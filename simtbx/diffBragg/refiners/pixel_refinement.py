@@ -104,6 +104,14 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
             return None
 
     @property
+    def spot_resolution(self):
+      return self._spot_resolution
+
+    @spot_resolution.setter
+    def spot_resolution(self, val):
+      self._spot_resolution=val
+
+    @property
     def abc_init(self):
         return self._abc_init
 

@@ -36,8 +36,12 @@ class RefineAll(RefineRot):
         self.best_image = np.zeros_like(self.img)
         self.num_positive_curvatures = 0
         # LS49 specific stuff 
-        self.harmonic_const = 1.e6
+        self.harmonic_const = 1.e5
         self.ucell_restraints = [63.6,28.8,35.6,math.radians(106.5)]
+        self.store_init_Imeas = []
+        self.store_init_model_Lambda = []
+        self.store_init_vmax = []
+        self.store_init_vmin = []
 
     def _setup(self):
         # total number of refinement parameters
@@ -205,6 +209,11 @@ class RefineAll(RefineRot):
             self._update_dxtbx_detector()
             self._update_ucell()
             self._update_ncells()
+            # Store some stuff
+            self.store_Imeas = []
+            self.store_model_Lambda = []
+            self.store_vmax = []
+            self.store_vmin = []
             for i_spot in range(self.n_spots):
                 if self.verbose:
                     print "\rRunning diffBragg over spot %d/%d " % (i_spot+1, self.n_spots),
@@ -259,8 +268,17 @@ class RefineAll(RefineRot):
                         self.ax1.images[0].set_clim(vmin, vmax)
                         self.ax2.images[0].set_data(Imeas)
                         self.ax2.images[0].set_clim(vmin, vmax)
-                    plt.suptitle("Iterations = %d, image %d / %d"
-                                 % (self.iterations, i_spot+1, self.n_spots))
+                        self.store_model_Lambda.append(self.model_Lambda)
+                        self.store_Imeas.append(Imeas)
+                        self.store_vmax.append(vmax)
+                        self.store_vmin.append(vmin)
+                        if self.iterations==0:
+                          self.store_init_model_Lambda.append(self.model_Lambda)
+                          self.store_init_Imeas.append(Imeas)
+                          self.store_init_vmax.append(vmax)
+                          self.store_init_vmin.append(vmin)
+                    plt.suptitle("Iterations = %d, image %d / %d, res=%.2f"
+                                 % (self.iterations, i_spot+1, self.n_spots, self.spot_resolution[i_spot]))
                     self.fig.canvas.draw()
                     plt.pause(.02)
                 if self.refine_Umatrix:
@@ -280,7 +298,7 @@ class RefineAll(RefineRot):
                         g[xpos] += (one_minus_k_over_Lambda * d).sum()
                         if self.refine_with_restraints:
                           for i_uc in range(self.n_ucell_param):
-                            g[xpos] += -2*self.harmonic_const*(self.ucell_manager.variables[i_uc] - self.ucell_restraints[i_uc])
+                            g[xpos] += 2*self.harmonic_const*(self.ucell_manager.variables[i_uc] - self.ucell_restraints[i_uc])
 
                         if self.calc_curvatures:
                             d2 = S2*G2*self.ucell_second_derivatives[i_ucell_p]
