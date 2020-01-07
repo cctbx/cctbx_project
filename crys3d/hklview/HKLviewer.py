@@ -242,7 +242,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.setupUi(self.window)
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
     self.actiondebug.triggered.connect(self.DebugInteractively)
-    self.actiondebug.triggered.connect(self.SettingsDialog)
+    self.actionSettings.triggered.connect(self.SettingsDialog)
 
     self.verbose = 0
     self.UseOSbrowser = False
@@ -351,7 +351,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.createRadiiScaleGroupBox()
     self.createBinsBox()
     self.CreateOtherBox()
-    #self.CreateFunctionTabs()
+    self.functionTabWidget.setDisabled(True)
 
     self.cpath = ""
     if self.UseOSbrowser==False:
@@ -847,6 +847,15 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.camera_type = orthographic")
 
 
+  def ExpandRefls(self):
+    if self.ExpandReflsGroupBox.isChecked():
+      self.PhilToJsRender('NGL_HKLviewer.viewer.expand_to_p1 = True')
+      self.PhilToJsRender('NGL_HKLviewer.viewer.expand_anomalous = True')
+    else:
+      self.PhilToJsRender('NGL_HKLviewer.viewer.expand_to_p1 = False')
+      self.PhilToJsRender('NGL_HKLviewer.viewer.expand_anomalous = False')
+
+
   def ExpandToP1(self):
     if self.expandP1checkbox.isChecked():
       self.PhilToJsRender('NGL_HKLviewer.viewer.expand_to_p1 = True')
@@ -1099,13 +1108,13 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     else:
       self.PhilToJsRender('NGL_HKLviewer.viewer.nth_power_scale_radii = -1.0')
       self.power_scale_spinBox.setEnabled(False)
-      #self.power_scale_spinBox.setValue(-1.0)
 
 
   def createExpansionBox(self):
     self.SpaceGroupComboBox.activated.connect(self.SpacegroupSelchange)
     self.expandP1checkbox.clicked.connect(self.ExpandToP1)
     self.expandAnomalouscheckbox.clicked.connect(self.ExpandAnomalous)
+    self.ExpandReflsGroupBox.clicked.connect(self.ExpandRefls)
     self.sysabsentcheckbox.clicked.connect(self.showSysAbsent)
     self.missingcheckbox.clicked.connect(self.showMissing)
     self.onlymissingcheckbox.clicked.connect(self.showOnlyMissing)
@@ -1113,153 +1122,73 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
   def CreateSliceTabs(self):
     self.SliceReflectionsBox.clicked.connect(self.onSliceReflectionsBoxclicked)
-    #self.showslicecheckbox = QCheckBox()
-    #self.showslicecheckbox.setText("Show Slice")
     self.showsliceGroupCheckbox.clicked.connect(self.showSlice)
 
-    #self.sliceindexspinBox = QDoubleSpinBox()
     self.sliceindex = 0
     self.sliceindexspinBox.setValue(self.sliceindex)
-    #self.sliceindexspinBox.setDecimals(0)
     self.sliceindexspinBox.setSingleStep(1)
     self.sliceindexspinBox.setRange(-100, 100)
     self.sliceindexspinBox.valueChanged.connect(self.onSliceIndexChanged)
 
-    #self.SliceLabelComboBox = QComboBox()
     self.SliceLabelComboBox.activated.connect(self.onSliceComboSelchange)
     self.sliceaxis = { 0:"h", 1:"k", 2:"l" }
     self.SliceLabelComboBox.addItems( list( self.sliceaxis.values()) )
     self.SliceLabelComboBox.setDisabled(True)
     self.sliceindexspinBox.setDisabled(True)
 
-    #self.sliceTabWidget = QTabWidget()
-    #tab1 = QWidget()
-    #layout1 = QGridLayout()
-    #layout1.addWidget(self.showslicecheckbox,         0, 0, 1, 1)
-    #layout1.addWidget(self.SliceLabelComboBox,        0, 1, 1, 1)
-    #layout1.addWidget(self.sliceindexspinBox,         0, 2, 1, 1)
-    #tab1.setLayout(layout1)
-
-    #tab2 = QWidget()
-    #layout2 = QGridLayout()
-
-    #self.recipvecBtn = QRadioButton(tab2)
+    self.fixedorientcheckbox.clicked.connect(self.onFixedorient)
     self.recipvecBtn.setText("as fractional values in reciprocal space")
     self.recipvecBtn.setChecked(False)
     self.recipvecBtn.clicked.connect(self.onClipPlaneChkBox)
-    #layout2.addWidget(self.recipvecBtn,       0, 0, 1, 2)
-
-    #self.realspacevecBtn = QRadioButton(tab2)
     self.realspacevecBtn.setText("as fractional values in real space")
     self.realspacevecBtn.setChecked(True)
     self.realspacevecBtn.clicked.connect(self.onClipPlaneChkBox)
-    #layout2.addWidget(self.realspacevecBtn,    1, 0, 1, 2)
-
-    #self.clipTNCSBtn = QRadioButton(tab2)
     self.clipTNCSBtn.setText("as tNCS vector")
     self.clipTNCSBtn.setChecked(False)
     self.clipTNCSBtn.clicked.connect(self.onClipPlaneChkBox)
-    #layout2.addWidget(self.clipTNCSBtn,    1, 2, 1, 1)
 
     vprec = 2
-    #self.hvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.hvec_spinBox.setValue(2.0)
     self.hvec_spinBox.setDecimals(vprec)
-    #self.hvec_spinBox.setSingleStep(0.5)
     self.hvec_spinBox.setRange(-100.0, 100.0)
     self.hvec_spinBox.valueChanged.connect(self.onHvecChanged)
-    #self.hvec_Label = QLabel()
-    #self.hvec_Label.setText("R1")
-    #layout2.addWidget(self.hvec_Label,      2, 0, 1, 1)
-    #layout2.addWidget(self.hvec_spinBox,    3, 0, 1, 1)
-
-    #self.kvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.kvec_spinBox.setValue(0.0)
     self.kvec_spinBox.setDecimals(vprec)
     self.kvec_spinBox.setSingleStep(0.5)
     self.kvec_spinBox.setRange(-100.0, 100.0)
     self.kvec_spinBox.valueChanged.connect(self.onKvecChanged)
-    #self.kvec_Label = QLabel()
-    #self.kvec_Label.setText("R2")
-    #layout2.addWidget(self.kvec_Label,      2, 1, 1, 1)
-    #layout2.addWidget(self.kvec_spinBox,    3, 1, 1, 1)
-
-    #self.lvec_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.lvec_spinBox.setValue(0.0)
     self.lvec_spinBox.setDecimals(vprec)
     self.lvec_spinBox.setSingleStep(0.5)
     self.lvec_spinBox.setRange(-100.0, 100.0)
     self.lvec_spinBox.valueChanged.connect(self.onLvecChanged)
-    #self.lvec_Label = QLabel()
-    #self.lvec_Label.setText("R3")
-    #layout2.addWidget(self.lvec_Label,      2, 2, 1, 1)
-    #layout2.addWidget(self.lvec_spinBox,    3, 2, 1, 1)
-
-    #self.hkldist_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.hkldistval = 0.0
     self.hkldist_spinBox.setValue(self.hkldistval)
     self.hkldist_spinBox.setDecimals(vprec)
     self.hkldist_spinBox.setSingleStep(0.5)
     self.hkldist_spinBox.setRange(-100.0, 100.0)
     self.hkldist_spinBox.valueChanged.connect(self.onHKLdistChanged)
-    #self.hkldist_Label = QLabel()
-    #self.hkldist_Label.setText("Distance from Origin")
-    #layout2.addWidget(self.hkldist_Label,      4, 0, 1, 1)
-    #layout2.addWidget(self.hkldist_spinBox,    4, 1, 1, 1)
-
-    #self.clipwidth_spinBox = QDoubleSpinBox(self.sliceTabWidget)
     self.clipwidth_spinBox.setValue(0.5 )
     self.clipwidth_spinBox.setDecimals(vprec)
     self.clipwidth_spinBox.setSingleStep(0.05)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
     self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
-    #self.clipwidth_Label = QLabel()
-    #self.clipwidth_Label.setText("Clip Plane Width")
-    #layout2.addWidget(self.clipwidth_Label,      5, 0, 1, 1)
-    #layout2.addWidget(self.clipwidth_spinBox,    5, 1, 1, 1)
-
-    #self.rotavecangle_labeltxt = QLabel()
     self.rotavecangle_labeltxt.setText("Angle rotated: 0°")
-    #self.rotavecangle_slider = QSlider(Qt.Horizontal)
     self.rotavecangle_slider.setMinimum(0)
     self.rotavecangle_slider.setMaximum(360)
     self.rotavecangle_slider.setValue(0)
     self.rotavecangle_slider.setSingleStep(5)
     self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
     self.rotavecangle_slider.valueChanged.connect(self.onRotaVecAngle)
-    #layout2.addWidget(self.rotavecangle_labeltxt,  6, 0, 1, 1)
-    #layout2.addWidget(self.rotavecangle_slider,    6, 1, 1, 2)
-
-
-    #self.ClipBox = QGroupBox("Specify vector components (R1,R2,R3)")
-    #self.ClipBox.setLayout(layout2)
-
-    #layout3 = QGridLayout()
-    #self.ClipPlaneChkBox = QCheckBox(self.sliceTabWidget)
-    #self.ClipPlaneChkGroupBox.setText("Slice reflections with a clip plane oriented")
-    #self.ClipPlaneChkBox.clicked.connect(self.onClipPlaneChkBox)
     self.ClipPlaneChkGroupBox.clicked.connect(self.onClipPlaneChkBox)
-    #self.clipLabel = QLabel()
-
-    #self.clipParallelBtn = QRadioButton(tab2)
     self.clipParallelBtn.setText("parallel to vector below")
     self.clipParallelBtn.setChecked(False)
     self.clipParallelBtn.clicked.connect(self.onClipPlaneChkBox)
 
-    #self.clipNormalBtn = QRadioButton(tab2)
     self.clipNormalBtn.setText("perpendicular to vector below")
     self.clipNormalBtn.setChecked(True)
     self.clipNormalBtn.clicked.connect(self.onClipPlaneChkBox)
 
-    #layout3.addWidget(self.ClipPlaneChkBox,  0, 0)
-    #layout3.addWidget(self.clipParallelBtn,  1, 0)
-    #layout3.addWidget(self.clipNormalBtn,    1, 1)
-    #layout3.addWidget(self.ClipBox,          2, 0, 1, 2)
-    #tab2.setLayout(layout3)
-
-    #self.sliceTabWidget.addTab(tab1, "Explicit Slicing")
-    #self.sliceTabWidget.addTab(tab2, "Clip Plane Slicing")
-    #self.ClipBox.setDisabled(True)
     self.clipParallelBtn.setChecked(True)
     self.clipNormalBtn.setDisabled(True)
     self.clipParallelBtn.setDisabled(True)
@@ -1512,7 +1441,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
   def createFileInfoBox(self):
     labels = ["Column label", "Type", "Space group", "# HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max", "Symmetry unique", "Anomalous"]
-    #self.millertable = MillerTableWidget(0, len(labels))
     self.millertable.setHorizontalHeaderLabels(labels)
     self.millertable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     # don't allow editing this table
@@ -1521,111 +1449,37 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.millertable.cellDoubleClicked.connect(self.onMillerTableCellPressed)
     self.millertable.itemSelectionChanged.connect(self.onMillerTableitemSelectionChanged)
 
-    #self.datasetLabel = QLabel()
-    #self.datasetLabel.setText("Display a data set with a double-click or right-click it for more options.")
-    #self.FileInfoBox = QGroupBox("Reflection File Information")
-    #self.HKLnameedit = QLineEdit('')
-    #self.HKLnameedit.setReadOnly(True)
-    #self.textInfo = QTextEdit()
-    #self.textInfo.setLineWrapMode(QTextEdit.NoWrap)
-    #self.textInfo.setReadOnly(True)
-    #layout = QGridLayout()
-    #layout.addWidget(self.openFileNameButton,     0, 0, 1, 2)
-    #if self.devmode:
-    #  layout.addWidget(self.debugbutton,            0, 2, 1, 1)
-    #layout.addWidget(self.HKLnameedit,            1, 0, 1, 3)
-    #layout.addWidget(self.datasetLabel,           2, 0, 1, 3)
-    #layout.addWidget(self.millertable,            3, 0, 1, 3)
-    #layout.addWidget(self.textInfo,               4, 0, 1, 3)
-    #layout.setColumnStretch(1, 2)
-    #self.FileInfoBox.setLayout(layout)
-
 
   def createRadiiScaleGroupBox(self):
-    #self.RadiiScaleGroupBox = QGroupBox("Radii Size of HKL Spheres")
-
-    #self.ManualPowerScalecheckbox = QCheckBox()
-    #self.ManualPowerScalecheckbox.setText("Manual Power Scaling of Sphere Radii")
     self.ManualPowerScalecheckbox.clicked.connect(self.onManualPowerScale)
-
-    #self.power_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
-    #self.power_scale_spinBox.setValue(0.33)
-    #self.power_scale_spinBox.setDecimals(2)
-    #self.power_scale_spinBox.setSingleStep(0.05)
-    #self.power_scale_spinBox.setRange(0.0, 1.0)
     self.power_scale_spinBox.valueChanged.connect(self.onPowerScaleChanged)
-    #self.power_scale_spinBox.setEnabled(False)
-    #self.powerscaleLabel = QLabel()
-    #self.powerscaleLabel.setText("Power scale Factor")
-
-    #self.radii_scale_spinBox = QDoubleSpinBox(self.RadiiScaleGroupBox)
-    #self.radii_scale_spinBox.setValue(1.0)
-    #self.radii_scale_spinBox.setDecimals(1)
-    #self.radii_scale_spinBox.setSingleStep(0.1)
-    #self.radii_scale_spinBox.setRange(0.2, 2.0)
     self.radii_scale_spinBox.valueChanged.connect(self.onRadiiScaleChanged)
-    #self.radiiscaleLabel = QLabel()
-    #self.radiiscaleLabel.setText("Linear Scale Factor")
-
-    #layout = QGridLayout()
-    #layout.addWidget(self.ManualPowerScalecheckbox, 1, 0, 1, 2)
-    #layout.addWidget(self.powerscaleLabel,          2, 0, 1, 2)
-    #layout.addWidget(self.power_scale_spinBox,      2, 1, 1, 2)
-    #layout.addWidget(self.radiiscaleLabel,          3, 0, 1, 2)
-    #layout.addWidget(self.radii_scale_spinBox,      3, 1, 1, 2)
-    #layout.setColumnStretch (0, 1)
-    #layout.setColumnStretch (1 ,0)
-    #self.RadiiScaleGroupBox.setLayout(layout)
 
 
   def createBinsBox(self):
-    #self.binstable = QTableWidget(0, 4)
     self.binstable_isready = False
     labels = ["no. of HKLs", "lower bin value", "upper bin value", "opacity"]
     self.binstable.setHorizontalHeaderLabels(labels)
     self.binstable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
-    #self.bindata_labeltxt = QLabel()
-    #self.bindata_labeltxt.setText("Binning according to:")
-    #self.Nbins_spinBox = QSpinBox()
-    #self.Nbins_spinBox.setSingleStep(1)
-    #self.Nbins_spinBox.setRange(1, 40)
     self.Nbins_spinBox.valueChanged.connect(self.onNbinsChanged)
-    #self.Nbins_labeltxt = QLabel()
-    #self.Nbins_labeltxt.setText("Number of bins:")
-
-    #self.OpaqueAllCheckbox = QCheckBox()
-    #self.OpaqueAllCheckbox.setCheckState(Qt.Checked)
-    #self.OpaqueAllCheckbox.setText("Show all data in bins")
     self.OpaqueAllCheckbox.clicked.connect(self.onOpaqueAll)
 
     self.binstable.itemChanged.connect(self.onBinsTableItemChanged  )
     self.binstable.itemClicked.connect(self.onBinsTableitemClicked  )
     self.binstable.itemPressed.connect(self.onBinsTableitemPressed  )
-    #self.binstable.itemSelectionChanged.connect(self.onBinsTableItemSelectionChanged  )
-
-    #self.BinDataComboBox = QComboBox()
     self.BinDataComboBox.activated.connect(self.onBindataComboSelchange)
-    #self.BinsGroupBox = QGroupBox("Bins")
-    #layout = QGridLayout()
-    #layout.addWidget(self.bindata_labeltxt, 0, 0)
-    #layout.addWidget(self.BinDataComboBox, 0, 1)
-    #layout.addWidget(self.Nbins_labeltxt, 0, 2)
-    #layout.addWidget(self.Nbins_spinBox, 0, 3)
-    #layout.addWidget(self.OpaqueAllCheckbox, 1, 2)
-    #layout.addWidget(self.binstable, 2, 0, 1, 4)
-    #layout.setColumnStretch(0, 0)
-    #layout.setColumnStretch(1, 2)
-    #layout.setColumnStretch(3, 1)
-    #self.BinsGroupBox.setLayout(layout)
 
 
   def CreateOtherBox(self):
     self.DrawRealUnitCellBox.clicked.connect(self.onDrawUnitCellBoxClick)
     self.DrawReciprocUnitCellBox.clicked.connect(self.onDrawReciprocUnitCellBoxClick)
     self.unitcellslider.sliderReleased.connect(self.onUnitcellScale)
-    #self.unitcellslider.valueChanged.connect(self.onUnitcellScale)
     self.reciprocunitcellslider.sliderReleased.connect(self.onReciprocUnitcellScale)
-    #self.reciprocunitcellslider.valueChanged.connect(self.onReciprocUnitcellScale)
+    self.ResetViewBtn.clicked.connect(self.onResetViewBtn)
+
+
+  def onResetViewBtn(self):
+    self.PhilToJsRender('NGL_HKLviewer.action = reset_view')
 
 
   def onUnitcellScale(self):
@@ -1642,42 +1496,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
   def DebugInteractively(self):
     import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-
-
-  def CreateFunctionTabs(self):
-    self.functionTabWidget = QTabWidget()
-    tab1 = QWidget()
-    layout1 = QGridLayout()
-    layout1.addWidget(self.ExpansionBox,     0, 0)
-    layout1.setRowStretch (0 ,0)
-    tab1.setLayout(layout1)
-
-    tab2 = QWidget()
-    layout2 = QGridLayout()
-
-    self.fixedorientcheckbox = QCheckBox(self.sliceTabWidget)
-    self.fixedorientcheckbox.setText("Fix orientation but allow zoom and translation")
-    self.fixedorientcheckbox.clicked.connect(self.onFixedorient)
-    layout2.addWidget(self.fixedorientcheckbox,   0, 0)
-
-    layout2.addWidget(self.sliceTabWidget,     1, 0)
-    tab2.setLayout(layout2)
-
-    tab3 = QWidget()
-    layout3 = QGridLayout()
-    layout3.addWidget(self.RadiiScaleGroupBox,     0, 0)
-    tab3.setLayout(layout3)
-
-    tab4 = QWidget()
-    layout4 = QGridLayout()
-    layout4.addWidget(self.BinsGroupBox,     0, 0)
-    tab4.setLayout(layout4)
-
-    self.functionTabWidget.addTab(tab1, "Expand")
-    self.functionTabWidget.addTab(tab2, "Slice")
-    self.functionTabWidget.addTab(tab3, "Size")
-    self.functionTabWidget.addTab(tab4, "Bins")
-    self.functionTabWidget.setDisabled(True)
 
 
   def SpacegroupSelchange(self,i):

@@ -478,6 +478,7 @@ class HKLViewFrame() :
 
       if view_3d.has_phil_path(diff_phil, "action"):
         ret = self.set_action(phl.action)
+        phl.action = "is_running" # to ensure issuing the same action twice will be executed
         if not ret:
           return False
 
@@ -492,7 +493,6 @@ class HKLViewFrame() :
       # parameters might have been changed. So update self.currentphil accordingly
       self.currentphil = self.master_phil.format(python_object = self.params)
       self.mprint( msg, verbose=1)
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.NewFileLoaded = False
       phl.mouse_moved = False
       self.SendCurrentPhilValues()
@@ -1033,6 +1033,8 @@ class HKLViewFrame() :
 
 
   def set_action(self, val):
+    if val == "reset_view":
+      self.viewer.SetAutoView()
     if val == "is_terminating":
       self.__exit__()
       return False
@@ -1232,7 +1234,7 @@ NGL_HKLviewer {
   bin_scene_label = 'Resolution'
     .type = str
   nbins = 1
-    .type = int
+    .type = int(value_min=1, value_max=20)
   shape_primitive = *'spheres' 'points'
     .type = choice
   tooltips_in_script = False
@@ -1245,7 +1247,7 @@ NGL_HKLviewer {
       %s
     }
   }
-  action = *is_running is_terminating
+  action = *is_running is_terminating reset_view
     .type = choice
   tabulate_miller_array_ids = "[]"
     .type = str

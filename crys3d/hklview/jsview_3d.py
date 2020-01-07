@@ -3021,9 +3021,10 @@ Distance: %s
 
 
   def SetAutoView(self):
+    rotmx = self.Euler2RotMatrix( ( 0.0, 0.0, 0.0 ) )
+    self.currentRotmx = rotmx
+    self.RotateMxStage(rotmx)
     self.AddToBrowserMsgQueue("SetAutoView" )
-    #self.send_msg_to_browser("SetAutoView")
-    #self.ReOrientStage()
 
 
   def TestNewFunction(self):
@@ -3054,6 +3055,8 @@ Distance: %s
 
 
   def RotateMxStage(self, rotmx, quietbrowser=True):
+    if self.cameraPosZ is None:
+      return
     scaleRot = rotmx * self.cameraPosZ
     ortrot = scaleRot.as_mat3()
     str_rot = str(ortrot)
