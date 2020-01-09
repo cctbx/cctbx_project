@@ -65,11 +65,11 @@ namespace cctbx {
       void wrap_tensor_constraints() {
         using namespace scitbx::matrix::tensors;
         tensor_constraints_wrappers<tensors::constraints<double, tensor_rank_2<double> > >
-          ::wrap("tensor_rank_2_constraints");
+          ::wrap("rank_2_tensor_constraints");
         tensor_constraints_wrappers<tensors::constraints<double, tensor_rank_3<double> > >
-          ::wrap("tensor_rank_3_constraints");
+          ::wrap("rank_3_tensor_constraints");
         tensor_constraints_wrappers<tensors::constraints<double, tensor_rank_4<double> > >
-          ::wrap("tensor_rank_4_constraints");
+          ::wrap("rank_4_tensor_constraints");
       }
 
     }

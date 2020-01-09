@@ -2354,7 +2354,7 @@ def exercise_tensor_rank_2_constraints():
   g = sgtbx.space_group("P 6 2")
   ss = sgtbx.site_symmetry(u, g, (0,0,0))
   tr2ca = sgtbx.tensor_rank_2_constraints
-  tr2cb = sgtbx.tensor_rank_2_constraints
+  tr2cb = sgtbx.rank_2_tensor_constraints
   for tr2c in (tr2ca,tr2cb):
     for c in (tr2c(
                 space_group=g,
