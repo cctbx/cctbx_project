@@ -23,10 +23,13 @@ if rank == 0:
     from numpy.linalg import norm
     from simtbx.diffBragg.refiners import BreakToUseCurvatures
     from scitbx.array_family import flex
+    from cctbx.array_family import flex as cctbx_flex
+    flex_miller_index = cctbx_flex.miller_index
 
     flex_double = flex.double
     from scitbx.matrix import col
     from simtbx.diffBragg.refiners import PixelRefinement
+    from scipy.optimize import minimize
 
     from collections import Counter
     import numpy as np
@@ -34,6 +37,8 @@ if rank == 0:
 else:
     mean = unique = np_log = np_exp = np_all = norm = median = std = None
     tabulate = None
+    flex_miller_index = None
+    minimize = None
     np_load = None
     linregress = None
     Counter = None
@@ -49,11 +54,13 @@ if has_mpi:
     linregress = comm.bcast(linregress, root=0)
     tabulate = comm.bcast(tabulate, root=0)
     std = comm.bcast(std, root=0)
+    flex_miller_index = comm.bcast(flex_miller_index, root=0)
     median = comm.bcast(median, root=0)
     unique = comm.bcast(unique, root=0)
     np_load = comm.bcast(np_load, root=0)
     np_log = comm.bcast(np_log, root=0)
     np_exp = comm.bcast(np_exp, root=0)
+    minimize = comm.bcast(minimize, root=0)
     norm = comm.bcast(norm, root=0)
     np_all = comm.bcast(np_all, root=0)
     # stdout_flush = comm.bcast(stdout_flush)
@@ -71,7 +78,6 @@ import warnings
 from copy import deepcopy
 from cxid9114.helpers import compare_with_ground_truth
 from cctbx import miller, sgtbx
-from cctbx.crystal import symmetry
 from IPython import embed
 
 warnings.filterwarnings("ignore")
@@ -83,8 +89,9 @@ class FatRefiner(PixelRefinement):
                  shot_roi_imgs, shot_spectra, shot_crystal_GTs,
                  shot_crystal_models, shot_xrel, shot_yrel, shot_abc_inits, shot_asu,
                  global_param_idx_start,
-                 shot_panel_ids, 
-                 all_crystal_scales=None, init_gain=1, init_scale=1, perturb_fcell=False, global_ncells=False):
+                 shot_panel_ids,
+                 log_of_init_crystal_scales=None,
+                 all_crystal_scales=None, init_gain=1, perturb_fcell=False, global_ncells=False):
         PixelRefinement.__init__(self)
         # super(GlobalFat, self).__init__()
         self.num_kludge = 0
@@ -152,7 +159,13 @@ class FatRefiner(PixelRefinement):
         self._ncells_id = 9  # diffBragg internal index for Ncells derivative manager
         self._originZ_id = 10  # diffBragg internal index for originZ derivative manager
         self._fcell_id = 11  # diffBragg internal index for Fcell derivative manager
-        self._init_scale = init_scale
+
+        if log_of_init_crystal_scales is None:
+            log_of_init_crystal_scales = {s: 0 for s in self.shot_ids}
+        else:
+            assert sorted(log_of_init_crystal_scales.keys()) == self.shot_ids
+        self.log_of_init_crystal_scales = log_of_init_crystal_scales
+
         self._init_gain = init_gain
         self.num_positive_curvatures = 0
         self._panel_id = None
@@ -175,9 +188,9 @@ class FatRefiner(PixelRefinement):
 
         self.a = self.b = self.c = None  # tilt plan place holder
 
-    def _setup_resolution_binner(self):
-        if self.Fref is not None:
-            _ = self.Fref.setup_binner(d_max=self.binner_dmax, d_min=self.binner_dmin, n_bins=self.binner_nbins)
+    #def _setup_resolution_binner(self):
+    #    if self.Fobs is not None:
+    #        _ = self.Fobs.setup_binner(d_max=self.binner_dmax, d_min=self.binner_dmin, n_bins=self.binner_nbins)
 
     def setup_plots(self):
         if rank == 0:
@@ -258,7 +271,6 @@ class FatRefiner(PixelRefinement):
         if not self.idx_from_asu:  # # TODO just derive from its inverse
             raise ValueError("Need to supply a non empty idx from asu map")
 
-        self._setup_resolution_binner()
 
         # get the Fhkl information from P1 array internal to nanoBragg
         if comm.rank == 0:
@@ -337,12 +349,11 @@ class FatRefiner(PixelRefinement):
             #    # put in Ncells abc estimate
             #    self.ncells_xpos[i_shot] = self.ucell_xstart[i_shot] + self.n_ucell_param
 
-
             if self.global_ncells_param:
                 self.spot_scale_xpos[i_shot] = self.rotZ_xpos[i_shot] + 1
             else:
                 self.spot_scale_xpos[i_shot] = self.ncells_xpos[i_shot] + 1
-            self.x[self.spot_scale_xpos[i_shot]] = self._init_scale  # TODO: each shot gets own starting scale factor
+            self.x[self.spot_scale_xpos[i_shot]] = self.log_of_init_crystal_scales[i_shot]
 
             _x_start = self.spot_scale_xpos[i_shot] + 1  # NOTE bg
 
@@ -396,6 +407,7 @@ class FatRefiner(PixelRefinement):
             # initialize the Fhkl global values
             print("--- --- --- inserting the Fhkl array in the parameter array... ")
             asu_idx = [self.asu_from_idx[idx] for idx in range(self.n_global_fcell)]
+            self.refinement_millers = flex_miller_index(tuple(asu_idx))
             Findices, Fdata = self.S.D.Fhkl_tuple
             vals = [Fdata[self.idx_from_p1[h]] for h in asu_idx]  # TODO am I correct/
             if self.log_fcells:
@@ -404,7 +416,8 @@ class FatRefiner(PixelRefinement):
                 self.x[self.fcell_xstart + i_fcell] = vals[i_fcell]
 
             if self.Fref is not None:
-                self.init_R1 = self.Fref.r1_factor(self.Fobs)
+                self.Fref_aligned = self.Fref.select_indices(self.Fobs.indices())
+                self.init_R1 = self.Fobs_Fref_Rfactor(use_binning=False, auto_scale=self.scale_r1)
                 print("Initial R1 = %.4f" % self.init_R1)
 
             if self.output_dir is not None:
@@ -457,6 +470,8 @@ class FatRefiner(PixelRefinement):
             print('convert to string')
             print(master_data.to_string())
 
+        #self._setup_resolution_binner()
+
         # setup the diffBragg instance
         self.D = self.S.D
 
@@ -489,7 +504,7 @@ class FatRefiner(PixelRefinement):
             ncells_vals = [lst[self.ncells_xpos[i_shot]] for i_shot in range(self.n_shots)]
         else:
             ncells_vals = [self.x[self.ncells_xpos[0]]] * len(rotx)
-        scale_vals = [lst[self.spot_scale_xpos[i_shot]] for i_shot in range(self.n_shots)]
+        scale_vals = [np_exp(lst[self.spot_scale_xpos[i_shot]]) for i_shot in range(self.n_shots)]
         
         # this can be used to compare directly
         if self.CRYSTAL_SCALE_TRUTH is not None:
@@ -699,7 +714,7 @@ class FatRefiner(PixelRefinement):
                 if self._i_shot in self.bad_shot_list:
                     continue
                 self.scale_fac = self.x[self.spot_scale_xpos[self._i_shot]]
-                S2 = self.scale_fac ** 2
+                expS = np_exp(self.scale_fac)
                 # TODO: Omatrix update? All crystal models here should have the same to_primitive operation, ideally
                 self._update_beams()
                 self._update_umatrix()
@@ -708,13 +723,10 @@ class FatRefiner(PixelRefinement):
                 self._update_rotXYZ()
                 n_spots = len(self.NANOBRAGG_ROIS[self._i_shot])
                 for i_spot in range(n_spots):
-                    #if self.FNAMES[self._i_shot] == '/global/project/projectdirs/lcls/dermen/d9114_sims/sadpaint/job5/realer_rank5_data858_fluence10473.h5.npz':
-                    # continue
                     mill_idx = self.ASU[self._i_shot][i_spot]
+
                     # Only refine me if Im above the threshold multiplicity
                     multi = self.hkl_frequency[self.idx_from_asu[mill_idx]]
-                    #if self.idx_from_asu[mill_idx] in self._fix_list:
-                    #    continue  #FIXME, not sure why this arises, possibly due to mis-indexing (check by running proc_mpi using ground truth)!
 
                     self._panel_id = self.PANEL_IDS[self._i_shot][i_spot]
                     if self.verbose:
@@ -723,22 +735,9 @@ class FatRefiner(PixelRefinement):
                         sys.stdout.flush()
 
                     self._update_dxtbx_detector()
-
                     self.Imeas = self.ROI_IMGS[self._i_shot][i_spot]
-
-                    _h = -8, -7, -3
-                    #_h = 10, 3, 3
-                    #_h = -5, -4, -5
-                    #if self.ASU[self._i_shot][i_spot] == _h:
-                    #    _verbose = self.D.verbose
-                    #    self.D.verbose = 4
-
                     self._run_diffBragg_current(i_spot)
-                    #self._unpack_bgplane_params(i_spot)  # NOTE now Im done in set_background_plane
-                    #try:
                     self._set_background_plane(i_spot)
-                    #except IndexError:
-                    #    embed()
                     self._extract_pixel_data()
                     self._evaluate_averageI()
                     if self.poisson_only:
@@ -756,9 +755,6 @@ class FatRefiner(PixelRefinement):
                     #    #print("Warning max_h  mismatch!!!!!!")
                     #    #comm.Abort()
 
-                    #if self.ASU[self._i_shot][i_spot] == _h:
-                    #    embed()
-                    #    self.D.verbose = _verbose
                     # helper terms for doing derivatives
                     one_over_Lambda = 1. / self.model_Lambda
                     self.one_minus_k_over_Lambda = (1. - self.Imeas * one_over_Lambda)
@@ -828,29 +824,30 @@ class FatRefiner(PixelRefinement):
                                        self.rotY_xpos[self._i_shot],
                                        self.rotZ_xpos[self._i_shot]]
                         for ii, xpos in enumerate(x_positions):
-                            d = S2 * G2 * self.rot_deriv[ii]
+                            d = expS * G2 * self.rot_deriv[ii]
                             g[xpos] += self._grad_accumulate(d)
                             if self.calc_curvatures:
-                                d2 = S2 * G2 * self.rot_second_deriv[ii]
+                                d2 = expS * G2 * self.rot_second_deriv[ii]
                                 self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_Bmatrix:
                         # unit cell derivative
                         for i_ucell_p in range(self.n_ucell_param):
                             xpos = self.ucell_xstart[self._i_shot] + i_ucell_p
-                            d = S2 * G2 * self.ucell_derivatives[i_ucell_p]
+                            d = expS * G2 * self.ucell_derivatives[i_ucell_p]
                             g[xpos] += self._grad_accumulate(d)
 
                             if self.calc_curvatures:
-                                d2 = S2 * G2 * self.ucell_second_derivatives[i_ucell_p]
+                                d2 = expS * G2 * self.ucell_second_derivatives[i_ucell_p]
                                 self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_ncells:
-                        d = S2 * G2 * self.ncells_deriv
+                        #TODO ensure Ncells is always positive with a reparameterization
+                        d = expS * G2 * self.ncells_deriv
                         xpos = self.ncells_xpos[self._i_shot]
                         g[xpos] += self._grad_accumulate(d)
                         if self.calc_curvatures:
-                            d2 = S2 * G2 * self.ncells_second_deriv
+                            d2 = expS * G2 * self.ncells_second_deriv
                             self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_detdist:
@@ -858,32 +855,32 @@ class FatRefiner(PixelRefinement):
                         # if self.calc_curvatures:
                         #    raise NotImplementedError("Cannot use curvatures and refine detdist (yet...)")
                         # origin_xpos = self.origin_xstart + self.idx_from_pid[self._panel_id]
-                        # g[origin_xpos] += (S2*G2*self.detdist_deriv*one_minus_k_over_Lambda).sum()
+                        # g[origin_xpos] += (expS*G2*self.detdist_deriv*one_minus_k_over_Lambda).sum()
 
                     if self.refine_Fcell and multi >= self.min_multiplicity:
                         xpos = self.fcell_xstart + self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
                         fcell = self.x[xpos]
-                        d = S2 * G2 * self.fcell_deriv
+                        d = expS * G2 * self.fcell_deriv
                         if self.log_fcells:
                             d *= np_exp(fcell)
                         g[xpos] += self._grad_accumulate(d)
                         if self.calc_curvatures:
-                            d2 = S2 * G2 * self.fcell_second_deriv
+                            d2 = expS * G2 * self.fcell_second_deriv
                             if self.log_fcells:
                                 ex_fcell = np_exp(fcell)
                                 d2 = ex_fcell * d + ex_fcell * ex_fcell * d2
                             self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_crystal_scale:
-                        d = G2 * 2 * self.scale_fac * self.model_bragg_spots
+                        d = G2 * expS * self.model_bragg_spots
                         xpos = self.spot_scale_xpos[self._i_shot]
                         g[xpos] += self._grad_accumulate(d)
                         if self.calc_curvatures:
-                            d2 = d / self.scale_fac
+                            d2 = d
                             self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_gain_fac:
-                        d = 2 * self.gain_fac * (self.tilt_plane + S2 * self.model_bragg_spots)
+                        d = 2 * self.gain_fac * (self.tilt_plane + expS * self.model_bragg_spots)
                         g[self.gain_xpos] += self._grad_accumulate(d)
                         if self.calc_curvatures:
                             d2 = d / self.gain_fac
@@ -1016,7 +1013,7 @@ class FatRefiner(PixelRefinement):
                     all_ang_off = ["%.5f" % aa for aa in all_ang_off]
                     print(", ".join(all_ang_off))
                     print ("N shots deemed bad from missets: %d" % self.n_bad_shots)
-                print("MISSETTING median: %.4f; num > .1 deg: %d/%d; num broken=%d" % (misset_median,n_bad_misset, n_misset, n_broken_misset)) 
+                print("\nMISSETTING median: %.4f; num > .1 deg: %d/%d; num broken=%d" % (misset_median,n_bad_misset, n_misset, n_broken_misset))
                 self.print_step("LBFGS stp", f)
                 self.print_step_grads("LBFGS GRADS", gnorm)
             self.iterations += 1
@@ -1165,15 +1162,15 @@ class FatRefiner(PixelRefinement):
                     print(master_data.to_string(float_format="%.3g"))
 
         # Compute the mean, min, max, variance  and median crystal scale
-      
-        _sv = [self.D.spot_scale*(s**2) for s in self.scale_vals] 
+        # Note we must also include the spot_scale in the diffBragg instance if its not unity
+        _sv = [self.D.spot_scale*s for s in self.scale_vals]
         stats = (median(_sv), 
             mean(_sv),
             min(_sv),
             max(_sv),
             std(_sv))
         scale_stat_names =["median", "mean", "min", "max", "sigma"]
-        scale_stats = ["%s=%.4f"%name_stat for name_stat in zip(scale_stat_names, stats)]
+        scale_stats = ["%s=%.4f" % name_stat for name_stat in zip(scale_stat_names, stats)]
         scale_stats_string = "SCALE FACTOR STATS: " + ", ".join(scale_stats)
         if self.scale_vals_truths is not None:
             scale_resid = [np.abs(s-stru) for s, stru in zip(_sv, self.scale_vals_truths)]
@@ -1196,13 +1193,13 @@ class FatRefiner(PixelRefinement):
         print("\n")
         if self.Fref is not None:
             print("R-factor overall:")
-            print self.Fref.r1_factor(self.Fobs)
+            print self.Fobs_Fref_Rfactor(use_binning=False, auto_scale=self.scale_r1)
             print("R-factor (shells):")
-            self.Fref.r1_factor(self.Fobs, use_binning=True).show()  # NOTE: is this slow ??
+            print self.Fobs_Fref_Rfactor(use_binning=True, auto_scale=self.scale_r1).show()
             print("CC overall:")
-            print self.Fref.correlation(self.Fobs)
+            print self.Fobs.correlation(self.Fref_aligned)
             print("CC:")
-            self.Fref.correlation(self.Fobs, use_binning=True).show()
+            self.Fobs.correlation(self.Fref_aligned, use_binning=True).show()
             print("\n")
 
     def get_refined_Bmatrix(self, i_shot):
@@ -1232,3 +1229,21 @@ class FatRefiner(PixelRefinement):
             return rot_ang, rot_ax
         else:
             return M
+
+    def Fobs_Fref_Rfactor(self, use_binning=False, auto_scale=False):
+        if auto_scale:
+            # TODO check for convergence of minimizer and warn if it faile, then set scale factor to 1 ?
+            self.r1_scale = minimize(FatRefiner._rfactor_minimizer_target,
+                                     x0=[1], args=(self.Fobs, self.Fref_aligned),
+                                     method='Nelder-Mead').x[0]
+        else:
+            self.r1_scale = 1
+
+        return self.Fobs.r1_factor(self.Fref_aligned,
+                                   use_binning=use_binning, scale_factor=self.r1_scale)
+
+    @staticmethod
+    def _rfactor_minimizer_target(k, Fobs, Fref):
+        return Fobs.r1_factor(Fref, scale_factor=k[0])
+
+
