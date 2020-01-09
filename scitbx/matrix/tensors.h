@@ -3,16 +3,7 @@
 
 #include <vector>
 #include <cctbx/sgtbx/rot_mx.h>
-#include <scitbx/vec3.h>
-#include <scitbx/array_family/shared.h>
 
-/*
-Note that in multithreaded environment the librray has to be initialised in the
-main thread before executing any threads accessing these objects
-For this scitbx::matrix::tensors::initialise<FloatType> function is implemented
-here. If you are doing memory leak hunting - also consider using the finalise
-method.
-*/
 namespace scitbx { namespace matrix { namespace tensors {
   namespace utils {
     static size_t factorial(const size_t& a) {
@@ -33,11 +24,8 @@ namespace scitbx { namespace matrix { namespace tensors {
 
   using cctbx::sgtbx::rot_mx;
 
-  template <class heir_t, typename FloatType>
+  template <class heir_t>
   class tensor_base {
-    heir_t &self() { return *(heir_t*)this; }
-    const heir_t &self() const { return *(heir_t*)this; }
-
   protected:
     /* https://en.wikipedia.org/wiki/Heap%27s_algorithm
     initialises equivalent map indices
@@ -63,28 +51,23 @@ namespace scitbx { namespace matrix { namespace tensors {
     multiplicity
     */
     static void init_map_m() {
-      const std::vector<std::vector<int> > &indices = heir_t::get_indices();
+      std::vector<std::vector<int> > indices = heir_t::get_indices();
       for (size_t i = 0; i < indices.size(); i++) {
-        std::vector<int> idx = indices[i];
+        std::vector<int> &idx = indices[i];
         init_index(idx.size(), idx, i);
         size_t mps[3] = { 0, 0, 0 };
         for (size_t j = 0; j < idx.size(); j++) {
           mps[idx[j]]++;
         }
-        get_multiplicity_()[i] = utils::calc_multiplicity(mps, heir_t::rank());
+        get_multiplicity_()[i] = utils::calc_multiplicity(mps, 3);
       }
     }
-
+    
     static std::vector<size_t> &get_multiplicity_() {
       static std::vector<size_t> multiplicity(heir_t::size());
       return multiplicity;
     }
-
   public:
-    const FloatType & operator [](size_t i) const { return self().data_[i]; }
-
-    FloatType & operator [](size_t i) { return self().data_[i]; }
-
     static size_t get_linear_idx(const std::vector<int> &idx) {
       return heir_t::get_linear_index_(idx);
     }
@@ -93,58 +76,13 @@ namespace scitbx { namespace matrix { namespace tensors {
       return get_multiplicity_()[i];
     }
 
-    static const std::vector<std::vector<int> > &get_indices() {
-      return heir_t::get_indices_();
-    }
-    /* this might be required in a multithreaded environment!
-    */
-    static void initialise() {
-      heir_t::get_map();
-    }
-
-    template <typename NumType>
-    FloatType sum_up(const scitbx::vec3<NumType> &h) const {
-      FloatType r = 0;
-      const std::vector<std::vector<int> > &indices = get_indices();
-      for (size_t i = 0; i < indices.size(); i++) {
-        const std::vector<int> &idx = indices[i];
-        FloatType prod_h = 1;
-        for (size_t j = 0; j < heir_t::rank(); j++) {
-          prod_h *= h[idx[j]];
-        }
-        r += prod_h * get_multiplicity(i) *
-          self().data_[get_linear_idx(idx)];
-      }
-      return r;
-    }
-
-    template <typename NumType>
-    af::shared<FloatType> gradient_coefficients(
-      const scitbx::vec3<NumType> &h) const
-    {
-      af::shared<FloatType> r(heir_t::size());
-      const std::vector<std::vector<int> > &indices = get_indices();
-      for (size_t i = 0; i < indices.size(); i++) {
-        const std::vector<int> &idx = indices[i];
-        FloatType prod_h = 1;
-        for (size_t j = 0; j < heir_t::rank(); j++) {
-          prod_h *= h[idx[j]];
-        }
-        r[i] = prod_h * get_multiplicity(i);
-      }
-      return r;
-    }
-
-    const af::shared<FloatType> &data() const {
-      return self().data_;
-    }
   };
 
   template <typename FloatType = double>
-  class tensor_rank_2 : public tensor_base<tensor_rank_2<FloatType>, FloatType> {
-    typedef tensor_base<tensor_rank_2<FloatType>, FloatType> parent_t;
-    friend class tensor_base<tensor_rank_2<FloatType>, FloatType>;
-    af::shared<FloatType> data_;
+  class tensor_rank_2 : public tensor_base<tensor_rank_2<FloatType> > {
+    typedef tensor_base<tensor_rank_2<FloatType> > parent_t;
+    friend class tensor_base<tensor_rank_2<FloatType> >;
+    std::vector<FloatType> data;
     /*
     should be to be identical with higher order
     0 0, 0 1, 0 2, 1 1, 1 2, 2 2
@@ -188,53 +126,34 @@ namespace scitbx { namespace matrix { namespace tensors {
       }
       return map;
     }
+    public:
+    tensor_rank_2()
+      : data(6)
+    {}
 
-    static const std::vector<std::vector<int> > &get_indices_() {
-      static std::vector<std::vector<int> > indices;
-      if (indices.empty()) {
-        indices.resize(size());
-        for (size_t i = 0; i < size(); i++) {
-          indices[i].resize(2);
+    const FloatType & operator ()(size_t i, size_t j) const {
+      return data[get_map()[i][j]];
+    }
+    FloatType & operator ()(size_t i, size_t j) {
+      return data[get_map()[i][j]];
+    }
+
+    const FloatType & operator [](size_t i) const { return data[i]; }
+    FloatType & operator [](size_t i) { return data[i]; }
+
+    static std::vector<std::vector<int> > get_indices() {
+      std::vector<std::vector<int> > indices(size());
+      for (int i = 0, idx = 0; i < 3; i++) {
+        for (int j = i; j < 3; j++, idx++) {
+          indices[idx].resize(2);
+          indices[idx][0] = i;
+          indices[idx][1] = j;
         }
-        indices[0][0] = 0; indices[0][1] = 0;
-        indices[1][0] = 1; indices[1][1] = 1;
-        indices[2][0] = 2; indices[2][1] = 2;
-        indices[3][0] = 0; indices[3][1] = 1;
-        indices[4][0] = 0; indices[4][1] = 2;
-        indices[5][0] = 1; indices[5][1] = 2;
-
-        /* overriding to match cctbx
-          for (int i = 0, idx = 0; i < 3; i++) {
-            for (int j = i; j < 3; j++, idx++) {
-              indices[idx].resize(2);
-              indices[idx][0] = i;
-              indices[idx][1] = j;
-            }
-          }
-          */
       }
       return indices;
     }
 
-   public:
-    tensor_rank_2()
-      : data_(6)
-    {}
-
-    tensor_rank_2(const af::shared<FloatType> &data)
-      : data_(data)
-    {
-      SCITBX_ASSERT(data_.size() == size());
-    }
-
-    const FloatType & operator ()(size_t i, size_t j) const {
-      return data_[get_map()[i][j]];
-    }
-    FloatType & operator ()(size_t i, size_t j) {
-      return data_[get_map()[i][j]];
-    }
-
-    static af::shared <FloatType> get_transform(const std::vector<int> &idx,
+    static std::vector<FloatType> get_transform(const std::vector<int> &idx,
       const rot_mx &rm)
     {
       tensor_rank_2 result;
@@ -244,7 +163,7 @@ namespace scitbx { namespace matrix { namespace tensors {
           result(s, r) += rm(i, r)*rm(j, s);
         }
       }
-      return result.data_;
+      return result.data;
     }
 
     static size_t rank() { return 2; }
@@ -267,10 +186,10 @@ namespace scitbx { namespace matrix { namespace tensors {
   }; // class scitbx::matrx::tensors::tensor_rank_2
 
   template <typename FloatType = double>
-  class tensor_rank_3 : public tensor_base<tensor_rank_3<FloatType>, FloatType>{
-    typedef tensor_base<tensor_rank_3<FloatType>, FloatType> parent_t;
-    friend class tensor_base<tensor_rank_3<FloatType>, FloatType>;
-    af::shared<FloatType> data_;
+  class tensor_rank_3 : public tensor_base<tensor_rank_3<FloatType> >{
+    typedef tensor_base<tensor_rank_3<FloatType> > parent_t;
+    friend class tensor_base<tensor_rank_3<FloatType> >;
+    std::vector<FloatType> data;
     /*
     0 0 0, 0 0 1, 0 0 2, 0 1 1, 0 1 2
     0 2 2, 1 1 1, 1 1 2, 1 2 2, 2 2 2
@@ -295,7 +214,7 @@ namespace scitbx { namespace matrix { namespace tensors {
     }
 
     static size_t *** build_map() {
-      size_t *** map = new size_t **[3];
+      size_t *** map = new size_t **[rank()];
       for (size_t i = 0; i < 3; i++) {
         map[i] = new size_t*[3];
         for (size_t j = 0; j < 3; j++) {
@@ -304,43 +223,37 @@ namespace scitbx { namespace matrix { namespace tensors {
       }
       return map;
     }
+  public:
+    tensor_rank_3()
+      : data(10)
+    {}
 
-    static const std::vector<std::vector<int> > &get_indices_() {
-      static std::vector<std::vector<int> > indices;
-      if (indices.empty()) {
-        indices.resize(size());
-        for (int i = 0, idx = 0; i < 3; i++) {
-          for (int j = i; j < 3; j++) {
-            for (int k = j; k < 3; k++, idx++) {
-              indices[idx].resize(rank());
-              indices[idx][0] = i;
-              indices[idx][1] = j;
-              indices[idx][2] = k;
-            }
+    const FloatType & operator ()(size_t i, size_t j, size_t k) const {
+      return data[get_map()[i][j][k]];
+    }
+    FloatType & operator ()(size_t i, size_t j, size_t k) {
+      return data[get_map()[i][j][k]];
+    }
+
+    const FloatType & operator [](size_t i) const { return data[i]; }
+    FloatType & operator [](size_t i) { return data[i]; }
+
+    static std::vector<std::vector<int> > get_indices() {
+      std::vector<std::vector<int> > indices(size());
+      for (int i = 0, idx = 0; i < 3; i++) {
+        for (int j = i; j < 3; j++) {
+          for (int k = j; k < 3; k++, idx++) {
+            indices[idx].resize(rank());
+            indices[idx][0] = i;
+            indices[idx][1] = j;
+            indices[idx][2] = k;
           }
         }
       }
       return indices;
     }
-  public:
-    tensor_rank_3()
-      : data_(10)
-    {}
 
-    tensor_rank_3(const af::shared<FloatType> &data)
-      : data_(data)
-    {
-      SCITBX_ASSERT(data_.size() == size());
-    }
-
-    const FloatType & operator ()(size_t i, size_t j, size_t k) const {
-      return data_[get_map()[i][j][k]];
-    }
-    FloatType & operator ()(size_t i, size_t j, size_t k) {
-      return data_[get_map()[i][j][k]];
-    }
-
-    static af::shared <FloatType> get_transform(const std::vector<int> &idx,
+    static std::vector<FloatType> get_transform(const std::vector<int> &idx,
       const rot_mx &rm)
     {
       tensor_rank_3 result;
@@ -352,7 +265,7 @@ namespace scitbx { namespace matrix { namespace tensors {
           }
         }
       }
-      return result.data_;
+      return result.data;
     }
 
     static size_t rank() { return 3; }
@@ -378,10 +291,10 @@ namespace scitbx { namespace matrix { namespace tensors {
   }; // class scitbx::matrix::tensors::tensor_rank_3
 
   template <typename FloatType = double>
-  class tensor_rank_4 : public tensor_base<tensor_rank_4<FloatType>, FloatType> {
-    typedef tensor_base<tensor_rank_4<FloatType>, FloatType> parent_t;
-    friend class tensor_base<tensor_rank_4<FloatType>, FloatType>;
-    af::shared<FloatType> data_;
+  class tensor_rank_4 : public tensor_base<tensor_rank_4<FloatType> > {
+    typedef tensor_base<tensor_rank_4<FloatType> > parent_t;
+    friend class tensor_base<tensor_rank_4<FloatType> >;
+    std::vector<FloatType> data;
     /*
     0 0 0 0, 0 0 0 1, 0 0 0 2, 0 0 1 1, 0 0 1 2
     0 0 2 2, 0 1 1 1, 0 1 1 2, 0 1 2 2, 0 2 2 2
@@ -418,21 +331,32 @@ namespace scitbx { namespace matrix { namespace tensors {
       }
       return map;
     }
+  public:
+    tensor_rank_4()
+      : data(15)
+    {}
 
-    static const std::vector<std::vector<int> > &get_indices_() {
-      static std::vector<std::vector<int> > indices;
-      if (indices.empty()) {
-        indices.resize(size());
-        for (int i = 0, idx = 0; i < 3; i++) {
-          for (int j = i; j < 3; j++) {
-            for (int k = j; k < 3; k++) {
-              for (int l = k; l < 3; l++, idx++) {
-                indices[idx].resize(4);
-                indices[idx][0] = i;
-                indices[idx][1] = j;
-                indices[idx][2] = k;
-                indices[idx][3] = l;
-              }
+    const FloatType & operator ()(size_t i, size_t j, size_t k, size_t l) const {
+      return data[get_map()[i][j][k][l]];
+    }
+    FloatType & operator ()(size_t i, size_t j, size_t k, size_t l) {
+      return data[get_map()[i][j][k][l]];
+    }
+
+    const FloatType & operator [](size_t i)const { return data[i]; }
+    FloatType & operator [](size_t i) { return data[i]; }
+
+    static std::vector<std::vector<int> > get_indices() {
+      std::vector<std::vector<int> > indices(size());
+      for (int i = 0, idx = 0; i < 3; i++) {
+        for (int j = i; j < 3; j++) {
+          for (int k = j; k < 3; k++) {
+            for (int l = k; l < 3; l++, idx++) {
+              indices[idx].resize(4);
+              indices[idx][0] = i;
+              indices[idx][1] = j;
+              indices[idx][2] = k;
+              indices[idx][3] = l;
             }
           }
         }
@@ -440,25 +364,7 @@ namespace scitbx { namespace matrix { namespace tensors {
       return indices;
     }
 
-  public:
-    tensor_rank_4()
-      : data_(15)
-    {}
-
-    tensor_rank_4(const af::shared<FloatType> &data)
-      : data_(data)
-    {
-      SCITBX_ASSERT(data_.size() == size());
-    }
-
-    const FloatType & operator ()(size_t i, size_t j, size_t k, size_t l) const {
-      return data_[get_map()[i][j][k][l]];
-    }
-    FloatType & operator ()(size_t i, size_t j, size_t k, size_t l) {
-      return data_[get_map()[i][j][k][l]];
-    }
-
-    static af::shared <FloatType> get_transform(const std::vector<int> &idx,
+    static std::vector<FloatType> get_transform(const std::vector<int> &idx,
       const rot_mx &rm)
     {
       tensor_rank_4 result;
@@ -472,7 +378,7 @@ namespace scitbx { namespace matrix { namespace tensors {
           }
         }
       }
-      return result.data_;
+      return result.data;
     }
 
     static size_t rank() { return 4; }
@@ -500,19 +406,6 @@ namespace scitbx { namespace matrix { namespace tensors {
     }
   }; // class scitbx::matrix::tensors::tensor_rank_4
 
-  template <typename FloatType>
-  static void initialise() {
-    tensor_rank_2<FloatType>::initialise();
-    tensor_rank_3<FloatType>::initialise();
-    tensor_rank_4<FloatType>::initialise();
-  }
-
-  template <typename FloatType>
-  static void finalise() {
-    tensor_rank_2<FloatType>::cleanup();
-    tensor_rank_3<FloatType>::cleanup();
-    tensor_rank_4<FloatType>::cleanup();
-  }
 }}} // namespace scitbx::matrix::tensors
 
 #endif // SCITBX_MATRIX_TENSORS_H
