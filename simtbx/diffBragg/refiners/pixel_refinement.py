@@ -28,11 +28,12 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.output_dir = None  # place to dump files
         self.min_multiplicity = 3
         self.restart_file = None
-        self.binner_dmin = 2
         self.global_ncells_param = False
+        self.scale_r1 = False
         self.bad_shot_list = []
         self.fcell_bump = 0.1
         self.filter_bad_shots = False
+        self.binner_dmin = 2
         self.binner_dmax = 999
         self.binner_nbin = 10
         self.Fref = None
@@ -112,16 +113,18 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         R factors and CC with the Fhkl reference array, these values are important diagnostics
         when determining how well a refinement is working
         """
-        if self.S is not None and self.Fref is not None:
+        if self.S is not None and self.Fref is not None and self.refinement_millers is not None:
             indices, amp_data = self.S.D.Fhkl_tuple
             mset = miller.set(self.Fref.crystal_symmetry(),
                               indices=indices, anomalous_flag=True)
             marray = miller.array(miller_set=mset, data=amp_data).set_observation_type_xray_amplitude()
             marray = marray.expand_to_p1()
             marray = marray.generate_bijvoet_mates()
-            marray = marray.select_indices(self.Fref.indices())  # Note this is useful for computing the R-factors
+            #marray = marray.select_indices(self.Fref.indices())  # Note this is useful for computing the R-factors
             #  ... because nanoBragg_ext.get_Fhkl_tuple returns all possible miller indices on a grid...
-            return marray.sort()
+            marray = marray.select_indices(self.refinement_millers).sort()
+            marray.setup_binner(d_max=self.binner_dmax, d_min=self.binner_dmin, n_bins=self.binner_nbins)
+            return marray
         else:
             return None
 
