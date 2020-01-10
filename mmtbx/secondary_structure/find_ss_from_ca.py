@@ -3403,6 +3403,11 @@ class find_secondary_structure: # class to look for secondary structure
         hierarchy=get_pdb_hierarchy(text=open(params.input_files.pdb_in).read())
     if hierarchy:
       hierarchy.remove_alt_confs(always_keep_one_conformer=False)
+      atom_selection="protein"
+      try:
+        hierarchy=apply_atom_selection(atom_selection,hierarchy=hierarchy)
+      except Exception,e:
+        hierarchy=None
 
     if force_secondary_structure_input and not \
         (params.input_files.secondary_structure_input or user_annotation_text):
