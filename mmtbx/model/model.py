@@ -1102,9 +1102,6 @@ class manager(object):
     self._mon_lib_srv = self._processed_pdb_files_srv.mon_lib_srv
     self._ener_lib = self._processed_pdb_files_srv.ener_lib
     self._ncs_obj = self._processed_pdb_file.ncs_obj
-
-    # copy-paste from command_line/geometry_minimization.py: get_geometry_restraints_manager
-    # should live only here and be removed there.
     self._update_has_hd()
 
   def has_hd(self):
