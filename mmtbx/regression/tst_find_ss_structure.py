@@ -667,6 +667,202 @@ ATOM    200  CA  VALzy 129     119.824 497.272 644.564  1.00 30.00           C
 ATOM    201  CA  ASPzy 130     121.341 496.425 647.959  1.00 30.00           C
 ATOM    202  CA  ILEzy 131     119.598 498.577 650.580  1.00 30.00           C
 """
+strands_text="""
+ATOM      1  N   GLY B  23      75.748  31.574 -24.376  1.00 58.86           N
+ATOM      2  CA  GLY B  23      76.475  30.862 -25.415  1.00 59.81           C
+ATOM      3  C   GLY B  23      77.927  30.531 -25.134  1.00 60.79           C
+ATOM      4  O   GLY B  23      78.447  30.790 -24.037  1.00 61.67           O
+ATOM      5  N   PHE B  24      78.585  29.965 -26.144  1.00 61.14           N
+ATOM      6  CA  PHE B  24      79.949  29.472 -26.012  1.00 61.19           C
+ATOM      7  C   PHE B  24      80.944  30.243 -26.876  1.00 63.09           C
+ATOM      8  O   PHE B  24      80.642  30.610 -28.010  1.00 64.18           O
+ATOM      9  N   ARG B  25      82.129  30.486 -26.333  1.00 64.55           N
+ATOM     10  CA  ARG B  25      83.259  31.022 -27.092  1.00 66.14           C
+ATOM     11  C   ARG B  25      84.369  30.015 -26.941  1.00 67.43           C
+ATOM     12  O   ARG B  25      84.649  29.575 -25.829  1.00 67.73           O
+ATOM     13  N   HIS B  26      85.003  29.620 -28.035  1.00 69.33           N
+ATOM     14  CA  HIS B  26      86.018  28.591 -27.914  1.00 70.83           C
+ATOM     15  C   HIS B  26      87.300  28.976 -28.604  1.00 71.56           C
+ATOM     16  O   HIS B  26      87.385  30.005 -29.255  1.00 71.19           O
+ATOM     17  N   GLN B  27      88.303  28.131 -28.423  1.00 73.27           N
+ATOM     18  CA  GLN B  27      89.565  28.220 -29.128  1.00 74.94           C
+ATOM     19  C   GLN B  27      90.136  26.807 -29.242  1.00 75.41           C
+ATOM     20  O   GLN B  27      90.278  26.098 -28.245  1.00 75.24           O
+ATOM     21  N   ASN B  28      90.430  26.392 -30.470  1.00 76.59           N
+ATOM     22  CA  ASN B  28      91.030  25.085 -30.727  1.00 77.27           C
+ATOM     23  C   ASN B  28      92.077  25.140 -31.836  1.00 78.04           C
+ATOM     24  O   ASN B  28      92.478  26.226 -32.274  1.00 77.66           O
+ATOM     25  N   GLY B  31      91.225  27.382 -34.660  1.00 77.75           N
+ATOM     26  CA  GLY B  31      91.082  28.818 -34.394  1.00 77.38           C
+ATOM     27  C   GLY B  31      90.111  29.130 -33.271  1.00 77.12           C
+ATOM     28  O   GLY B  31      90.048  28.415 -32.267  1.00 76.86           O
+ATOM     29  N   THR B  32      89.356  30.213 -33.433  1.00 76.72           N
+ATOM     30  CA  THR B  32      88.434  30.670 -32.391  1.00 75.83           C
+ATOM     31  C   THR B  32      87.081  31.029 -32.982  1.00 75.68           C
+ATOM     32  O   THR B  32      87.014  31.617 -34.052  1.00 75.73           O
+ATOM     33  N   GLY B  33      86.011  30.676 -32.272  1.00 75.64           N
+ATOM     34  CA  GLY B  33      84.637  30.973 -32.708  1.00 74.81           C
+ATOM     35  C   GLY B  33      83.704  31.316 -31.559  1.00 73.94           C
+ATOM     36  O   GLY B  33      84.134  31.411 -30.406  1.00 74.08           O
+ATOM     37  N   GLN B  34      82.423  31.488 -31.885  1.00 72.72           N
+ATOM     38  CA  GLN B  34      81.403  31.939 -30.933  1.00 71.35           C
+ATOM     39  C   GLN B  34      80.018  31.496 -31.400  1.00 69.74           C
+ATOM     40  O   GLN B  34      79.642  31.760 -32.530  1.00 70.46           O
+ATOM     41  N   ALA B  35      79.250  30.842 -30.538  1.00 67.76           N
+ATOM     42  CA  ALA B  35      77.893  30.432 -30.897  1.00 66.29           C
+ATOM     43  C   ALA B  35      76.934  30.553 -29.715  1.00 65.90           C
+ATOM     44  O   ALA B  35      77.299  30.262 -28.574  1.00 66.09           O
+ATOM     45  N   ALA B  36      75.712  30.988 -30.000  1.00 64.80           N
+ATOM     46  CA  ALA B  36      74.680  31.141 -28.988  1.00 63.86           C
+ATOM     47  C   ALA B  36      74.125  29.759 -28.638  1.00 63.78           C
+ATOM     48  O   ALA B  36      74.159  28.866 -29.479  1.00 64.19           O
+TER
+ATOM     49  N   GLY D  23      83.971  32.951   6.721  1.00 45.61           N
+ATOM     50  CA  GLY D  23      85.372  32.663   6.691  1.00 46.22           C
+ATOM     51  C   GLY D  23      85.873  31.235   6.715  1.00 45.42           C
+ATOM     53  CA  PHE D  24      87.986  30.081   7.243  1.00 46.15           C
+ATOM     54  C   PHE D  24      88.639  29.840   8.586  1.00 45.73           C
+ATOM     55  N   ARG D  25      88.677  28.529   8.785  1.00 46.53           N
+ATOM     56  CA  ARG D  25      89.502  27.858   9.773  1.00 46.92           C
+ATOM     57  C   ARG D  25      90.351  26.863   9.012  1.00 48.22           C
+ATOM     58  O   ARG D  25      89.902  26.301   8.005  1.00 48.21           O
+ATOM     59  N   HIS D  26      91.589  26.663   9.458  1.00 49.57           N
+ATOM     60  CA  HIS D  26      92.485  25.737   8.758  1.00 50.26           C
+ATOM     61  C   HIS D  26      93.451  25.007   9.666  1.00 50.46           C
+ATOM     62  O   HIS D  26      93.608  25.375  10.824  1.00 49.89           O
+ATOM     63  N   GLN D  27      94.091  23.974   9.118  1.00 51.49           N
+ATOM     64  CA  GLN D  27      95.222  23.320   9.764  1.00 52.01           C
+ATOM     65  C   GLN D  27      96.246  22.782   8.749  1.00 51.98           C
+ATOM     66  N   ASN D  28      97.431  23.381   8.906  1.00 53.20           N
+ATOM     67  CA  ASN D  28      98.667  23.022   8.198  1.00 53.62           C
+ATOM     68  C   ASN D  28      99.782  22.741   9.188  1.00 53.76           C
+ATOM     69  O   ASN D  28      99.562  22.726  10.389  1.00 54.00           O
+ATOM     70  N   GLY D  31     100.345  24.907  12.346  1.00 50.53           N
+ATOM     71  CA  GLY D  31      99.329  24.965  13.394  1.00 50.19           C
+ATOM     72  C   GLY D  31      97.937  25.229  12.840  1.00 50.80           C
+ATOM     73  O   GLY D  31      97.654  24.926  11.672  1.00 52.16           O
+ATOM     74  N   THR D  32      97.064  25.791  13.673  1.00 49.82           N
+ATOM     75  CA  THR D  32      95.691  26.083  13.281  1.00 49.15           C
+ATOM     76  C   THR D  32      95.490  27.580  13.139  1.00 50.69           C
+ATOM     77  O   THR D  32      96.305  28.374  13.631  1.00 51.88           O
+ATOM     78  N   GLY D  33      94.399  27.976  12.477  1.00 51.32           N
+ATOM     79  CA  GLY D  33      94.117  29.407  12.250  1.00 50.79           C
+ATOM     80  C   GLY D  33      92.666  29.678  11.925  1.00 50.08           C
+ATOM     81  O   GLY D  33      91.908  28.728  11.662  1.00 49.88           O
+ATOM     82  N   GLN D  34      92.291  30.966  11.956  1.00 49.01           N
+ATOM     83  CA  GLN D  34      90.926  31.420  11.677  1.00 49.25           C
+ATOM     84  C   GLN D  34      90.983  32.793  10.985  1.00 48.70           C
+ATOM     85  O   GLN D  34      91.799  33.610  11.349  1.00 49.25           O
+ATOM     86  N   ALA D  35      90.136  33.053   9.985  1.00 48.59           N
+ATOM     87  CA  ALA D  35      90.096  34.388   9.361  1.00 48.02           C
+ATOM     88  C   ALA D  35      88.791  34.664   8.628  1.00 48.49           C
+ATOM     89  O   ALA D  35      88.251  33.788   7.951  1.00 49.54           O
+ATOM     90  N   ALA D  36      88.285  35.881   8.768  1.00 48.74           N
+ATOM     91  CA  ALA D  36      87.038  36.277   8.117  1.00 49.59           C
+ATOM     92  C   ALA D  36      87.257  36.465   6.633  1.00 50.35           C
+ATOM     93  O   ALA D  36      88.340  36.838   6.226  1.00 50.20           O
+TER
+END
+"""
+strands_add_o_text="""
+ATOM      1  N   GLY B  23      75.748  31.574 -24.376  1.00 58.86           N
+ATOM      2  CA  GLY B  23      76.475  30.862 -25.415  1.00 59.81           C
+ATOM      3  C   GLY B  23      77.927  30.531 -25.134  1.00 60.79           C
+ATOM      4  O   GLY B  23      78.447  30.790 -24.037  1.00 61.67           O
+ATOM      5  N   PHE B  24      78.585  29.965 -26.144  1.00 61.14           N
+ATOM      6  CA  PHE B  24      79.949  29.472 -26.012  1.00 61.19           C
+ATOM      7  C   PHE B  24      80.944  30.243 -26.876  1.00 63.09           C
+ATOM      8  O   PHE B  24      80.642  30.610 -28.010  1.00 64.18           O
+ATOM      9  N   ARG B  25      82.129  30.486 -26.333  1.00 64.55           N
+ATOM     10  CA  ARG B  25      83.259  31.022 -27.092  1.00 66.14           C
+ATOM     11  C   ARG B  25      84.369  30.015 -26.941  1.00 67.43           C
+ATOM     12  O   ARG B  25      84.649  29.575 -25.829  1.00 67.73           O
+ATOM     13  N   HIS B  26      85.003  29.620 -28.035  1.00 69.33           N
+ATOM     14  CA  HIS B  26      86.018  28.591 -27.914  1.00 70.83           C
+ATOM     15  C   HIS B  26      87.300  28.976 -28.604  1.00 71.56           C
+ATOM     16  O   HIS B  26      87.385  30.005 -29.255  1.00 71.19           O
+ATOM     17  N   GLN B  27      88.303  28.131 -28.423  1.00 73.27           N
+ATOM     18  CA  GLN B  27      89.565  28.220 -29.128  1.00 74.94           C
+ATOM     19  C   GLN B  27      90.136  26.807 -29.242  1.00 75.41           C
+ATOM     20  O   GLN B  27      90.278  26.098 -28.245  1.00 75.24           O
+ATOM     21  N   ASN B  28      90.430  26.392 -30.470  1.00 76.59           N
+ATOM     22  CA  ASN B  28      91.030  25.085 -30.727  1.00 77.27           C
+ATOM     23  C   ASN B  28      92.077  25.140 -31.836  1.00 78.04           C
+ATOM     24  O   ASN B  28      92.478  26.226 -32.274  1.00 77.66           O
+ATOM     25  N   GLY B  31      91.225  27.382 -34.660  1.00 77.75           N
+ATOM     26  CA  GLY B  31      91.082  28.818 -34.394  1.00 77.38           C
+ATOM     27  C   GLY B  31      90.111  29.130 -33.271  1.00 77.12           C
+ATOM     28  O   GLY B  31      90.048  28.415 -32.267  1.00 76.86           O
+ATOM     29  N   THR B  32      89.356  30.213 -33.433  1.00 76.72           N
+ATOM     30  CA  THR B  32      88.434  30.670 -32.391  1.00 75.83           C
+ATOM     31  C   THR B  32      87.081  31.029 -32.982  1.00 75.68           C
+ATOM     32  O   THR B  32      87.014  31.617 -34.052  1.00 75.73           O
+ATOM     33  N   GLY B  33      86.011  30.676 -32.272  1.00 75.64           N
+ATOM     34  CA  GLY B  33      84.637  30.973 -32.708  1.00 74.81           C
+ATOM     35  C   GLY B  33      83.704  31.316 -31.559  1.00 73.94           C
+ATOM     36  O   GLY B  33      84.134  31.411 -30.406  1.00 74.08           O
+ATOM     37  N   GLN B  34      82.423  31.488 -31.885  1.00 72.72           N
+ATOM     38  CA  GLN B  34      81.403  31.939 -30.933  1.00 71.35           C
+ATOM     39  C   GLN B  34      80.018  31.496 -31.400  1.00 69.74           C
+ATOM     40  O   GLN B  34      79.642  31.760 -32.530  1.00 70.46           O
+ATOM     41  N   ALA B  35      79.250  30.842 -30.538  1.00 67.76           N
+ATOM     42  CA  ALA B  35      77.893  30.432 -30.897  1.00 66.29           C
+ATOM     43  C   ALA B  35      76.934  30.553 -29.715  1.00 65.90           C
+ATOM     44  O   ALA B  35      77.299  30.262 -28.574  1.00 66.09           O
+ATOM     45  N   ALA B  36      75.712  30.988 -30.000  1.00 64.80           N
+ATOM     46  CA  ALA B  36      74.680  31.141 -28.988  1.00 63.86           C
+ATOM     47  C   ALA B  36      74.125  29.759 -28.638  1.00 63.78           C
+ATOM     48  O   ALA B  36      74.159  28.866 -29.479  1.00 64.19           O
+TER
+ATOM     49  N   GLY D  23      83.971  32.951   6.721  1.00 45.61           N
+ATOM     50  CA  GLY D  23      85.372  32.663   6.691  1.00 46.22           C
+ATOM     51  C   GLY D  23      85.873  31.235   6.715  1.00 45.42           C
+ATOM     52  N   PHE D  24      87.131  31.246   7.173  1.00 46.55           N
+ATOM     53  CA  PHE D  24      87.986  30.081   7.243  1.00 46.15           C
+ATOM     54  C   PHE D  24      88.639  29.840   8.586  1.00 45.73           C
+ATOM     54  O   PHE D  24      88.639  31.000   9.400  1.00 45.73           C
+ATOM     55  N   ARG D  25      88.677  28.529   8.785  1.00 46.53           N
+ATOM     56  CA  ARG D  25      89.502  27.858   9.773  1.00 46.92           C
+ATOM     57  C   ARG D  25      90.351  26.863   9.012  1.00 48.22           C
+ATOM     58  O   ARG D  25      89.902  26.301   8.005  1.00 48.21           O
+ATOM     59  N   HIS D  26      91.589  26.663   9.458  1.00 49.57           N
+ATOM     60  CA  HIS D  26      92.485  25.737   8.758  1.00 50.26           C
+ATOM     61  C   HIS D  26      93.451  25.007   9.666  1.00 50.46           C
+ATOM     62  O   HIS D  26      93.608  25.375  10.824  1.00 49.89           O
+ATOM     63  N   GLN D  27      94.091  23.974   9.118  1.00 51.49           N
+ATOM     64  CA  GLN D  27      95.222  23.320   9.764  1.00 52.01           C
+ATOM     65  C   GLN D  27      96.246  22.782   8.749  1.00 51.98           C
+ATOM     66  N   ASN D  28      97.431  23.381   8.906  1.00 53.20           N
+ATOM     67  CA  ASN D  28      98.667  23.022   8.198  1.00 53.62           C
+ATOM     68  C   ASN D  28      99.782  22.741   9.188  1.00 53.76           C
+ATOM     69  O   ASN D  28      99.562  22.726  10.389  1.00 54.00           O
+ATOM     70  N   GLY D  31     100.345  24.907  12.346  1.00 50.53           N
+ATOM     71  CA  GLY D  31      99.329  24.965  13.394  1.00 50.19           C
+ATOM     72  C   GLY D  31      97.937  25.229  12.840  1.00 50.80           C
+ATOM     73  O   GLY D  31      97.654  24.926  11.672  1.00 52.16           O
+ATOM     74  N   THR D  32      97.064  25.791  13.673  1.00 49.82           N
+ATOM     75  CA  THR D  32      95.691  26.083  13.281  1.00 49.15           C
+ATOM     76  C   THR D  32      95.490  27.580  13.139  1.00 50.69           C
+ATOM     77  O   THR D  32      96.305  28.374  13.631  1.00 51.88           O
+ATOM     78  N   GLY D  33      94.399  27.976  12.477  1.00 51.32           N
+ATOM     79  CA  GLY D  33      94.117  29.407  12.250  1.00 50.79           C
+ATOM     80  C   GLY D  33      92.666  29.678  11.925  1.00 50.08           C
+ATOM     81  O   GLY D  33      91.908  28.728  11.662  1.00 49.88           O
+ATOM     82  N   GLN D  34      92.291  30.966  11.956  1.00 49.01           N
+ATOM     83  CA  GLN D  34      90.926  31.420  11.677  1.00 49.25           C
+ATOM     84  C   GLN D  34      90.983  32.793  10.985  1.00 48.70           C
+ATOM     85  O   GLN D  34      91.799  33.610  11.349  1.00 49.25           O
+ATOM     86  N   ALA D  35      90.136  33.053   9.985  1.00 48.59           N
+ATOM     87  CA  ALA D  35      90.096  34.388   9.361  1.00 48.02           C
+ATOM     88  C   ALA D  35      88.791  34.664   8.628  1.00 48.49           C
+ATOM     89  O   ALA D  35      88.251  33.788   7.951  1.00 49.54           O
+ATOM     90  N   ALA D  36      88.285  35.881   8.768  1.00 48.74           N
+ATOM     91  CA  ALA D  36      87.038  36.277   8.117  1.00 49.59           C
+ATOM     92  C   ALA D  36      87.257  36.465   6.633  1.00 50.35           C
+ATOM     93  O   ALA D  36      88.340  36.838   6.226  1.00 50.20           O
+TER
+END
+"""
 def tst_00():
   print("Finding sheets, splitting and merging...", end=' ')
   import iotbx.pdb
@@ -2663,6 +2859,88 @@ def tst_15():
   assert annotation_std.is_same_as(other=annotation_chains_rep)
   print("OK")
 
+
+def tst_16():
+  print("Checking missing atoms...", end=' ')
+  import iotbx.pdb
+  from cctbx.array_family import flex
+  hierarchy=iotbx.pdb.input(source_info='text',
+       lines=flex.split_lines(strands_text)).construct_hierarchy()
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
+
+  expected_text="""
+Model 1  N: 6  Start: 23 End: 28
+Class:  Beta strand  N: 6 Start: 23 End: 28  Rise: 3.42 A Dot: 0.97
+
+Model 2  N: 6  Start: 31 End: 36
+Class:  Beta strand  N: 6 Start: 31 End: 36  Rise: 3.54 A Dot: 0.98
+
+Model 3  N: 6  Start: 23 End: 28
+Class:  Beta strand  N: 6 Start: 23 End: 28  Rise: 3.44 A Dot: 0.96
+
+Model 4  N: 6  Start: 31 End: 36
+Class:  Beta strand  N: 6 Start: 31 End: 36  Rise: 3.56 A Dot: 0.98
+
+FINAL PDB RECORDS:
+SHEET    1   1 2 GLY B  23  ASN B  28  0
+SHEET    2   1 2 GLY B  31  ALA B  36 -1  N  ALA B  35   O  PHE B  24
+SHEET    1   2 2 GLY D  23  ASN D  28  0
+SHEET    2   2 2 GLY D  31  ALA D  36 -1  N  GLY D  33   O  HIS D  26
+
+
+FINAL PDB selections:
+"(chain 'B' and resid   23  through   28 ) or (chain 'B' and resid   31  through   36 ) or (chain 'D' and resid   23  through   28 ) or (chain 'D' and resid   31  through   36 )"
+"""
+  f=StringIO()
+  fss.show_summary(out=f,verbose=True)
+  found_text=f.getvalue()
+  #assert not test_utils.show_diff(found_text, expected_text)
+  if remove_blank(found_text)!=remove_blank(expected_text):
+    print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
+    raise AssertionError("FAILED")
+  print("OK")
+
+def tst_17():
+  print("Checking missing atoms part 2...", end=' ')
+  import iotbx.pdb
+  from cctbx.array_family import flex
+  hierarchy=iotbx.pdb.input(source_info='text',
+       lines=flex.split_lines(strands_add_o_text)).construct_hierarchy()
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
+
+  expected_text="""
+Model 1  N: 6  Start: 23 End: 28
+Class:  Beta strand  N: 6 Start: 23 End: 28  Rise: 3.42 A Dot: 0.97
+
+Model 2  N: 6  Start: 31 End: 36
+Class:  Beta strand  N: 6 Start: 31 End: 36  Rise: 3.54 A Dot: 0.98
+
+Model 3  N: 6  Start: 23 End: 28
+Class:  Beta strand  N: 6 Start: 23 End: 28  Rise: 3.44 A Dot: 0.96
+
+Model 4  N: 6  Start: 31 End: 36
+Class:  Beta strand  N: 6 Start: 31 End: 36  Rise: 3.56 A Dot: 0.98
+
+FINAL PDB RECORDS:
+SHEET    1   1 2 GLY B  23  ASN B  28  0
+SHEET    2   1 2 GLY B  31  ALA B  36 -1  N  ALA B  35   O  PHE B  24
+SHEET    1   2 2 GLY D  23  ASN D  28  0
+SHEET    2   2 2 GLY D  31  ALA D  36 -1  N  ALA D  35   O  PHE D  24
+
+
+FINAL PDB selections:
+"(chain 'B' and resid   23  through   28 ) or (chain 'B' and resid   31  through   36 ) or (chain 'D' and resid   23  through   28 ) or (chain 'D' and resid   31  through   36 )"
+"""
+  f=StringIO()
+  fss.show_summary(out=f,verbose=True)
+  found_text=f.getvalue()
+  #assert not test_utils.show_diff(found_text, expected_text)
+  if remove_blank(found_text)!=remove_blank(expected_text):
+    print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
+    raise AssertionError("FAILED")
+  print("OK")
+
+
 if __name__=="__main__":
   import sys
   tst_00()
@@ -2681,4 +2959,6 @@ if __name__=="__main__":
   tst_13()
   tst_14()
   tst_15()
+  tst_16()
+  tst_17()
   print("OK")
