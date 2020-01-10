@@ -894,7 +894,7 @@ def sites_are_similar(sites1,sites2,max_rmsd=1):
 def is_ca_only_hierarchy(hierarchy):
   if not hierarchy: return None
   asc=hierarchy.atom_selection_cache()
-  atom_selection="not (name CA)"
+  atom_selection="not (name ca)"
   sel = asc.selection(string = atom_selection)
   if sel.count(True)==0:
     return True
