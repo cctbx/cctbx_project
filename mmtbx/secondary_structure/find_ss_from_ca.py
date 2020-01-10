@@ -3406,7 +3406,7 @@ class find_secondary_structure: # class to look for secondary structure
       atom_selection="protein"
       try:
         hierarchy=apply_atom_selection(atom_selection,hierarchy=hierarchy)
-      except Exception,e:
+      except Exception as e:
         hierarchy=None
 
     if force_secondary_structure_input and not \
