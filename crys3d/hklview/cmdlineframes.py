@@ -295,6 +295,7 @@ class HKLViewFrame() :
     self.tncsvec = None
     self.guiSocketPort=None
     self.new_miller_array_operations_lst = []
+    self.zmqsleeptime = 0.1
     if 'useGuiSocket' in kwds:
       self.guiSocketPort = kwds['useGuiSocket']
       self.context = zmq.Context()
@@ -347,7 +348,7 @@ class HKLViewFrame() :
         self.mprint("Received phil string:\n" + philstr, verbose=1)
         new_phil = libtbx.phil.parse(philstr)
         self.update_settings(new_phil)
-        time.sleep(0.1)
+        time.sleep(self.zmqsleeptime)
       except Exception as e:
         self.mprint( str(e) + traceback.format_exc(limit=10), verbose=1)
     self.mprint( "Exiting zmq_listen() thread", 1)

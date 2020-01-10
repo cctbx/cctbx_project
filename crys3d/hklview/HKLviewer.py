@@ -1564,7 +1564,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer()
     timer = QTimer()
-    timer.setInterval(10)
+    timer.setInterval(20)
     timer.timeout.connect(guiobj.ProcessMessages)
     timer.start()
     ret = app.exec_()

@@ -1575,6 +1575,14 @@ async function ReRender()
   }
 }
 
+
+async function RenderRequest()
+{
+  await sleep(100);
+  stage.viewer.requestRender();
+  WebsockSendMsg( 'RenderRequest ' + pagename );
+}
+
 // Log errors to debugger of your browser
 mysocket.onerror = function(error)
 {
@@ -1809,7 +1817,8 @@ mysocket.onmessage = function(e)
       shapebufs[bin].setParameters({opacity: alphas[bin]});
       for (var g=0; g < nrots; g++ )
         br_shapebufs[bin][g].setParameters({opacity: alphas[bin]});
-      stage.viewer.requestRender();
+      //stage.viewer.requestRender();
+      RenderRequest();
     }
 
     if (msgtype === "colour")
@@ -1828,7 +1837,8 @@ mysocket.onmessage = function(e)
         br_colours[bin][3*si+2] = parseFloat(val[4]);
         br_shapebufs[bin][g].setAttributes({ color: br_colours[bin] });
       }
-      stage.viewer.requestRender();
+      //stage.viewer.requestRender();
+      RenderRequest();
     }
 
     if (msgtype === "DisplayTooltips")
@@ -1851,7 +1861,8 @@ mysocket.onmessage = function(e)
 
     if (msgtype === "Redraw")
     {
-      stage.viewer.requestRender();
+      //stage.viewer.requestRender();
+      RenderRequest();
     }
 
     if (msgtype === "ReOrient")
@@ -1869,7 +1880,8 @@ mysocket.onmessage = function(e)
       m.fromArray(sm);
       stage.viewerControls.orient(m);
       //stage.viewer.renderer.setClearColor( 0xffffff, 0.01);
-      stage.viewer.requestRender();
+      //stage.viewer.requestRender();
+      RenderRequest();
       msg = getOrientMsg();
       WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
     }
@@ -2045,7 +2057,8 @@ mysocket.onmessage = function(e)
         }
       }
 
-      stage.viewer.requestRender();
+      //stage.viewer.requestRender();
+      RenderRequest();
       WebsockSendMsg( 'Done ' + msgtype );
     }
 
@@ -2086,7 +2099,8 @@ mysocket.onmessage = function(e)
         postrotmxflag = true;
       ReturnClipPlaneDistances();
       //ReRender();
-      stage.viewer.requestRender();
+      //stage.viewer.requestRender();
+      RenderRequest();
       sleep(100).then(()=> {
           msg = getOrientMsg();
           WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
@@ -2142,7 +2156,8 @@ mysocket.onmessage = function(e)
       for (j=0; j<3; j++)
         sm[j] = parseFloat(elmstrs[j]);
       shapeComp.setPosition([ sm[0], sm[1], sm[2] ]);
-      stage.viewer.requestRender();
+      //stage.viewer.requestRender();
+      RenderRequest();
       sleep(100).then(()=> {
           msg = getOrientMsg();
           WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
@@ -2153,13 +2168,16 @@ mysocket.onmessage = function(e)
     function DeleteVectors(reprname)
     {
       thisrepr = stage.getRepresentationsByName(reprname);
+      var wasremoved = false;
       for (i=0; i<stage.compList.length; i++)
         if (stage.compList[i].reprList[0].name == reprname)
         {
           thiscomp = stage.compList[i];
           thiscomp.removeRepresentation(thisrepr);
           stage.removeComponent(thiscomp);
+          wasremoved = true;
         }
+      return wasremoved;
     };
 
     if (msgtype === "AddVector")
@@ -2196,7 +2214,8 @@ mysocket.onmessage = function(e)
                                                                       { name: reprname} )
         );
         vectorshape = null;
-        stage.viewer.requestRender();
+        //stage.viewer.requestRender();
+        RenderRequest();
       }
     }
 
@@ -2204,15 +2223,21 @@ mysocket.onmessage = function(e)
     {
       var reprname = val[0].trim(); // elmstrs[0].trim();
       // if reprname is supplied only remove vectors with that name
+      var reprnamegone = false;
+      var clipvecgone = false;
+      var unitcellgone = false;
+      var reciprocunitcellgone = false;
       if (reprname != "")
-        DeleteVectors(reprname);
+        reprnamegone = DeleteVectors(reprname);
       else // otherwise remove all vectors
       {
-        DeleteVectors("clip_vector");
-        DeleteVectors("unitcell");
-        DeleteVectors("reciprocal_unitcell");
+        clipvecgone = DeleteVectors("clip_vector");
+        unitcellgone = DeleteVectors("unitcell");
+        reciprocunitcellgone = DeleteVectors("reciprocal_unitcell");
       }
-      stage.viewer.requestRender();
+      if (reprnamegone || clipvecgone || unitcellgone || reciprocunitcellgone)
+        //stage.viewer.requestRender();
+        RenderRequest();
     }
 
     if (msgtype === "SetMouseSpeed")
@@ -2251,7 +2276,8 @@ mysocket.onmessage = function(e)
       stage.viewer.parameters.clipFar = far;
       origclipnear = near;
       origclipfar = far;
-      stage.viewer.requestRender();
+      //stage.viewer.requestRender();
+      RenderRequest();
     }
 
     if (msgtype === "GetClipPlaneDistances")
@@ -2352,7 +2378,8 @@ mysocket.onmessage = function(e)
       MakeHKL_Axis(shape);
       shapeComp = stage.addComponentFromObject(shape);
       repr = shapeComp.addRepresentation('buffer');
-      stage.viewer.requestRender();
+      //stage.viewer.requestRender();
+      RenderRequest();
       WebsockSendMsg('Injected new reflections');
     }
 
@@ -2374,7 +2401,8 @@ mysocket.onmessage = function(e)
           radius: newradii
       })
       repr = shapeComp.addRepresentation('buffer');
-      stage.viewer.requestRender();
+      //stage.viewer.requestRender();
+      RenderRequest();
       */
     }
     WebsockSendMsg('Received message: ' + msgtype );
