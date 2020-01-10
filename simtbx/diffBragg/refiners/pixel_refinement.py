@@ -12,6 +12,9 @@ from cctbx import miller
 class BreakToUseCurvatures(Exception):
     pass
 
+class ReachedMaxIterations(Exception):
+    pass
+
 
 class PixelRefinement(lbfgs_with_curvatures_mix_in):
     """
@@ -36,6 +39,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.binner_dmin = 2
         self.binner_dmax = 999
         self.binner_nbin = 10
+        self.trial_id = 0  # trial id in case multiple trials are run in sequence
+        self.x_init = None
         self.Fref = None
         self.plot_fcell = False
         self.log_fcells = True  # to refine Fcell using logarithms to avoid negative Fcells
@@ -52,6 +57,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.has_pre_cached_roi_data = False  # only for use in global refinement mode
         self.use_curvatures_threshold = 7   # how many positive curvature iterations required before breaking
         self.curv = None  # curvatures array used internally
+        self.print_all_missets = True  # prints out a list of all missetting results (when ground truth is known)
         self.refine_Umatrix = True  # whether to refine the Umatrix
         self.verbose = True  # whether to print during iterations
         self.refine_crystal_scale = True  # whether to refine the crystal scale factor
@@ -70,7 +76,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.drop_conv_max_eps = 1e-5  # not sure, used in the other scitbx lbfgs convergence test
         self.mn_iter = None  # not sure used in lbfgs
         self.mx_iter = None  # not sure used in lbfgs
-        self.max_calls = 1000  # how many overall iterations
+        self.max_calls = 100000  # how many overall iterations
         self.plot_stride = 10  # update plots after this many iterations
         self.ignore_line_search = False  # leave False, lbfgs
         self.panel_ids = None  # list of panel_ids (same length as roi images, spot_rois, tilt_abc etc)
@@ -116,12 +122,10 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         if self.S is not None and self.Fref is not None and self.refinement_millers is not None:
             indices, amp_data = self.S.D.Fhkl_tuple
             mset = miller.set(self.Fref.crystal_symmetry(),
-                              indices=indices, anomalous_flag=True)
+                            indices=indices, anomalous_flag=True)
             marray = miller.array(miller_set=mset, data=amp_data).set_observation_type_xray_amplitude()
             marray = marray.expand_to_p1()
             marray = marray.generate_bijvoet_mates()
-            #marray = marray.select_indices(self.Fref.indices())  # Note this is useful for computing the R-factors
-            #  ... because nanoBragg_ext.get_Fhkl_tuple returns all possible miller indices on a grid...
             marray = marray.select_indices(self.refinement_millers).sort()
             marray.setup_binner(d_max=self.binner_dmax, d_min=self.binner_dmin, n_bins=self.binner_nbins)
             return marray
