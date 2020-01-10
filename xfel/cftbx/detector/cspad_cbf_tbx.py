@@ -42,7 +42,6 @@ def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, commo
   """
   # order is pedestals, then common mode, then gain mask, then per pixel gain
   import numpy as np
-  run = evt.run()
 
   if PSANA2_VERSION:
       # in psana2, data are stored as raw, fex, etc so the selection
@@ -59,22 +58,22 @@ def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, commo
   data = data.astype(np.float64)
   if isinstance(dark, bool):
     if dark:
-      data -= psana_det.pedestals(run)
+      data -= psana_det.pedestals()
   elif isinstance( dark, np.ndarray ):
     data -= dark
 
   if common_mode is not None and common_mode != "default":
     if common_mode == 'cspad_default':
       common_mode = (1,25,25,100,1)  # default parameters for CSPAD images
-      psana_det.common_mode_apply(run, data, common_mode)
+      psana_det.common_mode_apply(data, common_mode)
     elif common_mode == 'unbonded':
       common_mode = (5,0,0,0,0)  # unbonded pixels used for correction
-      psana_det.common_mode_apply(run, data, common_mode)
+      psana_det.common_mode_apply(data, common_mode)
     else:  # this is how it was before.. Though I think common_mode would need to be a tuple..
-      psana_det.common_mode_apply(run, data, common_mode)
+      psana_det.common_mode_apply(data, common_mode)
   if apply_gain_mask:
     if gain_mask is None:  # TODO: consider try/except here
-      gain_mask = psana_det.gain_mask(run) == 1
+      gain_mask = psana_det.gain_mask() == 1
     if gain_mask_value is None:
       try:
         gain_mask_value = psana_det._gain_mask_factor
@@ -83,7 +82,7 @@ def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, commo
         gain_mask_value = 1
     data[gain_mask] = data[gain_mask]*gain_mask_value
   if per_pixel_gain: # TODO: test this
-    data *= psana_det.gain(run)
+    data *= psana_det.gain()
   if additional_gain_factor is not None:
     data /= additional_gain_factor
   return data
@@ -376,7 +375,7 @@ def env_dxtbx_from_slac_metrology(run, address):
   """
   if PSANA2_VERSION:
     det = run.Detector(address)
-    geometry = det.raw.geometry(run)
+    geometry = det.raw.geometry()
   else:
     from psana import Detector
     try:
