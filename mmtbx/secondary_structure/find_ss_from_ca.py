@@ -552,7 +552,7 @@ def get_atom_from_residue(residue=None,
     return None,None
   # just make sure that atom_name is there
   for atom in residue.atoms():
-    if atom.name.replace(" ","")==atom_name.replace(" ",""): # ZZZ HERE
+    if atom.name.replace(" ","")==atom_name.replace(" ",""):
       if skip_n_for_pro and atom.name.replace(" ","")=='N' and \
          residue.resname.replace(" ","").upper()=="PRO":
         return None,None
@@ -889,6 +889,28 @@ def sites_are_similar(sites1,sites2,max_rmsd=1):
     return True
   else:
     return False
+
+
+def is_ca_only_hierarchy(hierarchy):
+  if not hierarchy: return None
+  asc=hierarchy.atom_selection_cache()
+  atom_selection="not (name CA)"
+  sel = asc.selection(string = atom_selection)
+  if sel.count(True)==0:
+    return True
+  else:
+    return False
+
+def ca_n_and_o_always_present(hierarchy):
+  if not hierarchy: return None
+  total_residues=hierarchy.overall_counts().n_residues
+  asc=hierarchy.atom_selection_cache()
+  for n in ("ca","n","o"):
+    atom_selection="name %s" %(n)
+    sel = asc.selection(string = atom_selection)
+    if sel.count(True) != total_residues:
+      return False
+  return True
 
 
 def sites_and_seq_from_hierarchy(hierarchy):
@@ -1792,7 +1814,6 @@ class find_segment: # class to look for a type of segment
              start_resno=i2-1+self.start_resno)
           if h.is_ok():
            found=True
-           print("ZZA",i1,i2,i3,":",segment_dict[i2])
            segment_dict[i2-1]=segment_dict[i2]
            del segment_dict[i2]
         if found: break
@@ -1805,7 +1826,6 @@ class find_segment: # class to look for a type of segment
              start_resno=i2+self.start_resno)
           if h.is_ok():
            found=True
-           print("ZZB",i1,i2,i3,":",segment_dict[i2])
            segment_dict[i2]=segment_dict[i2]+1
 
     return segment_dict
@@ -3577,6 +3597,13 @@ class find_secondary_structure: # class to look for secondary structure
        oc.n_residues/max(1,oc.n_chains) < min_average_chain_length:
       return
 
+    # If not a CA-only model, require N and O to be present on all residues
+    #   to run with representative chains (otherwise there may be some N/O
+    #   that are present in only some chains)
+    if (not is_ca_only_hierarchy(self.hierarchy))  and (
+          not ca_n_and_o_always_present(self.hierarchy)):
+      return
+
     # Worth running on individual chains
     return True
 
@@ -3595,6 +3622,7 @@ class find_secondary_structure: # class to look for secondary structure
       local_out=null_out()
     result_dict={} # fss_conformation_groups keyed by sequence to find quickly
     unique_sequence_list=[]
+
     for model in self.hierarchy.models()[:1]:
       for chain in model.chains():
         chain_id=chain.id
