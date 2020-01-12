@@ -191,12 +191,12 @@ class run(object):
     for i, site_frac in enumerate(self.sites_frac_water):
       site_cart = self.unit_cell.orthogonalize(site_frac)
       # XXX make it so it is called once! XXX
-      o = maptbx.map_values_on_sphere(
+      o = maptbx.sphericity_by_heuristics(
         map_data    = self.map_data,
         unit_cell   = self.unit_cell,
         center_cart = site_cart,
         radius      = 0.5)
-      o2 = maptbx.map_values_on_sphere(
+      o2 = maptbx.sphericity_by_heuristics(
         map_data    = self.map_data,
         unit_cell   = self.unit_cell,
         center_cart = site_cart,
