@@ -877,6 +877,28 @@ void reset(
 }
 
 template <typename DataType>
+void resample(
+       af::const_ref<DataType, af::c_grid<3> > const& map_data,
+       af::ref<DataType, af::c_grid<3> > map_data_new,
+       cctbx::uctbx::unit_cell const& unit_cell)
+{
+  af::tiny<int, 3> const& n_real = map_data_new.accessor();
+  af::tiny<DataType, 6> ucp = unit_cell.parameters();
+  DataType sx = ucp[0]/n_real[0];
+  DataType sy = ucp[1]/n_real[1];
+  DataType sz = ucp[2]/n_real[2];
+  for(int i = 0; i < n_real[0]; i++) {
+    DataType x = sx*i;
+    for(int j = 0; j < n_real[1]; j++) {
+      DataType y = sy*j;
+      for(int k = 0; k < n_real[2]; k++) {
+        cctbx::cartesian<>  site_cart = cctbx::cartesian<>(x, y, sz*k);
+        cctbx::fractional<> site_frac = unit_cell.fractionalize(site_cart);
+        map_data_new(i,j,k) = tricubic_interpolation(map_data, site_frac);
+  }}}
+}
+
+template <typename DataType>
 void negate_selected_in_place(
        af::ref<DataType, af::c_grid<3> > map_data,
        af::const_ref<bool, af::c_grid<3> > const& selection)
@@ -1083,6 +1105,73 @@ map_box_average(
         map_data(lx,ly,lz) = rho / counter;
   }}}
 }
+
+class sphericity2 {
+public:
+  af::tiny<double, 3> rho_min_max_mean_;
+  af::tiny<double, 3> ccs_min_max_mean_;
+  sphericity2(
+    af::const_ref<double, af::c_grid<3> > const& map_data,
+    cctbx::cartesian<double> const& center_cart,
+    af::const_ref<scitbx::vec3<double> > const& points_on_sphere_cart,
+    cctbx::uctbx::unit_cell const& unit_cell)
+  :
+  rho_min_max_mean_(af::tiny<double, 3>(0,0,0)),
+  ccs_min_max_mean_(af::tiny<double, 3>(0,0,0))
+  {
+    af::shared<af::shared<double> > vecs(points_on_sphere_cart.size());
+    double rho_min=1.e+9, rho_max=-1.e+9, rho_mean=0.;
+    for(int i=0; i<points_on_sphere_cart.size(); i++) {
+      cctbx::cartesian<double>  posc = points_on_sphere_cart[i];
+      cctbx::fractional<double> posf = unit_cell.fractionalize(posc);
+      double rho = tricubic_interpolation(map_data, posf);
+      if(rho<rho_min) rho_min = rho;
+      if(rho>rho_max) rho_max = rho;
+      rho_mean += rho;
+      // Collect vectors along rays: start
+      af::shared<double> vec;
+      double p=0.;
+      while(p<=1.) {
+        double value = (int)(p * 100 + .5);
+        p = (float)value / 100; // this make it precisely 0.00, 0.05, 0.10,...
+        cctbx::cartesian<double> spc = cctbx::cartesian<>(
+          center_cart[0] + p * (posc[0]-center_cart[0]),
+          center_cart[1] + p * (posc[1]-center_cart[1]),
+          center_cart[2] + p * (posc[2]-center_cart[2]) );
+        cctbx::fractional<double> spf = unit_cell.fractionalize(spc);
+        vec.push_back( tricubic_interpolation(map_data, spf) );
+        p+=0.05;
+      }
+      vecs[i] = vec;
+      // end
+    }
+    rho_mean = rho_mean/points_on_sphere_cart.size();
+    rho_min_max_mean_ = af::tiny<double, 3>(rho_min, rho_max, rho_mean);
+    //
+    double cc_min=1.e+9, cc_max=-1.e+9, cc_mean=0.;
+    int cntr=0;
+    for(int i=0; i<vecs.size(); i++) {
+      af::shared<double> vec_i = vecs[i];
+      for(int j=0; j<vecs.size(); j++) {
+        if(i<j) {
+          af::shared<double> vec_j = vecs[j];
+          double cc = scitbx::math::linear_correlation<>(
+            vec_i.ref(), vec_j.ref()).coefficient();
+          if(cc<cc_min) cc_min = cc;
+          if(cc>cc_max) cc_max = cc;
+          cc_mean += cc;
+          cntr+=1;
+        }
+      }
+    }
+    cc_mean = cc_mean/cntr;
+    ccs_min_max_mean_ = af::tiny<double, 3>(cc_min, cc_max, cc_mean);
+    //
+  }
+
+  af::tiny<double, 3> rho_min_max_mean() {return rho_min_max_mean_;}
+  af::tiny<double, 3> ccs_min_max_mean() {return ccs_min_max_mean_;}
+};
 
 class fit_point_3d_grid_search {
 public:

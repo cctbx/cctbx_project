@@ -372,6 +372,23 @@ namespace {
     }
 
     {
+      typedef sphericity2 w_t;
+
+      class_<w_t>("sphericity2", no_init)
+        .def(init<af::const_ref<double, af::c_grid<3> > const&,
+                  cctbx::cartesian<double> const&,
+                  af::const_ref<scitbx::vec3<double> > const&,
+                  cctbx::uctbx::unit_cell const& >(
+                    (arg("map_data"),
+                     arg("center_cart"),
+                     arg("points_on_sphere_cart"),
+                     arg("unit_cell"))))
+        .def("rho_min_max_mean", &w_t::rho_min_max_mean)
+        .def("ccs_min_max_mean", &w_t::ccs_min_max_mean)
+      ;
+    }
+
+    {
       typedef fit_point_3d_grid_search w_t;
 
       class_<w_t>("fit_point_3d_grid_search", no_init)
@@ -762,6 +779,15 @@ namespace {
          std::vector<unsigned> const&)) negate_selected_in_place, (
       arg("map_data"),
       arg("selection")));
+
+    def("resample",
+      (void(*)
+        (af::const_ref<double, af::c_grid<3> > const&,
+         af::ref<double, af::c_grid<3> >,
+         cctbx::uctbx::unit_cell const&)) resample, (
+      arg("map_data"),
+      arg("map_data_new"),
+      arg("unit_cell")));
 
     def("reset",
       (void(*)
