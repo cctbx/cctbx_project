@@ -138,7 +138,57 @@ class density_distribution_per_atom
     af::shared<FloatType> map_values_;
 };
 
+template <typename FloatType>
+af::shared<std::size_t>
+  filter_water(
+    af::shared<vec3<FloatType> > const& sites_frac,
+    af::shared<vec3<FloatType> > const& sites_frac_water,
+    FloatType const& dist_max,
+    FloatType const& dist_min,
+    cctbx::uctbx::unit_cell const& unit_cell)
+{
+  af::shared<std::size_t> result;
+  af::shared<std::size_t> first_shell;
+  af::shared<std::size_t> second_shell;
+  for(std::size_t i=0; i<sites_frac_water.size(); i+=1) {
+    FloatType dist_closest = 1.e+9;
+    cctbx::fractional<> sfw = sites_frac_water[i];
+    for(std::size_t j=0; j<sites_frac.size(); j+=1) {
+      cctbx::fractional<> sf = sites_frac[j];
+      FloatType dist = unit_cell.distance(sf, sfw);
+      if(dist < dist_closest) {
+        dist_closest = dist;
+      }
+    }
+    if(dist_closest<=dist_max && dist_closest>=dist_min) {
+      first_shell.push_back(i);
+    }
+    else {
+      second_shell.push_back(i);
+    }
+  }
+  for(std::size_t i=0; i<second_shell.size(); i+=1) {
+    FloatType dist_closest = 1.e+9;
+    cctbx::fractional<> sfi = sites_frac_water[second_shell[i]];
+    for(std::size_t j=0; j<first_shell.size(); j+=1) {
+      cctbx::fractional<> sfj = sites_frac_water[first_shell[j]];
+      FloatType dist = unit_cell.distance(sfi, sfj);
+      if(dist < dist_closest) {
+        dist_closest = dist;
+      }
+    }
+    if(dist_closest<=dist_max && dist_closest>=dist_min) {
+      result.push_back(second_shell[i]);
+    }
+  }
+  for(std::size_t i=0; i<first_shell.size(); i+=1) {
+    result.push_back(first_shell[i]);
+  }
+  return result;
+}
+
 // TODO: mrt! it seems that it is all broken
+// XXX PVA: almost obsolete. Use filter_water code above, which is much better.
 template <typename FloatType>
 af::shared<std::size_t>
   select_water_by_distance(af::shared<vec3<FloatType> > const& sites_frac_all,
