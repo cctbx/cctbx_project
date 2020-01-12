@@ -668,12 +668,27 @@ class FatRefiner(PixelRefinement):
     def compute_functional_and_gradients(self):
         if self.calc_func:
             if self.verbose:
+                refine_str= "refining "
+                if self.refine_Fcell:
+                    refine_str += "fcell, "
+                if self.refine_ncells:
+                    refine_str += "Ncells, "
+                if self.refine_Bmatrix:
+                    refine_str += "Bmat, "
+                if self.refine_Umatrix:
+                    refine_str += "Umat, "
+                if self.refine_crystal_scale:
+                    refine_str += "scale, "
+                if self.refine_background_planes:
+                    refine_str += "bkgrnd, "
+                
                 if self.use_curvatures:
-                    print("Trial%d: Compute functional and gradients Iter %d (Using Curvatures)\n<><><><><><><><><><><><><>"
-                          % (self.trial_id+1, self.iterations + 1))
+                    
+                    print("Trial%d (%s): Compute functional and gradients Iter %d (Using Curvatures)\n<><><><><><><><><><><><><>"
+                          % (self.trial_id+1, refine_str, self.iterations + 1))
                 else:
-                    print("Trial%d: Compute functional and gradients Iter %d PosCurva %d\n<><><><><><><><><><><><><>"
-                          % (self.trial_id+1, self.iterations + 1, self.num_positive_curvatures))
+                    print("Trial%d (%s): Compute functional and gradients Iter %d PosCurva %d\n<><><><><><><><><><><><><>"
+                          % (self.trial_id+1, refine_str, self.iterations + 1, self.num_positive_curvatures))
             if comm.rank == 0 and self.output_dir is not None:
                 outf = os.path.join(self.output_dir, "_fcell_iter%d" % self.iterations)
                 fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
