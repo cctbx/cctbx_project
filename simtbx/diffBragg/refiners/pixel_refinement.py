@@ -45,28 +45,29 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.plot_fcell = False
         self.log_fcells = True  # to refine Fcell using logarithms to avoid negative Fcells
         self.use_curvatures = False  # whether to use the curvatures
-        self.refine_background_planes = True  # whether to refine the background planes
+        self.refine_background_planes = False  # whether to refine the background planes
         self.refine_gain_fac = False  # whether to refine the gain factor
+        self.refine_ncells = False  # whether to refine Ncells abc
+        self.refine_detdist = False  # whether to refine the detdist
+        self.refine_Umatrix = False  # whether to refine the Umatrix
+        self.refine_Bmatrix = False  # whether to refine the Bmatrx
+        self.refine_crystal_scale = False  # whether to refine the crystal scale factor
+        self.refine_Fcell = False
+        self.refine_rotX = True  # note: only matters if refine_Umatrix is True whether to refine the X rotation
+        self.refine_rotY = True  # whether to refine Y rotations
+        self.refine_rotZ = True  # whether to refine Z rotations
         self.multi_panel = False  # whether the camera is multi panel or single panel
         self.split_evaluation = False  # whether to use split evaluation run method
-        self.refine_ncells = False  # whether to refine Ncells abc
         self.hit_break_to_use_curvatures = False  # internal flag if calculating curvatures
-        self.refine_detdist = False  # whether to refine the detdist
-        self.refine_Amatrix = True  # whether to refine the  Amatrix (deprecated)
-        self.refine_Bmatrix = True  # whether to refine the Bmatrx
+        self.refine_Amatrix = False  # whether to refine the  Amatrix (deprecated)
         self.has_pre_cached_roi_data = False  # only for use in global refinement mode
         self.use_curvatures_threshold = 7   # how many positive curvature iterations required before breaking
         self.curv = None  # curvatures array used internally
         self.print_all_missets = True  # prints out a list of all missetting results (when ground truth is known)
-        self.refine_Umatrix = True  # whether to refine the Umatrix
         self.verbose = True  # whether to print during iterations
-        self.refine_crystal_scale = True  # whether to refine the crystal scale factor
         self.plot_images = False  # whether to plot images
-        self.refine_rotX = True  # whether to refine the X rotation
         self.iterations = 0  # iteration counter , used internally
-        self.refine_rotY = True  # whether to refine Y rotations
         self.FNAMES = {}  # place holder for fnames dictionary so refinement understands layout of the data
-        self.refine_rotZ = True  # whether to refine Z rotations
         self.plot_residuals = False  # whether to plot residuals
         self.debug = False  # for debug print statements
         self.trad_conv = False  # traditional convergenve
@@ -85,7 +86,6 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.shot_ids = None  # for global refinement ,
         self.refine_global_unitcell = True
 
-        self.refine_Fcell = False
 
         self.poisson_only = True  # use strictly Poissonian statistics
         self.sigma_r = 3
