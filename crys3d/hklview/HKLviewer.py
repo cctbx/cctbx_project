@@ -65,9 +65,12 @@ class SettingsForm(QDialog):
     layout.addWidget(parent.cameraPerspectCheckBox,  2, 0, 1, 1)
     layout.addWidget(parent.bufsize_labeltxt,        3, 0, 1, 1)
     layout.addWidget(parent.bufsizespinBox,          3, 4, 1, 1)
-    layout.addWidget(parent.ttipCheckBox,            4, 0, 1, 1)
-    layout.addWidget(parent.ttipalpha_labeltxt,      4, 1, 1, 1)
+
+    layout.addWidget(parent.ttipNoneradio,           4, 0, 1, 1)
+    layout.addWidget(parent.ttipClickradio,          4, 1, 1, 1)
+    layout.addWidget(parent.ttipHoverradio,          4, 2, 1, 1)
     layout.addWidget(parent.ttipalpha_spinBox,       4, 4, 1, 1)
+
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
     myGroupBox.setLayout(layout)
@@ -302,10 +305,16 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.bufsize_labeltxt.setText("Text buffer size (Kbytes):")
 
 
-    self.ttipCheckBox = QCheckBox()
-    self.ttipCheckBox.setText("Show tooltips")
-    self.ttipCheckBox.clicked.connect(self.onShowTooltips)
-    self.ttipCheckBox.setCheckState(Qt.Checked)
+    self.ttipNoneradio = QRadioButton()
+    self.ttipNoneradio.setText( "None")
+    self.ttipNoneradio.clicked.connect(self.onShowTooltips)
+    self.ttipHoverradio = QRadioButton()
+    self.ttipHoverradio.setText( "Hovering")
+    self.ttipHoverradio.clicked.connect(self.onShowTooltips)
+    self.ttipClickradio = QRadioButton()
+    self.ttipClickradio.setText( "Clicked")
+    self.ttipClickradio.clicked.connect(self.onShowTooltips)
+
 
     self.ttipalpha = 0.85
     self.ttipalpha_spinBox = QDoubleSpinBox()
@@ -827,10 +836,12 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def onShowTooltips(self,val):
-    if self.ttipCheckBox.isChecked():
-      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.show_tooltips = True")
-    else:
-      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.show_tooltips = False")
+    if self.ttipClickradio.isChecked():
+      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.show_tooltips = click")
+    if self.ttipHoverradio.isChecked():
+      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.show_tooltips = hover")
+    if self.ttipNoneradio.isChecked():
+      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.show_tooltips = none")
 
 
   def onFontsizeChanged(self, val):

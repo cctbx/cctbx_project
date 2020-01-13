@@ -1161,61 +1161,65 @@ function MakeHKL_Axis(mshape)
     spherebufferstr += """
 // create tooltip element and add to the viewer canvas
   stage.viewer.container.appendChild(tooltip);
+
   // listen to `hovered` signal to move tooltip around and change its text
-  stage.signals.hovered.add(
-    function (pickingProxy)
+  PickingProxyfunc = function(pickingProxy)
+  {
+    if (pickingProxy
+          && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]' )
+          && displaytooltips )
     {
-      if (pickingProxy
-           && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]' )
-           && displaytooltips )
-      {
-        var cp = pickingProxy.canvasPosition;
+      var cp = pickingProxy.canvasPosition;
     """
     if self.script_has_tooltips:
       spherebufferstr += """
-        tooltip.innerText = pickingProxy.picker[pickingProxy.pid];
+      tooltip.innerText = pickingProxy.picker[pickingProxy.pid];
     """
     else:
       spherebufferstr += """
-        var sym_id = -1;
-        var hkl_id = -1;
-        var ttipid = "";
-        if (pickingProxy.picker.length > 0)
-        { // get stored id number of symmetry operator applied to this hkl
-          sym_id = pickingProxy.picker[0];
-          var ids = pickingProxy.picker.slice(1);
-          var is_friedel_mate = 0;
-          hkl_id = ids[ pickingProxy.pid % ids.length ];
-          if (pickingProxy.pid >= ids.length)
-            is_friedel_mate = 1;
-        }
-        // tell python the id of the hkl and id number of the symmetry operator
-        rightnow = timefunc();
-        if (rightnow - timenow > tdelay)
-        { // only post every 50 milli second as not to overwhelm python
-          ttipid = String([hkl_id, sym_id, is_friedel_mate]);
-          WebsockSendMsg( 'tooltip_id: [' + ttipid + ']' );
-          timenow = timefunc();
-        }
-
-        if (isdebug)
-          console.log( "current_ttip_ids: " + String(current_ttip_ids) + ", ttipid: " + String(ttipid) );
-        if (current_ttip !== "" && current_ttip_ids == ttipid )
-        {
-          tooltip.innerText = current_ttip;
-    """
-    spherebufferstr += """      tooltip.style.bottom = cp.y + 7 + "px";
-          tooltip.style.left = cp.x + 8 + "px";
-          tooltip.style.fontSize = "smaller";
-          tooltip.style.display = "block";
-        }
+      var sym_id = -1;
+      var hkl_id = -1;
+      var ttipid = "";
+      if (pickingProxy.picker.length > 0)
+      { // get stored id number of symmetry operator applied to this hkl
+        sym_id = pickingProxy.picker[0];
+        var ids = pickingProxy.picker.slice(1);
+        var is_friedel_mate = 0;
+        hkl_id = ids[ pickingProxy.pid % ids.length ];
+        if (pickingProxy.pid >= ids.length)
+          is_friedel_mate = 1;
       }
-      else
+      // tell python the id of the hkl and id number of the symmetry operator
+      rightnow = timefunc();
+      if (rightnow - timenow > tdelay)
+      { // only post every 50 milli second as not to overwhelm python
+        ttipid = String([hkl_id, sym_id, is_friedel_mate]);
+        WebsockSendMsg( 'tooltip_id: [' + ttipid + ']' );
+        timenow = timefunc();
+      }
+
+      if (isdebug)
+        console.log( "current_ttip_ids: " + String(current_ttip_ids) + ", ttipid: " + String(ttipid) );
+      if (current_ttip !== "" && current_ttip_ids == ttipid )
       {
-        tooltip.style.display = "none";
-        current_ttip = "";
+        tooltip.innerText = current_ttip;
+    """
+    spherebufferstr += """    tooltip.style.bottom = cp.y + 7 + "px";
+        tooltip.style.left = cp.x + 8 + "px";
+        tooltip.style.fontSize = "smaller";
+        tooltip.style.display = "block";
       }
     }
+    else
+    {
+      tooltip.style.display = "none";
+      current_ttip = "";
+    }
+  };
+
+
+  stage.signals.clicked.add(
+    PickingProxyfunc
   );
 
 
@@ -1302,24 +1306,6 @@ function MakeHKL_Axis(mshape)
 
     """
 
-    spherebufferstr += """
-  stage.signals.clicked.add(
-    function (pickingProxy)
-    {
-      if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  ))
-      {
-"""
-    if self.script_has_tooltips:
-      spherebufferstr += "   var innerText = pickingProxy.picker[pickingProxy.pid];\n"
-    else:
-      spherebufferstr += "        var innerText = pickingProxy.pid;"
-    spherebufferstr += """
-        WebsockSendMsg( innerText);
-      }
-    }
-  );
-
-    """
     colourgradstrs = "colourgradvalarray = new Array(%s);\n" %fomln
     # if displaying phases from map coefficients together with fom values then
     for g,colourgradarray in enumerate(colourgradarrays):
@@ -1843,7 +1829,13 @@ mysocket.onmessage = function(e)
 
     if (msgtype === "DisplayTooltips")
     {
-      displaytooltips = ( parseInt(val[0]) == 1);
+      displaytooltips = val[0];
+      stage.signals.hovered.removeAll();
+      stage.signals.clicked.removeAll();
+      if (displaytooltips == "click")
+        stage.signals.clicked.add( PickingProxyfunc );
+      if (displaytooltips == "hover")
+        stage.signals.hovered.add( PickingProxyfunc );
     }
 
     if (msgtype === "ShowThisTooltip")
@@ -2495,7 +2487,8 @@ mysocket.onmessage = function(e)
           else:
             hklid = hklid % len(hkls)
             ttip = self.GetTooltipOnTheFly(hklid, sym_id, anomalous=True)
-          self.send_msg_to_browser("ShowThisTooltip", ttip)
+          #self.send_msg_to_browser("ShowThisTooltip", ttip)
+          self.AddToBrowserMsgQueue("ShowThisTooltip", ttip)
         else:
           if "Ready " in message:
             self.mprint( message, verbose=5)
@@ -2696,7 +2689,7 @@ Distance: %s
 
 
   def set_show_tooltips(self):
-    msg = "%d" %int(self.ngl_settings.show_tooltips)
+    msg = "%s" %self.ngl_settings.show_tooltips
     self.send_msg_to_browser("DisplayTooltips", msg)
 
 
@@ -3145,8 +3138,8 @@ ngl_philstr = """
     .type = str
   tooltip_alpha = 0.85
     .type = float
-  show_tooltips = True
-    .type = bool
+  show_tooltips = none *click hover
+    .type = choice
   fixorientation = False
     .type = bool
   camera_type = *orthographic perspective
