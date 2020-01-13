@@ -69,6 +69,9 @@ private:
         if (sc.flags.use_u_aniso() && sc.flags.grad_u_aniso()) {
           ids.u_aniso = params;
           params += 6;
+          if (sc.anharmonic_adp) {
+            params += 25;
+          }
         }
         if (sc.flags.grad_occupancy()) ids.occupancy = params++;
         if (sc.flags.grad_fp()) ids.fp = params++;

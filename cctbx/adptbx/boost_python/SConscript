@@ -4,3 +4,6 @@ env.Prepend(LIBS=["cctbx"])
 env.SharedLibrary(
   target="#lib/cctbx_adptbx_ext",
   source=["adptbx_ext.cpp", "hirshfeld.cpp"])
+env.SharedLibrary(target="#lib/cctbx_anharmonic_ext", source=[
+  "anharmonic_ext.cpp",
+])

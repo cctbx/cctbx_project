@@ -42,6 +42,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
       complex_type structure_factor;
       grad_site_type grad_site;
       grad_u_star_type grad_u_star;
+      af::shared<complex_type> grad_anharmonic_adp;
       complex_type grad_u_iso, grad_occ;
     };
 
@@ -92,6 +93,9 @@ namespace smtbx { namespace structure_factors { namespace direct {
         if (compute_grad) {
           this->grad_site = grad_site_type(0, 0, 0);
           this->grad_u_star = grad_u_star_type(0, 0, 0, 0, 0, 0);
+          if (scatterer.anharmonic_adp) {
+            this->grad_anharmonic_adp.resize(25);
+          }
         }
 
         heir.compute_anisotropic_part(scatterer, compute_grad);
@@ -108,6 +112,9 @@ namespace smtbx { namespace structure_factors { namespace direct {
         if (compute_grad) {
           this->grad_site = grad_site_type(0, 0, 0);
           this->grad_u_star = grad_u_star_type(0, 0, 0, 0, 0, 0);
+          if (scatterer.anharmonic_adp) {
+            this->grad_anharmonic_adp.resize(25);
+          }
         }
 
         heir.compute_anisotropic_part_full(scatterer, ff, compute_grad);
@@ -185,6 +192,17 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (scatterer.flags.use_u_aniso()) {
             float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);
             f *= dw;
+            if (scatterer.anharmonic_adp) {
+              complex_type ac = scatterer.anharmonic_adp->calculate(g.hr);
+              if (compute_grad && scatterer.flags.grad_u_aniso()) {
+                af::shared<FloatType> gc = scatterer
+                  .anharmonic_adp->gradient_coefficients(g.hr);
+                for (int gi = 0; gi < 25; gi++) {
+                  base_t::grad_anharmonic_adp[gi] = f * gc[gi];
+                }
+              }
+              f *= ac;
+            }
             if (compute_grad) {
               if (scatterer.flags.grad_u_aniso()) {
                 scitbx::sym_mat3<float_type> log_grad_u_star
@@ -257,6 +275,17 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (scatterer.flags.use_u_aniso()) {
             float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);
             f *= dw;
+            if (scatterer.anharmonic_adp) {
+              complex_type ac = scatterer.anharmonic_adp->calculate(g.hr);
+              if (compute_grad && scatterer.flags.grad_u_aniso()) {
+                af::shared<FloatType> gc = scatterer
+                  .anharmonic_adp->gradient_coefficients(g.hr);
+                for (int gi = 0; gi < 25; gi++) {
+                  base_t::grad_anharmonic_adp[gi] = f * gc[gi];
+                }
+              }
+              f *= ac;
+            }
             if (compute_grad) {
               if (scatterer.flags.grad_u_aniso()) {
                 scitbx::sym_mat3<float_type> log_grad_u_star
@@ -1009,6 +1038,11 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (sc.flags.use_u_aniso() && sc.flags.grad_u_aniso()) {
             for (int j=0; j<6; ++j) {
               *grad_f_calc_cursor++ = l.grad_u_star[j];
+            }
+            if (sc.anharmonic_adp) {
+              for (int j = 0; j < 25; ++j) {
+                *grad_f_calc_cursor++ = l.grad_anharmonic_adp[j];
+              }
             }
           }
           if (sc.flags.grad_occupancy()) {

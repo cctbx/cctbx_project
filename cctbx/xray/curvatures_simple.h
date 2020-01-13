@@ -70,7 +70,7 @@ namespace curvatures_simple {
       CCTBX_ASSERT(
         scatterer.flags.use_u_iso() != scatterer.flags.use_u_aniso());
       sgtbx::site_constraints<> const* site_constraints = 0;
-      sgtbx::tensor_rank_2::constraints<> const* adp_constraints = 0;
+      sgtbx::site_symmetry_ops::tensor_rank_2_constraints_t const* adp_constraints = 0;
       if (site_symmetry_table.is_special_position(i_scatterer)) {
         sgtbx::site_symmetry_ops const&
           site_symmetry_ops = site_symmetry_table.get(i_scatterer);
