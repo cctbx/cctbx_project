@@ -54,6 +54,8 @@ namespace cctbx {
               (arg("all_gradients")))
               .def("independent_curvatures", &w_t::independent_curvatures,
               (arg("all_curvatures")))
+              .def("initialise", &w_t::initialise)
+              .staticmethod("initialise")
               .def("cleanup", &w_t::cleanup)
               .staticmethod("cleanup")
               ;

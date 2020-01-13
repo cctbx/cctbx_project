@@ -586,10 +586,6 @@ public:
 class anharmonic_adp_parameter : public virtual parameter
 {
 public:
-  anharmonic_adp_parameter()
-    : value(25)
-  {}
-
   virtual af::ref<double> components();
 
   /// The u_star value
@@ -625,6 +621,7 @@ public:
     : parameter(0),
     single_asu_scatterer_parameter(scatterer)
   {
+    value.resize(25);
     for (size_t i = 0; i < 10; i++) {
       value[i] = scatterer->anharmonic_adp->C[i];
     }

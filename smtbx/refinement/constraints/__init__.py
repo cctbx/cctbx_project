@@ -293,19 +293,19 @@ class reparametrisation(ext.reparametrisation):
       else:
         site_symm = self.site_symmetry_table_.get(i_scatterer)
         if site_symm.is_point_group_1():
-          u = self.add(independent_u_star_parameter, sc)
           if sc.is_anharmonic_adp():
-            anh = self.add(independent_anharmonic_adp_parameter, sc)
-            self.asu_scatterer_parameters[i_scatterer].anharmonic_adp = anh
+            u = self.add(independent_anharmonic_adp_parameter, sc)
+          else:
+            u = self.add(independent_u_star_parameter, sc)
         else:
-          u = self.add(special_position_u_star_parameter,
-                       site_symm,
-                       sc)
           if sc.is_anharmonic_adp():
-            anh = self.add(special_position_anharmonic_adp_parameter,
+            u = self.add(special_position_anharmonic_adp_parameter,
                          site_symm,
                          sc)
-            self.asu_scatterer_parameters[i_scatterer].anharmonic_adp = anh
+          else:
+            u = self.add(special_position_u_star_parameter,
+                         site_symm,
+                         sc)
       self.asu_scatterer_parameters[i_scatterer].u = u
     return u
 

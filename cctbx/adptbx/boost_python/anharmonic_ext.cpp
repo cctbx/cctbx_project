@@ -7,7 +7,7 @@
 
 namespace cctbx { namespace boost_python { namespace anharmonic {
   using namespace cctbx::adptbx::anharmonic;
-
+  
   template <typename FloatType>
   struct anharmonic_adp_wrapper {
     typedef GramCharlier4<FloatType> wt;
@@ -25,7 +25,6 @@ namespace cctbx { namespace boost_python { namespace anharmonic {
           (arg("miller_index")))
         .def("gradient_coefficients", &wt::gradient_coefficients,
           (arg("miller_index")))
-        .def("data", &wt::data)
         ;
     }
   };

@@ -96,10 +96,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
           this->grad_site = grad_site_type(0, 0, 0);
           this->grad_u_star = grad_u_star_type(0, 0, 0, 0, 0, 0);
           if (scatterer.anharmonic_adp) {
-            this->grad_anharmonic_adp = af::shared<complex_type>(25);
+            this->grad_anharmonic_adp.resize(25);
           }
-          this->grad_fp = 0;
-          this->grad_fdp = 0;
         }
 
         heir.compute_anisotropic_part(scatterer, compute_grad);
@@ -116,6 +114,9 @@ namespace smtbx { namespace structure_factors { namespace direct {
         if (compute_grad) {
           this->grad_site = grad_site_type(0, 0, 0);
           this->grad_u_star = grad_u_star_type(0, 0, 0, 0, 0, 0);
+          if (scatterer.anharmonic_adp) {
+            this->grad_anharmonic_adp.resize(25);
+          }
         }
 
         heir.compute_anisotropic_part_full(scatterer, ff, compute_grad);
@@ -196,10 +197,10 @@ namespace smtbx { namespace structure_factors { namespace direct {
             if (scatterer.anharmonic_adp) {
               complex_type ac = scatterer.anharmonic_adp->calculate(g.hr);
               if (compute_grad && scatterer.flags.grad_u_aniso()) {
-                af::shared<complex_type> gc = scatterer
+                af::shared<FloatType> gc = scatterer
                   .anharmonic_adp->gradient_coefficients(g.hr);
-                for (int j = 0; j < 25; j++) {
-                  base_t::grad_anharmonic_adp[j] += f * gc[j];
+                for (int gi = 0; gi < 25; gi++) {
+                  base_t::grad_anharmonic_adp[gi] = f * gc[gi];
                 }
               }
               f *= ac;
@@ -282,6 +283,17 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (scatterer.flags.use_u_aniso()) {
             float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);
             f *= dw;
+            if (scatterer.anharmonic_adp) {
+              complex_type ac = scatterer.anharmonic_adp->calculate(g.hr);
+              if (compute_grad && scatterer.flags.grad_u_aniso()) {
+                af::shared<FloatType> gc = scatterer
+                  .anharmonic_adp->gradient_coefficients(g.hr);
+                for (int gi = 0; gi < 25; gi++) {
+                  base_t::grad_anharmonic_adp[gi] = f * gc[gi];
+                }
+              }
+              f *= ac;
+            }
             if (compute_grad) {
               if (scatterer.flags.grad_u_aniso()) {
                 scitbx::sym_mat3<float_type> log_grad_u_star

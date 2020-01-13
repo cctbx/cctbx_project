@@ -129,7 +129,7 @@ namespace xray {
        */
       scitbx::sym_mat3<FloatType> u_star;
 
-      //anharmonic part of the ADP
+      //anharmonic part of the ADP 
       boost::shared_ptr<anharmonic_adp_type> anharmonic_adp;
 
       //! Support for refinement.
@@ -235,7 +235,7 @@ namespace xray {
       }
 
       bool is_anharmonic_adp() const {
-        return anharmonic_adp != 0;
+        return anharmonic_adp;
       }
 
       //! get u_iso as b_iso.

@@ -139,6 +139,14 @@ public:
     return result;
   }
 
+  /* this might be required in a multithreaded environment!
+  allocate a small cunk of memory for the multidemensional index to
+  linear index mapping
+  */
+  static void initialise() {
+    tensor_t::initialise();
+  }
+
   /* release any allocated memory, not really needed unless want to
   investigate potential memory leaks
   */
@@ -159,14 +167,14 @@ protected:
     af::ref<int, af::mat_grid> row_echelon_setup(
       row_echelon_setup_memory.get(), n_rows, tensor_t::size());
     using scitbx::matrix::tensors::tensor_rank_2;
-    std::vector<std::vector<int> > indices = tensor_t::get_indices();
+    const std::vector<std::vector<int> > &indices = tensor_t::get_indices();
     for (unsigned i_s = i_first_matrix_to_use; i_s < symmetry_matrices.size(); i_s++) {
       const rot_mx rm = reciprocal_space ? symmetry_matrices[i_s].r()
         : symmetry_matrices[i_s].r().transpose();
       int *m_off = &row_echelon_setup.begin()[
         (i_s - i_first_matrix_to_use)*tensor_t::size()*tensor_t::size()];
       for (size_t i = 0; i < tensor_t::size(); i++) {
-        std::vector<FloatType> t = tensor_t::get_transform(indices[i], rm);
+        af::shared<FloatType> t = tensor_t::get_transform(indices[i], rm);
         size_t li = tensor_t::get_linear_idx(indices[i]);
         t[li] -= 1;
         int *t_off = &m_off[li*tensor_t::size()];
