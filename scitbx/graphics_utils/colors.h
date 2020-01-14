@@ -116,7 +116,69 @@ namespace scitbx { namespace graphics_utils {
     return scitbx::vec3<double>(r, g, b);
   }
 
-  af::shared< scitbx::vec3<double> >
+
+        af::shared< scitbx::vec3<double> >
+                NoNansvec3(af::const_ref< scitbx::vec3<double> > const& vecs,
+                        double defx = 0.0, double defy = 0.0, double defz = 0.0)
+        {
+                af::shared <scitbx::vec3<double> > nonanvecs(vecs.size());
+                for (unsigned i_seq = 0; i_seq < vecs.size(); i_seq++)
+                {
+                        if (boost::math::isfinite(vecs(i_seq)[0] + vecs(i_seq)[1] + vecs(i_seq)[2]))
+                                nonanvecs[i_seq] = vecs(i_seq);
+                        else
+                                nonanvecs[i_seq] = scitbx::vec3<double>(defx, defy, defz);
+                }
+                return nonanvecs;
+        }
+
+
+        af::shared< double>
+                NoNans(af::const_ref< double > const& arr, double def = 0.0)
+        {
+                af::shared <double> nonanarr(arr.size());
+                for (unsigned i_seq = 0; i_seq < arr.size(); i_seq++)
+                {
+                        if (boost::math::isfinite(arr(i_seq)))
+                                nonanarr[i_seq] = arr(i_seq);
+                        else
+                                nonanarr[i_seq] = def;
+                }
+                return nonanarr;
+        }
+
+
+        af::shared< bool>
+                IsNans(af::const_ref< double > const& arr)
+        {
+                af::shared <bool> nonanarr(arr.size());
+                for (unsigned i_seq = 0; i_seq < arr.size(); i_seq++)
+                {
+                        if (boost::math::isfinite(arr(i_seq)))
+                                nonanarr[i_seq] = false;
+                        else
+                                nonanarr[i_seq] = true;
+                }
+                return nonanarr;
+        }
+
+
+        af::shared< bool >
+                IsNansvec3(af::const_ref< scitbx::vec3<double> > const& vecs)
+        {
+                af::shared <bool > nonanarr(vecs.size());
+                for (unsigned i_seq = 0; i_seq < vecs.size(); i_seq++)
+                {
+                        if (boost::math::isfinite(vecs(i_seq)[0] + vecs(i_seq)[1] + vecs(i_seq)[2]))
+                                nonanarr[i_seq] = false;
+                        else
+                                nonanarr[i_seq] = true;
+                }
+                return nonanarr;
+        }
+
+
+        af::shared< scitbx::vec3<double> >
     color_by_phi_fom(
       af::const_ref< double > const& phases,
       af::const_ref< double > const& foms

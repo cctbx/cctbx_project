@@ -7,6 +7,7 @@ from libtbx.utils import Sorry, to_str
 from cctbx import miller
 from cctbx.array_family import flex
 import libtbx.phil
+from scitbx import graphics_utils
 from libtbx import object_oriented_patterns as oop # causes crash in easy_mp.multi_core_run
 from math import sqrt
 import math, traceback
@@ -49,7 +50,8 @@ def nth_power_scale(dataarray, nth_power):
   values to 0.1 of the largest values
   """
   absdat = flex.abs(dataarray).as_double()
-  absdat2 = flex.double([e for e in absdat if not math.isnan(e)])
+  #absdat2 = flex.double([e for e in absdat if not math.isnan(e)])
+  absdat2 = graphics_utils.NoNansArray(absdat)
   maxdat = flex.max(absdat2)
   mindat = max(1e-10*maxdat, flex.min(absdat2) )
   #print "minmaxdat:", mindat, maxdat
@@ -290,7 +292,8 @@ class scene(object):
           self.ampl = flex.abs(data)
           self.phases = flex.arg(data) * 180.0/math.pi
           # purge nan values from array to avoid crash in fmod_positive()
-          b = flex.bool([bool(math.isnan(e)) for e in self.phases])
+          #b = flex.bool([bool(math.isnan(e)) for e in self.phases])
+          b = graphics_utils.IsNansArray( self.phases )
           # replace the nan values with an arbitrary float value
           self.phases = self.phases.set_selected(b, 42.4242)
           # Cast negative degrees to equivalent positive degrees
@@ -328,7 +331,7 @@ class scene(object):
 
   def generate_view_data(self):
     from scitbx.array_family import flex
-    from scitbx import graphics_utils
+    #from scitbx import graphics_utils
     settings = self.settings
     data_for_colors = data_for_radii = None
     if not self.fullprocessarray:
@@ -403,7 +406,8 @@ class scene(object):
     #if (settings.sqrt_scale_radii) and (not settings.scale_radii_multiplicity):
     #  data_for_radii = flex.sqrt(flex.abs(data_for_radii))
     if len(data_for_radii):
-      dat2 = flex.abs(flex.double([e for e in data_for_radii if not math.isnan(e)]))
+      #dat2 = flex.abs(flex.double([e for e in data_for_radii if not math.isnan(e)]))
+      dat2 = flex.abs(flex.double( graphics_utils.NoNansArray( data_for_radii, 0.1 ) ))
       # don't divide by 0 if dealing with selection of Rfree array where all values happen to be zero
       scale = max_radius/(flex.max(dat2) + 0.001)
       radii = data_for_radii * (self.settings.scale * scale)

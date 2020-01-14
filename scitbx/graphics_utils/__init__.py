@@ -24,3 +24,17 @@ def colour_by_phi_FOM(phi, fom = None):
   if not fom:
     fom = flex.double(phi.size(), 1.0)
   return color_by_phi_fom_(phi, fom)
+
+
+
+def NoNansArray(arr, d=0.0):
+  return NoNans(arr, d)
+
+def IsNansArray(arr):
+  return IsNans(arr)
+
+def NoNansVecArray(vecs, defx=0.0, defy=0.0, defz=0.0):
+  return NoNansvec3(vecs, defx, defy, defz)
+
+def IsNansVecArray(vecs):
+  return IsNansvec3(vecs)

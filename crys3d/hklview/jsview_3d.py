@@ -29,16 +29,18 @@ class ArrayInfo:
     from iotbx.gui_tools.reflections import get_array_description
     data = millarr.data()
     if (isinstance(data, flex.int)):
-      data = [e for e in data if e!= display.inanval]
+      data = flex.double([e for e in data if e!= display.inanval])
     if millarr.is_complex_array():
       data = flex.abs(millarr.data())
-    data = [e for e in data if not math.isnan(e)]
+    #data = [e for e in data if not math.isnan(e)]
+    data = graphics_utils.NoNansArray( data, data[0] ) # assuming data[0] isn't NaN
     self.maxdata =max( data )
     self.mindata =min( data )
     self.maxsigmas = self.minsigmas = None
     if millarr.sigmas() is not None:
       data = millarr.sigmas()
-      data = [e for e in data if not math.isnan(e)]
+      #data = [e for e in data if not math.isnan(e)]
+      data = graphics_utils.NoNansArray( data, data[0] ) # assuming data[0] isn't NaN
       self.maxsigmas =max( data )
       self.minsigmas =min( data )
     self.minmaxdata = (roundoff(self.mindata), roundoff(self.maxdata))
@@ -103,10 +105,12 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
     # cast any NAN values to 1 of the colours and radii to 0.2 before writing javascript
     if hklscene.SceneCreated:
       hklscenes.append( hklscene)
-      b = flex.bool([bool(math.isnan(e[0]) + math.isnan(e[1]) + math.isnan(e[2])) for e in hklscene.colors])
-      hklscene.colors = hklscene.colors.set_selected(b, (1.0, 1.0, 1.0))
-      b = flex.bool([bool(math.isnan(e)) for e in hklscene.radii])
-      hklscene.radii = hklscene.radii.set_selected(b, 0.2)
+      #b = flex.bool([math.isnan(e[0] + e[1] + e[2]) for e in hklscene.colors])
+      #hklscene.colors = hklscene.colors.set_selected(b, (1.0, 1.0, 1.0))
+      hklscene.colors = graphics_utils.NoNansvec3( hklscene.colors, 1.0, 1.0, 1.0)
+      #b = flex.bool([math.isnan(e) for e in hklscene.radii])
+      #hklscene.radii = hklscene.radii.set_selected(b, 0.2)
+      hklscene.radii = graphics_utils.NoNansArray( hklscene.radii, 0.2)
       fomslabel = None
       if fomsarray:
         fomslabel = fomsarray.info().label_string()
@@ -132,9 +136,10 @@ def MakeTtips(hklscene, j):
     ampl = flex.abs(hklscene.data)
     phases = flex.arg(hklscene.data) * 180.0/math.pi
     # purge nan values from array to avoid crash in fmod_positive()
-    b = flex.bool([bool(math.isnan(e)) for e in phases])
+    #b = flex.bool([bool(math.isnan(e)) for e in phases])
     # replace the nan values with an arbitrary float value
-    phases = phases.set_selected(b, 42.4242)
+    #phases = phases.set_selected(b, 42.4242)
+    phases = graphics_utils.NoNansArray( phases, 42.4242)
     # Cast negative degrees to equivalent positive degrees
     phases = flex.fmod_positive(phases, 360.0)
   sigmas = hklscene.sigmas
@@ -482,9 +487,10 @@ class hklview_3d:
     ampls = flex.abs(data)
     phases = flex.arg(data) * 180.0/math.pi
     # purge nan values from array to avoid crash in fmod_positive()
-    b = flex.bool([bool(math.isnan(e)) for e in phases])
+    #b = flex.bool([bool(math.isnan(e)) for e in phases])
     # replace the nan values with an arbitrary float value
-    phases = phases.set_selected(b, 42.4242)
+    #phases = phases.set_selected(b, 42.4242)
+    phases = graphics_utils.NoNansArray( phases, 42.4242)
     # Cast negative degrees to equivalent positive degrees
     phases = flex.fmod_positive(phases, 360.0)
     return ampls, phases
@@ -1162,61 +1168,6 @@ function MakeHKL_Axis(mshape)
 // create tooltip element and add to the viewer canvas
   stage.viewer.container.appendChild(tooltip);
 
-  // listen to `hovered` signal to move tooltip around and change its text
-  PickingProxyfunc = function(pickingProxy)
-  {
-    if (pickingProxy
-          && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]' )
-          && displaytooltips )
-    {
-      var cp = pickingProxy.canvasPosition;
-    """
-    if self.script_has_tooltips:
-      spherebufferstr += """
-      tooltip.innerText = pickingProxy.picker[pickingProxy.pid];
-    """
-    else:
-      spherebufferstr += """
-      var sym_id = -1;
-      var hkl_id = -1;
-      var ttipid = "";
-      if (pickingProxy.picker.length > 0)
-      { // get stored id number of symmetry operator applied to this hkl
-        sym_id = pickingProxy.picker[0];
-        var ids = pickingProxy.picker.slice(1);
-        var is_friedel_mate = 0;
-        hkl_id = ids[ pickingProxy.pid % ids.length ];
-        if (pickingProxy.pid >= ids.length)
-          is_friedel_mate = 1;
-      }
-      // tell python the id of the hkl and id number of the symmetry operator
-      rightnow = timefunc();
-      if (rightnow - timenow > tdelay)
-      { // only post every 50 milli second as not to overwhelm python
-        ttipid = String([hkl_id, sym_id, is_friedel_mate]);
-        WebsockSendMsg( 'tooltip_id: [' + ttipid + ']' );
-        timenow = timefunc();
-      }
-
-      if (isdebug)
-        console.log( "current_ttip_ids: " + String(current_ttip_ids) + ", ttipid: " + String(ttipid) );
-      if (current_ttip !== "" && current_ttip_ids == ttipid )
-      {
-        tooltip.innerText = current_ttip;
-    """
-    spherebufferstr += """    tooltip.style.bottom = cp.y + 7 + "px";
-        tooltip.style.left = cp.x + 8 + "px";
-        tooltip.style.fontSize = "smaller";
-        tooltip.style.display = "block";
-      }
-    }
-    else
-    {
-      tooltip.style.display = "none";
-      current_ttip = "";
-    }
-  };
-
 
   stage.signals.clicked.add(
     PickingProxyfunc
@@ -1686,6 +1637,56 @@ function getOrientMsg()
   oldmsg = msg;
   return msg;
 }
+
+
+  // listen to `hovered` signal to move tooltip around and change its text
+PickingProxyfunc = function(pickingProxy)
+{
+  if (pickingProxy
+        && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]' )
+        && displaytooltips )
+  {
+    var cp = pickingProxy.canvasPosition;
+    var sym_id = -1;
+    var hkl_id = -1;
+    var ttipid = "";
+    if (pickingProxy.picker.length > 0)
+    { // get stored id number of symmetry operator applied to this hkl
+      sym_id = pickingProxy.picker[0];
+      var ids = pickingProxy.picker.slice(1);
+      var is_friedel_mate = 0;
+      hkl_id = ids[ pickingProxy.pid %% ids.length ];
+      if (pickingProxy.pid >= ids.length)
+        is_friedel_mate = 1;
+    }
+    // tell python the id of the hkl and id number of the symmetry operator
+    rightnow = timefunc();
+    if (rightnow - timenow > tdelay)
+    { // only post every 50 milli second as not to overwhelm python
+      ttipid = String([hkl_id, sym_id, is_friedel_mate]);
+      WebsockSendMsg( 'tooltip_id: [' + ttipid + ']' );
+      timenow = timefunc();
+    }
+
+    if (isdebug)
+      console.log( "current_ttip_ids: " + String(current_ttip_ids) + ", ttipid: " + String(ttipid) );
+    if (current_ttip !== "" && current_ttip_ids == ttipid )
+    {
+      tooltip.innerText = current_ttip;
+      tooltip.style.bottom = cp.y + 7 + "px";
+      tooltip.style.left = cp.x + 8 + "px";
+      tooltip.style.fontSize = "smaller";
+      tooltip.style.display = "block";
+    }
+  }
+  else
+  {
+    tooltip.style.display = "none";
+    current_ttip = "";
+  }
+};
+
+
 
 
 function HKLscene()
