@@ -17,8 +17,8 @@ asic_dimension = (194,185)
 asic_gap = 3
 pixel_size = 0.10992
 from xfel.cxi.cspad_ana.cspad_tbx import cspad_saturated_value, cspad_min_trusted_value
-  
-# check version of psana  
+
+# check version of psana
 from xfel.command_line.xtc_process import PSANA2_VERSION
 
 def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, common_mode=None, apply_gain_mask=True,
@@ -122,20 +122,28 @@ class cbf_wrapper(dxtbx_cbf_wrapper):
 
   def _want_unicode(self, arg):
       if isinstance(arg, bytes):
-          # py3 sees this as bytes 
+          # py3 sees this as bytes
           return arg.decode('utf-8')
       else:
-          # py2 
+          # py2
           return arg
-  
+
   """ Override the parent's class to ensure that arg is passed on as bytes"""
   def new_datablock(self, arg):
     arg_safe = self._want_bytes(arg)
     return super(cbf_wrapper, self).new_datablock(arg_safe)
-  
+
   def find_category(self, arg):
     arg_safe = self._want_bytes(arg)
     return super(cbf_wrapper, self).find_category(arg_safe)
+
+  def find_column(self, arg):
+    arg_safe = self._want_bytes(arg)
+    return super(cbf_wrapper, self).find_column(arg_safe)
+
+  def find_row(self, arg):
+    arg_safe = self._want_bytes(arg)
+    return super(cbf_wrapper, self).find_row(arg_safe)
 
   def set_datablockname(self, arg):
     arg_safe = self._want_bytes(arg)
