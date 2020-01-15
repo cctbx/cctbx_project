@@ -30,7 +30,7 @@ LABEL_SIZE = 11
 if wx.Platform == '__WXMAC__':
   try:
     from Carbon import Appearance as CarbonAppearance
-  except ModuleNotFoundError:
+  except Exception:
     CarbonAppearance = None
 elif (wx.Platform == '__WXMSW__'):
   CAPTION_SIZE = 9
