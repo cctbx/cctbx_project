@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from scitbx.array_family import flex
+from cctbx.array_family import flex
 import iotbx.pdb
 import mmtbx.model
 import iotbx.mrcfile
@@ -9,11 +9,55 @@ import time
 from cctbx import maptbx
 from libtbx import adopt_init_args
 from libtbx.utils import user_plus_sys_time
+from cctbx import crystal, maptbx, xray, adptbx
+from iotbx.pdb.utils import all_chain_ids
 
 elements=["N","O","S","Se","Fe","Mn","Mg","Mn","Zn","Ca","Cd","Cu","Co"]
 selection_string_interaction = " or ".join(["element %s"%e for e in elements])
 
 hoh_str = "ATOM  %5d  O   HOH S%4d    %8.3f%8.3f%8.3f  1.00  0.00           O"
+
+def TMP(
+      map_data,
+      unit_cell,
+      center_cart,
+      radius,
+      plot_number,
+      s_angle_sampling_step = 60,
+      t_angle_sampling_step = 60):
+
+  rho = flex.double()
+  vecs = []
+  for s in range(0,360,s_angle_sampling_step):
+    for t in range(0,360,t_angle_sampling_step):
+      xc,yc,zc = scitbx.math.point_on_sphere(r=radius, s_deg=s, t_deg=t,
+        center=center_cart)
+      xf,yf,zf = unit_cell.fractionalize([xc,yc,zc])
+      rho.append(map_data.tricubic_interpolation([xf,yf,zf]))
+      ###
+      v = flex.double()
+      r = flex.double()
+      for p in [p/20 for p in xrange(0,21)]:
+        xp = center_cart[0] + p * (xc-center_cart[0])
+        yp = center_cart[1] + p * (yc-center_cart[1])
+        zp = center_cart[2] + p * (zc-center_cart[2])
+        xpf,ypf,zpf = unit_cell.fractionalize([xp,yp,zp])
+        v.append(map_data.tricubic_interpolation([xpf,ypf,zpf]))
+        r.append(p)
+      vecs.append([r,v])
+      ###
+  ###
+  #print (len(vecs))
+  import matplotlib.pyplot as plt
+  fig, axes = plt.subplots(ncols=6, nrows=6)
+  for i, ax in enumerate(axes.flatten()):
+    ax.plot(vecs[i][0], vecs[i][1])
+    ax.set_xticks([])
+    ax.set_yticks([])
+  fig.savefig("fig_%d.png"%plot_number)
+  ###
+  return None
+
 
 class msg_accumulator(object):
   def __init__(self, log=None):
@@ -62,6 +106,7 @@ class run(object):
     self._call(self._filter_by_distance  , "Filter peaks by distance")
     self._call(self._filter_by_sphericity, "Filter peaks by sphericity")
     self._call(self._filter_by_distance  , "Filter peaks by distance")
+    self._call(self._append_to_model     , "Add to model and reset internals")
 
   def _call(self, func, msg):
     timer = user_plus_sys_time()
@@ -191,6 +236,12 @@ class run(object):
     for i, site_frac in enumerate(self.sites_frac_water):
       site_cart = self.unit_cell.orthogonalize(site_frac)
       # XXX make it so it is called once! XXX
+      TMP = TMP(
+        map_data    = self.map_data,
+        unit_cell   = self.unit_cell,
+        center_cart = site_cart,
+        radius      = 1.0,
+        plot_number = i)
       o = maptbx.sphericity_by_heuristics(
         map_data    = self.map_data,
         unit_cell   = self.unit_cell,
@@ -216,3 +267,32 @@ class run(object):
       #  #  "%6.3f %6.3f %6.3f"%ccs2.min_max_mean().as_tuple(), "<<< REJECTED"
     self.sites_frac_water = tmp
     self.ma.add("  peaks left: %d"%self.sites_frac_water.size())
+
+  def _append_to_model(self):
+    mean_b = flex.mean(self.model.get_hierarchy().atoms().extract_b())
+    self.ma.add("  new water B factors will be set to mean B: %8.3f"%mean_b)
+    sp = crystal.special_position_settings(self.model.crystal_symmetry())
+    scatterers = flex.xray_scatterer()
+    for site_frac in self.sites_frac_water:
+      sc = xray.scatterer(
+        label="O", site=site_frac, u=adptbx.b_as_u(mean_b), occupancy=1.0)
+      scatterers.append(sc)
+    xrs_water = xray.structure(sp, scatterers)
+    #
+    chain_ids_taken = []
+    for chain in self.model.get_hierarchy().chains():
+      chain_ids_taken.append(chain.id)
+    for solvent_chain in all_chain_ids():
+      if(not solvent_chain in chain_ids_taken):
+        break
+    self.ma.add("  new water will have chain ID: '%s'"%solvent_chain)
+    #
+    self.model.add_solvent(
+      solvent_xray_structure = xrs_water,
+      atom_name    = "O",
+      residue_name = "HOH",
+      chain_id     = solvent_chain,
+      refine_adp   = "isotropic")
+    if(self.debug):
+      with open("final.pdb", "w") as fo:
+        fo.write(self.model.model_as_pdb())
