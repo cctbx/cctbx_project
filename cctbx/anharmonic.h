@@ -30,18 +30,35 @@ namespace cctbx { namespace adptbx { namespace anharmonic {
         -c * pi_sq*pi * 4 / 3);
     }
 
-    af::shared<FloatType> gradient_coefficients(const miller::index<> &h) const {
-      af::shared<FloatType> r(25);
+    af::shared<std::complex<FloatType> >
+      gradient_coefficients(const miller::index<> &h) const
+    {
+      using namespace scitbx::constants;
+      af::shared<std::complex<FloatType> > r(25);
       af::shared<FloatType> c = C.gradient_coefficients(h);
+      const FloatType c_factor = -pi_sq * pi * 4 / 3,
+        d_factor = pi_sq * pi_sq * 2 / 3;
       for (size_t i = 0; i < 10; i++) {
-        r[i] = c[i];
+        r[i] = std::complex<FloatType>(0, c[i]*c_factor);
       }
       c = D.gradient_coefficients(h);
       for (size_t i = 0; i < 15; i++) {
-        r[i + 10] = c[i];
+        r[i + 10] = c[i] * d_factor;
       }
       return r;
     }
+
+    af::shared<FloatType> data() const {
+      af::shared<FloatType> rv(25);
+      for (size_t i = 0; i < 10; i++) {
+        rv[i] = C[i];
+      }
+      for (size_t i = 0; i < 15; i++) {
+        rv[i + 10] = D[i];
+      }
+      return rv;
+    }
+
   };
 
 }}} // end of cctbx::adptbx::anharmonic

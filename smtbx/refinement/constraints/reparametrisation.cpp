@@ -165,7 +165,7 @@ namespace smtbx { namespace refinement { namespace constraints {
         scitbx::matrix::tensors::tensor_rank_3<double>::get_indices();
       for (size_t i = 0; i < r3_indices.size(); i++) {
         const std::vector<int> &idx = r3_indices[i];
-        output << scatterer->label << '.'
+        output << scatterer->label << ".C"
           << (char)('1' + idx[0])
           << (char)('1' + idx[1])
           << (char)('1' + idx[2]) << ',';
@@ -174,7 +174,7 @@ namespace smtbx { namespace refinement { namespace constraints {
         scitbx::matrix::tensors::tensor_rank_4<double>::get_indices();
       for (size_t i = 0; i < r4_indices.size(); i++) {
         const std::vector<int> &idx = r4_indices[i];
-        output << scatterer->label << '.'
+        output << scatterer->label << ".D"
           << (char)('1' + idx[0])
           << (char)('1' + idx[1])
           << (char)('1' + idx[2])
@@ -191,6 +191,11 @@ namespace smtbx { namespace refinement { namespace constraints {
       scatterer->anharmonic_adp->D[i] = value[i + 10];
     }
   }
+
+  void independent_anharmonic_adp_parameter
+    ::linearise(uctbx::unit_cell const &unit_cell,
+      sparse_matrix_type *jacobian_transpose)
+  {}
 
   // Occupancy
 

@@ -303,6 +303,51 @@ namespace boost_python {
     }
   };
 
+  struct anharmonic_adp_parameter_wrapper
+  {
+    typedef anharmonic_adp_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      return_value_policy<return_by_value> rbv;
+      class_<wt,
+        bases<parameter>,
+        boost::noncopyable>("anharmonic_adp_parameter", no_init)
+        .add_property("value",
+          make_getter(&wt::value, rbv),
+          make_setter(&wt::value, rbv));
+      ;
+    }
+  };
+
+  struct asu_anharmonic_adp_parameter_wrapper
+  {
+    typedef asu_anharmonic_adp_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+        bases<u_star_parameter, single_asu_scatterer_parameter>,
+        boost::noncopyable>("asu_anharmonic_adp_parameter", no_init)
+        ;
+    }
+  };
+
+  struct independent_anharmonic_adp_parameter_wrapper
+  {
+    typedef independent_anharmonic_adp_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+        bases<asu_u_star_parameter>,
+        std::auto_ptr<wt> >("independent_anharmonic_adp_parameter", no_init)
+        .def(init<asu_parameter::scatterer_type *>(arg("scatterer")))
+        ;
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
+
   struct asu_occupancy_parameter_wrapper
   {
     typedef asu_occupancy_parameter wt;
@@ -485,6 +530,10 @@ namespace boost_python {
     u_star_parameter_wrapper::wrap();
     asu_u_star_parameter_wrapper::wrap();
     independent_u_star_parameter_wrapper::wrap();
+
+    anharmonic_adp_parameter_wrapper::wrap();
+    asu_anharmonic_adp_parameter_wrapper::wrap();
+    independent_anharmonic_adp_parameter_wrapper::wrap();
 
     asu_occupancy_parameter_wrapper::wrap();
     independent_occupancy_parameter_wrapper::wrap();

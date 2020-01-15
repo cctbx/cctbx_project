@@ -89,27 +89,20 @@ public:
     tensor_r3_constraints(site_symmetry.tensor_rank_3_constraints()),
     tensor_r4_constraints(site_symmetry.tensor_rank_4_constraints())
   {
-    value.resize(25);
-    af::shared<double> params(25);
     for (size_t i = 0; i < 10; i++) {
       value[i] = scatterer->anharmonic_adp->C[i];
     }
     for (size_t i = 0; i < 15; i++) {
       value[i + 10] = scatterer->anharmonic_adp->D[i];
     }
-    af::shared<double> anh_p =
-      tensor_r3_constraints.independent_params(scatterer->anharmonic_adp->C.data());
-    SMTBX_ASSERT(anh_p.size() == 10);
-    for (size_t i = 0; i < 10; i++) {
-      params[i] = anh_p[i];
+    af::shared<double> params = tensor_r3_constraints.independent_params(
+      scatterer->anharmonic_adp->C.data());
+    c_count = params.size();
+    af::shared<double> ip = tensor_r4_constraints.independent_params(
+      scatterer->anharmonic_adp->D.data());
+    for (size_t i = 0; i < ip.size(); i++) {
+      params.push_back(ip[i]);
     }
-    anh_p =
-      tensor_r4_constraints.independent_params(scatterer->anharmonic_adp->D.data());
-    SMTBX_ASSERT(anh_p.size() == 15);
-    for (size_t i = 0; i < 15; i++) {
-      params[i + 10] = anh_p[i];
-    }
-
     set_arguments(new independent_vector_parameter(
       params,
       scatterer->flags.use_u_aniso() && scatterer->flags.grad_u_aniso()));
@@ -123,6 +116,7 @@ public:
     sparse_matrix_type *jacobian_transpose);
 
 private:
+  size_t c_count;
   tensor_r3_constraints_t tensor_r3_constraints;
   tensor_r4_constraints_t tensor_r4_constraints;
 };
