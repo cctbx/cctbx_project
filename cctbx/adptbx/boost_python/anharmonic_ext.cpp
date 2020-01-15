@@ -11,7 +11,7 @@ namespace cctbx { namespace boost_python { namespace anharmonic {
   template <typename FloatType>
   struct anharmonic_adp_wrapper {
     typedef GramCharlier4<FloatType> wt;
-
+    
     static void wrap() {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
