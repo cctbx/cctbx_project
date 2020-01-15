@@ -34,15 +34,15 @@ class ArrayInfo:
       data = flex.abs(millarr.data())
     #data = [e for e in data if not math.isnan(e)]
     data = graphics_utils.NoNansArray( data, data[0] ) # assuming data[0] isn't NaN
-    self.maxdata =max( data )
-    self.mindata =min( data )
+    self.maxdata = flex.max( data )
+    self.mindata = flex.min( data )
     self.maxsigmas = self.minsigmas = None
     if millarr.sigmas() is not None:
       data = millarr.sigmas()
       #data = [e for e in data if not math.isnan(e)]
       data = graphics_utils.NoNansArray( data, data[0] ) # assuming data[0] isn't NaN
-      self.maxsigmas =max( data )
-      self.minsigmas =min( data )
+      self.maxsigmas = flex.max( data )
+      self.minsigmas = flex.min( data )
     self.minmaxdata = (roundoff(self.mindata), roundoff(self.maxdata))
     self.minmaxsigs = (roundoff(self.minsigmas), roundoff(self.maxsigmas))
     self.labels = self.desc = ""
@@ -67,7 +67,6 @@ class ArrayInfo:
     self.infotpl = ( self.labels, self.desc, self.spginf, millarr.indices().size(), self.span,
      self.minmaxdata, self.minmaxsigs, (roundoff(dmin), roundoff(dmax)), issymunique, isanomalous )
     self.infostr = "%s (%s), space group: %s, %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
-
 
 
 
@@ -183,7 +182,6 @@ class hklview_3d:
     self.NGLscriptstr = ""
     self.camera_type = "orthographic"
     self.primitivetype = "SphereBuffer"
-    self.script_has_tooltips = False
     self.url = ""
     self.binscenelabel = "Resolution"
     self.colour_scene_id = None
@@ -384,6 +382,10 @@ class hklview_3d:
     if has_phil_path(diff_phil, "camera_type"):
       self.set_camera_type()
 
+    if has_phil_path(diff_phil, "miller_array_operation"):
+      self.viewerparams.scene_id = len(self.HKLscenes)-1
+      self.set_scene(self.viewerparams.scene_id)
+
     if self.viewerparams.scene_id is not None:
       if not self.isinjected:
         self.scene = self.HKLscenes[self.viewerparams.scene_id]
@@ -459,6 +461,23 @@ class hklview_3d:
     return msg
 
 
+  def set_scene(self, scene_id):
+    self.binvals = []
+    self.isinjected = False
+    if scene_id is None:
+      return False
+    self.colour_scene_id = scene_id
+    self.radii_scene_id = scene_id
+    self.set_miller_array(scene_id)
+    if (self.miller_array is None):
+      raise Sorry("No data loaded!")
+    self.mprint( "Miller array %s runs from hkls: %s to %s" \
+     %(self.miller_array.info().label_string(), self.miller_array.index_span().min(),
+        self.miller_array.index_span().max() ) )
+    self.mprint("Spacegroup: %s" %self.miller_array.space_group().info().symbol_and_number())
+    return True
+
+
   def set_miller_array(self, scene_id=None, merge=None, details=""):
     if scene_id is not None:
       self.viewerparams.scene_id = scene_id
@@ -494,50 +513,6 @@ class hklview_3d:
     # Cast negative degrees to equivalent positive degrees
     phases = flex.fmod_positive(phases, 360.0)
     return ampls, phases
-
-
-  def MakeToolTips(self, HKLscenes):
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    allcolstraliases = "var hk = \'H,K,L: \';\n"
-    alltooltipstringsdict = {}
-    if self.script_has_tooltips:
-      # large data sets will make javascript file very large with risk of crashing browser
-      self.mprint( "making tooltips")
-      tooltipstringsdict = {}
-      for j,hklscene in enumerate(HKLscenes):
-        #tooltipstringsdict, colstraliases = MakeTtips(hklscene, j)
-        #"""
-        if hklscene.isUsingFOMs():
-          continue # already have tooltips for the scene without the associated fom
-        colstraliases = "\n  var st%d = '\\n%s: ';" %(j, hklscene.work_array.info().label_string() )
-        ocolstr = hklscene.work_array.info().label_string()
-        if hklscene.work_array.is_complex_array():
-          ampl, phases = self.Complex2AmplitudesPhases(hklscene.data)
-        sigmas = hklscene.sigmas
-        for i,datval in enumerate(hklscene.data):
-          hkl = hklscene.indices[i]
-          if not tooltipstringsdict.has_key(hkl):
-            spbufttip = '\'+hk+\'%s, %s, %s' %(hkl[0], hkl[1], hkl[2])
-            spbufttip += '\ndres: %s ' %str(roundoff(hklscene.dres[i], 2) )
-            spbufttip += '\'+AA+\'' # javascript alias for angstrom
-            tooltipstringsdict[hkl] = spbufttip
-          od =""
-          if hklscene.work_array.is_complex_array():
-            od = str(roundoff(ampl[i], 2)) + ", " + str(roundoff(phases[i], 1)) + \
-              "\'+DGR+\'"
-          elif sigmas is not None:
-            od = str(roundoff(datval, 2)) + ", " + str(roundoff(sigmas[i], 2))
-          else:
-            od = str(roundoff(datval, 2))
-          if not (math.isnan( abs(datval) ) or datval == display.inanval):
-            # st1, st2,... are javascript aliases for miller array labelstrings as declared in self.colstraliases
-            tooltipstringsdict[hkl] += '\'+st%d+\'%s' %(j, od)
-        #"""
-        alltooltipstringsdict.update( tooltipstringsdict )
-        allcolstraliases += colstraliases
-      allcolstraliases += "\n"
-
-    return alltooltipstringsdict, allcolstraliases
 
 
   def GetTooltipOnTheFly(self, id, sym_id, anomalous=False):
@@ -630,6 +605,7 @@ class hklview_3d:
       match_valarray.sort(by_value="packed_indices")
       match_valarray.set_info(procarray.info() )
       self.match_valarrays.append( match_valarray )
+    self.mprint("Done making superset")
 
 
   def ConstructReciprocalSpace(self, curphilparam, merge=None):
@@ -697,12 +673,12 @@ class hklview_3d:
         i += 1
 
     """
+    self.mprint("\nReflection data scenes:", verbose=0)
     for j,proc_array in enumerate(self.proc_arrays):
       (hklscenes, scenemaxdata,
         scenemindata, scenemaxsigmas,
          sceneminsigmas, scenearrayinfos
          ) = MakeHKLscene(argstuples[j][0], argstuples[j][1], argstuples[j][2], argstuples[j][3], argstuples[j][4], argstuples[j][5] )
-         #) = MakeHKLscene(proc_array, j, copy.deepcopy(self.viewerparams), self.mapcoef_fom_dict, None)
 
       HKLscenesMaxdata.extend(scenemaxdata)
       HKLscenesMindata.extend(scenemindata)
@@ -710,11 +686,11 @@ class hklview_3d:
       HKLscenesMinsigmas.extend(sceneminsigmas)
       hkl_scenes_info.extend(scenearrayinfos)
       HKLscenes.extend(hklscenes)
-      #for inf in scenearrayinfos:
-      #  self.mprint("%d, %s" %(i, inf) )
-      #  i += 1
+      for i,inf in enumerate(scenearrayinfos):
+        self.mprint("%d, %s" %(j+i+1, inf[0]), verbose=0)
 
-    tooltipstringsdict, self.colstraliases = self.MakeToolTips(HKLscenes)
+    tooltipstringsdict = {}
+    self.colstraliases = "var hk = \'H,K,L: \';\n"
     self.HKLscenesdict[self.HKLscenesKey] = (
                 HKLscenes,
                 tooltipstringsdict,
@@ -734,9 +710,6 @@ class hklview_3d:
       self.hkl_scenes_info
     ) =  self.HKLscenesdict[self.HKLscenesKey]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    self.mprint("\nReflection data scenes:", verbose=0)
-    for j,inf in enumerate(hkl_scenes_info):
-      self.mprint("%d, %s" %(j, inf[0]), verbose=0)
     self.sceneisdirty = True
     self.SendInfoToGUI({ "hklscenes_arrays": self.hkl_scenes_info, "NewHKLscenes" : True })
     self.has_new_miller_array = False
@@ -753,7 +726,7 @@ class hklview_3d:
           continue
         if proc_array.size() != foms_array.size():
           continue
-        if  min(foms_array.data()) < 0.0 or max(foms_array.data()) > 1.0:
+        if  min(foms_array.data()) < 0.0 or flex.max(foms_array.data()) > 1.0:
           continue
         fom_arrays_idx.append( (foms_array, i) )
       self.mapcoef_fom_dict[proc_array.info().label_string()] = fom_arrays_idx
@@ -766,7 +739,7 @@ class hklview_3d:
       dres = self.HKLscenes[int(self.viewerparams.scene_id)].dres
       uc = warray.unit_cell()
       indices = self.HKLscenes[int(self.viewerparams.scene_id)].indices
-      binning = miller.binning( uc, nbins, indices, max(dres), min(dres) )
+      binning = miller.binning( uc, nbins, indices, flex.max(dres), flex.min(dres) )
       binvals = [ binning.bin_d_range(n)[0] for n in binning.range_all() ]
       binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
       binvals = list( 1.0/flex.double(binvals) )
@@ -1065,13 +1038,8 @@ function MakeHKL_Axis(mshape)
       positions[ibin].extend( roundoff(list(hklstars), 2) )
       colours[ibin].extend( roundoff(list( colors[i] ), 2) )
       radii2[ibin].append( roundoff(radii[i], 2) )
-      #spbufttips[ibin].append(self.tooltipstrings[i] )
-      if self.script_has_tooltips:
-        spbufttips[ibin].append(self.tooltipstringsdict[hkls[i]])
-      else:
-        spbufttips[ibin].append( i )
+      spbufttips[ibin].append( i )
 
-    #spherebufferstr = ""
     spherebufferstr = self.colstraliases
     negativeradiistr = ""
     cntbin = 0
@@ -1115,15 +1083,10 @@ function MakeHKL_Axis(mshape)
       self.mprint(mstr, verbose=0)
 
       spherebufferstr += "\n// %s\n" %mstr
-      if self.script_has_tooltips:
-        uncrustttips = str(spbufttips[ibin]).replace('\"', '\'')
-        uncrustttips = uncrustttips.replace("\'\'+", "")
-        spherebufferstr += "  ttips.push( %s );" %uncrustttips
-      else:
-        #spherebufferstr += "  ttips.push( [ ] );"
-        ttlst = [-1]
-        ttlst.extend(spbufttips[ibin])
-        spherebufferstr += "  ttips.push( %s );" %str( ttlst )
+      #spherebufferstr += "  ttips.push( [ ] );"
+      ttlst = [-1]
+      ttlst.extend(spbufttips[ibin])
+      spherebufferstr += "  ttips.push( %s );" %str( ttlst )
       spherebufferstr += """
   positions.push( new Float32Array( %s ) );
   colours.push( new Float32Array( %s ) );
@@ -1563,7 +1526,7 @@ var rerendered = false;
 var expstate = "";
 var current_ttip_ids;
 var isdebug = %s;
-var tdelay = 200;
+var tdelay = 100;
 var displaytooltips = true;
 
 function timefunc() {

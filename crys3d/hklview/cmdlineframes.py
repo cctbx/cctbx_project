@@ -453,6 +453,7 @@ class HKLViewFrame() :
        or view_3d.has_phil_path(diff_phil, "scene_bin_thresholds"):
         #import code; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         if self.set_scene(phl.viewer.scene_id):
+          self.update_space_group_choices()
           self.set_scene_bin_thresholds(binvals=phl.scene_bin_thresholds,
                                          bin_scene_label=phl.bin_scene_label,
                                          nbins=phl.nbins )
@@ -482,9 +483,6 @@ class HKLViewFrame() :
         phl.action = "is_running" # to ensure issuing the same action twice will be executed
         if not ret:
           return False
-
-      if view_3d.has_phil_path(diff_phil, "tooltips_in_script"):
-        self.viewer.script_has_tooltips = phl.tooltips_in_script
 
       if view_3d.has_phil_path(diff_phil, "viewer"):
         self.viewer.settings = phl.viewer
@@ -542,6 +540,7 @@ class HKLViewFrame() :
       raise Sorry("No space group info is present in data")
     details = []
     self.infostr = ""
+    """
     if (not array.is_unique_set_under_symmetry() and self.params.NGL_HKLviewer.merge_data is None):
       shouldmergestr = "The data in the selected array are not symmetry-" + \
         "unique, which usually means they are unmerged (but could also be due "+ \
@@ -572,6 +571,7 @@ class HKLViewFrame() :
           details.append("unmerged data")
           self.settings.expand_to_p1 = False
           self.settings.expand_anomalous = False
+    """
     array = self.detect_Rfree(array)
     sg = "%s" % array.space_group_info()
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % array.unit_cell().parameters()
@@ -719,7 +719,7 @@ class HKLViewFrame() :
     from copy import deepcopy
     millarr1 = deepcopy(self.procarrays[arrid1])
     newarray = None
-    if arrid2:
+    if arrid2 is not None:
       millarr2 = deepcopy(self.procarrays[arrid2])
       newarray = self.viewer.OperateOn2MillerArrays(millarr1, millarr2, operation)
     else:
@@ -739,7 +739,7 @@ class HKLViewFrame() :
       #self.viewer.SupersetMillerArrays()
 
 
-  def load_reflections_file(self, file_name, set_array=True, data_only=False):
+  def load_reflections_file(self, file_name):
     file_name = to_str(file_name)
     ret = False
     if (file_name != ""):
@@ -779,14 +779,10 @@ class HKLViewFrame() :
         self.NewFileLoaded=False
         self.mprint(to_str(e))
         arrays = []
-
       valid_arrays = []
       self.viewer.array_infostrs = []
       self.viewer.array_infotpls = []
       for array in arrays :
-        #if array.is_hendrickson_lattman_array() :
-        #  continue
-        #elif (data_only) :
         if (not array.is_real_array()) and (not array.is_complex_array()) \
          and (not array.is_integer_array()) and (not array.is_bool_array()) :
           self.mprint('Ignoring miller array \"%s\" of %s' \
@@ -796,7 +792,7 @@ class HKLViewFrame() :
         self.viewer.array_infotpls.append( ArrayInfo(array, self.mprint).infotpl )
         valid_arrays.append(array)
       self.valid_arrays = valid_arrays
-      self.mprint("Miller arrays in this file:")
+      self.mprint("%d Miller arrays in this file:" %len(arrays))
       for e in self.viewer.array_infostrs:
         self.mprint("%s" %e)
       self.mprint("\n")
@@ -806,9 +802,7 @@ class HKLViewFrame() :
         self.mprint(msg)
         self.NewFileLoaded=False
       elif (len(valid_arrays) >= 1):
-        if (set_array):
-          self.set_miller_array()
-          self.viewer.SupersetMillerArrays()
+        self.set_miller_array()
         mydict = { "info": self.infostr,
                    "array_infotpls": self.viewer.array_infotpls,
                    "bin_infotpls": self.viewer.bin_infotpls,
@@ -832,6 +826,9 @@ class HKLViewFrame() :
 
   def tabulate_miller_array(self, ids):
     idlst = eval(ids)
+    if not self.viewer.match_valarrays:
+      self.viewer.SupersetMillerArrays()
+
     indices = self.viewer.match_valarrays[idlst[0]].indices()
     dres = self.viewer.match_valarrays[idlst[0]].unit_cell().d( indices )
     dreslst = [("d_res", list(dres))]
@@ -947,7 +944,7 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def set_scene(self, scene_id) :
+  def set_scene(self, scene_id):
     self.viewer.binvals = []
     self.viewer.isinjected = False
     if scene_id is None:
@@ -1049,11 +1046,6 @@ class HKLViewFrame() :
 
   def ShowReciprocalUnitCell(self, val):
     self.params.NGL_HKLviewer.show_reciprocal_unit_cell = val
-    self.update_settings()
-
-
-  def ShowTooltips(self, val):
-    self.params.NGL_HKLviewer.tooltips_in_script  = val
     self.update_settings()
 
 
@@ -1238,8 +1230,6 @@ NGL_HKLviewer {
     .type = int(value_min=1, value_max=20)
   shape_primitive = *'spheres' 'points'
     .type = choice
-  tooltips_in_script = False
-    .type = bool
   viewer {
     scene_id = None
       .type = int
