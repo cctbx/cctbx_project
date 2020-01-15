@@ -63,7 +63,7 @@ namespace scitbx { namespace matrix { namespace tensors {
         for (size_t j = 0; j < idx.size(); j++) {
           mps[idx[j]]++;
         }
-        get_multiplicity_()[i] = utils::calc_multiplicity(mps, 3);
+        get_multiplicity_()[i] = utils::calc_multiplicity(mps, heir_t::rank());
       }
     }
     
