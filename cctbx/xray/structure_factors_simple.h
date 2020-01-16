@@ -42,6 +42,9 @@ namespace cctbx { namespace xray { namespace structure_factors {
         dw = 1.0;
         if (scatterer.flags.use_u_aniso()) {
           dw *= adptbx::debye_waller_factor_u_star(hr, scatterer.u_star);
+          if (scatterer.anharmonic_adp) {
+            e_j_phase *= scatterer.anharmonic_adp->calculate(hr);
+          }
         }
         if (scatterer.flags.use_u_iso()) {
           dw *= adptbx::debye_waller_factor_u_iso(d_star_sq/4, scatterer.u_iso);
