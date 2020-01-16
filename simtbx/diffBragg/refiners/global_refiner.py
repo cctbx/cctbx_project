@@ -665,6 +665,10 @@ class FatRefiner(PixelRefinement):
         self.S.beam.spectra = self.SPECTRA[self._i_shot]
         self.D.xray_beams = self.S.beam.xray_beams
 
+    def compute_functional_gradients_diag(self):
+        self.compute_functional_and_gradients()
+        return self._f, self._g, self.d
+
     def compute_functional_and_gradients(self):
         if self.calc_func:
             if self.verbose:
@@ -718,7 +722,7 @@ class FatRefiner(PixelRefinement):
                                                         symbol="P43212")[0]
                 except Exception:
                     ang_off = -1
-                if self.filter_bad_shots and self.iterations==0:
+                if self.filter_bad_shots and self.iterations == 0:
                     if ang_off == -1 or ang_off > 0.015:
                         self.bad_shot_list.append(i)
 
