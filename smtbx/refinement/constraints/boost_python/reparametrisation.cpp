@@ -213,6 +213,36 @@ namespace boost_python {
     }
   };
 
+  struct vector_parameter_wrapper {
+    typedef vector_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      return_value_policy<return_by_value> rbv;
+      class_<wt,
+        bases<parameter>,
+        boost::noncopyable>("vector_parameter", no_init)
+        .add_property("value",
+          make_getter(&wt::value, rbv),
+          make_setter(&wt::value, rbv));
+    }
+  };
+
+  struct independent_vector_parameter_wrapper {
+    typedef independent_vector_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+        bases<vector_parameter>,
+        std::auto_ptr<wt> >("independent_vector_parameter", no_init)
+        .def(init<af::shared<double> const &, optional<bool> >
+        ((arg("value"), arg("variable") = true)));
+      ;
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
+
   struct site_parameter_wrapper
   {
     typedef site_parameter wt;
@@ -522,6 +552,9 @@ namespace boost_python {
 
     small_vector_parameter_wrapper<6>::wrap();
     independent_small_vector_parameter_wrapper<6>::wrap();
+
+    vector_parameter_wrapper::wrap();
+    independent_vector_parameter_wrapper::wrap();
 
     site_parameter_wrapper::wrap();
     asu_site_parameter_wrapper::wrap();

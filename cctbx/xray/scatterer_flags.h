@@ -309,7 +309,10 @@ namespace cctbx { namespace xray {
       {
         for(std::size_t i=0;i<scatterers.size();i++) {
           process(scatterers[i].flags);
-          if (scatterers[i].flags.use_u_aniso() && scatterers[i].anharmonic_adp) {
+          if (scatterers[i].flags.grad_u_aniso() &&
+            scatterers[i].flags.use_u_aniso() &&
+            scatterers[i].anharmonic_adp)
+          {
             u_anharmonic += 25;
           }
         }

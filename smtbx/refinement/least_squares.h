@@ -6,6 +6,7 @@
 #include <scitbx/lstbx/normal_equations.h>
 #include <scitbx/sparse/matrix.h>
 #include <scitbx/array_family/ref_reductions.h>
+#include <scitbx/matrix/tensors.h>
 
 #include <cctbx/xray/extinction.h>
 #include <cctbx/xray/observations.h>
@@ -73,6 +74,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
                   (f_mask.size())(reflections.size());
       reflections.update_prime_fraction();
       if(may_parallelise_) {
+        //!!
+        scitbx::matrix::tensors::initialise<FloatType>();
+
         int thread_count = get_available_threads();
         int equi_chunk_size = reflections.size()/thread_count;
         int number_of_threads_doing_one_more = reflections.size() % thread_count;
