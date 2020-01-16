@@ -12,22 +12,31 @@ namespace {
   void init_module ()
   {
     using namespace boost::python;
-                def("NoNansvec3", NoNansvec3, (
-                        arg("vecs"),
-                        arg("defx") = 0.0,
-                        arg("defy") = 0.0,
-                        arg("defz") = 0.0
-                        ));
-                def("IsNansvec3", IsNansvec3, (
-                        arg("vecs")));
-                def("NoNans", NoNans, (
-                        arg("arr"),
-                        arg("def") = 0.0));
-                def("IsNans", IsNans, (
-                        arg("arr")));
-                def("make_rainbow_gradient", make_rainbow_gradient, (
-                        arg("nbins")));
-                def("color_rainbow", color_rainbow, (
+    def("flt_roundoff", flt_roundoff, (
+      arg("val"),
+      arg("precision") = 3
+      ));
+    def("flt_roundoffvec3", flt_roundoffvec3, (
+      arg("val"),
+      arg("precision") = 3
+      ));
+    def("NoNansvec3", NoNansvec3, (
+      arg("vecs"),
+      arg("defx") = 0.0,
+      arg("defy") = 0.0,
+      arg("defz") = 0.0
+      ));
+    def("IsNansvec3", IsNansvec3, (
+      arg("vecs")));
+    def("NoNans", NoNans, (
+      arg("arr"),
+      arg("def") = 0.0));
+    def("IsNans", IsNans, (
+      arg("arr")));
+
+    def("make_rainbow_gradient", make_rainbow_gradient, (
+      arg("nbins")));
+    def("color_rainbow", color_rainbow, (
       arg("selection"),
       arg("color_all")=false));
     def("color_by_property_", color_by_property, (

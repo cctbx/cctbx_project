@@ -1012,13 +1012,13 @@ function MakeHKL_Axis(mshape)
       radii2.append([])
       spbufttips.append([])
 
-    def data2bin(d):
-      for ibin, binval in enumerate(self.binvalsboundaries):
+    def data2bin(d, binvalsboundaries, nbinvalsboundaries):
+      for ibin, binval in enumerate(binvalsboundaries):
         if math.isnan(d): # NaN values are un-binnable. Tag them for an additional last bin
-          return self.nbinvalsboundaries
-        if (ibin+1) == self.nbinvalsboundaries:
+          return nbinvalsboundaries
+        if (ibin+1) == nbinvalsboundaries:
           return ibin
-        if d > binval and d <= self.binvalsboundaries[ibin+1]:
+        if d > binval and d <= binvalsboundaries[ibin+1]:
           return ibin
       raise Sorry("Should never get here")
 
@@ -1032,13 +1032,28 @@ function MakeHKL_Axis(mshape)
     if nrefls > 0 and self.bindata.size() != points.size():
       raise Sorry("Not the same number of reflections in bin-data and displayed data")
 
+    flexbinvalsboundaries = flex.double(self.binvalsboundaries)
+    start_time = time.time()
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
-      ibin = data2bin( self.bindata[i] )
-      positions[ibin].extend( roundoff(list(hklstars), 2) )
-      colours[ibin].extend( roundoff(list( colors[i] ), 2) )
-      radii2[ibin].append( roundoff(radii[i], 2) )
+      ibin = data2bin( self.bindata[i], self.binvalsboundaries, self.nbinvalsboundaries )
+
+      #positions[ibin].extend( roundoff(list(hklstars), 2) )
+      #colours[ibin].extend( roundoff(list( colors[i] ), 2) )
+      #radii2[ibin].append( roundoff(radii[i], 2) )
+
+      #positions[ibin].extend( hklstars )
+      #colours[ibin].extend( colors[i]  )
+      #radii2[ibin].append( radii[i] )
+
+      positions[ibin].extend( graphics_utils.flt_roundoffvec3(hklstars, 2) )
+      colours[ibin].extend( graphics_utils.flt_roundoffvec3(colors[i], 2) )
+      radii2[ibin].append( graphics_utils.flt_roundoff(radii[i], 2) )
+
       spbufttips[ibin].append( i )
+
+    elapsed_time = time.time() - start_time
+    self.mprint("elapsed time: %s" %elapsed_time)
 
     spherebufferstr = self.colstraliases
     negativeradiistr = ""

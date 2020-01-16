@@ -9,6 +9,8 @@
 #include <scitbx/constants.h>
 
 #include <cmath>
+#include <string>
+#include <boost/python/list.hpp>
 #include <boost/math/special_functions/fpclassify.hpp> // provides isfinite()
 
 namespace scitbx { namespace graphics_utils {
@@ -178,14 +180,64 @@ namespace scitbx { namespace graphics_utils {
   }
 
 
+  double round2(double const &x, int const& n)
+  {
+    int d = 0;
+    if ((x * pow(10.0, n + 1)) - (floor(x * pow(10.0, n))) > 4)
+      d = 1;
+    return (floor(x * pow(10.0, n)) + d) / pow(10.0, n);
+  }
+
+
+  double flt_roundoff(double const& val, int const& precision)
+  {
+    // fast version of libtbx.math_utils.roundoff() for a single double value only
+    if (!boost::math::isfinite(val))
+      return FP_NAN;
+
+    if (fabs(val) < pow(10.0, -precision))
+    {
+      const int ndigits = 50;
+      char fstr[ndigits];
+      strcpy(fstr, "%");
+      char fstr1[ndigits];
+      sprintf(fstr1, "%d.", precision);
+      strcat(fstr, fstr1);
+      sprintf(fstr1, "%d", precision);
+      strcat(fstr, fstr1);
+      strcat(fstr, "e");
+
+      char fstr2[ndigits];
+      sprintf(fstr2, fstr, val);
+      return atof(fstr2);
+    }
+    return round2(val, precision);
+  }
+
+
+  boost::python::list
+  flt_roundoffvec3(
+    scitbx::vec3<double> const& vec,
+    int const& precision
+  )
+  {
+    // fast version of libtbx.math_utils.roundoff() for a flex vec3 double array. Returns a pythonlist
+    boost::python::list retlst;
+    retlst.append(flt_roundoff(vec[0], precision));
+    retlst.append(flt_roundoff(vec[1], precision));
+    retlst.append(flt_roundoff(vec[2], precision));
+    return retlst;
+  }
+
+
   af::shared< scitbx::vec3<double> >
   color_by_phi_fom(
     af::const_ref< double > const& phases,
     af::const_ref< double > const& foms
   )
   {
-      SCITBX_ASSERT(phases.size() == foms.size());
-      af::shared <scitbx::vec3<double> > colors(phases.size());
+    SCITBX_ASSERT(phases.size() == foms.size());
+    af::shared <scitbx::vec3<double> > colors(phases.size());
 
     for (unsigned i_seq = 0; i_seq < phases.size(); i_seq++)
       colors[i_seq] = get_Phi_FOM_colour(phases[i_seq], foms[i_seq]);
