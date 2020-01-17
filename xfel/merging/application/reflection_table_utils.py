@@ -27,17 +27,25 @@ class reflection_table_utils(object):
   @staticmethod
   def select_odd_experiment_reflections(reflections):
     'Select reflections from experiments with odd ids. An experiment id must be a string representing a hexadecimal number'
-    sel = flex.bool()
-    for refl in reflections.rows():
-      sel.append(int(refl['exp_id'], 16)%2 != 0)
+    # NOTE: exp_id is no longer guaranteed to be what it once was...
+    exp_index_map = {exp_uid: i for i, exp_uid in enumerate(set(reflections["exp_id"]))}
+    sel = [exp_index_map[exp_id] % 2 == 1 for exp_id in reflections["exp_id"]]
+    sel = flex.bool(sel)
+    #sel = flex.bool()
+    #for refl in reflections.rows():
+    #  sel.append(int(refl['exp_id'], 16)%2 != 0)
     return reflections.select(sel)
 
   @staticmethod
   def select_even_experiment_reflections(reflections):
     'Select reflections from experiments with even ids. An experiment id must be a string representing a hexadecimal number'
-    sel = flex.bool()
-    for refl in reflections.rows():
-      sel.append(int(refl['exp_id'], 16)%2 == 0)
+    # NOTE: exp_id is no longer guaranteed to be what it once was...
+    exp_index_map = {exp_uid: i for i, exp_uid in enumerate(set(reflections["exp_id"]))}
+    sel = [exp_index_map[exp_id] % 2 == 0 for exp_id in reflections["exp_id"]]
+    sel = flex.bool(sel)
+    #sel = flex.bool()
+    #for refl in reflections.rows():
+    #  sel.append(int(refl['exp_id'], 16)%2 == 0)
     return reflections.select(sel)
 
   @staticmethod
