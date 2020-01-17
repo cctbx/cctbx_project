@@ -371,6 +371,12 @@ class manager(object):
     """
     return manager.get_default_pdb_interpretation_scope().extract()
 
+  def get_current_pdb_interpretation_params(self):
+    """
+    Get the current extract object (libtbx.phil.scope_extract)
+    """
+    return self._pdb_interpretation_params
+
   def set_log(self, log):
     self.log = log
 
