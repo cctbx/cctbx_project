@@ -15,8 +15,7 @@ import wx.richtext
 import wx.lib.agw.floatspin as fs
 import wx.lib.agw.ultimatelistctrl as ulc
 import wx.lib.agw.knobctrl as kc
-from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin, ColumnSorterMixin,\
-  CheckListCtrlMixin
+from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin, ColumnSorterMixin
 import wx.lib.buttons as btn
 
 from wxtbx import metallicbutton as mb
