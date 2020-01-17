@@ -9,8 +9,7 @@
 #include <scitbx/constants.h>
 
 #include <cmath>
-#include <string>
-#include <boost/python/list.hpp>
+#include <cstdio>
 #include <boost/math/special_functions/fpclassify.hpp> // provides isfinite()
 
 namespace scitbx { namespace graphics_utils {
@@ -212,21 +211,6 @@ namespace scitbx { namespace graphics_utils {
       return atof(fstr2);
     }
     return round2(val, precision);
-  }
-
-
-  boost::python::list
-  flt_roundoffvec3(
-    scitbx::vec3<double> const& vec,
-    int const& precision
-  )
-  {
-    // fast version of libtbx.math_utils.roundoff() for a flex vec3 double array. Returns a pythonlist
-    boost::python::list retlst;
-    retlst.append(flt_roundoff(vec[0], precision));
-    retlst.append(flt_roundoff(vec[1], precision));
-    retlst.append(flt_roundoff(vec[2], precision));
-    return retlst;
   }
 
 
