@@ -95,7 +95,7 @@ if (__name__ == "__main__") :
     try:
       src_cbf.next_category()
     except Exception as e:
-      assert "CBF_NOTFOUND" in e.message
+      assert "CBF_NOTFOUND" in str(e)
       break
   assert n_found == len(req_names)
   print("OK")

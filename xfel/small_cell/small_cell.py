@@ -1180,7 +1180,7 @@ def get_crystal_orientation(spots, sym, use_minimizer=True, loop_count = 0):
     print("powder  cell and residuals round %3d from %3d spots "%(loop_count,len(spots)),"[%.7f, %.7f, %.7f]"%(0,0,0), end=' ')         ;sym.unit_cell().show_parameters()
     print("derived cell and residuals round %3d from %3d spots "%(loop_count,len(spots)),"[%.7f, %.7f, %.7f]"%tuple(solver.residuals), end=' ');ori.unit_cell().show_parameters()
   except Exception as e: # can fail here w/ a corrupt metrical matrix or math domain error
-    print(e.message)
+    print(str(e))
     return None
 
   if not use_minimizer:

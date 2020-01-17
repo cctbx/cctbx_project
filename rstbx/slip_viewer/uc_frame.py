@@ -278,7 +278,7 @@ class UCSettingsPanel(wx.Panel):
       uc = symmetry(unit_cell=self._cell, space_group_symbol=str(self._spacegroup))
       hkl_list = cctbx.miller.build_set(uc, False, d_min=self.d_min_ctrl.GetValue())
     except Exception as e:
-      frame.update_statusbar(e.message)
+      frame.update_statusbar(str(e))
       return
 
     frame.update_statusbar("%d %d %d %d %d %d, "%tuple(self._cell) + "number of indices: %d"%len(hkl_list.indices()))

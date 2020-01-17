@@ -765,7 +765,7 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, di
       array_names.append(cbf.get_value())
       cbf.next_row()
     except Exception as e:
-      assert "CBF_NOTFOUND" in e.message
+      assert "CBF_NOTFOUND" in str(e)
       break
 
   cbf.add_category("array_intensities",["array_id","binary_id","linearity","gain","gain_esd","overload","undefined_value"])
@@ -784,7 +784,7 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
       array_names.append(cbf.get_value())
       cbf.next_row()
     except Exception as e:
-      assert "CBF_NOTFOUND" in e.message
+      assert "CBF_NOTFOUND" in str(e)
       break
 
   tileisint = flex.bool()

@@ -213,7 +213,7 @@ class lbfgs(object):
             qblib_call.run()
           except Exception as e:
             if e.__class__.__name__=="QB_none_fatal_error":
-              raise Sorry(e.message)
+              raise Sorry(str(e))
             else:
               raise e
 

@@ -321,7 +321,7 @@ def add_data_to_cbf(cbf, data, verbose = False):
       array_name = cbf.get_value()
       cbf.next_row()
     except Exception as e:
-      assert "CBF_NOTFOUND" in e.message
+      assert "CBF_NOTFOUND" in str(e)
       break
 
   assert len(data.focus()) == 2
