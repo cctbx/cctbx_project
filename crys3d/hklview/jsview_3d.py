@@ -578,7 +578,7 @@ class hklview_3d:
     # First loop over all miller arrays to make a superset of hkls of all
     # miller arrays. Then loop over all miller arrays and extend them with NaNs
     # as to contain the same hkls as the superset
-    self.mprint("Gathering superset of miller indices")
+    self.mprint("Gathering superset of miller indices...")
     superset_array = self.proc_arrays[0].deep_copy()
     for i,procarray in enumerate(self.proc_arrays):
       if i==0:
@@ -590,7 +590,7 @@ class hklview_3d:
         superset_array._anomalous_flag = valarray._anomalous_flag
       missing = procarray.lone_set( superset_array )
       superset_array = display.ExtendMillerArray(superset_array, missing.size(), missing.indices())
-    self.mprint("Extending miller arrays to match superset of miller indices")
+    self.mprint("Extending miller arrays to match superset of miller indices...")
     for i,procarray in enumerate(self.proc_arrays):
       # first match indices in currently selected miller array with indices in the other miller arrays
       matchindices = miller.match_indices(superset_array.indices(), procarray.indices() )
@@ -1037,23 +1037,13 @@ function MakeHKL_Axis(mshape)
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
       ibin = data2bin( self.bindata[i], self.binvalsboundaries, self.nbinvalsboundaries )
-
-      #positions[ibin].extend( roundoff(list(hklstars), 2) )
-      #colours[ibin].extend( roundoff(list( colors[i] ), 2) )
-      #radii2[ibin].append( roundoff(radii[i], 2) )
-
-      #positions[ibin].extend( hklstars )
-      #colours[ibin].extend( colors[i]  )
-      #radii2[ibin].append( radii[i] )
-
       positions[ibin].extend( graphics_utils.flt_roundoffvec3(hklstars, 2) )
       colours[ibin].extend( graphics_utils.flt_roundoffvec3(colors[i], 2) )
       radii2[ibin].append( graphics_utils.flt_roundoff(radii[i], 2) )
-
       spbufttips[ibin].append( i )
 
     elapsed_time = time.time() - start_time
-    self.mprint("elapsed time: %s" %elapsed_time)
+    self.mprint("elapsed time: %s" %elapsed_time, verbose=2)
 
     spherebufferstr = self.colstraliases
     negativeradiistr = ""

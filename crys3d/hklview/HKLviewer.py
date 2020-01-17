@@ -235,17 +235,27 @@ class MillerArrayTableModel(QAbstractTableModel):
     self.layoutChanged.emit()
 
 
+class MyQMainWindow(QMainWindow):
+  def __init__(self, parent):
+    super(MyQMainWindow, self).__init__()
+    self.parent = parent
+
+  def closeEvent(self, event):
+    print("in MyQMainWindow.closeEvent")
+    self.parent.closeEvent(event)
+    event.accept()
+
+
+
 #class NGL_HKLViewer(QWidget):
 class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
   def __init__(self):
-    #super(NGL_HKLViewer, self).__init__()
-    self.window = QMainWindow()
-    #self.ui = HKLviewerGui.Ui_MainWindow()
-    #self.ui.setupUi(self.window)
+    self.window = MyQMainWindow(self)
     self.setupUi(self.window)
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
     self.actiondebug.triggered.connect(self.DebugInteractively)
     self.actionSettings.triggered.connect(self.SettingsDialog)
+    self.actionExit.triggered.connect(self.window.close)
 
     self.verbose = 0
     self.UseOSbrowser = False
@@ -419,7 +429,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
   def closeEvent(self, event):
     self.PhilToJsRender('NGL_HKLviewer.action = is_terminating')
     self.closing = True
-    self.setVisible(False)
+    self.window.setVisible(False)
 
     #while not self.canexit:
     #  time.sleep(1)
@@ -432,7 +442,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     print("HKLviewer exiting now.")
     nc = 0
     sleeptime = 0.2
-    while not self.canexit and nc < 5: # until cctbx.python has finished or after 5 sec
+    while not self.canexit: #and nc < 5: # until cctbx.python has finished or after 5 sec
       time.sleep(sleeptime)
       self.ProcessMessages()
       nc += sleeptime
@@ -594,7 +604,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
             self.millerarraytableform.SortComboBox.clear()
             self.millerarraytableform.SortComboBox.addItems(["unsorted"] + labels )
             self.millerarraytableform.SortComboBox.view().setMinimumWidth(self.comboviewwidth)
-            self.millerarraytableform.resize(tablewidth, self.millerarraytableform.size().height())
+            self.millerarraytableform.resize(tablewidth, self.millerarraytable.rowHeight(0)*15)
             self.millerarraytableform.show()
 
           currentinfostr = ""

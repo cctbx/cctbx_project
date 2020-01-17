@@ -179,12 +179,12 @@ namespace scitbx { namespace graphics_utils {
   }
 
 
-  double round2(double const &x, int const& n)
+  double round2(double const &val, int const& precision)
   {
     int d = 0;
-    if ((x * pow(10.0, n + 1)) - (floor(x * pow(10.0, n))) > 4)
+    if ((val * pow(10.0, precision + 1)) - (floor(val * pow(10.0, precision))) > 4)
       d = 1;
-    return (floor(x * pow(10.0, n)) + d) / pow(10.0, n);
+    return (floor(val * pow(10.0, precision)) + d) / pow(10.0, precision);
   }
 
 

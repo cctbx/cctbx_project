@@ -1,10 +1,9 @@
-from __future__ import division
 # -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file 'HKLviewer.ui',
 # licensing of 'HKLviewer.ui' applies.
 #
-# Created: Tue Jan  7 16:04:31 2020
+# Created: Fri Jan 17 14:48:55 2020
 #      by: pyside2-uic  running on PySide2 5.12.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -54,7 +53,7 @@ class Ui_MainWindow(object):
     self.millertable = HeaderDataTableWidget(self.widget_4)
     sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
     sizePolicy.setHorizontalStretch(0)
-    sizePolicy.setVerticalStretch(2)
+    sizePolicy.setVerticalStretch(1)
     sizePolicy.setHeightForWidth(self.millertable.sizePolicy().hasHeightForWidth())
     self.millertable.setSizePolicy(sizePolicy)
     self.millertable.setRowCount(5)
@@ -381,7 +380,7 @@ class Ui_MainWindow(object):
     self.tab_3 = QtWidgets.QWidget()
     self.tab_3.setObjectName("tab_3")
     self.groupBox_3 = QtWidgets.QGroupBox(self.tab_3)
-    self.groupBox_3.setGeometry(QtCore.QRect(6, 6, 316, 81))
+    self.groupBox_3.setGeometry(QtCore.QRect(6, 6, 246, 81))
     sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Preferred)
     sizePolicy.setHorizontalStretch(1)
     sizePolicy.setVerticalStretch(0)
@@ -545,7 +544,7 @@ class Ui_MainWindow(object):
     self.textInfo = QtWidgets.QPlainTextEdit(self.splitter_2)
     sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
     sizePolicy.setHorizontalStretch(0)
-    sizePolicy.setVerticalStretch(0)
+    sizePolicy.setVerticalStretch(1)
     sizePolicy.setHeightForWidth(self.textInfo.sizePolicy().hasHeightForWidth())
     self.textInfo.setSizePolicy(sizePolicy)
     self.textInfo.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
@@ -578,13 +577,16 @@ class Ui_MainWindow(object):
     self.actionSettings.setObjectName("actionSettings")
     self.actiondebug = QtWidgets.QAction(MainWindow)
     self.actiondebug.setObjectName("actiondebug")
+    self.actionExit = QtWidgets.QAction(MainWindow)
+    self.actionExit.setObjectName("actionExit")
     self.menuFile.addAction(self.actionOpen_reflection_file)
     self.menuFile.addAction(self.actionSettings)
     self.menuFile.addAction(self.actiondebug)
+    self.menuFile.addAction(self.actionExit)
     self.menubar.addAction(self.menuFile.menuAction())
 
     self.retranslateUi(MainWindow)
-    self.functionTabWidget.setCurrentIndex(4)
+    self.functionTabWidget.setCurrentIndex(0)
     QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
   def retranslateUi(self, MainWindow):
@@ -629,15 +631,16 @@ class Ui_MainWindow(object):
     self.ResetViewBtn.setText(QtWidgets.QApplication.translate("MainWindow", "Reset View", None, -1))
     self.DrawReciprocUnitCellBox.setTitle(QtWidgets.QApplication.translate("MainWindow", "Show Reciprocal Unit Cell", None, -1))
     self.label_2.setText(QtWidgets.QApplication.translate("MainWindow", "True to Scale", None, -1))
-    self.label_4.setText(QtWidgets.QApplication.translate("MainWindow", "Size of sphere of reflections", None, -1))
+    self.label_4.setText(QtWidgets.QApplication.translate("MainWindow", "Close to Radius of sphere of reflections", None, -1))
     self.DrawRealUnitCellBox.setTitle(QtWidgets.QApplication.translate("MainWindow", "Show Real Space Unit Cell", None, -1))
     self.label_6.setText(QtWidgets.QApplication.translate("MainWindow", "True to Scale", None, -1))
-    self.label_5.setText(QtWidgets.QApplication.translate("MainWindow", "Size of sphere of reflections", None, -1))
+    self.label_5.setText(QtWidgets.QApplication.translate("MainWindow", "Close to Radius of sphere of reflections", None, -1))
     self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_5), QtWidgets.QApplication.translate("MainWindow", "other", None, -1))
     self.menuFile.setTitle(QtWidgets.QApplication.translate("MainWindow", "File", None, -1))
     self.actionOpen_reflection_file.setText(QtWidgets.QApplication.translate("MainWindow", "Open reflection file...", None, -1))
     self.actionSettings.setText(QtWidgets.QApplication.translate("MainWindow", "Settings", None, -1))
     self.actiondebug.setText(QtWidgets.QApplication.translate("MainWindow", "Debug", None, -1))
+    self.actionExit.setText(QtWidgets.QApplication.translate("MainWindow", "Exit", None, -1))
 
 from PySide2.QtWebEngineWidgets import QWebEngineView
 from HKLviewer import HeaderDataTableWidget
