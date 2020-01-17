@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 from six.moves import range, zip
+from past.builtins import basestring
+
 
 '''
 Author      : Lyubimov, A.Y.
@@ -136,7 +138,7 @@ class Plotter(IOTABasePanel):
 
   def plot_table_text(self, data):
     data = [[to_unicode(i) for i in j] for j in data]
-    stripes = zip(*data)
+    stripes = list(zip(*data))
     col_ws = [max([len(i) if i else 0 for i in strp]) for strp in stripes]
     set_ws = [5 if i <= 3 else i + 2 for i in col_ws]
 
@@ -156,9 +158,10 @@ class Plotter(IOTABasePanel):
     # allow straight text to be passed on
     if type(data) in (list, tuple):
       table_text = self.plot_table_text(data=data)
-    elif type(data) in (str, unicode):
+    elif isinstance(data, basestring):
       table_text = data
     else:
+      print('debug: data type = ', type(data))
       table_text = None
 
     if not table_text:

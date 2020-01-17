@@ -197,7 +197,7 @@ mp
   .help = Multiprocessing options
   .alias = Multiprocessing
 {
-  n_processors = 1
+  n_processors = 0
     .type = int
     .help = No. of processing units
     .alias = No. Processors
@@ -481,11 +481,6 @@ def write_defaults(current_path=None, txt_out=None, method='cctbx_xfel',
     }
     refinement {
       parameterisation {
-        beam.fix = *all in_spindle_plane out_spindle_plane wavelength
-        detector  {
-          fix = all position orientation
-          hierarchy_level=0
-        }
         auto_reduction {
           action=fix
           min_nref_per_parameter=1

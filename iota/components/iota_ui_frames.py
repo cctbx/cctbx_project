@@ -1131,7 +1131,7 @@ class ProcessingTab(IOTABasePanel):
       res_ymin = np.nanmin(self.res_y) * 0.9
       if res_ymin == res_ymax:
         res_ymax = res_ymin + 1
-      self.res_axes.set_ylim(ymin=res_ymin, ymax=res_ymax)
+      self.res_axes.set_ylim(bottom=res_ymin, top=res_ymax)
       self.res_axes.draw_artist(self.res_chart)
 
       # Plot strong reflections per frame
@@ -1143,7 +1143,7 @@ class ProcessingTab(IOTABasePanel):
       nsref_ymax = np.nanmax(self.nsref_y) * 1.25 + 10
       if nsref_ymax == 0:
         nsref_ymax = 100
-      self.nsref_axes.set_ylim(ymin=0, ymax=nsref_ymax)
+      self.nsref_axes.set_ylim(bottom=0, top=nsref_ymax)
       self.nsref_axes.draw_artist(self.nsref_chart)
 
       self._update_canvas(canvas=self.int_canvas)
@@ -1232,8 +1232,8 @@ class ProcessingTab(IOTABasePanel):
       if ymax == 0:
         ymax += 0.00001
 
-      self.hkl_axes.set_xlim(xmin=-xmax, xmax=xmax)
-      self.hkl_axes.set_ylim(ymin=-ymax, ymax=ymax)
+      self.hkl_axes.set_xlim(left=-xmax, right=xmax)
+      self.hkl_axes.set_ylim(bottom=-ymax, top=ymax)
     except ValueError:
       pass
 
@@ -1290,7 +1290,7 @@ class ProcessingTab(IOTABasePanel):
 
     # handle filepath tuples
     if isinstance(filenames, list) or isinstance(filenames, tuple):
-      filenames = zip(*filenames)[1]
+      filenames = list(zip(*filenames))[1]
 
     if filenames:
       file_string = ' '.join(filenames)
@@ -1856,21 +1856,6 @@ class SummaryTab(IOTABaseScrolledPanel):
       self.gparams.output
     self.folder_txt.SetLabel(int_base)
 
-    # # Add grid search stats if exist
-    # if hasattr(self.info, 'gs_stats'):
-    #   gs_stats = self.info.gs_stats
-    #   rkeys = ['s', 'h', 'a']
-    #   clabels = ['min', 'max', 'avg', 'std']
-    #   rlabels = [gs_stats[k]['label'] for k in rkeys]
-    #   contents = [[gs_stats[k]['min'], gs_stats[k]['max'], gs_stats[k]['mean'],
-    #                gs_stats[k]['std']] for k in rkeys]
-    #   gs_table = ct.TableCtrl(self,
-    #                           clabels=clabels,
-    #                           rlabels=rlabels,
-    #                           contents=contents)
-    #   self.int_box_grid.Add(gs_table, span=(len(rlabels), 1),
-    #                         pos=(0, 0), flag=wx.EXPAND)
-
     # Add dataset information
     if hasattr(self.info, 'stats'):
       lres = self.info.stats['lres']['mean']
@@ -1886,16 +1871,18 @@ class SummaryTab(IOTABaseScrolledPanel):
 
       beamxy = 'X = {:.2f}, Y = {:.2f}'.format(self.info.stats['beamX']['mean'],
                                                self.info.stats['beamY']['mean'])
-      data = zip(
+      data = list(
+        zip(
         ['Bravais lattice: ', 'Unit cell: ','Resolution: ', 'Beam XY (''mm): '],
         [self.info.best_pg, uc, res, beamxy]
+        )
       )
 
       # Make dataset stat plot
       stat_plot = Plotter(self, info=self.info)
       stat_plot.initialize_figure(figsize=(0.1, 0.1))
       self.dat_box_grid.Add(stat_plot, span=(4, 1), pos=(0, 0), flag=wx.EXPAND)
-      stat_plot.plot_table(data=data)
+      stat_plot.plot_table(data=list(data))
       self.dat_box_grid.AddGrowableCol(0)
       self.dat_box_grid.AddGrowableRow(3)
 
@@ -1910,7 +1897,7 @@ class SummaryTab(IOTABaseScrolledPanel):
         if self.info.categories[k][0]:
           contents.append(str(len(self.info.categories[k][0])))
           rlabels.append(self.info.categories[k][1])
-      proc_data = zip(rlabels, contents)
+      proc_data = list(zip(rlabels, contents))
 
       # Make plot
       proc_plot = Plotter(self, info=self.info)

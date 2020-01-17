@@ -18,8 +18,14 @@ from cctbx import miller
 assert miller
 from libtbx import easy_pickle as ep, easy_run
 
-# for Py3 compatibility
-from six.moves import StringIO   # This, not io.BytesIO, works with DIALS logger
+# for Py2/3 compatibility
+from io import StringIO
+
+# if sys.version_info[0] == 3:
+#   from io import StringIO
+# else:
+#   from six.moves import StringIO   # This, not io.BytesIO, works with DIALS logger
+
 
 # For testing
 import time
@@ -92,12 +98,12 @@ class Capturing(list):
     return self
   def __exit__(self, *args):
     bytes_str = self._io_stdout.getvalue()
-    stdout_lines = bytes_str.decode('UTF-8').splitlines()
+    stdout_lines = bytes_str.splitlines() #.decode('UTF-8').splitlines()
     self.extend(stdout_lines)
     sys.stdout = self._stdout
 
     bytes_str = self._io_stderr.getvalue()
-    stderr_lines = bytes_str.decode('UTF-8').splitlines()
+    stderr_lines = bytes_str.splitlines() #.decode('UTF-8').splitlines()
     self.extend(stderr_lines)
     sys.stderr = self._stderr
 

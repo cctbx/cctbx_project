@@ -112,6 +112,8 @@ def initialize_new_run(phil, input_dict=None, target_phil=None):
                                             filepath=target_fp)
     params.cctbx_xfel.target = target_fp
 
+
+
     # Save PHIL for this run in base integration folder
     paramfile = os.path.join(int_base, 'iota_r{}.param'.format(run_no))
     phil = phil.format(python_object=params)
@@ -141,9 +143,6 @@ def initialize_new_run(phil, input_dict=None, target_phil=None):
     info.export_json()
     return True, info, 'IOTA_XTERM_INIT: Initialization complete!'
   except Exception as e:
-    import traceback
-    traceback.print_exc()
-
     msg = 'IOTA_INIT_ERROR: Could not initialize run! {}'.format(e)
     return False, None, msg
 
@@ -243,7 +242,7 @@ def resume_processing(info):
   else:
     try:
       phil, _ = inp.get_input_phil(paramfile=info.paramfile)
-    except Exception as e:
+    except Exception:
       return None, None
     else:
       info.status = 'processing'

@@ -1,8 +1,32 @@
-IOTA v1.4.017 - input finder bugfix
+IOTA v1.4.018 - Python3-related bugfixes
 
-- Fixed bug where input finder rejects all found processed pickles because they
-  are not raw images (and get filtered out)
-- The fix affects IOTA and PRIME input windows.
+- Exception handling
+    - Assign exception target value to a separate variable, since exception
+      target is cleaned up when except block exits
+    - ValueError no longer has a 'message' attribute, change exp.message to str
+      (exp) wherever appropriate
+- JSON-related issues
+    - Import basestring from past.builtins for use in making dictionaries
+      serializable for JSON and making all strings the same (especially
+      necessary for filepath comparisons elsewhere in code)
+    - Convert all NumPY types into corresponding base types (NumPY types are not
+      JSON serializable)
+    - When collecting processing stats, extract item from NumPy objects, e.g.
+      mean=np.mean(stat_list).item(); NumPy objects are not JSON serializable
+    - Put the json.dump line into a try block; if a TypeError signals that some
+      object is not serializable, try again after passing the dictionary through
+      the serialization function.
+- Stdout capture
+    - Use StringIO from io, rather than from six.moves
+- GUI-related fixes
+    - sys.maxint doesn't exist in Python3; use sys.maxsize for that purpose
+    - In wxtbx.metallicbutton, put import Carbon.Appearance into a try block,
+      because it may no longer be included as a separate module with wxPython4
+    - Switched xmin, ymin, xmax, and ymax in MatPlotLib to left, bottom, right,
+      and top, respectively (hopefully these work for MatPlotLib 2.0!)
+    - New PHIL control for MultiChoice drop-down menu (hinky, but will serve)
+- Zip objects:
+    - change to list(zip(l1, l2)) where I don't want a zip iterator
 
 12.02.2019
 # -- end

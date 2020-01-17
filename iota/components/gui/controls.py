@@ -15,7 +15,8 @@ import wx.richtext
 import wx.lib.agw.floatspin as fs
 import wx.lib.agw.ultimatelistctrl as ulc
 import wx.lib.agw.knobctrl as kc
-from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin, ColumnSorterMixin
+from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin, ColumnSorterMixin,\
+  CheckListCtrlMixin
 import wx.lib.buttons as btn
 
 from wxtbx import metallicbutton as mb
@@ -622,6 +623,121 @@ class InputCtrl(CtrlBase):
   def reset_default(self):
     self.ctr.SetValue(self.value)
 
+class DropdownDialog(wx.Dialog):
+  def __init__(self, parent, choices, selection, pos):
+    wx.Dialog.__init__(self, parent=parent, style=wx.BORDER_SIMPLE, pos=pos)
+
+    main_sizer = wx.FlexGridSizer(2, 1, 5, 5)
+    self.SetSizer(main_sizer)
+
+    self.parent = parent
+    self.widget = parent.widget
+    self.choices = choices
+    self.selection = selection
+
+    self.lc = wx.CheckListBox(self, choices=choices)
+    self.lc.SetCheckedItems(selection)
+    main_sizer.Add(self.lc, flag=wx.EXPAND)
+    main_sizer.AddGrowableRow(0)
+
+    btn_sizer = self.CreateSeparatedButtonSizer(flags=wx.OK | wx.CANCEL)
+    main_sizer.Add(btn_sizer)
+
+    self.Bind(wx.EVT_BUTTON, self.OnOK, id=wx.ID_OK)
+    self.Fit()
+    self.Layout()
+
+  def OnOK(self, evt):
+    self.parent.selection = self.lc.GetCheckedItems()
+    self.parent.update_text()
+    self.EndModal(0)
+
+
+class MultiChoiceCtrl(wx.Panel):
+  def __init__(self, parent, size):
+    wx.Panel.__init__(self, parent, id=wx.ID_ANY)
+    sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.SetSizer(sizer)
+
+    self.parent = parent
+    self.choices = None
+    self.selection = None
+    self.value_string = None
+
+    self.widget = wx.ToggleButton(self, size=size, label='---',
+                                  style=wx.BU_LEFT)
+    sizer.Add(self.widget)
+
+    self.Bind(wx.EVT_TOGGLEBUTTON, self.OnButton, self.widget)
+
+  def AutoSizeToChoices(self, choices=None):
+    dc = wx.WindowDC(self)
+    if choices is None:
+      choices = self.choices
+
+    max_length = max([dc.GetTextExtent(i)[0] for i in choices]) * 2.0
+    self.widget.SetSize((max_length, -1))
+
+    return max_length
+
+  def SetItems(self, choices):
+    self.choices = choices
+
+  def SetSelection(self, selection):
+    self.selection = selection
+    self.update_text()
+
+  def GetSelection(self):
+    return list(self.selection)
+
+  def GetCheckedStrings(self):
+    if self.choices and self.selection:
+      return [s for s in self.choices if self.choices.index(s) in
+              self.selection]
+    else:
+      return None
+
+  def OnButton(self, evt):
+    if self.widget.GetValue():
+      rect = self.widget.GetScreenRect()
+      dlg_pos = wx.Point(x=rect[0], y=rect[1] + rect[3])
+      self.dlg = DropdownDialog(parent=self,
+                                choices=self.choices,
+                                selection=self.selection,
+                                pos=dlg_pos)
+      self.dlg.ShowModal()
+      self.widget.SetValue(False)
+
+  def update_text(self):
+    if hasattr(self, 'dlg'):
+      if self.dlg.lc.GetCheckedStrings():
+        value_string = '; '.join(self.dlg.lc.GetCheckedStrings())
+      else:
+        value_string = None
+    else:
+      checked_strings = [s for s in self.choices if self.choices.index(s) in
+                         self.selection]
+      if checked_strings:
+        value_string = '; '.join(checked_strings)
+      else:
+        value_string = None
+
+    box_string = ' --- '
+    if value_string is not None:
+      dc = wx.WindowDC(self)
+      part_widths = dc.GetPartialTextExtents(value_string)
+      box_width = self.widget.GetSize()[0]
+      if part_widths[-1] > box_width:
+        for te in part_widths:
+          if te >= box_width:
+            idx = part_widths.index(te) - 4
+            box_string = value_string[:idx] + '...'
+            break
+      else:
+        box_string = value_string
+    self.widget.SetLabel(box_string)
+    wx.PostEvent(self.parent,
+                 wx.PyCommandEvent(wx.EVT_CHOICE.typeId, self.GetId()))
 
 class ChoiceCtrl(CtrlBase):
   """ Generic panel will place a choice control w/ label and a text control (
@@ -761,8 +877,9 @@ class SpinCtrl(CtrlBase):
 
     ctr_box = wx.FlexGridSizer(1, cols, 0, 5)
 
-    self.txt = wx.StaticText(self, label=label.decode('utf-8'),
-                             size=label_size)
+    if hasattr(label, 'decode'):
+      label = label.decode('utf-8')
+    self.txt = wx.StaticText(self, label=label, size=label_size)
     self.txt.SetFont(self.font)
     self.ctr = fs.FloatSpin(self, value=ctrl_value, max_val=(ctrl_max),
                             min_val=(ctrl_min), increment=ctrl_step,
@@ -832,7 +949,9 @@ class OptionCtrl(CtrlBase):
       if sub_labels is None:
         sub_label = key
       else:
-        sub_label = sub_labels[self.items.index((key, value))].decode('utf-8')
+        sub_label = sub_labels[self.items.index((key, value))]
+        if hasattr(sub_label, 'decode'):
+          sub_label = sub_label.decode('utf-8')
 
       if len(self.items) > 1:
         opt_label = wx.StaticText(self, id=wx.ID_ANY, label=sub_label)

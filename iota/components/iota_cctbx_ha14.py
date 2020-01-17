@@ -157,7 +157,7 @@ class Triage(object):
     try:
       with util.Capturing() as distl_output:
         Org = signal_strength.run_signal_strength(params)
-    except NotImplementedError as e:
+    except NotImplementedError:
       print ("NOT IMPLEMENTED ERROR FOR {}".format(self.img))
 
     # Extract relevant spotfinding info

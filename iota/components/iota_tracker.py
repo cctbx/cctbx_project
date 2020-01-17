@@ -414,7 +414,7 @@ class TrackChart(wx.Panel):
     # If any new folders are found, place marker at switch
     if new_p is not None:
       for p in new_p:
-        self.track_axes.axvline(p[0], ymin=-15, c='red', ls='--')
+        self.track_axes.axvline(p[0], bottom=-15, c='red', ls='--')
         label = os.path.basename(p[1])
         self.track_axes.annotate(label, xy=(p[0], 1), ha='left', va='top',
                                  xycoords=('data', 'figure fraction'))

@@ -284,12 +284,12 @@ class PHILPanelMixin(object):
           for i, c in ctrl.controls.items():
             path = c.full_path
             if path and path in defaults:
-              # c.default_value = defaults[path]
+              c.default_value = defaults[path]
               c.set_background()
         else:
           path = ctrl.full_path
           if path and path in defaults:
-            # ctrl.default_value = defaults[path]
+            ctrl.default_value = defaults[path]
             ctrl.set_background()
 
   def get_default_scope(self, full_path=None):
@@ -395,7 +395,7 @@ class PHILPanelMixin(object):
         if obj.full_path() not in self._multiples:
           # check if this is a grid-style scope
           style = self.phil_index.get_scope_style(obj.full_path())
-          if style.grid or len(obj.objects) <= 3:
+          if style.grid: #or len(obj.objects) <= 3:
             self.add_scope_grid(parent=panel, scope=obj, style=style,
                                 label_size=max_label_size)
           else:
@@ -1350,7 +1350,7 @@ class ValidatedStringCtrl(ValidatedTextCtrl):
     super(ValidatedStringCtrl, self).__init__(*args, **kwargs)
 
     self._min_len = 0
-    self._max_len = sys.maxint
+    self._max_len = sys.maxsize
 
   def SetMinLength(self, n):
     assert (n >= 0)
@@ -1510,15 +1510,15 @@ class ValidatedNumberCtrl(ValidatedTextCtrl):
     self._num_type = kwargs.pop('as_type', 'float')
 
     # Check for 'min' kwarg to set min value for control
-    vmin = kwargs.pop('min', -sys.maxint)
+    vmin = kwargs.pop('min', -sys.maxsize)
     if vmin is None:
-      vmin = -sys.maxint
+      vmin = -sys.maxsize
     self._value_min = int(vmin) if self._num_type == 'int' else float(vmin)
 
     # Check for 'max' kwarg to set max value for control
-    vmax = kwargs.pop('max', sys.maxint)
+    vmax = kwargs.pop('max', sys.maxsize)
     if vmax is None:
-      vmax = sys.maxint
+      vmax = sys.maxsize
     self._value_max = int(vmax) if self._num_type == 'int' else float(vmax)
 
     # Check for 'allow_none' option (won't be used in subclassed multinumber
@@ -1600,7 +1600,7 @@ class ValidatedMultiNumberCtrl(ValidatedNumberCtrl):
 
   def __init__(self, *args, **kwargs):
     self._size_min = kwargs.pop('size_min', 0)
-    self._size_max = kwargs.pop('size_max', sys.maxint)
+    self._size_max = kwargs.pop('size_max', sys.maxsize)
     self._allow_none_elements = kwargs.pop('allow_none_elements', True)
     self._allow_auto_elements = kwargs.pop('allow_auto_elements', True)
     super(ValidatedMultiNumberCtrl, self).__init__(*args, **kwargs)
@@ -1701,10 +1701,10 @@ class ValidatedUnitCellCtrl(ValidatedTextCtrl):
       try:
         uc_params = [float(p) for p in uc_params]
       except ValueError as e:
-        if 'invalid literal' in e.message.lower():
+        if 'invalid literal' in str(e).lower():
           raise ValueError('{}: unit cell should only contain '
                            'numbers'.format(error_msg))
-        raise ValueError('{}: {}'.format(error_msg, e.message))
+        raise ValueError('{}: {}'.format(error_msg, str(e)))
 
       uc = ' '.join([str(p) for p in uc_params])
 
@@ -1784,13 +1784,22 @@ class PHILDialogButton(ct.IOTAButton):
     label = self.title + '...'
     self.SetLabel(label)
 
+  def __str__(self):
+    if hasattr(self, 'name'):
+      return type(self).__name__ + (" ({})".format(self.name))
+    else:
+      return type(self).__name__
+
   def _set_attributes(self):
     if isinstance(self.scope, list):  # means it's a multiple!
       scp = self.scope[0]
     else:
       scp = self.scope
 
-      # Determine overall expert level
+    # Assign expert level
+    self.expert_level = scp.expert_level if scp.expert_level is not None else 0
+
+    # Determine name from full path
     self.full_path = scp.full_path()
     self.name = scp.name
     if not self.name:
@@ -2129,10 +2138,15 @@ class PHILBaseChoiceCtrl(PHILDefPanel):
     self._options = None
 
     # Set choice control
-    self.ctr = wx.Choice(self, size=ctrl_size)
+    self.is_multi = phil_object.type.multi
+    if self.is_multi:
+      self.ctr = ct.MultiChoiceCtrl(self, size=ctrl_size)
+    else:
+      self.ctr = wx.Choice(self, size=ctrl_size)
+    self.Bind(wx.EVT_CHOICE, self.onChoice, self.ctr)
+
     self.ctrl_sizer.add_widget_and_label(widget=self.ctr, label=label,
                                          label_size=label_size)
-    self.Bind(wx.EVT_CHOICE, self.onChoice, self.ctr)
 
   def is_default(self):
     default_value = self.default_value
@@ -2141,7 +2155,6 @@ class PHILBaseChoiceCtrl(PHILDefPanel):
     # Sometimes None is replaced with '---' in PHIL choice controls
     if control_value == '---':
       control_value = None
-
     return str(control_value) == str(default_value)
 
   def onChoice(self, e):
@@ -2157,14 +2170,22 @@ class PHILBaseChoiceCtrl(PHILDefPanel):
 
     # Determine selection
     selection = None
-    if isinstance(value, list):
-      value = value[0]
-    if value:
-      is_selected = [(choice.replace('*', '') == value) for choice in choices]
+    if self.is_multi:
+      if value:
+        is_selected = [(choice.replace('*', '') in value) for choice in choices]
+      else:
+        is_selected = [("*" in choice) for choice in choices]
+      if True in is_selected:
+        selection = [i for i, v in enumerate(is_selected) if v is True]
     else:
-      is_selected = [("*" in choice) for choice in choices]
-    if True in is_selected:
-      selection = is_selected.index(True)
+      if isinstance(value, list):
+        value = value[0]
+      if value:
+        is_selected = [(choice.replace('*', '') == value) for choice in choices]
+      else:
+        is_selected = [("*" in choice) for choice in choices]
+      if True in is_selected:
+        selection = is_selected.index(True)
 
     # Strip asterisk(s) from list of choices
     choices = [choice.replace("*", "") for choice in choices]
@@ -2181,20 +2202,24 @@ class PHILBaseChoiceCtrl(PHILDefPanel):
                                    '\n'.join(captions)))
 
     # Add a dashed line if parameter is optional (or None is an option)
-    if allow_none:
-      if choices[0] is None or choices[0].lower() == 'none':
-        captions[0] = '---'
-        choices[0] = None
-      elif self.IsOptional():
-        captions.insert(0, "---")
-        choices.insert(0, None)
-        # Increment selection to account for item insertion
-        if selection is not None:
-          selection += 1
+    if self.is_multi:
+      if selection is None:
+        selection = []
+    else:
+      if allow_none:
+        if choices[0] is None or choices[0].lower() == 'none':
+          captions[0] = '---'
+          choices[0] = None
+        elif self.IsOptional():
+          captions.insert(0, "---")
+          choices.insert(0, None)
+          # Increment selection to account for item insertion
+          if selection is not None:
+            selection += 1
 
-    # Sometimes selection may be None; if so, set it to zero
-    if selection is None:
-      selection = 0
+      # Sometimes selection may be None; if so, set it to zero
+      if selection is None:
+        selection = 0
 
     # Set options, captions, and selection
     self._options = choices
@@ -2203,28 +2228,41 @@ class PHILBaseChoiceCtrl(PHILDefPanel):
 
   def SetValue(self, value):
     ''' Set choice selection to specific value '''
+
+    if isinstance(value, list):
+      for v in value:
+        self.CheckValue(v)
+      selection = [self._options.index(o) for o in self._options if o in value]
+    else:
+      self.CheckValue(value)
+      selection = self._options.index(value)
+    self.ctr.SetSelection(selection)
+
+  def CheckValue(self, value):
     if value not in self._options:
       raise Sorry('Value {} not found! Available choices are:\n{}'
                   ''.format(value, '\n'.join(self._options)))
-
-    selection = self._options.index(value)
-    self.ctr.SetSelection(selection)
 
   def GetValue(self):
     raise NotImplementedError("Please use GetPhilValue()")
 
   def GetPHILValue(self):
-    """Returns a single string."""
-    return self._options[self.ctr.GetSelection()]
+    """Returns a value consistent with .from_words PHIL method."""
+    if self.is_multi:
+      return self.ctr.GetCheckedStrings()
+    else:
+      return self._options[self.ctr.GetSelection()]
 
   def GetStringValue(self):
     """Returns the long format (all choices, '*' denotes selected)."""
     selection = self.ctr.GetSelection()
+    if not isinstance(selection, list):
+      selection = [selection]
     choices_out = []
     for i, choice in enumerate(self._options):
       if choice is None:
         continue
-      elif i == selection:
+      elif i in selection:
         choices_out.append("*" + choice)
       else:
         choices_out.append(choice)
