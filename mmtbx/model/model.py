@@ -1138,6 +1138,7 @@ class manager(object):
     self.restraints_manager = None
     self.model_statistics_info = None
     self._processed_pdb_file = None
+    self._processed_pdb_files_srv = None
 
   def raise_clash_guard(self):
     # This is done for phenix.refine when run with shaking coordinates
