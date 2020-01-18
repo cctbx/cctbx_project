@@ -355,9 +355,9 @@ def get_offset_list(layers=1, include_origin=False):
     return offset_list
 
   offset_list=[]
-  for ix in xrange(-layers,layers+1):
-    for iy in xrange(-layers,layers+1):
-      for iz in xrange(-layers,layers+1):
+  for ix in range(-layers,layers+1):
+    for iy in range(-layers,layers+1):
+      for iz in range(-layers,layers+1):
         if include_origin or ix!=0 or iy!=0 or iz!=0:
           offset_list.append((ix,iy,iz))
   return offset_list
@@ -5397,7 +5397,7 @@ class array(set):
           scale_for_matches=weight)
 
       count_array=offset_array.customized_copy(
-		      data=flex.double(offset_array.size(),abs(weight)))
+                      data=flex.double(offset_array.size(),abs(weight)))
       if sum_n_array is None:
         sum_n_array=count_array
       else:
