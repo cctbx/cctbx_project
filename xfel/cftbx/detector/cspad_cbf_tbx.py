@@ -157,6 +157,10 @@ class cbf_wrapper(dxtbx_cbf_wrapper):
     val = super(cbf_wrapper, self).get_value()
     return self._want_unicode(val)
 
+  def set_value(self, val):
+    val = self._want_bytes(val)
+    super(cbf_wrapper, self).set_value(val)
+
 def angle_and_axis(basis):
   """Normalize a quaternion and return the angle and axis
   @param params metrology object"""
