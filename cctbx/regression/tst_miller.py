@@ -1602,6 +1602,49 @@ def exercise_squaring_and_patterson_map(space_group_info,
       assert grid_tags.n_grid_misses() == 0
       assert grid_tags.verify(patterson_map.real_map())
 
+def exercise_neighbor_average():
+  # Setup
+  symmetry = crystal.symmetry(
+    unit_cell=(10, 10, 10, 90, 90, 90),
+    space_group_symbol="P1")
+  d_min = 2
+  structure = xray.structure(crystal_symmetry=symmetry)
+  # now let's add some atoms
+  atmrad = flex.double()
+  xyzf = flex.vec3_double()
+  from cctbx.eltbx import van_der_waals_radii
+  a,b,c,_,_,_ = symmetry.unit_cell().parameters()
+  for k in range(10):
+    scatterer = xray.scatterer(
+      site=(0, 0.1*math.sin(math.pi*4*k/b), k/b),
+      scattering_type="S",
+      u=0.02)
+    structure.add_scatterer(scatterer)
+    atmrad.append(van_der_waals_radii.vdw.table[scatterer.element_symbol()])
+    xyzf.append(scatterer.site)
+  f_calc = structure.structure_factors(
+    d_min=d_min, anomalous_flag=False).f_calc()
+
+  # Ready to get local average
+
+  local_average=f_calc.average_neighbors(layers=0,include_origin=True)
+  local_average_2=f_calc.average_neighbors(layers=1,include_origin=False,
+      average_with_cc=True)
+
+  a=None
+  ind_list=[ (2,2,2),(1,2,2),(3,2,2),(2,1,2),(2,3,2),(2,2,1),(2,2,3)]
+  for ind in ind_list:
+    s=(f_calc.indices()==ind)
+    ind=f_calc.indices().select(s)
+    values=f_calc.data().select(s)
+    for x,y in zip(ind,values):
+      if a is None: a=y
+      else: a+=y
+  s=f_calc.indices()==ind_list[0]
+  avg=local_average.data().select(s)[0]
+  avg2=local_average_2.data().select(s)[0]
+  assert approx_equal(a/len(ind_list),avg)
+
 def exercise_local_overlap_map():
   symmetry = crystal.symmetry(
     unit_cell=(10, 10, 10, 90, 90, 90),
@@ -2482,6 +2525,7 @@ def exercise_structure_factors_from_map_and_asu_map(d_min=2.):
     assert approx_equal(rfactor(x=fc,y=fc_from_asu_map), 0.0)
 
 def run(args):
+  exercise_neighbor_average()
   exercise_local_overlap_map()
   exercise_structure_factors_from_map_and_asu_map()
   exercise_karle_normalization()

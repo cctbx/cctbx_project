@@ -340,6 +340,36 @@ def make_lookup_dict(indices): # XXX push to C++
     result[indices[i]] = i
   return result
 
+def get_offset_list(layers=1, include_origin=False):
+  # Ready to run
+  if layers==-1:
+    return [ [0,0,0] ]
+
+  elif layers==0:
+    offset_list=[
+     [-1,0,0],[1,0,0],
+     [0,-1,0],[0,1,0],
+     [0,0,-1],[0,0,1],
+      ]
+    if include_origin: offset_list.append([0,0,0])
+    return offset_list
+
+  offset_list=[]
+  for ix in xrange(-layers,layers+1):
+    for iy in xrange(-layers,layers+1):
+      for iz in xrange(-layers,layers+1):
+        if include_origin or ix!=0 or iy!=0 or iz!=0:
+          offset_list.append((ix,iy,iz))
+  return offset_list
+
+def offset_indices(array,offset=None):
+  from scitbx.matrix import col
+  offset=col(offset)
+  indices=flex.miller_index(
+      list(flex.vec3_int((
+         array.indices().as_vec3_double()+offset).iround().as_int())))
+  return array.customized_copy(indices=indices,data=array.data())
+
 class set(crystal.symmetry):
   """
   Basic class for handling sets of Miller indices (h,k,l), including sorting
@@ -2533,12 +2563,13 @@ class array(set):
       sigmas_new = s.sigmas().concatenate(ol.sigmas())
     return self.customized_copy(data = d_new, indices = i_new, sigmas = sigmas_new)
 
-  def combine(self, other, scale = True, scale_for_lones = 1):
+  def combine(self, other, scale = True, scale_for_lones = 1,
+        scale_for_matches=1):
     assert self.anomalous_flag() == other.anomalous_flag()
     assert self.sigmas() is None # not implemented
     f1_c, f2_c = self.common_sets(other = other)
     f1_l, f2_l = self.lone_sets(other = other)
-    scale_k1 = 1
+    scale_k1 = scale_for_matches
     if(scale):
       den = flex.sum(flex.abs(f2_c.data())*flex.abs(f2_c.data()))
       if(den != 0):
@@ -5332,6 +5363,56 @@ class array(set):
     discards the other results.  Requires mmtbx.
     """
     return self.analyze_intensity_statistics(d_min=d_min).has_twinning()
+
+  def average_neighbors(self, layers=1, include_origin=False,
+      offset_list=None, average_with_cc=None):
+    # Return array with values equal to average of values at neighboring indices
+    # layers=1 means 26 or 27 neighboring points.
+    # layers=0 means 6 or 7 closest points
+    if average_with_cc:
+      assert type(self.data()[0])==type((1+1j))  # must be complex
+
+    sum_array=None
+    sum_n_array=None
+    if not offset_list:
+      offset_list=get_offset_list(layers=layers,include_origin=include_origin)
+
+    for offset in offset_list:
+      offset_array=offset_indices(self,offset=offset)
+      if average_with_cc:
+        offset_array_matching, self_matching = offset_array.common_sets(self)
+        offset_array=self.customized_copy(
+           indices=offset_array_matching.indices(),
+           data=offset_array_matching.data())
+        self_array=self.customized_copy(
+           indices=self_matching.indices(),
+           data=self_matching.data())
+        weight=self_array.map_correlation(offset_array)
+      else:
+        weight=1
+      if sum_array is None:
+        sum_array=offset_array*weight
+      else:
+        sum_array=sum_array.combine(offset_array,scale=False,
+          scale_for_matches=weight)
+
+      count_array=offset_array.customized_copy(
+		      data=flex.double(offset_array.size(),abs(weight)))
+      if sum_n_array is None:
+        sum_n_array=count_array
+      else:
+        sum_n_array=sum_n_array.combine(count_array,scale=False)
+    s=(sum_n_array.data() < 1.e-6)
+    sum_n_array.data().set_selected(s,1)
+    sum_array=sum_array.customized_copy(
+      data=sum_array.data()*(1/sum_n_array.data()))
+
+    # and extract values corresponding to original data
+    sum_array_matching, self_matching = sum_array.common_sets(self)
+    new_array=self.customized_copy(indices=sum_array_matching.indices(),
+       data=sum_array_matching.data())
+    return new_array
+
 
 ########################################################################
 # END array class
