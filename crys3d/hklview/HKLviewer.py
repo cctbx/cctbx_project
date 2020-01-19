@@ -119,7 +119,7 @@ class MillerArrayTableForm(QDialog):
   def eventFilter(self, source, event):
     if (event.type() == QEvent.KeyPress and
       event.matches(QKeySequence.Copy)):
-      self.parent().millerarraytable.copySelection()
+      self.parent.millerarraytable.copySelection()
       return True
     return super(MillerArrayTableForm, self).eventFilter(source, event)
 
@@ -185,6 +185,10 @@ class MillerArrayTableModel(QAbstractTableModel):
     # [[list of H], [list of K], [list of L], [list of millerdata1], [list of millersigmas1], [list of millerdata2]... ]
     # Use zip to transpose it from a list of columns data to matching rows of data values for the table
     self._data = list(zip(*data))
+    # values strictly smaller than minima in case of any NaN present in the columns
+    # used for lambda function when sorting table and encountering NaN values in sorting column
+    if len(data[0]):
+      self.minvals = [ (min(col)-0.1) if type(col[0]) is not str else 1 for col in data ]
     self.columnheaderdata = headerdata
     self.precision = 4
   def rowCount(self, parent=None):
@@ -228,10 +232,10 @@ class MillerArrayTableModel(QAbstractTableModel):
     self.layoutAboutToBeChanged.emit()
     if order == Qt.AscendingOrder:
       print(self.columnheaderdata[col] + " sort AscendingOrder")
-      self._data = sorted(self._data, key= lambda data: data[col])
+      self._data = sorted(self._data, key= lambda data: self.minvals[col] if math.isnan(data[col]) else data[col])
     if order == Qt.DescendingOrder:
       print(self.columnheaderdata[col] + " sort DescendingOrder")
-      self._data = sorted(self._data, key= lambda data: data[col], reverse=True)
+      self._data = sorted(self._data, key= lambda data: self.minvals[col] if math.isnan(data[col]) else data[col], reverse=True)
     self.layoutChanged.emit()
 
 
@@ -813,6 +817,9 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.millerarraytable.setModel(self.millerarraytablemodel)
       return
     idx = i-1
+    if type(self.millerarraytablemodel._data[0][idx]) is str:
+      print("Cannot sort this column.")
+      return
     if self.millerarraytableform.sortChkbox.checkState() == Qt.Unchecked:
       self.millerarraytable.sortByColumn(idx, Qt.SortOrder.DescendingOrder)
     else:
