@@ -515,7 +515,7 @@ Installation of Python packages may fail.
       python_exe,
     ))
     if sys.platform == "win32": # Windows is picky about using double quotes rather than single quotes
-      self.call('%s -c "import %s"' % (python_exe, module_name))
+      self.call('"%s" -c "import %s"' % (python_exe, module_name))
     else:
       self.call("%s -c 'import %s'" % (python_exe, module_name))
     print(" OK", file=self.log)

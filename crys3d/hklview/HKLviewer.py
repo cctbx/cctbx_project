@@ -119,7 +119,7 @@ class MillerArrayTableForm(QDialog):
   def eventFilter(self, source, event):
     if (event.type() == QEvent.KeyPress and
       event.matches(QKeySequence.Copy)):
-      self.parent.millerarraytable.copySelection()
+      self.parent().parent.millerarraytable.copySelection()
       return True
     return super(MillerArrayTableForm, self).eventFilter(source, event)
 
