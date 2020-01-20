@@ -19,12 +19,10 @@ assert miller
 from libtbx import easy_pickle as ep, easy_run
 
 # for Py2/3 compatibility
-from io import StringIO
-
-# if sys.version_info[0] == 3:
-#   from io import StringIO
-# else:
-#   from six.moves import StringIO   # This, not io.BytesIO, works with DIALS logger
+if sys.version_info[0] == 3:
+  from io import StringIO
+else:
+  from six.moves import StringIO
 
 
 # For testing
