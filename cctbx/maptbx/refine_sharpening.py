@@ -223,7 +223,7 @@ def get_model_map_coeffs_normalized(pdb_inp=None,
      k_sol=si.k_sol,
      b_sol=si.b_sol,
      out=out)
-  except Exception, e:
+  except Exception as e:
     print ("Failed to get model map coeffs...going on",file=out)
     return None
   
