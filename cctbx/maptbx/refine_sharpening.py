@@ -215,13 +215,18 @@ def get_model_map_coeffs_normalized(pdb_inp=None,
 
   # create model map using same coeffs
   from cctbx.maptbx.segment_and_split_map import get_f_phases_from_model
-  model_map_coeffs=get_f_phases_from_model(
+  try:
+    model_map_coeffs=get_f_phases_from_model(
      pdb_inp=pdb_inp,
      f_array=f_array,
      overall_b=overall_b,
      k_sol=si.k_sol,
      b_sol=si.b_sol,
      out=out)
+  except Exception, e:
+    print ("Failed to get model map coeffs...going on",file=out)
+    return None
+  
 
   from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi,get_b_iso
   model_f_array,model_phases=map_coeffs_as_fp_phi(model_map_coeffs)

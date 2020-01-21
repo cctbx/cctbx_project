@@ -10553,6 +10553,12 @@ def run_auto_sharpen(
        f_array=f_array,
        resolution=si.resolution,
        out=out)
+    if not model_map_coeffs:  # give up
+      pdb_inp=None
+      if si.is_model_sharpening():
+        raise Sorry("Cannot carry out model sharpening without a model."+
+            " It could be that the model was outside the map")
+      
   else:
     model_map_coeffs=None
 
