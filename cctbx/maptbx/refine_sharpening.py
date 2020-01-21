@@ -226,7 +226,7 @@ def get_model_map_coeffs_normalized(pdb_inp=None,
   except Exception as e:
     print ("Failed to get model map coeffs...going on",file=out)
     return None
-  
+
 
   from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi,get_b_iso
   model_f_array,model_phases=map_coeffs_as_fp_phi(model_map_coeffs)

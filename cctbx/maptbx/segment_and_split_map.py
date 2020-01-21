@@ -10558,7 +10558,7 @@ def run_auto_sharpen(
       if si.is_model_sharpening():
         raise Sorry("Cannot carry out model sharpening without a model."+
             " It could be that the model was outside the map")
-      
+
   else:
     model_map_coeffs=None
 
