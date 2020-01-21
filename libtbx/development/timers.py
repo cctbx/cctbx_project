@@ -93,3 +93,13 @@ class Profiler:
 
     print("individual call time for %s: CPU, %8.3fs; elapsed, %8.3fs"%(
       self.message,self.end-self.start,self.end_el-self.start_el))
+
+class SlimProfiler(Profiler):
+  def __del__(self):
+    self.end = time.clock()
+    self.end_el = time.time()
+    if self.message not in timing_singleton:
+      timing_singleton[self.message]=[0.,0.,0]
+    timing_singleton[self.message][0]+=self.end-self.start
+    timing_singleton[self.message][1]+=self.end_el-self.start_el
+    timing_singleton[self.message][2]+=1
