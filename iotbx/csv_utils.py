@@ -2,6 +2,9 @@ from __future__ import absolute_import, division, print_function
 import csv
 from six.moves import range
 
+if 'unix' not in csv.list_dialects():
+  csv.register_dialect('unix', lineterminator='\n', quoting=csv.QUOTE_NONE)
+
 class writer(object):
   def __init__(self,
                file_object,
@@ -11,7 +14,8 @@ class writer(object):
     for field in fields:
       assert len(field) == len(fields[0])
     iter_object = self._iter_rows(fields)
-    writer = csv.writer(file_object, delimiter=delimiter)
+    writer = csv.writer(file_object, delimiter=delimiter,
+                        dialect='unix', quoting=csv.QUOTE_NONE)
     if field_names:
       writer.writerow(field_names)
     writer.writerows(iter_object)
