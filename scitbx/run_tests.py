@@ -139,6 +139,9 @@ tst_list = (
   "$D/lstbx/tests/test_problems.py",
   "$D/glmtbx/tests/tst.py",
   "$D/suffixtree/test/tst_single.py",
+  "$D/dtmin/regression/tst_dtmin_basic.py",
+  "$D/dtmin/regression/tst_dtmin_booth.py",
+  "$D/dtmin/regression/tst_dtmin_twisted.py",
   )
 
 def run():
