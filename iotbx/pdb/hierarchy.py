@@ -1948,8 +1948,8 @@ class _():
     get_residue_names_and_classes (majority of the processing is unnecessary)
     """
     rn_seq, residue_classes = self.get_residue_names_and_classes()
-    n_aa = residue_classes["common_amino_acid"]
-    n_na = residue_classes["common_rna_dna"]
+    n_aa = residue_classes["common_amino_acid"] + residue_classes['modified_amino_acid']
+    n_na = residue_classes["common_rna_dna"] + residue_classes['modified_rna_dna']
     if (ignore_water):
       while rn_seq.count("HOH") > 0 :
         rn_seq.remove("HOH")
@@ -1969,8 +1969,8 @@ class _():
     get_residue_names_and_classes (majority of the processing is unnecessary)
     """
     rn_seq, residue_classes = self.get_residue_names_and_classes()
-    n_aa = residue_classes["common_amino_acid"]
-    n_na = residue_classes["common_rna_dna"]
+    n_aa = residue_classes["common_amino_acid"] + residue_classes['modified_amino_acid']
+    n_na = residue_classes["common_rna_dna"] + residue_classes['modified_rna_dna']
     if (ignore_water):
       while rn_seq.count("HOH") > 0 :
         rn_seq.remove("HOH")
@@ -2166,8 +2166,8 @@ class _():
     # XXX DEPRECATED
     # Used only in mmtbx/validation and wxtbx. Easy to eliminate.
     rn_seq, residue_classes = self.get_residue_names_and_classes()
-    n_aa = residue_classes["common_amino_acid"]
-    n_na = residue_classes["common_rna_dna"]
+    n_aa = residue_classes["common_amino_acid"] + residue_classes['modified_amino_acid']
+    n_na = residue_classes["common_rna_dna"] + residue_classes['modified_rna_dna']
     non_water = len(rn_seq)-residue_classes.get('common_water', 0)
     if ((n_aa > n_na) and ((n_aa / non_water) >= min_content)):
       return True
@@ -2177,8 +2177,8 @@ class _():
     # XXX DEPRECATED
     # Used only in mmtbx/validation and wxtbx. Easy to eliminate.
     rn_seq, residue_classes = self.get_residue_names_and_classes()
-    n_aa = residue_classes["common_amino_acid"]
-    n_na = residue_classes["common_rna_dna"]
+    n_aa = residue_classes["common_amino_acid"] + residue_classes['modified_amino_acid']
+    n_na = residue_classes["common_rna_dna"] + residue_classes['modified_rna_dna']
     non_water = len(rn_seq)-residue_classes.get('common_water', 0)
     if ((n_na > n_aa) and ((n_na / non_water) >= min_content)):
       return True
