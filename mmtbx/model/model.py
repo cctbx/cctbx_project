@@ -2013,8 +2013,9 @@ class manager(object):
       X = atoms[ix]
       distance_initial = H.distance(X)
       difference = round(bproxy.distance_ideal - distance_initial, 2)
-      # could be approx_equal but what precision?
-      if distance_initial == bproxy.distance_ideal: continue
+      # only modify coordinates if different from ideal by eps
+      eps = 1.e-3
+      if(abs(distance_initial-bproxy.distance_ideal) < eps): continue
       rH = matrix.col(sites_cart[ih])
       rX = matrix.col(sites_cart[ix])
       uHX = (rH - rX).normalize()
