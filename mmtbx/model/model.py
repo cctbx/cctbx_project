@@ -1963,6 +1963,77 @@ class manager(object):
       self.set_xray_structure(xray_structure = xrs)
       self.unset_restraints_manager()
 
+  def set_hydrogen_bond_length(self,
+                               use_neutron_distances = True,
+                               show                  = False,
+                               log                   = None):
+    """
+    Set X-H bond lengths to either neutron or Xray target values.
+    Only elongates or shortens, no other idealization is performed.
+    """
+    from scitbx import matrix
+    if log is None:
+      log = self.log
+    pi_scope = self.get_current_pdb_interpretation_params()
+    # check if current pi_params is consistent with requested X-H length mode
+    if (pi_scope.pdb_interpretation.use_neutron_distances
+         is not use_neutron_distances):
+      pi_scope.pdb_interpretation.use_neutron_distances = use_neutron_distances
+      # this will take care of resetting everything (grm, processed pdb)
+      self.set_pdb_interpretation_params(params = pi_scope)
+    geometry = self.get_restraints_manager().geometry
+    hierarchy = self.get_hierarchy()
+    atoms = hierarchy.atoms()
+    sites_cart = self.get_sites_cart()
+    bond_proxies_simple, asu = \
+      geometry.get_all_bond_proxies(sites_cart = sites_cart)
+    hd_selection = self.get_hd_selection()
+    if show:
+      if use_neutron_distances: mode = 'neutron'
+      else:                     mode = 'Xray'
+      print_statistics.make_sub_header("Changing X-H distances to %s" % mode,
+        out=log)
+      string = ['atom', 'distance initial', 'modified distance', 'distance moved']
+      string_form = "{:^15}|{:^20}|{:^20}|{:^20}"
+      print('\n' + string_form.format(*string), file=log)
+      print('-'*99, file=log)
+    n_modified = 0
+    for bproxy in bond_proxies_simple:
+      i_seq, j_seq = bproxy.i_seqs
+      is_i_hd = hd_selection[i_seq]
+      is_j_hd = hd_selection[j_seq]
+      if(not is_i_hd and not is_j_hd):
+        continue
+      elif(is_i_hd and is_j_hd):
+        continue
+      else:
+        if  (is_i_hd): ih, ix = i_seq, j_seq
+        elif(is_j_hd): ih, ix = j_seq, i_seq
+      H = atoms[ih]
+      X = atoms[ix]
+      distance_initial = H.distance(X)
+      difference = round(bproxy.distance_ideal - distance_initial, 2)
+      # could be approx_equal but what precision?
+      if distance_initial == bproxy.distance_ideal: continue
+      rH = matrix.col(sites_cart[ih])
+      rX = matrix.col(sites_cart[ix])
+      uHX = (rH - rX).normalize()
+      rH_new = rX + bproxy.distance_ideal * uHX
+      H.set_xyz(rH_new)
+      n_modified += 1
+      #
+      if show:
+        line = [H.id_str().split('"')[1], round(distance_initial,2),
+          H.distance(X), difference]
+        line_form = "{:^15}|{:^20}|{:^20}|{:^20}"
+        print(line_form.format(*line), file=log)
+    #
+    self.set_sites_cart_from_hierarchy()
+    #
+    if show:
+      print("\n" + "Number of X-H bonds modified: %s"  % n_modified + "\n",
+        file=log)
+
   def idealize_h_minimization(self, correct_special_position_tolerance=1.0,
                    selection=None, show=True, nuclear=False):
     """
