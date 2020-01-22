@@ -11,13 +11,14 @@ from libtbx import adopt_init_args
 from libtbx.utils import user_plus_sys_time
 from cctbx import crystal, maptbx, xray, adptbx
 from iotbx.pdb.utils import all_chain_ids
+import scitbx.math
 
 elements=["N","O","S","Se","Fe","Mn","Mg","Mn","Zn","Ca","Cd","Cu","Co"]
 selection_string_interaction = " or ".join(["element %s"%e for e in elements])
 
 hoh_str = "ATOM  %5d  O   HOH S%4d    %8.3f%8.3f%8.3f  1.00  0.00           O"
 
-def TMP(
+def _debug_show_all_plots(
       map_data,
       unit_cell,
       center_cart,
@@ -25,7 +26,6 @@ def TMP(
       plot_number,
       s_angle_sampling_step = 60,
       t_angle_sampling_step = 60):
-
   rho = flex.double()
   vecs = []
   for s in range(0,360,s_angle_sampling_step):
@@ -46,18 +46,19 @@ def TMP(
         r.append(p)
       vecs.append([r,v])
       ###
-  ###
-  #print (len(vecs))
   import matplotlib.pyplot as plt
+  import matplotlib as mpl
+  mpl.use('Agg')
   fig, axes = plt.subplots(ncols=6, nrows=6)
   for i, ax in enumerate(axes.flatten()):
     ax.plot(vecs[i][0], vecs[i][1])
     ax.set_xticks([])
     ax.set_yticks([])
-  fig.savefig("fig_%d.png"%plot_number)
+  fig.savefig("fig_%s.png"%plot_number)
   ###
+  del plt
+  del mpl
   return None
-
 
 class msg_accumulator(object):
   def __init__(self, log=None):
@@ -85,7 +86,7 @@ class run(object):
                dist_min=2.2,
                dist_max=3.2,
                step=0.3,
-               debug=True,
+               debug=False,
                log=None):
     # Common parameters / variables
     adopt_init_args(self, locals())
@@ -98,6 +99,7 @@ class run(object):
       self.model.selection(selection_string_interaction))
     self.sites_frac_water = None
     self.cutoff = None
+    self._wrote_file=0
     # Calculations
     self._call(self._massage_map         , "Normalize and re-sample input map")
     self._call(self._get_cutoff          , "Get cutoff")
@@ -123,6 +125,14 @@ class run(object):
       flex.max(self.map_data),
       flex.mean(self.map_data)]])
 
+  def _write_map(self, file_name):
+    iotbx.mrcfile.write_ccp4_map(
+      file_name   = file_name,
+      unit_cell   = self.unit_cell,
+      space_group = self.model.crystal_symmetry().space_group(),
+      map_data    = self.map_data.as_double(),
+      labels      = flex.std_string([""]))
+
   def _massage_map(self):
     self.ma.add("  input map (min,max,mean): %s"%self._map_mmm_str())
     #
@@ -132,6 +142,8 @@ class run(object):
     assert sd != 0
     self.map_data = self.map_data / sd
     self.ma.add("  re-scaled map (min,max,mean): %s"%self._map_mmm_str())
+    if(self.debug):
+      self._write_map(file_name = "rescaled.mrc")
     #
     a,b,c = self.unit_cell.parameters()[:3]
     n_real = self.map_data.accessor().all()
@@ -150,19 +162,16 @@ class run(object):
       self.map_data = map_fine
       self.ma.add("  input map (min,max,mean): %s"%self._map_mmm_str())
     if(self.debug):
-      iotbx.mrcfile.write_ccp4_map(
-        file_name   = "massaged.mrc",
-        unit_cell   = self.unit_cell,
-        space_group = self.model.crystal_symmetry().space_group(),
-        map_data    = self.map_data.as_double(),
-        labels      = flex.std_string([""]))
+      self._write_map(file_name = "resampled.mrc")
 
-  def _write_pdb_file(self, file_name):
+  def _write_pdb_file(self, file_name_prefix):
+    file_name = file_name_prefix + "_%d.pdb"%self._wrote_file
     assert self.sites_frac_water is not None
     with open(file_name, "w") as fo:
       for i, site_frac in enumerate(self.sites_frac_water):
         site_cart = self.unit_cell.orthogonalize(site_frac)
-        fo.write( hoh_str%(i,i,site_cart[0],site_cart[1],site_cart[2]) )
+        print(hoh_str%(i,i,site_cart[0],site_cart[1],site_cart[2]), file=fo)
+    self._wrote_file += 1
 
   def _get_cutoff(self):
     map_at_atoms = flex.double()
@@ -216,7 +225,7 @@ class run(object):
       map = self.map_data).all(max_clusters = 99999999)
     self.sites_frac_water = psr.sites()
     self.ma.add("  total peaks found: %d"%self.sites_frac_water.size())
-    if(self.debug): self._write_pdb_file(file_name="hoh_all_peaks.pdb")
+    if(self.debug): self._write_pdb_file(file_name_prefix="hoh_all_peaks")
 
   def _filter_by_distance(self):
     sel = mmtbx.utils.filter_water(
@@ -229,19 +238,13 @@ class run(object):
     self.ma.add(
       "  distance (A), min: %4.2f max: %4.2f"%(self.dist_min, self.dist_max))
     self.ma.add("  peaks left: %d"%self.sites_frac_water.size())
-    if(self.debug): self._write_pdb_file(file_name="hoh_dist1.pdb")
+    if(self.debug): self._write_pdb_file(file_name_prefix="hoh_dist")
 
   def _filter_by_sphericity(self):
     tmp = flex.vec3_double()
     for i, site_frac in enumerate(self.sites_frac_water):
       site_cart = self.unit_cell.orthogonalize(site_frac)
       # XXX make it so it is called once! XXX
-      TMP = TMP(
-        map_data    = self.map_data,
-        unit_cell   = self.unit_cell,
-        center_cart = site_cart,
-        radius      = 1.0,
-        plot_number = i)
       o = maptbx.sphericity_by_heuristics(
         map_data    = self.map_data,
         unit_cell   = self.unit_cell,
@@ -253,6 +256,13 @@ class run(object):
         center_cart = site_cart,
         radius      = 1.0)
       mi,ma,me = o.rho
+      if(self.debug):
+        _debug_show_all_plots(
+          map_data    = self.map_data,
+          unit_cell   = self.unit_cell,
+          center_cart = site_cart,
+          radius      = 1.0,
+          plot_number = str("%d_%4.2f_%4.2f"%(i, o.ccs[0],o2.ccs[0])))
       fl = (mi>0 and ma>0 and me>0 and o.ccs[0]>0.95 and o2.ccs[0]>0.90)
       if(fl):
         tmp.append(site_frac)
@@ -293,6 +303,3 @@ class run(object):
       residue_name = "HOH",
       chain_id     = solvent_chain,
       refine_adp   = "isotropic")
-    if(self.debug):
-      with open("final.pdb", "w") as fo:
-        fo.write(self.model.model_as_pdb())
