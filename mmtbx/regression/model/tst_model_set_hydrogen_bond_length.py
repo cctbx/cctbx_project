@@ -91,7 +91,32 @@ def tst_2():
 #-------------------------------------------------------------------------------
 
 def tst_3():
-  pass
+  '''
+  Test if the modification works also when cif_objects are supplied
+  (meaning there is a ligand cif file)
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str2.split("\n"), source_info=None)
+  cif_object = iotbx.cif.reader(input_string = cif_str2).model()
+  # bla.cif does not exist, but cif_objects needs a filename in first position
+  # of the tuple
+  cif_objects = [('bla.cif', cif_object)]
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.use_neutron_distances = False
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    pdb_interpretation_params = params,
+    restraint_objects = cif_objects,
+    log         = null_out())
+  # request neutron bond lengths
+  model.set_hydrogen_bond_length(use_neutron_distances=True,
+                                 show=False,
+                                 log=sys.stdout)
+  compare_XH_bond_length_to_ideal(model = model)
+  # request X-ray bond lengths
+  model.set_hydrogen_bond_length(use_neutron_distances=False,
+                                 show=False,
+                                 log=sys.stdout)
+  compare_XH_bond_length_to_ideal(model = model)
 
 #-------------------------------------------------------------------------------
 pdb_str1 = """
@@ -166,9 +191,167 @@ TER
 END
 """
 
+cif_str2 = """
+#
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+3HA 3HA "Unknown                  " ligand 17 11 .
+#
+data_comp_3HA
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+3HA        O8      O   OC    -1 .         -2.5304   -0.3544    2.0294
+3HA        C7      C   C      0 .         -1.2760   -0.4611    2.0390
+3HA        O9      O   O      0 .         -0.6571   -0.5146    3.1342
+3HA        C2      C   CR6    0 .         -0.5023   -0.4939    0.7224
+3HA        C1      C   CR16   0 .         -0.2734   -1.7018    0.0834
+3HA        C6      C   CR16   0 .          0.4107   -1.7296   -1.1210
+3HA        C5      C   CR16   0 .          0.8659   -0.5495   -1.6865
+3HA        C4      C   CR6    0 .          0.6370    0.6583   -1.0475
+3HA        O11     O   OH1    0 .          1.1017    1.8508   -1.6167
+3HA        C3      C   CR6    0 .         -0.0471    0.6861    0.1569
+3HA        N10     N   NH2    0 .         -0.3039    1.9536    0.8168
+3HA        H1      H   HCR6   0 .         -0.6294   -2.6246    0.5256
+3HA        H6      H   HCR6   0 .          0.5887   -2.6740   -1.6213
+3HA        H5      H   HCR6   0 .          1.4009   -0.5713   -2.6283
+3HA        H11     H   HOH1   0 .          2.0033    1.7449   -1.8770
+3HA        H101    H   HNH2   0 .          0.0644    2.1253    1.7332
+3HA        H102    H   HNH2   0 .         -0.8528    2.6556    0.3576
+#
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+3HA  O8      C7     deloc         1.259 0.020     1.259
+3HA  C7      O9     deloc         1.259 0.020     1.259
+3HA  C7      C2     single        1.527 0.020     1.527
+3HA  C2      C1     aromatic      1.386 0.020     1.386
+3HA  C2      C3     aromatic      1.385 0.020     1.385
+3HA  C1      C6     aromatic      1.385 0.020     1.385
+3HA  C1      H1     single        0.930 0.020     1.080
+3HA  C6      C5     aromatic      1.385 0.020     1.385
+3HA  C6      H6     single        0.930 0.020     1.080
+3HA  C5      C4     aromatic      1.385 0.020     1.385
+3HA  C5      H5     single        0.930 0.020     1.080
+3HA  C4      O11    single        1.401 0.020     1.401
+3HA  C4      C3     aromatic      1.385 0.020     1.385
+3HA  O11     H11    single        0.850 0.020     0.980
+3HA  C3      N10    single        1.452 0.020     1.452
+3HA  N10     H101   single        0.860 0.020     1.020
+3HA  N10     H102   single        0.860 0.020     1.020
+#
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+3HA  C2      C7      O9           120.00 3.000
+3HA  C2      C7      O8           119.99 3.000
+3HA  O9      C7      O8           120.00 3.000
+3HA  C3      C2      C1           120.00 3.000
+3HA  C3      C2      C7           120.00 3.000
+3HA  C1      C2      C7           120.00 3.000
+3HA  H1      C1      C6           120.00 3.000
+3HA  H1      C1      C2           120.00 3.000
+3HA  C6      C1      C2           120.00 3.000
+3HA  H6      C6      C5           120.00 3.000
+3HA  H6      C6      C1           120.00 3.000
+3HA  C5      C6      C1           120.00 3.000
+3HA  H5      C5      C4           120.00 3.000
+3HA  H5      C5      C6           120.00 3.000
+3HA  C4      C5      C6           120.00 3.000
+3HA  C3      C4      O11          120.00 3.000
+3HA  C3      C4      C5           120.00 3.000
+3HA  O11     C4      C5           120.00 3.000
+3HA  H11     O11     C4           109.47 3.000
+3HA  N10     C3      C4           120.00 3.000
+3HA  N10     C3      C2           120.00 3.000
+3HA  C4      C3      C2           120.00 3.000
+3HA  H102    N10     H101         120.00 3.000
+3HA  H102    N10     C3           120.00 3.000
+3HA  H101    N10     C3           120.00 3.000
+#
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+3HA CONST_01      C5      C6      C1      C2             0.00   0.0 0
+3HA CONST_02      C5      C4      C3      C2             0.00   0.0 0
+3HA CONST_03      C4      C3      C2      C1            -0.00   0.0 0
+3HA CONST_04      C4      C5      C6      C1            -0.00   0.0 0
+3HA CONST_05      C3      C2      C1      C6             0.00   0.0 0
+3HA CONST_06      C3      C4      C5      C6             0.00   0.0 0
+3HA CONST_07      C6      C1      C2      C7           179.02   0.0 0
+3HA CONST_08      C4      C3      C2      C7          -179.02   0.0 0
+3HA CONST_09      O11     C4      C3      C2          -179.76   0.0 0
+3HA CONST_10      N10     C3      C2      C1           179.11   0.0 0
+3HA CONST_11      O11     C4      C5      C6           179.76   0.0 0
+3HA CONST_12      N10     C3      C4      C5          -179.11   0.0 0
+3HA CONST_13      H6      C6      C1      C2          -179.93   0.0 0
+3HA CONST_14      H5      C5      C6      C1           180.00   0.0 0
+3HA CONST_15      H1      C1      C6      C5          -180.00   0.0 0
+3HA CONST_16      H101    N10     C3      C2            61.62   0.0 0
+3HA CONST_17      H102    N10     C3      C2          -118.12   0.0 0
+3HA Var_01        C1      C2      C7      O8           -88.86  30.0 2
+#
+loop_
+_chem_comp_plane_atom.comp_id
+_chem_comp_plane_atom.plane_id
+_chem_comp_plane_atom.atom_id
+_chem_comp_plane_atom.dist_esd
+3HA plan-1  C7     0.020
+3HA plan-1  C2     0.020
+3HA plan-1  C1     0.020
+3HA plan-1  C6     0.020
+3HA plan-1  C5     0.020
+3HA plan-1  C4     0.020
+3HA plan-1  O11    0.020
+3HA plan-1  C3     0.020
+3HA plan-1  N10    0.020
+3HA plan-1  H1     0.020
+3HA plan-1  H6     0.020
+3HA plan-1  H5     0.020
+3HA plan-2  C3     0.020
+3HA plan-2  N10    0.020
+3HA plan-2  H101   0.020
+3HA plan-2  H102   0.020
+3HA plan-3  O8     0.020
+3HA plan-3  C7     0.020
+3HA plan-3  O9     0.020
+3HA plan-3  C2     0.020
+"""
+
 if (__name__ == "__main__"):
   t0 = time.time()
   tst_1()
   tst_2()
-#  tst_3()
+  tst_3()
   print("OK. Time: %8.3f"%(time.time()-t0))
