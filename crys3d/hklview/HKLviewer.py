@@ -1202,12 +1202,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.clipwidth_spinBox.setRange(0.0, 100.0)
     self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
     self.rotavecangle_labeltxt.setText("Angle rotated: 0°")
-    self.rotavecangle_slider.setMinimum(0)
-    self.rotavecangle_slider.setMaximum(360)
     self.rotavecangle_slider.setValue(0)
-    self.rotavecangle_slider.setSingleStep(5)
+    self.rotavecangle_slider.setSingleStep(3)
     self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
-    self.rotavecangle_slider.valueChanged.connect(self.onRotaVecAngle)
+    self.rotavecangle_slider.valueChanged.connect(self.onRotaVecAngleChanged)
     self.ClipPlaneChkGroupBox.clicked.connect(self.onClipPlaneChkBox)
     self.clipParallelBtn.setText("parallel to vector below")
     self.clipParallelBtn.setChecked(False)
@@ -1285,6 +1283,14 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.PhilToJsRender("NGL_HKLviewer.clip_plane.clipwidth = None")
 
 
+  def onRotaVecAngleChanged(self, val):
+    if self.unfeedback:
+      return
+    self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
+    angle_around_vector = %f
+    bequiet = False
+}""" %val)
+
 
   def onFinalRotaVecAngle(self):
     if self.unfeedback:
@@ -1293,16 +1299,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
     angle_around_vector = %f
     bequiet = False
-}""" %val)
-
-
-  def onRotaVecAngle(self):
-    if self.unfeedback:
-      return
-    val = self.rotavecangle_slider.value()
-    self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
-    angle_around_vector = %f
-    bequiet = True
 }""" %val)
 
 

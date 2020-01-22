@@ -153,7 +153,7 @@ def MakeTtips(hklscene, j):
       od = str(roundoff(datval, 2))
     if not (math.isnan( abs(datval) ) or datval == display.inanval):
       hkl = hklscene.indices[i]
-      if not tooltipstringsdict.has_key(hkl):
+      if not hkl in tooltipstringsdict:
         spbufttip = '\'+hk+\'%s, %s, %s' %(hkl[0], hkl[1], hkl[2])
         spbufttip += '\ndres: %s ' %str(roundoff(hklscene.dres[i], 2) )
         spbufttip += '\'+AA+\'' # javascript alias for angstrom
@@ -194,7 +194,7 @@ class hklview_3d:
     self.past = time.time()
     self.orientmessage = None
     self.high_quality = True
-    if kwds.has_key('high_quality'):
+    if 'high_quality' in kwds:
       self.high_quality = kwds['high_quality']
     self.clipNear = None
     self.clipFar = None
@@ -246,10 +246,10 @@ class hklview_3d:
     self.mapcoef_fom_dict = {}
     self.was_disconnected = False
     self.parent = None
-    if kwds.has_key('parent'):
+    if 'parent' in kwds:
       self.parent = kwds['parent']
     self.verbose = 0
-    if kwds.has_key('verbose'):
+    if 'verbose' in kwds:
       self.verbose = kwds['verbose']
     self.mprint = sys.stdout.write
     if 'mprint' in kwds:
@@ -626,7 +626,8 @@ class hklview_3d:
                          self.viewerparams.nth_power_scale_radii
                          )
 
-    if self.HKLscenesdict.has_key(self.HKLscenesKey) and not self.has_new_miller_array:
+    #if self.HKLscenesdict.has_key(self.HKLscenesKey) and not self.has_new_miller_array:
+    if self.HKLscenesKey in self.HKLscenesdict and not self.has_new_miller_array:
       (
         self.HKLscenes,
         self.tooltipstringsdict,

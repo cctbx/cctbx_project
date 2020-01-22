@@ -1,10 +1,11 @@
 from __future__ import division
+
 # -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file 'HKLviewer.ui',
 # licensing of 'HKLviewer.ui' applies.
 #
-# Created: Fri Jan 17 14:48:55 2020
+# Created: Mon Jan 20 17:40:15 2020
 #      by: pyside2-uic  running on PySide2 5.12.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -14,7 +15,7 @@ from PySide2 import QtCore, QtWidgets
 class Ui_MainWindow(object):
   def setupUi(self, MainWindow):
     MainWindow.setObjectName("MainWindow")
-    MainWindow.resize(1066, 830)
+    MainWindow.resize(1066, 840)
     self.centralwidget = QtWidgets.QWidget(MainWindow)
     self.centralwidget.setObjectName("centralwidget")
     self.gridLayout_2 = QtWidgets.QGridLayout(self.centralwidget)
@@ -54,7 +55,7 @@ class Ui_MainWindow(object):
     self.millertable = HeaderDataTableWidget(self.widget_4)
     sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
     sizePolicy.setHorizontalStretch(0)
-    sizePolicy.setVerticalStretch(1)
+    sizePolicy.setVerticalStretch(0)
     sizePolicy.setHeightForWidth(self.millertable.sizePolicy().hasHeightForWidth())
     self.millertable.setSizePolicy(sizePolicy)
     self.millertable.setRowCount(5)
@@ -64,7 +65,7 @@ class Ui_MainWindow(object):
     self.millertable.setRowCount(5)
     self.gridLayout_5.addWidget(self.millertable, 1, 0, 1, 1)
     self.functionTabWidget = QtWidgets.QTabWidget(self.splitter_2)
-    sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+    sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
     sizePolicy.setHorizontalStretch(0)
     sizePolicy.setVerticalStretch(1)
     sizePolicy.setHeightForWidth(self.functionTabWidget.sizePolicy().hasHeightForWidth())
@@ -332,7 +333,10 @@ class Ui_MainWindow(object):
     sizePolicy.setVerticalStretch(0)
     sizePolicy.setHeightForWidth(self.rotavecangle_slider.sizePolicy().hasHeightForWidth())
     self.rotavecangle_slider.setSizePolicy(sizePolicy)
+    self.rotavecangle_slider.setMaximum(359)
     self.rotavecangle_slider.setOrientation(QtCore.Qt.Horizontal)
+    self.rotavecangle_slider.setTickPosition(QtWidgets.QSlider.TicksAbove)
+    self.rotavecangle_slider.setTickInterval(18)
     self.rotavecangle_slider.setObjectName("rotavecangle_slider")
     self.gridLayout_18.addWidget(self.rotavecangle_slider, 0, 1, 1, 1)
     self.gridLayout_19.addWidget(self.frame_6, 3, 0, 1, 2)
@@ -545,7 +549,7 @@ class Ui_MainWindow(object):
     self.textInfo = QtWidgets.QPlainTextEdit(self.splitter_2)
     sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
     sizePolicy.setHorizontalStretch(0)
-    sizePolicy.setVerticalStretch(1)
+    sizePolicy.setVerticalStretch(2)
     sizePolicy.setHeightForWidth(self.textInfo.sizePolicy().hasHeightForWidth())
     self.textInfo.setSizePolicy(sizePolicy)
     self.textInfo.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)

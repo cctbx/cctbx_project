@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1066</width>
-    <height>830</height>
+    <height>840</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -80,7 +80,7 @@
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                    <horstretch>0</horstretch>
-                   <verstretch>1</verstretch>
+                   <verstretch>0</verstretch>
                   </sizepolicy>
                  </property>
                  <property name="rowCount">
@@ -110,7 +110,7 @@
              </widget>
              <widget class="QTabWidget" name="functionTabWidget">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>1</verstretch>
                </sizepolicy>
@@ -645,8 +645,17 @@
                              <verstretch>0</verstretch>
                             </sizepolicy>
                            </property>
+                           <property name="maximum">
+                            <number>359</number>
+                           </property>
                            <property name="orientation">
                             <enum>Qt::Horizontal</enum>
+                           </property>
+                           <property name="tickPosition">
+                            <enum>QSlider::TicksAbove</enum>
+                           </property>
+                           <property name="tickInterval">
+                            <number>18</number>
                            </property>
                           </widget>
                          </item>
@@ -1062,7 +1071,7 @@
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
-                <verstretch>1</verstretch>
+                <verstretch>2</verstretch>
                </sizepolicy>
               </property>
               <property name="verticalScrollBarPolicy">
