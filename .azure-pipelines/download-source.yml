@@ -54,7 +54,7 @@ jobs:
   # preserve permissions
   - script: |
       cd $(Pipeline.Workspace)
-      tar -cf modules.tar modules
+      tar -cfh modules.tar modules
     displayName: Build tarball
 
   # publish artifact
