@@ -236,7 +236,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
                 try:
                     from scitbx.lbfgs import core_parameters
                     C = core_parameters()
-                    C.gtol = 1
+                    C.gtol = 0.0001
                     self.minimizer = scitbx.lbfgs.run(
                         target_evaluator=self,
                         #core_params=C,

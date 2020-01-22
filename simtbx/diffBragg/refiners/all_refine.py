@@ -1,6 +1,9 @@
 from simtbx.diffBragg.refiners import RefineRot, BreakToUseCurvatures
 from scitbx.array_family import flex
-import pylab as plt
+#try:
+#  import pylab as plt
+#except Exception as e:
+#  pass
 import numpy as np
 import sys
 import math
@@ -239,7 +242,8 @@ class RefineAll(RefineRot):
                 # compute gradients for background plane constants a,b,c
                 xr = self.xrel[i_spot]  # fast scan pixels
                 yr = self.yrel[i_spot]  # slow scan pixels
-
+                if self.plot_images: # and self.iterations==0:
+                    import pylab as plt
                 if self.plot_images and self.iterations % self.plot_stride == 0:
                     if self.plot_residuals:
                         self.ax.clear()

@@ -1,9 +1,11 @@
-
-import pylab as plt
-from mpl_toolkits.mplot3d import axes3d
-
-fig = plt.figure()
-ax = fig.gca(projection='3d')
+#try:
+#  import pylab as plt
+#  from mpl_toolkits.mplot3d import axes3d
+#
+#  fig = plt.figure()
+#  ax = fig.gca(projection='3d')
+#except Exception as e:
+#  pass
 import numpy as np
 
 from scitbx.array_family import flex
@@ -24,6 +26,11 @@ class RefineRot(PixelRefinement):
         """
         super(RefineRot, self).__init__()
         self.plot_images = plot_images
+        if self.plot_images:
+            import pylab as plt
+            from mpl_toolkits.mplot3d import axes3d
+            fig = plt.figure()
+            ax = fig.gca(projection='3d')
         self.plot_residuals = plot_residuals
         self.spot_rois = spot_rois
         self.spot_resolution = spot_resolution
