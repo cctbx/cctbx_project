@@ -48,6 +48,7 @@ from mmtbx.refinement import anomalous_scatterer_groups
 from mmtbx.refinement import geometry_minimization
 import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 
+from scitbx import matrix
 from iotbx.bioinformatics import sequence
 from mmtbx.validation.sequence import master_phil as sequence_master_phil
 from mmtbx.validation.sequence import validation as sequence_validation
@@ -1971,7 +1972,6 @@ class manager(object):
     Set X-H bond lengths to either neutron or Xray target values.
     Only elongates or shortens, no other idealization is performed.
     """
-    from scitbx import matrix
     if log is None:
       log = self.log
     pi_scope = self.get_current_pdb_interpretation_params()
