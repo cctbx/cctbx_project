@@ -1699,9 +1699,15 @@ selfx:
     '''
     try:
       import pkg_resources
-      bin_directory = self.get_setuptools_script_dir()
     except ImportError:
       return
+    if self.build_options.use_conda:
+      bin_directory = os.path.normpath(os.path.join(get_conda_prefix(), "bin"))
+    else:
+      try:
+        bin_directory = self.get_setuptools_script_dir()
+      except ImportError:
+        return
     if not os.path.isdir(bin_directory):
       return # do not create console_scripts dispatchers, only point to them
 
