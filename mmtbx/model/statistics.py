@@ -7,7 +7,7 @@ import iotbx.cif.model
 from libtbx.test_utils import approx_equal
 from libtbx import group_args
 from libtbx.utils import null_out
-
+from mmtbx.validation import rama_z
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.cbetadev import cbetadev
@@ -16,17 +16,18 @@ from mmtbx.validation.utils import molprobity_score
 from mmtbx.validation import omegalyze
 from mmtbx.validation import cablam
 from cctbx import adptbx
+from libtbx.utils import null_out
 import six
 
 class geometry(object):
   def __init__(self,
-               pdb_hierarchy,
+               model,
                fast_clash=False,
                condensed_probe=False,
                use_hydrogens=True,
-               use_nuclear=False,
-               geometry_restraints_manager=None):
-    self.pdb_hierarchy = pdb_hierarchy
+               use_nuclear=False):
+    self.model = model
+    self.pdb_hierarchy = model.get_hierarchy()
     self.fast_clash = fast_clash
     self.condensed_probe = condensed_probe
     self.restraints_source = None
@@ -37,9 +38,10 @@ class geometry(object):
     self.cached_clash = None
     self.cached_rama = None
     self.cached_rota = None
-    self.update(self.pdb_hierarchy, geometry_restraints_manager)
+    self._init(self.pdb_hierarchy, model.restraints_manager.geometry)
 
-  def update(self, pdb_hierarchy=None, geometry_restraints_manager=None):
+  def _init(self, pdb_hierarchy=None, geometry_restraints_manager=None):
+    # XXX Really, this should be part of constructor (to avoid confusion)!
     if(pdb_hierarchy is not None):
       self.pdb_hierarchy = pdb_hierarchy
     if(geometry_restraints_manager is not None):
@@ -188,6 +190,9 @@ class geometry(object):
       ca_outliers = result.percent_ca_outliers(),
       gui_table   = gui_table)
 
+  def rama_z_score(self):
+    return rama_z.rama_z(model = self.model, log = null_out()).get_result()
+
   def omega(self):
     result = omegalyze.omegalyze(pdb_hierarchy=self.pdb_hierarchy, quiet=True)
     # XXX Move this to omegalyze function.
@@ -237,8 +242,9 @@ class geometry(object):
          c_beta           = self.c_beta(),
          clash            = self.clash(),
          molprobity_score = self.mp_score(),
-         cablam           = self.cablam(), # hopefully stable
-         omega            = self.omega())
+         cablam           = self.cablam(),
+         omega            = self.omega(),
+         rama_z           = self.rama_z_score())
     if(slim):
       delattr(self.cached_result.ramachandran, "ramalyze")
       delattr(self.cached_result.clash,        "clashes")
@@ -316,6 +322,9 @@ class geometry(object):
         prefix, format_value("%5.2f", res.omega.cis_general).strip(),
         prefix, format_value("%5.2f", res.omega.twisted_proline).strip(),
         prefix, format_value("%5.2f", res.omega.twisted_general).strip())
+    result += """
+%s"""%prefix
+    result += res.rama_z.as_string(prefix=prefix)
     if( uppercase ):
       result = result.upper()
     print(result, file=log)

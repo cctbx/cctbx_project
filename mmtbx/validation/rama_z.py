@@ -9,6 +9,7 @@ from mmtbx.secondary_structure import sec_str_master_phil_str
 from mmtbx.conformation_dependent_library import generate_protein_threes
 from libtbx.str_utils import format_value
 from scitbx.array_family import flex
+from libtbx import adopt_init_args
 from scipy import interpolate
 from libtbx import group_args
 import numpy as np
@@ -21,6 +22,25 @@ rama_z {
 
 }
 """
+
+class result(object):
+  def __init__(self, whole, helix, sheet, loop):
+    adopt_init_args(self, locals())
+
+  def as_string(self, prefix):
+    f = format_value
+    p = prefix
+    w, h, s, l = self.whole, self.helix, self.sheet, self.loop
+    d = "%5.2f"
+    i = "%d"
+    strs = [
+      "\n%sRamachandran plot Z-score:"%p,
+      "%s  whole: %s (%s), residues: %s"%(p, f(d,w.value),f(d,w.std).strip(),f(i,w.n)),
+      "%s  helix: %s (%s), residues: %s"%(p, f(d,h.value),f(d,h.std).strip(),f(i,h.n)),
+      "%s  sheet: %s (%s), residues: %s"%(p, f(d,s.value),f(d,s.std).strip(),f(i,s.n)),
+      "%s  loop : %s (%s), residues: %s"%(p, f(d,l.value),f(d,l.std).strip(),f(i,l.n))
+    ]
+    return "\n".join(strs)
 
 class rama_z(object):
   def __init__(self, model, log):
@@ -102,28 +122,32 @@ class rama_z(object):
 
   def get_result(self):
     r  = self.z_score
+    if(r["W"] is None): self.get_z_scores() # XXX Odd. This should not be necessary!
     rc = self.get_residue_counts()
-    return group_args(
-      whole = group_args(value=r["W"][0], std=r["W"][1], n=rc["W"]),
-      helix = group_args(value=r["H"][0], std=r["H"][1], n=rc["H"]),
-      sheet = group_args(value=r["S"][0], std=r["S"][1], n=rc["S"]),
-      loop  = group_args(value=r["L"][0], std=r["L"][1], n=rc["L"]))
+    def nov(x,i):
+      if(x is None): return None
+      else:          return x[i]
+    return result(
+      whole = group_args(value=nov(r["W"],0), std=nov(r["W"],1), n=rc["W"]),
+      helix = group_args(value=nov(r["H"],0), std=nov(r["H"],1), n=rc["H"]),
+      sheet = group_args(value=nov(r["S"],0), std=nov(r["S"],1), n=rc["S"]),
+      loop  = group_args(value=nov(r["L"],0), std=nov(r["L"],1), n=rc["L"]))
 
-  def result_as_string(self, prefix=""):
-    r = self.get_result()
-    f = format_value
-    p = prefix
-    w, h, s, l = r.whole, r.helix, r.sheet, r.loop
-    d = "%5.2f"
-    i = "%d"
-    strs = [
-      "%sRamachandran plot Z-score:"%p,
-      "%s  whole: %s (%s), residues: %s"%(p, f(d,w.value),f(d,w.std).strip(),f(i,w.n)),
-      "%s  helix: %s (%s), residues: %s"%(p, f(d,h.value),f(d,h.std).strip(),f(i,h.n)),
-      "%s  sheet: %s (%s), residues: %s"%(p, f(d,s.value),f(d,s.std).strip(),f(i,s.n)),
-      "%s  loop : %s (%s), residues: %s"%(p, f(d,l.value),f(d,l.std).strip(),f(i,l.n))
-    ]
-    return "\n".join(strs)
+  #def result_as_string(self, prefix=""):
+  #  r = self.get_result()
+  #  f = format_value
+  #  p = prefix
+  #  w, h, s, l = r.whole, r.helix, r.sheet, r.loop
+  #  d = "%5.2f"
+  #  i = "%d"
+  #  strs = [
+  #    "\n%sRamachandran plot Z-score:"%p,
+  #    "%s  whole: %s (%s), residues: %s"%(p, f(d,w.value),f(d,w.std).strip(),f(i,w.n)),
+  #    "%s  helix: %s (%s), residues: %s"%(p, f(d,h.value),f(d,h.std).strip(),f(i,h.n)),
+  #    "%s  sheet: %s (%s), residues: %s"%(p, f(d,s.value),f(d,s.std).strip(),f(i,s.n)),
+  #    "%s  loop : %s (%s), residues: %s"%(p, f(d,l.value),f(d,l.std).strip(),f(i,l.n))
+  #  ]
+  #  return "\n".join(strs)
 
   def get_z_scores(self):
     for k in ['H', 'S', 'L', 'W']:
