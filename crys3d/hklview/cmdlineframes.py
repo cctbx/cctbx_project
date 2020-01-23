@@ -344,7 +344,7 @@ class HKLViewFrame() :
     while not self.STOP:
       try:
         philstr = self.guisocket.recv()
-        philstr = str(philstr)
+        philstr = philstr.decode("utf-8")
         self.mprint("Received phil string:\n" + philstr, verbose=1)
         new_phil = libtbx.phil.parse(philstr)
         self.update_settings(new_phil)
@@ -1179,7 +1179,7 @@ class HKLViewFrame() :
       if not binary:
         self.guisocket.send( str(infodict).encode("utf-8") )
       else:
-        bindict = zlib.compress( bytes(infodict) )
+        bindict = zlib.compress( bytes(str(infodict).encode("utf-8") ) )
         self.guisocket.send( bindict )
 
 

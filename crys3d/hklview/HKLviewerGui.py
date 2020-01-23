@@ -5,7 +5,7 @@ from __future__ import division
 # Form implementation generated from reading ui file 'HKLviewer.ui',
 # licensing of 'HKLviewer.ui' applies.
 #
-# Created: Mon Jan 20 17:40:15 2020
+# Created: Thu Jan 23 11:41:45 2020
 #      by: pyside2-uic  running on PySide2 5.12.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -424,7 +424,6 @@ class Ui_MainWindow(object):
     self.power_scale_spinBox = QtWidgets.QDoubleSpinBox(self.groupBox_3)
     self.power_scale_spinBox.setMaximum(1.0)
     self.power_scale_spinBox.setSingleStep(0.05)
-    self.power_scale_spinBox.setStepType(QtWidgets.QAbstractSpinBox.DefaultStepType)
     self.power_scale_spinBox.setProperty("value", 0.35)
     self.power_scale_spinBox.setObjectName("power_scale_spinBox")
     self.gridLayout_10.addWidget(self.power_scale_spinBox, 0, 3, 1, 1)
