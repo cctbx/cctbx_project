@@ -3051,38 +3051,77 @@ class manager(object):
     return mmtbx.model.statistics.composition(
       pdb_hierarchy = self.get_hierarchy())
 
+  # THIS CASES ALL CRASHES
+  #def geometry_statistics(self, use_hydrogens=None, fast_clash=True,
+  #                        condensed_probe=True):
+  #  scattering_table = \
+  #      self.get_xray_structure().scattering_type_registry().last_table()
+  #  rm = self.restraints_manager
+  #  if(rm is None): return None
+  #  m = self.deep_copy()
+  #  m.get_hierarchy().atoms().reset_i_seq()
+  #  hd_selection = self.get_hd_selection()
+  #  if(self.use_ias):
+  #    ias_selection = self.get_ias_selection()
+  #    hd_selection = hd_selection.select(~ias_selection)
+  #    m = m.select(~ias_selection)
+  #  if(use_hydrogens==False):
+  #    not_hd_sel = ~hd_selection
+  #    m = m.select(not_hd_sel)
+  #  if(use_hydrogens is None):
+  #    if(self.riding_h_manager is not None or
+  #       scattering_table in ["n_gaussian","wk1995", "it1992", "electron"]):
+  #      not_hd_sel = ~hd_selection
+  #      m = m.select(not_hd_sel)
+  #  size = m.size()
+  #  atoms = m.get_hierarchy().atoms()
+  #  bs = flex.double(size, 10.0)
+  #  atoms.set_b(bs)
+  #  occs = flex.double(size, 1.0)
+  #  atoms.set_occ(occs)
+  #  #
+  #  return mmtbx.model.statistics.geometry(
+  #    model           = m,
+  #    fast_clash      = fast_clash,
+  #    condensed_probe = condensed_probe)
+
   def geometry_statistics(self, use_hydrogens=None, fast_clash=True,
                           condensed_probe=True):
     scattering_table = \
         self.get_xray_structure().scattering_type_registry().last_table()
-    rm = self.restraints_manager
-    if(rm is None): return None
     m = self.deep_copy()
-    m.get_hierarchy().atoms().reset_i_seq()
+    if(self.restraints_manager is None): return None
+    ph = self.get_hierarchy(sync_with_xray_structure=True)
     hd_selection = self.get_hd_selection()
     if(self.use_ias):
       ias_selection = self.get_ias_selection()
       hd_selection = hd_selection.select(~ias_selection)
-      m = m.select(~ias_selection)
+      ph = ph.select(~ias_selection)
+    rm = self.restraints_manager
     if(use_hydrogens==False):
       not_hd_sel = ~hd_selection
-      m = m.select(not_hd_sel)
+      ph = ph.select(not_hd_sel)
+      rm = rm.select(not_hd_sel)
     if(use_hydrogens is None):
       if(self.riding_h_manager is not None or
          scattering_table in ["n_gaussian","wk1995", "it1992", "electron"]):
         not_hd_sel = ~hd_selection
-        m = m.select(not_hd_sel)
-    size = m.size()
-    atoms = m.get_hierarchy().atoms()
+        ph = ph.select(not_hd_sel)
+        rm = rm.select(not_hd_sel)
+    #
+    ph_dc = ph.deep_copy()
+    ph_dc.atoms().reset_i_seq()
+    size = ph_dc.atoms().size()
     bs = flex.double(size, 10.0)
-    atoms.set_b(bs)
+    ph_dc.atoms().set_b(bs)
     occs = flex.double(size, 1.0)
-    atoms.set_occ(occs)
+    ph_dc.atoms().set_occ(occs)
     #
     return mmtbx.model.statistics.geometry(
-      model           = m,
-      fast_clash      = fast_clash,
-      condensed_probe = condensed_probe)
+      pdb_hierarchy               = ph_dc,
+      fast_clash                  = fast_clash,
+      condensed_probe             = condensed_probe,
+      geometry_restraints_manager = rm.geometry)
 
   def occupancy_statistics(self):
     return mmtbx.model.statistics.occupancy(
