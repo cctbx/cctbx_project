@@ -44,13 +44,30 @@ def run(filenames, options):
   else:
     out_root, out_ext = os.path.splitext(output_filename)
 
+  # ...and handle the hkl format specifiers requested by 
+  # iotbx.reflection_file_reader
+  if "=amplitudes" in reflections_filename:
+    reflections_realfilename = \
+        reflections_filename[:reflections_filename.find("=amplitudes")]
+  elif "=hklf3" in reflections_filename:
+    reflections_realfilename = \
+        reflections_filename[:reflections_filename.find("=hklf3")]
+  elif "=intensities" in reflections_filename:
+    reflections_realfilename = \
+        reflections_filename[:reflections_filename.find("=intensities")]
+  elif "=hklf4" in reflections_filename:
+    reflections_realfilename = \
+        reflections_filename[:reflections_filename.find("=hklf4")]
+  else:
+    reflections_realfilename = reflections_filename
+
   # check extensions are supported
   for ext in (in_ext, out_ext):
     if ext not in allowed_input_file_extensions:
       raise command_line_error("unsupported extension: %s" % ext)
 
   # Investigate whether input and ouput files do exist, are the same, etc
-  for filename in (input_filename, reflections_filename):
+  for filename in (input_filename, reflections_realfilename):
     if not os.path.isfile(filename):
       raise command_line_error("No such file %s" % filename)
   if os.path.isfile(output_filename):
@@ -100,7 +117,7 @@ def run(filenames, options):
   if out_ext != '.cif':
     raise NotImplementedError("Write refined structure to %s file" % out_ext)
   with open(output_filename, 'w') as out:
-    xm.xray_structure.as_cif_simple(out)
+    xm.xray_structure.as_cif_simple(out, format="corecif")
 
 here_usage="""\
 refine [options] INPUT
