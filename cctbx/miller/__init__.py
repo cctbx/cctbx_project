@@ -1737,6 +1737,15 @@ class set(crystal.symmetry):
     assert d_tolerance > 0
     assert d_tolerance < 0.5
     d_star_sq = self.d_star_sq().data()
+    d_star_sq = d_star_sq.select(flex.sort_permutation(d_star_sq))
+
+    # Select unique values of d_star_sq (within tolerance)
+    delta = d_star_sq[1:] - d_star_sq[:-1]
+    isel = (delta > d_tolerance).iselection()
+    isel += 1
+    isel.insert(0, 0)
+    d_star_sq = d_star_sq.select(isel)
+
     if (d_max > 0):
       d_star_sq = d_star_sq.select(d_star_sq >= 1./d_max**2)
     if (d_min > 0):
@@ -1744,9 +1753,11 @@ class set(crystal.symmetry):
     assert d_star_sq.size() > 0
     if n_bins is None:
       n_bins = max(1, iround(d_star_sq.size() / float(reflections_per_bin)))
-    assert n_bins <= self.size(), "n_bins (%i) must be <= number of reflections (%i)" %(n_bins, self.size())
+    assert n_bins <= d_star_sq.size(), (
+      "n_bins (%i) must be <= number of unique d-spacings (%i)" %(
+        n_bins, d_star_sq.size())
+      )
     reflections_per_bin = d_star_sq.size() / float(n_bins)
-    d_star_sq = d_star_sq.select(flex.sort_permutation(d_star_sq))
     limits = flex.double()
     limits.reserve(n_bins+1)
     if (d_max > 0):

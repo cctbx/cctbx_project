@@ -516,13 +516,14 @@ unused: 10.0715 -         [0/0]
 
 def exercise_counting_sorted_no_empty_bins():
   sgi = sgtbx.space_group_info("I23")
-  cs = sgi.any_compatible_crystal_symmetry(volume=1000)
+  cs = sgi.any_compatible_crystal_symmetry(volume=999)
   ms = cs.build_miller_set(True, d_min=1)
-  binner = ms.setup_binner_counting_sorted(n_bins=50)
-  assert min(binner.counts_complete()[1:-1]) > 0, list(binner.counts_complete()[1:-1])
-  limits = binner.limits()
-  for i in range(1, limits.size()):
-    assert limits[i] > limits[i-1], (i, limits[i-1], limits[i])
+  try:
+    ms.setup_binner_counting_sorted(n_bins=50)
+  except AssertionError:
+    pass
+  else:
+     raise Exception_expected
 
 def exercise_crystal_gridding():
   crystal_symmetry = crystal.symmetry(
