@@ -91,11 +91,12 @@ class FatRefiner(PixelRefinement):
                  global_param_idx_start,
                  shot_panel_ids,
                  log_of_init_crystal_scales=None,
-                 all_crystal_scales=None, init_gain=1, perturb_fcell=False, global_ncells=False):
+                 all_crystal_scales=None, init_gain=1, perturb_fcell=False, global_ncells=False, global_ucell=True):
         PixelRefinement.__init__(self)
         # super(GlobalFat, self).__init__()
         self.num_kludge = 0
         self.global_ncells_param = global_ncells
+        self.global_ucell_param = global_ucell
         self.debug = False
         self.rot_scale = 1e-3
         self.num_Fcell_kludge = 0
@@ -144,17 +145,20 @@ class FatRefiner(PixelRefinement):
 
         # These are the per-shot parameters
         self.n_rot_param = 3
+        self.n_spot_scale_param = 1
         self.n_ucell_param = len(self.UCELL_MAN[self._i_shot].variables)
         self.n_ncells_param = 1
-        self.n_spot_scale_param = 1
-        #NOTE ncells param
-        if self.global_ncells_param:
-            self.n_per_shot_params = self.n_rot_param + self.n_spot_scale_param
-        else:
-            self.n_per_shot_params = self.n_rot_param + self.n_ncells_param + self.n_spot_scale_param
 
-        # NOTE this does not work in normal situation
-        #assert self.n_per_shot_params * self.n_shots == self.n_local_params
+        self.n_per_shot_ucell_param = self.n_ucell_param
+        if global_ucell:
+            self.n_per_shot_ucell_param = 0
+
+        self.n_per_shot_ncells_param = 1
+        if global_ncells:
+            self.n_per_shot_ncells_param = 0
+
+        self.n_per_shot_params = self.n_rot_param + self.n_spot_scale_param \
+                                 + self.n_per_shot_ncells_param + self.n_per_shot_ucell_param
 
         self._ncells_id = 9  # diffBragg internal index for Ncells derivative manager
         self._originZ_id = 10  # diffBragg internal index for originZ derivative manager
@@ -187,10 +191,6 @@ class FatRefiner(PixelRefinement):
         self.global_param_idx_start = global_param_idx_start
 
         self.a = self.b = self.c = None  # tilt plan place holder
-
-    #def _setup_resolution_binner(self):
-    #    if self.Fobs is not None:
-    #        _ = self.Fobs.setup_binner(d_max=self.binner_dmax, d_min=self.binner_dmin, n_bins=self.binner_nbins)
 
     def setup_plots(self):
         if rank == 0:
@@ -271,7 +271,6 @@ class FatRefiner(PixelRefinement):
         if not self.idx_from_asu:  # # TODO just derive from its inverse
             raise ValueError("Need to supply a non empty idx from asu map")
 
-
         # get the Fhkl information from P1 array internal to nanoBragg
         if comm.rank == 0:
             print("--0 create an Fcell mapping")
@@ -299,7 +298,7 @@ class FatRefiner(PixelRefinement):
         self.bg_c_xstart = {}
         if comm.rank == 0:
             print("--1 Setting up per shot parameters")
-        _x_start = self.local_idx_start  # NOTE bg
+        _local_pos = self.local_idx_start  # NOTE bg
         for i_shot in self.shot_ids:
             self.pid_from_idx[i_shot] = {i: pid for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
             self.idx_from_pid[i_shot] = {pid: i for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
@@ -309,7 +308,7 @@ class FatRefiner(PixelRefinement):
             self.bg_a_xstart[i_shot] = []# NOTE bg
             self.bg_b_xstart[i_shot] = []# NOTE bg
             self.bg_c_xstart[i_shot] = []# NOTE bg
-            _spot_start = _x_start  # NOTE bg
+            _spot_start = _local_pos  # NOTE bg
             for i_spot in range(n_spots):# NOTE bg
                 self.bg_a_xstart[i_shot].append(_spot_start)  # NOTE bg
                 self.bg_b_xstart[i_shot].append(self.bg_a_xstart[i_shot][i_spot] + 1)  # NOTE bg
@@ -322,7 +321,6 @@ class FatRefiner(PixelRefinement):
                 _spot_start += 3
 
             self.rotX_xpos[i_shot] = self.bg_c_xstart[i_shot][-1] + 1  # NOTE bg
-            #self.rotX_xpos[i_shot] = self.local_idx_start + i_shot * self.n_per_shot_params # NOTE bg
             self.rotY_xpos[i_shot] = self.rotX_xpos[i_shot] + 1
             self.rotZ_xpos[i_shot] = self.rotY_xpos[i_shot] + 1
 
@@ -330,42 +328,33 @@ class FatRefiner(PixelRefinement):
             self.x[self.rotY_xpos[i_shot]] = 0
             self.x[self.rotZ_xpos[i_shot]] = 0
 
-            self.ucell_xstart[i_shot] = self.global_param_idx_start  # TODO: make global ucell params optional
-            if self.global_ncells_param:
-                self.ncells_xpos[i_shot] = self.ucell_xstart[i_shot] + self.n_ucell_param
+            # continue adding local per shot parameters after rotZ_xpos
+            _local_pos = self.rotZ_xpos[i_shot] + 1
+            # global always starts here, we have to decide whether to put ncells and unit cell parameters in global array
+            _global_pos = self.global_param_idx_start
+
+            if self.global_ucell_param:
+                self.ucell_xstart[i_shot] = _global_pos
+                _global_pos += self.n_ucell_param
             else:
-                self.ncells_xpos[i_shot] = self.rotZ_xpos[i_shot] + 1
-                self.x[self.ncells_xpos[i_shot]] = self.S.crystal.Ncells_abc[0]  # NOTE: each shot gets own starting Ncells
-            # if self.refine_global_unit_cell:
-            #    self.ucell_xstart[i_shot] = self.global_param_idx_start
-            #    self.ncells_xpos[i_shot] = self.rotZ_xpos[i_shot] + 1  # self.n_ucell_param
-
-            # else:
-            #    self.ucell_xstart[i_shot] = self.rotZ_xpos[i_shot] + 1
-            #    # populate the x-array with initial values
-            #    for i_uc in range(self.n_ucell_param):
-            #        self.x[self.ucell_xstart[i_shot] + i_uc] = self.UCELL_MAN[i_shot].variables[i_uc]
-
-            #    # put in Ncells abc estimate
-            #    self.ncells_xpos[i_shot] = self.ucell_xstart[i_shot] + self.n_ucell_param
+                self.ucell_xstart[i_shot] = _local_pos
+                _local_pos += self.n_ucell_param
+                for i_cell in range(self.n_ucell_param):
+                    self.x[self.ucell_xstart[i_shot] + i_cell] = self.UCELL_MAN[i_shot].variables[i_cell]
 
             if self.global_ncells_param:
-                self.spot_scale_xpos[i_shot] = self.rotZ_xpos[i_shot] + 1
+                self.ncells_xpos[i_shot] = _global_pos
+                _global_pos += self.n_ncells_param
             else:
-                self.spot_scale_xpos[i_shot] = self.ncells_xpos[i_shot] + 1
+                self.ncells_xpos[i_shot] = _local_pos
+                _local_pos += self.n_ncells_pos
+                self.x[self.ncells_xpos[i_shot]] = self.S.crystal.Ncells_abc[0]   # NOTE: each shot gets own starting Ncells
+
+            self.spot_scale_xpos[i_shot] = _local_pos
+            _local_pos += 1
             self.x[self.spot_scale_xpos[i_shot]] = self.log_of_init_crystal_scales[i_shot]
 
-            _x_start = self.spot_scale_xpos[i_shot] + 1  # NOTE bg
-
-        # if self.refine_global_unit_cell:
-        if self.global_ncells_param:
-            self.fcell_xstart = self.global_param_idx_start + self.n_ucell_param + self.n_ncells_param
-        else:
-            self.fcell_xstart = self.global_param_idx_start + self.n_ucell_param
-
-        # else:
-        #    self.fcell_xstart = self.global_param_idx_start
-
+        self.fcell_xstart = _global_pos
         self.originZ_xpos = self.n_total_params - 2
         self.gain_xpos = self.n_total_params - 1
 
@@ -392,9 +381,9 @@ class FatRefiner(PixelRefinement):
             # TODO: refine at the different hierarchy
             # get te first Z coordinate for now..
             # print("Setting origin: %f " % self.S.detector[0].get_local_origin()[2])
-            # TODO if self.refine_global_unit_cell
-            for i_cell in range(self.n_ucell_param):
-                self.x[self.ucell_xstart[0] + i_cell] = self.UCELL_MAN[0].variables[i_cell]
+            if self.global_ucell_param:
+                for i_cell in range(self.n_ucell_param):
+                    self.x[self.ucell_xstart[0] + i_cell] = self.UCELL_MAN[0].variables[i_cell]
 
             if self.global_ncells_param:
                 self.x[self.ncells_xpos[0]] = self.S.crystal.Ncells_abc[0]
@@ -449,6 +438,7 @@ class FatRefiner(PixelRefinement):
         self.hkl_frequency = comm.bcast(self.hkl_frequency)
 
         # See if restarting from save state
+
         if self.x_init is not None:
             self.x = self.x_init
         elif self.restart_file is not None:
@@ -466,7 +456,7 @@ class FatRefiner(PixelRefinement):
                            "rotx": rotx,
                            "roty": roty,
                            "rotz": rotz}
-            print ("frmae")
+            print ("frame")
             master_data = pandas.DataFrame(master_data)
             master_data["gain"] = self.x[self.gain_xpos]
             master_data["originZ"] = self.x[self.originZ_xpos]
@@ -474,7 +464,6 @@ class FatRefiner(PixelRefinement):
             print(master_data.to_string())
 
         #self._setup_resolution_binner()
-
         # setup the diffBragg instance
         self.D = self.S.D
 
@@ -503,21 +492,26 @@ class FatRefiner(PixelRefinement):
         rotx = [lst[self.rotX_xpos[i_shot]] for i_shot in range(self.n_shots)]
         roty = [lst[self.rotY_xpos[i_shot]] for i_shot in range(self.n_shots)]
         rotz = [lst[self.rotZ_xpos[i_shot]] for i_shot in range(self.n_shots)]
-        if not self.global_ncells_param:
-            ncells_vals = [lst[self.ncells_xpos[i_shot]] for i_shot in range(self.n_shots)]
-        else:
+        if self.global_ncells_param:
             ncells_vals = [self.x[self.ncells_xpos[0]]] * len(rotx)
+        else:
+            ncells_vals = [lst[self.ncells_xpos[i_shot]] for i_shot in range(self.n_shots)]
+
         scale_vals = [np_exp(lst[self.spot_scale_xpos[i_shot]]) for i_shot in range(self.n_shots)]
-        
         # this can be used to compare directly
         if self.CRYSTAL_SCALE_TRUTH is not None:
             scale_vals_truths = [self.CRYSTAL_SCALE_TRUTH[i_shot] for i_shot in range(self.n_shots)]
         else:
             scale_vals_truths = None
 
-        a, c = lst[self.ucell_xstart[0]:self.ucell_xstart[0] + self.n_ucell_param]
-        a_vals = [a] * len(rotx)
-        c_vals = [c] * len(rotx)
+        # TODO generalize for non tetragonal case
+        if self.global_ucell_param:
+            a, c = lst[self.ucell_xstart[0]:self.ucell_xstart[0] + self.n_ucell_param]
+            a_vals = [a] * len(rotx)
+            c_vals = [c] * len(rotx)
+        else:
+            a_vals = [lst[self.ucell_xstart[i_shot]] for i_shot in range(self.n_shots)]
+            c_vals = [lst[self.ucell_xstart[i_shot] + 1] for i_shot in range(self.n_shots)]
 
         rotx = self._mpi_reduce_broadcast(rotx)
         roty = self._mpi_reduce_broadcast(roty)
@@ -934,7 +928,7 @@ class FatRefiner(PixelRefinement):
                             self.curv[xpos] += 1 / sig_square
 
             # reduce the broadcast summed results:
-            if comm.rank==0:
+            if comm.rank == 0:
                 print("\nMPI reduce on functionals and gradients...")
             f = self._mpi_reduce_broadcast(f)
             g = self._mpi_reduce_broadcast(g)
