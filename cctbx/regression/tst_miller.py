@@ -525,6 +525,25 @@ def exercise_counting_sorted_no_empty_bins():
   else:
      raise Exception_expected
 
+def exercise_counting_sorted_n_bins_reflections_per_bin():
+  sgi = sgtbx.space_group_info("I23")
+  cs = sgi.any_compatible_crystal_symmetry(volume=999)
+  ms = cs.build_miller_set(True, d_min=1)
+  binner = ms.setup_binner_counting_sorted(n_bins=50, reflections_per_bin=10)
+  assert binner.n_bins_used() == 5
+  assert binner.counts_complete() == [0, 17, 30, 37, 44, 51, 0]
+  assert approx_equal(
+    binner.limits(),
+    [
+      0.020013344452328715,
+      0.20013344452328713,
+      0.4002668890465743,
+      0.6204136780221902,
+      0.8005337780931485,
+      0.9806538783602378
+    ]
+  )
+
 def exercise_crystal_gridding():
   crystal_symmetry = crystal.symmetry(
     unit_cell=(95.2939, 95.2939, 98.4232, 94.3158, 115.226, 118.822),
@@ -2536,6 +2555,7 @@ def exercise_structure_factors_from_map_and_asu_map(d_min=2.):
     assert approx_equal(rfactor(x=fc,y=fc_from_asu_map), 0.0)
 
 def run(args):
+  exercise_counting_sorted_n_bins_reflections_per_bin()
   exercise_counting_sorted_no_empty_bins()
   exercise_neighbor_average()
   exercise_local_overlap_map()

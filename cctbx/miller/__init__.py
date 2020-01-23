@@ -1751,8 +1751,9 @@ class set(crystal.symmetry):
     if (d_min > 0):
       d_star_sq = d_star_sq.select(d_star_sq < 1./d_min**2)
     assert d_star_sq.size() > 0
-    if n_bins is None:
-      n_bins = max(1, iround(d_star_sq.size() / float(reflections_per_bin)))
+    if reflections_per_bin:
+      n_bins_calc = max(1, iround(d_star_sq.size() / float(reflections_per_bin)))
+      n_bins = min(n_bins, n_bins_calc) if n_bins else n_bins_calc
     assert n_bins <= d_star_sq.size(), (
       "n_bins (%i) must be <= number of unique d-spacings (%i)" %(
         n_bins, d_star_sq.size())
