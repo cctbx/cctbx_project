@@ -196,21 +196,30 @@ def exercise(debug=False):
           "eliminate_sys_absent=False", "n_bins=20",
           "cc_one_half_significance_level=0.01"]
   result = merging_statistics.run(args, out=out)
+  assert len(result.bins) == 20
   assert approx_equal(result.overall.d_max, 52.445602416992195)
   assert result.overall.n_obs == 119045, result.overall.n_obs
-  assert approx_equal(result.bins[0].cc_anom, 0.8445946103668791)
+  assert approx_equal(result.bins[0].cc_anom, 0.879550520045)
   assert result.bins[0].cc_anom_significance is True
-  assert approx_equal(result.bins[0].cc_anom_critical_value, 0.08001889224417998)
-  assert approx_equal(result.cc_one_half_overall, 0.9277155216469152)
-  assert approx_equal(result.cc_one_half_sigma_tau_overall, 0.9334218927846825)
-  assert approx_equal(result.bins[0].cc_one_half, 0.9965897219959194)
-  assert approx_equal(result.bins[0].cc_one_half_sigma_tau, 0.9971174078562669)
+  assert approx_equal(result.bins[0].cc_anom_critical_value, 0.0873548986308)
+  assert approx_equal(result.cc_one_half_overall, 0.931122967496)
+  assert approx_equal(result.cc_one_half_sigma_tau_overall, 0.9343213900704643)
+  assert approx_equal(result.bins[0].cc_one_half, 0.9969293192434535)
+  assert approx_equal(result.bins[0].cc_one_half_sigma_tau, 0.9970705896978537)
   assert result.bins[0].cc_one_half_significance is True
   assert result.bins[0].cc_one_half_sigma_tau_significance is True
-  assert approx_equal(result.bins[-1].cc_one_half, 0.716558466728842)
-  assert approx_equal(result.bins[-1].cc_one_half_sigma_tau, 0.772170987527236)
+  assert approx_equal(result.bins[-1].cc_one_half, 0.675340867481686)
+  assert approx_equal(result.bins[-1].cc_one_half_sigma_tau, 0.7360191500836607)
   assert result.bins[-1].cc_one_half_significance is True
   assert result.bins[-1].cc_one_half_sigma_tau_significance is True
+
+  args = [hkl_file, "binning_method=counting_sorted",
+          "eliminate_sys_absent=False", "n_bins=20",
+          "reflections_per_bin=2000",
+          "cc_one_half_significance_level=0.01"]
+  result = merging_statistics.run(args, out=out)
+  assert len(result.bins) == 12
+
 
 if (__name__ == "__main__"):
   exercise(debug=("--debug" in sys.argv))
