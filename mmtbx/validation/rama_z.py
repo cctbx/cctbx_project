@@ -9,6 +9,7 @@ from mmtbx.secondary_structure import sec_str_master_phil_str
 from mmtbx.conformation_dependent_library import generate_protein_threes
 from scitbx.array_family import flex
 from scipy import interpolate
+from libtbx import group_args
 import numpy as np
 import copy
 import math
@@ -97,6 +98,15 @@ class rama_z(object):
 
   def get_residue_counts(self):
     return self.residue_counts
+
+  def get_result(self):
+    r  = self.z_score
+    rc = self.get_residue_counts()
+    return group_args(
+      whole = group_args(value=r["W"][0], std=r["W"][1], residues=rc["W"]),
+      helix = group_args(value=r["H"][0], std=r["H"][1], residues=rc["H"]),
+      sheet = group_args(value=r["S"][0], std=r["S"][1], residues=rc["S"]),
+      loop  = group_args(value=r["L"][0], std=r["L"][1], residues=rc["L"]))
 
   def get_z_scores(self):
     for k in ['H', 'S', 'L', 'W']:
@@ -261,4 +271,3 @@ class rama_z(object):
           jj = 0
         z[i][j] = grid[jj][ii]
     return interpolate.interp2d(x,y,z, kind='linear')
-
