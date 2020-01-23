@@ -7,7 +7,7 @@ import iotbx.cif.model
 from libtbx.test_utils import approx_equal
 from libtbx import group_args
 from libtbx.utils import null_out
-
+from mmtbx.validation import rama_z
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.cbetadev import cbetadev
