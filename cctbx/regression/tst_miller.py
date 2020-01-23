@@ -514,6 +514,16 @@ unused: 10.0715 -         [0/0]
     n_bins=2)
   assert list(set1.binner().counts()) == [2,3,2,1]
 
+def exercise_counting_sorted_no_empty_bins():
+  sgi = sgtbx.space_group_info("I23")
+  cs = sgi.any_compatible_crystal_symmetry(volume=1000)
+  ms = cs.build_miller_set(True, d_min=1)
+  binner = ms.setup_binner_counting_sorted(n_bins=50)
+  assert min(binner.counts_complete()[1:-1]) > 0, list(binner.counts_complete()[1:-1])
+  limits = binner.limits()
+  for i in range(1, limits.size()):
+    assert limits[i] > limits[i-1], (i, limits[i-1], limits[i])
+
 def exercise_crystal_gridding():
   crystal_symmetry = crystal.symmetry(
     unit_cell=(95.2939, 95.2939, 98.4232, 94.3158, 115.226, 118.822),
@@ -2525,6 +2535,7 @@ def exercise_structure_factors_from_map_and_asu_map(d_min=2.):
     assert approx_equal(rfactor(x=fc,y=fc_from_asu_map), 0.0)
 
 def run(args):
+  exercise_counting_sorted_no_empty_bins()
   exercise_neighbor_average()
   exercise_local_overlap_map()
   exercise_structure_factors_from_map_and_asu_map()
