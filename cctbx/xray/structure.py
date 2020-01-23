@@ -2167,11 +2167,11 @@ class structure(crystal.special_position_settings):
     result.set_sites_cart(sites_cart)
     return result
 
-  def as_cif_simple(self, out=None, data_name="global"):
+  def as_cif_simple(self, out=None, data_name="global", format="mmCIF"):
     if out is None: out = sys.stdout
     import iotbx.cif
     cif = iotbx.cif.model.cif()
-    cif[data_name] = self.as_cif_block()
+    cif[data_name] = self.as_cif_block(format=format)
     print(cif, file=out)
 
   def as_cif_block(self, covariance_matrix=None,
