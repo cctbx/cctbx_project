@@ -3078,6 +3078,7 @@ class manager(object):
     return mmtbx.model.statistics.geometry(
       model           = m,
       fast_clash      = fast_clash,
+      use_nuclear     = scattering_table == "neutron",
       condensed_probe = condensed_probe)
 
   def occupancy_statistics(self):

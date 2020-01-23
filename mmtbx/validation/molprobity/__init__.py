@@ -148,7 +148,6 @@ class molprobity(slots_getstate_setstate):
 
   def __init__(self,
       model,
-      pdb_hierarchy=None,   # keep for mmtbx.validation_summary (multiple models)
       fmodel=None,
       fmodel_neutron=None,
       sequences=None,
@@ -180,7 +179,7 @@ class molprobity(slots_getstate_setstate):
       import mmtbx.model
       self.model = mmtbx.model.manager(
         model_input = pdb_hierarchy.as_pdb_input())
-
+    pdb_hierarchy = self.model.get_hierarchy()
     if(nuclear):
       self.model.setup_scattering_dictionaries(scattering_table="neutron")
 
