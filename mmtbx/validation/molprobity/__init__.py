@@ -176,6 +176,14 @@ class molprobity(slots_getstate_setstate):
 
     # use objects from model
     self.model = model
+    if(self.model is None and pdb_hierarchy is not None):
+      import mmtbx.model
+      self.model = mmtbx.model.manager(
+        model_input = pdb_hierarchy.as_pdb_input())
+
+    if(nuclear):
+      self.model.setup_scattering_dictionaries(scattering_table="neutron")
+
     if (self.model is not None):
       pdb_hierarchy = self.model.get_hierarchy()
       xray_structure = self.model.get_xray_structure()
@@ -227,12 +235,9 @@ class molprobity(slots_getstate_setstate):
     self.header_info = header_info
     if (flags is None):
       flags = molprobity_flags()
-    import mmtbx.model.statistics
-    self.model_statistics_geometry = mmtbx.model.statistics.geometry(
-      pdb_hierarchy               = pdb_hierarchy,
-      geometry_restraints_manager = geometry_restraints_manager,
-      use_hydrogens               = keep_hydrogens,
-      use_nuclear                 = nuclear)
+
+    self.model_statistics_geometry = self.model.geometry_statistics(
+      use_hydrogens=keep_hydrogens, condensed_probe=False, fast_clash=False)
     self.model_statistics_geometry_result = \
       self.model_statistics_geometry.result()
     self.ramalyze  = self.model_statistics_geometry_result.ramachandran.ramalyze
