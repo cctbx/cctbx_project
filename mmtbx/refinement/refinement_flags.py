@@ -225,6 +225,55 @@ class manager(object):
     else: raise RuntimeError("Bad selection array type.")
     return x
 
+  def select_detached(self, selection):
+    new_sites_individual     = None
+    new_sites_torsion_angles = None
+    new_sites_rigid_body     = None
+    new_adp_individual_iso   = None
+    new_adp_individual_aniso = None
+    new_adp_group            = None
+    new_group_h              = None
+    new_adp_tls              = None
+    new_s_occupancies        = None
+    if(self.sites_individual is not None):
+      new_sites_individual = self._select(self.sites_individual, selection)
+    if(self.sites_torsion_angles is not None):
+      new_sites_torsion_angles = self._select(
+        self.sites_torsion_angles, selection)
+    if(self.adp_individual_iso is not None):
+      new_adp_individual_iso= self._select(self.adp_individual_iso, selection)
+    if(self.adp_individual_aniso is not None):
+      new_adp_individual_aniso= self._select(self.adp_individual_aniso,
+        selection)
+    if(self.sites_rigid_body is not None):
+      new_sites_rigid_body = self._select(self.sites_rigid_body, selection)
+    if(self.adp_group is not None):
+      new_adp_group = self._select(self.adp_group, selection)
+    if(self.group_h is not None):
+      new_group_h = self._select(self.group_h, selection)
+    if(self.adp_tls is not None):
+      new_adp_tls = self._select(self.adp_tls, selection)
+    if(self.s_occupancies is not None):
+      new_s_occupancies = self._select(self.s_occupancies, selection)
+    return manager(
+      individual_sites       = self.individual_sites,
+      torsion_angles         = self.torsion_angles  ,
+      rigid_body             = self.rigid_body      ,
+      individual_adp         = self.individual_adp  ,
+      group_adp              = self.group_adp       ,
+      tls                    = self.tls             ,
+      occupancies            = self.occupancies     ,
+      group_anomalous        = self.group_anomalous ,
+      sites_individual       = new_sites_individual    ,
+      sites_torsion_angles   = new_sites_torsion_angles,
+      sites_rigid_body       = new_sites_rigid_body    ,
+      adp_individual_iso     = new_adp_individual_iso  ,
+      adp_individual_aniso   = new_adp_individual_aniso,
+      adp_group              = new_adp_group           ,
+      group_h                = new_group_h             ,
+      adp_tls                = new_adp_tls             ,
+      s_occupancies          = new_s_occupancies       )
+
   def select(self, selection):
     assert self.is_bool(selection)
     if(self.sites_individual is not None):
