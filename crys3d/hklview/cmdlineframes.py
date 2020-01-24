@@ -1176,10 +1176,13 @@ class HKLViewFrame() :
 
   def SendInfoToGUI(self, infodict, binary=True):
     if self.guiSocketPort:
+      m = str(infodict).encode("utf-8")
       if not binary:
-        self.guisocket.send( str(infodict).encode("utf-8") )
+        self.guisocket.send( m )
       else:
-        bindict = zlib.compress( bytes(str(infodict).encode("utf-8") ) )
+        if type(m) is not bytes:
+          m = bytes(m)
+        bindict = zlib.compress( m )
         self.guisocket.send( bindict )
 
 
