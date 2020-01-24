@@ -31,8 +31,9 @@ input {
   parallel_file_load {
     method = *uniform node_memory
       .type = choice
-      .help = uniform: distribute input experiments/reflections files uniformly over all ranks
-      .help = node_memory: assign input experiments/reflections files to as many nodes as necessary so that each node's memory limit is not exceeded. Then distribute the files uniformly over the ranks on each node.
+      .help = uniform: distribute input experiments/reflections files uniformly over all available ranks
+      .help = node_memory: distribute input experiments/reflections files over the nodes such that the node memory limit is not exceeded.
+      .help = Within each node distribute the input files uniformly over all ranks of that node.
     node_memory {
       architecture = "Cori KNL"
         .type = str
@@ -50,12 +51,14 @@ input {
     balance = global per_node
       .type = choice
       .multiple = False
-      .help = balance the input file load by distributing experiments unformly over all available ranks (global) or over the ranks on each node
+      .help = Balance the input file load by distributing experiments uniformly over all available ranks (global) or over the ranks on each node (per_node)
+      .help = The idea behind the "per_node" method is that it doesn't require MPI communications across nodes. But if the input file load varies strongly
+      .help = between the nodes, "global" is a much better option.
     balance_mpi_alltoall_slices = 1
       .type = int
       .expert_level = 2
       .help = memory reduction factor for MPI alltoall.
-      .help = Use mpi_alltoall_slices > 1, when available RAM memory is insufficient for doing MPI alltoall on all data at once.
+      .help = Use mpi_alltoall_slices > 1, when available RAM is insufficient for doing MPI alltoall on all data at once.
       .help = The data will then be split into mpi_alltoall_slices parts and, correspondingly, alltoall will be performed in mpi_alltoall_slices iterations.
   }
 }
@@ -169,7 +172,7 @@ modify
 
 select
   .help = The select section accepts or rejects specified reflections
-  .help = refer to the filter section for filtering of whole experimens
+  .help = refer to the filter section for filtering of whole experiments
   {
   algorithm = panel cspad_sensor significance_filter
     .type = choice
@@ -222,7 +225,7 @@ scaling {
     .help = Kludge for cases with an indexing ambiguity, need to be able to adjust scaling model
   resolution_scalar = 0.969
     .type = float
-    .help = Accomodates a few more miller indices at the high resolution limit to account for
+    .help = Accommodates a few more miller indices at the high resolution limit to account for
     .help = unit cell variation in the sample. merging.d_min is multiplied by resolution_scalar
     .help = when computing which reflections are within the resolution limit.
   mtz {
@@ -253,15 +256,6 @@ scaling {
     .help = "mark0: original per-image scaling by reference to isomorphous PDB model"
     .help = "mark1: no scaling, just averaging (i.e. Monte Carlo
              algorithm).  Individual image scale factors are set to 1."
-  mark0 {
-    fit_reference_to_experiment = True
-      .type = bool
-      .help = "When true, fit reference to experiment: I_o = offset + slope * I_r, where I_o is observed intensities and I_r is reference intensities"
-      .help = "When false, fit experiment to reference: I_r = offset + slope * I_o"
-    fit_offset = False
-      .type = bool
-      .help = When true, fit both offset and slope, otherwise fit slope only.
-  }
 }
 
 postrefinement {
