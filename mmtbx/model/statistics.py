@@ -23,8 +23,7 @@ class geometry(object):
                model,
                fast_clash=False,
                condensed_probe=False,
-               use_hydrogens=True,
-               use_nuclear=False):
+               use_hydrogens=True):
     self.model = model
     self.pdb_hierarchy = model.get_hierarchy()
     self.fast_clash = fast_clash
@@ -32,7 +31,6 @@ class geometry(object):
     self.restraints_source = None
     self.from_restraints = None
     self.use_hydrogens = use_hydrogens
-    self.use_nuclear = use_nuclear
     self.cached_result = None
     self.cached_clash = None
     self.cached_rama = None
@@ -164,12 +162,12 @@ class geometry(object):
 
   def clash(self):
     if self.cached_clash is None:
-      self.cached_clash = clashscore(pdb_hierarchy = self.pdb_hierarchy,
-                                     fast = self.fast_clash,
-                                     condensed_probe=self.condensed_probe,
-                                     keep_hydrogens = self.use_hydrogens,
-                                     nuclear = self.use_nuclear,
-      )
+      self.cached_clash = clashscore(
+        pdb_hierarchy   = self.pdb_hierarchy,
+        fast            = self.fast_clash,
+        condensed_probe = self.condensed_probe,
+        keep_hydrogens  = self.use_hydrogens,
+        nuclear         = self.model.is_neutron())
     return group_args(
       score   = self.cached_clash.get_clashscore(),
       clashes = self.cached_clash #XXX Bulky object -- REMOVE! - Not kidding,

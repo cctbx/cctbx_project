@@ -3047,6 +3047,10 @@ class manager(object):
     return mmtbx.model.statistics.composition(
       pdb_hierarchy = self.get_hierarchy())
 
+  def is_neutron(self):
+    return self.get_xray_structure().scattering_type_registry().last_table() \
+      == "neutron"
+
   def geometry_statistics(self, use_hydrogens=None, fast_clash=True,
                           condensed_probe=True):
     scattering_table = \
@@ -3056,8 +3060,10 @@ class manager(object):
     if(self.use_ias):
       ias_selection = self.get_ias_selection()
       m = manager(
-        model_input = self.get_hierarchy().select(~ias_selection).as_pdb_input(),
-        log         = null_out())
+        model_input      = None,
+        pdb_hierarchy    = self.get_hierarchy().select(~ias_selection),
+        crystal_symmetry = self.crystal_symmetry(),
+        log              = null_out())
       m.setup_scattering_dictionaries(scattering_table=scattering_table)
       m.get_restraints_manager()
     else:
@@ -3082,7 +3088,6 @@ class manager(object):
     return mmtbx.model.statistics.geometry(
       model           = m,
       fast_clash      = fast_clash,
-      use_nuclear     = scattering_table == "neutron",
       condensed_probe = condensed_probe)
 
   def occupancy_statistics(self):
