@@ -1,11 +1,9 @@
 from __future__ import absolute_import, division, print_function
-import libtbx.load_env
 import iotbx.pdb
 import mmtbx.model.statistics
 from StringIO import StringIO
 from libtbx.test_utils import show_diff
 from libtbx.utils import null_out
-import os
 import mmtbx.model
 
 pdb_str = """\
@@ -1199,11 +1197,12 @@ MOLPROBITY STATISTICS.
     TWISTED GENERAL : 0.00 %
 
 RAMACHANDRAN PLOT Z-SCORE:
-  WHOLE: -0.62 (0.44), RESIDUES: 149
-  HELIX:  0.29 (0.65), RESIDUES: 67
-  SHEET: -1.83 (1.02), RESIDUES: 20
-  LOOP : -0.50 (0.67), RESIDUES: 62
+  WHOLE: -0.62 (0.62), RESIDUES: 149
+  HELIX:  0.29 (0.58), RESIDUES: 67
+  SHEET: -1.83 (0.89), RESIDUES: 20
+  LOOP : -0.50 (0.74), RESIDUES: 62
 """)
 
 if __name__ == '__main__':
   test_1()
+  print ('OK')
