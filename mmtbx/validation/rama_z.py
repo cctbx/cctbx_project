@@ -12,6 +12,7 @@ from libtbx.str_utils import format_value
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
 from libtbx import group_args
+from scipy import interpolate
 import numpy as np
 import math
 import os
