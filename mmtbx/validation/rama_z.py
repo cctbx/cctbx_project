@@ -167,7 +167,9 @@ class rama_z(object):
         c = None
       if c is not None:
         zs = (c - self.calibration_values[k][0]) / self.calibration_values[k][1]
-        zs_std = self._get_z_score_accuracy(element_points, k)
+        zs_std = None
+        if len(element_points) > 1:
+          zs_std = self._get_z_score_accuracy(element_points, k)
         self.z_score[k] = (zs, zs_std)
     return self.z_score
 
