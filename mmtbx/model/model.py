@@ -2787,7 +2787,7 @@ class manager(object):
     else: ssites_tors = None
     #
     sadp_iso, sadp_aniso = None, None
-    if (refine_adp=="isotropic"):
+    if(refine_adp=="isotropic"):
       nxrs_ui = new_xray_structure.use_u_iso()
       if((self.refinement_flags is not None and
           self.refinement_flags.adp_individual_iso) or nxrs_ui.count(True)>0):
@@ -3053,13 +3053,17 @@ class manager(object):
         self.get_xray_structure().scattering_type_registry().last_table()
     rm = self.restraints_manager
     if(rm is None): return None
-    m = self.deep_copy()
-    m.get_hierarchy().atoms().reset_i_seq()
-    hd_selection = self.get_hd_selection()
     if(self.use_ias):
       ias_selection = self.get_ias_selection()
-      hd_selection = hd_selection.select(~ias_selection)
-      m = m.select(~ias_selection)
+      m = manager(
+        model_input = self.get_hierarchy().select(~ias_selection).as_pdb_input(),
+        log         = null_out())
+      m.setup_scattering_dictionaries(scattering_table=scattering_table)
+      m.get_restraints_manager()
+    else:
+      m = self.deep_copy()
+    m.get_hierarchy().atoms().reset_i_seq()
+    hd_selection = m.get_hd_selection()
     if(use_hydrogens==False):
       not_hd_sel = ~hd_selection
       m = m.select(not_hd_sel)
