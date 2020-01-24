@@ -114,8 +114,8 @@ class rama_z(object):
         self.residue_counts[ss_type] += 1
         used_atoms.add(key)
     self.residue_counts["W"] = self.residue_counts["H"] + self.residue_counts["S"] + self.residue_counts["L"]
-    for i in self.res_info:
-      print(i, file=self.log)
+    # for i in self.res_info:
+    #   print(i, file=self.log)
 
   def get_residue_counts(self):
     return self.residue_counts
@@ -164,6 +164,8 @@ class rama_z(object):
         zs = (c - self.calibration_values[k][0]) / self.calibration_values[k][1]
         zs_std = self._get_z_score_accuracy(element_points, k)
         self.z_score[k] = (zs, zs_std)
+    for i in self.res_info:
+      print(i, file=self.log)
     return self.z_score
 
   def _get_z_score_accuracy(self, points, part, n_shuffles=50, percent_to_keep=50):
