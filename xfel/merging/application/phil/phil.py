@@ -384,7 +384,7 @@ output {
     .help = When True, calculate and log elapsed time for execution steps
   log_level = 1
     .type = int
-    .help = how much information to log. TODO: define it.
+    .help = determines how much information to log. Level 0 means: log all, while a non-zero level reduces the logging amount.
   save_experiments_and_reflections = False
     .type = bool
     .help = If True, dump the final set of experiments and reflections from the last worker
@@ -432,7 +432,7 @@ parallel {
     .type = int
     .expert_level = 2
     .help = memory reduction factor for MPI alltoall.
-    .help = Use a2a > 1, when available RAM memory is insufficient for doing MPI alltoall on all data at once.
+    .help = Use a2a > 1, when available RAM is insufficient for doing MPI alltoall on all data at once.
     .help = The data will be split into a2a parts and, correspondingly, alltoall will be performed in a2a iterations.
 }
 

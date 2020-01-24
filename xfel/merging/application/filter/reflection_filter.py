@@ -84,7 +84,7 @@ class reflection_filter(worker):
         N_acceptable_bins = max(acceptable_nested_bin_sequences) + 1
 
         imposed_res_filter = float(bin_results[N_acceptable_bins-1].d_range.split()[2])
-        self.logger.log("Experiment id %d, image index %d, resolution cutoff %f"%(expt_id, experiment.imageset.indices()[0], imposed_res_filter))
+        self.logger.log("Experiment id %d, image index %d, resolution cutoff %f\n"%(expt_id, experiment.imageset.indices()[0], imposed_res_filter))
 
         imposed_res_sel = exp_observations.resolution_filter_selection(d_min=imposed_res_filter)
 
