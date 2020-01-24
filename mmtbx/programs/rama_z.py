@@ -99,6 +99,9 @@ Usage examples:
         print("Writing out partial model: %s" % fn, file=self.logger)
         self.data_manager.write_model_file(selected_model, filename=fn)
       self._write_plots_if_needed(selected_model, label, type_of_plot='HSL')
+    res_info = self.rama_z.get_detailed_values()
+    for i in res_info:
+      print(i, file=self.logger)
     result = self.get_results()
     if result is None:
       print("Calculation of z-score failed for some reason", file=self.logger)

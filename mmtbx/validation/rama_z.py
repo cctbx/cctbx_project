@@ -114,8 +114,6 @@ class rama_z(object):
         self.residue_counts[ss_type] += 1
         used_atoms.add(key)
     self.residue_counts["W"] = self.residue_counts["H"] + self.residue_counts["S"] + self.residue_counts["L"]
-    # for i in self.res_info:
-    #   print(i, file=self.log)
 
   def get_residue_counts(self):
     return self.residue_counts
@@ -164,28 +162,19 @@ class rama_z(object):
         zs = (c - self.calibration_values[k][0]) / self.calibration_values[k][1]
         zs_std = self._get_z_score_accuracy(element_points, k)
         self.z_score[k] = (zs, zs_std)
-    for i in self.res_info:
-      print(i, file=self.log)
     return self.z_score
 
-  def _get_z_score_accuracy(self, points, part, n_shuffles=50, percent_to_keep=50):
-    return np.interp(len(points), self.rmsd_estimator[0], self.rmsd_estimator[1])
-    # tmp = copy.deepcopy(points)
-    # scores = []
-    # n_res = int(len(tmp) * percent_to_keep / 100)
-    # if n_res == len(tmp):
-    #   n_res -= 1
-    # for i in range(n_shuffles):
-    #   np.random.shuffle(tmp)
-    #   c = self._get_z_score_points(tmp[:n_res])
-    #   if c is not None:
-    #     c = (c - self.calibration_values[part][0]) / self.calibration_values[part][1]
-    #     scores.append(c)
-    #   c = self._get_z_score_points(tmp[n_res:])
-    #   if c is not None:
-    #     c = (c - self.calibration_values[part][0]) / self.calibration_values[part][1]
-    #     scores.append(c)
-    # return np.std(scores)
+  def get_detailed_values(self):
+    return self.res_info
+
+  def _get_z_score_accuracy(self, points, part):
+    scores = []
+    values = [x[-1] for x in points]
+    sum_values = np.sum(values)
+    for v in values:
+      s = (sum_values - v)/(len(values)-1)
+      scores.append( ( s-self.calibration_values[part][0]) / self.calibration_values[part][1] )
+    return np.std(scores) * ((len(points)-1) ** 0.5)
 
   def get_ss_selections(self):
     self.loop_sel = flex.bool([True]*self.helix_sel.size())
