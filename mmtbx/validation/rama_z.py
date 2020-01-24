@@ -4,16 +4,15 @@ from libtbx.utils import null_out
 from libtbx import easy_pickle
 import libtbx.load_env
 import iotbx.phil
+import iotbx.pdb
 from mmtbx.secondary_structure import manager as ss_manager
 from mmtbx.secondary_structure import sec_str_master_phil_str
 from mmtbx.conformation_dependent_library import generate_protein_threes
 from libtbx.str_utils import format_value
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
-from scipy import interpolate
 from libtbx import group_args
 import numpy as np
-import copy
 import math
 import os
 
@@ -70,14 +69,21 @@ class rama_z(object):
     self.n_phi_half = 45
     self.n_psi_half = 45
 
+    if model.get_hierarchy().models_size() > 1:
+      hierarchy = iotbx.pdb.hierarchy.root()
+      m = model.get_hierarchy().models()[0].detached_copy()
+      hierarchy.append_model(m)
+      asc = hierarchy.atom_selection_cache()
+    else:
+      hierarchy = model.get_hierarchy()
+      asc = model.get_atom_selection_cache()
     self.res_info = []
-    asc = model.get_atom_selection_cache()
     sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
     ss_params = sec_str_master_phil.fetch().extract()
     ss_params.secondary_structure.protein.search_method = "from_ca"
     ss_params.secondary_structure.from_ca_conservative = True
 
-    self.ssm = ss_manager(model.get_hierarchy(),
+    self.ssm = ss_manager(hierarchy,
         atom_selection_cache=asc,
         geometry_restraints_manager=None,
         sec_str_from_pdb_file=None,
@@ -97,7 +103,7 @@ class rama_z(object):
     self.sheet_sel = asc.selection(filtered_ann.overall_sheets_selection())
 
     used_atoms = set()
-    for three in generate_protein_threes(hierarchy=model.get_hierarchy(), geometry=None):
+    for three in generate_protein_threes(hierarchy=hierarchy, geometry=None):
       main_residue = three[1]
       phi_psi_atoms = three.get_phi_psi_atoms()
       if phi_psi_atoms is None:
