@@ -20,9 +20,9 @@ def check_function():
   ss_cont = zs.get_residue_counts()
   # print (z_scores)
   # print (ss_cont)
-  expected_z =  {'H': None, 'S': (-0.057428666470734, 0.6658791164520348),
-      'L': (-0.3588028726184504, 0.6320340431586435),
-      'W': (-0.4019606027769244, 0.45853802351647416)}
+  expected_z =  {'H': None, 'S': (-0.057428666470734, 0.5840017477579902),
+      'L': (-0.3588028726184504, 0.6941226745661744),
+      'W': (-0.4019606027769244, 0.6621289642029733)}
   expeted_ss = {'H': 0, 'S': 63, 'L': 71, 'W': 134}
   for k in expected_z:
     if z_scores[k] is not None:
@@ -41,10 +41,10 @@ def check_cmd_line():
   stdout = r.stdout_lines
   # print ("\n".join(stdout))
   assert_lines_in_text("\n".join(stdout), """\
-      z-score whole: -0.40 (0.46), residues: 134
+      z-score whole: -0.40 (0.66), residues: 134
       z-score helix: None, residues: 0
-      z-score sheet: -0.06 (0.67), residues: 63
-      z-score loop : -0.36 (0.63), residues: 71""")
+      z-score sheet: -0.06 (0.58), residues: 63
+      z-score loop : -0.36 (0.69), residues: 71""")
 
 if __name__ == '__main__':
   check_function()
