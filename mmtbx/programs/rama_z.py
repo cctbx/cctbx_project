@@ -105,11 +105,10 @@ for multi-model files", file=self.logger)
     result = self.get_results()
     res_info = self.rama_z.get_detailed_values()
     print ("Individual residues info:", file=self.logger)
-    print ("Residue name, type, SS, phi, psi, Z", file=self.logger)
+    print ("Residue name, type, SS, (phi, psi), Z", file=self.logger)
     for i in res_info:
-      print ('%4s %10s %1s (%7.2f %7.2f) %7.4f' % (
+      print ('%4s %10s %1s (%7.2f, %7.2f) %7.4f' % (
           i[2], res_type_labels[i[1]], i[3], i[4], i[5], i[6]), file=self.logger)
-      # print(i, file=self.logger)
 
     if result is None:
       print("Calculation of z-score failed for some reason", file=self.logger)
