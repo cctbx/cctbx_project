@@ -12,6 +12,7 @@ from libtbx.utils import user_plus_sys_time
 from cctbx import crystal, maptbx, xray, adptbx
 from iotbx.pdb.utils import all_chain_ids
 import scitbx.math
+from libtbx.utils import Sorry
 
 elements=["N","O","S","Se","Fe","Mn","Mg","Mn","Zn","Ca","Cd","Cu","Co"]
 selection_string_interaction = " or ".join(["element %s"%e for e in elements])
@@ -28,6 +29,7 @@ def _debug_show_all_plots(
       t_angle_sampling_step = 60):
   rho = flex.double()
   vecs = []
+  one_d = flex.double()
   for s in range(0,360,s_angle_sampling_step):
     for t in range(0,360,t_angle_sampling_step):
       xc,yc,zc = scitbx.math.point_on_sphere(r=radius, s_deg=s, t_deg=t,
@@ -45,6 +47,7 @@ def _debug_show_all_plots(
         v.append(map_data.tricubic_interpolation([xpf,ypf,zpf]))
         r.append(p)
       vecs.append([r,v])
+      one_d.extend(v)
       ###
   import matplotlib.pyplot as plt
   import matplotlib as mpl
@@ -52,6 +55,7 @@ def _debug_show_all_plots(
   fig, axes = plt.subplots(ncols=6, nrows=6)
   for i, ax in enumerate(axes.flatten()):
     ax.plot(vecs[i][0], vecs[i][1])
+    ax.set_ylim(flex.min(one_d),flex.max(one_d))
     ax.set_xticks([])
     ax.set_yticks([])
   fig.savefig("fig_%s.png"%plot_number)
@@ -83,14 +87,17 @@ class run(object):
   def __init__(self,
                model,
                map_data,
-               dist_min=2.2,
+               dist_min=2.0,
                dist_max=3.2,
                step=0.3,
+               mean_scale=0.7,
                debug=False,
                log=None):
     # Common parameters / variables
     adopt_init_args(self, locals())
     self.total_time = 0
+    if(map_data.accessor().origin()!=(0,0,0)):
+      raise Sorry("Map origin must be zero.")
     self.ma = msg_accumulator(log = log)
     self.map_data = self.map_data.deep_copy() # will be changed in-place!
     self.unit_cell = self.model.crystal_symmetry().unit_cell()
@@ -109,6 +116,8 @@ class run(object):
     self._call(self._filter_by_sphericity, "Filter peaks by sphericity")
     self._call(self._filter_by_distance  , "Filter peaks by distance")
     self._call(self._append_to_model     , "Add to model and reset internals")
+    if(self.debug):
+      self._call(self._show_peak_profiles, "Show peak profiles")
 
   def _call(self, func, msg):
     timer = user_plus_sys_time()
@@ -179,11 +188,11 @@ class run(object):
       map_at_atoms.append( self.map_data.tricubic_interpolation(site_frac) )
     mean = flex.mean(map_at_atoms)
     sel = map_at_atoms > mean/3 # so it is not spoiled by too low/high values
-    self.cutoff = flex.mean( map_at_atoms.select(sel) )*0.7
+    self.cutoff = flex.mean( map_at_atoms.select(sel) )*self.mean_scale
     self.ma.add("  mean density at atom centers: %8.3f"%mean)
     self.ma.add("  density cutoff for peak search: %8.3f"%self.cutoff)
 
-  def _mask_out(self, rad_inside = 1.5, rad_outside = 6.0):
+  def _mask_out(self, rad_inside = 1.0, rad_outside = 6.0):
     # Zero inside
     radii = flex.double(self.sites_frac.size(), rad_inside)
     mask = cctbx_maptbx_ext.mask(
@@ -213,7 +222,7 @@ class run(object):
       pre_determined_n_real = self.map_data.accessor().all())
     cgt = maptbx.crystal_gridding_tags(gridding = cg)
     peak_search_parameters = maptbx.peak_search_parameters(
-      peak_search_level      = 2, # use 3 XXXXXXXXXXXXXXXXXXX
+      peak_search_level      = 3,
       max_peaks              = 0,
       peak_cutoff            = self.cutoff,
       interpolate            = True,
@@ -277,6 +286,26 @@ class run(object):
       #  #  "%6.3f %6.3f %6.3f"%ccs2.min_max_mean().as_tuple(), "<<< REJECTED"
     self.sites_frac_water = tmp
     self.ma.add("  peaks left: %d"%self.sites_frac_water.size())
+
+  def _show_peak_profiles(self):
+    for i, site_frac in enumerate(self.sites_frac_water):
+      site_cart = self.unit_cell.orthogonalize(site_frac)
+      o = maptbx.sphericity_by_heuristics(
+        map_data    = self.map_data,
+        unit_cell   = self.unit_cell,
+        center_cart = site_cart,
+        radius      = 0.5)
+      o2 = maptbx.sphericity_by_heuristics(
+        map_data    = self.map_data,
+        unit_cell   = self.unit_cell,
+        center_cart = site_cart,
+        radius      = 1.0)
+      _debug_show_all_plots(
+        map_data    = self.map_data,
+        unit_cell   = self.unit_cell,
+        center_cart = site_cart,
+        radius      = 0.5,
+        plot_number = str("%d_%4.2f_%4.2f"%(i+1, o.ccs[0],o2.ccs[0])))
 
   def _append_to_model(self):
     mean_b = flex.mean(self.model.get_hierarchy().atoms().extract_b())
