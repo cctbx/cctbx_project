@@ -46,6 +46,7 @@ Usage examples:
     print('Validating inputs', file=self.logger)
     self.data_manager.has_models(expected_n=1, exact_count=True, raise_sorry=True)
     m = self.data_manager.get_model()
+    print ('Inputs OK', file=self.logger)
 
   # ---------------------------------------------------------------------------
 
@@ -84,9 +85,6 @@ Usage examples:
 
     self._write_plots_if_needed(model, label='whole', type_of_plot='whole')
     helix_sel, sheet_sel, loop_sel = self.rama_z.get_ss_selections()
-    res_info = self.rama_z.get_detailed_values()
-    for i in res_info:
-      print(i, file=self.logger)
     if model.get_hierarchy().models_size() != 1:
       print ("Warning! Outputting partial models and plots are not supported \
 for multi-model files", file=self.logger)
@@ -105,6 +103,14 @@ for multi-model files", file=self.logger)
           self.data_manager.write_model_file(selected_model, filename=fn)
         self._write_plots_if_needed(selected_model, label, type_of_plot='HSL')
     result = self.get_results()
+    res_info = self.rama_z.get_detailed_values()
+    print ("Individual residues info:", file=self.logger)
+    print ("Residue name, type, SS, phi, psi, Z", file=self.logger)
+    for i in res_info:
+      print ('%4s %10s %1s (%7.2f %7.2f) %7.4f' % (
+          i[2], res_type_labels[i[1]], i[3], i[4], i[5], i[6]), file=self.logger)
+      # print(i, file=self.logger)
+
     if result is None:
       print("Calculation of z-score failed for some reason", file=self.logger)
     else:
