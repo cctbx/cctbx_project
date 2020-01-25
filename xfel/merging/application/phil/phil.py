@@ -10,7 +10,8 @@ from xfel.merging.database.merging_database import mysql_master_phil
 master_phil="""
 dispatch {
   step_list = None
-    .type = strings
+    .type = str
+    .multiple = True
     .help = List of steps to use. None means use the full set of steps to merge.
 }
 input {
@@ -61,6 +62,15 @@ input {
       .help = Use mpi_alltoall_slices > 1, when available RAM is insufficient for doing MPI alltoall on all data at once.
       .help = The data will then be split into mpi_alltoall_slices parts and, correspondingly, alltoall will be performed in mpi_alltoall_slices iterations.
   }
+}
+tdata{
+  output_path = None
+    .type = path
+    .help = If output_path is not None, the tdata worker writes out a list of unit cells to a file.
+    .help = Generally speaking the program should then stop.  The tdata worker is not active by default, so it is necessary to have
+    .help = the following phil configuration: dispatch.step_list=input,tdata.
+    .help = The output_path assumes the *.tdata filename extension will be appended.
+    .help = More information about using this option is given in the source code, xfel/merging/application/tdata/README.md
 }
 
 mp {
