@@ -71,10 +71,37 @@ parameter should be decreased.  The user should note the component number and si
 matches the cluster of interest.
 
 sample output:
-```027_cells, eps=0.020
+```
+027_cells, eps=0.020
 Component        Abundance           c            a
 0: 134147 /137347 (97.67%)   38.12±0.06   78.96±0.11
 1:   2452 /137347 ( 1.79%)   36.94±0.05   80.20±0.10
 2:    222 /137347 ( 0.16%)   38.51±0.05   78.83±0.09
 ```
+
+4) To list out the clusters previously determined in step 3, one can use this convenience command:
+```
+uc_metrics.list_covariance covariance_027_cells.pickle
+```
+
+5) Now the full merging script (cctbx.xfel.merge) is run again, with special phil parameters
+to select those unit cells belonging to the cluster components of step 3. In this particular
+example the merging program would be run three times, once for each component (0, 1, or 2):
+
+```
+filter.algorithm=unit_cell \
+filter.unit_cell.algorithm=cluster \
+filter.unit_cell.cluster.covariance.file=LD91_new/covariance_027_cells.pickle \
+filter.unit_cell.cluster.covariance.component=0 \
+filter.unit_cell.cluster.covariance.mahalanobis=4.0 \
+```
+
+One does not expect the merging program to pick the exact population for each component that
+the clustering program did in step 3.  The reason is that different algorithms are used.  The
+clustering program uses the DBSCAN algorithm, controlled by the "eps" parameter.  The merging
+program, in contrast, uses a multivariate Gaussian fit, defined by the covariance matrix from
+the pickle file, and controlled by the "mahalanobis" parameter.  This is essentially a cutoff
+defining how many standard deviations away from the mean to include unit cells.  A value of
+mahalanobis=1.0 will pick a very restricted population very close to the mean.  The default
+value of mahalanobis=4.0 will in contrast pick 99.9% of the population defined by the ellipsoid.
 

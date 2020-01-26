@@ -130,7 +130,7 @@ filter
   unit_cell
     .help = Various algorithms to restrict unit cell and space group
     {
-    algorithm = range value cluster
+    algorithm = range *value cluster
       .type = choice
     value
       .help = Discard lattices that are not close to the given target.
@@ -152,15 +152,31 @@ filter
       .help = unit cells are brought together prior to any postrefinement or merging,
       .help = and analyzed in a global sense to identify the isoforms.
       .help = the output of this program could potentially form the a_list for a subsequent
-      .help = run where the pre-selected events are postrefined and merged. {
-      algorithm = rodgriguez_laio dbscan
+      .help = run where the pre-selected events are postrefined and merged.
+      {
+      algorithm = rodgriguez_laio dbscan *covariance
         .type = choice
+      covariance
+        .help = Read a pickle file containing the previously determined clusters,
+        .help = represented by estimated covariance models for unit cell parameters.
+        {
+        file = None
+          .type = path
+        component = 0
+          .type = int(value_min=0)
+        mahalanobis = 4.0
+          .type = float(value_min=0)
+          .help = Is essentially the standard deviation cutoff. Given that the unit cells
+          .help = are estimated to be distributed by a multivariate Gaussian, this is the
+          .help = maximum deviation (in sigmas) from the central value that is allowable for the
+          .help = unit cell to be considered part of the cluster.
+        }
       isoform = None
         .type=str
         .help = unknown at present. if there is more than one cluster, such as in PSII,
         .help = perhaps the program should write separate a_lists.
         .help = Alternatively identify a particular isoform to carry forward for merging.
-    }
+      }
   }
   outlier {
     min_corr = 0.1
