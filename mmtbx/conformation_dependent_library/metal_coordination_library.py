@@ -126,7 +126,7 @@ def get_metal_coordination_proxies(pdb_hierarchy,
           print(l.quote())
   return mbonds
 
-def get_proxies(coordination):
+def get_proxies(coordination, verbose=False):
   #
   # TODO
   #   - check that only one link is made to each resiude
@@ -170,7 +170,15 @@ def get_proxies(coordination):
         hiss.append(atom)
     key = (len(cyss), len(hiss))
     metal_name = atoms['metal'].name.strip()
-    # if key not in database[metal_name]: continue
+    if key not in database[metal_name]:
+      if verbose:
+        outl = '\n'
+        for atom in atoms['others']:
+          outl += '    %s\n' % atom.quote()
+        print('''  Metal %s has coordination not in MCL%s
+              ''' % (atoms['metal'].quote(), outl)
+              )
+      continue
     ideals = database[metal_name][key]
     if not atoms: continue #return None, None
     for a1, a2 in _bond_generator(atoms):
