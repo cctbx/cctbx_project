@@ -436,6 +436,8 @@ Found Python version:
   %s
 """ % self.python_exe, file=self.log)
       sys.exit(1)
+    if isinstance(python_version, bytes):
+        python_version = python_version.decode("utf-8")
     python_version = python_version.strip().split('\n')[0].split(':', 3)
     if (int(python_version[0]) == 2 and int(python_version[1]) < 7) or \
        (int(python_version[0]) > 2 and int(python_version[2]) < 0x03040000):
