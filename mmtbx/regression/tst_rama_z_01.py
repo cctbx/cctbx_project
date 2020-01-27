@@ -41,10 +41,10 @@ def check_cmd_line():
   stdout = r.stdout_lines
   # print ("\n".join(stdout))
   assert_lines_in_text("\n".join(stdout), """\
-      z-score whole: -0.40 (0.66), residues: 134
-      z-score helix: None, residues: 0
-      z-score sheet: -0.06 (0.58), residues: 63
-      z-score loop : -0.36 (0.69), residues: 71""")
+      whole: -0.40 (0.66), residues: 134
+      helix:  None (None), residues: 0
+      sheet: -0.06 (0.58), residues: 63
+      loop : -0.36 (0.69), residues: 71""")
 
 if __name__ == '__main__':
   check_function()

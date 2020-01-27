@@ -110,19 +110,8 @@ for multi-model files", file=self.logger)
       print ('%4s %10s %1s (%7.2f, %7.2f) %7.4f' % (
           i[2], res_type_labels[i[1]], i[3], i[4], i[5], i[6]), file=self.logger)
 
-    if result is None:
-      print("Calculation of z-score failed for some reason", file=self.logger)
-    else:
-      for k in ["whole", "helix", "sheet", "loop"]:
-        rc = k[0].upper()
-        v = result.get(rc, None)
-        if v is None:
-          print("z-score %-5s: None, residues: %d" % (k, result['residue_counts'][rc]), file=self.logger)
-        else:
-          print("z-score %-5s: %5.2f (%4.2f), residues: %d" % (k, v[0], v[1], result['residue_counts'][rc]), file=self.logger)
+    print(result.as_string(prefix=""), file = self.logger)
 
   # ---------------------------------------------------------------------------
   def get_results(self):
-    r = self.rama_z.get_z_scores()
-    r['residue_counts'] = self.rama_z.get_residue_counts()
-    return r
+    return self.rama_z.get_result()

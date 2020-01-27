@@ -34,7 +34,11 @@ class result(object):
     d = "%5.2f"
     i = "%d"
     strs = [
-      "\n%sRamachandran plot Z-score:"%p,
+      "\n%sRama-Z (Ramachandran plot Z-score):"%p,
+      "%svalue < -3: bad; value < -2: suspicious; value > -2: OK." % p,
+      "%sSeparate Rama-Z scores and Rama-Z for the whole model are related in" % p,
+      "%sunobvious way because Rama-Z scores for them were calibrated separately" %p,
+      "%sto achieve mean score 0 and RMSD of 1 for each of them." % p,
       "%s  whole: %s (%s), residues: %s"%(p, f(d,w.value),f(d,w.std).strip(),f(i,w.n)),
       "%s  helix: %s (%s), residues: %s"%(p, f(d,h.value),f(d,h.std).strip(),f(i,h.n)),
       "%s  sheet: %s (%s), residues: %s"%(p, f(d,s.value),f(d,s.std).strip(),f(i,s.n)),
@@ -134,22 +138,6 @@ class rama_z(object):
       sheet = group_args(value=nov(r["S"],0), std=nov(r["S"],1), n=rc["S"]),
       loop  = group_args(value=nov(r["L"],0), std=nov(r["L"],1), n=rc["L"]))
 
-  #def result_as_string(self, prefix=""):
-  #  r = self.get_result()
-  #  f = format_value
-  #  p = prefix
-  #  w, h, s, l = r.whole, r.helix, r.sheet, r.loop
-  #  d = "%5.2f"
-  #  i = "%d"
-  #  strs = [
-  #    "\n%sRamachandran plot Z-score:"%p,
-  #    "%s  whole: %s (%s), residues: %s"%(p, f(d,w.value),f(d,w.std).strip(),f(i,w.n)),
-  #    "%s  helix: %s (%s), residues: %s"%(p, f(d,h.value),f(d,h.std).strip(),f(i,h.n)),
-  #    "%s  sheet: %s (%s), residues: %s"%(p, f(d,s.value),f(d,s.std).strip(),f(i,s.n)),
-  #    "%s  loop : %s (%s), residues: %s"%(p, f(d,l.value),f(d,l.std).strip(),f(i,l.n))
-  #  ]
-  #  return "\n".join(strs)
-
   def get_z_scores(self):
     for k in ['H', 'S', 'L', 'W']:
       if k != 'W':
@@ -194,8 +182,6 @@ class rama_z(object):
     else: return "L"
 
   def _get_z_score_points(self, points):
-    # if len(points) < 10:
-    #   return None
     score = 0
     for entry in points:
       if len(entry) == 6:
@@ -221,19 +207,9 @@ class rama_z(object):
     return (int_sc - self.means[ss_type][resname]) / self.stds[ss_type][resname]
 
   def _get_mean(self, ss_type, resname):
-    # return np.average(self.g)
-
-    # Nonzero regular:
-    # nz = []
-    # for i in self.g:
-    #   for j in i:
-    #     if j != 0:
-    #       nz.append(j)
-    # self.mean = np.average(nz)
-    # Paper calc:
+    # Origianl paper calc:
     reg_sum = 0
     sq_sum = 0
-    # calculate as in paper
     for i in self.db[ss_type][resname]:
       for j in i:
         reg_sum += j
@@ -245,16 +221,7 @@ class rama_z(object):
     return mean
 
   def _get_std(self, ss_type, resname, mean):
-    # return np.std(self.g)
-
-    # Nonzero regular:
-    # nz = []
-    # for i in self.g:
-    #   for j in i:
-    #     if j != 0:
-    #       nz.append(j)
-    # self.std = np.std(nz)
-    # Paper calc:
+    # Origianl paper calc:
     ch = 0
     zn = 0
     for i in self.db[ss_type][resname]:
