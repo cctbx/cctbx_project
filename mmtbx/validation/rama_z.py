@@ -47,13 +47,9 @@ class rama_z(object):
     db_path = libtbx.env.find_in_repositories(
         relative_path="chem_data/rama_z/top8000_rama_z_dict.pkl",
         test=os.path.isfile)
-    rmsd_path = libtbx.env.find_in_repositories(
-        relative_path="chem_data/rama_z/rmsd.pkl",
-        test=os.path.isfile)
     self.log = log
     # this takes ~0.15 seconds, so I don't see a need to cache it somehow.
     self.db = easy_pickle.load(db_path)
-    self.rmsd_estimator = easy_pickle.load(rmsd_path)
     self.calibration_values = {
         'H': (-0.045355950779513175, 0.1951165524439217),
         'S': (-0.0425581278436754, 0.20068584887814633),
