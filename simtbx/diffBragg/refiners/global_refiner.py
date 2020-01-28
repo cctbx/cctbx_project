@@ -348,7 +348,7 @@ class FatRefiner(PixelRefinement):
             else:
                 self.ncells_xpos[i_shot] = _local_pos
                 _local_pos += self.n_ncells_pos
-                self.x[self.ncells_xpos[i_shot]] = self.S.crystal.Ncells_abc[0]   # NOTE: each shot gets own starting Ncells
+                self.x[self.ncells_xpos[i_shot]] = self.S.crystal.Ncells_abc[0]   # TODO: each shot gets own starting Ncells
 
             self.spot_scale_xpos[i_shot] = _local_pos
             _local_pos += 1
@@ -375,6 +375,11 @@ class FatRefiner(PixelRefinement):
                 # img_totals.append(self.ROI_IMGS[i_shot][i_h])
         hkl_totals = self._mpi_reduce_broadcast(hkl_totals)
         # img_totals = self._mpi_reduce_broadcast(img_totals)
+
+        #if self.global_ucell_param:
+        #    for i_shot in range(self.n_shots):
+        #        self.UCELL_MAN[i_shot].variables = self.UCELL_MAN[0].variables
+
         if rank == 0:
             print("--2 Setting up global parameters")
             # put in estimates for origin vectors
@@ -382,6 +387,7 @@ class FatRefiner(PixelRefinement):
             # get te first Z coordinate for now..
             # print("Setting origin: %f " % self.S.detector[0].get_local_origin()[2])
             if self.global_ucell_param:
+                # TODO is this too hacky, all ucell man should have same a,c if using a global model?
                 for i_cell in range(self.n_ucell_param):
                     self.x[self.ucell_xstart[0] + i_cell] = self.UCELL_MAN[0].variables[i_cell]
 
@@ -524,7 +530,7 @@ class FatRefiner(PixelRefinement):
             scale_vals_truths = self._mpi_reduce_broadcast(scale_vals_truths)
         return rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals, scale_vals_truths
 
-    def _send_gradients_to_derivative_managers(self):
+    def _send_ucell_gradients_to_derivative_managers(self):
         """Needs to be called once each time the orientation is updated"""
         for i in range(self.n_ucell_param):
             self.D.set_ucell_derivative_matrix(
@@ -648,7 +654,7 @@ class FatRefiner(PixelRefinement):
         _s = slice(self.ucell_xstart[self._i_shot], self.ucell_xstart[self._i_shot] + self.n_ucell_param, 1)
         pars = list(self.x[_s])
         self.UCELL_MAN[self._i_shot].variables = pars
-        self._send_gradients_to_derivative_managers()
+        self._send_ucell_gradients_to_derivative_managers()
         self.D.Bmatrix = self.UCELL_MAN[self._i_shot].B_recipspace
 
     def _update_umatrix(self):
@@ -1273,4 +1279,17 @@ class FatRefiner(PixelRefinement):
     def _rfactor_minimizer_target(k, Fobs, Fref):
         return Fobs.r1_factor(Fref, scale_factor=k[0])
 
+    def get_optimized_mtz(self, save_to_file=None, wavelength=1):
+        from cctbx import crystal
+        # TODO update for non global unit cell case (average over unit cells)
+        #rotx, roty, rotz, a_vals, c_vals, ncells_vals, scale_vals, _ = self._unpack_internal(self.x)
+        self._update_Fcell()  # just in case update the Fobs
+        um = self.UCELL_MAN[0]
+        sym = crystal.symmetry(unit_cell=um.unit_cell_parameters, space_group_symbol=self.symbol)
+        mset_obs = miller.set(sym, self.Fobs.indices(), anomalous_flag=True)
+        fobs = miller.array(mset_obs, self.Fobs.data()).set_observation_type_xray_amplitude()
+        # TODO: what to do in MPI mode when writing ?
+        if save_to_file is not None and comm.rank == 0:
+            fobs.as_mtz_dataset(column_root_label='fobs', wavelength=wavelength).mtz_object().write(save_to_file)
+        return fobs
 

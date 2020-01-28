@@ -117,3 +117,12 @@ class CrystalSystemManager(object):
     @abstractproperty
     def variable_names(self):
         pass
+
+    @property
+    def unit_cell_parameters(self):
+        """
+        unit cell parameter 6-tuple in Angstrom/degrees format
+        returns: a,b,c, alpha, beta, gamma
+        """
+        return self.a, self.b, self.c, self.al*180./np.pi, self.be*180./np.pi, self.ga*180./np.pi
+
