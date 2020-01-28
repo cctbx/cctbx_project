@@ -23,7 +23,8 @@ from PySide2.QtGui import QColor, QFont, QCursor, QKeySequence
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
 import sys, zmq, subprocess, time, traceback, shutil, zlib, math, csv, io
 
-import HKLviewerGui
+from crys3d.hklview import HKLviewerGui
+
 
 class MakeNewDataForm(QDialog):
   def __init__(self, parent=None):
@@ -506,10 +507,14 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         self.out = self.cctbxproc.stdout.read().decode("utf-8")
       if self.cctbxproc.stderr:
         self.err = self.cctbxproc.stderr.read().decode("utf-8")
+    currentinfostr = None
     if self.out:
+      currentinfostr = self.out.decode("utf-8")
       print(self.out.decode("utf-8"))
     if self.err:
+      currentinfostr += self.err.decode("utf-8")
       print(self.err.decode("utf-8"))
+
 
     if self.zmq_context:
       try:
@@ -650,6 +655,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
             self.infostr = self.infostr[-1000*self.bufsizespinBox.value():]
             self.textInfo.setPlainText(self.infostr)
             self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
+            currentinfostr = ""
 
           if (self.NewFileLoaded or self.NewMillerArray) and self.NewHKLscenes:
             #print("got hklscenes: " + str(self.hklscenes_arrays))
@@ -765,7 +771,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     #self.setWindowTitle("HKL-viewer: " + self.currentphilstringdict['NGL_HKLviewer.filename'])
     self.mousemoveslider.setValue( 2000*self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.mouse_sensitivity'])
     #self.rotavecangle_slider.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
-    self.rotavecangle_labeltxt.setText("Angle rotated: %2.f°" %self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
+    self.rotavecangle_labeltxt.setText("Angle rotated: %2.f" %self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
+
 
     self.sliceindexspinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_index'])
     self.Nbins_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.nbins'])
@@ -1201,7 +1208,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.clipwidth_spinBox.setSingleStep(0.05)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
     self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
-    self.rotavecangle_labeltxt.setText("Angle rotated: 0°")
+    self.rotavecangle_labeltxt.setText("Angle rotated: 0")
     self.rotavecangle_slider.setValue(0)
     self.rotavecangle_slider.setSingleStep(3)
     self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
@@ -1358,7 +1365,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       # quickly display data with a double click
       for i,scenelabel in enumerate(self.scenearraylabels):
         if self.millerarraylabels[row] == scenelabel:
-          self.DisplayData(i)
+          self.DisplayData(i, row)
 
 
   def onMillerTableitemSelectionChanged(self):
@@ -1374,7 +1381,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       if self.millerarraylabels[row] == scenelabel or self.millerarraylabels[row] + " + " in scenelabel:
         #print(i, scenelabel)
         myqa = QAction("Display %s data" %scenelabel, self.window, triggered=self.testaction)
-        myqa.setData(i)
+        myqa.setData((i, row))
         self.millertablemenu.addAction(myqa)
     myqa = QAction("Make new data as a function of this data...", self.window, triggered=self.testaction)
     myqa.setData( ("newdata_1", row ))
@@ -1401,9 +1408,9 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     data = action.data()
     # depending on what menu item the user clicked data is either an int or a (string, int) tuple
     if data is not None:
-      if type(data) is int:
-        idx = data
-        self.DisplayData(idx)
+      if type(data[0]) is int:
+        idx,row = data
+        self.DisplayData(idx,row)
       else:
         (strval, idx) = data
         self.operate_arrayidx1 = idx
@@ -1426,14 +1433,14 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
           self.PhilToJsRender('NGL_HKLviewer.tabulate_miller_array_ids = "%s"' %str(idx))
 
 
-  def DisplayData(self, idx):
+  def DisplayData(self, idx, row):
     self.PhilToJsRender("NGL_HKLviewer.viewer.scene_id = %d" %idx)
     if self.fileisvalid:
       self.functionTabWidget.setEnabled(True)
       self.expandAnomalouscheckbox.setEnabled(True)
       self.expandP1checkbox.setEnabled(True)
       # don' allow anomalous expansion for data that's already anomalous
-      arrayinfo = self.array_infotpls[idx]
+      arrayinfo = self.array_infotpls[row]
       isanomalous = arrayinfo[-1]
       spacegroup = arrayinfo[2]
       label = arrayinfo[0]
@@ -1568,8 +1575,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.socket.send(bytes(cmdstr))
 
 
-
-if __name__ == '__main__':
+def run():
   try:
     """
     If chromium webgl error on MacOS try using commandline arguments:
@@ -1596,3 +1602,7 @@ if __name__ == '__main__':
     sys.exit(ret)
   except Exception as e:
     print( str(e)  +  traceback.format_exc(limit=10) )
+
+
+if (__name__ == "__main__") :
+  run()

@@ -52,7 +52,7 @@ class Ui_MainWindow(object):
     self.label = QtWidgets.QLabel(self.widget_4)
     self.label.setObjectName("label")
     self.gridLayout_5.addWidget(self.label, 0, 0, 1, 1)
-    self.millertable = HeaderDataTableWidget(self.widget_4)
+    self.millertable = HKLviewer.HeaderDataTableWidget(self.widget_4)
     sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
     sizePolicy.setHorizontalStretch(0)
     sizePolicy.setVerticalStretch(0)
@@ -647,4 +647,4 @@ class Ui_MainWindow(object):
     self.actionExit.setText(QtWidgets.QApplication.translate("MainWindow", "Exit", None, -1))
 
 from PySide2.QtWebEngineWidgets import QWebEngineView
-from HKLviewer import HeaderDataTableWidget
+from crys3d.hklview import HKLviewer
