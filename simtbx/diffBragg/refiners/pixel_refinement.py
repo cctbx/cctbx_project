@@ -56,6 +56,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.plot_fcell = False
         self.log_fcells = True  # to refine Fcell using logarithms to avoid negative Fcells
         self.use_curvatures = False  # whether to use the curvatures
+        self.diag_mode = "always"
         self.refine_background_planes = False  # whether to refine the background planes
         self.refine_gain_fac = False  # whether to refine the gain factor
         self.refine_ncells = False  # whether to refine Ncells abc
@@ -332,15 +333,16 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         """
         pass
 
-    def run(self, setup=True):
+    def run(self, setup=True, setup_only=False):
         """runs the LBFGS minimizer"""
 
         if setup:
             self._setup()
             self._cache_roi_arrays()
+            if setup_only:
+                return
 
         if self.use_curvatures:
-            self.diag_mode = "always"
             self.minimizer = scitbx.lbfgs.run(
                 target_evaluator=self,
                 core_params=self._core_param,
