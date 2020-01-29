@@ -61,38 +61,86 @@ class experiment_filter(worker):
 
     return new_experiments, new_reflections
 
+  def check_cluster(self, experiment):
+    import numpy as np
+    from math import sqrt
+    experiment_unit_cell = experiment.crystal.get_unit_cell()
+    P = experiment_unit_cell.parameters()
+    features = [P[idx] for idx in self.cluster_data["idxs"]]
+    features = np.array(features).reshape(1,-1)
+    cov=self.cluster_data["populations"].fit_components[self.params.filter.unit_cell.cluster.covariance.component]
+    m_distance = sqrt(cov.mahalanobis(features))
+    return m_distance < self.params.filter.unit_cell.cluster.covariance.mahalanobis
+
   def run(self, experiments, reflections):
     if 'unit_cell' not in self.params.filter.algorithm: # so far only "unit_cell" algorithm is supported
       return experiments, reflections
 
     self.logger.log_step_time("FILTER_EXPERIMENTS")
 
-    # If the filter unit cell and/or space group params are Auto, use the corresponding scaling targets.
-    if self.params.filter.unit_cell.value.target_unit_cell == Auto:
-      if self.params.scaling.unit_cell is None:
-        try:
-          self.params.filter.unit_cell.value.target_unit_cell = self.params.statistics.average_unit_cell
-        except AttributeError:
-          pass
-      else:
-        self.params.filter.unit_cell.value.target_unit_cell = self.params.scaling.unit_cell
-    if self.params.filter.unit_cell.value.target_space_group == Auto:
-      self.params.filter.unit_cell.value.target_space_group = self.params.scaling.space_group
-
-    self.logger.log("Using filter target unit cell: %s"%str(self.params.filter.unit_cell.value.target_unit_cell))
-    self.logger.log("Using filter target space group: %s"%str(self.params.filter.unit_cell.value.target_space_group))
-
     experiment_ids_to_remove = []
     removed_for_unit_cell = 0
     removed_for_space_group = 0
-    for experiment in experiments:
-      if not self.check_space_group(experiment):
-        experiment_ids_to_remove.append(experiment.identifier)
-        removed_for_space_group += 1
-      elif not self.check_unit_cell(experiment):
-        experiment_ids_to_remove.append(experiment.identifier)
-        removed_for_unit_cell += 1
 
+# BEGIN BY-VALUE FILTER
+    if self.params.filter.unit_cell.algorithm == "value":
+    # If the filter unit cell and/or space group params are Auto, use the corresponding scaling targets.
+      if self.params.filter.unit_cell.value.target_unit_cell == Auto:
+        if self.params.scaling.unit_cell is None:
+          try:
+            self.params.filter.unit_cell.value.target_unit_cell = self.params.statistics.average_unit_cell
+          except AttributeError:
+            pass
+        else:
+          self.params.filter.unit_cell.value.target_unit_cell = self.params.scaling.unit_cell
+      if self.params.filter.unit_cell.value.target_space_group == Auto:
+        self.params.filter.unit_cell.value.target_space_group = self.params.scaling.space_group
+
+      self.logger.log("Using filter target unit cell: %s"%str(self.params.filter.unit_cell.value.target_unit_cell))
+      self.logger.log("Using filter target space group: %s"%str(self.params.filter.unit_cell.value.target_space_group))
+
+      for experiment in experiments:
+        if not self.check_space_group(experiment):
+          experiment_ids_to_remove.append(experiment.identifier)
+          removed_for_space_group += 1
+        elif not self.check_unit_cell(experiment):
+          experiment_ids_to_remove.append(experiment.identifier)
+          removed_for_unit_cell += 1
+# END BY-VALUE FILTER
+    elif self.params.filter.unit_cell.algorithm == "cluster":
+
+      from uc_metrics.clustering.util import get_population_permutation # implicit import
+      import pickle
+
+      class Empty: pass
+      if self.mpi_helper.rank == 0:
+        with open(self.params.filter.unit_cell.cluster.covariance.file,'rb') as F:
+          data = pickle.load(F)
+          E=Empty()
+          E.features_ = data["features"]
+          E.sample_name = data["sample"]
+          E.output_info = data["info"]
+          pop=data["populations"]
+          self.logger.main_log("Focusing on cluster component %d from previous analysis of %d cells"%(
+            self.params.filter.unit_cell.cluster.covariance.component, len(pop.labels)))
+          self.logger.main_log("%s noise %d order %s"%(pop.populations, pop.n_noise_, pop.main_components))
+
+          legend = pop.basic_covariance_compact_report(feature_vectors=E).getvalue()
+          self.logger.main_log(legend)
+          self.logger.main_log("Applying Mahalanobis cutoff of %.3f"%(self.params.filter.unit_cell.cluster.covariance.mahalanobis))
+        transmitted = data
+      else:
+        transmitted = None
+      # distribute cluster information to all ranks
+      self.cluster_data = self.mpi_helper.comm.bcast(transmitted, root=0)
+      # pull out the index numbers of the unit cell parameters to be used for covariance matrix
+      self.cluster_data["idxs"]=[["a","b","c","alpha","beta","gamma"].index(F) for F in self.cluster_data["features"]]
+
+      for experiment in experiments:
+        if not self.check_cluster(experiment):
+          experiment_ids_to_remove.append(experiment.identifier)
+          removed_for_unit_cell += 1
+# END OF COVARIANCE FILTER
     new_experiments, new_reflections = experiment_filter.remove_experiments(experiments, reflections, experiment_ids_to_remove)
 
     removed_reflections = len(reflections) - len(new_reflections)

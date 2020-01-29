@@ -206,6 +206,7 @@ def run(args,
 
   # model cannot be pickled
   validation.model = None
+  validation.model_statistics_geometry.model=None
 
   # polygon statistics
   validation.polygon_stats = validation.get_polygon_statistics(

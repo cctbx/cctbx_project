@@ -332,7 +332,8 @@ class hklview_3d:
 
   def SendInfoToGUI(self, mydict):
     if self.send_info_to_gui:
-      self.send_info_to_gui( str(mydict).encode("utf-8") )
+      self.send_info_to_gui( mydict )
+      #self.send_info_to_gui( str(mydict).encode("utf-8") )
 
 
   def update_settings(self, diff_phil, curphilparam) :
@@ -482,7 +483,7 @@ class hklview_3d:
     if scene_id is not None:
       self.viewerparams.scene_id = scene_id
       self.isinjected = False
-    if self.viewerparams and self.viewerparams.scene_id >= 0 and self.HKLscenes:
+    if self.viewerparams and self.viewerparams.scene_id is not None and self.viewerparams.scene_id >= 0 and self.HKLscenes:
       self.miller_array = self.HKLscenes[self.viewerparams.scene_id].miller_array
       self.scene = self.HKLscenes[self.viewerparams.scene_id]
     self.merge = merge

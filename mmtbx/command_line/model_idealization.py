@@ -650,7 +650,7 @@ class model_idealization():
       negate_selection = None
       if self.reference_map is None:
         outlier_selection_txt = mmtbx.building.loop_closure.utils. \
-          rama_score_selection(self.model, self.model.get_ramachandran_manager(), "outlier",1)
+          rama_score_selection(self.model.get_hierarchy(), self.model.get_ramachandran_manager(), "outlier",1)
         print("outlier_selection_txt", outlier_selection_txt, file=self.log)
         negate_selection = "all"
         if outlier_selection_txt != "" and outlier_selection_txt is not None:

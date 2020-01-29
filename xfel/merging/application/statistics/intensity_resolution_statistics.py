@@ -352,7 +352,7 @@ class intensity_resolution_statistics(worker):
     all_ranks_unmerged_meanIsig = []
     all_ranks_unmerged_stddevIsig = []
     all_ranks_unmerged_skewIsig = []
-    for bin_id in xrange(n_bins):
+    for bin_id in range(n_bins):
       all_ranks_isigi_list = self.mpi_helper.comm.gather(self.Isig_list[bin_id], 0)
       if self.mpi_helper.rank == 0:
         all_isigi = flex.double()

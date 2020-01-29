@@ -176,6 +176,7 @@ class manager(object):
     assert self.model.get_xray_structure() == self.fmodel.xray_structure
     self.sites = None
     self.heights = None
+    self.convert_water_adp()
     assert self.fmodel.xray_structure is self.model.get_xray_structure()
     if(self.find_peaks_params.max_number_of_peaks is None):
       if(self.model.solvent_selection().count(False) > 0):
@@ -238,20 +239,23 @@ class manager(object):
 
   def convert_water_adp(self):
     hd_sel     = self.model.get_hd_selection()
-    not_hd_sel = ~hd_sel
     sol_sel    = self.model.solvent_selection()
     not_sol_sel= ~sol_sel
     selection_aniso = self.model.get_xray_structure().use_u_aniso().deep_copy()
-    if(self.params.new_solvent == "anisotropic"):
-      selection_aniso.set_selected(sol_sel, True)
     selection_iso   = self.model.get_xray_structure().use_u_iso().deep_copy()
+    if(  self.params.new_solvent == "anisotropic"):
+      selection_aniso.set_selected(sol_sel, True)
+      selection_iso  .set_selected(sol_sel, False)
+    elif(self.params.new_solvent == "isotropic"):
+      selection_aniso.set_selected(sol_sel, False)
+      selection_iso  .set_selected(sol_sel, True)
+    else:
+      assert 0
     selection_aniso.set_selected(not_sol_sel, False)
     selection_iso  .set_selected(not_sol_sel, False)
     if(not self.is_neutron_scat_table):
       selection_aniso.set_selected(hd_sel, False)
       selection_iso.set_selected(hd_sel, False)
-    selection_aniso.set_selected(selection_iso, False)
-    selection_iso.set_selected(selection_aniso, False)
     self.model.get_xray_structure().convert_to_anisotropic(selection = selection_aniso)
     self.model.get_xray_structure().convert_to_isotropic(selection = selection_iso.iselection())
     self.fmodel.update_xray_structure(
@@ -259,13 +263,9 @@ class manager(object):
       update_f_calc  = True)
 
   def move_solvent_to_the_end_of_atom_list(self):
-    solsel = flex.bool(self.model.solvent_selection().count(False), False)
-    solsel.extend(flex.bool(self.model.solvent_selection().count(True), True))
     xrs_sol =  self.model.get_xray_structure().select(self.model.solvent_selection())
     if(xrs_sol.hd_selection().count(True) == 0):
-      self.reset_solvent(
-        solvent_selection      = solsel,
-        solvent_xray_structure = xrs_sol)
+      self.reset_solvent(solvent_xray_structure = xrs_sol)
     self.model.renumber_water()
     self.fmodel.xray_structure = self.model.get_xray_structure()
 
@@ -328,9 +328,7 @@ class manager(object):
         xray_structure = self.model.get_xray_structure(),
         update_f_calc  = True)
 
-  def reset_solvent(self, solvent_selection, solvent_xray_structure):
-    assert solvent_selection.count(True) == \
-      solvent_xray_structure.scatterers().size()
+  def reset_solvent(self, solvent_xray_structure):
     self.model = self.model.remove_solvent()
     self.model.add_solvent(
       solvent_xray_structure = solvent_xray_structure,

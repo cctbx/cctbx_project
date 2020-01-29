@@ -63,10 +63,7 @@ class experiment_scaler(worker):
       matching_indices = miller.match_multi_indices(miller_indices_unique = model_intensities.indices(), miller_indices = exp_intensities.indices())
 
       # Least squares
-      if self.params.scaling.mark0.fit_reference_to_experiment: # RB: in cxi-merge we fit reference to experiment, but we should really do it the other way
-        result = self.fit_reference_to_experiment(model_intensities, exp_intensities, matching_indices)
-      else:
-        result = self.fit_experiment_to_reference(model_intensities, exp_intensities, matching_indices)
+      result = self.fit_experiment_to_reference(model_intensities, exp_intensities, matching_indices)
 
       if result.error == scaling_result.err_low_signal:
         experiments_rejected_because_of_low_signal += 1
@@ -87,12 +84,8 @@ class experiment_scaler(worker):
 
       # apply scale factors
       if not self.params.postrefinement.enable:
-        if self.params.scaling.mark0.fit_reference_to_experiment:
-          exp_reflections['intensity.sum.value'] /= result.slope
-          exp_reflections['intensity.sum.variance'] /= (result.slope**2)
-        else:
-          exp_reflections['intensity.sum.value'] *= result.slope
-          exp_reflections['intensity.sum.variance'] *= (result.slope**2)
+        exp_reflections['intensity.sum.value'] *= result.slope
+        exp_reflections['intensity.sum.variance'] *= (result.slope**2)
 
       new_experiments.append(experiment)
       new_reflections.extend(exp_reflections)
@@ -187,78 +180,11 @@ class experiment_scaler(worker):
       result.error = scaling_result.err_low_correlation
       return result
 
-    if self.params.scaling.mark0.fit_offset:
-      # calculate slope and offset
-      DELTA = sum_w * sum_xx - sum_x**2 # see p. 105 in Bevington & Robinson
-      if abs(DELTA) < sys.float_info.epsilon:
-        result.error = scaling_result.err_low_signal
-        return result
-      result.slope = (sum_w * sum_xy - sum_x * sum_y) / DELTA
-      result.offset = (sum_xx * sum_y - sum_x * sum_xy) / DELTA
-    else: # calculate slope only
-      DELTA = sum_w * sum_xx
-      if abs(DELTA) < sys.float_info.epsilon:
-        result.error = scaling_result.err_low_signal
-        return result
-      result.slope = sum_w * sum_xy / DELTA
-
-    return result
-
-  def fit_reference_to_experiment(self, model_intensities, experiment_intensities, matching_indices):
-    'Scale the reference, or model, intensities to the observed intensities, using a linear least squares fit.'
-    # Y = offset + slope * X, where Y is I_o and X is I_r
-
-    result = scaling_result()
-    result.data_count = matching_indices.pairs().size()
-
-    if result.data_count == 0:
+    DELTA = sum_w * sum_xx
+    if abs(DELTA) < sys.float_info.epsilon:
       result.error = scaling_result.err_low_signal
       return result
-
-    # Do various auxilliary summations
-    sum_xx = 0.
-    sum_xy = 0.
-    sum_yy = 0.
-    sum_x = 0.
-    sum_y = 0.
-    sum_w = 0.
-    for pair in matching_indices.pairs():
-      I_w = 1. # Use unit weights for starters
-      I_r = model_intensities.data()[pair[0]]
-      I_o = experiment_intensities.data()[pair[1]]
-
-      sum_xx += I_w * I_r**2
-      sum_yy += I_w * I_o**2
-      sum_xy += I_w * I_o * I_r
-      sum_x += I_w * I_r
-      sum_y += I_w * I_o
-      sum_w += I_w
-
-    # calculate Pearson correlation coefficient between X and Y and test it
-    DELTA_1 = result.data_count * sum_xx - sum_x**2
-    DELTA_2 = result.data_count * sum_yy - sum_y**2
-    if (abs(DELTA_1) < sys.float_info.epsilon) or (abs(DELTA_2) < sys.float_info.epsilon):
-      result.error = scaling_result.err_low_signal
-      return result
-    result.correlation = (result.data_count * sum_xy - sum_x * sum_y) / (math.sqrt(DELTA_1) * math.sqrt(DELTA_2))
-    if result.correlation < self.params.filter.outlier.min_corr:
-      result.error = scaling_result.err_low_correlation
-      return result
-
-    if self.params.scaling.mark0.fit_offset:
-      # calculate slope and offset
-      DELTA = sum_w * sum_xx - sum_x**2 # see p. 105 in Bevington & Robinson
-      if abs(DELTA) < sys.float_info.epsilon:
-        result.error = scaling_result.err_low_signal
-        return result
-      result.slope = (sum_w * sum_xy - sum_x * sum_y) / DELTA
-      result.offset = (sum_xx * sum_y - sum_x * sum_xy) / DELTA
-    else: # calculate slope only
-      DELTA = sum_w * sum_xx
-      if abs(DELTA) < sys.float_info.epsilon:
-        result.error = scaling_result.err_low_signal
-        return result
-      result.slope = sum_w * sum_xy / DELTA
+    result.slope = sum_w * sum_xy / DELTA
 
     return result
 

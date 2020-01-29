@@ -13,6 +13,7 @@ from libtbx import easy_mp
 import os
 import sys
 from six.moves import range
+import mmtbx.model
 
 def summary(pdb_file=None, pdb_hierarchy=None):
   header_info = None
@@ -26,9 +27,9 @@ def summary(pdb_file=None, pdb_hierarchy=None):
       pdb_file=pdb_file)
   else :
     assert (pdb_file is None)
+  model = mmtbx.model.manager(model_input = pdb_hierarchy.as_pdb_input())
   return molprobity.molprobity(
-    None,
-    pdb_hierarchy=pdb_hierarchy,
+    model=model,
     keep_hydrogens=False,
     header_info=header_info).summarize()
 

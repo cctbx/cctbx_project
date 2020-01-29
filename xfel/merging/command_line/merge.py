@@ -101,7 +101,7 @@ class Script(object):
     import importlib
 
     workers = []
-    steps = default_steps if self.params.dispatch.step_list is None else self.params.dispatch.step_list
+    steps = default_steps if self.params.dispatch.step_list == [] else self.params.dispatch.step_list
     for step in steps:
       step_factory_name = step
       step_additional_info = []

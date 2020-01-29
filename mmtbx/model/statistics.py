@@ -7,7 +7,7 @@ import iotbx.cif.model
 from libtbx.test_utils import approx_equal
 from libtbx import group_args
 from libtbx.utils import null_out
-
+from mmtbx.validation import rama_z
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.cbetadev import cbetadev
@@ -18,364 +18,27 @@ from mmtbx.validation import cablam
 from cctbx import adptbx
 import six
 
-#class geometry(object):
-#  def __init__(self,
-#               model,
-#               fast_clash=False,
-#               condensed_probe=False,
-#               use_hydrogens=True,
-#               use_nuclear=False):
-#    self.model = model
-#    self.pdb_hierarchy = model.get_hierarchy()
-#    self.fast_clash = fast_clash
-#    self.condensed_probe = condensed_probe
-#    self.restraints_source = None
-#    self.from_restraints = None
-#    self.use_hydrogens = use_hydrogens
-#    self.use_nuclear = use_nuclear
-#    self.cached_result = None
-#    self.cached_clash = None
-#    self.cached_rama = None
-#    self.cached_rota = None
-#    self._init(self.pdb_hierarchy, model.restraints_manager.geometry)
-#
-#  def _init(self, pdb_hierarchy=None, geometry_restraints_manager=None):
-#    # XXX Really, this should be part of constructor (to avoid confusion)!
-#    if(pdb_hierarchy is not None):
-#      self.pdb_hierarchy = pdb_hierarchy
-#    if(geometry_restraints_manager is not None):
-#      self.restraints_source = geometry_restraints_manager.get_source()
-#      sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
-#      working_geometry_restraints_manager = geometry_restraints_manager
-#      if(not self.use_hydrogens):
-#        asc = self.pdb_hierarchy.atom_selection_cache()
-#        sel = asc.selection("not (element H or element D)")
-#        sites_cart = sites_cart.select(sel)
-#        working_geometry_restraints_manager = geometry_restraints_manager.select(sel)
-#      self.from_restraints = \
-#        working_geometry_restraints_manager.energies_sites(
-#          sites_cart        = sites_cart,
-#          compute_gradients = False)
-#      assert approx_equal(
-#        self.from_restraints.target,
-#        self.from_restraints.angle_residual_sum+
-#        self.from_restraints.bond_residual_sum+
-#        self.from_restraints.chirality_residual_sum+
-#        self.from_restraints.dihedral_residual_sum+
-#        self.from_restraints.nonbonded_residual_sum+
-#        self.from_restraints.planarity_residual_sum+
-#        self.from_restraints.parallelity_residual_sum+
-#        self.from_restraints.reference_coordinate_residual_sum+
-#        self.from_restraints.reference_dihedral_residual_sum+
-#        self.from_restraints.ncs_dihedral_residual_sum+
-#        self.from_restraints.den_residual_sum+
-#        self.from_restraints.ramachandran_residual_sum)
-#
-#  def angle(self):
-#    mi,ma,me,n = 0,0,0,0
-#    outliers = 0
-#    if(self.from_restraints is not None):
-#      mi,ma,me = self.from_restraints.angle_deviations()
-#      n = self.from_restraints.get_filtered_n_angle_proxies()
-#      outliers = self.from_restraints.angle_proxies.get_outliers(
-#        sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
-#        sigma_threshold=4)
-#    return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
-#
-#  def bond(self):
-#    mi,ma,me,n = 0,0,0,0
-#    outliers = 0
-#    if(self.from_restraints is not None):
-#      mi,ma,me = self.from_restraints.bond_deviations()
-#      n = self.from_restraints.get_filtered_n_bond_proxies()
-#      outliers = self.from_restraints.bond_proxies.get_outliers(
-#        sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
-#        sigma_threshold=4)
-#    return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
-#
-#  def chirality(self):
-#    mi,ma,me,n = 0,0,0,0
-#    if(self.from_restraints is not None):
-#      mi,ma,me = self.from_restraints.chirality_deviations()
-#      n = self.from_restraints.n_chirality_proxies
-#    return group_args(min = mi, max = ma, mean = me, n = n)
-#
-#  def dihedral(self):
-#    mi,ma,me,n = 0,0,0,0
-#    outliers = 0
-#    if(self.from_restraints is not None):
-#      mi,ma,me = self.from_restraints.dihedral_deviations()
-#      n = self.from_restraints.get_filtered_n_dihedral_proxies()
-#      outliers = self.from_restraints.dihedral_proxies.get_outliers(
-#        sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
-#        sigma_threshold=4)
-#    return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
-#
-#  def planarity(self):
-#    mi,ma,me,n = 0,0,0,0
-#    if(self.from_restraints is not None):
-#      mi,ma,me = self.from_restraints.planarity_deviations()
-#      n = self.from_restraints.get_filtered_n_planarity_proxies()
-#    return group_args(min = mi, max = ma, mean = me, n = n)
-#
-#  def parallelity(self):
-#    mi,ma,me,n = 0,0,0,0
-#    if(self.from_restraints is not None):
-#      mi,ma,me = self.from_restraints.parallelity_deviations()
-#      n = self.from_restraints.n_parallelity_proxies
-#    return group_args(min = mi, max = ma, mean = me, n = n)
-#
-#  def nonbonded(self):
-#    mi,ma,me,n = 0,0,0,0
-#    if(self.from_restraints is not None):
-#      mi,ma,me = self.from_restraints.nonbonded_deviations()
-#      n = self.from_restraints.n_nonbonded_proxies
-#    return group_args(min = mi, max = ma, mean = me, n = n)
-#
-#  def ramachandran(self):
-#    if self.cached_rama is None:
-#      self.cached_rama = ramalyze(
-#          pdb_hierarchy = self.pdb_hierarchy,
-#          outliers_only = False)
-#    return group_args(
-#      outliers = self.cached_rama.percent_outliers,
-#      allowed  = self.cached_rama.percent_allowed,
-#      favored  = self.cached_rama.percent_favored,
-#      ramalyze = self.cached_rama #XXX Bulky object -- REMOVE!
-#      )
-#
-#  def rotamer(self):
-#    if self.cached_rota is None:
-#      self.cached_rota = rotalyze(
-#          pdb_hierarchy = self.pdb_hierarchy,
-#          outliers_only = False)
-#    return group_args(
-#      outliers = self.cached_rota.percent_outliers,
-#      rotalyze = self.cached_rota #XXX Bulky object -- REMOVE!
-#      )
-#
-#  def c_beta(self):
-#    result = cbetadev(pdb_hierarchy = self.pdb_hierarchy,
-#      outliers_only = True, out = null_out()) # XXX Why it is different from others?
-#    return group_args(
-#      outliers = result.get_outlier_percent(),
-#      cbetadev = result #XXX Bulky object -- REMOVE!
-#      )
-#
-#  def clash(self):
-#    if self.cached_clash is None:
-#      self.cached_clash = clashscore(pdb_hierarchy = self.pdb_hierarchy,
-#                                     fast = self.fast_clash,
-#                                     condensed_probe=self.condensed_probe,
-#                                     keep_hydrogens = self.use_hydrogens,
-#                                     nuclear = self.use_nuclear,
-#      )
-#    return group_args(
-#      score   = self.cached_clash.get_clashscore(),
-#      clashes = self.cached_clash #XXX Bulky object -- REMOVE! - Not kidding,
-#          # it contains 1 probe output, which can be GigaBytes!
-#      )
-#
-#  def cablam(self):
-#    result = cablam.cablamalyze(self.pdb_hierarchy, outliers_only=False,
-#      out=null_out(), quiet=True) # XXX Why it is different from others?
-#    gui_table = group_args(column_labels = result.gui_list_headers,
-#                           column_formats = result.gui_formats,
-#                           data = result.as_gui_table_data(include_zoom=True),
-#                           column_widths = result.wx_column_widths)
-#    return group_args(
-#      outliers    = result.percent_outliers(),
-#      disfavored  = result.percent_disfavored(),
-#      ca_outliers = result.percent_ca_outliers(),
-#      gui_table   = gui_table)
-#
-#  def rama_z_score(self):
-#    return rama_z.rama_z(model = self.model, log = null_out()).get_result()
-#
-#  def omega(self):
-#    result = omegalyze.omegalyze(pdb_hierarchy=self.pdb_hierarchy, quiet=True)
-#    # XXX Move this to omegalyze function.
-#    n_proline         = result.n_proline()
-#    n_general         = result.n_general()
-#    n_cis_proline     = result.n_cis_proline()
-#    n_cis_general     = result.n_cis_general()
-#    n_twisted_proline = result.n_twisted_proline()
-#    n_twisted_general = result.n_twisted_general()
-#    cis_general       = 0
-#    twisted_general   = 0
-#    cis_proline       = 0
-#    twisted_proline   = 0
-#    if(n_proline != 0):
-#      cis_proline     = n_cis_proline    *100./n_proline
-#      twisted_proline = n_twisted_proline*100./n_proline
-#    if(n_general != 0):
-#      cis_general     = n_cis_general    *100./n_general
-#      twisted_general = n_twisted_general*100./n_general
-#    return group_args(
-#      cis_proline       = cis_proline,
-#      cis_general       = cis_general,
-#      twisted_general   = twisted_general,
-#      twisted_proline   = twisted_proline,
-#      n_twisted_general = n_twisted_general,
-#      omegalyze         = result #XXX Bulky object -- REMOVE!
-#      )
-#
-#  def mp_score(self):
-#    return molprobity_score(
-#      clashscore = self.clash().score,
-#      rota_out   = self.rotamer().outliers,
-#      rama_fav   = self.ramachandran().favored)
-#
-#  def result(self, slim=False):
-#    if(self.cached_result is None):
-#      self.cached_result = group_args(
-#         angle            = self.angle(),
-#         bond             = self.bond(),
-#         chirality        = self.chirality(),
-#         dihedral         = self.dihedral(),
-#         planarity        = self.planarity(),
-#         parallelity      = self.parallelity(),
-#         nonbonded        = self.nonbonded(),
-#         ramachandran     = self.ramachandran(),
-#         rotamer          = self.rotamer(),
-#         c_beta           = self.c_beta(),
-#         clash            = self.clash(),
-#         molprobity_score = self.mp_score(),
-#         cablam           = self.cablam(),
-#         omega            = self.omega(),
-#         rama_z           = self.rama_z_score())
-#    if(slim):
-#      delattr(self.cached_result.ramachandran, "ramalyze")
-#      delattr(self.cached_result.clash,        "clashes")
-#      delattr(self.cached_result.rotamer,      "rotalyze")
-#      delattr(self.cached_result.cablam,       "gui_table")
-#      delattr(self.cached_result.omega,        "omegalyze")
-#      delattr(self.cached_result.c_beta,       "cbetadev")
-#      delattr(self.cached_result.angle,        "outliers")
-#      delattr(self.cached_result.bond,         "outliers")
-#      delattr(self.cached_result.dihedral,     "outliers")
-#    return self.cached_result
-#
-#  def show_short(self):
-#    r = self.result()
-#    f="bond: %6.3f angle: %6.2f clash: %5.1f rota: %5.2f rama_f: %6.2f rama_o: %6.2f cb: %6.2f"
-#    return f%(r.bond.mean, r.angle.mean, r.clash.score, r.rotamer.outliers,
-#      r.ramachandran.favored, r.ramachandran.outliers, r.c_beta.outliers)
-#
-#  def show(self, log=None, prefix="", uppercase=True):
-#    if(log is None): log = sys.stdout
-#    def fmt(f1,f2,d1):
-#      fmt_str= "%6.3f %7.3f %6d"
-#      if f1 is None  : return '   -       -       -  '
-#      return fmt_str%(f1,f2,d1)
-#    def fmt2(f1):
-#      if f1 is None: return '  -   '
-#      return "%-6.3f"%(f1)
-#    res = self.result()
-#    a,b,c,d,p,n = res.angle, res.bond, res.chirality, res.dihedral, \
-#      res.planarity, res.nonbonded
-#    result = "%s" % prefix
-#    result += """
-#%sGeometry Restraints Library: %s
-#%sDeviations from Ideal Values.
-#%s  Bond      : %s
-#%s  Angle     : %s
-#%s  Chirality : %s
-#%s  Planarity : %s
-#%s  Dihedral  : %s
-#%s  Min Nonbonded Distance : %s
-#%s"""%(prefix,
-#       self.restraints_source,
-#       prefix,
-#       prefix, fmt(b.mean, b.max, b.n),
-#       prefix, fmt(a.mean, a.max, a.n),
-#       prefix, fmt(c.mean, c.max, c.n),
-#       prefix, fmt(p.mean, p.max, p.n),
-#       prefix, fmt(d.mean, d.max, d.n),
-#       prefix, fmt2(n.min).strip(),
-#       prefix)
-#    result += """
-#%sMolprobity Statistics.
-#%s  All-atom Clashscore : %s
-#%s  Ramachandran Plot:
-#%s    Outliers : %5.2f %%
-#%s    Allowed  : %5.2f %%
-#%s    Favored  : %5.2f %%
-#%s  Rotamer Outliers : %5.2f %%
-#%s  Cbeta Deviations : %5.2f %%
-#%s  Peptide Plane:
-#%s    Cis-proline     : %s %%
-#%s    Cis-general     : %s %%
-#%s    Twisted Proline : %s %%
-#%s    Twisted General : %s %%"""%(
-#        prefix,
-#        prefix, format_value("%5.2f", res.clash.score).strip(),
-#        prefix,
-#        prefix, res.ramachandran.outliers,
-#        prefix, res.ramachandran.allowed,
-#        prefix, res.ramachandran.favored,
-#        prefix, res.rotamer.outliers,
-#        prefix, res.c_beta.outliers,
-#        prefix,
-#        prefix, format_value("%5.2f", res.omega.cis_proline).strip(),
-#        prefix, format_value("%5.2f", res.omega.cis_general).strip(),
-#        prefix, format_value("%5.2f", res.omega.twisted_proline).strip(),
-#        prefix, format_value("%5.2f", res.omega.twisted_general).strip())
-#    result += """
-#%s"""%prefix
-#    result += res.rama_z.as_string(prefix=prefix)
-#    if( uppercase ):
-#      result = result.upper()
-#    print(result, file=log)
-#
-#  def as_cif_block(self, cif_block=None, pdbx_refine_id=''):
-#    if cif_block is None:
-#      cif_block = iotbx.cif.model.block()
-#    cif_block["_refine.pdbx_stereochemistry_target_values"] = \
-#        self.restraints_source if self.restraints_source is not None else '?'
-#    loop = iotbx.cif.model.loop(header=(
-#      "_refine_ls_restr.pdbx_refine_id",
-#      "_refine_ls_restr.type",
-#      "_refine_ls_restr.number",
-#      "_refine_ls_restr.dev_ideal",
-#      #"_refine_ls_restr.dev_ideal_target",
-#      "_refine_ls_restr.weight",
-#      #"_refine_ls_restr.pdbx_refine_id",
-#      "_refine_ls_restr.pdbx_restraint_function",
-#    ))
-#    res = self.result()
-#    a,b,c,d,p,n = res.angle, res.bond, res.chirality, res.dihedral, \
-#      res.planarity, res.nonbonded
-#    loop.add_row((pdbx_refine_id, "f_bond_d",           b.n, round_4_for_cif(b.mean), "?", "?"))
-#    loop.add_row((pdbx_refine_id, "f_angle_d",          a.n, round_4_for_cif(a.mean), "?", "?"))
-#    loop.add_row((pdbx_refine_id, "f_chiral_restr",     c.n, round_4_for_cif(c.mean), "?", "?"))
-#    loop.add_row((pdbx_refine_id, "f_plane_restr",      p.n, round_4_for_cif(p.mean), "?", "?"))
-#    loop.add_row((pdbx_refine_id, "f_dihedral_angle_d", d.n, round_4_for_cif(d.mean), "?", "?"))
-#    cif_block.add_loop(loop)
-#    return cif_block
-
 class geometry(object):
   def __init__(self,
-               pdb_hierarchy,
+               model,
                fast_clash=False,
                condensed_probe=False,
-               use_hydrogens=True,
-               use_nuclear=False,
-               geometry_restraints_manager=None):
-    self.pdb_hierarchy = pdb_hierarchy
+               use_hydrogens=True):
+    self.model = model
+    self.pdb_hierarchy = model.get_hierarchy()
     self.fast_clash = fast_clash
     self.condensed_probe = condensed_probe
     self.restraints_source = None
     self.from_restraints = None
     self.use_hydrogens = use_hydrogens
-    self.use_nuclear = use_nuclear
     self.cached_result = None
     self.cached_clash = None
     self.cached_rama = None
     self.cached_rota = None
-    self.update(self.pdb_hierarchy, geometry_restraints_manager)
+    self._init(self.pdb_hierarchy, model.restraints_manager.geometry)
 
-  def update(self, pdb_hierarchy=None, geometry_restraints_manager=None):
+  def _init(self, pdb_hierarchy=None, geometry_restraints_manager=None):
+    # XXX Really, this should be part of constructor (to avoid confusion)!
     if(pdb_hierarchy is not None):
       self.pdb_hierarchy = pdb_hierarchy
     if(geometry_restraints_manager is not None):
@@ -499,12 +162,12 @@ class geometry(object):
 
   def clash(self):
     if self.cached_clash is None:
-      self.cached_clash = clashscore(pdb_hierarchy = self.pdb_hierarchy,
-                                     fast = self.fast_clash,
-                                     condensed_probe=self.condensed_probe,
-                                     keep_hydrogens = self.use_hydrogens,
-                                     nuclear = self.use_nuclear,
-      )
+      self.cached_clash = clashscore(
+        pdb_hierarchy   = self.pdb_hierarchy,
+        fast            = self.fast_clash,
+        condensed_probe = self.condensed_probe,
+        keep_hydrogens  = self.use_hydrogens,
+        nuclear         = self.model.is_neutron())
     return group_args(
       score   = self.cached_clash.get_clashscore(),
       clashes = self.cached_clash #XXX Bulky object -- REMOVE! - Not kidding,
@@ -523,6 +186,9 @@ class geometry(object):
       disfavored  = result.percent_disfavored(),
       ca_outliers = result.percent_ca_outliers(),
       gui_table   = gui_table)
+
+  def rama_z_score(self):
+    return rama_z.rama_z(model = self.model, log = null_out()).get_result()
 
   def omega(self):
     result = omegalyze.omegalyze(pdb_hierarchy=self.pdb_hierarchy, quiet=True)
@@ -573,8 +239,9 @@ class geometry(object):
          c_beta           = self.c_beta(),
          clash            = self.clash(),
          molprobity_score = self.mp_score(),
-         cablam           = self.cablam(), # hopefully stable
-         omega            = self.omega())
+         cablam           = self.cablam(),
+         omega            = self.omega(),
+         rama_z           = self.rama_z_score())
     if(slim):
       delattr(self.cached_result.ramachandran, "ramalyze")
       delattr(self.cached_result.clash,        "clashes")
@@ -652,6 +319,9 @@ class geometry(object):
         prefix, format_value("%5.2f", res.omega.cis_general).strip(),
         prefix, format_value("%5.2f", res.omega.twisted_proline).strip(),
         prefix, format_value("%5.2f", res.omega.twisted_general).strip())
+    result += """
+%s"""%prefix
+    result += res.rama_z.as_string(prefix=prefix)
     if( uppercase ):
       result = result.upper()
     print(result, file=log)
