@@ -355,7 +355,7 @@ def refine_hierarchical(params, merged_scope, combine_phil):
     if i == params.start_at_hierarchy_level:
       command = "dials.refine %s %s_%s.expt %s_%s.refl"%(refine_phil_file, params.tag, input_name, params.tag, input_name)
     else:
-      command = "dials.refine %s %s_%slevel%d.expt %s_%s_level%d.refl"%(refine_phil_file, params.tag, input_name, i-1, params.tag, input_name, i-1)
+      command = "dials.refine %s %s_%s_level%d.expt %s_%s_level%d.refl"%(refine_phil_file, params.tag, input_name, i-1, params.tag, input_name, i-1)
 
     diff_phil += "refinement.parameterisation.detector.hierarchy_level=%d\n"%i
 
