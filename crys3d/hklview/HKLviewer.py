@@ -23,8 +23,10 @@ from PySide2.QtGui import QColor, QFont, QCursor, QKeySequence
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
 import sys, zmq, subprocess, time, traceback, shutil, zlib, math, csv, io
 
-from crys3d.hklview import HKLviewerGui
-
+try: # if invoked by cctbx.python or some such
+  from crys3d.hklview import HKLviewerGui
+except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
+  import HKLviewerGui
 
 class MakeNewDataForm(QDialog):
   def __init__(self, parent=None):
@@ -254,9 +256,10 @@ class MyQMainWindow(QMainWindow):
 
 #class NGL_HKLViewer(QWidget):
 class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
-  def __init__(self):
+  def __init__(self, thisapp):
     self.window = MyQMainWindow(self)
     self.setupUi(self.window)
+    self.app = thisapp
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
     self.actiondebug.triggered.connect(self.DebugInteractively)
     self.actionSettings.triggered.connect(self.SettingsDialog)
@@ -869,9 +872,9 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def onFontsizeChanged(self, val):
-    font = app.font()
+    font = self.app.font()
     font.setPointSize(val);
-    app.setFont(font);
+    self.app.setFont(font);
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
 
 
@@ -1592,7 +1595,7 @@ def run():
       sys.argv.append("--js-flags='--expose_gc'")
 
     app = QApplication(sys.argv)
-    guiobj = NGL_HKLViewer()
+    guiobj = NGL_HKLViewer(app)
     timer = QTimer()
     timer.setInterval(20)
     timer.timeout.connect(guiobj.ProcessMessages)

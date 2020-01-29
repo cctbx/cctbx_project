@@ -1240,7 +1240,7 @@ function MakeHKL_Axis(mshape)
       for j,val in enumerate(self.colourgradientvalues):
         vstr = ""
         alpha = 1.0
-        rgb = roundoff(val[1], 1)
+        rgb = (int(val[1][0]), int(val[1][1]), int(val[1][2]) )
         gradval = "rgba(%s, %s, %s, %s)" %(rgb[0], rgb[1], rgb[2], alpha)
         if j%10 == 0 or j==len(self.colourgradientvalues)-1 :
           vstr = str( roundoff(val[0], 2) )
@@ -1255,75 +1255,7 @@ function MakeHKL_Axis(mshape)
   //colourgradvalarrays
   %s
 
-  var ih = 3,
-  topr = 35,
-  topr2 = 10,
-  lp = 10,
-  wp = 40,
-  lp2 = lp + wp,
-  gl = 3,
-  wp2 = gl,
-  fomlabelheight = 25;
-  if (colourgradvalarray.length === 1)
-  {
-    wp2 = 15;
-    fomlabelheight = 0;
-  }
-
-  var wp3 = wp + colourgradvalarray.length * wp2 + 2;
-
-  totalheight = ih*colourgradvalarray[0].length + 35 + fomlabelheight;
-  // make a white box on top of which boxes with transparent background are placed
-  // containing the colour values at regular intervals as well as label legend of
-  // the displayed miller array
-  addDivBox("", topr2, lp, wp3, totalheight, 'rgba(255.0, 255.0, 255.0, 1.0)');
-
-  // print label of the miller array used for colouring
-  addDivBox("%s", topr2, lp, wp, 20);
-
-  if (colourgradvalarray.length > 1)
-  {
-    // print FOM label, 1, 0.5 and 0.0 values below colour chart
-    fomtop = topr2 + totalheight - 18;
-    fomlp = lp + wp;
-    fomwp = wp3;
-    fomtop2 = fomtop - 13;
-    // print the 1 number
-    addDivBox("1", fomtop2, fomlp, fomwp, 20);
-    // print the 0.5 number
-    leftp = fomlp + 0.48 * gl * colourgradvalarray.length;
-    addDivBox("0.5", fomtop2, leftp, fomwp, 20);
-    // print the FOM label
-    addDivBox("%s", fomtop, fomlp, fomwp, 20);
-    // print the 0 number
-    leftp = fomlp + 0.96 * gl * colourgradvalarray.length;
-    addDivBox("0", fomtop2, leftp, fomwp, 20);
-  }
-
-  for (j = 0; j < colourgradvalarray[0].length; j++)
-  {
-    rgbcol = colourgradvalarray[0][j][1];
-    val = colourgradvalarray[0][j][0];
-    topv = j*ih + topr;
-    toptxt = topv - 5;
-    // print value of miller array if present in colourgradvalarray[0][j][0]
-    addDivBox(val, toptxt, lp, wp, ih);
-  }
-
-  // draw the colour gradient
-  for (g = 0; g < colourgradvalarray.length; g++)
-  {
-    leftp = g*gl + lp + wp;
-    // if FOM values are supplied draw colour gradients with decreasing
-    // saturation values as stored in the colourgradvalarray[g] arrays
-    for (j = 0; j < colourgradvalarray[g].length; j++)
-    {
-      rgbcol = colourgradvalarray[g][j][1];
-      val = colourgradvalarray[g][j][0];
-      topv = j*ih + topr;
-      addDivBox("", topv, leftp, wp2, ih, rgbcol);
-    }
-  }
+  ColourChart("%s", "%s");
 
     """ % (colourgradstrs, colourlabel, fomlabel)
 
@@ -1351,7 +1283,6 @@ function createElement(name, properties, style)
   {
       display: "block",
       position: "absolute",
-      color: "black",
       fontFamily: "sans-serif",
       fontSize: "smaller",
   }
@@ -1373,7 +1304,7 @@ function addElement(el)
 }
 
 
-function addDivBox(txt, t, l, w, h, bgcolour='rgba(255.0, 255.0, 255.0, 0.0)')
+function addDivBox(txt, t, l, w, h, bgcolour="rgba(255, 255, 255, 0.0)")
 {
   divbox = createElement("div",
   {
@@ -1381,7 +1312,7 @@ function addDivBox(txt, t, l, w, h, bgcolour='rgba(255.0, 255.0, 255.0, 0.0)')
   },
   {
     backgroundColor: bgcolour,
-    color:  'rgba(0.0, 0.0, 0.0, 1.0)',
+    color:  "rgba(0, 0, 0, 1.0)",
     top: t.toString() + "px",
     left: l.toString() + "px",
     width: w.toString() + "px",
@@ -1424,7 +1355,7 @@ try
 catch(err)
 {
   alert('JavaScriptError: ' + err.stack );
-  addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100.0, 100.0, 100.0, 0.0));
+  addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100, 100, 100, 0.0));
 }
 
 
@@ -1444,7 +1375,7 @@ function WebsockSendMsg(msg)
   catch(err)
   {
     alert('JavaScriptError: ' + err.stack );
-    addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100.0, 100.0, 100.0, 0.0));
+    addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100, 100, 100, 0.0));
   }
 }
 
@@ -1657,13 +1588,85 @@ PickingProxyfunc = function(pickingProxy)
 };
 
 
+function ColourChart(millerlabel, fomlabel)
+{
+  var ih = 3,
+  topr = 35,
+  topr2 = 10,
+  lp = 10,
+  wp = 40,
+  lp2 = lp + wp,
+  gl = 3,
+  wp2 = gl,
+  fomlabelheight = 25;
+  if (colourgradvalarray.length === 1)
+  {
+    wp2 = 15;
+    fomlabelheight = 0;
+  }
+
+  var wp3 = wp + colourgradvalarray.length * wp2 + 2;
+
+  totalheight = ih*colourgradvalarray[0].length + 35 + fomlabelheight;
+  // make a white box on top of which boxes with transparent background are placed
+  // containing the colour values at regular intervals as well as label legend of
+  // the displayed miller array
+  addDivBox("", topr2, lp, wp3, totalheight, 'rgba(255, 255, 255, 1.0)');
+
+  // print label of the miller array used for colouring
+  addDivBox(millerlabel, topr2, lp, wp, 20);
+
+  if (colourgradvalarray.length > 1)
+  {
+    // print FOM label, 1, 0.5 and 0.0 values below colour chart
+    fomtop = topr2 + totalheight - 18;
+    fomlp = lp + wp;
+    fomwp = wp3;
+    fomtop2 = fomtop - 13;
+    // print the 1 number
+    addDivBox("1", fomtop2, fomlp, fomwp, 20);
+    // print the 0.5 number
+    leftp = fomlp + 0.48 * gl * colourgradvalarray.length;
+    addDivBox("0.5", fomtop2, leftp, fomwp, 20);
+    // print the FOM label
+    addDivBox(fomlabel, fomtop, fomlp, fomwp, 20);
+    // print the 0 number
+    leftp = fomlp + 0.96 * gl * colourgradvalarray.length;
+    addDivBox("0", fomtop2, leftp, fomwp, 20);
+  }
+
+  for (j = 0; j < colourgradvalarray[0].length; j++)
+  {
+    rgbcol = colourgradvalarray[0][j][1];
+    val = colourgradvalarray[0][j][0];
+    topv = j*ih + topr;
+    toptxt = topv - 5;
+    // print value of miller array if present in colourgradvalarray[0][j][0]
+    addDivBox(val, toptxt, lp, wp, ih);
+  }
+
+  // draw the colour gradient
+  for (g = 0; g < colourgradvalarray.length; g++)
+  {
+    leftp = g*gl + lp + wp;
+    // if FOM values are supplied draw colour gradients with decreasing
+    // saturation values as stored in the colourgradvalarray[g] arrays
+    for (j = 0; j < colourgradvalarray[g].length; j++)
+    {
+      rgbcol = colourgradvalarray[g][j][1];
+      val = colourgradvalarray[g][j][0];
+      topv = j*ih + topr;
+      addDivBox("", topv, leftp, wp2, ih, rgbcol);
+    }
+  }
+}
 
 
 function HKLscene()
 {
   shape = new NGL.Shape('shape');
   //vectorshape = new NGL.Shape('vectorshape');
-  stage = new NGL.Stage('viewport', { backgroundColor: "grey",
+  stage = new NGL.Stage('viewport', { // backgroundColor: "grey",
                                       tooltip:false, // create our own tooltip from a div element
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );

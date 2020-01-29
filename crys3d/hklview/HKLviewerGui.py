@@ -647,4 +647,7 @@ class Ui_MainWindow(object):
     self.actionExit.setText(QtWidgets.QApplication.translate("MainWindow", "Exit", None, -1))
 
 from PySide2.QtWebEngineWidgets import QWebEngineView
-from crys3d.hklview import HKLviewer
+try: # if invoked by cctbx.python or some such
+  from crys3d.hklview import HKLviewer
+except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
+  import HKLviewer
