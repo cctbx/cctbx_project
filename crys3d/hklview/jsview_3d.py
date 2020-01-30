@@ -1234,7 +1234,6 @@ function MakeHKL_Axis(mshape)
       for j,e in enumerate(colourgradarray):
         self.colourgradientvalues.append( [colourscalararray[j], e] )
       self.colourgradientvalues = roundoff( self.colourgradientvalues )
-
       fom = fomarrays[g]
       colourgradstr = []
       for j,val in enumerate(self.colourgradientvalues):
@@ -1243,9 +1242,8 @@ function MakeHKL_Axis(mshape)
         rgb = (int(val[1][0]), int(val[1][1]), int(val[1][2]) )
         gradval = "rgba(%s, %s, %s, %s)" %(rgb[0], rgb[1], rgb[2], alpha)
         if j%10 == 0 or j==len(self.colourgradientvalues)-1 :
-          vstr = str( roundoff(val[0], 2) )
+          vstr = str( roundoff(val[0], 2, as_string=True) )
         colourgradstr.append([vstr , gradval])
-
       colourgradstrs += "  colourgradvalarray[%s] = %s;\n" %(g, str(colourgradstr) )
     if blankscene:
       colourscriptstr = ""
@@ -1284,7 +1282,8 @@ function createElement(name, properties, style)
       display: "block",
       position: "absolute",
       fontFamily: "sans-serif",
-      fontSize: "smaller",
+      //fontSize: "smaller",
+      fontSize: "12px",
   }
   );
   return el;
@@ -1594,7 +1593,7 @@ function ColourChart(millerlabel, fomlabel)
   topr = 35,
   topr2 = 10,
   lp = 10,
-  wp = 40,
+  wp = 60,
   lp2 = lp + wp,
   gl = 3,
   wp2 = gl,
@@ -1666,7 +1665,7 @@ function HKLscene()
 {
   shape = new NGL.Shape('shape');
   //vectorshape = new NGL.Shape('vectorshape');
-  stage = new NGL.Stage('viewport', { // backgroundColor: "grey",
+  stage = new NGL.Stage('viewport', {  backgroundColor: "rgb(128, 128, 128)",
                                       tooltip:false, // create our own tooltip from a div element
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );

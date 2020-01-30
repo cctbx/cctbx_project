@@ -25,22 +25,24 @@ def round2(x, d=0):
   else:
     return float(math.ceil((x * p) - 0.5))/p
 
-def roundoff(val, precision=3):
+def roundoff(val, precision=3, as_string=False):
   '''
   round off all floats in a list (or tuple) of list (or tuples)
   recursively using round2() defined above as in:
   >>> math_utils.roundoff( [12.3454, 7.4843, ["foo", (35.3581, -0.3856, [4.2769, 3.2147] )] ])
   [12.345, 7.484, ['foo', (35.358, -0.386, [4.277, 3.215])]]
-  If value is less than the precision then return it with scientific notation
+  If value is less than 10**-precision or greater than 10**precision then return with scientific notation
   '''
   if isinstance(val, float):
     if math.isnan(val):
       return float("nan")
-    if abs(val) < float("1e-%d" %precision):
+    if abs(val) < float("1e-%d" %precision) or abs(val) > float("9e%d" %precision):
       fstr = "%" + "%d" %precision
       fstr += ".%de" %precision
-      val2 = float(fstr %val)
-      return val2
+      val2str = fstr %val
+      if as_string:
+        return val2str
+      return float(val2str)
     return round2(val, precision)
   if isinstance(val, list):
     for i,v in enumerate(val):

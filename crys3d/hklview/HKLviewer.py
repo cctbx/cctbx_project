@@ -582,7 +582,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
               self.BrowserBox.setUrl(self.html_url)
               # workaround for background colour bug in chromium
               # https://bugreports.qt.io/browse/QTBUG-41960
-              self.BrowserBox.page().setBackgroundColor(QColor(255, 255, 255, 0.0) )
+              self.BrowserBox.page().setBackgroundColor(QColor(127, 127, 127, 0.0) )
 
           if self.infodict.get("spacegroups"):
             spgs = self.infodict.get("spacegroups",[])
