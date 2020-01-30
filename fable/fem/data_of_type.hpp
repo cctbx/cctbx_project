@@ -1,20 +1,10 @@
 #ifndef FEM_DATA_OF_TYPE_HPP
 #define FEM_DATA_OF_TYPE_HPP
 
+#include <noexcept_false.hpp>
 #include <fem/arr.hpp>
 #include <fem/str_arr_ref.hpp>
 #include <fem/utils/misc.hpp>
-
-// If using C++11 or a later version, or VS2015 and later
-#if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1900)
-#ifndef NOEXCEPT_FALSE
-#define NOEXCEPT_FALSE noexcept(false)
-#endif
-#else
-#ifndef NOEXCEPT_FALSE
-#define NOEXCEPT_FALSE
-#endif
-#endif
 
 namespace fem {
 

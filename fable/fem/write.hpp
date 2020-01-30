@@ -1,6 +1,7 @@
 #ifndef FEM_WRITE_HPP
 #define FEM_WRITE_HPP
 
+#include <noexcept_false.hpp>
 #include <fem/common.hpp>
 #include <fem/format.hpp>
 #include <fem/star.hpp>
@@ -13,17 +14,6 @@
 # define FEM_WRITE_CRLF true
 #else
 # define FEM_WRITE_CRLF false
-#endif
-
-// If using C++11 or a later version, or VS2015 and later
-#if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1900)
-#ifndef NOEXCEPT_FALSE
-#define NOEXCEPT_FALSE noexcept(false)
-#endif
-#else
-#ifndef NOEXCEPT_FALSE
-#define NOEXCEPT_FALSE
-#endif
 #endif
 
 namespace fem {
