@@ -14,7 +14,6 @@ tst_list_base = [
      '"hall: P 1"', '"hall: P 3"', '"hall: -P 2ybc"' ],
     "$D/masks/tests/tst_masks.py",
     "$D/structure_factors/direct/tests/tst_standard_xray.py",
-    "$D/refinement/tests/tst_least_squares.py",
     ["$D/refinement/tests/tst_weighting_schemes.py",
      "--fix_random_seeds"],
     "$D/refinement/constraints/tests/tst_lbfgs.py",
@@ -38,6 +37,11 @@ if sys.version_info[0] > 2:
   tst_list_fail += tst_list_fail_py3
 else:
   tst_list_base += tst_list_fail_py3
+
+# unstable test
+tst_list_expected_unstable = [
+  "$D/refinement/tests/tst_least_squares.py",
+  ]
 
 # final lists
 tst_list = tst_list_base
