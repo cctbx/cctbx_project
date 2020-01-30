@@ -495,11 +495,6 @@ class class_ncs_restraints_group_list(list):
     if refine_selection:
       # make sure all ncs related parts are in refine_selection
       all_ncs = total_master_ncs_selection | total_ncs_related_selection
-      # print all_ncs
-      # print total_master_ncs_selection
-      # print total_ncs_related_selection
-      # print refine_selection
-      # STOP()
       not_all_ncs_related_atoms_selected = bool(all_ncs - refine_selection)
       if not_all_ncs_related_atoms_selected:
         msg = 'refine_selection does not contain all ncs related atoms'
@@ -708,23 +703,34 @@ class class_ncs_restraints_group_list(list):
       cur_index = 1
       atoms = hierarchy.atoms()
       while cur_index < len(isel):
-        while (cur_index < len(isel)
-            and isel[cur_index]-isel[cur_index-1] == 1
-            and hierarchy.get_label_asym_id_iseq(isel[cur_index]) != \
-                hierarchy.get_label_asym_id_iseq(isel[cur_index-1])):
+        seq_id = hierarchy.get_label_seq_id_iseq(isel[cur_index])
+        seq_id_1 = hierarchy.get_label_seq_id_iseq(isel[cur_index-1])
+        seq_id = int(seq_id) if seq_id !='.' else 0
+        seq_id_1 = int(seq_id_1) if seq_id_1 !='.' else 0
+        if cur_index >= len(isel):
+          break
+        seq_id = hierarchy.get_label_seq_id_iseq(isel[cur_index])
+        seq_id_1 = hierarchy.get_label_seq_id_iseq(isel[cur_index-1])
+        seq_id = int(seq_id) if seq_id !='.' else 0
+        seq_id_1 = int(seq_id_1) if seq_id_1 !='.' else 0
+        if (
+            # consecutive indices and no chain break
+            (isel[cur_index]-isel[cur_index-1] == 1
+                and hierarchy.get_label_asym_id_iseq(isel[cur_index]) != \
+                    hierarchy.get_label_asym_id_iseq(isel[cur_index-1]))
+            # same chain, same or next resid, no indices check (missing atom, etc)
+            or (hierarchy.get_label_asym_id_iseq(isel[cur_index]) == \
+                    hierarchy.get_label_asym_id_iseq(isel[cur_index-1])
+                and abs(seq_id - seq_id_1) <= 1 )
+            ):
           cur_index += 1
-        if cur_index < len(isel):
-          seq_id = hierarchy.get_label_seq_id_iseq(isel[cur_index])
-          seq_id_1 = hierarchy.get_label_seq_id_iseq(isel[cur_index-1])
-          seq_id = int(seq_id) if seq_id !='.' else 0
-          seq_id_1 = int(seq_id_1) if seq_id_1 !='.' else 0
-          if (hierarchy.get_label_asym_id_iseq(isel[cur_index]) != \
-                  hierarchy.get_label_asym_id_iseq(isel[cur_index-1])
-              or abs(seq_id - seq_id_1) > 1):
-            result.append(isel[start_index:cur_index-1])
-            start_index = cur_index
+        else: # end range
+          assert start_index != cur_index-1
+          result.append(isel[start_index:cur_index])
+          start_index = cur_index
           cur_index += 1
-      result.append(isel[start_index:cur_index-1])
+      if start_index != cur_index-1:
+        result.append(isel[start_index:cur_index])
       return result
 
     def _get_struct_ncs_dom_lim_row(dom_id, comp_id, r):
@@ -816,9 +822,6 @@ class class_ncs_restraints_group_list(list):
           "_struct_ncs_dom.id":master_dom_id,
           "_struct_ncs_dom.details":"%s" % group.master_str_selection.replace("'", '"')})
       ranges = _consecutive_ranges(group.master_iselection)
-      # print ('ranges', ranges)
-      # for r in ranges:
-      #   print(list(r))
       for i_r, r in enumerate(ranges):
         ncs_dom_lim_loop.add_row(_get_struct_ncs_dom_lim_row(master_dom_id, i_r+1, r))
       # now get to copies

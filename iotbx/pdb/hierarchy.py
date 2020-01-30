@@ -912,28 +912,47 @@ class _():
 
   def get_label_asym_id_iseq(self, iseq):
     assert self.atoms_size() > iseq
-    return self.get_label_asym_id(self.atoms()[iseq].parent())[1]
+    return self.get_label_asym_id(self.atoms()[iseq].parent().parent())
 
-  def get_label_asym_id(self, atom_group):
-    chain = atom_group.parent().parent()
-    if not hasattr(self, 'label_asym_ids'):
-      self.number_label_asym_id = -1
-      self.label_asym_ids = all_label_asym_ids()
+  def get_label_asym_id(self, residue_group):
+    import iotbx.pdb
+    get_class = iotbx.pdb.common_residue_names_get_class
+    if not hasattr(self, '_lai_lookup'):
       self._lai_lookup = {}
-    #
-    cmi = chain.memory_id()
-    if cmi not in self._lai_lookup:
-      if chain.is_protein() or chain.is_na():
-        self.number_label_asym_id+=1
-        self._lai_lookup[cmi] = self.number_label_asym_id
-      elif atom_group.resname in ['HOH', 'DOD']:
-        self.number_label_asym_id+=1
-        self._lai_lookup[cmi] = self.number_label_asym_id
-    #
-    if cmi in self._lai_lookup:
-      return self._lai_lookup[cmi], self.label_asym_ids[self._lai_lookup[cmi]]
-    self.number_label_asym_id+=1
-    return self.number_label_asym_id, self.label_asym_ids[self.number_label_asym_id]
+      # fill self._lai_lookup for the whole hierarchy
+      number_label_asym_id = 0
+      label_asym_ids = all_label_asym_ids()
+      previous = None
+      for model in self.models():
+        for chain in model.chains():
+          for rg in chain.residue_groups():
+            resname = rg.atom_groups()[0].resname.strip()
+            gc = get_class(resname)
+            rg_mid = rg.memory_id()
+            if gc in ['common_amino_acid', 'modified_amino_acid',
+                'common_rna_dna', 'modified_rna_dna']:
+              self._lai_lookup[rg_mid] = label_asym_ids[number_label_asym_id]
+              previous = 'poly'
+            elif gc in ['common_water']:
+              if previous != 'water' and previous is not None:
+                number_label_asym_id += 1
+              previous = 'water'
+              self._lai_lookup[rg_mid] = label_asym_ids[number_label_asym_id]
+            else: # ligand
+              if previous is not None:
+                number_label_asym_id += 1
+              previous = 'ligand'
+              self._lai_lookup[rg_mid] = label_asym_ids[number_label_asym_id]
+          number_label_asym_id += 1 # up for each chain
+          previous = None
+        number_label_asym_id += 1 # up for each model
+    rg_mid = residue_group.memory_id()
+    result = self._lai_lookup.get(rg_mid, None)
+    if result is None:
+      print (residue_group.id_str())
+    return result
+
+    # return self.number_label_asym_id, self.label_asym_ids[self.number_label_asym_id]
 
   def get_auth_seq_id_iseq(self, iseq):
     assert self.atoms_size() > iseq
@@ -1093,15 +1112,14 @@ class _():
       for chain in model.chains():
         auth_asym_id = self.get_auth_asym_id(chain)
         for residue_group in chain.residue_groups():
+          label_asym_id = self.get_label_asym_id(residue_group)
           seq_id = self.get_auth_seq_id(residue_group)
           icode = residue_group.icode
           if icode == ' ' or icode == '': icode = '?'
           for atom_group in residue_group.atom_groups():
-            label_asym_i, label_asym_id = self.get_label_asym_id(atom_group)
             comp_id = atom_group.resname.strip()
             entity_id = '?' # XXX how do we determine this?
             for atom in atom_group.atoms():
-              atom.tmp = label_asym_i
               group_pdb = "ATOM"
               if atom.hetero: group_pdb = "HETATM"
               x, y, z = [coord_fmt_str %i for i in atom.xyz]
