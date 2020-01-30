@@ -583,7 +583,6 @@ namespace smtbx { namespace structure_factors { namespace direct {
           hr_ht_group<float_type> const &g = hr_ht.groups[k];
           float_type hrx = g.hr * scatterer.site;
           complex_type f = ff[k] * this->exp_i_2pi(hrx + g.ht);
-          //float_type fa = f.real(), fb = f.imag();
           if (scatterer.flags.use_u_aniso()) {
             float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);
             f *= dw;
@@ -984,7 +983,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         : grad_flags_counts(scatterers.const_ref()),
           unit_cell(unit_cell),
           space_group(space_group),
-          origin_centric_case( space_group.is_origin_centric() ),
+          origin_centric_case(space_group.is_origin_centric()),
           scatterers(scatterers),
           grad_f_calc(grad_flags_counts.n_parameters(),
                       af::init_functor_null<complex_type>()),
