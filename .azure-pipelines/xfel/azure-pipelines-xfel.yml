@@ -15,8 +15,8 @@ stages:
     - template: ./conda-linux.yml
       parameters:
         distribution: centos
-        version: [6, 10]
+        version: [6]
     - template: ./conda-osx.yml
       parameters:
         vmImage: [10, 14]
-        xcode_version: [10, 3]
+        xcode_version: [11, 3, 1]
