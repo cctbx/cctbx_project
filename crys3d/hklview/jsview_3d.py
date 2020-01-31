@@ -1168,7 +1168,7 @@ function MakeHKL_Axis(mshape)
     }
   );
 
-  
+
   stage.mouseObserver.signals.clicked.add(
     function (x, y)
     {
@@ -1176,7 +1176,7 @@ function MakeHKL_Axis(mshape)
       WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
     }
   );
-  
+
 
   stage.mouseObserver.signals.scrolled.add(
     function (delta)
