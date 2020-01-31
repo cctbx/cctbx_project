@@ -1093,7 +1093,11 @@ function MakeHKL_Axis(mshape)
       #spherebufferstr += "  ttips.push( [ ] );"
       ttlst = [-1]
       ttlst.extend(spbufttips[ibin])
-      spherebufferstr += "  ttips.push( %s );" %str( ttlst )
+      ttipsobj = "{ ids: " + str( ttlst ) + """,
+       getPosition: function() { return { x:0, y:0 }; } // dummy function to avoid crash
+  } """
+      # + ",\n      getPosition: function() { return stage.mouseObserver.canvasPosition; } }"
+      spherebufferstr += "  ttips.push( %s );" %str( ttipsobj )
       spherebufferstr += """
   positions.push( new Float32Array( %s ) );
   colours.push( new Float32Array( %s ) );
@@ -1164,7 +1168,7 @@ function MakeHKL_Axis(mshape)
     }
   );
 
-
+  
   stage.mouseObserver.signals.clicked.add(
     function (x, y)
     {
@@ -1172,7 +1176,7 @@ function MakeHKL_Axis(mshape)
       WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
     }
   );
-
+  
 
   stage.mouseObserver.signals.scrolled.add(
     function (delta)
@@ -1543,17 +1547,17 @@ function getOrientMsg()
 PickingProxyfunc = function(pickingProxy)
 {
   if (pickingProxy
-        && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]' )
+        && (Object.prototype.toString.call(pickingProxy.picker["ids"]) === '[object Array]' )
         && displaytooltips )
   {
     var cp = pickingProxy.canvasPosition;
     var sym_id = -1;
     var hkl_id = -1;
     var ttipid = "";
-    if (pickingProxy.picker.length > 0)
+    if (pickingProxy.picker["ids"].length > 0)
     { // get stored id number of symmetry operator applied to this hkl
-      sym_id = pickingProxy.picker[0];
-      var ids = pickingProxy.picker.slice(1);
+      sym_id = pickingProxy.picker["ids"][0];
+      var ids = pickingProxy.picker["ids"].slice(1);
       var is_friedel_mate = 0;
       hkl_id = ids[ pickingProxy.pid %% ids.length ];
       if (pickingProxy.pid >= ids.length)
@@ -1699,6 +1703,7 @@ function HKLscene()
   stage.mouseControls.add("drag-shift-right", NGL.MouseActions.zoomDrag);
   stage.mouseControls.remove("drag-middle");
   stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomDrag);
+  stage.mouseControls.remove('clickPick-left'); // avoid undefined move-pick when clicking on a sphere
 
   stage.viewer.requestRender();
   if (isdebug)
@@ -1728,8 +1733,6 @@ catch(err)
     """ % (self.websockport, self.__module__, self.__module__, cntbin, str(self.verbose>=2).lower(), \
            self.ngl_settings.tooltip_alpha, axisfuncstr, self.camera_type, spherebufferstr, \
            negativeradiistr, colourscriptstr)
-
-
 
     WebsockMsgHandlestr = """
 
@@ -1962,7 +1965,7 @@ mysocket.onmessage = function(e)
           br_positions[bin].push( [] );
           br_shapebufs[bin].push( [] );
           br_ttips[bin].push( [] );
-          br_ttips[bin][rotmxidx] = ttips[bin].slice(); // deep copy with slice()
+          Object.assign(br_ttips[bin][rotmxidx], ttips[bin]); // deep copy the ttips[bin] object
           br_ttips[bin][rotmxidx][0] = rotmxidx;
           br_positions[bin][rotmxidx] = new Float32Array( csize );
           nexpandrefls += csize;
