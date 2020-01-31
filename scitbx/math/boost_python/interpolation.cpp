@@ -2,6 +2,7 @@
 #include <boost/python/args.hpp>
 
 #include <scitbx/math/interpolation.h>
+#include <scitbx/math/linear_interpolation.h>
 #include <scitbx/vec3.h>
 #include <scitbx/vec2.h>
 
@@ -27,6 +28,34 @@ namespace {
           arg("n_points")));
   }
 
+  template <typename FloatType>
+  void wrap_interp_2d()
+  {
+    using namespace boost::python;
+    def("linear_interpolation_2d",
+      (FloatType (*)(
+          FloatType const&,
+          FloatType const&,
+          FloatType const&,
+          FloatType const&,
+          FloatType const&,
+          FloatType const&,
+          FloatType const&,
+          FloatType const&,
+          FloatType const&,
+          FloatType const&)) linear_interpolation_2d, (
+            arg("x1"),
+            arg("y1"),
+            arg("x2"),
+            arg("y2"),
+            arg("v1"),
+            arg("v2"),
+            arg("v3"),
+            arg("v4"),
+            arg("xx"),
+            arg("yy")));
+  }
+
 } // namespace <anonymous>
 
 namespace boost_python {
@@ -35,6 +64,7 @@ namespace boost_python {
   {
     wrap_splines< scitbx::vec2<double> >();
     wrap_splines< scitbx::vec3<double> >();
+    wrap_interp_2d <double> ();
   }
 
 }}} // namespace scitbx::math::boost_python
