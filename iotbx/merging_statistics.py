@@ -402,7 +402,8 @@ class merging_stats(object):
       'cc_one_half': self.cc_one_half,
       'cc_one_half_significance': self.cc_one_half_significance,
       'cc_one_half_critical_value': self.cc_one_half_critical_value,
-      'cc_anom': self.cc_anom
+      'cc_anom': self.cc_anom,
+      'anom_completeness': self.anom_completeness
     }
     if (self.cc_work is not None):
       d.update({

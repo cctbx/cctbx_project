@@ -73,7 +73,7 @@ def exercise(debug=False):
       'n_obs', 'd_star_sq_max', 'i_over_sigma_mean', 'completeness',
       'cc_one_half', 'r_meas', 'd_star_sq_min', 'cc_anom', 'r_pim',
       'i_mean', 'cc_one_half_critical_value', 'r_merge', 'multiplicity',
-      'cc_one_half_significance', 'n_uniq']
+      'cc_one_half_significance', 'n_uniq', 'anom_completeness']
     for k in expected_keys:
       assert k in d
     assert approx_equal(
