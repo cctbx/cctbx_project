@@ -243,12 +243,21 @@ class merging_stats(object):
           "No reflections within specified resolution range (%g - %g)" % (self.d_max, self.d_min))
     self.completeness = min(self.n_uniq / n_expected, 1.)
     self.anom_completeness = None
+    self.anom_signal = None
+    self.delta_i_mean_over_sig_delta_i_mean = None
     # TODO also calculate when anomalous=False, since it is customary to
     # calculate merging statistics with F+ and F- treated as redundant
     # observations even when we're going to keep them separate.
     if (anomalous):
       self.anom_completeness = array_merged.anomalous_completeness(
         d_max=self.d_max, d_min=self.d_min)
+      self.anom_signal = array_merged.anomalous_signal()
+      anomalous_differences = array_merged.anomalous_differences()
+      nonzero_array = anomalous_differences.select(anomalous_differences.sigmas() > 0)
+      if nonzero_array.size():
+        self.delta_i_mean_over_sig_delta_i_mean = flex.mean(
+          flex.abs(nonzero_array.data()))/flex.mean(nonzero_array.sigmas())
+
     redundancies = merge.redundancies().data()
     self.redundancies = {}
     self.mean_redundancy = 0
@@ -403,7 +412,9 @@ class merging_stats(object):
       'cc_one_half_significance': self.cc_one_half_significance,
       'cc_one_half_critical_value': self.cc_one_half_critical_value,
       'cc_anom': self.cc_anom,
-      'anom_completeness': self.anom_completeness
+      'anom_completeness': self.anom_completeness,
+      'anom_signal': self.anom_signal,
+      'delta_i_mean_over_sig_delta_i_mean': self.delta_i_mean_over_sig_delta_i_mean,
     }
     if (self.cc_work is not None):
       d.update({

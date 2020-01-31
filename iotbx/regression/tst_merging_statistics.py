@@ -73,7 +73,9 @@ def exercise(debug=False):
       'n_obs', 'd_star_sq_max', 'i_over_sigma_mean', 'completeness',
       'cc_one_half', 'r_meas', 'd_star_sq_min', 'cc_anom', 'r_pim',
       'i_mean', 'cc_one_half_critical_value', 'r_merge', 'multiplicity',
-      'cc_one_half_significance', 'n_uniq', 'anom_completeness']
+      'cc_one_half_significance', 'n_uniq', 'anom_completeness', 'anom_signal',
+      'delta_i_mean_over_sig_delta_i_mean',
+    ]
     for k in expected_keys:
       assert k in d
     assert approx_equal(
@@ -95,6 +97,12 @@ def exercise(debug=False):
   cif = iotbx.cif.reader("merging_stats.mmcif").model()
   assert approx_equal(float(cif["test"]["_reflns.pdbx_CC_half"]), 0.997601585888)
   assert list(cif["test"]["_reflns_shell.number_measured_obs"]) == ['15737', '15728', '15668', '15371', '14996', '14771', '13899', '13549', '13206', '12528']
+  #
+  args3 = args + ["anomalous=True"]
+  result = merging_statistics.run(args3, out=out)
+  assert approx_equal(result.overall.anom_signal, 0.0835294960933567)
+  assert approx_equal(result.overall.anom_completeness, 0.9836098441180893)
+  assert approx_equal(result.overall.delta_i_mean_over_sig_delta_i_mean, 1.1764137800824204)
   # these should crash
   args2 = list(args[:-1]) + ["high_resolution=15", "low_resolution=2.5"]
   try :
