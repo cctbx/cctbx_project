@@ -252,6 +252,8 @@ class wheel_wedge():
     self.start = [start[0]-offset[0], start[1]-offset[1], start[2]-offset[2]]
     self.end = [end[0]-offset[0], end[1]-offset[1], end[2]-offset[2]]
     self.cablam_score = cablam_score
+#-------------------------------------------------------------------------------
+#}}}
 
 #{{{ cablam_result class
 #-------------------------------------------------------------------------------
