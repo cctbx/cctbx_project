@@ -7,13 +7,6 @@ import os.path
 
 import libtbx.load_env
 
-from mmtbx.regression.tst_validate_ligands import pdb_str_1 as one_chain_ligand_water
-from mmtbx.regression.tst_validate_ligands import pdb_str_2 as two_chains_ligand_water
-
-
-pdb_str_1 = """\
-"""
-
 def exercise_cif_label_asym_id_simple():
   # 1 chain, no water
   pdb_fname = libtbx.env.find_in_repositories(
@@ -35,7 +28,11 @@ def exercise_cif_label_asym_id_one_chain_ligand_water():
   waters are the same label_asym_id if in the same chain
   each ligand gets its own label_asym_id
   '''
-  h = iotbx.pdb.input(lines=one_chain_ligand_water, source_info=None).construct_hierarchy()
+  pdb_fname = libtbx.env.find_in_repositories(
+    relative_path="mmtbx/regression/pdbs/one_chain_ligand_water.pdb",
+    test=os.path.isfile)
+
+  h = iotbx.pdb.input(pdb_fname).construct_hierarchy()
   assert h.only_model().chains_size() == 1
   # 83 protein atoms
   for i in range(84):
@@ -50,7 +47,10 @@ def exercise_cif_label_asym_id_one_chain_ligand_water():
 
 
 def exercise_cif_label_asym_id_two_chains_ligands_waters():
-  h = iotbx.pdb.input(lines=two_chains_ligand_water, source_info=None).construct_hierarchy()
+  pdb_fname = libtbx.env.find_in_repositories(
+    relative_path="mmtbx/regression/pdbs/two_chains_ligand_water.pdb",
+    test=os.path.isfile)
+  h = iotbx.pdb.input(pdb_fname).construct_hierarchy()
   # print ('n chains:', h.only_model().chains_size())
   # for a in h.atoms():
   #   print (a.i_seq, a.id_str())
@@ -79,10 +79,13 @@ def exercise_cif_label_asym_id_two_chains_ligands_waters():
   # cb.show()
 
 def exercise_cif_label_asym_id_two_chains():
-  full_model = one_chain_ligand_water
-  second_chain = ('\n'.join(one_chain_ligand_water.split('\n')[5:])).replace(' A ', ' B ')
-  full_model += second_chain
-  # print (full_model)
+  pdb_fname = libtbx.env.find_in_repositories(
+    relative_path="mmtbx/regression/pdbs/one_chain_ligand_water.pdb",
+    test=os.path.isfile)
+  with open(pdb_fname, 'r') as f:
+    full_model = f.readlines()
+  second_chain = (''.join(full_model[5:])).replace(' A ', ' B ')
+  full_model = ''.join(full_model) + second_chain
   h = iotbx.pdb.input(lines=full_model, source_info=None).construct_hierarchy()
   # print ('n chains:', h.only_model().chains_size())
   # for a in h.atoms():
