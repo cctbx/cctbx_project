@@ -221,7 +221,6 @@ myHKLview.SetSceneNbins(5)
 """
 
 
-
 from cctbx.miller import display2 as display
 from crys3d.hklview import jsview_3d as view_3d
 from crys3d.hklview.jsview_3d import ArrayInfo
@@ -437,9 +436,9 @@ class HKLViewFrame() :
       #self.params = self.currentphil.extract()
       #phl = self.params.NGL_HKLviewer
 
-      if view_3d.has_phil_path(diff_phil, "filename"):
+      if view_3d.has_phil_path(diff_phil, "openfilename"):
         phl = self.ResetPhilandViewer(self.currentphil)
-        if not self.load_reflections_file(phl.filename):
+        if not self.load_reflections_file(phl.openfilename):
           return False
         self.viewer.lastscene_id = phl.viewer.scene_id
 
@@ -480,9 +479,13 @@ class HKLViewFrame() :
 
       if view_3d.has_phil_path(diff_phil, "action"):
         ret = self.set_action(phl.action)
-        phl.action = "is_running" # to ensure issuing the same action twice will be executed
+        phl.action = "is_running" # ensure the same action in succession can be executed
         if not ret:
           return False
+
+      if view_3d.has_phil_path(diff_phil, "savefilename"):
+        self.SaveReflectionsFile(phl.savefilename)
+      phl.savefilename = None # ensure the same action in succession can be executed
 
       if view_3d.has_phil_path(diff_phil, "viewer"):
         self.viewer.settings = phl.viewer
@@ -521,13 +524,11 @@ class HKLViewFrame() :
       test_flag_value = score_array.test_flag_values[0]
       array = array.customized_copy(data=(array.data() == test_flag_value))
       array.set_info(info)
-      #array = array.deep_copy()
       array._data = array.data().as_int()
-      #return intarray
     return array
 
 
-  def process_miller_array(self, array, merge_answer=[None]) :
+  def process_miller_array(self, array) :
     if (array is None) : return
     if (array.is_hendrickson_lattman_array()) :
       raise Sorry("Hendrickson-Lattman coefficients are currently not supported.")
@@ -540,38 +541,6 @@ class HKLViewFrame() :
       raise Sorry("No space group info is present in data")
     details = []
     self.infostr = ""
-    """
-    if (not array.is_unique_set_under_symmetry() and self.params.NGL_HKLviewer.merge_data is None):
-      shouldmergestr = "The data in the selected array are not symmetry-" + \
-        "unique, which usually means they are unmerged (but could also be due "+ \
-        "to different indexing conventions).  Do you want to merge equivalent "+ \
-        "observations (preserving anomalous data if present), or view the "+ \
-        "array unmodified?  (Note that if you do not merge the array, the "+ \
-        "options to expand to P1 or generate Friedel pairs will be be disabled"+ \
-        ", and the 2D view will only show indices present in the file, rather "+ \
-        "than a full pseudo-precession view.). yes/no?\n"
-      if self.useSocket:
-        self.infostr = shouldmergestr
-        while 1:
-          philstr = self.guisocket.recv()
-          philstr = str(philstr)
-          self.mprint("Received phil:\n" + philstr, verbose=2)
-          new_phil = libtbx.phil.parse(philstr)
-          #working_phil = self.master_phil.fetch(source = new_phil)
-          params = new_phil.extract().NGL_HKLviewer
-          if hasattr(params, "merge_data"): # awaiting user to tick a checkbox on the gui
-            self.params.NGL_HKLviewer.mergedata = params.merge_data
-            break
-          time.sleep(0.1)
-      else:
-        self.params.NGL_HKLviewer.merge_data = Inputarg(shouldmergestr).lower()[0] == "y"
-        if self.params.NGL_HKLviewer.merge_data:
-          details.append("merged")
-        else :
-          details.append("unmerged data")
-          self.settings.expand_to_p1 = False
-          self.settings.expand_anomalous = False
-    """
     array = self.detect_Rfree(array)
     sg = "%s" % array.space_group_info()
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % array.unit_cell().parameters()
@@ -588,32 +557,23 @@ class HKLViewFrame() :
 
 
   def process_all_miller_arrays(self, col):
-    #print "in process_all_miller_arrays"
     self.mprint("Processing reflection data...")
     self.procarrays = []
     if self.params.NGL_HKLviewer.merge_data == False:
       self.settings.expand_to_p1 = False
       self.settings.expand_anomalous = False
     for c,arr in enumerate(self.valid_arrays):
-      procarray, procarray_info = self.process_miller_array(arr,
-                                            merge_answer=self.merge_answer)
+      procarray, procarray_info = self.process_miller_array(arr)
       self.procarrays.append(procarray)
       if c==col:
         array_info = procarray_info
         self.viewer.miller_array = procarray
     if col is None:
       array_info = procarray_info
-    self.merge_answer = [None]
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    #self.viewer.set_miller_array(col, merge=array_info.merge,
-    #   details=array_info.details_str, proc_arrays=self.procarrays)
-    #self.viewer.identify_suitable_fomsarrays()
     return array_info
 
 
   def set_miller_array(self, col=None) :
-    #print "in set_miller_array"
-    #if col >= len(self.valid_arrays):
     if col is not None and col >= len(self.viewer.hkl_scenes_info ):
       return
     array_info = self.process_all_miller_arrays(col)
@@ -629,7 +589,6 @@ class HKLViewFrame() :
       self.params.NGL_HKLviewer.using_space_subgroup:
       return
     current_miller_array_idx = self.viewer.hkl_scenes_info[self.params.NGL_HKLviewer.viewer.scene_id][1]
-    #matching_valid_array = self.valid_arrays[ current_miller_array_idx ]
     matching_valid_array = self.procarrays[ current_miller_array_idx ]
     from cctbx.sgtbx.subgroups import subgroups
     from cctbx import sgtbx
@@ -668,9 +627,7 @@ class HKLViewFrame() :
     self.mprint( "MERGING 2", verbose=2)
     self.viewer.proc_arrays = othervalidarrays
     self.params.NGL_HKLviewer.using_space_subgroup = True
-    #self.viewer.identify_suitable_fomsarrays()
     self.viewer.set_miller_array()
-    #self.viewer.DrawNGLJavaScript()
     for i,e in enumerate(self.spacegroup_choices):
       self.mprint("%d, %s" %(i,e.symbol_and_number()) , verbose=0)
 
@@ -811,17 +768,33 @@ class HKLViewFrame() :
                    "merge_data": self.params.NGL_HKLviewer.merge_data,
                    "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
                    "NewFileLoaded": self.NewFileLoaded,
-                   "file_name": self.params.NGL_HKLviewer.filename
+                   "file_name": self.params.NGL_HKLviewer.openfilename
                   }
         self.SendInfoToGUI(mydict)
         ret =  True
-      self.params.NGL_HKLviewer.filename = None
+      self.params.NGL_HKLviewer.openfilename = None
       return ret
 
 
-  def LoadReflectionsFile(self, filename):
-    self.params.NGL_HKLviewer.filename = filename
+  def LoadReflectionsFile(self, openfilename):
+    self.params.NGL_HKLviewer.openfilename = openfilename
     self.update_settings()
+
+
+  def SaveReflectionsFile(self, savefilename):
+    if self.params.NGL_HKLviewer.openfilename == savefilename:
+      self.mprint("Not overwriting currently loaded file. Choose a different name!")
+      return
+    mtz1 = self.procarrays[0].as_mtz_dataset(column_root_label= self.procarrays[0].info().labels[0])
+    for i,arr in enumerate(self.procarrays):
+      if i==0:
+        continue
+      mtz1.add_miller_array(arr, column_root_label=arr.info().labels[0] )
+    try: # python2 or 3
+      mtz1.mtz_object().write(savefilename)
+    except Exception as e:
+      mtz1.mtz_object().write(savefilename.encode("ascii"))
+    self.mprint("Miller array(s) saved to " + savefilename)
 
 
   def tabulate_miller_array(self, ids):
@@ -1188,7 +1161,9 @@ class HKLViewFrame() :
 
 masterphilstr = """
 NGL_HKLviewer {
-  filename = None
+  openfilename = None
+    .type = path
+  savefilename = None
     .type = path
   merge_data = False
     .type = bool

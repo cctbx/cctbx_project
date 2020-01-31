@@ -1,15 +1,13 @@
-from __future__ import division
-
 # -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file 'HKLviewer.ui',
 # licensing of 'HKLviewer.ui' applies.
 #
-# Created: Thu Jan 23 11:41:45 2020
+# Created: Fri Jan 31 17:21:03 2020
 #      by: pyside2-uic  running on PySide2 5.12.2
 #
 # WARNING! All changes made in this file will be lost!
-
+from __future__ import absolute_import, division, print_function
 from PySide2 import QtCore, QtWidgets
 
 class Ui_MainWindow(object):
@@ -424,6 +422,7 @@ class Ui_MainWindow(object):
     self.power_scale_spinBox = QtWidgets.QDoubleSpinBox(self.groupBox_3)
     self.power_scale_spinBox.setMaximum(1.0)
     self.power_scale_spinBox.setSingleStep(0.05)
+    self.power_scale_spinBox.setStepType(QtWidgets.QAbstractSpinBox.DefaultStepType)
     self.power_scale_spinBox.setProperty("value", 0.35)
     self.power_scale_spinBox.setObjectName("power_scale_spinBox")
     self.gridLayout_10.addWidget(self.power_scale_spinBox, 0, 3, 1, 1)
@@ -583,7 +582,10 @@ class Ui_MainWindow(object):
     self.actiondebug.setObjectName("actiondebug")
     self.actionExit = QtWidgets.QAction(MainWindow)
     self.actionExit.setObjectName("actionExit")
+    self.actionSave_reflection_file = QtWidgets.QAction(MainWindow)
+    self.actionSave_reflection_file.setObjectName("actionSave_reflection_file")
     self.menuFile.addAction(self.actionOpen_reflection_file)
+    self.menuFile.addAction(self.actionSave_reflection_file)
     self.menuFile.addAction(self.actionSettings)
     self.menuFile.addAction(self.actiondebug)
     self.menuFile.addAction(self.actionExit)
@@ -645,6 +647,8 @@ class Ui_MainWindow(object):
     self.actionSettings.setText(QtWidgets.QApplication.translate("MainWindow", "Settings", None, -1))
     self.actiondebug.setText(QtWidgets.QApplication.translate("MainWindow", "Debug", None, -1))
     self.actionExit.setText(QtWidgets.QApplication.translate("MainWindow", "Exit", None, -1))
+    self.actionSave_reflection_file.setText(QtWidgets.QApplication.translate("MainWindow", "Save reflection file", None, -1))
+
 
 from PySide2.QtWebEngineWidgets import QWebEngineView
 try: # if invoked by cctbx.python or some such

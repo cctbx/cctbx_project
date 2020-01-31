@@ -341,7 +341,7 @@ class hklview_3d:
     self.viewerparams = curphilparam.viewer
     self.params = curphilparam
     self.diff_phil = diff_phil
-    if has_phil_path(diff_phil, "filename") \
+    if has_phil_path(diff_phil, "openfilename") \
      or has_phil_path(diff_phil, "spacegroup_choice") \
      or has_phil_path(diff_phil, "merge_data") \
      or has_phil_path(diff_phil, "miller_array_operation") \
@@ -610,7 +610,7 @@ class hklview_3d:
 
 
   def ConstructReciprocalSpace(self, curphilparam, merge=None):
-    self.HKLscenesKey = (curphilparam.filename,
+    self.HKLscenesKey = (curphilparam.openfilename,
                          curphilparam.spacegroup_choice,
                          curphilparam.using_space_subgroup,
                          curphilparam.merge_data,

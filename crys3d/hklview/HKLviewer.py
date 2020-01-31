@@ -264,6 +264,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.actiondebug.triggered.connect(self.DebugInteractively)
     self.actionSettings.triggered.connect(self.SettingsDialog)
     self.actionExit.triggered.connect(self.window.close)
+    self.actionSave_reflection_file.triggered.connect(self.onSaveReflectionFile)
 
     self.verbose = 0
     self.UseOSbrowser = False
@@ -484,7 +485,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       #self.infostr = ""
       self.textInfo.setPlainText("")
       self.fileisvalid = False
-      self.PhilToJsRender('NGL_HKLviewer.filename = "%s"' %fileName )
+      self.PhilToJsRender('NGL_HKLviewer.openfilename = "%s"' %fileName )
       self.MillerComboBox.clear()
       self.BinDataComboBox.clear()
       self.tncsvec = []
@@ -495,6 +496,16 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.missingcheckbox.setChecked(False)
       self.onlymissingcheckbox.setChecked(False)
       self.showsliceGroupCheckbox.setChecked(False)
+
+
+  def onSaveReflectionFile(self):
+    options = QFileDialog.Options()
+    fileName, filtr = QFileDialog.getSaveFileName(self.window,
+            "Save to a new reflection file", "",
+            "All Files (*);;MTZ Files (*.mtz)", "", options)
+    if fileName:
+      self.PhilToJsRender('NGL_HKLviewer.savefilename = "%s"' %fileName )
+
 
 
   def SettingsDialog(self):

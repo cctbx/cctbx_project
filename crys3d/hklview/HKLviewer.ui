@@ -1117,6 +1117,7 @@
      <string>File</string>
     </property>
     <addaction name="actionOpen_reflection_file"/>
+    <addaction name="actionSave_reflection_file"/>
     <addaction name="actionSettings"/>
     <addaction name="actiondebug"/>
     <addaction name="actionExit"/>
@@ -1142,6 +1143,11 @@
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionSave_reflection_file">
+   <property name="text">
+    <string>Save reflection file</string>
    </property>
   </action>
  </widget>
