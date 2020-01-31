@@ -80,6 +80,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.plot_images = False  # whether to plot images
         self.iterations = 0  # iteration counter , used internally
         self.FNAMES = {}  # place holder for fnames dictionary so refinement understands layout of the data
+        self.gradient_only=False  # parameter for LBFGS run method (internal to the Fortran code, see scitbx.lbfgs.__init__.py method run_c_plus_plus
         self.plot_residuals = False  # whether to plot residuals
         self.debug = False  # for debug print statements
         self.trad_conv = False  # traditional convergenve
@@ -347,7 +348,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
                 target_evaluator=self,
                 core_params=self._core_param,
                 exception_handling_params=self._handler,
-                termination_params=self._terminator)
+                termination_params=self._terminator,
+                gradient_only=self.gradient_only)
 
             # DEPRECATED:
             #self.minimizer = self.lbfgs_run(
@@ -366,7 +368,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
                     target_evaluator=self,
                     core_params=self._core_param,
                     exception_handling_params=self._handler,
-                    termination_params=self._terminator)
+                    termination_params=self._terminator,
+                    gradient_only=self.gradient_only)
             except BreakToUseCurvatures:
                 self.hit_break_to_use_curvatures = True
                 pass

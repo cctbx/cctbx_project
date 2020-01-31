@@ -16,6 +16,7 @@ if rank == 0:
     from numpy import mean, median, unique, std
     from tabulate import tabulate
     from scipy.stats import linregress
+    from scipy.stats import pearsonr
     from numpy import log as np_log
     from numpy import exp as np_exp
     from numpy import load as np_load
@@ -41,6 +42,7 @@ else:
     minimize = None
     np_load = None
     linregress = None
+    pearsonr = None
     Counter = None
     # stdout_flush = None
     BreakToUseCurvatures = None
@@ -52,6 +54,7 @@ if has_mpi:
     mean = comm.bcast(mean, root=0)
     Counter = comm.bcast(Counter, root=0)
     linregress = comm.bcast(linregress, root=0)
+    pearsonr = comm.bcast(pearsonr, root=0)
     tabulate = comm.bcast(tabulate, root=0)
     std = comm.bcast(std, root=0)
     flex_miller_index = comm.bcast(flex_miller_index, root=0)
@@ -732,7 +735,9 @@ class FatRefiner(PixelRefinement):
             self.n_bad_shots = len(self.bad_shot_list)
             self.n_bad_shots = comm.bcast(self.n_bad_shots)
 
+            self.image_corr = [0] * len(self.shot_ids)
             for self._i_shot in self.shot_ids:
+                roi_overlay = []
                 if self._i_shot in self.bad_shot_list:
                     continue
                 self.scale_fac = np_exp(self.x[self.spot_scale_xpos[self._i_shot]])
@@ -762,6 +767,10 @@ class FatRefiner(PixelRefinement):
                     self._set_background_plane(i_spot)
                     self._extract_pixel_data()
                     self._evaluate_averageI()
+
+                    # here we can correlate modelLambda with Imeas
+                    _overlay_corr,_ = pearsonr(self.Imeas.ravel(), self.model_Lambda.ravel())
+                    self.image_corr[self._i_shot] += _overlay_corr
                     if self.poisson_only:
                         self._evaluate_log_averageI()
                     else:
@@ -908,6 +917,10 @@ class FatRefiner(PixelRefinement):
                             d2 = d / self.gain_fac
                             self.curv[self.gain_xpos] += self._curv_accumulate(d, d2)
 
+                self.image_corr[self._i_shot] = self.image_corr[self._i_shot] / n_spots
+
+
+            all_image_corr = comm.reduce(self.image_corr, MPI.SUM, root=0)
             # TODO add in the priors:
             if self.use_ucell_priors and self.refine_Bmatrix:
                 for ii in range(self.n_shots):
@@ -1046,6 +1059,13 @@ class FatRefiner(PixelRefinement):
                     print ("N shots deemed bad from missets: %d" % self.n_bad_shots)
                 print("MISSETTING median: %.4f; mean: %.4f, max: %.4f, min %.4f, num > .1 deg: %d/%d; num broken=%d"
                       % (misset_median, misset_mean,misset_max, misset_min, n_bad_misset, n_misset, n_broken_misset))
+                all_corr_str = ["%.2f" % ic for ic in all_image_corr]
+                print(", ".join(all_corr_str))
+                n_bad = sum([1 for ic in all_image_corr if ic < 0.25])
+                n_bad_corr = sum([1 for ic in all_image_corr if ic < 0.25])
+                print("CORRELATION median: %.4f; mean: %.4f, max: %.4f, min %.4f, num <.25: %d/%d;"
+                      % (median(all_image_corr), mean(all_image_corr), max(all_image_corr), min(all_image_corr), n_bad_corr, len(all_image_corr) ))
+                
                 self.print_step("LBFGS stp", f)
                 self.print_step_grads("LBFGS GRADS", gnorm)
             self.iterations += 1
