@@ -24,6 +24,7 @@ class nanoBragg_beam(object):
 
     @property
     def spectrum(self):
+        """ list of (wavelength, flux) defining the energy spectrum"""
         return self._spectrum
 
     @spectrum.setter

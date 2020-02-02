@@ -111,6 +111,7 @@ class FatRefiner(PixelRefinement):
         self.shot_ids = sorted(shot_ucell_managers.keys())
         self.big_dump = False
         self.show_watched = False
+        self.image_corr = None
         self.n_shots = len(self.shot_ids)
         # sanity check: no repeats of the same shot
         assert len(self.shot_ids) == len(set(self.shot_ids))
