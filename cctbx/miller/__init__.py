@@ -17,6 +17,7 @@ from cctbx import uctbx
 from cctbx import r_free_utils
 from cctbx.array_family import flex
 from scitbx import fftpack
+from scitbx.math import distributions
 import scitbx.math
 from libtbx.math_utils import iround
 from libtbx import complex_math
@@ -32,6 +33,7 @@ import random
 import math
 import time
 import sys
+from collections import namedtuple
 from scitbx import matrix
 
 fp_eps_double = scitbx.math.floating_point_epsilon_double_get()
@@ -3025,6 +3027,33 @@ class array(set):
       sel = self.binner().selection(i_bin)
       results.append(self.select(sel).anomalous_signal())
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
+
+  def anomalous_probability_plot(self, expected_delta=None):
+    assert self.is_unique_set_under_symmetry()
+    assert self.anomalous_flag()
+
+    result = namedtuple("anomalous_probability_plot", [
+      "slope", "intercept", "n_pairs", "expected_delta"])
+
+    dI = self.anomalous_differences()
+    if not dI.size():
+      return result(None, None, None, expected_delta)
+
+    y = dI.data() / dI.sigmas()
+    perm = flex.sort_permutation(y)
+    y = y.select(perm)
+    distribution = distributions.normal_distribution()
+
+    x = distribution.quantiles(y.size())
+    if expected_delta is not None:
+      sel = flex.abs(x) < expected_delta
+      x = x.select(sel)
+      y = y.select(sel)
+
+    fit = flex.linear_regression(x, y)
+    if fit.is_well_defined():
+      return result(fit.slope(), fit.y_intercept(), x.size(), expected_delta)
+    return result(None, None, None, expected_delta)
 
   def phase_entropy(self, exponentiate=False, return_binned_data=False,
                           return_mean=False):
