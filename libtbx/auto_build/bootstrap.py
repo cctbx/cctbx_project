@@ -1934,7 +1934,7 @@ class PhaserBuilder(CCIBuilder):
   LIBTBX = [
     'cctbx',
     'scitbx',
-    'crys3d'
+    'crys3d',
     'libtbx',
     'iotbx',
     'mmtbx',
