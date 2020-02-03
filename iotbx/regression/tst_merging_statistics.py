@@ -2,12 +2,14 @@
 from __future__ import absolute_import, division, print_function
 from iotbx.command_line import merging_statistics
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal, Exception_expected
+from libtbx.test_utils import approx_equal, Exception_expected, show_diff
 from libtbx.utils import Sorry
 import libtbx.load_env
 from six.moves import cStringIO as StringIO
 import os
 import sys
+from collections import OrderedDict
+
 
 def exercise(debug=False):
   if (not libtbx.env.has_module("phenix_regression")):
@@ -219,6 +221,35 @@ def exercise(debug=False):
   assert approx_equal(result.bins[-1].cc_one_half_sigma_tau, 0.772170987527236)
   assert result.bins[-1].cc_one_half_significance is True
   assert result.bins[-1].cc_one_half_sigma_tau_significance is True
+  #
+  args2 = args + ["anomalous=True"]
+  result = merging_statistics.run(args2, out=out)
+  app = result.overall.anom_probability_plot_all_data
+  assert approx_equal(app.slope, 1.6747371892218779)
+  assert approx_equal(app.intercept, 0.03443233016003127)
+  assert app.n_pairs == 24317
+  assert app.expected_delta is None
+  app = result.overall.anom_probability_plot_expected_delta
+  assert approx_equal(app.slope, 1.2190614967160294)
+  assert approx_equal(app.intercept, 0.031151653693628906)
+  assert app.n_pairs == 15365
+  assert app.expected_delta == 0.9
+  d = result.overall.as_dict()
+  for k in ("anom_probability_plot_all_data", "anom_probability_plot_expected_delta"):
+    assert d[k].keys() == ["slope", "intercept", "n_pairs", "expected_delta"]
+  out = StringIO()
+  result.overall.show_anomalous_probability_plot(out)
+  assert not show_diff(out.getvalue(),
+                       """\
+Anomalous probability plot (all data):
+  slope:     1.675
+  intercept: 0.034
+  n_pairs:   24317
+Anomalous probability plot (expected delta = 0.9):
+  slope:     1.219
+  intercept: 0.031
+  n_pairs:   15365
+""")
 
 if (__name__ == "__main__"):
   exercise(debug=("--debug" in sys.argv))

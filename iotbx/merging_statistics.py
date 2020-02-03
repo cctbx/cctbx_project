@@ -5,14 +5,18 @@ redundant observations.
 """
 
 from __future__ import absolute_import, division, print_function
+
+import six
+import sys
+from math import sqrt
+from six.moves import cStringIO as StringIO
+
 from iotbx import data_plots
 from libtbx.str_utils import make_sub_header, format_value
 from libtbx.utils import Sorry, null_out
 from libtbx import group_args, Auto
-from math import sqrt
-from six.moves import cStringIO as StringIO
-import sys
-import six
+from scitbx.array_family import flex
+
 
 citations_str = """\
   Diederichs K & Karplus PA (1997) Nature Structural Biology 4:269-275
@@ -107,7 +111,6 @@ class model_based_arrays(object):
     f_obs_work = f_obs_sel.select(work_sel.data())
     f_obs_free = f_obs_sel.select(free_sel.data())
     if (len(f_obs_work.data()) > 0) and (len(f_obs_free.data()) > 0):
-      from scitbx.array_family import flex
       cc_work = flex.linear_correlation(i_obs_work.data(),
         i_calc_work.data()).coefficient()
       cc_free = flex.linear_correlation(i_obs_free.data(),
@@ -196,9 +199,11 @@ class merging_stats(object):
       sigma_filtering="scala",
       use_internal_variance=True,
       cc_one_half_significance_level=None,
-      cc_one_half_method='half_dataset'):
+      cc_one_half_method='half_dataset',
+      anomalous_probability_plot=False,
+      anomalous_probability_plot_expected_delta=0.9,
+      ):
     import cctbx.miller
-    from scitbx.array_family import flex
     assert cc_one_half_method in ('half_dataset', 'sigma_tau')
     self.cc_one_half_method = cc_one_half_method
     assert (array.sigmas() is not None)
@@ -245,6 +250,8 @@ class merging_stats(object):
     self.anom_completeness = None
     self.anom_signal = None
     self.delta_i_mean_over_sig_delta_i_mean = None
+    self.anom_probability_plot_all_data = None
+    self.anom_probability_plot_expected_delta = None
     # TODO also calculate when anomalous=False, since it is customary to
     # calculate merging statistics with F+ and F- treated as redundant
     # observations even when we're going to keep them separate.
@@ -257,6 +264,11 @@ class merging_stats(object):
       if nonzero_array.size():
         self.delta_i_mean_over_sig_delta_i_mean = flex.mean(
           flex.abs(nonzero_array.data()))/flex.mean(nonzero_array.sigmas())
+      if anomalous_probability_plot:
+        self.anom_probability_plot_all_data = array_merged.anomalous_probability_plot()
+        self.anom_probability_plot_expected_delta = array_merged.anomalous_probability_plot(
+          expected_delta=anomalous_probability_plot_expected_delta
+        )
 
     redundancies = merge.redundancies().data()
     self.redundancies = {}
@@ -414,6 +426,12 @@ class merging_stats(object):
       'cc_anom': self.cc_anom,
       'anom_completeness': self.anom_completeness,
       'anom_signal': self.anom_signal,
+      'anom_probability_plot_all_data':
+        self.anom_probability_plot_all_data._asdict()
+        if self.anom_probability_plot_all_data is not None else None,
+      'anom_probability_plot_expected_delta':
+        self.anom_probability_plot_expected_delta._asdict()
+        if self.anom_probability_plot_expected_delta is not None else None,
       'delta_i_mean_over_sig_delta_i_mean': self.delta_i_mean_over_sig_delta_i_mean,
     }
     if (self.cc_work is not None):
@@ -460,6 +478,28 @@ class merging_stats(object):
     print(prefix+"R-merge: %5.3f" % self.r_merge, file=out)
     print(prefix+"R-meas:  %5.3f" % self.r_meas, file=out)
     print(prefix+"R-pim:   %5.3f" % self.r_pim, file=out)
+
+  def show_anomalous_probability_plot(self, out=sys.stdout, prefix=""):
+    if (
+      self.anom_probability_plot_all_data is not None and
+      self.anom_probability_plot_all_data.slope is not None
+      ):
+      print(prefix+"Anomalous probability plot (all data):", file=out)
+      print(prefix+"  slope:     %5.3f" % self.anom_probability_plot_all_data.slope, file=out)
+      print(prefix+"  intercept: %5.3f" % self.anom_probability_plot_all_data.intercept, file=out)
+      print(prefix+"  n_pairs:   %d" % self.anom_probability_plot_all_data.n_pairs, file=out)
+    if (
+      self.anom_probability_plot_expected_delta is not None and
+      self.anom_probability_plot_expected_delta.slope is not None
+      ):
+      print(
+        prefix+"Anomalous probability plot (expected delta = %g):"
+        % self.anom_probability_plot_expected_delta.expected_delta,
+        file=out,
+      )
+      print(prefix+"  slope:     %5.3f" % self.anom_probability_plot_expected_delta.slope, file=out)
+      print(prefix+"  intercept: %5.3f" % self.anom_probability_plot_expected_delta.intercept, file=out)
+      print(prefix+"  n_pairs:   %d" % self.anom_probability_plot_expected_delta.n_pairs, file=out)
 
 class dataset_statistics(object):
   """
@@ -544,7 +584,9 @@ class dataset_statistics(object):
       sigma_filtering=sigma_filtering,
       use_internal_variance=use_internal_variance,
       cc_one_half_significance_level=cc_one_half_significance_level,
-      cc_one_half_method=cc_one_half_method)
+      cc_one_half_method=cc_one_half_method,
+      anomalous_probability_plot=True,
+    )
     self.bins = []
     title = "Intensity merging statistics"
     column_labels = ["1/d**2","N(obs)","N(unique)","Redundancy","Completeness",
@@ -586,7 +628,6 @@ class dataset_statistics(object):
       self.bins.append(bin_stats)
       self.table.add_row(bin_stats.table_data())
 
-    from scitbx.array_family import flex
     self.cc_one_half_overall = flex.mean_weighted(
       flex.double(b.cc_one_half for b in self.bins),
       flex.double(b.cc_one_half_n_refl for b in self.bins))
@@ -663,6 +704,9 @@ class dataset_statistics(object):
       make_sub_header("Merging statistics", out=out)
     self.overall.show_summary(out)
     print("", file=out)
+    if self.overall.anom_probability_plot_all_data is not None:
+      self.overall.show_anomalous_probability_plot(out)
+      print("", file=out)
     print("Redundancies%s:" % self.anom_extra, file=out)
     n_obs = sorted(self.overall.redundancies.keys())
     for x in n_obs :
@@ -687,7 +731,7 @@ class dataset_statistics(object):
   def as_dict(self):
     d = {}
     for bin_stats in self.bins:
-      for k, v in six.iteritems(bin_stats.as_dict()):
+      for k, v in bin_stats.as_dict().items():
         d.setdefault(k, [])
         d[k].append(v)
     d['overall'] = self.overall.as_dict()
@@ -930,6 +974,7 @@ class dataset_statistics(object):
     print("", file=out)
     print("NOTE: we recommend using all data out to the CC(1/2) limit", file=out)
     print("for refinement.", file=out)
+
 
 def select_data(file_name, data_labels, log=None,
     assume_shelx_observation_type_is=None, allow_amplitudes=None, anomalous=None):
