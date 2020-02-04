@@ -8,7 +8,6 @@ import libtbx.load_env
 from six.moves import cStringIO as StringIO
 import os
 import sys
-from collections import OrderedDict
 
 
 def exercise(debug=False):
