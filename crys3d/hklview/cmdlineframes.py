@@ -618,7 +618,7 @@ class HKLViewFrame() :
   def set_spacegroup_choice(self, n) :
     if (self.viewer.miller_array is None) :
       raise Sorry("No data loaded!")
-    if n == len(self.spacegroup_choices): # selected the "original spacegroup" in the list
+    if n == len(self.spacegroup_choices): # selected the unmerged "original spacegroup" in the list
       self.viewer.proc_arrays = self.procarrays
       self.params.NGL_HKLviewer.using_space_subgroup = False
     else:
