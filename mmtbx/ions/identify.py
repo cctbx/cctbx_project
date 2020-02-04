@@ -1432,7 +1432,7 @@ class _analyze_water_wrapper(object):
   def __call__(self, i_seq):
     try:
       result = self.manager.analyze_water(i_seq, **(self.kwds))
-      out = cStringIO.StringIO()
+      out = StringIO.StringIO()
       if (result is not None):
         result.show_summary(out = out,
           debug = self.kwds.get("debug", False))
