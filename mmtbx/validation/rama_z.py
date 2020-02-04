@@ -12,7 +12,7 @@ from libtbx.str_utils import format_value
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
 from libtbx import group_args
-from scipy import interpolate
+from scitbx.math import linear_interpolation_2d
 import numpy as np
 import math
 import os
@@ -61,7 +61,6 @@ class rama_z(object):
         'W': (-0.016806654295023003, 0.12044960331869274)}
     self.residue_counts = {"H": 0, "S": 0, "L":0}
     self.z_score = {"H": None, "S": None, "L":None, 'W': None}
-    self.interpolation_fs = {"H": {}, "S": {}, "L": {}}
     self.means = {"H": {}, "S": {}, "L": {}}
     self.stds = {"H": {}, "S": {}, "L": {}}
 
@@ -195,11 +194,45 @@ class rama_z(object):
     resname = self._get_resname(rama_type, resname)
     if resname == 'cisPRO':
       ss_type = 'L'
+    table = self.db[ss_type][resname]
+    vmin = -178
+    step = 4
+    if phi < -178:
+      i = -1
+      x1 = -182
+      x2 = -178
+    elif phi > 178:
+      i = -1
+      x1 = 178
+      x2 = 182
+    else:
+      i = int(abs(-178 - phi) // 4)
+      nsteps = abs(vmin - phi) // step
+      x1 = vmin + nsteps * step
+      x2 = x1 + 4
 
-    if self.interpolation_fs[ss_type].get(resname, None) is None:
-      self.interpolation_fs[ss_type][resname] = self._set_interpolation_f(self.db[ss_type][resname])
-    int_sc = self.interpolation_fs[ss_type][resname]([phi], [psi])[0]
+    if psi < -178:
+      j = -1
+      y1 = -182
+      y2 = -178
+    elif psi > 178:
+      j = -1
+      y1 = 178
+      y2 = 182
+    else:
+      j = int(abs(-178 - psi) // 4)
+      nsteps = abs(vmin - psi) // step
+      y1 = vmin + nsteps * step
+      y2 = y1 + 4
 
+    xx = phi
+    yy = psi
+    v1 = table[i][j]
+    v2 = table[i+1][j+1]
+    v3 = table[i][j+1]
+    v4 = table[i+1][j]
+
+    int_sc = linear_interpolation_2d(x1,y1,x2,y2,v1,v2,v3,v4,xx,yy)
     if self.means[ss_type].get(resname, None) is None:
       self.means[ss_type][resname] = self._get_mean(ss_type, resname)
     if self.stds[ss_type].get(resname, None) is None:
@@ -245,33 +278,3 @@ class rama_z(object):
     if rama_type == 4:
       rn = 'prePRO'
     return rn
-
-  def _calc_ij(self, p):
-    i = int(p[0] // self.phi_step) + self.n_phi_half
-    j = int(p[1] // self.psi_step) + self.n_psi_half
-    # assert  0 <= i < len(self.g), i
-    # assert  0 <= j < len(self.g[1]), j
-    return i,j
-
-  def _set_interpolation_f(self, grid):
-    x = range(-180-self.phi_step // 2, 180 +self.phi_step + self.phi_step //2, self.phi_step)
-    y = range(-180-self.psi_step // 2, 180 +self.psi_step + self.psi_step //2, self.psi_step)
-    z = []
-    # print "x,y", x, y
-    for i in range(len(grid)+2):
-      z.append([0] * (len(grid)+2) )
-    for i in range(len(z)):
-      for j in range(len(z)):
-        # figure out where to get value
-        ii = i-1
-        jj = j-1
-        if i == 0:
-          ii = len(grid)-1
-        if i == len(z) - 1:
-          ii = 0
-        if j == 0:
-          jj = len(grid)-1
-        if j == len(z) - 1:
-          jj = 0
-        z[i][j] = grid[jj][ii]
-    return interpolate.interp2d(x,y,z, kind='linear')
