@@ -248,7 +248,6 @@ class MyQMainWindow(QMainWindow):
     self.parent = parent
 
   def closeEvent(self, event):
-    print("in MyQMainWindow.closeEvent")
     self.parent.closeEvent(event)
     event.accept()
 
@@ -439,24 +438,15 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.PhilToJsRender('NGL_HKLviewer.action = is_terminating')
     self.closing = True
     self.window.setVisible(False)
-
-    #while not self.canexit:
-    #  time.sleep(1)
-    #self.webprofile.clearHttpCache()
     del self.webprofile
     del self.webpage
-    #del self.BrowserBox
-
-    #shutil.rmtree(cpath)
-    print("HKLviewer exiting now.")
+    print("HKLviewer closing down...")
     nc = 0
     sleeptime = 0.2
     while not self.canexit: #and nc < 5: # until cctbx.python has finished or after 5 sec
       time.sleep(sleeptime)
       self.ProcessMessages()
       nc += sleeptime
-
-    print("accepting close.event")
     self.cctbxproc.terminate()
     self.out, self.err = self.cctbxproc.communicate()
     #print( str(self.out) + "\n" + str(self.err) )
@@ -464,13 +454,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.BrowserBox.close()
     self.BrowserBox.deleteLater()
     #self.BrowserBox.destroy()
-
-    """
-    self.webprofile.clearHttpCache()
-    self.webpage = None
-    self.BrowserBox = None
-    self.webprofile = None
-    """
     event.accept()
 
 
@@ -538,8 +521,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         msgstr = msg.decode()
         self.infodict = eval(msgstr)
         if self.infodict:
-          if self.infodict.get("current_ phil_ strings"):
-            philstringdict = self.infodict.get("current_ phil_ strings", {})
+          if self.infodict.get("current_phil_strings"):
+            philstringdict = self.infodict.get("current_phil_strings", {})
             for k, v in philstringdict.items():
               try:
                 self.currentphilstringdict[k] = eval(v)
@@ -636,7 +619,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
             if self.closing:
               print(currentinfostr)
 
-            if "Purging HKLViewFrame" in currentinfostr:
+            if "Exiting HKLViewFrame" in currentinfostr:
               self.canexit = True
 
           if self.infodict.get("tncsvec"):
@@ -790,7 +773,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     self.sliceindexspinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_index'])
     self.Nbins_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.nbins'])
-    if self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice']:
+    if self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice'] is not None:
       self.SpaceGroupComboBox.setCurrentIndex(  self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice'] )
     self.clipParallelBtn.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.is_parallel'])
     self.missingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_missing'])

@@ -317,7 +317,7 @@ class HKLViewFrame() :
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
     self.viewer.__exit__(exc_type, exc_value, traceback)
     del self.viewer
-    self.mprint("Purging HKLViewFrame", verbose=1)
+    self.mprint("Exiting HKLViewFrame", verbose=0)
     self.STOP = True
     del self
 
@@ -370,6 +370,7 @@ class HKLViewFrame() :
     self.viewer.viewerparams = self.params.NGL_HKLviewer.viewer
     self.viewer.params = self.params.NGL_HKLviewer
     self.params.NGL_HKLviewer.bin_scene_label = 'Resolution'
+    self.params.NGL_HKLviewer.using_space_subgroup = False
     self.viewer.symops = []
     self.viewer.sg = None
     self.viewer.proc_arrays = []
@@ -598,35 +599,45 @@ class HKLViewFrame() :
     for i,subgroup in enumerate(subgrs) :
       subgroup_info = sgtbx.space_group_info(group=subgroup)
       self.spacegroup_choices.append(subgroup_info)
-    if (sg_info in self.spacegroup_choices) :
-      self.current_spacegroup = self.spacegroup_choices.index(sg_info)
-    else :
-      self.spacegroup_choices.insert(0, sg_info)
+    for i,e in enumerate(self.spacegroup_choices):
+      c = None
+      if str(sg_info) == str(e):
+        self.current_spacegroup = self.spacegroup_choices[i]
+        c = i
+        break
+    if c is None:
+      c = 0
+      self.spacegroup_choices.insert(c, sg_info)
       self.current_spacegroup = sg_info
-    mydict = { "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices] }
+    self.params.NGL_HKLviewer.spacegroup_choice = c
+    spglst = [e.symbol_and_number() for e in self.spacegroup_choices] + ["original spacegroup"]
+    mydict = { "spacegroups": spglst }
     self.SendInfoToGUI(mydict)
 
 
   def set_spacegroup_choice(self, n) :
     if (self.viewer.miller_array is None) :
       raise Sorry("No data loaded!")
-    self.current_spacegroup = self.spacegroup_choices[n]
-    from cctbx import crystal
-    symm = crystal.symmetry(
-      space_group_info= self.current_spacegroup,
-      unit_cell=self.viewer.miller_array.unit_cell())
-    othervalidarrays = []
-    #for validarray in self.valid_arrays:
-    for validarray in self.procarrays:
-      # TODO: check if array is unmerged i.e. not symmetry unique
-      #print "Space group casting ", validarray.info().label_string()
-      arr = validarray.expand_to_p1().customized_copy(crystal_symmetry=symm)
-      arr = arr.merge_equivalents().array().set_info(validarray.info())
-      arr = self.detect_Rfree(arr)
-      othervalidarrays.append( arr )
-    self.mprint( "MERGING 2", verbose=2)
-    self.viewer.proc_arrays = othervalidarrays
-    self.params.NGL_HKLviewer.using_space_subgroup = True
+    if n == len(self.spacegroup_choices): # selected the "original spacegroup" in the list
+      self.viewer.proc_arrays = self.procarrays
+      self.params.NGL_HKLviewer.using_space_subgroup = False
+    else:
+      self.current_spacegroup = self.spacegroup_choices[n]
+      from cctbx import crystal
+      symm = crystal.symmetry(
+        space_group_info= self.current_spacegroup,
+        unit_cell=self.viewer.miller_array.unit_cell())
+      othervalidarrays = []
+      for validarray in self.procarrays:
+        # TODO: check if array is unmerged i.e. not symmetry unique
+        arr = validarray.expand_to_p1().customized_copy(crystal_symmetry=symm)
+        arr = arr.merge_equivalents().array().set_info(validarray.info())
+        arr = self.detect_Rfree(arr)
+        othervalidarrays.append( arr )
+
+      self.mprint( "MERGING 2", verbose=2)
+      self.viewer.proc_arrays = othervalidarrays
+      self.params.NGL_HKLviewer.using_space_subgroup = True
     self.viewer.set_miller_array()
     for i,e in enumerate(self.spacegroup_choices):
       self.mprint("%d, %s" %(i,e.symbol_and_number()) , verbose=0)
@@ -693,7 +704,6 @@ class HKLViewFrame() :
       self.viewer.SupersetMillerArrays()
       mydict = { "array_infotpls": self.viewer.array_infotpls, "NewHKLscenes" : True, "NewMillerArray" : True}
       self.SendInfoToGUI(mydict)
-      #self.viewer.SupersetMillerArrays()
 
 
   def load_reflections_file(self, file_name):
@@ -1111,7 +1121,7 @@ class HKLViewFrame() :
     philstrvalsdict = {}
     for e in self.currentphil.all_definitions():
       philstrvalsdict[e.path] = e.object.extract()
-    mydict = { "current_ phil_ strings": philstrvalsdict }
+    mydict = { "current_phil_strings": philstrvalsdict }
     self.SendInfoToGUI(mydict)
 
 
