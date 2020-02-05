@@ -27,6 +27,8 @@ def has_phil_path(philobj, path):
 class ArrayInfo:
   def __init__(self, millarr, mprint=sys.stdout.write, fomlabel=None):
     from iotbx.gui_tools.reflections import get_array_description
+    if (millarr.unit_cell() is None) or (millarr.space_group() is None) :
+      raise Sorry("No space group info is present in data")
     data = millarr.data()
     if (isinstance(data, flex.int)):
       data = flex.double([e for e in data if e!= display.inanval])
