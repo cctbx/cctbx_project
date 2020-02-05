@@ -3,7 +3,7 @@
 # Form implementation generated from reading ui file 'HKLviewer.ui',
 # licensing of 'HKLviewer.ui' applies.
 #
-# Created: Fri Jan 31 17:21:03 2020
+# Created: Wed Feb  5 17:13:23 2020
 #      by: pyside2-uic  running on PySide2 5.12.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -146,7 +146,7 @@ class Ui_MainWindow(object):
     self.ClipPlaneChkGroupBox.setCheckable(True)
     self.ClipPlaneChkGroupBox.setObjectName("ClipPlaneChkGroupBox")
     self.gridLayout_7 = QtWidgets.QGridLayout(self.ClipPlaneChkGroupBox)
-    self.gridLayout_7.setContentsMargins(6, 3, 3, 6)
+    self.gridLayout_7.setContentsMargins(3, 3, 3, 6)
     self.gridLayout_7.setObjectName("gridLayout_7")
     self.clipNormalBtn = QtWidgets.QRadioButton(self.ClipPlaneChkGroupBox)
     sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
@@ -383,7 +383,7 @@ class Ui_MainWindow(object):
     self.tab_3 = QtWidgets.QWidget()
     self.tab_3.setObjectName("tab_3")
     self.groupBox_3 = QtWidgets.QGroupBox(self.tab_3)
-    self.groupBox_3.setGeometry(QtCore.QRect(6, 6, 246, 81))
+    self.groupBox_3.setGeometry(QtCore.QRect(6, 6, 246, 121))
     sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Preferred)
     sizePolicy.setHorizontalStretch(1)
     sizePolicy.setVerticalStretch(0)
@@ -422,7 +422,6 @@ class Ui_MainWindow(object):
     self.power_scale_spinBox = QtWidgets.QDoubleSpinBox(self.groupBox_3)
     self.power_scale_spinBox.setMaximum(1.0)
     self.power_scale_spinBox.setSingleStep(0.05)
-    self.power_scale_spinBox.setStepType(QtWidgets.QAbstractSpinBox.DefaultStepType)
     self.power_scale_spinBox.setProperty("value", 0.35)
     self.power_scale_spinBox.setObjectName("power_scale_spinBox")
     self.gridLayout_10.addWidget(self.power_scale_spinBox, 0, 3, 1, 1)

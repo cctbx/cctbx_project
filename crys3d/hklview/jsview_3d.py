@@ -750,6 +750,8 @@ class hklview_3d:
       nuniquevalues = len(set(list(dres)))
     else:
       bindata = self.HKLscenes[int(self.binscenelabel)].data.deep_copy()
+      if isinstance(bindata, flex.complex_double):
+        raise Sorry("Cannot order complex data values for binning.")
       selection = flex.sort_permutation( bindata )
       bindata_sorted = bindata.select(selection)
       # get binvals by dividing bindata_sorted with nbins
@@ -1024,7 +1026,7 @@ function MakeHKL_Axis(mshape)
           return ibin
         if d > binval and d <= binvalsboundaries[ibin+1]:
           return ibin
-      raise Sorry("Should never get here")
+      raise Sorry("data2bin: Should never get here")
 
     def getprecision(v1,v2):
       diff = abs(v1-v2); precision = 1; e = 1

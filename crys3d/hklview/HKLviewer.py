@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, print_function
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
-from PySide2.QtCore import Qt, QEvent, QModelIndex, QSize, QTimer
+from PySide2.QtCore import Qt, QEvent, QSize, QTimer
 from PySide2.QtWidgets import (  QAction, QApplication, QCheckBox,
         QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
@@ -19,9 +19,9 @@ from PySide2.QtWidgets import (  QAction, QApplication, QCheckBox,
         QSlider, QDoubleSpinBox, QSpinBox, QStyleFactory, QTableView, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget )
 
-from PySide2.QtGui import QColor, QFont, QCursor, QKeySequence
+from PySide2.QtGui import QColor, QFont, QCursor
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
-import sys, zmq, subprocess, time, traceback, zlib, math, csv, io
+import sys, zmq, subprocess, time, traceback, zlib, io
 
 try: # if invoked by cctbx.python or some such
   from crys3d.hklview import HKLviewerGui
