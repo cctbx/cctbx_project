@@ -18,7 +18,8 @@ def check_if_1_5_interaction(
       hd_sel,
       full_connectivity_table):
   """
-  Checks if there is 1-5 interaction between a hydrogen (H) and heavy atom (X): H-A-A-A-X
+  Checks if there is 1-5 interaction between a hydrogen (H) and heavy atom
+  (X): H-A-A-A-X
 
   Parameters
   ----------
@@ -60,7 +61,7 @@ def check_if_1_5_interaction(
       for new_atom in new_connections:
         atoms_numbers[new_atom] = i
     # return true if j_seq in the is 1-5 connection
-    is_1_5_interaction = (j_seq in atoms_numbers) and (atoms_numbers[j_seq] == 5)
+    is_1_5_interaction = (j_seq in atoms_numbers) and (atoms_numbers[j_seq]==5)
     #return (j_seq in atoms_numbers) and (atoms_numbers[j_seq] == 5)
   return is_1_5_interaction
   #else:
@@ -150,8 +151,9 @@ class clashes(object):
       # General information
       results = self.get_results()
       result_str = '{:<18} : {:5d}'
-      print(result_str.format(' Number of clashes', results.n_clashes), file=log)
-      print(result_str.format(' Number of clashes due to symmetry', results.n_clashes_sym), file=log)
+      print(result_str.format(' Number of clashes', results.n_clashes),file=log)
+      print(result_str.format(' Number of clashes due to symmetry',
+        results.n_clashes_sym), file=log)
       result_str = '{:<18} : {:5.2f}'
       if show_clashscore:
         print(result_str.format(' Clashscore', results.clashscore), file=log)
@@ -300,7 +302,8 @@ class clashes(object):
         self._macro_mol_clashes_dict[iseq_tuple] = record
     if self._macro_mol_clashes_dict:
       n_clashes_macro_mol = len(self._macro_mol_clashes_dict)
-      clashscore_macro_mol = n_clashes_macro_mol * 1000 / self.model.select(macro_mol_sel).size()
+      clashscore_macro_mol = n_clashes_macro_mol * 1000 / \
+        self.model.select(macro_mol_sel).size()
     return n_clashes_macro_mol, clashscore_macro_mol
 
 
@@ -440,26 +443,49 @@ class hbonds(object):
 
 #-------------------------------------------------------------------------------
 
-class manager():
+class h_bond(object):
+  """
+  Hydrogen bond is defined here as: D-H...A-Y
 
-  def __init__(self,
-        model,
-        Hs = ["H", "D"],
-        As = ["O","N","S","F","CL"],
-        Ds = ["O","N","S"],
-        d_HA_cutoff    = [1.4, 3.0],
-        d_DA_cutoff    = [2.5, 4.1],
-        a_DHA_cutoff   = 120,
-        a_YAH_cutoff   = [90, 180],
-        ):
-    self.model = model
-    self.Hs       = Hs
-    self.As       = As
-    self.Ds       = Ds
-    self.d_HA_cutoff    = d_HA_cutoff
-    self.d_DA_cutoff    = d_DA_cutoff
-    self.a_DHA_cutoff   = a_DHA_cutoff
-    self.a_YAH_cutoff   = a_YAH_cutoff
+     Y
+      \
+       A
+        .
+         .
+         H
+         |
+         D
+        / \
+
+    A = O, N, S
+    D = O, N, S
+    90 <= a_YAH <= 180
+    a_DHA >= 120
+    1.4 <= d_HA <= 3.0
+    2.5 <= d_DA <= 3.5
+  """
+  def __init__(self):
+    self.Hs = ["H", "D"]
+    self.As = ["O","N","S","F","CL"]
+    self.Ds = ["O","N","S"]
+    self.d_HA_cutoff  = [1.4, 3.0]
+    self.d_DA_cutoff  = [2.4, 4.1]
+    self.a_DHA_cutoff = 120
+    self.a_YAH_cutoff = [90, 180]
+
+class manager():
+  __slots__ = ["h_bond_params"]
+
+  def __init__(self, model, h_bond_params=None):
+    if(h_bond_params is None): h_bond_params = h_bond()
+    self.model        = model
+    self.Hs           = h_bond_params.Hs
+    self.As           = h_bond_params.As
+    self.Ds           = h_bond_params.Ds
+    self.d_HA_cutoff  = h_bond_params.d_HA_cutoff
+    self.d_DA_cutoff  = h_bond_params.d_DA_cutoff
+    self.a_DHA_cutoff = h_bond_params.a_DHA_cutoff
+    self.a_YAH_cutoff = h_bond_params.a_YAH_cutoff
     #
     self._clashes = None
     self._hbonds  = None
@@ -720,8 +746,10 @@ class manager():
       # Check to prevent that symmetry clashes are counted twice
       #if (i_seq, j_seq) not in self._clashes_dict.keys():
       is_clash = True
-      if (i_seq not in self._mult_clash_dict): self._mult_clash_dict[i_seq] = list()
-      if (j_seq not in self._mult_clash_dict): self._mult_clash_dict[j_seq] = list()
+      if (i_seq not in self._mult_clash_dict):
+        self._mult_clash_dict[i_seq] = list()
+      if (j_seq not in self._mult_clash_dict):
+        self._mult_clash_dict[j_seq] = list()
       self._mult_clash_dict[i_seq].append(j_seq)
       self._mult_clash_dict[j_seq].append(i_seq)
 
