@@ -112,55 +112,6 @@ class cbf_wrapper(dxtbx_cbf_wrapper):
 
     axis_settings.append([basis.axis_name, "FRAME1", str(angle), "0"])
 
-  # MONA: py2/3 compatability with encode
-  def _want_bytes(self, arg):
-      if isinstance(arg, str):
-          # py3 sees this as unicode
-          return arg.encode()
-      else:
-          return arg
-
-  def _want_unicode(self, arg):
-      if isinstance(arg, bytes):
-          # py3 sees this as bytes
-          return arg.decode('utf-8')
-      else:
-          # py2
-          return arg
-
-  """ Override the parent's class to ensure that arg is passed on as bytes"""
-  def new_datablock(self, arg):
-    arg_safe = self._want_bytes(arg)
-    return super(cbf_wrapper, self).new_datablock(arg_safe)
-
-  def find_category(self, arg):
-    arg_safe = self._want_bytes(arg)
-    return super(cbf_wrapper, self).find_category(arg_safe)
-
-  def find_column(self, arg):
-    arg_safe = self._want_bytes(arg)
-    return super(cbf_wrapper, self).find_column(arg_safe)
-
-  def find_row(self, arg):
-    arg_safe = self._want_bytes(arg)
-    return super(cbf_wrapper, self).find_row(arg_safe)
-
-  def set_datablockname(self, arg):
-    arg_safe = self._want_bytes(arg)
-    return super(cbf_wrapper, self).set_datablockname(arg_safe)
-
-  def column_name(self):
-    col_name = super(cbf_wrapper, self).column_name()
-    return self._want_unicode(col_name)
-
-  def get_value(self):
-    val = super(cbf_wrapper, self).get_value()
-    return self._want_unicode(val)
-
-  def set_value(self, val):
-    val = self._want_bytes(val)
-    super(cbf_wrapper, self).set_value(val)
-
 def angle_and_axis(basis):
   """Normalize a quaternion and return the angle and axis
   @param params metrology object"""
@@ -657,7 +608,7 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
       metro[(0,q_id,s_id,1)] = basis(null_ori,matrix.col((+w,0,0)))
 
   if plot:
-    print("Validating transofmation matrices set up correctly")
+    print("Validating transformation matrices set up correctly")
     import matplotlib.pyplot as plt
     from matplotlib.patches import Polygon
     fig = plt.figure()
@@ -903,7 +854,8 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
       elsize = 8
 
       cbf.set_realarray_wdims_fs(\
-        pycbf.CBF_CANONICAL,
+        #pycbf.CBF_CANONICAL,
+        pycbf.CBF_PACKED,
         binary_id,
         data,
         elsize,
