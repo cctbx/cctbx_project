@@ -101,7 +101,7 @@ class FatRefiner(PixelRefinement):
         self.global_ncells_param = global_ncells
         self.global_ucell_param = global_ucell
         self.debug = False
-        self.rot_scale = 1e-3
+        self.rot_scale = 1
         self.num_Fcell_kludge = 0
         self.perturb_fcell = perturb_fcell
         # dictionaries whose keys are the shot indices
@@ -308,7 +308,7 @@ class FatRefiner(PixelRefinement):
             self.idx_from_pid[i_shot] = {pid: i for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
             self.n_panels[i_shot] = len(self.pid_from_idx[i_shot])
 
-            n_spots = len(self.NANOBRAGG_ROIS[i_shot])# NOTE bg
+            n_spots = len(self.NANOBRAGG_ROIS[i_shot]) # NOTE bg
             self.bg_a_xstart[i_shot] = []# NOTE bg
             self.bg_b_xstart[i_shot] = []# NOTE bg
             self.bg_c_xstart[i_shot] = []# NOTE bg
@@ -698,7 +698,7 @@ class FatRefiner(PixelRefinement):
                     print("Trial%d (%s): Compute functional and gradients Iter %d PosCurva %d\n<><><><><><><><><><><><><>"
                           % (self.trial_id+1, refine_str, self.iterations + 1, self.num_positive_curvatures))
             if comm.rank == 0 and self.output_dir is not None:
-                outf = os.path.join(self.output_dir, "_fcell_iter%d" % self.iterations)
+                outf = os.path.join(self.output_dir, "_fcell_trial%d_iter%d" % (self.trial_id, self.iterations))
                 fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
                 np.savez(outf, fvals=fvals, x=self.x.as_numpy_array())
 
@@ -1108,7 +1108,7 @@ class FatRefiner(PixelRefinement):
         return cterm.sum()
 
     def _gaussian_target(self):
-        fterm = .5 * (self.log2pi + self.log_Lambda_plus_sigma_readout + self.u * self.u * self.one_over_v).sum()
+        fterm = .5 * (self.log2pi + 2*self.log_Lambda_plus_sigma_readout + self.u * self.u * self.one_over_v).sum()
         return fterm
 
     def _gaussian_d(self, d):

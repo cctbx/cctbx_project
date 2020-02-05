@@ -65,7 +65,7 @@ class SimData:
         self._seed = val
 
     @staticmethod
-    def Umats(mos_spread_deg, n_mos_doms, isotropic=False,
+    def Umats(mos_spread_deg, n_mos_doms, isotropic=True,
               seed=777, norm_dist_seed=777):
         import scitbx
         from scitbx.matrix import col
