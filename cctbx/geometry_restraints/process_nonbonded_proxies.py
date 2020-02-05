@@ -577,7 +577,7 @@ class manager():
 
       # Find hbonds
       if find_hbonds:
-        if (model_distance <= 3.0
+        if (model_distance <= self.d_HA_cutoff[1] # currently: 3.0
           and [self.hd_sel[i_seq],self.hd_sel[j_seq]].count(True) == 1):
           is_hbond = self._is_hbond(item  = item, fsc0  = fsc0)
           # proxy cannot be clash and hbond at the same time
