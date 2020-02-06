@@ -181,15 +181,6 @@ def adjust_amplitudes_linear(f_array,b1,b2,b3,resolution=None,
   data_array=data_array*scale_array
   return f_array.customized_copy(data=data_array)
 
-def get_scale_factors(f_array,target_scale_factors=None):
-  scale_array=flex.double(f_array.data().size()*(-1.,))
-  assert len(target_scale_factors)==len(list(f_array.binner().range_used()))
-  for i_bin in f_array.binner().range_used():
-    sel       = f_array.binner().selection(i_bin)
-    scale_array.set_selected(sel,target_scale_factors[i_bin-1])
-  assert scale_array.count(-1.)==0
-  return scale_array
-
 def get_model_map_coeffs_normalized(pdb_inp=None,
    si=None,
    f_array=None,
@@ -711,8 +702,8 @@ def apply_target_scale_factors(f_array=None,phases=None,
    return_map_coeffs=None,out=sys.stdout):
     from cctbx.maptbx.segment_and_split_map import get_b_iso
     f_array_b_iso=get_b_iso(f_array,d_min=resolution)
-    scale_array=get_scale_factors(f_array,
-        target_scale_factors=target_scale_factors)
+    scale_array=f_array.binner().interpolate(
+      target_scale_factors, 1) # d_star_power=1
     scaled_f_array=f_array.customized_copy(data=f_array.data()*scale_array)
     scaled_f_array_b_iso=get_b_iso(scaled_f_array,d_min=resolution)
     print("\nInitial b_iso for "+\
