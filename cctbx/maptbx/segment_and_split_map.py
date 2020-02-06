@@ -4123,6 +4123,7 @@ def get_mask_around_molecule(map_data=None,
        crystal_symmetry=crystal_symmetry,
        map_data=map_data,
        expand_target=buffer_radius,
+       minimum_expand_size=0,
        out=out)
 
   print("Target mask expand size is %d based on buffer_radius of %7.1f A" %(
@@ -4136,32 +4137,33 @@ def get_mask_around_molecule(map_data=None,
 
   masked_fraction=sorted_by_volume[1][0]/mask.size()
 
-  # Try to get expanded fraction < 0.5*(masked_fraction+1)
-  upper_limit=0.5*(masked_fraction+1)
+  if expand_size <= 0:
+    expanded_fraction=masked_fraction
+  else: # Try to get expanded fraction < 0.5*(masked_fraction+1)
+    upper_limit=0.5*(masked_fraction+1)
 
-  bool_region_mask = co.expand_mask(id_to_expand=sorted_by_volume[1][1],
-       expand_size=expand_size)
-  s=(bool_region_mask==True)
-  expanded_fraction=s.count(True)/s.size()
-  if expanded_fraction>upper_limit:
-    amount_too_big=max(1.e-10,expanded_fraction-upper_limit)/max(1.e-10,
-       expanded_fraction-masked_fraction)**0.667
-    # cut back
-    original_expand_size=expand_size
-    #expand_size=max(1,int(0.5+expand_size*amount_too_big)) # XXX fix
-    expand_size=max(1,int(0.5+expand_size * min(1,max(0,(1-amount_too_big)))))
-    if expand_size != original_expand_size:
-
-      print ("\nCutting back expand size to try and get "+
-         "fraction < about %.2f . New expand_size: %s" %(
-        upper_limit,expand_size),file=out)
-      bool_region_mask = co.expand_mask(id_to_expand=sorted_by_volume[1][1],
+    bool_region_mask = co.expand_mask(id_to_expand=sorted_by_volume[1][1],
          expand_size=expand_size)
-      s=(bool_region_mask==True)
-      expanded_fraction=s.count(True)/s.size()
-  if expanded_fraction > 0.9999:
-        print ("\nSkipping expansion as no space is available\n",file=out)
-        return None,None
+    s=(bool_region_mask==True)
+    expanded_fraction=s.count(True)/s.size()
+    if expanded_fraction>upper_limit:
+      amount_too_big=max(1.e-10,expanded_fraction-upper_limit)/max(1.e-10,
+         expanded_fraction-masked_fraction)**0.667
+      # cut back
+      original_expand_size=expand_size
+      expand_size=max(1,int(0.5+expand_size * min(1,max(0,(1-amount_too_big)))))
+      if expand_size != original_expand_size:
+
+        print ("\nCutting back expand size to try and get "+
+           "fraction < about %.2f . New expand_size: %s" %(
+          upper_limit,expand_size),file=out)
+        bool_region_mask = co.expand_mask(id_to_expand=sorted_by_volume[1][1],
+           expand_size=expand_size)
+        s=(bool_region_mask==True)
+        expanded_fraction=s.count(True)/s.size()
+    if expanded_fraction > 0.9999:
+          print ("\nSkipping expansion as no space is available\n",file=out)
+          return None,None
   print("\nLargest masked region before buffering: %7.2f" %(masked_fraction),
       file=out)
   print("\nLargest masked region after buffering: %7.2f" %(expanded_fraction),
@@ -4352,7 +4354,10 @@ def estimate_expand_size(
        crystal_symmetry=None,
        map_data=None,
        expand_target=None,
+       minimum_expand_size=1,
        out=sys.stdout):
+    if not expand_target:
+     return minimum_expand_size
     abc = crystal_symmetry.unit_cell().parameters()[:3]
     N_ = map_data.all()
     nn=0.
@@ -4362,7 +4367,7 @@ def estimate_expand_size(
     nn=max(1,int(0.5+nn/3.))
     print("Expand size (grid units): %d (about %4.1f A) " %(
       nn,nn*abc[0]/N_[0]), file=out)
-    return max(1,nn)
+    return max(minimum_expand_size,nn)
 
 def get_max_z_range_for_helical_symmetry(params,out=sys.stdout):
   if not params.input_files.ncs_file: return
@@ -5336,7 +5341,7 @@ def get_and_apply_soft_mask_to_maps(
   else:
     wang_radius=1.5*resolution
 
-  if buffer_radius:
+  if buffer_radius is not None:
     buffer_radius=buffer_radius
   else:
     buffer_radius=2.*resolution
