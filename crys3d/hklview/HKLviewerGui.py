@@ -3,11 +3,12 @@
 # Form implementation generated from reading ui file 'HKLviewer.ui',
 # licensing of 'HKLviewer.ui' applies.
 #
-# Created: Wed Feb  5 17:13:23 2020
+# Created: Fri Feb  7 17:35:52 2020
 #      by: pyside2-uic  running on PySide2 5.12.2
 #
 # WARNING! All changes made in this file will be lost!
 from __future__ import absolute_import, division, print_function
+
 from PySide2 import QtCore, QtWidgets
 
 class Ui_MainWindow(object):
@@ -382,9 +383,10 @@ class Ui_MainWindow(object):
     self.functionTabWidget.addTab(self.tab_2, "")
     self.tab_3 = QtWidgets.QWidget()
     self.tab_3.setObjectName("tab_3")
+    self.gridLayout_27 = QtWidgets.QGridLayout(self.tab_3)
+    self.gridLayout_27.setObjectName("gridLayout_27")
     self.groupBox_3 = QtWidgets.QGroupBox(self.tab_3)
-    self.groupBox_3.setGeometry(QtCore.QRect(6, 6, 246, 121))
-    sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Preferred)
+    sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
     sizePolicy.setHorizontalStretch(1)
     sizePolicy.setVerticalStretch(0)
     sizePolicy.setHeightForWidth(self.groupBox_3.sizePolicy().hasHeightForWidth())
@@ -408,6 +410,9 @@ class Ui_MainWindow(object):
     self.label_10.setIndent(1)
     self.label_10.setObjectName("label_10")
     self.gridLayout_10.addWidget(self.label_10, 0, 2, 1, 1)
+    self.ManualPowerScalecheckbox = QtWidgets.QCheckBox(self.groupBox_3)
+    self.ManualPowerScalecheckbox.setObjectName("ManualPowerScalecheckbox")
+    self.gridLayout_10.addWidget(self.ManualPowerScalecheckbox, 0, 0, 1, 2)
     self.label_11 = QtWidgets.QLabel(self.groupBox_3)
     sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Preferred)
     sizePolicy.setHorizontalStretch(0)
@@ -416,15 +421,18 @@ class Ui_MainWindow(object):
     self.label_11.setSizePolicy(sizePolicy)
     self.label_11.setObjectName("label_11")
     self.gridLayout_10.addWidget(self.label_11, 1, 0, 1, 1)
-    self.ManualPowerScalecheckbox = QtWidgets.QCheckBox(self.groupBox_3)
-    self.ManualPowerScalecheckbox.setObjectName("ManualPowerScalecheckbox")
-    self.gridLayout_10.addWidget(self.ManualPowerScalecheckbox, 0, 0, 1, 2)
     self.power_scale_spinBox = QtWidgets.QDoubleSpinBox(self.groupBox_3)
+    sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+    sizePolicy.setHorizontalStretch(0)
+    sizePolicy.setVerticalStretch(0)
+    sizePolicy.setHeightForWidth(self.power_scale_spinBox.sizePolicy().hasHeightForWidth())
+    self.power_scale_spinBox.setSizePolicy(sizePolicy)
     self.power_scale_spinBox.setMaximum(1.0)
     self.power_scale_spinBox.setSingleStep(0.05)
     self.power_scale_spinBox.setProperty("value", 0.35)
     self.power_scale_spinBox.setObjectName("power_scale_spinBox")
     self.gridLayout_10.addWidget(self.power_scale_spinBox, 0, 3, 1, 1)
+    self.gridLayout_27.addWidget(self.groupBox_3, 0, 0, 1, 1)
     self.functionTabWidget.addTab(self.tab_3, "")
     self.tab_4 = QtWidgets.QWidget()
     self.tab_4.setObjectName("tab_4")
@@ -625,8 +633,8 @@ class Ui_MainWindow(object):
     self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_2), QtWidgets.QApplication.translate("MainWindow", "Slicing", None, -1))
     self.groupBox_3.setTitle(QtWidgets.QApplication.translate("MainWindow", "Radii size of HKL spheres", None, -1))
     self.label_10.setText(QtWidgets.QApplication.translate("MainWindow", "Exponent:", None, -1))
-    self.label_11.setText(QtWidgets.QApplication.translate("MainWindow", "Linea scale factor", None, -1))
     self.ManualPowerScalecheckbox.setText(QtWidgets.QApplication.translate("MainWindow", "Exponential scaling of spheres", None, -1))
+    self.label_11.setText(QtWidgets.QApplication.translate("MainWindow", "Linea scale factor", None, -1))
     self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_3), QtWidgets.QApplication.translate("MainWindow", "Sizing", None, -1))
     self.groupBox_5.setTitle(QtWidgets.QApplication.translate("MainWindow", "Bin according to", None, -1))
     self.label_12.setText(QtWidgets.QApplication.translate("MainWindow", "Number of bins:", None, -1))

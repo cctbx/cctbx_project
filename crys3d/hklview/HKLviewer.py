@@ -1,4 +1,3 @@
-from __future__ import absolute_import, division, print_function
 # -*- coding: utf-8 -*-
 #-------------------------------------------------------------------------------
 # Name:        module1
@@ -10,6 +9,7 @@ from __future__ import absolute_import, division, print_function
 # Copyright:   (c) oeffner 2019
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
+from __future__ import absolute_import, division, print_function
 
 from PySide2.QtCore import Qt, QEvent, QSize, QTimer
 from PySide2.QtWidgets import (  QAction, QApplication, QCheckBox,
@@ -617,7 +617,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     #self.setWindowTitle("HKL-viewer: " + self.currentphilstringdict['NGL_HKLviewer.filename'])
     self.mousemoveslider.setValue( 2000*self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.mouse_sensitivity'])
     #self.rotavecangle_slider.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
-    self.rotavecangle_labeltxt.setText("Angle rotated: %2.f" %self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
+    self.rotavecangle_labeltxt.setText("Angle rotated: %2.fº" %self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
 
 
     self.sliceindexspinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_index'])
@@ -1054,7 +1054,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.clipwidth_spinBox.setSingleStep(0.05)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
     self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
-    self.rotavecangle_labeltxt.setText("Angle rotated: 0")
+    self.rotavecangle_labeltxt.setText("Angle rotated: 0 º")
     self.rotavecangle_slider.setValue(0)
     self.rotavecangle_slider.setSingleStep(3)
     self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
