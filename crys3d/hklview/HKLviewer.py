@@ -21,13 +21,14 @@ from PySide2.QtWidgets import (  QAction, QApplication, QCheckBox,
 
 from PySide2.QtGui import QColor, QFont, QCursor
 from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
-import sys, zmq, subprocess, time, traceback, zlib, io
+import sys, zmq, subprocess, time, traceback, zlib, io, os
+
 
 try: # if invoked by cctbx.python or some such
-  from crys3d.hklview import HKLviewerGui
+  from crys3d.hklview import HKLviewerGui, QtChromiumCheck
   from crys3d.hklview.helpers import MillerArrayTableView, MillerArrayTableForm, MillerArrayTableModel
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
-  import HKLviewerGui
+  import HKLviewerGui, QtChromiumCheck
   from helpers import MillerArrayTableView, MillerArrayTableForm, MillerArrayTableModel
 
 class MakeNewDataForm(QDialog):
@@ -224,19 +225,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     self.cpath = ""
     if self.UseOSbrowser==False:
-      #self.BrowserBox = QWebEngineView()
-      self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
-      # omitting name for QWebEngineProfile() means it is private/off-the-record with no cache files
-      self.webprofile = QWebEngineProfile(parent=self.BrowserBox)
-      self.webpage = QWebEnginePage( self.webprofile, self.BrowserBox)
-      if self.devmode:
-        #self.webpage.setUrl("https://webglreport.com/")
-        self.webpage.setUrl("chrome://gpu")
-      else:
-        self.webpage.setUrl("https://cctbx.github.io/")
-      self.cpath = self.webprofile.cachePath()
-      self.BrowserBox.setPage(self.webpage)
-
+      self.InitBrowser()
 
     self.window.setWindowTitle("HKL-Viewer")
     self.cctbxproc = None
@@ -291,12 +280,25 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       nc += sleeptime
     self.cctbxproc.terminate()
     self.out, self.err = self.cctbxproc.communicate()
-    #print( str(self.out) + "\n" + str(self.err) )
     self.cctbxproc.wait()
     self.BrowserBox.close()
     self.BrowserBox.deleteLater()
     #self.BrowserBox.destroy()
     event.accept()
+
+
+  def InitBrowser(self):
+    self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
+    # omitting name for QWebEngineProfile() means it is private/off-the-record with no cache files
+    self.webprofile = QWebEngineProfile(parent=self.BrowserBox)
+    self.webpage = QWebEnginePage( self.webprofile, self.BrowserBox)
+    if self.devmode:
+      #self.webpage.setUrl("https://webglreport.com/")
+      self.webpage.setUrl("chrome://gpu")
+    else:
+      self.webpage.setUrl("https://cctbx.github.io/")
+    self.cpath = self.webprofile.cachePath()
+    self.BrowserBox.setPage(self.webpage)
 
 
   def onOpenReflectionFile(self):
@@ -363,6 +365,11 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         msgstr = msg.decode()
         self.infodict = eval(msgstr)
         if self.infodict:
+          if self.infodict.get("WebGL_error"):
+            self.BrowserBox.close()
+            sys.argv.append("--enable-webgl-software-rendering")
+            self.InitBrowser()
+
           if self.infodict.get("current_phil_strings"):
             philstringdict = self.infodict.get("current_phil_strings", {})
             for k, v in philstringdict.items():
@@ -1416,19 +1423,24 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 def run():
   try:
-    """
-    If chromium webgl error on MacOS try using commandline arguments:
-    --enable-webgl-software-rendering and --ignore-gpu-blacklist
-    """
     debugtrue = False
+    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
     for e in sys.argv:
       if "devmode" in e or "debug" in e:
         debugtrue = True
-    if debugtrue:
-      # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
-      sys.argv.append("--remote-debugging-port=9742")
-      sys.argv.append("--single-process")
-      sys.argv.append("--js-flags='--expose_gc'")
+        # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9742 --single-process --js-flags='--expose_gc'"
+
+    print("testing if WebGL works in QWebEngineView....")
+    cmdargs = [ sys.executable, QtChromiumCheck.__file__ ]
+    webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    procout, procerr = webglproc.communicate()
+
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+
+    if not "WebGL=True" in procout.decode():
+      print("using additional flags for QWebEngineView")
+      os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += " --enable-webgl-software-rendering --ignore-gpu-blacklist"
 
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer(app)
@@ -1437,7 +1449,6 @@ def run():
     timer.timeout.connect(guiobj.ProcessMessages)
     timer.start()
     ret = app.exec_()
-    #app.quit()
     sys.exit(ret)
   except Exception as e:
     print( str(e)  +  traceback.format_exc(limit=10) )
