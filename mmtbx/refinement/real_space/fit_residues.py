@@ -288,6 +288,7 @@ class run(object):
         unit_cell       = self.crystal_symmetry.unit_cell(),
         target_map      = self.target_map,
         mon_lib_srv     = self.mon_lib_srv,
+        rotamer_manager = self.rotamer_manager.rotamer_evaluator)
       mv2 =  maptbx.real_space_target_simple(
         unit_cell   = self.crystal_symmetry.unit_cell(),
         density_map = self.target_map,
