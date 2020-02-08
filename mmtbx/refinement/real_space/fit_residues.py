@@ -132,10 +132,13 @@ class run(object):
       assert approx_equal(self.sites_cart,
         self.pdb_hierarchy.atoms().extract_xyz())
       print("outliers after map fit: %d"%self.count_outliers(), file=self.log)
-    print("tune up", file=self.log)
-    assert approx_equal(self.sites_cart,
-      self.pdb_hierarchy.atoms().extract_xyz())
-    self.loop(function = self.one_residue_tune_up)
+    #
+    if(not outliers_only):
+      print("tune up", file=self.log)
+      assert approx_equal(self.sites_cart,
+        self.pdb_hierarchy.atoms().extract_xyz())
+      self.loop(function = self.one_residue_tune_up)
+    #
     print("outliers final: %d"%self.count_outliers(), file=self.log)
     assert approx_equal(self.sites_cart,
       self.pdb_hierarchy.atoms().extract_xyz())
@@ -221,14 +224,6 @@ class run(object):
         outliers_only     = self.outliers_only,
         f_map             = self.map_data,
         fdiff_map         = self.diff_map_data)
-      # XXX Totally ad hoc, to rationalize later!
-      mv_r = get_mean_side_chain_density_value_residue(
-        residue   = residue,
-        map_data  = self.map_data,
-        unit_cell = self.crystal_symmetry.unit_cell())
-      if(mv_r is not None and mv_r<self.mean_side_chain_density/2):
-        need_fix = True
-      #
       if(not need_fix): return
     negate_rad = negate_map_table[residue.resname.strip().lower()]
     if(not negate_rad): return
@@ -283,13 +278,25 @@ class run(object):
   def one_residue_tune_up(self, residue):
     re = self.rotamer_manager.rotamer_evaluator
     if(re.evaluate_residue(residue)=="OUTLIER"):
+      sites_cart_start = residue.atoms().extract_xyz()
+      mv1 =  maptbx.real_space_target_simple(
+        unit_cell   = self.crystal_symmetry.unit_cell(),
+        density_map = self.target_map,
+        sites_cart  = sites_cart_start)
       mmtbx.refinement.real_space.fit_residue.tune_up(
         residue         = residue,
         unit_cell       = self.crystal_symmetry.unit_cell(),
         target_map      = self.target_map,
         mon_lib_srv     = self.mon_lib_srv,
-        rotamer_manager = self.rotamer_manager.rotamer_evaluator)
-      self.sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
+      mv2 =  maptbx.real_space_target_simple(
+        unit_cell   = self.crystal_symmetry.unit_cell(),
+        density_map = self.target_map,
+        sites_cart  = residue.atoms().extract_xyz())
+      pshift = abs(abs(mv1)-abs(mv2)) / ((abs(mv1)+abs(mv2))/2)*100.
+      if(pshift<3):
+        self.sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
+      else:
+        residue.atoms().set_xyz(sites_cart_start)
 
 class fix_outliers(object):
   def __init__(self,
