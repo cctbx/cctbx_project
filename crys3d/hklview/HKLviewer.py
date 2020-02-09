@@ -1395,23 +1395,21 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.socket.bind("tcp://127.0.0.1:%s" %self.sockport)
     try: msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
     except Exception as e: pass
+    """
     cmdargs = 'cctbx.python -i -c "from crys3d.hklview import cmdlineframes;' \
-     + ' myHKLview = cmdlineframes.HKLViewFrame(useGuiSocket=%s, high_quality=True,' %self.sockport \
+     + ' cmdlineframes.HKLViewFrame(useGuiSocket=%s, high_quality=True,' %self.sockport \
      + ' jscriptfname = \'%s\', ' %self.jscriptfname \
      + ' verbose=%s, UseOSBrowser=%s, htmlfname=\'%s\', handshakewait=%s )"\n'\
        %(self.verbose, str(self.UseOSbrowser), self.hklfname, self.handshakewait)
+    """
+
+    guiargs = [ 'useGuiSocket=' + str(self.sockport),
+               'high_quality=True',
+               'UseOSBrowser=' + str(self.UseOSbrowser)
+              ]
+    cmdargs =  'cctbx.python -i -c "from crys3d.hklview import cmdlineframes;' \
+     + ' cmdlineframes.run()" ' + ' '.join( guiargs + sys.argv[1:])
     self.cctbxproc = subprocess.Popen( cmdargs, shell=True, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
-    """
-    input = 'from crys3d.hklview import cmdlineframes;' \
-     + ' myHKLview = cmdlineframes.HKLViewFrame(useGuiSocket=%s, high_quality=True,' %self.sockport \
-     + ' jscriptfname = \'%s\', ' %self.jscriptfname \
-     + ' verbose=%s, UseOSBrowser=%s, htmlfname=\'%s\', handshakewait=%s )\n'\
-       %(self.verbose, str(self.UseOSbrowser), self.hklfname, self.handshakewait)
-    self.cctbxproc = subprocess.Popen( 'cctbx.python.bat', shell=False, stdin=subprocess.PIPE, stdout=sys.stdout, stderr=sys.stderr)
-    self.out, self.err = self.cctbxproc.communicate(bytes(input,"utf-8") )
-    """
-    #self.out, self.err = self.cctbxproc.communicate()
-    #time.sleep(1)
 
 
   def PhilToJsRender(self, cmdstr):

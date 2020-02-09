@@ -252,7 +252,7 @@ class hklview_3d:
       self.parent = kwds['parent']
     self.verbose = 0
     if 'verbose' in kwds:
-      self.verbose = kwds['verbose']
+      self.verbose = eval(kwds['verbose'])
     self.mprint = sys.stdout.write
     if 'mprint' in kwds:
       self.mprint = kwds['mprint']
@@ -276,7 +276,7 @@ class hklview_3d:
     if 'send_info_to_gui' in kwds:
       self.send_info_to_gui = kwds['send_info_to_gui']
     self.mprint('Output will be written to \"%s\"\n' \
-      'including reference to NGL JavaScript \"%s\"' %(self.hklfname, self.jscriptfname))
+      'rendering WebGL with JavaScript in \"%s\"' %(self.hklfname, self.jscriptfname))
     self.hklhtml = r"""
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 
@@ -300,7 +300,7 @@ class hklview_3d:
     self.isinjected = False
     self.UseOSBrowser = True
     if 'UseOSBrowser' in kwds:
-      self.UseOSBrowser = kwds['UseOSBrowser']
+      self.UseOSBrowser = eval(kwds['UseOSBrowser'])
     self.viewmtrx = None
     self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
@@ -310,7 +310,7 @@ class hklview_3d:
     self.websockclient = None
     self.handshakewait = 5
     if 'handshakewait' in kwds:
-      self.handshakewait = kwds['handshakewait']
+      self.handshakewait = eval(kwds['handshakewait'])
     self.lastmsg = "" # "Ready"
     self.browserisopen = False
     self.msgdelim = ":\n"

@@ -234,22 +234,6 @@ import sys, zmq, threading,  time, cmath, zlib
 
 from six.moves import input
 
-
-argn = 1
-argc = len(sys.argv)
-
-# prompt user for value if it's not on the commandline
-def Inputarg(varname):
-  global argn
-  global argc
-  if argc > 1 and argn < argc:
-    myvar = sys.argv[argn]
-    argn = argn + 1
-    print(varname + " " + myvar)
-  else:
-    myvar = input(varname)
-  return myvar
-
 NOREFLDATA = "No reflection data has been selected"
 
 
@@ -278,6 +262,8 @@ class settings_window () :
 
 class HKLViewFrame() :
   def __init__ (self, *args, **kwds) :
+    print("kwds= ", kwds)
+    print("args= ", *args)
     self.valid_arrays = []
     self.spacegroup_choices = []
     self.procarrays = []
@@ -286,7 +272,7 @@ class HKLViewFrame() :
     self.settings = display.settings()
     self.verbose = 0
     if 'verbose' in kwds:
-      self.verbose = kwds['verbose']
+      self.verbose = eval(kwds['verbose'])
     kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
     self.infostr = ""
@@ -296,7 +282,7 @@ class HKLViewFrame() :
     self.new_miller_array_operations_lst = []
     self.zmqsleeptime = 0.1
     if 'useGuiSocket' in kwds:
-      self.guiSocketPort = kwds['useGuiSocket']
+      self.guiSocketPort = eval(kwds['useGuiSocket'])
       self.context = zmq.Context()
       self.guisocket = self.context.socket(zmq.PAIR)
       self.guisocket.connect("tcp://127.0.0.1:%s" %self.guiSocketPort )
@@ -312,6 +298,10 @@ class HKLViewFrame() :
     self.ResetPhilandViewer()
     self.idx_data = None
     self.NewFileLoaded = False
+    self.hklin = None
+    if 'hklin' in kwds:
+      self.hklin = kwds['hklin']
+      self.LoadReflectionsFile(self.hklin)
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
@@ -1235,6 +1225,13 @@ NGL_HKLviewer {
 """ %(display.philstr, view_3d.ngl_philstr)
 
 
+def run():
+  """
+  utility function for passing keyword arguments more directly to HKLViewFrame()
+  """
+  kwargs = dict(arg.split('=') for arg in sys.argv[1:])
+  myHKLview = HKLViewFrame(**kwargs)
+
 
 if __name__ == '__main__':
-  myHKLview = HKLViewFrame()
+  run()
