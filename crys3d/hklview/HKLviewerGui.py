@@ -7,7 +7,7 @@
 #      by: pyside2-uic  running on PySide2 5.12.2
 #
 # WARNING! All changes made in this file will be lost!
-
+from __future__ import absolute_import, division, print_function
 from PySide2 import QtCore, QtWidgets
 
 class Ui_MainWindow(object):
