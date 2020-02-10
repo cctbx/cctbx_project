@@ -224,6 +224,15 @@ class run(object):
         outliers_only     = self.outliers_only,
         f_map             = self.map_data,
         fdiff_map         = self.diff_map_data)
+      # XXX Totally ad hoc, to rationalize later!
+      if(not self.outliers_only):
+        mv_r = get_mean_side_chain_density_value_residue(
+          residue   = residue,
+          map_data  = self.map_data,
+          unit_cell = self.crystal_symmetry.unit_cell())
+        if(mv_r is not None and mv_r<self.mean_side_chain_density/2):
+          need_fix = True
+      #
       if(not need_fix): return
     negate_rad = negate_map_table[residue.resname.strip().lower()]
     if(not negate_rad): return
