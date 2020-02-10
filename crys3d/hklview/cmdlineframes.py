@@ -291,7 +291,7 @@ class HKLViewFrame() :
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen )
       self.msgqueuethrd.daemon = True
       self.msgqueuethrd.start()
-      kwds['send_info_to_gui'] = self.SendInfoToGUI
+      kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by hklview_3d
     kwds['websockport'] = self.find_free_port()
     kwds['parent'] = self
     self.viewer = view_3d.hklview_3d( **kwds )
@@ -299,7 +299,7 @@ class HKLViewFrame() :
     self.idx_data = None
     self.NewFileLoaded = False
     self.hklin = None
-    if 'hklin' in kwds:
+    if 'hklin' in kwds or 'HKLIN' in kwds:
       self.hklin = kwds['hklin']
       self.LoadReflectionsFile(self.hklin)
 
@@ -1229,7 +1229,7 @@ def run():
   """
   utility function for passing keyword arguments more directly to HKLViewFrame()
   """
-  kwargs = dict(arg.split('=') for arg in sys.argv[1:])
+  kwargs = dict(arg.split('=') for arg in sys.argv[1:] if '=' in arg)
   myHKLview = HKLViewFrame(**kwargs)
 
 

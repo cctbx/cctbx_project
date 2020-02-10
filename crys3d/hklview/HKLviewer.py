@@ -108,25 +108,13 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.actionExit.triggered.connect(self.window.close)
     self.actionSave_reflection_file.triggered.connect(self.onSaveReflectionFile)
 
-    self.verbose = 0
-    self.UseOSbrowser = False
-    self.jscriptfname = ""
+    self.UseOSBrowser = False
     self.devmode = False
-    self.hklfname = ""
-    self.handshakewait = 5
     for e in sys.argv:
-      if "verbose" in e:
-        self.verbose = e.split("verbose=")[1]
-      if "UseOSbrowser" in e:
-        self.UseOSbrowser = True
-      if "jscriptfname" in e:
-        self.jscriptfname = e.split("jscriptfname=")[1]
+      if "UseOSBrowser" in e:
+        self.UseOSBrowser = True
       if "devmode" in e or "debug" in e:
         self.devmode = True
-      if 'htmlfname' in e:
-        self.hklfname = e.split("htmlfname=")[1]
-      if 'handshakewait' in e:
-        self.handshakewait = e.split('handshakewait=')[1]
 
     self.zmq_context = None
     self.unfeedback = False
@@ -224,7 +212,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.functionTabWidget.setDisabled(True)
 
     self.cpath = ""
-    if self.UseOSbrowser==False:
+    if self.UseOSBrowser==False:
       self.InitBrowser()
 
     self.window.setWindowTitle("HKL-Viewer")
@@ -421,7 +409,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
           if self.infodict.get("html_url"):
             self.html_url = self.infodict["html_url"]
-            if self.UseOSbrowser==False:
+            if self.UseOSBrowser==False:
               self.BrowserBox.setUrl(self.html_url)
               # workaround for background colour bug in chromium
               # https://bugreports.qt.io/browse/QTBUG-41960
@@ -773,6 +761,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def showSlice(self):
+    if self.unfeedback:
+      return
     if self.showsliceGroupCheckbox.isChecked():
       self.ClipPlaneChkGroupBox.setChecked(False)
       self.PhilToJsRender('NGL_HKLviewer.viewer.slice_mode = True')
@@ -788,8 +778,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
                                                        inbrowser = False
                                                      }
                              """)
-      self.SliceLabelComboBox.setEnabled(True)
-      self.sliceindexspinBox.setEnabled(True)
+      self.ClipPlaneChkGroupBox.setChecked(False)
+      self.PhilToJsRender("NGL_HKLviewer.clip_plane.clipwidth = None")
     else:
       self.ClipPlaneChkGroupBox.setChecked(True)
       self.PhilToJsRender("""NGL_HKLviewer.viewer {
@@ -797,8 +787,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
                                                       inbrowser = True
                                                     }
                             """)
-      self.SliceLabelComboBox.setDisabled(True)
-      self.sliceindexspinBox.setDisabled(True)
 
 
   def onSliceComboSelchange(self,i):
@@ -1067,10 +1055,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.clipNormalBtn.setText("perpendicular to vector below")
     self.clipNormalBtn.setChecked(True)
     self.clipNormalBtn.clicked.connect(self.onClipPlaneChkBox)
-
     self.clipParallelBtn.setChecked(True)
-    self.clipNormalBtn.setDisabled(True)
-    self.clipParallelBtn.setDisabled(True)
 
 
   def onSliceReflectionsBoxclicked(self):
@@ -1078,11 +1063,17 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.showsliceGroupCheckbox.setEnabled(True)
       self.ClipPlaneChkGroupBox.setEnabled(True)
       self.fixedorientcheckbox.setEnabled(True)
+      self.onClipPlaneChkBox()
     else:
       self.showsliceGroupCheckbox.setEnabled(False)
       self.ClipPlaneChkGroupBox.setEnabled(False)
       self.fixedorientcheckbox.setEnabled(False)
-
+      self.PhilToJsRender("""NGL_HKLviewer {
+                                              clip_plane.clipwidth = None
+                                              viewer.slice_mode = False
+                                              viewer.NGL.fixorientation = False
+                                           }
+                          """)
 
 
   def onClipPlaneChkBox(self):
@@ -1090,9 +1081,11 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       return
     if self.ClipPlaneChkGroupBox.isChecked():
       self.showsliceGroupCheckbox.setChecked(False)
-      self.clipNormalBtn.setDisabled(False)
-      self.clipParallelBtn.setDisabled(False)
-      #self.ClipBox.setDisabled(False)
+      self.PhilToJsRender("""NGL_HKLviewer.viewer {
+                                                      slice_mode = False
+                                                      inbrowser = True
+                                                    }
+                            """)
       if len(self.tncsvec):
         self.clipTNCSBtn.setDisabled(False)
         self.clipwidth_spinBox.setValue(4)
@@ -1129,11 +1122,9 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.PhilToJsRender(philstr)
     else:
       self.showsliceGroupCheckbox.setChecked(True)
-      #self.ClipBox.setDisabled(True)
-      self.clipNormalBtn.setDisabled(True)
-      self.clipParallelBtn.setDisabled(True)
-      self.clipTNCSBtn.setDisabled(True)
-      self.PhilToJsRender("NGL_HKLviewer.clip_plane.clipwidth = None")
+      self.PhilToJsRender("""NGL_HKLviewer.viewer.slice_mode = True
+                             NGL_HKLviewer.clip_plane.clipwidth = None
+                          """)
 
 
   def onRotaVecAngleChanged(self, val):
@@ -1405,7 +1396,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     guiargs = [ 'useGuiSocket=' + str(self.sockport),
                'high_quality=True',
-               'UseOSBrowser=' + str(self.UseOSbrowser)
+               'UseOSBrowser=' + str(self.UseOSBrowser)
               ]
     cmdargs =  'cctbx.python -i -c "from crys3d.hklview import cmdlineframes;' \
      + ' cmdlineframes.run()" ' + ' '.join( guiargs + sys.argv[1:])

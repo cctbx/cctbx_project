@@ -158,13 +158,6 @@
                   </layout>
                  </widget>
                 </item>
-                <item row="1" column="0" colspan="2">
-                 <widget class="QCheckBox" name="sysabsentcheckbox">
-                  <property name="text">
-                   <string>Show Systematic Absences</string>
-                  </property>
-                 </widget>
-                </item>
                 <item row="1" column="2">
                  <widget class="QCheckBox" name="missingcheckbox">
                   <property name="text">
@@ -199,6 +192,13 @@
                     <horstretch>0</horstretch>
                     <verstretch>2</verstretch>
                    </sizepolicy>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0" colspan="2">
+                 <widget class="QCheckBox" name="sysabsentcheckbox">
+                  <property name="text">
+                   <string>Show Systematic Absences</string>
                   </property>
                  </widget>
                 </item>
@@ -419,7 +419,14 @@
                              </widget>
                             </item>
                             <item row="0" column="1">
-                             <widget class="QDoubleSpinBox" name="hvec_spinBox"/>
+                             <widget class="QDoubleSpinBox" name="hvec_spinBox">
+                              <property name="sizePolicy">
+                               <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                               </sizepolicy>
+                              </property>
+                             </widget>
                             </item>
                            </layout>
                           </widget>
@@ -465,7 +472,14 @@
                              </widget>
                             </item>
                             <item row="0" column="1">
-                             <widget class="QDoubleSpinBox" name="kvec_spinBox"/>
+                             <widget class="QDoubleSpinBox" name="kvec_spinBox">
+                              <property name="sizePolicy">
+                               <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                               </sizepolicy>
+                              </property>
+                             </widget>
                             </item>
                            </layout>
                           </widget>
@@ -511,7 +525,14 @@
                              </widget>
                             </item>
                             <item row="0" column="1">
-                             <widget class="QDoubleSpinBox" name="lvec_spinBox"/>
+                             <widget class="QDoubleSpinBox" name="lvec_spinBox">
+                              <property name="sizePolicy">
+                               <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                               </sizepolicy>
+                              </property>
+                             </widget>
                             </item>
                            </layout>
                           </widget>
@@ -548,7 +569,14 @@
                           </widget>
                          </item>
                          <item row="0" column="1">
-                          <widget class="QDoubleSpinBox" name="hkldist_spinBox"/>
+                          <widget class="QDoubleSpinBox" name="hkldist_spinBox">
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                             <horstretch>0</horstretch>
+                             <verstretch>0</verstretch>
+                            </sizepolicy>
+                           </property>
+                          </widget>
                          </item>
                         </layout>
                        </widget>
@@ -593,7 +621,7 @@
                          <item row="0" column="1">
                           <widget class="QDoubleSpinBox" name="clipwidth_spinBox">
                            <property name="sizePolicy">
-                            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                              <horstretch>0</horstretch>
                              <verstretch>0</verstretch>
                             </sizepolicy>
@@ -730,7 +758,7 @@
                    <item row="0" column="2">
                     <widget class="QSpinBox" name="sliceindexspinBox">
                      <property name="sizePolicy">
-                      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                        <horstretch>0</horstretch>
                        <verstretch>0</verstretch>
                       </sizepolicy>
@@ -762,17 +790,39 @@
                    <bool>false</bool>
                   </property>
                   <layout class="QGridLayout" name="gridLayout_10">
-                   <item row="1" column="1">
-                    <widget class="QDoubleSpinBox" name="radii_scale_spinBox">
-                     <property name="maximum">
-                      <double>5.000000000000000</double>
+                   <item row="0" column="0" colspan="4">
+                    <widget class="QLabel" name="label_7">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
                      </property>
-                     <property name="singleStep">
-                      <double>0.100000000000000</double>
+                     <property name="text">
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick the &amp;quot;Manual Exponent&amp;quot; box for manually chosing an exponential factor. Untick this box for automatic exponent factor. Automatic exponent factor computes an exponent rendering the reflection with the smalles data value to about 1/10 of the size of the reflection with the largest data value. &lt;br/&gt;Exponent of 1 means the size of a sphere for each reflection is proportional to its data value. This would for a typical data set of amplitudes or intensities render reflections only with very large values visible. Exponent of 0 means all spheres will have the same size irrespective of their data values. So even the weakest reflections will be visible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                     </property>
+                     <property name="textFormat">
+                      <enum>Qt::AutoText</enum>
+                     </property>
+                     <property name="alignment">
+                      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                     </property>
+                     <property name="wordWrap">
+                      <bool>true</bool>
                      </property>
                     </widget>
                    </item>
-                   <item row="0" column="2">
+                   <item row="1" column="0" colspan="2">
+                    <widget class="QCheckBox" name="ManualPowerScalecheckbox">
+                     <property name="toolTip">
+                      <string/>
+                     </property>
+                     <property name="text">
+                      <string>Manual Exponent</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="2">
                     <widget class="QLabel" name="label_10">
                      <property name="sizePolicy">
                       <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
@@ -791,33 +841,16 @@
                      </property>
                     </widget>
                    </item>
-                   <item row="0" column="0" colspan="2">
-                    <widget class="QCheckBox" name="ManualPowerScalecheckbox">
-                     <property name="text">
-                      <string>Exponential scaling of spheres</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="0">
-                    <widget class="QLabel" name="label_11">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="text">
-                      <string>Linea scale factor</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="3">
+                   <item row="1" column="3">
                     <widget class="QDoubleSpinBox" name="power_scale_spinBox">
                      <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                      <sizepolicy hsizetype="Minimum" vsizetype="Maximum">
                        <horstretch>0</horstretch>
                        <verstretch>0</verstretch>
                       </sizepolicy>
+                     </property>
+                     <property name="toolTip">
+                      <string extracomment="Exponent of 1 means the size of a sphere for each reflection is proportional to its data value. Exponent of 0 means all spheres will have the same size irrespective of their data values."/>
                      </property>
                      <property name="maximum">
                       <double>1.000000000000000</double>
@@ -827,6 +860,35 @@
                      </property>
                      <property name="value">
                       <double>0.350000000000000</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="0">
+                    <widget class="QLabel" name="label_11">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="text">
+                      <string>Linear scale factor</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="1">
+                    <widget class="QDoubleSpinBox" name="radii_scale_spinBox">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Minimum" vsizetype="Maximum">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="maximum">
+                      <double>5.000000000000000</double>
+                     </property>
+                     <property name="singleStep">
+                      <double>0.100000000000000</double>
                      </property>
                     </widget>
                    </item>
@@ -865,6 +927,12 @@
                    </item>
                    <item row="0" column="2">
                     <widget class="QSpinBox" name="Nbins_spinBox">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
                      <property name="minimum">
                       <number>1</number>
                      </property>
@@ -936,7 +1004,7 @@
               </widget>
               <widget class="QWidget" name="tab_5">
                <attribute name="title">
-                <string>other</string>
+                <string>Extras</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_8">
                 <item row="0" column="0">
