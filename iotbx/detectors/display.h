@@ -86,19 +86,7 @@ public:
     return is_active_area(i/487,i%487);
   }
 };
-class ActiveAreaEigerDLETE: public ActiveAreaDefault {
-public:
-  inline virtual bool is_active_area(const int& x,const int& y){
-    /*
-    x, vertical, slow, size1:  8 blocks of 514, separated by 7 stripes of 37, giving 4371.
-    y  horizont, fast, size2:  4 blocks of 1030, separated by 3 stripes of 10, giving 4150.
-    */
-    return ( (x%551<514) && (y%1040<1030) );
-  }
-  inline virtual bool is_active_area_by_linear_index(const int& i){
-    return is_active_area(i/4150,i%4150);
-  }
-};
+
 template <int FastModules>
 class ActiveAreaEigerX: public ActiveAreaDefault {
 public:
@@ -119,11 +107,47 @@ public:
     EigerX-1M, FastModules=1
     x, vertical, slow, size1:  2 blocks of 514, separated by 1 stripes of 37, giving 1065.
     y  horizont, fast, size2:  1 blocks of 1030, separated by 0 stripes of 10, giving 1030.
+
+    EigerX-500K, FastModules=1 (no inactive areas, do not instantiate)
+    x, vertical, slow, size1:  1 blocks of 514, separated by 0 stripes of 37, giving 514.
+    y  horizont, fast, size2:  1 blocks of 1030, separated by 0 stripes of 10, giving 1030.
     */
     return ( (x%551<514) && (y%1040<1030) );
   }
   inline virtual bool is_active_area_by_linear_index(const int& i){
     return is_active_area(i/(FastModules*1030+(FastModules-1)*10),i%(FastModules*1030+(FastModules-1)*10));
+  }
+};
+
+template <int FastModules>
+class ActiveAreaEiger2X: public ActiveAreaDefault {
+public:
+  inline virtual bool is_active_area(const int& x,const int& y){
+    /*
+    Eiger2X-16M, FastModules=4
+    x, vertical, slow, size1:  8 blocks of 512, separated by 7 stripes of 38, giving 4362.
+    y  horizont, fast, size2:  4 blocks of 1028, separated by 3 stripes of 12, giving 4148.
+
+    Eiger2X-9M, FastModules=3
+    x, vertical, slow, size1:  6 blocks of 512, separated by 5 stripes of 38, giving 3262.
+    y  horizont, fast, size2:  3 blocks of 1028, separated by 2 stripes of 12, giving 3108.
+
+    Eiger2X=4M, FastModules=2
+    x, vertical, slow, size1:  4 blocks of 512, separated by 3 stripes of 38, giving 2162.
+    y  horizont, fast, size2:  2 blocks of 1028, separated by 1 stripes of 12, giving 2068.
+
+    Eiger2X-1M, FastModules=1
+    x, vertical, slow, size1:  2 blocks of 512, separated by 1 stripes of 38, giving 1062.
+    y  horizont, fast, size2:  1 blocks of 1028, separated by 0 stripes of 12, giving 1028.
+
+    Eiger2X-500K, FastModules=1 (no inactive areas, do not instantiate)
+    x, vertical, slow, size1:  1 blocks of 512, separated by 0 stripes of 38, giving 512.
+    y  horizont, fast, size2:  1 blocks of 1028, separated by 0 stripes of 12, giving 1028.
+    */
+    return ( (x%550<512) && (y%1040<1028) );
+  }
+  inline virtual bool is_active_area_by_linear_index(const int& i){
+    return is_active_area(i/(FastModules*1040+(FastModules-1)*12),i%(FastModules*1040+(FastModules-1)*12));
   }
 };
 
@@ -221,6 +245,18 @@ public:
       } else if (vendortype=="Eiger-1M") {
         detector_location = ptr_area(new ActiveAreaEigerX<1>());
         has_pilatus_inactive_flag = true;
+      } else if (vendortype=="Eiger2-16M") {
+        detector_location = ptr_area(new ActiveAreaEiger2X<4>());
+        has_pilatus_inactive_flag = true;
+      } else if (vendortype=="Eiger2-9M") {
+        detector_location = ptr_area(new ActiveAreaEiger2X<3>());
+        has_pilatus_inactive_flag = true;
+      } else if (vendortype=="Eiger2-4M") {
+        detector_location = ptr_area(new ActiveAreaEiger2X<2>());
+        has_pilatus_inactive_flag = true;
+      } else if (vendortype=="Eiger2-1M") {
+        detector_location = ptr_area(new ActiveAreaEiger2X<1>());
+        has_pilatus_inactive_flag = true;
       }
       for (std::size_t i=0; i<raw.accessor()[0]; i++) {
         int slow = binning * i;
@@ -277,6 +313,14 @@ public:
         detector_location = ptr_area(new ActiveAreaEigerX<2>());
       } else if (vendortype=="Eiger-1M") {
         detector_location = ptr_area(new ActiveAreaEigerX<1>());
+      } else if (vendortype=="Eiger2-16M") {
+        detector_location = ptr_area(new ActiveAreaEiger2X<4>());
+      } else if (vendortype=="Eiger2-9M") {
+        detector_location = ptr_area(new ActiveAreaEiger2X<3>());
+      } else if (vendortype=="Eiger2-4M") {
+        detector_location = ptr_area(new ActiveAreaEiger2X<2>());
+      } else if (vendortype=="Eiger2-1M") {
+        detector_location = ptr_area(new ActiveAreaEiger2X<1>());
       }
 
       af::shared<data_t> raw_active;
@@ -574,6 +618,14 @@ public:
       detector_location = ptr_area(new ActiveAreaEigerX<2>());
     } else if (vendortype=="Eiger-1M") {
       detector_location = ptr_area(new ActiveAreaEigerX<1>());
+    } else if (vendortype=="Eiger2-16M") {
+      detector_location = ptr_area(new ActiveAreaEiger2X<4>());
+    } else if (vendortype=="Eiger2-9M") {
+      detector_location = ptr_area(new ActiveAreaEiger2X<3>());
+    } else if (vendortype=="Eiger2-4M") {
+      detector_location = ptr_area(new ActiveAreaEiger2X<2>());
+    } else if (vendortype=="Eiger2-1M") {
+      detector_location = ptr_area(new ActiveAreaEiger2X<1>());
     }
     export_s = "";
     export_s.reserve(export_size_cut1*export_size_cut2*3);

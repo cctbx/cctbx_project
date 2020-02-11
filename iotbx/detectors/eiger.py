@@ -1,6 +1,19 @@
 from __future__ import absolute_import, division, print_function
 from iotbx.detectors.detectorbase import DetectorImageBase
 
+vendortype_from_size = {
+  (4150, 4371):"Eiger-16M",
+  (3110, 3269):"Eiger-9M",
+  (2070, 2167):"Eiger-4M",
+  (1030, 1065):"Eiger-1M",
+  (1030, 514): "Eiger-500K",
+  (4148, 4362):"Eiger2-16M",
+  (3108, 3262):"Eiger2-9M",
+  (2068, 2162):"Eiger2-4M",
+  (1028, 1062):"Eiger2-1M",
+  (1028, 512): "Eiger2-500K",
+}
+
 class EIGERImage(DetectorImageBase):
   def __init__(self,filename,index=0):
     DetectorImageBase.__init__(self,filename)
@@ -52,16 +65,7 @@ class EIGERImage(DetectorImageBase):
       if "PIXEL_SIZE" in self.parameters:
         self.pixel_resolution = self.pixel_size
 
-      if self.size1==4371 and self.size2==4150:
-        self.vendortype="Eiger-16M"
-      elif self.size1==4362 and self.size2==4148:
-        self.vendortype="Eiger-16M"
-      elif self.size1==3269 and self.size2==3110:
-        self.vendortype="Eiger-9M"
-      elif self.size1==2167 and self.size2==2070:
-        self.vendortype="Eiger-4M"
-      elif self.size1==1065 and self.size2==2030:
-        self.vendortype="Eiger-1M"
+      self.vendortype = vendortype_from_size.get((self.size2,self.size1),self.vendortype)
       dxtbx_instance.vendortype = self.vendortype
 
   def read(self):

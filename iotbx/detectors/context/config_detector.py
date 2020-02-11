@@ -303,7 +303,8 @@ def beam_center_convention_from_image_object(imageobject,phil_params):
        if phil_params.distl.minimum_spot_area==None or \
           phil_params.distl.minimum_spot_area > 5:
           phil_params.distl.minimum_spot_area=5
-    if imageobject.vendortype in ["Eiger-16M","Eiger-9M","Eiger-4M","Eiger-1M",]:
+    if imageobject.vendortype in ["Eiger-16M","Eiger-9M","Eiger-4M","Eiger-1M","Eiger-500K",
+                                  "Eiger2-16M","Eiger2-9M","Eiger2-4M","Eiger2-1M","Eiger2-500K"]:
        beam_center_convention = 0
        set_convention(0,phil_params)
        if phil_params.distl.minimum_signal_height==None:
@@ -318,4 +319,5 @@ def beam_center_convention_from_image_object(imageobject,phil_params):
     if phil_params.distl.minimum_spot_area == None:
       phil_params.distl.minimum_spot_area = 10 # last-resort default formerly set in signal_strength.py
 
+    assert beam_center_convention != None
     return beam_center_convention
