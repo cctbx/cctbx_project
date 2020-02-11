@@ -103,7 +103,7 @@ def get_angle_ideal_and_weight(a1,a2,a3):
     weight=1.0/ligand_lookup[('SG', 'FE', 'SG')][1]**2
   else:
     angle_ideal = ligand_lookup[key][0]
-    weight = ligand_lookup[key][1]
+    weight = 1.0/ligand_lookup[key][1]**2
   return angle_ideal, weight
 
 def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
