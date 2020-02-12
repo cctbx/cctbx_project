@@ -4,7 +4,6 @@ import sys
 from iotbx.pdb.tst_secondary_structure import pdb_1ywf_sample_strings, \
     get_annotation
 import iotbx.pdb
-import string
 from iotbx.pdb.utils import all_chain_ids
 from iotbx.pdb.secondary_structure import annotation
 from six.moves import cStringIO as StringIO
