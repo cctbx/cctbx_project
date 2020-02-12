@@ -2095,11 +2095,11 @@ SHEET    2   A 5 LEU A  27  SER A  30 -1  O  ARG A  29   N  ARG A  13
     for s in sh.strands:
       assert sh.sheet_id == s.sheet_id, "%s, %s" % (sh.sheet_id, s.sheet_id)
   ss_lines = secstr.as_pdb_str().split('\n')
-  # print ss_lines[1200]
-  # print ss_lines[6999]
-  # print ss_lines[7000]
+  # print (ss_lines[1200])
+  # print (ss_lines[6999])
+  # print (ss_lines[7000])
   assert ss_lines[1200] == \
-      "HELIX  A5L 120 THR5V   11  ASP5V   39  1                                  29"
+      "HELIX  A5L A5L THR5V   11  ASP5V   39  1                                  29"
   assert ss_lines[6999] == "SHEET    1 AF7 2 ARGHf  13  ASPHf  14  0"
   assert ss_lines[7000] == \
       "SHEET    2 AF7 2 LEUHf  27  SERHf  30 -1  O  ARGHf  29   N  ARGHf  13"

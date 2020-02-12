@@ -375,6 +375,13 @@ class structure_base(object):
     elif isinstance(id, int):
       return hy36encode(3, id)
 
+  @staticmethod
+  def id_as_int(id):
+    if isinstance(id, str):
+      return hy36decode(min(len(id), 3), id)
+    elif isinstance(id, int):
+      return id
+    raise ValueError("String or int is needed")
 
   @staticmethod
   def icode_to_cif(icode):
@@ -1934,13 +1941,12 @@ class pdb_helix(structure_base):
     self.end_resseq = self.convert_resseq(resseq)
 
   def set_new_serial(self, serial, adopt_as_id=False):
-    self.serial = serial
+    self.serial = hy36encode(3, serial)
     if adopt_as_id:
       self.adopt_serial_as_id()
 
   def adopt_serial_as_id(self):
     self.helix_id = "%s" % self.serial
-    self.helix_id = self.helix_id[:3]
 
   def set_new_chain_ids(self, new_chain_id):
     self.start_chain_id = new_chain_id
@@ -1959,7 +1965,7 @@ class pdb_helix(structure_base):
     if prefix_scope != "" and not prefix_scope.endswith("."):
       prefix_scope += "."
     serial_and_id = ""
-    if self.serial is not None and int(self.serial) > 0:
+    if self.serial is not None and self.id_as_int(self.serial) > 0:
       serial_and_id += "\n  serial_number = %s" % self.serial
     if self.helix_id is not None:
       serial_and_id += "\n  helix_identifier = %s" % self.helix_id
@@ -2442,8 +2448,7 @@ class pdb_sheet(structure_base):
       ):
     adopt_init_args(self, locals())
     if isinstance(self.sheet_id, int):
-      self.sheet_id = "%s" % self.sheet_id
-      self.sheet_id = self.sheet_id[:3]
+      self.sheet_id = hy36encode(3, self.sheet_id)
     else:
       assert isinstance(self.sheet_id, str)
 
