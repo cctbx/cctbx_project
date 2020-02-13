@@ -234,8 +234,8 @@ class manager(object):
           # 'smart' selections provided by it. If they useless, remove.
 
     # These are new
-    self.xray_scattering_dict = None
-    self.neutron_scattering_dict = None
+    self.xray_scattering_dict = None    # 2020: leave only one: self._scattering_dict
+    self.neutron_scattering_dict = None # 2020: leave only one: self._scattering_dict
     self._has_hd = None
     self.model_statistics_info = None
     self._master_sel = flex.size_t([]) # selection of master part if NCS constraints are in use
@@ -1476,6 +1476,10 @@ class manager(object):
     if self.get_restraints_manager() is not None:
       return self.get_restraints_manager().cartesian_ncs_manager
     return None
+
+  def scattering_dictionary(self):
+    if(self._xray_structure is None): return None
+    return self._xray_structure.scattering_type_registry().as_type_gaussian_dict()
 
   def setup_scattering_dictionaries(self,
       scattering_table,

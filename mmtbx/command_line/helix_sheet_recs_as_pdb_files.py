@@ -29,7 +29,7 @@ def run(args):
     sel_list = rec.as_atom_selections()
     assert type(sel_list) == list
     if(len(sel_list) == 1):
-      sel = asc.selection(string=sel_list[0])
+      sel_str=sel_list[0]
     else:
       sel_str=" or ".join( ["(%s)"%s for s in rec.as_atom_selections()] )
     sel = asc.selection(string=sel_str)

@@ -1171,9 +1171,9 @@ the percentage of R-free reflections).
       n_bins = self.determine_n_bins(
         free_reflections_per_bin = free_reflections_per_bin,
         max_n_bins = max_number_of_bins)
-      self.f_obs_f.setup_binner(n_bins = n_bins)
-      self.f_obs_w.use_binning_of(self.f_obs_f)
-      self.f_obs().use_binning_of(self.f_obs_f)
+      self.f_obs().setup_binner(n_bins = n_bins)
+      self.f_obs_w.use_binning_of(self.f_obs())
+      self.f_obs_f.use_binning_of(self.f_obs())
       completeness = self.f_obs_w.completeness(use_binning=True).data
       for i_bin in self.f_obs_f.binner().range_used():
         selection = flex.bool( self.f_obs().binner().bin_indices() == i_bin )
