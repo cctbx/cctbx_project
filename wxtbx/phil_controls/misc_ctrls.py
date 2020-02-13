@@ -42,7 +42,7 @@ class ElementsValidator(strings.StringsValidator):
   single_element = False
   def CheckFormat(self, value):
     from cctbx.eltbx import chemical_elements
-    allowed = chemical_elements.proper_upper_list() + ["TX"]
+    allowed = chemical_elements.proper_upper_list() + list(clusters)
     ctrl = self.GetWindow()
     style = ctrl.GetWxtbxStyle()
     elem_strings = strings.parse_strings(value)
