@@ -132,6 +132,9 @@ def install_git(**kwargs):
     result = procrunner.run_process(['git', 'clone', '--recursive', kwargs['source'], kwargs['location']] + reference,
                                     print_stdout=False)
     if result['exitcode']:
+      if os.path.exists(kwargs['location']) and not os.listdir(kwargs['location']):
+        # git-auth can leave an empty directory behind
+        os.rmdir(kwargs['location'])
       return False
     if reference:
       oldcwd = os.getcwd()
