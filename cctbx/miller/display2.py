@@ -50,16 +50,14 @@ def nth_power_scale(dataarray, nth_power):
   values to 0.1 of the largest values
   """
   absdat = flex.abs(dataarray).as_double()
-  #absdat2 = flex.double([e for e in absdat if not math.isnan(e)])
-  absdat2 = graphics_utils.NoNansArray(absdat)
+  absdat2 = graphics_utils.NoNansArray(absdat) # much faster than flex.double([e for e in absdat if not math.isnan(e)])
   maxdat = flex.max(absdat2)
   mindat = max(1e-10*maxdat, flex.min(absdat2) )
-  #print "minmaxdat:", mindat, maxdat
   # only autoscale for sensible values of maxdat and mindat
   if nth_power < 0.0 and maxdat > mindat : # amounts to automatic scale
     nth_power = math.log(0.2)/(math.log(mindat) - math.log(maxdat))
   datascaled = flex.pow(absdat, nth_power)
-  return datascaled
+  return datascaled, nth_power
 
 
 def ExtendMillerArray(miller_array, nsize, indices=None ):
@@ -171,6 +169,7 @@ class scene(object):
     self.colourlabel = self.miller_array.info().labels[0]
     self.d_min = array.d_min()
     self.min_dist = 0.0
+    self.nth_power_scale_radii = settings.nth_power_scale_radii
     self.hkl_range = index_span.abs_range()
     self.axes = [ uc.reciprocal_space_vector((self.hkl_range[0],0,0)),
                   uc.reciprocal_space_vector((0,self.hkl_range[1],0)),
@@ -369,7 +368,7 @@ class scene(object):
     elif (settings.sigma_radius) and sigmas is not None:
       data_for_radii = sigmas.as_double()
     else :
-      data_for_radii = nth_power_scale(flex.abs(data.deep_copy()),
+      data_for_radii, self.nth_power_scale_radii = nth_power_scale(flex.abs(data.deep_copy()),
                                        settings.nth_power_scale_radii)
     if (settings.slice_mode):
       data = data.select(self.slice_selection)

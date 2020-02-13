@@ -467,7 +467,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
             self.clipTNCSBtn.setEnabled(True)
 
           if self.infodict.get("file_name"):
-            #self.HKLnameedit.setText( self.infodict.get("file_name", "") )
             self.window.setWindowTitle("HKL-viewer: " + self.infodict.get("file_name", "") )
 
           if self.infodict.get("NewFileLoaded"):
@@ -478,6 +477,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
           if self.infodict.get("NewMillerArray"):
             self.NewMillerArray = self.infodict.get("NewMillerArray",False)
+
+          if self.infodict.get("used_nth_power_scale_radii") \
+          and  self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] < 0.0:
+            self.power_scale_spinBox.setValue( self.infodict.get("used_nth_power_scale_radii", 0.0))
 
           self.fileisvalid = True
           #print("ngl_hkl_infodict: " + str(ngl_hkl_infodict))
@@ -590,7 +593,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     NGL_HKLviewer.clip_plane.bequiet, False
     """
     self.unfeedback = True
-    self.power_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'])
+    self.power_scale_spinBox.setEnabled( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] >= 0.0 )
     self.ManualPowerScalecheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] >= 0.0 )
     self.radii_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.scale'])
     self.showsliceGroupCheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_mode'])
@@ -614,6 +617,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.SpaceGroupComboBox.setCurrentIndex(  self.currentphilstringdict['NGL_HKLviewer.spacegroup_choice'] )
     self.clipParallelBtn.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.is_parallel'])
     self.missingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_missing'])
+    self.onlymissingcheckbox.setEnabled( self.currentphilstringdict['NGL_HKLviewer.viewer.show_missing'] )
     axidx = -1
     for axidx,c in enumerate(self.sliceaxis.values()):
       if c in self.currentphilstringdict['NGL_HKLviewer.viewer.slice_axis']:
@@ -630,14 +634,14 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.clipTNCSBtn.setChecked( "tncs" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
     self.fixedorientcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.fixorientation'])
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_only_missing'])
-    if self.currentphilstringdict['NGL_HKLviewer.show_real_space_unit_cell'] is not None:
+    if self.currentphilstringdict['NGL_HKLviewer.real_space_unit_cell_scale_fraction'] is not None:
       self.DrawRealUnitCellBox.setChecked(True)
-      self.unitcellslider.setValue( self.currentphilstringdict['NGL_HKLviewer.show_real_space_unit_cell'])
+      self.unitcellslider.setValue( self.currentphilstringdict['NGL_HKLviewer.real_space_unit_cell_scale_fraction'] * self.unitcellslider.maximum())
     else:
       self.DrawRealUnitCellBox.setChecked(False)
-    if self.currentphilstringdict['NGL_HKLviewer.show_reciprocal_unit_cell'] is not None:
+    if self.currentphilstringdict['NGL_HKLviewer.reciprocal_unit_cell_scale_fraction'] is not None:
       self.DrawReciprocUnitCellBox.setChecked(True)
-      self.reciprocunitcellslider.setValue( self.currentphilstringdict['NGL_HKLviewer.show_reciprocal_unit_cell'])
+      self.reciprocunitcellslider.setValue( self.currentphilstringdict['NGL_HKLviewer.reciprocal_unit_cell_scale_fraction'] * self.reciprocunitcellslider.maximum())
     else:
       self.DrawReciprocUnitCellBox.setChecked(False)
 
@@ -749,8 +753,14 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
   def showMissing(self):
     if self.missingcheckbox.isChecked():
       self.PhilToJsRender('NGL_HKLviewer.viewer.show_missing = True')
+      self.onlymissingcheckbox.setEnabled(True)
     else:
-      self.PhilToJsRender('NGL_HKLviewer.viewer.show_missing = False')
+      self.PhilToJsRender("""NGL_HKLviewer.viewer {
+                                                     show_missing = False
+                                                     show_only_missing = False
+                                                   }
+                          """)
+      self.onlymissingcheckbox.setEnabled(False)
 
 
   def showOnlyMissing(self):
@@ -973,10 +983,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       return
     if self.ManualPowerScalecheckbox.isChecked():
       self.PhilToJsRender('NGL_HKLviewer.viewer.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
-      self.power_scale_spinBox.setEnabled(True)
+      #self.power_scale_spinBox.setEnabled(True)
     else:
       self.PhilToJsRender('NGL_HKLviewer.viewer.nth_power_scale_radii = -1.0')
-      self.power_scale_spinBox.setEnabled(False)
+      #self.power_scale_spinBox.setEnabled(False)
 
 
   def createExpansionBox(self):
@@ -1124,7 +1134,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.showsliceGroupCheckbox.setChecked(True)
       self.PhilToJsRender("""NGL_HKLviewer.viewer.slice_mode = True
                              NGL_HKLviewer.clip_plane.clipwidth = None
-                          """)
+                           """)
 
 
   def onRotaVecAngleChanged(self, val):
@@ -1176,22 +1186,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     if not self.unfeedback:
       self.PhilToJsRender('NGL_HKLviewer.viewer.NGL.fixorientation = %s' \
                                     %str(self.fixedorientcheckbox.isChecked()))
-
-
-  def onDrawReciprocUnitCellBoxClick(self):
-    if not self.unfeedback:
-      if self.DrawReciprocUnitCellBox.isChecked():
-        self.PhilToJsRender("NGL_HKLviewer.show_reciprocal_unit_cell = %f" %self.reciprocunitcellslider.value())
-      else:
-        self.PhilToJsRender("NGL_HKLviewer.show_reciprocal_unit_cell = None")
-
-
-  def onDrawUnitCellBoxClick(self):
-    if not self.unfeedback:
-      if self.DrawRealUnitCellBox.isChecked():
-        self.PhilToJsRender("NGL_HKLviewer.show_real_space_unit_cell = %f" %self.unitcellslider.value())
-      else:
-        self.PhilToJsRender("NGL_HKLviewer.show_real_space_unit_cell = None")
 
 
   def onMillerTableCellPressed(self, row, col):
@@ -1350,16 +1344,36 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.PhilToJsRender('NGL_HKLviewer.action = reset_view')
 
 
+  def onDrawReciprocUnitCellBoxClick(self):
+    if not self.unfeedback:
+      if self.DrawReciprocUnitCellBox.isChecked():
+        val = self.reciprocunitcellslider.value()/self.reciprocunitcellslider.maximum()
+        self.PhilToJsRender("NGL_HKLviewer.reciprocal_unit_cell_scale_fraction = %f" %val)
+      else:
+        self.PhilToJsRender("NGL_HKLviewer.reciprocal_unit_cell_scale_fraction = None")
+
+
+  def onDrawUnitCellBoxClick(self):
+    if not self.unfeedback:
+      if self.DrawRealUnitCellBox.isChecked():
+        val = self.unitcellslider.value()/self.unitcellslider.maximum()
+        self.PhilToJsRender("NGL_HKLviewer.real_space_unit_cell_scale_fraction = %f" %val)
+      else:
+        self.PhilToJsRender("NGL_HKLviewer.real_space_unit_cell_scale_fraction = None")
+
+
   def onUnitcellScale(self):
     if self.unfeedback:
       return
-    self.PhilToJsRender("NGL_HKLviewer.show_real_space_unit_cell = %f" %self.unitcellslider.value())
+    val = self.unitcellslider.value()/self.unitcellslider.maximum()
+    self.PhilToJsRender("NGL_HKLviewer.real_space_unit_cell_scale_fraction = %f" %val)
 
 
   def onReciprocUnitcellScale(self):
     if self.unfeedback:
       return
-    self.PhilToJsRender("NGL_HKLviewer.show_reciprocal_unit_cell = %f" %self.reciprocunitcellslider.value())
+    val = self.reciprocunitcellslider.value()/self.reciprocunitcellslider.maximum()
+    self.PhilToJsRender("NGL_HKLviewer.reciprocal_unit_cell_scale_fraction = %f" %val)
 
 
   def DebugInteractively(self):

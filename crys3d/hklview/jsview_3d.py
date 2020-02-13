@@ -446,17 +446,16 @@ class hklview_3d:
       #if clipwidth==0.0 or ( R[0][0]==0.0 and R[0][1]==0.0 and R[0][2]==0.0 ) or self.params.clip_plane.angle_around_vector == 0.0:
       #  self.ReOrientStage()
       msg += self.SetOpacities(self.viewerparams.NGL.bin_opacities )
-      #if has_phil_path(self.diff_phil, "show_real_space_unit_cell" ):
-      if self.params.show_real_space_unit_cell is None:
-          scale = None
-      else:
-        scale = (self.realspace_scale - 1.0)*self.params.show_real_space_unit_cell/100 + 1.0
-      msg += self.DrawUnitCell(scale )
-      #if has_phil_path(self.diff_phil, "show_reciprocal_unit_cell" ):
-      if self.params.show_reciprocal_unit_cell is None:
+      if self.params.real_space_unit_cell_scale_fraction is None:
         scale = None
       else:
-        scale = (self.reciproc_scale - 1.0)*self.params.show_reciprocal_unit_cell/100 + 1.0
+        scale = (self.realspace_scale - 1.0)*self.params.real_space_unit_cell_scale_fraction + 1.0
+
+      msg += self.DrawUnitCell(scale )
+      if self.params.reciprocal_unit_cell_scale_fraction is None:
+        scale = None
+      else:
+        scale = (self.reciproc_scale - 1.0)*self.params.reciprocal_unit_cell_scale_fraction + 1.0
       msg += self.DrawReciprocalUnitCell(scale )
       self.set_tooltip_opacity()
       self.set_show_tooltips()
@@ -1718,7 +1717,7 @@ function HKLscene()
 function OnUpdateOrientation()
 {
   msg = getOrientMsg();
-  WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+  WebsockSendMsg('MouseMovedOrientation:\\n' + msg );
 }
 
 
@@ -2401,7 +2400,7 @@ mysocket.onmessage = function(e)
       if self.WaitforHandshake():
         #time.sleep(0.2)
         nwait = 0
-        while self.lastviewmtrx == self.viewmtrx and nwait < self.handshakewait:
+        while self.lastviewmtrx == self.viewmtrx and nwait < self.handshakewait  :
           time.sleep(self.sleeptime)
           nwait += self.sleeptime
 
@@ -2524,7 +2523,8 @@ mysocket.onmessage = function(e)
   %s,  %s,  %s,  %s
 Distance: %s
     """ %tuple(alllst), verbose=4)
-    self.params.mouse_moved = True
+    if "MouseMovedOrientation:" in message:
+      self.params.mouse_moved = True
     if self.currentRotmx.is_r3_rotation_matrix():
       # Round off matrix elements to avoid machine imprecision errors that might cast
       # any matrix element into a number strictly larger than 1 which would
@@ -2761,8 +2761,8 @@ Distance: %s
     vec2 = (t1*self.scene.renderscale, t2*self.scene.renderscale, t3*self.scene.renderscale)
     #svec = list(vec)
     if isreciprocal:
-      # uc.reciprocal_space_vector() only takes integer miller indices so compute
-      # the cartesian coordinates for real valued miller indices with the transpose of the fractionalization matrix
+      # uc.reciprocal_space_vector() only takes integer miller indices so compute the cartesian coordinates
+      # for floating valued miller indices with the transpose of the fractionalization matrix
       vec1 = list( vec1 * matrix.sqr(uc.fractionalization_matrix()).transpose() )
       vec2 = list( vec2 * matrix.sqr(uc.fractionalization_matrix()).transpose() )
       svec1 = [ vec1[0], vec1[1], vec1[2] ]

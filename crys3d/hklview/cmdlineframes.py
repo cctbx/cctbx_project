@@ -300,7 +300,7 @@ class HKLViewFrame() :
     self.NewFileLoaded = False
     self.hklin = None
     if 'hklin' in kwds or 'HKLIN' in kwds:
-      self.hklin = kwds['hklin']
+      self.hklin = kwds.get('hklin', kwds['HKLIN'] )
       self.LoadReflectionsFile(self.hklin)
 
 
@@ -1113,6 +1113,9 @@ class HKLViewFrame() :
       philstrvalsdict[e.path] = e.object.extract()
     mydict = { "current_phil_strings": philstrvalsdict }
     self.SendInfoToGUI(mydict)
+    if self.viewer.params.viewer.scene_id is not None:
+      self.SendInfoToGUI({ "used_nth_power_scale_radii": self.viewer.HKLscenes[int(self.viewer.params.viewer.scene_id)].nth_power_scale_radii })
+
 
 
   def GetHtmlURL(self):
@@ -1175,9 +1178,9 @@ NGL_HKLviewer {
     .type = bool
   mouse_moved = False
     .type = bool
-  show_real_space_unit_cell = None
+  real_space_unit_cell_scale_fraction = None
     .type = float
-  show_reciprocal_unit_cell = None
+  reciprocal_unit_cell_scale_fraction = None
     .type = float
   clip_plane {
     h = 2.0
