@@ -2083,12 +2083,12 @@ class DIALSBuilder(CCIBuilder):
     pass
 
 class LABELITBuilder(CCIBuilder):
-  CODEBASES_EXTRA = ['labelit']
-  LIBTBX_EXTRA = ['labelit']
+  CODEBASES_EXTRA = ['labelit', 'dials']
+  LIBTBX_EXTRA = ['labelit', 'dials']
 
   def add_base(self, extra_opts=[]):
     super(LABELITBuilder, self).add_base(
-      extra_opts=['--labelit'] + extra_opts)
+      extra_opts=['--labelit', 'dials'] + extra_opts)
 
   def add_tests(self):
     self.add_test_parallel('labelit', flunkOnFailure=False, warnOnFailure=True)
