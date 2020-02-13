@@ -56,14 +56,16 @@ def run(args):
 
   errors = False
   for package in args:
-    if (installation_root / package).isdir() and glob.glob(abs(installation_root / package / "*")):
-      print("Skipping download of package %s: Non-empty directory already exists in installation root" % package)
-      if package not in libtbx.env.module_dict and package.get('configure', True):
-        packages_to_configure.add(package)
-      continue
     if package not in warehouse:
       print("Skipping package %s: Never heard of this before" % package)
       errors = True
+      continue
+    if (installation_root / package).isdir() and glob.glob(abs(installation_root / package / "*")):
+      print("Skipping download of package %s: Non-empty directory already exists in installation root" % package)
+      if package not in libtbx.env.module_dict and warehouse[package].get('configure', True):
+        packages_to_configure.add(package)
+      if warehouse[package].get('force-configure'):
+        packages_to_configure.add('libtbx')
       continue
 
     downloaded = False
