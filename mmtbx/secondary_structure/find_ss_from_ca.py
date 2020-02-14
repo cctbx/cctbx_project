@@ -65,6 +65,18 @@ master_phil = iotbx.phil.parse("""
                ss_by_chain=False.
        .short_caption = Secondary structure by chain
        .expert_level = 1
+
+     auto_choose_ca_vs_ca_n_o = True
+       .type = bool
+       .help = Automatically identify whether chains are mostly CA or mostly \
+                contain CA/N/O atoms (requires min_ca_n_o_completeness).
+       .short_caption = Auto choose CA vs CA/N/O
+
+     min_ca_n_o_completeness = 0.95
+       .type = float
+       .help = Minimum completeness of CA/N/O atoms to not use CA-only
+       .short_caption = Minimum completeness of CA/N/O
+
      max_rmsd = 1
        .type = float
        .help = Maximum rmsd to consider two chains with identical sequences \
@@ -912,6 +924,35 @@ def ca_n_and_o_always_present(hierarchy):
       return False
   return True
 
+
+def get_fraction_complete_backbone(hierarchy):
+  if not hierarchy: return 0
+  total_residues=hierarchy.overall_counts().n_residues
+  asc=hierarchy.atom_selection_cache()
+  minimum_complete=total_residues
+  for n in ("ca","n","o"):
+    atom_selection="name %s" %(n)
+    sel = asc.selection(string = atom_selection)
+    if sel.count(True) < minimum_complete:
+      minimum_complete=sel.count(True)
+  if minimum_complete==total_residues:
+    return 1 # just to make sure it is exactly 1
+  else:
+    return minimum_complete/max(1,total_residues)
+
+def choose_ca_or_complete_backbone(hierarchy, params=None):
+  # Purpose: return a hierarchy that is either completely CA or has no CA-only
+  #   residues
+  fraction_complete_backbone=get_fraction_complete_backbone(hierarchy)
+  if fraction_complete_backbone == 1:
+    return hierarchy # nothing to do
+  if fraction_complete_backbone < \
+       params.find_ss_structure.min_ca_n_o_completeness:
+    # just use CA-only
+    return apply_atom_selection('name CA',hierarchy=hierarchy)
+  else:  # remove CA-only residues
+    hierarchy.remove_incomplete_main_chain_protein()
+    return hierarchy
 
 def sites_and_seq_from_hierarchy(hierarchy):
   atom_selection="name ca"
@@ -3408,6 +3449,9 @@ class find_secondary_structure: # class to look for secondary structure
         hierarchy=apply_atom_selection(atom_selection,hierarchy=hierarchy)
       except Exception as e:
         hierarchy=None
+
+    if hierarchy and params.find_ss_structure.auto_choose_ca_vs_ca_n_o:
+      hierarchy=choose_ca_or_complete_backbone(hierarchy,params=params)
 
     if force_secondary_structure_input and not \
         (params.input_files.secondary_structure_input or user_annotation_text):

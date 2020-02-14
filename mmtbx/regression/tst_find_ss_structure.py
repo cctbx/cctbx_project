@@ -2885,11 +2885,12 @@ FINAL PDB RECORDS:
 SHEET    1   1 2 GLY B  23  ASN B  28  0
 SHEET    2   1 2 GLY B  31  ALA B  36 -1  N  ALA B  35   O  PHE B  24
 SHEET    1   2 2 GLY D  23  ASN D  28  0
-SHEET    2   2 2 GLY D  31  ALA D  36 -1  N  GLY D  33   O  HIS D  26
+SHEET    2   2 2 GLY D  31  ALA D  36 -1  N  ALA D  35   O  PHE D  24
 
 
 FINAL PDB selections:
 "(chain 'B' and resid   23  through   28 ) or (chain 'B' and resid   31  through   36 ) or (chain 'D' and resid   23  through   28 ) or (chain 'D' and resid   31  through   36 )"
+
 """
   f=StringIO()
   fss.show_summary(out=f,verbose=True)

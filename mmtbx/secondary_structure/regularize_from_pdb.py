@@ -107,6 +107,18 @@ master_phil = iotbx.phil.parse("""
                ss_by_chain=False.  Not used in regularize_pdb
        .short_caption = Secondary structure by chain
        .style = hidden
+
+     auto_choose_ca_vs_ca_n_o = True
+       .type = bool
+       .help = Automatically identify whether chains are mostly CA or mostly \
+                contain CA/N/O atoms (requires min_ca_n_o_completeness).
+       .short_caption = Auto choose CA vs CA/N/O
+
+     min_ca_n_o_completeness = 0.95
+       .type = float
+       .help = Minimum completeness of CA/N/O atoms to not use CA-only
+       .short_caption = Minimum completeness of CA/N/O
+
      max_rmsd = 1
        .type = float
        .help = Maximum rmsd to consider two chains with identical sequences \

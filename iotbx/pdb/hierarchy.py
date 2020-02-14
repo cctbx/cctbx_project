@@ -1252,6 +1252,27 @@ class _():
       conformer_indices.set_selected(altloc_indices[altloc], i+p)
     return conformer_indices
 
+  def remove_incomplete_main_chain_protein(self,
+       required_atom_names=['CA','N','C','O']):
+    # Remove each residue_group that does not contain CA N C O of protein
+    hierarchy = self
+    for model in hierarchy.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          all_atom_names_found=[]
+          atom_groups = residue_group.atom_groups()
+          for atom_group in atom_groups:
+            for atom in atom_group.atoms():
+              atom_name=atom.name.strip()
+              if not atom_name in all_atom_names_found:
+                all_atom_names_found.append(atom_name)
+          for r in required_atom_names:
+            if not r in all_atom_names_found:
+              chain.remove_residue_group(residue_group=residue_group)
+              break
+        if (len(chain.residue_groups()) == 0):
+          model.remove_chain(chain=chain)
+
   def remove_alt_confs(self, always_keep_one_conformer):
     hierarchy = self
     for model in hierarchy.models():
