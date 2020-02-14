@@ -454,7 +454,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
             if self.closing:
               print(currentinfostr)
 
-            if "Exiting HKLViewFrame" in currentinfostr:
+            if "Destroying HKLViewFrame" in currentinfostr:
               self.canexit = True
 
           if self.infodict.get("tncsvec"):

@@ -307,7 +307,7 @@ class HKLViewFrame() :
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
     self.viewer.__exit__(exc_type, exc_value, traceback)
     del self.viewer
-    self.mprint("Exiting HKLViewFrame", verbose=0)
+    self.mprint("Destroying HKLViewFrame", verbose=0) # this string is expected by HKLviewer.py so don't change
     self.STOP = True
     del self
 
@@ -340,7 +340,7 @@ class HKLViewFrame() :
         time.sleep(self.zmqsleeptime)
       except Exception as e:
         self.mprint( str(e) + traceback.format_exc(limit=10), verbose=1)
-    self.mprint( "Exiting zmq_listen() thread", 1)
+    self.mprint( "Shutting down zmq_listen() thread", 1)
     del self.guisocket
     self.guiSocketPort=None
 

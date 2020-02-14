@@ -93,11 +93,11 @@ def CheckWebGL():
   browser.page().scripts().insert(script)
   print('WebGL=' + str(webglsupport),)
   # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
-  webpage.deleteLater() 
+  webpage.deleteLater()
 
 if (__name__ == "__main__") :
   app1 = QApplication(sys.argv)
   # give the browser time to instatiate and after 1 second close down gracefully
-  QTimer.singleShot(1000, app1.quit ) 
+  QTimer.singleShot(1000, app1.quit )
   CheckWebGL()
   app1.exec_()

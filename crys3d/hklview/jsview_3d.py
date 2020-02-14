@@ -317,25 +317,24 @@ class hklview_3d:
     self.msgqueuethrd = None
     self.StartWebsocket()
     self.isterminating = False
+    self.javascriptcleaned = False
 
 
   def __exit__(self, exc_type, exc_value, traceback):
     # not called unless instantiated with a "with hklview_3d ... " statement
     self.JavaScriptCleanUp()
     nwait = 0
-    while not "JavaScriptCleanUp" in self.lastmsg and nwait < 5:
+    while not self.isterminating and nwait < 5:
       sleep(self.sleeptime)
       nwait += self.sleeptime
-    self.isterminating = True
     if os.path.isfile(self.hklfname):
       os.remove(self.hklfname)
-    self.mprint("Annihilating hklview_3d", 1)
+    self.mprint("Destroying hklview_3d", 1)
 
 
   def SendInfoToGUI(self, mydict):
     if self.send_info_to_gui:
       self.send_info_to_gui( mydict )
-      #self.send_info_to_gui( str(mydict).encode("utf-8") )
 
 
   def update_settings(self, diff_phil, curphilparam) :
@@ -2394,16 +2393,13 @@ mysocket.onmessage = function(e)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
-    #self.lastviewmtrx = self.viewmtrx
     self.ReloadNGL()
     if not blankscene:
       if self.WaitforHandshake():
-        #time.sleep(0.2)
         nwait = 0
-        while self.lastviewmtrx == self.viewmtrx and nwait < self.handshakewait  :
+        while self.viewmtrx is None and nwait < self.handshakewait:
           time.sleep(self.sleeptime)
           nwait += self.sleeptime
-
       self.GetClipPlaneDistances()
       self.GetBoundingBox()
       self.OrigClipFar = self.clipFar
@@ -2476,45 +2472,16 @@ mysocket.onmessage = function(e)
       self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
 
 
-  def ProcessOrientationMessage(self, message):
-    if message.find("NaN")>=0 or message.find("undefined")>=0:
-      return
-    if "OrientationBeforeReload:" in message:
-      #sleep(0.2)
-      if not self.isnewfile:
-        self.viewmtrx = message[ message.find("\n") + 1: ]
-        self.lastviewmtrx = self.viewmtrx
-        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-        #self.AddToBrowserMsgQueue ("ReOrient", self.viewmtrx)
-      self.isnewfile = False
-    self.viewmtrx = message[ message.find("\n") + 1: ]
-    lst = self.viewmtrx.split(",")
+  def GetCameraPosRotTrans(self, viewmtrx):
+    lst = viewmtrx.split(",")
     flst = [float(e) for e in lst]
     ScaleRotMx = matrix.sqr( (flst[0], flst[4], flst[8],
                           flst[1], flst[5], flst[9],
                           flst[2], flst[6], flst[10]
                           )
     )
-    self.cameratranslation = (flst[12], flst[13], flst[14])
-    self.mprint("translation: %s" %str(roundoff(self.cameratranslation)), verbose=3)
-    rotdet = ScaleRotMx.determinant()
-    if rotdet <= 0.0:
-      self.mprint("Negative orientation matrix determinant!!", verbose=1)
-      return
-      #cameradist = flst[16] # javascript backup of distance in case of invalid matrix
-    else:
-      cameradist = math.pow(rotdet, 1.0/3.0)
-    self.mprint("Scale distance: %s" %roundoff(cameradist), verbose=3)
-    self.currentRotmx = matrix.identity(3)
-    if cameradist > 0.0:
-      self.currentRotmx = ScaleRotMx/cameradist
-      self.cameraPosZ = cameradist
-    rotlst = roundoff(self.currentRotmx.elems)
-    self.mprint("""Rotation matrix:
-  %s,  %s,  %s
-  %s,  %s,  %s
-  %s,  %s,  %s
-    """ %rotlst, verbose=3)
+    cameratranslation = (flst[12], flst[13], flst[14])
+    self.mprint("translation: %s" %str(roundoff(cameratranslation)), verbose=3)
     alllst = roundoff(flst)
     self.mprint("""OrientationMatrix matrix:
   %s,  %s,  %s,  %s
@@ -2523,6 +2490,37 @@ mysocket.onmessage = function(e)
   %s,  %s,  %s,  %s
 Distance: %s
     """ %tuple(alllst), verbose=4)
+    rotdet = ScaleRotMx.determinant()
+    if rotdet <= 0.0:
+      self.mprint("Negative orientation matrix determinant!!", verbose=1)
+      return
+    else:
+      cameradist = math.pow(rotdet, 1.0/3.0)
+    self.mprint("Scale distance: %s" %roundoff(cameradist), verbose=3)
+    currentRotmx = matrix.identity(3)
+    if cameradist > 0.0:
+      currentRotmx = ScaleRotMx/cameradist
+      cameraPosZ = cameradist
+    return cameraPosZ, currentRotmx, cameratranslation
+
+
+  def ProcessOrientationMessage(self, message):
+    if message.find("NaN")>=0 or message.find("undefined")>=0:
+      return
+    if "OrientationBeforeReload:" in message:
+      #sleep(0.2)
+      if not self.isnewfile:
+        self.viewmtrx = message[ message.find("\n") + 1: ]
+        self.lastviewmtrx = self.viewmtrx
+      self.isnewfile = False
+    self.viewmtrx = message[ message.find("\n") + 1: ]
+    self.cameraPosZ, self.currentRotmx, self.cameratranslation = self.GetCameraPosRotTrans( self.viewmtrx)
+    rotlst = roundoff(self.currentRotmx.elems)
+    self.mprint("""Rotation matrix:
+  %s,  %s,  %s
+  %s,  %s,  %s
+  %s,  %s,  %s
+    """ %rotlst, verbose=3)
     if "MouseMovedOrientation:" in message:
       self.params.mouse_moved = True
     if self.currentRotmx.is_r3_rotation_matrix():
@@ -2561,7 +2559,8 @@ Distance: %s
       while True:
         nwait = 0.0
         sleep(self.sleeptime)
-        if self.isterminating:
+        if self.javascriptcleaned:
+          self.mprint("Shutting down WebBrowser message queue", verbose=1)
           return
         if len(self.msgqueue):
           pendingmessagetype, pendingmessage = self.msgqueue[0]
@@ -2569,10 +2568,14 @@ Distance: %s
           while not self.browserisopen:  #self.websockclient:
             sleep(self.sleeptime)
             nwait += self.sleeptime
-            if nwait > self.handshakewait:
+            if nwait > self.handshakewait or self.javascriptcleaned or not self.viewerparams.scene_id is not None:
               return
-              #break
           self.msgqueue.remove( self.msgqueue[0] )
+          #if self.was_disconnected:
+          #  nwait2 = 0.0
+          #  while nwait2 < self.handshakewait:
+          #    nwait2 += self.sleeptime
+          #  self.ReloadNGL()
 # if the html content is huge the browser will be unresponsive until it has finished
 # reading the html content. This may crash this thread. So try restarting this thread until
 # browser is ready
@@ -2599,21 +2602,19 @@ Distance: %s
   def OnDisconnectWebsocketClient(self, client, server):
     self.mprint( "Browser disconnected:" + str( client ), verbose=1 )
     self.was_disconnected = True
-    #self.websockclient = None
 
 
   def send_msg_to_browser(self, msgtype, msg=""):
     message = u"" + msgtype + self.msgdelim + str(msg)
     if self.websockclient:
-    #if self.browserisopen:
       nwait = 0.0
       while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
-        or "CurrentViewOrientation" in self.lastmsg or "AutoViewSet" in self.lastmsg or "ReOrient" in self.lastmsg):
+        or "CurrentViewOrientation" in self.lastmsg or "AutoViewSet" in self.lastmsg \
+        or "ReOrient" in self.lastmsg):
         sleep(self.sleeptime)
         nwait += self.sleeptime
         if nwait > self.handshakewait and self.browserisopen:
           self.mprint("ERROR: No handshake from browser! Security settings may have to be adapted", verbose=0 )
-          #return
           break
       self.server.send_message(self.websockclient, message )
     else:
@@ -2621,8 +2622,7 @@ Distance: %s
 
 
   def OpenBrowser(self):
-    #if not self.browserisopen:
-    if not (self.websockclient or self.browserisopen):
+    if self.viewerparams.scene_id is not None and not (self.websockclient or self.browserisopen):
       NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
       htmlstr = self.hklhtml %(NGLlibpath, os.path.abspath( self.jscriptfname))
       htmlstr += self.htmldiv
@@ -2645,7 +2645,6 @@ Distance: %s
     self.server.set_fn_new_client(self.OnConnectWebsocketClient)
     self.server.set_fn_client_left(self.OnDisconnectWebsocketClient)
     self.server.set_fn_message_received(self.OnWebsocketClientMessage)
-
     self.wst = threading.Thread(target=self.server.run_forever)
     self.wst.daemon = True
     self.wst.start()
@@ -2656,12 +2655,17 @@ Distance: %s
 
   def StopThreads(self):
     try:
-      self.websockclient['handler'].send_text(u"", opcode=0x8)
+      if self.websockclient: # might not have been created if program is closed before a data set is shown
+        self.websockclient['handler'].send_text(u"", opcode=0x8)
     except Exception as e:
       self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
+    self.mprint("Shutting down Websocket listening thread", verbose=1)
     self.server.shutdown()
+    self.javascriptcleaned = True
     self.msgqueuethrd.join()
+    self.mprint("Shutting down WebsocketServer", verbose=1)
     self.wst.join()
+    self.isterminating = True
 
 
   def set_camera_type(self):
@@ -2710,6 +2714,8 @@ Distance: %s
 
   def JavaScriptCleanUp(self):
     self.AddToBrowserMsgQueue("JavaScriptCleanUp")
+    if self.viewerparams.scene_id is None: # nothing is showing in the browser
+      self.StopThreads()
 
 
   def ExpandInBrowser(self, P1=True, friedel_mate=True):
@@ -2943,6 +2949,8 @@ Distance: %s
       self.vecrotmx = self.PointVectorParallelToClipPlane()
     else:
       self.vecrotmx = self.PointVectorPerpendicularToClipPlane()
+    if self.cameraPosZ is None and self.viewmtrx is not None:
+      self.cameraPosZ, self.currentRotmx, self.cameratranslation = self.GetCameraPosRotTrans( self.viewmtrx)
     halfdist = self.cameraPosZ  + hkldist # self.viewer.boundingZ*0.5
     if clipwidth == 0.0:
       clipwidth = self.meanradius
