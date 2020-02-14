@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+from PySide2.QtCore import QTimer
 
 from PySide2.QtWebEngineWidgets import QWebEngineView, QWebEngineScript, QWebEnginePage
 from PySide2.QtWidgets import QApplication
@@ -88,33 +89,15 @@ def CheckWebGL():
   webpage = MyQWebEnginePage()
   webpage.setHtml(htmlstr)
   browser.setPage(webpage)
-  browser.show()
+  #browser.show()
   browser.page().scripts().insert(script)
   print('WebGL=' + str(webglsupport),)
-  #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-
-  #app1.exec_()
-  #app1.quit()
-  #app1.exit()
-  del script
-  del webpage
-  del browser
-  #del app1
-
-  del sys.modules["PySide2.QtWebEngineWidgets"]
-  import gc
-  gc.collect()
-
-  script = None
-  webpage = None
-  browser = None
-  #app1 = None
-  #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-
-
-  #app1.exit()
-  #del app1
+  # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
+  webpage.deleteLater() 
 
 if (__name__ == "__main__") :
   app1 = QApplication(sys.argv)
+  # give the browser time to instatiate and after 1 second close down gracefully
+  QTimer.singleShot(1000, app1.quit ) 
   CheckWebGL()
+  app1.exec_()

@@ -300,7 +300,7 @@ class HKLViewFrame() :
     self.NewFileLoaded = False
     self.hklin = None
     if 'hklin' in kwds or 'HKLIN' in kwds:
-      self.hklin = kwds.get('hklin', kwds['HKLIN'] )
+      self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
       self.LoadReflectionsFile(self.hklin)
 
 

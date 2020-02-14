@@ -257,8 +257,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.PhilToJsRender('NGL_HKLviewer.action = is_terminating')
     self.closing = True
     self.window.setVisible(False)
-    del self.webprofile
-    del self.webpage
+    self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
     print("HKLviewer closing down...")
     nc = 0
     sleeptime = 0.2
@@ -271,7 +270,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.cctbxproc.wait()
     self.BrowserBox.close()
     self.BrowserBox.deleteLater()
-    #self.BrowserBox.destroy()
     event.accept()
 
 
