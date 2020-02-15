@@ -144,7 +144,7 @@ namespace boost_python {
           af::const_ref<phi_psi_proxy> const&,
           af::ref<scitbx::vec3<double> > const&,
           af::ref<scitbx::vec3<double> > const&,
-          af::small<double, 5> const&,
+          af::tiny<double, 4> const&,
           af::ref<double> const&))
         ramachandran_residual_sum,
         (arg("sites_cart"), arg("proxies"), arg("gradient_array"),

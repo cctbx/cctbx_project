@@ -350,7 +350,7 @@ namespace mmtbx { namespace geometry_restraints {
     af::const_ref<phi_psi_proxy> const& proxies,
     af::ref<scitbx::vec3<double> > const& gradient_array,
     af::ref<scitbx::vec3<double> > const& phi_psi_targets,
-    af::small<double, 5> const& weights,
+    af::tiny<double, 4> const& weights,
     af::ref<double > const& residuals_array)
   {
     MMTBX_ASSERT(gradient_array.size() == sites_cart.size());
@@ -359,12 +359,16 @@ namespace mmtbx { namespace geometry_restraints {
     double res_sum = 0;
     for (std::size_t i=0; i<proxies.size(); i++) {
       phi_psi_proxy const& proxy = proxies[i];
+      // r: phi target, psi target, distance to allowed.
       scitbx::vec3<double> r = phi_psi_targets[i];
       double weight = weights[0];
-      if(weight < 0) {
-        weight = 1.0/weights[1]/weights[1] *
-            (std::max(weights[3], std::min(r[2], weights[2]))) * weights[4];
+      // if(weight < 0) {
+      if(std::abs(weight) < 1e-7) {
+        weight = weights[1] * std::max(weights[2], std::min(r[2], weights[3]));
+        // weight = 1.0/weights[1]/weights[1] *
+        //     (std::max(weights[3], std::min(r[2], weights[2]))) * weights[4];
       }
+      // std::cout << "c++ weight:" << weight << "\n";
       af::tiny<scitbx::vec3<double>, 4> phi_sites;
       af::tiny<scitbx::vec3<double>, 4> psi_sites;
       af::tiny<unsigned, 5> const i_seqs = proxy.i_seqs;

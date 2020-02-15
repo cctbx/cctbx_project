@@ -375,7 +375,8 @@ master_params_str = """\
   {
     ramachandran_restraints = False
       .type = bool
-      .help = Restrains peptide backbone to fall within allowed regions of \
+      .help = !!! OBSOLETED. Kept for backward compatibility only !!! \
+        Restrains peptide backbone to fall within allowed regions of \
         Ramachandran plot.  Although it does not eliminate outliers, it can \
         significantly improve the percent favored and percent outliers at \
         low resolution.  Probably not useful (and maybe even harmful) at \
@@ -400,8 +401,9 @@ master_params_str = """\
     omega_esd_override_value = None
       .type = float
       .short_caption = Omega-ESD override value
-    include scope mmtbx.geometry_restraints.ramachandran.master_phil
+    include scope mmtbx.geometry_restraints.ramachandran.old_master_phil
   }
+  include scope mmtbx.geometry_restraints.ramachandran.master_phil
   max_reasonable_bond_distance = 50.0
     .type=float
   nonbonded_distance_cutoff = None
@@ -5584,14 +5586,25 @@ class process(object):
       # Ramachandran restraints
       ramachandran_manager = None
       pep_link_params = self.all_chain_proxies.params.peptide_link
-      if pep_link_params.ramachandran_restraints :
+      rama_params = None
+      if hasattr(self.all_chain_proxies.params, 'ramachandran_restraints'):
+        rama_params = self.all_chain_proxies.params.ramachandran_restraints
+      if (pep_link_params.ramachandran_restraints or
+          (rama_params and rama_params.enabled)):
+        if pep_link_params.ramachandran_restraints and rama_params and rama_params.enabled:
+          raise Sorry("You cannot use obsoleted and modern ramachandran " +
+              "restraints scopes at the same time.")
         if (not pep_link_params.discard_psi_phi):
           # Not sure anymore why this is necessary
           raise Sorry("You may not use Ramachandran restraints when "+
             "discard_psi_phi=False.")
+        params_to_pass = rama_params
+        if pep_link_params.ramachandran_restraints:
+          params_to_pass = pep_link_params
+        # print ('params_to_pass', type(params_to_pass))
         ramachandran_manager = ramachandran.ramachandran_manager(
             pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy,
-            params=pep_link_params,
+            params=params_to_pass,
             log=self.log)
         self._geometry_restraints_manager.set_ramachandran_restraints(
             ramachandran_manager)

@@ -179,6 +179,7 @@ def exercise_lbfgs_simple(mon_lib_srv, ener_lib, verbose=False):
       gradient_array=gradients_an)
     # print "comparing", residual_an
     assert approx_equal(residual_an, residuals[i], eps=0.001)
+    # approx_equal(residual_an, residuals[i], eps=0.001)
   if verbose :
     print("")
   for i, peptide in enumerate([pdb1, pdb2, pdb3]):
@@ -343,7 +344,10 @@ def exercise_geo_output(mon_lib_srv, ener_lib):
   atoms = hierarchy.atoms()
   sites_cart = atoms.extract_xyz()
   params = ramachandran.master_phil.fetch().extract()
-  params.rama_potential = "emsley"
+  params = params.ramachandran_restraints
+  params.favored = 'emsley'
+  params.allowed = 'emsley'
+  params.outlier = 'emsley'
   rama_manager = ramachandran.ramachandran_manager(
       hierarchy, params, StringIO())
   out = StringIO()
@@ -412,7 +416,9 @@ phi-psi angles formed by             residual
 
 """)
 
-  params.rama_potential = "oldfield"
+  params.favored = 'oldfield'
+  params.allowed = 'oldfield'
+  params.outlier = 'oldfield'
   rama_manager = ramachandran.ramachandran_manager(
       hierarchy, params, StringIO())
   out = StringIO()
@@ -485,7 +491,10 @@ def exercise_manager_selection(mon_lib_srv, ener_lib):
   atoms = hierarchy.atoms()
   sites_cart = atoms.extract_xyz()
   params = ramachandran.master_phil.fetch().extract()
-  params.rama_potential = "emsley"
+  params = params.ramachandran_restraints
+  params.favored = 'emsley'
+  params.allowed = 'emsley'
+  params.outlier = 'emsley'
   rama_manager = ramachandran.ramachandran_manager(
       hierarchy, params, StringIO())
   out = StringIO()
@@ -601,7 +610,7 @@ def exercise_allowed_outliers():
       pdb_interpretation_params=params,
       log=null_out())
   grm = model.get_restraints_manager().geometry
-  assert grm.ramachandran_manager.get_n_proxies() == 170
+  assert grm.ramachandran_manager.get_n_proxies() == 170, grm.ramachandran_manager.get_n_proxies()
   full_proxies_iseqs = list(tuple(x.get_i_seqs()) for x in grm.ramachandran_manager._oldfield_proxies)
 
   params.pdb_interpretation.peptide_link.ramachandran_restraints = True
@@ -798,7 +807,6 @@ if __name__ == "__main__" :
   import time
   mon_lib_srv = server.server()
   ener_lib = server.ener_lib()
-
   t0 = time.time()
   exercise_basic()
   t1 = time.time()
