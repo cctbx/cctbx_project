@@ -5587,13 +5587,10 @@ class process(object):
       ramachandran_manager = None
       pep_link_params = self.all_chain_proxies.params.peptide_link
       rama_params = None
-      if hasattr(self.all_chain_proxies.params, 'ramachandran_restraints'):
-        rama_params = self.all_chain_proxies.params.ramachandran_restraints
+      if hasattr(self.all_chain_proxies.params, 'ramachandran_plot_restraints'):
+        rama_params = self.all_chain_proxies.params.ramachandran_plot_restraints
       if (pep_link_params.ramachandran_restraints or
           (rama_params and rama_params.enabled)):
-        if pep_link_params.ramachandran_restraints and rama_params and rama_params.enabled:
-          raise Sorry("You cannot use obsoleted and modern ramachandran " +
-              "restraints scopes at the same time.")
         if (not pep_link_params.discard_psi_phi):
           # Not sure anymore why this is necessary
           raise Sorry("You may not use Ramachandran restraints when "+
