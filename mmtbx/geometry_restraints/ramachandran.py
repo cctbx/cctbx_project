@@ -73,7 +73,7 @@ old_master_phil = iotbx.phil.parse("""
 """)
 
 master_phil = iotbx.phil.parse("""\
-ramachandran_restraints {
+ramachandran_plot_restraints {
   enabled = False
     .type = bool
   favored = *oldfield emsley None
@@ -159,20 +159,20 @@ class ramachandran_manager(object):
     if params is None:
       # print ('init, params is None')
       w_params = master_phil.fetch().extract()
-      w_params = w_params.ramachandran_restraints
+      w_params = w_params.ramachandran_plot_restraints
     elif hasattr(params, 'enabled'):
       # print ("init, hasattr(params, 'enabled')")
       # New params
       w_params = params
-    elif (hasattr(params, 'ramachandran_restraints')
-        and not isinstance(params.ramachandran_restraints, bool)):
-      # print ("init, hasattr(params, 'ramachandran_restraints'")
-      # print ("init, ", type(params), type(params.ramachandran_restraints), params.ramachandran_restraints)
-      w_params = params.ramachandran_restraints
+    elif (hasattr(params, 'ramachandran_plot_restraints')
+        and not isinstance(params.ramachandran_plot_restraints, bool)):
+      # print ("init, hasattr(params, 'ramachandran_plot_restraints'")
+      # print ("init, ", type(params), type(params.ramachandran_plot_restraints), params.ramachandran_plot_restraints)
+      w_params = params.ramachandran_plot_restraints
     else:
       # print ("init, else")
       w_params = master_phil.fetch().extract()
-      w_params = w_params.ramachandran_restraints
+      w_params = w_params.ramachandran_plot_restraints
       # old params, make transfer
       w_params.selection = params.rama_selection
       # oldfield
@@ -536,7 +536,7 @@ class ramachandran_manager(object):
 def load_tables(params=None):
   if (params is None):
     params = master_phil.fetch().extract()
-    params = params.ramachandran_restraints
+    params = params.ramachandran_plot_restraints
   if (params.emsley.scale_allowed <= 0.0):
     raise Sorry("Ramachandran restraint parameter scale_allowed must be "+
       "a positive number (current value: %g)." % params.emsley.scale_allowed)

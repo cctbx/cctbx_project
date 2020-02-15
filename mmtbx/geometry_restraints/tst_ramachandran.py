@@ -169,7 +169,7 @@ def exercise_lbfgs_simple(mon_lib_srv, ener_lib, verbose=False):
     sites_cart_1 = atoms.extract_xyz().deep_copy()
     gradients_fd = flex.vec3_double(sites_cart_1.size(), (0,0,0))
     gradients_an = flex.vec3_double(sites_cart_1.size(), (0,0,0))
-    params = ramachandran.master_phil.fetch().extract()
+    params = ramachandran.master_phil.fetch().extract().ramachandran_plot_restraints
     rama_manager = ramachandran.ramachandran_manager(
         pdb_hierarchy, params, log)
     assert rama_manager.get_n_proxies() == 1
@@ -256,7 +256,7 @@ def benchmark_structure(pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0):
   b1 = lbfgs.rmsd_bonds
   atoms.set_xyz(sites_cart_1)
   r1 = ramalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
-  rama_params = ramachandran.master_phil.fetch().extract()
+  rama_params = ramachandran.master_phil.fetch().extract().ramachandran_plot_restraints
   rama_manager = ramachandran.ramachandran_manager(
       pdb_hierarchy, rama_params, log)
   grm.set_ramachandran_restraints(rama_manager)
@@ -344,7 +344,7 @@ def exercise_geo_output(mon_lib_srv, ener_lib):
   atoms = hierarchy.atoms()
   sites_cart = atoms.extract_xyz()
   params = ramachandran.master_phil.fetch().extract()
-  params = params.ramachandran_restraints
+  params = params.ramachandran_plot_restraints
   params.favored = 'emsley'
   params.allowed = 'emsley'
   params.outlier = 'emsley'
@@ -491,7 +491,7 @@ def exercise_manager_selection(mon_lib_srv, ener_lib):
   atoms = hierarchy.atoms()
   sites_cart = atoms.extract_xyz()
   params = ramachandran.master_phil.fetch().extract()
-  params = params.ramachandran_restraints
+  params = params.ramachandran_plot_restraints
   params.favored = 'emsley'
   params.allowed = 'emsley'
   params.outlier = 'emsley'
