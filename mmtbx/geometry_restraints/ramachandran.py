@@ -163,7 +163,7 @@ class ramachandran_manager(object):
       # print ("init, hasattr(params, 'enabled')")
       # New params
       w_params = params
-    elif (hasattr(params, 'ramachandran_plot_restraints'):
+    elif hasattr(params, 'ramachandran_plot_restraints'):
       # print ("init, hasattr(params, 'ramachandran_plot_restraints'")
       # print ("init, ", type(params), type(params.ramachandran_plot_restraints), params.ramachandran_plot_restraints)
       w_params = params.ramachandran_plot_restraints
