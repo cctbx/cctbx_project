@@ -104,19 +104,19 @@ ramachandran_plot_restraints {
                                                                   \
            1 / esd^2  * weight_scale  *  max(distance_to_allowed_cutoff,   current_distance_to_allowed)   \
                 weight_scale(=0.01)  *  max(distance_weight_min(=2.), min(distance_weight_max(=10.), current_distance_to_allowed))
-    # esd = 10.0
-    #   .type = float
-    #   .expert_level = 2
-    #   .short_caption = E.S.D.
     weight_scale = 0.01
       .type = float
       .expert_level = 2
     distance_weight_min = 2.0
       .type = float
       .expert_level = 2
+      .help = minimum coefficient when scaling depending on how far the residue \
+          is from allowed region.
     distance_weight_max = 10.0
       .type = float
       .expert_level = 2
+      .help = maximum coefficient when scaling depending on how far the residue \
+          is from allowed region.
     plot_cutoff = 0.027
       .type = float
       .expert_level = 2
@@ -155,7 +155,6 @@ class ramachandran_manager(object):
     assert not pdb_hierarchy.atoms().extract_i_seq().all_eq(0), ""+\
         "Probably all atoms have i_seq = 0 which is wrong"
 
-    # Here we are making sure params are modern, otherwise translate.
     if params is None:
       # print ('init, params is None')
       w_params = master_phil.fetch().extract()
@@ -164,8 +163,7 @@ class ramachandran_manager(object):
       # print ("init, hasattr(params, 'enabled')")
       # New params
       w_params = params
-    elif (hasattr(params, 'ramachandran_plot_restraints')
-        and not isinstance(params.ramachandran_plot_restraints, bool)):
+    elif (hasattr(params, 'ramachandran_plot_restraints'):
       # print ("init, hasattr(params, 'ramachandran_plot_restraints'")
       # print ("init, ", type(params), type(params.ramachandran_plot_restraints), params.ramachandran_plot_restraints)
       w_params = params.ramachandran_plot_restraints
@@ -183,7 +181,6 @@ class ramachandran_manager(object):
           1/(params.oldfield.esd**2) * params.oldfield.weight_scale
       w_params.oldfield.distance_weight_min = 2.0
       w_params.oldfield.distance_weight_max = params.oldfield.dist_weight_max
-
 
       # emsley
       w_params.emsley.weight = params.rama_weight
@@ -211,13 +208,6 @@ class ramachandran_manager(object):
 
     self.params = w_params
 
-    # if self.params.rama_potential == "emsley":
-    #   assert self.params.restrain_rama_outliers, "Incompatible set of parameters"
-    #   assert self.params.restrain_rama_allowed, "Incompatible set of parameters"
-    #   assert not self.params.restrain_allowed_outliers_with_emsley
-
-
-
     self.hierarchy = pdb_hierarchy # only for def select()
     self.log = log
     self._oldfield_proxies = ext.shared_phi_psi_proxy()
@@ -234,18 +224,12 @@ class ramachandran_manager(object):
     self.new_to_old_conversion = {"general":"ala", "glycine":"gly",
         "cis-proline":"pro", "trans-proline":"pro", "pre-proline":"prepro",
         "isoleucine or valine":"ala"}
-
-    # self.need_filtering = not (self.params.restrain_rama_outliers and
-    #                       self.params.restrain_rama_allowed)
-    self.need_filtering = True
     self.bool_atom_selection = None
     if self.params.selection is None:
       self.bool_atom_selection = flex.bool(pdb_hierarchy.atoms_size(), True)
     else:
       cache = pdb_hierarchy.atom_selection_cache()
       self.bool_atom_selection = cache.selection(self.params.selection)
-
-
     if initialize:
       if 'oldfield' in [self.params.favored, self.params.allowed, self.params.outlier]:
         self._oldfield_tables = ramachandran_plot_data(
@@ -289,18 +273,16 @@ class ramachandran_manager(object):
     self._emsley_proxies = ext.shared_phi_psi_proxy()
     # it would be great to save rama_eval, but the fact that this is called in
     # pdb_interpretation, not in mmtbx.model makes it impossible
-    if self.need_filtering:
-      self.rama_eval = rama_eval()
+    self.rama_eval = rama_eval()
     for three in generate_protein_threes(
         hierarchy=selected_h,
         geometry=None):
       rc = three.get_phi_psi_atoms()
       if rc is None: continue
       rama_key = three.get_ramalyze_key()
-      if self.need_filtering:
-        angles = three.get_phi_psi_angles()
-        rama_score = self.rama_eval.get_score(rama_key, angles[0], angles[1])
-        r_evaluation = self.rama_eval.evaluate_score(rama_key, rama_score)
+      angles = three.get_phi_psi_angles()
+      rama_score = self.rama_eval.get_score(rama_key, angles[0], angles[1])
+      r_evaluation = self.rama_eval.evaluate_score(rama_key, rama_score)
       phi_atoms, psi_atoms = rc
       i_seqs = [atom.i_seq for atom in phi_atoms] + [psi_atoms[-1].i_seq]
       resnames = three.get_resnames()
@@ -326,27 +308,7 @@ class ramachandran_manager(object):
         self.append_emsley_proxies(proxy, n_seq)
       else:
         pass
-        # print ('DID NOTHING!!!!', r_type, r_evaluation)
 
-
-
-      # if self.params.rama_potential == "oldfield":
-      #   if self.need_filtering:
-      #     if r_evaluation == ramalyze.RAMALYZE_FAVORED:
-      #       self.append_oldfield_proxies(proxy, n_seq)
-      #     elif r_evaluation == ramalyze.RAMALYZE_ALLOWED and self.params.restrain_rama_allowed:
-      #       self.append_oldfield_proxies(proxy, n_seq)
-      #     elif r_evaluation == ramalyze.RAMALYZE_OUTLIER and self.params.restrain_rama_outliers:
-      #       self.append_oldfield_proxies(proxy, n_seq)
-      #     elif self.params.restrain_allowed_outliers_with_emsley:
-      #       self.append_emsley_proxies(proxy, n_seq)
-      #   else:
-      #     self.append_oldfield_proxies(proxy, n_seq)
-      # else: # self.params.rama_potential == "emsley":
-      #   self.append_emsley_proxies(proxy, n_seq)
-
-    # import sys
-    # self.log = sys.stdout
     print("", file=self.log)
     print("  %d Ramachandran restraints generated." % (
         self.get_n_proxies()), file=self.log)
@@ -379,7 +341,7 @@ class ramachandran_manager(object):
 
   def update_phi_psi_targets(self, hierarchy):
     self.hierarchy = hierarchy
-    if self.need_filtering and not self.initialize:
+    if not self.initialize:
       self.extract_proxies(hierarchy)
     self.update_phi_psi_targets_on_init(hierarchy)
 
@@ -404,35 +366,13 @@ class ramachandran_manager(object):
       w = op.weight
       if w is None:
         w = 0.
-
-
-      # print('====')
-      # for x in [w, op.weight_scale, op.distance_weight_min, op.distance_weight_max]:
-      #   print (x, type(x))
-
-      # print(sites_cart,)
-      # print(self._oldfield_proxies,)
-      # print(gradient_array,)
-      # print(self.target_phi_psi,)
-      # print(self.residuals_array_oldfield)
-
-      # print(sites_cart.size())
-      # print(self._oldfield_proxies.size())
-      # print(gradient_array.size())
-      # print(self.target_phi_psi.size())
-      # print(self.residuals_array_oldfield.size())
-
-
-      # STOP()
       oldfield_residual_sum = ramachandran_residual_sum(
-        sites_cart=sites_cart,
-        proxies=self._oldfield_proxies,
-        gradient_array=gradient_array,
-        phi_psi_targets = self.target_phi_psi,
-        weights=(w, op.weight_scale, op.distance_weight_min, op.distance_weight_max),
-        # weights = flex.double((0.0, 0.01, 2.0, 10.0)),
-        residuals_array=self.residuals_array_oldfield)
-
+          sites_cart=sites_cart,
+          proxies=self._oldfield_proxies,
+          gradient_array=gradient_array,
+          phi_psi_targets = self.target_phi_psi,
+          weights=(w, op.weight_scale, op.distance_weight_min, op.distance_weight_max),
+          residuals_array=self.residuals_array_oldfield)
       overall_residual_sum += oldfield_residual_sum
     n_emsley_proxies = self.get_n_emsley_proxies()
     if n_emsley_proxies > 0:
@@ -443,11 +383,11 @@ class ramachandran_manager(object):
       for i, proxy in enumerate(self._emsley_proxies):
         rama_table = self._emsley_tables[self.new_to_old_conversion[proxy.residue_type]]
         self.residuals_array_emsley[i] = rama_table.compute_gradients(
-          gradient_array=gradient_array,
-          sites_cart=sites_cart,
-          proxy=proxy,
-          weight=self.params.emsley.weight,
-          epsilon=0.001)
+            gradient_array=gradient_array,
+            sites_cart=sites_cart,
+            proxy=proxy,
+            weight=self.params.emsley.weight,
+            epsilon=0.001)
       overall_residual_sum += flex.sum(self.residuals_array_emsley)
     return overall_residual_sum
 
