@@ -1010,9 +1010,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.SliceLabelComboBox.activated.connect(self.onSliceComboSelchange)
     self.sliceaxis = { 0:"h", 1:"k", 2:"l" }
     self.SliceLabelComboBox.addItems( list( self.sliceaxis.values()) )
-    self.SliceLabelComboBox.setDisabled(True)
-    self.sliceindexspinBox.setDisabled(True)
-
     self.fixedorientcheckbox.clicked.connect(self.onFixedorient)
     self.recipvecBtn.setText("as fractional values in reciprocal space")
     self.recipvecBtn.setChecked(False)

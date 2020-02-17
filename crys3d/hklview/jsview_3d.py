@@ -427,29 +427,15 @@ class hklview_3d:
         R = flex.vec3_double( [(self.params.clip_plane.h, self.params.clip_plane.k, self.params.clip_plane.l)])
         if self.params.clip_plane.fractional_vector == "realspace" or self.params.clip_plane.fractional_vector == "tncs":
           isreciprocal = False
-      if ( has_phil_path(self.diff_phil, "clip_plane") or \
-       has_phil_path(self.diff_phil, "hkldist") or \
-       has_phil_path(self.diff_phil, "fixorientation") or \
-       has_phil_path(self.diff_phil, "is_parallel") or \
-       has_phil_path(self.diff_phil, "fractional_vector") ) and not \
-       ( has_phil_path(self.diff_phil, "bequiet") and len(self.diff_phil.all_definitions()) == 1 ):
-        self.clip_plane_vector(R[0][0], R[0][1], R[0][2], hkldist,
-            clipwidth, self.viewerparams.NGL.fixorientation, self.params.clip_plane.is_parallel,
-            isreciprocal)
-        #if self.params.clip_plane.fractional_vector == "reciprocal":
-        #  if hkldist == -1:
-        #    self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], 0.0)
-        #  else:
-        #    self.TranslateHKLpoints(R[0][0], R[0][1], R[0][2], hkldist)
 
-      #if clipwidth==0.0 or ( R[0][0]==0.0 and R[0][1]==0.0 and R[0][2]==0.0 ) or self.params.clip_plane.angle_around_vector == 0.0:
-      #  self.ReOrientStage()
+      self.clip_plane_vector(R[0][0], R[0][1], R[0][2], hkldist,
+          clipwidth, self.viewerparams.NGL.fixorientation, self.params.clip_plane.is_parallel,
+          isreciprocal)
       msg += self.SetOpacities(self.viewerparams.NGL.bin_opacities )
       if self.params.real_space_unit_cell_scale_fraction is None:
         scale = None
       else:
         scale = (self.realspace_scale - 1.0)*self.params.real_space_unit_cell_scale_fraction + 1.0
-
       msg += self.DrawUnitCell(scale )
       if self.params.reciprocal_unit_cell_scale_fraction is None:
         scale = None
@@ -2614,7 +2600,7 @@ Distance: %s
         sleep(self.sleeptime)
         nwait += self.sleeptime
         if nwait > self.handshakewait and self.browserisopen:
-          self.mprint("ERROR: No handshake from browser! Security settings may have to be adapted", verbose=0 )
+          self.mprint("ERROR: No handshake from browser!", verbose=0 )
           break
       self.server.send_message(self.websockclient, message )
     else:
@@ -2933,11 +2919,11 @@ Distance: %s
 
   def clip_plane_vector(self, a, b, c, hkldist=0.0,
              clipwidth=None, fixorientation=True, is_parallel=False, isreciprocal=False):
-    self.GetClipPlaneDistances()
     # create clip plane oriented parallel or perpendicular to abc vector
     if a==0.0 and b==0.0 and c==0.0 or clipwidth is None:
       self.RemoveVectorsNoClipPlane()
       return
+    self.mprint("Applying clip plane to reflections", verbose=1)
     self.RemoveVectors("clip_vector")
     self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0,
                             a, b, c, isreciprocal=isreciprocal, name="clip_vector")
@@ -2960,9 +2946,6 @@ Distance: %s
     #if hkldist < 0.0:
     #  self.TranslateHKLpoints(a, b, c, hkldist)
     scale = max(self.miller_array.index_span().max())/10
-    #self.DrawUnitCell(scale)
-    #self.DrawReciprocalUnitCell(scale)
-    #self.RotateMxStage(self.currentRotmx, True)
 
 
   def RemoveVectorsNoClipPlane(self):
