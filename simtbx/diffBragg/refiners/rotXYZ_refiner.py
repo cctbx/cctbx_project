@@ -1,11 +1,11 @@
-#try:
-#  import pylab as plt
-#  from mpl_toolkits.mplot3d import axes3d
-#
-#  fig = plt.figure()
-#  ax = fig.gca(projection='3d')
-#except Exception as e:
-#  pass
+try:
+  import pylab as plt
+  from mpl_toolkits.mplot3d import axes3d
+
+  fig = plt.figure()
+  ax = fig.gca(projection='3d')
+except Exception as e:
+  pass
 import numpy as np
 
 from scitbx.array_family import flex
@@ -88,9 +88,12 @@ class RefineRot(PixelRefinement):
     def _move_abc_init_to_x(self):
         if self.refine_background_planes:
             for i in range(self.n_spots):
-                self.x[i] = self.abc_init[i, 0]
-                self.x[self.n_spots+i] = self.abc_init[i, 1]
-                self.x[2*self.n_spots+i] = self.abc_init[i, 2]
+                try:
+                    self.x[i] = self.abc_init[i, 0]
+                    self.x[self.n_spots+i] = self.abc_init[i, 1]
+                    self.x[2*self.n_spots+i] = self.abc_init[i, 2]
+                except Exception as e:
+                    from IPython import embed; embed(); exit()
 
     @property
     def x(self):

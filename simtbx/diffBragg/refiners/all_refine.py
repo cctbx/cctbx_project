@@ -1,9 +1,9 @@
 from simtbx.diffBragg.refiners import RefineRot, BreakToUseCurvatures
 from scitbx.array_family import flex
-#try:
-#  import pylab as plt
-#except Exception as e:
-#  pass
+try:
+  import pylab as plt
+except Exception as e:
+  pass
 import numpy as np
 import sys
 import math
@@ -48,12 +48,12 @@ class RefineAll(RefineRot):
 
     def _setup(self):
         # total number of refinement parameters
-        n_bg = 0  #3 * self.n_spots
+        n_bg = 3 * self.n_spots
         n_spotscale = 2
         n_origin_params = 1
         n_ncells_params = 1
         self.n = n_bg + self.n_rot_param + self.n_ucell_param + n_ncells_params + n_origin_params + n_spotscale
-        self.n = self.n_rot_param + self.n_ucell_param + n_ncells_params + n_origin_params + n_spotscale
+        #self.n = self.n_rot_param + self.n_ucell_param + n_ncells_params + n_origin_params + n_spotscale
         self.x = flex.double(self.n)
 
         self.rotX_xpos = n_bg
@@ -242,6 +242,14 @@ class RefineAll(RefineRot):
                 # compute gradients for background plane constants a,b,c
                 xr = self.xrel[i_spot]  # fast scan pixels
                 yr = self.yrel[i_spot]  # slow scan pixels
+                da = G2*xr
+                db = G2*yr
+                dc = G2
+                if self.refine_background_planes:
+                    g[i_spot] += (da*one_minus_k_over_Lambda).sum()
+                    g[self.n_spots + i_spot] += (db*one_minus_k_over_Lambda).sum()
+                    g[self.n_spots*2 + i_spot] += (dc*one_minus_k_over_Lambda).sum()
+
                 if self.plot_images: # and self.iterations==0:
                     import pylab as plt
                 if self.plot_images and self.iterations % self.plot_stride == 0:
