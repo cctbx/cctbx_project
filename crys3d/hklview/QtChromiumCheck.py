@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from PySide2.QtCore import QTimer
 
-from PySide2.QtWebEngineWidgets import QWebEngineView, QWebEngineScript, QWebEnginePage
+from PySide2.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PySide2.QtWidgets import QApplication
 import sys, os
 
@@ -37,6 +37,11 @@ function MyWebGL_Detect(return_context)
   return false;
 }
 
+
+retval = MyWebGL_Detect();
+retmsg = "WebGL triage: " + String(retval);
+//alert(retmsg);
+
 if (MyWebGL_Detect() == false )
 {
   //alert('WebGL error');
@@ -51,7 +56,8 @@ else
 """
 
 
-htmlstr = """
+
+htmlstr1 = """
 
 <html lang="en">
 <head>
@@ -63,41 +69,53 @@ htmlstr = """
 <body>
 This is a test for webgl
 <div id="viewport" style="width:100%; height:100%;"></div>
+
+
 </body>
 </html>
 
 """
 
+
+
+
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--single-process" # necessary for detecting webgl abilities on Mac
 
-webglsupport = True
 
 class MyQWebEnginePage(QWebEnginePage):
-  webglsupport = True
+  def __init__(self, *args, **kwargs):
+    #print('in MyQWebEnginePage')
+    QWebEnginePage.__init__(self, *args, **kwargs)
+    self.webglsupport = None
   def javaScriptConsoleMessage(self,level, message, lineNumber, sourceID):
     print(message)
+    self.webglsupport = True
     if message == 'WebGL error':
-      webglsupport = False
+      self.webglsupport = False
+    return super(MyQWebEnginePage,self).javaScriptConsoleMessage(level, message, lineNumber, sourceID)
+  def javaScriptAlert(self,securityOrigin,msg):
+    print(msg)
+    return super(MyQWebEnginePage,self).javaScriptAlert(securityOrigin,msg)
 
-def CheckWebGL():
-  script = QWebEngineScript()
-  script.setInjectionPoint(QWebEngineScript.DocumentCreation)
-  script.setSourceCode(jsstr)
-  script.setInjectionPoint(QWebEngineScript.Deferred)
-
-  browser = QWebEngineView()
-  webpage = MyQWebEnginePage()
-  webpage.setHtml(htmlstr)
-  browser.setPage(webpage)
-  #browser.show()
-  browser.page().scripts().insert(script)
-  print('WebGL=' + str(webglsupport),)
-  # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
-  webpage.deleteLater()
 
 if (__name__ == "__main__") :
   app1 = QApplication(sys.argv)
-  # give the browser time to instatiate and after 1 second close down gracefully
-  QTimer.singleShot(1000, app1.quit )
-  CheckWebGL()
+  # give the browser time to instatiate and then close down gracefully
+  QTimer.singleShot(10000, app1.quit ) # in case pageloadFinished() is never executed
+  browser = QWebEngineView()
+  webpage = MyQWebEnginePage(browser)
+  browser.setPage(webpage)
+
+  def pageloadFinished( ok):
+    #print('webpage load has finished: ' + str(ok))
+    browser.page().runJavaScript(jsstr)
+    # give the script time to run and then close us down gracefully
+    QTimer.singleShot(1000, app1.quit )
+
+  webpage.loadFinished.connect(pageloadFinished)
+  webpage.setHtml(htmlstr1)
+  browser.hide() # show() or hide() is necessary for loading the html page
+  #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+  #print('WebGL=' + str(webpage.webglsupport),)
+
   app1.exec_()

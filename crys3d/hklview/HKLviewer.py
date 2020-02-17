@@ -1433,13 +1433,10 @@ def run():
     cmdargs = [ sys.executable, QtChromiumCheck.__file__ ]
     webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     procout, procerr = webglproc.communicate()
-
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-
-    if not "WebGL=True" in procout.decode():
+    if not "WebGL works" in procout.decode():
       print("using additional flags for QWebEngineView")
       os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += " --enable-webgl-software-rendering --ignore-gpu-blacklist"
-
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer(app)
     timer = QTimer()
