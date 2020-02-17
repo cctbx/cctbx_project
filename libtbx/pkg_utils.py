@@ -454,7 +454,7 @@ def resolve_module_conda_dependencies(modules):
     *action_list,
     stdout=None,
     stderr=None,
-    use_exception_handler=True,
+    use_exception_handler=True
   )
   if return_code:
     _notice("    WARNING: Could not automatically update conda environment", "",
