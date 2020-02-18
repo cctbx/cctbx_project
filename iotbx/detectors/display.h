@@ -418,7 +418,7 @@ public:
     export_size_uncut1 = size1()/binning;
     export_size_uncut2 = size2()/binning;
     channels = af::versa<int, af::c_grid<3> >(af::c_grid<3>(nchannels,
-                            export_size_uncut1,export_size_uncut2));
+                            export_size_uncut1,export_size_uncut2),af::init_functor_null<int>());
     correction = global_bright_contrast();
   }
 
@@ -772,7 +772,7 @@ class generic_flex_image: public FlexImage<double>{
     export_size_uncut1 = size1()/binning;
     export_size_uncut2 = size2()/binning;
     channels = af::versa<int, af::c_grid<3> >(af::c_grid<3>(nchannels,
-                            export_size_uncut1,export_size_uncut2));
+                            export_size_uncut1,export_size_uncut2),af::init_functor_null<int>());
     axis = scitbx::vec3<double>(0.,0.,1.);
     rotation = scitbx::math::r3_rotation::axis_and_angle_as_matrix<double>(axis,4.,true);
     rotation2 = scitbx::mat2<double>(rotation[0],rotation[1],rotation[3],rotation[4]);
@@ -1025,18 +1025,18 @@ class generic_flex_image: public FlexImage<double>{
   void followup_brightness_scale(){
 
       //first pass through data calculate average
-      double qave = 0;
-      for (std::size_t i = 0; i < rawdata.size(); i++) {
-          qave+=rawdata[i];
-      }
-      qave/=rawdata.size();
+      double qave = af::mean(rawdata.const_ref());
       //std::cout<<"ave shown pixel value is "<<qave<<std::endl;
 
       //second pass calculate histogram
+      data_t* data_ptr = rawdata.begin();
       int hsize=100;
       array_t histogram(hsize);
-      for (std::size_t i = 0; i < rawdata.size(); i++) {
-          int temp = int((hsize/2)*rawdata[i]/qave);
+      std::size_t data_sz = rawdata.size();
+      double bins_per_pixel_unit = (hsize/2)/qave;
+      int temp;
+      for (std::size_t i = 0; i < data_sz; i++) {
+          temp = int(bins_per_pixel_unit*(*data_ptr++));
           if (temp<0){histogram[0]+=1;}
           else if (temp>=hsize){histogram[hsize-1]+=1;}
           else {histogram[temp]+=1;}
