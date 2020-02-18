@@ -75,7 +75,7 @@ class geometry(object):
     if(self.from_restraints is not None):
       mi,ma,me = self.from_restraints.angle_deviations()
       n = self.from_restraints.get_filtered_n_angle_proxies()
-      outliers = self.from_restraints.angle_proxies.get_outliers(
+      outliers = self.from_restraints.get_angle_outliers(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
         sigma_threshold=4)
     return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
@@ -86,7 +86,7 @@ class geometry(object):
     if(self.from_restraints is not None):
       mi,ma,me = self.from_restraints.bond_deviations()
       n = self.from_restraints.get_filtered_n_bond_proxies()
-      outliers = self.from_restraints.bond_proxies.get_outliers(
+      outliers = self.from_restraints.get_bond_outliers(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
         sigma_threshold=4)
     return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
@@ -104,7 +104,7 @@ class geometry(object):
     if(self.from_restraints is not None):
       mi,ma,me = self.from_restraints.dihedral_deviations()
       n = self.from_restraints.get_filtered_n_dihedral_proxies()
-      outliers = self.from_restraints.dihedral_proxies.get_outliers(
+      outliers = self.from_restraints.get_dihedral_outliers(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
         sigma_threshold=4)
     return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
