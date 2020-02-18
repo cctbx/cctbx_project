@@ -339,6 +339,13 @@ void low_pass_filter(af::flex_complex_double complex_data) {
   }
 }
 
+//Allocating unitialized array from Python
+//Not yet shown to save wall time in the image viewer, but code is saved here for further study.
+template <typename DataType>
+af::versa<DataType, af::c_grid<2> >
+allocate_2D_flex(const std::size_t& nslow, const std::size_t& nfast){
+  return af::versa<DataType, af::c_grid<2> >(af::c_grid<2>(nslow,nfast), af::init_functor_null<DataType>());
+}
 
 } // namespace <anonymous>
 
@@ -441,6 +448,7 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
         (arg("vector"),arg("unit_direction"),arg("angle"))
   );
   def("low_pass_filter", low_pass_filter);
+  def("allocate_2D_flex_double",allocate_2D_flex<double>,(arg("nslow"), arg("nfast")));
 
   flex_image_wrapper<int>::wrap("FlexImage");
   flex_image_wrapper<double>::wrap("FlexImage_d");
