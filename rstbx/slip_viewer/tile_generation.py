@@ -67,7 +67,7 @@ def _get_flex_image_multipanel(panels, raw_data, beam, brightness=1.0,
 
   # Determine next multiple of eight of the largest panel size.
   data_max_focus = None
-  for data in image_data:
+  for data in raw_data:
       if data_max_focus is None:
           data_max_focus = data.focus()
       else:
