@@ -72,9 +72,10 @@ class SettingsForm(QDialog):
     layout.addWidget(parent.bufsize_labeltxt,        3, 0, 1, 1)
     layout.addWidget(parent.bufsizespinBox,          3, 4, 1, 1)
 
-    layout.addWidget(parent.ttipNoneradio,           4, 0, 1, 1)
+    layout.addWidget(parent.ttiplabeltxt,            4, 0, 1, 1)
     layout.addWidget(parent.ttipClickradio,          4, 1, 1, 1)
     layout.addWidget(parent.ttipHoverradio,          4, 2, 1, 1)
+    layout.addWidget(parent.ttipalphalabeltxt,       4, 3, 1, 1)
     layout.addWidget(parent.ttipalpha_spinBox,       4, 4, 1, 1)
 
     layout.setRowStretch (0, 1)
@@ -152,11 +153,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.bufsizespinBox.setValue(10)
     self.bufsize_labeltxt = QLabel()
     self.bufsize_labeltxt.setText("Text buffer size (Kbytes):")
-
-
-    self.ttipNoneradio = QRadioButton()
-    self.ttipNoneradio.setText( "None")
-    self.ttipNoneradio.clicked.connect(self.onShowTooltips)
+    self.ttiplabeltxt = QLabel()
+    self.ttiplabeltxt.setText("Tooltips")
+    self.ttipalphalabeltxt = QLabel()
+    self.ttipalphalabeltxt.setText("Opacity:")
     self.ttipHoverradio = QRadioButton()
     self.ttipHoverradio.setText( "Hovering")
     self.ttipHoverradio.clicked.connect(self.onShowTooltips)
@@ -700,8 +700,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.show_tooltips = click")
     if self.ttipHoverradio.isChecked():
       self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.show_tooltips = hover")
-    if self.ttipNoneradio.isChecked():
-      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.show_tooltips = none")
 
 
   def onFontsizeChanged(self, val):

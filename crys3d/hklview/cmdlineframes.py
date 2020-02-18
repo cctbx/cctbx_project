@@ -230,7 +230,7 @@ from libtbx.utils import Sorry, to_str
 from libtbx import group_args
 import libtbx
 import traceback
-import sys, zmq, threading,  time, cmath, zlib
+import sys, zmq, threading,  time, cmath, zlib, os.path
 
 from six.moves import input
 
@@ -298,6 +298,7 @@ class HKLViewFrame() :
     self.ResetPhilandViewer()
     self.idx_data = None
     self.NewFileLoaded = False
+    self.loaded_file_name = ""
     self.hklin = None
     if 'hklin' in kwds or 'HKLIN' in kwds:
       self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
@@ -383,7 +384,9 @@ class HKLViewFrame() :
 
 
   def GetNewCurrentPhilFromPython(self, pyphilobj, oldcurrentphil):
-    newcurrentphil = oldcurrentphil.fetch(source = pyphilobj)
+    newcurrentphil, unusedphilparms = oldcurrentphil.fetch(source = pyphilobj, track_unused_definitions=True)
+    for parm in unusedphilparms:
+      self.mprint( "Received unrecognised phil parameter: " + parm.path, verbose=1)
     diffphil = oldcurrentphil.fetch_diff(source = pyphilobj)
     oldcolbintrshld = oldcurrentphil.extract().NGL_HKLviewer.scene_bin_thresholds
     newcolbintrshld = oldcolbintrshld
@@ -716,6 +719,7 @@ class HKLViewFrame() :
       self.viewer.mapcoef_fom_dict = {}
       self.hklfile_history = []
       self.tncsvec = None
+      self.loaded_file_name = ""
       try :
         hkl_file = any_reflection_file(file_name)
         arrays = hkl_file.as_miller_arrays(merge_equivalents=False,
@@ -723,6 +727,7 @@ class HKLViewFrame() :
         #arrays = f.file_server.miller_arrays
         if hkl_file._file_type == 'ccp4_mtz':
           self.hklfile_history = list(hkl_file._file_content.history())
+          self.loaded_file_name = file_name
           for e in self.hklfile_history:
             if "TNCS NMOL" in e and "VECTOR" in e:
               svec = e.split()[-3:]
@@ -782,7 +787,7 @@ class HKLViewFrame() :
 
 
   def SaveReflectionsFile(self, savefilename):
-    if self.params.NGL_HKLviewer.openfilename == savefilename:
+    if self.loaded_file_name == savefilename:
       self.mprint("Not overwriting currently loaded file. Choose a different name!")
       return
     mtz1 = self.procarrays[0].as_mtz_dataset(column_root_label= self.procarrays[0].info().labels[0])
@@ -1233,6 +1238,12 @@ def run():
   utility function for passing keyword arguments more directly to HKLViewFrame()
   """
   kwargs = dict(arg.split('=') for arg in sys.argv[1:] if '=' in arg)
+  #check if any argument is a filename
+  for arg in sys.argv[1:]:
+    # if so add it as a keyword argument
+    if os.path.isfile(arg) and '=' not in arg:
+      kwargs['hklin'] = arg
+
   myHKLview = HKLViewFrame(**kwargs)
 
 

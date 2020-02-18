@@ -30,7 +30,7 @@
        <property name="bottomMargin">
         <number>0</number>
        </property>
-       <item row="0" column="1">
+       <item row="0" column="0">
         <widget class="QSplitter" name="splitter">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -116,7 +116,7 @@
                </sizepolicy>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>4</number>
               </property>
               <widget class="QWidget" name="tab">
                <attribute name="title">
@@ -324,19 +324,7 @@
                       <string>Vector Components (r1, r2, r3) are specified</string>
                      </property>
                      <layout class="QGridLayout" name="gridLayout_19">
-                      <property name="leftMargin">
-                       <number>3</number>
-                      </property>
-                      <property name="topMargin">
-                       <number>3</number>
-                      </property>
-                      <property name="rightMargin">
-                       <number>3</number>
-                      </property>
-                      <property name="bottomMargin">
-                       <number>3</number>
-                      </property>
-                      <item row="0" column="0" colspan="2">
+                      <item row="0" column="0">
                        <widget class="QFrame" name="frame_2">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -387,7 +375,66 @@
                         </layout>
                        </widget>
                       </item>
-                      <item row="1" column="0" colspan="2">
+                      <item row="3" column="0">
+                       <widget class="QFrame" name="frame_6">
+                        <property name="frameShape">
+                         <enum>QFrame::StyledPanel</enum>
+                        </property>
+                        <property name="frameShadow">
+                         <enum>QFrame::Raised</enum>
+                        </property>
+                        <layout class="QGridLayout" name="gridLayout_18">
+                         <property name="leftMargin">
+                          <number>0</number>
+                         </property>
+                         <property name="topMargin">
+                          <number>0</number>
+                         </property>
+                         <property name="rightMargin">
+                          <number>0</number>
+                         </property>
+                         <property name="bottomMargin">
+                          <number>0</number>
+                         </property>
+                         <item row="0" column="0">
+                          <widget class="QLabel" name="rotavecangle_labeltxt">
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                             <horstretch>0</horstretch>
+                             <verstretch>0</verstretch>
+                            </sizepolicy>
+                           </property>
+                           <property name="text">
+                            <string>Angle rotated around vector </string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QSlider" name="rotavecangle_slider">
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                             <horstretch>1</horstretch>
+                             <verstretch>0</verstretch>
+                            </sizepolicy>
+                           </property>
+                           <property name="maximum">
+                            <number>359</number>
+                           </property>
+                           <property name="orientation">
+                            <enum>Qt::Horizontal</enum>
+                           </property>
+                           <property name="tickPosition">
+                            <enum>QSlider::TicksAbove</enum>
+                           </property>
+                           <property name="tickInterval">
+                            <number>18</number>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
                        <widget class="QFrame" name="frame_3">
                         <property name="frameShape">
                          <enum>QFrame::StyledPanel</enum>
@@ -411,7 +458,7 @@
                          <item row="0" column="0">
                           <widget class="QFrame" name="frame_9">
                            <property name="sizePolicy">
-                            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                              <horstretch>0</horstretch>
                              <verstretch>0</verstretch>
                             </sizepolicy>
@@ -464,7 +511,7 @@
                          <item row="0" column="1">
                           <widget class="QFrame" name="frame_10">
                            <property name="sizePolicy">
-                            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                              <horstretch>0</horstretch>
                              <verstretch>0</verstretch>
                             </sizepolicy>
@@ -517,7 +564,7 @@
                          <item row="0" column="2">
                           <widget class="QFrame" name="frame_11">
                            <property name="sizePolicy">
-                            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                              <horstretch>0</horstretch>
                              <verstretch>0</verstretch>
                             </sizepolicy>
@@ -571,14 +618,14 @@
                        </widget>
                       </item>
                       <item row="2" column="0">
-                       <widget class="QFrame" name="frame_4">
+                       <widget class="QFrame" name="frame">
                         <property name="frameShape">
                          <enum>QFrame::StyledPanel</enum>
                         </property>
                         <property name="frameShadow">
                          <enum>QFrame::Raised</enum>
                         </property>
-                        <layout class="QGridLayout" name="gridLayout_14">
+                        <layout class="QGridLayout" name="gridLayout_29">
                          <property name="leftMargin">
                           <number>0</number>
                          </property>
@@ -591,48 +638,7 @@
                          <property name="bottomMargin">
                           <number>0</number>
                          </property>
-                         <item row="0" column="0">
-                          <widget class="QLabel" name="label_14">
-                           <property name="text">
-                            <string>Distance from origin:</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="0" column="1">
-                          <widget class="QDoubleSpinBox" name="hkldist_spinBox">
-                           <property name="sizePolicy">
-                            <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                             <horstretch>0</horstretch>
-                             <verstretch>0</verstretch>
-                            </sizepolicy>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </widget>
-                      </item>
-                      <item row="2" column="1">
-                       <widget class="QFrame" name="frame_5">
-                        <property name="frameShape">
-                         <enum>QFrame::StyledPanel</enum>
-                        </property>
-                        <property name="frameShadow">
-                         <enum>QFrame::Raised</enum>
-                        </property>
-                        <layout class="QGridLayout" name="gridLayout_17">
-                         <property name="leftMargin">
-                          <number>0</number>
-                         </property>
-                         <property name="topMargin">
-                          <number>0</number>
-                         </property>
-                         <property name="rightMargin">
-                          <number>0</number>
-                         </property>
-                         <property name="bottomMargin">
-                          <number>0</number>
-                         </property>
-                         <item row="0" column="0">
+                         <item row="0" column="3">
                           <widget class="QLabel" name="label_15">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -649,6 +655,16 @@
                           </widget>
                          </item>
                          <item row="0" column="1">
+                          <widget class="QDoubleSpinBox" name="hkldist_spinBox">
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                             <horstretch>0</horstretch>
+                             <verstretch>0</verstretch>
+                            </sizepolicy>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="4">
                           <widget class="QDoubleSpinBox" name="clipwidth_spinBox">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -658,62 +674,10 @@
                            </property>
                           </widget>
                          </item>
-                        </layout>
-                       </widget>
-                      </item>
-                      <item row="3" column="0" colspan="2">
-                       <widget class="QFrame" name="frame_6">
-                        <property name="frameShape">
-                         <enum>QFrame::StyledPanel</enum>
-                        </property>
-                        <property name="frameShadow">
-                         <enum>QFrame::Raised</enum>
-                        </property>
-                        <layout class="QGridLayout" name="gridLayout_18">
-                         <property name="leftMargin">
-                          <number>0</number>
-                         </property>
-                         <property name="topMargin">
-                          <number>0</number>
-                         </property>
-                         <property name="rightMargin">
-                          <number>0</number>
-                         </property>
-                         <property name="bottomMargin">
-                          <number>0</number>
-                         </property>
                          <item row="0" column="0">
-                          <widget class="QLabel" name="rotavecangle_labeltxt">
-                           <property name="sizePolicy">
-                            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                             <horstretch>0</horstretch>
-                             <verstretch>0</verstretch>
-                            </sizepolicy>
-                           </property>
+                          <widget class="QLabel" name="label_14">
                            <property name="text">
-                            <string>Angle rotated around vector </string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="0" column="1">
-                          <widget class="QSlider" name="rotavecangle_slider">
-                           <property name="sizePolicy">
-                            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                             <horstretch>1</horstretch>
-                             <verstretch>0</verstretch>
-                            </sizepolicy>
-                           </property>
-                           <property name="maximum">
-                            <number>359</number>
-                           </property>
-                           <property name="orientation">
-                            <enum>Qt::Horizontal</enum>
-                           </property>
-                           <property name="tickPosition">
-                            <enum>QSlider::TicksAbove</enum>
-                           </property>
-                           <property name="tickInterval">
-                            <number>18</number>
+                            <string>Distance from origin:</string>
                            </property>
                           </widget>
                          </item>
@@ -823,13 +787,13 @@
                    <item row="0" column="0" colspan="4">
                     <widget class="QLabel" name="label_7">
                      <property name="sizePolicy">
-                      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                        <horstretch>0</horstretch>
                        <verstretch>0</verstretch>
                       </sizepolicy>
                      </property>
                      <property name="text">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick the &amp;quot;User defined power scaling&amp;quot; box for chosing a power scale factor. Untick this box for an automatically computed power factor. Automatic power factor will render reflections so that the reflection with the smallest data value is about 1/10 of the size of the reflection with the largest data value. &lt;br/&gt;Entering a power factor of 1 means the size of a sphere for each reflection is proportional to its data value. For a typical data set of intensities with values differing by some orders of magnitude only the strongest reflections would then be visible. Entering a power factor of 0 means all spheres of reflections will have the same size irrespective of their data values. This means even very weak reflections would then be visible. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick the &amp;quot;User defined power scaling&amp;quot; box for chosing a power scale factor. Untick this box for an automatically computed power scale factor. Automatic power scale factor will render reflections so that the reflection with the smallest data value is rendered about 10 times smaller than the reflection with the largest data value. &lt;br/&gt;Entering a power scale factor of 1 means the size of a sphere for each reflection is proportional to its data value. For a typical data set of intensities with values differing by some orders of magnitude only the strongest reflections would then be visible. Entering a power scale factor of 0 means all spheres of reflections will have the same size irrespective of their data values. This means even very weak reflections would then be visible. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <property name="textFormat">
                       <enum>Qt::AutoText</enum>
@@ -844,6 +808,12 @@
                    </item>
                    <item row="1" column="0" colspan="2">
                     <widget class="QCheckBox" name="ManualPowerScalecheckbox">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
                      <property name="toolTip">
                       <string/>
                      </property>
@@ -855,7 +825,7 @@
                    <item row="1" column="2">
                     <widget class="QLabel" name="label_10">
                      <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                      <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                        <horstretch>0</horstretch>
                        <verstretch>0</verstretch>
                       </sizepolicy>
@@ -874,7 +844,7 @@
                    <item row="1" column="3">
                     <widget class="QDoubleSpinBox" name="power_scale_spinBox">
                      <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="Maximum">
+                      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
                        <horstretch>0</horstretch>
                        <verstretch>0</verstretch>
                       </sizepolicy>
@@ -896,7 +866,7 @@
                    <item row="2" column="0">
                     <widget class="QLabel" name="label_11">
                      <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                      <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                        <horstretch>0</horstretch>
                        <verstretch>0</verstretch>
                       </sizepolicy>
@@ -912,7 +882,7 @@
                    <item row="2" column="1">
                     <widget class="QDoubleSpinBox" name="radii_scale_spinBox">
                      <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="Maximum">
+                      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
                        <horstretch>0</horstretch>
                        <verstretch>0</verstretch>
                       </sizepolicy>
@@ -940,6 +910,12 @@
                <layout class="QGridLayout" name="gridLayout_13">
                 <item row="0" column="0">
                  <widget class="QGroupBox" name="groupBox_5">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
                   <property name="title">
                    <string>Bin according to</string>
                   </property>
@@ -1086,7 +1062,7 @@
                    <item row="1" column="0">
                     <widget class="QGroupBox" name="DrawReciprocUnitCellBox">
                      <property name="toolTip">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The reciprocal unit cell spanning a*,b*,c* from (0,0,0) to (1,1,1) is located in the centre of the displayed reflections. and therefore very small. Adjust the slider to resize its outline to become compatible with the sphere of displayed reflections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The reciprocal unit cell spanning a*,b*,c* from (0,0,0) to (1,1,1) is located in the centre of the displayed reflections. and is therefore quite small. Adjust the slider to scale its outline to become compatible with the sphere of displayed reflections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <property name="title">
                       <string>Show Reciprocal Unit Cell</string>
@@ -1149,7 +1125,7 @@
                    <item row="2" column="0">
                     <widget class="QGroupBox" name="DrawRealUnitCellBox">
                      <property name="toolTip">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The real space unit cell is typically much larger than the sphere of displayed reflections because the reciprocal unit cell size is inversely proportional to the real space unit cell. Adjust the slider to resize its outline to become compatible with the sphere of displayed reflections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The real space unit cell is often much larger than the sphere of displayed reflections because the reciprocal unit cell size is inversely proportional to the size of the real space unit cell. Adjust the slider to scale its outline to become compatible with the sphere of displayed reflections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <property name="title">
                       <string>Show Real Space Unit Cell</string>

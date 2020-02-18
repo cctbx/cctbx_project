@@ -21,7 +21,7 @@ from six.moves import range
 
 
 def has_phil_path(philobj, path):
-  return [ e.path for e in philobj.all_definitions() if path in e.path ]
+  return [ e.path for e in philobj.all_definitions() if path in e.path.split(".") ]
 
 
 class ArrayInfo:
@@ -345,7 +345,7 @@ class hklview_3d:
     if has_phil_path(diff_phil, "openfilename") \
      or has_phil_path(diff_phil, "spacegroup_choice") \
      or has_phil_path(diff_phil, "merge_data") \
-     or has_phil_path(diff_phil, "miller_array_operation") \
+     or has_phil_path(diff_phil, "miller_array_operations") \
      or has_phil_path(diff_phil, "scene_id")  \
      or has_phil_path(diff_phil, "camera_type") \
      or has_phil_path(diff_phil, "spacegroup_choice") \
@@ -384,7 +384,7 @@ class hklview_3d:
     if has_phil_path(diff_phil, "camera_type"):
       self.set_camera_type()
 
-    if has_phil_path(diff_phil, "miller_array_operation"):
+    if has_phil_path(diff_phil, "miller_array_operations"):
       self.viewerparams.scene_id = len(self.HKLscenes)-1
       self.set_scene(self.viewerparams.scene_id)
 
@@ -393,9 +393,9 @@ class hklview_3d:
         self.scene = self.HKLscenes[self.viewerparams.scene_id]
       self.DrawNGLJavaScript()
       msg = "Rendered %d reflections\n" % self.scene.points.size()
-      if not has_phil_path(diff_phil, "scene_id"):
+      #if not has_phil_path(diff_phil, "scene_id"):
 # set_volatile_params() is already called when we receive the AutoViewSet message when loading a new scene
-        msg += self.set_volatile_params()
+      msg += self.set_volatile_params()
     return msg, curphilparam
 
 
@@ -596,8 +596,7 @@ class hklview_3d:
 
 
   def ConstructReciprocalSpace(self, curphilparam, merge=None):
-    self.HKLscenesKey = (curphilparam.openfilename,
-                         curphilparam.spacegroup_choice,
+    self.HKLscenesKey = (curphilparam.spacegroup_choice,
                          curphilparam.using_space_subgroup,
                          curphilparam.merge_data,
                          self.viewerparams.expand_anomalous,
@@ -612,8 +611,6 @@ class hklview_3d:
                          self.viewerparams.scale,
                          self.viewerparams.nth_power_scale_radii
                          )
-
-    #if self.HKLscenesdict.has_key(self.HKLscenesKey) and not self.has_new_miller_array:
     if self.HKLscenesKey in self.HKLscenesdict and not self.has_new_miller_array:
       (
         self.HKLscenes,
@@ -2601,6 +2598,7 @@ Distance: %s
         nwait += self.sleeptime
         if nwait > self.handshakewait and self.browserisopen:
           self.mprint("ERROR: No handshake from browser!", verbose=0 )
+          self.mprint("failed sending " + msgtype, verbose=1)
           break
       self.server.send_message(self.websockclient, message )
     else:
