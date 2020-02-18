@@ -236,10 +236,10 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
                 try:
                     from scitbx.lbfgs import core_parameters
                     C = core_parameters()
-                    C.gtol = 0.0001
+                    C.gtol = 0.009
                     self.minimizer = scitbx.lbfgs.run(
                         target_evaluator=self,
-                        #core_params=C,
+                        core_params=C,
                         exception_handling_params=self._handler,
                         termination_params=self._terminator)
                 except BreakToUseCurvatures:
