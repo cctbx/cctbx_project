@@ -13,7 +13,7 @@ from dxtbx.model import Panel
 class RefineAll(RefineRot):
 
     def __init__(self, ucell_manager, rotXYZ_refine=(True, True, True), init_gain=1, init_scale=1,
-                 panel_id=0, *args, **kwargs):
+                 panel_id=0,init_local_spotscale=[], *args, **kwargs):
         """
         :param ucell_manager:
         :param rotXYZ_refine:
@@ -34,6 +34,7 @@ class RefineAll(RefineRot):
         self._originZ_id = 10
         self.n_ucell_param = len(self.ucell_manager.variables)
         self._init_scale = init_scale
+        self._init_local_spotscale = init_local_spotscale
         self._init_gain = init_gain
         self._panel_id = panel_id
         self.best_image = np.zeros_like(self.img)
@@ -45,24 +46,31 @@ class RefineAll(RefineRot):
         self.store_init_model_Lambda = []
         self.store_init_vmax = []
         self.store_init_vmin = []
+        self.refine_local_spotscale=False
 
     def _setup(self):
         # total number of refinement parameters
         n_bg = 3 * self.n_spots
+        self.n_bg=n_bg
+        n_local_spotscale = self.n_spots
         n_spotscale = 2
         n_origin_params = 1
         n_ncells_params = 1
-        self.n = n_bg + self.n_rot_param + self.n_ucell_param + n_ncells_params + n_origin_params + n_spotscale
+        self.n = n_bg + n_local_spotscale + self.n_rot_param + self.n_ucell_param + n_ncells_params + n_origin_params + n_spotscale
         #self.n = self.n_rot_param + self.n_ucell_param + n_ncells_params + n_origin_params + n_spotscale
         self.x = flex.double(self.n)
 
-        self.rotX_xpos = n_bg
-        self.rotY_xpos = n_bg + 1
-        self.rotZ_xpos = n_bg + 2
+        self.rotX_xpos = n_bg + n_local_spotscale
+        self.rotY_xpos = n_bg + n_local_spotscale+1
+        self.rotZ_xpos = n_bg + n_local_spotscale+2
 
-        self.ucell_xstart = n_bg + self.n_rot_param
+        self.ucell_xstart = n_bg + n_local_spotscale+self.n_rot_param
         # populate the x-array with initial values
         self._move_abc_init_to_x()
+
+        for ii in range(n_local_spotscale):
+            self.x[n_bg+ii] = self._init_local_spotscale[ii] 
+
         self.x[self.rotX_xpos] = 0
         self.x[self.rotY_xpos] = 0
         self.x[self.rotZ_xpos] = 0
@@ -201,7 +209,7 @@ class RefineAll(RefineRot):
                     print("Compute functional and gradients Iter %d PosCurva %d\n<><><><><><><><><><><><><>"
                           % (self.iterations+1, self.num_positive_curvatures))
             f = 0
-            g = flex.double(self.n)
+            g = flex.double(self.n, 0.0)
             if self.calc_curvatures:
                 self.curv = flex.double(self.n)
             self.best_image *= 0
@@ -221,6 +229,8 @@ class RefineAll(RefineRot):
                 if self.verbose:
                     print "\rRunning diffBragg over spot %d/%d " % (i_spot+1, self.n_spots),
                     sys.stdout.flush()
+                self.local_spotscale = self.x[self.n_bg+i_spot]
+                local_S2 = self.local_spotscale**2
                 self._run_diffBragg_current(i_spot)
                 self._unpack_bgplane_params(i_spot)
                 self._set_background_plane(i_spot)
@@ -289,16 +299,16 @@ class RefineAll(RefineRot):
                           self.store_init_Imeas.append(Imeas)
                           self.store_init_vmax.append(vmax)
                           self.store_init_vmin.append(vmin)
-                    plt.suptitle("Iterations = %d, image %d / %d, res=%.2f"
-                                 % (self.iterations, i_spot+1, self.n_spots, self.spot_resolution[i_spot]))
-                    self.fig.canvas.draw()
-                    plt.pause(.02)
+                    #plt.suptitle("Iterations = %d, image %d / %d, res=%.2f"
+                    #             % (self.iterations, i_spot+1, self.n_spots, self.spot_resolution[i_spot]))
+                    #self.fig.canvas.draw()
+                    #plt.pause(.02)
                 if self.refine_Umatrix:
                     for ii, xpos in enumerate([self.rotX_xpos, self.rotY_xpos, self.rotZ_xpos]):
-                        d = S2*G2*self.rot_deriv[ii]
+                        d = local_S2*S2*G2*self.rot_deriv[ii]
                         g[xpos] += (one_minus_k_over_Lambda * d).sum()
                         if self.calc_curvatures:
-                            d2 = S2*G2*self.rot_second_deriv[ii]
+                            d2 = local_S2*S2*G2*self.rot_second_deriv[ii]
                             cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
                             self.curv[xpos] += cc.sum()
 
@@ -306,43 +316,47 @@ class RefineAll(RefineRot):
                     # unit cell derivative
                     for i_ucell_p in range(self.n_ucell_param):
                         xpos = self.ucell_xstart + i_ucell_p
-                        d = S2*G2*self.ucell_derivatives[i_ucell_p]
+                        d = local_S2*S2*G2*self.ucell_derivatives[i_ucell_p]
                         g[xpos] += (one_minus_k_over_Lambda * d).sum()
                         if self.refine_with_restraints:
                           for i_uc in range(self.n_ucell_param):
                             g[xpos] += 2*self.harmonic_const*(self.ucell_manager.variables[i_uc] - self.ucell_restraints[i_uc])
 
                         if self.calc_curvatures:
-                            d2 = S2*G2*self.ucell_second_derivatives[i_ucell_p]
+                            d2 = local_S2*S2*G2*self.ucell_second_derivatives[i_ucell_p]
                             cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
                             self.curv[xpos] += cc.sum()
 
                 if self.refine_ncells:
-                    d = S2*G2*self.ncells_deriv
+                    d = local_S2*S2*G2*self.ncells_deriv
                     g[-4] += (d*one_minus_k_over_Lambda).sum()
                     if self.calc_curvatures:
-                        d2 = S2*G2*self.ncells_second_deriv
+                        d2 = local_S2*S2*G2*self.ncells_second_deriv
                         cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
                         self.curv[-4] += cc.sum()
 
                 if self.refine_detdist:
                     if self.calc_curvatures:
                         raise NotImplementedError("Cannot use curvatures and refine detdist (yet...)")
-                    g[-3] += (S2*G2*self.detdist_deriv*one_minus_k_over_Lambda).sum()
+                    g[-3] += (local_S2*S2*G2*self.detdist_deriv*one_minus_k_over_Lambda).sum()
 
                 if self.refine_gain_fac:
-                    d = 2*self.gain_fac*(self.tilt_plane + S2*self.model_bragg_spots)
+                    d = 2*self.gain_fac*(self.tilt_plane + local_S2*S2*self.model_bragg_spots)
                     g[-2] += (d*one_minus_k_over_Lambda).sum()
                     if self.calc_curvatures:
                         d2 = d / self.gain_fac
                         self.curv[-2] += (d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda).sum()
 
                 if self.refine_crystal_scale:
-                    d = G2*2*self.scale_fac*self.model_bragg_spots
+                    d = local_S2*G2*2*self.scale_fac*self.model_bragg_spots
                     g[-1] += (d*one_minus_k_over_Lambda).sum()
                     if self.calc_curvatures:
                         d2 = d / self.scale_fac
                         self.curv[-1] += (d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda).sum()
+
+                if self.refine_local_spotscale:
+                    d = G2*S2*2*self.local_spotscale*self.model_bragg_spots
+                    g[self.n_bg+i_spot] += (d*one_minus_k_over_Lambda).sum()
             if self.calc_curvatures and not self.use_curvatures:
                 if np.all(self.curv.as_numpy_array() >= 0):
                     self.num_positive_curvatures += 1
@@ -379,6 +393,9 @@ class RefineAll(RefineRot):
         print ("Ucell: %s *** Missets: %s" %
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
         print("\n")
+        print (["Local spotscales = "]+["%3.7g"%yy for yy in self.x[:]])
+        #print (["Local spotscales = "]+["%3.7g"%yy for yy in self.x[self.n_bg:self.n_bg+self.n_spots]])
+        print("\n")
 
     def print_step_grads(self, message, target):
         names = self.ucell_manager.variable_names
@@ -396,6 +413,9 @@ class RefineAll(RefineRot):
               % (message, xnorm, target, self._g[-4], self._g[-3], self._g[-2], self._g[-1]))
         print ("GUcell: %s *** GMissets: %s" %
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
+        print("\n")
+        print (["Local spotscales Grads = "]+["%3.7g"%yy for yy in self._g[:]])
+        #print (["Local spotscales Grads = "]+["%3.7g"%yy for yy in self._g[self.n_bg:self.n_bg+self.n_spots]])
         print("\n")
 
     def get_refined_Bmatrix(self):

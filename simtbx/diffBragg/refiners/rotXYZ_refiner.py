@@ -86,14 +86,11 @@ class RefineRot(PixelRefinement):
         self.D.initialize_managers()
 
     def _move_abc_init_to_x(self):
-        if self.refine_background_planes:
+        if True: #self.refine_background_planes:
             for i in range(self.n_spots):
-                try:
-                    self.x[i] = self.abc_init[i, 0]
-                    self.x[self.n_spots+i] = self.abc_init[i, 1]
-                    self.x[2*self.n_spots+i] = self.abc_init[i, 2]
-                except Exception as e:
-                    from IPython import embed; embed(); exit()
+               self.x[i] = self.abc_init[i, 0]
+               self.x[self.n_spots+i] = self.abc_init[i, 1]
+               self.x[2*self.n_spots+i] = self.abc_init[i, 2]
 
     @property
     def x(self):
@@ -138,7 +135,7 @@ class RefineRot(PixelRefinement):
     def _evaluate_averageI(self):
         """model_Lambda means expected intensity in the pixel"""
         self.model_Lambda = \
-            self.gain_fac*self.gain_fac*(self.tilt_plane + self.scale_fac * self.scale_fac * self.model_bragg_spots)
+            self.gain_fac*self.gain_fac*(self.tilt_plane + self.local_spotscale*self.local_spotscale*self.scale_fac * self.scale_fac * self.model_bragg_spots)
 
     def _unpack_params(self, i_spot):
         self.a = self.x[i_spot]
