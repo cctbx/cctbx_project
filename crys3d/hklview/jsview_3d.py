@@ -1709,6 +1709,8 @@ try
   document.addEventListener('mouseup', function() { OnUpdateOrientation() }, false );
   document.addEventListener('wheel', function(e) { OnUpdateOrientation() }, false );
   document.addEventListener('scroll', function(e) { OnUpdateOrientation() }, false );
+  // mitigate flickering on some PCs when resizing
+  document.addEventListener('resize', function() { RenderRequest() }, false );
 }
 catch(err)
 {

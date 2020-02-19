@@ -3,7 +3,7 @@
 # Form implementation generated from reading ui file 'HKLviewer.ui',
 # licensing of 'HKLviewer.ui' applies.
 #
-# Created: Tue Feb 18 17:32:11 2020
+# Created: Wed Feb 19 17:38:53 2020
 #      by: pyside2-uic  running on PySide2 5.12.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -661,7 +661,7 @@ class Ui_MainWindow(object):
     self.menubar.addAction(self.menuFile.menuAction())
 
     self.retranslateUi(MainWindow)
-    self.functionTabWidget.setCurrentIndex(4)
+    self.functionTabWidget.setCurrentIndex(0)
     QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
   def retranslateUi(self, MainWindow):
@@ -694,9 +694,9 @@ class Ui_MainWindow(object):
     self.label_3.setText(QtWidgets.QApplication.translate("MainWindow", "equal to", None, -1))
     self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_2), QtWidgets.QApplication.translate("MainWindow", "Slicing", None, -1))
     self.groupBox_3.setTitle(QtWidgets.QApplication.translate("MainWindow", "Radii size of HKL spheres", None, -1))
-    self.label_7.setText(QtWidgets.QApplication.translate("MainWindow", "<html><head/><body><p>Tick the &quot;User defined power scaling&quot; box for chosing a power scale factor. Untick this box for an automatically computed power scale factor. Automatic power scale factor will render reflections so that the reflection with the smallest data value is rendered about 10 times smaller than the reflection with the largest data value. <br/>Entering a power scale factor of 1 means the size of a sphere for each reflection is proportional to its data value. For a typical data set of intensities with values differing by some orders of magnitude only the strongest reflections would then be visible. Entering a power scale factor of 0 means all spheres of reflections will have the same size irrespective of their data values. This means even very weak reflections would then be visible. </p></body></html>", None, -1))
+    self.label_7.setText(QtWidgets.QApplication.translate("MainWindow", "<html><head/><body><p>Tick the &quot;User defined power scaling&quot; box for chosing a power factor. Untick this box for an automatically computed power factor. Automatic power factor will render reflections so that the reflection with the smallest data value is rendered about 10 times smaller than the reflection with the largest data value. <br/>Entering a power factor of 1 means the size of a sphere for each reflection is proportional to its data value. For a typical data set of intensities with values differing by some orders of magnitude only the strongest reflections would then be visible. Entering a power factor of 0 means all spheres of reflections will have the same size irrespective of their data values. This means even very weak reflections would then be visible. </p></body></html>", None, -1))
     self.ManualPowerScalecheckbox.setText(QtWidgets.QApplication.translate("MainWindow", "User defined power scaling", None, -1))
-    self.label_10.setText(QtWidgets.QApplication.translate("MainWindow", "Power factor:", None, -1))
+    self.label_10.setText(QtWidgets.QApplication.translate("MainWindow", "Power scale factor:", None, -1))
     self.label_11.setToolTip(QtWidgets.QApplication.translate("MainWindow", "<html><head/><body><p>A linear scale factor of 1 means that if two reflectiions with the largest data values happen to be next to each other their spheres will touch but not overlap.</p></body></html>", None, -1))
     self.label_11.setText(QtWidgets.QApplication.translate("MainWindow", "Linear scale factor", None, -1))
     self.radii_scale_spinBox.setToolTip(QtWidgets.QApplication.translate("MainWindow", "<html><head/><body><p>A linear scale factor of 1 means that if two reflectiions with the largest data values happen to be next to each other their spheres will touch but not overlap.</p></body></html>", None, -1))

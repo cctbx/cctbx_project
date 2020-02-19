@@ -11,7 +11,7 @@
 #-------------------------------------------------------------------------------
 from __future__ import absolute_import, division, print_function
 
-from PySide2.QtCore import Qt, QEvent, QSize, QTimer
+from PySide2.QtCore import Qt, QEvent, QSize, QSettings, QTimer
 from PySide2.QtWidgets import (  QAction, QApplication, QCheckBox,
         QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
@@ -108,6 +108,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.actionSettings.triggered.connect(self.SettingsDialog)
     self.actionExit.triggered.connect(self.window.close)
     self.actionSave_reflection_file.triggered.connect(self.onSaveReflectionFile)
+    self.functionTabWidget.setCurrentIndex(0) # if accidentally set to a different tab in the Qtdesigner
 
     self.UseOSBrowser = False
     self.devmode = False
@@ -120,7 +121,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.zmq_context = None
     self.unfeedback = False
 
-    self.originalPalette = QApplication.palette()
     self.mousespeed_labeltxt = QLabel()
     self.mousespeed_labeltxt.setText("Mouse speed:")
     self.mousemoveslider = QSlider(Qt.Horizontal)
@@ -274,7 +274,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def InitBrowser(self):
-    self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
     # omitting name for QWebEngineProfile() means it is private/off-the-record with no cache files
     self.webprofile = QWebEngineProfile(parent=self.BrowserBox)
     self.webpage = QWebEnginePage( self.webprofile, self.BrowserBox)
@@ -285,6 +284,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.webpage.setUrl("https://cctbx.github.io/")
     self.cpath = self.webprofile.cachePath()
     self.BrowserBox.setPage(self.webpage)
+    self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
 
 
   def onOpenReflectionFile(self):
@@ -476,9 +476,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
           if self.infodict.get("NewMillerArray"):
             self.NewMillerArray = self.infodict.get("NewMillerArray",False)
 
-          if self.infodict.get("used_nth_power_scale_radii") \
-          and  self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] < 0.0:
+          if self.infodict.get("used_nth_power_scale_radii", None) is not None:
+            self.unfeedback = True
             self.power_scale_spinBox.setValue( self.infodict.get("used_nth_power_scale_radii", 0.0))
+            self.unfeedback = False
 
           self.fileisvalid = True
           #print("ngl_hkl_infodict: " + str(ngl_hkl_infodict))
@@ -1427,14 +1428,23 @@ def run():
         # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
         os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9742 --single-process --js-flags='--expose_gc'"
 
-    print("testing if WebGL works in QWebEngineView....")
-    cmdargs = [ sys.executable, QtChromiumCheck.__file__ ]
-    webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    procout, procerr = webglproc.communicate()
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    if not "WebGL works" in procout.decode():
-      print("using additional flags for QWebEngineView")
-      os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += " --enable-webgl-software-rendering --ignore-gpu-blacklist"
+    settings = QSettings("CCTBX", "HKLviewer" )
+    settings.beginGroup("SomeSettings")
+    QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
+    settings.endGroup()
+
+    if QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
+      QWebEngineViewFlags = ""
+      print("testing if WebGL works in QWebEngineView....")
+      cmdargs = [ sys.executable, QtChromiumCheck.__file__ ]
+      webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      procout, procerr = webglproc.communicate()
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      if not "WebGL works" in procout.decode():
+        QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist"
+    print("using flags for QWebEngineView: " + QWebEngineViewFlags)
+    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += QWebEngineViewFlags
+
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer(app)
     timer = QTimer()
@@ -1442,6 +1452,12 @@ def run():
     timer.timeout.connect(guiobj.ProcessMessages)
     timer.start()
     ret = app.exec_()
+
+    settings = QSettings("CCTBX", "HKLviewer" )
+    settings.beginGroup("SomeSettings")
+    QWebEngineViewFlags = settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
+    settings.endGroup()
+
     sys.exit(ret)
   except Exception as e:
     print( str(e)  +  traceback.format_exc(limit=10) )

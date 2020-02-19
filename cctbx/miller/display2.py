@@ -358,7 +358,7 @@ class scene(object):
     uc = self.work_array.unit_cell()
     self.min_dist = min(uc.reciprocal_space_vector((1,1,1))) * self.renderscale
     min_radius = 0.05 * self.min_dist
-    max_radius = 0.45 * self.min_dist
+    max_radius = 0.5 * self.min_dist
     if ((self.multiplicities is not None) and
         (settings.scale_radii_multiplicity)):
       data_for_radii = self.multiplicities.data().as_double()
@@ -683,7 +683,9 @@ philstr = """
     .type = bool
   show_data_over_sigma = False
     .type = bool
-  nth_power_scale_radii = 0.33
+  nth_power_scale_radii = 0.0
+    .type = float
+  scale = 1
     .type = float
   sqrt_scale_colors = False
     .type = bool
@@ -720,8 +722,6 @@ philstr = """
   uniform_size = False
     .type = bool
   d_min = None
-    .type = float
-  scale = 1
     .type = float
   map_to_asu = False
     .type = bool

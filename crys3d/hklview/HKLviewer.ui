@@ -116,7 +116,7 @@
                </sizepolicy>
               </property>
               <property name="currentIndex">
-               <number>4</number>
+               <number>0</number>
               </property>
               <widget class="QWidget" name="tab">
                <attribute name="title">
@@ -793,7 +793,7 @@
                       </sizepolicy>
                      </property>
                      <property name="text">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick the &amp;quot;User defined power scaling&amp;quot; box for chosing a power scale factor. Untick this box for an automatically computed power scale factor. Automatic power scale factor will render reflections so that the reflection with the smallest data value is rendered about 10 times smaller than the reflection with the largest data value. &lt;br/&gt;Entering a power scale factor of 1 means the size of a sphere for each reflection is proportional to its data value. For a typical data set of intensities with values differing by some orders of magnitude only the strongest reflections would then be visible. Entering a power scale factor of 0 means all spheres of reflections will have the same size irrespective of their data values. This means even very weak reflections would then be visible. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick the &amp;quot;User defined power scaling&amp;quot; box for chosing a power factor. Untick this box for an automatically computed power factor. Automatic power factor will render reflections so that the reflection with the smallest data value is rendered about 10 times smaller than the reflection with the largest data value. &lt;br/&gt;Entering a power factor of 1 means the size of a sphere for each reflection is proportional to its data value. For a typical data set of intensities with values differing by some orders of magnitude only the strongest reflections would then be visible. Entering a power factor of 0 means all spheres of reflections will have the same size irrespective of their data values. This means even very weak reflections would then be visible. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <property name="textFormat">
                       <enum>Qt::AutoText</enum>
@@ -831,7 +831,7 @@
                       </sizepolicy>
                      </property>
                      <property name="text">
-                      <string>Power factor:</string>
+                      <string>Power scale factor:</string>
                      </property>
                      <property name="alignment">
                       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
