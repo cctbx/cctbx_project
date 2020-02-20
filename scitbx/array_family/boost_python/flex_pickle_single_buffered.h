@@ -67,7 +67,13 @@ namespace scitbx { namespace af { namespace boost_python {
       {
         SCITBX_ASSERT(a_size == 0);
 #ifdef IS_PY3K
-        str_ptr = PyBytes_AsString(state);
+        if(PyUnicode_Check(state)) {
+          str_ptr = PyUnicode_AsUTF8(state);
+        }
+        else {
+          SCITBX_ASSERT(PyBytes_Check(state));
+          str_ptr = PyBytes_AsString(state);
+        }
 #else
         str_ptr = PyString_AsString(state);
 #endif
