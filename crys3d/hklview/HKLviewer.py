@@ -531,66 +531,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def UpdateGUI(self):
-    """
-    NGL_HKLviewer.viewer.scale_colors_multiplicity, False
-    #NGL_HKLviewer.viewer.nth_power_scale_radii, -1
-    #NGL_HKLviewer.viewer.slice_mode, False
-    NGL_HKLviewer.viewer.uniform_size, False
-    NGL_HKLviewer.tabulate_miller_array_ids, []
-    #NGL_HKLviewer.clip_plane.l, 0
-    #NGL_HKLviewer.viewer.expand_to_p1, False
-    #NGL_HKLviewer.clip_plane.h, 2
-    NGL_HKLviewer.viewer.sigma_radius, False
-    NGL_HKLviewer.viewer.map_to_asu, False
-    #NGL_HKLviewer.clip_plane.k, 0
-    #NGL_HKLviewer.viewer.show_systematic_absences, False
-    #NGL_HKLviewer.viewer.NGL.tooltip_alpha, 0.85
-    NGL_HKLviewer.viewer.d_min, None
-    NGL_HKLviewer.tooltips_in_script, False
-    NGL_HKLviewer.using_space_subgroup, False
-    #NGL_HKLviewer.viewer.expand_anomalous, False
-    #NGL_HKLviewer.viewer.scale, 1
-    #NGL_HKLviewer.filename, C:/Users/oeffner/Buser/NGL_HKLviewer/mymtz.mtz
-    NGL_HKLviewer.viewer.scale_radii_multiplicity, False
-    NGL_HKLviewer.viewer.data, None
-    #NGL_HKLviewer.viewer.NGL.mouse_sensitivity, 0.2
-    NGL_HKLviewer.action, *'is_running'
-    #NGL_HKLviewer.clip_plane.angle_around_vector, 0
-    #NGL_HKLviewer.viewer.slice_index, 0
-    NGL_HKLviewer.shape_primitive, *'spheres'
-    #NGL_HKLviewer.nbins, 6
-    #NGL_HKLviewer.clip_plane.hkldist, 0
-    NGL_HKLviewer.viewer.phase_color, False
-    NGL_HKLviewer.viewer.show_labels, True
-    NGL_HKLviewer.viewer.labels, None
-    NGL_HKLviewer.viewer.show_anomalous_pairs, False
-    NGL_HKLviewer.miller_array_operations,
-    NGL_HKLviewer.viewer.symmetry_file, None
-    #NGL_HKLviewer.spacegroup_choice, None
-    #NGL_HKLviewer.clip_plane.is_parallel, False
-    NGL_HKLviewer.scene_bin_thresholds, None
-    NGL_HKLviewer.viewer.scene_id, 3
-    NGL_HKLviewer.viewer.color_scheme, *rainbow
-    NGL_HKLviewer.viewer.black_background, True
-    NGL_HKLviewer.viewer.show_axes, True
-    NGL_HKLviewer.bin_scene_label, Resolution
-    NGL_HKLviewer.merge_data, False
-    NGL_HKLviewer.mouse_moved, True
-    #NGL_HKLviewer.viewer.show_missing, False
-    NGL_HKLviewer.viewer.slice_axis, *h
-    NGL_HKLviewer.viewer.keep_constant_scale, True
-    NGL_HKLviewer.viewer.show_data_over_sigma, False
-    NGL_HKLviewer.viewer.NGL.camera_type, *orthographic
-    NGL_HKLviewer.clip_plane.clipwidth, None
-    NGL_HKLviewer.viewer.sqrt_scale_colors, False
-    NGL_HKLviewer.viewer.sigma_color, False
-    NGL_HKLviewer.clip_plane.is_real_space_frac_vec, False
-    NGL_HKLviewer.viewer.NGL.fixorientation, False
-    NGL_HKLviewer.viewer.inbrowser, True
-    NGL_HKLviewer.viewer.show_only_missing, False
-    NGL_HKLviewer.viewer.NGL.bin_opacities, [(1.0, 0), (1.0, 1), (1.0, 2)]
-    NGL_HKLviewer.clip_plane.bequiet, False
-    """
     self.unfeedback = True
     self.power_scale_spinBox.setEnabled( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] >= 0.0 )
     self.ManualPowerScalecheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] >= 0.0 )
@@ -643,11 +583,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.reciprocunitcellslider.setValue( self.currentphilstringdict['NGL_HKLviewer.reciprocal_unit_cell_scale_fraction'] * self.reciprocunitcellslider.maximum())
     else:
       self.DrawReciprocUnitCellBox.setChecked(False)
-
-
     self.unfeedback = False
-
-    pass
 
 
 
@@ -1442,7 +1378,8 @@ def run():
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       if not "WebGL works" in procout.decode():
         QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist"
-    print("using flags for QWebEngineView: " + QWebEngineViewFlags)
+    if "verbose" in sys.argv[1:]:
+      print("using flags for QWebEngineView: " + QWebEngineViewFlags)
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += QWebEngineViewFlags
 
     app = QApplication(sys.argv)

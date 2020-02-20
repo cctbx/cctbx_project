@@ -262,8 +262,6 @@ class settings_window () :
 
 class HKLViewFrame() :
   def __init__ (self, *args, **kwds) :
-    print("kwds= ", kwds)
-    print("args= ", *args)
     self.valid_arrays = []
     self.spacegroup_choices = []
     self.procarrays = []
@@ -273,12 +271,14 @@ class HKLViewFrame() :
     self.verbose = 0
     if 'verbose' in kwds:
       self.verbose = eval(kwds['verbose'])
+    self.guiSocketPort=None
+    self.mprint("kwds= " +str(kwds), 1)
+    self.mprint("args= " + str(args), 1)
     kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
     self.infostr = ""
     self.hklfile_history = []
     self.tncsvec = None
-    self.guiSocketPort=None
     self.new_miller_array_operations_lst = []
     self.zmqsleeptime = 0.1
     if 'useGuiSocket' in kwds:
@@ -287,7 +287,7 @@ class HKLViewFrame() :
       self.guisocket = self.context.socket(zmq.PAIR)
       self.guisocket.connect("tcp://127.0.0.1:%s" %self.guiSocketPort )
       self.STOP = False
-      print("starting socketthread")
+      self.mprint("starting socketthread", 1)
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen )
       self.msgqueuethrd.daemon = True
       self.msgqueuethrd.start()
@@ -717,6 +717,7 @@ class HKLViewFrame() :
       self.settings = display.settings()
       self.viewer.settings = self.params.NGL_HKLviewer.viewer
       self.viewer.mapcoef_fom_dict = {}
+      self.viewer.sceneid_from_arrayid = []
       self.hklfile_history = []
       self.tncsvec = None
       self.loaded_file_name = ""
