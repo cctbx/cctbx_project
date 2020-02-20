@@ -5,15 +5,11 @@ from six.moves import zip
 #
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.xtc_process
 #
-PSANA2_VERSION = 0
-try:
-  import os, psana
-  PSANA2_VERSION = os.environ.get('PSANA2_VERSION', 0)
 
+try:
+  import psana
 except ImportError:
   pass # for running at home without psdm build
-except AttributeError:
-  pass
 
 import errno
 from xfel.cftbx.detector import cspad_cbf_tbx
@@ -30,6 +26,9 @@ import numpy as np
 from libtbx import easy_pickle
 
 import io # fix buffering py2/3
+
+# check version of psana
+from xfel.cftbx.detector.cspad_cbf_tbx import PSANA2_VERSION
 
 xtc_phil_str = '''
   dispatch {
@@ -627,7 +626,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         # Python 2
         sys.stdout = open(os.devnull,'w', buffering=0)
         sys.stderr = open(os.devnull,'w',buffering=0)
-	
+
       info_path = os.devnull
       debug_path = os.devnull
     else:
@@ -639,7 +638,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         # Python 3
         sys.stdout = io.TextIOWrapper(open(log_path,'ab', 0), write_through=True)
         sys.stderr = io.TextIOWrapper(open(error_path,'ab', 0), write_through=True)
-      except TypeError:  
+      except TypeError:
         # Python 2
         sys.stdout = open(log_path,'a', buffering=0)
         sys.stderr = open(error_path,'a',buffering=0)
@@ -1021,7 +1020,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     if self.params.format.file_format == 'cbf':
       if self.params.format.cbf.mode == "cspad":
         # get numpy array, 32x185x388
-        data = cspad_cbf_tbx.get_psana_corrected_data(self.psana_det, evt, use_default=True, dark=True,
+        data = cspad_cbf_tbx.get_psana_corrected_data(self.psana_det, evt, use_default=False, dark=True,
                                                     common_mode=self.common_mode,
                                                     apply_gain_mask=self.params.format.cbf.cspad.gain_mask_value is not None,
                                                     gain_mask_value=self.params.format.cbf.cspad.gain_mask_value,
@@ -1306,7 +1305,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     try:
       if params.format.file_format == 'cbf':
-        image._cbf_handle.write_widefile(dest_path, pycbf.CBF,\
+        image._cbf_handle.write_widefile(dest_path.encode(), pycbf.CBF,\
           pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
       elif params.format.file_format == 'pickle':
         easy_pickle.dump(dest_path, image._image_file)

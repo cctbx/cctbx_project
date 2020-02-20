@@ -12,14 +12,17 @@ import six
 from six.moves import zip
 from six.moves import map
 
+PSANA2_VERSION = 0
+try:
+  PSANA2_VERSION = os.environ.get('PSANA2_VERSION', 0)
+except AttributeError:
+  pass
+
 # need to define these here since it not defined in SLAC's metrology definitions
 asic_dimension = (194,185)
 asic_gap = 3
 pixel_size = 0.10992
 from xfel.cxi.cspad_ana.cspad_tbx import cspad_saturated_value, cspad_min_trusted_value
-
-# check version of psana
-from xfel.command_line.xtc_process import PSANA2_VERSION
 
 def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, common_mode=None, apply_gain_mask=True,
                              gain_mask_value=None, per_pixel_gain=False, gain_mask=None, additional_gain_factor=None):
@@ -58,7 +61,7 @@ def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, commo
   data = data.astype(np.float64)
   if isinstance(dark, bool):
     if dark:
-      data -= psana_det.pedestals()
+      data -= psana_det.pedestals(evt)
   elif isinstance( dark, np.ndarray ):
     data -= dark
 
@@ -73,7 +76,7 @@ def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, commo
       psana_det.common_mode_apply(data, common_mode)
   if apply_gain_mask:
     if gain_mask is None:  # TODO: consider try/except here
-      gain_mask = psana_det.gain_mask() == 1
+      gain_mask = psana_det.gain_mask(evt) == 1
     if gain_mask_value is None:
       try:
         gain_mask_value = psana_det._gain_mask_factor
@@ -383,7 +386,7 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
   import numpy as np
   cbf = copy_cbf_header(base_dxtbx._cbf_handle)
   cspad_img = FormatCBFCspadInMemory(cbf)
-  cbf.set_datablockname(address + "_" + timestamp)
+  cbf.set_datablockname((address + "_" + timestamp).encode())
 
   if round_to_int:
     data = flex.double(data.astype(np.float64)).iround()
@@ -396,11 +399,11 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
     [(cspad_min_trusted_value,cspad_saturated_value)]*n_asics)
 
   # Set the distance, I.E., the length translated along the Z axis
-  cbf.find_category("diffrn_scan_frame_axis")
-  cbf.find_column("axis_id")
-  cbf.find_row("AXIS_D0_Z") # XXX discover the Z axis somehow, don't use D0 here
-  cbf.find_column("displacement")
-  cbf.set_value(str(-distance))
+  cbf.find_category(b"diffrn_scan_frame_axis")
+  cbf.find_column(b"axis_id")
+  cbf.find_row(b"AXIS_D0_Z") # XXX discover the Z axis somehow, don't use D0 here
+  cbf.find_column(b"displacement")
+  cbf.set_value(b"%f"%(-distance))
 
   # Explicitly reset the detector object now that the distance is set correctly
   cspad_img._detector_instance = cspad_img._detector()
@@ -765,11 +768,11 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, di
    the set of data values stored in the ARRAY_DATA category."""
   # More detail here: http://www.iucr.org/__data/iucr/cifdic_html/2/cif_img.dic/Carray_intensities.html
   array_names = []
-  cbf.find_category("diffrn_data_frame")
+  cbf.find_category(b"diffrn_data_frame")
   while True:
     try:
-      cbf.find_column("array_id")
-      array_names.append(cbf.get_value())
+      cbf.find_column(b"array_id")
+      array_names.append(cbf.get_value().decode())
       cbf.next_row()
     except Exception as e:
       assert "CBF_NOTFOUND" in str(e)
@@ -784,11 +787,11 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
   Given a cbf handle, add the raw data and the necessary tables to support it
   """
   array_names = []
-  cbf.find_category("diffrn_data_frame")
+  cbf.find_category(b"diffrn_data_frame")
   while True:
     try:
-      cbf.find_column("array_id")
-      array_names.append(cbf.get_value())
+      cbf.find_column(b"array_id")
+      array_names.append(cbf.get_value().decode())
       cbf.next_row()
     except Exception as e:
       assert "CBF_NOTFOUND" in str(e)
@@ -828,7 +831,7 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
     binary_id = i+1
     data = tiles[tilekey].copy_to_byte_str()
     elements = len(tiles[tilekey])
-    byteorder = "little_endian"
+    byteorder = b"little_endian"
     dimfast = focus[2]
     dimmid = focus[1]
     dimslow = focus[0]
@@ -854,8 +857,8 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
       elsize = 8
 
       cbf.set_realarray_wdims_fs(\
-        #pycbf.CBF_CANONICAL,
-        pycbf.CBF_PACKED,
+        pycbf.CBF_CANONICAL,
+        #pycbf.CBF_PACKED,
         binary_id,
         data,
         elsize,
@@ -873,7 +876,7 @@ def copy_cbf_header(src_cbf, skip_sections = False):
   which may not always be present
   @return cbf_wrapper instance with the header information from the source """
   dst_cbf = cbf_wrapper()
-  dst_cbf.new_datablock("dummy")
+  dst_cbf.new_datablock(b"dummy")
 
   categories = ["diffrn",
                 "diffrn_source",
@@ -891,11 +894,11 @@ def copy_cbf_header(src_cbf, skip_sections = False):
                 "diffrn_scan_frame_axis"])
 
   for cat in categories:
-    src_cbf.find_category(cat)
+    src_cbf.find_category(cat.encode())
     columns = []
     for i in range(src_cbf.count_columns()):
       src_cbf.select_column(i)
-      columns.append(src_cbf.column_name())
+      columns.append(src_cbf.column_name().decode())
 
     dst_cbf.add_category(cat, columns)
 
@@ -904,7 +907,7 @@ def copy_cbf_header(src_cbf, skip_sections = False):
       row = []
       for j in range(src_cbf.count_columns()):
         src_cbf.select_column(j)
-        row.append(src_cbf.get_value())
+        row.append(src_cbf.get_value().decode())
       dst_cbf.add_row(row)
 
   return dst_cbf
@@ -961,7 +964,7 @@ def get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelen
 
   # the data block is the root cbf node
   cbf=cbf_wrapper()
-  cbf.new_datablock(os.path.splitext(os.path.basename(cbf_root))[0])
+  cbf.new_datablock(os.path.splitext(os.path.basename(cbf_root))[0].encode())
 
   # Each category listed here is preceded by the imageCIF description taken from here:
   # http://www.iucr.org/__data/iucr/cifdic_html/2/cif_img.dic/index.html

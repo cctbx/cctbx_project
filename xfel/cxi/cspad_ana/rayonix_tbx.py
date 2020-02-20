@@ -70,7 +70,7 @@ def get_rayonix_cbf_handle(tiles, metro, timestamp, cbf_root, wavelength, distan
   from xfel.cftbx.detector.cspad_cbf_tbx import cbf_wrapper
   import os
   cbf=cbf_wrapper()
-  cbf.new_datablock(os.path.splitext(os.path.basename(cbf_root))[0])
+  cbf.new_datablock(os.path.splitext(os.path.basename(cbf_root))[0].encode())
 
   # Each category listed here is preceded by the imageCIF description taken from here:
   # http://www.iucr.org/__data/iucr/cifdic_html/2/cif_img.dic/index.html
@@ -279,7 +279,7 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
   from xfel.cftbx.detector import cspad_cbf_tbx
   cbf = cspad_cbf_tbx.copy_cbf_header(base_dxtbx._cbf_handle, skip_sections=True)
   rayonix_img = FormatCBFRayonixInMemory(cbf)
-  cbf.set_datablockname(address + "_" + timestamp)
+  cbf.set_datablockname((address + "_" + timestamp).encode())
 
   if round_to_int:
     data = flex.double(data.astype(np.float64)).iround()
@@ -291,11 +291,11 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
     [(rayonix_min_trusted_value, rayonix_saturated_value)]*n_asics)
 
   # Set the distance, I.E., the length translated along the Z axis
-  cbf.find_category("diffrn_scan_frame_axis")
-  cbf.find_column("axis_id")
-  cbf.find_row("AXIS_D0_Z") # XXX discover the Z axis somehow, don't use D0 here
-  cbf.find_column("displacement")
-  cbf.set_value(str(-distance))
+  cbf.find_category(b"diffrn_scan_frame_axis")
+  cbf.find_column(b"axis_id")
+  cbf.find_row(b"AXIS_D0_Z") # XXX discover the Z axis somehow, don't use D0 here
+  cbf.find_column(b"displacement")
+  cbf.set_value(b"%f"%(-distance))
 
   # Explicitly reset the detector object now that the distance is set correctly
   rayonix_img._detector_instance = rayonix_img._detector()
@@ -314,11 +314,11 @@ def add_data_to_cbf(cbf, data, verbose = False):
   """
   import pycbf
 
-  cbf.find_category("diffrn_data_frame")
+  cbf.find_category(b"diffrn_data_frame")
   while True:
     try:
-      cbf.find_column("array_id")
-      array_name = cbf.get_value()
+      cbf.find_column(b"array_id")
+      array_name = cbf.get_value().decode()
       cbf.next_row()
     except Exception as e:
       assert "CBF_NOTFOUND" in str(e)
