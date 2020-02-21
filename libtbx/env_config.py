@@ -129,16 +129,19 @@ def is_llvm_compiler(gcc='gcc'):
     return False
 
 def get_gcc_version(command_name="gcc"):
+  # run command in shell subprocess
   from libtbx import easy_run
   buffer = easy_run.fully_buffered(
     command="%s -dumpversion" % command_name)
-  if (len(buffer.stderr_lines) != 0):
-    return None
-  if (len(buffer.stdout_lines) != 1):
-    return None
+  # if something went wrong `buffer.stdout_lines` might have len=0
+  if len(buffer.stdout_lines) < 1:
+      return None
+
   major_minor_patchlevel = buffer.stdout_lines[0].split(".")
+  # output is not a valid version format:
   if (len(major_minor_patchlevel) not in [1,2,3]):
     return None
+  # parse version number
   num = []
   for fld in major_minor_patchlevel:
     try: i = int(fld)
@@ -148,6 +151,8 @@ def get_gcc_version(command_name="gcc"):
   # substitute missing minor and patchlevel for gcc7 on Ubuntu18
   if (len(num) == 1): num.append(0); num.append(0)
   if (len(num) == 2): num.append(0) # substitute missing patchlevel
+
+  # format version numbers
   return ((num[0]*100)+num[1])*100+num[2]
 
 def get_hostname():
