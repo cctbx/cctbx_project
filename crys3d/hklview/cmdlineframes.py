@@ -366,6 +366,7 @@ class HKLViewFrame() :
     self.viewer.sg = None
     self.viewer.proc_arrays = []
     self.viewer.HKLscenesdict = {}
+    self.viewer.HKLscenedict = {}
     self.viewer.sceneisdirty = True
     if self.viewer.miller_array:
       self.viewer.params.viewer.scene_id = None
@@ -1120,7 +1121,8 @@ class HKLViewFrame() :
     mydict = { "current_phil_strings": philstrvalsdict }
     self.SendInfoToGUI(mydict)
     if self.viewer.params.viewer.scene_id is not None:
-      self.SendInfoToGUI({ "used_nth_power_scale_radii": self.viewer.HKLscenes[int(self.viewer.params.viewer.scene_id)].nth_power_scale_radii })
+      #self.SendInfoToGUI({ "used_nth_power_scale_radii": self.viewer.HKLscenes[int(self.viewer.params.viewer.scene_id)].nth_power_scale_radii })
+      self.SendInfoToGUI({ "used_nth_power_scale_radii": self.viewer.HKLscene[int(self.viewer.params.viewer.scene_id)].nth_power_scale_radii })
 
 
 
