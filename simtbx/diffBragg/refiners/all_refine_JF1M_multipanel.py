@@ -10,7 +10,7 @@ import math
 from dxtbx.model import Panel
 
 
-class RefineAll(RefineRot):
+class RefineAll_JF1M_MultiPanel(RefineRot):
 
     def __init__(self, ucell_manager, rotXYZ_refine=(True, True, True), init_gain=1, init_scale=1,
                  panel_id=0,init_local_spotscale=[], *args, **kwargs):
@@ -24,6 +24,7 @@ class RefineAll(RefineRot):
         RefineRot.__init__(self, *args, **kwargs)
         self.calc_func = True
         self.f_vals = []
+        self.multi_panel = True
 
         self.refine_rotX = rotXYZ_refine[0]
         self.refine_rotY = rotXYZ_refine[1]
@@ -56,8 +57,14 @@ class RefineAll(RefineRot):
         n_spotscale = 2
         n_origin_params = 1
         n_ncells_params = 1
-        self.n = n_bg + n_local_spotscale + self.n_rot_param + self.n_ucell_param + n_ncells_params + n_origin_params + n_spotscale
-        #self.n = self.n_rot_param + self.n_ucell_param + n_ncells_params + n_origin_params + n_spotscale
+
+        # make a mapping of panel id to parameter index and backwards
+        self.pid_from_idx = {i: pid for i, pid in enumerate(np.unique(self.panel_ids))}
+        self.idx_from_pid = {pid: i for i, pid in enumerate(np.unique(self.panel_ids))}
+        n_panels = len(self.pid_from_idx)
+
+
+        self.n = n_bg + n_local_spotscale + self.n_rot_param + self.n_ucell_param + n_ncells_params + n_origin_params*n_panels + n_spotscale
         self.x = flex.double(self.n)
 
         self.rotX_xpos = n_bg + n_local_spotscale
@@ -76,8 +83,19 @@ class RefineAll(RefineRot):
         self.x[self.rotZ_xpos] = 0
         for i_uc in range(self.n_ucell_param):
             self.x[self.ucell_xstart + i_uc] = self.ucell_manager.variables[i_uc]
-        self.x[-4] = self.S.crystal.Ncells_abc[0]
-        self.x[-3] = self.S.detector[self._panel_id].get_origin()[2]
+
+
+        # put in Ncells abc estimate
+        self.ncells_xpos = self.ucell_xstart + self.n_ucell_param
+        self.x[self.ncells_xpos] = self.S.crystal.Ncells_abc[0]
+        # put in estimates for origin vectors
+        self.origin_xstart = self.ncells_xpos + 1
+        for i_pan in range(n_panels):
+            pid = self.pid_from_idx[i_pan]
+            #import pdb; pdb.set_trace()
+            self.x[self.origin_xstart + i_pan] = self.S.detector[pid].get_local_origin()[2]
+
+        #self.x[-3] = self.S.detector[self._panel_id].get_origin()[2]
         self.x[-2] = self._init_gain  # initial gain for experiment
         self.x[-1] = self._init_scale  # initial scale factor
 
@@ -136,6 +154,24 @@ class RefineAll(RefineRot):
         self.D.set_value(self._ncells_id, self.x[-4])
 
     def _update_dxtbx_detector(self):
+
+
+        det = self.S.detector
+        self.S.panel_id = self._panel_id
+        # TODO: select hierarchy level at this point
+        # NOTE: what does fast-axis and slow-axis mean
+        # for the different hierarchy levels?
+        node = det[self._panel_id]
+        orig = node.get_local_origin()
+        xpos = self.origin_xstart + self.idx_from_pid[self._panel_id]
+        new_originZ = self.x[xpos]
+        new_origin = orig[0], orig[1], new_originZ
+        node.set_local_frame(node.get_local_fast_axis(),
+                             node.get_local_slow_axis(),
+                             new_origin)
+        self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
+        self.D.update_dxtbx_geoms(det, self.S.beam.nanoBragg_constructor_beam, self._panel_id)
+        '''
         det = self.S.detector
         node = det[self._panel_id]
         node_d = node.to_dict()
@@ -144,6 +180,7 @@ class RefineAll(RefineRot):
         det[self._panel_id] = Panel.from_dict(node_d)
         self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
         self.D.update_dxtbx_geoms(det, self.S.beam.nanoBragg_constructor_beam, self._panel_id)
+        '''
 
     def _extract_pixel_data(self):
         self.rot_deriv = [0, 0, 0]
@@ -184,8 +221,9 @@ class RefineAll(RefineRot):
         self.model_bragg_spots = self.D.raw_pixels_roi.as_numpy_array()
 
     def _update_best_image(self, i_spot):
+        pid = self.panel_ids[i_spot]
         x1, x2, y1, y2 = self.spot_rois[i_spot]
-        self.best_image[y1:y2 + 1, x1:x2 + 1] = self.model_Lambda
+        self.best_image[pid, y1:y2 + 1, x1:x2 + 1] = self.model_Lambda
 
     def _unpack_bgplane_params(self, i_spot):
         self.a, self.b, self.c = self.abc_init[i_spot]
@@ -227,6 +265,8 @@ class RefineAll(RefineRot):
             self.store_vmax = []
             self.store_vmin = []
             for i_spot in range(self.n_spots):
+                self._panel_id = self.panel_ids[i_spot]
+                self.S.panel_id=self.panel_ids[i_spot]
                 if self.verbose:
                     print "\rRunning diffBragg over spot %d/%d " % (i_spot+1, self.n_spots),
                     sys.stdout.flush()
@@ -241,6 +281,7 @@ class RefineAll(RefineRot):
                 self._update_best_image(i_spot)
 
                 Imeas = self.roi_img[i_spot]
+                #from IPython import embed; embed(); exit()
                 f += (self.model_Lambda - Imeas * self.log_Lambda).sum()
                 if self.refine_with_restraints:
                   for i_uc in range(self.n_ucell_param):

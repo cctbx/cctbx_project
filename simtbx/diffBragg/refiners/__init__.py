@@ -7,4 +7,5 @@ from .detdist_refiner import RefineDetdist
 from .ncells_refiner import RefineNcells
 from .all_refine import RefineAll
 from .all_refine_multipanel import RefineAllMultiPanel
+from .all_refine_JF1M_multipanel import RefineAll_JF1M_MultiPanel
 #from .global_refiner import FatRefiner

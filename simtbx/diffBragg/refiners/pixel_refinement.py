@@ -297,7 +297,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
             yrel.append(yr)
             if self.multi_panel:
                 pid = self.panel_ids[i_roi]
-                roi_img.append(self.img[pid, y1:y2 + 1, x1:x2 + 1])
+                roi_img.append(self.img[pid][y1:y2 + 1, x1:x2 + 1])
             else:
                 roi_img.append(self.img[y1:y2+1, x1:x2+1])
 
