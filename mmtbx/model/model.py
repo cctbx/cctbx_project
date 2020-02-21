@@ -1218,19 +1218,15 @@ class manager(object):
           selection=None,
           log=self.log)
 
-    # Use Schrodinger force field if requested
+    ############################################################################
+    # Switch in external alternative geometry manager. Options include:
+    #  1. Amber force field
+    #  2. Schrodinger force field
+    ############################################################################
     params = self._pdb_interpretation_params
     if params.amber.use_amber:
-      from amber_adaptbx.manager import manager as amber_manager
-      new_geometry = amber_manager(self._pdb_hierarchy,
-                                   geometry,
-                                   params,
-                                   # cleanup=True,
-                                   # geometry,
-                                   log=self.log,
-                                   )
-      new_geometry.standard_geometry = geometry
-      geometry = new_geometry
+      from amber_adaptbx.manager import digester
+      geometry = digester(geometry, params, log=self.log)
     elif hasattr(params, "schrodinger") and params.schrodinger.use_schrodinger:
       from phenix_schrodinger import schrodinger_manager
       geometry = schrodinger_manager(self._pdb_hierarchy,

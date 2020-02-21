@@ -26,9 +26,6 @@ class manager(object):
         geometry=None,
         cartesian_ncs_manager=None,
         normalization=False,
-        use_amber=False,
-        use_sander=False,
-        amber_structs=None,
         use_afitt=False, #afitt
         afitt_object=None):
     self.geometry = geometry
@@ -131,37 +128,37 @@ class manager(object):
     if (self.geometry is None):
       result.geometry = None
     else:
-      if (self.use_amber and not force_restraints_model):
-        assert 0
-        geometry_energy = self.geometry.energies_sites(
-          sites_cart=sites_cart,
-          flags=geometry_flags,
-          external_energy_function=external_energy_function,
-          custom_nonbonded_function=custom_nonbonded_function,
-          compute_gradients=False,
-          gradients=None,
-          disable_asu_cache=disable_asu_cache,
-          normalization=False)
-        ##################################################################
-        #                                                                #
-        # AMBER CALL - Amber force field gradients and target            #
-        #                                                                #
-        ##################################################################
-        import amber_adaptbx
-        amber_geometry_manager = amber_adaptbx.geometry_manager(
-          sites_cart=sites_cart,
-          number_of_restraints=geometry_energy.number_of_restraints,
-          gradients_factory=flex.vec3_double,
-          amber_structs=self.amber_structs)
-        result.geometry = amber_geometry_manager.energies_sites(
-          crystal_symmetry = self.geometry.crystal_symmetry,
-          compute_gradients = compute_gradients,
-          # these are only available for use_amber=True
-          log=self.log,
-          print_amber_energies=self.print_amber_energies,
-          qmmask=self.qmmask)
+      # if (self.use_amber and not force_restraints_model):
+      #   assert 0
+      #   geometry_energy = self.geometry.energies_sites(
+      #     sites_cart=sites_cart,
+      #     flags=geometry_flags,
+      #     external_energy_function=external_energy_function,
+      #     custom_nonbonded_function=custom_nonbonded_function,
+      #     compute_gradients=False,
+      #     gradients=None,
+      #     disable_asu_cache=disable_asu_cache,
+      #     normalization=False)
+      #   ##################################################################
+      #   #                                                                #
+      #   # AMBER CALL - Amber force field gradients and target            #
+      #   #                                                                #
+      #   ##################################################################
+      #   import amber_adaptbx
+      #   amber_geometry_manager = amber_adaptbx.geometry_manager(
+      #     sites_cart=sites_cart,
+      #     number_of_restraints=geometry_energy.number_of_restraints,
+      #     gradients_factory=flex.vec3_double,
+      #     amber_structs=self.amber_structs)
+      #   result.geometry = amber_geometry_manager.energies_sites(
+      #     crystal_symmetry = self.geometry.crystal_symmetry,
+      #     compute_gradients = compute_gradients,
+      #     # these are only available for use_amber=True
+      #     log=self.log,
+      #     print_amber_energies=self.print_amber_energies,
+      #     qmmask=self.qmmask)
 
-      elif (self.use_afitt and
+      if (self.use_afitt and
             len(sites_cart)==self.afitt_object.total_model_atoms
             ):
         ##################################################################
