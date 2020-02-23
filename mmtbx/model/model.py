@@ -540,9 +540,7 @@ class manager(object):
     return self._atom_selection_cache
 
   def get_number_of_models(self):
-    if self._model_input is not None:
-      return self._model_input.model_ids().size()
-    return 0
+    return len(self.get_hierarchy().models())
 
   def get_site_symmetry_table(self):
     if self._site_symmetry_table is not None:
