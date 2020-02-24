@@ -363,7 +363,7 @@ class hklview_3d:
                        "slice_axis",
                        "slice_mode",
                        "slice_index",
-                       "scene_id"
+                       "scene_id",
                        "scale",
                        "nth_power_scale_radii"
                        ) \
@@ -376,13 +376,7 @@ class hklview_3d:
         if curphilparam.viewer.slice_mode and self.viewerparams.inbrowser:
           self.viewerparams.inbrowser = False
         self.sceneisdirty = True
-        if has_phil_path(diff_phil, "scene_id",
-                       "scale",
-                       "nth_power_scale_radii"
-            ):
-          self.ConstructReciprocalSpace(curphilparam, merge=self.merge, scene_id=self.viewerparams.scene_id )
-        else:
-          self.ConstructReciprocalSpace(curphilparam, merge=self.merge )
+        self.ConstructReciprocalSpace(curphilparam, merge=self.merge )
     msg = ""
     if self.viewerparams.scene_id is not None and \
       ( has_phil_path(diff_phil,
