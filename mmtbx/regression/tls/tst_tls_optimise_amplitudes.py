@@ -317,7 +317,7 @@ def calculate_expected_f_and_g_sum_of_squared_amplitudes(
 
 def tst_optimisation_weights():
 
-  weights = OptimisationWeights()
+  weights = OptimisationWeights.defaults()
   assert approx_equal(weights.sum_of_amplitudes, 0.0)
   assert approx_equal(weights.sum_of_squared_amplitudes, 0.0)
   assert approx_equal(weights.sum_of_amplitudes_squared, 0.0)
@@ -334,30 +334,46 @@ def tst_optimisation_weights():
     sum_of_amplitudes_squared = wgts_dbl[2],
   )
 
-  weights = OptimisationWeights()
-  weights.update_from_dict(wgts_dict)
+  # Initialise from dict
+  weights = OptimisationWeights(**wgts_dict)
   assert approx_equal(weights.sum_of_amplitudes, wgts_dbl[0])
   assert approx_equal(weights.sum_of_squared_amplitudes, wgts_dbl[1])
   assert approx_equal(weights.sum_of_amplitudes_squared, wgts_dbl[2])
 
-  weights = OptimisationWeights()
-  weights.update(wgts_dict)
+  # Copy from dict
+  weights = OptimisationWeights.defaults().transfer_from_other(wgts_dict)
+  assert approx_equal(wgts_dict['sum_of_amplitudes'], wgts_dbl[0])
+  assert approx_equal(wgts_dict['sum_of_squared_amplitudes'], wgts_dbl[1])
+  assert approx_equal(wgts_dict['sum_of_amplitudes_squared'], wgts_dbl[2])
   assert approx_equal(weights.sum_of_amplitudes, wgts_dbl[0])
   assert approx_equal(weights.sum_of_squared_amplitudes, wgts_dbl[1])
   assert approx_equal(weights.sum_of_amplitudes_squared, wgts_dbl[2])
 
-  weights2 = OptimisationWeights.from_other(weights)
+  # Copy from object with attributes
+  weights = OptimisationWeights.defaults().transfer_from_other(wgts_obj)
+  assert approx_equal(wgts_dict['sum_of_amplitudes'], wgts_dbl[0])
+  assert approx_equal(wgts_dict['sum_of_squared_amplitudes'], wgts_dbl[1])
+  assert approx_equal(wgts_dict['sum_of_amplitudes_squared'], wgts_dbl[2])
+  assert approx_equal(weights.sum_of_amplitudes, wgts_dbl[0])
+  assert approx_equal(weights.sum_of_squared_amplitudes, wgts_dbl[1])
+  assert approx_equal(weights.sum_of_amplitudes_squared, wgts_dbl[2])
+
+  # Copy from other weights object
+  weights2 = OptimisationWeights.defaults().transfer_from_other(weights)
+  assert approx_equal(weights.sum_of_amplitudes, wgts_dbl[0])
+  assert approx_equal(weights.sum_of_squared_amplitudes, wgts_dbl[1])
+  assert approx_equal(weights.sum_of_amplitudes_squared, wgts_dbl[2])
   assert approx_equal(weights2.sum_of_amplitudes, wgts_dbl[0])
   assert approx_equal(weights2.sum_of_squared_amplitudes, wgts_dbl[1])
   assert approx_equal(weights2.sum_of_amplitudes_squared, wgts_dbl[2])
 
-  weights2 = OptimisationWeights.from_other(wgts_obj)
-  assert approx_equal(weights2.sum_of_amplitudes, wgts_dbl[0])
-  assert approx_equal(weights2.sum_of_squared_amplitudes, wgts_dbl[1])
-  assert approx_equal(weights2.sum_of_amplitudes_squared, wgts_dbl[2])
-
-  weights2 = OptimisationWeights.from_dict(wgts_dict)
-  assert approx_equal(weights2.sum_of_amplitudes, wgts_dbl[0])
+  # Partial transfer
+  partial_dict = {'sum_of_amplitudes':99.0}
+  weights2 = weights.transfer_from_other(partial_dict)
+  assert approx_equal(weights.sum_of_amplitudes, wgts_dbl[0])
+  assert approx_equal(weights.sum_of_squared_amplitudes, wgts_dbl[1])
+  assert approx_equal(weights.sum_of_amplitudes_squared, wgts_dbl[2])
+  assert approx_equal(weights2.sum_of_amplitudes, 99.0)
   assert approx_equal(weights2.sum_of_squared_amplitudes, wgts_dbl[1])
   assert approx_equal(weights2.sum_of_amplitudes_squared, wgts_dbl[2])
 
