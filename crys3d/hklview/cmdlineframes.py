@@ -365,7 +365,6 @@ class HKLViewFrame() :
     self.viewer.symops = []
     self.viewer.sg = None
     self.viewer.proc_arrays = []
-    self.viewer.HKLscenesdict = {}
     self.viewer.HKLscenedict = {}
     self.viewer.sceneisdirty = True
     if self.viewer.miller_array:
@@ -583,7 +582,7 @@ class HKLViewFrame() :
     if self.viewer.miller_array is None or \
       self.params.NGL_HKLviewer.using_space_subgroup:
       return
-    current_miller_array_idx = self.viewer.hkl_scenes_info[self.params.NGL_HKLviewer.viewer.scene_id][1]
+    current_miller_array_idx = self.viewer.HKLInfo_from_dict()[1]
     matching_valid_array = self.procarrays[ current_miller_array_idx ]
     from cctbx.sgtbx.subgroups import subgroups
     from cctbx import sgtbx
@@ -1122,7 +1121,7 @@ class HKLViewFrame() :
     self.SendInfoToGUI(mydict)
     if self.viewer.params.viewer.scene_id is not None:
       #self.SendInfoToGUI({ "used_nth_power_scale_radii": self.viewer.HKLscenes[int(self.viewer.params.viewer.scene_id)].nth_power_scale_radii })
-      self.SendInfoToGUI({ "used_nth_power_scale_radii": self.viewer.HKLscene[int(self.viewer.params.viewer.scene_id)].nth_power_scale_radii })
+      self.SendInfoToGUI({ "used_nth_power_scale_radii": self.viewer.HKLscene_from_dict().nth_power_scale_radii })
 
 
 
