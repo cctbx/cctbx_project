@@ -10,8 +10,13 @@ from mmtbx_tls_optimise_amplitudes_ext import *
 
 from libtbx import adopt_init_args
 
+import collections
+_OptimisationWeights = collections.namedtuple(
+  typename = 'OptimisationWeights',
+  field_names = ('sum_of_amplitudes', 'sum_of_squared_amplitudes', 'sum_of_amplitudes_squared'),
+)
 
-class OptimisationWeights(object):
+class OptimisationWeights(_OptimisationWeights):
   """
   Weights object for OptimiseAmplitudes class.
 
@@ -25,67 +30,40 @@ class OptimisationWeights(object):
     weight for the square of the lasso-like term (restrains sum of amplitudes to zero)
   """
 
-  def __init__(self,
-      sum_of_amplitudes = 0.0,
-      sum_of_squared_amplitudes = 0.0,
-      sum_of_amplitudes_squared = 0.0,
-      ):
-    adopt_init_args(self, locals())
-
-  def update(self, weights):
-    """
-    Transfer weights from an input object (dict or other OptimisationWeights object)
-    """
-    if weights is None:
-      return self
-    elif isinstance(weights, dict):
-      return self.update_from_dict(weights)
-    elif isinstance(weights, type(self)):
-      return self.update_from_dict(weights.__dict__)
-    else:
-      raise Exception('Unknown type for `weights`')
-
-  def update_from_dict(self, weights):
-    """
-    Update weights from an input dictionary
-    """
-    for k,v in weights.iteritems():
-      assert k in self.__dict__.keys(), 'invalid dictionary element: {}'.format(k)
-      self.__dict__[k] = v
-    return self
-
   @classmethod
-  def from_other(cls, obj):
-    """
-    Create a new OptimisationWeights object from either dict or generic object
-    """
-    if isinstance(obj, dict):
-      return cls.from_dict(obj)
-    else:
-      return cls.from_generic(obj)
+  def defaults(cls):
+    """Initialise class with default values for each of the fields"""
+    return cls(**{f:0.0 for f in cls._fields})
 
-  @classmethod
-  def from_dict(cls, obj):
+  def transfer_from_other(self, other, require_all=False):
     """
-    Create a new OptimisationWeights object from an input dictionary
+    Transfer weights from an input object (with equivalent attributes or indexed)
+    Returns a new object using _replace function of namedtuple
     """
-    return cls().update_from_dict(obj)
 
-  @classmethod
-  def from_generic(cls, obj):
-    """
-    Create a new OptimisationWeights object from a generic object
-    """
-    self = cls()
-    found_none = True
-    for k in self.__dict__.keys():
-      v = getattr(obj, k, None)
-      if v is None: continue
-      found_none = False
-      self.__dict__[k] = v
-    if found_none is True:
-      raise Exception('No overlapping attributes were found between objects')
-    return self
+    update_dict = {}
+
+    for f in self._fields:
+
+      # Extract value for the field name (if available or required)
+      try:
+        if hasattr(other, f):
+          v = getattr(other, f)
+        else:
+          v = other[f]
+      except (TypeError, AttributeError, KeyError) as e:
+        if require_all is True:
+          raise ValueError('{}\n`other` does not have attribute or contain item: {}'.format(str(e), f))
+        else:
+          continue
+
+      # store temporarily in dictionary
+      update_dict[f] = v
+
+    if len(update_dict) == 0:
+      raise ValueError('No overlapping attributes/items were found between self and `other`')
+
+    return self._replace(**update_dict)
 
 
 class OptimiseAmplitudes:
@@ -145,7 +123,9 @@ class OptimiseAmplitudes:
 
     # Initialise weights object
     if optimisation_weights is None:
-      optimisation_weights = OptimisationWeights()
+      optimisation_weights = OptimisationWeights.defaults()
+    else:
+      optimisation_weights = OptimisationWeights.defaults().transfer_from_other(optimisation_weights)
 
     adopt_init_args(self, locals())
 
