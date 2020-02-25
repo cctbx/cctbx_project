@@ -139,6 +139,10 @@ public:
     return result;
   }
 
+  static const std::vector<std::vector<int> > &get_indices() {
+    return tensor_t::get_indices();
+  }
+
   /* this might be required in a multithreaded environment!
   allocate a small cunk of memory for the multidemensional index to
   linear index mapping
