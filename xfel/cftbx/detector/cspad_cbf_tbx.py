@@ -61,7 +61,10 @@ def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, commo
   data = data.astype(np.float64)
   if isinstance(dark, bool):
     if dark:
-      data -= psana_det.pedestals(evt)
+      if PSANA2_VERSION:
+        data -= psana_det.pedestals()
+      else:
+        data -= psana_det.pedestals(evt)
   elif isinstance( dark, np.ndarray ):
     data -= dark
 
