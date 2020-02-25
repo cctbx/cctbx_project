@@ -6,11 +6,16 @@ from __future__ import absolute_import, division, print_function
 
 import contextlib
 import itertools
+import json
 import os
 import sys
 
 import libtbx.load_env
-import libtbx.auto_build.install_conda
+
+try:
+  import conda.cli.python_api
+except ImportError:
+  conda = None
 
 try:
   import pip
@@ -151,18 +156,10 @@ def require(pkgname, version=None):
     return False
 
   if libtbx.env.build_options.use_conda:
-    if not os.getenv("LIBTBX_UPDATE_CONDA"):
-      _notice("    WARNING: Can not {action} package {package} automatically.", "",
-              "You are in a conda environment. Please {action} manually.",
-              package=pkgname, currentversion=currentversion, requirement=version, action=action)
-      return False
-    try:
-      return install_conda_package(package=pkgname, requirement=version, action=action)
-    except Exception:
-      _notice("    WARNING: Can not {action} package {package} automatically.", "",
-              "Please {action} manually in conda environment.",
-              package=pkgname, currentversion=currentversion, requirement=version, action=action)
-      raise
+    _notice("    WARNING: Can not {action} package {package} automatically.", "",
+            "You are in a conda environment. Please {action} manually.",
+            package=pkgname, currentversion=currentversion, requirement=version, action=action)
+    return False
 
   print("attempting {action} of {package}...".format(action=action, package=pkgname))
   has_req_tracker = os.environ.get('PIP_REQ_TRACKER')
@@ -176,20 +173,6 @@ def require(pkgname, version=None):
   else:
     print("{action} failed. please check manually".format(action=action))
     return False
-
-def install_conda_package(package, requirement, action):
-    conda_manager = libtbx.auto_build.install_conda.conda_manager()
-    conda = conda_manager.get_conda_exe()
-    prefix = conda_manager.conda_env
-    if not prefix:
-        prefix = os.path.join(conda_manager.root_dir, "conda_base")
-    if not prefix or not os.path.exists(prefix):
-        raise RuntimeError("Could not find conda environment at " + repr(prefix))
-    command_list = [conda, action, '--prefix', prefix, package + requirement]
-    if conda_manager.system == 'Windows':
-      command_list = [os.path.join(conda_manager.conda_base, 'Scripts', 'activate'),
-                      'base', '&&'] + command_list
-    raise RuntimeError("Would run " + repr(command_list))
 
 @contextlib.contextmanager
 def _silence():
@@ -332,6 +315,29 @@ def _merge_requirements(requirements, new_req):
   else:
     requirements.append(new_req)
 
+def collate_conda_requirements(modules):
+  # type: (List[libtbx.env_config.module]) -> List[pkg_resources.Requirement]
+  """Combine conda requirements from a module list.
+
+  An attempt will be made to merge any joint requirements. The requirement
+  objects will have an added property 'modules', which is a set of module
+  names that formed the requirement.
+
+  Attr:
+      modules (Iterable[libtbx.env_config.module]): The module list
+
+  Returns:
+      List[pkg_resources.Requirement]: The merged requirements
+  """
+  requirements = []
+  for module, spec in itertools.chain(*[[(x.name, y) for y in x.conda_required] for x in modules if hasattr(x, "conda_required")]):
+    requirement = pkg_resources.Requirement.parse(spec)
+    # Track where dependencies came from
+    requirement.modules = {module}
+    # Attempt to merge this with any other requirements to avoid double-specifying
+    _merge_requirements(requirements, requirement)
+  return requirements
+
 def collate_python_requirements(modules):
   # type: (List[libtbx.env_config.module]) -> List[packaging.requirements.Requirement]
   """Combine python requirements from a module list.
@@ -354,6 +360,105 @@ def collate_python_requirements(modules):
     # Attempt to merge this with any other requirements to avoid double-specifying
     _merge_requirements(requirements, requirement)
   return requirements
+
+def resolve_module_conda_dependencies(modules):
+  # type: (List[libtbx.env_config.module]) -> None
+  """Resolve all python dependencies from the list of modules"""
+  # Check we can do anything here
+  if not libtbx.env.build_options.use_conda:
+    return
+
+  if conda is None:
+    _notice("  WARNING: Can not find conda package in your environment",
+            "  You will have to keep track of dependencies yourself")
+    return
+
+  conda_list, error, return_code = conda.cli.python_api.run_command(
+    conda.cli.python_api.Commands.LIST,
+    "--json",
+    use_exception_handler=True,
+  )
+  if error or return_code:
+    _notice("  WARNING: Could not obtain list of conda packages in your environment",
+            error)
+    return
+  conda_environment = {package["name"]: package["version"] for package in json.loads(conda_list)}
+
+  requirements = collate_conda_requirements(modules)
+  # Now we should have an unduplicated set of requirements
+  action_list = []
+  for requirement in requirements:
+    # Check if package is installed in development mode
+    if pkg_resources:
+      try:
+        currentversion = pkg_resources.require(requirement.name)[0].version
+      except Exception:
+        pass
+      else:
+        location = None
+        for path_item in sys.path:
+          egg_link = os.path.join(path_item, requirement.name + '.egg-link')
+          if os.path.isfile(egg_link):
+            with open(egg_link, 'r') as fh:
+              location = fh.readline().strip()
+              break
+        if location and currentversion in requirement:
+          print("requires conda package %s, has %s as developer installation" % (requirement, currentversion))
+          continue
+        elif location and currentversion not in requirement:
+          _notice(
+            "    WARNING: Can not update package {package} automatically.", "",
+            "It is installed as editable package for development purposes. The currently",
+            "installed version, {currentversion}, is too old. The required version is {requirement}.",
+            "Please update the package manually in its installed location:", "",
+            "    {location}",
+            package=requirement.name, currentversion=currentversion,
+            requirement=requirement, location=location)
+          continue
+
+    # Check if package is installed with conda
+    if requirement.name in conda_environment:
+      if conda_environment[requirement.name] in requirement:
+        print("requires conda package %s, has %s" % (requirement, conda_environment[requirement.name]))
+        continue
+      print("conda requirement %s is not currently met, current version %s" % (requirement, conda_environment[requirement.name]))
+
+    # Install/update required
+    print("conda requirement %s is not currently met, package not installed" % (requirement))
+    action_list.append(str(requirement))
+
+  if not action_list:
+    print("All conda requirements satisfied")
+    return
+
+  if not os.path.isdir(libtbx.env.under_base('.')):
+    _notice("    WARNING: Can not update conda packages automatically.", "",
+            "You are running in a base-less installation, which disables automatic package",
+            "management by convention, see https://github.com/cctbx/cctbx_project/issues/151", "",
+            "Please update the following packages manually:",
+            "  {action_list}",
+            action_list=", ".join(action_list))
+    return
+
+  if os.getenv('LIBTBX_DISABLE_UPDATES') and os.getenv('LIBTBX_DISABLE_UPDATES').strip() not in ('0', ''):
+    _notice("    WARNING: Can not automatically update conda environment", "",
+            "Environment variable LIBTBX_DISABLE_UPDATES is set.",
+            "Please update the following packages manually:",
+            "  {action_list}",
+            action_list=", ".join(action_list))
+    return
+
+  print("\nUpdating conda environment for packages:" + "".join("\n - " + a for a in action_list) + "\n")
+  _, _, return_code = conda.cli.python_api.run_command(
+    conda.cli.python_api.Commands.INSTALL,
+    *action_list,
+    stdout=None,
+    stderr=None,
+    use_exception_handler=True
+  )
+  if return_code:
+    _notice("    WARNING: Could not automatically update conda environment", "",
+            "Please check your environment manually.")
 
 def resolve_module_python_dependencies(modules):
   # type: (List[libtbx.env_config.module]) -> None
