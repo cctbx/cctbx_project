@@ -53,14 +53,15 @@ class MakeNewDataForm(QDialog):
     mainLayout.addWidget(myGroupBox,     0, 0)
     self.setLayout(mainLayout)
     m = self.fontMetrics().width( "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf")
-    self.setMinimumWidth(m)
+    #self.setMinimumWidth(m)
     #self.setFixedSize( self.sizeHint() )
 
 
 class SettingsForm(QDialog):
   def __init__(self, parent=None):
     super(SettingsForm, self).__init__(parent.window)
-    self.setWindowTitle("Settings")
+    self.setWindowTitle("HKL-viewer Settings")
+    self.setWindowFlags(Qt.Tool)
     myGroupBox = QGroupBox("Stuff")
     layout = QGridLayout()
     layout.addWidget(parent.mousespeed_labeltxt,     0, 0, 1, 1)
@@ -70,6 +71,7 @@ class SettingsForm(QDialog):
     layout.addWidget(parent.fontspinBox,             1, 4, 1, 1)
     layout.addWidget(parent.cameraPerspectCheckBox,  2, 0, 1, 1)
     layout.addWidget(parent.bufsize_labeltxt,        3, 0, 1, 1)
+    layout.addWidget(parent.clearbufbtn,             3, 2, 1, 2)
     layout.addWidget(parent.bufsizespinBox,          3, 4, 1, 1)
 
     layout.addWidget(parent.ttiplabeltxt,            4, 0, 1, 1)
@@ -153,6 +155,9 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.bufsizespinBox.setValue(10)
     self.bufsize_labeltxt = QLabel()
     self.bufsize_labeltxt.setText("Text buffer size (Kbytes):")
+    self.clearbufbtn = QPushButton()
+    self.clearbufbtn.setText("Clear all text")
+    self.clearbufbtn.clicked.connect(self.onClearTextBuffer)
     self.ttiplabeltxt = QLabel()
     self.ttiplabeltxt.setText("Tooltips")
     self.ttipalphalabeltxt = QLabel()
@@ -258,7 +263,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.closing = True
     self.window.setVisible(False)
     self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
-    print("HKLviewer closing down...")
+    print("HKL-viewer closing down...")
     nc = 0
     sleeptime = 0.2
     while not self.canexit: #and nc < 5: # until cctbx.python has finished or after 5 sec
@@ -644,6 +649,11 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     font.setPointSize(val);
     self.app.setFont(font);
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
+
+
+  def onClearTextBuffer(self):
+    self.textInfo.clear()
+    self.infostr = ""
 
 
   def onCameraPerspect(self,val):

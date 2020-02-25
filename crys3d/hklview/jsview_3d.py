@@ -379,8 +379,9 @@ class hklview_3d:
         if curphilparam.viewer.slice_mode and self.viewerparams.inbrowser:
           self.viewerparams.inbrowser = False
         self.sceneisdirty = True
-        if has_phil_path(diff_phil, "scale",
-                       "nth_power_scale_radii"
+        if has_phil_path(diff_phil, "scene_id",
+                         "scale",
+                         "nth_power_scale_radii"
             ):
           #self.ConstructReciprocalSpace(curphilparam, merge=self.merge, scene_id=self.viewerparams.scene_id )
           self.ConstructScenes(curphilparam, scene_id=self.viewerparams.scene_id )
@@ -722,6 +723,9 @@ class hklview_3d:
 
 
   def ConstructScenes(self, curphilparam, scene_id=None):
+    sceneid = scene_id
+    if scene_id is not None and scene_id != self.viewerparams.scene_id:
+      sceneid = self.viewerparams.scene_id
     self.HKLsceneKey = (curphilparam.spacegroup_choice,
                          curphilparam.using_space_subgroup,
                          curphilparam.merge_data,
@@ -734,15 +738,16 @@ class hklview_3d:
                          self.viewerparams.show_missing,
                          self.viewerparams.show_only_missing,
                          self.viewerparams.show_systematic_absences,
-                         self.viewerparams.scene_id,
+                         sceneid,
                          self.viewerparams.scale,
                          self.viewerparams.nth_power_scale_radii
                          )
     if self.HKLsceneKey in self.HKLscenedict and not self.has_new_miller_array:
-      self.HKLscene = self.HKLscenedict[self.HKLsceneKey]
-      self.mprint("Scene key is already present2", verbose=1)
-      #self.sceneisdirty = False
-      return True
+      self.HKLscene = self.HKLscenedict.get(self.HKLsceneKey, False)
+      if self.HKLscene:
+        self.mprint("Scene key is already present2", verbose=1)
+        #self.sceneisdirty = False
+        return True
     self.mprint("Constructing HKL scenes2", verbose=0)
     assert(self.proc_arrays)
     self.mprint("\nReflection data scenes2:", verbose=0)
@@ -776,7 +781,7 @@ class hklview_3d:
                                 )
           self.HKLscenedict[self.HKLsceneKey] = ( hklscenes[i], scenemaxdata[i],
           scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
-          hkl_scenes_info.extend(scenearrayinfos)
+          hkl_scenes_info.append(inf)
           self.HKLscenes.append(hklscenes[i])
           sceneid += 1
       self.hkl_scenes_info = hkl_scenes_info
@@ -789,6 +794,8 @@ class hklview_3d:
           sceneminsigmas, scenearrayinfos
       ) = MakeHKLscene( self.proc_arrays[idx].deep_copy(), idx, copy.deepcopy(self.viewerparams), self.mapcoef_fom_dict, None, self.mprint )
       for i,inf in enumerate(scenearrayinfos):
+        #if (idx+i) != scene_id:
+        #  continue
         self.mprint("%d, %s" %(idx+i+1, inf[0]), verbose=0)
         self.HKLsceneKey = (curphilparam.spacegroup_choice,
                               curphilparam.using_space_subgroup,
@@ -802,7 +809,7 @@ class hklview_3d:
                               self.viewerparams.show_missing,
                               self.viewerparams.show_only_missing,
                               self.viewerparams.show_systematic_absences,
-                              idx + i,
+                              scene_id,
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
                               )
@@ -1548,201 +1555,6 @@ function MakeHKL_Axis(mshape)
       self.NGLscriptstr = """
 
 
-function createElement(name, properties, style)
-{
-// utility function used in for loop over colourgradvalarray
-  var el = document.createElement(name);
-  Object.assign(el, properties);
-  Object.assign(el.style, style);
-  Object.assign(el.style,
-  {
-      display: "block",
-      position: "absolute",
-      fontFamily: "sans-serif",
-      //fontSize: "smaller",
-      fontSize: "12px",
-  }
-  );
-  return el;
-}
-
-
-function addElement(el)
-{
-// utility function used in for loop over colourgradvalarray
-  Object.assign(el.style,
-  {
-    position: "absolute",
-    zIndex: 10
-  }
-  );
-  stage.viewer.container.appendChild(el);
-}
-
-
-function addDivBox(txt, t, l, w, h, bgcolour="rgba(255, 255, 255, 0.0)")
-{
-  divbox = createElement("div",
-  {
-    innerText: txt
-  },
-  {
-    backgroundColor: bgcolour,
-    color:  "rgba(0, 0, 0, 1.0)",
-    top: t.toString() + "px",
-    left: l.toString() + "px",
-    width: w.toString() + "px",
-    height: h.toString() + "px",
-  }
-  );
-  addElement(divbox);
-}
-
-var dbgmsg = "";
-// debug message window
-var debugmessage = document.createElement("div");
-Object.assign(debugmessage.style, {
-  position: "absolute",
-  zIndex: 10,
-  pointerEvents: "none",
-  backgroundColor: "rgba(255, 255, 255, 0.8 )",
-  color: "black",
-  padding: "0.1em",
-  fontFamily: "sans-serif",
-  bottom: "10px",
-  left: "10px",
-  fontSize: "smaller",
-  display: "block"
-});
-
-
-
-// Microsoft Edge users follow instructions on
-// https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
-// to enable websocket connection
-
-var pagename = location.pathname.substring(1);
-var mysocket;
-
-try
-{
-  mysocket = new WebSocket('ws://127.0.0.1:%s/');
-}
-catch(err)
-{
-  alert('JavaScriptError: ' + err.stack );
-  addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100, 100, 100, 0.0));
-}
-
-
-
-function WebsockSendMsg(msg)
-{
-  try
-  {
-    // Avoid "WebSocket is already in CLOSING or CLOSED state" errors when using QWebEngineView
-    // See https://stackoverflow.com/questions/48472977/how-to-catch-and-deal-with-websocket-is-already-in-closing-or-closed-state-in
-    if (mysocket.readyState === mysocket.OPEN)
-    {
-      mysocket.send(msg);
-      mysocket.send( 'Ready ' + pagename + '\\n' );
-    }
-  }
-  catch(err)
-  {
-    alert('JavaScriptError: ' + err.stack );
-    addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100, 100, 100, 0.0));
-  }
-}
-
-
-mysocket.onopen = function(e)
-{
-  msg = '%s now connected via websocket to ' + pagename + '\\n';
-  WebsockSendMsg(msg);
-  dbgmsg =msg;
-  rerendered = false;
-  //ReRender();
-};
-
-
-mysocket.onclose = function(e)
-{
-  msg = '%s now disconnecting from websocket ' + pagename + '\\n';
-  WebsockSendMsg(msg);
-  dbgmsg =msg;
-};
-
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function ReRender()
-{
-  await sleep(500);
-  if (shapeComp != null && rerendered==false) // workaround for QTWebEngine bug sometimes failing to render scene
-  {
-    shapeComp.autoView();
-    rerendered = true;
-    WebsockSendMsg( 'AutoViewSet ' + pagename );
-  }
-}
-
-
-async function RenderRequest()
-{
-  await sleep(100);
-  stage.viewer.requestRender();
-  WebsockSendMsg( 'RenderRequest ' + pagename );
-}
-
-// Log errors to debugger of your browser
-mysocket.onerror = function(error)
-{
-  msg = 'WebSocket Error ' + error;
-  console.log(msg);
-  dbgmsg =msg;
-};
-
-
-var stage;
-var shape;
-var shapeComp;
-var vectorshape = null;
-var repr;
-var AA = String.fromCharCode(197); // short for angstrom
-var DGR = String.fromCharCode(176); // short for degree symbol
-var current_ttip = "";
-var ttips = [];
-var vectorreprs = [];
-var vectorshapeComps = [];
-var positions = [];
-var br_positions = [];
-var br_colours = [];
-var br_radii = [];
-var br_ttips = [];
-var colours = [];
-var alphas = [];
-var radii = [];
-var shapebufs = [];
-var br_shapebufs = [];
-var nrots = 0;
-var postrotmxflag = false;
-var cvorient = new NGL.Matrix4();
-var oldmsg = "";
-var clipFixToCamPosZ = false;
-var origclipnear;
-var origclipfar;
-var origcameraZpos;
-var nbins = %s;
-var rerendered = false;
-var expstate = "";
-var current_ttip_ids;
-var isdebug = %s;
-var tdelay = 100;
-var displaytooltips = true;
-
 function timefunc() {
   var d = new Date();
   var now = d.getTime();
@@ -2005,11 +1817,158 @@ catch(err)
   WebsockSendMsg('JavaScriptError: ' + err.stack );
 }
 
-    """ % (self.websockport, self.__module__, self.__module__, cntbin, str(self.verbose>=2).lower(), \
-           self.ngl_settings.tooltip_alpha, axisfuncstr, self.camera_type, spherebufferstr, \
+    """ % ( self.ngl_settings.tooltip_alpha, axisfuncstr, self.camera_type, spherebufferstr, \
            negativeradiistr, colourscriptstr)
 
     WebsockMsgHandlestr = """
+
+
+function createElement(name, properties, style)
+{
+// utility function used in for loop over colourgradvalarray
+  var el = document.createElement(name);
+  Object.assign(el, properties);
+  Object.assign(el.style, style);
+  Object.assign(el.style,
+  {
+      display: "block",
+      position: "absolute",
+      fontFamily: "sans-serif",
+      //fontSize: "smaller",
+      fontSize: "12px",
+  }
+  );
+  return el;
+}
+
+
+function addElement(el)
+{
+// utility function used in for loop over colourgradvalarray
+  Object.assign(el.style,
+  {
+    position: "absolute",
+    zIndex: 10
+  }
+  );
+  stage.viewer.container.appendChild(el);
+}
+
+
+function addDivBox(txt, t, l, w, h, bgcolour="rgba(255, 255, 255, 0.0)")
+{
+  divbox = createElement("div",
+  {
+    innerText: txt
+  },
+  {
+    backgroundColor: bgcolour,
+    color:  "rgba(0, 0, 0, 1.0)",
+    top: t.toString() + "px",
+    left: l.toString() + "px",
+    width: w.toString() + "px",
+    height: h.toString() + "px",
+  }
+  );
+  addElement(divbox);
+}
+
+
+// Microsoft Edge users follow instructions on
+// https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
+// to enable websocket connection
+
+var pagename = location.pathname.substring(1);
+var mysocket;
+
+try
+{
+  mysocket = new WebSocket('ws://127.0.0.1:%s/');
+}
+catch(err)
+{
+  alert('JavaScriptError: ' + err.stack );
+  addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100, 100, 100, 0.0));
+}
+
+
+var stage = null;
+var shape;
+var shapeComp;
+var vectorshape = null;
+var repr;
+var AA = String.fromCharCode(197); // short for angstrom
+var DGR = String.fromCharCode(176); // short for degree symbol
+var current_ttip = "";
+var ttips = [];
+var vectorreprs = [];
+var vectorshapeComps = [];
+var positions = [];
+var br_positions = [];
+var br_colours = [];
+var br_radii = [];
+var br_ttips = [];
+var colours = [];
+var alphas = [];
+var radii = [];
+var shapebufs = [];
+var br_shapebufs = [];
+var nrots = 0;
+var postrotmxflag = false;
+var cvorient = new NGL.Matrix4();
+var oldmsg = "";
+var clipFixToCamPosZ = false;
+var origclipnear;
+var origclipfar;
+var origcameraZpos;
+var nbins = %s;
+var rerendered = false;
+var expstate = "";
+var current_ttip_ids;
+var isdebug = %s;
+var tdelay = 100;
+var displaytooltips = true;
+
+
+
+function WebsockSendMsg(msg)
+{
+  try
+  {
+    // Avoid "WebSocket is already in CLOSING or CLOSED state" errors when using QWebEngineView
+    // See https://stackoverflow.com/questions/48472977/how-to-catch-and-deal-with-websocket-is-already-in-closing-or-closed-state-in
+    if (mysocket.readyState === mysocket.OPEN)
+    {
+      mysocket.send(msg);
+      mysocket.send( 'Ready ' + pagename + '\\n' );
+    }
+  }
+  catch(err)
+  {
+    alert('JavaScriptError: ' + err.stack );
+    addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100, 100, 100, 0.0));
+  }
+}
+
+
+var dbgmsg = "";
+// debug message window
+var debugmessage = document.createElement("div");
+Object.assign(debugmessage.style, {
+  position: "absolute",
+  zIndex: 10,
+  pointerEvents: "none",
+  backgroundColor: "rgba(255, 255, 255, 0.8 )",
+  color: "black",
+  padding: "0.1em",
+  fontFamily: "sans-serif",
+  bottom: "10px",
+  left: "10px",
+  fontSize: "smaller",
+  display: "block"
+});
+
+
 
 function ReturnClipPlaneDistances()
 {
@@ -2034,6 +1993,56 @@ function ReturnClipPlaneDistances()
                   cameradist ] )
   WebsockSendMsg('ReturnClipPlaneDistances:\\n' + msg );
 }
+
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function ReRender()
+{
+  await sleep(500);
+  if (shapeComp != null && rerendered==false) // workaround for QTWebEngine bug sometimes failing to render scene
+  {
+    shapeComp.autoView();
+    rerendered = true;
+    WebsockSendMsg( 'AutoViewSet ' + pagename );
+  }
+}
+
+
+async function RenderRequest()
+{
+  await sleep(100);
+  stage.viewer.requestRender();
+  WebsockSendMsg( 'RenderRequest ' + pagename );
+}
+
+// Log errors to debugger of your browser
+mysocket.onerror = function(error)
+{
+  msg = 'WebSocket Error ' + error;
+  console.log(msg);
+  dbgmsg =msg;
+};
+
+
+mysocket.onopen = function(e)
+{
+  msg = '%s now connected via websocket to ' + pagename + '\\n';
+  WebsockSendMsg(msg);
+  dbgmsg =msg;
+  rerendered = false;
+  //ReRender();
+};
+
+
+mysocket.onclose = function(e)
+{
+  msg = '%s now disconnecting from websocket ' + pagename + '\\n';
+  WebsockSendMsg(msg);
+  dbgmsg =msg;
+};
 
 
 mysocket.onmessage = function(e)
@@ -2132,8 +2141,11 @@ mysocket.onmessage = function(e)
     if (msgtype === "Reload")
     {
     // refresh browser with the javascript file
-      msg = getOrientMsg();
-      WebsockSendMsg('OrientationBeforeReload:\\n' + msg );
+      if (stage != null)
+      {
+        msg = getOrientMsg();
+        WebsockSendMsg('OrientationBeforeReload:\\n' + msg );
+      }
       WebsockSendMsg( 'Refreshing ' + pagename );
       window.location.reload(true);
       // Now we are gone. A new javascript file has been loaded in the browser
@@ -2660,9 +2672,9 @@ mysocket.onmessage = function(e)
 
 };
 
-    """ %qualitystr
+    """ %(self.websockport, cntbin, str(self.verbose>=2).lower(), self.__module__, self.__module__, qualitystr )
 
-    self.NGLscriptstr += WebsockMsgHandlestr
+    self.NGLscriptstr = WebsockMsgHandlestr + self.NGLscriptstr
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
