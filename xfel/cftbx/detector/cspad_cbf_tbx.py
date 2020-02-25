@@ -857,8 +857,8 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
       elsize = 8
 
       cbf.set_realarray_wdims_fs(\
-        pycbf.CBF_CANONICAL,
-        #pycbf.CBF_PACKED,
+        #pycbf.CBF_CANONICAL,
+        pycbf.CBF_PACKED,
         binary_id,
         data,
         elsize,
