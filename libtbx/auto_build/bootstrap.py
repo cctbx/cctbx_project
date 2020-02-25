@@ -749,7 +749,7 @@ class amber_adaptbx_module(SourceModule):
 class amber_library_module(SourceModule):
   module = 'amber_library'
   anonymous = ['git',
-               'git@github.com:phenix-project/amber_adaptbx.git',
+               'git@github.com:phenix-project/amber_library.git',
                'https://github.com/phenix-project/amber_library.git',
                ]
 
