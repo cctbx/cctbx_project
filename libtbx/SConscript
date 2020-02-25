@@ -883,8 +883,11 @@ int main() {
           print(", LLVM build %i" % env_etc.apple_gcc_builds.llvm, end=' ')
     try:
       # Print out the version of XCode (but only if we could check the version)
-      print(subprocess.check_output(('xcodebuild', '-version'),
-            stderr=subprocess.STDOUT))
+      xcode_version = subprocess.check_output(('xcodebuild', '-version'),
+                                               stderr=subprocess.STDOUT)
+      if hasattr(xcode_version, "decode"):
+        xcode_version = xcode_version.decode()
+      print(xcode_version)
     except subprocess.CalledProcessError:
       print("Not using Xcode")
     print()
