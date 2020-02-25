@@ -11,60 +11,10 @@ from mmtbx_tls_optimise_amplitudes_ext import *
 from libtbx import adopt_init_args
 
 import collections
-_OptimisationWeights = collections.namedtuple(
+OptimisationWeights = collections.namedtuple(
   typename = 'OptimisationWeights',
   field_names = ('sum_of_amplitudes', 'sum_of_squared_amplitudes', 'sum_of_amplitudes_squared'),
 )
-
-class OptimisationWeights(_OptimisationWeights):
-  """
-  Weights object for OptimiseAmplitudes class.
-
-  Parameters
-  ----------
-  sum_of_amplitudes : float
-    weight for the lasso-like term (constrains sum of amplitudes)
-  sum_of_squared_amplitudes : float
-    weight for the ridge-regression-like term (restrains each amplitude to zero)
-  sum_of_amplitudes_squared : float
-    weight for the square of the lasso-like term (restrains sum of amplitudes to zero)
-  """
-
-  @classmethod
-  def defaults(cls):
-    """Initialise class with default values for each of the fields"""
-    return cls(**{f:0.0 for f in cls._fields})
-
-  def transfer_from_other(self, other, require_all=False):
-    """
-    Transfer weights from an input object (with equivalent attributes or indexed)
-    Returns a new object using _replace function of namedtuple
-    """
-
-    update_dict = {}
-
-    for f in self._fields:
-
-      # Extract value for the field name (if available or required)
-      try:
-        if hasattr(other, f):
-          v = getattr(other, f)
-        else:
-          v = other[f]
-      except (TypeError, AttributeError, KeyError) as e:
-        if require_all is True:
-          raise ValueError('{}\n`other` does not have attribute or contain item: {}'.format(str(e), f))
-        else:
-          continue
-
-      # store temporarily in dictionary
-      update_dict[f] = v
-
-    if len(update_dict) == 0:
-      raise ValueError('No overlapping attributes/items were found between self and `other`')
-
-    return self._replace(**update_dict)
-
 
 class OptimiseAmplitudes:
   """
@@ -123,9 +73,7 @@ class OptimiseAmplitudes:
 
     # Initialise weights object
     if optimisation_weights is None:
-      optimisation_weights = OptimisationWeights.defaults()
-    else:
-      optimisation_weights = OptimisationWeights.defaults().transfer_from_other(optimisation_weights)
+      optimisation_weights = OptimisationWeights(0.0, 0.0, 0.0)
 
     adopt_init_args(self, locals())
 
