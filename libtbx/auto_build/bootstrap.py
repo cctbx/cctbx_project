@@ -746,6 +746,13 @@ class amber_adaptbx_module(SourceModule):
                'https://github.com/phenix-project/amber_adaptbx.git',
                ]
 
+class amber_library_module(SourceModule):
+  module = 'amber_library'
+  anonymous = ['git',
+               'git@github.com:phenix-project/amber_adaptbx.git',
+               'https://github.com/phenix-project/amber_library.git',
+               ]
+
 class qrefine_module(SourceModule):
   module = 'qrefine'
   anonymous = ['git',
@@ -2169,6 +2176,7 @@ class PhenixBuilder(CCIBuilder):
     'PyQuante',
     'elbow',
     'amber_adaptbx',
+    'amber_library',
     'ksdssp',
     'pulchra',
     'solve_resolve',
