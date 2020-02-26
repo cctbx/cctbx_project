@@ -333,8 +333,7 @@ namespace boost_python {
     }
   };
 
-  struct anharmonic_adp_parameter_wrapper
-  {
+  struct anharmonic_adp_parameter_wrapper {
     typedef anharmonic_adp_parameter wt;
 
     static void wrap() {
@@ -350,27 +349,25 @@ namespace boost_python {
     }
   };
 
-  struct asu_anharmonic_adp_parameter_wrapper
-  {
+  struct asu_anharmonic_adp_parameter_wrapper {
     typedef asu_anharmonic_adp_parameter wt;
 
     static void wrap() {
       using namespace boost::python;
       class_<wt,
-        bases<u_star_parameter, single_asu_scatterer_parameter>,
+        bases<anharmonic_adp_parameter, single_asu_scatterer_parameter>,
         boost::noncopyable>("asu_anharmonic_adp_parameter", no_init)
         ;
     }
   };
 
-  struct independent_anharmonic_adp_parameter_wrapper
-  {
+  struct independent_anharmonic_adp_parameter_wrapper {
     typedef independent_anharmonic_adp_parameter wt;
 
     static void wrap() {
       using namespace boost::python;
       class_<wt,
-        bases<asu_u_star_parameter>,
+        bases<asu_anharmonic_adp_parameter>,
         std::auto_ptr<wt> >("independent_anharmonic_adp_parameter", no_init)
         .def(init<asu_parameter::scatterer_type *>(arg("scatterer")))
         ;

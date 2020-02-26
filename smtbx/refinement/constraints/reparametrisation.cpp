@@ -291,11 +291,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     scatterer->fdp = value;
   }
 
-  void asu_fdp_parameter::validate() {
-    if (value < 0) {
-      value *= -1;
-    }
-  }
+
   // reparametrisation
 
   void reparametrisation

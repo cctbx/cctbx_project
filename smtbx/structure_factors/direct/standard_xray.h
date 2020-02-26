@@ -98,6 +98,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (scatterer.anharmonic_adp) {
             this->grad_anharmonic_adp.resize(25);
           }
+          this->grad_fp = 0;
+          this->grad_fdp = 0;
         }
 
         heir.compute_anisotropic_part(scatterer, compute_grad);
@@ -117,6 +119,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (scatterer.anharmonic_adp) {
             this->grad_anharmonic_adp.resize(25);
           }
+          this->grad_fp = 0;
+          this->grad_fdp = 0;
         }
 
         heir.compute_anisotropic_part_full(scatterer, ff, compute_grad);
@@ -396,13 +400,13 @@ namespace smtbx { namespace structure_factors { namespace direct {
               base_t::grad_fp = p;
             }
             if (scatterer.flags.grad_fdp()) {
-              base_t::grad_fdp = complex_type(-p.imag(), p.real());
+              base_t::grad_fdp = complex_type(0, 1) * p;
             }
           }
         }
 
         // Scattering factor
-        FormFactorType ff_iso = ff * f_iso * scatterer.occupancy;
+        FormFactorType ff_iso = ff_iso_p * scatterer.occupancy;
 
         // Finish
         structure_factor *= ff_iso;
@@ -666,14 +670,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (scatterer.flags.grad_occupancy()) {
             grad_occ = ff_iso_p * structure_factor.real();
           }
-          if (scatterer.flags.grad_fp() || scatterer.flags.grad_fdp()) {
-            float_type p = f_iso * structure_factor.real() * scatterer.occupancy;
-            if (scatterer.flags.grad_fp()) {
-              base_t::grad_fp = p;
-            }
-            if (scatterer.flags.grad_fdp()) {
-              base_t::grad_fdp = complex_type(0, 1) * p;
-            }
+          if (scatterer.flags.grad_fp()) {
+            base_t::grad_fp = f_iso * structure_factor.real() * scatterer.occupancy;
           }
         }
 
@@ -717,12 +715,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
         // factor from inversion
         float_type f_iso = 2.;
 
-        // factor from centring translation group
-        f_iso *= hr_ht.ltr_factor;
-
-        // factor from special position
-        float_type w = scatterer.weight_without_occupancy();
-        if (w != 1) f_iso *= w;
+        // factor from centring translation group * factor from special position
+        f_iso *= hr_ht.ltr_factor * scatterer.weight_without_occupancy();
 
         // isotropic Debye-Waller
         if (scatterer.flags.use_u_iso()) {
