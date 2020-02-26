@@ -569,7 +569,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     #self.SliceLabelComboBox.setCurrentIndex( axidx )
     self.cameraPerspectCheckBox.setChecked( "perspective" in self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.camera_type'])
-    self.ClipPlaneChkGroupBox.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'] != None )
+    self.ClipPlaneChkGroupBox.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'] != None and not self.showsliceGroupCheckbox.isChecked() )
     if self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth']:
       self.clipwidth_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'])
     self.hkldist_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.hkldist'])
@@ -664,29 +664,92 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def ExpandRefls(self):
-    if self.ExpandReflsGroupBox.isChecked():
-      self.PhilToJsRender('NGL_HKLviewer.viewer.expand_to_p1 = True')
-      self.PhilToJsRender('NGL_HKLviewer.viewer.expand_anomalous = True')
+    if self.unfeedback:
+      return
+    if self.showsliceGroupCheckbox.isChecked():
+      if self.ExpandReflsGroupBox.isChecked():
+        self.PhilToJsRender('''
+        NGL_HKLviewer.viewer.expand_to_p1 = True
+        NGL_HKLviewer.viewer.expand_anomalous = True
+        NGL_HKLviewer.viewer.inbrowser = False
+                        ''' )
+      else:
+        self.PhilToJsRender('''
+        NGL_HKLviewer.viewer.expand_to_p1 = False
+        NGL_HKLviewer.viewer.expand_anomalous = False
+        NGL_HKLviewer.viewer.inbrowser = False
+                        ''' )
     else:
-      self.PhilToJsRender('NGL_HKLviewer.viewer.expand_to_p1 = False')
-      self.PhilToJsRender('NGL_HKLviewer.viewer.expand_anomalous = False')
+      if self.ExpandReflsGroupBox.isChecked():
+        self.PhilToJsRender('''
+        NGL_HKLviewer.viewer.expand_to_p1 = True
+        NGL_HKLviewer.viewer.expand_anomalous = True
+        NGL_HKLviewer.viewer.inbrowser = True
+                        ''' )
+      else:
+        self.PhilToJsRender('''
+        NGL_HKLviewer.viewer.expand_to_p1 = False
+        NGL_HKLviewer.viewer.expand_anomalous = False
+        NGL_HKLviewer.viewer.inbrowser = True
+                        ''' )
 
 
   def ExpandToP1(self):
-    if self.expandP1checkbox.isChecked():
-      self.PhilToJsRender('NGL_HKLviewer.viewer.expand_to_p1 = True')
+    if self.unfeedback:
+      return
+    if self.showsliceGroupCheckbox.isChecked():
+      if self.expandP1checkbox.isChecked():
+        self.PhilToJsRender('''
+        NGL_HKLviewer.viewer.expand_to_p1 = True
+        NGL_HKLviewer.viewer.NGL.inbrowser = False
+                        ''' )
+      else:
+        self.PhilToJsRender('''
+        NGL_HKLviewer.viewer.expand_to_p1 = False
+        NGL_HKLviewer.viewer.inbrowser = False
+                        ''' )
     else:
-      self.PhilToJsRender('NGL_HKLviewer.viewer.expand_to_p1 = False')
+      if self.expandP1checkbox.isChecked():
+        self.PhilToJsRender('''
+        NGL_HKLviewer.viewer.expand_to_p1 = True
+        NGL_HKLviewer.viewer.NGL.inbrowser = True
+                        ''' )
+      else:
+        self.PhilToJsRender('''
+        NGL_HKLviewer.viewer.expand_to_p1 = False
+        NGL_HKLviewer.viewer.inbrowser = True
+                        ''' )
 
 
   def ExpandAnomalous(self):
-    if self.expandAnomalouscheckbox.isChecked():
-      self.PhilToJsRender('NGL_HKLviewer.viewer.expand_anomalous = True')
+    if self.unfeedback:
+      return
+    if self.showsliceGroupCheckbox.isChecked():
+      if self.expandAnomalouscheckbox.isChecked():
+        self.PhilToJsRender('''
+        NGL_HKLviewer.viewer.expand_anomalous = True
+        NGL_HKLviewer.viewer.inbrowser = False
+                        ''' )
+      else:
+        self.PhilToJsRender('''
+        NGL_HKLviewer.viewer.expand_anomalous = False
+        NGL_HKLviewer.viewer.inbrowser = False
+                        ''' )
     else:
-      self.PhilToJsRender('NGL_HKLviewer.viewer.expand_anomalous = False')
-
+      if self.expandAnomalouscheckbox.isChecked():
+        self.PhilToJsRender('''
+        NGL_HKLviewer.viewer.expand_anomalous = True
+        NGL_HKLviewer.viewer.inbrowser = True
+                        ''' )
+      else:
+        self.PhilToJsRender('''
+        NGL_HKLviewer.viewer.expand_anomalous = False
+        NGL_HKLviewer.viewer.inbrowser = True
+                        ''' )
 
   def showSysAbsent(self):
+    if self.unfeedback:
+      return
     if self.sysabsentcheckbox.isChecked():
       self.PhilToJsRender('NGL_HKLviewer.viewer.show_systematic_absences = True')
     else:
@@ -694,19 +757,21 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def showMissing(self):
+    if self.unfeedback:
+      return
     if self.missingcheckbox.isChecked():
       self.PhilToJsRender('NGL_HKLviewer.viewer.show_missing = True')
       self.onlymissingcheckbox.setEnabled(True)
     else:
-      self.PhilToJsRender("""NGL_HKLviewer.viewer {
-                                                     show_missing = False
-                                                     show_only_missing = False
-                                                   }
+      self.PhilToJsRender("""NGL_HKLviewer.viewer.show_missing = False
+                             NGL_HKLviewer.viewer.show_only_missing = False
                           """)
       self.onlymissingcheckbox.setEnabled(False)
 
 
   def showOnlyMissing(self):
+    if self.unfeedback:
+      return
     if self.onlymissingcheckbox.isChecked():
       self.PhilToJsRender('NGL_HKLviewer.viewer.show_only_missing = True')
     else:
@@ -718,27 +783,13 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       return
     if self.showsliceGroupCheckbox.isChecked():
       self.ClipPlaneChkGroupBox.setChecked(False)
-      self.PhilToJsRender('NGL_HKLviewer.viewer.slice_mode = True')
-      if self.expandP1checkbox.isChecked():
-        self.PhilToJsRender("""NGL_HKLviewer.viewer {
-                                                       expand_to_p1 = True
-                                                       inbrowser = False
-                                                    }
-                             """)
-      if self.expandAnomalouscheckbox.isChecked():
-        self.PhilToJsRender("""NGL_HKLviewer.viewer {
-                                                       expand_anomalous = True
-                                                       inbrowser = False
-                                                     }
-                             """)
-      self.ClipPlaneChkGroupBox.setChecked(False)
-      self.PhilToJsRender("NGL_HKLviewer.clip_plane.clipwidth = None")
+      self.PhilToJsRender("""NGL_HKLviewer.viewer.slice_mode = True
+                             NGL_HKLviewer.viewer.inbrowser = False
+                       """)
     else:
       self.ClipPlaneChkGroupBox.setChecked(True)
-      self.PhilToJsRender("""NGL_HKLviewer.viewer {
-                                                      slice_mode = False
-                                                      inbrowser = True
-                                                    }
+      self.PhilToJsRender("""NGL_HKLviewer.viewer.slice_mode = False
+                             NGL_HKLviewer.viewer.inbrowser = True
                             """)
 
 
@@ -1009,10 +1060,13 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def onSliceReflectionsBoxclicked(self):
+    if self.unfeedback:
+      return
     if self.SliceReflectionsBox.isChecked():
       self.showsliceGroupCheckbox.setEnabled(True)
       self.ClipPlaneChkGroupBox.setEnabled(True)
       self.fixedorientcheckbox.setEnabled(True)
+      self.ClipPlaneChkGroupBox.setChecked(True)
       self.onClipPlaneChkBox()
     else:
       self.showsliceGroupCheckbox.setEnabled(False)
@@ -1030,11 +1084,14 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     if self.unfeedback:
       return
     if self.ClipPlaneChkGroupBox.isChecked():
+      #if self.showsliceGroupCheckbox.isChecked() == False:
+      #self.showsliceGroupCheckbox.setChecked(False)
+      #self.ClipPlaneChkGroupBox.setChecked(True)
       self.showsliceGroupCheckbox.setChecked(False)
       self.PhilToJsRender("""NGL_HKLviewer.viewer {
                                                       slice_mode = False
                                                       inbrowser = True
-                                                    }
+                                                  }
                             """)
       if len(self.tncsvec):
         self.clipTNCSBtn.setDisabled(False)
@@ -1071,8 +1128,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
       self.PhilToJsRender(philstr)
     else:
+      #self.ClipPlaneChkGroupBox.setChecked(False)
       self.showsliceGroupCheckbox.setChecked(True)
       self.PhilToJsRender("""NGL_HKLviewer.viewer.slice_mode = True
+                             NGL_HKLviewer.viewer.inbrowser = False
                              NGL_HKLviewer.clip_plane.clipwidth = None
                            """)
 

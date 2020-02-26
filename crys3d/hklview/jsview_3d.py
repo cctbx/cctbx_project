@@ -376,17 +376,13 @@ class hklview_3d:
                      "expand_to_p1",
                      "show_anomalous_pairs")
        ):
-        if curphilparam.viewer.slice_mode and self.viewerparams.inbrowser:
-          self.viewerparams.inbrowser = False
         self.sceneisdirty = True
         if has_phil_path(diff_phil, "scene_id",
                          "scale",
                          "nth_power_scale_radii"
             ):
-          #self.ConstructReciprocalSpace(curphilparam, merge=self.merge, scene_id=self.viewerparams.scene_id )
           self.ConstructScenes(curphilparam, scene_id=self.viewerparams.scene_id )
         else:
-          #self.ConstructReciprocalSpace(curphilparam, merge=self.merge )
           self.ConstructScenes(curphilparam )
     msg = ""
     if self.viewerparams.scene_id is not None and \
@@ -439,12 +435,10 @@ class hklview_3d:
         if self.viewerparams.slice_axis=="l": hkl = [0,0,1]
         R = hkl[0] * self.normal_kl + hkl[1] * self.normal_lh - hkl[2] * self.normal_hk
         clipwidth = 200
-        #self.clip_plane_hkl_vector(hkl[0], hkl[1], hkl[2], clipwidth=200,
-        #                 fixorientation = self.viewerparams.NGL.fixorientation)
       if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
         msg += self.ExpandInBrowser(P1= self.viewerparams.expand_to_p1,
                               friedel_mate= self.viewerparams.expand_anomalous)
-      if self.params.clip_plane.clipwidth:
+      if self.params.clip_plane.clipwidth and not self.viewerparams.slice_mode:
         clipwidth = self.params.clip_plane.clipwidth
         hkldist = self.params.clip_plane.hkldist
         R = flex.vec3_double( [(self.params.clip_plane.h, self.params.clip_plane.k, self.params.clip_plane.l)])
@@ -729,8 +723,8 @@ class hklview_3d:
     self.HKLsceneKey = (curphilparam.spacegroup_choice,
                          curphilparam.using_space_subgroup,
                          curphilparam.merge_data,
-                         self.viewerparams.expand_anomalous,
-                         self.viewerparams.expand_to_p1,
+                         self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
+                         self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                          self.viewerparams.inbrowser,
                          self.viewerparams.slice_axis,
                          self.viewerparams.slice_mode,
@@ -738,7 +732,7 @@ class hklview_3d:
                          self.viewerparams.show_missing,
                          self.viewerparams.show_only_missing,
                          self.viewerparams.show_systematic_absences,
-                         sceneid,
+                         self.viewerparams.scene_id,
                          self.viewerparams.scale,
                          self.viewerparams.nth_power_scale_radii
                          )
@@ -766,8 +760,8 @@ class hklview_3d:
           self.HKLsceneKey = (curphilparam.spacegroup_choice,
                                 curphilparam.using_space_subgroup,
                                 curphilparam.merge_data,
-                                self.viewerparams.expand_anomalous,
-                                self.viewerparams.expand_to_p1,
+                                self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
+                                self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                                 self.viewerparams.inbrowser,
                                 self.viewerparams.slice_axis,
                                 self.viewerparams.slice_mode,
@@ -785,7 +779,23 @@ class hklview_3d:
           self.HKLscenes.append(hklscenes[i])
           sceneid += 1
       self.hkl_scenes_info = hkl_scenes_info
-
+      if self.viewerparams.scene_id is not None:
+        self.HKLsceneKey = (curphilparam.spacegroup_choice,
+                              curphilparam.using_space_subgroup,
+                              curphilparam.merge_data,
+                              self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
+                              self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
+                              self.viewerparams.inbrowser,
+                              self.viewerparams.slice_axis,
+                              self.viewerparams.slice_mode,
+                              self.viewerparams.slice_index,
+                              self.viewerparams.show_missing,
+                              self.viewerparams.show_only_missing,
+                              self.viewerparams.show_systematic_absences,
+                              self.viewerparams.scene_id,
+                              self.viewerparams.scale,
+                              self.viewerparams.nth_power_scale_radii
+                              )
       self.SendInfoToGUI({ "hklscenes_arrays": hkl_scenes_info, "NewHKLscenes" : True })
     else:
       idx = self.scene_id_to_array_id(scene_id)
@@ -794,14 +804,12 @@ class hklview_3d:
           sceneminsigmas, scenearrayinfos
       ) = MakeHKLscene( self.proc_arrays[idx].deep_copy(), idx, copy.deepcopy(self.viewerparams), self.mapcoef_fom_dict, None, self.mprint )
       for i,inf in enumerate(scenearrayinfos):
-        #if (idx+i) != scene_id:
-        #  continue
         self.mprint("%d, %s" %(idx+i+1, inf[0]), verbose=0)
         self.HKLsceneKey = (curphilparam.spacegroup_choice,
                               curphilparam.using_space_subgroup,
                               curphilparam.merge_data,
-                              self.viewerparams.expand_anomalous,
-                              self.viewerparams.expand_to_p1,
+                              self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
+                              self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                               self.viewerparams.inbrowser,
                               self.viewerparams.slice_axis,
                               self.viewerparams.slice_mode,
@@ -815,7 +823,6 @@ class hklview_3d:
                               )
         self.HKLscenedict[self.HKLsceneKey] =  ( hklscenes[i], scenemaxdata[i],
           scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
-
     (
       self.HKLscene,
       self.HKLscenesMaxdata,
@@ -824,9 +831,7 @@ class hklview_3d:
       self.HKLscenesMinsigmas,
       self.hkl_scenes_info
     ) =  self.HKLscenedict[self.HKLsceneKey]
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.sceneisdirty = True
-    #self.SendInfoToGUI({ "hklscenes_arrays": self.hkl_scenes_info, "NewHKLscenes" : True })
     self.has_new_miller_array = False
     return True
 
@@ -837,8 +842,8 @@ class hklview_3d:
     HKLsceneKey = (self.params.spacegroup_choice,
                       self.params.using_space_subgroup,
                       self.params.merge_data,
-                      self.viewerparams.expand_anomalous,
-                      self.viewerparams.expand_to_p1,
+                      self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
+                      self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                       self.viewerparams.inbrowser,
                       self.viewerparams.slice_axis,
                       self.viewerparams.slice_mode,
@@ -862,8 +867,8 @@ class hklview_3d:
     HKLsceneKey = (self.params.spacegroup_choice,
                       self.params.using_space_subgroup,
                       self.params.merge_data,
-                      self.viewerparams.expand_anomalous,
-                      self.viewerparams.expand_to_p1,
+                      self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
+                      self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                       self.viewerparams.inbrowser,
                       self.viewerparams.slice_axis,
                       self.viewerparams.slice_mode,
@@ -884,8 +889,8 @@ class hklview_3d:
     HKLsceneKey = (self.params.spacegroup_choice,
                       self.params.using_space_subgroup,
                       self.params.merge_data,
-                      self.viewerparams.expand_anomalous,
-                      self.viewerparams.expand_to_p1,
+                      self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
+                      self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                       self.viewerparams.inbrowser,
                       self.viewerparams.slice_axis,
                       self.viewerparams.slice_mode,
@@ -906,8 +911,8 @@ class hklview_3d:
     HKLsceneKey = (self.params.spacegroup_choice,
                       self.params.using_space_subgroup,
                       self.params.merge_data,
-                      self.viewerparams.expand_anomalous,
-                      self.viewerparams.expand_to_p1,
+                      self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
+                      self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                       self.viewerparams.inbrowser,
                       self.viewerparams.slice_axis,
                       self.viewerparams.slice_mode,
@@ -928,8 +933,8 @@ class hklview_3d:
     HKLsceneKey = (self.params.spacegroup_choice,
                       self.params.using_space_subgroup,
                       self.params.merge_data,
-                      self.viewerparams.expand_anomalous,
-                      self.viewerparams.expand_to_p1,
+                      self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
+                      self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                       self.viewerparams.inbrowser,
                       self.viewerparams.slice_axis,
                       self.viewerparams.slice_mode,
@@ -950,8 +955,8 @@ class hklview_3d:
     HKLsceneKey = (self.params.spacegroup_choice,
                       self.params.using_space_subgroup,
                       self.params.merge_data,
-                      self.viewerparams.expand_anomalous,
-                      self.viewerparams.expand_to_p1,
+                      self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
+                      self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                       self.viewerparams.inbrowser,
                       self.viewerparams.slice_axis,
                       self.viewerparams.slice_mode,
@@ -2877,7 +2882,7 @@ Distance: %s
     if self.was_disconnected:
       self.was_disconnected = False
     if self.lastviewmtrx and self.viewerparams.scene_id is not None:
-      self.set_volatile_params()
+      #self.set_volatile_params()
       self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
       self.AddToBrowserMsgQueue("ReOrient", self.lastviewmtrx)
     else:
