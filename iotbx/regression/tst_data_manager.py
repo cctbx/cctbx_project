@@ -211,7 +211,7 @@ END
   pdb_filename = 'cctbx_program.pdb'
   assert(os.path.exists(pdb_filename))
   dm.process_model_file(pdb_filename)
-  assert(not dm.get_model(pdb_filename).input_format_was_cif())
+  assert(not dm.get_model(pdb_filename).input_model_format_cif())
 
   # test type
   assert(dm.get_model_type() == 'x_ray')
@@ -253,7 +253,7 @@ END
   cif_filename = 'cctbx_program.cif'
   assert(os.path.exists(cif_filename))
   dm.process_model_file(cif_filename)
-  assert(dm.get_model(cif_filename).input_format_was_cif())
+  assert(dm.get_model(cif_filename).input_model_format_cif())
   os.remove(pdb_filename)
   os.remove(cif_filename)
 

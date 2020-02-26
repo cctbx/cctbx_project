@@ -1058,8 +1058,16 @@ class manager(object):
   def get_site_labels(self):
     return self.get_xray_structure().scatterers().extract_labels()
 
-  def input_format_was_cif(self):
+  def input_model_format_cif(self):
     return self._original_model_format == "mmcif"
+
+  def input_model_format_pdb(self):
+    return self._original_model_format == "pdb"
+
+  def model_as_str(self):
+    if(  self.input_model_format_cif()): return self.model_as_mmcif()
+    elif(self.input_model_format_pdb()): return self.model_as_pdb()
+    else: raise RuntimeError("Model source is unknown.")
 
   def _process_input_model(self):
     # Not clear if we can handle this correctly for self._xray_structure

@@ -46,7 +46,7 @@ def run(args):
     out_fn_prefix = inp_fn[:-4]
   out_fn = out_fn_prefix + "_iupac.pdb"
 
-  if model.input_format_was_cif():
+  if model.input_model_format_cif():
     out_fn = out_fn_prefix + "_iupac.cif"
     txt = model.model_as_mmcif()
   else:

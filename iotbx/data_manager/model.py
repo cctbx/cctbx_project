@@ -193,7 +193,7 @@ model
       Nothing
     '''
     if isinstance(model_str, mmtbx.model.manager):
-      if model_str.input_format_was_cif():
+      if model_str.input_model_format_cif():
         extension = '.cif'
         model_str = model_str.model_as_mmcif()
       else:

@@ -20,7 +20,7 @@ def run(args):
   m = mmtbx.model.manager(model_input = pdb_inp, expand_with_mtrix=False)
   m.expand_with_BIOMT_records()
   ofn = "%s_BIOMT_expanded" % (os.path.splitext(os.path.basename(file_name))[0])
-  if m.input_format_was_cif():
+  if m.input_model_format_cif():
     ofn += ".cif"
     text_to_write = m.model_as_mmcif()
   else:
