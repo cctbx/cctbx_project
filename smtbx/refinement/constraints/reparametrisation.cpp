@@ -44,7 +44,9 @@ namespace smtbx { namespace refinement { namespace constraints {
   }
 
   void extinction_parameter::validate() {
-    if (exti->get_value() < 0) exti->get_value() = 0;
+    if (exti->get_value() < 0) {
+      exti->get_value() = 0;
+    }
   }
   // single_scatterer_parameter
 
@@ -258,6 +260,37 @@ namespace smtbx { namespace refinement { namespace constraints {
   ::linearise(uctbx::unit_cell const &unit_cell,
               sparse_matrix_type *jacobian_transpose)
   {}
+
+  // asu_fp_parameter
+
+  void asu_fp_parameter
+    ::write_component_annotations_for(scatterer_type const *scatterer,
+      std::ostream &output) const
+  {
+    if (scatterer == this->scatterer) {
+      output << scatterer->label << ".fp,";
+    }
+  }
+
+  void asu_fp_parameter::store(uctbx::unit_cell const &unit_cell) const {
+    scatterer->fp = value;
+  }
+
+  // asu_fdp_parameter
+
+  void asu_fdp_parameter
+    ::write_component_annotations_for(scatterer_type const *scatterer,
+      std::ostream &output) const
+  {
+    if (scatterer == this->scatterer) {
+      output << scatterer->label << ".fdp,";
+    }
+  }
+
+  void asu_fdp_parameter::store(uctbx::unit_cell const &unit_cell) const {
+    scatterer->fdp = value;
+  }
+
 
   // reparametrisation
 

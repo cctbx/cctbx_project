@@ -97,6 +97,46 @@ public:
                          sparse_matrix_type *jacobian_transpose);
 };
 
+/** fp parameter equals to the reference fp/scalar value.
+ */
+class shared_fp : public asu_fp_parameter {
+public:
+  shared_fp(scatterer_type *scatterer,
+    scalar_parameter *reference)
+    : parameter(1),
+    single_asu_scatterer_parameter(scatterer)
+  {
+    this->set_arguments(reference);
+  }
+
+  scalar_parameter *reference() const {
+    return dynamic_cast<scalar_parameter *>(this->argument(0));
+  }
+
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+    sparse_matrix_type *jacobian_transpose);
+};
+
+/** fdp parameter equals to the reference fp/scalar value.
+ */
+class shared_fdp : public asu_fdp_parameter {
+public:
+  shared_fdp(scatterer_type *scatterer,
+    scalar_parameter *reference)
+    : parameter(1),
+    single_asu_scatterer_parameter(scatterer)
+  {
+    this->set_arguments(reference);
+  }
+
+  scalar_parameter *reference() const {
+    return dynamic_cast<scalar_parameter *>(this->argument(0));
+  }
+
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+    sparse_matrix_type *jacobian_transpose);
+};
+
 }}}
 
 #endif // GUARD
