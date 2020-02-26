@@ -175,12 +175,18 @@ def stats(model, prefix, no_ticks=True):
   model._crystal_symmetry = box.crystal_symmetry()
   #
   N = 10
+  #
+  import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
+  h_bond_params = pnp.h_bond()
+  h_bond_params.a_DHA_cutoff=90
+  #
   SS = get_ss_selections(hierarchy=model.get_hierarchy())
-  HB_all = find(model = model.select(flex.bool(model.size(), True)), a_DHA_cutoff=90
+  HB_all = find(model = model.select(flex.bool(model.size(), True)),
+    h_bond_params=h_bond_params
     ).get_params_as_arrays(replace_with_empty_threshold=N)
-  HB_alpha = find(model = model.select(SS.both.h_sel), a_DHA_cutoff=90
+  HB_alpha = find(model = model.select(SS.both.h_sel), h_bond_params=h_bond_params
     ).get_params_as_arrays(replace_with_empty_threshold=N)
-  HB_beta = find(model = model.select(SS.both.s_sel), a_DHA_cutoff=90
+  HB_beta = find(model = model.select(SS.both.s_sel), h_bond_params=h_bond_params
     ).get_params_as_arrays(replace_with_empty_threshold=N)
   print (HB_all.d_HA.size())
   result_dict = {}
