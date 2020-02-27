@@ -73,7 +73,6 @@ class ArrayInfo:
     self.infostr = "%s (%s), space group: %s, %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
 
 
-
 def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.stdout.write):
   scenemaxdata =[]
   scenemindata =[]
@@ -230,7 +229,9 @@ class hklview_3d:
     self.binvals = []
     self.binvalsboundaries = []
     self.proc_arrays = []
+    self.HKLscene = []
     self.HKLscenes = []
+    self.HKLscenedict = {}
     self.HKLscenesdict = {}
     self.HKLscenesMaxdata = []
     self.HKLscenesMindata = []
@@ -309,6 +310,8 @@ class hklview_3d:
     self.currentRotmx = matrix.identity(3)
     self.HKLscenesKey = ( 0, False,
                           self.viewerparams.expand_anomalous, self.viewerparams.expand_to_p1  )
+    self.HKLsceneKey = ( 0, False,
+                          self.viewerparams.expand_anomalous, self.viewerparams.expand_to_p1  )
     self.msgqueue = []
     self.websockclient = None
     self.handshakewait = 5
@@ -373,10 +376,14 @@ class hklview_3d:
                      "expand_to_p1",
                      "show_anomalous_pairs")
        ):
-        if curphilparam.viewer.slice_mode and self.viewerparams.inbrowser:
-          self.viewerparams.inbrowser = False
         self.sceneisdirty = True
-        self.ConstructReciprocalSpace(curphilparam, merge=self.merge )
+        if has_phil_path(diff_phil, "scene_id",
+                         "scale",
+                         "nth_power_scale_radii"
+            ):
+          self.ConstructReciprocalSpace(curphilparam, scene_id=self.viewerparams.scene_id )
+        else:
+          self.ConstructReciprocalSpace(curphilparam )
     msg = ""
     if self.viewerparams.scene_id is not None and \
       ( has_phil_path(diff_phil,
@@ -395,12 +402,14 @@ class hklview_3d:
       self.set_camera_type()
 
     if has_phil_path(diff_phil, "miller_array_operations"):
-      self.viewerparams.scene_id = len(self.HKLscenes)-1
+      self.viewerparams.scene_id = len(self.HKLscenedict)-1
+      #self.viewerparams.scene_id = len(self.HKLscenes)-1
       self.set_scene(self.viewerparams.scene_id)
 
     if self.viewerparams.scene_id is not None:
       if not self.isinjected:
-        self.scene = self.HKLscenes[self.viewerparams.scene_id]
+        self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
+        #self.scene = self.HKLscenes[self.viewerparams.scene_id]
       self.DrawNGLJavaScript()
       msg = "Rendered %d reflections\n" % self.scene.points.size()
       #if not has_phil_path(diff_phil, "scene_id"):
@@ -426,12 +435,7 @@ class hklview_3d:
         if self.viewerparams.slice_axis=="l": hkl = [0,0,1]
         R = hkl[0] * self.normal_kl + hkl[1] * self.normal_lh - hkl[2] * self.normal_hk
         clipwidth = 200
-        #self.clip_plane_hkl_vector(hkl[0], hkl[1], hkl[2], clipwidth=200,
-        #                 fixorientation = self.viewerparams.NGL.fixorientation)
-      if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
-        msg += self.ExpandInBrowser(P1= self.viewerparams.expand_to_p1,
-                              friedel_mate= self.viewerparams.expand_anomalous)
-      if self.params.clip_plane.clipwidth:
+      if self.params.clip_plane.clipwidth and not self.viewerparams.slice_mode:
         clipwidth = self.params.clip_plane.clipwidth
         hkldist = self.params.clip_plane.hkldist
         R = flex.vec3_double( [(self.params.clip_plane.h, self.params.clip_plane.k, self.params.clip_plane.l)])
@@ -441,6 +445,9 @@ class hklview_3d:
       self.clip_plane_vector(R[0][0], R[0][1], R[0][2], hkldist,
           clipwidth, self.viewerparams.NGL.fixorientation, self.params.clip_plane.is_parallel,
           isreciprocal)
+      if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
+        msg += self.ExpandInBrowser(P1= self.viewerparams.expand_to_p1,
+                              friedel_mate= self.viewerparams.expand_anomalous)
       msg += self.SetOpacities(self.viewerparams.NGL.bin_opacities )
       if self.params.real_space_unit_cell_scale_fraction is None:
         scale = None
@@ -479,9 +486,12 @@ class hklview_3d:
     if scene_id is not None:
       self.viewerparams.scene_id = scene_id
       self.isinjected = False
-    if self.viewerparams and self.viewerparams.scene_id is not None and self.viewerparams.scene_id >= 0 and self.HKLscenes:
-      self.miller_array = self.HKLscenes[self.viewerparams.scene_id].miller_array
-      self.scene = self.HKLscenes[self.viewerparams.scene_id]
+    #if self.viewerparams and self.viewerparams.scene_id is not None and self.viewerparams.scene_id >= 0 and self.HKLscenes:
+    if self.viewerparams and self.viewerparams.scene_id is not None and self.viewerparams.scene_id >= 0 and self.HKLscene:
+      #self.miller_array = self.HKLscenes[self.viewerparams.scene_id].miller_array
+      #self.scene = self.HKLscenes[self.viewerparams.scene_id]
+      self.miller_array = self.HKLscene_from_dict(self.viewerparams.scene_id).miller_array
+      self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
     self.merge = merge
     if (self.miller_array is None):
       return
@@ -565,9 +575,9 @@ class hklview_3d:
 
 
   def get_col_fomcol(self, idx):
-    if len(self.hkl_scenes_info) == 0:
+    if len(self.HKLInfo_from_dict()) == 0:
       return -1, -1
-    return self.hkl_scenes_info[idx][6], self.hkl_scenes_info[idx][7]
+    return self.HKLInfo_from_dict(idx)[6], self.HKLInfo_from_dict(idx)[7]
 
 
   def SupersetMillerArrays(self):
@@ -605,12 +615,15 @@ class hklview_3d:
     self.mprint("Done making superset")
 
 
-  def ConstructReciprocalSpace(self, curphilparam, merge=None, scene_id=None):
-    self.HKLscenesKey = (curphilparam.spacegroup_choice,
+  def ConstructReciprocalSpace(self, curphilparam, scene_id=None):
+    sceneid = scene_id
+    if scene_id is not None and scene_id != self.viewerparams.scene_id:
+      sceneid = self.viewerparams.scene_id
+    self.HKLsceneKey = (curphilparam.spacegroup_choice,
                          curphilparam.using_space_subgroup,
                          curphilparam.merge_data,
-                         self.viewerparams.expand_anomalous,
-                         self.viewerparams.expand_to_p1,
+                         self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
+                         self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                          self.viewerparams.inbrowser,
                          self.viewerparams.slice_axis,
                          self.viewerparams.slice_mode,
@@ -618,79 +631,169 @@ class hklview_3d:
                          self.viewerparams.show_missing,
                          self.viewerparams.show_only_missing,
                          self.viewerparams.show_systematic_absences,
+                         self.viewerparams.scene_id,
                          self.viewerparams.scale,
                          self.viewerparams.nth_power_scale_radii
                          )
-    if self.HKLscenesKey in self.HKLscenesdict and not self.has_new_miller_array:
-      (
-        self.HKLscenes,
-        self.tooltipstringsdict,
-        self.HKLscenesMaxdata,
-        self.HKLscenesMindata,
-        self.HKLscenesMaxsigmas,
-        self.HKLscenesMinsigmas,
-        self.hkl_scenes_info
-      ) =  self.HKLscenesdict[self.HKLscenesKey]
-      self.mprint("Scene key is already present", verbose=1)
-      #self.sceneisdirty = False
-      return True
+    if self.HKLsceneKey in self.HKLscenedict and not self.has_new_miller_array:
+      self.HKLscene = self.HKLscenedict.get(self.HKLsceneKey, False)
+      if self.HKLscene:
+        self.mprint("Using cached HKL scene", verbose=1)
+        return True
     self.mprint("Constructing HKL scenes", verbose=0)
-
-    HKLscenes = []
-    HKLscenesMaxdata = []
-    HKLscenesMindata = []
-    HKLscenesMaxsigmas = []
-    HKLscenesMinsigmas = []
-    hkl_scenes_info = []
-    tooltipstringsdict = {}
-    i = 0
     assert(self.proc_arrays)
-    self.mprint("\nReflection data scenes:", verbose=0)
-    arrayid = None
-    if scene_id is not None:
-      arrayid = self.scene_id_to_array_id(scene_id)
-    for (idx,e) in enumerate(self.proc_arrays):
-      if arrayid is not None and arrayid != idx:
-        continue
+    if scene_id is None:
+      hkl_scenes_info = []
+      self.HKLscenes = []
+      sceneid = 0
+      for (idx, arr) in enumerate(self.proc_arrays):
+        (hklscenes, scenemaxdata,
+          scenemindata, scenemaxsigmas,
+            sceneminsigmas, scenearrayinfos
+         ) = MakeHKLscene( arr.deep_copy(), idx, copy.deepcopy(self.viewerparams), self.mapcoef_fom_dict, None, self.mprint )
+
+        for i,inf in enumerate(scenearrayinfos):
+          self.mprint("%d, %s" %(idx+i+1, inf[0]), verbose=0)
+          self.HKLsceneKey = (curphilparam.spacegroup_choice,
+                                curphilparam.using_space_subgroup,
+                                curphilparam.merge_data,
+                                self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
+                                self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
+                                self.viewerparams.inbrowser,
+                                self.viewerparams.slice_axis,
+                                self.viewerparams.slice_mode,
+                                self.viewerparams.slice_index,
+                                self.viewerparams.show_missing,
+                                self.viewerparams.show_only_missing,
+                                self.viewerparams.show_systematic_absences,
+                                sceneid,
+                                self.viewerparams.scale,
+                                self.viewerparams.nth_power_scale_radii
+                                )
+          self.HKLscenedict[self.HKLsceneKey] = ( hklscenes[i], scenemaxdata[i],
+          scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
+          hkl_scenes_info.append(inf)
+          self.HKLscenes.append(hklscenes[i])
+          sceneid += 1
+      self.hkl_scenes_info = hkl_scenes_info
+      if self.viewerparams.scene_id is not None:
+        self.HKLsceneKey = (curphilparam.spacegroup_choice,
+                              curphilparam.using_space_subgroup,
+                              curphilparam.merge_data,
+                              self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
+                              self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
+                              self.viewerparams.inbrowser,
+                              self.viewerparams.slice_axis,
+                              self.viewerparams.slice_mode,
+                              self.viewerparams.slice_index,
+                              self.viewerparams.show_missing,
+                              self.viewerparams.show_only_missing,
+                              self.viewerparams.show_systematic_absences,
+                              self.viewerparams.scene_id,
+                              self.viewerparams.scale,
+                              self.viewerparams.nth_power_scale_radii
+                              )
+      self.SendInfoToGUI({ "hklscenes_arrays": hkl_scenes_info, "NewHKLscenes" : True })
+    else:
+      idx = self.scene_id_to_array_id(scene_id)
       (hklscenes, scenemaxdata,
         scenemindata, scenemaxsigmas,
-         sceneminsigmas, scenearrayinfos
-         ) = MakeHKLscene( e.deep_copy(), idx, copy.deepcopy(self.viewerparams), self.mapcoef_fom_dict, merge, self.mprint )
-
-      HKLscenesMaxdata.extend(scenemaxdata)
-      HKLscenesMindata.extend(scenemindata)
-      HKLscenesMaxsigmas.extend(scenemaxsigmas)
-      HKLscenesMinsigmas.extend(sceneminsigmas)
-      hkl_scenes_info.extend(scenearrayinfos)
-      HKLscenes.extend(hklscenes)
+          sceneminsigmas, scenearrayinfos
+      ) = MakeHKLscene( self.proc_arrays[idx].deep_copy(), idx, copy.deepcopy(self.viewerparams), self.mapcoef_fom_dict, None, self.mprint )
       for i,inf in enumerate(scenearrayinfos):
         self.mprint("%d, %s" %(idx+i+1, inf[0]), verbose=0)
-
-    tooltipstringsdict = {}
-    self.colstraliases = "var hk = \'H,K,L: \';\n"
-    self.HKLscenesdict[self.HKLscenesKey] = (
-                HKLscenes,
-                tooltipstringsdict,
-                HKLscenesMaxdata,
-                HKLscenesMindata,
-                HKLscenesMaxsigmas,
-                HKLscenesMinsigmas,
-                hkl_scenes_info
-                )
+        self.HKLsceneKey = (curphilparam.spacegroup_choice,
+                              curphilparam.using_space_subgroup,
+                              curphilparam.merge_data,
+                              self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
+                              self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
+                              self.viewerparams.inbrowser,
+                              self.viewerparams.slice_axis,
+                              self.viewerparams.slice_mode,
+                              self.viewerparams.slice_index,
+                              self.viewerparams.show_missing,
+                              self.viewerparams.show_only_missing,
+                              self.viewerparams.show_systematic_absences,
+                              scene_id,
+                              self.viewerparams.scale,
+                              self.viewerparams.nth_power_scale_radii
+                              )
+        self.HKLscenedict[self.HKLsceneKey] =  ( hklscenes[i], scenemaxdata[i],
+          scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
     (
-      self.HKLscenes,
-      self.tooltipstringsdict,
+      self.HKLscene,
       self.HKLscenesMaxdata,
       self.HKLscenesMindata,
       self.HKLscenesMaxsigmas,
       self.HKLscenesMinsigmas,
       self.hkl_scenes_info
-    ) =  self.HKLscenesdict[self.HKLscenesKey]
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    ) =  self.HKLscenedict[self.HKLsceneKey]
     self.sceneisdirty = True
-    self.SendInfoToGUI({ "hklscenes_arrays": self.hkl_scenes_info, "NewHKLscenes" : True })
     self.has_new_miller_array = False
     return True
+
+
+  def Sceneid_to_SceneKey(self, sceneid):
+    return (self.params.spacegroup_choice,
+                      self.params.using_space_subgroup,
+                      self.params.merge_data,
+                      self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
+                      self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
+                      self.viewerparams.inbrowser,
+                      self.viewerparams.slice_axis,
+                      self.viewerparams.slice_mode,
+                      self.viewerparams.slice_index,
+                      self.viewerparams.show_missing,
+                      self.viewerparams.show_only_missing,
+                      self.viewerparams.show_systematic_absences,
+                      sceneid,
+                      self.viewerparams.scale,
+                      self.viewerparams.nth_power_scale_radii
+                      )
+
+
+  def HKLscene_from_dict(self, sceneid=None):
+    if sceneid is None:
+      sceneid = self.viewerparams.scene_id
+    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    if not self.HKLscenedict.get(HKLsceneKey, False):
+      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
+    return self.HKLscenedict[HKLsceneKey][0]
+
+
+  def HKLMaxData_from_dict(self, sceneid=None):
+    if sceneid is None:
+      sceneid = self.viewerparams.scene_id
+    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    return self.HKLscenedict[HKLsceneKey][1]
+
+
+  def HKLMinData_from_dict(self, sceneid=None):
+    if sceneid is None:
+      sceneid = self.viewerparams.scene_id
+    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    return self.HKLscenedict[HKLsceneKey][2]
+
+
+  def HKLMaxSigmas_from_dict(self, sceneid=None):
+    if sceneid is None:
+      sceneid = self.viewerparams.scene_id
+    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    return self.HKLscenedict[HKLsceneKey][3]
+
+
+  def HKLMinSigmas_from_dict(self, sceneid=None):
+    if sceneid is None:
+      sceneid = self.viewerparams.scene_id
+    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    return self.HKLscenedict[HKLsceneKey][4]
+
+
+  def HKLInfo_from_dict(self, sceneid=None):
+    if sceneid is None:
+      sceneid = self.viewerparams.scene_id
+    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    return self.HKLscenedict[HKLsceneKey][5]
 
 
   def identify_suitable_fomsarrays(self):
@@ -723,17 +826,21 @@ class hklview_3d:
   def calc_bin_thresholds(self, bin_scene_label, nbins):
     self.binscenelabel = bin_scene_label
     if self.binscenelabel=="Resolution":
-      warray = self.HKLscenes[int(self.viewerparams.scene_id)].work_array
-      dres = self.HKLscenes[int(self.viewerparams.scene_id)].dres
+      #warray = self.HKLscenes[int(self.viewerparams.scene_id)].work_array
+      warray = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).work_array
+      #dres = self.HKLscenes[int(self.viewerparams.scene_id)].dres
+      dres = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).dres
       uc = warray.unit_cell()
-      indices = self.HKLscenes[int(self.viewerparams.scene_id)].indices
+      #indices = self.HKLscenes[int(self.viewerparams.scene_id)].indices
+      indices = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).indices
       binning = miller.binning( uc, nbins, indices, flex.max(dres), flex.min(dres) )
       binvals = [ binning.bin_d_range(n)[0] for n in binning.range_all() ]
       binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
       binvals = list( 1.0/flex.double(binvals) )
       nuniquevalues = len(set(list(dres)))
     else:
-      bindata = self.HKLscenes[int(self.binscenelabel)].data.deep_copy()
+      #bindata = self.HKLscenes[int(self.binscenelabel)].data.deep_copy()
+      bindata = self.HKLscene_from_dict(int(self.binscenelabel)).data.deep_copy()
       if isinstance(bindata, flex.complex_double):
         raise Sorry("Cannot order complex data values for binning.")
       selection = flex.sort_permutation( bindata )
@@ -763,9 +870,12 @@ class hklview_3d:
     if self.binscenelabel=="Resolution":
       return 1.0/self.scene.dres
     # get the array id that is mapped through an HKLscene id
-    binarraydata = self.HKLscenes[ibinarray].data
-    scenearraydata = self.HKLscenes[self.viewerparams.scene_id].data
-    matchindices = miller.match_indices(self.HKLscenes[self.viewerparams.scene_id].indices, self.HKLscenes[ibinarray].indices )
+    #binarraydata = self.HKLscenes[ibinarray].data
+    #scenearraydata = self.HKLscenes[self.viewerparams.scene_id].data
+    #matchindices = miller.match_indices(self.HKLscenes[self.viewerparams.scene_id].indices, self.HKLscenes[ibinarray].indices )
+    binarraydata = self.HKLscene_from_dict(ibinarray).data
+    scenearraydata = self.HKLscene_from_dict(self.viewerparams.scene_id).data
+    matchindices = miller.match_indices(self.HKLscene_from_dict(self.viewerparams.scene_id).indices, self.HKLscene_from_dict(ibinarray).indices )
     matched_binarray = binarraydata.select( matchindices.pairs().column(1) )
     #valarray.sort(by_value="packed_indices")
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -895,61 +1005,65 @@ function MakeHKL_Axis(mshape)
     """ %(fontsize, str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart),
           str(Kstararrowend), str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt,
           Kstararrowtxt, Lstararrowtxt)
-
-    # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
-    mincolourscalar = self.HKLscenesMindata[self.colour_scene_id]
-    maxcolourscalar = self.HKLscenesMaxdata[self.colour_scene_id]
-    if self.viewerparams.sigma_color:
-      mincolourscalar = self.HKLscenesMinsigmas[self.colour_scene_id]
-      maxcolourscalar = self.HKLscenesMaxsigmas[self.colour_scene_id]
-    span = maxcolourscalar - mincolourscalar
-    ln = 60
-    incr = span/ln
-    colourgradarrays = []
-    val = mincolourscalar
-    colourscalararray = flex.double()
-    colourscalararray.append( val )
-    for j,sc in enumerate(range(ln)):
-      val += incr
-      colourscalararray.append( val )
-    if self.HKLscenes[self.colour_scene_id].miller_array.is_complex_array():
-      # When displaying phases from map coefficients together with fom values
-      # compute colour map chart as a function of fom and phase values (x,y axis)
-      incr = 360.0/ln
-      val = 0.0
+    if not blankscene:
+      # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
+      mincolourscalar = self.HKLMinData_from_dict(self.colour_scene_id)
+      maxcolourscalar = self.HKLMaxData_from_dict(self.colour_scene_id)
+      if self.viewerparams.sigma_color:
+        mincolourscalar = self.HKLMinSigmas_from_dict(self.colour_scene_id)
+        maxcolourscalar = self.HKLMaxSigmas_from_dict(self.colour_scene_id)
+      span = maxcolourscalar - mincolourscalar
+      ln = 60
+      incr = span/ln
+      colourgradarrays = []
+      val = mincolourscalar
       colourscalararray = flex.double()
       colourscalararray.append( val )
-      for j in enumerate(range(ln)):
+      for j,sc in enumerate(range(ln)):
         val += incr
         colourscalararray.append( val )
+      #if self.HKLscenes[self.colour_scene_id].miller_array.is_complex_array():
+      if self.HKLscene_from_dict(self.colour_scene_id).miller_array.is_complex_array():
+        # When displaying phases from map coefficients together with fom values
+        # compute colour map chart as a function of fom and phase values (x,y axis)
+        incr = 360.0/ln
+        val = 0.0
+        colourscalararray = flex.double()
+        colourscalararray.append( val )
+        for j in enumerate(range(ln)):
+          val += incr
+          colourscalararray.append( val )
 
-      fomarrays = []
-      if self.HKLscenes[self.colour_scene_id].isUsingFOMs():
-        fomln = 50
-        fom = 1.0
-        fomdecr = 1.0/(fomln-1.0)
-      # make fomln fom arrays of size len(colourscalararray) when calling colour_by_phi_FOM
-        for j in range(fomln):
-          fomarrays.append( flex.double(len(colourscalararray), fom) )
-          fom -= fomdecr
-        for j in range(fomln):
-          colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0), fomarrays[j] ) * 255.0)
+        fomarrays = []
+        #if self.HKLscenes[self.colour_scene_id].isUsingFOMs():
+        if self.HKLscene_from_dict(self.colour_scene_id).isUsingFOMs():
+          fomln = 50
+          fom = 1.0
+          fomdecr = 1.0/(fomln-1.0)
+        # make fomln fom arrays of size len(colourscalararray) when calling colour_by_phi_FOM
+          for j in range(fomln):
+            fomarrays.append( flex.double(len(colourscalararray), fom) )
+            fom -= fomdecr
+          for j in range(fomln):
+            colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0), fomarrays[j] ) * 255.0)
+        else:
+          fomln =1
+          fomarrays = [1.0]
+          colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0) ) * 255.0)
       else:
-        fomln =1
+        fomln = 1
         fomarrays = [1.0]
-        colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0) ) * 255.0)
-    else:
-      fomln = 1
-      fomarrays = [1.0]
-      colourgradarrays.append(graphics_utils.color_by_property(
-        properties= flex.double(colourscalararray),
-        selection=flex.bool( len(colourscalararray), True),
-        color_all=False,
-        gradient_type= self.viewerparams.color_scheme) * 255.0)
+        colourgradarrays.append(graphics_utils.color_by_property(
+          properties= flex.double(colourscalararray),
+          selection=flex.bool( len(colourscalararray), True),
+          color_all=False,
+          gradient_type= self.viewerparams.color_scheme) * 255.0)
 
-    colors = self.HKLscenes[self.colour_scene_id].colors
-    radii = self.HKLscenes[self.radii_scene_id].radii
-    self.meanradius = flex.mean(radii)
+      #colors = self.HKLscenes[self.colour_scene_id].colors
+      #radii = self.HKLscenes[self.radii_scene_id].radii
+      colors = self.HKLscene_from_dict(self.colour_scene_id).colors
+      radii = self.HKLscene_from_dict(self.radii_scene_id).radii
+      self.meanradius = flex.mean(radii)
 
     if blankscene:
       points = flex.vec3_double( [ ] )
@@ -965,10 +1079,15 @@ function MakeHKL_Axis(mshape)
     if self.binscenelabel=="Resolution":
       colstr = "dres"
     else:
-      colstr = self.HKLscenes[ int(self.binscenelabel) ].work_array.info().label_string()
+      #colstr = self.HKLscenes[ int(self.binscenelabel) ].work_array.info().label_string()
+      if not blankscene:
+        colstr = self.HKLscene_from_dict(int(self.binscenelabel)).work_array.info().label_string()
     data = self.scene.data
-    colourlabel = self.HKLscenes[self.colour_scene_id].colourlabel
-    fomlabel = self.HKLscenes[self.colour_scene_id].fomlabel
+    #colourlabel = self.HKLscenes[self.colour_scene_id].colourlabel
+    #fomlabel = self.HKLscenes[self.colour_scene_id].fomlabel
+    if not blankscene:
+      colourlabel = self.HKLscene_from_dict(self.colour_scene_id).colourlabel
+      fomlabel = self.HKLscene_from_dict(self.colour_scene_id).fomlabel
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     assert (colors.size() == radii.size() == nrefls)
     colours = []
@@ -977,21 +1096,24 @@ function MakeHKL_Axis(mshape)
     spbufttips = []
 
     self.binvalsboundaries = []
-    if self.binscenelabel=="Resolution":
-      self.binvalsboundaries = self.binvals
-      self.bindata = 1.0/self.scene.dres
-    else:
-      ibinarray= int(self.binscenelabel)
-      self.binvalsboundaries = [ self.HKLscenesMindata[ibinarray] - 0.1 , self.HKLscenesMaxdata[ibinarray] + 0.1 ]
-      self.binvalsboundaries.extend( self.binvals )
-      self.binvalsboundaries.sort()
-      if self.binvalsboundaries[0] < 0.0:
-        self.binvalsboundaries.append(0.0)
+    if not blankscene:
+      if self.binscenelabel=="Resolution":
+        self.binvalsboundaries = self.binvals
+        self.bindata = 1.0/self.scene.dres
+      else:
+        ibinarray= int(self.binscenelabel)
+        self.binvalsboundaries = [ self.HKLMinData_from_dict(ibinarray) - 0.1 , self.HKLMaxData_from_dict(ibinarray) + 0.1 ]
+        self.binvalsboundaries.extend( self.binvals )
         self.binvalsboundaries.sort()
-      #self.bindata = self.HKLscenes[ibinarray].data
-      self.bindata = self.MatchBinArrayToSceneArray(ibinarray)
-      if self.HKLscenes[ibinarray].work_array.is_complex_array():
-        self.bindata = self.HKLscenes[ibinarray].ampl
+        if self.binvalsboundaries[0] < 0.0:
+          self.binvalsboundaries.append(0.0)
+          self.binvalsboundaries.sort()
+        #self.bindata = self.HKLscenes[ibinarray].data
+        self.bindata = self.MatchBinArrayToSceneArray(ibinarray)
+        #if self.HKLscenes[ibinarray].work_array.is_complex_array():
+        #  self.bindata = self.HKLscenes[ibinarray].ampl
+        if self.HKLscene_from_dict(ibinarray).work_array.is_complex_array():
+          self.bindata = self.HKLscene_from_dict(ibinarray).ampl
 
     self.nbinvalsboundaries = len(self.binvalsboundaries)
     # Un-binnable data is scene data values where there's no matching reflection in the bin data
@@ -1218,28 +1340,26 @@ function MakeHKL_Axis(mshape)
   );
 
     """
+    if not blankscene:
+      colourgradstrs = "colourgradvalarray = new Array(%s);\n" %fomln
+      # if displaying phases from map coefficients together with fom values then
+      for g,colourgradarray in enumerate(colourgradarrays):
+        self.colourgradientvalues = []
+        for j,e in enumerate(colourgradarray):
+          self.colourgradientvalues.append( [colourscalararray[j], e] )
+        self.colourgradientvalues = roundoff( self.colourgradientvalues )
+        fom = fomarrays[g]
+        colourgradstr = []
+        for j,val in enumerate(self.colourgradientvalues):
+          vstr = ""
+          alpha = 1.0
+          rgb = (int(val[1][0]), int(val[1][1]), int(val[1][2]) )
+          gradval = "rgba(%s, %s, %s, %s)" %(rgb[0], rgb[1], rgb[2], alpha)
+          if j%10 == 0 or j==len(self.colourgradientvalues)-1 :
+            vstr = str( roundoff(val[0], 2, as_string=True) )
+          colourgradstr.append([vstr , gradval])
+        colourgradstrs += "  colourgradvalarray[%s] = %s;\n" %(g, str(colourgradstr) )
 
-    colourgradstrs = "colourgradvalarray = new Array(%s);\n" %fomln
-    # if displaying phases from map coefficients together with fom values then
-    for g,colourgradarray in enumerate(colourgradarrays):
-      self.colourgradientvalues = []
-      for j,e in enumerate(colourgradarray):
-        self.colourgradientvalues.append( [colourscalararray[j], e] )
-      self.colourgradientvalues = roundoff( self.colourgradientvalues )
-      fom = fomarrays[g]
-      colourgradstr = []
-      for j,val in enumerate(self.colourgradientvalues):
-        vstr = ""
-        alpha = 1.0
-        rgb = (int(val[1][0]), int(val[1][1]), int(val[1][2]) )
-        gradval = "rgba(%s, %s, %s, %s)" %(rgb[0], rgb[1], rgb[2], alpha)
-        if j%10 == 0 or j==len(self.colourgradientvalues)-1 :
-          vstr = str( roundoff(val[0], 2, as_string=True) )
-        colourgradstr.append([vstr , gradval])
-      colourgradstrs += "  colourgradvalarray[%s] = %s;\n" %(g, str(colourgradstr) )
-    if blankscene:
-      colourscriptstr = ""
-    else:
       colourscriptstr = """
 
   //colourgradvalarrays
@@ -1260,203 +1380,10 @@ function MakeHKL_Axis(mshape)
     if self.high_quality:
       qualitystr = ""
 
-    self.NGLscriptstr = """
+    self.NGLscriptstr = ""
+    if not blankscene:
+      self.NGLscriptstr = """
 
-
-function createElement(name, properties, style)
-{
-// utility function used in for loop over colourgradvalarray
-  var el = document.createElement(name);
-  Object.assign(el, properties);
-  Object.assign(el.style, style);
-  Object.assign(el.style,
-  {
-      display: "block",
-      position: "absolute",
-      fontFamily: "sans-serif",
-      //fontSize: "smaller",
-      fontSize: "12px",
-  }
-  );
-  return el;
-}
-
-
-function addElement(el)
-{
-// utility function used in for loop over colourgradvalarray
-  Object.assign(el.style,
-  {
-    position: "absolute",
-    zIndex: 10
-  }
-  );
-  stage.viewer.container.appendChild(el);
-}
-
-
-function addDivBox(txt, t, l, w, h, bgcolour="rgba(255, 255, 255, 0.0)")
-{
-  divbox = createElement("div",
-  {
-    innerText: txt
-  },
-  {
-    backgroundColor: bgcolour,
-    color:  "rgba(0, 0, 0, 1.0)",
-    top: t.toString() + "px",
-    left: l.toString() + "px",
-    width: w.toString() + "px",
-    height: h.toString() + "px",
-  }
-  );
-  addElement(divbox);
-}
-
-var dbgmsg = "";
-// debug message window
-var debugmessage = document.createElement("div");
-Object.assign(debugmessage.style, {
-  position: "absolute",
-  zIndex: 10,
-  pointerEvents: "none",
-  backgroundColor: "rgba(255, 255, 255, 0.8 )",
-  color: "black",
-  padding: "0.1em",
-  fontFamily: "sans-serif",
-  bottom: "10px",
-  left: "10px",
-  fontSize: "smaller",
-  display: "block"
-});
-
-
-
-// Microsoft Edge users follow instructions on
-// https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
-// to enable websocket connection
-
-var pagename = location.pathname.substring(1);
-var mysocket;
-
-try
-{
-  mysocket = new WebSocket('ws://127.0.0.1:%s/');
-}
-catch(err)
-{
-  alert('JavaScriptError: ' + err.stack );
-  addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100, 100, 100, 0.0));
-}
-
-
-
-function WebsockSendMsg(msg)
-{
-  try
-  {
-    // Avoid "WebSocket is already in CLOSING or CLOSED state" errors when using QWebEngineView
-    // See https://stackoverflow.com/questions/48472977/how-to-catch-and-deal-with-websocket-is-already-in-closing-or-closed-state-in
-    if (mysocket.readyState === mysocket.OPEN)
-    {
-      mysocket.send(msg);
-      mysocket.send( 'Ready ' + pagename + '\\n' );
-    }
-  }
-  catch(err)
-  {
-    alert('JavaScriptError: ' + err.stack );
-    addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100, 100, 100, 0.0));
-  }
-}
-
-
-mysocket.onopen = function(e)
-{
-  msg = '%s now connected via websocket to ' + pagename + '\\n';
-  WebsockSendMsg(msg);
-  dbgmsg =msg;
-  rerendered = false;
-  //ReRender();
-};
-
-
-mysocket.onclose = function(e)
-{
-  msg = '%s now disconnecting from websocket ' + pagename + '\\n';
-  WebsockSendMsg(msg);
-  dbgmsg =msg;
-};
-
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function ReRender()
-{
-  await sleep(500);
-  if (shapeComp != null && rerendered==false) // workaround for QTWebEngine bug sometimes failing to render scene
-  {
-    shapeComp.autoView();
-    rerendered = true;
-    WebsockSendMsg( 'AutoViewSet ' + pagename );
-  }
-}
-
-
-async function RenderRequest()
-{
-  await sleep(100);
-  stage.viewer.requestRender();
-  WebsockSendMsg( 'RenderRequest ' + pagename );
-}
-
-// Log errors to debugger of your browser
-mysocket.onerror = function(error)
-{
-  msg = 'WebSocket Error ' + error;
-  console.log(msg);
-  dbgmsg =msg;
-};
-
-
-var stage;
-var shape;
-var shapeComp;
-var vectorshape = null;
-var repr;
-var AA = String.fromCharCode(197); // short for angstrom
-var DGR = String.fromCharCode(176); // short for degree symbol
-var current_ttip = "";
-var ttips = [];
-var vectorreprs = [];
-var vectorshapeComps = [];
-var positions = [];
-var br_positions = [];
-var br_colours = [];
-var br_radii = [];
-var br_ttips = [];
-var colours = [];
-var alphas = [];
-var radii = [];
-var shapebufs = [];
-var br_shapebufs = [];
-var nrots = 0;
-var postrotmxflag = false;
-var cvorient = new NGL.Matrix4();
-var oldmsg = "";
-var clipFixToCamPosZ = false;
-var origclipnear;
-var origclipfar;
-var origcameraZpos;
-var nbins = %s;
-var rerendered = false;
-var expstate = "";
-var current_ttip_ids;
-var isdebug = %s;
-var tdelay = 100;
-var displaytooltips = true;
 
 function timefunc() {
   var d = new Date();
@@ -1720,11 +1647,158 @@ catch(err)
   WebsockSendMsg('JavaScriptError: ' + err.stack );
 }
 
-    """ % (self.websockport, self.__module__, self.__module__, cntbin, str(self.verbose>=2).lower(), \
-           self.ngl_settings.tooltip_alpha, axisfuncstr, self.camera_type, spherebufferstr, \
+    """ % ( self.ngl_settings.tooltip_alpha, axisfuncstr, self.camera_type, spherebufferstr, \
            negativeradiistr, colourscriptstr)
 
     WebsockMsgHandlestr = """
+
+
+function createElement(name, properties, style)
+{
+// utility function used in for loop over colourgradvalarray
+  var el = document.createElement(name);
+  Object.assign(el, properties);
+  Object.assign(el.style, style);
+  Object.assign(el.style,
+  {
+      display: "block",
+      position: "absolute",
+      fontFamily: "sans-serif",
+      //fontSize: "smaller",
+      fontSize: "12px",
+  }
+  );
+  return el;
+}
+
+
+function addElement(el)
+{
+// utility function used in for loop over colourgradvalarray
+  Object.assign(el.style,
+  {
+    position: "absolute",
+    zIndex: 10
+  }
+  );
+  stage.viewer.container.appendChild(el);
+}
+
+
+function addDivBox(txt, t, l, w, h, bgcolour="rgba(255, 255, 255, 0.0)")
+{
+  divbox = createElement("div",
+  {
+    innerText: txt
+  },
+  {
+    backgroundColor: bgcolour,
+    color:  "rgba(0, 0, 0, 1.0)",
+    top: t.toString() + "px",
+    left: l.toString() + "px",
+    width: w.toString() + "px",
+    height: h.toString() + "px",
+  }
+  );
+  addElement(divbox);
+}
+
+
+// Microsoft Edge users follow instructions on
+// https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
+// to enable websocket connection
+
+var pagename = location.pathname.substring(1);
+var mysocket;
+
+try
+{
+  mysocket = new WebSocket('ws://127.0.0.1:%s/');
+}
+catch(err)
+{
+  alert('JavaScriptError: ' + err.stack );
+  addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100, 100, 100, 0.0));
+}
+
+
+var stage = null;
+var shape;
+var shapeComp;
+var vectorshape = null;
+var repr;
+var AA = String.fromCharCode(197); // short for angstrom
+var DGR = String.fromCharCode(176); // short for degree symbol
+var current_ttip = "";
+var ttips = [];
+var vectorreprs = [];
+var vectorshapeComps = [];
+var positions = [];
+var br_positions = [];
+var br_colours = [];
+var br_radii = [];
+var br_ttips = [];
+var colours = [];
+var alphas = [];
+var radii = [];
+var shapebufs = [];
+var br_shapebufs = [];
+var nrots = 0;
+var postrotmxflag = false;
+var cvorient = new NGL.Matrix4();
+var oldmsg = "";
+var clipFixToCamPosZ = false;
+var origclipnear;
+var origclipfar;
+var origcameraZpos;
+var nbins = %s;
+var rerendered = false;
+var expstate = "";
+var current_ttip_ids;
+var isdebug = %s;
+var tdelay = 100;
+var displaytooltips = true;
+
+
+
+function WebsockSendMsg(msg)
+{
+  try
+  {
+    // Avoid "WebSocket is already in CLOSING or CLOSED state" errors when using QWebEngineView
+    // See https://stackoverflow.com/questions/48472977/how-to-catch-and-deal-with-websocket-is-already-in-closing-or-closed-state-in
+    if (mysocket.readyState === mysocket.OPEN)
+    {
+      mysocket.send(msg);
+      mysocket.send( 'Ready ' + pagename + '\\n' );
+    }
+  }
+  catch(err)
+  {
+    alert('JavaScriptError: ' + err.stack );
+    addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100, 100, 100, 0.0));
+  }
+}
+
+
+var dbgmsg = "";
+// debug message window
+var debugmessage = document.createElement("div");
+Object.assign(debugmessage.style, {
+  position: "absolute",
+  zIndex: 10,
+  pointerEvents: "none",
+  backgroundColor: "rgba(255, 255, 255, 0.8 )",
+  color: "black",
+  padding: "0.1em",
+  fontFamily: "sans-serif",
+  bottom: "10px",
+  left: "10px",
+  fontSize: "smaller",
+  display: "block"
+});
+
+
 
 function ReturnClipPlaneDistances()
 {
@@ -1749,6 +1823,56 @@ function ReturnClipPlaneDistances()
                   cameradist ] )
   WebsockSendMsg('ReturnClipPlaneDistances:\\n' + msg );
 }
+
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function ReRender()
+{
+  await sleep(500);
+  if (shapeComp != null && rerendered==false) // workaround for QTWebEngine bug sometimes failing to render scene
+  {
+    shapeComp.autoView();
+    rerendered = true;
+    WebsockSendMsg( 'AutoViewSet ' + pagename );
+  }
+}
+
+
+async function RenderRequest()
+{
+  await sleep(100);
+  stage.viewer.requestRender();
+  WebsockSendMsg( 'RenderRequest ' + pagename );
+}
+
+// Log errors to debugger of your browser
+mysocket.onerror = function(error)
+{
+  msg = 'WebSocket Error ' + error;
+  console.log(msg);
+  dbgmsg =msg;
+};
+
+
+mysocket.onopen = function(e)
+{
+  msg = '%s now connected via websocket to ' + pagename + '\\n';
+  WebsockSendMsg(msg);
+  dbgmsg =msg;
+  rerendered = false;
+  //ReRender();
+};
+
+
+mysocket.onclose = function(e)
+{
+  msg = '%s now disconnecting from websocket ' + pagename + '\\n';
+  WebsockSendMsg(msg);
+  dbgmsg =msg;
+};
 
 
 mysocket.onmessage = function(e)
@@ -1847,8 +1971,11 @@ mysocket.onmessage = function(e)
     if (msgtype === "Reload")
     {
     // refresh browser with the javascript file
-      msg = getOrientMsg();
-      WebsockSendMsg('OrientationBeforeReload:\\n' + msg );
+      if (stage != null)
+      {
+        msg = getOrientMsg();
+        WebsockSendMsg('OrientationBeforeReload:\\n' + msg );
+      }
       WebsockSendMsg( 'Refreshing ' + pagename );
       window.location.reload(true);
       // Now we are gone. A new javascript file has been loaded in the browser
@@ -2375,9 +2502,9 @@ mysocket.onmessage = function(e)
 
 };
 
-    """ %qualitystr
+    """ %(self.websockport, cntbin, str(self.verbose>=2).lower(), self.__module__, self.__module__, qualitystr )
 
-    self.NGLscriptstr += WebsockMsgHandlestr
+    self.NGLscriptstr = WebsockMsgHandlestr + self.NGLscriptstr
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
@@ -2481,7 +2608,8 @@ Distance: %s
     rotdet = ScaleRotMx.determinant()
     if rotdet <= 0.0:
       self.mprint("Negative orientation matrix determinant!!", verbose=1)
-      return
+      self.SetAutoView() # return old values as a fall back even if they're out of date
+      return self.cameraPosZ, self.currentRotmx, self.cameratranslation
     else:
       cameradist = math.pow(rotdet, 1.0/3.0)
     self.mprint("Scale distance: %s" %roundoff(cameradist), verbose=3)
@@ -2552,13 +2680,14 @@ Distance: %s
           return
         if len(self.msgqueue):
           pendingmessagetype, pendingmessage = self.msgqueue[0]
-          self.send_msg_to_browser(pendingmessagetype, pendingmessage)
+          gotsent = self.send_msg_to_browser(pendingmessagetype, pendingmessage)
           while not self.browserisopen:  #self.websockclient:
             sleep(self.sleeptime)
             nwait += self.sleeptime
             if nwait > self.handshakewait or self.javascriptcleaned or not self.viewerparams.scene_id is not None:
               return
-          self.msgqueue.remove( self.msgqueue[0] )
+          if gotsent:
+            self.msgqueue.remove( self.msgqueue[0] )
           #if self.was_disconnected:
           #  nwait2 = 0.0
           #  while nwait2 < self.handshakewait:
@@ -2598,16 +2727,26 @@ Distance: %s
       nwait = 0.0
       while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
         or "CurrentViewOrientation" in self.lastmsg or "AutoViewSet" in self.lastmsg \
-        or "ReOrient" in self.lastmsg):
+        or "ReOrient" in self.lastmsg or self.websockclient is None):
         sleep(self.sleeptime)
         nwait += self.sleeptime
-        if nwait > self.handshakewait and self.browserisopen:
+        if nwait > 1.0 and self.browserisopen:
           self.mprint("ERROR: No handshake from browser!", verbose=0 )
           self.mprint("failed sending " + msgtype, verbose=1)
+          self.mprint("Reopening webpage again", verbose=0)
           break
-      self.server.send_message(self.websockclient, message )
+    if self.browserisopen and self.websockclient is not None:
+      try:
+        self.server.send_message(self.websockclient, message )
+        return True
+      except Exception as e:
+        self.mprint( str(e) + "\n" + traceback.format_exc(limit=10), verbose=1)
+        self.websockclient = None
+        return False
     else:
       self.OpenBrowser()
+    return False
+
 
 
   def OpenBrowser(self):
