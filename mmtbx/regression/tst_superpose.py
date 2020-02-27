@@ -95,9 +95,9 @@ class SuperposeTest(unittest.TestCase):
     def test_alignment_used_1(self, filename='fab_a_cut_1.pdb', test='test_alignment_used_1', tolerance=0.003):
       filename = get_filename(filename)
       filename_shifted = "%s.shifted.pdb"%test
-      cmd = """phenix.pdbtools %(filename)s output.file_name=%(filename_shifted)s remove="%(gap_selection)s" %(shift)s"""%{
+      cmd = """phenix.pdbtools %(filename)s suffix=none output.prefix=%(filename_shifted)s remove="%(gap_selection)s" %(shift)s"""%{
           'filename': filename,
-          'filename_shifted': filename_shifted,
+          'filename_shifted': filename_shifted.replace(".pdb",""),
           'gap_selection': "chain A and (resid 5:30 or resid 32:50)",
           'shift': 'sites.rotate="10 20 30" sites.translate="10 20 30"'
       }
@@ -116,9 +116,9 @@ class SuperposeTest(unittest.TestCase):
           random_pair(0, 15)+
           random_pair(16, 35)+
           random_pair(36, 50)))
-        cmd = """phenix.pdbtools %(filename)s output.file_name=%(filename_shifted)s remove="%(gap_selection)s" %(shift)s"""%{
+        cmd = """phenix.pdbtools %(filename)s suffix=none output.prefix=%(filename_shifted)s remove="%(gap_selection)s" %(shift)s"""%{
             'filename': filename,
-            'filename_shifted': filename_shifted,
+            'filename_shifted': filename_shifted.replace(".pdb",""),
             'gap_selection': gap_selection,
             'shift': 'sites.rotate="10 20 30" sites.translate="10 20 30"'
         }
@@ -145,9 +145,9 @@ class SuperposeTest(unittest.TestCase):
         print("========= shift: %s -- shift_selection: %s -- remove_selection: %s"%(shift, shift_selection, remove_selection))
         filename_shifted = '%s.%s.shifted.pdb'%(test, count)
         filename_fitted = '%s.%s.fitted.pdb'%(test, count)
-        cmd = """phenix.pdbtools %(filename)s output.file_name=%(filename_shifted)s selection="%(shift_selection)s" remove="%(remove_selection)s" %(shift)s"""%{
+        cmd = """phenix.pdbtools %(filename)s suffix=none output.prefix=%(filename_shifted)s selection="%(shift_selection)s" remove="%(remove_selection)s" %(shift)s"""%{
             'filename': filename,
-            'filename_shifted': filename_shifted,
+            'filename_shifted': filename_shifted.replace(".pdb",""),
             'shift': shift,
             'shift_selection': shift_selection,
             'remove_selection': remove_selection
