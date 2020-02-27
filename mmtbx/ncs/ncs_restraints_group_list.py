@@ -702,25 +702,27 @@ class class_ncs_restraints_group_list(list):
       start_index = 0
       cur_index = 1
       atoms = hierarchy.atoms()
+      # shortcut: if all atoms form consecutive range and in one chain:
+      if ( (isel[-1] -isel[0] == len(isel)-1)
+          and (hierarchy.get_label_asym_id_iseq(isel[0]) == \
+                hierarchy.get_label_asym_id_iseq(isel[-1]))):
+        return [isel]
+
       while cur_index < len(isel):
-        seq_id = hierarchy.get_label_seq_id_iseq(isel[cur_index])
-        seq_id_1 = hierarchy.get_label_seq_id_iseq(isel[cur_index-1])
-        seq_id = int(seq_id) if seq_id !='.' else 0
-        seq_id_1 = int(seq_id_1) if seq_id_1 !='.' else 0
         if cur_index >= len(isel):
           break
         seq_id = hierarchy.get_label_seq_id_iseq(isel[cur_index])
         seq_id_1 = hierarchy.get_label_seq_id_iseq(isel[cur_index-1])
         seq_id = int(seq_id) if seq_id !='.' else 0
         seq_id_1 = int(seq_id_1) if seq_id_1 !='.' else 0
+        asym_id = hierarchy.get_label_asym_id_iseq(isel[cur_index])
+        asym_id_1 = hierarchy.get_label_asym_id_iseq(isel[cur_index-1])
         if (
             # consecutive indices and no chain break
             (isel[cur_index]-isel[cur_index-1] == 1
-                and hierarchy.get_label_asym_id_iseq(isel[cur_index]) != \
-                    hierarchy.get_label_asym_id_iseq(isel[cur_index-1]))
+                and asym_id != asym_id_1)
             # same chain, same or next resid, no indices check (missing atom, etc)
-            or (hierarchy.get_label_asym_id_iseq(isel[cur_index]) == \
-                    hierarchy.get_label_asym_id_iseq(isel[cur_index-1])
+            or (asym_id == asym_id_1
                 and abs(seq_id - seq_id_1) <= 1 )
             ):
           cur_index += 1
