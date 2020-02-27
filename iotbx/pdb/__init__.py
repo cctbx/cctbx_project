@@ -1679,7 +1679,6 @@ def format_cryst1_and_scale_records(
   from cctbx import crystal
   from cctbx import sgtbx
   from cctbx import uctbx
-  from scitbx import matrix
   if (crystal_symmetry is None):
     unit_cell = None
     space_group_info = None

@@ -1,26 +1,24 @@
 from __future__ import absolute_import, division, print_function
 import boost.python
 from functools import cmp_to_key
-from past.builtins import cmp
-from six.moves import range
-from six.moves import zip
 ext = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
-import six
-from cctbx.array_family import flex
 from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s, null_out
-from libtbx import Auto, dict_with_default_0
-from six.moves import cStringIO as StringIO
-from iotbx.pdb import hy36encode, hy36decode
+from libtbx import Auto, dict_with_default_0, group_args
+from iotbx.pdb import hy36encode, hy36decode, common_residue_names_get_class
+from iotbx.pdb.utils import all_chain_ids, all_label_asym_ids
 import iotbx.cif.model
 from cctbx import crystal
-from libtbx import group_args
+from cctbx.array_family import flex
+import six
+from six.moves import cStringIO as StringIO
+from six.moves import range, zip
+from past.builtins import cmp
 import collections
 import warnings
 import math
 import sys
-from iotbx.pdb.utils import all_chain_ids, all_label_asym_ids
 
 class pickle_import_trigger(object): pass
 
@@ -58,7 +56,6 @@ class overall_counts(object):
         flag_warnings=True,
         residue_groups_max_show=10,
         duplicate_atom_labels_max_show=10):
-    from iotbx.pdb import common_residue_names_get_class
     if (out is None): out = sys.stdout
     self._errors = []
     self._warnings = []
@@ -693,7 +690,6 @@ class _():
     object to the atoms in the PDB hierarchy.  This will fail if the labels of
     the scatterers do not match the atom labels.
     """
-    from iotbx.pdb import common_residue_names_get_class as gc
     from cctbx import adptbx
     if(self.atoms_size() != xray_structure.scatterers().size()):
       raise RuntimeError("Incompatible size of hierarchy and scatterers array.")
@@ -724,8 +720,8 @@ class _():
     for sc, a in zip(scatterers, awl):
       id_str = a.id_str()
       resname_from_sc = id_str[10:13]
-      cl1 = gc(resname_from_sc)
-      cl2 = gc(a.resname)
+      cl1 = common_residue_names_get_class(resname_from_sc)
+      cl2 = common_residue_names_get_class(a.resname)
       if assert_identical_id_str:
         l1 = get_id(sc.label)
         l2 = get_id(a.id_str())
@@ -756,8 +752,6 @@ class _():
 
   def remove_residue_groups_with_atoms_on_special_positions_selective(self,
         crystal_symmetry):
-    import iotbx.pdb
-    get_class = iotbx.pdb.common_residue_names_get_class
     self.reset_i_seq_if_necessary()
     special_position_settings = crystal.special_position_settings(
       crystal_symmetry = crystal_symmetry)
@@ -778,8 +772,8 @@ class _():
             break
         if(not keep):
           for resname in rg.unique_resnames():
-            if(get_class(resname) == "common_amino_acid" or
-               get_class(resname) == "common_rna_dna"):
+            if(common_residue_names_get_class(resname) == "common_amino_acid" or
+               common_residue_names_get_class(resname) == "common_rna_dna"):
               raise RuntimeError(
                 "Amino-acid residue or NA is on special position.")
           for resname in rg.unique_resnames():
@@ -870,9 +864,9 @@ class _():
       print(link_records, file=open(file_name, mode))
       open_append = True
     if (crystal_symmetry is not None or cryst1_z is not None):
-      from iotbx.pdb import format_cryst1_and_scale_records
       if (open_append): mode = "a"
       else:             mode = "w"
+      from iotbx.pdb import format_cryst1_and_scale_records
       print(format_cryst1_and_scale_records(
         crystal_symmetry=crystal_symmetry,
         cryst1_z=cryst1_z,
@@ -915,8 +909,6 @@ class _():
     return self.get_label_asym_id(self.atoms()[iseq].parent().parent())
 
   def get_label_asym_id(self, residue_group):
-    import iotbx.pdb
-    get_class = iotbx.pdb.common_residue_names_get_class
     if not hasattr(self, '_lai_lookup'):
       self._lai_lookup = {}
       # fill self._lai_lookup for the whole hierarchy
@@ -927,13 +919,13 @@ class _():
         for chain in model.chains():
           for rg in chain.residue_groups():
             resname = rg.atom_groups()[0].resname.strip()
-            gc = get_class(resname)
+            residue_class = common_residue_names_get_class(resname)
             rg_mid = rg.memory_id()
-            if gc in ['common_amino_acid', 'modified_amino_acid',
+            if residue_class in ['common_amino_acid', 'modified_amino_acid',
                 'common_rna_dna', 'modified_rna_dna']:
               self._lai_lookup[rg_mid] = label_asym_ids[number_label_asym_id]
               previous = 'poly'
-            elif gc in ['common_water']:
+            elif residue_class in ['common_water']:
               if previous != 'water' and previous is not None:
                 number_label_asym_id += 1
               previous = 'water'
@@ -966,8 +958,6 @@ class _():
     return self.get_label_seq_id(self.atoms()[iseq].parent())
 
   def get_label_seq_id(self, atom_group):
-    import iotbx.pdb
-    get_class = iotbx.pdb.common_residue_names_get_class
     if not hasattr(self, '_label_seq_id_dict'):
       # make it
       self._label_seq_id_dict = {}
@@ -978,8 +968,8 @@ class _():
             label_seq_id += 1
             label_seq_id_str='.'
             comp_id = ag.resname.strip()
-            gc = get_class(comp_id)
-            if gc in ['common_amino_acid', 'modified_amino_acid']:
+            residue_class = common_residue_names_get_class(comp_id)
+            if residue_class in ['common_amino_acid', 'modified_amino_acid']:
               label_seq_id_str = str(label_seq_id)
             self._label_seq_id_dict[ag.memory_id()] = label_seq_id_str
     return self._label_seq_id_dict[atom_group.memory_id()]
@@ -992,11 +982,9 @@ class _():
       u_aniso_precision=5):
     if crystal_symmetry is None:
       crystal_symmetry = crystal.symmetry()
-    import iotbx.cif
     cs_cif_block = crystal_symmetry.as_cif_block(format="mmcif")
 
-    from iotbx.cif import model
-    h_cif_block = model.block()
+    h_cif_block = iotbx.cif.model.block()
     coord_fmt_str = "%%.%if" %coordinate_precision
     occ_fmt_str = "%%.%if" %occupancy_precision
     b_iso_fmt_str = "%%.%if" %b_iso_precision
@@ -1205,7 +1193,6 @@ class _():
                        file_name,
                        crystal_symmetry=None,
                        data_block_name=None):
-    import iotbx.cif.model
     cif_object = iotbx.cif.model.cif()
     if data_block_name is None:
       data_block_name = "phenix"
@@ -1396,7 +1383,6 @@ class _():
             ag_atom.hetero = True
 
   def transfer_chains_from_other(self, other):
-    from iotbx.pdb import hy36encode
     i_model = 0
     other_models = other.models()
     for md,other_md in zip(self.models(), other_models):
@@ -1609,15 +1595,13 @@ class _():
     Extract atom selection (flex.size_t) for protein C-alpha atoms.
     """
     result = flex.size_t()
-    import iotbx.pdb
-    get_class = iotbx.pdb.common_residue_names_get_class
     i_seqs = self.atoms().extract_i_seq()
     if(i_seqs.size()>1): assert i_seqs[1:].all_ne(0)
     for model in self.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
           for ag in rg.atom_groups():
-            if(get_class(ag.resname) == "common_amino_acid"):
+            if(common_residue_names_get_class(ag.resname) == "common_amino_acid"):
               for atom in ag.atoms():
                 if(atom.name.strip() == "CA"):
                   result.append(atom.i_seq)
@@ -1638,7 +1622,6 @@ class _():
     Inspect residue names (stored in atom_group objects) to determine if any of
     them are RNA or DNA.
     """
-    import iotbx.pdb
     for model in self.models():
       for chain in self.chains():
         if chain.is_na() : return True
@@ -1649,13 +1632,11 @@ class _():
     Inspect residue names (stored in atom_group objects) to determine if any of
     them are RNA.
     """
-    import iotbx.pdb
-    get_class = iotbx.pdb.common_residue_names_get_class
     for model in self.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
           for ag in rg.atom_groups():
-            if ((get_class(ag.resname) == "common_rna_dna") and
+            if ((common_residue_names_get_class(ag.resname) == "common_rna_dna") and
                 (not "D" in ag.resname.upper())):
               return True
     return False
@@ -1868,7 +1849,6 @@ class _():
     :returns: a tuple containing a list of residue names, and a dictionary of
       residue type frequencies.
     """
-    from iotbx.pdb import common_residue_names_get_class
     from iotbx.pdb import residue_name_plus_atom_names_interpreter
     rn_seq = []
     residue_classes = dict_with_default_0()
@@ -2188,7 +2168,6 @@ class _():
     # XXX This function should probably be deprecated, since it has been
     # duplicated in chain.get_residue_names_and_classes which should probably
     # be preferred to this function
-    from iotbx.pdb import common_residue_names_get_class
     rn_seq = []
     residue_classes = dict_with_default_0()
     for residue in self.residues():
@@ -2675,9 +2654,7 @@ def get_contiguous_ranges(hierarchy):
 
 # used for reporting build results in phenix
 def get_residue_and_fragment_count(pdb_file=None, pdb_hierarchy=None):
-  import iotbx.pdb
   from libtbx import smart_open
-  get_class = iotbx.pdb.common_residue_names_get_class
   if (pdb_file is not None):
     raw_records = flex.std_string()
     f = smart_open.for_reading(file_name=pdb_file)
@@ -2697,7 +2674,8 @@ def get_residue_and_fragment_count(pdb_file=None, pdb_hierarchy=None):
   for chain in chains :
     i = -999
     for res in chain.conformers()[0].residues():
-      residue_type = get_class(res.resname, consider_ccp4_mon_lib_rna_dna=True)
+      residue_type = common_residue_names_get_class(
+          res.resname, consider_ccp4_mon_lib_rna_dna=True)
       if ( ('amino_acid' in residue_type) or ('rna_dna' in residue_type) ):
         n_res += 1
         resseq = res.resseq_as_int()
@@ -2753,7 +2731,6 @@ def substitute_atom_group(
   Limited functionality:
     1) Amino-acids only, 2) side chain atoms only.
   """
-  from iotbx.pdb import common_residue_names_get_class
   from scitbx.math import superpose
   new_atoms = new_group.detached_copy().atoms()
   selection_fixed = flex.size_t()
