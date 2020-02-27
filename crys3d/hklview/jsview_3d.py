@@ -381,9 +381,9 @@ class hklview_3d:
                          "scale",
                          "nth_power_scale_radii"
             ):
-          self.ConstructScenes(curphilparam, scene_id=self.viewerparams.scene_id )
+          self.ConstructReciprocalSpace(curphilparam, scene_id=self.viewerparams.scene_id )
         else:
-          self.ConstructScenes(curphilparam )
+          self.ConstructReciprocalSpace(curphilparam )
     msg = ""
     if self.viewerparams.scene_id is not None and \
       ( has_phil_path(diff_phil,
@@ -435,9 +435,6 @@ class hklview_3d:
         if self.viewerparams.slice_axis=="l": hkl = [0,0,1]
         R = hkl[0] * self.normal_kl + hkl[1] * self.normal_lh - hkl[2] * self.normal_hk
         clipwidth = 200
-      if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
-        msg += self.ExpandInBrowser(P1= self.viewerparams.expand_to_p1,
-                              friedel_mate= self.viewerparams.expand_anomalous)
       if self.params.clip_plane.clipwidth and not self.viewerparams.slice_mode:
         clipwidth = self.params.clip_plane.clipwidth
         hkldist = self.params.clip_plane.hkldist
@@ -448,6 +445,9 @@ class hklview_3d:
       self.clip_plane_vector(R[0][0], R[0][1], R[0][2], hkldist,
           clipwidth, self.viewerparams.NGL.fixorientation, self.params.clip_plane.is_parallel,
           isreciprocal)
+      if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
+        msg += self.ExpandInBrowser(P1= self.viewerparams.expand_to_p1,
+                              friedel_mate= self.viewerparams.expand_anomalous)
       msg += self.SetOpacities(self.viewerparams.NGL.bin_opacities )
       if self.params.real_space_unit_cell_scale_fraction is None:
         scale = None
@@ -615,108 +615,7 @@ class hklview_3d:
     self.mprint("Done making superset")
 
 
-  def ConstructReciprocalSpace(self, curphilparam, merge=None, scene_id=None):
-    self.HKLscenesKey = (curphilparam.spacegroup_choice,
-                         curphilparam.using_space_subgroup,
-                         curphilparam.merge_data,
-                         self.viewerparams.expand_anomalous,
-                         self.viewerparams.expand_to_p1,
-                         self.viewerparams.inbrowser,
-                         self.viewerparams.slice_axis,
-                         self.viewerparams.slice_mode,
-                         self.viewerparams.slice_index,
-                         self.viewerparams.show_missing,
-                         self.viewerparams.show_only_missing,
-                         self.viewerparams.show_systematic_absences,
-                         self.viewerparams.scale,
-                         self.viewerparams.nth_power_scale_radii
-                         )
-    if self.HKLscenesKey in self.HKLscenesdict and not self.has_new_miller_array:
-      (
-        self.HKLscenes,
-        self.tooltipstringsdict,
-        self.HKLscenesMaxdata,
-        self.HKLscenesMindata,
-        self.HKLscenesMaxsigmas,
-        self.HKLscenesMinsigmas,
-        self.hkl_scenes_info
-      ) =  self.HKLscenesdict[self.HKLscenesKey]
-      self.mprint("Scene key is already present", verbose=1)
-      #self.sceneisdirty = False
-      return True
-    self.mprint("Constructing HKL scenes", verbose=0)
-    i = 0
-    assert(self.proc_arrays)
-    self.mprint("\nReflection data scenes:", verbose=0)
-    if scene_id is None:
-      HKLscenes = []
-      HKLscenesMaxdata = []
-      HKLscenesMindata = []
-      HKLscenesMaxsigmas = []
-      HKLscenesMinsigmas = []
-      hkl_scenes_info = []
-      tooltipstringsdict = {}
-      for (idx,e) in enumerate(self.proc_arrays):
-        (hklscenes, scenemaxdata,
-          scenemindata, scenemaxsigmas,
-           sceneminsigmas, scenearrayinfos
-           ) = MakeHKLscene( e.deep_copy(), idx, copy.deepcopy(self.viewerparams), self.mapcoef_fom_dict, merge, self.mprint )
-
-        HKLscenesMaxdata.extend(scenemaxdata)
-        HKLscenesMindata.extend(scenemindata)
-        HKLscenesMaxsigmas.extend(scenemaxsigmas)
-        HKLscenesMinsigmas.extend(sceneminsigmas)
-        hkl_scenes_info.extend(scenearrayinfos)
-        HKLscenes.extend(hklscenes)
-        for i,inf in enumerate(scenearrayinfos):
-          self.mprint("%d, %s" %(idx+i+1, inf[0]), verbose=0)
-
-      tooltipstringsdict = {}
-      self.colstraliases = "var hk = \'H,K,L: \';\n"
-      self.HKLscenesdict[self.HKLscenesKey] = (
-                  HKLscenes,
-                  tooltipstringsdict,
-                  HKLscenesMaxdata,
-                  HKLscenesMindata,
-                  HKLscenesMaxsigmas,
-                  HKLscenesMinsigmas,
-                  hkl_scenes_info
-                  )
-    else:
-      arrayid = self.scene_id_to_array_id(scene_id)
-      for (idx,e) in enumerate(self.proc_arrays):
-        if arrayid is not None and arrayid != idx:
-          continue
-        (hklscenes, scenemaxdata,
-          scenemindata, scenemaxsigmas,
-           sceneminsigmas, scenearrayinfos
-           ) = MakeHKLscene( e.deep_copy(), idx, copy.deepcopy(self.viewerparams), self.mapcoef_fom_dict, merge, self.mprint )
-        #HKLscenesMaxdata.extend(scenemaxdata)
-        #HKLscenesMindata.extend(scenemindata)
-        #HKLscenesMaxsigmas.extend(scenemaxsigmas)
-        #HKLscenesMinsigmas.extend(sceneminsigmas)
-        #hkl_scenes_info.extend(scenearrayinfos)
-        for i,inf in enumerate(scenearrayinfos):
-          self.mprint("%d, %s" %(idx+i+1, inf[0]), verbose=0)
-          self.HKLscenesdict[self.HKLscenesKey][0][idx+i] = hklscenes[i]
-
-    (
-      self.HKLscenes,
-      self.tooltipstringsdict,
-      self.HKLscenesMaxdata,
-      self.HKLscenesMindata,
-      self.HKLscenesMaxsigmas,
-      self.HKLscenesMinsigmas,
-      self.hkl_scenes_info
-    ) =  self.HKLscenesdict[self.HKLscenesKey]
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    self.sceneisdirty = True
-    self.SendInfoToGUI({ "hklscenes_arrays": self.hkl_scenes_info, "NewHKLscenes" : True })
-    self.has_new_miller_array = False
-    return True
-
-
-  def ConstructScenes(self, curphilparam, scene_id=None):
+  def ConstructReciprocalSpace(self, curphilparam, scene_id=None):
     sceneid = scene_id
     if scene_id is not None and scene_id != self.viewerparams.scene_id:
       sceneid = self.viewerparams.scene_id
@@ -739,12 +638,10 @@ class hklview_3d:
     if self.HKLsceneKey in self.HKLscenedict and not self.has_new_miller_array:
       self.HKLscene = self.HKLscenedict.get(self.HKLsceneKey, False)
       if self.HKLscene:
-        self.mprint("Scene key is already present2", verbose=1)
-        #self.sceneisdirty = False
+        self.mprint("Using cached HKL scene", verbose=1)
         return True
-    self.mprint("Constructing HKL scenes2", verbose=0)
+    self.mprint("Constructing HKL scenes", verbose=0)
     assert(self.proc_arrays)
-    self.mprint("\nReflection data scenes2:", verbose=0)
     if scene_id is None:
       hkl_scenes_info = []
       self.HKLscenes = []
@@ -836,10 +733,8 @@ class hklview_3d:
     return True
 
 
-  def HKLscene_from_dict(self, sceneid=None):
-    if sceneid is None:
-      sceneid = self.viewerparams.scene_id
-    HKLsceneKey = (self.params.spacegroup_choice,
+  def Sceneid_to_SceneKey(self, sceneid):
+    return (self.params.spacegroup_choice,
                       self.params.using_space_subgroup,
                       self.params.merge_data,
                       self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
@@ -855,119 +750,49 @@ class hklview_3d:
                       self.viewerparams.scale,
                       self.viewerparams.nth_power_scale_radii
                       )
-    if not self.HKLscenedict.get(HKLsceneKey, False):
-      self.ConstructScenes(self.params, scene_id=sceneid)
 
+
+  def HKLscene_from_dict(self, sceneid=None):
+    if sceneid is None:
+      sceneid = self.viewerparams.scene_id
+    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+    if not self.HKLscenedict.get(HKLsceneKey, False):
+      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
     return self.HKLscenedict[HKLsceneKey][0]
 
 
   def HKLMaxData_from_dict(self, sceneid=None):
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
-    HKLsceneKey = (self.params.spacegroup_choice,
-                      self.params.using_space_subgroup,
-                      self.params.merge_data,
-                      self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
-                      self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
-                      self.viewerparams.inbrowser,
-                      self.viewerparams.slice_axis,
-                      self.viewerparams.slice_mode,
-                      self.viewerparams.slice_index,
-                      self.viewerparams.show_missing,
-                      self.viewerparams.show_only_missing,
-                      self.viewerparams.show_systematic_absences,
-                      sceneid,
-                      self.viewerparams.scale,
-                      self.viewerparams.nth_power_scale_radii
-                      )
+    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
     return self.HKLscenedict[HKLsceneKey][1]
 
 
   def HKLMinData_from_dict(self, sceneid=None):
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
-    HKLsceneKey = (self.params.spacegroup_choice,
-                      self.params.using_space_subgroup,
-                      self.params.merge_data,
-                      self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
-                      self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
-                      self.viewerparams.inbrowser,
-                      self.viewerparams.slice_axis,
-                      self.viewerparams.slice_mode,
-                      self.viewerparams.slice_index,
-                      self.viewerparams.show_missing,
-                      self.viewerparams.show_only_missing,
-                      self.viewerparams.show_systematic_absences,
-                      sceneid,
-                      self.viewerparams.scale,
-                      self.viewerparams.nth_power_scale_radii
-                      )
+    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
     return self.HKLscenedict[HKLsceneKey][2]
 
 
   def HKLMaxSigmas_from_dict(self, sceneid=None):
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
-    HKLsceneKey = (self.params.spacegroup_choice,
-                      self.params.using_space_subgroup,
-                      self.params.merge_data,
-                      self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
-                      self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
-                      self.viewerparams.inbrowser,
-                      self.viewerparams.slice_axis,
-                      self.viewerparams.slice_mode,
-                      self.viewerparams.slice_index,
-                      self.viewerparams.show_missing,
-                      self.viewerparams.show_only_missing,
-                      self.viewerparams.show_systematic_absences,
-                      sceneid,
-                      self.viewerparams.scale,
-                      self.viewerparams.nth_power_scale_radii
-                      )
+    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
     return self.HKLscenedict[HKLsceneKey][3]
 
 
   def HKLMinSigmas_from_dict(self, sceneid=None):
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
-    HKLsceneKey = (self.params.spacegroup_choice,
-                      self.params.using_space_subgroup,
-                      self.params.merge_data,
-                      self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
-                      self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
-                      self.viewerparams.inbrowser,
-                      self.viewerparams.slice_axis,
-                      self.viewerparams.slice_mode,
-                      self.viewerparams.slice_index,
-                      self.viewerparams.show_missing,
-                      self.viewerparams.show_only_missing,
-                      self.viewerparams.show_systematic_absences,
-                      sceneid,
-                      self.viewerparams.scale,
-                      self.viewerparams.nth_power_scale_radii
-                      )
+    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
     return self.HKLscenedict[HKLsceneKey][4]
 
 
   def HKLInfo_from_dict(self, sceneid=None):
     if sceneid is None:
       sceneid = self.viewerparams.scene_id
-    HKLsceneKey = (self.params.spacegroup_choice,
-                      self.params.using_space_subgroup,
-                      self.params.merge_data,
-                      self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
-                      self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
-                      self.viewerparams.inbrowser,
-                      self.viewerparams.slice_axis,
-                      self.viewerparams.slice_mode,
-                      self.viewerparams.slice_index,
-                      self.viewerparams.show_missing,
-                      self.viewerparams.show_only_missing,
-                      self.viewerparams.show_systematic_absences,
-                      sceneid,
-                      self.viewerparams.scale,
-                      self.viewerparams.nth_power_scale_radii
-                      )
+    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
     return self.HKLscenedict[HKLsceneKey][5]
 
 
@@ -2783,7 +2608,8 @@ Distance: %s
     rotdet = ScaleRotMx.determinant()
     if rotdet <= 0.0:
       self.mprint("Negative orientation matrix determinant!!", verbose=1)
-      return
+      self.SetAutoView() # return old values as a fall back even if they're out of date
+      return self.cameraPosZ, self.currentRotmx, self.cameratranslation
     else:
       cameradist = math.pow(rotdet, 1.0/3.0)
     self.mprint("Scale distance: %s" %roundoff(cameradist), verbose=3)
@@ -2854,13 +2680,14 @@ Distance: %s
           return
         if len(self.msgqueue):
           pendingmessagetype, pendingmessage = self.msgqueue[0]
-          self.send_msg_to_browser(pendingmessagetype, pendingmessage)
+          gotsent = self.send_msg_to_browser(pendingmessagetype, pendingmessage)
           while not self.browserisopen:  #self.websockclient:
             sleep(self.sleeptime)
             nwait += self.sleeptime
             if nwait > self.handshakewait or self.javascriptcleaned or not self.viewerparams.scene_id is not None:
               return
-          self.msgqueue.remove( self.msgqueue[0] )
+          if gotsent:
+            self.msgqueue.remove( self.msgqueue[0] )
           #if self.was_disconnected:
           #  nwait2 = 0.0
           #  while nwait2 < self.handshakewait:
@@ -2882,7 +2709,7 @@ Distance: %s
     if self.was_disconnected:
       self.was_disconnected = False
     if self.lastviewmtrx and self.viewerparams.scene_id is not None:
-      #self.set_volatile_params()
+      self.set_volatile_params()
       self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
       self.AddToBrowserMsgQueue("ReOrient", self.lastviewmtrx)
     else:
@@ -2900,16 +2727,26 @@ Distance: %s
       nwait = 0.0
       while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
         or "CurrentViewOrientation" in self.lastmsg or "AutoViewSet" in self.lastmsg \
-        or "ReOrient" in self.lastmsg):
+        or "ReOrient" in self.lastmsg or self.websockclient is None):
         sleep(self.sleeptime)
         nwait += self.sleeptime
-        if nwait > self.handshakewait and self.browserisopen:
+        if nwait > 1.0 and self.browserisopen:
           self.mprint("ERROR: No handshake from browser!", verbose=0 )
           self.mprint("failed sending " + msgtype, verbose=1)
+          self.mprint("Reopening webpage again", verbose=0)
           break
-      self.server.send_message(self.websockclient, message )
+    if self.browserisopen and self.websockclient is not None:
+      try:
+        self.server.send_message(self.websockclient, message )
+        return True
+      except Exception as e:
+        self.mprint( str(e) + "\n" + traceback.format_exc(limit=10), verbose=1)
+        self.websockclient = None
+        return False
     else:
       self.OpenBrowser()
+    return False
+
 
 
   def OpenBrowser(self):
