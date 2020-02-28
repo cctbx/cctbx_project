@@ -76,13 +76,13 @@ master_phil = iotbx.phil.parse("""\
 ramachandran_plot_restraints {
   enabled = False
     .type = bool
-  favored = *oldfield emsley None
+  favored = *oldfield emsley
     .type = choice(multi=False)
 
-  allowed = *oldfield emsley None
+  allowed = *oldfield emsley
     .type = choice(multi=False)
 
-  outlier = *oldfield emsley None
+  outlier = *oldfield emsley
     .type = choice(multi=False)
 
   selection = None
