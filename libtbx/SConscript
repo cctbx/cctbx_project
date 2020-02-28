@@ -804,7 +804,7 @@ int main() {
       if sys.platform == 'darwin':
         env_etc.static_libraries = 1
         env_etc.shlinkflags_bpl += ['-undefined', 'dynamic_lookup']
-        min_macos = 10.7
+        min_macos = 10.9
         base_macos_flags = ['-stdlib=libc++',
                             '-mmacosx-version-min=%s' % min_macos]
         env_etc.ccflags_base.extend(base_macos_flags)
@@ -924,7 +924,7 @@ int main() {
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
 
-    min_macos = 10.7
+    min_macos = 10.9
     base_macos_flags = ['-stdlib=libc++', '-mmacosx-version-min=%s' % min_macos]
 
     link_flags = ["-w"] # suppress "source/lib does not exist" warning
