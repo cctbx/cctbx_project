@@ -575,14 +575,16 @@ class HKLViewFrame() :
        details=array_info.details_str)
     self.viewer.proc_arrays = self.procarrays
     self.viewer.identify_suitable_fomsarrays()
-    self.update_space_group_choices()
 
 
-  def update_space_group_choices(self) :
-    if self.viewer.miller_array is None or \
+  def update_space_group_choices(self, col=None) :
+    if (self.viewer.miller_array is None and col is None) or \
       self.params.NGL_HKLviewer.using_space_subgroup:
       return
-    current_miller_array_idx = self.viewer.HKLInfo_from_dict()[1]
+    if col is None:
+      current_miller_array_idx = self.viewer.HKLInfo_from_dict()[1]
+    else:
+      current_miller_array_idx = col
     matching_valid_array = self.procarrays[ current_miller_array_idx ]
     from cctbx.sgtbx.subgroups import subgroups
     from cctbx import sgtbx
@@ -766,6 +768,7 @@ class HKLViewFrame() :
         self.NewFileLoaded=False
       elif (len(valid_arrays) >= 1):
         self.set_miller_array()
+        self.update_space_group_choices(0) # get the default spacegroup choice
         mydict = { "info": self.infostr,
                    "array_infotpls": self.viewer.array_infotpls,
                    "bin_infotpls": self.viewer.bin_infotpls,

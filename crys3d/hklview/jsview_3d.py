@@ -308,8 +308,6 @@ class hklview_3d:
     self.viewmtrx = None
     self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
-    self.HKLscenesKey = ( 0, False,
-                          self.viewerparams.expand_anomalous, self.viewerparams.expand_to_p1  )
     self.HKLsceneKey = ( 0, False,
                           self.viewerparams.expand_anomalous, self.viewerparams.expand_to_p1  )
     self.msgqueue = []
@@ -2657,7 +2655,6 @@ Distance: %s
 
   def WaitforHandshake(self, sec=5):
     nwait = 0
-    #while not self.websockclient :
     while not self.browserisopen :
       time.sleep(self.sleeptime)
       nwait += self.sleeptime
@@ -2730,7 +2727,7 @@ Distance: %s
         or "ReOrient" in self.lastmsg or self.websockclient is None):
         sleep(self.sleeptime)
         nwait += self.sleeptime
-        if nwait > 1.0 and self.browserisopen:
+        if nwait > 2.0 and self.browserisopen:
           self.mprint("ERROR: No handshake from browser!", verbose=0 )
           self.mprint("failed sending " + msgtype, verbose=1)
           self.mprint("Reopening webpage again", verbose=0)
