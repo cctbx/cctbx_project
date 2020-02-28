@@ -2410,6 +2410,9 @@ class _():
   def fetch_labels(self):
     return self
 
+# MARKED_FOR_DELETION_OLEG
+# Reason: so far fount only in iotbx/file_reader.py for no clear reason.
+
 class input_hierarchy_pair(object):
 
   def __init__(self,
@@ -2512,6 +2515,7 @@ class input(input_hierarchy_pair):
       pdb_inp = iotbx.pdb.input(
         source_info=source_info, lines=flex.split_lines(pdb_string))
     super(input, self).__init__(input=pdb_inp, sort_atoms=sort_atoms)
+# END_MARKED_FOR_DELETION_OLEG
 
 class show_summary(input):
 
