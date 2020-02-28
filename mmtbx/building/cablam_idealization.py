@@ -16,6 +16,7 @@ from scitbx.matrix import rotate_point_around_axis
 from mmtbx.refinement.geometry_minimization import run2
 from mmtbx.building.loop_closure.utils import list_rama_outliers_h
 from mmtbx.secondary_structure import manager as ss_manager_class
+from mmtbx.geometry_restraints.ramachandran import master_phil as rama_master_phil
 import six
 from six.moves import range
 
@@ -224,7 +225,11 @@ class cablam_idealization(object):
 
   def _minimize(self):
     m1 = self.model.deep_copy()
-    m1.set_ramachandran_plot_restraints(rama_potential="oldfield")
+    rama_params = rama_master_phil.fetch().extract().ramachandran_plot_restraints
+    rama_params.favored = 'oldfield'
+    rama_params.allowed = 'oldfield'
+    rama_params.outlier = 'oldfield'
+    m1.set_ramachandran_plot_restraints(rama_params=rama_params)
     run2(
         restraints_manager=m1.get_restraints_manager(),
         pdb_hierarchy=m1.get_hierarchy(),
