@@ -235,3 +235,4 @@ class RefineMissetAndUcell(RefineRot):
 
     def get_refined_Bmatrix(self):
         return self.ucell_manager.B_recipspace
+

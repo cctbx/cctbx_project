@@ -2,6 +2,7 @@
 import scitbx
 import numpy as np
 from abc import ABCMeta, abstractproperty, abstractmethod
+from scitbx.array_family import flex
 from scitbx.lbfgs.tst_curvatures import lbfgs_with_curvatures_mix_in
 from scitbx.lbfgs.tst_mpi_split_evaluator import mpi_split_evaluator_run
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
@@ -540,3 +541,10 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         if not isinstance(val, bool):
             raise ValueError("refine background planes should be a boolean")
         self._refine_ncells = val
+
+    def compute_functional_gradients_diag(self):
+        self.f, self.g = self.compute_functional_and_gradients()
+        self.d = flex.double(self.curv.as_numpy_array())
+        self._verify_diag()
+        return self.f, self.g, self.d
+

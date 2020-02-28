@@ -363,3 +363,10 @@ class RefineAll(RefineRot):
 
     def curvatures(self):
         return self.curv
+
+    def compute_functional_gradients_diag(self):
+        self.compute_functional_and_gradients()
+        self.d = flex.double(self.curv.as_numpy_array())
+        self.g = self._g
+        self._verify_diag()
+        return self._f, self._g, self.d
