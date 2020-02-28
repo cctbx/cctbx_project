@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Fri Feb 14 11:24:26 2020
+The date of file generation: Fri Feb 28 14:23:03 2020
 """
 from __future__ import absolute_import, division, print_function
 
@@ -174,6 +174,7 @@ lookup = {
   "DMK" : "D",
   "DOH" : "D",
   "DYA" : "D",
+  "KKD" : "D",
   "LAA" : "D",
   "OHS" : "D",
   "OXX" : "D",
@@ -320,6 +321,7 @@ lookup = {
   "MEQ" : "Q",
   "MGN" : "Q",
   "NLQ" : "Q",
+  "PCA" : "Q",
   "QMM" : "Q",
   "11W" : "E",
   "3GL" : "E",
@@ -345,7 +347,6 @@ lookup = {
   "ILG" : "E",
   "LME" : "E",
   "MEG" : "E",
-  "PCA" : "E",
   "X2W" : "E",
   "0AC" : "G",
   "3XH" : "G",
@@ -468,6 +469,7 @@ lookup = {
   "5GG" : "K",
   "5MW" : "K",
   "5OW" : "K",
+  "5T3" : "K",
   "6CL" : "K",
   "6G4" : "K",
   "6HN" : "K",
@@ -720,6 +722,7 @@ lookup = {
   "4HJ" : "S",
   "4OV" : "S",
   "4OZ" : "S",
+  "5R5" : "S",
   "73C" : "S",
   "8SP" : "S",
   "A9D" : "S",
@@ -850,6 +853,7 @@ lookup = {
   "TRY" : "W",
   "TTQ" : "W",
   "WRP" : "W",
+  "ZIQ" : "W",
   "0A1" : "Y",
   "0EA" : "Y",
   "0PR" : "Y",
