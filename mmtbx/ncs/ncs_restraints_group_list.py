@@ -708,15 +708,18 @@ class class_ncs_restraints_group_list(list):
                 hierarchy.get_label_asym_id_iseq(isel[-1]))):
         return [isel]
 
+      seq_id = hierarchy.get_label_seq_id_iseq(isel[0])
+      seq_id = int(seq_id) if seq_id !='.' else 0
+      asym_id = hierarchy.get_label_asym_id_iseq(isel[0])
       while cur_index < len(isel):
         if cur_index >= len(isel):
           break
+        seq_id_1 = seq_id
+        asym_id_1 = asym_id
+        #
         seq_id = hierarchy.get_label_seq_id_iseq(isel[cur_index])
-        seq_id_1 = hierarchy.get_label_seq_id_iseq(isel[cur_index-1])
         seq_id = int(seq_id) if seq_id !='.' else 0
-        seq_id_1 = int(seq_id_1) if seq_id_1 !='.' else 0
         asym_id = hierarchy.get_label_asym_id_iseq(isel[cur_index])
-        asym_id_1 = hierarchy.get_label_asym_id_iseq(isel[cur_index-1])
         if (
             # consecutive indices and no chain break
             (isel[cur_index]-isel[cur_index-1] == 1
