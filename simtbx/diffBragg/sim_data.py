@@ -78,8 +78,11 @@ class SimData:
         mosaic_rotation = g(n_mos_doms)
         for m in mosaic_rotation:
             site = col(mersenne_twister.random_double_point_on_sphere())
-            UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(m, deg=False))
-            if isotropic:
+            if mos_spread_deg > 0:
+                UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(m, deg=False))
+            else:
+                UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(0, deg=False))
+            if isotropic and mos_spread_deg > 0:
                 UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(-m, deg=False))
         return UMAT_nm
 
