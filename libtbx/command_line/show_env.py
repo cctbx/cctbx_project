@@ -12,11 +12,13 @@ Usage:
 from __future__ import absolute_import, division, print_function
 
 import os
+import pickle
 import sys
 from pprint import pprint
-from six.moves import cPickle as pickle
 from types import ModuleType
-from six.moves import map
+
+import six
+
 
 def _read_obj(obj, prev=None):
   if prev is None:
@@ -39,29 +41,41 @@ def _read_obj(obj, prev=None):
   else:
     return obj
 
+
 class prop_object(object):
   """Object that can convert itself to a dictionary"""
+
   def to_dict(self):
     return _read_obj(self)
 
+
 def pathed_prop_object(path):
   "Create a class that knows the path it's supposed to represent"
+
   class _pathed_prop_object(prop_object):
     """Object that can convert itself to a dictionary"""
+
     _pathed_type = path
+
   return _pathed_prop_object
+
 
 class relocatable_path(object):
   def __repr__(self):
-    return os.path.normpath(os.path.join(self._anchor._path,self.relocatable))
+    return os.path.normpath(os.path.join(self._anchor._path, self.relocatable))
+
 
 class absolute_path(object):
   def __repr__(self):
     return self._path
 
+
 def plainlify(thing):
-  import six
-  if isinstance(thing,six.string_types) or isinstance(thing, (unicode, str, int, float, long, complex)):
+  if (
+    isinstance(thing, six.string_types)
+    or isinstance(thing, six.integer_types)
+    or isinstance(thing, (float, complex))
+  ):
     return thing
   if thing in (None, True, False):
     return thing
@@ -75,12 +89,14 @@ def plainlify(thing):
     return {plainlify(item) for item in thing}
   return str(thing)
 
+
 def new_module(name, doc=None):
   """Create a new module and inject it into sys.modules"""
   m = ModuleType(name, doc)
-  m.__file__ = name + '.py'
+  m.__file__ = name + ".py"
   sys.modules[name] = m
   return m
+
 
 # Create the fake libtbx environment
 libtbx = new_module("libtbx")
@@ -101,6 +117,6 @@ elif not os.path.isfile(sys.argv[1]):
   print("Error: {} is not a file.".format(sys.argv[1]))
 else:
   # Load the environment dump and
-  env = pickle.load(open(sys.argv[1],"rb"))
+  env = pickle.load(open(sys.argv[1], "rb"))
   d = plainlify(env.to_dict())
   pprint(d)
