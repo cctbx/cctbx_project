@@ -447,14 +447,14 @@ class manager(object):
     d = flex.sqrt((s1 - s3).dot())
     assert d<1.e-4
 
-  def set_ramachandran_plot_restraints(self, rama_potential):
+  def set_ramachandran_plot_restraints(self, rama_params):
+    """ rama_params - mmtbx.geometry_restraints.ramachandran.master_phil->
+        ramachandran_plot_restraints"""
     self.unset_ramachandran_plot_restraints()
     grm = self.get_restraints_manager().geometry
-    pep_link_params = self._pdb_interpretation_params.pdb_interpretation.peptide_link
-    pep_link_params.rama_potential = rama_potential
     ramachandran_restraints_manager = ramachandran.ramachandran_manager(
       pdb_hierarchy  = self.get_hierarchy(),
-      params         = pep_link_params,
+      params         = rama_params,
       log            = null_out())
     grm.set_ramachandran_restraints(manager = ramachandran_restraints_manager)
 
