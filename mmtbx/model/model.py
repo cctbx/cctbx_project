@@ -455,7 +455,7 @@ class manager(object):
     ramachandran_restraints_manager = ramachandran.ramachandran_manager(
       pdb_hierarchy  = self.get_hierarchy(),
       params         = rama_params,
-      log            = null_out())
+      log            = self.log)
     grm.set_ramachandran_restraints(manager = ramachandran_restraints_manager)
 
   def unset_ramachandran_plot_restraints(self):
