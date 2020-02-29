@@ -327,17 +327,18 @@ class ramachandran_manager(object):
     ramachandran_manager._append_proxies(self._emsley_proxies, proxy, n_seq)
 
   def update_phi_psi_targets_on_init(self, hierarchy):
-    # if(self.params.rama_potential != "oldfield"): return None
-    self.target_phi_psi = phi_psi_targets(
-      sites_cart=hierarchy.atoms().extract_xyz(),
-      proxies=self._oldfield_proxies,
-      general_table=self._oldfield_tables.general,
-      gly_table=self._oldfield_tables.gly,
-      cispro_table=self._oldfield_tables.cispro,
-      transpro_table=self._oldfield_tables.transpro,
-      prepro_table=self._oldfield_tables.prepro,
-      ileval_table=self._oldfield_tables.ileval)
-    return self.target_phi_psi
+    if 'oldfield' in [self.params.favored, self.params.allowed, self.params.outlier]:
+      self.target_phi_psi = phi_psi_targets(
+          sites_cart=hierarchy.atoms().extract_xyz(),
+          proxies=self._oldfield_proxies,
+          general_table=self._oldfield_tables.general,
+          gly_table=self._oldfield_tables.gly,
+          cispro_table=self._oldfield_tables.cispro,
+          transpro_table=self._oldfield_tables.transpro,
+          prepro_table=self._oldfield_tables.prepro,
+          ileval_table=self._oldfield_tables.ileval)
+      return self.target_phi_psi
+    return None
 
   def update_phi_psi_targets(self, hierarchy):
     self.hierarchy = hierarchy
