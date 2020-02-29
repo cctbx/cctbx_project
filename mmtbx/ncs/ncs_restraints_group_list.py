@@ -471,6 +471,13 @@ class class_ncs_restraints_group_list(list):
         shifts.append(mu_i-current.mean())
     return shifts
 
+  def get_all_copies_selection(self):
+    result = flex.size_t()
+    for nrg in self:
+      for c in nrg.copies:
+        result.extend(c.iselection)
+    return flex.sorted(result)
+
   def get_extended_ncs_selection(self, refine_selection):
     """
     Args:
