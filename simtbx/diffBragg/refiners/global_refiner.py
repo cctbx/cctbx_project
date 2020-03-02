@@ -79,7 +79,7 @@ if rank == 0:
 import sys
 import warnings
 from copy import deepcopy
-from cxid9114.helpers import compare_with_ground_truth
+from simtbx.diffBragg.utils import compare_with_ground_truth
 from cctbx import miller, sgtbx
 from IPython import embed
 
