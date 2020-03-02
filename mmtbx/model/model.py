@@ -466,7 +466,10 @@ class manager(object):
     return self._model_input
 
   def crystal_symmetry(self):
-    return self._crystal_symmetry
+    cs = self._crystal_symmetry
+    if(cs is None or cs.is_empty() or cs.is_nonsense()):
+      return None
+    return cs
 
   def get_restraint_objects(self):
     return self._restraint_objects
@@ -529,7 +532,10 @@ class manager(object):
     return self.pdb_atoms
 
   def get_sites_cart(self):
-    return self.get_xray_structure().sites_cart()
+    if(self._xray_structure is not None):
+      return self.get_xray_structure().sites_cart()
+    else:
+      return self.get_hierarchy().atoms().extract_xyz()
 
   def get_sites_frac(self):
     return self.get_xray_structure().sites_frac()
@@ -715,8 +721,11 @@ class manager(object):
     if self.all_chain_proxies is not None:
       self._xray_structure = self.all_chain_proxies.extract_xray_structure()
     else:
+      cs = self.crystal_symmetry()
+      #assert cs is not None # You cannot create xray_structure without
+      #                      # crystal symmetry. And if you can then it is wrong.
       self._xray_structure = self._pdb_hierarchy.extract_xray_structure(
-          crystal_symmetry=self.crystal_symmetry())
+          crystal_symmetry=cs)
 
   def get_mon_lib_srv(self):
     if self._mon_lib_srv is None:
@@ -1062,9 +1071,11 @@ class manager(object):
   def input_model_format_pdb(self):
     return self._original_model_format == "pdb"
 
-  def model_as_str(self):
-    if(  self.input_model_format_cif()): return self.model_as_mmcif()
-    elif(self.input_model_format_pdb()): return self.model_as_pdb()
+  def model_as_str(self, output_cs=True):
+    if(  self.input_model_format_cif()):
+      return self.model_as_mmcif(output_cs=output_cs)
+    elif(self.input_model_format_pdb()):
+      return self.model_as_pdb(output_cs=output_cs)
     else: raise RuntimeError("Model source is unknown.")
 
   def _process_input_model(self):
