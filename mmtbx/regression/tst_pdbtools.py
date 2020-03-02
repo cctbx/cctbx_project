@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 #import libtbx.load_env
 import sys, os, math
 from cctbx.array_family import flex
-from libtbx.utils import remove_files, search_for
+from libtbx.utils import remove_files
 from mmtbx import utils
 from libtbx.test_utils import approx_equal, not_approx_equal, run_command, \
   show_diff
