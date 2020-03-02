@@ -38,7 +38,6 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.xtol = 1.e-16
         self.stpmin = 1.e-20
         self.stpmax = 1.e20
-
         self.output_dir = None  # place to dump files
         self.min_multiplicity = 3
         self.restart_file = None
@@ -58,6 +57,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.log_fcells = True  # to refine Fcell using logarithms to avoid negative Fcells
         self.use_curvatures = False  # whether to use the curvatures
         self.diag_mode = "always"
+        self.testing_mode =False  #Special flag used by the unit tests, ignore
         self.refine_background_planes = False  # whether to refine the background planes
         self.refine_gain_fac = False  # whether to refine the gain factor
         self.refine_ncells = False  # whether to refine Ncells abc
@@ -81,7 +81,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.plot_images = False  # whether to plot images
         self.iterations = 0  # iteration counter , used internally
         self.FNAMES = {}  # place holder for fnames dictionary so refinement understands layout of the data
-        self.gradient_only=False  # parameter for LBFGS run method (internal to the Fortran code, see scitbx.lbfgs.__init__.py method run_c_plus_plus
+        self.gradient_only = False  # parameter for LBFGS run method (internal to the Fortran code, see scitbx.lbfgs.__init__.py method run_c_plus_plus
         self.plot_residuals = False  # whether to plot residuals
         self.debug = False  # for debug print statements
         self.trad_conv = False  # traditional convergenve
