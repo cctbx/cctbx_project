@@ -5,7 +5,7 @@ import numpy as np
 import sys
 from dxtbx.model import Panel
 from copy import deepcopy
-from cxid9114.helpers import compare_with_ground_truth
+from simtbx.diffBragg.utils import compare_with_ground_truth
 
 
 class RefineAll(RefineRot):
