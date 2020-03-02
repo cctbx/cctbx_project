@@ -381,3 +381,11 @@ def perturb_miller_array(F, factor, perturb_log_vals=True):
 
     mset = miller.set(F.crystal_symmetry(), indices=F.indices(), anomalous_flag=True)
     return miller.array(miller_set=mset, data=Fdat).set_observation_type_xray_amplitude()
+
+
+def map_hkl_list(Hi_lst, anomalous_flag=True, symbol="P43212"):
+    from cctbx import sgtbx
+    sg_type = sgtbx.space_group_info(symbol=symbol).type()
+    Hi_flex = flex.miller_index(tuple(map(tuple, Hi_lst)))
+    miller.map_to_asu(sg_type, anomalous_flag, Hi_flex)
+    return list(Hi_flex)
