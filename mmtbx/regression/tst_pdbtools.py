@@ -13,6 +13,7 @@ import mmtbx.model
 import iotbx.pdb
 from six.moves import cStringIO as StringIO
 from six.moves import zip
+from libtbx import easy_run
 
 class xray_structure_plus(object):
   def __init__(self, file_name):
@@ -110,7 +111,7 @@ END
   file_name = "exercise_basic_pdbtools.pdb"
   pi = iotbx.pdb.input(source_info=None, lines=pdb_str)
   pi.write_pdb_file(file_name=file_name)
-  output = file_name+"_modified.pdb"
+  output = "exercise_basic_pdbtools_mod.pdb"
   xrsp_init = xray_structure_plus(file_name = file_name)
   assert file_name.find('"') < 0
   base = \
@@ -418,12 +419,9 @@ def check_all_none(cmd, xrsp_init, output, verbose, tolerance=1.e-3):
 def check_keep_remove_conflict(cmd, output, verbose):
   cmd += " keep=all remove=all "
   print(cmd)
-  cmd_result = run_command(command=cmd, verbose=verbose, sorry_expected=True)
-  sorry_lines = search_for(
-    pattern="Sorry: 'keep' and 'remove' keywords cannot be used simultaneously.",
-    mode="==",
-    lines=cmd_result.stdout_lines)
-  assert len(sorry_lines) == 1
+  r = easy_run.go(cmd)
+  assert r.stdout_lines[-1]==\
+    "Sorry: 'keep' and 'remove' keywords cannot be used simultaneously."
 
 def exercise_multiple():
   pdb_str = """\
@@ -521,7 +519,7 @@ END
     if(line.startswith("ATOM") or line.startswith("HETATM")):
       lines1.append(line)
   lines2 = []
-  for line in open("exercise_no_cryst1.pdb_modified.pdb","r").readlines():
+  for line in open("exercise_no_cryst1_modified.pdb","r").readlines():
     line = line.strip()
     assert line.count("CRYST1") == 0
     if(line.startswith("ATOM") or line.startswith("HETATM")):
@@ -559,7 +557,7 @@ END
   run_command(command=cmd)
   gly_atom_names = [" N  ", " CA ", " C  ", " O  ", " CB "]
   pdb_inp = iotbx.pdb.hierarchy.input(
-    file_name="exercise_exercise_truncate_to_polyala.pdb_modified.pdb")
+    file_name="exercise_exercise_truncate_to_polyala_modified.pdb")
   for a in pdb_inp.hierarchy.atoms_with_labels():
     assert a.name in gly_atom_names
 
@@ -573,7 +571,7 @@ END
   cmd='phenix.pdbtools tmp_cl.pdb charge_selection="element Cl" charge=-1'
   print(cmd)
   run_command(command=cmd, verbose=False)
-  pdb_in = file_reader.any_file("tmp_cl.pdb_modified.pdb").file_object
+  pdb_in = file_reader.any_file("tmp_cl_modified.pdb").file_object
   hierarchy = pdb_in.hierarchy
   xrs = pdb_in.xray_structure_simple()
   assert (xrs.scatterers()[0].scattering_type == 'Cl1-')
@@ -619,10 +617,10 @@ TER
   cmd = 'phenix.pdbtools "%s" renumber_residues=true'%ifn
   print(cmd)
   run_command(command=cmd, verbose=False)
-  for line1, line2 in zip(open(ifn+"_modified.pdb").readlines(), expected_output_pdb.splitlines()):
+  for line1, line2 in zip(open("exercise_renumber_residues_modified.pdb").readlines(), expected_output_pdb.splitlines()):
     line1 = line1.strip()
     line2 = line2.strip()
-    assert line1 == line2
+    assert line1 == line2,[line1, line2]
   # now only a selected chain
   expected_output_pdb_2 = """\
 ATOM      1  O   GLY A   3       1.434   1.460   2.496  1.00  6.04           O
@@ -644,13 +642,13 @@ TER
   cmd = "phenix.pdbtools \"%s\" renumber_residues=true modify.selection=\"chain B\"" % ifn
   print(cmd)
   run_command(command=cmd, verbose=False)
-  new_lines = open(ifn+"_modified.pdb").readlines()
+  new_lines = open("exercise_renumber_residues_modified.pdb").readlines()
   for line1, line2 in zip(new_lines, expected_output_pdb_2.splitlines()):
     assert (line1.strip() == line2.strip())
   cmd="phenix.pdbtools \"%s\" increment_resseq=10 modify.selection=\"chain B\"" % ifn
   print(cmd)
   run_command(command=cmd, verbose=False)
-  pdb_new = open(ifn+"_modified.pdb").read()
+  pdb_new = open("exercise_renumber_residues_modified.pdb").read()
   expected_output_pdb_3 = """\
 ATOM      1  O   GLY A   3       1.434   1.460   2.496  1.00  6.04           O
 ATOM      2  O   CYS A   7       2.196   4.467   3.911  1.00  4.51           O
@@ -703,7 +701,7 @@ ATOM     12  OH  TYR    22      -1.452   2.696  -2.817  1.00 10.00           O
   cmd = 'phenix.pdbtools "%s" neutralize_scatterers=true adp.set_b_iso=10'%ifn
   print(cmd)
   run_command(command=cmd, verbose=False)
-  for line1, line2 in zip(open(ifn+"_modified.pdb").readlines(), expected_output_pdb.splitlines()):
+  for line1, line2 in zip(open(ifn.replace(".pdb","_modified.pdb")).readlines(), expected_output_pdb.splitlines()):
     line1 = line1.strip()
     line2 = line2.strip()
     assert line1 == line2
@@ -774,7 +772,7 @@ END
     "remove_fraction=0.1"])
   print(cmd)
   run_command(command=cmd, verbose=False)
-  pi = iotbx.pdb.input(file_name="exercise_remove_atoms.pdb_modified.pdb")
+  pi = iotbx.pdb.input(file_name="exercise_remove_atoms_modified.pdb")
   ph_in = pi.construct_hierarchy()
   s2 = ph_in.atoms_size()
   f = s2*100./s1
@@ -792,7 +790,7 @@ ATOM      3  C   GLY A   1      -8.015   3.140   4.419  1.00 16.16           C
 ATOM      4  O   GLY A   1      -7.523   2.521   5.381  1.00 16.78           O  """)
   cmd = "phenix.pdbtools tmp_pdbtools_cb_op.pdb change_of_basis='a,c,b'"
   run_command(command=cmd, verbose=False)
-  lines = open("tmp_pdbtools_cb_op.pdb_modified.pdb").readlines()
+  lines = open("tmp_pdbtools_cb_op_modified.pdb").readlines()
   for line in lines :
     if line.startswith("CRYST1"):
       assert (line.strip() ==
@@ -847,21 +845,12 @@ loop_
     "rename_chain_id.new_id=C"])
   print(cmd)
   run_command(command=cmd, verbose=False)
-  assert os.path.isfile(f.name+"_modified.pdb")
-  pdb_inp = iotbx.pdb.input(file_name=f.name+"_modified.pdb")
-  assert pdb_inp.file_type() == "pdb"
+  ofn = f.name[:].replace(".cif","_modified.cif")
+  assert os.path.isfile(ofn)
+  pdb_inp = iotbx.pdb.input(file_name=ofn)
+  assert pdb_inp.file_type() == "mmcif"
   hierarchy = pdb_inp.construct_hierarchy()
   assert [chain.id for chain in hierarchy.chains()] == ['C', 'B']
-  cmd = " ".join(["phenix.pdbtools", "\"%s\"" % f.name,
-    "adp.convert_to_anisotropic=True",
-    "output.format=mmcif"])
-  print(cmd)
-  run_command(command=cmd, verbose=False)
-  assert os.path.isfile(f.name+"_modified.cif")
-  pdb_inp = iotbx.pdb.input(file_name=f.name+"_modified.cif")
-  assert pdb_inp.file_type() == "mmcif"
-  xs = pdb_inp.xray_structure_simple()
-  assert xs.use_u_aniso().all_eq(True)
 
 def exercise_mmcif_support_2(prefix="tst_pdbtools_mmcif2"):
   f = open("%s.pdb" % prefix, 'w')
@@ -915,10 +904,14 @@ ATOM      2  CA  GLN A  56      22.670  12.004   2.148  1.00 39.46           C
 """)
   f.close()
   cmd = " ".join([
+      "phenix.pdb_as_cif",
+      "%s.pdb" % prefix])
+  run_command(command=cmd, verbose=False)
+  cmd = " ".join([
       "phenix.pdbtools",
-      "%s.pdb" % prefix,
-      "output.format=mmcif",
-      "output.file_name=%s.cif" % prefix])
+      "%s.cif" % prefix,
+      "suffix=none",
+      "output.prefix=%s" % prefix])
   print(cmd)
   run_command(command=cmd, verbose=False)
   cif_f = open("%s.cif" % prefix, 'r')
@@ -982,7 +975,7 @@ END
   cmd = "phenix.pdbtools tst_pdbtools_move_waters.pdb move_waters_last=True"
   print(cmd)
   run_command(command=cmd, verbose=False)
-  pdb_new = open("tst_pdbtools_move_waters.pdb_modified.pdb").read()
+  pdb_new = open("tst_pdbtools_move_waters_modified.pdb").read()
   assert pdb_new == pdb_out, pdb_new
 
 def exercise_stop_for_unknowns():
@@ -1016,7 +1009,7 @@ ATOM     19  O  BHOH A   4       4.132   9.963   7.800  0.50 15.00           O
   cmd = "phenix.pdbtools tst_pdbtools_alt_confs.pdb remove_alt_confs=True"
   print(cmd)
   run_command(command=cmd, verbose=False)
-  pdb_new = open("tst_pdbtools_alt_confs.pdb_modified.pdb").read()
+  pdb_new = open("tst_pdbtools_alt_confs_modified.pdb").read()
   assert (pdb_new == """\
 ATOM      1  O   HOH A   2       5.131   5.251   5.823  1.00 10.00           O
 ATOM      2  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
@@ -1030,7 +1023,7 @@ END
   cmd = "phenix.pdbtools tst_pdbtools_alt_confs.pdb remove_alt_confs=True " +\
     "always_keep_one_conformer=True"
   run_command(command=cmd, verbose=False)
-  pdb_new = open("tst_pdbtools_alt_confs.pdb_modified.pdb").read()
+  pdb_new = open("tst_pdbtools_alt_confs_modified.pdb").read()
   assert (pdb_new == """\
 ATOM      1  O   HOH A   2       5.131   5.251   5.823  1.00 10.00           O
 ATOM      2  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
@@ -1066,18 +1059,18 @@ END
   print(cmd)
   run_command(command=cmd, verbose=False)
   pi_out = iotbx.pdb.input(
-    file_name="exercise_convert_met_to_semet.pdb_modified.pdb"
+    file_name="exercise_convert_met_to_semet_modified.pdb"
     ).construct_hierarchy()
   for rg in pi_out.residue_groups():
       for rn in rg.unique_resnames():
         assert rn=="MSE"
   cmd = " ".join([
     "phenix.pdbtools",
-    "exercise_convert_met_to_semet.pdb_modified.pdb",
+    "exercise_convert_met_to_semet_modified.pdb",
     "convert_semet_to_met=true"])
   run_command(command=cmd, verbose=False)
   pi_out = iotbx.pdb.input(
-    file_name="exercise_convert_met_to_semet.pdb_modified.pdb_modified.pdb"
+    file_name="exercise_convert_met_to_semet_modified_modified.pdb"
     ).construct_hierarchy()
   for rg in pi_out.residue_groups():
       for rn in rg.unique_resnames():
@@ -1130,7 +1123,8 @@ END
         "phenix.pdbtools",
         "%s.pdb"%prefix,
         "%s=True" % o,
-        "output.file_name=%s_%s.pdb"%(o,prefix)])
+        "suffix=none",
+        "output.prefix=%s_%s"%(o,prefix)])
     print(cmd)
     run_command(command=cmd, verbose=False)
     pdb_new = open("%s_%s.pdb"%(o,prefix)).read()
@@ -1163,21 +1157,21 @@ END
 
 def exercise(args):
   exercise_switch_rotamers()
-  #exercise_mmcif_support_2()
-  #exercise_basic()
-  #exercise_multiple()
-  #exercise_no_cryst1()
-  #exercise_renumber_residues()
-  #exercise_change_of_basis()
-  #exercise_move_waters()
-  #exercise_remove_alt_confs()
-  #exercise_truncate_to_polyala()
-  #exercise_convert_met_to_semet()
-  #exercise_set_charge()
-  #exercise_neutralize_scatterers()
-  #exercise_remove_atoms()
-  #exercise_mmcif_support()
-  #exercise_segid_manipulations()
+  exercise_mmcif_support_2()
+  exercise_basic()
+  exercise_multiple()
+  exercise_no_cryst1()
+  exercise_renumber_residues()
+  exercise_change_of_basis()
+  exercise_move_waters()
+  exercise_remove_alt_confs()
+  exercise_truncate_to_polyala()
+  exercise_convert_met_to_semet()
+  exercise_set_charge()
+  exercise_neutralize_scatterers()
+  exercise_remove_atoms()
+  exercise_mmcif_support()
+  exercise_segid_manipulations()
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

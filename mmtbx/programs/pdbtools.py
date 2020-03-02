@@ -46,11 +46,11 @@ output {
     cs = self.model.crystal_symmetry()
     if(cs is None or cs.is_empty() or cs.is_nonsense()):
       print("Crystal symmetry undefined, creating fake P1 box.")
-      crystal_symmetry = \
+      box_crystal_symmetry = \
         uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
           sites_cart   = self.model.get_sites_cart(),
           buffer_layer = 5).crystal_symmetry()
-      self.model.set_crystal_symmetry_if_undefined(cs = cs)
+      self.model.set_crystal_symmetry_if_undefined(cs = box_crystal_symmetry)
     print('Performing manipulations', file=self.logger)
     self.model = mmtbx.pdbtools.modify(
       model  = self.model,
@@ -73,7 +73,10 @@ output {
       suffix=None,
       serial=Auto)
     print('Writing output model', file=self.logger)
-    self.data_manager.write_model_file(self.model.model_as_str(), ofn)
+    output_cs=True
+    if(cs is None): output_cs = False
+    self.data_manager.write_model_file(self.model.model_as_str(
+      output_cs=output_cs), ofn)
 
   def get_results(self):
     return self.model
