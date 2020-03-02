@@ -12,11 +12,18 @@ import numpy as np
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg import utils
-from simtbx.diffBragg.refiners import RefineNcells
+from simtbx.diffBragg.refiners import RefineNcells, RefineAll
+from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager
 
 
 ucell = (85.2, 96, 124, 90, 105, 90)
 symbol = "P121"
+
+UcellMan = MonoclinicManager(
+    a=ucell[0],
+    b=ucell[1],
+    c=ucell[2],
+    beta=ucell[4]*np.pi/180.)
 
 # generate a random raotation
 rotation = Rotation.random(num=1, random_state=1107)[0]
@@ -79,22 +86,33 @@ idx = np.random.permutation(n_spots)[:n_kept]
 spot_roi = spot_roi[idx]
 tilt_abc = tilt_abc[idx]
 
-RUC = RefineNcells(
+#RUC = RefineNcells(
+#    spot_rois=spot_roi,
+#    abc_init=tilt_abc,
+#    img=img,
+#    SimData_instance=SIM,
+#    plot_images=args.plot,
+#    plot_residuals=True)
+
+RUC = RefineAll(
     spot_rois=spot_roi,
     abc_init=tilt_abc,
     img=img,
     SimData_instance=SIM,
     plot_images=args.plot,
-    plot_residuals=True)
+    plot_residuals=True,
+    ucell_manager=UcellMan)
 
 RUC.refine_Amatrix = False
+RUC.refine_Umatrix = False
+RUC.refine_Bmatrix = False
 RUC.refine_ncells = True
 RUC.refine_gain_fac = False
 RUC.refine_crystal_scale = False
 RUC.trad_conv = True
-RUC.trad_conv_eps = 1e-5
-RUC.max_calls = 100
+RUC.trad_conv_eps = 1e-8
+RUC.max_calls = 1050
 RUC.run()
 
-assert round(np.exp(RUC.x[-3])) == 19
+assert round(RUC.D.get_value(9)) == 19
 print("OK.")

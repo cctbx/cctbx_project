@@ -232,6 +232,10 @@ class FatRefiner(PixelRefinement):
 
         self.a = self.b = self.c = None  # tilt plan place holder
 
+        # optional properties
+        self.FNAMES = None
+        self.PROC_FNAMES = None
+
     def setup_plots(self):
         if rank == 0:
             if self.plot_fcell:
@@ -250,6 +254,7 @@ class FatRefiner(PixelRefinement):
             if self.plot_images:
                 if self.plot_residuals:
                     self.fig = plt.figure()
+                    #FIXME need an import
                     self.ax = self.fig.gca(projection='3d')
                     self.ax.set_yticklabels([])
                     self.ax.set_xticklabels([])
@@ -388,7 +393,9 @@ class FatRefiner(PixelRefinement):
             else:
                 self.ncells_xpos[i_shot] = _local_pos
                 _local_pos += self.n_ncells_pos
-                self.x[self.ncells_xpos[i_shot]] = self.S.crystal.Ncells_abc[0]   # TODO: each shot gets own starting Ncells
+                ncells_xval = np_log(self.S.crystal.Ncells_abc[0]-3)
+                #self.x[self.ncells_xpos[i_shot]] = self.S.crystal.Ncells_abc[0]   # TODO: each shot gets own starting Ncells
+                self.x[self.ncells_xpos[i_shot]] = ncells_xval
 
             self.spot_scale_xpos[i_shot] = _local_pos
             _local_pos += 1
@@ -408,7 +415,8 @@ class FatRefiner(PixelRefinement):
         # img_totals = []
         for i_shot in self.ASU:
             for i_h, h in enumerate(self.ASU[i_shot]):
-                fname_totals.append(self.FNAMES[i_shot])
+                if self.FNAMES is not None:
+                    fname_totals.append(self.FNAMES[i_shot])
                 panel_id_totals.append(self.PANEL_IDS[i_shot][i_h])
                 hkl_totals.append(self.idx_from_asu[h])
                 roi_totals.append(self.ROIS[i_shot][i_h])
@@ -432,7 +440,9 @@ class FatRefiner(PixelRefinement):
                     self.x[self.ucell_xstart[0] + i_cell] = self.UCELL_MAN[0].variables[i_cell]
 
             if self.global_ncells_param:
-                self.x[self.ncells_xpos[0]] = self.S.crystal.Ncells_abc[0]
+                ncells_xval = np_log(self.S.crystal.Ncells_abc[0]-3)
+                #self.x[self.ncells_xpos[0]] = self.S.crystal.Ncells_abc[0]
+                self.x[self.ncells_xpos[0]] = ncells_xval
 
             print("----loading fcell data")
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index
@@ -493,7 +503,7 @@ class FatRefiner(PixelRefinement):
         if comm.rank == 0:
             print("--4 print initial stats")
             print ("unpack")
-        rotx, roty, rotz, uc_vals, ncells_vals, scale_vals, _ = self._unpack_internal(self.x)
+        rotx, roty, rotz, uc_vals, ncells_vals, scale_vals, _ = self._unpack_internal(self.x, lst_is_x=True)
         if comm.rank == 0 and self.big_dump:
             print("making frame")
 
@@ -532,8 +542,7 @@ class FatRefiner(PixelRefinement):
             self.D.refine(self._fcell_id)
         self.D.initialize_managers()
 
-    def _unpack_internal(self, lst):
-        # NOTE: This is not a generalized method, only works in context of D9114 global refinement
+    def _unpack_internal(self, lst, lst_is_x=False):
         # x = self..as_numpy_array()
         # note n_shots should be specific for this rank
         rotx = [lst[self.rotX_xpos[i_shot]] for i_shot in range(self.n_shots)]
@@ -544,7 +553,12 @@ class FatRefiner(PixelRefinement):
         else:
             ncells_vals = [lst[self.ncells_xpos[i_shot]] for i_shot in range(self.n_shots)]
 
-        scale_vals = [np_exp(lst[self.spot_scale_xpos[i_shot]]) for i_shot in range(self.n_shots)]
+        ncells_vals = list(np_exp(ncells_vals)+3)
+
+        if lst_is_x:
+            scale_vals = [np_exp(lst[self.spot_scale_xpos[i_shot]]) for i_shot in range(self.n_shots)]
+        else:
+            scale_vals = [lst[self.spot_scale_xpos[i_shot]] for i_shot in range(self.n_shots)]
         # this can be used to compare directly
         if self.CRYSTAL_SCALE_TRUTH is not None:
             scale_vals_truths = [self.CRYSTAL_SCALE_TRUTH[i_shot] for i_shot in range(self.n_shots)]
@@ -634,7 +648,8 @@ class FatRefiner(PixelRefinement):
             self.D.set_value(2, self.rot_scale*self.x[self.rotZ_xpos[self._i_shot]])
 
     def _update_ncells(self):
-        self.D.set_value(self._ncells_id, self.x[self.ncells_xpos[self._i_shot]])
+        val = np.exp(self.x[self.ncells_xpos[self._i_shot]])+3
+        self.D.set_value(self._ncells_id, val)
 
     def _update_dxtbx_detector(self):
         # TODO: verify that all panels have same local origin to start with..
@@ -765,7 +780,8 @@ class FatRefiner(PixelRefinement):
                         B = self.get_refined_Bmatrix(i)
                         C = deepcopy(self.CRYSTAL_MODELS[i])
                         C.set_B(B)
-                        C.rotate_around_origin(ax, ang)
+                        if ang > 0:
+                            C.rotate_around_origin(ax, ang)
                         ang_off = compare_with_ground_truth(atru, btru, ctru,
                                                             [C],
                                                             symbol=self.symbol)[0]
@@ -999,13 +1015,13 @@ class FatRefiner(PixelRefinement):
             f = self._mpi_reduce_broadcast(f)
             g = self._mpi_reduce_broadcast(g)
             self.rotx, self.roty, self.rotz, self.uc_vals, self.ncells_vals, self.scale_vals, self.scale_vals_truths = \
-                self._unpack_internal(self.x)
+                self._unpack_internal(self.x, lst_is_x=True)
             self.Grotx, self.Groty, self.Grotz, self.Guc_vals, self.Gncells_vals, self.Gscale_vals, _ = \
-                self._unpack_internal(g)
+                self._unpack_internal(g, lst_is_x=False)
             if self.calc_curvatures:
                 self.curv = self._mpi_reduce_broadcast(self.curv)
                 self.CUrotx, self.CUroty, self.CUrotz, self.CUuc_vals, self.CUncells_vals, self.CUscale_vals, _ = \
-                    self._unpack_internal(self.curv)
+                    self._unpack_internal(self.curv, lst_is_x=False)
             self.tot_fcell_kludge = self._mpi_reduce_broadcast(self.num_Fcell_kludge)
             self.tot_neg_curv = 0
             self.neg_curv_shots = []
@@ -1108,7 +1124,9 @@ class FatRefiner(PixelRefinement):
                           % (misset_median, misset_mean,misset_max, misset_min, n_bad_misset, n_misset, n_broken_misset))
 
                 all_corr_str = ["%.2f" % ic for ic in all_image_corr]
+                print"Correlation stats:"
                 print(", ".join(all_corr_str))
+                print"---------------"
                 n_bad_corr = sum([1 for ic in all_image_corr if ic < 0.25])
                 print("CORRELATION median: %.4f; mean: %.4f, max: %.4f, min %.4f, num <.25: %d/%d;"
                       % (median(all_image_corr), mean(all_image_corr), max(all_image_corr), min(all_image_corr), n_bad_corr, len(all_image_corr) ))
@@ -1293,6 +1311,8 @@ class FatRefiner(PixelRefinement):
             print("CC:")
             self.Fobs.correlation(self.Fref_aligned, use_binning=True).show()
             print("<><><><><><><><> TOP GUN <><><><><><><><>")
+        if self.testing_mode:
+            self.conv_test()
 
     def get_refined_Bmatrix(self, i_shot):
         return self.UCELL_MAN[i_shot].B_recipspace
@@ -1310,13 +1330,10 @@ class FatRefiner(PixelRefinement):
             rx = ry = rz = 0
             if self.refine_Umatrix:
                 if self.refine_rotX:
-                    print "ROTX"
                     rx = self.rot_scale*self.x[self.rotX_xpos[i_shot]]
                 if self.refine_rotY:
-                    print "ROTY"
                     ry = self.rot_scale*self.x[self.rotY_xpos[i_shot]]
                 if self.refine_rotZ:
-                    print "ROTZ"
                     rz = self.rot_scale*self.x[self.rotZ_xpos[i_shot]]
 
             anglesXYZ = rx,ry,rz
@@ -1363,3 +1380,37 @@ class FatRefiner(PixelRefinement):
             fobs.as_mtz_dataset(column_root_label='fobs', wavelength=wavelength).mtz_object().write(save_to_file)
         return fobs
 
+    def conv_test(self):
+        err = []
+        s = ""
+        A = []
+        for i in range(self.n_ucell_param):
+            a = self.x[self.ucell_xstart[0] + i]
+            if i == 3:
+                a = a * 180 / np.pi
+            s += "%.4f " % a
+            A.append(a)
+            err.append(np.abs(self.gt_ucell[i] - a))
+
+        diff = np.abs(np.array(A)-np.array(self.gt_ucell))
+        mn_err = sum(err) / self.n_ucell_param
+
+        Ctru = self.CRYSTAL_GT[0]
+        atru, btru, ctru = Ctru.get_real_space_vectors()
+        ang, ax = self.get_correction_misset(as_axis_angle_deg=True, i_shot=0)
+        B = self.get_refined_Bmatrix(i_shot=0)
+        C = deepcopy(self.CRYSTAL_MODELS[0])
+        C.set_B(B)
+        if ang > 0:
+            C.rotate_around_origin(ax, ang)
+        try:
+            ang_off = compare_with_ground_truth(atru, btru, ctru,
+                                            [C],
+                                            symbol=self.symbol)[0]
+        except RuntimeError:
+            ang_off = 999
+        print "MEAN ERROR=%.4f, ANG OFF %.4f" % (mn_err, ang_off)
+
+        if mn_err < 0.01 and ang_off < 0.004:
+            print "OK"
+            exit()
