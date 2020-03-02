@@ -143,7 +143,7 @@ class nanoBragg_crystal(object):
 
     @staticmethod
     def dummie_Fhkl():
-        from simtbx.nanoBragg.tst_nanoBragg_basic import fcalc_from_pdb
+        from simtbx.diffBragg.utils import fcalc_from_pdb
         return fcalc_from_pdb(resolution=2, algorithm="fft", wavelength=1)
 
     def dxtbx_crystal_with_missetting(self):

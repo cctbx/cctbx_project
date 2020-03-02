@@ -273,7 +273,8 @@ class FatRefiner(PixelRefinement):
     @property
     def n(self):
         """LBFGS property"""
-        return self.n_total_params
+        return len(self.x)
+        #return self.n_total_params
 
     @property
     def n_global_fcell(self):
@@ -542,6 +543,54 @@ class FatRefiner(PixelRefinement):
             self.D.refine(self._fcell_id)
         self.D.initialize_managers()
 
+        #if self.testing_mode:
+
+        #    assert comm.size == 1
+        #    assert self.global_ucell_param
+        #    assert self.global_ncells_param
+        #    from copy import deepcopy
+        #    import numpy as np
+        #    self.x_master = deepcopy(self.x)
+        #    sel = np.zeros(len(self.x), bool)
+        #    if self.refine_background_planes:
+        #        for i in range(n_spots):
+        #            sel[self.bg_a_xstart[0][i]] = True
+        #            sel[self.bg_b_xstart[0][i]] = True
+        #            sel[self.bg_c_xstart[0][i]] = True
+
+        #    if self.refine_ncells:
+        #        sel[self.ncells_xpos[0]] = True
+
+        #    if self.refine_detdist:
+        #        sel[self.originZ_xpos] = True
+
+        #    if self.refine_Fcell:
+        #        sel[self.fcell_xstart: self.fcell_xstart + self.n_global_fcell] = True
+
+        #    if self.refine_Bmatrix:
+        #        for i in range(self.n_ucell_param):
+        #            sel[self.ucell_xstart[0] + i] = True
+
+        #    if self.refine_Umatrix:
+        #        if self.refine_rotX:
+        #            sel[self.rotX_xpos[0]] = True
+        #        if self.refine_rotY:
+        #            sel[self.rotY_xpos[0]] = True
+        #        if self.refine_rotZ:
+        #            sel[self.rotZ_xpos[0]] = True
+
+        #    if self.refine_crystal_scale:
+        #        sel[self.spot_scale_xpos[0]] = True
+
+        #    if self.refine_gain_fac:
+        #        sel[self.gain_xpos] = True
+
+        #    from scitbx.array_family import flex
+        #    self.refine_sel = flex.bool(sel)
+        #    self.x = self.x_master.select(self.refine_sel)
+
+        #    self.refine_sel_pos = np.where(sel)[0]
+
     def _unpack_internal(self, lst, lst_is_x=False):
         # x = self..as_numpy_array()
         # note n_shots should be specific for this rank
@@ -549,13 +598,12 @@ class FatRefiner(PixelRefinement):
         roty = [lst[self.rotY_xpos[i_shot]] for i_shot in range(self.n_shots)]
         rotz = [lst[self.rotZ_xpos[i_shot]] for i_shot in range(self.n_shots)]
         if self.global_ncells_param:
-            ncells_vals = [self.x[self.ncells_xpos[0]]] * len(rotx)
+            ncells_vals = [lst[self.ncells_xpos[0]]] * len(rotx)
         else:
             ncells_vals = [lst[self.ncells_xpos[i_shot]] for i_shot in range(self.n_shots)]
 
-        ncells_vals = list(np_exp(ncells_vals)+3)
-
         if lst_is_x:
+            ncells_vals = list(np_exp(ncells_vals)+3)
             scale_vals = [np_exp(lst[self.spot_scale_xpos[i_shot]]) for i_shot in range(self.n_shots)]
         else:
             scale_vals = [lst[self.spot_scale_xpos[i_shot]] for i_shot in range(self.n_shots)]
@@ -696,9 +744,12 @@ class FatRefiner(PixelRefinement):
         self.ncells_deriv = self.detdist_deriv = self.fcell_deriv = 0
         self.ncells_second_deriv = self.detdist_second_deriv = self.fcell_second_deriv = 0
         if self.refine_ncells:
+            val = np.exp(self.x[self.ncells_xpos[self._i_shot]])
             self.ncells_deriv = self.D.get_derivative_pixels(self._ncells_id).as_numpy_array()
+            self.ncells_deriv *= val
             if self.calc_curvatures:
                 self.ncells_second_deriv = self.D.get_second_derivative_pixels(self._ncells_id).as_numpy_array()
+                self.ncells_second_deriv *= (val*val)  # NOTE: check me
         if self.refine_detdist:
             self.detdist_deriv = self.D.get_derivative_pixels(self._originZ_id).as_numpy_array()
             if self.calc_curvatures:
@@ -761,6 +812,13 @@ class FatRefiner(PixelRefinement):
                 fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
                 np.savez(outf, fvals=fvals, x=self.x.as_numpy_array())
 
+            #if self.testing_mode:
+            #    print list(self.x)
+            #    print self.refine_sel_pos
+            #    for sel_i, sel_xpos in enumerate(self.refine_sel_pos):
+            #        self.x_master[sel_xpos] = self.x[sel_i]
+            #    self.x = deepcopy(self.x_master)
+
             f = 0
             g = flex_double(self.n)
             if self.calc_curvatures:
@@ -768,7 +826,8 @@ class FatRefiner(PixelRefinement):
 
             self.gain_fac = self.x[self.gain_xpos]
             G2 = self.gain_fac ** 2
-            self._update_Fcell()  # update the structure factor with the new x  
+
+            self._update_Fcell()  # update the structure factor with the new x
 
             if self.CRYSTAL_GT is not None:
                 all_ang_off = []
@@ -831,8 +890,10 @@ class FatRefiner(PixelRefinement):
                     self._extract_pixel_data()
                     self._evaluate_averageI()
 
+                    #if i_spot==46:
+                    #    embed()
                     # here we can correlate modelLambda with Imeas
-                    _overlay_corr,_ = pearsonr(self.Imeas.ravel(), self.model_Lambda.ravel())
+                    _overlay_corr, _ = pearsonr(self.Imeas.ravel(), self.model_Lambda.ravel())
                     self.image_corr[self._i_shot] += _overlay_corr
                     if self.poisson_only:
                         self._evaluate_log_averageI()
@@ -1028,44 +1089,6 @@ class FatRefiner(PixelRefinement):
             if self.calc_curvatures:
                 self.tot_neg_curv = sum(self.curv < 0)
 
-            #if comm.rank == 0:
-                #if self.plot_statistics:
-                #    self.ax1.clear()
-                #    self.ax2.clear()
-                #    self.ax3.clear()
-                #    self.ax4.clear()
-                #    # plot unit cell a
-                #    self.ax1.hist(a, bins='auto')
-                #    # plot unit cell c
-                #    self.ax2.hist(c, bins='auto')
-                #    # plot restoring missets
-                #    self.ax3.hist(rotx, bins='auto', histtype='step', label='x')
-                #    self.ax3.hist(roty, bins='auto', histtype='step', label='y')
-                #    self.ax3.hist(rotz, bins='auto', histtype='step', label='z')
-                #    # plot grad norms per shot as a bar plot
-                #    assert (self.n_total_params - self.n_global_params) % self.n_per_shot_params == 0
-                #    total_shots = int((self.n_total_params - 2) / self.n_per_shot_params)
-                #    g_norm_per_shot = [norm(g[self.n_per_shot_params * i: self.n_per_shot_params * (i + 1)])
-                #                       for i in range(total_shots)]
-
-                #    curv_per_shot = [self.curv[self.n_per_shot_params * i: self.n_per_shot_params * (i + 1)]
-                #                     for i in range(total_shots)]
-                #    idx_all_pos, idx_has_neg = [], []
-                #    for i in range(total_shots):
-                #        if not np_all(curv_per_shot[i].as_numpy_array() >= 0):
-                #            idx_has_neg.append(i)
-                #        else:
-                #            idx_all_pos.append(i)
-
-                #    self.ax4.bar(idx_has_neg,
-                #                 height=[g_norm_per_shot[i] for i in idx_has_neg],
-                #                 width=0.8, color='r')
-                #    self.ax4.bar(idx_all_pos,
-                #                 height=[g_norm_per_shot[i] for i in idx_all_pos],
-                #                 width=0.8, color='g')
-                #    self.ax4.set_yscale("log")
-                #    self.fig.canvas.draw()
-                #    plt.pause(.02)
             self._f = f
             self._g = g
             self.g = g
@@ -1136,10 +1159,16 @@ class FatRefiner(PixelRefinement):
             self.iterations += 1
             self.f_vals.append(f)
 
+            #if self.testing_mode:
+            #    self.x = self.x_master.select(self.refine_sel)
+            #    self._g = self._g.select(self.refine_sel)
+            #    if self.d is not None:
+            #        self.d = self.d.select(self.refine_sel)
+            #    self.g = self.g.select(self.refine_sel)
+
             if self.calc_curvatures and not self.use_curvatures:
                 if self.num_positive_curvatures == self.use_curvatures_threshold:
                     raise BreakToUseCurvatures
-
         return self._f, self._g
 
     def _mpi_reduce_broadcast(self, var):
@@ -1213,19 +1242,22 @@ class FatRefiner(PixelRefinement):
 
         if self.refine_Umatrix or self.refine_Bmatrix or self.refine_crystal_scale or self.refine_ncells:
 
-            master_data = {"u0": self.uc_vals[0], "u1": self.uc_vals[1],
-                           "Ncells": self.ncells_vals,
+            master_data = {"Ncells": self.ncells_vals,
                            "scale": self.scale_vals,
                            "rotx": self.rotx,
                            "roty": self.roty,
                            "rotz": self.rotz}
+            for i_uc in range(self.n_ucell_param):
+                master_data["uc%d" % i_uc] = self.uc_vals[i_uc]
+
 
             master_data = pandas.DataFrame(master_data)
             master_data["gain"] = self.x[self.gain_xpos]
             if self.big_dump:
-                print(master_data.to_string(float_format="%2.6g"))
+                print(master_data.to_string(float_format="%2.7g"))
 
     def print_step_grads(self):
+
         names = self.UCELL_MAN[self._i_shot].variable_names
         vals = self.UCELL_MAN[self._i_shot].variables
         ucell_labels = []
@@ -1239,29 +1271,32 @@ class FatRefiner(PixelRefinement):
         xnorm = norm(self.x)
 
         if self.big_dump:
-            master_data = {"Guc0": self.Guc_vals[0], "Guc1": self.Guc_vals[1],
-                           "GNcells": self.Gncells_vals,
+            master_data ={"GNcells": self.Gncells_vals,
                            "Gscale": self.Gscale_vals,
                            "Grotx": self.Grotx,
                            "Groty": self.Groty,
                            "Grotz": self.Grotz}
+            for i_uc in range(self.n_ucell_param):
+                master_data["Guc%d" %i_uc]= self.Guc_vals[i_uc]
             master_data = pandas.DataFrame(master_data)
             master_data["Ggain"] = self._g[self.gain_xpos]
-            print(master_data.to_string(float_format="%.3g"))
+            print(master_data.to_string(float_format="%2.7g"))
 
         if self.calc_curvatures:
             if self.refine_Umatrix or self.refine_Bmatrix or self.refine_crystal_scale or self.refine_ncells:
-
-                master_data = {"CUuc0": self.CUuc_vals[0], "CUuc1": self.CUuc_vals[1],
-                               "CUNcells": self.CUncells_vals,
+                master_data = {"CUNcells": self.CUncells_vals,
                                "CUscale": self.CUscale_vals,
                                "CUrotx": self.CUrotx,
                                "CUroty": self.CUroty,
                                "CUrotz": self.CUrotz}
+
+                for i_uc in range(self.n_ucell_param):
+                    master_data["CUuc%d" % i_uc] = self.CUuc_vals[i_uc]
+
                 master_data = pandas.DataFrame(master_data)
                 master_data["CUgain"] = self.curv[self.gain_xpos]
                 if self.big_dump:
-                    print(master_data.to_string(float_format="%.3g"))
+                    print(master_data.to_string(float_format="%2.7g"))
 
         # Compute the mean, min, max, variance  and median crystal scale
         # Note we must also include the spot_scale in the diffBragg instance if its not unity
@@ -1297,7 +1332,7 @@ class FatRefiner(PixelRefinement):
         stat_bins_str = ""
         Istat_bins_str = ""
         print(
-                    "\t|G|=%2.7g, eps*|X|=%2.7g, R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n%s\n%s\n%s"
+                    "\t|G|=%f, eps*|X|=%f, R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n%s\n%s\n%s"
                     % (self.gnorm, Xnorm * self.trad_conv_eps, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
                        ", ".join(map(str, self.neg_curv_shots)), scale_stats_string, stat_bins_str,  Istat_bins_str))
 
@@ -1370,7 +1405,9 @@ class FatRefiner(PixelRefinement):
     def get_optimized_mtz(self, save_to_file=None, wavelength=1):
         from cctbx import crystal
         # TODO update for non global unit cell case (average over unit cells)
+
         self._update_Fcell()  # just in case update the Fobs
+
         um = self.UCELL_MAN[0]
         sym = crystal.symmetry(unit_cell=um.unit_cell_parameters, space_group_symbol=self.symbol)
         mset_obs = miller.set(sym, self.Fobs.indices(), anomalous_flag=True)
@@ -1411,6 +1448,8 @@ class FatRefiner(PixelRefinement):
             ang_off = 999
         print "MEAN ERROR=%.4f, ANG OFF %.4f" % (mn_err, ang_off)
 
-        if mn_err < 0.01 and ang_off < 0.004:
+        ncells_val = np.exp(self.x[self.ncells_xpos[0]])+3
+        ncells_resid = abs(ncells_val - self.gt_ncells)
+        if mn_err < 0.01 and ang_off < 0.004 and ncells_resid < 0.1:
             print "OK"
             exit()
