@@ -160,14 +160,13 @@ class RefineAll(RefineRot):
         self.ncells_deriv = self.detdist_deriv = 0
         self.ncells_second_deriv = self.detdist_second_deriv = 0
         if self.refine_ncells:
-
             self.ncells_deriv = self.D.get_derivative_pixels(self._ncells_id).as_numpy_array()
             val = np.exp(self.x[-4])
             self.ncells_deriv *= val
-
+            #print "MCDOLANZ: %3.9g" % sum(sum(self.ncells_deriv))
             if self.calc_curvatures:
                 self.ncells_second_deriv = self.D.get_second_derivative_pixels(self._ncells_id).as_numpy_array()
-                self.ncells_second_deriv *= val
+                self.ncells_second_deriv *= (val*val)  # NOTE: check me
 
         if self.refine_detdist:
             self.detdist_deriv = self.D.get_derivative_pixels(self._originZ_id).as_numpy_array()
@@ -231,6 +230,10 @@ class RefineAll(RefineRot):
                 one_minus_k_over_Lambda = (1. - Imeas * one_over_Lambda)
                 if self.calc_curvatures:
                     k_over_squared_Lambda = Imeas * one_over_Lambda * one_over_Lambda
+
+                #if i_spot == 46:
+                #    from IPython import embed
+                #    embed()
 
                 # compute gradients for background plane constants a,b,c
                 xr = self.xrel[i_spot]  # fast scan pixels
@@ -348,7 +351,6 @@ class RefineAll(RefineRot):
             A.append(a)
             err.append(np.abs(self.gt_ucell[i] - a))
 
-        diff = np.abs(np.array(A)-np.array(self.gt_ucell))
         mn_err = sum(err) / self.n_ucell_param
 
         Ctru = self.CRYSTAL_GT[0]
@@ -367,7 +369,9 @@ class RefineAll(RefineRot):
             ang_off = 999
         print "MEAN ERROR=%.4f, ANG OFF %.4f" % (mn_err, ang_off)
 
-        if mn_err < 0.01 and ang_off < 0.004:
+        ncells_val = np.exp(self.x[-4])+3
+        ncells_resid = abs(ncells_val - self.gt_ncells)
+        if mn_err < 0.01 and ang_off < 0.004 and ncells_resid < 0.1:
             print("OK")
             exit()
 

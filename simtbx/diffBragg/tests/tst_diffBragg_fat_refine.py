@@ -28,6 +28,7 @@ from simtbx.nanoBragg import shapetype
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg import utils
+from simtbx.diffBragg.utils import fcalc_from_pdb
 from simtbx.diffBragg.refiners import RefineAll
 from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager
 
@@ -69,6 +70,7 @@ nbcryst.dxtbx_crystal = C   # simulate ground truth
 nbcryst.thick_mm = 0.1
 Ncells_gt = 12, 12, 12
 nbcryst.Ncells_abc = Ncells_gt  # ground truth Ncells
+nbcryst.miller_array = fcalc_from_pdb(resolution=2, wavelength=1,algorithm='fft', ucell=ucell, symbol=symbol)
 print("Ground truth ncells = %f" % (nbcryst.Ncells_abc[0]))
 
 SIM = SimData()
@@ -297,6 +299,7 @@ RUC.verbose = True
 RUC.big_dump = True
 
 RUC.gt_ucell = ucell[0], ucell[1], ucell[2], ucell[4]
+RUC.gt_ncells = Ncells_gt[0]
 RUC.testing_mode = True
 RUC.run(setup_only=False)
 #if RUC.hit_break_to_use_curvatures:

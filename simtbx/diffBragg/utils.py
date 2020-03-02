@@ -454,3 +454,42 @@ def compare_with_ground_truth(a, b, c, dxcryst_models, symbol="C121", verbose=Fa
         angles.append(hyp)
 
     return angles
+
+
+def fcalc_from_pdb(resolution, algorithm=None, wavelength=0.9, anom=True, ucell=None, symbol=None):
+    # borrowed fro:m tst_nanoBragg_basic
+    pdb_lines = """HEADER TEST
+CRYST1   50.000   60.000   70.000  90.00  90.00  90.00 P 1
+ATOM      1  O   HOH A   1      56.829   2.920  55.702  1.00 20.00           O
+ATOM      2  O   HOH A   2      49.515  35.149  37.665  1.00 20.00           O
+ATOM      3  O   HOH A   3      52.667  17.794  69.925  1.00 20.00           O
+ATOM      4  O   HOH A   4      40.986  20.409  18.309  1.00 20.00           O
+ATOM      5  O   HOH A   5      46.896  37.790  41.629  1.00 20.00           O
+ATOM      6 SED  MSE A   6       1.000   2.000   3.000  1.00 20.00          SE
+END
+"""
+    from iotbx import pdb
+    pdb_inp = pdb.input(source_info=None, lines=pdb_lines)
+    xray_structure = pdb_inp.xray_structure_simple()
+    if ucell is not None:
+        assert symbol is not None
+        from cctbx.xray import structure
+        from cctbx import crystal
+        crystal_sym = crystal.symmetry(unit_cell=ucell, space_group_symbol=symbol)
+        xray_structure = structure(scatterers=xray_structure.scatterers(), crystal_symmetry=crystal_sym)
+        print "MADE UCELL SYM"
+    # take a detour to insist on calculating anomalous contribution of every atom
+    scatterers = xray_structure.scatterers()
+    if anom:
+        from cctbx.eltbx import henke
+        for sc in scatterers:
+            expected_henke = henke.table(sc.element_symbol()).at_angstrom(wavelength)
+            sc.fp = expected_henke.fp()
+            sc.fdp = expected_henke.fdp()
+    # how do we do bulk solvent?
+    primitive_xray_structure = xray_structure.primitive_setting()
+    P1_primitive_xray_structure = primitive_xray_structure.expand_to_p1()
+    fcalc = P1_primitive_xray_structure.structure_factors(
+        d_min=resolution, anomalous_flag=anom, algorithm=algorithm).f_calc()
+    return fcalc.amplitudes()
+
