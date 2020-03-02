@@ -31,12 +31,14 @@ class model(object):
     return cls(fo_sq=fo_sq, xray_structure=xs,
                constraints=[],
                restraints_manager=restraints.manager(),
-               weighting_scheme=least_squares.sigma_weighting())
+               weighting_scheme=least_squares.sigma_weighting(),
+               wavelength=xs.wavelength)
 
   def __init__(self, fo_sq, xray_structure,
                constraints, restraints_manager, weighting_scheme,
                temperature_in_celsius=20,
-               conformer_indices=None):
+               conformer_indices=None,
+               wavelength=None):
     self.fo_sq = fo_sq
     self.xray_structure = xray_structure
     self.constraints = constraints
@@ -47,6 +49,7 @@ class model(object):
       conformer_indices=conformer_indices
     )
     self.temperature_in_celsius = temperature_in_celsius
+    self.wavelength = wavelength
 
   def make_anisotropic(self):
     self.xray_structure.convert_to_anisotropic()

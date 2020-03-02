@@ -44,7 +44,7 @@ def run(filenames, options):
   else:
     out_root, out_ext = os.path.splitext(output_filename)
 
-  # ...and handle the hkl format specifiers requested by 
+  # ...and handle the hkl format specifiers requested by
   # iotbx.reflection_file_reader
   if "=amplitudes" in reflections_filename:
     reflections_realfilename = \
@@ -84,6 +84,11 @@ def run(filenames, options):
     xm = refinement.model.from_shelx(ins_or_res=input_filename,
                                      hkl=reflections_filename,
                                      strictly_shelxl=False)
+
+  # Load default anomalous scattering factors if wavelength is available
+  wvl=xm.wavelength
+  if wvl:
+    xm.xray_structure.set_inelastic_form_factors(wvl, 'sasaki')
 
   sgi = xm.xray_structure.space_group_info()
   sg = sgi.group()
