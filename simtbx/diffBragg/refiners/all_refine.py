@@ -4,6 +4,8 @@ import pylab as plt
 import numpy as np
 import sys
 from dxtbx.model import Panel
+from copy import deepcopy
+from cxid9114.helpers import compare_with_ground_truth
 
 
 class RefineAll(RefineRot):
@@ -57,7 +59,10 @@ class RefineAll(RefineRot):
         self.x[self.rotZ_xpos] = 0
         for i_uc in range(self.n_ucell_param):
             self.x[self.ucell_xstart + i_uc] = self.ucell_manager.variables[i_uc]
-        self.x[-4] = self.S.crystal.Ncells_abc[0]
+
+
+        #self.x[-4] = self.S.crystal.Ncells_abc[0]
+        self.x[-4] = np.log(self.S.crystal.Ncells_abc[0]-3)
         self.x[-3] = self.S.detector[self._panel_id].get_origin()[2]
         self.x[-2] = self._init_gain  # initial gain for experiment
         self.x[-1] = self._init_scale  # initial scale factor
@@ -114,7 +119,8 @@ class RefineAll(RefineRot):
         self.D.add_diffBragg_spots()
 
     def _update_ncells(self):
-        self.D.set_value(self._ncells_id, self.x[-4])
+        val = np.exp(self.x[-4])+3
+        self.D.set_value(self._ncells_id, val)
 
     def _update_dxtbx_detector(self):
         det = self.S.detector
@@ -154,9 +160,15 @@ class RefineAll(RefineRot):
         self.ncells_deriv = self.detdist_deriv = 0
         self.ncells_second_deriv = self.detdist_second_deriv = 0
         if self.refine_ncells:
+
             self.ncells_deriv = self.D.get_derivative_pixels(self._ncells_id).as_numpy_array()
+            val = np.exp(self.x[-4])
+            self.ncells_deriv *= val
+
             if self.calc_curvatures:
                 self.ncells_second_deriv = self.D.get_second_derivative_pixels(self._ncells_id).as_numpy_array()
+                self.ncells_second_deriv *= val
+
         if self.refine_detdist:
             self.detdist_deriv = self.D.get_derivative_pixels(self._originZ_id).as_numpy_array()
             if self.calc_curvatures:
@@ -324,6 +336,41 @@ class RefineAll(RefineRot):
 
         return self._f, self._g
 
+    def conv_test(self):
+        err = []
+        s = ""
+        A = []
+        for i in range(self.n_ucell_param):
+            a = self.x[self.ucell_xstart + i]
+            if i == 3:
+                a = a * 180 / np.pi
+            s += "%.4f " % a
+            A.append(a)
+            err.append(np.abs(self.gt_ucell[i] - a))
+
+        diff = np.abs(np.array(A)-np.array(self.gt_ucell))
+        mn_err = sum(err) / self.n_ucell_param
+
+        Ctru = self.CRYSTAL_GT[0]
+        atru, btru, ctru = Ctru.get_real_space_vectors()
+        ang, ax = self.get_correction_misset(as_axis_angle_deg=True)
+        B = self.get_refined_Bmatrix()
+        C = deepcopy(self.CRYSTAL_MODELS[0])
+        C.set_B(B)
+        if ang > 0:
+            C.rotate_around_origin(ax, ang)
+        try:
+            ang_off = compare_with_ground_truth(atru, btru, ctru,
+                                            [C],
+                                            symbol=self.symbol)[0]
+        except RuntimeError:
+            ang_off = 999
+        print "MEAN ERROR=%.4f, ANG OFF %.4f" % (mn_err, ang_off)
+
+        if mn_err < 0.01 and ang_off < 0.004:
+            print("OK")
+            exit()
+
     def print_step(self, message, target):
         names = self.ucell_manager.variable_names
         vals = self.ucell_manager.variables
@@ -335,7 +382,7 @@ class RefineAll(RefineRot):
         rotZ = self.x[self.rotZ_xpos]
         rot_labels = ["rotX=%+3.7g" % rotX, "rotY=%+3.7g" % rotY, "rotZ=%+3.4g" % rotZ]
         print("%s: residual=%3.8g, ncells=%f, detdist=%3.8g, gain=%3.4g, scale=%4.8g"
-              % (message, target, self.x[-4], self.x[-3], self.x[-2]**2, self.x[-1]**2))
+              % (message, target, np.exp(self.x[-4])+3, self.x[-3], self.x[-2]**2, self.x[-1]**2))
         print ("Ucell: %s *** Missets: %s" %
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
         print("\n")
@@ -357,6 +404,8 @@ class RefineAll(RefineRot):
         print ("GUcell: %s *** GMissets: %s" %
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
         print("\n")
+        if self.testing_mode:
+            self.conv_test()
 
     def get_refined_Bmatrix(self):
         return self.ucell_manager.B_recipspace
@@ -370,3 +419,4 @@ class RefineAll(RefineRot):
         self.g = self._g
         self._verify_diag()
         return self._f, self._g, self.d
+

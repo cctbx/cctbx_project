@@ -3,9 +3,9 @@ parser = ArgumentParser()
 parser.add_argument("--plot", action='store_true')
 parser.add_argument("--detdist", action='store_true', help='perturb then refine the detdist')
 parser.add_argument("--ncells", action='store_true', help='perturb then refine the ncells')
+parser.add_argument("--fixscale", action='store_true', help='fix the scale')
 parser.add_argument("--bmatrix", action='store_true')
 parser.add_argument("--umatrix", action='store_true')
-parser.add_argument("--fixscale", action='store_true', help='fix the scale')
 parser.add_argument("--curvatures", action='store_true')
 parser.add_argument("--psf", action='store_true')
 parser.add_argument("--gain", action='store_true')
@@ -178,152 +178,131 @@ init_Bmat_norm = np.abs(np.array(C2.get_B()) - np.array(C.get_B())).sum()
 if args.gain:
     img = img*1.1
 
-RUC = RefineAll(
-    spot_rois=spot_roi,
-    abc_init=tilt_abc,
-    img=img,
-    SimData_instance=SIM,
-    plot_images=args.plot,
-    plot_residuals=True,
-    ucell_manager=UcellMan)
+#RUC = RefineAll(
+#    spot_rois=spot_roi,
+#    abc_init=tilt_abc,
+#    img=img,
+#    SimData_instance=SIM,
+#    plot_images=args.plot,
+#    plot_residuals=True,
+#    ucell_manager=UcellMan)
+
+from simtbx.diffBragg.refiners.global_refiner import FatRefiner
 
 
-#from simtbx.diffBragg.refiners.global_refiner import FatRefiner
-#
-#
-## TODO: the following need to be embedded in the refiner init function..
-#nspot = len(spot_roi)
-#
-#
-#
-#
-#nanoBragg_rois = []  # special nanoBragg format
-#xrel, yrel, roi_imgs = [], [], []
-#xcom, ycom = [],[]
-#for i_roi, (x1, x2, y1, y2) in enumerate(spot_roi):
-#    nanoBragg_rois.append(((x1, x2), (y1, y2)))
-#    yr, xr = np.indices((y2 - y1 + 1, x2 - x1 + 1))
-#    xrel.append(xr)
-#    yrel.append(yr)
-#    roi_imgs.append(img[y1:y2 + 1, x1:x2 + 1])
-#
-#    xcom.append(.5*(x1 + x2))
-#    ycom.append(.5*(x1 + x2))
-#
-#q_spot = utils.x_y_to_q(xcom, ycom, SIM.detector, SIM.beam.nanoBragg_constructor_beam)
-#Ai = sqr(SIM.crystal.dxtbx_crystal.get_A()).inverse()
-#Ai = Ai.as_numpy_array()
-#HKL = np.dot(Ai, q_spot.T)
-#HKLi = [np.ceil(h - 0.5).astype(int) for h in HKL]
-#HKLi = [tuple(x) for x in np.vstack(HKLi).T]
-#Hi_asu = utils.map_hkl_list(HKLi, anomalous_flag=True, symbol=symbol)
-#
-#nrotation_param = 3
-#nscale_param = 1
-#ntilt_param = 3*nspot
-#n_local_unknowns = nrotation_param + nscale_param + ntilt_param
-#
-#nucell_param = len(UcellMan.variables)
-#n_ncell_param = 1
-#nfcell_param = len(Hi_asu)
-#ngain_param = 1
-#ndetz_param = 1
-#
-#n_global_unknowns = nucell_param + nfcell_param + ngain_param + ndetz_param + n_ncell_param
-#n_total_unknowns = n_local_unknowns + n_global_unknowns
-#
-#
-#RUC = FatRefiner(
-#    n_total_params=n_total_unknowns,
-#    n_local_params=n_local_unknowns,
-#    n_global_params=n_global_unknowns,
-#    local_idx_start=0,
-#    shot_ucell_managers={0: UcellMan},
-#    shot_rois={0: spot_roi},
-#    shot_nanoBragg_rois={0: nanoBragg_rois},
-#    shot_roi_imgs={0: roi_imgs},
-#    shot_spectra={0: SIM.beam.spectrum},
-#    shot_crystal_GTs={0: C},
-#    shot_crystal_models={0: SIM.crystal.dxtbx_crystal},
-#    shot_xrel={0: xrel},
-#    shot_yrel={0: yrel},
-#    shot_abc_inits={0: tilt_abc},
-#    shot_asu={0: Hi_asu},
-#    global_param_idx_start=n_local_unknowns,
-#    shot_panel_ids={0: [0]*nspot},
-#    log_of_init_crystal_scales=None,
-#    all_crystal_scales=None,
-#    perturb_fcell=False,
-#    global_ncells=True,
-#    global_ucell=True,
-#    sgsymbol=symbol)
-#
-##TODO make this part of class init:
-#idx_from_asu = {h: i for i, h in enumerate(set(Hi_asu))}
-#asu_from_idx = {i: h for i, h in enumerate(set(Hi_asu))}
-#
-#RUC.idx_from_asu = idx_from_asu
-#RUC.asu_from_idx = asu_from_idx
-#
-#RUC.refine_background_planes = False
-#RUC.refine_Umatrix = args.umatrix
-#RUC.refine_Bmatrix = args.bmatrix
-#RUC.refine_ncells = args.ncells
-#RUC.refine_crystal_scale = False
-#RUC.refine_crystal_scale = True
-#RUC.refine_Fcell = False
-#RUC.refine_detdist = args.detdist
-#RUC.refine_gain_fac = args.gain
-#
-#RUC.max_calls = 3000
-#RUC.trad_conv_eps = 1e-2
-#RUC.trad_conv = True
-#RUC.trial_id = 0
-#
-#
-#RUC.plot_stride = 10
-#RUC.plot_residuals = False
-#RUC.plot_images = args.plot
-#RUC.setup_plots()
-#
-#RUC.refine_rotZ = True
-#RUC.request_diag_once = False
-#RUC.S = SIM
-#RUC.has_pre_cached_roi_data = True
-#RUC.S.D.update_oversample_during_refinement = False
-#RUC.use_curvatures = False  # args.curvatures
-#RUC.use_curvatures_threshold = 1
-#RUC.calc_curvatures = args.curvatures
-#RUC.poisson_only = True
-#RUC.verbose = True
-#RUC.big_dump = True
-
-#============
+# TODO: the following need to be embedded in the refiner init function..
+nspot = len(spot_roi)
 
 
 
 
-RUC.trad_conv = True
-RUC.refine_detdist = args.detdist
+nanoBragg_rois = []  # special nanoBragg format
+xrel, yrel, roi_imgs = [], [], []
+xcom, ycom = [],[]
+for i_roi, (x1, x2, y1, y2) in enumerate(spot_roi):
+    nanoBragg_rois.append(((x1, x2), (y1, y2)))
+    yr, xr = np.indices((y2 - y1 + 1, x2 - x1 + 1))
+    xrel.append(xr)
+    yrel.append(yr)
+    roi_imgs.append(img[y1:y2 + 1, x1:x2 + 1])
+
+    xcom.append(.5*(x1 + x2))
+    ycom.append(.5*(x1 + x2))
+
+q_spot = utils.x_y_to_q(xcom, ycom, SIM.detector, SIM.beam.nanoBragg_constructor_beam)
+Ai = sqr(SIM.crystal.dxtbx_crystal.get_A()).inverse()
+Ai = Ai.as_numpy_array()
+HKL = np.dot(Ai, q_spot.T)
+HKLi = [np.ceil(h - 0.5).astype(int) for h in HKL]
+HKLi = [tuple(x) for x in np.vstack(HKLi).T]
+Hi_asu = utils.map_hkl_list(HKLi, anomalous_flag=True, symbol=symbol)
+
+nrotation_param = 3
+nscale_param = 1
+ntilt_param = 3*nspot
+n_local_unknowns = nrotation_param + nscale_param + ntilt_param
+
+nucell_param = len(UcellMan.variables)
+n_ncell_param = 1
+nfcell_param = len(Hi_asu)
+ngain_param = 1
+ndetz_param = 1
+
+n_global_unknowns = nucell_param + nfcell_param + ngain_param + ndetz_param + n_ncell_param
+n_total_unknowns = n_local_unknowns + n_global_unknowns
+
+
+RUC = FatRefiner(
+    n_total_params=n_total_unknowns,
+    n_local_params=n_local_unknowns,
+    n_global_params=n_global_unknowns,
+    local_idx_start=0,
+    shot_ucell_managers={0: UcellMan},
+    shot_rois={0: spot_roi},
+    shot_nanoBragg_rois={0: nanoBragg_rois},
+    shot_roi_imgs={0: roi_imgs},
+    shot_spectra={0: SIM.beam.spectrum},
+    shot_crystal_GTs={0: C},
+    shot_crystal_models={0: SIM.crystal.dxtbx_crystal},
+    shot_xrel={0: xrel},
+    shot_yrel={0: yrel},
+    shot_abc_inits={0: tilt_abc},
+    shot_asu={0: Hi_asu},
+    global_param_idx_start=n_local_unknowns,
+    shot_panel_ids={0: [0]*nspot},
+    log_of_init_crystal_scales=None,
+    all_crystal_scales=None,
+    perturb_fcell=False,
+    global_ncells=True,
+    global_ucell=True,
+    sgsymbol=symbol)
+
+#TODO make this part of class init:
+idx_from_asu = {h: i for i, h in enumerate(set(Hi_asu))}
+asu_from_idx = {i: h for i, h in enumerate(set(Hi_asu))}
+
+RUC.idx_from_asu = idx_from_asu
+RUC.asu_from_idx = asu_from_idx
+
 RUC.refine_background_planes = False
 RUC.refine_Umatrix = args.umatrix
 RUC.refine_Bmatrix = args.bmatrix
 RUC.refine_ncells = args.ncells
-RUC.use_curvatures = args.curvatures
-RUC.refine_crystal_scale =  not args.fixscale
-RUC.refine_gain_fac = False
-RUC.plot_stride = 10
-RUC.plot_residuals = args.plot
-RUC.trad_conv_eps = 1e-5
+RUC.refine_crystal_scale = not args.fixscale
+RUC.refine_Fcell = False
+RUC.refine_detdist = args.detdist
+RUC.refine_gain_fac = args.gain
+
 RUC.max_calls = 3000
-#RUC._setup()
-#RUC._cache_roi_arrays()
-RUC.testing_mode = True
+RUC.trad_conv_eps = 1e-2
+RUC.trad_conv = True
+RUC.trial_id = 0
+
+
+RUC.plot_stride = 10
+RUC.plot_residuals = False
+RUC.plot_images = args.plot
+RUC.setup_plots()
+
+RUC.refine_rotZ = True
+RUC.request_diag_once = False
+RUC.S = SIM
+RUC.has_pre_cached_roi_data = True
+RUC.S.D.update_oversample_during_refinement = False
+RUC.use_curvatures = args.curvatures
+RUC.use_curvatures_threshold = 0
+RUC.calc_curvatures = args.curvatures
+RUC.poisson_only = True
+RUC.verbose = True
+RUC.big_dump = True
+
 RUC.gt_ucell = ucell[0], ucell[1], ucell[2], ucell[4]
-RUC.CRYSTAL_MODELS = {0: RUC.S.crystal.dxtbx_crystal}
-RUC.CRYSTAL_GT = {0: C}
-RUC.symbol = symbol
-RUC.run()
+RUC.testing_mode = True
+RUC.run(setup_only=False)
+#if RUC.hit_break_to_use_curvatures:
+#    RUC.num_positive_curvatures = 0
+#    RUC.use_curvatures = True
+#    RUC.run(setup=False)
 
 
 
@@ -371,10 +350,10 @@ RUC.run()
 #                    args=(RUC,),
 #                    bounds=bounds)
 
-ang, ax = RUC.get_correction_misset(as_axis_angle_deg=True)
+ang, ax = RUC.get_correction_misset(as_axis_angle_deg=True, i_shot=0)
 if ang > 0:
     C2.rotate_around_origin(ax, ang)
-C2.set_B(RUC.get_refined_Bmatrix())
+C2.set_B(RUC.get_refined_Bmatrix(i_shot=0))
 
 final_Umat_norm = np.abs(np.array(C2.get_U()) - np.array(C.get_U())).sum()
 final_Bmat_norm = np.abs(np.array(C2.get_B()) - np.array(C.get_B())).sum()
