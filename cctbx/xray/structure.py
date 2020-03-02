@@ -59,7 +59,8 @@ class structure(crystal.special_position_settings):
         site_symmetry_table=None,
         non_unit_occupancy_implies_min_distance_sym_equiv_zero=False,
         scattering_type_registry=None,
-        crystal_symmetry=None):
+        crystal_symmetry=None,
+        wavelength=None):
     assert [special_position_settings, crystal_symmetry].count(None) == 1
     assert scatterers is not None or site_symmetry_table is None
     if (special_position_settings is None):
@@ -79,6 +80,7 @@ class structure(crystal.special_position_settings):
           self._non_unit_occupancy_implies_min_distance_sym_equiv_zero)
     self.scattering_type_registry_params = None
     self.inelastic_form_factors_source = None
+    self.wavelength = wavelength
 
   def _copy_constructor(self, other):
     crystal.special_position_settings._copy_constructor(

@@ -303,8 +303,13 @@ class crystal_structure_builder(crystal_symmetry_builder):
       scatterers.append(xray.scatterer(**kwds))
     scatterers.set_sites(atom_sites_frac)
 
+    wvl_str = self.get_cif_item('_diffrn_radiation_wavelength')
+    wavelength = float(wvl_str) if (wvl_str and wvl_str!='?') else None
+
     self.structure = xray.structure(crystal_symmetry=self.crystal_symmetry,
-                                    scatterers=scatterers)
+                                    scatterers=scatterers,
+                                    wavelength=wavelength)
+
 
 class miller_array_builder(crystal_symmetry_builder):
 
