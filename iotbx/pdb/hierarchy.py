@@ -1613,7 +1613,7 @@ class _():
     them are protein.
     """
     for model in self.models():
-      for chain in self.chains():
+      for chain in model.chains():
         if chain.is_protein() : return True
     return False
 
@@ -1623,7 +1623,7 @@ class _():
     them are RNA or DNA.
     """
     for model in self.models():
-      for chain in self.chains():
+      for chain in model.chains():
         if chain.is_na() : return True
     return False
 
