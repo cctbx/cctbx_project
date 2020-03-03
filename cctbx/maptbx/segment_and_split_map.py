@@ -3332,7 +3332,10 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
         #  operator that maps each point on to all others the best, then save
   #  that list of values
 
-  identify_ncs_id_list=list(range(ncs_group.n_ncs_oper()))+[None]
+  if (not ncs_group) or not ncs_group.n_ncs_oper():
+    identify_ncs_id_list=[None]
+  else:
+    identify_ncs_id_list=list(range(ncs_group.n_ncs_oper()))+[None]
 
   all_value_lists=[]
 
