@@ -346,11 +346,11 @@ def get_amide_isel(asc, ss_element_string_selection):
     return amide_isel_main_conf
   if len(amide_isel_all) > 0:
     return amide_isel_all
-  error_msg = "Error in helix definition.\n"
+  error_msg = "Error in helix definition. It will be skipped.\n"
   error_msg += "String '%s' selected 0 atoms.\n" % sele_str_main_conf
   error_msg += "String '%s' selected 0 atoms.\n" % sele_str_all
   error_msg += "Most likely the definition of SS element does not match model.\n"
-  raise Sorry(error_msg)
+  return error_msg
 
 
 class structure_base(object):
@@ -662,11 +662,13 @@ class annotation(structure_base):
     for i, helix_param in enumerate(phil_helices):
       if helix_param.selection is not None:
         h = pdb_helix.from_phil_params(helix_param, pdb_hierarchy, cache, i, log)
-        helices.append(h)
+        if h is not None:
+          helices.append(h)
     for i, sheet_param in enumerate(phil_sheets):
       if sheet_param.first_strand is not None:
         sh = pdb_sheet.from_phil_params(sheet_param, pdb_hierarchy, cache, log)
-        sheets.append(sh)
+        if sh is not None:
+          sheets.append(sh)
     return cls(helices=helices, sheets=sheets)
 
   def deep_copy(self):
@@ -1876,12 +1878,17 @@ class pdb_helix(structure_base):
 
   @classmethod
   def from_phil_params(cls, helix_params, pdb_hierarchy, cache, serial=0, log=None):
+    if log is None:
+      log = sys.stdout
     if helix_params.selection is None :
       print("Empty helix at serial %d." % (serial), file=log)
       # continue
     if helix_params.serial_number is not None:
       serial = helix_params.serial_number
     amide_isel = get_amide_isel(cache, helix_params.selection)
+    if isinstance(amide_isel, str):
+      print(amide_isel, file=log)
+      return None
     start_atom = pdb_hierarchy.atoms()[amide_isel[0]]
     end_atom = pdb_hierarchy.atoms()[amide_isel[-1]]
     hbonds = []
@@ -2534,6 +2541,8 @@ class pdb_sheet(structure_base):
 
   @classmethod
   def from_phil_params(cls, sheet_params, pdb_hierarchy, cache, log=None):
+    if log is None:
+      log = sys.stdout
     if sheet_params.first_strand is None:
       raise Sorry("Empty first strand selection")
     sheet_id="1"
@@ -2541,6 +2550,9 @@ class pdb_sheet(structure_base):
       sheet_id =  "%3s" % sheet_params.sheet_id[:3]
     n_strands = len(sheet_params.strand) + 1
     amide_isel = get_amide_isel(cache, sheet_params.first_strand)
+    if isinstance(amide_isel, str):
+      print(amide_isel, file=log)
+      return None
     start_atom = pdb_hierarchy.atoms()[amide_isel[0]]
     end_atom = pdb_hierarchy.atoms()[amide_isel[-1]]
     first_strand = pdb_strand(
@@ -2559,6 +2571,9 @@ class pdb_sheet(structure_base):
     registrations = [None]
     for i, strand_param in enumerate(sheet_params.strand):
       amide_isel = get_amide_isel(cache, strand_param.selection)
+      if isinstance(amide_isel, str):
+        print(amide_isel, file=log)
+        return None
       start_atom = pdb_hierarchy.atoms()[amide_isel[0]]
       end_atom = pdb_hierarchy.atoms()[amide_isel[-1]]
       sense = cls.sense_to_int(strand_param.sense)
@@ -2578,10 +2593,11 @@ class pdb_sheet(structure_base):
       if strand_param.bond_start_current is not None:
         reg_cur_sel = cache.iselection(strand_param.bond_start_current)
         if reg_cur_sel is None or len(reg_cur_sel) == 0:
-          error_msg = "Error in sheet definition.\n"
+          error_msg = "Error in sheet definition. Whole sheet will be skipped.\n"
           error_msg += "String '%s' selected 0 atoms.\n" % strand_param.bond_start_current
           error_msg += "Most likely the definition of sheet does not match model.\n"
-          raise Sorry(error_msg)
+          print(error_msg, file=log)
+          return None
         reg_cur_atom = pdb_hierarchy.atoms()[reg_cur_sel[0]]
       if reg_cur_atom is None: # No current atom in registration
         pass
@@ -2590,10 +2606,11 @@ class pdb_sheet(structure_base):
       if strand_param.bond_start_previous is not None:
         reg_prev_sel = cache.iselection(strand_param.bond_start_previous)
         if reg_prev_sel is None or len(reg_prev_sel) == 0:
-          error_msg = "Error in sheet definition.\n"
+          error_msg = "Error in sheet definition. Whole sheet will be skipped.\n"
           error_msg += "String '%s' selected 0 atoms.\n" % strand_param.bond_start_previous
           error_msg += "Most likely the definition of sheet does not match model.\n"
-          raise Sorry(error_msg)
+          print(error_msg, file=log)
+          return None
         reg_prev_atom = pdb_hierarchy.atoms()[reg_prev_sel[0]]
       if reg_prev_atom is None: # No previous atom in registration
         pass
