@@ -339,11 +339,11 @@ def get_amide_isel(asc, ss_element_string_selection):
   # There are cases where SS element can be only in B conformation
   # and split in A/B conformations
   sele_str_main_conf = "(%s) and (name N) and (altloc 'A' or altloc ' ')" % ss_element_string_selection
-  sele_str_all = "(%s) and (name N)" % ss_element_string_selection
   amide_isel_main_conf = asc.iselection(sele_str_main_conf)
-  amide_isel_all = asc.iselection(sele_str_all)
   if len(amide_isel_main_conf) > 0:
     return amide_isel_main_conf
+  sele_str_all = "(%s) and (name N)" % ss_element_string_selection
+  amide_isel_all = asc.iselection(sele_str_all)
   if len(amide_isel_all) > 0:
     return amide_isel_all
   error_msg = "Error in helix definition. It will be skipped.\n"
@@ -1273,6 +1273,18 @@ class annotation(structure_base):
 
   def is_empty(self):
     return self.get_n_helices() + self.get_n_sheets() == 0
+
+  def get_n_helix_residues(self):
+    result = 0
+    for h in self.helices:
+      result += h.length
+    return result
+
+  def get_n_sheet_residues(self):
+    result = 0
+    for sh in self.sheets:
+      result += sh.get_approx_size()
+    return result
 
   def get_n_defined_hbonds(self):
     n_hb = 0
@@ -2653,6 +2665,12 @@ class pdb_sheet(structure_base):
     elif str_sense == "antiparallel":
       sense = -1
     return sense
+
+  def get_approx_size(self):
+    s = 0
+    for strand in self.strands:
+      s += strand.approx_length
+    return s
 
   def remove_short_strands(self, size=3):
     strand_indices_to_delete = []
