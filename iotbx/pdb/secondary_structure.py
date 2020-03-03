@@ -659,14 +659,15 @@ class annotation(structure_base):
     cache = atom_selection_cache
     if cache is None:
       cache = pdb_hierarchy.atom_selection_cache()
+    h_atoms = pdb_hierarchy.atoms()
     for i, helix_param in enumerate(phil_helices):
       if helix_param.selection is not None:
-        h = pdb_helix.from_phil_params(helix_param, pdb_hierarchy, cache, i, log)
+        h = pdb_helix.from_phil_params(helix_param, pdb_hierarchy, h_atoms, cache, i, log)
         if h is not None:
           helices.append(h)
     for i, sheet_param in enumerate(phil_sheets):
       if sheet_param.first_strand is not None:
-        sh = pdb_sheet.from_phil_params(sheet_param, pdb_hierarchy, cache, log)
+        sh = pdb_sheet.from_phil_params(sheet_param, pdb_hierarchy, h_atoms, cache, log)
         if sh is not None:
           sheets.append(sh)
     return cls(helices=helices, sheets=sheets)
@@ -1877,7 +1878,7 @@ class pdb_helix(structure_base):
       length=int(line[71:76])) #string.atoi(line[71:76]))
 
   @classmethod
-  def from_phil_params(cls, helix_params, pdb_hierarchy, cache, serial=0, log=None):
+  def from_phil_params(cls, helix_params, pdb_hierarchy, h_atoms, cache, serial=0, log=None):
     if log is None:
       log = sys.stdout
     if helix_params.selection is None :
@@ -1889,8 +1890,8 @@ class pdb_helix(structure_base):
     if isinstance(amide_isel, str):
       print(amide_isel, file=log)
       return None
-    start_atom = pdb_hierarchy.atoms()[amide_isel[0]]
-    end_atom = pdb_hierarchy.atoms()[amide_isel[-1]]
+    start_atom = h_atoms[amide_isel[0]]
+    end_atom = h_atoms[amide_isel[-1]]
     hbonds = []
     for hb in helix_params.hbond:
       if hb.donor is None:
@@ -2540,7 +2541,7 @@ class pdb_sheet(structure_base):
                registrations=registrations)
 
   @classmethod
-  def from_phil_params(cls, sheet_params, pdb_hierarchy, cache, log=None):
+  def from_phil_params(cls, sheet_params, pdb_hierarchy, h_atoms, cache, log=None):
     if log is None:
       log = sys.stdout
     if sheet_params.first_strand is None:
@@ -2553,8 +2554,8 @@ class pdb_sheet(structure_base):
     if isinstance(amide_isel, str):
       print(amide_isel, file=log)
       return None
-    start_atom = pdb_hierarchy.atoms()[amide_isel[0]]
-    end_atom = pdb_hierarchy.atoms()[amide_isel[-1]]
+    start_atom = h_atoms[amide_isel[0]]
+    end_atom = h_atoms[amide_isel[-1]]
     first_strand = pdb_strand(
         sheet_id=sheet_id,
         strand_id=1,
@@ -2574,8 +2575,8 @@ class pdb_sheet(structure_base):
       if isinstance(amide_isel, str):
         print(amide_isel, file=log)
         return None
-      start_atom = pdb_hierarchy.atoms()[amide_isel[0]]
-      end_atom = pdb_hierarchy.atoms()[amide_isel[-1]]
+      start_atom = h_atoms[amide_isel[0]]
+      end_atom = h_atoms[amide_isel[-1]]
       sense = cls.sense_to_int(strand_param.sense)
       strand = pdb_strand(
           sheet_id=sheet_id,
@@ -2598,7 +2599,7 @@ class pdb_sheet(structure_base):
           error_msg += "Most likely the definition of sheet does not match model.\n"
           print(error_msg, file=log)
           return None
-        reg_cur_atom = pdb_hierarchy.atoms()[reg_cur_sel[0]]
+        reg_cur_atom = h_atoms[reg_cur_sel[0]]
       if reg_cur_atom is None: # No current atom in registration
         pass
         # raise Sorry("This bond_start_current yields 0 atoms:\n %s" % strand_param.bond_start_current)
@@ -2611,7 +2612,7 @@ class pdb_sheet(structure_base):
           error_msg += "Most likely the definition of sheet does not match model.\n"
           print(error_msg, file=log)
           return None
-        reg_prev_atom = pdb_hierarchy.atoms()[reg_prev_sel[0]]
+        reg_prev_atom = h_atoms[reg_prev_sel[0]]
       if reg_prev_atom is None: # No previous atom in registration
         pass
         # raise Sorry("This bond_start_previous yields 0 atoms:\n %s" % strand_param.bond_start_previous)
