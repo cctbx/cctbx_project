@@ -306,6 +306,8 @@ class FatRefiner(PixelRefinement):
         self.a = self.x[self.bg_a_xstart[self._i_shot][i_spot]]
         self.b = self.x[self.bg_b_xstart[self._i_shot][i_spot]]
         self.c = self.x[self.bg_c_xstart[self._i_shot][i_spot]]
+        if self.bg_offset_only and self.bg_offset_positive:
+            self.c = np_exp(self.c)
         self.tilt_plane = xr * self.a + yr * self.b + self.c
 
     def _setup(self):
@@ -361,6 +363,12 @@ class FatRefiner(PixelRefinement):
                 self.bg_c_xstart[i_shot].append(self.bg_b_xstart[i_shot][i_spot] + 1) # NOTE bg
 
                 a, b, c = self.ABC_INIT[i_shot][i_spot]
+                if self.bg_offset_only and self.bg_offset_positive:
+                    if c < 0:
+                        c = np_log(1e-9)
+                    else:
+                        c = np_log(c)
+                #self.x[self.ncells_xpos[i_shot]] = ncells_xval
                 self.x[self.bg_a_xstart[i_shot][i_spot]] = float(a)
                 self.x[self.bg_b_xstart[i_shot][i_spot]] = float(b)
                 self.x[self.bg_c_xstart[i_shot][i_spot]] = float(c)
@@ -890,8 +898,6 @@ class FatRefiner(PixelRefinement):
                     self._extract_pixel_data()
                     self._evaluate_averageI()
 
-                    #if i_spot==46:
-                    #    embed()
                     # here we can correlate modelLambda with Imeas
                     _overlay_corr, _ = pearsonr(self.Imeas.ravel(), self.model_Lambda.ravel())
                     self.image_corr[self._i_shot] += _overlay_corr
@@ -960,12 +966,27 @@ class FatRefiner(PixelRefinement):
                     if self.refine_background_planes:
                         xr = self.XREL[self._i_shot][i_spot]  # fast scan pixels
                         yr = self.YREL[self._i_shot][i_spot]  # slow scan pixels
+
+
                         bg_deriv = [xr*G2, yr*G2, G2]
                         bg_second_deriv = [0, 0, 0]
 
                         x_positions = [self.bg_a_xstart[self._i_shot][i_spot],
                                        self.bg_b_xstart[self._i_shot][i_spot],
                                        self.bg_c_xstart[self._i_shot][i_spot]]
+
+                        if self.bg_offset_only:
+                            bg_offset_x = self.x[self.bg_c_xstart[self._i_shot][i_spot]]
+                            # option to only refine C plane
+
+                            x_positions = [x_positions[2]]
+                            if self.bg_offset_positive:
+                                bg_val = np_exp(bg_offset_x)
+                                bg_deriv = [bg_val]
+                                bg_second_deriv = [bg_val]  # same as bg_deriv ...
+                            else:
+                                bg_deriv = [bg_deriv[2]]
+                                bg_second_deriv = [bg_second_deriv[2]]
 
                         for ii, xpos in enumerate(x_positions):
                             d = bg_deriv[ii]
@@ -1371,7 +1392,7 @@ class FatRefiner(PixelRefinement):
                 if self.refine_rotZ:
                     rz = self.rot_scale*self.x[self.rotZ_xpos[i_shot]]
 
-            anglesXYZ = rx,ry,rz
+            anglesXYZ = rx, ry, rz
         x = col((-1, 0, 0))
         y = col((0, -1, 0))
         z = col((0, 0, -1))
