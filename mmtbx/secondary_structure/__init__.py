@@ -618,15 +618,16 @@ class manager(object):
     return shared.stl_set_unsigned(simple_bonds)
 
   def calculate_structure_content(self):
-    isel = self.selection_cache.iselection
-    calpha = isel("name N and (altloc ' ' or altloc 'A')")
-    alpha_sele = self.helix_selection(limit="name N", main_conf_only=True)
-    n_alpha = alpha_sele.count(True)
-    beta_sele = self.beta_selection(limit="name N", main_conf_only=True)
-    n_beta = beta_sele.count(True)
-    if calpha.size() == 0 :
+    if self.actual_sec_str is not None:
+      oc = self.pdb_hierarchy.overall_counts()
+      n_alpha = self.actual_sec_str.get_n_helix_residues()
+      n_beta = self.actual_sec_str.get_n_sheet_residues()
+      n_residues = oc.n_residues
+    else:
+      raise NotImplementedError("Should have defined secondary structure before calculating its content.")
+    if n_residues == 0 :
       return (0.0, 0.0)
-    return (n_alpha / calpha.size(), n_beta / calpha.size())
+    return (n_alpha / n_residues, n_beta / n_residues)
 
   def show_summary(self, log=None):
     if log is None:
