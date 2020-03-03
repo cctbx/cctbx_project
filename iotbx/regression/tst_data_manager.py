@@ -586,6 +586,8 @@ output {
 }
 """
   master_phil = iotbx.phil.parse(TestProgram.master_phil_str)
+  required_output_phil = iotbx.phil.parse(ProgramTemplate.output_phil_str)
+  master_phil.adopt_scope(required_output_phil)
   working_phil = iotbx.phil.parse(ProgramTemplate.master_phil_str)
   params = master_phil.fetch(working_phil).extract()
   p = ProgramTemplate(dm, params, master_phil)
@@ -611,6 +613,24 @@ output {
   os.remove('cctbx_program_001.eff')
   os.remove('cctbx_program_001.seq')
   os.remove('cctbx_program_002.seq')
+
+  # test output.filename, output.file_name
+  assert p.get_default_output_filename() == 'cctbx_program_002'
+  assert p.get_default_output_filename(filename='abc') == 'abc'
+  working_phil_str='output.filename=def'
+  working_phil = iotbx.phil.parse(working_phil_str)
+  params = master_phil.fetch(working_phil).extract()
+  p = ProgramTemplate(dm, params, master_phil)
+  assert params.output.filename == params.output.file_name == 'def'
+  assert p.get_default_output_filename() == 'def'
+  assert dm.get_default_output_filename() == 'def'
+  working_phil_str='output.file_name=ghi'
+  working_phil = iotbx.phil.parse(working_phil_str)
+  params = master_phil.fetch(working_phil).extract()
+  p = ProgramTemplate(dm, params, master_phil)
+  assert params.output.filename == params.output.file_name == 'ghi'
+  assert p.get_default_output_filename() == 'ghi'
+  assert dm.get_default_output_filename() == 'ghi'
 
 # -----------------------------------------------------------------------------
 if (__name__ == '__main__'):
