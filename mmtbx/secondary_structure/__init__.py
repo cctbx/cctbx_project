@@ -680,15 +680,6 @@ class manager(object):
       whole_selection |= helix
     return whole_selection
 
-  # FIXME backwards compatibility
-  def alpha_selection(self, **kwds):
-    assert 0
-    return self.helix_selection(**kwds)
-
-  def alpha_selections(self, **kwds):
-    assert 0
-    return self.helix_selections(**kwds)
-
   def beta_selections(self, limit=None, main_conf_only=False):
     sele = self.selection_cache.selection
     all_selections = []
@@ -739,22 +730,6 @@ class manager(object):
       whole_selection |= sheet
     return whole_selection
 
-  def selections_as_ints(self):
-    assert 0, "Anybody using this?"
-    sec_str = flex.int(self.n_atoms, 0)
-    all_alpha = flex.int(self.n_atoms, 1)
-    all_beta = flex.int(self.n_atoms, 2)
-    helices = self.alpha_selection()
-    sheets = self.beta_selection()
-    sec_str.set_selected(helices, all_alpha.select(helices))
-    sec_str.set_selected(sheets, all_beta.select(sheets))
-    return sec_str
-
-  def apply_params(self, params):
-    assert 0, "Not used anywhere?"
-    self.params.helix = params.helix
-    self.params.sheet = params.sheet
-
 # =============================================================================
 # General functions
 # =============================================================================
@@ -790,73 +765,3 @@ def run_ksdssp_direct(pdb_str):
   exe_path = get_ksdssp_exe_path()
   ksdssp_out = easy_run.fully_buffered(command=exe_path, stdin_lines=pdb_str)
   return ( ksdssp_out.stdout_lines, ksdssp_out.stderr_lines )
-
-
-
-
-# =============================================================================
-# Unused functions...
-# =============================================================================
-
-def _get_distances(bonds, sites_cart):
-  assert 0, "Hopefully is not used"
-  distances = flex.double(bonds.size(), -1)
-  for k, (i_seq, j_seq) in enumerate(bonds):
-    (x1, y1, z1) = sites_cart[i_seq]
-    (x2, y2, z2) = sites_cart[j_seq]
-    dist = sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
-    distances[k] = dist
-  return distances
-
-def get_pdb_hierarchy(file_names):
-  assert 0, "Hopefully is not used"
-  pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=file_names)
-  pdb_structure = iotbx.pdb.input(source_info=None,
-    lines=flex.std_string(pdb_combined.raw_records))
-  return pdb_structure.construct_hierarchy()
-
-def analyze_distances(self, params, pdb_hierarchy=None, log=sys.stdout):
-  assert 0 # Not used anywhere?
-  atoms = None
-  if params.verbose :
-    assert pdb_hierarchy is not None
-    atoms = pdb_hierarchy.atoms()
-  remove_outliers = params.secondary_structure.protein.remove_outliers
-  atoms = pdb_hierarchy.atoms()
-  hist =  flex.histogram(self.bond_lengths, 10)
-  print("  Distribution of hydrogen bond lengths without filtering:", file=log)
-  hist.show(f=log, prefix="    ", format_cutoffs="%.4f")
-  print("", file=log)
-  if not remove_outliers :
-    return False
-  for i, distance in enumerate(self.bond_lengths):
-    if distance > distance_max :
-      self.flag_use_bond[i] = False
-      if params.verbose :
-        print("Excluding H-bond with length %.3fA" % distance, file=log)
-        i_seq, j_seq = self.bonds[i]
-        print("  %s" % atoms[i_seq].fetch_labels().id_str(), file=log)
-        print("  %s" % atoms[j_seq].fetch_labels().id_str(), file=log)
-  print("  After filtering: %d bonds remaining." % \
-    self.flag_use_bond.count(True), file=log)
-  print("  Distribution of hydrogen bond lengths after applying cutoff:", file=log)
-  hist = flex.histogram(self.bond_lengths.select(self.flag_use_bond), 10)
-  hist.show(f=log, prefix="    ", format_cutoffs="%.4f")
-  print("", file=log)
-  return True
-
-def manager_from_pdb_file(pdb_file):
-  assert 0, "will not work"
-  from iotbx import file_reader
-  assert os.path.isfile(pdb_file)
-  pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
-  pdb_hierarchy = pdb_in.file_object.hierarchy
-  pdb_hierarchy.atoms().reset_i_seq()
-  ss_manager  = manager(pdb_hierarchy=pdb_hierarchy)
-  return ss_manager
-
-def calculate_structure_content(pdb_file):
-  assert 0, "will not work"
-  ss_manager = manager_from_pdb_file(pdb_file)
-  ss_manager.find_automatically()
-  return ss_manager.calculate_structure_content()
