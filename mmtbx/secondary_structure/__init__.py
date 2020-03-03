@@ -34,7 +34,7 @@ def contiguous_ss_selections(pdb_hierarchy):
     params                       = params.secondary_structure,
     log                          = null_out())
   n_atoms = pdb_hierarchy.atoms_size()
-  ss_all = ssm.alpha_selection().iselection()
+  ss_all = ssm.helix_selection().iselection()
   ss_all.extend(ssm.beta_selection().iselection())
   ss_all.extend(ssm.base_pair_selection().iselection())
   chain_selections = []
@@ -620,7 +620,7 @@ class manager(object):
   def calculate_structure_content(self):
     isel = self.selection_cache.iselection
     calpha = isel("name N and (altloc ' ' or altloc 'A')")
-    alpha_sele = self.alpha_selection(limit="name N", main_conf_only=True)
+    alpha_sele = self.helix_selection(limit="name N", main_conf_only=True)
     n_alpha = alpha_sele.count(True)
     beta_sele = self.beta_selection(limit="name N", main_conf_only=True)
     n_beta = beta_sele.count(True)
@@ -682,9 +682,11 @@ class manager(object):
 
   # FIXME backwards compatibility
   def alpha_selection(self, **kwds):
+    assert 0
     return self.helix_selection(**kwds)
 
   def alpha_selections(self, **kwds):
+    assert 0
     return self.helix_selections(**kwds)
 
   def beta_selections(self, limit=None, main_conf_only=False):

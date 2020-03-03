@@ -942,7 +942,7 @@ class sequence_window(object):
         seq = self._seq_cache[chain_id]
         ss = self._ss_cache[chain_id]
       else :
-        helix_sele = self.sec_str.alpha_selection()
+        helix_sele = self.sec_str.helix_selection()
         sheet_sele = self.sec_str.beta_selection()
         seq = chain_conf.as_padded_sequence()
         ss = chain_conf.as_sec_str_sequence(helix_sele, sheet_sele)
