@@ -7,6 +7,7 @@ parser.add_argument("--fixscale", action='store_true', help='fix the scale')
 parser.add_argument("--bmatrix", action='store_true')
 parser.add_argument("--umatrix", action='store_true')
 parser.add_argument("--curvatures", action='store_true')
+parser.add_argument("--bg", action="store_true", help='refine background planes')
 parser.add_argument("--psf", action='store_true')
 parser.add_argument("--gain", action='store_true')
 args = parser.parse_args()
@@ -266,7 +267,7 @@ asu_from_idx = {i: h for i, h in enumerate(set(Hi_asu))}
 RUC.idx_from_asu = idx_from_asu
 RUC.asu_from_idx = asu_from_idx
 
-RUC.refine_background_planes = False
+RUC.refine_background_planes = args.bg
 RUC.refine_Umatrix = args.umatrix
 RUC.refine_Bmatrix = args.bmatrix
 RUC.refine_ncells = args.ncells
@@ -301,6 +302,10 @@ RUC.big_dump = True
 RUC.gt_ucell = ucell[0], ucell[1], ucell[2], ucell[4]
 RUC.gt_ncells = Ncells_gt[0]
 RUC.testing_mode = True
+
+RUC.bg_offset_only = True
+RUC.bg_offset_positive = True
+
 RUC.run(setup_only=False)
 #if RUC.hit_break_to_use_curvatures:
 #    RUC.num_positive_curvatures = 0
