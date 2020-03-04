@@ -11,15 +11,7 @@ namespace smtbx { namespace refinement { namespace constraints {
   {
   public:
     symmetry_equivalent_site_parameter(site_parameter *site,
-                                       sgtbx::rt_mx const &op)
-    : parameter(1),
-      op(op), local_jt(3, 3)
-    {
-      set_arguments(site);
-      scitbx::mat3<double> r_t = op.r().as_double().transpose();
-      af::const_ref<double, af::mat_grid> rr_t(r_t.begin(), af::mat_grid(3,3));
-      local_jt.assign_block(rr_t, 0, 0);
-    }
+      sgtbx::rt_mx const &op);
 
     /// The original site in the asu this is a symmetry equivalent of
     asu_site_parameter *original() const {
@@ -32,10 +24,10 @@ namespace smtbx { namespace refinement { namespace constraints {
     virtual void linearise(uctbx::unit_cell const &unit_cell,
                            sparse_matrix_type *jacobian_transpose);
   private:
+    class special_position_site_parameter *special_position;
     sgtbx::rt_mx op;
-
     // Transpose of the Jacobian of the transform x -> op*x
-    scitbx::sparse::matrix<double> local_jt;
+    af::ref<double, af::mat_grid> local_jt;
   };
 
 

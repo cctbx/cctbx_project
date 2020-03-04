@@ -400,7 +400,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
               base_t::grad_fp = p;
             }
             if (scatterer.flags.grad_fdp()) {
-              base_t::grad_fdp = complex_type(0, 1) * p;
+              base_t::grad_fdp = complex_type(-p.imag(), p.real());
             }
           }
         }
@@ -466,18 +466,20 @@ namespace smtbx { namespace structure_factors { namespace direct {
         if (scatterer.flags.use_u_iso() && scatterer.flags.grad_u_iso()) {
           grad_u_iso = -two_pi_sq * d_star_sq * structure_factor;
         }
-        if (scatterer.flags.grad_site()) {
-          for (int j = 0; j < 3; ++j) {
-            grad_site[j] *= ff_iso;
+        if (ff_iso != 1) {
+          if (scatterer.flags.grad_site()) {
+            for (int j = 0; j < 3; ++j) {
+              grad_site[j] *= ff_iso;
+            }
           }
-        }
-        if (scatterer.flags.grad_u_aniso()) {
-          for (int j = 0; j < 6; ++j) {
-            grad_u_star[j] *= ff_iso;
-          }
-          if (scatterer.anharmonic_adp) {
-            for (int j = 0; j < 25; j++) {
-              base_t::grad_anharmonic_adp[j] *= ff_iso;
+          if (scatterer.flags.grad_u_aniso()) {
+            for (int j = 0; j < 6; ++j) {
+              grad_u_star[j] *= ff_iso;
+            }
+            if (scatterer.anharmonic_adp) {
+              for (int j = 0; j < 25; j++) {
+                base_t::grad_anharmonic_adp[j] *= ff_iso;
+              }
             }
           }
         }
@@ -543,7 +545,6 @@ namespace smtbx { namespace structure_factors { namespace direct {
           hr_ht_group<float_type> const &g = hr_ht.groups[k];
           float_type hrx = g.hr * scatterer.site;
           complex_type f = this->exp_i_2pi(hrx + g.ht);
-          //float_type fa = f.real(), fb = f.imag();
           if (scatterer.flags.use_u_aniso()) {
             float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);
             f *= dw;
@@ -570,7 +571,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
               }
             }
           }
-          structure_factor += f.real();
+          structure_factor += f;
           if (compute_grad && scatterer.flags.grad_site()) {
             float_type grad_site_factor = -two_pi * f.imag();
             for (int j = 0; j < 3; ++j) {
@@ -626,7 +627,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
               }
             }
           }
-          structure_factor += f.real();
+          structure_factor += f;
           if (compute_grad && scatterer.flags.grad_site()) {
             float_type grad_site_factor = -two_pi * f.imag();
             for (int j = 0; j < 3; ++j) {
@@ -669,8 +670,14 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (scatterer.flags.grad_occupancy()) {
             grad_occ = ff_iso_p * structure_factor.real();
           }
-          if (scatterer.flags.grad_fp()) {
-            base_t::grad_fp = f_iso * structure_factor.real() * scatterer.occupancy;
+          if (scatterer.flags.grad_fp() || scatterer.flags.grad_fdp()) {
+            FormFactorType p = f_iso * structure_factor * scatterer.occupancy;
+            if (scatterer.flags.grad_fp()) {
+              base_t::grad_fp = p;
+            }
+            if (scatterer.flags.grad_fdp()) {
+              base_t::grad_fdp = complex_type(0, 1) * p;
+            }
           }
         }
 

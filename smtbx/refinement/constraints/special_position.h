@@ -32,7 +32,9 @@ public:
 
   virtual void linearise(uctbx::unit_cell const &unit_cell,
                          sparse_matrix_type *jacobian_transpose);
-
+  const sgtbx::site_constraints<double> &get_site_constraints() const {
+    return site_constraints;
+  }
 private:
   sgtbx::site_constraints<double> site_constraints;
 };
