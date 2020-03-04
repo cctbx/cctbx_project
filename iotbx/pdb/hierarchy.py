@@ -211,7 +211,7 @@ class overall_counts(object):
 
   def get_n_residues_of_classes(self, classes):
     result = 0
-    for resname, count in self.resnames.iteritems():
+    for resname, count in self.resnames.items():
       if common_residue_names_get_class(resname) in classes:
         result += count
     return result
@@ -1647,7 +1647,7 @@ class _():
     them are RNA.
     """
     oc = self.overall_counts()
-    for resname, count in oc.resnames.iteritems():
+    for resname, count in oc.resnames.items():
       if ( common_residue_names_get_class(resname) == "common_rna_dna"
           and "D" not in resname.upper() ):
         return True
