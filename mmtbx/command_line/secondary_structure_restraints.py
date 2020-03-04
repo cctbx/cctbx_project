@@ -190,7 +190,7 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
     (hb_proxies, hb_angle_proxies, planarity_proxies,
         parallelity_proxies) = m.create_all_new_restraints(
         pdb_hierarchy=pdb_hierarchy,
-        grm=geometry,
+        grm=model.get_restraints_manager().geometry,
         log=out)
     if hb_proxies.size() > 0:
       if work_params.format == "pymol" :

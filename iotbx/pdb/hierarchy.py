@@ -209,6 +209,13 @@ class overall_counts(object):
     if (self._errors is None): self.show(out=null_out())
     return self._errors
 
+  def get_n_residues_of_classes(self, classes):
+    result = 0
+    for resname, count in self.resnames.iteritems():
+      if common_residue_names_get_class(resname) in classes:
+        result += count
+    return result
+
   def warnings(self):
     if (self._warnings is None): self.show(out=null_out())
     return self._warnings
@@ -1607,38 +1614,43 @@ class _():
                   result.append(atom.i_seq)
     return result
 
-  def contains_protein(self):
+  def contains_protein(self, min_content=0.1):
     """
-    Inspect residue names (stored in atom_group objects) to determine if any of
-    them are protein.
+    Inspect residue names and counts to determine if enough of them are protein.
     """
-    for model in self.models():
-      for chain in model.chains():
-        if chain.is_protein() : return True
-    return False
+    oc = self.overall_counts()
+    n_prot_residues = oc.get_n_residues_of_classes(
+        classes=['common_amino_acid', 'modified_amino_acid'])
+    n_water_residues = oc.get_n_residues_of_classes(
+        classes=['common_water'])
+    if oc.n_residues-n_water_residues > 0:
+      return n_prot_residues / (oc.n_residues-n_water_residues) > min_content
+    return n_prot_residues > min_content
 
-  def contains_nucleic_acid(self):
+  def contains_nucleic_acid(self, min_content=0.1):
     """
-    Inspect residue names (stored in atom_group objects) to determine if any of
+    Inspect residue names and counts to determine if enough of
     them are RNA or DNA.
     """
-    for model in self.models():
-      for chain in model.chains():
-        if chain.is_na() : return True
-    return False
+    oc = self.overall_counts()
+    n_na_residues = oc.get_n_residues_of_classes(
+        classes=['common_rna_dna', 'modified_rna_dna'])
+    n_water_residues = oc.get_n_residues_of_classes(
+        classes=['common_water'])
+    if oc.n_residues-n_water_residues > 0:
+      return n_na_residues / (oc.n_residues-n_water_residues) > min_content
+    return n_na_residues > min_content
 
   def contains_rna(self):
     """
-    Inspect residue names (stored in atom_group objects) to determine if any of
+    Inspect residue names and counts to determine if any of
     them are RNA.
     """
-    for model in self.models():
-      for chain in model.chains():
-        for rg in chain.residue_groups():
-          for ag in rg.atom_groups():
-            if ((common_residue_names_get_class(ag.resname) == "common_rna_dna") and
-                (not "D" in ag.resname.upper())):
-              return True
+    oc = self.overall_counts()
+    for resname, count in oc.resnames.iteritems():
+      if ( common_residue_names_get_class(resname) == "common_rna_dna"
+          and "D" not in resname.upper() ):
+        return True
     return False
 
   def remove_hd(self, reset_i_seq=False):

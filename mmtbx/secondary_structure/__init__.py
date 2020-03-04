@@ -252,6 +252,7 @@ class manager(object):
         protein_found = True
       if not protein_found:
         ss_params = []
+        annot = None
         if use_segid:
           # Could get rid of this 'if' clause, but I want to avoid construction of
           # atom_selection_cache and selections when there is no segids in pdb
@@ -275,14 +276,14 @@ class manager(object):
               ss_params.append(ss_phil)
               # self.actual_sec_str = annot
         ss_params_str = "\n".join(ss_params)
-        self.apply_phil_str(ss_params_str, log=self.log)
+        self.apply_phil_str(ss_params_str, annot=annot, log=self.log)
       else:
         if (self.sec_str_from_pdb_file is not None):
           # self.actual_sec_str = self.sec_str_from_pdb_file
           ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(
               log=self.log,
               prefix_scope="secondary_structure")
-          self.apply_phil_str(ss_params_str, log=self.log)
+          self.apply_phil_str(ss_params_str, annot=self.sec_str_from_pdb_file, log=self.log)
         # else:
         #   # got phil SS, need to refactor later, when the class is fully
         #   # converted for operation with annotation object
@@ -445,6 +446,7 @@ class manager(object):
   def apply_phil_str(self,
       phil_string,
       phil_params=None,
+      annot=None,
       log=None,
       verbose=False):
     assert [phil_string, phil_params].count(None) == 1
@@ -462,11 +464,13 @@ class manager(object):
         new_ss_params.secondary_structure.protein.helix
     self.params.secondary_structure.protein.sheet = \
         new_ss_params.secondary_structure.protein.sheet
-    self.actual_sec_str = iotbx.pdb.secondary_structure.annotation.from_phil(
-        phil_helices=new_ss_params.secondary_structure.protein.helix,
-        phil_sheets=new_ss_params.secondary_structure.protein.sheet,
-        pdb_hierarchy=self.pdb_hierarchy,
-        atom_selection_cache=self.selection_cache)
+    self.actual_sec_str = annot
+    if annot is None:
+      self.actual_sec_str = iotbx.pdb.secondary_structure.annotation.from_phil(
+          phil_helices=new_ss_params.secondary_structure.protein.helix,
+          phil_sheets=new_ss_params.secondary_structure.protein.sheet,
+          pdb_hierarchy=self.pdb_hierarchy,
+          atom_selection_cache=self.selection_cache)
 
   def create_protein_hbond_proxies(self,
                             annotation=None,
@@ -622,7 +626,8 @@ class manager(object):
       oc = self.pdb_hierarchy.overall_counts()
       n_alpha = self.actual_sec_str.get_n_helix_residues()
       n_beta = self.actual_sec_str.get_n_sheet_residues()
-      n_residues = oc.n_residues
+      n_residues = oc.get_n_residues_of_classes(
+          classes=['common_amino_acid', 'modified_amino_acid'])
     else:
       raise NotImplementedError("Should have defined secondary structure before calculating its content.")
     if n_residues == 0 :

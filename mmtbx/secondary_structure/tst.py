@@ -7,6 +7,7 @@ import iotbx.pdb.hierarchy
 import libtbx.load_env
 import iotbx.pdb.secondary_structure as ioss
 from libtbx.utils import null_out
+from libtbx.test_utils import approx_equal
 import os
 
 def exercise_protein():
@@ -44,8 +45,8 @@ def exercise_protein():
     assert hb_angles.size() == 294+27, hb_angles.size() # helix+sheet angles
     assert isinstance(proxies, geometry_restraints.shared_bond_simple_proxy)
     (frac_alpha, frac_beta) = m.calculate_structure_content()
-    assert ("%.3f" % frac_alpha == "0.643")
-    assert ("%.3f" % frac_beta == "0.075")
+    assert approx_equal(frac_alpha, 0.643, eps=1e-3)
+    assert approx_equal(frac_beta, 0.0539, eps=1e-3)
 
     # Make sure the hydrogen auto-detection override is working
     # Functionality is disabled
