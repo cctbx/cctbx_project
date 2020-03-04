@@ -93,23 +93,21 @@ loop_
   _atom_type_scat_Cromer_Mann_c
   _atom_type_scat_source
   _atom_type_scat_dispersion_source
-  C  0.00211  0.00161  2.18189  1.77612  1.08772  0.64146  0.20789  0.10522  13.45337  32.57901   0.74729   0.25125  80.97993  0.05873  0.0  
+  C  0.00211  0.00161  2.18189  1.77612  1.08772  0.64146  0.20789  0.10522  13.45337  32.57901   0.74729   0.25125  80.97993  0.05873  0.0
 ;
 6-Gaussian fit: Grosse-Kunstleve RW, Sauter NK, Adams PD:
 Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31.
 ;
   'Sasaki, KEK Report, 1989, 88-14, 1'
-  F  0.01364  0.01032  3.45430  2.86374  0.87265  0.78919  0.78648  0.23325  10.91554   4.46290  27.67080   0.15325   0.36169  0.04182  0.0  
+  F  0.01364  0.01032  3.45430  2.86374  0.87265  0.78919  0.78648  0.23325  10.91554   4.46290  27.67080   0.15325   0.36169  0.04182  0.0
 ;
 6-Gaussian fit: Grosse-Kunstleve RW, Sauter NK, Adams PD:
 Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31.
 ;
   'Sasaki, KEK Report, 1989, 88-14, 1'
-  N  0.00411  0.00331  2.77545  1.37596  1.06290  1.03806  0.62582  0.12084  15.06448   7.17747   0.52745  37.96228   0.18762  0.04718  0.0  
+  N  0.00411  0.00331  2.77545  1.37596  1.06290  1.03806  0.62582  0.12084  15.06448   7.17747   0.52745  37.96228   0.18762  0.04718  0.0
 ;
 6-Gaussian fit: Grosse-Kunstleve RW, Sauter NK, Adams PD:
 Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31.
 ;
   'Sasaki, KEK Report, 1989, 88-14, 1'
-
-
