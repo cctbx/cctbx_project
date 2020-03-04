@@ -26,25 +26,19 @@ namespace mmtbx { namespace geometry_restraints {
     typedef af::tiny<unsigned, 5> i_seqs_type;
 
     i_seqs_type i_seqs;
-    std::string residue_name;
     std::string residue_type;
-    size_t residue_index;
 
     // default initializer
     phi_psi_proxy () {}
 
     phi_psi_proxy(
       i_seqs_type i_seqs_,
-      std::string const& residue_name_,
-      std::string const& residue_type_,
-      size_t residue_index_=1)
+      std::string const& residue_type_
+      )
     :
       i_seqs(i_seqs_),
-      residue_name(residue_name_),
-      residue_type(residue_type_),
-      residue_index(residue_index_)
+      residue_type(residue_type_)
     {
-      MMTBX_ASSERT(residue_index > 0);
     }
 
     phi_psi_proxy(
@@ -52,11 +46,8 @@ namespace mmtbx { namespace geometry_restraints {
       phi_psi_proxy const& proxy)
     :
       i_seqs(i_seqs_),
-      residue_name(proxy.residue_name),
-      residue_type(proxy.residue_type),
-      residue_index(proxy.residue_index)
+      residue_type(proxy.residue_type)
     {
-      MMTBX_ASSERT(residue_index > 0);
     }
 
     af::shared<unsigned> get_i_seqs() {

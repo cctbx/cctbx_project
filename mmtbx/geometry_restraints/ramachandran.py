@@ -306,7 +306,7 @@ class ramachandran_manager(object):
       assert text_rama_key in ["general", "glycine", "cis-proline", "trans-proline",
                  "pre-proline", "isoleucine or valine"]
       proxy = ext.phi_psi_proxy(
-        residue_name = r_name,
+        #residue_name = r_name,
         residue_type = text_rama_key,
         i_seqs       = i_seqs)
       # pick where to put...
@@ -577,8 +577,8 @@ def load_emsley8k_tables():
         di[(phi,psi)]=float(val)
     data = flex.double()
     for k, v in zip(tmp.keys(), tmp.values()):
-      try:    val = math.exp(di[k])**3
-      except: val = -1
+      try:             val = math.exp(di[k])**3
+      except KeyError: val = -1
       data.append(val)
     t = lookup_table(data, 180)
     tables[residue_type] = t
@@ -601,7 +601,6 @@ class ramachandran_plot_data(object):
       ("trans-proline",        "rama8000-transpro.data", 3),
       ("pre-proline",          "rama8000-prepro-noGP.data", 4),
       ("isoleucine or valine", "rama8000-ileval-nopreP.data", 5)]
-
     for (rama_key, file_name, selfstore) in data:
       file_name = libtbx.env.find_in_repositories(
         relative_path="chem_data/rotarama_data/%s" % file_name,

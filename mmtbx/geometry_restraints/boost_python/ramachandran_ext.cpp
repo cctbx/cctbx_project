@@ -22,10 +22,9 @@ namespace boost_python {
     static boost::python::tuple
       getinitargs(w_t const& self)
     {
-      return boost::python::make_tuple(self.i_seqs,
-        self.residue_name,
-        self.residue_type,
-        self.residue_index
+      return boost::python::make_tuple(
+        self.i_seqs,
+        self.residue_type
         );
     }
 
@@ -36,17 +35,13 @@ namespace boost_python {
       class_<w_t>("phi_psi_proxy", no_init)
         .def(init<
           w_t::i_seqs_type const&,
-          std::string const&,
-          std::string const&,
-          optional<size_t> >((
+          std::string const&
+          >((
             arg("i_seqs"),
-            arg("residue_name"),
-            arg("residue_type"),
-            arg("residue_index") = 1)))
-        .def_readonly("residue_name", &w_t::residue_name)
+            arg("residue_type")
+            )))
         .def_readonly("residue_type", &w_t::residue_type)
         .def("get_i_seqs", &w_t::get_i_seqs)
-        //  .def_readonly("phi_psi", &w_t::phi_psi_i_seqs)
         .def_pickle(ramachandran_proxies_wrappers())
         ;
       {

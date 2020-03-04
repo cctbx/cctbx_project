@@ -38,26 +38,21 @@ def exercise_basic():
   proxies.append(
     ext.phi_psi_proxy(
       i_seqs=[0,1,2,3,4],
-      residue_name="ALA",
       residue_type="general"))
   proxies.append(
     ext.phi_psi_proxy(
       i_seqs=[4,5,6,7,8],
-      residue_name="ALA",
       residue_type="pre-proline"))
   proxies.append(
     ext.phi_psi_proxy(
       i_seqs=[8,9,10,11,12],
-      residue_name="ALA",
       residue_type="general"))
   selected = proxies.proxy_select(n_seq=13,
     iselection=flex.size_t(range(9)))
   assert (selected.size() == 2)
   assert list(selected[0].get_i_seqs()) == [0,1,2,3,4]
-  assert selected[0].residue_name == "ALA"
   assert selected[0].residue_type == "general"
   assert list(selected[1].get_i_seqs()) == [4,5,6,7,8]
-  assert selected[1].residue_name == "ALA"
   assert selected[1].residue_type == "pre-proline"
 
 pdb1 = """
@@ -357,7 +352,7 @@ def exercise_geo_output(mon_lib_srv, ener_lib):
       site_labels=[a.id_str() for a in atoms],
       f=out)
   gv = out.getvalue()
-  #print (out.getvalue())
+  #print (gv)
   #STOP()
   assert not show_diff(gv, """\
 Ramachandran plot restraints (Oldfield): 0
@@ -417,7 +412,7 @@ phi-psi angles formed by             residual
 Ramachandran plot restraints (emsley8k): 0
 Sorted by residual:
 
-"""), gv
+""")
 
   params.favored = 'oldfield'
   params.allowed = 'oldfield'
@@ -431,7 +426,7 @@ Sorted by residual:
       site_labels=[a.id_str() for a in atoms],
       f=out)
   gv = out.getvalue()
-  #print (out.getvalue())
+  #print(gv)
   #STOP()
   assert not show_diff(gv, """\
 Ramachandran plot restraints (Oldfield): 8
@@ -520,7 +515,7 @@ def exercise_manager_selection(mon_lib_srv, ener_lib):
       sites_cart=sites_cart,
       site_labels=[a.id_str() for a in atoms],
       f=s_out)
-  #print (s_out.getvalue())
+  #print(s_out.getvalue())
   #STOP()
   assert not show_diff(s_out.getvalue(), """\
 Ramachandran plot restraints (Oldfield): 0
@@ -569,6 +564,8 @@ Ramachandran plot restraints (emsley8k): 0
 Sorted by residual:
 
 """)
+
+
 
 def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
   # Just check overall rama proxies
