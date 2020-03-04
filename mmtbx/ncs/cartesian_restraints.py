@@ -108,6 +108,7 @@ class cartesian_ncs_manager(object):
         or self.ncs_params.b_factor_weight <= 0):
       print(prefix+"  b_factor_weight: %s  =>  restraints disabled" % (
           str(self.ncs_params.b_factor_weight)), file=out)
+      return
     for i_group,group in enumerate(self.groups_list):
       print(prefix + "NCS restraint group %d:" % (i_group+1), file=out)
       energies_adp_iso = group.energies_adp_iso(
