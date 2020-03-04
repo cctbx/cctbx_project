@@ -29,5 +29,6 @@ def run_tests():
   run_args = [ciffile, hklfile+'=hklf4', outfile]
   refine.run(run_args, run_options())
   check_result(0.166644)
+  os.remove(outfile)
 
 run_tests()
