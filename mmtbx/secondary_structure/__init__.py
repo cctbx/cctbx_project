@@ -9,7 +9,6 @@ from scitbx.array_family import flex
 from libtbx.utils import null_out
 from libtbx import easy_run
 import libtbx.load_env
-from math import sqrt
 import sys, os
 import time
 
