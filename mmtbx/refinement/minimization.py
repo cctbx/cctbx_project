@@ -158,7 +158,9 @@ class lbfgs(object):
     #
     if(self.riding_h_manager is not None and self.refine_xyz):
       sites_cart = self.xray_structure.sites_cart()
-      self.riding_h_manager.idealize(sites_cart = sites_cart)
+      self.riding_h_manager.idealize(
+        sites_cart = sites_cart,
+        refinement_flags_sites_individual = self.model.refinement_flags.sites_individual)
       self.xray_structure.set_sites_cart(sites_cart=sites_cart)
     #
     if(self.refine_adp):

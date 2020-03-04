@@ -168,8 +168,20 @@ class manager(object):
   def n_parameters(self):
     return self.not_hd_selection.count(True)*3
 
-  def idealize(self, sites_cart=None, pdb_hierarchy=None, xray_structure=None):
+  def idealize(self,
+               sites_cart = None,
+               pdb_hierarchy = None,
+               xray_structure = None,
+               refinement_flags_sites_individual = None):
     assert [sites_cart, pdb_hierarchy, xray_structure].count(None) in [2,3]
+    # prevent idealization if refinement flag for xyz is False
+    if refinement_flags_sites_individual:
+      para_cpp = list()
+      for p in self.parameterization_cpp:
+        if refinement_flags_sites_individual[p.ih]:
+          para_cpp.append(p)
+      self.parameterization_cpp = para_cpp
+    #
     if(xray_structure is not None):
       sites_cart = xray_structure.sites_cart()
       apply_new_H_positions(

@@ -1675,7 +1675,13 @@ class manager(object):
       self.setup_riding_h_manager(idealize=True)
     else:
       sites_cart = self.get_sites_cart()
-      self.riding_h_manager.idealize(sites_cart=sites_cart)
+      if self.refinement_flags:
+        flags = self.refinement_flags.sites_individual
+      else:
+        flags = None
+      self.riding_h_manager.idealize(
+        sites_cart=sites_cart,
+        refinement_flags_sites_individual = flags)
       self.set_sites_cart(sites_cart)
 
   def get_hierarchy(self, sync_with_xray_structure=False):
