@@ -732,6 +732,29 @@ Si*5  O     Si*6   146.93
     sc_fp_fdp_henke = sc_henke.at_angstrom(0.71073)
     assert approx_equal(sc.fp, sc_fp_fdp_henke.fp())
     assert approx_equal(sc.fdp, sc_fp_fdp_henke.fdp())
+
+  # Exercise structure.wavelength
+  from cctbx.eltbx import sasaki, wavelengths
+  test_wvl=1.1
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(3,4,5,90,90,90),
+      space_group_symbol="Pmmm"),
+      wavelength=test_wvl)
+  xs.add_scatterer(xray.scatterer("Mo1", site=(0.5, 0.5, 0.5)))
+  xs.add_scatterer(xray.scatterer("C2", site=(0.7, 0.7, 0.7)))
+  xs1 = xs.deep_copy_scatterers()
+  assert approx_equal(xs1.wavelength, test_wvl)
+  xs1.set_inelastic_form_factors(xs1.wavelength, "sasaki")
+  for sc in xs1.scatterers():
+    assert sc.flags.use_fp_fdp() == True
+    assert sc.fp != 0
+    assert sc.fdp != 0
+    sc_sasaki = sasaki.table(sc.element_symbol())
+    sc_fp_fdp_sasaki = sc_sasaki.at_angstrom(test_wvl)
+    assert approx_equal(sc.fp, sc_fp_fdp_sasaki.fp())
+    assert approx_equal(sc.fdp, sc_fp_fdp_sasaki.fdp())
+
   #
   xs = xray.structure(
     crystal_symmetry=crystal.symmetry(

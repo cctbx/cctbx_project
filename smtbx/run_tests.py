@@ -25,6 +25,7 @@ tst_list_base = [
      '--normal_eqns_solving_method=naive'],
     ["$D/refinement/constraints/tests/tst_constrained_structure.py",
      '--normal_eqns_solving_method=levenberg-marquardt'],
+    "$D/command_line/tests/test_refine.py"
 ] + discover()
 
 # failing tests on Python 3
