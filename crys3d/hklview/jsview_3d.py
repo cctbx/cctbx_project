@@ -16,6 +16,7 @@ import os.path, time, copy
 import libtbx
 import webbrowser, tempfile
 from six.moves import range
+import base64
 
 
 
@@ -241,6 +242,8 @@ class hklview_3d:
     self.reciproc_scale = 1.0
     self.realspace_scale = 1.0
     self.sceneisdirty = True
+    self.imagename = None
+    self.imgdatastr = ""
     self.hkl_scenes_info = []
     self.match_valarrays = []
     self.array_infostrs = []
@@ -401,17 +404,13 @@ class hklview_3d:
 
     if has_phil_path(diff_phil, "miller_array_operations"):
       self.viewerparams.scene_id = len(self.HKLscenedict)-1
-      #self.viewerparams.scene_id = len(self.HKLscenes)-1
       self.set_scene(self.viewerparams.scene_id)
 
     if self.viewerparams.scene_id is not None:
       if not self.isinjected:
         self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
-        #self.scene = self.HKLscenes[self.viewerparams.scene_id]
       self.DrawNGLJavaScript()
       msg = "Rendered %d reflections\n" % self.scene.points.size()
-      #if not has_phil_path(diff_phil, "scene_id"):
-# set_volatile_params() is already called when we receive the AutoViewSet message when loading a new scene
       msg += self.set_volatile_params()
     return msg, curphilparam
 
@@ -484,10 +483,7 @@ class hklview_3d:
     if scene_id is not None:
       self.viewerparams.scene_id = scene_id
       self.isinjected = False
-    #if self.viewerparams and self.viewerparams.scene_id is not None and self.viewerparams.scene_id >= 0 and self.HKLscenes:
     if self.viewerparams and self.viewerparams.scene_id is not None and self.viewerparams.scene_id >= 0 and self.HKLscene:
-      #self.miller_array = self.HKLscenes[self.viewerparams.scene_id].miller_array
-      #self.scene = self.HKLscenes[self.viewerparams.scene_id]
       self.miller_array = self.HKLscene_from_dict(self.viewerparams.scene_id).miller_array
       self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
     self.merge = merge
@@ -824,12 +820,9 @@ class hklview_3d:
   def calc_bin_thresholds(self, bin_scene_label, nbins):
     self.binscenelabel = bin_scene_label
     if self.binscenelabel=="Resolution":
-      #warray = self.HKLscenes[int(self.viewerparams.scene_id)].work_array
       warray = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).work_array
-      #dres = self.HKLscenes[int(self.viewerparams.scene_id)].dres
       dres = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).dres
       uc = warray.unit_cell()
-      #indices = self.HKLscenes[int(self.viewerparams.scene_id)].indices
       indices = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).indices
       binning = miller.binning( uc, nbins, indices, flex.max(dres), flex.min(dres) )
       binvals = [ binning.bin_d_range(n)[0] for n in binning.range_all() ]
@@ -837,7 +830,6 @@ class hklview_3d:
       binvals = list( 1.0/flex.double(binvals) )
       nuniquevalues = len(set(list(dres)))
     else:
-      #bindata = self.HKLscenes[int(self.binscenelabel)].data.deep_copy()
       bindata = self.HKLscene_from_dict(int(self.binscenelabel)).data.deep_copy()
       if isinstance(bindata, flex.complex_double):
         raise Sorry("Cannot order complex data values for binning.")
@@ -868,9 +860,6 @@ class hklview_3d:
     if self.binscenelabel=="Resolution":
       return 1.0/self.scene.dres
     # get the array id that is mapped through an HKLscene id
-    #binarraydata = self.HKLscenes[ibinarray].data
-    #scenearraydata = self.HKLscenes[self.viewerparams.scene_id].data
-    #matchindices = miller.match_indices(self.HKLscenes[self.viewerparams.scene_id].indices, self.HKLscenes[ibinarray].indices )
     binarraydata = self.HKLscene_from_dict(ibinarray).data
     scenearraydata = self.HKLscene_from_dict(self.viewerparams.scene_id).data
     matchindices = miller.match_indices(self.HKLscene_from_dict(self.viewerparams.scene_id).indices, self.HKLscene_from_dict(ibinarray).indices )
@@ -1020,7 +1009,6 @@ function MakeHKL_Axis(mshape)
       for j,sc in enumerate(range(ln)):
         val += incr
         colourscalararray.append( val )
-      #if self.HKLscenes[self.colour_scene_id].miller_array.is_complex_array():
       if self.HKLscene_from_dict(self.colour_scene_id).miller_array.is_complex_array():
         # When displaying phases from map coefficients together with fom values
         # compute colour map chart as a function of fom and phase values (x,y axis)
@@ -1033,7 +1021,6 @@ function MakeHKL_Axis(mshape)
           colourscalararray.append( val )
 
         fomarrays = []
-        #if self.HKLscenes[self.colour_scene_id].isUsingFOMs():
         if self.HKLscene_from_dict(self.colour_scene_id).isUsingFOMs():
           fomln = 50
           fom = 1.0
@@ -1057,8 +1044,6 @@ function MakeHKL_Axis(mshape)
           color_all=False,
           gradient_type= self.viewerparams.color_scheme) * 255.0)
 
-      #colors = self.HKLscenes[self.colour_scene_id].colors
-      #radii = self.HKLscenes[self.radii_scene_id].radii
       colors = self.HKLscene_from_dict(self.colour_scene_id).colors
       radii = self.HKLscene_from_dict(self.radii_scene_id).radii
       self.meanradius = flex.mean(radii)
@@ -1077,12 +1062,9 @@ function MakeHKL_Axis(mshape)
     if self.binscenelabel=="Resolution":
       colstr = "dres"
     else:
-      #colstr = self.HKLscenes[ int(self.binscenelabel) ].work_array.info().label_string()
       if not blankscene:
         colstr = self.HKLscene_from_dict(int(self.binscenelabel)).work_array.info().label_string()
     data = self.scene.data
-    #colourlabel = self.HKLscenes[self.colour_scene_id].colourlabel
-    #fomlabel = self.HKLscenes[self.colour_scene_id].fomlabel
     if not blankscene:
       colourlabel = self.HKLscene_from_dict(self.colour_scene_id).colourlabel
       fomlabel = self.HKLscene_from_dict(self.colour_scene_id).fomlabel
@@ -1106,10 +1088,7 @@ function MakeHKL_Axis(mshape)
         if self.binvalsboundaries[0] < 0.0:
           self.binvalsboundaries.append(0.0)
           self.binvalsboundaries.sort()
-        #self.bindata = self.HKLscenes[ibinarray].data
         self.bindata = self.MatchBinArrayToSceneArray(ibinarray)
-        #if self.HKLscenes[ibinarray].work_array.is_complex_array():
-        #  self.bindata = self.HKLscenes[ibinarray].ampl
         if self.HKLscene_from_dict(ibinarray).work_array.is_complex_array():
           self.bindata = self.HKLscene_from_dict(ibinarray).ampl
 
@@ -2473,6 +2452,54 @@ mysocket.onmessage = function(e)
       WebsockSendMsg('AutoViewSet ' + pagename);
     }
 
+    if (msgtype === "MakeImage")
+    {
+      filename = val[0];
+      stage.viewer.makeImage( {
+                factor: 1,
+                antialias: true,
+                trim: false,
+                transparent: false
+            } ).then( function( blob ){
+              //NGL.download( blob, "example.png" );
+              //bytes = new Uint8Array(blob.size);
+              //bytes.map((byte, i) => blob.slice(i));
+              //b64 = btoa(blob);
+              var reader = new FileReader();
+              //reader.readAsDataURL(blob);
+              reader.readAsBinaryString(blob);
+              reader.onloadend = function() {
+                  //var base64data = reader.result;
+                  var base64data = window.btoa(reader.result);
+
+                  var msize = 1000;
+                  var j = 0;
+                  var chunk = String(base64data.slice(j*msize, (j+1)*msize));
+                  while (chunk != "")
+                  {
+                    WebsockSendMsg('ImageChunk_' + String(j) + '\\n' + chunk);
+                    //WebsockSendMsg('ImageChunk_' + String(j) + '\\n' + 'Waffle');
+                    j++;
+                    chunk = String(base64data.slice(j*msize, (j+1)*msize));
+                  }
+
+                  WebsockSendMsg('ImageSent');
+              }
+              //WebsockSendMsg('Imageblob\\n' + b64);
+              //WebsockSendMsg('Imageblob\\n' + String(bytes) );
+              /*
+              var link = document.getElementById('link');
+              var canvas = stage.viewer.renderer.domElement;
+              link.setAttribute('download', 'C:/Users/oeffner/Buser/HKLviewerTests/MintyPaper.png');
+              //link.setAttribute('href', canvas.toDataURL("image/png").replace("image/png", "image/octet-stream"));
+              link.setAttribute('href', blob);
+              link.click();
+              */
+        } );
+
+      //WebsockSendMsg('MakeImage ' + pagename);
+    }
+
     if (msgtype === "Testing")
     {
       // test something new
@@ -2543,6 +2570,27 @@ mysocket.onmessage = function(e)
         elif "Expand" in message:
           self.mprint( message, verbose=0)
           #raise Sorry(message)
+        elif "Imageblob" in message:
+          datastr = message[ message.find("\n") + 1: ]
+          with open( self.imagename, "wb") as imgfile:
+            #datastr += "=" * ((4 - len(datastr) % 4) % 4)
+            datastr = datastr[(len('data:image/png;base64,')):]
+            #blob = base64.b64decode(datastr2)
+            #blob = base64.urlsafe_b64decode(datastr)
+            #blob = base64.b64decode(datastr + '=' * (-len(datastr) % 4) )
+            blob = base64.b64decode(datastr + b'===' )
+            imgfile.write(blob)
+        elif "ImageChunk" in message:
+          self.imgdatastr += message[ message.find("\n") + 1: ]
+        elif "ImageSent" in message:
+          with open( self.imagename, "wb") as imgfile:
+            datastr = self.imgdatastr #[(len('data:image/png;base64,')):]
+            blob = base64.b64decode(datastr + b'===' )
+            imgfile.write(blob)
+          self.imgdatastr = ""
+
+        elif "MakeImage" in message:
+          self.mprint( "Image saved to storage", verbose=0)
         elif "ReturnClipPlaneDistances:" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
@@ -3160,7 +3208,11 @@ Distance: %s
 
   def TestNewFunction(self):
     self.AddToBrowserMsgQueue("Testing")
-    #self.parent.update_settings()
+
+
+  def MakeImage(self, filename):
+    self.imagename = filename
+    self.AddToBrowserMsgQueue("MakeImage")
 
 
   def DisableMouseRotation(self): # disable rotating with the mouse

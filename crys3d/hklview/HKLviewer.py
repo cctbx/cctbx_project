@@ -89,6 +89,20 @@ class SettingsForm(QDialog):
     self.setFixedSize( self.sizeHint() )
 
 
+class WebEngineDebugForm(QDialog):
+  def __init__(self, parent=None):
+    super(WebEngineDebugForm, self).__init__(parent.window)
+    self.setWindowTitle("QtWebEngineDebug")
+    browser = QWebEngineView()
+    mainLayout = QGridLayout()
+    mainLayout.addWidget(browser, 0, 0)
+    self.setLayout(mainLayout)
+    webpage = QWebEnginePage( parent.webprofile, browser)
+    browser.setPage(webpage)
+    browser.page().setInspectedPage(parent.webpage )
+    self.show()
+
+
 class MyQMainWindow(QMainWindow):
   def __init__(self, parent):
     super(MyQMainWindow, self).__init__()
@@ -169,7 +183,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.ttipClickradio.setText( "Clicked")
     self.ttipClickradio.clicked.connect(self.onShowTooltips)
 
-
     self.ttipalpha = 0.85
     self.ttipalpha_spinBox = QDoubleSpinBox()
     self.ttipalpha_spinBox.setSingleStep(0.05)
@@ -180,6 +193,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.ttipalpha_labeltxt.setText("Tooltip Opacity:")
 
     self.settingsform = SettingsForm(self)
+    self.webpagedebugform = None
 
     self.MillerComboBox = QComboBox()
     self.MillerComboBox.activated.connect(self.onMillerComboSelchange)
@@ -219,6 +233,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.cpath = ""
     if self.UseOSBrowser==False:
       self.InitBrowser()
+    else:
+      self.BrowserBox.setMaximumWidth(0)
 
     self.window.setWindowTitle("HKL-Viewer")
     self.cctbxproc = None
@@ -273,6 +289,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.cctbxproc.terminate()
     self.out, self.err = self.cctbxproc.communicate()
     self.cctbxproc.wait()
+    self.webpagedebugform.close()
+    self.webpagedebugform.deleteLater()
     self.BrowserBox.close()
     self.BrowserBox.deleteLater()
     event.accept()
@@ -290,6 +308,9 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.cpath = self.webprofile.cachePath()
     self.BrowserBox.setPage(self.webpage)
     self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
+    if self.devmode:
+      self.webpagedebugform = WebEngineDebugForm(self)
+
 
 
   def onOpenReflectionFile(self):
@@ -334,6 +355,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     """
     Deal with the messages posted to this GUI by cmdlineframes.py
     """
+    if self.webpagedebugform is not None:
+      self.webpagedebugform.update()
     if self.cctbxproc:
       if self.cctbxproc.stdout:
         self.out = self.cctbxproc.stdout.read().decode("utf-8")
@@ -346,7 +369,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     if self.err:
       currentinfostr += self.err.decode("utf-8")
       print(self.err.decode("utf-8"))
-
 
     if self.zmq_context:
       try:
@@ -424,8 +446,17 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
             self.SpaceGroupComboBox.clear()
             self.SpaceGroupComboBox.addItems( list(self.spacegroups.values()) )
 
+          currentinfostr = ""
+          if self.infodict.get("info"):
+            currentinfostr = self.infodict.get("info",[])
+            if self.closing:
+              print(currentinfostr)
+
+            if "Destroying HKLViewFrame" in currentinfostr:
+              self.canexit = True
+
           if self.infodict.get("tabulate_miller_array"):
-            print("received table")
+            currentinfostr = "Received table data"
             self.tabulate_miller_array = self.infodict["tabulate_miller_array"]
             self.indices = self.tabulate_miller_array[0]
             #labels = ["H", "K", "L"] + [ ld[0] for ld in self.tabulate_miller_array[1:] ]
@@ -452,15 +483,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
             self.millerarraytableform.SortComboBox.view().setMinimumWidth(self.comboviewwidth)
             self.millerarraytableform.resize(tablewidth, self.millerarraytable.rowHeight(0)*15)
             self.millerarraytableform.show()
-
-          currentinfostr = ""
-          if self.infodict.get("info"):
-            currentinfostr = self.infodict.get("info",[])
-            if self.closing:
-              print(currentinfostr)
-
-            if "Destroying HKLViewFrame" in currentinfostr:
-              self.canexit = True
 
           if self.infodict.get("tncsvec"):
             self.tncsvec = self.infodict.get("tncsvec",[])
@@ -532,7 +554,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         errmsg = str(e)
         if "Resource temporarily unavailable" not in errmsg:
           print( errmsg  +  traceback.format_exc(limit=10) )
-        pass
+        #print(errmsg)
 
 
   def UpdateGUI(self):
@@ -1337,10 +1359,15 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.unitcellslider.sliderReleased.connect(self.onUnitcellScale)
     self.reciprocunitcellslider.sliderReleased.connect(self.onReciprocUnitcellScale)
     self.ResetViewBtn.clicked.connect(self.onResetViewBtn)
+    self.SaveImageBtn.clicked.connect(self.onSaveImageBtn)
 
 
   def onResetViewBtn(self):
     self.PhilToJsRender('NGL_HKLviewer.action = reset_view')
+
+
+  def onSaveImageBtn(self):
+    self.PhilToJsRender('NGL_HKLviewer.save_image_name = "C:\\Users\\oeffner\\Buser\\HKLviewerTests\\testimage.png" ')
 
 
   def onDrawReciprocUnitCellBoxClick(self):
@@ -1431,7 +1458,7 @@ def run():
       if "devmode" in e or "debug" in e:
         debugtrue = True
         # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
-        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9742 --single-process --js-flags='--expose_gc'"
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
 
     settings = QSettings("CCTBX", "HKLviewer" )
     settings.beginGroup("SomeSettings")

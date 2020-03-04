@@ -3,7 +3,7 @@
 # Form implementation generated from reading ui file 'HKLviewer.ui',
 # licensing of 'HKLviewer.ui' applies.
 #
-# Created: Wed Feb 19 17:38:53 2020
+# Created: Tue Mar  3 13:21:17 2020
 #      by: pyside2-uic  running on PySide2 5.12.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -551,14 +551,6 @@ class Ui_MainWindow(object):
     self.groupBox_6.setObjectName("groupBox_6")
     self.gridLayout_21 = QtWidgets.QGridLayout(self.groupBox_6)
     self.gridLayout_21.setObjectName("gridLayout_21")
-    self.ResetViewBtn = QtWidgets.QPushButton(self.groupBox_6)
-    sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-    sizePolicy.setHorizontalStretch(0)
-    sizePolicy.setVerticalStretch(0)
-    sizePolicy.setHeightForWidth(self.ResetViewBtn.sizePolicy().hasHeightForWidth())
-    self.ResetViewBtn.setSizePolicy(sizePolicy)
-    self.ResetViewBtn.setObjectName("ResetViewBtn")
-    self.gridLayout_21.addWidget(self.ResetViewBtn, 0, 0, 1, 1)
     self.DrawReciprocUnitCellBox = QtWidgets.QGroupBox(self.groupBox_6)
     self.DrawReciprocUnitCellBox.setCheckable(True)
     self.DrawReciprocUnitCellBox.setChecked(False)
@@ -611,6 +603,34 @@ class Ui_MainWindow(object):
     self.label_5.setObjectName("label_5")
     self.gridLayout_26.addWidget(self.label_5, 0, 2, 1, 1)
     self.gridLayout_21.addWidget(self.DrawRealUnitCellBox, 2, 0, 1, 1)
+    self.frame_4 = QtWidgets.QFrame(self.groupBox_6)
+    sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+    sizePolicy.setHorizontalStretch(0)
+    sizePolicy.setVerticalStretch(0)
+    sizePolicy.setHeightForWidth(self.frame_4.sizePolicy().hasHeightForWidth())
+    self.frame_4.setSizePolicy(sizePolicy)
+    self.frame_4.setFrameShape(QtWidgets.QFrame.StyledPanel)
+    self.frame_4.setFrameShadow(QtWidgets.QFrame.Raised)
+    self.frame_4.setObjectName("frame_4")
+    self.gridLayout_14 = QtWidgets.QGridLayout(self.frame_4)
+    self.gridLayout_14.setObjectName("gridLayout_14")
+    self.ResetViewBtn = QtWidgets.QPushButton(self.frame_4)
+    sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+    sizePolicy.setHorizontalStretch(0)
+    sizePolicy.setVerticalStretch(0)
+    sizePolicy.setHeightForWidth(self.ResetViewBtn.sizePolicy().hasHeightForWidth())
+    self.ResetViewBtn.setSizePolicy(sizePolicy)
+    self.ResetViewBtn.setObjectName("ResetViewBtn")
+    self.gridLayout_14.addWidget(self.ResetViewBtn, 0, 0, 1, 1)
+    self.SaveImageBtn = QtWidgets.QPushButton(self.frame_4)
+    sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+    sizePolicy.setHorizontalStretch(0)
+    sizePolicy.setVerticalStretch(0)
+    sizePolicy.setHeightForWidth(self.SaveImageBtn.sizePolicy().hasHeightForWidth())
+    self.SaveImageBtn.setSizePolicy(sizePolicy)
+    self.SaveImageBtn.setObjectName("SaveImageBtn")
+    self.gridLayout_14.addWidget(self.SaveImageBtn, 0, 1, 1, 1)
+    self.gridLayout_21.addWidget(self.frame_4, 0, 0, 1, 1)
     self.gridLayout_8.addWidget(self.groupBox_6, 0, 0, 1, 1)
     self.functionTabWidget.addTab(self.tab_5, "")
     self.textInfo = QtWidgets.QPlainTextEdit(self.splitter_2)
@@ -709,8 +729,6 @@ class Ui_MainWindow(object):
     self.binstable.setToolTip(QtWidgets.QApplication.translate("MainWindow", "<html><head/><body><p>Change the visibility of selected bins either by ticking or unticking the check boxes or by entering an opacity value between 0 and 1</p></body></html>", None, -1))
     self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_4), QtWidgets.QApplication.translate("MainWindow", "Binning", None, -1))
     self.groupBox_6.setTitle(QtWidgets.QApplication.translate("MainWindow", "Geometry", None, -1))
-    self.ResetViewBtn.setToolTip(QtWidgets.QApplication.translate("MainWindow", "<html><head/><body><p>Place the displayed reflections in the centre of the view.</p></body></html>", None, -1))
-    self.ResetViewBtn.setText(QtWidgets.QApplication.translate("MainWindow", "Reset View", None, -1))
     self.DrawReciprocUnitCellBox.setToolTip(QtWidgets.QApplication.translate("MainWindow", "<html><head/><body><p>The reciprocal unit cell spanning a*,b*,c* from (0,0,0) to (1,1,1) is located in the centre of the displayed reflections. and is therefore quite small. Adjust the slider to scale its outline to become compatible with the sphere of displayed reflections.</p></body></html>", None, -1))
     self.DrawReciprocUnitCellBox.setTitle(QtWidgets.QApplication.translate("MainWindow", "Show Reciprocal Unit Cell", None, -1))
     self.label_2.setText(QtWidgets.QApplication.translate("MainWindow", "True to Scale of HKL grid", None, -1))
@@ -719,6 +737,9 @@ class Ui_MainWindow(object):
     self.DrawRealUnitCellBox.setTitle(QtWidgets.QApplication.translate("MainWindow", "Show Real Space Unit Cell", None, -1))
     self.label_6.setText(QtWidgets.QApplication.translate("MainWindow", "True to Scale of HKL grid", None, -1))
     self.label_5.setText(QtWidgets.QApplication.translate("MainWindow", "Close to radius of sphere of reflections", None, -1))
+    self.ResetViewBtn.setToolTip(QtWidgets.QApplication.translate("MainWindow", "<html><head/><body><p>Place the displayed reflections in the centre of the view.</p></body></html>", None, -1))
+    self.ResetViewBtn.setText(QtWidgets.QApplication.translate("MainWindow", "Reset View", None, -1))
+    self.SaveImageBtn.setText(QtWidgets.QApplication.translate("MainWindow", "Save Image", None, -1))
     self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_5), QtWidgets.QApplication.translate("MainWindow", "Extras", None, -1))
     self.menuFile.setTitle(QtWidgets.QApplication.translate("MainWindow", "File", None, -1))
     self.actionOpen_reflection_file.setText(QtWidgets.QApplication.translate("MainWindow", "Open reflection file...", None, -1))
@@ -726,6 +747,7 @@ class Ui_MainWindow(object):
     self.actiondebug.setText(QtWidgets.QApplication.translate("MainWindow", "Debug", None, -1))
     self.actionExit.setText(QtWidgets.QApplication.translate("MainWindow", "Exit", None, -1))
     self.actionSave_reflection_file.setText(QtWidgets.QApplication.translate("MainWindow", "Save reflection file", None, -1))
+
 
 
 

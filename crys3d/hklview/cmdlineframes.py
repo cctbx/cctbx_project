@@ -436,15 +436,9 @@ class HKLViewFrame() :
           return False
         self.viewer.lastscene_id = phl.viewer.scene_id
 
-      if view_3d.has_phil_path(diff_phil, "scene_id") \
-       or view_3d.has_phil_path(diff_phil, "merge_data") \
-       or view_3d.has_phil_path(diff_phil, "show_missing") \
-       or view_3d.has_phil_path(diff_phil, "show_only_missing") \
-       or view_3d.has_phil_path(diff_phil, "show_systematic_absences") \
-       or view_3d.has_phil_path(diff_phil, "nbins") \
-       or view_3d.has_phil_path(diff_phil, "bin_scene_label") \
-       or view_3d.has_phil_path(diff_phil, "scene_bin_thresholds"):
-        #import code; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      if view_3d.has_phil_path(diff_phil, "scene_id", "merge_data", "show_missing", \
+         "show_only_missing", "show_systematic_absences", "nbins", "bin_scene_label",\
+         "scene_bin_thresholds"):
         if self.set_scene(phl.viewer.scene_id):
           self.update_space_group_choices()
           self.set_scene_bin_thresholds(binvals=phl.scene_bin_thresholds,
@@ -461,8 +455,7 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "miller_array_operations"):
         self.make_new_miller_array()
 
-      if view_3d.has_phil_path(diff_phil, "angle_around_vector") \
-       or view_3d.has_phil_path(diff_phil, "bequiet"):
+      if view_3d.has_phil_path(diff_phil, "angle_around_vector", "bequiet"):
         self.rotate_around_vector(phl.clip_plane.angle_around_vector)
 
       if view_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
@@ -470,6 +463,10 @@ class HKLViewFrame() :
 
       if view_3d.has_phil_path(diff_phil, "shape_primitive"):
         self.set_shape_primitive(phl.shape_primitive)
+
+      if view_3d.has_phil_path(diff_phil, "save_image_name"):
+        self.SaveImageName(phl.save_image_name)
+        phl.save_image_name = None
 
       if view_3d.has_phil_path(diff_phil, "action"):
         ret = self.set_action(phl.action)
@@ -833,11 +830,11 @@ class HKLViewFrame() :
         list_with_nans = [ e if not e==display.inanval else display.nanval for e in self.viewer.match_valarrays[id].data() ]
         if self.viewer.array_infotpls[id][0] == 'FreeR_flag': # want True or False back
           list_with_nans = [ 1==e if not cmath.isnan(e) else display.nanval for e in list_with_nans ]
-        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list_with_nans)  )
+        datalst.append( (self.viewer.match_valarrays[id].info().label_string(), list_with_nans)  )
       else:
         datalst.append( (self.viewer.match_valarrays[id].info().label_string(), list(self.viewer.match_valarrays[id].data()))  )
     self.idx_data = hkllst + dreslst + datalst
-    self.mprint("Sending table data", verbose=1)
+    self.mprint("Sending table data...", verbose=0)
     mydict = { "tabulate_miller_array": self.idx_data }
     self.SendInfoToGUI(mydict)
 
@@ -1116,6 +1113,10 @@ class HKLViewFrame() :
     return []
 
 
+  def SaveImageName(self, fname):
+    self.viewer.MakeImage(fname)
+
+
   def SendCurrentPhilValues(self):
     philstrvalsdict = {}
     for e in self.currentphil.all_definitions():
@@ -1123,9 +1124,7 @@ class HKLViewFrame() :
     mydict = { "current_phil_strings": philstrvalsdict }
     self.SendInfoToGUI(mydict)
     if self.viewer.params.viewer.scene_id is not None:
-      #self.SendInfoToGUI({ "used_nth_power_scale_radii": self.viewer.HKLscenes[int(self.viewer.params.viewer.scene_id)].nth_power_scale_radii })
       self.SendInfoToGUI({ "used_nth_power_scale_radii": self.viewer.HKLscene_from_dict().nth_power_scale_radii })
-
 
 
   def GetHtmlURL(self):
@@ -1177,6 +1176,8 @@ NGL_HKLviewer {
   openfilename = None
     .type = path
   savefilename = None
+    .type = path
+  save_image_name = None
     .type = path
   merge_data = False
     .type = bool

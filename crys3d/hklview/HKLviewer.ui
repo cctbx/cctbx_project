@@ -1043,22 +1043,6 @@
                    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                   </property>
                   <layout class="QGridLayout" name="gridLayout_21">
-                   <item row="0" column="0">
-                    <widget class="QPushButton" name="ResetViewBtn">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="toolTip">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Place the displayed reflections in the centre of the view.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                     </property>
-                     <property name="text">
-                      <string>Reset View</string>
-                     </property>
-                    </widget>
-                   </item>
                    <item row="1" column="0">
                     <widget class="QGroupBox" name="DrawReciprocUnitCellBox">
                      <property name="toolTip">
@@ -1167,6 +1151,53 @@
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item row="0" column="0">
+                    <widget class="QFrame" name="frame_4">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="frameShape">
+                      <enum>QFrame::StyledPanel</enum>
+                     </property>
+                     <property name="frameShadow">
+                      <enum>QFrame::Raised</enum>
+                     </property>
+                     <layout class="QGridLayout" name="gridLayout_14">
+                      <item row="0" column="0">
+                       <widget class="QPushButton" name="ResetViewBtn">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Place the displayed reflections in the centre of the view.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="text">
+                         <string>Reset View</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QPushButton" name="SaveImageBtn">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="text">
+                         <string>Save Image</string>
                         </property>
                        </widget>
                       </item>
