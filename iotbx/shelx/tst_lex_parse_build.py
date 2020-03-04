@@ -902,6 +902,14 @@ def exercise_constrained_occupancies():
   assert c1.scatterer_indices == (3, len(sc) - 1)
   assert c1.linear_form == ((1,1), 1)
 
+def exercise_wavelength():
+  from iotbx.shelx.parsers import wavelength_parser
+  builder = iotbx.builders.crystal_structure_builder()
+  stream = shelx.command_stream(file=StringIO(ins_aspirin))
+  stream = wavelength_parser(stream, builder)
+  stream.parse()
+  assert approx_equal(builder.wavelength_in_angstrom, 0.71073)
+
 def run():
   exercise_lexing()
   exercise_lexing_bis()
@@ -917,6 +925,7 @@ def run():
     exercise_residues()
   exercise_xray_structure_parsing()
   exercise_crystal_symmetry_parsing()
+  exercise_wavelength()
   print('OK')
 
 ins_mundane_tiny = (

@@ -1,0 +1,115 @@
+data_global
+loop_
+  _space_group_symop_id
+  _space_group_symop_operation_xyz
+  1  x,y,z
+  2  -x+1/2,y+1/2,-z+1/2
+  3  -x,-y,-z
+  4  x-1/2,-y-1/2,z-1/2
+
+_space_group_crystal_system       monoclinic
+_space_group_IT_number            14
+_space_group_name_H-M_alt         'P 1 21/n 1'
+_space_group_name_Hall            '-P 2ybc (x-z,y,z)'
+_symmetry_space_group_name_H-M    'P 1 21/n 1'
+_symmetry_space_group_name_Hall   '-P 2ybc (x-z,y,z)'
+_symmetry_Int_Tables_number       14
+_cell_length_a                    6.920
+_cell_length_b                    14.575
+_cell_length_c                    9.725
+_cell_angle_alpha                 90.000
+_cell_angle_beta                  90.637
+_cell_angle_gamma                 90.000
+_cell_volume                      980.710
+loop_
+  _atom_site_label
+  _atom_site_type_symbol
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_U_iso_or_equiv
+  _atom_site_adp_type
+  _atom_site_occupancy
+  F1   F  0.166963  0.426044  -0.237582  0.027923  Uani  1.000000
+  F2   F  0.131017  0.314923  -0.012806  0.029609  Uani  1.000000
+  N8   N  0.361906  0.669236   0.076378  0.020635  Uani  1.000000
+  N3   N  0.226668  0.430082   0.128234  0.022456  Uiso  0.840886
+  C9   C  0.301436  0.582759   0.041999  0.017410  Uani  1.000000
+  C4   C  0.275517  0.516706   0.152293  0.018408  Uani  1.000000
+  N5   N  0.303518  0.542588   0.285592  0.024448  Uani  1.000000
+  C2   C  0.188309  0.402874   0.002046  0.020658  Uani  1.000000
+  C10  C  0.262515  0.550075  -0.090268  0.018678  Uani  1.000000
+  C1   C  0.205784  0.457266  -0.109225  0.020288  Uani  1.000000
+  C11  C  0.260091  0.602742  -0.214229  0.024729  Uani  1.000000
+  C13  C  0.267517  0.476155   0.394545  0.028988  Uani  1.000000
+  C6   C  0.365342  0.634690   0.320850  0.032231  Uani  1.000000
+  N12  N  0.250777  0.638952  -0.319773  0.037097  Uani  1.000000
+  C7A  C  0.306580  0.702430   0.212250  0.027988  Uani  0.921682
+  C14  C  0.395992  0.739562  -0.026622  0.027821  Uani  1.000000
+  C7B  C  0.417668  0.696486   0.219379  0.012199  Uani  0.078318
+  C3   C  0.205807  0.430901   0.135680  0.001248  Uiso  0.159114
+
+loop_
+  _atom_site_aniso_label
+  _atom_site_aniso_U_11
+  _atom_site_aniso_U_22
+  _atom_site_aniso_U_33
+  _atom_site_aniso_U_12
+  _atom_site_aniso_U_13
+  _atom_site_aniso_U_23
+  F1    0.034893  0.029179  0.019625  -0.000833  -0.002965  -0.007552
+  F2    0.040017  0.016936  0.031757  -0.002988  -0.004857  -0.002405
+  N8    0.026733  0.017129  0.018075  -0.001625   0.001658   0.000169
+  C9    0.015980  0.018143  0.018123   0.003002   0.000883   0.000034
+  C4    0.020172  0.018867  0.016174   0.001000  -0.000311   0.000321
+  N5    0.037145  0.020989  0.015166  -0.004070  -0.001678   0.001195
+  C2    0.022661  0.016627  0.022633   0.001556  -0.002108  -0.002673
+  C10   0.018645  0.020162  0.017273   0.002270   0.002254  -0.000043
+  C1    0.022036  0.021152  0.017656   0.002744  -0.000669  -0.003893
+  C11   0.029437  0.026030  0.018728  -0.000072   0.000646  -0.001637
+  C13   0.041316  0.028016  0.017622  -0.003706  -0.000218   0.004634
+  C6    0.052108  0.025086  0.019476  -0.006431  -0.000667  -0.003955
+  N12   0.054361  0.034277  0.022607  -0.005625  -0.001663   0.004927
+  C7A   0.043900  0.020551  0.019590  -0.000079   0.003845  -0.005056
+  C14   0.039699  0.019465  0.024327  -0.005109   0.001552   0.004239
+  C7B  -0.005211  0.014420  0.027271   0.006881  -0.005126  -0.000406
+
+loop_
+  _atom_type_symbol
+  _atom_type_scat_dispersion_real
+  _atom_type_scat_dispersion_imag
+  _atom_type_scat_Cromer_Mann_a1
+  _atom_type_scat_Cromer_Mann_a2
+  _atom_type_scat_Cromer_Mann_a3
+  _atom_type_scat_Cromer_Mann_a4
+  _atom_type_scat_Cromer_Mann_a5
+  _atom_type_scat_Cromer_Mann_a6
+  _atom_type_scat_Cromer_Mann_b1
+  _atom_type_scat_Cromer_Mann_b2
+  _atom_type_scat_Cromer_Mann_b3
+  _atom_type_scat_Cromer_Mann_b4
+  _atom_type_scat_Cromer_Mann_b5
+  _atom_type_scat_Cromer_Mann_b6
+  _atom_type_scat_Cromer_Mann_c
+  _atom_type_scat_source
+  _atom_type_scat_dispersion_source
+  C  0.00211  0.00161  2.18189  1.77612  1.08772  0.64146  0.20789  0.10522  13.45337  32.57901   0.74729   0.25125  80.97993  0.05873  0.0  
+;
+6-Gaussian fit: Grosse-Kunstleve RW, Sauter NK, Adams PD:
+Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31.
+;
+  'Sasaki, KEK Report, 1989, 88-14, 1'
+  F  0.01364  0.01032  3.45430  2.86374  0.87265  0.78919  0.78648  0.23325  10.91554   4.46290  27.67080   0.15325   0.36169  0.04182  0.0  
+;
+6-Gaussian fit: Grosse-Kunstleve RW, Sauter NK, Adams PD:
+Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31.
+;
+  'Sasaki, KEK Report, 1989, 88-14, 1'
+  N  0.00411  0.00331  2.77545  1.37596  1.06290  1.03806  0.62582  0.12084  15.06448   7.17747   0.52745  37.96228   0.18762  0.04718  0.0  
+;
+6-Gaussian fit: Grosse-Kunstleve RW, Sauter NK, Adams PD:
+Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31.
+;
+  'Sasaki, KEK Report, 1989, 88-14, 1'
+
+

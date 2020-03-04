@@ -1034,6 +1034,56 @@ O6 0.34780 0.11820 0.55300 1.00000 0.01089
 O7 0.33760 0.00000 0.27000 1.00000 0.00937
 """
 
+def exercise_build_with_wavelength():
+  m = cif.reader(input_string=cif_xray_structure_with_wavelength).model()
+  xs = cif.builders.crystal_structure_builder(m['global']).structure
+  assert approx_equal(xs.wavelength, 1.54184)
+  cif_xray_structure_missing_wavelength = \
+      cif_xray_structure_with_wavelength.replace('1.54184', '?')
+  m = cif.reader(input_string=cif_xray_structure_missing_wavelength).model()
+  xs = cif.builders.crystal_structure_builder(m['global']).structure
+  assert xs.wavelength == None
+
+cif_xray_structure_with_wavelength = """\
+data_global
+loop_
+    _symmetry_equiv_pos_as_xyz
+    'x, y, z'
+    '-x, y, -z'
+    '-x, -y, -z'
+    'x, -y, z'
+    'x+1/2, y+1/2, z'
+    '-x+1/2, y+1/2, -z'
+    '-x+1/2, -y+1/2, -z'
+    'x+1/2, -y+1/2, z'
+_cell_length_a 10
+_cell_length_b 20
+_cell_length_c 30
+_cell_angle_alpha 90
+_cell_angle_beta 90
+_cell_angle_gamma 90
+_diffrn_radiation_wavelength 1.54184
+loop_ # comment
+    _atom_site_label # another comment
+    _atom_site_fract_x
+    _atom_site_fract_y
+    _atom_site_fract_z
+    _atom_site_U_iso_or_equiv
+    _atom_site_occupancy
+    _atom_site_type_symbol
+    'o' 0.5 0 0 0.1 0.8 'O'
+    'c' 0 0 0 0.2 1 'C'
+loop_
+    _atom_site_aniso_label
+    _atom_site_aniso_U_11
+    _atom_site_aniso_U_22
+    _atom_site_aniso_U_33
+    _atom_site_aniso_U_12
+    _atom_site_aniso_U_13
+    _atom_site_aniso_U_23
+    'c' 0.1 0.2 0.3 0 0 0
+"""
+
 def exercise():
   exercise_missing_atom_site_type_symbol()
   exercise_syntax_errors()
@@ -1044,6 +1094,7 @@ def exercise():
   exercise_partial_crystal_symmetry()
   exercise_mmcif_structure_factors()
   exercise_atom_type_loop()
+  exercise_build_with_wavelength()
 
 if __name__ == '__main__':
   exercise()
