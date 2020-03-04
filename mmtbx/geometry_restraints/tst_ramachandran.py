@@ -357,8 +357,8 @@ def exercise_geo_output(mon_lib_srv, ener_lib):
       site_labels=[a.id_str() for a in atoms],
       f=out)
   gv = out.getvalue()
-  # print out.getvalue()
-  # STOP()
+  #print (out.getvalue())
+  #STOP()
   assert not show_diff(gv, """\
 Ramachandran plot restraints (Oldfield): 0
 Sorted by residual:
@@ -414,7 +414,10 @@ phi-psi angles formed by             residual
     pdb=" C   ALA     6 "
     pdb=" N   ALA     7 "
 
-""")
+Ramachandran plot restraints (emsley8k): 0
+Sorted by residual:
+
+"""), gv
 
   params.favored = 'oldfield'
   params.allowed = 'oldfield'
@@ -428,6 +431,8 @@ phi-psi angles formed by             residual
       site_labels=[a.id_str() for a in atoms],
       f=out)
   gv = out.getvalue()
+  #print (out.getvalue())
+  #STOP()
   assert not show_diff(gv, """\
 Ramachandran plot restraints (Oldfield): 8
 Sorted by residual:
@@ -483,6 +488,9 @@ phi-psi angles formed by             residual
 Ramachandran plot restraints (Emsley): 0
 Sorted by residual:
 
+Ramachandran plot restraints (emsley8k): 0
+Sorted by residual:
+
 """)
 
 def exercise_manager_selection(mon_lib_srv, ener_lib):
@@ -512,6 +520,8 @@ def exercise_manager_selection(mon_lib_srv, ener_lib):
       sites_cart=sites_cart,
       site_labels=[a.id_str() for a in atoms],
       f=s_out)
+  #print (s_out.getvalue())
+  #STOP()
   assert not show_diff(s_out.getvalue(), """\
 Ramachandran plot restraints (Oldfield): 0
 Sorted by residual:
@@ -555,9 +565,10 @@ phi-psi angles formed by             residual
     pdb=" C   ALA     6 "
     pdb=" N   ALA     7 "
 
+Ramachandran plot restraints (emsley8k): 0
+Sorted by residual:
+
 """)
-
-
 
 def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
   # Just check overall rama proxies
