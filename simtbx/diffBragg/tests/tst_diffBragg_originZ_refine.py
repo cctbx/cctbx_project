@@ -232,12 +232,6 @@ RUC.poisson_only = True
 RUC.verbose = True
 RUC.big_dump = True
 
-#RUC.gt_ucell = ucell[0], ucell[1], ucell[2], ucell[4]
-#RUC.gt_ncells = Ncells_gt[0]
-#RUC.testing_mode = True
-#RUC.bg_offset_only = True
-#RUC.bg_offset_positive = True
-
 RUC.run(setup_only=False)
 if RUC.hit_break_to_use_curvatures:
     RUC.num_positive_curvatures = 0
@@ -245,4 +239,4 @@ if RUC.hit_break_to_use_curvatures:
     RUC.run(setup=False)
 
 assert abs(RUC.x[RUC.originZ_xpos] - distance) < 1e-2
-print "OK"
+print "OK I_AM_ZIM"
