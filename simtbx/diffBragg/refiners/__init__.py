@@ -7,4 +7,4 @@ from .detdist_refiner import RefineDetdist
 from .ncells_refiner import RefineNcells
 from .all_refine import RefineAll
 from .all_refine_multipanel import RefineAllMultiPanel
-#from .global_refiner import FatRefiner
+#from .global_refiner import FatRefiner  # TODO: why commented out ???

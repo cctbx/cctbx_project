@@ -196,9 +196,6 @@ from simtbx.diffBragg.refiners.global_refiner import FatRefiner
 # TODO: the following need to be embedded in the refiner init function..
 nspot = len(spot_roi)
 
-
-
-
 nanoBragg_rois = []  # special nanoBragg format
 xrel, yrel, roi_imgs = [], [], []
 xcom, ycom = [],[]

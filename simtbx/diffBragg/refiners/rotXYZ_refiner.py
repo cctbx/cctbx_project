@@ -37,6 +37,7 @@ class RefineRot(PixelRefinement):
         self.iterations = 0
         if self.plot_images:
             if plot_residuals:
+                from mpl_toolkits.mplot3d import Axes3D
                 self.fig = plt.figure()
                 self.ax = self.fig.gca(projection='3d')
                 self.ax.set_yticklabels([])

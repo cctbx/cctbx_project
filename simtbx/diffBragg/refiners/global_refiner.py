@@ -176,7 +176,7 @@ class FatRefiner(PixelRefinement):
         self.local_idx_start = local_idx_start
 
         self.calc_func = True  # NOTE: leave True, debug flag from older code
-        self.multi_panel = True  # we are multi panel
+        self.multi_panel = True  # we are multi panel for all space and time back to the dawn of creation
         self.f_vals = []  # store the functional over time
 
         # start with the first shot
@@ -254,7 +254,7 @@ class FatRefiner(PixelRefinement):
             if self.plot_images:
                 if self.plot_residuals:
                     self.fig = plt.figure()
-                    #FIXME need an import
+                    from mpl_toolkits.mplot3d import Axes3D
                     self.ax = self.fig.gca(projection='3d')
                     self.ax.set_yticklabels([])
                     self.ax.set_xticklabels([])
@@ -662,7 +662,6 @@ class FatRefiner(PixelRefinement):
         """needs to be called each time the ROI is changed"""
         self.D.region_of_interest = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
         self.D.add_diffBragg_spots()
-        #if not tuple(map(int, self.D.max_I_hkl)) == self.ASU[]
 
     def _update_Fcell(self):
         idx, data = self.S.D.Fhkl_tuple
@@ -807,6 +806,8 @@ class FatRefiner(PixelRefinement):
                     refine_str += "scale, "
                 if self.refine_background_planes:
                     refine_str += "bkgrnd, "
+                if self.refine_detdist:
+                    refine_str += "originZ, "
                 
                 if self.use_curvatures:
                     
@@ -819,13 +820,6 @@ class FatRefiner(PixelRefinement):
                 outf = os.path.join(self.output_dir, "_fcell_trial%d_iter%d" % (self.trial_id, self.iterations))
                 fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
                 np.savez(outf, fvals=fvals, x=self.x.as_numpy_array())
-
-            #if self.testing_mode:
-            #    print list(self.x)
-            #    print self.refine_sel_pos
-            #    for sel_i, sel_xpos in enumerate(self.refine_sel_pos):
-            #        self.x_master[sel_xpos] = self.x[sel_i]
-            #    self.x = deepcopy(self.x_master)
 
             f = 0
             g = flex_double(self.n)
@@ -916,7 +910,7 @@ class FatRefiner(PixelRefinement):
                     #    #print("Warning max_h  mismatch!!!!!!")
                     #    #comm.Abort()
 
-                    # helper terms for doing derivatives
+                    # helper terms for doing outer derivatives of likelihood function
                     one_over_Lambda = 1. / self.model_Lambda
                     self.one_minus_k_over_Lambda = (1. - self.Imeas * one_over_Lambda)
                     self.k_over_squared_Lambda = self.Imeas * one_over_Lambda * one_over_Lambda
@@ -1018,7 +1012,6 @@ class FatRefiner(PixelRefinement):
                                 self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_ncells:
-                        #TODO ensure Ncells is always positive with a reparameterization
                         d = expS * G2 * self.ncells_deriv
                         xpos = self.ncells_xpos[self._i_shot]
                         g[xpos] += self._grad_accumulate(d)
@@ -1027,11 +1020,19 @@ class FatRefiner(PixelRefinement):
                             self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_detdist:
-                        raise NotImplementedError("Cannot refine detdist (yet...)")
-                        # if self.calc_curvatures:
-                        #    raise NotImplementedError("Cannot use curvatures and refine detdist (yet...)")
-                        # origin_xpos = self.origin_xstart + self.idx_from_pid[self._panel_id]
-                        # g[origin_xpos] += (expS*G2*self.detdist_deriv*one_minus_k_over_Lambda).sum()
+                        d = expS * G2 * self.detdist_deriv
+                        xpos = self.originZ_xpos  #[self._i_shot]
+                        g[xpos] += self._grad_accumulate(d)
+                        if self.calc_curvatures:
+                            d2 = expS * G2 * self.detdist_second_deriv
+                            self.curv[xpos] += self._curv_accumulate(d, d2)
+
+                    #    raise NotImplementedError("Cannot refine detdist (yet...)")
+                    #    # if self.calc_curvatures:
+                    #    #    raise NotImplementedError("Cannot use curvatures and refine detdist (yet...)")
+                    #    #origin_xpos = self.origin_xstart + self.idx_from_pid[self._panel_id]
+                    #    #g[origin_xpos] += (expS*G2*self.detdist_deriv*one_minus_k_over_Lambda).sum()
+
 
                     if self.refine_Fcell and multi >= self.min_multiplicity:
                         xpos = self.fcell_xstart + self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
@@ -1274,6 +1275,7 @@ class FatRefiner(PixelRefinement):
 
             master_data = pandas.DataFrame(master_data)
             master_data["gain"] = self.x[self.gain_xpos]
+            master_data["originZ"] = self.x[self.originZ_xpos]
             if self.big_dump:
                 print(master_data.to_string(float_format="%2.7g"))
 
@@ -1342,6 +1344,7 @@ class FatRefiner(PixelRefinement):
             param_val = median(ucparam_lst)
             uc_string += "%s=%.3f, " % (ucparam_names[i_ucparam], param_val)
         scale_stats_string += uc_string
+        scale_stats_string += "originZ=%f, " % self.x[self.originZ_xpos]
 
         Xnorm = norm(self.x)
         R1 = -1
@@ -1450,27 +1453,44 @@ class FatRefiner(PixelRefinement):
             A.append(a)
             err.append(np.abs(self.gt_ucell[i] - a))
 
-        diff = np.abs(np.array(A)-np.array(self.gt_ucell))
         mn_err = sum(err) / self.n_ucell_param
 
-        Ctru = self.CRYSTAL_GT[0]
-        atru, btru, ctru = Ctru.get_real_space_vectors()
-        ang, ax = self.get_correction_misset(as_axis_angle_deg=True, i_shot=0)
-        B = self.get_refined_Bmatrix(i_shot=0)
-        C = deepcopy(self.CRYSTAL_MODELS[0])
-        C.set_B(B)
-        if ang > 0:
-            C.rotate_around_origin(ax, ang)
-        try:
-            ang_off = compare_with_ground_truth(atru, btru, ctru,
+        shot_refined = []
+        for i_shot in range(self.n_shots):
+            Ctru = self.CRYSTAL_GT[i_shot]
+            atru, btru, ctru = Ctru.get_real_space_vectors()
+            ang, ax = self.get_correction_misset(as_axis_angle_deg=True, i_shot=i_shot)
+            B = self.get_refined_Bmatrix(i_shot=i_shot)
+            C = deepcopy(self.CRYSTAL_MODELS[i_shot])
+            C.set_B(B)
+            if ang > 0:
+                C.rotate_around_origin(ax, ang)
+            try:
+                ang_off = compare_with_ground_truth(atru, btru, ctru,
                                             [C],
                                             symbol=self.symbol)[0]
-        except RuntimeError:
-            ang_off = 999
-        print "MEAN ERROR=%.4f, ANG OFF %.4f" % (mn_err, ang_off)
+            except RuntimeError:
+                ang_off = 999
 
-        ncells_val = np.exp(self.x[self.ncells_xpos[0]])+3
-        ncells_resid = abs(ncells_val - self.gt_ncells)
-        if mn_err < 0.01 and ang_off < 0.004 and ncells_resid < 0.1:
-            print "OK"
-            exit()
+            print "shot %d: MEAN ERROR=%.4f, ANG OFF %.4f" % (i_shot, mn_err, ang_off)
+            ncells_val = np.exp(self.x[self.ncells_xpos[i_shot]]) + 3
+            ncells_resid = abs(ncells_val - self.gt_ncells)
+
+            if mn_err < 0.01 and ang_off < 0.004 and ncells_resid < 0.1:
+                shot_refined.append(True)
+            else:
+                shot_refined.append(False)
+
+        if self.refine_detdist:
+            det_resid = abs(self.originZ_gt - self.x[self.originZ_xpos])
+            print "Origin Z truth: %f" % self.originZ_gt
+            print "Origin Z current: %f" % self.x[self.originZ_xpos]
+
+        if all(shot_refined):
+            if self.refine_detdist:
+                if det_resid < 0.1:
+                    print "OK"
+                    exit()
+            else:
+                print "OK"
+                exit()
