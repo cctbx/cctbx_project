@@ -82,6 +82,7 @@ class origin_manager: public derivative_manager{
         double air_path, double wavelen, double Hrad, double Fcell, double Flatt, double fudge,
         double source_I, double capture_fraction, double omega_pixel, double pixel_size);
     vec3 dk; /* derivative of the diffracted vector along this origin component */
+    double FF, FdF, FdF2, dFdF;
 };
 
 class rotX_manager: public rot_manager{
@@ -133,6 +134,17 @@ class diffBragg: public nanoBragg{
   double kEi;
   double kBi;
 
+  //bool use_omega_pixel_ave;
+  double om;
+  double omega_pixel_ave;
+  double airpath_ave;
+
+  double diffracted_ave[4];
+  double pixel_pos_ave[4];
+  double Fdet_ave, Sdet_ave, Odet_ave;
+  vec3 k_diffracted_ave;
+  vec3 k_incident_ave;
+
   mat3 Umatrix;
   mat3 Bmatrix;
   mat3 Omatrix;
@@ -167,8 +179,64 @@ class diffBragg: public nanoBragg{
   af::flex_double raw_pixels_roi;
 
   bool update_oversample_during_refinement;
+  bool oversample_omega;
+  double uncorrected_I;
   vec3 max_I_hkl;// the hkl corresponding to the maximum intensity in the array (debug)
   //int max_I_h, max_I_k, max_I_l;
+
+  double D;
+  double D2;
+  double dD;
+
+  // helpful definitions..
+  double per_k ;
+  double per_k2 ;
+  double per_k3 ;
+  double per_k4 ;
+  double per_k5;
+  double per_k6;
+  double per_k7;
+  double G ;
+
+  double du;
+  double du2;
+
+  double w ;
+  double w2;
+  double BperE2;
+  double dkE ;
+  double dkB;
+  double v ;
+  double dv;
+  double dpsi ;
+  double dpsi2;
+
+  double c2psi ;
+  double s2psi ;
+  double gam_cos2psi;
+  double gam_sin2psi;
+
+  double dpolar ;
+
+  double dpolar2;
+
+  double pp ;
+  double dOmega ;
+  double dOmega2;
+
+  double FF ;
+  double FdF ;
+  double dFdF ;
+  double FdF2;
+
+  /* om is the average solid angle in the pixel (average over sub pixels) */
+  double origin_dI ;
+  double origin_dI2;
+  // different scale term here because polar and domega terms depend on originZ
+  double scale_term2 ;
+  double scale_term ;
+
+
 
 }; // end of diffBragg
 

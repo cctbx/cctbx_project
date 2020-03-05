@@ -150,6 +150,11 @@ namespace boost_python { namespace {
                      make_setter(&simtbx::nanoBragg::diffBragg::raw_pixels_roi,dcp()),
                     "raw pixels from region of interest only")
 
+      .add_property("oversample_omega",
+                     make_getter(&simtbx::nanoBragg::diffBragg::oversample_omega,rbv()),
+                     make_setter(&simtbx::nanoBragg::diffBragg::oversample_omega,dcp()),
+                    "whether to use an average solid angle correction per pixel, or one at the sub pixel level")
+
       .add_property("max_I_hkl",
                      make_getter(&simtbx::nanoBragg::diffBragg::max_I_hkl,rbv()),
                      make_setter(&simtbx::nanoBragg::diffBragg::max_I_hkl,dcp()),
