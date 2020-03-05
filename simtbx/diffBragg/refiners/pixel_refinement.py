@@ -42,6 +42,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.min_multiplicity = 3
         self.restart_file = None
         self.global_ncells_param = False
+        self.global_originZ_param = True
         self.global_ucell_param = True
         self.scale_r1 = False
         self.bad_shot_list = []

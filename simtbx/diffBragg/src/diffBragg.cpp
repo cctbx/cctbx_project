@@ -27,31 +27,44 @@ void derivative_manager::increment_image(int idx, double value, double value2){
 // END derivative manager
 
 //BEGIN origin manager
-origin_manager::origin_manager(){}
+origin_manager::origin_manager(){
+    FF=0;
+    FdF=0;
+    dFdF=0;
+    FdF2=0;
+    }
 
 void origin_manager::increment(
         vec3 V, mat3 N, mat3 UBO, vec3 k_diffracted, vec3 o_vec, double air_path, double wavelen,
         double Hrad, double Fcell, double Flatt, double fudge,
         double source_I, double capture_fraction, double omega_pixel, double pixel_size){
 
-    vec3 dq = 1/air_path * (dk - k_diffracted*(1/air_path/air_path)*(dk*k_diffracted));
-    dq /= wavelen;
-    vec3 dV = N*(UBO*dq);
+    double per_k = 1/air_path;
+    double per_k3 = pow(per_k,3);
+    double per_k5 = pow(per_k,5);
+
+    double G = dk*k_diffracted;
+
+    vec3 dQ = per_k * dk - per_k3 * G *k_diffracted;
+    vec3 dQ2 = 3*per_k5*G*G*k_diffracted - per_k3 * ((dk*dk)*k_diffracted  + 2*G*dk);
+
+    dQ /= wavelen;
+    dQ2 /= wavelen;
+
+    vec3 dV = N*(UBO*dQ);
     double V_dot_dV = V*dV;
     double dHrad = 2*V_dot_dV;
     double a = 1 / 0.63 * fudge;
     double dFlatt = -1*a*Flatt*dHrad;
     double c = Fcell*Fcell*source_I*capture_fraction;
-    dI += c*2*Flatt*dFlatt*omega_pixel;
-    // contribution from derivative of solid angle
-    //FIXME I mist be broken:
-    double D = k_diffracted * o_vec;
-    double pp = pixel_size*pixel_size;
-    double domega  = -3*pp/pow(air_path,5)*(dk*k_diffracted)*D;
-    domega += pp/pow(air_path,3)* (o_vec * dk);
-    dI += c*Flatt*Flatt*domega;
 
-    dI2 += 0;
+    vec3 dV2 = N*(UBO*dQ2);
+    double dFlatt2 = -2*a*(dFlatt * V_dot_dV + Flatt*(dV*dV) + Flatt*(V*dV2));
+
+    FF += c*Flatt*Flatt;
+    FdF += c*2*Flatt*dFlatt;
+    dFdF += c*2*dFlatt*dFlatt;
+    FdF2 += c*2*Flatt*dFlatt2;
 };
 //END origin manager
 
@@ -284,6 +297,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
 
     origin_managers.push_back(orig0);
     update_oversample_during_refinement = true;
+    oversample_omega = true;
 
 
     // set ucell gradients, Bmatrix is upper triangular in diffBragg?
@@ -753,6 +767,10 @@ void diffBragg::add_diffBragg_spots()
             if (origin_managers[0]->refine_me){
                 origin_managers[0]->dI=0;
                 origin_managers[0]->dI2=0;
+                origin_managers[0]->FF=0;
+                origin_managers[0]->FdF=0;
+                origin_managers[0]->dFdF=0;
+                origin_managers[0]->FdF2=0;
             }
 
             if (fcell_man->refine_me){
@@ -793,9 +811,9 @@ void diffBragg::add_diffBragg_spots()
 
                         /* solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta) */
                         omega_pixel = pixel_size*pixel_size/airpath/airpath*close_distance/airpath;
+
                         /* option to turn off obliquity effect, inverse-square-law only */
                         if(point_pixel) omega_pixel = 1.0/airpath/airpath;
-                        //omega_pixel = 1e-6; // FIXME
                         omega_sum += omega_pixel;
 
                         /* now calculate detector thickness effects */
@@ -812,6 +830,8 @@ void diffBragg::add_diffBragg_spots()
                         }
 
                     /* loop over sources now */
+
+
                     for(source=0;source<sources;++source){
                         /* retrieve stuff from cache */
                         incident[1] = -source_X[source];
@@ -828,12 +848,13 @@ void diffBragg::add_diffBragg_spots()
                         scattering[2] = (diffracted[2]-incident[2])/lambda;
                         scattering[3] = (diffracted[3]-incident[3])/lambda;
 
-                        k_diffracted[0] = pixel_pos[1];
-                        k_diffracted[1] = pixel_pos[2];
-                        k_diffracted[2] = pixel_pos[3];
                         o_vec[0] = odet_vector[1];
                         o_vec[1] = odet_vector[2];
                         o_vec[2] = odet_vector[3];
+
+                        k_diffracted[0] = pixel_pos[1];
+                        k_diffracted[1] = pixel_pos[2];
+                        k_diffracted[2] = pixel_pos[3];
 
                         /* sin(theta)/lambda is half the scattering vector length */
                         stol = 0.5*magnitude(scattering);
@@ -1050,9 +1071,10 @@ void diffBragg::add_diffBragg_spots()
                                 {
                                     polar = 1.0;
                                 }
-                                //polar=1; //FIXME
 
                                 /* convert amplitudes into intensity (photons per steradian) */
+                                if (!oversample_omega)
+                                    omega_pixel = 1;
                                 I += F_cell*F_cell*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
 
                                 if(verbose > 3)
@@ -1125,7 +1147,56 @@ void diffBragg::add_diffBragg_spots()
             }
             /* end of sub-pixel x loop */
 
-            floatimage[i] += r_e_sqr*fluence*spot_scale*polar*I/steps;
+            /* absolute mm position on detector (relative to its origin) */
+            Fdet_ave = pixel_size*fpixel + pixel_size/2.0;
+            Sdet_ave = pixel_size*spixel + pixel_size/2.0;
+            Odet_ave = Odet; // TODO maybe make this more general for thick detectors?
+
+            pixel_pos_ave[1] = Fdet_ave*fdet_vector[1]+Sdet_ave*sdet_vector[1]+Odet_ave*odet_vector[1]+pix0_vector[1];
+            pixel_pos_ave[2] = Fdet_ave*fdet_vector[2]+Sdet_ave*sdet_vector[2]+Odet_ave*odet_vector[2]+pix0_vector[2];
+            pixel_pos_ave[3] = Fdet_ave*fdet_vector[3]+Sdet_ave*sdet_vector[3]+Odet_ave*odet_vector[3]+pix0_vector[3];
+            pixel_pos_ave[0] = 0.0;
+
+            //pixel_pos_ave[1]  = pixel_pos_ave[1] / oversample / oversample;
+            //pixel_pos_ave[2]  = pixel_pos_ave[2] / oversample / oversample;
+            //pixel_pos_ave[3]  = pixel_pos_ave[3] / oversample / oversample;
+            //pixel_pos_ave[0]  = 0;
+            airpath_ave = unitize(pixel_pos_ave,diffracted_ave);
+            omega_pixel_ave = pixel_size*pixel_size/airpath_ave/airpath_ave*close_distance/airpath_ave;
+            //SCITBX_EXAMINE(omega_pixel_ave);
+
+            k_diffracted_ave[0] = pixel_pos_ave[1];
+            k_diffracted_ave[1] = pixel_pos_ave[2];
+            k_diffracted_ave[2] = pixel_pos_ave[3];
+
+            k_incident_ave[0] = incident[1];
+            k_incident_ave[1] = incident[2];
+            k_incident_ave[2] = incident[3];
+            k_incident_ave *= (1./k_incident_ave.length());
+
+            //double kl = k_incident_ave.length();
+            //SCITBX_ASSERT(kl==1);
+
+            //airpath_ave = airpath_ave/ oversample/oversample;
+            //omega_pixel_ave = omega_pixel_ave/ oversample/oversample;
+
+            /* polarization factor */
+            if(!nopolar){
+                if (!oversample_omega)
+                  polar = polarization_factor(polarization,incident,diffracted_ave,polar_vector);
+            }
+
+            if (!oversample_omega)
+                om=omega_pixel_ave;
+            else
+                om=1;
+
+            // final scale term to being everything to photon number units
+            scale_term =r_e_sqr*fluence*spot_scale*polar*om / steps;
+
+            //floatimage[i] += r_e_sqr*fluence*spot_scale*polar*I*om/steps;
+
+            floatimage[i] += scale_term*I;
 
             int roi_fs = i % fpixels - roi_xmin;
             int roi_ss = floor(i / fpixels) - roi_ymin ;
@@ -1143,60 +1214,137 @@ void diffBragg::add_diffBragg_spots()
             //SCITBX_ASSERT(roi_i >= 0);
             //SCITBX_ASSERT(roi_i < (roi_fdim*roi_sdim) ) ;
 
-            floatimage_roi[roi_i] += r_e_sqr*fluence*spot_scale*polar*I/steps;
+            //floatimage_roi[roi_i] += r_e_sqr*fluence*spot_scale*polar*I*om/steps;
+            floatimage_roi[roi_i] += scale_term*I;
+
 
             /* udpate the rotation derivative images*/
             for (int i_rot =0 ; i_rot < 3 ; i_rot++){
                 if (rot_managers[i_rot]->refine_me){
-                    double value = r_e_sqr*fluence*spot_scale*polar*rot_managers[i_rot]->dI/steps;
-                    double value2 = r_e_sqr*fluence*spot_scale*polar*rot_managers[i_rot]->dI2/steps;
+                    double value = scale_term*rot_managers[i_rot]->dI;
+                    double value2 = scale_term*rot_managers[i_rot]->dI2;
                     rot_managers[i_rot]->increment_image(roi_i, value, value2);
                 }
             } /* end rot deriv image increment */
 
+
             /*update the ucell derivative images*/
             for (int i_uc=0 ; i_uc < 6 ; i_uc++){
                 if (ucell_managers[i_uc]->refine_me){
-                    double value = r_e_sqr*fluence*spot_scale*polar*ucell_managers[i_uc]->dI/steps;
-                    double value2 = r_e_sqr*fluence*spot_scale*polar*ucell_managers[i_uc]->dI2/steps;
+                    double value = scale_term*ucell_managers[i_uc]->dI;
+                    double value2 = scale_term*ucell_managers[i_uc]->dI2;
                     ucell_managers[i_uc]->increment_image(roi_i, value, value2);
                 }
             }/* end ucell deriv image increment */
 
             /*update the Ncells derivative image*/
             if (Ncells_managers[0]->refine_me){
-                double value = r_e_sqr*fluence*spot_scale*polar*Ncells_managers[0]->dI/steps;
-                double value2 = r_e_sqr*fluence*spot_scale*polar*Ncells_managers[0]->dI2/steps;
+                double value = scale_term*Ncells_managers[0]->dI;
+                double value2 = scale_term*Ncells_managers[0]->dI2;
                 Ncells_managers[0]->increment_image(roi_i, value, value2);
             }/* end Ncells deriv image increment */
 
             /* update Fcell derivative image */
             if(fcell_man->refine_me){
-                double value = r_e_sqr*fluence*spot_scale*polar*fcell_man->dI/steps;
-                double value2 = r_e_sqr*fluence*spot_scale*polar*fcell_man->dI2/steps;
+                double value = scale_term*fcell_man->dI;
+                double value2 = scale_term*fcell_man->dI2;
                 fcell_man->increment_image(roi_i, value, value2);
             }/* end Fcell deriv image increment */
 
             /* update origin derivative image */
             if (origin_managers[0]->refine_me){
-                double value = r_e_sqr*fluence*spot_scale*polar*  origin_managers[0]->dI  /steps;
+                //double value = r_e_sqr*fluence*spot_scale*polar*  origin_managers[0]->dI  /steps;
+
+                /* TODO: REMOVE THIS RESTRICTION */
+                SCITBX_ASSERT(!oversample_omega);
+
                 vec3 dk = origin_managers[0]->dk;
-                double D = k_diffracted*o_vec; //origin_managers[0]->value; /* TODO check me */
-                double dD = dk * o_vec;
+
+                // detector distance:
+                D = o_vec*k_diffracted_ave; //origin_managers[0]->value; /* TODO check me */
+                D2 =D*D;
+                dD = o_vec*dk; // I think this is approximately -1 ... maybe not for  tilted detector
                 //SCITBX_EXAMINE(dD);
-                //SCITBX_EXAMINE(dk*k_diffracted);
-                double du = 2*D/airpath*(dD/airpath - D/pow(airpath,3)*(dk*k_diffracted));
-                //double dpsi = 0;
+
+                // helpful definitions..
+                per_k = 1/airpath_ave;
+                per_k2 = per_k*per_k;
+                per_k3 = per_k*per_k2;
+                per_k4 = per_k2*per_k2;
+                per_k5 = per_k2*per_k3;
+                per_k6 = per_k3*per_k3;
+                per_k7 = per_k3*per_k4;
+                G = dk*k_diffracted_ave;
+
+                /* here, u = cos^2 (2\theta) */
+                // TODO: propagate derivative of D for tilted detector ? does it matter ?
+                du = 2*D*per_k2*(o_vec*dk) - 2*D2*per_k4 * G;
+                // old: du = 2*D/airpath*(dD*per_k - D/pow(airpath,3)*(dk*k_diffracted));
+                //du2 = 2*per_k2 - 8*D*per_k4 *G + 8*D*per_k6*G*G - 2*D2*per_k4 * (dk*dk);
+                double o_dot_k = o_vec*k_diffracted_ave;
+                double o_dot_dk = o_vec*dk;
+                du2 = 8*per_k6*G*G*o_dot_k*o_dot_k - 2*per_k4*(dk*dk)*o_dot_k*o_dot_k
+                    -8*per_k4*G*o_dot_k*o_dot_dk + 2*per_k2*o_dot_dk*o_dot_dk;
+
                 /* kahn factor is the variable called polarization */
-                //if(polarization)
+                // REDO THESE
+                w = kBi/kEi;
+                w2=w*w;
+                BperE2=kBi/kEi/kEi;
+                dkE = dk*Ei_vec;
+                dkB = dk*Bi_vec;
+                v = (dkB/kEi - BperE2*dkE);
+                dv = - 2*dkB*dkE/kEi/kEi + 2*BperE2/kEi  * dkE*dkE;
+                dpsi = -1/(1+w2) * v;
+                dpsi2 = -2*w/(1+w2)/(1+w2)*v*v + 1/(1+w2)*dv;
 
-                double dpsi = -1/(1+kBi*kBi/kEi/kEi) * ((dk*Bi_vec)/kEi - kBi/kEi/kEi*(dk*Ei_vec));
-                double dpolar = .5*(du*(1 + polarization * cos(2*psi)) + 2*dpsi*sin(2*psi)*polarization*(1-u));
-                if (! nopolar)
-                    value += r_e_sqr*fluence*spot_scale*  dpolar  *I/steps;
+                c2psi = cos(2*psi);
+                s2psi = sin(2*psi);
+                gam_cos2psi = polarization * c2psi;
+                gam_sin2psi = polarization * s2psi;
 
-                double value2 = r_e_sqr*fluence*spot_scale*polar*origin_managers[0]->dI2/steps;
-                origin_managers[0]->increment_image(roi_i, value, value2);
+                /* here, u = cos^2 (2\theta) */
+                if (!nopolar){
+                    dpolar = du*(1 + gam_cos2psi) + 2*dpsi*gam_sin2psi*(1-u);
+                    dpolar /= 2;
+                    dpolar2 = du2*(1 + gam_cos2psi) - 2*gam_sin2psi*du*dpsi + 2*gam_sin2psi*(1-u)*dpsi2
+                            + 4*gam_cos2psi*(1-u)*dpsi*dpsi - 2*gam_sin2psi*du*dpsi;
+                    dpolar2/=2;
+
+                }
+                else{
+                    dpolar=0;
+                    dpolar2=0;
+                }
+
+                /* solid angle pix (Omega) derivative */
+                pp = pixel_size*pixel_size; // this is total pixel size not sub pixel size
+                dOmega = - 3*pp*per_k5*G*(o_vec*k_diffracted_ave) + pp*per_k3*(o_vec*dk);
+                dOmega2 = 15*pp*per_k7*G*G*(o_vec*k_diffracted_ave)
+                        - 3*pp*per_k5*(dk*dk)*(o_vec*k_diffracted_ave)
+                        -6*pp*per_k5*G*(o_vec*dk);
+
+                //dOmega = 0;
+                //dOmega2 = 0;
+
+                FF = origin_managers[0]->FF;
+                FdF = origin_managers[0]->FdF;
+                dFdF = origin_managers[0]->dFdF;
+                FdF2 = origin_managers[0]->FdF2;
+
+                /* om is the average solid angle in the pixel (average over sub pixels) */
+                origin_dI = dpolar*om*FF + polar*dOmega*FF + polar*om*FdF;
+
+                origin_dI2 = dpolar2*om*FF +  dpolar*FdF*om + dpolar*FF*dOmega
+                        + dpolar *FdF*om + polar*dFdF*om + polar*FdF2*om + polar*FdF*dOmega
+                        +dpolar*FF*dOmega + polar*FdF*dOmega + polar*FF*dOmega2;
+
+                // different scale term here because polar and domega terms depend on originZ
+                scale_term2 = r_e_sqr*fluence*spot_scale/steps;
+                origin_dI *= scale_term2;
+                origin_dI2 *= scale_term2;
+
+                origin_managers[0]->increment_image(roi_i, origin_dI, origin_dI2);
             } /*end origigin deriv image increment */
 
             if(floatimage[i] > max_I) {
@@ -1227,6 +1375,62 @@ void diffBragg::add_diffBragg_spots()
                     printf("I/steps %15.10g\n", I/steps);
                     printf("polar   %15.10g\n", polar);
                     printf("omega   %15.10g\n", omega_pixel);
+                    SCITBX_EXAMINE(I);
+                    SCITBX_EXAMINE(FF);
+                    SCITBX_EXAMINE(scale_term);
+                    SCITBX_EXAMINE(scale_term2);
+                    SCITBX_EXAMINE(omega_pixel_ave);
+                    SCITBX_EXAMINE(om);
+                    SCITBX_EXAMINE(diffracted_ave[0]);
+                    SCITBX_EXAMINE(diffracted_ave[1]);
+                    SCITBX_EXAMINE(diffracted_ave[2]);
+                    SCITBX_EXAMINE(diffracted_ave[3]);
+                    SCITBX_EXAMINE(diffracted[0]);
+                    SCITBX_EXAMINE(diffracted[1]);
+                    SCITBX_EXAMINE(diffracted[2]);
+                    SCITBX_EXAMINE(diffracted[3]);
+                    SCITBX_EXAMINE(airpath);
+                    SCITBX_EXAMINE(airpath_ave);
+                    SCITBX_EXAMINE(pixel_pos[0]);
+                    SCITBX_EXAMINE(pixel_pos[1]);
+                    SCITBX_EXAMINE(pixel_pos[2]);
+                    SCITBX_EXAMINE(pixel_pos[3]);
+
+                    SCITBX_EXAMINE(pixel_pos_ave[0]);
+                    SCITBX_EXAMINE(pixel_pos_ave[1]);
+                    SCITBX_EXAMINE(pixel_pos_ave[2]);
+                    SCITBX_EXAMINE(pixel_pos_ave[3]);
+
+                    SCITBX_EXAMINE(floatimage[i]);
+                    double ddd = FF*scale_term2*om*polar;
+                    SCITBX_EXAMINE(ddd);
+
+
+
+                    SCITBX_EXAMINE(u);
+                    SCITBX_EXAMINE(du);
+                    SCITBX_EXAMINE(D);
+                    SCITBX_EXAMINE(v);
+                    SCITBX_EXAMINE(dv);
+                    SCITBX_EXAMINE(kBi);
+                    SCITBX_EXAMINE(kEi);
+                    SCITBX_EXAMINE(w);
+                    SCITBX_EXAMINE(gam_sin2psi);
+                    SCITBX_EXAMINE(gam_cos2psi);
+
+                    SCITBX_EXAMINE(dpolar);
+                    SCITBX_EXAMINE(dpolar2);
+                    SCITBX_EXAMINE(dOmega);
+                    SCITBX_EXAMINE(dOmega2);
+                    SCITBX_EXAMINE(FF);
+                    SCITBX_EXAMINE(FdF);
+                    SCITBX_EXAMINE(dFdF);
+                    SCITBX_EXAMINE(FdF2);
+                    SCITBX_EXAMINE(k_diffracted_ave[0]);
+                    SCITBX_EXAMINE(k_diffracted_ave[1]);
+                    SCITBX_EXAMINE(k_diffracted_ave[2]);
+                    SCITBX_EXAMINE(nopolar);
+                    SCITBX_EXAMINE(oversample_omega);
                     //printf("pixel   %15.10g\n", floatimage[i]);
                     printf("real-space cell vectors (Angstrom):\n");
                     printf("     %-10s  %-10s  %-10s\n","a","b","c");
