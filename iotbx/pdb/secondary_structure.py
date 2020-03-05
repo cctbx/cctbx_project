@@ -375,6 +375,22 @@ class structure_base(object):
     elif isinstance(id, int):
       return hy36encode(3, id)
 
+  def get_start_resseq_as_int(self):
+    if self.start_resseq is not None:
+      if isinstance(self.start_resseq, str):
+        return hy36decode(4, self.start_resseq)
+      elif isinstance(self.start_resseq, int):
+        return self.start_resseq
+    return None
+
+  def get_end_resseq_as_int(self):
+    if self.end_resseq is not None:
+      if isinstance(self.end_resseq, str):
+        return hy36decode(4, self.end_resseq)
+      elif isinstance(self.end_resseq, int):
+        return self.end_resseq
+    return None
+
   @staticmethod
   def id_as_int(id):
     if isinstance(id, str):
@@ -569,7 +585,10 @@ class annotation(structure_base):
   @classmethod
   def resseq_as_int(cls, resseq):
     if resseq is not None:
-      return hy36decode(4, resseq)
+      if isinstance(resseq, str):
+        return hy36decode(4, resseq)
+      elif isinstance(resseq, int):
+        return resseq
     return None
 
   @classmethod
@@ -1938,16 +1957,6 @@ class pdb_helix(structure_base):
   def deep_copy(self):
     return copy.deepcopy(self)
 
-  def get_start_resseq_as_int(self):
-    if self.start_resseq is not None:
-      return hy36decode(4, self.start_resseq)
-    return None
-
-  def get_end_resseq_as_int(self):
-    if self.end_resseq is not None:
-      return hy36decode(4, self.end_resseq)
-    return None
-
   def get_class_as_int(self):
     return self.helix_class_to_int(self.helix_class)
 
@@ -2233,16 +2242,6 @@ class pdb_strand(structure_base):
       return "anti-parallel"
     else:
       raise Sorry("Invalid sense creeped in object: %s", self.sense)
-
-  def get_start_resseq_as_int(self):
-    if self.start_resseq is not None:
-      return hy36decode(4, self.start_resseq)
-    return None
-
-  def get_end_resseq_as_int(self):
-    if self.end_resseq is not None:
-      return hy36decode(4, self.end_resseq)
-    return None
 
   def set_start_resseq(self, resseq):
     self.start_resseq = self.convert_resseq(resseq)
