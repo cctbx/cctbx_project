@@ -35,10 +35,12 @@ namespace boost_python {
       class_<w_t>("phi_psi_proxy", no_init)
         .def(init<
           w_t::i_seqs_type const&,
-          std::string const&
+          std::string const&,
+          double const&
           >((
             arg("i_seqs"),
-            arg("residue_type")
+            arg("residue_type"),
+            arg("weight")
             )))
         .def_readonly("residue_type", &w_t::residue_type)
         .def("get_i_seqs", &w_t::get_i_seqs)
@@ -89,11 +91,11 @@ namespace boost_python {
       // COOT-like restraints
       class_<lookup_table>("lookup_table", no_init)
         .def(init<af::const_ref< double >,
-          int,
-          double>((
+          int
+          >((
             arg("values"),
-            arg("n_angles"),
-            arg("scale_allowed") = 1.0)))
+            arg("n_angles")
+            )))
         .def("get_score", &lookup_table::get_score, (
           arg("phi"),
           arg("psi"),
@@ -105,7 +107,6 @@ namespace boost_python {
           arg("gradient_array"),
           arg("sites_cart"),
           arg("proxy"),
-          arg("weight") = 1.0,
           arg("epsilon") = 0.1))
         .def_pickle(ramachandran_targets_wrappers())
         ;

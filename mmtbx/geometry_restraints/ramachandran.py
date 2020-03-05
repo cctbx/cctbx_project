@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 import iotbx.phil
-from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import sys
 import os, math
@@ -77,13 +76,13 @@ master_phil = iotbx.phil.parse("""\
 ramachandran_plot_restraints {
   enabled = False
     .type = bool
-  favored = *oldfield emsley emsley8k
+  favored = oldfield emsley *emsley8k
     .type = choice(multi=False)
 
-  allowed = *oldfield emsley emsley8k
+  allowed = oldfield emsley *emsley8k
     .type = choice(multi=False)
 
-  outlier = *oldfield emsley emsley8k
+  outlier = oldfield emsley *emsley8k
     .type = choice(multi=False)
 
   selection = None
@@ -132,15 +131,15 @@ ramachandran_plot_restraints {
       .short_caption = Rescale allowed region pseudo-energy by
   }
   emsley8k {
-    weight_favored = 1.0
+    weight_favored = 10.0
       .type = float
       .short_caption = Ramachandran plot restraints weight
       .expert_level = 1
-    weight_allowed = 1.0
+    weight_allowed = 10.0
       .type = float
       .short_caption = Ramachandran plot restraints weight
       .expert_level = 1
-    weight_outlier = 1.0
+    weight_outlier = 10.0
       .type = float
       .short_caption = Ramachandran plot restraints weight
       .expert_level = 1
@@ -250,17 +249,18 @@ class ramachandran_manager(object):
     else:
       cache = pdb_hierarchy.atom_selection_cache()
       self.bool_atom_selection = cache.selection(self.params.selection)
+    fao = [self.params.favored, self.params.allowed, self.params.outlier]
     if initialize:
-      if 'oldfield' in [self.params.favored, self.params.allowed, self.params.outlier]:
+      if 'oldfield' in fao:
         self._oldfield_tables = ramachandran_plot_data(
-            plot_cutoff=self.params.oldfield.plot_cutoff)
-      if 'emsley' in [self.params.favored, self.params.allowed, self.params.outlier]:
-        self._emsley_tables = load_tables(self.params)
-      if 'emsley8k' in [self.params.favored, self.params.allowed, self.params.outlier]:
+          plot_cutoff=self.params.oldfield.plot_cutoff)
+      if 'emsley' in fao:
+        self._emsley_tables = load_tables()
+      if 'emsley8k' in fao:
         self._emsley8k_tables = load_emsley8k_tables()
       # get proxies
       self.extract_proxies(pdb_hierarchy)
-    if 'oldfield' in [self.params.favored, self.params.allowed, self.params.outlier]:
+    if 'oldfield' in fao:
       self.target_phi_psi = self.update_phi_psi_targets_on_init(
         hierarchy = pdb_hierarchy)
     self.initialize = False
@@ -278,6 +278,9 @@ class ramachandran_manager(object):
     return new_manager
 
   def extract_proxies(self, hierarchy):
+    favored = ramalyze.RAMALYZE_FAVORED
+    allowed = ramalyze.RAMALYZE_ALLOWED
+    outlier = ramalyze.RAMALYZE_OUTLIER
     self.hierarchy = hierarchy
     selected_h = hierarchy.select(self.bool_atom_selection)
     n_seq = flex.max(selected_h.atoms().extract_i_seq())
@@ -288,46 +291,53 @@ class ramachandran_manager(object):
     # it would be great to save rama_eval, but the fact that this is called in
     # pdb_interpretation, not in mmtbx.model makes it impossible
     self.rama_eval = rama_eval()
-    for three in generate_protein_threes(
-        hierarchy=selected_h,
-        geometry=None):
+    for three in generate_protein_threes(hierarchy=selected_h, geometry=None):
       rc = three.get_phi_psi_atoms()
       if rc is None: continue
       rama_key = three.get_ramalyze_key()
       angles = three.get_phi_psi_angles()
       rama_score = self.rama_eval.get_score(rama_key, angles[0], angles[1])
-      r_evaluation = self.rama_eval.evaluate_score(rama_key, rama_score)
+      r_eval = self.rama_eval.evaluate_score(rama_key, rama_score)
       phi_atoms, psi_atoms = rc
       i_seqs = [atom.i_seq for atom in phi_atoms] + [psi_atoms[-1].i_seq]
       resnames = three.get_resnames()
       r_name = resnames[1]
       assert rama_key in range(6)
       text_rama_key = ramalyze.res_types[rama_key]
-      assert text_rama_key in ["general", "glycine", "cis-proline", "trans-proline",
-                 "pre-proline", "isoleucine or valine"]
-      proxy = ext.phi_psi_proxy(
-        #residue_name = r_name,
-        residue_type = text_rama_key,
-        i_seqs       = i_seqs)
+      assert text_rama_key in ["general", "glycine", "cis-proline",
+        "trans-proline", "pre-proline", "isoleucine or valine"]
       # pick where to put...
       ev_match_dict = {
-        ramalyze.RAMALYZE_FAVORED: self.params.favored,
-        ramalyze.RAMALYZE_ALLOWED: self.params.allowed,
-        ramalyze.RAMALYZE_OUTLIER: self.params.outlier}
-      r_type = ev_match_dict[r_evaluation]
-      #print (r_type, r_evaluation, rama_key, text_rama_key, rama_score, ramalyze.RAMALYZE_FAVORED)
-      #print(r_evaluation,
-      #  r_evaluation is ramalyze.RAMALYZE_FAVORED,
-      #  r_evaluation is ramalyze.RAMALYZE_ALLOWED,
-      #  r_evaluation is ramalyze.RAMALYZE_OUTLIER)
+        favored: self.params.favored,
+        allowed: self.params.allowed,
+        outlier: self.params.outlier}
+      r_type = ev_match_dict[r_eval]
       if r_type == 'oldfield':
+        proxy = ext.phi_psi_proxy(
+          residue_type = text_rama_key,
+          i_seqs       = i_seqs,
+          weight       = 1) # XXX Not used in oldfield
         self.append_oldfield_proxies(proxy, n_seq)
       elif r_type == 'emsley':
+        weight = self.params.emsley.weight
+        proxy = ext.phi_psi_proxy(
+          residue_type = text_rama_key,
+          i_seqs       = i_seqs,
+          weight       = weight)
         self.append_emsley_proxies(proxy, n_seq)
       elif r_type == 'emsley8k':
+        if(  r_eval is favored): weight=self.params.emsley8k.weight_favored
+        elif(r_eval is allowed): weight=self.params.emsley8k.weight_allowed
+        elif(r_eval is outlier): weight=self.params.emsley8k.weight_outlier
+        else:                    raise RuntimeError("Rama eveluation failed.")
+        proxy = ext.phi_psi_proxy(
+          residue_type = text_rama_key,
+          i_seqs       = i_seqs,
+          weight       = weight)
         self.append_emsley8k_proxies(proxy, n_seq)
+      elif(r_type is None): pass
       else:
-        pass
+        raise RuntimeError("Not an option: %s"%str(r_type))
 
     print("", file=self.log)
     print("  %d Ramachandran restraints generated." % (
@@ -374,10 +384,7 @@ class ramachandran_manager(object):
   def target_and_gradients(self,
       unit_cell,
       sites_cart,
-      gradient_array=None,
-      #XXX not used? residuals_array_oldfield=None,
-      #XXX not used? residuals_array_emsley=None
-      ):
+      gradient_array=None):
     if(gradient_array is None):
       gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
     overall_residual_sum = 0
@@ -414,7 +421,6 @@ class ramachandran_manager(object):
             gradient_array=gradient_array,
             sites_cart=sites_cart,
             proxy=proxy,
-            weight=self.params.emsley.weight,
             epsilon=0.001)
       overall_residual_sum += flex.sum(self.residuals_array_emsley)
     # emsley8k
@@ -429,7 +435,6 @@ class ramachandran_manager(object):
           gradient_array = gradient_array,
           sites_cart     = sites_cart,
           proxy          = proxy,
-          weight         = self.params.emsley.weight, # XXX
           epsilon        = 1.0) # XXX
       overall_residual_sum += flex.sum(self.residuals_array_emsley8k)
     return overall_residual_sum
@@ -526,13 +531,7 @@ class ramachandran_manager(object):
           print("    %s" % p.labels[i], file=f)
       print("", file=f)
 
-def load_tables(params=None):
-  if (params is None):
-    params = master_phil.fetch().extract()
-    params = params.ramachandran_plot_restraints
-  if (params.emsley.scale_allowed <= 0.0):
-    raise Sorry("Ramachandran restraint parameter scale_allowed must be "+
-      "a positive number (current value: %g)." % params.emsley.scale_allowed)
+def load_tables():
   tables = {}
   for residue_type in ["ala", "gly", "prepro", "pro"] :
     file_name = libtbx.env.find_in_repositories(
@@ -545,7 +544,7 @@ def load_tables(params=None):
       val, phi, psi = line.split()
       assert ((int(phi) % 2 == 1) and (int(psi) % 2 == 1))
       data.append(float(val))
-    t = lookup_table(data, 180, params.emsley.scale_allowed)
+    t = lookup_table(data, 180)
     tables[residue_type] = t
   return tables
 
@@ -577,7 +576,7 @@ def load_emsley8k_tables():
         di[(phi,psi)]=float(val)
     data = flex.double()
     for k, v in zip(tmp.keys(), tmp.values()):
-      try:             val = math.exp(di[k])**3
+      try:             val = di[k]#math.exp(di[k])**3
       except KeyError: val = -1
       data.append(val)
     t = lookup_table(data, 180)
