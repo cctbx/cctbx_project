@@ -1,6 +1,10 @@
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--plot", action='store_true')
+parser.add_argument("--residuals", action='store_true')
+parser.add_argument("--oversample", type=int, default=0)
+parser.add_argument("--curvatures", action="store_true")
+parser.add_argument("--nopolar", action="store_true")
 args = parser.parse_args()
 
 from dxtbx.model.crystal import Crystal
@@ -11,6 +15,8 @@ from dxtbx.model import Panel
 from copy import deepcopy
 import numpy as np
 from scipy.spatial.transform import Rotation
+from simtbx.diffBragg.refiners.global_refiner import FatRefiner
+from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager
 
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
@@ -61,13 +67,15 @@ SIM.crystal = nbcryst
 SIM.instantiate_diffBragg(oversample=0)
 SIM.D.progress_meter = False
 SIM.D.verbose = 0 #1
-SIM.D.nopolar = True
+SIM.D.nopolar = args.nopolar
 SIM.water_path_mm = 0.005
 SIM.air_path_mm = 0.1
 SIM.add_air = True
 SIM.add_Water = True
 SIM.include_noise = True
 #SIM.D.spot_scale = 1e8
+
+
 SIM.D.add_diffBragg_spots()
 spots = SIM.D.raw_pixels.as_numpy_array()
 SIM._add_background()
@@ -97,22 +105,144 @@ spot_roi = spot_roi[idx]
 tilt_abc = tilt_abc[idx]
 print ("I got %d spots!" % tilt_abc.shape[0])
 
-RUC = RefineDetdist(
-    spot_rois=spot_roi,
-    abc_init=tilt_abc,
-    img=img,
-    SimData_instance=SIM,
-    plot_images=args.plot,
-    plot_residuals=True)
 
-RUC.trad_conv = True
-RUC.refine_background_planes = False
-RUC.trad_conv_eps = 1e-5
+#RUC = RefineDetdist(
+#    spot_rois=spot_roi,
+#    abc_init=tilt_abc,
+#    img=img,
+#    SimData_instance=SIM,
+#    plot_images=args.plot,
+#    plot_residuals=args.residuals)
+#
+#RUC.trad_conv = True
+#RUC.refine_background_planes = False
+#RUC.trad_conv_eps = 1e-5
+#RUC.refine_detdist = True
+#RUC.max_calls = 200
+#RUC.run()
+#
+#
+#
+#print det2[0].get_origin()[2]
+#print RUC.x[-3]
+#
+#assert abs(RUC.x[-3] - distance) < 1e-2
+#
+#print("OK!")
+######3
+
+nspot = len(spot_roi)
+
+nanoBragg_rois = []  # special nanoBragg format
+xrel, yrel, roi_imgs = [], [], []
+xcom, ycom = [],[]
+for i_roi, (x1, x2, y1, y2) in enumerate(spot_roi):
+    nanoBragg_rois.append(((x1, x2), (y1, y2)))
+    yr, xr = np.indices((y2 - y1 + 1, x2 - x1 + 1))
+    xrel.append(xr)
+    yrel.append(yr)
+    roi_imgs.append(img[y1:y2 + 1, x1:x2 + 1])
+
+    xcom.append(.5*(x1 + x2))
+    ycom.append(.5*(x1 + x2))
+
+q_spot = utils.x_y_to_q(xcom, ycom, SIM.detector, SIM.beam.nanoBragg_constructor_beam)
+Ai = sqr(SIM.crystal.dxtbx_crystal.get_A()).inverse()
+Ai = Ai.as_numpy_array()
+HKL = np.dot(Ai, q_spot.T)
+HKLi = [np.ceil(h - 0.5).astype(int) for h in HKL]
+HKLi = [tuple(x) for x in np.vstack(HKLi).T]
+Hi_asu = utils.map_hkl_list(HKLi, anomalous_flag=True, symbol=symbol)
+
+nrotation_param = 3
+nscale_param = 1
+ntilt_param = 3*nspot
+n_local_unknowns = nrotation_param + nscale_param + ntilt_param
+
+UcellMan = MonoclinicManager(a=ucell[0], b=ucell[1], c=ucell[2], beta=ucell[4]*np.pi/180.)
+nucell_param = len(UcellMan.variables)
+n_ncell_param = 1
+nfcell_param = len(Hi_asu)
+ngain_param = 1
+ndetz_param = 1
+
+n_global_unknowns = nucell_param + nfcell_param + ngain_param + ndetz_param + n_ncell_param
+n_total_unknowns = n_local_unknowns + n_global_unknowns
+
+SIM.D.oversample_omega = False
+
+RUC = FatRefiner(
+    n_total_params=n_total_unknowns,
+    n_local_params=n_local_unknowns,
+    n_global_params=n_global_unknowns,
+    local_idx_start=0,
+    shot_ucell_managers={0: UcellMan},
+    shot_rois={0: spot_roi},
+    shot_nanoBragg_rois={0: nanoBragg_rois},
+    shot_roi_imgs={0: roi_imgs},
+    shot_spectra={0: SIM.beam.spectrum},
+    shot_crystal_GTs={0: C},
+    shot_crystal_models={0: SIM.crystal.dxtbx_crystal},
+    shot_xrel={0: xrel},
+    shot_yrel={0: yrel},
+    shot_abc_inits={0: tilt_abc},
+    shot_asu={0: Hi_asu},
+    global_param_idx_start=n_local_unknowns,
+    shot_panel_ids={0: [0]*nspot},
+    log_of_init_crystal_scales=None,
+    all_crystal_scales=None,
+    perturb_fcell=False,
+    global_ncells=True,
+    global_ucell=True,
+    sgsymbol=symbol)
+
+#TODO make this part of class init:
+idx_from_asu = {h: i for i, h in enumerate(set(Hi_asu))}
+asu_from_idx = {i: h for i, h in enumerate(set(Hi_asu))}
+
+RUC.idx_from_asu = idx_from_asu
+RUC.asu_from_idx = asu_from_idx
+
+RUC.refine_background_planes =False
+RUC.refine_Umatrix = False
+RUC.refine_Bmatrix = False
+RUC.refine_ncells =False
+RUC.refine_crystal_scale = False
+RUC.refine_Fcell = False
+RUC.refine_detdist = True
+RUC.refine_gain_fac = False
+
 RUC.max_calls = 200
-RUC.run()
+RUC.trad_conv_eps = 1e-5
+RUC.trad_conv = True
+RUC.trial_id = 0
 
-assert abs(RUC.x[-3] - distance) < 1e-2
+RUC.plot_images = False
+RUC.setup_plots()
 
-print det2[0].get_origin()[2]
-print RUC.x[-3]
-print("OK!")
+RUC.refine_rotZ = True
+RUC.request_diag_once = False
+RUC.S = SIM
+RUC.has_pre_cached_roi_data = True
+RUC.S.D.update_oversample_during_refinement = False
+RUC.use_curvatures = False
+RUC.use_curvatures_threshold = 2
+RUC.calc_curvatures = args.curvatures
+RUC.poisson_only = True
+RUC.verbose = True
+RUC.big_dump = True
+
+#RUC.gt_ucell = ucell[0], ucell[1], ucell[2], ucell[4]
+#RUC.gt_ncells = Ncells_gt[0]
+#RUC.testing_mode = True
+#RUC.bg_offset_only = True
+#RUC.bg_offset_positive = True
+
+RUC.run(setup_only=False)
+if RUC.hit_break_to_use_curvatures:
+    RUC.num_positive_curvatures = 0
+    RUC.use_curvatures = True
+    RUC.run(setup=False)
+
+assert abs(RUC.x[RUC.originZ_xpos] - distance) < 1e-2
+print "OK"
