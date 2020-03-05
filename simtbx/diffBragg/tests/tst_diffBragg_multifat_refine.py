@@ -247,6 +247,30 @@ for i_shot in range(N_SHOTS):
 if args.detdist:
     SIM.D.oversample_omega = False  # necessary to refine detector distance
 
+Hi_all_ranks, Hi_asu_all_ranks = [], []
+for i in range(N_SHOTS):
+    Hi_all_ranks += shot_hkl[i]
+    Hi_asu_all_ranks += shot_asu[i]
+
+print("Overall completeness\n<><><><><><><><>")
+from cctbx.crystal import symmetry
+from cctbx import miller
+from cctbx.array_family import flex as cctbx_flex
+uc = shot_ucell_managers[0]
+from cctbx.array_family import flex as cctbx_flex
+params = uc.a, uc.b, uc.c, uc.al * 180 / np.pi, uc.be * 180 / np.pi, uc.ga * 180 / np.pi
+symm = symmetry(unit_cell=params, space_group_symbol=symbol)
+hi_flex_unique = cctbx_flex.miller_index(list(set(Hi_asu_all_ranks)))
+mset = miller.set(symm, hi_flex_unique, anomalous_flag=True)
+mset.setup_binner(d_min=2, d_max=999, n_bins=10)
+mset.completeness(use_binning=True).show()
+print("total miller vars=%d" % (len(set(Hi_asu_all_ranks))))
+
+# this will map the measured miller indices to their index in the LBFGS parameter array self.x
+idx_from_asu = {h: i for i, h in enumerate(set(Hi_asu_all_ranks))}
+# we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
+asu_from_idx = {i: h for i, h in enumerate(set(Hi_asu_all_ranks))}
+
 nrotation_param = 3*N_SHOTS
 nscale_param = 1*N_SHOTS
 ntilt_param = 0
@@ -257,7 +281,7 @@ n_local_unknowns = nrotation_param + nscale_param + ntilt_param
 
 nucell_param = len(UcellMan.variables)
 n_ncell_param = 1
-nfcell_param = len(Hi_asu)
+nfcell_param = len(idx_from_asu)
 ngain_param = 1
 ndetz_param = 1
 
@@ -289,34 +313,8 @@ RUC = FatRefiner(
     global_ucell=True,
     sgsymbol=symbol)
 
-
-Hi_all_ranks, Hi_asu_all_ranks = [], []
-for i in range(N_SHOTS):
-    Hi_all_ranks += shot_hkl[i]
-    Hi_asu_all_ranks += shot_asu[i]
-
-print("Overall completeness\n<><><><><><><><>")
-from cctbx.crystal import symmetry
-from cctbx import miller
-from cctbx.array_family import flex as cctbx_flex
-uc = shot_ucell_managers[0]
-from cctbx.array_family import flex as cctbx_flex
-params = uc.a, uc.b, uc.c, uc.al * 180 / np.pi, uc.be * 180 / np.pi, uc.ga * 180 / np.pi
-symm = symmetry(unit_cell=params, space_group_symbol=symbol)
-hi_flex_unique = cctbx_flex.miller_index(list(set(Hi_asu_all_ranks)))
-mset = miller.set(symm, hi_flex_unique, anomalous_flag=True)
-mset.setup_binner(d_min=2, d_max=999, n_bins=10)
-mset.completeness(use_binning=True).show()
-print("total miller vars=%d" % (len(set(Hi_asu_all_ranks))))
-
-# this will map the measured miller indices to their index in the LBFGS parameter array self.x
-idx_from_asu = {h: i for i, h in enumerate(set(Hi_asu_all_ranks))}
-# we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
-asu_from_idx = {i: h for i, h in enumerate(set(Hi_asu_all_ranks))}
-
 RUC.idx_from_asu = idx_from_asu
 RUC.asu_from_idx = asu_from_idx
-
 RUC.refine_background_planes = args.bg
 RUC.refine_Umatrix = args.umatrix
 RUC.refine_Bmatrix = args.bmatrix
@@ -355,6 +353,9 @@ RUC.originZ_gt = originZ_gt
 RUC.gt_ucell = ucell[0], ucell[1], ucell[2], ucell[4]
 RUC.testing_mode = True
 RUC.run(setup_only=False)
+#RUC.run(setup_only=True)
+#from IPython import embed
+#embed()
 
 #if RUC.hit_break_to_use_curvatures:
 #    RUC.num_positive_curvatures = 0
