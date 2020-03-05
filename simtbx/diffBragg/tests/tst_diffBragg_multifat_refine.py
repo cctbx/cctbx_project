@@ -245,7 +245,7 @@ for i_shot in range(N_SHOTS):
         SIM.D.free_all()  # CLEANGIUAGE
 
 if args.detdist:
-    SIM.D.use_omega_pixel_ave = True  # necessary to refine detector distance
+    SIM.D.oversample_omega = False  # necessary to refine detector distance
 
 nrotation_param = 3*N_SHOTS
 nscale_param = 1*N_SHOTS
