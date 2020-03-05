@@ -184,10 +184,6 @@ class diffBragg: public nanoBragg{
   vec3 max_I_hkl;// the hkl corresponding to the maximum intensity in the array (debug)
   //int max_I_h, max_I_k, max_I_l;
 
-  double D;
-  double D2;
-  double dD;
-
   // helpful definitions..
   double per_k ;
   double per_k2 ;
