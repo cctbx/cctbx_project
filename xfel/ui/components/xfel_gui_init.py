@@ -3338,6 +3338,7 @@ class DatasetPanel(wx.Panel):
     self.dataset_box = wx.StaticBox(self, label=box_label)
     self.main_sizer = wx.StaticBoxSizer(self.dataset_box, wx.VERTICAL)
 
+    self.dataset_comment = wx.StaticText(self)
     self.task_panel = ScrolledPanel(self, size=(150, 180))
     self.task_sizer = wx.BoxSizer(wx.VERTICAL)
     self.task_panel.SetSizer(self.task_sizer)
@@ -3368,6 +3369,7 @@ class DatasetPanel(wx.Panel):
                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_LEFT,
                        border=10)
 
+    self.main_sizer.Add(self.dataset_comment, 0, flag=wx.ALL, border=10)
     self.main_sizer.Add(self.task_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.add_panel, flag=wx.ALL | wx.ALIGN_BOTTOM, border=5)
 
@@ -3404,6 +3406,7 @@ class DatasetPanel(wx.Panel):
     tasksel_dlg.Destroy()
 
   def refresh_dataset(self):
+    self.dataset_comment.SetLabel(self.dataset.comment if self.dataset.comment is not None else "")
     self.dataset_box.SetLabel('Dataset {} {}'.format(self.dataset.dataset_id,
                                self.dataset.name[:min(len(self.dataset.name), 10)]
                                if self.dataset.name is not None else ""))

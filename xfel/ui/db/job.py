@@ -759,8 +759,14 @@ def submit_all_jobs(app):
     for rungroup in trial.rungroups:
       for run in rungroup.runs:
         run_tags_ids = [t.id for t in run.tags]
-        if any([t.id in run_tags_ids for t in dataset_tags]):
-          runs_rungroups.append((run, rungroup))
+        if dataset.tag_operator == "union":
+          if any([t.id in run_tags_ids for t in dataset_tags]):
+            runs_rungroups.append((run, rungroup))
+        elif dataset.tag_operator == "intersection":
+          if all([t.id in run_tags_ids for t in dataset_tags]):
+            runs_rungroups.append((run, rungroup))
+        else:
+          assert False
 
     # Datasets always start with indexing
     global_tasks = {}

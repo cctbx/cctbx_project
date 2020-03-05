@@ -2364,8 +2364,8 @@ class DatasetDialog(BaseDialog):
                                            label_style='normal',
                                            label_size=(-1, -1),
                                            direction='horizontal',
-                                           items={'union':'union',
-                                                  'inter':'intersection'})
+                                           items={'inter':'intersection',
+                                                  'union':'union'})
 
     self.main_sizer.Add(self.name,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
@@ -2390,11 +2390,17 @@ class DatasetDialog(BaseDialog):
 
     if self.new:
       self.SetTitle('New Dataset Settings')
-
+      self.selection_type_radio.inter.SetValue(1)
     else:
       self.SetTitle('Dataset Settings')
       self.name.ctr.SetValue(str(self.dataset.name))
       self.comment.ctr.SetValue(str(self.dataset.comment))
+      if self.dataset.tag_operator == "union":
+        self.selection_type_radio.union.SetValue(1)
+      elif self.dataset.tag_operator == "intersection":
+        self.selection_type_radio.inter.SetValue(1)
+      else:
+        assert False
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
