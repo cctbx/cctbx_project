@@ -4,7 +4,6 @@ import numpy as np
 from abc import ABCMeta, abstractproperty, abstractmethod
 from scitbx.array_family import flex
 from scitbx.lbfgs.tst_curvatures import lbfgs_with_curvatures_mix_in
-from scitbx.lbfgs.tst_mpi_split_evaluator import mpi_split_evaluator_run
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from scitbx.lbfgs import core_parameters
 from cctbx import miller
@@ -13,6 +12,7 @@ from cctbx import miller
 # used in pixel refinement
 class BreakToUseCurvatures(Exception):
     pass
+
 
 class ReachedMaxIterations(Exception):
     pass
@@ -31,36 +31,41 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
 
     def __init__(self):
 
-        # LBFGS default core parameters
-        self.m = 5
-        self.maxfev = 20
-        self.gtol = 0.9
-        self.xtol = 1.e-16
-        self.stpmin = 1.e-20
-        self.stpmax = 1.e20
-        self.output_dir = None  # place to dump files
-        self.min_multiplicity = 3
-        self.restart_file = None
-        self.global_ncells_param = False
-        self.global_originZ_param = True
-        self.global_ucell_param = True
-        self.scale_r1 = False
-        self.bad_shot_list = []
-        self.fcell_bump = 0.1
-        self.filter_bad_shots = False
-        self.binner_dmin = 2
-        self.binner_dmax = 999
-        self.binner_nbin = 10
+        self.m = 5  # LBFGS default core parameters
+        self.maxfev = 20  # LBFGS default core parameters
+        self.gtol = 0.9  # LBFGS default core parameters
+        self.xtol = 1.e-16  # LBFGS default core parameters
+        self.stpmin = 1.e-20  # LBFGS default core parameters
+        self.stpmax = 1.e20  # LBFGS default core parameters
+        self.trad_conv_eps = 0.05  # LBFGS terminator param converges whern |g| <= max(|x|,1) * trad_conv_eps
+        self.drop_conv_max_eps = 1e-5  # LBFGS terminator param not sure, used in the other scitbx lbfgs convergence test
+        self.mn_iter = None  # LBFGS terminator param not sure used in lbfgs
+        self.mx_iter = None  # LBFGS terminator param not sure used in lbfgs
+        self.max_calls = 100000  # LBFGS terminator param how many overall iterations
+        self.diag_mode = "always"  # LBFGS refiner property, whether to update curvatures at each iteration
+        self.request_diag_once = False  # LBFGS refiner property
+        self.output_dir = None  # directory to dump progress files, these can be used to restart simulation later
+        self.min_multiplicity = 3  # only refine a spots Fhkl if multiplicity greater than this number
+        self.restart_file = None  # output file from previous run refinement
+        self.global_ncells_param = False  # refine one mosaic domain size parameter for all lattices
+        self.global_originZ_param = True  # refine one origin for all shots/lattices
+        self.global_ucell_param = True  # refine one unit cell for all shots/lattices
+        self.scale_r1 = False  # auto scale Fref (reference) to match Fobs when computing R factors
+        self.bad_shot_list = []  # deprecated
+        self.fcell_bump = 0.1  # deprecated
+        self.filter_bad_shots = False  # deprecated
+        self.binner_dmin = 2  # if Fref is not None, then this defines R-factor and CC resolution binner
+        self.binner_dmax = 999  # if Fref is not None, then this defines R-factor and CC resolution binner
+        self.binner_nbin = 10  # if Fref is not None, then this defines R-factor and CC resolution binner
         self.trial_id = 0  # trial id in case multiple trials are run in sequence
-        self.x_init = None
-        self.Fref = None
-        self.plot_fcell = False
+        self.x_init = None  # used to restart the refiner (e.g. self.x gets updated with this)
+        self.Fref = None  # place holder for Fhkl reference (for computing R factors during refinement)
+        self.plot_fcell = False  # deprecated
         self.bg_offset_only = False  # only refine background offset constant
         self.bg_offset_positive = False  # only allow background offset constant to be positive (recommended if using offset_only)
         self.log_fcells = True  # to refine Fcell using logarithms to avoid negative Fcells
         self.use_curvatures = False  # whether to use the curvatures
-        self.diag_mode = "always"
-        self.testing_mode =False  #Special flag used by the unit tests, ignore
+        self.testing_mode = False  # Special flag used by the unit tests, ignore
         self.refine_background_planes = False  # whether to refine the background planes
         self.refine_gain_fac = False  # whether to refine the gain factor
         self.refine_ncells = False  # whether to refine Ncells abc
@@ -68,7 +73,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.refine_Umatrix = False  # whether to refine the Umatrix
         self.refine_Bmatrix = False  # whether to refine the Bmatrx
         self.refine_crystal_scale = False  # whether to refine the crystal scale factor
-        self.refine_Fcell = False
+        self.refine_Fcell = False  # whether to refine Fhkl for each shoebox ROI
         self.refine_rotX = True  # note: only matters if refine_Umatrix is True whether to refine the X rotation
         self.refine_rotY = True  # whether to refine Y rotations
         self.refine_rotZ = True  # whether to refine Z rotations
@@ -77,7 +82,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.hit_break_to_use_curvatures = False  # internal flag if calculating curvatures
         self.refine_Amatrix = False  # whether to refine the  Amatrix (deprecated)
         self.has_pre_cached_roi_data = False  # only for use in global refinement mode
-        self.use_curvatures_threshold = 7   # how many positive curvature iterations required before breaking
+        self.use_curvatures_threshold = 7  # how many positive curvature iterations required before breaking, after which simulation can be restart with use_curvatures=True
         self.curv = None  # curvatures array used internally
         self.print_all_missets = True  # prints out a list of all missetting results (when ground truth is known)
         self.verbose = True  # whether to print during iterations
@@ -89,27 +94,19 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.debug = False  # for debug print statements
         self.trad_conv = False  # traditional convergenve
         self.calc_curvatures = False  # whether to calc curvatures until a region of positive curvature is reached
-        self.trad_conv_eps = 0.05  # converges whern |g| <= max(|x|,1) * trad_conv_eps
         self.plot_statistics = False  # whether to plot stats (global refinement mode)
-        self.drop_conv_max_eps = 1e-5  # not sure, used in the other scitbx lbfgs convergence test
-        self.mn_iter = None  # not sure used in lbfgs
-        self.mx_iter = None  # not sure used in lbfgs
-        self.max_calls = 100000  # how many overall iterations
         self.plot_stride = 10  # update plots after this many iterations
-        self.ignore_line_search = False  # leave False, lbfgs
+        self.plot_spot_stride = 10  # stride for plotting spots on an image
         self.panel_ids = None  # list of panel_ids (same length as roi images, spot_rois, tilt_abc etc)
         self.update_curvatures_every = 3  # every 3 consecutive all positive curvatures we will update them
         self.shot_idx = 0  # place holder because global refinement is across multiple shots
         self.shot_ids = None  # for global refinement ,
-
         self.poisson_only = True  # use strictly Poissonian statistics
-        self.sigma_r = 3
+        self.sigma_r = 3  # readout noise mean in ADU
         self.log2pi = np.log(np.pi*2)
-
-        self.use_ucell_priors = False  # whether to include priors for the unit cell constants
-        self.use_rot_priors = False  # whether to inc;ude priors for misset corrections
-
-        self.request_diag_once = False  # property of the parent class
+        self.use_ucell_priors = False  # (not yet supported) whether to include priors for the unit cell constants
+        self.use_rot_priors = False  # (not yet supported) whether to inc;ude priors for misset corrections
+        self._refinement_millers = None  # flex array of refinement miller indices (computed by FatRefiner _setup method)
         lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
 
     @property
@@ -129,20 +126,20 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     @property
     def Fobs(self):
         """
-        global refiner updates the Fhkl tuple directly during refinement, therefore
+        Fat refiner updates the internal diffBragg Fhkl tuple directly during refinement, therefore
         if we want an Fobs array we have to manually create it.. This is used for computing
         R factors and CC with the Fhkl reference array, these values are important diagnostics
         when determining how well a refinement is working
         """
-        if self.S is not None and self.Fref is not None and self.refinement_millers is not None:
+        if self.S is not None and self.Fref is not None and self._refinement_millers is not None:
             indices, amp_data = self.S.D.Fhkl_tuple
             mset = miller.set(self.Fref.crystal_symmetry(),
                             indices=indices, anomalous_flag=True)
             marray = miller.array(miller_set=mset, data=amp_data).set_observation_type_xray_amplitude()
             marray = marray.expand_to_p1()
             marray = marray.generate_bijvoet_mates()
-            marray = marray.select_indices(self.refinement_millers).sort()
-            marray.setup_binner(d_max=self.binner_dmax, d_min=self.binner_dmin, n_bins=self.binner_nbins)
+            marray = marray.select_indices(self._refinement_millers).sort()
+            marray.setup_binner(d_max=self.binner_dmax, d_min=self.binner_dmin, n_bins=self.binner_nbin)
             return marray
         else:
             return None
@@ -354,16 +351,6 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
                 exception_handling_params=self._handler,
                 termination_params=self._terminator,
                 gradient_only=self.gradient_only)
-
-            # DEPRECATED:
-            #self.minimizer = self.lbfgs_run(
-            #    target_evaluator=self,
-            #    min_iterations=self.mn_iter,
-            #    max_iterations=self.mx_iter,
-            #    traditional_convergence_test=self.trad_conv,
-            #    traditional_convergence_test_eps=self.trad_conv_eps,
-            #    use_curvatures=True,
-            #    verbose=curvature_min_verbose)
 
         else:
             try:

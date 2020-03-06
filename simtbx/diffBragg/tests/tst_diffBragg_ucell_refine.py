@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--plot", action='store_true')
 parser.add_argument("--refine", action='store_true')
+parser.add_argument("--new", action='store_true')
 parser.add_argument("--crystalsystem", default='tetragonal',
                     choices=["monoclinic", "tetragonal"])
 parser.add_argument("--curvatures", action='store_true')
@@ -12,6 +13,8 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 from scipy.stats import pearsonr
 import pylab as plt
+from scipy.stats import linregress
+from IPython import embed
 
 from scitbx.matrix import sqr
 from scitbx.matrix import rec
@@ -113,14 +116,16 @@ for i_param in range(n_ucell_params):
 # STEP8
 # iterate over the parameters and do a finite difference test for each one
 # parameter shifts:
-shifts = [1e-4 * (2**i) for i in range(1, 12, 2)]
+shifts = [1e-4*(2*i) for i in range(1, 12, 2)]
 
 if not args.refine:
     for i_param in range(n_ucell_params):
         analy_deriv = derivs[i_param]
         diffs = []
         diffs2 = []
+        error = []
         error2 = []
+        h_vals = []
         for i_shift, percent_shift in enumerate(shifts):
 
             if is_tet:
@@ -172,6 +177,8 @@ if not args.refine:
             r = pearsonr(analy_deriv[bragg].ravel(), finite_deriv[bragg].ravel())[0]
             diffs.append(r)
 
+            error.append(ave_error)
+            h_vals.append( param_shift)
             print ("\tAverage error=%f; parameter shift h=%f" % (ave_error, abs(param_shift)))
             if args.curvatures:
                 ave_error2 = np.abs(finite_second_deriv[bragg] - second_derivs[i_param][bragg]).mean()
@@ -203,6 +210,19 @@ if not args.refine:
                     plt.suptitle("Shift %d / %d"
                                  % (i_shift + 1, len(shifts)))
                     plt.pause(0.8)
+
+        l = linregress(h_vals, error)
+        l2 = linregress(np.array(h_vals)**2, error2)
+
+        print "finite diff l.rvalue=%10.7g" % l.rvalue
+        print "finite 2nd diff l.rvalue=%10.7g" % l2.rvalue
+        assert l.rvalue > .99
+        assert l.slope > 0
+        assert l.pvalue < 1e-6
+
+        assert l2.rvalue > .99
+        assert l2.slope > 0
+        assert l2.pvalue < 1e-6
 
         if args.plot:
             plt.close()
@@ -298,25 +318,138 @@ SIM.D.Omatrix = nbcryst.Omatrix
 SIM.D.Bmatrix = C2.get_B()
 SIM.D.Umatrix = C2.get_U()
 
-RUC = RefineUcell(
-    spot_rois=spot_roi,
-    abc_init=tilt_abc,
-    img=img,
-    SimData_instance=SIM,
-    plot_images=args.plot,
-    ucell_manager=UcellMan)
 
-RUC.refine_background_planes = False
-RUC.refine_crystal_scale = False
-RUC.refine_gain_fac = False
-RUC.refine_Amatrix = True
-RUC.trad_conv = True
-RUC.trad_conv_eps = 1e-4
-RUC.max_calls = 150
-RUC.use_curvatures = args.curvatures
-#RUC._setup()
-#RUC._cache_roi_arrays()
-RUC.run()
+if args.new:
+    nspot = len(spot_roi)
+
+    nanoBragg_rois = []  # special nanoBragg format
+    xrel, yrel, roi_imgs = [], [], []
+    xcom, ycom = [],[]
+    for i_roi, (x1, x2, y1, y2) in enumerate(spot_roi):
+        nanoBragg_rois.append(((x1, x2), (y1, y2)))
+        yr, xr = np.indices((y2 - y1 + 1, x2 - x1 + 1))
+        xrel.append(xr)
+        yrel.append(yr)
+        roi_imgs.append(img[y1:y2 + 1, x1:x2 + 1])
+
+        xcom.append(.5*(x1 + x2))
+        ycom.append(.5*(x1 + x2))
+
+    q_spot = utils.x_y_to_q(xcom, ycom, SIM.detector, SIM.beam.nanoBragg_constructor_beam)
+    Ai = sqr(SIM.crystal.dxtbx_crystal.get_A()).inverse()
+    Ai = Ai.as_numpy_array()
+    HKL = np.dot(Ai, q_spot.T)
+    HKLi = [np.ceil(h - 0.5).astype(int) for h in HKL]
+    HKLi = [tuple(x) for x in np.vstack(HKLi).T]
+    Hi_asu = utils.map_hkl_list(HKLi, anomalous_flag=True, symbol=symbol)
+
+    #TODO make this part of class init:
+    idx_from_asu = {h: i for i, h in enumerate(set(Hi_asu))}
+    asu_from_idx = {i: h for i, h in enumerate(set(Hi_asu))}
+
+    nrotation_param = 3
+    nscale_param = 1
+    ntilt_param = 3*nspot
+    n_local_unknowns = nrotation_param + nscale_param + ntilt_param
+
+    nucell_param = len(UcellMan.variables)
+    n_ncell_param = 1
+    nfcell_param = len(idx_from_asu)
+    ngain_param = 1
+    ndetz_param = 1
+
+    n_global_unknowns = nucell_param + nfcell_param + ngain_param + ndetz_param + n_ncell_param
+    n_total_unknowns = n_local_unknowns + n_global_unknowns
+
+    SIM.D.oversample_omega = False
+
+    from simtbx.diffBragg.refiners.global_refiner import FatRefiner
+    RUC = FatRefiner(
+        n_total_params=n_total_unknowns,
+        n_local_params=n_local_unknowns,
+        n_global_params=n_global_unknowns,
+        local_idx_start=0,
+        shot_ucell_managers={0: UcellMan},
+        shot_rois={0: spot_roi},
+        shot_nanoBragg_rois={0: nanoBragg_rois},
+        shot_roi_imgs={0: roi_imgs},
+        shot_spectra={0: SIM.beam.spectrum},
+        shot_crystal_GTs={0: C},
+        shot_crystal_models={0: SIM.crystal.dxtbx_crystal},
+        shot_xrel={0: xrel},
+        shot_yrel={0: yrel},
+        shot_abc_inits={0: tilt_abc},
+        shot_asu={0: Hi_asu},
+        global_param_idx_start=n_local_unknowns,
+        shot_panel_ids={0: [0]*nspot},
+        log_of_init_crystal_scales=None,
+        all_crystal_scales=None,
+        perturb_fcell=False,
+        global_ncells=True,
+        global_ucell=True,
+        sgsymbol=symbol)
+
+    RUC.idx_from_asu = idx_from_asu
+    RUC.asu_from_idx = asu_from_idx
+
+    RUC.refine_background_planes =False
+    RUC.refine_Umatrix = False
+    RUC.refine_Bmatrix = True
+    RUC.refine_ncells =False
+    RUC.refine_crystal_scale = False
+    RUC.refine_Fcell = False
+    RUC.refine_detdist = False
+    RUC.refine_gain_fac = False
+
+    RUC.max_calls = 300
+    RUC.trad_conv_eps = 1e-4
+    RUC.trad_conv = True
+    RUC.trial_id = 0
+
+    RUC.plot_images = False
+    RUC.setup_plots()
+
+    RUC.refine_rotZ = True
+    RUC.request_diag_once = False
+    RUC.S = SIM
+    RUC.has_pre_cached_roi_data = True
+    RUC.S.D.update_oversample_during_refinement = False
+    RUC.use_curvatures = False
+    RUC.use_curvatures_threshold = 7
+    RUC.calc_curvatures = args.curvatures
+    RUC.poisson_only = True
+    RUC.verbose = True
+    RUC.big_dump = True
+
+    RUC.run(setup_only=False)
+    if RUC.hit_break_to_use_curvatures:
+        RUC.num_positive_curvatures = 0
+        RUC.use_curvatures = True
+        RUC.run(setup=False)
+    RUC.ucell_manager = RUC.UCELL_MAN[0]
+##########
+# OLD WAY
+##########
+else:
+    RUC = RefineUcell(
+        spot_rois=spot_roi,
+        abc_init=tilt_abc,
+        img=img,
+        SimData_instance=SIM,
+        plot_images=args.plot,
+        ucell_manager=UcellMan)
+
+    RUC.refine_background_planes = False
+    RUC.refine_crystal_scale = False
+    RUC.refine_gain_fac = False
+    RUC.refine_Amatrix = True
+    RUC.trad_conv = True
+    RUC.trad_conv_eps = 1e-4
+    RUC.max_calls = 150
+    RUC.use_curvatures = args.curvatures
+    #RUC._setup()
+    #RUC._cache_roi_arrays()
+    RUC.run()
 
 #from scitbx.array_family import flex
 #
