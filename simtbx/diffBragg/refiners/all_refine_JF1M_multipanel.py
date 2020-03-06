@@ -64,6 +64,7 @@ class RefineAll_JF1M_MultiPanel(RefineRot):
         n_panels = len(self.pid_from_idx)
 
 
+        #self.n = n_bg + n_local_spotscale + self.n_rot_param + self.n_ucell_param + n_ncells_params + n_origin_params*n_panels + n_spotscale
         self.n = n_bg + n_local_spotscale + self.n_rot_param + self.n_ucell_param + n_ncells_params + n_origin_params*n_panels + n_spotscale
         self.x = flex.double(self.n)
 
@@ -92,7 +93,6 @@ class RefineAll_JF1M_MultiPanel(RefineRot):
         self.origin_xstart = self.ncells_xpos + 1
         for i_pan in range(n_panels):
             pid = self.pid_from_idx[i_pan]
-            #import pdb; pdb.set_trace()
             self.x[self.origin_xstart + i_pan] = self.S.detector[pid].get_local_origin()[2]
 
         #self.x[-3] = self.S.detector[self._panel_id].get_origin()[2]
@@ -151,7 +151,7 @@ class RefineAll_JF1M_MultiPanel(RefineRot):
         self.D.add_diffBragg_spots()
 
     def _update_ncells(self):
-        self.D.set_value(self._ncells_id, self.x[-4])
+        self.D.set_value(self._ncells_id, self.x[self.ncells_xpos])
 
     def _update_dxtbx_detector(self):
 
@@ -226,10 +226,10 @@ class RefineAll_JF1M_MultiPanel(RefineRot):
         self.best_image[pid, y1:y2 + 1, x1:x2 + 1] = self.model_Lambda
 
     def _unpack_bgplane_params(self, i_spot):
-        self.a, self.b, self.c = self.abc_init[i_spot]
-        #self.a = self.x[i_spot]
-        #self.b = self.x[self.n_spots + i_spot]
-        #self.c = self.x[self.n_spots * 2 + i_spot]
+        #self.a, self.b, self.c = self.abc_init[i_spot]
+        self.a = self.x[i_spot]
+        self.b = self.x[self.n_spots + i_spot]
+        self.c = self.x[self.n_spots * 2 + i_spot]
 
     def _update_ucell(self):
         _s = slice(self.ucell_xstart, self.ucell_xstart + self.n_ucell_param, 1)
@@ -267,6 +267,8 @@ class RefineAll_JF1M_MultiPanel(RefineRot):
             for i_spot in range(self.n_spots):
                 self._panel_id = self.panel_ids[i_spot]
                 self.S.panel_id=self.panel_ids[i_spot]
+                # Need to update for every spot
+                self._update_dxtbx_detector()
                 if self.verbose:
                     print "\rRunning diffBragg over spot %d/%d " % (i_spot+1, self.n_spots),
                     sys.stdout.flush()
@@ -372,11 +374,11 @@ class RefineAll_JF1M_MultiPanel(RefineRot):
 
                 if self.refine_ncells:
                     d = local_S2*S2*G2*self.ncells_deriv
-                    g[-4] += (d*one_minus_k_over_Lambda).sum()
+                    g[self.ncells_xpos] += (d*one_minus_k_over_Lambda).sum()
                     if self.calc_curvatures:
                         d2 = local_S2*S2*G2*self.ncells_second_deriv
                         cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
-                        self.curv[-4] += cc.sum()
+                        self.curv[self.ncells_xpos] += cc.sum()
 
                 if self.refine_detdist:
                     if self.calc_curvatures:
@@ -432,12 +434,21 @@ class RefineAll_JF1M_MultiPanel(RefineRot):
         rotZ = self.x[self.rotZ_xpos]
         rot_labels = ["rotX=%+3.7g" % rotX, "rotY=%+3.7g" % rotY, "rotZ=%+3.4g" % rotZ]
         print("%s: residual=%3.8g, ncells=%f, detdist=%3.8g, gain=%3.4g, scale=%4.8g"
-              % (message, target, self.x[-4], self.x[-3], self.x[-2]**2, self.x[-1]**2))
+              % (message, target, self.x[self.ncells_xpos], self.x[-3], self.x[-2]**2, self.x[-1]**2))
         print ("Ucell: %s *** Missets: %s" %
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
         print("\n")
-        print (["Local spotscales = "]+["%3.7g"%yy for yy in self.x[:]])
+        #print (["Local spotscales = "]+["%3.7g"%yy for yy in self.x[:]])
+        print ('------------------------------------------------------------------')
+        for i in range(self.n_bg//3):
+          print ('Background Planes Spot %d: %f, %f %f'%(i+1, self.x[i], self.x[self.n_spots+i], self.x[2*self.n_spots+i]))
+        for i in range(self.n_spots):
+          print ('Local spot scale: Spot %d: %f'%(i+1, self.x[self.n_bg+i]))
+        print ('Rot X: %f ; RotY: %f  ; RotZ: %f'%(self.x[self.rotX_xpos],self.x[self.rotY_xpos], self.x[self.rotZ_xpos]))
+        for i_uc in range(self.n_ucell_param):
+            print ('UCELL Param: %f'%self.x[self.ucell_xstart + i_uc])
         #print (["Local spotscales = "]+["%3.7g"%yy for yy in self.x[self.n_bg:self.n_bg+self.n_spots]])
+        print ('------------------------------------------------------------------')
         print("\n")
 
     def print_step_grads(self, message, target):
@@ -457,7 +468,17 @@ class RefineAll_JF1M_MultiPanel(RefineRot):
         print ("GUcell: %s *** GMissets: %s" %
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
         print("\n")
-        print (["Local spotscales Grads = "]+["%3.7g"%yy for yy in self._g[:]])
+        #print (["Local spotscales Grads = "]+["%3.7g"%yy for yy in self._g[:]])
+        print ('------------------------------------------------------------------')
+        for i in range(self.n_bg//3):
+          print ('GRAD Background Planes Spot %d: %f, %f %f'%(i+1, self._g[i], self._g[self.n_spots+i], self._g[2*self.n_spots+i]))
+        for i in range(self.n_spots):
+          print ('Grad Local spot scale: Spot %d: %f'%(i+1, self._g[self.n_bg+i]))
+        print ('Grad Rot X: %f ; RotY: %f  ; RotZ: %f'%(self._g[self.rotX_xpos],self._g[self.rotY_xpos], self._g[self.rotZ_xpos]))
+        for i_uc in range(self.n_ucell_param):
+            print ('Grad UCELL Param: %f'%self._g[self.ucell_xstart + i_uc])
+        #print (["Local spotscales = "]+["%3.7g"%yy for yy in self.x[self.n_bg:self.n_bg+self.n_spots]])
+        print ('------------------------------------------------------------------')
         #print (["Local spotscales Grads = "]+["%3.7g"%yy for yy in self._g[self.n_bg:self.n_bg+self.n_spots]])
         print("\n")
 
