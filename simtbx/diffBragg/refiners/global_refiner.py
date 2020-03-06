@@ -95,7 +95,9 @@ class FatRefiner(PixelRefinement):
                  shot_panel_ids,
                  log_of_init_crystal_scales=None,
                  all_crystal_scales=None, init_gain=1, perturb_fcell=False,
-                 global_ncells=False, global_ucell=True, sgsymbol="P43212"):
+                 global_ncells=False, global_ucell=True, global_originZ=True,
+                 shot_originZ_init=None,
+                 sgsymbol="P43212"):
         """
         TODO: parameter x array boundaries should be done in this class, eliminating the need for local_idx_start
         TODO and global_idx_start
@@ -127,12 +129,15 @@ class FatRefiner(PixelRefinement):
         :param perturb_fcell: deprecated, leave as False
         :param global_ncells: do we refine ncells_abc per shot or global for all shots  (global_ncells=True)
         :param global_ucell: do we refine a unitcell per shot or global for all shots (global_ucell=True)
+        :param shot_originZ_init: per shot origin Z
+        :param global_originZ: do we refine a single detector Z position for all shots (default is True)
         """
         PixelRefinement.__init__(self)
         # super(GlobalFat, self).__init__()
         self.num_kludge = 0
         self.global_ncells_param = global_ncells
         self.global_ucell_param = global_ucell
+        self.global_originZ_param = global_originZ
         self.debug = False
         self.rot_scale = 1
         self.num_Fcell_kludge = 0
@@ -146,6 +151,9 @@ class FatRefiner(PixelRefinement):
         self.show_watched = False
         self.image_corr = None
         self.n_shots = len(self.shot_ids)
+        self.shot_originZ_init = None
+        if shot_originZ_init is not None:
+            self.shot_originZ_init = self._check_keys(shot_originZ_init)
         # sanity check: no repeats of the same shot
         assert len(self.shot_ids) == len(set(self.shot_ids))
 
@@ -188,6 +196,12 @@ class FatRefiner(PixelRefinement):
         self.n_ucell_param = len(self.UCELL_MAN[self._i_shot].variables)
         self.n_ncells_param = 1
 
+        self.n_per_shot_originZ_param = 1
+        if global_originZ:
+            self.n_per_shot_originZ_param = 0
+        else:
+            assert shot_originZ_init is not None
+
         self.n_per_shot_ucell_param = self.n_ucell_param
         if global_ucell:
             self.n_per_shot_ucell_param = 0
@@ -197,7 +211,8 @@ class FatRefiner(PixelRefinement):
             self.n_per_shot_ncells_param = 0
 
         self.n_per_shot_params = self.n_rot_param + self.n_spot_scale_param \
-                                 + self.n_per_shot_ncells_param + self.n_per_shot_ucell_param
+            + self.n_per_shot_ncells_param + self.n_per_shot_ucell_param \
+            + self.n_per_shot_originZ_param
 
         self._ncells_id = 9  # diffBragg internal index for Ncells derivative manager
         self._originZ_id = 10  # diffBragg internal index for originZ derivative manager
@@ -214,7 +229,6 @@ class FatRefiner(PixelRefinement):
         self._panel_id = None
         self.symbol = sgsymbol
 
-        # FIXME: no hard coded unit cells!!!!
         self.pid_from_idx = {}
         self.idx_from_pid = {}
 
@@ -238,23 +252,10 @@ class FatRefiner(PixelRefinement):
 
     def setup_plots(self):
         if rank == 0:
-            if self.plot_fcell:
-                print("plot fcell")
-                self.fig_fcell, self.ax_fcell = plt.subplots(nrows=1, ncols=1)
-
-            if self.plot_statistics:
-                print ("plot_stats")
-                assert not self.plot_images  # only one plot at a time for now
-                self.fig, self.ax = plt.subplots(nrows=2, ncols=2)
-                self.ax1 = self.ax[0][0]
-                self.ax2 = self.ax[0][1]
-                self.ax3 = self.ax[1][0]
-                self.ax4 = self.ax[1][1]
-
             if self.plot_images:
                 if self.plot_residuals:
-                    self.fig = plt.figure()
                     from mpl_toolkits.mplot3d import Axes3D
+                    self.fig = plt.figure()
                     self.ax = self.fig.gca(projection='3d')
                     self.ax.set_yticklabels([])
                     self.ax.set_xticklabels([])
@@ -263,7 +264,7 @@ class FatRefiner(PixelRefinement):
                     self.ax.set_facecolor("gray")
                 else:
                     self.fig, (self.ax1, self.ax2) = plt.subplots(nrows=1, ncols=2)
-                    self.ax1.imshow([[0, 1, 1], [0, 1, 2]])
+                    self.ax1.imshow([[0, 1, 1], [0, 1, 2]])  # dummie plot
                     self.ax2.imshow([[0, 1, 1], [0, 1, 2]])
 
     def __call__(self, *args, **kwargs):
@@ -339,6 +340,7 @@ class FatRefiner(PixelRefinement):
         self.rotZ_xpos = {}
         self.ucell_xstart = {}
         self.ncells_xpos = {}
+        self.originZ_xpos = {}
         self.spot_scale_xpos = {}
         self.n_panels = {}
         self.bg_a_xstart = {}
@@ -346,21 +348,23 @@ class FatRefiner(PixelRefinement):
         self.bg_c_xstart = {}
         if comm.rank == 0:
             print("--1 Setting up per shot parameters")
-        _local_pos = self.local_idx_start  # NOTE bg
+
+        # this is a sliding parameter that points to the latest local (per-shot) parameter in the x-array
+        _local_pos = self.local_idx_start
         for i_shot in self.shot_ids:
             self.pid_from_idx[i_shot] = {i: pid for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
             self.idx_from_pid[i_shot] = {pid: i for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
             self.n_panels[i_shot] = len(self.pid_from_idx[i_shot])
 
-            n_spots = len(self.NANOBRAGG_ROIS[i_shot]) # NOTE bg
-            self.bg_a_xstart[i_shot] = []# NOTE bg
-            self.bg_b_xstart[i_shot] = []# NOTE bg
-            self.bg_c_xstart[i_shot] = []# NOTE bg
-            _spot_start = _local_pos  # NOTE bg
-            for i_spot in range(n_spots):# NOTE bg
-                self.bg_a_xstart[i_shot].append(_spot_start)  # NOTE bg
-                self.bg_b_xstart[i_shot].append(self.bg_a_xstart[i_shot][i_spot] + 1)  # NOTE bg
-                self.bg_c_xstart[i_shot].append(self.bg_b_xstart[i_shot][i_spot] + 1) # NOTE bg
+            n_spots = len(self.NANOBRAGG_ROIS[i_shot])
+            self.bg_a_xstart[i_shot] = []
+            self.bg_b_xstart[i_shot] = []
+            self.bg_c_xstart[i_shot] = []
+            _spot_start = _local_pos
+            for i_spot in range(n_spots):
+                self.bg_a_xstart[i_shot].append(_spot_start)
+                self.bg_b_xstart[i_shot].append(self.bg_a_xstart[i_shot][i_spot] + 1)
+                self.bg_c_xstart[i_shot].append(self.bg_b_xstart[i_shot][i_spot] + 1)
 
                 a, b, c = self.ABC_INIT[i_shot][i_spot]
                 if self.bg_offset_only and self.bg_offset_positive:
@@ -368,13 +372,12 @@ class FatRefiner(PixelRefinement):
                         c = np_log(1e-9)
                     else:
                         c = np_log(c)
-                #self.x[self.ncells_xpos[i_shot]] = ncells_xval
                 self.x[self.bg_a_xstart[i_shot][i_spot]] = float(a)
                 self.x[self.bg_b_xstart[i_shot][i_spot]] = float(b)
                 self.x[self.bg_c_xstart[i_shot][i_spot]] = float(c)
                 _spot_start += 3
 
-            self.rotX_xpos[i_shot] = self.bg_c_xstart[i_shot][-1] + 1  # NOTE bg
+            self.rotX_xpos[i_shot] = self.bg_c_xstart[i_shot][-1] + 1
             self.rotY_xpos[i_shot] = self.rotX_xpos[i_shot] + 1
             self.rotZ_xpos[i_shot] = self.rotY_xpos[i_shot] + 1
 
@@ -384,7 +387,8 @@ class FatRefiner(PixelRefinement):
 
             # continue adding local per shot parameters after rotZ_xpos
             _local_pos = self.rotZ_xpos[i_shot] + 1
-            # global always starts here, we have to decide whether to put ncells and unit cell parameters in global array
+
+            # global always starts here, we have to decide whether to put ncells / unit cell/ originZ parameters in global array
             _global_pos = self.global_param_idx_start
 
             if self.global_ucell_param:
@@ -403,15 +407,22 @@ class FatRefiner(PixelRefinement):
                 self.ncells_xpos[i_shot] = _local_pos
                 _local_pos += self.n_ncells_pos
                 ncells_xval = np_log(self.S.crystal.Ncells_abc[0]-3)
-                #self.x[self.ncells_xpos[i_shot]] = self.S.crystal.Ncells_abc[0]   # TODO: each shot gets own starting Ncells
+                # TODO: each shot gets own starting Ncells
                 self.x[self.ncells_xpos[i_shot]] = ncells_xval
+
+            if self.global_originZ_param:
+                self.originZ_xpos[i_shot] = _global_pos
+                _global_pos += 1
+            else:
+                self.originZ_xpos[i_shot] = _local_pos
+                _local_pos += 1
+                self.x[self.originZ_xpos[i_shot]] = self.shot_originZ_init[i_shot]
 
             self.spot_scale_xpos[i_shot] = _local_pos
             _local_pos += 1
             self.x[self.spot_scale_xpos[i_shot]] = self.log_of_init_crystal_scales[i_shot]
 
         self.fcell_xstart = _global_pos
-        self.originZ_xpos = self.n_total_params - 2
         self.gain_xpos = self.n_total_params - 1
 
         # tally up HKL multiplicity
@@ -420,7 +431,6 @@ class FatRefiner(PixelRefinement):
         hkl_totals = []
         fname_totals = []
         panel_id_totals = []
-        roi_totals = []
         # img_totals = []
         for i_shot in self.ASU:
             for i_h, h in enumerate(self.ASU[i_shot]):
@@ -428,14 +438,8 @@ class FatRefiner(PixelRefinement):
                     fname_totals.append(self.FNAMES[i_shot])
                 panel_id_totals.append(self.PANEL_IDS[i_shot][i_h])
                 hkl_totals.append(self.idx_from_asu[h])
-                roi_totals.append(self.ROIS[i_shot][i_h])
                 # img_totals.append(self.ROI_IMGS[i_shot][i_h])
         hkl_totals = self._mpi_reduce_broadcast(hkl_totals)
-        # img_totals = self._mpi_reduce_broadcast(img_totals)
-
-        #if self.global_ucell_param:
-        #    for i_shot in range(self.n_shots):
-        #        self.UCELL_MAN[i_shot].variables = self.UCELL_MAN[0].variables
 
         if rank == 0:
             print("--2 Setting up global parameters")
@@ -444,14 +448,19 @@ class FatRefiner(PixelRefinement):
             # get te first Z coordinate for now..
             # print("Setting origin: %f " % self.S.detector[0].get_local_origin()[2])
             if self.global_ucell_param:
-                # TODO is this too hacky, all ucell man should have same a,c if using a global model?
+                # TODO have parameter for global init of unit cell, right now its handled in the global_bboxes scripts
                 for i_cell in range(self.n_ucell_param):
                     self.x[self.ucell_xstart[0] + i_cell] = self.UCELL_MAN[0].variables[i_cell]
 
             if self.global_ncells_param:
+                # TODO have parameter for global init of Ncells , right now its handled in the global_bboxes scripts
                 ncells_xval = np_log(self.S.crystal.Ncells_abc[0]-3)
-                #self.x[self.ncells_xpos[0]] = self.S.crystal.Ncells_abc[0]
                 self.x[self.ncells_xpos[0]] = ncells_xval
+
+            if self.global_originZ_param:
+                # TODO have parameter for global init of originZ param , right now its handled in the global_bboxes scripts
+                self.x[self.originZ_xpos[0]] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
+
 
             print("----loading fcell data")
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index
@@ -479,9 +488,7 @@ class FatRefiner(PixelRefinement):
                 #np.save(os.path.join(self.output_dir, "f_truth"), self.f_truth)  #FIXME by adding in the correct truth from Fref
                 np.save(os.path.join(self.output_dir, "f_asu_map"), self.asu_from_idx)
 
-            # set det dist
-            self.x[self.originZ_xpos] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?
-            # set gain TODO: remove gain from all of this and never refine it
+            # set gain TODO: implement gain dependent statistical model ? Per panel or per gain mode dependent ?
             self.x[self.gain_xpos] = self._init_gain  # gain factor
             # n_panels = len(self.S.detector)
             # self.origin_xstart = self.global_param_idx_start
@@ -512,7 +519,7 @@ class FatRefiner(PixelRefinement):
         if comm.rank == 0:
             print("--4 print initial stats")
             print ("unpack")
-        rotx, roty, rotz, uc_vals, ncells_vals, scale_vals, _ = self._unpack_internal(self.x, lst_is_x=True)
+        rotx, roty, rotz, uc_vals, ncells_vals, scale_vals, _, origZ = self._unpack_internal(self.x, lst_is_x=True)
         if comm.rank == 0 and self.big_dump:
             print("making frame")
 
@@ -521,11 +528,11 @@ class FatRefiner(PixelRefinement):
                            "scale": scale_vals,
                            "rotx": rotx,
                            "roty": roty,
-                           "rotz": rotz}
+                           "rotz": rotz,
+                           "origZ": origZ}
             print ("frame")
             master_data = pandas.DataFrame(master_data)
             master_data["gain"] = self.x[self.gain_xpos]
-            master_data["originZ"] = self.x[self.originZ_xpos]
             print('convert to string')
             print(master_data.to_string())
 
@@ -570,7 +577,7 @@ class FatRefiner(PixelRefinement):
         #        sel[self.ncells_xpos[0]] = True
 
         #    if self.refine_detdist:
-        #        sel[self.originZ_xpos] = True
+        #        sel[self.originZ_xpos[0]] = True
 
         #    if self.refine_Fcell:
         #        sel[self.fcell_xstart: self.fcell_xstart + self.n_global_fcell] = True
@@ -610,6 +617,11 @@ class FatRefiner(PixelRefinement):
         else:
             ncells_vals = [lst[self.ncells_xpos[i_shot]] for i_shot in range(self.n_shots)]
 
+        if self.global_originZ_param:
+            originZ_vals = [lst[self.originZ_xpos[0]]] * len(rotx)
+        else:
+            originZ_vals = [lst[self.originZ_xpos[i_shot]] for i_shot in range(self.n_shots)]
+
         if lst_is_x:
             ncells_vals = list(np_exp(ncells_vals)+3)
             scale_vals = [np_exp(lst[self.spot_scale_xpos[i_shot]]) for i_shot in range(self.n_shots)]
@@ -638,6 +650,7 @@ class FatRefiner(PixelRefinement):
         rotz = self._mpi_reduce_broadcast(rotz)
         ncells_vals = self._mpi_reduce_broadcast(ncells_vals)
         scale_vals = self._mpi_reduce_broadcast(scale_vals)
+        originZ_vals = self._mpi_reduce_broadcast(originZ_vals)
 
         ucparams_all = []
         for ucp in ucparams_lsts:
@@ -646,7 +659,7 @@ class FatRefiner(PixelRefinement):
         if scale_vals_truths is not None:
             scale_vals_truths = self._mpi_reduce_broadcast(scale_vals_truths)
 
-        return rotx, roty, rotz, ucparams_all, ncells_vals, scale_vals, scale_vals_truths
+        return rotx, roty, rotz, ucparams_all, ncells_vals, scale_vals, scale_vals_truths, originZ_vals
 
     def _send_ucell_gradients_to_derivative_managers(self):
         """Needs to be called once each time the orientation is updated"""
@@ -711,11 +724,10 @@ class FatRefiner(PixelRefinement):
         det = self.S.detector
         self.S.panel_id = self._panel_id
         # TODO: select hierarchy level at this point
-        # NOTE: what does fast-axis and slow-axis mean
-        # for the different hierarchy levels?
+        # NOTE: what does fast-axis and slow-axis mean for the different hierarchy levels?
         node = det[self._panel_id]
         orig = node.get_local_origin()
-        new_originZ = self.x[self.originZ_xpos]
+        new_originZ = self.x[self.originZ_xpos[self._i_shot]]
         new_local_origin = orig[0], orig[1], new_originZ
         node.set_local_frame(node.get_local_fast_axis(),
                              node.get_local_slow_axis(),
@@ -885,8 +897,8 @@ class FatRefiner(PixelRefinement):
                               % (self._i_shot + 1, self.n_shots, i_spot + 1, n_spots, self._panel_id),
                         sys.stdout.flush()
 
-                    self._update_dxtbx_detector()
                     self.Imeas = self.ROI_IMGS[self._i_shot][i_spot]
+                    self._update_dxtbx_detector()
                     self._run_diffBragg_current(i_spot)
                     self._set_background_plane(i_spot)
                     self._extract_pixel_data()
@@ -922,45 +934,44 @@ class FatRefiner(PixelRefinement):
                     f += self._target_accumulate()
 
                     if self.plot_images and self.iterations % self.plot_stride == 0:
+                        if i_spot % self.plot_spot_stride==0:
+                            xr = self.XREL[self._i_shot][i_spot]  # fast scan pixels
+                            yr = self.YREL[self._i_shot][i_spot]  # slow scan pixels
+                            if self.plot_residuals:
+                                self.ax.clear()
+                                residual = self.model_Lambda - self.Imeas
+                                if i_spot == 0:
+                                    x = residual.max()
+                                else:
+                                    x = mean([x, residual.max()])
 
-                        xr = self.XREL[self._i_shot][i_spot]  # fast scan pixels
-                        yr = self.YREL[self._i_shot][i_spot]  # slow scan pixels
-                        if self.plot_residuals:
-                            self.ax.clear()
-                            residual = self.model_Lambda - self.Imeas
-                            if i_spot == 0:
-                                x = residual.max()
+                                self.ax.plot_surface(xr, yr, residual, rstride=2, cstride=2, alpha=0.3, cmap='coolwarm')
+                                self.ax.contour(xr, yr, residual, zdir='z', offset=-x, cmap='coolwarm')
+                                self.ax.set_yticks(range(yr.min(), yr.max()))
+                                self.ax.set_xticks(range(xr.min(), xr.max()))
+                                self.ax.set_xticklabels([])
+                                self.ax.set_yticklabels([])
+                                self.ax.set_zlim(-x, x)
+                                self.ax.set_title("residual (photons)")
                             else:
-                                x = mean([x, residual.max()])
-
-                            self.ax.plot_surface(xr, yr, residual, rstride=2, cstride=2, alpha=0.3, cmap='coolwarm')
-                            self.ax.contour(xr, yr, residual, zdir='z', offset=-x, cmap='coolwarm')
-                            self.ax.set_yticks(range(yr.min(), yr.max()))
-                            self.ax.set_xticks(range(xr.min(), xr.max()))
-                            self.ax.set_xticklabels([])
-                            self.ax.set_yticklabels([])
-                            self.ax.set_zlim(-x, x)
-                            self.ax.set_title("residual (photons)")
-                        else:
-                            m = self.Imeas[self.Imeas > 1e-9].mean()
-                            s = self.Imeas[self.Imeas > 1e-9].std()
-                            vmax = m + 5 * s
-                            vmin = m - s
-                            m2 = self.model_Lambda.mean()
-                            s2 = self.model_Lambda.std()
-                            self.ax1.images[0].set_data(self.model_Lambda)
-                            self.ax1.images[0].set_clim(vmin, vmax)
-                            self.ax2.images[0].set_data(self.Imeas)
-                            self.ax2.images[0].set_clim(vmin, vmax)
-                        plt.suptitle("Iterations = %d, image %d / %d"
-                                     % (self.iterations, i_spot + 1, n_spots))
-                        self.fig.canvas.draw()
-                        plt.pause(.02)
+                                m = self.Imeas[self.Imeas > 1e-9].mean()
+                                s = self.Imeas[self.Imeas > 1e-9].std()
+                                vmax = m + 5 * s
+                                vmin = m - s
+                                m2 = self.model_Lambda.mean()
+                                s2 = self.model_Lambda.std()
+                                self.ax1.images[0].set_data(self.model_Lambda)
+                                self.ax1.images[0].set_clim(vmin, vmax)
+                                self.ax2.images[0].set_data(self.Imeas)
+                                self.ax2.images[0].set_clim(vmin, vmax)
+                            plt.suptitle("Iterations = %d, image %d / %d"
+                                         % (self.iterations, i_spot + 1, n_spots))
+                            self.fig.canvas.draw()
+                            plt.pause(.02)
 
                     if self.refine_background_planes:
                         xr = self.XREL[self._i_shot][i_spot]  # fast scan pixels
                         yr = self.YREL[self._i_shot][i_spot]  # slow scan pixels
-
 
                         bg_deriv = [xr*G2, yr*G2, G2]
                         bg_second_deriv = [0, 0, 0]
@@ -1021,7 +1032,7 @@ class FatRefiner(PixelRefinement):
 
                     if self.refine_detdist:
                         d = expS * G2 * self.detdist_deriv
-                        xpos = self.originZ_xpos  #[self._i_shot]
+                        xpos = self.originZ_xpos[self._i_shot]
                         g[xpos] += self._grad_accumulate(d)
                         if self.calc_curvatures:
                             d2 = expS * G2 * self.detdist_second_deriv
@@ -1097,13 +1108,13 @@ class FatRefiner(PixelRefinement):
                 print("\nMPI reduce on functionals and gradients...")
             f = self._mpi_reduce_broadcast(f)
             g = self._mpi_reduce_broadcast(g)
-            self.rotx, self.roty, self.rotz, self.uc_vals, self.ncells_vals, self.scale_vals, self.scale_vals_truths = \
-                self._unpack_internal(self.x, lst_is_x=True)
-            self.Grotx, self.Groty, self.Grotz, self.Guc_vals, self.Gncells_vals, self.Gscale_vals, _ = \
+            self.rotx, self.roty, self.rotz, self.uc_vals, self.ncells_vals, self.scale_vals, \
+                self.scale_vals_truths, self.origZ_vals = self._unpack_internal(self.x, lst_is_x=True)
+            self.Grotx, self.Groty, self.Grotz, self.Guc_vals, self.Gncells_vals, self.Gscale_vals, _, self.GorigZ_vals = \
                 self._unpack_internal(g, lst_is_x=False)
             if self.calc_curvatures:
                 self.curv = self._mpi_reduce_broadcast(self.curv)
-                self.CUrotx, self.CUroty, self.CUrotz, self.CUuc_vals, self.CUncells_vals, self.CUscale_vals, _ = \
+                self.CUrotx, self.CUroty, self.CUrotz, self.CUuc_vals, self.CUncells_vals, self.CUscale_vals, _, self.CUorigZ_vals = \
                     self._unpack_internal(self.curv, lst_is_x=False)
             self.tot_fcell_kludge = self._mpi_reduce_broadcast(self.num_Fcell_kludge)
             self.tot_neg_curv = 0
@@ -1268,14 +1279,13 @@ class FatRefiner(PixelRefinement):
                            "scale": self.scale_vals,
                            "rotx": self.rotx,
                            "roty": self.roty,
-                           "rotz": self.rotz}
+                           "rotz": self.rotz, "origZ": self.origZ_vals}
             for i_uc in range(self.n_ucell_param):
                 master_data["uc%d" % i_uc] = self.uc_vals[i_uc]
 
 
             master_data = pandas.DataFrame(master_data)
             master_data["gain"] = self.x[self.gain_xpos]
-            master_data["originZ"] = self.x[self.originZ_xpos]
             if self.big_dump:
                 print(master_data.to_string(float_format="%2.7g"))
 
@@ -1298,7 +1308,7 @@ class FatRefiner(PixelRefinement):
                            "Gscale": self.Gscale_vals,
                            "Grotx": self.Grotx,
                            "Groty": self.Groty,
-                           "Grotz": self.Grotz}
+                           "Grotz": self.Grotz, "GorigZ": self.GorigZ_vals}
             for i_uc in range(self.n_ucell_param):
                 master_data["Guc%d" %i_uc]= self.Guc_vals[i_uc]
             master_data = pandas.DataFrame(master_data)
@@ -1311,7 +1321,7 @@ class FatRefiner(PixelRefinement):
                                "CUscale": self.CUscale_vals,
                                "CUrotx": self.CUrotx,
                                "CUroty": self.CUroty,
-                               "CUrotz": self.CUrotz}
+                               "CUrotz": self.CUrotz, "CUorigZ": self.CUorigZ_vals}
 
                 for i_uc in range(self.n_ucell_param):
                     master_data["CUuc%d" % i_uc] = self.CUuc_vals[i_uc]
@@ -1344,7 +1354,7 @@ class FatRefiner(PixelRefinement):
             param_val = median(ucparam_lst)
             uc_string += "%s=%.3f, " % (ucparam_names[i_ucparam], param_val)
         scale_stats_string += uc_string
-        scale_stats_string += "originZ=%f, " % self.x[self.originZ_xpos]
+        scale_stats_string += "originZ=%f, " % np.median(self.origZ_vals)
 
         Xnorm = norm(self.x)
         R1 = -1
@@ -1456,6 +1466,7 @@ class FatRefiner(PixelRefinement):
         mn_err = sum(err) / self.n_ucell_param
 
         shot_refined = []
+        all_det_resid = []
         for i_shot in range(self.n_shots):
             Ctru = self.CRYSTAL_GT[i_shot]
             atru, btru, ctru = Ctru.get_real_space_vectors()
@@ -1481,14 +1492,15 @@ class FatRefiner(PixelRefinement):
             else:
                 shot_refined.append(False)
 
-        if self.refine_detdist:
-            det_resid = abs(self.originZ_gt - self.x[self.originZ_xpos])
-            print "Origin Z truth: %f" % self.originZ_gt
-            print "Origin Z current: %f" % self.x[self.originZ_xpos]
+            if self.refine_detdist:
+                det_resid = abs(self.originZ_gt[i_shot] - self.x[self.originZ_xpos[i_shot]])
+                print "Origin Z truth: %f" % self.originZ_gt[i_shot]
+                print "Origin Z current: %f" % self.x[self.originZ_xpos[i_shot]]
+                all_det_resid.append(det_resid)
 
         if all(shot_refined):
             if self.refine_detdist:
-                if det_resid < 0.1:
+                if all([det_resid < 0.01 for det_resid in all_det_resid]):
                     print "OK"
                     exit()
             else:

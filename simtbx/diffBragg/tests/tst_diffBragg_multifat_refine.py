@@ -7,6 +7,7 @@ parser.add_argument("--bg", action='store_true', help='refine bg planes... ')
 parser.add_argument("--fixscale", action='store_true', help='fix the scale')
 parser.add_argument("--bmatrix", action='store_true')
 parser.add_argument("--umatrix", action='store_true')
+parser.add_argument("--nshots", default=1, type=int)
 parser.add_argument("--curvatures", action='store_true')
 parser.add_argument("--psf", action='store_true')
 parser.add_argument("--gain", action='store_true')
@@ -30,6 +31,7 @@ from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg import utils
 from simtbx.diffBragg.refiners.global_refiner import FatRefiner
+from IPython import embed
 from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager
 
 # containers for FatRefine
@@ -47,23 +49,25 @@ shot_asu={}
 shot_hkl={}
 shot_panel_ids={}
 nspot_per_shot = {}
-
+shot_originZ_init = {}
 # GLOBAL PARAMETERS
 ucell = (55, 65, 75, 90, 95, 90)
 ucell2 = (55, 65, 75, 90, 95, 90)
 if args.bmatrix:
     ucell2 = (55.1, 65.2, 74.9, 90, 94.9, 90)
 symbol = "P121"
-# ground truth detector
-DET_gt = SimData.simple_detector(150, 0.177, (600, 600))
-originZ_gt = DET_gt[0].get_origin()[2]
 
 from simtbx.diffBragg.utils import  fcalc_from_pdb
 miller_array = fcalc_from_pdb(resolution=2, wavelength=1, algorithm='fft', ucell=ucell, symbol=symbol)
 Ncells_gt = 12, 12, 12
 
-N_SHOTS = 3
+N_SHOTS = args.nshots
 
+np.random.seed(3142019)
+detdists_gt = np.random.normal(150,0.1, N_SHOTS)
+offsets = np.random.uniform(1, 3, N_SHOTS) * np.random.choice([1,-1], N_SHOTS)
+originZ_gt = {}
+all_dets = []
 for i_shot in range(N_SHOTS):
 
     # FIRST WE GENERATE SOME RANDOM IMAGES
@@ -74,18 +78,18 @@ for i_shot in range(N_SHOTS):
     rot_ang, rot_axis = Q.unit_quaternion_as_axis_and_angle()
 
     # generate a small perturbation rotation
-    np.random.seed(1)
     perturb_rot_axis = np.random.random(3)
     perturb_rot_axis /= np.linalg.norm(perturb_rot_axis)
     perturb_rot_ang = 0
     if args.umatrix:
-        perturb_rot_ang = .05  # degrees
+        perturb_rot_ang = np.random.choice([0.02, 0.03, 0.04, .05])  # degrees
 
     # make the ground truth crystal:
     a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell).orthogonalization_matrix()).transpose().as_list_of_lists()
     C = Crystal(a_real, b_real, c_real, symbol)
     C.rotate_around_origin(rot_axis, rot_ang)
 
+    # make the perturbed crystal model
     a2_real, b2_real, c2_real = sqr(uctbx.unit_cell(ucell2).orthogonalization_matrix()).transpose().as_list_of_lists()
     C2 = Crystal(a2_real, b2_real, c2_real, symbol)
     C2.rotate_around_origin(rot_axis, rot_ang)
@@ -103,8 +107,14 @@ for i_shot in range(N_SHOTS):
     nbcryst.miller_array = miller_array
     print("Ground truth ncells = %f" % (nbcryst.Ncells_abc[0]))
 
+    # ground truth detector
+    DET_gt = SimData.simple_detector(detdists_gt[i_shot], 0.177, (600, 600))
+    originZ_gt[i_shot] = DET_gt[0].get_origin()[2]
+
+    # initialize the simulator
     SIM = SimData()
     SIM.detector = DET_gt
+    all_dets.append(DET_gt)
 
     # TODO get the detector model
     node = SIM.detector[0]
@@ -117,9 +127,14 @@ for i_shot in range(N_SHOTS):
     # copy the detector and update the origin
     det2 = deepcopy(SIM.detector)
     # alter the detector distance by 2 mm
-    detz_offset = 0.3  # TODO make me random per shot (like GDVN would have)
+    #detz_offset = np.random.normal(0, 0.1)  # TODO make me random per shot (like GDVN would have)
+    detz_offset = offsets[i_shot]
     node_d["origin"] = Origin[0], Origin[1], Origin[2] + detz_offset
     det2[0] = Panel.from_dict(node_d)
+
+    shot_originZ_init[i_shot] = Origin[2]
+    if args.detdist:
+        shot_originZ_init[i_shot] = Origin[2]+detz_offset
 
     SIM.crystal = nbcryst
     SIM.instantiate_diffBragg(oversample=0)
@@ -188,15 +203,11 @@ for i_shot in range(N_SHOTS):
     # <><><><><><><><><><><><><><><><><><><><><><><><><>
     spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot, shoebox_sz=30)
 
-
     UcellMan = MonoclinicManager(
         a=ucell2[0],
         b=ucell2[1],
         c=ucell2[2],
         beta=ucell2[4]*np.pi/180.)
-
-    #init_Umat_norm = np.abs(np.array(C2.get_U()) - np.array(C.get_U())).sum()
-    #init_Bmat_norm = np.abs(np.array(C2.get_B()) - np.array(C.get_B())).sum()
 
     if args.gain:
         img = img*1.1
@@ -214,7 +225,6 @@ for i_shot in range(N_SHOTS):
         xrel.append(xr)
         yrel.append(yr)
         roi_imgs.append(img[y1:y2 + 1, x1:x2 + 1])
-
         xcom.append(.5*(x1 + x2))
         ycom.append(.5*(x1 + x2))
 
@@ -225,7 +235,6 @@ for i_shot in range(N_SHOTS):
     HKLi = [np.ceil(h - 0.5).astype(int) for h in HKL]
     HKLi = [tuple(x) for x in np.vstack(HKLi).T]
     Hi_asu = utils.map_hkl_list(HKLi, anomalous_flag=True, symbol=symbol)
-
 
     shot_ucell_managers[i_shot]= UcellMan
     shot_rois[i_shot]= spot_roi
@@ -255,7 +264,6 @@ for i in range(N_SHOTS):
 print("Overall completeness\n<><><><><><><><>")
 from cctbx.crystal import symmetry
 from cctbx import miller
-from cctbx.array_family import flex as cctbx_flex
 uc = shot_ucell_managers[0]
 from cctbx.array_family import flex as cctbx_flex
 params = uc.a, uc.b, uc.c, uc.al * 180 / np.pi, uc.be * 180 / np.pi, uc.ga * 180 / np.pi
@@ -277,15 +285,15 @@ ntilt_param = 0
 for i_shot in range(N_SHOTS):
     ntilt_param += 3 * nspot_per_shot[i_shot]
 
-n_local_unknowns = nrotation_param + nscale_param + ntilt_param
+ndetz_param = len(detdists_gt)
+n_local_unknowns = nrotation_param + nscale_param + ntilt_param + ndetz_param
 
 nucell_param = len(UcellMan.variables)
 n_ncell_param = 1
 nfcell_param = len(idx_from_asu)
 ngain_param = 1
-ndetz_param = 1
 
-n_global_unknowns = nucell_param + nfcell_param + ngain_param + ndetz_param + n_ncell_param
+n_global_unknowns = nucell_param + nfcell_param + ngain_param + n_ncell_param
 n_total_unknowns = n_local_unknowns + n_global_unknowns
 
 RUC = FatRefiner(
@@ -308,9 +316,10 @@ RUC = FatRefiner(
     shot_panel_ids=shot_panel_ids,
     log_of_init_crystal_scales=None,
     all_crystal_scales=None,
-    perturb_fcell=False,
     global_ncells=True,
     global_ucell=True,
+    global_originZ=False,
+    shot_originZ_init=shot_originZ_init,
     sgsymbol=symbol)
 
 RUC.idx_from_asu = idx_from_asu
@@ -329,8 +338,8 @@ RUC.trad_conv_eps = 1e-2
 RUC.trad_conv = True
 RUC.trial_id = 0
 
-
-RUC.plot_stride = 10
+RUC.plot_stride = 4
+RUC.plot_spot_stride = 10
 RUC.plot_residuals = False
 RUC.plot_images = args.plot
 RUC.setup_plots()
@@ -340,8 +349,8 @@ RUC.request_diag_once = False
 RUC.S = SIM
 RUC.has_pre_cached_roi_data = True
 RUC.S.D.update_oversample_during_refinement = False
-RUC.use_curvatures = args.curvatures
-RUC.use_curvatures_threshold = 0
+RUC.use_curvatures = False
+RUC.use_curvatures_threshold = 4
 RUC.bg_offset_positive = args.bg
 RUC.bg_offset_only = args.bg
 RUC.calc_curvatures = args.curvatures
@@ -353,14 +362,11 @@ RUC.originZ_gt = originZ_gt
 RUC.gt_ucell = ucell[0], ucell[1], ucell[2], ucell[4]
 RUC.testing_mode = True
 RUC.run(setup_only=False)
-#RUC.run(setup_only=True)
-#from IPython import embed
-#embed()
-
-#if RUC.hit_break_to_use_curvatures:
-#    RUC.num_positive_curvatures = 0
-#    RUC.use_curvatures = True
-#    RUC.run(setup=False)
+RUC.run(setup_only=True)
+if RUC.hit_break_to_use_curvatures:
+    RUC.num_positive_curvatures = 0
+    RUC.use_curvatures = True
+    RUC.run(setup=False)
 
 
 
