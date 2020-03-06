@@ -20,6 +20,7 @@ from IPython import embed
 from dxtbx.model import Panel
 from cctbx import uctbx
 from scitbx.matrix import sqr, rec, col
+from dials.array_family import flex
 import numpy as np
 from scipy.spatial.transform import Rotation
 
@@ -123,7 +124,7 @@ SIM.D.raw_pixels *= 0
 if args.psf:
     y = slice(450, 480,1)
     x = slice(650, 670, 1)
-    print "PSF max discrepancy: %f" % abs(img_pre_psf[y,x]- img[y,x]).max()
+    #print "PSF max discrepancy: %f" % abs(img_pre_psf[y,x]- img[y,x]).max()
 
 # Simulate the perturbed image for comparison
 # perturbed detector:
@@ -177,14 +178,21 @@ init_Bmat_norm = np.abs(np.array(C2.get_B()) - np.array(C.get_B())).sum()
 if args.gain:
     img = img*1.1
 
+n_spots=tilt_abc.shape[0]
+init_local_spotscale = flex.double([1.0]*n_spots)
+spot_resolution=[2.0]*n_spots # fake resolution to make RefineAll work
 RUC = RefineAll(
     spot_rois=spot_roi,
+    spot_resolution=spot_resolution,
     abc_init=tilt_abc,
     img=img,
     SimData_instance=SIM,
     plot_images=args.plot,
     plot_residuals=True,
-    ucell_manager=UcellMan)
+    ucell_manager=UcellMan,
+    init_gain=1.0,
+    init_scale=1.0,
+    init_local_spotscale=init_local_spotscale)
 
 RUC.trad_conv = True
 RUC.refine_detdist = args.detdist
@@ -199,6 +207,7 @@ RUC.plot_stride = 10
 RUC.plot_residuals = args.plot
 RUC.trad_conv_eps = 1e-5
 RUC.max_calls = 3000
+RUC.refine_with_psf=True
 #RUC._setup()
 #RUC._cache_roi_arrays()
 RUC.run()

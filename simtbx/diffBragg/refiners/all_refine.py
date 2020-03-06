@@ -1,4 +1,5 @@
 from simtbx.diffBragg.refiners import RefineRot, BreakToUseCurvatures
+from simtbx.nanoBragg import shapetype
 from scitbx.array_family import flex
 try:
   import pylab as plt
@@ -182,16 +183,18 @@ class RefineAll(RefineRot):
                 self.detdist_second_deriv = self.D.get_second_derivative_pixels(self._originZ_id).as_numpy_array()
 
         self.model_bragg_spots = self.D.raw_pixels_roi.as_numpy_array()
+        if self.refine_with_psf:
+          self.model_bragg_spots = convolve_with_psf(self.model_bragg_spots)
 
     def _update_best_image(self, i_spot):
         x1, x2, y1, y2 = self.spot_rois[i_spot]
         self.best_image[y1:y2 + 1, x1:x2 + 1] = self.model_Lambda
 
     def _unpack_bgplane_params(self, i_spot):
-        self.a, self.b, self.c = self.abc_init[i_spot]
-        #self.a = self.x[i_spot]
-        #self.b = self.x[self.n_spots + i_spot]
-        #self.c = self.x[self.n_spots * 2 + i_spot]
+        #self.a, self.b, self.c = self.abc_init[i_spot]
+        self.a = self.x[i_spot]
+        self.b = self.x[self.n_spots + i_spot]
+        self.c = self.x[self.n_spots * 2 + i_spot]
 
     def _update_ucell(self):
         _s = slice(self.ucell_xstart, self.ucell_xstart + self.n_ucell_param, 1)
@@ -395,7 +398,18 @@ class RefineAll(RefineRot):
         print ("Ucell: %s *** Missets: %s" %
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
         print("\n")
-        print (["Local spotscales = "]+["%3.7g"%yy for yy in self.x[:]])
+        #print (["Local spotscales = "]+["%3.7g"%yy for yy in self.x[:]])
+        if False:
+          print ('------------------------------------------------------------------')
+          for i in range(self.n_bg//3):
+            print ('Background Planes Spot %d: %f, %f %f'%(i+1, self.x[i], self.x[self.n_spots+i], self.x[2*self.n_spots+i]))
+          for i in range(self.n_spots):
+            print ('Local spot scale: Spot %d: %f'%(i+1, self.x[self.n_bg+i]))
+          print ('Rot X: %f ; RotY: %f  ; RotZ: %f'%(self.x[self.rotX_xpos],self.x[self.rotY_xpos], self.x[self.rotZ_xpos]))
+          for i_uc in range(self.n_ucell_param):
+              print ('UCELL Param: %f'%self.x[self.ucell_xstart + i_uc])
+          #print (["Local spotscales = "]+["%3.7g"%yy for yy in self.x[self.n_bg:self.n_bg+self.n_spots]])
+          print ('------------------------------------------------------------------')
         #print (["Local spotscales = "]+["%3.7g"%yy for yy in self.x[self.n_bg:self.n_bg+self.n_spots]])
         print("\n")
 
@@ -416,7 +430,18 @@ class RefineAll(RefineRot):
         print ("GUcell: %s *** GMissets: %s" %
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
         print("\n")
-        print (["Local spotscales Grads = "]+["%3.7g"%yy for yy in self._g[:]])
+        #print (["Local spotscales Grads = "]+["%3.7g"%yy for yy in self._g[:]])
+        print ('------------------------------------------------------------------')
+        if False:
+          for i in range(self.n_bg//3):
+            print ('GRAD Background Planes Spot %d: %f, %f %f'%(i+1, self._g[i], self._g[self.n_spots+i], self._g[2*self.n_spots+i]))
+          for i in range(self.n_spots):
+            print ('Grad Local spot scale: Spot %d: %f'%(i+1, self._g[self.n_bg+i]))
+          print ('Grad Rot X: %f ; RotY: %f  ; RotZ: %f'%(self._g[self.rotX_xpos],self._g[self.rotY_xpos], self._g[self.rotZ_xpos]))
+          for i_uc in range(self.n_ucell_param):
+              print ('Grad UCELL Param: %f'%self._g[self.ucell_xstart + i_uc])
+          ##print (["Local spotscales = "]+["%3.7g"%yy for yy in self.x[self.n_bg:self.n_bg+self.n_spots]])
+          print ('------------------------------------------------------------------')
         #print (["Local spotscales Grads = "]+["%3.7g"%yy for yy in self._g[self.n_bg:self.n_bg+self.n_spots]])
         print("\n")
 
