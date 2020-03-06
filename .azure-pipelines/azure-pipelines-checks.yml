@@ -4,4 +4,4 @@ stages:
 - stage: Checks
   displayName: Check
   jobs:
-    - template: ./.azure-pipelines/syntax.yml
+    - template: ./syntax.yml
