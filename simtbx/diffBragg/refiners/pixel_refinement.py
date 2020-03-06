@@ -61,7 +61,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.shot_idx = 0  # place holder because global refinement is across multiple shots
         self.shot_ids = None
         self.refine_with_psf = False # Flag to refine with  PSF convolution, fiber by default
-        self.psf_fwhm = 27/0.652 # FWHM of power law psf. As specified in holton 2012 for ccd detectors
+        self.psf_fwhm_um = 27/0.652 # FWHM of power law psf. As specified in holton 2012 for ccd detectors
         self.psf_radius=3
 
         self.request_diag_once = False  # property of the parent class

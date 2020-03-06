@@ -110,9 +110,10 @@ if args.psf:
     v = SIM.D.verbose
     SIM.D.verbose = 8
     SIM.D.detector_psf_kernel_radius_pixels = 0
-    fwhm = 76 / 56
+    fwhm = 41.4
+    fwhm_pixel = fwhm / 177.8
     radius = 3
-    SIM.D.apply_psf(shapetype.Fiber, fwhm, radius)
+    SIM.D.apply_psf(shapetype.Fiber, fwhm_pixel, radius)
     SIM.D.verbose = v
 
 print "Using oversample %d" % SIM.D.oversample
@@ -207,7 +208,10 @@ RUC.plot_stride = 10
 RUC.plot_residuals = args.plot
 RUC.trad_conv_eps = 1e-5
 RUC.max_calls = 3000
-RUC.refine_with_psf=True
+if args.psf:
+  RUC.refine_with_psf=True
+  RUC.psf_radius=3
+  RUC.psf_fwhm_um= 41.4
 #RUC._setup()
 #RUC._cache_roi_arrays()
 RUC.run()

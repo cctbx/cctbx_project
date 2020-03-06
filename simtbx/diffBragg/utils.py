@@ -1,6 +1,8 @@
 from scipy import ndimage
 from scipy.optimize import minimize
+from scitbx.array_family import flex
 import numpy as np
+import math
 import pylab as plt
 
 
@@ -327,3 +329,40 @@ def process_simdata(spots, img, thresh=20, plot=False, shoebox_sz=20, edge_refle
     tilt_abc = tilt_abc[successes]
     return spot_roi, tilt_abc
 
+
+def fiber2D_integ(x,y,g):
+    return math.atan((x*y)/(g*math.sqrt(g*g + x*x + y*y)))/(2.0*math.pi);
+
+def makeMoffat_integPSF(fwhm_pixel, sizeX, sizeY):
+    ''' Integral form of contribution of moffat PSF to signal recorded in a square pixel'''
+    g = fwhm_pixel*0.65238
+    psf = np.zeros((sizeX, sizeY))
+    sx = int(sizeX/2)
+    sy = int(sizeY/2)
+    for y in range(-sy, sy+1):
+    #for y in range(sy, -(sy+1), -1):
+      for x in range(-sx, sx+1):
+        #for x in range(-sx, sx+1):
+        # Holton 2012 paper says x,y should be pixel center; this does not seem right ?
+        psf[x+sx,y+sy] = fiber2D_integ(x+1./2,y+1./2,g)-fiber2D_integ(x+1./2,y-1./2,g)-fiber2D_integ(x-1./2,y+1./2,g)+fiber2D_integ(x-1./2,y-1./2,g)
+        #psf[x+sx, -y+sy] = fiber2D_integ(x+1./2,y+1./2,g)-fiber2D_integ(x+1./2,y-1./2,g)-fiber2D_integ(x-1./2,y+1./2,g)+fiber2D_integ(x-1./2,y-1./2,g)
+        # Trying to get pixel center instead
+        #psf[x+sx, -y+sy] = fiber2D_integ(x+1,y+1,g)-fiber2D_integ(x+1,y,g)-fiber2D_integ(x,y+1,g)+fiber2D_integ(x,y,g)
+    psf = psf/psf.sum()
+    psf = psf.tolist()
+    psf = flex.double(psf)
+    return psf
+
+
+def convolve_with_psf(image_data, fwhm=27.0, pixel_size=177.8, psf_radius=3):
+  ''' Given a 2D numpy array of image data, convolve with a PSF. '''
+  from dials.algorithms.image.filter import convolve
+
+  # Currently only supporting fiber PSF i.e power law form as proposed in Holton et. al 2012, Journal of Synchotron Radiation
+  xpsf=2*psf_radius+1
+  ypsf=2*psf_radius+1
+  fwhm_pixel=fwhm/pixel_size
+  psf = makeMoffat_integPSF(fwhm_pixel,xpsf,ypsf)
+  convolved_image = convolve(flex.double(image_data), psf)
+  return convolved_image.as_numpy_array()
+  

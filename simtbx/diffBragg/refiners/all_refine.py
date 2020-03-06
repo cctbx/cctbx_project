@@ -1,6 +1,7 @@
 from simtbx.diffBragg.refiners import RefineRot, BreakToUseCurvatures
 from simtbx.nanoBragg import shapetype
 from scitbx.array_family import flex
+from simtbx.diffBragg.utils import convolve_with_psf
 try:
   import pylab as plt
 except Exception as e:
@@ -101,6 +102,7 @@ class RefineAll(RefineRot):
         if self.refine_detdist:
             self.D.refine(self._originZ_id)
         self.D.initialize_managers()
+        self.detector_pixel_size_um=self.S.detector[0].get_pixel_size()[0]*1000.0
 
     @property
     def x(self):
@@ -184,7 +186,7 @@ class RefineAll(RefineRot):
 
         self.model_bragg_spots = self.D.raw_pixels_roi.as_numpy_array()
         if self.refine_with_psf:
-          self.model_bragg_spots = convolve_with_psf(self.model_bragg_spots)
+          self.model_bragg_spots = convolve_with_psf(self.model_bragg_spots,fwhm=self.psf_fwhm_um, pixel_size=self.detector_pixel_size_um, psf_radius=self.psf_radius)
 
     def _update_best_image(self, i_spot):
         x1, x2, y1, y2 = self.spot_rois[i_spot]
@@ -322,7 +324,10 @@ class RefineAll(RefineRot):
                     for i_ucell_p in range(self.n_ucell_param):
                         xpos = self.ucell_xstart + i_ucell_p
                         d = local_S2*S2*G2*self.ucell_derivatives[i_ucell_p]
-                        g[xpos] += (one_minus_k_over_Lambda * d).sum()
+                        g_tmp = (one_minus_k_over_Lambda * d)
+                        if self.refine_with_psf:
+                          g_tmp=convolve_with_psf(g_tmp)
+                        g[xpos] += g_tmp.sum()
                         if self.refine_with_restraints:
                           for i_uc in range(self.n_ucell_param):
                             g[xpos] += 2*self.harmonic_const*(self.ucell_manager.variables[i_uc] - self.ucell_restraints[i_uc])
@@ -330,6 +335,8 @@ class RefineAll(RefineRot):
                         if self.calc_curvatures:
                             d2 = local_S2*S2*G2*self.ucell_second_derivatives[i_ucell_p]
                             cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
+                            if self.refine_with_psf:
+                              cc=convolve_with_psf(cc)
                             self.curv[xpos] += cc.sum()
 
                 if self.refine_ncells:
