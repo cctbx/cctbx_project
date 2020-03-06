@@ -82,7 +82,7 @@ def exercise_00():
   for a, ar, rbool in zip(ph.atoms(), ph_refined.atoms(), sele_bool):
     if not rbool:
       for ax, arx in zip(a.xyz, ar.xyz):
-        print(ax, arx)
+        #print(ax, arx)
         assert(approx_equal(ax, arx, eps=0.005))
 
 

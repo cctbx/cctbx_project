@@ -160,7 +160,7 @@ class lbfgs(object):
       sites_cart = self.xray_structure.sites_cart()
       self.riding_h_manager.idealize(
         sites_cart = sites_cart,
-        refinement_flags_sites_individual = self.model.refinement_flags.sites_individual)
+        selection_bool = self.model.refinement_flags.sites_individual)
       self.xray_structure.set_sites_cart(sites_cart=sites_cart)
     #
     if(self.refine_adp):

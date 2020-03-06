@@ -172,13 +172,13 @@ class manager(object):
                sites_cart = None,
                pdb_hierarchy = None,
                xray_structure = None,
-               refinement_flags_sites_individual = None):
+               selection_bool = None):
     assert [sites_cart, pdb_hierarchy, xray_structure].count(None) in [2,3]
     # prevent idealization if refinement flag for xyz is False
-    if refinement_flags_sites_individual:
+    if selection_bool:
       para_cpp = list()
       for p in self.parameterization_cpp:
-        if refinement_flags_sites_individual[p.ih]:
+        if selection_bool[p.ih]:
           para_cpp.append(p)
       self.parameterization_cpp = para_cpp
     #
