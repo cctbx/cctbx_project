@@ -5,14 +5,8 @@
 pr: none
 
 stages:
-- stage: Checks
-  displayName: Check
-  jobs:
-    - template: ./.azure-pipelines/syntax.yml
-
 - stage: Preparation
   displayName: Download
-  dependsOn: Checks
   jobs:
     - template: ./.azure-pipelines/download-source.yml
     - template: ./.azure-pipelines/download-conda.yml

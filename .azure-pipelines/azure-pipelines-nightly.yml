@@ -12,14 +12,8 @@ schedules:
     - master
 
 stages:
-- stage: Checks
-  displayName: Check
-  jobs:
-    - template: ./syntax.yml
-
 - stage: Preparation
   displayName: Download
-  dependsOn: Checks
   jobs:
     - template: ./download-source.yml
     - template: ./download-conda.yml
