@@ -120,7 +120,9 @@ class _():
           after_rotation_rama_score = utils.get_rama_score(phi_psi_pair, self.r, rama_key, round_coords=True)
           # print "before/after rotation rama:", before_rotation_rama_score, after_rotation_rama_score
           # if before_rotation_rama_score > after_rotation_rama_score:
-          if ramalyze.evalScore(rama_key, after_rotation_rama_score) == RAMALYZE_OUTLIER:
+          eval_score_after_rotation = ramalyze.evalScore(rama_key, after_rotation_rama_score)
+          if eval_score_after_rotation == RAMALYZE_OUTLIER or \
+             eval_score_after_rotation == RAMALYZE_ALLOWED:
             # rotate back!!! / not always
             # print "  rotate back"
             if True: # always
