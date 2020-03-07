@@ -10,6 +10,7 @@ from mmtbx.validation import ramalyze
 from mmtbx.conformation_dependent_library import generate_protein_threes
 from six.moves import range
 from collections import OrderedDict
+from mmtbx.rotamer import ramachandran_eval
 
 ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
 from mmtbx_ramachandran_restraints_ext import lookup_table, \
@@ -76,7 +77,7 @@ master_phil = iotbx.phil.parse("""\
 ramachandran_plot_restraints {
   enabled = False
     .type = bool
-  favored = oldfield emsley *emsley8k
+  favored = *oldfield emsley emsley8k
     .type = choice(multi=False)
 
   allowed = oldfield emsley *emsley8k
@@ -550,37 +551,54 @@ def load_tables():
 
 def load_emsley8k_tables():
   tables = {}
-  name_to_file = {
-    "general"             : "rama8000-general-noGPIVpreP.data",
-    "glycine"             : "rama8000-gly-sym.data",
-    "cis-proline"         : "rama8000-cispro.data",
-    "trans-proline"       : "rama8000-transpro.data",
-    "pre-proline"         : "rama8000-prepro-noGP.data",
-    "isoleucine or valine": "rama8000-ileval-nopreP.data"}
+  name_to_file = [
+    ("general",              "rama8000-general-noGPIVpreP.data", 0),
+    ("glycine",              "rama8000-gly-sym.data", 1),
+    ("cis-proline",          "rama8000-cispro.data", 2),
+    ("trans-proline",        "rama8000-transpro.data", 3),
+    ("pre-proline",          "rama8000-prepro-noGP.data", 4),
+    ("isoleucine or valine", "rama8000-ileval-nopreP.data", 5)]
   tmp = OrderedDict()
   rr = [i for i in range(-179,180,2)]
   for i in rr:
     for j in rr:
       tmp[(i,j)]=0
-  for residue_type in name_to_file.keys():
+  R = ramachandran_eval.RamachandranEval()
+  O = ramalyze.RAMALYZE_OUTLIER
+  for (rama_key, file_name, selfstore) in name_to_file:
     file_name = libtbx.env.find_in_repositories(
-      relative_path="chem_data/rotarama_data/%s"%(name_to_file[residue_type]),
+      relative_path="chem_data/rotarama_data/%s"%(file_name),
       test=os.path.isfile)
-    di={}
+    di        = {}
+    outl_vals = flex.double()
+    outliers  = {}
     with open(file_name, "r") as f:
       for line in f.readlines():
         if line[0]=="#": continue
         phi, psi, val = line.split()
         phi=int(float(phi))
         psi=int(float(psi))
-        di[(phi,psi)]=float(val)
+        val=float(val)
+        di[(phi,psi)]=val
+        rama_score = R.rama_eval.get_score(selfstore, phi, psi)
+        evaluation = R.rama_eval.evaluate_score(selfstore, rama_score)
+        if(evaluation==O):
+          outl_vals.append(val)
+          outliers[(phi,psi)]=True
+        else:
+          outliers[(phi,psi)]=False
     data = flex.double()
+    max_outl_val = flex.max(outl_vals)
     for k, v in zip(tmp.keys(), tmp.values()):
-      try:             val = di[k]#math.exp(di[k])**3
-      except KeyError: val = -1
+      try:
+        val = di[k] #math.exp(di[k])**3 # to make it steeper
+        if(outliers[k]):
+          val=-2+val*1000
+      except KeyError:
+        val = -2
       data.append(val)
     t = lookup_table(data, 180)
-    tables[residue_type] = t
+    tables[rama_key] = t
   return tables
 
 class ramachandran_plot_data(object):
