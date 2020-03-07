@@ -1025,18 +1025,30 @@ class generic_flex_image: public FlexImage<double>{
   void followup_brightness_scale(){
 
       //first pass through data calculate average
-      double qave = af::mean(rawdata.const_ref());
+      std::size_t data_sz = rawdata.size();
+      double qsum = 0;
+      std::size_t good_sz = 0;
+      data_t* data_ptr = rawdata.begin();
+      data_t px_val;
+      for (std::size_t i = 0; i < data_sz; i++) {
+        px_val = *data_ptr++;
+        if (px_val == std::numeric_limits<int>::min()) continue;
+        qsum += px_val;
+        good_sz++;
+      }
+      double qave = (good_sz > 0) ? qsum/good_sz : 0;
       //std::cout<<"ave shown pixel value is "<<qave<<std::endl;
 
       //second pass calculate histogram
-      data_t* data_ptr = rawdata.begin();
+      data_ptr = rawdata.begin();
       int hsize=100;
       array_t histogram(hsize);
-      std::size_t data_sz = rawdata.size();
       double bins_per_pixel_unit = (hsize/2)/qave;
       int temp;
       for (std::size_t i = 0; i < data_sz; i++) {
-          temp = int(bins_per_pixel_unit*(*data_ptr++));
+          px_val = *data_ptr++;
+          if (px_val == std::numeric_limits<int>::min()) continue;
+          temp = int(bins_per_pixel_unit*(px_val));
           if (temp<0){histogram[0]+=1;}
           else if (temp>=hsize){histogram[hsize-1]+=1;}
           else {histogram[temp]+=1;}
