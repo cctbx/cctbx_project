@@ -186,6 +186,7 @@ class RefineAll(RefineRot):
 
         self.model_bragg_spots = self.D.raw_pixels_roi.as_numpy_array()
         if self.refine_with_psf:
+          self.model_bragg_spots_no_psf = self.D.raw_pixels_roi.as_numpy_array()
           self.model_bragg_spots = convolve_with_psf(self.model_bragg_spots,fwhm=self.psf_fwhm_um, pixel_size=self.detector_pixel_size_um, psf_radius=self.psf_radius)
 
     def _update_best_image(self, i_spot):
@@ -262,9 +263,16 @@ class RefineAll(RefineRot):
                 db = G2*yr
                 dc = G2
                 if self.refine_background_planes:
-                    g[i_spot] += (da*one_minus_k_over_Lambda).sum()
-                    g[self.n_spots + i_spot] += (db*one_minus_k_over_Lambda).sum()
-                    g[self.n_spots*2 + i_spot] += (dc*one_minus_k_over_Lambda).sum()
+                    if self.refine_with_psf:
+                        da=convolve_with_psf(da)
+                        db=convolve_with_psf(db)
+                        dc=convolve_with_psf(dc)
+                    g_tmp_a=(da*one_minus_k_over_Lambda)
+                    g_tmp_b = (db*one_minus_k_over_Lambda)
+                    g_tmp_c = (dc*one_minus_k_over_Lambda)
+                    g[i_spot] += g_tmp_a.sum()
+                    g[self.n_spots + i_spot] += g_tmp_b.sum()
+                    g[self.n_spots*2 + i_spot] += g_tmp_c.sum()
 
                 if self.plot_images: # and self.iterations==0:
                     import pylab as plt
@@ -313,9 +321,13 @@ class RefineAll(RefineRot):
                 if self.refine_Umatrix:
                     for ii, xpos in enumerate([self.rotX_xpos, self.rotY_xpos, self.rotZ_xpos]):
                         d = local_S2*S2*G2*self.rot_deriv[ii]
+                        if self.refine_with_psf:
+                          d=convolve_with_psf(d)
                         g[xpos] += (one_minus_k_over_Lambda * d).sum()
                         if self.calc_curvatures:
                             d2 = local_S2*S2*G2*self.rot_second_deriv[ii]
+                            if self.refine_with_psf:
+                              d2=convolve_with_psf(d2)
                             cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
                             self.curv[xpos] += cc.sum()
 
@@ -324,33 +336,42 @@ class RefineAll(RefineRot):
                     for i_ucell_p in range(self.n_ucell_param):
                         xpos = self.ucell_xstart + i_ucell_p
                         d = local_S2*S2*G2*self.ucell_derivatives[i_ucell_p]
-                        g_tmp = (one_minus_k_over_Lambda * d)
                         if self.refine_with_psf:
-                          g_tmp=convolve_with_psf(g_tmp)
-                        g[xpos] += g_tmp.sum()
+                          d=convolve_with_psf(d)
+                        g[xpos] += (one_minus_k_over_Lambda * d).sum()
                         if self.refine_with_restraints:
                           for i_uc in range(self.n_ucell_param):
                             g[xpos] += 2*self.harmonic_const*(self.ucell_manager.variables[i_uc] - self.ucell_restraints[i_uc])
 
                         if self.calc_curvatures:
                             d2 = local_S2*S2*G2*self.ucell_second_derivatives[i_ucell_p]
-                            cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
                             if self.refine_with_psf:
-                              cc=convolve_with_psf(cc)
+                              d2=convolve_with_psf(d2)
+                            cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
                             self.curv[xpos] += cc.sum()
 
                 if self.refine_ncells:
                     d = local_S2*S2*G2*self.ncells_deriv
+                    #g_tmp = (d*one_minus_k_over_Lambda)
+                    if self.refine_with_psf:
+                      d=convolve_with_psf(d)
                     g[-4] += (d*one_minus_k_over_Lambda).sum()
                     if self.calc_curvatures:
                         d2 = local_S2*S2*G2*self.ncells_second_deriv
+                        if self.refine_with_psf:
+                          d2=convolve_with_psf(d2)
                         cc = d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda
                         self.curv[-4] += cc.sum()
 
                 if self.refine_detdist:
                     if self.calc_curvatures:
                         raise NotImplementedError("Cannot use curvatures and refine detdist (yet...)")
-                    g[-3] += (local_S2*S2*G2*self.detdist_deriv*one_minus_k_over_Lambda).sum()
+                    d=local_S2*S2*G2*self.detdist_deriv
+                    if self.refine_with_psf:
+                      d=convolve_with_psf(d)
+                    g_tmp = (local_S2*S2*G2*self.detdist_deriv*one_minus_k_over_Lambda)
+                    g[-3] += g_tmp.sum()
+                      
 
                 if self.refine_gain_fac:
                     d = 2*self.gain_fac*(self.tilt_plane + local_S2*S2*self.model_bragg_spots)
@@ -364,11 +385,13 @@ class RefineAll(RefineRot):
                     g[-1] += (d*one_minus_k_over_Lambda).sum()
                     if self.calc_curvatures:
                         d2 = d / self.scale_fac
-                        self.curv[-1] += (d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda).sum()
+                        cc= (d2*one_minus_k_over_Lambda + d*d*k_over_squared_Lambda)
+                        self.curv[-1] += cc.sum()
 
                 if self.refine_local_spotscale:
                     d = G2*S2*2*self.local_spotscale*self.model_bragg_spots
-                    g[self.n_bg+i_spot] += (d*one_minus_k_over_Lambda).sum()
+                    g_tmp= (d*one_minus_k_over_Lambda)
+                    g[self.n_bg+i_spot] += g_tmp.sum()
             if self.calc_curvatures and not self.use_curvatures:
                 if np.all(self.curv.as_numpy_array() >= 0):
                     self.num_positive_curvatures += 1
