@@ -238,5 +238,6 @@ if RUC.hit_break_to_use_curvatures:
     RUC.use_curvatures = True
     RUC.run(setup=False)
 
-assert abs(RUC.x[RUC.originZ_xpos] - distance) < 1e-2
-print "OK I_AM_ZIM"
+assert abs(RUC.x[RUC.originZ_xpos[0]] - distance) < 1e-2
+print ("I AM ZIM")
+print ("OK!")
