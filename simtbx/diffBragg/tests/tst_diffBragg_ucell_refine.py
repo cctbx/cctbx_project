@@ -212,17 +212,18 @@ if not args.refine:
                     plt.pause(0.8)
 
         l = linregress(h_vals, error)
-        l2 = linregress(np.array(h_vals)**2, error2)
 
         print "finite diff l.rvalue=%10.7g" % l.rvalue
-        print "finite 2nd diff l.rvalue=%10.7g" % l2.rvalue
         assert l.rvalue > .99
         assert l.slope > 0
         assert l.pvalue < 1e-6
 
-        assert l2.rvalue > .99
-        assert l2.slope > 0
-        assert l2.pvalue < 1e-6
+        if args.curvatures:
+            l2 = linregress(np.array(h_vals)**2, error2)
+            print "finite 2nd diff l.rvalue=%10.7g" % l2.rvalue
+            assert l2.rvalue > .99
+            assert l2.slope > 0
+            assert l2.pvalue < 1e-6
 
         if args.plot:
             plt.close()
