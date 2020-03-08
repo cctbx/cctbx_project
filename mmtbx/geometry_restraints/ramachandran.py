@@ -564,14 +564,18 @@ def load_emsley8k_tables():
     for j in rr:
       tmp[(i,j)]=0
   R = ramachandran_eval.RamachandranEval()
-  O = ramalyze.RAMALYZE_OUTLIER
+  outlier = ramalyze.RAMALYZE_OUTLIER
+  favored = ramalyze.RAMALYZE_FAVORED
+  allowed = ramalyze.RAMALYZE_ALLOWED
   for (rama_key, file_name, selfstore) in name_to_file:
     file_name = libtbx.env.find_in_repositories(
       relative_path="chem_data/rotarama_data/%s"%(file_name),
       test=os.path.isfile)
     di        = {}
-    outl_vals = flex.double()
-    outliers  = {}
+    outlier_vals = flex.double()
+    favored_vals = flex.double()
+    allowed_vals = flex.double()
+    status       = {}
     with open(file_name, "r") as f:
       for line in f.readlines():
         if line[0]=="#": continue
@@ -582,20 +586,29 @@ def load_emsley8k_tables():
         di[(phi,psi)]=val
         rama_score = R.rama_eval.get_score(selfstore, phi, psi)
         evaluation = R.rama_eval.evaluate_score(selfstore, rama_score)
-        if(evaluation==O):
-          outl_vals.append(val)
-          outliers[(phi,psi)]=True
-        else:
-          outliers[(phi,psi)]=False
+        if  (evaluation==outlier):
+          outlier_vals.append(val)
+          status[(phi,psi)]=outlier
+        elif(evaluation==favored):
+          favored_vals.append(val)
+          status[(phi,psi)]=favored
+        elif(evaluation==allowed):
+          allowed_vals.append(val)
+          status[(phi,psi)]=allowed
+        else: raise RuntimeError("Not supposed to be here.")
     data = flex.double()
-    max_outl_val = flex.max(outl_vals)
+    max_outlier = flex.max(outlier_vals)
+    max_favored = flex.max(favored_vals)
+    min_favored = flex.min(favored_vals)
+    max_allowed = flex.max(allowed_vals)
     for k, v in zip(tmp.keys(), tmp.values()):
       try:
-        val = di[k] #math.exp(di[k])**3 # to make it steeper
-        if(outliers[k]):
-          val=-2+val*1000
+        val = di[k]
+        if  (status[k]==outlier): val = -1 + val/max_outlier
+        elif(status[k]==favored): val = val #math.exp(val)**0.5/2.71828182846**0.5 #math.exp(val)**3
+        elif(status[k]==allowed): val = val #math.exp(val)**0.5/2.71828182846**0.5 #math.exp(val/max_allowed)**3
       except KeyError:
-        val = -2
+        val = -1
       data.append(val)
     t = lookup_table(data, 180)
     tables[rama_key] = t
