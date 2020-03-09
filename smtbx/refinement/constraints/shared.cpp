@@ -116,4 +116,32 @@ namespace smtbx { namespace refinement { namespace constraints {
       jt.col(index()+i) = jt.col(site->index()+i);
   }
 
+  // shared fp
+  void
+    shared_fp
+    ::linearise(uctbx::unit_cell const &unit_cell,
+      sparse_matrix_type *jacobian_transpose)
+  {
+    scalar_parameter *fp = reference();
+    value = fp->value;
+
+    if (!jacobian_transpose) return;
+    sparse_matrix_type &jt = *jacobian_transpose;
+    jt.col(index()) = jt.col(fp->index());
+  }
+
+  // shared fdp
+  void
+    shared_fdp
+    ::linearise(uctbx::unit_cell const &unit_cell,
+      sparse_matrix_type *jacobian_transpose)
+  {
+    scalar_parameter *fdp = reference();
+    value = fdp->value;
+
+    if (!jacobian_transpose) return;
+    sparse_matrix_type &jt = *jacobian_transpose;
+    jt.col(index()) = jt.col(fdp->index());
+  }
+
 }}}
