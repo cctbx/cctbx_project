@@ -65,6 +65,18 @@ master_phil = iotbx.phil.parse("""
                ss_by_chain=False.
        .short_caption = Secondary structure by chain
        .expert_level = 1
+
+     auto_choose_ca_vs_ca_n_o = True
+       .type = bool
+       .help = Automatically identify whether chains are mostly CA or mostly \
+                contain CA/N/O atoms (requires min_ca_n_o_completeness).
+       .short_caption = Auto choose CA vs CA/N/O
+
+     min_ca_n_o_completeness = 0.95
+       .type = float
+       .help = Minimum completeness of CA/N/O atoms to not use CA-only
+       .short_caption = Minimum completeness of CA/N/O
+
      max_rmsd = 1
        .type = float
        .help = Maximum rmsd to consider two chains with identical sequences \
@@ -149,6 +161,11 @@ master_phil = iotbx.phil.parse("""
        .type = bool
        .help = Write SHEET records that contain a single strand
        .short_caption = Write single strands
+
+     remove_missing_atom_annotation = False
+       .type = bool
+       .help = Remove annotation that refers to atoms that are not present
+       .short_caption = Remove missing atom annotation
 
      max_h_bond_length = 3.5
        .type = float
@@ -885,6 +902,57 @@ def sites_are_similar(sites1,sites2,max_rmsd=1):
   else:
     return False
 
+
+def is_ca_only_hierarchy(hierarchy):
+  if not hierarchy: return None
+  asc=hierarchy.atom_selection_cache()
+  atom_selection="not (name ca)"
+  sel = asc.selection(string = atom_selection)
+  if sel.count(True)==0:
+    return True
+  else:
+    return False
+
+def ca_n_and_o_always_present(hierarchy):
+  if not hierarchy: return None
+  total_residues=hierarchy.overall_counts().n_residues
+  asc=hierarchy.atom_selection_cache()
+  for n in ("ca","n","o"):
+    atom_selection="name %s" %(n)
+    sel = asc.selection(string = atom_selection)
+    if sel.count(True) != total_residues:
+      return False
+  return True
+
+
+def get_fraction_complete_backbone(hierarchy):
+  if not hierarchy: return 0
+  total_residues=hierarchy.overall_counts().n_residues
+  asc=hierarchy.atom_selection_cache()
+  minimum_complete=total_residues
+  for n in ("ca","n","o"):
+    atom_selection="name %s" %(n)
+    sel = asc.selection(string = atom_selection)
+    if sel.count(True) < minimum_complete:
+      minimum_complete=sel.count(True)
+  if minimum_complete==total_residues:
+    return 1 # just to make sure it is exactly 1
+  else:
+    return minimum_complete/max(1,total_residues)
+
+def choose_ca_or_complete_backbone(hierarchy, params=None):
+  # Purpose: return a hierarchy that is either completely CA or has no CA-only
+  #   residues
+  fraction_complete_backbone=get_fraction_complete_backbone(hierarchy)
+  if fraction_complete_backbone == 1:
+    return hierarchy # nothing to do
+  if fraction_complete_backbone < \
+       params.find_ss_structure.min_ca_n_o_completeness:
+    # just use CA-only
+    return apply_atom_selection('name CA',hierarchy=hierarchy)
+  else:  # remove CA-only residues
+    hierarchy.remove_incomplete_main_chain_protein()
+    return hierarchy
 
 def sites_and_seq_from_hierarchy(hierarchy):
   atom_selection="name ca"
@@ -1787,7 +1855,6 @@ class find_segment: # class to look for a type of segment
              start_resno=i2-1+self.start_resno)
           if h.is_ok():
            found=True
-           print("ZZA",i1,i2,i3,":",segment_dict[i2])
            segment_dict[i2-1]=segment_dict[i2]
            del segment_dict[i2]
         if found: break
@@ -1800,7 +1867,6 @@ class find_segment: # class to look for a type of segment
              start_resno=i2+self.start_resno)
           if h.is_ok():
            found=True
-           print("ZZB",i1,i2,i3,":",segment_dict[i2])
            segment_dict[i2]=segment_dict[i2]+1
 
     return segment_dict
@@ -3378,6 +3444,14 @@ class find_secondary_structure: # class to look for secondary structure
         hierarchy=get_pdb_hierarchy(text=open(params.input_files.pdb_in).read())
     if hierarchy:
       hierarchy.remove_alt_confs(always_keep_one_conformer=False)
+      atom_selection="protein"
+      try:
+        hierarchy=apply_atom_selection(atom_selection,hierarchy=hierarchy)
+      except Exception as e:
+        hierarchy=None
+
+    if hierarchy and params.find_ss_structure.auto_choose_ca_vs_ca_n_o:
+      hierarchy=choose_ca_or_complete_backbone(hierarchy,params=params)
 
     if force_secondary_structure_input and not \
         (params.input_files.secondary_structure_input or user_annotation_text):
@@ -3448,6 +3522,15 @@ class find_secondary_structure: # class to look for secondary structure
         print("\nMerged annotation:\n", file=out)
         print(working_annotation.as_pdb_str(), file=out)
 
+
+    #  Remove annotation that does not match model
+    if params.find_ss_structure.remove_missing_atom_annotation:
+      working_annotation=remove_bad_annotation(
+        working_annotation,
+        hierarchy=hierarchy,
+        max_h_bond_length=params.find_ss_structure.max_h_bond_length,
+        remove_overlaps=False, # XXX Required to prevent recursion
+        out=out)
 
     # Now get final values of H-bonds etc with our final annotation
 
@@ -3563,6 +3646,13 @@ class find_secondary_structure: # class to look for secondary structure
        oc.n_residues/max(1,oc.n_chains) < min_average_chain_length:
       return
 
+    # If not a CA-only model, require N and O to be present on all residues
+    #   to run with representative chains (otherwise there may be some N/O
+    #   that are present in only some chains)
+    if (not is_ca_only_hierarchy(self.hierarchy))  and (
+          not ca_n_and_o_always_present(self.hierarchy)):
+      return
+
     # Worth running on individual chains
     return True
 
@@ -3581,6 +3671,7 @@ class find_secondary_structure: # class to look for secondary structure
       local_out=null_out()
     result_dict={} # fss_conformation_groups keyed by sequence to find quickly
     unique_sequence_list=[]
+
     for model in self.hierarchy.models()[:1]:
       for chain in model.chains():
         chain_id=chain.id
@@ -3750,7 +3841,6 @@ class find_secondary_structure: # class to look for secondary structure
     else:
       print("\nThis secondary structure annotation will be modified if necessary\n", file=out)
       remove_overlaps=True
-
     # Remove any parts of this annotation that do not exist in the hierarchy
     user_annotation=remove_bad_annotation(
         user_annotation,

@@ -158,7 +158,9 @@ class lbfgs(object):
     #
     if(self.riding_h_manager is not None and self.refine_xyz):
       sites_cart = self.xray_structure.sites_cart()
-      self.riding_h_manager.idealize(sites_cart = sites_cart)
+      self.riding_h_manager.idealize(
+        sites_cart = sites_cart,
+        selection_bool = self.model.refinement_flags.sites_individual)
       self.xray_structure.set_sites_cart(sites_cart=sites_cart)
     #
     if(self.refine_adp):
@@ -213,7 +215,7 @@ class lbfgs(object):
             qblib_call.run()
           except Exception as e:
             if e.__class__.__name__=="QB_none_fatal_error":
-              raise Sorry(e.message)
+              raise Sorry(str(e))
             else:
               raise e
 

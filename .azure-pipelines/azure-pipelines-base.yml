@@ -12,14 +12,8 @@ schedules:
     - master
 
 stages:
-- stage: Checks
-  displayName: Check
-  jobs:
-    - template: ./syntax.yml
-
 - stage: Preparation
   displayName: Download
-  dependsOn: Checks
   jobs:
     - template: ./download-source.yml
 
@@ -27,14 +21,15 @@ stages:
   displayName: Build and test
   dependsOn: Preparation
   jobs:
+    - template: ./base-win.yml
     - template: ./base-linux.yml
       parameters:
         distribution: centos
-        version: [6, 10]
+        version: [6]
     - template: ./base-linux.yml
       parameters:
         distribution: centos
-        version: [7, 6, 1810]
+        version: [7]
     - template: ./base-linux.yml
       parameters:
         distribution: ubuntu
@@ -53,13 +48,9 @@ stages:
         xcode_version: [10, 2, 1]
     - template: ./base-osx.yml
       parameters:
-        vmImage: [10, 13]
+        vmImage: [10, 14]
         xcode_version: [10, 1]
     - template: ./base-osx.yml
       parameters:
         vmImage: [10, 13]
         xcode_version: [9, 4, 1]
-    - template: ./base-osx.yml
-      parameters:
-        vmImage: [10, 13]
-        xcode_version: [8, 3, 3]

@@ -181,22 +181,20 @@ def adjust_amplitudes_linear(f_array,b1,b2,b3,resolution=None,
   data_array=data_array*scale_array
   return f_array.customized_copy(data=data_array)
 
-def get_scale_factors(f_array,target_scale_factors=None):
-  scale_array=flex.double(f_array.data().size()*(-1.,))
-  assert len(target_scale_factors)==len(list(f_array.binner().range_used()))
-  for i_bin in f_array.binner().range_used():
-    sel       = f_array.binner().selection(i_bin)
-    scale_array.set_selected(sel,target_scale_factors[i_bin-1])
-  assert scale_array.count(-1.)==0
-  return scale_array
-
 def get_model_map_coeffs_normalized(pdb_inp=None,
    si=None,
    f_array=None,
    overall_b=None,
    resolution=None,
+   n_bins=None,
+   target_b_iso_model_scale=0,
    out=sys.stdout):
   if not pdb_inp: return None
+  if not si:
+    from cctbx.maptbx.segment_and_split_map import sharpening_info
+    si=sharpening_info(resolution=resolution,
+     target_b_iso_model_scale=0,
+     n_bins=n_bins)
 
   # define Wilson B for the model
   if overall_b is None:
@@ -208,13 +206,18 @@ def get_model_map_coeffs_normalized(pdb_inp=None,
 
   # create model map using same coeffs
   from cctbx.maptbx.segment_and_split_map import get_f_phases_from_model
-  model_map_coeffs=get_f_phases_from_model(
+  try:
+    model_map_coeffs=get_f_phases_from_model(
      pdb_inp=pdb_inp,
      f_array=f_array,
      overall_b=overall_b,
      k_sol=si.k_sol,
      b_sol=si.b_sol,
      out=out)
+  except Exception as e:
+    print ("Failed to get model map coeffs...going on",file=out)
+    return None
+
 
   from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi,get_b_iso
   model_f_array,model_phases=map_coeffs_as_fp_phi(model_map_coeffs)
@@ -280,11 +283,11 @@ def fit_cc(cc_list=None,sthol_list=None,
       scale_using_last=scale_using_last)
 
 def get_fitted_cc(cc_list=None,sthol_list=None, cc_cut=None,
-   scale_using_last=None,keep_cutoff_point=False):
+   scale_using_last=None,keep_cutoff_point=False,force_scale_using_last=False):
   # only do this if there is some value of s where cc is at least 2*cc_cut or
   #  (1-c_cut/2), whichever is smaller
   min_cc=min(2*cc_cut,1-0.5*cc_cut)
-  if cc_list.min_max_mean().max < min_cc:
+  if cc_list.min_max_mean().max < min_cc and (not force_scale_using_last):
     return cc_list
   # find first point after point where cc>=min_cc that cc<=cc_cut
   #   then back off by 1 point  # 2019-10-12 don't back off if keep_cutoff_point
@@ -298,6 +301,10 @@ def get_fitted_cc(cc_list=None,sthol_list=None, cc_cut=None,
       s_cut=s
       break
     i_cut+=1
+  if force_scale_using_last:
+    scale_using_last=True
+    s_cut=sthol_list[0]
+    i_cut=1
   if s_cut is None or i_cut==0:
     return cc_list
 
@@ -363,6 +370,7 @@ def calculate_fsc(si=None,
      f_array=None,  # just used for binner
      map_coeffs=None,
      model_map_coeffs=None,
+     external_map_coeffs=None,
      first_half_map_coeffs=None,
      second_half_map_coeffs=None,
      resolution=None,
@@ -383,8 +391,10 @@ def calculate_fsc(si=None,
     print("Setting rmsd to %5.1f A based on resolution of %5.1f A" %(
        si.rmsd,resolution), file=out)
 
-
   # get f and model_f vs resolution and FSC vs resolution and apply
+
+  # If external_map_coeffs then simply scale f to external_map_coeffs
+
   # scale to f_array and return sharpened map
   dsd = f_array.d_spacings().data()
   from cctbx.maptbx.segment_and_split_map import map_coeffs_to_fp
@@ -395,6 +405,13 @@ def calculate_fsc(si=None,
     fo_map=map_coeffs # scale map_coeffs to model_map_coeffs*FSC
     fc_map=model_map_coeffs
     b_eff=get_b_eff(si=si,out=out)
+  elif external_map_coeffs:
+    mc1=map_coeffs
+    mc2=external_map_coeffs
+    fo_map=map_coeffs # scale map_coeffs to external_map_coeffs
+    fc_map=external_map_coeffs
+    b_eff=None
+
   else: # half_dataset
     mc1=first_half_map_coeffs
     mc2=second_half_map_coeffs
@@ -425,6 +442,8 @@ def calculate_fsc(si=None,
     m2        = mc2.select(sel)
     cc        = m1.map_correlation(other = m2)
 
+    if external_map_coeffs:
+      cc=1.
 
     if fo_map:
       fo        = fo_map.select(sel)
@@ -589,6 +608,7 @@ def analyze_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
 
 def scale_amplitudes(model_map_coeffs=None,
     map_coeffs=None,
+    external_map_coeffs=None,
     first_half_map_coeffs=None,
     second_half_map_coeffs=None,
     si=None,resolution=None,overall_b=None,
@@ -608,7 +628,8 @@ def scale_amplitudes(model_map_coeffs=None,
     is_model_based=True
   else:
     assert si.target_scale_factors or (
-       first_half_map_coeffs and second_half_map_coeffs)
+       first_half_map_coeffs and second_half_map_coeffs) or (
+        external_map_coeffs)
     is_model_based=False
 
   if si.verbose and not verbose:
@@ -641,6 +662,7 @@ def scale_amplitudes(model_map_coeffs=None,
       model_map_coeffs=model_map_coeffs,
       first_half_map_coeffs=first_half_map_coeffs,
       second_half_map_coeffs=second_half_map_coeffs,
+      external_map_coeffs=external_map_coeffs,
       resolution=resolution,
       fraction_complete=fraction_complete,
       min_fraction_complete=min_fraction_complete,
@@ -680,8 +702,8 @@ def apply_target_scale_factors(f_array=None,phases=None,
    return_map_coeffs=None,out=sys.stdout):
     from cctbx.maptbx.segment_and_split_map import get_b_iso
     f_array_b_iso=get_b_iso(f_array,d_min=resolution)
-    scale_array=get_scale_factors(f_array,
-        target_scale_factors=target_scale_factors)
+    scale_array=f_array.binner().interpolate(
+      target_scale_factors, 1) # d_star_power=1
     scaled_f_array=f_array.customized_copy(data=f_array.data()*scale_array)
     scaled_f_array_b_iso=get_b_iso(scaled_f_array,d_min=resolution)
     print("\nInitial b_iso for "+\

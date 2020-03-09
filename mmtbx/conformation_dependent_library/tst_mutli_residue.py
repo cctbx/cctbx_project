@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from iotbx import pdb
-from test_rdl import get_geometry_restraints_manager
+from mmtbx.conformation_dependent_library.testing_utils import get_geometry_restraints_manager
 
 from mmtbx.regression import model_1yjp
 from six.moves import range

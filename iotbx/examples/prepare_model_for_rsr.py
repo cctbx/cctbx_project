@@ -47,7 +47,7 @@ def run(args):
   try:
     model.expand_with_BIOMT_records()
   except Sorry as e:
-    if e.message.startswith("Model has been already expanded"):
+    if str(e).startswith("Model has been already expanded"):
       double_counter += 1
   print("="*80)
   print("number of atoms with BIOMT multiplication:", model.get_number_of_atoms())

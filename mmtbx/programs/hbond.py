@@ -31,7 +31,8 @@ Usage example:
     self.results.show(log = self.logger)
     print("-"*79, file=self.logger)
     self.results.show_summary(log = self.logger)
-    self.results.as_pymol()
+    if self.params.hbond.output_pymol_files:
+      self.results.as_pymol()
 
   # ---------------------------------------------------------------------------
   def get_results(self):

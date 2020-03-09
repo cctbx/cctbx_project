@@ -17,12 +17,14 @@ from itertools import count
 import sys
 from libtbx.str_utils import line_breaker
 from mmtbx.ncs.ncs_params import global_ncs_params
+from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list
 
 class cartesian_ncs_manager(object):
   def __init__(self, model, ncs_params, ext_groups=None):
     # create bunch of group objects
     self.ncs_params = ncs_params
     self.n_excessive_site_distances = None
+    self.ncs_restraints_group_list = class_ncs_restraints_group_list()
     if self.ncs_params is None:
       self.ncs_params = global_ncs_params.extract().ncs
     if ext_groups is not None:
@@ -30,9 +32,9 @@ class cartesian_ncs_manager(object):
     else:
       self.groups_list = []
       ncs_obj = model.get_ncs_obj()
-      ncs_restraints_group_list = ncs_obj.get_ncs_restraints_group_list()
-      ncs_groups_selection_string_list = ncs_restraints_group_list.get_array_of_str_selections()
-      for i_gr, gr in enumerate(ncs_restraints_group_list):
+      self.ncs_restraints_group_list = ncs_obj.get_ncs_restraints_group_list()
+      ncs_groups_selection_string_list = self.ncs_restraints_group_list.get_array_of_str_selections()
+      for i_gr, gr in enumerate(self.ncs_restraints_group_list):
         n_copies = gr.get_number_of_copies()
         registry = pair_registry(n_seq=model.get_number_of_atoms(), n_ncs=n_copies+1)
         for i_copy, c in enumerate(gr.copies):
@@ -53,14 +55,19 @@ class cartesian_ncs_manager(object):
             u_average_min=1.e-6,)
         self.groups_list.append(g)
 
-  def select(self, iselection):
+  def select(self, selection):
+    assert isinstance(selection, flex.bool)
+    iselection = selection.iselection()
     ext_groups = []
     for group in self.groups_list:
       ext_groups.append(group.select(iselection))
-    return cartesian_ncs_manager(
+    new_manager = cartesian_ncs_manager(
         model=None,
         ncs_params=self.ncs_params,
         ext_groups=ext_groups)
+    new_manager.ncs_restraints_group_list = \
+        self.ncs_restraints_group_list.select(selection)
+    return new_manager
 
   def energies_adp_iso(self,
         u_isos,
@@ -101,6 +108,7 @@ class cartesian_ncs_manager(object):
         or self.ncs_params.b_factor_weight <= 0):
       print(prefix+"  b_factor_weight: %s  =>  restraints disabled" % (
           str(self.ncs_params.b_factor_weight)), file=out)
+      return
     for i_group,group in enumerate(self.groups_list):
       print(prefix + "NCS restraint group %d:" % (i_group+1), file=out)
       energies_adp_iso = group.energies_adp_iso(
@@ -187,40 +195,12 @@ class cartesian_ncs_manager(object):
         print(pr+"   RMSD               : %-10.3f" % rms, file=result)
     return result.getvalue()
 
-  def as_cif_block(self, loops, cif_block, sites_cart):
-    if cif_block is None:
-      cif_block = iotbx.cif.model.block()
-    (ncs_ens_loop, ncs_dom_loop, ncs_dom_lim_loop, ncs_oper_loop,
-        ncs_ens_gen_loop) = loops
-
-    oper_id = 0
-    if self.get_n_groups > 0:
-      for i_group, group in enumerate(self.groups_list):
-        ncs_ens_loop.add_row((i_group+1, "?"))
-        selection_strings = group.selection_strings
-        matrices = group.matrices
-        rms = group.rms
-        pair_count = len(group.selection_pairs[0])
-        for i_domain, domain_selection in enumerate(selection_strings):
-          ncs_dom_loop.add_row((i_domain+1, i_group+1, "?"))
-          # XXX TODO: export individual sequence ranges from selection
-          ncs_dom_lim_loop.add_row(
-            (i_group+1, i_domain+1, "?", "?", "?", "?", domain_selection))
-          if i_domain > 0:
-            rt_mx = group.matrices[i_domain-1]
-            oper_id += 1
-            row = [oper_id, "given"]
-            row.extend(rt_mx.r)
-            row.extend(rt_mx.t)
-            row.append("?")
-            ncs_oper_loop.add_row(row)
-            ncs_ens_gen_loop.add_row((1, i_domain+1, i_group+1, oper_id))
-    cif_block.add_loop(ncs_ens_loop)
-    cif_block.add_loop(ncs_dom_loop)
-    cif_block.add_loop(ncs_dom_lim_loop)
-    if self.get_n_groups > 0:
-      cif_block.add_loop(ncs_oper_loop)
-      cif_block.add_loop(ncs_ens_gen_loop)
+  def as_cif_block(self, cif_block, hierarchy, scattering_type):
+    self.ncs_restraints_group_list.as_cif_block(
+        cif_block=cif_block,
+        hierarchy=hierarchy,
+        scattering_type=scattering_type,
+        ncs_type='cartesian NCS')
     return cif_block
 
   def get_n_excessive_sites_distances(self):

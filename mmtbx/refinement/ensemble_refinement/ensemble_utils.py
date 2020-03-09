@@ -556,7 +556,10 @@ class manager(object):
     # Bond
     mean_bond_delta = flex.double()
     for proxy, info in six.iteritems(ensemble_bond_deltas):
-      assert info[1] == ensemble_size
+      # assert info[1] == ensemble_size
+      if info[1]!=ensemble_size:
+        print('skipping bond RMSD calns of ensemble %s' % info, file=out)
+        continue
       mean_delta = info[0] / info[1]
       mean_bond_delta.append(mean_delta)
     bond_delta_sq = mean_bond_delta * mean_bond_delta

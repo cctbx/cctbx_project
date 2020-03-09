@@ -9,7 +9,6 @@ from scitbx.array_family import flex
 from libtbx.utils import null_out
 from libtbx import easy_run
 import libtbx.load_env
-from math import sqrt
 import sys, os
 import time
 
@@ -34,7 +33,7 @@ def contiguous_ss_selections(pdb_hierarchy):
     params                       = params.secondary_structure,
     log                          = null_out())
   n_atoms = pdb_hierarchy.atoms_size()
-  ss_all = ssm.alpha_selection().iselection()
+  ss_all = ssm.helix_selection().iselection()
   ss_all.extend(ssm.beta_selection().iselection())
   ss_all.extend(ssm.base_pair_selection().iselection())
   chain_selections = []
@@ -252,6 +251,7 @@ class manager(object):
         protein_found = True
       if not protein_found:
         ss_params = []
+        annot = None
         if use_segid:
           # Could get rid of this 'if' clause, but I want to avoid construction of
           # atom_selection_cache and selections when there is no segids in pdb
@@ -275,14 +275,14 @@ class manager(object):
               ss_params.append(ss_phil)
               # self.actual_sec_str = annot
         ss_params_str = "\n".join(ss_params)
-        self.apply_phil_str(ss_params_str, log=self.log)
+        self.apply_phil_str(ss_params_str, annot=annot, log=self.log)
       else:
         if (self.sec_str_from_pdb_file is not None):
           # self.actual_sec_str = self.sec_str_from_pdb_file
           ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(
               log=self.log,
               prefix_scope="secondary_structure")
-          self.apply_phil_str(ss_params_str, log=self.log)
+          self.apply_phil_str(ss_params_str, annot=self.sec_str_from_pdb_file, log=self.log)
         # else:
         #   # got phil SS, need to refactor later, when the class is fully
         #   # converted for operation with annotation object
@@ -445,6 +445,7 @@ class manager(object):
   def apply_phil_str(self,
       phil_string,
       phil_params=None,
+      annot=None,
       log=None,
       verbose=False):
     assert [phil_string, phil_params].count(None) == 1
@@ -462,11 +463,13 @@ class manager(object):
         new_ss_params.secondary_structure.protein.helix
     self.params.secondary_structure.protein.sheet = \
         new_ss_params.secondary_structure.protein.sheet
-    self.actual_sec_str = iotbx.pdb.secondary_structure.annotation.from_phil(
-        phil_helices=new_ss_params.secondary_structure.protein.helix,
-        phil_sheets=new_ss_params.secondary_structure.protein.sheet,
-        pdb_hierarchy=self.pdb_hierarchy,
-        atom_selection_cache=self.selection_cache)
+    self.actual_sec_str = annot
+    if annot is None:
+      self.actual_sec_str = iotbx.pdb.secondary_structure.annotation.from_phil(
+          phil_helices=new_ss_params.secondary_structure.protein.helix,
+          phil_sheets=new_ss_params.secondary_structure.protein.sheet,
+          pdb_hierarchy=self.pdb_hierarchy,
+          atom_selection_cache=self.selection_cache)
 
   def create_protein_hbond_proxies(self,
                             annotation=None,
@@ -618,15 +621,17 @@ class manager(object):
     return shared.stl_set_unsigned(simple_bonds)
 
   def calculate_structure_content(self):
-    isel = self.selection_cache.iselection
-    calpha = isel("name N and (altloc ' ' or altloc 'A')")
-    alpha_sele = self.alpha_selection(limit="name N", main_conf_only=True)
-    n_alpha = alpha_sele.count(True)
-    beta_sele = self.beta_selection(limit="name N", main_conf_only=True)
-    n_beta = beta_sele.count(True)
-    if calpha.size() == 0 :
+    if self.actual_sec_str is not None:
+      oc = self.pdb_hierarchy.overall_counts()
+      n_alpha = self.actual_sec_str.get_n_helix_residues()
+      n_beta = self.actual_sec_str.get_n_sheet_residues()
+      n_residues = oc.get_n_residues_of_classes(
+          classes=['common_amino_acid', 'modified_amino_acid'])
+    else:
+      raise NotImplementedError("Should have defined secondary structure before calculating its content.")
+    if n_residues == 0 :
       return (0.0, 0.0)
-    return (n_alpha / calpha.size(), n_beta / calpha.size())
+    return (n_alpha / n_residues, n_beta / n_residues)
 
   def show_summary(self, log=None):
     if log is None:
@@ -680,13 +685,6 @@ class manager(object):
       whole_selection |= helix
     return whole_selection
 
-  # FIXME backwards compatibility
-  def alpha_selection(self, **kwds):
-    return self.helix_selection(**kwds)
-
-  def alpha_selections(self, **kwds):
-    return self.helix_selections(**kwds)
-
   def beta_selections(self, limit=None, main_conf_only=False):
     sele = self.selection_cache.selection
     all_selections = []
@@ -737,22 +735,6 @@ class manager(object):
       whole_selection |= sheet
     return whole_selection
 
-  def selections_as_ints(self):
-    assert 0, "Anybody using this?"
-    sec_str = flex.int(self.n_atoms, 0)
-    all_alpha = flex.int(self.n_atoms, 1)
-    all_beta = flex.int(self.n_atoms, 2)
-    helices = self.alpha_selection()
-    sheets = self.beta_selection()
-    sec_str.set_selected(helices, all_alpha.select(helices))
-    sec_str.set_selected(sheets, all_beta.select(sheets))
-    return sec_str
-
-  def apply_params(self, params):
-    assert 0, "Not used anywhere?"
-    self.params.helix = params.helix
-    self.params.sheet = params.sheet
-
 # =============================================================================
 # General functions
 # =============================================================================
@@ -788,73 +770,3 @@ def run_ksdssp_direct(pdb_str):
   exe_path = get_ksdssp_exe_path()
   ksdssp_out = easy_run.fully_buffered(command=exe_path, stdin_lines=pdb_str)
   return ( ksdssp_out.stdout_lines, ksdssp_out.stderr_lines )
-
-
-
-
-# =============================================================================
-# Unused functions...
-# =============================================================================
-
-def _get_distances(bonds, sites_cart):
-  assert 0, "Hopefully is not used"
-  distances = flex.double(bonds.size(), -1)
-  for k, (i_seq, j_seq) in enumerate(bonds):
-    (x1, y1, z1) = sites_cart[i_seq]
-    (x2, y2, z2) = sites_cart[j_seq]
-    dist = sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
-    distances[k] = dist
-  return distances
-
-def get_pdb_hierarchy(file_names):
-  assert 0, "Hopefully is not used"
-  pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=file_names)
-  pdb_structure = iotbx.pdb.input(source_info=None,
-    lines=flex.std_string(pdb_combined.raw_records))
-  return pdb_structure.construct_hierarchy()
-
-def analyze_distances(self, params, pdb_hierarchy=None, log=sys.stdout):
-  assert 0 # Not used anywhere?
-  atoms = None
-  if params.verbose :
-    assert pdb_hierarchy is not None
-    atoms = pdb_hierarchy.atoms()
-  remove_outliers = params.secondary_structure.protein.remove_outliers
-  atoms = pdb_hierarchy.atoms()
-  hist =  flex.histogram(self.bond_lengths, 10)
-  print("  Distribution of hydrogen bond lengths without filtering:", file=log)
-  hist.show(f=log, prefix="    ", format_cutoffs="%.4f")
-  print("", file=log)
-  if not remove_outliers :
-    return False
-  for i, distance in enumerate(self.bond_lengths):
-    if distance > distance_max :
-      self.flag_use_bond[i] = False
-      if params.verbose :
-        print("Excluding H-bond with length %.3fA" % distance, file=log)
-        i_seq, j_seq = self.bonds[i]
-        print("  %s" % atoms[i_seq].fetch_labels().id_str(), file=log)
-        print("  %s" % atoms[j_seq].fetch_labels().id_str(), file=log)
-  print("  After filtering: %d bonds remaining." % \
-    self.flag_use_bond.count(True), file=log)
-  print("  Distribution of hydrogen bond lengths after applying cutoff:", file=log)
-  hist = flex.histogram(self.bond_lengths.select(self.flag_use_bond), 10)
-  hist.show(f=log, prefix="    ", format_cutoffs="%.4f")
-  print("", file=log)
-  return True
-
-def manager_from_pdb_file(pdb_file):
-  assert 0, "will not work"
-  from iotbx import file_reader
-  assert os.path.isfile(pdb_file)
-  pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
-  pdb_hierarchy = pdb_in.file_object.hierarchy
-  pdb_hierarchy.atoms().reset_i_seq()
-  ss_manager  = manager(pdb_hierarchy=pdb_hierarchy)
-  return ss_manager
-
-def calculate_structure_content(pdb_file):
-  assert 0, "will not work"
-  ss_manager = manager_from_pdb_file(pdb_file)
-  ss_manager.find_automatically()
-  return ss_manager.calculate_structure_content()

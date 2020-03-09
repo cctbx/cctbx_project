@@ -12,6 +12,12 @@ import six
 from six.moves import zip
 from six.moves import map
 
+PSANA2_VERSION = 0
+try:
+  PSANA2_VERSION = os.environ.get('PSANA2_VERSION', 0)
+except AttributeError:
+  pass
+
 # need to define these here since it not defined in SLAC's metrology definitions
 asic_dimension = (194,185)
 asic_gap = 3
@@ -39,7 +45,12 @@ def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, commo
   """
   # order is pedestals, then common mode, then gain mask, then per pixel gain
   import numpy as np
-  run = evt.run()
+
+  if PSANA2_VERSION:
+      # in psana2, data are stored as raw, fex, etc so the selection
+      # has to be given here when the detector interface is used.
+      # for now, assumes cctbx uses "raw".
+      psana_det = psana_det.raw
 
   if use_default:
     return psana_det.calib(evt)  # applies psana's complex run-dependent calibrations
@@ -50,22 +61,25 @@ def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, commo
   data = data.astype(np.float64)
   if isinstance(dark, bool):
     if dark:
-      data -= psana_det.pedestals(run)
+      if PSANA2_VERSION:
+        data -= psana_det.pedestals()
+      else:
+        data -= psana_det.pedestals(evt)
   elif isinstance( dark, np.ndarray ):
     data -= dark
 
   if common_mode is not None and common_mode != "default":
     if common_mode == 'cspad_default':
       common_mode = (1,25,25,100,1)  # default parameters for CSPAD images
-      psana_det.common_mode_apply(run, data, common_mode)
+      psana_det.common_mode_apply(data, common_mode)
     elif common_mode == 'unbonded':
       common_mode = (5,0,0,0,0)  # unbonded pixels used for correction
-      psana_det.common_mode_apply(run, data, common_mode)
+      psana_det.common_mode_apply(data, common_mode)
     else:  # this is how it was before.. Though I think common_mode would need to be a tuple..
-      psana_det.common_mode_apply(run, data, common_mode)
+      psana_det.common_mode_apply(data, common_mode)
   if apply_gain_mask:
     if gain_mask is None:  # TODO: consider try/except here
-      gain_mask = psana_det.gain_mask(run) == 1
+      gain_mask = psana_det.gain_mask(evt) == 1
     if gain_mask_value is None:
       try:
         gain_mask_value = psana_det._gain_mask_factor
@@ -74,7 +88,7 @@ def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, commo
         gain_mask_value = 1
     data[gain_mask] = data[gain_mask]*gain_mask_value
   if per_pixel_gain: # TODO: test this
-    data *= psana_det.gain(run)
+    data *= psana_det.gain()
   if additional_gain_factor is not None:
     data /= additional_gain_factor
   return data
@@ -328,10 +342,9 @@ def env_dxtbx_from_slac_metrology(run, address):
       @param env psana run object
       @param address address string for a detector
   """
-  from xfel.command_line.xtc_process import PSANA2_VERSION
   if PSANA2_VERSION:
-    det = run.ds.Detector(address)
-    geometry = det.geometry(run)
+    det = run.Detector(address)
+    geometry = det.raw.geometry()
   else:
     from psana import Detector
     try:
@@ -376,7 +389,7 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
   import numpy as np
   cbf = copy_cbf_header(base_dxtbx._cbf_handle)
   cspad_img = FormatCBFCspadInMemory(cbf)
-  cbf.set_datablockname(address + "_" + timestamp)
+  cbf.set_datablockname((address + "_" + timestamp).encode())
 
   if round_to_int:
     data = flex.double(data.astype(np.float64)).iround()
@@ -389,11 +402,11 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
     [(cspad_min_trusted_value,cspad_saturated_value)]*n_asics)
 
   # Set the distance, I.E., the length translated along the Z axis
-  cbf.find_category("diffrn_scan_frame_axis")
-  cbf.find_column("axis_id")
-  cbf.find_row("AXIS_D0_Z") # XXX discover the Z axis somehow, don't use D0 here
-  cbf.find_column("displacement")
-  cbf.set_value(str(-distance))
+  cbf.find_category(b"diffrn_scan_frame_axis")
+  cbf.find_column(b"axis_id")
+  cbf.find_row(b"AXIS_D0_Z") # XXX discover the Z axis somehow, don't use D0 here
+  cbf.find_column(b"displacement")
+  cbf.set_value(b"%f"%(-distance))
 
   # Explicitly reset the detector object now that the distance is set correctly
   cspad_img._detector_instance = cspad_img._detector()
@@ -601,7 +614,7 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
       metro[(0,q_id,s_id,1)] = basis(null_ori,matrix.col((+w,0,0)))
 
   if plot:
-    print("Validating transofmation matrices set up correctly")
+    print("Validating transformation matrices set up correctly")
     import matplotlib.pyplot as plt
     from matplotlib.patches import Polygon
     fig = plt.figure()
@@ -637,8 +650,8 @@ def cbf_file_to_basis_dict(path):
   """ Maps a cbf file to a dictionary of tuples and basis objects, in the same form as the above from
   read_optical_metrology_from_flat_file
   @param path cbf file path """
-  from dxtbx.format.Registry import Registry
-  reader = Registry.find(path)
+  import dxtbx.format.Registry
+  reader = dxtbx.format.Registry.get_format_class_for_file(path)
   instance = reader(path)
   return map_detector_to_basis_dict(instance.get_detector())
 
@@ -758,14 +771,14 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, di
    the set of data values stored in the ARRAY_DATA category."""
   # More detail here: http://www.iucr.org/__data/iucr/cifdic_html/2/cif_img.dic/Carray_intensities.html
   array_names = []
-  cbf.find_category("diffrn_data_frame")
+  cbf.find_category(b"diffrn_data_frame")
   while True:
     try:
-      cbf.find_column("array_id")
-      array_names.append(cbf.get_value())
+      cbf.find_column(b"array_id")
+      array_names.append(cbf.get_value().decode())
       cbf.next_row()
     except Exception as e:
-      assert "CBF_NOTFOUND" in e.message
+      assert "CBF_NOTFOUND" in str(e)
       break
 
   cbf.add_category("array_intensities",["array_id","binary_id","linearity","gain","gain_esd","overload","undefined_value"])
@@ -777,14 +790,14 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
   Given a cbf handle, add the raw data and the necessary tables to support it
   """
   array_names = []
-  cbf.find_category("diffrn_data_frame")
+  cbf.find_category(b"diffrn_data_frame")
   while True:
     try:
-      cbf.find_column("array_id")
-      array_names.append(cbf.get_value())
+      cbf.find_column(b"array_id")
+      array_names.append(cbf.get_value().decode())
       cbf.next_row()
     except Exception as e:
-      assert "CBF_NOTFOUND" in e.message
+      assert "CBF_NOTFOUND" in str(e)
       break
 
   tileisint = flex.bool()
@@ -821,7 +834,7 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
     binary_id = i+1
     data = tiles[tilekey].copy_to_byte_str()
     elements = len(tiles[tilekey])
-    byteorder = "little_endian"
+    byteorder = b"little_endian"
     dimfast = focus[2]
     dimmid = focus[1]
     dimslow = focus[0]
@@ -847,7 +860,8 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
       elsize = 8
 
       cbf.set_realarray_wdims_fs(\
-        pycbf.CBF_CANONICAL,
+        #pycbf.CBF_CANONICAL,
+        pycbf.CBF_PACKED,
         binary_id,
         data,
         elsize,
@@ -865,7 +879,7 @@ def copy_cbf_header(src_cbf, skip_sections = False):
   which may not always be present
   @return cbf_wrapper instance with the header information from the source """
   dst_cbf = cbf_wrapper()
-  dst_cbf.new_datablock("dummy")
+  dst_cbf.new_datablock(b"dummy")
 
   categories = ["diffrn",
                 "diffrn_source",
@@ -883,11 +897,11 @@ def copy_cbf_header(src_cbf, skip_sections = False):
                 "diffrn_scan_frame_axis"])
 
   for cat in categories:
-    src_cbf.find_category(cat)
+    src_cbf.find_category(cat.encode())
     columns = []
     for i in range(src_cbf.count_columns()):
       src_cbf.select_column(i)
-      columns.append(src_cbf.column_name())
+      columns.append(src_cbf.column_name().decode())
 
     dst_cbf.add_category(cat, columns)
 
@@ -896,7 +910,7 @@ def copy_cbf_header(src_cbf, skip_sections = False):
       row = []
       for j in range(src_cbf.count_columns()):
         src_cbf.select_column(j)
-        row.append(src_cbf.get_value())
+        row.append(src_cbf.get_value().decode())
       dst_cbf.add_row(row)
 
   return dst_cbf
@@ -953,7 +967,7 @@ def get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelen
 
   # the data block is the root cbf node
   cbf=cbf_wrapper()
-  cbf.new_datablock(os.path.splitext(os.path.basename(cbf_root))[0])
+  cbf.new_datablock(os.path.splitext(os.path.basename(cbf_root))[0].encode())
 
   # Each category listed here is preceded by the imageCIF description taken from here:
   # http://www.iucr.org/__data/iucr/cifdic_html/2/cif_img.dic/index.html

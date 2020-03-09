@@ -346,7 +346,7 @@ class refine_adp(object):
         deltab .append(result.delta_b)
         w      .append(result.weight)
     #
-    if(len(trial_weights)>1):
+    if(len(trial_weights)>1 and rw.size()>0):
       # filter by rfree-rwork
       rw,rf,rfrw,deltab,w = self.score(rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,
         score_target=rfrw,score_target_value=r_free_r_work_gap,

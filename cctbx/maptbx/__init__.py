@@ -1201,6 +1201,26 @@ class local_scale(object):
         anomalous_flag = False,
         use_sg         = False)
 
+def sphericity_by_heuristics(
+      map_data,
+      unit_cell,
+      center_cart,
+      radius,
+      s_angle_sampling_step = 20,
+      t_angle_sampling_step = 20):
+  points_on_sphere_cart = flex.vec3_double()
+  for s in range(0,360,s_angle_sampling_step):
+    for t in range(0,360,t_angle_sampling_step):
+      xc,yc,zc = scitbx.math.point_on_sphere(r=radius, s_deg=s, t_deg=t,
+        center=center_cart)
+      points_on_sphere_cart.append([xc,yc,zc])
+  o = sphericity2(
+    map_data              = map_data,
+    center_cart           = center_cart,
+    points_on_sphere_cart = points_on_sphere_cart,
+    unit_cell             = unit_cell)
+  return group_args(rho=o.rho_min_max_mean(), ccs=o.ccs_min_max_mean())
+
 def map_peak_3d_as_2d(
       map_data,
       unit_cell,

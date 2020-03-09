@@ -281,7 +281,8 @@ class manager (manager_base):
 
 
   def read_frames(self):
-    if self.params.postrefinement.algorithm in ["rs2","rs_hybrid"]:
+    if self.params.postrefinement.enable==True and \
+       self.params.postrefinement.algorithm in ["rs2","rs_hybrid"]:
       return self.read_frames_updated_detail()
     else:
       return self.read_frames_legacy_detail()

@@ -140,7 +140,7 @@ class ConstructFrame(object):
   # generate a list of dictionaries containing a series of corrections for each predicted reflection
   def populate_corrections(self):
     assert 'xyzobs.px.value' in self.reflections and 'xyzcal.px' in self.reflections, "no calculated or observed spot positions"
-    assert self.frame['xbeam'] is not 0 and self.frame['ybeam'] is not 0, "invalid beam center"
+    assert self.frame['xbeam'] != 0 and self.frame['ybeam'] != 0, "invalid beam center"
     self.frame['correction_vectors'] = [[]]
     for idx in range(len(self.reflections['xyzobs.px.value'])):
       if self.reflections['xyzcal.px'][idx][0:2] != self.reflections['xyzobs.px.value'][idx][0:2]:

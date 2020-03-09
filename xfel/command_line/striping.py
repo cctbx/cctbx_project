@@ -8,12 +8,14 @@ from six.moves import range
 # run group and then distrbute each run group's results into subgroups and run
 # dials.combine_experiments (optionally with clustering and selecting clusters).
 #
+from dials.util import show_mail_on_error
 from libtbx.phil import parse
 from libtbx.utils import Sorry
 from libtbx import easy_run
 from xfel.util.dials_file_matcher import match_dials_files
 from xfel.util.mp import mp_phil_str as multiprocessing_str
 from xfel.util.mp import get_submit_command_chooser
+import sys
 
 import os, math
 import six
@@ -34,7 +36,7 @@ striping {
     .multiple = True
     .help = "Selected rungroups to stripe. If None, all rungroups are accepted."
   run = None
-    .type = int
+    .type = str
     .multiple = True
     .help = "Selected runs to stripe. If None, all runs are accepted."
   trial = None
@@ -51,6 +53,12 @@ striping {
     .type = bool
     .help = "Enforce separation by rungroup at time of striping (default)."
             "Turn off to allow multiple rungroups to share a detector model."
+  dry_run = False
+    .type = bool
+    .help = "Only set up jobs but do not execute them"
+  output_folder = None
+    .type = path
+    .help = "Path for output data. If None, use current directory"
 }
 '''
 
@@ -243,12 +251,12 @@ master_defaults_str = multiprocessing_str + striping_str + combining_str + filte
 # initialize a master scope from the multiprocessing phil string
 master_defaults_scope = parse(master_defaults_str, process_includes=True)
 # update master scope with customized and local phil scopes
-master_scope = master_defaults_scope.fetch(parse(postprocessing_override_str, process_includes=True))
-master_scope = master_scope.fetch(parse(reintegration_override_str, process_includes=True))
-master_scope = master_scope.fetch(parse(recompute_mosaicity_override_str, process_includes=True))
-master_scope = master_scope.fetch(parse(refinement_override_str, process_includes=True))
-master_scope = master_scope.fetch(parse(combining_override_str, process_includes=True))
-master_scope = master_scope.fetch(parse(multiprocessing_override_str, process_includes=True))
+phil_scope = master_defaults_scope.fetch(parse(postprocessing_override_str, process_includes=True))
+phil_scope = phil_scope.fetch(parse(reintegration_override_str, process_includes=True))
+phil_scope = phil_scope.fetch(parse(recompute_mosaicity_override_str, process_includes=True))
+phil_scope = phil_scope.fetch(parse(refinement_override_str, process_includes=True))
+phil_scope = phil_scope.fetch(parse(combining_override_str, process_includes=True))
+phil_scope = phil_scope.fetch(parse(multiprocessing_override_str, process_includes=True))
 
 helpstring = """cctbx.xfel.stripe_experiment: parallel processing of an XFEL UI-generated trial.
 
@@ -275,8 +283,6 @@ def allocate_chunks(results_dir,
     rg_condition = lambda rg: True
   rgs = {} # rungroups and associated runs
   for run in os.listdir(results_dir):
-    if not (run.startswith("r") and run.split("r")[1].isdigit()):
-      continue
     if runs_selected and run not in runs_selected:
       continue
     trgs = [trg for trg in os.listdir(os.path.join(results_dir, run))
@@ -358,9 +364,9 @@ def allocate_chunks(results_dir,
         (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch])))
   return batch_chunks
 
-def parse_retaining_scope(args, master_scope=master_scope):
+def parse_retaining_scope(args, phil_scope=phil_scope):
   if "-c" in args:
-    master_scope.show(attributes_level=2)
+    phil_scope.show(attributes_level=2)
     return
   file_phil = []
   cmdl_phil = []
@@ -376,8 +382,12 @@ def parse_retaining_scope(args, master_scope=master_scope):
       except Exception as e:
         raise Sorry("Unrecognized argument: %s" % arg)
 
-  run_scope = master_scope.fetch(sources=file_phil)
-  run_scope = run_scope.fetch(sources=cmdl_phil)
+  run_scope, unused1 = phil_scope.fetch(sources=file_phil, track_unused_definitions=True)
+  run_scope, unused2 = run_scope.fetch(sources=cmdl_phil, track_unused_definitions=True)
+  if any([unused1, unused2]):
+    msg = "\n".join([str(loc) for loc in unused1 + unused2])
+    raise Sorry("Unrecognized argument(s): " + msg)
+
   return run_scope
 
 def script_to_expand_over_clusters(clustered_json_name,
@@ -417,12 +427,13 @@ done
 
 class Script(object):
 
-  def __init__(self):
+  def __init__(self, args = None):
     '''Initialise the script.'''
 
     # The script usage
     self.master_defaults_scope = master_defaults_scope
-    self.run_scope = parse_retaining_scope(sys.argv[1:])
+    if args is None: args = sys.argv[1:]
+    self.run_scope = parse_retaining_scope(args)
     self.diff_scope = self.master_defaults_scope.fetch_diff(self.run_scope)
     self.params = self.run_scope.extract()
 
@@ -449,7 +460,7 @@ class Script(object):
     diff_str = "\n".join(diff_parts)
     phil_filename = "%s_%s_CLUSTER.phil" % (self.filename, section_tag) if clustering else \
       "%s_%s.phil" % (self.filename, section_tag)
-    phil_path = os.path.join(self.cwd, self.intermediates, phil_filename)
+    phil_path = os.path.join(self.params.striping.output_folder, self.intermediates, phil_filename)
     if os.path.isfile(phil_path):
       os.remove(phil_path)
     with open(phil_path, "wb") as phil_outfile:
@@ -460,33 +471,36 @@ class Script(object):
         phil_filename,
         dispatcher_name,
         self.intermediates)
-      command = ". %s" % os.path.join(self.cwd, self.intermediates, script)
+      command = ". %s" % os.path.join(self.params.striping.output_folder, self.intermediates, script)
     else:
       command = "%s %s" % (dispatcher_name, phil_filename)
     self.command_sequence.append(command)
 
   def run(self):
     '''Execute the script.'''
+    runs = ["r%04d" % r if isinstance(r, int) else r for r in self.params.striping.run]
     if self.params.striping.run:
-      print("processing runs " + ", ".join(["r%04d" % r for r in self.params.striping.run]))
+      print("processing runs " + ", ".join(runs))
     if self.params.striping.rungroup:
       print("processing rungroups " + ", ".join(["rg%03d" % rg for rg in self.params.striping.rungroup]))
     batch_chunks = allocate_chunks(self.params.striping.results_dir,
                                    self.params.striping.trial,
                                    rgs_selected=["rg%03d" % rg for rg in self.params.striping.rungroup],
                                    respect_rungroup_barriers=self.params.striping.respect_rungroup_barriers,
-                                   runs_selected=["r%04d" % r for r in self.params.striping.run],
+                                   runs_selected=runs,
                                    stripe=self.params.striping.stripe,
                                    max_size=self.params.striping.chunk_size,
                                    integrated=self.params.combine_experiments.keep_integrated)
-    self.dirname = "combine_experiments_t%03d" % self.params.striping.trial
+    self.dirname = os.path.join(self.params.striping.output_folder, "combine_experiments_t%03d" % self.params.striping.trial)
     self.intermediates = os.path.join(self.dirname, "intermediates")
     self.extracted = os.path.join(self.dirname, "final_extracted")
     for d in self.dirname, self.intermediates, self.extracted:
       if not os.path.isdir(d):
         os.mkdir(d)
-    self.cwd = os.getcwd()
+    if self.params.striping.output_folder is None:
+      self.params.striping.output_folder = os.getcwd()
     tag = "stripe" if self.params.striping.stripe else "chunk"
+    all_commands = []
     for batch, ch_list in six.iteritems(batch_chunks):
       for idx in range(len(ch_list)):
         chunk = ch_list[idx]
@@ -496,7 +510,7 @@ class Script(object):
         self.command_sequence = []
 
         # set up the file containing input expts and refls (logging)
-        chunk_path = os.path.join(self.cwd, self.intermediates, self.filename)
+        chunk_path = os.path.join(self.params.striping.output_folder, self.intermediates, self.filename)
         if os.path.isfile(chunk_path):
           os.remove(chunk_path)
         with open(chunk_path, "wb") as outfile:
@@ -540,19 +554,21 @@ class Script(object):
         if self.params.combine_experiments.clustering.dendrogram:
           easy_run.fully_buffered(command).raise_if_errors().show_stdout()
         else:
-          submit_path = os.path.join(self.cwd, self.intermediates, "combine_%s.sh" % self.filename)
+          submit_path = os.path.join(self.params.striping.output_folder, self.intermediates, "combine_%s.sh" % self.filename)
           submit_command = get_submit_command_chooser(command, submit_path, self.intermediates, self.params.mp,
-            log_name=(submit_path.split(".sh")[0] + ".out"))
-          print("executing command: %s" % submit_command)
-          try:
-            easy_run.fully_buffered(submit_command).raise_if_errors().show_stdout()
-          except Exception as e:
-            if not "Warning: job being submitted without an AFS token." in str(e):
-              raise e
-        os.chdir(self.cwd)
+            log_name=os.path.splitext(os.path.basename(submit_path))[0] + ".out",
+            err_name=os.path.splitext(os.path.basename(submit_path))[0] + ".err")
+          all_commands.append(submit_command)
+          if not self.params.striping.dry_run:
+            print("executing command: %s" % submit_command)
+            try:
+              easy_run.fully_buffered(submit_command).raise_if_errors().show_stdout()
+            except Exception as e:
+              if not "Warning: job being submitted without an AFS token." in str(e):
+                raise e
+    return all_commands
 
 if __name__ == "__main__":
-  from dials.util import halraiser
   import sys
   if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
     print(helpstring)
@@ -560,12 +576,10 @@ if __name__ == "__main__":
   if "-c" in sys.argv[1:]:
     expert_level = int(sys.argv[sys.argv.index("-e") + 1]) if "-e" in sys.argv[1:] else 0
     attr_level = int(sys.argv[sys.argv.index("-a") + 1]) if "-a" in sys.argv[1:] else 0
-    master_scope.show(expert_level=expert_level, attributes_level=attr_level)
+    phil_scope.show(expert_level=expert_level, attributes_level=attr_level)
     with open("striping_defaults.phil", "wb") as defaults:
-      defaults.write(master_scope.as_str())
+      defaults.write(phil_scope.as_str())
     exit()
-  try:
+  with show_mail_on_error():
     script = Script()
     script.run()
-  except Exception as e:
-    halraiser(e)

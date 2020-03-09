@@ -4,12 +4,16 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/18/2018
-Last Changed: 10/31/2019
+Last Changed: 11/25/2019
 Description : IOTA base classes
 '''
 
 import os
 import json
+import collections
+
+# Python 2/3 compatibility
+from past.builtins import basestring
 
 from dxtbx.model.experiment_list import ExperimentListFactory as ExLF
 from libtbx.easy_mp import parallel_map
@@ -200,6 +204,58 @@ class ImageImporterBase():
                                new_ext='int')
     self.img_object.obj_file = os.path.join(self.img_object.obj_path, fname)
 
+    # DIALS process filepaths
+    # Indexed reflections
+    ridx_path = util.make_filename(
+      prefix=image_index,
+      path=self.img_object.img_path,
+      suffix='indexed',
+      new_ext='refl'
+    )
+    self.img_object.ridx_path = os.path.join(self.img_object.obj_path,
+                                             ridx_path)
+
+    # Spotfinding (strong) reflections
+    rspf_path = util.make_filename(
+      prefix=image_index,
+      path=self.img_object.img_path,
+      suffix='strong',
+      new_ext='refl'
+    )
+    self.img_object.rspf_path = os.path.join(self.img_object.obj_path,
+                                             rspf_path)
+
+    # Refined experiments
+    eref_path = util.make_filename(
+      prefix=image_index,
+      path=self.img_object.img_path,
+      suffix='refined',
+      new_ext='expt'
+    )
+    self.img_object.eref_path = os.path.join(self.img_object.obj_path,
+                                             eref_path)
+
+    # Integrated experiments
+    eint_path = util.make_filename(
+      prefix=image_index,
+      path=self.img_object.img_path,
+      suffix='integrated',
+      new_ext='expt'
+    )
+    self.img_object.eint_path = os.path.join(self.img_object.obj_path,
+                                             eint_path)
+
+    # Integrated reflections
+    rint_path = util.make_filename(
+      prefix=image_index,
+      path=self.img_object.img_path,
+      suffix='integrated',
+      new_ext='refl'
+    )
+    self.img_object.rint_path = os.path.join(self.img_object.obj_path,
+                                             rint_path)
+
+
     # Final integration pickle path
     self.img_object.int_path = util.make_image_path(self.img_object.img_path,
                                                     input_base, fin_base)
@@ -386,7 +442,6 @@ class ProcessingBase(Thread):
                                func=self.import_and_process,
                                callback=self.callback,
                                processes=self.params.mp.n_processors)
-
     return img_objects
 
   def run_analysis(self):
@@ -469,7 +524,7 @@ class ProcInfo(object):
     if info_dict:
 
       # Convert all unicode values to strings
-      info_dict = self._convert_unicode_to_string(info_dict)
+      info_dict = self._make_serializable(info_dict)
 
       # update with values from dictionary
       self.update(info_dict)
@@ -593,10 +648,10 @@ class ProcInfo(object):
   def update_input_list(self, new_input=None):
     assert hasattr(self, 'input_list') and hasattr(self, 'categories')
     if new_input:
-      self.input_list = new_input
+      self.input_list += new_input
       self.unprocessed = []
-      for i in self.input_list:
-        idx = self.input_list.index(i)
+      for i in new_input:
+        idx = new_input.index(i) + self.n_input_images
         if isinstance(i, str):
           path = i
           img_index = 0
@@ -722,18 +777,26 @@ class ProcInfo(object):
     try:
       with open(json_file, 'w') as jf:
         json.dump(self.__dict__, jf)
-    except TypeError as e:
-      raise Exception('IOTA JSON ERROR: {}'.format(e))
+    except TypeError:
+      # pick up non-serializable objects when json.dump fails; putting this
+      # into a try block because inefficient with large INFO objects, esp. in
+      # Python2
+      try:
+        with open(json_file, 'w') as jf:
+          json.dump(self._make_serializable(self.__dict__), jf)
+      except TypeError as e:
+        raise Exception('IOTA JSON ERROR: {}'.format(e))
 
-  def _convert_unicode_to_string(self, info_dict):
-    import collections
+  def _make_serializable(self, info_dict):
     if isinstance(info_dict, basestring):
       return str(info_dict)
     elif isinstance(info_dict, collections.Mapping):
-      return dict(map(self._convert_unicode_to_string, info_dict.iteritems()))
+      return dict(map(self._make_serializable, info_dict.items()))
     elif isinstance(info_dict, collections.Iterable):
-      return type(info_dict)(map(self._convert_unicode_to_string, info_dict))
+      return type(info_dict)(map(self._make_serializable, info_dict))
     else:
+      if type(info_dict).__module__ == 'numpy':
+        info_dict = info_dict.item()
       return info_dict
 
   @classmethod

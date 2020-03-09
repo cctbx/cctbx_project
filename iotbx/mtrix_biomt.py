@@ -19,10 +19,14 @@ class container(object):
     self.serial_number.append(serial_number)
 
   def validate(self):
+    raise_sorry = False
     for i, r in enumerate(self.r):
       if not self.coordinates_present[i]:
         if(not r.is_r3_rotation_matrix(rms_tolerance=1.e-4)):
-          raise Sorry("Rotation matrix is not proper!")
+          raise_sorry = True
+          print ('  ERROR: matrix with serial number %d is not proper' % self.serial_number[i])
+    if raise_sorry:
+      raise Sorry("One or more rotation matrices is not proper. See the log for details.")
     present = False
     for (r,t,n,cp) in zip(self.r,self.t,self.serial_number,
                             self.coordinates_present):

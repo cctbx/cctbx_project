@@ -19,6 +19,28 @@ import sys
 from scitbx.array_family import flex
 from libtbx import group_args
 
+from mmtbx.conformation_dependent_library import generate_protein_threes
+from mmtbx.validation import cbd_utils
+
+relevant_atom_names = {
+  " CA ": None, " N  ": None, " C  ": None, " CB ": None} # FUTURE: set
+
+def get_phi_psi_dict(pdb_hierarchy):
+  rc = {}
+  for i, three in enumerate(generate_protein_threes(hierarchy=pdb_hierarchy,
+                                                    geometry=None)):
+    phi_psi_angles = three.get_phi_psi_angles()
+    is_alt_conf = ' '
+    relevant_atoms = {}
+    for atom in three[1].atoms():
+      if (atom.name in relevant_atom_names):
+        if (len(atom.parent().altloc) != 0):
+          is_alt_conf = atom.parent().altloc
+          break
+    id_str = '|%s:%s|' % (three[1].id_str(), is_alt_conf)
+    rc[id_str] = phi_psi_angles
+  return rc
+
 class cbeta(residue):
   """
   Result class for protein C-beta deviation analysis (phenix.cbetadev).
@@ -69,16 +91,21 @@ class cbetadev(validation):
       outliers_only=False,
       out=sys.stdout,
       collect_ideal=False,
+      apply_phi_psi_correction=False,
+      display_phi_psi_correction=False,
       quiet=False):
     validation.__init__(self)
     self._outlier_i_seqs = flex.size_t()
     self.beta_ideal = {}
-    relevant_atom_names = {
-      " CA ": None, " N  ": None, " C  ": None, " CB ": None} # FUTURE: set
     output_list = []
     self.stats = group_args(n_results=0,
                             n_weighted_results = 0,
                             n_weighted_outliers = 0)
+    if apply_phi_psi_correction:
+      phi_psi_angles = get_phi_psi_dict(pdb_hierarchy)
+      new_outliers = 0
+      outliers_removed = 0
+      total_residues = 0
     from mmtbx.validation import utils
     use_segids = utils.use_segids_in_place_of_chainids(
       hierarchy=pdb_hierarchy)
@@ -112,15 +139,32 @@ class cbetadev(validation):
                 resCB = relevant_atoms[" CB "]
                 self.stats.n_results += 1
                 self.stats.n_weighted_results += resCB.occ
+                if (is_alt_conf):
+                  altchar = cf.altloc
+                else:
+                  altchar = " "
+                if apply_phi_psi_correction:
+                  total_residues+=1
+                  id_str = '|%s:%s|' % (residue.id_str(), altchar)
+                  phi_psi = phi_psi_angles.get(id_str, None)
+                  if phi_psi:
+                    rc = cbd_utils.get_phi_psi_correction(
+                      result,
+                      residue,
+                      phi_psi,
+                      display_phi_psi_correction=display_phi_psi_correction,
+                      )
+                    if rc:
+                      dev, dihedralNABB, start, finish = rc
+                      if start and not finish:
+                        outliers_removed += 1
+                      elif not start and finish:
+                        new_outliers += 1
                 if(dev >=0.25 or outliers_only==False):
                   if(dev >=0.25):
                     self.n_outliers+=1
                     self.stats.n_weighted_outliers += resCB.occ
                     self._outlier_i_seqs.append(atom.i_seq)
-                  if (is_alt_conf):
-                    altchar = cf.altloc
-                  else:
-                    altchar = " "
                   res=residue.resname.lower()
                   sub=chain.id
                   if(len(sub)==1):
@@ -141,6 +185,17 @@ class cbetadev(validation):
                   key = result.id_str()
                   if (collect_ideal):
                     self.beta_ideal[key] = betaxyz
+      if apply_phi_psi_correction:
+        print('''
+  Outliers removed : %5d
+  New outliers     : %5d
+  Num. of outliers : %5d
+  Num. of residues : %5d
+  ''' % (outliers_removed,
+         new_outliers,
+         self.n_outliers,
+         total_residues,
+        ))
 
   def show_old_output(self, out, verbose=False, prefix="pdb"):
     if (verbose):

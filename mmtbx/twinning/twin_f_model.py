@@ -1026,9 +1026,6 @@ the percentage of R-free reflections).
 
   def _get_step(self, update_f_ordered_solvent = False):
     step = self.f_obs().d_min()/self.mask_params.grid_step_factor
-    if(step < 0.3): step = 0.3
-    step = min(0.8, step)
-    if(update_f_ordered_solvent): step = 0.3
     return step
 
   def _update_f_mask_flag(self, xray_structure, mean_shift):
@@ -1174,10 +1171,15 @@ the percentage of R-free reflections).
       n_bins = self.determine_n_bins(
         free_reflections_per_bin = free_reflections_per_bin,
         max_n_bins = max_number_of_bins)
-      self.f_obs_f.setup_binner(n_bins = n_bins)
-      self.f_obs_w.use_binning_of(self.f_obs_f)
+      self.f_obs().setup_binner(n_bins = n_bins)
+      self.f_obs_w.use_binning_of(self.f_obs())
+      self.f_obs_f.use_binning_of(self.f_obs())
       completeness = self.f_obs_w.completeness(use_binning=True).data
       for i_bin in self.f_obs_f.binner().range_used():
+        selection = flex.bool( self.f_obs().binner().bin_indices() == i_bin )
+        d_max,d_min = self.f_obs().select(selection).d_max_min()
+        d_range = "%7.2f - %7.2f"%(d_max,d_min)
+
         selection = flex.bool( self.f_obs_w.binner().bin_indices() == i_bin )
         #combine selection
         n_work = selection.count(True)
@@ -1201,8 +1203,7 @@ the percentage of R-free reflections).
 
         r_abs_work_f_bin.append(tmp_work)
         r_abs_free_f_bin.append(tmp_free)
-        d_max,d_min = self.f_obs().d_max_min()
-        d_range = "%7.2f - %7.2f"%(d_max,d_min)
+        #d_max,d_min = self.f_obs().d_max_min()
 
         alpha_w, beta_w = self.alpha_beta_w()
         alpha_f, beta_f = self.alpha_beta_f()

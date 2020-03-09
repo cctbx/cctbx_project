@@ -2448,51 +2448,12 @@ def to_str(text, codec=None, errors='replace'):
   else:
     return to_bytes(text, codec, errors)
 
-def guess_total_memory(meminfo_file='/proc/meminfo'):
-  import subprocess
-  if (sys.platform == 'win32'):
-    ps = subprocess.Popen(['wmic','OS','get','TotalVisibleMemorySize', '/Value'],
-     stdout=subprocess.PIPE).communicate()[0]
-    mem = float(ps.split("=")[1].strip()) * 1024
-    return mem # trivially easy on Windows
-
-  elif (sys.platform=='darwin'):
-    # Copied from https://apple.stackexchange.com/questions/4286/is-there-a-mac-os-x-terminal-version-of-the-free-command-in-linux-systems
-    import re
-    # Get process info
-    ps = subprocess.Popen(['ps', '-caxm', '-orss,comm'],
-       stdout=subprocess.PIPE).communicate()[0].decode()
-
-    # Iterate processes
-    processLines = ps.split('\n')
-    sep = re.compile('[\s]+')
-    rssTotal = 0 # kB
-    for row in range(1,len(processLines)):
-        rowText = processLines[row].strip()
-        rowElements = sep.split(rowText)
-        try:
-            rss = float(rowElements[0]) * 1024
-        except Exception:
-            rss = 0 # ignore...
-        rssTotal += rss
-
-    return rssTotal
-
-  elif os.path.isfile(meminfo_file):
-    for line in open(meminfo_file).readlines():
-      if line.lower().startswith("memtotal"):
-        spl=line.split()
-        if len(spl)!=3:
-          return None
-        try:
-          mem=int(spl[1])
-        except Exception:
-          return None
-        if spl[2].lower()=='kb':
-          mem=mem*1024
-        elif spl[2].lwer()=='mb':
-          mem=mem*1024*1024
-        return mem
+def guess_total_memory():
+  '''
+  Use psutil to return the total memory on a system in bytes.
+  '''
+  import psutil
+  return psutil.virtual_memory().total
 
 MANGLE_LEN = 256 # magic constant from compile.c
 def mangle(name, klass):
@@ -2522,3 +2483,26 @@ def mangle(name, klass):
     klass = klass[:MANGLE_LEN-tlen]
 
   return "_%s%s" % (klass, name)
+
+def path_is_git_lfs_pointer(path):
+  '''
+  Test if a file is a git lfs pointer. See
+  https://github.com/git-lfs/git-lfs/blob/master/docs/spec.md
+  '''
+  with open(path, 'rb') as f:
+    return f.read(12) == b'version http'
+
+def check_git_lfs_pointer_is_loaded(path):
+  '''
+  Prints a skip if the lfs pointer hasn't been loaded
+  '''
+  test = path_is_git_lfs_pointer(path)
+  if test:
+    print ("""
+Skipping. %s hasn't been loaded from git
+Run these commands to load the data:
+cd <repository name>
+git lfs install --local
+git lsf pull
+"""%path)
+  return not test

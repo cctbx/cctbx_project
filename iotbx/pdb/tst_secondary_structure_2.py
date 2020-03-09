@@ -3,6 +3,9 @@ from libtbx import test_utils
 import sys
 from iotbx.pdb.tst_secondary_structure import pdb_1ywf_sample_strings, \
     get_annotation
+import iotbx.pdb
+from iotbx.pdb.utils import all_chain_ids
+from iotbx.pdb.secondary_structure import annotation
 from six.moves import cStringIO as StringIO
 
 
@@ -458,9 +461,21 @@ protein.sheet {
   print("OK")
 
 
+def tst_hybrid_ids():
+  inp = iotbx.pdb.input(source_info=None, lines=pdb_1ywf_sample_strings)
+  ss_ann = inp.extract_secondary_structure()
+  ch_ids = all_chain_ids()[1:1000]
+  chain_ids_dict = {'A': ch_ids}
+  ss_ann.multiply_to_asu_2(chain_ids_dict)
+  # print (ss_ann.as_pdb_str())
+  ss_big = annotation.from_records(ss_ann.as_pdb_str().split('\n'))
+  # print (ss_big.as_restraint_groups())
+  ss_big.as_restraint_groups()
+
 def exercise(args):
   tst_parsing_phil_single_helix()
   tst_parsing_phil_single_sheet()
+  tst_hybrid_ids()
 
 
 if (__name__ == "__main__"):

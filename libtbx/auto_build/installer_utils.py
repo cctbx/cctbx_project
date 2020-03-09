@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function, with_statement
 
+import errno
 import os
 import os.path as op
 import platform
@@ -16,7 +17,8 @@ def check_python_version():
   if sys.hexversion < 0x2060000:
     sys.exit("Python version 2.6 or greater required to run this script")
 
-def call(args, log=sys.stdout, shell=True, cwd=None, verbose=False, env=None):
+def call(args, log=None, shell=True, cwd=None, verbose=False, env=None):
+  if log is None: log = sys.stdout
   # shell=True requires string as args.
   if shell and isinstance(args, list):
     args = " ".join(args)
@@ -54,7 +56,12 @@ def call(args, log=sys.stdout, shell=True, cwd=None, verbose=False, env=None):
 
 def check_output(*popenargs, **kwargs):
   # Back-port of Python 2.7 subprocess.check_output.
-  process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+  try:
+    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+  except OSError as exc:
+    if exc.errno == errno.ENOENT:
+      raise OSError("No such file or directory (%s)" % popenargs[0])
+    raise
   output, unused_err = process.communicate()
   retcode = process.poll()
   if retcode:

@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 10/31/2019
+Last Changed: 11/25/2019
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -189,27 +189,38 @@ class ImageFinderThread(Thread):
     Thread.__init__(self)
     self.parent = parent
     self.input = input
-    self.input_list = input_list
     self.min_back = min_back
     self.last_file = last_file
     self.back_to_thread = back_to_thread
 
+    # Generate comparable input list
+    self.input_list = []
+    for item in input_list:
+      if isinstance(item, list) or isinstance(item, tuple):
+        self.input_list.append((item[1], item[2]))
+      else:
+        self.input_list.append(item)
+
   def run(self):
     # Poll filesystem and determine which files are new (if any)
 
-    ext_file_list, _ = ginp.make_input_list(self.input,
-                                         filter_results=True,
-                                         filter_type='image',
-                                         min_back=self.min_back,
-                                         last=self.last_file,
-                                         expand_multiple=True)
+    ext_file_list, _ = ginp.make_input_list(
+      self.input,
+      filter_results=True,
+      filter_type='image',
+      min_back=self.min_back,
+      last=self.last_file,
+      expand_multiple=True)
+
     new_input_list = list(set(ext_file_list) - set(self.input_list))
+    new_input_list = sorted(new_input_list)
 
     if self.back_to_thread:
       wx.CallAfter(self.parent.onImageFinderDone, new_input_list)
     else:
       evt = ImageFinderAllDone(tp_EVT_IMGDONE, -1, input_list=new_input_list)
       wx.PostEvent(self.parent, evt)
+
 
 class ObjectFinderThread(Thread):
   """ Worker thread that polls filesystem on timer for image objects. Will
@@ -260,9 +271,14 @@ class ImageViewerThread(Thread):
     self.file_string = file_string
     self.viewer = viewer
     self.img_type = img_type
+    self.options = 'show_ctr_mass=False ' \
+                   'show_max_pix=False ' \
+                   'show_all_pix=False ' \
+                   'show_predictions=False ' \
+                   'show_basis_vectors=False'
 
   def run(self):
-    command = '{} {}'.format(self.viewer, self.file_string)
+    command = '{} {} {}'.format(self.viewer, self.file_string, self.options)
     easy_run.fully_buffered(command)
 
 # ---------------------------------- PRIME ----------------------------------- #

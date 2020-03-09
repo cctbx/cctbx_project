@@ -28,6 +28,7 @@ def exercise_out(prefix="tst_fix_cablam_basic_cl_operations_pdb_out"):
         "output.suffix=%s" % prfx,
         "output.format=%s" % fmt,
         ])
+    print(cmd)
     assert not easy_run.call(cmd)
     if fmt.find("pdb") >= 0:
       print("checking %s" % (in_fname[:-4]+prfx+'.pdb'))

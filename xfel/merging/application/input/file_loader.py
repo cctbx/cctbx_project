@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import os
+import numpy as np
 from dxtbx.model.experiment_list import ExperimentListFactory
 from dials.array_family import flex
 from six.moves import range
@@ -20,7 +21,7 @@ def create_experiment_identifier(experiment, experiment_file_path, experiment_id
                        str(experiment.crystal) + \
                        str(experiment.detector) + \
                        ''.join(experiment.imageset.paths())
-  hash_obj = hashlib.md5(exp_identifier_str)
+  hash_obj = hashlib.md5(exp_identifier_str.encode('utf-8'))
   return hash_obj.hexdigest()
 
 #for integration pickles:
@@ -35,7 +36,7 @@ allowable_basename_endings = ["_00000.pickle",
 def is_odd_numbered(file_name, use_hash = False):
   if use_hash:
     import hashlib
-    hash_object = hashlib.md5(file_name)
+    hash_object = hashlib.md5(file_name.encode('utf-8'))
     return int(hash_object.hexdigest(), 16) % 2 == 0
   for allowable in allowable_basename_endings:
     if (file_name.endswith(allowable)):
@@ -109,20 +110,46 @@ class simple_file_loader(worker):
       for experiments_filename, reflections_filename in new_file_list:
         experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = False)
         reflections = flex.reflection_table.from_file(reflections_filename)
+        # NOTE: had to use slicing below because it selection no longer works...
+        reflections.sort("id")
+        unique_refl_ids = set(reflections['id'])
+        assert len(unique_refl_ids) == len(experiments), "refl table and experiment list should contain data on same experiment "  # TODO: decide if this is true
+        assert min(reflections["id"]) >= 0, "No more -1 in the id column, ideally it should be the numerical index of experiment, but beware that this is not enforced anywhere in the upstream code base"
+
+        if 'intensity.sum.value' in reflections:
+          reflections['intensity.sum.value.unmodified'] = reflections['intensity.sum.value'] * 1
+        if 'intensity.sum.variance' in reflections:
+          reflections['intensity.sum.variance.unmodified'] = reflections['intensity.sum.variance'] * 1
 
         for experiment_id, experiment in enumerate(experiments):
           if experiment.identifier is None or len(experiment.identifier) == 0:
             experiment.identifier = create_experiment_identifier(experiment, experiments_filename, experiment_id)
+
           all_experiments.append(experiment)
-          #experiment.identifier = "%d"%(len(all_experiments) - 1)
 
           # select reflections of the current experiment
-          refls = reflections.select(reflections['id'] == experiment_id)
+          # FIXME the selection was broke for me, it raised
+          #    RuntimeError: boost::bad_get: failed value get using boost::get
+          #refls = reflections.select(reflections['id'] == experiment_id)
+          # NOTE: this is a hack due to the broken expereimnt_id selection above
+          exp_id_pos = np.where(reflections['id'] == experiment_id)[0]
+          assert exp_id_pos.size, "no refls in this experiment"  # NOTE: maybe we can relax this assertion ?
+          refls = reflections[exp_id_pos[0]: exp_id_pos[-1]+1]
 
+          #FIXME: how will this work if reading in multiple composite mode experiment jsons?
           # Reflection experiment 'id' is supposed to be unique within this rank; 'exp_id' (i.e. experiment identifier) is supposed to be unique globally
-          #refls['id'] = flex.size_t(len(refls), len(all_experiments)-1)
           refls['exp_id'] = flex.std_string(len(refls), experiment.identifier)
 
+          new_id = 0
+          if len(all_reflections) > 0:
+            new_id = max(all_reflections['id'])+1
+
+          # FIXME: it is hard to interperet that a function call returning a changeable property
+          eid = refls.experiment_identifiers()
+          for k in eid.keys():
+            del eid[k]
+          eid[new_id] = experiment.identifier
+          refls['id'] = flex.int(len(refls), new_id)
           all_reflections.extend(refls)
     else:
       self.logger.log("Received a list of 0 json/pickle file pairs")
@@ -132,7 +159,7 @@ class simple_file_loader(worker):
     self.logger.log("Memory usage: %d MB"%get_memory_usage())
 
     from xfel.merging.application.reflection_table_utils import reflection_table_utils
-    all_reflections = reflection_table_utils.prune_reflection_table_keys(reflections=all_reflections, keys_to_keep=['intensity.sum.value', 'intensity.sum.variance', 'miller_index', 'miller_index_asymmetric', 'exp_id', 's1'])
+    all_reflections = reflection_table_utils.prune_reflection_table_keys(reflections=all_reflections, keys_to_keep=['intensity.sum.value', 'intensity.sum.variance', 'miller_index', 'miller_index_asymmetric', 'exp_id', 's1', 'intensity.sum.value.unmodified', 'intensity.sum.variance.unmodified'])
     self.logger.log("Pruned reflection table")
     self.logger.log("Memory usage: %d MB"%get_memory_usage())
 

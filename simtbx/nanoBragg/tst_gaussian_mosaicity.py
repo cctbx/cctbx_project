@@ -95,7 +95,7 @@ class check_distributions:
     return angle_deg
 
 MOSAIC_SPREAD = 2.0 # top hat half width rotation in degrees
-SAMPLE_SIZE = 90000
+SAMPLE_SIZE = 100000
 
 def run_sim2smv(fileout):
   SIM = nanoBragg(detpixels_slowfast=(1000,1000),pixel_size_mm=0.1,Ncells_abc=(5,5,5),verbose=0)

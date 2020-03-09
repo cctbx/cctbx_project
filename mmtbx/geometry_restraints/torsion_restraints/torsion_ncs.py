@@ -222,27 +222,12 @@ class torsion_ncs(object):
       # ================================================
       assert 0
 
-  def as_cif_block(self, loops, cif_block):
-    if cif_block is None:
-      cif_block = iotbx.cif.model.block()
-    (ncs_ens_loop, ncs_dom_loop, ncs_dom_lim_loop, ncs_oper_loop,
-        ncs_ens_gen_loop) = loops
-    for i_group, ncs_group in enumerate(self.ncs_groups_selection_string_list):
-      ncs_ens_loop.add_row((i_group+1, "?"))
-      for i_domain, ncs_domain in enumerate(ncs_group):
-        ncs_dom_loop.add_row((i_domain+1, i_group+1, "?"))
-        segments = self.master_ranges[ncs_domain]
-        asym_id = ncs_domain.split("and")[0].split()[1].strip()
-        for i_segment, segment_range in enumerate(segments):
-          ncs_dom_lim_loop.add_row(
-            (i_group+1, i_domain+1, asym_id, segment_range[0],
-             asym_id, segment_range[1], ncs_domain))
-    cif_block.add_loop(ncs_ens_loop)
-    cif_block.add_loop(ncs_dom_loop)
-    cif_block.add_loop(ncs_dom_lim_loop)
-    if self.ncs_groups_selection_string_list is not None:
-      cif_block.add_loop(ncs_oper_loop)
-      cif_block.add_loop(ncs_ens_gen_loop)
+  def as_cif_block(self, cif_block, hierarchy, scattering_type):
+    self.ncs_restraints_group_list.as_cif_block(
+        cif_block=cif_block,
+        hierarchy=hierarchy,
+        scattering_type=scattering_type,
+        ncs_type='Torsion NCS')
     return cif_block
 
   def as_pdb(self, out):

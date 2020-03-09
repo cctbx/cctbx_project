@@ -4,6 +4,7 @@ from six.moves import cStringIO as StringIO
 
 import libtbx.load_env
 from libtbx.test_utils import approx_equal, show_diff
+from mmtbx.tls.tools import tls_groups
 import iotbx.pdb
 from six.moves import zip
 
@@ -34,7 +35,9 @@ def exercise_mmcif_tls():
   check_tls_params(pdb_tls_params, cif_tls_params)
 
   selection_strings = [tls.selection_string for tls in cif_tls_params]
-  cif_block = iotbx.pdb.mmcif.tls_as_cif_block(cif_tls_params, selection_strings)
+  tls_grps = tls_groups(tlsos=cif_tls_params, selection_strings=selection_strings)
+  cif_block = tls_grps.as_cif_block(hierarchy=cif_hierarchy)
+
   cif_block.update(cif_hierarchy.as_cif_block())
   cif_model = iotbx.cif.model.cif()
   cif_model["3orl"] = cif_block
@@ -68,7 +71,9 @@ def exercise_mmcif_tls():
   check_tls_params(pdb_tls_params, cif_tls_params)
 
   selection_strings = [tls.selection_string for tls in cif_tls_params]
-  cif_block = iotbx.pdb.mmcif.tls_as_cif_block(cif_tls_params, selection_strings)
+  tls_grps = tls_groups(tlsos=cif_tls_params, selection_strings=selection_strings)
+  cif_block = tls_grps.as_cif_block(hierarchy=cif_hierarchy)
+
   cif_block.update(cif_hierarchy.as_cif_block())
   cif_model = iotbx.cif.model.cif()
   cif_model["4g9h"] = cif_block
@@ -103,7 +108,8 @@ def exercise_mmcif_tls():
   assert approx_equal(cif_tls.selection_string, "(chain A and resseq 1:228)")
 
   selection_strings = [tls.selection_string for tls in cif_tls_params]
-  cif_block = iotbx.pdb.mmcif.tls_as_cif_block(cif_tls_params, selection_strings)
+  tls_grps = tls_groups(tlsos=cif_tls_params, selection_strings=selection_strings)
+  cif_block = tls_grps.as_cif_block(hierarchy=cif_hierarchy)
   cif_block.update(cif_hierarchy.as_cif_block())
   cif_model = iotbx.cif.model.cif()
   cif_model["2xw9"] = cif_block

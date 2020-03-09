@@ -77,7 +77,9 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         // is header?
         if (!header_read) {
           boost::split(toks, line, boost::is_any_of(":"));
-          SMTBX_ASSERT(toks.size() == 2);
+          if (toks.size() < 2) {
+            continue;
+          }
           if (boost::iequals(toks[0], "scatterers")) {
             std::vector<std::string> stoks;
             boost::trim(toks[1]);
@@ -299,6 +301,9 @@ namespace smtbx { namespace structure_factors { namespace table_based {
           std::vector<complex_type> h_row(space_group.n_smx());
           for (size_t mi = 0; mi < space_group.n_smx(); mi++) {
             const size_t r_off = data.size() * mi;
+            miller::index<> h =
+              data_.miller_indices()[hi] * space_group.smx(r_map[mi]).r();
+            SMTBX_ASSERT(h == data_.miller_indices()[r_off + hi]);
             complex_type v = data_.data()[r_off + hi][sci];
             if (data_.use_AD()) {
               xray::scatterer<> const &sc = scatterers[sci];
@@ -311,9 +316,6 @@ namespace smtbx { namespace structure_factors { namespace table_based {
                 }
               }
             }
-            miller::index<> h =
-              data_.miller_indices()[hi] * space_group.smx(r_map[mi]).r();
-            SMTBX_ASSERT(h == data_.miller_indices()[r_off + hi]);
             h_row[r_map[mi]] = v;
           }
           row[sci] = h_row;

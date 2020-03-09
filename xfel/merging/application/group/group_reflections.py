@@ -20,6 +20,8 @@ class hkl_group(worker):
     table['miller_index_asymmetric']  = flex.miller_index()
     table['intensity.sum.value']      = flex.double()
     table['intensity.sum.variance']   = flex.double()
+    table['intensity.sum.value.unmodified']      = flex.double()
+    table['intensity.sum.variance.unmodified']   = flex.double()
     table['exp_id']                   = flex.std_string()
     return table
 
@@ -75,7 +77,7 @@ class hkl_group(worker):
 
       for i in range(len(self.hkl_split_set)):
         for j in range(len(self.hkl_split_set[i])):
-          hkl = (self.hkl_split_set[i][j][0], self.hkl_split_set[i][j][1], self.hkl_split_set[i][j][2])
+          hkl = (int(self.hkl_split_set[i][j][0]), int(self.hkl_split_set[i][j][1]), int(self.hkl_split_set[i][j][2]))
           hkl_list.append(hkl)
           chunk_id_list.append(i)
 

@@ -59,7 +59,6 @@ class reader(object):
           if len(line_tokens) not in (5, 9):
             return None
         tokens.extend(line_tokens)
-      assert count
 
       if version == 1:
         if count+1 != 11 or len(tokens) != 42:

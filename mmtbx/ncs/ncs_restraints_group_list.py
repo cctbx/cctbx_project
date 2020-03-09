@@ -7,7 +7,9 @@ import mmtbx.ncs.ncs_utils as nu
 import scitbx.rigid_body
 from libtbx.utils import Sorry
 from libtbx.test_utils import approx_equal
+import iotbx.cif.model
 from six.moves import zip
+
 
 class NCS_copy():
   def __init__(self,copy_iselection, rot, tran, str_selection=None, rmsd=999):
@@ -332,6 +334,7 @@ class class_ncs_restraints_group_list(list):
             other_sites     = asu_site_cart.select(m_sel))
         cp.r = lsq_fit_obj.r
         cp.t = lsq_fit_obj.t
+        cp.rmsd = asu_site_cart.select(c_sel).rms_difference(lsq_fit_obj.other_sites_best_fit())
 
   def check_for_max_rmsd(self,
       sites_cart,
@@ -468,6 +471,13 @@ class class_ncs_restraints_group_list(list):
         shifts.append(mu_i-current.mean())
     return shifts
 
+  def get_all_copies_selection(self):
+    result = flex.size_t()
+    for nrg in self:
+      for c in nrg.copies:
+        result.extend(c.iselection)
+    return flex.sorted(result)
+
   def get_extended_ncs_selection(self, refine_selection):
     """
     Args:
@@ -492,11 +502,6 @@ class class_ncs_restraints_group_list(list):
     if refine_selection:
       # make sure all ncs related parts are in refine_selection
       all_ncs = total_master_ncs_selection | total_ncs_related_selection
-      # print all_ncs
-      # print total_master_ncs_selection
-      # print total_ncs_related_selection
-      # print refine_selection
-      # STOP()
       not_all_ncs_related_atoms_selected = bool(all_ncs - refine_selection)
       if not_all_ncs_related_atoms_selected:
         msg = 'refine_selection does not contain all ncs related atoms'
@@ -565,3 +570,314 @@ class class_ncs_restraints_group_list(list):
         group.append(c.str_selection)
       result.append(group)
     return result
+
+  def as_cif_block(self, cif_block, hierarchy, scattering_type, ncs_type):
+    """
+    Let me lay out what I found and please correct me if I am wrong in any detail.
+    There are some questions along as well. Then I will implement the correct NCS
+    output in Phenix.
+    We look at NCS groups in the following way:
+    ncs_group {
+      reference = chain 'C'
+      selection = chain 'E'
+      selection = chain 'G'
+      selection = chain 'I'
+    }
+    ncs_group {
+      reference = chain 'D'
+      selection = chain 'F'
+      selection = chain 'H'
+      selection = chain 'J'
+    }
+    In this example we have 2 NCS groups with 4 chains in each. For simplicity,
+    let's assume that whole chains are included. This means that chains C,E,G,I
+    are NCS-related and (almost) identical. The same is for chains D,F,H,J.
+    Chains in different NCS groups does not match each other. We also know relation
+    (rotation/translation matrices) between chains C<--E, C<--G and C<--I.
+    Same goes to the second group.
+
+    Now I will try to translate this into mmCIF terminology:
+    Ensemble - each of ncs_group.
+    Domain - each of the reference/selection chains.
+    If so, then mmCIF should have loops as following:
+     _struct_ncs_ens.id
+     _struct_ncs_ens.details
+    en1 ?
+    en2 ?
+    We almost never know any useful details, so I'm putting ? here.
+    Or will it be better to put something else very generic?
+    Then we list 'domains' (we will put valid Phenix atom selection syntax in details):
+    loop_
+        _struct_ncs_dom.id
+        _struct_ncs_dom.pdbx_ens_id
+        _struct_ncs_dom.details
+         d1 en1  'Chains C'
+         d2 en1  'Chains E'
+         d3 en1  'Chains G'
+         d4 en1  'Chains I'
+         d1 en2  'Chains D'
+         d2 en2  'Chains F'
+         d3 en2  'Chains H'
+         d4 en2  'Chains J'
+
+    And to relate everything to matrices:
+    _struct_ncs_ens_gen.dom_id_1
+    _struct_ncs_ens_gen.dom_id_2
+    _struct_ncs_ens_gen.ens_id
+    _struct_ncs_ens_gen.oper_id
+    d1 d2 en1 op1
+    d1 d3 en1 op2
+    d1 d4 en1 op3
+    d1 d2 en2 op4
+    d1 d3 en2 op5
+    d1 d4 en2 op6
+
+    Question: Here is an important question: should we output matrices defining
+    how to align dom_id_2 onto dom_id_1 or another way around?
+
+    Answer (John Berrisford): "NCS operators are defined by struct_ncs_ens_gen.
+    This defines which domain moves onto the other. Dom_id_1 doesn't move,
+    dom_id_2 is transformed by the operator."
+    http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/struct_ncs_ens_gen.html
+
+
+    Content of _struct_ncs_oper
+    (matrices themselves) seems trivial, so omitting from this example.
+
+    Now I'm guessing _struct_ncs_dom_lim was designed with the ability to
+    provide more than one residue-level interval for each 'domain' and
+    pdbx_component_id is for numbering these intervals. In our simple case there
+    will be only one row for each domain:
+    loop_
+        _struct_ncs_dom_lim.dom_id
+        _struct_ncs_dom_lim.pdbx_ens_id
+        _struct_ncs_dom_lim.pdbx_component_id
+        _struct_ncs_dom_lim.beg_label_alt_id
+        _struct_ncs_dom_lim.beg_label_asym_id
+        _struct_ncs_dom_lim.beg_label_comp_id
+        _struct_ncs_dom_lim.beg_label_seq_id
+        _struct_ncs_dom_lim.end_label_alt_id
+        _struct_ncs_dom_lim.end_label_asym_id
+        _struct_ncs_dom_lim.end_label_comp_id
+        _struct_ncs_dom_lim.end_label_seq_id
+         d1 en1 1 .  C PRO  1  . C GLY  29
+         d2 en1 1 .  E PRO  1  . E GLY  29
+         d3 en1 1 .  G PRO  1  . G GLY  29
+         d4 en1 1 .  I PRO  1  . I GLY  29
+         d1 en2 1 .  D PRO  31 . D GLY  59
+         d2 en2 1 .  F PRO  31 . F GLY  59
+         d3 en2 1 .  H PRO  31 . H GLY  59
+         d4 en2 1 .  J PRO  31 . J GLY  59
+    Can we omit _struct_ncs_dom_lim loop? We will put valid Phenix atom selection
+    syntax in selection_details in this loop.
+
+    JB: "Please do not omit _struct_ncs_dom_lim - this provides
+    the exact details of which residues from which chain have to be transformed
+    with the NCS operator.  This is the bit read by users such as pdb_redo when
+    they are re-refining the structures. Note in struct_ncs_dom_lim there are
+    fields for auth_asym_id (chain ID in PDB speak) and
+    label_asym_id (mmCIF only chain identifiers). Please do not mix these two."
+
+    Then, after refinement, we can construct _refine_ls_restr_ncs where
+    pdbx_ordinal - is just ordinal number in this loop
+    dom_id - domain id (== _struct_ncs_ens_gen.dom_id_1 == _struct_ncs_dom.id)
+    pdbx_ens_id - ensemble id (== _struct_ncs_ens_gen.ens_id == _struct_ncs_ens.id )
+    pdbx_asym_id - chain id from the first component (_struct_ncs_dom_lim.pdbx_component_id)?
+    There is an example of domain with 3 components:
+    http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/struct_ncs_dom_lim.html
+    and chain A is chosen for this asym_id:
+    http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/refine_ls_restr_ncs.html
+    Do I understand correctly that you expect information on only 3 domains from
+    each ensemble (marked 'selection' in Phenix notation) and it should show
+    how this particular domain relates to the first one ('reference' in Phenix notation)?
+
+    JB: "yes, refine_ls_restr_ncs describes the refinement result and gives the
+    details of moving domain 2 onto domain 1 - i.e. how well do they overlay if
+    the transform is applied. So domain 1 doesn't need to be described here - it
+    would fit perfectly to itself (we hope!)"
+
+    _struct_ncs_oper.code is 'given' since in Phenix we never omit NCS-related
+    parts of model.
+    """
+    #
+    def _consecutive_ranges(isel):
+      '''
+      Split selection into consecutive ranges that can be represented
+      by ncs_dom_lim. Maybe useful elsewhere.
+      '''
+      result = []
+      start_index = 0
+      cur_index = 1
+      atoms = hierarchy.atoms()
+      # shortcut: if all atoms form consecutive range and in one chain:
+      if ( (isel[-1] -isel[0] == len(isel)-1)
+          and (hierarchy.get_label_asym_id_iseq(isel[0]) == \
+                hierarchy.get_label_asym_id_iseq(isel[-1]))):
+        return [isel]
+
+      seq_id = hierarchy.get_label_seq_id_iseq(isel[0])
+      seq_id = int(seq_id) if seq_id !='.' else 0
+      asym_id = hierarchy.get_label_asym_id_iseq(isel[0])
+      while cur_index < len(isel):
+        if cur_index >= len(isel):
+          break
+        seq_id_1 = seq_id
+        asym_id_1 = asym_id
+        #
+        seq_id = hierarchy.get_label_seq_id_iseq(isel[cur_index])
+        seq_id = int(seq_id) if seq_id !='.' else 0
+        asym_id = hierarchy.get_label_asym_id_iseq(isel[cur_index])
+        if (
+            # consecutive indices and no chain break
+            (isel[cur_index]-isel[cur_index-1] == 1
+                and asym_id != asym_id_1)
+            # same chain, same or next resid, no indices check (missing atom, etc)
+            or (asym_id == asym_id_1
+                and abs(seq_id - seq_id_1) <= 1 )
+            ):
+          cur_index += 1
+        else: # end range
+          assert start_index != cur_index-1
+          result.append(isel[start_index:cur_index])
+          start_index = cur_index
+          cur_index += 1
+      if start_index != cur_index-1:
+        result.append(isel[start_index:cur_index])
+      return result
+
+    def _get_struct_ncs_dom_lim_row(dom_id, comp_id, r):
+      return {
+          "_struct_ncs_dom_lim.pdbx_ens_id": struct_ncs_ens_id,
+          "_struct_ncs_dom_lim.dom_id": dom_id,
+          "_struct_ncs_dom_lim.pdbx_component_id": comp_id,
+          "_struct_ncs_dom_lim.beg_label_alt_id": hierarchy.get_label_alt_id_iseq(r[0]),
+          "_struct_ncs_dom_lim.beg_label_asym_id": hierarchy.get_label_asym_id_iseq(r[0]),
+          "_struct_ncs_dom_lim.beg_label_comp_id": hierarchy.atoms()[r[0]].parent().resname.strip(),
+          "_struct_ncs_dom_lim.beg_label_seq_id": hierarchy.get_label_seq_id_iseq(r[0]),
+          "_struct_ncs_dom_lim.end_label_alt_id": hierarchy.get_label_alt_id_iseq(r[-1]),
+          "_struct_ncs_dom_lim.end_label_asym_id": hierarchy.get_label_asym_id_iseq(r[-1]),
+          "_struct_ncs_dom_lim.end_label_comp_id": hierarchy.atoms()[r[-1]].parent().resname.strip(),
+          "_struct_ncs_dom_lim.end_label_seq_id": hierarchy.get_label_seq_id_iseq(r[-1])}
+
+    ncs_ens_loop = iotbx.cif.model.loop(header=(
+      "_struct_ncs_ens.id",
+      "_struct_ncs_ens.details"))
+    ncs_dom_loop = iotbx.cif.model.loop(header=(
+      "_struct_ncs_dom.pdbx_ens_id",
+      "_struct_ncs_dom.id",
+      "_struct_ncs_dom.details"))
+    ncs_dom_lim_loop = iotbx.cif.model.loop(header=(
+      "_struct_ncs_dom_lim.pdbx_ens_id",
+      "_struct_ncs_dom_lim.dom_id",
+      "_struct_ncs_dom_lim.pdbx_component_id",
+      #"_struct_ncs_dom_lim.pdbx_refine_code", # no need, from CCP4
+      "_struct_ncs_dom_lim.beg_label_alt_id",
+      "_struct_ncs_dom_lim.beg_label_asym_id",
+      "_struct_ncs_dom_lim.beg_label_comp_id",
+      "_struct_ncs_dom_lim.beg_label_seq_id",
+      "_struct_ncs_dom_lim.end_label_alt_id",
+      "_struct_ncs_dom_lim.end_label_asym_id",
+      "_struct_ncs_dom_lim.end_label_comp_id",
+      "_struct_ncs_dom_lim.end_label_seq_id",))
+
+    ncs_oper_loop = iotbx.cif.model.loop(header=(
+      "_struct_ncs_oper.id",
+      "_struct_ncs_oper.code",
+      "_struct_ncs_oper.matrix[1][1]",
+      "_struct_ncs_oper.matrix[1][2]",
+      "_struct_ncs_oper.matrix[1][3]",
+      "_struct_ncs_oper.matrix[2][1]",
+      "_struct_ncs_oper.matrix[2][2]",
+      "_struct_ncs_oper.matrix[2][3]",
+      "_struct_ncs_oper.matrix[3][1]",
+      "_struct_ncs_oper.matrix[3][2]",
+      "_struct_ncs_oper.matrix[3][3]",
+      "_struct_ncs_oper.vector[1]",
+      "_struct_ncs_oper.vector[2]",
+      "_struct_ncs_oper.vector[3]",
+      "_struct_ncs_oper.details"))
+
+    ncs_ens_gen_loop = iotbx.cif.model.loop(header=(
+      "_struct_ncs_ens_gen.ens_id",
+      "_struct_ncs_ens_gen.dom_id_1",
+      "_struct_ncs_ens_gen.dom_id_2",
+      "_struct_ncs_ens_gen.oper_id"))
+
+    refine_ls_restr_ncs_loop = iotbx.cif.model.loop(header=(
+      "_refine_ls_restr_ncs.pdbx_ordinal",
+      "_refine_ls_restr_ncs.pdbx_ens_id",
+      "_refine_ls_restr_ncs.dom_id",
+      "_refine_ls_restr_ncs.pdbx_refine_id",
+      "_refine_ls_restr_ncs.pdbx_asym_id",
+      "_refine_ls_restr_ncs.pdbx_type",
+      "_refine_ls_restr_ncs.weight_position",
+      "_refine_ls_restr_ncs.weight_B_iso",
+      "_refine_ls_restr_ncs.rms_dev_position",
+      "_refine_ls_restr_ncs.rms_dev_B_iso",
+      "_refine_ls_restr_ncs.ncs_model_details"))
+
+    self.update_str_selections_if_needed(hierarchy)
+    self.recalculate_ncs_transforms(hierarchy.atoms().extract_xyz())
+    if cif_block is None:
+      cif_block = iotbx.cif.model.block()
+    if len(self) == 0:
+      return cif_block
+    refine_ls_restr_ncs_pdbx_ordinal = 1
+    n_oper = 1
+    for i_group, group in enumerate(self):
+      struct_ncs_ens_id = 'ens_%d' % (i_group+1)
+      ncs_ens_loop.add_row({"_struct_ncs_ens.id" : struct_ncs_ens_id})
+      # master loops
+      master_dom_id = 'd_1'
+      ncs_dom_loop.add_row({
+          "_struct_ncs_dom.pdbx_ens_id":struct_ncs_ens_id,
+          "_struct_ncs_dom.id":master_dom_id,
+          "_struct_ncs_dom.details":"%s" % group.master_str_selection.replace("'", '"')})
+      ranges = _consecutive_ranges(group.master_iselection)
+      for i_r, r in enumerate(ranges):
+        ncs_dom_lim_loop.add_row(_get_struct_ncs_dom_lim_row(master_dom_id, i_r+1, r))
+      # now get to copies
+      for i_ncs_copy, ncs_copy in enumerate(group.copies):
+        copy_dom_id = 'd_%d' % (i_ncs_copy+2) # no 0, 1-master
+        ncs_dom_loop.add_row({
+            "_struct_ncs_dom.pdbx_ens_id":struct_ncs_ens_id,
+            "_struct_ncs_dom.id":copy_dom_id,
+            "_struct_ncs_dom.details":'%s' % ncs_copy.str_selection.replace("'", '"')})
+
+        ranges = _consecutive_ranges(ncs_copy.iselection)
+        for i_r, r in enumerate(ranges):
+          ncs_dom_lim_loop.add_row(_get_struct_ncs_dom_lim_row(copy_dom_id, i_r+1, r))
+        oper_id = 'op_%d' % n_oper
+        n_oper += 1
+        ncs_ens_gen_loop.add_row({
+            "_struct_ncs_ens_gen.dom_id_1":copy_dom_id,
+            "_struct_ncs_ens_gen.dom_id_2":master_dom_id,
+            "_struct_ncs_ens_gen.ens_id":struct_ncs_ens_id,
+            "_struct_ncs_ens_gen.oper_id":oper_id})
+        row = [oper_id, 'given']
+        row.extend(ncs_copy.r)
+        row.extend(ncs_copy.t)
+        row.append('?')
+        ncs_oper_loop.add_row(row)
+
+        refine_ls_restr_ncs_loop.add_row({
+            "_refine_ls_restr_ncs.pdbx_ordinal": refine_ls_restr_ncs_pdbx_ordinal,
+            "_refine_ls_restr_ncs.dom_id": copy_dom_id,
+            "_refine_ls_restr_ncs.pdbx_refine_id": scattering_type,
+            "_refine_ls_restr_ncs.pdbx_ens_id": struct_ncs_ens_id,
+            "_refine_ls_restr_ncs.pdbx_asym_id": "'%s'" % hierarchy.get_label_asym_id_iseq(group.master_iselection[0]),
+            "_refine_ls_restr_ncs.pdbx_type": ncs_type,
+            "_refine_ls_restr_ncs.weight_position": '?', # weight_position
+            "_refine_ls_restr_ncs.weight_B_iso": '?', # weight_B_iso
+            "_refine_ls_restr_ncs.rms_dev_position": ncs_copy.rmsd,
+            "_refine_ls_restr_ncs.rms_dev_B_iso": '?', # rms_dev_B_iso
+            "_refine_ls_restr_ncs.ncs_model_details": '?', # model_details
+            })
+        refine_ls_restr_ncs_pdbx_ordinal += 1
+      cif_block.add_loop(ncs_ens_loop)
+      cif_block.add_loop(ncs_dom_loop)
+      cif_block.add_loop(ncs_dom_lim_loop)
+      cif_block.add_loop(ncs_oper_loop)
+      cif_block.add_loop(ncs_ens_gen_loop)
+      cif_block.add_loop(refine_ls_restr_ncs_loop)
+    return cif_block

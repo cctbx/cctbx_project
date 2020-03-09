@@ -39,7 +39,7 @@ class small_cell_orientation:
   try:
     result = np.linalg.lstsq(hkl,xyz)
   except Exception as e:
-    print("Exception while calculating basis vectors: %s"%e.message)
+    print("Exception while calculating basis vectors: %s"%str(e))
     return None
 
   solution,self.residuals,rank,singular = result[0],result[1],result[2],result[3]

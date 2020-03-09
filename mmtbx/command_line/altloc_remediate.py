@@ -405,7 +405,8 @@ def correct_altloc(hierarchy, max_c_beta_deviation=0.2, verbose=False):
     if types[1:] == ["all", None]:
       spread_to_c_alpha(three[2], spread_altlocs, pre_peptide=False)
     elif types[1:] == ["sidechain only", None]:
-      if geometry_flags["c_beta_dist"]>max_c_beta_deviation:
+      if (geometry_flags["c_beta_dist"] and
+          geometry_flags["c_beta_dist"] > max_c_beta_deviation):
         spread_to_c_alpha(three[2], spread_altlocs, pre_peptide=False)
 
   hierarchy.atoms().reset_serial()

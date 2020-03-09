@@ -1928,6 +1928,26 @@ def exercise_interpolation():
   points = interpolate_catmull_rom_spline(p0, p1, p2, p3, 5)
   assert approx_equal(points[1][1], 0.454, eps=0.0001)
 
+  from scitbx.math import linear_interpolation_2d
+  r = linear_interpolation_2d(
+      1., 1.,
+      2., 2.,
+      0., 1., 0., 1.,
+      1.5, 1.5);
+  assert approx_equal(r, 0.5)
+  r = linear_interpolation_2d(
+      1., 1.,
+      2., 2.,
+      0., 2., 0., 1.,
+      1.5, 1.5);
+  assert approx_equal(r, 0.75)
+  r = linear_interpolation_2d(
+      1., 1.,
+      2., 2.,
+      0., 2., 0., 1.,
+      1., 1.);
+  assert approx_equal(r, 0);
+
 def exercise_misc():
   from scitbx.math import distance_difference_matrix
   sites1 = flex.vec3_double([(0.,0.,0.),(0.,1.,2.),(3.,4.,5.)])

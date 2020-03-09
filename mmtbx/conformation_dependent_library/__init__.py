@@ -7,6 +7,7 @@ from string import ascii_letters as letters
 import iotbx.pdb
 
 from mmtbx.conformation_dependent_library.cdl_database import cdl_database
+from mmtbx.conformation_dependent_library.cdl_svl_database import cdl_svl_database
 import mmtbx.conformation_dependent_library.cdl_utils
 
 from mmtbx.conformation_dependent_library.multi_residue_class import \
@@ -42,13 +43,56 @@ def restraints_show(restraints_values):
         )
   return outl
 
-def get_restraint_values(threes, interpolate=False):
+def get_restraint_values(threes,
+                         cdl_svl=False,
+                         interpolate=False):
   from mmtbx.conformation_dependent_library import utils
   res_type_group = cdl_utils.get_res_type_group(
     threes[1].resname,
     threes[2].resname,
   )
   if res_type_group is None: return None
+  #
+  if cdl_svl:
+    assert not interpolate
+    key = '%s/%s' % (['trans', 'cis'][threes.cis_group()],
+                     ['trans', 'cis'][threes.cis_group(omega_cdl=True)])
+    assert cdl_svl_database.get(key, None)
+    current = cdl_svl_database[key]
+    restraint_values = current[res_type_group]
+    return restraint_values
+  #
+  if threes.cis_group():
+    resnames = threes.get_resnames()
+    if resnames[1]=='PRO':
+      # cis-PRO
+      restraint_values = ['?', 0, 127.0, 2.4] # CNA
+      restraint_values += [102.6, 1.1, # NAB
+                           112.1, 2.6, # NAC
+                           112.0, 2.5, # BAC
+                           120.2, 2.4, # ACO
+                           117.1, 2.8, # ACN
+                           121.1, 1.9, # OCN
+                           1.338, 0.019, # CN
+                           1.468, 0.017, # NA
+                           1.533, 0.018, # AB
+                           1.524, 0.020, # AC
+                           1.228, 0.020, # CO
+      ]
+      restraint_values += [120.6, 2.2, # CND
+                           111.5, 1.4, # AND
+                           103.8, 1.2, # NDG
+                           104.0, 1.9, # ABG
+                           105.4, 2.3, # BGD
+                           1.506, 0.039, # BG
+                           1.512, 0.027, # GD
+                           1.474, 0.014, # ND
+      ]
+    else:
+      # cis-NonPRO
+      restraint_values = ['?', 0, 123.0, 3.0]
+    return restraint_values
+  #
   if interpolate:
     restraint_values = ["2", -1]
     key = threes.get_cdl_key(exact=interpolate)
@@ -173,6 +217,7 @@ def generate_protein_tuples(hierarchy,
                             include_non_linked=False,
                             backbone_only=True,
                             include_non_standard_peptides=False,
+                            include_linked_via_restraints_manager=False,
                             # CDL specific
                             cdl_class=False,
                             omega_cdl=False,
@@ -186,6 +231,7 @@ def generate_protein_tuples(hierarchy,
                                       include_non_linked=include_non_linked,
                                       backbone_only=backbone_only,
                                       include_non_standard_residues=include_non_standard_peptides,
+                                      #include_linked_via_restraints_manager=include_linked_via_restraints_manager,
                                       # CDL specific
                                       cdl_class=cdl_class,
                                       omega_cdl=omega_cdl,
@@ -201,9 +247,11 @@ def generate_protein_threes(hierarchy,
                             include_non_linked=False,
                             backbone_only=True,
                             include_non_standard_peptides=False,
+                            include_linked_via_restraints_manager=False,
                             # CDL specific
                             cdl_class=False,
                             omega_cdl=False,
+                            retain_selection="name ca or name c or name n or name o or name cb or name h",
                             verbose=False,
                             ):
   for threes in generate_protein_tuples(
@@ -212,8 +260,10 @@ def generate_protein_threes(hierarchy,
     include_non_linked=include_non_linked,
     backbone_only=backbone_only,
     include_non_standard_peptides=include_non_standard_peptides,
+    # include_linked_via_restraints_manager=include_linked_via_restraints_manager,
     cdl_class=cdl_class,
     omega_cdl=omega_cdl,
+    retain_selection=retain_selection,
     length=3,
     ):
     yield threes
@@ -225,6 +275,7 @@ def generate_protein_fragments(hierarchy,
                                backbone_only=True,
                                include_non_standard_peptides=False,
                                # include_non_protein_linked=False, # NH2 1KYC
+                               # include_linked_via_restraints_manager=False,
                                verbose=False,
                                ):
   for fragment in generate_residue_tuples(
@@ -235,6 +286,7 @@ def generate_protein_fragments(hierarchy,
     backbone_only=backbone_only,
     include_non_standard_residues=include_non_standard_peptides,
     # include_non_protein_linked=include_non_protein_linked,
+    # include_linked_via_restraints_manager=include_linked_via_restraints_manager,
     verbose=verbose,
     ):
     yield fragment
@@ -262,11 +314,12 @@ def generate_dna_rna_fragments(hierarchy,
     yield item
 
 def update_restraints(hierarchy,
-                      geometry, # restraints_manager,
+                      geometry,
                       current_geometry=None, # xray_structure!!
                       sites_cart=None,
                       cdl_proxies=None,
-                      use_cis_127=False,
+                      cis_pro_eh99=False, # use EH99 for cis-PRO
+                      cdl_svl=False, # use CDL-SVL
                       ideal=True,
                       esd=True,
                       esd_factor=1.,
@@ -288,18 +341,29 @@ def update_restraints(hierarchy,
   threes = None
   average_updates = 0
   total_updates = 0
-  for threes in generate_protein_threes(hierarchy,
-                                        geometry, #restraints_manager,
-                                        cdl_class=True,
-                                        #verbose=verbose,
-                                        ):
-    if threes.cis_group():
-      if use_cis_127:
-        restraint_values = ['?', 0, 127.0, 3.0]
-      else:
-        continue
+  for threes in generate_protein_threes(
+    hierarchy,
+    geometry,
+    cdl_class=True,
+    retain_selection="name ca or name c or name n or name o or name cb or name h or name cd or name cg",
+    #verbose=verbose,
+    ):
+    if cdl_svl:
+      restraint_values = get_restraint_values(threes,
+                                              cdl_svl=cdl_svl,
+                                              interpolate=interpolate)
+      # print('cdl_svl %s %s' % (threes,restraint_values))
     else:
-      restraint_values = get_restraint_values(threes, interpolate=interpolate)
+      if threes.cis_group():
+        if cis_pro_eh99:
+          # returns cis-PRO EH99 values if asked
+          restraint_values = get_restraint_values(threes, interpolate=interpolate)
+          # print('cis-PRO EH99  %s %s' % (threes, restraint_values))
+        else:
+          continue
+      else:
+        restraint_values = get_restraint_values(threes, interpolate=interpolate)
+        # print('CDL %s %s' % (threes, restraint_values))
 
     if restraint_values is None: continue
 
@@ -314,7 +378,6 @@ def update_restraints(hierarchy,
                          esd_factor=esd_factor,
                          )
   if registry.n: threes.apply_average_updates(registry)
-#  restraints_manager.geometry.reset_internals()
   geometry.reset_internals()
   if verbose and threes and threes.errors:
     if log:

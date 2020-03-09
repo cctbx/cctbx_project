@@ -10,7 +10,8 @@ from xfel.merging.database.merging_database import mysql_master_phil
 master_phil="""
 dispatch {
   step_list = None
-    .type = strings
+    .type = str
+    .multiple = True
     .help = List of steps to use. None means use the full set of steps to merge.
 }
 input {
@@ -31,8 +32,9 @@ input {
   parallel_file_load {
     method = *uniform node_memory
       .type = choice
-      .help = uniform: distribute input experiments/reflections files uniformly over all ranks
-      .help = node_memory: assign input experiments/reflections files to as many nodes as necessary so that each node's memory limit is not exceeded. Then distribute the files uniformly over the ranks on each node.
+      .help = uniform: distribute input experiments/reflections files uniformly over all available ranks
+      .help = node_memory: distribute input experiments/reflections files over the nodes such that the node memory limit is not exceeded.
+      .help = Within each node distribute the input files uniformly over all ranks of that node.
     node_memory {
       architecture = "Cori KNL"
         .type = str
@@ -50,14 +52,31 @@ input {
     balance = global per_node
       .type = choice
       .multiple = False
-      .help = balance the input file load by distributing experiments unformly over all available ranks (global) or over the ranks on each node
+      .help = Balance the input file load by distributing experiments uniformly over all available ranks (global) or over the ranks on each node (per_node)
+      .help = The idea behind the "per_node" method is that it doesn't require MPI communications across nodes. But if the input file load varies strongly
+      .help = between the nodes, "global" is a much better option.
     balance_mpi_alltoall_slices = 1
       .type = int
       .expert_level = 2
       .help = memory reduction factor for MPI alltoall.
-      .help = Use mpi_alltoall_slices > 1, when available RAM memory is insufficient for doing MPI alltoall on all data at once.
+      .help = Use mpi_alltoall_slices > 1, when available RAM is insufficient for doing MPI alltoall on all data at once.
       .help = The data will then be split into mpi_alltoall_slices parts and, correspondingly, alltoall will be performed in mpi_alltoall_slices iterations.
   }
+}
+tdata{
+  output_path = None
+    .type = path
+    .help = If output_path is not None, the tdata worker writes out a list of unit cells to a file.
+    .help = Generally speaking the program should then stop.  The tdata worker is not active by default, so it is necessary to have
+    .help = the following phil configuration: dispatch.step_list=input,tdata.
+    .help = The output_path assumes the *.tdata filename extension will be appended.
+    .help = More information about using this option is given in the source code, xfel/merging/application/tdata/README.md
+}
+
+mp {
+  method = *mpi
+    .type = choice
+    .help = Muliprocessing method (only mpi at present)
 }
 
 filter
@@ -111,7 +130,7 @@ filter
   unit_cell
     .help = Various algorithms to restrict unit cell and space group
     {
-    algorithm = range value cluster
+    algorithm = range *value cluster
       .type = choice
     value
       .help = Discard lattices that are not close to the given target.
@@ -133,15 +152,31 @@ filter
       .help = unit cells are brought together prior to any postrefinement or merging,
       .help = and analyzed in a global sense to identify the isoforms.
       .help = the output of this program could potentially form the a_list for a subsequent
-      .help = run where the pre-selected events are postrefined and merged. {
-      algorithm = rodgriguez_laio dbscan
+      .help = run where the pre-selected events are postrefined and merged.
+      {
+      algorithm = rodgriguez_laio dbscan *covariance
         .type = choice
+      covariance
+        .help = Read a pickle file containing the previously determined clusters,
+        .help = represented by estimated covariance models for unit cell parameters.
+        {
+        file = None
+          .type = path
+        component = 0
+          .type = int(value_min=0)
+        mahalanobis = 4.0
+          .type = float(value_min=0)
+          .help = Is essentially the standard deviation cutoff. Given that the unit cells
+          .help = are estimated to be distributed by a multivariate Gaussian, this is the
+          .help = maximum deviation (in sigmas) from the central value that is allowable for the
+          .help = unit cell to be considered part of the cluster.
+        }
       isoform = None
         .type=str
         .help = unknown at present. if there is more than one cluster, such as in PSII,
         .help = perhaps the program should write separate a_lists.
         .help = Alternatively identify a particular isoform to carry forward for merging.
-    }
+      }
   }
   outlier {
     min_corr = 0.1
@@ -163,7 +198,7 @@ modify
 
 select
   .help = The select section accepts or rejects specified reflections
-  .help = refer to the filter section for filtering of whole experimens
+  .help = refer to the filter section for filtering of whole experiments
   {
   algorithm = panel cspad_sensor significance_filter
     .type = choice
@@ -216,7 +251,7 @@ scaling {
     .help = Kludge for cases with an indexing ambiguity, need to be able to adjust scaling model
   resolution_scalar = 0.969
     .type = float
-    .help = Accomodates a few more miller indices at the high resolution limit to account for
+    .help = Accommodates a few more miller indices at the high resolution limit to account for
     .help = unit cell variation in the sample. merging.d_min is multiplied by resolution_scalar
     .help = when computing which reflections are within the resolution limit.
   mtz {
@@ -247,15 +282,6 @@ scaling {
     .help = "mark0: original per-image scaling by reference to isomorphous PDB model"
     .help = "mark1: no scaling, just averaging (i.e. Monte Carlo
              algorithm).  Individual image scale factors are set to 1."
-  mark0 {
-    fit_reference_to_experiment = True
-      .type = bool
-      .help = "When true, fit reference to experiment: I_o = offset + slope * I_r, where I_o is observed intensities and I_r is reference intensities"
-      .help = "When false, fit experiment to reference: I_r = offset + slope * I_o"
-    fit_offset = False
-      .type = bool
-      .help = When true, fit both offset and slope, otherwise fit slope only.
-  }
 }
 
 postrefinement {
@@ -384,7 +410,7 @@ output {
     .help = When True, calculate and log elapsed time for execution steps
   log_level = 1
     .type = int
-    .help = how much information to log. TODO: define it.
+    .help = determines how much information to log. Level 0 means: log all, while a non-zero level reduces the logging amount.
   save_experiments_and_reflections = False
     .type = bool
     .help = If True, dump the final set of experiments and reflections from the last worker
@@ -432,7 +458,7 @@ parallel {
     .type = int
     .expert_level = 2
     .help = memory reduction factor for MPI alltoall.
-    .help = Use a2a > 1, when available RAM memory is insufficient for doing MPI alltoall on all data at once.
+    .help = Use a2a > 1, when available RAM is insufficient for doing MPI alltoall on all data at once.
     .help = The data will be split into a2a parts and, correspondingly, alltoall will be performed in a2a iterations.
 }
 

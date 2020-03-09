@@ -64,10 +64,11 @@ def get_stats(data):
   kurtosis=(x**4).min_max_mean().mean/sd**4
   return group_args(mean=mean, sd=sd, skew=skew, kurtosis=kurtosis)
 
-# XXX None at the moment
 master_phil_str = '''
 hbond {
-
+  output_pymol_files = True
+    .type = bool
+    .short_caption = Output useful PyMOL files for visualisation
 }
 '''
 
@@ -174,12 +175,18 @@ def stats(model, prefix, no_ticks=True):
   model._crystal_symmetry = box.crystal_symmetry()
   #
   N = 10
+  #
+  import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
+  h_bond_params = pnp.h_bond()
+  h_bond_params.a_DHA_cutoff=90
+  #
   SS = get_ss_selections(hierarchy=model.get_hierarchy())
-  HB_all = find(model = model.select(flex.bool(model.size(), True)), a_DHA_cutoff=90
+  HB_all = find(model = model.select(flex.bool(model.size(), True)),
+    h_bond_params=h_bond_params
     ).get_params_as_arrays(replace_with_empty_threshold=N)
-  HB_alpha = find(model = model.select(SS.both.h_sel), a_DHA_cutoff=90
+  HB_alpha = find(model = model.select(SS.both.h_sel), h_bond_params=h_bond_params
     ).get_params_as_arrays(replace_with_empty_threshold=N)
-  HB_beta = find(model = model.select(SS.both.s_sel), a_DHA_cutoff=90
+  HB_beta = find(model = model.select(SS.both.s_sel), h_bond_params=h_bond_params
     ).get_params_as_arrays(replace_with_empty_threshold=N)
   print (HB_all.d_HA.size())
   result_dict = {}
@@ -335,36 +342,23 @@ def get_D_H_A_Y(i, j, Hs, fsc0, rt_mx_ji, fm, om, atoms):
   return D, H, A, Y, atom_A, atom_H, atom_D
 
 class find(object):
-  """
-     Y
-      \
-       A
-        .
-         .
-         H
-         |
-         D
-        / \
-
-    A = O, N, S
-    D = O, N, S
-    90 <= a_YAH <= 180
-    a_DHA >= 120
-    1.4 <= d_HA <= 3.0
-    2.5 <= d_DA <= 3.5
-  """
   def __init__(self,
         model,
-        Hs             = ["H", "D"],
-        As             = ["O","N","S","F","CL"],
-        Ds             = ["O","N","S"],
-        d_HA_cutoff    = [1.4, 3.0], # original: [1.4, 2.4],
-        d_DA_cutoff    = [2.4, 4.1],
-        a_DHA_cutoff   = 120,        # should be greater than this
-        a_YAH_cutoff   = [90, 180],  # should be within this interval
+        h_bond_params  = None,
         protein_only   = False,
         pair_proxies   = None,
         write_eff_file = True):
+    if(h_bond_params is None):
+      import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
+      h_bond_params = pnp.h_bond()
+    Hs           = h_bond_params.Hs
+    As           = h_bond_params.As
+    Ds           = h_bond_params.Ds
+    d_HA_cutoff  = h_bond_params.d_HA_cutoff
+    d_DA_cutoff  = h_bond_params.d_DA_cutoff
+    a_DHA_cutoff = h_bond_params.a_DHA_cutoff
+    a_YAH_cutoff = h_bond_params.a_YAH_cutoff
+    #
     self.result = []
     self.model = model
     self.pair_proxies = pair_proxies

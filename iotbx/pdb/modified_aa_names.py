@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Sun Jul 28 21:04:35 2019
+The date of file generation: Fri Feb 28 14:23:03 2020
 """
 from __future__ import absolute_import, division, print_function
 
@@ -174,6 +174,7 @@ lookup = {
   "DMK" : "D",
   "DOH" : "D",
   "DYA" : "D",
+  "KKD" : "D",
   "LAA" : "D",
   "OHS" : "D",
   "OXX" : "D",
@@ -270,10 +271,12 @@ lookup = {
   "HNC" : "C",
   "HTI" : "C",
   "ICY" : "C",
+  "J3D" : "C",
   "JJJ" : "C",
   "JJK" : "C",
   "JJL" : "C",
   "K1R" : "C",
+  "K5H" : "C",
   "M0H" : "C",
   "MCS" : "C",
   "MD3" : "C",
@@ -318,6 +321,7 @@ lookup = {
   "MEQ" : "Q",
   "MGN" : "Q",
   "NLQ" : "Q",
+  "PCA" : "Q",
   "QMM" : "Q",
   "11W" : "E",
   "3GL" : "E",
@@ -343,7 +347,6 @@ lookup = {
   "ILG" : "E",
   "LME" : "E",
   "MEG" : "E",
-  "PCA" : "E",
   "X2W" : "E",
   "0AC" : "G",
   "3XH" : "G",
@@ -466,6 +469,7 @@ lookup = {
   "5GG" : "K",
   "5MW" : "K",
   "5OW" : "K",
+  "5T3" : "K",
   "6CL" : "K",
   "6G4" : "K",
   "6HN" : "K",
@@ -557,6 +561,7 @@ lookup = {
   "PE1" : "K",
   "PRK" : "K",
   "PYH" : "K",
+  "Q3P" : "K",
   "SHR" : "K",
   "SKH" : "K",
   "SLL" : "K",
@@ -609,6 +614,7 @@ lookup = {
   "BIF" : "F",
   "BNN" : "F",
   "DAH" : "F",
+  "DJD" : "F",
   "EHP" : "F",
   "F2F" : "F",
   "FC0" : "F",
@@ -716,6 +722,7 @@ lookup = {
   "4HJ" : "S",
   "4OV" : "S",
   "4OZ" : "S",
+  "5R5" : "S",
   "73C" : "S",
   "8SP" : "S",
   "A9D" : "S",
@@ -812,6 +819,7 @@ lookup = {
   "4HT" : "W",
   "4IN" : "W",
   "4PQ" : "W",
+  "54C" : "W",
   "5CW" : "W",
   "6CW" : "W",
   "BTR" : "W",
@@ -845,6 +853,7 @@ lookup = {
   "TRY" : "W",
   "TTQ" : "W",
   "WRP" : "W",
+  "ZIQ" : "W",
   "0A1" : "Y",
   "0EA" : "Y",
   "0PR" : "Y",

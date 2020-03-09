@@ -1,0 +1,41 @@
+# Script for checking out sources and storing it as an artifact
+# The artifact name is "modules"
+
+jobs:
+- job: modules
+  pool:
+    vmImage: ubuntu-16.04
+  timeoutInMinutes: 360
+
+  steps:
+
+  # download sources
+  - checkout: self
+    path: ./modules/cctbx_project
+
+  - script: |
+      cd $(Pipeline.Workspace)
+      ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
+    displayName: Link bootstrap.py
+
+  - script: |
+      cd $(Pipeline.Workspace)
+      python bootstrap.py hot update --builder=xfel
+    displayName: Download sources
+
+  - script: |
+      cd $(Pipeline.Workspace)
+      cd modules/uc_metrics
+      git lfs install --local
+      git lfs pull
+    displayName: Download LFS files
+
+  # preserve permissions
+  - script: |
+      cd $(Pipeline.Workspace)
+      tar -cf modules.tar modules
+    displayName: Build tarball
+
+  # publish artifact
+  - publish: $(Pipeline.Workspace)/modules.tar
+    artifact: modules

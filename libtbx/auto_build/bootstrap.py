@@ -705,12 +705,8 @@ class annlib_module(SourceModule):
 
 class scons_module(SourceModule):
   module = 'scons'
-  anonymous = ['curl', [
-    'http://cci.lbl.gov/repositories/scons.gz',
-    'https://drive.google.com/uc?id=1hPd5cMbVcsN4j0P5qaPUV71XS_aifw-J&export=download',
-  ]]
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'scons.tar.gz', '/net/cci/auto_build/repositories/scons']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/']
+  anonymous = ['git', '-b 3.1.1',
+               'https://github.com/SCons/scons/archive/3.1.1.zip']
 
 # external modules
 class rosetta_class(SourceModule):
@@ -748,6 +744,13 @@ class amber_adaptbx_module(SourceModule):
   anonymous = ['git',
                'git@github.com:phenix-project/amber_adaptbx.git',
                'https://github.com/phenix-project/amber_adaptbx.git',
+               ]
+
+class amber_library_module(SourceModule):
+  module = 'amber_library'
+  anonymous = ['git',
+               'git@github.com:phenix-project/amber_library.git',
+               'https://github.com/phenix-project/amber_library.git',
                ]
 
 class qrefine_module(SourceModule):
@@ -985,6 +988,19 @@ class king_module(SourceModule):
 class molprobity_moodule(SourceModule):
   module = 'molprobity'
   anonymous = ['svn', 'https://github.com/rlabduke/MolProbity.git/trunk']
+
+class uc_metrics_module(SourceModule):
+  module = 'uc_metrics'
+  anonymous = ['git',
+               'git@gitlab.com:cctbx/uc_metrics.git',
+               'https://gitlab.com/cctbx/uc_metrics.git']
+
+class ncdist_module(SourceModule):
+  module = 'ncdist'
+  anonymous = ['git',
+               'git@github.com:yayahjb/ncdist.git',
+               'https://github.com/yayahjb/ncdist.git',
+               'https://github.com/yayahjb/ncdist/archive/master.zip']
 
 MODULES = SourceModule()
 
@@ -1534,6 +1550,8 @@ class Builder(object):
       if self.use_conda == '' or os.path.isfile(self.use_conda):
         conda_python = self.op.join('..', 'conda_base',
                                     m_get_conda_python(self))
+        if self.isPlatformWindows():
+          conda_python = self.op.join(os.getcwd(), 'conda_base', m_get_conda_python(self))
       # (case 2)
       # use path provided to --use-conda
       elif os.path.isdir(self.use_conda):
@@ -1712,7 +1730,7 @@ environment exists in or is defined by {conda_env}.
       ]
     else:
       # default
-      base_dir = '../conda_base'
+      base_dir = self.op.join('..', 'conda_base')
       # use path from --use-conda flag
       # error-checking done in _get_conda_python function
       if os.path.isdir(self.use_conda):
@@ -1923,6 +1941,7 @@ class PhaserBuilder(CCIBuilder):
   LIBTBX = [
     'cctbx',
     'scitbx',
+    'crys3d',
     'libtbx',
     'iotbx',
     'mmtbx',
@@ -2071,12 +2090,12 @@ class DIALSBuilder(CCIBuilder):
     pass
 
 class LABELITBuilder(CCIBuilder):
-  CODEBASES_EXTRA = ['labelit']
-  LIBTBX_EXTRA = ['labelit']
+  CODEBASES_EXTRA = ['labelit', 'dials']
+  LIBTBX_EXTRA = ['labelit', 'dials']
 
   def add_base(self, extra_opts=[]):
     super(LABELITBuilder, self).add_base(
-      extra_opts=['--labelit'] + extra_opts)
+      extra_opts=['--labelit', 'dials'] + extra_opts)
 
   def add_tests(self):
     self.add_test_parallel('labelit', flunkOnFailure=False, warnOnFailure=True)
@@ -2087,7 +2106,7 @@ class LABELITBuilder(CCIBuilder):
   def rebuild_docs(self):
     pass
 
-class XFELBuilder(CCIBuilder):
+class XFELLegacyBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'dials',
     'labelit',
@@ -2104,11 +2123,40 @@ class XFELBuilder(CCIBuilder):
   HOT_EXTRA = ['msgpack']
 
   def add_base(self, extra_opts=[]):
-    super(XFELBuilder, self).add_base(
+    super(XFELLegacyBuilder, self).add_base(
       extra_opts=['--labelit', '--dials'] + extra_opts)
 
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')
+
+  def add_dispatchers(self):
+    pass
+
+  def rebuild_docs(self):
+    pass
+
+class XFELBuilder(CCIBuilder):
+  CODEBASES_EXTRA = [
+    'dials',
+    'uc_metrics',
+    'ncdist',
+  ]
+  LIBTBX_EXTRA = [
+    'dials',
+    'xfel',
+    'prime',
+    'iota',
+    'uc_metrics',
+  ]
+  HOT_EXTRA = ['msgpack']
+
+  def add_base(self, extra_opts=[]):
+    super(XFELBuilder, self).add_base(
+      extra_opts=['--dials'] + extra_opts)
+
+  def add_tests(self):
+    self.add_test_command('cctbx_regression.test_nightly')
+    self.add_test_parallel(module='uc_metrics')
 
   def add_dispatchers(self):
     pass
@@ -2128,6 +2176,7 @@ class PhenixBuilder(CCIBuilder):
     'PyQuante',
     'elbow',
     'amber_adaptbx',
+    'amber_library',
     'ksdssp',
     'pulchra',
     'solve_resolve',
@@ -2406,7 +2455,7 @@ class QRBuilder(PhenixBuilder):
     # XXX fast_interaction=True (=False won't work)
     #
     #pip_installs = ['ase', 'JPype1','pymongo']
-    pip_installs = ['ase==3.17.0', 'pymongo']
+    pip_installs = ['ase==3.17.0', 'pymongo', "JPype1==0.6.3"]
     instructions = []
     # versioning
     cmd = [os.path.join('..', self.python_base),
@@ -2493,6 +2542,7 @@ def run(root=None):
     'cctbx': CCTBXBuilder,
     'phenix': PhenixBuilder,
     'phenix_tng': PhenixTNGBuilder,
+    'xfellegacy': XFELLegacyBuilder,
     'xfel': XFELBuilder,
     'labelit': LABELITBuilder,
     'dials': DIALSBuilder,

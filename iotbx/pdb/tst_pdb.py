@@ -269,12 +269,12 @@ INFO: PDB file name appears 2 times: "tmp4"
 INFO: PDB file name appears 2 times: "tmp5"
   2 repeated file names ignored.
 INFO: PDB files with identical content:
-  "tmp2"
-  "tmp4"
-INFO: PDB files with identical content:
   "tmp1"
   "tmp3"
   "tmp5"
+INFO: PDB files with identical content:
+  "tmp2"
+  "tmp4"
 3 files with repeated content ignored.
 
 """)

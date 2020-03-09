@@ -8,6 +8,16 @@ Test multiplication of hierarchy and SS annotations in different combinations
 of MTRIX and BIOMT records presence.
 """
 
+single_mtrix_txt = """
+MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
+MTRIX2   1  0.000000  1.000000  0.000000        0.00000    1
+MTRIX3   1  0.000000  0.000000  1.000000        0.00000    1
+MTRIX1   2  0.479787 -0.038259 -0.876550        0.00000
+MTRIX2   2 -0.530698  0.782918 -0.324654        0.00000
+MTRIX3   2  0.698688  0.620947  0.355330        0.00000
+"""
+
+
 mtrix_txt = """
 MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
 MTRIX2   1  0.000000  1.000000  0.000000        0.00000    1
@@ -344,6 +354,19 @@ ATOM   2363  O   ALA A 342      14.703 -12.618 103.392  1.00 14.49           O
 ATOM   2364  CB  ALA A 342      11.782 -12.143 104.511  1.00 12.29           C
 """
 
+def exercise_single_mtrix():
+  inp = iotbx.pdb.input(lines=single_mtrix_txt+ss_txt+atoms_txt, source_info=None)
+  model = mmtbx.model.manager(
+    model_input = inp)
+  # print (model.model_as_pdb())
+  assert model.get_number_of_atoms() == 600, model.get_number_of_atoms()
+  assert model.get_hierarchy().atoms_size() == 600
+  assert model.get_xray_structure().scatterers().size() == 600
+  ss_ann = model.get_ss_annotation()
+  # print ss_ann.as_pdb_str()
+  assert ss_ann.get_n_helices() == 4
+  assert ss_ann.get_n_sheets() == 2
+
 def exercise_mtrix():
   inp = iotbx.pdb.input(lines=mtrix_txt+ss_txt+atoms_txt, source_info=None)
   model = mmtbx.model.manager(
@@ -400,6 +423,7 @@ def exercise_both():
 
 if (__name__ == "__main__"):
   t0 = time.time()
+  exercise_single_mtrix()
   exercise_mtrix()
   exercise_biomt()
   exercise_both()

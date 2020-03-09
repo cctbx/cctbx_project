@@ -26,9 +26,9 @@ class heuristics_base(object):
   def oneImage(self,framenumber):
     self.reporters[framenumber] = []
 
-    from dxtbx.format.Registry import Registry
+    import dxtbx.format.Registry
     filename = self.phil_params.distl.image[framenumber]
-    reader = Registry.find(filename)
+    reader = dxtbx.format.Registry.get_format_class_for_file(filename)
     img = reader(filename)
 
     detector = img.get_detector()

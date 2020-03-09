@@ -107,6 +107,18 @@ master_phil = iotbx.phil.parse("""
                ss_by_chain=False.  Not used in regularize_pdb
        .short_caption = Secondary structure by chain
        .style = hidden
+
+     auto_choose_ca_vs_ca_n_o = True
+       .type = bool
+       .help = Automatically identify whether chains are mostly CA or mostly \
+                contain CA/N/O atoms (requires min_ca_n_o_completeness).
+       .short_caption = Auto choose CA vs CA/N/O
+
+     min_ca_n_o_completeness = 0.95
+       .type = float
+       .help = Minimum completeness of CA/N/O atoms to not use CA-only
+       .short_caption = Minimum completeness of CA/N/O
+
      max_rmsd = 1
        .type = float
        .help = Maximum rmsd to consider two chains with identical sequences \
@@ -194,6 +206,11 @@ master_phil = iotbx.phil.parse("""
        .type = bool
        .help = Write SHEET records that contain a single strand
        .short_caption = Write single strands
+
+     remove_missing_atom_annotation = False
+       .type = bool
+       .help = Remove annotation that refers to atoms that are not present
+       .short_caption = Remove missing atom annotation
 
      max_h_bond_length = 3.5
        .type = float
@@ -1740,7 +1757,7 @@ class replace_with_segments_from_pdb:
           [cg.get_left_connection()+cg.get_score()*small_number,cg])
       else:
         sort_list.append([cg.get_score(),cg])
-    sort_list.sort()
+    sort_list.sort(key = lambda x: x[0])
     if not sort_by_start: # high to low in score, low to high in sort_by_start
       sort_list.reverse()
     connected_groups=[]

@@ -41,7 +41,7 @@ def run(args):
   out_fn = out_fn_prefix + "_sorted"
 
   txt = ""
-  if model.input_format_was_cif():
+  if model.input_model_format_cif():
     out_fn += ".cif"
     txt = model.model_as_mmcif()
   else:

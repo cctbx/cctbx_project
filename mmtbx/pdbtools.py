@@ -645,11 +645,8 @@ class modify(object):
         for a in raap.axis.split():
           axis.append(float(a))
       except Exception:
-        sel = utils.get_atom_selections(
-          iselection=False,
-          all_chain_proxies=self.all_chain_proxies,
-          selection_strings=raap.axis,
-          xray_structure=self.xray_structure)[0]
+        asc = self.pdb_hierarchy.atom_selection_cache()
+        sel = asc.selection(raap.axis)
         axis = [i for i in sites_cart.select(sel).as_double()]
       if(len(axis)!=6):
         raise Sorry("Bad selection rotate_about_axis.axis: %s"%str(raap.axis))
@@ -657,12 +654,8 @@ class modify(object):
       p2 = scitbx.matrix.col(axis[3:])
       raa = p1.rt_for_rotation_around_axis_through(
         point=p2, angle=raap.angle, deg=True)
-      #
-      sel = utils.get_atom_selections(
-          iselection=False,
-          all_chain_proxies=self.all_chain_proxies,
-          selection_strings=raap.atom_selection,
-          xray_structure=self.xray_structure)[0]
+      asc = self.pdb_hierarchy.atom_selection_cache()
+      sel = asc.selection(raap.atom_selection)
       if(sel.count(True)==0):
         raise Sorry(
           "Empty selection rotate_about_axis.selection: %s"%str(raap.atom_selection))

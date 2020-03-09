@@ -59,6 +59,23 @@ columns = [
   "sAC",
   "mCO",  # CO    C(0)  - O(0)
   "sCO",
+  # needed for cis_127
+  'mCND', # C(-1) - N(0) - Cd(0)
+  'sCND',
+  'mAND', # Ca(0) - N(0) - Cd(0)
+  'sAND',
+  'mNDG', # N(0) - Cd(0) - Cg(0)
+  'sNDG',
+  'mABG', # Ca(0) - Cb(0) - Cg(0)
+  'sABG',
+  'mBGD', # Cb(0) - Cg(0) - Cd(0)
+  'sBGD',
+  'mBG',
+  'sBG',
+  'mGD',
+  'sGD',
+  'mND',
+  'sND',
   ]
 headers = [
   "statistical type",       # 0

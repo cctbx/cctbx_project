@@ -42,6 +42,13 @@ master_phil = iotbx.phil.parse("""
       .help = Half map (two should be supplied) for FSC calculation. Must \
                have grid identical to map_file
 
+    external_map_file = None
+      .type = path
+      .short_caption = External map
+      .style = file_type:ccp4_map bold input_file
+      .help = External map to be used to scale map_file (power vs resolution\
+              will be matched). Not used in segment_and_split_map
+
     ncs_file = None
       .type = path
       .help = File with symmetry information (typically point-group NCS with \
@@ -835,7 +842,8 @@ master_phil = iotbx.phil.parse("""
        .type = str
        .short_caption = Overall sharpening target
        .help = Overall target for sharpening.  Can be kurtosis or adjusted_sa \
-          (adjusted surface area).  Used to decide which sharpening approach \
+          (adjusted surface area) or adjusted_path_length.  \
+            Used to decide which sharpening approach \
           is used. Note that during optimization, residual_target is used \
           (they can be the same.)
 
@@ -1930,7 +1938,7 @@ class sharpening_info:
       buffer_radius=None,
       pseudo_likelihood=None,
       preliminary_sharpening_done=False,
-
+      adjusted_path_length=None,
         ):
 
     from libtbx import adopt_init_args
@@ -2184,6 +2192,7 @@ class sharpening_info:
 
     target_summary_dict={
        'adjusted_sa':"Adjusted surface area",
+       'adjusted_path_length':"Adjusted path length",
        'kurtosis':"Map kurtosis",
        'model':"Map-model CC",
       }
@@ -2253,6 +2262,10 @@ class sharpening_info:
       print("Final adjusted map surface area:  %7.2f" %(self.adjusted_sa), file=out)
     if self.kurtosis is not None:
       print("Final map kurtosis:               %7.2f" %(self.kurtosis), file=out)
+    if hasattr(self,'adjusted_path_length') and \
+         self.adjusted_path_length is not None:
+      print("Final adjusted path length:        %7.2f A" %(
+         self.adjusted_path_length), file=out)
 
     print(file=out)
 
@@ -2305,6 +2318,8 @@ class sharpening_info:
        return False
     if self.is_half_map_sharpening():
        return False
+    if self.is_external_map_sharpening():
+       return False
     return True
 
   def is_resolution_dependent_sharpening(self):
@@ -2315,6 +2330,12 @@ class sharpening_info:
 
   def is_model_sharpening(self):
     if self.sharpening_method=='model_sharpening':
+       return True
+    else:
+       return False
+
+  def is_external_map_sharpening(self):
+    if self.sharpening_method=='external_map_sharpening':
        return True
     else:
        return False
@@ -2415,6 +2436,11 @@ class ncs_group_object:
   def set_map_files_written(self,map_files_written):
     self.map_files_written=deepcopy(map_files_written)
 
+def zero_if_none(x):
+  if not x:
+    return 0
+  else:
+    return x
 def scale_map(map,scale_rms=1.0,out=sys.stdout):
     sd=map.as_double().as_1d().sample_standard_deviation()
     if (sd > 1.e-10):
@@ -2706,6 +2732,7 @@ def apply_sharpening(map_coeffs=None,
     target_scale_factors=None,
     f_array=None,phases=None,d_min=None,k_sharpen=None,
     b_blur_hires=None,
+    include_sharpened_map_coeffs=False,
     out=sys.stdout):
     if map_coeffs and f_array is None and phases is None:
       f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
@@ -2802,6 +2829,8 @@ def apply_sharpening(map_coeffs=None,
       crystal_symmetry=crystal_symmetry,
        n_real=n_real)
     mb=map_and_b_object(map_data=map_data,final_b_iso=actual_b_iso)
+    if include_sharpened_map_coeffs:
+      mb.sharpened_map_coeffs=sharpened_map_coeffs
     return mb
 
 def get_map_from_map_coeffs(map_coeffs=None,crystal_symmetry=None,
@@ -3303,7 +3332,10 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
         #  operator that maps each point on to all others the best, then save
   #  that list of values
 
-  identify_ncs_id_list=list(range(ncs_group.n_ncs_oper()))+[None]
+  if (not ncs_group) or not ncs_group.n_ncs_oper():
+    identify_ncs_id_list=[None]
+  else:
+    identify_ncs_id_list=list(range(ncs_group.n_ncs_oper()))+[None]
 
   all_value_lists=[]
 
@@ -4094,6 +4126,7 @@ def get_mask_around_molecule(map_data=None,
        crystal_symmetry=crystal_symmetry,
        map_data=map_data,
        expand_target=buffer_radius,
+       minimum_expand_size=0,
        out=out)
 
   print("Target mask expand size is %d based on buffer_radius of %7.1f A" %(
@@ -4107,14 +4140,38 @@ def get_mask_around_molecule(map_data=None,
 
   masked_fraction=sorted_by_volume[1][0]/mask.size()
 
-  bool_region_mask = co.expand_mask(id_to_expand=sorted_by_volume[1][1],
-       expand_size=expand_size)
-  s=(bool_region_mask==True)
-  expanded_fraction=s.count(True)/s.size()
+  if expand_size <= 0:
+    expanded_fraction=masked_fraction
+  else: # Try to get expanded fraction < 0.5*(masked_fraction+1)
+    upper_limit=0.5*(masked_fraction+1)
+
+    bool_region_mask = co.expand_mask(id_to_expand=sorted_by_volume[1][1],
+         expand_size=expand_size)
+    s=(bool_region_mask==True)
+    expanded_fraction=s.count(True)/s.size()
+    if expanded_fraction>upper_limit:
+      amount_too_big=max(1.e-10,expanded_fraction-upper_limit)/max(1.e-10,
+         expanded_fraction-masked_fraction)**0.667
+      # cut back
+      original_expand_size=expand_size
+      expand_size=max(1,int(0.5+expand_size * min(1,max(0,(1-amount_too_big)))))
+      if expand_size != original_expand_size:
+
+        print ("\nCutting back expand size to try and get "+
+           "fraction < about %.2f . New expand_size: %s" %(
+          upper_limit,expand_size),file=out)
+        bool_region_mask = co.expand_mask(id_to_expand=sorted_by_volume[1][1],
+           expand_size=expand_size)
+        s=(bool_region_mask==True)
+        expanded_fraction=s.count(True)/s.size()
+    if expanded_fraction > 0.9999:
+          print ("\nSkipping expansion as no space is available\n",file=out)
+          return None,None
   print("\nLargest masked region before buffering: %7.2f" %(masked_fraction),
       file=out)
   print("\nLargest masked region after buffering: %7.2f" %(expanded_fraction),
      file=out)
+
   if solvent_content and (not force_buffer_radius):
     delta_as_is=abs(solvent_content- (1-masked_fraction))
     delta_expanded=abs(solvent_content- (1-expanded_fraction))
@@ -4177,9 +4234,11 @@ def get_mean_in_or_out(sel=None,
     map_data=None,
     out=sys.stdout):
   masked_map=map_data.deep_copy()
-  masked_map.set_selected(~sel,0)
+  if sel.count(False) !=0:
+    masked_map.as_1d().set_selected(~sel.as_1d(),0)
   mean_after_zeroing_in_or_out=masked_map.as_1d().min_max_mean().mean
-  masked_map.set_selected(sel,1)
+  if sel.count(True) != 0:
+    masked_map.as_1d().set_selected(sel.as_1d(),1)
   fraction_in_or_out=masked_map.as_1d().min_max_mean().mean
   if fraction_in_or_out >1.e-10:
     mean_value=mean_after_zeroing_in_or_out/fraction_in_or_out
@@ -4247,7 +4306,6 @@ def apply_mask_to_map(mask_data=None,
     out=sys.stdout):
 
   s = mask_data > threshold  # s marks inside mask
-
   # get mean inside or outside mask
   if verbose:
     print("\nStarting map values inside and outside mask:", file=out)
@@ -4299,7 +4357,10 @@ def estimate_expand_size(
        crystal_symmetry=None,
        map_data=None,
        expand_target=None,
+       minimum_expand_size=1,
        out=sys.stdout):
+    if not expand_target:
+     return minimum_expand_size
     abc = crystal_symmetry.unit_cell().parameters()[:3]
     N_ = map_data.all()
     nn=0.
@@ -4309,7 +4370,7 @@ def estimate_expand_size(
     nn=max(1,int(0.5+nn/3.))
     print("Expand size (grid units): %d (about %4.1f A) " %(
       nn,nn*abc[0]/N_[0]), file=out)
-    return max(1,nn)
+    return max(minimum_expand_size,nn)
 
 def get_max_z_range_for_helical_symmetry(params,out=sys.stdout):
   if not params.input_files.ncs_file: return
@@ -4721,7 +4782,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
      params.map_modification.sharpening_target=='adjusted_sa') and \
      (params.map_modification.box_in_auto_sharpen or
        params.map_modification.density_select_in_auto_sharpen):
-    print("Checking to make sure we can use adjusted_sa as target...", end=' ', file=out)
+    print("Checking to make sure we can use adjusted_sa as target...",
+        end=' ', file=out)
     try:
       from phenix.autosol.map_to_model import iterated_solvent_fraction
     except Exception as e:
@@ -5274,14 +5336,15 @@ def get_and_apply_soft_mask_to_maps(
   if not rad_smooth:
     rad_smooth=resolution
 
-  print("\nApplying soft mask with smoothing radius of %s\n" %(
-    rad_smooth), file=out)
+  if rad_smooth:
+    print("\nApplying soft mask with smoothing radius of %.2f A\n" %(
+      rad_smooth), file=out)
   if wang_radius:
     wang_radius=wang_radius
   else:
     wang_radius=1.5*resolution
 
-  if buffer_radius:
+  if buffer_radius is not None:
     buffer_radius=buffer_radius
   else:
     buffer_radius=2.*resolution
@@ -5318,6 +5381,7 @@ def get_and_apply_soft_mask_to_maps(
     new_half_map_data_list=[]
     if not half_map_data_list: half_map_data_list=[]
     for half_map in half_map_data_list:
+      assert half_map.size()==mask_data.size()
       half_map,smoothed_mask_data=apply_soft_mask(map_data=half_map,
         mask_data=mask_data.as_double(),
         rad_smooth=rad_smooth,
@@ -7636,7 +7700,6 @@ def write_output_files(params,
   mask=mask.set_selected(~s,0)
   if params.map_modification.soft_mask:
     # buffer and smooth the mask
-    print("Smoothing mask")
     map_data_ncs_au,smoothed_mask_data=apply_soft_mask(map_data=map_data_ncs_au,
       mask_data=mask.as_double(),
       rad_smooth=tracking_data.params.crystal_info.resolution,
@@ -8019,6 +8082,7 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
 
 def set_up_and_apply_soft_mask(map_data=None,shift_origin=None,
   crystal_symmetry=None,resolution=None,
+  grid_units_for_boundary=None,
   radius=None,out=sys.stdout):
 
     acc=map_data.accessor()
@@ -8027,9 +8091,13 @@ def set_up_and_apply_soft_mask(map_data=None,shift_origin=None,
 
     # Add soft boundary to mean around outside of mask
     # grid_units is how many grid units are about equal to soft_mask_radius
-    grid_units=get_grid_units(map_data=map_data,
-      crystal_symmetry=crystal_symmetry,radius=radius,out=out)
-    grid_units=int(0.5+0.5*grid_units)
+    if grid_units_for_boundary is None:
+      grid_units=get_grid_units(map_data=map_data,
+        crystal_symmetry=crystal_symmetry,radius=radius,out=out)
+      grid_units=int(0.5+0.5*grid_units)
+    else:
+      grid_units=grid_units_for_boundary
+
     from cctbx import maptbx
     zero_boundary_map=maptbx.zero_boundary_box_map(
        map_data,grid_units).result()
@@ -8403,6 +8471,7 @@ def get_overall_mask(
     d_max=100000.,
     out=sys.stdout):
 
+
   # Make a local SD map from our map-data
   from cctbx.maptbx import crystal_gridding
   from cctbx import sgtbx
@@ -8432,8 +8501,8 @@ def get_overall_mask(
          return_as_miller_arrays=True,nohl=True,out=null_out())
   if not map_coeffs:
     raise Sorry("No map coeffs obtained")
-  map_coeffs=map_coeffs.resolution_filter(d_min=resolution,d_max=d_max)
 
+  map_coeffs=map_coeffs.resolution_filter(d_min=resolution,d_max=d_max)
   complete_set = map_coeffs.complete_set()
   stol = flex.sqrt(complete_set.sin_theta_over_lambda_sq().data())
   import math
@@ -8445,9 +8514,24 @@ def get_overall_mask(
       flex.pow2(map_data-map_data.as_1d().min_max_mean().mean))
   except Exception as e:
     print(e, file=out)
-    raise Sorry("The sampling of the map appears to be too low for a "+
-      "\nresolution of %s. Try using a larger value for resolution" %(
+    print ("The sampling of the map appears to be too low for a "+
+      "\nresolution of %s. Using a larger value for resolution" %(
        resolution))
+    from cctbx.maptbx import d_min_from_map
+    resolution=d_min_from_map(
+      map_data,crystal_symmetry.unit_cell(), resolution_factor=1./4.)
+    print("\nEstimated resolution of map: %6.1f A\n" %(
+     resolution), file=out)
+    map_coeffs=map_coeffs.resolution_filter(d_min=resolution,d_max=d_max)
+    complete_set = map_coeffs.complete_set()
+    stol = flex.sqrt(complete_set.sin_theta_over_lambda_sq().data())
+    import math
+    w = 4 * stol * math.pi * smoothing_radius
+    sphere_reciprocal = 3 * (flex.sin(w) - w * flex.cos(w))/flex.pow(w, 3)
+    temp = complete_set.structure_factors_from_map(
+      flex.pow2(map_data-map_data.as_1d().min_max_mean().mean))
+
+
   fourier_coeff=complete_set.array(data=temp.data()*sphere_reciprocal)
   sd_map=fourier_coeff.fft_map(
       crystal_gridding=cg,
@@ -8590,11 +8674,50 @@ def score_map(map_data=None,
     sharpening_info_obj.normalized_regions=normalized_regions
 
   sharpening_info_obj.kurtosis=get_kurtosis(map_data.as_1d())
+
+  if sharpening_info_obj.sharpening_target=='adjusted_path_length':
+    sharpening_info_obj.adjusted_path_length=get_adjusted_path_length(
+      map_data=map_data,
+      resolution=sharpening_info_obj.resolution,
+      crystal_symmetry=sharpening_info_obj.crystal_symmetry,
+      out=out)
+  else:
+    sharpening_info_obj.adjusted_path_length=None
+
   if sharpening_info_obj.sharpening_target=='kurtosis':
     sharpening_info_obj.score=sharpening_info_obj.kurtosis
+  if sharpening_info_obj.sharpening_target=='adjusted_path_length':
+    sharpening_info_obj.score=sharpening_info_obj.adjusted_path_length
   else:
     sharpening_info_obj.score=sharpening_info_obj.adjusted_sa
+
   return sharpening_info_obj
+
+def get_adjusted_path_length(
+    map_data=None,
+    crystal_symmetry=None,
+    resolution=None,
+    out=sys.stdout):
+  from phenix.autosol.trace_and_build import trace_and_build
+  from phenix.programs.trace_and_build import master_phil_str
+  import iotbx.phil
+  tnb_params=iotbx.phil.parse(master_phil_str).extract()
+  tnb_params.crystal_info.resolution=resolution
+  tnb_params.strategy.retry_long_branches=False
+  tnb_params.strategy.correct_segments=False
+  tnb_params.strategy.split_and_join=False
+  tnb_params.strategy.vary_sharpening=[]
+  tnb_params.strategy.get_path_length_only=True
+  tnb_params.trace_and_build.find_helices_strands=False
+  tnb=trace_and_build(
+      params=tnb_params,
+      map_data=map_data,
+      crystal_symmetry=crystal_symmetry,
+      origin_cart=(0,0,0),
+      origin=(0,0,0),
+      log=out)
+  tnb.run()
+  return tnb.adjusted_path_length
 
 def sharpen_map_with_si(sharpening_info_obj=None,
      f_array_normalized=None,
@@ -8789,7 +8912,6 @@ def get_solvent_fraction_from_low_res_mask(
       return_mask_and_solvent_fraction=None,
       mask_resolution=None,
       out=sys.stdout):
-
   overall_mask,max_in_sd_map,sd_map=get_overall_mask(map_data=map_data,
     fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
     use_solvent_content_for_threshold=use_solvent_content_for_threshold,
@@ -10009,7 +10131,8 @@ def auto_sharpen_map_or_map_coeffs(
 
     # Determine if we are running model_sharpening
     if half_map_data_list and len(half_map_data_list)==2:
-      auto_sharpen_methods=['half_map_sharpening']
+      if auto_sharpen_methods != ['external_map_sharpening']:
+        auto_sharpen_methods=['half_map_sharpening']
     elif pdb_inp:
       auto_sharpen_methods=['model_sharpening']
     if not si:
@@ -10272,8 +10395,9 @@ def optimize_b_blur_or_d_cut_or_b_iso(
               local_si.b_sharpen,local_si.b_iso,
                local_si.b_blur_hires,
                local_si.adjusted_sa,local_si.kurtosis) + \
-              "  %7.3f         %7.3f   %7.3f %7.3f " %(
-               local_si.sa_ratio,local_si.normalized_regions,
+              "  %7.1f         %7.3f   %7.3f %7.3f " %(
+               zero_if_none(local_si.adjusted_path_length), #local_si.sa_ratio,
+               local_si.normalized_regions,
                test_d_cut,
                test_b_blur_hires
                 ), file=out)
@@ -10437,6 +10561,12 @@ def run_auto_sharpen(
        f_array=f_array,
        resolution=si.resolution,
        out=out)
+    if not model_map_coeffs:  # give up
+      pdb_inp=None
+      if si.is_model_sharpening():
+        raise Sorry("Cannot carry out model sharpening without a model."+
+            " It could be that the model was outside the map")
+
   else:
     model_map_coeffs=None
 
@@ -10671,6 +10801,8 @@ def run_auto_sharpen(
       print("\nSetting up model sharpening", file=out)
     elif best_si.is_half_map_sharpening():
       print("\nSetting up half-map sharpening", file=out)
+    elif best_si.is_external_map_sharpening():
+      print("\nSetting up external map sharpening", file=out)
     else:
       print("\nTesting sharpening methods with target of %s" %(
         best_si.sharpening_target), file=out)
@@ -10679,7 +10811,8 @@ def run_auto_sharpen(
     for m in auto_sharpen_methods:
       # ------------------------
       if m in ['no_sharpening','resolution_dependent','model_sharpening',
-          'half_map_sharpening','target_b_iso_to_d_cut']:
+          'half_map_sharpening','target_b_iso_to_d_cut',
+           'external_map_sharpening']:
         if m=='target_b_iso_to_d_cut':
           b_min=si.get_target_b_iso()
           b_max=si.get_target_b_iso()
@@ -10690,11 +10823,11 @@ def run_auto_sharpen(
         k_sharpen=0.
         delta_b=0
         if m in ['resolution_dependent','model_sharpening',
-           'half_map_sharpening']:
+           'half_map_sharpening','external_map_sharpening']:
           pass # print out later
         else:
           print("\nB-sharpen   B-iso   k_sharpen   SA   "+\
-             "Kurtosis  sa_ratio  Normalized regions", file=out)
+             "Kurtosis  Path len  Normalized regions", file=out)
       # ------------------------
       # ------------------------
       else:  #  ['b_iso','b_iso_to_d_cut']:
@@ -10716,7 +10849,7 @@ def run_auto_sharpen(
           k_sharpen=si.k_sharpen
 
         print("\nB-sharpen   B-iso   k_sharpen   SA   "+\
-             "Kurtosis  sa_ratio  Normalized regions", file=out)
+             "Kurtosis  Path len  Normalized regions", file=out)
       # ------------------------
       local_best_map_and_b=map_and_b_object()
       local_best_si=deepcopy(si).update_with_box_sharpening_info(
@@ -10783,6 +10916,19 @@ def run_auto_sharpen(
           # local_si contains target_scale_factors now
           local_f_array=f_array
           local_phases=phases
+        elif m=='external_map_sharpening':
+          print("\nUsing external-map-based sharpening", file=out)
+          local_si.b_sharpen=0
+          local_si.b_iso=original_b_iso
+          from cctbx.maptbx.refine_sharpening import scale_amplitudes
+          scale_amplitudes(
+            model_map_coeffs=model_map_coeffs,
+            map_coeffs=map_coeffs,
+            external_map_coeffs=first_half_map_coeffs,
+            si=local_si,out=out)
+          # local_si contains target_scale_factors now
+          local_f_array=f_array
+          local_phases=phases
 
         else:
           local_f_array=f_array
@@ -10826,7 +10972,7 @@ def run_auto_sharpen(
         local_si=result.local_si
         local_map_and_b=result.local_map_and_b
         if result.text:
-          print(result.text)
+          print(result.text,file=out)
         # Run through all result to get these
         if local_si.b_sharpen is not None and local_si.b_iso is not None and\
            local_si.k_sharpen is not None and local_si.kurtosis is not None \
@@ -11013,15 +11159,16 @@ def run_sharpen_and_score(f_array=None,
            "\nb[0]   b[1]   b[2]   SA   Kurtosis   sa_ratio  Normalized regions"
           text+="\n"+\
             "\nB-sharpen   B-iso   k_sharpen   SA   "+\
-             "Kurtosis  sa_ratio  Normalized regions"
+             "Kurtosis  Path len  Normalized regions"
           text+="\n"+" %6.2f  %6.2f  %6.2f  " %(
               local_si.resolution_dependent_b[0],
               local_si.resolution_dependent_b[1],
               local_si.resolution_dependent_b[2]) +\
             "  %7.3f  %7.3f  " %(
                 local_si.adjusted_sa,local_si.kurtosis)+\
-            " %7.3f  %7.3f" %(
-             local_si.sa_ratio,local_si.normalized_regions)
+            " %7.1f  %7.3f" %(
+             zero_if_none(local_si.adjusted_path_length), #local_si.sa_ratio,
+             local_si.normalized_regions)
         elif local_si.b_sharpen is not None and local_si.b_iso is not None and\
            local_si.k_sharpen is not None and local_si.kurtosis is not None \
            and local_si.adjusted_sa is not None:
@@ -11029,8 +11176,9 @@ def run_sharpen_and_score(f_array=None,
            " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
             local_si.b_sharpen,local_si.b_iso,
              local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
-            "  %7.3f         %7.3f" %(
-             local_si.sa_ratio,local_si.normalized_regions)
+            "  %7.1f         %7.3f" %(
+             zero_if_none(local_si.adjusted_path_length), #local_si.sa_ratio,
+             local_si.normalized_regions)
         else:
           text=""
 

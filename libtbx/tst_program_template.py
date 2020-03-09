@@ -40,10 +40,24 @@ def test_phil():
   assert('parameter_c' not in test_program.get_program_phil_str(True))
 
   assert(test_program.get_default_output_filename() == 'cctbx_program_000')
+  assert(test_program.get_default_output_filename(prefix='abc') == 'abc_000')
+  assert(test_program.get_default_output_filename(suffix='abc') == 'cctbx_programabc_000')
+  assert(test_program.get_default_output_filename(serial=999) == 'cctbx_program_999')
+  assert(test_program.get_default_output_filename(prefix='abc', suffix='def', serial=123) == 'abcdef_123')
+
   test_program.params.output.prefix = 'prefix'
   test_program.params.output.suffix = 'suffix'
   test_program.params.output.serial = 7
   assert(test_program.get_default_output_filename() == 'prefixsuffix_007')
+  assert(test_program.get_default_output_filename(prefix='abc') == 'abcsuffix_007')
+  assert(test_program.get_default_output_filename(suffix='abc') == 'prefixabc_007')
+  assert(test_program.get_default_output_filename(serial=999) == 'prefixsuffix_999')
+
+  try:
+    test_program.get_default_output_filename(serial='abc')
+  except ValueError as e:
+    if str(e) != 'The serial argument should be an integer.':
+      raise
 
 # =============================================================================
 if __name__ == '__main__':

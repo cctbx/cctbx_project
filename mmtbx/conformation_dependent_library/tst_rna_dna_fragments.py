@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from iotbx import pdb
-from test_rdl import get_geometry_restraints_manager
+from mmtbx.conformation_dependent_library.testing_utils import get_geometry_restraints_manager
 from six.moves import range
 
 pdb_1ehz = '''HEADER    RIBONUCLEIC ACID                        23-FEB-00   1EHZ

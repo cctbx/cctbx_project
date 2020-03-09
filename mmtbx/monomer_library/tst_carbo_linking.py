@@ -138,9 +138,8 @@ result = '''Links applied
 
 def main():
   input_model_filename = 'carbo_linking_output.pdb'
-  f=file(input_model_filename, 'wb')
-  f.write(input_model)
-  del f
+  with open(input_model_filename, 'w') as f:
+    f.write(input_model)
   cmd = 'phenix.pdb_interpretation %s' % input_model_filename
   rc = easy_run.go(cmd)
   lines = '\n'.join(rc.stdout_lines)

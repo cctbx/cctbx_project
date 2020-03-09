@@ -57,14 +57,14 @@ refinement {
       if action == "delete":
         cntr+=1
         assert r.stderr_lines[0] == \
-          'Sorry: geometry_restraints.edits.bond.action = delete not implemented.'
+            'Sorry: geometry_restraints.edits.bond.action = delete not implemented.'
       else:
         if kind == "new":
           if action == 'add':
             cntr+=1
             assert_lines_in_file(
-              file_name = "%s.pdb.geo"%prefix,
-              lines     = """bond pdb=" CA  ILE A   7 "
+                file_name = "%s.pdb.geo"%prefix,
+                lines     = """bond pdb=" CA  ILE A   7 "
                              pdb=" O   ILE A   7 "
                           ideal  model  delta    sigma   weight residual
                           2.000  2.394 -0.394 1.00e+00 1.00e+00 1.56e-01""")
@@ -78,8 +78,8 @@ refinement {
           elif action == 'change':
             cntr+=1
             assert_lines_in_file(
-              file_name = "%s.pdb.geo"%prefix,
-              lines     = """bond pdb=" C   ILE A   7 "
+                file_name = "%s.pdb.geo"%prefix,
+                lines     = """bond pdb=" C   ILE A   7 "
                                   pdb=" O   ILE A   7 "
                           ideal  model  delta    sigma   weight residual
                           2.000  1.229  0.771 1.00e+00 1.00e+00 5.94e-01""")
@@ -117,33 +117,35 @@ refinement {
       cmd = cmd_base%(prefix, prefix_)
       print (cmd)
       r = easy_run.fully_buffered(cmd)
-      if(action == "add"):
-        if  (kind == "new"):
+      if action == "add":
+        if kind == "new":
           cntr+=1
           assert_lines_in_file(
-            file_name = "%s.pdb.geo"%prefix,
-            lines     = """
+              file_name = "%s.pdb.geo"%prefix,
+              lines     = """
 angle pdb=" N   ILE A   7 "
       pdb=" CA  ILE A   7 "
       pdb=" CG2 ILE A   7 "
     ideal   model   delta    sigma   weight residual
     10.00  143.31 -133.31 1.00e+00 1.00e+00 1.78e+04""")
-        elif(kind == "old"):
+        elif kind == "old":
           cntr+=1
-          assert r.stderr_lines[0] == "Sorry: Some restraints were not added because they are already present."
-      if(action == "delete"):
+          assert r.stderr_lines[0] == \
+              "Sorry: Some restraints were not added because they are already present."
+      if action == "delete":
         cntr+=1
         assert r.stderr_lines[0] == \
-          'Sorry: geometry_restraints.edits.angle.action = delete not implemented.'
-      if(action == "change"):
-        if  (kind == "new"):
+            'Sorry: geometry_restraints.edits.angle.action = delete not implemented.'
+      if action == "change":
+        if kind == "new":
           cntr+=1
-          print ( "\n".join(r.stderr_lines) )
-        elif(kind == "old"):
+          assert r.stderr_lines[0] == \
+              'Sorry: Angle below is not restrained, nothing to change.'
+        elif kind == "old":
           cntr+=1
           assert_lines_in_file(
-            file_name = "%s.pdb.geo"%prefix,
-            lines     = """
+              file_name = "%s.pdb.geo"%prefix,
+              lines     = """
 angle pdb=" N   ILE A   7 "
       pdb=" CA  ILE A   7 "
       pdb=" CB  ILE A   7 "

@@ -17,6 +17,7 @@ from cctbx import uctbx
 from cctbx import r_free_utils
 from cctbx.array_family import flex
 from scitbx import fftpack
+from scitbx.math import distributions
 import scitbx.math
 from libtbx.math_utils import iround
 from libtbx import complex_math
@@ -32,6 +33,7 @@ import random
 import math
 import time
 import sys
+from collections import namedtuple
 from scitbx import matrix
 
 fp_eps_double = scitbx.math.floating_point_epsilon_double_get()
@@ -339,6 +341,36 @@ def make_lookup_dict(indices): # XXX push to C++
   for i in range(len(indices)):
     result[indices[i]] = i
   return result
+
+def get_offset_list(layers=1, include_origin=False):
+  # Ready to run
+  if layers==-1:
+    return [ [0,0,0] ]
+
+  elif layers==0:
+    offset_list=[
+     [-1,0,0],[1,0,0],
+     [0,-1,0],[0,1,0],
+     [0,0,-1],[0,0,1],
+      ]
+    if include_origin: offset_list.append([0,0,0])
+    return offset_list
+
+  offset_list=[]
+  for ix in range(-layers,layers+1):
+    for iy in range(-layers,layers+1):
+      for iz in range(-layers,layers+1):
+        if include_origin or ix!=0 or iy!=0 or iz!=0:
+          offset_list.append((ix,iy,iz))
+  return offset_list
+
+def offset_indices(array,offset=None):
+  from scitbx.matrix import col
+  offset=col(offset)
+  indices=flex.miller_index(
+      list(flex.vec3_int((
+         array.indices().as_vec3_double()+offset).iround().as_int())))
+  return array.customized_copy(indices=indices,data=array.data())
 
 class set(crystal.symmetry):
   """
@@ -1707,16 +1739,28 @@ class set(crystal.symmetry):
     assert d_tolerance > 0
     assert d_tolerance < 0.5
     d_star_sq = self.d_star_sq().data()
+    d_star_sq = d_star_sq.select(flex.sort_permutation(d_star_sq))
+
+    # Select unique values of d_star_sq (within tolerance)
+    delta = d_star_sq[1:] - d_star_sq[:-1]
+    isel = (delta > d_tolerance).iselection()
+    isel += 1
+    isel.insert(0, 0)
+    d_star_sq = d_star_sq.select(isel)
+
     if (d_max > 0):
       d_star_sq = d_star_sq.select(d_star_sq >= 1./d_max**2)
     if (d_min > 0):
       d_star_sq = d_star_sq.select(d_star_sq < 1./d_min**2)
     assert d_star_sq.size() > 0
-    if n_bins is None:
-      n_bins = max(1, iround(d_star_sq.size() / float(reflections_per_bin)))
-    assert n_bins <= self.size(), "n_bins (%i) must be <= number of reflections (%i)" %(n_bins, self.size())
+    if reflections_per_bin:
+      n_bins_calc = max(1, iround(d_star_sq.size() / float(reflections_per_bin)))
+      n_bins = min(n_bins, n_bins_calc) if n_bins else n_bins_calc
+    assert n_bins <= d_star_sq.size(), (
+      "n_bins (%i) must be <= number of unique d-spacings (%i)" %(
+        n_bins, d_star_sq.size())
+      )
     reflections_per_bin = d_star_sq.size() / float(n_bins)
-    d_star_sq = d_star_sq.select(flex.sort_permutation(d_star_sq))
     limits = flex.double()
     limits.reserve(n_bins+1)
     if (d_max > 0):
@@ -2533,12 +2577,13 @@ class array(set):
       sigmas_new = s.sigmas().concatenate(ol.sigmas())
     return self.customized_copy(data = d_new, indices = i_new, sigmas = sigmas_new)
 
-  def combine(self, other, scale = True, scale_for_lones = 1):
+  def combine(self, other, scale = True, scale_for_lones = 1,
+        scale_for_matches=1):
     assert self.anomalous_flag() == other.anomalous_flag()
     assert self.sigmas() is None # not implemented
     f1_c, f2_c = self.common_sets(other = other)
     f1_l, f2_l = self.lone_sets(other = other)
-    scale_k1 = 1
+    scale_k1 = scale_for_matches
     if(scale):
       den = flex.sum(flex.abs(f2_c.data())*flex.abs(f2_c.data()))
       if(den != 0):
@@ -2994,6 +3039,33 @@ class array(set):
       sel = self.binner().selection(i_bin)
       results.append(self.select(sel).anomalous_signal())
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
+
+  def anomalous_probability_plot(self, expected_delta=None):
+    assert self.is_unique_set_under_symmetry()
+    assert self.anomalous_flag()
+
+    result = namedtuple("anomalous_probability_plot", [
+      "slope", "intercept", "n_pairs", "expected_delta"])
+
+    dI = self.anomalous_differences()
+    if not dI.size():
+      return result(None, None, None, expected_delta)
+
+    y = dI.data() / dI.sigmas()
+    perm = flex.sort_permutation(y)
+    y = y.select(perm)
+    distribution = distributions.normal_distribution()
+
+    x = distribution.quantiles(y.size())
+    if expected_delta is not None:
+      sel = flex.abs(x) < expected_delta
+      x = x.select(sel)
+      y = y.select(sel)
+
+    fit = flex.linear_regression(x, y)
+    if fit.is_well_defined():
+      return result(fit.slope(), fit.y_intercept(), x.size(), expected_delta)
+    return result(None, None, None, expected_delta)
 
   def phase_entropy(self, exponentiate=False, return_binned_data=False,
                           return_mean=False):
@@ -5332,6 +5404,56 @@ class array(set):
     discards the other results.  Requires mmtbx.
     """
     return self.analyze_intensity_statistics(d_min=d_min).has_twinning()
+
+  def average_neighbors(self, layers=1, include_origin=False,
+      offset_list=None, average_with_cc=None):
+    # Return array with values equal to average of values at neighboring indices
+    # layers=1 means 26 or 27 neighboring points.
+    # layers=0 means 6 or 7 closest points
+    if average_with_cc:
+      assert type(self.data()[0])==type((1+1j))  # must be complex
+
+    sum_array=None
+    sum_n_array=None
+    if not offset_list:
+      offset_list=get_offset_list(layers=layers,include_origin=include_origin)
+
+    for offset in offset_list:
+      offset_array=offset_indices(self,offset=offset)
+      if average_with_cc:
+        offset_array_matching, self_matching = offset_array.common_sets(self)
+        offset_array=self.customized_copy(
+           indices=offset_array_matching.indices(),
+           data=offset_array_matching.data())
+        self_array=self.customized_copy(
+           indices=self_matching.indices(),
+           data=self_matching.data())
+        weight=self_array.map_correlation(offset_array)
+      else:
+        weight=1
+      if sum_array is None:
+        sum_array=offset_array*weight
+      else:
+        sum_array=sum_array.combine(offset_array,scale=False,
+          scale_for_matches=weight)
+
+      count_array=offset_array.customized_copy(
+                      data=flex.double(offset_array.size(),abs(weight)))
+      if sum_n_array is None:
+        sum_n_array=count_array
+      else:
+        sum_n_array=sum_n_array.combine(count_array,scale=False)
+    s=(sum_n_array.data() < 1.e-6)
+    sum_n_array.data().set_selected(s,1)
+    sum_array=sum_array.customized_copy(
+      data=sum_array.data()*(1/sum_n_array.data()))
+
+    # and extract values corresponding to original data
+    sum_array_matching, self_matching = sum_array.common_sets(self)
+    new_array=self.customized_copy(indices=sum_array_matching.indices(),
+       data=sum_array_matching.data())
+    return new_array
+
 
 ########################################################################
 # END array class

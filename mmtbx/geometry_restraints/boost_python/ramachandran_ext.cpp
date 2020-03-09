@@ -22,10 +22,9 @@ namespace boost_python {
     static boost::python::tuple
       getinitargs(w_t const& self)
     {
-      return boost::python::make_tuple(self.i_seqs,
-        self.residue_name,
-        self.residue_type,
-        self.residue_index
+      return boost::python::make_tuple(
+        self.i_seqs,
+        self.residue_type
         );
     }
 
@@ -37,16 +36,14 @@ namespace boost_python {
         .def(init<
           w_t::i_seqs_type const&,
           std::string const&,
-          std::string const&,
-          optional<size_t> >((
+          double const&
+          >((
             arg("i_seqs"),
-            arg("residue_name"),
             arg("residue_type"),
-            arg("residue_index") = 1)))
-        .def_readonly("residue_name", &w_t::residue_name)
+            arg("weight")
+            )))
         .def_readonly("residue_type", &w_t::residue_type)
         .def("get_i_seqs", &w_t::get_i_seqs)
-        //  .def_readonly("phi_psi", &w_t::phi_psi_i_seqs)
         .def_pickle(ramachandran_proxies_wrappers())
         ;
       {
@@ -94,11 +91,11 @@ namespace boost_python {
       // COOT-like restraints
       class_<lookup_table>("lookup_table", no_init)
         .def(init<af::const_ref< double >,
-          int,
-          double>((
+          int
+          >((
             arg("values"),
-            arg("n_angles"),
-            arg("scale_allowed") = 1.0)))
+            arg("n_angles")
+            )))
         .def("get_score", &lookup_table::get_score, (
           arg("phi"),
           arg("psi"),
@@ -110,7 +107,6 @@ namespace boost_python {
           arg("gradient_array"),
           arg("sites_cart"),
           arg("proxy"),
-          arg("weight") = 1.0,
           arg("epsilon") = 0.1))
         .def_pickle(ramachandran_targets_wrappers())
         ;
@@ -144,7 +140,7 @@ namespace boost_python {
           af::const_ref<phi_psi_proxy> const&,
           af::ref<scitbx::vec3<double> > const&,
           af::ref<scitbx::vec3<double> > const&,
-          af::small<double, 5> const&,
+          af::tiny<double, 4> const&,
           af::ref<double> const&))
         ramachandran_residual_sum,
         (arg("sites_cart"), arg("proxies"), arg("gradient_array"),

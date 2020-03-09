@@ -514,6 +514,36 @@ unused: 10.0715 -         [0/0]
     n_bins=2)
   assert list(set1.binner().counts()) == [2,3,2,1]
 
+def exercise_counting_sorted_no_empty_bins():
+  sgi = sgtbx.space_group_info("I23")
+  cs = sgi.any_compatible_crystal_symmetry(volume=999)
+  ms = cs.build_miller_set(True, d_min=1)
+  try:
+    ms.setup_binner_counting_sorted(n_bins=50)
+  except AssertionError:
+    pass
+  else:
+     raise Exception_expected
+
+def exercise_counting_sorted_n_bins_reflections_per_bin():
+  sgi = sgtbx.space_group_info("I23")
+  cs = sgi.any_compatible_crystal_symmetry(volume=999)
+  ms = cs.build_miller_set(True, d_min=1)
+  binner = ms.setup_binner_counting_sorted(n_bins=50, reflections_per_bin=10)
+  assert binner.n_bins_used() == 5
+  assert binner.counts_complete() == [0, 17, 30, 37, 44, 51, 0]
+  assert approx_equal(
+    binner.limits(),
+    [
+      0.020013344452328715,
+      0.20013344452328713,
+      0.4002668890465743,
+      0.6204136780221902,
+      0.8005337780931485,
+      0.9806538783602378
+    ]
+  )
+
 def exercise_crystal_gridding():
   crystal_symmetry = crystal.symmetry(
     unit_cell=(95.2939, 95.2939, 98.4232, 94.3158, 115.226, 118.822),
@@ -693,6 +723,10 @@ def exercise_array():
     assert approx_equal(tuple(hm.data()), (2,3))
     assert approx_equal(tuple(hm.sigmas()), (0.2,0.4))
   assert approx_equal(ma.anomalous_signal(), 0.5063697)
+  app = ma.anomalous_probability_plot()
+  assert approx_equal(app.slope, 6.280403781181725)
+  assert approx_equal(app.intercept, -0.23606797749978936)
+  assert app.n_pairs ==  2
   assert ma.measurability() == 1.0
   assert approx_equal(ma.anomalous_completeness(), 0.018018)
   assert approx_equal(ma.anomalous_completeness(
@@ -1602,6 +1636,49 @@ def exercise_squaring_and_patterson_map(space_group_info,
       assert grid_tags.n_grid_misses() == 0
       assert grid_tags.verify(patterson_map.real_map())
 
+def exercise_neighbor_average():
+  # Setup
+  symmetry = crystal.symmetry(
+    unit_cell=(10, 10, 10, 90, 90, 90),
+    space_group_symbol="P1")
+  d_min = 2
+  structure = xray.structure(crystal_symmetry=symmetry)
+  # now let's add some atoms
+  atmrad = flex.double()
+  xyzf = flex.vec3_double()
+  from cctbx.eltbx import van_der_waals_radii
+  a,b,c,_,_,_ = symmetry.unit_cell().parameters()
+  for k in range(10):
+    scatterer = xray.scatterer(
+      site=(0, 0.1*math.sin(math.pi*4*k/b), k/b),
+      scattering_type="S",
+      u=0.02)
+    structure.add_scatterer(scatterer)
+    atmrad.append(van_der_waals_radii.vdw.table[scatterer.element_symbol()])
+    xyzf.append(scatterer.site)
+  f_calc = structure.structure_factors(
+    d_min=d_min, anomalous_flag=False).f_calc()
+
+  # Ready to get local average
+
+  local_average=f_calc.average_neighbors(layers=0,include_origin=True)
+  local_average_2=f_calc.average_neighbors(layers=1,include_origin=False,
+      average_with_cc=True)
+
+  a=None
+  ind_list=[ (2,2,2),(1,2,2),(3,2,2),(2,1,2),(2,3,2),(2,2,1),(2,2,3)]
+  for ind in ind_list:
+    s=(f_calc.indices()==ind)
+    ind=f_calc.indices().select(s)
+    values=f_calc.data().select(s)
+    for x,y in zip(ind,values):
+      if a is None: a=y
+      else: a+=y
+  s=f_calc.indices()==ind_list[0]
+  avg=local_average.data().select(s)[0]
+  avg2=local_average_2.data().select(s)[0]
+  assert approx_equal(a/len(ind_list),avg)
+
 def exercise_local_overlap_map():
   symmetry = crystal.symmetry(
     unit_cell=(10, 10, 10, 90, 90, 90),
@@ -2482,6 +2559,9 @@ def exercise_structure_factors_from_map_and_asu_map(d_min=2.):
     assert approx_equal(rfactor(x=fc,y=fc_from_asu_map), 0.0)
 
 def run(args):
+  exercise_counting_sorted_n_bins_reflections_per_bin()
+  exercise_counting_sorted_no_empty_bins()
+  exercise_neighbor_average()
   exercise_local_overlap_map()
   exercise_structure_factors_from_map_and_asu_map()
   exercise_karle_normalization()

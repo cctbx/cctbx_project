@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
+import six
 from six.moves import range
+from six.moves import cStringIO as StringIO
 import math
 from xfel.merging.application.worker import worker
 from libtbx import adopt_init_args, group_args
@@ -10,13 +12,11 @@ from cctbx.crystal import symmetry
 from scitbx import matrix
 from scitbx.math.tests.tst_weighted_correlation import simple_weighted_correlation
 from cctbx.crystal_orientation import crystal_orientation, basis_type
-from six.moves import cStringIO as StringIO
-import six
 
-class postrefinement(worker):
+class postrefinement_rs(worker):
 
   def __init__(self, params, mpi_helper=None, mpi_logger=None):
-    super(postrefinement, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
+    super(postrefinement_rs, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
 
   def __repr__(self):
     return 'Postrefinement'
@@ -35,8 +35,8 @@ class postrefinement(worker):
 
     # Ensure that match_multi_indices() will return identical results
     # when a frame's observations are matched against the
-    # pre-generated Miller set, self.miller_set, and the reference
-    # data set, self.i_model.  The implication is that the same match
+    # pre-generated Miller set, miller_set, and the reference
+    # data set, i_model.  The implication is that the same match
     # can be used to map Miller indices to array indices for intensity
     # accumulation, and for determination of the correlation
     # coefficient in the presence of a scaling reference.
@@ -52,16 +52,14 @@ class postrefinement(worker):
 
       exp_reflections = reflections.select(reflections['exp_id'] == experiment.identifier)
 
-      # Build a miller array for the experiment reflections with original miller indexes
+      # Build a miller array with _original_ miller indices of the experiment reflections
       exp_miller_indices_original = miller.set(target_symm, exp_reflections['miller_index'], not self.params.merging.merge_anomalous)
-      observations_original_index = miller.array(exp_miller_indices_original,
-                                                 exp_reflections['intensity.sum.value'],
-                                                 flex.double(flex.sqrt(exp_reflections['intensity.sum.variance'])))
+      observations_original_index = miller.array(exp_miller_indices_original, exp_reflections['intensity.sum.value'], flex.double(flex.sqrt(exp_reflections['intensity.sum.variance'])))
 
       assert exp_reflections.size() == exp_miller_indices_original.size()
       assert observations_original_index.size() == exp_miller_indices_original.size()
 
-      # Build a miller array for the experiment reflections with asu miller indexes
+      # Build a miller array with _asymmetric_ miller indices of the experiment reflections
       exp_miller_indices_asu = miller.set(target_symm, exp_reflections['miller_index_asymmetric'], True)
       observations = miller.array(exp_miller_indices_asu, exp_reflections['intensity.sum.value'], flex.double(flex.sqrt(exp_reflections['intensity.sum.variance'])))
 
@@ -69,9 +67,6 @@ class postrefinement(worker):
 
       pair1 = flex.int([pair[1] for pair in matches.pairs()]) # refers to the observations
       pair0 = flex.int([pair[0] for pair in matches.pairs()]) # refers to the model
-
-      assert exp_reflections.size() == exp_miller_indices_original.size()
-      assert observations_original_index.size() == exp_miller_indices_original.size()
 
       # narrow things down to the set that matches, only
       observations_pair1_selected = observations.customized_copy(indices = flex.miller_index([observations.indices()[p] for p in pair1]),
@@ -81,7 +76,6 @@ class postrefinement(worker):
       observations_original_index_pair1_selected = observations_original_index.customized_copy(indices = flex.miller_index([observations_original_index.indices()[p] for p in pair1]),
                                                                                                data = flex.double([observations_original_index.data()[p] for p in pair1]),
                                                                                                sigmas = flex.double([observations_original_index.sigmas()[p] for p in pair1]))
-
       I_observed = observations_pair1_selected.data()
       MILLER = observations_original_index_pair1_selected.indices()
 
@@ -121,9 +115,10 @@ class postrefinement(worker):
          +       reflections only used for calc/obs correlation slope for initial estimate of G parameter
          + and - reflections both passed to the refinery and used in the target function (makes sense if
                              you look at it from a certain point of view)
+
+         NOTE: by the new design, "include negatives" is always True
       """
 
-      # RB: By design, for MPI-Merge "include negatives" is implicitly True
       SWC = simple_weighted_correlation(I_weight, I_reference, I_observed)
       if self.params.output.log_level == 0:
         self.logger.log("Old correlation is: %f"%SWC.corr)
@@ -178,7 +173,6 @@ class postrefinement(worker):
 
         assert result_observations_original_index.size() == result_observations.size()
         assert result_matches.pairs().size() == result_observations_original_index.size()
-
       except (AssertionError, ValueError, RuntimeError) as e:
         error_detected = True
         reason = repr(e)
@@ -197,12 +191,18 @@ class postrefinement(worker):
         new_exp_reflections['intensity.sum.value']      = flex.double(result_observations.data())
         new_exp_reflections['intensity.sum.variance']   = flex.double(flex.pow(result_observations.sigmas(),2))
         new_exp_reflections['exp_id']                   = flex.std_string(len(new_exp_reflections), experiment.identifier)
+
+        # The original reflection table, i.e. the input to this run() method, has more columns than those used
+        # for the postrefinement ("data" and "sigma" in the miller arrays). The problems is: some of the input reflections may have been rejected by now.
+        # So to bring those extra columns over to the new reflection table, we have to create a subset of the original exp_reflections table,
+        # which would match (by original miller indices) the miller array results of the postrefinement.
+        match_original_indices = miller.match_multi_indices(miller_indices_unique = exp_miller_indices_original.indices(), miller_indices = result_observations_original_index.indices())
+        exp_reflections_match_results = exp_reflections.select(match_original_indices.pairs().column(0))
+        assert (exp_reflections_match_results['intensity.sum.value'] == result_observations_original_index.data()).count(False) == 0
+        new_exp_reflections['intensity.sum.value.unmodified'] = exp_reflections_match_results['intensity.sum.value.unmodified']
+        new_exp_reflections['intensity.sum.variance.unmodified'] = exp_reflections_match_results['intensity.sum.variance.unmodified']
+
         new_reflections.extend(new_exp_reflections)
-      '''
-      # debugging
-      elif reason.startswith("ValueError"):
-        self.logger.log("Rejected b/c of value error exp id: %s; unit cell: %s"%(exp_id, str(experiment.crystal.get_unit_cell())) )
-      '''
 
     # report rejected experiments, reflections
     experiments_rejected_by_postrefinement = len(experiments) - len(new_experiments)
@@ -487,4 +487,4 @@ class lbfgs_minimizer_base:
 
 if __name__ == '__main__':
   from xfel.merging.application.worker import exercise_worker
-  exercise_worker(postrefinement)
+  exercise_worker(postrefinement_rs)

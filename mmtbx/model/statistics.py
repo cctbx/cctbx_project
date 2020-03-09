@@ -7,7 +7,7 @@ import iotbx.cif.model
 from libtbx.test_utils import approx_equal
 from libtbx import group_args
 from libtbx.utils import null_out
-
+from mmtbx.validation import rama_z
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.cbetadev import cbetadev
@@ -20,26 +20,25 @@ import six
 
 class geometry(object):
   def __init__(self,
-               pdb_hierarchy,
+               model,
                fast_clash=False,
                condensed_probe=False,
-               use_hydrogens=True,
-               use_nuclear=False,
-               geometry_restraints_manager=None):
-    self.pdb_hierarchy = pdb_hierarchy
+               use_hydrogens=True):
+    self.model = model
+    self.pdb_hierarchy = model.get_hierarchy()
     self.fast_clash = fast_clash
     self.condensed_probe = condensed_probe
     self.restraints_source = None
     self.from_restraints = None
     self.use_hydrogens = use_hydrogens
-    self.use_nuclear = use_nuclear
     self.cached_result = None
     self.cached_clash = None
     self.cached_rama = None
     self.cached_rota = None
-    self.update(self.pdb_hierarchy, geometry_restraints_manager)
+    self._init(self.pdb_hierarchy, model.restraints_manager.geometry)
 
-  def update(self, pdb_hierarchy=None, geometry_restraints_manager=None):
+  def _init(self, pdb_hierarchy=None, geometry_restraints_manager=None):
+    # XXX Really, this should be part of constructor (to avoid confusion)!
     if(pdb_hierarchy is not None):
       self.pdb_hierarchy = pdb_hierarchy
     if(geometry_restraints_manager is not None):
@@ -76,7 +75,7 @@ class geometry(object):
     if(self.from_restraints is not None):
       mi,ma,me = self.from_restraints.angle_deviations()
       n = self.from_restraints.get_filtered_n_angle_proxies()
-      outliers = self.from_restraints.angle_proxies.get_outliers(
+      outliers = self.from_restraints.get_angle_outliers(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
         sigma_threshold=4)
     return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
@@ -87,7 +86,7 @@ class geometry(object):
     if(self.from_restraints is not None):
       mi,ma,me = self.from_restraints.bond_deviations()
       n = self.from_restraints.get_filtered_n_bond_proxies()
-      outliers = self.from_restraints.bond_proxies.get_outliers(
+      outliers = self.from_restraints.get_bond_outliers(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
         sigma_threshold=4)
     return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
@@ -105,7 +104,7 @@ class geometry(object):
     if(self.from_restraints is not None):
       mi,ma,me = self.from_restraints.dihedral_deviations()
       n = self.from_restraints.get_filtered_n_dihedral_proxies()
-      outliers = self.from_restraints.dihedral_proxies.get_outliers(
+      outliers = self.from_restraints.get_dihedral_outliers(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
         sigma_threshold=4)
     return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
@@ -163,12 +162,12 @@ class geometry(object):
 
   def clash(self):
     if self.cached_clash is None:
-      self.cached_clash = clashscore(pdb_hierarchy = self.pdb_hierarchy,
-                                     fast = self.fast_clash,
-                                     condensed_probe=self.condensed_probe,
-                                     keep_hydrogens = self.use_hydrogens,
-                                     nuclear = self.use_nuclear,
-      )
+      self.cached_clash = clashscore(
+        pdb_hierarchy   = self.pdb_hierarchy,
+        fast            = self.fast_clash,
+        condensed_probe = self.condensed_probe,
+        keep_hydrogens  = self.use_hydrogens,
+        nuclear         = self.model.is_neutron())
     return group_args(
       score   = self.cached_clash.get_clashscore(),
       clashes = self.cached_clash #XXX Bulky object -- REMOVE! - Not kidding,
@@ -187,6 +186,9 @@ class geometry(object):
       disfavored  = result.percent_disfavored(),
       ca_outliers = result.percent_ca_outliers(),
       gui_table   = gui_table)
+
+  def rama_z_score(self):
+    return rama_z.rama_z(model = self.model, log = null_out()).get_result()
 
   def omega(self):
     result = omegalyze.omegalyze(pdb_hierarchy=self.pdb_hierarchy, quiet=True)
@@ -237,8 +239,9 @@ class geometry(object):
          c_beta           = self.c_beta(),
          clash            = self.clash(),
          molprobity_score = self.mp_score(),
-         cablam           = self.cablam(), # hopefully stable
-         omega            = self.omega())
+         cablam           = self.cablam(),
+         omega            = self.omega(),
+         rama_z           = self.rama_z_score())
     if(slim):
       delattr(self.cached_result.ramachandran, "ramalyze")
       delattr(self.cached_result.clash,        "clashes")
@@ -316,6 +319,9 @@ class geometry(object):
         prefix, format_value("%5.2f", res.omega.cis_general).strip(),
         prefix, format_value("%5.2f", res.omega.twisted_proline).strip(),
         prefix, format_value("%5.2f", res.omega.twisted_general).strip())
+    result += """
+%s"""%prefix
+    result += res.rama_z.as_string(prefix=prefix)
     if( uppercase ):
       result = result.upper()
     print(result, file=log)
@@ -533,6 +539,19 @@ class info(object):
         free_reflections_per_bin = ref_par.alpha_beta.free_reflections_per_bin,
         max_number_of_bins       = ref_par.main.max_number_of_resolution_bins)
 
+    self._pdbx_refine_id = ''
+    if self.data_x is not None:
+      self._pdbx_refine_id = 'X-RAY DIFFRACTION'
+    if self.data_n is not None:
+      # !!! Warning: "X-ray+Neutron" is not compliant with mmCIF dictionary:
+      # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_exptl.method.html
+      self._pdbx_refine_id = 'NEUTRON DIFFRACTION' if self.data_x is None else 'X-ray+Neutron'
+    if self._pdbx_refine_id == '':
+      # most likely electron microscopy, but checking scattering table anyway
+      if self.model.get_xray_structure().scattering_type_registry().last_table() == "electron":
+        self._pdbx_refine_id = 'ELECTRON MICROSCOPY'
+
+
   def show_remark_3(self, out = None):
     prefix = "REMARK   3  "
     if(out is None): out = sys.stdout
@@ -560,34 +579,21 @@ class info(object):
         print(prefix, file=out)
         print(info_pdb_str, end='', file=out)
 
+  def get_pdbx_refine_id(self):
+    return self._pdbx_refine_id
+
   def as_cif_block(self, cif_block=None):
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
-    pdbx_refine_id = ''
     if self.data_x is not None:
-      pdbx_refine_id = 'X-RAY DIFFRACTION'
-    if self.data_n is not None:
-      # !!! Warning: "X-ray+Neutron" is not compliant with mmCIF dictionary:
-      # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_exptl.method.html
-      pdbx_refine_id = 'NEUTRON DIFFRACTION' if self.data_x is None else 'X-ray+Neutron'
-    if self.data_x is not None:
-      cif_block = self.data_x.as_cif_block(cif_block=cif_block, scattering_type=pdbx_refine_id)
+      cif_block = self.data_x.as_cif_block(cif_block=cif_block, scattering_type=self._pdbx_refine_id)
     # XXX Neutron data?
-
     if self.geometry is not None:
-      cif_block = self.geometry.as_cif_block(cif_block=cif_block, pdbx_refine_id=pdbx_refine_id)
+      cif_block = self.geometry.as_cif_block(cif_block=cif_block, pdbx_refine_id=self._pdbx_refine_id)
     if self.adp is not None:
       cif_block = self.adp.as_cif_block(cif_block=cif_block)
       cif_block["_reflns.B_iso_Wilson_estimate"] = round_2_for_cif(self.wilson_b)
     cif_block = self.model.tls_groups_as_cif_block(cif_block=cif_block)
 
     # What about anomalous_scatterer_groups here?
-
-    # adding NCS information.
-    # It is not clear why we dump cartesian NCS first, and if it is absent,
-    # Torsion NCS next. What about NCS constraints?
-    if self.model.cartesian_NCS_present():
-      self.model.cartesian_NCS_as_cif_block(cif_block=cif_block)
-    elif self.model.torsion_NCS_present():
-      self.model.torsion_NCS_as_cif_block(cif_block=cif_block)
     return cif_block

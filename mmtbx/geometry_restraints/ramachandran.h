@@ -26,25 +26,22 @@ namespace mmtbx { namespace geometry_restraints {
     typedef af::tiny<unsigned, 5> i_seqs_type;
 
     i_seqs_type i_seqs;
-    std::string residue_name;
     std::string residue_type;
-    size_t residue_index;
+    double weight;
 
     // default initializer
     phi_psi_proxy () {}
 
     phi_psi_proxy(
       i_seqs_type i_seqs_,
-      std::string const& residue_name_,
       std::string const& residue_type_,
-      size_t residue_index_=1)
+      double weight_
+      )
     :
       i_seqs(i_seqs_),
-      residue_name(residue_name_),
       residue_type(residue_type_),
-      residue_index(residue_index_)
+      weight(weight_)
     {
-      MMTBX_ASSERT(residue_index > 0);
     }
 
     phi_psi_proxy(
@@ -52,11 +49,9 @@ namespace mmtbx { namespace geometry_restraints {
       phi_psi_proxy const& proxy)
     :
       i_seqs(i_seqs_),
-      residue_name(proxy.residue_name),
       residue_type(proxy.residue_type),
-      residue_index(proxy.residue_index)
+      weight(proxy.weight)
     {
-      MMTBX_ASSERT(residue_index > 0);
     }
 
     af::shared<unsigned> get_i_seqs() {
@@ -85,13 +80,9 @@ namespace mmtbx { namespace geometry_restraints {
       af::versa<double, af::flex_grid<> > plot;
       double values_max;
 
-      lookup_table (
-        af::const_ref< double > values,
-        int n_angles,
-        double scale_allowed=1.0)
+      lookup_table(af::const_ref< double > values, int n_angles)
       {
         MMTBX_ASSERT(values.size() == (n_angles * n_angles));
-        MMTBX_ASSERT(scale_allowed > 0.0);
         af::flex_grid<>::index_type fg_origin;
         af::flex_grid<>::index_type fg_last;
         for (unsigned i = 0; i < 2; i++) {
@@ -103,7 +94,7 @@ namespace mmtbx { namespace geometry_restraints {
         values_max = 0.0;
         for (unsigned i = 0; i < values.size(); i++) {
           if (values[i] > 0.0) {
-            plot[i] = values[i] * scale_allowed;
+            plot[i] = values[i];
           } else {
             plot[i] = values[i];
           }
@@ -121,7 +112,6 @@ namespace mmtbx { namespace geometry_restraints {
         using scitbx::math::interpolate_at_point;
         phi = convert_angle(phi);
         psi = convert_angle(psi);
-        //std::cout << phi << " " << psi << "\n";
         MMTBX_ASSERT((phi <= 180.0) && (phi >= -180.0));
         MMTBX_ASSERT((psi <= 180.0) && (psi >= -180.0));
         int phi_1 = (int) floor(phi);
@@ -198,7 +188,6 @@ namespace mmtbx { namespace geometry_restraints {
         af::ref<scitbx::vec3<double> > const& gradient_array,
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         phi_psi_proxy const& proxy,
-        double weight=1.0,
         double epsilon=0.1)
       {
         MMTBX_ASSERT(gradient_array.size() == sites_cart.size());
@@ -226,13 +215,13 @@ namespace mmtbx { namespace geometry_restraints {
         for (unsigned k = 0; k < 5; k++) {
           std::size_t i_seq = i_seqs[k];
           if (k < 4) {
-            gradient_array[i_seq] += d_r_d_phi * d_phi_d_xyz[k] * weight;
+            gradient_array[i_seq] += d_r_d_phi * d_phi_d_xyz[k] * proxy.weight;
           }
           if (k > 0) {
-            gradient_array[i_seq] += d_r_d_psi * d_psi_d_xyz[k-1] * weight;
+            gradient_array[i_seq] += d_r_d_psi * d_psi_d_xyz[k-1] * proxy.weight;
           }
         }
-        return residual * weight;
+        return residual * proxy.weight;
         // this is to get magnitudes of gradients instead of function value
         // return (d_r_d_phi*d_r_d_phi+d_r_d_psi*d_r_d_psi) * weight;
       }
@@ -350,7 +339,7 @@ namespace mmtbx { namespace geometry_restraints {
     af::const_ref<phi_psi_proxy> const& proxies,
     af::ref<scitbx::vec3<double> > const& gradient_array,
     af::ref<scitbx::vec3<double> > const& phi_psi_targets,
-    af::small<double, 5> const& weights,
+    af::tiny<double, 4> const& weights,
     af::ref<double > const& residuals_array)
   {
     MMTBX_ASSERT(gradient_array.size() == sites_cart.size());
@@ -359,11 +348,11 @@ namespace mmtbx { namespace geometry_restraints {
     double res_sum = 0;
     for (std::size_t i=0; i<proxies.size(); i++) {
       phi_psi_proxy const& proxy = proxies[i];
+      // r: phi target, psi target, distance to allowed.
       scitbx::vec3<double> r = phi_psi_targets[i];
       double weight = weights[0];
-      if(weight < 0) {
-        weight = 1.0/weights[1]/weights[1] *
-            (std::max(weights[3], std::min(r[2], weights[2]))) * weights[4];
+      if(std::abs(weight) < 1e-7) {
+        weight = weights[1] * std::max(weights[2], std::min(r[2], weights[3]));
       }
       af::tiny<scitbx::vec3<double>, 4> phi_sites;
       af::tiny<scitbx::vec3<double>, 4> psi_sites;

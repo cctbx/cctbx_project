@@ -24,7 +24,7 @@ struct format_e
   format_e(const char* fmt, double val)
   {
     if(std::fabs(val)<1e-99) val=0.;
-#if !defined(BOOST_MSVC)
+#if !defined(BOOST_MSVC) || BOOST_MSVC > 1500 // VC++ 9.0
     s = buf;
     std::sprintf(buf, fmt, val);
     if (*(s + Width)) throw_error();

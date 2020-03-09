@@ -385,6 +385,9 @@ def exercise_round2():
   assert approx_equal(-0.2, utils.round2(-0.15, 1))
   assert approx_equal(-0.3, utils.round2(-0.25, 1))
 
+def exercise_guess_total_memory():
+  assert(utils.guess_total_memory() > 0)
+
 def run(args):
   assert len(args) == 0
   if '--exercise-retrieve-unless-exists' in args:

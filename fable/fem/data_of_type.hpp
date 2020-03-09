@@ -1,15 +1,10 @@
 #ifndef FEM_DATA_OF_TYPE_HPP
 #define FEM_DATA_OF_TYPE_HPP
 
+#include <noexcept_false.hpp>
 #include <fem/arr.hpp>
 #include <fem/str_arr_ref.hpp>
 #include <fem/utils/misc.hpp>
-
-#if __cplusplus >= 201103L                // If using C++11 or a later version
-#define NOEXCEPT_FALSE noexcept(false)
-#else
-#define NOEXCEPT_FALSE
-#endif
 
 namespace fem {
 
@@ -78,7 +73,7 @@ namespace fem {
       value_index(0)
     {}
 
-    ~data_of_type_str() { TBXX_ASSERT(value_index == values_size); }
+    ~data_of_type_str() NOEXCEPT_FALSE { TBXX_ASSERT(value_index == values_size); }
 
     data_of_type_str&
     operator,(

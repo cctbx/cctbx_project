@@ -88,14 +88,14 @@ def check_output(*popenargs, **kwargs):
     if cmd is None:
       cmd = popenargs[0]
     raise subprocess.CalledProcessError(retcode, cmd)
+  if six.PY3:
+    return output.decode("latin-1")
   return output
 
 class FixLinuxRpath(object):
   def find_deps(self, filename):
     ret = []
     p = check_output(['ldd', filename])
-    if six.PY3:
-      p = p.decode("latin-1")
     for line in p.split("\n"):
       fields = line.partition("=>")
       try:

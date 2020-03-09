@@ -135,7 +135,13 @@ restraints_library_str = """
       .help = Use Conformation Dependent Library (CDL) \
         for geometry restraints
       .style = bold
-    cis_c_n_ca = False
+    mcl = True
+      .type = bool
+      .short_caption = Use Metal Coordination Library (MCL)
+      .help = Use Metal Coordination Library (MCL) \
+        for tetrahedral Zn++ and iron-sulfur clusters SF4, FES, F3S, ...
+      .style = bold
+    cis_pro_eh99 = False
       .type = bool
       .style = hidden
     omega_cdl = False
@@ -143,6 +149,10 @@ restraints_library_str = """
       .short_caption = Use Omega Conformation-Dependent Library
       .help = Use Omega Conformation Dependent Library (omega-CDL) \
         for geometry restraints
+      .style = hidden
+    cdl_svl = False
+      .type = bool
+      .short_caption = Use improved SVL values for CDL classes
       .style = hidden
     rdl = False
       .type = bool
@@ -161,7 +171,7 @@ master_params_str = """\
     .short_caption = Sort atoms in input pdb so they would be in the same order
   superpose_ideal_ligand = *None all %(ideal_ligands_str)s
     .type = choice(multi=True)
-    .short_caption = Substitute correctly oriented F3S metal cluster
+    .short_caption = Substitute correctly oriented SF4 metal cluster
   flip_symmetric_amino_acids = False
     .type = bool
     .short_caption = Flip symmetric amino acids to conform to IUPAC convention
@@ -365,7 +375,8 @@ master_params_str = """\
   {
     ramachandran_restraints = False
       .type = bool
-      .help = Restrains peptide backbone to fall within allowed regions of \
+      .help = !!! OBSOLETED. Kept for backward compatibility only !!! \
+        Restrains peptide backbone to fall within allowed regions of \
         Ramachandran plot.  Although it does not eliminate outliers, it can \
         significantly improve the percent favored and percent outliers at \
         low resolution.  Probably not useful (and maybe even harmful) at \
@@ -390,8 +401,9 @@ master_params_str = """\
     omega_esd_override_value = None
       .type = float
       .short_caption = Omega-ESD override value
-    include scope mmtbx.geometry_restraints.ramachandran.master_phil
+    include scope mmtbx.geometry_restraints.ramachandran.old_master_phil
   }
+  include scope mmtbx.geometry_restraints.ramachandran.master_phil
   max_reasonable_bond_distance = 50.0
     .type=float
   nonbonded_distance_cutoff = None
@@ -5256,7 +5268,7 @@ class build_all_chain_proxies(linking_mixins):
     self.time_building_geometry_restraints_manager = timer.elapsed()
     restraints_source = "GeoStd + Monomer Library"
     use_cdl = self.params.restraints_library.cdl
-    use_cis_127 = self.params.restraints_library.cis_c_n_ca
+    cis_pro_eh99 = self.params.restraints_library.cis_pro_eh99
     if (use_cdl is Auto):
       use_cdl = self.pdb_inp.used_cdl_restraints()
       if (use_cdl):
@@ -5272,7 +5284,8 @@ class build_all_chain_proxies(linking_mixins):
         self.pdb_hierarchy,
         result,
         cdl_proxies=cdl_proxies,
-        use_cis_127=use_cis_127,
+        cis_pro_eh99=cis_pro_eh99,
+        cdl_svl=self.params.restraints_library.cdl_svl,
         log=log,
         verbose=True,
         )
@@ -5562,25 +5575,33 @@ class process(object):
 
       # improved metal coordination
       automatic_linking = self.all_chain_proxies.params.automatic_linking
-      if automatic_linking.link_metals:
+      if self.all_chain_proxies.params.restraints_library.mcl:
         from mmtbx.conformation_dependent_library import mcl
         mcl.update(self._geometry_restraints_manager,
                    self.all_chain_proxies.pdb_hierarchy,
-                   self.all_chain_proxies.pdb_link_records,
+                   log=self.log,
                   )
 
       # Here we are going to add another needed restraints.
       # Ramachandran restraints
       ramachandran_manager = None
       pep_link_params = self.all_chain_proxies.params.peptide_link
-      if pep_link_params.ramachandran_restraints :
+      rama_params = None
+      if hasattr(self.all_chain_proxies.params, 'ramachandran_plot_restraints'):
+        rama_params = self.all_chain_proxies.params.ramachandran_plot_restraints
+      if (pep_link_params.ramachandran_restraints or
+          (rama_params and rama_params.enabled)):
         if (not pep_link_params.discard_psi_phi):
           # Not sure anymore why this is necessary
           raise Sorry("You may not use Ramachandran restraints when "+
             "discard_psi_phi=False.")
+        params_to_pass = rama_params
+        if pep_link_params.ramachandran_restraints:
+          params_to_pass = pep_link_params
+        # print ('params_to_pass', type(params_to_pass))
         ramachandran_manager = ramachandran.ramachandran_manager(
             pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy,
-            params=pep_link_params,
+            params=params_to_pass,
             log=self.log)
         self._geometry_restraints_manager.set_ramachandran_restraints(
             ramachandran_manager)

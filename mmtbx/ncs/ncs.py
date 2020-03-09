@@ -3916,7 +3916,7 @@ class ncs:
   def max_operators(self):
     n_max=0
     for ncs_group in self._ncs_groups:
-      if ncs_group.n_ncs_oper()>n_max:
+      if ncs_group and ncs_group.n_ncs_oper()>n_max:
         n_max=ncs_group.n_ncs_oper()
     return n_max
 

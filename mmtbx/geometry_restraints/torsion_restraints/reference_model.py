@@ -326,7 +326,7 @@ class reference_model(object):
                 current_ref_index = ri
           reference_rg = ncs_residue_groups[current_ref_index][j]
           # Filling out self.residue_match_hash
-          if reference_rg.parent().id > 2 and reference_rg.parent().id[-3:] == 'ref':
+          if len(reference_rg.parent().id) > 2 and reference_rg.parent().id[-3:] == 'ref':
             reference_rg.parent().id = reference_rg.parent().id[:-3]
           key_model = "%s %s" % (model_rg.unique_resnames()[0],
               model_rg.id_str().strip())

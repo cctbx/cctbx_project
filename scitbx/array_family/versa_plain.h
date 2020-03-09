@@ -226,6 +226,32 @@ namespace scitbx { namespace af {
                                    index_value_type const& i2)       {
         return begin()[m_accessor(i0, i1, i2)];
       }
+      value_type const& operator()(index_value_type const& i0,
+                                   index_value_type const& i1,
+                                   index_value_type const& i2,
+                                   index_value_type const& i3) const {
+        return begin()[m_accessor(i0, i1, i2, i3)];
+      }
+            value_type& operator()(index_value_type const& i0,
+                                   index_value_type const& i1,
+                                   index_value_type const& i2,
+                                   index_value_type const& i3)       {
+        return begin()[m_accessor(i0, i1, i2, i3)];
+      }
+      value_type const& operator()(index_value_type const& i0,
+                                   index_value_type const& i1,
+                                   index_value_type const& i2,
+                                   index_value_type const& i3,
+                                   index_value_type const& i4) const {
+        return begin()[m_accessor(i0, i1, i2, i3, i4)];
+      }
+            value_type& operator()(index_value_type const& i0,
+                                   index_value_type const& i1,
+                                   index_value_type const& i2,
+                                   index_value_type const& i3,
+                                   index_value_type const& i4)       {
+        return begin()[m_accessor(i0, i1, i2, i3, i4)];
+      }
 
     protected:
       AccessorType m_accessor;

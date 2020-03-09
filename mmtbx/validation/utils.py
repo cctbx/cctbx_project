@@ -224,7 +224,7 @@ def get_rna_backbone_dihedrals(processed_pdb_file,
       bb_dihedrals[key][name] = restraint.angle_model
       if invert_sign:
         bb_dihedrals[key][name] = bb_dihedrals[key][name] * -1.0
-  for key in bb_dihedrals.keys():
+  for key in list(bb_dihedrals.keys()):
     altloc = key[0:1]
     resname = key[1:4]
     chainID = key[4:6]

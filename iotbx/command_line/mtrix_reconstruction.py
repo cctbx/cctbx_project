@@ -20,7 +20,7 @@ def run(args):
   pdb_inp = iotbx.pdb.input(file_name=file_name)
   model = mmtbx.model.manager(
       model_input=pdb_inp)
-  if model.input_format_was_cif():
+  if model.input_model_format_cif():
     out_text = model.model_as_mmcif()
     ext = ".cif"
   else:

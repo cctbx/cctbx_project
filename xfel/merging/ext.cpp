@@ -32,16 +32,22 @@ namespace sx_merging {
     SCITBX_ASSERT(reflections.contains("miller_index_asymmetric"));
     SCITBX_ASSERT(reflections.contains("intensity.sum.value"));
     SCITBX_ASSERT(reflections.contains("intensity.sum.variance"));
+    SCITBX_ASSERT(reflections.contains("intensity.sum.value.unmodified"));
+    SCITBX_ASSERT(reflections.contains("intensity.sum.variance.unmodified"));
     SCITBX_ASSERT(reflections.contains("exp_id"));
 
     scitbx::af::ref<miller_index_t> miller_index    = reflections["miller_index_asymmetric"];
     scitbx::af::ref<double> intensity               = reflections["intensity.sum.value"];
     scitbx::af::ref<double> variance                = reflections["intensity.sum.variance"];
+    scitbx::af::ref<double> intensity_unmodified    = reflections["intensity.sum.value.unmodified"];
+    scitbx::af::ref<double> variance_unmodified     = reflections["intensity.sum.variance.unmodified"];
     scitbx::af::ref<std::string> experiment_id      = reflections["exp_id"];
 
     miller_index_t* mi_ptr          = miller_index.begin();
     double* intensity_ptr           = intensity.begin();
     double* variance_ptr            = variance.begin();
+    double* intensity_unmodified_ptr           = intensity_unmodified.begin();
+    double* variance_unmodified_ptr            = variance_unmodified.begin();
     std::string* experiment_id_ptr  = experiment_id.begin();
 
     int n_chunks = boost::python::len(hkl_chunks_cpp);
@@ -55,12 +61,16 @@ namespace sx_merging {
     std::vector<scitbx::af::shared<miller_index_t> >  mi_cols;
     std::vector<scitbx::af::shared<double> >          intensity_cols;
     std::vector<scitbx::af::shared<double> >          variance_cols;
+    std::vector<scitbx::af::shared<double> >          intensity_unmodified_cols;
+    std::vector<scitbx::af::shared<double> >          variance_unmodified_cols;
     std::vector<scitbx::af::shared<std::string> >     experiment_id_cols;
 
     for(size_t i=0UL; i < n_chunks; ++i){
       mi_cols.push_back(tables[i]["miller_index_asymmetric"]);
       intensity_cols.push_back(tables[i]["intensity.sum.value"]);
       variance_cols.push_back(tables[i]["intensity.sum.variance"]);
+      intensity_unmodified_cols.push_back(tables[i]["intensity.sum.value.unmodified"]);
+      variance_unmodified_cols.push_back(tables[i]["intensity.sum.variance.unmodified"]);
       experiment_id_cols.push_back(tables[i]["exp_id"]);
     }
 
@@ -69,6 +79,8 @@ namespace sx_merging {
       miller_index_t  hkl       = *mi_ptr++;
       double          intensity = *intensity_ptr++;
       double          variance  = *variance_ptr++;
+      double          intensity_unmodified = *intensity_unmodified_ptr++;
+      double          variance_unmodified  = *variance_unmodified_ptr++;
       std::string     experiment_id = *experiment_id_ptr++;
 
       if( 0 != chunk_lookup.count(hkl) )
@@ -77,6 +89,8 @@ namespace sx_merging {
           mi_cols[chunk_id].push_back(hkl);
           intensity_cols[chunk_id].push_back(intensity);
           variance_cols[chunk_id].push_back(variance);
+          intensity_unmodified_cols[chunk_id].push_back(intensity_unmodified);
+          variance_unmodified_cols[chunk_id].push_back(variance_unmodified);
           experiment_id_cols[chunk_id].push_back(experiment_id);
        }
     }
@@ -95,18 +109,24 @@ namespace sx_merging {
     SCITBX_ASSERT(reflections.contains("miller_index"));
     SCITBX_ASSERT(reflections.contains("intensity.sum.value"));
     SCITBX_ASSERT(reflections.contains("intensity.sum.variance"));
+    SCITBX_ASSERT(reflections.contains("intensity.sum.value.unmodified"));
+    SCITBX_ASSERT(reflections.contains("intensity.sum.variance.unmodified"));
     SCITBX_ASSERT(reflections.contains("exp_id"));
     SCITBX_ASSERT(reflections.contains("s1"));
 
     scitbx::af::ref<miller_index_t> miller_index    = reflections["miller_index"];
     scitbx::af::ref<double> intensity               = reflections["intensity.sum.value"];
     scitbx::af::ref<double> variance                = reflections["intensity.sum.variance"];
+    scitbx::af::ref<double> intensity_unmodified    = reflections["intensity.sum.value.unmodified"];
+    scitbx::af::ref<double> variance_unmodified     = reflections["intensity.sum.variance.unmodified"];
     scitbx::af::ref<std::string> experiment_id      = reflections["exp_id"];
     scitbx::af::ref<scitbx::vec3<double> > s1       = reflections["s1"];
 
     miller_index_t* mi_ptr          = miller_index.begin();
     double* intensity_ptr           = intensity.begin();
     double* variance_ptr            = variance.begin();
+    double* intensity_unmodified_ptr = intensity_unmodified.begin();
+    double* variance_unmodified_ptr  = variance_unmodified.begin();
     std::string* experiment_id_ptr  = experiment_id.begin();
     scitbx::vec3<double>* s1_ptr    = s1.begin();
 
@@ -121,6 +141,8 @@ namespace sx_merging {
     std::vector<scitbx::af::shared<miller_index_t> >  mi_cols;
     std::vector<scitbx::af::shared<double> >          intensity_cols;
     std::vector<scitbx::af::shared<double> >          variance_cols;
+    std::vector<scitbx::af::shared<double> >          intensity_unmodified_cols;
+    std::vector<scitbx::af::shared<double> >          variance_unmodified_cols;
     std::vector<scitbx::af::shared<std::string> >     experiment_id_cols;
     std::vector<scitbx::af::shared<scitbx::vec3<double> > >     s1_cols;
 
@@ -128,6 +150,8 @@ namespace sx_merging {
       mi_cols.push_back(tables[i]["miller_index"]);
       intensity_cols.push_back(tables[i]["intensity.sum.value"]);
       variance_cols.push_back(tables[i]["intensity.sum.variance"]);
+      intensity_unmodified_cols.push_back(tables[i]["intensity.sum.value.unmodified"]);
+      variance_unmodified_cols.push_back(tables[i]["intensity.sum.variance.unmodified"]);
       experiment_id_cols.push_back(tables[i]["exp_id"]);
       s1_cols.push_back(tables[i]["s1"]);
     }
@@ -137,6 +161,8 @@ namespace sx_merging {
       miller_index_t  hkl             = *mi_ptr++;
       double          intensity       = *intensity_ptr++;
       double          variance        = *variance_ptr++;
+      double          intensity_unmodified = *intensity_unmodified_ptr++;
+      double          variance_unmodified  = *variance_unmodified_ptr++;
       std::string     experiment_id   = *experiment_id_ptr++;
       scitbx::vec3<double> s1         = *s1_ptr++;
 
@@ -146,6 +172,8 @@ namespace sx_merging {
           mi_cols[chunk_id].push_back(hkl);
           intensity_cols[chunk_id].push_back(intensity);
           variance_cols[chunk_id].push_back(variance);
+          intensity_unmodified_cols[chunk_id].push_back(intensity_unmodified);
+          variance_unmodified_cols[chunk_id].push_back(variance_unmodified);
           experiment_id_cols[chunk_id].push_back(experiment_id);
           s1_cols[chunk_id].push_back(s1);
        }

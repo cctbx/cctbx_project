@@ -244,6 +244,14 @@ class secondary_structure_segment():
     self.end = end
     self.segment_type = segment_type
     self.segment_length = segment_length
+
+class wheel_wedge():
+  #a wedge of space generated from rotating a peptide plane, and the corresponding cablam score
+  #for drawing kinemage markup
+  def __init__(self, start, end, offset, cablam_score):
+    self.start = [start[0]-offset[0], start[1]-offset[1], start[2]-offset[2]]
+    self.end = [end[0]-offset[0], end[1]-offset[1], end[2]-offset[2]]
+    self.cablam_score = cablam_score
 #-------------------------------------------------------------------------------
 #}}}
 
@@ -461,7 +469,7 @@ class cablam_result(residue):
     resname = self.resname.upper()
     if resname == "GLY": return "gly"
     elif resname == "PRO":
-      if self.measures.omega < 90 and self.measures.omega > -90:
+      if self.measures.omega is not None and self.measures.omega < 90 and self.measures.omega > -90:
         return "cispro"
       else: return "transpro"
     else: return "general"
@@ -591,6 +599,111 @@ class cablam_result(residue):
         out.write('\n{'+stats+'} '+ str(midpoint[0]) +' '+ str(midpoint[1]) +' '+ str(midpoint[2]))
         out.write('\n{'+stats+'} '+ str(X_2[0]) +' '+ str(X_2[1]) +' '+ str(X_2[2]))
         out.write('\n{'+stats+'} '+ str(O_2[0]) +' '+ str(O_2[1]) +' '+ str(O_2[2]))
+  #-----------------------------------------------------------------------------
+  #}}}
+
+  #{{{ calculate_kinemage_wheels
+  #-----------------------------------------------------------------------------
+  def calculate_kinemage_wheels(self, cablam_contours):
+    from scitbx.matrix import rotate_point_around_axis
+    category = self.contour_category()
+    CA_1 = self.prevres.get_atom(' CA ').xyz
+    O_1  = self.prevres.get_atom(' O  ').xyz
+    CA_2 = self.get_atom(' CA ').xyz
+    O_2  = self.get_atom(' O  ').xyz
+    CA_3 = self.nextres.get_atom(' CA ').xyz
+    if None in [CA_1, CA_2, CA_3, O_1, O_2]: return
+    #markup wheels should extend to less than the full CO length
+    #moving the used CO position is an easy way to propagate this across calculations
+    #along the X-O line used in the dihedral so as not to change the cablam results
+    scaling = 0.75
+    X1 = perptersect(CA_1,CA_2,O_1)
+    X2 = perptersect(CA_2,CA_3,O_2)
+    O_1 = ( (O_1[0]-X1[0])*scaling+X1[0], (O_1[1]-X1[1])*scaling+X1[1], (O_1[2]-X1[2])*scaling+X1[2])
+    O_2 = ( (O_2[0]-X2[0])*scaling+X2[0], (O_2[1]-X2[1])*scaling+X2[1], (O_2[2]-X2[2])*scaling+X2[2])
+    #-----------------------------
+    #markup wheels are offset from the carbonyl oxygen position for visual clarity
+    #offset is a move along the CA-CA line
+    #calculate unit vector alone CA-CA line, offset is some fraction of that
+    offset = 0.15
+    CA_2_1 = (CA_1[0]-CA_2[0], CA_1[1]-CA_2[1], CA_1[2]-CA_2[2])
+    CA_2_1_len = (CA_2_1[0]**2 + CA_2_1[1]**2 + CA_2_1[2]**2)**0.5
+    CA_2_1_offset = (CA_2_1[0]/CA_2_1_len*offset, CA_2_1[1]/CA_2_1_len*offset, CA_2_1[2]/CA_2_1_len*offset)
+    CA_2_3 = (CA_3[0]-CA_2[0], CA_3[1]-CA_2[1], CA_3[2]-CA_2[2])
+    CA_2_3_len = (CA_2_3[0]**2 + CA_2_3[1]**2 + CA_2_3[2]**2)**0.5
+    CA_2_3_offset = (CA_2_3[0]/CA_2_3_len*offset, CA_2_3[1]/CA_2_3_len*offset, CA_2_3[2]/CA_2_3_len*offset)
+
+    #Each CaBLAM outlier is based on the relative positions of *two* peptide planes, represented by CO positions
+    #Test rotation of each peptide plane independently, and draw a wheel for each
+    #Starting with O_2 is arbitrary, but O_2 is the CO in the residue named as an outlier by CaBLAM convention
+    angle = -10
+    #prev_O_2_xyz = O_2
+    wheel1_center = (X2[0]-CA_2_3_offset[0], X2[1]-CA_2_3_offset[1], X2[2]-CA_2_3_offset[2])
+    wheel1 = []
+    while angle < 360:
+      angle += 10
+      new_xyz = rotate_point_around_axis(
+        axis_point_1 = CA_2,
+        axis_point_2 = CA_3,
+        point        = O_2,
+        angle        = angle,
+        deg          = True)
+      new_nu = geometry_restraints.dihedral(sites=[O_1, X1, X2, new_xyz],
+                                            angle_ideal=180, weight=1).angle_model
+      cablam_point = [self.measures.mu_in, self.measures.mu_out, new_nu]
+      cablam_score = cablam_contours[category].valueAt(cablam_point)
+      if cablam_score >= 0.05:
+        wheel1.append(None)
+        continue
+      wedge_start = rotate_point_around_axis(
+        axis_point_1 = CA_2,
+        axis_point_2 = CA_3,
+        point        = O_2,
+        angle        = angle-5,
+        deg          = True)
+      wedge_end = rotate_point_around_axis(
+        axis_point_1=CA_2,
+        axis_point_2=CA_3,
+        point=O_2,
+        angle=angle+5,
+        deg=True)
+      wedge = wheel_wedge(wedge_start, wedge_end, CA_2_3_offset, cablam_score)
+      wheel1.append(wedge)
+
+    angle = -10
+    #prev_O_1_xyz = O_1
+    wheel2_center = (X1[0]-CA_2_1_offset[0], X1[1]-CA_2_1_offset[1], X1[2]-CA_2_1_offset[2])
+    wheel2 = []
+    while angle <= 360:
+      angle += 10
+      new_xyz = rotate_point_around_axis(
+        axis_point_1 = CA_1,
+        axis_point_2 = CA_2,
+        point        = O_1,
+        angle        = angle,
+        deg          = True)
+      new_nu = geometry_restraints.dihedral(sites=[new_xyz,X1,X2,O_2],
+        angle_ideal=180, weight=1).angle_model
+      cablam_point = [self.measures.mu_in,self.measures.mu_out, new_nu]
+      cablam_score = cablam_contours[category].valueAt(cablam_point)
+      if cablam_score >= 0.05:
+        wheel2.append(None)
+        continue
+      wedge_start = rotate_point_around_axis(
+        axis_point_1=CA_1,
+        axis_point_2=CA_2,
+        point=O_1,
+        angle=angle-5,
+        deg=True)
+      wedge_end = rotate_point_around_axis(
+        axis_point_1=CA_1,
+        axis_point_2=CA_2,
+        point=O_1,
+        angle=angle+5,
+        deg=True)
+      wedge = wheel_wedge(wedge_start, wedge_end, CA_2_1_offset, cablam_score)
+      wheel2.append(wedge)
+    return [(wheel1, wheel1_center), (wheel2, wheel2_center)]
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -1050,13 +1163,13 @@ class cablamalyze(validation):
         correctable_helix_count += is_correctable_helix
         correctable_beta_count += is_correctable_beta
         is_correctable_helix, is_correctable_beta = 0,0
-      if result.scores.cablam < CABLAM_OUTLIER_CUTOFF and is_residue:
+      if result.scores.cablam is not None and result.scores.cablam < CABLAM_OUTLIER_CUTOFF and is_residue:
         is_cablam_outlier    = 1
         if result.feedback.alpha or result.feedback.threeten:
           is_correctable_helix = 1
         elif result.feedback.beta:
           is_correctable_beta = 1
-      if result.scores.cablam < CABLAM_DISFAVORED_CUTOFF and is_residue:
+      if result.scores.cablam is not None and result.scores.cablam < CABLAM_DISFAVORED_CUTOFF and is_residue:
         is_cablam_disfavored = 1
       if result.scores.c_alpha_geom is not None and result.scores.c_alpha_geom < CA_GEOM_CUTOFF:
         is_ca_geom_outlier = 1
@@ -1148,6 +1261,14 @@ class cablamalyze(validation):
   #-----------------------------------------------------------------------------
   #}}}
 
+  def cablam_wheel_triangle(self, wheel_center, wedge, color):
+    self.out.write('\n{} P X %s %.3f %.3f %.3f' % (color, wheel_center[0], wheel_center[1], wheel_center[2]))
+    self.out.write('\n{} %s %.3f %.3f %.3f' % (color, wedge.start[0], wedge.start[1], wedge.start[2]))
+    self.out.write('\n{} %s %.3f %.3f %.3f' % (color, wedge.end[0], wedge.end[1], wedge.end[2]))
+
+  def cablam_wheel_edge(self, wheel_center, wedge, prevwedge):
+    pass
+
   #{{{ as_kinemage
   #-----------------------------------------------------------------------------
   def as_kinemage(self):
@@ -1173,6 +1294,57 @@ class cablamalyze(validation):
         continue
       if result.feedback.c_alpha_geom_outlier:
         result.as_kinemage(mode="ca_geom", out=self.out)
+    #----------------------------
+    #"wheels" show favorable and unfavorabe regions for each peptide plane involved in a cablam outlier
+    #Some additional calculations are required to generate these wheels
+    cablam_contours = fetch_peptide_expectations()
+    wheels_list = []
+    for result in self.results:
+      if not result.has_ca:
+        continue
+      if result.feedback.cablam_disfavored:
+        wheels_list.extend(result.calculate_kinemage_wheels(cablam_contours=cablam_contours))
+    #wheels are made of 10-degree wedges, each wedge drawn as a triangle
+    self.out.write('\n@subgroup {cablam_wheels} dominant master={cablam wheels}\n')
+    self.out.write('@trianglelist {cablam_wheels} alpha=0.75')
+    for cablam_wheel in wheels_list:
+      wheel = cablam_wheel[0]
+      wheel_center = cablam_wheel[1]
+      for wedge in wheel:
+        if wedge is None:
+          continue
+        elif wedge.cablam_score < 0.01:
+          color = 'magenta'
+        else:
+          color = 'purple'
+        self.cablam_wheel_triangle(wheel_center, wedge, color)
+        #self.out.write('\n{} P X %s %.3f %.3f %.3f' % (color, wheel_center[0], wheel_center[1], wheel_center[2]))
+        #self.out.write('\n{} %s %.3f %.3f %.3f' % (color, wedge.start[0], wedge.start[1], wedge.start[2]))
+        #self.out.write('\n{} %s %.3f %.3f %.3f' % (color, wedge.end[0], wedge.end[1], wedge.end[2]))
+    #a thin black line outlining the wheel greatly aids visual interpretation
+    self.out.write('\n@vectorlist {cablam_wheels_lines} color=deadblack width= 1 alpha=0.75')
+    for cablam_wheel in wheels_list:
+      wheel = cablam_wheel[0]
+      wheel_center = cablam_wheel[1]
+      prevwedge = wheel[-1]
+      new_poly = ' P' #starts a new polyline in kinemage format, print this for each new wheel
+      for wedge in wheel:
+        if wedge and prevwedge:
+          self.out.write('\n{}%s %.3f %.3f %.3f' % (new_poly, wedge.start[0], wedge.start[1], wedge.start[2]))
+          self.out.write('\n{} %.3f %.3f %.3f' % (wedge.end[0], wedge.end[1], wedge.end[2]))
+        elif wedge and not prevwedge:
+          self.out.write('\n{}%s %.3f %.3f %.3f' % (new_poly, wheel_center[0], wheel_center[1], wheel_center[2]))
+          self.out.write('\n{} %.3f %.3f %.3f' % (wedge.start[0], wedge.start[1], wedge.start[2]))
+          self.out.write('\n{} %.3f %.3f %.3f' % (wedge.end[0], wedge.end[1], wedge.end[2]))
+        elif prevwedge and not wedge:
+          self.out.write('\n{}%s %.3f %.3f %.3f' % (new_poly, prevwedge.end[0], prevwedge.end[1], prevwedge.end[2]))
+          self.out.write('\n{} %.3f %.3f %.3f' % (wheel_center[0], wheel_center[1], wheel_center[2]))
+        else:
+          prevwedge = wedge
+          continue
+        prevwedge = wedge
+        new_poly=''
+    #----------------------------
     self.out.write('\n')
   #-----------------------------------------------------------------------------
   #}}}

@@ -159,6 +159,14 @@ class ProteinResidues(LinkedResidues):
       rc.append(omega)
     return rc
 
+  def get_residue_group_from_hierarchy(self, hierarchy, index):
+    atom = self[index].atoms()[0]
+    for i in range(atom.i_seq, len(hierarchy.atoms())):
+      tmp = hierarchy.atoms()[i]
+      if tmp.id_str()==atom.id_str(): break
+    atom = hierarchy.atoms()[i]
+    return atom.parent().parent()
+
 class TwoProteinResidues(ProteinResidues):
   def get_omega_value(self):
     return get_omega_value(self[1], self[0])

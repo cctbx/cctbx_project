@@ -1,26 +1,24 @@
 from __future__ import absolute_import, division, print_function
 import boost.python
 from functools import cmp_to_key
-from past.builtins import cmp
-from six.moves import range
-from six.moves import zip
 ext = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
-import six
-from cctbx.array_family import flex
 from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s, null_out
-from libtbx import Auto, dict_with_default_0
-from six.moves import cStringIO as StringIO
-from iotbx.pdb import hy36encode, hy36decode
+from libtbx import Auto, dict_with_default_0, group_args
+from iotbx.pdb import hy36encode, hy36decode, common_residue_names_get_class
+from iotbx.pdb.utils import all_chain_ids, all_label_asym_ids
 import iotbx.cif.model
 from cctbx import crystal
-from libtbx import group_args
+from cctbx.array_family import flex
+import six
+from six.moves import cStringIO as StringIO
+from six.moves import range, zip
+from past.builtins import cmp
 import collections
 import warnings
 import math
 import sys
-from iotbx.pdb.utils import all_chain_ids, all_label_asym_ids
 
 class pickle_import_trigger(object): pass
 
@@ -58,7 +56,6 @@ class overall_counts(object):
         flag_warnings=True,
         residue_groups_max_show=10,
         duplicate_atom_labels_max_show=10):
-    from iotbx.pdb import common_residue_names_get_class
     if (out is None): out = sys.stdout
     self._errors = []
     self._warnings = []
@@ -173,7 +170,9 @@ class overall_counts(object):
         "common_water": "   common water",
         "common_small_molecule": "   common small molecule",
         "common_element": "   common element",
-        "other": "   other"
+        "other": "   other",
+        'd_amino_acid' : '   D-amino acid',
+        'common_saccharide' : '  common saccharide',
       }
       show_sorted_by_counts(c.items(), out=out, prefix=prefix+"  ",
         annotations=[
@@ -209,6 +208,13 @@ class overall_counts(object):
   def errors(self):
     if (self._errors is None): self.show(out=null_out())
     return self._errors
+
+  def get_n_residues_of_classes(self, classes):
+    result = 0
+    for resname, count in self.resnames.items():
+      if common_residue_names_get_class(resname) in classes:
+        result += count
+    return result
 
   def warnings(self):
     if (self._warnings is None): self.show(out=null_out())
@@ -691,7 +697,6 @@ class _():
     object to the atoms in the PDB hierarchy.  This will fail if the labels of
     the scatterers do not match the atom labels.
     """
-    from iotbx.pdb import common_residue_names_get_class as gc
     from cctbx import adptbx
     if(self.atoms_size() != xray_structure.scatterers().size()):
       raise RuntimeError("Incompatible size of hierarchy and scatterers array.")
@@ -713,14 +718,20 @@ class _():
       element, charge = sc.element_and_charge_symbols()
       a.set_element(element)
       a.set_charge(charge)
+    def get_id(l):
+      r = [pos for pos, char in enumerate(l) if char == '"']
+      if(len(r)<2): return None
+      i,j = r[-2:]
+      r = "".join(l[i:j+1].replace('"',"").replace('"',"").split())
+      return r
     for sc, a in zip(scatterers, awl):
       id_str = a.id_str()
       resname_from_sc = id_str[10:13]
-      cl1 = gc(resname_from_sc)
-      cl2 = gc(a.resname)
+      cl1 = common_residue_names_get_class(resname_from_sc)
+      cl2 = common_residue_names_get_class(a.resname)
       if assert_identical_id_str:
-        l1 = sc.label.replace("pdb=","").replace(" ","")
-        l2 = a.id_str().replace("pdb=","").replace(" ","")
+        l1 = get_id(sc.label)
+        l2 = get_id(a.id_str())
         if(l1 != l2):
           raise RuntimeError("Mismatch: \n %s \n %s \n"%(sc.label,a.id_str()))
       set_attr(sc=sc, a=a)
@@ -748,8 +759,6 @@ class _():
 
   def remove_residue_groups_with_atoms_on_special_positions_selective(self,
         crystal_symmetry):
-    import iotbx.pdb
-    get_class = iotbx.pdb.common_residue_names_get_class
     self.reset_i_seq_if_necessary()
     special_position_settings = crystal.special_position_settings(
       crystal_symmetry = crystal_symmetry)
@@ -770,8 +779,8 @@ class _():
             break
         if(not keep):
           for resname in rg.unique_resnames():
-            if(get_class(resname) == "common_amino_acid" or
-               get_class(resname) == "common_rna_dna"):
+            if(common_residue_names_get_class(resname) == "common_amino_acid" or
+               common_residue_names_get_class(resname) == "common_rna_dna"):
               raise RuntimeError(
                 "Amino-acid residue or NA is on special position.")
           for resname in rg.unique_resnames():
@@ -862,9 +871,9 @@ class _():
       print(link_records, file=open(file_name, mode))
       open_append = True
     if (crystal_symmetry is not None or cryst1_z is not None):
-      from iotbx.pdb import format_cryst1_and_scale_records
       if (open_append): mode = "a"
       else:             mode = "w"
+      from iotbx.pdb import format_cryst1_and_scale_records
       print(format_cryst1_and_scale_records(
         crystal_symmetry=crystal_symmetry,
         cryst1_z=cryst1_z,
@@ -882,25 +891,95 @@ class _():
       siguij=siguij,
       )
 
-  def _label_asym_id_lookup(self, chain, residue_group, atom_group):
-    if not hasattr(self, 'label_asym_ids'):
-      self.number_label_asym_id = -1
-      self.label_asym_ids = all_label_asym_ids()
+  def get_label_alt_id_iseq(self, iseq):
+    assert self.atoms_size() > iseq
+    return self.get_label_alt_id_atom(self.atoms()[iseq])
+
+  def get_label_alt_id_atom(self, atom):
+    alt_id = atom.parent().altloc
+    if alt_id == '': alt_id = '.'
+    return alt_id
+
+  def get_auth_asym_id_iseq(self, iseq):
+    assert self.atoms_size() > iseq, "%d, %d" % (self.atoms_size(), iseq)
+    return self.get_auth_asym_id(self.atoms()[iseq].parent().parent().parent())
+
+  def get_auth_asym_id(self, chain):
+    auth_asym_id = chain.id
+    if chain.atoms()[0].segid.strip() != '':
+      auth_asym_id = chain.atoms()[0].segid.strip()
+    if auth_asym_id.strip() == '': auth_asym_id = '.'
+    return auth_asym_id
+
+  def get_label_asym_id_iseq(self, iseq):
+    assert self.atoms_size() > iseq
+    return self.get_label_asym_id(self.atoms()[iseq].parent().parent())
+
+  def get_label_asym_id(self, residue_group):
+    if not hasattr(self, '_lai_lookup'):
       self._lai_lookup = {}
-    #
-    cmi = chain.memory_id()
-    if cmi not in self._lai_lookup:
-      if chain.is_protein() or chain.is_na():
-        self.number_label_asym_id+=1
-        self._lai_lookup[cmi] = self.number_label_asym_id
-      elif atom_group.resname in ['HOH', 'DOD']:
-        self.number_label_asym_id+=1
-        self._lai_lookup[cmi] = self.number_label_asym_id
-    #
-    if cmi in self._lai_lookup:
-      return self._lai_lookup[cmi], self.label_asym_ids[self._lai_lookup[cmi]]
-    self.number_label_asym_id+=1
-    return self.number_label_asym_id, self.label_asym_ids[self.number_label_asym_id]
+      # fill self._lai_lookup for the whole hierarchy
+      number_label_asym_id = 0
+      label_asym_ids = all_label_asym_ids()
+      previous = None
+      for model in self.models():
+        for chain in model.chains():
+          for rg in chain.residue_groups():
+            resname = rg.atom_groups()[0].resname.strip()
+            residue_class = common_residue_names_get_class(resname)
+            rg_mid = rg.memory_id()
+            if residue_class in ['common_amino_acid', 'modified_amino_acid',
+                'common_rna_dna', 'modified_rna_dna']:
+              self._lai_lookup[rg_mid] = label_asym_ids[number_label_asym_id]
+              previous = 'poly'
+            elif residue_class in ['common_water']:
+              if previous != 'water' and previous is not None:
+                number_label_asym_id += 1
+              previous = 'water'
+              self._lai_lookup[rg_mid] = label_asym_ids[number_label_asym_id]
+            else: # ligand
+              if previous is not None:
+                number_label_asym_id += 1
+              previous = 'ligand'
+              self._lai_lookup[rg_mid] = label_asym_ids[number_label_asym_id]
+          number_label_asym_id += 1 # up for each chain
+          previous = None
+        number_label_asym_id += 1 # up for each model
+    rg_mid = residue_group.memory_id()
+    result = self._lai_lookup.get(rg_mid, None)
+    if result is None:
+      print (residue_group.id_str())
+    return result
+
+    # return self.number_label_asym_id, self.label_asym_ids[self.number_label_asym_id]
+
+  def get_auth_seq_id_iseq(self, iseq):
+    assert self.atoms_size() > iseq
+    return self.get_auth_seq_id(self.atoms()[iseq].parent().parent())
+
+  def get_auth_seq_id(self, rg):
+    return rg.resseq.strip()
+
+  def get_label_seq_id_iseq(self, iseq):
+    assert self.atoms_size() > iseq, "%d, %d" % (self.atoms_size(), iseq)
+    return self.get_label_seq_id(self.atoms()[iseq].parent())
+
+  def get_label_seq_id(self, atom_group):
+    if not hasattr(self, '_label_seq_id_dict'):
+      # make it
+      self._label_seq_id_dict = {}
+      for chain in self.models()[0].chains():
+        label_seq_id = 0
+        for rg in chain.residue_groups():
+          for ag in rg.atom_groups():
+            label_seq_id += 1
+            label_seq_id_str='.'
+            comp_id = ag.resname.strip()
+            residue_class = common_residue_names_get_class(comp_id)
+            if residue_class in ['common_amino_acid', 'modified_amino_acid']:
+              label_seq_id_str = str(label_seq_id)
+            self._label_seq_id_dict[ag.memory_id()] = label_seq_id_str
+    return self._label_seq_id_dict[atom_group.memory_id()]
 
   def as_cif_block(self,
       crystal_symmetry=None,
@@ -908,17 +987,11 @@ class _():
       occupancy_precision=3,
       b_iso_precision=5,
       u_aniso_precision=5):
-    # from iotbx.pdb.mmcif import pdb_hierarchy_as_cif_block
-    import iotbx.pdb
-    get_class = iotbx.pdb.common_residue_names_get_class
-
     if crystal_symmetry is None:
       crystal_symmetry = crystal.symmetry()
-    import iotbx.cif
     cs_cif_block = crystal_symmetry.as_cif_block(format="mmcif")
 
-    from iotbx.cif import model
-    h_cif_block = model.block()
+    h_cif_block = iotbx.cif.model.block()
     coord_fmt_str = "%%.%if" %coordinate_precision
     occ_fmt_str = "%%.%if" %occupancy_precision
     b_iso_fmt_str = "%%.%if" %b_iso_precision
@@ -1032,31 +1105,16 @@ class _():
       model_id = model.id
       if model_id == '': model_id = '1'
       for chain in model.chains():
-        label_seq_id = 0
-        auth_asym_id = chain.id
-        if chain.atoms()[0].segid.strip() != '':
-          auth_asym_id = chain.atoms()[0].segid.strip()
-        if auth_asym_id.strip() == '': auth_asym_id = '.'
+        auth_asym_id = self.get_auth_asym_id(chain)
         for residue_group in chain.residue_groups():
-          seq_id = residue_group.resseq.strip()
-          label_seq_id += 1
+          label_asym_id = self.get_label_asym_id(residue_group)
+          seq_id = self.get_auth_seq_id(residue_group)
           icode = residue_group.icode
           if icode == ' ' or icode == '': icode = '?'
           for atom_group in residue_group.atom_groups():
-            label_asym_i, label_asym_id = self._label_asym_id_lookup(
-              chain,
-              residue_group,
-              atom_group)
-            alt_id = atom_group.altloc
-            if alt_id == '': alt_id = '.'
             comp_id = atom_group.resname.strip()
             entity_id = '?' # XXX how do we determine this?
-            gc = get_class(comp_id)
-            label_seq_id_str='.'
-            if gc in ['common_amino_acid', 'modified_amino_acid']:
-              label_seq_id_str = str(label_seq_id)
             for atom in atom_group.atoms():
-              atom.tmp = label_asym_i
               group_pdb = "ATOM"
               if atom.hetero: group_pdb = "HETATM"
               x, y, z = [coord_fmt_str %i for i in atom.xyz]
@@ -1078,7 +1136,7 @@ class _():
               atom_site_label_atom_id.append(atom.name.strip())
               if atom.name.strip() not in chem_comp_atom_ids:
                 chem_comp_atom_ids.append(atom.name.strip())
-              atom_site_label_alt_id.append(alt_id)
+              atom_site_label_alt_id.append(self.get_label_alt_id_atom(atom))
               atom_site_label_comp_id.append(comp_id)
               if comp_id not in chem_comp_ids: chem_comp_ids.append(comp_id)
               atom_site_auth_asym_id.append(auth_asym_id)
@@ -1097,7 +1155,7 @@ class _():
               if label_asym_id.strip() not in struct_asym_ids:
                 struct_asym_ids.append(label_asym_id.strip())
               atom_site_label_entity_id.append(entity_id)
-              atom_site_label_seq_id.append(label_seq_id_str)
+              atom_site_label_seq_id.append(self.get_label_seq_id(atom_group))
               #atom_site_loop['_atom_site.auth_comp_id'].append(comp_id)
               #atom_site_loop['_atom_site.auth_atom_id'].append(atom.name.strip())
               atom_site_pdbx_PDB_model_num.append(model_id.strip())
@@ -1108,7 +1166,7 @@ class _():
                 atom_site_anisotrop_id.append(
                   str(hy36decode(width=5, s=atom.serial)))
                 atom_site_anisotrop_pdbx_auth_atom_id.append(atom.name.strip())
-                atom_site_anisotrop_pdbx_label_alt_id.append(alt_id)
+                atom_site_anisotrop_pdbx_label_alt_id.append(self.get_label_alt_id_atom(atom))
                 atom_site_anisotrop_pdbx_auth_comp_id.append(comp_id)
                 atom_site_anisotrop_pdbx_auth_asym_id.append(auth_asym_id)
                 atom_site_anisotrop_pdbx_auth_seq_id.append(seq_id)
@@ -1142,7 +1200,6 @@ class _():
                        file_name,
                        crystal_symmetry=None,
                        data_block_name=None):
-    import iotbx.cif.model
     cif_object = iotbx.cif.model.cif()
     if data_block_name is None:
       data_block_name = "phenix"
@@ -1188,6 +1245,27 @@ class _():
       if (altloc == ""): continue
       conformer_indices.set_selected(altloc_indices[altloc], i+p)
     return conformer_indices
+
+  def remove_incomplete_main_chain_protein(self,
+       required_atom_names=['CA','N','C','O']):
+    # Remove each residue_group that does not contain CA N C O of protein
+    hierarchy = self
+    for model in hierarchy.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          all_atom_names_found=[]
+          atom_groups = residue_group.atom_groups()
+          for atom_group in atom_groups:
+            for atom in atom_group.atoms():
+              atom_name=atom.name.strip()
+              if not atom_name in all_atom_names_found:
+                all_atom_names_found.append(atom_name)
+          for r in required_atom_names:
+            if not r in all_atom_names_found:
+              chain.remove_residue_group(residue_group=residue_group)
+              break
+        if (len(chain.residue_groups()) == 0):
+          model.remove_chain(chain=chain)
 
   def remove_alt_confs(self, always_keep_one_conformer):
     hierarchy = self
@@ -1312,7 +1390,6 @@ class _():
             ag_atom.hetero = True
 
   def transfer_chains_from_other(self, other):
-    from iotbx.pdb import hy36encode
     i_model = 0
     other_models = other.models()
     for md,other_md in zip(self.models(), other_models):
@@ -1525,55 +1602,55 @@ class _():
     Extract atom selection (flex.size_t) for protein C-alpha atoms.
     """
     result = flex.size_t()
-    import iotbx.pdb
-    get_class = iotbx.pdb.common_residue_names_get_class
     i_seqs = self.atoms().extract_i_seq()
     if(i_seqs.size()>1): assert i_seqs[1:].all_ne(0)
     for model in self.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
           for ag in rg.atom_groups():
-            if(get_class(ag.resname) == "common_amino_acid"):
+            if(common_residue_names_get_class(ag.resname) == "common_amino_acid"):
               for atom in ag.atoms():
                 if(atom.name.strip() == "CA"):
                   result.append(atom.i_seq)
     return result
 
-  def contains_protein(self):
+  def contains_protein(self, min_content=0.1):
     """
-    Inspect residue names (stored in atom_group objects) to determine if any of
-    them are protein.
+    Inspect residue names and counts to determine if enough of them are protein.
     """
-    for model in self.models():
-      for chain in self.chains():
-        if chain.is_protein() : return True
-    return False
+    oc = self.overall_counts()
+    n_prot_residues = oc.get_n_residues_of_classes(
+        classes=['common_amino_acid', 'modified_amino_acid'])
+    n_water_residues = oc.get_n_residues_of_classes(
+        classes=['common_water'])
+    if oc.n_residues-n_water_residues > 0:
+      return n_prot_residues / (oc.n_residues-n_water_residues) > min_content
+    return n_prot_residues > min_content
 
-  def contains_nucleic_acid(self):
+  def contains_nucleic_acid(self, min_content=0.1):
     """
-    Inspect residue names (stored in atom_group objects) to determine if any of
+    Inspect residue names and counts to determine if enough of
     them are RNA or DNA.
     """
-    import iotbx.pdb
-    for model in self.models():
-      for chain in self.chains():
-        if chain.is_na() : return True
-    return False
+    oc = self.overall_counts()
+    n_na_residues = oc.get_n_residues_of_classes(
+        classes=['common_rna_dna', 'modified_rna_dna'])
+    n_water_residues = oc.get_n_residues_of_classes(
+        classes=['common_water'])
+    if oc.n_residues-n_water_residues > 0:
+      return n_na_residues / (oc.n_residues-n_water_residues) > min_content
+    return n_na_residues > min_content
 
   def contains_rna(self):
     """
-    Inspect residue names (stored in atom_group objects) to determine if any of
+    Inspect residue names and counts to determine if any of
     them are RNA.
     """
-    import iotbx.pdb
-    get_class = iotbx.pdb.common_residue_names_get_class
-    for model in self.models():
-      for chain in model.chains():
-        for rg in chain.residue_groups():
-          for ag in rg.atom_groups():
-            if ((get_class(ag.resname) == "common_rna_dna") and
-                (not "D" in ag.resname.upper())):
-              return True
+    oc = self.overall_counts()
+    for resname, count in oc.resnames.items():
+      if ( common_residue_names_get_class(resname) == "common_rna_dna"
+          and "D" not in resname.upper() ):
+        return True
     return False
 
   def remove_hd(self, reset_i_seq=False):
@@ -1784,7 +1861,6 @@ class _():
     :returns: a tuple containing a list of residue names, and a dictionary of
       residue type frequencies.
     """
-    from iotbx.pdb import common_residue_names_get_class
     from iotbx.pdb import residue_name_plus_atom_names_interpreter
     rn_seq = []
     residue_classes = dict_with_default_0()
@@ -1904,8 +1980,8 @@ class _():
     get_residue_names_and_classes (majority of the processing is unnecessary)
     """
     rn_seq, residue_classes = self.get_residue_names_and_classes()
-    n_aa = residue_classes["common_amino_acid"]
-    n_na = residue_classes["common_rna_dna"]
+    n_aa = residue_classes["common_amino_acid"] + residue_classes['modified_amino_acid']
+    n_na = residue_classes["common_rna_dna"] + residue_classes['modified_rna_dna']
     if (ignore_water):
       while rn_seq.count("HOH") > 0 :
         rn_seq.remove("HOH")
@@ -1925,8 +2001,8 @@ class _():
     get_residue_names_and_classes (majority of the processing is unnecessary)
     """
     rn_seq, residue_classes = self.get_residue_names_and_classes()
-    n_aa = residue_classes["common_amino_acid"]
-    n_na = residue_classes["common_rna_dna"]
+    n_aa = residue_classes["common_amino_acid"] + residue_classes['modified_amino_acid']
+    n_na = residue_classes["common_rna_dna"] + residue_classes['modified_rna_dna']
     if (ignore_water):
       while rn_seq.count("HOH") > 0 :
         rn_seq.remove("HOH")
@@ -2104,7 +2180,6 @@ class _():
     # XXX This function should probably be deprecated, since it has been
     # duplicated in chain.get_residue_names_and_classes which should probably
     # be preferred to this function
-    from iotbx.pdb import common_residue_names_get_class
     rn_seq = []
     residue_classes = dict_with_default_0()
     for residue in self.residues():
@@ -2122,8 +2197,8 @@ class _():
     # XXX DEPRECATED
     # Used only in mmtbx/validation and wxtbx. Easy to eliminate.
     rn_seq, residue_classes = self.get_residue_names_and_classes()
-    n_aa = residue_classes["common_amino_acid"]
-    n_na = residue_classes["common_rna_dna"]
+    n_aa = residue_classes["common_amino_acid"] + residue_classes['modified_amino_acid']
+    n_na = residue_classes["common_rna_dna"] + residue_classes['modified_rna_dna']
     non_water = len(rn_seq)-residue_classes.get('common_water', 0)
     if ((n_aa > n_na) and ((n_aa / non_water) >= min_content)):
       return True
@@ -2133,8 +2208,8 @@ class _():
     # XXX DEPRECATED
     # Used only in mmtbx/validation and wxtbx. Easy to eliminate.
     rn_seq, residue_classes = self.get_residue_names_and_classes()
-    n_aa = residue_classes["common_amino_acid"]
-    n_na = residue_classes["common_rna_dna"]
+    n_aa = residue_classes["common_amino_acid"] + residue_classes['modified_amino_acid']
+    n_na = residue_classes["common_rna_dna"] + residue_classes['modified_rna_dna']
     non_water = len(rn_seq)-residue_classes.get('common_water', 0)
     if ((n_na > n_aa) and ((n_na / non_water) >= min_content)):
       return True
@@ -2347,6 +2422,9 @@ class _():
   def fetch_labels(self):
     return self
 
+# MARKED_FOR_DELETION_OLEG
+# Reason: so far fount only in iotbx/file_reader.py for no clear reason.
+
 class input_hierarchy_pair(object):
 
   def __init__(self,
@@ -2449,6 +2527,7 @@ class input(input_hierarchy_pair):
       pdb_inp = iotbx.pdb.input(
         source_info=source_info, lines=flex.split_lines(pdb_string))
     super(input, self).__init__(input=pdb_inp, sort_atoms=sort_atoms)
+# END_MARKED_FOR_DELETION_OLEG
 
 class show_summary(input):
 
@@ -2591,9 +2670,7 @@ def get_contiguous_ranges(hierarchy):
 
 # used for reporting build results in phenix
 def get_residue_and_fragment_count(pdb_file=None, pdb_hierarchy=None):
-  import iotbx.pdb
   from libtbx import smart_open
-  get_class = iotbx.pdb.common_residue_names_get_class
   if (pdb_file is not None):
     raw_records = flex.std_string()
     f = smart_open.for_reading(file_name=pdb_file)
@@ -2613,7 +2690,8 @@ def get_residue_and_fragment_count(pdb_file=None, pdb_hierarchy=None):
   for chain in chains :
     i = -999
     for res in chain.conformers()[0].residues():
-      residue_type = get_class(res.resname, consider_ccp4_mon_lib_rna_dna=True)
+      residue_type = common_residue_names_get_class(
+          res.resname, consider_ccp4_mon_lib_rna_dna=True)
       if ( ('amino_acid' in residue_type) or ('rna_dna' in residue_type) ):
         n_res += 1
         resseq = res.resseq_as_int()
@@ -2669,7 +2747,6 @@ def substitute_atom_group(
   Limited functionality:
     1) Amino-acids only, 2) side chain atoms only.
   """
-  from iotbx.pdb import common_residue_names_get_class
   from scitbx.math import superpose
   new_atoms = new_group.detached_copy().atoms()
   selection_fixed = flex.size_t()

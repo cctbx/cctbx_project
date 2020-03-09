@@ -5,7 +5,9 @@ Import ("env_etc")
 ncdist_resource_flags=[]
 env_etc.ncdist_resource_common_includes = []
 
-env_etc.ncdist_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../ncdist"))
+# Find the modules/ncdist folder, using modules/cctbx_project/cctbx as a starting point
+source_list = ["ext.cpp"]
+env_etc.ncdist_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("cctbx"), "..", "..", "ncdist"))
 if os.path.isdir(env_etc.ncdist_dist):
     # only get here if the repo is checked out in the modules directory:
     # git clone git@github.com:yayahjb/ncdist.git
@@ -13,6 +15,7 @@ if os.path.isdir(env_etc.ncdist_dist):
       env_etc.ncdist_dist
     )
     ncdist_resource_flags.append("HAVE_NCDIST")
+    source_list.append(os.path.join(libtbx.env.dist_path("cctbx"), "..", "..", "ncdist", "CS6Dist.c"))
 
 if (not env_etc.no_boost_python):
   Import("env_cctbx_boost_python_ext")
@@ -25,7 +28,7 @@ if (not env_etc.no_boost_python):
     ncdist_resource_flags.append("HAVE_SINGLEFILE_NCDIST")
     env_metrics.Prepend(CPPDEFINES=ncdist_resource_flags)
     env_metrics.SharedLibrary(target="#lib/determine_unit_cell_ext",
-                              source=["ext.cpp",]
+                              source=source_list
   )
 
   env_etc.include_registry.append(

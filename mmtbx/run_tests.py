@@ -65,6 +65,7 @@ general_tests = [
   "$D/regression/model/tst_model_2.py",
   "$D/regression/model/tst_model_biomt_mtrix.py",
   "$D/regression/model/tst_model_neutralize_scatterers.py",
+  "$D/regression/model/tst_model_set_hydrogen_bond_length.py",
   "$D/regression/model/tst_model_cart_ref_restraints.py",
   "$D/regression/model/tst_model_tors_ref_restraints.py",
   "$D/regression/model/tst_model_remove_alternative_conformations.py",
@@ -139,6 +140,7 @@ general_tests = [
   "$D/hydrogens/tst_riding_fd_4.py",
   "$D/hydrogens/tst_riding_fd_5.py",
   "$D/hydrogens/tst_riding_minimize.py",
+  "$D/hydrogens/tst_riding_fix_xyz.py",
   "$D/max_lik/tst_maxlik.py",
   "$D/masks/tst_masks.py",
   "$D/masks/tst_asu_mask.py",
@@ -170,7 +172,10 @@ general_tests = [
   "$D/conformation_dependent_library/tst_rdl.py",
   "$D/conformation_dependent_library/tst_hpdl.py",
   "$D/conformation_dependent_library/tst_cis_c_n_ca.py",
+  "$D/conformation_dependent_library/cdl_svl_database.py",
   "$D/conformation_dependent_library/tst_pH_mechanism.py",
+  '$D/conformation_dependent_library/tst_mcl_01.py',
+  '$D/conformation_dependent_library/tst_mcl_02.py',
   "$D/regression/tst_find_ss_structure.py",
   "$D/regression/tst_fix_rotamer_outliers.py",
   "$D/regression/tst_chain_comparison.py",
@@ -224,6 +229,7 @@ general_tests = [
   "$D/regression/tst_isomorphous_difference_misc.py",
   "$D/regression/tst_dynamics_cli.py",
   "$D/ligands/tst_xtal_screens.py",
+  "$D/ligands/tst_ready_set_utils.py",
   "$D/regression/tst_mtz2map.py",
   # ringer
   "$D/regression/tst_ringer.py",
@@ -294,6 +300,7 @@ general_tests = [
   "$D/monomer_library/tst_correct_hydrogens.py",
   # automatic linking
   "$D/monomer_library/tst_superpose_ideal.py",
+  '$D/monomer_library/tst_iron_sulfur_clusters.py',
   #
   "$D/scaling/tst_plan_sad_experiment.py",
   #

@@ -355,7 +355,7 @@ def refine_hierarchical(params, merged_scope, combine_phil):
     if i == params.start_at_hierarchy_level:
       command = "dials.refine %s %s_%s.expt %s_%s.refl"%(refine_phil_file, params.tag, input_name, params.tag, input_name)
     else:
-      command = "dials.refine %s %s_%slevel%d.expt %s_%s_level%d.refl"%(refine_phil_file, params.tag, input_name, i-1, params.tag, input_name, i-1)
+      command = "dials.refine %s %s_%s_level%d.expt %s_%s_level%d.refl"%(refine_phil_file, params.tag, input_name, i-1, params.tag, input_name, i-1)
 
     diff_phil += "refinement.parameterisation.detector.hierarchy_level=%d\n"%i
 
@@ -495,7 +495,7 @@ def refine_expanding(params, merged_scope, combine_phil):
       # panels will have been left behind.  Read back the new metrology, compute the shift applied to the panels refined
       # in this step,and apply that shift to the unrefined panels in this step
       if params.flat_refinement and params.flat_refinement_with_distance and i > 0:
-        from dxtbx.model.experiment_list import ExperimentListFactory, ExperimentListDumper
+        from dxtbx.model.experiment_list import ExperimentListFactory
         from xfel.command_line.cspad_detector_congruence import iterate_detector_at_level, iterate_panels
         from scitbx.array_family import flex
         from scitbx.matrix import col
@@ -550,8 +550,7 @@ def refine_expanding(params, merged_scope, combine_phil):
         for k in range(1, len(displacements)):
           assert approx_equal(displacements[0], displacements[k])
 
-        dump = ExperimentListDumper(experiments)
-        dump.as_json(output_experiments)
+        experiments.as_file(output_experiments)
 
       previous_step_and_level = j,i
 

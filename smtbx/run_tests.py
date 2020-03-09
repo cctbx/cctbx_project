@@ -14,7 +14,6 @@ tst_list_base = [
      '"hall: P 1"', '"hall: P 3"', '"hall: -P 2ybc"' ],
     "$D/masks/tests/tst_masks.py",
     "$D/structure_factors/direct/tests/tst_standard_xray.py",
-    "$D/refinement/tests/tst_least_squares.py",
     ["$D/refinement/tests/tst_weighting_schemes.py",
      "--fix_random_seeds"],
     "$D/refinement/constraints/tests/tst_lbfgs.py",
@@ -28,18 +27,21 @@ tst_list_base = [
      '--normal_eqns_solving_method=levenberg-marquardt'],
 ] + discover()
 
-# failing tests on macOS and linux, Python 3.6
-tst_list_unix_fail = [
+# failing tests on Python 3
+tst_list_fail_py3 = [
   ["$D/refinement/restraints/tests/tst_restraints.py",
      '--verbose', '--scatterers=5', '--resolution=0.2'],
   ]
-
 tst_list_fail = list()
-if ((sys.platform == 'darwin' or sys.platform.startswith('linux')) and
-    sys.version_info > (3, 0)):
-  tst_list_fail += tst_list_unix_fail
+if sys.version_info[0] > 2:
+  tst_list_fail += tst_list_fail_py3
 else:
-  tst_list_base += tst_list_unix_fail
+  tst_list_base += tst_list_fail_py3
+
+# unstable test
+tst_list_expected_unstable = [
+  "$D/refinement/tests/tst_least_squares.py",
+  ]
 
 # final lists
 tst_list = tst_list_base

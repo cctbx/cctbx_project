@@ -4,12 +4,16 @@ from libtbx.utils import null_out
 from libtbx import easy_pickle
 import libtbx.load_env
 import iotbx.phil
+import iotbx.pdb
 from mmtbx.secondary_structure import manager as ss_manager
 from mmtbx.secondary_structure import sec_str_master_phil_str
 from mmtbx.conformation_dependent_library import generate_protein_threes
-from scipy import interpolate
+from libtbx.str_utils import format_value
+from scitbx.array_family import flex
+from libtbx import adopt_init_args
+from libtbx import group_args
+from scitbx.math import linear_interpolation_2d
 import numpy as np
-import copy
 import math
 import os
 
@@ -19,13 +23,35 @@ rama_z {
 }
 """
 
+class result(object):
+  def __init__(self, whole, helix, sheet, loop):
+    adopt_init_args(self, locals())
+
+  def as_string(self, prefix):
+    f = format_value
+    p = prefix
+    w, h, s, l = self.whole, self.helix, self.sheet, self.loop
+    d = "%5.2f"
+    i = "%d"
+    strs = [
+      "\n%sRama-Z (Ramachandran plot Z-score):"%p,
+      "%sInterpretation: bad < -3 | suspicious < -2 | good > -2" % p,
+      "%sValues for helix/sheet/loop are not additive and are interpreted" % p,
+      "%sindependently." %p,
+      "%s  whole: %s (%s), residues: %s"%(p, f(d,w.value),f(d,w.std).strip(),f(i,w.n)),
+      "%s  helix: %s (%s), residues: %s"%(p, f(d,h.value),f(d,h.std).strip(),f(i,h.n)),
+      "%s  sheet: %s (%s), residues: %s"%(p, f(d,s.value),f(d,s.std).strip(),f(i,s.n)),
+      "%s  loop : %s (%s), residues: %s"%(p, f(d,l.value),f(d,l.std).strip(),f(i,l.n))
+    ]
+    return "\n".join(strs)
+
 class rama_z(object):
   def __init__(self, model, log):
     db_path = libtbx.env.find_in_repositories(
         relative_path="chem_data/rama_z/top8000_rama_z_dict.pkl",
         test=os.path.isfile)
-    # this takes ~0.15 seconds, so I don't see a need to cache it somehow.
     self.log = log
+    # this takes ~0.15 seconds, so I don't see a need to cache it somehow.
     self.db = easy_pickle.load(db_path)
     self.calibration_values = {
         'H': (-0.045355950779513175, 0.1951165524439217),
@@ -34,7 +60,6 @@ class rama_z(object):
         'W': (-0.016806654295023003, 0.12044960331869274)}
     self.residue_counts = {"H": 0, "S": 0, "L":0}
     self.z_score = {"H": None, "S": None, "L":None, 'W': None}
-    self.interpolation_fs = {"H": {}, "S": {}, "L": {}}
     self.means = {"H": {}, "S": {}, "L": {}}
     self.stds = {"H": {}, "S": {}, "L": {}}
 
@@ -43,14 +68,21 @@ class rama_z(object):
     self.n_phi_half = 45
     self.n_psi_half = 45
 
+    if model.get_hierarchy().models_size() > 1:
+      hierarchy = iotbx.pdb.hierarchy.root()
+      m = model.get_hierarchy().models()[0].detached_copy()
+      hierarchy.append_model(m)
+      asc = hierarchy.atom_selection_cache()
+    else:
+      hierarchy = model.get_hierarchy()
+      asc = model.get_atom_selection_cache()
     self.res_info = []
-    asc = model.get_atom_selection_cache()
     sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
     ss_params = sec_str_master_phil.fetch().extract()
     ss_params.secondary_structure.protein.search_method = "from_ca"
     ss_params.secondary_structure.from_ca_conservative = True
 
-    self.ssm = ss_manager(model.get_hierarchy(),
+    self.ssm = ss_manager(hierarchy,
         atom_selection_cache=asc,
         geometry_restraints_manager=None,
         sec_str_from_pdb_file=None,
@@ -70,7 +102,7 @@ class rama_z(object):
     self.sheet_sel = asc.selection(filtered_ann.overall_sheets_selection())
 
     used_atoms = set()
-    for three in generate_protein_threes(hierarchy=model.get_hierarchy(), geometry=None):
+    for three in generate_protein_threes(hierarchy=hierarchy, geometry=None):
       main_residue = three[1]
       phi_psi_atoms = three.get_phi_psi_atoms()
       if phi_psi_atoms is None:
@@ -87,11 +119,22 @@ class rama_z(object):
         self.residue_counts[ss_type] += 1
         used_atoms.add(key)
     self.residue_counts["W"] = self.residue_counts["H"] + self.residue_counts["S"] + self.residue_counts["L"]
-    for i in self.res_info:
-      print(i, file=self.log)
 
   def get_residue_counts(self):
     return self.residue_counts
+
+  def get_result(self):
+    r  = self.z_score
+    if(r["W"] is None): self.get_z_scores() # XXX Odd. This should not be necessary!
+    rc = self.get_residue_counts()
+    def nov(x,i):
+      if(x is None): return None
+      else:          return x[i]
+    return result(
+      whole = group_args(value=nov(r["W"],0), std=nov(r["W"],1), n=rc["W"]),
+      helix = group_args(value=nov(r["H"],0), std=nov(r["H"],1), n=rc["H"]),
+      sheet = group_args(value=nov(r["S"],0), std=nov(r["S"],1), n=rc["S"]),
+      loop  = group_args(value=nov(r["L"],0), std=nov(r["L"],1), n=rc["L"]))
 
   def get_z_scores(self):
     for k in ['H', 'S', 'L', 'W']:
@@ -106,27 +149,23 @@ class rama_z(object):
         c = None
       if c is not None:
         zs = (c - self.calibration_values[k][0]) / self.calibration_values[k][1]
-        zs_std = self._get_z_score_accuracy(element_points, k)
+        zs_std = None
+        if len(element_points) > 1:
+          zs_std = self._get_z_score_accuracy(element_points, k)
         self.z_score[k] = (zs, zs_std)
     return self.z_score
 
-  def _get_z_score_accuracy(self, points, part, n_shuffles=50, percent_to_keep=50):
-    tmp = copy.deepcopy(points)
+  def get_detailed_values(self):
+    return self.res_info
+
+  def _get_z_score_accuracy(self, points, part):
     scores = []
-    n_res = int(len(tmp) * percent_to_keep / 100)
-    if n_res == len(tmp):
-      n_res -= 1
-    for i in range(n_shuffles):
-      np.random.shuffle(tmp)
-      c = self._get_z_score_points(tmp[:n_res])
-      if c is not None:
-        c = (c - self.calibration_values[part][0]) / self.calibration_values[part][1]
-        scores.append(c)
-      c = self._get_z_score_points(tmp[n_res:])
-      if c is not None:
-        c = (c - self.calibration_values[part][0]) / self.calibration_values[part][1]
-        scores.append(c)
-    return np.std(scores)
+    values = [x[-1] for x in points]
+    sum_values = np.sum(values)
+    for v in values:
+      s = (sum_values - v)/(len(values)-1)
+      scores.append( ( s-self.calibration_values[part][0]) / self.calibration_values[part][1] )
+    return np.std(scores) * ((len(points)-1) ** 0.5)
 
   def get_ss_selections(self):
     self.loop_sel = flex.bool([True]*self.helix_sel.size())
@@ -141,8 +180,6 @@ class rama_z(object):
     else: return "L"
 
   def _get_z_score_points(self, points):
-    # if len(points) < 10:
-    #   return None
     score = 0
     for entry in points:
       if len(entry) == 6:
@@ -156,11 +193,45 @@ class rama_z(object):
     resname = self._get_resname(rama_type, resname)
     if resname == 'cisPRO':
       ss_type = 'L'
+    table = self.db[ss_type][resname]
+    vmin = -178
+    step = 4
+    if phi < -178:
+      i = -1
+      x1 = -182
+      x2 = -178
+    elif phi > 178:
+      i = -1
+      x1 = 178
+      x2 = 182
+    else:
+      i = int(abs(-178 - phi) // 4)
+      nsteps = abs(vmin - phi) // step
+      x1 = vmin + nsteps * step
+      x2 = x1 + 4
 
-    if self.interpolation_fs[ss_type].get(resname, None) is None:
-      self.interpolation_fs[ss_type][resname] = self._set_interpolation_f(self.db[ss_type][resname])
-    int_sc = self.interpolation_fs[ss_type][resname]([phi], [psi])[0]
+    if psi < -178:
+      j = -1
+      y1 = -182
+      y2 = -178
+    elif psi > 178:
+      j = -1
+      y1 = 178
+      y2 = 182
+    else:
+      j = int(abs(-178 - psi) // 4)
+      nsteps = abs(vmin - psi) // step
+      y1 = vmin + nsteps * step
+      y2 = y1 + 4
 
+    xx = phi
+    yy = psi
+    v1 = table[i][j]
+    v2 = table[i+1][j+1]
+    v3 = table[i][j+1]
+    v4 = table[i+1][j]
+
+    int_sc = linear_interpolation_2d(x1,y1,x2,y2,v1,v2,v3,v4,xx,yy)
     if self.means[ss_type].get(resname, None) is None:
       self.means[ss_type][resname] = self._get_mean(ss_type, resname)
     if self.stds[ss_type].get(resname, None) is None:
@@ -168,19 +239,9 @@ class rama_z(object):
     return (int_sc - self.means[ss_type][resname]) / self.stds[ss_type][resname]
 
   def _get_mean(self, ss_type, resname):
-    # return np.average(self.g)
-
-    # Nonzero regular:
-    # nz = []
-    # for i in self.g:
-    #   for j in i:
-    #     if j != 0:
-    #       nz.append(j)
-    # self.mean = np.average(nz)
-    # Paper calc:
+    # Origianl paper calc:
     reg_sum = 0
     sq_sum = 0
-    # calculate as in paper
     for i in self.db[ss_type][resname]:
       for j in i:
         reg_sum += j
@@ -192,16 +253,7 @@ class rama_z(object):
     return mean
 
   def _get_std(self, ss_type, resname, mean):
-    # return np.std(self.g)
-
-    # Nonzero regular:
-    # nz = []
-    # for i in self.g:
-    #   for j in i:
-    #     if j != 0:
-    #       nz.append(j)
-    # self.std = np.std(nz)
-    # Paper calc:
+    # Origianl paper calc:
     ch = 0
     zn = 0
     for i in self.db[ss_type][resname]:
@@ -225,34 +277,3 @@ class rama_z(object):
     if rama_type == 4:
       rn = 'prePRO'
     return rn
-
-  def _calc_ij(self, p):
-    i = int(p[0] // self.phi_step) + self.n_phi_half
-    j = int(p[1] // self.psi_step) + self.n_psi_half
-    # assert  0 <= i < len(self.g), i
-    # assert  0 <= j < len(self.g[1]), j
-    return i,j
-
-  def _set_interpolation_f(self, grid):
-    x = range(-180-self.phi_step // 2, 180 +self.phi_step + self.phi_step //2, self.phi_step)
-    y = range(-180-self.psi_step // 2, 180 +self.psi_step + self.psi_step //2, self.psi_step)
-    z = []
-    # print "x,y", x, y
-    for i in range(len(grid)+2):
-      z.append([0] * (len(grid)+2) )
-    for i in range(len(z)):
-      for j in range(len(z)):
-        # figure out where to get value
-        ii = i-1
-        jj = j-1
-        if i == 0:
-          ii = len(grid)-1
-        if i == len(z) - 1:
-          ii = 0
-        if j == 0:
-          jj = len(grid)-1
-        if j == len(z) - 1:
-          jj = 0
-        z[i][j] = grid[jj][ii]
-    return interpolate.interp2d(x,y,z, kind='linear')
-

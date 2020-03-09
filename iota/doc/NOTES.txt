@@ -1,19 +1,32 @@
-IOTA v1.4.012 - HDF5 handling
+IOTA v1.4.018 - Python3-related bugfixes
 
-- IOTA now reads HDF5 format
-    - each HDF5 file is expanded into individual imagesets, which are then
-      converted into separate ExperimentList objects (that's the hack for now)
-    - internal changes on result tracking so that HDF5 datasets can be handled
-      the same as one-image files
-    - NOTE: h5py has to be imported only where needed; importing it in a module
-      that itself is imported elsewhere seems to cause malloc errors.
+- Exception handling
+    - Assign exception target value to a separate variable, since exception
+      target is cleaned up when except block exits
+    - ValueError no longer has a 'message' attribute, change exp.message to str
+      (exp) wherever appropriate
+- JSON-related issues
+    - Import basestring from past.builtins for use in making dictionaries
+      serializable for JSON and making all strings the same (especially
+      necessary for filepath comparisons elsewhere in code)
+    - Convert all NumPY types into corresponding base types (NumPY types are not
+      JSON serializable)
+    - When collecting processing stats, extract item from NumPy objects, e.g.
+      mean=np.mean(stat_list).item(); NumPy objects are not JSON serializable
+    - Put the json.dump line into a try block; if a TypeError signals that some
+      object is not serializable, try again after passing the dictionary through
+      the serialization function.
+- Stdout capture
+    - Use StringIO from io, rather than from six.moves
+- GUI-related fixes
+    - sys.maxint doesn't exist in Python3; use sys.maxsize for that purpose
+    - In wxtbx.metallicbutton, put import Carbon.Appearance into a try block,
+      because it may no longer be included as a separate module with wxPython4
+    - Switched xmin, ymin, xmax, and ymax in MatPlotLib to left, bottom, right,
+      and top, respectively (hopefully these work for MatPlotLib 2.0!)
+    - New PHIL control for MultiChoice drop-down menu (hinky, but will serve)
+- Zip objects:
+    - change to list(zip(l1, l2)) where I don't want a zip iterator
 
-- Bugfixes:
-    - XTerm IOTA now accumulates "unplotted" results, which can then be plotted
-      when the run is recovered in GUI
-
-- Known issues:
-    - Comma-delimited file lists aren't read in properly
-
-10.31.2019
+12.02.2019
 # -- end

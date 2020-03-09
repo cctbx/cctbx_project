@@ -207,6 +207,18 @@ class energies(scitbx.restraints.energies):
   def get_filtered_n_planarity_proxies(self):
     return self.planarity_proxies.proxy_select(origin_id=0).size()
 
+  def get_angle_outliers(self, sites_cart, sigma_threshold=4):
+    return self.angle_proxies.get_outliers(sites_cart=sites_cart,
+                                           sigma_threshold=sigma_threshold)
+
+  def get_bond_outliers(self, sites_cart, sigma_threshold=4):
+    return self.bond_proxies.get_outliers(sites_cart=sites_cart,
+                                           sigma_threshold=sigma_threshold)
+
+  def get_dihedral_outliers(self, sites_cart, sigma_threshold=4):
+    return self.dihedral_proxies.get_outliers(sites_cart=sites_cart,
+                                              sigma_threshold=sigma_threshold)
+
   def bond_deviations_z(self):
     '''
     Calculate rmsz of bond deviations

@@ -16,7 +16,7 @@ namespace cctbx { namespace adptbx { namespace anharmonic {
     tensor_rank_4<FloatType> D;
 
     GramCharlier4() {}
-    
+
     GramCharlier4(const af::shared<FloatType> &Cijk,
       const af::shared<FloatType> &Dijkl)
       : C(Cijk), D(Dijkl)

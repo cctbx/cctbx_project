@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 import os, sys
-import time
 
 from mmtbx.conformation_dependent_library.rdl_database import rdl_database
 from mmtbx.conformation_dependent_library import rotamers as rdl
@@ -8,6 +7,8 @@ from mmtbx.conformation_dependent_library import rotamers as rdl
 from iotbx import pdb
 
 import libtbx.load_env
+
+from mmtbx.conformation_dependent_library.testing_utils import get_geometry_restraints_manager
 
 pdbs = {
   "3sgs" : """
@@ -93,29 +94,6 @@ ATOM   1245  CZ  TYR A 150       6.401  57.437  14.581  1.00 18.47           C
 ATOM   1246  OH  TYR A 150       5.685  56.901  13.541  1.00 20.26           O
 """,
   }
-
-def get_geometry_restraints_manager(pdb_filename=None,
-                                    raw_records=None,
-                                    #pdb_inp,
-                                    #pdb_hierarchy,
-                                    ):
-  t0=time.time()
-  from mmtbx.monomer_library import server
-  from mmtbx.monomer_library import pdb_interpretation
-  #lines = pdb_hierarchy.as_pdb_string(
-  #  crystal_symmetry=pdb_inp.crystal_symmetry(),
-  #  )
-  mon_lib_srv = server.server()
-  ener_lib = server.ener_lib()
-  processed_pdb = pdb_interpretation.process(
-    mon_lib_srv,
-    ener_lib,
-    raw_records=raw_records,
-    file_name=pdb_filename,
-    )
-  geometry_restraints_manager = processed_pdb.geometry_restraints_manager()
-  print('time',time.time()-t0)
-  return geometry_restraints_manager
 
 def run(filename):
   print(filename)

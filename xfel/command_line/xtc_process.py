@@ -5,26 +5,30 @@ from six.moves import zip
 #
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.xtc_process
 #
-PSANA2_VERSION = 0
+
 try:
   import psana
-  PSANA2_VERSION = psana.__version__
 except ImportError:
   pass # for running at home without psdm build
-except AttributeError:
-  pass
 
+import errno
 from xfel.cftbx.detector import cspad_cbf_tbx
 from xfel.cxi.cspad_ana import cspad_tbx, rayonix_tbx
 import pycbf, os, sys, copy, socket
 import libtbx.load_env
 from libtbx.utils import Sorry, Usage
+from dials.util import show_mail_on_error
 from dials.util.options import OptionParser
 from libtbx.phil import parse
 from dxtbx.model.experiment_list import ExperimentListFactory
 from scitbx.array_family import flex
 import numpy as np
 from libtbx import easy_pickle
+
+import io # fix buffering py2/3
+
+# check version of psana
+from xfel.cftbx.detector.cspad_cbf_tbx import PSANA2_VERSION
 
 xtc_phil_str = '''
   dispatch {
@@ -350,9 +354,6 @@ xtc_phil_str = '''
 from dials.command_line.stills_process import dials_phil_str, program_defaults_phil_str
 
 extra_dials_phil_str = '''
-  verbosity = 1
-   .type = int(value_min=0)
-   .help = The verbosity level
   border_mask {
     include scope dials.util.masking.phil_scope
   }
@@ -384,12 +385,12 @@ def run_psana2(ims, params, comm):
     ims: InMemScript (cctbx driver class)
     params: input parameters
     comm: mpi comm for broadcasting per run calibration files"""
-    ds = psana.DataSource("exp=%s:run=%s:dir=%s" \
-        %(params.input.experiment, params.input.run_num, params.input.xtc_dir), \
-        filter=filter, max_events=params.dispatch.max_events, det_name=params.input.address)
+    ds = psana.DataSource(exp=params.input.experiment, run=params.input.run_num, \
+            dir=params.input.xtc_dir, max_events=params.dispatch.max_events, \
+            det_name=params.input.address)
 
     for run in ds.runs():
-      det = ds.Detector(ds.det_name)
+      det = run.Detector(ds.det_name)
       # broadcast cctbx per run calibration
       if comm.Get_rank() == 0:
         PS_CALIB_DIR = os.environ.get('PS_CALIB_DIR')
@@ -545,12 +546,13 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         else:
           tmp_dir = os.path.join(params.output.tmp_output_dir, '.tmp')
         if not os.path.exists(tmp_dir):
-          try:
-            os.makedirs(tmp_dir)
-          except Exception as e:
-            # Can fail if running multiprocessed, which is ok if the tmp folder was created
-            if not os.path.exists(tmp_dir):
-              halraiser(e)
+          with show_mail_on_error():
+            try:
+              os.makedirs(tmp_dir)
+              # Can fail if running multiprocessed - that's OK if the folder was created
+            except OSError as e:  # In Python 2, a FileExistsError is just an OSError
+              if e.errno != errno.EEXIST:  # If this OSError is not a FileExistsError
+                raise
       os.environ['CBF_TMP_DIR'] = tmp_dir
 
     for abs_params in params.integration.absorption_correction:
@@ -612,12 +614,19 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     # Configure the logging
     if params.output.logging_dir is None:
-      info_path = ''
-      debug_path = ''
+      logfile = ''
     elif params.output.logging_dir == 'DevNull':
       print("Redirecting stdout, stderr and other DIALS logfiles to /dev/null")
-      sys.stdout = open(os.devnull,'w', buffering=0)
-      sys.stderr = open(os.devnull,'w',buffering=0)
+      logfile = os.devnull
+      try:
+        # Python 3
+        sys.stdout = io.TextIOWrapper(open(os.devnull,'wb', 0), write_through=True)
+        sys.stderr = io.TextIOWrapper(open(os.devnull,'wb', 0), write_through=True)
+      except TypeError:
+        # Python 2
+        sys.stdout = open(os.devnull,'w', buffering=0)
+        sys.stderr = open(os.devnull,'w',buffering=0)
+
       info_path = os.devnull
       debug_path = os.devnull
     else:
@@ -625,15 +634,21 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       error_path = os.path.join(params.output.logging_dir, "error_rank%04d.out"%rank)
       print("Redirecting stdout to %s"%log_path)
       print("Redirecting stderr to %s"%error_path)
-      sys.stdout = open(log_path,'a', buffering=0)
-      sys.stderr = open(error_path,'a',buffering=0)
+      try:
+        # Python 3
+        sys.stdout = io.TextIOWrapper(open(log_path,'ab', 0), write_through=True)
+        sys.stderr = io.TextIOWrapper(open(error_path,'ab', 0), write_through=True)
+      except TypeError:
+        # Python 2
+        sys.stdout = open(log_path,'a', buffering=0)
+        sys.stderr = open(error_path,'a',buffering=0)
+
       print("Should be redirected now")
 
-      info_path = os.path.join(params.output.logging_dir, "info_rank%04d.out"%rank)
-      debug_path = os.path.join(params.output.logging_dir, "debug_rank%04d.out"%rank)
+      logfile = os.path.join(params.output.logging_dir, "info_rank%04d.out"%rank)
 
     from dials.util import log
-    log.config(params.verbosity, info=info_path, debug=debug_path)
+    log.config(options.verbose, logfile=logfile)
 
     debug_dir = os.path.join(params.output.output_dir, "debug")
     if not os.path.exists(debug_dir):
@@ -929,10 +944,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         experiments = refiner.get_experiments()
         reflections = combined_reflections.select(refiner.selection_used_for_refinement())
 
-        from dxtbx.model.experiment_list import ExperimentListDumper
         from dxtbx.model import ExperimentList
-        dump = ExperimentListDumper(experiments)
-        dump.as_json(os.path.join(reint_dir, "refined.expt"))
+        experiments.as_file(os.path.join(reint_dir, "refined.expt"))
         reflections.as_pickle(os.path.join(reint_dir, "refined.refl"))
 
         for expt_id, (expt, img_file) in enumerate(zip(experiments, images)):
@@ -944,8 +957,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
             expts = ExperimentList([expt])
             self.integrate(expts, refls)
-            dump = ExperimentListDumper(expts)
-            dump.as_json(os.path.join(reint_dir, base_name + "_refined.expt"))
+            expts.as_file(os.path.join(reint_dir, base_name + "_refined.expt"))
           except Exception as e:
             print("Couldn't reintegrate", img_file, str(e))
     print("Rank %d signing off"%rank)
@@ -961,8 +973,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     @param timestamp psana timestamp object
     """
     if PSANA2_VERSION:
-      sec  = evt.seconds
-      nsec = evt.nanoseconds
+      sec  = evt._seconds
+      nsec = evt._nanoseconds
     else:
       time = evt.get(psana.EventId).time()
       fid = evt.get(psana.EventId).fiducials()
@@ -1035,7 +1047,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
       if self.params.format.cbf.override_energy is None:
         if PSANA2_VERSION:
-          wavelength = 12398.4187/self.psana_det.photonEnergy(evt)
+          wavelength = 12398.4187/self.psana_det.raw.photonEnergy(evt)
         else:
           wavelength = cspad_tbx.evt_wavelength(evt)
         if wavelength is None:
@@ -1293,7 +1305,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     try:
       if params.format.file_format == 'cbf':
-        image._cbf_handle.write_widefile(dest_path, pycbf.CBF,\
+        image._cbf_handle.write_widefile(dest_path.encode(), pycbf.CBF,\
           pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
       elif params.format.file_format == 'pickle':
         easy_pickle.dump(dest_path, image._image_file)
@@ -1356,9 +1368,6 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     super(InMemScript, self).finalize()
 
 if __name__ == "__main__":
-  from dials.util import halraiser
-  try:
+  with show_mail_on_error():
     script = InMemScript()
     script.run()
-  except Exception as e:
-    halraiser(e)

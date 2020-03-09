@@ -86,32 +86,29 @@ from libtbx import easy_run
 
 def main():
   tf = 'test_cis_127.pdb'
-  f=file(tf, 'wb')
-  f.write(pdb_lines)
-  del f
+  with open(tf, 'w') as f:
+    f.write(pdb_lines)
   cmd = 'phenix.pdb_interpretation write_geo=True %s' % tf
   print(cmd)
   easy_run.go(cmd)
-  f=file('%s.geo' % tf, 'rb')
-  lines = f.read()
-  del f
+  with open('%s.geo' % tf, 'r') as f:
+    lines = f.read()
   find = '''angle pdb=" C   GLY A  73 "
       pdb=" N   PRO A  74 "
       pdb=" CA  PRO A  74 "
     ideal   model   delta    sigma   weight residual
    122.60  124.91   -2.31 5.00e+00 4.00e-02 2.14e-01'''
   assert lines.find(find)>-1
-  cmd = 'phenix.pdb_interpretation write_geo=True cis_c_n_ca=True %s' % tf
+  cmd = 'phenix.pdb_interpretation write_geo=True cis_pro_eh99=True %s' % tf
   print(cmd)
   easy_run.go(cmd)
-  f=file('%s.geo' % tf, 'rb')
-  lines = f.read()
-  del f
+  with open('%s.geo' % tf, 'r') as f:
+    lines = f.read()
   find = '''angle pdb=" C   GLY A  73 "
       pdb=" N   PRO A  74 "
       pdb=" CA  PRO A  74 "
     ideal   model   delta    sigma   weight residual
-   127.00  124.91    2.09 3.00e+00 1.11e-01 4.84e-01'''
+   127.00  124.91    2.09 2.40e+00 1.74e-01 7.57e-01'''
   assert lines.find(find)>-1
 
 if __name__ == '__main__':

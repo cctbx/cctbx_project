@@ -1,13 +1,8 @@
 #ifndef FEM_FILE_POSITIONING_CHAIN_HPP
 #define FEM_FILE_POSITIONING_CHAIN_HPP
 
+#include <noexcept_false.hpp>
 #include <fem/io.hpp>
-
-#if __cplusplus >= 201103L                // If using C++11 or a later version
-#define NOEXCEPT_FALSE noexcept(false)
-#else
-#define NOEXCEPT_FALSE
-#endif
 
 namespace fem {
 

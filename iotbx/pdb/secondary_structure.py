@@ -339,18 +339,18 @@ def get_amide_isel(asc, ss_element_string_selection):
   # There are cases where SS element can be only in B conformation
   # and split in A/B conformations
   sele_str_main_conf = "(%s) and (name N) and (altloc 'A' or altloc ' ')" % ss_element_string_selection
-  sele_str_all = "(%s) and (name N)" % ss_element_string_selection
   amide_isel_main_conf = asc.iselection(sele_str_main_conf)
-  amide_isel_all = asc.iselection(sele_str_all)
   if len(amide_isel_main_conf) > 0:
     return amide_isel_main_conf
+  sele_str_all = "(%s) and (name N)" % ss_element_string_selection
+  amide_isel_all = asc.iselection(sele_str_all)
   if len(amide_isel_all) > 0:
     return amide_isel_all
-  error_msg = "Error in helix definition.\n"
+  error_msg = "Error in helix definition. It will be skipped.\n"
   error_msg += "String '%s' selected 0 atoms.\n" % sele_str_main_conf
   error_msg += "String '%s' selected 0 atoms.\n" % sele_str_all
   error_msg += "Most likely the definition of SS element does not match model.\n"
-  raise Sorry(error_msg)
+  return error_msg
 
 
 class structure_base(object):
@@ -375,6 +375,29 @@ class structure_base(object):
     elif isinstance(id, int):
       return hy36encode(3, id)
 
+  def get_start_resseq_as_int(self):
+    if self.start_resseq is not None:
+      if isinstance(self.start_resseq, str):
+        return hy36decode(4, self.start_resseq)
+      elif isinstance(self.start_resseq, int):
+        return self.start_resseq
+    return None
+
+  def get_end_resseq_as_int(self):
+    if self.end_resseq is not None:
+      if isinstance(self.end_resseq, str):
+        return hy36decode(4, self.end_resseq)
+      elif isinstance(self.end_resseq, int):
+        return self.end_resseq
+    return None
+
+  @staticmethod
+  def id_as_int(id):
+    if isinstance(id, str):
+      return hy36decode(min(len(id), 3), id)
+    elif isinstance(id, int):
+      return id
+    raise ValueError("String or int is needed")
 
   @staticmethod
   def icode_to_cif(icode):
@@ -562,7 +585,10 @@ class annotation(structure_base):
   @classmethod
   def resseq_as_int(cls, resseq):
     if resseq is not None:
-      return hy36decode(4, resseq)
+      if isinstance(resseq, str):
+        return hy36decode(4, resseq)
+      elif isinstance(resseq, int):
+        return resseq
     return None
 
   @classmethod
@@ -652,14 +678,17 @@ class annotation(structure_base):
     cache = atom_selection_cache
     if cache is None:
       cache = pdb_hierarchy.atom_selection_cache()
+    h_atoms = pdb_hierarchy.atoms()
     for i, helix_param in enumerate(phil_helices):
       if helix_param.selection is not None:
-        h = pdb_helix.from_phil_params(helix_param, pdb_hierarchy, cache, i, log)
-        helices.append(h)
+        h = pdb_helix.from_phil_params(helix_param, pdb_hierarchy, h_atoms, cache, i, log)
+        if h is not None:
+          helices.append(h)
     for i, sheet_param in enumerate(phil_sheets):
       if sheet_param.first_strand is not None:
-        sh = pdb_sheet.from_phil_params(sheet_param, pdb_hierarchy, cache, log)
-        sheets.append(sh)
+        sh = pdb_sheet.from_phil_params(sheet_param, pdb_hierarchy, h_atoms, cache, log)
+        if sh is not None:
+          sheets.append(sh)
     return cls(helices=helices, sheets=sheets)
 
   def deep_copy(self):
@@ -1263,6 +1292,18 @@ class annotation(structure_base):
 
   def is_empty(self):
     return self.get_n_helices() + self.get_n_sheets() == 0
+
+  def get_n_helix_residues(self):
+    result = 0
+    for h in self.helices:
+      result += h.length
+    return result
+
+  def get_n_sheet_residues(self):
+    result = 0
+    for sh in self.sheets:
+      result += sh.get_approx_size()
+    return result
 
   def get_n_defined_hbonds(self):
     n_hb = 0
@@ -1868,15 +1909,20 @@ class pdb_helix(structure_base):
       length=int(line[71:76])) #string.atoi(line[71:76]))
 
   @classmethod
-  def from_phil_params(cls, helix_params, pdb_hierarchy, cache, serial=0, log=None):
+  def from_phil_params(cls, helix_params, pdb_hierarchy, h_atoms, cache, serial=0, log=None):
+    if log is None:
+      log = sys.stdout
     if helix_params.selection is None :
       print("Empty helix at serial %d." % (serial), file=log)
       # continue
     if helix_params.serial_number is not None:
       serial = helix_params.serial_number
     amide_isel = get_amide_isel(cache, helix_params.selection)
-    start_atom = pdb_hierarchy.atoms()[amide_isel[0]]
-    end_atom = pdb_hierarchy.atoms()[amide_isel[-1]]
+    if isinstance(amide_isel, str):
+      print(amide_isel, file=log)
+      return None
+    start_atom = h_atoms[amide_isel[0]]
+    end_atom = h_atoms[amide_isel[-1]]
     hbonds = []
     for hb in helix_params.hbond:
       if hb.donor is None:
@@ -1911,16 +1957,6 @@ class pdb_helix(structure_base):
   def deep_copy(self):
     return copy.deepcopy(self)
 
-  def get_start_resseq_as_int(self):
-    if self.start_resseq is not None:
-      return hy36decode(4, self.start_resseq)
-    return None
-
-  def get_end_resseq_as_int(self):
-    if self.end_resseq is not None:
-      return hy36decode(4, self.end_resseq)
-    return None
-
   def get_class_as_int(self):
     return self.helix_class_to_int(self.helix_class)
 
@@ -1934,13 +1970,12 @@ class pdb_helix(structure_base):
     self.end_resseq = self.convert_resseq(resseq)
 
   def set_new_serial(self, serial, adopt_as_id=False):
-    self.serial = serial
+    self.serial = hy36encode(3, serial)
     if adopt_as_id:
       self.adopt_serial_as_id()
 
   def adopt_serial_as_id(self):
     self.helix_id = "%s" % self.serial
-    self.helix_id = self.helix_id[:3]
 
   def set_new_chain_ids(self, new_chain_id):
     self.start_chain_id = new_chain_id
@@ -1959,7 +1994,7 @@ class pdb_helix(structure_base):
     if prefix_scope != "" and not prefix_scope.endswith("."):
       prefix_scope += "."
     serial_and_id = ""
-    if self.serial is not None and int(self.serial) > 0:
+    if self.serial is not None and self.id_as_int(self.serial) > 0:
       serial_and_id += "\n  serial_number = %s" % self.serial
     if self.helix_id is not None:
       serial_and_id += "\n  helix_identifier = %s" % self.helix_id
@@ -2208,16 +2243,6 @@ class pdb_strand(structure_base):
     else:
       raise Sorry("Invalid sense creeped in object: %s", self.sense)
 
-  def get_start_resseq_as_int(self):
-    if self.start_resseq is not None:
-      return hy36decode(4, self.start_resseq)
-    return None
-
-  def get_end_resseq_as_int(self):
-    if self.end_resseq is not None:
-      return hy36decode(4, self.end_resseq)
-    return None
-
   def set_start_resseq(self, resseq):
     self.start_resseq = self.convert_resseq(resseq)
 
@@ -2442,8 +2467,7 @@ class pdb_sheet(structure_base):
       ):
     adopt_init_args(self, locals())
     if isinstance(self.sheet_id, int):
-      self.sheet_id = "%s" % self.sheet_id
-      self.sheet_id = self.sheet_id[:3]
+      self.sheet_id = hy36encode(3, self.sheet_id)
     else:
       assert isinstance(self.sheet_id, str)
 
@@ -2528,7 +2552,9 @@ class pdb_sheet(structure_base):
                registrations=registrations)
 
   @classmethod
-  def from_phil_params(cls, sheet_params, pdb_hierarchy, cache, log=None):
+  def from_phil_params(cls, sheet_params, pdb_hierarchy, h_atoms, cache, log=None):
+    if log is None:
+      log = sys.stdout
     if sheet_params.first_strand is None:
       raise Sorry("Empty first strand selection")
     sheet_id="1"
@@ -2536,8 +2562,11 @@ class pdb_sheet(structure_base):
       sheet_id =  "%3s" % sheet_params.sheet_id[:3]
     n_strands = len(sheet_params.strand) + 1
     amide_isel = get_amide_isel(cache, sheet_params.first_strand)
-    start_atom = pdb_hierarchy.atoms()[amide_isel[0]]
-    end_atom = pdb_hierarchy.atoms()[amide_isel[-1]]
+    if isinstance(amide_isel, str):
+      print(amide_isel, file=log)
+      return None
+    start_atom = h_atoms[amide_isel[0]]
+    end_atom = h_atoms[amide_isel[-1]]
     first_strand = pdb_strand(
         sheet_id=sheet_id,
         strand_id=1,
@@ -2554,8 +2583,11 @@ class pdb_sheet(structure_base):
     registrations = [None]
     for i, strand_param in enumerate(sheet_params.strand):
       amide_isel = get_amide_isel(cache, strand_param.selection)
-      start_atom = pdb_hierarchy.atoms()[amide_isel[0]]
-      end_atom = pdb_hierarchy.atoms()[amide_isel[-1]]
+      if isinstance(amide_isel, str):
+        print(amide_isel, file=log)
+        return None
+      start_atom = h_atoms[amide_isel[0]]
+      end_atom = h_atoms[amide_isel[-1]]
       sense = cls.sense_to_int(strand_param.sense)
       strand = pdb_strand(
           sheet_id=sheet_id,
@@ -2573,11 +2605,12 @@ class pdb_sheet(structure_base):
       if strand_param.bond_start_current is not None:
         reg_cur_sel = cache.iselection(strand_param.bond_start_current)
         if reg_cur_sel is None or len(reg_cur_sel) == 0:
-          error_msg = "Error in sheet definition.\n"
+          error_msg = "Error in sheet definition. Whole sheet will be skipped.\n"
           error_msg += "String '%s' selected 0 atoms.\n" % strand_param.bond_start_current
           error_msg += "Most likely the definition of sheet does not match model.\n"
-          raise Sorry(error_msg)
-        reg_cur_atom = pdb_hierarchy.atoms()[reg_cur_sel[0]]
+          print(error_msg, file=log)
+          return None
+        reg_cur_atom = h_atoms[reg_cur_sel[0]]
       if reg_cur_atom is None: # No current atom in registration
         pass
         # raise Sorry("This bond_start_current yields 0 atoms:\n %s" % strand_param.bond_start_current)
@@ -2585,11 +2618,12 @@ class pdb_sheet(structure_base):
       if strand_param.bond_start_previous is not None:
         reg_prev_sel = cache.iselection(strand_param.bond_start_previous)
         if reg_prev_sel is None or len(reg_prev_sel) == 0:
-          error_msg = "Error in sheet definition.\n"
+          error_msg = "Error in sheet definition. Whole sheet will be skipped.\n"
           error_msg += "String '%s' selected 0 atoms.\n" % strand_param.bond_start_previous
           error_msg += "Most likely the definition of sheet does not match model.\n"
-          raise Sorry(error_msg)
-        reg_prev_atom = pdb_hierarchy.atoms()[reg_prev_sel[0]]
+          print(error_msg, file=log)
+          return None
+        reg_prev_atom = h_atoms[reg_prev_sel[0]]
       if reg_prev_atom is None: # No previous atom in registration
         pass
         # raise Sorry("This bond_start_previous yields 0 atoms:\n %s" % strand_param.bond_start_previous)
@@ -2630,6 +2664,12 @@ class pdb_sheet(structure_base):
     elif str_sense == "antiparallel":
       sense = -1
     return sense
+
+  def get_approx_size(self):
+    s = 0
+    for strand in self.strands:
+      s += strand.approx_length
+    return s
 
   def remove_short_strands(self, size=3):
     strand_indices_to_delete = []

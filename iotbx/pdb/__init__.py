@@ -596,7 +596,7 @@ class combine_unique_pdb_files(object):
       print(prefix+"  %d repeated file name%s ignored." % \
         plural_s(n=n_ignored), file=out)
     n_identical = 0
-    for file_names in self.md5_registry.values():
+    for file_names in sorted(self.md5_registry.values()):
       if (len(file_names) != 1):
         print(prefix+"INFO: PDB files with identical content:", file=out)
         for file_name in file_names:
@@ -1679,7 +1679,6 @@ def format_cryst1_and_scale_records(
   from cctbx import crystal
   from cctbx import sgtbx
   from cctbx import uctbx
-  from scitbx import matrix
   if (crystal_symmetry is None):
     unit_cell = None
     space_group_info = None

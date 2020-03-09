@@ -4,6 +4,7 @@ import docutils.parsers.rst
 import io
 import multiprocessing
 import os
+import six
 from Bio import Entrez
 
 _biolock = multiprocessing.Lock()
@@ -34,6 +35,8 @@ class PubMedDirective(docutils.parsers.rst.Directive):
       if not raw_cache:
         handle = Entrez.efetch(db="pubmed", id=PMID, retmode="xml")
         raw_cache = handle.read()
+        if six.PY3:
+          raw_cache = raw_cache.encode('utf-8')
       handle = io.BytesIO(raw_cache)
       XML = Entrez.read(handle)['PubmedArticle']
       if os.getenv("BIOCACHE") and not os.path.exists(cache_file):

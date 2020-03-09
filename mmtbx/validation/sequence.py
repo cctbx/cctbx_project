@@ -312,7 +312,7 @@ class validation(object):
       ssm = mmtbx.secondary_structure.manager(
         pdb_hierarchy=pdb_hierarchy,
         sec_str_from_pdb_file=None)
-      helix_selection = ssm.alpha_selection()
+      helix_selection = ssm.helix_selection()
       sheet_selection = ssm.beta_selection()
     pdb_chains = []
     for pdb_chain in pdb_hierarchy.models()[0].chains():

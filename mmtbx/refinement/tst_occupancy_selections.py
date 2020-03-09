@@ -312,8 +312,8 @@ def exercise_10(verbose):
       other_constrained_groups = other_constrained_groups,
       other_individual_selection_strings = ['resseq 0'],
       as_flex_arrays    = False)
-  except Exception as e: pass
-  assert e.__str__() == "Duplicate selection: same atoms selected for individual and group occupancy refinement."
+  except Exception as e:
+    assert str(e) == "Duplicate selection: same atoms selected for individual and group occupancy refinement."
 
 def exercise_11(verbose):
   pdb_file = libtbx.env.find_in_repositories(
@@ -329,8 +329,8 @@ def exercise_11(verbose):
       remove_selection = ['resseq 0'],
       other_individual_selection_strings = ['resseq 0'],
       as_flex_arrays    = False)
-  except Exception as e: pass
-  assert e.__str__() == "Duplicate selection: occupancies of same atoms selected to be fixed and to be refined."
+  except Exception as e:
+    assert str(e) == "Duplicate selection: occupancies of same atoms selected to be fixed and to be refined."
   e = None
   try:
     other_constrained_groups = make_up_other_constrained_groups_obj(
@@ -340,8 +340,8 @@ def exercise_11(verbose):
       other_constrained_groups = other_constrained_groups,
       remove_selection = ['resseq 0'],
       as_flex_arrays    = False)
-  except Exception as e: pass
-  assert e.__str__() == "Duplicate selection: occupancies of same atoms selected to be fixed and to be refined."
+  except Exception as e:
+    assert str(e) == "Duplicate selection: occupancies of same atoms selected to be fixed and to be refined."
 
 def exercise_12(verbose):
   pdb_file = libtbx.env.find_in_repositories(
@@ -498,9 +498,9 @@ def exercise_19(verbose):
       model = model,
       other_constrained_groups = other_constrained_groups,
       as_flex_arrays    = False)
-  except Exception as e: pass
-  assert str(e) == \
-    'Selection string results in empty selection (selects no atoms): "%s"' \
+  except Exception as e:
+    assert str(e) == \
+      'Selection string results in empty selection (selects no atoms): "%s"' \
       % tmp
 
 def exercise_20(verbose):

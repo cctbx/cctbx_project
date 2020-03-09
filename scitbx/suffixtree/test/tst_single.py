@@ -665,15 +665,15 @@ class TestTree(unittest.TestCase):
 
     builder.append( glyph = "a" )
     self.assertFalse( builder.is_valid )
-    self.assertRaises( builder.detach )
+    self.assertRaises( RuntimeError, builder.detach )
 
     builder.append( glyph = "n" )
     self.assertFalse( builder.is_valid )
-    self.assertRaises( builder.detach )
+    self.assertRaises( RuntimeError, builder.detach )
 
     builder.append( glyph = "a" )
     self.assertFalse( builder.is_valid )
-    self.assertRaises( builder.detach )
+    self.assertRaises( RuntimeError, builder.detach )
 
     builder.append( glyph = "s" )
     self.assertTrue( builder.is_valid )

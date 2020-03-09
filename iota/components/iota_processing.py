@@ -4,7 +4,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/31/2019
+Last Changed: 11/25/2019
 Description : Runs spotfinding, indexing, refinement and integration using
               subclassed DIALS Stills Processor module. Selector class
               applies filters based on unit cell, space group, etc.
@@ -19,8 +19,8 @@ import copy
 
 from dials.util import log
 from dials.array_family import flex
-from dials.algorithms.indexing.symmetry import \
-  refined_settings_factory_from_refined_triclinic
+from dials.algorithms.indexing.bravais_settings import \
+  refined_settings_from_refined_triclinic
 from dials.command_line.stills_process import phil_scope, Processor
 from dials.command_line.refine_bravais_settings import phil_scope as sg_scope
 from dials.command_line.refine_bravais_settings import \
@@ -222,41 +222,54 @@ class IOTAImageProcessor(Processor):
 
     # configure DIALS logging
     if self.dials_log:
-      log.config(verbosity=0, logfile=self.dials_log)
+      log.config(verbosity=1, logfile=self.dials_log)
 
     proc_scope = phil_scope.format(python_object=self.params)
     sgparams = sg_scope.fetch(proc_scope).extract()
     sgparams.refinement.reflections.outlier.algorithm = 'tukey'
 
     crystal_P1 = copy.deepcopy(experiments[0].crystal)
-
-    # Generate Bravais settings
     try:
-      Lfat = refined_settings_factory_from_refined_triclinic(sgparams,
-                                                             experiments,
-                                                             reflections,
-                                                             lepage_max_delta=5)
-    except Exception as e:
-      # If refinement fails, reset to P1 (experiments remain modified by Lfat
-      # if there's a refinement failure, which causes issues down the line)
+      refined_settings = refined_settings_from_refined_triclinic(
+        experiments=experiments,
+        reflections=reflections,
+        params=sgparams
+      )
+      possible_bravais_settings = {s["bravais"] for s in refined_settings}
+      bravais_lattice_to_space_group_table(possible_bravais_settings)
+    except Exception:
       for expt in experiments:
         expt.crystal = crystal_P1
       return None
 
-    Lfat.labelit_printout()
+    # Generate Bravais settings
+    # try:
+    #   Lfat = refined_settings_factory_from_refined_triclinic(sgparams,
+    #                                                          experiments,
+    #                                                          reflections,
+    #                                                          lepage_max_delta=5)
+    # except Exception as e:
+    #   # If refinement fails, reset to P1 (experiments remain modified by Lfat
+    #   # if there's a refinement failure, which causes issues down the line)
+    #   for expt in experiments:
+    #     expt.crystal = crystal_P1
+    #   return None
+    #
+    # Lfat.labelit_printout()
+    #
+    # # Filter out not-recommended (i.e. too-high rmsd and too-high max angular
+    # # difference) solutions
+    # Lfat_recommended = [s for s in Lfat if s.recommended]
+    #
+    # # If none are recommended, return None (do not reindex)
+    # if len(Lfat_recommended) == 0:
+    #   return None
+    #
+    # # Find the highest symmetry group
+    # possible_bravais_settings = set(solution['bravais'] for solution in
+    #                                 Lfat_recommended)
+    # bravais_lattice_to_space_group_table(possible_bravais_settings)
 
-    # Filter out not-recommended (i.e. too-high rmsd and too-high max angular
-    # difference) solutions
-    Lfat_recommended = [s for s in Lfat if s.recommended]
-
-    # If none are recommended, return None (do not reindex)
-    if len(Lfat_recommended) == 0:
-      return None
-
-    # Find the highest symmetry group
-    possible_bravais_settings = set(solution['bravais'] for solution in
-                                    Lfat_recommended)
-    bravais_lattice_to_space_group_table(possible_bravais_settings)
     lattice_to_sg_number = {
       'aP': 1, 'mP': 3, 'mC': 5, 'oP': 16, 'oC': 20, 'oF': 22, 'oI': 23,
       'tP': 75, 'tI': 79, 'hP': 143, 'hR': 146, 'cP': 195, 'cF': 196, 'cI': 197
@@ -267,7 +280,8 @@ class IOTAImageProcessor(Processor):
         filtered_lattices[key] = value
 
     highest_sym_lattice = max(filtered_lattices, key=filtered_lattices.get)
-    highest_sym_solutions = [s for s in Lfat if s['bravais'] == highest_sym_lattice]
+    highest_sym_solutions = [s for s in refined_settings
+                             if s['bravais'] == highest_sym_lattice]
     if len(highest_sym_solutions) > 1:
       highest_sym_solution = sorted(highest_sym_solutions,
                                     key=lambda x: x['max_angular_difference'])[0]
@@ -360,14 +374,11 @@ class IOTAImageProcessor(Processor):
   def process(self, img_object):
     # write out DIALS info (tied to self.write_pickle)
     if self.write_pickle:
-      pfx = os.path.splitext(img_object.obj_file)[0]
-      self.params.output.experiments_filename = pfx + '_imported.expt'
-      self.params.output.indexed_filename = pfx + '_indexed.refl'
-      self.params.output.strong_filename = pfx + '_strong.refl'
-      self.params.output.refined_experiments_filename = pfx + '_refined.expt'
-      self.params.output.integrated_experiments_filename = pfx + \
-                                                           '_integrated.expt'
-      self.params.output.integrated_filename = pfx + '_integrated.refl'
+      self.params.output.indexed_filename = img_object.ridx_path
+      self.params.output.strong_filename = img_object.rspf_path
+      self.params.output.refined_experiments_filename = img_object.eref_path
+      self.params.output.integrated_experiments_filename = img_object.eint_path
+      self.params.output.integrated_filename = img_object.rint_path
 
     # Set up integration pickle path and logfile
     self.params.output.integration_pickle = img_object.int_file
@@ -376,16 +387,12 @@ class IOTAImageProcessor(Processor):
     # configure DIALS logging
     self.dials_log = getattr(img_object, 'dials_log', None)
     if self.dials_log:
-      log.config(verbosity=0, logfile=self.dials_log)
+      log.config(verbosity=1, logfile=self.dials_log)
 
     # Create output folder if one does not exist
     if self.write_pickle:
       if not os.path.isdir(img_object.int_path):
         os.makedirs(img_object.int_path)
-
-    # if not img_object.experiments:
-    #   from dxtbx.model.experiment_list import ExperimentListFactory as exp
-    #   img_object.experiments = exp.from_filenames([img_object.img_path])[0]
 
     # Auto-set threshold and gain (not saved for target.phil)
     if self.iparams.cctbx_xfel.auto_threshold:
@@ -436,7 +443,8 @@ class IOTAImageProcessor(Processor):
         print ('<--->')
         observed = self.find_spots(img_object.experiments)
         img_object.final['spots'] = len(observed)
-      except Exception as e_spf:
+      except Exception as e:
+        e_spf = str(e)
         observed = None
       else:
         if (
@@ -483,7 +491,8 @@ class IOTAImageProcessor(Processor):
         print ("{:-^100}\n".format(" INDEXING"))
         print ('<--->')
         experiments, indexed = self.index(img_object.experiments, observed)
-      except Exception as e_idx:
+      except Exception as e:
+        e_idx = str(e)
         indexed = None
       else:
         if indexed:
@@ -491,6 +500,7 @@ class IOTAImageProcessor(Processor):
           print ("{:-^100}\n\n".format(" USED {} INDEXED REFLECTIONS "
                                      "".format(len(indexed))))
         else:
+          e_idx = "Not indexed for unspecified reason(s)"
           img_object.fail = 'failed indexing'
 
     if indexed:
@@ -515,7 +525,8 @@ class IOTAImageProcessor(Processor):
           else:
             print ("{:-^100}\n".format(" RETAINED TRICLINIC (P1) SYMMETRY "))
           reindex_success = True
-        except Exception as e_ridx:
+        except Exception as e:
+          e_ridx = str(e)
           reindex_success = False
 
         if reindex_success:
@@ -525,15 +536,29 @@ class IOTAImageProcessor(Processor):
         else:
           return self.error_handler(e_ridx, 'indexing', img_object, output)
 
-    # **** INTEGRATION **** #
+    # **** REFINEMENT **** #
     with util.Capturing() as output:
       try:
         experiments, indexed = self.refine(experiments, indexed)
+        refined = True
+      except Exception as e:
+        e_ref = str(e)
+        refined = False
+    if refined:
+      if self.write_logs:
+        self.write_int_log(path=img_object.int_log, output=output,
+                           dials_log=self.dials_log)
+    else:
+      return self.error_handler(e_ref, 'refinement', img_object, output)
+
+    # **** INTEGRATION **** #
+    with util.Capturing() as output:
+      try:
         print ("{:-^100}\n".format(" INTEGRATING "))
         print ('<--->')
         integrated = self.integrate(experiments, indexed)
-      except Exception as e_int:
-
+      except Exception as e:
+        e_int = str(e)
         integrated = None
       else:
         if integrated:

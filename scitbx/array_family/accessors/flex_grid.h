@@ -364,6 +364,40 @@ namespace scitbx { namespace af {
              * all_[2] + (k-origin_[2]);
       }
 
+      // No assertions to enable maximum performance.
+      std::size_t
+      operator()(
+        index_value_type const& i,
+        index_value_type const& j,
+        index_value_type const& k,
+        index_value_type const& l) const
+      {
+        if (origin_.size() == 0) {
+          return ((i * all_[1] + j) * all_[2] + k) * all_[3] + l;
+        }
+        return (((i-origin_[0]) * all_[1] + (j-origin_[1]))
+             * all_[2] + (k-origin_[2]))
+             * all_[3] + (l-origin_[3]);
+      }
+
+      // No assertions to enable maximum performance.
+      std::size_t
+      operator()(
+        index_value_type const& i,
+        index_value_type const& j,
+        index_value_type const& k,
+        index_value_type const& l,
+        index_value_type const& m) const
+      {
+        if (origin_.size() == 0) {
+          return (((i * all_[1] + j) * all_[2] + k) * all_[3] + l) * all_[4] + m;
+        }
+        return ((((i-origin_[0]) * all_[1] + (j-origin_[1]))
+             * all_[2] + (k-origin_[2]))
+             * all_[3] + (l-origin_[3]))
+             * all_[4] + (m-origin_[4]);
+      }
+
       bool
       operator==(flex_grid<index_type> const& other) const
       {

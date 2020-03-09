@@ -2,12 +2,13 @@
 from __future__ import absolute_import, division, print_function
 from iotbx.command_line import merging_statistics
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal, Exception_expected
+from libtbx.test_utils import approx_equal, Exception_expected, show_diff
 from libtbx.utils import Sorry
 import libtbx.load_env
 from six.moves import cStringIO as StringIO
 import os
 import sys
+
 
 def exercise(debug=False):
   if (not libtbx.env.has_module("phenix_regression")):
@@ -73,7 +74,9 @@ def exercise(debug=False):
       'n_obs', 'd_star_sq_max', 'i_over_sigma_mean', 'completeness',
       'cc_one_half', 'r_meas', 'd_star_sq_min', 'cc_anom', 'r_pim',
       'i_mean', 'cc_one_half_critical_value', 'r_merge', 'multiplicity',
-      'cc_one_half_significance', 'n_uniq']
+      'cc_one_half_significance', 'n_uniq', 'anom_completeness', 'anom_signal',
+      'delta_i_mean_over_sig_delta_i_mean',
+    ]
     for k in expected_keys:
       assert k in d
     assert approx_equal(
@@ -95,6 +98,12 @@ def exercise(debug=False):
   cif = iotbx.cif.reader("merging_stats.mmcif").model()
   assert approx_equal(float(cif["test"]["_reflns.pdbx_CC_half"]), 0.997601585888)
   assert list(cif["test"]["_reflns_shell.number_measured_obs"]) == ['15737', '15728', '15668', '15371', '14996', '14771', '13899', '13549', '13206', '12528']
+  #
+  args3 = args + ["anomalous=True"]
+  result = merging_statistics.run(args3, out=out)
+  assert approx_equal(result.overall.anom_signal, 0.0835294960933567)
+  assert approx_equal(result.overall.anom_completeness, 0.9836098441180893)
+  assert approx_equal(result.overall.delta_i_mean_over_sig_delta_i_mean, 1.1764137800824204)
   # these should crash
   args2 = list(args[:-1]) + ["high_resolution=15", "low_resolution=2.5"]
   try :
@@ -196,21 +205,59 @@ def exercise(debug=False):
           "eliminate_sys_absent=False", "n_bins=20",
           "cc_one_half_significance_level=0.01"]
   result = merging_statistics.run(args, out=out)
+  assert len(result.bins) == 20
   assert approx_equal(result.overall.d_max, 52.445602416992195)
   assert result.overall.n_obs == 119045, result.overall.n_obs
-  assert approx_equal(result.bins[0].cc_anom, 0.8445946103668791)
+  assert approx_equal(result.bins[0].cc_anom, 0.879550520045)
   assert result.bins[0].cc_anom_significance is True
-  assert approx_equal(result.bins[0].cc_anom_critical_value, 0.08001889224417998)
-  assert approx_equal(result.cc_one_half_overall, 0.9277155216469152)
-  assert approx_equal(result.cc_one_half_sigma_tau_overall, 0.9334218927846825)
-  assert approx_equal(result.bins[0].cc_one_half, 0.9965897219959194)
-  assert approx_equal(result.bins[0].cc_one_half_sigma_tau, 0.9971174078562669)
+  assert approx_equal(result.bins[0].cc_anom_critical_value, 0.0873548986308)
+  assert approx_equal(result.cc_one_half_overall, 0.931122967496)
+  assert approx_equal(result.cc_one_half_sigma_tau_overall, 0.9343213900704643)
+  assert approx_equal(result.bins[0].cc_one_half, 0.9969293192434535)
+  assert approx_equal(result.bins[0].cc_one_half_sigma_tau, 0.9970705896978537)
   assert result.bins[0].cc_one_half_significance is True
   assert result.bins[0].cc_one_half_sigma_tau_significance is True
-  assert approx_equal(result.bins[-1].cc_one_half, 0.716558466728842)
-  assert approx_equal(result.bins[-1].cc_one_half_sigma_tau, 0.772170987527236)
+  assert approx_equal(result.bins[-1].cc_one_half, 0.675340867481686)
+  assert approx_equal(result.bins[-1].cc_one_half_sigma_tau, 0.7360191500836607)
   assert result.bins[-1].cc_one_half_significance is True
   assert result.bins[-1].cc_one_half_sigma_tau_significance is True
+  #
+  args2 = args + ["anomalous=True"]
+  result = merging_statistics.run(args2, out=out)
+  app = result.overall.anom_probability_plot_all_data
+  assert approx_equal(app.slope, 1.6747371892218779)
+  assert approx_equal(app.intercept, 0.03443233016003127)
+  assert app.n_pairs == 24317
+  assert app.expected_delta is None
+  app = result.overall.anom_probability_plot_expected_delta
+  assert approx_equal(app.slope, 1.2190614967160294)
+  assert approx_equal(app.intercept, 0.031151653693628906)
+  assert app.n_pairs == 15365
+  assert app.expected_delta == 0.9
+  d = result.overall.as_dict()
+  for k in ("anom_probability_plot_all_data", "anom_probability_plot_expected_delta"):
+    assert d[k].keys() == ["slope", "intercept", "n_pairs", "expected_delta"]
+  out = StringIO()
+  result.overall.show_anomalous_probability_plot(out)
+  assert not show_diff(out.getvalue(),
+                       """\
+Anomalous probability plot (all data):
+  slope:     1.675
+  intercept: 0.034
+  n_pairs:   24317
+Anomalous probability plot (expected delta = 0.9):
+  slope:     1.219
+  intercept: 0.031
+  n_pairs:   15365
+""")
+
+  args = [hkl_file, "binning_method=counting_sorted",
+          "eliminate_sys_absent=False", "n_bins=20",
+          "reflections_per_bin=2000",
+          "cc_one_half_significance_level=0.01"]
+  result = merging_statistics.run(args, out=out)
+  assert len(result.bins) == 12
+
 
 if (__name__ == "__main__"):
   exercise(debug=("--debug" in sys.argv))

@@ -2372,6 +2372,7 @@ class extract_box_around_model_and_map(object):
                xray_structure, # safe to pass here, does not change
                map_data,
                box_cushion,
+               mask_data=None,
                selection=None,
                density_select=None,
                mask_select=None,
@@ -2489,9 +2490,9 @@ class extract_box_around_model_and_map(object):
       self.gridding_first=[ifloor(f*n) for f,n in zip(frac_min,na)]
       self.gridding_last =[iceil(f*n) for f,n in zip(frac_max,na)]
       if restrict_map_size:
-        self.gridding_first=[max(0,g) for g in self.gridding_first]
+        self.gridding_first=[max(0,min(n-2,g)) for n,g in zip(na,self.gridding_first)]
         # do not go beyond map_data.all()-(1,1,1) which is end of map
-        self.gridding_last=[max(gf,min(n-1,g)) for gf,n,g in zip(self.gridding_first,na,self.gridding_last)]
+        self.gridding_last=[max(gf+1,min(n-1,g)) for gf,n,g in zip(self.gridding_first,na,self.gridding_last)]
     self.map_box = self.cut_and_copy_map(map_data=self.map_data)
     secondary_shift_frac = [
       -self.map_box.origin()[i]/self.map_data.all()[i] for i in range(3)]
@@ -2554,7 +2555,7 @@ class extract_box_around_model_and_map(object):
         maptbx.unpad_in_place(map=mask)
         mask = maptbx.smooth_map(
           map              = mask,
-          crystal_symmetry = cs,
+          crystal_symmetry = self.box_crystal_symmetry,
           rad_smooth       = soft_mask_radius)
       self.map_box = self.map_box*mask
       if(value_outside_atoms is not None):
@@ -2575,9 +2576,11 @@ class extract_box_around_model_and_map(object):
          set_up_and_apply_soft_mask(
        map_data=self.map_box.deep_copy(),
        shift_origin=False,
-       crystal_symmetry=cs,
+       crystal_symmetry=self.box_crystal_symmetry,
        resolution=resolution,
-       radius=soft_mask_radius,out=sys.stdout)
+       grid_units_for_boundary=None,
+       radius=soft_mask_radius,
+       out=sys.stdout)
 
   def get_solvent_content(self):
     return self.solvent_content
@@ -2686,36 +2689,40 @@ class extract_box_around_model_and_map(object):
         box_map_ncs_au_half_map_data_list
 
   def select_box_with_mask(self,crystal_symmetry=None):
-    # auto-generate mask and use it to select box
+    # If we have a mask, use it
+    if self.mask_data:
+      mask_data=self.mask_data
+    else:
+      # auto-generate mask and use it to select box
 
-    # See if we can get solvent fraction accurately to start off:
-    if (self.molecular_mass or self.sequence ) and (
-        not self.solvent_content):
-      from cctbx.maptbx.segment_and_split_map import get_solvent_fraction
-      self.solvent_content=get_solvent_fraction(
-         params=None,
-         molecular_mass=self.molecular_mass,
-         sequence=self.sequence,
-         do_not_adjust_dalton_scale=True,
-         crystal_symmetry=self.crystal_symmetry,
-         out=null_out())
+      # See if we can get solvent fraction accurately to start off:
+      if (self.molecular_mass or self.sequence ) and (
+          not self.solvent_content):
+        from cctbx.maptbx.segment_and_split_map import get_solvent_fraction
+        self.solvent_content=get_solvent_fraction(
+           params=None,
+           molecular_mass=self.molecular_mass,
+           sequence=self.sequence,
+           do_not_adjust_dalton_scale=True,
+           crystal_symmetry=self.crystal_symmetry,
+           out=null_out())
 
-    from cctbx.maptbx.segment_and_split_map import \
-        get_iterated_solvent_fraction
-    mask_data,solvent_fraction=get_iterated_solvent_fraction(
-        crystal_symmetry=crystal_symmetry,
-        fraction_of_max_mask_threshold=0.05, #
-        solvent_content=self.solvent_content,
-        cell_cutoff_for_solvent_from_mask=1, # Use low-res method always
-        use_solvent_content_for_threshold=True,
-        mask_resolution=self.resolution,
-        return_mask_and_solvent_fraction=True,
-        verbose=False,
-        map=self.map_data,
-        out=null_out())
+      from cctbx.maptbx.segment_and_split_map import \
+          get_iterated_solvent_fraction
+      mask_data,solvent_fraction=get_iterated_solvent_fraction(
+          crystal_symmetry=crystal_symmetry,
+          fraction_of_max_mask_threshold=0.05, #
+          solvent_content=self.solvent_content,
+          cell_cutoff_for_solvent_from_mask=1, # Use low-res method always
+          use_solvent_content_for_threshold=True,
+          mask_resolution=self.resolution,
+          return_mask_and_solvent_fraction=True,
+          verbose=False,
+          map=self.map_data,
+          out=null_out())
 
-    if solvent_fraction is None:
-      raise Sorry("Unable to get solvent fraction in auto-masking")
+      if solvent_fraction is None:
+        raise Sorry("Unable to get solvent fraction in auto-masking")
 
     from cctbx.maptbx.segment_and_split_map import get_co
     co,sorted_by_volume,min_b,max_b=get_co(

@@ -1401,7 +1401,7 @@ _chem_comp_angle.value_angle_esd   3.000
   cmd = "phenix.pdb_interpretation \"%s\" \"%s\" write_geo_files=True" %(
     pdb_file.name, restraints_file.name)
   result = easy_run.fully_buffered(cmd).raise_if_errors()
-  geo_file = open(pdb_file.name+".geo", "rb")
+  geo_file = open(pdb_file.name+".geo", "r")
   geo_file_str = geo_file.read()
   assert "Bond angle restraints: 1" in geo_file_str
 

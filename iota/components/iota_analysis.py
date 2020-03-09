@@ -5,7 +5,7 @@ from six.moves import range, zip
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 10/31/2019
+Last Changed: 11/21/2019
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -338,6 +338,16 @@ class Analyzer(object):
                           obj.img_index, obj.final[key])
             self.info.stats[key]['lst'].append(stat_tuple)
 
+            # add proc filepath info to 'pointers'
+            pointer_dict = {
+              'img_file'   : obj.img_path,
+              'obj_file'   : obj.obj_file,
+              'img_index'  : obj.img_index,
+              'experiments': obj.eint_path,
+              'reflections': obj.rint_path
+            }
+            self.info.pointers[str(obj.input_index)] = pointer_dict
+
             if key not in self.info.unplotted_stats:
               self.info.unplotted_stats[key] = dict(lst=[])
             self.info.unplotted_stats[key]['lst'].append(stat_tuple)
@@ -396,13 +406,13 @@ class Analyzer(object):
 
       # Calculate dataset stats
       for k in self.info.stats:
-        stat_list = list(zip(*self.info.stats[k]['lst']))[2]
+        stat_list = list(zip(*self.info.stats[k]['lst']))[3]
         stats = dict(lst=self.info.stats[k]['lst'],
-                     median=np.median(stat_list),
-                     mean=np.mean(stat_list),
-                     std=np.std(stat_list),
-                     max=np.max(stat_list),
-                     min=np.min(stat_list),
+                     median=np.median(stat_list).item(),
+                     mean=np.mean(stat_list).item(),
+                     std=np.std(stat_list).item(),
+                     max=np.max(stat_list).item(),
+                     min=np.min(stat_list).item(),
                      cons=Counter(stat_list).most_common(1)[0][0])
         self.info.stats[k].update(stats)
       return True

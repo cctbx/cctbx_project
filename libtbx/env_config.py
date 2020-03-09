@@ -4,13 +4,14 @@ from libtbx.auto_build import regenerate_module_files
 from libtbx.auto_build.installer_utils import call
 from libtbx.path import relocatable_path, absolute_path
 from libtbx.str_utils import show_string
-from libtbx.utils import detect_binary_file
+from libtbx.utils import detect_binary_file, to_str
 from libtbx import adopt_init_args
 import platform
 import shutil
 from six.moves import zip, map
 from six.moves import cPickle as pickle
 
+import io
 import os
 import re
 import site
@@ -128,16 +129,19 @@ def is_llvm_compiler(gcc='gcc'):
     return False
 
 def get_gcc_version(command_name="gcc"):
+  # run command in shell subprocess
   from libtbx import easy_run
   buffer = easy_run.fully_buffered(
     command="%s -dumpversion" % command_name)
-  if (len(buffer.stderr_lines) != 0):
-    return None
-  if (len(buffer.stdout_lines) != 1):
-    return None
+  # if something went wrong `buffer.stdout_lines` might have len=0
+  if len(buffer.stdout_lines) < 1:
+      return None
+
   major_minor_patchlevel = buffer.stdout_lines[0].split(".")
+  # output is not a valid version format:
   if (len(major_minor_patchlevel) not in [1,2,3]):
     return None
+  # parse version number
   num = []
   for fld in major_minor_patchlevel:
     try: i = int(fld)
@@ -147,6 +151,8 @@ def get_gcc_version(command_name="gcc"):
   # substitute missing minor and patchlevel for gcc7 on Ubuntu18
   if (len(num) == 1): num.append(0); num.append(0)
   if (len(num) == 2): num.append(0) # substitute missing patchlevel
+
+  # format version numbers
   return ((num[0]*100)+num[1])*100+num[2]
 
 def get_hostname():
@@ -228,7 +234,9 @@ def highlight_dispatcher_include_lines(lines):
   lines.append(lines[0])
 
 def source_specific_dispatcher_include(pattern, source_file):
-  try: source_lines = source_file.open().read().splitlines()
+  try:
+    with io.open(abs(source_file), encoding='utf-8', errors='ignore') as fh:
+      source_lines = to_str(fh.read()).splitlines()
   except IOError: return []
   if (os.name == "nt"):
     lines = ["@REM lines marked " + pattern]
@@ -717,7 +725,7 @@ Wait for the command to finish, then try again.""" % vars())
 
   def find_dist_path(self, module_name, optional=False,
                      return_relocatable_path=False):
-    if module_name=='amber': optional=True
+    if module_name=='amber': return None # because amber_adaptbx is not an adapter
     dist_path = self.command_line_redirections.get(module_name, None)
     if (dist_path is not None):
       return dist_path.self_or_abs_if(return_relocatable_path)
@@ -786,6 +794,8 @@ Wait for the command to finish, then try again.""" % vars())
             '  resulting target = "%s"' % (
               module_name, redirection, dist_path))
         self.command_line_redirections[module_name] = dist_path
+      # remove any trailing dir separators
+      module_name = module_name.rstrip("/\\")
       module_names.append(module_name)
     if (pre_processed_args.warm_start):
       self.explicitly_requested_modules |= set(module_names)
@@ -1255,7 +1265,10 @@ Wait for the command to finish, then try again.""" % vars())
     write_dispatcher_include(where="at_start")
     essentials = [("PYTHONPATH", self.pythonpath)]
     essentials.append((self.ld_library_path_var_name(), [self.lib_path]))
-    essentials.append(("PATH", [self.bin_path]))
+    bin_path = [self.bin_path]
+    if self.build_options.use_conda:
+      bin_path.append(self.as_relocatable_path(get_conda_prefix()) / 'Library' / 'bin')
+    essentials.append(("PATH", bin_path))
     for n,v in essentials:
       if (len(v) == 0): continue
       v = ';'.join([ op.join('%LIBTBX_BUILD%', p.relocatable) for p in v ])
@@ -1451,6 +1464,12 @@ alias libtbx.unsetpaths "source '$LIBTBX_BUILD/unsetpaths.csh'"
                                    return_relocatable_path=True))
     write_do_not_edit(f=f)
     print('SConsignFile()', file=f)
+    if os.getenv("SCONS_CACHE"):
+      cache_dir = os.getenv("SCONS_CACHE")
+      print("Using build cache in %s" % cache_dir)
+      print("CacheDir(%r)" % cache_dir, file=f)
+      assert os.path.exists(cache_dir) and os.path.isdir(cache_dir), \
+        "Specified build cache dir does not exist"
     for path in self.repository_paths:
       print('Repository(r"%s")' % abs(path), file=f)
     for module in self.module_list:
@@ -1685,9 +1704,15 @@ selfx:
     '''
     try:
       import pkg_resources
-      bin_directory = self.get_setuptools_script_dir()
     except ImportError:
       return
+    if self.build_options.use_conda:
+      bin_directory = os.path.normpath(os.path.join(sys.prefix, "bin"))
+    else:
+      try:
+        bin_directory = self.get_setuptools_script_dir()
+      except ImportError:
+        return
     if not os.path.isdir(bin_directory):
       return # do not create console_scripts dispatchers, only point to them
 
@@ -1821,7 +1846,10 @@ selfx:
     # Resolve python dependencies in advance of potential use in refresh scripts
     # Lazy-load the import here as we might not have an environment before this
     from . import pkg_utils
-    pkg_utils.resolve_module_python_dependencies(self.module_list)
+    if self.build_options.use_conda:
+      pkg_utils.resolve_module_conda_dependencies(self.module_list)
+    else:
+      pkg_utils.resolve_module_python_dependencies(self.module_list)
 
     for path in self.pythonpath:
       sys.path.insert(0, abs(path))
@@ -1860,6 +1888,8 @@ selfx:
 class module:
   """
   Attributes:
+    conda_required (List[str]):
+      List of conda package requirement specifiers. Should match PEP508-style.
     python_required (List[str]):
       List of python package requirement specifiers. Should match PEP508-style.
   """
@@ -1877,6 +1907,7 @@ class module:
       self.names = [name, name + mate_suffix]
       if (dist_path is not None):
         self.dist_paths = [dist_path, None]
+    self.conda_required = []
     self.python_required = []
 
   def names_active(self):
@@ -1912,6 +1943,7 @@ class module:
     self.exclude_from_binary_bundle = []
     dist_paths = []
     self.extra_command_line_locations = []
+    self.conda_required = []
     self.python_required = []
     for dist_path in self.dist_paths:
       if (dist_path is not None):
@@ -1953,6 +1985,7 @@ class module:
             "modules_required_for_build", []))
           self.required_for_use.extend(config.get(
             "modules_required_for_use", []))
+          self.conda_required.extend(config.get("conda_required", []))
           self.python_required.extend(config.get("python_required", []))
           self.optional.extend(config.get(
             "optional_modules", []))
@@ -2043,7 +2076,9 @@ class module:
       check_for_hash_bang = True
     target_files = []
     if (read_size != 0):
-      try: source_text = source_file.open().read(read_size)
+      try:
+        with io.open(abs(source_file), encoding='utf-8', errors='ignore') as fh:
+          source_text = to_str(fh.read(read_size))
       except IOError:
         raise RuntimeError('Cannot read file: "%s"' % source_file)
       if (check_for_hash_bang and not source_text.startswith("#!")):
@@ -2135,8 +2170,8 @@ class module:
         global_vars = globals()
         global_vars["__name__"] = dist_path.basename() + ".libtbx_refresh"
         global_vars["self"] = self
-        with open(abs(custom_refresh)) as fh:
-          exec(fh.read(), global_vars)
+        with io.open(abs(custom_refresh), encoding='utf-8', errors='ignore') as fh:
+          exec(to_str(fh.read()), global_vars)
 
   def collect_test_scripts(self,
         file_names=["run_tests.py", "run_examples.py"]):
@@ -2634,15 +2669,18 @@ def get_boost_library_with_python_version(name, libpath):
   for p in libpath:
     name_version = name + version
     if sys.platform == 'win32':
-      full_name = os.path.join(p, name_version + '.dll')
+      full_names = [os.path.join(p, name_version + '.dll'),
+                    os.path.join(p, name_version + '.lib')]
     else:
       full_name = os.path.join(p, 'lib' + name_version)
       if sys.platform == 'darwin':
         full_name += '.dylib'
       else:
         full_name += '.so'
-    if os.path.isfile(full_name):
-      return name_version
+      full_names = [full_name]
+    for full_name in full_names:
+      if os.path.isfile(full_name):
+        return name_version
   return name
 
 if (__name__ == "__main__"):

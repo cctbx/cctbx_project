@@ -5,7 +5,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 10/31/2019
+Last Changed: 12/02/2019
 Description : IOTA GUI Windows / frames
 '''
 
@@ -175,7 +175,8 @@ class MainWindow(IOTABaseFrame):
                                                        'hdf5 image folder',
                                                        'mixed input folder',
                                                        'image folder'],
-                                      'data_types': ['image']
+                                      'data_types': ['image'],
+                                      'input_filter':'image'
                                     })
 
     # Front options panel
@@ -558,6 +559,16 @@ class MainWindow(IOTABaseFrame):
 
     # Update gparams here, to include new stuff from PHIL
     self.gparams = self.iota_index.get_python_object(make_copy=True)
+
+    # Pass input from IOTA PHIL through Input Finder to resolve wildcards, etc.
+    if self.gparams.input is not None:
+      inputs = [
+        self.gparams.input.pop(i) for i in range(len(self.gparams.input))]
+      phil_input_dict = ut.ginp.process_mixed_input(paths=inputs)
+      if input_dict:
+        input_dict.update(phil_input_dict)
+      else:
+        input_dict = phil_input_dict
 
     # Read input OR update from window params
     if input_dict:
@@ -1120,7 +1131,7 @@ class ProcessingTab(IOTABasePanel):
       res_ymin = np.nanmin(self.res_y) * 0.9
       if res_ymin == res_ymax:
         res_ymax = res_ymin + 1
-      self.res_axes.set_ylim(ymin=res_ymin, ymax=res_ymax)
+      self.res_axes.set_ylim(bottom=res_ymin, top=res_ymax)
       self.res_axes.draw_artist(self.res_chart)
 
       # Plot strong reflections per frame
@@ -1132,7 +1143,7 @@ class ProcessingTab(IOTABasePanel):
       nsref_ymax = np.nanmax(self.nsref_y) * 1.25 + 10
       if nsref_ymax == 0:
         nsref_ymax = 100
-      self.nsref_axes.set_ylim(ymin=0, ymax=nsref_ymax)
+      self.nsref_axes.set_ylim(bottom=0, top=nsref_ymax)
       self.nsref_axes.draw_artist(self.nsref_chart)
 
       self._update_canvas(canvas=self.int_canvas)
@@ -1221,8 +1232,8 @@ class ProcessingTab(IOTABasePanel):
       if ymax == 0:
         ymax += 0.00001
 
-      self.hkl_axes.set_xlim(xmin=-xmax, xmax=xmax)
-      self.hkl_axes.set_ylim(ymin=-ymax, ymax=ymax)
+      self.hkl_axes.set_xlim(left=-xmax, right=xmax)
+      self.hkl_axes.set_ylim(bottom=-ymax, top=ymax)
     except ValueError:
       pass
 
@@ -1238,12 +1249,22 @@ class ProcessingTab(IOTABasePanel):
     self._update_canvas(canvas=self.hkl_canvas)
 
   def onImageView(self, e):
-    filepath = self.info_txt.GetValue()
-    viewer = self.gparams.gui.image_viewer
-    if os.path.isfile(filepath):
+    # filepath = self.info_txt.GetValue().split(' ')[0]
+    # viewer = self.gparams.gui.image_viewer
+    # if os.path.isfile(filepath):
+    #   viewer = thr.ImageViewerThread(self,
+    #                                  viewer=viewer,
+    #                                  file_string=filepath)
+    #   viewer.start()
+
+    idx = str(self.pick['index'])
+    exp = self.info.pointers[idx]['experiments']
+    ref = self.info.pointers[idx]['reflections']
+    file_string = 'experiments={} reflections={}'.format(exp, ref)
+    if os.path.isfile(exp) and os.path.isfile(ref):
       viewer = thr.ImageViewerThread(self,
-                                     viewer=viewer,
-                                     file_string=filepath)
+                                     viewer=self.gparams.gui.image_viewer,
+                                     file_string=file_string)
       viewer.start()
 
   def view_proc_images(self):
@@ -1266,6 +1287,10 @@ class ProcessingTab(IOTABasePanel):
               filenames.append(self.proc_fnames[int(n)])
     elif 0 < len(self.proc_fnames) <= 5:
       filenames = self.proc_fnames
+
+    # handle filepath tuples
+    if isinstance(filenames, list) or isinstance(filenames, tuple):
+      filenames = list(zip(*filenames))[1]
 
     if filenames:
       file_string = ' '.join(filenames)
@@ -1831,21 +1856,6 @@ class SummaryTab(IOTABaseScrolledPanel):
       self.gparams.output
     self.folder_txt.SetLabel(int_base)
 
-    # # Add grid search stats if exist
-    # if hasattr(self.info, 'gs_stats'):
-    #   gs_stats = self.info.gs_stats
-    #   rkeys = ['s', 'h', 'a']
-    #   clabels = ['min', 'max', 'avg', 'std']
-    #   rlabels = [gs_stats[k]['label'] for k in rkeys]
-    #   contents = [[gs_stats[k]['min'], gs_stats[k]['max'], gs_stats[k]['mean'],
-    #                gs_stats[k]['std']] for k in rkeys]
-    #   gs_table = ct.TableCtrl(self,
-    #                           clabels=clabels,
-    #                           rlabels=rlabels,
-    #                           contents=contents)
-    #   self.int_box_grid.Add(gs_table, span=(len(rlabels), 1),
-    #                         pos=(0, 0), flag=wx.EXPAND)
-
     # Add dataset information
     if hasattr(self.info, 'stats'):
       lres = self.info.stats['lres']['mean']
@@ -1861,16 +1871,18 @@ class SummaryTab(IOTABaseScrolledPanel):
 
       beamxy = 'X = {:.2f}, Y = {:.2f}'.format(self.info.stats['beamX']['mean'],
                                                self.info.stats['beamY']['mean'])
-      data = zip(
+      data = list(
+        zip(
         ['Bravais lattice: ', 'Unit cell: ','Resolution: ', 'Beam XY (''mm): '],
         [self.info.best_pg, uc, res, beamxy]
+        )
       )
 
       # Make dataset stat plot
       stat_plot = Plotter(self, info=self.info)
       stat_plot.initialize_figure(figsize=(0.1, 0.1))
       self.dat_box_grid.Add(stat_plot, span=(4, 1), pos=(0, 0), flag=wx.EXPAND)
-      stat_plot.plot_table(data=data)
+      stat_plot.plot_table(data=list(data))
       self.dat_box_grid.AddGrowableCol(0)
       self.dat_box_grid.AddGrowableRow(3)
 
@@ -1885,7 +1897,7 @@ class SummaryTab(IOTABaseScrolledPanel):
         if self.info.categories[k][0]:
           contents.append(str(len(self.info.categories[k][0])))
           rlabels.append(self.info.categories[k][1])
-      proc_data = zip(rlabels, contents)
+      proc_data = list(zip(rlabels, contents))
 
       # Make plot
       proc_plot = Plotter(self, info=self.info)
@@ -1961,7 +1973,8 @@ class ProcWindow(IOTABaseFrame):
     self.monitor_mode = False
     self.monitor_mode_timeout = None
     self.timeout_start = None
-    self.find_new_images = self.monitor_mode
+    self.find_new_images = False
+    self.finding_images = False
     self.start_object_finder = True
     self.plotter_time = []
     self.obj_reader_time = []
@@ -2071,6 +2084,7 @@ class ProcWindow(IOTABaseFrame):
     if self.gparams.gui.monitor_mode:
       self.toolbar.ToggleTool(self.tb_btn_monitor.GetId(), True)
       self.monitor_mode = True
+      self.find_new_images = True
       if self.gparams.gui.monitor_mode_timeout:
         if self.gparams.gui.monitor_mode_timeout_length is None:
           self.monitor_mode_timeout = 30
@@ -2385,19 +2399,13 @@ class ProcWindow(IOTABaseFrame):
   def monitor_filesystem(self):
     # Check if all images have been looked at; if yes, finish process
     if self.monitor_mode:
-      self.get_images_from_filesystem()
-
-      # if self.find_new_images:
-      #   self.get_images_from_filesystem()
-      # else:
-      #   self.find_new_images = (not self.new_images)
-
       if self.new_images:
         self.status_txt.SetLabel(
           'Found {} new images'.format(len(self.new_images)))
         self.timeout_start = None
         self.state = 'new images'
         self.info.update_input_list(new_input=self.new_images)
+        self.new_images = []
         self.info.export_json()
         self.process_images()
       else:
@@ -2410,12 +2418,16 @@ class ProcWindow(IOTABaseFrame):
               self.status_txt.SetLabel('Timed out. Finishing...')
               self.finish_process()
             else:
-              timeout_msg = 'No images found! Timing out in {} seconds' \
+              timeout_msg = 'No new images found! Timing out in {} seconds' \
                             ''.format(
                 int(self.monitor_mode_timeout - interval))
               self.status_txt.SetLabel(timeout_msg)
         else:
           self.status_txt.SetLabel('No new images found! Waiting ...')
+
+        if self.find_new_images:
+          self.get_images_from_filesystem()
+
     else:
       self.status_txt.SetLabel('Wrapping up ...')
       # interrupt long-running PRIME thread
@@ -2429,20 +2441,21 @@ class ProcWindow(IOTABaseFrame):
       self.finish_process()
 
   def get_images_from_filesystem(self):
-    img_finder = thr.ImageFinderThread(self,
-                                       input=self.gparams.input,
-                                       input_list=self.info.categories['total'][
-                                         0])
+    self.find_new_images = False
+    img_finder = thr.ImageFinderThread(
+      self,
+      input=self.gparams.input,
+      input_list=self.info.categories['total'][0])
     img_finder.start()
 
   def onFinishedProcess(self, e):
+    self.finding_images = False
     if not self.monitor_mode:
       self.finish_process()
-    else:
-      self.find_new_images = True
 
   def onFinishedImageFinder(self, e):
     self.new_images = e.GetValue()
+    self.find_new_images = True
 
   def onFinishedObjectReader(self, info):
     # Read info object

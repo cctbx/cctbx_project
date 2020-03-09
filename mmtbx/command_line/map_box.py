@@ -366,6 +366,7 @@ def run(args, crystal_symmetry=None,
      ncs_object=None,
      pdb_hierarchy=None,
      map_data=None,
+     mask_data=None,
      half_map_data_list=None,
      half_map_labels_list=None,
      lower_bounds=None,
@@ -716,9 +717,12 @@ Parameters:"""%h
     print("Bounds for cut out map are (%s,%s,%s) to (%s,%s,%s)" %(
      tuple(list(params.lower_bounds)+list(params.upper_bounds))), file=log)
 
+  if mask_data:
+    mask_data=mask_data.as_double()
   box = mmtbx.utils.extract_box_around_model_and_map(
     xray_structure   = xray_structure,
     map_data         = map_data.as_double(),
+    mask_data        = mask_data,
     box_cushion      = params.box_cushion,
     selection        = selection,
     mask_select      = params.mask_select,
@@ -860,7 +864,7 @@ Parameters:"""%h
       print("\nOutput files are in same location as original and origin "+\
         "is at (0,0,0)\n", file=log)
 
-  print("\nBox grid: (%s, %s, %s) " %(output_box.map_box.all()))
+  print("\nBox grid: (%s, %s, %s) " %(output_box.map_box.all()),file=log)
   ph_output_box_output_location = ph_box.deep_copy()
   if output_box.shift_cart:  # shift coordinates and NCS back by shift_cart
     # NOTE output_box.shift_cart could be different than box.shift_cart if

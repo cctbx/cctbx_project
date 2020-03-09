@@ -372,6 +372,46 @@ namespace {
     }
 
     {
+      typedef sphericity2 w_t;
+
+      class_<w_t>("sphericity2", no_init)
+        .def(init<af::const_ref<double, af::c_grid<3> > const&,
+                  cctbx::cartesian<double> const&,
+                  af::const_ref<scitbx::vec3<double> > const&,
+                  cctbx::uctbx::unit_cell const& >(
+                    (arg("map_data"),
+                     arg("center_cart"),
+                     arg("points_on_sphere_cart"),
+                     arg("unit_cell"))))
+        .def("rho_min_max_mean", &w_t::rho_min_max_mean)
+        .def("ccs_min_max_mean", &w_t::ccs_min_max_mean)
+      ;
+    }
+
+    {
+      typedef fit_point_3d_grid_search w_t;
+
+      class_<w_t>("fit_point_3d_grid_search", no_init)
+        .def(init<cctbx::cartesian<> const&,
+                  af::const_ref<double, af::c_grid<3> > const&,
+                  double const&,
+                  cctbx::uctbx::unit_cell const&,
+                  double const&,
+                  double const& >(
+                    (arg("site_cart"),
+                     arg("map_data"),
+                     arg("map_min"),
+                     arg("unit_cell"),
+                     arg("amplitude"),
+                     arg("increment"))))
+        .def("has_peak",        &w_t::has_peak)
+        .def("map_best",        &w_t::map_best)
+        .def("map_start",       &w_t::map_start)
+        .def("site_cart_moved", &w_t::site_cart_moved)
+      ;
+    }
+
+    {
       typedef volume_scale w_t;
 
       class_<w_t>("volume_scale", no_init)
@@ -625,19 +665,6 @@ namespace {
       arg("unit_cell"),
       arg("cutoff")));
 
-    def("fit_point_3d_grid_search",
-      (cctbx::cartesian<>(*)
-        (cctbx::cartesian<> const&,
-         af::const_ref<double, af::c_grid<3> > const&,
-         uctbx::unit_cell const&,
-         double const&,
-         double const&)) fit_point_3d_grid_search, (
-      arg("site_cart"),
-      arg("map_data"),
-      arg("unit_cell"),
-      arg("amplitude"),
-      arg("increment")));
-
     def("sharpen",
       (void(*)
         (af::ref<double, af::c_grid<3> >,
@@ -752,6 +779,15 @@ namespace {
          std::vector<unsigned> const&)) negate_selected_in_place, (
       arg("map_data"),
       arg("selection")));
+
+    def("resample",
+      (void(*)
+        (af::const_ref<double, af::c_grid<3> > const&,
+         af::ref<double, af::c_grid<3> >,
+         cctbx::uctbx::unit_cell const&)) resample, (
+      arg("map_data"),
+      arg("map_data_new"),
+      arg("unit_cell")));
 
     def("reset",
       (void(*)

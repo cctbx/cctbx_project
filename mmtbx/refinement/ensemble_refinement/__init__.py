@@ -1740,6 +1740,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
       log = log)
 
   # Refinement flags
+  # Worst hack I've ever seen! No wonder ensemble refinement is semi-broken!
   class rf:
     def __init__(self, size):
       self.individual_sites     = True
@@ -1750,6 +1751,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
       self.adp_individual_iso   = None
       self.adp_individual_aniso = None
     def inflate(self, **keywords): pass
+    def select_detached(self, **keywords): pass
 
   refinement_flags = rf(size = model.get_number_of_atoms())
 

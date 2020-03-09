@@ -28,7 +28,10 @@ from wxtbx import wx4_compatibility as wx4c
 CAPTION_SIZE = 9
 LABEL_SIZE = 11
 if wx.Platform == '__WXMAC__':
-  import Carbon.Appearance
+  try:
+    from Carbon import Appearance as CarbonAppearance
+  except Exception:
+    CarbonAppearance = None
 elif (wx.Platform == '__WXMSW__'):
   CAPTION_SIZE = 9
   LABEL_SIZE = 11
@@ -269,7 +272,8 @@ class MetallicButton(WxCtrl):
       gc.SetTextForeground(self._color['htxt'])
       if wx.Platform == '__WXMAC__':
         brush = wx.Brush((100,100,100))
-        brush.MacSetTheme(Carbon.Appearance.kThemeBrushFocusHighlight)
+        if CarbonAppearance:
+          brush.MacSetTheme(CarbonAppearance.kThemeBrushFocusHighlight)
         with wx4c.set_pen_style(wx.PENSTYLE_SOLID) as pstyle:
           pen = wx.Pen(brush.GetColour(), 1, pstyle)
       else:

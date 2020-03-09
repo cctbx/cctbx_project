@@ -5,6 +5,9 @@
 from __future__ import absolute_import, division, print_function
 
 import logging
+
+from dials.util import show_mail_on_error
+
 logger = logging.getLogger('cctbx.small_cell_process')
 
 help_message = '''
@@ -51,9 +54,6 @@ if __name__ == '__main__':
   stills_process.Processor = Processor
   stills_process.phil_scope = phil_scope
 
-  from dials.util import halraiser
-  try:
+  with show_mail_on_error():
     script = stills_process.Script()
     script.run()
-  except Exception as e:
-    halraiser(e)

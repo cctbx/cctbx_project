@@ -5,14 +5,8 @@
 pr: none
 
 stages:
-- stage: Checks
-  displayName: Check
-  jobs:
-    - template: ./.azure-pipelines/syntax.yml
-
 - stage: Preparation
   displayName: Download
-  dependsOn: Checks
   jobs:
     - template: ./.azure-pipelines/download-source.yml
     - template: ./.azure-pipelines/download-conda.yml
@@ -25,8 +19,8 @@ stages:
     - template: ./.azure-pipelines/conda-linux.yml
       parameters:
         distribution: centos
-        version: [6, 10]
+        version: [6]
     - template: ./.azure-pipelines/conda-osx.yml
       parameters:
         vmImage: [10, 14]
-        xcode_version: [10, 3]
+        xcode_version: [11, 3, 1]

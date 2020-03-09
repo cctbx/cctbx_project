@@ -457,7 +457,7 @@ class CCTBXParser(ParserBase):
       self.working_phil, more_unused_phil = self.master_phil.fetch(
         sources=data_sources + sources, track_unused_definitions=True)
       unused_phil.extend(more_unused_phil)
-    else:
+    elif self.working_phil is None:
       self.working_phil = self.master_phil.fetch()
 
     # show unrecognized parameters and abort

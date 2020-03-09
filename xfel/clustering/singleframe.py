@@ -303,13 +303,18 @@ class SingleFrame(InputFrame):
 
   @staticmethod
   def make_g6(uc):
-      """ Take a reduced Niggli Cell, and turn it into the G6 representation """
+      """ Take a reduced Niggli Cell, and turn it into the G6 representation. This is
+          similar but not identical to the metrical matrix.  See
+          doi:10.1107/S0567739473001063 Gruber (1973)
+          doi:10.1107/S0108767388006427 Andrews and Bernstein (1988)
+          doi:10.1107/S1600576713031002 Andrews and Bernstein (2014)
+      """
       a = uc[0] ** 2
       b = uc[1] ** 2
       c = uc[2] ** 2
-      d = 2 * uc[1] * uc[2] * math.cos(uc[3])
-      e = 2 * uc[0] * uc[2] * math.cos(uc[4])
-      f = 2 * uc[0] * uc[1] * math.cos(uc[5])
+      d = 2 * uc[1] * uc[2] * math.cos(math.radians(uc[3]))
+      e = 2 * uc[0] * uc[2] * math.cos(math.radians(uc[4]))
+      f = 2 * uc[0] * uc[1] * math.cos(math.radians(uc[5]))
       return [a, b, c, d, e, f]
 
 class SingleDialsFrame(SingleFrame):

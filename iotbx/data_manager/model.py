@@ -193,7 +193,7 @@ model
       Nothing
     '''
     if isinstance(model_str, mmtbx.model.manager):
-      if model_str.input_format_was_cif():
+      if model_str.input_model_format_cif():
         extension = '.cif'
         model_str = model_str.model_as_mmcif()
       else:
@@ -201,6 +201,8 @@ model
         model_str = model_str.model_as_pdb()
     if filename is Auto:
       filename = self.get_default_output_model_filename(extension=extension)
+    elif extension is not Auto:
+      filename += extension
     self._write_text(ModelDataManager.datatype, model_str,
                      filename=filename, overwrite=overwrite)
 

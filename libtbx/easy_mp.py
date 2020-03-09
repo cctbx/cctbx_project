@@ -105,6 +105,12 @@ fixed_func_registry_key_generator = _()
 
 try: # cannot use detect_problem() here (hangs in pool.map())
   from multiprocessing.pool import Pool as multiprocessing_Pool
+  # on macOS restore "fork" instead of new default of "spawn" on Python 3.8
+  # https://bugs.python.org/issue33725
+  # may need to re-evaluate if Python is built with macOS 10.13 SDK (or later)
+  if sys.platform == 'darwin' and sys.hexversion >= 0x03080000:
+    import multiprocessing
+    multiprocessing.set_start_method('fork')
 except Exception:
   multiprocessing_Pool = object
 

@@ -100,8 +100,8 @@ class Plotter(IOTAPlotter):
 
     # Flatten data list of lists (works this once, since each sub-list
     # contains a single item)
-    tb1_data = zip(*tb1_data)[0]
-    data = zip(rlabels, tb1_data)
+    tb1_data = list(zip(*tb1_data))[0]
+    data = list(zip(rlabels, tb1_data))
     return data
 
   def table_one_text(self):

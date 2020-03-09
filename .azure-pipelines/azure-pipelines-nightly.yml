@@ -12,14 +12,8 @@ schedules:
     - master
 
 stages:
-- stage: Checks
-  displayName: Check
-  jobs:
-    - template: ./syntax.yml
-
 - stage: Preparation
   displayName: Download
-  dependsOn: Checks
   jobs:
     - template: ./download-source.yml
     - template: ./download-conda.yml
@@ -32,11 +26,11 @@ stages:
     - template: ./conda-linux.yml
       parameters:
         distribution: centos
-        version: [6, 10]
+        version: [6]
     - template: ./conda-linux.yml
       parameters:
         distribution: centos
-        version: [7, 6, 1810]
+        version: [7]
     - template: ./conda-linux.yml
       parameters:
         distribution: centos
@@ -56,7 +50,7 @@ stages:
     - template: ./conda-osx.yml
       parameters:
         vmImage: [10, 14]
-        xcode_version: [11, 1]
+        xcode_version: [11, 3, 1]
     - template: ./conda-osx.yml
       parameters:
         vmImage: [10, 14]
@@ -69,7 +63,3 @@ stages:
       parameters:
         vmImage: [10, 13]
         xcode_version: [9, 4, 1]
-    - template: ./conda-osx.yml
-      parameters:
-        vmImage: [10, 13]
-        xcode_version: [8, 3, 3]

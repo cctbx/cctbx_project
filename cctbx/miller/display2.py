@@ -7,6 +7,7 @@ from libtbx.utils import Sorry, to_str
 from cctbx import miller
 from cctbx.array_family import flex
 import libtbx.phil
+from scitbx import graphics_utils
 from libtbx import object_oriented_patterns as oop # causes crash in easy_mp.multi_core_run
 from math import sqrt
 import math, traceback
@@ -49,15 +50,14 @@ def nth_power_scale(dataarray, nth_power):
   values to 0.1 of the largest values
   """
   absdat = flex.abs(dataarray).as_double()
-  absdat2 = flex.double([e for e in absdat if not math.isnan(e)])
+  absdat2 = graphics_utils.NoNansArray(absdat) # much faster than flex.double([e for e in absdat if not math.isnan(e)])
   maxdat = flex.max(absdat2)
   mindat = max(1e-10*maxdat, flex.min(absdat2) )
-  #print "minmaxdat:", mindat, maxdat
   # only autoscale for sensible values of maxdat and mindat
   if nth_power < 0.0 and maxdat > mindat : # amounts to automatic scale
     nth_power = math.log(0.2)/(math.log(mindat) - math.log(maxdat))
   datascaled = flex.pow(absdat, nth_power)
-  return datascaled
+  return datascaled, nth_power
 
 
 def ExtendMillerArray(miller_array, nsize, indices=None ):
@@ -73,8 +73,8 @@ def ExtendMillerArray(miller_array, nsize, indices=None ):
 
 def ExtendAnyData(data, nsize):
   if isinstance(data, flex.bool):
-    data.extend( flex.bool(nsize, False) )
-  # insert NAN values as default values for real and integer values
+    # flex.bool cannot be extended with NaN so cast the data to ints and extend with inanval instead
+    data = data.as_int().extend( flex.int(nsize, inanval) )
   if isinstance(data, flex.hendrickson_lattman):
     data.extend( flex.hendrickson_lattman(nsize, (nanval, nanval, nanval, nanval)) )
   if isinstance(data, flex.int) or isinstance(data, flex.long) \
@@ -169,6 +169,7 @@ class scene(object):
     self.colourlabel = self.miller_array.info().labels[0]
     self.d_min = array.d_min()
     self.min_dist = 0.0
+    self.nth_power_scale_radii = settings.nth_power_scale_radii
     self.hkl_range = index_span.abs_range()
     self.axes = [ uc.reciprocal_space_vector((self.hkl_range[0],0,0)),
                   uc.reciprocal_space_vector((0,self.hkl_range[1],0)),
@@ -290,7 +291,8 @@ class scene(object):
           self.ampl = flex.abs(data)
           self.phases = flex.arg(data) * 180.0/math.pi
           # purge nan values from array to avoid crash in fmod_positive()
-          b = flex.bool([bool(math.isnan(e)) for e in self.phases])
+          #b = flex.bool([bool(math.isnan(e)) for e in self.phases])
+          b = graphics_utils.IsNansArray( self.phases )
           # replace the nan values with an arbitrary float value
           self.phases = self.phases.set_selected(b, 42.4242)
           # Cast negative degrees to equivalent positive degrees
@@ -328,7 +330,7 @@ class scene(object):
 
   def generate_view_data(self):
     from scitbx.array_family import flex
-    from scitbx import graphics_utils
+    #from scitbx import graphics_utils
     settings = self.settings
     data_for_colors = data_for_radii = None
     if not self.fullprocessarray:
@@ -356,7 +358,7 @@ class scene(object):
     uc = self.work_array.unit_cell()
     self.min_dist = min(uc.reciprocal_space_vector((1,1,1))) * self.renderscale
     min_radius = 0.05 * self.min_dist
-    max_radius = 0.45 * self.min_dist
+    max_radius = 0.5 * self.min_dist
     if ((self.multiplicities is not None) and
         (settings.scale_radii_multiplicity)):
       data_for_radii = self.multiplicities.data().as_double()
@@ -366,7 +368,7 @@ class scene(object):
     elif (settings.sigma_radius) and sigmas is not None:
       data_for_radii = sigmas.as_double()
     else :
-      data_for_radii = nth_power_scale(flex.abs(data.deep_copy()),
+      data_for_radii, self.nth_power_scale_radii = nth_power_scale(flex.abs(data.deep_copy()),
                                        settings.nth_power_scale_radii)
     if (settings.slice_mode):
       data = data.select(self.slice_selection)
@@ -403,7 +405,8 @@ class scene(object):
     #if (settings.sqrt_scale_radii) and (not settings.scale_radii_multiplicity):
     #  data_for_radii = flex.sqrt(flex.abs(data_for_radii))
     if len(data_for_radii):
-      dat2 = flex.abs(flex.double([e for e in data_for_radii if not math.isnan(e)]))
+      #dat2 = flex.abs(flex.double([e for e in data_for_radii if not math.isnan(e)]))
+      dat2 = flex.abs(flex.double( graphics_utils.NoNansArray( data_for_radii, 0.1 ) ))
       # don't divide by 0 if dealing with selection of Rfree array where all values happen to be zero
       scale = max_radius/(flex.max(dat2) + 0.001)
       radii = data_for_radii * (self.settings.scale * scale)
@@ -680,7 +683,9 @@ philstr = """
     .type = bool
   show_data_over_sigma = False
     .type = bool
-  nth_power_scale_radii = -1.0
+  nth_power_scale_radii = 0.0
+    .type = float
+  scale = 1
     .type = float
   sqrt_scale_colors = False
     .type = bool
@@ -717,8 +722,6 @@ philstr = """
   uniform_size = False
     .type = bool
   d_min = None
-    .type = float
-  scale = 1
     .type = float
   map_to_asu = False
     .type = bool

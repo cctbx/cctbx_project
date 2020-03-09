@@ -66,25 +66,31 @@ def _get_flex_image_multipanel(panels, raw_data, beam, brightness=1.0,
   assert len(panels) == len(raw_data), (len(panels), len(raw_data))
 
   # Determine next multiple of eight of the largest panel size.
+  data_max_focus = None
   for data in raw_data:
-    if 'data_max_focus' not in locals():
-      data_max_focus = data.focus()
-    else:
-      data_max_focus = (max(data_max_focus[0], data.focus()[0]),
-                        max(data_max_focus[1], data.focus()[1]))
-  data_padded = (8 * int(ceil(data_max_focus[0] / 8)),
-                 8 * int(ceil(data_max_focus[1] / 8)))
+      if data_max_focus is None:
+          data_max_focus = data.focus()
+      else:
+          data_max_focus = (
+              max(data_max_focus[0], data.focus()[0]),
+              max(data_max_focus[1], data.focus()[1]),
+          )
+  data_padded = (
+      8 * int(ceil(data_max_focus[0] / 8)),
+      8 * int(ceil(data_max_focus[1] / 8)),
+  )
 
   # Assert that all saturated values are equal and not None.  While
   # dxtbx records a separated trusted_range for each panel,
   # generic_flex_image supports only accepts a single common value for
   # the saturation.
+  saturation = None
   for panel in panels:
-    if 'saturation' not in locals():
-      saturation = panel.get_trusted_range()[1]
-    else:
-      assert approx_equal(saturation, panel.get_trusted_range()[1])
-  assert 'saturation' in locals() and saturation is not None
+      if saturation is None:
+          saturation = panel.get_trusted_range()[1]
+      else:
+          assert approx_equal(saturation, panel.get_trusted_range()[1])
+  assert saturation is not None
 
   # Create rawdata and my_flex_image before populating it.
   rawdata = flex.double(

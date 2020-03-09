@@ -9,6 +9,7 @@
 #include <scitbx/constants.h>
 
 #include <cmath>
+#include <cstdio>
 #include <boost/math/special_functions/fpclassify.hpp> // provides isfinite()
 
 namespace scitbx { namespace graphics_utils {
@@ -116,14 +117,111 @@ namespace scitbx { namespace graphics_utils {
     return scitbx::vec3<double>(r, g, b);
   }
 
+
   af::shared< scitbx::vec3<double> >
-    color_by_phi_fom(
-      af::const_ref< double > const& phases,
-      af::const_ref< double > const& foms
-    )
+  NoNansvec3(af::const_ref< scitbx::vec3<double> > const& vecs,
+          double defx = 0.0, double defy = 0.0, double defz = 0.0)
+  {
+    af::shared <scitbx::vec3<double> > nonanvecs(vecs.size());
+    for (unsigned i_seq = 0; i_seq < vecs.size(); i_seq++)
     {
-      SCITBX_ASSERT(phases.size() == foms.size());
-      af::shared <scitbx::vec3<double> > colors(phases.size());
+      if (boost::math::isfinite(vecs(i_seq)[0] + vecs(i_seq)[1] + vecs(i_seq)[2]))
+        nonanvecs[i_seq] = vecs(i_seq);
+      else
+        nonanvecs[i_seq] = scitbx::vec3<double>(defx, defy, defz);
+    }
+    return nonanvecs;
+  }
+
+
+  af::shared< double>
+  NoNans(af::const_ref< double > const& arr, double def = 0.0)
+  {
+    af::shared <double> nonanarr(arr.size());
+    for (unsigned i_seq = 0; i_seq < arr.size(); i_seq++)
+    {
+      if (boost::math::isfinite(arr(i_seq)))
+        nonanarr[i_seq] = arr(i_seq);
+      else
+        nonanarr[i_seq] = def;
+    }
+    return nonanarr;
+  }
+
+
+  af::shared< bool>
+  IsNans(af::const_ref< double > const& arr)
+  {
+    af::shared <bool> nonanarr(arr.size());
+    for (unsigned i_seq = 0; i_seq < arr.size(); i_seq++)
+    {
+      if (boost::math::isfinite(arr(i_seq)))
+        nonanarr[i_seq] = false;
+      else
+        nonanarr[i_seq] = true;
+    }
+    return nonanarr;
+  }
+
+
+  af::shared< bool >
+  IsNansvec3(af::const_ref< scitbx::vec3<double> > const& vecs)
+  {
+    af::shared <bool > nonanarr(vecs.size());
+    for (unsigned i_seq = 0; i_seq < vecs.size(); i_seq++)
+    {
+      if (boost::math::isfinite(vecs(i_seq)[0] + vecs(i_seq)[1] + vecs(i_seq)[2]))
+        nonanarr[i_seq] = false;
+      else
+        nonanarr[i_seq] = true;
+    }
+    return nonanarr;
+  }
+
+
+  double round2(double const &val, int const& precision)
+  {
+    int d = 0;
+    if ((val * pow(10.0, precision + 1)) - (floor(val * pow(10.0, precision))) > 4)
+      d = 1;
+    return (floor(val * pow(10.0, precision)) + d) / pow(10.0, precision);
+  }
+
+
+  double flt_roundoff(double const& val, int const& precision)
+  {
+    // fast version of libtbx.math_utils.roundoff() for a single double value only
+    if (!boost::math::isfinite(val))
+      return FP_NAN;
+
+    if (fabs(val) < pow(10.0, -precision))
+    {
+      const int ndigits = 50;
+      char fstr[ndigits];
+      strcpy(fstr, "%");
+      char fstr1[ndigits];
+      sprintf(fstr1, "%d.", precision);
+      strcat(fstr, fstr1);
+      sprintf(fstr1, "%d", precision);
+      strcat(fstr, fstr1);
+      strcat(fstr, "e");
+
+      char fstr2[ndigits];
+      sprintf(fstr2, fstr, val);
+      return atof(fstr2);
+    }
+    return round2(val, precision);
+  }
+
+
+  af::shared< scitbx::vec3<double> >
+  color_by_phi_fom(
+    af::const_ref< double > const& phases,
+    af::const_ref< double > const& foms
+  )
+  {
+    SCITBX_ASSERT(phases.size() == foms.size());
+    af::shared <scitbx::vec3<double> > colors(phases.size());
 
     for (unsigned i_seq = 0; i_seq < phases.size(); i_seq++)
       colors[i_seq] = get_Phi_FOM_colour(phases[i_seq], foms[i_seq]);

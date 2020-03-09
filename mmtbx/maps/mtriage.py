@@ -12,7 +12,7 @@ from scitbx.array_family import flex
 import time
 from libtbx import introspection
 from libtbx.str_utils import size_as_string_with_commas
-from libtbx.utils import null_out
+from libtbx.utils import null_out,Sorry
 
 def show_process_info(out):
   print("\\/"*39, file=out)
@@ -31,6 +31,9 @@ master_params_str = """
     fsc_curve_model = True
       .type = bool
       .help = Compute model-map CC in reciprocal space: FSC(model map, data map)
+    d_fsc_half_map_05 = False
+      .type = bool
+      .help = Compute d_half_map (FSC=0.5)
     d_fsc_model_05 = True
       .type = bool
       .help = Compute d_fsc_model (FSC=0.5)
@@ -70,9 +73,10 @@ master_params_str = """
     .help = If mask smoothing radius is not specified it will be \
                radius_smooth_ratio times the resolution
     .short_caption = Mask smoothing radius ratio
-  n_bins = 500
+  n_bins = None
     .type = int
-    .help = Number of bins for FSC curves
+    .help = Number of bins for FSC curves. Suggested number is 5000. \
+           Alternative is default (None) which gives bins of width 100.
     .short_caption = Bins for FSC
   nproc = 1
     .type = int
@@ -285,6 +289,7 @@ class _mtriage(object):
     self.d_model_b0       = None
     self.b_iso_overall    = None
     self.d_fsc            = None
+    self.d_fsc_05         = None
     self.d_fsc_model_05   = None
     self.d_fsc_model_0    = None
     self.d_fsc_model_0143 = None
@@ -319,6 +324,8 @@ class _mtriage(object):
     self.call(f=self._adjust, msg="Adjustments based on d99")
     # Compute half-map FSC
     self.call(f=self._compute_half_map_fsc, msg="Compute half-map FSC")
+    # Compute half-map FSC at 0.5
+    self.call(f=self._compute_half_map_fsc_05, msg="Compute half-map FSC_05")
     # Compute Fcalc
     self.call(f=self._compute_f_calc, msg="Compute Fcalc")
     # Map-model FSC curve
@@ -338,7 +345,7 @@ class _mtriage(object):
       self.params.compute.fsc_curve_model = False
       self.params.compute.d_fsc_model_05  = False
       self.params.compute.d_fsc_model_0   = False
-      self.params.compute.d_fsc_model_0143= False
+      self.params.computed_fsc_model_0143= False
       self.params.compute.d_model         = False
       self.params.compute.d_model_b0      = False
 
@@ -396,6 +403,8 @@ class _mtriage(object):
     if(self.xray_structure is None):
       self.mask_smooth=None
       if self.params.auto_mask_if_no_model:
+        if not self.params.resolution:
+          raise Sorry("Need approximate resolution for auto_mask_if_no_model")
         # generate mask from the density
         self.mask_smooth=self._compute_soft_mask_from_density()
       if not self.mask_smooth:  # failed or did not attempt
@@ -468,6 +477,16 @@ class _mtriage(object):
         other = self.f_map_2, bin_width=bin_width, fsc_cutoff=0.143)
       self.d_fsc = self.fsc_curve.d_min
 
+  def _compute_half_map_fsc_05(self):
+    if(not self.params.compute.d_fsc_half_map_05): return
+    if(self.map_data_1 is not None):
+      bin_width=100
+      if self.n_bins:
+        bin_width=max(bin_width,int(0.5+self.f_map_1.size()/self.n_bins))
+      self.fsc_curve_05 = self.f_map_1.d_min_from_fsc(
+        other = self.f_map_2, bin_width=bin_width, fsc_cutoff=0.5)
+      self.d_fsc_05 = self.fsc_curve_05.d_min
+
   def _compute_fsc_curve_model(self):
     if(not self.params.compute.fsc_curve_model): return
     if(self.xray_structure is not None):
@@ -520,6 +539,7 @@ class _mtriage(object):
       d_model_b0        = self.d_model_b0,
       b_iso_overall     = self.b_iso_overall,
       d_fsc             = self.d_fsc,
+      d_fsc_05          = self.d_fsc_05,
       d_fsc_model_05    = self.d_fsc_model_05,
       d_fsc_model_0     = self.d_fsc_model_0,
       d_fsc_model_0143  = self.d_fsc_model_0143,
