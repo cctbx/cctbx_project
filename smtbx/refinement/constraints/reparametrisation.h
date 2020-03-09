@@ -450,7 +450,6 @@ public:
 };
 
 
-
 /// asu scatterer site.
 /** A parameter whose components are the fractional coordinates of a
     scatterer in the asu.
@@ -629,6 +628,91 @@ public:
                          sparse_matrix_type *jacobian_transpose);
 };
 
+/// asu scatterer fp parameter.
+class asu_fp_parameter : public scalar_parameter,
+  public virtual single_asu_scatterer_parameter
+{
+public:
+  /// Variability property, directly linked to the scatterer grad_fp flag
+  //@{
+  virtual void set_variable(bool f) {
+    scatterer->flags.set_grad_fp(f);
+  }
+
+  virtual bool is_variable() const {
+    return scatterer->flags.grad_fp();
+  }
+  //@}
+
+  virtual void
+    write_component_annotations_for(scatterer_type const *scatterer,
+      std::ostream &output) const;
+
+  virtual void store(uctbx::unit_cell const &unit_cell) const;
+
+};
+
+/// Scatterer fp that is an independent parameter
+class independent_fp_parameter : public asu_fp_parameter {
+public:
+  independent_fp_parameter(scatterer_type *scatterer)
+    : parameter(0),
+    single_asu_scatterer_parameter(scatterer)
+  {
+    value = scatterer->fp;
+  }
+
+  /// Does nothing in this class
+  /** This optimisation relies on class reparametrisation implementation
+   */
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+    sparse_matrix_type *jacobian_transpose)
+  {}
+};
+
+/// asu scatterer fdp parameter.
+class asu_fdp_parameter : public scalar_parameter,
+  public virtual single_asu_scatterer_parameter
+{
+public:
+  /// Variability property, directly linked to the scatterer grad_fdp flag
+  //@{
+  virtual void set_variable(bool f) {
+    scatterer->flags.set_grad_fdp(f);
+  }
+
+  virtual bool is_variable() const {
+    return scatterer->flags.grad_fdp();
+  }
+  //@}
+
+  virtual void
+    write_component_annotations_for(scatterer_type const *scatterer,
+      std::ostream &output) const;
+
+  virtual void store(uctbx::unit_cell const &unit_cell) const;
+
+  virtual void validate();
+
+};
+
+/// Scatterer fdp that is an independent parameter
+class independent_fdp_parameter : public asu_fdp_parameter {
+public:
+  independent_fdp_parameter(scatterer_type *scatterer)
+    : parameter(0),
+    single_asu_scatterer_parameter(scatterer)
+  {
+    value = scatterer->fdp;
+  }
+
+  /// Does nothing in this class
+  /** This optimisation relies on class reparametrisation implementation
+   */
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+    sparse_matrix_type *jacobian_transpose)
+  {}
+};
 
 class computing_graph_has_cycle_error : public error
 {

@@ -89,11 +89,51 @@ namespace smtbx { namespace refinement { namespace constraints {
       }
     };
 
+    struct shared_fp_wrapper {
+      typedef shared_fp wt;
+
+      static void wrap() {
+        using namespace boost::python;
+        return_internal_reference<> rir;
+        class_<wt,
+          bases<asu_fp_parameter>,
+          std::auto_ptr<wt> >("shared_fp", no_init)
+          .def(init<wt::scatterer_type *,
+            scalar_parameter *>
+            ((arg("scatterer"),
+              arg("reference"))))
+          .add_property("reference", make_function(&wt::reference, rir))
+          ;
+        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      }
+    };
+
+    struct shared_fdp_wrapper {
+      typedef shared_fdp wt;
+
+      static void wrap() {
+        using namespace boost::python;
+        return_internal_reference<> rir;
+        class_<wt,
+          bases<asu_fdp_parameter>,
+          std::auto_ptr<wt> >("shared_fdp", no_init)
+          .def(init<wt::scatterer_type *,
+            scalar_parameter *>
+            ((arg("scatterer"),
+              arg("reference"))))
+          .add_property("reference", make_function(&wt::reference, rir))
+          ;
+        implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+      }
+    };
+
     void wrap_shared() {
       shared_u_star_wrapper::wrap();
       shared_rotated_u_star_wrapper::wrap();
       shared_u_iso_wrapper::wrap();
       shared_site_wrapper::wrap();
+      shared_fp_wrapper::wrap();
+      shared_fdp_wrapper::wrap();
     }
 
 }}}}

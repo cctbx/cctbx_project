@@ -56,6 +56,10 @@ struct scatterer_parameters_wrapper
                                , make_setter(&wt::occupancy, rir))
       .add_property("u"        , make_getter(&wt::u, rir)
                                , make_setter(&wt::u, rir))
+      .add_property("fp"       , make_getter(&wt::fp, rir)
+                               , make_setter(&wt::fp, rir))
+      .add_property("fdp"      , make_getter(&wt::fdp, rir)
+                               , make_setter(&wt::fdp, rir))
       ;
 
     scitbx::af::boost_python::shared_wrapper<wt, rir_t>
