@@ -269,7 +269,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
             grad_occ = ff_iso_p * structure_factor;
           }
           if (scatterer.flags.grad_fp() || scatterer.flags.grad_fdp()) {
-            FormFactorType p = f_iso * structure_factor * scatterer.occupancy;
+            complex_type p = f_iso * structure_factor * scatterer.occupancy;
             if (scatterer.flags.grad_fp()) {
               base_t::grad_fp = p;
             }
