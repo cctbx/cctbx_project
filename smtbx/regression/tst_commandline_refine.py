@@ -25,10 +25,10 @@ def check_result(value):
 def run_tests():
   run_args = [insfile, hklfile, outfile]
   refine.run(run_args, run_options())
-  check_result(0.166963)
+  check_result(0.167193)
   run_args = [ciffile, hklfile+'=hklf4', outfile]
   refine.run(run_args, run_options())
-  check_result(0.166644)
+  check_result(0.166661)
   os.remove(outfile)
 
 run_tests()

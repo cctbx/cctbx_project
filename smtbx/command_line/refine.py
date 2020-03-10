@@ -105,7 +105,7 @@ def run(filenames, options):
   ls = xm.least_squares()
   print("%i atoms" % len(ls.reparametrisation.structure.scatterers()))
   print("%i refined parameters" % ls.reparametrisation.n_independents)
-  steps = lstbx.normal_eqns_solving.naive_iterations(
+  steps = lstbx.normal_eqns_solving.levenberg_marquardt_iterations(
     non_linear_ls=ls,
     n_max_iterations=options.max_cycles,
     gradient_threshold=options.stop_if_max_derivative_below,
