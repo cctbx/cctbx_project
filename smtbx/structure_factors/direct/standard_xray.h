@@ -97,6 +97,9 @@ namespace smtbx { namespace structure_factors { namespace direct {
           this->grad_u_star = grad_u_star_type(0, 0, 0, 0, 0, 0);
           if (scatterer.anharmonic_adp) {
             this->grad_anharmonic_adp.resize(25);
+            for (int i = 0; i < 25; i++) {
+              this->grad_anharmonic_adp[i] = 0;
+            }
           }
           this->grad_fp = 0;
           this->grad_fdp = 0;
@@ -204,7 +207,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
                 af::shared<complex_type> gc = scatterer
                   .anharmonic_adp->gradient_coefficients(g.hr);
                 for (int j = 0; j < 25; j++) {
-                  base_t::grad_anharmonic_adp[j] = f * gc[j];
+                  base_t::grad_anharmonic_adp[j] += f * gc[j];
                 }
               }
               f *= ac;
@@ -283,7 +286,10 @@ namespace smtbx { namespace structure_factors { namespace direct {
         for (int k = 0; k < hr_ht.groups.size(); ++k) {
           hr_ht_group<float_type> const &g = hr_ht.groups[k];
           float_type hrx = g.hr * scatterer.site;
-          complex_type f = ff[k] * this->exp_i_2pi(hrx + g.ht);
+          complex_type f = this->exp_i_2pi(hrx + g.ht);
+          if (!hr_ht.is_centric) {
+            f *= ff[k];
+          }
           if (scatterer.flags.use_u_aniso()) {
             float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);
             f *= dw;
@@ -292,8 +298,17 @@ namespace smtbx { namespace structure_factors { namespace direct {
               if (compute_grad && scatterer.flags.grad_u_aniso()) {
                 af::shared<complex_type> gc = scatterer
                   .anharmonic_adp->gradient_coefficients(g.hr);
-                for (int j = 0; j < 25; j++) {
-                  base_t::grad_anharmonic_adp[j] = f * gc[j];
+                if (hr_ht.is_centric) {
+                  for (int j = 0; j < 25; j++) {
+                    complex_type t = f * gc[j];
+                    base_t::grad_anharmonic_adp[j] +=
+                      ff[k] * (t + std::conj(t) * hr_ht.f_h_inv_t);
+                  }
+                }
+                else {
+                  for (int j = 0; j < 25; j++) {
+                    base_t::grad_anharmonic_adp[j] += f * gc[j];
+                  }
                 }
               }
               f *= ac;
@@ -304,41 +319,37 @@ namespace smtbx { namespace structure_factors { namespace direct {
                   = debye_waller_factor_u_star_gradient_coefficients<
                   float_type>(g.hr);
                 complex_type grad_u_star_factor = -two_pi_sq * f;
-                for (int j = 0; j < 6; ++j) {
-                  grad_u_star[j] += grad_u_star_factor * log_grad_u_star[j];
+                if (hr_ht.is_centric) {
+                  for (int j = 0; j < 6; ++j) {
+                    complex_type t = grad_u_star_factor * log_grad_u_star[j];
+                    grad_u_star[j] += ff[k] * (t + std::conj(t) * hr_ht.f_h_inv_t);
+                  }
+                }
+                else {
+                  for (int j = 0; j < 6; ++j) {
+                    grad_u_star[j] += grad_u_star_factor * log_grad_u_star[j];
+                  }
                 }
               }
             }
           }
-          structure_factor += f;
+          if (hr_ht.is_centric) {
+            structure_factor += ff[k] * (f + std::conj(f) * hr_ht.f_h_inv_t);
+          }
+          else {
+            structure_factor += f;
+          }
           if (compute_grad && scatterer.flags.grad_site()) {
             complex_type grad_site_factor = i * two_pi * f;
-            for (int j = 0; j < 3; ++j) {
-              float_type h_j = g.hr[j];
-              grad_site[j] += grad_site_factor * h_j;
-            }
-          }
-        }
-
-        if (hr_ht.is_centric) {
-          // Compute S = S' + conj(S') exp(i 2pi h.t_inv) and its gradients
-          structure_factor += std::conj(structure_factor) * hr_ht.f_h_inv_t;
-          if (compute_grad) {
-            if (scatterer.flags.grad_site()) {
+            if (hr_ht.is_centric) {
               for (int j = 0; j < 3; ++j) {
-                grad_site[j] += std::conj(grad_site[j]) * hr_ht.f_h_inv_t;
+                complex_type t = grad_site_factor * static_cast<float_type>(g.hr[j]);
+                grad_site[j] += ff[k] * (t + std::conj(t) * hr_ht.f_h_inv_t);
               }
             }
-            if (scatterer.flags.use_u_aniso() && scatterer.flags.grad_u_aniso())
-            {
-              for (int j = 0; j < 6; ++j) {
-                grad_u_star[j] += std::conj(grad_u_star[j]) * hr_ht.f_h_inv_t;
-              }
-              if (scatterer.anharmonic_adp) {
-                for (int j = 0; j < 25; j++) {
-                  base_t::grad_anharmonic_adp[j] +=
-                    std::conj(base_t::grad_anharmonic_adp[j]) * hr_ht.f_h_inv_t;
-                }
+            else {
+              for (int j = 0; j < 3; ++j) {
+                grad_site[j] += grad_site_factor * static_cast<float_type>(g.hr[j]);
               }
             }
           }
@@ -371,8 +382,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
        */
       template <typename FormFactorType>
       void multiply_by_isotropic_part(scatterer_type const &scatterer,
-                                      FormFactorType const &ff,
-                                      bool compute_grad)
+        FormFactorType const &ff,
+        bool compute_grad)
       {
         using namespace adptbx;
         using namespace scitbx::constants;
@@ -382,8 +393,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         // isotropic Debye-Waller
         if (scatterer.flags.use_u_iso()) {
-          float_type dw_iso = debye_waller_factor_u_iso(d_star_sq/4,
-                                                        scatterer.u_iso);
+          float_type dw_iso = debye_waller_factor_u_iso(d_star_sq / 4,
+            scatterer.u_iso);
           f_iso *= dw_iso;
         }
 
@@ -414,10 +425,10 @@ namespace smtbx { namespace structure_factors { namespace direct {
         if (!compute_grad) {
           return;
         }
-
         if (scatterer.flags.use_u_iso() && scatterer.flags.grad_u_iso()) {
           grad_u_iso = -two_pi_sq * d_star_sq * structure_factor;
         }
+
         if (scatterer.flags.grad_site()) {
           for (int j = 0; j < 3; ++j) {
             grad_site[j] *= ff_iso;
@@ -554,7 +565,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
                 af::shared<complex_type> gc = scatterer
                   .anharmonic_adp->gradient_coefficients(g.hr);
                 for (int j = 0; j < 25; j++) {
-                  base_t::grad_anharmonic_adp[j] = f * gc[j];
+                  base_t::grad_anharmonic_adp[j] += f * gc[j];
                 }
               }
               f *= ac;
@@ -592,6 +603,20 @@ namespace smtbx { namespace structure_factors { namespace direct {
         using namespace adptbx;
         using namespace scitbx::constants;
 
+        // factor from inversion
+        float_type f_iso = 2.;
+
+        // factor from centring translation group * factor from special position
+        f_iso *= hr_ht.ltr_factor * scatterer.weight_without_occupancy();
+        float_type ff_iso = f_iso * scatterer.occupancy;
+
+        // isotropic Debye-Waller
+        if (scatterer.flags.use_u_iso()) {
+          float_type dw_iso = debye_waller_factor_u_iso(d_star_sq / 4,
+            scatterer.u_iso);
+          f_iso *= dw_iso;
+        }
+
         /* Compute the real part of S' and its gradients
          We only ever touch the real part of structure_factors and grad_xxx
          members. So this code should be as efficient as working with
@@ -600,7 +625,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         for (int k = 0; k < hr_ht.groups.size(); ++k) {
           hr_ht_group<float_type> const &g = hr_ht.groups[k];
           float_type hrx = g.hr * scatterer.site;
-          complex_type f = ff[k] * this->exp_i_2pi(hrx + g.ht);
+          complex_type f = this->exp_i_2pi(hrx + g.ht);
           if (scatterer.flags.use_u_aniso()) {
             float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);
             f *= dw;
@@ -610,7 +635,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
                 af::shared<complex_type> gc = scatterer
                   .anharmonic_adp->gradient_coefficients(g.hr);
                 for (int gi = 0; gi < 25; gi++) {
-                  base_t::grad_anharmonic_adp[gi] = f * gc[gi];
+                  base_t::grad_anharmonic_adp[gi] += ff_iso * f.real() * gc[gi];
                 }
               }
               f *= ac;
@@ -620,25 +645,37 @@ namespace smtbx { namespace structure_factors { namespace direct {
                 scitbx::sym_mat3<float_type> log_grad_u_star
                   = debye_waller_factor_u_star_gradient_coefficients<
                   float_type>(g.hr);
-                float_type grad_u_star_factor = -two_pi_sq * f.real();
+                complex_type grad_u_star_factor = -ff_iso * two_pi_sq * f.real() * ff[k];
                 for (int j = 0; j < 6; ++j) {
                   grad_u_star[j] += grad_u_star_factor * log_grad_u_star[j];
                 }
               }
             }
           }
-          structure_factor += f;
+          structure_factor += f.real() * ff[k];
           if (compute_grad && scatterer.flags.grad_site()) {
-            float_type grad_site_factor = -two_pi * f.imag();
+            complex_type grad_site_factor = -ff_iso * two_pi * f.imag() * ff[k];
             for (int j = 0; j < 3; ++j) {
-              grad_site[j] += grad_site_factor * g.hr[j];
+              grad_site[j] += grad_site_factor * static_cast<float_type>(g.hr[j]);
             }
           }
         }
 
-        /* We should now multiply S' and its gradients by 2
-         to get S and its gradients. Postponed to next stage for efficiency.
-         */
+         // occupancy
+        if (compute_grad && scatterer.flags.grad_occupancy()) {
+          grad_occ = f_iso * structure_factor;
+        }
+
+        // Finish
+        structure_factor = ff_iso * structure_factor;
+
+        if (!compute_grad) {
+          return;
+        }
+
+        if (scatterer.flags.use_u_iso() && scatterer.flags.grad_u_iso()) {
+          grad_u_iso = -two_pi_sq * d_star_sq * structure_factor;
+        }
       }
 
       /** \copydoc in_generic_space_group::multiply_by_isotropic_part */
@@ -715,56 +752,6 @@ namespace smtbx { namespace structure_factors { namespace direct {
       void multiply_by_isotropic_part_full(scatterer_type const &scatterer,
         bool compute_grad)
       {
-        using namespace adptbx;
-        using namespace scitbx::constants;
-
-        // factor from inversion
-        float_type f_iso = 2.;
-
-        // factor from centring translation group * factor from special position
-        f_iso *= hr_ht.ltr_factor * scatterer.weight_without_occupancy();
-
-        // isotropic Debye-Waller
-        if (scatterer.flags.use_u_iso()) {
-          float_type dw_iso = debye_waller_factor_u_iso(d_star_sq / 4,
-            scatterer.u_iso);
-          f_iso *= dw_iso;
-        }
-
-        // occupancy
-        if (compute_grad && scatterer.flags.grad_occupancy()) {
-          grad_occ = f_iso * structure_factor.real();
-        }
-
-        // Scattering factor
-        float_type ff_iso = f_iso * scatterer.occupancy;
-
-        // Finish
-        structure_factor = ff_iso * structure_factor.real();
-
-        if (!compute_grad) {
-          return;
-        }
-
-        if (scatterer.flags.use_u_iso() && scatterer.flags.grad_u_iso()) {
-          grad_u_iso = -two_pi_sq * d_star_sq * structure_factor;
-        }
-        if (scatterer.flags.grad_site()) {
-          for (int j = 0; j < 3; ++j) {
-            grad_site[j] = ff_iso * grad_site[j].real();
-          }
-        }
-        if (scatterer.flags.grad_u_aniso()) {
-          for (int j = 0; j < 6; ++j) {
-            grad_u_star[j] = ff_iso * grad_u_star[j].real();
-          }
-          if (scatterer.anharmonic_adp) {
-            for (int j = 0; j < 25; j++) {
-              base_t::grad_anharmonic_adp[j] +=
-                ff_iso * base_t::grad_anharmonic_adp[j].real();
-            }
-          }
-        }
       }
     };
 
