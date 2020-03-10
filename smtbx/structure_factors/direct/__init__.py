@@ -86,13 +86,17 @@ def generate_isc_table_file(file_name,
     out.write("\nScatterers:")
     for sc in xs.scatterers():
       out.write(" %s" %sc.label)
-    out.write("\nAD accounted: true")
-    out.write("\nSymm:")
+    out.write("\nAD: false")
+    out.write("\nSymm: expanded")
+    sg = xs.space_group()
+    ml = list(sg.smx())
     out.write("\nData:")
-    for idx in indices:
-      d_star_sq = xs.unit_cell().d_star_sq(idx)
+    for idx_ in indices:
+      d_star_sq = xs.unit_cell().d_star_sq(idx_)
       isc.at_d_star_sq(d_star_sq)
-      out.write("\n%s %s %s" %(idx[0], idx[1], idx[2]))
-      for sci in xrange(xs.scatterers().size()):
-        val = isc.get(sci, idx)
-        out.write(" %.6f,%.6f" %(val.real, val.imag))
+      for m in ml:
+        idx = [int(x) for x in (m.r() * idx_)]
+        out.write("\n%s %s %s" %(idx[0], idx[1], idx[2]))
+        for sci in xrange(xs.scatterers().size()):
+          val = isc.get(sci, idx_)
+          out.write(" %.6f,%.6f" %(val.real, val.imag))

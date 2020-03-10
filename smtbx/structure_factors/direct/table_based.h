@@ -202,12 +202,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
           if (data_.use_AD()) {
             xray::scatterer<> const &sc = scatterers[j];
             if (sc.flags.use_fp_fdp()) {
-              if (space_group.is_origin_centric()) {
-                v += sc.fp;
-              }
-              else {
-                v = complex_type(v.real() + sc.fp, v.imag() + sc.fdp);
-              }
+              v = complex_type(v.real() + sc.fp, v.imag() + sc.fdp);
             }
           }
           data[i][j] = v;
@@ -308,12 +303,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
             if (data_.use_AD()) {
               xray::scatterer<> const &sc = scatterers[sci];
               if (sc.flags.use_fp_fdp()) {
-                if (space_group.is_origin_centric()) {
-                  v += sc.fp;
-                }
-                else {
-                  v = complex_type(v.real() + sc.fp, v.imag() + sc.fdp);
-                }
+                 v = complex_type(v.real() + sc.fp, v.imag() + sc.fdp);
               }
             }
             h_row[r_map[mi]] = v;
@@ -406,12 +396,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
           if (data_.use_AD()) {
             xray::scatterer<> const &sc = scatterers[j];
             if (sc.flags.use_fp_fdp()) {
-              if (space_group.is_origin_centric()) {
-                v += sc.fp;
-              }
-              else {
-                v = complex_type(v.real() + sc.fp, v.imag() + sc.fdp);
-              }
+              v = complex_type(v.real() + sc.fp, v.imag() + sc.fdp);
             }
           }
           data[i][j] = v;
