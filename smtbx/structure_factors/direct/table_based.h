@@ -198,14 +198,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       for (size_t i = 0; i < data.size(); i++) {
         data[i].resize(scatterers.size());
         for (size_t j = 0; j < scatterers.size(); j++) {
-          complex_type v = data_.data()[i][j];
-          if (data_.use_AD()) {
-            xray::scatterer<> const &sc = scatterers[j];
-            if (sc.flags.use_fp_fdp()) {
-              v = complex_type(v.real() + sc.fp, v.imag() + sc.fdp);
-            }
-          }
-          data[i][j] = v;
+          data[i][j] = data_.data()[i][j];
         }
       }
       mi_lookup = miller::lookup_utils::lookup_tensor<float_type>(
@@ -299,14 +292,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
             miller::index<> h =
               data_.miller_indices()[hi] * space_group.smx(r_map[mi]).r();
             SMTBX_ASSERT(h == data_.miller_indices()[r_off + hi]);
-            complex_type v = data_.data()[r_off + hi][sci];
-            if (data_.use_AD()) {
-              xray::scatterer<> const &sc = scatterers[sci];
-              if (sc.flags.use_fp_fdp()) {
-                 v = complex_type(v.real() + sc.fp, v.imag() + sc.fdp);
-              }
-            }
-            h_row[r_map[mi]] = v;
+            h_row[r_map[mi]] = data_.data()[r_off + hi][sci];
           }
           row[sci] = h_row;
         }
@@ -392,14 +378,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         mi_lookup[data_.miller_indices()[i]] = i;
         data[i].resize(scatterers.size());
         for (size_t j = 0; j < scatterers.size(); j++) {
-          complex_type v = data_.data()[i][j];
-          if (data_.use_AD()) {
-            xray::scatterer<> const &sc = scatterers[j];
-            if (sc.flags.use_fp_fdp()) {
-              v = complex_type(v.real() + sc.fp, v.imag() + sc.fdp);
-            }
-          }
-          data[i][j] = v;
+          data[i][j] = data_.data()[i][j];
         }
       }
     }
