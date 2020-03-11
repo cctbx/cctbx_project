@@ -122,7 +122,7 @@ class _():
     # dxtbx crystal description
     if self.Amatrix is not None:
       A = sqr(self.Amatrix).inverse().elems
-      # this is always P-1 correct ?
+      # is this always P-1 ?
       real_a = A[0], A[3], A[6]
       real_b = A[1], A[4], A[7]
       real_c = A[2], A[5], A[8]
@@ -130,14 +130,13 @@ class _():
                      'real_space_a': real_a,
                      'real_space_b': real_b,
                      'real_space_c': real_c,
-                     'space_group_hall_symbol': 'P 1'}
+                     'space_group_hall_symbol': ' P 1'}
       crystal = CrystalFactory.from_dict(cryst_dict)
     return crystal
 
   @property
   def detector(self):
     # monolithic camera description
-    detdist = self.distance_mm
     pixsize = self.pixel_size_mm
     im_shape = self.detpixels_fastslow
     fdet = self.fdet_vector
@@ -159,7 +158,7 @@ class _():
                      'px_mm_strategy': {'type': 'SimplePxMmStrategy'},
                      'raw_image_offset': (0, 0),  # TODO
                      'thickness': 0.0,  # TODO
-                     'trusted_range': (-1e7, 1e7), # TODO
+                     'trusted_range': (-1e3, 1e10),  # TODO
                      'type': ''}]}
     detector = DetectorFactory.from_dict(det_descr)
     return detector
