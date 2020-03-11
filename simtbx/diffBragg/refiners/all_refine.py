@@ -266,7 +266,7 @@ class RefineAll(RefineRot):
                     if self.refine_with_psf:
                         da=convolve_with_psf(da)
                         db=convolve_with_psf(db)
-                        dc=convolve_with_psf(dc)
+                        #dc=convolve_with_psf(dc)
                     g_tmp_a=(da*one_minus_k_over_Lambda)
                     g_tmp_b = (db*one_minus_k_over_Lambda)
                     g_tmp_c = (dc*one_minus_k_over_Lambda)
@@ -313,7 +313,7 @@ class RefineAll(RefineRot):
                           self.store_init_Imeas.append(Imeas)
                           self.store_init_vmax.append(vmax)
                           self.store_init_vmin.append(vmin)
-                    if True:
+                    if False:
                         plt.suptitle("Iterations = %d, image %d / %d, res=%.2f"
                                      % (self.iterations, i_spot+1, self.n_spots, self.spot_resolution[i_spot]))
                         self.fig.canvas.draw()
@@ -369,7 +369,7 @@ class RefineAll(RefineRot):
                     d=local_S2*S2*G2*self.detdist_deriv
                     if self.refine_with_psf:
                       d=convolve_with_psf(d)
-                    g_tmp = (local_S2*S2*G2*self.detdist_deriv*one_minus_k_over_Lambda)
+                    g_tmp = (d*one_minus_k_over_Lambda)
                     g[-3] += g_tmp.sum()
                       
 
