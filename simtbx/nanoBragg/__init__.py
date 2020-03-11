@@ -167,7 +167,7 @@ class _():
   @property
   def imageset(self):
     format_class = FormatBraggInMemory(self.raw_pixels)
-    reader = MemReader([format_class])
+    reader = MemReaderNamedPath("virtual_Bragg_path", [format_class])
     reader.format_class = FormatBraggInMemory
     imageset_data = ImageSetData(reader, None)
     imageset = ImageSet(imageset_data)
@@ -200,7 +200,14 @@ class FormatBraggInMemory:
   def __init__(self, raw_pixels):
     self.raw_pixels = raw_pixels
     panel_shape = self.raw_pixels.focus()
+    #self._filenames = ["InMemoryBraggPath"]  # TODO: CBFLib complains if no datablock path provided which comes from path
     self.mask = flex.bool(flex.grid(panel_shape), True)  # TODO: use nanoBragg internal mask
+
+  def get_path(self, index):
+    if index == 0:
+      return "Virtual"
+    else:
+      raise ValueError("index must be 0 for format %s" % self.__name__)
 
   def get_raw_data(self):
     """
@@ -213,3 +220,16 @@ class FormatBraggInMemory:
   def get_mask(self, goniometer=None):
     """dummie place holder for mask, consider using internal nanoBragg mask"""
     return self.mask,
+
+  #def paths(self):
+  #  return ["InMemoryBraggPath"]  # TODO: CBFLib complains if no datablock path provided which comes from path
+
+class MemReaderNamedPath(MemReader):
+
+  def __init__(self, path,  *args, **kwargs):
+    self.dummie_path_name = path
+    super(MemReaderNamedPath, self).__init__(*args, **kwargs)
+
+  def paths(self):
+    """Necessary to have non zero string for CBFLib writer for some reason..."""
+    return ["%s_%d" % (self.dummie_path_name, i) for i, _ in enumerate(self._images)]
