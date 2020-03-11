@@ -22,6 +22,7 @@ from scitbx.array_family import flex
 from scitbx.matrix import sqr, col
 from simtbx.nanoBragg import nanoBragg, shapetype
 
+print("Make a randomly oriented xtal")
 # make a randomly oriented crystal..
 np.random.seed(3142019)
 # make random rotation about principle axes
@@ -43,6 +44,7 @@ cryst_descr = {'__id__': 'crystal',
                'real_space_c': real_c.elems,
                'space_group_hall_symbol': ' P 4nw 2abw'}
 
+print("Make a beam")
 # make a beam
 ENERGY = 9000
 ENERGY_CONV = 1e10*constants.c*constants.h / constants.electron_volt
@@ -59,6 +61,7 @@ beam_descr = {'direction': (0.0, 0.0, 1.0),
 
 # make a detector panel
 # monolithic camera description
+print("Make a dxtbx detector")
 detdist = 100.
 pixsize = 0.1
 im_shape = 1536, 1536
@@ -100,6 +103,7 @@ Ncells_abc = 20, 20, 20
 oversmaple = 2
 
 # do the simulation
+print("Do the initial simulation")
 SIM = nanoBragg(DETECTOR, BEAM, panel_id=0)
 SIM.Ncells_abc = Ncells_abc
 SIM.Fhkl = Famp
@@ -110,10 +114,14 @@ SIM.add_nanoBragg_spots()
 
 # write the simulation to disk using cbf writer
 cbf_filename = "test_full.cbf"
+print("write simulation to disk (%s)" % cbf_filename)
 SIM.to_cbf(cbf_filename)
 
 # load the CBF from disk
+print("Open file %s using dxtbx" % cbf_filename)
 loader = dxtbx.load(cbf_filename)
+
+print("Perform second simulation using dxtbx loaded detector and beam")
 test_cbf = nanoBragg(loader.get_detector(), loader.get_beam(), panel_id=0)
 test_cbf.Ncells_abc = Ncells_abc
 test_cbf.Fhkl = Famp
@@ -126,5 +134,6 @@ test_cbf.xtal_shape = shapetype.Gauss
 test_cbf.add_nanoBragg_spots()
 
 # verify test_cbf and SIM produce the same Bragg spot image
+print("Check the intensities haven't changed, and that  cbf writing preserved geometry")
 assert np.allclose(SIM.raw_pixels.as_numpy_array(), test_cbf.raw_pixels.as_numpy_array())
 print("OK!")
