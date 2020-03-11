@@ -1028,11 +1028,11 @@ class generic_flex_image: public FlexImage<double>{
       std::size_t data_sz = rawdata.size();
       double qsum = 0;
       std::size_t good_sz = 0;
-      data_t* data_ptr = rawdata.begin();
+      const data_t* data_ptr = rawdata.begin();
       data_t px_val;
       for (std::size_t i = 0; i < data_sz; i++) {
         px_val = *data_ptr++;
-        if (px_val == std::numeric_limits<int>::min()) continue;
+        if (px_val == std::numeric_limits<int>::min()) {continue;}
         qsum += px_val;
         good_sz++;
       }
@@ -1047,7 +1047,7 @@ class generic_flex_image: public FlexImage<double>{
       int temp;
       for (std::size_t i = 0; i < data_sz; i++) {
           px_val = *data_ptr++;
-          if (px_val == std::numeric_limits<int>::min()) continue;
+          if (px_val == std::numeric_limits<int>::min()) {continue;}
           temp = int(bins_per_pixel_unit*(px_val));
           if (temp<0){histogram[0]+=1;}
           else if (temp>=hsize){histogram[hsize-1]+=1;}
@@ -1059,7 +1059,7 @@ class generic_flex_image: public FlexImage<double>{
       double accum=0;
       for (std::size_t i = 0; i<hsize; i++) {
         accum+=histogram[i];
-        if (accum > 0.9*rawdata.size()) { percentile=i*qave/(hsize/2); break; }
+        if (accum > 0.9*good_sz) { percentile=i*qave/(hsize/2); break; }
       }
       //std::cout<<"the 90-percentile pixel value is "<<percentile<<std::endl;
 
