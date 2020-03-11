@@ -1243,12 +1243,12 @@ def run():
   """
   utility function for passing keyword arguments more directly to HKLViewFrame()
   """
-  #time.sleep(40)
+  time.sleep(30)
   # dirty hack for parsing a file path with spaces of a browser if not using default
   args = sys.argv[1:]
   sargs = " ".join(args)
   qchar = "'"
-  if sargs.find("'") > -1:
+  if sargs.find("'") > -1: 
     quote1 = sargs.find(qchar)
     if sargs[ quote1 + 1:].find(qchar) < 0:
       raise Sorry("Missing quote in arguments")
@@ -1269,7 +1269,7 @@ def run():
     if os.path.isfile(arg) and '=' not in arg:
       kwargs['hklin'] = arg
 
-
+    
   myHKLview = HKLViewFrame(**kwargs)
 
 
