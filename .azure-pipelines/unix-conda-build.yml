@@ -68,7 +68,7 @@ steps:
     python bootstrap.py build --builder=cctbx --use-conda=${CONDA_PREFIX} --nproc=4
     cd build
     source setpaths.sh
-    libtbx.configure cma_es fable rstbx simtbx spotfinder cbflib_adaptbx
+    libtbx.configure cma_es fable rstbx simtbx spotfinder cbflib_adaptbx xfel
     make -j 4
     make -j 4
   displayName: Configure and Build
@@ -84,7 +84,7 @@ steps:
     libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es \
       module=fable module=gltbx module=iotbx module=libtbx module=rstbx \
       module=scitbx module=simtbx module=smtbx module=spotfinder \
-      module=annlib_adaptbx module=cbflib_adaptbx \
+      module=annlib_adaptbx module=cbflib_adaptbx module=xfel \
       nproc=4
   failOnStderr: false
   displayName: Test
