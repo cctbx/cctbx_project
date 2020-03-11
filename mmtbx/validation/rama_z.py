@@ -36,8 +36,8 @@ class result(object):
     strs = [
       "\n%sRama-Z (Ramachandran plot Z-score):"%p,
       "%sInterpretation: bad < -3 | suspicious < -2 | good > -2" % p,
-      "%sValues for helix/sheet/loop are not additive and are interpreted" % p,
-      "%sindependently." %p,
+      "%sScores for whole/helix/sheet/loop are scaled independently;" % p,
+      "%stherefore, the values are not related simply." % p,
       "%s  whole: %s (%s), residues: %s"%(p, f(d,w.value),f(d,w.std).strip(),f(i,w.n)),
       "%s  helix: %s (%s), residues: %s"%(p, f(d,h.value),f(d,h.std).strip(),f(i,h.n)),
       "%s  sheet: %s (%s), residues: %s"%(p, f(d,s.value),f(d,s.std).strip(),f(i,s.n)),
