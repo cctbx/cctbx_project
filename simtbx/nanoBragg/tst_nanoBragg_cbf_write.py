@@ -9,6 +9,7 @@ Loads CBF with dxtbx, and uses the loaded detector and beam to recompute the Bra
 
 Verifies pixel intensities are reproduced
 """
+from __future__ import absolute_import, division, print_function
 import numpy as np
 from scipy import constants
 
