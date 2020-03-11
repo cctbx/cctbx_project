@@ -1441,8 +1441,7 @@ Wait for the command to finish, then try again.""" % vars())
           + "   =%s" % source_file)
     if (os.name == "nt"):
       action = self.write_win32_dispatcher
-    elif (self.build_path == sys.prefix and
-          self.build_options.compiler == 'conda'):
+    elif abs(self.build_path) == sys.prefix:
       action = self.write_conda_dispatcher
     else:
       action = self.write_bin_sh_dispatcher
