@@ -278,7 +278,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.PhilToJsRender('NGL_HKLviewer.action = is_terminating')
     self.closing = True
     self.window.setVisible(False)
-    self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
+    if self.UseOSBrowser==False:
+      self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
     print("HKL-viewer closing down...")
     nc = 0
     sleeptime = 0.2
@@ -289,10 +290,12 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.cctbxproc.terminate()
     self.out, self.err = self.cctbxproc.communicate()
     self.cctbxproc.wait()
-    self.webpagedebugform.close()
-    self.webpagedebugform.deleteLater()
-    self.BrowserBox.close()
-    self.BrowserBox.deleteLater()
+    if self.UseOSBrowser==False:
+      if self.devmode:
+        self.webpagedebugform.close()
+        self.webpagedebugform.deleteLater()
+      self.BrowserBox.close()
+      self.BrowserBox.deleteLater()
     event.accept()
 
 
@@ -1367,7 +1370,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def onSaveImageBtn(self):
-    self.PhilToJsRender('NGL_HKLviewer.save_image_name = "C:\\Users\\oeffner\\Buser\\HKLviewerTests\\testimage.png" ')
+    self.PhilToJsRender('NGL_HKLviewer.save_image_name = "testimage.png" ')
 
 
   def onDrawReciprocUnitCellBoxClick(self):
@@ -1426,14 +1429,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.socket.bind("tcp://127.0.0.1:%s" %self.sockport)
     try: msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
     except Exception as e: pass
-    """
-    cmdargs = 'cctbx.python -i -c "from crys3d.hklview import cmdlineframes;' \
-     + ' cmdlineframes.HKLViewFrame(useGuiSocket=%s, high_quality=True,' %self.sockport \
-     + ' jscriptfname = \'%s\', ' %self.jscriptfname \
-     + ' verbose=%s, UseOSBrowser=%s, htmlfname=\'%s\', handshakewait=%s )"\n'\
-       %(self.verbose, str(self.UseOSbrowser), self.hklfname, self.handshakewait)
-    """
-
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     guiargs = [ 'useGuiSocket=' + str(self.sockport),
                'high_quality=True',
                'UseOSBrowser=' + str(self.UseOSBrowser)
@@ -1454,11 +1450,10 @@ def run():
   try:
     debugtrue = False
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
-    for e in sys.argv:
-      if "devmode" in e or "debug" in e:
-        debugtrue = True
-        # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
-        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
+    if ("devmode" in sys.argv or "debug" in sys.argv) and not "UseOSBrowser=True" in sys.argv:
+      debugtrue = True
+      # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
+      os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9742 --single-process --js-flags='--expose_gc'"
 
     settings = QSettings("CCTBX", "HKLviewer" )
     settings.beginGroup("SomeSettings")
@@ -1481,7 +1476,7 @@ def run():
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer(app)
     timer = QTimer()
-    timer.setInterval(20)
+    timer.setInterval(5)
     timer.timeout.connect(guiobj.ProcessMessages)
     timer.start()
     ret = app.exec_()
