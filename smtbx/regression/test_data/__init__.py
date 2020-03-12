@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 
 test_data_dir = os.path.dirname(__file__)

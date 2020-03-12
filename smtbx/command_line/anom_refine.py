@@ -109,7 +109,7 @@ def run(args):
                                      strictly_shelxl=False)
 
   # Look for beam energy
-  if args.energy: 
+  if args.energy:
     energy = args.energy
     wvl = 12398 / energy
   elif args.energy_in_fname:
