@@ -97,7 +97,7 @@ class jf16m_cxigeom2nexus(object):
     entry = f.create_group('entry')
     entry.attrs['NX_class'] = 'NXentry'
     # --> definition
-    self._create_scalar(entry, 'definition', 'S4', 'NXmx')
+    self._create_scalar(entry, 'definition', 'S4', np.string_('NXmx'))
     # --> data
     data = entry.create_group('data')
     data.attrs['NX_class'] = 'NXdata'
@@ -123,7 +123,7 @@ class jf16m_cxigeom2nexus(object):
     jf16m = instrument.create_group('JF16M')
     jf16m.attrs['NX_class'] = 'NXdetector_group'
     jf16m.create_dataset('group_index', data = list(range(1,3)), dtype='i')
-    data = ['JF16M','ELE_D0']
+    data = [np.string_('JF16M'),np.string_('ELE_D0')]
     jf16m.create_dataset('group_names',(2,), data=data, dtype='S12')
     jf16m.create_dataset('group_parent',(2,), data=[-1,1], dtype='i')
     jf16m.create_dataset('group_type', (2,), data=[1,2], dtype='i')
