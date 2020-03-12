@@ -640,7 +640,6 @@ namespace smtbx { namespace structure_factors { namespace direct {
               if (compute_grad && scatterer.flags.grad_u_aniso()) {
                 af::shared<complex_type> gc = scatterer
                   .anharmonic_adp->gradient_coefficients(g.hr);
-                complex_type grad_ah_factor = f.real() + fp_fdp;
                 for (int gi = 0; gi < 25; gi++) {
                   complex_type t = f * gc[gi];
                   base_t::grad_anharmonic_adp[gi] += fp_fdp * t.real();
