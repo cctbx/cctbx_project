@@ -75,7 +75,7 @@ jobs:
       call "C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat" amd64
       python bootstrap.py build --builder=cctbx --nproc=4
       call .\build\setpaths.bat
-      call libtbx.configure cma_es fable rstbx simtbx spotfinder cbflib_adaptbx xfel
+      call libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx
       cd build
       call libtbx.scons -j 4
       call libtbx.scons -j 4
@@ -88,7 +88,7 @@ jobs:
       call .\build\setpaths.bat
       mkdir tests
       cd tests
-      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=simtbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx module=xfel nproc=4
+      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx nproc=4
     failOnStderr: false
     displayName: Test
 
