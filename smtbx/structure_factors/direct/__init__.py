@@ -19,11 +19,21 @@ class constructed_with_xray_structure(object):
             xs.scatterers(),
             xs.scattering_type_registry())
     else:
-      self.scatterer_contribution = ext.table_based_scatterer_contribution.build(
-        xs.scatterers(),
-        table_file_name,
-        xs.space_group(),
-        not xs.space_group().is_origin_centric())
+      if "__test__" == table_file_name:
+        assert reflections
+        self.scatterer_contribution = ext.table_based_scatterer_contribution.\
+          build_lookup_based_for_tests(
+          xs.unit_cell(),
+          xs.space_group(),
+          xs.scatterers(),
+          xs.scattering_type_registry(),
+          reflections.indices())
+      else:
+        self.scatterer_contribution = ext.table_based_scatterer_contribution.build(
+          xs.scatterers(),
+          table_file_name,
+          xs.space_group(),
+          not xs.space_group().is_origin_centric())
 
     args = (xs.unit_cell(),
             xs.space_group(),
@@ -77,7 +87,9 @@ def f_calc_modulus(xray_structure,
 def generate_isc_table_file(file_name,
                             xray_structure,
                             indices):
-  xs = xray_structure
+  xs = xray_structure.deep_copy_scatterers()
+  for sc in xs.scatterers():
+    sc.flags.set_use_fp_fdp(False)
   isc = ext.isotropic_scatterer_contribution(
     xs.scatterers(),
     xs.scattering_type_registry())
@@ -86,7 +98,6 @@ def generate_isc_table_file(file_name,
     out.write("\nScatterers:")
     for sc in xs.scatterers():
       out.write(" %s" %sc.label)
-    out.write("\nAD: false")
     out.write("\nSymm: expanded")
     sg = xs.space_group()
     ml = list(sg.smx())

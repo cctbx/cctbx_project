@@ -207,6 +207,14 @@ namespace smtbx { namespace structure_factors { namespace direct {
               arg("anomalous_flag")),
             return_value_policy<manage_new_object>())
           .staticmethod("build")
+          .def("build_lookup_based_for_tests", &wt::build_lookup_based_for_tests,
+          (arg("unit_cell"),
+            arg("space_group"),
+            arg("scatterers"),
+            arg("scattering_type_registry"),
+            arg("indices")),
+            return_value_policy<manage_new_object>())
+          .staticmethod("build_lookup_based_for_tests")
           ;
       }
     };
