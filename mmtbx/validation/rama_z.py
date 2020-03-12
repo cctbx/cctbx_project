@@ -27,7 +27,7 @@ class result(object):
   def __init__(self, whole, helix, sheet, loop):
     adopt_init_args(self, locals())
 
-  def as_string(self, prefix):
+  def as_string(self, prefix=''):
     f = format_value
     p = prefix
     w, h, s, l = self.whole, self.helix, self.sheet, self.loop
@@ -37,7 +37,7 @@ class result(object):
       "\n%sRama-Z (Ramachandran plot Z-score):"%p,
       "%sInterpretation: bad < -3 | suspicious < -2 | good > -2" % p,
       "%sScores for whole/helix/sheet/loop are scaled independently;" % p,
-      "%stherefore, the values are not related simply." % p,
+      "%stherefore, the values are not related in a simple manner." % p,
       "%s  whole: %s (%s), residues: %s"%(p, f(d,w.value),f(d,w.std).strip(),f(i,w.n)),
       "%s  helix: %s (%s), residues: %s"%(p, f(d,h.value),f(d,h.std).strip(),f(i,h.n)),
       "%s  sheet: %s (%s), residues: %s"%(p, f(d,s.value),f(d,s.std).strip(),f(i,s.n)),
