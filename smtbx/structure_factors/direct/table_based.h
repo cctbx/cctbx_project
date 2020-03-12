@@ -382,6 +382,37 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         }
       }
     }
+    // for testing
+    lookup_based_anisotropic(
+      uctbx::unit_cell const &unit_cell,
+      sgtbx::space_group const &space_group,
+      af::shared<xray::scatterer<float_type> > const &scatterers,
+      direct::one_scatterer_one_h::isotropic_scatterer_contribution<FloatType> &isc,
+      af::shared<cctbx::miller::index<> > const &indices)
+      :
+      space_group(space_group),
+      data(indices.size()*space_group.n_smx()),
+      tmp(space_group.n_smx())
+    {
+      for (size_t i = 0; i < indices.size(); i++) {
+        float_type d_star_sq = unit_cell.d_star_sq(indices[i]);
+        direct::one_scatterer_one_h::scatterer_contribution<FloatType> const& sc =
+          isc.at_d_star_sq(d_star_sq);
+        for (size_t j = 0; j < space_group.n_smx(); j++) {
+          size_t d_off = j * indices.size() + i;
+          miller::index<> h = indices[i] * space_group.smx(j).r();
+          mi_lookup[h] = d_off;
+          data[d_off].resize(scatterers.size());
+          for (size_t k = 0; k < scatterers.size(); k++) {
+            complex_type v = sc.get(k, h);
+            if (scatterers[k].flags.use_fp_fdp()) { // revert of applied...
+              v = complex_type(v.real() - scatterers[k].fp, 0);
+            }
+            data[d_off][k] = v;
+          }
+        }
+      }
+    }
 
     virtual complex_type get(std::size_t scatterer_idx,
       miller::index<> const &h) const
@@ -417,7 +448,6 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     }
   };
 
-
   template <typename FloatType>
   struct builder {
     static direct::one_scatterer_one_h::scatterer_contribution<FloatType> *
@@ -450,6 +480,23 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         anomalous_flag);
     }
 
+    static direct::one_scatterer_one_h::scatterer_contribution<FloatType> *
+      build_lookup_based_for_tests(
+        uctbx::unit_cell const &unit_cell,
+        sgtbx::space_group const &space_group,
+        af::shared<xray::scatterer<FloatType> > const &scatterers,
+        xray::scattering_type_registry const &scattering_type_registry,
+        af::shared<cctbx::miller::index<> > const &indices)
+    {
+      direct::one_scatterer_one_h::isotropic_scatterer_contribution<FloatType>
+        isc(scatterers, scattering_type_registry);
+      return new lookup_based_anisotropic<FloatType>(
+        unit_cell,
+        space_group,
+        scatterers,
+        isc,
+        indices);
+    }
   };
 
 }}} // smtbx::structure_factors::table_based
