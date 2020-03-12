@@ -488,6 +488,26 @@ class structure(crystal.special_position_settings):
       assert selection.size() == s.size()
       s.set_occupancies(q_new, selection)
 
+  def shake_fps(self, selection = None):
+    s = self._scatterers
+    q_deltas = flex.double([random.gauss(0,1) for _ in range(s.size())])
+    q_new = q_deltas + flex.double([sc.fp for sc in s])
+    if(selection is None):
+      s.set_fps(q_new)
+    else:
+      assert selection.size() == s.size()
+      s.set_fps(q_new, selection)
+
+  def shake_fdps(self, selection = None):
+    s = self._scatterers
+    q_deltas = flex.double([random.gauss(0,1) for _ in range(s.size())])
+    q_new = q_deltas + flex.double([sc.fdp for sc in s])
+    if(selection is None):
+      s.set_fdps(q_new)
+    else:
+      assert selection.size() == s.size()
+      s.set_fdps(q_new, selection)
+
   def set_occupancies(self, value, selection = None):
     if(selection is not None and isinstance(selection, flex.size_t)):
       selection = flex.bool(self._scatterers.size(), selection)
@@ -503,6 +523,40 @@ class structure(crystal.special_position_settings):
     else:
       assert selection.size() == s.size()
       s.set_occupancies(values, selection)
+    return self
+
+  def set_fps(self, value, selection = None):
+    if(selection is not None and isinstance(selection, flex.size_t)):
+      selection = flex.bool(self._scatterers.size(), selection)
+    s = self._scatterers
+    if(hasattr(value, 'size')):
+      values = value
+      if(selection is not None):
+        assert values.size() == selection.size()
+    else:
+      values = flex.double(s.size(), value)
+    if(selection is None):
+      s.set_fps(values)
+    else:
+      assert selection.size() == s.size()
+      s.set_fps(values, selection)
+    return self
+
+  def set_fdps(self, value, selection = None):
+    if(selection is not None and isinstance(selection, flex.size_t)):
+      selection = flex.bool(self._scatterers.size(), selection)
+    s = self._scatterers
+    if(hasattr(value, 'size')):
+      values = value
+      if(selection is not None):
+        assert values.size() == selection.size()
+    else:
+      values = flex.double(s.size(), value)
+    if(selection is None):
+      s.set_fdps(values)
+    else:
+      assert selection.size() == s.size()
+      s.set_fdps(values, selection)
     return self
 
   def coordinate_degrees_of_freedom_counts(self, selection=None):

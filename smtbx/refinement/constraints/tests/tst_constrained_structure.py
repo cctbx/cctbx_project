@@ -11,11 +11,15 @@ from smtbx import development
 from scitbx.lstbx import normal_eqns_solving
 from scitbx import matrix
 from six.moves import zip
+from smtbx.refinement.constraints import fpfdp
+from libtbx.test_utils import approx_equal
+
 
 class test_case(object):
 
   expected_reparametrisation_for_hydrogen_named = None
   expected_mapping_to_grad_fc = None
+  fpfdp_run = False
 
   def __init__(self, normal_eqns_solving_method):
     self.normal_eqns_solving_method = normal_eqns_solving_method
@@ -128,10 +132,23 @@ class test_case(object):
     print("[ %s ]" % self.__class__.__name__)
     self.connectivity_table = smtbx.utils.connectivity_table(
       self.xray_structure)
-    for sc in self.xray_structure.scatterers():
-      sc.flags.set_grad_site(True)
-      if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(True)
-      if sc.flags.use_u_iso(): sc.flags.set_grad_u_iso(True)
+    if not self.fpfdp_run:
+      for sc in self.xray_structure.scatterers():
+        sc.flags.set_grad_site(True)
+        if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(True)
+        if sc.flags.use_u_iso(): sc.flags.set_grad_u_iso(True)
+    else:
+      self.xray_structure.set_inelastic_form_factors(1.54184, 'sasaki')
+      for sc in self.xray_structure.scatterers():
+        sc.flags.set_grad_site(False)
+        sc.flags.set_grad_u_iso(False)
+        sc.flags.set_grad_u_aniso(False)
+        sc.flags.set_grad_occupancy(False)
+        if sc.element_symbol()=='O':
+          sc.flags.set_use_fp_fdp(True)
+          sc.flags.set_grad_fp(True)
+          sc.flags.set_grad_fdp(True)
+
 
     self.reparametrisation = constraints.reparametrisation(
       self.xray_structure,
@@ -144,7 +161,117 @@ class test_case(object):
     self.check_mapping_to_grad_fc()
 
     # above settings are customised in the following tests
+    # n.b. the fp,fdp tests override the default check_refinement_stability
     self.check_refinement_stability()
+
+
+class fpfdp_test_case(test_case):
+
+  fpfdp_run = True
+
+  def __init__(self, m):
+    test_case.__init__(self, m)
+    self.xray_structure = development.sucrose()
+
+    self.t_celsius = 20
+    self.shall_refine_thermal_displacements = False
+    self.constraints = []
+
+    self.expected_mapping_to_grad_fc = (
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+        20, 21 # that was easy
+        )
+    self.expected_reparametrisation_for_hydrogen_named = {}
+
+    self.fp_refinement_tolerance = 1e-6
+    self.fdp_refinement_tolerance = 1e-6
+
+
+  def check_refinement_stability(self):
+    xs = self.xray_structure
+    xs0 = self.reference_xray_structure = xs.deep_copy_scatterers()
+    mi = xs0.build_miller_set(anomalous_flag=True, d_min=0.5)
+    fo_sq = mi.structure_factors_from_scatterers(
+      xs0, algorithm="direct").f_calc().norm()
+    fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.size(), 1))
+
+    self.shake_selection = flex.bool([
+        True if sc.element_symbol()=='O' else False
+        for sc
+        in self.xray_structure.scatterers()
+        ])
+    xs.shake_fps(selection=self.shake_selection)
+    xs.shake_fdps(selection=self.shake_selection)
+
+    self.reparametrisation = constraints.reparametrisation(
+      xs, self.constraints, self.connectivity_table,
+      temperature=self.t_celsius)
+    self.obs = fo_sq.as_xray_observations()
+    ls = least_squares.crystallographic_ls(
+      self.obs,
+      self.reparametrisation,
+      weighting_scheme=least_squares.mainstream_shelx_weighting())
+    self.cycles = self.normal_eqns_solving_method(ls)
+    print ("%i %s iterations to recover from shaking"
+           % (self.cycles.n_iterations,
+              self.cycles))
+
+    delta_fp = flex.double([
+      sc.fp - sc0.fp
+      for sc, sc0
+      in zip(xs.scatterers(), xs0.scatterers())
+      ])
+
+    delta_fdp = flex.double([
+      sc.fdp - sc0.fdp
+      for sc, sc0
+      in zip(xs.scatterers(), xs0.scatterers())
+      ])
+
+    assert flex.max_absolute(delta_fp) < self.fp_refinement_tolerance,\
+           self.__class__.__name__
+
+    assert flex.max_absolute(delta_fdp) < self.fdp_refinement_tolerance,\
+           self.__class__.__name__
+
+
+class constrained_fpfdp_test_case(fpfdp_test_case):
+
+  def __init__(self, m):
+    fpfdp_test_case.__init__(self, m)
+    self.constraints = [
+        fpfdp.shared_fp([0,1,3,5,7,9,10,12,14,16,18]),
+        fpfdp.shared_fdp([0,1,3,5,7,9,10,12,14,16,18]),
+        ]
+    self.expected_mapping_to_grad_fc = (
+        0, 1, 410, 420, 411, 421, 412, 422, 413, 423, 414, 424, 415, 425, 416,
+        426, 417, 427, 418, 428, 419, 429
+        )
+
+  def check_reparametrisation_construction_more(self):
+    assert self.reparametrisation.n_independents==2
+
+  def check_refinement_stability(self):
+    """Shake the fps and fdps, then refine, then make sure they are all equal
+    within a very small tolerance.
+    """
+    fpfdp_test_case.check_refinement_stability(self)
+    oxygen_fps = [
+        sc.fp for sc in self.xray_structure.scatterers()
+        if sc.element_symbol()=='O'
+        ]
+    oxygen_fdps = [
+        sc.fdp for sc in self.xray_structure.scatterers()
+        if sc.element_symbol()=='O'
+        ]
+    assert len([
+      x for x in oxygen_fps
+      if approx_equal(x, oxygen_fps[0], eps=1e-9, multiplier=None)
+      ]) == len(oxygen_fps)
+    assert len([
+      x for x in oxygen_fdps
+      if approx_equal(x, oxygen_fdps[0], eps=1e-9, multiplier=None)
+      ]) == len(oxygen_fdps)
 
 
 class sucrose_test_case(test_case):
@@ -264,97 +391,97 @@ class sucrose_test_case(test_case):
     }
 
     self.expected_mapping_to_grad_fc = (
-      59,60,61 , # O1.site
-      80,81,82,83,84,85 , # O1.u
-      0,1,2 , # O2.site
-      86,87,88,89,90,91 , # O2.u
-      304,305,306 , # H2.site
-      92 , # H2.u
-      7,8,9 , # O3.site
-      93,94,95,96,97,98 , # O3.u
-      307,308,309 , # H3.site
-      99 , # H3.u
-      14,15,16 , # O4.site
-      100,101,102,103,104,105 , # O4.u
-      310,311,312 , # H4.site
-      106 , # H4.u
-      21,22,23 , # O5.site
-      107,108,109,110,111,112 , # O5.u
-      313,314,315 , # H5.site
-      113 , # H5.u
-      76,77,78 , # O6.site
-      114,115,116,117,118,119 , # O6.u
-      28,29,30 , # O7.site
-      120,121,122,123,124,125 , # O7.u
-      316,317,318 , # H7.site
-      126 , # H7.u
-      35,36,37 , # O8.site
-      127,128,129,130,131,132 , # O8.u
-      319,320,321 , # H8.site
-      133 , # H8.u
-      42,43,44 , # O9.site
-      134,135,136,137,138,139 , # O9.u
-      322,323,324 , # H9.site
-      140 , # H9.u
-      49,50,51 , # O10.site
-      141,142,143,144,145,146 , # O10.u
-      325,326,327 , # H10.site
-      147 , # H10.u
-      66,67,68 , # O11.site
-      148,149,150,151,152,153 , # O11.u
-      56,57,58 , # C1.site
-      154,155,156,157,158,159 , # C1.u
-      328,329,330 , # H1.site
-      160 , # H1.u
-      3,4,5 , # C2.site
-      161,162,163,164,165,166 , # C2.u
-      334,335,336 , # H2B.site
-      167 , # H2B.u
-      10,11,12 , # C3.site
-      168,169,170,171,172,173 , # C3.u
-      337,338,339 , # H3B.site
-      174 , # H3B.u
-      17,18,19 , # C4.site
-      175,176,177,178,179,180 , # C4.u
-      331,332,333 , # H2A.site
-      181 , # H2A.u
-      340,341,342 , # H4B.site
-      182 , # H4B.u
-      24,25,26 , # C5.site
-      183,184,185,186,187,188 , # C5.u
-      343,344,345 , # H5B.site
-      189 , # H5B.u
-      63,64,65 , # C6.site
-      190,191,192,193,194,195 , # C6.u
-      346,347,348 , # H6.site
-      196 , # H6.u
-      69,70,71 , # C7.site
-      197,198,199,200,201,202 , # C7.u
-      52,53,54 , # C8.site
-      203,204,205,206,207,208 , # C8.u
-      352,353,354 , # H8A.site
-      209 , # H8A.u
-      349,350,351 , # H8B.site
-      210 , # H8B.u
-      45,46,47 , # C9.site
-      211,212,213,214,215,216 , # C9.u
-      355,356,357 , # H9B.site
-      217 , # H9B.u
-      38,39,40 , # C10.site
-      218,219,220,221,222,223 , # C10.u
-      358,359,360 , # H10B.site
-      224 , # H10B.u
-      73,74,75 , # C11.site
-      225,226,227,228,229,230 , # C11.u
-      361,362,363 , # H11.site
-      231 , # H11.u
-      31,32,33 , # C12.site
-      232,233,234,235,236,237 , # C12.u
-      364,365,366 , # H12B.site
-      238 , # H12B.u
-      367,368,369 , # H12A.site
-      239 , # H12A.u
-    )
+            59, 60, 61, # O1.site
+            80, 81, 82, 83, 84, 85, # O1.u
+            0, 1, 2, # O2.site
+            86, 87, 88, 89, 90, 91,# O2.u
+            394, 395, 396, # H2.site
+            92, # H2.u
+            7, 8, 9, # O3.site
+            93, 94, 95, 96, 97, 98, # O3.u
+            397, 398, 399, # H3.site
+            99, # H3.u
+            14, 15, 16, # O4.site
+            100, 101, 102, 103, 104, 105, # O4.u
+            400, 401, 402, # H4.site
+            106, # H4.u
+            21, 22, 23, # O5.site
+            107, 108, 109, 110, 111, 112, # O5.u
+            403, 404, 405, # H5.site
+            113, # H5.u
+            76, 77, 78, # O6.site
+            114, 115, 116, 117, 118, 119, # O6.u
+            28, 29, 30, # O7.site
+            120, 121, 122, 123, 124, 125, # O7.u
+            406, 407, 408, # H7.site
+            126, # H7.u
+            35, 36, 37, # O8.site
+            127, 128, 129, 130, 131, 132, # O8.u
+            409, 410, 411, # H8.site
+            133, # H8.u
+            42, 43, 44, # O9.site
+            134, 135, 136, 137, 138, 139, # O9.u
+            412, 413, 414, # H9.site
+            140, # H9.u
+            49, 50, 51, # O10.site
+            141, 142, 143, 144, 145, 146, # O10.u
+            415, 416, 417, # H10.site
+            147, # H10.u
+            66, 67, 68, # O11.site
+            148, 149, 150, 151, 152, 153, # O11.u
+            56, 57, 58, # C1.site
+            154, 155, 156, 157, 158, 159, # C1.u
+            418, 419, 420, # H1.site
+            160, # H1.u
+            3, 4, 5, # C2.site
+            161, 162, 163, 164, 165, 166, # C2.u
+            424, 425, 426, # H2B.site
+            167, # H2B.u
+            10, 11, 12, # C3.site
+            168, 169, 170, 171, 172, 173, # C3.u
+            427, 428, 429, # H3B.site
+            174, # H3B.u
+            17, 18, 19, # C4.site
+            175, 176, 177, 178, 179, 180, # C4.u
+            421, 422, 423, # H2A.site
+            181, # H2A.u
+            430, 431, 432, # H4B.site
+            182, # H4B.u
+            24, 25, 26, # C5.site
+            183, 184, 185, 186, 187, 188, # C5.u
+            433, 434, 435, # H5B.site
+            189, # H5B.u
+            63, 64, 65, # C6.site
+            190, 191, 192, 193, 194, 195, # C6.u
+            436, 437, 438, # H6.site
+            196, # H6.u
+            69, 70, 71, # C7.site
+            197, 198, 199, 200, 201, 202, # C7.u
+            52, 53, 54, # C8.site
+            203, 204, 205, 206, 207, 208, # C8.u
+            442, 443, 444, # H8A.site
+            209, # H8A.u
+            439, 440, 441, # H8B.site
+            210, # H8B.u
+            45, 46, 47, # C9.site
+            211, 212, 213, 214, 215, 216, # C9.u
+            445, 446, 447, # H9B.site
+            217, # H9B.u
+            38, 39, 40, # C10.site
+            218, 219, 220, 221, 222, 223, # C10.u
+            448, 449, 450, # H10B.site
+            224, # H10B.u
+            73, 74, 75, # C11.site
+            225, 226, 227, 228, 229, 230, # C11.u
+            451, 452, 453, # H11.site
+            231, # H11.u
+            31, 32, 33, # C12.site
+            232, 233, 234, 235, 236, 237, # C12.u
+            454, 455, 456, # H12B.site
+            238, # H12B.u
+            457, 458, 459, # H12A.site
+            239 # H12A.u
+            )
 
     self.site_refinement_tolerance = 1e-4
 
@@ -820,6 +947,8 @@ def run():
     saturated_test_case(m),
     sucrose_test_case(m),
     symmetry_equivalent_test_case(m),
+    fpfdp_test_case(m),
+    constrained_fpfdp_test_case(m)
     ]:
     t.run()
 
