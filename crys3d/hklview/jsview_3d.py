@@ -46,13 +46,14 @@ class MyWebSocketServerProtocol(websockets.server.WebSocketServerProtocol):
     if self.ondisconnect:
       self.ondisconnect(self.client_connected)
     super().connection_lost(exc)
+  """
   def connection_closed_exc(self) -> ConnectionClosed:
     print("In connection_closed_exc()")
     self.client_connected = None
     if self.ondisconnect:
       self.ondisconnect(self.client_connected)
     super().connection_closed_exc()
-
+  """
 
 def has_phil_path(philobj, *paths): # variable number of arguments
   for path in paths:
@@ -352,6 +353,7 @@ class hklview_3d:
                           self.viewerparams.expand_anomalous, self.viewerparams.expand_to_p1  )
     self.msgqueue = []
     self.websockclient = None
+    self.mywebsock = None
     self.websockeventloop = None
     self.handshakewait = 5
     if 'handshakewait' in kwds:
@@ -1958,8 +1960,8 @@ mysocket.onmessage = function(e)
 
     if (msgtype === "Redraw")
     {
-      //stage.viewer.requestRender();
       RenderRequest();
+      WebsockSendMsg( 'Redrawing ' + pagename );
     }
 
     if (msgtype === "ReOrient")
@@ -1992,6 +1994,7 @@ mysocket.onmessage = function(e)
         WebsockSendMsg('OrientationBeforeReload:\\n' + msg );
       }
       WebsockSendMsg( 'Refreshing ' + pagename );
+      //alert( 'Refreshing ' + pagename );
       window.location.reload(true);
       // Now we are gone. A new javascript file has been loaded in the browser
     }
@@ -2588,12 +2591,12 @@ mysocket.onmessage = function(e)
 
 
   #def OnWebsocketClientMessage(self, client, server, message):
-  async def OnWebsocketClientMessage(self, mywebsock):
+  async def OnWebsocketClientMessage(self):
     #while True:
       #time.sleep(self.sleeptime)
       #await asyncio.sleep(self.sleeptime)
-    message = await mywebsock.recv()
-    if self.viewerparams.scene_id is None or self.miller_array is None:
+    message = await self.mywebsock.recv()
+    if self.viewerparams.scene_id is None or self.miller_array is None or self.websockclient is None:
       return
     try:
       if message != "":
@@ -2602,6 +2605,8 @@ mysocket.onmessage = function(e)
         elif 'Received message:' in message:
           self.mprint( message, verbose=2)
         elif "websocket" in message:
+          self.mprint( message, verbose=1)
+        elif "Refreshing" in message or "disconnecting" in message:
           self.mprint( message, verbose=1)
         elif "AutoViewSet" in message:
           self.set_volatile_params()
@@ -2756,7 +2761,7 @@ Distance: %s
     self.msgqueue.append( (msgtype, msg) )
 
 
-  async def RunSendMessageQueue(self, mywebsock):
+  async def RunSendMessageQueue(self):
     while len(self.msgqueue):
       nwait = 0.0
       #await asyncio.sleep(self.sleeptime)
@@ -2782,15 +2787,20 @@ Distance: %s
             break
         if self.browserisopen and self.websockclient is not None:
           try:
-            await mywebsock.send( message )
+            await self.mywebsock.send( message )
             gotsent = True
           except Exception as e:
             self.mprint( str(e) + "\n" + traceback.format_exc(limit=10), verbose=1)
-            self.websockclient = None
+            #self.websockclient = None
             gotsent = False
+            if self.was_disconnected:
+              self.server.ws_server.close()
+              self.StartWebsocket()
+              #time.sleep(1)
+              await asyncio.sleep(0.2)
         else:
-          self.OpenBrowser()
-        gotsent = False
+          #self.OpenBrowser()
+          gotsent = False
         while not self.browserisopen:  #self.websockclient:
           #await asyncio.sleep(self.sleeptime)
           #time.sleep(self.sleeptime)
@@ -2799,6 +2809,9 @@ Distance: %s
             return
         if gotsent:
           self.msgqueue.remove( self.msgqueue[0] )
+        if self.websockclient is None:
+          self.OpenBrowser()
+
 
 
   async def WebSockHandler(self, mywebsock, path):
@@ -2808,12 +2821,14 @@ Distance: %s
     mywebsock.onconnect = self.OnConnectWebsocketClient
     self.OnConnectWebsocketClient(mywebsock.client_connected)
     mywebsock.ondisconnect = self.OnDisconnectWebsocketClient
+    self.mywebsock = mywebsock
     while True:
     #  await mywebsock.send( message )
     #  message = await mywebsock.recv()
-      await asyncio.sleep(0.2)
-      await self.OnWebsocketClientMessage(mywebsock)
-      await self.RunSendMessageQueue(mywebsock)
+      #await asyncio.sleep(self.sleeptime)
+      time.sleep(self.sleeptime)
+      await self.OnWebsocketClientMessage()
+      await self.RunSendMessageQueue()
 
 
   def WebBrowserMsgQueue(self):
@@ -2847,8 +2862,7 @@ Distance: %s
   def OnConnectWebsocketClient(self, client):
     self.websockclient = client
     self.mprint( "Browser connected:" + str( self.websockclient ), verbose=1 )
-    if self.was_disconnected:
-      self.was_disconnected = False
+    self.was_disconnected = False
     if self.lastviewmtrx and self.viewerparams.scene_id is not None:
       self.set_volatile_params()
       self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
@@ -2860,6 +2874,7 @@ Distance: %s
   def OnDisconnectWebsocketClient(self, client):
     self.mprint( "Browser disconnected:" + str( client ), verbose=1 )
     self.was_disconnected = True
+    self.websockclient = client
 
 
   def send_msg_to_browser(self, msgtype, msg=""):
@@ -2943,8 +2958,8 @@ Distance: %s
         self.websockclient['handler'].send_text(u"", opcode=0x8)
     except Exception as e:
       self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
-    self.mprint("Shutting down Websocket listening thread", verbose=1)
-    self.server.shutdown()
+    #self.mprint("Shutting down Websocket listening thread", verbose=1)
+    #self.server.shutdown()
     self.javascriptcleaned = True
     self.msgqueuethrd.join()
     self.mprint("Shutting down WebsocketServer", verbose=1)
