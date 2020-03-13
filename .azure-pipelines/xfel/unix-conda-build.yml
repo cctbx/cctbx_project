@@ -76,7 +76,7 @@ steps:
     source ./build/setpaths.sh
     mkdir tests
     cd tests
-    libtbx.run_tests_parallel module=uc_metrics nproc=4
+    libtbx.run_tests_parallel module=uc_metrics module=simtbx nproc=4
   failOnStderr: false
   displayName: Test
 
