@@ -49,6 +49,7 @@ STANDARD_LIMITATIONS_DICT={
      "This map is masked around unique region and not suitable for auto-sharpening.",
     "map_is_sharpened":
      "This map is auto-sharpened and not suitable for further auto-sharpening.",
+    "map_is_density_modified": "This map has been density modified.",
      }
 
 
