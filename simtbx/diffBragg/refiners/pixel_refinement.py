@@ -30,7 +30,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.split_evaluation = False
         self.refine_ncells = False
         self.hit_break_to_use_curvatures = False
-        self.refine_detdist = True
+        self.refine_detdist = False
         self.refine_Amatrix = True
         self.refine_Bmatrix = True
         self.refine_with_restraints = False
@@ -46,15 +46,15 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.refine_rotY = True
         self.refine_rotZ = True
         self.plot_residuals = False
-        self.trad_conv = False
+        self.trad_conv = True
         self.calc_curvatures = False
         self.trad_conv_eps = 0.05
         self.plot_statistics = False
         self.drop_conv_max_eps = 1e-5
         self.mn_iter = None
         self.mx_iter = None
-        self.max_calls = 1000
-        self.plot_stride = 10
+        self.max_calls = 250
+        self.plot_stride = 1
         self.ignore_line_search = False
         self.panel_ids = None
         self.update_curvatures_every = 3  # every 3 consecutive all positive curvatures we will update them

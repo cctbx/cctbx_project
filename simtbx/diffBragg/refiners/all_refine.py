@@ -285,14 +285,14 @@ class RefineAll(RefineRot):
                         else:
                             x = np.mean([x, residual.max()])
 
-                        self.ax.plot_surface(xr, yr, residual, rstride=2, cstride=2, alpha=0.3, cmap='coolwarm')
-                        self.ax.contour(xr, yr, residual, zdir='z', offset=-x, cmap='coolwarm')
-                        self.ax.set_yticks(range(yr.min(), yr.max()))
-                        self.ax.set_xticks(range(xr.min(), xr.max()))
-                        self.ax.set_xticklabels([])
-                        self.ax.set_yticklabels([])
-                        self.ax.set_zlim(-x, x)
-                        self.ax.set_title("residual (photons)")
+                        #self.ax.plot_surface(xr, yr, residual, rstride=2, cstride=2, alpha=0.3, cmap='coolwarm')
+                        #self.ax.contour(xr, yr, residual, zdir='z', offset=-x, cmap='coolwarm')
+                        #self.ax.set_yticks(range(yr.min(), yr.max()))
+                        #self.ax.set_xticks(range(xr.min(), xr.max()))
+                        #self.ax.set_xticklabels([])
+                        #self.ax.set_yticklabels([])
+                        #self.ax.set_zlim(-x, x)
+                        #self.ax.set_title("residual (photons)")
                     else:
                         m = Imeas[Imeas > 1e-9].mean()
                         s = Imeas[Imeas > 1e-9].std()
@@ -429,12 +429,12 @@ class RefineAll(RefineRot):
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
         print("\n")
         #print (["Local spotscales = "]+["%3.7g"%yy for yy in self.x[:]])
-        if False:
+        if True:
           print ('------------------------------------------------------------------')
           for i in range(self.n_bg//3):
             print ('Background Planes Spot %d: %f, %f %f'%(i+1, self.x[i], self.x[self.n_spots+i], self.x[2*self.n_spots+i]))
           for i in range(self.n_spots):
-            print ('Local spot scale: Spot %d: %f'%(i+1, self.x[self.n_bg+i]))
+            print ('Local spot scale: Spot %d: %f'%(i+1, self.x[self.n_bg+i]**2))
           print ('Rot X: %f ; RotY: %f  ; RotZ: %f'%(self.x[self.rotX_xpos],self.x[self.rotY_xpos], self.x[self.rotZ_xpos]))
           for i_uc in range(self.n_ucell_param):
               print ('UCELL Param: %f'%self.x[self.ucell_xstart + i_uc])
