@@ -1,6 +1,11 @@
 # Templates for linux, macOS, and Windows
 # Based on approach from conda-forge
 
+trigger:
+  branches:
+    include:
+    - '*'
+
 # skip pull requests
 pr: none
 

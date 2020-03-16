@@ -1,5 +1,10 @@
 # Basic checks
 
+trigger:
+  branches:
+    include:
+    - '*'
+
 stages:
 - stage: Checks
   displayName: Check
