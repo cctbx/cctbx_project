@@ -135,10 +135,11 @@ class consistency_test_cases(test_case):
         delta = abs(1 - diff/diff_num)
         deltas.append(delta)
     stats = median_statistics(deltas)
-    tol = 1e-3
-    assert stats.median < tol, (str(space_group_info), stats.median)
-    assert stats.median_absolute_deviation < tol, (str(space_group_info),
-      stats.median_absolute_deviation)
+    tol = 1e-5
+    assert stats.median < tol, (
+        xs.space_group_info().symbol_and_number(), stats.median)
+    assert stats.median_absolute_deviation < tol, (
+        xs.space_group_info().symbol_and_number(), stats.median_absolute_deviation)
 
 class smtbx_against_cctbx_test_case(test_case):
 

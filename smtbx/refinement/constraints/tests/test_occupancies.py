@@ -3,10 +3,10 @@ from __future__ import absolute_import, division, print_function
 import os
 import smtbx.refinement
 from libtbx.test_utils import approx_equal
+from smtbx.regression.test_data import fnames
 
 def test_simple_disorder():
-  working_dir = os.path.dirname(__file__)
-  ins = os.path.join(working_dir, 'thpp.res')
+  ins = fnames.thpp_ins
   model = smtbx.refinement.model.from_shelx(ins)
   ls = model.least_squares()
   assert str(ls.reparametrisation).strip() == """\
