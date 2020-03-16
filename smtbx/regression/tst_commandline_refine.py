@@ -3,12 +3,12 @@ import os
 from smtbx.command_line import refine
 from smtbx.refinement import model
 from libtbx.test_utils import approx_equal
+from smtbx.regression.test_data import fnames
 
-working_dir = os.path.dirname(__file__)
-insfile = os.path.join(working_dir, 'thpp.ins')
-hklfile = os.path.join(working_dir, 'thpp.hkl')
-ciffile = os.path.join(working_dir, 'thpp.cif')
-outfile = os.path.join(working_dir, 'thpp_out.cif')
+insfile = fnames.thpp_ins
+hklfile = fnames.thpp_hkl
+ciffile = fnames.thpp_cif
+outfile = fnames.thpp_out
 
 class run_options:
   def __init__(self):
