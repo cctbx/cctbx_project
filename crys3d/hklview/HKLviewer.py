@@ -119,6 +119,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.window = MyQMainWindow(self)
     self.setupUi(self.window)
     self.app = thisapp
+    self.app.aboutToQuit.connect(self.AppAboutToQuit)
+
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
     self.actiondebug.triggered.connect(self.DebugInteractively)
     self.actionSettings.triggered.connect(self.SettingsDialog)
@@ -274,6 +276,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.window.show()
 
 
+  def AppAboutToQuit(self):
+    print("in AppAboutToQuit")
+
+
   def closeEvent(self, event):
     self.PhilToJsRender('NGL_HKLviewer.action = is_terminating')
     self.closing = True
@@ -289,8 +295,9 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.cctbxproc.terminate()
     self.out, self.err = self.cctbxproc.communicate()
     self.cctbxproc.wait()
-    self.webpagedebugform.close()
-    self.webpagedebugform.deleteLater()
+    if self.webpagedebugform:
+      self.webpagedebugform.close()
+      self.webpagedebugform.deleteLater()
     self.BrowserBox.close()
     self.BrowserBox.deleteLater()
     event.accept()
@@ -1450,6 +1457,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.socket.send(bytes(cmdstr))
 
 
+
 def run():
   try:
     debugtrue = False
@@ -1463,8 +1471,9 @@ def run():
     settings = QSettings("CCTBX", "HKLviewer" )
     settings.beginGroup("SomeSettings")
     QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
+    fontsize = settings.value("FontSize", None)
     settings.endGroup()
-
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       QWebEngineViewFlags = ""
       print("testing if WebGL works in QWebEngineView....")
@@ -1480,6 +1489,10 @@ def run():
 
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer(app)
+
+    if fontsize is not None:
+      guiobj.onFontsizeChanged(fontsize)
+
     timer = QTimer()
     timer.setInterval(20)
     timer.timeout.connect(guiobj.ProcessMessages)
@@ -1489,6 +1502,7 @@ def run():
     settings = QSettings("CCTBX", "HKLviewer" )
     settings.beginGroup("SomeSettings")
     QWebEngineViewFlags = settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
+    fontsize = settings.value("FontSize", self.app.font().PointSize() )
     settings.endGroup()
 
     sys.exit(ret)

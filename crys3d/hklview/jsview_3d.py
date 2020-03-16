@@ -36,7 +36,7 @@ class MyWebSocketServerProtocol(websockets.server.WebSocketServerProtocol):
     super().__init__(*args,**kwargs)
   def connection_open(self) -> None:
     print("In connection_open()")
-    self.client_connected = True
+    self.client_connected = self.local_address
     if self.onconnect:
       self.onconnect(self.client_connected)
     super().connection_open()
@@ -2592,91 +2592,91 @@ mysocket.onmessage = function(e)
 
   #def OnWebsocketClientMessage(self, client, server, message):
   async def OnWebsocketClientMessage(self):
-    #while True:
+    while True:
       #time.sleep(self.sleeptime)
-      #await asyncio.sleep(self.sleeptime)
-    message = await self.mywebsock.recv()
-    if self.viewerparams.scene_id is None or self.miller_array is None or self.websockclient is None:
-      return
-    try:
-      if message != "":
-        if "Orientation" in message:
-          self.ProcessOrientationMessage(message)
-        elif 'Received message:' in message:
-          self.mprint( message, verbose=2)
-        elif "websocket" in message:
-          self.mprint( message, verbose=1)
-        elif "Refreshing" in message or "disconnecting" in message:
-          self.mprint( message, verbose=1)
-        elif "AutoViewSet" in message:
-          self.set_volatile_params()
-        elif "JavaScriptCleanUp:" in message:
-          self.mprint( message, verbose=1)
-          self.StopThreads()
-        elif "JavaScriptError:" in message:
-          self.mprint( message, verbose=0)
-        elif "Expand" in message:
-          self.mprint( message, verbose=0)
-          #raise Sorry(message)
-        elif "Imageblob" in message:
-          datastr = message[ message.find("\n") + 1: ]
-          with open( self.imagename, "wb") as imgfile:
-            #datastr += "=" * ((4 - len(datastr) % 4) % 4)
-            datastr = datastr[(len('data:image/png;base64,')):]
-            #blob = base64.b64decode(datastr2)
-            #blob = base64.urlsafe_b64decode(datastr)
-            #blob = base64.b64decode(datastr + '=' * (-len(datastr) % 4) )
-            blob = base64.b64decode(datastr + b'===' )
-            imgfile.write(blob)
-        elif "ImageChunk" in message:
-          self.imgdatastr += message[ message.find("\n") + 1: ]
-        elif "ImageSent" in message:
-          with open( self.imagename, "wb") as imgfile:
-            datastr = self.imgdatastr #[(len('data:image/png;base64,')):]
-            blob = base64.b64decode(datastr + b'===' )
-            imgfile.write(blob)
-          self.imgdatastr = ""
-        elif "MakeImage" in message:
-          self.mprint( "Image saved to storage", verbose=0)
-        elif "ReturnClipPlaneDistances:" in message:
-          datastr = message[ message.find("\n") + 1: ]
-          lst = datastr.split(",")
-          flst = [float(e) for e in lst]
-          self.clipNear = flst[0]
-          self.clipFar = flst[1]
-          self.cameraPosZ = flst[2]
-        elif "ReturnBoundingBox:" in message:
-          datastr = message[ message.find("\n") + 1: ]
-          lst = datastr.split(",")
-          flst = [float(e) for e in lst]
-          self.boundingX = flst[0]
-          self.boundingY = flst[1]
-          self.boundingZ = flst[2]
-        elif "ReturnMouseSpeed" in message:
-          datastr = message[ message.find("\n") + 1: ]
-          lst = datastr.split(",")
-          flst = [float(e) for e in lst]
-          if flst[0] is not None and not cmath.isnan(flst[0]):
-            self.ngl_settings.mouse_sensitivity = flst[0]
-        elif "tooltip_id:" in message:
-          ttipids = message.split("tooltip_id:")[1]
-          hklid = eval(message.split("tooltip_id:")[1])[0]
-          sym_id = eval(message.split("tooltip_id:")[1])[1]
-          is_friedel_mate = eval(message.split("tooltip_id:")[1])[2]
-          rotmx = None
-          hkls = self.scene.indices
-          if not is_friedel_mate:
-            ttip = self.GetTooltipOnTheFly(hklid, sym_id)
+      await asyncio.sleep(self.sleeptime)
+      if self.viewerparams.scene_id is None or self.miller_array is None or self.websockclient is None:
+        continue
+      message = await self.mywebsock.recv()
+      self.lastmsg = message
+      try:
+        if message != "":
+          if "Orientation" in message:
+            self.ProcessOrientationMessage(message)
+          elif 'Received message:' in message:
+            self.mprint( message, verbose=2)
+          elif "websocket" in message:
+            self.mprint( message, verbose=1)
+          elif "Refreshing" in message or "disconnecting" in message:
+            self.mprint( message, verbose=1)
+          elif "AutoViewSet" in message:
+            self.set_volatile_params()
+          elif "JavaScriptCleanUp:" in message:
+            self.mprint( message, verbose=1)
+            self.StopThreads()
+          elif "JavaScriptError:" in message:
+            self.mprint( message, verbose=0)
+          elif "Expand" in message:
+            self.mprint( message, verbose=0)
+            #raise Sorry(message)
+          elif "Imageblob" in message:
+            datastr = message[ message.find("\n") + 1: ]
+            with open( self.imagename, "wb") as imgfile:
+              #datastr += "=" * ((4 - len(datastr) % 4) % 4)
+              datastr = datastr[(len('data:image/png;base64,')):]
+              #blob = base64.b64decode(datastr2)
+              #blob = base64.urlsafe_b64decode(datastr)
+              #blob = base64.b64decode(datastr + '=' * (-len(datastr) % 4) )
+              blob = base64.b64decode(datastr + b'===' )
+              imgfile.write(blob)
+          elif "ImageChunk" in message:
+            self.imgdatastr += message[ message.find("\n") + 1: ]
+          elif "ImageSent" in message:
+            with open( self.imagename, "wb") as imgfile:
+              datastr = self.imgdatastr #[(len('data:image/png;base64,')):]
+              blob = base64.b64decode(datastr + b'===' )
+              imgfile.write(blob)
+            self.imgdatastr = ""
+          elif "MakeImage" in message:
+            self.mprint( "Image saved to storage", verbose=0)
+          elif "ReturnClipPlaneDistances:" in message:
+            datastr = message[ message.find("\n") + 1: ]
+            lst = datastr.split(",")
+            flst = [float(e) for e in lst]
+            self.clipNear = flst[0]
+            self.clipFar = flst[1]
+            self.cameraPosZ = flst[2]
+          elif "ReturnBoundingBox:" in message:
+            datastr = message[ message.find("\n") + 1: ]
+            lst = datastr.split(",")
+            flst = [float(e) for e in lst]
+            self.boundingX = flst[0]
+            self.boundingY = flst[1]
+            self.boundingZ = flst[2]
+          elif "ReturnMouseSpeed" in message:
+            datastr = message[ message.find("\n") + 1: ]
+            lst = datastr.split(",")
+            flst = [float(e) for e in lst]
+            if flst[0] is not None and not cmath.isnan(flst[0]):
+              self.ngl_settings.mouse_sensitivity = flst[0]
+          elif "tooltip_id:" in message:
+            ttipids = message.split("tooltip_id:")[1]
+            hklid = eval(message.split("tooltip_id:")[1])[0]
+            sym_id = eval(message.split("tooltip_id:")[1])[1]
+            is_friedel_mate = eval(message.split("tooltip_id:")[1])[2]
+            rotmx = None
+            hkls = self.scene.indices
+            if not is_friedel_mate:
+              ttip = self.GetTooltipOnTheFly(hklid, sym_id)
+            else:
+              hklid = hklid % len(hkls)
+              ttip = self.GetTooltipOnTheFly(hklid, sym_id, anomalous=True)
+            self.AddToBrowserMsgQueue("ShowThisTooltip", ttip)
           else:
-            hklid = hklid % len(hkls)
-            ttip = self.GetTooltipOnTheFly(hklid, sym_id, anomalous=True)
-          self.AddToBrowserMsgQueue("ShowThisTooltip", ttip)
-        else:
-          if "Ready " in message:
-            self.mprint( message, verbose=5)
-        self.lastmsg = message
-    except Exception as e:
-      self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
+            if "Ready " in message:
+              self.mprint( message, verbose=5)
+      except Exception as e:
+        self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
 
 
   def GetCameraPosRotTrans(self, viewmtrx):
@@ -2764,7 +2764,7 @@ Distance: %s
   async def RunSendMessageQueue(self):
     while len(self.msgqueue):
       nwait = 0.0
-      #await asyncio.sleep(self.sleeptime)
+      await asyncio.sleep(self.sleeptime)
       #time.sleep(self.sleeptime)
       if self.javascriptcleaned:
         self.mprint("Shutting down WebBrowser message queue", verbose=1)
@@ -2776,17 +2776,18 @@ Distance: %s
         nwait = 0.0
         while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
           or "CurrentViewOrientation" in self.lastmsg or "AutoViewSet" in self.lastmsg \
-          or "ReOrient" in self.lastmsg or self.websockclient is None):
+          or "ReOrient" in self.lastmsg):
           #time.sleep(self.sleeptime)
-          #await asyncio.sleep(self.sleeptime)
+          await asyncio.sleep(self.sleeptime)
           nwait += self.sleeptime
           if nwait > 2.0 and self.browserisopen:
             self.mprint("ERROR: No handshake from browser!", verbose=0 )
             self.mprint("failed sending " + pendingmessagetype, verbose=1)
-            self.mprint("Reopening webpage again", verbose=0)
+            #self.mprint("Reopening webpage again", verbose=0)
             break
         if self.browserisopen and self.websockclient is not None:
           try:
+            await asyncio.sleep(self.sleeptime)
             await self.mywebsock.send( message )
             gotsent = True
           except Exception as e:
@@ -2822,31 +2823,37 @@ Distance: %s
     self.OnConnectWebsocketClient(mywebsock.client_connected)
     mywebsock.ondisconnect = self.OnDisconnectWebsocketClient
     self.mywebsock = mywebsock
-    while True:
+    #while True:
     #  await mywebsock.send( message )
     #  message = await mywebsock.recv()
       #await asyncio.sleep(self.sleeptime)
-      time.sleep(self.sleeptime)
-      await self.OnWebsocketClientMessage()
-      await self.RunSendMessageQueue()
+    #  time.sleep(self.sleeptime)
+      #await self.OnWebsocketClientMessage()
+      #await self.RunSendMessageQueue()
+    #getmsgtask = asyncio.ensure_future(self.OnWebsocketClientMessage())
+    #sendmsgtask = asyncio.ensure_future(self.WebBrowserMsgQueue())
+    #await getmsgtask
+    #await sendmsgtask
+    await asyncio.gather(self.OnWebsocketClientMessage(), self.WebBrowserMsgQueue())
 
 
-  def WebBrowserMsgQueue(self):
+
+  async def WebBrowserMsgQueue(self):
     try:
       while True:
         nwait = 0.0
-        sleep(self.sleeptime)
+        asyncio.sleep(self.sleeptime)
         if self.javascriptcleaned:
           self.mprint("Shutting down WebBrowser message queue", verbose=1)
           return
         if len(self.msgqueue):
           pendingmessagetype, pendingmessage = self.msgqueue[0]
-          gotsent = self.send_msg_to_browser(pendingmessagetype, pendingmessage)
+          gotsent = await self.send_msg_to_browser(pendingmessagetype, pendingmessage)
           while not self.browserisopen:  #self.websockclient:
-            sleep(self.sleeptime)
+            await asyncio.sleep(self.sleeptime)
             nwait += self.sleeptime
             if nwait > self.handshakewait or self.javascriptcleaned or not self.viewerparams.scene_id is not None:
-              return
+              continue
           if gotsent:
             self.msgqueue.remove( self.msgqueue[0] )
 # if the html content is huge the browser will be unresponsive until it has finished
@@ -2861,7 +2868,7 @@ Distance: %s
 
   def OnConnectWebsocketClient(self, client):
     self.websockclient = client
-    self.mprint( "Browser connected:" + str( self.websockclient ), verbose=1 )
+    self.mprint( "Browser connected " + str( self.websockclient ), verbose=1 )
     self.was_disconnected = False
     if self.lastviewmtrx and self.viewerparams.scene_id is not None:
       self.set_volatile_params()
@@ -2872,19 +2879,19 @@ Distance: %s
 
 
   def OnDisconnectWebsocketClient(self, client):
-    self.mprint( "Browser disconnected:" + str( client ), verbose=1 )
+    self.mprint( "Browser disconnected " + str( self.websockclient ), verbose=1 )
     self.was_disconnected = True
     self.websockclient = client
 
 
-  def send_msg_to_browser(self, msgtype, msg=""):
+  async def send_msg_to_browser(self, msgtype, msg=""):
     message = u"" + msgtype + self.msgdelim + str(msg)
     if self.websockclient:
       nwait = 0.0
       while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
         or "CurrentViewOrientation" in self.lastmsg or "AutoViewSet" in self.lastmsg \
-        or "ReOrient" in self.lastmsg or self.websockclient is None):
-        time.sleep(self.sleeptime)
+        or "ReOrient" in self.lastmsg):
+        await asyncio.sleep(self.sleeptime)
         nwait += self.sleeptime
         if nwait > 2.0 and self.browserisopen:
           self.mprint("ERROR: No handshake from browser!", verbose=0 )
@@ -2894,7 +2901,8 @@ Distance: %s
     if self.browserisopen and self.websockclient is not None:
       try:
         #self.server.send_message(self.websockclient, message )
-        mywebsock.send( message )
+        await asyncio.sleep(self.sleeptime)
+        await self.mywebsock.send( message )
         return True
       except Exception as e:
         self.mprint( str(e) + "\n" + traceback.format_exc(limit=10), verbose=1)
@@ -2927,9 +2935,13 @@ Distance: %s
     try:
       #self.server = WebsocketServer(self.websockport, host='127.0.0.1')
       #asyncio.sleep(self.sleeptime)
+      if self.websockeventloop is not None:
+        self.mprint("websockeventloop already running", verbose=1)
+        return
+
       self.websockeventloop = asyncio.get_event_loop()
-      if self.debug:
-        self.websockeventloop.set_debug()
+      if self.debug is not None:
+        self.websockeventloop.set_debug(True)
       self.server = websockets.serve(self.WebSockHandler, '127.0.0.1',
                                      self.websockport,
                                      create_protocol=MyWebSocketServerProtocol)
@@ -2953,17 +2965,20 @@ Distance: %s
 
 
   def StopThreads(self):
+    """
     try:
       if self.websockclient: # might not have been created if program is closed before a data set is shown
         self.websockclient['handler'].send_text(u"", opcode=0x8)
     except Exception as e:
       self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
+    """
     #self.mprint("Shutting down Websocket listening thread", verbose=1)
     #self.server.shutdown()
     self.javascriptcleaned = True
-    self.msgqueuethrd.join()
+    #self.msgqueuethrd.join()
     self.mprint("Shutting down WebsocketServer", verbose=1)
-    self.wst.join()
+    self.server.ws_server.close()
+    #self.wst.join()
     self.isterminating = True
 
 
