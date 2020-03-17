@@ -1,6 +1,12 @@
 """
-Script for copying or symbolically linking CCTBX modules into
-the site-packages directory.
+Script for copying or symbolically linking CCTBX builds into $PREFIX
+
+The script assumes that the build directory has a complete build
+
+By default, the installation will be placed into the sys.prefix
+directory of the calling python.
+
+Usage: libtbx.python install_modules.py
 """
 from __future__ import absolute_import, division, print_function
 
@@ -58,9 +64,13 @@ def remove_cmd(src):
     os.remove(src)
 
 # =============================================================================
-def copy_headers(env, prefix=None, link=False):
+def copy_build(env, prefix=None, ext_dir=None, link=False):
   """
-  Copy headers from build to $PREFIX/include
+  Copies the following items,
+    1) Binaries from build/exe_dev to $PREFIX/bin
+    2) Headers from build/include to $PREFIX/include
+    3) Libraries from build/lib to $PREFIX/lib
+    4) Python extensions from build/lib to $PREFIX/lib/$PYTHON/lib-dynload
 
   Parameters
   ----------
@@ -68,28 +78,36 @@ def copy_headers(env, prefix=None, link=False):
       The libtbx environment
     prefix: str
       The destination $PREFIX directory
+    ext_dir: str
+      The destination directory for Python extensions
     link: bool
       If True, symbolic links are used instead of copying.
 
   Returns
   -------
-    0 if successful,
+    Nothing
   """
-  src_path = os.path.join(abs(env.build_path), 'include')
-  dst_path = os.path.join(prefix, 'include')
-  cmd = 'Copying'
-  if link:
-    cmd = 'Linking'
-  print(cmd + ' headers')
-  print('-'*79)
-  for src in os.listdir(src_path):
-    dst = os.path.join(dst_path, src)
-    src = os.path.join(src_path, src)
-    print('  source:      ' + src)
-    print('  destination: ' + dst)
-    copy_cmd(src, dst, link)
-  print('Done')
-  print()
+
+  # binaries and headers
+  # ---------------------------------------------------------------------------
+  for name, name_dir in [('binaries', 'exe_dev'), ('headers', 'include')]:
+    src_path = os.path.join(abs(env.build_path), name_dir)
+    if name_dir == 'exe_dev':
+      name_dir = 'bin'
+    dst_path = os.path.join(prefix, name_dir)
+    cmd = 'Copying'
+    if link:
+      cmd = 'Linking'
+    print(cmd + ' ' + name)
+    print('-'*79)
+    for src in os.listdir(src_path):
+      dst = os.path.join(dst_path, src)
+      src = os.path.join(src_path, src)
+      print('  source:      ' + src)
+      print('  destination: ' + dst)
+      copy_cmd(src, dst, link)
+    print('Done')
+    print()
 
 # =============================================================================
 def copy_modules(env, sp_dir=None, link=False):
@@ -107,7 +125,7 @@ def copy_modules(env, sp_dir=None, link=False):
 
   Returns
   -------
-    0 if successful,
+    Nothing
   """
 
   # copy each module directory
@@ -136,10 +154,9 @@ def copy_modules(env, sp_dir=None, link=False):
 
     print('Done')
     print()
-  return 0
 
 # =============================================================================
-def remove_headers(env, prefix=None):
+def remove_build(env, prefix=None):
   """
   Remove configured modules from site-packages directory
 
@@ -152,22 +169,24 @@ def remove_headers(env, prefix=None):
 
   Returns
   -------
-    0 if successful,
+    Nothing
   """
-  src_path = os.path.join(abs(env.build_path), 'include')
-  dst_path = os.path.join(prefix, 'include')
-  print('Removing headers')
-  print('-'*79)
-  for src in os.listdir(src_path):
-    src = os.path.join(dst_path, src)
-    if os.path.exists(src):
-      print('  source: ' + src)
-      remove_cmd(src)
-    else:
-      print('  {src} not found.'.format(src=src))
-  print('Done')
-  print()
-
+  for name, name_dir in [('binaries', 'exe_dev'), ('headers', 'include')]:
+    src_path = os.path.join(abs(env.build_path), name_dir)
+    if name_dir == 'exe_dev':
+      name_dir = 'bin'
+    dst_path = os.path.join(prefix, name_dir)
+    print('Removing ' + name)
+    print('-'*79)
+    for src in os.listdir(src_path):
+      src = os.path.join(dst_path, src)
+      if os.path.exists(src):
+        print('  source: ' + src)
+        remove_cmd(src)
+      else:
+        print('  {src} not found.'.format(src=src))
+    print('Done')
+    print()
 
 # =============================================================================
 def remove_modules(env, sp_dir=None):
@@ -183,7 +202,7 @@ def remove_modules(env, sp_dir=None):
 
   Returns
   -------
-    0 if successful,
+    Nothing
   """
 
   # load original libtbx_env
@@ -212,41 +231,40 @@ by the LIBTBX_BUILD environment variable''')
     print('Done')
     print()
 
-  return 0
-
 # =============================================================================
 def run():
   parser = argparse.ArgumentParser(description=__doc__,
     formatter_class=argparse.RawDescriptionHelpFormatter)
 
   default_sp_dir = None
+  default_lib_dynload_dir = None
   for p in sys.path:
-    if p.endswith('site-packages'):
+    if default_sp_dir is None and p.endswith('site-packages'):
       default_sp_dir = p
-      break
+    if default_lib_dynload_dir is None and p.endswith('lib-dynload'):
+      default_lib_dynload_dir = p
 
   parser.add_argument(
-    '--prefix', default=sys.prefix, type=str, nargs='?',
-    help="""The $PREFIX location, by default the directory is the sys.path
+    '--prefix', default=sys.prefix, type=str,
+    help="""The $PREFIX location, by default the directory is the sys.prefix
       location of the calling python.""")
   parser.add_argument(
-    '--sp-dir', '--sp_dir', default=default_sp_dir, type=str, nargs='?',
+    '--sp-dir', '--sp_dir', default=default_sp_dir, type=str,
     help="""The location where the modules will be installed, by default
       the directory is the site-packages location of the calling python.""")
   parser.add_argument(
+    '--ext-dir', '--ext_dir', default=default_lib_dynload_dir, type=str,
+    help="""The location where the Python extensions will be installed, by
+      default the directory is the lib-dynload location of the calling python.""")
+  parser.add_argument(
     '--link', action='store_true',
     help="""When set, instead of copying, symbolic links are created
-      for the repository directories.""")
+      for directories and files.""")
   parser.add_argument(
     '--clean', action='store_true',
-    help="""When set, repository directories are removed from the sp_dir.""")
+    help="""When set, directories and files are removed from the $PREFIX.""")
 
   namespace = parser.parse_args()
-
-  # show help if no arguments are provided
-  if len(sys.argv) == 1 and namespace.sp_dir is None:
-    parser.print_help()
-    parser.exit()
 
   # load original libtbx_env
   if os.getenv('LIBTBX_BUILD') is None:
@@ -258,10 +276,10 @@ by the LIBTBX_BUILD environment variable''')
 
   # copy or clean
   if namespace.clean:
-    remove_headers(env, prefix=namespace.prefix)
+    remove_build(env, prefix=namespace.prefix)
     remove_modules(env, sp_dir=namespace.sp_dir)
   else:
-    copy_headers(env, prefix=namespace.prefix, link=namespace.link)
+    copy_build(env, prefix=namespace.prefix, link=namespace.link)
     copy_modules(env, sp_dir=namespace.sp_dir, link=namespace.link)
 
   return 0
