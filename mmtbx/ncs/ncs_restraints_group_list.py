@@ -727,22 +727,24 @@ class class_ncs_restraints_group_list(list):
         seq_id = hierarchy.get_label_seq_id_iseq(isel[cur_index])
         seq_id = int(seq_id) if seq_id !='.' else 0
         asym_id = hierarchy.get_label_asym_id_iseq(isel[cur_index])
+        # print ('  DEBUG: seq_id, asym_id,', seq_id, asym_id, seq_id_1, asym_id_1)
         if (
             # consecutive indices and no chain break
             (isel[cur_index]-isel[cur_index-1] == 1
-                and asym_id != asym_id_1)
+                and asym_id == asym_id_1)
             # same chain, same or next resid, no indices check (missing atom, etc)
             or (asym_id == asym_id_1
                 and abs(seq_id - seq_id_1) <= 1 )
             ):
           cur_index += 1
         else: # end range
-          assert start_index != cur_index-1
+          # assert start_index != cur_index-1 # maybe needed for 1 atom chains, like ions
           result.append(isel[start_index:cur_index])
           start_index = cur_index
           cur_index += 1
       if start_index != cur_index-1:
         result.append(isel[start_index:cur_index])
+      # print ('Debug result', [list(x) for x in result])
       return result
 
     def _get_struct_ncs_dom_lim_row(dom_id, comp_id, r):
