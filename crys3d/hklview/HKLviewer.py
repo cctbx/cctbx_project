@@ -12,7 +12,7 @@
 from __future__ import absolute_import, division, print_function
 
 from PySide2.QtCore import Qt, QEvent, QSize, QSettings, QTimer
-from PySide2.QtWidgets import (  QAction, QApplication, QCheckBox,
+from PySide2.QtWidgets import (  QAction, QCheckBox,
         QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
         QMainWindow, QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
@@ -119,7 +119,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.window = MyQMainWindow(self)
     self.setupUi(self.window)
     self.app = thisapp
-    self.app.aboutToQuit.connect(self.AppAboutToQuit)
 
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
     self.actiondebug.triggered.connect(self.DebugInteractively)
@@ -159,6 +158,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
     self.Fontsize_labeltxt = QLabel()
     self.Fontsize_labeltxt.setText("Font size:")
+    self.fontsize = self.font.pointSize()
+
 
     self.cameraPerspectCheckBox = QCheckBox()
     self.cameraPerspectCheckBox.setText("Perspective camera")
@@ -283,7 +284,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
   def closeEvent(self, event):
     self.PhilToJsRender('NGL_HKLviewer.action = is_terminating')
     self.closing = True
-    self.window.setVisible(False)
+    #self.window.setVisible(False)
     self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
     print("HKL-viewer closing down...")
     nc = 0
@@ -676,6 +677,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
   def onFontsizeChanged(self, val):
     font = self.app.font()
     font.setPointSize(val);
+    self.fontsize = val
     self.app.setFont(font);
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
 
@@ -1457,7 +1459,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.socket.send(bytes(cmdstr))
 
 
-
 def run():
   try:
     debugtrue = False
@@ -1474,6 +1475,7 @@ def run():
     fontsize = settings.value("FontSize", None)
     settings.endGroup()
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    
     if QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       QWebEngineViewFlags = ""
       print("testing if WebGL works in QWebEngineView....")
@@ -1487,11 +1489,21 @@ def run():
       print("using flags for QWebEngineView: " + QWebEngineViewFlags)
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += QWebEngineViewFlags
 
+    from PySide2.QtWidgets import QApplication
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer(app)
 
+    def MyAppClosing():
+      settings.beginGroup("SomeSettings")
+      settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
+      settings.setValue("FontSize", guiobj.fontsize )
+      settings.endGroup()
+    
+    app.lastWindowClosed.connect(MyAppClosing)
+
     if fontsize is not None:
-      guiobj.onFontsizeChanged(fontsize)
+      guiobj.onFontsizeChanged(int(fontsize))
+      guiobj.fontspinBox.setValue(int(fontsize))
 
     timer = QTimer()
     timer.setInterval(20)
@@ -1499,13 +1511,6 @@ def run():
     timer.start()
     ret = app.exec_()
 
-    settings = QSettings("CCTBX", "HKLviewer" )
-    settings.beginGroup("SomeSettings")
-    QWebEngineViewFlags = settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
-    fontsize = settings.value("FontSize", self.app.font().PointSize() )
-    settings.endGroup()
-
-    sys.exit(ret)
   except Exception as e:
     print( str(e)  +  traceback.format_exc(limit=10) )
 

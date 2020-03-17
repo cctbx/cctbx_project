@@ -2842,7 +2842,7 @@ Distance: %s
     try:
       while True:
         nwait = 0.0
-        asyncio.sleep(self.sleeptime)
+        await asyncio.sleep(self.sleeptime)
         if self.javascriptcleaned:
           self.mprint("Shutting down WebBrowser message queue", verbose=1)
           return
@@ -2915,7 +2915,12 @@ Distance: %s
 
 
   def OpenBrowser(self):
-    if self.viewerparams.scene_id is not None and not (self.websockclient or self.browserisopen):
+    if self.viewerparams.scene_id is not None: # and not (self.websockclient or self.browserisopen):
+      if self.server:
+        #self.server.ws_server.close()
+        #self.websockeventloop.stop()
+        #self.websockeventloop = None
+        self.StartWebsocket()
       NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
       htmlstr = self.hklhtml %(NGLlibpath, os.path.abspath( self.jscriptfname))
       htmlstr += self.htmldiv
@@ -2935,13 +2940,16 @@ Distance: %s
     try:
       #self.server = WebsocketServer(self.websockport, host='127.0.0.1')
       #asyncio.sleep(self.sleeptime)
-      if self.websockeventloop is not None:
-        self.mprint("websockeventloop already running", verbose=1)
-        return
-
-      self.websockeventloop = asyncio.get_event_loop()
-      if self.debug is not None:
-        self.websockeventloop.set_debug(True)
+      #if self.websockeventloop is not None:
+      #  self.mprint("websockeventloop already running", verbose=1)
+      #  return
+      if self.websockeventloop is None:
+        self.websockeventloop = asyncio.get_event_loop()
+        if self.debug is not None:
+          self.websockeventloop.set_debug(True)
+      else:
+        self.websockeventloop.stop()
+        self.wst.join()
       self.server = websockets.serve(self.WebSockHandler, '127.0.0.1',
                                      self.websockport,
                                      create_protocol=MyWebSocketServerProtocol)
@@ -3023,9 +3031,9 @@ Distance: %s
 
   def ReloadNGL(self): # expensive as javascript may be several Mbytes large
     self.mprint("Rendering JavaScript...", verbose=1)
-    if not self.websockclient:
-      self.OpenBrowser()
-    self.AddToBrowserMsgQueue("Reload")
+    #if not self.websockclient:
+    self.OpenBrowser()
+    #self.AddToBrowserMsgQueue("Reload")
 
 
   def JavaScriptCleanUp(self):
