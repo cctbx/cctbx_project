@@ -1708,6 +1708,8 @@ selfx:
       return
     if self.build_options.use_conda:
       bin_directory = os.path.normpath(os.path.join(sys.prefix, "bin"))
+      if not os.path.isdir(bin_directory):
+        bin_directory = os.path.normpath(os.path.join(get_conda_prefix(), "bin"))
     else:
       try:
         bin_directory = self.get_setuptools_script_dir()
