@@ -67,7 +67,7 @@ def update_libtbx_env():
 
   # basic path changes
   env = libtbx.env
-  env.build_path = absolute_path(sys.prefix)
+  env.build_path = absolute_path(sys_prefix)
   env.set_derived_paths()
   env.exe_path = env.bin_path
   env.pythonpath = list()
@@ -78,7 +78,7 @@ def update_libtbx_env():
     if path.endswith('site-packages'):
       site_packages_path = env.as_relocatable_path(path)
       break
-  relocatable_sys_prefix = env.as_relocatable_path(sys.prefix)
+  relocatable_sys_prefix = env.as_relocatable_path(sys_prefix)
   env.repository_paths = [relocatable_sys_prefix, site_packages_path]
   env.scons_dist_path = relocatable_sys_prefix
 
@@ -93,7 +93,7 @@ def update_libtbx_env():
     module = env.module_dict[name]
     new_paths = [relocatable_sys_prefix, relocatable_sys_prefix]
     for path in sys.path:
-      if path.startswith(sys.prefix):
+      if path.startswith(sys_prefix):
         new_path = os.path.join(path, name)
         if os.path.isdir(new_path):
           new_paths[0] = env.as_relocatable_path(new_path)
