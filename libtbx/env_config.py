@@ -2757,7 +2757,12 @@ def cold_start(args):
   env.refresh()
 
 def unpickle():
-  build_path = os.environ["LIBTBX_BUILD"]
+  build_path = os.getenv("LIBTBX_BUILD")
+  if build_path is None:
+    if sys.platform == 'win32':
+      build_path = os.path.join(sys.prefix, 'Library')
+    else:
+      build_path = get_conda_prefix()
   set_preferred_sys_prefix_and_sys_executable(build_path=build_path)
   libtbx_env = open(op.join(build_path, "libtbx_env"), "rb")
   env = pickle.load(libtbx_env)
