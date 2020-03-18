@@ -27,7 +27,12 @@ def copy_libtbx_env():
   value = 0
   if os.getenv('LIBTBX_BUILD') is not None:
     src = os.path.join(os.getenv('LIBTBX_BUILD'), 'libtbx_env')
-    dst = os.path.join(sys.prefix, 'libtbx_env')
+    sys_prefix = sys.prefix
+    if sys.platform == 'darwin' and 'python.app' in sys_prefix:
+      sys_prefix = sys_prefix.split('python.app')[0]
+    if sys.platform == 'win32':
+      sys_prefix = os.path.join(sys_prefix, 'Library')
+    dst = os.path.join(sys_prefix, 'libtbx_env')
     if not os.path.isfile(src):
       raise IOError(
         'The "libtbx_env" file does not exist in {src}.'.format(src=src))
@@ -53,6 +58,12 @@ def update_libtbx_env():
   if os.getenv('LIBTBX_BUILD') is not None:
     del os.environ['LIBTBX_BUILD']
   import libtbx.load_env
+
+  sys_prefix = sys.prefix
+  if sys.platform == 'darwin' and 'python.app' in sys_prefix:
+    sys_prefix = sys_prefix.split('python.app')[0]
+  if sys.platform == 'win32':
+    sys_prefix = os.path.join(sys_prefix, 'Library')
 
   # basic path changes
   env = libtbx.env
