@@ -724,7 +724,7 @@ def metro_phil_to_basis_dict(metro):
 
   return bd
 
-def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, diffrn_id = "DS1", is_xfel = True):
+def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, diffrn_id = "DS1", is_xfel = True, gain = 1.0):
   """ Adds tables to cbf handle that won't already exsist if the cbf file is just a header
   @ param wavelength Wavelength in angstroms
   @ param timestamp String formatted timestamp for the image
@@ -783,7 +783,7 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, di
 
   cbf.add_category("array_intensities",["array_id","binary_id","linearity","gain","gain_esd","overload","undefined_value"])
   for i, array_name in enumerate(array_names):
-    cbf.add_row([array_name,str(i+1),"linear","1.0","0.1",str(trusted_ranges[i][1]),str(trusted_ranges[i][0])])
+    cbf.add_row([array_name,str(i+1),"linear","%f"%gain,"0.0",str(trusted_ranges[i][1]),str(trusted_ranges[i][0])])
 
 def add_tiles_to_cbf(cbf, tiles, verbose = False):
   """
