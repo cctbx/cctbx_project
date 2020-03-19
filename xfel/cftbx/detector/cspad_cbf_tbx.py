@@ -781,9 +781,12 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, di
       assert "CBF_NOTFOUND" in str(e)
       break
 
+  if not isinstance(gain, list):
+    gain = [gain] * len(array_names)
+
   cbf.add_category("array_intensities",["array_id","binary_id","linearity","gain","gain_esd","overload","undefined_value"])
   for i, array_name in enumerate(array_names):
-    cbf.add_row([array_name,str(i+1),"linear","%f"%gain,"0.0",str(trusted_ranges[i][1]),str(trusted_ranges[i][0])])
+    cbf.add_row([array_name,str(i+1),"linear","%f"%gain[i],"0.0",str(trusted_ranges[i][1]),str(trusted_ranges[i][0])])
 
 def add_tiles_to_cbf(cbf, tiles, verbose = False):
   """
