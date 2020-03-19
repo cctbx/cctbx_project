@@ -89,6 +89,10 @@ def update_libtbx_env():
     source_is_python_exe=True)
 
   # update module locations
+  if sys.platform == 'win32':
+    sys_prefix = sys.prefix
+    relocatable_sys_prefix = env.as_relocatable_path(
+      os.path.join(sys.prefix, 'Lib', 'site-packages'))
   for name in env.module_dict:
     module = env.module_dict[name]
     new_paths = [relocatable_sys_prefix, relocatable_sys_prefix]
