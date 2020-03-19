@@ -135,11 +135,11 @@ def rama_score_evaluate(resType, value):
 def pair_info(phi_psi_pair):
   return phi_psi_pair[0][2].id_str()
 
-def list_rama_outliers_h(hierarchy, r=None):
+def list_rama_outliers_h(hierarchy, r=None, include_allowed=False):
   if r is None:
     r = rama_eval()
   phi_psi_atoms = get_phi_psi_atoms(hierarchy)
-  outp = list_rama_outliers(phi_psi_atoms, r)
+  outp = list_rama_outliers(phi_psi_atoms, r, include_allowed=include_allowed)
   return outp
 
 def pair_selection(phi_psi_pair, margin=1):
@@ -164,13 +164,15 @@ def rama_score_selection(hierarchy, r=None, score="outlier",margin=1):
   return out_sel_txt
 
 
-def list_rama_outliers(phi_psi_atoms, r):
+def list_rama_outliers(phi_psi_atoms, r, include_allowed=False):
   result = ""
   # out_sel = []
   for phi_psi_pair, rama_key in phi_psi_atoms:
     rama_score = get_rama_score(phi_psi_pair, r, rama_key)
     if rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER:
       result += "  !!! OUTLIER %s, score=%f\n" % (pair_info(phi_psi_pair), rama_score)
+    if include_allowed and rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_ALLOWED:
+      result += "  !!! Allowed %s, score=%f\n" % (pair_info(phi_psi_pair), rama_score)
     # print "%s, %s, %s" % (pair_info(phi_psi_pair), get_rama_score(phi_psi_pair, r, rama_key), ramalyze.res_types[rama_key])
       # out_sel.append(pair_selection(phi_psi_pair))
     # print_rama_stats(phi_psi_atoms, r)

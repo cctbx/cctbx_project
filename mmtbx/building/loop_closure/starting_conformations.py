@@ -99,7 +99,7 @@ def get_sampled_rama_favored_angles(rama_key, r=None, step=20):
   return result
 
 def get_all_starting_conformations(moving_h, change_radius,
-    n_outliers,
+    include_allowed, n_outliers,
     direction_forward=True, cutoff=50, change_all=True, log=null_out(), check_omega=False):
   if log is None:
     log = StringIO()
@@ -127,6 +127,7 @@ def get_all_starting_conformations(moving_h, change_radius,
   print("n_outliers", n_outliers, file=log)
   for i, (phi_psi_pair, rama_key, omega) in enumerate(phi_psi_atoms):
     angle_is_outlier = utils.rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER
+    angle_is_outlier = angle_is_outlier or (include_allowed and utils.rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_ALLOWED)
     twisted = omega is not None and ((abs(abs(omega)-180) > 30) and check_omega)
     print("in cycle, N, outlier?, change?, twisted?", i, angle_is_outlier, i in change_angles, twisted, file=log)
     if angle_is_outlier and n_outliers < 3:
