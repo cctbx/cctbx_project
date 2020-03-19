@@ -2940,16 +2940,16 @@ Distance: %s
     try:
       #self.server = WebsocketServer(self.websockport, host='127.0.0.1')
       #asyncio.sleep(self.sleeptime)
-      #if self.websockeventloop is not None:
-      #  self.mprint("websockeventloop already running", verbose=1)
-      #  return
+      if self.websockeventloop is not None:
+        self.mprint("websockeventloop already running", verbose=1)
+        return
       if self.websockeventloop is None:
         self.websockeventloop = asyncio.get_event_loop()
         if self.debug is not None:
           self.websockeventloop.set_debug(True)
-      else:
-        self.websockeventloop.stop()
-        self.wst.join()
+      #else:
+      #  self.websockeventloop.stop()
+      #  self.wst.join()
       self.server = websockets.serve(self.WebSockHandler, '127.0.0.1',
                                      self.websockport,
                                      create_protocol=MyWebSocketServerProtocol)
@@ -2985,7 +2985,9 @@ Distance: %s
     self.javascriptcleaned = True
     #self.msgqueuethrd.join()
     self.mprint("Shutting down WebsocketServer", verbose=1)
-    self.server.ws_server.close()
+    #self.server.ws_server.close()
+    self.websockeventloop.stop()
+    #self.websockeventloop.close()
     #self.wst.join()
     self.isterminating = True
 

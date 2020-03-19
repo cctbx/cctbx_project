@@ -289,10 +289,13 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     print("HKL-viewer closing down...")
     nc = 0
     sleeptime = 0.2
-    while not self.canexit: #and nc < 5: # until cctbx.python has finished or after 5 sec
+    timeout = 10
+    while not self.canexit and nc < timeout: # until cctbx.python has finished or after 5 sec
       time.sleep(sleeptime)
       self.ProcessMessages()
       nc += sleeptime
+    if nc>= timeout:
+      print("Terminating hanging cctbx.python process...")
     self.cctbxproc.terminate()
     self.out, self.err = self.cctbxproc.communicate()
     self.cctbxproc.wait()
@@ -1473,9 +1476,12 @@ def run():
     settings.beginGroup("SomeSettings")
     QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
     fontsize = settings.value("FontSize", None)
+    windowsize = settings.value("windowsize", None)
+    splitter1sizes = settings.value("splitter1Sizes", None)
+    splitter2sizes = settings.value("splitter2Sizes", None)
     settings.endGroup()
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    
+
     if QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       QWebEngineViewFlags = ""
       print("testing if WebGL works in QWebEngineView....")
@@ -1497,13 +1503,21 @@ def run():
       settings.beginGroup("SomeSettings")
       settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
       settings.setValue("FontSize", guiobj.fontsize )
+      settings.setValue("windowsize", guiobj.window.size())
+      settings.setValue("splitter1Sizes", guiobj.splitter.saveState())
+      settings.setValue("splitter2Sizes", guiobj.splitter_2.saveState())
       settings.endGroup()
-    
+
     app.lastWindowClosed.connect(MyAppClosing)
 
     if fontsize is not None:
       guiobj.onFontsizeChanged(int(fontsize))
       guiobj.fontspinBox.setValue(int(fontsize))
+    if splitter1sizes is not None and splitter2sizes is not None and windowsize is not None:
+      guiobj.window.resize(windowsize)
+      guiobj.splitter.restoreState(splitter1sizes)
+      guiobj.splitter_2.restoreState(splitter2sizes)
+
 
     timer = QTimer()
     timer.setInterval(20)
