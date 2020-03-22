@@ -477,10 +477,12 @@ class structure_base(object):
     return ph.overall_counts().n_residues
 
   def present_in_hierarchy(self, hierarchy):
+    start_resseq = self.start_resseq if isinstance(self.start_resseq, str) else self.convert_resseq(self.start_resseq)
+    end_resseq = self.end_resseq if isinstance(self.end_resseq, str) else self.convert_resseq(self.end_resseq)
     for chain in hierarchy.models()[0].chains():
       if chain.id == self.start_chain_id:
         for rg in chain.residue_groups():
-          if rg.resseq == self.start_resseq or rg.resseq == self.end_resseq:
+          if rg.resseq == start_resseq or rg.resseq == end_resseq:
             return True
     return False
 
