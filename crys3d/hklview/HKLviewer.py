@@ -231,7 +231,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.functionTabWidget.setDisabled(True)
 
     self.cpath = ""
-    if self.UseOSBrowser==False:
+    if self.UseOSBrowser == False:
       self.InitBrowser()
     else:
       self.BrowserBox.setMaximumWidth(0)
@@ -278,7 +278,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.PhilToJsRender('NGL_HKLviewer.action = is_terminating')
     self.closing = True
     self.window.setVisible(False)
-    if self.UseOSBrowser==False:
+    if self.UseOSBrowser == False:
       self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
     print("HKL-viewer closing down...")
     nc = 0
@@ -290,7 +290,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.cctbxproc.terminate()
     self.out, self.err = self.cctbxproc.communicate()
     self.cctbxproc.wait()
-    if self.UseOSBrowser==False:
+    if self.UseOSBrowser == False:
       if self.devmode:
         self.webpagedebugform.close()
         self.webpagedebugform.deleteLater()
@@ -437,7 +437,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
           if self.infodict.get("html_url"):
             self.html_url = self.infodict["html_url"]
-            if self.UseOSBrowser==False:
+            if self.UseOSBrowser == False:
               self.BrowserBox.setUrl(self.html_url)
               # workaround for background colour bug in chromium
               # https://bugreports.qt.io/browse/QTBUG-41960
@@ -1432,7 +1432,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     guiargs = [ 'useGuiSocket=' + str(self.sockport),
                'high_quality=True',
-               'UseOSBrowser=' + str(self.UseOSBrowser)
+               #'UseOSBrowser=' + str(self.UseOSBrowser)
               ]
     cmdargs =  'cctbx.python -i -c "from crys3d.hklview import cmdlineframes;' \
      + ' cmdlineframes.run()" ' + ' '.join( guiargs + sys.argv[1:])

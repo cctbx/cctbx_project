@@ -306,14 +306,13 @@ class hklview_3d:
     """
     self.colourgradientvalues = []
     self.isinjected = False
-    self.UseOSBrowser = "default"
+    self.UseOSBrowser = ""
     if 'UseOSBrowser' in kwds:
-      self.UseOSBrowser = kwds['UseOSBrowser']
+      exec("self.UseOSBrowser = kwds['UseOSBrowser']")
     self.viewmtrx = None
     self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
-    self.HKLsceneKey = ( 0, False,
-                          self.viewerparams.expand_anomalous, self.viewerparams.expand_to_p1  )
+    self.HKLsceneKey = ( 0, False, self.viewerparams.expand_anomalous, self.viewerparams.expand_to_p1  )
     self.msgqueue = []
     self.websockclient = None
     self.handshakewait = 5
@@ -2865,7 +2864,7 @@ Distance: %s
         if not webbrowser.open(self.url, new=1):
           self.mprint("Could not open the default web browser")
           return False
-      if self.UseOSBrowser != "default":
+      if self.UseOSBrowser != "default" and self.UseOSBrowser != "":
         browserpath = self.UseOSBrowser + " %s"
         if not webbrowser.get(browserpath).open(self.url, new=1):
           self.mprint("Could not open web browser, %s" %self.UseOSBrowser)
