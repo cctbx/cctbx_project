@@ -13,6 +13,22 @@
 #include <boost/shared_ptr.hpp>
 #include <iostream>
 
+#define SMTBX_STRUCTURE_FACTORS_DIRECT_TYPEDEFS                            \
+  typedef FloatType float_type;                                            \
+  typedef std::complex<float_type> complex_type;                           \
+  typedef scitbx::sym_mat3<complex_type> grad_u_star_type;                 \
+  typedef af::tiny<complex_type, 3> grad_site_type;                        \
+  typedef xray::scatterer<float_type> scatterer_type;
+
+#define SMTBX_STRUCTURE_FACTORS_DIRECT_ONE_SCATTERER_ONE_H_USING           \
+  using core<float_type>::structure_factor;                                \
+  using core<float_type>::grad_site;                                       \
+  using core<float_type>::grad_u_star;                                     \
+  using core<float_type>::grad_u_iso;                                      \
+  using core<float_type>::grad_occ;                                        \
+  using base_t::hr_ht;                                                     \
+  using base_t::d_star_sq;
+
 namespace smtbx { namespace structure_factors { namespace direct {
 
   using cctbx::xray::structure_factors::hr_ht_group;
@@ -20,13 +36,6 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
 
   namespace one_scatterer_one_h {
-
-    #define SMTBX_STRUCTURE_FACTORS_DIRECT_TYPEDEFS                            \
-      typedef FloatType float_type;                                            \
-      typedef std::complex<float_type> complex_type;                           \
-      typedef scitbx::sym_mat3<complex_type> grad_u_star_type;                 \
-      typedef af::tiny<complex_type, 3> grad_site_type;                        \
-      typedef xray::scatterer<float_type> scatterer_type;
 
     /** Bare bundle of the structure factor of one scatterer
         for a given Miller index and its gradient wrt to the crystallagraphic
@@ -107,15 +116,6 @@ namespace smtbx { namespace structure_factors { namespace direct {
       }
     };
 
-
-    #define SMTBX_STRUCTURE_FACTORS_DIRECT_ONE_SCATTERER_ONE_H_USING           \
-      using core<float_type>::structure_factor;                                \
-      using core<float_type>::grad_site;                                       \
-      using core<float_type>::grad_u_star;                                     \
-      using core<float_type>::grad_u_iso;                                      \
-      using core<float_type>::grad_occ;                                        \
-      using base_t::hr_ht;                                                     \
-      using base_t::d_star_sq;
 
 
     /** Key steps of the evaluation or linearisation of the structure factor
@@ -216,6 +216,11 @@ namespace smtbx { namespace structure_factors { namespace direct {
             }
           }
         }
+
+        // This balances the extra (conditional) curly brace that follows
+        #if (0)
+        {
+        #endif
 
         #if (   defined(__linux__) && defined(__GNUC__) \
              && __GNUC__ == 4 && __GNUC_MINOR__ == 0 && __GNUC_PATCHLEVEL__ == 0)
