@@ -702,7 +702,7 @@ class FatRefiner(PixelRefinement):
                     p1_idx = self.idx_from_p1[h_equiv]  # TODO change name to be more specific
                 except KeyError as err:
                     if self.debug:
-                        print h_equiv, err
+                        print( h_equiv, err)
                     continue
                 data[p1_idx] = new_Fcell  # set the data with the new value
         self.S.D.Fhkl_tuple = idx, data  # update nanoBragg again  # TODO: add flag to not re-allocate in nanoBragg!

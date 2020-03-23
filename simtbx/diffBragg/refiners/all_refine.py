@@ -1,3 +1,4 @@
+from __future__ import print_function
 from simtbx.diffBragg.refiners import RefineRot, BreakToUseCurvatures
 from scitbx.array_family import flex
 import pylab as plt
@@ -6,6 +7,7 @@ import sys
 from dxtbx.model import Panel
 from copy import deepcopy
 from simtbx.diffBragg.utils import compare_with_ground_truth
+
 
 
 class RefineAll(RefineRot):
@@ -163,7 +165,6 @@ class RefineAll(RefineRot):
             self.ncells_deriv = self.D.get_derivative_pixels(self._ncells_id).as_numpy_array()
             val = np.exp(self.x[-4])
             self.ncells_deriv *= val
-            #print "MCDOLANZ: %3.9g" % sum(sum(self.ncells_deriv))
             if self.calc_curvatures:
                 self.ncells_second_deriv = self.D.get_second_derivative_pixels(self._ncells_id).as_numpy_array()
                 self.ncells_second_deriv *= (val*val)  # NOTE: check me
@@ -214,8 +215,7 @@ class RefineAll(RefineRot):
             self._update_ncells()
             for i_spot in range(self.n_spots):
                 if self.verbose:
-                    print "\rRunning diffBragg over spot %d/%d " % (i_spot+1, self.n_spots),
-                    sys.stdout.flush()
+                    print ("\rRunning diffBragg over spot %d/%d " % (i_spot+1, self.n_spots), flush=True)
                 self._run_diffBragg_current(i_spot)
                 self._unpack_bgplane_params(i_spot)
                 self._set_background_plane(i_spot)
@@ -367,8 +367,7 @@ class RefineAll(RefineRot):
                                             symbol=self.symbol)[0]
         except RuntimeError:
             ang_off = 999
-        print "MEAN ERROR=%.4f, ANG OFF %.4f" % (mn_err, ang_off)
-
+        print( "MEAN ERROR=%.4f, ANG OFF %.4f" % (mn_err, ang_off))
         ncells_val = np.exp(self.x[-4])+3
         ncells_resid = abs(ncells_val - self.gt_ncells)
         if mn_err < 0.01 and ang_off < 0.004 and ncells_resid < 0.1:
