@@ -188,7 +188,7 @@ class RefineUcell(RefineRot):
         labels = []
         for n, v in zip(names, vals):
             labels.append('%s=%2.7g' % (n, v))
-        print ", ".join(labels)
+        print (", ".join(labels))
 
     def curvatures(self):
         return self.curv
