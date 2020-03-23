@@ -1,3 +1,4 @@
+from __future__ import print_function
 from simtbx.diffBragg.refiners import RefineRot, BreakToUseCurvatures
 from scitbx.array_family import flex
 import pylab as plt
@@ -252,8 +253,7 @@ class RefineAllMultiPanel(RefineRot):
             for i_spot in range(self.n_spots):
                 self._panel_id = self.panel_ids[i_spot]
                 if self.verbose:
-                    print "\rRunning diffBragg over spot %d/%d on panel %d " % (i_spot+1, self.n_spots, self._panel_id),
-                    sys.stdout.flush()
+                    print( "\rRunning diffBragg over spot %d/%d on panel %d " % (i_spot+1, self.n_spots, self._panel_id), flush=True)
 
                 self._update_dxtbx_detector()  # TODO : chek that I wrk
                 self._run_diffBragg_current(i_spot)

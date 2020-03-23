@@ -372,7 +372,7 @@ def perturb_miller_array(F, factor, perturb_log_vals=True):
     try:
         Fdat = np.random.uniform(Fdat-factor, Fdat+factor)
     except OverflowError:
-        print 'You suck'
+        print ('You suck')
         return None
     if perturb_log_vals:
         Fdat = np.exp(Fdat)
@@ -477,7 +477,7 @@ END
         from cctbx import crystal
         crystal_sym = crystal.symmetry(unit_cell=ucell, space_group_symbol=symbol)
         xray_structure = structure(scatterers=xray_structure.scatterers(), crystal_symmetry=crystal_sym)
-        print "MADE UCELL SYM"
+        print( "MADE UCELL SYM")
     # take a detour to insist on calculating anomalous contribution of every atom
     scatterers = xray_structure.scatterers()
     if anom:
