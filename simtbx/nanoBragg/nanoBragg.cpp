@@ -2979,6 +2979,18 @@ nanoBragg::add_nanoBragg_spots()
                     printf("X: %11.8f %11.8f %11.8f\n",a[1]*1e10,b[1]*1e10,c[1]*1e10);
                     printf("Y: %11.8f %11.8f %11.8f\n",a[2]*1e10,b[2]*1e10,c[2]*1e10);
                     printf("Z: %11.8f %11.8f %11.8f\n",a[3]*1e10,b[3]*1e10,c[3]*1e10);
+                    SCITBX_EXAMINE(airpath);
+                    SCITBX_EXAMINE(Fclose);
+                    SCITBX_EXAMINE(Sclose);
+                    SCITBX_EXAMINE(close_distance);
+                    SCITBX_EXAMINE(pix0_vector[0]);
+                    SCITBX_EXAMINE(pix0_vector[1]);
+                    SCITBX_EXAMINE(pix0_vector[2]);
+                    SCITBX_EXAMINE(pix0_vector[3]);
+                    SCITBX_EXAMINE(odet_vector[0]);
+                    SCITBX_EXAMINE(odet_vector[1]);
+                    SCITBX_EXAMINE(odet_vector[2]);
+                    SCITBX_EXAMINE(odet_vector[3]);
                 }
             }
             else
