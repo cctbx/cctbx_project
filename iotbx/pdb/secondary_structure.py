@@ -476,6 +476,16 @@ class structure_base(object):
     ph=hierarchy.deep_copy().select(sel)
     return ph.overall_counts().n_residues
 
+  def present_in_hierarchy(self, hierarchy):
+    start_resseq = self.start_resseq if isinstance(self.start_resseq, str) else self.convert_resseq(self.start_resseq)
+    end_resseq = self.end_resseq if isinstance(self.end_resseq, str) else self.convert_resseq(self.end_resseq)
+    for chain in hierarchy.models()[0].chains():
+      if chain.id == self.start_chain_id:
+        for rg in chain.residue_groups():
+          if rg.resseq == start_resseq or rg.resseq == end_resseq:
+            return True
+    return False
+
   def count_h_bonds(self,hierarchy=None,
        max_h_bond_length=None,ss_by_chain=False):
     "Count good and poor H-bonds in this hierarchy"
@@ -741,15 +751,11 @@ class annotation(structure_base):
     h_indeces_to_delete = []
     sh_indeces_to_delete = []
     for i, h in enumerate(self.helices):
-      selstring = h.as_atom_selections()
-      isel = asc.iselection(selstring[0])
-      if len(isel) == 0:
+      if not h.present_in_hierarchy(hierarchy):
         h_indeces_to_delete.append(i)
     for i, sh in enumerate(self.sheets):
       for st in sh.strands:
-        selstring = st.as_atom_selections()
-        isel = asc.iselection(selstring)
-        if len(isel) == 0:
+        if not st.present_in_hierarchy(hierarchy):
           if i not in sh_indeces_to_delete:
             sh_indeces_to_delete.append(i)
     deleted_helices = []

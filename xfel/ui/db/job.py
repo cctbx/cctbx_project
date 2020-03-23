@@ -513,7 +513,8 @@ class EnsembleRefinementJob(Job):
     identifier_string = self.get_identifier_string()
     target_phil_path = os.path.join(configs_dir, identifier_string + "_params.phil")
     with open(target_phil_path, 'w') as f:
-      f.write(self.task.parameters)
+      if self.task.parameters:
+        f.write(self.task.parameters)
 
     path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
     os.mkdir(path)
@@ -521,6 +522,7 @@ class EnsembleRefinementJob(Job):
     arguments = """
     mp.queue={}
     mp.nproc={}
+    mp.nproc_per_node={}
     mp.method={}
     {}
     mp.use_mpi=False
@@ -535,6 +537,7 @@ class EnsembleRefinementJob(Job):
     striping.output_folder={}
     """.format(self.app.params.mp.queue if len(self.app.params.mp.queue) > 0 else None,
                self.app.params.mp.nproc,
+               self.app.params.mp.nproc_per_node,
                self.app.params.mp.method,
                '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script]),
                self.app.params.output_folder,

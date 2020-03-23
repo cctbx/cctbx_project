@@ -32,6 +32,15 @@ output {
   overwrite = True
     .type = bool
 }
+# temporary GUI PHIL
+include scope libtbx.phil.interface.tracking_params
+gui
+  .help = "GUI-specific parameter required for output directory"
+{
+  output_dir = None
+  .type = path
+  .style = output_dir
+}
 """
 
   def validate(self):
@@ -77,6 +86,7 @@ output {
     if(cs is None): output_cs = False
     self.data_manager.write_model_file(self.model.model_as_str(
       output_cs=output_cs), ofn)
+    self.result = ofn
 
   def get_results(self):
-    return self.model
+    return self.result

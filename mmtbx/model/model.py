@@ -418,8 +418,9 @@ class manager(object):
         full_params.geometry_restraints = params.geometry_restraints
       if hasattr(params, "reference_model"):
         full_params.reference_model = params.reference_model
-      if hasattr(params, "schrodinger"):
-        full_params.schrodinger = params.schrodinger
+      for attr in ['amber', 'schrodinger']:
+        if hasattr(params, attr):
+          setattr(full_params, attr, getattr(params, attr))
       self._pdb_interpretation_params = full_params
     self.unset_restraints_manager()
 
@@ -1217,11 +1218,21 @@ class manager(object):
           selection=None,
           log=self.log)
 
-    # Use Schrodinger force field if requested
+    ############################################################################
+    # Switch in external alternative geometry manager. Options include:
+    #  1. Amber force field
+    #  2. Schrodinger force field
+    ############################################################################
     params = self._pdb_interpretation_params
-    if hasattr(params, "schrodinger") and params.schrodinger.use_schrodinger:
+    if params.amber.use_amber:
+      from amber_adaptbx.manager import digester
+      geometry = digester(geometry, params, log=self.log)
+    elif hasattr(params, "schrodinger") and params.schrodinger.use_schrodinger:
       from phenix_schrodinger import schrodinger_manager
-      geometry = schrodinger_manager(self._pdb_hierarchy, params, cleanup=True, grm=geometry)
+      geometry = schrodinger_manager(self._pdb_hierarchy,
+                                     params,
+                                     cleanup=True,
+                                     grm=geometry)
 
     restraints_manager = mmtbx.restraints.manager(
       geometry      = geometry,

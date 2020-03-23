@@ -118,7 +118,7 @@ mp_phil_str = '''
 
 class get_submit_command(object):
   def __init__(self, command, submit_path, stdoutdir, params,
-               log_name="log.out", err_name="log.err", job_name=None):
+               log_name="log.out", err_name="log.err", job_name=None, root_dir=None):
     """ Get a submit command for the various compute environments
     @param command Any command line program and its arguments
     @param submit_path Submit script will be written here
@@ -138,6 +138,7 @@ class get_submit_command(object):
     self.err_name = err_name
     self.params = params
     self.job_name = job_name
+    self.root_dir = root_dir
     self.command = command
     self.options = []
     self.args = []
@@ -391,6 +392,10 @@ class get_pbs_submit_command(get_submit_command):
     # <extra_options> (optional, preceding the command)
     for cmd in self.params.extra_options:
       cmd_str = "#PBS %s" % cmd
+      self.options_inside_submit_script.append(cmd_str)
+
+    if self.root_dir is not None:
+      cmd_str = "cd %s"%self.root_dir
       self.options_inside_submit_script.append(cmd_str)
 
     # source </path/to/env.sh> (optional)
@@ -713,7 +718,8 @@ class get_custom_submit_command(get_submit_command):
     return self.submit_command_contents
 
 def get_submit_command_chooser(command, submit_path, stdoutdir, params,
-                               log_name="log.out", err_name="log.err", job_name=None):
+                               log_name="log.out", err_name="log.err", job_name=None,
+                               root_dir=None):
   if params.method == "local":
     choice = get_local_submit_command
   elif params.method == "lsf":
@@ -733,5 +739,5 @@ def get_submit_command_chooser(command, submit_path, stdoutdir, params,
   else:
     raise Sorry("Multiprocessing method %s not recognized" % params.method)
   command_generator = choice(command, submit_path, stdoutdir, params,
-                             log_name=log_name, err_name=err_name, job_name=job_name)
+                             log_name=log_name, err_name=err_name, job_name=job_name, root_dir=root_dir)
   return command_generator()
