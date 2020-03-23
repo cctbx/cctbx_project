@@ -12,7 +12,7 @@
 from __future__ import absolute_import, division, print_function
 
 from PySide2.QtCore import Qt, QEvent, QSize, QSettings, QTimer
-from PySide2.QtWidgets import (  QAction, QApplication, QCheckBox,
+from PySide2.QtWidgets import (  QAction, QCheckBox,
         QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
         QMainWindow, QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
@@ -119,6 +119,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.window = MyQMainWindow(self)
     self.setupUi(self.window)
     self.app = thisapp
+
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
     self.actiondebug.triggered.connect(self.DebugInteractively)
     self.actionSettings.triggered.connect(self.SettingsDialog)
@@ -157,6 +158,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
     self.Fontsize_labeltxt = QLabel()
     self.Fontsize_labeltxt.setText("Font size:")
+    self.fontsize = self.font.pointSize()
+
 
     self.cameraPerspectCheckBox = QCheckBox()
     self.cameraPerspectCheckBox.setText("Perspective camera")
@@ -231,7 +234,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.functionTabWidget.setDisabled(True)
 
     self.cpath = ""
-    if self.UseOSBrowser == False:
+    if self.UseOSBrowser==False:
       self.InitBrowser()
     else:
       self.BrowserBox.setMaximumWidth(0)
@@ -274,24 +277,31 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.window.show()
 
 
+  def AppAboutToQuit(self):
+    print("in AppAboutToQuit")
+
+
   def closeEvent(self, event):
     self.PhilToJsRender('NGL_HKLviewer.action = is_terminating')
     self.closing = True
-    self.window.setVisible(False)
+    #self.window.setVisible(False)
     if self.UseOSBrowser == False:
       self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
     print("HKL-viewer closing down...")
     nc = 0
     sleeptime = 0.2
-    while not self.canexit: #and nc < 5: # until cctbx.python has finished or after 5 sec
+    timeout = 10
+    while not self.canexit and nc < timeout: # until cctbx.python has finished or after 5 sec
       time.sleep(sleeptime)
       self.ProcessMessages()
       nc += sleeptime
+    if nc>= timeout:
+      print("Terminating hanging cctbx.python process...")
     self.cctbxproc.terminate()
     self.out, self.err = self.cctbxproc.communicate()
     self.cctbxproc.wait()
     if self.UseOSBrowser == False:
-      if self.devmode:
+      if self.webpagedebugform and self.devmod:
         self.webpagedebugform.close()
         self.webpagedebugform.deleteLater()
       self.BrowserBox.close()
@@ -437,7 +447,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
           if self.infodict.get("html_url"):
             self.html_url = self.infodict["html_url"]
-            if self.UseOSBrowser == False:
+            if self.UseOSBrowser==False:
               self.BrowserBox.setUrl(self.html_url)
               # workaround for background colour bug in chromium
               # https://bugreports.qt.io/browse/QTBUG-41960
@@ -672,6 +682,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
   def onFontsizeChanged(self, val):
     font = self.app.font()
     font.setPointSize(val);
+    self.fontsize = val
     self.app.setFont(font);
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
 
@@ -1429,10 +1440,16 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.socket.bind("tcp://127.0.0.1:%s" %self.sockport)
     try: msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
     except Exception as e: pass
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    """
+    cmdargs = 'cctbx.python -i -c "from crys3d.hklview import cmdlineframes;' \
+     + ' cmdlineframes.HKLViewFrame(useGuiSocket=%s, high_quality=True,' %self.sockport \
+     + ' jscriptfname = \'%s\', ' %self.jscriptfname \
+     + ' verbose=%s, UseOSBrowser=%s, htmlfname=\'%s\', handshakewait=%s )"\n'\
+       %(self.verbose, str(self.UseOSbrowser), self.hklfname, self.handshakewait)
+    """
+
     guiargs = [ 'useGuiSocket=' + str(self.sockport),
                'high_quality=True',
-               #'UseOSBrowser=' + str(self.UseOSBrowser)
               ]
     cmdargs =  'cctbx.python -i -c "from crys3d.hklview import cmdlineframes;' \
      + ' cmdlineframes.run()" ' + ' '.join( guiargs + sys.argv[1:])
@@ -1450,15 +1467,21 @@ def run():
   try:
     debugtrue = False
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
-    if ("devmode" in sys.argv or "debug" in sys.argv) and not "UseOSBrowser=True" in sys.argv:
-      debugtrue = True
-      # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
-      os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9742 --single-process --js-flags='--expose_gc'"
+    for e in sys.argv:
+      if "devmode" in e or "debug" in e and not "UseOSBrowser" in e:
+        debugtrue = True
+        # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
 
     settings = QSettings("CCTBX", "HKLviewer" )
     settings.beginGroup("SomeSettings")
     QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
+    fontsize = settings.value("FontSize", None)
+    windowsize = settings.value("windowsize", None)
+    splitter1sizes = settings.value("splitter1Sizes", None)
+    splitter2sizes = settings.value("splitter2Sizes", None)
     settings.endGroup()
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
     if QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       QWebEngineViewFlags = ""
@@ -1473,20 +1496,36 @@ def run():
       print("using flags for QWebEngineView: " + QWebEngineViewFlags)
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += QWebEngineViewFlags
 
+    from PySide2.QtWidgets import QApplication
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer(app)
+
+    def MyAppClosing():
+      settings.beginGroup("SomeSettings")
+      settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
+      settings.setValue("FontSize", guiobj.fontsize )
+      settings.setValue("windowsize", guiobj.window.size())
+      settings.setValue("splitter1Sizes", guiobj.splitter.saveState())
+      settings.setValue("splitter2Sizes", guiobj.splitter_2.saveState())
+      settings.endGroup()
+
+    app.lastWindowClosed.connect(MyAppClosing)
+
+    if fontsize is not None:
+      guiobj.onFontsizeChanged(int(fontsize))
+      guiobj.fontspinBox.setValue(int(fontsize))
+    if splitter1sizes is not None and splitter2sizes is not None and windowsize is not None:
+      guiobj.window.resize(windowsize)
+      guiobj.splitter.restoreState(splitter1sizes)
+      guiobj.splitter_2.restoreState(splitter2sizes)
+
+
     timer = QTimer()
-    timer.setInterval(5)
+    timer.setInterval(20)
     timer.timeout.connect(guiobj.ProcessMessages)
     timer.start()
     ret = app.exec_()
 
-    settings = QSettings("CCTBX", "HKLviewer" )
-    settings.beginGroup("SomeSettings")
-    QWebEngineViewFlags = settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
-    settings.endGroup()
-
-    sys.exit(ret)
   except Exception as e:
     print( str(e)  +  traceback.format_exc(limit=10) )
 
