@@ -1410,6 +1410,7 @@ class manager(object):
       custom_nb_excl=None,
       run_clash_guard = True,
       ):
+    print('setup_restraints_manager'*10)
     if(self.restraints_manager is not None): return
     if self._processed_pdb_file is None:
       self._process_input_model()
@@ -3339,7 +3340,9 @@ class manager(object):
     return self.get_xray_structure().scattering_type_registry().last_table() \
       == "neutron"
 
-  def geometry_statistics(self, use_hydrogens=None, fast_clash=True,
+  def geometry_statistics(self,
+                          use_hydrogens=None,
+                          fast_clash=True,
                           condensed_probe=True):
     scattering_table = \
         self.get_xray_structure().scattering_type_registry().last_table()

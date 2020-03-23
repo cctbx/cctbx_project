@@ -1476,6 +1476,8 @@ class manager(Base_geometry):
         external_energy_function=None,
         extension_objects=[],
         site_labels=None):
+    print('standard gradients')
+    # if compute_gradients or 1: assert 0
     if(external_energy_function is not None):
       assert self.external_energy_function is None
     else:

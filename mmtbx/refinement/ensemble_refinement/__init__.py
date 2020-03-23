@@ -759,6 +759,13 @@ class run_ensemble_refinement(object):
 
 ############################## END ER ##########################################
 
+  def __setattr__(self, attr, value):
+    print ('...%s...' % attr)
+    print (value)
+    if attr=='model':
+      assert 0
+    object.__setattr__(self, attr, value)
+
   def write_output_files(self, run_number=None):
     #PDB output
     prefix = self.params.output_file_prefix
@@ -1183,6 +1190,12 @@ class run_ensemble_refinement(object):
         = (self.a_prime * self.er_data.ke_protein_running) + ( (1-self.a_prime) * ke)
 
   def ordered_solvent_update(self):
+    print(self.model)
+    print(dir(self.model))
+    grm = self.model.get_restraints_manager()
+    print(grm)
+    print(dir(grm))
+    grm.energies_sites()
     ensemble_ordered_solvent_manager = ensemble_ordered_solvent.manager(
         model             = self.model,
         fmodel            = self.fmodel_running,
@@ -1713,6 +1726,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     restraint_objects = cif_objects,
     pdb_interpretation_params = params.ensemble_refinement,
     log = log)
+  # assert 0
   if model.get_number_of_models() > 1:
     raise Sorry("Multiple models not supported.")
 
@@ -1737,6 +1751,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
       restraint_objects = cif_objects,
       pdb_interpretation_params = params.ensemble_refinement,
       log = log)
+    assert 0
 
   # Refinement flags
   # Worst hack I've ever seen! No wonder ensemble refinement is semi-broken!
