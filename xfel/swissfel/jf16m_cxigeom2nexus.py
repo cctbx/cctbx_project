@@ -24,6 +24,10 @@ phil_scope = parse("""
   wavelength = None
     .type = float
     .help = If not provided, try to find wavelength in unassembled file.
+  beam_file = None
+    .type = path
+    .help = Overrides wavelength. Reads the pulse IDs in the provided file \
+            to get a list of wavelengths for the master.
   mask_file = None
     .type = str
     .help = Path to file with external bad pixel mask.
@@ -111,10 +115,25 @@ class jf16m_cxigeom2nexus(object):
     sample.attrs['NX_class'] = 'NXsample'
     beam = sample.create_group('beam')
     beam.attrs['NX_class'] = 'NXbeam'
-    if self.params.wavelength is None:
+    if self.params.wavelength is None and self.params.beam_file is None:
       wavelengths = h5py.File(self.params.unassembled_file, 'r')['instrument/photon_wavelength_A']
       beam.create_dataset('incident_wavelength', (1,), data=np.mean(wavelengths), dtype='f8')
+    elif self.params.beam_file is not None:
+      # data file has pulse ids, need to match those to the beam file, which may have more pulses
+      if self.params.raw:
+        data_pulse_ids = h5py.File(self.params.unassembled_file, 'r')['data/JF07T32V01/pulse_id'][()]
+      else:
+        data_pulse_ids = h5py.File(self.params.unassembled_file, 'r')['data/pulse_id'][()]
+      beam_h5 = h5py.File(self.params.beam_file, 'r')
+      beam_pulse_ids = beam_h5['data/SARFE10-PSSS059:SPECTRUM_CENTER/pulse_id'][()]
+      beam_energies = beam_h5['data/SARFE10-PSSS059:SPECTRUM_CENTER/data'][()]
+      energies = np.ndarray((len(data_pulse_ids),), dtype='f8')
+      for i, pulse_id in enumerate(data_pulse_ids):
+        energies[i] = beam_energies[np.where(beam_pulse_ids==pulse_id)[0][0]]
+      wavelengths = 12398.4187/energies
+      beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
     else:
+      assert self.params.wavelength is not None, "Provide a wavelength"
       beam.create_dataset('incident_wavelength', (1,), data=self.params.wavelength, dtype='f8')
     beam['incident_wavelength'].attrs['units'] = 'angstrom'
     # --> instrument
