@@ -249,9 +249,11 @@ class SetupInstaller(object):
           ['conda', 'pack', '-h'],
           stderr=subprocess.STDOUT, env=env)
         conda_pack_is_available = True
-      except subprocess.CalledProcessError as e:
+      except Exception as e:
         print('Unable to find conda-pack.')
-        print(e.output.decode('utf8'))
+        print(str(e))  # WindowsError or OSError
+        if sys.platform != 'win32':  # subprocess.CalledProcessError
+          print(e.output.decode('utf8'))
         print('Fallback to a regular copy.')
 
       if conda_pack_is_available:
@@ -263,11 +265,12 @@ class SetupInstaller(object):
             stderr=subprocess.STDOUT, env=env)
           shutil.copy(os.path.join(self.root_dir, filename),
                       os.path.join(self.dest_dir))
-        except subprocess.CalledProcessError as e:
-          print('Unable to use conda-pack.')
-          print(e.output.decode('utf8'))
+        except Exception as e:
+          print('Unable to run conda-pack.')
+          print(str(e))  # WindowsError or OSError
+          if sys.platform != 'win32':  # subprocess.CalledProcessError
+            print(e.output.decode('utf8'))
           print('Fallback to a regular copy.')
-          conda_pack_is_available = False
 
     # Copy dependencies
     if not conda_pack_is_available:
