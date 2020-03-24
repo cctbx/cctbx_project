@@ -264,6 +264,7 @@ def rotate_atoms_around_bond(
       a.set_xyz(new_xyz)
 
 def find_nearest_non_outlier_region(phi_psi_pair, r, rama_key):
+  ''' In current implementation actually finds FAVORED region'''
   def spiral(N, M):
       x,y = 0,0
       dx, dy = 0, -1

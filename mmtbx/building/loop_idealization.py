@@ -56,6 +56,10 @@ loop_idealization
   include_allowed = False
     .type = bool
     .help = Try to fix residues in allowed Ramachandran region with CCD
+  avoid_allowed_region = False
+    .type = bool
+    .help = If true, CCD will not let residues go to allowed region on \
+      Ramachandran plot
   make_all_trans = True
     .type = bool
     .help = If true, procedure will try to get rid of all twisted and \
@@ -655,7 +659,10 @@ class loop_idealization():
           #     direction_forward,
           #     self.params.save_states])
           ccd_obj = ccd_cpp(fixed_ref_atoms_coors, h, moving_ref_atoms_iseqs)
-          ccd_obj.run(direction_forward=direction_forward, save_states=self.params.save_states)
+          ccd_obj.run(
+              direction_forward=direction_forward,
+              save_states=self.params.save_states,
+              avoid_allowed_region=self.params.avoid_allowed_region)
           resulting_rmsd = ccd_obj.resulting_rmsd
           n_iter = ccd_obj.n_iter
 

@@ -22,7 +22,7 @@ from mmtbx_building_loop_closure_ext import ccd_cpp
 @boost.python.inject_into(ccd_cpp)
 class _():
 
-  def run(self, direction_forward=True, save_states=False):
+  def run(self, direction_forward=True, save_states=False, avoid_allowed_region=False):
     if save_states:
       self.states = mmtbx.utils.states(pdb_hierarchy=self.moving_h)
       self.states.add(sites_cart=self.moving_h.atoms().extract_xyz())
@@ -65,14 +65,14 @@ class _():
 
           angle_modified = self._modify_angle(ccd_angle)
           # angle_modified = ccd_angle
-          # print "ccd_angle", ccd_angle, angle_modified
+          # print ("  ccd_angle", ccd_angle, angle_modified)
           # angle_modified = - angle_modified
 
           phi_psi_angles = utils.get_pair_angles(phi_psi_pair)
           # print "phi_psi_angles", phi_psi_angles
           before_rotation_rama_score = utils.get_rama_score(phi_psi_pair, self.r, rama_key, round_coords=True)
-          if (ramalyze.evalScore(rama_key, before_rotation_rama_score) == RAMALYZE_OUTLIER):
-            # or ramalyze.evalScore(rama_key, before_rotation_rama_score) == RAMALYZE_ALLOWED):
+          if (ramalyze.evalScore(rama_key, before_rotation_rama_score) == RAMALYZE_OUTLIER
+            or (avoid_allowed_region and ramalyze.evalScore(rama_key, before_rotation_rama_score) == RAMALYZE_ALLOWED)):
             # assert i == 0
             if i != 0:
               # this is a error, we should spot rama outliers on the first angle
@@ -130,6 +130,8 @@ class _():
                   angle=-angle_modified,direction_forward=direction_forward)
           s = utils.get_rama_score(phi_psi_pair, self.r, rama_key,round_coords=True)
           assert utils.rama_score_evaluate(rama_key, s) != RAMALYZE_OUTLIER, s
+          if avoid_allowed_region:
+            assert utils.rama_score_evaluate(rama_key, s) != RAMALYZE_ALLOWED, "%s, %s" % (s, after_rotation_rama_score)
 
         # new rama score:
         after_rama_score = utils.get_rama_score(phi_psi_pair, self.r, rama_key)
