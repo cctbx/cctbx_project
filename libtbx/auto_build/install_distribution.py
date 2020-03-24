@@ -230,7 +230,8 @@ class installer(object):
       self.base_dir = op.join(self.dest_dir, "base")
       self.modules_dir = op.join(self.dest_dir, "modules")
       # check for conda
-      if os.path.isdir(op.join(self.installer_dir, "conda_base")):
+      if os.path.isdir(op.join(self.installer_dir, "conda_base")) or \
+         os.path.exists(op.join(self.installer_dir, "conda_base.tar")):
         self.base_dir = op.join(self.dest_dir, "conda_base")
       return
     # The default behavior for nearly all program's --prefix options
@@ -267,7 +268,8 @@ class installer(object):
         os.makedirs(i)
 
     # check for conda
-    if os.path.isdir(op.join(self.installer_dir, "conda_base")):
+    if os.path.isdir(op.join(self.installer_dir, "conda_base")) or \
+       os.path.exists(op.join(self.installer_dir, "conda_base.tar")):
       self.base_dir = op.join(self.dest_dir, "conda_base")
 
     # Environment variables required by other scripts
@@ -314,6 +316,24 @@ class installer(object):
     for i in ['base', 'conda_base', 'build', 'modules', 'doc']:
       if os.path.exists(os.path.join(self.installer_dir, i)):
         copy_tree(os.path.join(self.installer_dir, i), os.path.join(self.dest_dir, i))
+
+    # Copy conda_base packaged with conda-pack if available
+    # only this file or the conda_base directory will exist in the installer
+    conda_base_tarfile = os.path.join(self.installer_dir, 'conda_base.tar')
+    if os.path.exists(conda_base_tarfile):
+      import subprocess
+      import tarfile
+      tarball = tarfile.open(conda_base_tarfile)
+      dest_dir = os.path.join(self.dest_dir, 'conda_base')
+      tarball.extractall(path=dest_dir)
+      tarball.close()
+      cwd = os.getcwd()
+      os.chdir(dest_dir)
+      unpack_cmd = os.path.join('.', 'bin', 'conda-unpack')
+      if sys.platform == 'win32':
+        unpack_cmd = os.path.join('.', 'Scripts', 'conda-unpack.exe')
+      subprocess.check_call([unpack_cmd])
+      os.chdir(cwd)
 
     # Reconfigure
     log = open(os.path.join(self.tmp_dir, "binary.log"), "w")
