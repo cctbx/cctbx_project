@@ -1473,8 +1473,11 @@ def run():
         # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
         os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
 
+    import PySide2.QtCore
     settings = QSettings("CCTBX", "HKLviewer" )
-    settings.beginGroup("SomeSettings")
+    # In case of more than one PySide2 installation tag the settings by version number of PySide2
+    # as different versions occasionally use slightly different metrics for font and window sizes
+    settings.beginGroup("PySide2_" + str(PySide2.QtCore.qVersion()))
     QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
     fontsize = settings.value("FontSize", None)
     windowsize = settings.value("windowsize", None)
@@ -1501,7 +1504,7 @@ def run():
     guiobj = NGL_HKLViewer(app)
 
     def MyAppClosing():
-      settings.beginGroup("SomeSettings")
+      settings.beginGroup("PySide2_" + str(PySide2.QtCore.qVersion()) )
       settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
       settings.setValue("FontSize", guiobj.fontsize )
       settings.setValue("windowsize", guiobj.window.size())
