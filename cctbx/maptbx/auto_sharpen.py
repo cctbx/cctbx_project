@@ -1166,7 +1166,10 @@ class launcher(runtime_utils.target_with_save_result):
     from wxGUI2 import utils
     utils.safe_makedirs(self.output_dir)
     os.chdir(self.output_dir)
-    result = run(args=self.args, out=sys.stdout)
+    map_to_return, new_map_coeffs, crystal_symmetry, si = \
+      run(args=self.args, out=sys.stdout)
+    si.map_data = None
+    result = (None, None, crystal_symmetry, si)
     return result
 
 def validate_params(params):
