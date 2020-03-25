@@ -74,10 +74,11 @@ def setup_test(pdb_answer, pdb_poor, i_pdb, d_min, resolution_factor,
     crystal_symmetry = f_calc.crystal_symmetry(),
     model_poor       = model_poor)
 
-def check_sites_match(ph_answer, ph_refined, tol):
+def check_sites_match(ph_answer, ph_refined, tol, exclude_atom_names=[]):
   s1 = flex.vec3_double()
   s2 = flex.vec3_double()
   for a1,a2 in zip(ph_answer.atoms(), ph_refined.atoms()):
+    if(a1.name.strip() in exclude_atom_names): continue
     if((not a1.element.strip().upper() in ["H","D"]) and
        (not a2.element.strip().upper() in ["H","D"])):
       s1.append(a1.xyz)
@@ -921,10 +922,6 @@ class score3(object):
   def update(self, sites_cart, selection=None):
     target = self.compute_target(sites_cart=sites_cart, selection=selection)
     assert self.target is not None
-    den = (abs(self.target)+abs(target))*100
-    num = abs(abs(self.target)-abs(target))*2
-    if(den==0): second_cond = False
-    else:       second_cond = num/den<5.
     if(target > self.target):
       self.residue.atoms().set_xyz(sites_cart)
       fl = self.rotamer_eval is None or \
@@ -932,16 +929,6 @@ class score3(object):
       if(fl):
         self.target = target
         self.sites_cart = sites_cart
-    elif(second_cond):
-      fl = self.rotamer_eval is None or \
-        self.rotamer_eval.evaluate_residue(residue = self.residue) == "OUTLIER"
-      if(fl):
-        self.residue.atoms().set_xyz(sites_cart)
-        fl = self.rotamer_eval is None or \
-          self.rotamer_eval.evaluate_residue(residue = self.residue) != "OUTLIER"
-        if(fl):
-          self.target = target
-          self.sites_cart = sites_cart
 
   def reset(self, sites_cart, selection=None):
     self.target = self.compute_target(sites_cart = sites_cart,

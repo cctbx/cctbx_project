@@ -179,7 +179,7 @@ class run(object):
       try: radii.append(self.vdw_radii[an]-0.25)
       except KeyError: radii.append(1.5) # XXX U, Uranium, OXT are problems!
     #
-    return fit_ext.xyzrad(sites_cart = sites_cart, radii = radii)
+    return fit_ext.fixed(sites_cart = sites_cart, radii = radii)
 
   def on_special_position(self, residue):
     if(self.special_position_indices is None): return False

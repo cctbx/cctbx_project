@@ -107,17 +107,49 @@ class run(object):
       for n in mon_lib_names:
         try: radii.append(self.vdw_radii[n.strip()]-0.25)
         except KeyError: radii.append(1.5) # XXX U, Uranium, OXT are problems!
+      # Strangely, making use of weights produces much worse results.
+      # This needs more investigation.
+      #AN = {"S":16, "O":8, "N":7, "C":6, "SE":34, "H":1}
+      AN = {"S":1, "O":1, "N":1, "C":1, "SE":1, "H":1}
+      weights = flex.double()
+      for atom in self.residue.atoms():
+        weights.append(AN[atom.element.strip().upper()])
+      assert sites.size()==weights.size()
+      assert radii.size()==sites.size()
+      # bonded pairs
+      exclude = ["C","N","O","CA"]
+      atoms = self.residue.atoms()
+      pairs = []
+      for i, ai in enumerate(atoms):
+        if(ai.name.strip() in exclude): continue
+        if(ai.element.strip()=="H"): continue
+        for j, aj in enumerate(atoms):
+          if i==j: continue
+          if(aj.name.strip() in exclude): continue
+          if(aj.element.strip()=="H"): continue
+          d = ai.distance(aj)
+          if d < 1.6:
+            pair = [i,j]
+            pair.sort()
+            if(not pair in pairs):
+              pairs.append(pair)
       #
-      xyzrad_residue = ext.xyzrad(sites_cart = sites, radii = radii)
+      fl = False if self.residue.resname in ["MET","MSE"] else False
+      xyzrad_residue = ext.moving(
+        sites_cart       = sites,
+        sites_cart_start = sites_cart_start,
+        radii            = radii,
+        weights          = weights,
+        use_reference    = fl,
+        bonded_pairs     = pairs)
       #
       ro = ext.fit(
-        target_value             = start_target_value,
-        xyzrad_bumpers           = self.xyzrad_bumpers,
+        fixed                    = self.xyzrad_bumpers,
         axes                     = axes,
         rotatable_points_indices = atr,
         angles_array             = self.chi_angles,
         density_map              = self.target_map,
-        all_points               = xyzrad_residue,
+        moving                   = xyzrad_residue,
         unit_cell                = self.unit_cell,
         selection_clash          = selection_clash,
         selection_rsr            = selection_rsr,
@@ -165,6 +197,16 @@ class run(object):
           self.residue.atoms().set_xyz(sites_cart_start)
     else:
       self.residue.atoms().set_xyz(sites_cart_start)
+    if(self.target_map is not None):
+      tune_up(
+        target_map           = self.target_map,
+        residue              = self.residue,
+        mon_lib_srv          = self.mon_lib_srv,
+        rotamer_manager      = self.rotamer_manager.rotamer_evaluator,
+        unit_cell            = self.unit_cell,
+        torsion_search_start = -10,
+        torsion_search_stop  = 10,
+        torsion_search_step  = 1)
 
   def fit_c_beta(self, c_beta_rotation_cluster):
     selection = flex.size_t(c_beta_rotation_cluster.selection)
@@ -354,6 +396,7 @@ class tune_up(object):
                torsion_search_stop  = 20,
                torsion_search_step  = 2):
     adopt_init_args(self, locals())
+    sites_cart_start = self.residue.atoms().extract_xyz().deep_copy()
     self.clusters = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
       residue         = self.residue,
       mon_lib_srv     = self.mon_lib_srv,
@@ -363,6 +406,7 @@ class tune_up(object):
       target_map   = self.target_map,
       residue      = self.residue,
       rotamer_eval = self.rotamer_manager)
+    t_start = score_residue.compute_target(sites_cart=sites_cart_start)
     mmtbx.refinement.real_space.torsion_search(
       clusters   = self.clusters,
       sites_cart = self.residue.atoms().extract_xyz(),
@@ -370,7 +414,11 @@ class tune_up(object):
       start      = self.torsion_search_start,
       stop       = self.torsion_search_stop,
       step       = self.torsion_search_step)
-    self.residue.atoms().set_xyz(new_xyz=score_residue.sites_cart)
+    t_end = score_residue.compute_target(sites_cart=score_residue.sites_cart)
+    if(t_end > t_start):
+      self.residue.atoms().set_xyz(new_xyz=score_residue.sites_cart)
+    else:
+      self.residue.atoms().set_xyz(new_xyz=sites_cart_start)
 
 #
 # These functions are not used anywhere. And not tested anymore.
