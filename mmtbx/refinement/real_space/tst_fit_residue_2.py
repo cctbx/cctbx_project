@@ -111,6 +111,7 @@ def exercise(pdb_poor_str, i_pdb, d_min = 1.0, resolution_factor = 0.1):
 if(__name__ == "__main__"):
   t0 = time.time()
   for i_pdb, pdb_poor_str in enumerate([pdb_poor1, pdb_poor2, pdb_poor3]):
+    print(i_pdb, "-"*30)
     exercise(
       pdb_poor_str = pdb_poor_str,
       i_pdb        = i_pdb)

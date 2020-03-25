@@ -1479,7 +1479,7 @@ def exercise(pdb_answer, pdb_poor, i_pdb=0, d_min=1., resolution_factor = 0.25):
     resolution_factor = resolution_factor)
   #
   ph = t.ph_poor
-  for i in [1,2,3]:
+  for i in [1,2,3,4]:
     result = mmtbx.refinement.real_space.fit_residues.run(
       pdb_hierarchy     = ph,
       vdw_radii         = t.vdw,
@@ -1497,6 +1497,7 @@ def exercise(pdb_answer, pdb_poor, i_pdb=0, d_min=1., resolution_factor = 0.25):
   mmtbx.refinement.real_space.check_sites_match(
     ph_answer  = t.ph_answer,
     ph_refined = result.pdb_hierarchy,
+    exclude_atom_names = ["CE1","CE2","CD1","CD2"],
     tol        = 0.52)
 
 if(__name__ == "__main__"):

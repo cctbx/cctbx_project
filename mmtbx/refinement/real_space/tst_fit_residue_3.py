@@ -51,9 +51,9 @@ ATOM      9  CZ  ARG A  21       7.839   5.785  11.385  0.30 20.00           C
 ATOM     10  NH1 ARG A  21       6.546   5.811  11.088  0.30 20.00           N
 ATOM     11  NH2 ARG A  21       8.275   5.000  12.360  0.30 20.00           N
 TER
-ATOM      9  O   HOH B  21       8.776  10.791   4.311  1.00 55.00           O
-ATOM     10  O   HOH B  22       7.708  11.548   4.090  1.00 55.00           O
-ATOM     11  O   HOH B  23       9.698  10.663   3.367  1.00 55.00           O
+ATOM      9  O   HOH B  21       8.776  10.791   4.311  1.00  5.00           O
+ATOM     10  O   HOH B  22       7.708  11.548   4.090  1.00  5.00           O
+ATOM     11  O   HOH B  23       9.698  10.663   3.367  1.00  5.00           O
 TER
 END
 """
@@ -62,7 +62,6 @@ def exercise(d_min = 1.0, resolution_factor = 0.1):
   """
   Fit one residue having weak side chain density. There is a blob nearby that
   overlaps with a plausible rotamer.
-  Making B of HOH smaller will break the test, indicaing potential problem.
   """
  #
   t = mmtbx.refinement.real_space.setup_test(

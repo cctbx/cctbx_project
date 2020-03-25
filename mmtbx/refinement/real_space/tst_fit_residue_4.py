@@ -69,12 +69,10 @@ def exercise(d_min = 1.0, resolution_factor = 0.1):
     mon_lib_srv       = t.mon_lib_srv)
   result.pdb_hierarchy.write_pdb_file(file_name = "refined_%s.pdb"%str(0))
   #
-  # Disbaled till solution is found. Good test. See in Coot for test setup.
-  #
-  #mmtbx.refinement.real_space.check_sites_match(
-  #  ph_answer  = t.ph_answer,
-  #  ph_refined = result.pdb_hierarchy,
-  #  tol        = 0.47)
+  mmtbx.refinement.real_space.check_sites_match(
+    ph_answer  = t.ph_answer,
+    ph_refined = result.pdb_hierarchy,
+    tol        = 0.3)
 
 if(__name__ == "__main__"):
   t0 = time.time()

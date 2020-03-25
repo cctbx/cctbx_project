@@ -109,9 +109,10 @@ def exercise(d_min = 1.0, resolution_factor = 0.1, i_pdb = 0):
     crystal_symmetry = t.crystal_symmetry)
   #
   mmtbx.refinement.real_space.check_sites_match(
-    ph_answer  = t.ph_answer,
-    ph_refined = result.pdb_hierarchy,
-    tol        = 0.35)
+    ph_answer          = t.ph_answer,
+    ph_refined         = result.pdb_hierarchy,
+    exclude_atom_names = ["CE1","CE2","CD1","CD2"],
+    tol                = 0.35)
 
 if(__name__ == "__main__"):
   t0 = time.time()

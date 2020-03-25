@@ -776,7 +776,7 @@ def exercise(i_pdb = 0, d_min=1.0, resolution_factor = 0.25):
     resolution_factor = resolution_factor)
   #
   ph = t.ph_poor
-  for i in [1,2]:
+  for i in [1,2,3]:
     result = mmtbx.refinement.real_space.fit_residues.run(
       pdb_hierarchy     = ph,
       vdw_radii         = t.vdw,
@@ -792,9 +792,10 @@ def exercise(i_pdb = 0, d_min=1.0, resolution_factor = 0.25):
     crystal_symmetry = t.crystal_symmetry)
   #
   mmtbx.refinement.real_space.check_sites_match(
-    ph_answer  = t.ph_answer,
-    ph_refined = result.pdb_hierarchy,
-    tol        = 0.4)
+    ph_answer          = t.ph_answer,
+    ph_refined         = result.pdb_hierarchy,
+    exclude_atom_names = ["CE1","CE2","CD1","CD2"],
+    tol                = 0.4)
 
 if(__name__ == "__main__"):
   t0 = time.time()
