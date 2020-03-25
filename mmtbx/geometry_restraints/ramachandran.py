@@ -319,6 +319,15 @@ class ramachandran_manager(object):
           i_seqs       = i_seqs,
           weight       = 1) # XXX Not used in oldfield
         self.append_oldfield_proxies(proxy, n_seq)
+
+        ### PLACEHOLDER
+        #proxy = ext.phi_psi_proxy(
+        #  residue_type = text_rama_key,
+        #  i_seqs       = i_seqs,
+        #  weight       = 5)
+        #self.append_emsley8k_proxies(proxy, n_seq)
+        ###
+
       elif r_type == 'emsley':
         weight = self.params.emsley.weight
         proxy = ext.phi_psi_proxy(
