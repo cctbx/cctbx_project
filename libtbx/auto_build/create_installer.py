@@ -252,7 +252,7 @@ class SetupInstaller(object):
       except Exception as e:
         print('Unable to find conda-pack.')
         print(str(e))  # WindowsError or OSError
-        if sys.platform != 'win32':  # subprocess.CalledProcessError
+        if isinstance(e, subprocess.CalledProcessError):
           print(e.output.decode('utf8'))
         print('Fallback to a regular copy.')
 
