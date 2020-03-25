@@ -7,33 +7,65 @@
 #include <scitbx/math/rotate_around_axis.h>
 #include <scitbx/vec3.h>
 
+#include <cctbx/maptbx/interpolation.h>
+
 namespace mmtbx { namespace rotamer {
 namespace af=scitbx::af;
 namespace rs_simple=cctbx::maptbx::target_and_gradients::simple;
 
 template <typename FloatType=double>
-class xyzrad
+class moving
+{
+  public:
+    af::shared<scitbx::vec3<FloatType> > sites_cart;
+    af::shared<scitbx::vec3<FloatType> > sites_cart_start;
+    af::shared<FloatType> radii;
+    af::shared<FloatType> weights;
+    af::shared<af::tiny<std::size_t, 2> > bonded_pairs;
+    bool use_reference;
+
+    moving() {
+     sites_cart.fill(0.0);
+     sites_cart_start.fill(0.0);
+     radii.fill(0.0);
+     weights.fill(0.0);
+    }
+
+    moving(af::shared<scitbx::vec3<FloatType> > const& sites_cart_,
+           af::shared<scitbx::vec3<FloatType> > const& sites_cart_start_,
+           af::shared<FloatType> const& radii_,
+           af::shared<FloatType> const& weights_,
+           bool use_reference_,
+           boost::python::list const& bonded_pairs_)
+    :
+      sites_cart(sites_cart_), sites_cart_start(sites_cart_start_),
+      radii(radii_), weights(weights_), use_reference(use_reference_)
+    {
+      for(std::size_t i=0;i<boost::python::len(bonded_pairs_);i++) {
+         af::shared<size_t> p =
+           boost::python::extract<af::shared<size_t> >(bonded_pairs_[i])();
+         bonded_pairs.push_back( af::tiny<std::size_t, 2>(p[0],p[1]) );
+      }
+    }
+};
+
+template <typename FloatType=double>
+class fixed
 {
   public:
     af::shared<scitbx::vec3<FloatType> > sites_cart;
     af::shared<FloatType> radii;
-    af::shared<FloatType> weights;
-    xyzrad() {
+    fixed() {
      sites_cart.fill(0.0);
      radii.fill(0.0);
-     weights.fill(0.0);
     }
-    xyzrad(af::shared<scitbx::vec3<FloatType> > const& sites_cart_,
-           af::shared<FloatType> const& radii_,
-           af::shared<FloatType> const& weights_)
-    :
-      sites_cart(sites_cart_), radii(radii_), weights(weights_)
-    {}
-    xyzrad(af::shared<scitbx::vec3<FloatType> > const& sites_cart_,
-           af::shared<FloatType> const& radii_)
+
+    fixed(af::shared<scitbx::vec3<FloatType> > const& sites_cart_,
+          af::shared<FloatType> const& radii_)
     :
       sites_cart(sites_cart_), radii(radii_)
     {}
+
 };
 
 template <typename FloatType=double>
@@ -44,6 +76,7 @@ public:
   af::shared<af::shared<FloatType> > angles_array;
   af::shared<scitbx::vec3<FloatType> > all_points_result;
   FloatType score_;
+  FloatType score_start_;
 
   fit() {}
 
@@ -61,7 +94,7 @@ public:
     FloatType const& step,
     int const& n)
   :
-  score_(target_value)
+  score_(target_value), score_start_(target_value)
   {
     SCITBX_ASSERT(boost::python::len(axes_)==
                   boost::python::len(rotatable_points_indices_));
@@ -104,13 +137,12 @@ public:
   }
 
   fit(
-    FloatType target_value,
-    xyzrad<double> const& xyzrad_bumpers,
+    fixed<double> const& xyzrad_bumpers,
     boost::python::list const& axes_,
     boost::python::list const& rotatable_points_indices_,
     boost::python::list const& angles_array_,
     af::const_ref<FloatType, af::c_grid_padded<3> > const& density_map,
-    xyzrad<double> const& all_points,
+    moving<double> const& all_points,
     cctbx::uctbx::unit_cell const& unit_cell,
     af::const_ref<std::size_t> const& selection_clash,
     af::const_ref<std::size_t> const& selection_rsr,
@@ -118,8 +150,6 @@ public:
     af::const_ref<FloatType> const& cos_table,
     FloatType const& step,
     int const& n)
-  :
-  score_(target_value)
   {
     SCITBX_ASSERT(boost::python::len(axes_)==
                   boost::python::len(rotatable_points_indices_));
@@ -136,21 +166,41 @@ public:
     }
     af::tiny<int, 3> a = density_map.accessor().all();
     af::flex_grid<> const& g = af::flex_grid<>(a[0],a[1],a[2]);
+    // startin map values
+    af::shared<FloatType> reference_values;
+    for(std::size_t i=0; i<all_points.sites_cart_start.size(); i++) {
+      FloatType mv = cctbx::maptbx::eight_point_interpolation(
+        density_map,
+        unit_cell.fractionalize(all_points.sites_cart_start[i]));
+      reference_values.push_back(mv);
+    }
+    // initial score
+    af::tiny<FloatType, 2> r = rs_simple::score<FloatType, FloatType>(
+      unit_cell,
+      density_map,
+      all_points.sites_cart_start.const_ref(),
+      selection_rsr,
+      reference_values.ref(),
+      all_points.bonded_pairs,
+      all_points.use_reference,
+      all_points.weights.const_ref());
+    score_ = r[1];
+    score_start_ = score_;
     for(std::size_t j=0;j<angles_array.size();j++) {
       af::shared<FloatType> angles = angles_array[j];
       af::shared<scitbx::vec3<FloatType> >
         all_points_cp = all_points.sites_cart.deep_copy();
       for(std::size_t i=0;i<angles.size();i++) {
-       scitbx::math::rotate_points_around_axis(
-         axes[i][0],
-         axes[i][1],
-         all_points_cp.ref(),
-         rotatable_points_indices[i].const_ref(),
-         angles[i],
-         sin_table,
-         cos_table,
-         step,
-         n);
+        scitbx::math::rotate_points_around_axis(
+          axes[i][0],
+          axes[i][1],
+          all_points_cp.ref(),
+          rotatable_points_indices[i].const_ref(),
+          angles[i],
+          sin_table,
+          cos_table,
+          step,
+          n);
       }
       bool ignore = false;
       for(std::size_t k=0;k<selection_clash.size();k++) {
@@ -170,14 +220,18 @@ public:
         }
       }
       if(!ignore) {
-        FloatType mv = rs_simple::target<FloatType, FloatType>(
+        af::tiny<FloatType, 2> r = rs_simple::score<FloatType, FloatType>(
           unit_cell,
           density_map,
           all_points_cp.ref(),
-          selection_rsr);
-        if(mv>score_) {
+          selection_rsr,
+          reference_values.ref(),
+          all_points.bonded_pairs,
+          all_points.use_reference,
+          all_points.weights.const_ref());
+        if(r[0]>0 && r[1]>score_) {
           all_points_result = all_points_cp;
-          score_ = mv;
+          score_ = r[1];
         }
       }
     }
@@ -238,6 +292,7 @@ public:
   af::shared<scitbx::vec3<double> > result() { return all_points_result; }
 
   FloatType score() { return score_;}
+  FloatType score_start() { return score_start_;}
 
 };
 

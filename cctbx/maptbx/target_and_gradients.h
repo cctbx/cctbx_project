@@ -355,6 +355,85 @@ public:
   af::shared<scitbx::vec3<FloatType> > gradients() { return gradients_; }
 };
 
+// Binary score
+template <
+  typename MapFloatType,
+  typename SiteFloatType>
+af::tiny<SiteFloatType, 2>
+score(
+  uctbx::unit_cell const& unit_cell,
+  af::const_ref<MapFloatType, af::c_grid_padded<3> > const& density_map,
+  af::const_ref<scitbx::vec3<SiteFloatType> > const& sites_cart,
+  af::const_ref<std::size_t> const& selection,
+  af::ref<MapFloatType > reference_values,
+  af::shared<af::tiny<std::size_t, 2> > bonded_pairs,
+  bool use_reference,
+  af::const_ref<MapFloatType > const& weights)
+{
+  MapFloatType result = 0;
+  MapFloatType status = 0;
+  for(std::size_t i_site=0;i_site<selection.size();i_site++) {
+    std::size_t i = selection[i_site];
+    MapFloatType mv = eight_point_interpolation(
+      density_map,
+      unit_cell.fractionalize(sites_cart[i]));
+    mv = mv * weights[i];
+    if(use_reference) {
+      if(mv < reference_values[i]) status += 1;
+      else                         reference_values[i] = mv;
+    }
+    result += mv;
+  }
+  if(use_reference) {
+    if(status > selection.size()/2) status = -1;
+    else                            status =  1;
+  }
+  else status = 1;
+  MapFloatType diff = 0;
+  for(std::size_t i=0; i<bonded_pairs.size(); i++) {
+    af::tiny<std::size_t, 2> p = bonded_pairs[i];
+    MapFloatType mv1 = eight_point_interpolation(
+      density_map,
+      unit_cell.fractionalize(sites_cart[p[0]]));
+    MapFloatType mv2 = eight_point_interpolation(
+      density_map,
+      unit_cell.fractionalize(sites_cart[p[1]]));
+    mv1 = mv1 * weights[p[0]];
+    mv2 = mv2 * weights[p[1]];
+    diff += (std::abs(mv1-mv2) * std::abs(std::max(mv1,mv2)));
+  }
+  return af::tiny<SiteFloatType, 2> (status, result-diff);
+}
+
+// Keep for now!
+//
+//template <
+//  typename MapFloatType,
+//  typename SiteFloatType>
+//MapFloatType
+//target(
+//  uctbx::unit_cell const& unit_cell,
+//  af::const_ref<MapFloatType, af::c_grid_padded<3> > const& density_map,
+//  af::const_ref<scitbx::vec3<SiteFloatType> > const& sites_cart,
+//  af::const_ref<std::size_t> const& selection,
+//  af::const_ref<MapFloatType > const& reference_values)
+//{
+//  CCTBX_ASSERT(sites_cart.size() == reference_values.size());
+//  CCTBX_ASSERT(sites_cart.size() >= af::max(selection));
+//  MapFloatType result = 0;
+//  for(std::size_t i_site=0;i_site<sites_cart.size();i_site++) {
+//    if(selection[i_site]) {
+//      MapFloatType mv = eight_point_interpolation(
+//        density_map,
+//        unit_cell.fractionalize(sites_cart[i_site]));
+//      result += mv;
+//      //MapFloatType penalty = 0;
+//      MapFloatType diff = mv - reference_values[i_site];
+//      //if(diff<0) result += diff;
+//    }
+//  }
+//  return result;
+//}
 
 template <
   typename MapFloatType,
