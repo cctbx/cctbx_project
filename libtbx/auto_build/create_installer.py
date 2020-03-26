@@ -271,6 +271,7 @@ class SetupInstaller(object):
           if isinstance(e, subprocess.CalledProcessError):
             print(e.output.decode('utf8'))
           print('Fallback to a regular copy.')
+          conda_pack_is_available = False
 
     # Copy dependencies
     if not conda_pack_is_available:
