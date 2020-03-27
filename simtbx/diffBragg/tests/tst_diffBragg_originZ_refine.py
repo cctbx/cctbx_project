@@ -53,7 +53,7 @@ node = SIM.detector[0]
 node_d = node.to_dict()
 Origin = node_d["origin"][0], node_d["origin"][1], node_d["origin"][2]
 distance = Origin[2]
-print "Ground truth originZ=%f" % (SIM.detector[0].get_origin()[2])
+print("Ground truth originZ=%f" % (SIM.detector[0].get_origin()[2]))
 
 
 # copy the detector and update the origin
@@ -239,5 +239,5 @@ if RUC.hit_break_to_use_curvatures:
     RUC.run(setup=False)
 
 assert abs(RUC.x[RUC.originZ_xpos[0]] - distance) < 1e-2
-print ("I AM ZIM")
-print ("OK!")
+print("I AM ZIM")
+print("OK!")

@@ -43,7 +43,7 @@ nbcryst.dxtbx_crystal = C   # simulate ground truth
 nbcryst.thick_mm = 0.1
 nbcryst.Ncells_abc = 19, 19, 19
 
-print "Ground truth ncells abc=%f" % (nbcryst.Ncells_abc[0])
+print ("Ground truth ncells abc=%f" % (nbcryst.Ncells_abc[0]))
 
 # generate the ground truth image
 SIM = SimData()
