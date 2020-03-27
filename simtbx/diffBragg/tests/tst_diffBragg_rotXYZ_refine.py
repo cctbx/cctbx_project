@@ -30,11 +30,11 @@ crystal = RR.S.crystal
 
 # rotate the ground truth crystal with the .4,.3,.2 degree perturbations
 C = S.crystal.dxtbx_crystal
-initial_miss = np.diff(zip(C.get_U(), C0.get_U()))[:, 0].sum()
+initial_miss = np.diff(list(zip(C.get_U(), C0.get_U())))[:, 0].sum()
 
 # get the correction missetting from refiner
 correction_ang, correction_ax = RR.get_correction_misset(as_axis_angle_deg=True)
 C.rotate_around_origin(correction_ax, correction_ang)
-final_miss = np.diff(zip(C.get_U(), C0.get_U()))[:, 0].sum()
+final_miss = np.diff(list(zip(C.get_U(), C0.get_U())))[:, 0].sum()
 assert final_miss < 5e-2*initial_miss   # this is volatile criterion, no worries if it starts failing
 print("OK!")

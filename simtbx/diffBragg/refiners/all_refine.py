@@ -110,7 +110,9 @@ class RefineAll(RefineRot):
 
     def _run_diffBragg_current(self, i_spot):
         """needs to be called each time the ROI is changed"""
-        self.D.region_of_interest = self.nanoBragg_rois[i_spot]
+        # NOTE under py3 this int cast is necessary, in case nanoBragg_rois contains np.int64 ..
+        (i1, i2), (j1, j2) = self.nanoBragg_rois[i_spot]
+        self.D.region_of_interest = (int(i1), int(i2)), (int(j1), int(j2))  #self.nanoBragg_rois[i_spot]
         if self.refine_rotX:
             self.D.set_value(0, self.x[self.rotX_xpos])
         if self.refine_rotY:
