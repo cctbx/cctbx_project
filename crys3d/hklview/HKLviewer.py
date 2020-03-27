@@ -285,7 +285,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.PhilToJsRender('NGL_HKLviewer.action = is_terminating')
     self.closing = True
     #self.window.setVisible(False)
-    self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
+    if self.UseOSBrowser == False:
+      self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
     print("HKL-viewer closing down...")
     nc = 0
     sleeptime = 0.2
@@ -299,11 +300,12 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.cctbxproc.terminate()
     self.out, self.err = self.cctbxproc.communicate()
     self.cctbxproc.wait()
-    if self.webpagedebugform:
-      self.webpagedebugform.close()
-      self.webpagedebugform.deleteLater()
-    self.BrowserBox.close()
-    self.BrowserBox.deleteLater()
+    if self.UseOSBrowser == False:
+      if self.webpagedebugform and self.devmode:
+        self.webpagedebugform.close()
+        self.webpagedebugform.deleteLater()
+      self.BrowserBox.close()
+      self.BrowserBox.deleteLater()
     event.accept()
 
 
@@ -312,15 +314,16 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.webprofile = QWebEngineProfile(parent=self.BrowserBox)
     self.webpage = QWebEnginePage( self.webprofile, self.BrowserBox)
     if self.devmode:
-      #self.webpage.setUrl("https://webglreport.com/")
-      self.webpage.setUrl("chrome://gpu")
+      if hasattr(self.webpage, "setInspectedPage"): # older versions of Qt5 hasn't got chromium debug kit
+        self.webpage.setUrl("chrome://gpu")
+        self.webpagedebugform = WebEngineDebugForm(self)
+      else:
+        self.webpage.setUrl("https://webglreport.com/")
     else:
       self.webpage.setUrl("https://cctbx.github.io/")
     self.cpath = self.webprofile.cachePath()
     self.BrowserBox.setPage(self.webpage)
     self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
-    #if self.devmode:
-    #  self.webpagedebugform = WebEngineDebugForm(self)
 
 
 
@@ -355,7 +358,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
             "All Files (*);;MTZ Files (*.mtz)", "", options)
     if fileName:
       self.PhilToJsRender('NGL_HKLviewer.savefilename = "%s"' %fileName )
-
 
 
   def SettingsDialog(self):
@@ -1379,7 +1381,12 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def onSaveImageBtn(self):
-    self.PhilToJsRender('NGL_HKLviewer.save_image_name = "C:\\Users\\oeffner\\Buser\\HKLviewerTests\\testimage.png" ')
+    options = QFileDialog.Options()
+    fileName, filtr = QFileDialog.getSaveFileName(self.window,
+            "Save screenshot to file", "",
+            "All Files (*);;PNG Files (*.png)", "", options)
+    if fileName:
+      self.PhilToJsRender('NGL_HKLviewer.save_image_name = "%s" '%fileName)
 
 
   def onDrawReciprocUnitCellBoxClick(self):
@@ -1448,7 +1455,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     guiargs = [ 'useGuiSocket=' + str(self.sockport),
                'high_quality=True',
-               'UseOSBrowser=' + str(self.UseOSBrowser)
               ]
     cmdargs =  'cctbx.python -i -c "from crys3d.hklview import cmdlineframes;' \
      + ' cmdlineframes.run()" ' + ' '.join( guiargs + sys.argv[1:])
@@ -1464,16 +1470,21 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 def run():
   try:
+    import PySide2.QtCore
+    Qtversion = str(PySide2.QtCore.qVersion())
     debugtrue = False
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
     for e in sys.argv:
-      if "devmode" in e or "debug" in e:
+      if "devmode" in e or "debug" in e and not "UseOSBrowser" in e:
         debugtrue = True
+        print("Qt version " + Qtversion)
         # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
         os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
 
     settings = QSettings("CCTBX", "HKLviewer" )
-    settings.beginGroup("SomeSettings")
+    # In case of more than one PySide2 installation tag the settings by version number of PySide2
+    # as different versions occasionally use slightly different metrics for font and window sizes
+    settings.beginGroup("PySide2_" + Qtversion)
     QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
     fontsize = settings.value("FontSize", None)
     windowsize = settings.value("windowsize", None)
@@ -1500,7 +1511,7 @@ def run():
     guiobj = NGL_HKLViewer(app)
 
     def MyAppClosing():
-      settings.beginGroup("SomeSettings")
+      settings.beginGroup("PySide2_" + Qtversion )
       settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
       settings.setValue("FontSize", guiobj.fontsize )
       settings.setValue("windowsize", guiobj.window.size())
