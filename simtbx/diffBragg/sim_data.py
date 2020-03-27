@@ -274,5 +274,5 @@ class SimData:
 if __name__ == "__main__":
     S = SimData()
     img = S.generate_simulated_image()
-    print "Maximum pixel value: %.3g" % img.max()
-    print "Minimum pixel value: %.3g" % img.min()
+    print ("Maximum pixel value: %.3g" % img.max())
+    print ("Minimum pixel value: %.3g" % img.min())

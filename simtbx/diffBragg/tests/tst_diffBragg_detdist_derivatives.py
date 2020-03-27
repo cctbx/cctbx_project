@@ -128,9 +128,9 @@ luk = linregress(h_vals, all_uk_err)
 lq = linregress(h_vals, all_q_err)
 lq2 = linregress(np.array(h_vals)**2, all_q_err2)
 
-print luk.rvalue, luk.slope
-print lq.rvalue, lq.slope
-print lq2.rvalue, lq2.slope
+print (luk.rvalue, luk.slope)
+print (lq.rvalue, lq.slope)
+print (lq2.rvalue, lq2.slope)
 print ("\nmomentum transfer vector:")
 print ("finite deriv", fdiff)
 #print ("deriv", deriv)
@@ -169,7 +169,7 @@ G = np.dot(dk, k)
 d_unitk = dk * per_k - k * (per_k3 * G)
 dq = 1/wavelen * d_unitk
 
-print ("\unit momentum transfer vector:")
+print ("\nunit momentum transfer vector:")
 print ("finite deriv", fdiff)
 print ("deriv", dq)
 
@@ -278,7 +278,7 @@ all_shifts = []
 all_errors = []
 all_errors2 = []
 shifts_mm = [2*i*(1e-2) for i in range(1,30,2)]
-print shifts_mm
+print (shifts_mm)
 
 for i_shift, p in enumerate(percs):
     # update the detector model
@@ -349,9 +349,9 @@ for i_shift, p in enumerate(percs):
                          % (distance + delta_shift, delta_shift, i_shift + 1, len(percs)))
             plt.pause(0.3)
 
-print "\n\nSecond derivative\nerror          (shift)^2\n-----------------------------"
+print( "\n\nSecond derivative\nerror          (shift)^2\n-----------------------------")
 for err2, shift in zip(all_errors2, all_shifts):
-    print "%10.7g  %10.7g" %(err2, shift**2)
+    print ("%10.7g  %10.7g" %(err2, shift**2))
 
 if args.plotlines:
     plt.close()
@@ -362,7 +362,7 @@ if args.plotlines:
     plt.show()
 
 l = linregress(all_shifts, all_errors)
-print "finite diff l.rvalue=%10.7g" % l.rvalue
+print("finite diff l.rvalue=%10.7g" % l.rvalue)
 assert l.rvalue > .99
 assert l.slope > 0
 assert l.pvalue < 1e-6
@@ -377,7 +377,7 @@ if args.curvatures:
         plt.show()
 
     l = linregress(np.array(all_shifts)**2, all_errors2)
-    print "finite 2nd diff l.rvalue=%10.7g" % l.rvalue
+    print("finite 2nd diff l.rvalue=%10.7g" % l.rvalue)
     assert l.rvalue > .99
     assert l.slope > 0
     assert l.pvalue < 1e-6

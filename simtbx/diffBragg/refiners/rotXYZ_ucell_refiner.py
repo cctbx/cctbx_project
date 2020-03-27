@@ -84,7 +84,9 @@ class RefineMissetAndUcell(RefineRot):
 
     def _run_diffBragg_current(self, i_spot):
         """needs to be called each time the ROI is changed"""
-        self.D.region_of_interest = self.nanoBragg_rois[i_spot]
+
+        (i1,i2), (j1,j2) = self.nanoBragg_rois[i_spot]
+        self.D.region_of_interest = (int(i1), int(i2)), (int(j1), int(j2))
         self.D.set_value(0, self.x[self.rotX_xpos])
         self.D.set_value(1, self.x[self.rotY_xpos])
         self.D.set_value(2, self.x[self.rotZ_xpos])

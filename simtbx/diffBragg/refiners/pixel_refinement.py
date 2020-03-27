@@ -39,7 +39,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.stpmax = 1.e20  # LBFGS default core parameters
         self.trad_conv_eps = 0.05  # LBFGS terminator param converges whern |g| <= max(|x|,1) * trad_conv_eps
         self.drop_conv_max_eps = 1e-5  # LBFGS terminator param not sure, used in the other scitbx lbfgs convergence test
-        self.mn_iter = None  # LBFGS terminator param not sure used in lbfgs
+        self.mn_iter = 0  # LBFGS terminator param not sure used in lbfgs
         self.mx_iter = None  # LBFGS terminator param not sure used in lbfgs
         self.max_calls = 100000  # LBFGS terminator param how many overall iterations
         self.diag_mode = "always"  # LBFGS refiner property, whether to update curvatures at each iteration
@@ -305,8 +305,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
                     traditional_convergence_test=self.trad_conv,
                     traditional_convergence_test_eps=self.trad_conv_eps,
                     drop_convergence_test_max_drop_eps=self.drop_conv_max_eps,
-                    min_iterations=self.mx_iter,
-                    max_iterations=self.mn_iter,
+                    min_iterations=self.mn_iter,
+                    max_iterations=self.mx_iter,
                     max_calls=self.max_calls)
 
     @property

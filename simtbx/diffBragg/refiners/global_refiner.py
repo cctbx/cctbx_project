@@ -1,3 +1,4 @@
+from __future__ import print_function
 try:
     from mpi4py import MPI
 
@@ -673,7 +674,8 @@ class FatRefiner(PixelRefinement):
 
     def _run_diffBragg_current(self, i_spot):
         """needs to be called each time the ROI is changed"""
-        self.D.region_of_interest = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
+        (i1,i2),(j1,j2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
+        self.D.region_of_interest = (int(i1), int(i2)), (int(j1), int(j2))
         self.D.add_diffBragg_spots()
 
     def _update_Fcell(self):
@@ -893,9 +895,8 @@ class FatRefiner(PixelRefinement):
 
                     self._panel_id = self.PANEL_IDS[self._i_shot][i_spot]
                     if self.verbose:
-                        print "\rdiffBragg: img %d/%d; spot %d/%d; panel %d" \
-                              % (self._i_shot + 1, self.n_shots, i_spot + 1, n_spots, self._panel_id),
-                        sys.stdout.flush()
+                        print ("\rdiffBragg: img %d/%d; spot %d/%d; panel %d" \
+                              % (self._i_shot + 1, self.n_shots, i_spot + 1, n_spots, self._panel_id), flush=True)
 
                     self.Imeas = self.ROI_IMGS[self._i_shot][i_spot]
                     self._update_dxtbx_detector()
@@ -1180,9 +1181,9 @@ class FatRefiner(PixelRefinement):
                           % (misset_median, misset_mean,misset_max, misset_min, n_bad_misset, n_misset, n_broken_misset))
 
                 all_corr_str = ["%.2f" % ic for ic in all_image_corr]
-                print"Correlation stats:"
+                print("Correlation stats:")
                 print(", ".join(all_corr_str))
-                print"---------------"
+                print("---------------")
                 n_bad_corr = sum([1 for ic in all_image_corr if ic < 0.25])
                 print("CORRELATION median: %.4f; mean: %.4f, max: %.4f, min %.4f, num <.25: %d/%d;"
                       % (median(all_image_corr), mean(all_image_corr), max(all_image_corr), min(all_image_corr), n_bad_corr, len(all_image_corr) ))
@@ -1372,11 +1373,11 @@ class FatRefiner(PixelRefinement):
 
         if self.Fref is not None:
             print("R-factor overall:")
-            print self.Fobs_Fref_Rfactor(use_binning=False, auto_scale=self.scale_r1)
+            print( self.Fobs_Fref_Rfactor(use_binning=False, auto_scale=self.scale_r1))
             print("R-factor (shells):")
-            print self.Fobs_Fref_Rfactor(use_binning=True, auto_scale=self.scale_r1).show()
+            print (self.Fobs_Fref_Rfactor(use_binning=True, auto_scale=self.scale_r1).show())
             print("CC overall:")
-            print self.Fobs.correlation(self.Fref_aligned)
+            print( self.Fobs.correlation(self.Fref_aligned))
             print("CC:")
             self.Fobs.correlation(self.Fref_aligned, use_binning=True).show()
             print("<><><><><><><><> TOP GUN <><><><><><><><>")
@@ -1483,7 +1484,7 @@ class FatRefiner(PixelRefinement):
             except RuntimeError:
                 ang_off = 999
 
-            print "shot %d: MEAN ERROR=%.4f, ANG OFF %.4f" % (i_shot, mn_err, ang_off)
+            print ("shot %d: MEAN ERROR=%.4f, ANG OFF %.4f" % (i_shot, mn_err, ang_off))
             ncells_val = np.exp(self.x[self.ncells_xpos[i_shot]]) + 3
             ncells_resid = abs(ncells_val - self.gt_ncells)
 
@@ -1494,15 +1495,15 @@ class FatRefiner(PixelRefinement):
 
             if self.refine_detdist:
                 det_resid = abs(self.originZ_gt[i_shot] - self.x[self.originZ_xpos[i_shot]])
-                print "Origin Z truth: %f" % self.originZ_gt[i_shot]
-                print "Origin Z current: %f" % self.x[self.originZ_xpos[i_shot]]
+                print ("Origin Z truth: %f" % self.originZ_gt[i_shot])
+                print ("Origin Z current: %f" % self.x[self.originZ_xpos[i_shot]])
                 all_det_resid.append(det_resid)
 
         if all(shot_refined):
             if self.refine_detdist:
                 if all([det_resid < 0.01 for det_resid in all_det_resid]):
-                    print "OK"
+                    print( "OK")
                     exit()
             else:
-                print "OK"
+                print ("OK")
                 exit()
