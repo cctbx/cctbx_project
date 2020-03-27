@@ -3098,10 +3098,13 @@ class manager(object):
     if(self.use_ias):
       ias_selection = self.get_ias_selection()
       m = manager(
-        model_input      = None,
-        pdb_hierarchy    = self.get_hierarchy().select(~ias_selection),
-        crystal_symmetry = self.crystal_symmetry(),
-        log              = null_out())
+        model_input        = None,
+        pdb_hierarchy      = self.get_hierarchy().select(~ias_selection),
+        crystal_symmetry   = self.crystal_symmetry(),
+        restraint_objects  = self._restraint_objects,
+        monomer_parameters = self._monomer_parameters,
+        pdb_interpretation_params = self.get_current_pdb_interpretation_params(),
+        log                = null_out())
       m.setup_scattering_dictionaries(scattering_table=scattering_table)
       m.get_restraints_manager()
     else:
