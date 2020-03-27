@@ -386,7 +386,9 @@ def perturb_miller_array(F, factor, perturb_log_vals=True):
 def map_hkl_list(Hi_lst, anomalous_flag=True, symbol="P43212"):
     from cctbx import sgtbx
     sg_type = sgtbx.space_group_info(symbol=symbol).type()
-    Hi_flex = flex.miller_index(tuple(map(tuple, Hi_lst)))
+    # necessary for py3 to type cast the ints
+    type_casted_Hi_lst = tuple([(int(x), int(y), int(z)) for x, y, z in Hi_lst])
+    Hi_flex = flex.miller_index(type_casted_Hi_lst)
     miller.map_to_asu(sg_type, anomalous_flag, Hi_flex)
     return list(Hi_flex)
 

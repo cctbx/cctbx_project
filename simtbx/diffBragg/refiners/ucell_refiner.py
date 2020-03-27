@@ -49,7 +49,8 @@ class RefineUcell(RefineRot):
                     i+3, self.ucell_manager.second_derivative_matrices[i])
 
     def _run_diffBragg_current(self, i_spot):
-        self.D.region_of_interest = self.nanoBragg_rois[i_spot]
+        (i1,i2),(j1,j2) = self.nanoBragg_rois[i_spot]
+        self.D.region_of_interest = (int(i1), int(i2)), (int(j1), int(j2))
         self.D.Bmatrix = self.ucell_manager.B_recipspace
         self.D.add_diffBragg_spots()
 
