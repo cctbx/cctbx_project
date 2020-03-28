@@ -301,7 +301,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.out, self.err = self.cctbxproc.communicate()
     self.cctbxproc.wait()
     if self.UseOSBrowser == False:
-      if self.webpagedebugform and self.devmod:
+      if self.webpagedebugform and self.devmode:
         self.webpagedebugform.close()
         self.webpagedebugform.deleteLater()
       self.BrowserBox.close()
@@ -314,15 +314,16 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.webprofile = QWebEngineProfile(parent=self.BrowserBox)
     self.webpage = QWebEnginePage( self.webprofile, self.BrowserBox)
     if self.devmode:
-      #self.webpage.setUrl("https://webglreport.com/")
-      self.webpage.setUrl("chrome://gpu")
+      if hasattr(self.webpage, "setInspectedPage"): # older versions of Qt5 hasn't got chromium debug kit
+        self.webpage.setUrl("chrome://gpu")
+        self.webpagedebugform = WebEngineDebugForm(self)
+      else:
+        self.webpage.setUrl("https://webglreport.com/")
     else:
       self.webpage.setUrl("https://cctbx.github.io/")
     self.cpath = self.webprofile.cachePath()
     self.BrowserBox.setPage(self.webpage)
     self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
-    if self.devmode:
-      self.webpagedebugform = WebEngineDebugForm(self)
 
 
 
@@ -1465,19 +1466,21 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 def run():
   try:
+    import PySide2.QtCore
+    Qtversion = str(PySide2.QtCore.qVersion())
     debugtrue = False
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
     for e in sys.argv:
       if "devmode" in e or "debug" in e and not "UseOSBrowser" in e:
         debugtrue = True
+        print("Qt version " + Qtversion)
         # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
         os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
 
-    import PySide2.QtCore
     settings = QSettings("CCTBX", "HKLviewer" )
     # In case of more than one PySide2 installation tag the settings by version number of PySide2
     # as different versions occasionally use slightly different metrics for font and window sizes
-    settings.beginGroup("PySide2_" + str(PySide2.QtCore.qVersion()))
+    settings.beginGroup("PySide2_" + Qtversion)
     QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
     fontsize = settings.value("FontSize", None)
     windowsize = settings.value("windowsize", None)
@@ -1504,7 +1507,7 @@ def run():
     guiobj = NGL_HKLViewer(app)
 
     def MyAppClosing():
-      settings.beginGroup("PySide2_" + str(PySide2.QtCore.qVersion()) )
+      settings.beginGroup("PySide2_" + Qtversion )
       settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
       settings.setValue("FontSize", guiobj.fontsize )
       settings.setValue("windowsize", guiobj.window.size())
