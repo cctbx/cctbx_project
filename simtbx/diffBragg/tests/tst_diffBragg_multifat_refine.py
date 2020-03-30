@@ -20,7 +20,11 @@ parser.add_argument("--bgoffsetpositive", action="store_true")
 parser.add_argument("--shufflebg", action="store_true")
 parser.add_argument("--tiltfit", action="store_true")
 parser.add_argument("--predictwithtruth", action="store_true")
+parser.add_argument("--pershotucell", action="store_true")
+parser.add_argument("--pershotncells", action="store_true")
+parser.add_argument("--displayedimage", type=int, default=0)
 args = parser.parse_args()
+
 
 #if args.detdist:
 #    raise NotImplementedError("Not yet refining detdist for single shots")
@@ -288,7 +292,7 @@ for i_shot in range(N_SHOTS):
 
 
     if args.shufflebg:
-        tilt_abc[:,2] = np.random.permutation(tilt_abc[:,2])
+        tilt_abc[:, 2] = np.random.permutation(tilt_abc[:, 2])
 
     #UcellMan = MonoclinicManager(
     #    a=ucell2[0],
@@ -374,21 +378,37 @@ idx_from_asu = {h: i for i, h in enumerate(set(Hi_asu_all_ranks))}
 # we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
 asu_from_idx = {i: h for i, h in enumerate(set(Hi_asu_all_ranks))}
 
+
+# always local parameters: rotations, spot scales, tilt coeffs
 nrotation_param = 3*N_SHOTS
 nscale_param = 1*N_SHOTS
-ntilt_param = 0
+ntilt_param = 0  # note: tilt means tilt plane
 for i_shot in range(N_SHOTS):
     ntilt_param += 3 * nspot_per_shot[i_shot]
 
-ndetz_param = len(detdists_gt)
-n_local_unknowns = nrotation_param + nscale_param + ntilt_param + ndetz_param
+# unit cell parameters
+nucell_param = len(shot_ucell_managers[0].variables)
+n_pershot_ucell_param = 0
+n_global_ucell_param = nucell_param
+if args.pershotucell:
+    n_pershot_ucell_param += nucell_param*N_SHOTS
+    n_global_ucell_param = 0
 
-nucell_param = len(UcellMan.variables)
+# mosaic domain parameter m
 n_ncell_param = 1
+n_pershot_m_param = 0
+n_global_m_param = n_ncell_param
+if args.pershotncells:
+    n_pershot_m_param = 1*N_SHOTS
+    n_global_m_param = 0
+
+ndetz_param = len(detdists_gt)
+n_local_unknowns = nrotation_param + nscale_param + ntilt_param + ndetz_param + n_pershot_ucell_param + n_pershot_m_param
+
 nfcell_param = len(idx_from_asu)
 ngain_param = 1
 
-n_global_unknowns = nucell_param + nfcell_param + ngain_param + n_ncell_param
+n_global_unknowns = nfcell_param + ngain_param + n_global_m_param + n_global_ucell_param
 n_total_unknowns = n_local_unknowns + n_global_unknowns
 
 RUC = FatRefiner(
@@ -411,14 +431,15 @@ RUC = FatRefiner(
     shot_panel_ids=shot_panel_ids,
     log_of_init_crystal_scales=None,
     all_crystal_scales=None,
-    global_ncells=True,
-    global_ucell=True,
+    global_ncells=not args.pershotncells,
+    global_ucell=not args.pershotucell,
     global_originZ=False,
     shot_originZ_init=shot_originZ_init,
     sgsymbol=symbol,
     omega_kahn=[omega_kahn])
 
 RUC.iteratively_freeze_parameters = args.iterfreeze
+RUC.index_of_displayed_image = args.displayedimage
 RUC.idx_from_asu = idx_from_asu
 RUC.asu_from_idx = asu_from_idx
 RUC.refine_background_planes = args.bg
@@ -456,7 +477,6 @@ RUC.poisson_only = False
 RUC.verbose = True
 RUC.big_dump = True
 RUC.gt_ncells = Ncells_gt[0]
-RUC.m_init = Ncells_abc2[0]  # np.log(Ncells_abc2[0]-3)
 RUC.originZ_gt = originZ_gt
 RUC.gt_ucell = ucell[0], ucell[2]
 if args.testbg:
@@ -464,16 +484,17 @@ if args.testbg:
 else:
     RUC.spot_scale_init = [1]*N_SHOTS
 #RUC.gt_ucell = ucell[0], ucell[1], ucell[2], ucell[4]
-RUC.testing_mode = False #True
+RUC.testing_mode = False
+
+RUC.m_init = Ncells_abc2[0]   # np.log(Ncells_abc2[0]-3)
 RUC.ucell_inits = ucell2[0], ucell2[2]
+
 RUC.run(setup_only=False)
 #RUC.run(setup_only=True)
 if RUC.hit_break_to_use_curvatures:
     RUC.num_positive_curvatures = 0
     RUC.use_curvatures = True
     RUC.run(setup=False)
-
-
 
 #RUC.calc_func = True
 #RUC.compute_functional_and_gradients()
@@ -493,7 +514,6 @@ if RUC.hit_break_to_use_curvatures:
 #    RUC.x = flex.double(x)
 #    f, g = RUC.compute_functional_and_gradients()
 #    return 1*g.as_numpy_array()
-#
 #
 #from scipy.optimize import fmin_l_bfgs_b
 #

@@ -115,6 +115,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.trad_conv = False  # traditional convergenve
         self.calc_curvatures = False  # whether to calc curvatures until a region of positive curvature is reached
         self.plot_statistics = False  # whether to plot stats (global refinement mode)
+        self.index_of_displayed_image = 0  # which image to plot
         self.plot_stride = 10  # update plots after this many iterations
         self.plot_spot_stride = 10  # stride for plotting spots on an image
         self.panel_ids = None  # list of panel_ids (same length as roi images, spot_rois, tilt_abc etc)
