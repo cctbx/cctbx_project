@@ -70,7 +70,8 @@ def run(args, return_list_of_tests=None):
   all_tests = []
   expected_failure_list = []
   expected_unstable_list = []
-  all_tests.extend(libtbx.test_utils.parallel.make_commands(params.script))
+  if not return_list_of_tests: # (this fails with return_list_of_tests)
+    all_tests.extend(libtbx.test_utils.parallel.make_commands(params.script))
   for dir_name in params.directory :
     if os.path.split(dir_name)[-1].find("cctbx_project")>-1:
       print('DANGER '*10)
