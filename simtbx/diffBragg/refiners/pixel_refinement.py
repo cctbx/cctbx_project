@@ -31,12 +31,31 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
 
     def __init__(self):
 
+        self.rescale_params = False
+
+        self.rotX_sigma = 0.003
+        self.rotY_sigma = 0.003
+        self.rotZ_sigma = 0.003
+        self.ucell_sigmas = [0.1, .1]
+        self.originZ_sigma = 0.01
+        self.m_sigma = 0.05
+        self.spot_scale_sigma = 0.0001
+        self.a_sigma = 0.05
+        self.b_sigma = 0.05
+        self.c_sigma = 0.1
+
+        self.ucell_inits = [79.1, 38.2]
+        self.m_init = 10
+
         self.m = 5  # LBFGS default core parameters
         self.maxfev = 20  # LBFGS default core parameters
         self.gtol = 0.9  # LBFGS default core parameters
         self.xtol = 1.e-16  # LBFGS default core parameters
         self.stpmin = 1.e-20  # LBFGS default core parameters
         self.stpmax = 1.e20  # LBFGS default core parameters
+        self.iteratively_freeze_parameters = False  # if true cycle through the various parameter types during each iteration
+        self.number_of_frozen_iterations = 10  # how long to freeze parameters before switching to  a new frozen selection
+        self.param_sels = None  # this parameters tells the refiner which parameters to freeze next, defined in global_refiner class
         self.trad_conv_eps = 0.05  # LBFGS terminator param converges whern |g| <= max(|x|,1) * trad_conv_eps
         self.drop_conv_max_eps = 1e-5  # LBFGS terminator param not sure, used in the other scitbx lbfgs convergence test
         self.mn_iter = 0  # LBFGS terminator param not sure used in lbfgs
@@ -63,6 +82,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.plot_fcell = False  # deprecated
         self.bg_offset_only = False  # only refine background offset constant
         self.bg_offset_positive = False  # only allow background offset constant to be positive (recommended if using offset_only)
+        self.background_test_mode = False
         self.log_fcells = True  # to refine Fcell using logarithms to avoid negative Fcells
         self.use_curvatures = False  # whether to use the curvatures
         self.testing_mode = False  # Special flag used by the unit tests, ignore

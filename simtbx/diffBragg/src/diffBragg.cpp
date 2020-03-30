@@ -298,6 +298,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     origin_managers.push_back(orig0);
     update_oversample_during_refinement = true;
     oversample_omega = true;
+    only_save_omega_kahn = false;
 
 
     // set ucell gradients, Bmatrix is upper triangular in diffBragg?
@@ -1168,6 +1169,7 @@ void diffBragg::add_diffBragg_spots()
             k_incident_ave[2] = incident[3];
             k_incident_ave *= (1./k_incident_ave.length());
 
+
             /* polarization factor */
             if(!nopolar){
                 /* TODO: what about divergence and different incident vectors ? perhaps do for averagce incident vec */
@@ -1180,10 +1182,15 @@ void diffBragg::add_diffBragg_spots()
             else
                 om=1;
 
+
             // final scale term to being everything to photon number units
             scale_term =r_e_sqr*fluence*spot_scale*polar*om / steps;
 
-            floatimage[i] += scale_term*I;
+            if(only_save_omega_kahn)
+                floatimage[i] += polar*om;
+            else
+                floatimage[i] += scale_term*I;
+
 
             int roi_fs = i % fpixels - roi_xmin;
             int roi_ss = floor(i / fpixels) - roi_ymin ;
