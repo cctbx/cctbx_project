@@ -430,7 +430,7 @@ class FatRefiner(PixelRefinement):
                 _global_pos += self.n_ncells_param
             else:
                 self.ncells_xpos[i_shot] = _local_pos
-                _local_pos += self.n_ncells_pos
+                _local_pos += self.n_ncells_param
                 ncells_xval = np_log(self.S.crystal.Ncells_abc[0]-3)
                 # TODO: each shot gets own starting Ncells
                 if self.rescale_params:
@@ -723,9 +723,8 @@ class FatRefiner(PixelRefinement):
         all_p = []
         for i in range(self.n_ucell_param):
             if self.rescale_params:
-                assert self.global_ucell_param
                 sig = self.ucell_sigmas[i]
-                init = self.ucell_inits[i]
+                init = self.ucell_inits[i]  # NOTE all shots have same initial value
                 p = sig*(self.x[self.ucell_xstart[i_shot]+i] - 1) + init
             else:
                 p = self.x[self.ucell_xstart[i_shot]+i]
@@ -743,9 +742,8 @@ class FatRefiner(PixelRefinement):
     def _get_m_val(self, i_shot):
         val = self.x[self.ncells_xpos[i_shot]]
         if self.rescale_params:
-            assert self.global_ncells_param
             sig = self.m_sigma
-            init = self.m_init
+            init = self.m_init # note all shots start from same mosaic parameter
             val = np_exp(sig*(val-1))*(init-3) + 3
         else:
             val = np_exp(val)+3
@@ -776,7 +774,7 @@ class FatRefiner(PixelRefinement):
             if self.bg_offset_positive:
                 c = np_exp(c_sig*(c_val-1))*c_init
 
-        elif self.bg_offset_posive:
+        elif self.bg_offset_positive:
             a = a_val
             b = b_val
             c = np_exp(c_val)
@@ -845,11 +843,14 @@ class FatRefiner(PixelRefinement):
             for ucp in ucparams:
                 ucparams_lsts.append([ucp]*len(rotx))
         else:
-            assert not self.rescale_params
-            ucparams_lsts = []
-            for i_uc in range(self.n_ucell_param):
-                ucp_lst = [lst[self.ucell_xstart[i_shot] + i_uc] for i_shot in range(self.n_shots)]
-                ucparams_lsts.append(ucp_lst)
+            if lst_is_x:
+                all_shot_params = [self._get_ucell_vars(i_shot) for i_shot in range(self.n_shots)]
+                ucparams_lsts = list(map(list, zip(*all_shot_params)))
+            else:
+                ucparams_lsts = []
+                for i_uc in range(self.n_ucell_param):
+                    ucp_lst = [lst[self.ucell_xstart[i_shot] + i_uc] for i_shot in range(self.n_shots)]
+                    ucparams_lsts.append(ucp_lst)
 
         rotx = self._mpi_reduce_broadcast(rotx)
         roty = self._mpi_reduce_broadcast(roty)
@@ -1414,7 +1415,7 @@ class FatRefiner(PixelRefinement):
         return self._f, self._g
 
     def _show_plots(self, i_spot, n_spots):
-        if rank == 0 and self.plot_images and self.iterations % self.plot_stride == 0 and self._i_shot == 0:
+        if rank == 0 and self.plot_images and self.iterations % self.plot_stride == 0 and self._i_shot == self.index_of_displayed_image:
             if i_spot % self.plot_spot_stride == 0:
                 xr = self.XREL[self._i_shot][i_spot]  # fast scan pixels
                 yr = self.YREL[self._i_shot][i_spot]  # slow scan pixels
