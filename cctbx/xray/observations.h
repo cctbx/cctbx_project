@@ -206,12 +206,20 @@ namespace cctbx { namespace xray {
     scitbx::af::shared<twin_fraction<FloatType>*> twin_fractions_;
     scitbx::af::shared<int> measured_scale_indices_;
     mutable FloatType prime_fraction_;
+    scitbx::af::shared<scitbx::vec3<FloatType> > e_incidents_;
+    scitbx::af::shared<scitbx::vec3<FloatType> > e_scattereds_;
 
     void validate_data() {
       CCTBX_ASSERT(indices_.size()==data_.size());
       CCTBX_ASSERT(indices_.size()==sigmas_.size());
       if (index_components_.size() != 0) {
         CCTBX_ASSERT(measured_scale_indices_.size() == indices_.size());
+      }
+      if (e_incidents_.size() != 0) {
+        CCTBX_ASSERT(e_incidents_.size() == indices_.size());
+      }
+      if (e_scattereds_.size() != 0) {
+        CCTBX_ASSERT(e_scattereds_.size() == indices_.size());
       }
     }
 
@@ -287,6 +295,22 @@ namespace cctbx { namespace xray {
       validate_data();
       process_merohedral_components(merohedral_components);
     }
+
+    // hklf 4 + polarization vectors
+    observations(scitbx::af::shared<miller::index<> > const& indices,
+      scitbx::af::shared<FloatType> const& data,
+      scitbx::af::shared<FloatType> const& sigmas,
+      scitbx::af::shared<scitbx::vec3<FloatType> > const& e_incidents,
+      scitbx::af::shared<scitbx::vec3<FloatType> > const& e_scattereds)
+      : indices_(indices),
+        data_(data),
+        sigmas_(sigmas),
+        e_incidents_(e_incidents),
+        e_scattereds_(e_scattereds)
+    {
+      validate_data();
+    }
+
 
     // hklf 5
     observations(scitbx::af::shared<miller::index<> > const& indices,
