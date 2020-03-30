@@ -82,7 +82,7 @@ node = SIM.detector[0]
 node_d = node.to_dict()
 Origin = node_d["origin"][0], node_d["origin"][1], node_d["origin"][2]
 distance = Origin[2]
-print "Ground truth originZ=%f" % (SIM.detector[0].get_origin()[2])
+print ("Ground truth originZ=%f" % (SIM.detector[0].get_origin()[2]))
 
 # TODO perturb the detector model
 # copy the detector and update the origin
@@ -118,7 +118,7 @@ if args.psf:
     SIM.D.apply_psf(shapetype.Fiber, fwhm, radius)
     SIM.D.verbose = v
 
-print "Using oversample %d" % SIM.D.oversample
+print ("Using oversample %d" % SIM.D.oversample)
 
 # This is the ground truth image:
 img = SIM.D.raw_pixels.as_numpy_array()
@@ -127,7 +127,7 @@ SIM.D.raw_pixels *= 0
 if args.psf:
     y = slice(450, 480,1)
     x = slice(650, 670, 1)
-    print "PSF max discrepancy: %f" % abs(img_pre_psf[y,x]- img[y,x]).max()
+    print ("PSF max discrepancy: %f" % abs(img_pre_psf[y,x]- img[y,x]).max())
 
 # Simulate the perturbed image for comparison
 # perturbed detector:
