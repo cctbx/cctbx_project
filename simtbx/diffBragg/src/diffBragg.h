@@ -180,6 +180,7 @@ class diffBragg: public nanoBragg{
 
   bool update_oversample_during_refinement;
   bool oversample_omega;
+  bool only_save_omega_kahn;
   double uncorrected_I;
   vec3 max_I_hkl;// the hkl corresponding to the maximum intensity in the array (debug)
   //int max_I_h, max_I_k, max_I_l;

@@ -4,13 +4,22 @@ parser.add_argument("--plot", action='store_true')
 parser.add_argument("--detdist", action='store_true', help='perturb then refine the detdist')
 parser.add_argument("--ncells", action='store_true', help='perturb then refine the ncells')
 parser.add_argument("--bg", action='store_true', help='refine bg planes... ')
-parser.add_argument("--fixscale", action='store_true', help='fix the scale')
+parser.add_argument("--spotscale", action='store_true') #, help='fix the scale')
 parser.add_argument("--bmatrix", action='store_true')
 parser.add_argument("--umatrix", action='store_true')
 parser.add_argument("--nshots", default=1, type=int)
 parser.add_argument("--curvatures", action='store_true')
 parser.add_argument("--psf", action='store_true')
 parser.add_argument("--gain", action='store_true')
+parser.add_argument("--iterfreeze", action="store_true")
+parser.add_argument("--rescale", action="store_true")
+parser.add_argument("--onlyindexed", action="store_true")
+parser.add_argument("--testbg", action="store_true")
+parser.add_argument("--bgoffsetonly", action="store_true")
+parser.add_argument("--bgoffsetpositive", action="store_true")
+parser.add_argument("--shufflebg", action="store_true")
+parser.add_argument("--tiltfit", action="store_true")
+parser.add_argument("--predictwithtruth", action="store_true")
 args = parser.parse_args()
 
 #if args.detdist:
@@ -32,7 +41,7 @@ from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg import utils
 from simtbx.diffBragg.refiners.global_refiner import FatRefiner
 from IPython import embed
-from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager
+from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager, TetragonalManager
 
 # containers for FatRefine
 shot_ucell_managers={}
@@ -51,11 +60,19 @@ shot_panel_ids={}
 nspot_per_shot = {}
 shot_originZ_init = {}
 # GLOBAL PARAMETERS
+
+all_c_before = []
 ucell = (55, 65, 75, 90, 95, 90)
 ucell2 = (55, 65, 75, 90, 95, 90)
 if args.bmatrix:
     ucell2 = (55.1, 65.2, 74.9, 90, 94.9, 90)
 symbol = "P121"
+
+ucell = (79, 79, 38, 90,90,90)
+ucell2 = (79, 79, 38, 90,90, 90)
+if args.bmatrix:
+    ucell2 = (79.1, 79.1, 38.2, 90, 90, 90)
+symbol = "P43212"
 
 from simtbx.diffBragg.utils import  fcalc_from_pdb
 miller_array = fcalc_from_pdb(resolution=2, wavelength=1, algorithm='fft', ucell=ucell, symbol=symbol)
@@ -86,11 +103,25 @@ for i_shot in range(N_SHOTS):
 
     # make the ground truth crystal:
     a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell).orthogonalization_matrix()).transpose().as_list_of_lists()
+    x = col((-1, 0, 0))
+    y = col((0, -1, 0))
+    z = col((0, 0, -1))
+    rx, ry, rz = np.random.uniform(-180, 180, 3)
+    RX = x.axis_and_angle_as_r3_rotation_matrix(rx, deg=True)
+    RY = y.axis_and_angle_as_r3_rotation_matrix(ry, deg=True)
+    RZ = z.axis_and_angle_as_r3_rotation_matrix(rz, deg=True)
+    M = RX * RY * RZ
+    a_real = M * col(a_real)
+    b_real = M * col(b_real)
+    c_real = M * col(c_real)
     C = Crystal(a_real, b_real, c_real, symbol)
     C.rotate_around_origin(rot_axis, rot_ang)
 
     # make the perturbed crystal model
     a2_real, b2_real, c2_real = sqr(uctbx.unit_cell(ucell2).orthogonalization_matrix()).transpose().as_list_of_lists()
+    a2_real = M * col(a2_real)
+    b2_real = M * col(b2_real)
+    c2_real = M * col(c2_real)
     C2 = Crystal(a2_real, b2_real, c2_real, symbol)
     C2.rotate_around_origin(rot_axis, rot_ang)
     assert np.allclose(C2.get_U(), C.get_U())
@@ -121,7 +152,7 @@ for i_shot in range(N_SHOTS):
     node_d = node.to_dict()
     Origin = node_d["origin"][0], node_d["origin"][1], node_d["origin"][2]
     distance = Origin[2]
-    print "Ground truth originZ=%f" % (SIM.detector[0].get_origin()[2])
+    print ("Ground truth originZ=%f" % (SIM.detector[0].get_origin()[2]))
 
     # TODO perturb the detector model
     # copy the detector and update the origin
@@ -141,15 +172,22 @@ for i_shot in range(N_SHOTS):
     SIM.D.nopolar = False
     SIM.D.default_F = 0
     SIM.D.progress_meter = False
-    SIM.water_path_mm = 0.005
+    #SIM.water_path_mm = 0.005
+    SIM.water_path_mm = 0.15
     SIM.air_path_mm = 0.1
     SIM.add_air = True
-    SIM.add_Water = True
+    SIM.add_water = True
     SIM.include_noise = True
     SIM.D.add_diffBragg_spots()
-    spots = SIM.D.raw_pixels.as_numpy_array()
-    SIM.D.readout_noise_adu = 0
+    SPOTS = SIM.D.raw_pixels.as_numpy_array()
+    SIM.D.readout_noise_adu = 1
+    if args.testbg:
+        SIM.D.raw_pixels *= 0
     SIM._add_background()
+    if args.testbg:
+        BACKGROUND_IMAGE = SIM.D.raw_pixels.as_numpy_array()
+    else:
+        BACKGROUND_IMAGE = SIM.D.raw_pixels.as_numpy_array() - SPOTS
     SIM._add_noise()
 
     if args.psf:
@@ -162,16 +200,21 @@ for i_shot in range(N_SHOTS):
         SIM.D.apply_psf(shapetype.Fiber, fwhm, radius)
         SIM.D.verbose = v
 
-    print "Using oversample %d" % SIM.D.oversample
+    print("Using oversample %d" % SIM.D.oversample)
 
     # This is the ground truth image:
     img = SIM.D.raw_pixels.as_numpy_array()
     SIM.D.raw_pixels *= 0
+    SIM.D.only_save_omega_kahn = True
+    SIM.D.add_diffBragg_spots()
+    omega_kahn = SIM.D.raw_pixels.as_numpy_array()
+    SIM.D.raw_pixels *= 0
+    SIM.D.only_save_omega_kahn = False
 
     if args.psf:
         y = slice(450, 480,1)
         x = slice(650, 670, 1)
-        print "PSF max discrepancy: %f" % abs(img_pre_psf[y,x]- img[y,x]).max()
+        print ("PSF max discrepancy: %f" % abs(img_pre_psf[y,x]- img[y,x]).max())
 
     # Simulate the perturbed image for comparison
     # perturbed detector:
@@ -183,31 +226,79 @@ for i_shot in range(N_SHOTS):
     SIM.D.Bmatrix = C2.get_B()
     SIM.D.Umatrix = C2.get_U()
     nbcryst.dxtbx_crystal = C2
+
     if args.ncells:
         Ncells_abc2 = 14, 14, 14
         nbcryst.Ncells_abc = Ncells_abc2
         SIM.D.set_value(9, Ncells_abc2[0])
-        print ("Modified Ncells=%f" % Ncells_abc2[0])
+        print("Modified Ncells=%f" % Ncells_abc2[0])
+    else:
+        Ncells_abc2 = 12, 12, 12
 
     SIM.crystal = nbcryst
     # perturbed Ncells
+    SIM.D.raw_pixels*=0
     SIM.D.add_diffBragg_spots()
-    SIM._add_background()
-    SIM._add_noise()
+    SPOTS2 = SIM.D.raw_pixels.as_numpy_array()
 
-    # Perturbed image:
-    img_pet = SIM.D.raw_pixels.as_numpy_array()
+    #SIM._add_noise()
+
+    ## Perturbed image:
+    #img_pet = SIM.D.raw_pixels.as_numpy_array()
     SIM.D.raw_pixels *= 0
 
     # spot_rois, abc_init , these are inputs to the refiner
     # <><><><><><><><><><><><><><><><><><><><><><><><><>
-    spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot, shoebox_sz=30)
 
-    UcellMan = MonoclinicManager(
+    if args.tiltfit:
+        from tilt_fit.tilt_fit import tilt_fit
+        from cxid9114.prediction import prediction_utils
+
+        expLst = SIM.D.as_explist()
+        exper = expLst[0]
+        if args.predictwithtruth:
+            refls_predict = prediction_utils.refls_from_sims([SPOTS], exper.detector, exper.beam, thresh=20)
+        else:
+            refls_predict = prediction_utils.refls_from_sims([SPOTS2], exper.detector, exper.beam, thresh=20)
+        results = tilt_fit(
+            imgs=[img/omega_kahn], is_bg_pix=[SPOTS < 20],
+            delta_q=0.095, photon_gain=1, sigma_rdout=1, zinger_zscore=5,
+            exper=exper, predicted_refls=refls_predict, sb_pad=2)
+
+        refls_predict, tilt_abc, error_in_tilt, I_Leslie99, varI_Leslie99 = results
+        shoeboxes = refls_predict['shoebox']
+        spot_roi = np.vstack([list(sb.bbox)[:4] for sb in shoeboxes])
+
+        Hi = np.vstack(refls_predict['miller_index'])
+        did_index = np.array(refls_predict['id']) != -1  # refls that didnt index should be labeled with -1
+        boundary_spot = np.array(refls_predict['boundary'])
+        resolution = np.array(refls_predict["resolution"])  # reso of the spots
+        if args.onlyindexed:
+            spot_roi = spot_roi[did_index]
+            tilt_abc = tilt_abc[did_index]
+            Hi = Hi[did_index]
+            resolution = resolution[did_index]
+
+    else:
+        if args.predictwithtruth:
+            spot_roi, tilt_abc = utils.process_simdata(SPOTS, img/omega_kahn, thresh=20, plot=args.plot, shoebox_sz=20)
+        else:
+            spot_roi, tilt_abc = utils.process_simdata(SPOTS2, img/omega_kahn, thresh=20, plot=args.plot, shoebox_sz=20)
+        #spot_roi, tilt_abc = utils.process_simdata(SPOTS, img, thresh=20, plot=args.plot, shoebox_sz=20)
+
+
+    if args.shufflebg:
+        tilt_abc[:,2] = np.random.permutation(tilt_abc[:,2])
+
+    #UcellMan = MonoclinicManager(
+    #    a=ucell2[0],
+    #    b=ucell2[1],
+    #    c=ucell2[2],
+    #    beta=ucell2[4]*np.pi/180.)
+
+    UcellMan = TetragonalManager(
         a=ucell2[0],
-        b=ucell2[1],
-        c=ucell2[2],
-        beta=ucell2[4]*np.pi/180.)
+        c=ucell2[2])
 
     if args.gain:
         img = img*1.1
@@ -220,7 +311,7 @@ for i_shot in range(N_SHOTS):
     xrel, yrel, roi_imgs = [], [], []
     xcom, ycom = [],[]
     for i_roi, (x1, x2, y1, y2) in enumerate(spot_roi):
-        nanoBragg_rois.append(((x1, x2), (y1, y2)))
+        nanoBragg_rois.append(((int(x1), int(x2)), (int(y1), int(y2))))
         yr, xr = np.indices((y2 - y1 + 1, x2 - x1 + 1))
         xrel.append(xr)
         yrel.append(yr)
@@ -228,12 +319,16 @@ for i_shot in range(N_SHOTS):
         xcom.append(.5*(x1 + x2))
         ycom.append(.5*(x1 + x2))
 
-    q_spot = utils.x_y_to_q(xcom, ycom, SIM.detector, SIM.beam.nanoBragg_constructor_beam)
-    Ai = sqr(SIM.crystal.dxtbx_crystal.get_A()).inverse()
-    Ai = Ai.as_numpy_array()
-    HKL = np.dot(Ai, q_spot.T)
-    HKLi = [np.ceil(h - 0.5).astype(int) for h in HKL]
-    HKLi = [tuple(x) for x in np.vstack(HKLi).T]
+    if args.tiltfit:
+        HKLi = [tuple(hi) for hi in Hi]
+    else:
+        q_spot = utils.x_y_to_q(xcom, ycom, SIM.detector, SIM.beam.nanoBragg_constructor_beam)
+        Ai = sqr(SIM.crystal.dxtbx_crystal.get_A()).inverse()
+        Ai = Ai.as_numpy_array()
+        HKL = np.dot(Ai, q_spot.T)
+        HKLi = [np.ceil(h - 0.5).astype(int) for h in HKL]
+        HKLi = [tuple(x) for x in np.vstack(HKLi).T]
+
     Hi_asu = utils.map_hkl_list(HKLi, anomalous_flag=True, symbol=symbol)
 
     shot_ucell_managers[i_shot]= UcellMan
@@ -320,21 +415,24 @@ RUC = FatRefiner(
     global_ucell=True,
     global_originZ=False,
     shot_originZ_init=shot_originZ_init,
-    sgsymbol=symbol)
+    sgsymbol=symbol,
+    omega_kahn=[omega_kahn])
 
+RUC.iteratively_freeze_parameters = args.iterfreeze
 RUC.idx_from_asu = idx_from_asu
 RUC.asu_from_idx = asu_from_idx
 RUC.refine_background_planes = args.bg
 RUC.refine_Umatrix = args.umatrix
 RUC.refine_Bmatrix = args.bmatrix
 RUC.refine_ncells = args.ncells
-RUC.refine_crystal_scale = not args.fixscale
+RUC.refine_crystal_scale = args.spotscale
 RUC.refine_Fcell = False
 RUC.refine_detdist = args.detdist
 RUC.refine_gain_fac = args.gain
-
+RUC.rescale_params = args.rescale
+RUC.background_testing_mode = args.testbg
 RUC.max_calls = 3000
-RUC.trad_conv_eps = 1e-2
+RUC.trad_conv_eps = 1e-7
 RUC.trad_conv = True
 RUC.trial_id = 0
 
@@ -351,18 +449,25 @@ RUC.has_pre_cached_roi_data = True
 RUC.S.D.update_oversample_during_refinement = False
 RUC.use_curvatures = False
 RUC.use_curvatures_threshold = 4
-RUC.bg_offset_positive = args.bg
-RUC.bg_offset_only = args.bg
+RUC.bg_offset_positive = args.bgoffsetpositive
+RUC.bg_offset_only = args.bgoffsetonly
 RUC.calc_curvatures = args.curvatures
-RUC.poisson_only = True
+RUC.poisson_only = False
 RUC.verbose = True
 RUC.big_dump = True
 RUC.gt_ncells = Ncells_gt[0]
+RUC.m_init = Ncells_abc2[0]  # np.log(Ncells_abc2[0]-3)
 RUC.originZ_gt = originZ_gt
-RUC.gt_ucell = ucell[0], ucell[1], ucell[2], ucell[4]
-RUC.testing_mode = True
+RUC.gt_ucell = ucell[0], ucell[2]
+if args.testbg:
+    RUC.spot_scale_init = [1e-10]*N_SHOTS
+else:
+    RUC.spot_scale_init = [1]*N_SHOTS
+#RUC.gt_ucell = ucell[0], ucell[1], ucell[2], ucell[4]
+RUC.testing_mode = False #True
+RUC.ucell_inits = ucell2[0], ucell2[2]
 RUC.run(setup_only=False)
-RUC.run(setup_only=True)
+#RUC.run(setup_only=True)
 if RUC.hit_break_to_use_curvatures:
     RUC.num_positive_curvatures = 0
     RUC.use_curvatures = True
@@ -414,3 +519,46 @@ if RUC.hit_break_to_use_curvatures:
 #                    args=(RUC,),
 #                    bounds=bounds)
 
+#if args.testbg:
+i_shot = 0
+abc_init = RUC.ABC_INIT[i_shot]
+n_spots = len(RUC.ABC_INIT[i_shot])
+all_dev = []
+all_dev_i = []
+all_tilt = []
+all_tilt_i = []
+all_img = []
+all_data =[]
+for i_spot in range(n_spots):
+    xr = RUC.XREL[i_shot][i_spot]
+    yr = RUC.YREL[i_shot][i_spot]
+    ai, bi, ci = RUC.ABC_INIT[i_shot][i_spot]
+    a, b, c = RUC._get_bg_vals(i_shot, i_spot)
+    (i1, i2), (j1, j2) = RUC.NANOBRAGG_ROIS[i_shot][i_spot]
+
+    tilt_i = ai*xr + bi*yr + ci
+    tilt_refined = a*xr + b*yr + c
+
+    correction_term = omega_kahn[j1:j2+1, i1:i2+1]
+    tilt_i *= correction_term
+    tilt_refined *= correction_term
+
+    all_tilt.append(tilt_refined)
+    all_tilt_i.append(tilt_i)
+
+    real_bg = BACKGROUND_IMAGE[j1:j2+1, i1:i2+1]
+    data = img[j1:j2+1, i1:i2+1]
+    all_img.append(real_bg)
+    all_data.append(data)
+    dev_i = np.abs(tilt_i - real_bg).sum()
+    dev = np.abs(tilt_refined - real_bg).sum()
+    all_dev_i.append(dev_i)
+    all_dev.append(dev)
+all_dev = np.array(all_dev)
+all_dev_i = np.array(all_dev_i)
+print("Before reinfment: bg deviation mean=%.4f, med=%.4f, c std = %.4f" % (np.mean(all_dev_i), np.median(all_dev_i), np.std(all_dev_i)))
+print("After reinfment:               mean=%.4f, med=%.4f, c std = %.4f" % (np.mean(all_dev), np.median(all_dev), np.std(all_dev)))
+if args.testbg:
+    assert np.mean(all_dev) < np.mean(all_dev_i)
+print("OK!")
+#embed()
