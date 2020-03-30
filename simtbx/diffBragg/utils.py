@@ -291,7 +291,11 @@ def process_simdata(spots, img, thresh=20, plot=False, shoebox_sz=20, edge_refle
     ss_spot, fs_spot = map(np.array, zip(*spot_data["maxIpos"]))  # slow/fast  scan coords of strong spots
     num_spots = len(ss_spot)
     if plot:
-        plt.imshow(img, vmax=200)
+        m = np.median(img)
+        s = np.std(img)
+        vmax=m+2*s
+        vmin=m-2*s
+        plt.imshow(img, vmax=vmax, vmin=vmin)
         plt.plot(fs_spot, ss_spot, 'o', mfc='none', mec='r')
         plt.title("Simulated image with strong spots marked")
         plt.xlim(-.5, img.shape[1]-.5)
@@ -350,7 +354,7 @@ def process_simdata(spots, img, thresh=20, plot=False, shoebox_sz=20, edge_refle
 
     if plot:
         patch_coll = plt.mpl.collections.PatchCollection(patches, match_original=True)
-        plt.imshow(img, vmin=0, vmax=200)
+        plt.imshow(img, vmin=vmin, vmax=vmax)
         plt.gca().add_collection(patch_coll)
         plt.show()
 

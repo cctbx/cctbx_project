@@ -155,6 +155,11 @@ namespace boost_python { namespace {
                      make_setter(&simtbx::nanoBragg::diffBragg::oversample_omega,dcp()),
                     "whether to use an average solid angle correction per pixel, or one at the sub pixel level")
 
+      .add_property("only_save_omega_kahn",
+                     make_getter(&simtbx::nanoBragg::diffBragg::only_save_omega_kahn,rbv()),
+                     make_setter(&simtbx::nanoBragg::diffBragg::only_save_omega_kahn,dcp()),
+                    "ONLY simulate the kahn polarization correction and solid angle components")
+
       .add_property("max_I_hkl",
                      make_getter(&simtbx::nanoBragg::diffBragg::max_I_hkl,rbv()),
                      make_setter(&simtbx::nanoBragg::diffBragg::max_I_hkl,dcp()),
