@@ -7,6 +7,7 @@ parser.add_argument("--bg", action='store_true', help='refine bg planes... ')
 parser.add_argument("--spotscale", action='store_true') #, help='fix the scale')
 parser.add_argument("--bmatrix", action='store_true')
 parser.add_argument("--umatrix", action='store_true')
+parser.add_argument("--fcell", action='store_true')
 parser.add_argument("--nshots", default=1, type=int)
 parser.add_argument("--curvatures", action='store_true')
 parser.add_argument("--psf", action='store_true')
@@ -89,6 +90,7 @@ detdists_gt = np.random.normal(150,0.1, N_SHOTS)
 offsets = np.random.uniform(1, 3, N_SHOTS) * np.random.choice([1,-1], N_SHOTS)
 originZ_gt = {}
 all_dets = []
+all_reso = []
 for i_shot in range(N_SHOTS):
 
     # FIRST WE GENERATE SOME RANDOM IMAGES
@@ -156,7 +158,7 @@ for i_shot in range(N_SHOTS):
     node_d = node.to_dict()
     Origin = node_d["origin"][0], node_d["origin"][1], node_d["origin"][2]
     distance = Origin[2]
-    print ("Ground truth originZ=%f" % (SIM.detector[0].get_origin()[2]))
+    print("Ground truth originZ=%f" % (SIM.detector[0].get_origin()[2]))
 
     # TODO perturb the detector model
     # copy the detector and update the origin
@@ -183,6 +185,7 @@ for i_shot in range(N_SHOTS):
     SIM.add_water = True
     SIM.include_noise = True
     SIM.D.add_diffBragg_spots()
+    SIM.D.F000 = 0
     SPOTS = SIM.D.raw_pixels.as_numpy_array()
     SIM.D.readout_noise_adu = 1
     if args.testbg:
@@ -307,7 +310,7 @@ for i_shot in range(N_SHOTS):
     if args.gain:
         img = img*1.1
 
-    # TODO: the following need to be embedded in the refiner init function..
+    # TODO: the following need to be added to the refiner init function..
     nspot = len(spot_roi)
     nspot_per_shot[i_shot] = nspot
 
@@ -321,12 +324,14 @@ for i_shot in range(N_SHOTS):
         yrel.append(yr)
         roi_imgs.append(img[y1:y2 + 1, x1:x2 + 1])
         xcom.append(.5*(x1 + x2))
-        ycom.append(.5*(x1 + x2))
+        ycom.append(.5*(y1 + y2))
 
     if args.tiltfit:
         HKLi = [tuple(hi) for hi in Hi]
     else:
         q_spot = utils.x_y_to_q(xcom, ycom, SIM.detector, SIM.beam.nanoBragg_constructor_beam)
+        reso = 1/np.linalg.norm(q_spot, axis=1)
+        all_reso += list(reso)
         Ai = sqr(SIM.crystal.dxtbx_crystal.get_A()).inverse()
         Ai = Ai.as_numpy_array()
         HKL = np.dot(Ai, q_spot.T)
@@ -411,6 +416,7 @@ ngain_param = 1
 n_global_unknowns = nfcell_param + ngain_param + n_global_m_param + n_global_ucell_param
 n_total_unknowns = n_local_unknowns + n_global_unknowns
 
+
 RUC = FatRefiner(
     n_total_params=n_total_unknowns,
     n_local_params=n_local_unknowns,
@@ -447,7 +453,7 @@ RUC.refine_Umatrix = args.umatrix
 RUC.refine_Bmatrix = args.bmatrix
 RUC.refine_ncells = args.ncells
 RUC.refine_crystal_scale = args.spotscale
-RUC.refine_Fcell = False
+RUC.refine_Fcell = args.fcell
 RUC.refine_detdist = args.detdist
 RUC.refine_gain_fac = args.gain
 RUC.rescale_params = args.rescale
@@ -488,6 +494,17 @@ RUC.testing_mode = False
 
 RUC.m_init = Ncells_abc2[0]   # np.log(Ncells_abc2[0]-3)
 RUC.ucell_inits = ucell2[0], ucell2[2]
+
+#RUC.S.D.update_oversample_during_refinement = False  # todo: decide
+Fobs = RUC.S.crystal.miller_array_high_symmetry
+RUC.Fref = Fobs
+#dmax, dmin = Fobs.d_max_min()
+dmax, dmin = max(all_reso), min(all_reso)
+RUC.binner_dmax = dmax + 1e-6
+RUC.binner_dmin = dmin - 1e-6
+RUC.binner_nbin = 10
+RUC.scale_r1 = True
+RUC.print_resolution_bins = False
 
 RUC.run(setup_only=False)
 #RUC.run(setup_only=True)
