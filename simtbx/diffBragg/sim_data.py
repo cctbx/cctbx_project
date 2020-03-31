@@ -144,11 +144,14 @@ class SimData:
     def include_noise(self, val):
         self._include_noise = val
 
+    def update_Fhkl_tuple(self):
+        if self.crystal.miller_array is not None:
+            self.D.Fhkl_tuple = self.crystal.miller_array.indices(), self.crystal.miller_array.data()
+
     def _crystal_properties(self):
         self.D.xtal_shape = self.crystal.xtal_shape
 
-        if self.crystal.miller_array is not None:
-            self.D.Fhkl_tuple = self.crystal.miller_array.indices(), self.crystal.miller_array.data()
+        self.update_Fhkl_tuple()
 
         ## TODO: am I unnecessary?
         #self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
