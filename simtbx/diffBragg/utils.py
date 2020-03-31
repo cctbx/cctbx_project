@@ -498,7 +498,8 @@ END
     P1_primitive_xray_structure = primitive_xray_structure.expand_to_p1()
     fcalc = P1_primitive_xray_structure.structure_factors(
         d_min=resolution, anomalous_flag=anom, algorithm=algorithm).f_calc()
-    return fcalc.amplitudes()
+    fcalc = fcalc.amplitudes().set_observation_type_xray_amplitude()
+    return fcalc
 
 def nearest_non_zero(lst, idx):
     # https: // codereview.stackexchange.com / a / 172121 / 78230
@@ -515,3 +516,30 @@ def nearest_non_zero(lst, idx):
             return a_val
     else:
         return 0  # all zeroes in this list
+
+
+def update_miller_array_at_indices(miller_array, indices, new_values):
+    if not miller_array.is_xray_amplitude_array():
+        raise ValueError("Miller array is assumed to be an amplitude array")
+
+    if len(indices) != len(new_values):
+        raise ValueError("Indices (length %d) should be the same length as new_values (length %d)"
+                         % (len(indices), len(new_values)))
+    mset = miller_array.set()
+    fdata_map = {tuple(h): val for h,val in zip(miller_array.indices(), miller_array.data())}
+    for i_h, h in enumerate(indices):
+        equivs = [idx.h() for idx in miller.sym_equiv_indices(mset.space_group(), h).indices()]
+        n_missing = 0
+        for equiv_h in equivs:
+            if equiv_h in fdata_map:
+                fdata_map[h] = new_values[i_h]
+            else:
+                n_missing += 1
+        if n_missing == len(equivs):
+            raise KeyError("Trying to update index %s which is not in the miller array" % " ".join(h))
+
+    new_data = flex.double(list(fdata_map.values()))
+    new_indices = flex.miller_index(tuple(fdata_map.keys()))
+    new_mset = miller.set(mset.crystal_symmetry(), indices=new_indices, anomalous_flag=mset.anomalous_flag())
+    new_miller_array = miller.array(miller_set=new_mset, data=new_data).set_observation_type_xray_amplitude()
+    return new_miller_array
