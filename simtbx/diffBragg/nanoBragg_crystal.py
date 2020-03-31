@@ -4,20 +4,41 @@ organizer for setting the nanoBragg crystal properties
 
 from simtbx.nanoBragg import shapetype
 from scitbx.matrix import sqr, col
+from cctbx import sgtbx
 
 
 class nanoBragg_crystal(object):
 
     def __init__(self):
 
-        self.dxtbx_crystal = nanoBragg_crystal.dxtbx_crystal_from_ucell_and_symbol()
-        self.miller_array = nanoBragg_crystal.dummie_Fhkl()
+        ucell = 79.1, 79.1, 38.4, 90, 90, 90
         self.xtal_shape = shapetype.Gauss
         self.Ncells_abc = 10, 10, 10
         self.mos_spread_deg = 0
         self.n_mos_domains = 1
         self.thick_mm = 0.1
+        self.symbol = "P43212"
         self.missetting_matrix = sqr((1, 0, 0, 0, 1, 0, 0, 0, 1))
+        self.miller_array = nanoBragg_crystal.dummie_Fhkl(ucell, self.symbol)
+        self.dxtbx_crystal = nanoBragg_crystal.dxtbx_crystal_from_ucell_and_symbol(
+            ucell_tuple_Adeg=ucell, symbol=self.symbol)
+
+    @property
+    def space_group_info(self):
+        info = sgtbx.space_group_info(symbol=self.symbol)
+        return info
+
+    @property
+    def miller_array_high_symmetry(self):
+        return self.miller_array.customized_copy(space_group_info=self.space_group_info)
+
+    @property
+    def symbol(self):
+        return self._symbol
+
+    @symbol.setter
+    def symbol(self, val):
+        self._symbol = val
 
     @property
     def Omatrix(self):
@@ -116,7 +137,7 @@ class nanoBragg_crystal(object):
         self._thick_mm = val
 
     @staticmethod
-    def dxtbx_crystal_from_ucell_and_symbol(ucell_tuple_Adeg=(65, 40, 75, 90, 110, 90), symbol="P1211"):
+    def dxtbx_crystal_from_ucell_and_symbol(ucell_tuple_Adeg, symbol):
         """
         :param ucell_tuple_Adeg:  unit cell tuple a,b,c al, be, ga in Angstom and degrees
         :param symbol: lookup symbol for space group, e.g. 'P1'
@@ -142,9 +163,9 @@ class nanoBragg_crystal(object):
                        'space_group_hall_symbol': hall_symbol})
 
     @staticmethod
-    def dummie_Fhkl():
+    def dummie_Fhkl(ucell, symbol):
         from simtbx.diffBragg.utils import fcalc_from_pdb
-        return fcalc_from_pdb(resolution=2, algorithm="fft", wavelength=1)
+        return fcalc_from_pdb(resolution=2, algorithm="fft", wavelength=1, symbol=symbol, ucell=ucell)
 
     def dxtbx_crystal_with_missetting(self):
         from copy import deepcopy

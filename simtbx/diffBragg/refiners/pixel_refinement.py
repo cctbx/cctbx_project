@@ -43,6 +43,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.a_sigma = 0.05
         self.b_sigma = 0.05
         self.c_sigma = 0.1
+        self.fcell_sigma_scale = 0.005
+        self.fcell_resolution_bin_Id = None
 
         self.ucell_inits = [79.1, 38.2]
         self.m_init = 10
@@ -64,7 +66,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.diag_mode = "always"  # LBFGS refiner property, whether to update curvatures at each iteration
         self.request_diag_once = False  # LBFGS refiner property
         self.output_dir = None  # directory to dump progress files, these can be used to restart simulation later
-        self.min_multiplicity = 3  # only refine a spots Fhkl if multiplicity greater than this number
+        self.min_multiplicity = 1  # only refine a spots Fhkl if multiplicity greater than this number
         self.restart_file = None  # output file from previous run refinement
         self.global_ncells_param = False  # refine one mosaic domain size parameter for all lattices
         self.global_originZ_param = True  # refine one origin for all shots/lattices
@@ -106,6 +108,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.curv = None  # curvatures array used internally
         self.print_all_missets = True  # prints out a list of all missetting results (when ground truth is known)
         self.verbose = True  # whether to print during iterations
+        self.print_resolution_bins = True  # whether to print the res bin R factor and CC
         self.plot_images = False  # whether to plot images
         self.iterations = 0  # iteration counter , used internally
         self.FNAMES = {}  # place holder for fnames dictionary so refinement understands layout of the data
@@ -138,11 +141,16 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     @Fref.setter
     def Fref(self, val):
         if val is not None:
-            C = nanoBragg_crystal()
-            C.miller_array = val  # NOTE: this takes care of expansion to P1
-            val = C.miller_array
+            #C = nanoBragg_crystal()
+            #C.miller_array = val  # NOTE: this takes care of expansion to P1
+            #val = C.miller_array
             val = val.sort()
         self._Fref = val
+
+    @property
+    def resolution_binner(self):
+        if self.Fobs is not None:
+            return self.Fobs.binner()
 
     @property
     def Fobs(self):
@@ -152,13 +160,27 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         R factors and CC with the Fhkl reference array, these values are important diagnostics
         when determining how well a refinement is working
         """
-        if self.S is not None and self.Fref is not None and self._refinement_millers is not None:
-            indices, amp_data = self.S.D.Fhkl_tuple
-            mset = miller.set(self.Fref.crystal_symmetry(),
-                            indices=indices, anomalous_flag=True)
-            marray = miller.array(miller_set=mset, data=amp_data).set_observation_type_xray_amplitude()
-            marray = marray.expand_to_p1()
-            marray = marray.generate_bijvoet_mates()
+        if self.S is not None and self._refinement_millers is not None:
+            #indices, amp_data = self.S.D.Fhkl_tuple
+            symmetry = self.S.crystal.dxtbx_crystal.get_crystal_symmetry()
+            if self.Fref is not None:
+                # todo: improve efficiency ? Is this even necessary ?
+                symmetry = self.Fref.crystal_symmetry()
+                #assert np.allclose(symmetry.unit_cell().parameters(), ref_sym.unit_cell().parameters())
+                #assert symmetry.space_group_info().type().hall_symbol() == ref_sym.space_group_info().type().hall_symbol()
+
+            # fobs.customized_copy( space_group_info=self.S.crystal.dxtbx_crystal.get_space_group().info())
+
+            #info = symmetry.space_group_info()
+            marray = self.S.D.Fhkl
+            marray = marray.customized_copy(crystal_symmetry=symmetry).deep_copy()
+
+            #mset = miller.set(symmetry,
+            #                indices=indices, anomalous_flag=True)
+            #marray = miller.array(miller_set=mset, data=amp_data).set_observation_type_xray_amplitude()
+            #marray = marray.expand_to_p1()
+            #marray = marray.generate_bijvoet_mates()
+
             marray = marray.select_indices(self._refinement_millers).sort()
             marray.setup_binner(d_max=self.binner_dmax, d_min=self.binner_dmin, n_bins=self.binner_nbin)
             return marray

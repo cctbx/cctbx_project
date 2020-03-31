@@ -233,6 +233,7 @@ class FatRefiner(PixelRefinement):
         self.num_positive_curvatures = 0
         self._panel_id = None
         self.symbol = sgsymbol
+        self.space_group = sgtbx.space_group(sgtbx.space_group_info(symbol=self.symbol).type().hall_symbol())
 
         self.pid_from_idx = {}
         self.idx_from_pid = {}
@@ -305,20 +306,6 @@ class FatRefiner(PixelRefinement):
         """model_Lambda means expected intensity in the pixel"""
         self.model_Lambda = \
             self.gain_fac * self.gain_fac * (self.tilt_plane + self.scale_fac * self.model_bragg_spots)
-
-    def _set_background_plane(self, i_spot):
-        xr = self.XREL[self._i_shot][i_spot]
-        yr = self.YREL[self._i_shot][i_spot]
-        self.a, self.b, self.c = self._get_bg_vals(self._i_shot, i_spot)
-        if self.bg_offset_only:
-            self.tilt_plane = np.ones_like(xr)*self.c
-        else:
-            self.tilt_plane = xr * self.a + yr * self.b + self.c
-        if self.OMEGA_KAHN is not None:
-            (i1, i2), (j1, j2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
-            omega_kahn_correction = self.OMEGA_KAHN[self._panel_id][j1:j2+1, i1:i2+1]
-            self.tilt_plane *= omega_kahn_correction
-        #print ("C=%.4f" % np.median(self.tilt_plane[:,0]))
 
     def _setup(self):
         # Here we go!  https://youtu.be/7VvkXA6xpqI
@@ -504,7 +491,6 @@ class FatRefiner(PixelRefinement):
                 else:
                     self.x[self.originZ_xpos[0]] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
 
-
             print("----loading fcell data")
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index
             print("---- -- counting hkl totes")
@@ -513,13 +499,18 @@ class FatRefiner(PixelRefinement):
             # initialize the Fhkl global values
             print("--- --- --- inserting the Fhkl array in the parameter array... ")
             asu_idx = [self.asu_from_idx[idx] for idx in range(self.n_global_fcell)]
-            self.refinement_millers = flex_miller_index(tuple(asu_idx))
+            self._refinement_millers = flex_miller_index(tuple(asu_idx))
             Findices, Fdata = self.S.D.Fhkl_tuple
             vals = [Fdata[self.idx_from_p1[h]] for h in asu_idx]  # TODO am I correct/
-            if self.log_fcells:
+            if self.rescale_params:
+                self.fcell_init = deepcopy(vals)  # store the initial values  for rescaling procedure
+            if not self.rescale_params and self.log_fcells:
                 vals = np_log(vals)
             for i_fcell in range(self.n_global_fcell):
-                self.x[self.fcell_xstart + i_fcell] = vals[i_fcell]
+                if self.rescale_params:
+                    self.x[self.fcell_xstart + i_fcell] = 1
+                else:
+                    self.x[self.fcell_xstart + i_fcell] = vals[i_fcell]
 
             self.Fref_aligned = self.Fref
             if self.Fref is not None:
@@ -527,21 +518,49 @@ class FatRefiner(PixelRefinement):
                 self.init_R1 = self.Fobs_Fref_Rfactor(use_binning=False, auto_scale=self.scale_r1)
                 print("Initial R1 = %.4f" % self.init_R1)
 
+            if self.Fobs is not None:  # TODO should this ever be None ?
+                miller_binner = self.Fobs.binner()
+                miller_bin_idx = miller_binner.bin_indices()
+
+                import numpy as np # TODO move me to top
+                from simtbx.diffBragg.utils import nearest_non_zero
+
+                unique_bins = sorted(set(miller_bin_idx))
+                sigmas = []
+                for i_bin in unique_bins:
+                    dmax, dmin = miller_binner.bin_d_range(i_bin)
+                    f_selection = self.Fobs.resolution_filter(d_min=dmin, d_max=dmax)
+                    fsel_data = f_selection.data().as_numpy_array()
+                    if self.log_fcells:
+                        fsel_data = np_log(fsel_data)
+                    sigma = np.std(f_selection.data())
+                    sigmas.append(sigma) #sigma_for_res_id[i_bin] = sigma
+                #min_sigma = min(self.sigma_for_res_id.values())
+                #max_sigma = max(self.sigma_for_res_id.values())
+                #median_sigma = np.median(self.sigma_for_res_id.values())
+                self.sigma_for_res_id = {}
+                for ii, sigma in enumerate(sigmas):
+                    i_bin = unique_bins[ii]
+                    if sigma == 0:
+                        sigma = nearest_non_zero(sigmas, ii)
+                    if sigma == 0:
+                        bin_rng = miller_binner.bin_d_range(i_bin)
+                        raise ValueError("sigma is being set to 0 for all fcell in range %.4f - %.4f" % bin_rng)
+                    self.sigma_for_res_id[i_bin] = sigma
+
+                self.res_group_id_from_fcell_index = {}
+                for ii, asu_index in enumerate(miller_binner.miller_indices()):
+                    if asu_index not in self.idx_from_asu:
+                        raise KeyError("something wrong Fobs does not contain the asu indices")
+                    i_fcell = self.idx_from_asu[asu_index]
+                    self.res_group_id_from_fcell_index[i_fcell] = miller_bin_idx[ii]
+
             if self.output_dir is not None:
                 #np.save(os.path.join(self.output_dir, "f_truth"), self.f_truth)  #FIXME by adding in the correct truth from Fref
                 np.save(os.path.join(self.output_dir, "f_asu_map"), self.asu_from_idx)
 
             # set gain TODO: implement gain dependent statistical model ? Per panel or per gain mode dependent ?
             self.x[self.gain_xpos] = self._init_gain  # gain factor
-            # n_panels = len(self.S.detector)
-            # self.origin_xstart = self.global_param_idx_start
-            # for i_pan in range(n_panels):
-            #    pid = self.pid_from_idx[i_pan]
-            #    self.x[self.origin_xstart + i_pan] = self.S.detector[pid].get_local_origin()[2]
-            # lastly, the panel gain correction factor
-            # for i_pan in range(n_panels):
-            #    self.x[-1] = self._init_gain
-            # self.x[-1] = self._init_scale  # initial scale factor
 
         # reduce then broadcast self.x
         if comm.rank == 0:
@@ -561,10 +580,8 @@ class FatRefiner(PixelRefinement):
 
         if comm.rank == 0:
             print("--4 print initial stats")
-            print ("unpack")
         rotx, roty, rotz, uc_vals, ncells_vals, scale_vals, _, origZ = self._unpack_internal(self.x, lst_is_x=True)
         if comm.rank == 0 and self.big_dump:
-            print("making frame")
 
             master_data = {"a": uc_vals[0], "c": uc_vals[1],
                            "Ncells": ncells_vals,
@@ -573,10 +590,8 @@ class FatRefiner(PixelRefinement):
                            "roty": roty,
                            "rotz": rotz,
                            "origZ": origZ}
-            print("frame")
             master_data = pandas.DataFrame(master_data)
             master_data["gain"] = self.x[self.gain_xpos]
-            print('convert to string')
             print(master_data.to_string())
 
         # make the parameter masks for isolating parameters of different types
@@ -604,54 +619,6 @@ class FatRefiner(PixelRefinement):
             self.D.refine(self._fcell_id)
         self.D.initialize_managers()
 
-        #if self.testing_mode:
-
-        #    assert comm.size == 1
-        #    assert self.global_ucell_param
-        #    assert self.global_ncells_param
-        #    from copy import deepcopy
-        #    import numpy as np
-        #    self.x_master = deepcopy(self.x)
-        #    sel = np.zeros(len(self.x), bool)
-        #    if self.refine_background_planes:
-        #        for i in range(n_spots):
-        #            sel[self.bg_a_xstart[0][i]] = True
-        #            sel[self.bg_b_xstart[0][i]] = True
-        #            sel[self.bg_c_xstart[0][i]] = True
-
-        #    if self.refine_ncells:
-        #        sel[self.ncells_xpos[0]] = True
-
-        #    if self.refine_detdist:
-        #        sel[self.originZ_xpos[0]] = True
-
-        #    if self.refine_Fcell:
-        #        sel[self.fcell_xstart: self.fcell_xstart + self.n_global_fcell] = True
-
-        #    if self.refine_Bmatrix:
-        #        for i in range(self.n_ucell_param):
-        #            sel[self.ucell_xstart[0] + i] = True
-
-        #    if self.refine_Umatrix:
-        #        if self.refine_rotX:
-        #            sel[self.rotX_xpos[0]] = True
-        #        if self.refine_rotY:
-        #            sel[self.rotY_xpos[0]] = True
-        #        if self.refine_rotZ:
-        #            sel[self.rotZ_xpos[0]] = True
-
-        #    if self.refine_crystal_scale:
-        #        sel[self.spot_scale_xpos[0]] = True
-
-        #    if self.refine_gain_fac:
-        #        sel[self.gain_xpos] = True
-
-        #    from scitbx.array_family import flex
-        #    self.refine_sel = flex.bool(sel)
-        #    self.x = self.x_master.select(self.refine_sel)
-
-        #    self.refine_sel_pos = np.where(sel)[0]
-
     def determine_parameter_freeze_order(self):
         param_sels = []
         if self.refine_detdist:
@@ -671,7 +638,7 @@ class FatRefiner(PixelRefinement):
 
         self.param_sels = itertools.cycle(param_sels)
 
-    def _make_parameter_type_selection_arrays(self):
+    def _make_parameter_type_selection_arrays(self):  # experimental , not really used
         self.umatrix_sel = flex.bool(len(self.x), True)
         self.bmatrix_sel = flex.bool(len(self.x), True)
         self.Fcell_sel = flex.bool(len(self.x), True)
@@ -703,7 +670,7 @@ class FatRefiner(PixelRefinement):
 
     def _get_rotX(self, i_shot):
         if self.rescale_params:
-            return self.rotX_sigma * (self.x[self.rotX_xpos[i_shot]]-1) + 0.0
+            return self.rotX_sigma*(self.x[self.rotX_xpos[i_shot]]-1) + 0.0
         else:
             return self.x[self.rotX_xpos[i_shot]]
 
@@ -885,26 +852,46 @@ class FatRefiner(PixelRefinement):
         if not self.background_test_mode:
             self.D.add_diffBragg_spots()
 
+    def _get_fcell_val(self, i_fcell):
+        # TODO vectorize me
+        # i_fcell is between 0 and self.n_global_fcell
+        # get the asu index and its updated amplitude
+        xpos = self.fcell_xstart + i_fcell
+        val = self.x[xpos]  # new amplitude
+        if self.rescale_params:
+            resolution_id = self.res_group_id_from_fcell_index[i_fcell]  # TODO
+            sig = self.sigma_for_res_id[resolution_id]*self.fcell_sigma_scale  # TODO
+            init = self.fcell_init[i_fcell]
+            if self.log_fcells:
+                val = np_exp(sig*(val - 1))*init
+            else:
+                if val < 0:  # NOTE this easily happens without the log c.o.v.
+                    self.x[xpos] = 0
+                    val = 0
+                    self.num_Fcell_kludge += 1
+                else:
+                    val = sig*(val - 1) + init
+
+        else:
+            if self.log_fcells:
+                val = np_exp(val)
+            if val < 0:  # NOTE this easily happens without the log c.o.v.
+                self.x[xpos] = 0
+                val = 0
+                self.num_Fcell_kludge += 1
+        return val
+
     def _update_Fcell(self):
         idx, data = self.S.D.Fhkl_tuple
         for i_fcell in range(self.n_global_fcell):
-            # get the asu index and its updated amplitude
-            hkl = self.asu_from_idx[i_fcell]
-            xpos = self.fcell_xstart + i_fcell
-            new_Fcell = self.x[xpos]  # new amplitude
-            if self.log_fcells:
-                new_Fcell = np_exp(new_Fcell)
+            # get the asu miller index
+            hkl_asu = self.asu_from_idx[i_fcell]
 
-            if new_Fcell < 0:  # NOTE this easily happens without the log c.o.v.
-                self.x[xpos] = 0
-                new_Fcell = 0
-                self.num_Fcell_kludge += 1
+            new_Fcell_amplitude = self._get_fcell_val(i_fcell)
 
             # now surgically update the p1 array in nanoBragg with the new amplitudes
             # (need to update each symmetry equivalent)
-            sg = sgtbx.space_group(sgtbx.space_group_info(symbol=self.symbol).type().hall_symbol())
-            self._sg = sg
-            equivs = [i.h() for i in miller.sym_equiv_indices(sg, hkl).indices()]
+            equivs = [i.h() for i in miller.sym_equiv_indices(self.space_group, hkl_asu).indices()] # todo: speed test.
             for h_equiv in equivs:
                 # get the nanoBragg p1 miller table index corresponding to this hkl equivalent
                 try:
@@ -913,24 +900,29 @@ class FatRefiner(PixelRefinement):
                     if self.debug:
                         print( h_equiv, err)
                     continue
-                data[p1_idx] = new_Fcell  # set the data with the new value
+                data[p1_idx] = new_Fcell_amplitude  # set the data with the new value
         self.S.D.Fhkl_tuple = idx, data  # update nanoBragg again  # TODO: add flag to not re-allocate in nanoBragg!
 
+    def _set_background_plane(self, i_spot):
+        xr = self.XREL[self._i_shot][i_spot]
+        yr = self.YREL[self._i_shot][i_spot]
+        self.a, self.b, self.c = self._get_bg_vals(self._i_shot, i_spot)
+        if self.bg_offset_only:
+            self.tilt_plane = np.ones_like(xr)*self.c
+        else:
+            self.tilt_plane = xr * self.a + yr * self.b + self.c
+        if self.OMEGA_KAHN is not None:
+            (i1, i2), (j1, j2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
+            omega_kahn_correction = self.OMEGA_KAHN[self._panel_id][j1:j2+1, i1:i2+1]
+            self.tilt_plane *= omega_kahn_correction
+
     def _update_rotXYZ(self):
-        #if self.rescale_params:
         if self.refine_rotX:
             self.D.set_value(0, self._get_rotX(self._i_shot))
         if self.refine_rotY:
             self.D.set_value(1, self._get_rotY(self._i_shot))
         if self.refine_rotZ:
             self.D.set_value(2, self._get_rotZ(self._i_shot))
-        #else:
-        #    if self.refine_rotX:
-        #        self.D.set_value(0, self.x[self.rotX_xpos[self._i_shot]])
-        #    if self.refine_rotY:
-        #        self.D.set_value(1, self.x[self.rotY_xpos[self._i_shot]])
-        #    if self.refine_rotZ:
-        #        self.D.set_value(2, self.x[self.rotZ_xpos[self._i_shot]])
 
     def _update_ncells(self):
         val = self._get_m_val(self._i_shot)
@@ -1000,11 +992,6 @@ class FatRefiner(PixelRefinement):
 
         self.model_bragg_spots = self.D.raw_pixels_roi.as_numpy_array()
 
-        # self.omega_and_kahn = self.D.omega_kahn.as_numpy_array()
-
-    #def _unpack_bgplane_params(self, i_spot):
-    #    self.a, self.b, self.c = self.ABC_INIT[self._i_shot][i_spot]
-
     def _update_ucell(self):
         if self.rescale_params:
             pars = self._get_ucell_vars(self._i_shot)
@@ -1055,7 +1042,11 @@ class FatRefiner(PixelRefinement):
                           % (self.trial_id+1, refine_str, self.iterations + 1, self.num_positive_curvatures))
             if comm.rank == 0 and self.output_dir is not None:
                 outf = os.path.join(self.output_dir, "_fcell_trial%d_iter%d" % (self.trial_id, self.iterations))
-                fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
+                if self.rescale_params:
+                    fvals = [self._get_fcell_val(i_fcell) for i_fcell in range(self.n_global_fcell)]
+                    fvals = np.array(fvals)
+                else:
+                    fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
                 np.savez(outf, fvals=fvals, x=self.x.as_numpy_array())
 
             if self.iteratively_freeze_parameters:
@@ -1245,13 +1236,25 @@ class FatRefiner(PixelRefinement):
                             self.curv[xpos] += self._curv_accumulate(d, d2)
 
                     if self.refine_Fcell and multi >= self.min_multiplicity:
-                        xpos = self.fcell_xstart + self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
-                        fcell = self.x[xpos]
-                        d = self.scale_fac * G2 * self.fcell_deriv
-                        if self.log_fcells:
-                            d *= np_exp(fcell)
+                        i_fcell = self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
+                        xpos = self.fcell_xstart + i_fcell
+                        fcell = self._get_fcell_val(i_fcell)  # todo: interact with a vectorized object instead
+
+                        if self.rescale_params:
+                            resolution_id = self.res_group_id_from_fcell_index[i_fcell]  # TODO
+                            sig = self.sigma_for_res_id[resolution_id] * self.fcell_sigma_scale  # TODO
+                            d = sig*self.scale_fac * G2 * self.fcell_deriv
+                            if self.log_fcells:
+                                d *= fcell
+                        else:
+                            d = self.scale_fac * G2 * self.fcell_deriv
+                            if self.log_fcells:
+                                d *= np_exp(fcell)
+
+
                         g[xpos] += self._grad_accumulate(d)
                         if self.calc_curvatures:
+                            assert not self.rescale_params
                             d2 = self.scale_fac * G2 * self.fcell_second_deriv
                             if self.log_fcells:
                                 ex_fcell = np_exp(fcell)
@@ -1304,6 +1307,7 @@ class FatRefiner(PixelRefinement):
                         g[xpos] += rot_p / sig_square
                         if self.calc_curvatures:
                             self.curv[xpos] += 1 / sig_square
+            # END TODO  PRIORS
 
             # apply masks
             if self.iteratively_freeze_parameters and self.iterations % self.number_of_frozen_iterations ==0:
@@ -1616,15 +1620,16 @@ class FatRefiner(PixelRefinement):
                        ", ".join(map(str, self.neg_curv_shots)), scale_stats_string, stat_bins_str,  Istat_bins_str))
 
         if self.Fref is not None:
-            print("R-factor overall:")
-            print( self.Fobs_Fref_Rfactor(use_binning=False, auto_scale=self.scale_r1))
-            print("R-factor (shells):")
-            print (self.Fobs_Fref_Rfactor(use_binning=True, auto_scale=self.scale_r1).show())
-            print("CC overall:")
-            print( self.Fobs.correlation(self.Fref_aligned))
-            print("CC:")
-            self.Fobs.correlation(self.Fref_aligned, use_binning=True).show()
+            R_overall = self.Fobs_Fref_Rfactor(use_binning=False, auto_scale=self.scale_r1)
+            CC_overall = self.Fobs.correlation(self.Fref_aligned).coefficient()
+            print("R-factor overall: %.4f, CC overall: %.4f" % (R_overall, CC_overall))
+            if self.print_resolution_bins:
+                print("R-factor (shells):")
+                print(self.Fobs_Fref_Rfactor(use_binning=True, auto_scale=self.scale_r1).show())
+                print("CC (shells):")
+                self.Fobs.correlation(self.Fref_aligned, use_binning=True).show()
             print("<><><><><><><><> TOP GUN <><><><><><><><>")
+            print("                 End of iteration.")
         if self.testing_mode:
             self.conv_test()
 
@@ -1649,8 +1654,8 @@ class FatRefiner(PixelRefinement):
                     ry = self._get_rotY(i_shot)
                 if self.refine_rotZ:
                     rz = self._get_rotZ(i_shot)
-
             anglesXYZ = rx, ry, rz
+
         x = col((-1, 0, 0))
         y = col((0, -1, 0))
         z = col((0, 0, -1))

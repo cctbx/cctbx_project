@@ -1,4 +1,5 @@
 from scipy import ndimage
+from itertools import zip_longest
 from scipy.optimize import minimize
 import numpy as np
 import pylab as plt
@@ -463,7 +464,7 @@ def compare_with_ground_truth(a, b, c, dxcryst_models, symbol="C121", verbose=Fa
 
 
 def fcalc_from_pdb(resolution, algorithm=None, wavelength=0.9, anom=True, ucell=None, symbol=None):
-    # borrowed fro:m tst_nanoBragg_basic
+    # borrowed from tst_nanoBragg_basic
     pdb_lines = """HEADER TEST
 CRYST1   50.000   60.000   70.000  90.00  90.00  90.00 P 1
 ATOM      1  O   HOH A   1      56.829   2.920  55.702  1.00 20.00           O
@@ -499,3 +500,18 @@ END
         d_min=resolution, anomalous_flag=anom, algorithm=algorithm).f_calc()
     return fcalc.amplitudes()
 
+def nearest_non_zero(lst, idx):
+    # https: // codereview.stackexchange.com / a / 172121 / 78230
+    if lst[idx] > 0:
+        return lst[idx]
+    before, after = lst[:idx], lst[idx+1:]
+    for b_val, a_val in zip_longest(reversed(before), after, fillvalue=0):
+        # N.B. I applied `reversed` inside `zip_longest` here. This
+        # ensures that `before` and `after` are the same type, and that
+        # `before + [lst[idx]] + after == lst`.
+        if b_val > 0:
+            return b_val
+        if a_val > 0:
+            return a_val
+    else:
+        return 0  # all zeroes in this list
