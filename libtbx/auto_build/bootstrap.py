@@ -1806,6 +1806,11 @@ environment exists in or is defined by {conda_env}.
         description="permit execution of config_modules.sh",
       ))
 
+    # write extra setpaths script for conda
+    if self.use_conda is not None:
+      self.add_command('libtbx.install_conda', args=['--write_setpaths'],
+                       description='Writing additional setup scripts for conda.')
+
   def add_make(self):
     self.add_command('libtbx.scons', args=['-j',
                                            str(self.nproc),
