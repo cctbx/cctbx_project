@@ -137,7 +137,7 @@ def center(coords):
 
 class basis(object):
   """ Bucket for detector element information """
-  def __init__(self, orientation = None, translation = None, panelgroup = None, homogenous_transformation = None):
+  def __init__(self, orientation = None, translation = None, panelgroup = None, homogenous_transformation = None, name = None):
     """
     Provide only orientation + translation or a panelgroup or a homogenous_transformation.
 
@@ -147,8 +147,10 @@ class basis(object):
     basis shift
     @param homogenous_transformation 4x4 matrix.sqr object representing a translation
     and a rotation. Must not also contain a scale as this won't be decomposed properly.
+    @param name optional name for this basis shift
     """
     self.include_translation = True
+    self.name = name
 
     if panelgroup is not None:
       d_mat = panelgroup.get_local_d_matrix()
@@ -164,6 +166,9 @@ class basis(object):
 
       self.orientation = r3.r3_rotation_matrix_as_unit_quaternion()
       self.translation = orig
+
+      if not self.name:
+        self.name = panelgroup.get_name()
 
     elif orientation is not None or translation is not None:
       assert orientation is not None and translation is not None
