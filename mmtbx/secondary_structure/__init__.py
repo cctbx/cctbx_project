@@ -279,6 +279,13 @@ class manager(object):
       else:
         if (self.sec_str_from_pdb_file is not None):
           # self.actual_sec_str = self.sec_str_from_pdb_file
+          removed_annot = self.sec_str_from_pdb_file.remove_empty_annotations(self.pdb_hierarchy)
+          if not removed_annot.is_empty():
+            print("\n  WARNING! Some SS annotations were removed because the model\n" +\
+                "  does not have atoms for them:", file=self.log)
+            rem_str = '  ' + removed_annot.as_pdb_str()
+            rem_str = rem_str.replace('\n', '\n  ')
+            print(rem_str+'\n', file=self.log)
           ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(
               log=self.log,
               prefix_scope="secondary_structure")
