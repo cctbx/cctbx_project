@@ -143,7 +143,6 @@ class FatRefiner(PixelRefinement):
         self.global_ucell_param = global_ucell
         self.global_originZ_param = global_originZ
         self.debug = False
-        self.rot_scale = 1
         self.num_Fcell_kludge = 0
         self.perturb_fcell = perturb_fcell
         # dictionaries whose keys are the shot indices
@@ -944,22 +943,26 @@ class FatRefiner(PixelRefinement):
         self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
         self.D.update_dxtbx_geoms(det, self.S.beam.nanoBragg_constructor_beam, self._panel_id)
 
-    def _extract_pixel_data(self):
-        self.rot_deriv = [0, 0, 0]
+    def _extract_rotXYZ_derivative_pixels(self):
+        self.rotX_dI_dtheta = self.rotY_dI_dtheta = self.rotZ_dI_dtheta = 0
         self.rot_second_deriv = [0, 0, 0]
         if self.refine_Umatrix:
             if self.refine_rotX:
-                self.rot_deriv[0] = self.rot_scale*self.D.get_derivative_pixels(0).as_numpy_array()
+                self.rotX_dI_dtheta = self.scale_fac*self.G2*self.D.get_derivative_pixels(0).as_numpy_array()
                 if self.calc_curvatures:
                     self.rot_second_deriv[0] = self.D.get_second_derivative_pixels(0).as_numpy_array()
             if self.refine_rotY:
-                self.rot_deriv[1] = self.rot_scale*self.D.get_derivative_pixels(1).as_numpy_array()
+                self.rotY_dI_dtheta = self.scale_fac*self.G2*self.D.get_derivative_pixels(1).as_numpy_array()
                 if self.calc_curvatures:
                     self.rot_second_deriv[1] = self.D.get_second_derivative_pixels(1).as_numpy_array()
             if self.refine_rotZ:
-                self.rot_deriv[2] = self.rot_scale*self.D.get_derivative_pixels(2).as_numpy_array()
+                self.rotZ_dI_dtheta = self.scale_fac*self.G2*self.D.get_derivative_pixels(2).as_numpy_array()
                 if self.calc_curvatures:
                     self.rot_second_deriv[2] = self.D.get_second_derivative_pixels(2).as_numpy_array()
+
+    def _extract_pixel_data(self):
+
+        self._extract_rotXYZ_derivative_pixels()
 
         self.ucell_derivatives = [0] * self.n_ucell_param
         self.ucell_second_derivatives = [0] * self.n_ucell_param
@@ -1017,79 +1020,29 @@ class FatRefiner(PixelRefinement):
     def compute_functional_and_gradients(self):
         if self.calc_func:
             if self.verbose:
-                refine_str = "refining "
-                if self.refine_Fcell:
-                    refine_str += "fcell, "
-                if self.refine_ncells:
-                    refine_str += "Ncells, "
-                if self.refine_Bmatrix:
-                    refine_str += "Bmat, "
-                if self.refine_Umatrix:
-                    refine_str += "Umat, "
-                if self.refine_crystal_scale:
-                    refine_str += "scale, "
-                if self.refine_background_planes:
-                    refine_str += "bkgrnd, "
-                if self.refine_detdist:
-                    refine_str += "originZ, "
-                
-                if self.use_curvatures:
-                    
-                    print("Trial%d (%s): Compute functional and gradients Iter %d (Using Curvatures)\n<><><><><><><><><><><><><>"
-                          % (self.trial_id+1, refine_str, self.iterations + 1))
-                else:
-                    print("Trial%d (%s): Compute functional and gradients Iter %d PosCurva %d\n<><><><><><><><><><><><><>"
-                          % (self.trial_id+1, refine_str, self.iterations + 1, self.num_positive_curvatures))
+                self._print_iteration_header()
+
             if comm.rank == 0 and self.output_dir is not None:
-                outf = os.path.join(self.output_dir, "_fcell_trial%d_iter%d" % (self.trial_id, self.iterations))
-                if self.rescale_params:
-                    fvals = [self._get_fcell_val(i_fcell) for i_fcell in range(self.n_global_fcell)]
-                    fvals = np.array(fvals)
-                else:
-                    fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
-                np.savez(outf, fvals=fvals, x=self.x.as_numpy_array())
+                self._save_state_of_refiner()
 
             if self.iteratively_freeze_parameters:
                 if self.param_sels is None:
                     self.determine_parameter_freeze_order()
 
-            f = 0
-            g = flex_double(self.n)
+            # reset gradient and functional
+            self.target_functional = 0
+            self.grad = flex_double(self.n)
             if self.calc_curvatures:
                 self.curv = flex_double(self.n)
 
+            # current work has these all at 1
             self.gain_fac = self.x[self.gain_xpos]
-            G2 = self.gain_fac ** 2
+            self.G2 = self.gain_fac ** 2
 
             self._update_Fcell()  # update the structure factor with the new x
 
             if self.CRYSTAL_GT is not None:
-                all_ang_off = []
-                for i in range(self.n_shots):
-                    try:
-                        Ctru = self.CRYSTAL_GT[i]
-                        atru, btru, ctru = Ctru.get_real_space_vectors()
-                        ang, ax = self.get_correction_misset(as_axis_angle_deg=True, i_shot=i)
-                        B = self.get_refined_Bmatrix(i)
-                        C = deepcopy(self.CRYSTAL_MODELS[i])
-                        C.set_B(B)
-                        if ang > 0:
-                            C.rotate_around_origin(ax, ang)
-                        ang_off = compare_with_ground_truth(atru, btru, ctru,
-                                                            [C],
-                                                            symbol=self.symbol)[0]
-                    except Exception:
-                        ang_off = -1
-                    if self.filter_bad_shots and self.iterations == 0:
-                        if ang_off == -1 or ang_off > 0.015:
-                            self.bad_shot_list.append(i)
-
-                    all_ang_off.append(ang_off)
-
-                self.bad_shot_list = list(set(self.bad_shot_list))
-                all_ang_off = comm.gather(all_ang_off, root=0)
-                self.n_bad_shots = len(self.bad_shot_list)
-                self.n_bad_shots = comm.bcast(self.n_bad_shots)
+                self._initialize_GT_crystal_misorientation_analysis()
 
             self.image_corr = [0] * len(self.shot_ids)
             for self._i_shot in self.shot_ids:
@@ -1105,15 +1058,12 @@ class FatRefiner(PixelRefinement):
                 self._update_rotXYZ()
                 n_spots = len(self.NANOBRAGG_ROIS[self._i_shot])
                 for i_spot in range(n_spots):
-                    mill_idx = self.ASU[self._i_shot][i_spot]
-
-                    # Only refine me if Im above the threshold multiplicity
-                    multi = self.hkl_frequency[self.idx_from_asu[mill_idx]]
 
                     self._panel_id = self.PANEL_IDS[self._i_shot][i_spot]
-                    #if self.verbose:
-                    #    print ("\rdiffBragg: img %d/%d; spot %d/%d; panel %d" \
-                    #          % (self._i_shot + 1, self.n_shots, i_spot + 1, n_spots, self._panel_id), flush=True)
+
+                    if self.verbose and i_spot % self.spot_print_stride == 0:
+                        print("diffBragg: img %d/%d; spot %d/%d; panel %d" \
+                              % (self._i_shot + 1, self.n_shots, i_spot + 1, n_spots, self._panel_id), flush=True)
 
                     self.Imeas = self.ROI_IMGS[self._i_shot][i_spot]
                     self._update_dxtbx_detector()
@@ -1125,298 +1075,395 @@ class FatRefiner(PixelRefinement):
                     # here we can correlate modelLambda with Imeas
                     _overlay_corr, _ = pearsonr(self.Imeas.ravel(), self.model_Lambda.ravel())
                     self.image_corr[self._i_shot] += _overlay_corr
+
                     if self.poisson_only:
                         self._evaluate_log_averageI()
                     else:
                         self._evaluate_log_averageI_plus_sigma_readout()
 
-                    max_h = tuple(map(int, self.D.max_I_hkl))
-                    sg = sgtbx.space_group(sgtbx.space_group_info(self.symbol).type().hall_symbol())
-                    refinement_h = self.ASU[self._i_shot][i_spot]
-                    equivs = [i.h() for i in miller.sym_equiv_indices(sg, refinement_h).indices()]
+                    #self._max_h_sanity_test()
+                    self._derivative_convenience_factors()
 
-                    #if not max_h in equivs:  # TODO understand this more, how does this effect things
-                    #    #
-                    #    #print("Warning max_h  mismatch!!!!!!")
-                    #    #comm.Abort()
+                    self.target_functional += self._target_accumulate()
 
-                    # helper terms for doing outer derivatives of likelihood function
-                    one_over_Lambda = 1. / self.model_Lambda
-                    self.one_minus_k_over_Lambda = (1. - self.Imeas * one_over_Lambda)
-                    self.k_over_squared_Lambda = self.Imeas * one_over_Lambda * one_over_Lambda
-
-                    self.u = self.Imeas - self.model_Lambda
-                    self.one_over_v = 1. / (self.model_Lambda + self.sigma_r ** 2)
-                    self.one_minus_2u_minus_u_squared_over_v = 1 - 2 * self.u - self.u * self.u * self.one_over_v
-
-                    f += self._target_accumulate()
-
-                    # make any plots
+                    # make any plots (this only matters if proper flags have been set)
                     self._show_plots(i_spot, n_spots)
 
-                    if self.refine_background_planes:
-                        if self.bg_offset_only: # option to only refine c plane
-                            x_positions = [self.bg_c_xstart[self._i_shot][i_spot]]
-                            if self.bg_offset_positive:
-                                bg_deriv = [G2*self.c]
-                                bg_second_deriv = [G2*self.c]  # same as bg_deriv ...
-                            else:
-                                bg_deriv = [G2]
-                                bg_second_deriv = [0]
-                            if self.rescale_params:
-                                bg_deriv = [bg_deriv[0]*self.c_sigma]
-                                bg_second_deriv = [bg_second_deriv[0]*self.c_sigma*self.c_sigma]  # NOTE check me
-                        else:
-                            xr = self.XREL[self._i_shot][i_spot]  # fast scan pixels
-                            yr = self.YREL[self._i_shot][i_spot]  # slow scan pixels
-                            if self.rescale_params:
-                                bg_deriv = [xr*G2*self.a_sigma, yr*G2*self.b_sigma, G2*self.c_sigma]
-                            else:
-                                bg_deriv = [xr*G2, yr*G2, G2]
-                            bg_second_deriv = [0, 0, 0]
-                            x_positions = [self.bg_a_xstart[self._i_shot][i_spot],
-                                           self.bg_b_xstart[self._i_shot][i_spot],
-                                           self.bg_c_xstart[self._i_shot][i_spot]]
-
-                        for ii, xpos in enumerate(x_positions):
-                            d = bg_deriv[ii]
-                            g[xpos] += self._grad_accumulate(d)
-                            if self.calc_curvatures:
-                                assert not self.rescale_params
-                                d2 = bg_second_deriv[ii]
-                                self.curv[xpos] += self._curv_accumulate(d, d2)
-
-                    if self.refine_Umatrix:
-                        x_positions = [self.rotX_xpos[self._i_shot],
-                                       self.rotY_xpos[self._i_shot],
-                                       self.rotZ_xpos[self._i_shot]]
-                        rot_sigs = [self.rotX_sigma, self.rotY_sigma, self.rotZ_sigma]
-                        for ii, xpos in enumerate(x_positions):
-                            d = self.scale_fac * G2 * self.rot_deriv[ii]
-                            if self.rescale_params:
-                                d *= rot_sigs[ii]
-                            g[xpos] += self._grad_accumulate(d)
-                            if self.calc_curvatures:
-                                assert not self.rescale_params
-                                d2 = self.scale_fac * G2 * self.rot_second_deriv[ii]
-                                self.curv[xpos] += self._curv_accumulate(d, d2)
-
-                    if self.refine_Bmatrix:
-                        # unit cell derivative
-                        for i_ucell_p in range(self.n_ucell_param):
-                            xpos = self.ucell_xstart[self._i_shot] + i_ucell_p
-                            d = self.scale_fac * G2 * self.ucell_derivatives[i_ucell_p]
-                            if self.rescale_params:
-                                d *= self.ucell_sigmas[i_ucell_p]
-                            g[xpos] += self._grad_accumulate(d)
-
-                            if self.calc_curvatures:
-                                assert not self.rescale_params
-                                d2 = self.scale_fac * G2 * self.ucell_second_derivatives[i_ucell_p]
-                                self.curv[xpos] += self._curv_accumulate(d, d2)
-
-                    if self.refine_ncells:
-                        # NOTE ncells deriv scale factor computed in function above
-                        d = self.scale_fac * G2 * self.ncells_deriv
-                        xpos = self.ncells_xpos[self._i_shot]
-                        g[xpos] += self._grad_accumulate(d)
-                        if self.calc_curvatures:
-                            d2 = self.scale_fac * G2 * self.ncells_second_deriv
-                            self.curv[xpos] += self._curv_accumulate(d, d2)
-
-                    if self.refine_detdist:
-                        xpos = self.originZ_xpos[self._i_shot]
-                        d = self.scale_fac * G2 * self.detdist_deriv
-                        if self.rescale_params:
-                            d *= self.originZ_sigma
-                        g[xpos] += self._grad_accumulate(d)
-                        if self.calc_curvatures:
-                            assert not self.rescale_params
-                            d2 = self.scale_fac * G2 * self.detdist_second_deriv
-                            self.curv[xpos] += self._curv_accumulate(d, d2)
-
-                    if self.refine_Fcell and multi >= self.min_multiplicity:
-                        i_fcell = self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
-                        xpos = self.fcell_xstart + i_fcell
-                        fcell = self._get_fcell_val(i_fcell)  # todo: interact with a vectorized object instead
-
-                        if self.rescale_params:
-                            resolution_id = self.res_group_id_from_fcell_index[i_fcell]  # TODO
-                            sig = self.sigma_for_res_id[resolution_id] * self.fcell_sigma_scale  # TODO
-                            d = sig*self.scale_fac * G2 * self.fcell_deriv
-                            if self.log_fcells:
-                                d *= fcell
-                        else:
-                            d = self.scale_fac * G2 * self.fcell_deriv
-                            if self.log_fcells:
-                                d *= np_exp(fcell)
-
-
-                        g[xpos] += self._grad_accumulate(d)
-                        if self.calc_curvatures:
-                            assert not self.rescale_params
-                            d2 = self.scale_fac * G2 * self.fcell_second_deriv
-                            if self.log_fcells:
-                                ex_fcell = np_exp(fcell)
-                                d2 = ex_fcell * d + ex_fcell * ex_fcell * d2
-                            self.curv[xpos] += self._curv_accumulate(d, d2)
-
-                    if self.refine_crystal_scale:
-                        d = G2 * self.scale_fac * self.model_bragg_spots
-                        if self.rescale_params:
-                            d *= (self.scale_fac*self.spot_scale_sigma)
-                        xpos = self.spot_scale_xpos[self._i_shot]
-                        g[xpos] += self._grad_accumulate(d)
-                        if self.calc_curvatures:
-                            assert not self.rescale_params
-                            d2 = d
-                            self.curv[xpos] += self._curv_accumulate(d, d2)
-
-                    if self.refine_gain_fac:
-                        d = 2 * self.gain_fac * (self.tilt_plane + self.scale_fac * self.model_bragg_spots)
-                        g[self.gain_xpos] += self._grad_accumulate(d)
-                        if self.calc_curvatures:
-                            d2 = d / self.gain_fac
-                            self.curv[self.gain_xpos] += self._curv_accumulate(d, d2)
+                    # accumulate the per pixel derivatives
+                    self._background_derivatives(i_spot)
+                    self._Umatrix_derivatives()
+                    self._Bmatrix_derivatives()
+                    self._mosaic_parameter_m_derivatives()
+                    self._originZ_derivatives()
+                    self._spot_scale_derivatives()
+                    self._gain_factor_derivatives()
+                    self._Fcell_derivatives(i_spot)
+                    # Done with derivative accumulation
 
                 self.image_corr[self._i_shot] = self.image_corr[self._i_shot] / n_spots
 
-
-            all_image_corr = comm.reduce(self.image_corr, MPI.SUM, root=0)
+            self.all_image_corr = comm.reduce(self.image_corr, MPI.SUM, root=0)
             # TODO add in the priors:
-            if self.use_ucell_priors and self.refine_Bmatrix:
-                for ii in range(self.n_shots):
-                    for jj in range(self.n_ucell_param):
-                        xpos = self.ucell_xstart[ii] + jj
-                        ucell_p = self.x[xpos]
-                        sig_square = self.sig_ucell[jj] ** 2
-                        f += (ucell_p - self.ave_ucell[jj]) ** 2 / 2 / sig_square
-                        g[xpos] += (ucell_p - self.ave_ucell[jj]) / sig_square
-                        if self.calc_curvatures:
-                            self.curv[xpos] += 1 / sig_square
+            self._priors()
+            self._parameter_freezes()
+            self._mpi_aggregation()
+            self._curvature_analysis()
 
-            if self.use_rot_priors and self.refine_Umatrix:
-                for ii in range(self.n_shots):
-                    x_positions = [self.rotX_xpos[self._i_shot],
-                                   self.rotY_xpos[self._i_shot],
-                                   self.rotZ_xpos[self._i_shot]]
-                    for xpos in x_positions:
-                        rot_p = self.x[xpos]
-                        sig_square = self.sig_rot ** 2
-                        f += rot_p ** 2 / 2 / sig_square
-                        g[xpos] += rot_p / sig_square
-                        if self.calc_curvatures:
-                            self.curv[xpos] += 1 / sig_square
-            # END TODO  PRIORS
+            self._f = self.target_functional
+            self._g = self.grad
+            self.g = self.grad  # TODO why all these repeated definitions ?
 
-            # apply masks
-            if self.iteratively_freeze_parameters and self.iterations % self.number_of_frozen_iterations ==0:
-                print("\n\n\t\tSwitching!!\n\n")
-                freeze_sel = next(self.param_sels)
-                g.set_selected(freeze_sel, 0)
-                if self.calc_curvatures:
-                    self.curv.set_selected(freeze_sel, 0)
-
-            # reduce the broadcast summed results:
-            if comm.rank == 0:
-                print("\nMPI reduce on functionals and gradients...")
-            f = self._mpi_reduce_broadcast(f)
-            g = self._mpi_reduce_broadcast(g)
-            self.rotx, self.roty, self.rotz, self.uc_vals, self.ncells_vals, self.scale_vals, \
-                self.scale_vals_truths, self.origZ_vals = self._unpack_internal(self.x, lst_is_x=True)
-            self.Grotx, self.Groty, self.Grotz, self.Guc_vals, self.Gncells_vals, self.Gscale_vals, _, self.GorigZ_vals = \
-                self._unpack_internal(g, lst_is_x=False)
-            if self.calc_curvatures:
-                self.curv = self._mpi_reduce_broadcast(self.curv)
-                self.CUrotx, self.CUroty, self.CUrotz, self.CUuc_vals, self.CUncells_vals, self.CUscale_vals, _, self.CUorigZ_vals = \
-                    self._unpack_internal(self.curv, lst_is_x=False)
-            self.tot_fcell_kludge = self._mpi_reduce_broadcast(self.num_Fcell_kludge)
-            self.tot_neg_curv = 0
-            self.neg_curv_shots = []
-            if self.calc_curvatures:
-                self.tot_neg_curv = sum(self.curv < 0)
-
-            self._f = f
-            self._g = g
-            self.g = g
-
-            if self.calc_curvatures and not self.use_curvatures:
-                if np_all(self.curv.as_numpy_array() >= 0):
-                    self.num_positive_curvatures += 1
-                    self.d = flex_double(self.curv.as_numpy_array())
-                    self._verify_diag()
-                else:
-                    self.num_positive_curvatures = 0
-                    self.d = None
-
-            if self.use_curvatures:
-                if np_all(self.curv.as_numpy_array() >= 0):
-                    self.request_diag_once = False
-                    self.d = flex_double(self.curv.as_numpy_array())
-                    self._verify_diag()
-                else:
-                    if self.debug:
-                        print("\n**************************************")
-                        print("**************************************")
-                        print("**************************************")
-                        print("**************************************")
-                        print("\tFIXING CURVA: ATTEMPTING DISASTER AVERSION")
-                        print("*nn***************************************")
-                        print("*nn***************************************")
-                        print("*nn***************************************")
-                        print("*nn***************************************")
-            else:
-                self.d = None
-
+            # reset ROI pixels TODO: is this necessary
             self.D.raw_pixels *= 0
-            self.gnorm = norm(g)
+            self.gnorm = norm(self.grad)
 
             if self.verbose:
                 if self.CRYSTAL_GT is not None:
-                    all_ang_off = [s for sl in all_ang_off for s in sl]  # flatten the gathered array
-                    n_broken_misset = sum([1 for aa in all_ang_off if aa == -1])
-                    n_bad_misset = sum([1 for aa in all_ang_off if aa > 0.1])
-                    n_misset = len(all_ang_off)
-                    _pos_misset_vals = [aa for aa in all_ang_off if aa > 0]
-                    misset_median = median(_pos_misset_vals)
-                    misset_mean = mean(_pos_misset_vals)
-                    misset_max = -1
-                    misset_min = -1
-                    if _pos_misset_vals:
-                        misset_max = max(_pos_misset_vals)
-                        misset_min = min(_pos_misset_vals)
-                    if self.refine_Umatrix or self.refine_Bmatrix and self.print_all_missets:
-                        print("\nMissets\n========")
-                        all_ang_off = ["%.5f" % aa for aa in all_ang_off]
-                        print(", ".join(all_ang_off))
-                        print ("N shots deemed bad from missets: %d" % self.n_bad_shots)
-                    print("MISSETTING median: %.4f; mean: %.4f, max: %.4f, min %.4f, num > .1 deg: %d/%d; num broken=%d"
-                          % (misset_median, misset_mean,misset_max, misset_min, n_bad_misset, n_misset, n_broken_misset))
-
-                all_corr_str = ["%.2f" % ic for ic in all_image_corr]
-                print("Correlation stats:")
-                print(", ".join(all_corr_str))
-                print("---------------")
-                n_bad_corr = sum([1 for ic in all_image_corr if ic < 0.25])
-                print("CORRELATION median: %.4f; mean: %.4f, max: %.4f, min %.4f, num <.25: %d/%d;"
-                      % (median(all_image_corr), mean(all_image_corr), max(all_image_corr), min(all_image_corr), n_bad_corr, len(all_image_corr) ))
-                
+                    self._print_GT_crystal_misorientation_analysis()
+                self._print_image_correlation_analysis()
                 self.print_step()
                 self.print_step_grads()
-            self.iterations += 1
-            self.f_vals.append(f)
 
-            #if self.testing_mode:
-            #    self.x = self.x_master.select(self.refine_sel)
-            #    self._g = self._g.select(self.refine_sel)
-            #    if self.d is not None:
-            #        self.d = self.d.select(self.refine_sel)
-            #    self.g = self.g.select(self.refine_sel)
+            self.iterations += 1
+            self.f_vals.append(self.target_functional)
 
             if self.calc_curvatures and not self.use_curvatures:
                 if self.num_positive_curvatures == self.use_curvatures_threshold:
                     raise BreakToUseCurvatures
+
         return self._f, self._g
+
+    def _Bmatrix_derivatives(self):
+        if self.refine_Bmatrix:
+            # unit cell derivative
+            for i_ucell_p in range(self.n_ucell_param):
+                xpos = self.ucell_xstart[self._i_shot] + i_ucell_p
+                d = self.scale_fac * self.G2 * self.ucell_derivatives[i_ucell_p]
+                if self.rescale_params:
+                    d *= self.ucell_sigmas[i_ucell_p]
+                self.grad[xpos] += self._grad_accumulate(d)
+
+                if self.calc_curvatures:
+                    assert not self.rescale_params
+                    d2 = self.scale_fac * self.G2 * self.ucell_second_derivatives[i_ucell_p]
+                    self.curv[xpos] += self._curv_accumulate(d, d2)
+
+    def _get_rotXYZ_first_derivs(self):
+        derivs = [self.rotX_dI_dtheta, self.rotY_dI_dtheta, self.rotZ_dI_dtheta]
+        if self.rescale_params:
+            sigmas = [self.rotX_sigma, self.rotY_sigma, self.rotZ_sigma]
+            for i in range(3):
+                derivs[i] = derivs[i]*sigmas[i]
+        return derivs
+
+    def _Umatrix_derivatives(self):
+        if self.refine_Umatrix:
+            x_positions = [self.rotX_xpos[self._i_shot],
+                           self.rotY_xpos[self._i_shot],
+                           self.rotZ_xpos[self._i_shot]]
+            derivs = self._get_rotXYZ_first_derivs()
+            for ii, xpos in enumerate(x_positions):
+                d = derivs[ii]
+                #if self.rescale_params:
+                #    d *= rot_sigs[ii]
+                self.grad[xpos] += self._grad_accumulate(d)
+                if self.calc_curvatures:
+                    assert not self.rescale_params
+                    d2 = self.scale_fac * self.G2 * self.rot_second_deriv[ii]
+                    self.curv[xpos] += self._curv_accumulate(d, d2)
+
+    def _background_derivatives(self, i_spot):
+        if self.refine_background_planes:
+            if self.bg_offset_only:  # option to only refine c plane
+                x_positions = [self.bg_c_xstart[self._i_shot][i_spot]]
+                if self.bg_offset_positive:
+                    bg_deriv = [self.G2 * self.c]
+                    bg_second_deriv = [self.G2 * self.c]  # same as bg_deriv ...
+                else:
+                    bg_deriv = [self.G2]
+                    bg_second_deriv = [0]
+                if self.rescale_params:
+                    bg_deriv = [bg_deriv[0] * self.c_sigma]
+                    bg_second_deriv = [bg_second_deriv[0] * self.c_sigma * self.c_sigma]  # NOTE check me
+            else:
+                xr = self.XREL[self._i_shot][i_spot]  # fast scan pixels
+                yr = self.YREL[self._i_shot][i_spot]  # slow scan pixels
+                if self.rescale_params:
+                    bg_deriv = [xr * self.G2 * self.a_sigma, yr * self.G2 * self.b_sigma, self.G2 * self.c_sigma]
+                else:
+                    bg_deriv = [xr * self.G2, yr * self.G2, self.G2]
+                bg_second_deriv = [0, 0, 0]
+                x_positions = [self.bg_a_xstart[self._i_shot][i_spot],
+                               self.bg_b_xstart[self._i_shot][i_spot],
+                               self.bg_c_xstart[self._i_shot][i_spot]]
+
+            for ii, xpos in enumerate(x_positions):
+                d = bg_deriv[ii]
+                self.grad[xpos] += self._grad_accumulate(d)
+                if self.calc_curvatures:
+                    assert not self.rescale_params
+                    d2 = bg_second_deriv[ii]
+                    self.curv[xpos] += self._curv_accumulate(d, d2)
+
+    def _mosaic_parameter_m_derivatives(self):
+        # NOTE ncells deriv scale factor computed in function above
+        if self.refine_ncells:
+            d = self.scale_fac * self.G2 * self.ncells_deriv
+            xpos = self.ncells_xpos[self._i_shot]
+            self.grad[xpos] += self._grad_accumulate(d)
+            if self.calc_curvatures:
+                d2 = self.scale_fac * self.G2 * self.ncells_second_deriv
+                self.curv[xpos] += self._curv_accumulate(d, d2)
+
+    def _originZ_derivatives(self):
+        if self.refine_detdist:
+            xpos = self.originZ_xpos[self._i_shot]
+            d = self.scale_fac * self.G2 * self.detdist_deriv
+            if self.rescale_params:
+                d *= self.originZ_sigma
+            self.grad[xpos] += self._grad_accumulate(d)
+            if self.calc_curvatures:
+                assert not self.rescale_params
+                d2 = self.scale_fac * self.G2 * self.detdist_second_deriv
+                self.curv[xpos] += self._curv_accumulate(d, d2)
+
+    def _Fcell_derivatives(self, i_spot):
+        miller_idx = self.ASU[self._i_shot][i_spot]
+        multi = self.hkl_frequency[self.idx_from_asu[miller_idx]]
+        if self.refine_Fcell and multi >= self.min_multiplicity:
+            i_fcell = self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
+            xpos = self.fcell_xstart + i_fcell
+            fcell = self._get_fcell_val(i_fcell)  # todo: interact with a vectorized object instead
+
+            if self.rescale_params:
+                resolution_id = self.res_group_id_from_fcell_index[i_fcell]  # TODO
+                sig = self.sigma_for_res_id[resolution_id] * self.fcell_sigma_scale  # TODO
+                d = sig * self.scale_fac * self.G2 * self.fcell_deriv
+                if self.log_fcells:
+                    d *= fcell
+            else:
+                d = self.scale_fac * self.G2 * self.fcell_deriv
+                if self.log_fcells:
+                    d *= np_exp(fcell)
+
+            self.grad[xpos] += self._grad_accumulate(d)
+            if self.calc_curvatures:
+                assert not self.rescale_params
+                d2 = self.scale_fac * self.G2 * self.fcell_second_deriv
+                if self.log_fcells:
+                    ex_fcell = np_exp(fcell)
+                    d2 = ex_fcell * d + ex_fcell * ex_fcell * d2
+                self.curv[xpos] += self._curv_accumulate(d, d2)
+
+    def _spot_scale_derivatives(self):
+        if self.refine_crystal_scale:
+            d = self.G2 * self.scale_fac * self.model_bragg_spots
+            if self.rescale_params:
+                d *= (self.scale_fac * self.spot_scale_sigma)
+            xpos = self.spot_scale_xpos[self._i_shot]
+            self.grad[xpos] += self._grad_accumulate(d)
+            if self.calc_curvatures:
+                assert not self.rescale_params
+                d2 = d
+                self.curv[xpos] += self._curv_accumulate(d, d2)
+
+    def _gain_factor_derivatives(self):
+        if self.refine_gain_fac:
+            #raise NotImplementedError("gain factor derivatives need more testing")
+            d = 2 * self.gain_fac * (self.tilt_plane + self.scale_fac * self.model_bragg_spots)
+            self.grad[self.gain_xpos] += self._grad_accumulate(d)
+            if self.calc_curvatures:
+                d2 = d / self.gain_fac
+                self.curv[self.gain_xpos] += self._curv_accumulate(d, d2)
+
+    def _max_h_sanity_test(self, i_spot):
+        max_h = tuple(map(int, self.D.max_I_hkl))
+        refinement_h = self.ASU[self._i_shot][i_spot]
+        equivs = [i.h() for i in miller.sym_equiv_indices(self.space_group, refinement_h).indices()]
+        if not max_h in equivs and self.debug:  # TODO understand this more, how does this effect things
+           print("Warning max_h  mismatch!!!!!!")
+
+    def _derivative_convenience_factors(self):
+        one_over_Lambda = 1. / self.model_Lambda
+        self.one_minus_k_over_Lambda = (1. - self.Imeas * one_over_Lambda)
+        self.k_over_squared_Lambda = self.Imeas * one_over_Lambda * one_over_Lambda
+
+        self.u = self.Imeas - self.model_Lambda
+        self.one_over_v = 1. / (self.model_Lambda + self.sigma_r ** 2)
+        self.one_minus_2u_minus_u_squared_over_v = 1 - 2 * self.u - self.u * self.u * self.one_over_v
+
+    def _priors(self):
+        # experimental, not yet proven to help
+        if self.use_ucell_priors and self.refine_Bmatrix:
+            for ii in range(self.n_shots):
+                for jj in range(self.n_ucell_param):
+                    xpos = self.ucell_xstart[ii] + jj
+                    ucell_p = self.x[xpos]
+                    sig_square = self.sig_ucell[jj] ** 2
+                    self.target_functional += (ucell_p - self.ave_ucell[jj]) ** 2 / 2 / sig_square
+                    self.grad[xpos] += (ucell_p - self.ave_ucell[jj]) / sig_square
+                    if self.calc_curvatures:
+                        self.curv[xpos] += 1 / sig_square
+
+        if self.use_rot_priors and self.refine_Umatrix:
+            for ii in range(self.n_shots):
+                x_positions = [self.rotX_xpos[self._i_shot],
+                               self.rotY_xpos[self._i_shot],
+                               self.rotZ_xpos[self._i_shot]]
+                for xpos in x_positions:
+                    rot_p = self.x[xpos]
+                    sig_square = self.sig_rot ** 2
+                    self.target_functional += rot_p ** 2 / 2 / sig_square
+                    self.grad[xpos] += rot_p / sig_square
+                    if self.calc_curvatures:
+                        self.curv[xpos] += 1 / sig_square
+
+    def _parameter_freezes(self):
+        if self.iteratively_freeze_parameters and self.iterations % self.number_of_frozen_iterations == 0:
+            print("\n\n\t\tSwitching!!\n\n")
+            freeze_sel = next(self.param_sels)
+            self.grad.set_selected(freeze_sel, 0)
+            if self.calc_curvatures:
+                self.curv.set_selected(freeze_sel, 0)
+
+    def _mpi_aggregation(self):
+        # reduce the broadcast summed results:
+        if comm.rank == 0:
+            print("\nMPI reduce on functionals and gradients...")
+        self.target_functional = self._mpi_reduce_broadcast(self.target_functional)
+        self.grad = self._mpi_reduce_broadcast(self.grad)
+        self.rotx, self.roty, self.rotz, self.uc_vals, self.ncells_vals, self.scale_vals, \
+        self.scale_vals_truths, self.origZ_vals = self._unpack_internal(self.x, lst_is_x=True)
+        self.Grotx, self.Groty, self.Grotz, self.Guc_vals, self.Gncells_vals, self.Gscale_vals, _, self.GorigZ_vals = \
+            self._unpack_internal(self.grad, lst_is_x=False)
+        if self.calc_curvatures:
+            self.curv = self._mpi_reduce_broadcast(self.curv)
+            self.CUrotx, self.CUroty, self.CUrotz, self.CUuc_vals, self.CUncells_vals, self.CUscale_vals, _, self.CUorigZ_vals = \
+                self._unpack_internal(self.curv, lst_is_x=False)
+        self.tot_fcell_kludge = self._mpi_reduce_broadcast(self.num_Fcell_kludge)
+
+    def _curvature_analysis(self):
+        self.tot_neg_curv = 0
+        self.neg_curv_shots = []
+        if self.calc_curvatures:
+            self.tot_neg_curv = sum(self.curv < 0)
+        if self.calc_curvatures and not self.use_curvatures:
+            if self.tot_neg_curv == 0:   #np_all(self.curv.as_numpy_array() >= 0):
+                self.num_positive_curvatures += 1
+                self.d = flex_double(self.curv.as_numpy_array())
+                self._verify_diag()
+            else:
+                self.num_positive_curvatures = 0
+                self.d = None
+
+        if self.use_curvatures:
+            if self.tot_neg_curv == 0:  #np_all(self.curv.as_numpy_array() >= 0):
+                self.request_diag_once = False
+                self.d = flex_double(self.curv.as_numpy_array())
+                self._verify_diag()
+            else:
+                if self.debug:
+                    print("\n\t******************************************")
+                    print("\tFREEZING THE CURVATURE: DISASTER AVERSION")
+                    print("*\t*****************************************")
+        else:
+            self.d = None
+
+    def _initialize_GT_crystal_misorientation_analysis(self):
+        self.all_ang_off = []
+        for i in range(self.n_shots):
+            try:
+                Ctru = self.CRYSTAL_GT[i]
+                atru, btru, ctru = Ctru.get_real_space_vectors()
+                ang, ax = self.get_correction_misset(as_axis_angle_deg=True, i_shot=i)
+                B = self.get_refined_Bmatrix(i)
+                C = deepcopy(self.CRYSTAL_MODELS[i])
+                C.set_B(B)
+                if ang > 0:
+                    C.rotate_around_origin(ax, ang)
+                ang_off = compare_with_ground_truth(atru, btru, ctru,
+                                                    [C],
+                                                    symbol=self.symbol)[0]
+            except Exception:
+                ang_off = -1
+            if self.filter_bad_shots and self.iterations == 0:
+                if ang_off == -1 or ang_off > 0.015:
+                    self.bad_shot_list.append(i)
+
+            self.all_ang_off.append(ang_off)
+
+        self.bad_shot_list = list(set(self.bad_shot_list))
+        self.all_ang_off = comm.gather(self.all_ang_off, root=0)
+        self.n_bad_shots = len(self.bad_shot_list)
+        self.n_bad_shots = comm.bcast(self.n_bad_shots)
+
+    def _print_GT_crystal_misorientation_analysis(self):
+        all_ang_off = [s for sl in self.all_ang_off for s in sl]  # flatten the gathered array
+        n_broken_misset = sum([1 for aa in all_ang_off if aa == -1])
+        n_bad_misset = sum([1 for aa in all_ang_off if aa > 0.1])
+        n_misset = len(all_ang_off)
+        _pos_misset_vals = [aa for aa in all_ang_off if aa > 0]
+        misset_median = median(_pos_misset_vals)
+        misset_mean = mean(_pos_misset_vals)
+        misset_max = -1
+        misset_min = -1
+        if _pos_misset_vals:
+            misset_max = max(_pos_misset_vals)
+            misset_min = min(_pos_misset_vals)
+        if self.refine_Umatrix or self.refine_Bmatrix and self.print_all_missets:
+            print("\nMissets\n========")
+            all_ang_off = ["%.5f" % aa for aa in all_ang_off]
+            print(", ".join(all_ang_off))
+            print("N shots deemed bad from missets: %d" % self.n_bad_shots)
+        print("MISSETTING median: %.4f; mean: %.4f, max: %.4f, min %.4f, num > .1 deg: %d/%d; num broken=%d"
+              % (misset_median, misset_mean, misset_max, misset_min, n_bad_misset, n_misset, n_broken_misset))
+
+    def _print_image_correlation_analysis(self):
+        all_corr_str = ["%.2f" % ic for ic in self.all_image_corr]
+        print("Correlation stats:")
+        print(", ".join(all_corr_str))
+        print("---------------")
+        n_bad_corr = sum([1 for ic in self.all_image_corr if ic < 0.25])
+        print("CORRELATION median: %.4f; mean: %.4f, max: %.4f, min %.4f, num <.25: %d/%d;"
+              % (median(self.all_image_corr), mean(self.all_image_corr), max(self.all_image_corr),
+                 min(self.all_image_corr), n_bad_corr, len(self.all_image_corr)))
+
+    def _get_refinement_string_label(self):
+        refine_str = "refining "
+        if self.refine_Fcell:
+            refine_str += "fcell, "
+        if self.refine_ncells:
+            refine_str += "Ncells, "
+        if self.refine_Bmatrix:
+            refine_str += "Bmat, "
+        if self.refine_Umatrix:
+            refine_str += "Umat, "
+        if self.refine_crystal_scale:
+            refine_str += "scale, "
+        if self.refine_background_planes:
+            refine_str += "bkgrnd, "
+        if self.refine_detdist:
+            refine_str += "originZ, "
+        return refine_str
+
+    def _print_iteration_header(self):
+        refine_str = self._get_refinement_string_label()
+        if self.use_curvatures:
+            print(
+                "Trial%d (%s): Compute functional and gradients Iter %d (Using Curvatures)\n<><><><><><><><><><><><><>"
+                % (self.trial_id + 1, refine_str, self.iterations + 1))
+        else:
+            print("Trial%d (%s): Compute functional and gradients Iter %d PosCurva %d\n<><><><><><><><><><><><><>"
+                  % (self.trial_id + 1, refine_str, self.iterations + 1, self.num_positive_curvatures))
+
+    def _save_state_of_refiner(self):
+        outf = os.path.join(self.output_dir, "_fcell_trial%d_iter%d" % (self.trial_id, self.iterations))
+        if self.rescale_params:
+            fvals = [self._get_fcell_val(i_fcell) for i_fcell in range(self.n_global_fcell)]
+            fvals = np.array(fvals)
+        else:
+            fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
+        np.savez(outf, fvals=fvals, x=self.x.as_numpy_array())
 
     def _show_plots(self, i_spot, n_spots):
         if rank == 0 and self.plot_images and self.iterations % self.plot_stride == 0 and self._i_shot == self.index_of_displayed_image:
