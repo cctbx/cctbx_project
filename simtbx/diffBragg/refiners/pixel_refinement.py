@@ -49,6 +49,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.ucell_inits = [79.1, 38.2]
         self.m_init = 10
 
+        self.spot_print_stride = 1000
         self.m = 5  # LBFGS default core parameters
         self.maxfev = 20  # LBFGS default core parameters
         self.gtol = 0.9  # LBFGS default core parameters
