@@ -165,7 +165,8 @@ class nanoBragg_crystal(object):
     @staticmethod
     def dummie_Fhkl(ucell, symbol):
         from simtbx.diffBragg.utils import fcalc_from_pdb
-        return fcalc_from_pdb(resolution=2, algorithm="fft", wavelength=1, symbol=symbol, ucell=ucell)
+        Fhkl = fcalc_from_pdb(resolution=2, algorithm="fft", wavelength=1, symbol=symbol, ucell=ucell)
+        return Fhkl
 
     def dxtbx_crystal_with_missetting(self):
         from copy import deepcopy
