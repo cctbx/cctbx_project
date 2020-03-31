@@ -21,18 +21,35 @@ class model(object):
     xs_dict = xray.structure.from_cif(file_path=model)
     assert len(xs_dict) == 1, "CIF should contain only one xray structure"
     xs = list(xs_dict.values())[0]
-    mas = any_reflection_file(reflections).as_miller_arrays(crystal_symmetry=xs)
     fo_sq = None
-    for ma in mas:
-      if ma.is_xray_intensity_array() and ma.sigmas() is not None:
-        fo_sq = ma.as_xray_observations()
-        break
-    assert fo_sq is not None
+    if reflections is not None:
+      mas = any_reflection_file(reflections). \
+          as_miller_arrays(crystal_symmetry=xs)
+      for ma in mas:
+        if ma.is_xray_intensity_array() and ma.sigmas() is not None:
+          fo_sq = ma.as_xray_observations()
+          break
+      assert fo_sq is not None
     return cls(fo_sq=fo_sq, xray_structure=xs,
                constraints=[],
                restraints_manager=restraints.manager(),
                weighting_scheme=least_squares.sigma_weighting(),
                wavelength=xs.wavelength)
+
+  def add_reflections_with_polarization(self, reflections_fname):
+    import iotbx.reflection_file_reader as reader
+    cs = self.xray_structure.crystal_symmetry()
+    fo_sq = None
+    reflections = reader.hklf4_reflection_file_with_polarization(
+        reflections_fname, cs.unit_cell())
+    mas = reflections.as_miller_arrays(crystal_symmetry=cs)
+    for ma in mas:
+      if ma.is_xray_intensity_array() and ma.sigmas() is not None:
+        fo_sq = ma.as_xray_observations()
+        break
+    assert fo_sq is not None
+    self.fo_sq = fo_sq
+
 
   def __init__(self, fo_sq, xray_structure,
                constraints, restraints_manager, weighting_scheme,
