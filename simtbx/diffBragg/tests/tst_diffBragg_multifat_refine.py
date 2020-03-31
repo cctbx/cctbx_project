@@ -24,6 +24,9 @@ parser.add_argument("--predictwithtruth", action="store_true")
 parser.add_argument("--pershotucell", action="store_true")
 parser.add_argument("--pershotncells", action="store_true")
 parser.add_argument("--displayedimage", type=int, default=0)
+parser.add_argument("--perturbfcell", type=float, default=None, help="perturbation factor, 0.1 is small, 1 is large")
+parser.add_argument("--fractionperturbed", type=float, default=0.1, help="Fraction of Fhkl to perturn")
+parser.add_argument("--fcellsigmascale", type=float, default=None)
 args = parser.parse_args()
 
 
@@ -80,7 +83,7 @@ if args.bmatrix:
 symbol = "P43212"
 
 from simtbx.diffBragg.utils import  fcalc_from_pdb
-miller_array = fcalc_from_pdb(resolution=2, wavelength=1, algorithm='fft', ucell=ucell, symbol=symbol)
+miller_array_GT = fcalc_from_pdb(resolution=2, wavelength=1, algorithm='fft', ucell=ucell, symbol=symbol)
 Ncells_gt = 12, 12, 12
 
 N_SHOTS = args.nshots
@@ -141,7 +144,7 @@ for i_shot in range(N_SHOTS):
     nbcryst.thick_mm = 0.1
     nbcryst.Ncells_abc = Ncells_gt  # ground truth Ncells
 
-    nbcryst.miller_array = miller_array
+    nbcryst.miller_array = miller_array_GT
     print("Ground truth ncells = %f" % (nbcryst.Ncells_abc[0]))
 
     # ground truth detector
@@ -228,11 +231,12 @@ for i_shot in range(N_SHOTS):
     if args.detdist:
         SIM.detector = det2
         SIM.D.update_dxtbx_geoms(det2, SIM.beam.nanoBragg_constructor_beam, 0)
-        print ("Modified originZ=%f" % (det2[0].get_origin()[2]))
+        print("Modified originZ=%f" % (det2[0].get_origin()[2]))
     # perturbed crystal:
     SIM.D.Bmatrix = C2.get_B()
     SIM.D.Umatrix = C2.get_U()
     nbcryst.dxtbx_crystal = C2
+
 
     if args.ncells:
         Ncells_abc2 = 14, 14, 14
@@ -293,7 +297,6 @@ for i_shot in range(N_SHOTS):
             spot_roi, tilt_abc = utils.process_simdata(SPOTS2, img/omega_kahn, thresh=20, plot=args.plot, shoebox_sz=20)
         #spot_roi, tilt_abc = utils.process_simdata(SPOTS, img, thresh=20, plot=args.plot, shoebox_sz=20)
 
-
     if args.shufflebg:
         tilt_abc[:, 2] = np.random.permutation(tilt_abc[:, 2])
 
@@ -340,6 +343,9 @@ for i_shot in range(N_SHOTS):
 
     Hi_asu = utils.map_hkl_list(HKLi, anomalous_flag=True, symbol=symbol)
 
+
+
+
     shot_ucell_managers[i_shot]= UcellMan
     shot_rois[i_shot]= spot_roi
     shot_nanoBragg_rois[i_shot]= nanoBragg_rois
@@ -365,6 +371,7 @@ for i in range(N_SHOTS):
     Hi_all_ranks += shot_hkl[i]
     Hi_asu_all_ranks += shot_asu[i]
 
+
 print("Overall completeness\n<><><><><><><><>")
 from cctbx.crystal import symmetry
 from cctbx import miller
@@ -383,6 +390,28 @@ idx_from_asu = {h: i for i, h in enumerate(set(Hi_asu_all_ranks))}
 # we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
 asu_from_idx = {i: h for i, h in enumerate(set(Hi_asu_all_ranks))}
 
+if args.perturbfcell is not None:
+    pert = args.perturbfcell
+    fobs = SIM.crystal.miller_array
+    unique_Hi_asu_all_ranks = list(idx_from_asu.keys())
+    h_vals = []
+    for h in unique_Hi_asu_all_ranks:
+        h_vals.append(fobs.value_at_index(tuple(h)))
+    h_vals = np.array(h_vals)
+
+    num_hkl = len(h_vals)
+    num_perturb = int(args.fractionperturbed * num_hkl)
+
+    indices_of_fhkl_chosen_for_perturbation = np.random.permutation(num_hkl)[:num_perturb]
+
+    for i in indices_of_fhkl_chosen_for_perturbation:
+        val = np.log(h_vals[i])
+        new_val = np.random.uniform(val-pert, val+pert)
+        h_vals[i] = np.exp(new_val)
+
+    new_fobs = utils.update_miller_array_at_indices(fobs, indices=unique_Hi_asu_all_ranks, new_values=h_vals)
+    SIM.crystal.miller_array = new_fobs
+    SIM.update_Fhkl_tuple()
 
 # always local parameters: rotations, spot scales, tilt coeffs
 nrotation_param = 3*N_SHOTS
@@ -497,7 +526,7 @@ RUC.ucell_inits = ucell2[0], ucell2[2]
 
 #RUC.S.D.update_oversample_during_refinement = False  # todo: decide
 Fobs = RUC.S.crystal.miller_array_high_symmetry
-RUC.Fref = Fobs
+RUC.Fref = miller_array_GT
 #dmax, dmin = Fobs.d_max_min()
 dmax, dmin = max(all_reso), min(all_reso)
 RUC.binner_dmax = dmax + 1e-6
@@ -505,6 +534,8 @@ RUC.binner_dmin = dmin - 1e-6
 RUC.binner_nbin = 10
 RUC.scale_r1 = True
 RUC.print_resolution_bins = False
+if args.fcellsigmascale is not None:
+    RUC.fcell_sigma_scale = args.fcellsigmascale
 
 RUC.run(setup_only=False)
 #RUC.run(setup_only=True)
