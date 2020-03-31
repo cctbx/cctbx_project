@@ -1276,7 +1276,7 @@ def tst_remove_empty_annotations():
   ann = annotation.from_records(pdb_records_2.split("\n"))
   pdb_h = iotbx.pdb.input(source_info=None, lines=pdb_string_2.split('\n')).\
       construct_hierarchy()
-  ann.remove_empty_annotations(hierarchy=pdb_h, asc=None)
+  ann.remove_empty_annotations(hierarchy=pdb_h)
   # print ann
   assert ann.get_n_helices() == 2
   assert ann.get_n_sheets() == 0
@@ -1286,9 +1286,9 @@ def tst_split_helices_with_prolines():
   pdb_h = iotbx.pdb.input(source_info=None, lines=pdb_string_2.split('\n')).\
       construct_hierarchy()
   # pdb_h.write_pdb_file(file_name='1.pdb')
-  ann.remove_empty_annotations(hierarchy=pdb_h, asc=None)
+  ann.remove_empty_annotations(hierarchy=pdb_h)
   # print ann
-  ann.split_helices_with_prolines(hierarchy=pdb_h, asc=None)
+  ann.split_helices_with_prolines(hierarchy=pdb_h)
   # print "="*50
   # print ann
   assert ann.get_n_helices() == 4

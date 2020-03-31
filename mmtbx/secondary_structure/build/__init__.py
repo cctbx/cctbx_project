@@ -504,8 +504,7 @@ def substitute_ss(
   t1 = time()
   # Checking for SS selections
   deleted_annotations = ann.remove_empty_annotations(
-      hierarchy=model.get_hierarchy(),
-      asc=selection_cache)
+      hierarchy=model.get_hierarchy())
   if not deleted_annotations.is_empty():
     if processed_params.skip_empty_ss_elements:
       if len(deleted_annotations.helices) > 0:

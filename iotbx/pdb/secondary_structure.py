@@ -735,7 +735,7 @@ class annotation(structure_base):
       if asc is None:
         asc = hierarchy.atom_selection_cache()
       if remove_empty_annotations:
-        result.remove_empty_annotations(hierarchy, asc)
+        result.remove_empty_annotations(hierarchy)
       if concatenate_consecutive_helices:
         result.concatenate_consecutive_helices(hierarchy, asc)
       if split_helices_with_prolines:
@@ -744,10 +744,8 @@ class annotation(structure_base):
         result.filter_sheets_with_long_hbonds(hierarchy, asc)
     return result
 
-  def remove_empty_annotations(self, hierarchy, asc=None):
+  def remove_empty_annotations(self, hierarchy):
     # returns annotation of deleted helices and sheets
-    if asc is None:
-      asc = hierarchy.atom_selection_cache()
     h_indeces_to_delete = []
     sh_indeces_to_delete = []
     for i, h in enumerate(self.helices):

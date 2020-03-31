@@ -917,8 +917,7 @@ class manager(object):
     elif self.get_ss_annotation() is not None:
       ss_ann = self.get_ss_annotation()
     if ss_ann is not None:
-      ss_ann.remove_empty_annotations(self.get_hierarchy(),
-          self.get_atom_selection_cache())
+      ss_ann.remove_empty_annotations(self.get_hierarchy())
     return ss_ann
 
   def model_as_mmcif(self,
