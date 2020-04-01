@@ -179,6 +179,8 @@ def _silence():
   '''Helper context which shuts up stdout.'''
   if os.name == "nt":
     # Can't silence using this method on Windows. Just leave it.
+    # new windows console in python >= 3.6 does not work with os.dup2
+    # https://bugs.python.org/issue30555
     yield
     return
   sys.stdout.flush()
