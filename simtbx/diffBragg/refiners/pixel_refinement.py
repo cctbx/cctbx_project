@@ -45,10 +45,10 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.c_sigma = 0.1
         self.fcell_sigma_scale = 0.005
         self.fcell_resolution_bin_Id = None
-
+        self.big_dump = False
         self.ucell_inits = [79.1, 38.2]
         self.m_init = 10
-
+        self.compute_image_model_correlation = False
         self.spot_print_stride = 1000
         self.m = 5  # LBFGS default core parameters
         self.maxfev = 20  # LBFGS default core parameters
@@ -74,6 +74,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.global_ucell_param = True  # refine one unit cell for all shots/lattices
         self.scale_r1 = False  # auto scale Fref (reference) to match Fobs when computing R factors
         self.bad_shot_list = []  # deprecated
+        self.d = None
         self.fcell_bump = 0.1  # deprecated
         self.filter_bad_shots = False  # deprecated
         self.binner_dmin = 2  # if Fref is not None, then this defines R-factor and CC resolution binner
@@ -109,6 +110,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.curv = None  # curvatures array used internally
         self.print_all_missets = True  # prints out a list of all missetting results (when ground truth is known)
         self.verbose = True  # whether to print during iterations
+        self.merge_stat_frequency = 10
         self.print_resolution_bins = True  # whether to print the res bin R factor and CC
         self.plot_images = False  # whether to plot images
         self.iterations = 0  # iteration counter , used internally
