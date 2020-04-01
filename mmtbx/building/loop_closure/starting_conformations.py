@@ -3,6 +3,8 @@ from __future__ import absolute_import, division, print_function
 from mmtbx.building.loop_closure import utils
 from mmtbx.validation import ramalyze
 import itertools
+import numpy
+import random
 from libtbx.utils import null_out
 
 import boost.python
@@ -139,6 +141,15 @@ def get_all_starting_conformations(moving_h, change_radius,
       vs = [(None, None)]
     variants.append(vs)
   print("variants", variants, file=log)
+
+  # Filtering them, since could be
+  # [len(x) for x in variants] = [129, 129, 4, 129, 129]
+  # resulting in 1107691524 all_angles_combination
+  n_comb = numpy.prod([len(x) for x in variants])
+  if n_comb > cutoff:
+    # still aiming for ~1000
+    n_in_each = int(1000 ** (1/len(variants)))
+    variants = [random.sample(x, n_in_each) if len(x)>n_in_each else x for x in variants]
   all_angles_combination = list(itertools.product(*variants))
   # filter none combinations
   # print "len(all_angles_combination)", len(all_angles_combination)
