@@ -46,8 +46,11 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.fcell_sigma_scale = 0.005
         self.fcell_resolution_bin_Id = None
         self.big_dump = False
-        self.ucell_inits = [79.1, 38.2]
-        self.m_init = 10
+        self.ucell_inits = [79.1, 38.2]  # TODO see below comment
+        self.m_init = 10  # TODO make setting these more of a requirement
+        self.spot_scale_init = {0: 1} # TODO see below comment
+
+
         self.compute_image_model_correlation = False
         self.spot_print_stride = 1000
         self.m = 5  # LBFGS default core parameters
@@ -135,6 +138,11 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.use_rot_priors = False  # (not yet supported) whether to inc;ude priors for misset corrections
         self._refinement_millers = None  # flex array of refinement miller indices (computed by FatRefiner _setup method)
         lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
+
+    #@property
+    #def m_init(self):
+    #    if self.S is not None:
+    #        return self.S.crystal.Ncells_abc[0]
 
     @property
     def Fref(self):
