@@ -83,6 +83,7 @@ from copy import deepcopy
 from simtbx.diffBragg.utils import compare_with_ground_truth
 from cctbx import miller, sgtbx
 import itertools
+#import numexpr
 from IPython import embed
 
 warnings.filterwarnings("ignore")
@@ -1029,6 +1030,7 @@ class FatRefiner(PixelRefinement):
         self.compute_functional_and_gradients()
         return self._f, self._g, self.d
 
+    #@profile
     def compute_functional_and_gradients(self):
         if self.calc_func:
             if self.verbose:
@@ -1085,7 +1087,10 @@ class FatRefiner(PixelRefinement):
                     self._evaluate_averageI()
 
                     # here we can correlate modelLambda with Imeas
-                    _overlay_corr, _ = pearsonr(self.Imeas.ravel(), self.model_Lambda.ravel())
+                    if self.compute_image_model_correlation:
+                        _overlay_corr, _ = pearsonr(self.Imeas.ravel(), self.model_Lambda.ravel())
+                    else:
+                        _overlay_corr = np.nan
                     self.image_corr[self._i_shot] += _overlay_corr
 
                     if self.poisson_only:
@@ -1154,7 +1159,10 @@ class FatRefiner(PixelRefinement):
             else:
                 xr = self.XREL[self._i_shot][i_spot]  # fast scan pixels
                 yr = self.YREL[self._i_shot][i_spot]  # slow scan pixels
-                abc_dI_dtheta = [xr*self.G2, yr*self.G2, self.G2]
+                if self.G2 != 1:
+                    abc_dI_dtheta = [xr*self.G2, yr*self.G2, self.G2]
+                else:
+                    abc_dI_dtheta = [xr, yr, self.G2]
                 abc_d2I_dtheta2 = [0, 0, 0]
 
             if self.rescale_params or self.bg_offset_positive:
@@ -1355,14 +1363,7 @@ class FatRefiner(PixelRefinement):
         if not max_h in equivs and self.debug:  # TODO understand this more, how does this effect things
            print("Warning max_h  mismatch!!!!!!")
 
-    def _derivative_convenience_factors(self):
-        one_over_Lambda = 1. / self.model_Lambda
-        self.one_minus_k_over_Lambda = (1. - self.Imeas * one_over_Lambda)
-        self.k_over_squared_Lambda = self.Imeas * one_over_Lambda * one_over_Lambda
 
-        self.u = self.Imeas - self.model_Lambda
-        self.one_over_v = 1. / (self.model_Lambda + self.sigma_r ** 2)
-        self.one_minus_2u_minus_u_squared_over_v = 1 - 2 * self.u - self.u * self.u * self.one_over_v
 
     def _priors(self):
         # experimental, not yet proven to help
@@ -1426,7 +1427,8 @@ class FatRefiner(PixelRefinement):
                 self._verify_diag()
             else:
                 self.num_positive_curvatures = 0
-                self.d = None
+                _d = None
+                self.d = _d
 
         if self.use_curvatures:
             if self.tot_neg_curv == 0:
@@ -1439,7 +1441,8 @@ class FatRefiner(PixelRefinement):
                     print("\tFREEZING THE CURVATURE: DISASTER AVERSION")
                     print("*\t*****************************************")
         else:
-            self.d = None
+            _d = None
+            self.d = _d
 
     def _initialize_GT_crystal_misorientation_analysis(self):
         self.all_ang_off = []
@@ -1590,20 +1593,41 @@ class FatRefiner(PixelRefinement):
         return cterm.sum()
 
     def _gaussian_target(self):
-        fterm = .5 * (self.log2pi + 2*self.log_Lambda_plus_sigma_readout + self.u * self.u * self.one_over_v).sum()
-        return fterm
+        #fterm = (self.log2pi + 2*self.log_Lambda_plus_sigma_readout + self.u*self.u*self.one_over_v).sum()
+        #return .5*fterm
+        fterm = (self.log2pi + 2*self.log_Lambda_plus_sigma_readout + self.u_u_one_over_v).sum()
+        return .5*fterm
 
     def _gaussian_d(self, d):
-        gterm = .5 * (d * self.one_over_v * self.one_minus_2u_minus_u_squared_over_v).sum()
-        return gterm
+        gterm = (d*self.one_over_v_times_one_minus_2u_minus_u_squared_over_v).sum()
+        #a = self.one_over_v_times_one_minus_2u_minus_u_squared_over_v
+        #gterm = numexpr.evaluate('sum(d*a)')
+        #local_dict={'a': self.one_over_v_times_one_minus_2u_minus_u_squared_over_v, 'd':d})
+        #gterm = 0.5*gterm[()]
+        return .5*gterm
 
     def _gaussian_d2(self, d, d2):
-        cterm = self.one_over_v * (d2 * self.one_minus_2u_minus_u_squared_over_v -
-                                   d * d * (self.one_over_v * self.one_minus_2u_minus_u_squared_over_v -
-                                            (
-                                                        2 + 2 * self.u * self.one_over_v + self.u * self.u * self.one_over_v * self.one_over_v)))
-        cterm = .5 * cterm.sum()
+        #cterm = self.one_over_v * (d2*self.one_minus_2u_minus_u_squared_over_v -
+        #                           d*d*(self.one_over_v*self.one_minus_2u_minus_u_squared_over_v -
+        #                                    (2 + 2*self.u*self.one_over_v + self.u*self.u*self.one_over_v*self.one_over_v)))
+        #cterm = .5 * (cterm.sum())
+        cterm = self.one_over_v * (d2*self.one_minus_2u_minus_u_squared_over_v -
+                                   d*d*(self.one_over_v_times_one_minus_2u_minus_u_squared_over_v -
+                                        (2 + 2*self.u_times_one_over_v + self.u_u_one_over_v*self.one_over_v)))
+        cterm = .5 * (cterm.sum())
         return cterm
+
+    def _derivative_convenience_factors(self):
+        one_over_Lambda = 1. / self.model_Lambda
+        self.one_minus_k_over_Lambda = (1. - self.Imeas * one_over_Lambda)
+        self.k_over_squared_Lambda = self.Imeas * one_over_Lambda * one_over_Lambda
+
+        self.u = self.Imeas - self.model_Lambda
+        self.one_over_v = 1. / (self.model_Lambda + self.sigma_r ** 2)
+        self.u_times_one_over_v = self.u*self.one_over_v
+        self.u_u_one_over_v = self.u*self.u_times_one_over_v
+        self.one_minus_2u_minus_u_squared_over_v = 1 - 2 * self.u - self.u_u_one_over_v
+        self.one_over_v_times_one_minus_2u_minus_u_squared_over_v = self.one_over_v*self.one_minus_2u_minus_u_squared_over_v
 
     def _evaluate_log_averageI(self):  # for Poisson only stats
         # fix log(x<=0)
@@ -1642,19 +1666,18 @@ class FatRefiner(PixelRefinement):
         rot_labels = ["rotX=%+3.7g" % rotX, "rotY=%+3.7g" % rotY, "rotZ=%+3.4g" % rotZ]
 
         if self.refine_Umatrix or self.refine_Bmatrix or self.refine_crystal_scale or self.refine_ncells:
-
-            master_data = {"Ncells": self.ncells_vals,
-                           "scale": self.scale_vals,
-                           "rotx": self.rotx,
-                           "roty": self.roty,
-                           "rotz": self.rotz, "origZ": self.origZ_vals}
-            for i_uc in range(self.n_ucell_param):
-                master_data["uc%d" % i_uc] = self.uc_vals[i_uc]
-
-
-            master_data = pandas.DataFrame(master_data)
-            master_data["gain"] = self.x[self.gain_xpos]
             if self.big_dump:
+                master_data = {"Ncells": self.ncells_vals,
+                               "scale": self.scale_vals,
+                               "rotx": self.rotx,
+                               "roty": self.roty,
+                               "rotz": self.rotz, "origZ": self.origZ_vals}
+                for i_uc in range(self.n_ucell_param):
+                    master_data["uc%d" % i_uc] = self.uc_vals[i_uc]
+
+
+                master_data = pandas.DataFrame(master_data)
+                master_data["gain"] = self.x[self.gain_xpos]
                 print(master_data.to_string(float_format="%2.7g"))
 
     def print_step_grads(self):
@@ -1665,11 +1688,6 @@ class FatRefiner(PixelRefinement):
         for i, (n, v) in enumerate(zip(names, vals)):
             grad = self._g[self.ucell_xstart[self._i_shot] + i]
             ucell_labels.append('G%s=%+2.7g' % (n, grad))
-        rotX = self._g[self.rotX_xpos[self._i_shot]]
-        rotY = self._g[self.rotY_xpos[self._i_shot]]
-        rotZ = self._g[self.rotZ_xpos[self._i_shot]]
-        rot_labels = ["GrotX=%+3.7g" % rotX, "GrotY=%+3.7g" % rotY, "GrotZ=%+3.4g" % rotZ]
-        xnorm = norm(self.x)
 
         if self.big_dump:
             master_data ={"GNcells": self.Gncells_vals,
@@ -1684,20 +1702,21 @@ class FatRefiner(PixelRefinement):
             print(master_data.to_string(float_format="%2.7g"))
 
         if self.calc_curvatures:
-            if self.refine_Umatrix or self.refine_Bmatrix or self.refine_crystal_scale or self.refine_ncells:
-                master_data = {"CUNcells": self.CUncells_vals,
-                               "CUscale": self.CUscale_vals,
-                               "CUrotx": self.CUrotx,
-                               "CUroty": self.CUroty,
-                               "CUrotz": self.CUrotz, "CUorigZ": self.CUorigZ_vals}
+            if self.big_dump:
+                if self.refine_Umatrix or self.refine_Bmatrix or self.refine_crystal_scale or self.refine_ncells:
+                    master_data = {"CUNcells": self.CUncells_vals,
+                                   "CUscale": self.CUscale_vals,
+                                   "CUrotx": self.CUrotx,
+                                   "CUroty": self.CUroty,
+                                   "CUrotz": self.CUrotz, "CUorigZ": self.CUorigZ_vals}
 
-                for i_uc in range(self.n_ucell_param):
-                    master_data["CUuc%d" % i_uc] = self.CUuc_vals[i_uc]
+                    for i_uc in range(self.n_ucell_param):
+                        master_data["CUuc%d" % i_uc] = self.CUuc_vals[i_uc]
 
-                master_data = pandas.DataFrame(master_data)
-                master_data["CUgain"] = self.curv[self.gain_xpos]
-                if self.big_dump:
-                    print(master_data.to_string(float_format="%2.7g"))
+                    master_data = pandas.DataFrame(master_data)
+                    master_data["CUgain"] = self.curv[self.gain_xpos]
+                    if self.big_dump:
+                        print(master_data.to_string(float_format="%2.7g"))
 
         # Compute the mean, min, max, variance  and median crystal scale
         # Note we must also include the spot_scale in the diffBragg instance if its not unity
@@ -1738,7 +1757,7 @@ class FatRefiner(PixelRefinement):
                     % (self.gnorm, Xnorm * self.trad_conv_eps, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
                        ", ".join(map(str, self.neg_curv_shots)), scale_stats_string, stat_bins_str,  Istat_bins_str))
 
-        if self.Fref is not None:
+        if self.Fref is not None and self.iterations % self.merge_stat_frequency == 0:
             R_overall = self.Fobs_Fref_Rfactor(use_binning=False, auto_scale=self.scale_r1)
             CC_overall = self.Fobs.correlation(self.Fref_aligned).coefficient()
             print("R-factor overall: %.4f, CC overall: %.4f" % (R_overall, CC_overall))
