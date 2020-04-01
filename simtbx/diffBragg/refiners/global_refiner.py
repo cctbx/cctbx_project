@@ -304,7 +304,7 @@ class FatRefiner(PixelRefinement):
     def _evaluate_averageI(self):
         """model_Lambda means expected intensity in the pixel"""
         self.model_Lambda = \
-            self.gain_fac * self.gain_fac * (self.tilt_plane + self.scale_fac * self.model_bragg_spots)
+            self.gain_fac * self.gain_fac * (self.tilt_plane + self.model_bragg_spots)
 
     def _setup(self):
         # Here we go!  https://youtu.be/7VvkXA6xpqI
@@ -943,57 +943,69 @@ class FatRefiner(PixelRefinement):
         self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
         self.D.update_dxtbx_geoms(det, self.S.beam.nanoBragg_constructor_beam, self._panel_id)
 
-    def _extract_rotXYZ_derivative_pixels(self):
+    def _extract_Umatrix_derivative_pixels(self):
         self.rotX_dI_dtheta = self.rotY_dI_dtheta = self.rotZ_dI_dtheta = 0
-        self.rot_second_deriv = [0, 0, 0]
+        self.rotX_d2I_dtheta2 = self.rotY_d2I_dtheta2 = self.rotZ_d2I_dtheta2 = 0
+        # convenient storage of the gain and scale as a single parameter
+        SG = self.scale_fac*self.G2
         if self.refine_Umatrix:
             if self.refine_rotX:
-                self.rotX_dI_dtheta = self.scale_fac*self.G2*self.D.get_derivative_pixels(0).as_numpy_array()
+                self.rotX_dI_dtheta = SG*self.D.get_derivative_pixels(0).as_numpy_array()
                 if self.calc_curvatures:
-                    self.rot_second_deriv[0] = self.D.get_second_derivative_pixels(0).as_numpy_array()
+                    self.rotX_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(0).as_numpy_array()
+
             if self.refine_rotY:
-                self.rotY_dI_dtheta = self.scale_fac*self.G2*self.D.get_derivative_pixels(1).as_numpy_array()
+                self.rotY_dI_dtheta = SG*self.D.get_derivative_pixels(1).as_numpy_array()
                 if self.calc_curvatures:
-                    self.rot_second_deriv[1] = self.D.get_second_derivative_pixels(1).as_numpy_array()
+                    self.rotY_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(1).as_numpy_array()
+
             if self.refine_rotZ:
-                self.rotZ_dI_dtheta = self.scale_fac*self.G2*self.D.get_derivative_pixels(2).as_numpy_array()
+                self.rotZ_dI_dtheta = SG*self.D.get_derivative_pixels(2).as_numpy_array()
                 if self.calc_curvatures:
-                    self.rot_second_deriv[2] = self.D.get_second_derivative_pixels(2).as_numpy_array()
+                    self.rotZ_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(2).as_numpy_array()
 
-    def _extract_pixel_data(self):
-
-        self._extract_rotXYZ_derivative_pixels()
-
-        self.ucell_derivatives = [0] * self.n_ucell_param
-        self.ucell_second_derivatives = [0] * self.n_ucell_param
+    def _extract_Bmatrix_derivative_pixels(self):
+        # the Bmatrix derivatives are stored for each unit cell parameter (UcellManager.variables)
+        self.ucell_dI_dtheta = [0] * self.n_ucell_param
+        self.ucell_d2I_dtheta2 = [0] * self.n_ucell_param
+        SG = self.scale_fac*self.G2
         if self.refine_Bmatrix:
             for i in range(self.n_ucell_param):
-                self.ucell_derivatives[i] = self.D.get_derivative_pixels(3 + i).as_numpy_array()
+                self.ucell_dI_dtheta[i] = SG*self.D.get_derivative_pixels(3 + i).as_numpy_array()
                 if self.calc_curvatures:
-                    self.ucell_second_derivatives[i] = self.D.get_second_derivative_pixels(3 + i).as_numpy_array()
+                    self.ucell_d2I_dtheta2[i] = SG*self.D.get_second_derivative_pixels(3 + i).as_numpy_array()
 
-        self.ncells_deriv = self.detdist_deriv = self.fcell_deriv = 0
-        self.ncells_second_deriv = self.detdist_second_deriv = self.fcell_second_deriv = 0
+    def _extract_mosaic_parameter_m_derivative_pixels(self):
+        self.m_dI_dtheta = self.m_d2I_dtheta2 = 0
+        SG = self.scale_fac * self.G2
         if self.refine_ncells:
-            self.ncells_deriv = self.D.get_derivative_pixels(self._ncells_id).as_numpy_array()
-            val = self._get_m_val(self._i_shot)-3   # np.exp(self.x[self.ncells_xpos[self._i_shot]])
-            if self.rescale_params:
-                val = val*self.m_sigma
-            self.ncells_deriv *= val
+            self.m_dI_dtheta = SG*self.D.get_derivative_pixels(self._ncells_id).as_numpy_array()
             if self.calc_curvatures:
-                assert not self.rescale_params
-                self.ncells_second_deriv = self.D.get_second_derivative_pixels(self._ncells_id).as_numpy_array()
-                self.ncells_second_deriv *= (val*val)  # NOTE: check me
-        if self.refine_detdist:
-            self.detdist_deriv = self.D.get_derivative_pixels(self._originZ_id).as_numpy_array()
-            if self.calc_curvatures:
-                self.detdist_second_deriv = self.D.get_second_derivative_pixels(self._originZ_id).as_numpy_array()
-        if self.refine_Fcell:
-            self.fcell_deriv = self.D.get_derivative_pixels(self._fcell_id).as_numpy_array()
-            if self.calc_curvatures:
-                self.fcell_second_deriv = self.D.get_second_derivative_pixels(self._fcell_id).as_numpy_array()
+                self.m_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(self._ncells_id).as_numpy_array()
 
-        self.model_bragg_spots = self.D.raw_pixels_roi.as_numpy_array()
+    def _extract_originZ_derivative_pixels(self):
+        self.detdist_dI_dtheta = self.detdist_d2I_dtheta2 = 0
+        SG = self.scale_fac*self.G2
+        if self.refine_detdist:
+            self.detdist_dI_dtheta  = SG*self.D.get_derivative_pixels(self._originZ_id).as_numpy_array()
+            if self.calc_curvatures:
+                self.detdist_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(self._originZ_id).as_numpy_array()
+
+    def _extract_Fcell_derivative_pixels(self):
+        self.fcell_deriv = self.fcell_second_deriv = 0
+        if self.refine_Fcell:
+            SG = self.scale_fac*self.G2
+            self.fcell_deriv = SG*self.D.get_derivative_pixels(self._fcell_id).as_numpy_array()
+            if self.calc_curvatures:
+                self.fcell_second_deriv = SG*self.D.get_second_derivative_pixels(self._fcell_id).as_numpy_array()
+
+    def _extract_pixel_data(self):
+        self.model_bragg_spots = self.scale_fac*self.D.raw_pixels_roi.as_numpy_array()
+        self._extract_Umatrix_derivative_pixels()
+        self._extract_Bmatrix_derivative_pixels()
+        self._extract_mosaic_parameter_m_derivative_pixels()
+        self._extract_originZ_derivative_pixels()
+        self._extract_Fcell_derivative_pixels()
 
     def _update_ucell(self):
         if self.rescale_params:
@@ -1107,11 +1119,12 @@ class FatRefiner(PixelRefinement):
             self._priors()
             self._parameter_freezes()
             self._mpi_aggregation()
-            self._curvature_analysis()
 
             self._f = self.target_functional
             self._g = self.grad
-            self.g = self.grad  # TODO why all these repeated definitions ?
+            self.g = self.grad  # TODO why all these repeated definitions ?, self.g is needed by _verify_diag
+
+            self._curvature_analysis()
 
             # reset ROI pixels TODO: is this necessary
             self.D.raw_pixels *= 0
@@ -1133,28 +1146,65 @@ class FatRefiner(PixelRefinement):
 
         return self._f, self._g
 
-    def _Bmatrix_derivatives(self):
-        if self.refine_Bmatrix:
-            # unit cell derivative
-            for i_ucell_p in range(self.n_ucell_param):
-                xpos = self.ucell_xstart[self._i_shot] + i_ucell_p
-                d = self.scale_fac * self.G2 * self.ucell_derivatives[i_ucell_p]
-                if self.rescale_params:
-                    d *= self.ucell_sigmas[i_ucell_p]
-                self.grad[xpos] += self._grad_accumulate(d)
+    def _background_derivatives(self, i_spot):
+        if self.refine_background_planes:
+            if self.bg_offset_only:  # option to only refine c (t3 in manuscript) plane
+                abc_dI_dtheta = [0, 0, self.G2*self.c]
+                abc_d2I_dtheta2 = [0, 0, 0]
+            else:
+                xr = self.XREL[self._i_shot][i_spot]  # fast scan pixels
+                yr = self.YREL[self._i_shot][i_spot]  # slow scan pixels
+                abc_dI_dtheta = [xr*self.G2, yr*self.G2, self.G2]
+                abc_d2I_dtheta2 = [0, 0, 0]
 
+            if self.rescale_params or self.bg_offset_positive:
+                if self.bg_offset_only:
+                    # here we apply case2 type reparameterization to the c derivative
+                    abc_dI_dx = [0, 0, abc_dI_dtheta[2]*self.c*self.c_sigma]
+                    abc_d2I_dx2 = [0, 0, abc_dI_dx[2]*self.c_sigma]
+                else:
+                    # here we apply case1 type reparameterization to a,b,c derivs
+                    abc_dI_dx = [abc_dI_dtheta[0]*self.a_sigma,
+                                 abc_dI_dtheta[1]*self.b_sigma,
+                                 abc_dI_dtheta[2]*self.c_sigma]
+                    abc_d2I_dx2 = [0, 0, 0]
+                bg_deriv = abc_dI_dx
+                bg_second_deriv = abc_d2I_dx2
+            else:
+                bg_deriv = abc_dI_dtheta
+                bg_second_deriv = abc_d2I_dtheta2
+
+            x_positions = [self.bg_a_xstart[self._i_shot][i_spot],
+                           self.bg_b_xstart[self._i_shot][i_spot],
+                           self.bg_c_xstart[self._i_shot][i_spot]]
+            for ii, xpos in enumerate(x_positions):
+                d = bg_deriv[ii]
+                self.grad[xpos] += self._grad_accumulate(d)
                 if self.calc_curvatures:
-                    assert not self.rescale_params
-                    d2 = self.scale_fac * self.G2 * self.ucell_second_derivatives[i_ucell_p]
+                    d2 = bg_second_deriv[ii]
                     self.curv[xpos] += self._curv_accumulate(d, d2)
 
     def _get_rotXYZ_first_derivs(self):
-        derivs = [self.rotX_dI_dtheta, self.rotY_dI_dtheta, self.rotZ_dI_dtheta]
         if self.rescale_params:
-            sigmas = [self.rotX_sigma, self.rotY_sigma, self.rotZ_sigma]
-            for i in range(3):
-                derivs[i] = derivs[i]*sigmas[i]
+            # rot XYZ uses a case1 type rescaling
+            derivs = [self.rotX_sigma*self.rotX_dI_dtheta,
+                      self.rotY_sigma*self.rotY_dI_dtheta,
+                      self.rotZ_sigma*self.rotZ_dI_dtheta]
+        else:
+            derivs = [self.rotX_dI_dtheta, self.rotY_dI_dtheta, self.rotZ_dI_dtheta]
+
         return derivs
+
+    def _get_rotXYZ_second_derivs(self):
+        if self.rescale_params:
+            # rot XYZ uses a case1 type rescaling
+            second_derivs = [(self.rotX_sigma**2)*self.rotX_d2I_dtheta2,
+                             (self.rotY_sigma**2)*self.rotY_d2I_dtheta2,
+                             (self.rotZ_sigma**2)*self.rotZ_d2I_dtheta2]
+        else:
+            second_derivs = [self.rotX_d2I_dtheta2, self.rotY_d2I_dtheta2, self.rotZ_d2I_dtheta2]
+
+        return second_derivs
 
     def _Umatrix_derivatives(self):
         if self.refine_Umatrix:
@@ -1162,69 +1212,81 @@ class FatRefiner(PixelRefinement):
                            self.rotY_xpos[self._i_shot],
                            self.rotZ_xpos[self._i_shot]]
             derivs = self._get_rotXYZ_first_derivs()
+            second_derivs = self._get_rotXYZ_second_derivs()
             for ii, xpos in enumerate(x_positions):
                 d = derivs[ii]
-                #if self.rescale_params:
-                #    d *= rot_sigs[ii]
                 self.grad[xpos] += self._grad_accumulate(d)
                 if self.calc_curvatures:
-                    assert not self.rescale_params
-                    d2 = self.scale_fac * self.G2 * self.rot_second_deriv[ii]
+                    d2 = second_derivs[ii]
                     self.curv[xpos] += self._curv_accumulate(d, d2)
 
-    def _background_derivatives(self, i_spot):
-        if self.refine_background_planes:
-            if self.bg_offset_only:  # option to only refine c plane
-                x_positions = [self.bg_c_xstart[self._i_shot][i_spot]]
-                if self.bg_offset_positive:
-                    bg_deriv = [self.G2 * self.c]
-                    bg_second_deriv = [self.G2 * self.c]  # same as bg_deriv ...
-                else:
-                    bg_deriv = [self.G2]
-                    bg_second_deriv = [0]
-                if self.rescale_params:
-                    bg_deriv = [bg_deriv[0] * self.c_sigma]
-                    bg_second_deriv = [bg_second_deriv[0] * self.c_sigma * self.c_sigma]  # NOTE check me
-            else:
-                xr = self.XREL[self._i_shot][i_spot]  # fast scan pixels
-                yr = self.YREL[self._i_shot][i_spot]  # slow scan pixels
-                if self.rescale_params:
-                    bg_deriv = [xr * self.G2 * self.a_sigma, yr * self.G2 * self.b_sigma, self.G2 * self.c_sigma]
-                else:
-                    bg_deriv = [xr * self.G2, yr * self.G2, self.G2]
-                bg_second_deriv = [0, 0, 0]
-                x_positions = [self.bg_a_xstart[self._i_shot][i_spot],
-                               self.bg_b_xstart[self._i_shot][i_spot],
-                               self.bg_c_xstart[self._i_shot][i_spot]]
+    def _get_ucell_first_derivatives(self):
+        derivs = []
+        for i_ucell in range(self.n_ucell_param):
+            d = self.ucell_dI_dtheta[i_ucell]
+            if self.rescale_params:
+                sigma = self.ucell_sigmas[i_ucell]
+                d = d*sigma
+            derivs.append(d)
+        return derivs
 
-            for ii, xpos in enumerate(x_positions):
-                d = bg_deriv[ii]
+    def _get_ucell_second_derivatives(self):
+        second_derivs = []
+        for i_ucell in range(self.n_ucell_param):
+            d2 = self.ucell_d2I_dtheta2[i_ucell]
+            if self.rescale_params:
+                sigma_squared = self.ucell_sigmas[i_ucell]**2
+                d2 = d2*sigma_squared
+            second_derivs.append(d2)
+        return second_derivs
+
+    def _Bmatrix_derivatives(self):
+        if self.refine_Bmatrix:
+            # unit cell derivative
+            derivs = self._get_ucell_first_derivatives()
+            second_derivs = self._get_ucell_second_derivatives()
+            for i_ucell in range(self.n_ucell_param):
+                xpos = self.ucell_xstart[self._i_shot] + i_ucell
+                d = derivs[i_ucell]
                 self.grad[xpos] += self._grad_accumulate(d)
                 if self.calc_curvatures:
-                    assert not self.rescale_params
-                    d2 = bg_second_deriv[ii]
+                    d2 = second_derivs
                     self.curv[xpos] += self._curv_accumulate(d, d2)
 
     def _mosaic_parameter_m_derivatives(self):
-        # NOTE ncells deriv scale factor computed in function above
         if self.refine_ncells:
-            d = self.scale_fac * self.G2 * self.ncells_deriv
+            theta = self._get_m_val(self._i_shot)  # mosaic parameter "m"
+            theta_minus_three = theta - 3
+            sig = self.m_sigma
+            if self.rescale_params:
+                # case 3 rescaling
+                sig_theta_minus_three = sig*theta_minus_three
+                d = self.m_dI_dtheta*sig_theta_minus_three
+                d2 = self.m_d2I_dtheta2*(sig_theta_minus_three*sig_theta_minus_three) + \
+                     self.m_dI_dtheta*(sig*sig_theta_minus_three)
+            else:
+                # case 4 rescaling with theta_o = 3
+                d = self.m_dI_dtheta*theta_minus_three
+                d2 = self.m_d2I_dtheta2*(theta_minus_three*theta_minus_three) + self.m_dI_dtheta*theta_minus_three
+
             xpos = self.ncells_xpos[self._i_shot]
             self.grad[xpos] += self._grad_accumulate(d)
             if self.calc_curvatures:
-                d2 = self.scale_fac * self.G2 * self.ncells_second_deriv
                 self.curv[xpos] += self._curv_accumulate(d, d2)
 
     def _originZ_derivatives(self):
         if self.refine_detdist:
-            xpos = self.originZ_xpos[self._i_shot]
-            d = self.scale_fac * self.G2 * self.detdist_deriv
             if self.rescale_params:
-                d *= self.originZ_sigma
+                # case 1 type of rescaling
+                d = self.detdist_dI_dtheta*self.originZ_sigma
+                d2 = self.detdist_d2I_dtheta2*(self.originZ_sigma*self.originZ_sigma)
+            else:
+                d = self.detdist_dI_dtheta
+                d2 = self.detdist_d2I_dtheta2
+
+            xpos = self.originZ_xpos[self._i_shot]
             self.grad[xpos] += self._grad_accumulate(d)
             if self.calc_curvatures:
-                assert not self.rescale_params
-                d2 = self.scale_fac * self.G2 * self.detdist_second_deriv
                 self.curv[xpos] += self._curv_accumulate(d, d2)
 
     def _Fcell_derivatives(self, i_spot):
@@ -1233,44 +1295,54 @@ class FatRefiner(PixelRefinement):
         if self.refine_Fcell and multi >= self.min_multiplicity:
             i_fcell = self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
             xpos = self.fcell_xstart + i_fcell
-            fcell = self._get_fcell_val(i_fcell)  # todo: interact with a vectorized object instead
+
+            self.fcell_dI_dtheta = self.fcell_deriv
+            self.fcell_d2I_d2theta2 = self.fcell_second_deriv
 
             if self.rescale_params:
-                resolution_id = self.res_group_id_from_fcell_index[i_fcell]  # TODO
-                sig = self.sigma_for_res_id[resolution_id] * self.fcell_sigma_scale  # TODO
-                d = sig * self.scale_fac * self.G2 * self.fcell_deriv
+                fcell = self._get_fcell_val(i_fcell)  # todo: interact with a vectorized object instead
+                resolution_id = self.res_group_id_from_fcell_index[i_fcell]
+                sig = self.sigma_for_res_id[resolution_id] * self.fcell_sigma_scale
                 if self.log_fcells:
-                    d *= fcell
+                    # case 2 rescaling
+                    sig_times_fcell = sig*fcell
+                    d = sig_times_fcell*self.fcell_dI_dtheta
+                    d2 = (sig_times_fcell*sig_times_fcell)*self.fcell_d2I_d2theta2 + (sig*sig_times_fcell)*self.fcell_dI_dtheta
+                else:
+                    # case 1 rescaling
+                    d = sig*self.fcell_dI_dtheta
+                    d2 = (sig*sig)*self.fcell_d2I_d2theta2
             else:
-                d = self.scale_fac * self.G2 * self.fcell_deriv
-                if self.log_fcells:
-                    d *= np_exp(fcell)
+                d = self.fcell_dI_dtheta
+                d2 = self.fcell_d2I_d2theta2
 
             self.grad[xpos] += self._grad_accumulate(d)
             if self.calc_curvatures:
-                assert not self.rescale_params
-                d2 = self.scale_fac * self.G2 * self.fcell_second_deriv
-                if self.log_fcells:
-                    ex_fcell = np_exp(fcell)
-                    d2 = ex_fcell * d + ex_fcell * ex_fcell * d2
                 self.curv[xpos] += self._curv_accumulate(d, d2)
 
     def _spot_scale_derivatives(self):
         if self.refine_crystal_scale:
-            d = self.G2 * self.scale_fac * self.model_bragg_spots
+            dI_dtheta = (self.G2/self.scale_fac)*self.model_bragg_spots
+            # second derivative is 0 with respect to scale factor
             if self.rescale_params:
-                d *= (self.scale_fac * self.spot_scale_sigma)
+                sig = self.spot_scale_sigma
+                # case 2 type rescaling
+                d = dI_dtheta*self.scale_fac * sig
+                d2 = dI_dtheta*(self.scale_fac*sig*sig)
+            else:
+                # case 4 type rescaling
+                d = dI_dtheta*self.scale_fac
+                d2 = d  # same as first derivative
+
             xpos = self.spot_scale_xpos[self._i_shot]
             self.grad[xpos] += self._grad_accumulate(d)
             if self.calc_curvatures:
-                assert not self.rescale_params
-                d2 = d
                 self.curv[xpos] += self._curv_accumulate(d, d2)
 
     def _gain_factor_derivatives(self):
         if self.refine_gain_fac:
-            #raise NotImplementedError("gain factor derivatives need more testing")
-            d = 2 * self.gain_fac * (self.tilt_plane + self.scale_fac * self.model_bragg_spots)
+            raise NotImplementedError("gain factor derivatives need more testing")
+            d = 2*self.gain_fac*(self.tilt_plane + self.model_bragg_spots)
             self.grad[self.gain_xpos] += self._grad_accumulate(d)
             if self.calc_curvatures:
                 d2 = d / self.gain_fac
@@ -1357,7 +1429,7 @@ class FatRefiner(PixelRefinement):
                 self.d = None
 
         if self.use_curvatures:
-            if self.tot_neg_curv == 0:  #np_all(self.curv.as_numpy_array() >= 0):
+            if self.tot_neg_curv == 0:
                 self.request_diag_once = False
                 self.d = flex_double(self.curv.as_numpy_array())
                 self._verify_diag()
