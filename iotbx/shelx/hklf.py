@@ -90,7 +90,59 @@ def miller_array_export_as_shelx_hklf(
     print(line, file=file_object)
   print("   0   0   0    0.00    0.00", file=file_object)
 
+
+def args_for_polarization_run(file_name, unit_cell):
+  from libtbx import smart_open
+
+  # Process and check filenames
+  import os
+  file_root = os.path.splitext(file_name)[0]
+  p4p_filename = file_root + '.p4p'
+  raw_filename = file_root + '.raw'
+  offsets_filename = file_root + '.offsets'
+  assert os.path.exists(p4p_filename), \
+      "{} not found".format(p4p_filename)
+  assert os.path.exists(raw_filename), \
+      "{} not found".format(raw_filename)
+  assert os.path.exists(offsets_filename), \
+      "{} not found".format(offsets_filename)
+
+  # Read .raw file and store as flex array
+  raw_lines = flex.split_lines(
+      smart_open.for_reading(file_name=raw_filename).read())
+
+  # Store orientation matrix as list of elements
+  with open(p4p_filename) as p4pfile:
+    head, line = '', ''
+    ormx_list = []
+    try:
+      while head != 'ORT1':
+        line = p4pfile.readline()
+        head = line.split()[0]
+    except StopIteration:
+      raise RuntimeError, \
+          "Orientation matrix not found in {}".format(p4p_filename)
+    ormx_list.extend([float(x) for x in line.split()[1:4]])
+    line = p4pfile.readline()
+    ormx_list.extend([float(x) for x in line.split()[1:4]])
+    line = p4pfile.readline()
+    ormx_list.extend([float(x) for x in line.split()[1:4]])
+    #ort_matrix = flex.mat3_double([ormx_list])
+
+  # Read frame # offsets from file_root.offsets. Each entry is added to the 
+  # frame number in the hkl file (all frames numbered consecutively) to give 
+  # the frame number in the .raw file (frames numbered from start of run).
+  with open(offsets_filename) as offsetsfile:
+    offsets = flex.int([int(x) for x in offsetsfile.readline().split()])
+
+  # We keep the metrical matrix as a tuple, it will be implicitly converted
+  metrical_matrix = unit_cell.metrical_matrix()
+
+
+  return (raw_lines, ormx_list, offsets, metrical_matrix)
+
 class reader(iotbx_shelx_ext.hklf_reader):
+
 
   def __init__(self, 
       file_object=None, 
@@ -110,63 +162,15 @@ class reader(iotbx_shelx_ext.hklf_reader):
           "reader to load intensities with polarization"
       assert unit_cell is not None, "Must supply a unit cell to iotbx.shelx." \
           "reader to load intensities with polarization"
-      raw_lines, ort_matrix, offsets, metrical_matrix = \
+      raw_lines, ormx_list, offsets, metrical_matrix = \
           args_for_polarization_run(file_name, unit_cell)
       super(reader, self).__init__(
-          lines=hkl_lines,
-          raw_lines=raw_lines,
-          ort_matrix=ort_matrix,
-          offsets=offsets,
-          metrical_matrix=metrical_matrix)
+          hkl_lines,
+          raw_lines,
+          ormx_list,
+          offsets,
+          metrical_matrix)
 
-  def args_for_polarization_run(file_name, unit_cell):
-
-    # Process and check filenames
-    import os
-    file_root = os.path.splitext(file_name)[0]
-    p4p_filename = file_root + '.p4p'
-    raw_filename = file_root + '.raw'
-    offsets_filename = file_root + '.offsets'
-    assert os.path.exists(p4p_filename), \
-        "{} not found".format(p4p_filename)
-    assert os.path.exists(raw_filename), \
-        "{} not found".format(raw_filename)
-    assert os.path.exists(offsets_filename), \
-        "{} not found".format(offsets_filename)
-
-    # Read .raw file and store as flex array
-    raw_lines = flex.split_lines(
-        smart_open.for_reading(file_name=raw_filename).read())
-
-    # Store orientation matrix as flex.mat3_double
-    with open(p4p_filename) as p4pfile:
-      head, line = '', ''
-      ormx_list = []
-      try:
-        while head != 'ORT1':
-          line = p4pfile.readline()
-          head = line.split()[0]
-      except StopIteration:
-        raise RuntimeError, \
-            "Orientation matrix not found in {}".format(p4p_filename)
-      ormx_list.extend([float(x) for x in line.split()[1:4]])
-      line = p4pfile.readline()
-      ormx_list.extend([float(x) for x in line.split()[1:4]])
-      line = p4pfile.readline()
-      ormx_list.extend([float(x) for x in line.split()[1:4]])
-      ort_matrix = flex.mat3_double([ormx_list])
-
-    # Read frame # offsets from file_root.offsets. Each entry is added to the 
-    # frame number in the hkl file (all frames numbered consecutively) to give 
-    # the frame number in the .raw file (frames numbered from start of run).
-    with open(offsets_filename) as offsetsfile:
-      offsets = flex.int([int(x) for x in offsetsfile.readline().split()])
-
-    # We keep the metrical matrix as a tuple, it will be implicitly converted
-    metrical_matrix = unit_cell.metrical_matrix()
-
-
-    return (raw_lines, ort_matrix, offsets, metrical_matrix)
 
 
 

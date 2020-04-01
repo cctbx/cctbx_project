@@ -109,6 +109,7 @@ tst_list_base = [
   "$D/bioinformatics/test/tst_ebi_wu_blast_xml.py",
   "$D/bioinformatics/test/tst_ncbi_blast_xml.py",
   "$D/regression/tst_cif_as_pdb_1atom.py",
+  "$B/shelx/tests/tst_hklf",
   ]
 
 # failing tests on Windows, Python 2.7

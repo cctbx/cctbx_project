@@ -17,6 +17,12 @@ namespace iotbx { namespace shelx { namespace boost_python {
       using namespace boost::python;
       class_<wt>("hklf_reader", no_init)
         .def(init<af::const_ref<std::string> const&>((arg("lines"))))
+        .def(init<
+            af::const_ref<std::string> const&,
+            af::const_ref<std::string> const&,
+            scitbx::mat3<double> const&,
+            af::const_ref<int> const&,
+            scitbx::sym_mat3<double> const& >()) 
         .def("indices", &wt::indices)
         .def("data", &wt::data)
         .def("sigmas", &wt::sigmas)

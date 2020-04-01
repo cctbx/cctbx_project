@@ -11,7 +11,7 @@ class model(object):
     return _(cls, *args, **kwds)
 
   @classmethod
-  def from_cif(cls, model, reflections):
+  def from_cif(cls, model, reflections=None):
     """
     We could try to read in the weighting scheme.
     As for constraints and restraints, the CIF format does not support them
