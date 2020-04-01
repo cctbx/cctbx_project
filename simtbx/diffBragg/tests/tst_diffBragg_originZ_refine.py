@@ -5,6 +5,7 @@ parser.add_argument("--residuals", action='store_true')
 parser.add_argument("--oversample", type=int, default=0)
 parser.add_argument("--curvatures", action="store_true")
 parser.add_argument("--nopolar", action="store_true")
+parser.add_argument("--rescale", action="store_true")
 args = parser.parse_args()
 
 from dxtbx.model.crystal import Crystal
@@ -21,8 +22,6 @@ from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg import utils
-from simtbx.diffBragg.refiners import RefineDetdist
-
 
 ucell = (85.2, 96, 124, 90, 105, 90)
 symbol = "P121"
@@ -53,6 +52,7 @@ node = SIM.detector[0]
 node_d = node.to_dict()
 Origin = node_d["origin"][0], node_d["origin"][1], node_d["origin"][2]
 distance = Origin[2]
+gt_distance = distance
 print("Ground truth originZ=%f" % (SIM.detector[0].get_origin()[2]))
 
 
@@ -104,7 +104,6 @@ idx = np.random.permutation(n_spots)[:n_kept]
 spot_roi = spot_roi[idx]
 tilt_abc = tilt_abc[idx]
 print ("I got %d spots!" % tilt_abc.shape[0])
-
 
 #RUC = RefineDetdist(
 #    spot_rois=spot_roi,
@@ -170,7 +169,7 @@ n_global_unknowns = nucell_param + nfcell_param + ngain_param + ndetz_param + n_
 n_total_unknowns = n_local_unknowns + n_global_unknowns
 
 SIM.D.oversample_omega = False
-
+starting_originZ = SIM.detector[0].get_origin()[2]
 RUC = FatRefiner(
     n_total_params=n_total_unknowns,
     n_local_params=n_local_unknowns,
@@ -191,6 +190,7 @@ RUC = FatRefiner(
     shot_panel_ids={0: [0]*nspot},
     log_of_init_crystal_scales=None,
     all_crystal_scales=None,
+    shot_originZ_init={0: starting_originZ},
     perturb_fcell=False,
     global_ncells=True,
     global_ucell=True,
@@ -212,7 +212,10 @@ RUC.refine_Fcell = False
 RUC.refine_detdist = True
 RUC.refine_gain_fac = False
 
-RUC.max_calls = 200
+RUC.ucell_sigmas = [1]*len(UcellMan.variables)
+RUC.ucell_inits = [i for i in UcellMan.variables]
+
+RUC.max_calls = 300
 RUC.trad_conv_eps = 1e-5
 RUC.trad_conv = True
 RUC.trial_id = 0
@@ -220,13 +223,14 @@ RUC.trial_id = 0
 RUC.plot_images = False
 RUC.setup_plots()
 
+RUC.rescale_params = args.rescale
 RUC.refine_rotZ = True
 RUC.request_diag_once = False
 RUC.S = SIM
 RUC.has_pre_cached_roi_data = True
 RUC.S.D.update_oversample_during_refinement = False
 RUC.use_curvatures = False
-RUC.use_curvatures_threshold = 2
+RUC.use_curvatures_threshold = 10
 RUC.calc_curvatures = args.curvatures
 RUC.poisson_only = True
 RUC.verbose = True
@@ -238,6 +242,7 @@ if RUC.hit_break_to_use_curvatures:
     RUC.use_curvatures = True
     RUC.run(setup=False)
 
-assert abs(RUC.x[RUC.originZ_xpos[0]] - distance) < 1e-2
+refined_distance = RUC._get_originZ_val(0)
+assert abs(refined_distance - distance) < 1e-2
 print("I AM ZIM")
 print("OK!")

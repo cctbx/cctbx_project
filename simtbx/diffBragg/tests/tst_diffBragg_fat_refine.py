@@ -3,13 +3,14 @@ parser = ArgumentParser()
 parser.add_argument("--plot", action='store_true')
 parser.add_argument("--detdist", action='store_true', help='perturb then refine the detdist')
 parser.add_argument("--ncells", action='store_true', help='perturb then refine the ncells')
-parser.add_argument("--fixscale", action='store_true', help='fix the scale')
+parser.add_argument("--spotscale", action='store_true', help='refine the crystal spot scale')
 parser.add_argument("--bmatrix", action='store_true')
 parser.add_argument("--umatrix", action='store_true')
 parser.add_argument("--curvatures", action='store_true')
 parser.add_argument("--bg", action="store_true", help='refine background planes')
 parser.add_argument("--psf", action='store_true')
 parser.add_argument("--gain", action='store_true')
+parser.add_argument("--rescale", action="store_true")
 args = parser.parse_args()
 
 if args.detdist:
@@ -23,14 +24,14 @@ from cctbx import uctbx
 from scitbx.matrix import sqr, rec, col
 import numpy as np
 from scipy.spatial.transform import Rotation
-from scitbx.matrix import sqr
+from IPython import embed
 
+from simtbx.diffBragg.refiners.global_refiner import FatRefiner
 from simtbx.nanoBragg import shapetype
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg import utils
 from simtbx.diffBragg.utils import fcalc_from_pdb
-from simtbx.diffBragg.refiners import RefineAll
 from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager
 
 ucell = (55, 65, 75, 90, 95, 90)
@@ -104,7 +105,7 @@ SIM.add_Water = True
 SIM.include_noise = True
 SIM.D.add_diffBragg_spots()
 spots = SIM.D.raw_pixels.as_numpy_array()
-SIM.D.readout_noise_adu = 0
+SIM.D.readout_noise_adu = 3
 SIM._add_background()
 SIM._add_noise()
 
@@ -118,7 +119,7 @@ if args.psf:
     SIM.D.apply_psf(shapetype.Fiber, fwhm, radius)
     SIM.D.verbose = v
 
-print ("Using oversample %d" % SIM.D.oversample)
+print("Using oversample %d" % SIM.D.oversample)
 
 # This is the ground truth image:
 img = SIM.D.raw_pixels.as_numpy_array()
@@ -127,15 +128,16 @@ SIM.D.raw_pixels *= 0
 if args.psf:
     y = slice(450, 480,1)
     x = slice(650, 670, 1)
-    print ("PSF max discrepancy: %f" % abs(img_pre_psf[y,x]- img[y,x]).max())
+    print("PSF max discrepancy: %f" % abs(img_pre_psf[y,x]- img[y,x]).max())
 
 # Simulate the perturbed image for comparison
 # perturbed detector:
 if args.detdist:
     SIM.detector = det2
     SIM.D.update_dxtbx_geoms(det2, SIM.beam.nanoBragg_constructor_beam, 0)
-    print ("Modified originZ=%f" % (det2[0].get_origin()[2]))
+    print("Modified originZ=%f" % (det2[0].get_origin()[2]))
 # perturbed crystal:
+distance = SIM.detector[0].get_origin()[2]
 SIM.D.Bmatrix = C2.get_B()
 SIM.D.Umatrix = C2.get_U()
 nbcryst.dxtbx_crystal = C2
@@ -143,7 +145,7 @@ if args.ncells:
     Ncells_abc2 = 14, 14, 14
     nbcryst.Ncells_abc = Ncells_abc2
     SIM.D.set_value(9, Ncells_abc2[0])
-    print ("Modified Ncells=%f" % Ncells_abc2[0])
+    print("Modified Ncells=%f" % Ncells_abc2[0])
 
 SIM.crystal = nbcryst
 # perturbed Ncells
@@ -154,7 +156,6 @@ SIM._add_noise()
 # Perturbed image:
 img_pet = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.raw_pixels *= 0
-
 
 # spot_rois, abc_init , these are inputs to the refiner
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
@@ -167,7 +168,6 @@ spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot
 #spot_roi = spot_roi[idx]
 #tilt_abc = tilt_abc[idx]
 #print ("I kept %d spots!" % tilt_abc.shape[0])
-
 
 UcellMan = MonoclinicManager(
     a=ucell2[0],
@@ -190,7 +190,6 @@ if args.gain:
 #    plot_residuals=True,
 #    ucell_manager=UcellMan)
 
-from simtbx.diffBragg.refiners.global_refiner import FatRefiner
 
 
 # TODO: the following need to be embedded in the refiner init function..
@@ -231,7 +230,6 @@ ndetz_param = 1
 n_global_unknowns = nucell_param + nfcell_param + ngain_param + ndetz_param + n_ncell_param
 n_total_unknowns = n_local_unknowns + n_global_unknowns
 
-
 RUC = FatRefiner(
     n_total_params=n_total_unknowns,
     n_local_params=n_local_unknowns,
@@ -253,6 +251,7 @@ RUC = FatRefiner(
     log_of_init_crystal_scales=None,
     all_crystal_scales=None,
     perturb_fcell=False,
+    shot_originZ_init={0: distance},
     global_ncells=True,
     global_ucell=True,
     sgsymbol=symbol)
@@ -268,16 +267,19 @@ RUC.refine_background_planes = args.bg
 RUC.refine_Umatrix = args.umatrix
 RUC.refine_Bmatrix = args.bmatrix
 RUC.refine_ncells = args.ncells
-RUC.refine_crystal_scale = not args.fixscale
+RUC.refine_crystal_scale = args.spotscale
 RUC.refine_Fcell = False
 RUC.refine_detdist = args.detdist
 RUC.refine_gain_fac = args.gain
+RUC.ucell_sigmas = [.1, .1, .3, .005]
+RUC.ucell_inits = UcellMan.variables
+RUC.m_init = SIM.crystal.Ncells_abc[0]
+RUC.spot_scale_init = {0: 1}
 
-RUC.max_calls = 3000
+RUC.max_calls = 300
 RUC.trad_conv_eps = 1e-2
 RUC.trad_conv = True
 RUC.trial_id = 0
-
 
 RUC.plot_stride = 10
 RUC.plot_residuals = False
@@ -289,12 +291,13 @@ RUC.request_diag_once = False
 RUC.S = SIM
 RUC.has_pre_cached_roi_data = True
 RUC.S.D.update_oversample_during_refinement = False
-RUC.use_curvatures = args.curvatures
-RUC.use_curvatures_threshold = 0
+RUC.use_curvatures = False
+RUC.use_curvatures_threshold = 6
 RUC.calc_curvatures = args.curvatures
-RUC.poisson_only = True
+RUC.poisson_only = False #True
 RUC.verbose = True
 RUC.big_dump = True
+RUC.rescale_params = args.rescale
 
 RUC.gt_ucell = ucell[0], ucell[1], ucell[2], ucell[4]
 RUC.gt_ncells = Ncells_gt[0]
@@ -304,56 +307,10 @@ RUC.bg_offset_only = True
 RUC.bg_offset_positive = True
 
 RUC.run(setup_only=False)
-#if RUC.hit_break_to_use_curvatures:
-#    RUC.num_positive_curvatures = 0
-#    RUC.use_curvatures = True
-#    RUC.run(setup=False)
-
-
-
-#RUC.calc_func = True
-#RUC.compute_functional_and_gradients()
-#
-#def func(x, RUC):
-#    print("F: det dist %f" % RUC.x[-3])
-#    RUC.calc_func = True
-#    RUC.x = flex.double(x)
-#    f, g = RUC.compute_functional_and_gradients()
-#    return f
-#
-#
-#def fprime(x, RUC):
-#    print("G: det dist %f" % RUC.x[-3])
-#    RUC.calc_func = False
-#    RUC.x = flex.double(x)
-#    RUC.x = flex.double(x)
-#    f, g = RUC.compute_functional_and_gradients()
-#    return 1*g.as_numpy_array()
-#
-#
-#from scipy.optimize import fmin_l_bfgs_b
-#
-#bounds = [(-np.inf, np.inf)]*RUC.n
-#bounds[-11] = -.1*np.pi/180, .1*np.pi/180  # rotX
-#bounds[-10] = -.1*np.pi/180, .1*np.pi/180  # roty
-#bounds[-9] = -.1*np.pi/180, .1*np.pi/180  # rotZ
-#bounds[-8] = 50, 60  # a
-#bounds[-7] = 60, 70  #  b
-#bounds[-6] = 70, 80  # c
-#bounds[-5] = 93*np.pi/180, 97*np.pi/180.  # beta
-#bounds[-4] = 7, 30  # ncells
-#bounds[-3] = -170, -150  # detdist
-#bounds[-2] = 1, 1  # gain
-#bounds[-1] = 1, 1  # scale
-#
-#print("GO!")
-##out = fmin_l_bfgs_b(func=func, x0=np.array(RUC.x),
-##                    fprime=fprime,args=[RUC]) #, bounds=bounds)
-#out = fmin_l_bfgs_b(func=func, factr=1000, x0=np.array(RUC.x),
-#                    fprime=fprime, maxls=100,
-#                    pgtol=1e-7,
-#                    args=(RUC,),
-#                    bounds=bounds)
+if RUC.hit_break_to_use_curvatures:
+    RUC.num_positive_curvatures = 0
+    RUC.use_curvatures = True
+    RUC.run(setup=False)
 
 ang, ax = RUC.get_correction_misset(as_axis_angle_deg=True, i_shot=0)
 if ang > 0:
@@ -379,32 +336,32 @@ print("Perturbation axis =%+2.7g,%+2.7g,%+2.7g and angle=%+2.7g deg"
 print("Misset applied during refinement: axis=%+2.7g,%+2.7g,%+2.7g and angle=%+2.7g deg"
       % (ax[0], ax[1], ax[2], ang))
 
-# error in initial unit cell parameters
-err_init = np.linalg.norm([abs(u-u_init)/u for u, u_init in zip(ucell, ucell2)])*100
-
-# error in refined unit cell parameters
-err_ref = np.linalg.norm([abs(u-u_ref)/u for u, u_ref in zip(ucell, ucell_ref)])*100
-
-if args.bmatrix:
-    assert err_ref < 1e-1 * err_init
-
-# NOTE, this test might change, e.g. angle could be negative and axis could be the same...
-if args.umatrix:
-    # the initial perturbation matrix:
-    R1 = rec(perturb_rot_axis, (3, 1)).axis_and_angle_as_r3_rotation_matrix(perturb_rot_ang, deg=True)
-    # restoring purturbation applied after refinement:
-    R2 = ax.axis_and_angle_as_r3_rotation_matrix(ang, deg=True)
-
-    # the hope is that the refined R2 cancels the effect of R1
-    # hence, the product R1 and R2 should be ~ Identity
-    I = np.reshape(R1 * R2, (3, 3))
-    assert np.all(np.round(I - np.eye(3), 3) == np.zeros((3, 3)))
-    assert final_Umat_norm < 1e-1*init_Umat_norm
-
-if args.ncells:
-    ncells_val = np.exp(RUC.x[RUC.ncells_xpos[0]]) + 3
-    #ncells_val = RUC.x[RUC.ncells_xpos[0]]
-    assert np.round(ncells_val) == Ncells_gt[0]
+## error in initial unit cell parameters
+#err_init = np.linalg.norm([abs(u-u_init)/u for u, u_init in zip(ucell, ucell2)])*100
+#
+## error in refined unit cell parameters
+#err_ref = np.linalg.norm([abs(u-u_ref)/u for u, u_ref in zip(ucell, ucell_ref)])*100
+#
+#if args.bmatrix:
+#    assert err_ref < 1e-1 * err_init
+#
+## NOTE, this test might change, e.g. angle could be negative and axis could be the same...
+#if args.umatrix:
+#    # the initial perturbation matrix:
+#    R1 = rec(perturb_rot_axis, (3, 1)).axis_and_angle_as_r3_rotation_matrix(perturb_rot_ang, deg=True)
+#    # restoring purturbation applied after refinement:
+#    R2 = ax.axis_and_angle_as_r3_rotation_matrix(ang, deg=True)
+#
+#    # the hope is that the refined R2 cancels the effect of R1
+#    # hence, the product R1 and R2 should be ~ Identity
+#    I = np.reshape(R1 * R2, (3, 3))
+#    assert np.all(np.round(I - np.eye(3), 3) == np.zeros((3, 3)))
+#    assert final_Umat_norm < 1e-1*init_Umat_norm
+#
+#if args.ncells:
+#    ncells_val = np.exp(RUC.x[RUC.ncells_xpos[0]]) + 3
+#    #ncells_val = RUC.x[RUC.ncells_xpos[0]]
+#    assert np.round(ncells_val) == Ncells_gt[0]
 
 print("OK")
 
