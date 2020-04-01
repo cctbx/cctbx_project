@@ -1118,12 +1118,27 @@ class Builder(object):
 
     # Add 'hot' sources
     if hot:
-      list(map(self.add_module, self.get_hot()))
+      # conda builds do not need eigen (disabled), scons
+      hot = self.get_hot()
+      if self.use_conda is not None:
+        for module in ['scons']:
+          try:
+            hot.remove(module)
+          except ValueError:
+            pass
+      list(map(self.add_module, hot))
 
     # Add svn sources.
     self.revert=revert
     if update:
-      list(map(self.add_module, self.get_codebases()))
+      # conda builds do not need boost (disabled)
+      codebases = self.get_codebases()
+      # if self.use_conda is not None:
+      #   try:
+      #     codebases.remove('boost')
+      #   except ValueError:
+      #     pass
+      list(map(self.add_module, codebases))
 
     # always remove .pyc files
     self.remove_pyc()
