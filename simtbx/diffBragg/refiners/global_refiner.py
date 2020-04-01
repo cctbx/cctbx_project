@@ -11,6 +11,17 @@ except ImportError:
     size = 1
     has_mpi = False
 
+
+class Bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 if rank == 0:
     import os
     import pandas
@@ -988,7 +999,7 @@ class FatRefiner(PixelRefinement):
         self.detdist_dI_dtheta = self.detdist_d2I_dtheta2 = 0
         SG = self.scale_fac*self.G2
         if self.refine_detdist:
-            self.detdist_dI_dtheta  = SG*self.D.get_derivative_pixels(self._originZ_id).as_numpy_array()
+            self.detdist_dI_dtheta = SG*self.D.get_derivative_pixels(self._originZ_id).as_numpy_array()
             if self.calc_curvatures:
                 self.detdist_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(self._originZ_id).as_numpy_array()
 
@@ -1289,8 +1300,8 @@ class FatRefiner(PixelRefinement):
                 d = self.detdist_dI_dtheta*self.originZ_sigma
                 d2 = self.detdist_d2I_dtheta2*(self.originZ_sigma*self.originZ_sigma)
             else:
-                d = self.detdist_dI_dtheta
-                d2 = self.detdist_d2I_dtheta2
+                d = 1*self.detdist_dI_dtheta
+                d2 = 1*self.detdist_d2I_dtheta2
 
             xpos = self.originZ_xpos[self._i_shot]
             self.grad[xpos] += self._grad_accumulate(d)
@@ -1420,19 +1431,20 @@ class FatRefiner(PixelRefinement):
         self.neg_curv_shots = []
         if self.calc_curvatures:
             self.tot_neg_curv = sum(self.curv < 0)
+
         if self.calc_curvatures and not self.use_curvatures:
-            if self.tot_neg_curv == 0:   #np_all(self.curv.as_numpy_array() >= 0):
+            if self.tot_neg_curv == 0:
                 self.num_positive_curvatures += 1
                 self.d = flex_double(self.curv.as_numpy_array())
                 self._verify_diag()
             else:
                 self.num_positive_curvatures = 0
-                _d = None
-                self.d = _d
+                self.d = None
 
         if self.use_curvatures:
             if self.tot_neg_curv == 0:
                 self.request_diag_once = False
+                self.diag_mode = "always"  # TODO is this proper place to set ?
                 self.d = flex_double(self.curv.as_numpy_array())
                 self._verify_diag()
             else:
@@ -1441,8 +1453,7 @@ class FatRefiner(PixelRefinement):
                     print("\tFREEZING THE CURVATURE: DISASTER AVERSION")
                     print("*\t*****************************************")
         else:
-            _d = None
-            self.d = _d
+            self.d = None
 
     def _initialize_GT_crystal_misorientation_analysis(self):
         self.all_ang_off = []
@@ -1523,13 +1534,15 @@ class FatRefiner(PixelRefinement):
 
     def _print_iteration_header(self):
         refine_str = self._get_refinement_string_label()
+        border = "<><><><><><><><><><><><><><><><>"
         if self.use_curvatures:
+
             print(
-                "Trial%d (%s): Compute functional and gradients Iter %d (Using Curvatures)\n<><><><><><><><><><><><><>"
-                % (self.trial_id + 1, refine_str, self.iterations + 1))
+                "%s%s%s%s\nTrial%d (%s): Compute functional and gradients Iter %d %s(Using Curvatures)%s\n%s%s%s%s"
+                % (Bcolors.HEADER, border,border,border, self.trial_id + 1, refine_str, self.iterations + 1, Bcolors.OKGREEN, Bcolors.HEADER, border,border,border, Bcolors.ENDC))
         else:
-            print("Trial%d (%s): Compute functional and gradients Iter %d PosCurva %d\n<><><><><><><><><><><><><>"
-                  % (self.trial_id + 1, refine_str, self.iterations + 1, self.num_positive_curvatures))
+            print("%s%s%s%s\n, Trial%d (%s): Compute functional and gradients Iter %d PosCurva %d\n%s%s%s%s"
+                  % (Bcolors.HEADER, border, border, border, self.trial_id + 1, refine_str, self.iterations + 1, self.num_positive_curvatures, border, border,border, Bcolors.ENDC))
 
     def _save_state_of_refiner(self):
         outf = os.path.join(self.output_dir, "_fcell_trial%d_iter%d" % (self.trial_id, self.iterations))
@@ -1681,7 +1694,6 @@ class FatRefiner(PixelRefinement):
                 print(master_data.to_string(float_format="%2.7g"))
 
     def print_step_grads(self):
-
         names = self.UCELL_MAN[self._i_shot].variable_names
         vals = self.UCELL_MAN[self._i_shot].variables
         ucell_labels = []
@@ -1750,12 +1762,6 @@ class FatRefiner(PixelRefinement):
         if self.calc_curvatures:
             ncurv = len(self.curv)
 
-        stat_bins_str = ""
-        Istat_bins_str = ""
-        print(
-                    "\t|G|=%f, eps*|X|=%f, R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n%s\n%s\n%s"
-                    % (self.gnorm, Xnorm * self.trad_conv_eps, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
-                       ", ".join(map(str, self.neg_curv_shots)), scale_stats_string, stat_bins_str,  Istat_bins_str))
 
         if self.Fref is not None and self.iterations % self.merge_stat_frequency == 0:
             R_overall = self.Fobs_Fref_Rfactor(use_binning=False, auto_scale=self.scale_r1)
@@ -1766,8 +1772,13 @@ class FatRefiner(PixelRefinement):
                 print(self.Fobs_Fref_Rfactor(use_binning=True, auto_scale=self.scale_r1).show())
                 print("CC (shells):")
                 self.Fobs.correlation(self.Fref_aligned, use_binning=True).show()
-            print("<><><><><><><><> TOP GUN <><><><><><><><>")
-            print("                 End of iteration.")
+
+        print(
+            "%s\n\t%s|G|=%f, eps*|X|=%f,%s R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n"
+            % (scale_stats_string, Bcolors.OKBLUE, self.gnorm, Xnorm * self.trad_conv_eps, Bcolors.ENDC, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
+               ", ".join(map(str, self.neg_curv_shots))))
+        #print("<><><><><><><><> TOP GUN <><><><><><><><>")
+        #print("                 End of iteration.")
         if self.testing_mode:
             self.conv_test()
 
@@ -1849,8 +1860,9 @@ class FatRefiner(PixelRefinement):
                 a = vars[i]
             else:
                 a = self.x[self.ucell_xstart[0] + i]
-                if i == 3:
-                    a = a * 180 / np.pi
+
+            if i == 3:
+                a = a * 180 / np.pi
 
             s += "%.4f " % a
             A.append(a)
@@ -1876,7 +1888,7 @@ class FatRefiner(PixelRefinement):
             except RuntimeError:
                 ang_off = 999
 
-            out_str = "shot %d: MEAN ERROR=%.4f, ANG OFF %.4f" % (i_shot, mn_err, ang_off)
+            out_str = "shot %d: MEAN UCELL ERROR=%.4f, ANG OFF %.4f" % (i_shot, mn_err, ang_off)
             ncells_val = self._get_m_val(i_shot)  #np.exp(self.x[self.ncells_xpos[i_shot]]) + 3
             ncells_resid = abs(ncells_val - self.gt_ncells)
 
