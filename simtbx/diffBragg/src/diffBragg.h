@@ -27,14 +27,14 @@ class rot_manager: public derivative_manager{
     rot_manager();
     virtual ~rot_manager(){}
     virtual void set_R();
-    void increment(
-        double fudge,
-        mat3 X, mat3 Y, mat3 Z,
-        mat3 X2, mat3 Y2, mat3 Z2,
-        mat3 N, mat3 U, mat3 UBOt,
-        vec3 q, vec3 V,
-        double Hrad, double Fcell, double Flatt,
-        double source_I, double capture_fraction, double omega_pixel);
+    void increment(double value, double value2);
+        //double fudge,
+        //mat3 X, mat3 Y, mat3 Z,
+        //mat3 X2, mat3 Y2, mat3 Z2,
+        //mat3 N, mat3 U, mat3 UBOt,
+        //vec3 q, vec3 V,
+        //double Hrad, double Fcell, double Flatt,
+        //double source_I, double capture_fraction, double omega_pixel);
 
     mat3 XYZ, XYZ2;
     mat3 R, dR, dR2;
@@ -44,10 +44,10 @@ class Ncells_manager: public derivative_manager{
   public:
     Ncells_manager();
     virtual ~Ncells_manager(){}
-    void increment(
-        vec3 V, vec3 H0_vec, vec3 H_vec,
-        double Hrad, double Fcell, double Flatt, double fudge,
-        double source_I, double capture_fraction, double omega_pixel);
+    void increment(double dI_increment, double dI2_increment);
+       // vec3 V, vec3 H0_vec, vec3 H_vec,
+       // double Hrad, double Fcell, double Flatt, double fudge,
+       // double source_I, double capture_fraction, double omega_pixel);
 };
 
 
@@ -65,10 +65,10 @@ class ucell_manager: public derivative_manager{
   public:
     ucell_manager();
     virtual ~ucell_manager(){}
-    void increment(
-        vec3 V, mat3 NABC, mat3 UR, vec3 q, mat3 Ot,
-        double Hrad, double Fcell, double Flatt, double fudge,
-        double source_I, double capture_fraction, double omega_pixel);
+    void increment(double value, double value2);
+        //vec3 V, mat3 NABC, mat3 UR, vec3 q, mat3 Ot,
+        //double Hrad, double Fcell, double Flatt, double fudge,
+        //double source_I, double capture_fraction, double omega_pixel);
 
     mat3 dB, dB2;
 };
