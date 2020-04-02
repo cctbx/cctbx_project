@@ -1243,7 +1243,7 @@ def run():
   """
   utility function for passing keyword arguments more directly to HKLViewFrame()
   """
-  #time.sleep(30)
+  #time.sleep(15)
   # dirty hack for parsing a file path with spaces of a browser if not using default
   args = sys.argv[1:]
   sargs = " ".join(args)

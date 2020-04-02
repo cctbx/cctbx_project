@@ -290,7 +290,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     print("HKL-viewer closing down...")
     nc = 0
     sleeptime = 0.2
-    timeout = 10
+    timeout = 1000
     while not self.canexit and nc < timeout: # until cctbx.python has finished or after 5 sec
       time.sleep(sleeptime)
       self.ProcessMessages()
@@ -1494,14 +1494,14 @@ def run():
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
     if QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
-      QWebEngineViewFlags = ""
+      QWebEngineViewFlags = " --disable-web-security" # for chromium
       print("testing if WebGL works in QWebEngineView....")
       cmdargs = [ sys.executable, QtChromiumCheck.__file__ ]
       webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       procout, procerr = webglproc.communicate()
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       if not "WebGL works" in procout.decode():
-        QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist"
+        QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist "
     if "verbose" in sys.argv[1:]:
       print("using flags for QWebEngineView: " + QWebEngineViewFlags)
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += QWebEngineViewFlags
