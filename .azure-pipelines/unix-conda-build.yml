@@ -3,7 +3,11 @@
 # Variables:
 #   CONDA: Linux, MacOSX
 #   OS: linux-64, osx-64
-#   PYTHON_VERSION: py27, py36
+#   PYTHON_VERSION: py27, py36, py37, py38
+#
+# Optional Parameters:
+#   distribution: centos, ubuntu
+#   version: [6, 10]
 
 steps:
 
@@ -66,6 +70,13 @@ steps:
     conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
     conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
   displayName: Create conda environment
+
+# - script: |
+#     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
+#     conda remove -y --force -n $(PYTHON_VERSION) boost boost-cpp
+#     conda install -y --no-deps -c cctbx-old-abi -n $(PYTHON_VERSION) boost boost-cpp
+#   displayName: Use Boost from cctbx-old-abi channel
+#   condition: or(eq('${{ parameters.version[0] }}', 6), eq('${{ parameters.version[0] }}', 7), eq('${{ parameters.version[0] }}', 14))
 
 # build
 - script: |

@@ -9,6 +9,8 @@ stages:
   displayName: Download
   jobs:
     - template: ./.azure-pipelines/download-source.yml
+      parameters:
+        flags: --use-conda
     - template: ./.azure-pipelines/download-conda.yml
 
 - stage: Build

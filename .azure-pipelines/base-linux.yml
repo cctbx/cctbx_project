@@ -8,7 +8,7 @@ jobs:
     vmImage: ubuntu-16.04
   timeoutInMinutes: 360
   strategy:
-    maxParallel: 3
+    maxParallel: 1
     matrix:
       python2.7:
         CONDA: Linux

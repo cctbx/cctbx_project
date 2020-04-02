@@ -9,7 +9,7 @@ jobs:
     vmImage: ${{ format('macOS-{0}', join('.', parameters.vmImage)) }}
   timeoutInMinutes: 360
   strategy:
-    maxParallel: 3
+    maxParallel: 2
     matrix:
       python2.7:
         CONDA: MacOSX
@@ -19,6 +19,14 @@ jobs:
         CONDA: MacOSX
         OS: osx-64
         PYTHON_VERSION: py36
+      python3.7:
+        CONDA: MacOSX
+        OS: osx-64
+        PYTHON_VERSION: py37
+      python3.8:
+        CONDA: MacOSX
+        OS: osx-64
+        PYTHON_VERSION: py38
 
   steps:
   - script: |

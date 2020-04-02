@@ -8,7 +8,7 @@ jobs:
     vmImage: vs2017-win2016
   timeoutInMinutes: 360
   strategy:
-    maxParallel: 3
+    maxParallel: 1
     matrix:
       python2.7:
         OS: win-64

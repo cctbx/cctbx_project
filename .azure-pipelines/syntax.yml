@@ -12,6 +12,11 @@ jobs:
         PYTHON_VERSION: 2.7
       python3.6:
         PYTHON_VERSION: 3.6
+      python3.7:
+        PYTHON_VERSION: 3.7
+      python3.8:
+        PYTHON_VERSION: 3.8
+
 
   steps:
 

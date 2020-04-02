@@ -16,6 +16,8 @@ stages:
   displayName: Download
   jobs:
     - template: ./download-source.yml
+      parameters:
+        flags: --use-conda
     - template: ./download-conda.yml
 
 - stage: Build
@@ -59,11 +61,3 @@ stages:
       parameters:
         vmImage: [10, 14]
         xcode_version: [10, 3]
-    - template: ./conda-osx.yml
-      parameters:
-        vmImage: [10, 14]
-        xcode_version: [10, 2, 1]
-#    - template: ./conda-osx.yml
-#      parameters:
-#        vmImage: [10, 13]
-#        xcode_version: [9, 4, 1]
