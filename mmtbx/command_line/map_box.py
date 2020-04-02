@@ -1081,7 +1081,7 @@ class launcher(runtime_utils.target_with_save_result):
     utils.safe_makedirs(self.output_dir)
     os.chdir(self.output_dir)
     result = run(args=self.args, log=sys.stdout)
-    return result
+    return 0
 
 # =============================================================================
 
