@@ -604,16 +604,18 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
       filename = os.path.join(
         self.root_dir, 'modules', self.env_locations[builder])
       if python is not None:
-        if python not in ['27', '36']:
+        if python not in ['27', '36', '37', '38']:
           raise RuntimeError(
-            """Only Python 2.7 and 3.6 are currently supported.""")
+            """Only Python 2.7, 3.6, 3.7, and 3.8 are currently supported.""")
         filename = filename.replace('PYTHON_VERSION', python)
     else:
       filename = os.path.abspath(filename)
 
     if not os.path.isfile(filename):
-      raise RuntimeError("""The file, {filename}, is not available""".\
-                         format(filename=filename))
+      raise RuntimeError("""\
+The file, {filename}, is not available. Please contact the developers to make \
+sure that the requested version of Python is supported for the {builder} \
+builder.""".format(filename=filename, builder=builder))
 
     yaml_format = False
     if filename.endswith('yml') or filename.endswith('yaml'):
@@ -880,7 +882,7 @@ Example usage:
       same as the ones for bootstrap.py. The default builder is "cctbx." """)
   parser.add_argument(
     '--python', default='27', type=str, nargs='?', const='27',
-    choices=['27', '36'],
+    choices=['27', '36', '37', '38'],
     help="""When set, a specific Python version of the environment will be used.
     This only affects environments selected with the --builder flag.""")
   parser.add_argument(
