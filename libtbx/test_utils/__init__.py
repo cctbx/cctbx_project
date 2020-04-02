@@ -222,6 +222,10 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
     cmd += tst_path
     cmd += cmd_args
 
+    if co.python_keyword_text:
+      cmd=cmd.replace("libtbx.python","libtbx.python %s" %(
+         co.python_keyword_text))
+
     if test_class and test_name:
       # If the passed object contains test class and name information
       # then attach that information to the string object.

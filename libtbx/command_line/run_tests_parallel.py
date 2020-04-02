@@ -37,7 +37,7 @@ slow_tests = False
   .help = "If True, also run any tests marked as slow, if any"
 """)
 
-def run(args, return_list_of_tests=None):
+def run(args, return_list_of_tests=None,python_keyword_text=""):
   if (len(args) == 0):
     raise Usage("""libtbx.run_tests_parallel [module=NAME] [directory=path]""")
   user_phil = []
@@ -71,16 +71,20 @@ def run(args, return_list_of_tests=None):
   expected_failure_list = []
   expected_unstable_list = []
   if not return_list_of_tests: # (this fails with return_list_of_tests)
-    all_tests.extend(libtbx.test_utils.parallel.make_commands(params.script))
+    all_tests.extend(libtbx.test_utils.parallel.make_commands(params.script,
+      python_keyword_text=python_keyword_text))
   for dir_name in params.directory :
     if os.path.split(dir_name)[-1].find("cctbx_project")>-1:
       print('DANGER '*10)
       print('Using the directory option in cctbx_project can be very time consuming')
       print('DANGER '*10)
     dir_tests = libtbx.test_utils.parallel.find_tests(dir_name)
-    all_tests.extend(libtbx.test_utils.parallel.make_commands(dir_tests))
+    all_tests.extend(libtbx.test_utils.parallel.make_commands(dir_tests,
+      python_keyword_text=python_keyword_text))
   for module_name in params.module :
-    module_tests = libtbx.test_utils.parallel.get_module_tests(module_name, slow_tests = params.slow_tests)
+    module_tests = libtbx.test_utils.parallel.get_module_tests(module_name,
+       slow_tests = params.slow_tests,
+       python_keyword_text=python_keyword_text)
     fail_tests = libtbx.test_utils.parallel.\
       get_module_expected_test_failures(module_name)
     unstable_tests = libtbx.test_utils.\
