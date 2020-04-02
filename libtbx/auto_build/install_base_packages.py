@@ -1620,6 +1620,9 @@ _replace_sysconfig_paths(build_time_vars)
     #    if (os.path.exists(font_cache)):
     #      os.remove(font_cache)
 
+    for dependency in MATPLOTLIB_DEPS:
+      self.build_python_module_pip(dependency[0], package_version=dependency[1])
+
     self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=MATPLOTLIB_PKG,
