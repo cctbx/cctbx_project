@@ -343,9 +343,6 @@ for i_shot in range(N_SHOTS):
 
     Hi_asu = utils.map_hkl_list(HKLi, anomalous_flag=True, symbol=symbol)
 
-
-
-
     shot_ucell_managers[i_shot]= UcellMan
     shot_rois[i_shot]= spot_roi
     shot_nanoBragg_rois[i_shot]= nanoBragg_rois
@@ -444,7 +441,6 @@ ngain_param = 1
 
 n_global_unknowns = nfcell_param + ngain_param + n_global_m_param + n_global_ucell_param
 n_total_unknowns = n_local_unknowns + n_global_unknowns
-
 
 RUC = FatRefiner(
     n_total_params=n_total_unknowns,

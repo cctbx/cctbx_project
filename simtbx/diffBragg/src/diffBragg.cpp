@@ -71,21 +71,15 @@ void origin_manager::increment(
 // BEGIN Ncells_abc manager
 Ncells_manager::Ncells_manager(){}
 
-void Ncells_manager::increment(
-        vec3 V, vec3 H0_vec, vec3 H_vec,
-        double Hrad, double Fcell, double Flatt, double fudge,
-        double source_I, double capture_fraction, double omega_pixel){
-
-    vec3 dV = H_vec - H0_vec;
-    double V_dot_dV = V*dV;
-    double dHrad = 2*V_dot_dV;
-    double a = 1 / 0.63 * fudge;
-    double dFlatt = Flatt * (3/value - a*dHrad); // value in this case is Ncells_abc size
-    double c = Fcell*Fcell*source_I*capture_fraction*omega_pixel;
-    dI += c*2*Flatt*dFlatt;
-
-    double dFlatt2 = 6*Flatt/value/value -6*a*Flatt/value*dHrad + a*a*Flatt*dHrad*dHrad;
-    dI2 += c*2*(dFlatt2*Flatt + dFlatt*dFlatt);
+void Ncells_manager::increment(double dI_increment, double dI2_increment){
+    //vec3 dV = H_vec - H0_vec;
+    //double V_dot_dV = V*dV;
+    //double dHrad = 2*V_dot_dV;
+    //double a = 1 / 0.63 * fudge;
+    //double dFlatt = Flatt * (3/value - a*dHrad); // value in this case is Ncells_abc size
+    //double c = Fcell*Fcell*source_I*capture_fraction*omega_pixel;
+    dI += dI_increment; //c*2*Flatt*dFlatt;
+    dI2 += dI2_increment; //c*2*(dFlatt2*Flatt + dFlatt*dFlatt);
 };
 
 //END Ncells_abc manager
@@ -105,23 +99,23 @@ void Fcell_manager::increment(
 //BEGIN unit cell manager
 ucell_manager::ucell_manager(){}
 
-void ucell_manager::increment(
-    vec3 V,
-    mat3 NABC, mat3 UR, vec3 q, mat3 Ot,
-    double Hrad, double Fcell, double Flatt, double fudge,
-    double source_I, double capture_fraction, double omega_pixel){
+void ucell_manager::increment(double value, double value2)
+    //vec3 V,
+    //mat3 NABC, mat3 UR, vec3 q, mat3 Ot,
+    //double Hrad, double Fcell, double Flatt, double fudge,
+    //double source_I, double capture_fraction, double omega_pixel){
+{
+  //vec3 dV = NABC*(UR*dB*Ot).transpose()*q;
+  //double V_dot_dV = V*dV;
+  //double dHrad = 2*V_dot_dV;
+  //double a = 1 / 0.63 * fudge;
+  //double dFlatt = -1*a*Flatt*dHrad;
+  //double c = Fcell*Fcell*source_I*capture_fraction*omega_pixel;
+  dI += value; //c*2*Flatt*dFlatt; //Fcell*Fcell*2*Flatt*source_I*capture_fraction*omega_pixel*dFlatt;
 
-  vec3 dV = NABC*(UR*dB*Ot).transpose()*q;
-  double V_dot_dV = V*dV;
-  double dHrad = 2*V_dot_dV;
-  double a = 1 / 0.63 * fudge;
-  double dFlatt = -1*a*Flatt*dHrad;
-  double c = Fcell*Fcell*source_I*capture_fraction*omega_pixel;
-  dI += c*2*Flatt*dFlatt; //Fcell*Fcell*2*Flatt*source_I*capture_fraction*omega_pixel*dFlatt;
-
-  vec3 dV2 = NABC*(UR*dB2*Ot).transpose() * q;
-  double dFlatt2 = -2*a*(dFlatt * V_dot_dV + Flatt*(dV*dV) + Flatt*(V*dV2));
-  dI2 += c*2*(dFlatt2*Flatt + dFlatt*dFlatt);
+  //vec3 dV2 = NABC*(UR*dB2*Ot).transpose() * q;
+  //double dFlatt2 = -2*a*(dFlatt * V_dot_dV + Flatt*(dV*dV) + Flatt*(V*dV2));
+  dI2 += value2; //c*2*(dFlatt2*Flatt + dFlatt*dFlatt);
 };
 
 
@@ -130,29 +124,29 @@ rot_manager::rot_manager(){}
 
 void rot_manager::set_R(){assert (false);}
 
-void rot_manager::increment(
-        double fudge,
-        mat3 X, mat3 Y, mat3 Z,
-        mat3 X2, mat3 Y2, mat3 Z2,
-        mat3 N, mat3 U, mat3 UBOt,
-        vec3 q, vec3 V,
-        double Hrad, double Fcell, double Flatt,
-        double source_I, double capture_fraction, double omega_pixel)
+void rot_manager::increment(double value, double value2)
+        //double fudge,
+        //mat3 X, mat3 Y, mat3 Z,
+        //mat3 X2, mat3 Y2, mat3 Z2,
+        //mat3 N, mat3 U, mat3 UBOt,
+        //vec3 q, vec3 V,
+        //double Hrad, double Fcell, double Flatt,
+        //double source_I, double capture_fraction, double omega_pixel)
 {
   /* X,Y,Z will change depending on whether its RotX, RotY, or RotZ manager */
-  XYZ = X*Y*Z;
-  vec3 dV = N*(U*XYZ*UBOt).transpose() * q;
-  double V_dot_dV = V*dV;
-  double dHrad = 2*V_dot_dV;
-  double a = 1 / 0.63 * fudge;
-  double dFlatt = -1*a*Flatt*dHrad;
-  double c = Fcell*Fcell*source_I*capture_fraction*omega_pixel;
-  dI += c*2*Flatt*dFlatt;
+  //XYZ = X*Y*Z;
+  //vec3 dV = N*(U*XYZ*UBOt).transpose() * q;
+  //double V_dot_dV = V*dV;
+  //double dHrad = 2*V_dot_dV;
+  //double a = 1 / 0.63 * fudge;
+  //double dFlatt = -1*a*Flatt*dHrad;
+  //double c = Fcell*Fcell*source_I*capture_fraction*omega_pixel;
+  dI += value; //c*2*Flatt*dFlatt;
 
-  XYZ2 = X2*Y2*Z2;
-  vec3 dV2 = N*(U*XYZ2*UBOt).transpose() * q;
-  double dFlatt2 = -2*a*(dFlatt * V_dot_dV + Flatt*(dV*dV) + Flatt*(V*dV2));
-  dI2 += c*2*(dFlatt2*Flatt + dFlatt*dFlatt);
+  //XYZ2 = X2*Y2*Z2;
+  //vec3 dV2 = N*(U*XYZ2*UBOt).transpose() * q;
+  //double dFlatt2 = -2*a*(dFlatt * V_dot_dV + Flatt*(dV*dV) + Flatt*(V*dV2));
+  dI2 += value2; //c*2*(dFlatt2*Flatt + dFlatt*dFlatt);
 }
 
 rotX_manager::rotX_manager(){
@@ -940,7 +934,10 @@ void diffBragg::add_diffBragg_spots()
                                 NABC[7] = 0;
                                 NABC[8] = Nc;
 
-                                vec3 V = NABC*(H_vec- H0_vec);
+                                double C = 2 / 0.63 * fudge;
+                                double m = Na;
+                                vec3 delta_H = (H_vec - H0_vec);
+                                vec3 V = NABC*delta_H;// (H_vec- H0_vec);
 
                                 //if (mos_tic==1 && fpixel==10 && spixel==10)
                                 //  //printf("AAAAAAAAAAAA: %f, %f, %f \n", AA[0]*1e10, AA[1]*1e10, AA[2]*1e10);
@@ -1075,48 +1072,85 @@ void diffBragg::add_diffBragg_spots()
                                 /* convert amplitudes into intensity (photons per steradian) */
                                 if (!oversample_omega)
                                     omega_pixel = 1;
-                                I += F_cell*F_cell*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
+                                double Iincrement = F_cell*F_cell*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
+                                I += Iincrement;//  F_cell*F_cell*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
 
                                 if(verbose > 3)
                                     printf("hkl= %f %f %f  hkl1= %d %d %d  Fcell=%f\n", h,k,l,h0,k0,l0, F_cell);
 
 
                                 /* checkpoint for rotataion derivatives */
-                                for (int i_rot =0 ; i_rot < 3 ; i_rot++){
-                                    if (rot_managers[i_rot]->refine_me){
-                                        R3[i_rot] = dRotMats[i_rot]; // TODO: design upgrade
-                                        R3_2[i_rot] = d2RotMats[i_rot]; // TODO: design upgrade
-                                        rot_managers[i_rot]->increment(
-                                                            fudge,
-                                                            R3[0], R3[1], R3[2],
-                                                            R3_2[0], R3_2[1], R3_2[2],
-                                                            NABC, UMATS[mos_tic],
-                                                            Umatrix*Bmat_realspace*(Omatrix.transpose()),
-                                                            q_vec, V,
-                                                            hrad_sqr, F_cell, F_latt,
-                                                            source_I[source], capture_fraction, omega_pixel);
-                                        R3[i_rot] = RotMats[i_rot];
-                                        R3_2[i_rot] = RotMats[i_rot]; // TODO: design upgrade
-                                    }
-                                } //* end rotation manager deriv */
+                                double two_C_m_squared = 2*C*m*m;
+                                mat3 UBOt = Umatrix*Bmat_realspace*(Omatrix.transpose());
+                                if (rot_managers[0]->refine_me){
+                                    mat3 RyRzUBOt = RotMats[1]*RotMats[2]*UBOt;
+                                    vec3 delta_H_prime = (UMATS[mos_tic]*dRotMats[0]*RyRzUBOt).transpose()*q_vec;
+                                    double coef = delta_H*delta_H_prime;
+                                    double value = -two_C_m_squared * coef * Iincrement;
+
+                                    vec3 delta_H_dbl_prime = (UMATS[mos_tic]*d2RotMats[0]*RyRzUBOt).transpose()*q_vec;
+                                    double coef2 = delta_H_prime*delta_H_prime;
+                                    double coef3 = delta_H*delta_H_dbl_prime;
+                                    double value2 = -two_C_m_squared * (value *coef + Iincrement*(coef2 + coef3));
+
+                                    rot_managers[0]->increment(value, value2);
+                                }
+                                if (rot_managers[1]->refine_me){
+                                    mat3 UmosRx = UMATS[mos_tic]*RotMats[0];
+                                    mat3 RzUBOt = RotMats[2]*UBOt;
+                                    vec3 delta_H_prime =(UmosRx*dRotMats[1]*RzUBOt).transpose()*q_vec;
+                                    double coef = delta_H*delta_H_prime;
+                                    double value = -two_C_m_squared*coef*Iincrement;
+
+                                    vec3 delta_H_dbl_prime = (UmosRx*d2RotMats[1]*RzUBOt).transpose()*q_vec;
+                                    double coef2 = delta_H_prime*delta_H_prime;
+                                    double coef3 = delta_H*delta_H_dbl_prime;
+                                    double value2 = -two_C_m_squared * (value *coef + Iincrement*(coef2 + coef3));
+                                    rot_managers[1]->increment(value, value2);
+                                }
+                                if (rot_managers[2]->refine_me){
+                                    mat3 UmosRxRy = UMATS[mos_tic]*RotMats[0]*RotMats[1];
+                                    vec3 delta_H_prime = (UmosRxRy*dRotMats[2]*UBOt).transpose()*q_vec;
+                                    double coef = delta_H*delta_H_prime;
+                                    double value = -two_C_m_squared * coef * Iincrement;
+
+                                    vec3 delta_H_dbl_prime = (UmosRxRy*d2RotMats[2]*UBOt).transpose()*q_vec;
+                                    double coef2 = delta_H_prime*delta_H_prime;
+                                    double coef3 = delta_H*delta_H_dbl_prime;
+                                    double value2 = -two_C_m_squared * (value *coef + Iincrement*(coef2 + coef3));
+                                    rot_managers[2]->increment(value, value2);
+                                }
 
                                 /*Checkpoint for unit cell derivatives*/
+                                mat3 Ot = Omatrix.transpose();
                                 for(int i_uc=0; i_uc < 6; i_uc++ ){
                                     if (ucell_managers[i_uc]->refine_me){
-                                        ucell_managers[i_uc]->increment(
-                                            V, NABC, UMATS_RXYZ[mos_tic]*Umatrix, q_vec,
-                                            Omatrix.transpose(),
-                                            hrad_sqr, F_cell, F_latt, fudge,
-                                            source_I[source], capture_fraction, omega_pixel);
+                                        mat3 UmosRxRyRzU = UMATS_RXYZ[mos_tic]*Umatrix;
+
+                                        vec3 delta_H_prime = ((UmosRxRyRzU*(ucell_managers[i_uc]->dB)*Ot).transpose()*q_vec);
+                                        double coef = delta_H*delta_H_prime;
+                                        double value = -two_C_m_squared * coef * Iincrement;
+
+                                        vec3 delta_H_dbl_prime = ((UmosRxRyRzU*(ucell_managers[i_uc]->dB2)*Ot).transpose()*q_vec);
+                                        double coef2 = delta_H_prime*delta_H_prime;
+                                        double coef3 = delta_H*delta_H_dbl_prime;
+                                        double value2 = -two_C_m_squared * (value *coef + Iincrement*(coef2 + coef3));
+
+                                        ucell_managers[i_uc]->increment(value, value2);
                                     }
                                 } /*end ucell deriv */
 
                                 /* Checkpoint for Ncells manager */
                                 if (Ncells_managers[0]->refine_me){
-                                    Ncells_managers[0]->increment(
-                                            V, H0_vec, H_vec,
-                                            hrad_sqr, F_cell, F_latt, fudge,
-                                            source_I[source], capture_fraction, omega_pixel);
+                                    double hsqr = delta_H*delta_H;
+                                    double six_by_m = 6/m;
+                                    double two_C_hsqr = 2*C*hsqr;
+                                    double deriv_coef = (six_by_m - two_C_hsqr*m);
+                                    double value = Iincrement*deriv_coef;
+                                    double value2 = Iincrement*(-six_by_m/m - two_C_hsqr)
+                                                + deriv_coef * value;
+
+                                    Ncells_managers[0]->increment(value, value2);
                                 } /* end Ncells manager deriv */
 
                                 /* Checkpoint for Origin manager */
@@ -1182,7 +1216,6 @@ void diffBragg::add_diffBragg_spots()
             else
                 om=1;
 
-
             // final scale term to being everything to photon number units
             scale_term =r_e_sqr*fluence*spot_scale*polar*om / steps;
 
@@ -1232,6 +1265,18 @@ void diffBragg::add_diffBragg_spots()
             if (Ncells_managers[0]->refine_me){
                 double value = scale_term*Ncells_managers[0]->dI;
                 double value2 = scale_term*Ncells_managers[0]->dI2;
+                //double C = 1 / 0.63 * fudge;
+                //vec3 delta_H = (H_vec - H0_vec);
+                //double hsqr = delta_H*delta_H;
+                //double m = Na;
+                //double six_by_m = 6/m;
+                //double two_C_hsqr = 2*C*hsqr;
+
+                //double deriv_coef = (six_by_m - two_C_hsqr*m);
+                //double value = floatimage_roi[roi_i]*deriv_coef;
+                //double value2 = floatimage_roi[roi_i]*(-six_by_m/m - two_C_hsqr)
+                //            + deriv_coef * value;
+
                 Ncells_managers[0]->increment_image(roi_i, value, value2);
             }/* end Ncells deriv image increment */
 
@@ -1239,6 +1284,9 @@ void diffBragg::add_diffBragg_spots()
             if(fcell_man->refine_me){
                 double value = scale_term*fcell_man->dI;
                 double value2 = scale_term*fcell_man->dI2;
+                //double value = floatimage_roi[roi_i]*2/F_cell;
+                //double value2 = value/F_cell; //floatimage_roi[roi_i]*2/Fcell;
+
                 fcell_man->increment_image(roi_i, value, value2);
             }/* end Fcell deriv image increment */
 
