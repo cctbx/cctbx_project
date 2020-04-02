@@ -4,7 +4,7 @@
 #
 # Variables:
 #   OS: linux-64, osx-64, win-64
-#   PYTHON_VERSION: py27, py36
+#   PYTHON_VERSION: py27, py36, py37, py38
 
 jobs:
 - job: conda_packages
@@ -20,18 +20,36 @@ jobs:
       linux_py36:
         OS: linux-64
         PYTHON_VERSION: py36
+      linux_py37:
+        OS: linux-64
+        PYTHON_VERSION: py37
+      linux_py38:
+        OS: linux-64
+        PYTHON_VERSION: py38
       macos_py27:
         OS: osx-64
         PYTHON_VERSION: py27
       macos_py36:
         OS: osx-64
         PYTHON_VERSION: py36
-      win_py27:
-        OS: win-64
-        PYTHON_VERSION: py27
+      macos_py37:
+        OS: osx-64
+        PYTHON_VERSION: py37
+      macos_py38:
+        OS: osx-64
+        PYTHON_VERSION: py38
+      # win_py27:
+      #   OS: win-64
+      #   PYTHON_VERSION: py27
       # win_py36:
       #   OS: win-64
       #   PYTHON_VERSION: py36
+      # win_py37:
+      #   OS: win-64
+      #   PYTHON_VERSION: py37
+      # win_py38:
+      #   OS: win-64
+      #   PYTHON_VERSION: py38
 
   steps:
 
@@ -46,6 +64,9 @@ jobs:
         filename=${url##*/}
         filename=${filename%#*}
         directory=`echo ${url} | cut -f5 -d"/"`
+        if [ "${directory}" = "main" ]; then
+          directory=`echo ${url} | cut -f6 -d"/"`
+        fi
         mkdir -p ${directory}
         cd ${directory}
         echo Downloading ${filename} to ${directory}
@@ -57,6 +78,7 @@ jobs:
           echo ${directory}/${filename} >> filenames.txt
         fi
       done
+      ls
     displayName: Download conda packages
 
   - publish: $(Pipeline.Workspace)/$(PYTHON_VERSION)_$(OS)

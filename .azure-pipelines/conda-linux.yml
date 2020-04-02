@@ -8,7 +8,7 @@ jobs:
     vmImage: ubuntu-16.04
   timeoutInMinutes: 360
   strategy:
-    maxParallel: 3
+    maxParallel: 2
     matrix:
       python2.7:
         CONDA: Linux
@@ -18,6 +18,15 @@ jobs:
         CONDA: Linux
         OS: linux-64
         PYTHON_VERSION: py36
+      python3.7:
+        CONDA: Linux
+        OS: linux-64
+        PYTHON_VERSION: py37
+      python3.8:
+        CONDA: Linux
+        OS: linux-64
+        PYTHON_VERSION: py38
+
   container:
     image: ${{ parameters.distribution }}:${{ join('.', parameters.version) }}
     options: "--name ci-container -v /usr/bin/docker:/tmp/docker:ro"
@@ -64,3 +73,6 @@ jobs:
 
   # build
   - template: ./unix-conda-build.yml
+    parameters:
+      distribution: ${{ parameters.distribution }}
+      version: ${{ parameters.version }}
