@@ -45,7 +45,7 @@ class model(object):
     mas = reflections.as_miller_arrays(crystal_symmetry=cs)
     for ma in mas:
       if ma.is_xray_intensity_array() and ma.sigmas() is not None:
-        fo_sq = ma.as_xray_observations()
+        fo_sq = ma.as_xray_observations(with_polarization=True)
         break
     assert fo_sq is not None
     self.fo_sq = fo_sq

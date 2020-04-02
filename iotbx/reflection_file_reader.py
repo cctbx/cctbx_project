@@ -360,8 +360,8 @@ class hklf4_reflection_file_with_polarization(any_reflection_file):
     self._file_name = file_name
     self._observation_type = "intensities"
     self._file_type = "shelx_hklf"
-    self._file_content = shelx_hklf.reader(
-        file_name=file_name, unit_cell=unit_cell, with_polarization=True)
+    self._file_content = shelx_hklf.reader_with_polarization(
+        file_name=file_name, unit_cell=unit_cell)
 
 
 

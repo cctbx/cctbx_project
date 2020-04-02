@@ -2068,6 +2068,22 @@ class array(set):
       assert sigmas.size() == self.indices().size()
     self._sigmas = sigmas
 
+  def e_incidents(self):
+    return self._e_incidents
+
+  def set_e_incidents(self, e_incidents):
+    if e_incidents is not None:
+      assert e_incidents.size() == self.indices().size()
+    self._e_incidents = e_incidents
+
+  def e_scattereds(self):
+    return self._e_scattereds
+
+  def set_e_scattereds(self, e_scattereds):
+    if e_scattereds is not None:
+      assert e_scattereds.size() == self.indices().size()
+    self._e_scattereds = e_scattereds
+
   def __iter__(self):
     if self.sigmas() is not None:
       for item in zip(self.indices(), self.data(), self.sigmas()):
@@ -4796,7 +4812,7 @@ class array(set):
     return result
 
   def as_xray_observations(self, scale_indices=None, twin_fractions=None,
-                           twin_components=None):
+                           twin_components=None, with_polarization=False):
     assert self.observation_type() is None or (
            self.is_xray_amplitude_array() or self.is_xray_intensity_array())
     assert self.is_real_array()
@@ -4819,6 +4835,14 @@ class array(set):
           anomalous_flag=self.anomalous_flag()),
         data=result.data,
         sigmas=result.sigmas).set_observation_type(self)
+    elif with_polarization: #HKLF 4 with polarization
+      print("with polarization")
+      assert self.e_scattereds().size() == self.indices().size()
+      assert self.e_incidents().size() == self.indices().size()
+      result = observations.observations(
+        self.indices(), self.data(), self.sigmas(), self.e_incidents(),
+        self.e_scattereds())
+      result.fo_sq = self
     else: #HKLF 4
       result = observations.observations(
         self.indices(), self.data(), self.sigmas(), tw_cmps)

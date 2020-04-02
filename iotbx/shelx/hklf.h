@@ -96,7 +96,7 @@ class hklf_reader
     }
 
     hklf_reader(
-        af::const_ref<std::string> const& lines,
+        af::const_ref<std::string> const& hkl_lines,
         af::const_ref<std::string> const& raw_lines,
         mat3_t const& ort_matrix,
         af::const_ref<int> const& offsets,
@@ -104,16 +104,49 @@ class hklf_reader
     {
       mat3_t UB_inv = ort_matrix.inverse();
       scitbx::sym_mat3<double> g_star = metrical_matrix.inverse();
-      std::size_t n = lines.size();
+      std::size_t n = hkl_lines.size();
       indices_.reserve(n);
       data_.reserve(n);
       sigmas_.reserve(n);
       e_incidents_.reserve(n);
       e_scattereds_.reserve(n);
+
+      std::string raw_fstring;
+      if (1) {          //just to fold this huge string
+        raw_fstring = 
+          std::string("(3i4,") + // h_r
+          "2f8.0,"    + // i and sigma
+          "i4,"       + // batch number
+          "6f8.0,"    + // cosines_inc and cosines_scat
+          "i3,"       + // status mask
+          "2f7.0,"    + // detector coordinates
+          "f8.0,"     + // frame number of refln centroid
+          "2f7.0,"    + // detector coordinates (reduced)
+          "f8.0,"     + // frame number (predicted)
+          "f6.0,"     + // LP factor
+          "f5.0,"     + // profile correlation
+          "3f7.0,"    + // cumul. exp. time, det. angle, scan axis angle 
+                        // (omega for omega scan, phi for phi scan)
+          "i2,"       + // scan axis: 2 for omega, 3 for phi
+          "i5,"       + // 10000*sin(th)/lambda
+          "i9,"       + // total counts
+          "i7,"       + // background
+          "f7.2,"     + // scan axis relat. to start of run
+          "i4,"       + // crystal number
+          "f6.0,"     + // fraction of peak vol. nearest this hkl
+          "i11,"      + // sort key
+          "i3,"       + // point-group multiplicity of refln
+          "f6.0,"     + // Lorentz factor
+          "4f8.0,"    + // corrected det. coordinates, chi, "other angle"
+                        // (phi for omega scan, omega for phi scan)
+          "i3)";        // twin comp. number
+      }
+
+      //loop over hkl_lines
       for(std::size_t i=0; i<n; i++) {
 
         //read line from hkl
-        std::string line = lines[i];
+        std::string line = hkl_lines[i];
         miller_t h;
         vec3_t e_inc, e_scat;
         double datum, sigma, frame;
@@ -124,64 +157,32 @@ class hklf_reader
         if (h.is_zero()) break;
 
         //correct hkl frame number to match raw file
-        for (std::size_t i_offset=0; i<run; i++) {
-          frame -= offsets[i_offset];
-        }
+        frame -= offsets[run-1];
 
         //find corresponding entry in raw file and store direction cosines and
         //goniometer angles
         vec3_t cosines_inc, cosines_scat;
-        double angle1_deg, angle2_deg;
-        double omega_deg, chi_deg, phi_deg;
+        miller_t h_r;
+        double angle1_deg, angle2_deg, omega_deg, chi_deg, phi_deg;
         double omega, chi, phi;
+        double frame_r;
         int scan_axis;
-        for(std::size_t i_r=0; i_r<n; i_r++) {
+        double djunk;
+        int ijunk;
+
+        // hkl_lines and raw_lines are both sorted by hkl before we receive them
+        // so we can expect to find the matching raw line around i_r=i. We back
+        // up a few lines because we haven't performed any sorting by frame #
+        // within groups of identical hkls.
+        for (
+            std::size_t i_r=(i<5 ? 0 : i-5);
+            i_r<raw_lines.size();
+            i_r++) 
+        {
           std::string line_r = raw_lines[i_r];
-          miller_t h_r;
-          double frame_r;
-          double djunk;
-          int ijunk;
           prepare_for_read(line_r, 255);
 
-          /*
-          fem::read_from_string(
-              line_r, "(3i4,20a,6f8.0,17a,f8.0,47a,f7.0,i2,74a,2f8.0)"),
-              h_r[0], h_r[1], h_r[2], junk1, cosines_inc[0], cosines_inc[1],
-              cosines_inc[2], cosines_scat[0], cosines_scat[1], cosines_scat[2],
-              junk2, frame_r, junk3, angle1_deg, scan_axis, junk4, chi_deg, 
-              angle2_deg;
-              */
-
-          std::string fstring =
-            std::string("(3i4,")     + // h_r
-            "2f8.0,"    + // i and sigma
-            "i4,"       + // batch number
-            "6f8.0,"    + // cosines_inc and cosines_scat
-            "i2,"       + // status mask
-            "2f7.0,"    + // detector coordinates
-            "f8.0,"     + // frame number of refln centroid
-            "2f7.0,"    + // detector coordinates (reduced)
-            "f8.0,"     + // frame number (predicted)
-            "f6.0,"     + // LP factor
-            "f5.0,"     + // profile correlation
-            "3f7.0,"    + // cumul. exp. time, det. angle, scan axis angle 
-                          // (omega for omega scan, phi for phi scan)
-            "i2,"       + // scan axis: 2 for omega, 3 for phi
-            "i5,"       + // 10000*sin(th)/lambda
-            "i9,"       + // total counts
-            "i7,"       + // background
-            "f7.2,"     + // scan axis relat. to start of run
-            "i4,"       + // crystal number
-            "f6.0,"     + // fraction of peak vol. nearest this hkl
-            "i11,"      + // sort key
-            "i3,"       + // point-group multiplicity of refln
-            "f6.0,"     + // Lorentz factor
-            "4f8.0,"    + // corrected det. coordinates, chi, "other angle"
-                          // (phi for omega scan, omega for phi scan)
-            "i3)";        // twin comp. number
-              
-
-          fem::read_from_string(line_r, fstring.c_str()),
+          fem::read_from_string(line_r, raw_fstring.c_str()),
             h_r[0], h_r[1], h_r[2],  djunk, djunk, ijunk, cosines_inc[0], 
             cosines_inc[1], cosines_inc[2], cosines_scat[0], cosines_scat[1], 
             cosines_scat[2], ijunk, djunk, djunk, frame_r, djunk, djunk, djunk, 
@@ -189,13 +190,15 @@ class hklf_reader
             ijunk, djunk, ijunk, djunk,  ijunk, ijunk, djunk, djunk, djunk, 
             chi_deg, angle2_deg, ijunk;
 
-
-
+          //found match
           if ( h==h_r && abs(frame-frame_r)<.1 ) {
             break;
           }
 
-          //std::cout<<"No match for reflection "<<h[0]<<" "<<h[1]<<" "<<h[2]<<std::endl;
+          //crash if we didn't find a matching .raw entry
+          if (i_r==raw_lines.size()-1) {
+            throw std::runtime_error("No matching .raw entry for reflection");
+          }
         }
           
         //Sort out angles and convert to radians
@@ -207,24 +210,21 @@ class hklf_reader
           phi_deg = angle1_deg;
           omega_deg = angle2_deg;
         }
-        else {
-          std::cout<<"What a nice day for scan axis "<<scan_axis<<std::endl;
-          throw "Scan axis in .raw file should be 2 (omega) or 3 (phi)";
-        }
         chi = scitbx::deg_as_rad(chi_deg); 
         omega = scitbx::deg_as_rad(omega_deg); 
         phi = scitbx::deg_as_rad(phi_deg); 
 
-
+        //compute the polarization vectors
         vec3_t hkl_zaxis = hkl_z(UB_inv, phi, chi);
-
         e_inc = make_perpendicular(hkl_zaxis, cosines_inc, g_star);
-        e_inc = e_inc.normalize();
         e_scat = make_perpendicular(hkl_zaxis, cosines_scat, g_star);
-        e_scat = e_scat.normalize();
 
-
-
+        //done
+        indices_.push_back(h);
+        data_.push_back(datum);
+        sigmas_.push_back(sigma);
+        e_incidents_.push_back(e_inc);
+        e_scattereds_.push_back(e_scat);
       }
     }
 
@@ -246,23 +246,17 @@ class hklf_reader
 
 
     vec3_t hkl_z(
-        mat3_t const &UB_inv,
-        double const &phi,
-        double const &chi) {
+        mat3_t const &UB_inv, double const &phi, double const &chi) {
       //Compute the hkl indices of the laboratory z axis. Ort_matrix is similar
       //to the Busing/Levy UB-matrix but conforms to the Bruker convention in
       //which chi is a rotation around the Y axis instead of X.
 
-      double sin_phi = sin(phi);
-      double cos_phi = cos(phi);
-      double sin_chi = sin(chi);
-      double cos_chi = cos(chi);
       vec3_t v = vec3_t(
           sin(phi) * sin(chi),
           -1 * cos(phi) * sin(chi),
           cos(chi));
       vec3_t h_z = UB_inv * v;
-      return h_z;
+      return h_z.normalize();
     }
 
 

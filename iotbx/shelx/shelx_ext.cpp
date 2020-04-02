@@ -29,6 +29,8 @@ namespace iotbx { namespace shelx { namespace boost_python {
         .def("alphas", &wt::alphas)
         .def("batch_numbers", &wt::batch_numbers)
         .def("wavelengths", &wt::wavelengths)
+        .def("e_incidents", &wt::e_incidents)
+        .def("e_scattereds", &wt::e_scattereds)
       ;
     }
   };

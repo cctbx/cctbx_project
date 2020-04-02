@@ -66,6 +66,16 @@ namespace {
                arg("scale_indices"),
                arg("twin_fractions"),
                arg("merohedral_components"))))
+        .def(init<scitbx::af::shared<cctbx::miller::index<> > const&,
+                  scitbx::af::shared<FloatType> const&,
+                  scitbx::af::shared<FloatType> const&,
+                  scitbx::af::shared<scitbx::vec3<FloatType> > const&,
+                  scitbx::af::shared<scitbx::vec3<FloatType> > const& >
+             ((arg("observations"),
+               arg("data"),
+               arg("sigmas"),
+               arg("e_incidents"),
+               arg("e_scattereds"))))
         .def(init<observations<FloatType> const&,
                   scitbx::af::shared<
                     cctbx::xray::twin_fraction<FloatType>*> const&,
@@ -78,6 +88,8 @@ namespace {
         .add_property("indices", &obst::indices)
         .add_property("data", &obst::data)
         .add_property("sigmas", &obst::sigmas)
+        .add_property("e_incidents", &obst::e_incidents)
+        .add_property("e_scattereds", &obst::e_scattereds)
         .add_property("twin_fractions", &obst::twin_fractions)
         .add_property("merohedral_components", &obst::merohedral_components)
         .add_property("measured_scale_indices", &obst::measured_scale_indices)

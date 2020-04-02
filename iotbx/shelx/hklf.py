@@ -91,90 +91,18 @@ def miller_array_export_as_shelx_hklf(
   print("   0   0   0    0.00    0.00", file=file_object)
 
 
-def args_for_polarization_run(file_name, unit_cell):
-  from libtbx import smart_open
-
-  # Process and check filenames
-  import os
-  file_root = os.path.splitext(file_name)[0]
-  p4p_filename = file_root + '.p4p'
-  raw_filename = file_root + '.raw'
-  offsets_filename = file_root + '.offsets'
-  assert os.path.exists(p4p_filename), \
-      "{} not found".format(p4p_filename)
-  assert os.path.exists(raw_filename), \
-      "{} not found".format(raw_filename)
-  assert os.path.exists(offsets_filename), \
-      "{} not found".format(offsets_filename)
-
-  # Read .raw file and store as flex array
-  raw_lines = flex.split_lines(
-      smart_open.for_reading(file_name=raw_filename).read())
-
-  # Store orientation matrix as list of elements
-  with open(p4p_filename) as p4pfile:
-    head, line = '', ''
-    ormx_list = []
-    try:
-      while head != 'ORT1':
-        line = p4pfile.readline()
-        head = line.split()[0]
-    except StopIteration:
-      raise RuntimeError, \
-          "Orientation matrix not found in {}".format(p4p_filename)
-    ormx_list.extend([float(x) for x in line.split()[1:4]])
-    line = p4pfile.readline()
-    ormx_list.extend([float(x) for x in line.split()[1:4]])
-    line = p4pfile.readline()
-    ormx_list.extend([float(x) for x in line.split()[1:4]])
-    #ort_matrix = flex.mat3_double([ormx_list])
-
-  # Read frame # offsets from file_root.offsets. Each entry is added to the 
-  # frame number in the hkl file (all frames numbered consecutively) to give 
-  # the frame number in the .raw file (frames numbered from start of run).
-  with open(offsets_filename) as offsetsfile:
-    offsets = flex.int([int(x) for x in offsetsfile.readline().split()])
-
-  # We keep the metrical matrix as a tuple, it will be implicitly converted
-  metrical_matrix = unit_cell.metrical_matrix()
-
-
-  return (raw_lines, ormx_list, offsets, metrical_matrix)
 
 class reader(iotbx_shelx_ext.hklf_reader):
 
 
-  def __init__(self, 
-      file_object=None, 
-      file_name=None, 
-      unit_cell=None,
-      with_polarization=False):
+  def __init__(self, file_object=None, file_name=None):
     from cctbx.array_family import flex
+    from libtbx import smart_open
     assert [file_object, file_name].count(None) == 1
     if (file_object is None):
-      from libtbx import smart_open
       file_object = smart_open.for_reading(file_name=file_name)
     hkl_lines = flex.split_lines(file_object.read())
-    if not with_polarization:
-      super(reader, self).__init__(lines=hkl_lines)
-    else:
-      assert file_name is not None, "Must supply a file name to iotbx.shelx." \
-          "reader to load intensities with polarization"
-      assert unit_cell is not None, "Must supply a unit cell to iotbx.shelx." \
-          "reader to load intensities with polarization"
-      raw_lines, ormx_list, offsets, metrical_matrix = \
-          args_for_polarization_run(file_name, unit_cell)
-      super(reader, self).__init__(
-          hkl_lines,
-          raw_lines,
-          ormx_list,
-          offsets,
-          metrical_matrix)
-
-
-
-
-
+    super(reader, self).__init__(lines=hkl_lines)
 
 
 
@@ -220,3 +148,101 @@ class reader(iotbx_shelx_ext.hklf_reader):
   batch_numbers = _override('batch_numbers')
   wavelengths = _override('wavelengths')
   del _override
+
+def args_for_polarization_run(file_name, unit_cell):
+  def _sortkey(line):
+    h, k, l = int(line[0:4]), int(line[4:8]), int(line[8:12])
+    return 1048576*(h+511) + 1024*(k+511) + (l+511)
+
+  # Process and check filenames
+  import os
+  file_root = os.path.splitext(file_name)[0]
+  p4p_filename = file_root + '.p4p'
+  raw_filename = file_root + '.raw'
+  offsets_filename = file_root + '.offsets'
+  assert os.path.exists(p4p_filename), \
+      "{} not found".format(p4p_filename)
+  assert os.path.exists(raw_filename), \
+      "{} not found".format(raw_filename)
+  assert os.path.exists(offsets_filename), \
+      "{} not found".format(offsets_filename)
+
+  # Read .hkl file, sort, and store as flex array
+  with open(file_name) as f:
+    hl = f.readlines()
+  hkl_lines = flex.std_string(sorted(hl, key=_sortkey))
+
+  # Read .raw file, sort, and store as flex array
+  with open(raw_filename) as f:
+    rl = f.readlines()
+  raw_lines = flex.std_string(sorted(rl, key=_sortkey))
+
+  # Store orientation matrix as list of elements
+  with open(p4p_filename) as p4pfile:
+    head, line = '', ''
+    ormx_list = []
+    try:
+      while head != 'ORT1':
+        line = p4pfile.readline()
+        head = line.split()[0]
+    except StopIteration:
+      raise RuntimeError, \
+          "Orientation matrix not found in {}".format(p4p_filename)
+    ormx_list.extend([float(x) for x in line.split()[1:4]])
+    line = p4pfile.readline()
+    ormx_list.extend([float(x) for x in line.split()[1:4]])
+    line = p4pfile.readline()
+    ormx_list.extend([float(x) for x in line.split()[1:4]])
+
+  # Read frame # offsets from file_root.offsets. Entries are added to the 
+  # frame number in the hkl file (all frames numbered consecutively) to give 
+  # the frame number in the .raw file (frames numbered from start of run).
+  with open(offsets_filename) as offsetsfile:
+    offsets = flex.int([int(x) for x in offsetsfile.readline().split()])
+
+  # Retrieve the metrical matrix as a tuple, it will be implicitly converted
+  metrical_matrix = unit_cell.metrical_matrix()
+
+  return (hkl_lines, raw_lines, ormx_list, offsets, metrical_matrix)
+
+class reader_with_polarization(iotbx_shelx_ext.hklf_reader):
+
+  def __init__(self, file_name, unit_cell):
+      hkl_lines, raw_lines, ormx_list, offsets, metrical_matrix = \
+          args_for_polarization_run(file_name, unit_cell)
+      super(reader_with_polarization, self).__init__(
+          hkl_lines,
+          raw_lines,
+          ormx_list,
+          offsets,
+          metrical_matrix)
+
+  def as_miller_arrays(self,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        merge_equivalents=False,
+        base_array_info=None,
+        anomalous=None):
+    from cctbx import miller
+    from cctbx import crystal
+    if (crystal_symmetry is None):
+      crystal_symmetry = crystal.symmetry()
+    if (base_array_info is None):
+      base_array_info = miller.array_info(
+          source_type="shelx_hklf_with_polarization")
+    miller_set = miller.set(
+      crystal_symmetry=crystal_symmetry,
+      indices=self.indices(), anomalous_flag=anomalous)
+    if anomalous is None:
+      miller_set = miller_set.auto_anomalous()
+    miller_arrays = []
+    obs = (miller.array(
+      miller_set=miller_set,
+      data=self.data(),
+      sigmas=self.sigmas()))
+    obs.set_e_incidents(self.e_incidents())
+    obs.set_e_scattereds(self.e_scattereds())
+    obs.set_info(base_array_info.customized_copy(
+      labels=["obs", "sigmas", "e_incidents", "e_scattereds"]))
+    miller_arrays.append(obs)
+    return miller_arrays
