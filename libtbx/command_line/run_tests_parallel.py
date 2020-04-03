@@ -102,7 +102,7 @@ def run(args, return_list_of_tests=None,python_keyword_text=""):
         if not t.find("tst_scheduling")>-1:
           new_tests.append(t)
       all_tests=new_tests
-        
+
     # check that test lists are unique
     seen = set()
     duplicates = set()
