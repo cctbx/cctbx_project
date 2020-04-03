@@ -89,7 +89,6 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.plot_fcell = False  # deprecated
         self.bg_offset_only = False  # only refine background offset constant
         self.bg_offset_positive = False  # only allow background offset constant to be positive (recommended if using offset_only)
-        self.background_test_mode = False
         self.log_fcells = True  # to refine Fcell using logarithms to avoid negative Fcells
         self.use_curvatures = False  # whether to use the curvatures
         self.testing_mode = False  # Special flag used by the unit tests, ignore

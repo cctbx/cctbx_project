@@ -737,6 +737,14 @@ class FatRefiner(PixelRefinement):
             val = np_exp(val)
         return val
 
+    def _set_spot_scale(self, new_val, i_shot):
+        """just used in testsing derivatives"""
+        if self.rescale_params:
+            self.spot_scale_init[0] = new_val
+            self.x[self.spot_scale_xpos[0]] = 1
+        else:
+            self.x[self.spot_scale_xpos[0]] = np_log(new_val)
+
     def _get_bg_vals(self, i_shot, i_spot):
         a_val = self.x[self.bg_a_xstart[i_shot][i_spot]]
         b_val = self.x[self.bg_b_xstart[i_shot][i_spot]]
@@ -860,8 +868,7 @@ class FatRefiner(PixelRefinement):
         """needs to be called each time the ROI is changed"""
         (i1, i2), (j1, j2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
         self.D.region_of_interest = (int(i1), int(i2)), (int(j1), int(j2))
-        if not self.background_test_mode:
-            self.D.add_diffBragg_spots()
+        self.D.add_diffBragg_spots()
 
     def _get_fcell_val(self, i_fcell):
         # TODO vectorize me
@@ -1339,7 +1346,7 @@ class FatRefiner(PixelRefinement):
             if self.calc_curvatures:
                 self.curv[xpos] += self._curv_accumulate(d, d2)
 
-    def _spot_scale_derivatives(self):
+    def _spot_scale_derivatives(self, return_derivatives=False):
         if self.refine_crystal_scale:
             dI_dtheta = (self.G2/self.scale_fac)*self.model_bragg_spots
             # second derivative is 0 with respect to scale factor
@@ -1357,6 +1364,8 @@ class FatRefiner(PixelRefinement):
             self.grad[xpos] += self._grad_accumulate(d)
             if self.calc_curvatures:
                 self.curv[xpos] += self._curv_accumulate(d, d2)
+        if return_derivatives:
+            return d, d2
 
     def _gain_factor_derivatives(self):
         if self.refine_gain_fac:
