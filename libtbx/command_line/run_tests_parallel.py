@@ -94,6 +94,15 @@ def run(args, return_list_of_tests=None,python_keyword_text=""):
     all_tests.extend(unstable_tests)
     expected_failure_list.extend(fail_tests)
     expected_unstable_list.extend(unstable_tests)
+
+    # remove one test if python_keyword_text is set
+    if python_keyword_text:
+      new_tests=[]
+      for t in all_tests:
+        if not t.find("tst_scheduling")>-1:
+          new_tests.append(t)
+      all_tests=new_tests
+        
     # check that test lists are unique
     seen = set()
     duplicates = set()
