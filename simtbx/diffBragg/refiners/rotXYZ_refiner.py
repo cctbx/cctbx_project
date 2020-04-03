@@ -139,14 +139,17 @@ class RefineRot(PixelRefinement):
 
     def _evaluate_log_averageI(self):
         # fix log(x<=0)
-        try:
-            self.log_Lambda = np.log(self.model_Lambda)
-        except FloatingPointError:
-            pass
+        bad = self.model_Lambda <= 0
+        self.model_Lambda[bad] = 1e-10
+        self.log_Lambda = np.log(self.model_Lambda)
+        #try:
+        #    self.log_Lambda = np.log(self.model_Lambda)
+        #except FloatingPointError:
+        #    pass
         #if any((self.model_Lambda <= 0).ravel()):
         #    print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL!!!!!!!!!\n<><><><><><><><><>\n")
         #    raise ValueError("model of Bragg spots cannot have negative intensities...")
-        self.log_Lambda[self.model_Lambda <= 0] = 0
+        #self.log_Lambda[bad] = 0
 
     def compute_functional_and_gradients(self):
         f = 0
