@@ -48,11 +48,11 @@ from simtbx.nanoBragg import shapetype
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg import utils
-from simtbx.diffBragg.refiners.global_refiner import GlobalRefiner
+from simtbx.diffBragg.refiners.global_refiner import FatRefiner
 from IPython import embed
 from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager, TetragonalManager
 
-# containers for GlobalRefine
+# containers for FatRefine
 shot_ucell_managers={}
 shot_rois={}
 shot_nanoBragg_rois={}
@@ -330,7 +330,7 @@ ngain_param = 1
 n_global_unknowns = nfcell_param + ngain_param + n_global_m_param + n_global_ucell_param
 n_total_unknowns = n_local_unknowns + n_global_unknowns
 
-RUC = GlobalRefiner(
+RUC = FatRefiner(
     n_total_params=n_total_unknowns,
     n_local_params=n_local_unknowns,
     n_global_params=n_global_unknowns,
@@ -401,8 +401,8 @@ RUC.gt_ucell = ucell[0], ucell[2]
 RUC.spot_scale_init = [1]*N_SHOTS
 RUC.testing_mode = False
 
-RUC.m_init = {0:Ncells_gt[0]}  # np.log(Ncells_abc2[0]-3)
-RUC.ucell_inits = {0: [ucell[0], ucell[2]]}
+RUC.m_init = Ncells_gt[0]  # np.log(Ncells_abc2[0]-3)
+RUC.ucell_inits = ucell[0], ucell[2]
 
 #RUC.S.D.update_oversample_during_refinement = False  # todo: decide
 Fobs = RUC.S.crystal.miller_array_high_symmetry
