@@ -1498,11 +1498,12 @@ class FatRefiner(PixelRefinement):
             misset_min = min(_pos_misset_vals)
         if self.refine_Umatrix or self.refine_Bmatrix and self.print_all_missets:
             print("\nMissets\n========")
-            all_ang_off = ["%.5f" % aa for aa in all_ang_off]
-            print(", ".join(all_ang_off))
+            all_ang_off_s = ["%.5f" % aa for aa in all_ang_off]
+            print(", ".join(all_ang_off_s))
             print("N shots deemed bad from missets: %d" % self.n_bad_shots)
         print("MISSETTING median: %.4f; mean: %.4f, max: %.4f, min %.4f, num > .1 deg: %d/%d; num broken=%d"
               % (misset_median, misset_mean, misset_max, misset_min, n_bad_misset, n_misset, n_broken_misset))
+        self.all_ang_off = all_ang_off
 
     def _print_image_correlation_analysis(self):
         all_corr_str = ["%.2f" % ic for ic in self.all_image_corr]
@@ -1764,9 +1765,9 @@ class FatRefiner(PixelRefinement):
 
 
         if self.Fref is not None and self.iterations % self.merge_stat_frequency == 0:
-            R_overall = self.Fobs_Fref_Rfactor(use_binning=False, auto_scale=self.scale_r1)
-            CC_overall = self.Fobs.correlation(self.Fref_aligned).coefficient()
-            print("R-factor overall: %.4f, CC overall: %.4f" % (R_overall, CC_overall))
+            self.R_overall = self.Fobs_Fref_Rfactor(use_binning=False, auto_scale=self.scale_r1)
+            self.CC_overall = self.Fobs.correlation(self.Fref_aligned).coefficient()
+            print("R-factor overall: %.4f, CC overall: %.4f" % (self.R_overall, self.CC_overall))
             if self.print_resolution_bins:
                 print("R-factor (shells):")
                 print(self.Fobs_Fref_Rfactor(use_binning=True, auto_scale=self.scale_r1).show())

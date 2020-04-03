@@ -21,13 +21,18 @@ tst_list = (
     "$D/diffBragg/tests/tst_diffBragg_originZ_refine.py",
     "$D/diffBragg/tests/tst_diffBragg_regions_of_interest.py",
     "$D/diffBragg/tests/tst_diffBragg_rotXYZ.py",
-    "$D/diffBragg/tests/tst_diffBragg_rotXYZ_deriv.py",
+    ["$D/diffBragg/tests/tst_diffBragg_rotXYZ_deriv.py", "--curvatures --rotidx 0"],
+    ["$D/diffBragg/tests/tst_diffBragg_rotXYZ_deriv.py", "--curvatures --rotidx 1"],
+    ["$D/diffBragg/tests/tst_diffBragg_rotXYZ_deriv.py", "--curvatures --rotidx 2"],
     "$D/diffBragg/tests/tst_diffBragg_rotXYZ_refine.py",
     ["$D/diffBragg/tests/tst_diffBragg_rotXYZ_ucell_refine.py", "--curvatures"],
     ["$D/diffBragg/tests/tst_diffBragg_all_refine.py", "--umatrix --bmatrix --curvatures"],
     ["$D/diffBragg/tests/tst_diffBragg_ucell_refine.py", "--crystalsystem monoclinic --curvatures"],
     ["$D/diffBragg/tests/tst_diffBragg_ucell_refine.py", "--crystalsystem tetragonal"],
     ["$D/diffBragg/tests/tst_diffBragg_Fcell_deriv.py", "--curvatures"],
+    ["$D/diffBragg/tests/tst_diffBragg_multifat_refine.py",
+        "--nshots 1 --rescale --spotscale --umatrix --ncells " +
+        "--bmatrix --bg --fcell --testbg --testfcell --testUmatrix --maxcalls 50"],
     ["$D/diffBragg/tests/tst_diffBragg_fat_refine.py", "--spotscale --umatrix --bmatrix --ncells --curvatures --rescale"],
     )
 
