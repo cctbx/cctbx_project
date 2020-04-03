@@ -32,6 +32,10 @@ phil_scope = parse("""
     .type = bool
     .help = If true, 2D spectral data will be included in the master file, \
             as read from the beam_file.
+  energy_offset = None
+    .type = float
+    .help = If set, add this offset (in eV) to the energy axis in the \
+            spectra in the beam file and to the per-shot wavelength.
   mask_file = None
     .type = str
     .help = Path to file with external bad pixel mask.
@@ -145,8 +149,13 @@ class jf16m_cxigeom2nexus(object):
           spectra_x[i] = beam_spectra_x[where]
           spectra_y[i] = beam_spectra_y[where]
 
+      if self.params.energy_offset:
+        energies += self.params.energy_offset
       wavelengths = 12398.4187/energies
+
       if self.params.include_spectra:
+        if self.params.energy_offset:
+          spectra_x += self.params.energy_offset
         beam.create_dataset('incident_wavelength', spectra_x.shape, data=12398.4187/spectra_x, dtype=spectra_x.dtype)
         beam.create_dataset('incident_wavelength_weight', spectra_y.shape, data=spectra_y, dtype=spectra_y.dtype)
         beam.create_dataset('incident_wavelength_calculated', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
