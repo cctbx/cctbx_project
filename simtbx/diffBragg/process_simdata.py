@@ -91,7 +91,7 @@ def process_simdata(plot=False, angles=None, perturb="rotXYZ"):
 
     # multiply with the real-space Amatrix in order to get fractional miller indices
     hkl = np.dot(Areal_approx.as_numpy_array(), q_vecs.T)
-    hkli = map(lambda h: np.ceil(h - 0.5).astype(int), hkl)
+    hkli = list(map(lambda h: np.ceil(h - 0.5).astype(int), hkl))
     hkli = np.vstack(hkli).T
 
     if plot:
