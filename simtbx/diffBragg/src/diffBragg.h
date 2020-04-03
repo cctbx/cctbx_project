@@ -10,7 +10,7 @@ namespace nanoBragg {
 class derivative_manager{
   public:
     derivative_manager();
-    void initialize(int sdim, int fdim);
+    void initialize(int sdim, int fdim, bool compute_curvatures);
     af::flex_double raw_pixels;
     af::flex_double raw_pixels2;
     double value; // the value of the parameter
@@ -18,7 +18,7 @@ class derivative_manager{
     double dI2; // the incremental derivative
     bool refine_me;
     bool second_derivatives;
-    void increment_image(int idx, double value, double value2);
+    void increment_image(int idx, double value, double value2, bool curvatures);
 };
 
 
@@ -28,14 +28,6 @@ class rot_manager: public derivative_manager{
     virtual ~rot_manager(){}
     virtual void set_R();
     void increment(double value, double value2);
-        //double fudge,
-        //mat3 X, mat3 Y, mat3 Z,
-        //mat3 X2, mat3 Y2, mat3 Z2,
-        //mat3 N, mat3 U, mat3 UBOt,
-        //vec3 q, vec3 V,
-        //double Hrad, double Fcell, double Flatt,
-        //double source_I, double capture_fraction, double omega_pixel);
-
     mat3 XYZ, XYZ2;
     mat3 R, dR, dR2;
 }; // end of rot_manager
@@ -45,9 +37,6 @@ class Ncells_manager: public derivative_manager{
     Ncells_manager();
     virtual ~Ncells_manager(){}
     void increment(double dI_increment, double dI2_increment);
-       // vec3 V, vec3 H0_vec, vec3 H_vec,
-       // double Hrad, double Fcell, double Flatt, double fudge,
-       // double source_I, double capture_fraction, double omega_pixel);
 };
 
 
@@ -55,9 +44,7 @@ class Fcell_manager: public derivative_manager{
   public:
     Fcell_manager();
     virtual ~Fcell_manager(){}
-    void increment(
-        double Hrad, double Fcell, double Flatt, double fudge,
-        double source_I, double capture_fraction, double omega_pixel);
+    void increment(double value, double value2);
 };
 
 
@@ -66,9 +53,6 @@ class ucell_manager: public derivative_manager{
     ucell_manager();
     virtual ~ucell_manager(){}
     void increment(double value, double value2);
-        //vec3 V, mat3 NABC, mat3 UR, vec3 q, mat3 Ot,
-        //double Hrad, double Fcell, double Flatt, double fudge,
-        //double source_I, double capture_fraction, double omega_pixel);
 
     mat3 dB, dB2;
 };
@@ -178,6 +162,7 @@ class diffBragg: public nanoBragg{
   double* floatimage_roi;
   af::flex_double raw_pixels_roi;
 
+  bool compute_curvatures;
   bool update_oversample_during_refinement;
   bool oversample_omega;
   bool only_save_omega_kahn;
