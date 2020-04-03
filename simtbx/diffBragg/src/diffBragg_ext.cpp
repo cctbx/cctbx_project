@@ -155,6 +155,12 @@ namespace boost_python { namespace {
                      make_setter(&simtbx::nanoBragg::diffBragg::oversample_omega,dcp()),
                     "whether to use an average solid angle correction per pixel, or one at the sub pixel level")
 
+      .add_property("compute_curvatures",
+                     make_getter(&simtbx::nanoBragg::diffBragg::compute_curvatures,rbv()),
+                     make_setter(&simtbx::nanoBragg::diffBragg::compute_curvatures,dcp()),
+                    "Whether to compute the curvatures")
+
+
       .add_property("only_save_omega_kahn",
                      make_getter(&simtbx::nanoBragg::diffBragg::only_save_omega_kahn,rbv()),
                      make_setter(&simtbx::nanoBragg::diffBragg::only_save_omega_kahn,dcp()),

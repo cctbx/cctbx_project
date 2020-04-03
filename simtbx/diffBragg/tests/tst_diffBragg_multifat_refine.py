@@ -4,7 +4,7 @@ parser.add_argument("--plot", action='store_true')
 parser.add_argument("--detdist", action='store_true', help='perturb then refine the detdist')
 parser.add_argument("--ncells", action='store_true', help='perturb then refine the ncells')
 parser.add_argument("--bg", action='store_true', help='refine bg planes... ')
-parser.add_argument("--spotscale", action='store_true') #, help='fix the scale')
+parser.add_argument("--spotscale", action='store_true')
 parser.add_argument("--bmatrix", action='store_true')
 parser.add_argument("--umatrix", action='store_true')
 parser.add_argument("--fcell", action='store_true')
@@ -16,6 +16,8 @@ parser.add_argument("--iterfreeze", action="store_true")
 parser.add_argument("--rescale", action="store_true")
 parser.add_argument("--onlyindexed", action="store_true")
 parser.add_argument("--testbg", action="store_true")
+parser.add_argument("--testfcell", action="store_true")
+parser.add_argument("--testUmatrix", action="store_true")
 parser.add_argument("--bgoffsetonly", action="store_true")
 parser.add_argument("--bgoffsetpositive", action="store_true")
 parser.add_argument("--shufflebg", action="store_true")
@@ -23,6 +25,7 @@ parser.add_argument("--tiltfit", action="store_true")
 parser.add_argument("--predictwithtruth", action="store_true")
 parser.add_argument("--pershotucell", action="store_true")
 parser.add_argument("--pershotncells", action="store_true")
+parser.add_argument("--maxcalls", type=int, default=None)
 parser.add_argument("--displayedimage", type=int, default=0)
 parser.add_argument("--perturbfcell", type=float, default=None, help="perturbation factor, 0.1 is small, 1 is large")
 parser.add_argument("--fractionperturbed", type=float, default=0.1, help="Fraction of Fhkl to perturn")
@@ -191,13 +194,13 @@ for i_shot in range(N_SHOTS):
     SIM.D.F000 = 0
     SPOTS = SIM.D.raw_pixels.as_numpy_array()
     SIM.D.readout_noise_adu = 1
-    if args.testbg:
-        SIM.D.raw_pixels *= 0
+    #if args.testbg:
+    #    SIM.D.raw_pixels *= 0
     SIM._add_background()
-    if args.testbg:
-        BACKGROUND_IMAGE = SIM.D.raw_pixels.as_numpy_array()
-    else:
-        BACKGROUND_IMAGE = SIM.D.raw_pixels.as_numpy_array() - SPOTS
+    #if args.testbg:
+    #    BACKGROUND_IMAGE = SIM.D.raw_pixels.as_numpy_array()
+    #else:
+    BACKGROUND_IMAGE = SIM.D.raw_pixels.as_numpy_array() - SPOTS
     SIM._add_noise()
 
     if args.psf:
@@ -483,7 +486,10 @@ RUC.refine_detdist = args.detdist
 RUC.refine_gain_fac = args.gain
 RUC.rescale_params = args.rescale
 RUC.background_testing_mode = args.testbg
-RUC.max_calls = 15
+if args.maxcalls is not None:
+    RUC.max_calls = args.maxcalls
+else:
+    RUC.max_calls = 1000
 RUC.trad_conv_eps = 1e-7
 RUC.trad_conv = True
 RUC.trial_id = 0
@@ -497,6 +503,8 @@ RUC.setup_plots()
 RUC.refine_rotZ = True
 RUC.request_diag_once = False
 RUC.S = SIM
+if not args.curvatures:
+    RUC.S.D.compute_curvatures=False
 RUC.has_pre_cached_roi_data = True
 RUC.S.D.update_oversample_during_refinement = False
 RUC.use_curvatures = False
@@ -510,14 +518,14 @@ RUC.big_dump = False
 RUC.gt_ncells = Ncells_gt[0]
 RUC.originZ_gt = originZ_gt
 RUC.gt_ucell = ucell[0], ucell[2]
-if args.testbg:
-    RUC.spot_scale_init = [1e-10]*N_SHOTS
-else:
-    RUC.spot_scale_init = [1]*N_SHOTS
+#if args.testbg:
+#    RUC.spot_scale_init = [1e-10]*N_SHOTS
+#else:
+RUC.spot_scale_init = [1]*N_SHOTS
 #RUC.gt_ucell = ucell[0], ucell[1], ucell[2], ucell[4]
 RUC.testing_mode = False
 
-RUC.m_init = Ncells_abc2[0]   # np.log(Ncells_abc2[0]-3)
+RUC.m_init = Ncells_abc2[0]  # np.log(Ncells_abc2[0]-3)
 RUC.ucell_inits = ucell2[0], ucell2[2]
 
 #RUC.S.D.update_oversample_during_refinement = False  # todo: decide
@@ -529,7 +537,7 @@ RUC.binner_dmax = dmax + 1e-6
 RUC.binner_dmin = dmin - 1e-6
 RUC.binner_nbin = 10
 RUC.scale_r1 = True
-RUC.merge_stat_frequency = 2
+RUC.merge_stat_frequency = 1 #2
 RUC.print_resolution_bins = False
 if args.fcellsigmascale is not None:
     RUC.fcell_sigma_scale = args.fcellsigmascale
@@ -542,7 +550,7 @@ if RUC.hit_break_to_use_curvatures:
     RUC.run(setup=False)
 
 #RUC.calc_func = True
-#RUC.compute_functional_and_gradients()
+#RUC.compute_functional_and_graGdients()
 #
 #def func(x, RUC):
 #    print("F: det dist %f" % RUC.x[-3])
@@ -584,7 +592,6 @@ if RUC.hit_break_to_use_curvatures:
 #                    args=(RUC,),
 #                    bounds=bounds)
 
-#if args.testbg:
 i_shot = 0
 abc_init = RUC.ABC_INIT[i_shot]
 n_spots = len(RUC.ABC_INIT[i_shot])
@@ -625,5 +632,12 @@ print("Before reinfment: bg deviation mean=%.4f, med=%.4f, c std = %.4f" % (np.m
 print("After reinfment:               mean=%.4f, med=%.4f, c std = %.4f" % (np.mean(all_dev), np.median(all_dev), np.std(all_dev)))
 if args.testbg:
     assert np.mean(all_dev) < np.mean(all_dev_i)
+if args.testfcell:
+    print("Final Rfactor = %2.7g" % RUC.R_overall)
+    assert RUC.R_overall < 0.006
+if args.testUmatrix:
+    print("Final Misorientation=%2.7g" % RUC.all_ang_off[0])
+    assert RUC.all_ang_off[0] < 0.001
+
 print("OK!")
 #embed()
