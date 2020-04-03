@@ -28,6 +28,10 @@ phil_scope = parse("""
     .type = path
     .help = Overrides wavelength. Reads the pulse IDs in the provided file \
             to get a list of wavelengths for the master.
+  include_spectra = False
+    .type = bool
+    .help = If true, 2D spectral data will be included in the master file, \
+            as read from the beam_file.
   mask_file = None
     .type = str
     .help = Path to file with external bad pixel mask.
@@ -128,10 +132,27 @@ class jf16m_cxigeom2nexus(object):
       beam_pulse_ids = beam_h5['data/SARFE10-PSSS059:SPECTRUM_CENTER/pulse_id'][()]
       beam_energies = beam_h5['data/SARFE10-PSSS059:SPECTRUM_CENTER/data'][()]
       energies = np.ndarray((len(data_pulse_ids),), dtype='f8')
+      if self.params.include_spectra:
+        beam_spectra_x = beam_h5['data/SARFE10-PSSS059:SPECTRUM_X/data'][()]
+        beam_spectra_y = beam_h5['data/SARFE10-PSSS059:SPECTRUM_Y/data'][()]
+        spectra_x = np.ndarray((len(data_pulse_ids),beam_spectra_x.shape[1]), dtype='f8')
+        spectra_y = np.ndarray((len(data_pulse_ids),beam_spectra_y.shape[1]), dtype='f8')
+
       for i, pulse_id in enumerate(data_pulse_ids):
-        energies[i] = beam_energies[np.where(beam_pulse_ids==pulse_id)[0][0]]
+        where = np.where(beam_pulse_ids==pulse_id)[0][0]
+        energies[i] = beam_energies[where]
+        if self.params.include_spectra:
+          spectra_x[i] = beam_spectra_x[where]
+          spectra_y[i] = beam_spectra_y[where]
+
       wavelengths = 12398.4187/energies
-      beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
+      if self.params.include_spectra:
+        beam.create_dataset('incident_wavelength', spectra_x.shape, data=12398.4187/spectra_x, dtype=spectra_x.dtype)
+        beam.create_dataset('incident_wavelength_weight', spectra_y.shape, data=spectra_y, dtype=spectra_y.dtype)
+        beam.create_dataset('incident_wavelength_calculated', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
+        beam['incident_wavelength_calculated'].attrs['units'] = 'angstrom'
+      else:
+        beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
     else:
       assert self.params.wavelength is not None, "Provide a wavelength"
       beam.create_dataset('incident_wavelength', (1,), data=self.params.wavelength, dtype='f8')
