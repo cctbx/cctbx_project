@@ -37,7 +37,12 @@ slow_tests = False
   .help = "If True, also run any tests marked as slow, if any"
 """)
 
-def run(args, return_list_of_tests=None,python_keyword_text=""):
+def run(args, 
+   return_list_of_tests=None,
+   python_keyword_text="",
+   max_tests=None,
+   tests_to_skip=None):
+
   if (len(args) == 0):
     raise Usage("""libtbx.run_tests_parallel [module=NAME] [directory=path]""")
   user_phil = []
@@ -95,12 +100,18 @@ def run(args, return_list_of_tests=None,python_keyword_text=""):
     expected_failure_list.extend(fail_tests)
     expected_unstable_list.extend(unstable_tests)
 
-    # remove one test if python_keyword_text is set
-    if python_keyword_text:
+    # remove any specified tests:
+    if tests_to_skip:
       new_tests=[]
       for t in all_tests:
-        if not t.find("tst_scheduling")>-1:
+        ok=True
+        for tts in tests_to_skip:
+          if t.find(tts)>-1:
+            ok=False
+        if ok:
           new_tests.append(t)
+        else:
+          print ("Skipping the test %s" %(t))
       all_tests=new_tests
 
     # check that test lists are unique
@@ -112,6 +123,10 @@ def run(args, return_list_of_tests=None,python_keyword_text=""):
       else:
         seen.add(t)
     assert len(duplicates) == 0, "Duplicate tests found.\n%s" % list(duplicates)
+  if max_tests:
+    all_tests=all_tests[:max_tests]
+    print("Running only %s tests" %(max_tests))
+
   if return_list_of_tests:
     return all_tests
   if (len(all_tests) == 0):
