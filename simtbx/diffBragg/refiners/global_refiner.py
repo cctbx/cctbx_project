@@ -1,7 +1,7 @@
 from __future__ import print_function
+
 try:
     from mpi4py import MPI
-
     comm = MPI.COMM_WORLD
     rank = comm.rank
     size = comm.size
@@ -10,7 +10,6 @@ except ImportError:
     rank = 0
     size = 1
     has_mpi = False
-
 
 class Bcolors:
     HEADER = '\033[95m'
@@ -320,7 +319,7 @@ class FatRefiner(PixelRefinement):
 
     def _setup(self):
         # Here we go!  https://youtu.be/7VvkXA6xpqI
-        if comm.rank == 0:
+        if rank == 0:
             print("Setup begins!")
         if not self.asu_from_idx:
             raise ValueError("Need to supply a non empty asu from idx map")
@@ -328,7 +327,7 @@ class FatRefiner(PixelRefinement):
             raise ValueError("Need to supply a non empty idx from asu map")
 
         # get the Fhkl information from P1 array internal to nanoBragg
-        if comm.rank == 0:
+        if rank == 0:
             print("--0 create an Fcell mapping")
         idx, data = self.S.D.Fhkl_tuple
         self.idx_from_p1 = {h: i for i, h in enumerate(idx)}
@@ -353,7 +352,7 @@ class FatRefiner(PixelRefinement):
         self.bg_a_xstart = {}
         self.bg_b_xstart = {}
         self.bg_c_xstart = {}
-        if comm.rank == 0:
+        if rank == 0:
             print("--1 Setting up per shot parameters")
 
         # this is a sliding parameter that points to the latest local (per-shot) parameter in the x-array
@@ -458,7 +457,7 @@ class FatRefiner(PixelRefinement):
         self.gain_xpos = self.n_total_params - 1
 
         # tally up HKL multiplicity
-        if comm.rank == 0:
+        if rank == 0:
             print("REduction of global data layout")
         hkl_totals = []
         fname_totals = []
@@ -574,13 +573,14 @@ class FatRefiner(PixelRefinement):
             self.x[self.gain_xpos] = self._init_gain  # gain factor
 
         # reduce then broadcast self.x
-        if comm.rank == 0:
+        if rank == 0:
             print("--3 combining parameters across ranks")
         self.x = self._mpi_reduce_broadcast(self.x)
 
-        if comm.rank != 0:
+        if rank != 0:
             self.hkl_frequency = None
-        self.hkl_frequency = comm.bcast(self.hkl_frequency)
+        if has_mpi:
+            self.hkl_frequency = comm.bcast(self.hkl_frequency)
 
         # See if restarting from save state
 
@@ -589,10 +589,10 @@ class FatRefiner(PixelRefinement):
         elif self.restart_file is not None:
             self.x = flex_double(np_load(self.restart_file)["x"])
 
-        if comm.rank == 0:
+        if rank == 0:
             print("--4 print initial stats")
         rotx, roty, rotz, uc_vals, ncells_vals, scale_vals, _, origZ = self._unpack_internal(self.x, lst_is_x=True)
-        if comm.rank == 0 and self.big_dump:
+        if rank == 0 and self.big_dump:
 
             master_data = {"a": uc_vals[0], "c": uc_vals[1],
                            "Ncells": ncells_vals,
@@ -1054,7 +1054,7 @@ class FatRefiner(PixelRefinement):
             if self.verbose:
                 self._print_iteration_header()
 
-            if comm.rank == 0 and self.output_dir is not None:
+            if rank == 0 and self.output_dir is not None:
                 self._save_state_of_refiner()
 
             if self.iteratively_freeze_parameters:
@@ -1095,7 +1095,7 @@ class FatRefiner(PixelRefinement):
 
                     if self.verbose and i_spot % self.spot_print_stride == 0:
                         print("diffBragg: img %d/%d; spot %d/%d; panel %d" \
-                              % (self._i_shot + 1, self.n_shots, i_spot + 1, n_spots, self._panel_id), flush=True)
+                              % (self._i_shot + 1, self.n_shots, i_spot + 1, n_spots, self._panel_id)) #, flush=True)
 
                     self.Imeas = self.ROI_IMGS[self._i_shot][i_spot]
                     self._update_dxtbx_detector()
@@ -1137,7 +1137,10 @@ class FatRefiner(PixelRefinement):
 
                 self.image_corr[self._i_shot] = self.image_corr[self._i_shot] / n_spots
 
-            self.all_image_corr = comm.reduce(self.image_corr, MPI.SUM, root=0)
+            if has_mpi:
+                self.all_image_corr = comm.reduce(self.image_corr, MPI.SUM, root=0)
+            else:
+                self.all_image_corr = self.image_corr
             # TODO add in the priors:
             self._priors()
             self._parameter_freezes()
@@ -1421,7 +1424,7 @@ class FatRefiner(PixelRefinement):
 
     def _mpi_aggregation(self):
         # reduce the broadcast summed results:
-        if comm.rank == 0:
+        if rank == 0:
             print("\nMPI reduce on functionals and gradients...")
         self.target_functional = self._mpi_reduce_broadcast(self.target_functional)
         self.grad = self._mpi_reduce_broadcast(self.grad)
@@ -1488,12 +1491,17 @@ class FatRefiner(PixelRefinement):
             self.all_ang_off.append(ang_off)
 
         self.bad_shot_list = list(set(self.bad_shot_list))
-        self.all_ang_off = comm.gather(self.all_ang_off, root=0)
+        if has_mpi:
+            self.all_ang_off = comm.gather(self.all_ang_off, root=0)
         self.n_bad_shots = len(self.bad_shot_list)
-        self.n_bad_shots = comm.bcast(self.n_bad_shots)
+        if has_mpi:
+            self.n_bad_shots = comm.bcast(self.n_bad_shots)
 
     def _print_GT_crystal_misorientation_analysis(self):
-        all_ang_off = [s for sl in self.all_ang_off for s in sl]  # flatten the gathered array
+        if has_mpi:
+            all_ang_off = [s for sl in self.all_ang_off for s in sl]  # flatten the gathered array
+        else:
+            all_ang_off = self.all_ang_off
         n_broken_misset = sum([1 for aa in all_ang_off if aa == -1])
         n_bad_misset = sum([1 for aa in all_ang_off if aa > 0.1])
         n_misset = len(all_ang_off)
@@ -1599,8 +1607,9 @@ class FatRefiner(PixelRefinement):
                 plt.pause(.02)
 
     def _mpi_reduce_broadcast(self, var):
-        var = comm.reduce(var, MPI.SUM, root=0)
-        var = comm.bcast(var, root=0)
+        if has_mpi:
+            var = comm.reduce(var, MPI.SUM, root=0)
+            var = comm.bcast(var, root=0)
         return var
 
     def _poisson_target(self):
@@ -1856,7 +1865,7 @@ class FatRefiner(PixelRefinement):
         mset_obs = miller.set(sym, self.Fobs.indices(), anomalous_flag=True)
         fobs = miller.array(mset_obs, self.Fobs.data()).set_observation_type_xray_amplitude()
         # TODO: what to do in MPI mode when writing ?
-        if save_to_file is not None and comm.rank == 0:
+        if save_to_file is not None and rank == 0:
             fobs.as_mtz_dataset(column_root_label='fobs', wavelength=wavelength).mtz_object().write(save_to_file)
         return fobs
 
