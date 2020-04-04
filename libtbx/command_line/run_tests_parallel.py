@@ -37,7 +37,7 @@ slow_tests = False
   .help = "If True, also run any tests marked as slow, if any"
 """)
 
-def run(args, 
+def run(args,
    return_list_of_tests=None,
    python_keyword_text="",
    max_tests=None,
