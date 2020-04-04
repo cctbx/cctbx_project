@@ -217,7 +217,7 @@ class RefineAll(RefineRot):
             self._update_ncells()
             for i_spot in range(self.n_spots):
                 if self.verbose:
-                    print ("\rRunning diffBragg over spot %d/%d " % (i_spot+1, self.n_spots), flush=True)
+                    print ("\rRunning diffBragg over spot %d/%d " % (i_spot+1, self.n_spots))
                 self._run_diffBragg_current(i_spot)
                 self._unpack_bgplane_params(i_spot)
                 self._set_background_plane(i_spot)
