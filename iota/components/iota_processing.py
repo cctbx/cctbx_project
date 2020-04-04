@@ -150,7 +150,13 @@ class IOTAImageProcessor(Processor):
         tphil_string = tf.read()
       tparams = phil_scope.fetch(source=parse(tphil_string)).extract()
     else:
-      tparams = phil_scope.extract()
+      from iota.components.iota_input import write_defaults
+      method = self.iparams.advanced.processing_backend
+      target_phil, _ = write_defaults(
+        method=method,
+        write_param_file=False,
+        write_target_file=False)
+      tparams = phil_scope.fetch(source=target_phil).extract()
     Processor.__init__(self, params=tparams)
 
     # IOTA-specific settings from here
@@ -345,11 +351,11 @@ class IOTAImageProcessor(Processor):
     if hasattr(error, "classname"):
       # print(error.classname, "for {}:".format(img_object.img_path), )
       error_message = "{}: {}".format(error.classname,
-                                      error[0].replace('\n', ' ')[:50])
+                                      error[0].replace('\n', ' ')) #[:50])
     else:
       p_name = p_name.lower().capitalize()
       # print("{} error for {}:".format(p_name, img_object.img_path), )
-      error_message = "{}".format(str(error).replace('\n', ' ')[:50])
+      error_message = "{}".format(str(error).replace('\n', ' ')) #[:50])
     # print(error_message)
     img_object.fail = 'failed {}'.format(p_name.lower())
     img_object.errors.append(error_message)
@@ -467,7 +473,7 @@ class IOTAImageProcessor(Processor):
                          dials_log=self.dials_log)
 
     # Finish if spotfinding is the last processing stage
-    if 'spotfind' in self.last_stage:
+    if 'spotfind' in self.last_stage or 'spf' in self.last_stage:
       try:
         detector = img_object.experiments.unique_detectors()[0]
         beam = img_object.experiments.unique_beams()[0]
@@ -535,6 +541,9 @@ class IOTAImageProcessor(Processor):
                                dials_log=self.dials_log)
         else:
           return self.error_handler(e_ridx, 'indexing', img_object, output)
+
+    if 'index' in self.last_stage or 'idx' in self.last_stage:
+      return img_object
 
     # **** REFINEMENT **** #
     with util.Capturing() as output:
