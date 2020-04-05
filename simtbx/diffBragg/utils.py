@@ -484,7 +484,6 @@ END
         from cctbx import crystal
         crystal_sym = crystal.symmetry(unit_cell=ucell, space_group_symbol=symbol)
         xray_structure = structure(scatterers=xray_structure.scatterers(), crystal_symmetry=crystal_sym)
-        print( "MADE UCELL SYM")
     # take a detour to insist on calculating anomalous contribution of every atom
     scatterers = xray_structure.scatterers()
     if anom:

@@ -1,5 +1,5 @@
 from __future__ import print_function
-
+import time
 try:
     from mpi4py import MPI
     comm = MPI.COMM_WORLD
@@ -953,12 +953,18 @@ class FatRefiner(PixelRefinement):
         # TODO: select hierarchy level at this point
         # NOTE: what does fast-axis and slow-axis mean for the different hierarchy levels?
         node = det[self._panel_id]
-        orig = node.get_local_origin()
+        #orig = node.get_local_origin()
+        #new_originZ = self._get_originZ_val(self._i_shot)
+        #new_local_origin = orig[0], orig[1], new_originZ
+        #node.set_local_frame(node.get_local_fast_axis(),
+        #                     node.get_local_slow_axis(),
+        #                     new_local_origin)
+        orig = node.get_origin()
         new_originZ = self._get_originZ_val(self._i_shot)
-        new_local_origin = orig[0], orig[1], new_originZ
-        node.set_local_frame(node.get_local_fast_axis(),
-                             node.get_local_slow_axis(),
-                             new_local_origin)
+        new_origin = orig[0], orig[1], new_originZ
+        node.set_frame(node.get_fast_axis(),
+                             node.get_slow_axis(),
+                             new_origin)
         self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
         self.D.update_dxtbx_geoms(det, self.S.beam.nanoBragg_constructor_beam, self._panel_id)
 
@@ -1165,6 +1171,7 @@ class FatRefiner(PixelRefinement):
 
             self.iterations += 1
             self.f_vals.append(self.target_functional)
+            time.sleep(self.pause_after_iteration)
 
             if self.calc_curvatures and not self.use_curvatures:
                 if self.num_positive_curvatures == self.use_curvatures_threshold:

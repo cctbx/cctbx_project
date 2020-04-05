@@ -50,6 +50,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.m_init = 10  # TODO make setting these more of a requirement
         self.spot_scale_init = {0: 1} # TODO see below comment
 
+        self.pause_after_iteration=0.001
+
 
         self.compute_image_model_correlation = False
         self.spot_print_stride = 1000
