@@ -356,6 +356,13 @@ void diffBragg::update_dxtbx_geoms(
     Fclose = Xclose = -dot_product(pix0_vector,fdet_vector);
     Sclose = Yclose = -dot_product(pix0_vector,sdet_vector);
     close_distance = distance =  dot_product(pix0_vector,odet_vector);
+    if (close_distance < 0){  /* NOTE close_distance defined this way is negative for some dxtbx models */
+      printf("diffBragg::udpate_dxtbx_geom: Warning close distance is coming out as negative!\n");
+      odet_vector[1] = -odet_vector[1];
+      odet_vector[2] = -odet_vector[2];
+      odet_vector[3] = -odet_vector[3];
+      close_distance = distance = dot_product(pix0_vector,odet_vector);
+    }
 
     /* set beam centre */
     scitbx::vec2<double> dials_bc = detector[panel_id].get_beam_centre(beam.get_s0());
