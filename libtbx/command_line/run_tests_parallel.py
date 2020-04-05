@@ -41,6 +41,7 @@ def run(args,
    return_list_of_tests=None,
    python_keyword_text="",
    max_tests=None,
+   start_test=None,
    tests_to_skip=None):
 
   if (len(args) == 0):
@@ -123,6 +124,9 @@ def run(args,
       else:
         seen.add(t)
     assert len(duplicates) == 0, "Duplicate tests found.\n%s" % list(duplicates)
+  if start_test:
+    all_tests=all_tests[start_test:]
+    print ("Starting with test # %s " %(start_test))
   if max_tests:
     all_tests=all_tests[:max_tests]
     print("Running only %s tests" %(max_tests))

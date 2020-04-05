@@ -454,7 +454,10 @@ def make_commands(files,python_keyword_text=""):
   unrecognized = []
   for file_name in files :
     if file_name.endswith('.py'):
-      cmd = 'libtbx.python %s "%s"'%(python_keyword_text,file_name)
+      if python_keyword_text:
+        cmd = 'libtbx.python %s "%s"'%(python_keyword_text,file_name)
+      else:
+        cmd = 'libtbx.python "%s"'%(file_name) # usual
     elif file_name.endswith('.sh'):
       # interpreter = 'libtbx.bash'
       cmd = file_name
