@@ -354,7 +354,7 @@ def makeMoffat_integPSF(fwhm_pixel, sizeX, sizeY):
     return psf
 
 
-def convolve_with_psf(image_data, fwhm=27.0, pixel_size=177.8, psf_radius=3):
+def convolve_with_psf(image_data, fwhm=27.0, pixel_size=177.8, psf_radius=7):
   ''' Given a 2D numpy array of image data, convolve with a PSF. '''
   from dials.algorithms.image.filter import convolve
 

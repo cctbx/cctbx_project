@@ -2,10 +2,11 @@ from simtbx.diffBragg.refiners import RefineRot, BreakToUseCurvatures
 from simtbx.nanoBragg import shapetype
 from scitbx.array_family import flex
 from simtbx.diffBragg.utils import convolve_with_psf
-try:
-  import pylab as plt
-except Exception as e:
-  pass
+if True:
+  try:
+    import pylab as plt
+  except Exception as e:
+    pass
 import numpy as np
 import sys
 import math
@@ -273,8 +274,7 @@ class RefineAll(RefineRot):
                     g[i_spot] += g_tmp_a.sum()
                     g[self.n_spots + i_spot] += g_tmp_b.sum()
                     g[self.n_spots*2 + i_spot] += g_tmp_c.sum()
-
-                if self.plot_images: # and self.iterations==0:
+                if self.plot_images and self.show_plotted_images: # and self.iterations==0:
                     import pylab as plt
                 if self.plot_images and self.iterations % self.plot_stride == 0:
                     if self.plot_residuals:
@@ -300,10 +300,11 @@ class RefineAll(RefineRot):
                         vmin = m-s
                         m2 = self.model_Lambda.mean()
                         s2 = self.model_Lambda.std()
-                        self.ax1.images[0].set_data(self.model_Lambda)
-                        self.ax1.images[0].set_clim(vmin, vmax)
-                        self.ax2.images[0].set_data(Imeas)
-                        self.ax2.images[0].set_clim(vmin, vmax)
+                        if self.show_plotted_images:
+                          self.ax1.images[0].set_data(self.model_Lambda)
+                          self.ax1.images[0].set_clim(vmin, vmax)
+                          self.ax2.images[0].set_data(Imeas)
+                          self.ax2.images[0].set_clim(vmin, vmax)
                         self.store_model_Lambda.append(self.model_Lambda)
                         self.store_Imeas.append(Imeas)
                         self.store_vmax.append(vmax)

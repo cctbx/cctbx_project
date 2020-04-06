@@ -41,6 +41,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.verbose = True
         self.refine_crystal_scale = True
         self.plot_images = False
+        self.show_plotted_images=False # Does not load up matplotlib if set to false
         self.refine_rotX = True
         self.iterations = 0
         self.refine_rotY = True
@@ -88,6 +89,16 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         if not isinstance(val, bool):
             raise ValueError("plot_images must be True or False")
         self._plot_images = val
+
+    @property
+    def show_plotted_images(self):
+        return self._show_plotted_images
+
+    @show_plotted_images.setter
+    def show_plotted_images(self, val):
+        if not isinstance(val, bool):
+            raise ValueError("plot_images must be True or False")
+        self._show_plotted_images = val
 
     @property
     def spot_rois(self):

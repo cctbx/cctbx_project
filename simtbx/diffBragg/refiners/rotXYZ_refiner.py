@@ -1,11 +1,12 @@
-try:
-  import pylab as plt
-  from mpl_toolkits.mplot3d import axes3d
-
-  fig = plt.figure()
-  ax = fig.gca(projection='3d')
-except Exception as e:
-  pass
+if True:
+  try:
+    import pylab as plt
+    from mpl_toolkits.mplot3d import axes3d
+  
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+  except Exception as e:
+    pass
 import numpy as np
 
 from scitbx.array_family import flex
@@ -16,7 +17,7 @@ from simtbx.diffBragg.refiners import PixelRefinement
 class RefineRot(PixelRefinement):
 
     def __init__(self, spot_rois, spot_resolution, abc_init, img, SimData_instance,
-                 plot_images=False, plot_residuals=False, panel_ids=None):
+                 plot_images=False, show_plotted_images=False, plot_residuals=False, panel_ids=None):
         """
         :param spot_rois:
         :param abc_init:
@@ -26,7 +27,8 @@ class RefineRot(PixelRefinement):
         """
         super(RefineRot, self).__init__()
         self.plot_images = plot_images
-        if self.plot_images:
+        self.show_plotted_images=show_plotted_images
+        if self.plot_images and self.show_plotted_images:
             import pylab as plt
             from mpl_toolkits.mplot3d import axes3d
             fig = plt.figure()
@@ -46,7 +48,7 @@ class RefineRot(PixelRefinement):
         self.S = SimData_instance
         self.refine_rotX = self.refine_rotY = self.refine_rotZ = True
         self.iterations = 0
-        if self.plot_images:
+        if self.plot_images and self.show_plotted_images:
             if plot_residuals:
                 self.fig = plt.figure()
                 self.ax = self.fig.gca(projection='3d')
