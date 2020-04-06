@@ -7,11 +7,11 @@
 namespace cctbx { namespace xray { namespace structure_factors {
 
   /// A pair \f$(hR, ht)\f$ where \f$(R \mid t)\f$ is a symmetry element.
-  template <typename FloatType>
+  template <typename FloatType, typename IndexType=miller::index<> >
   struct hr_ht_group
   {
     hr_ht_group(
-      miller::index<> const& hr_,
+      IndexType const& hr_,
       FloatType const& ht_)
     :
       hr(hr_),
@@ -19,7 +19,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
     {}
 
     /// \f$hR\f$
-    miller::index<> hr;
+    IndexType hr;
 
     /// \f$ht\f$
     FloatType ht;
@@ -32,14 +32,14 @@ namespace cctbx { namespace xray { namespace structure_factors {
     A centric space group is partition as the coset decomposition
     \f$G = G' \bigcup \bar{1}G''\f$ and only the elements of G' are considered.
    */
-  template <typename FloatType>
+  template <typename FloatType, typename IndexType=miller::index<> >
   struct hr_ht_cache
   {
     typedef FloatType f_t;
 
     /// Construct the cache using std::cos and std::sin.
     hr_ht_cache(sgtbx::space_group const& space_group,
-                miller::index<> const& h)
+                IndexType const& h)
     {
       math::cos_sin_exact<f_t> cos_sin;
       init(cos_sin, space_group, h);
@@ -50,7 +50,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
     template<class CosSinType>
     hr_ht_cache(CosSinType const &cos_sin,
                 sgtbx::space_group const& space_group,
-                miller::index<> const& h)
+                IndexType const& h)
     {
       init(cos_sin, space_group, h);
     }
@@ -59,7 +59,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
     template <class CosSinType>
     void init(CosSinType const &cos_sin,
               sgtbx::space_group const& space_group,
-              miller::index<> const& h)
+              IndexType const& h)
     {
       ltr_factor = space_group.n_ltr();
       is_centric = space_group.is_centric();
@@ -74,7 +74,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
       }
       for(std::size_t i_smx=0;i_smx<space_group.n_smx();i_smx++) {
         sgtbx::rt_mx const& s = space_group.smx(i_smx);
-        groups.push_back(hr_ht_group<f_t>(
+        groups.push_back(hr_ht_group<f_t, IndexType>(
           h * s.r(),
           static_cast<f_t>(h * s.t()) / t_den));
       }
@@ -104,7 +104,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
     std::complex<f_t> f_h_inv_t;
 
     /// The list of pairs \f$(hR, ht)\f$.
-    af::small<hr_ht_group<f_t>, sgtbx::n_max_repr_rot_mx> groups;
+    af::small<hr_ht_group<f_t, IndexType>, sgtbx::n_max_repr_rot_mx> groups;
   };
 
 }}} // namespace cctbx::xray::structure_factors
