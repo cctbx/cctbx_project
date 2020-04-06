@@ -37,6 +37,10 @@ namespace cctbx { namespace xray { namespace structure_factors {
   {
     typedef FloatType f_t;
 
+    hr_ht_cache()
+    {}
+
+
     /// Construct the cache using std::cos and std::sin.
     hr_ht_cache(sgtbx::space_group const& space_group,
                 IndexType const& h)
