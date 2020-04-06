@@ -45,13 +45,19 @@ namespace cctbx { namespace xray {
 
     unsigned bits;
     int param;
+    bool use_fp_fdp_aniso_;
+    bool grad_fp_aniso_;
+    bool grad_fdp_aniso_;
 
     scatterer_flags(
       unsigned bits_=use_bit,
       int param_=0)
     :
       bits(bits_),
-      param(param_)
+      param(param_),
+      use_fp_fdp_aniso_(false),
+      grad_fp_aniso_(false),
+      grad_fdp_aniso_(false)
     {}
 
     scatterer_flags(
@@ -124,6 +130,9 @@ namespace cctbx { namespace xray {
       set_curv_fdp_fdp(curv_fdp_fdp);
       set_tan_u_iso(tan_u_iso);
       set_use_fp_fdp(use_fp_fdp);
+      set_use_fp_fdp_aniso(false);
+      set_grad_fp_aniso(false);
+      set_grad_fdp_aniso(false);
     }
 
     /// Whether for each corresponding pair of bits a and b from bits
@@ -143,6 +152,34 @@ namespace cctbx { namespace xray {
       else       bits &= ~attr##_bit; \
       return *this; \
     }
+
+    bool use_fp_fdp_aniso() const {
+      return use_fp_fdp_aniso_;
+    }
+
+    scatterer_flags& set_use_fp_fdp_aniso(bool state) {
+      use_fp_fdp_aniso_ = state;
+      return *this;
+    }
+
+    bool grad_fp_aniso() const {
+      return grad_fp_aniso_;
+    }
+
+    scatterer_flags& set_grad_fp_aniso(bool state) {
+      grad_fp_aniso_ = state;
+      return *this;
+    }
+
+    bool grad_fdp_aniso() const {
+      return grad_fdp_aniso_;
+    }
+
+    scatterer_flags& set_grad_fdp_aniso(bool state) {
+      grad_fdp_aniso_ = state;
+      return *this;
+    }
+
 
     CCTBX_XRAY_SCATTERER_FLAGS_GET_SET(use)
     CCTBX_XRAY_SCATTERER_FLAGS_GET_SET(use_u_iso)
@@ -253,11 +290,14 @@ namespace cctbx { namespace xray {
       unsigned u_aniso;
       unsigned occupancy;
       unsigned fp;
+      unsigned fp_aniso;
       unsigned fdp;
+      unsigned fdp_aniso;
       unsigned tan_u_iso;
       unsigned use_u_iso;
       unsigned use_u_aniso;
       unsigned use_fp_fdp;
+      unsigned use_fp_fdp_aniso;
 
       grad_flags_counts_core()
         : site(0),
@@ -265,11 +305,14 @@ namespace cctbx { namespace xray {
           u_aniso(0),
           occupancy(0),
           fp(0),
+          fp_aniso(0),
           fdp(0),
+          fdp_aniso(0),
           tan_u_iso(0),
           use_u_iso(0),
           use_u_aniso(0),
-          use_fp_fdp(0)
+          use_fp_fdp(0),
+          use_fp_fdp_aniso(0)
       {}
 
       void process(scatterer_flags const &f)
@@ -281,16 +324,19 @@ namespace cctbx { namespace xray {
           if (f.grad_occupancy()) occupancy++;
           if (f.grad_fp()) fp++;
           if (f.grad_fdp()) fdp++;
+          if (f.grad_fp_aniso()) fp_aniso = fp_aniso + 6;
+          if (f.grad_fdp_aniso()) fdp_aniso = fdp_aniso + 6;
           if (f.tan_u_iso()) tan_u_iso++;
           if (f.use_u_iso()) use_u_iso++;
           if (f.use_u_aniso()) use_u_aniso++;
           if (f.use_fp_fdp()) use_fp_fdp++;
+          if (f.use_fp_fdp_aniso()) use_fp_fdp_aniso++;
         }
       }
 
       unsigned
       n_parameters() const {
-        return site + u_iso + u_aniso + occupancy + fp + fdp;
+        return site + u_iso + u_aniso + occupancy + fp + fdp + fp_aniso + fdp_aniso;
       }
   };
 

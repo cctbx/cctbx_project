@@ -61,7 +61,9 @@ namespace xray {
         u_star(-1,-1,-1,-1,-1,-1),
         flags(scatterer_flags::use_bit|scatterer_flags::use_u_iso_bit),
         multiplicity_(0),
-        weight_without_occupancy_(0)
+        weight_without_occupancy_(0),
+        fp_aniso(-1,-1,-1,-1,-1,-1),
+        fdp_aniso(-1,-1,-1,-1,-1,-1)
       {}
 
       //! Initialization with anisotropic displacement parameters.
@@ -83,7 +85,9 @@ namespace xray {
         u_star(u_star_),
         flags(scatterer_flags::use_bit|scatterer_flags::use_u_aniso_bit),
         multiplicity_(0),
-        weight_without_occupancy_(0)
+        weight_without_occupancy_(0),
+        fp_aniso(-1,-1,-1,-1,-1,-1),
+        fdp_aniso(-1,-1,-1,-1,-1,-1)
       {}
 
       //! Direct access to label.
@@ -128,6 +132,18 @@ namespace xray {
 
       //! Support for refinement.
       scatterer_flags flags;
+
+      //! Anisotropic f-prime tensor.
+      /* Near absorption edges the inelastic scattering factors may show strong
+         polarization anisotropy.
+       */
+      scitbx::sym_mat3<FloatType> fp_aniso;
+
+      //! Anisotropic f-double-prime tensor.
+      /* Near absorption edges the inelastic scattering factors may show strong
+         polarization anisotropy.
+       */
+      scitbx::sym_mat3<FloatType> fdp_aniso;
 
       void set_use_u(bool iso, bool aniso)
       {
