@@ -500,6 +500,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
       typedef ObservableType<float_type> observable_type;
       typedef ExpI2PiFunctor<float_type> exp_i_2pi_functor;
       typedef boost::shared_ptr<Heir> pointer_type;
+      typedef scitbx::vec3<float_type> pol_vec_type;
 
     protected:
       cctbx::xray::scatterer_grad_flags_counts grad_flags_counts;
@@ -518,6 +519,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
       af::ref_owning_shared<complex_type> grad_f_calc;
       float_type observable;
       af::ref_owning_shared<float_type> grad_observable;
+
+      // A second Fc at this h; e.g. for the second polarization direction when
+      // polarization anisotropy is present
+      complex_type f_calc_prime;
+      af::ref_owning_shared<complex_type> grad_f_calc_prime;
+      complex_type *grad_f_calc_prime_cursor;
 
     public:
       /** @brief The evaluation or linearisation of \f$F_c\f$
@@ -548,6 +555,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
           scattering_type_indices(
             scattering_type_registry.unique_indices(this->scatterers) ),
           grad_f_calc(grad_flags_counts.n_parameters(),
+                      af::init_functor_null<complex_type>()),
+          grad_f_calc_prime(grad_flags_counts.n_parameters(),
                       af::init_functor_null<complex_type>()),
           grad_observable(grad_flags_counts.n_parameters(),
                           af::init_functor_null<float_type>()),
@@ -617,6 +626,51 @@ namespace smtbx { namespace structure_factors { namespace direct {
         }
       }
 
+      void compute(miller::index<> const h,
+                   pol_vec_type u_inc, // u,v convention as in Schiltz 2008
+                   pol_vec_type u_scat,
+                   pol_vec_type v_scat,
+                   boost::optional<complex_type> const &f_mask=boost::none,
+                   bool compute_grad=true)
+      {
+        float_type d_star_sq = unit_cell.d_star_sq(h);
+        af::shared<float_type> elastic_form_factors
+          = scattering_type_registry.unique_form_factors_at_d_star_sq(d_star_sq);
+
+        Heir &heir = static_cast<Heir &> (*this);
+
+        typedef one_scatterer_one_h::in_generic_space_group<
+                  float_type, exp_i_2pi_functor>
+                generic_linearisation_t;
+
+        typedef one_scatterer_one_h::in_origin_centric_space_group<
+                  float_type, exp_i_2pi_functor>
+                origin_centric_linearisation_t;
+
+        if (!origin_centric_case) {
+          generic_linearisation_t lin_for_h_parallel(space_group, h,
+                                                     d_star_sq, heir.exp_i_2pi,
+                                                     u_inc, u_scat);
+          generic_linearisation_t lin_for_h_perpendicular(space_group, h,
+                                                     d_star_sq, heir.exp_i_2pi,
+                                                     u_inc, v_scat);
+          compute(elastic_form_factors.ref(), lin_for_h_parallel,
+                  lin_for_h_perpendicular, f_mask, compute_grad);
+        }
+        else {
+          origin_centric_linearisation_t lin_for_h_parallel(space_group, h,
+                                                     d_star_sq, heir.exp_i_2pi,
+                                                     u_inc, u_scat);
+          origin_centric_linearisation_t lin_for_h_perpendicular(space_group, h,
+                                                     d_star_sq, heir.exp_i_2pi,
+                                                     u_inc, v_scat);
+          compute(elastic_form_factors.ref(), lin_for_h_parallel,
+                  lin_for_h_perpendicular, f_mask, compute_grad);
+        }
+
+      }
+
+
     private:
       template <class LinearisationForMillerIndex>
       void compute(af::const_ref<float_type> const &elastic_form_factors,
@@ -668,7 +722,71 @@ namespace smtbx { namespace structure_factors { namespace direct {
                                  compute_grad);
         has_computed_grad = compute_grad;
       }
+
+      template <class LinearisationForMillerIndex>
+      void compute(af::const_ref<float_type> const &elastic_form_factors,
+                   LinearisationForMillerIndex &l,
+                   LinearisationForMillerIndex &l_prime,
+                   boost::optional<complex_type> const &f_mask,
+                   bool compute_grad)
+      {
+        f_calc = 0;
+        f_calc_prime = 0;
+        grad_f_calc_cursor = grad_f_calc.begin();
+        grad_f_calc_prime_cursor = grad_f_calc_prime.begin();
+
+        for (int j=0; j < scatterers.size(); ++j) {
+          xray::scatterer<> const &sc = scatterers[j];
+          float_type f0 = elastic_form_factors[ scattering_type_indices[j] ];
+          l.compute(sc, f0, compute_grad);
+          l_prime.compute(sc, f0, compute_grad);
+
+          f_calc += l.structure_factor;
+          f_calc_prime += l_prime.structure_factor;
+
+          if (!compute_grad) continue;
+
+          if (sc.flags.grad_site()) {
+            for (int j=0; j<3; ++j) {
+              *grad_f_calc_cursor++ = l.grad_site[j];
+              *grad_f_calc_prime_cursor++ = l_prime.grad_site[j];
+            }
+          }
+          if (sc.flags.use_u_iso() && sc.flags.grad_u_iso()) {
+            *grad_f_calc_cursor++ = l.grad_u_iso;
+            *grad_f_calc_prime_cursor++ = l_prime.grad_u_iso;
+          }
+          if (sc.flags.use_u_aniso() && sc.flags.grad_u_aniso()) {
+            for (int j=0; j<6; ++j) {
+              *grad_f_calc_cursor++ = l.grad_u_star[j];
+              *grad_f_calc_prime_cursor++ = l_prime.grad_u_star[j];
+            }
+          }
+          if (sc.flags.grad_occupancy()) {
+            *grad_f_calc_cursor++ = l.grad_occ;
+            *grad_f_calc_prime_cursor++ = l_prime.grad_occ;
+          }
+          if (sc.flags.grad_fp()) {
+            *grad_f_calc_cursor++ = l.grad_fp;
+            *grad_f_calc_prime_cursor++ = l_prime.grad_fp;
+          }
+          if (sc.flags.grad_fdp()) {
+            *grad_f_calc_cursor++ = l.grad_fdp;
+            *grad_f_calc_prime_cursor++ = l_prime.grad_fdp;
+          }
+        }
+
+        observable_type::compute(origin_centric_case,
+                                 f_calc, grad_f_calc,
+                                 f_calc_prime, grad_f_calc_prime,
+                                 observable, grad_observable,
+                                 compute_grad);
+        has_computed_grad = compute_grad;
+      }
+
     };
+
+
 
 
     /// Specialisation of class base computing trigonometric functions
@@ -787,6 +905,61 @@ namespace smtbx { namespace structure_factors { namespace direct {
               grad = f_calc.real() * grad_f_calc[j].real();
               if (grad_f_calc[j].imag()) {
                 grad += f_calc.imag() * grad_f_calc[j].imag();
+              }
+              grad *= 2;
+            }
+          }
+        }
+      }
+
+      static
+      void compute(bool origin_centric_case,
+                   complex_type f_calc,
+                   af::const_ref<complex_type> const &grad_f_calc,
+                   complex_type f_calc_prime,
+                   af::const_ref<complex_type> const &grad_f_calc_prime,
+                   float_type &observable,
+                   af::ref<float_type> const &grad_observable,
+                   bool compute_grad)
+      {
+        if (origin_centric_case && f_calc.imag()==0 && f_calc_prime.imag()==0) {
+          observable = (  f_calc.real() * f_calc.real()
+                        + f_calc_prime.real() * f_calc_prime.real() );
+        }
+        else {
+          observable = std::norm(f_calc) + std::norm(f_calc_prime);
+        }
+
+        if (!compute_grad) return;
+
+        if (!origin_centric_case) {
+          for (int j=0; j < grad_f_calc.size(); ++j) {
+            grad_observable[j] = 2 * (  f_calc.real() * grad_f_calc[j].real()
+                                      + f_calc.imag() * grad_f_calc[j].imag()
+                                      + f_calc_prime.real() 
+                                          * grad_f_calc_prime[j].real() 
+                                      + f_calc_prime.imag()
+                                          * grad_f_calc_prime[j].imag() );
+          }
+        }
+        else {
+          if (f_calc.imag()==0 && f_calc_prime.imag()==0) {
+            for (int j=0; j < grad_f_calc.size(); ++j) {
+              grad_observable[j] = 2 * (  f_calc.real() * grad_f_calc[j].real()
+                                        + f_calc_prime.real() 
+                                            * grad_f_calc_prime[j].real() );
+            }
+          }
+          else {
+            for (int j=0; j < grad_f_calc.size(); ++j) {
+              float_type &grad = grad_observable[j];
+              grad = f_calc.real() * grad_f_calc[j].real();
+              grad += f_calc_prime.real() * grad_f_calc_prime[j].real();
+              if (f_calc.imag() && grad_f_calc[j].imag()) {
+                grad += f_calc.imag() * grad_f_calc[j].imag();
+              }
+              if (f_calc_prime.imag() && grad_f_calc_prime.imag()) {
+                grad += f_calc_prime.imag() * grad_f_calc_prime[j].imag();
               }
               grad *= 2;
             }
