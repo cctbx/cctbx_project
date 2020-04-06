@@ -113,7 +113,7 @@ class hklf_reader
 
       std::string raw_fstring;
       if (1) {          //just to fold this huge string
-        raw_fstring = 
+        raw_fstring =
           std::string("(3i4,") + // h_r
           "2f8.0,"    + // i and sigma
           "i4,"       + // batch number
@@ -125,7 +125,7 @@ class hklf_reader
           "f8.0,"     + // frame number (predicted)
           "f6.0,"     + // LP factor
           "f5.0,"     + // profile correlation
-          "3f7.0,"    + // cumul. exp. time, det. angle, scan axis angle 
+          "3f7.0,"    + // cumul. exp. time, det. angle, scan axis angle
                         // (omega for omega scan, phi for phi scan)
           "i2,"       + // scan axis: 2 for omega, 3 for phi
           "i5,"       + // 10000*sin(th)/lambda
@@ -177,17 +177,17 @@ class hklf_reader
         for (
             std::size_t i_r=(i<5 ? 0 : i-5);
             i_r<raw_lines.size();
-            i_r++) 
+            i_r++)
         {
           std::string line_r = raw_lines[i_r];
           prepare_for_read(line_r, 255);
 
           fem::read_from_string(line_r, raw_fstring.c_str()),
-            h_r[0], h_r[1], h_r[2],  djunk, djunk, ijunk, cosines_inc[0], 
-            cosines_inc[1], cosines_inc[2], cosines_scat[0], cosines_scat[1], 
-            cosines_scat[2], ijunk, djunk, djunk, frame_r, djunk, djunk, djunk, 
-            djunk, djunk, djunk, djunk, angle1_deg, scan_axis, ijunk, ijunk, 
-            ijunk, djunk, ijunk, djunk,  ijunk, ijunk, djunk, djunk, djunk, 
+            h_r[0], h_r[1], h_r[2],  djunk, djunk, ijunk, cosines_inc[0],
+            cosines_inc[1], cosines_inc[2], cosines_scat[0], cosines_scat[1],
+            cosines_scat[2], ijunk, djunk, djunk, frame_r, djunk, djunk, djunk,
+            djunk, djunk, djunk, djunk, angle1_deg, scan_axis, ijunk, ijunk,
+            ijunk, djunk, ijunk, djunk,  ijunk, ijunk, djunk, djunk, djunk,
             chi_deg, angle2_deg, ijunk;
 
           //found match
@@ -200,7 +200,7 @@ class hklf_reader
             throw std::runtime_error("No matching .raw entry for reflection");
           }
         }
-          
+
         //Sort out angles and convert to radians
         if (scan_axis==2) {
           omega_deg = angle1_deg;
@@ -210,9 +210,9 @@ class hklf_reader
           phi_deg = angle1_deg;
           omega_deg = angle2_deg;
         }
-        chi = scitbx::deg_as_rad(chi_deg); 
-        omega = scitbx::deg_as_rad(omega_deg); 
-        phi = scitbx::deg_as_rad(phi_deg); 
+        chi = scitbx::deg_as_rad(chi_deg);
+        omega = scitbx::deg_as_rad(omega_deg);
+        phi = scitbx::deg_as_rad(phi_deg);
 
         //compute the polarization vectors
         vec3_t hkl_zaxis = hkl_z(UB_inv, phi, chi);

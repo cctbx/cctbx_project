@@ -194,8 +194,8 @@ def args_for_polarization_run(file_name, unit_cell):
     line = p4pfile.readline()
     ormx_list.extend([float(x) for x in line.split()[1:4]])
 
-  # Read frame # offsets from file_root.offsets. Entries are added to the 
-  # frame number in the hkl file (all frames numbered consecutively) to give 
+  # Read frame # offsets from file_root.offsets. Entries are added to the
+  # frame number in the hkl file (all frames numbered consecutively) to give
   # the frame number in the .raw file (frames numbered from start of run).
   with open(offsets_filename) as offsetsfile:
     offsets = flex.int([int(x) for x in offsetsfile.readline().split()])

@@ -22,7 +22,7 @@ namespace iotbx { namespace shelx { namespace boost_python {
             af::const_ref<std::string> const&,
             scitbx::mat3<double> const&,
             af::const_ref<int> const&,
-            scitbx::sym_mat3<double> const& >()) 
+            scitbx::sym_mat3<double> const& >())
         .def("indices", &wt::indices)
         .def("data", &wt::data)
         .def("sigmas", &wt::sigmas)

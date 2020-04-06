@@ -444,11 +444,11 @@ namespace cctbx { namespace xray {
     scitbx::af::shared<FloatType> sigmas() const { return sigmas_; }
 
     scitbx::af::shared<scitbx::vec3<FloatType> > e_incidents() const {
-      return e_incidents_; 
+      return e_incidents_;
     }
 
     scitbx::af::shared<scitbx::vec3<FloatType> > e_scattereds() const {
-      return e_scattereds_; 
+      return e_scattereds_;
     }
 
     scitbx::af::shared<miller::index<> > indices() const { return indices_; }
