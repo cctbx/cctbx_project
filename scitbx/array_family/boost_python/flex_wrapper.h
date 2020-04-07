@@ -107,6 +107,9 @@ namespace scitbx { namespace af { namespace boost_python {
     static std::size_t
     element_size() { return sizeof(ElementType); }
 
+    static std::size_t
+    memory_footprint(f_t const& a) { return sizeof(ElementType) * a.size(); }
+
     static flex_grid<>
     accessor(f_t const& a) { return a.accessor(); }
 
@@ -798,6 +801,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("id", id)
         .def("size", size)
         .def("__len__", size)
+        .def("__sizeof__", memory_footprint)
         .def("capacity", capacity)
         .def("__getitem__", getitem_tuple) // must be before other __getitem__
         .def("__getitem__", getitem_1d_slice)
