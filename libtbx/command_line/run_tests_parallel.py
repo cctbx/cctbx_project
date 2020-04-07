@@ -69,7 +69,7 @@ def run(args,
   else:
     cwd = os.getcwd()
     cwd_files = os.listdir(cwd)
-    if (len(cwd_files) > 0):
+    if cwd_files and cwd_files != ["default.profraw"]:
       raise Sorry("Please run this program in an empty directory.")
   if (len(params.directory) == 0) and (len(params.module) == 0):
     raise Sorry("Please specify modules and/or directories to test.")
