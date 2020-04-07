@@ -1479,7 +1479,10 @@ def run():
         debugtrue = True
         print("Qt version " + Qtversion)
         # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
-        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
+        if "debug" in e:
+          os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
+        if "devmode" in e:  # --single-process will freeze the WebEngineDebugForm at breakpoints
+          os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
 
     settings = QSettings("CCTBX", "HKLviewer" )
     # In case of more than one PySide2 installation tag the settings by version number of PySide2

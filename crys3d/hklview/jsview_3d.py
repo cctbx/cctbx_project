@@ -454,16 +454,15 @@ class hklview_3d:
       if not self.isinjected:
         self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
       self.DrawNGLJavaScript()
-      msg = "Rendered %d reflections\n" % self.scene.points.size()
-      msg += self.set_volatile_params()
-    return msg, curphilparam
+      self.mprint( "Rendered %d reflections" % self.scene.points.size(), verbose=1)
+      self.set_volatile_params()
+    return curphilparam
 
 
   def set_volatile_params(self):
-    msg = ""
     if self.viewerparams.scene_id is not None:
       if has_phil_path(self.diff_phil, "angle_around_vector"): # no need to redraw any clip plane
-        return msg
+        return
       self.fix_orientation(self.viewerparams.NGL.fixorientation)
       self.SetMouseSpeed(self.viewerparams.NGL.mouse_sensitivity)
       R = flex.vec3_double( [(0,0,0)])
@@ -482,28 +481,25 @@ class hklview_3d:
         R = flex.vec3_double( [(self.params.clip_plane.h, self.params.clip_plane.k, self.params.clip_plane.l)])
         if self.params.clip_plane.fractional_vector == "realspace" or self.params.clip_plane.fractional_vector == "tncs":
           isreciprocal = False
-
       self.clip_plane_vector(R[0][0], R[0][1], R[0][2], hkldist,
           clipwidth, self.viewerparams.NGL.fixorientation, self.params.clip_plane.is_parallel,
           isreciprocal)
       if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
-        msg += self.ExpandInBrowser(P1= self.viewerparams.expand_to_p1,
+        self.ExpandInBrowser(P1= self.viewerparams.expand_to_p1,
                               friedel_mate= self.viewerparams.expand_anomalous)
-      msg += self.SetOpacities(self.viewerparams.NGL.bin_opacities )
+      self.SetOpacities(self.viewerparams.NGL.bin_opacities )
       if self.params.real_space_unit_cell_scale_fraction is None:
         scale = None
       else:
         scale = (self.realspace_scale - 1.0)*self.params.real_space_unit_cell_scale_fraction + 1.0
-      msg += self.DrawUnitCell(scale )
+      self.DrawUnitCell(scale )
       if self.params.reciprocal_unit_cell_scale_fraction is None:
         scale = None
       else:
         scale = (self.reciproc_scale - 1.0)*self.params.reciprocal_unit_cell_scale_fraction + 1.0
-      msg += self.DrawReciprocalUnitCell(scale )
+      self.DrawReciprocalUnitCell(scale )
       self.set_tooltip_opacity()
       self.set_show_tooltips()
-      #self.SetAutoView()
-    return msg
 
 
   def set_scene(self, scene_id):
@@ -1794,6 +1790,7 @@ var isdebug = %s;
 var tdelay = 100;
 var displaytooltips = true;
 
+var sockwaitcount = 0;
 
 
 function WebsockSendMsg(msg)
@@ -1804,23 +1801,24 @@ function WebsockSendMsg(msg)
       return;
     // Avoid "WebSocket is already in CLOSING or CLOSED state" errors when using QWebEngineView
     // See https://stackoverflow.com/questions/48472977/how-to-catch-and-deal-with-websocket-is-already-in-closing-or-closed-state-in
-    /*
-    if (mysocket.readyState !== mysocket.OPEN )
-    {
-      //sleep(250).then(()=> { 
-          CreateWebSocket(); 
-          alert('readyState: ' + String(mysocket.readyState) );
 
-      // } );
+    if (mysocket.readyState === mysocket.CONNECTING )
+    {
+      sleep(50).then(()=> {
+         WebsockSendMsg(msg);
+          return;
+        }
+      );
     }
-    */
-    if (mysocket.readyState === mysocket.OPEN )
+
+    if (mysocket.readyState === mysocket.OPEN)
     {
       mysocket.send(msg);
       mysocket.send( 'Ready ' + pagename + '\\n' );
     }
     else
-      alert('Cannot connect to websocket server! \\nAre the firewall permissions or browser security too strict?');
+      if (mysocket.readyState !== mysocket.CONNECTING)
+        alert('Cannot connect to websocket server! \\nAre the firewall permissions or browser security too strict?');
   }
   catch(err)
   {
@@ -2009,14 +2007,13 @@ mysocket.onmessage = function(e)
         WebsockSendMsg('OrientationBeforeReload:\\n' + msg );
       }
       WebsockSendMsg( 'Refreshing ' + pagename );
+      socket_intentionally_closed = true;
       sleep(200).then(()=> {
-          socket_intentionally_closed = true;
-          //mysocket.close(4242, 'Refreshing ' + pagename);
+          mysocket.close(4242, 'Refreshing ' + pagename);
           window.location.reload(true);
         }
       );
-      //alert( 'Refreshing ' + pagename );
-      // Now we are gone. A new javascript file has been loaded in the browser
+      // Now we are gone. A new javascript file will be loaded in the browser
     }
 
     if (msgtype.includes("Expand") )
@@ -2436,7 +2433,7 @@ mysocket.onmessage = function(e)
       repr = null;
       stage.dispose();
       stage = null;
-      WebsockSendMsg('CleanUp:\\nDestroying JavaScript objects');
+      WebsockSendMsg('JavaScriptCleanUpDone:\\nDestroying JavaScript objects');
       socket_intentionally_closed = true;
       mysocket.close(4241, 'Cleanup done');
       document = null;
@@ -2615,16 +2612,13 @@ mysocket.onmessage = function(e)
     self.lastscene_id = self.viewerparams.scene_id
 
 
-  #def OnWebsocketClientMessage(self, client, server, message):
   async def OnWebsocketClientMessage(self):
     while True:
       await asyncio.sleep(self.sleeptime)
       if self.was_disconnected == 4242:
-        continue # reload
+        return
       if self.was_disconnected == 4241 or self.was_disconnected == 1001:
         return # shutdown
-      #time.sleep(self.sleeptime)
-      #await asyncio.sleep(self.sleeptime)
       if self.viewerparams.scene_id is None or self.miller_array is None \
          or self.websockclient is None or self.mywebsock.client_connected is None:
         await asyncio.sleep(self.sleeptime)
@@ -2634,7 +2628,8 @@ mysocket.onmessage = function(e)
         message = await self.mywebsock.recv()
         self.lastmsg = message
       except Exception as e:
-        self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=1)
+        if self.was_disconnected != 4242:
+          self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=1)
         continue
       try:
         if message != "":
@@ -2649,10 +2644,11 @@ mysocket.onmessage = function(e)
             await asyncio.sleep(self.sleeptime)
           elif "AutoViewSet" in message:
             self.set_volatile_params()
-          elif "JavaScriptCleanUp:" in message:
+          elif "JavaScriptCleanUpDone:" in message:
             self.mprint( message, verbose=1)
             await asyncio.sleep(0.5) # time for browser to clean up
-            self.StopThreads()
+            if not self.isnewfile:
+              self.StopThreads()
           elif "JavaScriptError:" in message:
             self.mprint( message, verbose=0)
           elif "Expand" in message:
@@ -2716,7 +2712,6 @@ mysocket.onmessage = function(e)
               self.mprint( message, verbose=5)
       except Exception as e:
         self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
-      #time.sleep(self.sleeptime)
 
 
   def GetCameraPosRotTrans(self, viewmtrx):
@@ -2802,9 +2797,7 @@ Distance: %s
 
 
   async def WebSockHandler(self, mywebsock, path):
-    #asyncio.create_task(self.RunSendMessageQueue())
-    #asyncio.create_task(self.OnWebsocketClientMessage())
-    print("Entering WebSockHandler")
+    self.mprint("Entering WebSockHandler", verbose=1)
     if self.websockclient is not None or self.ishandling:
       return
     self.ishandling = True
@@ -2813,31 +2806,23 @@ Distance: %s
     mywebsock.ondisconnect = self.OnDisconnectWebsocketClient
     mywebsock.onlostconnect = self.OnLostConnectWebsocketClient
     self.mywebsock = mywebsock
-    #while True:
-    #  await mywebsock.send( message )
-    #  message = await mywebsock.recv()
-      #await asyncio.sleep(self.sleeptime)
-    #  time.sleep(self.sleeptime)
-    #await self.RunSendMessageQueue()
-    #await self.OnWebsocketClientMessage()
     getmsgtask = asyncio.ensure_future(self.OnWebsocketClientMessage())
     sendmsgtask = asyncio.ensure_future(self.WebBrowserMsgQueue())
     await getmsgtask
     await sendmsgtask
-    print("Exiting WebSockHandler")
+    self.mprint("Exiting WebSockHandler", verbose=1)
     self.ishandling = False
     #await asyncio.gather(self.OnWebsocketClientMessage(), self.WebBrowserMsgQueue())
 
 
-
   async def WebBrowserMsgQueue(self):
-    try:
-      while True:
+    while True:
+      try:
         nwait = 0.0
         await asyncio.sleep(self.sleeptime)
         if self.was_disconnected == 4242:
-          continue
-        if self.javascriptcleaned or self.was_disconnected == 4241 or self.was_disconnected == 1001:
+          return
+        if self.javascriptcleaned or self.was_disconnected == 4241: # or self.was_disconnected == 1001:
           self.mprint("Shutting down WebBrowser message queue", verbose=1)
           return
         if len(self.msgqueue):
@@ -2850,14 +2835,8 @@ Distance: %s
               continue
           if gotsent:
             self.msgqueue.remove( self.msgqueue[0] )
-        #await asyncio.sleep(self.sleeptime)
-# if the html content is huge the browser will be unresponsive until it has finished
-# reading the html content. This may crash this thread. So try restarting this thread until
-# browser is ready
-    except Exception as e:
-      self.mprint( str(e) + ", Restarting WebBrowserMsgQueue\n" \
-                         + traceback.format_exc(limit=10), verbose=2)
-      self.websockclient = None
+      except Exception as e:
+        self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
 
 
   def OnConnectWebsocketClient(self, client):
@@ -2894,22 +2873,22 @@ Distance: %s
     while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
       or "CurrentViewOrientation" in self.lastmsg or "AutoViewSet" in self.lastmsg \
       or "ReOrient" in self.lastmsg) or self.websockclient is None:
-      #time.sleep(self.sleeptime)
       await asyncio.sleep(self.sleeptime)
       nwait += self.sleeptime
+      if self.was_disconnected != None:
+        return False
       if nwait > 2.0 and self.browserisopen:
         self.mprint("ERROR: No handshake from browser!", verbose=0 )
         self.mprint("failed sending " + msgtype, verbose=1)
         self.mprint("Reopening webpage again", verbose=0)
         break
-    if self.browserisopen and self.websockclient is not None or mywebsock.client_connected is not None:
+    if self.browserisopen and self.websockclient is not None or self.mywebsock.client_connected is not None:
       try: # use EAFP rather than LBYL style with websockets
-        #self.server.send_message(self.websockclient, message )
         await self.mywebsock.send( message )
-        #await asyncio.sleep(self.sleeptime)
         return True
       except Exception as e:
-        self.mprint( str(e) + "\n" + traceback.format_exc(limit=10), verbose=1)
+        if self.was_disconnected != 4242:
+          self.mprint( str(e) + "\n" + traceback.format_exc(limit=10), verbose=1)
         self.websockclient = None
         return False
     else:
@@ -2919,7 +2898,8 @@ Distance: %s
 
 
   def OpenBrowser(self):
-    if self.viewerparams.scene_id is not None and not (self.websockclient or self.browserisopen):
+    if self.viewerparams.scene_id is not None and not self.websockclient \
+       and not self.browserisopen or self.isnewfile:
       NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
       htmlstr = self.hklhtml %(NGLlibpath, os.path.abspath( self.jscriptfname))
       htmlstr += self.htmldiv
@@ -2929,12 +2909,12 @@ Distance: %s
       self.url = self.url.replace("\\", "/")
       self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname, verbose=1)
       if self.UseOSBrowser=="default":
-        if not webbrowser.open(self.url, new=1):
+        if not webbrowser.open(self.url, new=0):
           self.mprint("Could not open the default web browser")
           return False
       if self.UseOSBrowser != "default" and self.UseOSBrowser != "":
         browserpath = self.UseOSBrowser + " %s"
-        if not webbrowser.get(browserpath).open(self.url, new=1):
+        if not webbrowser.get(browserpath).open(self.url, new=0):
           self.mprint("Could not open web browser, %s" %self.UseOSBrowser)
           return False
       self.SendInfoToGUI({ "html_url": self.url } )
@@ -2984,7 +2964,7 @@ Distance: %s
     self.isterminating = True
     self.javascriptcleaned = True
     #self.msgqueuethrd.join()
-    self.mprint("Shutting down WebsocketServer", verbose=1)
+    self.mprint("Shutting down websockeventloop", verbose=1)
     self.websockeventloop.stop()
     #self.websockeventloop.close()
     #self.wst.join()
@@ -3014,7 +2994,7 @@ Distance: %s
         bin = binopacity[1] # int(binopacity.split(",")[1])
         retstr += self.set_opacity(bin, alpha)
       self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities } )
-    return retstr
+    self.mprint( retstr, verbose=1)
 
 
   def set_opacity(self, bin, alpha):
@@ -3036,16 +3016,14 @@ Distance: %s
       self.AddToBrowserMsgQueue("Reload")
 
 
-  def JavaScriptCleanUp(self):
+  def JavaScriptCleanUp(self, ):
     self.AddToBrowserMsgQueue("JavaScriptCleanUp")
-    if self.viewerparams.scene_id is None: # nothing is showing in the browser
-      self.StopThreads()
 
 
   def ExpandInBrowser(self, P1=True, friedel_mate=True):
-    retmsg = "Not expanding in browser\n"
     if self.sceneisdirty:
-      return retmsg
+      self.mprint( "Not expanding in browser", verbose=1)
+      return
     uc = self.miller_array.unit_cell()
     OrtMx = matrix.sqr( uc.orthogonalization_matrix())
     InvMx = OrtMx.inverse()
@@ -3055,15 +3033,16 @@ Distance: %s
     if P1:
       msgtype += "P1"
       unique_rot_ops = self.symops[ 0 : self.sg.order_p() ] # avoid duplicate rotation matrices
-      retmsg = "Expanding to P1 in browser\n"
+      retmsg = "Expanding to P1 in browser"
       if not self.miller_array.is_unique_set_under_symmetry():
-        retmsg += "Not all reflections are in the same asymmetric unit in reciprocal space.\n"
+        retmsg += "\nNot all reflections are in the same asymmetric unit in reciprocal space.\n"
         retmsg += "Some reflections might be displayed on top of one another.\n"
+      self.mprint( retmsg, verbose=1)
     else:
       unique_rot_ops = [ self.symops[0] ] # No P1 expansion. So only submit the identity matrix
     if friedel_mate and not self.miller_array.anomalous_flag():
       msgtype += "Friedel"
-      retmsg = "Expanding Friedel mates in browser\n"
+      self.mprint( "Expanding Friedel mates in browser", verbose=1)
     for i, symop in enumerate(unique_rot_ops):
       RotMx = matrix.sqr( symop.r().as_double())
       ortrot = (OrtMx * RotMx * InvMx).as_mat3()
@@ -3076,7 +3055,7 @@ Distance: %s
       msg += str_rot + "\n" # add rotation matrix to end of message string
     self.AddToBrowserMsgQueue(msgtype, msg)
     self.GetBoundingBox() # bounding box changes when the extent of the displayed lattice changes
-    return retmsg
+
 
 
   def AddVector(self, s1, s2, s3, t1, t2, t3, isreciprocal=True, label="",
@@ -3190,7 +3169,8 @@ Distance: %s
   def DrawUnitCell(self, scale=1):
     if scale is None:
       self.RemoveVectors("unitcell")
-      return "Removing real space unit cell\n"
+      self.mprint( "Removing real space unit cell", verbose=1)
+      return
     uc = self.miller_array.unit_cell()
     rad = 0.2 # scale # * 0.05 #  1000/ uc.volume()
     self.AddVector(0,0,0, scale,0,0, False, label="a", r=0.5, g=0.8, b=0.8, radius=rad)
@@ -3205,13 +3185,15 @@ Distance: %s
     self.AddVector(scale,0,0, scale,0,scale, False, r=0.8, g=0.8, b=0.5, radius=rad)
     self.AddVector(0,scale,0, 0,scale,scale, False, r=0.8, g=0.8, b=0.5, radius=rad)
     self.AddVector(scale,scale,0, scale,scale,scale, False, r=0.8, g=0.8, b=0.5, radius=rad, name="unitcell")
-    return "Adding real space unit cell\n"
+    self.mprint( "Adding real space unit cell", verbose=1)
+
 
 
   def DrawReciprocalUnitCell(self, scale=1):
     if scale is None:
       self.RemoveVectors("reciprocal_unitcell")
-      return "Removing reciprocal unit cell\n"
+      self.mprint( "Removing reciprocal unit cell", verbose=1)
+      return
     rad = 0.2 # 0.05 * scale
     self.AddVector(0,0,0, scale,0,0, label="a*", r=0.5, g=0.3, b=0.3, radius=rad)
     self.AddVector(0,0,0, 0,scale,0, label="b*", r=0.3, g=0.5, b=0.3, radius=rad)
@@ -3225,7 +3207,7 @@ Distance: %s
     self.AddVector(scale,0,0, scale,0,scale, r=0.3, g=0.3, b=0.5, radius=rad)
     self.AddVector(0,scale,0, 0,scale,scale, r=0.3, g=0.3, b=0.5, radius=rad)
     self.AddVector(scale,scale,0, scale,scale,scale, r=0.3, g=0.3, b=0.5, radius=rad, name="reciprocal_unitcell")
-    return "Adding reciprocal unit cell\n"
+    self.mprint( "Adding reciprocal unit cell", verbose=1)
 
 
   def GetUnitcellScales(self):

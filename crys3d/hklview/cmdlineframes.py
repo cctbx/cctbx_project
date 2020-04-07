@@ -367,11 +367,11 @@ class HKLViewFrame() :
     self.viewer.proc_arrays = []
     self.viewer.HKLscenedict = {}
     self.viewer.sceneisdirty = True
+    self.viewer.isnewfile = True
     if self.viewer.miller_array:
       self.viewer.params.viewer.scene_id = None
-      self.viewer.DrawNGLJavaScript( blankscene=True)
+      self.viewer.JavaScriptCleanUp()
     self.viewer.miller_array = None
-    self.viewer.isnewfile = True
     self.viewer.lastviewmtrx = None
     return self.viewer.params
 
@@ -482,10 +482,9 @@ class HKLViewFrame() :
         self.viewer.settings = phl.viewer
         self.settings = phl.viewer
 
-      msg, self.params.NGL_HKLviewer = self.viewer.update_settings(diff_phil, phl)
+      self.params.NGL_HKLviewer = self.viewer.update_settings(diff_phil, phl)
       # parameters might have been changed. So update self.currentphil accordingly
       self.currentphil = self.master_phil.format(python_object = self.params)
-      self.mprint( msg, verbose=1)
       self.NewFileLoaded = False
       phl.mouse_moved = False
       self.SendCurrentPhilValues()
@@ -769,7 +768,6 @@ class HKLViewFrame() :
         mydict = { "info": self.infostr,
                    "array_infotpls": self.viewer.array_infotpls,
                    "bin_infotpls": self.viewer.bin_infotpls,
-                   "html_url": self.viewer.url,
                    "tncsvec": self.tncsvec,
                    "merge_data": self.params.NGL_HKLviewer.merge_data,
                    "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
