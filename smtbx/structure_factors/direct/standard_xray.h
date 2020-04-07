@@ -18,7 +18,9 @@
   typedef std::complex<float_type> complex_type;                           \
   typedef scitbx::sym_mat3<complex_type> grad_u_star_type;                 \
   typedef af::tiny<complex_type, 3> grad_site_type;                        \
-  typedef xray::scatterer<float_type> scatterer_type;
+  typedef xray::scatterer<float_type> scatterer_type;                      \
+  typedef scitbx::vec3<float_type> pol_vec_type;
+
 
 #define SMTBX_STRUCTURE_FACTORS_DIRECT_ONE_SCATTERER_ONE_H_USING           \
   using core<float_type>::structure_factor;                                \
@@ -69,6 +71,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
       float_type d_star_sq;
       ExpI2PiFunctor const &exp_i_2pi;
 
+      //vectors for the incident and scattered polarization, for refinement of
+      //anisotropic fp, fdp tensors
+      hr_ht_cache<float_type, pol_vec_type> e1_r_e1_t;
+      hr_ht_cache<float_type, pol_vec_type> e2_r_e2_t;
+      bool has_polarization;
+
       /** Construct the linearisation or the evaluation for the given h
           in the given space-group.
 
@@ -81,7 +89,24 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         : hr_ht(exp_i_2pi_functor, space_group, h),
           d_star_sq(d_star_sq),
-          exp_i_2pi(exp_i_2pi_functor)
+          exp_i_2pi(exp_i_2pi_functor),
+          has_polarization(false)
+
+      {}
+
+      base(sgtbx::space_group const &space_group,
+           miller::index<> const &h,
+           float_type d_star_sq,
+           ExpI2PiFunctor const &exp_i_2pi_functor,
+           pol_vec_type const &pol_inc,
+           pol_vec_type const &pol_scat)
+
+        : hr_ht(exp_i_2pi_functor, space_group, h),
+          d_star_sq(d_star_sq),
+          exp_i_2pi(exp_i_2pi_functor),
+          e1_r_e1_t(exp_i_2pi_functor, space_group, pol_inc),
+          e2_r_e2_t(exp_i_2pi_functor, space_group, pol_scat),
+          has_polarization(true)
       {}
 
       /** Compute the structure factor of the given scatterer
@@ -144,6 +169,15 @@ namespace smtbx { namespace structure_factors { namespace direct {
                              ExpI2PiFunctor const &exp_i_2pi_functor)
 
         : base_t(space_group, h, d_star_sq, exp_i_2pi_functor)
+      {}
+
+      in_generic_space_group(sgtbx::space_group const &space_group,
+                             miller::index<> const &h,
+                             float_type d_star_sq,
+                             ExpI2PiFunctor const &exp_i_2pi_functor,
+                             pol_vec_type const &pol_inc,
+                             pol_vec_type const &pol_scat)
+        : base_t(space_group, h, d_star_sq, exp_i_2pi_functor, pol_inc, pol_scat)
       {}
 
       /** Sum of Debye-Waller * Fourier basis function,
@@ -336,6 +370,15 @@ namespace smtbx { namespace structure_factors { namespace direct {
                                     ExpI2PiFunctor const &exp_i_2pi_functor)
 
         : base_t(space_group, h, d_star_sq, exp_i_2pi_functor)
+      {}
+
+      in_origin_centric_space_group(sgtbx::space_group const &space_group,
+                             miller::index<> const &h,
+                             float_type d_star_sq,
+                             ExpI2PiFunctor const &exp_i_2pi_functor,
+                             pol_vec_type const &pol_inc,
+                             pol_vec_type const &pol_scat)
+        : base_t(space_group, h, d_star_sq, exp_i_2pi_functor, pol_inc, pol_scat)
       {}
 
       /** Sum of Debye-Waller * Fourier basis function,
@@ -737,42 +780,51 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         for (int j=0; j < scatterers.size(); ++j) {
           xray::scatterer<> const &sc = scatterers[j];
+          bool sc_aniso = sc.flags.use_fp_fdp_aniso();
           float_type f0 = elastic_form_factors[ scattering_type_indices[j] ];
           l.compute(sc, f0, compute_grad);
-          l_prime.compute(sc, f0, compute_grad);
+          if (sc_aniso) {
+            l_prime.compute(sc, f0, compute_grad);
+          }
 
           f_calc += l.structure_factor;
-          f_calc_prime += l_prime.structure_factor;
+          f_calc_prime += (sc_aniso ? l_prime.structure_factor : 0);
 
           if (!compute_grad) continue;
 
           if (sc.flags.grad_site()) {
             for (int j=0; j<3; ++j) {
               *grad_f_calc_cursor++ = l.grad_site[j];
-              *grad_f_calc_prime_cursor++ = l_prime.grad_site[j];
+              *grad_f_calc_prime_cursor++ =
+                  (sc_aniso ? l_prime.grad_site[j] : 0);
             }
           }
           if (sc.flags.use_u_iso() && sc.flags.grad_u_iso()) {
             *grad_f_calc_cursor++ = l.grad_u_iso;
-            *grad_f_calc_prime_cursor++ = l_prime.grad_u_iso;
+            *grad_f_calc_prime_cursor++ =
+                (sc_aniso ? l_prime.grad_u_iso : 0);
           }
           if (sc.flags.use_u_aniso() && sc.flags.grad_u_aniso()) {
             for (int j=0; j<6; ++j) {
               *grad_f_calc_cursor++ = l.grad_u_star[j];
-              *grad_f_calc_prime_cursor++ = l_prime.grad_u_star[j];
+              *grad_f_calc_prime_cursor++ =
+                  (sc_aniso ? l_prime.grad_u_star[j] : 0);
             }
           }
           if (sc.flags.grad_occupancy()) {
             *grad_f_calc_cursor++ = l.grad_occ;
-            *grad_f_calc_prime_cursor++ = l_prime.grad_occ;
+            *grad_f_calc_prime_cursor++ =
+                (sc_aniso ? l_prime.grad_occ : 0);
           }
           if (sc.flags.grad_fp()) {
             *grad_f_calc_cursor++ = l.grad_fp;
-            *grad_f_calc_prime_cursor++ = l_prime.grad_fp;
+            *grad_f_calc_prime_cursor++ =
+                (sc_aniso ? l_prime.grad_fp : 0);
           }
           if (sc.flags.grad_fdp()) {
             *grad_f_calc_cursor++ = l.grad_fdp;
-            *grad_f_calc_prime_cursor++ = l_prime.grad_fdp;
+            *grad_f_calc_prime_cursor++ =
+                (sc_aniso ? l_prime.grad_fdp : 0);
           }
         }
 
@@ -936,8 +988,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
           for (int j=0; j < grad_f_calc.size(); ++j) {
             grad_observable[j] = 2 * (  f_calc.real() * grad_f_calc[j].real()
                                       + f_calc.imag() * grad_f_calc[j].imag()
-                                      + f_calc_prime.real() 
-                                          * grad_f_calc_prime[j].real() 
+                                      + f_calc_prime.real()
+                                          * grad_f_calc_prime[j].real()
                                       + f_calc_prime.imag()
                                           * grad_f_calc_prime[j].imag() );
           }
@@ -946,7 +998,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (f_calc.imag()==0 && f_calc_prime.imag()==0) {
             for (int j=0; j < grad_f_calc.size(); ++j) {
               grad_observable[j] = 2 * (  f_calc.real() * grad_f_calc[j].real()
-                                        + f_calc_prime.real() 
+                                        + f_calc_prime.real()
                                             * grad_f_calc_prime[j].real() );
             }
           }
