@@ -29,12 +29,12 @@ def integrate_coset(self, experiments, indexed):
 
         # XXX Fixme later implement support for non-primitive lattices NKS
         base_set = miller_set( crystal_symmetry = symmetry(
-            unit_cell = experiments[0].crystal.get_unit_cell(),
-            space_group = experiments[0].crystal.get_space_group()),
+            unit_cell = experiments_local[0].crystal.get_unit_cell(),
+            space_group = experiments_local[0].crystal.get_space_group()),
             indices = indexed["miller_index"]
           )
         triclinic = base_set.customized_copy(
-          crystal_symmetry=symmetry(unit_cell = experiments[0].crystal.get_unit_cell(),space_group="P1"))
+          crystal_symmetry=symmetry(unit_cell = experiments_local[0].crystal.get_unit_cell(),space_group="P1"))
 
         # ================
         # Compute the profile model
@@ -92,12 +92,6 @@ def integrate_coset(self, experiments, indexed):
         if self.params.integration.debug.delete_shoeboxes and "shoebox" in integrated:
             del integrated["shoebox"]
 
-        # XXX Dummy workaround for filename; fix later:
-        coset_experiments_filename = self.params.output.integrated_experiments_filename.replace(
-          "integrated","coset%d"%TRANS)
-        coset_filename = self.params.output.integrated_filename.replace(
-          "integrated","coset%d"%TRANS)
-
         if self.params.output.composite_output:
             if (
                 self.params.output.coset_experiments_filename
@@ -108,25 +102,25 @@ def integrate_coset(self, experiments, indexed):
                     and self.params.output.coset_filename is not None
                 )
                 assert 0 # XXX Fixme
-                n = len(self.all_integrated_experiments)
-                self.all_integrated_experiments.extend(experiments)
-                for i, experiment in enumerate(experiments):
+                n = len(self.all_coset_experiments)
+                self.all_coset_experiments.extend(experiments_local)
+                for i, experiment in enumerate(experiments_local):
                     refls = integrated.select(integrated["id"] == i)
                     refls["id"] = flex.int(len(refls), n)
                     del refls.experiment_identifiers()[i]
                     refls.experiment_identifiers()[n] = experiment.identifier
-                    self.all_integrated_reflections.extend(refls)
+                    self.all_coset_reflections.extend(refls)
                     n += 1
         else:
             # Dump experiments to disk
-            if coset_experiments_filename:
+            if self.params.output.coset_experiments_filename:
 
-                experiments.as_json(coset_experiments_filename)
+                experiments.as_json(self.params.output.coset_experiments_filename)
 
-            if coset_filename:
+            if self.params.output.coset_filename:
                 # Save the reflections
                 self.save_reflections(
-                    integrated, coset_filename
+                    integrated, self.params.output.coset_filename
                 )
 
         rmsd_indexed, _ = calc_2D_rmsd_and_displacements(indexed)
