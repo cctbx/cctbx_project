@@ -28,11 +28,18 @@ steps:
   displayName: Link bootstrap.py
 
 # install miniconda
+- task: DownloadPipelineArtifact@2
+  displayName: Download miniconda
+  inputs:
+    source: 'specific'
+    project: '$(System.TeamProjectId)'
+    pipeline: 4
+    artifact: 'miniconda'
+    path: $(Pipeline.Workspace)/miniconda
+
 - script: |
     set -x -e
-    curl -o $(Pipeline.Workspace)/miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-latest-$(CONDA)-x86_64.sh
-    bash $(Pipeline.Workspace)/miniconda.sh -b -u -p $(Pipeline.Workspace)/miniconda
-    export PATH=$(Pipeline.Workspace)/miniconda/bin:$PATH
+    bash $(Pipeline.Workspace)/miniconda/Miniconda3-latest-$(CONDA)-x86_64.sh -b -u -p $(Pipeline.Workspace)/miniconda
   displayName: Install miniconda
 
 # create conda environment
