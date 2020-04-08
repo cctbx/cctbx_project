@@ -255,6 +255,40 @@ class wheel_wedge():
 #-------------------------------------------------------------------------------
 #}}}
 
+#{{{ get_cablam_scores_from_atoms
+#-------------------------------------------------------------------------------
+def get_cablam_scores_from_atoms(CA0, CA1, CA2, CA3, CA4, O1, O2, residue_type='general', cablam_contours=None, ca_contours=None):
+  #this funtion is meant for use by outside programs that already know the
+  #  positions of the atoms CaBLAM needs
+  #It takes 5 CA positions and 2 O positions and a residue type
+  #  Positions should be x,y,z coords in list-like form
+  #  Supported residue types are strings "general", "pro", and "gly"
+  #  Assumes general case residue by default
+  #  For this 0-indexed list of residues, residue #2 is the residue of interest
+  #    and the one whose type matters
+  #It returns a list of CaBLAM validation scores [CaBLAM,  CA geom]
+  ca_in = geometry_restraints.dihedral(sites=[CA0,CA1,CA2,CA3],
+    angle_ideal=180, weight=1).angle_model
+  ca_out = geometry_restraints.dihedral(sites=[CA1,CA2,CA3,CA4],
+    angle_ideal=180, weight=1).angle_model
+  ca_virtual_angle = geometry_restraints.angle(sites=[CA1,CA2,CA3],
+    angle_ideal=120, weight=1).angle_model
+  X1 = perptersect(CA1,CA2,O1)
+  X2 = perptersect(CA2,CA3,O2)
+  peptide_dihedral = geometry_restraints.dihedral(sites=[O1,X1,X2,O2],
+    angle_ideal=180, weight=1).angle_model
+  if not cablam_contours:
+    cablam_contours = fetch_peptide_expectations()
+  if not ca_contours:
+    ca_contours = fetch_ca_expectations()
+  cablam_point = [ca_in, ca_out, peptide_dihedral]
+  ca_point = [ca_in, ca_out, ca_virtual_angle]
+  cablam_score = cablam_contours[residue_type].valueAt(cablam_point)
+  c_alpha_geom_score = ca_contours[residue_type].valueAt(ca_point)
+  return [cablam_score,c_alpha_geom_score]
+#-------------------------------------------------------------------------------
+#}}}
+
 #{{{ cablam_result class
 #-------------------------------------------------------------------------------
 class cablam_result(residue):
