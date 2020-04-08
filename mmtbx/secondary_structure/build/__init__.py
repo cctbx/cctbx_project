@@ -817,7 +817,9 @@ def substitute_ss(
         "%d %d" % (grm.geometry.get_n_reference_coordinate_proxies(), n_main_chain_atoms)
   refinement_log = null_out()
   log.write(
-      "Refining geometry of substituted secondary structure elements...")
+      "Refining geometry of substituted secondary structure elements\n")
+  log.write(
+      "  for %s macro_cycle(s).\n" % processed_params.n_macro)
   log.flush()
   if verbose:
     refinement_log = log
@@ -836,6 +838,7 @@ def substitute_ss(
         target_map=reference_map,
         refine_ncs_operators=False,
         number_of_cycles=processed_params.n_macro,
+        min_mode='simple_cycles',
         log=log)
   model.set_sites_cart_from_hierarchy()
 
