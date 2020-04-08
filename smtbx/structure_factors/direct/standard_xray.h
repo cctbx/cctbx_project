@@ -9,6 +9,7 @@
 #include <cctbx/xray/hr_ht_cache.h>
 #include <smtbx/import_cctbx.h>
 #include <smtbx/import_scitbx_af.h>
+#include <smtbx/error.h>
 
 #include <boost/shared_ptr.hpp>
 #include <iostream>
@@ -73,9 +74,11 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
       //vectors for the incident and scattered polarization, for refinement of
       //anisotropic fp, fdp tensors
-      hr_ht_cache<float_type, pol_vec_type> e1_r_e1_t;
-      hr_ht_cache<float_type, pol_vec_type> e2_r_e2_t;
+      hr_ht_cache<float_type, pol_vec_type> e1r_e1t;
+      hr_ht_cache<float_type, pol_vec_type> e2r_e2t;
+      float_type pol_factor;
       bool has_polarization;
+      float_type m_f0;
 
       /** Construct the linearisation or the evaluation for the given h
           in the given space-group.
@@ -99,14 +102,17 @@ namespace smtbx { namespace structure_factors { namespace direct {
            float_type d_star_sq,
            ExpI2PiFunctor const &exp_i_2pi_functor,
            pol_vec_type const &pol_inc,
-           pol_vec_type const &pol_scat)
+           pol_vec_type const &pol_scat,
+           float_type const &pol_factor)
 
         : hr_ht(exp_i_2pi_functor, space_group, h),
           d_star_sq(d_star_sq),
           exp_i_2pi(exp_i_2pi_functor),
-          e1_r_e1_t(exp_i_2pi_functor, space_group, pol_inc),
-          e2_r_e2_t(exp_i_2pi_functor, space_group, pol_scat),
-          has_polarization(true)
+          e1r_e1t(exp_i_2pi_functor, space_group, pol_inc),
+          e2r_e2t(exp_i_2pi_functor, space_group, pol_scat),
+          has_polarization(true),
+          pol_factor(pol_factor)
+
       {}
 
       /** Compute the structure factor of the given scatterer
@@ -130,13 +136,22 @@ namespace smtbx { namespace structure_factors { namespace direct {
           this->grad_fdp = 0;
         }
 
-        heir.compute_anisotropic_part(scatterer, compute_grad);
-        if (scatterer.flags.use_fp_fdp()) {
-          complex_type ff(f0 + scatterer.fp, scatterer.fdp);
-          heir.multiply_by_isotropic_part(scatterer, ff, compute_grad);
+        if (scatterer.flags.use_fp_fdp_aniso()) {
+          SMTBX_ASSERT(has_polarization);
+          m_f0 = f0;
+          heir.compute_anisotropic_part(scatterer, compute_grad);
+          FloatType dummy_ff = 1; //form factor was already used in aniso part
+          heir.multiply_by_isotropic_part(scatterer, dummy_ff, compute_grad);
         }
         else {
-          heir.multiply_by_isotropic_part(scatterer, f0, compute_grad);
+          heir.compute_anisotropic_part(scatterer, compute_grad);
+          if (scatterer.flags.use_fp_fdp()) {
+            complex_type ff(f0 + scatterer.fp, scatterer.fdp);
+            heir.multiply_by_isotropic_part(scatterer, ff, compute_grad);
+          }
+          else {
+            heir.multiply_by_isotropic_part(scatterer, f0, compute_grad);
+          }
         }
       }
     };
@@ -176,8 +191,10 @@ namespace smtbx { namespace structure_factors { namespace direct {
                              float_type d_star_sq,
                              ExpI2PiFunctor const &exp_i_2pi_functor,
                              pol_vec_type const &pol_inc,
-                             pol_vec_type const &pol_scat)
-        : base_t(space_group, h, d_star_sq, exp_i_2pi_functor, pol_inc, pol_scat)
+                             pol_vec_type const &pol_scat,
+                             float_type pol_factor)
+        : base_t(space_group, h, d_star_sq, exp_i_2pi_functor, pol_inc,
+            pol_scat, pol_factor)
       {}
 
       /** Sum of Debye-Waller * Fourier basis function,
@@ -223,6 +240,19 @@ namespace smtbx { namespace structure_factors { namespace direct {
               }
             }
           }
+          if (scatterer.flags.use_fp_fdp_aniso()) {
+            hr_ht_group<float_type, pol_vec_type> const &e1_g =
+                base_t::e1r_e1t.groups[k];
+            hr_ht_group<float_type, pol_vec_type> const &e2_g =
+                base_t::e2r_e2t.groups[k];
+            float_type fp =
+              e1_g.hr * scatterer.fp_aniso * e2_g.hr / base_t::pol_factor;
+            float_type fdp =
+              e1_g.hr * scatterer.fdp_aniso * e2_g.hr / base_t::pol_factor;
+            complex_type formfactor(base_t::m_f0 + fp, fdp);
+            f *= formfactor;
+          }
+
           structure_factor += f;
           if (compute_grad && scatterer.flags.grad_site()) {
             complex_type grad_site_factor = i * two_pi * f;
@@ -377,8 +407,10 @@ namespace smtbx { namespace structure_factors { namespace direct {
                              float_type d_star_sq,
                              ExpI2PiFunctor const &exp_i_2pi_functor,
                              pol_vec_type const &pol_inc,
-                             pol_vec_type const &pol_scat)
-        : base_t(space_group, h, d_star_sq, exp_i_2pi_functor, pol_inc, pol_scat)
+                             pol_vec_type const &pol_scat,
+                             float_type pol_factor)
+        : base_t(space_group, h, d_star_sq, exp_i_2pi_functor, pol_inc,
+            pol_scat, pol_factor)
       {}
 
       /** Sum of Debye-Waller * Fourier basis function,
@@ -424,6 +456,20 @@ namespace smtbx { namespace structure_factors { namespace direct {
               }
             }
           }
+          if (scatterer.flags.use_fp_fdp_aniso()) {
+            hr_ht_group<float_type, pol_vec_type> const &e1_g =
+                base_t::e1r_e1t.groups[k];
+            hr_ht_group<float_type, pol_vec_type> const &e2_g =
+                base_t::e2r_e2t.groups[k];
+            float_type fp =
+              e1_g.hr * scatterer.fp_aniso * e2_g.hr / base_t::pol_factor;
+            float_type fdp =
+              e1_g.hr * scatterer.fdp_aniso * e2_g.hr / base_t::pol_factor;
+            complex_type formfactor(base_t::m_f0 + fp, fdp);
+            f *= formfactor;
+          }
+
+
           structure_factor += f.real();
           if (compute_grad && scatterer.flags.grad_site()) {
             float_type grad_site_factor = -two_pi * f.imag();
@@ -673,6 +719,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
                    pol_vec_type u_inc, // u,v convention as in Schiltz 2008
                    pol_vec_type u_scat,
                    pol_vec_type v_scat,
+                   float_type pol_factor,
                    boost::optional<complex_type> const &f_mask=boost::none,
                    bool compute_grad=true)
       {
@@ -693,20 +740,20 @@ namespace smtbx { namespace structure_factors { namespace direct {
         if (!origin_centric_case) {
           generic_linearisation_t lin_for_h_parallel(space_group, h,
                                                      d_star_sq, heir.exp_i_2pi,
-                                                     u_inc, u_scat);
+                                                     u_inc, u_scat, pol_factor);
           generic_linearisation_t lin_for_h_perpendicular(space_group, h,
                                                      d_star_sq, heir.exp_i_2pi,
-                                                     u_inc, v_scat);
+                                                     u_inc, v_scat, pol_factor);
           compute(elastic_form_factors.ref(), lin_for_h_parallel,
                   lin_for_h_perpendicular, f_mask, compute_grad);
         }
         else {
           origin_centric_linearisation_t lin_for_h_parallel(space_group, h,
                                                      d_star_sq, heir.exp_i_2pi,
-                                                     u_inc, u_scat);
+                                                     u_inc, u_scat, pol_factor);
           origin_centric_linearisation_t lin_for_h_perpendicular(space_group, h,
                                                      d_star_sq, heir.exp_i_2pi,
-                                                     u_inc, v_scat);
+                                                     u_inc, v_scat, pol_factor);
           compute(elastic_form_factors.ref(), lin_for_h_parallel,
                   lin_for_h_perpendicular, f_mask, compute_grad);
         }
@@ -780,15 +827,15 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         for (int j=0; j < scatterers.size(); ++j) {
           xray::scatterer<> const &sc = scatterers[j];
-          bool sc_aniso = sc.flags.use_fp_fdp_aniso();
+          bool ff_aniso = sc.flags.use_fp_fdp_aniso();
           float_type f0 = elastic_form_factors[ scattering_type_indices[j] ];
           l.compute(sc, f0, compute_grad);
-          if (sc_aniso) {
-            l_prime.compute(sc, f0, compute_grad);
+          if (ff_aniso) {
+            l_prime.compute(sc, 0., compute_grad);
           }
 
           f_calc += l.structure_factor;
-          f_calc_prime += (sc_aniso ? l_prime.structure_factor : 0);
+          f_calc_prime += (ff_aniso ? l_prime.structure_factor : 0);
 
           if (!compute_grad) continue;
 
@@ -796,35 +843,35 @@ namespace smtbx { namespace structure_factors { namespace direct {
             for (int j=0; j<3; ++j) {
               *grad_f_calc_cursor++ = l.grad_site[j];
               *grad_f_calc_prime_cursor++ =
-                  (sc_aniso ? l_prime.grad_site[j] : 0);
+                  (ff_aniso ? l_prime.grad_site[j] : 0);
             }
           }
           if (sc.flags.use_u_iso() && sc.flags.grad_u_iso()) {
             *grad_f_calc_cursor++ = l.grad_u_iso;
             *grad_f_calc_prime_cursor++ =
-                (sc_aniso ? l_prime.grad_u_iso : 0);
+                (ff_aniso ? l_prime.grad_u_iso : 0);
           }
           if (sc.flags.use_u_aniso() && sc.flags.grad_u_aniso()) {
             for (int j=0; j<6; ++j) {
               *grad_f_calc_cursor++ = l.grad_u_star[j];
               *grad_f_calc_prime_cursor++ =
-                  (sc_aniso ? l_prime.grad_u_star[j] : 0);
+                  (ff_aniso ? l_prime.grad_u_star[j] : 0);
             }
           }
           if (sc.flags.grad_occupancy()) {
             *grad_f_calc_cursor++ = l.grad_occ;
             *grad_f_calc_prime_cursor++ =
-                (sc_aniso ? l_prime.grad_occ : 0);
+                (ff_aniso ? l_prime.grad_occ : 0);
           }
           if (sc.flags.grad_fp()) {
             *grad_f_calc_cursor++ = l.grad_fp;
             *grad_f_calc_prime_cursor++ =
-                (sc_aniso ? l_prime.grad_fp : 0);
+                (ff_aniso ? l_prime.grad_fp : 0);
           }
           if (sc.flags.grad_fdp()) {
             *grad_f_calc_cursor++ = l.grad_fdp;
             *grad_f_calc_prime_cursor++ =
-                (sc_aniso ? l_prime.grad_fdp : 0);
+                (ff_aniso ? l_prime.grad_fdp : 0);
           }
         }
 
