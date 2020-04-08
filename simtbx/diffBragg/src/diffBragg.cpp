@@ -1436,9 +1436,9 @@ void diffBragg::add_diffBragg_spots()
                     printf("Origin managers refine status: %d, value=%f\n", origin_managers[0]->refine_me,
                             origin_managers[0]->value);
                     printf("Bmatrix_real:\n%11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n",
-                        Bmat_realspace[0]*1e10, Bmat_realspace[1]*1e10, Bmat_realspace[2]*1e10,
-                        Bmat_realspace[3]*1e10, Bmat_realspace[4]*1e10, Bmat_realspace[5]*1e10,
-                        Bmat_realspace[6]*1e10, Bmat_realspace[7]*1e10, Bmat_realspace[8]*1e10);
+                        Bmat_realspace[0], Bmat_realspace[1], Bmat_realspace[2],
+                        Bmat_realspace[3], Bmat_realspace[4], Bmat_realspace[5],
+                        Bmat_realspace[6], Bmat_realspace[7], Bmat_realspace[8]);
                     printf("Umatrix_real:\n%11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n",
                         Umatrix[0], Umatrix[1], Umatrix[2],
                         Umatrix[3], Umatrix[4], Umatrix[5],
