@@ -97,6 +97,7 @@ nanoBragg::nanoBragg(
     Sclose = Yclose = -dot_product(pix0_vector,sdet_vector);
     close_distance = distance =  dot_product(pix0_vector,odet_vector);
     if (close_distance < 0){  /* NOTE close_distance defined this way is negative for some dxtbx models */
+      backwards_odet_vector = true;
       odet_vector[1] = -odet_vector[1];
       odet_vector[2] = -odet_vector[2];
       odet_vector[3] = -odet_vector[3];
@@ -133,6 +134,7 @@ nanoBragg::nanoBragg(
 
     /* sensible initialization of all unititialized values */
     reconcile_parameters();
+    SCITBX_ASSERT(distance > 0);  // safe to check,  especially with multi panel dxtbx models
 }
 
 
@@ -380,6 +382,7 @@ nanoBragg::init_defaults()
     detector_pivot = BEAM;
     beam_convention = MOSFLM;
     detector_twotheta = 0.0;
+    backwards_odet_vector = false;
     airpath=omega_pixel=omega_Rsqr_pixel=omega_sum = 0.0;
     curved_detector = 0;
     point_pixel= 0;
@@ -789,6 +792,12 @@ nanoBragg::init_beamcenter()
         if(verbose) printf("WARNING: auto-generating odet_vector\n");
         cross_product(fdet_vector,sdet_vector,odet_vector);
         unitize(odet_vector,odet_vector);
+        if (backwards_odet_vector)
+        {
+            odet_vector[1] = -odet_vector[1];
+            odet_vector[2] = -odet_vector[2];
+            odet_vector[3] = -odet_vector[3];
+        }
     }
     unitize(polar_vector,polar_vector);
     unitize(spindle_vector,spindle_vector);
