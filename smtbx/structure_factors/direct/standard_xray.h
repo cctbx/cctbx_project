@@ -29,6 +29,8 @@
   using core<float_type>::grad_u_star;                                     \
   using core<float_type>::grad_u_iso;                                      \
   using core<float_type>::grad_occ;                                        \
+  using core<float_type>::grad_fp_star;                                    \
+  using core<float_type>::grad_fdp_star;                                   \
   using base_t::hr_ht;                                                     \
   using base_t::d_star_sq;
 
@@ -55,6 +57,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
       complex_type grad_fdp;
       grad_u_star_type grad_u_star;
       complex_type grad_u_iso, grad_occ;
+      grad_u_star_type grad_fp_star, grad_fdp_star;
     };
 
     /** Base class for the linearisation or the evaluation of the structure
@@ -134,6 +137,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
           this->grad_u_star = grad_u_star_type(0, 0, 0, 0, 0, 0);
           this->grad_fp = 0;
           this->grad_fdp = 0;
+          this->grad_fp_star = grad_u_star_type(0, 0, 0, 0, 0, 0);
+          this->grad_fdp_star = grad_u_star_type(0, 0, 0, 0, 0, 0);
         }
 
         if (scatterer.flags.use_fp_fdp_aniso()) {
@@ -218,7 +223,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
       {
         using namespace adptbx;
         using namespace scitbx::constants;
-        scitbx::math::imaginary_unit_t i;
+        complex_type const i(0,1);
 
         // Compute S'
         for (int k=0; k < hr_ht.groups.size(); ++k) {
@@ -250,6 +255,40 @@ namespace smtbx { namespace structure_factors { namespace direct {
             float_type fdp =
               e1_g.hr * scatterer.fdp_aniso * e2_g.hr / base_t::pol_factor;
             complex_type formfactor(base_t::m_f0 + fp, fdp);
+            if(scatterer.flags.grad_fp_aniso()) {
+              grad_fp_star[0] += 
+                  e1_g.hr[0] * e2_g.hr[0] * f / base_t::pol_factor;
+              grad_fp_star[1] += 
+                  e1_g.hr[1] * e2_g.hr[1] * f / base_t::pol_factor;
+              grad_fp_star[2] += 
+                  e1_g.hr[2] * e2_g.hr[2] * f / base_t::pol_factor;
+              grad_fp_star[3] +=
+                  (e1_g.hr[0]*e2_g.hr[1] + e1_g.hr[1]*e2_g.hr[0])
+                  * f / base_t::pol_factor;
+              grad_fp_star[4] +=
+                  (e1_g.hr[0]*e2_g.hr[2] + e1_g.hr[2]*e2_g.hr[0])
+                  * f / base_t::pol_factor;
+              grad_fp_star[5] +=
+                  (e1_g.hr[1]*e2_g.hr[2] + e1_g.hr[2]*e2_g.hr[1])
+                  * f / base_t::pol_factor;
+            }
+            if(scatterer.flags.grad_fdp_aniso()) {
+              grad_fdp_star[0] +=
+                  i * e1_g.hr[0] * e2_g.hr[0] * f / base_t::pol_factor;
+              grad_fdp_star[1] +=
+                  i * e1_g.hr[1] * e2_g.hr[1] * f / base_t::pol_factor;
+              grad_fdp_star[2] +=
+                  i * e1_g.hr[2] * e2_g.hr[2] * f / base_t::pol_factor;
+              grad_fdp_star[3] +=
+                  i * (e1_g.hr[0]*e2_g.hr[1] + e1_g.hr[1]*e2_g.hr[0])
+                  * f / base_t::pol_factor;
+              grad_fdp_star[4] +=
+                  i * (e1_g.hr[0]*e2_g.hr[2] + e1_g.hr[2]*e2_g.hr[0])
+                  * f / base_t::pol_factor;
+              grad_fdp_star[5] +=
+                  i * (e1_g.hr[1]*e2_g.hr[2] + e1_g.hr[2]*e2_g.hr[1])
+                  * f / base_t::pol_factor;
+            }
             f *= formfactor;
           }
 
