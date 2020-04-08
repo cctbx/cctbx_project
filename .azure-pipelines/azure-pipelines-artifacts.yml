@@ -1,13 +1,17 @@
-# Script for downloading chem_data and phenix_regression as artifacts
+# Script for downloading data as artifacts
+#   - miniconda
+#   - chem_data
+#   - phenix_regression
+#   - phenix_examples
 
 # no continuous integration or pull request builds
 trigger: none
 pr: none
 
-# only daily updates
+# update every other hour
 schedules:
-- cron: '30 */6 * * *'
-  displayName: Daily update for test data
+- cron: '30 */2 * * *'
+  displayName: Scheduled update for artifact data
   branches:
     include:
     - master
@@ -15,7 +19,7 @@ schedules:
 jobs:
 - job: artifacts
   pool:
-    vmImage: ubuntu-16.04
+    vmImage: ubuntu-latest
   timeoutInMinutes: 360
 
   steps:
@@ -29,29 +33,70 @@ jobs:
       sshKeySecureFile: id_rsa
     displayName: Download SSH key
 
+  # miniconda
   - script: |
-      svn co svn+ssh://builder@cci.lbl.gov/chem_data/trunk chem_data
+      mkdir -p $(System.DefaultWorkingDirectory)/miniconda
+      cd $(System.DefaultWorkingDirectory)/miniconda
+      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+      wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
+    displayName: Download miniconda
+
+  - publish: $(System.DefaultWorkingDirectory)/miniconda
+    artifact: miniconda
+
+  # chem_data
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProjectId)'
+      pipeline: 4
+      artifact: 'chem_data'
+      path: $(System.DefaultWorkingDirectory)/chem_data
+    displayName: Download chem_data
+
+  - script: |
+      # svn co svn+ssh://builder@cci.lbl.gov/chem_data/trunk chem_data
       cd $(System.DefaultWorkingDirectory)/chem_data
-      rm -fr .svn
-    displayName: Checkout chem_data
-
-  - script: |
-      svn co svn+ssh://builder@cci.lbl.gov/phenix_regression/trunk phenix_regression
-      cd $(System.DefaultWorkingDirectory)/phenix_regression
-      rm -fr .svn
-    displayName: Checkout phenix_regression
-
-  - script: |
-      svn co svn+ssh://builder@cci.lbl.gov/phenix_examples/trunk phenix_examples
-      cd $(System.DefaultWorkingDirectory)/phenix_examples
-      rm -fr .svn
-    displayName: Checkout phenix_examples
+      svn update
+    displayName: Update chem_data
 
   - publish: $(System.DefaultWorkingDirectory)/chem_data
     artifact: chem_data
 
+  # phenix_regression
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProjectId)'
+      pipeline: 4
+      artifact: 'phenix_regression'
+      path: $(System.DefaultWorkingDirectory)/phenix_regression
+    displayName: Download phenix_regression
+
+  - script: |
+      # svn co svn+ssh://builder@cci.lbl.gov/phenix_regression/trunk phenix_regression
+      cd $(System.DefaultWorkingDirectory)/phenix_regression
+      svn update
+    displayName: Update phenix_regression
+
   - publish: $(System.DefaultWorkingDirectory)/phenix_regression
     artifact: phenix_regression
+
+  # phenix_examples
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProjectId)'
+      pipeline: 4
+      artifact: 'phenix_examples'
+      path: $(System.DefaultWorkingDirectory)/phenix_examples
+    displayName: Download phenix_examples
+
+  - script: |
+      # svn co svn+ssh://builder@cci.lbl.gov/phenix_examples/trunk phenix_examples
+      cd $(System.DefaultWorkingDirectory)/phenix_examples
+      svn update
+    displayName: Update phenix_examples
 
   - publish: $(System.DefaultWorkingDirectory)/phenix_examples
     artifact: phenix_examples
