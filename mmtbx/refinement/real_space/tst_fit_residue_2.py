@@ -85,12 +85,11 @@ def exercise(pdb_poor_str, i_pdb, d_min = 1.0, resolution_factor = 0.1):
     pdb_poor          = pdb_poor_str,
     i_pdb             = i_pdb,
     d_min             = d_min,
+    residues          = ["ARG"],
     resolution_factor = resolution_factor)
   #
   matching_selection = t.ph_answer.atom_selection_cache().selection(
     string = "not element U")
-  # Truncate the map
-  target_map = t.target_map.set_selected(t.target_map > 10, 2)
   #
   result = mmtbx.refinement.real_space.fit_residues.run(
     pdb_hierarchy     = t.ph_poor,
@@ -98,6 +97,8 @@ def exercise(pdb_poor_str, i_pdb, d_min = 1.0, resolution_factor = 0.1):
     crystal_symmetry  = t.crystal_symmetry,
     map_data          = t.target_map,
     do_all            = True,
+    backbone_sample   = True,
+    rotatable_hd      = t.rotatable_hd,
     rotamer_manager   = t.rotamer_manager,
     sin_cos_table     = t.sin_cos_table,
     mon_lib_srv       = t.mon_lib_srv)

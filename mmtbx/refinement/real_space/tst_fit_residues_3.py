@@ -109,6 +109,7 @@ def exercise(i_pdb, pdb_for_map, d_min = 1.5, resolution_factor = 0.1):
     pdb_poor          = pdb_poor,
     i_pdb             = i_pdb,
     d_min             = d_min,
+    residues          = ["PHE","THR","ALA"],
     resolution_factor = resolution_factor,
     pdb_for_map       = pdb_for_map)
   #
@@ -120,8 +121,8 @@ def exercise(i_pdb, pdb_for_map, d_min = 1.5, resolution_factor = 0.1):
       crystal_symmetry  = t.crystal_symmetry,
       map_data          = t.target_map,
       do_all            = True,
-      massage_map       = False,
       backbone_sample   = False,
+      rotatable_hd      = t.rotatable_hd,
       rotamer_manager   = t.rotamer_manager,
       sin_cos_table     = t.sin_cos_table,
       mon_lib_srv       = t.mon_lib_srv)

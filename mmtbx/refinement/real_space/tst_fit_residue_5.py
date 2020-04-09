@@ -72,6 +72,7 @@ def exercise(pdb_poor_str, i_pdb = 0, d_min = 1.0, resolution_factor = 0.25):
     pdb_poor          = pdb_poor_str,
     i_pdb             = i_pdb,
     d_min             = d_min,
+    residues          = ["GLY","TYR","ASN"],
     resolution_factor = resolution_factor)
   #
   get_class = iotbx.pdb.common_residue_names_get_class

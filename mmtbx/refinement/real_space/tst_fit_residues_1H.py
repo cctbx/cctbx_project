@@ -1479,14 +1479,15 @@ def exercise(pdb_answer, pdb_poor, i_pdb=0, d_min=1., resolution_factor = 0.25):
     resolution_factor = resolution_factor)
   #
   ph = t.ph_poor
-  for i in [1,2,3,4]:
+  for i in [1,2,3]:
     result = mmtbx.refinement.real_space.fit_residues.run(
       pdb_hierarchy     = ph,
       vdw_radii         = t.vdw,
       crystal_symmetry  = t.crystal_symmetry,
       map_data          = t.target_map,
       do_all            = True,
-      massage_map       = False,
+      backbone_sample   = True,
+      rotatable_hd      = t.rotatable_hd,
       rotamer_manager   = t.rotamer_manager,
       sin_cos_table     = t.sin_cos_table,
       mon_lib_srv       = t.mon_lib_srv)
@@ -1498,7 +1499,7 @@ def exercise(pdb_answer, pdb_poor, i_pdb=0, d_min=1., resolution_factor = 0.25):
     ph_answer  = t.ph_answer,
     ph_refined = result.pdb_hierarchy,
     exclude_atom_names = ["CE1","CE2","CD1","CD2"],
-    tol        = 0.52)
+    tol        = 0.3)
 
 if(__name__ == "__main__"):
   t0 = time.time()
