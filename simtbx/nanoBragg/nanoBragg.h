@@ -267,7 +267,6 @@ class nanoBragg {
     double pix0_vector[4]; //  = {0,0,0,0};
     double detector_rotx,detector_roty,detector_rotz;
     double twotheta_axis[4]; // = {0,0,1,0};
-    bool backwards_odet_vector; // = false;
     pivot detector_pivot; // = BEAM;
     convention beam_convention; // = MOSFLM;
     double detector_twotheta; // = 0.0;
