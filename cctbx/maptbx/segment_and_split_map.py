@@ -5919,11 +5919,12 @@ def get_solvent_content_from_seq_file(params,
   from mmtbx.validation.chain_comparison import \
        extract_unique_part_of_sequences as eups
   print("Unique part of sequences:", file=out)
-  copies_in_unique,base_copies,unique_sequence_dict=eups(sequences)
+  copies_in_unique,base_copies,unique_sequence_dict=eups(sequences,
+     out=out)
   all_unique_sequence=[]
   for seq in copies_in_unique.keys():
     print("Copies: %s  base copies: %s  Sequence: %s" %(
-       copies_in_unique[seq],base_copies,seq))
+       copies_in_unique[seq],base_copies,seq),file=out)
     all_unique_sequence.append(seq)
   if base_copies != ncs_copies:
     print("NOTE: %s copies of unique portion but ncs_copies=%s" %(
@@ -8083,7 +8084,10 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
 def set_up_and_apply_soft_mask(map_data=None,shift_origin=None,
   crystal_symmetry=None,resolution=None,
   grid_units_for_boundary=None,
-  radius=None,out=sys.stdout):
+  radius=None,out=None):
+    if out is None:
+      from libtbx.utils import null_out
+      out=null_out()
 
     acc=map_data.accessor()
     map_data = map_data.shift_origin()

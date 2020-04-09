@@ -2580,7 +2580,7 @@ class extract_box_around_model_and_map(object):
        resolution=resolution,
        grid_units_for_boundary=None,
        radius=soft_mask_radius,
-       out=sys.stdout)
+        )
 
   def get_solvent_content(self):
     return self.solvent_content
