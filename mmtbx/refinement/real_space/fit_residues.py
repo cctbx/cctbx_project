@@ -86,17 +86,39 @@ class run(object):
                rotamer_manager,
                sin_cos_table,
                mon_lib_srv,
+               rotatable_hd=None,
                outliers_only=False,
                bselection=None,
                map_data=None,
                vdw_radii=None,
                do_all=False,
-               backbone_sample=True,
+               backbone_sample=False, # XXX
                diff_map_data=None,
-               massage_map=True,
                tune_up_only=False,
                log = None):
     adopt_init_args(self, locals())
+
+#    ### DEBUG start
+#    from libtbx import easy_pickle as ep
+#    tmp = [
+#               pdb_hierarchy,
+#               crystal_symmetry,
+#               rotamer_manager,
+#               sin_cos_table,
+#               mon_lib_srv,
+#               outliers_only,
+#               bselection,
+#               map_data,
+#               vdw_radii,
+#               do_all,
+#               backbone_sample,
+#               diff_map_data,
+#               tune_up_only,
+#               log
+#           ]
+#    ep.dump(file_name="all.pkl", obj=tmp)
+#    STOP()
+#    ### DEBUG end
     self.did_it_for = 0
     if(self.do_all): assert not outliers_only
     if(self.outliers_only): assert not do_all
@@ -121,10 +143,7 @@ class run(object):
     self.atom_selection_cache = self.pdb_hierarchy.atom_selection_cache()
     self.selection_water_as_set = set(self.atom_selection_cache.\
         selection(string = "water").iselection())
-    if(self.massage_map and self.map_data is not None):
-      self.target_map = self.prepare_target_map()
-    else:
-      self.target_map = map_data
+    self.target_map = map_data
     print("outliers start: %d"%self.count_outliers(), file=self.log)
     #
     if(not self.tune_up_only):
@@ -145,6 +164,10 @@ class run(object):
     #
     print("Did it for:", self.did_it_for, file=self.log)
     #
+#    ### DEBUG start
+#    pdb_hierarchy.write_pdb_file(file_name="end1.pdb")
+#    STOP()
+#    ### DEBUG end
 
   def get_special_position_indices(self):
     site_symmetry_table = \
@@ -157,12 +180,10 @@ class run(object):
   def get_nonbonded_bumpers(self, residue, radius):
     if(self.special_position_settings is None): return None
     if(self.vdw_radii is None): return None
-    #residue_i_selection = residue.atoms().extract_i_seq()
     residue_i_selection = flex.size_t()
     for a in residue.atoms():
       if(not a.name.strip() in ["N", "C", "O"]):
         residue_i_selection.append(a.i_seq)
-    #
     residue_b_selection = flex.bool(self.sites_cart.size(), residue_i_selection)
     selection_around_residue = self.special_position_settings.pair_generator(
       sites_cart      = self.sites_cart,
@@ -171,8 +192,15 @@ class run(object):
     selection_around_residue_minus_residue = flex.size_t(
       list(set(selection_around_residue).difference(
         set(residue_i_selection)).difference(self.selection_water_as_set)))
-    sites_cart = self.sites_cart.select(selection_around_residue_minus_residue)
-    atom_names = self.atom_names.select(selection_around_residue_minus_residue)
+    # exclude rotatable H
+    selection_around_residue_minus_residue_minus_rotatableH = flex.size_t()
+    for s in selection_around_residue_minus_residue:
+      if(not self.rotatable_hd[s]):
+        selection_around_residue_minus_residue_minus_rotatableH.append(s)
+    sites_cart = self.sites_cart.select(
+      selection_around_residue_minus_residue_minus_rotatableH)
+    atom_names = self.atom_names.select(
+      selection_around_residue_minus_residue_minus_rotatableH)
     #
     radii = flex.double()
     for an in atom_names:
@@ -187,30 +215,6 @@ class run(object):
     for i_seq in residue.atoms().extract_i_seq():
       if(i_seq in self.special_position_indices): return True
     return False
-
-  def prepare_target_map(self): # XXX This may need to go external
-    if(self.map_data is None): return None
-    map_data = self.map_data
-    # truncate map
-    selection = self.atom_selection_cache.selection(
-      string = "element C or element O or element N")
-    mean_atom = flex.double()
-    for i_a, a in enumerate(list(self.pdb_hierarchy.atoms())):
-      if(selection[i_a]):
-        site_frac = self.crystal_symmetry.unit_cell().fractionalize(a.xyz)
-        mean_atom.append(map_data.eight_point_interpolation(site_frac))
-    mean_atom = flex.mean_default(mean_atom,0)
-    map_data = map_data.set_selected(map_data>mean_atom, mean_atom)
-    # Blend maps if applicable
-    if(self.diff_map_data is not None):
-      diff_map_data = self.diff_map_data.deep_copy()
-      sel = diff_map_data < 2.
-      diff_map_data = diff_map_data.set_selected(sel, 0)
-      sel = diff_map_data > 3.
-      diff_map_data = diff_map_data.set_selected(sel, 3)
-      diff_map_data = diff_map_data/3.
-      maptbx.combine_1(map_data=map_data, diff_map=diff_map_data)
-    return map_data
 
   def one_residue_iteration(self, residue):
     if(residue.resname.strip().upper() in ["ALA","GLY","PRO"]): return
@@ -233,6 +237,8 @@ class run(object):
         if(mv_r is not None and mv_r<self.mean_side_chain_density/2):
           need_fix = True
       #
+      if(residue.resname in ["MSE", "MET"]): need_fix=True
+      #
       if(not need_fix): return
     negate_rad = negate_map_table[residue.resname.strip().lower()]
     if(not negate_rad): return
@@ -252,6 +258,7 @@ class run(object):
       target_map_for_cb = self.target_map,
       mon_lib_srv       = self.mon_lib_srv,
       rotamer_manager   = self.rotamer_manager,
+      rotatable_hd      = self.rotatable_hd,
       sin_cos_table     = self.sin_cos_table)
     self.sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
 
@@ -269,6 +276,8 @@ class run(object):
             if self.bselection is not None:
               if not self.bselection[residue.atoms()[0].i_seq]: continue
             cntr += 1
+            # Handy for debugging
+            #print(chain.id, residue.resname, residue.resseq,"-"*10)
             function(residue = residue)
     return cntr
 
