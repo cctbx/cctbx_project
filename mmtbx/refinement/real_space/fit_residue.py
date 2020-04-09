@@ -52,7 +52,7 @@ class monitor(object):
       exceed_map_max_value = exceed_map_max_value)
 
   def finalize(self, residue):
-    if(len(self.states.keys())==1): return
+    if(len(self.states.keys())==1 or self.selection.size()==0): return
     state=None
     if(self.states["start"].target > self.states["fitting"].target):
       if(not self.states["start"].exceed_map_max_value):
@@ -65,16 +65,16 @@ class monitor(object):
          state="fitting"
     else:
       state="fitting"
+    if(state is None): state="start"
     if(self.states[state].target <= self.states["tuneup"].target):
       if(not self.states["tuneup"].exceed_map_max_value):
         state="tuneup"
-    if(state is None): state="start"
-
     if(state != self.states.keys()[-1]):
       residue.atoms().set_xyz(self.states[state].sites_cart)
       self.add(residue = residue, state = "revert")
 
   def show(self):
+    if(len(self.states.keys())==1 or self.selection.size()==0): return
     print(self.id_str, file=self.log)
     for k,v in zip(self.states.keys(), self.states.values()):
       vals = " ".join(["%s: %5.2f"%(k_, v_)
@@ -142,9 +142,13 @@ class run(object):
          self.residue.parent().parent() is not None):
          id_str+="chain: %s"%(self.residue.parent().parent().id)
       id_str+=" residue: %s %s"%(self.residue.resname, self.residue.resseq.strip())
+      if(len(self.co.clusters)>1):
+        msel = flex.size_t(flatten(self.co.clusters[1:][0].vector))
+      else:
+        msel = flex.size_t()
       self.m = monitor(
         id_str    = id_str,
-        selection = flex.size_t(flatten(self.co.clusters[1:][0].vector)),
+        selection = msel,
         map_data  = self.target_map,
         unit_cell = self.unit_cell,
         weights   = self.weights,
