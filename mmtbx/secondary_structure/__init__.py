@@ -178,6 +178,7 @@ class manager(object):
                 was_initialized=False,
                 mon_lib_srv=None,
                 verbose=-1,
+                show_summary_on=True,
                 log=sys.stdout):
     self.pdb_hierarchy = pdb_hierarchy
     self.mon_lib_srv = mon_lib_srv
@@ -190,6 +191,7 @@ class manager(object):
       self.params.secondary_structure = params
 
     self.verbose = verbose
+    self.show_summary_on = show_summary_on
     self.log = log
     self.def_params = sec_str_master_phil.extract()
     self.stats = {'n_protein_hbonds':0, 'n_na_hbonds':0, 'n_na_hbond_angles':0,
@@ -215,16 +217,19 @@ class manager(object):
   def initialize(self):
     if not self._was_initialized :
       self.find_automatically()
-      self.show_summary()
+      if self.show_summary_on:
+        self.show_summary()
       self._was_initialized = True
 
   def find_automatically(self):
     # find_automatically = self.params.secondary_structure.find_automatically
     protein_found = False
+    use_segid = self.selection_cache.segid.size() > 1
     segids = {}
-    for a in self.pdb_hierarchy.atoms():
-      segids[a.segid] = ""
-    use_segid = len(segids) > 1
+    if use_segid:
+      for si in self.selection_cache.segid.keys():
+        segids[si] = ""
+
     # XXX: check for presence of protein first?
     protein_ss_definition_present = False
     if (len(self.params.secondary_structure.protein.helix) > 1 or
