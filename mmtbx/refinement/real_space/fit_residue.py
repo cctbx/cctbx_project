@@ -8,6 +8,8 @@ from cctbx import maptbx
 import scitbx.math
 import mmtbx.idealized_aa_residues.rotamer_manager
 import iotbx.pdb
+import collections
+from libtbx import group_args
 
 import boost.python
 from six.moves import range
@@ -18,32 +20,137 @@ def flatten(l):
   return sum(([x] if not (isinstance(x, list) or isinstance(x, flex.size_t))
     else flatten(x) for x in l), [])
 
+class monitor(object):
+  def __init__(self, id_str, selection, map_data, unit_cell, weights, pairs,
+               reference_map_value):
+    adopt_init_args(self, locals())
+    self.states = collections.OrderedDict()
+
+  def add(self, residue, state):
+    vals = collections.OrderedDict()
+    target     = 0
+    target_neg = 0
+    exceed_map_max_value = False
+    for i in self.selection:
+      atom = residue.atoms()[i]
+      name = atom.name.strip().upper()
+      element = atom.element.strip().upper()
+      if(element in ["H","D"]): continue
+      mv = self.map_data.eight_point_interpolation(
+        self.unit_cell.fractionalize(atom.xyz))
+      vals[name] = mv
+      if(mv > self.reference_map_value*2 and not element in ["S","SE"]):
+        exceed_map_max_value = True
+      target += mv
+      if(mv < 0): target_neg += mv
+    #
+    self.states[state] = group_args(
+      vals       = vals,
+      sites_cart = residue.atoms().extract_xyz(),
+      target     = target,
+      target_neg = target_neg,
+      exceed_map_max_value = exceed_map_max_value)
+
+  def finalize(self, residue):
+    if(len(self.states.keys())==1): return
+    state=None
+    if(self.states["start"].target > self.states["fitting"].target):
+      if(not self.states["start"].exceed_map_max_value):
+        if(self.states["start"].target_neg>self.states["fitting"].target_neg):
+          state="start"
+        else:
+          state="fitting"
+      else:
+        if(not self.states["fitting"].exceed_map_max_value):
+         state="fitting"
+    else:
+      state="fitting"
+    if(self.states[state].target <= self.states["tuneup"].target):
+      if(not self.states["tuneup"].exceed_map_max_value):
+        state="tuneup"
+    if(state is None): state="start"
+
+    if(state != self.states.keys()[-1]):
+      residue.atoms().set_xyz(self.states[state].sites_cart)
+      self.add(residue = residue, state = "revert")
+
+  def show(self):
+    print(self.id_str)
+    for k,v in zip(self.states.keys(), self.states.values()):
+      vals = " ".join(["%s: %5.2f"%(k_, v_)
+        for k_,v_ in zip(v.vals.keys(), v.vals.values())])
+      print("  %7s: score: %7.3f %s"%(k, v.target, vals))
+
 class run(object):
   def __init__(self,
                residue,
                mon_lib_srv,
                rotamer_manager,
                sin_cos_table,
+               rotatable_hd=None,
                vdw_radii=None,
                xyzrad_bumpers=None,
                target_map=None,
                target_map_for_cb=None,
                unit_cell=None,
-               backbone_sample=True,
+               backbone_sample=False,
+               reference_map_value=None,
                accept_only_if_max_shift_is_smaller_than=None):
     adopt_init_args(self, locals())
-    #
-    if(target_map is None):
-      assert not backbone_sample
-    # Initial state
-    rotamer_start = rotamer_manager.rotamer(residue=self.residue)
-    sites_cart_start = self.residue.atoms().extract_xyz()
     self.co = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
       residue         = self.residue,
       mon_lib_srv     = self.mon_lib_srv,
       backbone_sample = True)
-    if(target_map is not None):
-      target_start = self.get_target_value(sites_cart = sites_cart_start)
+    self.m = None
+    if(self.target_map is not None and len(self.co.clusters)>0):
+      # Set weights
+      AN = {"S":16, "O":8, "N":7, "C":6, "SE":34, "H":1}
+      #AN = {"S":1, "O":1, "N":1, "C":1, "SE":1, "H":1}
+      self.weights = flex.double()
+      for atom in self.residue.atoms():
+        self.weights.append(AN[atom.element.strip().upper()])
+      # Bonded pairs
+      exclude = ["C","N","O","CA"]
+      reference = exclude + ["CB"]
+      atoms = self.residue.atoms()
+      reference_vals = flex.double()
+      self.pairs = []
+      for i, ai in enumerate(atoms):
+        if(ai.name.strip() in reference):
+          mv = self.target_map.eight_point_interpolation(
+            self.unit_cell.fractionalize(ai.xyz))
+          reference_vals.append(mv)
+        if(ai.name.strip() in exclude): continue
+        if(ai.element.strip().upper() in ["H","S","SE"]): continue
+        for j, aj in enumerate(atoms):
+          if i==j: continue
+          if(aj.name.strip() in exclude): continue
+          if(aj.element.strip().upper() in ["H","S","SE"]): continue
+          d = ai.distance(aj)
+          if d < 1.6:
+            pair = [i,j]
+            pair.sort()
+            if(not pair in self.pairs):
+              self.pairs.append(pair)
+      if(self.reference_map_value is None):
+        self.reference_map_value = flex.mean(reference_vals)
+      # Set monitor
+      id_str=""
+      if(self.residue.parent() is not None and
+         self.residue.parent().parent() is not None):
+         id_str+="chain: %s"%(self.residue.parent().parent().id)
+      id_str+=" residue: %s %s"%(self.residue.resname, self.residue.resseq.strip())
+      self.m = monitor(
+        id_str    = id_str,
+        selection = flex.size_t(flatten(self.co.clusters[1:][0].vector)),
+        map_data  = self.target_map,
+        unit_cell = self.unit_cell,
+        weights   = self.weights,
+        pairs     = self.pairs,
+        reference_map_value = self.reference_map_value)
+      self.m.add(residue = self.residue, state = "start")
+    if(self.target_map is None):
+      assert not backbone_sample
     # Actual calculations
     self.chi_angles = self.rotamer_manager.get_chi_angles(
       resname = self.residue.resname)
@@ -51,12 +158,9 @@ class run(object):
       if(backbone_sample):
         self.fit_c_beta(c_beta_rotation_cluster = self.co.clusters[0])
       self.fit_side_chain(clusters = self.co.clusters[1:])
-      # Final state
-      if(target_map is not None):
-        target_final = self.get_target_value(
-          sites_cart=self.residue.atoms().extract_xyz())
-        if(target_start > target_final):
-          self.residue.atoms().set_xyz(sites_cart_start)
+    if(self.m is not None):
+      self.m.finalize(residue = self.residue)
+      self.m.show()
 
   def get_target_value(self, sites_cart, selection=None, target_map=None):
     if(target_map is None): target_map = self.target_map
@@ -78,7 +182,6 @@ class run(object):
         mon_lib_srv = self.mon_lib_srv,
         residue     = self.residue)
     if(rotamer_iterator is None): return
-    #selection_rsr = flex.size_t(flatten(clusters[0].vector))
     selection_clash = self.co.clash_eval_selection
     selection_rsr   = self.co.rsr_eval_selection
     if(self.target_map is not None):
@@ -87,6 +190,7 @@ class run(object):
         selection  = selection_rsr)
     sites_cart_start = self.residue.atoms().extract_xyz()
     sites_cart_first_rotamer = list(rotamer_iterator)[0][1]
+    # From this point on the coordinates in residue are to initial rotamer!
     self.residue.atoms().set_xyz(sites_cart_first_rotamer)
     axes = []
     atr = []
@@ -97,51 +201,30 @@ class run(object):
     sites = self.residue.atoms().extract_xyz()
     if(self.target_map is not None and self.xyzrad_bumpers is not None):
       # Get vdW radii
+      offset = 0.25
+      #if(self.residue.resname=="MSE"): offset=0.5
       radii = flex.double()
       atom_names = []
       for a in self.residue.atoms():
+        if(self.rotatable_hd[a.i_seq]): continue # don't include rotatable H
         atom_names.append(a.name.strip())
       converter = iotbx.pdb.residue_name_plus_atom_names_interpreter(
         residue_name=self.residue.resname, atom_names = atom_names)
       mon_lib_names = converter.atom_name_interpretation.mon_lib_names()
       for n in mon_lib_names:
-        try: radii.append(self.vdw_radii[n.strip()]-0.25)
+        try: radii.append(self.vdw_radii[n.strip()]-offset)
         except KeyError: radii.append(1.5) # XXX U, Uranium, OXT are problems!
-      # Strangely, making use of weights produces much worse results.
-      # This needs more investigation.
-      #AN = {"S":16, "O":8, "N":7, "C":6, "SE":34, "H":1}
-      AN = {"S":1, "O":1, "N":1, "C":1, "SE":1, "H":1}
-      weights = flex.double()
-      for atom in self.residue.atoms():
-        weights.append(AN[atom.element.strip().upper()])
-      assert sites.size()==weights.size()
-      assert radii.size()==sites.size()
-      # bonded pairs
-      exclude = ["C","N","O","CA"]
-      atoms = self.residue.atoms()
-      pairs = []
-      for i, ai in enumerate(atoms):
-        if(ai.name.strip() in exclude): continue
-        if(ai.element.strip()=="H"): continue
-        for j, aj in enumerate(atoms):
-          if i==j: continue
-          if(aj.name.strip() in exclude): continue
-          if(aj.element.strip()=="H"): continue
-          d = ai.distance(aj)
-          if d < 1.6:
-            pair = [i,j]
-            pair.sort()
-            if(not pair in pairs):
-              pairs.append(pair)
       #
-      fl = False if self.residue.resname in ["MET","MSE"] else False
+      if(self.residue.resname in ["MET","MSE"]): scale = 100
+      else:                                      scale = 2
       xyzrad_residue = ext.moving(
-        sites_cart       = sites,
-        sites_cart_start = sites_cart_start,
-        radii            = radii,
-        weights          = weights,
-        use_reference    = fl,
-        bonded_pairs     = pairs)
+        sites_cart          = sites,
+        sites_cart_start    = sites_cart_start,
+        radii               = radii,
+        weights             = self.weights,
+        bonded_pairs        = self.pairs,
+        max_map_value       = self.reference_map_value * scale,
+        min_map_value       = self.reference_map_value * 0.1)
       #
       ro = ext.fit(
         fixed                    = self.xyzrad_bumpers,
@@ -197,6 +280,8 @@ class run(object):
           self.residue.atoms().set_xyz(sites_cart_start)
     else:
       self.residue.atoms().set_xyz(sites_cart_start)
+    if(self.m): self.m.add(residue = self.residue, state = "fitting")
+#    # tune up
     if(self.target_map is not None):
       tune_up(
         target_map           = self.target_map,
@@ -204,8 +289,9 @@ class run(object):
         mon_lib_srv          = self.mon_lib_srv,
         rotamer_manager      = self.rotamer_manager.rotamer_evaluator,
         unit_cell            = self.unit_cell,
-        torsion_search_start = -10,
-        torsion_search_stop  = 10,
+        monitor = self.m,
+        torsion_search_start = -30,
+        torsion_search_stop  = 30,
         torsion_search_step  = 1)
 
   def fit_c_beta(self, c_beta_rotation_cluster):
@@ -253,7 +339,8 @@ class run_with_minimization(object):
                allow_modified_residues=False):
     adopt_init_args(self, locals())
     # load rotamer manager
-    self.rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load()
+    self.rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load(
+      rotamers="favored")
     # pre-compute sin and cos tables
     self.sin_cos_table = scitbx.math.sin_cos_table(n=10000)
     self.backbone_atom_names = ["N", "CA", "O", "CB", "C"]
@@ -392,11 +479,11 @@ class tune_up(object):
                mon_lib_srv,
                rotamer_manager,
                unit_cell,
+               monitor              = None,
                torsion_search_start = -20,
                torsion_search_stop  = 20,
                torsion_search_step  = 2):
     adopt_init_args(self, locals())
-    sites_cart_start = self.residue.atoms().extract_xyz().deep_copy()
     self.clusters = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
       residue         = self.residue,
       mon_lib_srv     = self.mon_lib_srv,
@@ -406,7 +493,6 @@ class tune_up(object):
       target_map   = self.target_map,
       residue      = self.residue,
       rotamer_eval = self.rotamer_manager)
-    t_start = score_residue.compute_target(sites_cart=sites_cart_start)
     mmtbx.refinement.real_space.torsion_search(
       clusters   = self.clusters,
       sites_cart = self.residue.atoms().extract_xyz(),
@@ -414,11 +500,9 @@ class tune_up(object):
       start      = self.torsion_search_start,
       stop       = self.torsion_search_stop,
       step       = self.torsion_search_step)
-    t_end = score_residue.compute_target(sites_cart=score_residue.sites_cart)
-    if(t_end > t_start):
-      self.residue.atoms().set_xyz(new_xyz=score_residue.sites_cart)
-    else:
-      self.residue.atoms().set_xyz(new_xyz=sites_cart_start)
+    self.residue.atoms().set_xyz(new_xyz=score_residue.sites_cart)
+    if(monitor is not None):
+      monitor.add(residue = self.residue, state = "tuneup")
 
 #
 # These functions are not used anywhere. And not tested anymore.
