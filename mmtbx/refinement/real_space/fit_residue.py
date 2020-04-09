@@ -3,7 +3,7 @@ from cctbx.array_family import flex
 from libtbx import adopt_init_args
 import mmtbx.refinement.real_space
 from mmtbx.refinement.real_space import individual_sites
-import math
+import math, sys
 from cctbx import maptbx
 import scitbx.math
 import mmtbx.idealized_aa_residues.rotamer_manager
@@ -22,7 +22,7 @@ def flatten(l):
 
 class monitor(object):
   def __init__(self, id_str, selection, map_data, unit_cell, weights, pairs,
-               reference_map_value):
+               reference_map_value, log):
     adopt_init_args(self, locals())
     self.states = collections.OrderedDict()
 
@@ -75,11 +75,11 @@ class monitor(object):
       self.add(residue = residue, state = "revert")
 
   def show(self):
-    print(self.id_str)
+    print(self.id_str, file=self.log)
     for k,v in zip(self.states.keys(), self.states.values()):
       vals = " ".join(["%s: %5.2f"%(k_, v_)
         for k_,v_ in zip(v.vals.keys(), v.vals.values())])
-      print("  %7s: score: %7.3f %s"%(k, v.target, vals))
+      print("  %7s: score: %7.3f %s"%(k, v.target, vals), file=self.log)
 
 class run(object):
   def __init__(self,
@@ -95,8 +95,10 @@ class run(object):
                unit_cell=None,
                backbone_sample=False,
                reference_map_value=None,
-               accept_only_if_max_shift_is_smaller_than=None):
+               accept_only_if_max_shift_is_smaller_than=None,
+               log=None):
     adopt_init_args(self, locals())
+    if(self.log is None): self.log = sys.stdout
     self.co = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
       residue         = self.residue,
       mon_lib_srv     = self.mon_lib_srv,
@@ -147,7 +149,8 @@ class run(object):
         unit_cell = self.unit_cell,
         weights   = self.weights,
         pairs     = self.pairs,
-        reference_map_value = self.reference_map_value)
+        reference_map_value = self.reference_map_value,
+        log       = self.log)
       self.m.add(residue = self.residue, state = "start")
     if(self.target_map is None):
       assert not backbone_sample

@@ -259,7 +259,8 @@ class run(object):
       mon_lib_srv       = self.mon_lib_srv,
       rotamer_manager   = self.rotamer_manager,
       rotatable_hd      = self.rotatable_hd,
-      sin_cos_table     = self.sin_cos_table)
+      sin_cos_table     = self.sin_cos_table,
+      log               = self.log)
     self.sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
 
   def loop(self, function):
@@ -361,4 +362,5 @@ class fix_outliers(object):
                     mon_lib_srv     = self.mon_lib_srv,
                     rotamer_manager = self.rotamer_manager,
                     sin_cos_table   = self.sin_cos_table,
-                    accept_only_if_max_shift_is_smaller_than = ac)
+                    accept_only_if_max_shift_is_smaller_than = ac,
+                    log = self.log)
