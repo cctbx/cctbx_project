@@ -1937,7 +1937,7 @@ class manager(object):
           scatterers[i].site = scatterers[j].site
     self.set_sites_cart_from_xrs()
 
-  def rotatable_hd_selection(self):
+  def rotatable_hd_selection(self, iselection=True):
     rmh_sel = mmtbx.hydrogens.rotatable(
       pdb_hierarchy      = self.get_hierarchy(),
       mon_lib_srv        = self.get_mon_lib_srv(),
@@ -1945,7 +1945,9 @@ class manager(object):
       log                = self.log)
     sel_i = []
     for s in rmh_sel: sel_i.extend(s[1])
-    return flex.size_t(sel_i)
+    result = flex.size_t(sel_i)
+    if(iselection): return result
+    else:           return flex.bool(self.size(), result)
 
   def h_counts(self):
     occupancies = self._xray_structure.scatterers().extract_occupancies()
