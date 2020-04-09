@@ -365,44 +365,66 @@ score(
   af::const_ref<MapFloatType, af::c_grid_padded<3> > const& density_map,
   af::const_ref<scitbx::vec3<SiteFloatType> > const& sites_cart,
   af::const_ref<std::size_t> const& selection,
-  af::ref<MapFloatType > reference_values,
   af::shared<af::tiny<std::size_t, 2> > bonded_pairs,
-  bool use_reference,
-  af::const_ref<MapFloatType > const& weights)
+  af::const_ref<MapFloatType > const& weights,
+  MapFloatType const& max_map_value,
+  MapFloatType const& min_map_value)
 {
+  MapFloatType status = 1;
   MapFloatType result = 0;
-  MapFloatType status = 0;
   for(std::size_t i_site=0;i_site<selection.size();i_site++) {
     std::size_t i = selection[i_site];
     MapFloatType mv = eight_point_interpolation(
       density_map,
       unit_cell.fractionalize(sites_cart[i]));
-    mv = mv * weights[i];
-    if(use_reference) {
-      if(mv < reference_values[i]) status += 1;
-      else                         reference_values[i] = mv;
+    if(mv < min_map_value || mv > max_map_value)  {
+      status=-1;
+      break;
     }
+    mv = mv * weights[i];
     result += mv;
   }
-  if(use_reference) {
-    if(status > selection.size()/2) status = -1;
-    else                            status =  1;
-  }
-  else status = 1;
-  MapFloatType diff = 0;
-  for(std::size_t i=0; i<bonded_pairs.size(); i++) {
-    af::tiny<std::size_t, 2> p = bonded_pairs[i];
-    MapFloatType mv1 = eight_point_interpolation(
-      density_map,
-      unit_cell.fractionalize(sites_cart[p[0]]));
-    MapFloatType mv2 = eight_point_interpolation(
-      density_map,
-      unit_cell.fractionalize(sites_cart[p[1]]));
-    mv1 = mv1 * weights[p[0]];
-    mv2 = mv2 * weights[p[1]];
-    diff += (std::abs(mv1-mv2) * std::abs(std::max(mv1,mv2)));
-  }
-  return af::tiny<SiteFloatType, 2> (status, result-diff);
+  //return af::tiny<SiteFloatType, 2> (status, result);
+
+//  MapFloatType status = 1;
+//  for(std::size_t i_site=0;i_site<reference_selection.size();i_site++) {
+//    std::size_t i = reference_selection[i_site];
+//    MapFloatType mv = eight_point_interpolation(
+//      density_map,
+//      unit_cell.fractionalize(sites_cart[i]));
+//    mv = mv * weights[i];
+//    if(mv < reference_values[i]) status=-1;
+//    //if(mv < reference_values[i] && mv > map_value_CB/3*weights[i]) status=-1;
+//    //if(mv > reference_values[i]) {
+//    //  reference_values[i] = mv;
+//    //}
+//  }
+
+
+  //MapFloatType diff = 0;
+  //for(std::size_t i=0; i<bonded_pairs.size(); i++) {
+  //  af::tiny<std::size_t, 2> p = bonded_pairs[i];
+  //  MapFloatType mv1 = eight_point_interpolation(
+  //    density_map,
+  //    unit_cell.fractionalize(sites_cart[p[0]]));
+  //  MapFloatType mv2 = eight_point_interpolation(
+  //    density_map,
+  //    unit_cell.fractionalize(sites_cart[p[1]]));
+  //  mv1 = std::abs(mv1);
+  //  mv2 = std::abs(mv2);
+  //  MapFloatType result;
+  //  if(mv1>mv2) result = mv1/mv2;
+  //  else        result = mv2/mv1;
+  //  if(result > 5) {
+  //    status = -1;
+  //    std::cout<<result<<" "<<mv1<<" "<<mv2<<std::endl;
+  //  }
+  //  //mv1 = std::abs(mv1)*weights[p[0]];
+  //  //mv2 = std::abs(mv2)*weights[p[1]];
+  //  //diff += (std::abs(mv1-mv2));// *
+  //  //        // std::abs(std::max(mv1*weights[p[0]], mv2*weights[p[1]])));
+  //}
+  return af::tiny<SiteFloatType, 2> (status, result);
 }
 
 // Keep for now!

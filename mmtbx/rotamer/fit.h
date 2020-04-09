@@ -22,9 +22,10 @@ class moving
     af::shared<FloatType> radii;
     af::shared<FloatType> weights;
     af::shared<af::tiny<std::size_t, 2> > bonded_pairs;
-    bool use_reference;
+    FloatType max_map_value;
+    FloatType min_map_value;
 
-    moving() {
+    moving() { // Can I remove this?
      sites_cart.fill(0.0);
      sites_cart_start.fill(0.0);
      radii.fill(0.0);
@@ -35,11 +36,16 @@ class moving
            af::shared<scitbx::vec3<FloatType> > const& sites_cart_start_,
            af::shared<FloatType> const& radii_,
            af::shared<FloatType> const& weights_,
-           bool use_reference_,
-           boost::python::list const& bonded_pairs_)
+           boost::python::list const& bonded_pairs_,
+           FloatType const& max_map_value_,
+           FloatType const& min_map_value_)
     :
-      sites_cart(sites_cart_), sites_cart_start(sites_cart_start_),
-      radii(radii_), weights(weights_), use_reference(use_reference_)
+      sites_cart(sites_cart_),
+      sites_cart_start(sites_cart_start_),
+      radii(radii_),
+      weights(weights_),
+      max_map_value(max_map_value_),
+      min_map_value(min_map_value_)
     {
       for(std::size_t i=0;i<boost::python::len(bonded_pairs_);i++) {
          af::shared<size_t> p =
@@ -166,24 +172,16 @@ public:
     }
     af::tiny<int, 3> a = density_map.accessor().all();
     af::flex_grid<> const& g = af::flex_grid<>(a[0],a[1],a[2]);
-    // startin map values
-    af::shared<FloatType> reference_values;
-    for(std::size_t i=0; i<all_points.sites_cart_start.size(); i++) {
-      FloatType mv = cctbx::maptbx::eight_point_interpolation(
-        density_map,
-        unit_cell.fractionalize(all_points.sites_cart_start[i]));
-      reference_values.push_back(mv);
-    }
     // initial score
     af::tiny<FloatType, 2> r = rs_simple::score<FloatType, FloatType>(
       unit_cell,
       density_map,
       all_points.sites_cart_start.const_ref(),
       selection_rsr,
-      reference_values.ref(),
       all_points.bonded_pairs,
-      all_points.use_reference,
-      all_points.weights.const_ref());
+      all_points.weights.const_ref(),
+      all_points.max_map_value,
+      all_points.min_map_value);
     score_ = r[1];
     score_start_ = score_;
     for(std::size_t j=0;j<angles_array.size();j++) {
@@ -225,10 +223,10 @@ public:
           density_map,
           all_points_cp.ref(),
           selection_rsr,
-          reference_values.ref(),
           all_points.bonded_pairs,
-          all_points.use_reference,
-          all_points.weights.const_ref());
+          all_points.weights.const_ref(),
+          all_points.max_map_value,
+          all_points.min_map_value);
         if(r[0]>0 && r[1]>score_) {
           all_points_result = all_points_cp;
           score_ = r[1];

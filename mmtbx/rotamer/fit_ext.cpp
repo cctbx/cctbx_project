@@ -27,8 +27,9 @@ namespace {
       self.sites_cart_start,
       self.radii,
       self.weights,
-      self.use_reference,
-      self.bonded_pairs);
+      self.bonded_pairs,
+      self.max_map_value,
+      self.min_map_value);
   }
 
   boost::python::tuple
@@ -49,19 +50,23 @@ namespace {
                 af::shared<scitbx::vec3<double> > const&,
                 af::shared<double> const&,
                 af::shared<double> const&,
-                bool,
-                boost::python::list const& >((arg("sites_cart"),
-                                              arg("sites_cart_start"),
-                                              arg("radii"),
-                                              arg("weights"),
-                                              arg("use_reference"),
-                                              arg("bonded_pairs"))))
+                boost::python::list const&,
+                double const&,
+                double const&>
+                               ((arg("sites_cart"),
+                                 arg("sites_cart_start"),
+                                 arg("radii"),
+                                 arg("weights"),
+                                 arg("bonded_pairs"),
+                                 arg("max_map_value"),
+                                 arg("min_map_value"))))
       .add_property("sites_cart",       make_getter(&moving<>::sites_cart,       rbv()))
       .add_property("sites_cart_start", make_getter(&moving<>::sites_cart_start, rbv()))
       .add_property("radii",            make_getter(&moving<>::radii,            rbv()))
       .add_property("weights",          make_getter(&moving<>::weights,          rbv()))
-      .add_property("use_reference",    make_getter(&moving<>::use_reference,    rbv()))
       .add_property("bonded_pairs",     make_getter(&moving<>::bonded_pairs,     rbv()))
+      .add_property("max_map_value",    make_getter(&moving<>::max_map_value,     rbv()))
+      .add_property("min_map_value",    make_getter(&moving<>::min_map_value,     rbv()))
       .enable_pickling()
       .def("__getinitargs__", getinitargs_moving)
     ;
@@ -82,8 +87,7 @@ namespace {
 
     class_<fit<> >("fit")
 
-     .def(init<       //double,
-                      fixed<double> const&,
+     .def(init<       fixed<double> const&,
                       boost::python::list const&,
                       boost::python::list const&,
                       boost::python::list const&,
@@ -96,8 +100,7 @@ namespace {
                       af::const_ref<double> const&,
                       double,
                       int >
-                       ((//arg("target_value"),
-                         arg("fixed"),
+                       ((arg("fixed"),
                          arg("axes"),
                          arg("rotatable_points_indices"),
                          arg("angles_array"),
