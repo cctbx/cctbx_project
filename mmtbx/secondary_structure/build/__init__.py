@@ -739,7 +739,8 @@ def substitute_ss(
         pdb_hierarchy     = model.get_hierarchy(),
         crystal_symmetry  = model.crystal_symmetry(),
         map_data          = reference_map,
-        rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(),
+        rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(
+          rotamers="favored"),
         sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
         backbone_sample   = backbone_sample,
         mon_lib_srv       = model.get_mon_lib_srv(),

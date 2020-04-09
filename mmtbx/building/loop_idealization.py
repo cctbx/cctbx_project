@@ -126,7 +126,8 @@ class loop_idealization():
     self.ideal_res_dict = idealized_aa.residue_dict()
     self.n_run = n_run
 
-    iaar_rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load()
+    iaar_rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load(
+      rotamers="favored")
     sin_cos_table = scitbx.math.sin_cos_table(n=10000)
 
     ram = ramalyze.ramalyze(pdb_hierarchy=self.model.get_hierarchy())
