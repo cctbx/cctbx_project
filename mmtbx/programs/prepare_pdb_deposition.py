@@ -6,6 +6,7 @@ from six.moves import cStringIO as StringIO
 
 from libtbx import group_args
 from libtbx.program_template import ProgramTemplate
+from libtbx.utils import Sorry
 
 # =============================================================================
 class Program(ProgramTemplate):
@@ -81,6 +82,9 @@ gui
   def validate(self):
     self.data_manager.has_models(expected_n=1, exact_count=True, raise_sorry=True)
     self.data_manager.has_sequences(raise_sorry=True)
+    model = self.data_manager.get_model()
+    if not model.input_model_format_cif():
+      raise Sorry('Your input model must already be in mmCIF.')
 
   # ---------------------------------------------------------------------------
   def run(self):
