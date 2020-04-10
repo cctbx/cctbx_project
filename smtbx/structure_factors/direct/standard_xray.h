@@ -199,13 +199,13 @@ namespace smtbx { namespace structure_factors { namespace direct {
         complex_type const i(0,1);
         float_type f0 = base_t::m_f0;
 
-        
+
         for (int k=0; k < hr_ht.groups.size(); ++k) {
 
           /* Partial structure factor and grads for this atom and symop. We
            * store the partial contributions because we may have to multiply
            * them by their conj (if centric SG) and /then/ multiply by the
-           * (possibly anisotropic) form factor before accumulating the 
+           * (possibly anisotropic) form factor before accumulating the
            * contribution into the sum.
            * */
           complex_type f_k;
@@ -299,11 +299,11 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
             if (scatterer.flags_use_fp_fdp_aniso()
                 && scatterer.flags.grad_fp_aniso()) {
-              grad_fp_star[0] += 
+              grad_fp_star[0] +=
                   e1_g.hr[0] * e2_g.hr[0] * f_k / base_t::pol_factor;
-              grad_fp_star[1] += 
+              grad_fp_star[1] +=
                   e1_g.hr[1] * e2_g.hr[1] * f_k / base_t::pol_factor;
-              grad_fp_star[2] += 
+              grad_fp_star[2] +=
                   e1_g.hr[2] * e2_g.hr[2] * f_k / base_t::pol_factor;
               grad_fp_star[3] +=
                   (e1_g.hr[0]*e2_g.hr[1] + e1_g.hr[1]*e2_g.hr[0])
@@ -417,8 +417,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
       }
     };
 
-                                         
-      
+
+
     /** Key steps of the evaluation or linearisation of the structure factor
         of one scatterer for a given Miller index in any space group.
      */
