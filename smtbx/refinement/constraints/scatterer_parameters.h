@@ -53,6 +53,9 @@ struct scatterer_parameters
 
   scatterer_type const *scatterer;
   asu_parameter *site, *occupancy, *u, *fp, *fdp;
+  // Be careful: In scatterer_parameters, fp and fdp can refer to EITHER
+  // scatterer.fp or scatterer.fp_star (analogous to u, which can refer
+  // to scatterer.u_iso or scatterer.u_star)
 
   scatterer_parameters() {}
 

@@ -492,7 +492,6 @@ public:
                          sparse_matrix_type *jacobian_transpose);
 };
 
-
 /// Anisotropic displacement parameters of a site
 /** A parameter whose components are the coefficients of the tensor
     in fractional coordinates.
@@ -712,6 +711,104 @@ public:
   virtual void linearise(uctbx::unit_cell const &unit_cell,
     sparse_matrix_type *jacobian_transpose)
   {}
+};
+
+/// Anisotropic fp parameter of a site
+/** A tensor written so that it measures fp as e1(T) * fp_star * e2 when
+ * e1 and e2 are polarisation vectors with length 1 A-1.
+ * */
+class fp_star_parameter : public virtual parameter
+{
+public:
+  virtual af::ref<double> components();
+
+  tensor_rank_2_t value;
+};
+
+/// Anisotropic fp parameters of a site in the asu
+class asu_fp_star_parameter : public fp_star_parameter,
+                              public virtual single_asu_scatterer_parameter
+{
+public:
+  /// Variability property, directly linked to the scatterer grad_site flag
+  //@{
+  virtual void set_variable(bool f);
+
+  virtual bool is_variable() const;
+  //@}
+
+  virtual void
+  write_component_annotations_for(scatterer_type const *scatterer,
+                                  std::ostream &output) const;
+
+  virtual void store(uctbx::unit_cell const &unit_cell) const;
+
+};
+
+class independent_fp_star_parameter : public asu_fp_star_parameter
+{
+public:
+  independent_fp_star_parameter(scatterer_type *scatterer)
+  : parameter(0),
+    single_asu_scatterer_parameter(scatterer)
+  {
+    value = scatterer->fp_star;
+  }
+
+  /// Does nothing in this class
+  /** This optimisation relies on class reparametrisation implementation
+   */
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose);
+};
+
+/// Anisotropic fdp parameter of a site
+/** A tensor written so that it measures fdp as e1(T) * fdp_star * e2 when
+ * e1 and e2 are polarisation vectors with length 1 A-1.
+ * */
+class fdp_star_parameter : public virtual parameter
+{
+public:
+  virtual af::ref<double> components();
+
+  tensor_rank_2_t value;
+};
+
+/// Anisotropic fdp parameters of a site in the asu
+class asu_fdp_star_parameter : public fdp_star_parameter,
+                              public virtual single_asu_scatterer_parameter
+{
+public:
+  /// Variability property, directly linked to the scatterer grad_site flag
+  //@{
+  virtual void set_variable(bool f);
+
+  virtual bool is_variable() const;
+  //@}
+
+  virtual void
+  write_component_annotations_for(scatterer_type const *scatterer,
+                                  std::ostream &output) const;
+
+  virtual void store(uctbx::unit_cell const &unit_cell) const;
+
+};
+
+class independent_fdp_star_parameter : public asu_fdp_star_parameter
+{
+public:
+  independent_fdp_star_parameter(scatterer_type *scatterer)
+  : parameter(0),
+    single_asu_scatterer_parameter(scatterer)
+  {
+    value = scatterer->fdp_star;
+  }
+
+  /// Does nothing in this class
+  /** This optimisation relies on class reparametrisation implementation
+   */
+  virtual void linearise(uctbx::unit_cell const &unit_cell,
+                         sparse_matrix_type *jacobian_transpose);
 };
 
 class computing_graph_has_cycle_error : public error

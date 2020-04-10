@@ -32,6 +32,8 @@ namespace {
         .def("grad_occupancy", &w_t::grad_occupancy)
         .def("grad_fp", &w_t::grad_fp)
         .def("grad_fdp", &w_t::grad_fdp)
+        .def("grad_fp_aniso", &w_t::grad_fp_aniso)
+        .def("grad_fdp_aniso", &w_t::grad_fdp_aniso)
         .def("curv_site_site", &w_t::curv_site_site)
         .def("curv_site_u_iso", &w_t::curv_site_u_iso)
         .def("curv_site_u_aniso", &w_t::curv_site_u_aniso)
@@ -55,6 +57,7 @@ namespace {
         .def("curv_fdp_fdp", &w_t::curv_fdp_fdp)
         .def("tan_u_iso", &w_t::tan_u_iso)
         .def("use_fp_fdp", &w_t::use_fp_fdp)
+        .def("use_fp_fdp_aniso", &w_t::use_fp_fdp_aniso)
         .def("use_u_iso_only", &w_t::use_u_iso_only)
         .def("use_u_aniso_only", &w_t::use_u_aniso_only)
         .def("set_use", &w_t::set_use, (arg("state")), return_self<>())
@@ -73,6 +76,10 @@ namespace {
         .def("set_grad_fp", &w_t::set_grad_fp, (
           arg("state")), return_self<>())
         .def("set_grad_fdp", &w_t::set_grad_fdp, (
+          arg("state")), return_self<>())
+        .def("set_grad_fp_aniso", &w_t::set_grad_fp_aniso, (
+          arg("state")), return_self<>())
+        .def("set_grad_fdp_aniso", &w_t::set_grad_fdp_aniso, (
           arg("state")), return_self<>())
         .def("set_curv_site_site", &w_t::set_curv_site_site, (
           arg("state")), return_self<>())
@@ -120,6 +127,8 @@ namespace {
         .def("set_tan_u_iso", &w_t::set_tan_u_iso, (
           arg("state")), return_self<>())
         .def("set_use_fp_fdp", &w_t::set_use_fp_fdp, arg("state"),
+             return_self<>())
+        .def("set_use_fp_fdp_aniso", &w_t::set_use_fp_fdp_aniso, arg("state"),
              return_self<>())
         .def("set_use_u_iso_only", &w_t::set_use_u_iso_only)
         .def("set_use_u_aniso_only", &w_t::set_use_u_aniso_only)

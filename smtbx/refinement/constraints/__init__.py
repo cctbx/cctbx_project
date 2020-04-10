@@ -307,7 +307,10 @@ class reparametrisation(ext.reparametrisation):
     fp = self.asu_scatterer_parameters[i_sc].fp
     if fp is None:
       sc = self.structure.scatterers()[i_sc]
-      fp = self.add(independent_fp_parameter, sc)
+      if sc.flags.use_fp_fdp_aniso():
+        fp = self.add(independent_fp_star_parameter, sc)
+      else:
+        fp = self.add(independent_fp_parameter, sc)
       self.asu_scatterer_parameters[i_sc].fp = fp
     return fp
 
@@ -317,7 +320,10 @@ class reparametrisation(ext.reparametrisation):
     fdp = self.asu_scatterer_parameters[i_sc].fdp
     if fdp is None:
       sc = self.structure.scatterers()[i_sc]
-      fdp = self.add(independent_fdp_parameter, sc)
+      if sc.flags.use_fp_fdp_aniso():
+        fdp = self.add(independent_fdp_star_parameter, sc)
+      else:
+        fdp = self.add(independent_fdp_parameter, sc)
       self.asu_scatterer_parameters[i_sc].fdp = fdp
     return fdp
 

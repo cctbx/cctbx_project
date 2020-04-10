@@ -411,6 +411,97 @@ namespace boost_python {
     }
   };
 
+  struct fp_star_parameter_wrapper
+  {
+    typedef fp_star_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      return_value_policy<return_by_value> rbv;
+      class_<wt,
+             bases<parameter>,
+             boost::noncopyable>("fp_star_parameter", no_init)
+        .add_property("value",
+                      make_getter(&wt::value, rbv),
+                      make_setter(&wt::value, rbv));
+        ;
+    }
+  };
+
+  struct asu_fp_star_parameter_wrapper
+  {
+    typedef asu_fp_star_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<fp_star_parameter, single_asu_scatterer_parameter>,
+             boost::noncopyable>("asu_fp_star_parameter", no_init)
+        ;
+    }
+  };
+
+  struct independent_fp_star_parameter_wrapper
+  {
+    typedef independent_fp_star_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<asu_fp_star_parameter>,
+             std::auto_ptr<wt> >("independent_fp_star_parameter", no_init)
+        .def(init<asu_parameter::scatterer_type *>(arg("scatterer")))
+        ;
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
+
+  struct fdp_star_parameter_wrapper
+  {
+    typedef fdp_star_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      return_value_policy<return_by_value> rbv;
+      class_<wt,
+             bases<parameter>,
+             boost::noncopyable>("fdp_star_parameter", no_init)
+        .add_property("value",
+                      make_getter(&wt::value, rbv),
+                      make_setter(&wt::value, rbv));
+        ;
+    }
+  };
+
+  struct asu_fdp_star_parameter_wrapper
+  {
+    typedef asu_fdp_star_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<fdp_star_parameter, single_asu_scatterer_parameter>,
+             boost::noncopyable>("asu_fdp_star_parameter", no_init)
+        ;
+    }
+  };
+
+  struct independent_fdp_star_parameter_wrapper
+  {
+    typedef independent_fdp_star_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+             bases<asu_fdp_star_parameter>,
+             std::auto_ptr<wt> >("independent_fdp_star_parameter", no_init)
+        .def(init<asu_parameter::scatterer_type *>(arg("scatterer")))
+        ;
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
+
+
   struct index_range_to_tuple
   {
     static PyObject *convert(index_range const &ir) {
@@ -549,6 +640,14 @@ namespace boost_python {
 
     asu_fdp_parameter_wrapper::wrap();
     independent_fdp_parameter_wrapper::wrap();
+
+    fp_star_parameter_wrapper::wrap();
+    asu_fp_star_parameter_wrapper::wrap();
+    independent_fp_star_parameter_wrapper::wrap();
+
+    fdp_star_parameter_wrapper::wrap();
+    asu_fdp_star_parameter_wrapper::wrap();
+    independent_fdp_star_parameter_wrapper::wrap();
 
     reparametrisation_wrapper::wrap();
 

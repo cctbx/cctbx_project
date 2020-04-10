@@ -1068,6 +1068,18 @@ namespace smtbx { namespace structure_factors { namespace direct {
             *grad_f_calc_prime_cursor++ =
                 (ff_aniso ? l_prime.grad_fdp : 0);
           }
+          if (ff_aniso && sc.flags.grad_fp_aniso()) {
+            for (int j=0; j<6; ++j) {
+              *grad_f_calc_cursor++ = l.grad_fp_star[j];
+              *grad_f_calc_prime_cursor++ = l_prime.grad_fp_star[j];
+            }
+          }
+          if (ff_aniso && sc.flags.grad_fdp_aniso()) {
+            for (int j=0; j<6; ++j) {
+              *grad_f_calc_cursor++ = l.grad_fdp_star[j];
+              *grad_f_calc_prime_cursor++ = l_prime.grad_fdp_star[j];
+            }
+          }
         }
 
         observable_type::compute(origin_centric_case,

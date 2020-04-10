@@ -236,6 +236,95 @@ namespace smtbx { namespace refinement { namespace constraints {
     if (value < 0) value *= -1;
   }
 
+  // fp_star
+
+  af::ref<double> fp_star_parameter::components() { return value.ref(); }
+
+  // asu fp_star
+
+  void asu_fp_star_parameter::set_variable(bool f) {
+    if (f) scatterer->flags.set_use_fp_fdp_aniso(true);
+    scatterer->flags.set_grad_fp_aniso(f);
+  }
+
+  bool asu_fp_star_parameter::is_variable() const {
+    return scatterer->flags.use_fp_fdp_aniso() &&
+           scatterer->flags.grad_fp_aniso();
+  }
+
+
+  // asu_fp_star_parameter
+
+  void asu_fp_star_parameter
+    ::write_component_annotations_for(scatterer_type const *scatterer,
+        std::ostream &output) const
+  {
+    if (scatterer == this->scatterer) {
+      output << scatterer->label << ".fp11,"
+             << scatterer->label << ".fp22,"
+             << scatterer->label << ".fp33,"
+             << scatterer->label << ".fp12,"
+             << scatterer->label << ".fp13,"
+             << scatterer->label << ".fp23,";
+    }
+  }
+
+  void asu_fp_star_parameter::store(uctbx::unit_cell const &unit_cell) const {
+    scatterer->fp_star = value;
+  }
+
+  // independent fp_star
+
+  void independent_fp_star_parameter
+  ::linearise(uctbx::unit_cell const &unit_cell,
+              sparse_matrix_type *jacobian_transpose)
+  {}
+
+
+  // fdp_star
+
+  af::ref<double> fdp_star_parameter::components() { return value.ref(); }
+
+  // asu fdp_star
+
+  void asu_fdp_star_parameter::set_variable(bool f) {
+    if (f) scatterer->flags.set_use_fp_fdp_aniso(true);
+    scatterer->flags.set_grad_fdp_aniso(f);
+  }
+
+  bool asu_fdp_star_parameter::is_variable() const {
+    return scatterer->flags.use_fp_fdp_aniso() &&
+           scatterer->flags.grad_fdp_aniso();
+  }
+
+
+  // asu_fdp_star_parameter
+  //
+  void asu_fdp_star_parameter
+    ::write_component_annotations_for(scatterer_type const *scatterer,
+        std::ostream &output) const
+  {
+    if (scatterer == this->scatterer) {
+      output << scatterer->label << ".fdp11,"
+             << scatterer->label << ".fdp22,"
+             << scatterer->label << ".fdp33,"
+             << scatterer->label << ".fdp12,"
+             << scatterer->label << ".fdp13,"
+             << scatterer->label << ".fdp23,";
+    }
+  }
+
+  void asu_fdp_star_parameter::store(uctbx::unit_cell const &unit_cell) const {
+    scatterer->fdp_star = value;
+  }
+
+  // independent fdp_star
+
+  void independent_fdp_star_parameter
+  ::linearise(uctbx::unit_cell const &unit_cell,
+              sparse_matrix_type *jacobian_transpose)
+  {}
+
 
   // reparametrisation
 
