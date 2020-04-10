@@ -1097,7 +1097,7 @@ class FatRefiner(PixelRefinement):
                 n_spots = len(self.NANOBRAGG_ROIS[self._i_shot])
                 for i_spot in range(n_spots):
 
-                    self._panel_id = self.PANEL_IDS[self._i_shot][i_spot]
+                    self._panel_id = int(self.PANEL_IDS[self._i_shot][i_spot])
 
                     if self.verbose and i_spot % self.spot_print_stride == 0:
                         print("diffBragg: img %d/%d; spot %d/%d; panel %d" \
