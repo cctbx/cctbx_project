@@ -227,6 +227,25 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         // Compute S'
         for (int k=0; k < hr_ht.groups.size(); ++k) {
+
+          /* If f' and/or f" are polarization-anisotropic, then the form factor
+           * depends on hR and further we need it before calculating grad_site,
+           * etc. Thus we calculate it right away.
+           * */
+          complex_type formfactor;
+          hr_ht_group<float_type, pol_vec_type> e1_g;
+          hr_ht_group<float_type, pol_vec_type> e2_g;
+          if (scatterer.flags.use_fp_fdp_aniso()) {
+            e1_g = base_t::e1r_e1t.groups[k];
+            e2_g = base_t::e2r_e2t.groups[k];
+            float_type fp =
+              e1_g.hr * scatterer.fp_aniso * e2_g.hr / base_t::pol_factor;
+            float_type fdp =
+              e1_g.hr * scatterer.fdp_aniso * e2_g.hr / base_t::pol_factor;
+            formfactor =  complex_type(base_t::m_f0 + fp, fdp);
+          }
+
+
           hr_ht_group<float_type> const &g = hr_ht.groups[k];
           float_type hrx = g.hr * scatterer.site;
           complex_type f = this->exp_i_2pi(hrx + g.ht);
@@ -239,23 +258,29 @@ namespace smtbx { namespace structure_factors { namespace direct {
                   = debye_waller_factor_u_star_gradient_coefficients<
                       float_type>(g.hr);
                 complex_type grad_u_star_factor = -two_pi_sq * f;
+                if (scatterer.flags.use_fp_fdp_aniso()) {
+                  grad_u_star_factor *= formfactor;
+                }
                 for (int j=0; j<6; ++j) {
                   grad_u_star[j] += grad_u_star_factor * log_grad_u_star[j];
                 }
               }
             }
           }
+
+          if (compute_grad && scatterer.flags.grad_site()) {
+            complex_type grad_site_factor = i * two_pi * f;
+            if (scatterer.flags.use_fp_fdp_aniso()) {
+              grad_site_factor *= formfactor;
+            }
+            for (int j=0; j<3; ++j) {
+              float_type h_j = g.hr[j];
+              grad_site[j] += grad_site_factor * h_j;
+            }
+          }
+
           if (scatterer.flags.use_fp_fdp_aniso()) {
-            hr_ht_group<float_type, pol_vec_type> const &e1_g =
-                base_t::e1r_e1t.groups[k];
-            hr_ht_group<float_type, pol_vec_type> const &e2_g =
-                base_t::e2r_e2t.groups[k];
-            float_type fp =
-              e1_g.hr * scatterer.fp_aniso * e2_g.hr / base_t::pol_factor;
-            float_type fdp =
-              e1_g.hr * scatterer.fdp_aniso * e2_g.hr / base_t::pol_factor;
-            complex_type formfactor(base_t::m_f0 + fp, fdp);
-            if(scatterer.flags.grad_fp_aniso()) {
+            if(compute_grad && scatterer.flags.grad_fp_aniso()) {
               grad_fp_star[0] += 
                   e1_g.hr[0] * e2_g.hr[0] * f / base_t::pol_factor;
               grad_fp_star[1] += 
@@ -272,7 +297,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
                   (e1_g.hr[1]*e2_g.hr[2] + e1_g.hr[2]*e2_g.hr[1])
                   * f / base_t::pol_factor;
             }
-            if(scatterer.flags.grad_fdp_aniso()) {
+            if(compute_grad && scatterer.flags.grad_fdp_aniso()) {
               grad_fdp_star[0] +=
                   i * e1_g.hr[0] * e2_g.hr[0] * f / base_t::pol_factor;
               grad_fdp_star[1] +=
@@ -293,16 +318,17 @@ namespace smtbx { namespace structure_factors { namespace direct {
           }
 
           structure_factor += f;
-          if (compute_grad && scatterer.flags.grad_site()) {
-            complex_type grad_site_factor = i * two_pi * f;
-            for (int j=0; j<3; ++j) {
-              float_type h_j = g.hr[j];
-              grad_site[j] += grad_site_factor * h_j;
-            }
-          }
         }
 
         if (hr_ht.is_centric) {
+          /*
+           * This is a major problem! Might need to add the conjugate after each
+           * hr_ht_group is processed. The basic problem is that we're factoring
+           * in the form factor while looping over each operator, then lumping 
+           * everything together and forgetting the contribution of the form
+           * factor. Then you take the conj of the whole thing. Instead we need
+           * to apply form factor to pairs (f + conj(f)).
+           * */
           // Compute S = S' + conj(S') exp(i 2pi h.t_inv) and its gradients
           structure_factor += std::conj(structure_factor) * hr_ht.f_h_inv_t;
           if (compute_grad) {
@@ -315,6 +341,24 @@ namespace smtbx { namespace structure_factors { namespace direct {
             {
               for (int j=0; j<6; ++j) {
                 grad_u_star[j] += std::conj(grad_u_star[j]) * hr_ht.f_h_inv_t;
+              }
+            }
+            if (scatterer.flags.use_fp_fdp_aniso()
+                && scatterer.flags.grad_fp_aniso())
+            {
+              for (int j=0; j<6; ++j)
+              {
+                grad_fp_star[j] +=
+                  std::conj(grad_fp_star[j]) * hr_ht.f_h_inv_t;
+              }
+            }
+            if (scatterer.flags.use_fp_fdp_aniso()
+                && scatterer.flags.grad_fdp_aniso())
+            {
+              for (int j=0; j<6; ++j)
+              {
+                grad_fdp_star[j] +=
+                  std::conj(grad_fdp_star[j]) * hr_ht.f_h_inv_t;
               }
             }
           }
@@ -406,6 +450,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (scatterer.flags.grad_u_aniso()) {
             for (int j=0; j<6; ++j) grad_u_star[j] *= ff_iso;
           }
+          if (scatterer.flags.grad_fp_aniso()) {
+            for (int j=0; j<6; ++j) grad_fp_star[j] *= ff_iso;
+          }
+          if (scatterer.flags.grad_fdp_aniso()) {
+            for (int j=0; j<6; ++j) grad_fdp_star[j] *= ff_iso;
+          }
         }
       }
     };
@@ -470,52 +520,112 @@ namespace smtbx { namespace structure_factors { namespace direct {
       {
         using namespace adptbx;
         using namespace scitbx::constants;
+        complex_type const i(0,1);
 
         /* Compute the real part of S' and its gradients
          We only ever touch the real part of structure_factors and grad_xxx
          members. So this code should be as efficient as working with
          real numbers.
          */
+
+
+
         for (int k=0; k < hr_ht.groups.size(); ++k) {
+
+          /* If f' and/or f" are polarization-anisotropic, then the form factor
+           * depends on hR and further we need it before calculating grad_site,
+           * etc. Thus we calculate it right away.
+           * */
+          complex_type formfactor;
+          hr_ht_group<float_type, pol_vec_type> e1_g;
+          hr_ht_group<float_type, pol_vec_type> e2_g;
+          if (scatterer.flags.use_fp_fdp_aniso()) {
+            e1_g = base_t::e1r_e1t.groups[k];
+            e2_g = base_t::e2r_e2t.groups[k];
+            float_type fp =
+              e1_g.hr * scatterer.fp_aniso * e2_g.hr / base_t::pol_factor;
+            float_type fdp =
+              e1_g.hr * scatterer.fdp_aniso * e2_g.hr / base_t::pol_factor;
+            formfactor =  complex_type(base_t::m_f0 + fp, fdp);
+          }
+
           hr_ht_group<float_type> const &g = hr_ht.groups[k];
           float_type hrx = g.hr * scatterer.site;
           complex_type f = this->exp_i_2pi(hrx + g.ht);
           if (scatterer.flags.use_u_aniso()) {
             float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);
             f *= dw;
-            if (compute_grad) {
-              if (scatterer.flags.grad_u_aniso()) {
-                scitbx::sym_mat3<float_type> log_grad_u_star
-                  = debye_waller_factor_u_star_gradient_coefficients<
-                      float_type>(g.hr);
-                float_type grad_u_star_factor = -two_pi_sq * f.real();
-                for (int j=0; j<6; ++j) {
-                  grad_u_star[j] += grad_u_star_factor * log_grad_u_star[j];
-                }
+            if (compute_grad && scatterer.flags.grad_u_aniso()) {
+              scitbx::sym_mat3<float_type> log_grad_u_star
+                = debye_waller_factor_u_star_gradient_coefficients<
+                    float_type>(g.hr);
+              complex_type grad_u_star_factor = -two_pi_sq * f.real();
+              if (scatterer.flags.use_fp_fdp_aniso()) {
+                grad_u_star_factor *= formfactor;
+              }
+              for (int j=0; j<6; ++j) {
+                grad_u_star[j] += grad_u_star_factor * log_grad_u_star[j];
               }
             }
           }
-          if (scatterer.flags.use_fp_fdp_aniso()) {
-            hr_ht_group<float_type, pol_vec_type> const &e1_g =
-                base_t::e1r_e1t.groups[k];
-            hr_ht_group<float_type, pol_vec_type> const &e2_g =
-                base_t::e2r_e2t.groups[k];
-            float_type fp =
-              e1_g.hr * scatterer.fp_aniso * e2_g.hr / base_t::pol_factor;
-            float_type fdp =
-              e1_g.hr * scatterer.fdp_aniso * e2_g.hr / base_t::pol_factor;
-            complex_type formfactor(base_t::m_f0 + fp, fdp);
-            f *= formfactor;
-          }
 
-
-          structure_factor += f.real();
           if (compute_grad && scatterer.flags.grad_site()) {
-            float_type grad_site_factor = -two_pi * f.imag();
+            complex_type grad_site_factor = -two_pi * f.imag();
+            if (scatterer.flags.use_fp_fdp_aniso()) {
+              grad_site_factor *= formfactor;
+            }
             for (int j=0; j<3; ++j) {
-              grad_site[j] += grad_site_factor * g.hr[j];
+              float_type h_j = g.hr[j];
+              grad_site[j] += grad_site_factor * h_j;
             }
           }
+
+          complex_type f_r(f.real(), 0.);
+
+
+
+          if (scatterer.flags.use_fp_fdp_aniso()) {
+
+            if(compute_grad && scatterer.flags.grad_fp_aniso()) {
+              grad_fp_star[0] += 
+                  e1_g.hr[0] * e2_g.hr[0] * f_r / base_t::pol_factor;
+              grad_fp_star[1] += 
+                  e1_g.hr[1] * e2_g.hr[1] * f_r / base_t::pol_factor;
+              grad_fp_star[2] += 
+                  e1_g.hr[2] * e2_g.hr[2] * f_r / base_t::pol_factor;
+              grad_fp_star[3] +=
+                  (e1_g.hr[0]*e2_g.hr[1] + e1_g.hr[1]*e2_g.hr[0])
+                  * f_r / base_t::pol_factor;
+              grad_fp_star[4] +=
+                  (e1_g.hr[0]*e2_g.hr[2] + e1_g.hr[2]*e2_g.hr[0])
+                  * f_r / base_t::pol_factor;
+              grad_fp_star[5] +=
+                  (e1_g.hr[1]*e2_g.hr[2] + e1_g.hr[2]*e2_g.hr[1])
+                  * f_r / base_t::pol_factor;
+            }
+            if(compute_grad && scatterer.flags.grad_fdp_aniso()) {
+              grad_fdp_star[0] +=
+                  i * e1_g.hr[0] * e2_g.hr[0] * f_r / base_t::pol_factor;
+              grad_fdp_star[1] +=
+                  i * e1_g.hr[1] * e2_g.hr[1] * f_r / base_t::pol_factor;
+              grad_fdp_star[2] +=
+                  i * e1_g.hr[2] * e2_g.hr[2] * f_r / base_t::pol_factor;
+              grad_fdp_star[3] +=
+                  i * (e1_g.hr[0]*e2_g.hr[1] + e1_g.hr[1]*e2_g.hr[0])
+                  * f_r / base_t::pol_factor;
+              grad_fdp_star[4] +=
+                  i * (e1_g.hr[0]*e2_g.hr[2] + e1_g.hr[2]*e2_g.hr[0])
+                  * f_r / base_t::pol_factor;
+              grad_fdp_star[5] +=
+                  i * (e1_g.hr[1]*e2_g.hr[2] + e1_g.hr[2]*e2_g.hr[1])
+                  * f_r / base_t::pol_factor;
+            }
+
+            f_r *= formfactor;
+          }
+
+
+          structure_factor += f_r;
         }
 
         /* We should now multiply S' and its gradients by 2
@@ -550,7 +660,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         // occupancy
         if (compute_grad) {
           if (scatterer.flags.grad_occupancy()) {
-            grad_occ = ff_iso_p * structure_factor.real();
+            grad_occ = ff_iso_p * structure_factor;
           }
           if (scatterer.flags.grad_fp() || scatterer.flags.grad_fdp()) {
             complex_type p = f_iso * structure_factor * scatterer.occupancy;
@@ -567,7 +677,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         FormFactorType ff_iso = ff_iso_p * scatterer.occupancy;
 
         // Finish
-        structure_factor = ff_iso * structure_factor.real();
+        structure_factor = ff_iso * structure_factor;
 
         if (!compute_grad) return;
 
@@ -576,12 +686,22 @@ namespace smtbx { namespace structure_factors { namespace direct {
         }
         if (scatterer.flags.grad_site()) {
           for (int j=0; j<3; ++j) {
-            grad_site[j] = ff_iso * grad_site[j].real();
+            grad_site[j] = ff_iso * grad_site[j];
           }
         }
         if (scatterer.flags.grad_u_aniso()) {
           for (int j=0; j<6; ++j) {
-            grad_u_star[j] = ff_iso * grad_u_star[j].real();
+            grad_u_star[j] = ff_iso * grad_u_star[j];
+          }
+        }
+        if (scatterer.flags.grad_fp_aniso()) {
+          for (int j=0; j<6; ++j) {
+            grad_fp_star[j] *= ff_iso;
+          }
+        }
+        if (scatterer.flags.grad_fdp_aniso()) {
+          for (int j=0; j<6; ++j) {
+            grad_fdp_star[j] *= ff_iso;
           }
         }
       }

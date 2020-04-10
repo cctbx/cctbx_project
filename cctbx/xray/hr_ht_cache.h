@@ -10,6 +10,9 @@ namespace cctbx { namespace xray { namespace structure_factors {
   template <typename FloatType, typename IndexType=miller::index<> >
   struct hr_ht_group
   {
+    hr_ht_group()
+    {}
+
     hr_ht_group(
       IndexType const& hr_,
       FloatType const& ht_)
