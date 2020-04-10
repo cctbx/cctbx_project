@@ -29,6 +29,8 @@
   using core<float_type>::grad_u_star;                                     \
   using core<float_type>::grad_u_iso;                                      \
   using core<float_type>::grad_occ;                                        \
+  using core<float_type>::grad_fp;                                         \
+  using core<float_type>::grad_fdp;                                        \
   using core<float_type>::grad_fp_star;                                    \
   using core<float_type>::grad_fdp_star;                                   \
   using base_t::hr_ht;                                                     \
@@ -75,12 +77,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
       float_type d_star_sq;
       ExpI2PiFunctor const &exp_i_2pi;
 
-      //vectors for the incident and scattered polarization, for refinement of
+      //vectors for the incident and scattered polarisation, for refinement of
       //anisotropic fp, fdp tensors
       hr_ht_cache<float_type, pol_vec_type> e1r_e1t;
       hr_ht_cache<float_type, pol_vec_type> e2r_e2t;
       float_type pol_factor;
-      bool has_polarization;
+      bool has_polarisation;
       float_type m_f0;
 
       /** Construct the linearisation or the evaluation for the given h
@@ -96,7 +98,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         : hr_ht(exp_i_2pi_functor, space_group, h),
           d_star_sq(d_star_sq),
           exp_i_2pi(exp_i_2pi_functor),
-          has_polarization(false)
+          has_polarisation(false)
 
       {}
 
@@ -113,7 +115,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
           exp_i_2pi(exp_i_2pi_functor),
           e1r_e1t(exp_i_2pi_functor, space_group, pol_inc),
           e2r_e2t(exp_i_2pi_functor, space_group, pol_scat),
-          has_polarization(true),
+          has_polarisation(true),
           pol_factor(pol_factor)
 
       {}
@@ -142,7 +144,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         }
 
         if (scatterer.flags.use_fp_fdp_aniso()) {
-          SMTBX_ASSERT(has_polarization);
+          SMTBX_ASSERT(has_polarisation);
           m_f0 = f0;
           heir.compute_anisotropic_part(scatterer, compute_grad);
           FloatType dummy_ff = 1; //form factor was already used in aniso part
@@ -163,6 +165,260 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
 
 
+    template <typename FloatType, class ExpI2PiFunctor>
+    struct in_any_sg_with_polarisation : base <FloatType,
+                                               ExpI2PiFunctor,
+                                               in_any_sg_with_polarisation<
+                                                 FloatType, ExpI2PiFunctor> >
+    {
+      typedef base<FloatType,
+                   ExpI2PiFunctor,
+                   in_any_sg_with_polarisation<FloatType,
+                                               ExpI2PiFunctor> >
+              base_t;
+
+      SMTBX_STRUCTURE_FACTORS_DIRECT_TYPEDEFS;
+      SMTBX_STRUCTURE_FACTORS_DIRECT_ONE_SCATTERER_ONE_H_USING;
+
+      in_any_sg_with_polarisation(sgtbx::space_group const &space_group,
+                             miller::index<> const &h,
+                             float_type d_star_sq,
+                             ExpI2PiFunctor const &exp_i_2pi_functor,
+                             pol_vec_type const &pol_inc,
+                             pol_vec_type const &pol_scat,
+                             float_type pol_factor)
+        : base_t(space_group, h, d_star_sq, exp_i_2pi_functor, pol_inc,
+            pol_scat, pol_factor)
+      {}
+
+      void compute_anisotropic_part(scatterer_type const &scatterer,
+                                    bool compute_grad)
+      {
+        using namespace adptbx;
+        using namespace scitbx::constants;
+        complex_type const i(0,1);
+        float_type f0 = base_t::m_f0;
+
+        
+        for (int k=0; k < hr_ht.groups.size(); ++k) {
+
+          /* Partial structure factor and grads for this atom and symop. We
+           * store the partial contributions because we may have to multiply
+           * them by their conj (if centric SG) and /then/ multiply by the
+           * (possibly anisotropic) form factor before accumulating the 
+           * contribution into the sum.
+           * */
+          complex_type f_k;
+          grad_site_type grad_site_k;
+          grad_u_star_type grad_u_star_k;
+
+
+          float_type fp, fdp;
+          hr_ht_group<float_t, pol_vec_type> const &e1_g =
+            base_t::e1r_e1t.groups[k];
+          hr_ht_group<float_t, pol_vec_type> const &e2_g =
+            base_t::e2r_e2t.groups[k];
+          if (scatterer.flags.use_fp_fdp_aniso()) {
+            fp = e1_g.hr * scatterer.fp_aniso * e2_g.hr / base_t::pol_factor;
+            fdp = e1_g.hr * scatterer.fdp_aniso * e2_g.hr / base_t::pol_factor;
+          }
+          else {
+            fp = scatterer.fp;
+            fdp = scatterer.fdp;
+          }
+          complex_type formfactor(f0 + fp, fdp);
+
+          hr_ht_group<float_type> const &g = hr_ht.groups[k];
+          float_type hrx = g.hr * scatterer.site;
+          f_k = this->exp_i_2pi(hrx + g.ht);
+
+          if (scatterer.flags.use_u_aniso()) {
+            float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);
+            f_k *= dw;
+            if (compute_grad && scatterer.flags.grad_u_aniso()) {
+              scitbx::sym_mat3<float_type> log_grad_u_star
+                = debye_waller_factor_u_star_gradient_coefficients<
+                    float_type>(g.hr);
+              complex_type grad_u_star_factor = -two_pi_sq * f_k;
+              for (int j=0; j<6; ++j) {
+                grad_u_star_k[j] = grad_u_star_factor * log_grad_u_star[j];
+              }
+            }
+          }
+
+          if (compute_grad && scatterer.flags.grad_site()) {
+            complex_type grad_site_factor = i * two_pi * f_k;
+            for (int j=0; j<3; ++j) {
+              float_type h_j = g.hr[j];
+              grad_site_k[j] = grad_site_factor * h_j;
+            }
+          }
+
+
+          if (hr_ht.is_centric) {
+            // Compute S = S' + conj(S') exp(i 2pi h.t_inv) and its gradients
+            f_k += std::conj(f_k) * hr_ht.f_h_inv_t;
+            if (compute_grad && scatterer.flags.grad_site()) {
+              for (int j=0; j<3; ++j) {
+                grad_site_k[j] += std::conj(grad_site_k[j]) * hr_ht.f_h_inv_t;
+              }
+            }
+            if (compute_grad && scatterer.flags.use_u_aniso()
+                && scatterer.flags.grad_u_aniso())
+            {
+              for (int j=0; j<6; ++j) {
+                grad_u_star_k[j] +=
+                  std::conj(grad_u_star_k[j]) * hr_ht.f_h_inv_t;
+              }
+            }
+          }
+
+          structure_factor += f_k * formfactor;
+          if (compute_grad) {
+            if (scatterer.flags.use_u_aniso()
+                && scatterer.flags.grad_u_aniso())
+            {
+              for (int j=0; j<6; ++j) {
+                grad_u_star[j] += grad_u_star_k[j] * formfactor;
+              }
+            }
+            if (scatterer.flags.grad_site())
+            {
+              for (int j=0; j<3; ++j) {
+                grad_site[j] += grad_site_k[j] * formfactor;
+              }
+            }
+
+            if (scatterer.flags.grad_fp()) {
+              grad_fp += f_k;
+            }
+            if (scatterer.flags.grad_fdp()) {
+              grad_fdp += i * f_k;
+            }
+
+
+            if (scatterer.flags_use_fp_fdp_aniso()
+                && scatterer.flags.grad_fp_aniso()) {
+              grad_fp_star[0] += 
+                  e1_g.hr[0] * e2_g.hr[0] * f_k / base_t::pol_factor;
+              grad_fp_star[1] += 
+                  e1_g.hr[1] * e2_g.hr[1] * f_k / base_t::pol_factor;
+              grad_fp_star[2] += 
+                  e1_g.hr[2] * e2_g.hr[2] * f_k / base_t::pol_factor;
+              grad_fp_star[3] +=
+                  (e1_g.hr[0]*e2_g.hr[1] + e1_g.hr[1]*e2_g.hr[0])
+                  * f_k / base_t::pol_factor;
+              grad_fp_star[4] +=
+                  (e1_g.hr[0]*e2_g.hr[2] + e1_g.hr[2]*e2_g.hr[0])
+                  * f_k / base_t::pol_factor;
+              grad_fp_star[5] +=
+                  (e1_g.hr[1]*e2_g.hr[2] + e1_g.hr[2]*e2_g.hr[1])
+                  * f_k / base_t::pol_factor;
+            }
+            if (scatterer.flags_use_fp_fdp_aniso()
+                && scatterer.flags.grad_fdp_aniso()) {
+              grad_fdp_star[0] +=
+                  i * e1_g.hr[0] * e2_g.hr[0] * f_k / base_t::pol_factor;
+              grad_fdp_star[1] +=
+                  i * e1_g.hr[1] * e2_g.hr[1] * f_k / base_t::pol_factor;
+              grad_fdp_star[2] +=
+                  i * e1_g.hr[2] * e2_g.hr[2] * f_k / base_t::pol_factor;
+              grad_fdp_star[3] +=
+                  i * (e1_g.hr[0]*e2_g.hr[1] + e1_g.hr[1]*e2_g.hr[0])
+                  * f_k / base_t::pol_factor;
+              grad_fdp_star[4] +=
+                  i * (e1_g.hr[0]*e2_g.hr[2] + e1_g.hr[2]*e2_g.hr[0])
+                  * f_k / base_t::pol_factor;
+              grad_fdp_star[5] +=
+                  i * (e1_g.hr[1]*e2_g.hr[2] + e1_g.hr[2]*e2_g.hr[1])
+                  * f_k / base_t::pol_factor;
+            }
+          }
+
+        }
+
+        // This balances the extra (conditional) curly brace that follows
+        #if (0)
+        {
+        #endif
+
+        #if (   defined(__linux__) && defined(__GNUC__) \
+             && __GNUC__ == 4 && __GNUC_MINOR__ == 0 && __GNUC_PATCHLEVEL__ == 0)
+        /** Careful analysis with valgrind showed that the compiler seems to
+            generate undefined bits in the array grad_site in this member
+            function.
+            We hypothesised that an overzealous optimiser was at fault, hence
+            the idea of the volatile member. That it solves the problem seems
+            to vindicate our intuition.
+        */
+        foo = grad_site.begin();
+      }
+      complex_type volatile *foo;
+        #else
+      }
+        #endif
+
+      template <typename FormFactorType>
+      void multiply_by_isotropic_part(scatterer_type const &scatterer,
+                                      FormFactorType const &ff,
+                                      bool compute_grad)
+      {
+        using namespace adptbx;
+        using namespace scitbx::constants;
+
+        // lattice centring factor and special position multiplicity
+        float_type f_iso =
+          hr_ht.ltr_factor * scatterer.weight_without_occupancy();
+
+        // isotropic D-W factor
+        if (scatterer.flags.use_u_iso()) {
+          float_type dw_iso = debye_waller_factor_iso(d_star_sq/4,
+                                                      scatterer.u_iso);
+          f_iso *= dw_iso;
+        }
+
+        // occupancy
+        f_iso *= scatterer.occupancy;
+        if (compute_grad && scatterer.flags.grad_occupancy()) {
+          grad_occ = f_iso * structure_factor;
+        }
+
+        // finish
+        structure_factor *= f_iso;
+
+        if (!compute_grad) return;
+
+        if (scatterer.flags.use_u_iso() && scatterer.flags.grad_u_iso()) {
+          grad_u_iso = -two_pi_sq * d_star_sq * structure_factor;
+        }
+
+        if (scatterer.flags.grad_site()) {
+          for (int j=0; j<3; ++j) grad_site[j] *= f_iso;
+        }
+        if (scatterer.flags.grad_u_aniso()) {
+          for (int j=0; j<6; ++j) grad_u_star[j] *= f_iso;
+        }
+        if (scatterer.flags.grad_fp()) {
+          grad_fp *= f_iso;
+        }
+        if (scatterer.flags.grad_fdp()) {
+          grad_fdp *= f_iso;
+        }
+        if (scatterer.flags.grad_fp_aniso()) {
+          for (int j=0; j<6; ++j) grad_fp_star[j] *= f_iso;
+        }
+        if (scatterer.flags.grad_fdp_aniso()) {
+          for (int j=0; j<6; ++j) grad_fdp_star[j] *= f_iso;
+        }
+
+
+
+
+      }
+    };
+
+                                         
+      
     /** Key steps of the evaluation or linearisation of the structure factor
         of one scatterer for a given Miller index in any space group.
      */
@@ -228,7 +484,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         // Compute S'
         for (int k=0; k < hr_ht.groups.size(); ++k) {
 
-          /* If f' and/or f" are polarization-anisotropic, then the form factor
+          /* If f' and/or f" are polarisation-anisotropic, then the form factor
            * depends on hR and further we need it before calculating grad_site,
            * etc. Thus we calculate it right away.
            * */
@@ -532,7 +788,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         for (int k=0; k < hr_ht.groups.size(); ++k) {
 
-          /* If f' and/or f" are polarization-anisotropic, then the form factor
+          /* If f' and/or f" are polarisation-anisotropic, then the form factor
            * depends on hR and further we need it before calculating grad_site,
            * etc. Thus we calculate it right away.
            * */
@@ -768,8 +1024,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
       float_type observable;
       af::ref_owning_shared<float_type> grad_observable;
 
-      // A second Fc at this h; e.g. for the second polarization direction when
-      // polarization anisotropy is present
+      // A second Fc at this h; e.g. for the second polarisation direction when
+      // polarisation anisotropy is present
       complex_type f_calc_prime;
       af::ref_owning_shared<complex_type> grad_f_calc_prime;
       complex_type *grad_f_calc_prime_cursor;
@@ -888,34 +1144,17 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         Heir &heir = static_cast<Heir &> (*this);
 
-        typedef one_scatterer_one_h::in_generic_space_group<
+        typedef one_scatterer_one_h::in_any_sg_with_polarisation<
                   float_type, exp_i_2pi_functor>
-                generic_linearisation_t;
-
-        typedef one_scatterer_one_h::in_origin_centric_space_group<
-                  float_type, exp_i_2pi_functor>
-                origin_centric_linearisation_t;
-
-        if (!origin_centric_case) {
-          generic_linearisation_t lin_for_h_parallel(space_group, h,
-                                                     d_star_sq, heir.exp_i_2pi,
-                                                     u_inc, u_scat, pol_factor);
-          generic_linearisation_t lin_for_h_perpendicular(space_group, h,
-                                                     d_star_sq, heir.exp_i_2pi,
-                                                     u_inc, v_scat, pol_factor);
-          compute(elastic_form_factors.ref(), lin_for_h_parallel,
-                  lin_for_h_perpendicular, f_mask, compute_grad);
-        }
-        else {
-          origin_centric_linearisation_t lin_for_h_parallel(space_group, h,
-                                                     d_star_sq, heir.exp_i_2pi,
-                                                     u_inc, u_scat, pol_factor);
-          origin_centric_linearisation_t lin_for_h_perpendicular(space_group, h,
-                                                     d_star_sq, heir.exp_i_2pi,
-                                                     u_inc, v_scat, pol_factor);
-          compute(elastic_form_factors.ref(), lin_for_h_parallel,
-                  lin_for_h_perpendicular, f_mask, compute_grad);
-        }
+                linearisation_with_polarisation_t;
+        linearisation_with_polarisation_t lin_for_h_parallel(space_group, h,
+                                                   d_star_sq, heir.exp_i_2pi,
+                                                   u_inc, u_scat, pol_factor);
+        linearisation_with_polarisation_t lin_for_h_perpendicular(space_group,
+                                                   h, d_star_sq, heir.exp_i_2pi,
+                                                   u_inc, v_scat, pol_factor);
+        compute(elastic_form_factors.ref(), lin_for_h_parallel,
+                lin_for_h_perpendicular, f_mask, compute_grad);
 
       }
 
