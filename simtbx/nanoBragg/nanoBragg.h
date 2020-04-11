@@ -281,6 +281,7 @@ class nanoBragg {
     double Fclose,Sclose; //=NAN;
     double ORGX,ORGY; //=NAN;
     double dials_origin[4];
+    double detector_is_righthanded; //true;
     double adc_offset; // = 40.0;
 
     /* use these to remember "user" inputs */
