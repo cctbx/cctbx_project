@@ -28,8 +28,10 @@ class hklf_reader
     af::shared<double> sigmas_;
     af::shared<int> batch_numbers_or_phases_;
     af::shared<double> wavelengths_;
-    af::shared<vec3_t> e_incidents_;
-    af::shared<vec3_t> e_scattereds_;
+    af::shared<vec3_t> u_incs_;
+    af::shared<vec3_t> u_scats_;
+    af::shared<vec3_t> v_scats_;
+    af::shared<double> pol_factors_;
 
     static
     void
@@ -108,8 +110,8 @@ class hklf_reader
       indices_.reserve(n);
       data_.reserve(n);
       sigmas_.reserve(n);
-      e_incidents_.reserve(n);
-      e_scattereds_.reserve(n);
+      u_incs_.reserve(n);
+      u_scats_.reserve(n);
 
       std::string raw_fstring;
       if (1) {          //just to fold this huge string
@@ -216,16 +218,41 @@ class hklf_reader
 
         //compute the polarization vectors
         vec3_t hkl_zaxis = hkl_z(UB_inv, phi, chi);
-        e_inc = make_perpendicular(hkl_zaxis, cosines_inc, g_star);
-        e_scat = make_perpendicular(hkl_zaxis, cosines_scat, g_star);
+        vec3_t u_inc = make_perpendicular(hkl_zaxis, cosines_inc, g_star);
+        vec3_t u_scat = plane_projection(u_inc, cosines_scat, g_star);
+        vec3_t v_scat = make_perpendicular(u_scat, cosines_scat, g_star);
+
+        u_inc = length1(u_inc, g_star);
+        u_scat = length1(u_scat, g_star);
+        v_scat = length1(v_scat, g_star);
+        double pol_factor = u_inc * g_star * u_scat;
 
         //done
         indices_.push_back(h);
         data_.push_back(datum);
         sigmas_.push_back(sigma);
-        e_incidents_.push_back(e_inc);
-        e_scattereds_.push_back(e_scat);
+        u_incs_.push_back(u_inc);
+        u_scats_.push_back(u_scat);
+        v_scats_.push_back(v_scat);
+        pol_factors_.push_back(pol_factor);
       }
+    }
+
+    static
+    vec3_t plane_projection(
+        vec3_t const &v1, vec3_t const &v2, scitbx::sym_mat3<double> const &g) {
+      //Construct the projection of v1 on the plane normal to v2. g is the
+      //metric tensor.
+
+      vec3_t v1_on_v2 = (v1 * g * length1(v2, g)) * v2.normalize();
+      return v1 - v1_on_v2;
+    }
+
+    static
+    vec3_t length1(vec3_t const &v1, scitbx::sym_mat3<double> const &g) {
+      //Construct a vector along v1 that has length 1 in the system with metric
+      //tensor g.
+      return v1 / sqrt(v1 * g * v1);
     }
 
     static
@@ -272,9 +299,13 @@ class hklf_reader
 
     af::shared<double> wavelengths() { return wavelengths_; }
 
-    af::shared<vec3_t> e_incidents() { return e_incidents_; }
+    af::shared<vec3_t> u_incs() { return u_incs_; }
 
-    af::shared<vec3_t> e_scattereds() { return e_scattereds_; }
+    af::shared<vec3_t> u_scats() { return u_scats_; }
+
+    af::shared<vec3_t> v_scats() { return v_scats_; }
+
+    af::shared<double> pol_factors() { return pol_factors_; }
 };
 
 }} // iotbx::shelx

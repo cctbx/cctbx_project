@@ -2068,21 +2068,37 @@ class array(set):
       assert sigmas.size() == self.indices().size()
     self._sigmas = sigmas
 
-  def e_incidents(self):
-    return self._e_incidents
+  def u_incs(self):
+    return self._u_incs
 
-  def set_e_incidents(self, e_incidents):
-    if e_incidents is not None:
-      assert e_incidents.size() == self.indices().size()
-    self._e_incidents = e_incidents
+  def set_u_incs(self, u_incs):
+    if u_incs is not None:
+      assert u_incs.size() == self.indices().size()
+    self._u_incs = u_incs
 
-  def e_scattereds(self):
-    return self._e_scattereds
+  def u_scats(self):
+    return self._u_scats
 
-  def set_e_scattereds(self, e_scattereds):
-    if e_scattereds is not None:
-      assert e_scattereds.size() == self.indices().size()
-    self._e_scattereds = e_scattereds
+  def set_u_scats(self, u_scats):
+    if u_scats is not None:
+      assert u_scats.size() == self.indices().size()
+    self._u_scats = u_scats
+
+  def v_scats(self):
+    return self._v_scats
+
+  def set_v_scats(self, v_scats):
+    if v_scats is not None:
+      assert v_scats.size() == self.indices().size()
+    self._v_scats = v_scats
+
+  def pol_factors(self):
+    return self._pol_factors
+
+  def set_pol_factors(self, pol_factors):
+    if pol_factors is not None:
+      assert pol_factors.size() == self.indices().size()
+    self._pol_factors = pol_factors
 
   def __iter__(self):
     if self.sigmas() is not None:
@@ -4836,12 +4852,13 @@ class array(set):
         data=result.data,
         sigmas=result.sigmas).set_observation_type(self)
     elif with_polarization: #HKLF 4 with polarization
-      print("with polarization")
-      assert self.e_scattereds().size() == self.indices().size()
-      assert self.e_incidents().size() == self.indices().size()
+      assert self.u_incs().size() == self.indices().size()
+      assert self.u_scats().size() == self.indices().size()
+      assert self.v_scats().size() == self.indices().size()
+      assert self.pol_factors().size() == self.indices().size()
       result = observations.observations(
-        self.indices(), self.data(), self.sigmas(), self.e_incidents(),
-        self.e_scattereds())
+        self.indices(), self.data(), self.sigmas(), self.u_incs(),
+        self.u_scats(), self.v_scats(), self.pol_factors())
       result.fo_sq = self
     else: #HKLF 4
       result = observations.observations(

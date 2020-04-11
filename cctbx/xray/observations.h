@@ -206,8 +206,10 @@ namespace cctbx { namespace xray {
     scitbx::af::shared<twin_fraction<FloatType>*> twin_fractions_;
     scitbx::af::shared<int> measured_scale_indices_;
     mutable FloatType prime_fraction_;
-    scitbx::af::shared<scitbx::vec3<FloatType> > e_incidents_;
-    scitbx::af::shared<scitbx::vec3<FloatType> > e_scattereds_;
+    scitbx::af::shared<scitbx::vec3<FloatType> > u_incs_;
+    scitbx::af::shared<scitbx::vec3<FloatType> > u_scats_;
+    scitbx::af::shared<scitbx::vec3<FloatType> > v_scats_;
+    scitbx::af::shared<FloatType> pol_factors_;
 
     void validate_data() {
       CCTBX_ASSERT(indices_.size()==data_.size());
@@ -215,11 +217,17 @@ namespace cctbx { namespace xray {
       if (index_components_.size() != 0) {
         CCTBX_ASSERT(measured_scale_indices_.size() == indices_.size());
       }
-      if (e_incidents_.size() != 0) {
-        CCTBX_ASSERT(e_incidents_.size() == indices_.size());
+      if (u_incs_.size() != 0) {
+        CCTBX_ASSERT(u_incs_.size() == indices_.size());
       }
-      if (e_scattereds_.size() != 0) {
-        CCTBX_ASSERT(e_scattereds_.size() == indices_.size());
+      if (u_scats_.size() != 0) {
+        CCTBX_ASSERT(u_scats_.size() == indices_.size());
+      }
+      if (v_scats_.size() != 0) {
+        CCTBX_ASSERT(v_scats_.size() == indices_.size());
+      }
+      if (pol_factors_.size() != 0) {
+        CCTBX_ASSERT(pol_factors_.size() == indices_.size());
       }
     }
 
@@ -300,13 +308,17 @@ namespace cctbx { namespace xray {
     observations(scitbx::af::shared<miller::index<> > const& indices,
       scitbx::af::shared<FloatType> const& data,
       scitbx::af::shared<FloatType> const& sigmas,
-      scitbx::af::shared<scitbx::vec3<FloatType> > const& e_incidents,
-      scitbx::af::shared<scitbx::vec3<FloatType> > const& e_scattereds)
+      scitbx::af::shared<scitbx::vec3<FloatType> > const& u_incs,
+      scitbx::af::shared<scitbx::vec3<FloatType> > const& u_scats,
+      scitbx::af::shared<scitbx::vec3<FloatType> > const& v_scats,
+      scitbx::af::shared<FloatType> const &pol_factors)
       : indices_(indices),
         data_(data),
         sigmas_(sigmas),
-        e_incidents_(e_incidents),
-        e_scattereds_(e_scattereds)
+        u_incs_(u_incs),
+        u_scats_(u_scats),
+        v_scats_(v_scats),
+        pol_factors_(pol_factors)
     {
       validate_data();
     }
@@ -443,12 +455,20 @@ namespace cctbx { namespace xray {
 
     scitbx::af::shared<FloatType> sigmas() const { return sigmas_; }
 
-    scitbx::af::shared<scitbx::vec3<FloatType> > e_incidents() const {
-      return e_incidents_;
+    scitbx::af::shared<scitbx::vec3<FloatType> > u_incs() const {
+      return u_incs_;
     }
 
-    scitbx::af::shared<scitbx::vec3<FloatType> > e_scattereds() const {
-      return e_scattereds_;
+    scitbx::af::shared<scitbx::vec3<FloatType> > u_scats() const {
+      return u_scats_;
+    }
+
+    scitbx::af::shared<scitbx::vec3<FloatType> > v_scats() const {
+      return v_scats_;
+    }
+
+    scitbx::af::shared<FloatType> pol_factors() const {
+      return pol_factors_;
     }
 
     scitbx::af::shared<miller::index<> > indices() const { return indices_; }

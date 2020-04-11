@@ -70,12 +70,16 @@ namespace {
                   scitbx::af::shared<FloatType> const&,
                   scitbx::af::shared<FloatType> const&,
                   scitbx::af::shared<scitbx::vec3<FloatType> > const&,
-                  scitbx::af::shared<scitbx::vec3<FloatType> > const& >
+                  scitbx::af::shared<scitbx::vec3<FloatType> > const&,
+                  scitbx::af::shared<scitbx::vec3<FloatType> > const&,
+                  scitbx::af::shared<FloatType> const& >
              ((arg("observations"),
                arg("data"),
                arg("sigmas"),
-               arg("e_incidents"),
-               arg("e_scattereds"))))
+               arg("u_incs"),
+               arg("u_scats"),
+               arg("v_scats"),
+               arg("pol_factors"))))
         .def(init<observations<FloatType> const&,
                   scitbx::af::shared<
                     cctbx::xray::twin_fraction<FloatType>*> const&,
@@ -88,8 +92,10 @@ namespace {
         .add_property("indices", &obst::indices)
         .add_property("data", &obst::data)
         .add_property("sigmas", &obst::sigmas)
-        .add_property("e_incidents", &obst::e_incidents)
-        .add_property("e_scattereds", &obst::e_scattereds)
+        .add_property("u_incs", &obst::u_incs)
+        .add_property("u_scats", &obst::u_scats)
+        .add_property("v_scats", &obst::v_scats)
+        .add_property("pol_factors", &obst::pol_factors)
         .add_property("twin_fractions", &obst::twin_fractions)
         .add_property("merohedral_components", &obst::merohedral_components)
         .add_property("measured_scale_indices", &obst::measured_scale_indices)

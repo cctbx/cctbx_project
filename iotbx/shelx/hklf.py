@@ -240,9 +240,11 @@ class reader_with_polarization(iotbx_shelx_ext.hklf_reader):
       miller_set=miller_set,
       data=self.data(),
       sigmas=self.sigmas()))
-    obs.set_e_incidents(self.e_incidents())
-    obs.set_e_scattereds(self.e_scattereds())
+    obs.set_u_incs(self.u_incs())
+    obs.set_u_scats(self.u_scats())
+    obs.set_v_scats(self.v_scats())
+    obs.set_pol_factors(self.pol_factors())
     obs.set_info(base_array_info.customized_copy(
-      labels=["obs", "sigmas", "e_incidents", "e_scattereds"]))
+      labels=["obs", "sigmas", "u_incs", "u_scats", "v_scats", "pol_factors"]))
     miller_arrays.append(obs)
     return miller_arrays
