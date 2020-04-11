@@ -96,6 +96,12 @@ nanoBragg::nanoBragg(
     Fclose = Xclose = -dot_product(pix0_vector,fdet_vector);
     Sclose = Yclose = -dot_product(pix0_vector,sdet_vector);
     close_distance = distance =  dot_product(pix0_vector,odet_vector);
+    if (close_distance < 0){
+        if(verbose)printf("WARNING: dxtbx model seems to be lefthanded. Inverting odet_vector.\n");
+        vector_rescale(odet_vector, odet_vector, -1);
+        close_distance = distance =  dot_product(pix0_vector,odet_vector);
+        detector_is_righthanded = false;
+    }
 
     /* set beam centre */
     scitbx::vec2<double> dials_bc = detector[panel_id].get_beam_centre(beam.get_s0());
@@ -384,6 +390,7 @@ nanoBragg::init_defaults()
     Xclose=NAN;Yclose=NAN;close_distance=NAN;
     Fclose=NAN;Sclose=NAN;
     ORGX=NAN;ORGY=NAN;
+    detector_is_righthanded=true;
     adc_offset = 40.0;
 
     /* use these to remember "user" inputs */
@@ -784,6 +791,8 @@ nanoBragg::init_beamcenter()
         if(verbose) printf("WARNING: auto-generating odet_vector\n");
         cross_product(fdet_vector,sdet_vector,odet_vector);
         unitize(odet_vector,odet_vector);
+        if (! detector_is_righthanded)
+            vector_rescale(odet_vector, odet_vector, -1);
     }
     unitize(polar_vector,polar_vector);
     unitize(spindle_vector,spindle_vector);
