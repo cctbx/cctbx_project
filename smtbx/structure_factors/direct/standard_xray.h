@@ -20,7 +20,7 @@
   typedef scitbx::sym_mat3<complex_type> grad_u_star_type;                 \
   typedef af::tiny<complex_type, 3> grad_site_type;                        \
   typedef xray::scatterer<float_type> scatterer_type;                      \
-  typedef scitbx::vec3<float_type> pol_vec_type;
+  typedef miller::index<float_type> pol_vec_type;
 
 
 #define SMTBX_STRUCTURE_FACTORS_DIRECT_ONE_SCATTERER_ONE_H_USING           \
@@ -214,13 +214,13 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
 
           float_type fp, fdp;
-          hr_ht_group<float_t, pol_vec_type> const &e1_g =
+          hr_ht_group<float_type, pol_vec_type> const &e1_g =
             base_t::e1r_e1t.groups[k];
-          hr_ht_group<float_t, pol_vec_type> const &e2_g =
+          hr_ht_group<float_type, pol_vec_type> const &e2_g =
             base_t::e2r_e2t.groups[k];
           if (scatterer.flags.use_fp_fdp_aniso()) {
-            fp = e1_g.hr * scatterer.fp_aniso * e2_g.hr / base_t::pol_factor;
-            fdp = e1_g.hr * scatterer.fdp_aniso * e2_g.hr / base_t::pol_factor;
+            fp = e1_g.hr * scatterer.fp_star * e2_g.hr / base_t::pol_factor;
+            fdp = e1_g.hr * scatterer.fdp_star * e2_g.hr / base_t::pol_factor;
           }
           else {
             fp = scatterer.fp;
@@ -297,7 +297,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
             }
 
 
-            if (scatterer.flags_use_fp_fdp_aniso()
+            if (scatterer.flags.use_fp_fdp_aniso()
                 && scatterer.flags.grad_fp_aniso()) {
               grad_fp_star[0] +=
                   e1_g.hr[0] * e2_g.hr[0] * f_k / base_t::pol_factor;
@@ -315,7 +315,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
                   (e1_g.hr[1]*e2_g.hr[2] + e1_g.hr[2]*e2_g.hr[1])
                   * f_k / base_t::pol_factor;
             }
-            if (scatterer.flags_use_fp_fdp_aniso()
+            if (scatterer.flags.use_fp_fdp_aniso()
                 && scatterer.flags.grad_fdp_aniso()) {
               grad_fdp_star[0] +=
                   i * e1_g.hr[0] * e2_g.hr[0] * f_k / base_t::pol_factor;
@@ -372,7 +372,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         // isotropic D-W factor
         if (scatterer.flags.use_u_iso()) {
-          float_type dw_iso = debye_waller_factor_iso(d_star_sq/4,
+          float_type dw_iso = debye_waller_factor_u_iso(d_star_sq/4,
                                                       scatterer.u_iso);
           f_iso *= dw_iso;
         }
@@ -801,7 +801,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
       typedef ObservableType<float_type> observable_type;
       typedef ExpI2PiFunctor<float_type> exp_i_2pi_functor;
       typedef boost::shared_ptr<Heir> pointer_type;
-      typedef scitbx::vec3<float_type> pol_vec_type;
+      typedef miller::index<float_type> pol_vec_type;
 
     protected:
       cctbx::xray::scatterer_grad_flags_counts grad_flags_counts;
@@ -1264,7 +1264,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
               if (f_calc.imag() && grad_f_calc[j].imag()) {
                 grad += f_calc.imag() * grad_f_calc[j].imag();
               }
-              if (f_calc_prime.imag() && grad_f_calc_prime.imag()) {
+              if (f_calc_prime.imag() && grad_f_calc_prime[j].imag()) {
                 grad += f_calc_prime.imag() * grad_f_calc_prime[j].imag();
               }
               grad *= 2;

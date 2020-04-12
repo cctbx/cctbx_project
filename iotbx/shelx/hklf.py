@@ -240,6 +240,9 @@ class reader_with_polarization(iotbx_shelx_ext.hklf_reader):
       miller_set=miller_set,
       data=self.data(),
       sigmas=self.sigmas()))
+    import ipdb
+    ipdb.set_trace()
+    junk = self.indices()
     obs.set_u_incs(self.u_incs())
     obs.set_u_scats(self.u_scats())
     obs.set_v_scats(self.v_scats())

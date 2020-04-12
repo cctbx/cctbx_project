@@ -19,7 +19,7 @@ class hklf_reader
   public:
     typedef char char_t;
     typedef cctbx::miller::index<> miller_t;
-    typedef scitbx::vec3<double> vec3_t;
+    typedef cctbx::miller::index<double> vec3_t;
     typedef scitbx::mat3<double> mat3_t;
 
   protected:
@@ -184,6 +184,7 @@ class hklf_reader
           std::string line_r = raw_lines[i_r];
           prepare_for_read(line_r, 255);
 
+          //std::cout<<"\n"<<line<<"\n\n"<<line_r<<std::endl;
           fem::read_from_string(line_r, raw_fstring.c_str()),
             h_r[0], h_r[1], h_r[2],  djunk, djunk, ijunk, cosines_inc[0],
             cosines_inc[1], cosines_inc[2], cosines_scat[0], cosines_scat[1],
@@ -200,6 +201,7 @@ class hklf_reader
           //crash if we didn't find a matching .raw entry
           if (i_r==raw_lines.size()-1) {
             throw std::runtime_error("No matching .raw entry for reflection");
+
           }
         }
 
@@ -221,11 +223,22 @@ class hklf_reader
         vec3_t u_inc = make_perpendicular(hkl_zaxis, cosines_inc, g_star);
         vec3_t u_scat = plane_projection(u_inc, cosines_scat, g_star);
         vec3_t v_scat = make_perpendicular(u_scat, cosines_scat, g_star);
+        //std::cout<<"u_inc:"<<' '<<u_inc[0]<<' '<<u_inc[1]<<' '<<u_inc[2]<<std::endl;
+        //std::cout<<"u_scat:"<<' '<<u_scat[0]<<' '<<u_scat[1]<<' '<<u_scat[2]<<std::endl;
+        //std::cout<<"v_scat:"<<' '<<v_scat[0]<<' '<<v_scat[1]<<' '<<v_scat[2]<<std::endl;
 
         u_inc = length1(u_inc, g_star);
         u_scat = length1(u_scat, g_star);
         v_scat = length1(v_scat, g_star);
         double pol_factor = u_inc * g_star * u_scat;
+        //std::cout<<"Normalizing..."<<std::endl;
+        //std::cout<<"u_inc:"<<' '<<u_inc[0]<<' '<<u_inc[1]<<' '<<u_inc[2]<<std::endl;
+        //std::cout<<"u_scat:"<<' '<<u_scat[0]<<' '<<u_scat[1]<<' '<<u_scat[2]<<std::endl;
+        //std::cout<<"v_scat:"<<' '<<v_scat[0]<<' '<<v_scat[1]<<' '<<v_scat[2]<<std::endl;
+        //std::cout<<"pol_factor: "<<pol_factor<<std::endl;
+
+        double pol2 = u_inc * g_star * v_scat;
+        //std::cout<<"pol factor, second beam: "<<pol2<<std::endl;
 
         //done
         indices_.push_back(h);

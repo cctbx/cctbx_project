@@ -206,9 +206,9 @@ namespace cctbx { namespace xray {
     scitbx::af::shared<twin_fraction<FloatType>*> twin_fractions_;
     scitbx::af::shared<int> measured_scale_indices_;
     mutable FloatType prime_fraction_;
-    scitbx::af::shared<scitbx::vec3<FloatType> > u_incs_;
-    scitbx::af::shared<scitbx::vec3<FloatType> > u_scats_;
-    scitbx::af::shared<scitbx::vec3<FloatType> > v_scats_;
+    scitbx::af::shared<miller::index<FloatType> > u_incs_;
+    scitbx::af::shared<miller::index<FloatType> > u_scats_;
+    scitbx::af::shared<miller::index<FloatType> > v_scats_;
     scitbx::af::shared<FloatType> pol_factors_;
 
     void validate_data() {
@@ -308,9 +308,9 @@ namespace cctbx { namespace xray {
     observations(scitbx::af::shared<miller::index<> > const& indices,
       scitbx::af::shared<FloatType> const& data,
       scitbx::af::shared<FloatType> const& sigmas,
-      scitbx::af::shared<scitbx::vec3<FloatType> > const& u_incs,
-      scitbx::af::shared<scitbx::vec3<FloatType> > const& u_scats,
-      scitbx::af::shared<scitbx::vec3<FloatType> > const& v_scats,
+      scitbx::af::shared<miller::index<FloatType> > const& u_incs,
+      scitbx::af::shared<miller::index<FloatType> > const& u_scats,
+      scitbx::af::shared<miller::index<FloatType> > const& v_scats,
       scitbx::af::shared<FloatType> const &pol_factors)
       : indices_(indices),
         data_(data),
@@ -394,9 +394,9 @@ namespace cctbx { namespace xray {
     // returns sigma of a measured reflection
     FloatType sig(int i) const { return sigmas_[i]; }
 
-    scitbx::vec3<FloatType> u_inc(int i) const { return u_incs_[i]; }
-    scitbx::vec3<FloatType> u_scat(int i) const { return u_scats_[i]; }
-    scitbx::vec3<FloatType> v_scat(int i) const { return v_scats_[i]; }
+    miller::index<FloatType> u_inc(int i) const { return u_incs_[i]; }
+    miller::index<FloatType> u_scat(int i) const { return u_scats_[i]; }
+    miller::index<FloatType> v_scat(int i) const { return v_scats_[i]; }
     FloatType pol_factor(int i) const { return pol_factors_[i]; }
 
     // returns scale of a measured reflection
@@ -460,15 +460,15 @@ namespace cctbx { namespace xray {
 
     scitbx::af::shared<FloatType> sigmas() const { return sigmas_; }
 
-    scitbx::af::shared<scitbx::vec3<FloatType> > u_incs() const {
+    scitbx::af::shared<miller::index<FloatType> > u_incs() const {
       return u_incs_;
     }
 
-    scitbx::af::shared<scitbx::vec3<FloatType> > u_scats() const {
+    scitbx::af::shared<miller::index<FloatType> > u_scats() const {
       return u_scats_;
     }
 
-    scitbx::af::shared<scitbx::vec3<FloatType> > v_scats() const {
+    scitbx::af::shared<miller::index<FloatType> > v_scats() const {
       return v_scats_;
     }
 

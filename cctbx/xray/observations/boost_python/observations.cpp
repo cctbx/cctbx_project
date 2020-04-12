@@ -69,9 +69,9 @@ namespace {
         .def(init<scitbx::af::shared<cctbx::miller::index<> > const&,
                   scitbx::af::shared<FloatType> const&,
                   scitbx::af::shared<FloatType> const&,
-                  scitbx::af::shared<scitbx::vec3<FloatType> > const&,
-                  scitbx::af::shared<scitbx::vec3<FloatType> > const&,
-                  scitbx::af::shared<scitbx::vec3<FloatType> > const&,
+                  scitbx::af::shared<cctbx::miller::index<FloatType> > const&,
+                  scitbx::af::shared<cctbx::miller::index<FloatType> > const&,
+                  scitbx::af::shared<cctbx::miller::index<FloatType> > const&,
                   scitbx::af::shared<FloatType> const& >
              ((arg("observations"),
                arg("data"),
