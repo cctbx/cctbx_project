@@ -900,6 +900,7 @@ int main() {
         print("which is llvm-gcc", end=' ')
         if env_etc.apple_gcc_builds.llvm is not None:
           print(", LLVM build %i" % env_etc.apple_gcc_builds.llvm, end=' ')
+    xcode_version = None
     try:
       # Print out the version of XCode (but only if we could check the version)
       xcode_version = subprocess.check_output(('xcodebuild', '-version'),
@@ -907,6 +908,11 @@ int main() {
       if hasattr(xcode_version, "decode"):
         xcode_version = xcode_version.decode()
       print(xcode_version)
+      # store just the version of Xcode (e.g. 11.4 becomes [11, 4])
+      try:
+        xcode_version = [int(i) for i in xcode_version.split()[1].split('.')]
+      except Exception:
+        pass
     except subprocess.CalledProcessError:
       print("Not using Xcode")
     print()
@@ -950,7 +956,11 @@ int main() {
       env_etc.cxxflags_base.append("-fcoalesce-templates")
     env_etc.cxxflags_base.append("-DBOOST_ALL_NO_LIB")
     if (libtbx.env.build_options.optimization):
-      opts = ["-DNDEBUG", "-O3", "-ffast-math"]
+      opts = ["-DNDEBUG", "-O3"]
+      # -ffast-math changes scitbx/lbfgs/tst_lbfgs_fem.py behavior in Xcode 11.4
+      # minimization steps may be different than fortran standard
+      if xcode_version is not None and xcode_version < [11, 4]:
+        opts.append("-ffast-math")
       if (cxx == "c++" and env_etc.gcc_version
             and env_etc.gcc_version == 40000):
         opts[1] = "-O2" # Apple's optimizer is broken
