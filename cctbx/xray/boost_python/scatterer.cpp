@@ -72,6 +72,10 @@ namespace {
                                make_setter(&w_t::u_iso, dcp()))
         .add_property("u_star", make_getter(&w_t::u_star, rbv()),
                                 make_setter(&w_t::u_star, dcp()))
+        .add_property("fp_star", make_getter(&w_t::fp_star, rbv()),
+                                make_setter(&w_t::fp_star, dcp()))
+        .add_property("fdp_star", make_getter(&w_t::fdp_star, rbv()),
+                                make_setter(&w_t::fdp_star, dcp()))
         .def_readwrite("flags", &w_t::flags)
         .def("set_use_u", &w_t::set_use_u, (arg("iso"),arg("aniso")))
         .def("set_use_u_iso_only", &w_t::set_use_u_iso_only)
@@ -143,6 +147,8 @@ namespace {
         .def("report_details", &w_t::report_details, (
           arg("unit_cell"),
           arg("prefix")))
+        .def("convert_to_fp_aniso", &w_t::convert_to_fp_aniso)
+        .def("convert_to_fdp_aniso", &w_t::convert_to_fdp_aniso)
       ;
     }
   };

@@ -394,6 +394,11 @@ namespace cctbx { namespace xray {
     // returns sigma of a measured reflection
     FloatType sig(int i) const { return sigmas_[i]; }
 
+    scitbx::vec3<FloatType> u_inc(int i) const { return u_incs_[i]; }
+    scitbx::vec3<FloatType> u_scat(int i) const { return u_scats_[i]; }
+    scitbx::vec3<FloatType> v_scat(int i) const { return v_scats_[i]; }
+    FloatType pol_factor(int i) const { return pol_factors_[i]; }
+
     // returns scale of a measured reflection
     FloatType scale(int i) const {
       FloatType rv = (measured_scale_indices_.size() == 0 ||

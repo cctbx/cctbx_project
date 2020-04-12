@@ -196,6 +196,30 @@ namespace xray {
         }
       }
 
+      void convert_to_fp_aniso(
+        uctbx::unit_cell const& unit_cell)
+      {
+        if (flags.use_fp_fdp()) {
+          fp_star = adptbx::u_iso_as_u_star(unit_cell, fp);
+        }
+        else {
+          fp_star = scitbx::sym_mat3<FloatType>(0,0,0,0,0,0);
+        }
+        flags.set_use_fp_fdp_aniso(true);
+      }
+
+      void convert_to_fdp_aniso(
+        uctbx::unit_cell const& unit_cell)
+      {
+        if (flags.use_fp_fdp()) {
+          fdp_star = adptbx::u_iso_as_u_star(unit_cell, fdp);
+        }
+        else {
+          fdp_star = scitbx::sym_mat3<FloatType>(0,0,0,0,0,0);
+        }
+        flags.set_use_fp_fdp_aniso(true);
+      }
+
       //! Tests u_iso > 0 or adptbx::is_positive_definite(u_cart).
       bool
       is_positive_definite_u(
