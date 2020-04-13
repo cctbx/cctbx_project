@@ -222,7 +222,6 @@ def shortcut(residue, first):
       atoms = [d["H1"], d["H2"], d["H3"]]
       result.append([axis, atoms])
     except KeyError: pass
-    except: raise
   if  (rn == "MET"):
     axis  = [d['SD'],  d['CE']           ]
     atoms = [d['HE1'], d['HE2'], d['HE3']]

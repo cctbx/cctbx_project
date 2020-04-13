@@ -20,6 +20,9 @@ def flatten(l):
   return sum(([x] if not (isinstance(x, list) or isinstance(x, flex.size_t))
     else flatten(x) for x in l), [])
 
+###
+# TODO: do not fit residues whose side chains are involced into bonds!
+###
 class monitor(object):
   def __init__(self, id_str, selection, map_data, unit_cell, weights, pairs,
                reference_map_value, rotamer_evaluator, log):
