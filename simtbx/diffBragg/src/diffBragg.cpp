@@ -347,6 +347,8 @@ void diffBragg::update_dxtbx_geoms(
     /* set orthogonal vector to the detector pixel array */
     cross_product(fdet_vector,sdet_vector,odet_vector);
     unitize(odet_vector,odet_vector);
+    if (! detector_is_righthanded)
+        vector_scale(odet_vector, odet_vector, -1);
 
     /* dxtbx origin is location of outer corner of the first pixel */
     pix0_vector[1] = detector[panel_id].get_origin()[0]/1000.0;
@@ -356,13 +358,6 @@ void diffBragg::update_dxtbx_geoms(
     Fclose = Xclose = -dot_product(pix0_vector,fdet_vector);
     Sclose = Yclose = -dot_product(pix0_vector,sdet_vector);
     close_distance = distance =  dot_product(pix0_vector,odet_vector);
-    if (close_distance < 0){  /* NOTE close_distance defined this way is negative for some dxtbx models */
-      printf("diffBragg::udpate_dxtbx_geom: Warning close distance is coming out as negative!\n");
-      odet_vector[1] = -odet_vector[1];
-      odet_vector[2] = -odet_vector[2];
-      odet_vector[3] = -odet_vector[3];
-      close_distance = distance = dot_product(pix0_vector,odet_vector);
-    }
 
     /* set beam centre */
     scitbx::vec2<double> dials_bc = detector[panel_id].get_beam_centre(beam.get_s0());
@@ -402,6 +397,7 @@ void diffBragg::update_dxtbx_geoms(
     //SCITBX_EXAMINE(distance);
     //SCITBX_EXAMINE(close_distance);
     //printf("Done updating!\n");
+    SCITBX_ASSERT(close_distance > 0);
     }
 
 void diffBragg::init_raw_pixels_roi(){
