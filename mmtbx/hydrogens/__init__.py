@@ -249,9 +249,10 @@ def shortcut(residue, first):
     atoms = [d['HD21'], d['HD22'], d['HD23']]
     result.append([axis, atoms])
   elif(rn == "CYS"):
-    axis  = [d['CB'], d['SG']]
-    atoms = [d['HG']         ]
-    result.append([axis, atoms])
+    if("HG" in d.keys()): # not a disulfide bridge
+      axis  = [d['CB'], d['SG']]
+      atoms = [d['HG']         ]
+      result.append([axis, atoms])
   elif(rn == "VAL"):
     axis  = [d['CB'],   d['CG1']            ]
     atoms = [d['HG11'], d['HG12'], d['HG13']]
