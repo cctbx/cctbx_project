@@ -133,6 +133,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
       {
         Heir &heir = static_cast<Heir &> (*this);
 
+        m_f0 = f0;
         this->structure_factor = 0;
         if (compute_grad) {
           this->grad_site = grad_site_type(0, 0, 0);
@@ -145,7 +146,6 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         if (scatterer.flags.use_fp_fdp_aniso()) {
           SMTBX_ASSERT(has_polarisation);
-          m_f0 = f0;
           heir.compute_anisotropic_part(scatterer, compute_grad);
           FloatType dummy_ff = 1; //form factor was already used in aniso part
           heir.multiply_by_isotropic_part(scatterer, dummy_ff, compute_grad);
