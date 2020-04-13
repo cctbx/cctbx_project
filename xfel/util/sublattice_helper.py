@@ -107,7 +107,6 @@ def integrate_coset(self, experiments, indexed):
                     self.params.output.coset_experiments_filename is not None
                     and self.params.output.coset_filename is not None
                 )
-                assert 0 # XXX Fixme
                 n = len(self.all_coset_experiments)
                 self.all_coset_experiments.extend(experiments_local)
                 for i, experiment in enumerate(experiments_local):
@@ -121,7 +120,7 @@ def integrate_coset(self, experiments, indexed):
             # Dump experiments to disk
             if self.params.output.coset_experiments_filename:
 
-                experiments.as_json(self.params.output.coset_experiments_filename)
+                experiments_local.as_json(self.params.output.coset_experiments_filename)
 
             if self.params.output.coset_filename:
                 # Save the reflections
@@ -149,7 +148,7 @@ def integrate_coset(self, experiments, indexed):
                 % (i, len(bright_integrated), rmsd_integrated)
             )
 
-        for crystal_model in experiments.crystals():
+        for crystal_model in experiments_local.crystals():
             if hasattr(crystal_model, "get_domain_size_ang"):
                 log_str += (
                     ". Final ML model: domain size angstroms: %f, half mosaicity degrees: %f"
