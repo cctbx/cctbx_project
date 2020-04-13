@@ -122,6 +122,10 @@ namespace {
         first_index, (
           bp::arg("miller_index")))
     ;
+
+    flex_wrapper<miller::index<double> >::ordered(
+        "miller_index_double", flex_root_scope)
+    ;
   }
 
 }}} // namespace scitbx::af::boost_python
