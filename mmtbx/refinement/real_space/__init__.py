@@ -82,10 +82,11 @@ def check_sites_match(ph_answer, ph_refined, tol, exclude_atom_names=[]):
   s2 = flex.vec3_double()
   for a1,a2 in zip(ph_answer.atoms(), ph_refined.atoms()):
     if(a1.name.strip() in exclude_atom_names): continue
-    if((not a1.element.strip().upper() in ["H","D"]) and
-       (not a2.element.strip().upper() in ["H","D"])):
-      s1.append(a1.xyz)
-      s2.append(a2.xyz)
+    if(a1.element.strip().upper() in ["H","D"]): continue
+    if(a2.element.strip().upper() in ["H","D"]): continue
+    assert a1.name == a2.name
+    s1.append(a1.xyz)
+    s2.append(a2.xyz)
   dist = flex.max(flex.sqrt((s1 - s2).dot()))
   print(dist, tol)
   assert dist < tol,  [dist, tol]

@@ -22,7 +22,7 @@ def flatten(l):
 
 class monitor(object):
   def __init__(self, id_str, selection, map_data, unit_cell, weights, pairs,
-               reference_map_value, log):
+               reference_map_value, rotamer_evaluator, log):
     adopt_init_args(self, locals())
     self.states = collections.OrderedDict()
 
@@ -39,39 +39,42 @@ class monitor(object):
       mv = self.map_data.eight_point_interpolation(
         self.unit_cell.fractionalize(atom.xyz))
       vals[name] = mv
-      if(mv > self.reference_map_value*2 and not element in ["S","SE"]):
+      if(mv > self.reference_map_value*3 and not element in ["S","SE"]):
         exceed_map_max_value = True
       target += mv
       if(mv < 0): target_neg += mv
     #
+    rot = self.rotamer_evaluator.evaluate_residue(residue)
     self.states[state] = group_args(
       vals       = vals,
       sites_cart = residue.atoms().extract_xyz(),
       target     = target,
       target_neg = target_neg,
-      exceed_map_max_value = exceed_map_max_value)
+      exceed_map_max_value = exceed_map_max_value,
+      rot        = rot)
 
   def finalize(self, residue):
     if(len(self.states.keys())==1 or self.selection.size()==0): return
-    state=None
-    if(self.states["start"].target > self.states["fitting"].target):
-      if(not self.states["start"].exceed_map_max_value):
-        if(self.states["start"].target_neg>self.states["fitting"].target_neg):
-          state="start"
-        else:
-          state="fitting"
-      else:
-        if(not self.states["fitting"].exceed_map_max_value):
-         state="fitting"
-    else:
-      state="fitting"
-    if(state is None): state="start"
-    if(self.states[state].target <= self.states["tuneup"].target):
-      if(not self.states["tuneup"].exceed_map_max_value):
-        state="tuneup"
-    if(state != self.states.keys()[-1]):
-      residue.atoms().set_xyz(self.states[state].sites_cart)
+    state = "start"
+    S     = self.states["start"]
+    F     = self.states["fitting"]
+    T     = self.states["tuneup"]
+    #
+    if((S.rot=="OUTLIER" and F.rot!="OUTLIER" and not F.exceed_map_max_value) or
+       (F.target>S.target and F.target_neg>=S.target_neg and not F.exceed_map_max_value) or
+       (F.target_neg>=S.target_neg and S.exceed_map_max_value and not F.exceed_map_max_value)):
+      state = "fitting"
+    N = self.states[state]
+    if((N.rot=="OUTLIER" and T.rot!="OUTLIER" and not T.exceed_map_max_value) or
+       (T.target>N.target and T.target_neg>=S.target_neg and not T.exceed_map_max_value) or
+       (T.target_neg>=N.target_neg and N.exceed_map_max_value and not T.exceed_map_max_value)):
+      state = "tuneup"
+    #
+    residue.atoms().set_xyz(self.states[state].sites_cart)
+    #
+    if(state != "tuneup"):
       self.add(residue = residue, state = "revert")
+    #
 
   def show(self):
     if(len(self.states.keys())==1 or self.selection.size()==0): return
@@ -79,7 +82,7 @@ class monitor(object):
     for k,v in zip(self.states.keys(), self.states.values()):
       vals = " ".join(["%s: %5.2f"%(k_, v_)
         for k_,v_ in zip(v.vals.keys(), v.vals.values())])
-      print("  %7s: score: %7.3f %s"%(k, v.target, vals), file=self.log)
+      print("  %7s: score: %7.3f %s %s"%(k, v.target, vals, v.rot), file=self.log)
 
 class run(object):
   def __init__(self,
@@ -154,6 +157,7 @@ class run(object):
         weights   = self.weights,
         pairs     = self.pairs,
         reference_map_value = self.reference_map_value,
+        rotamer_evaluator = self.rotamer_manager.rotamer_evaluator,
         log       = self.log)
       self.m.add(residue = self.residue, state = "start")
     if(self.target_map is None):
