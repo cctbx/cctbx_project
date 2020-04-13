@@ -80,10 +80,10 @@ ramachandran_plot_restraints {
   favored = *oldfield emsley emsley8k
     .type = choice(multi=False)
 
-  allowed = oldfield emsley *emsley8k
+  allowed = *oldfield emsley emsley8k
     .type = choice(multi=False)
 
-  outlier = oldfield emsley *emsley8k
+  outlier = *oldfield emsley emsley8k
     .type = choice(multi=False)
 
   selection = None
@@ -132,7 +132,7 @@ ramachandran_plot_restraints {
       .short_caption = Rescale allowed region pseudo-energy by
   }
   emsley8k {
-    weight_favored = 10.0
+    weight_favored = 5.0
       .type = float
       .short_caption = Ramachandran plot restraints weight
       .expert_level = 1
@@ -257,7 +257,10 @@ class ramachandran_manager(object):
           plot_cutoff=self.params.oldfield.plot_cutoff)
       if 'emsley' in fao:
         self._emsley_tables = load_tables()
-      if 'emsley8k' in fao:
+      #
+      ### THIS IS CRUEL. REMOVE ONCE favored/allowed/outlier are made multiple!
+      #
+      if 1:#if 'emsley8k' in fao:
         self._emsley8k_tables = load_emsley8k_tables()
       # get proxies
       self.extract_proxies(pdb_hierarchy)
@@ -320,12 +323,12 @@ class ramachandran_manager(object):
           weight       = 1) # XXX Not used in oldfield
         self.append_oldfield_proxies(proxy, n_seq)
 
-        ### PLACEHOLDER
-        #proxy = ext.phi_psi_proxy(
-        #  residue_type = text_rama_key,
-        #  i_seqs       = i_seqs,
-        #  weight       = 5)
-        #self.append_emsley8k_proxies(proxy, n_seq)
+        ### THIS IS CRUEL. REMOVE ONCE favored/allowed/outlier are made multiple!
+        proxy = ext.phi_psi_proxy(
+          residue_type = text_rama_key,
+          i_seqs       = i_seqs,
+          weight       = 5)
+        self.append_emsley8k_proxies(proxy, n_seq)
         ###
 
       elif r_type == 'emsley':
