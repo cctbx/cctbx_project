@@ -92,6 +92,10 @@ ramachandran_plot_restraints {
     .help = Selection of part of the model for which \
         Ramachandran restraints will be set up.
     .expert_level = 1
+  inject_emsley8k_into_oldfield_favored = True
+    .type=bool
+    .expert_level = 3
+    .help = Backdoor to disable temporary dirty hack to use both
   oldfield {
     weight = 0.
       .type = float
@@ -260,7 +264,7 @@ class ramachandran_manager(object):
       #
       ### THIS IS CRUEL. REMOVE ONCE favored/allowed/outlier are made multiple!
       #
-      if 1:#if 'emsley8k' in fao:
+      if 'emsley8k' in fao or self.params.inject_emsley8k_into_oldfield_favored:
         self._emsley8k_tables = load_emsley8k_tables()
       # get proxies
       self.extract_proxies(pdb_hierarchy)
@@ -324,11 +328,12 @@ class ramachandran_manager(object):
         self.append_oldfield_proxies(proxy, n_seq)
 
         ### THIS IS CRUEL. REMOVE ONCE favored/allowed/outlier are made multiple!
-        proxy = ext.phi_psi_proxy(
-          residue_type = text_rama_key,
-          i_seqs       = i_seqs,
-          weight       = 5)
-        self.append_emsley8k_proxies(proxy, n_seq)
+        if(self.params.inject_emsley8k_into_oldfield_favored):
+          proxy = ext.phi_psi_proxy(
+            residue_type = text_rama_key,
+            i_seqs       = i_seqs,
+            weight       = 5)
+          self.append_emsley8k_proxies(proxy, n_seq)
         ###
 
       elif r_type == 'emsley':

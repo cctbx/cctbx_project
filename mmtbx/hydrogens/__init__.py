@@ -202,7 +202,7 @@ xh_bond_distance_deviation_limit = 0.0
   .expert_level=2
 """
 
-def shortcut(residue, first):
+def shortcut(residue, first, log):
   """
   Avoid TARDY, huge speedup for huge structures!
   """
@@ -216,72 +216,76 @@ def shortcut(residue, first):
     d[name] = a.i_seq
   rn = residue.resname.strip().upper()
   result = []
-  if(first):
-    try:
+  try:
+    if(first):
       axis  = [d["CA"], d["N"]]
       atoms = [d["H1"], d["H2"], d["H3"]]
       result.append([axis, atoms])
-    except KeyError: pass
-  if  (rn == "MET"):
-    axis  = [d['SD'],  d['CE']           ]
-    atoms = [d['HE1'], d['HE2'], d['HE3']]
-    result.append([axis, atoms])
-  elif(rn == "LYS"):
-    axis  = [d['CE'],  d['NZ']           ]
-    atoms = [d['HZ1'], d['HZ2'], d['HZ3']]
-    result.append([axis, atoms])
-  elif(rn == "SER"):
-    axis  = [d['CB'], d['OG']]
-    atoms = [d['HG']]
-    result.append([axis, atoms])
-  elif(rn == "THR"):
-    axis  = [d['CB'],   d['CG2']            ]
-    atoms = [d['HG21'], d['HG22'], d['HG23']]
-    result.append([axis, atoms])
-    axis  = [d['CB'], d['OG1']]
-    atoms = [d['HG1']         ]
-    result.append([axis, atoms])
-  elif(rn == "LEU"):
-    axis  = [d['CG'],   d['CD1']            ]
-    atoms = [d['HD11'], d['HD12'], d['HD13']]
-    result.append([axis, atoms])
-    axis  = [d['CG'],   d['CD2']            ]
-    atoms = [d['HD21'], d['HD22'], d['HD23']]
-    result.append([axis, atoms])
-  elif(rn == "CYS"):
-    if("HG" in d.keys()): # not a disulfide bridge
-      axis  = [d['CB'], d['SG']]
-      atoms = [d['HG']         ]
+    if  (rn == "MET"):
+      axis  = [d['SD'],  d['CE']           ]
+      atoms = [d['HE1'], d['HE2'], d['HE3']]
       result.append([axis, atoms])
-  elif(rn == "VAL"):
-    axis  = [d['CB'],   d['CG1']            ]
-    atoms = [d['HG11'], d['HG12'], d['HG13']]
-    result.append([axis, atoms])
-    axis  = [d['CB'],   d['CG2']            ]
-    atoms = [d['HG21'], d['HG22'], d['HG23']]
-    result.append([axis, atoms])
-  elif(rn == "TYR"):
-    axis  = [d['CZ'], d['OH']]
-    atoms = [d['HH']         ]
-    result.append([axis, atoms])
-  elif(rn == "ALA"):
-    axis  = [d['CA'],  d['CB']           ]
-    atoms = [d['HB1'], d['HB2'], d['HB3']]
-    result.append([axis, atoms])
-  elif(rn == "ILE"):
-    axis  = [d['CB'],   d['CG2']            ]
-    atoms = [d['HG21'], d['HG22'], d['HG23']]
-    result.append([axis, atoms])
-    axis  = [d['CG1'],  d['CD1']            ]
-    atoms = [d['HD11'], d['HD12'], d['HD13']]
-    result.append([axis, atoms])
-  elif(rn == "MSE"):
-    axis  =  [d['SE'],  d['CE']           ]
-    atoms =  [d['HE1'], d['HE2'], d['HE3']]
-    result.append([axis, atoms])
-  else:
-    if(len(result)>0): return result
-    else:              return None
+    elif(rn == "LYS"):
+      axis  = [d['CE'],  d['NZ']           ]
+      atoms = [d['HZ1'], d['HZ2'], d['HZ3']]
+      result.append([axis, atoms])
+    elif(rn == "SER"):
+      axis  = [d['CB'], d['OG']]
+      atoms = [d['HG']]
+      result.append([axis, atoms])
+    elif(rn == "THR"):
+      axis  = [d['CB'],   d['CG2']            ]
+      atoms = [d['HG21'], d['HG22'], d['HG23']]
+      result.append([axis, atoms])
+      axis  = [d['CB'], d['OG1']]
+      atoms = [d['HG1']         ]
+      result.append([axis, atoms])
+    elif(rn == "LEU"):
+      axis  = [d['CG'],   d['CD1']            ]
+      atoms = [d['HD11'], d['HD12'], d['HD13']]
+      result.append([axis, atoms])
+      axis  = [d['CG'],   d['CD2']            ]
+      atoms = [d['HD21'], d['HD22'], d['HD23']]
+      result.append([axis, atoms])
+    elif(rn == "CYS"):
+      if("HG" in d.keys()): # not a disulfide bridge
+        axis  = [d['CB'], d['SG']]
+        atoms = [d['HG']         ]
+        result.append([axis, atoms])
+    elif(rn == "VAL"):
+      axis  = [d['CB'],   d['CG1']            ]
+      atoms = [d['HG11'], d['HG12'], d['HG13']]
+      result.append([axis, atoms])
+      axis  = [d['CB'],   d['CG2']            ]
+      atoms = [d['HG21'], d['HG22'], d['HG23']]
+      result.append([axis, atoms])
+    elif(rn == "TYR"):
+      axis  = [d['CZ'], d['OH']]
+      atoms = [d['HH']         ]
+      result.append([axis, atoms])
+    elif(rn == "ALA"):
+      axis  = [d['CA'],  d['CB']           ]
+      atoms = [d['HB1'], d['HB2'], d['HB3']]
+      result.append([axis, atoms])
+    elif(rn == "ILE"):
+      axis  = [d['CB'],   d['CG2']            ]
+      atoms = [d['HG21'], d['HG22'], d['HG23']]
+      result.append([axis, atoms])
+      axis  = [d['CG1'],  d['CD1']            ]
+      atoms = [d['HD11'], d['HD12'], d['HD13']]
+      result.append([axis, atoms])
+    elif(rn == "MSE"):
+      axis  =  [d['SE'],  d['CE']           ]
+      atoms =  [d['HE1'], d['HE2'], d['HE3']]
+      result.append([axis, atoms])
+    else:
+      if(len(result)>0): return result
+      else:              return None
+  except KeyError:
+    m="Residue %s %s is missing expected H atoms. Skipping."%(
+      residue.resname, str(residue.resseq))
+    print(m, file=log)
+    return None
   return result
 
 def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log,
@@ -447,7 +451,7 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log,
             if(not hd): continue
             if(get_class(name=residue.resname)=="common_amino_acid" and not last):
               if(use_shortcut):
-                r_ = shortcut(residue=residue, first=first)
+                r_ = shortcut(residue=residue, first=first, log=log)
                 if(r_ is not None): result.extend(r_)
               else:
                 helper_1(residue, mon_lib_srv, log, result, psel)
