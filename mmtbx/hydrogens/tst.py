@@ -59,6 +59,9 @@ ATOM      4  O   THR H  21       3.236   3.035   6.301  1.00 10.00           O
 ATOM      5  CB  THR H  21       4.646   4.511   3.992  1.00 10.00           C
 ATOM      6  OG1 THR H  21       5.786   4.660   3.137  1.00 10.00           O
 ATOM      7  CG2 THR H  21       3.792   5.769   3.916  1.00 10.00           C
+ATOM      8  H1  THR H  21       6.394   2.977   4.730  1.00 10.00           H
+ATOM      9  H2  THR H  21       6.620   3.247   6.140  1.00 10.00           H
+ATOM     10  H3  THR H  21       5.527   2.380   5.733  1.00 10.00           H
 ATOM      8 DG21 THR H  21       3.708   6.055   2.993  1.00 10.00           D
 ATOM      9 DG22 THR H  21       2.906   5.595   4.272  1.00 10.00           D
 ATOM     10 DG23 THR H  21       4.205   6.482   4.429  1.00 10.00           D
@@ -66,26 +69,26 @@ ATOM     10 DG23 THR H  21       4.205   6.482   4.429  1.00 10.00           D
 
 m5_str = """
 CRYST1   19.756   19.585   19.568  90.00  90.00  90.00 P 1
-ATOM      1  N   SER H   7       7.561   4.409   2.370  1.00 10.00           N
-ATOM      2  CA  SER H   7       6.281   4.192   3.051  1.00 10.00           C
-ATOM      3  C   SER H   7       6.112   3.781   4.520  1.00 10.00           C
-ATOM      4  O   SER H   7       6.620   2.744   4.947  1.00 10.00           O
-ATOM      5  CB  SER H   7       5.067   3.972   2.131  1.00 10.00           C
-ATOM      6  HA  SER H   7       6.473   3.250   2.923  1.00 10.00           H
-ATOM      7  OG ASER H   7       3.884   3.774   2.885  0.50 10.00           O
-ATOM      8  HG ASER H   7       3.729   4.456   3.369  0.50 10.00           H
-ATOM      9  OG BSER H   7       5.247   2.836   1.302  0.50 10.00           O
-ATOM     10  HG BSER H   7       5.189   2.125   1.764  0.50 10.00           H
-ATOM     11  N   THR H   8       5.397   4.602   5.281  1.00 10.00           N
-ATOM     12  CA  THR H   8       5.161   4.328   6.694  1.00 10.00           C
-ATOM     13  C   THR H   8       3.963   3.404   6.887  1.00 10.00           C
-ATOM     14  O   THR H   8       4.113   2.257   7.310  1.00 10.00           O
-ATOM     15  CB  THR H   8       4.938   5.627   7.495  1.00 10.00           C
-ATOM     16  OG1 THR H   8       4.686   5.308   8.869  1.00 10.00           O
-ATOM     17  CG2 THR H   8       3.757   6.410   6.935  1.00 10.00           C
-ATOM     18 DG21 THR H   8       3.891   6.587   5.991  1.00 10.00           D
-ATOM     19 DG22 THR H   8       2.937   5.904   7.048  1.00 10.00           D
-ATOM     20 DG23 THR H   8       3.670   7.255   7.403  1.00 10.00           D
+ATOM      1  N   SER H   1       7.561   4.409   2.370  1.00 10.00           N
+ATOM      2  CA  SER H   1       6.281   4.192   3.051  1.00 10.00           C
+ATOM      3  C   SER H   1       6.112   3.781   4.520  1.00 10.00           C
+ATOM      4  O   SER H   1       6.620   2.744   4.947  1.00 10.00           O
+ATOM      5  CB  SER H   1       5.067   3.972   2.131  1.00 10.00           C
+ATOM      6  HA  SER H   1       6.473   3.250   2.923  1.00 10.00           H
+ATOM      7  OG ASER H   1       3.884   3.774   2.885  0.50 10.00           O
+ATOM      8  HG ASER H   1       3.729   4.456   3.369  0.50 10.00           H
+ATOM      9  OG BSER H   1       5.247   2.836   1.302  0.50 10.00           O
+ATOM     10  HG BSER H   1       5.189   2.125   1.764  0.50 10.00           H
+ATOM     11  N   THR H   2       5.397   4.602   5.281  1.00 10.00           N
+ATOM     12  CA  THR H   2       5.161   4.328   6.694  1.00 10.00           C
+ATOM     13  C   THR H   2       3.963   3.404   6.887  1.00 10.00           C
+ATOM     14  O   THR H   2       4.113   2.257   7.310  1.00 10.00           O
+ATOM     15  CB  THR H   2       4.938   5.627   7.495  1.00 10.00           C
+ATOM     16  OG1 THR H   2       4.686   5.308   8.869  1.00 10.00           O
+ATOM     17  CG2 THR H   2       3.757   6.410   6.935  1.00 10.00           C
+ATOM     18 DG21 THR H   2       3.891   6.587   5.991  1.00 10.00           D
+ATOM     19 DG22 THR H   2       2.937   5.904   7.048  1.00 10.00           D
+ATOM     20 DG23 THR H   2       3.670   7.255   7.403  1.00 10.00           D
 """
 
 m6_str = """
@@ -1391,7 +1394,7 @@ loop = [
   (m1_str, 1, [[[4,5], [9]]]),
   (m2_str, 2, [[[4,5], [9]], [[4,5], [10]]]),
   (m3_str, 2, [[[4,6], [7]], [[4,8], [9]]]),
-  (m4_str, 3, [[[4,6], [7,8,9]]]),
+  (m4_str, 6, [[[4, 6], [7, 8, 9]], [[1, 0], [10, 11, 12]]]),
   (m5_str, 5, [[[4,6], [7]], [[4,8], [9]], [[14,16], [17,18,19]]]),
   (m6_str, 4, [[[1,0], [11,12,13]], [[23,22],[34]]]),
   (m7_str, 4, [[[0, 1], [5]], [[1, 0], [2, 3, 4]]]), #[[[0, 1], [2, 3, 4]], [[1, 0], [5]]]),
@@ -1412,6 +1415,7 @@ def exercise_00(debug=True):
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   for i, l in enumerate(loop):
+    print(i,"*"*10)
     ppf = monomer_library.pdb_interpretation.process(
       mon_lib_srv    = mon_lib_srv,
       ener_lib       = ener_lib,
@@ -1423,9 +1427,9 @@ def exercise_00(debug=True):
     restraints_manager = mmtbx.restraints.manager(
       geometry = geometry, normalization = False)
     ph = ppf.all_chain_proxies.pdb_hierarchy
+    ppf.all_chain_proxies.pdb_inp.write_pdb_file(file_name = "m%s.pdb"%str(i))
     sel = hydrogens.rotatable(pdb_hierarchy=ph, mon_lib_srv=mon_lib_srv,
       restraints_manager = restraints_manager, log=None)
-    ppf.all_chain_proxies.pdb_inp.write_pdb_file(file_name = "m%s.pdb"%str(i))
     assert sel == l[2], "%s != %s" % (sel, l[2])
     assert hydrogens.count_rotatable(sel) == l[1]
 

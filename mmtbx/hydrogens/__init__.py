@@ -218,9 +218,11 @@ def shortcut(residue, first, log):
   result = []
   try:
     if(first):
-      axis  = [d["CA"], d["N"]]
-      atoms = [d["H1"], d["H2"], d["H3"]]
-      result.append([axis, atoms])
+      try: # H1,H2,H3 are missing way to often, also due to reduce bug
+        axis  = [d["CA"], d["N"]]
+        atoms = [d["H1"], d["H2"], d["H3"]]
+        result.append([axis, atoms])
+      except KeyError: pass
     if  (rn == "MET"):
       axis  = [d['SD'],  d['CE']           ]
       atoms = [d['HE1'], d['HE2'], d['HE3']]
