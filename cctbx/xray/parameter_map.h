@@ -12,15 +12,18 @@ struct parameter_indices
 {
   static int const invariable = -1;
 
-  int site, u_iso, u_aniso, occupancy, fp, fdp;
+  int site, u_iso, u_aniso, occupancy, fp, fdp, fp_aniso, fdp_aniso;
 
   parameter_indices()
     : site(invariable), u_iso(invariable), u_aniso(invariable),
-      occupancy(invariable), fp(invariable), fdp(invariable)
+      occupancy(invariable), fp(invariable), fdp(invariable),
+      fp_aniso(invariable), fdp_aniso(invariable)
   {}
 
   int top() {
-    return   fdp       != invariable ? fdp
+    return   fdp_aniso != invariable ? fdp_aniso
+           : fp_aniso  != invariable ? fp_aniso
+           : fdp       != invariable ? fdp
            : fp        != invariable ? fp
            : occupancy != invariable ? occupancy
            : u_aniso   != invariable ? u_aniso
@@ -73,6 +76,14 @@ private:
         if (sc.flags.grad_occupancy()) ids.occupancy = params++;
         if (sc.flags.grad_fp()) ids.fp = params++;
         if (sc.flags.grad_fdp()) ids.fdp = params++;
+        if (sc.flags.use_fp_fdp_aniso() && sc.flags.grad_fp_aniso()) {
+          ids.fp_aniso = params;
+          params += 6;
+        }
+        if (sc.flags.use_fp_fdp_aniso() && sc.flags.grad_fdp_aniso()) {
+          ids.fdp_aniso = params;
+          params += 6;
+        }
       }
     }
 
