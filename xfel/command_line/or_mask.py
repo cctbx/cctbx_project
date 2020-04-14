@@ -24,7 +24,7 @@ for item in srcs[1:]:
   except AttributeError:
     bdata1 |= (dataN["DATA"].as_double().iround()!=0)
 dirname = os.path.dirname(dest)
-if dirname is not "" and not os.path.isdir(dirname):
+if dirname != "" and not os.path.isdir(dirname):
   os.makedirs(dirname)
 debug_fixer = flex.bool(list(bdata1)).as_int().as_double()*discover_mask_pix_val
 debug_fixer.reshape(flex.grid(ddata.focus()))

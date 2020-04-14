@@ -58,7 +58,7 @@ class Script(object):
 
       # Log the modified phil parameters
       diff_phil_str = self.parser.diff_phil.as_str()
-      if diff_phil_str is not "":
+      if diff_phil_str != "":
         self.mpi_logger.main_log("The following parameters have been modified:\n%s"%diff_phil_str)
 
       # prepare for transmitting input parameters to all ranks
