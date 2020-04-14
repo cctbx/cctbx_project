@@ -5114,6 +5114,9 @@ class build_all_chain_proxies(linking_mixins):
       for proxy in processed_edits.angle_proxies:
         added = self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
         if not added:
+          print ("    Angle is duplicated:", file=log)
+          for i in [0,1,2]:
+            print("      atom %d:" % (i+1), self.pdb_hierarchy.atoms()[proxy.i_seqs[i]].quote(), file=log)
           not_added_proxies.append(proxy)
       for proxy in processed_edits.dihedral_proxies:
         added = self.geometry_proxy_registries.dihedral.add_if_not_duplicated(proxy=proxy)
@@ -5128,7 +5131,7 @@ class build_all_chain_proxies(linking_mixins):
         if not added:
           not_added_proxies.append(proxy)
       if len(not_added_proxies) > 0:
-        raise Sorry("Some restraints were not added because they are already present.")
+        raise Sorry("Some (%d) restraints were not added because they are already present." % len(not_added_proxies))
 
     if params_edits and params_edits.angle:
       processed_edits = self.process_geometry_restraints_edits(
