@@ -312,8 +312,12 @@ class run(object):
         unit_cell   = self.crystal_symmetry.unit_cell(),
         density_map = self.target_map,
         sites_cart  = residue.atoms().extract_xyz())
-      pshift = abs(abs(mv1)-abs(mv2)) / ((abs(mv1)+abs(mv2))/2)*100.
-      if(pshift<3):
+      den = ((abs(mv1)+abs(mv2))/2)*100.
+      if(abs(den)>1.e-6):
+        pshift = abs(abs(mv1)-abs(mv2)) / den
+      else:
+        pshift = None
+      if(pshift is not None and pshift<3):
         self.sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
       else:
         residue.atoms().set_xyz(sites_cart_start)
