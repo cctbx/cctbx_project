@@ -156,10 +156,11 @@ class jf16m_cxigeom2nexus(object):
       if self.params.include_spectra:
         if self.params.energy_offset:
           spectra_x += self.params.energy_offset
-        beam.create_dataset('incident_wavelength', spectra_x.shape, data=12398.4187/spectra_x, dtype=spectra_x.dtype)
-        beam.create_dataset('incident_wavelength_weight', spectra_y.shape, data=spectra_y, dtype=spectra_y.dtype)
-        beam.create_dataset('incident_wavelength_calculated', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
-        beam['incident_wavelength_calculated'].attrs['units'] = 'angstrom'
+        beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
+        beam.create_dataset('incident_wavelength_1Dspectrum', spectra_x.shape, data=12398.4187/spectra_x, dtype=spectra_x.dtype)
+        beam.create_dataset('incident_wavelength_1Dspectrum_weight', spectra_y.shape, data=spectra_y, dtype=spectra_y.dtype)
+        beam['incident_wavelength_1Dspectrum'].attrs['units'] = 'angstrom'
+        beam['incident_wavelength'].attrs['variant'] = 'incident_wavelength_1Dspectrum'
       else:
         beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
     else:
