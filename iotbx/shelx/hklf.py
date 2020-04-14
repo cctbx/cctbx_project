@@ -186,8 +186,8 @@ def args_for_polarization_run(file_name, unit_cell):
         line = p4pfile.readline()
         head = line.split()[0]
     except StopIteration:
-      raise RuntimeError, \
-          "Orientation matrix not found in {}".format(p4p_filename)
+      raise RuntimeError(
+          "Orientation matrix not found in {}".format(p4p_filename))
     ormx_list.extend([float(x) for x in line.split()[1:4]])
     line = p4pfile.readline()
     ormx_list.extend([float(x) for x in line.split()[1:4]])
