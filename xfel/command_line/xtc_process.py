@@ -397,9 +397,13 @@ def run_psana2(ims, params, comm):
     ims: InMemScript (cctbx driver class)
     params: input parameters
     comm: mpi comm for broadcasting per run calibration files"""
-    ds = psana.DataSource(exp=params.input.experiment, run=params.input.run_num, \
-            dir=params.input.xtc_dir, max_events=params.dispatch.max_events, \
-            det_name=params.input.address)
+
+    import os
+    xtc_read_batch_size = int(os.environ.get("CCTBX_XTC2_BATCH_SIZE"))
+
+    ds = psana.DataSource(exp=params.input.experiment,run=params.input.run_num,
+            dir=params.input.xtc_dir, max_events=params.dispatch.max_events,
+            det_name=params.input.address, batch_size=xtc_read_batch_size)
 
     for run in ds.runs():
       det = run.Detector(ds.det_name)
