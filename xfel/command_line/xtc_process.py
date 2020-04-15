@@ -387,7 +387,11 @@ def run_psana2(ims, params, comm):
     comm: mpi comm for broadcasting per run calibration files"""
 
     import os
-    xtc_read_batch_size = int(os.environ.get("CCTBX_XTC2_BATCH_SIZE"))
+    CCTBX_XTC2_BATCH_SIZE = os.environ.get("CCTBX_XTC2_BATCH_SIZE")
+    if CCTBX_XTC2_BATCH_SIZE == None:
+      xtc_read_batch_size = None
+    else:
+      xtc_read_batch_size = int(CCTBX_XTC2_BATCH_SIZE)
 
     ds = psana.DataSource(exp=params.input.experiment,run=params.input.run_num,
             dir=params.input.xtc_dir, max_events=params.dispatch.max_events,
