@@ -198,6 +198,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         using namespace scitbx::constants;
         complex_type const i(0,1);
         float_type f0 = base_t::m_f0;
+        grad_site = grad_site_type(0,0,0);
 
 
         for (int k=0; k < hr_ht.groups.size(); ++k) {
@@ -469,6 +470,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         using namespace adptbx;
         using namespace scitbx::constants;
         scitbx::math::imaginary_unit_t i;
+        grad_site = grad_site_type(0,0,0);
 
         // Compute S'
         for (int k=0; k < hr_ht.groups.size(); ++k) {
@@ -657,6 +659,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
       {
         using namespace adptbx;
         using namespace scitbx::constants;
+        grad_site = grad_site_type(0,0,0);
 
         /* Compute the real part of S' and its gradients
          We only ever touch the real part of structure_factors and grad_xxx
