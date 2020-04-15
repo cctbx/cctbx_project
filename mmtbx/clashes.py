@@ -35,13 +35,16 @@ class from_pdb(object):
 
   def __init__(self, pdb_str,
       clash_threshold, remove_clash_guard=False,
-      remove_max_reasonable_bond_distance=False):
+      remove_max_reasonable_bond_distance=False,
+      allow_polymer_cross_special_position=False):
     params = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
     if remove_clash_guard:
       params.clash_guard.nonbonded_distance_threshold=None
       params.proceed_with_excessive_length_bonds=True
     if remove_max_reasonable_bond_distance:
       params.max_reasonable_bond_distance=None
+    if allow_polymer_cross_special_position:
+      params.allow_polymer_cross_special_position=True
 
     ppf = mmtbx.monomer_library.pdb_interpretation.process(
       mon_lib_srv              = mmtbx.monomer_library.server.server(),
