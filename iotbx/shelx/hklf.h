@@ -156,7 +156,7 @@ class hklf_reader
         prepare_for_read(line, 40);
         fem::read_from_string(line, "(3i4,2f8.0,i4,f8.0)"),
           h[0], h[1], h[2], datum, sigma, run, frame;
-        if (h.is_zero()) break;
+        if (h.is_zero()) continue;
 
         //correct hkl frame number to match raw file
         frame -= offsets[run-1];

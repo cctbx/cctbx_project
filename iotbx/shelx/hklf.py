@@ -170,12 +170,18 @@ def args_for_polarization_run(file_name, unit_cell):
   # Read .hkl file, sort, and store as flex array
   with open(file_name) as f:
     hl = f.readlines()
-  hkl_lines = flex.std_string(sorted(hl, key=_sortkey))
+  try:
+    hkl_lines = flex.std_string(sorted(hl, key=_sortkey))
+  except ValueError:
+    raise RuntimeError("No extra data allowed in hkl file")
 
   # Read .raw file, sort, and store as flex array
   with open(raw_filename) as f:
     rl = f.readlines()
-  raw_lines = flex.std_string(sorted(rl, key=_sortkey))
+  try:
+    raw_lines = flex.std_string(sorted(rl, key=_sortkey))
+  except ValueError:
+    raise RuntimeError("No extra data allowed in raw file")
 
   # Store orientation matrix as list of elements
   with open(p4p_filename) as p4pfile:
@@ -240,9 +246,6 @@ class reader_with_polarization(iotbx_shelx_ext.hklf_reader):
       miller_set=miller_set,
       data=self.data(),
       sigmas=self.sigmas()))
-    import ipdb
-    ipdb.set_trace()
-    junk = self.indices()
     obs.set_u_incs(self.u_incs())
     obs.set_u_scats(self.u_scats())
     obs.set_v_scats(self.v_scats())
