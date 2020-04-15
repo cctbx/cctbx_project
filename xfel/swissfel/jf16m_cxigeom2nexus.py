@@ -157,6 +157,8 @@ class jf16m_cxigeom2nexus(object):
         if self.params.energy_offset:
           spectra_x += self.params.energy_offset
         beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
+        if (spectra_x == spectra_x[0]).all(): # check if all rows are the same
+          spectra_x = spectra_x[0]
         beam.create_dataset('incident_wavelength_1Dspectrum', spectra_x.shape, data=12398.4187/spectra_x, dtype=spectra_x.dtype)
         beam.create_dataset('incident_wavelength_1Dspectrum_weight', spectra_y.shape, data=spectra_y, dtype=spectra_y.dtype)
         beam['incident_wavelength_1Dspectrum'].attrs['units'] = 'angstrom'
