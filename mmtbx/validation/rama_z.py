@@ -46,7 +46,7 @@ class result(object):
     return "\n".join(strs)
 
 class rama_z(object):
-  def __init__(self, model, log):
+  def __init__(self, models, log):
     db_path = libtbx.env.find_in_repositories(
         relative_path="chem_data/rama_z/top8000_rama_z_dict.pkl",
         test=os.path.isfile)
@@ -68,57 +68,58 @@ class rama_z(object):
     self.n_phi_half = 45
     self.n_psi_half = 45
 
-    if model.get_hierarchy().models_size() > 1:
-      hierarchy = iotbx.pdb.hierarchy.root()
-      m = model.get_hierarchy().models()[0].detached_copy()
-      hierarchy.append_model(m)
-      asc = hierarchy.atom_selection_cache()
-    else:
-      hierarchy = model.get_hierarchy()
-      asc = model.get_atom_selection_cache()
-    self.res_info = []
-    sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
-    ss_params = sec_str_master_phil.fetch().extract()
-    ss_params.secondary_structure.protein.search_method = "from_ca"
-    ss_params.secondary_structure.from_ca_conservative = True
+    for model in models:
+      if model.get_hierarchy().models_size() > 1:
+        hierarchy = iotbx.pdb.hierarchy.root()
+        m = model.get_hierarchy().models()[0].detached_copy()
+        hierarchy.append_model(m)
+        asc = hierarchy.atom_selection_cache()
+      else:
+        hierarchy = model.get_hierarchy()
+        asc = model.get_atom_selection_cache()
+      self.res_info = []
+      sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
+      ss_params = sec_str_master_phil.fetch().extract()
+      ss_params.secondary_structure.protein.search_method = "from_ca"
+      ss_params.secondary_structure.from_ca_conservative = True
 
-    self.ssm = ss_manager(hierarchy,
-        atom_selection_cache=asc,
-        geometry_restraints_manager=None,
-        sec_str_from_pdb_file=None,
-        # params=None,
-        params = ss_params.secondary_structure,
-        was_initialized=False,
-        mon_lib_srv=None,
-        verbose=-1,
-        log=null_out(),
-        # log=sys.stdout,
-        )
+      self.ssm = ss_manager(hierarchy,
+          atom_selection_cache=asc,
+          geometry_restraints_manager=None,
+          sec_str_from_pdb_file=None,
+          # params=None,
+          params = ss_params.secondary_structure,
+          was_initialized=False,
+          mon_lib_srv=None,
+          verbose=-1,
+          log=null_out(),
+          # log=sys.stdout,
+          )
 
-    filtered_ann = self.ssm.actual_sec_str.deep_copy()
-    filtered_ann.remove_short_annotations(
-        helix_min_len=4, sheet_min_len=4, keep_one_stranded_sheets=True)
-    self.helix_sel = asc.selection(filtered_ann.overall_helices_selection())
-    self.sheet_sel = asc.selection(filtered_ann.overall_sheets_selection())
+      filtered_ann = self.ssm.actual_sec_str.deep_copy()
+      filtered_ann.remove_short_annotations(
+          helix_min_len=4, sheet_min_len=4, keep_one_stranded_sheets=True)
+      self.helix_sel = asc.selection(filtered_ann.overall_helices_selection())
+      self.sheet_sel = asc.selection(filtered_ann.overall_sheets_selection())
 
-    used_atoms = set()
-    for three in generate_protein_threes(hierarchy=hierarchy, geometry=None):
-      main_residue = three[1]
-      phi_psi_atoms = three.get_phi_psi_atoms()
-      if phi_psi_atoms is None:
-        continue
-      phi_atoms, psi_atoms = phi_psi_atoms
-      key = [x.i_seq for x in phi_atoms]+[psi_atoms[-1].i_seq]
-      key = "%s" % key
-      if key not in used_atoms:
-        phi, psi = three.get_phi_psi_angles()
-        rkey = three.get_ramalyze_key()
-        resname = main_residue.resname
-        ss_type = self._figure_out_ss(three)
-        self.res_info.append( ["", rkey, resname, ss_type, phi, psi] )
-        self.residue_counts[ss_type] += 1
-        used_atoms.add(key)
-    self.residue_counts["W"] = self.residue_counts["H"] + self.residue_counts["S"] + self.residue_counts["L"]
+      used_atoms = set()
+      for three in generate_protein_threes(hierarchy=hierarchy, geometry=None):
+        main_residue = three[1]
+        phi_psi_atoms = three.get_phi_psi_atoms()
+        if phi_psi_atoms is None:
+          continue
+        phi_atoms, psi_atoms = phi_psi_atoms
+        key = [x.i_seq for x in phi_atoms]+[psi_atoms[-1].i_seq]
+        key = "%s" % key
+        if key not in used_atoms:
+          phi, psi = three.get_phi_psi_angles()
+          rkey = three.get_ramalyze_key()
+          resname = main_residue.resname
+          ss_type = self._figure_out_ss(three)
+          self.res_info.append( ["", rkey, resname, ss_type, phi, psi] )
+          self.residue_counts[ss_type] += 1
+          used_atoms.add(key)
+      self.residue_counts["W"] = self.residue_counts["H"] + self.residue_counts["S"] + self.residue_counts["L"]
 
   def get_residue_counts(self):
     return self.residue_counts

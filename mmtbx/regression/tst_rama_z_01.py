@@ -15,7 +15,7 @@ fname = libtbx.env.find_in_repositories(
 def check_function():
   inp = iotbx.pdb.input(fname)
   model = mmtbx.model.manager(model_input=inp)
-  zs = rama_z(model, log=null_out())
+  zs = rama_z([model], log=null_out())
   z_scores = zs.get_z_scores()
   ss_cont = zs.get_residue_counts()
   # print (z_scores)

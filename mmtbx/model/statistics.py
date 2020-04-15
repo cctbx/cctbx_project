@@ -188,7 +188,7 @@ class geometry(object):
       gui_table   = gui_table)
 
   def rama_z_score(self):
-    return rama_z.rama_z(model = self.model, log = null_out()).get_result()
+    return rama_z.rama_z(models = [self.model], log = null_out()).get_result()
 
   def omega(self):
     result = omegalyze.omegalyze(pdb_hierarchy=self.pdb_hierarchy, quiet=True)
