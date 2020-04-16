@@ -42,6 +42,7 @@ namespace {
     tuple_mapping_fixed_size<cctbx::grid_point<> >();
     tuple_mapping_fixed_size<cctbx::hendrickson_lattman<> >();
     tuple_mapping_fixed_size<cctbx::miller::index<> >();
+    tuple_mapping_fixed_size<cctbx::miller::index<double> >();
   }
 
   void register_cctbx_c_grid_conversions()
