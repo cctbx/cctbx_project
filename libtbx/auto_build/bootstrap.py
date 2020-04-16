@@ -2509,6 +2509,7 @@ class QRBuilder(PhenixBuilder):
                           env = self.get_environment()
                           )
     self.add_test_command('qr.test',
+                          args=['--non_mopac_only'],
                           haltOnFailure=True,
                           env = self.get_environment()
                           )
