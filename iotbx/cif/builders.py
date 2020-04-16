@@ -304,6 +304,8 @@ class crystal_structure_builder(crystal_symmetry_builder):
     scatterers.set_sites(atom_sites_frac)
 
     wvl_str = self.get_cif_item('_diffrn_radiation_wavelength')
+    if not isinstance(wvl_str, str) and wvl_str is not None:
+      wvl_str = wvl_str[0]
     wavelength = float(wvl_str) if (wvl_str and wvl_str!='?') else None
 
     self.structure = xray.structure(crystal_symmetry=self.crystal_symmetry,
