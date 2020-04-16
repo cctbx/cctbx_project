@@ -147,16 +147,32 @@ Inelastic form factors for \n non-refined atoms may be inaccurate.\n''')
       anom_sc_list.append(sc)
 
   ls = xm.least_squares()
-  import IPython
-  IPython.embed()
   steps = lstbx.normal_eqns_solving.levenberg_marquardt_iterations(
     non_linear_ls=ls,
     n_max_iterations=args.max_cycles,
     gradient_threshold=args.stop_deriv,
     step_threshold=args.stop_shift)
+  print(ls.r1_factor())
 
+  import ipdb
+  ipdb.set_trace()
   # Prepare output
   result = ''
+
+  from cctbx import adptbx
+  uc = xm.xray_structure.unit_cell()
+  for sc in anom_sc_list:
+    fp_cif = adptbx.u_star_as_u_cif(uc, sc.fp_star)
+    fp_s = [x * -.01 for x in fp_cif]
+    print("{} 3 {:.5f} {:.5f} {:.5f} 11 {:.5f} {:.5f} {:.5f} =\n {:.5f} {:.5f} {:.5f} ".format(
+      sc.label, sc.site[0], sc.site[1], sc.site[2], fp_s[0], fp_s[1], fp_s[2], fp_s[5], fp_s[4], fp_s[3]))
+
+  for sc in anom_sc_list:
+    fdp_cif = adptbx.u_star_as_u_cif(uc, sc.fdp_star)
+    fdp_s = [x * .02 for x in fdp_cif]
+    print("{} 3 {:.5f} {:.5f} {:.5f} 11 {:.5f} {:.5f} {:.5f} =\n {:.5f} {:.5f} {:.5f} ".format(
+      sc.label, sc.site[0], sc.site[1], sc.site[2], fdp_s[0], fdp_s[1], fdp_s[2], fdp_s[5], fdp_s[4], fdp_s[3]))
+
 
   if args.table:
     if energy: result += "{:.1f} ".format(energy)
