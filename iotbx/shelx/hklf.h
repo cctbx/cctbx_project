@@ -190,7 +190,7 @@ class hklf_reader
           //std::cout<<"\n"<<line<<"\n\n"<<line_r<<std::endl;
           fem::read_from_string(line_r, raw_fstring.c_str()),
             h_r[0], h_r[1], h_r[2],  djunk, djunk, ijunk, cosines_inc[0],
-            cosines_scat[0], cosines_inc[1], cosines_scat[1], cosines_inc[2], 
+            cosines_scat[0], cosines_inc[1], cosines_scat[1], cosines_inc[2],
             cosines_scat[2], ijunk, djunk, djunk, frame_r, djunk, djunk, djunk,
             djunk, djunk, djunk, djunk, angle1_deg, scan_axis, ijunk, ijunk,
             ijunk, djunk, ijunk, djunk,  ijunk, ijunk, djunk, djunk, djunk,

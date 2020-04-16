@@ -205,7 +205,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           if (f_mask.size()) {
             f_calc_function.compute(h, f_mask[i_h], compute_grad);
           }
-          else if (reflections.u_incs().size()) {
+          else if (reflections.has_polarisation()) {
             f_calc_function.compute(h,
                                     reflections.u_inc(i_h),
                                     reflections.u_scat(i_h),

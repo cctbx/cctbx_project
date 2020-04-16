@@ -210,6 +210,7 @@ namespace cctbx { namespace xray {
     scitbx::af::shared<miller::index<FloatType> > u_scats_;
     scitbx::af::shared<miller::index<FloatType> > v_scats_;
     scitbx::af::shared<FloatType> pol_factors_;
+    bool has_polarisation_;
 
     void validate_data() {
       CCTBX_ASSERT(indices_.size()==data_.size());
@@ -298,7 +299,8 @@ namespace cctbx { namespace xray {
       : indices_(indices),
         data_(data),
         sigmas_(sigmas),
-        prime_fraction_(1)
+        prime_fraction_(1),
+        has_polarisation_(false)
     {
       validate_data();
       process_merohedral_components(merohedral_components);
@@ -318,7 +320,8 @@ namespace cctbx { namespace xray {
         u_incs_(u_incs),
         u_scats_(u_scats),
         v_scats_(v_scats),
-        pol_factors_(pol_factors)
+        pol_factors_(pol_factors),
+        has_polarisation_(true)
     {
       validate_data();
     }
@@ -331,7 +334,8 @@ namespace cctbx { namespace xray {
       scitbx::af::shared<int> const& scale_indices,
       scitbx::af::shared<twin_fraction<FloatType>*> const&
         twin_fractions)
-      : twin_fractions_(twin_fractions)
+      : twin_fractions_(twin_fractions),
+        has_polarisation_(false)
     {
       build_indices_twin_components(indices, data, sigmas, scale_indices);
       update_prime_fraction();
@@ -351,7 +355,8 @@ namespace cctbx { namespace xray {
         sigmas_(obs.sigmas_),
         index_components_(obs.index_components_),
         measured_scale_indices_(obs.measured_scale_indices_),
-        twin_fractions_(twin_fractions)
+        twin_fractions_(twin_fractions),
+        has_polarisation_(false)
     {
       CCTBX_ASSERT(twin_fractions.size()==obs.twin_fractions_.size());
       CCTBX_ASSERT(!(twin_fractions.size() != 0 && merohedral_components.size() != 0));
@@ -398,6 +403,7 @@ namespace cctbx { namespace xray {
     miller::index<FloatType> u_scat(int i) const { return u_scats_[i]; }
     miller::index<FloatType> v_scat(int i) const { return v_scats_[i]; }
     FloatType pol_factor(int i) const { return pol_factors_[i]; }
+    bool has_polarisation() const { return has_polarisation_; }
 
     // returns scale of a measured reflection
     FloatType scale(int i) const {
