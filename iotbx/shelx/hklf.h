@@ -105,6 +105,9 @@ class hklf_reader
         scitbx::sym_mat3<double> const& metrical_matrix)
     {
       mat3_t UB_inv = ort_matrix.inverse();
+      double len_a = sqrt(metrical_matrix[0]);
+      double len_b = sqrt(metrical_matrix[1]);
+      double len_c = sqrt(metrical_matrix[2]);
       scitbx::sym_mat3<double> g_star = metrical_matrix.inverse();
       std::size_t n = hkl_lines.size();
       indices_.reserve(n);
@@ -187,7 +190,7 @@ class hklf_reader
           //std::cout<<"\n"<<line<<"\n\n"<<line_r<<std::endl;
           fem::read_from_string(line_r, raw_fstring.c_str()),
             h_r[0], h_r[1], h_r[2],  djunk, djunk, ijunk, cosines_inc[0],
-            cosines_inc[1], cosines_inc[2], cosines_scat[0], cosines_scat[1],
+            cosines_scat[0], cosines_inc[1], cosines_scat[1], cosines_inc[2], 
             cosines_scat[2], ijunk, djunk, djunk, frame_r, djunk, djunk, djunk,
             djunk, djunk, djunk, djunk, angle1_deg, scan_axis, ijunk, ijunk,
             ijunk, djunk, ijunk, djunk,  ijunk, ijunk, djunk, djunk, djunk,
@@ -218,11 +221,21 @@ class hklf_reader
         omega = scitbx::deg_as_rad(omega_deg);
         phi = scitbx::deg_as_rad(phi_deg);
 
+        //compute the hkl indices of the inc and scattered beams
+        vec3_t h_inc(
+            cosines_inc[0] * len_a,
+            cosines_inc[1] * len_b,
+            cosines_inc[2] * len_c);
+        vec3_t h_scat(
+            cosines_scat[0] * len_a,
+            cosines_scat[1] * len_b,
+            cosines_scat[2] * len_c);
+
         //compute the polarization vectors
-        vec3_t hkl_zaxis = hkl_z(UB_inv, phi, chi);
-        vec3_t u_inc = make_perpendicular(hkl_zaxis, cosines_inc, g_star);
-        vec3_t u_scat = plane_projection(u_inc, cosines_scat, g_star);
-        vec3_t v_scat = make_perpendicular(u_scat, cosines_scat, g_star);
+        vec3_t hkl_zaxis = hkl_z(UB_inv, phi, chi, omega);
+        vec3_t u_inc = make_perpendicular(hkl_zaxis, h_inc, g_star);
+        vec3_t u_scat = plane_projection(u_inc, h_scat, g_star);
+        vec3_t v_scat = make_perpendicular(u_scat, h_scat, g_star);
         //std::cout<<"u_inc:"<<' '<<u_inc[0]<<' '<<u_inc[1]<<' '<<u_inc[2]<<std::endl;
         //std::cout<<"u_scat:"<<' '<<u_scat[0]<<' '<<u_scat[1]<<' '<<u_scat[2]<<std::endl;
         //std::cout<<"v_scat:"<<' '<<v_scat[0]<<' '<<v_scat[1]<<' '<<v_scat[2]<<std::endl;
@@ -286,17 +299,45 @@ class hklf_reader
 
 
     vec3_t hkl_z(
-        mat3_t const &UB_inv, double const &phi, double const &chi) {
+        mat3_t const &UB_inv,
+        double const &phi,
+        double const &chi,
+        double const &om)
+    {
       //Compute the hkl indices of the laboratory z axis. Ort_matrix is similar
       //to the Busing/Levy UB-matrix but conforms to the Bruker convention in
       //which chi is a rotation around the Y axis instead of X.
+      const mat3_t r_phi_inv = mat3_t(
+          cos(phi),     sin(phi),     0,
+          -1*sin(phi),  cos(phi),     0,
+          0,            0,            1
+          ).inverse();
 
+      const mat3_t r_chi_inv = mat3_t(
+          1,            0,            0,
+          0,            cos(chi),     sin(chi),
+          0,            -1*sin(chi),  cos(chi)
+          ).inverse();
+
+      const mat3_t r_omega_inv = mat3_t(
+          cos(om),      -1*sin(om),   0,
+          sin(om),      cos(om),      0,
+          0,            0,            1
+          ).inverse();
+
+      vec3_t v_l(0, 1, 0);
+
+      vec3_t v_h = UB_inv * r_phi_inv * r_chi_inv * r_omega_inv * v_l;
+
+      /*
       vec3_t v = vec3_t(
           sin(phi) * sin(chi),
           -1 * cos(phi) * sin(chi),
           cos(chi));
       vec3_t h_z = UB_inv * v;
-      return h_z.normalize();
+      */
+
+      return v_h.normalize();
     }
 
 
