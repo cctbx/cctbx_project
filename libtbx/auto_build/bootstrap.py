@@ -2509,7 +2509,7 @@ class QRBuilder(PhenixBuilder):
                           env = self.get_environment()
                           )
     self.add_test_command('qr.test',
-                          args=['--non_mopac_only'],
+                          # args=['--non_mopac_only'],
                           haltOnFailure=True,
                           env = self.get_environment()
                           )
@@ -2527,7 +2527,7 @@ class QRBuilder(PhenixBuilder):
       "MOPAC_COMMAND"  : "/home/builder/software/mopac/mopac.csh",
     }
     for env, dirs in mopac_envs.items():
-      environment[env] = os.path.join(*dirs)
+      environment[env] = dirs
     return environment
 
 class PhenixTNGBuilder(PhenixBuilder):
