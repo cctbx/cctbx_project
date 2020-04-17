@@ -191,7 +191,7 @@ def fread_vector(stream):
   """
 
   return (numpy.array(
-      [float(d) for d in re.split("\s+", stream.readline()) if len(d) > 0]))
+      [float(d) for d in re.split(r"\s+", stream.readline()) if len(d) > 0]))
 
 
 def fread_matrix(stream):
