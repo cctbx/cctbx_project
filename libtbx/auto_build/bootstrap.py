@@ -1898,6 +1898,7 @@ class CCIBuilder(Builder):
     'cbflib',
     'dxtbx',
     'scitbx',
+    'crys3d',
     'libtbx',
     'iotbx',
     'mmtbx',
