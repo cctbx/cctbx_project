@@ -87,19 +87,19 @@ def address_split(address, env=None):
 
   # pyana
   m = re.match(
-    '^(?P<det>\S+)\-(?P<det_id>\d+)\|(?P<dev>\S+)\-(?P<dev_id>\d+)$', address)
+    r"^(?P<det>\S+)\-(?P<det_id>\d+)\|(?P<dev>\S+)\-(?P<dev_id>\d+)$", address)
   if m is not None:
     return (m.group('det'), m.group('det_id'), m.group('dev'), m.group('dev_id'))
 
   # psana
   m = re.match(
-    '^(?P<det>\S+)\.(?P<det_id>\d+)\:(?P<dev>\S+)\.(?P<dev_id>\d+)$', address)
+    r"^(?P<det>\S+)\.(?P<det_id>\d+)\:(?P<dev>\S+)\.(?P<dev_id>\d+)$", address)
   if m is not None:
     return (m.group('det'), m.group('det_id'), m.group('dev'), m.group('dev_id'))
 
   # psana DetInfo string
   m = re.match(
-    '^DetInfo\((?P<det>\S+)\.(?P<det_id>\d+)\:(?P<dev>\S+)\.(?P<dev_id>\d+)\)$', address)
+    r"^DetInfo\((?P<det>\S+)\.(?P<det_id>\d+)\:(?P<dev>\S+)\.(?P<dev_id>\d+)\)$", address)
   if m is not None:
     return (m.group('det'), m.group('det_id'), m.group('dev'), m.group('dev_id'))
 
