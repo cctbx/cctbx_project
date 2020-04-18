@@ -791,8 +791,12 @@ int main() {
     else:
       env_etc.ccflags_base = ["-fPIC", "-fno-strict-aliasing"] + \
         gcc_common_warn_options() + \
-        ["-DNDEBUG", "-O3", "-ffast-math", "-funroll-loops"] + \
+        ["-DNDEBUG", "-O3", "-funroll-loops"] + \
         ["-DBOOST_ALL_NO_LIB"]
+      if env_etc.compiler != 'darwin_conda':
+        env_etc.ccflags_base.append("-ffast-math")
+        # -ffast-math changes scitbx/lbfgs/tst_lbfgs_fem.py behavior in Xcode 11.4
+        # minimization steps may be different than fortran standard
       env_etc.cxxflags_base = []
       env_etc.shlinkflags = ['-shared']
       env_etc.shlinkflags_bpl = env_etc.shlinkflags
