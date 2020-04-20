@@ -68,6 +68,10 @@ class rama_z(object):
     self.n_phi_half = 45
     self.n_psi_half = 45
 
+    # this is needed to disable e.g. selection functionality when
+    # multiple models are present
+    self.n_models = len(models)
+    self.res_info = []
     for model in models:
       if model.get_hierarchy().models_size() > 1:
         hierarchy = iotbx.pdb.hierarchy.root()
@@ -77,13 +81,12 @@ class rama_z(object):
       else:
         hierarchy = model.get_hierarchy()
         asc = model.get_atom_selection_cache()
-      self.res_info = []
       sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
       ss_params = sec_str_master_phil.fetch().extract()
       ss_params.secondary_structure.protein.search_method = "from_ca"
       ss_params.secondary_structure.from_ca_conservative = True
 
-      self.ssm = ss_manager(hierarchy,
+      ssm = ss_manager(hierarchy,
           atom_selection_cache=asc,
           geometry_restraints_manager=None,
           sec_str_from_pdb_file=None,
@@ -96,7 +99,7 @@ class rama_z(object):
           # log=sys.stdout,
           )
 
-      filtered_ann = self.ssm.actual_sec_str.deep_copy()
+      filtered_ann = ssm.actual_sec_str.deep_copy()
       filtered_ann.remove_short_annotations(
           helix_min_len=4, sheet_min_len=4, keep_one_stranded_sheets=True)
       self.helix_sel = asc.selection(filtered_ann.overall_helices_selection())
@@ -119,7 +122,7 @@ class rama_z(object):
           self.res_info.append( ["", rkey, resname, ss_type, phi, psi] )
           self.residue_counts[ss_type] += 1
           used_atoms.add(key)
-      self.residue_counts["W"] = self.residue_counts["H"] + self.residue_counts["S"] + self.residue_counts["L"]
+    self.residue_counts["W"] = self.residue_counts["H"] + self.residue_counts["S"] + self.residue_counts["L"]
 
   def get_residue_counts(self):
     return self.residue_counts
@@ -169,6 +172,8 @@ class rama_z(object):
     return np.std(scores) * ((len(points)-1) ** 0.5)
 
   def get_ss_selections(self):
+    if self.n_models > 1:
+      raise NotImplementedError
     self.loop_sel = flex.bool([True]*self.helix_sel.size())
     self.loop_sel &= ~self.helix_sel
     self.loop_sel &= ~self.sheet_sel
