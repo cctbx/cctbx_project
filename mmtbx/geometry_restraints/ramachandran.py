@@ -77,6 +77,8 @@ master_phil = iotbx.phil.parse("""\
 ramachandran_plot_restraints {
   enabled = False
     .type = bool
+    .short_caption = Ramachandran restraints
+
   favored = *oldfield emsley emsley8k
     .type = choice(multi=False)
 
@@ -96,7 +98,11 @@ ramachandran_plot_restraints {
     .type=bool
     .expert_level = 3
     .help = Backdoor to disable temporary dirty hack to use both
-  oldfield {
+  oldfield
+    .short_caption = Oldfield settings
+    .expert_level = 2
+    .style = box
+  {
     weight = 0.
       .type = float
       .expert_level = 2
@@ -126,27 +132,34 @@ ramachandran_plot_restraints {
       .type = float
       .expert_level = 2
   }
-  emsley {
+  emsley
+    .short_caption = Emsley settings
+    .style = box
+  {
     weight = 1.0
       .type = float
-      .short_caption = Ramachandran plot restraints weight
+      .short_caption = Ramachandran plot restraints weight (emsley)
       .expert_level = 1
     scale_allowed = 1.0
       .type = float
       .short_caption = Rescale allowed region pseudo-energy by
   }
-  emsley8k {
+  emsley8k
+    .short_caption = Emsley8k settings
+    .expert_level = 1
+    .style = box
+  {
     weight_favored = 5.0
       .type = float
-      .short_caption = Ramachandran plot restraints weight
+      .short_caption = Ramachandran plot restraints weight (emsley8k, favored)
       .expert_level = 1
     weight_allowed = 10.0
       .type = float
-      .short_caption = Ramachandran plot restraints weight
+      .short_caption = Ramachandran plot restraints weight (emsley8k, allowed)
       .expert_level = 1
     weight_outlier = 10.0
       .type = float
-      .short_caption = Ramachandran plot restraints weight
+      .short_caption = Ramachandran plot restraints weight (emsley8k, outlier)
       .expert_level = 1
   }
 }
