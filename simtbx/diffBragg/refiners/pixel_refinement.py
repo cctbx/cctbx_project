@@ -32,6 +32,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     def __init__(self):
 
         self.rescale_params = False
+        self.ignore_line_search_failed_step_at_lower_bound=False
 
         self.rotX_sigma = 0.003
         self.rotY_sigma = 0.003
@@ -46,12 +47,12 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.fcell_sigma_scale = 0.005
         self.fcell_resolution_bin_Id = None
         self.big_dump = False
-        self.ucell_inits = [79.1, 38.2]  # TODO see below comment
-        self.m_init = 10  # TODO make setting these more of a requirement
-        self.spot_scale_init = {0: 1} # TODO see below comment
+        #self.ucell_inits = {0: [79.1, 38.2]} # deprecated, just uses UCELL MANAGERS now 
+        self.m_init = 10  # TODO make setting these properties a requirement
+        self.spot_scale_init = {0: 1} # TODO make setting these properties a requirement
+        self.print_all_corr=True
 
         self.pause_after_iteration=0.001
-
 
         self.compute_image_model_correlation = False
         self.spot_print_stride = 1000
@@ -378,7 +379,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     @property
     def _handler(self):
         return scitbx.lbfgs.exception_handling_parameters(
-            ignore_line_search_failed_step_at_lower_bound=False)
+            ignore_line_search_failed_step_at_lower_bound=\
+                self.ignore_line_search_failed_step_at_lower_bound)
 
     def _setup(self):
         """
