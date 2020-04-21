@@ -21,6 +21,9 @@ import mmtbx.refinement.real_space.fit_residues
 from six.moves import zip
 from six.moves import range
 
+from libtbx import adopt_init_args
+from libtbx import easy_mp
+
 alpha_helix_str = """
 ATOM      1  N   GLY A   1      -5.606  -2.251 -12.878  1.00  0.00           N
 ATOM      2  CA  GLY A   1      -5.850  -1.194 -13.852  1.00  0.00           C
@@ -119,6 +122,8 @@ ss_idealization
   n_macro = Auto
     .type = int
   n_iter=300
+    .type = int
+  nproc = 1
     .type = int
 }
 """
@@ -458,6 +463,59 @@ def ss_element_is_good(ss_stats_obj, hsh_tuple):
     return False
   return True
 
+class idealize_helix(object):
+  def __init__(self, ss_stats, selection_cache, master_bool_sel,
+      n_atoms_in_real_h, model, skip_good_ss_elements):
+    adopt_init_args(self, locals())
+
+  def __call__(self, h):
+    if self.skip_good_ss_elements and ss_element_is_good(self.ss_stats, ([h],[])):
+      return 'Skipped'
+    selstring = h.as_atom_selections()
+    sel = self.selection_cache.selection(selstring[0])
+    isel = sel.iselection()
+    if (self.master_bool_sel & sel).iselection().size() == 0:
+      return 'Not master'
+    all_bsel = flex.bool(self.n_atoms_in_real_h, False)
+    all_bsel.set_selected(isel, True)
+    sel_h = self.model.get_hierarchy().select(all_bsel, copy_atoms=True)
+    ideal_h = get_helix(helix_class=h.helix_class,
+                        pdb_hierarchy_template=sel_h,
+                        rotamer_manager=self.model.get_rotamer_manager())
+    return ideal_h, all_bsel
+
+class idealize_sheet(object):
+  def __init__(self, ss_stats, selection_cache, master_bool_sel,
+      n_atoms_in_real_h, model, skip_good_ss_elements):
+    adopt_init_args(self, locals())
+
+  def __call__(self, sh):
+    result = []
+    if self.skip_good_ss_elements and ss_element_is_good(self.ss_stats, ([],[sh])):
+      return 'Skipped'
+    else:
+      full_sh_selection = flex.bool(self.n_atoms_in_real_h, False)
+      for st in sh.strands:
+        selstring = st.as_atom_selections()
+        isel = self.selection_cache.iselection(selstring)
+        full_sh_selection.set_selected(isel, True)
+      if (self.master_bool_sel & full_sh_selection).iselection().size() == 0:
+        return 'Not master'
+      for st in sh.strands:
+        selstring = st.as_atom_selections()
+        isel = self.selection_cache.iselection(selstring)
+        all_bsel = flex.bool(self.n_atoms_in_real_h, False)
+        all_bsel.set_selected(isel, True)
+        sel_h = self.model.get_hierarchy().select(all_bsel, copy_atoms=True)
+        ideal_h = secondary_structure_from_sequence(
+            pdb_str=beta_pdb_str,
+            sequence=None,
+            pdb_hierarchy_template=sel_h,
+            rotamer_manager=self.model.get_rotamer_manager(),
+            )
+        result.append((ideal_h, all_bsel))
+    return result
+
 def substitute_ss(
                     model, # changed in place
                     params = None,
@@ -535,7 +593,6 @@ def substitute_ss(
 
   t2 = time()
   # Actually idelizing SS elements
-  fixed_ss_selection = flex.bool(n_atoms_in_real_h, False)
   log.write("Replacing ss-elements with ideal ones:\n")
   log.flush()
   ss_stats = gather_ss_stats(pdb_h=model.get_hierarchy())
@@ -546,63 +603,28 @@ def substitute_ss(
   elif isinstance(master_bool_sel, flex.size_t):
     master_bool_sel = flex.bool(model.get_number_of_atoms(), master_bool_sel)
   assert master_bool_sel.size() == model.get_number_of_atoms()
-  for h in ann.helices:
-    log.write("  %s\n" % h.as_pdb_str())
-    log.flush()
-    if processed_params.skip_good_ss_elements and ss_element_is_good(ss_stats, ([h],[])):
-      log.write("    skipping, good element.\n")
-    else:
-      selstring = h.as_atom_selections()
-      sel = selection_cache.selection(selstring[0])
-      isel = sel.iselection()
-      if (master_bool_sel & sel).iselection().size() == 0:
-        log.write("    skipping, not in NCS master.\n")
-        continue
+
+  ih = idealize_helix(ss_stats, selection_cache, master_bool_sel, n_atoms_in_real_h, model, processed_params.skip_good_ss_elements)
+  h_results = easy_mp.pool_map(
+      processes = processed_params.nproc,
+      fixed_func=ih,
+      args=ann.helices)
+  for res in h_results:
+    if not isinstance(res, str):
+      n_idealized_elements +=1
+      set_xyz_carefully(dest_h=edited_h.select(res[1]), source_h=res[0])
+
+  ish = idealize_sheet(ss_stats, selection_cache, master_bool_sel, n_atoms_in_real_h, model, processed_params.skip_good_ss_elements)
+  sh_results = easy_mp.pool_map(
+      processes = processed_params.nproc,
+      fixed_func=ish,
+      args=ann.sheets)
+  for res in sh_results:
+    if not isinstance(res, str):
       n_idealized_elements += 1
-      log.write("    substitute with idealized one.\n")
-      fixed_ss_selection.set_selected(isel, True)
-      all_bsel = flex.bool(n_atoms_in_real_h, False)
-      all_bsel.set_selected(isel, True)
-      sel_h = model.get_hierarchy().select(all_bsel, copy_atoms=True)
-      ideal_h = get_helix(helix_class=h.helix_class,
-                          pdb_hierarchy_template=sel_h,
-                          rotamer_manager=model.get_rotamer_manager())
-      # edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
-      set_xyz_carefully(dest_h=edited_h.select(all_bsel), source_h=ideal_h)
-      # set_xyz_smart(dest_h=edited_h.select(all_bsel), source_h=ideal_h) # does not work here
-  for sh in ann.sheets:
-    s = "  %s\n" % sh.as_pdb_str()
-    ss = s.replace("\n", "\n  ")
-    log.write(ss[:-2])
-    log.flush()
-    if processed_params.skip_good_ss_elements and ss_element_is_good(ss_stats, ([],[sh])):
-      log.write("    skipping, good element.\n")
-    else:
-      full_sh_selection = flex.bool(n_atoms_in_real_h, False)
-      for st in sh.strands:
-        selstring = st.as_atom_selections()
-        isel = selection_cache.iselection(selstring)
-        full_sh_selection.set_selected(isel, True)
-      if (master_bool_sel & full_sh_selection).iselection().size() == 0:
-        log.write("    skipping, not in NCS master.\n")
-        continue
-      n_idealized_elements += 1
-      log.write("    substitute with idealized one.\n")
-      for st in sh.strands:
-        selstring = st.as_atom_selections()
-        isel = selection_cache.iselection(selstring)
-        all_bsel = flex.bool(n_atoms_in_real_h, False)
-        all_bsel.set_selected(isel, True)
-        fixed_ss_selection.set_selected(isel, True)
-        sel_h = model.get_hierarchy().select(all_bsel, copy_atoms=True)
-        ideal_h = secondary_structure_from_sequence(
-            pdb_str=beta_pdb_str,
-            sequence=None,
-            pdb_hierarchy_template=sel_h,
-            rotamer_manager=model.get_rotamer_manager(),
-            )
-        set_xyz_carefully(edited_h.select(all_bsel), ideal_h)
-        # edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
+      for (ideal_h, sel) in res:
+        set_xyz_carefully(edited_h.select(sel), ideal_h)
+
   if n_idealized_elements == 0:
     log.write("Nothing was idealized.\n")
     # Don't do geometry minimization and stuff if nothing was changed.
@@ -655,6 +677,15 @@ def substitute_ss(
       ss_for_tors_selection.set_selected(isel, True)
       nonss_for_tors_selection.set_selected(isel, False)
   t5 = time()
+  # print("N idealized elements: %d" % n_idealized_elements, file=log)
+  # print("Initial checking, init   : %.4f" % (t1-t0), file=log)
+  # print("Checking SS              : %.4f" % (t2-t1), file=log)
+  # print("Changing SS              : %.4f" % (t3-t2), file=log)
+  # print("Initializing selections  : %.4f" % (t4-t3), file=log)
+  # print("Looping for selections   : %.4f" % (t5-t4), file=log)
+  # with open('idealized.pdb', 'w') as f:
+  #   f.write(model.model_as_pdb())
+  # return
   isel = selection_cache.iselection(
       "not name ca and not name n and not name o and not name c")
   other_selection.set_selected(isel, False)
