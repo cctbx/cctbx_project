@@ -32,10 +32,19 @@ if rank == 0:
     from numpy import exp as np_exp
     from numpy import load as np_load
     from numpy import all as np_all
+    from numpy import abs as ABS
+    from numpy import std as STD
+    from numpy import save as SAVE
+    from numpy import savez as SAVEZ
     from numpy.linalg import norm
+    from numpy import ones_like as ONES_LIKE
+    from numpy import array as ARRAY
+    from numpy import pi as PI
+    
     from simtbx.diffBragg.refiners import BreakToUseCurvatures
     from scitbx.array_family import flex
     from cctbx.array_family import flex as cctbx_flex
+    from numpy import nan as NAN
     flex_miller_index = cctbx_flex.miller_index
 
     flex_double = flex.double
@@ -48,12 +57,14 @@ if rank == 0:
 
 else:
     mean = unique = np_log = np_exp = np_all = norm = median = std = None
+    NAN = ARRAY = SAVE = SAVEZ = ONES_LIKE = STD = ABS = PI= None
     tabulate = None
     flex_miller_index = None
     minimize = None
     np_load = None
     linregress = None
     pearsonr = None
+    ARRAY = None
     Counter = None
     # stdout_flush = None
     BreakToUseCurvatures = None
@@ -62,6 +73,13 @@ else:
     PixelRefinement = None
 
 if has_mpi:
+    ARRAY =comm.bcast(ARRAY) 
+    PI =comm.bcast(PI) 
+    SAVE = comm.bcast(SAVE) 
+    SAVEZ = comm.bcast(SAVEZ) 
+    ONES_LIKE = comm.bcast(ONES_LIKE) 
+    STD = comm.bcast(STD) 
+    ABS = comm.bcast(ABS) 
     mean = comm.bcast(mean, root=0)
     Counter = comm.bcast(Counter, root=0)
     linregress = comm.bcast(linregress, root=0)
@@ -76,12 +94,14 @@ if has_mpi:
     np_exp = comm.bcast(np_exp, root=0)
     minimize = comm.bcast(minimize, root=0)
     norm = comm.bcast(norm, root=0)
+    ARRAY = comm.bcast(ARRAY, root=0)
     np_all = comm.bcast(np_all, root=0)
     # stdout_flush = comm.bcast(stdout_flush)
     BreakToUseCurvatures = comm.bcast(BreakToUseCurvatures)
     flex_double = comm.bcast(flex_double)
     col = comm.bcast(col)
     PixelRefinement = comm.bcast(PixelRefinement)
+    NAN = comm.bcast(NAN, root=0)
 
 if rank == 0:
     import pylab as plt
@@ -444,7 +464,7 @@ class FatRefiner(PixelRefinement):
                 if self.rescale_params:
                     self.x[self.originZ_xpos[i_shot]] = 1
                 else:
-                    self.x[self.originZ_xpos[i_shot]] = self.shot_originZ_init[i_shot]
+                    self.x[self.originZ_xpos[i_shot]] =self.S.detector[0].get_origin()[2]  #TODO fixme local_origin vs origin
 
             self.spot_scale_xpos[i_shot] = _local_pos
             _local_pos += 1
@@ -499,7 +519,8 @@ class FatRefiner(PixelRefinement):
                 if self.rescale_params:
                     self.x[self.originZ_xpos[0]] = 1  #self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
                 else:
-                    self.x[self.originZ_xpos[0]] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
+                    self.x[self.originZ_xpos[0]] = self.S.detector[0].get_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
+                    #self.x[self.originZ_xpos[0]] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
 
             print("----loading fcell data")
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index
@@ -543,7 +564,7 @@ class FatRefiner(PixelRefinement):
                     fsel_data = f_selection.data().as_numpy_array()
                     if self.log_fcells:
                         fsel_data = np_log(fsel_data)
-                    sigma = np.std(f_selection.data())
+                    sigma = STD(f_selection.data())
                     sigmas.append(sigma) #sigma_for_res_id[i_bin] = sigma
                 #min_sigma = min(self.sigma_for_res_id.values())
                 #max_sigma = max(self.sigma_for_res_id.values())
@@ -567,12 +588,21 @@ class FatRefiner(PixelRefinement):
 
             if self.output_dir is not None:
                 #np.save(os.path.join(self.output_dir, "f_truth"), self.f_truth)  #FIXME by adding in the correct truth from Fref
-                np.save(os.path.join(self.output_dir, "f_asu_map"), self.asu_from_idx)
+                SAVE(os.path.join(self.output_dir, "f_asu_map"), self.asu_from_idx)
 
             # set gain TODO: implement gain dependent statistical model ? Per panel or per gain mode dependent ?
             self.x[self.gain_xpos] = self._init_gain  # gain factor
 
         # reduce then broadcast self.x
+        if not rank==0:
+            self.sigma_for_res_id = None 
+            self.res_group_id_from_fcell_index = None
+            self.fcell_init = None
+        if self.rescale_params:
+            self.fcell_init = comm.bcast(self.fcell_init)
+            self.sigma_for_res_id = comm.bcast(self.sigma_for_res_id)
+            self.res_group_id_from_fcell_index = comm.bcast(self.res_group_id_from_fcell_index)
+
         if rank == 0:
             print("--3 combining parameters across ranks")
         self.x = self._mpi_reduce_broadcast(self.x)
@@ -650,6 +680,7 @@ class FatRefiner(PixelRefinement):
         self.param_sels = itertools.cycle(param_sels)
 
     def _make_parameter_type_selection_arrays(self):  # experimental , not really used
+        from cctbx.array_family import flex
         self.umatrix_sel = flex.bool(len(self.x), True)
         self.bmatrix_sel = flex.bool(len(self.x), True)
         self.Fcell_sel = flex.bool(len(self.x), True)
@@ -702,7 +733,8 @@ class FatRefiner(PixelRefinement):
         for i in range(self.n_ucell_param):
             if self.rescale_params:
                 sig = self.ucell_sigmas[i]
-                init = self.ucell_inits[i]  # NOTE all shots have same initial value
+                init = self.UCELL_MAN[i_shot].variables[i]
+                #init = self.ucell_inits[i]  # NOTE all shots have same initial value
                 p = sig*(self.x[self.ucell_xstart[i_shot]+i] - 1) + init
             else:
                 p = self.x[self.ucell_xstart[i_shot]+i]
@@ -926,7 +958,7 @@ class FatRefiner(PixelRefinement):
         yr = self.YREL[self._i_shot][i_spot]
         self.a, self.b, self.c = self._get_bg_vals(self._i_shot, i_spot)
         if self.bg_offset_only:
-            self.tilt_plane = np.ones_like(xr)*self.c
+            self.tilt_plane = ONES_LIKE(xr)*self.c
         else:
             self.tilt_plane = xr * self.a + yr * self.b + self.c
         if self.OMEGA_KAHN is not None:
@@ -953,6 +985,8 @@ class FatRefiner(PixelRefinement):
         # TODO: select hierarchy level at this point
         # NOTE: what does fast-axis and slow-axis mean for the different hierarchy levels?
         node = det[self._panel_id]
+        #from IPython import embed
+        #embed()
         #orig = node.get_local_origin()
         #new_originZ = self._get_originZ_val(self._i_shot)
         #new_local_origin = orig[0], orig[1], new_originZ
@@ -1114,7 +1148,7 @@ class FatRefiner(PixelRefinement):
                     if self.compute_image_model_correlation:
                         _overlay_corr, _ = pearsonr(self.Imeas.ravel(), self.model_Lambda.ravel())
                     else:
-                        _overlay_corr = np.nan
+                        _overlay_corr = NAN 
                     self.image_corr[self._i_shot] += _overlay_corr
 
                     if self.poisson_only:
@@ -1531,6 +1565,7 @@ class FatRefiner(PixelRefinement):
 
     def _print_image_correlation_analysis(self):
         all_corr_str = ["%.2f" % ic for ic in self.all_image_corr]
+        #if self.print_all_corr:
         print("Correlation stats:")
         print(", ".join(all_corr_str))
         print("---------------")
@@ -1573,10 +1608,10 @@ class FatRefiner(PixelRefinement):
         outf = os.path.join(self.output_dir, "_fcell_trial%d_iter%d" % (self.trial_id, self.iterations))
         if self.rescale_params:
             fvals = [self._get_fcell_val(i_fcell) for i_fcell in range(self.n_global_fcell)]
-            fvals = np.array(fvals)
+            fvals = ARRAY(fvals)
         else:
             fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
-        np.savez(outf, fvals=fvals, x=self.x.as_numpy_array())
+        SAVEZ(outf, fvals=fvals, x=self.x.as_numpy_array())
 
     def _show_plots(self, i_spot, n_spots):
         if rank == 0 and self.plot_images and self.iterations % self.plot_stride == 0 and self._i_shot == self.index_of_displayed_image:
@@ -1768,8 +1803,8 @@ class FatRefiner(PixelRefinement):
         scale_stats = ["%s=%.4f" % name_stat for name_stat in zip(scale_stat_names, stats)]
         scale_stats_string = "SCALE FACTOR STATS: " + ", ".join(scale_stats)
         if self.scale_vals_truths is not None:
-            scale_resid = [np.abs(s-stru) for s, stru in zip(_sv, self.scale_vals_truths)]
-            scale_stats_string += ", truth_resid=%.4f" % np.median(scale_resid)
+            scale_resid = [ABS(s-stru) for s, stru in zip(_sv, self.scale_vals_truths)]
+            scale_stats_string += ", truth_resid=%.4f" % median(scale_resid)
 
         # TODO : use a median for a vals if refining Ncells per shot or unit cell per shot
         scale_stats_string += ", Ncells=%.3f" % self.ncells_vals[0]
@@ -1779,7 +1814,7 @@ class FatRefiner(PixelRefinement):
             param_val = median(ucparam_lst)
             uc_string += "%s=%.3f, " % (ucparam_names[i_ucparam], param_val)
         scale_stats_string += uc_string
-        scale_stats_string += "originZ=%f, " % np.median(self.origZ_vals)
+        scale_stats_string += "originZ=%f, " % median(self.origZ_vals)
 
         Xnorm = norm(self.x)
         R1 = -1
@@ -1800,7 +1835,7 @@ class FatRefiner(PixelRefinement):
                 self.Fobs.correlation(self.Fref_aligned, use_binning=True).show()
 
         print(
-            "%s\n\t%s|G|=%f, eps*|X|=%f,%s R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n"
+            "%s\n\t%s|G|=%2.7g, eps*|X|=%2.7g,%s R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n"
             % (scale_stats_string, Bcolors.OKBLUE, self.gnorm, Xnorm * self.trad_conv_eps, Bcolors.ENDC, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
                ", ".join(map(str, self.neg_curv_shots))))
         #print("<><><><><><><><> TOP GUN <><><><><><><><>")
@@ -1888,11 +1923,11 @@ class FatRefiner(PixelRefinement):
                 a = self.x[self.ucell_xstart[0] + i]
 
             if i == 3:
-                a = a * 180 / np.pi
+                a = a * 180 /PI 
 
             s += "%.4f " % a
             A.append(a)
-            err.append(np.abs(self.gt_ucell[i] - a))
+            err.append(ABS(self.gt_ucell[i] - a))
 
         mn_err = sum(err) / self.n_ucell_param
 
