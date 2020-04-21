@@ -62,7 +62,7 @@ DEPENDENCIES_BASE = [
 ]
 OPENSSL_PKG = "openssl-1.0.2s.tar.gz"    # OpenSSL
 PYTHON3_PKG = "Python-3.7.2.tgz"
-PYTHON_PKG = "Python-2.7.17.tgz"
+PYTHON_PKG = "Python-2.7.18.tgz"
 
 # from CCI
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
