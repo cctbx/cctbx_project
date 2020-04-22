@@ -3,7 +3,7 @@ from six.moves import range
 import os
 import h5py
 import numpy as np
-from .read_geom import read_geom
+from read_geom import read_geom
 from libtbx.phil import parse
 from libtbx.utils import Sorry
 import six
@@ -63,7 +63,7 @@ class agipd_cxigeom2nexus(object):
 
   def _create_scalar(self, handle,path,dtype,value):
     dataset = handle.create_dataset(path, (),dtype=dtype)
-    dataset[()] = value
+    dataset[()] = value.encode('utf8')
 
   def create_vector(self,handle, name, value, **attributes):
     handle.create_dataset(name, (1,), data = [value], dtype='f')
@@ -109,7 +109,7 @@ class agipd_cxigeom2nexus(object):
     agipd = instrument.create_group('AGIPD')
     agipd.attrs['NX_class'] = 'NXdetector_group'
     agipd.create_dataset('group_index', data = list(range(1,3)), dtype='i')
-    data = ['AGIPD','ELE_D0']
+    data = [d.encode('utf8') for d in ['AGIPD','ELE_D0']]
     agipd.create_dataset('group_names',(2,), data=data, dtype='S12')
     agipd.create_dataset('group_parent',(2,), data=[-1,1], dtype='i')
     agipd.create_dataset('group_type', (2,), data=[1,2], dtype='i')
