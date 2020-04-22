@@ -278,6 +278,7 @@ def run():
     print(('-%s- ' % code)*10)
     f=open("tst_symmetric_flips_%s.pdb" % code, "w").write(lines)
     cmd = "phenix.pdb_interpretation tst_symmetric_flips_%s.pdb" % code
+    cmd += ' flip_symmetric_amino_acids=False'
     print(cmd)
     ero = easy_run.fully_buffered(command=cmd)
     out = StringIO()
@@ -315,6 +316,7 @@ def run():
     print(rc)
     hierarchy.write_pdb_file("tst_symmetric_flips_%s.pdb" % code)
     cmd = "phenix.pdb_interpretation tst_symmetric_flips_%s.pdb" % code
+    cmd += ' flip_symmetric_amino_acids=False'
     print(cmd)
     ero = easy_run.fully_buffered(command=cmd)
     out = StringIO()
