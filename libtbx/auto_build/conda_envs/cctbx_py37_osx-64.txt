@@ -90,7 +90,6 @@ https://conda.anaconda.org/cctbx202003/noarch/sphinxcontrib-jsmath-1.0.1-py_0.ta
 https://conda.anaconda.org/cctbx202003/noarch/sphinxcontrib-qthelp-1.0.3-py_0.tar.bz2#d01180388e6d1838c3e1ad029590aa7a
 https://conda.anaconda.org/cctbx202003/noarch/sphinxcontrib-serializinghtml-1.1.4-py_0.tar.bz2#8ea6a8036e28dba8827d35c764709358
 https://conda.anaconda.org/cctbx202003/noarch/wcwidth-0.1.9-pyh9f0ad1d_0.tar.bz2#ef10a99c7570762fa2a69218c171dbc8
-https://conda.anaconda.org/cctbx/noarch/websocket-server-0.4-py_0.tar.bz2#631bc3a5d0a6832f1f67a5f0c219603d
 https://conda.anaconda.org/cctbx202003/noarch/zipp-3.1.0-py_0.tar.bz2#61948e426a3a3ec1fa7c90a44c2585d1
 https://conda.anaconda.org/cctbx202003/osx-64/appnope-0.1.0-py37hc8dfbb8_1001.tar.bz2#350a67575e96e244c886c4a350528eb3
 https://conda.anaconda.org/cctbx202003/noarch/babel-2.8.0-py_0.tar.bz2#2d6d06e3b9884b2446ed7d6e10db9eb3
@@ -128,6 +127,7 @@ https://conda.anaconda.org/cctbx202003/osx-64/pyzmq-19.0.0-py37haec44b1_1.tar.bz
 https://conda.anaconda.org/cctbx202003/osx-64/scons-3.1.2-py37hc8dfbb8_1.tar.bz2#b73c2611c4f96e9d3d96e4bcff8df7bf
 https://conda.anaconda.org/cctbx202003/osx-64/tornado-6.0.4-py37h9bfed18_1.tar.bz2#829661629c8cea96982bbb9ec5431cb5
 https://conda.anaconda.org/cctbx202003/osx-64/traitlets-4.3.3-py37hc8dfbb8_1.tar.bz2#c69cda56fe4f495a80d7c0b113a3dd78
+https://conda.anaconda.org/cctbx202003/osx-64/websockets-8.1-py37h9bfed18_1.tar.bz2#0e2c7337a67c04fcfe2c343ed8cff899
 https://conda.anaconda.org/cctbx202003/osx-64/cryptography-2.8-py37he655712_2.tar.bz2#c642f23d2dc0050a6b5a68fc14b16703
 https://conda.anaconda.org/cctbx202003/noarch/importlib_metadata-1.6.0-0.tar.bz2#5ab13b586ea79f4324a1d4d5de1f04fb
 https://conda.anaconda.org/cctbx202003/osx-64/reportlab-3.5.42-py37h637e792_0.tar.bz2#defdc83e9c5ad8a5c986b0f4518fc912
