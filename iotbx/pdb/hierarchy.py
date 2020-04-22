@@ -682,14 +682,19 @@ class _():
 
 # END_MARKED_FOR_DELETION_OLEG
 
-  def extract_xray_structure(self, crystal_symmetry=None):
+  def extract_xray_structure(self, crystal_symmetry=None,
+     min_distance_sym_equiv=None):
     """
     Generate the equivalent cctbx.xray.structure object.  If the crystal
     symmetry is not provided, this will be placed in a P1 box.  In practice it
     is usually best to keep the original xray structure object around, but this
     method is helpful in corner cases.
     """
-    return self.as_pdb_input(crystal_symmetry).xray_structure_simple()
+    if min_distance_sym_equiv is not None: # use it
+      return self.as_pdb_input(crystal_symmetry).xray_structure_simple(
+        min_distance_sym_equiv=min_distance_sym_equiv)
+    else:  # usual just use whatever is default in xray_structure_simple
+      return self.as_pdb_input(crystal_symmetry).xray_structure_simple()
 
   def adopt_xray_structure(self, xray_structure, assert_identical_id_str=True):
     """
