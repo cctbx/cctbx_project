@@ -68,7 +68,6 @@ https://conda.anaconda.org/cctbx202003/noarch/sphinxcontrib-qthelp-1.0.3-py_0.ta
 https://conda.anaconda.org/cctbx202003/noarch/sphinxcontrib-serializinghtml-1.1.4-py_0.tar.bz2#8ea6a8036e28dba8827d35c764709358
 https://conda.anaconda.org/cctbx202003/win-64/tornado-6.0.4-py36hfa6e2cd_0.tar.bz2#9180750abf2edf8fc251254e4aee4292
 https://conda.anaconda.org/cctbx202003/noarch/wcwidth-0.1.9-pyh9f0ad1d_0.tar.bz2#ef10a99c7570762fa2a69218c171dbc8
-https://conda.anaconda.org/cctbx/noarch/websocket-server-0.4-py_0.tar.bz2#631bc3a5d0a6832f1f67a5f0c219603d
 https://conda.anaconda.org/cctbx202003/win-64/win_inet_pton-1.1.0-py36_0.tar.bz2#c338988594da74f906117479d0dc4ba9
 https://conda.anaconda.org/cctbx202003/win-64/wincertstore-0.2-py36_1003.tar.bz2#ac45a1216c3355ef171b1cda8daea6b9
 https://conda.anaconda.org/cctbx202003/win-64/zeromq-4.3.2-h6538335_2.tar.bz2#2e29011e1b688108cecc854d2ed4f38a
@@ -108,6 +107,7 @@ https://conda.anaconda.org/cctbx202003/win-64/pyzmq-19.0.0-py36ha89082f_1.tar.bz
 https://conda.anaconda.org/cctbx202003/win-64/qt-5.12.5-h7ef1ec2_0.tar.bz2#a16c963e40559de01833f28f826f5a99
 https://conda.anaconda.org/cctbx202003/win-64/scons-3.1.2-py36h9f0ad1d_1.tar.bz2#f06f408332eddbdd0f8f7ad706b4affc
 https://conda.anaconda.org/cctbx202003/win-64/traitlets-4.3.3-py36h9f0ad1d_1.tar.bz2#af03bfeb2e66a71f3830d68a56695bd6
+https://conda.anaconda.org/cctbx202003/win-64/websockets-8.1-py36h68a101e_1.tar.bz2#d49cf4ffe835967aa34cde8900a8cb1e
 https://conda.anaconda.org/cctbx202003/win-64/biopython-1.76-py36hfa6e2cd_0.tar.bz2#60f8fa2096d7bd57f4f8d11750f174d7
 https://conda.anaconda.org/cctbx202003/win-64/clangdev-9.0.1-default_hf44288c_0.tar.bz2#8fef5fa2d0fa91b21f5f7f5b28e981a1
 https://conda.anaconda.org/cctbx202003/win-64/cryptography-2.8-py36hb32ad35_1.tar.bz2#3d937bc74ebdd969796eca4393076542
