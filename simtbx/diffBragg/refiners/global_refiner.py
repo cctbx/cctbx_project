@@ -23,7 +23,11 @@ class Bcolors:
 
 if rank == 0:
     import os
-    import pandas
+    try:
+        import pandas
+        HAS_PANDAS=True
+    except ImportError:
+        HAS_PANDAS = False
     from numpy import mean, median, unique, std
     from tabulate import tabulate
     from scipy.stats import linregress
@@ -628,7 +632,7 @@ class FatRefiner(PixelRefinement):
         if rank == 0:
             print("--4 print initial stats")
         rotx, roty, rotz, uc_vals, ncells_vals, scale_vals, _, origZ = self._unpack_internal(self.x, lst_is_x=True)
-        if rank == 0 and self.big_dump:
+        if rank == 0 and self.big_dump and HAS_PANDAS:
 
             master_data = {"a": uc_vals[0], "c": uc_vals[1],
                            "Ncells": ncells_vals,
@@ -1755,7 +1759,7 @@ class FatRefiner(PixelRefinement):
         rot_labels = ["rotX=%+3.7g" % rotX, "rotY=%+3.7g" % rotY, "rotZ=%+3.4g" % rotZ]
 
         if self.refine_Umatrix or self.refine_Bmatrix or self.refine_crystal_scale or self.refine_ncells:
-            if self.big_dump:
+            if self.big_dump and HAS_PANDAS:
                 master_data = {"Ncells": self.ncells_vals,
                                "scale": self.scale_vals,
                                "rotx": self.rotx,
@@ -1777,7 +1781,7 @@ class FatRefiner(PixelRefinement):
             grad = self._g[self.ucell_xstart[self._i_shot] + i]
             ucell_labels.append('G%s=%+2.7g' % (n, grad))
 
-        if self.big_dump:
+        if self.big_dump and HAS_PANDAS:
             master_data ={"GNcells": self.Gncells_vals,
                            "Gscale": self.Gscale_vals,
                            "Grotx": self.Grotx,
