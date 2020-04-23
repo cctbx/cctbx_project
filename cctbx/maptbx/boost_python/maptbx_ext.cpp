@@ -464,24 +464,30 @@ namespace {
       typedef connectivity w_t;
 
       class_<w_t>("connectivity", no_init)
-        .def(init<af::const_ref<float, af::flex_grid<> > const&,
+        .def(init<af::ref<float, af::c_grid<3> >,
                   float const&,
+                  bool,
                   bool >(
                     (arg("map_data"),
                      arg("threshold"),
-                     arg("wrapping")=true)))
-        .def(init<af::const_ref<double, af::flex_grid<> > const&,
+                     arg("wrapping")=true,
+                     arg("preprocess_against_shallow")=false)))
+        .def(init<af::ref<double, af::c_grid<3> > ,
                   double const&,
+                  bool,
                   bool >(
                     (arg("map_data"),
                      arg("threshold"),
-                     arg("wrapping")=true)))
-        .def(init<af::const_ref<int, af::flex_grid<> > const&,
+                     arg("wrapping")=true,
+                     arg("preprocess_against_shallow")=false)))
+        .def(init<af::ref<int, af::c_grid<3> >,
                   int const&,
+                  bool,
                   bool >(
                     (arg("map_data"),
                      arg("threshold"),
-                     arg("wrapping")=true)))
+                     arg("wrapping")=true,
+                     arg("preprocess_against_shallow")=false)))
         .def("result",    &w_t::result)
         .def("regions",   &w_t::regions)
         .def("volume_cutoff_mask", &w_t::volume_cutoff_mask,
@@ -497,6 +503,8 @@ namespace {
                      arg("zero_all_interblob_region")=true))
         .def("maximum_coors", &w_t::maximum_coors)
         .def("maximum_values", &w_t::maximum_values)
+        .def_readonly("preprocessing_changed_voxels", &w_t::preprocessing_changed_voxels)
+        .def_readonly("preprocessing_n_passes", &w_t::preprocessing_n_passes)
       ;
     }
     {
