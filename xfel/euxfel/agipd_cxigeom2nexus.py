@@ -63,7 +63,7 @@ class agipd_cxigeom2nexus(object):
 
   def _create_scalar(self, handle,path,dtype,value):
     dataset = handle.create_dataset(path, (),dtype=dtype)
-    dataset[()] = value.encode('utf8')
+    dataset[()] = value
 
   def create_vector(self,handle, name, value, **attributes):
     handle.create_dataset(name, (1,), data = [value], dtype='f')
@@ -86,7 +86,7 @@ class agipd_cxigeom2nexus(object):
     entry = f.create_group('entry')
     entry.attrs['NX_class'] = 'NXentry'
     # --> definition
-    self._create_scalar(entry, 'definition', 'S4', 'NXmx')
+    self._create_scalar(entry, 'definition', 'S4', np.string_('NXmx'))
     # --> data
     data = entry.create_group('data')
     data.attrs['NX_class'] = 'NXdata'
@@ -109,7 +109,7 @@ class agipd_cxigeom2nexus(object):
     agipd = instrument.create_group('AGIPD')
     agipd.attrs['NX_class'] = 'NXdetector_group'
     agipd.create_dataset('group_index', data = list(range(1,3)), dtype='i')
-    data = [d.encode('utf8') for d in ['AGIPD','ELE_D0']]
+    data = [np.string_('AGIPD'), np.string_('ELE_D0')]
     agipd.create_dataset('group_names',(2,), data=data, dtype='S12')
     agipd.create_dataset('group_parent',(2,), data=[-1,1], dtype='i')
     agipd.create_dataset('group_type', (2,), data=[1,2], dtype='i')
