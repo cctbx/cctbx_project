@@ -108,6 +108,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.refine_rotZ = True  # whether to refine Z rotations
         self.multi_panel = False  # whether the camera is multi panel or single panel
         self.split_evaluation = False  # whether to use split evaluation run method
+        self.recenter=False
         self.hit_break_to_use_curvatures = False  # internal flag if calculating curvatures
         self.refine_Amatrix = False  # whether to refine the  Amatrix (deprecated)
         self.has_pre_cached_roi_data = False  # only for use in global refinement mode
