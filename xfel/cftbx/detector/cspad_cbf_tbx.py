@@ -926,7 +926,7 @@ def copy_cbf_header(src_cbf, skip_sections = False):
 def write_cspad_cbf(tiles, metro, metro_style, timestamp, cbf_root, wavelength, distance, verbose = True, header_only = False):
   cbf = get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelength, distance, verbose, header_only)
 
-  cbf.write_widefile(cbf_root,pycbf.CBF,\
+  cbf.write_widefile(cbf_root.encode(),pycbf.CBF,\
       pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
 
   if verbose:
