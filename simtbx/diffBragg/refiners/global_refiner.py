@@ -40,6 +40,7 @@ if rank == 0:
     from numpy import ones_like as ONES_LIKE
     from numpy import array as ARRAY
     from numpy import pi as PI
+    from numpy import allclose as ALL_CLOSE
     
     from simtbx.diffBragg.refiners import BreakToUseCurvatures
     from scitbx.array_family import flex
@@ -57,7 +58,7 @@ if rank == 0:
 
 else:
     mean = unique = np_log = np_exp = np_all = norm = median = std = None
-    NAN = ARRAY = SAVE = SAVEZ = ONES_LIKE = STD = ABS = PI= None
+    ALL_CLOSE=NAN = ARRAY = SAVE = SAVEZ = ONES_LIKE = STD = ABS = PI= None
     tabulate = None
     flex_miller_index = None
     minimize = None
@@ -73,6 +74,7 @@ else:
     PixelRefinement = None
 
 if has_mpi:
+    ALL_CLOSE= comm.bcast(ALL_CLOSE)
     ARRAY =comm.bcast(ARRAY) 
     PI =comm.bcast(PI) 
     SAVE = comm.bcast(SAVE) 
@@ -131,11 +133,10 @@ class FatRefiner(PixelRefinement):
                  global_ncells=False, global_ucell=True, global_originZ=True,
                  shot_originZ_init=None,
                  sgsymbol="P43212",
-                 omega_kahn=None):
+                 omega_kahn=None, selection_flags=None):
         """
         TODO: parameter x array boundaries should be done in this class, eliminating the need for local_idx_start
         TODO and global_idx_start
-
         TODO: ROI and nanoBragg ROI should be single variable
 
         :param n_total_params:  total number of parameters all shots
@@ -188,6 +189,11 @@ class FatRefiner(PixelRefinement):
         self.shot_originZ_init = None
         if shot_originZ_init is not None:
             self.shot_originZ_init = self._check_keys(shot_originZ_init)
+        
+        self.selection_flags = selection_flags
+        if self.selection_flags is not None: 
+            self.selection_flags = self._check_keys(self.selection_flags)
+        
         # sanity check: no repeats of the same shot
         assert len(self.shot_ids) == len(set(self.shot_ids))
 
@@ -712,6 +718,7 @@ class FatRefiner(PixelRefinement):
 
     def _get_rotX(self, i_shot):
         if self.rescale_params:
+            # FIXME ? 
             return self.rotX_sigma*(self.x[self.rotX_xpos[i_shot]]-1) + 0.0
         else:
             return self.x[self.rotX_xpos[i_shot]]
@@ -733,8 +740,7 @@ class FatRefiner(PixelRefinement):
         for i in range(self.n_ucell_param):
             if self.rescale_params:
                 sig = self.ucell_sigmas[i]
-                init = self.UCELL_MAN[i_shot].variables[i]
-                #init = self.ucell_inits[i]  # NOTE all shots have same initial value
+                init = self.ucell_inits[i_shot][i]
                 p = sig*(self.x[self.ucell_xstart[i_shot]+i] - 1) + init
             else:
                 p = self.x[self.ucell_xstart[i_shot]+i]
@@ -1001,6 +1007,9 @@ class FatRefiner(PixelRefinement):
                              new_origin)
         self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
         self.D.update_dxtbx_geoms(det, self.S.beam.nanoBragg_constructor_beam, self._panel_id)
+        if self.recenter:
+            s0 = self.S.beam.nanoBragg_constructor_beam.get_s0()
+            assert ALL_CLOSE(node.get_beam_centre(s0), self.D.beam_center_mm)
 
     def _extract_Umatrix_derivative_pixels(self):
         self.rotX_dI_dtheta = self.rotY_dI_dtheta = self.rotZ_dI_dtheta = 0
@@ -1130,6 +1139,12 @@ class FatRefiner(PixelRefinement):
                 self._update_rotXYZ()
                 n_spots = len(self.NANOBRAGG_ROIS[self._i_shot])
                 for i_spot in range(n_spots):
+                    
+                    if self.selection_flags is not None:
+                        if self._i_shot not in self.selection_flags:
+                            continue
+                        elif not self.selection_flags[self._i_shot][i_spot]:
+                            continue
 
                     self._panel_id = int(self.PANEL_IDS[self._i_shot][i_spot])
 
