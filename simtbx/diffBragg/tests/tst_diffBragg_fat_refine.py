@@ -272,7 +272,7 @@ RUC.refine_Fcell = False
 RUC.refine_detdist = args.detdist
 RUC.refine_gain_fac = args.gain
 RUC.ucell_sigmas = [.1, .1, .3, .005]
-RUC.ucell_inits = UcellMan.variables
+RUC.ucell_inits = {0: UcellMan.variables}
 RUC.m_init = SIM.crystal.Ncells_abc[0]
 RUC.spot_scale_init = {0: 1}
 
