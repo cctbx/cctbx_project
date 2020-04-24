@@ -10,6 +10,7 @@ namespace nanoBragg {
 class derivative_manager{
   public:
     derivative_manager();
+    virtual ~derivative_manager(){};
     void initialize(int sdim, int fdim);
     af::flex_double raw_pixels;
     af::flex_double raw_pixels2;
@@ -77,16 +78,19 @@ class origin_manager: public derivative_manager{
 class rotX_manager: public rot_manager{
   public:
     rotX_manager();
+    virtual ~rotX_manager(){};
     void set_R();
 };
 class rotY_manager: public rot_manager{
   public:
     rotY_manager();
+    virtual ~rotY_manager(){};
     void set_R();
 };
 class rotZ_manager: public rot_manager{
   public:
     rotZ_manager();
+    virtual ~rotZ_manager(){};
     void set_R();
 };
 
