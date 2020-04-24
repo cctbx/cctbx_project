@@ -83,7 +83,8 @@ steps:
     source ./build/setpaths.sh
     mkdir tests
     cd tests
-    libtbx.run_tests_parallel module=uc_metrics module=simtbx nproc=4
+    libtbx.configure xfel_regression
+    libtbx.run_tests_parallel module=uc_metrics module=simtbx module=xfel_regression nproc=4
   failOnStderr: false
   displayName: Test
 
