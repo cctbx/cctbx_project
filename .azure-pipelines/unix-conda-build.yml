@@ -4,6 +4,7 @@
 #   CONDA: Linux, MacOSX
 #   OS: linux-64, osx-64
 #   PYTHON_VERSION: py27, py36, py37, py38
+#   MODULES: <modules artifact name>
 #
 # Optional Parameters:
 #   distribution: centos, ubuntu
@@ -18,7 +19,7 @@ steps:
   displayName: Download modules tarball
   inputs:
     source: 'current'
-    artifact: modules
+    artifact: $(MODULES)
     path: $(Pipeline.Workspace)
 
 - script: |

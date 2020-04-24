@@ -9,8 +9,6 @@ stages:
   displayName: Download
   jobs:
     - template: ./.azure-pipelines/download-source.yml
-      parameters:
-        flags: --use-conda
     - template: ./.azure-pipelines/download-conda.yml
 
 - stage: Build
@@ -18,11 +16,15 @@ stages:
   dependsOn: Preparation
   jobs:
     - template: ./.azure-pipelines/conda-win.yml
+      parameters:
+        modules: modules
     - template: ./.azure-pipelines/conda-linux.yml
       parameters:
         distribution: centos
         version: [6]
+        modules: modules
     - template: ./.azure-pipelines/conda-osx.yml
       parameters:
         vmImage: [10, 14]
         xcode_version: [11, 3, 1]
+        modules: modules
