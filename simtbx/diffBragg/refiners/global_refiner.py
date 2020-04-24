@@ -604,14 +604,15 @@ class FatRefiner(PixelRefinement):
             self.x[self.gain_xpos] = self._init_gain  # gain factor
 
         # reduce then broadcast self.x
-        if not rank==0:
+        if not rank == 0:
             self.sigma_for_res_id = None 
             self.res_group_id_from_fcell_index = None
             self.fcell_init = None
         if self.rescale_params:
-            self.fcell_init = comm.bcast(self.fcell_init)
-            self.sigma_for_res_id = comm.bcast(self.sigma_for_res_id)
-            self.res_group_id_from_fcell_index = comm.bcast(self.res_group_id_from_fcell_index)
+            if has_mpi:
+                self.fcell_init = comm.bcast(self.fcell_init)
+                self.sigma_for_res_id = comm.bcast(self.sigma_for_res_id)
+                self.res_group_id_from_fcell_index = comm.bcast(self.res_group_id_from_fcell_index)
 
         if rank == 0:
             print("--3 combining parameters across ranks")
