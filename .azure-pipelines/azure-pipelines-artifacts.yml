@@ -103,19 +103,19 @@ jobs:
     artifact: phenix_examples
 
   # xfel_regression
-#  - task: DownloadPipelineArtifact@2
-#    inputs:
-#      source: 'specific'
-#      project: '$(System.TeamProjectId)'
-#      pipeline: 4
-#      artifact: 'xfel_regression'
-#      path: $(System.DefaultWorkingDirectory)/xfel_regression
-#    displayName: Download xfel_regression
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProjectId)'
+      pipeline: 4
+      artifact: 'xfel_regression'
+      path: $(System.DefaultWorkingDirectory)/xfel_regression
+    displayName: Download xfel_regression
 
   - script: |
-      svn co svn+ssh://builder@cci.lbl.gov/xfel_regression/trunk xfel_regression
-      #cd $(System.DefaultWorkingDirectory)/xfel_regression
-      #svn update
+      #svn co svn+ssh://builder@cci.lbl.gov/xfel_regression/trunk xfel_regression
+      cd $(System.DefaultWorkingDirectory)/xfel_regression
+      svn update
     displayName: Update xfel_regression
 
   - publish: $(System.DefaultWorkingDirectory)/xfel_regression
