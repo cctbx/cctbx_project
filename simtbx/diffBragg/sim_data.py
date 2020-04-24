@@ -191,7 +191,7 @@ class SimData:
                               adc_offset=0, default_F=1e3, interpolate=0):
 
         self.D = diffBragg(self.detector, self.beam.nanoBragg_constructor_beam,
-                           verbose=verbose, panel_id=self.panel_id)
+                           verbose=verbose, panel_id=int(self.panel_id))
         self._seedlings()
         self.D.interpolate = interpolate
         self._crystal_properties()
