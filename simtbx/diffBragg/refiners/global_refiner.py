@@ -188,8 +188,10 @@ class FatRefiner(PixelRefinement):
         self.shot_ids = sorted(shot_ucell_managers.keys())
         self.big_dump = False
         self.show_watched = False
-        self.image_corr = None
         self.n_shots = len(self.shot_ids)
+        self.init_image_corr = None
+        self.image_corr = {i_shot:None for i_shot in range(self.n_shots)}
+        self.image_corr_norm = {i_shot:None for i_shot in range(self.n_shots)}
         self.shot_originZ_init = None
         if shot_originZ_init is not None:
             self.shot_originZ_init = self._check_keys(shot_originZ_init)
@@ -295,6 +297,8 @@ class FatRefiner(PixelRefinement):
         # optional properties
         self.FNAMES = None
         self.PROC_FNAMES = None
+        self.init_ang_off = None
+        self.current_ang_off = None # TODO move me to pixel_refinement
 
     def setup_plots(self):
         if rank == 0:
@@ -1121,7 +1125,7 @@ class FatRefiner(PixelRefinement):
             if self.calc_curvatures:
                 self.curv = flex_double(self.n)
 
-            # current work has these all at 1
+            # current work has gain_fac at 1 (#TODO gain factor should effect the probability of observing the photons)
             self.gain_fac = self.x[self.gain_xpos]
             self.G2 = self.gain_fac ** 2
 
@@ -1130,7 +1134,6 @@ class FatRefiner(PixelRefinement):
             if self.CRYSTAL_GT is not None:
                 self._initialize_GT_crystal_misorientation_analysis()
 
-            self.image_corr = [0] * len(self.shot_ids)
             for self._i_shot in self.shot_ids:
                 if self._i_shot in self.bad_shot_list:
                     continue
@@ -1165,11 +1168,7 @@ class FatRefiner(PixelRefinement):
                     self._evaluate_averageI()
 
                     # here we can correlate modelLambda with Imeas
-                    if self.compute_image_model_correlation:
-                        _overlay_corr, _ = pearsonr(self.Imeas.ravel(), self.model_Lambda.ravel())
-                    else:
-                        _overlay_corr = NAN 
-                    self.image_corr[self._i_shot] += _overlay_corr
+                    self._increment_model_data_correlation()
 
                     if self.poisson_only:
                         self._evaluate_log_averageI()
@@ -1195,12 +1194,9 @@ class FatRefiner(PixelRefinement):
                     self._Fcell_derivatives(i_spot)
                     # Done with derivative accumulation
 
-                self.image_corr[self._i_shot] = self.image_corr[self._i_shot] / n_spots
+            #    self.image_corr[self._i_shot] = self.image_corr[self._i_shot] / self.image_corr_norm[self._i_shot]
 
-            if has_mpi:
-                self.all_image_corr = comm.reduce(self.image_corr, MPI.SUM, root=0)
-            else:
-                self.all_image_corr = self.image_corr
+            self._aggregate_model_data_correlations()
             # TODO add in the priors:
             self._priors()
             self._parameter_freezes()
@@ -1232,6 +1228,24 @@ class FatRefiner(PixelRefinement):
                     raise BreakToUseCurvatures
 
         return self._f, self._g
+
+    def _aggregate_model_data_correlations(self):
+        self.all_image_corr = [self._get_image_correlation(i) for i in self.shot_ids]
+        if self.init_image_corr is None:
+            self.init_image_corr = deepcopy(self.all_image_corr)
+        if has_mpi:
+            self.all_image_corr = comm.reduce(self.all_image_corr, MPI.SUM, root=0)
+
+    def _increment_model_data_correlation(self):
+        if self.image_corr[self._i_shot] is None:
+            self.image_corr[self._i_shot] = 0
+            self.image_corr_norm[self._i_shot] = 0
+        if self.compute_image_model_correlation:
+            _overlay_corr, _ = pearsonr(self.Imeas.ravel(), self.model_Lambda.ravel())
+        else:
+            _overlay_corr = NAN
+        self.image_corr[self._i_shot] += _overlay_corr
+        self.image_corr_norm[self._i_shot] += 1
 
     def _background_derivatives(self, i_spot):
         if self.refine_background_planes:
@@ -1447,8 +1461,6 @@ class FatRefiner(PixelRefinement):
         if not max_h in equivs and self.debug:  # TODO understand this more, how does this effect things
            print("Warning max_h  mismatch!!!!!!")
 
-
-
     def _priors(self):
         # experimental, not yet proven to help
         if self.use_ucell_priors and self.refine_Bmatrix:
@@ -1530,6 +1542,7 @@ class FatRefiner(PixelRefinement):
 
     def _initialize_GT_crystal_misorientation_analysis(self):
         self.all_ang_off = []
+        self.current_ang_off = []
         for i in range(self.n_shots):
             try:
                 Ctru = self.CRYSTAL_GT[i]
@@ -1549,7 +1562,11 @@ class FatRefiner(PixelRefinement):
                 if ang_off == -1 or ang_off > 0.015:
                     self.bad_shot_list.append(i)
 
+            self.current_ang_off.append(ang_off)
             self.all_ang_off.append(ang_off)
+
+        if self.init_ang_off is None:
+            self.init_ang_off = deepcopy(self.current_ang_off)
 
         self.bad_shot_list = list(set(self.bad_shot_list))
         if has_mpi:
@@ -1557,6 +1574,18 @@ class FatRefiner(PixelRefinement):
         self.n_bad_shots = len(self.bad_shot_list)
         if has_mpi:
             self.n_bad_shots = comm.bcast(self.n_bad_shots)
+
+    def get_init_misorientation(self, i_shot):
+        ang = NAN
+        if self.CRYSTAL_GT is not None:
+            ang = self.init_ang_off[i_shot]
+        return ang
+
+    def get_current_misorientation(self, i_shot):
+        ang = NAN
+        if self.CRYSTAL_GT is not None:
+            ang = self.current_ang_off[i_shot]
+        return ang
 
     def _print_GT_crystal_misorientation_analysis(self):
         if has_mpi:
@@ -1582,6 +1611,18 @@ class FatRefiner(PixelRefinement):
         print("MISSETTING median: %.4f; mean: %.4f, max: %.4f, min %.4f, num > .1 deg: %d/%d; num broken=%d"
               % (misset_median, misset_mean, misset_max, misset_min, n_bad_misset, n_misset, n_broken_misset))
         self.all_ang_off = all_ang_off
+
+    def _get_image_correlation(self, i_shot):
+        corr = NAN
+        if self.image_corr[i_shot] is not None:
+            corr = self.image_corr[i_shot] / self.image_corr_norm[i_shot]
+        return corr
+
+    def _get_init_image_correlation(self, i_shot):
+        corr = NAN
+        if self.image_corr[i_shot] is not None:
+            corr = self.init_image_corr[i_shot]
+        return corr
 
     def _print_image_correlation_analysis(self):
         all_corr_str = ["%.2f" % ic for ic in self.all_image_corr]
