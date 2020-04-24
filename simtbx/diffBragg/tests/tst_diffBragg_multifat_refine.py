@@ -518,15 +518,12 @@ RUC.big_dump = False
 RUC.gt_ncells = Ncells_gt[0]
 RUC.originZ_gt = originZ_gt
 RUC.gt_ucell = ucell[0], ucell[2]
-#if args.testbg:
-#    RUC.spot_scale_init = [1e-10]*N_SHOTS
-#else:
-RUC.spot_scale_init = [1]*N_SHOTS
-#RUC.gt_ucell = ucell[0], ucell[1], ucell[2], ucell[4]
 RUC.testing_mode = False
 
+RUC.spot_scale_init = [1]*N_SHOTS
 RUC.m_init = Ncells_abc2[0]  # np.log(Ncells_abc2[0]-3)
 RUC.ucell_inits = {i:shot_ucell_managers[i].variables for i in range(N_SHOTS)}
+
 
 #RUC.S.D.update_oversample_during_refinement = False  # todo: decide
 Fobs = RUC.S.crystal.miller_array_high_symmetry
