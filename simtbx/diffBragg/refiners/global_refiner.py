@@ -1795,7 +1795,7 @@ class FatRefiner(PixelRefinement):
             print(master_data.to_string(float_format="%2.7g"))
 
         if self.calc_curvatures:
-            if self.big_dump:
+            if self.big_dump and HAS_PANDAS:
                 if self.refine_Umatrix or self.refine_Bmatrix or self.refine_crystal_scale or self.refine_ncells:
                     master_data = {"CUNcells": self.CUncells_vals,
                                    "CUscale": self.CUscale_vals,
@@ -1808,8 +1808,7 @@ class FatRefiner(PixelRefinement):
 
                     master_data = pandas.DataFrame(master_data)
                     master_data["CUgain"] = self.curv[self.gain_xpos]
-                    if self.big_dump:
-                        print(master_data.to_string(float_format="%2.7g"))
+                    print(master_data.to_string(float_format="%2.7g"))
 
         # Compute the mean, min, max, variance  and median crystal scale
         # Note we must also include the spot_scale in the diffBragg instance if its not unity
