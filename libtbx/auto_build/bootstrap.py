@@ -947,6 +947,13 @@ class dials_regression_module(SourceModule):
   authenticated = ['svn',
                    'svn+ssh://%(cciuser)s@cci.lbl.gov/dials_regression/trunk']
 
+class iota_module(SourceModule):
+  module = 'iota'
+  anonymous = ['git',
+               'git@github.com:ssrl-px/iota.git',
+               'https://github.com/ssrl-px/iota.git',
+               'https://github.com/ssrl-px/iota/archive/master.zip']
+
 class msgpack_module(SourceModule):
   module = 'msgpack'
   anonymous = ['curl', [
@@ -2070,7 +2077,7 @@ class CCTBXBuilder(CCIBuilder):
     pass
 
 class DIALSBuilder(CCIBuilder):
-  CODEBASES_EXTRA = ['dials', 'xia2']
+  CODEBASES_EXTRA = ['dials', 'iota', 'xia2']
   LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
   HOT_EXTRA = ['msgpack']
   def add_tests(self):
@@ -2114,6 +2121,7 @@ class LABELITBuilder(CCIBuilder):
 class XFELLegacyBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'dials',
+    'iota',
     'labelit',
     'cxi_xdr_xes'
   ]
@@ -2143,6 +2151,7 @@ class XFELLegacyBuilder(CCIBuilder):
 class XFELBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'dials',
+    'iota',
     'uc_metrics',
     'ncdist',
   ]
@@ -2197,6 +2206,7 @@ class PhenixBuilder(CCIBuilder):
     'xia2',
     'phaser',
     'phaser_regression',
+    'iota',
   ]
   HOT_EXTRA = ['msgpack']
   LIBTBX_EXTRA = [
