@@ -12,9 +12,9 @@ import libtbx.phil.command_line
 from iotbx import pdb
 from iotbx import file_reader
 from libtbx import group_args
-import boost.python
+import boost_adaptbx.python
 from six.moves import range
-cpputils = boost.python.import_ext("mmtbx_cablam_align_utils_ext")
+cpputils = boost_adaptbx.python.import_ext("mmtbx_cablam_align_utils_ext")
 
 # {{{ phil
 #-------------------------------------------------------------------------------

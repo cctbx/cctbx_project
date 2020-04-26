@@ -7,10 +7,10 @@ import mmtbx.refinement.real_space.fit_residue
 import sys
 from cctbx import maptbx
 from cctbx import crystal
-import boost.python
-cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
+import boost_adaptbx.python
+cctbx_maptbx_ext = boost_adaptbx.python.import_ext("cctbx_maptbx_ext")
 from libtbx.test_utils import approx_equal
-fit_ext = boost.python.import_ext("mmtbx_rotamer_fit_ext")
+fit_ext = boost_adaptbx.python.import_ext("mmtbx_rotamer_fit_ext")
 
 negate_map_table = {
   #"ala": False,

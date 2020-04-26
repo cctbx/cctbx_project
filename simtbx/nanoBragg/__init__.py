@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
+import boost_adaptbx.python
 import cctbx.uctbx # possibly implicit
-ext = boost.python.import_ext("simtbx_nanoBragg_ext")
+ext = boost_adaptbx.python.import_ext("simtbx_nanoBragg_ext")
 from scitbx.array_family import flex
 from simtbx_nanoBragg_ext import *
 from scitbx.matrix import col, sqr
@@ -15,7 +15,7 @@ from dxtbx.model import DetectorFactory
 from dxtbx.format import cbf_writer
 
 
-@boost.python.inject_into(ext.nanoBragg)
+@boost_adaptbx.python.inject_into(ext.nanoBragg)
 class _():
 
   def __getattr__(self,name):
@@ -97,7 +97,7 @@ class _():
       outfile.write(image_bytes)
       outfile.close();
       return
-    from boost.python import streambuf
+    from boost_adaptbx.python import streambuf
     self.to_smv_format_streambuf(streambuf(outfile),intfile_scale,debug_x,debug_y)
 
     outfile.close();

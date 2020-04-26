@@ -10,13 +10,13 @@ from scitbx import fftpack
 from scitbx import matrix
 from cctbx.eltbx.xray_scattering import wk1995
 
-import boost.python
+import boost_adaptbx.python
 from six.moves import range
-ext = boost.python.import_ext("mmtbx_max_lik_ext")
+ext = boost_adaptbx.python.import_ext("mmtbx_max_lik_ext")
 from mmtbx_max_lik_ext import *
 
-import boost.python
-ext = boost.python.import_ext("mmtbx_masks_ext")
+import boost_adaptbx.python
+ext = boost_adaptbx.python.import_ext("mmtbx_masks_ext")
 from mmtbx_masks_ext import *
 
 

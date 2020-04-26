@@ -4,8 +4,8 @@ from __future__ import absolute_import, division, print_function
 import scitbx.array_family.flex
 import scitbx.lbfgs
 
-import boost.python
-ext = boost.python.import_ext("mmtbx_tls_optimise_amplitudes_ext")
+import boost_adaptbx.python
+ext = boost_adaptbx.python.import_ext("mmtbx_tls_optimise_amplitudes_ext")
 from mmtbx_tls_optimise_amplitudes_ext import *
 
 from libtbx import adopt_init_args

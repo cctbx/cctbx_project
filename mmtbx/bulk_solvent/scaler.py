@@ -3,9 +3,9 @@ from scitbx.array_family import flex
 import sys
 from mmtbx import bulk_solvent
 from cctbx import adptbx
-import boost.python
+import boost_adaptbx.python
 from six.moves import range
-ext = boost.python.import_ext("mmtbx_f_model_ext")
+ext = boost_adaptbx.python.import_ext("mmtbx_f_model_ext")
 from cctbx import sgtbx
 from mmtbx.bulk_solvent import kbu_refinery
 import mmtbx.f_model

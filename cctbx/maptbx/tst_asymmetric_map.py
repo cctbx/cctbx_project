@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
-import boost.python
+import boost_adaptbx.python
 from six.moves import range
 from six.moves import zip
-ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+ext = boost_adaptbx.python.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_asymmetric_map_ext import *
 from cctbx.array_family import flex
 from cctbx import maptbx

@@ -1,13 +1,13 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
+import boost_adaptbx.python
 from six.moves import zip
-ext = boost.python.import_ext("cctbx_xray_ext")
+ext = boost_adaptbx.python.import_ext("cctbx_xray_ext")
 from cctbx_xray_ext import *
 
 from cctbx.array_family import flex
 import sys
 
-@boost.python.inject_into(scattering_type_registry)
+@boost_adaptbx.python.inject_into(scattering_type_registry)
 class _():
 
   def type_count_dict(self):
@@ -122,7 +122,7 @@ class _():
       result[t] = ugs[i]
     return result
 
-@boost.python.inject_into(sampled_model_density)
+@boost_adaptbx.python.inject_into(sampled_model_density)
 class _():
 
   def real_map_unpadded(self):

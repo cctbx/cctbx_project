@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
 import sys
-import boost.python
+import boost_adaptbx.python
 try:
-  ext = boost.python.import_ext('fast_linalg_ext')
+  ext = boost_adaptbx.python.import_ext('fast_linalg_ext')
   env = ext.env
   try_to_initialise = True
 except ImportError:

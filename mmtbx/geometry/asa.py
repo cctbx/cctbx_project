@@ -2,9 +2,9 @@ from __future__ import absolute_import, division, print_function
 
 import mmtbx.geometry.shared_types # import dependency
 
-import boost.python
+import boost_adaptbx.python
 from six.moves import zip
-ext = boost.python.import_ext( "mmtbx_geometry_asa_ext" )
+ext = boost_adaptbx.python.import_ext( "mmtbx_geometry_asa_ext" )
 from mmtbx_geometry_asa_ext import *
 
 from mmtbx.geometry import altloc

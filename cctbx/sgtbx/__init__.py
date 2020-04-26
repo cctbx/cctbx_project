@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
 from cctbx import uctbx
 
-import boost.python
+import boost_adaptbx.python
 from six.moves import range
 from six.moves import zip
-ext = boost.python.import_ext("cctbx_sgtbx_ext")
+ext = boost_adaptbx.python.import_ext("cctbx_sgtbx_ext")
 from cctbx_sgtbx_ext import *
 
 import libtbx
@@ -22,11 +22,11 @@ class empty: pass
 
 from cctbx.array_family import flex
 from scitbx import matrix
-from boost import rational
+from boost_adaptbx import rational
 import random
 import sys
 
-boost.python.inject(ext.space_group_symbol_iterator, boost.python.py3_make_iterator)
+boost_adaptbx.python.inject(ext.space_group_symbol_iterator, boost_adaptbx.python.py3_make_iterator)
 
 def vec3_rat_from_str(s):
   flds = s.split(",")
@@ -42,7 +42,7 @@ def vec3_rat_from_str(s):
     result.append(rational.int(n, d))
   return result
 
-@boost.python.inject_into(ext.space_group)
+@boost_adaptbx.python.inject_into(ext.space_group)
 class _():
 
   def smx(self, with_inversion=False):
@@ -415,7 +415,7 @@ def reference_space_group_infos():
   for number in range(1,230+1):
     yield space_group_info(number=number)
 
-@boost.python.inject_into(tr_vec)
+@boost_adaptbx.python.inject_into(tr_vec)
 class _():
 
   def as_rational(self):
@@ -437,7 +437,7 @@ class le_page_1982_delta_details:
     else:
       self.delta = self.t.accute_angle(self.tau, deg=deg)
 
-@boost.python.inject_into(rot_mx)
+@boost_adaptbx.python.inject_into(rot_mx)
 class _():
 
   def as_rational(self):
@@ -459,7 +459,7 @@ class _():
     return ((sirms * sirms).trace() / 12)**0.5
 
 
-@boost.python.inject_into(rot_mx_info)
+@boost_adaptbx.python.inject_into(rot_mx_info)
 class _():
 
   def basis_of_invariant(self):
@@ -482,7 +482,7 @@ class _():
     result += " |(%i, %i, %i)" % self.ev()
     return result
 
-@boost.python.inject_into(translation_part_info)
+@boost_adaptbx.python.inject_into(translation_part_info)
 class _():
 
   def __str__(self):
@@ -492,7 +492,7 @@ class _():
     return result
 
 
-@boost.python.inject_into(ext.rt_mx)
+@boost_adaptbx.python.inject_into(ext.rt_mx)
 class _():
 
   def __getinitargs__(self):
@@ -518,7 +518,7 @@ class _():
     t_info = translation_part_info(self)
     print("%s %s" % (r_info, t_info), file=out)
 
-@boost.python.inject_into(ext.search_symmetry_flags)
+@boost_adaptbx.python.inject_into(ext.search_symmetry_flags)
 class _():
 
   def show_summary(self, f=None):
@@ -625,7 +625,7 @@ def special_op_simplifier(special_op):
         [i_row], [m], t[j_row] - m*t[i_row])
   return special_op_simplified(terms=terms)
 
-@boost.python.inject_into(ext.site_symmetry_ops)
+@boost_adaptbx.python.inject_into(ext.site_symmetry_ops)
 class _():
 
   def __getinitargs__(self):
@@ -639,7 +639,7 @@ class _():
     return fvar_encoding.site_constraints_site_symmetry_ops(
       O=self, fvars=fvars, site=site, p_tolerance=p_tolerance)
 
-@boost.python.inject_into(ext.site_symmetry_table)
+@boost_adaptbx.python.inject_into(ext.site_symmetry_table)
 class _():
 
   def __getinitargs__(self):
@@ -746,13 +746,13 @@ class _():
       for _ in g: result.append(_)
     return result
 
-@boost.python.inject_into(wyckoff_position)
+@boost_adaptbx.python.inject_into(wyckoff_position)
 class _():
 
   def special_op_simplified(self):
     return special_op_simplifier(special_op=self.special_op())
 
-@boost.python.inject_into(wyckoff_table)
+@boost_adaptbx.python.inject_into(wyckoff_table)
 class _():
 
   def random_site_symmetry(self,
@@ -773,7 +773,7 @@ class _():
         assert site_symmetry.multiplicity() == position.multiplicity()
         return site_symmetry
 
-@boost.python.inject_into(structure_seminvariants)
+@boost_adaptbx.python.inject_into(structure_seminvariants)
 class _():
 
   def __str__(self):
