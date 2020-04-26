@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 import os
 import re
 
-import boost.python
-ext = boost.python.import_ext("iotbx_detectors_ext")
+import boost_adaptbx.python
+ext = boost_adaptbx.python.import_ext("iotbx_detectors_ext")
 from iotbx_detectors_ext import *
 from iotbx_detectors_bruker_ext import Bruker_base # import dependency
 

@@ -3,7 +3,7 @@ from cctbx.sgtbx.direct_space_asu import cut_plane
 from cctbx.array_family import flex
 from scitbx import matrix
 import scitbx.math
-from boost import rational
+from boost_adaptbx import rational
 from six.moves import range
 from six.moves import zip
 

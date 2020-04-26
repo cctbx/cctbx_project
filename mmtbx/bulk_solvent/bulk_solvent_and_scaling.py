@@ -5,9 +5,9 @@ from cctbx.array_family import flex
 from cctbx import adptbx
 from libtbx import group_args
 
-import boost.python
+import boost_adaptbx.python
 from six.moves import range
-ext = boost.python.import_ext("mmtbx_f_model_ext")
+ext = boost_adaptbx.python.import_ext("mmtbx_f_model_ext")
 
 master_params = iotbx.phil.parse("""\
   bulk_solvent = True

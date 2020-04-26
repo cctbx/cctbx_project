@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 import scitbx.math.gaussian # base class for gaussian
 
-import boost.python
+import boost_adaptbx.python
 from six.moves import zip
-ext = boost.python.import_ext("cctbx_eltbx_xray_scattering_ext")
+ext = boost_adaptbx.python.import_ext("cctbx_eltbx_xray_scattering_ext")
 from cctbx_eltbx_xray_scattering_ext import *
 
 import sys
@@ -25,10 +25,10 @@ def get_element_and_charge_symbols(scattering_type, exact=True):
     return sl[:-2], sl[-2:]
   return sl, ""
 
-boost.python.inject(ext.it1992_iterator, boost.python.py3_make_iterator)
-boost.python.inject(ext.wk1995_iterator, boost.python.py3_make_iterator)
+boost_adaptbx.python.inject(ext.it1992_iterator, boost_adaptbx.python.py3_make_iterator)
+boost_adaptbx.python.inject(ext.wk1995_iterator, boost_adaptbx.python.py3_make_iterator)
 
-@boost.python.inject_into(ext.gaussian)
+@boost_adaptbx.python.inject_into(ext.gaussian)
 class _():
 
   def show(self, f=None, format=None):

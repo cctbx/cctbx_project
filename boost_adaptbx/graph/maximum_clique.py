@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-import boost.python
+import boost_adaptbx.python
 from functools import reduce
-ext = boost.python.import_ext( "boost_adaptbx_graph_maximum_clique_ext" )
+ext = boost_adaptbx.python.import_ext( "boost_adaptbx_graph_maximum_clique_ext" )
 import operator
 
 rascal = ext.rascal

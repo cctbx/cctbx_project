@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
-ext = boost.python.import_ext("rstbx_diffraction_fastbragg_ext")
+import boost_adaptbx.python
+ext = boost_adaptbx.python.import_ext("rstbx_diffraction_fastbragg_ext")
 from rstbx_diffraction_fastbragg_ext import *
 
-@boost.python.inject_into(ext.detector)
+@boost_adaptbx.python.inject_into(ext.detector)
 class _():
 
   def show(self):

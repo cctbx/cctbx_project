@@ -4,7 +4,7 @@ import iotbx.phil
 from libtbx import adopt_init_args
 import sys
 import os, math
-import boost.python
+import boost_adaptbx.python
 from scitbx.array_family import flex
 from mmtbx.validation import ramalyze
 from mmtbx.conformation_dependent_library import generate_protein_threes
@@ -12,10 +12,10 @@ from six.moves import range
 from collections import OrderedDict
 from mmtbx.rotamer import ramachandran_eval
 
-ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
+ext = boost_adaptbx.python.import_ext("mmtbx_ramachandran_restraints_ext")
 from mmtbx_ramachandran_restraints_ext import lookup_table, \
     ramachandran_residual_sum, phi_psi_targets
-ext2 = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+ext2 = boost_adaptbx.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 
 old_master_phil = iotbx.phil.parse("""

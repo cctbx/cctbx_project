@@ -11,11 +11,11 @@ http://cctbx.sourceforge.net/iotbx_cif
 """
 from __future__ import absolute_import, division, print_function
 
-import boost.python
+import boost_adaptbx.python
 from six.moves import range
 from six.moves import zip
 import six
-ext = boost.python.import_ext("iotbx_cif_ext")
+ext = boost_adaptbx.python.import_ext("iotbx_cif_ext")
 
 from cctbx.array_family import flex
 from cctbx import miller

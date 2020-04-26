@@ -53,19 +53,19 @@ from iotbx.bioinformatics import sequence
 from mmtbx.validation.sequence import master_phil as sequence_master_phil
 from mmtbx.validation.sequence import validation as sequence_validation
 
-import boost.python
+import boost_adaptbx.python
 import six
 from six.moves import zip
 from six.moves import range
 
-ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+ext = boost_adaptbx.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx.rotamer.rotamer_eval import RotamerID
 
 from mmtbx.geometry_restraints import ramachandran
 
-ext2 = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
+ext2 = boost_adaptbx.python.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
 
 from six.moves import cStringIO as StringIO

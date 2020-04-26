@@ -2532,8 +2532,8 @@ def exercise_karle_normalization():
   assert cntr == 2
 
 def exercise_structure_factors_from_map_and_asu_map(d_min=2.):
-  import boost.python
-  asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+  import boost_adaptbx.python
+  asu_map_ext = boost_adaptbx.python.import_ext("cctbx_asymmetric_map_ext")
   def rfactor(x,y):
     x = flex.abs(x.data())
     y = flex.abs(y.data())

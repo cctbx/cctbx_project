@@ -2,11 +2,11 @@ from __future__ import absolute_import, division, print_function
 import iotbx.phil
 from mmtbx.validation import ramalyze
 from mmtbx.validation import rotalyze
-import boost.python
+import boost_adaptbx.python
 import sys
 from six.moves import range
 
-ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
+ext = boost_adaptbx.python.import_ext("mmtbx_ramachandran_restraints_ext")
 
 def get_master_phil():
   return iotbx.phil.parse(input_string="""
