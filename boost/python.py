@@ -18,7 +18,7 @@ class injector(object):
 
   please use
 
-  @boost.python.inject_into(Crystal)
+  @boost_adaptbx.python.inject_into(Crystal)
   class _(object):
   '''
   class __metaclass__(meta_class):
