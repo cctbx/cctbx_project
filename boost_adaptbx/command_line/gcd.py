@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from boost.rational import gcd
+from boost_adaptbx.rational import gcd
 from libtbx.utils import Usage
 import libtbx.load_env
 import sys

@@ -3,8 +3,8 @@ import iotbx.pdb
 from mmtbx.pair_interaction import pair_interaction
 from libtbx.test_utils import approx_equal
 
-import boost.python
-ext = boost.python.import_ext("mmtbx_pair_interaction_ext")
+import boost_adaptbx.python
+ext = boost_adaptbx.python.import_ext("mmtbx_pair_interaction_ext")
 
 pdb_str = """
 ATOM     49  C   TYR A   7      10.603   2.331   6.885  1.00 15.91           C

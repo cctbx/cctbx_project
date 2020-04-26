@@ -13,10 +13,10 @@ import sys, math
 from six import StringIO
 import iotbx.pdb
 
-import boost.python
+import boost_adaptbx.python
 from six.moves import range
 from six.moves import zip
-boost.python.import_ext("scitbx_array_family_flex_ext")
+boost_adaptbx.python.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import reindexing_array
 
 from cctbx.geometry_restraints.linking_class import linking_class

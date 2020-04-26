@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
-import boost.python
-ext = boost.python.import_ext( "boost_adaptbx_graph_breadth_first_search_ext" )
+import boost_adaptbx.python
+ext = boost_adaptbx.python.import_ext( "boost_adaptbx_graph_breadth_first_search_ext" )
 from boost_adaptbx_graph_breadth_first_search_ext import *
 
 class visitor(object):

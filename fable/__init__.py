@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
 try:
-  import boost.python
+  import boost_adaptbx.python
 except Exception:
   ext = None
 else:
-  ext = boost.python.import_ext("fable_ext", optional=True)
+  ext = boost_adaptbx.python.import_ext("fable_ext", optional=True)
 from six.moves import range
 
 # compare with fem/utils/string.hpp

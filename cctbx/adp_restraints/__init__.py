@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 
-import boost.python
+import boost_adaptbx.python
 from six.moves import zip
-ext = boost.python.import_ext("cctbx_adp_restraints_ext")
+ext = boost_adaptbx.python.import_ext("cctbx_adp_restraints_ext")
 from cctbx_adp_restraints_ext import *
 
 from cctbx import crystal
@@ -135,7 +135,7 @@ class adp_aniso_restraints(object):
     self.gradients_aniso_star = adptbx.grad_u_cart_as_u_star(unit_cell,
                                                self.gradients_aniso_cart)
 
-@boost.python.inject_into(adp_similarity)
+@boost_adaptbx.python.inject_into(adp_similarity)
 class _():
 
   def _show_sorted_item(self, f, prefix):
@@ -159,7 +159,7 @@ class _():
         prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr), file=f)
       rdr = ""
 
-@boost.python.inject_into(shared_adp_similarity_proxy)
+@boost_adaptbx.python.inject_into(shared_adp_similarity_proxy)
 class _():
 
   def deltas_rms(self, params):
@@ -186,7 +186,7 @@ class _():
         site_labels=site_labels, f=f, prefix=prefix,
         max_items=max_items)
 
-@boost.python.inject_into(adp_u_eq_similarity)
+@boost_adaptbx.python.inject_into(adp_u_eq_similarity)
 class _():
 
   def _show_sorted_item(self, f, prefix):
@@ -195,7 +195,7 @@ class _():
       %(prefix, self.weight, weight_as_sigma(weight=self.weight),
         self.rms_deltas(), self.residual()), file=f)
 
-@boost.python.inject_into(shared_adp_u_eq_similarity_proxy)
+@boost_adaptbx.python.inject_into(shared_adp_u_eq_similarity_proxy)
 class _():
 
   def deltas_rms(self, params):
@@ -222,7 +222,7 @@ class _():
         site_labels=site_labels, f=f, prefix=prefix,
         max_items=max_items)
 
-@boost.python.inject_into(adp_volume_similarity)
+@boost_adaptbx.python.inject_into(adp_volume_similarity)
 class _():
 
   def _show_sorted_item(self, f, prefix):
@@ -231,7 +231,7 @@ class _():
       %(prefix, self.weight, weight_as_sigma(weight=self.weight),
         self.rms_deltas(), self.residual()), file=f)
 
-@boost.python.inject_into(shared_adp_volume_similarity_proxy)
+@boost_adaptbx.python.inject_into(shared_adp_volume_similarity_proxy)
 class _():
 
   def deltas_rms(self, params):
@@ -258,7 +258,7 @@ class _():
         site_labels=site_labels, f=f, prefix=prefix,
         max_items=max_items)
 
-@boost.python.inject_into(isotropic_adp)
+@boost_adaptbx.python.inject_into(isotropic_adp)
 class _():
 
   def _show_sorted_item(self, f, prefix):
@@ -273,7 +273,7 @@ class _():
         self.weight, rdr), file=f)
       rdr = ""
 
-@boost.python.inject_into(shared_isotropic_adp_proxy)
+@boost_adaptbx.python.inject_into(shared_isotropic_adp_proxy)
 class _():
 
   def deltas_rms(self, params):
@@ -301,7 +301,7 @@ class _():
         max_items=max_items)
 
 
-@boost.python.inject_into(fixed_u_eq_adp)
+@boost_adaptbx.python.inject_into(fixed_u_eq_adp)
 class _():
 
   def _show_sorted_item(self, f, prefix):
@@ -313,7 +313,7 @@ class _():
       prefix, adp_label, self.delta(), weight_as_sigma(weight=self.weight),
       self.weight, rdr), file=f)
 
-@boost.python.inject_into(shared_fixed_u_eq_adp_proxy)
+@boost_adaptbx.python.inject_into(shared_fixed_u_eq_adp_proxy)
 class _():
 
   def deltas_rms(self, params):
@@ -341,7 +341,7 @@ class _():
         max_items=max_items)
 
 
-@boost.python.inject_into(rigid_bond)
+@boost_adaptbx.python.inject_into(rigid_bond)
 class _():
 
   def _show_sorted_item(self, f, prefix):
@@ -350,7 +350,7 @@ class _():
       prefix, self.delta_z(), weight_as_sigma(weight=self.weight),
       self.weight, self.residual()), file=f)
 
-@boost.python.inject_into(shared_rigid_bond_proxy)
+@boost_adaptbx.python.inject_into(shared_rigid_bond_proxy)
 class _():
 
   def deltas(self, params):
@@ -376,7 +376,7 @@ class _():
         site_labels=site_labels, f=f, prefix=prefix,
         max_items=max_items)
 
-@boost.python.inject_into(rigu)
+@boost_adaptbx.python.inject_into(rigu)
 class _():
 
   def _show_sorted_item(self, f, prefix):
@@ -391,7 +391,7 @@ class _():
       prefix, self.delta_13(), weight_as_sigma(weight=self.weight),
       self.weight, self.residual23()), file=f)
 
-@boost.python.inject_into(shared_rigu_proxy)
+@boost_adaptbx.python.inject_into(shared_rigu_proxy)
 class _():
 
   def deltas(self, params):

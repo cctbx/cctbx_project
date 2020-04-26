@@ -55,15 +55,15 @@ from iotbx.cns.miller_array import crystal_symmetry_as_cns_comments
 from iotbx.file_reader import any_file
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 
-import boost.python
+import boost_adaptbx.python
 from six.moves import zip
 from six.moves import range
-utils_ext = boost.python.import_ext("mmtbx_utils_ext")
+utils_ext = boost_adaptbx.python.import_ext("mmtbx_utils_ext")
 from mmtbx_utils_ext import *
 
-import boost.python
+import boost_adaptbx.python
 from mmtbx import bulk_solvent
-ext = boost.python.import_ext("mmtbx_f_model_ext")
+ext = boost_adaptbx.python.import_ext("mmtbx_f_model_ext")
 
 import mmtbx.rotamer
 
