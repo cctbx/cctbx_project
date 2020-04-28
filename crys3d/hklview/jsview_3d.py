@@ -44,17 +44,17 @@ class MyWebSocketServerProtocol(websockets.server.WebSocketServerProtocol):
   def connection_lost(self, exc: Optional[Exception]) -> None:
     #print("In connection_lost()")
     self.client_connected = None
-    if self.onlostconnect:
+    if self.onlostconnect and hasattr(self, "close_code"):
       self.onlostconnect(self.client_connected, self.close_code, self.close_reason)
     super().connection_lost(exc)
-  """
+  #"""
   def connection_closed_exc(self) -> ConnectionClosed:
     #print("In connection_closed_exc()")
     self.client_connected = None
     if self.ondisconnect:
       self.ondisconnect(self.client_connected, self.close_code, self.close_reason)
     super().connection_closed_exc()
-  """
+  #"""
 
 def has_phil_path(philobj, *paths): # variable number of arguments
   for path in paths:
@@ -363,7 +363,6 @@ class hklview_3d:
     self.lastmsg = "" # "Ready"
     self.browserisopen = False
     self.msgdelim = ":\n"
-    self.msgqueuethrd = None
     self.StartWebsocket()
     self.isterminating = False
     self.javascriptcleaned = False
@@ -2615,9 +2614,11 @@ mysocket.onmessage = function(e)
   async def OnWebsocketClientMessage(self):
     while True:
       await asyncio.sleep(self.sleeptime)
-      if self.was_disconnected == 4242:
-        return
-      if self.was_disconnected == 4241 or self.was_disconnected == 1001:
+      if self.was_disconnected in [4242, # reload
+                                   4241, # javascriptcleanup
+                                   1001, # normal exit
+                                   1000 # normal exit
+                                   ]:
         return # shutdown
       if self.viewerparams.scene_id is None or self.miller_array is None \
          or self.websockclient is None or self.mywebsock.client_connected is None:
@@ -2648,7 +2649,7 @@ mysocket.onmessage = function(e)
             self.mprint( message, verbose=1)
             await asyncio.sleep(0.5) # time for browser to clean up
             if not self.isnewfile:
-              self.StopThreads()
+              self.StopWebsocket()
           elif "JavaScriptError:" in message:
             self.mprint( message, verbose=0)
           elif "Expand" in message:
@@ -2820,7 +2821,9 @@ Distance: %s
       try:
         nwait = 0.0
         await asyncio.sleep(self.sleeptime)
-        if self.was_disconnected == 4242:
+        if self.was_disconnected in [4242, # reload
+                                     1006 # if WebSocketServerProtocol.close_code is absent
+                                     ]:
           return
         if self.javascriptcleaned or self.was_disconnected == 4241: # or self.was_disconnected == 1001:
           self.mprint("Shutting down WebBrowser message queue", verbose=1)
@@ -2862,9 +2865,7 @@ Distance: %s
     msg =  "Browser disconnected %s, code %d, reason: %s" %(str(self.websockclient), close_code, close_reason)
     self.mprint(msg , verbose=1 )
     self.was_disconnected = close_code
-    self.websockclient = client
-    if not self.isterminating:
-      self.StartWebsocket()
+    self.websockclient = None
 
 
   async def send_msg_to_browser(self, msgtype, msg=""):
@@ -2894,7 +2895,6 @@ Distance: %s
     else:
       self.OpenBrowser()
     return False
-
 
 
   def OpenBrowser(self):
@@ -2930,7 +2930,6 @@ Distance: %s
         self.mprint("websockeventloop already running", verbose=1)
         return
       if self.websockeventloop is None:
-        #self.websockeventloop = asyncio.get_event_loop()
         self.websockeventloop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.websockeventloop)
         if self.debug is not None:
@@ -2938,10 +2937,9 @@ Distance: %s
       self.server = websockets.serve(self.WebSockHandler, '127.0.0.1',
                                      self.websockport,
                                      create_protocol=MyWebSocketServerProtocol)
-
       self.websockeventloop.run_until_complete(self.server)
-      #self.websockeventloop.run_forever()
       self.mprint("starting WebSockHandler on port %s" %str(self.websockport), verbose=1)
+      # run_forever() blocks execution so put in a separate thread
       self.wst = threading.Thread(target=self.websockeventloop.run_forever)
       self.wst.daemon = True
       self.wst.start()
@@ -2951,23 +2949,11 @@ Distance: %s
       self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
 
 
-  def StopThreads(self):
-    """
-    try:
-      if self.websockclient: # might not have been created if program is closed before a data set is shown
-        self.websockclient['handler'].send_text(u"", opcode=0x8)
-    except Exception as e:
-      self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
-    """
-    #self.mprint("Shutting down Websocket listening thread", verbose=1)
-    #self.server.shutdown()
+  def StopWebsocket(self):
     self.isterminating = True
     self.javascriptcleaned = True
-    #self.msgqueuethrd.join()
     self.mprint("Shutting down websockeventloop", verbose=1)
     self.websockeventloop.stop()
-    #self.websockeventloop.close()
-    #self.wst.join()
 
 
   def set_camera_type(self):
@@ -3011,7 +2997,6 @@ Distance: %s
 
   def ReloadNGL(self): # expensive as javascript may be several Mbytes large
     self.mprint("Rendering JavaScript...", verbose=1)
-    #if not self.websockclient:
     if not self.OpenBrowser():
       self.AddToBrowserMsgQueue("Reload")
 
@@ -3414,7 +3399,6 @@ Distance: %s
     strdata = ""
     hklscene = hklscenes[0]
     self.scene = hklscene
-
     for i,radius in enumerate(hklscene.radii):
       ftuple = (hklscene.points[i][0], hklscene.points[i][1], hklscene.points[i][2],
                hklscene.colors[i][0], hklscene.colors[i][1], hklscene.colors[i][2], radius )
