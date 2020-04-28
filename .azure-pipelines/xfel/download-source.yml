@@ -30,6 +30,15 @@ jobs:
       git lfs pull
     displayName: Download LFS files
 
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProjectId)'
+      pipeline: 4
+      artifact: 'xfel_regression'
+      path: $(Pipeline.Workspace)/modules/xfel_regression
+    displayName: Download xfel_regression
+
   # preserve permissions
   - script: |
       cd $(Pipeline.Workspace)
