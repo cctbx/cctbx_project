@@ -1626,10 +1626,10 @@ class FatRefiner(PixelRefinement):
 
     def _print_image_correlation_analysis(self):
         all_corr_str = ["%.2f" % ic for ic in self.all_image_corr]
-        #if self.print_all_corr:
         print("Correlation stats:")
-        print(", ".join(all_corr_str))
-        print("---------------")
+        if self.print_all_corr:
+            print(", ".join(all_corr_str))
+            print("---------------")
         n_bad_corr = sum([1 for ic in self.all_image_corr if ic < 0.25])
         print("CORRELATION median: %.4f; mean: %.4f, max: %.4f, min %.4f, num <.25: %d/%d;"
               % (median(self.all_image_corr), mean(self.all_image_corr), max(self.all_image_corr),
