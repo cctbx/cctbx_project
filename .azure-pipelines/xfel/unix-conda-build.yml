@@ -43,27 +43,28 @@ steps:
   displayName: Install miniconda
 
 # create conda environment
-- task: DownloadPipelineArtifact@2
-  displayName: Download conda packages
-  inputs:
-    source: 'current'
-    artifact: $(PYTHON_VERSION)_$(OS)
-    path: $(Pipeline.Workspace)/channel
+#- task: DownloadPipelineArtifact@2
+#  displayName: Download conda packages
+#  inputs:
+#    source: 'current'
+#    artifact: $(PYTHON_VERSION)_$(OS)
+#    path: $(Pipeline.Workspace)/channel
+#
+#- script: |
+#    source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
+#    conda install -y conda-build
+#    cd $(Pipeline.Workspace)/channel
+#    conda index .
+#    echo @EXPLICIT > env.txt
+#    for filename in `cat filenames.txt`; do
+#      echo file://$(Pipeline.Workspace)/channel/${filename} >> env.txt
+#    done
+#  displayName: Build local channel
 
 - script: |
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
-    conda install -y conda-build
-    cd $(Pipeline.Workspace)/channel
-    conda index .
-    echo @EXPLICIT > env.txt
-    for filename in `cat filenames.txt`; do
-      echo file://$(Pipeline.Workspace)/channel/${filename} >> env.txt
-    done
-  displayName: Build local channel
-
-- script: |
-    source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
-    conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
+    #conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
+    conda create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/modules/dials/.conda-envs/dials_$(PYTHON_VERSION)_$(OS).txt
     conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
   displayName: Create conda environment
 
