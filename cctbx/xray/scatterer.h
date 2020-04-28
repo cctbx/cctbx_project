@@ -235,7 +235,7 @@ namespace xray {
       }
 
       bool is_anharmonic_adp() const {
-        return anharmonic_adp;
+        return anharmonic_adp != 0;
       }
 
       //! get u_iso as b_iso.
