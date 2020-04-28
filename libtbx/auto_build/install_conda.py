@@ -159,7 +159,9 @@ class conda_manager(object):
     'phenix_tng': os.path.join('phenix', 'conda_envs',
       default_format.format(builder='phenix', version=version,
                             platform=conda_platform[platform.system()])),
-    'xfel': default_file,
+    'xfel': os.path.join('dials', '.conda-envs',
+      default_format.format(builder='dials', version=version,
+                            platform=conda_platform[platform.system()])),
     'xfellegacy': default_file,
     'labelit': default_file,
     'dials': os.path.join('dials', '.conda-envs',
@@ -645,7 +647,7 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
       command_list.append('--copy')
     if offline and not yaml_format:
       command_list.append('--offline')
-    if builder == "dials":
+    if builder in ["dials", "xfel"]:
       command_list.append("-y")
     # RuntimeError is raised on failure
     print('{text} {builder} environment with:\n  {filename}'.format(
