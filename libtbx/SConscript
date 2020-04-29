@@ -1038,6 +1038,7 @@ if( libtbx.env.build_options.use_environment_flags ):
   else:
     env_etc.shlinkflags = flg
   env_base.Append(LINKFLAGS=flg)
+  env_base.Append(SHLINKFLAGS=flg)
 
 # conda header and library paths
 if (libtbx.env.build_options.use_conda):
