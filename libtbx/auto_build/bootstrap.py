@@ -1079,7 +1079,7 @@ class Builder(object):
     self.name = '%s-%s'%(self.category, self.platform)
     # Platform configuration.
     python_executable = 'python'
-    self.python3 = python3
+    self.python3 = python.startswith('3')
     if python3:
       python_executable = 'python3'
     self.wxpython4 = wxpython4
@@ -1708,11 +1708,7 @@ environment exists in or is defined by {conda_env}.
         # check for existing miniconda3 installation
         if not os.path.isdir('mc3'):
           flags.append('--install_conda')
-        # check if --python3 is set
-        if self.python3:
-          flags.append('--python=36')
-        else:
-          flags.append('--python={python}'.format(python=self.python))
+        flags.append('--python={python}'.format(python=self.python))
         command = [
           'python',
           self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build',
@@ -2695,17 +2691,8 @@ def run(root=None):
                     choices=['27', '36', '37', '38'],
                     help="""When set, a specific Python version of the
 conda environment will be used. This only affects environments selected with
-the --builder flag. This cannot be used with --python3.""")
-  python_args.add_argument("--python3",
-                    dest="python3",
-                    help="Install a Python3 interpreter. This is unsupported and purely for development purposes. This cannot be used with --python.",
-                    action="store_true",
-                    default=False)
-  parser.add_argument("--wxpython4",
-                    dest="wxpython4",
-                    help="Install wxpython4 instead of wxpython3. This is unsupported and purely for development purposes.",
-                    action="store_true",
-                    default=False)
+the --builder flag. For non-conda dependencies, "36", "37", and "38" implies
+Python 3.7.""")
   parser.add_argument("--config-flags", "--config_flags",
                     dest="config_flags",
                     help="""Pass flags to the configuration step. Flags should
@@ -2720,9 +2707,9 @@ existing conda environment or a file defining a conda environment can be
 provided. The build will use that environment instead of creating a default one
 for the builder. If the currently active conda environment is to be used for
 building, $CONDA_PREFIX should be the argument for this flag. Otherwise, a new
-environment will be created. The --python or --python3 flags will be ignored
- when there is an argument for this flag. Specifying an environment is for
- developers that maintain their own conda environment.""",
+environment will be created. The --python flag will be ignored when there is
+an argument for this flag. Specifying an environment is for developers that
+maintain their own conda environment.""",
                     default=None, nargs='?', const='')
 
   parser.add_argument("--build-dir",
@@ -2803,8 +2790,8 @@ environment will be created. The --python or --python3 flags will be ignored
     force_base_build=options.force_base_build,
     enable_shared=options.enable_shared,
     mpi_build=options.mpi_build,
-    python3=options.python3,
-    wxpython4=options.wxpython4,
+    python3=False,
+    wxpython4=False,
     config_flags=options.config_flags,
     use_conda=options.use_conda,
     python=options.python,
