@@ -26,7 +26,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 from IPython import embed
 
-from simtbx.diffBragg.refiners.global_refiner import FatRefiner
+from simtbx.diffBragg.refiners.global_refiner import GlobalRefiner
 from simtbx.nanoBragg import shapetype
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
@@ -230,7 +230,7 @@ ndetz_param = 1
 n_global_unknowns = nucell_param + nfcell_param + ngain_param + ndetz_param + n_ncell_param
 n_total_unknowns = n_local_unknowns + n_global_unknowns
 
-RUC = FatRefiner(
+RUC = GlobalRefiner(
     n_total_params=n_total_unknowns,
     n_local_params=n_local_unknowns,
     n_global_params=n_global_unknowns,
