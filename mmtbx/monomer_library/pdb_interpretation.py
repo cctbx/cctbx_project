@@ -382,6 +382,7 @@ master_params_str = """\
         low resolution.  Probably not useful (and maybe even harmful) at \
         resolutions much higher than 3.5A.
       .expert_level = 2
+      .style = hidden
       .short_caption = Ramachandran restraints
     cis_threshold = 45
       .type = float

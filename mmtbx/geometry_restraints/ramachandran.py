@@ -23,16 +23,19 @@ old_master_phil = iotbx.phil.parse("""
     .type = float
     .short_caption = Ramachandran gradients weight
     .expert_level = 1
+    .style = hidden
   scale_allowed = 1.0
     .type = float
     .short_caption = Rescale allowed region pseudo-energy by
+    .style = hidden
   rama_potential = *oldfield emsley
     .type = choice(multi=False)
     .short_caption = Ramachandran potential
     .caption = Oldfield Coot
+    .style = hidden
   oldfield
     .short_caption = Oldfield potential parameters
-    .style = box auto_align
+    .style = box auto_align hidden
   {
     esd = 10.0
       .type = float
@@ -57,6 +60,7 @@ old_master_phil = iotbx.phil.parse("""
     .help = Selection of part of the model for which \
         Ramachandran restraints will be set up.
     .expert_level = 1
+    .style = hidden
   restrain_rama_outliers = True
     .type = bool
     .help = Apply restraints to Ramachandran outliers
