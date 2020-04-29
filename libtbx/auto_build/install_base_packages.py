@@ -1252,7 +1252,10 @@ _replace_sysconfig_paths(build_time_vars)
     cert_file = check_output([self.python_exe, '-c',
                               'import certifi; print(certifi.where())'])
     cert_file = cert_file.strip()
-    os.environ['SSL_CERT_FILE'] = cert_file
+    try:
+      os.environ['SSL_CERT_FILE'] = cert_file
+    except TypeError: # str is needed instead of bytes (Python 3)
+      os.environ['SSL_CERT_FILE'] = cert_file.decode("utf-8")
     print('SSL_CERT_FILE environment variable set to %s' % \
       cert_file, file=self.log)
 
