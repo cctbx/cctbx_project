@@ -30,10 +30,10 @@ tst_list = (
     ["$D/diffBragg/tests/tst_diffBragg_ucell_refine.py", "--crystalsystem monoclinic --curvatures"],
     ["$D/diffBragg/tests/tst_diffBragg_ucell_refine.py", "--crystalsystem tetragonal"],
     ["$D/diffBragg/tests/tst_diffBragg_Fcell_deriv.py", "--curvatures"],
-    ["$D/diffBragg/tests/tst_diffBragg_multifat_refine.py",
+    ["$D/diffBragg/tests/tst_diffBragg_global_refine.py",
         "--nshots 1 --rescale --spotscale --umatrix --ncells " +
         "--bmatrix --bg --fcell --testbg --testfcell --testUmatrix --maxcalls 50"],
-    ["$D/diffBragg/tests/tst_diffBragg_fat_refine.py", "--spotscale --umatrix --bmatrix --ncells --curvatures --rescale"],
+    ["$D/diffBragg/tests/tst_diffBragg_global_refine_older.py", "--spotscale --umatrix --bmatrix --ncells --curvatures --rescale"],
     )
 
 

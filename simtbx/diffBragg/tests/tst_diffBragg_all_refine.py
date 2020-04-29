@@ -190,7 +190,7 @@ RUC = RefineAll(
     ucell_manager=UcellMan)
 
 
-#from simtbx.diffBragg.refiners.global_refiner import FatRefiner
+#from simtbx.diffBragg.refiners.global_refiner import GlobalRefiner
 #
 #
 ## TODO: the following need to be embedded in the refiner init function..
@@ -235,7 +235,7 @@ RUC = RefineAll(
 #n_total_unknowns = n_local_unknowns + n_global_unknowns
 #
 #
-#RUC = FatRefiner(
+#RUC = GlobalRefiner(
 #    n_total_params=n_total_unknowns,
 #    n_local_params=n_local_unknowns,
 #    n_global_params=n_global_unknowns,

@@ -25,16 +25,11 @@ parser.add_argument("--tiltfit", action="store_true")
 parser.add_argument("--predictwithtruth", action="store_true")
 parser.add_argument("--pershotucell", action="store_true")
 parser.add_argument("--pershotncells", action="store_true")
-parser.add_argument("--maxcalls", type=int, default=None, help="maximum number of iterations for refinement")
-parser.add_argument("--displayedimage", type=int, default=0, help="if plotting during refinement, this is specifies which image to plot")
+parser.add_argument("--maxcalls", type=int, default=None)
+parser.add_argument("--displayedimage", type=int, default=0)
 parser.add_argument("--perturbfcell", type=float, default=None, help="perturbation factor, 0.1 is small, 1 is large")
 parser.add_argument("--fractionperturbed", type=float, default=0.1, help="Fraction of Fhkl to perturn")
 parser.add_argument("--fcellsigmascale", type=float, default=None)
-parser.add_argument("--outdir", type=str, default=None, help="output directory for refinement data")
-parser.add_argument("--spectra", action="store_true", help="test with a refinable spectrum")
-parser.add_argument("--perturbSpectra", action="store_true", help="perturb the spectrum")
-parser.add_argument("--refineSpectra", action="store_true", help="refine the spectrum")
-parser.add_argument("--testSpectra", action="store_true", help="test average energy after spectrum refinement")
 args = parser.parse_args()
 
 
@@ -75,7 +70,6 @@ shot_hkl={}
 shot_panel_ids={}
 nspot_per_shot = {}
 shot_originZ_init = {}
-
 # GLOBAL PARAMETERS
 
 all_c_before = []
@@ -103,7 +97,6 @@ offsets = np.random.uniform(1, 3, N_SHOTS) * np.random.choice([1,-1], N_SHOTS)
 originZ_gt = {}
 all_dets = []
 all_reso = []
-waves = waves_perturbed = fluxes = None
 for i_shot in range(N_SHOTS):
 
     # FIRST WE GENERATE SOME RANDOM IMAGES
@@ -121,15 +114,7 @@ for i_shot in range(N_SHOTS):
         perturb_rot_ang = np.random.choice([0.02, 0.03, 0.04, .05])  # degrees
 
     # make the ground truth crystal:
-    if args.pershotucell:
-        np.random.seed(i_shot)
-        uc_a = np.random.uniform(78.5, 79.5)
-        uc_c = np.random.uniform(37.5, 38.5)
-        ucell_shot = uc_a, uc_a, uc_c, 90,90,90
-        print("Shot %d cell:" % (i_shot+1), ucell_shot)
-        a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell_shot).orthogonalization_matrix()).transpose().as_list_of_lists()
-    else:
-        a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell).orthogonalization_matrix()).transpose().as_list_of_lists()
+    a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell).orthogonalization_matrix()).transpose().as_list_of_lists()
     x = col((-1, 0, 0))
     y = col((0, -1, 0))
     z = col((0, 0, -1))
@@ -171,35 +156,6 @@ for i_shot in range(N_SHOTS):
 
     # initialize the simulator
     SIM = SimData()
-    if args.spectra:
-
-        if waves is None:
-            from cxid9114.parameters import ENERGY_CONV
-            from scipy.signal import windows
-            spec = SIM.beam.spectrum
-            total_flux = spec[0][1]
-            wave = spec[0][0]
-
-            en = ENERGY_CONV / wave
-            delta_en = 1.5
-            ens = np.arange(en - 5, en + 6, delta_en)
-            waves = ENERGY_CONV / ens
-            num_energies = len(ens)
-            fluxes = np.ones(num_energies) * total_flux / num_energies
-            fluxes = fluxes*windows.hanning(num_energies)
-            fluxes /= fluxes.sum()
-            fluxes *= total_flux
-
-
-            spectrum_GT = list(zip(waves, fluxes))
-            gt_lambda0 = waves[0]
-            gt_lambda1 = waves[1] - waves[0]
-            spec_idx = np.arange(num_energies)
-            assert np.allclose(waves, gt_lambda0 + spec_idx*gt_lambda1)
-            lam0, lam1 = gt_lambda0, gt_lambda1
-
-        SIM.beam.spectrum = list(zip(waves, fluxes))
-
     SIM.detector = DET_gt
     all_dets.append(DET_gt)
 
@@ -227,7 +183,7 @@ for i_shot in range(N_SHOTS):
     SIM.instantiate_diffBragg(oversample=0)
     SIM.D.nopolar = False
     SIM.D.default_F = 0
-    SIM.D.progress_meter =  False
+    SIM.D.progress_meter = False
     #SIM.water_path_mm = 0.005
     SIM.water_path_mm = 0.15
     SIM.air_path_mm = 0.1
@@ -283,6 +239,7 @@ for i_shot in range(N_SHOTS):
     SIM.D.Bmatrix = C2.get_B()
     SIM.D.Umatrix = C2.get_U()
     nbcryst.dxtbx_crystal = C2
+
 
     if args.ncells:
         Ncells_abc2 = 14, 14, 14
@@ -389,25 +346,11 @@ for i_shot in range(N_SHOTS):
 
     Hi_asu = utils.map_hkl_list(HKLi, anomalous_flag=True, symbol=symbol)
 
-    shot_ucell_managers[i_shot] = UcellMan
-    shot_rois[i_shot] = spot_roi
-    shot_nanoBragg_rois[i_shot] = nanoBragg_rois
-    shot_roi_imgs[i_shot] = roi_imgs
-    shot_spectra[i_shot] = SIM.beam.spectrum
-    if args.perturbSpectra:
-        assert args.spectra
-        if waves_perturbed is None:
-            np.random.seed(3142019)
-            lam0 = np.random.normal(gt_lambda0, gt_lambda0 * 0.002)
-            lam1 = np.random.normal(gt_lambda1, abs(gt_lambda1) * 0.002)
-            waves_perturbed = lam0 + spec_idx * lam1
-        print("ENERGY TRUTH=%.4f" % (ENERGY_CONV/gt_lambda0))
-        print("ENERGY PERTURBED=%.4f" % (ENERGY_CONV/lam0))
-        shot_spectra[i_shot] = list(zip(waves_perturbed, fluxes))
-        SIM.beam.spectrum = list(zip(waves_perturbed, fluxes))
-    elif args.spectra:
-        waves_perturbed = waves
-
+    shot_ucell_managers[i_shot]= UcellMan
+    shot_rois[i_shot]= spot_roi
+    shot_nanoBragg_rois[i_shot]= nanoBragg_rois
+    shot_roi_imgs[i_shot]= roi_imgs
+    shot_spectra[i_shot]= SIM.beam.spectrum
     shot_crystal_GTs[i_shot]= C
     shot_crystal_models[i_shot]= SIM.crystal.dxtbx_crystal
     shot_xrel[i_shot]= xrel
@@ -499,10 +442,7 @@ n_local_unknowns = nrotation_param + nscale_param + ntilt_param + ndetz_param + 
 nfcell_param = len(idx_from_asu)
 ngain_param = 1
 
-n_spectra_param = 0
-if args.refineSpectra:
-    n_spectra_param = 2
-n_global_unknowns = nfcell_param + ngain_param + n_global_m_param + n_global_ucell_param + n_spectra_param
+n_global_unknowns = nfcell_param + ngain_param + n_global_m_param + n_global_ucell_param
 n_total_unknowns = n_local_unknowns + n_global_unknowns
 
 RUC = GlobalRefiner(
@@ -531,22 +471,6 @@ RUC = GlobalRefiner(
     shot_originZ_init=shot_originZ_init,
     sgsymbol=symbol,
     omega_kahn=[omega_kahn])
-
-
-if args.refineSpectra:
-    RUC.refine_spectra = True
-    RUC.n_spectra_param = 2
-    RUC.spectra_coefficients_sigma = .01, .01
-    RUC.spectra_coefficients_init = 0, 1
-    RUC.lambda_coef_ranges = [(-0.01, 0.01), (0.95, 1.05)]
-
-RUC.output_dir = args.outdir
-# dummie info (used only in real situations)
-RUC.FNAMES = ["DUMMIE%d.imagefile" % i_shot for i_shot in range(N_SHOTS)]
-RUC.PROC_FNAMES = ["DUMMIE.hdf5"]
-RUC.BBOX_IDX = [range(len(shot_nanoBragg_rois[i_shot])) for i_shot in range(N_SHOTS)]
-RUC.PROC_IDX = range(N_SHOTS)
-# end dummie info
 
 RUC.iteratively_freeze_parameters = args.iterfreeze
 RUC.index_of_displayed_image = args.displayedimage
@@ -597,7 +521,7 @@ RUC.gt_ucell = ucell[0], ucell[2]
 RUC.testing_mode = False
 
 RUC.spot_scale_init = [1]*N_SHOTS
-RUC.m_init = {i:Ncells_abc2[0] for i in range(N_SHOTS)}  # np.log(Ncells_abc2[0]-3)
+RUC.m_init = Ncells_abc2[0]  # np.log(Ncells_abc2[0]-3)
 RUC.ucell_inits = {i:shot_ucell_managers[i].variables for i in range(N_SHOTS)}
 
 
@@ -712,17 +636,5 @@ if args.testUmatrix:
     print("Final Misorientation=%2.7g" % RUC.all_ang_off[0])
     assert RUC.all_ang_off[0] < 0.001
 
-if args.testSpectra:
-    coef = RUC._get_spectra_coefficients()
-    waves_refined = coef[0] + coef[1]*waves_perturbed
-    fluxsum = sum(fluxes)
-    en_ref_com = ENERGY_CONV / (sum(fluxes * waves_refined) / fluxsum)
-    en_com = ENERGY_CONV / (sum(fluxes * waves) / fluxsum)
-    en_init_com = ENERGY_CONV / (sum(fluxes * waves_perturbed) / fluxsum)
-
-    print("Before refinement: COM energy=%f" % en_init_com)
-    print("AFTER refinement: COM energy=%f" % en_ref_com)
-    print("Ground truth COM energy = %f" % en_com)
-    assert abs(en_ref_com - en_com) < 1
-
 print("OK!")
+#embed()

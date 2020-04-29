@@ -124,7 +124,7 @@ from IPython import embed
 
 warnings.filterwarnings("ignore")
 
-class FatRefiner(PixelRefinement):
+class GlobalRefiner(PixelRefinement):
 
     def __init__(self, n_total_params, n_local_params, n_global_params, local_idx_start,
                  shot_ucell_managers, shot_rois, shot_nanoBragg_rois,
@@ -173,7 +173,6 @@ class FatRefiner(PixelRefinement):
         :param omega_kahn: omega and kahn correction term for each panel
         """
         PixelRefinement.__init__(self)
-        # super(GlobalFat, self).__init__()
         self.num_kludge = 0
         self.global_ncells_param = global_ncells
         self.global_ucell_param = global_ucell
@@ -343,7 +342,7 @@ class FatRefiner(PixelRefinement):
     def _check_keys(self, shot_dict):
         """checks that the dictionary keys are the same"""
         if not sorted(shot_dict.keys()) == self.shot_ids:
-            raise KeyError("input data funky, check GlobalFat inputs")
+            raise KeyError("input data funky, check GlobalRefiner inputs")
         return shot_dict
 
     def _evaluate_averageI(self):
@@ -1943,7 +1942,7 @@ class FatRefiner(PixelRefinement):
     def Fobs_Fref_Rfactor(self, use_binning=False, auto_scale=False):
         if auto_scale:
             # TODO check for convergence of minimizer and warn if it faile, then set scale factor to 1 ?
-            self.r1_scale = minimize(FatRefiner._rfactor_minimizer_target,
+            self.r1_scale = minimize(GlobalRefiner._rfactor_minimizer_target,
                                      x0=[1], args=(self.Fobs, self.Fref_aligned),
                                      method='Nelder-Mead').x[0]
         else:
