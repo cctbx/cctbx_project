@@ -364,8 +364,8 @@ if args.new:
 
     SIM.D.oversample_omega = False
 
-    from simtbx.diffBragg.refiners.global_refiner import FatRefiner
-    RUC = FatRefiner(
+    from simtbx.diffBragg.refiners.global_refiner import GlobalRefiner
+    RUC = GlobalRefiner(
         n_total_params=n_total_unknowns,
         n_local_params=n_local_unknowns,
         n_global_params=n_global_unknowns,

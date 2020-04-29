@@ -48,11 +48,11 @@ from simtbx.nanoBragg import shapetype
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg import utils
-from simtbx.diffBragg.refiners.global_refiner import FatRefiner
+from simtbx.diffBragg.refiners.global_refiner import GlobalRefiner
 from IPython import embed
 from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager, TetragonalManager
 
-# containers for FatRefine
+# containers for GlobalRefine
 shot_ucell_managers={}
 shot_rois={}
 shot_nanoBragg_rois={}
@@ -330,7 +330,7 @@ ngain_param = 1
 n_global_unknowns = nfcell_param + ngain_param + n_global_m_param + n_global_ucell_param
 n_total_unknowns = n_local_unknowns + n_global_unknowns
 
-RUC = FatRefiner(
+RUC = GlobalRefiner(
     n_total_params=n_total_unknowns,
     n_local_params=n_local_unknowns,
     n_global_params=n_global_unknowns,

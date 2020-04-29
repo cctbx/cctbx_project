@@ -139,7 +139,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.log2pi = np.log(np.pi*2)
         self.use_ucell_priors = False  # (not yet supported) whether to include priors for the unit cell constants
         self.use_rot_priors = False  # (not yet supported) whether to inc;ude priors for misset corrections
-        self._refinement_millers = None  # flex array of refinement miller indices (computed by FatRefiner _setup method)
+        self._refinement_millers = None  # flex array of refinement miller indices (computed by GlobalRefiner _setup method)
         lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
 
     #@property
@@ -169,7 +169,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     @property
     def Fobs(self):
         """
-        Fat refiner updates the internal diffBragg Fhkl tuple directly during refinement, therefore
+        refinement updates the internal diffBragg Fhkl tuple directly during refinement, therefore
         if we want an Fobs array we have to manually create it.. This is used for computing
         R factors and CC with the Fhkl reference array, these values are important diagnostics
         when determining how well a refinement is working
