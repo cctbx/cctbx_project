@@ -1059,6 +1059,7 @@ class Builder(object):
       config_flags=[],
       use_conda=None,
       python='27',
+      no_boost_src=False,
     ):
     if nproc is None:
       self.nproc=1
@@ -1104,6 +1105,7 @@ class Builder(object):
     self.config_flags = config_flags
     self.use_conda = use_conda
     self.python = python
+    self.no_boost_src = no_boost_src
     self.add_init()
 
     # Cleanup
@@ -1133,13 +1135,13 @@ class Builder(object):
     # Add svn sources.
     self.revert=revert
     if update:
-      # conda builds do not need boost (disabled)
+      # check if boost needs to be downloaded
       codebases = self.get_codebases()
-      # if self.use_conda is not None:
-      #   try:
-      #     codebases.remove('boost')
-      #   except ValueError:
-      #     pass
+      if self.no_boost_src:
+        try:
+          codebases.remove('boost')
+        except ValueError:
+          pass
       list(map(self.add_module, codebases))
 
     # always remove .pyc files
@@ -2711,7 +2713,15 @@ environment will be created. The --python flag will be ignored when there is
 an argument for this flag. Specifying an environment is for developers that
 maintain their own conda environment.""",
                     default=None, nargs='?', const='')
-
+  parser.add_argument("--no-boost-src", "--no_boost_src",
+                      dest="no_boost_src",
+                      help="""When set, the reduced Boost source code is not
+downloaded into the modules directory. This enables the usage of an existing
+installation of Boost in the same directory as the Python for configuration.
+For example, this flag should be used if the conda package for Boost is
+available. This flag only affects the "update" step.""",
+                      action="store_true",
+                      default=False)
   parser.add_argument("--build-dir",
                      dest="build_dir",
                      help="directory where the build will be. Should be at the same level as modules! default is 'build'",
@@ -2795,6 +2805,7 @@ maintain their own conda environment.""",
     config_flags=options.config_flags,
     use_conda=options.use_conda,
     python=options.python,
+    no_boost_src=options.no_boost_src,
   ).run()
   print("\nBootstrap success: %s" % ", ".join(actions))
 
