@@ -4,7 +4,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 import iotbx.cif
 from libtbx.test_utils import approx_equal, show_diff
-from StringIO import StringIO
+from six.moves import cStringIO as StringIO
 import iotbx.mtz
 import os
 
