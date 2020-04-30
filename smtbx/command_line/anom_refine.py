@@ -6,6 +6,7 @@ from scitbx import lstbx
 import scitbx.lstbx.normal_eqns_solving
 from smtbx import refinement
 from timeit import default_timer as current_time
+from math import sqrt
 
 
 allowed_input_file_extensions = ('.ins', '.res', '.cif')
@@ -56,6 +57,10 @@ start,length.'''
     '-t', '--table',
     action='store_true',
     help='Output in condensed format suitable for further processing')
+  parser.add_argument(
+    '-T', '--table-with-su',
+    action='store_true',
+    help='Output in condensed format with SUs under the values')
   parser.add_argument(
     '-c', '--max-cycles',
     type=int,
@@ -135,7 +140,7 @@ Inelastic form factors for \n non-refined atoms may be inaccurate.\n''')
 
   # At last...
   anom_sc_list=[]
-  for sc in xm.xray_structure.scatterers():
+  for i, sc in enumerate(xm.xray_structure.scatterers()):
     sc.flags.set_grad_site(False)
     sc.flags.set_grad_u_iso(False)
     sc.flags.set_grad_u_aniso(False)
@@ -144,7 +149,7 @@ Inelastic form factors for \n non-refined atoms may be inaccurate.\n''')
       sc.flags.set_use_fp_fdp(True)
       sc.flags.set_grad_fp(True)
       sc.flags.set_grad_fdp(True)
-      anom_sc_list.append(sc)
+      anom_sc_list.append((i, sc))
 
   ls = xm.least_squares()
   steps = lstbx.normal_eqns_solving.levenberg_marquardt_iterations(
@@ -153,23 +158,59 @@ Inelastic form factors for \n non-refined atoms may be inaccurate.\n''')
     gradient_threshold=args.stop_deriv,
     step_threshold=args.stop_shift)
 
+  cov = ls.covariance_matrix()
+  cov_diag = cov.matrix_packed_u_diagonal()
+  param_map = xm.xray_structure.parameter_map()
+
   # Prepare output
   result = ''
 
-  if args.table:
-    if energy: result += "{:.1f} ".format(energy)
-    else: result += "{} ".format(args.reflections)
-    for sc in anom_sc_list:
-      result += "{:.3f} ".format(sc.fp)
-    for sc in anom_sc_list:
-      result += "{:.3f} ".format(sc.fdp)
+  if args.table or args.table_with_su:
+    if energy: label = "{:.1f} ".format(energy)
+    else: label = "{} ".format(args.reflections)
+    result += label
+    for i, sc in anom_sc_list:
+      result += "{:6.3f} ".format(sc.fp)
+    for i, sc in anom_sc_list:
+      result += "{:6.3f} ".format(sc.fdp)
     result += '\n'
 
-  else:
+  if args.table_with_su:
+    result += ' ' * len(label)
+    for i, sc in anom_sc_list:
+      sigma_fp = None
+      params = param_map[i]
+      if params.fp >= 0:
+        sigma_fp = sqrt(cov_diag[params.fp])
+        result += "{:6.3f} ".format(sigma_fp)
+      else:
+        result += "       "
+    for i, sc in anom_sc_list:
+      sigma_fdp = None
+      params = param_map[i]
+      if params.fdp >= 0:
+        sigma_fdp = sqrt(cov_diag[params.fdp])
+        result += "{:6.3f} ".format(sigma_fdp)
+      else:
+        result += "       "
+    result += '\n'
+
+  if not (args.table or args.table_with_su):
+    from libtbx.utils import format_float_with_standard_uncertainty \
+        as format_float_with_su
     result += "\n### REFINE ANOMALOUS SCATTERING FACTORS ###\n"
     result += "Reflections: {}\n\n".format(args.reflections)
-    for sc in anom_sc_list:
-      result += "{}:\n\tfp: {:.3f}\n\tfdp: {:.3f}\n".format(sc.label, sc.fp, sc.fdp)
+    for i, sc in anom_sc_list:
+      sigma_fp = sigma_fdp = None
+      params = param_map[i]
+      if params.fp >= 0:
+        sigma_fp = sqrt(cov_diag[params.fp])
+      if params.fdp >= 0:
+        sigma_fdp = sqrt(cov_diag[params.fdp])
+      result += "{}:\n\tfp: {}\n\tfdp: {}\n".format(
+          sc.label,
+          format_float_with_su(sc.fp, sigma_fp),
+          format_float_with_su(sc.fdp, sigma_fdp))
 
   # Write to file or stdout
   if args.outfile:
