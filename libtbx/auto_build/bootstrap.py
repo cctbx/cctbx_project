@@ -2741,7 +2741,7 @@ maintain their own conda environment.""",
 
   # Check if the argument to --use-conda starts with '~'
   if options.use_conda is not None and options.use_conda.startswith('~'):
-    options.use_conda = os.expanduser(options.use_conda)
+    options.use_conda = os.path.expanduser(options.use_conda)
 
   print("Performing actions:", " ".join(actions))
 
