@@ -594,9 +594,12 @@ class GlobalRefiner(PixelRefinement):
                         raise ValueError("sigma is being set to 0 for all fcell in range %.4f - %.4f" % bin_rng)
                     if self.rescale_fcell_by_resolution:
                         assert sigma > 0
-                        self.sigma_for_res_id[i_bin] = 1./sigma/sigma
+                        self.sigma_for_res_id[i_bin] = 1./sigma
                     else:
                         self.sigma_for_res_id[i_bin] = 1.
+                if rank==0:
+                    print("SIGMA FOR RES ID:")
+                    print(self.sigma_for_res_id)
 
                 self.res_group_id_from_fcell_index = {}
                 for ii, asu_index in enumerate(miller_binner.miller_indices()):
