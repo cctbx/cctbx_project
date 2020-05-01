@@ -521,7 +521,7 @@ RUC.gt_ucell = ucell[0], ucell[2]
 RUC.testing_mode = False
 
 RUC.spot_scale_init = [1]*N_SHOTS
-RUC.m_init = Ncells_abc2[0]  # np.log(Ncells_abc2[0]-3)
+RUC.m_init = {i:Ncells_abc2[0] for i in range(N_SHOTS)}  # np.log(Ncells_abc2[0]-3)
 RUC.ucell_inits = {i:shot_ucell_managers[i].variables for i in range(N_SHOTS)}
 
 

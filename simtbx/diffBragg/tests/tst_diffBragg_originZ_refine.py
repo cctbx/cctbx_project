@@ -213,7 +213,7 @@ RUC.refine_detdist = True
 RUC.refine_gain_fac = False
 
 RUC.ucell_sigmas = [1]*len(UcellMan.variables)
-RUC.ucell_inits = [i for i in UcellMan.variables]
+RUC.ucell_inits = {0:  UcellMan.variables}
 
 RUC.max_calls = 300
 RUC.trad_conv_eps = 1e-5
