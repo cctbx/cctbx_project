@@ -529,7 +529,7 @@ def exercise_bond_over_symmetry(mon_lib_srv, ener_lib):
       distance_ideal=2.9,
       weight=400,
       origin_id=origin_ids.get_origin_id('hydrogen bonds'))
-  grm.add_new_hbond_restraints_in_place(
+  grm.add_new_bond_restraints_in_place(
       proxies=[proxy, proxy2],
       sites_cart=h.atoms().extract_xyz())
   simple, asu = grm.get_all_bond_proxies()
