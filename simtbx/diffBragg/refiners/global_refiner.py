@@ -561,6 +561,8 @@ class GlobalRefiner(PixelRefinement):
                 self.Fref_aligned = self.Fref.select_indices(self.Fobs.indices())
                 self.init_R1 = self.Fobs_Fref_Rfactor(use_binning=False, auto_scale=self.scale_r1)
                 print("Initial R1 = %.4f" % self.init_R1)
+            else:
+                self.init_R1 = -1
 
             if self.Fobs is not None:  # TODO should this ever be None ?
                 miller_binner = self.Fobs.binner()
@@ -590,7 +592,11 @@ class GlobalRefiner(PixelRefinement):
                     if sigma == 0:
                         bin_rng = miller_binner.bin_d_range(i_bin)
                         raise ValueError("sigma is being set to 0 for all fcell in range %.4f - %.4f" % bin_rng)
-                    self.sigma_for_res_id[i_bin] = sigma
+                    if self.rescale_fcell_by_resolution:
+                        assert sigma > 0
+                        self.sigma_for_res_id[i_bin] = 1./sigma/sigma
+                    else:
+                        self.sigma_for_res_id[i_bin] = 1.
 
                 self.res_group_id_from_fcell_index = {}
                 for ii, asu_index in enumerate(miller_binner.miller_indices()):
@@ -767,7 +773,7 @@ class GlobalRefiner(PixelRefinement):
         val = self.x[self.ncells_xpos[i_shot]]
         if self.rescale_params:
             sig = self.m_sigma
-            init = self.m_init # note all shots start from same mosaic parameter
+            init = self.m_init[i_shot] 
             val = np_exp(sig*(val-1))*(init-3) + 3
         else:
             val = np_exp(val)+3
@@ -1878,6 +1884,7 @@ class GlobalRefiner(PixelRefinement):
         Xnorm = norm(self.x)
         R1 = -1
         R1_i = -1
+        self.R_overall = -1
         ncurv = 0
         if self.calc_curvatures:
             ncurv = len(self.curv)
@@ -1895,7 +1902,7 @@ class GlobalRefiner(PixelRefinement):
 
         print(
             "%s\n\t%s|G|=%2.7g, eps*|X|=%2.7g,%s R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n"
-            % (scale_stats_string, Bcolors.OKBLUE, self.gnorm, Xnorm * self.trad_conv_eps, Bcolors.ENDC, R1, R1_i, self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
+            % (scale_stats_string, Bcolors.OKBLUE, self.gnorm, Xnorm * self.trad_conv_eps, Bcolors.ENDC, self.R_overall, self.init_R1, self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
                ", ".join(map(str, self.neg_curv_shots))))
         #print("<><><><><><><><> TOP GUN <><><><><><><><>")
         #print("                 End of iteration.")

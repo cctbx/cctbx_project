@@ -401,8 +401,8 @@ RUC.gt_ucell = ucell[0], ucell[2]
 RUC.spot_scale_init = [1]*N_SHOTS
 RUC.testing_mode = False
 
-RUC.m_init = Ncells_gt[0]  # np.log(Ncells_abc2[0]-3)
-RUC.ucell_inits = ucell[0], ucell[2]
+RUC.m_init = {0:Ncells_gt[0]}  # np.log(Ncells_abc2[0]-3)
+RUC.ucell_inits = {0: [ucell[0], ucell[2]]}
 
 #RUC.S.D.update_oversample_during_refinement = False  # todo: decide
 Fobs = RUC.S.crystal.miller_array_high_symmetry
