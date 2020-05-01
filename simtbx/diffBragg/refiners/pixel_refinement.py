@@ -48,7 +48,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.fcell_resolution_bin_Id = None
         self.big_dump = False
         #self.ucell_inits = {0: [79.1, 38.2]} # deprecated, just uses UCELL MANAGERS now 
-        self.m_init = 10  # TODO make setting these properties a requirement
+        self.m_init = {0: 10}  # TODO make setting these properties a requirement
         self.spot_scale_init = {0: 1} # TODO make setting these properties a requirement
         self.print_all_corr=True
 
@@ -74,6 +74,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.request_diag_once = False  # LBFGS refiner property
         self.output_dir = None  # directory to dump progress files, these can be used to restart simulation later
         self.min_multiplicity = 1  # only refine a spots Fhkl if multiplicity greater than this number
+        self.rescale_fcell_by_resolution = True
         self.restart_file = None  # output file from previous run refinement
         self.global_ncells_param = False  # refine one mosaic domain size parameter for all lattices
         self.global_originZ_param = True  # refine one origin for all shots/lattices
