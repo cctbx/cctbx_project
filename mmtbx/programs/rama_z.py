@@ -44,7 +44,7 @@ Usage examples:
   # ---------------------------------------------------------------------------
   def validate(self):
     print('Validating inputs', file=self.logger)
-    self.data_manager.has_models(expected_n=1, exact_count=True, raise_sorry=True)
+    self.data_manager.has_models()
     m = self.data_manager.get_model()
     print ('Inputs OK', file=self.logger)
 
@@ -77,31 +77,36 @@ Usage examples:
         self.plots[i].save_image(fn, dpi=300)
 
   def run(self):
-    model = self.data_manager.get_model()
+    models = []
+    for model_name in self.data_manager.get_model_names():
+      models.append(self.data_manager.get_model(model_name))
+
+    # model = self.data_manager.get_model()
     self.inp_fn = os.path.basename(self.data_manager.get_default_model_name())[:-4]
     self.rama_z = rama_z.rama_z(
-        model = model,
+        models = models,
         log = self.logger)
-
-    self._write_plots_if_needed(model, label='whole', type_of_plot='whole')
-    helix_sel, sheet_sel, loop_sel = self.rama_z.get_ss_selections()
-    if model.get_hierarchy().models_size() != 1:
-      print ("Warning! Outputting partial models and plots are not supported \
-for multi-model files", file=self.logger)
-    else:
-      for sel, label in [(helix_sel, "helix"),
-           (sheet_sel, "sheet"),
-           (loop_sel, "loop")]:
-        selected_model = model.select(sel)
-        if self.params.write_HSL_models:
-          pdb_str = selected_model.model_as_pdb()
-          fn = "%s" % self.get_default_output_filename(
-              prefix='%s_' % self.inp_fn,
-              suffix=label,
-              serial=Auto)
-          print("Writing out partial model: %s" % fn, file=self.logger)
-          self.data_manager.write_model_file(selected_model, filename=fn)
-        self._write_plots_if_needed(selected_model, label, type_of_plot='HSL')
+    if len(models) == 1:
+      model = models[0]
+      self._write_plots_if_needed(model, label='whole', type_of_plot='whole')
+      helix_sel, sheet_sel, loop_sel = self.rama_z.get_ss_selections()
+      if model.get_hierarchy().models_size() != 1:
+        print ("Warning! Outputting partial models and plots are not supported \
+  for multi-model files", file=self.logger)
+      else:
+        for sel, label in [(helix_sel, "helix"),
+             (sheet_sel, "sheet"),
+             (loop_sel, "loop")]:
+          selected_model = model.select(sel)
+          if self.params.write_HSL_models:
+            pdb_str = selected_model.model_as_pdb()
+            fn = "%s" % self.get_default_output_filename(
+                prefix='%s_' % self.inp_fn,
+                suffix=label,
+                serial=Auto)
+            print("Writing out partial model: %s" % fn, file=self.logger)
+            self.data_manager.write_model_file(selected_model, filename=fn)
+          self._write_plots_if_needed(selected_model, label, type_of_plot='HSL')
     result = self.get_results()
     res_info = self.rama_z.get_detailed_values()
     print ("Individual residues info:", file=self.logger)

@@ -10,7 +10,8 @@ import libtbx.load_env
 
 mon_lib_srv = monomer_library.server.server()
 rotamer_eval = RotamerEval()
-rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load()
+rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load(
+  rotamers="favored")
 
 pdb_files = [
   "ala.pdb",

@@ -41,7 +41,7 @@ class container(object):
       serial_numbers=self.serial_number,
       coordinates_present_flags=self.coordinates_present)
 
-  def format_BOIMT_pdb_string(self):
+  def format_BIOMT_pdb_string(self):
     '''
     BIOMT data sample
     REMARK 350   BIOMT1   1  1.000000  0.000000  0.000000        0.00000
@@ -125,10 +125,10 @@ def process_BIOMT_records(lines, eps=1e-4):
       rm = matrix.sqr(rotation_data)
       tv = matrix.col(translation_data)
       # For BIOMT the first transform is the identity matrix
-      ingnor_transform = rm.is_r3_identity_matrix() and tv.is_col_zero()
+      ignore_transform = rm.is_r3_identity_matrix() and tv.is_col_zero()
       result.add(
         r=rm, t=tv,
-        coordinates_present=ingnor_transform,
+        coordinates_present=ignore_transform,
         serial_number=i+1)
   return result
 

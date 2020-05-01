@@ -29,12 +29,14 @@ from six.moves import zip
 from six.moves import range
 
 def setup_test(pdb_answer, pdb_poor, i_pdb, d_min, resolution_factor,
-               pdb_for_map = None):
-  rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load()
+               pdb_for_map = None, residues=None):
+  rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load(
+    residues = residues, rotamers = "favored_allowed")
   sin_cos_table = scitbx.math.sin_cos_table(n=10000)
   #
   pip = mmtbx.model.manager.get_default_pdb_interpretation_params()
   pip.pdb_interpretation.link_distance_cutoff=999
+  pip.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
   # answer
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer)
   model_answer = mmtbx.model.manager(model_input=pdb_inp, process_input=True,
@@ -71,17 +73,20 @@ def setup_test(pdb_answer, pdb_poor, i_pdb, d_min, resolution_factor,
     vdw              = model_answer.get_vdw_radii(),
     mon_lib_srv      = model_answer.get_mon_lib_srv(),
     ph_poor          = model_poor.get_hierarchy(),
+    rotatable_hd     = model_poor.rotatable_hd_selection(iselection=False),
     crystal_symmetry = f_calc.crystal_symmetry(),
     model_poor       = model_poor)
 
-def check_sites_match(ph_answer, ph_refined, tol):
+def check_sites_match(ph_answer, ph_refined, tol, exclude_atom_names=[]):
   s1 = flex.vec3_double()
   s2 = flex.vec3_double()
   for a1,a2 in zip(ph_answer.atoms(), ph_refined.atoms()):
-    if((not a1.element.strip().upper() in ["H","D"]) and
-       (not a2.element.strip().upper() in ["H","D"])):
-      s1.append(a1.xyz)
-      s2.append(a2.xyz)
+    if(a1.name.strip() in exclude_atom_names): continue
+    if(a1.element.strip().upper() in ["H","D"]): continue
+    if(a2.element.strip().upper() in ["H","D"]): continue
+    assert a1.name == a2.name
+    s1.append(a1.xyz)
+    s2.append(a2.xyz)
   dist = flex.max(flex.sqrt((s1 - s2).dot()))
   print(dist, tol)
   assert dist < tol,  [dist, tol]
@@ -864,6 +869,39 @@ def torsion_search(clusters, scorer, sites_cart, start, stop, step):
       scorer.update(sites_cart = xyz_moved, selection = cl.selection)
   return scorer
 
+def generate_angles_nested(
+      clusters,
+      residue,
+      rotamer_eval,
+      nested_loop,
+      include,
+      states=None):
+  result = []
+  choices = ["ALLOWED", "FAVORED", "OUTLIER", "NONE"]
+  for it in include:
+    assert it in choices
+  sites_cart = residue.atoms().extract_xyz()
+  for angles in nested_loop:
+    sites_cart_moved = sites_cart.deep_copy()
+    for i, angle in enumerate(angles):
+      cl = clusters[i]
+      for atom_to_rotate in cl.atoms_to_rotate:
+        new_site_cart = rotate_point_around_axis(
+          axis_point_1 = sites_cart_moved[cl.axis[0]],
+          axis_point_2 = sites_cart_moved[cl.axis[1]],
+          point        = sites_cart_moved[atom_to_rotate],
+          angle        = angle,
+          deg          = True)
+        sites_cart_moved[atom_to_rotate] = new_site_cart
+    residue.atoms().set_xyz(sites_cart_moved)
+    fl = str(rotamer_eval.evaluate_residue_2(residue = residue)).strip().upper()
+    if(fl in include):
+      if(states is not None):
+        states.add(sites_cart=sites_cart_moved)
+      result.append(angles)
+  residue.atoms().set_xyz(sites_cart) # Was changed in place, so we restore it!
+  return result
+
 def torsion_search_nested(
       clusters,
       scorer,
@@ -904,9 +942,14 @@ class score3(object):
     self.target = None
     self.sites_cart = self.residue.atoms().extract_xyz()
     self.status = self.rotamer_eval.evaluate_residue(residue = self.residue)
+    self.hd_sel = flex.size_t()
+    for i, atom in enumerate(self.residue.atoms()):
+      if(atom.element_is_hydrogen()):
+        self.hd_sel.append(i)
 
   def compute_target(self, sites_cart, selection=None):
     if(selection is not None):
+      selection = flex.size_t(list(set(selection)-set(self.hd_sel)))
       return maptbx.real_space_target_simple(
         unit_cell   = self.unit_cell,
         density_map = self.target_map,
@@ -921,10 +964,6 @@ class score3(object):
   def update(self, sites_cart, selection=None):
     target = self.compute_target(sites_cart=sites_cart, selection=selection)
     assert self.target is not None
-    den = (abs(self.target)+abs(target))*100
-    num = abs(abs(self.target)-abs(target))*2
-    if(den==0): second_cond = False
-    else:       second_cond = num/den<5.
     if(target > self.target):
       self.residue.atoms().set_xyz(sites_cart)
       fl = self.rotamer_eval is None or \
@@ -932,16 +971,6 @@ class score3(object):
       if(fl):
         self.target = target
         self.sites_cart = sites_cart
-    elif(second_cond):
-      fl = self.rotamer_eval is None or \
-        self.rotamer_eval.evaluate_residue(residue = self.residue) == "OUTLIER"
-      if(fl):
-        self.residue.atoms().set_xyz(sites_cart)
-        fl = self.rotamer_eval is None or \
-          self.rotamer_eval.evaluate_residue(residue = self.residue) != "OUTLIER"
-        if(fl):
-          self.target = target
-          self.sites_cart = sites_cart
 
   def reset(self, sites_cart, selection=None):
     self.target = self.compute_target(sites_cart = sites_cart,

@@ -119,7 +119,7 @@ class HemisphereSampler(SimpleSampler):
            break
       if direction_ok:
         unique_clusters+=1
-      hemisphere_solutions_sort.append(test_item)
+        hemisphere_solutions_sort.append(test_item)
       perm_idx+=1
 
     return hemisphere_solutions_sort;

@@ -19,13 +19,15 @@ private:
   af::shared<scitbx::vec3<int> > region_maximum_coors;
   int n_regions;
   bool border_wrapping;
+  bool preprocess_shallow;
 
   int
   get_six_neighbours(
     int const& x,
     int const& y,
     int const& z,
-    af::shared<scitbx::vec3<int> > neighbours)
+    af::shared<scitbx::vec3<int> > neighbours,
+    bool pad_with_negative=false)
   // returns number of neigbours, coordinates are in neighbours, should be
   // at least 6 long
   {
@@ -54,24 +56,49 @@ private:
         neighbours[n] = scitbx::vec3<int>(x+1, y, z);
         n++;
       }
+      else if (pad_with_negative) {
+        neighbours[n] = scitbx::vec3<int>(-1, -1, -1);
+        n++;
+      }
       if (x-1>=0) {
         neighbours[n] = scitbx::vec3<int>(x-1, y, z);
         n++;
       }
+      else if (pad_with_negative) {
+        neighbours[n] = scitbx::vec3<int>(-1, -1, -1);
+        n++;
+      }
+
       if (y+1<map_dimensions[1]) {
         neighbours[n] = scitbx::vec3<int>(x, y+1, z);
+        n++;
+      }
+      else if (pad_with_negative) {
+        neighbours[n] = scitbx::vec3<int>(-1, -1, -1);
         n++;
       }
       if (y-1>=0) {
         neighbours[n] = scitbx::vec3<int>(x, y-1, z);
         n++;
       }
+      else if (pad_with_negative) {
+        neighbours[n] = scitbx::vec3<int>(-1, -1, -1);
+        n++;
+      }
       if (z+1<map_dimensions[2]) {
         neighbours[n] = scitbx::vec3<int>(x, y, z+1);
         n++;
       }
+      else if (pad_with_negative) {
+        neighbours[n] = scitbx::vec3<int>(-1, -1, -1);
+        n++;
+      }
       if (z-1>=0) {
         neighbours[n] = scitbx::vec3<int>(x, y, z-1);
+        n++;
+      }
+      else if (pad_with_negative) {
+        neighbours[n] = scitbx::vec3<int>(-1, -1, -1);
         n++;
       }
     }
@@ -98,20 +125,53 @@ private:
   }
 
 public:
+  int preprocessing_changed_voxels;
+  int preprocessing_n_passes;
+
   template <typename MapType>
   connectivity(
-    af::const_ref<MapType, af::flex_grid<> > const& map_data,
+    af::ref<MapType, af::c_grid<3> > map_data,
     MapType const& threshold,
-    bool wrapping=true)
+    bool wrapping=true,
+    bool preprocess_against_shallow=false)
   {
-    CCTBX_ASSERT(map_data.accessor().nd() == 3);
-    CCTBX_ASSERT(map_data.accessor().all().all_gt(0));
-    map_dimensions = af::adapt(map_data.accessor().all());
+    map_dimensions = map_data.accessor();
     border_wrapping=wrapping;
+    preprocess_shallow=preprocess_against_shallow;
     int pointer_empty=0, pointer_current=0, cur_reg = 0;
-    af::const_ref<MapType, af::c_grid<3> > data_ref(
-        map_data.begin(),
-        af::c_grid<3>(af::adapt(map_data.accessor().all())));
+    af::shared<scitbx::vec3<int> > neighbours(6);
+    preprocessing_changed_voxels = 0;
+    preprocessing_n_passes = 0;
+    if (preprocess_shallow) {
+      int n_changed;
+      do {
+        n_changed = 0;
+        for (int i = 0; i < map_dimensions[0]; i++) {
+          for (int j = 0; j < map_dimensions[1]; j++) {
+            for (int k = 0; k < map_dimensions[2]; k++) {
+              if (map_data(i,j,k) > threshold) {
+                int n_neib = get_six_neighbours(i,j,k, neighbours, true);
+                CCTBX_ASSERT(n_neib == 6);
+                bool keep=true;
+                int l=0;
+                while (keep && l<3) {
+                  MapType v1 = (neighbours[l*2][0]>=0) ? map_data(af::adapt(neighbours[l*2])) : threshold-1;
+                  MapType v2 = (neighbours[l*2+1][0]>=0) ? map_data(af::adapt(neighbours[l*2+1])) : threshold-1;
+                  if (v1 <= threshold && v2 <= threshold) keep=false;
+                  l += 1;
+                }
+                if (!keep) {
+                  map_data(i,j,k) = threshold-1;
+                  n_changed += 1;
+                }
+              }
+            }
+          }
+        }
+        preprocessing_changed_voxels += n_changed;
+        preprocessing_n_passes += 1;
+      } while (n_changed > 0);
+    }
     // estimating size of working array tempcoors. If this code fails with
     // segmentation fault or reveal a bug, here is the first place to look.
     // To make sure the cause is not here, just make tempcoors of map_data
@@ -124,7 +184,6 @@ public:
     af::shared<scitbx::vec3<int> > tempcoors(needed_size);
     // af::shared<scitbx::vec3<int> > tempcoors(needed_size);
     map_new.resize(af::c_grid<3>(map_dimensions), -1);
-    af::shared<scitbx::vec3<int> > neighbours(6);
     region_vols.push_back(0);
     region_maximum_values.push_back(-10000000);
     region_maximum_coors.push_back(scitbx::vec3<int>(0,0,0));
@@ -134,12 +193,12 @@ public:
       for (int j = 0; j < map_dimensions[1]; j++) {
         for (int k = 0; k < map_dimensions[2]; k++) {
           if (map_new(i,j,k)<0) {
-            if (data_ref(i,j,k) > threshold) {
+            if (map_data(i,j,k) > threshold) {
               // got a new point, start filling
               cur_reg += 1;
               tempcoors[0] = scitbx::vec3<int> (i,j,k);
               map_new(i,j,k) = cur_reg;
-              MapType cur_max_value = data_ref(i,j,k);
+              MapType cur_max_value = map_data(i,j,k);
               scitbx::vec3<int> cur_max (i,j,k);
               cur_reg_vol = 1;
               pointer_empty = 1;
@@ -152,26 +211,26 @@ public:
                 for (int l = 0; l < n_neib; l++) {
                   //processing neighbours
                   if (map_new(af::adapt(neighbours[l]))<0) {
-                    if (data_ref(af::adapt(neighbours[l])) > threshold) {
+                    if (map_data(af::adapt(neighbours[l])) > threshold) {
                       map_new(af::adapt(neighbours[l])) = cur_reg;
                       cur_reg_vol += 1;
                       tempcoors[pointer_empty] = neighbours[l];
                       pointer_empty += 1;
                       if (pointer_empty >= needed_size) pointer_empty = 0;
-                      if (data_ref(af::adapt(neighbours[l])) > cur_max_value)
+                      if (map_data(af::adapt(neighbours[l])) > cur_max_value)
                       {
-                        cur_max_value = data_ref(af::adapt(neighbours[l]));
+                        cur_max_value = map_data(af::adapt(neighbours[l]));
                         cur_max = neighbours[l];
                       }
                     }
                     else {
                       map_new(af::adapt(neighbours[l])) = 0;
                       v0 += 1;
-                      if (data_ref(af::adapt(neighbours[l])) >
+                      if (map_data(af::adapt(neighbours[l])) >
                           region_maximum_values[0])
                       {
                         region_maximum_values[0] =
-                            data_ref(af::adapt(neighbours[l]));
+                            map_data(af::adapt(neighbours[l]));
                         region_maximum_coors[0] = neighbours[l];
                       }
                     }
@@ -187,9 +246,9 @@ public:
             else {
               map_new(i,j,k) = 0;
               v0 += 1;
-              if (data_ref(i,j,k) > region_maximum_values[0])
+              if (map_data(i,j,k) > region_maximum_values[0])
               {
-                region_maximum_values[0] = data_ref(i,j,k);
+                region_maximum_values[0] = map_data(i,j,k);
                 region_maximum_coors[0] = scitbx::vec3<int>(i,j,k);
               }
             }

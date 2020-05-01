@@ -619,7 +619,6 @@ class dataset_statistics(object):
       graph_columns=graph_columns,
       x_is_inverse_d_min=True,
       force_exact_x_labels=True)
-    last_bin = None
     for bin in i_obs.binner().range_used():
       sele_unmerged = i_obs.binner().selection(bin)
       bin_stats = merging_stats(i_obs.select(sele_unmerged),
@@ -930,22 +929,32 @@ class dataset_statistics(object):
     if ([min_i_over_sigma,min_cc_one_half,max_r_merge,max_r_meas,min_cc_anom,
           min_completeness].count(None) == 6):
       return None
+
     if (min_completeness > 1):
       min_completeness /= 100.
-    d_min = None
+
     last_bin = None
-    for bin in self.bins :
-      if ((bin.i_over_sigma_mean < min_i_over_sigma) or
-          (bin.cc_one_half < min_cc_one_half) or
-          ((max_r_merge is not None) and (bin.r_merge > max_r_merge)) or
-          ((max_r_meas is not None) and (bin.r_meas > max_r_meas)) or
-          (bin.cc_anom < min_cc_anom) or
-          (bin.completeness < min_completeness)):
+    for bin in self.bins:
+      if (
+        bin.i_over_sigma_mean < min_i_over_sigma or
+        bin.cc_one_half < min_cc_one_half or
+        (
+          max_r_merge is not None and
+          bin.r_merge is not None and
+          bin.r_merge > max_r_merge
+        ) or
+        (
+          max_r_meas is not None and bin.r_meas is not None and bin.r_meas > max_r_meas
+        ) or
+        bin.cc_anom < min_cc_anom or
+        bin.completeness < min_completeness
+      ):
         break
       last_bin = bin
-    if (last_bin is None):
+
+    if last_bin is None:
       return None
-    else :
+    else:
       return last_bin.d_min
 
   def show_estimated_cutoffs(self, out=sys.stdout, prefix=""):

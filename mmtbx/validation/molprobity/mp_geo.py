@@ -207,6 +207,9 @@ def run(args):
       print(rc.angles.kinemage_header, file=out)
       for result in rc.angles.results:
         print(result.as_kinemage(), file=out)
+      print(rc.chiralities.kinemage_header, file=out)
+      for result in rc.chiralities.results:
+        print(result.as_kinemage(), file=out)
     out.close()
   elif do_rna_backbone:
     from mmtbx.validation import utils

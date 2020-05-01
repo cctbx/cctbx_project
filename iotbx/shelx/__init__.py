@@ -19,6 +19,7 @@ def _cctbx_xray_structure_from(file=None, filename=None,
   stream = command_stream(file=file, filename=filename)
   stream = crystal_symmetry_parser(stream, builder)
   stream = atom_parser(stream.filtered_commands(), builder, strictly_shelxl)
+  stream = wavelength_parser(stream.filtered_commands(), builder)
   stream.parse()
   return builder.structure
 
@@ -60,7 +61,8 @@ def _smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None,
              builder.restraints_manager,
              builder.weighting_scheme,
              builder.temperature_in_celsius,
-             builder.conformer_indices)
+             builder.conformer_indices,
+             builder.wavelength_in_angstrom)
 
 
 def parse_smtbx_refinement_model(file=None, filename=None,
@@ -79,5 +81,6 @@ def parse_smtbx_refinement_model(file=None, filename=None,
                        strictly_shelxl=strictly_shelxl)
   stream = restraint_parser(stream.filtered_commands(), builder)
   stream = instruction_parser(stream.filtered_commands(), builder)
+  stream = wavelength_parser(stream.filtered_commands(), builder)
   stream.parse()
   return builder

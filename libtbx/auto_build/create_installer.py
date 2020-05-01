@@ -238,11 +238,47 @@ class SetupInstaller(object):
     )
 
   def copy_dependencies(self):
+    # try conda-pack for conda_base for better portability
+    # https://conda.github.io/conda-pack/
+    conda_pack_is_available = False
+    if self.base_dir == 'conda_base':
+      env = dict()  # clean environment
+      env['PATH'] = os.getenv('PATH')
+      try:
+        output = subprocess.check_output(
+          ['conda', 'pack', '-h'],
+          stderr=subprocess.STDOUT, env=env)
+        conda_pack_is_available = True
+      except Exception as e:
+        print('Unable to find conda-pack.')
+        print(str(e))  # WindowsError or OSError
+        if isinstance(e, subprocess.CalledProcessError):
+          print(e.output.decode('utf8'))
+        print('Fallback to a regular copy.')
+
+      if conda_pack_is_available:
+        try:
+          filename = 'conda_base.tar'
+          output = subprocess.check_output(
+            ['conda', 'pack', '--force', '-p', os.path.abspath('conda_base'),
+             '-o', filename],
+            stderr=subprocess.STDOUT, env=env)
+          shutil.copy(os.path.join(self.root_dir, filename),
+                      os.path.join(self.dest_dir))
+        except Exception as e:
+          print('Unable to run conda-pack.')
+          print(str(e))  # WindowsError or OSError
+          if isinstance(e, subprocess.CalledProcessError):
+            print(e.output.decode('utf8'))
+          print('Fallback to a regular copy.')
+          conda_pack_is_available = False
+
     # Copy dependencies
-    archive(
-      os.path.join(self.root_dir, self.base_dir),
-      os.path.join(self.dest_dir, self.base_dir)
-    )
+    if not conda_pack_is_available:
+      archive(
+        os.path.join(self.root_dir, self.base_dir),
+        os.path.join(self.dest_dir, self.base_dir)
+      )
     if self.base_dir == 'base':
       libtbx.auto_build.rpath.run(
         ['--otherroot', os.path.join(self.root_dir, 'base'),

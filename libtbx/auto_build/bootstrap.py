@@ -947,6 +947,13 @@ class dials_regression_module(SourceModule):
   authenticated = ['svn',
                    'svn+ssh://%(cciuser)s@cci.lbl.gov/dials_regression/trunk']
 
+class iota_module(SourceModule):
+  module = 'iota'
+  anonymous = ['git',
+               'git@github.com:ssrl-px/iota.git',
+               'https://github.com/ssrl-px/iota.git',
+               'https://github.com/ssrl-px/iota/archive/master.zip']
+
 class msgpack_module(SourceModule):
   module = 'msgpack'
   anonymous = ['curl', [
@@ -1806,6 +1813,11 @@ environment exists in or is defined by {conda_env}.
         description="permit execution of config_modules.sh",
       ))
 
+    # write extra setpaths script for conda
+    if self.use_conda is not None:
+      self.add_command('libtbx.install_conda', args=['--write_setpaths'],
+                       description='Writing additional setup scripts for conda.')
+
   def add_make(self):
     self.add_command('libtbx.scons', args=['-j',
                                            str(self.nproc),
@@ -2065,7 +2077,7 @@ class CCTBXBuilder(CCIBuilder):
     pass
 
 class DIALSBuilder(CCIBuilder):
-  CODEBASES_EXTRA = ['dials', 'xia2']
+  CODEBASES_EXTRA = ['dials', 'iota', 'xia2']
   LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
   HOT_EXTRA = ['msgpack']
   def add_tests(self):
@@ -2109,6 +2121,7 @@ class LABELITBuilder(CCIBuilder):
 class XFELLegacyBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'dials',
+    'iota',
     'labelit',
     'cxi_xdr_xes'
   ]
@@ -2138,6 +2151,7 @@ class XFELLegacyBuilder(CCIBuilder):
 class XFELBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'dials',
+    'iota',
     'uc_metrics',
     'ncdist',
   ]
@@ -2192,6 +2206,7 @@ class PhenixBuilder(CCIBuilder):
     'xia2',
     'phaser',
     'phaser_regression',
+    'iota',
   ]
   HOT_EXTRA = ['msgpack']
   LIBTBX_EXTRA = [
@@ -2504,6 +2519,7 @@ class QRBuilder(PhenixBuilder):
                           env = self.get_environment()
                           )
     self.add_test_command('qr.test',
+                          # args=['--non_mopac_only'],
                           haltOnFailure=True,
                           env = self.get_environment()
                           )
@@ -2521,7 +2537,7 @@ class QRBuilder(PhenixBuilder):
       "MOPAC_COMMAND"  : "/home/builder/software/mopac/mopac.csh",
     }
     for env, dirs in mopac_envs.items():
-      environment[env] = os.path.join(*dirs)
+      environment[env] = dirs
     return environment
 
 class PhenixTNGBuilder(PhenixBuilder):
@@ -2722,6 +2738,10 @@ maintain their own conda environment.""",
     else:
       actions.append(options.use_conda)
     options.use_conda = ''
+
+  # Check if the argument to --use-conda starts with '~'
+  if options.use_conda is not None and options.use_conda.startswith('~'):
+    options.use_conda = os.path.expanduser(options.use_conda)
 
   print("Performing actions:", " ".join(actions))
 

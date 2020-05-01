@@ -24,6 +24,10 @@ phil_scope = parse("""
   wavelength = None
     .type = float
     .help = If not provided, try to find wavelength in unassembled file.
+  beam_file = None
+    .type = path
+    .help = Overrides wavelength. Reads the pulse IDs in the provided file \
+            to get a list of wavelengths for the master.
   mask_file = None
     .type = str
     .help = Path to file with external bad pixel mask.
@@ -97,7 +101,7 @@ class jf16m_cxigeom2nexus(object):
     entry = f.create_group('entry')
     entry.attrs['NX_class'] = 'NXentry'
     # --> definition
-    self._create_scalar(entry, 'definition', 'S4', 'NXmx')
+    self._create_scalar(entry, 'definition', 'S4', np.string_('NXmx'))
     # --> data
     data = entry.create_group('data')
     data.attrs['NX_class'] = 'NXdata'
@@ -111,10 +115,25 @@ class jf16m_cxigeom2nexus(object):
     sample.attrs['NX_class'] = 'NXsample'
     beam = sample.create_group('beam')
     beam.attrs['NX_class'] = 'NXbeam'
-    if self.params.wavelength is None:
+    if self.params.wavelength is None and self.params.beam_file is None:
       wavelengths = h5py.File(self.params.unassembled_file, 'r')['instrument/photon_wavelength_A']
       beam.create_dataset('incident_wavelength', (1,), data=np.mean(wavelengths), dtype='f8')
+    elif self.params.beam_file is not None:
+      # data file has pulse ids, need to match those to the beam file, which may have more pulses
+      if self.params.raw:
+        data_pulse_ids = h5py.File(self.params.unassembled_file, 'r')['data/JF07T32V01/pulse_id'][()]
+      else:
+        data_pulse_ids = h5py.File(self.params.unassembled_file, 'r')['data/pulse_id'][()]
+      beam_h5 = h5py.File(self.params.beam_file, 'r')
+      beam_pulse_ids = beam_h5['data/SARFE10-PSSS059:SPECTRUM_CENTER/pulse_id'][()]
+      beam_energies = beam_h5['data/SARFE10-PSSS059:SPECTRUM_CENTER/data'][()]
+      energies = np.ndarray((len(data_pulse_ids),), dtype='f8')
+      for i, pulse_id in enumerate(data_pulse_ids):
+        energies[i] = beam_energies[np.where(beam_pulse_ids==pulse_id)[0][0]]
+      wavelengths = 12398.4187/energies
+      beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
     else:
+      assert self.params.wavelength is not None, "Provide a wavelength"
       beam.create_dataset('incident_wavelength', (1,), data=self.params.wavelength, dtype='f8')
     beam['incident_wavelength'].attrs['units'] = 'angstrom'
     # --> instrument
@@ -123,7 +142,7 @@ class jf16m_cxigeom2nexus(object):
     jf16m = instrument.create_group('JF16M')
     jf16m.attrs['NX_class'] = 'NXdetector_group'
     jf16m.create_dataset('group_index', data = list(range(1,3)), dtype='i')
-    data = ['JF16M','ELE_D0']
+    data = [np.string_('JF16M'),np.string_('ELE_D0')]
     jf16m.create_dataset('group_names',(2,), data=data, dtype='S12')
     jf16m.create_dataset('group_parent',(2,), data=[-1,1], dtype='i')
     jf16m.create_dataset('group_type', (2,), data=[1,2], dtype='i')

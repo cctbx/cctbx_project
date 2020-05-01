@@ -26,58 +26,15 @@ class manager(object):
         geometry=None,
         cartesian_ncs_manager=None,
         normalization=False,
-        use_amber=False,
-        use_sander=False,
-        amber_structs=None,
         use_afitt=False, #afitt
         afitt_object=None):
     self.geometry = geometry
     self.cartesian_ncs_manager = cartesian_ncs_manager
     self.normalization = normalization
-    # amber
-    self.use_amber = use_amber
-    self.amber_structs = amber_structs
-    self.sander = None
-    #afitt
+    # amber moved to a Base_geometry class
+    # afitt
     self.use_afitt = use_afitt
     self.afitt_object = afitt_object
-
-  def init_amber(self, params, pdb_hierarchy, log):
-    if hasattr(params, "amber"):
-      self.use_amber = params.amber.use_amber
-      self.print_amber_energies = params.amber.print_amber_energies
-      self.qmmask = params.amber.qmmask
-      self.log = log
-      if (self.use_amber):
-        sites_cart = pdb_hierarchy.atoms().extract_xyz()
-        compute_gradients=False
-        make_header("Initializing AMBER", out=log)
-        print("  topology    : %s" % params.amber.topology_file_name, file=log)
-        print("  atom order  : %s" % params.amber.order_file_name, file=log)
-        if params.amber.coordinate_file_name:
-          print("  coordinates : %s" % params.amber.coordinate_file_name, file=log)
-        from amber_adaptbx import interface
-        self.amber_structs, sander = interface.get_amber_struct_object(params)
-        self.sander=sander # used for cleanup
-        import amber_adaptbx
-        amber_geometry_manager = amber_adaptbx.geometry_manager(
-          sites_cart=sites_cart,
-          #number_of_restraints=geometry_energy.number_of_restraints,
-          gradients_factory=flex.vec3_double,
-          amber_structs=self.amber_structs)
-        geometry = amber_geometry_manager.energies_sites(
-          crystal_symmetry = self.geometry.crystal_symmetry,
-          compute_gradients = compute_gradients,
-          log=log,
-          print_amber_energies=self.print_amber_energies,
-          qmmask=self.qmmask)
-
-  def cleanup_amber(self):
-    if self.sander and self.amber_structs:
-      if self.amber_structs.is_LES:
-        import sanderles; sanderles.cleanup()
-      else:
-        import sander; sander.cleanup()
 
   def init_afitt(self, params, pdb_hierarchy, log):
     if hasattr(params, "afitt"):
@@ -140,8 +97,6 @@ class manager(object):
       geometry=geometry,
       cartesian_ncs_manager=cartesian_ncs_manager,
       normalization=self.normalization,
-      use_amber=self.use_amber,
-      amber_structs=self.amber_structs,
       )
 
   def energies_sites(self,
@@ -171,38 +126,9 @@ class manager(object):
     if (self.geometry is None):
       result.geometry = None
     else:
-      if (self.use_amber and not force_restraints_model):
-        geometry_energy = self.geometry.energies_sites(
-          sites_cart=sites_cart,
-          flags=geometry_flags,
-          external_energy_function=external_energy_function,
-          custom_nonbonded_function=custom_nonbonded_function,
-          compute_gradients=False,
-          gradients=None,
-          disable_asu_cache=disable_asu_cache,
-          normalization=False)
-        ##################################################################
-        #                                                                #
-        # AMBER CALL - Amber force field gradients and target            #
-        #                                                                #
-        ##################################################################
-        import amber_adaptbx
-        amber_geometry_manager = amber_adaptbx.geometry_manager(
-          sites_cart=sites_cart,
-          number_of_restraints=geometry_energy.number_of_restraints,
-          gradients_factory=flex.vec3_double,
-          amber_structs=self.amber_structs)
-        result.geometry = amber_geometry_manager.energies_sites(
-          crystal_symmetry = self.geometry.crystal_symmetry,
-          compute_gradients = compute_gradients,
-          # these are only available for use_amber=True
-          log=self.log,
-          print_amber_energies=self.print_amber_energies,
-          qmmask=self.qmmask)
-
-      elif (self.use_afitt and
-            len(sites_cart)==self.afitt_object.total_model_atoms
-            ):
+      if (self.use_afitt and
+          len(sites_cart)==self.afitt_object.total_model_atoms
+          ):
         ##################################################################
         #                                                                #
         # AFITT CALL - OpenEye AFITT gradients and target                #

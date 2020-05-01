@@ -176,9 +176,13 @@ class CCTBXParser(ParserBase):
     '''
     '''
     # program name
-    self.prog = os.getenv('LIBTBX_DISPATCHER_NAME')
-    if (self.prog is None):
-      self.prog = sys.argv[0]
+    # Order of precedence:
+    # 1) ProgramTemplate.program_name
+    # 2) LIBTBX_DISPATCHER_NAME
+    # 3) Calling command
+    self.prog = os.getenv('LIBTBX_DISPATCHER_NAME', sys.argv[0])
+    if program_class.program_name is not None:
+      self.prog = program_class.program_name
     self.prefix = self.prog.split('.')[-1]
 
     # PHIL filenames

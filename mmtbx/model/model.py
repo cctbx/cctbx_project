@@ -418,8 +418,9 @@ class manager(object):
         full_params.geometry_restraints = params.geometry_restraints
       if hasattr(params, "reference_model"):
         full_params.reference_model = params.reference_model
-      if hasattr(params, "schrodinger"):
-        full_params.schrodinger = params.schrodinger
+      for attr in ['amber', 'schrodinger']:
+        if hasattr(params, attr):
+          setattr(full_params, attr, getattr(params, attr))
       self._pdb_interpretation_params = full_params
     self.unset_restraints_manager()
 
@@ -916,8 +917,7 @@ class manager(object):
     elif self.get_ss_annotation() is not None:
       ss_ann = self.get_ss_annotation()
     if ss_ann is not None:
-      ss_ann.remove_empty_annotations(self.get_hierarchy(),
-          self.get_atom_selection_cache())
+      ss_ann.remove_empty_annotations(self.get_hierarchy())
     return ss_ann
 
   def model_as_mmcif(self,
@@ -1217,11 +1217,21 @@ class manager(object):
           selection=None,
           log=self.log)
 
-    # Use Schrodinger force field if requested
+    ############################################################################
+    # Switch in external alternative geometry manager. Options include:
+    #  1. Amber force field
+    #  2. Schrodinger force field
+    ############################################################################
     params = self._pdb_interpretation_params
-    if hasattr(params, "schrodinger") and params.schrodinger.use_schrodinger:
+    if hasattr(params, 'amber') and params.amber.use_amber:
+      from amber_adaptbx.manager import digester
+      geometry = digester(geometry, params, log=self.log)
+    elif hasattr(params, "schrodinger") and params.schrodinger.use_schrodinger:
       from phenix_schrodinger import schrodinger_manager
-      geometry = schrodinger_manager(self._pdb_hierarchy, params, cleanup=True, grm=geometry)
+      geometry = schrodinger_manager(self._pdb_hierarchy,
+                                     params,
+                                     cleanup=True,
+                                     grm=geometry)
 
     restraints_manager = mmtbx.restraints.manager(
       geometry      = geometry,
@@ -1927,15 +1937,18 @@ class manager(object):
           scatterers[i].site = scatterers[j].site
     self.set_sites_cart_from_xrs()
 
-  def rotatable_hd_selection(self):
+  def rotatable_hd_selection(self, iselection=True, use_shortcut=True):
     rmh_sel = mmtbx.hydrogens.rotatable(
       pdb_hierarchy      = self.get_hierarchy(),
       mon_lib_srv        = self.get_mon_lib_srv(),
       restraints_manager = self.get_restraints_manager(),
-      log                = self.log)
+      log                = self.log,
+      use_shortcut       = use_shortcut)
     sel_i = []
     for s in rmh_sel: sel_i.extend(s[1])
-    return flex.size_t(sel_i)
+    result = flex.size_t(sel_i)
+    if(iselection): return result
+    else:           return flex.bool(self.size(), result)
 
   def h_counts(self):
     occupancies = self._xray_structure.scatterers().extract_occupancies()
@@ -3087,10 +3100,13 @@ class manager(object):
     if(self.use_ias):
       ias_selection = self.get_ias_selection()
       m = manager(
-        model_input      = None,
-        pdb_hierarchy    = self.get_hierarchy().select(~ias_selection),
-        crystal_symmetry = self.crystal_symmetry(),
-        log              = null_out())
+        model_input        = None,
+        pdb_hierarchy      = self.get_hierarchy().select(~ias_selection),
+        crystal_symmetry   = self.crystal_symmetry(),
+        restraint_objects  = self._restraint_objects,
+        monomer_parameters = self._monomer_parameters,
+        pdb_interpretation_params = self.get_current_pdb_interpretation_params(),
+        log                = null_out())
       m.setup_scattering_dictionaries(scattering_table=scattering_table)
       m.get_restraints_manager()
     else:

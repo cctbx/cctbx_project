@@ -523,7 +523,9 @@ class model_idealization():
         pdb_hierarchy     = self.model_h.get_hierarchy(),
         crystal_symmetry  = self.model.crystal_symmetry(),
         map_data          = self.master_map,
-        rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(),
+        rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(
+          rotamers="favored"),
+        rotatable_hd      = self.model_h.rotatable_hd_selection(iselection=False),
         sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
         backbone_sample   = False,
         mon_lib_srv       = self.model_h.get_mon_lib_srv(),

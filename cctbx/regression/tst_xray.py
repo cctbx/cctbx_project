@@ -548,6 +548,42 @@ Si    O     *16Si    *17O     *20 -36.91
         assert abs(sc.occupancy - sc_mod.occupancy) > 1.e-4
       else:
         assert approx_equal(sc.occupancy, sc_mod.occupancy)
+### shake_fps()
+  cs = crystal.symmetry((5.01, 6.01, 5.47, 60, 80, 120), "P1")
+  sp = crystal.special_position_settings(cs)
+  scatterers = flex.xray_scatterer([xray.scatterer("o")]*100)
+  selection = flex.bool()
+  for sc in scatterers:
+    sc.fp = random.random()
+    selection.append(random.choice((False,True)))
+  xs = xray.structure(sp, scatterers)
+  for sel in [None, selection]:
+    xs_mod = xs.deep_copy_scatterers()
+    xs_mod.shake_fps(selection = sel)
+    if(sel is None): sel = flex.bool(xs.scatterers().size(), True)
+    for sc, sc_mod, s in zip(xs.scatterers(),xs_mod.scatterers(), sel):
+      if(s):
+        assert abs(sc.fp - sc_mod.fp) > 1.e-4
+      else:
+        assert approx_equal(sc.fp, sc_mod.fp)
+### shake_fdps()
+  cs = crystal.symmetry((5.01, 6.01, 5.47, 60, 80, 120), "P1")
+  sp = crystal.special_position_settings(cs)
+  scatterers = flex.xray_scatterer([xray.scatterer("o")]*100)
+  selection = flex.bool()
+  for sc in scatterers:
+    sc.fdp = random.random()
+    selection.append(random.choice((False,True)))
+  xs = xray.structure(sp, scatterers)
+  for sel in [None, selection]:
+    xs_mod = xs.deep_copy_scatterers()
+    xs_mod.shake_fdps(selection = sel)
+    if(sel is None): sel = flex.bool(xs.scatterers().size(), True)
+    for sc, sc_mod, s in zip(xs.scatterers(),xs_mod.scatterers(), sel):
+      if(s):
+        assert abs(sc.fdp - sc_mod.fdp) > 1.e-4
+      else:
+        assert approx_equal(sc.fdp, sc_mod.fdp)
 ### shake_adp_if_all_equal()
   cs = crystal.symmetry((5.01, 6.01, 5.47, 60, 80, 120), "P1")
   sp = crystal.special_position_settings(cs)
@@ -768,6 +804,29 @@ Si    O     *16Si    *17O     *20 -36.91
     sc_fp_fdp_henke = sc_henke.at_angstrom(0.71073)
     assert approx_equal(sc.fp, sc_fp_fdp_henke.fp())
     assert approx_equal(sc.fdp, sc_fp_fdp_henke.fdp())
+
+  # Exercise structure.wavelength
+  from cctbx.eltbx import sasaki, wavelengths
+  test_wvl=1.1
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(3,4,5,90,90,90),
+      space_group_symbol="Pmmm"),
+      wavelength=test_wvl)
+  xs.add_scatterer(xray.scatterer("Mo1", site=(0.5, 0.5, 0.5)))
+  xs.add_scatterer(xray.scatterer("C2", site=(0.7, 0.7, 0.7)))
+  xs1 = xs.deep_copy_scatterers()
+  assert approx_equal(xs1.wavelength, test_wvl)
+  xs1.set_inelastic_form_factors(xs1.wavelength, "sasaki")
+  for sc in xs1.scatterers():
+    assert sc.flags.use_fp_fdp() == True
+    assert sc.fp != 0
+    assert sc.fdp != 0
+    sc_sasaki = sasaki.table(sc.element_symbol())
+    sc_fp_fdp_sasaki = sc_sasaki.at_angstrom(test_wvl)
+    assert approx_equal(sc.fp, sc_fp_fdp_sasaki.fp())
+    assert approx_equal(sc.fdp, sc_fp_fdp_sasaki.fdp())
+
   #
   xs = xray.structure(
     crystal_symmetry=crystal.symmetry(
@@ -839,6 +898,39 @@ def exercise_set_occupancies():
     value = -1, selection = flex.bool([True,True,False,True,False]))
   occ = xs.scatterers().extract_occupancies()
   assert approx_equal(occ, [-1.0, -1.0, 2.0, -1.0, 2.0])
+
+def exercise_set_fps():
+  xs = random_structure.xray_structure(
+    space_group_info = sgtbx.space_group_info("P1"),
+    elements         = ["N"]*5,
+    unit_cell        = (10, 20, 30, 70, 80, 120))
+  xs.set_inelastic_form_factors(1.54184, 'sasaki')
+  fp = xs.scatterers().extract_fps()
+  assert fp.all_approx_equal(0.029155200347304344)
+  xs.set_fps(value = 2)
+  fp = xs.scatterers().extract_fps()
+  assert fp.all_eq(2.0)
+  xs.set_fps(
+    value = -1, selection = flex.bool([True,True,False,True,False]))
+  fp = xs.scatterers().extract_fps()
+  assert approx_equal(fp, [-1.0, -1.0, 2.0, -1.0, 2.0])
+
+def exercise_set_fdps():
+  xs = random_structure.xray_structure(
+    space_group_info = sgtbx.space_group_info("P1"),
+    elements         = ["N"]*5,
+    unit_cell        = (10, 20, 30, 70, 80, 120))
+  xs.set_inelastic_form_factors(1.54184, 'sasaki')
+  fdp = xs.scatterers().extract_fdps()
+  assert fdp.all_approx_equal(0.018055198714137077)
+  xs.set_fdps(value = 2)
+  fdp = xs.scatterers().extract_fdps()
+  assert fdp.all_eq(2.0)
+  xs.set_fdps(
+    value = -1, selection = flex.bool([True,True,False,True,False]))
+  fdp = xs.scatterers().extract_fdps()
+  assert approx_equal(fdp, [-1.0, -1.0, 2.0, -1.0, 2.0])
+
 
 def exercise_u_base():
   d_min = 9
@@ -1488,6 +1580,8 @@ def run():
   exercise_replace_sites()
   exercise_min_u_cart_eigenvalue()
   exercise_set_occupancies()
+  exercise_set_fps()
+  exercise_set_fdps()
   exercise_closest_distances()
   exercise_concatenate_inplace()
   exercise_scatterer()

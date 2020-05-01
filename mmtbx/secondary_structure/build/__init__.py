@@ -504,8 +504,7 @@ def substitute_ss(
   t1 = time()
   # Checking for SS selections
   deleted_annotations = ann.remove_empty_annotations(
-      hierarchy=model.get_hierarchy(),
-      asc=selection_cache)
+      hierarchy=model.get_hierarchy())
   if not deleted_annotations.is_empty():
     if processed_params.skip_empty_ss_elements:
       if len(deleted_annotations.helices) > 0:
@@ -740,7 +739,8 @@ def substitute_ss(
         pdb_hierarchy     = model.get_hierarchy(),
         crystal_symmetry  = model.crystal_symmetry(),
         map_data          = reference_map,
-        rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(),
+        rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(
+          rotamers="favored"),
         sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
         backbone_sample   = backbone_sample,
         mon_lib_srv       = model.get_mon_lib_srv(),
@@ -818,7 +818,9 @@ def substitute_ss(
         "%d %d" % (grm.geometry.get_n_reference_coordinate_proxies(), n_main_chain_atoms)
   refinement_log = null_out()
   log.write(
-      "Refining geometry of substituted secondary structure elements...")
+      "Refining geometry of substituted secondary structure elements\n")
+  log.write(
+      "  for %s macro_cycle(s).\n" % processed_params.n_macro)
   log.flush()
   if verbose:
     refinement_log = log
@@ -837,6 +839,7 @@ def substitute_ss(
         target_map=reference_map,
         refine_ncs_operators=False,
         number_of_cycles=processed_params.n_macro,
+        min_mode='simple_cycles',
         log=log)
   model.set_sites_cart_from_hierarchy()
 

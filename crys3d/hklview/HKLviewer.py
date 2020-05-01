@@ -12,7 +12,7 @@
 from __future__ import absolute_import, division, print_function
 
 from PySide2.QtCore import Qt, QEvent, QSize, QSettings, QTimer
-from PySide2.QtWidgets import (  QAction, QApplication, QCheckBox,
+from PySide2.QtWidgets import (  QAction, QCheckBox,
         QComboBox, QDialog,
         QFileDialog, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
         QMainWindow, QMenu, QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
@@ -119,6 +119,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.window = MyQMainWindow(self)
     self.setupUi(self.window)
     self.app = thisapp
+
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
     self.actiondebug.triggered.connect(self.DebugInteractively)
     self.actionSettings.triggered.connect(self.SettingsDialog)
@@ -157,6 +158,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
     self.Fontsize_labeltxt = QLabel()
     self.Fontsize_labeltxt.setText("Font size:")
+    self.fontsize = self.font.pointSize()
+
 
     self.cameraPerspectCheckBox = QCheckBox()
     self.cameraPerspectCheckBox.setText("Perspective camera")
@@ -200,7 +203,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     #self.MillerComboBox.setSizeAdjustPolicy(QComboBox.AdjustToContents)
 
     self.MillerLabel1 = QLabel()
-    self.MillerLabel1.setText("and 'data2' and or 'sigma2' variable from the")
+    self.MillerLabel1.setText("and 'data2' and or 'sigmas2' variable from the")
     self.MillerLabel2 = QLabel()
     self.MillerLabel2.setText("column")
     self.MillerLabel3 = QLabel()
@@ -274,25 +277,35 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.window.show()
 
 
+  def AppAboutToQuit(self):
+    print("in AppAboutToQuit")
+
+
   def closeEvent(self, event):
     self.PhilToJsRender('NGL_HKLviewer.action = is_terminating')
     self.closing = True
-    self.window.setVisible(False)
-    self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
+    #self.window.setVisible(False)
+    if self.UseOSBrowser == False:
+      self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
     print("HKL-viewer closing down...")
     nc = 0
     sleeptime = 0.2
-    while not self.canexit: #and nc < 5: # until cctbx.python has finished or after 5 sec
+    timeout = 10
+    while not self.canexit and nc < timeout: # until cctbx.python has finished or after 5 sec
       time.sleep(sleeptime)
       self.ProcessMessages()
       nc += sleeptime
+    if nc>= timeout:
+      print("Terminating hanging cctbx.python process...")
     self.cctbxproc.terminate()
     self.out, self.err = self.cctbxproc.communicate()
     self.cctbxproc.wait()
-    self.webpagedebugform.close()
-    self.webpagedebugform.deleteLater()
-    self.BrowserBox.close()
-    self.BrowserBox.deleteLater()
+    if self.UseOSBrowser == False:
+      if self.webpagedebugform and self.devmode:
+        self.webpagedebugform.close()
+        self.webpagedebugform.deleteLater()
+      self.BrowserBox.close()
+      self.BrowserBox.deleteLater()
     event.accept()
 
 
@@ -301,15 +314,16 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.webprofile = QWebEngineProfile(parent=self.BrowserBox)
     self.webpage = QWebEnginePage( self.webprofile, self.BrowserBox)
     if self.devmode:
-      #self.webpage.setUrl("https://webglreport.com/")
-      self.webpage.setUrl("chrome://gpu")
+      if hasattr(self.webpage, "setInspectedPage"): # older versions of Qt5 hasn't got chromium debug kit
+        self.webpage.setUrl("chrome://gpu")
+        self.webpagedebugform = WebEngineDebugForm(self)
+      else:
+        self.webpage.setUrl("https://webglreport.com/")
     else:
       self.webpage.setUrl("https://cctbx.github.io/")
     self.cpath = self.webprofile.cachePath()
     self.BrowserBox.setPage(self.webpage)
     self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
-    if self.devmode:
-      self.webpagedebugform = WebEngineDebugForm(self)
 
 
 
@@ -669,6 +683,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
   def onFontsizeChanged(self, val):
     font = self.app.font()
     font.setPointSize(val);
+    self.fontsize = val
     self.app.setFont(font);
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
 
@@ -1267,7 +1282,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         (strval, idx) = data
         self.operate_arrayidx1 = idx
         if strval=="newdata_1":
-          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data' and or 'sigma' variable")
+          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data' and or 'sigmas' variable")
           self.MillerLabel1.setDisabled(True)
           self.MillerLabel2.setDisabled(True)
           self.MillerComboBox.setDisabled(True)
@@ -1275,7 +1290,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
           self.operate_arrayidx2 = None
           self.makenewdataform.show()
         if strval=="newdata_2":
-          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data1' and or 'sigma1' variable")
+          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data1' and or 'sigmas1' variable")
           self.MillerLabel1.setEnabled(True)
           self.MillerLabel2.setEnabled(True)
           self.MillerComboBox.setEnabled(True)
@@ -1367,7 +1382,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def onSaveImageBtn(self):
-    self.PhilToJsRender('NGL_HKLviewer.save_image_name = "C:\\Users\\oeffner\\Buser\\HKLviewerTests\\testimage.png" ')
+    self.PhilToJsRender('NGL_HKLviewer.save_image_name = "testimage.png" ')
 
 
   def onDrawReciprocUnitCellBoxClick(self):
@@ -1436,7 +1451,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     guiargs = [ 'useGuiSocket=' + str(self.sockport),
                'high_quality=True',
-               'UseOSBrowser=' + str(self.UseOSBrowser)
               ]
     cmdargs =  'cctbx.python -i -c "from crys3d.hklview import cmdlineframes;' \
      + ' cmdlineframes.run()" ' + ' '.join( guiargs + sys.argv[1:])
@@ -1452,18 +1466,28 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 def run():
   try:
+    import PySide2.QtCore
+    Qtversion = str(PySide2.QtCore.qVersion())
     debugtrue = False
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
     for e in sys.argv:
-      if "devmode" in e or "debug" in e:
+      if "devmode" in e or "debug" in e and not "UseOSBrowser" in e:
         debugtrue = True
+        print("Qt version " + Qtversion)
         # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
         os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
 
     settings = QSettings("CCTBX", "HKLviewer" )
-    settings.beginGroup("SomeSettings")
+    # In case of more than one PySide2 installation tag the settings by version number of PySide2
+    # as different versions occasionally use slightly different metrics for font and window sizes
+    settings.beginGroup("PySide2_" + Qtversion)
     QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
+    fontsize = settings.value("FontSize", None)
+    windowsize = settings.value("windowsize", None)
+    splitter1sizes = settings.value("splitter1Sizes", None)
+    splitter2sizes = settings.value("splitter2Sizes", None)
     settings.endGroup()
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
     if QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       QWebEngineViewFlags = ""
@@ -1478,20 +1502,36 @@ def run():
       print("using flags for QWebEngineView: " + QWebEngineViewFlags)
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += QWebEngineViewFlags
 
+    from PySide2.QtWidgets import QApplication
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer(app)
+
+    def MyAppClosing():
+      settings.beginGroup("PySide2_" + Qtversion )
+      settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
+      settings.setValue("FontSize", guiobj.fontsize )
+      settings.setValue("windowsize", guiobj.window.size())
+      settings.setValue("splitter1Sizes", guiobj.splitter.saveState())
+      settings.setValue("splitter2Sizes", guiobj.splitter_2.saveState())
+      settings.endGroup()
+
+    app.lastWindowClosed.connect(MyAppClosing)
+
+    if fontsize is not None:
+      guiobj.onFontsizeChanged(int(fontsize))
+      guiobj.fontspinBox.setValue(int(fontsize))
+    if splitter1sizes is not None and splitter2sizes is not None and windowsize is not None:
+      guiobj.window.resize(windowsize)
+      guiobj.splitter.restoreState(splitter1sizes)
+      guiobj.splitter_2.restoreState(splitter2sizes)
+
+
     timer = QTimer()
     timer.setInterval(20)
     timer.timeout.connect(guiobj.ProcessMessages)
     timer.start()
     ret = app.exec_()
 
-    settings = QSettings("CCTBX", "HKLviewer" )
-    settings.beginGroup("SomeSettings")
-    QWebEngineViewFlags = settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
-    settings.endGroup()
-
-    sys.exit(ret)
   except Exception as e:
     print( str(e)  +  traceback.format_exc(limit=10) )
 

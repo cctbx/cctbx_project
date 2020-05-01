@@ -556,7 +556,7 @@ the output images in the folder cxi49812.
       for data, path in zip(all_data, dest_paths):
         print("Saving", path)
         cspad_img = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, address, round_to_int=False)
-        cspad_img._cbf_handle.write_widefile(path, pycbf.CBF,\
+        cspad_img._cbf_handle.write_widefile(path.encode(), pycbf.CBF,\
           pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
 
 

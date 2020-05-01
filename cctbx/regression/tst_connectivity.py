@@ -6,6 +6,7 @@ from cctbx import maptbx
 from cctbx import miller
 from six.moves import range
 from six.moves import zip
+from libtbx.test_utils import approx_equal
 
 def getvs(cmap, threshold, wrap=True):
   co = maptbx.connectivity(map_data=cmap, threshold=threshold, wrapping=wrap)
@@ -465,6 +466,101 @@ def exercise_expand_mask():
         assert new_mask[i,j,k] == (i in [29,0,1,2,3] and
             j in [29,0,1,2,3] and k in [29,0,1,2,3])
 
+def exercise_preprocess_against_shallow():
+  # case 1: simple
+  cmap = flex.double(flex.grid(30,30,30))
+  cmap.fill(1)
+  for i in range(10,20):
+    for j in range(10,20):
+      for k in range(10,20):
+        cmap[i,j,k] = 10
+  for i in range(10,20):
+    cmap[i,5,5] = 10
+  co = maptbx.connectivity(map_data=cmap, threshold=5)
+  minb, maxb = co.get_blobs_boundaries_tuples()
+  assert minb == [(0, 0, 0), (10, 5, 5), (10, 10, 10)]
+  assert maxb == [(29, 29, 29), (19, 5, 5), (19, 19, 19)]
+  co = maptbx.connectivity(map_data=cmap, threshold=5, preprocess_against_shallow=True)
+  minb, maxb = co.get_blobs_boundaries_tuples()
+  assert minb == [(0, 0, 0), (10, 10, 10)]
+  assert maxb == [(29, 29, 29), (19, 19, 19)] # note dissapearance of (10,5,5)(19,5,5)
+  # check new map values
+  for i in range(10,20):
+    assert approx_equal(cmap[i,5,5], 4)
+
+
+  # case 2: wrapping
+  cmap = flex.double(flex.grid(30,30,30))
+  cmap.fill(1)
+  for i in range(10,20):
+    for j in range(10,20):
+      for k in range(10,20):
+        cmap[i,j,k] = 10
+  for i in range(10,20):
+    for j in range(10,20):
+      cmap[i,j,0] = 10
+      cmap[i,j,29] = 10
+  # standard, no wrap, 4 regions
+  co = maptbx.connectivity(map_data=cmap, threshold=5, wrapping=False, preprocess_against_shallow=False)
+  minb, maxb = co.get_blobs_boundaries_tuples()
+  assert minb == [(0, 0, 0), (10, 10, 0), (10, 10, 10), (10, 10, 29)]
+  assert maxb == [(29, 29, 29), (19, 19, 0), (19, 19, 19), (19, 19, 29)]
+  # 2 small regions merged
+  co = maptbx.connectivity(map_data=cmap, threshold=5, wrapping=True, preprocess_against_shallow=False)
+  minb, maxb = co.get_blobs_boundaries_tuples()
+  assert minb == [(0, 0, 0), (10, 10, 0), (10, 10, 10)]
+  assert maxb == [(29, 29, 29), (19, 19, 29), (19, 19, 19)]
+  # with wrapping the region preserved
+  co = maptbx.connectivity(map_data=cmap, threshold=5, wrapping=True, preprocess_against_shallow=True)
+  minb, maxb = co.get_blobs_boundaries_tuples()
+  assert minb == [(0, 0, 0), (10, 10, 0), (10, 10, 10)]
+  assert maxb == [(29, 29, 29), (19, 19, 29), (19, 19, 19)]
+
+  # without wrapping - no
+  co = maptbx.connectivity(map_data=cmap, threshold=5, wrapping=False, preprocess_against_shallow=True)
+  minb, maxb = co.get_blobs_boundaries_tuples()
+  assert minb == [(0, 0, 0), (10, 10, 10)]
+  assert maxb ==[(29, 29, 29), (19, 19, 19)]
+
+  # case 3: blob has a spike that needs to be 'shaved off'
+  cmap = flex.double(flex.grid(30,30,30))
+  cmap.fill(1)
+  for i in range(10,20):
+    for j in range(10,20):
+      for k in range(10,20):
+        cmap[i,j,k] = 10
+  for i in range(0,10):
+    cmap[i,15,15] = 10
+
+  co = maptbx.connectivity(map_data=cmap, threshold=5, preprocess_against_shallow=False)
+  volumes = list(co.regions())
+  assert volumes == [25990, 1010]
+  co = maptbx.connectivity(map_data=cmap, threshold=5, preprocess_against_shallow=True)
+  volumes = list(co.regions())
+  assert volumes == [26000, 1000]
+  for i in range(0,10):
+    assert approx_equal(cmap[i,15,15], 4)
+
+  # case 4: need at least two passes
+  cmap = flex.double(flex.grid(30,30,30))
+  cmap.fill(1)
+  cmap[10,10,10] = 10
+  cmap[9,10,10] = 10
+  cmap[11,10,10] = 10
+  cmap[10,9,10] = 10
+  cmap[10,11,10] = 10
+  cmap[10,10,9] = 10
+  cmap[10,10,11] = 10
+  co = maptbx.connectivity(map_data=cmap, threshold=5, preprocess_against_shallow=False)
+  volumes = list(co.regions())
+  assert volumes == [26993, 7]
+  co = maptbx.connectivity(map_data=cmap, threshold=5, preprocess_against_shallow=True)
+  volumes = list(co.regions())
+  assert volumes == [27000]
+  assert co.preprocessing_changed_voxels == 7
+  assert co.preprocessing_n_passes == 3
+
+
 if __name__ == "__main__":
   t0 = time.time()
   exercise1()  # examples of usage are here!
@@ -478,4 +574,5 @@ if __name__ == "__main__":
   exercise_noise_elimination_two_cutoffs() # example and comment
   exercise_get_blobs_boundaries()
   exercise_expand_mask()
+  exercise_preprocess_against_shallow()
   print("OK time =%8.3f"%(time.time() - t0))

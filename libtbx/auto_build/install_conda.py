@@ -142,6 +142,9 @@ class conda_manager(object):
     Updates the current version of conda
   create_environment(builder, filename, copy)
     Uses the known conda installtion to create an environment
+  write_conda_setpaths(prefix, build_dir, conda_env, check_file)
+    Writes an additional script that activates the conda environment before
+    calling the normal setpaths script.
   """
 
   # Currently, there is one monolithic environment
@@ -156,7 +159,9 @@ class conda_manager(object):
     'phenix_tng': os.path.join('phenix', 'conda_envs',
       default_format.format(builder='phenix', version=version,
                             platform=conda_platform[platform.system()])),
-    'xfel': default_file,
+    'xfel': os.path.join('dials', '.conda-envs',
+      default_format.format(builder='dials', version=version,
+                            platform=conda_platform[platform.system()])),
     'xfellegacy': default_file,
     'labelit': default_file,
     'dials': os.path.join('dials', '.conda-envs',
@@ -642,7 +647,7 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
       command_list.append('--copy')
     if offline and not yaml_format:
       command_list.append('--offline')
-    if builder == "dials":
+    if builder in ["dials", "xfel"]:
       command_list.append("-y")
     # RuntimeError is raised on failure
     print('{text} {builder} environment with:\n  {filename}'.format(
@@ -687,6 +692,151 @@ working network connection for downloading conda packages.
 The newly installed environment cannot be found in
 ${HOME}/.conda/environments.txt.
 """)
+
+  # ---------------------------------------------------------------------------
+  def write_conda_setpaths(self, prefix='conda', build_dir=None,
+                           conda_env=None, check_file=True):
+    """
+    Write a script similar to setpaths.sh/csh/bat that activates the environment
+    first. This is useful for developers that want to use other software
+    installed in the conda environment without having to manually activate it.
+
+    Parameters
+    ----------
+      prefix: str
+        The prefix for the output file. The output file will be constructed
+        as <prefix>_<script name>.<extension>. The <script name> is the
+        standard setpaths or unsetpaths file, and the <extension> will be
+        the existing extensions for the script (sh, csh, and bat)
+      build_dir: str
+        The build directory where the standard setpaths script resides.
+      conda_env: str
+        The conda environment directory
+      check_file: bool
+        Used to override the check_file attribute
+
+    Returns
+    -------
+      Nothing
+    """
+
+    if check_file is None:
+      check_file = self.check_file
+
+    # check that build_dir is valid
+    if build_dir is None:
+      build_dir = os.getenv('LIBTBX_BUILD')
+    if build_dir is None:
+      raise RuntimeError("""\
+Please run the dispatcher version of libtbx.install_conda or provide a valid
+directory as an argument to the write_conda_setpaths function.""")
+
+    build_dir_error = """\
+Please provide the directory to the setpaths script.
+"""
+    if build_dir is None or not os.path.isdir(build_dir):
+      raise RuntimeError(build_dir_error)
+    if sys.platform == 'win32':
+      if not os.path.isfile(os.path.join(build_dir, 'setpaths.bat')):
+        raise RuntimeError(build_dir_error)
+    else:
+      if not os.path.isfile(os.path.join(build_dir, 'setpaths.sh')) \
+         or not os.path.isfile(os.path.join(build_dir, 'setpaths.csh')):
+        raise RuntimeError(build_dir_error)
+
+    # check conda_env
+    if conda_env is None:
+      conda_env = self.conda_env
+    if conda_env is None:
+      from libtbx.env_config import get_conda_prefix
+      conda_env = get_conda_prefix()
+    conda_env = os.path.abspath(conda_env)
+
+    # -------------------------------------------------------------------------
+    def do_check_file(filename):
+      """
+      Convenience function for checking if the script was written.
+      """
+      if os.path.isfile(filename):
+        print('{filename} has been written successfully.'.format(
+          filename=os.path.basename(filename)))
+      else:
+        raise RuntimeError("""
+{filename} has not been written successfully.""".format(filename=filename))
+    # -------------------------------------------------------------------------
+
+    # Windows
+    if sys.platform == 'win32':
+      script_template = """\
+@ECHO OFF
+CALL {mc3_dir} {conda_env}
+CALL {setpaths}
+"""
+      # activate
+      mc3_dir = os.path.abspath(
+        os.path.join(self.conda_base, 'Scripts', 'activate.bat'))
+      setpaths = os.path.abspath(os.path.join(build_dir, 'setpaths.bat'))
+      filename = os.path.abspath(os.path.join(build_dir, prefix + '_setpaths.bat'))
+      with open(filename, 'w') as f:
+        f.write(script_template.format(
+          mc3_dir=mc3_dir, conda_env=conda_env, setpaths=setpaths))
+      if check_file:
+        do_check_file(filename)
+      # deactivate
+      mc3_dir = 'conda'
+      conda_env = 'deactivate'
+      setpaths = os.path.abspath(os.path.join(build_dir, 'unsetpaths.bat'))
+      filename = os.path.abspath(
+        os.path.join(build_dir, prefix + '_unsetpaths.bat'))
+      with open(filename, 'w') as f:
+        f.write(script_template.format(
+          mc3_dir=mc3_dir, conda_env=conda_env, setpaths=setpaths))
+      if check_file:
+        do_check_file(filename)
+    # linux and macOS
+    else:
+      for ext in ('sh', 'csh'):
+        # activate
+        script_template = """\
+source {mc3_dir}
+{get_old_prompt}
+conda activate {conda_env}
+{set_old_prompt}
+{unset_old_prompt}
+source {setpaths}
+"""
+        mc3_dir = os.path.abspath(
+          os.path.join(self.conda_base, 'etc', 'profile.d', 'conda.' + ext))
+        if ext == 'sh':
+          get_old_prompt = 'LIBTBX_OLD_PS1=$PS1'
+          set_old_prompt = 'PS1=$LIBTBX_OLD_PS1'
+          unset_old_prompt = 'unset LIBTBX_OLD_PS1'
+        else:
+          get_old_prompt = 'set libtbx_old_prompt="$prompt"'
+          set_old_prompt = 'set prompt="$libtbx_old_prompt"'
+          unset_old_prompt = 'unset libtbx_old_prompt'
+        setpaths = os.path.abspath(os.path.join(build_dir, 'setpaths.' + ext))
+        filename = os.path.abspath(
+          os.path.join(build_dir, prefix + '_setpaths.' + ext))
+        with open(filename, 'w') as f:
+          f.write(script_template.format(
+            mc3_dir=mc3_dir, get_old_prompt=get_old_prompt, conda_env=conda_env,
+            set_old_prompt=set_old_prompt, unset_old_prompt=unset_old_prompt,
+            setpaths=setpaths))
+        if check_file:
+          do_check_file(filename)
+        # deactivate
+        script_template = """\
+conda deactivate
+source {setpaths}
+"""
+        setpaths = os.path.abspath(os.path.join(build_dir, 'unsetpaths.' + ext))
+        filename = os.path.abspath(
+          os.path.join(build_dir, prefix + '_unsetpaths.' + ext))
+        with open(filename, 'w') as f:
+          f.write(script_template.format(setpaths=setpaths))
+        if check_file:
+          do_check_file(filename)
 
 # =============================================================================
 def run():
@@ -763,6 +913,15 @@ Example usage:
       ensure that that environment is used. Using $CONDA_PREFIX as the
       argument will use the currently active environment for building.""")
   parser.add_argument(
+    '--write_setpaths', default=None, type=str, nargs='?', metavar='PREFIX',
+    const='conda',
+    help="""When set, another script is added that activates the conda
+      environment before sourcing the setpaths script. Optionally, the prefix
+      of the script can be provided. The output files will be named
+      <prefix>_setpaths.<extension> and <prefix>_unsetpaths.<extension>
+      where the extension will be "sh"/"csh" for linux and macOS, and
+      "bat" for Windows.""")
+  parser.add_argument(
     '--copy', action='store_true', default=False,
     help="""When set, the new environment has copies, not links to files. This
       should only be used when building installers.""")
@@ -809,6 +968,10 @@ Example usage:
     m.create_environment(builder=builder, filename=filename,
                          python=namespace.python,
                          copy=namespace.copy, offline=namespace.offline)
+
+  # if --write_setpaths is set, write the extra script
+  if namespace.write_setpaths is not None:
+    m.write_conda_setpaths(prefix=namespace.write_setpaths, check_file=True)
 
   return 0
 

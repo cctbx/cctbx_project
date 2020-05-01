@@ -137,7 +137,7 @@ def center(coords):
 
 class basis(object):
   """ Bucket for detector element information """
-  def __init__(self, orientation = None, translation = None, panelgroup = None, homogenous_transformation = None):
+  def __init__(self, orientation = None, translation = None, panelgroup = None, homogenous_transformation = None, name = None):
     """
     Provide only orientation + translation or a panelgroup or a homogenous_transformation.
 
@@ -147,8 +147,10 @@ class basis(object):
     basis shift
     @param homogenous_transformation 4x4 matrix.sqr object representing a translation
     and a rotation. Must not also contain a scale as this won't be decomposed properly.
+    @param name optional name for this basis shift
     """
     self.include_translation = True
+    self.name = name
 
     if panelgroup is not None:
       d_mat = panelgroup.get_local_d_matrix()
@@ -164,6 +166,9 @@ class basis(object):
 
       self.orientation = r3.r3_rotation_matrix_as_unit_quaternion()
       self.translation = orig
+
+      if not self.name:
+        self.name = panelgroup.get_name()
 
     elif orientation is not None or translation is not None:
       assert orientation is not None and translation is not None
@@ -724,7 +729,7 @@ def metro_phil_to_basis_dict(metro):
 
   return bd
 
-def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, diffrn_id = "DS1", is_xfel = True):
+def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, diffrn_id = "DS1", is_xfel = True, gain = 1.0):
   """ Adds tables to cbf handle that won't already exsist if the cbf file is just a header
   @ param wavelength Wavelength in angstroms
   @ param timestamp String formatted timestamp for the image
@@ -781,9 +786,12 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, di
       assert "CBF_NOTFOUND" in str(e)
       break
 
+  if not isinstance(gain, list):
+    gain = [gain] * len(array_names)
+
   cbf.add_category("array_intensities",["array_id","binary_id","linearity","gain","gain_esd","overload","undefined_value"])
   for i, array_name in enumerate(array_names):
-    cbf.add_row([array_name,str(i+1),"linear","1.0","0.1",str(trusted_ranges[i][1]),str(trusted_ranges[i][0])])
+    cbf.add_row([array_name,str(i+1),"linear","%f"%gain[i],"0.0",str(trusted_ranges[i][1]),str(trusted_ranges[i][0])])
 
 def add_tiles_to_cbf(cbf, tiles, verbose = False):
   """
@@ -918,7 +926,7 @@ def copy_cbf_header(src_cbf, skip_sections = False):
 def write_cspad_cbf(tiles, metro, metro_style, timestamp, cbf_root, wavelength, distance, verbose = True, header_only = False):
   cbf = get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelength, distance, verbose, header_only)
 
-  cbf.write_widefile(cbf_root,pycbf.CBF,\
+  cbf.write_widefile(cbf_root.encode(),pycbf.CBF,\
       pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
 
   if verbose:

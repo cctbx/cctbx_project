@@ -131,7 +131,7 @@ angle pdb=" N   ILE A   7 "
         elif kind == "old":
           cntr+=1
           assert r.stderr_lines[0] == \
-              "Sorry: Some restraints were not added because they are already present."
+              "Sorry: Some (1) restraints were not added because they are already present."
       if action == "delete":
         cntr+=1
         assert r.stderr_lines[0] == \

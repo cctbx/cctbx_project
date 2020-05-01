@@ -36,14 +36,18 @@ from libtbx.utils import multi_out
 class ProgramTemplate(object):
   # Class variables for customizing program
 
+  # name of the program, this overrides the LIBTBX_DISPATCHER_NAME
+  # environment variable
+  program_name = None
+
   # description of the program
   description = '''
 Program Description
 '''
 
   # datatypes for program
-  # see libtbx/data_manager/<datatype>.py for list of supported datatypes
-  # default datatypes are set in libtbx/data_manager/__init__.py
+  # see iotbx/data_manager/<datatype>.py for list of supported datatypes
+  # default datatypes are set in iotbx/data_manager/__init__.py
   datatypes = None
 
   # master PHIL string for the program (required)

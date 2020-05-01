@@ -7,6 +7,7 @@ from scitbx import matrix
 import math
 from libtbx.test_utils import approx_equal
 import os
+from smtbx.regression.test_data import fnames
 
 def test_basics():
   # construct a simple structure whose sites and u_iso's are to be refined
@@ -88,7 +89,7 @@ def test_basics():
 
 def test_real_life_structure():
   working_dir = os.path.dirname(__file__)
-  res = os.path.join(working_dir, 'sucrose_p1.res')
+  res = fnames.sucrose_p1_res
   xs = xray.structure.from_shelx(filename=res)
   fo_sq = xs.structure_factors(
     d_min=0.5, algorithm='direct').f_calc().intensities()

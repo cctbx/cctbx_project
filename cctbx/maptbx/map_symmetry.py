@@ -15,6 +15,7 @@ class map_symmetry:
       map_data=None,
       map_coeffs=None,
       crystal_symmetry=None,
+      likely_map_center_locations_grid_units=None,
       ncs_object=None,
       log=sys.stdout):
     adopt_init_args(self, locals())
@@ -58,7 +59,6 @@ class map_symmetry:
     pass
 
   def run(self):
-
 
     # Print out values of parameters
     import iotbx.phil
@@ -152,6 +152,7 @@ class map_symmetry:
 
   def shift_origin(self):
 
+     origin_shift_grid_units=self.map_data.origin()
      origin_shift=(
          self.map_data.origin()[0]/self.map_data.all()[0],
          self.map_data.origin()[1]/self.map_data.all()[1],
@@ -167,6 +168,14 @@ class map_symmetry:
        self.map_data = self.map_data.shift_origin()
        self.origin_frac=origin_shift
        self.origin_shift_cart=origin_shift_cart
+       # Adjust likely center position
+       new_location=[]
+       for xx,osc in zip(self.params.reconstruction_symmetry.symmetry_center,
+         origin_shift_cart):
+         new_location.append(xx-osc)
+       self.params.reconstruction_symmetry.symmetry_center=tuple(new_location)
+       print("Shifted guess for symmetry center is at: (%.2f,%.2f,%.2f) A "%(
+        self.params.reconstruction_symmetry.symmetry_center),file=self.log)
      else:
        self.origin_frac=(0.,0.,0.)
        self.origin_shift_cart=(0,0,0)

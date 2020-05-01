@@ -28,35 +28,43 @@ steps:
   displayName: Link bootstrap.py
 
 # install miniconda
+- task: DownloadPipelineArtifact@2
+  displayName: Download miniconda
+  inputs:
+    source: 'specific'
+    project: '$(System.TeamProjectId)'
+    pipeline: 4
+    artifact: 'miniconda'
+    path: $(Pipeline.Workspace)/miniconda
+
 - script: |
     set -x -e
-    curl -o $(Pipeline.Workspace)/miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-latest-$(CONDA)-x86_64.sh
-    bash $(Pipeline.Workspace)/miniconda.sh -b -u -p $(Pipeline.Workspace)/miniconda
-    export PATH=$(Pipeline.Workspace)/miniconda/bin:$PATH
+    bash $(Pipeline.Workspace)/miniconda/Miniconda3-latest-$(CONDA)-x86_64.sh -b -u -p $(Pipeline.Workspace)/miniconda
   displayName: Install miniconda
 
 # create conda environment
-- task: DownloadPipelineArtifact@2
-  displayName: Download conda packages
-  inputs:
-    source: 'current'
-    artifact: $(PYTHON_VERSION)_$(OS)
-    path: $(Pipeline.Workspace)/channel
+#- task: DownloadPipelineArtifact@2
+#  displayName: Download conda packages
+#  inputs:
+#    source: 'current'
+#    artifact: $(PYTHON_VERSION)_$(OS)
+#    path: $(Pipeline.Workspace)/channel
+#
+#- script: |
+#    source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
+#    conda install -y conda-build
+#    cd $(Pipeline.Workspace)/channel
+#    conda index .
+#    echo @EXPLICIT > env.txt
+#    for filename in `cat filenames.txt`; do
+#      echo file://$(Pipeline.Workspace)/channel/${filename} >> env.txt
+#    done
+#  displayName: Build local channel
 
 - script: |
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
-    conda install -y conda-build
-    cd $(Pipeline.Workspace)/channel
-    conda index .
-    echo @EXPLICIT > env.txt
-    for filename in `cat filenames.txt`; do
-      echo file://$(Pipeline.Workspace)/channel/${filename} >> env.txt
-    done
-  displayName: Build local channel
-
-- script: |
-    source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
-    conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
+    #conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
+    conda create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/modules/dials/.conda-envs/dials_$(PYTHON_VERSION)_$(OS).txt
     conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
   displayName: Create conda environment
 
@@ -76,7 +84,10 @@ steps:
     source ./build/setpaths.sh
     mkdir tests
     cd tests
-    libtbx.run_tests_parallel module=uc_metrics nproc=4
+    libtbx.configure xfel_regression
+    chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/xfel_merge.sh
+    chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/merge_thermo.csh
+    libtbx.run_tests_parallel module=uc_metrics module=simtbx module=xfel_regression nproc=4
   failOnStderr: false
   displayName: Test
 

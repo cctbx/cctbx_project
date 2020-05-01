@@ -127,6 +127,7 @@ nanoBragg::nanoBragg(
 
     /* sensible initialization of all unititialized values */
     reconcile_parameters();
+    SCITBX_ASSERT(distance > 0);  // safe to check,  especially with multi panel dxtbx models
 }
 
 

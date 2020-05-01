@@ -554,10 +554,12 @@ class Script(object):
         if self.params.combine_experiments.clustering.dendrogram:
           easy_run.fully_buffered(command).raise_if_errors().show_stdout()
         else:
-          submit_path = os.path.join(self.params.striping.output_folder, self.intermediates, "combine_%s.sh" % self.filename)
+          submit_folder = os.path.join(self.params.striping.output_folder, self.intermediates)
+          submit_path = os.path.join(submit_folder, "combine_%s.sh" % self.filename)
           submit_command = get_submit_command_chooser(command, submit_path, self.intermediates, self.params.mp,
             log_name=os.path.splitext(os.path.basename(submit_path))[0] + ".out",
-            err_name=os.path.splitext(os.path.basename(submit_path))[0] + ".err")
+            err_name=os.path.splitext(os.path.basename(submit_path))[0] + ".err",
+            root_dir = submit_folder)
           all_commands.append(submit_command)
           if not self.params.striping.dry_run:
             print("executing command: %s" % submit_command)

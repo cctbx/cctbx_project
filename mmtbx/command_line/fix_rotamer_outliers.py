@@ -77,9 +77,11 @@ def run(args, params=None, out=sys.stdout, model=None):
       pdb_hierarchy     = model.get_hierarchy(),
       crystal_symmetry  = model.crystal_symmetry(),
       map_data          = None,
-      rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(),
+      rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(
+        rotamers="favored_allowed"),
       sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
       backbone_sample   = False,
+      rotatable_hd      = model.rotatable_hd_selection(iselection=False),
       mon_lib_srv       = model.get_mon_lib_srv(),
       log               = out)
   model.set_sites_cart(

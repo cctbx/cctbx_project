@@ -244,6 +244,7 @@ class hklview_3d:
     self.sceneisdirty = True
     self.imagename = None
     self.imgdatastr = ""
+    self.imgcount = 0
     self.hkl_scenes_info = []
     self.match_valarrays = []
     self.array_infostrs = []
@@ -305,14 +306,13 @@ class hklview_3d:
     """
     self.colourgradientvalues = []
     self.isinjected = False
-    self.UseOSBrowser = True
+    self.UseOSBrowser = ""
     if 'UseOSBrowser' in kwds:
-      self.UseOSBrowser = eval(kwds['UseOSBrowser'])
+      exec("self.UseOSBrowser = kwds['UseOSBrowser']")
     self.viewmtrx = None
     self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
-    self.HKLsceneKey = ( 0, False,
-                          self.viewerparams.expand_anomalous, self.viewerparams.expand_to_p1  )
+    self.HKLsceneKey = ( 0, False, self.viewerparams.expand_anomalous, self.viewerparams.expand_to_p1  )
     self.msgqueue = []
     self.websockclient = None
     self.handshakewait = 5
@@ -1691,6 +1691,7 @@ var mysocket;
 try
 {
   mysocket = new WebSocket('ws://127.0.0.1:%s/');
+  //mysocket.binaryType = "blob"; //"arraybuffer";
 }
 catch(err)
 {
@@ -1735,7 +1736,7 @@ var current_ttip_ids;
 var isdebug = %s;
 var tdelay = 100;
 var displaytooltips = true;
-
+var link = document.createElement('a');
 
 
 function WebsockSendMsg(msg)
@@ -1776,7 +1777,6 @@ Object.assign(debugmessage.style, {
 });
 
 
-
 function ReturnClipPlaneDistances()
 {
   if (stage.viewer.parameters.clipScale == 'relative')
@@ -1805,6 +1805,27 @@ function ReturnClipPlaneDistances()
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+
+function download(filename, text) {
+  var element = document.createElement('a');
+  element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+  element.setAttribute('download', filename);
+  //element.style.display = 'none';
+  document.body.appendChild(element);
+  element.click();
+  document.body.removeChild(element);
+}
+
+
+function syncsleep(ms) {
+  const date = Date.now();
+  let currentDate = null;
+  do {
+    currentDate = Date.now();
+  } while (currentDate - date < ms);
+}
+
 
 async function ReRender()
 {
@@ -2466,35 +2487,68 @@ mysocket.onmessage = function(e)
               //bytes.map((byte, i) => blob.slice(i));
               //b64 = btoa(blob);
               var reader = new FileReader();
-              //reader.readAsDataURL(blob);
-              reader.readAsBinaryString(blob);
-              reader.onloadend = function() {
-                  //var base64data = reader.result;
-                  var base64data = window.btoa(reader.result);
-
-                  var msize = 1000;
-                  var j = 0;
-                  var chunk = String(base64data.slice(j*msize, (j+1)*msize));
-                  while (chunk != "")
-                  {
-                    WebsockSendMsg('ImageChunk_' + String(j) + '\\n' + chunk);
-                    //WebsockSendMsg('ImageChunk_' + String(j) + '\\n' + 'Waffle');
-                    j++;
-                    chunk = String(base64data.slice(j*msize, (j+1)*msize));
-                  }
-
-                  WebsockSendMsg('ImageSent');
+              reader.readAsDataURL(blob);
+              reader.onloadend = function()
+              {
+                var base64data = reader.result.replace(/^data:.+;base64,/, '');
+                WebsockSendMsg('Imageblob\\n' + base64data);
+                /*
+                var msize = 500;
+                var j = 0;
+                var chunk = base64data.slice(j*msize, (j+1)*msize);
+                while (chunk != "")
+                {
+                  if (chunk.length <=0)
+                    break;
+                  msg = 'ImageChunk_' + String(j) + '\\n' + chunk
+                  WebsockSendMsg(msg);
+                  //alert("chunk size: " + String(chunk.length));
+                  syncsleep(50);
+                  //WebsockSendMsg(msg);
+                  //WebsockSendMsg('ImageChunk_' + String(j) + '\\n' + 'Waffle');
+                  j++;
+                  chunk = base64data.slice(j*msize, (j+1)*msize);
+                }
+                alert("last chunk: " + String(chunk));
+                WebsockSendMsg('ImageSent\\n');
+                alert("ImageSent");
+                */
+                //download("base64data.txt", base64data);
               }
-              //WebsockSendMsg('Imageblob\\n' + b64);
+              //WebsockSendMsg('Imageblob\\n' + reader.result);
               //WebsockSendMsg('Imageblob\\n' + String(bytes) );
-              /*
-              var link = document.getElementById('link');
+
               var canvas = stage.viewer.renderer.domElement;
-              link.setAttribute('download', 'C:/Users/oeffner/Buser/HKLviewerTests/MintyPaper.png');
-              //link.setAttribute('href', canvas.toDataURL("image/png").replace("image/png", "image/octet-stream"));
-              link.setAttribute('href', blob);
-              link.click();
+              var ctx = canvas.getContext("2d");
+              /*
+              baseimage        = new Image();
+              baseimage.onload = function() {
+                  ctx.drawImage(baseimage,1,1);
+                  //var dataURL = canvas.toDataURL("image/png");
+                  //document.getElementById('canvasImg').src = dataURL;
+              }
               */
+
+              link.setAttribute('download', filename);
+              var imgurl = canvas.toDataURL("image/png"); //.replace("image/png", "image/octet-stream");
+
+              //var w=window.open(imgurl);
+              //w.document.write("<img src='"+imgurl+"' alt='from canvas'/>");
+              //location.href = imgurl;
+
+              link.src = imgurl;
+              link.setAttribute('href', imgurl);
+              //document.body.appendChild(link);
+              //link.click();
+
+              // wait for the link to be added to the document
+              /*
+              window.requestAnimationFrame(function () {
+                var event = new MouseEvent('click');
+                link.dispatchEvent(event);
+                //document.body.removeChild(link);
+              });
+               */
         } );
 
       //WebsockSendMsg('MakeImage ' + pagename);
@@ -2574,23 +2628,26 @@ mysocket.onmessage = function(e)
           datastr = message[ message.find("\n") + 1: ]
           with open( self.imagename, "wb") as imgfile:
             #datastr += "=" * ((4 - len(datastr) % 4) % 4)
-            datastr = datastr[(len('data:image/png;base64,')):]
+            #datastr = datastr[(len('data:image/png;base64,')):]
             #blob = base64.b64decode(datastr2)
             #blob = base64.urlsafe_b64decode(datastr)
             #blob = base64.b64decode(datastr + '=' * (-len(datastr) % 4) )
-            blob = base64.b64decode(datastr + b'===' )
+            blob = base64.b64decode(datastr )
             imgfile.write(blob)
         elif "ImageChunk" in message:
+          self.imgcount +=1
           self.imgdatastr += message[ message.find("\n") + 1: ]
+          print( "imagechunk " + str(self.imgcount))
         elif "ImageSent" in message:
           with open( self.imagename, "wb") as imgfile:
             datastr = self.imgdatastr #[(len('data:image/png;base64,')):]
             blob = base64.b64decode(datastr + b'===' )
             imgfile.write(blob)
           self.imgdatastr = ""
-
-        elif "MakeImage" in message:
-          self.mprint( "Image saved to storage", verbose=0)
+          self.imgcount = 0
+          print( "ImageSaved ")
+        #elif "MakeImage" in message:
+        #  self.mprint( "Image saved to storage", verbose=0)
         elif "ReturnClipPlaneDistances:" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
@@ -2789,8 +2846,7 @@ Distance: %s
         self.websockclient = None
         return False
     else:
-      self.OpenBrowser()
-    return False
+      return self.OpenBrowser()
 
 
 
@@ -2804,8 +2860,15 @@ Distance: %s
       self.url = "file:///" + os.path.abspath( self.hklfname )
       self.url = self.url.replace("\\", "/")
       self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname, verbose=1)
-      if self.UseOSBrowser:
-        webbrowser.open(self.url, new=1)
+      if self.UseOSBrowser=="default":
+        if not webbrowser.open(self.url, new=1):
+          self.mprint("Could not open the default web browser")
+          return False
+      if self.UseOSBrowser != "default" and self.UseOSBrowser != "":
+        browserpath = self.UseOSBrowser + " %s"
+        if not webbrowser.get(browserpath).open(self.url, new=1):
+          self.mprint("Could not open web browser, %s" %self.UseOSBrowser)
+          return False
       self.SendInfoToGUI({ "html_url": self.url } )
       self.browserisopen = True
       self.isnewfile = False

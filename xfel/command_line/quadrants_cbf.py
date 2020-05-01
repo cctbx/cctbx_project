@@ -116,7 +116,7 @@ def run(args):
       image.sync_detector_to_cbf()
       dest_path = os.path.splitext(file)[0]+"_cc.cbf"
       print("Saving result to", dest_path)
-      image._cbf_handle.write_widefile(dest_path,pycbf.CBF,\
+      image._cbf_handle.write_widefile(dest_path.encode(),pycbf.CBF,\
           pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
 
 if (__name__ == "__main__"):

@@ -234,6 +234,10 @@ plots {
     .type = bool
     .help = Show trumpet plot equivalent but using the Ewald offset for Y \
             (I.E. the reflection distance from the Ewald sphere)
+  include_offset_dots = False
+    .type = bool
+    .help = Plot mean offset for spot predictions from observations in \
+            deltaXY_by_deltapsi plot
 }
 
 save_pdf = False
@@ -470,7 +474,14 @@ class ResidualsPlotter(object):
 
     lab_coords = panel.get_lab_coord(mm_panel_coords)
 
-    ax.scatter(lab_coords.parts()[0], lab_coords.parts()[1], c = data, norm=norm, cmap = cmap, linewidths=0, s=self.params.dot_size)
+    lab_coords_x, lab_coords_y, _ = lab_coords.parts()
+    ax.scatter(lab_coords_x, lab_coords_y, c = data, norm=norm, cmap = cmap, linewidths=0, s=self.params.dot_size)
+
+    if self.params.plots.include_offset_dots:
+      panel_center = panel.get_lab_coord(offset[0:2])
+      ax.scatter(panel_center[0], panel_center[1], c='k', s=self.params.dot_size)
+      ax.scatter(flex.mean(lab_coords_x), flex.mean(lab_coords_y), c='k', s=self.params.dot_size)
+      print(panel.get_name(), (flex.mean(lab_coords_x) - panel_center[0])/self.delta_scalar, (flex.mean(lab_coords_y) - panel_center[0])/self.delta_scalar)
 
     return sm, color_vals
 

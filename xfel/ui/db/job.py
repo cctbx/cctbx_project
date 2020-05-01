@@ -513,7 +513,8 @@ class EnsembleRefinementJob(Job):
     identifier_string = self.get_identifier_string()
     target_phil_path = os.path.join(configs_dir, identifier_string + "_params.phil")
     with open(target_phil_path, 'w') as f:
-      f.write(self.task.parameters)
+      if self.task.parameters:
+        f.write(self.task.parameters)
 
     path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
     os.mkdir(path)
@@ -521,6 +522,7 @@ class EnsembleRefinementJob(Job):
     arguments = """
     mp.queue={}
     mp.nproc={}
+    mp.nproc_per_node={}
     mp.method={}
     {}
     mp.use_mpi=False
@@ -535,6 +537,7 @@ class EnsembleRefinementJob(Job):
     striping.output_folder={}
     """.format(self.app.params.mp.queue if len(self.app.params.mp.queue) > 0 else None,
                self.app.params.mp.nproc,
+               self.app.params.mp.nproc_per_node,
                self.app.params.mp.method,
                '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script]),
                self.app.params.output_folder,
@@ -840,21 +843,26 @@ def submit_all_jobs(app):
       if latest_version is None:
         jobs = global_tasks[global_task] # first version
         next_version = 0
+        global_task_submitted = False
       else:
-        latest_verion_job_ids = [j.id for j in latest_version.jobs]
+        latest_version_jobs = latest_version.jobs
+        global_task_submitted = any([j.task_id == task.id for j in latest_version_jobs])
+
+        latest_verion_job_ids = [j.id for j in latest_version_jobs if j.task_id != task.id]
         jobs = [j for j in global_tasks[global_task] if j.id not in latest_verion_job_ids]
         next_version = latest_version.version + 1
-      if not jobs: continue
+      if not jobs and global_task_submitted: continue
 
-      new_version = app.create_dataset_version(dataset_id = dataset.id, version=next_version)
-      for job in global_tasks[global_task]:
-        new_version.add_job(job)
+      if not global_task_submitted:
+        latest_version = app.create_dataset_version(dataset_id = dataset.id, version=next_version)
+        for job in global_tasks[global_task]:
+          latest_version.add_job(job)
 
       j = JobFactory.from_args(app,
                                task_id = task.id,
                                dataset_id = dataset.id,
                                status = "SUBMITTED")
-      j.task = task; j.dataset = dataset; j.dataset_version = new_version
+      j.task = task; j.dataset = dataset; j.dataset_version = latest_version
 
       try:
         j.submission_id = j.submit()
@@ -862,6 +870,7 @@ def submit_all_jobs(app):
         print("Couldn't submit job:", str(e))
         j.status = "SUBMIT_FAIL"
         raise
+      latest_version.add_job(j)
 
       if app.params.mp.method == 'local': # only run one job at a time
         return

@@ -961,7 +961,8 @@ def sites_and_seq_from_hierarchy(hierarchy):
     sites=flex.vec3_double()
     sequence=""
   else:
-    sites=sele.extract_xray_structure().sites_cart()
+    sites=sele.extract_xray_structure(min_distance_sym_equiv=0 # REQUIRED
+        ).sites_cart()
     sequence=sequence_from_hierarchy(sele)
   start_resno=get_first_resno(sele)
   end_resno=get_last_resno(sele)
@@ -1758,7 +1759,8 @@ class find_segment: # class to look for a type of segment
       return []
     else:
       # extract coordinates
-      sites=sele.extract_xray_structure().sites_cart()
+      sites=sele.extract_xray_structure(min_distance_sym_equiv=0 # REQUIRED
+         ).sites_cart()
       return sites
 
   def get_segments(self):

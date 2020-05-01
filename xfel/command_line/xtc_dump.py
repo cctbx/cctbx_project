@@ -275,7 +275,7 @@ class Script(object):
 
           # write the file
           import pycbf
-          image._cbf_handle.write_widefile(path, pycbf.CBF,\
+          image._cbf_handle.write_widefile(path.encode(), pycbf.CBF,\
             pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
 
       run.end()

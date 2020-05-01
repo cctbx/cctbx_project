@@ -562,6 +562,9 @@ def _get_residue_groups_from_selection(pdb_hierarchy, bool_selection):
   # Selection should cover only one chain
   assert isinstance(bool_selection, flex.bool)
   i_seqs = bool_selection.iselection()
+  if len(i_seqs) == 0:
+    raise Sorry(
+        "Error in SS definitions, most likely atoms are absent for one of them.")
   a = pdb_hierarchy.atoms()[i_seqs[0]]
   ch_id = a.parent().parent().parent().id
   rgs = []

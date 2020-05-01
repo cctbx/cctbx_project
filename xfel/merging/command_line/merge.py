@@ -58,7 +58,7 @@ class Script(object):
 
       # Log the modified phil parameters
       diff_phil_str = self.parser.diff_phil.as_str()
-      if diff_phil_str is not "":
+      if diff_phil_str != "":
         self.mpi_logger.main_log("The following parameters have been modified:\n%s"%diff_phil_str)
 
       # prepare for transmitting input parameters to all ranks
@@ -101,7 +101,7 @@ class Script(object):
     import importlib
 
     workers = []
-    steps = default_steps if self.params.dispatch.step_list == [] else self.params.dispatch.step_list
+    steps = self.params.dispatch.step_list if self.params.dispatch.step_list else default_steps
     for step in steps:
       step_factory_name = step
       step_additional_info = []
