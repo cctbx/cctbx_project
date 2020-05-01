@@ -420,7 +420,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
       params.refinement.parameterisation.crystal.fix="cell"
     from dials.algorithms.refinement.refiner import RefinerFactory
     refiner = RefinerFactory.from_parameters_data_experiments(params,
-      reflections, experiments, verbosity=1)
+      reflections, experiments)
 
     history = refiner.run()
     print(history.keys())
