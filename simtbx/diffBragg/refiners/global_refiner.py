@@ -193,28 +193,53 @@ class GlobalRefiner(PixelRefinement):
         self.image_corr_norm = {i_shot:None for i_shot in range(self.n_shots)}
         self.shot_originZ_init = None
         if shot_originZ_init is not None:
+            if rank==0:
+                print("check originZ")
             self.shot_originZ_init = self._check_keys(shot_originZ_init)
         
         self.selection_flags = selection_flags
         if self.selection_flags is not None: 
+            if rank==0:
+                print("check selection flags")
             self.selection_flags = self._check_keys(self.selection_flags)
         
         # sanity check: no repeats of the same shot
         assert len(self.shot_ids) == len(set(self.shot_ids))
 
         self.OMEGA_KAHN = omega_kahn
+        if rank==0:
+            print("check ROIS")
         self.ROIS = self._check_keys(shot_rois)
+        if rank==0:
+            print("check ASU")
         self.ASU = self._check_keys(shot_asu)
+        if rank==0:
+            print("check nanoBRAGG ROIS")
         self.NANOBRAGG_ROIS = self._check_keys(shot_nanoBragg_rois)
+        if rank==0:
+            print("check ROI IMAGES")
         self.ROI_IMGS = self._check_keys(shot_roi_imgs)
+        if rank==0:
+            print("check SPECTRA")
         self.SPECTRA = self._check_keys(shot_spectra)
         self.CRYSTAL_GT = None
         if shot_crystal_GTs is not None:
+            if rank==0:
+                print("check GT CRYSTAL")
             self.CRYSTAL_GT = self._check_keys(shot_crystal_GTs)
+        if rank==0:
+            print("check CRYSTAL")
         self.CRYSTAL_MODELS = self._check_keys(shot_crystal_models)
+        if rank==0:
+            print("check XREL YREL")
+
         self.XREL = self._check_keys(shot_xrel)
         self.YREL = self._check_keys(shot_yrel)
+        if rank==0:
+            print("check ABC INIT")
         self.ABC_INIT = self._check_keys(shot_abc_inits)
+        if rank==0:
+            print("check PANEL IDS")
         self.PANEL_IDS = self._check_keys(shot_panel_ids)
 
         # Total number of parameters in the MPI world
@@ -923,6 +948,9 @@ class GlobalRefiner(PixelRefinement):
         """needs to be called each time the ROI is changed"""
         (i1, i2), (j1, j2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
         self.D.region_of_interest = (int(i1), int(i2)), (int(j1), int(j2))
+        self.D.printout_pixel_fastslow = int(i1)+2, int(j1)+2
+        from IPython import embed
+        embed()
         self.D.add_diffBragg_spots()
 
     def _get_fcell_val(self, i_fcell):
