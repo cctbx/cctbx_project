@@ -73,6 +73,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.diag_mode = "always"  # LBFGS refiner property, whether to update curvatures at each iteration
         self.request_diag_once = False  # LBFGS refiner property
         self.output_dir = None  # directory to dump progress files, these can be used to restart simulation later
+        self.bg_extracted = False  # is using the mode where background is extracted from the image ahead of time and we only fit a coefficient times that extracted value
+        self.bg_coef_sigma = .1
         self.min_multiplicity = 1  # only refine a spots Fhkl if multiplicity greater than this number
         self.rescale_fcell_by_resolution = True
         self.restart_file = None  # output file from previous run refinement
