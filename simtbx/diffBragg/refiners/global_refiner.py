@@ -137,7 +137,7 @@ class GlobalRefiner(PixelRefinement):
                  global_ncells=False, global_ucell=True, global_originZ=True,
                  shot_originZ_init=None,
                  sgsymbol="P43212",
-                 omega_kahn=None, selection_flags=None):
+                 omega_kahn=None, selection_flags=None, shot_bg_coef=None, background_estimate=None):
         """
         TODO: parameter x array boundaries should be done in this class, eliminating the need for local_idx_start
         TODO and global_idx_start
@@ -196,6 +196,11 @@ class GlobalRefiner(PixelRefinement):
             if rank==0:
                 print("check originZ")
             self.shot_originZ_init = self._check_keys(shot_originZ_init)
+        # load the background coefficient  and extracted backgorund estimate
+        self.shot_bg_coef = None
+        if shot_bg_coef is not None:
+            self.shot_bg_coef = self._check_keys(shot_bg_coef)
+        self.background_estimate = background_estimate
         
         self.selection_flags = selection_flags
         if self.selection_flags is not None: 
@@ -410,6 +415,7 @@ class GlobalRefiner(PixelRefinement):
         self.bg_a_xstart = {}
         self.bg_b_xstart = {}
         self.bg_c_xstart = {}
+        self.bg_coef_xpos = {}
         if rank == 0:
             print("--1 Setting up per shot parameters")
 
@@ -419,36 +425,46 @@ class GlobalRefiner(PixelRefinement):
             self.pid_from_idx[i_shot] = {i: pid for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
             self.idx_from_pid[i_shot] = {pid: i for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
             self.n_panels[i_shot] = len(self.pid_from_idx[i_shot])
+            
+            if self.bg_extracted:
+                self.bg_coef_xpos[i_shot] = _local_pos
+                self.x[self.bg_coef_xpos[i_shot]] = 1
+                if not self.rescale_params:
+                    raise NotImplementedError("bg coef mode only works in rescale mode")
+            else:
+                n_spots = len(self.NANOBRAGG_ROIS[i_shot])
+                self.bg_a_xstart[i_shot] = []
+                self.bg_b_xstart[i_shot] = []
+                self.bg_c_xstart[i_shot] = []
+                _spot_start = _local_pos
+                
+                for i_spot in range(n_spots):
+                    self.bg_a_xstart[i_shot].append(_spot_start)
+                    self.bg_b_xstart[i_shot].append(self.bg_a_xstart[i_shot][i_spot] + 1)
+                    self.bg_c_xstart[i_shot].append(self.bg_b_xstart[i_shot][i_spot] + 1)
 
-            n_spots = len(self.NANOBRAGG_ROIS[i_shot])
-            self.bg_a_xstart[i_shot] = []
-            self.bg_b_xstart[i_shot] = []
-            self.bg_c_xstart[i_shot] = []
-            _spot_start = _local_pos
-            for i_spot in range(n_spots):
-                self.bg_a_xstart[i_shot].append(_spot_start)
-                self.bg_b_xstart[i_shot].append(self.bg_a_xstart[i_shot][i_spot] + 1)
-                self.bg_c_xstart[i_shot].append(self.bg_b_xstart[i_shot][i_spot] + 1)
+                    a, b, c = self.ABC_INIT[i_shot][i_spot]
+                    if self.bg_offset_only and self.bg_offset_positive:
+                        if c < 0:
+                            c = np_log(1e-9)
+                        else:
+                            c = np_log(c)
+                    if self.rescale_params:
+                        self.x[self.bg_a_xstart[i_shot][i_spot]] = 1
+                        self.x[self.bg_b_xstart[i_shot][i_spot]] = 1
+                        self.x[self.bg_c_xstart[i_shot][i_spot]] = 1
 
-                a, b, c = self.ABC_INIT[i_shot][i_spot]
-                if self.bg_offset_only and self.bg_offset_positive:
-                    if c < 0:
-                        c = np_log(1e-9)
                     else:
-                        c = np_log(c)
-                if self.rescale_params:
-                    self.x[self.bg_a_xstart[i_shot][i_spot]] = 1
-                    self.x[self.bg_b_xstart[i_shot][i_spot]] = 1
-                    self.x[self.bg_c_xstart[i_shot][i_spot]] = 1
+                        self.x[self.bg_a_xstart[i_shot][i_spot]] = float(a)
+                        self.x[self.bg_b_xstart[i_shot][i_spot]] = float(b)
+                        self.x[self.bg_c_xstart[i_shot][i_spot]] = float(c)
 
-                else:
-                    self.x[self.bg_a_xstart[i_shot][i_spot]] = float(a)
-                    self.x[self.bg_b_xstart[i_shot][i_spot]] = float(b)
-                    self.x[self.bg_c_xstart[i_shot][i_spot]] = float(c)
+                    _spot_start += 3
 
-                _spot_start += 3
-
-            self.rotX_xpos[i_shot] = self.bg_c_xstart[i_shot][-1] + 1
+            if self.bg_extracted:
+                self.rotX_xpos[i_shot] = self.bg_coef_xpos[i_shot] + 1
+            else:
+                self.rotX_xpos[i_shot] = self.bg_c_xstart[i_shot][-1] + 1
             self.rotY_xpos[i_shot] = self.rotX_xpos[i_shot] + 1
             self.rotZ_xpos[i_shot] = self.rotY_xpos[i_shot] + 1
 
@@ -749,11 +765,12 @@ class GlobalRefiner(PixelRefinement):
 
             self.origin_sel[self.originZ_xpos[i_shot]] = False
 
-            nspots_on_shot = len(self.NANOBRAGG_ROIS[i_shot])
-            for i_spot in range(nspots_on_shot):
-                self.bg_sel[self.bg_a_xstart[i_shot][i_spot]] = False
-                self.bg_sel[self.bg_b_xstart[i_shot][i_spot]] = False
-                self.bg_sel[self.bg_c_xstart[i_shot][i_spot]] = False
+            if not self.bg_extracted:
+                nspots_on_shot = len(self.NANOBRAGG_ROIS[i_shot])
+                for i_spot in range(nspots_on_shot):
+                    self.bg_sel[self.bg_a_xstart[i_shot][i_spot]] = False
+                    self.bg_sel[self.bg_b_xstart[i_shot][i_spot]] = False
+                    self.bg_sel[self.bg_c_xstart[i_shot][i_spot]] = False
 
         for i_fcell in range(self.n_global_fcell):
             self.Fcell_sel[self.fcell_xstart + i_fcell] = False
@@ -815,6 +832,14 @@ class GlobalRefiner(PixelRefinement):
             val = np_exp(sig*(val-1))*init
         else:
             val = np_exp(val)
+        return val
+    
+    def _get_bg_coef(self, i_shot):
+        assert (self.rescale_params)
+        val = self.x[self.bg_coef_xpos[i_shot]]
+        sig = self.bg_coef_sigma
+        init = self.shot_bg_coef[i_shot]
+        val = np_exp(sig*(val-1))*init
         return val
 
     def _set_spot_scale(self, new_val, i_shot):
@@ -948,9 +973,7 @@ class GlobalRefiner(PixelRefinement):
         """needs to be called each time the ROI is changed"""
         (i1, i2), (j1, j2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
         self.D.region_of_interest = (int(i1), int(i2)), (int(j1), int(j2))
-        self.D.printout_pixel_fastslow = int(i1)+2, int(j1)+2
-        from IPython import embed
-        embed()
+        #self.D.printout_pixel_fastslow = int(i1)+2, int(j1)+2
         self.D.add_diffBragg_spots()
 
     def _get_fcell_val(self, i_fcell):
@@ -1005,17 +1028,23 @@ class GlobalRefiner(PixelRefinement):
         self.S.D.Fhkl_tuple = idx, data  # update nanoBragg again  # TODO: add flag to not re-allocate in nanoBragg!
 
     def _set_background_plane(self, i_spot):
-        xr = self.XREL[self._i_shot][i_spot]
-        yr = self.YREL[self._i_shot][i_spot]
-        self.a, self.b, self.c = self._get_bg_vals(self._i_shot, i_spot)
-        if self.bg_offset_only:
-            self.tilt_plane = ONES_LIKE(xr)*self.c
-        else:
-            self.tilt_plane = xr * self.a + yr * self.b + self.c
-        if self.OMEGA_KAHN is not None:
+        if self.bg_extracted:
+            self.bg_coef = self._get_bg_coef(self._i_shot)
             (i1, i2), (j1, j2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
-            omega_kahn_correction = self.OMEGA_KAHN[self._panel_id][j1:j2+1, i1:i2+1]
-            self.tilt_plane *= omega_kahn_correction
+            self.tilt_plane = self.bg_coef*self.background_estimate[self._panel_id, j1:j2+1, i1:i2+1]
+
+        else:
+            xr = self.XREL[self._i_shot][i_spot]
+            yr = self.YREL[self._i_shot][i_spot]
+            self.a, self.b, self.c = self._get_bg_vals(self._i_shot, i_spot)
+            if self.bg_offset_only:
+                self.tilt_plane = ONES_LIKE(xr)*self.c
+            else:
+                self.tilt_plane = xr * self.a + yr * self.b + self.c
+            if self.OMEGA_KAHN is not None:
+                (i1, i2), (j1, j2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
+                omega_kahn_correction = self.OMEGA_KAHN[self._panel_id][j1:j2+1, i1:i2+1]
+                self.tilt_plane *= omega_kahn_correction
 
     def _update_rotXYZ(self):
         if self.refine_rotX:
@@ -1220,7 +1249,10 @@ class GlobalRefiner(PixelRefinement):
                     self._show_plots(i_spot, n_spots)
 
                     # accumulate the per pixel derivatives
-                    self._background_derivatives(i_spot)
+                    if self.bg_extracted:
+                        self._bg_extracted_derivatives(i_spot)
+                    else:
+                        self._background_derivatives(i_spot)
                     self._Umatrix_derivatives()
                     self._Bmatrix_derivatives()
                     self._mosaic_parameter_m_derivatives()
@@ -1459,6 +1491,22 @@ class GlobalRefiner(PixelRefinement):
             self.grad[xpos] += self._grad_accumulate(d)
             if self.calc_curvatures:
                 self.curv[xpos] += self._curv_accumulate(d, d2)
+
+    def _bg_extracted_derivatives(self, return_derivatives=False):
+        if self.refine_background_planes:
+            assert self.rescale_params
+            dI_dtheta = self.G2 * self.tilt_plane
+            sig = self.bg_coef_sigma
+            # case 2 type rescaling
+            d = dI_dtheta*self.bg_coef * sig
+            d2 = dI_dtheta*(self.bg_coef*sig*sig)
+
+            xpos = self.bg_coef_xpos[self._i_shot]
+            self.grad[xpos] += self._grad_accumulate(d)
+            if self.calc_curvatures:
+                self.curv[xpos] += self._curv_accumulate(d, d2)
+            if return_derivatives:
+                return d, d2
 
     def _spot_scale_derivatives(self, return_derivatives=False):
         if self.refine_crystal_scale:
