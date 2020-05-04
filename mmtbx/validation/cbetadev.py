@@ -283,7 +283,7 @@ class cbetadev(validation):
     cbeta_main_labels = ["@labellist {outlier labels} color= white"]
     cbeta_alt = ["@dotlist {alt conf Cb scatter} color= pink"]
     cbeta_alt_labels = ["@labellist {alt conf outlier labels} color= pinktint"]
-    
+
     #cbeta_main.append("@dotlist {Cb scatter} color= white")
     for result in self.results:
       if result.altloc in ['',' ','A']:
