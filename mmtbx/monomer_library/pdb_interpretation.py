@@ -5602,7 +5602,6 @@ class process(object):
         params_to_pass = rama_params
         if pep_link_params.ramachandran_restraints:
           params_to_pass = pep_link_params
-        # print ('params_to_pass', type(params_to_pass))
         ramachandran_manager = ramachandran.ramachandran_manager(
             pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy,
             params=params_to_pass,
