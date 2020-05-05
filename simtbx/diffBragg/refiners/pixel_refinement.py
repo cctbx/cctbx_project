@@ -34,6 +34,12 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.rescale_params = False
         self.ignore_line_search_failed_step_at_lower_bound=False
 
+        #optional properties.. make this obvious
+        self.FNAMES = None  # dict of {rank_shot_index: image_file_path }
+        self.PROC_FNAMES = None  # dict of {rank_shot_index: agg_file_path }
+        self.PROC_IDX = None   # dict of {rank_shot_index: agg_file_index }
+        self.BBOX_IDX = None   # dict of {rank_bbox_index: agg_file_index }
+
         self.rotX_sigma = 0.003
         self.rotY_sigma = 0.003
         self.rotZ_sigma = 0.003

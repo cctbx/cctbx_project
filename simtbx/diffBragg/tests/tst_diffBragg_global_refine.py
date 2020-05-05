@@ -25,11 +25,12 @@ parser.add_argument("--tiltfit", action="store_true")
 parser.add_argument("--predictwithtruth", action="store_true")
 parser.add_argument("--pershotucell", action="store_true")
 parser.add_argument("--pershotncells", action="store_true")
-parser.add_argument("--maxcalls", type=int, default=None)
-parser.add_argument("--displayedimage", type=int, default=0)
+parser.add_argument("--maxcalls", type=int, default=None, help="maximum number of iterations for refinement")
+parser.add_argument("--displayedimage", type=int, default=0, help="if plotting during refinement, this is specifies which image to plot")
 parser.add_argument("--perturbfcell", type=float, default=None, help="perturbation factor, 0.1 is small, 1 is large")
 parser.add_argument("--fractionperturbed", type=float, default=0.1, help="Fraction of Fhkl to perturn")
 parser.add_argument("--fcellsigmascale", type=float, default=None)
+parser.add_argument("--outdir", type=str, default=None, help="output directory for refinement data")
 args = parser.parse_args()
 
 
@@ -472,6 +473,7 @@ RUC = GlobalRefiner(
     sgsymbol=symbol,
     omega_kahn=[omega_kahn])
 
+RUC.output_dir = args.outdir
 RUC.iteratively_freeze_parameters = args.iterfreeze
 RUC.index_of_displayed_image = args.displayedimage
 RUC.idx_from_asu = idx_from_asu
