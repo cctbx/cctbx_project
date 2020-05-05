@@ -474,6 +474,13 @@ RUC = GlobalRefiner(
     omega_kahn=[omega_kahn])
 
 RUC.output_dir = args.outdir
+# dummie info (used only in real situations)
+RUC.FNAMES = ["DUMMIE%d.imagefile" % i_shot for i_shot in range(N_SHOTS)]
+RUC.PROC_FNAMES = ["DUMMIE.hdf5"]
+RUC.BBOX_IDX = [range(len(shot_nanoBragg_rois[i_shot])) for i_shot in range(N_SHOTS)]
+RUC.PROC_IDX = range(N_SHOTS)
+# end dummie info
+
 RUC.iteratively_freeze_parameters = args.iterfreeze
 RUC.index_of_displayed_image = args.displayedimage
 RUC.idx_from_asu = idx_from_asu
