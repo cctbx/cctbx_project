@@ -60,7 +60,6 @@ def exercise(use_map, i_pdb, d_min = 1.5, resolution_factor = 0.1):
     vdw_radii         = None,
     crystal_symmetry  = t.crystal_symmetry,
     map_data          = map_data,
-    do_all            = True,
     backbone_sample   = False,
     rotatable_hd      = t.rotatable_hd,
     rotamer_manager   = t.rotamer_manager,
