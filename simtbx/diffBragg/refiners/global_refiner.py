@@ -45,6 +45,10 @@ if rank == 0:
     from numpy import array as ARRAY
     from numpy import pi as PI
     from numpy import allclose as ALL_CLOSE
+    from json import dump as JSON_DUMP
+    from os import makedirs as MAKEDIRS
+    from os.path import exists as EXISTS
+    from os.path import join as PATHJOIN
     
     from simtbx.diffBragg.refiners import BreakToUseCurvatures
     from scitbx.array_family import flex
@@ -61,6 +65,8 @@ if rank == 0:
     import numpy as np
 
 else:
+    PATHJOIN = MAKEDIRS = EXISTS = None
+    JSON_DUMP = None
     mean = unique = np_log = np_exp = np_all = norm = median = std = None
     ALL_CLOSE=NAN = ARRAY = SAVE = SAVEZ = ONES_LIKE = STD = ABS = PI= None
     tabulate = None
@@ -78,6 +84,10 @@ else:
     PixelRefinement = None
 
 if has_mpi:
+    PATHJOIN = comm.bcast(PATHJOIN)
+    MAKEDIRS = comm.bcast(MAKEDIRS)
+    EXISTS = comm.bcast(EXISTS)
+    JSON_DUMP = comm.bcast(JSON_DUMP)
     ALL_CLOSE= comm.bcast(ALL_CLOSE)
     ARRAY =comm.bcast(ARRAY) 
     PI =comm.bcast(PI) 
@@ -123,6 +133,12 @@ import itertools
 from IPython import embed
 
 warnings.filterwarnings("ignore")
+
+
+class ParameterIdentifier:
+    def __init__(self, file_name):
+        self.file_name = file_name
+
 
 class GlobalRefiner(PixelRefinement):
 
@@ -388,6 +404,10 @@ class GlobalRefiner(PixelRefinement):
             raise ValueError("Need to supply a non empty asu from idx map")
         if not self.idx_from_asu:  # # TODO just derive from its inverse
             raise ValueError("Need to supply a non empty idx from asu map")
+        if rank == 0:
+            if self.output_dir is not None:
+                if not EXISTS(self.output_dir):
+                    MAKEDIRS(self.output_dir)
 
         # get the Fhkl information from P1 array internal to nanoBragg
         if rank == 0:
@@ -702,6 +722,9 @@ class GlobalRefiner(PixelRefinement):
         # make the parameter masks for isolating parameters of different types
         self._make_parameter_type_selection_arrays()
 
+        if self.output_dir is not None:
+            self._make_x_identifier_array()
+
         #self._setup_resolution_binner()
         # setup the diffBragg instance
         self.D = self.S.D
@@ -742,6 +765,87 @@ class GlobalRefiner(PixelRefinement):
             param_sels.append(self.bg_sel)
 
         self.param_sels = itertools.cycle(param_sels)
+
+    def _make_x_identifier_array(self):
+        """do this in case we need to identify what the parameters in X are at a later time"""
+        # each MPI rank has a number of shots
+        #if any([val is None for val in [self.PROC_FNAMES, self.FNAMES, self.BBOX_IDX, self.PROC_IDX]]):
+        #    if rank == 0:
+        #        print("Cannot save parameter indentifier")
+        #    return
+
+        parameter_dict = {}
+        for i_shot in range(self.n_shots):
+            if self.FNAMES is None:
+                fname = "rank%d_shot%d" % (rank, i_shot)
+            else:
+                fname = self.FNAMES[i_shot]
+
+            proc_fname = "null"
+            if self.PROC_FNAMES is not None:
+                proc_fname = self.PROC_FNAMES[i_shot]
+
+            proc_idx = -1
+            if self.PROC_IDX is not None:
+                proc_idx = self.PROC_IDX[i_shot]
+
+            img_fname = fname
+            parameter_dict[img_fname] = {}
+            parameter_dict[img_fname]["agg_file"] = proc_fname
+            parameter_dict[img_fname]["agg_idx"] = proc_idx
+            parameter_dict[img_fname]["x_pos"] = {}
+            PD = parameter_dict[img_fname]["x_pos"]
+
+            # save the background tilt plane coefficients identifiers
+            nspots_on_shot = len(self.NANOBRAGG_ROIS[i_shot])
+            for i_roi in range(nspots_on_shot):
+                i_a = self.bg_a_xstart[i_shot][i_roi]
+                i_b = self.bg_b_xstart[i_shot][i_roi]
+                i_c = self.bg_c_xstart[i_shot][i_roi]
+                if self.BBOX_IDX is not None:
+                    bbox_idx = self.BBOX_IDX[i_shot][i_roi]
+                else:
+                    bbox_idx = -1
+                PD[i_a] = "t1", bbox_idx
+                PD[i_b] = "t2", bbox_idx
+                PD[i_c] = "t3", bbox_idx
+
+            # save the rotation angles identifier
+            i_rotX = self.rotX_xpos[i_shot]
+            i_rotY = self.rotY_xpos[i_shot]
+            i_rotZ = self.rotZ_xpos[i_shot]
+            PD[i_rotX] = "rX"
+            PD[i_rotY] = "rY"
+            PD[i_rotZ] = "rZ"
+
+            # save unit cell variables identifier
+            ucell_man = self.UCELL_MAN[i_shot]
+            names = ucell_man.variable_names
+            for i_name, name in enumerate(names):
+                i_uc = self.ucell_xstart[i_shot] + i_name
+                PD[i_uc] = name
+
+            # save the ncells identifier
+            i_ncells = self.ncells_xpos[i_shot]
+            PD[i_ncells] = "m"
+
+            # save spot scale indentifier
+            i_scale = self.spot_scale_xpos[i_shot]
+            PD[i_scale] = "Gs"
+
+        if self.output_dir is not None:
+            outdir =PATHJOIN(self.output_dir, "parameter_id")
+            if not EXISTS(outdir):
+                MAKEDIRS(outdir)
+            if has_mpi:
+                all_data = comm.gather(parameter_dict)
+            else:
+                all_data = [parameter_dict]
+            if rank==0:
+                for PD in all_data:
+                    output_path = PATHJOIN(outdir, "rank%d.json" % rank)
+                    with open(output_path, "w") as out:
+                        JSON_DUMP(PD, out)
 
     def _make_parameter_type_selection_arrays(self):  # experimental , not really used
         from cctbx.array_family import flex
