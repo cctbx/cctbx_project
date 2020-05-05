@@ -516,15 +516,20 @@ class model_idealization():
         fname_suffix="just_before_rota")
 
     self._update_model_h()
-
+    rotman = mmtbx.idealized_aa_residues.rotamer_manager.load(
+          rotamers="favored")
+    o = mmtbx.refinement.real_space.side_chain_fit_evaluator(
+      pdb_hierarchy      = self.model_h.get_hierarchy(),
+      crystal_symmetry   = self.model.crystal_symmetry(),
+      rotamer_evaluator  = rotman.rotamer_evaluator,
+      map_data           = self.master_map)
     result = mmtbx.refinement.real_space.fit_residues.run(
         vdw_radii         = self.model_h.get_vdw_radii(),
-        bselection        = self.model_h.get_master_selection(),
+        bselection        = o.sel_all(),
         pdb_hierarchy     = self.model_h.get_hierarchy(),
         crystal_symmetry  = self.model.crystal_symmetry(),
         map_data          = self.master_map,
-        rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(
-          rotamers="favored"),
+        rotamer_manager   = rotman,
         rotatable_hd      = self.model_h.rotatable_hd_selection(iselection=False),
         sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
         backbone_sample   = False,
