@@ -31,7 +31,7 @@ def integrate_coset(self, experiments, indexed):
         print("Coset Reflections for modeling or validating the background")
         print("*" * 80)
         from dials.algorithms.profile_model.factory import ProfileModelFactory
-        from dials.algorithms.integration.integrator import IntegratorFactory
+        from dials.algorithms.integration.integrator import create_integrator
 
         # XXX Fixme later implement support for non-primitive lattices NKS
         base_set = miller_set( crystal_symmetry = symmetry(
@@ -89,7 +89,7 @@ def integrate_coset(self, experiments, indexed):
         print("of which %d are in coset %d"%(len(predicted), TRANS))
 
         print("")
-        integrator = IntegratorFactory.create(self.params, experiments_local, predicted)
+        integrator = create_integrator(self.params, experiments_local, predicted)
 
         # Integrate the reflections
         integrated = integrator.integrate()
