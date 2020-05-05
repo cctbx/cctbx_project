@@ -835,8 +835,9 @@ class GlobalRefiner(PixelRefinement):
 
         if self.output_dir is not None:
             outdir =PATHJOIN(self.output_dir, "parameter_id")
-            if not EXISTS(outdir):
-                MAKEDIRS(outdir)
+            if rank==0:
+                if not EXISTS(outdir):
+                    MAKEDIRS(outdir)
             if has_mpi:
                 all_data = comm.gather(parameter_dict)
             else:
