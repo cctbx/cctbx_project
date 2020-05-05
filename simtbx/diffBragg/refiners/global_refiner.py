@@ -842,9 +842,9 @@ class GlobalRefiner(PixelRefinement):
                 all_data = comm.gather(parameter_dict)
             else:
                 all_data = [parameter_dict]
-            if rank==0:
-                for PD in all_data:
-                    output_path = PATHJOIN(outdir, "rank%d.json" % rank)
+            if rank == 0:
+                for i_pd, PD in enumerate(all_data):
+                    output_path = PATHJOIN(outdir, "param%d.json" % i_pd)
                     with open(output_path, "w") as out:
                         JSON_DUMP(PD, out)
 
