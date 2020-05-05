@@ -19,6 +19,7 @@ from mmtbx.maps.correlation import five_cc
 import mmtbx.model
 from cctbx.eltbx import tiny_pse
 from cctbx import eltbx
+from cctbx import crystal
 
 # Test utils (common to all tests in this folder).
 # Perhaps to move to mmtbx/regression.
@@ -171,110 +172,168 @@ def flatten(l):
   if l is None: return None
   return sum(([x] if not (isinstance(x, list) or isinstance(x, flex.size_t)) else flatten(x) for x in l), [])
 
-def need_sidechain_fit(
-      residue,
-      rotamer_evaluator,
-      mon_lib_srv,
-      unit_cell,
-      f_map,
-      outliers_only=False,
-      fdiff_map=None,
-      small_f_map=0.9):
-  """
-  Important: maps assumed to be sigma-scaled!
-  """
-  get_class = iotbx.pdb.common_residue_names_get_class
-  assert get_class(residue.resname) == "common_amino_acid"
-  if(residue.resname.strip().upper() in ["ALA", "GLY"]): return False
-  ### If it is rotamer OUTLIER
-  if(rotamer_evaluator.evaluate_residue(residue)=="OUTLIER"):
-    return True
-  if(outliers_only): return False
-  ###
-  cl = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
-    residue         = residue,
-    mon_lib_srv     = mon_lib_srv,
-    backbone_sample = False).clusters
-  if(len(cl)==0): return False
-  # service functions
-  def anal(x):
-    for i,e in enumerate(x):
-      if(e<0): return True
-      r=None
-      if(i+1<len(x)):
-        e1=abs(x[i])
-        e2=abs(x[i+1])
-        if(e1>e2):
-          if(e2!=0):
-            r = e1/e2
-        else:
-          if(e1!=0):
-            r = e2/e1
-      if(r is not None and r>3): return True
+class side_chain_fit_evaluator(object):
+  def __init__(self,
+               pdb_hierarchy,
+               crystal_symmetry,
+               rotamer_evaluator = None,
+               map_data = None,
+               diff_map_data = None,
+               map_data_scale = 2.5,
+               diff_map_data_threshold = -2.5):
+    t0 = time.time()
+    self.crystal_symmetry = crystal_symmetry
+    unit_cell = crystal_symmetry.unit_cell()
+    self.pdb_hierarchy = pdb_hierarchy
+    self.special_position_indices = self._get_special_position_indices()
+    get_class = iotbx.pdb.common_residue_names_get_class
+    self.cntr_residues = 0
+    self.cntr_poormap  = 0
+    self.cntr_outliers = 0
+    self.mes = []
+    mainchain = ["C","N","O","CA","CB"]
+    map_values = {}
+    diff_map_values = {}
+    self._sel_outliers = flex.bool(pdb_hierarchy.atoms().size(), False)
+    self._sel_poormap  = flex.bool(pdb_hierarchy.atoms().size(), False)
+    self._sel_all      = flex.bool(pdb_hierarchy.atoms().size(), False)
+    def skip(residue):
+      if(get_class(residue.resname) != "common_amino_acid"): return True
+      if(residue.resname.strip().upper() in ["ALA","GLY","PRO"]): return True
+      if(self._on_spacial_position(residue)): return True
+      return False
+    for model in pdb_hierarchy.models():
+      d1 = {}
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          conformers = residue_group.conformers()
+          if(len(conformers)>1): continue
+          for conformer in residue_group.conformers():
+            residue = conformer.only_residue()
+            if(skip(residue)): continue
+            self.cntr_residues += 1 # count all
+            outlier = False
+            if(rotamer_evaluator is None or
+               rotamer_evaluator.evaluate_residue(residue)=="OUTLIER"):
+              outlier = True
+              self.cntr_outliers += 1
+            for atom in residue.atoms():
+              self._sel_all[atom.i_seq] = True
+              if(outlier): self._sel_outliers[atom.i_seq] = True
+              if(atom.element_is_hydrogen()): continue
+              if(map_data is not None):
+                sf = unit_cell.fractionalize(atom.xyz)
+                mv = map_data.eight_point_interpolation(sf)
+                key = "%s_%s"%(residue.resname, atom.name.strip())
+                d1.setdefault(key, flex.double()).append(mv)
+                map_values[atom.i_seq] = mv
+              if(diff_map_data is not None):
+                sf = unit_cell.fractionalize(atom.xyz)
+                mv_diff = diff_map_data.eight_point_interpolation(sf)
+                diff_map_values[atom.i_seq] = mv_diff
+      # Loop over chains again
+      if([map_data, diff_map_data].count(None) != 2):
+        if(map_data is not None):
+          d2 = {}
+          for k,v in zip(d1.keys(), d1.values()):
+            me = flex.mean(v)
+            sel  = v < me*3
+            sel &= v > me/3
+            if(sel.count(True)>0):
+              d2[k] = flex.mean(v.select(sel))
+            else:
+              d2[k] = flex.mean(v)
+          #for k,v in zip(d2.keys(), d2.values()):
+          #  print(k, "%8.3f"%v)
+        for chain in model.chains():
+          for residue_group in chain.residue_groups():
+            conformers = residue_group.conformers()
+            if(len(conformers)>1): continue
+            for conformer in residue_group.conformers():
+              residue = conformer.only_residue()
+              if(skip(residue)): continue
+              atoms = residue.atoms()
+              need_fix = False
+              poor_mainchain = False
+              # Always do MSE and MET
+              if(not need_fix and residue.resname in ["MSE", "MET"]):
+                need_fix=True
+              # Check maps now
+              if(not need_fix):
+                for atom in residue.atoms():
+                  if(atom.element_is_hydrogen()): continue
+                  an = atom.name.strip()
+                  # Check map
+                  if(map_data is not None):
+                    key="%s_%s"%(residue.resname, an)
+                    m_ref = d2[key]
+                    m_cur = map_values[atom.i_seq]
+                    if(an in mainchain and m_cur < m_ref/map_data_scale):
+                      poor_mainchain = True
+                      break
+                    if(not an in mainchain and m_cur < m_ref/map_data_scale):
+                      need_fix = True
+                      break
+                  # Check Fo-Fc map
+                  if(diff_map_data is not None):
+                    mv_diff = diff_map_values[atom.i_seq]
+                    if(an in mainchain and mv_diff < diff_map_data_threshold):
+                      poor_mainchain = True
+                      break
+                    if(not an in mainchain and mv_diff<diff_map_data_threshold):
+                      need_fix = True
+                      break
+                if(poor_mainchain): need_fix = False
+              #
+              if(need_fix):
+                self._sel_poormap = self._sel_poormap.set_selected(
+                  atoms.extract_i_seq(), True)
+                self.cntr_poormap+=1
+    #
+    fmt = "%-d residues out of total %-d (non-ALA, GLY, PRO) need a fit."
+    self.mes.append(
+      fmt%(self.cntr_poormap+self.cntr_outliers, self.cntr_residues))
+    self.mes.append("  rotamer outliers: %d"%self.cntr_outliers)
+    self.mes.append("  poor density    : %d"%self.cntr_poormap)
+    self.mes.append("time to evaluate  : %-6.3f"%(time.time()-t0))
+
+  def show(self, log=None, prefix=""):
+    if(log is None): log = sys.stdout
+    for m in self.mes:
+      print("%s%s"%(prefix,m), file=log)
+    log.flush()
+
+  def sel_all(self):
+    return self._sel_all
+
+  def sel_outliers_or_poormap(self):
+    return self._sel_outliers | self._sel_poormap
+
+  def sel_outliers(self):
+    return self._sel_outliers
+
+  def sel_outliers_and_poormap(self):
+    return self._sel_outliers & self._sel_poormap
+
+  def sel_poormap(self):
+    return self._sel_poormap
+
+  def _get_special_position_indices(self):
+    special_position_settings = crystal.special_position_settings(
+      crystal_symmetry = self.crystal_symmetry)
+    site_symmetry_table = \
+      special_position_settings.site_symmetry_table(
+        sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
+        unconditional_general_position_flags=(
+          self.pdb_hierarchy.atoms().extract_occ() != 1))
+    return site_symmetry_table.special_position_indices()
+
+  def _on_spacial_position(self, residue):
+    if(self.special_position_indices is None): return False
+    if(self.special_position_indices.size()==0): return False
+    for i_seq in residue.atoms().extract_i_seq():
+      if(i_seq in self.special_position_indices): return True
     return False
-  def anal2(x):
-    for i,e in enumerate(x):
-      if(e<-3.0): return True
-    return False
-  def anal3(x): return (flex.double(x)>=small_f_map).count(True)==len(x)
-  #
-  last = cl[0].vector[len(cl[0].vector)-1]
-  vector = flatten(cl[0].vector)
-  bs = residue.atoms().extract_b()
-  #
-  weights = []
-  for el in residue.atoms().extract_element():
-    std_lbl = eltbx.xray_scattering.get_standard_label(
-      label=el, exact=True, optional=True)
-    weights.append(tiny_pse.table(std_lbl).weight())
-  #
-  side_chain_sel = flex.size_t()
-  main_chain_sel = flex.size_t()
-  for i_seq, a in enumerate(list(residue.atoms())):
-    if(a.name.strip().upper() not in ["N","CA","C","O","CB"]):
-      side_chain_sel.append(i_seq)
-    elif(a.name.strip().upper() in ["N","CA","C"]):
-      main_chain_sel.append(i_seq)
-  #
-  sites_frac = unit_cell.fractionalize(residue.atoms().extract_xyz())
-  #
-  mv = []
-  mv_orig = []
-  if(fdiff_map is not None): diff_mv = []
-  mv2 = flex.double()
-  for v_ in vector:
-    sf = sites_frac[v_]
-    f_map_epi = f_map.eight_point_interpolation(sf)
-    mv.append(     f_map_epi/weights[v_]*bs[v_])
-    mv2.append(    f_map_epi/weights[v_])
-    mv_orig.append(f_map_epi)
-    if(fdiff_map is not None):
-      diff_mv.append(fdiff_map.value_at_closest_grid_point(sf))
-  f  = anal(mv)
-  if(fdiff_map is not None): f2 = anal2(diff_mv)
-  f3 = anal3(mv_orig)
-  # main vs side chain
-  mvbb = flex.double()
-  mvbb_orig = flex.double()
-  for mcs in main_chain_sel:
-    sf = sites_frac[mcs]
-    f_map_epi = f_map.eight_point_interpolation(sf)
-    mvbb.append(     f_map_epi/weights[mcs])
-    mvbb_orig.append(f_map_epi)
-  f4 = flex.min(mvbb_orig)<small_f_map or flex.mean(mvbb)<flex.mean(mv2)
-  c_id = "none"
-  if(residue.parent() is not None):
-    c_id = residue.parent().parent().id.strip()
-  id_str = "%s_%s_%s"%(c_id, residue.resname.strip(), residue.resid().strip())
-  #
-  result = False
-  if(fdiff_map is not None):
-    if((f or f2 and not f3) and not f4): result = True
-    else: result = False
-  else:
-    if((f       and not f3) and not f4): result = True
-    else: result = False
-  return result
 
 class cluster(object):
   def __init__(self,

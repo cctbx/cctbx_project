@@ -65,12 +65,14 @@ class monitor(object):
     #
     if((S.rot=="OUTLIER" and F.rot!="OUTLIER" and not F.exceed_map_max_value) or
        (F.target>S.target and F.target_neg>=S.target_neg and not F.exceed_map_max_value) or
-       (F.target_neg>=S.target_neg and S.exceed_map_max_value and not F.exceed_map_max_value)):
+       (F.target_neg>S.target_neg) or
+       (S.exceed_map_max_value and not F.exceed_map_max_value)):
       state = "fitting"
     N = self.states[state]
     if((N.rot=="OUTLIER" and T.rot!="OUTLIER" and not T.exceed_map_max_value) or
        (T.target>N.target and T.target_neg>=S.target_neg and not T.exceed_map_max_value) or
-       (T.target_neg>=N.target_neg and N.exceed_map_max_value and not T.exceed_map_max_value)):
+       (T.target_neg>N.target_neg) or
+       (N.exceed_map_max_value and not T.exceed_map_max_value)):
       state = "tuneup"
     #
     residue.atoms().set_xyz(self.states[state].sites_cart)
@@ -174,7 +176,8 @@ class run(object):
       self.fit_side_chain(clusters = self.co.clusters[1:])
     if(self.m is not None):
       self.m.finalize(residue = self.residue)
-      self.m.show()
+      # Too bulky, but very useful. Use for debugging only.
+      #self.m.show()
 
   def get_target_value(self, sites_cart, selection=None, target_map=None):
     if(target_map is None): target_map = self.target_map
