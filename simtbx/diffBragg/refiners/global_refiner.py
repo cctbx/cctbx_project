@@ -364,12 +364,12 @@ class GlobalRefiner(PixelRefinement):
 
     def __call__(self, *args, **kwargs):
         _, _ = self.compute_functional_and_gradients()
-        return self.x, self._f, self._g, self.d
+        return self.x, self._f, self._g, self.d  #NOTEX
 
     @property
     def n(self):
         """LBFGS property"""
-        return len(self.x)
+        return len(self.x)  # NOTEX
         #return self.n_total_params
 
     @property
@@ -379,11 +379,14 @@ class GlobalRefiner(PixelRefinement):
     @property
     def x(self):
         """LBFGS parameter array"""
-        return self._x
+        if self.only_pass_refined_x_to_lbfgs:
+            return self.Xall[self.is_being_refined]
+        else:
+            return self.Xall
 
-    @x.setter
-    def x(self, val):
-        self._x = val
+    #@x.setter
+    #def x(self, val):
+    #    self._x = val
 
     def _check_keys(self, shot_dict):
         """checks that the dictionary keys are the same"""
@@ -698,7 +701,7 @@ class GlobalRefiner(PixelRefinement):
 
         # See if restarting from save state
 
-        if self.x_init is not None:
+        if self.x_init is not None: #NOTEX
             self.x = self.x_init
         elif self.restart_file is not None:
             self.x = flex_double(np_load(self.restart_file)["x"])
@@ -1919,7 +1922,8 @@ class GlobalRefiner(PixelRefinement):
     def _gaussian_target(self):
         #fterm = (self.log2pi + 2*self.log_Lambda_plus_sigma_readout + self.u*self.u*self.one_over_v).sum()
         #return .5*fterm
-        fterm = (self.log2pi + 2*self.log_Lambda_plus_sigma_readout + self.u_u_one_over_v).sum()
+        #fterm = (self.log2pi + 2*self.log_Lambda_plus_sigma_readout + self.u_u_one_over_v).sum()
+        fterm = (2*self.log_Lambda_plus_sigma_readout + self.u_u_one_over_v).sum()
         return .5*fterm
 
     def _gaussian_d(self, d):
@@ -2065,7 +2069,7 @@ class GlobalRefiner(PixelRefinement):
         scale_stats_string += uc_string
         scale_stats_string += "originZ=%f, " % median(self.origZ_vals)
 
-        Xnorm = norm(self.x)
+        Xnorm = norm(self.x)  # NOTEX
         R1 = -1
         R1_i = -1
         self.R_overall = -1
@@ -2085,8 +2089,8 @@ class GlobalRefiner(PixelRefinement):
                 self.Fobs.correlation(self.Fref_aligned, use_binning=True).show()
 
         print(
-            "%s\n\t%s|G|=%2.7g, eps*|X|=%2.7g,%s R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n"
-            % (scale_stats_string, Bcolors.OKBLUE, self.gnorm, Xnorm * self.trad_conv_eps, Bcolors.ENDC, self.R_overall, self.init_R1, self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
+            "%s\n\t%s, F=%2.7g, |G|=%2.7g, eps*|X|=%2.7g,%s R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n"
+            % (scale_stats_string, Bcolors.OKBLUE, self._f, self.gnorm, Xnorm * self.trad_conv_eps, Bcolors.ENDC, self.R_overall, self.init_R1, self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
                ", ".join(map(str, self.neg_curv_shots))))
         #print("<><><><><><><><> TOP GUN <><><><><><><><>")
         #print("                 End of iteration.")
