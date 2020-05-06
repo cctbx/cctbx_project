@@ -7,7 +7,7 @@ import mmtbx.model
 from six.moves import cStringIO as StringIO
 #import libtbx.load_env
 from cctbx import geometry_restraints
-from libtbx.test_utils import show_diff, assert_lines_in_text
+from libtbx.test_utils import show_diff, assert_lines_in_text, approx_equal
 from libtbx.utils import null_out
 import iotbx
 from six.moves import range
@@ -255,6 +255,14 @@ HETATM   33 ZN    ZN A   8       1.797  27.888  76.692  1.00 34.36          Zn
 HETATM   34  O   HOH A  57       3.694  28.411  75.816  1.00 39.92           O
 HETATM   35  O   HOH A  69       5.784  26.244  75.932  1.00 38.11           O
 """
+
+raw_records10 = """\
+CRYST1   15.775   12.565   13.187  90.00  90.00  90.00 P 1
+ATOM      1  N   MET A   1       9.821   1.568   5.000  1.00 66.07           N
+ATOM      2  CA  HIS A   2       9.946  12.171   5.357  1.00 66.55           C
+END
+"""
+
 
 def make_initial_grm(mon_lib_srv, ener_lib, records):
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -561,6 +569,96 @@ bond pdb=" NE2 HIS B 304 "
   2.900  2.969 -0.069 5.00e-02 4.00e+02 1.92e+00 -x-1/2,y-1/2,-z+3/4
     """)
 
+def exercise_bond_over_symmetry_2(mon_lib_srv, ener_lib):
+  """ This test is to illustrate that bond over symmetry actually
+  adds 2 proxies.
+  """
+  from cctbx.geometry_restraints.linking_class import linking_class
+  origin_ids = linking_class()
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records10)
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.restraints_library.mcl=False
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      pdb_interpretation_params=params,
+      log=null_out())
+  grm = model.get_restraints_manager().geometry
+  simple, asu = grm.get_all_bond_proxies()
+  assert (simple.size(), asu.size()) == (0, 0)
+
+  h = model.get_hierarchy()
+  sites_cart = h.atoms().extract_xyz()
+  site_labels = model.get_xray_structure().scatterers().extract_labels()
+  pair_proxies = grm.pair_proxies(flags=None, sites_cart=sites_cart)
+
+  out = StringIO()
+  pair_proxies.bond_proxies.show_sorted(
+      by_value="residual",
+      sites_cart=sites_cart,
+      site_labels=site_labels,
+      f=out,
+      prefix="")
+  outtxt = out.getvalue()
+  # print(outtxt)
+
+  proxy = geometry_restraints.bond_simple_proxy(
+      i_seqs=(0,1),
+      distance_ideal=2.9,
+      weight=400,
+      origin_id=origin_ids.get_origin_id('hydrogen bonds'))
+  grm.add_new_bond_restraints_in_place(
+      proxies=[proxy],
+      sites_cart=h.atoms().extract_xyz())
+  simple, asu = grm.get_all_bond_proxies()
+  # print(simple.size(), asu.size())
+  assert (simple.size(), asu.size()) == (0,2)
+
+  sites_cart = h.atoms().extract_xyz()
+  site_labels = model.get_xray_structure().scatterers().extract_labels()
+  pair_proxies = grm.pair_proxies(flags=None, sites_cart=sites_cart)
+
+  out = StringIO()
+  pair_proxies.bond_proxies.show_sorted(
+      by_value="residual",
+      sites_cart=sites_cart,
+      site_labels=site_labels,
+      f=out,
+      prefix="")
+  outtxt = out.getvalue()
+  # print(outtxt)
+  assert_lines_in_text(outtxt, """\
+bond pdb=" CA  HIS A   2 "
+     pdb=" N   MET A   1 "
+  ideal  model  delta    sigma   weight residual sym.op.
+  2.900  1.998  0.902 5.00e-02 4.00e+02 3.25e+02 x,y+1,z
+bond pdb=" N   MET A   1 "
+     pdb=" CA  HIS A   2 "
+  ideal  model  delta    sigma   weight residual sym.op.
+  2.900  1.998  0.902 5.00e-02 4.00e+02 3.25e+02 x,y-1,z
+    """)
+
+  es = grm.energies_sites(sites_cart=sites_cart, compute_gradients=True)
+  out = StringIO()
+  es.show(f=out)
+  outtxt = out.getvalue()
+  # print(outtxt)
+  # do for x coordinate
+  # ATOM      1  N   MET A   1       9.821   1.568   5.000  1.00 66.07           N
+  # ATOM      2  CA  HIS A   2       9.946  12.171   5.357  1.00 66.55           C
+
+  # calculation is from geometry_restraints/bond.h: gradient_0()
+  # weight * 2 * delta_slack * d_distance_d_site_0(epsilon);
+  # print("X gradient:", 400*2*0.902*(9.946-9.821)) # 90
+  # Note that n=2 but residual sum is 325.349. 349 is chopped off in rounding in
+  # cctbx/geometry_restraints/__init__py, def _bond_show_sorted_impl(...)
+  # where %6.2e is used. in cctbx/geometry_restraints/energies.py: def show()
+  # %.6g is used which is showing more numbers.
+  assert_lines_in_text(outtxt, """\
+      bond_residual_sum (n=2): 325.349""")
+  # print("Gradients:", list(es.gradients))
+  # Seems that gradients were splitted in half (note the X gradient is 90 8 lines above)
+  assert approx_equal(list(es.gradients),
+    [(45.135801792665134, -708.451544937652, 128.90784991984805), (-45.13580179266516, 708.4515449376522, -128.90784991984813)])
 
 def exercise():
   mon_lib_srv = None
@@ -580,6 +678,7 @@ def exercise():
     exercise_bond_near_symmetry2(mon_lib_srv, ener_lib)
     exercise_bond_near_symmetry3(mon_lib_srv, ener_lib)
     exercise_bond_over_symmetry(mon_lib_srv, ener_lib)
+    exercise_bond_over_symmetry_2(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise()
