@@ -57,6 +57,7 @@ if rank == 0:
     flex_miller_index = cctbx_flex.miller_index
 
     flex_double = flex.double
+    FLEX_BOOL = flex.bool
     from scitbx.matrix import col
     from simtbx.diffBragg.refiners import PixelRefinement
     from scipy.optimize import minimize
@@ -80,6 +81,7 @@ else:
     # stdout_flush = None
     BreakToUseCurvatures = None
     flex_double = None
+    FLEX_BOOL= None
     col = None
     PixelRefinement = None
 
@@ -115,6 +117,7 @@ if has_mpi:
     # stdout_flush = comm.bcast(stdout_flush)
     BreakToUseCurvatures = comm.bcast(BreakToUseCurvatures)
     flex_double = comm.bcast(flex_double)
+    FLEX_BOOL = comm.bcast(FLEX_BOOL)
     col = comm.bcast(col)
     PixelRefinement = comm.bcast(PixelRefinement)
     NAN = comm.bcast(NAN, root=0)
@@ -364,7 +367,7 @@ class GlobalRefiner(PixelRefinement):
 
     def __call__(self, *args, **kwargs):
         _, _ = self.compute_functional_and_gradients()
-        return self.x, self._f, self._g, self.d  #NOTEX
+        return self.Xall, self._f, self._g, self.d  #NOTEX
 
     @property
     def n(self):
@@ -377,16 +380,37 @@ class GlobalRefiner(PixelRefinement):
         return len(self.idx_from_asu)
 
     @property
-    def x(self):
+    def x_for_lbfgs(self):
         """LBFGS parameter array"""
         if self.only_pass_refined_x_to_lbfgs:
-            return self.Xall[self.is_being_refined]
+            return self.Xall.select(self.is_being_refined)
         else:
             return self.Xall
 
-    #@x.setter
-    #def x(self, val):
-    #    self._x = val
+    @property
+    def g_for_lbfgs(self):
+        """LBFGS parameter array"""
+        if self.only_pass_refined_x_to_lbfgs:
+            return self.grad.select(self.is_being_refined)
+        else:
+            return self.grad
+
+    @property
+    def d_for_lbfgs(self):
+        """LBFGS parameter array"""
+        if self.only_pass_refined_x_to_lbfgs:
+            return self.curv.select(self.is_being_refined)
+        else:
+            return self.curv
+
+    @property
+    def x(self):
+        """LBFGS parameter array"""
+        return self._x
+
+    @x.setter
+    def x(self, val):
+        self._x = val
 
     def _check_keys(self, shot_dict):
         """checks that the dictionary keys are the same"""
@@ -424,7 +448,8 @@ class GlobalRefiner(PixelRefinement):
         self.idx_from_pid = {}
 
         # Make the global sized parameter array, though here we only update the local portion
-        self.x = flex_double(self.n_total_params)
+        self.Xall = flex_double(self.n_total_params)
+        self.is_being_refined = FLEX_BOOL(self.n_total_params, False)
 
         # store the starting positions in the parameter array for this shot
         self.rotX_xpos = {}
@@ -451,9 +476,11 @@ class GlobalRefiner(PixelRefinement):
             
             if self.bg_extracted:
                 self.bg_coef_xpos[i_shot] = _local_pos
-                self.x[self.bg_coef_xpos[i_shot]] = 1
+                self.Xall[self.bg_coef_xpos[i_shot]] = 1
                 if not self.rescale_params:
                     raise NotImplementedError("bg coef mode only works in rescale mode")
+                if self.refine_background_planes:
+                    self.is_being_refined[self.bg_coef_xpos[i_shot]] = True
             else:
                 n_spots = len(self.NANOBRAGG_ROIS[i_shot])
                 self.bg_a_xstart[i_shot] = []
@@ -473,16 +500,21 @@ class GlobalRefiner(PixelRefinement):
                         else:
                             c = np_log(c)
                     if self.rescale_params:
-                        self.x[self.bg_a_xstart[i_shot][i_spot]] = 1
-                        self.x[self.bg_b_xstart[i_shot][i_spot]] = 1
-                        self.x[self.bg_c_xstart[i_shot][i_spot]] = 1
+                        self.Xall[self.bg_a_xstart[i_shot][i_spot]] = 1
+                        self.Xall[self.bg_b_xstart[i_shot][i_spot]] = 1
+                        self.Xall[self.bg_c_xstart[i_shot][i_spot]] = 1
 
                     else:
-                        self.x[self.bg_a_xstart[i_shot][i_spot]] = float(a)
-                        self.x[self.bg_b_xstart[i_shot][i_spot]] = float(b)
-                        self.x[self.bg_c_xstart[i_shot][i_spot]] = float(c)
+                        self.Xall[self.bg_a_xstart[i_shot][i_spot]] = float(a)
+                        self.Xall[self.bg_b_xstart[i_shot][i_spot]] = float(b)
+                        self.Xall[self.bg_c_xstart[i_shot][i_spot]] = float(c)
 
                     _spot_start += 3
+                    if self.refine_background_planes:
+                        self.is_being_refined[self.bg_c_xstart[i_shot][i_spot]] = True
+                        if not self.bg_offset_only:
+                            self.is_being_refined[self.bg_a_xstart[i_shot][i_spot]] = True
+                            self.is_being_refined[self.bg_b_xstart[i_shot][i_spot]] = True
 
             if self.bg_extracted:
                 self.rotX_xpos[i_shot] = self.bg_coef_xpos[i_shot] + 1
@@ -492,13 +524,20 @@ class GlobalRefiner(PixelRefinement):
             self.rotZ_xpos[i_shot] = self.rotY_xpos[i_shot] + 1
 
             if self.rescale_params:
-                self.x[self.rotX_xpos[i_shot]] = 1
-                self.x[self.rotY_xpos[i_shot]] = 1
-                self.x[self.rotZ_xpos[i_shot]] = 1
+                self.Xall[self.rotX_xpos[i_shot]] = 1
+                self.Xall[self.rotY_xpos[i_shot]] = 1
+                self.Xall[self.rotZ_xpos[i_shot]] = 1
             else:
-                self.x[self.rotX_xpos[i_shot]] = 0
-                self.x[self.rotY_xpos[i_shot]] = 0
-                self.x[self.rotZ_xpos[i_shot]] = 0
+                self.Xall[self.rotX_xpos[i_shot]] = 0
+                self.Xall[self.rotY_xpos[i_shot]] = 0
+                self.Xall[self.rotZ_xpos[i_shot]] = 0
+            if self.refine_Umatrix:
+                if self.refine_rotX:
+                    self.is_being_refined[self.rotX_xpos[i_shot]] = True
+                if self.refine_rotY:
+                    self.is_being_refined[self.rotY_xpos[i_shot]] = True
+                if self.refine_rotZ:
+                    self.is_being_refined[self.rotZ_xpos[i_shot]] = True
 
             # continue adding local per shot parameters after rotZ_xpos
             _local_pos = self.rotZ_xpos[i_shot] + 1
@@ -514,9 +553,13 @@ class GlobalRefiner(PixelRefinement):
                 _local_pos += self.n_ucell_param
                 for i_cell in range(self.n_ucell_param):
                     if self.rescale_params:
-                        self.x[self.ucell_xstart[i_shot] + i_cell] = 1  #self.UCELL_MAN[i_shot].variables[i_cell]
+                        self.Xall[self.ucell_xstart[i_shot] + i_cell] = 1  #self.UCELL_MAN[i_shot].variables[i_cell]
                     else:
-                        self.x[self.ucell_xstart[i_shot] + i_cell] = self.UCELL_MAN[i_shot].variables[i_cell]
+                        self.Xall[self.ucell_xstart[i_shot] + i_cell] = self.UCELL_MAN[i_shot].variables[i_cell]
+            # set refinement flags
+            if self.refine_Bmatrix:
+                for i_cell in range(self.n_ucell_param):
+                    self.is_being_refined[self.ucell_xstart[i_shot] + i_cell] = True
 
 
             if self.global_ncells_param:
@@ -528,9 +571,13 @@ class GlobalRefiner(PixelRefinement):
                 ncells_xval = np_log(self.S.crystal.Ncells_abc[0]-3)
                 # TODO: each shot gets own starting Ncells
                 if self.rescale_params:
-                    self.x[self.ncells_xpos[i_shot]] = 1  #ncells_xval
+                    self.Xall[self.ncells_xpos[i_shot]] = 1  #ncells_xval
                 else:
-                    self.x[self.ncells_xpos[i_shot]] = ncells_xval
+                    self.Xall[self.ncells_xpos[i_shot]] = ncells_xval
+            # set refinement flags
+            if self.refine_ncells:
+                for i_ncells in range(self.n_ncells_param):  # note n_ncells_param is always 1 currently
+                    self.is_being_refined[self.ncells_xpos[i_shot] + i_ncells] = True
 
             if self.global_originZ_param:
                 self.originZ_xpos[i_shot] = _global_pos
@@ -539,16 +586,21 @@ class GlobalRefiner(PixelRefinement):
                 self.originZ_xpos[i_shot] = _local_pos
                 _local_pos += 1
                 if self.rescale_params:
-                    self.x[self.originZ_xpos[i_shot]] = 1
+                    self.Xall[self.originZ_xpos[i_shot]] = 1
                 else:
-                    self.x[self.originZ_xpos[i_shot]] =self.S.detector[0].get_origin()[2]  #TODO fixme local_origin vs origin
+                    self.Xall[self.originZ_xpos[i_shot]] =self.S.detector[0].get_origin()[2]  #TODO fixme local_origin vs origin
+            # set refinement flag
+            if self.refine_detdist:
+                self.is_being_refined[self.originZ_xpos[i_shot]] = True
 
             self.spot_scale_xpos[i_shot] = _local_pos
             _local_pos += 1
             if self.rescale_params:
-                self.x[self.spot_scale_xpos[i_shot]] = 1
+                self.Xall[self.spot_scale_xpos[i_shot]] = 1
             else:
-                self.x[self.spot_scale_xpos[i_shot]] = self.log_of_init_crystal_scales[i_shot]
+                self.Xall[self.spot_scale_xpos[i_shot]] = self.log_of_init_crystal_scales[i_shot]
+            if self.refine_crystal_scale:
+                self.is_being_refined[self.spot_scale_xpos[i_shot]] = True
 
         self.fcell_xstart = _global_pos
         self.gain_xpos = self.n_total_params - 1
@@ -579,9 +631,9 @@ class GlobalRefiner(PixelRefinement):
                 # TODO have parameter for global init of unit cell, right now its handled in the global_bboxes scripts
                 for i_cell in range(self.n_ucell_param):
                     if self.rescale_params:
-                        self.x[self.ucell_xstart[0] + i_cell] = 1
+                        self.Xall[self.ucell_xstart[0] + i_cell] = 1
                     else:
-                        self.x[self.ucell_xstart[0] + i_cell] = self.UCELL_MAN[0].variables[i_cell]
+                        self.Xall[self.ucell_xstart[0] + i_cell] = self.UCELL_MAN[0].variables[i_cell]
 
             if self.global_ncells_param:
                 # TODO have parameter for global init of Ncells , right now its handled in the global_bboxes scripts
@@ -589,15 +641,15 @@ class GlobalRefiner(PixelRefinement):
                     ncells_xval = 1
                 else:
                     ncells_xval = np_log(self.S.crystal.Ncells_abc[0] - 3)
-                self.x[self.ncells_xpos[0]] = ncells_xval
+                self.Xall[self.ncells_xpos[0]] = ncells_xval
 
             if self.global_originZ_param:
                 # TODO have parameter for global init of originZ param , right now its handled in the global_bboxes scripts
                 if self.rescale_params:
-                    self.x[self.originZ_xpos[0]] = 1  #self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
+                    self.Xall[self.originZ_xpos[0]] = 1  #self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
                 else:
-                    self.x[self.originZ_xpos[0]] = self.S.detector[0].get_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
-                    #self.x[self.originZ_xpos[0]] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
+                    self.Xall[self.originZ_xpos[0]] = self.S.detector[0].get_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
+                    #self.Xall[self.originZ_xpos[0]] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
 
             print("----loading fcell data")
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index
@@ -616,9 +668,11 @@ class GlobalRefiner(PixelRefinement):
                 vals = np_log(vals)
             for i_fcell in range(self.n_global_fcell):
                 if self.rescale_params:
-                    self.x[self.fcell_xstart + i_fcell] = 1
+                    self.Xall[self.fcell_xstart + i_fcell] = 1
                 else:
-                    self.x[self.fcell_xstart + i_fcell] = vals[i_fcell]
+                    self.Xall[self.fcell_xstart + i_fcell] = vals[i_fcell]
+                if self.refine_Fcell:  # TODO only refine if fcell is in the res range
+                    self.is_being_refined[self.fcell_xstart + i_fcell] = True
 
             self.Fref_aligned = self.Fref
             if self.Fref is not None:
@@ -677,9 +731,9 @@ class GlobalRefiner(PixelRefinement):
                 SAVE(os.path.join(self.output_dir, "f_asu_map"), self.asu_from_idx)
 
             # set gain TODO: implement gain dependent statistical model ? Per panel or per gain mode dependent ?
-            self.x[self.gain_xpos] = self._init_gain  # gain factor
+            self.Xall[self.gain_xpos] = self._init_gain  # gain factor
 
-        # reduce then broadcast self.x
+        # reduce then broadcast
         if not rank == 0:
             self.sigma_for_res_id = None 
             self.res_group_id_from_fcell_index = None
@@ -690,9 +744,22 @@ class GlobalRefiner(PixelRefinement):
                 self.sigma_for_res_id = comm.bcast(self.sigma_for_res_id)
                 self.res_group_id_from_fcell_index = comm.bcast(self.res_group_id_from_fcell_index)
 
+        # reduce then broadcast fcell
         if rank == 0:
             print("--3 combining parameters across ranks")
-        self.x = self._mpi_reduce_broadcast(self.x)
+        self.Xall = self._mpi_reduce_broadcast(self.Xall)
+
+        # flex bool has no + operator so we convert to numpy
+        self.is_being_refined = self._mpi_reduce_broadcast(self.is_being_refined.as_numpy_array())
+        self.is_being_refined = FLEX_BOOL(self.is_being_refined)
+
+        # set the BFGS parameter array
+        self.x = self.x_for_lbfgs
+
+        # make the mapping from x to Xall
+        refine_pos = np.where(self.is_being_refined.as_numpy_array())[0]
+        self.x2xall = {xi: xalli for xi, xalli in enumerate(refine_pos)}
+        self.xall2x = {xalli: xi for xi, xalli in enumerate(refine_pos)}
 
         if rank != 0:
             self.hkl_frequency = None
@@ -702,13 +769,13 @@ class GlobalRefiner(PixelRefinement):
         # See if restarting from save state
 
         if self.x_init is not None: #NOTEX
-            self.x = self.x_init
+            self.Xall = self.x_init
         elif self.restart_file is not None:
-            self.x = flex_double(np_load(self.restart_file)["x"])
+            self.Xall = flex_double(np_load(self.restart_file)["x"])
 
         if rank == 0:
             print("--4 print initial stats")
-        rotx, roty, rotz, uc_vals, ncells_vals, scale_vals, _, origZ = self._unpack_internal(self.x, lst_is_x=True)
+        rotx, roty, rotz, uc_vals, ncells_vals, scale_vals, _, origZ = self._unpack_internal(self.Xall, lst_is_x=True)
         if rank == 0 and self.big_dump and HAS_PANDAS:
 
             master_data = {"a": uc_vals[0], "c": uc_vals[1],
@@ -719,7 +786,7 @@ class GlobalRefiner(PixelRefinement):
                            "rotz": rotz,
                            "origZ": origZ}
             master_data = pandas.DataFrame(master_data)
-            master_data["gain"] = self.x[self.gain_xpos]
+            master_data["gain"] = self.Xall[self.gain_xpos]
             print(master_data.to_string())
 
         # make the parameter masks for isolating parameters of different types
@@ -768,6 +835,17 @@ class GlobalRefiner(PixelRefinement):
             param_sels.append(self.bg_sel)
 
         self.param_sels = itertools.cycle(param_sels)
+
+    def _update_Xall_from_x(self):
+        """update the master parameter array with values from the parameter array that LBFGS sees"""
+        for i, val in enumerate(self.x):
+            if self.only_pass_refined_x_to_lbfgs:
+                Xall_pos = self.x2xall[i]
+            else:
+                Xall_pos = i
+            self.Xall[Xall_pos] = val
+        # TODO maybe its more quick to use set_selected with is_being_refined ?
+        # seomthing like self.Xall.set_selected(self.is_being_refined, self.x)
 
     def _make_x_identifier_array(self):
         """do this in case we need to identify what the parameters in X are at a later time"""
@@ -853,13 +931,13 @@ class GlobalRefiner(PixelRefinement):
 
     def _make_parameter_type_selection_arrays(self):  # experimental , not really used
         from cctbx.array_family import flex
-        self.umatrix_sel = flex.bool(len(self.x), True)
-        self.bmatrix_sel = flex.bool(len(self.x), True)
-        self.Fcell_sel = flex.bool(len(self.x), True)
-        self.origin_sel = flex.bool(len(self.x), True)
-        self.spot_scale_sel = flex.bool(len(self.x), True)
-        self.ncells_sel = flex.bool(len(self.x), True)
-        self.bg_sel = flex.bool(len(self.x), True)
+        self.umatrix_sel = flex.bool(len(self.Xall), True)
+        self.bmatrix_sel = flex.bool(len(self.Xall), True)
+        self.Fcell_sel = flex.bool(len(self.Xall), True)
+        self.origin_sel = flex.bool(len(self.Xall), True)
+        self.spot_scale_sel = flex.bool(len(self.Xall), True)
+        self.ncells_sel = flex.bool(len(self.Xall), True)
+        self.bg_sel = flex.bool(len(self.Xall), True)
         for i_shot in range(self.n_shots):
             self.umatrix_sel[self.rotX_xpos[i_shot]] = False
             self.umatrix_sel[self.rotY_xpos[i_shot]] = False
@@ -886,21 +964,21 @@ class GlobalRefiner(PixelRefinement):
     def _get_rotX(self, i_shot):
         if self.rescale_params:
             # FIXME ? 
-            return self.rotX_sigma*(self.x[self.rotX_xpos[i_shot]]-1) + 0.0
+            return self.rotX_sigma*(self.Xall[self.rotX_xpos[i_shot]]-1) + 0.0
         else:
-            return self.x[self.rotX_xpos[i_shot]]
+            return self.Xall[self.rotX_xpos[i_shot]]
 
     def _get_rotY(self, i_shot):
         if self.rescale_params:
-            return self.rotY_sigma * (self.x[self.rotY_xpos[i_shot]] - 1) + 0.0
+            return self.rotY_sigma * (self.Xall[self.rotY_xpos[i_shot]] - 1) + 0.0
         else:
-            return self.x[self.rotY_xpos[i_shot]]
+            return self.Xall[self.rotY_xpos[i_shot]]
 
     def _get_rotZ(self, i_shot):
         if self.rescale_params:
-            return self.rotZ_sigma * (self.x[self.rotZ_xpos[i_shot]] - 1) + 0.0
+            return self.rotZ_sigma * (self.Xall[self.rotZ_xpos[i_shot]] - 1) + 0.0
         else:
-            return self.x[self.rotZ_xpos[i_shot]]
+            return self.Xall[self.rotZ_xpos[i_shot]]
 
     def _get_ucell_vars(self, i_shot):
         all_p = []
@@ -908,14 +986,14 @@ class GlobalRefiner(PixelRefinement):
             if self.rescale_params:
                 sig = self.ucell_sigmas[i]
                 init = self.ucell_inits[i_shot][i]
-                p = sig*(self.x[self.ucell_xstart[i_shot]+i] - 1) + init
+                p = sig*(self.Xall[self.ucell_xstart[i_shot]+i] - 1) + init
             else:
-                p = self.x[self.ucell_xstart[i_shot]+i]
+                p = self.Xall[self.ucell_xstart[i_shot]+i]
             all_p.append(p)
         return all_p
 
     def _get_originZ_val(self, i_shot):
-        val = self.x[self.originZ_xpos[i_shot]]
+        val = self.Xall[self.originZ_xpos[i_shot]]
         if self.rescale_params:
             sig = self.originZ_sigma
             init = self.shot_originZ_init[i_shot]
@@ -923,7 +1001,7 @@ class GlobalRefiner(PixelRefinement):
         return val
 
     def _get_m_val(self, i_shot):
-        val = self.x[self.ncells_xpos[i_shot]]
+        val = self.Xall[self.ncells_xpos[i_shot]]
         if self.rescale_params:
             sig = self.m_sigma
             init = self.m_init[i_shot] 
@@ -933,7 +1011,7 @@ class GlobalRefiner(PixelRefinement):
         return val
 
     def _get_spot_scale(self, i_shot):
-        val = self.x[self.spot_scale_xpos[i_shot]]
+        val = self.Xall[self.spot_scale_xpos[i_shot]]
         if self.rescale_params:
             sig = self.spot_scale_sigma
             init = self.spot_scale_init[i_shot]
@@ -944,7 +1022,7 @@ class GlobalRefiner(PixelRefinement):
     
     def _get_bg_coef(self, i_shot):
         assert (self.rescale_params)
-        val = self.x[self.bg_coef_xpos[i_shot]]
+        val = self.Xall[self.bg_coef_xpos[i_shot]]
         sig = self.bg_coef_sigma
         init = self.shot_bg_coef[i_shot]
         val = np_exp(sig*(val-1))*init
@@ -954,14 +1032,14 @@ class GlobalRefiner(PixelRefinement):
         """just used in testsing derivatives"""
         if self.rescale_params:
             self.spot_scale_init[0] = new_val
-            self.x[self.spot_scale_xpos[0]] = 1
+            self.Xall[self.spot_scale_xpos[0]] = 1
         else:
-            self.x[self.spot_scale_xpos[0]] = np_log(new_val)
+            self.Xall[self.spot_scale_xpos[0]] = np_log(new_val)
 
     def _get_bg_vals(self, i_shot, i_spot):
-        a_val = self.x[self.bg_a_xstart[i_shot][i_spot]]
-        b_val = self.x[self.bg_b_xstart[i_shot][i_spot]]
-        c_val = self.x[self.bg_c_xstart[i_shot][i_spot]]
+        a_val = self.Xall[self.bg_a_xstart[i_shot][i_spot]]
+        b_val = self.Xall[self.bg_b_xstart[i_shot][i_spot]]
+        c_val = self.Xall[self.bg_c_xstart[i_shot][i_spot]]
         if self.rescale_params:
             a_sig = self.a_sigma
             b_sig = self.b_sigma
@@ -1089,7 +1167,7 @@ class GlobalRefiner(PixelRefinement):
         # i_fcell is between 0 and self.n_global_fcell
         # get the asu index and its updated amplitude
         xpos = self.fcell_xstart + i_fcell
-        val = self.x[xpos]  # new amplitude
+        val = self.Xall[xpos]  # new amplitude
         if self.rescale_params:
             resolution_id = self.res_group_id_from_fcell_index[i_fcell]  # TODO
             sig = self.sigma_for_res_id[resolution_id]*self.fcell_sigma_scale  # TODO
@@ -1098,7 +1176,7 @@ class GlobalRefiner(PixelRefinement):
                 val = np_exp(sig*(val - 1))*init
             else:
                 if val < 0:  # NOTE this easily happens without the log c.o.v.
-                    self.x[xpos] = 0
+                    self.Xall[xpos] = 0
                     val = 0
                     self.num_Fcell_kludge += 1
                 else:
@@ -1108,7 +1186,7 @@ class GlobalRefiner(PixelRefinement):
             if self.log_fcells:
                 val = np_exp(val)
             if val < 0:  # NOTE this easily happens without the log c.o.v.
-                self.x[xpos] = 0
+                self.Xall[xpos] = 0
                 val = 0
                 self.num_Fcell_kludge += 1
         return val
@@ -1262,7 +1340,7 @@ class GlobalRefiner(PixelRefinement):
             pars = self._get_ucell_vars(self._i_shot)
         else:
             _s = slice(self.ucell_xstart[self._i_shot], self.ucell_xstart[self._i_shot] + self.n_ucell_param, 1)
-            pars = list(self.x[_s])
+            pars = list(self.Xall[_s])
         self.UCELL_MAN[self._i_shot].variables = pars
         self._send_ucell_gradients_to_derivative_managers()
         self.D.Bmatrix = self.UCELL_MAN[self._i_shot].B_recipspace
@@ -1294,12 +1372,14 @@ class GlobalRefiner(PixelRefinement):
 
             # reset gradient and functional
             self.target_functional = 0
-            self.grad = flex_double(self.n)
+            self._update_Xall_from_x()
+
+            self.grad = flex_double(self.n_total_params)
             if self.calc_curvatures:
-                self.curv = flex_double(self.n)
+                self.curv = flex_double(self.n_total_params)
 
             # current work has gain_fac at 1 (#TODO gain factor should effect the probability of observing the photons)
-            self.gain_fac = self.x[self.gain_xpos]
+            self.gain_fac = self.Xall[self.gain_xpos]
             self.G2 = self.gain_fac ** 2
 
             self._update_Fcell()  # update the structure factor with the new x
@@ -1379,8 +1459,8 @@ class GlobalRefiner(PixelRefinement):
             self._mpi_aggregation()
 
             self._f = self.target_functional
-            self._g = self.grad
-            self.g = self.grad  # TODO why all these repeated definitions ?, self.g is needed by _verify_diag
+            self._g = self.g_for_lbfgs
+            self.g = self.g_for_lbfgs  # TODO why all these repeated definitions ?, self.g is needed by _verify_diag
 
             self._curvature_analysis()
 
@@ -1530,7 +1610,7 @@ class GlobalRefiner(PixelRefinement):
                 d = derivs[i_ucell]
                 self.grad[xpos] += self._grad_accumulate(d)
                 if self.calc_curvatures:
-                    d2 = second_derivs
+                    d2 = second_derivs[i_ucell]
                     self.curv[xpos] += self._curv_accumulate(d, d2)
 
     def _mosaic_parameter_m_derivatives(self):
@@ -1659,7 +1739,7 @@ class GlobalRefiner(PixelRefinement):
             for ii in range(self.n_shots):
                 for jj in range(self.n_ucell_param):
                     xpos = self.ucell_xstart[ii] + jj
-                    ucell_p = self.x[xpos]
+                    ucell_p = self.Xall[xpos]
                     sig_square = self.sig_ucell[jj] ** 2
                     self.target_functional += (ucell_p - self.ave_ucell[jj]) ** 2 / 2 / sig_square
                     self.grad[xpos] += (ucell_p - self.ave_ucell[jj]) / sig_square
@@ -1672,7 +1752,7 @@ class GlobalRefiner(PixelRefinement):
                                self.rotY_xpos[self._i_shot],
                                self.rotZ_xpos[self._i_shot]]
                 for xpos in x_positions:
-                    rot_p = self.x[xpos]
+                    rot_p = self.Xall[xpos]
                     sig_square = self.sig_rot ** 2
                     self.target_functional += rot_p ** 2 / 2 / sig_square
                     self.grad[xpos] += rot_p / sig_square
@@ -1694,7 +1774,7 @@ class GlobalRefiner(PixelRefinement):
         self.target_functional = self._mpi_reduce_broadcast(self.target_functional)
         self.grad = self._mpi_reduce_broadcast(self.grad)
         self.rotx, self.roty, self.rotz, self.uc_vals, self.ncells_vals, self.scale_vals, \
-        self.scale_vals_truths, self.origZ_vals = self._unpack_internal(self.x, lst_is_x=True)
+        self.scale_vals_truths, self.origZ_vals = self._unpack_internal(self.Xall, lst_is_x=True)
         self.Grotx, self.Groty, self.Grotz, self.Guc_vals, self.Gncells_vals, self.Gscale_vals, _, self.GorigZ_vals = \
             self._unpack_internal(self.grad, lst_is_x=False)
         if self.calc_curvatures:
@@ -1712,7 +1792,7 @@ class GlobalRefiner(PixelRefinement):
         if self.calc_curvatures and not self.use_curvatures:
             if self.tot_neg_curv == 0:
                 self.num_positive_curvatures += 1
-                self.d = flex_double(self.curv.as_numpy_array())
+                self.d = self.d_for_lbfgs #flex_double(self.curv.as_numpy_array())
                 self._verify_diag()
             else:
                 self.num_positive_curvatures = 0
@@ -1722,7 +1802,7 @@ class GlobalRefiner(PixelRefinement):
             if self.tot_neg_curv == 0:
                 self.request_diag_once = False
                 self.diag_mode = "always"  # TODO is this proper place to set ?
-                self.d = flex_double(self.curv.as_numpy_array())
+                self.d = self.d_for_lbfgs #flex_double(self.curv.as_numpy_array())
                 self._verify_diag()
             else:
                 if self.debug:
@@ -1863,8 +1943,8 @@ class GlobalRefiner(PixelRefinement):
             fvals = [self._get_fcell_val(i_fcell) for i_fcell in range(self.n_global_fcell)]
             fvals = ARRAY(fvals)
         else:
-            fvals = self.x[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
-        SAVEZ(outf, fvals=fvals, x=self.x.as_numpy_array())
+            fvals = self.Xall[self.fcell_xstart:self.fcell_xstart + self.n_global_fcell].as_numpy_array()
+        SAVEZ(outf, fvals=fvals, x=self.Xall.as_numpy_array())
 
     def _show_plots(self, i_spot, n_spots):
         if rank == 0 and self.plot_images and self.iterations % self.plot_stride == 0 and self._i_shot == self.index_of_displayed_image:
@@ -1923,8 +2003,8 @@ class GlobalRefiner(PixelRefinement):
         #fterm = (self.log2pi + 2*self.log_Lambda_plus_sigma_readout + self.u*self.u*self.one_over_v).sum()
         #return .5*fterm
         #fterm = (self.log2pi + 2*self.log_Lambda_plus_sigma_readout + self.u_u_one_over_v).sum()
-        fterm = (2*self.log_Lambda_plus_sigma_readout + self.u_u_one_over_v).sum()
-        return .5*fterm
+        fterm = (self.log_Lambda_plus_sigma_readout + .5*self.u_u_one_over_v).sum()
+        return fterm
 
     def _gaussian_d(self, d):
         gterm = (d*self.one_over_v_times_one_minus_2u_minus_u_squared_over_v).sum()
@@ -1988,9 +2068,9 @@ class GlobalRefiner(PixelRefinement):
         ucell_labels = []
         for n, v in zip(names, vals):
             ucell_labels.append('%s=%+2.7g' % (n, v))
-        rotX = self._get_rotX(self._i_shot) #self.rot_scale*self.x[self.rotX_xpos[self._i_shot]]
-        rotY = self._get_rotY(self._i_shot) #self.rot_scale*self.x[self.rotY_xpos[self._i_shot]]
-        rotZ = self._get_rotZ(self._i_shot)  #self.rot_scale*self.x[self.rotZ_xpos[self._i_shot]]
+        rotX = self._get_rotX(self._i_shot) #self.rot_scale*self.Xall[self.rotX_xpos[self._i_shot]]
+        rotY = self._get_rotY(self._i_shot) #self.rot_scale*self.Xall[self.rotY_xpos[self._i_shot]]
+        rotZ = self._get_rotZ(self._i_shot)  #self.rot_scale*self.Xall[self.rotZ_xpos[self._i_shot]]
         rot_labels = ["rotX=%+3.7g" % rotX, "rotY=%+3.7g" % rotY, "rotZ=%+3.4g" % rotZ]
 
         if self.refine_Umatrix or self.refine_Bmatrix or self.refine_crystal_scale or self.refine_ncells:
@@ -2005,7 +2085,7 @@ class GlobalRefiner(PixelRefinement):
 
 
                 master_data = pandas.DataFrame(master_data)
-                master_data["gain"] = self.x[self.gain_xpos]
+                master_data["gain"] = self.Xall[self.gain_xpos]
                 print(master_data.to_string(float_format="%2.7g"))
 
     def print_step_grads(self):
@@ -2013,7 +2093,7 @@ class GlobalRefiner(PixelRefinement):
         vals = self.UCELL_MAN[self._i_shot].variables
         ucell_labels = []
         for i, (n, v) in enumerate(zip(names, vals)):
-            grad = self._g[self.ucell_xstart[self._i_shot] + i]
+            grad = self.grad[self.ucell_xstart[self._i_shot] + i]
             ucell_labels.append('G%s=%+2.7g' % (n, grad))
 
         if self.big_dump and HAS_PANDAS:
@@ -2025,7 +2105,7 @@ class GlobalRefiner(PixelRefinement):
             for i_uc in range(self.n_ucell_param):
                 master_data["Guc%d" %i_uc]= self.Guc_vals[i_uc]
             master_data = pandas.DataFrame(master_data)
-            master_data["Ggain"] = self._g[self.gain_xpos]
+            master_data["Ggain"] = self.grad[self.gain_xpos]
             print(master_data.to_string(float_format="%2.7g"))
 
         if self.calc_curvatures:
@@ -2174,7 +2254,7 @@ class GlobalRefiner(PixelRefinement):
             if self.rescale_params:
                 a = vars[i]
             else:
-                a = self.x[self.ucell_xstart[0] + i]
+                a = self.Xall[self.ucell_xstart[0] + i]
 
             if i == 3:
                 a = a * 180 /PI 
@@ -2204,7 +2284,7 @@ class GlobalRefiner(PixelRefinement):
                 ang_off = 999
 
             out_str = "shot %d: MEAN UCELL ERROR=%.4f, ANG OFF %.4f" % (i_shot, mn_err, ang_off)
-            ncells_val = self._get_m_val(i_shot)  #np.exp(self.x[self.ncells_xpos[i_shot]]) + 3
+            ncells_val = self._get_m_val(i_shot)  #np.exp(self.Xall[self.ncells_xpos[i_shot]]) + 3
             ncells_resid = abs(ncells_val - self.gt_ncells)
 
             if mn_err < 0.01 and ang_off < 0.004 and ncells_resid < 0.1:
