@@ -125,6 +125,8 @@ ss_idealization
     .type = int
   nproc = 1
     .type = int
+  verbose = False
+    .type = bool
 }
 """
 
@@ -426,31 +428,7 @@ def get_matching_sites_cart_in_both_h(old_h, new_h):
   assert fixed_sites.size() == moving_sites.size()
   return fixed_sites, moving_sites
 
-def process_params(params):
-  min_sigma = 1e-5
-  if params is None:
-    params = master_phil.fetch().extract()
-    params.ss_idealization.enabled = True
-  if hasattr(params, "ss_idealization"):
-    p_pars = params.ss_idealization
-  else:
-    assert hasattr(params, "enabled") and hasattr(params, "sigma_on_cbeta"), \
-        "Something wrong with parameters passed to ss_idealization"
-    p_pars = params
-  assert isinstance(p_pars.enabled, bool)
-  assert isinstance(p_pars.restrain_torsion_angles, bool)
-  for par in ["sigma_on_reference_non_ss",
-      "sigma_on_reference_helix", "sigma_on_reference_sheet",
-      "sigma_on_torsion_ss", "sigma_on_torsion_nonss", "sigma_on_ramachandran",
-      "sigma_on_cbeta"]:
-    assert (isinstance(getattr(p_pars, par), float) and \
-      getattr(p_pars, par) > min_sigma), "" + \
-      "Bad %s parameter" % par
-  for par in ["n_iter"]:
-    assert (isinstance(getattr(p_pars, par), int) and \
-      getattr(p_pars, par) >= 0), ""+ \
-      "Bad %s parameter" % par
-  return p_pars
+
 
 def ss_element_is_good(ss_stats_obj, hsh_tuple):
   (n_hbonds, n_bad_hbonds, n_mediocre_hbonds, hb_lens, n_outliers,
@@ -516,380 +494,419 @@ class idealize_sheet(object):
         result.append((ideal_h, all_bsel))
     return result
 
-def substitute_ss(
-                    model, # changed in place
-                    params = None,
-                    log=null_out(),
-                    reference_map=None,
-                    verbose=False):
-  """
-  Substitute secondary structure elements in real_h hierarchy with ideal
-  ones _in_place_.
-  Returns reference torsion proxies - the only thing that cannot be restored
-  with little effort outside the procedure.
-  """
+class substitute_ss(object):
+  def __init__(self,
+               model, # changed in place
+               params = None,
+               log=null_out(),
+               reference_map=None):
+    """
+    Substitute secondary structure elements in real_h hierarchy with ideal
+    ones _in_place_.
+    Returns reference torsion proxies - the only thing that cannot be restored
+    with little effort outside the procedure.
+    """
 
-  ss_annotation = model.get_ss_annotation()
+    self.model = model
+    self.params = params
 
-  t0 = time()
-  if model.get_hierarchy().models_size() > 1:
-    raise Sorry("Multi model files are not supported")
-  for m in model.get_hierarchy().models():
-    for chain in m.chains():
-      if len(chain.conformers()) > 1:
-        raise Sorry("Alternative conformations are not supported.")
+    self.ss_annotation = self.model.get_ss_annotation()
+    self.log = log
+    self.reference_map = reference_map
 
-  processed_params = process_params(params)
-  if not processed_params.enabled:
-    return None
-  if ss_annotation is None:
-    return None
+    t0 = time()
+    if self.model.get_hierarchy().models_size() > 1:
+      raise Sorry("Multi model files are not supported")
+    for m in self.model.get_hierarchy().models():
+      for chain in m.chains():
+        if len(chain.conformers()) > 1:
+          raise Sorry("Alternative conformations are not supported.")
 
-  ann = ss_annotation
-  if model.ncs_constraints_present():
-    print("Using master NCS to reduce amount of work", file=log)
+    self.processed_params = self._process_params(params)
+    if not self.processed_params.enabled:
+      return None
+    if self.ss_annotation is None:
+      return None
 
-  expected_n_hbonds = 0
-  for h in ann.helices:
-    expected_n_hbonds += h.get_n_maximum_hbonds()
-  edited_h = model.get_hierarchy().deep_copy()
-  n_atoms_in_real_h = model.get_number_of_atoms()
-  selection_cache = model.get_atom_selection_cache()
+    # ann = ss_annotation
+    if self.model.ncs_constraints_present():
+      print("Using master NCS to reduce amount of work", file=self.log)
 
-  # check the annotation for correctness (atoms are actually in hierarchy)
-  error_msg = "The following secondary structure annotations result in \n"
-  error_msg +="empty atom selections. They don't match the structre: \n"
-  t1 = time()
-  # Checking for SS selections
-  deleted_annotations = ann.remove_empty_annotations(
-      hierarchy=model.get_hierarchy())
-  if not deleted_annotations.is_empty():
-    if processed_params.skip_empty_ss_elements:
-      if len(deleted_annotations.helices) > 0:
-        print("Removing the following helices because there are", file=log)
-        print("no corresponding atoms in the model:", file=log)
-        for h in deleted_annotations.helices:
-          print(h.as_pdb_str(), file=log)
-          error_msg += "  %s\n" % h
-      if len(deleted_annotations.sheets) > 0:
-        print("Removing the following sheets because there are", file=log)
-        print("no corresponding atoms in the model:", file=log)
-        for sh in deleted_annotations.sheets:
-          print(sh.as_pdb_str(), file=log)
-          error_msg += "  %s\n" % sh.as_pdb_str(strand_id=st.strand_id)
-    else:
-      raise Sorry(error_msg)
-  phil_str = ann.as_restraint_groups()
+    expected_n_hbonds = 0
+    for h in self.ss_annotation.helices:
+      expected_n_hbonds += h.get_n_maximum_hbonds()
+    self.edited_h = self.model.get_hierarchy().deep_copy()
 
-  # gathering initial special position atoms
-  special_position_settings = crystal.special_position_settings(
-      crystal_symmetry = model.crystal_symmetry())
-  site_symmetry_table = \
-      special_position_settings.site_symmetry_table(
-        sites_cart = model.get_sites_cart(),
-        unconditional_general_position_flags=(
-          model.get_atoms().extract_occ() != 1))
-  original_spi = site_symmetry_table.special_position_indices()
+    # check the annotation for correctness (atoms are actually in hierarchy)
+    error_msg = "The following secondary structure annotations result in \n"
+    error_msg +="empty atom selections. They don't match the structre: \n"
+    t1 = time()
 
-  t2 = time()
-  # Actually idelizing SS elements
-  log.write("Replacing ss-elements with ideal ones:\n")
-  log.flush()
-  ss_stats = gather_ss_stats(pdb_h=model.get_hierarchy())
-  n_idealized_elements = 0
-  master_bool_sel = model.get_master_selection()
-  if master_bool_sel is None or master_bool_sel.size() == 0:
-    master_bool_sel = flex.bool(model.get_number_of_atoms(), True)
-  elif isinstance(master_bool_sel, flex.size_t):
-    master_bool_sel = flex.bool(model.get_number_of_atoms(), master_bool_sel)
-  assert master_bool_sel.size() == model.get_number_of_atoms()
+  def run(self):
+    self.check_and_filter_annotations()
+    self.idealize_annotations()
 
-  ih = idealize_helix(ss_stats, selection_cache, master_bool_sel, n_atoms_in_real_h, model, processed_params.skip_good_ss_elements)
-  h_results = easy_mp.pool_map(
-      processes = processed_params.nproc,
-      fixed_func=ih,
-      args=ann.helices)
-  for res in h_results:
-    if not isinstance(res, str):
-      n_idealized_elements +=1
-      set_xyz_carefully(dest_h=edited_h.select(res[1]), source_h=res[0])
+  def check_and_filter_annotations(self):
+    # Checking for SS selections
+    deleted_annotations = self.ss_annotation.remove_empty_annotations(
+        hierarchy=self.model.get_hierarchy())
+    if not deleted_annotations.is_empty():
+      if self.processed_params.skip_empty_ss_elements:
+        if len(deleted_annotations.helices) > 0:
+          print("Removing the following helices because there are", file=self.log)
+          print("no corresponding atoms in the model:", file=self.log)
+          for h in deleted_annotations.helices:
+            print(h.as_pdb_str(), file=self.log)
+            error_msg += "  %s\n" % h
+        if len(deleted_annotations.sheets) > 0:
+          print("Removing the following sheets because there are", file=self.log)
+          print("no corresponding atoms in the model:", file=self.log)
+          for sh in deleted_annotations.sheets:
+            print(sh.as_pdb_str(), file=self.log)
+            error_msg += "  %s\n" % sh.as_pdb_str(strand_id=st.strand_id)
+      else:
+        raise Sorry(error_msg)
 
-  ish = idealize_sheet(ss_stats, selection_cache, master_bool_sel, n_atoms_in_real_h, model, processed_params.skip_good_ss_elements)
-  sh_results = easy_mp.pool_map(
-      processes = processed_params.nproc,
-      fixed_func=ish,
-      args=ann.sheets)
-  for res in sh_results:
-    if not isinstance(res, str):
-      n_idealized_elements += 1
-      for (ideal_h, sel) in res:
-        set_xyz_carefully(edited_h.select(sel), ideal_h)
+    # gathering initial special position atoms
+    special_position_settings = crystal.special_position_settings(
+        crystal_symmetry = self.model.crystal_symmetry())
+    site_symmetry_table = \
+        special_position_settings.site_symmetry_table(
+          sites_cart = self.model.get_sites_cart(),
+          unconditional_general_position_flags=(
+            self.model.get_atoms().extract_occ() != 1))
+    original_spi = site_symmetry_table.special_position_indices()
 
-  if n_idealized_elements == 0:
-    log.write("Nothing was idealized.\n")
-    # Don't do geometry minimization and stuff if nothing was changed.
-    return None
+    t2 = time()
 
-  # XXX here we want to adopt new coordinates
-  model.set_sites_cart(sites_cart=edited_h.atoms().extract_xyz())
-  if model.ncs_constraints_present():
-    model.set_sites_cart_from_hierarchy(multiply_ncs=True)
+  def idealize_annotations(self):
+    # Actually idelizing SS elements
+    self.log.write("Replacing ss-elements with ideal ones:\n")
+    self.log.flush()
+    ss_stats = gather_ss_stats(pdb_h=self.model.get_hierarchy())
+    n_idealized_elements = 0
+    master_bool_sel = self.model.get_master_selection()
+    if master_bool_sel is None or master_bool_sel.size() == 0:
+      master_bool_sel = flex.bool(self.model.get_number_of_atoms(), True)
+    elif isinstance(master_bool_sel, flex.size_t):
+      master_bool_sel = flex.bool(self.model.get_number_of_atoms(), master_bool_sel)
+    assert master_bool_sel.size() == self.model.get_number_of_atoms()
 
-  t3 = time()
-  # pre_result_h = edited_h
-  # pre_result_h.reset_i_seq_if_necessary()
-  bsel = flex.bool(n_atoms_in_real_h, False)
-  helix_selection = flex.bool(n_atoms_in_real_h, False)
-  sheet_selection = flex.bool(n_atoms_in_real_h, False)
-  other_selection = flex.bool(n_atoms_in_real_h, False)
-  ss_for_tors_selection = flex.bool(n_atoms_in_real_h, False)
-  nonss_for_tors_selection = flex.bool(n_atoms_in_real_h, False)
-  # set all CA atoms to True for other_selection
-  #isel = selection_cache.iselection("name ca")
-  isel = selection_cache.iselection("name ca or name n or name o or name c")
-  other_selection.set_selected(isel, True)
-  n_main_chain_atoms = other_selection.count(True)
-  isel = selection_cache.iselection("name ca or name n or name o or name c")
-  nonss_for_tors_selection.set_selected(isel, True)
-  main_chain_selection_prefix = "(name ca or name n or name o or name c) %s"
+    ih = idealize_helix(ss_stats, self.model.get_atom_selection_cache(), master_bool_sel, self.model.get_number_of_atoms(), self.model, self.processed_params.skip_good_ss_elements)
+    h_results = easy_mp.pool_map(
+        processes = self.processed_params.nproc,
+        fixed_func=ih,
+        args=self.ss_annotation.helices)
+    for res in h_results:
+      if not isinstance(res, str):
+        n_idealized_elements +=1
+        set_xyz_carefully(dest_h=self.edited_h.select(res[1]), source_h=res[0])
 
-  t4 = time()
-  print("Preparing selections...", file=log)
-  log.flush()
-  # Here we are just preparing selections
-  for h in ann.helices:
-    ss_sels = h.as_atom_selections()[0]
-    selstring = main_chain_selection_prefix % ss_sels
-    isel = selection_cache.iselection(selstring)
-    helix_selection.set_selected(isel, True)
-    other_selection.set_selected(isel, False)
-    isel = selection_cache.iselection(selstring)
-    ss_for_tors_selection.set_selected(isel, True)
-    nonss_for_tors_selection.set_selected(isel, False)
+    ish = idealize_sheet(ss_stats, self.model.get_atom_selection_cache(), master_bool_sel, self.model.get_number_of_atoms(), self.model, self.processed_params.skip_good_ss_elements)
+    sh_results = easy_mp.pool_map(
+        processes = self.processed_params.nproc,
+        fixed_func=ish,
+        args=self.ss_annotation.sheets)
+    for res in sh_results:
+      if not isinstance(res, str):
+        n_idealized_elements += 1
+        for (ideal_h, sel) in res:
+          set_xyz_carefully(self.edited_h.select(sel), ideal_h)
 
-  for sheet in ann.sheets:
-    for ss_sels in sheet.as_atom_selections():
+    if n_idealized_elements == 0:
+      self.log.write("Nothing was idealized.\n")
+      # Don't do geometry minimization and stuff if nothing was changed.
+      return None
+
+    # XXX here we want to adopt new coordinates
+    self.model.set_sites_cart(sites_cart=self.edited_h.atoms().extract_xyz())
+    if self.model.ncs_constraints_present():
+      self.model.set_sites_cart_from_hierarchy(multiply_ncs=True)
+
+    t3 = time()
+    # pre_result_h = edited_h
+    # pre_result_h.reset_i_seq_if_necessary()
+    bsel = flex.bool(self.model.get_number_of_atoms(), False)
+    helix_selection = flex.bool(self.model.get_number_of_atoms(), False)
+    sheet_selection = flex.bool(self.model.get_number_of_atoms(), False)
+    other_selection = flex.bool(self.model.get_number_of_atoms(), False)
+    ss_for_tors_selection = flex.bool(self.model.get_number_of_atoms(), False)
+    nonss_for_tors_selection = flex.bool(self.model.get_number_of_atoms(), False)
+    # set all CA atoms to True for other_selection
+    #isel = self.model.get_atom_selection_cache().iselection("name ca")
+    isel = self.model.get_atom_selection_cache().iselection("name ca or name n or name o or name c")
+    other_selection.set_selected(isel, True)
+    n_main_chain_atoms = other_selection.count(True)
+    isel = self.model.get_atom_selection_cache().iselection("name ca or name n or name o or name c")
+    nonss_for_tors_selection.set_selected(isel, True)
+    main_chain_selection_prefix = "(name ca or name n or name o or name c) %s"
+
+    t4 = time()
+    print("Preparing selections...", file=self.log)
+    self.log.flush()
+    # Here we are just preparing selections
+    for h in self.ss_annotation.helices:
+      ss_sels = h.as_atom_selections()[0]
       selstring = main_chain_selection_prefix % ss_sels
-      isel = selection_cache.iselection(selstring)
-      sheet_selection.set_selected(isel, True)
+      isel = self.model.get_atom_selection_cache().iselection(selstring)
+      helix_selection.set_selected(isel, True)
       other_selection.set_selected(isel, False)
-      isel = selection_cache.iselection(selstring)
+      isel = self.model.get_atom_selection_cache().iselection(selstring)
       ss_for_tors_selection.set_selected(isel, True)
       nonss_for_tors_selection.set_selected(isel, False)
-  t5 = time()
-  # print("N idealized elements: %d" % n_idealized_elements, file=log)
-  # print("Initial checking, init   : %.4f" % (t1-t0), file=log)
-  # print("Checking SS              : %.4f" % (t2-t1), file=log)
-  # print("Changing SS              : %.4f" % (t3-t2), file=log)
-  # print("Initializing selections  : %.4f" % (t4-t3), file=log)
-  # print("Looping for selections   : %.4f" % (t5-t4), file=log)
-  # with open('idealized.pdb', 'w') as f:
-  #   f.write(model.model_as_pdb())
-  # return
-  isel = selection_cache.iselection(
-      "not name ca and not name n and not name o and not name c")
-  other_selection.set_selected(isel, False)
-  helix_sheet_intersection = helix_selection & sheet_selection
-  if helix_sheet_intersection.count(True) > 0:
-    sheet_selection = sheet_selection & ~helix_sheet_intersection
-  assert ((helix_selection | sheet_selection) & other_selection).count(True)==0
 
-  from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
-  params_line = grand_master_phil_str
-  params_line += "secondary_structure {%s}" % secondary_structure.sec_str_master_phil_str
-  # print "params_line"
-  # print params_line
-  params = iotbx.phil.parse(input_string=params_line, process_includes=True)#.extract()
-  # This does not work the same way for a strange reason. Need to investigate.
-  # The number of resulting hbonds is different later.
-  # w_params = params.extract()
-  # w_params.pdb_interpretation.secondary_structure.protein.remove_outliers = False
-  # w_params.pdb_interpretation.peptide_link.ramachandran_restraints = True
-  # w_params.pdb_interpretation.c_beta_restraints = True
-  # w_params.pdb_interpretation.secondary_structure.enabled = True
-  # params.format(python_object=w_params)
-  # params.show()
-  # print "="*80
-  # print "="*80
-  # print "="*80
-  grm = model.get_restraints_manager()
-  ssm_log = null_out()
-  if verbose:
-    ssm_log = log
-  ss_params = secondary_structure.sec_str_master_phil.fetch().extract()
-  ss_params.secondary_structure.protein.remove_outliers=False
-  ss_manager = secondary_structure.manager(
-      pdb_hierarchy=model.get_hierarchy(),
-      geometry_restraints_manager=grm.geometry,
-      sec_str_from_pdb_file=ss_annotation,
-      params=ss_params.secondary_structure,
-      mon_lib_srv=None,
-      verbose=-1,
-      log=ssm_log)
-  grm.geometry.set_secondary_structure_restraints(
-      ss_manager=ss_manager,
-      hierarchy=model.get_hierarchy(),
-      log=ssm_log)
-  model.get_hierarchy().reset_i_seq_if_necessary()
-  from mmtbx.geometry_restraints import reference
-  if reference_map is None:
-    if verbose:
-      print("Adding reference coordinate restraints...", file=log)
-    grm.geometry.append_reference_coordinate_restraints_in_place(
-        reference.add_coordinate_restraints(
-            sites_cart = model.get_sites_cart().select(helix_selection),
-            selection  = helix_selection,
-            sigma      = processed_params.sigma_on_reference_helix))
-    grm.geometry.append_reference_coordinate_restraints_in_place(
-        reference.add_coordinate_restraints(
-            sites_cart = model.get_sites_cart().select(sheet_selection),
-            selection  = sheet_selection,
-            sigma      = processed_params.sigma_on_reference_sheet))
-    grm.geometry.append_reference_coordinate_restraints_in_place(
-        reference.add_coordinate_restraints(
-            sites_cart = model.get_sites_cart().select(other_selection),
-            selection  = other_selection,
-            sigma      = processed_params.sigma_on_reference_non_ss))
+    for sheet in self.ss_annotation.sheets:
+      for ss_sels in sheet.as_atom_selections():
+        selstring = main_chain_selection_prefix % ss_sels
+        isel = self.model.get_atom_selection_cache().iselection(selstring)
+        sheet_selection.set_selected(isel, True)
+        other_selection.set_selected(isel, False)
+        isel = self.model.get_atom_selection_cache().iselection(selstring)
+        ss_for_tors_selection.set_selected(isel, True)
+        nonss_for_tors_selection.set_selected(isel, False)
+    t5 = time()
+    # print("N idealized elements: %d" % n_idealized_elements, file=self.log)
+    # print("Initial checking, init   : %.4f" % (t1-t0), file=self.log)
+    # print("Checking SS              : %.4f" % (t2-t1), file=self.log)
+    # print("Changing SS              : %.4f" % (t3-t2), file=self.log)
+    # print("Initializing selections  : %.4f" % (t4-t3), file=self.log)
+    # print("Looping for selections   : %.4f" % (t5-t4), file=self.log)
+    # with open('idealized.pdb', 'w') as f:
+    #   f.write(self.model.model_as_pdb())
+    # return
+    isel = self.model.get_atom_selection_cache().iselection(
+        "not name ca and not name n and not name o and not name c")
+    other_selection.set_selected(isel, False)
+    helix_sheet_intersection = helix_selection & sheet_selection
+    if helix_sheet_intersection.count(True) > 0:
+      sheet_selection = sheet_selection & ~helix_sheet_intersection
+    assert ((helix_selection | sheet_selection) & other_selection).count(True)==0
 
-  # XXX Somewhere here we actually should check placed side-chains for
-  # clashes because we used ones that were in original model and just moved
-  # them to nearest allowed rotamer. The idealization may affect a lot
-  # the orientation of side chain thus justifying changing rotamer on it
-  # to avoid clashes.
-  if processed_params.fix_rotamer_outliers:
-    print("Fixing/checking rotamers...", file=log)
-    # pre_result_h.write_pdb_file(file_name="before_rotamers.pdb")
-    br_txt = model.model_as_pdb()
-    with open("before_rotamers.pdb", 'w') as f:
-      f.write(br_txt)
-    if(reference_map is None):
-      backbone_sample=False
+    from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
+    params_line = grand_master_phil_str
+    params_line += "secondary_structure {%s}" % secondary_structure.sec_str_master_phil_str
+    # print "params_line"
+    # print params_line
+    params = iotbx.phil.parse(input_string=params_line, process_includes=True)#.extract()
+    # This does not work the same way for a strange reason. Need to investigate.
+    # The number of resulting hbonds is different later.
+    # w_params = params.extract()
+    # w_params.pdb_interpretation.secondary_structure.protein.remove_outliers = False
+    # w_params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+    # w_params.pdb_interpretation.c_beta_restraints = True
+    # w_params.pdb_interpretation.secondary_structure.enabled = True
+    # params.format(python_object=w_params)
+    # params.show()
+    # print "="*80
+    # print "="*80
+    # print "="*80
+    grm = self.model.get_restraints_manager()
+    ssm_log = null_out()
+    if self.processed_params.verbose:
+      ssm_log = self.log
+    ss_params = secondary_structure.sec_str_master_phil.fetch().extract()
+    ss_params.secondary_structure.protein.remove_outliers=False
+    ss_manager = secondary_structure.manager(
+        pdb_hierarchy=self.model.get_hierarchy(),
+        geometry_restraints_manager=grm.geometry,
+        sec_str_from_pdb_file=self.ss_annotation,
+        params=ss_params.secondary_structure,
+        mon_lib_srv=None,
+        verbose=-1,
+        log=ssm_log)
+    grm.geometry.set_secondary_structure_restraints(
+        ss_manager=ss_manager,
+        hierarchy=self.model.get_hierarchy(),
+        log=ssm_log)
+    self.model.get_hierarchy().reset_i_seq_if_necessary()
+    from mmtbx.geometry_restraints import reference
+    if self.reference_map is None:
+      if self.processed_params.verbose:
+        print("Adding reference coordinate restraints...", file=self.log)
+      grm.geometry.append_reference_coordinate_restraints_in_place(
+          reference.add_coordinate_restraints(
+              sites_cart = self.model.get_sites_cart().select(helix_selection),
+              selection  = helix_selection,
+              sigma      = self.processed_params.sigma_on_reference_helix))
+      grm.geometry.append_reference_coordinate_restraints_in_place(
+          reference.add_coordinate_restraints(
+              sites_cart = self.model.get_sites_cart().select(sheet_selection),
+              selection  = sheet_selection,
+              sigma      = self.processed_params.sigma_on_reference_sheet))
+      grm.geometry.append_reference_coordinate_restraints_in_place(
+          reference.add_coordinate_restraints(
+              sites_cart = self.model.get_sites_cart().select(other_selection),
+              selection  = other_selection,
+              sigma      = self.processed_params.sigma_on_reference_non_ss))
+
+    # XXX Somewhere here we actually should check placed side-chains for
+    # clashes because we used ones that were in original model and just moved
+    # them to nearest allowed rotamer. The idealization may affect a lot
+    # the orientation of side chain thus justifying changing rotamer on it
+    # to avoid clashes.
+    if self.processed_params.fix_rotamer_outliers:
+      print("Fixing/checking rotamers...", file=self.log)
+      # pre_result_h.write_pdb_file(file_name="before_rotamers.pdb")
+      br_txt = self.model.model_as_pdb()
+      with open("before_rotamers.pdb", 'w') as f:
+        f.write(br_txt)
+      if(self.reference_map is None):
+        backbone_sample=False
+      else:
+        backbone_sample=True
+      result = mmtbx.refinement.real_space.fit_residues.run(
+          pdb_hierarchy     = self.model.get_hierarchy(),
+          crystal_symmetry  = self.model.crystal_symmetry(),
+          map_data          = self.reference_map,
+          rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(
+            rotamers="favored"),
+          sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
+          backbone_sample   = backbone_sample,
+          mon_lib_srv       = self.model.get_mon_lib_srv(),
+          log               = self.log)
+      self.model.set_sites_cart(
+          sites_cart = result.pdb_hierarchy.atoms().extract_xyz(),
+          update_grm = True)
+
+    if self.processed_params.verbose:
+      print("Adding chi torsion restraints...", file=self.log)
+    # only backbone
+    grm.geometry.add_chi_torsion_restraints_in_place(
+            pdb_hierarchy   = self.model.get_hierarchy(),
+            sites_cart      = self.model.get_sites_cart().\
+                                   select(ss_for_tors_selection),
+            selection = ss_for_tors_selection,
+            chi_angles_only = False,
+            sigma           = self.processed_params.sigma_on_torsion_ss)
+    grm.geometry.add_chi_torsion_restraints_in_place(
+            pdb_hierarchy   = self.model.get_hierarchy(),
+            sites_cart      = self.model.get_sites_cart().\
+                                  select(nonss_for_tors_selection),
+            selection = nonss_for_tors_selection,
+            chi_angles_only = False,
+            sigma           = self.processed_params.sigma_on_torsion_nonss)
+
+    # real_h.atoms().set_xyz(pre_result_h.atoms().extract_xyz())
+    #
+    # Check and correct for special positions
+    #
+    real_h = self.model.get_hierarchy() # just a shortcut here...
+    special_position_settings = crystal.special_position_settings(
+        crystal_symmetry = self.model.crystal_symmetry())
+    site_symmetry_table = \
+        special_position_settings.site_symmetry_table(
+          sites_cart = self.model.get_sites_cart(),
+          unconditional_general_position_flags=(
+            self.model.get_atoms().extract_occ() != 1))
+    spi = site_symmetry_table.special_position_indices()
+    if spi.size() > 0:
+      print("Moving atoms from special positions:", file=self.log)
+      for spi_i in spi:
+        if spi_i not in original_spi:
+          new_coords = (
+              real_h.atoms()[spi_i].xyz[0]+0.2,
+              real_h.atoms()[spi_i].xyz[1]+0.2,
+              real_h.atoms()[spi_i].xyz[2]+0.2)
+          print("  ", real_h.atoms()[spi_i].id_str(), end=' ', file=self.log)
+          print(tuple(real_h.atoms()[spi_i].xyz), "-->", new_coords, file=self.log)
+          real_h.atoms()[spi_i].set_xyz(new_coords)
+    self.model.set_sites_cart_from_hierarchy()
+
+
+    t9 = time()
+    if self.processed_params.file_name_before_regularization is not None:
+      grm.geometry.pair_proxies(sites_cart=self.model.get_sites_cart())
+      grm.geometry.update_ramachandran_restraints_phi_psi_targets(
+          hierarchy=self.model.get_hierarchy())
+      print("Outputting model before regularization %s" % self.processed_params.file_name_before_regularization, file=self.log)
+
+      m_txt = self.model.model_as_pdb()
+      g_txt = self.model.restraints_as_geo()
+      with open(self.processed_params.file_name_before_regularization, 'w') as f:
+        f.write(m_txt)
+
+      geo_fname = self.processed_params.file_name_before_regularization[:-4]+'.geo'
+      print("Outputting geo file for regularization %s" % geo_fname, file=self.log)
+      with open(geo_fname, 'w') as f:
+        f.write(g_txt)
+
+    #testing number of restraints
+    assert grm.geometry.get_n_den_proxies() == 0
+    if self.reference_map is None:
+      assert grm.geometry.get_n_reference_coordinate_proxies() == n_main_chain_atoms, "" +\
+          "%d %d" % (grm.geometry.get_n_reference_coordinate_proxies(), n_main_chain_atoms)
+    refinement_log = null_out()
+    self.log.write(
+        "Refining geometry of substituted secondary structure elements\n")
+    self.log.write(
+        "  for %s macro_cycle(s).\n" % self.processed_params.n_macro)
+    self.log.flush()
+    if self.processed_params.verbose:
+      refinement_log = self.log
+    t10 = time()
+    if self.reference_map is None:
+      n_cycles = self.processed_params.n_macro
+      if self.processed_params.n_macro == Auto:
+        n_cycles=5
+      minimize_wrapper_for_ramachandran(
+          model = self.model,
+          original_pdb_h = None,
+          excl_string_selection = "",
+          log = refinement_log,
+          number_of_cycles = n_cycles)
     else:
-      backbone_sample=True
-    result = mmtbx.refinement.real_space.fit_residues.run(
-        pdb_hierarchy     = model.get_hierarchy(),
-        crystal_symmetry  = model.crystal_symmetry(),
-        map_data          = reference_map,
-        rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(
-          rotamers="favored"),
-        sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
-        backbone_sample   = backbone_sample,
-        mon_lib_srv       = model.get_mon_lib_srv(),
-        log               = log)
-    model.set_sites_cart(
-        sites_cart = result.pdb_hierarchy.atoms().extract_xyz(),
-        update_grm = True)
+      ref_xrs = self.model.crystal_symmetry()
+      minimize_wrapper_with_map(
+          model = self.model,
+          target_map=self.reference_map,
+          refine_ncs_operators=False,
+          number_of_cycles=self.processed_params.n_macro,
+          min_mode='simple_cycles',
+          log=self.log)
+    self.model.set_sites_cart_from_hierarchy()
 
-  if verbose:
-    print("Adding chi torsion restraints...", file=log)
-  # only backbone
-  grm.geometry.add_chi_torsion_restraints_in_place(
-          pdb_hierarchy   = model.get_hierarchy(),
-          sites_cart      = model.get_sites_cart().\
-                                 select(ss_for_tors_selection),
-          selection = ss_for_tors_selection,
-          chi_angles_only = False,
-          sigma           = processed_params.sigma_on_torsion_ss)
-  grm.geometry.add_chi_torsion_restraints_in_place(
-          pdb_hierarchy   = model.get_hierarchy(),
-          sites_cart      = model.get_sites_cart().\
-                                select(nonss_for_tors_selection),
-          selection = nonss_for_tors_selection,
-          chi_angles_only = False,
-          sigma           = processed_params.sigma_on_torsion_nonss)
+    self.log.write(" Done\n")
+    self.log.flush()
+    t11 = time()
+    # print("Initial checking, init   : %.4f" % (t1-t0), file=self.log)
+    # print("Checking SS              : %.4f" % (t2-t1), file=self.log)
+    # print("Initializing selections  : %.4f" % (t4-t3), file=self.log)
+    # print("Looping for selections   : %.4f" % (t5-t4), file=self.log)
+    # print("Finalizing selections    : %.4f" % (t6-t5), file=self.log)
+    # print("PDB interpretation       : %.4f" % (t7-t6), file=self.log)
+    # print("Get GRM                  : %.4f" % (t8-t7), file=self.log)
+    # print("Adding restraints to GRM : %.4f" % (t9-t8), file=self.log)
+    # print("Running GM               : %.4f" % (t11-t10), file=self.log)
+    # print_hbond_proxies(grm.geometry,real_h)
+    grm.geometry.remove_reference_coordinate_restraints_in_place()
+    grm.geometry.remove_chi_torsion_restraints_in_place(nonss_for_tors_selection)
+    return grm.geometry.get_chi_torsion_proxies()
 
-  # real_h.atoms().set_xyz(pre_result_h.atoms().extract_xyz())
-  #
-  # Check and correct for special positions
-  #
-  real_h = model.get_hierarchy() # just a shortcut here...
-  special_position_settings = crystal.special_position_settings(
-      crystal_symmetry = model.crystal_symmetry())
-  site_symmetry_table = \
-      special_position_settings.site_symmetry_table(
-        sites_cart = model.get_sites_cart(),
-        unconditional_general_position_flags=(
-          model.get_atoms().extract_occ() != 1))
-  spi = site_symmetry_table.special_position_indices()
-  if spi.size() > 0:
-    print("Moving atoms from special positions:", file=log)
-    for spi_i in spi:
-      if spi_i not in original_spi:
-        new_coords = (
-            real_h.atoms()[spi_i].xyz[0]+0.2,
-            real_h.atoms()[spi_i].xyz[1]+0.2,
-            real_h.atoms()[spi_i].xyz[2]+0.2)
-        print("  ", real_h.atoms()[spi_i].id_str(), end=' ', file=log)
-        print(tuple(real_h.atoms()[spi_i].xyz), "-->", new_coords, file=log)
-        real_h.atoms()[spi_i].set_xyz(new_coords)
-  model.set_sites_cart_from_hierarchy()
-
-
-  t9 = time()
-  if processed_params.file_name_before_regularization is not None:
-    grm.geometry.pair_proxies(sites_cart=model.get_sites_cart())
-    grm.geometry.update_ramachandran_restraints_phi_psi_targets(
-        hierarchy=model.get_hierarchy())
-    print("Outputting model before regularization %s" % processed_params.file_name_before_regularization, file=log)
-
-    m_txt = model.model_as_pdb()
-    g_txt = model.restraints_as_geo()
-    with open(processed_params.file_name_before_regularization, 'w') as f:
-      f.write(m_txt)
-
-    geo_fname = processed_params.file_name_before_regularization[:-4]+'.geo'
-    print("Outputting geo file for regularization %s" % geo_fname, file=log)
-    with open(geo_fname, 'w') as f:
-      f.write(g_txt)
-
-  #testing number of restraints
-  assert grm.geometry.get_n_den_proxies() == 0
-  if reference_map is None:
-    assert grm.geometry.get_n_reference_coordinate_proxies() == n_main_chain_atoms, "" +\
-        "%d %d" % (grm.geometry.get_n_reference_coordinate_proxies(), n_main_chain_atoms)
-  refinement_log = null_out()
-  log.write(
-      "Refining geometry of substituted secondary structure elements\n")
-  log.write(
-      "  for %s macro_cycle(s).\n" % processed_params.n_macro)
-  log.flush()
-  if verbose:
-    refinement_log = log
-  t10 = time()
-  if reference_map is None:
-    minimize_wrapper_for_ramachandran(
-        model = model,
-        original_pdb_h = None,
-        excl_string_selection = "",
-        log = refinement_log,
-        number_of_cycles = processed_params.n_iter)
-  else:
-    ref_xrs = model.crystal_symmetry()
-    minimize_wrapper_with_map(
-        model = model,
-        target_map=reference_map,
-        refine_ncs_operators=False,
-        number_of_cycles=processed_params.n_macro,
-        min_mode='simple_cycles',
-        log=log)
-  model.set_sites_cart_from_hierarchy()
-
-  log.write(" Done\n")
-  log.flush()
-  t11 = time()
-  # print >> log, "Initial checking, init   : %.4f" % (t1-t0)
-  # print >> log, "Checking SS              : %.4f" % (t2-t1)
-  # print >> log, "Initializing selections  : %.4f" % (t4-t3)
-  # print >> log, "Looping for selections   : %.4f" % (t5-t4)
-  # print >> log, "Finalizing selections    : %.4f" % (t6-t5)
-  # print >> log, "PDB interpretation       : %.4f" % (t7-t6)
-  # print >> log, "Get GRM                  : %.4f" % (t8-t7)
-  # print >> log, "Adding restraints to GRM : %.4f" % (t9-t8)
-  # print >> log, "Running GM               : %.4f" % (t11-t10)
-  # print_hbond_proxies(grm.geometry,real_h)
-  grm.geometry.remove_reference_coordinate_restraints_in_place()
-  grm.geometry.remove_chi_torsion_restraints_in_place(nonss_for_tors_selection)
-  return grm.geometry.get_chi_torsion_proxies()
+  def _process_params(self, params):
+    min_sigma = 1e-5
+    if params is None:
+      params = master_phil.fetch().extract()
+      params.ss_idealization.enabled = True
+    if hasattr(params, "ss_idealization"):
+      p_pars = params.ss_idealization
+    else:
+      assert hasattr(params, "enabled") and hasattr(params, "sigma_on_cbeta"), \
+          "Something wrong with parameters passed to ss_idealization"
+      p_pars = params
+    assert isinstance(p_pars.enabled, bool)
+    assert isinstance(p_pars.restrain_torsion_angles, bool)
+    for par in ["sigma_on_reference_non_ss",
+        "sigma_on_reference_helix", "sigma_on_reference_sheet",
+        "sigma_on_torsion_ss", "sigma_on_torsion_nonss", "sigma_on_ramachandran",
+        "sigma_on_cbeta"]:
+      assert (isinstance(getattr(p_pars, par), float) and \
+        getattr(p_pars, par) > min_sigma), "" + \
+        "Bad %s parameter" % par
+    for par in ["n_iter"]:
+      assert (isinstance(getattr(p_pars, par), int) and \
+        getattr(p_pars, par) >= 0), ""+ \
+        "Bad %s parameter" % par
+    return p_pars
 
 
 def beta():

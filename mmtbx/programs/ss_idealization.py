@@ -44,10 +44,11 @@ include scope mmtbx.secondary_structure.build.ss_idealization.ss_idealization_ma
 
     # Done in place!
     self.params.ss_idealization.enabled=True
-    rm = ss_idealization.substitute_ss(
+    sss = ss_idealization.substitute_ss(
         model = self.model,
         params = self.params.ss_idealization,
         log=self.logger)
+    sss.run()
     inp_fn = os.path.basename(self.data_manager.get_default_model_name())[:-4]
     fn = "%s" % self.get_default_output_filename(
                 prefix='%s_' % inp_fn,
