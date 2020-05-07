@@ -64,6 +64,7 @@ SIM.default_F = 1
 SIM.F000 = 10
 SIM.oversample=2
 SIM.Ncells_abc = (5,5,5)
+SIM.interpolate=0
 SIM.show_params()
 SIM.add_nanoBragg_spots()
 SIM.raw_pixels *= 2000
@@ -112,6 +113,7 @@ for i_pan in range(2):
   SIM.F000 = 10
   SIM.oversample=2
   SIM.Ncells_abc = (5,5,5)
+  SIM.interpolate=0
   SIM.add_nanoBragg_spots()
   SIM.raw_pixels *= 2000
   SIMs[i_pan] = SIM
@@ -121,10 +123,6 @@ for i_pan in range(2):
 # combine the two panels:
 pix0 = SIMs[0].raw_pixels.as_numpy_array()
 pix1 = SIMs[1].raw_pixels.as_numpy_array()
-
-# FIXME: not sure why but in this case the first pixel in memory is off by 0.05
-# but the others are all close..
-pix1[0,0] = wholepix[128,0]   # pix1[0,0] = 1.217 and pix[128,0] = 1.264
 pix01 = np.vstack((pix0,pix1))
 
 assert( np.allclose(wholepix, pix01))

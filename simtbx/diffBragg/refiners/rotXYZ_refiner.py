@@ -125,6 +125,7 @@ class RefineRot(PixelRefinement):
 
     def _evaluate_averageI(self):
         """model_Lambda means expected intensity in the pixel"""
+
         self.model_Lambda = \
             self.gain_fac*self.gain_fac*(self.tilt_plane + self.scale_fac * self.scale_fac * self.model_bragg_spots)
 

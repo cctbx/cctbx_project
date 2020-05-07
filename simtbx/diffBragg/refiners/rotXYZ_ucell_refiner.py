@@ -15,6 +15,10 @@ class RefineMissetAndUcell(RefineRot):
         """
 
         RefineRot.__init__(self, *args, **kwargs)
+        self.all_c = []
+        self.all_g = []
+        self.all_x = []
+        self.funcs = []
 
         self.refine_rotX = rotXYZ_refine[0]
         self.refine_rotY = rotXYZ_refine[1]
@@ -34,7 +38,7 @@ class RefineMissetAndUcell(RefineRot):
         else:
             n_bg = 0
 
-        n_spotscale = 2
+        n_spotscale = 0 #2
         self.n = n_bg + self.n_rot_param + self.n_ucell_param + n_spotscale
         self.x = flex.double(self.n)
 
@@ -51,8 +55,8 @@ class RefineMissetAndUcell(RefineRot):
         self.ucell_xstart = n_bg + self.n_rot_param
         for i in range(self.n_ucell_param):
             self.x[self.ucell_xstart + i] = self.ucell_manager.variables[i]
-        self.x[-2] = self._init_gain  # initial gain for experiment
-        self.x[-1] = self._init_scale  # initial scale factor
+        #self.x[-2] = self._init_gain  # initial gain for experiment
+        #self.x[-1] = self._init_scale  # initial scale factor
 
         # setup the diffBragg instance
         self.D = self.S.D
@@ -136,8 +140,8 @@ class RefineMissetAndUcell(RefineRot):
         g = flex.double(self.n)
         if self.use_curvatures:
             self.curv = flex.double(self.n)
-        self.gain_fac = self.x[-2]
-        self.scale_fac = self.x[-1]
+        self.gain_fac = 1  #self.x[-2]
+        self.scale_fac = 1  #self.x[-1]
         G2 = self.gain_fac**2
         S2 = self.scale_fac**2
         self._update_ucell()
@@ -211,9 +215,18 @@ class RefineMissetAndUcell(RefineRot):
             #    # scale factor derivative
             #    g[-1] += (G2*2*self.scale_fac*self.model_bragg_spots * one_minus_k_over_Lambda).sum()
 
+        self._f = f
+        self._g = g
+
         self.D.raw_pixels *= 0
         self.print_step("LBFGS stp", f)
         self.iterations += 1
+        #from IPython import embed
+        #embed()
+        self.all_g.append(g.as_numpy_array())
+        self.all_x.append(self.x.as_numpy_array())
+        self.funcs.append(f)
+        self.all_c.append(self.curv.as_numpy_array())
         return f, g
 
     def print_step(self, message, target):
@@ -227,10 +240,14 @@ class RefineMissetAndUcell(RefineRot):
         rotY = self.x[self.rotY_xpos]
         rotZ = self.x[self.rotZ_xpos]
         rot_labels = ["rotX=%+2.7g" % rotX, "rotY=%+2.7g" % rotY, "rotZ=%+2.7g" % rotZ]
-        print ("Ucell: %s *** Missets: %s ** s=%2.7g, g=%2.7g" %
+        gnorm = np.linalg.norm(self._g)
+        xnorm = np.linalg.norm(self.x)
+        xeps = self.trad_conv_eps*xnorm
+
+        print ("Ucell: %s *** Missets: %s ** F=%2.7g, |G|=%2.7g, eps*|X|=%2.7g" %
                (", ".join(ucell_labels),
                 ", ".join(rot_labels),
-                self.x[-1], self.x[-2]))
+                self._f, gnorm, xeps))
 
     def curvatures(self):
         return self.curv
