@@ -697,7 +697,8 @@ class GlobalRefiner(PixelRefinement):
                     fsel_data = f_selection.data().as_numpy_array()
                     if self.log_fcells:
                         fsel_data = np_log(fsel_data)
-                    sigma = STD(f_selection.data())
+                    sigma = mean(f_selection.data().as_numpy_array()**2)
+                    #sigma = STD(f_selection.data())
                     sigmas.append(sigma) #sigma_for_res_id[i_bin] = sigma
                 #min_sigma = min(self.sigma_for_res_id.values())
                 #max_sigma = max(self.sigma_for_res_id.values())
