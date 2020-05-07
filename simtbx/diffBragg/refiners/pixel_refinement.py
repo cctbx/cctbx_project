@@ -31,6 +31,9 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
 
     def __init__(self):
 
+        self.idx_from_asu = None  # maps global fcell index to asu hkl
+        self.asu_from_idx = None   # maps asu hkl to global fcell index
+        self.freeze_idx = None  # same length as number of asu indices, whether we freeze it or refine it
         self.rescale_params = False
         self.ignore_line_search_failed_step_at_lower_bound=False
 
