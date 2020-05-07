@@ -703,6 +703,7 @@ class GlobalRefiner(PixelRefinement):
                 #max_sigma = max(self.sigma_for_res_id.values())
                 #median_sigma = np.median(self.sigma_for_res_id.values())
                 self.sigma_for_res_id = {}
+                summed_sigma = 0
                 for ii, sigma in enumerate(sigmas):
                     i_bin = unique_bins[ii]
                     if sigma == 0:
@@ -713,8 +714,14 @@ class GlobalRefiner(PixelRefinement):
                     if self.rescale_fcell_by_resolution:
                         assert sigma > 0
                         self.sigma_for_res_id[i_bin] = 1./sigma
+                        summed_sigma += 1./sigma
                     else:
                         self.sigma_for_res_id[i_bin] = 1.
+                if self.rescale_fcell_by_resolution:
+                    assert summed_sigma  > 0
+                    for ii in self.sigma_for_res_id.keys():
+                        self.sigma_for_res_id[ii] = self.sigma_for_res_id[ii] / summed_sigma
+
                 if rank==0:
                     print("SIGMA FOR RES ID:")
                     print(self.sigma_for_res_id)
@@ -1650,9 +1657,16 @@ class GlobalRefiner(PixelRefinement):
                 self.curv[xpos] += self._curv_accumulate(d, d2)
 
     def _Fcell_derivatives(self, i_spot):
+        # asu index
         miller_idx = self.ASU[self._i_shot][i_spot]
+        # get multiplicity of this index
         multi = self.hkl_frequency[self.idx_from_asu[miller_idx]]
-        if self.refine_Fcell and multi >= self.min_multiplicity:
+        # check if we are freezing this index during refinement 
+        freeze_this_hkl = False
+        if self.freeze_idx is not None:
+            freeze_this_hkl = self.freeze_idx[miller_idx]
+        # do the derivative
+        if self.refine_Fcell and multi >= self.min_multiplicity and not freeze_this_hkl:
             i_fcell = self.idx_from_asu[self.ASU[self._i_shot][i_spot]]
             xpos = self.fcell_xstart + i_fcell
 
