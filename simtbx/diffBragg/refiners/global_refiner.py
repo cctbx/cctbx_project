@@ -42,6 +42,7 @@ if rank == 0:
     from numpy import savez as SAVEZ
     from numpy.linalg import norm
     from numpy import ones_like as ONES_LIKE
+    from numpy import where as WHERE
     from numpy import array as ARRAY
     from numpy import pi as PI
     from numpy import allclose as ALL_CLOSE
@@ -70,6 +71,7 @@ else:
     JSON_DUMP = None
     mean = unique = np_log = np_exp = np_all = norm = median = std = None
     ALL_CLOSE=NAN = ARRAY = SAVE = SAVEZ = ONES_LIKE = STD = ABS = PI= None
+    WHERE = None
     tabulate = None
     flex_miller_index = None
     minimize = None
@@ -88,6 +90,7 @@ else:
 if has_mpi:
     PATHJOIN = comm.bcast(PATHJOIN)
     MAKEDIRS = comm.bcast(MAKEDIRS)
+    WHERE = comm.bcast(WHERE)
     EXISTS = comm.bcast(EXISTS)
     JSON_DUMP = comm.bcast(JSON_DUMP)
     ALL_CLOSE= comm.bcast(ALL_CLOSE)
@@ -765,7 +768,7 @@ class GlobalRefiner(PixelRefinement):
         self.x = self.x_for_lbfgs
 
         # make the mapping from x to Xall
-        refine_pos = np.where(self.is_being_refined.as_numpy_array())[0]
+        refine_pos = WHERE(self.is_being_refined.as_numpy_array())[0]
         self.x2xall = {xi: xalli for xi, xalli in enumerate(refine_pos)}
         self.xall2x = {xalli: xi for xi, xalli in enumerate(refine_pos)}
 
@@ -778,8 +781,10 @@ class GlobalRefiner(PixelRefinement):
 
         if self.x_init is not None: #NOTEX
             self.Xall = self.x_init
+            self.x = self.x_for_lbfgs
         elif self.restart_file is not None:
             self.Xall = flex_double(np_load(self.restart_file)["x"])
+            self.x = self.x_for_lbfgs
 
         if rank == 0:
             print("--4 print initial stats")
@@ -1112,6 +1117,7 @@ class GlobalRefiner(PixelRefinement):
             scale_vals = [self._get_spot_scale(i_shot) for i_shot in range(self.n_shots)]
         else:
             scale_vals = [lst[self.spot_scale_xpos[i_shot]] for i_shot in range(self.n_shots)]
+
         # this can be used to compare directly
         if self.CRYSTAL_SCALE_TRUTH is not None:
             scale_vals_truths = [self.CRYSTAL_SCALE_TRUTH[i_shot] for i_shot in range(self.n_shots)]
@@ -1259,8 +1265,6 @@ class GlobalRefiner(PixelRefinement):
         # TODO: select hierarchy level at this point
         # NOTE: what does fast-axis and slow-axis mean for the different hierarchy levels?
         node = det[self._panel_id]
-        #from IPython import embed
-        #embed()
         #orig = node.get_local_origin()
         #new_originZ = self._get_originZ_val(self._i_shot)
         #new_local_origin = orig[0], orig[1], new_originZ
@@ -2299,7 +2303,7 @@ class GlobalRefiner(PixelRefinement):
                 ang_off = 999
 
             out_str = "shot %d: MEAN UCELL ERROR=%.4f, ANG OFF %.4f" % (i_shot, mn_err, ang_off)
-            ncells_val = self._get_m_val(i_shot)  #np.exp(self.Xall[self.ncells_xpos[i_shot]]) + 3
+            ncells_val = self._get_m_val(i_shot) 
             ncells_resid = abs(ncells_val - self.gt_ncells)
 
             if mn_err < 0.01 and ang_off < 0.004 and ncells_resid < 0.1:
