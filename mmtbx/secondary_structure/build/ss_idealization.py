@@ -21,8 +21,8 @@ import mmtbx.refinement.real_space.fit_residues
 from six.moves import zip
 from six.moves import range
 
-from libtbx import adopt_init_args
-from libtbx import easy_mp
+from libtbx import adopt_init_args, easy_mp, group_args
+
 
 alpha_helix_str = """
 ATOM      1  N   GLY A   1      -5.606  -2.251 -12.878  1.00  0.00           N
@@ -514,6 +514,8 @@ class substitute_ss(object):
     self.log = log
     self.reference_map = reference_map
 
+    self.idealized_counts = None
+
     t0 = time()
     if self.model.get_hierarchy().models_size() > 1:
       raise Sorry("Multi model files are not supported")
@@ -537,17 +539,54 @@ class substitute_ss(object):
       expected_n_hbonds += h.get_n_maximum_hbonds()
     self.edited_h = self.model.get_hierarchy().deep_copy()
 
-    # check the annotation for correctness (atoms are actually in hierarchy)
-    error_msg = "The following secondary structure annotations result in \n"
-    error_msg +="empty atom selections. They don't match the structre: \n"
+    # gathering initial special position atoms
+    special_position_settings = crystal.special_position_settings(
+        crystal_symmetry = self.model.crystal_symmetry())
+    site_symmetry_table = \
+        special_position_settings.site_symmetry_table(
+          sites_cart = self.model.get_sites_cart(),
+          unconditional_general_position_flags=(
+            self.model.get_atoms().extract_occ() != 1))
+    self.original_spi = site_symmetry_table.special_position_indices()
+
     t1 = time()
 
   def run(self):
     self.check_and_filter_annotations()
     self.idealize_annotations()
+    self.whole_minimization()
+
+  def _process_params(self, params):
+    min_sigma = 1e-5
+    if params is None:
+      params = master_phil.fetch().extract()
+      params.ss_idealization.enabled = True
+    if hasattr(params, "ss_idealization"):
+      p_pars = params.ss_idealization
+    else:
+      assert hasattr(params, "enabled") and hasattr(params, "sigma_on_cbeta"), \
+          "Something wrong with parameters passed to ss_idealization"
+      p_pars = params
+    assert isinstance(p_pars.enabled, bool)
+    assert isinstance(p_pars.restrain_torsion_angles, bool)
+    for par in ["sigma_on_reference_non_ss",
+        "sigma_on_reference_helix", "sigma_on_reference_sheet",
+        "sigma_on_torsion_ss", "sigma_on_torsion_nonss", "sigma_on_ramachandran",
+        "sigma_on_cbeta"]:
+      assert (isinstance(getattr(p_pars, par), float) and \
+        getattr(p_pars, par) > min_sigma), "" + \
+        "Bad %s parameter" % par
+    for par in ["n_iter"]:
+      assert (isinstance(getattr(p_pars, par), int) and \
+        getattr(p_pars, par) >= 0), ""+ \
+        "Bad %s parameter" % par
+    return p_pars
 
   def check_and_filter_annotations(self):
     # Checking for SS selections
+    # check the annotation for correctness (atoms are actually in hierarchy)
+    error_msg = "The following secondary structure annotations result in \n"
+    error_msg +="empty atom selections. They don't match the structre: \n"
     deleted_annotations = self.ss_annotation.remove_empty_annotations(
         hierarchy=self.model.get_hierarchy())
     if not deleted_annotations.is_empty():
@@ -566,17 +605,6 @@ class substitute_ss(object):
             error_msg += "  %s\n" % sh.as_pdb_str(strand_id=st.strand_id)
       else:
         raise Sorry(error_msg)
-
-    # gathering initial special position atoms
-    special_position_settings = crystal.special_position_settings(
-        crystal_symmetry = self.model.crystal_symmetry())
-    site_symmetry_table = \
-        special_position_settings.site_symmetry_table(
-          sites_cart = self.model.get_sites_cart(),
-          unconditional_general_position_flags=(
-            self.model.get_atoms().extract_occ() != 1))
-    original_spi = site_symmetry_table.special_position_indices()
-
     t2 = time()
 
   def idealize_annotations(self):
@@ -584,7 +612,6 @@ class substitute_ss(object):
     self.log.write("Replacing ss-elements with ideal ones:\n")
     self.log.flush()
     ss_stats = gather_ss_stats(pdb_h=self.model.get_hierarchy())
-    n_idealized_elements = 0
     master_bool_sel = self.model.get_master_selection()
     if master_bool_sel is None or master_bool_sel.size() == 0:
       master_bool_sel = flex.bool(self.model.get_number_of_atoms(), True)
@@ -592,27 +619,37 @@ class substitute_ss(object):
       master_bool_sel = flex.bool(self.model.get_number_of_atoms(), master_bool_sel)
     assert master_bool_sel.size() == self.model.get_number_of_atoms()
 
-    ih = idealize_helix(ss_stats, self.model.get_atom_selection_cache(), master_bool_sel, self.model.get_number_of_atoms(), self.model, self.processed_params.skip_good_ss_elements)
+    ih = idealize_helix(ss_stats, self.model.get_atom_selection_cache(),
+        master_bool_sel, self.model.get_number_of_atoms(), self.model,
+        self.processed_params.skip_good_ss_elements)
+    n_idealized_helices = 0
     h_results = easy_mp.pool_map(
         processes = self.processed_params.nproc,
         fixed_func=ih,
         args=self.ss_annotation.helices)
     for res in h_results:
       if not isinstance(res, str):
-        n_idealized_elements +=1
+        n_idealized_helices +=1
         set_xyz_carefully(dest_h=self.edited_h.select(res[1]), source_h=res[0])
 
-    ish = idealize_sheet(ss_stats, self.model.get_atom_selection_cache(), master_bool_sel, self.model.get_number_of_atoms(), self.model, self.processed_params.skip_good_ss_elements)
+    ish = idealize_sheet(ss_stats, self.model.get_atom_selection_cache(),
+        master_bool_sel, self.model.get_number_of_atoms(), self.model,
+        self.processed_params.skip_good_ss_elements)
     sh_results = easy_mp.pool_map(
         processes = self.processed_params.nproc,
         fixed_func=ish,
         args=self.ss_annotation.sheets)
+    n_idealized_sheets = 0
     for res in sh_results:
       if not isinstance(res, str):
-        n_idealized_elements += 1
+        n_idealized_sheets += 1
         for (ideal_h, sel) in res:
           set_xyz_carefully(self.edited_h.select(sel), ideal_h)
-
+    n_idealized_elements = n_idealized_helices + n_idealized_sheets
+    self.idealized_counts = group_args(
+        n_total=n_idealized_elements,
+        n_helices=n_idealized_helices,
+        n_sheets=n_idealized_sheets)
     if n_idealized_elements == 0:
       self.log.write("Nothing was idealized.\n")
       # Don't do geometry minimization and stuff if nothing was changed.
@@ -623,6 +660,10 @@ class substitute_ss(object):
     if self.model.ncs_constraints_present():
       self.model.set_sites_cart_from_hierarchy(multiply_ncs=True)
 
+  def get_idealized_counts(self):
+    return self.idealized_counts
+
+  def whole_minimization(self):
     t3 = time()
     # pre_result_h = edited_h
     # pre_result_h.reset_i_seq_if_necessary()
@@ -802,7 +843,7 @@ class substitute_ss(object):
     if spi.size() > 0:
       print("Moving atoms from special positions:", file=self.log)
       for spi_i in spi:
-        if spi_i not in original_spi:
+        if spi_i not in self.original_spi:
           new_coords = (
               real_h.atoms()[spi_i].xyz[0]+0.2,
               real_h.atoms()[spi_i].xyz[1]+0.2,
@@ -812,8 +853,10 @@ class substitute_ss(object):
           real_h.atoms()[spi_i].set_xyz(new_coords)
     self.model.set_sites_cart_from_hierarchy()
 
+    self.model_before_regularization = self.model.deep_copy()
 
     t9 = time()
+
     if self.processed_params.file_name_before_regularization is not None:
       grm.geometry.pair_proxies(sites_cart=self.model.get_sites_cart())
       grm.geometry.update_ramachandran_restraints_phi_psi_targets(
@@ -881,32 +924,6 @@ class substitute_ss(object):
     grm.geometry.remove_reference_coordinate_restraints_in_place()
     grm.geometry.remove_chi_torsion_restraints_in_place(nonss_for_tors_selection)
     return grm.geometry.get_chi_torsion_proxies()
-
-  def _process_params(self, params):
-    min_sigma = 1e-5
-    if params is None:
-      params = master_phil.fetch().extract()
-      params.ss_idealization.enabled = True
-    if hasattr(params, "ss_idealization"):
-      p_pars = params.ss_idealization
-    else:
-      assert hasattr(params, "enabled") and hasattr(params, "sigma_on_cbeta"), \
-          "Something wrong with parameters passed to ss_idealization"
-      p_pars = params
-    assert isinstance(p_pars.enabled, bool)
-    assert isinstance(p_pars.restrain_torsion_angles, bool)
-    for par in ["sigma_on_reference_non_ss",
-        "sigma_on_reference_helix", "sigma_on_reference_sheet",
-        "sigma_on_torsion_ss", "sigma_on_torsion_nonss", "sigma_on_ramachandran",
-        "sigma_on_cbeta"]:
-      assert (isinstance(getattr(p_pars, par), float) and \
-        getattr(p_pars, par) > min_sigma), "" + \
-        "Bad %s parameter" % par
-    for par in ["n_iter"]:
-      assert (isinstance(getattr(p_pars, par), int) and \
-        getattr(p_pars, par) >= 0), ""+ \
-        "Bad %s parameter" % par
-    return p_pars
 
 
 def beta():
