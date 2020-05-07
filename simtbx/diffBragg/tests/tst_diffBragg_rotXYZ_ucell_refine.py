@@ -3,7 +3,7 @@ parser = ArgumentParser()
 parser.add_argument("--plot", action='store_true')
 parser.add_argument("--curvatures", action='store_true')
 parser.add_argument("--rescale", action="store_true")
-parser.add_argument("--poisson", action="store_true")
+#parser.add_argument("--poisson", action="store_true")
 parser.add_argument("--readout", type=float, default=0)
 parser.add_argument("--xrefinedonly", action="store_true" )
 parser.add_argument("--skipfirst", action="store_true" )
@@ -369,14 +369,13 @@ RUC.S.D.update_oversample_during_refinement = False
 RUC.use_curvatures = args.curvatures #False
 RUC.use_curvatures_threshold = 0
 RUC.calc_curvatures = True
-RUC.poisson_only = False
+RUC.poisson_only = args.readout ==0
 RUC.verbose = True
 RUC.big_dump = False
 RUC.gt_ncells = nbcryst.Ncells_abc[0]
 RUC.originZ_gt = {0:shot_originZ_init[0]}
 RUC.gt_ucell = ucell[0], ucell[2]
 RUC.testing_mode = False
-RUC.poisson_only = args.poisson
 RUC.sigma_r = args.readout #3/28.
 
 RUC.spot_scale_init = [1]*N_SHOTS
@@ -392,12 +391,5 @@ if RUC.hit_break_to_use_curvatures:
     RUC.use_curvatures = True
     RUC.run(setup=False)
 
-#X = np.array(RUC.all_x)
-#G = np.array(RUC.all_g)
-#CURV = np.array(RUC.all_c)[:,RUC.is_being_refined]
-#F = np.array(RUC.funcs)
-#np.save("new", [X,G,CURV])
-#np.save("newF", F)
-from IPython import embed
-embed()
-
+assert RUC.all_ang_off[0] < 0.005
+print("OK")
