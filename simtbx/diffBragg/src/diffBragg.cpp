@@ -944,7 +944,7 @@ void diffBragg::add_diffBragg_spots()
                                         F_latt = Na*Nb*Nc*(hrad_sqr*fudge < 0.3969 );
                                 }
                                 /* no need to go further if result will be zero */
-                                if(F_latt == 0.0) continue;
+                                if(F_latt == 0.0 && ! only_save_omega_kahn) continue;
 
                                 /* structure factor of the unit cell */
                                 if(interpolate){
@@ -1200,13 +1200,13 @@ void diffBragg::add_diffBragg_spots()
             if (!oversample_omega)
                 om=omega_pixel_ave;
             else
-                om=1;
+                om=1;  // if we hit this case it means we applied the correction already
 
             // final scale term to being everything to photon number units
             scale_term =r_e_sqr*fluence*spot_scale*polar*om / steps;
 
             if(only_save_omega_kahn)
-                floatimage[i] += polar*om;
+                floatimage[i] += polar*omega_pixel_ave;
             else
                 floatimage[i] += scale_term*I;
 
