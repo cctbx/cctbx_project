@@ -370,7 +370,7 @@ class GlobalRefiner(PixelRefinement):
 
     def __call__(self, *args, **kwargs):
         _, _ = self.compute_functional_and_gradients()
-        return self.Xall, self._f, self._g, self.d  #NOTEX
+        return self.x, self._f, self._g, self.d  #NOTEX
 
     @property
     def n(self):
@@ -701,7 +701,6 @@ class GlobalRefiner(PixelRefinement):
                     if self.log_fcells:
                         fsel_data = np_log(fsel_data)
                     sigma = mean(f_selection.data().as_numpy_array()**2)
-                    #sigma = STD(f_selection.data())
                     sigmas.append(sigma) #sigma_for_res_id[i_bin] = sigma
                 #min_sigma = min(self.sigma_for_res_id.values())
                 #max_sigma = max(self.sigma_for_res_id.values())
@@ -891,18 +890,22 @@ class GlobalRefiner(PixelRefinement):
             PD = parameter_dict[img_fname]["x_pos"]
 
             # save the background tilt plane coefficients identifiers
-            nspots_on_shot = len(self.NANOBRAGG_ROIS[i_shot])
-            for i_roi in range(nspots_on_shot):
-                i_a = self.bg_a_xstart[i_shot][i_roi]
-                i_b = self.bg_b_xstart[i_shot][i_roi]
-                i_c = self.bg_c_xstart[i_shot][i_roi]
-                if self.BBOX_IDX is not None:
-                    bbox_idx = self.BBOX_IDX[i_shot][i_roi]
-                else:
-                    bbox_idx = -1
-                PD[i_a] = "t1", bbox_idx
-                PD[i_b] = "t2", bbox_idx
-                PD[i_c] = "t3", bbox_idx
+            if not self.bg_extracted:
+                nspots_on_shot = len(self.NANOBRAGG_ROIS[i_shot])
+                for i_roi in range(nspots_on_shot):
+                    i_a = self.bg_a_xstart[i_shot][i_roi]
+                    i_b = self.bg_b_xstart[i_shot][i_roi]
+                    i_c = self.bg_c_xstart[i_shot][i_roi]
+                    if self.BBOX_IDX is not None:
+                        bbox_idx = self.BBOX_IDX[i_shot][i_roi]
+                    else:
+                        bbox_idx = -1
+                    PD[i_a] = "t1", bbox_idx
+                    PD[i_b] = "t2", bbox_idx
+                    PD[i_c] = "t3", bbox_idx
+            else:
+                i_bg_coef = self.bg_coef_xpos[i_shot]
+                PD[i_bg_coef] = "bg_coef"
 
             # save the rotation angles identifier
             i_rotX = self.rotX_xpos[i_shot]
@@ -1265,6 +1268,8 @@ class GlobalRefiner(PixelRefinement):
         # TODO: select hierarchy level at this point
         # NOTE: what does fast-axis and slow-axis mean for the different hierarchy levels?
         node = det[self._panel_id]
+        #from IPython import embed
+        #embed()
         #orig = node.get_local_origin()
         #new_originZ = self._get_originZ_val(self._i_shot)
         #new_local_origin = orig[0], orig[1], new_originZ
@@ -2303,7 +2308,7 @@ class GlobalRefiner(PixelRefinement):
                 ang_off = 999
 
             out_str = "shot %d: MEAN UCELL ERROR=%.4f, ANG OFF %.4f" % (i_shot, mn_err, ang_off)
-            ncells_val = self._get_m_val(i_shot) 
+            ncells_val = self._get_m_val(i_shot)  #np.exp(self.Xall[self.ncells_xpos[i_shot]]) + 3
             ncells_resid = abs(ncells_val - self.gt_ncells)
 
             if mn_err < 0.01 and ang_off < 0.004 and ncells_resid < 0.1:
