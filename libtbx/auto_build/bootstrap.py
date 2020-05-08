@@ -775,7 +775,7 @@ class geostd_module(SourceModule):
 
 class boost_module(SourceModule):
   module = 'boost'
-  anonymous = ['git', '-b 1.70',
+  anonymous = ['git',
                'git@github.com:cctbx/boost.git',
                'https://github.com/cctbx/boost.git',
                'https://github.com/cctbx/boost/archive/master.zip']
