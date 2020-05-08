@@ -8,7 +8,6 @@ import sys, time
 from cctbx import crystal
 import boost.python
 cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
-from libtbx.test_utils import approx_equal
 fit_ext = boost.python.import_ext("mmtbx_rotamer_fit_ext")
 
 negate_map_table = {
