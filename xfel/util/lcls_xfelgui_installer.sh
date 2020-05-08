@@ -28,6 +28,10 @@ python bootstrap.py --builder=dials hot update
 # Download and install dependencies using conda
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 bash Miniconda3-latest-Linux-x86_64.sh -b -p $WORKING/dialsBuild/miniconda3
+# psana1 needs some discontinued packages
+echo "\
+restore_free_channel: true
+" > $WORKING/dialsBuild/miniconda3/.condarc
 source $WORKING/dialsBuild/miniconda3/etc/profile.d/conda.sh
 conda env create -f $WORKING/dialsBuild/modules/cctbx_project/xfel/conda_envs/psana_environment.yml
 conda activate psana_env
