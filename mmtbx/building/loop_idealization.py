@@ -6,7 +6,7 @@ from libtbx.utils import Sorry, null_out
 from mmtbx.validation import ramalyze
 from mmtbx.building.loop_closure.ccd import ccd_cpp
 from mmtbx.building.loop_closure import utils, starting_conformations
-from mmtbx.secondary_structure.build import side_chain_placement, \
+from mmtbx.secondary_structure.build.ss_idealization import side_chain_placement, \
     set_xyz_smart
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
 from cctbx import maptbx

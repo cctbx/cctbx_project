@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from mmtbx.secondary_structure import build as ssb
+from mmtbx.secondary_structure.build import ss_idealization as ssb
 import iotbx.pdb
 from libtbx.utils import Sorry
 import mmtbx.model

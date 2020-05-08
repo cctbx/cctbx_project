@@ -5,5 +5,3 @@ from mmtbx.programs import ss_idealization
 from iotbx.cli_parser import run_program
 
 run_program(ss_idealization.Program)
-
-

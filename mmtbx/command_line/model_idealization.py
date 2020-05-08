@@ -18,7 +18,7 @@ import iotbx.ncs
 import iotbx.phil
 from cctbx import maptbx, miller
 
-from mmtbx.secondary_structure import build as ssb
+from mmtbx.secondary_structure.build import ss_idealization as ssb
 from mmtbx.secondary_structure import manager, sec_str_master_phil
 import mmtbx.utils
 from mmtbx.building.loop_idealization import loop_idealization
