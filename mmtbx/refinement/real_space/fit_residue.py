@@ -25,7 +25,7 @@ def flatten(l):
 ###
 class monitor(object):
   def __init__(self, id_str, selection, map_data, unit_cell, weights, pairs,
-               reference_map_value, rotamer_evaluator, log):
+               cmv, rotamer_evaluator, log):
     adopt_init_args(self, locals())
     self.states = collections.OrderedDict()
 
@@ -36,13 +36,16 @@ class monitor(object):
     exceed_map_max_value = False
     for i in self.selection:
       atom = residue.atoms()[i]
+      key = "%s_%s_%s"%(
+        atom.parent().parent().parent().id, atom.parent().resname,
+        atom.name.strip())
       name = atom.name.strip().upper()
       element = atom.element.strip().upper()
       if(element in ["H","D"]): continue
       mv = self.map_data.eight_point_interpolation(
         self.unit_cell.fractionalize(atom.xyz))
       vals[name] = mv
-      if(mv > self.reference_map_value*3 and not element in ["S","SE"]):
+      if(mv > self.cmv[key]*3 and not element in ["S","SE"]):
         exceed_map_max_value = True
       target += mv
       if(mv < 0): target_neg += mv
@@ -95,14 +98,14 @@ class run(object):
                mon_lib_srv,
                rotamer_manager,
                sin_cos_table,
+               cmv,
+               unit_cell,
                rotatable_hd=None,
                vdw_radii=None,
                xyzrad_bumpers=None,
                target_map=None,
                target_map_for_cb=None,
-               unit_cell=None,
                backbone_sample=False,
-               reference_map_value=None,
                accept_only_if_max_shift_is_smaller_than=None,
                log=None):
     adopt_init_args(self, locals())
@@ -123,13 +126,11 @@ class run(object):
       exclude = ["C","N","O","CA"]
       reference = exclude + ["CB"]
       atoms = self.residue.atoms()
-      reference_vals = flex.double()
       self.pairs = []
       for i, ai in enumerate(atoms):
         if(ai.name.strip() in reference):
           mv = self.target_map.eight_point_interpolation(
             self.unit_cell.fractionalize(ai.xyz))
-          reference_vals.append(mv)
         if(ai.name.strip() in exclude): continue
         if(ai.element.strip().upper() in ["H","S","SE"]): continue
         for j, aj in enumerate(atoms):
@@ -142,8 +143,6 @@ class run(object):
             pair.sort()
             if(not pair in self.pairs):
               self.pairs.append(pair)
-      if(self.reference_map_value is None):
-        self.reference_map_value = flex.mean(reference_vals)
       # Set monitor
       id_str=""
       if(self.residue.parent() is not None and
@@ -161,7 +160,7 @@ class run(object):
         unit_cell = self.unit_cell,
         weights   = self.weights,
         pairs     = self.pairs,
-        reference_map_value = self.reference_map_value,
+        cmv       = self.cmv,
         rotamer_evaluator = self.rotamer_manager.rotamer_evaluator,
         log       = self.log)
       self.m.add(residue = self.residue, state = "start")
@@ -177,7 +176,7 @@ class run(object):
     if(self.m is not None):
       self.m.finalize(residue = self.residue)
       # Too bulky, but very useful. Use for debugging only.
-      #self.m.show()
+      self.m.show()
 
   def get_target_value(self, sites_cart, selection=None, target_map=None):
     if(target_map is None): target_map = self.target_map
@@ -222,9 +221,14 @@ class run(object):
       #if(self.residue.resname=="MSE"): offset=0.5
       radii = flex.double()
       atom_names = []
+      ref_map_vals = flex.double()
       for a in self.residue.atoms():
         if(self.rotatable_hd[a.i_seq]): continue # don't include rotatable H
         atom_names.append(a.name.strip())
+        key = "%s_%s_%s"%(
+          a.parent().parent().parent().id, a.parent().resname,
+          a.name.strip())
+        ref_map_vals.append(self.cmv[key])
       converter = iotbx.pdb.residue_name_plus_atom_names_interpreter(
         residue_name=self.residue.resname, atom_names = atom_names)
       mon_lib_names = converter.atom_name_interpretation.mon_lib_names()
@@ -232,16 +236,14 @@ class run(object):
         try: radii.append(self.vdw_radii[n.strip()]-offset)
         except KeyError: radii.append(1.5) # XXX U, Uranium, OXT are problems!
       #
-      if(self.residue.resname in ["MET","MSE"]): scale = 100
-      else:                                      scale = 2
       xyzrad_residue = ext.moving(
-        sites_cart          = sites,
-        sites_cart_start    = sites_cart_start,
-        radii               = radii,
-        weights             = self.weights,
-        bonded_pairs        = self.pairs,
-        max_map_value       = self.reference_map_value * scale,
-        min_map_value       = self.reference_map_value * 0.1)
+        sites_cart       = sites,
+        sites_cart_start = sites_cart_start,
+        radii            = radii,
+        weights          = self.weights,
+        bonded_pairs     = self.pairs,
+        ref_map_max      = ref_map_vals * 3,
+        ref_map_min      = ref_map_vals / 10)
       #
       ro = ext.fit(
         fixed                    = self.xyzrad_bumpers,
@@ -353,6 +355,7 @@ class run_with_minimization(object):
                rms_bonds_limit = 0.03, # XXX probably needs to be much lower
                rms_angles_limit = 3.0, # XXX
                backbone_sample_angle=None,
+               cmv = None,
                allow_modified_residues=False):
     adopt_init_args(self, locals())
     # load rotamer manager
@@ -404,6 +407,7 @@ class run_with_minimization(object):
       unit_cell         = self.xray_structure.unit_cell(),
       residue           = self.residue,
       sin_cos_table     = self.sin_cos_table,
+      cmv               = self.cmv,
       rotamer_manager   = self.rotamer_manager)
     sites_cart_poor = self.xray_structure.sites_cart()
     sites_cart_poor.set_selected(self.residue_iselection,

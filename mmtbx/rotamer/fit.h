@@ -22,8 +22,8 @@ class moving
     af::shared<FloatType> radii;
     af::shared<FloatType> weights;
     af::shared<af::tiny<std::size_t, 2> > bonded_pairs;
-    FloatType max_map_value;
-    FloatType min_map_value;
+    af::shared<FloatType> ref_map_max;
+    af::shared<FloatType> ref_map_min;
 
     moving() { // Can I remove this?
      sites_cart.fill(0.0);
@@ -37,15 +37,16 @@ class moving
            af::shared<FloatType> const& radii_,
            af::shared<FloatType> const& weights_,
            boost::python::list const& bonded_pairs_,
-           FloatType const& max_map_value_,
-           FloatType const& min_map_value_)
+           af::shared<FloatType> const& ref_map_max_,
+           af::shared<FloatType> const& ref_map_min_
+           )
     :
       sites_cart(sites_cart_),
       sites_cart_start(sites_cart_start_),
       radii(radii_),
       weights(weights_),
-      max_map_value(max_map_value_),
-      min_map_value(min_map_value_)
+      ref_map_max(ref_map_max_),
+      ref_map_min(ref_map_min_)
     {
       for(std::size_t i=0;i<boost::python::len(bonded_pairs_);i++) {
          af::shared<size_t> p =
@@ -180,8 +181,8 @@ public:
       selection_rsr,
       all_points.bonded_pairs,
       all_points.weights.const_ref(),
-      all_points.max_map_value,
-      all_points.min_map_value);
+      all_points.ref_map_max.const_ref(),
+      all_points.ref_map_min.const_ref());
     score_ = r[1];
     score_start_ = score_;
     for(std::size_t j=0;j<angles_array.size();j++) {
@@ -225,8 +226,8 @@ public:
           selection_rsr,
           all_points.bonded_pairs,
           all_points.weights.const_ref(),
-          all_points.max_map_value,
-          all_points.min_map_value);
+          all_points.ref_map_max.const_ref(),
+          all_points.ref_map_min.const_ref());
         if(r[0]>0 && r[1]>score_) {
           all_points_result = all_points_cp;
           score_ = r[1];

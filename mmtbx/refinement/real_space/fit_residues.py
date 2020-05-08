@@ -32,7 +32,8 @@ negate_map_table = {
   "tyr": 7.7,
   "val": 5,
   "arg": 10,
-  "lys": 8
+  "lys": 8,
+  "pro": 3
 }
 
 class run(object):
@@ -55,6 +56,13 @@ class run(object):
     self.processed = 0
     self.total_time_residue_loop = 0
     t0 = time.time()
+    self.atoms = self.pdb_hierarchy.atoms()
+    self.cmv = None
+    if(self.map_data is not None):
+      self.cmv = mmtbx.refinement.real_space.common_map_values(
+        pdb_hierarchy = self.pdb_hierarchy,
+        unit_cell     = self.crystal_symmetry.unit_cell(),
+        map_data      = self.map_data)
     self.mes = []
     if(self.bselection is None):
       o = mmtbx.refinement.real_space.side_chain_fit_evaluator(
@@ -68,9 +76,6 @@ class run(object):
       self.mes.extend(o.mes)
       self.bselection = o.sel_all() # or all_possible() ?
     if(self.log is None): self.log = sys.stdout
-    self.sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
-    self.atom_names = flex.std_string(
-      [i.strip() for i in self.pdb_hierarchy.atoms().extract_name()])
     self.special_position_settings = crystal.special_position_settings(
       crystal_symmetry = self.crystal_symmetry)
     # Even better would be to pass it here. Ideally just use model
@@ -81,13 +86,8 @@ class run(object):
     self.mes.append("outliers start: %d"%self.count_outliers())
     #
     self.loop(function = self.one_residue_iteration)
-    assert approx_equal(self.sites_cart,
-      self.pdb_hierarchy.atoms().extract_xyz())
-    self.mes.append("outliers after fit: %d"%self.count_outliers())
     #
     self.mes.append("outliers final: %d"%self.count_outliers())
-    assert approx_equal(self.sites_cart,
-      self.pdb_hierarchy.atoms().extract_xyz())
     #
     self.mes.append("residues processed: %d"%self.processed)
     if(self.processed > 0):
@@ -107,9 +107,11 @@ class run(object):
     for a in residue.atoms():
       if(not a.name.strip() in ["N", "C", "O"]):
         residue_i_selection.append(a.i_seq)
-    residue_b_selection = flex.bool(self.sites_cart.size(), residue_i_selection)
+    sites_cart = self.atoms.extract_xyz()
+    #
+    residue_b_selection = flex.bool(sites_cart.size(), residue_i_selection)
     selection_around_residue = self.special_position_settings.pair_generator(
-      sites_cart      = self.sites_cart,
+      sites_cart      = sites_cart,
       distance_cutoff = radius
         ).neighbors_of(primary_selection = residue_b_selection).iselection()
     selection_around_residue_minus_residue = flex.size_t(
@@ -120,16 +122,30 @@ class run(object):
     for s in selection_around_residue_minus_residue:
       if(not self.rotatable_hd[s]):
         selection_around_residue_minus_residue_minus_rotatableH.append(s)
-    sites_cart = self.sites_cart.select(
-      selection_around_residue_minus_residue_minus_rotatableH)
-    atom_names = self.atom_names.select(
-      selection_around_residue_minus_residue_minus_rotatableH)
     #
     radii = flex.double()
-    for an in atom_names:
-      try: radii.append(self.vdw_radii[an]-0.25)
-      except KeyError: radii.append(1.5) # XXX U, Uranium, OXT are problems!
-    #
+    sites_cart = flex.vec3_double()
+    for i in selection_around_residue_minus_residue_minus_rotatableH:
+      atom = self.atoms[i]
+      an = atom.name.strip()
+      try:             rad = self.vdw_radii[an]-0.25
+      except KeyError: rad = 1.5 # XXX U, Uranium, OXT are problems!
+      good = True
+      if(self.diff_map_data is not None):
+        sf = self.crystal_symmetry.unit_cell().fractionalize(atom.xyz)
+        mv = self.diff_map_data.eight_point_interpolation(sf)
+        if(mv<-2.): good = False
+      if(residue.resname=="CYS" and atom.parent().resname=="CYS" and an=="SG"):
+        continue
+      if(self.map_data is not None):
+        key = "%s_%s_%s"%(
+          atom.parent().parent().parent().id, atom.parent().resname, an)
+        sf = self.crystal_symmetry.unit_cell().fractionalize(atom.xyz)
+        mv = self.map_data.eight_point_interpolation(sf)
+        if(mv < self.cmv[key]/3): good = False
+      if(good):
+        radii.append(rad)
+        sites_cart.append(atom.xyz)
     return fit_ext.fixed(sites_cart = sites_cart, radii = radii)
 
   def one_residue_iteration(self, residue):
@@ -151,8 +167,8 @@ class run(object):
       rotamer_manager   = self.rotamer_manager,
       rotatable_hd      = self.rotatable_hd,
       sin_cos_table     = self.sin_cos_table,
+      cmv               = self.cmv,
       log               = self.log)
-    self.sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
     self.total_time_residue_loop += (time.time()-t0)
 
   def loop(self, function):
