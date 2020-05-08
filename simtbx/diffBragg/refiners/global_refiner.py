@@ -43,6 +43,7 @@ if rank == 0:
     from numpy.linalg import norm
     from numpy import ones_like as ONES_LIKE
     from numpy import where as WHERE
+    from numpy import sqrt as SQRT
     from numpy import array as ARRAY
     from numpy import pi as PI
     from numpy import allclose as ALL_CLOSE
@@ -72,6 +73,7 @@ else:
     mean = unique = np_log = np_exp = np_all = norm = median = std = None
     ALL_CLOSE=NAN = ARRAY = SAVE = SAVEZ = ONES_LIKE = STD = ABS = PI= None
     WHERE = None
+    SQRT = None
     tabulate = None
     flex_miller_index = None
     minimize = None
@@ -91,6 +93,7 @@ if has_mpi:
     PATHJOIN = comm.bcast(PATHJOIN)
     MAKEDIRS = comm.bcast(MAKEDIRS)
     WHERE = comm.bcast(WHERE)
+    SQRT = comm.bcast(SQRT)
     EXISTS = comm.bcast(EXISTS)
     JSON_DUMP = comm.bcast(JSON_DUMP)
     ALL_CLOSE= comm.bcast(ALL_CLOSE)
@@ -700,7 +703,7 @@ class GlobalRefiner(PixelRefinement):
                     fsel_data = f_selection.data().as_numpy_array()
                     if self.log_fcells:
                         fsel_data = np_log(fsel_data)
-                    sigma = mean(f_selection.data().as_numpy_array()**2)
+                    sigma = SQRT(mean(f_selection.data().as_numpy_array()**2))
                     sigmas.append(sigma) #sigma_for_res_id[i_bin] = sigma
                 #min_sigma = min(self.sigma_for_res_id.values())
                 #max_sigma = max(self.sigma_for_res_id.values())
