@@ -7,7 +7,6 @@ import math, sys
 from cctbx import maptbx
 import scitbx.math
 import mmtbx.idealized_aa_residues.rotamer_manager
-import iotbx.pdb
 import collections
 from libtbx import group_args
 
@@ -214,35 +213,34 @@ class run(object):
       cl = clusters[i]
       axes.append(flex.size_t(cl.axis))
       atr.append(flex.size_t(cl.atoms_to_rotate))
-    sites = self.residue.atoms().extract_xyz()
+    #
     if(self.target_map is not None and self.xyzrad_bumpers is not None):
-      # Get vdW radii
-      offset = 0.25
-      #if(self.residue.resname=="MSE"): offset=0.5
-      radii = flex.double()
-      atom_names = []
+      # Get reference map values
       ref_map_vals = flex.double()
       for a in self.residue.atoms():
-        if(self.rotatable_hd[a.i_seq]): continue # don't include rotatable H
-        atom_names.append(a.name.strip())
         key = "%s_%s_%s"%(
           a.parent().parent().parent().id, a.parent().resname,
           a.name.strip())
         ref_map_vals.append(self.cmv[key])
-      converter = iotbx.pdb.residue_name_plus_atom_names_interpreter(
-        residue_name=self.residue.resname, atom_names = atom_names)
-      mon_lib_names = converter.atom_name_interpretation.mon_lib_names()
-      for n in mon_lib_names:
-        try: radii.append(self.vdw_radii[n.strip()]-offset)
-        except KeyError: radii.append(1.5) # XXX U, Uranium, OXT are problems!
-      #
-      xyzrad_residue = ext.moving(
-        sites_cart       = sites,
+      # Get radii
+      radii = mmtbx.refinement.real_space.get_radii(
+        residue = self.residue, vdw_radii = self.vdw_radii)
+      # Exclude rotatable H from clash calculation
+      tmp = flex.size_t()
+      for i in selection_clash:
+        if(self.rotatable_hd[self.residue.atoms()[i].i_seq]): continue
+        tmp.append(i)
+      selection_clash = tmp[:]
+      # Ad hoc: S or SE have larger peaks!
+      if(self.residue.resname in ["MET","MSE"]): scale=100
+      else:                                      scale=3
+      moving = ext.moving(
+        sites_cart       = self.residue.atoms().extract_xyz(),
         sites_cart_start = sites_cart_start,
         radii            = radii,
         weights          = self.weights,
         bonded_pairs     = self.pairs,
-        ref_map_max      = ref_map_vals * 3,
+        ref_map_max      = ref_map_vals * scale,
         ref_map_min      = ref_map_vals / 10)
       #
       ro = ext.fit(
@@ -251,10 +249,10 @@ class run(object):
         rotatable_points_indices = atr,
         angles_array             = self.chi_angles,
         density_map              = self.target_map,
-        moving                   = xyzrad_residue,
+        moving                   = moving,
         unit_cell                = self.unit_cell,
         selection_clash          = selection_clash,
-        selection_rsr            = selection_rsr,
+        selection_rsr            = selection_rsr, # select atoms to compute map target
         sin_table                = self.sin_cos_table.sin_table,
         cos_table                = self.sin_cos_table.cos_table,
         step                     = self.sin_cos_table.step,
@@ -266,7 +264,7 @@ class run(object):
         rotatable_points_indices = atr,
         angles_array             = self.chi_angles,
         density_map              = self.target_map,
-        all_points               = sites,
+        all_points               = self.residue.atoms().extract_xyz(),
         unit_cell                = self.unit_cell,
         selection                = selection_rsr,
         sin_table                = self.sin_cos_table.sin_table,

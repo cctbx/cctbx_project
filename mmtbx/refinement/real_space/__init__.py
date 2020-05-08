@@ -172,6 +172,27 @@ def flatten(l):
   if l is None: return None
   return sum(([x] if not (isinstance(x, list) or isinstance(x, flex.size_t)) else flatten(x) for x in l), [])
 
+def get_radii(residue, vdw_radii):
+  atom_names = [a.name.strip() for a in residue.atoms()]
+  converter = iotbx.pdb.residue_name_plus_atom_names_interpreter(
+    residue_name = residue.resname, atom_names = atom_names)
+  mon_lib_names = converter.atom_name_interpretation.mon_lib_names()
+  radii = flex.double()
+  for n in mon_lib_names:
+    try:             radii.append(vdw_radii[n.strip()]-0.25)
+    except KeyError: radii.append(1.5) # XXX U, Uranium, OXT are problems!
+  return radii
+
+def get_radius(atom, vdw_radii):
+  atom_names = [atom.name.strip()]
+  converter = iotbx.pdb.residue_name_plus_atom_names_interpreter(
+    residue_name = atom.parent().resname, atom_names = atom_names)
+  if(converter.atom_name_interpretation is not None):
+    atom_names = converter.atom_name_interpretation.mon_lib_names()
+  n = atom_names[0].strip()
+  try:             return vdw_radii[n.strip()]-0.25
+  except KeyError: return 1.5 # XXX U, Uranium, OXT are problems!
+
 def common_map_values(pdb_hierarchy, unit_cell, map_data):
   d = {}
   for model in pdb_hierarchy.models():
@@ -199,16 +220,8 @@ def common_map_values(pdb_hierarchy, unit_cell, map_data):
   overall_mean = flex.mean_default(all_vals.select(sel),0)
   for k,v in zip(d.keys(), d.values()):
     sel = mean_filtered(v)
-    if(sel.count(True)>10):
-      result[k] = flex.mean_default(v.select(sel),0)
-    else:
-      result[k] = overall_mean
-      an = key.split("_")[-1][0]
-      mv = flex.mean_default(v,0)
-      if(an=="S"):
-        result[k] = mv
-      else:
-        result[k] = overall_mean
+    if(sel.count(True)>10): result[k] = flex.mean_default(v.select(sel),0)
+    else:                   result[k] = overall_mean
   return result
 
 class side_chain_fit_evaluator(object):

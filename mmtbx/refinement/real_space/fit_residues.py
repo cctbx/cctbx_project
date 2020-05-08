@@ -127,8 +127,8 @@ class run(object):
     for i in selection_around_residue_minus_residue_minus_rotatableH:
       atom = self.atoms[i]
       an = atom.name.strip()
-      try:             rad = self.vdw_radii[an]-0.25
-      except KeyError: rad = 1.5 # XXX U, Uranium, OXT are problems!
+      rad = mmtbx.refinement.real_space.get_radius(
+        atom = atom, vdw_radii = self.vdw_radii)
       good = True
       if(self.diff_map_data is not None):
         sf = self.crystal_symmetry.unit_cell().fractionalize(atom.xyz)
