@@ -86,7 +86,8 @@ def get_lookup(a1, a2, a3=None):
 def get_distance_ideal_and_weight(a1, a2):
   ligand_lookup = get_lookup(a1, a2)
   key = (a1.element.strip().upper(), a2.element.strip().upper())
-  assert key in ligand_lookup
+  assert key in ligand_lookup, ' Atom pair %s %s not found in MCL' % (a1.quote(),
+                                                                      a2.quote())
   distance_ideal=ligand_lookup[key][0]
   weight=1.0/ligand_lookup[key][1]**2
   return distance_ideal, weight
@@ -155,8 +156,8 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
         sf4g=ag2
         aa=a2
         aag=ag2
-      if aa.element.strip() in ['H', 'D']: continue
-      if aa.element.strip() in ['CA', 'C', 'O', 'N']: continue
+      if aa.element.strip() not in ['S']: continue
+      # if aa.element.strip() in ['H', 'D']: continue
       if verbose: print('%s-aa' % resname,sf4.quote(),aa.quote(),dist)
       if sf4.element.lower()=="fe":
         if aag.id_str() not in done_aa:

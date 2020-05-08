@@ -393,6 +393,7 @@ probe_tests = [
   # automatic linking
   ["$D/monomer_library/tst_metal_coordination.py", "1"],
   ["$D/monomer_library/tst_metal_coordination.py", "2"],
+  ["$D/monomer_library/tst_metal_coordination.py", "3"],
   ["$D/monomer_library/tst_linking.py", "1"],
   ["$D/monomer_library/tst_linking.py", "2"],
   ["$D/monomer_library/tst_linking.py", "3"],
