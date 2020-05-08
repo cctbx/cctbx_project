@@ -176,7 +176,7 @@ class run(object):
     if(self.m is not None):
       self.m.finalize(residue = self.residue)
       # Too bulky, but very useful. Use for debugging only.
-      self.m.show()
+      #self.m.show()
 
   def get_target_value(self, sites_cart, selection=None, target_map=None):
     if(target_map is None): target_map = self.target_map
