@@ -678,7 +678,6 @@ class model_idealization():
       ssb.substitute_ss(
           model = self.model,
           params=self.params.ss_idealization,
-          verbose=self.params.verbose,
           reference_map=self.master_map,
           log=self.log)
       self.log.flush()
