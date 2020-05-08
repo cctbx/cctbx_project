@@ -187,7 +187,7 @@ def common_map_values(pdb_hierarchy, unit_cell, map_data):
             key = "%s_%s_%s"%(chain.id, residue.resname, atom.name.strip())
             d.setdefault(key, flex.double()).append(mv)
   def mean_filtered(x):
-    me = flex.mean(x)
+    me = flex.mean_default(x,0)
     sel  = x < me*3
     sel &= x > me/3
     return sel
@@ -196,15 +196,15 @@ def common_map_values(pdb_hierarchy, unit_cell, map_data):
   for v in d.values():
     all_vals.extend(v)
   sel = mean_filtered(all_vals)
-  overall_mean = flex.mean(all_vals.select(sel))
+  overall_mean = flex.mean_default(all_vals.select(sel),0)
   for k,v in zip(d.keys(), d.values()):
     sel = mean_filtered(v)
     if(sel.count(True)>10):
-      result[k] = flex.mean(v.select(sel))
+      result[k] = flex.mean_default(v.select(sel),0)
     else:
       result[k] = overall_mean
       an = key.split("_")[-1][0]
-      mv = flex.mean(v)
+      mv = flex.mean_default(v,0)
       if(an=="S"):
         result[k] = mv
       else:
