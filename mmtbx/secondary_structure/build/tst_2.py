@@ -1195,6 +1195,7 @@ HELIX   13  13 SER A  466  TYR A  472  1                                   7
   rm = ssb.substitute_ss(
       model,
       params = ssb_params_norot.ss_idealization)
+  rm.run()
   # model.get_hierarchy().write_pdb_file(file_name="result.pdb")
   d1 = get_distances(model.get_hierarchy(), 5)
   answer_h = iotbx.pdb.input(
@@ -1224,6 +1225,7 @@ HELIX    1  21 ALA A   21  ALA A   24  1                                  5
   rm = ssb.substitute_ss(
       model,
       params = ssb_params_norot.ss_idealization)
+  rm.run()
   # h.write_pdb_file(file_name="%s_result.pdb" % prefix)
   d1 = get_distances(model.get_hierarchy(), 5)
   answer_h = iotbx.pdb.input(

@@ -457,9 +457,15 @@ class idealize_helix(object):
     all_bsel = flex.bool(self.n_atoms_in_real_h, False)
     all_bsel.set_selected(isel, True)
     sel_h = self.model.get_hierarchy().select(all_bsel, copy_atoms=True)
-    ideal_h = get_helix(helix_class=h.helix_class,
-                        pdb_hierarchy_template=sel_h,
-                        rotamer_manager=self.model.get_rotamer_manager())
+    try:
+      ideal_h = get_helix(helix_class=h.helix_class,
+                          pdb_hierarchy_template=sel_h,
+                          rotamer_manager=self.model.get_rotamer_manager())
+    except Sorry as e:
+      if e.args[0].startswith("C, CA or N"):
+        return 'Not enough atoms'
+      else:
+        raise e
     return ideal_h, all_bsel
 
 class idealize_sheet(object):
@@ -623,28 +629,45 @@ class substitute_ss(object):
         master_bool_sel, self.model.get_number_of_atoms(), self.model,
         self.processed_params.skip_good_ss_elements)
     n_idealized_helices = 0
-    h_results = easy_mp.pool_map(
-        processes = self.processed_params.nproc,
-        fixed_func=ih,
-        args=self.ss_annotation.helices)
-    for res in h_results:
-      if not isinstance(res, str):
-        n_idealized_helices +=1
-        set_xyz_carefully(dest_h=self.edited_h.select(res[1]), source_h=res[0])
+    n_skipped_in_copies = 0
+    if len(self.ss_annotation.helices)>0:
+      h_results = easy_mp.pool_map(
+          processes = self.processed_params.nproc,
+          fixed_func=ih,
+          args=self.ss_annotation.helices)
+      for res in h_results:
+        if not isinstance(res, str):
+          n_idealized_helices +=1
+          set_xyz_carefully(dest_h=self.edited_h.select(res[1]), source_h=res[0])
+        else:
+          if res == 'Not enough atoms':
+            error_msg = "C, CA or N atoms are absent in secondary structure element." +\
+                "\nPlease add them to the model and try again."
+            raise Sorry(error_msg)
+          elif res == 'Not master':
+            n_skipped_in_copies += 1
 
     ish = idealize_sheet(ss_stats, self.model.get_atom_selection_cache(),
         master_bool_sel, self.model.get_number_of_atoms(), self.model,
         self.processed_params.skip_good_ss_elements)
-    sh_results = easy_mp.pool_map(
-        processes = self.processed_params.nproc,
-        fixed_func=ish,
-        args=self.ss_annotation.sheets)
     n_idealized_sheets = 0
-    for res in sh_results:
-      if not isinstance(res, str):
-        n_idealized_sheets += 1
-        for (ideal_h, sel) in res:
-          set_xyz_carefully(self.edited_h.select(sel), ideal_h)
+    if len(self.ss_annotation.sheets)>0:
+      sh_results = easy_mp.pool_map(
+          processes = self.processed_params.nproc,
+          fixed_func=ish,
+          args=self.ss_annotation.sheets)
+      for res in sh_results:
+        if not isinstance(res, str):
+          n_idealized_sheets += 1
+          for (ideal_h, sel) in res:
+            set_xyz_carefully(self.edited_h.select(sel), ideal_h)
+        else:
+          if res == 'Not enough atoms':
+            error_msg = "C, CA or N atoms are absent in secondary structure element." +\
+                "\nPlease add them to the model and try again."
+            raise Sorry(error_msg)
+          elif res == 'Not master':
+            n_skipped_in_copies += 1
     n_idealized_elements = n_idealized_helices + n_idealized_sheets
     self.idealized_counts = group_args(
         n_total=n_idealized_elements,
@@ -654,6 +677,7 @@ class substitute_ss(object):
       self.log.write("Nothing was idealized.\n")
       # Don't do geometry minimization and stuff if nothing was changed.
       return None
+    self.log.write('%d element(s) were skipped because they are in NCS copies\n' % n_skipped_in_copies)
 
     # XXX here we want to adopt new coordinates
     self.model.set_sites_cart(sites_cart=self.edited_h.atoms().extract_xyz())
