@@ -240,5 +240,5 @@ if __name__ == '__main__':
         'structure.')
     sys.exit(1)
   t1 = current_time()
-  if not args.table:
+  if not (args.table or args.table_with_su):
     print("Total time: %.3f s" % (t1 - t0))
