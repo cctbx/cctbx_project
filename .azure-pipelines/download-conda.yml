@@ -70,7 +70,7 @@ jobs:
         mkdir -p ${directory}
         cd ${directory}
         echo Downloading ${filename} to ${directory}
-        wget ${url}
+        wget --retry-connrefused ${url}
         cd ..
         if [ "$(OS)" = "win-64" ]; then
           echo ${directory}\\${filename} >> filenames.txt
