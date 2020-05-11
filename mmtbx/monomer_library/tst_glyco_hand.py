@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library.glyco_chiral_values import alpha_beta
 
 def main():
-  print 'codes',len(alpha_beta)
+  print('codes',len(alpha_beta))
   tests = {"NAG" : "beta",
            'NDG' : 'alpha',
            'MAN' : "alpha",

@@ -58,7 +58,37 @@ HETATM   45  H2  NAG A1177       9.424 -10.949  12.357  1.00 12.00           H
 HETATM   46  H82 NAG A1177       5.243 -11.105  10.751  1.00 10.52           H
 HETATM   47  HN2 NAG A1177       7.399 -12.601  11.034  1.00 11.60           H
 ''',
-        }
+  'linking_FUC.pdb' : '''
+CRYST1   72.333   98.984  152.019  90.00  90.00  90.00 P 21 21 21
+SCALE1      0.013825  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.010103  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.006578        0.00000
+HETATM    1  C2  GAL E 207     -50.952  -3.199  42.155  0.90 39.70           C
+ANISOU    1  C2  GAL E 207     5050   5702   4333   -619   -389    745       C
+HETATM    2  O2  GAL E 207     -51.145  -3.682  40.855  0.90 37.04           O
+ANISOU    2  O2  GAL E 207     4034   3948   6093  -1230     63   -597       O
+HETATM    3  C1  FUC E 210     -50.167  -4.605  40.258  0.90 40.07           C
+ANISOU    3  C1  FUC E 210     5310   4344   5571   -330    -46  -1039       C
+HETATM    4  C2  FUC E 210     -50.885  -5.345  39.138  0.90 39.95           C
+ANISOU    4  C2  FUC E 210     4770   4247   6162   -993    207  -1570       C
+HETATM    5  C3  FUC E 210     -51.328  -4.387  38.002  0.90 37.97           C
+ANISOU    5  C3  FUC E 210     3982   4753   5691  -1411   -306  -2427       C
+HETATM    6  C4  FUC E 210     -50.128  -3.526  37.490  0.90 42.09           C
+ANISOU    6  C4  FUC E 210     4378   5641   5972  -1302   -138  -1850       C
+HETATM    7  C5  FUC E 210     -49.452  -2.849  38.740  0.90 38.93           C
+ANISOU    7  C5  FUC E 210     4139   4684   5967  -1869   -447  -1235       C
+HETATM    8  C6  FUC E 210     -48.234  -1.996  38.345  0.90 34.08           C
+ANISOU    8  C6  FUC E 210     2501   5771   4677   -766    279   -903       C
+HETATM    9  O2  FUC E 210     -52.027  -5.944  39.685  0.90 45.56           O
+ANISOU    9  O2  FUC E 210     4712   5115   7484   -531   1136  -1747       O
+HETATM   10  O3  FUC E 210     -51.952  -5.101  36.892  0.90 48.86           O
+ANISOU   10  O3  FUC E 210     4944   7622   6000  -2188   -157  -3300       O
+HETATM   11  O4  FUC E 210     -49.187  -4.308  36.634  0.90 47.16           O
+ANISOU   11  O4  FUC E 210     3538   8928   5451  -2181      3  -3117       O
+HETATM   12  O5  FUC E 210     -49.036  -3.825  39.759  0.90 43.21           O
+ANISOU   12  O5  FUC E 210     5470   4074   6872   -230   -266  -1185       O
+''',
+  }
 
 links = {
   'linking_BDP.pdb' : '''
@@ -67,6 +97,11 @@ links = {
       " NAG A1175 " - " BDP A1176 "
     BETA1-4
       " BDP A1176 " - " NAG A1177 "''',
+  'linking_FUC.pdb' : '''
+  Links applied
+    BETA1-2
+      " GAL E 207 " - " FUC E 210 "
+       ~> Even though FUC is an alpha isomer, a beta linkage is required...'''
   }
 
 def run(only_i=None):
