@@ -116,6 +116,7 @@ general_tests = [
   "$D/monomer_library/tst_neutron_distance.py",
   '$D/monomer_library/tst_carbo_linking.py',
   '$D/monomer_library/tst_glyco_hand.py',
+  '$D/monomer_library/tst_glyco_coordination.py',
   '$D/monomer_library/tst_paral_geo.py',
   #
   "$D/regression/tst_altloc_remediate.py",
