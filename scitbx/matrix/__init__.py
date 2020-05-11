@@ -1691,7 +1691,7 @@ def exercise_1():
   assert approx_equal(f(vector_1=[3,6,9], vector_2=[1,2,3]), 1/3)
   assert f(vector_1=col([0,1,1]), vector_2=[1,1,1]) is None
   assert f(vector_1=[1,1,1], vector_2=col([0,1,1])) is None
-  assert f(vector_1=col([0,0,0]), vector_2=col([0,0,0])) is 0
+  assert f(vector_1=col([0,0,0]), vector_2=col([0,0,0])) == 0
   #
   a = col_list(seq=[(1,2), (2,3)])
   for e in a: assert isinstance(e, col)

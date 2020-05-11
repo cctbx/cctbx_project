@@ -328,7 +328,7 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log,
         for gi1i in gi[1]:
           rot_atoms.append(atoms[gi1i].i_seq)
         result.append([axis, rot_atoms])
-    if(len(result)>0 is not None): return result
+    if(len(result)>0): return result
     else: return None
   def analyze_group_general(g, atoms, bps, psel):
     result = []
@@ -381,7 +381,7 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log,
               if(psel[atoms[i].i_seq]): in_plane = True
               rot_atoms.append(atoms[i].i_seq)
             if(not in_plane): result.append([axis, rot_atoms])
-    if(len(result)>0 is not None): return result
+    if(len(result)>0): return result
     else: return None
   def helper_1(residue, mon_lib_srv, log, result, psel):
     fr = rotatable_bonds.axes_and_atoms_aa_specific(
