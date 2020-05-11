@@ -419,19 +419,19 @@ class HKLViewFrame (wx.Frame) :
   def SetupToolbar (self) :
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
     self.toolbar.SetToolBitmapSize((32,32))
-    btn = self.toolbar.AddLabelTool(id=-1,
+    btn = self.toolbar.AddTool(toolId=-1,
       label="Load file",
       bitmap=icons.hkl_file.GetBitmap(),
       shortHelp="Load file",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnLoadFile, btn)
-    btn = self.toolbar.AddLabelTool(id=-1,
+    btn = self.toolbar.AddTool(toolId=-1,
       label="Save image",
       bitmap=icons.save_all.GetBitmap(),
       shortHelp="Save image",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnSave, btn)
-    btn = self.toolbar.AddLabelTool(id=-1,
+    btn = self.toolbar.AddTool(toolId=-1,
       label="Delete reflection",
       bitmap=bitmaps.fetch_icon_bitmap("actions","editdelete"), # FIXME
       shortHelp="Delete reflection",
@@ -444,7 +444,7 @@ class HKLViewFrame (wx.Frame) :
     self.menubar.Append(self.file_menu, "File")
     item = wx.MenuItem(self.file_menu, -1, "Load data...\tCtrl-O")
     self.Bind(wx.EVT_MENU, self.OnLoadFile, item)
-    self.file_menu.AppendItem(item)
+    self.file_menu.Append(item)
     if (libtbx.env.has_module("phenix")) :
       phenix_dir = os.path.dirname(libtbx.env.dist_path("phenix"))
       examples_dir = os.path.join(phenix_dir, "phenix_examples")
@@ -460,7 +460,7 @@ class HKLViewFrame (wx.Frame) :
         for subdir, data in examples_and_data :
           example_file = os.path.join(examples_dir, subdir, data)
           item = wx.MenuItem(submenu, -1, subdir)
-          submenu.AppendItem(item)
+          submenu.Append(item)
           self.Bind(wx.EVT_MENU,
             lambda evt, f=example_file: self.load_reflections_file(f), item)
 
@@ -478,15 +478,15 @@ class HKLViewFrame (wx.Frame) :
 
   def add_view_specific_functions (self) :
     item = wx.MenuItem(self.file_menu, -1, "Show 2D view")
-    self.file_menu.AppendItem(item)
+    self.file_menu.Append(item)
     self.Bind(wx.EVT_MENU, self.OnShow2D, item)
-    btn = self.toolbar.AddLabelTool(id=-1,
+    btn = self.toolbar.AddTool(toolId=-1,
       label="Show 2D view",
       bitmap=icons.hklview_2d.GetBitmap(),
       shortHelp="Show 2D view",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnShow2D, btn)
-    btn = self.toolbar.AddLabelTool(id=-1,
+    btn = self.toolbar.AddTool(toolId=-1,
       label="Clear labels",
       bitmap=icons.clear_left.GetBitmap(),
       shortHelp="Clear labels",
@@ -723,7 +723,7 @@ class HKLViewFrame (wx.Frame) :
     file_name = wx.FileSelector("Reflections file",
       wildcard="Reflection files (*.mtz, *.sca, *.hkl)|*.mtz;*.sca;*.hkl",
       default_path=os.getcwd(),
-      flags=wx.OPEN)
+      flags=wx.FD_OPEN)
     self.load_reflections_file(to_str(file_name))
 
   def OnSave (self, evt) :
@@ -731,7 +731,7 @@ class HKLViewFrame (wx.Frame) :
       default_path=os.getcwd(),
       default_filename="hklview.png",
       wildcard="PNG image (*.png)|*.png",
-      flags=wx.SAVE)
+      flags=wx.FD_SAVE)
     if (output_file != "") :
       self.viewer.save_screen_shot(file_name=to_str(output_file),
         extensions=["png"])
@@ -786,9 +786,9 @@ class HKLViewFrame2D (HKLViewFrame) :
 
   def add_view_specific_functions (self) :
     item = wx.MenuItem(self.file_menu, -1, "Show 3D view")
-    self.file_menu.AppendItem(item)
+    self.file_menu.Append(item)
     self.Bind(wx.EVT_MENU, self.OnShow3D, item)
-    btn = self.toolbar.AddLabelTool(id=-1,
+    btn = self.toolbar.AddTool(toolId=-1,
       label="Show 3D view",
       bitmap=icons.hklview_3d.GetBitmap(),
       shortHelp="Show 3D view",

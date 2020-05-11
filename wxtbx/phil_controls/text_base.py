@@ -75,9 +75,9 @@ class ValidatedTextCtrl(wx.TextCtrl, phil_controls.PhilCtrl):
     else :
       self.SetBackgroundColour((200,200,200))
 
-class TextCtrlValidator(wx.PyValidator):
+class TextCtrlValidator(wx.Validator):
   def __init__(self):
-    wx.PyValidator.__init__(self)
+    wx.Validator.__init__(self)
     self.Bind(wx.EVT_TEXT_ENTER, self.OnEnter)
 
   def Clone(self):
