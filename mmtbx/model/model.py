@@ -3367,6 +3367,7 @@ class manager(object):
     self._expand_symm_helper(biomt_records_container)
 
   def set_sequences(self, sequences, custom_residues=None,
+                    custom_alignment=None,
                     similarity_matrix=None, min_allowable_identity=None,
                     minimum_identity=0.5):
     """
@@ -3382,6 +3383,9 @@ class manager(object):
     custom_residues: list of str
       List of custom 3-letter residues to keep in pdbx_one_letter_sequence
       The 3-letter residue must exist in the model
+    custom_alignment: list of str
+      List of chain ids where the alignment will be forced to match a
+      sequence with the same name
     similarity_matrix: blosum50 dayhoff *identity
       choice from mmtbx.validation.sequence.master_phil
     min_allowable_identity: float
@@ -3410,6 +3414,7 @@ class manager(object):
       pdb_hierarchy=self._pdb_hierarchy,
       sequences=sequences,
       custom_residues=custom_residues,
+      custom_alignment=custom_alignment,
       params=params,
       log=self.log,
       minimum_identity=minimum_identity

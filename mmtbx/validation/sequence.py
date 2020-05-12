@@ -276,7 +276,7 @@ class validation(object):
   def __init__(self, pdb_hierarchy, sequences, params=None, log=None,
       nproc=Auto, include_secondary_structure=False,
       extract_coordinates=False, extract_residue_groups=False,
-      minimum_identity=0, custom_residues=[]):
+      minimum_identity=0, custom_residues=[], custom_alignment=[]):
     assert (len(sequences) > 0)
     for seq_object in sequences :
       assert (seq_object.sequence != "")
@@ -293,6 +293,9 @@ class validation(object):
     self.custom_residues = custom_residues
     if self.custom_residues is None:
       self.custom_residues = list()
+    self.custom_alignment = custom_alignment
+    if self.custom_alignment is None:
+      self.custom_alignment = list()
     self.sequence_mappings = [ None ] * len(sequences)
     for i_seq in range(1, len(sequences)):
       seq_obj1 = sequences[i_seq]
@@ -394,6 +397,21 @@ class validation(object):
           c.extract_coordinates(pdb_chain)
         if extract_residue_groups:
           c.extract_residue_groups(pdb_chain)
+        # force alignment based on chain id and sequence description
+        import mmtbx.alignment
+        if c.chain_id in self.custom_alignment:
+          for i, seq in enumerate(self.sequences):
+            if c.chain_id == seq.name.strip():
+              alignment = mmtbx.alignment.align(
+                seq_a=c.sequence,
+                seq_b=seq.sequence).extract_alignment()
+              c.set_alignment(alignment, seq.name, i)
+              c.n_missing = 0
+              c.n_gaps = 0
+              c.mismatch = list()
+              c.extra = list()
+              c.unknown = list()
+              break
     self.sequences = None
 
   def align_chain(self, i):

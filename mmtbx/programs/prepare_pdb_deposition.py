@@ -47,6 +47,13 @@ custom_residues = None
   .help = Space-separated list of three letter codes to be included in \
     the entity_poly.pdbx_one_letter_code mmCIF loop \
     (e.g. custom_residues='SUI PYL')
+custom_alignment = None
+  .type = strings
+  .help = Space-separated list of chain ids that will be forced to match.\
+    This is useful for matching chains in the model where the sequence \
+    cannot be determined. The chain id in the model file and the \
+    description of the sequence in the sequence file must be exactly the \
+    same. (e.g chain D in the model file must be ">D" in the FASTA file)
 keep_original_loops = True
   .type = bool
   .help = Preserves mmCIF data from the input model file (if available) that \
