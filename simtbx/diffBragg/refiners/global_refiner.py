@@ -373,7 +373,6 @@ class GlobalRefiner(PixelRefinement):
 
     def __call__(self, *args, **kwargs):
         _, _ = self.compute_functional_and_gradients()
-        exit()
         return self.x, self._f, self._g, self.d  #NOTEX
 
     @property
@@ -2048,19 +2047,20 @@ class GlobalRefiner(PixelRefinement):
         return cterm.sum()
 
     def _gaussian_target(self):
-        #fterm = (self.log2pi + 2*self.log_Lambda_plus_sigma_readout + self.u*self.u*self.one_over_v).sum()
-        #return .5*fterm
-        #fterm = (self.log2pi + 2*self.log_Lambda_plus_sigma_readout + self.u_u_one_over_v).sum()
-        fterm = (self.log_Lambda_plus_sigma_readout + .5*self.u_u_one_over_v).sum()
+        fterm = .5*(self.log2pi + self.log_v + self.u*self.u*self.one_over_v).sum()
         return fterm
+        #fterm = (self.log2pi + 2*self.log_Lambda_plus_sigma_readout + self.u_u_one_over_v).sum()
+        #fterm = (self.log_Lambda_plus_sigma_readout + .5*self.u_u_one_over_v).sum()
+        #return fterm
 
     def _gaussian_d(self, d):
-        gterm = (d*self.one_over_v_times_one_minus_2u_minus_u_squared_over_v).sum()
+        #gterm = (d*self.one_over_v_times_one_minus_2u_minus_u_squared_over_v).sum()
+        gterm = .5 * (d * self.one_over_v * self.one_minus_2u_minus_u_squared_over_v).sum()
         #a = self.one_over_v_times_one_minus_2u_minus_u_squared_over_v
         #gterm = numexpr.evaluate('sum(d*a)')
         #local_dict={'a': self.one_over_v_times_one_minus_2u_minus_u_squared_over_v, 'd':d})
         #gterm = 0.5*gterm[()]
-        return .5*gterm
+        return gterm
 
     def _gaussian_d2(self, d, d2):
         #cterm = self.one_over_v * (d2*self.one_minus_2u_minus_u_squared_over_v -
@@ -2080,9 +2080,10 @@ class GlobalRefiner(PixelRefinement):
 
         self.u = self.Imeas - self.model_Lambda
         self.one_over_v = 1. / (self.model_Lambda + self.sigma_r ** 2)
+        self.one_minus_2u_minus_u_squared_over_v = 1 - 2 * self.u - self.u * self.u * self.one_over_v
         self.u_times_one_over_v = self.u*self.one_over_v
         self.u_u_one_over_v = self.u*self.u_times_one_over_v
-        self.one_minus_2u_minus_u_squared_over_v = 1 - 2 * self.u - self.u_u_one_over_v
+        #self.one_minus_2u_minus_u_squared_over_v = 1 - 2 * self.u - self.u_u_one_over_v
         self.one_over_v_times_one_minus_2u_minus_u_squared_over_v = self.one_over_v*self.one_minus_2u_minus_u_squared_over_v
 
     def _evaluate_log_averageI(self):  # for Poisson only stats
@@ -2100,14 +2101,14 @@ class GlobalRefiner(PixelRefinement):
         self.log_Lambda[self.model_Lambda <= 0] = 0
 
     def _evaluate_log_averageI_plus_sigma_readout(self):
-        L = self.model_Lambda + self.sigma_r ** 2
-        L_is_neg = (L <= 0).ravel()
-        if any(L_is_neg):
+        v = self.model_Lambda + self.sigma_r ** 2
+        v_is_neg = (v <= 0).ravel()
+        if any(v_is_neg):
             self.num_kludge += 1
             print("\n<><><><><><><><>\n\tWARNING: NEGATIVE INTENSITY IN MODEL!!!!!!!!!\n<><><><><><><><><>\n")
         #    raise ValueError("model of Bragg spots cannot have negative intensities...")
-        self.log_Lambda_plus_sigma_readout = np_log(L)
-        self.log_Lambda_plus_sigma_readout[L <= 0] = 0  # but will I ever kludge ?
+        self.log_v = np_log(v)
+        self.log_v[v <= 0] = 0  # but will I ever kludge ?
 
     def print_step(self):
         """Deprecated"""
