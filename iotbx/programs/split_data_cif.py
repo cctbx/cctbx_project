@@ -77,7 +77,7 @@ output {
           if os.path.isfile(fn) and not self.params.output.overwrite:
             raise Sorry("%s already exists and overwrite is set to False." % fn)
           print ("Writing '%s'" % fn, file=self.logger)
-          output_model = iotbx.cif.model.cif(blocks={data_block_name:cif_model[data_block_name]})
+          output_model = iotbx.cif.model.cif(blocks={data_block_name:cif_model[data_block_name]}).deepcopy()
           with open(fn, 'w') as f:
             output_model.show(out=f)
           self.out_cif_names.append(fn)
