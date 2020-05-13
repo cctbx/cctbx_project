@@ -2198,7 +2198,7 @@ class GlobalRefiner(PixelRefinement):
         self.R_overall = -1
         ncurv = 0
         if self.calc_curvatures:
-            ncurv = len(self.curv)
+            ncurv = len(self.curv > 0)
 
 
         if self.Fref is not None and self.iterations % self.merge_stat_frequency == 0:
