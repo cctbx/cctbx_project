@@ -80,6 +80,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.mx_iter = None  # LBFGS terminator param not sure used in lbfgs
         self.max_calls = 100000  # LBFGS terminator param how many overall iterations
         self.diag_mode = "always"  # LBFGS refiner property, whether to update curvatures at each iteration
+        self.fix_params_with_negative_curvature = False
         self.request_diag_once = False  # LBFGS refiner property
         self.output_dir = None  # directory to dump progress files, these can be used to restart simulation later
         self.bg_extracted = False  # is using the mode where background is extracted from the image ahead of time and we only fit a coefficient times that extracted value
