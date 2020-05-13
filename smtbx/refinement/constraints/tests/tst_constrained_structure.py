@@ -19,7 +19,7 @@ class test_case(object):
 
   expected_reparametrisation_for_hydrogen_named = None
   expected_mapping_to_grad_fc = None
-  fpfdp_run = False
+  refinement_config = "default"
 
   def __init__(self, normal_eqns_solving_method):
     self.normal_eqns_solving_method = normal_eqns_solving_method
@@ -132,12 +132,12 @@ class test_case(object):
     print("[ %s ]" % self.__class__.__name__)
     self.connectivity_table = smtbx.utils.connectivity_table(
       self.xray_structure)
-    if not self.fpfdp_run:
+    if self.refinement_config == "default":
       for sc in self.xray_structure.scatterers():
         sc.flags.set_grad_site(True)
         if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(True)
         if sc.flags.use_u_iso(): sc.flags.set_grad_u_iso(True)
-    else:
+    elif self.refinement_config == "fpfdp":
       self.xray_structure.set_inelastic_form_factors(1.54184, 'sasaki')
       for sc in self.xray_structure.scatterers():
         sc.flags.set_grad_site(False)
@@ -148,6 +148,11 @@ class test_case(object):
           sc.flags.set_use_fp_fdp(True)
           sc.flags.set_grad_fp(True)
           sc.flags.set_grad_fdp(True)
+    elif self.refinement_config == "adp":
+      for sc in self.xray_structure.scatterers():
+        sc.flags.set_grad_site(False)
+        if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(True)
+        if sc.flags.use_u_iso(): sc.flags.set_grad_u_iso(True)
 
 
     self.reparametrisation = constraints.reparametrisation(
@@ -164,10 +169,109 @@ class test_case(object):
     # n.b. the fp,fdp tests override the default check_refinement_stability
     self.check_refinement_stability()
 
+class scalar_scaled_adp_test_case(test_case):
+
+  refinement_config = "adp"
+
+  def __init__(self, m):
+    test_case.__init__(self, m)
+    self.xray_structure = development.sucrose()
+    self.t_celsius = 20
+    self.shall_refine_thermal_displacements = True
+    self.constraints = [
+        _.scalar_scaled_u(range(len(self.xray_structure.scatterers())))
+        ]
+    self.expected_reparametrisation_for_hydrogen_named = {}
+    xs = self.xray_structure
+
+    # Make one O atom isotropic to exercise scalar_scaled_u_iso on a non-H atom
+    sc1 = xs.scatterers()[1]
+    sc1.u_iso = sc1.u_iso_or_equiv(xs.unit_cell())
+    sc1.set_use_u_iso_only()
+    self.expected_mapping_to_grad_fc = tuple(range(271, 271+155)) # There are
+    # 155 adp params: 12 aniso C, 22 isot H, 10 aniso O, 1 isot O
+
+  def check_reparametrisation_construction(self):
+    for sc, params in zip(
+      self.reparametrisation.structure.scatterers(),
+      self.reparametrisation.asu_scatterer_parameters
+      ):
+      if sc.scattering_type != 'H':
+        assert (
+            isinstance(params.site, core.independent_site_parameter)
+            or
+            isinstance(params.site, core.special_position_u_star_parameter)
+            )
+        if sc.flags.use_u_iso():
+          assert isinstance(params.u, core.scalar_scaled_u_iso)
+        else:
+          assert sc.flags.use_u_aniso()
+          assert isinstance(params.u, core.scalar_scaled_u_star)
+        assert params.site.scatterers[0].label == sc.label
+        assert params.u.scatterers[0].label == sc.label
+        assert isinstance(params.occupancy,
+                          core.independent_occupancy_parameter)
+        assert params.occupancy.scatterers[0].label == sc.label
+      else:
+        assert isinstance(params.u, core.scalar_scaled_u_iso)
+    self.check_reparametrisation_construction_more()
+
+  def check_refinement_stability(self):
+    xs = self.xray_structure
+    xs0 = self.reference_xray_structure = xs.deep_copy_scatterers()
+
+    # First we construct the Fo array
+    mi = xs0.build_miller_set(anomalous_flag=True, d_min=0.5)
+    fo_sq = mi.structure_factors_from_scatterers(
+        xs0, algorithm="direct").f_calc().norm()
+    fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.size(), 1))
+
+    # Then shake adps and store the shaken adp components
+    self.shake_selection = flex.bool([
+        sc.element_symbol() in ['C', 'O']
+        for sc in xs.scatterers()
+        ])
+    xs.shake_adp(selection=self.shake_selection)
+    adp_ref = []
+    for sc in xs.scatterers():
+      if sc.flags.use_u_aniso():
+        adp_ref.extend(sc.u_star)
+      else:
+        adp_ref.append(sc.u_iso)
+
+    # Then do the refinement
+    self.reparametrisation = constraints.reparametrisation(
+      xs, self.constraints, self.connectivity_table,
+      temperature=self.t_celsius)
+    self.obs = fo_sq.as_xray_observations()
+    ls = least_squares.crystallographic_ls(
+      self.obs,
+      self.reparametrisation,
+      weighting_scheme=least_squares.mainstream_shelx_weighting())
+    self.cycles = self.normal_eqns_solving_method(ls)
+    print ("%i %s iterations to recover from shaking"
+           % (self.cycles.n_iterations,
+              self.cycles))
+
+    # Then verify the final ADPs have all changed by the same amount
+    adp_final = []
+    for sc in xs.scatterers():
+      if sc.flags.use_u_aniso():
+        adp_final.extend(sc.u_star)
+      else:
+        adp_final.append(sc.u_iso)
+    adp_ratios = [x/y for x,y in zip(adp_ref, adp_final) if x>1e-6 and y>1e-6]
+    assert all(
+        [approx_equal(x, adp_ratios[0], eps=1e-9) for x in adp_ratios[1:]]
+    )
+
+    #Make sure the ADPs have changed by some non-zero amount
+    assert adp_ratios[0] > 1.01 or adp_ratios[0] < 0.99
+
 
 class fpfdp_test_case(test_case):
 
-  fpfdp_run = True
+  refinement_config = "fpfdp"
 
   def __init__(self, m):
     test_case.__init__(self, m)
@@ -948,7 +1052,8 @@ def run():
     sucrose_test_case(m),
     symmetry_equivalent_test_case(m),
     fpfdp_test_case(m),
-    constrained_fpfdp_test_case(m)
+    constrained_fpfdp_test_case(m),
+    scalar_scaled_adp_test_case(m),
     ]:
     t.run()
 

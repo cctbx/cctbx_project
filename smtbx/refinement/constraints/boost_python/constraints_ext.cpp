@@ -19,6 +19,7 @@ namespace boost_python {
   void wrap_rigid();
   void wrap_direction();
   void wrap_same_group();
+  void wrap_scaled_adp();
 
   namespace {
     void init_module() {
@@ -36,6 +37,7 @@ namespace boost_python {
       wrap_rigid();
       wrap_direction();
       wrap_same_group();
+      wrap_scaled_adp();
     }
   }
 
