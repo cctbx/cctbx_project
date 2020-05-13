@@ -373,6 +373,7 @@ class GlobalRefiner(PixelRefinement):
 
     def __call__(self, *args, **kwargs):
         _, _ = self.compute_functional_and_gradients()
+        exit()
         return self.x, self._f, self._g, self.d  #NOTEX
 
     @property
@@ -1827,26 +1828,30 @@ class GlobalRefiner(PixelRefinement):
                 self.d = None
 
         if self.use_curvatures:
-            if self.tot_neg_curv == 0 and not self.fix_params_with_negative_curvature:
+            if self.tot_neg_curv == 0:
                 self.request_diag_once = False
                 self.diag_mode = "always"  # TODO is this proper place to set ?
                 self.d = self.d_for_lbfgs #flex_double(self.curv.as_numpy_array())
                 self._verify_diag()
             elif self.fix_params_with_negative_curvature:
-                self.request_diag_once = True
+                self.request_diag_once = False
                 self.diag_mode = "always"
                 is_ref = self.is_being_refined.as_numpy_array()
                 is_ref[self.is_negative_curvature] = False
                 self.is_being_refined = FLEX_BOOL(is_ref)
                 # set the BFGS parameter array
                 self.x = self.x_for_lbfgs
+                assert( self.n == len(self.x))
                 # make the mapping from x to Xall
                 refine_pos = WHERE(self.is_being_refined.as_numpy_array())[0]
                 self.x2xall = {xi: xalli for xi, xalli in enumerate(refine_pos)}
                 self.xall2x = {xalli: xi for xi, xalli in enumerate(refine_pos)}
                 self.g = self.g_for_lbfgs
                 self.d = self.d_for_lbfgs
+                self._g = self.g_for_lbfgs
                 self._verify_diag()
+                print("Breaking to freeze %d curvatures" % self.tot_neg_curv)
+                raise BreakToUseCurvatures
             else:
                 if self.debug:
                     print("\n\t******************************************")
