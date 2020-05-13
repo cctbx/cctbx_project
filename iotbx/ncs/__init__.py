@@ -801,13 +801,17 @@ def get_chain_and_ranges(hierarchy):
   Used in get_ncs_info_as_spec
   hierarchy is already selected
   """
-  c = hierarchy.only_chain()
-  c_id = c.id
+  c_ids = [c.id for c in hierarchy.only_model().chains()]
+  assert len(set(c_ids)) == 1
+  c_id = c_ids[0]
+  rgs_all = []
+  for chain in hierarchy.chains():
+    rgs_all +=list(chain.residue_groups())
   ranges = []
   in_range = False
   first_id = None
   last_id = None
-  for rg in c.residue_groups():
+  for rg in rgs_all:
     resseq = int(rg.resseq)
     if in_range:
       if resseq - last_id > 1:
