@@ -1814,7 +1814,8 @@ class GlobalRefiner(PixelRefinement):
         self.tot_neg_curv = 0
         self.neg_curv_shots = []
         if self.calc_curvatures:
-            self.tot_neg_curv = sum(self.curv < 0)
+            self.is_negative_curvature = self.curv.as_numpy_array() < 0
+            self.tot_neg_curv = sum(self.is_negative_curvature)
 
         if self.calc_curvatures and not self.use_curvatures:
             if self.tot_neg_curv == 0:
@@ -1826,10 +1827,25 @@ class GlobalRefiner(PixelRefinement):
                 self.d = None
 
         if self.use_curvatures:
-            if self.tot_neg_curv == 0:
+            if self.tot_neg_curv == 0 and not self.fix_params_with_negative_curvature:
                 self.request_diag_once = False
                 self.diag_mode = "always"  # TODO is this proper place to set ?
                 self.d = self.d_for_lbfgs #flex_double(self.curv.as_numpy_array())
+                self._verify_diag()
+            elif self.fix_params_with_negative_curvature:
+                self.request_diag_once = True
+                self.diag_mode = "always"
+                is_ref = self.is_being_refined.as_numpy_array()
+                is_ref[self.is_negative_curvature] = False
+                self.is_being_refined = FLEX_BOOL(is_ref)
+                # set the BFGS parameter array
+                self.x = self.x_for_lbfgs
+                # make the mapping from x to Xall
+                refine_pos = WHERE(self.is_being_refined.as_numpy_array())[0]
+                self.x2xall = {xi: xalli for xi, xalli in enumerate(refine_pos)}
+                self.xall2x = {xalli: xi for xi, xalli in enumerate(refine_pos)}
+                self.g = self.g_for_lbfgs
+                self.d = self.d_for_lbfgs
                 self._verify_diag()
             else:
                 if self.debug:
@@ -2197,7 +2213,8 @@ class GlobalRefiner(PixelRefinement):
 
         print(
             "%s\n\t%s, F=%2.7g, |G|=%2.7g, eps*|X|=%2.7g,%s R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n"
-            % (scale_stats_string, Bcolors.OKBLUE, self._f, self.gnorm, Xnorm * self.trad_conv_eps, Bcolors.ENDC, self.R_overall, self.init_R1, self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
+            % (scale_stats_string, Bcolors.OKBLUE, self._f, self.gnorm, Xnorm * self.trad_conv_eps, Bcolors.ENDC, self.R_overall, self.init_R1,
+               self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
                ", ".join(map(str, self.neg_curv_shots))))
         #print("<><><><><><><><> TOP GUN <><><><><><><><>")
         #print("                 End of iteration.")
