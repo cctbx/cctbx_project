@@ -18,6 +18,10 @@ def test_1():
 
   Therefore they don't work properly when the model is expanded using MTRIX
   and/or BIOMT matrices internally.
+
+  To reproduce nqh_flip problem:
+  phenix.fetch_pdb 1qgt
+  phenix.molprobity 1qgt.pdb
   """
   # Loading and expanding the model
   inp = iotbx.pdb.input(lines=pdb_str_0, source_info=None)
