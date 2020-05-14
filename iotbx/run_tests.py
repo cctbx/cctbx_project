@@ -110,6 +110,7 @@ tst_list_base = [
   "$D/bioinformatics/test/tst_ncbi_blast_xml.py",
   "$D/regression/tst_cif_as_pdb_1atom.py",
   "$D/regression/tst_split_data_cif.py",
+  "$D/regression/tst_all_chain_ids.py",
   ]
 
 # failing tests on Windows, Python 2.7

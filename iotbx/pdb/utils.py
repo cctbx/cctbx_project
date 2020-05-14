@@ -13,6 +13,10 @@ def __permutations(iterable, r=None): # XXX This may go to libtbx or scitbx
 
 def all_chain_ids():
   """
+  !!! There is a problem with this functionality illustrated in
+  iotbx/regression/tst_all_chain_ids.py
+  Leading whitespace is an issue.
+
   Returns all possible 2 character chain IDs for PDB format files.
   In general, returns single character chains first.
   Also tries to use all combinations of uppercase/numbers before going to lower case.
