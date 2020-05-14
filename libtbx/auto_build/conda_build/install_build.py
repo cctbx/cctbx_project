@@ -407,6 +407,9 @@ by the LIBTBX_BUILD environment variable''')
                link=namespace.link)
     copy_modules(env, sp_dir=namespace.sp_dir, link=namespace.link)
 
+  if namespace.fix_rpath:
+    raise NotImplementedError
+
   return 0
 
 # =============================================================================
