@@ -418,20 +418,22 @@ class HKLViewFrame (wx.Frame) :
 
   def SetupToolbar (self) :
     self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+    if wx.VERSION < (4,0):
+      self.toolbar.AddTool = self.toolbar.AddLabelTool
     self.toolbar.SetToolBitmapSize((32,32))
-    btn = self.toolbar.AddTool(toolId=-1,
+    btn = self.toolbar.AddTool(-1,
       label="Load file",
       bitmap=icons.hkl_file.GetBitmap(),
       shortHelp="Load file",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnLoadFile, btn)
-    btn = self.toolbar.AddTool(toolId=-1,
+    btn = self.toolbar.AddTool(-1,
       label="Save image",
       bitmap=icons.save_all.GetBitmap(),
       shortHelp="Save image",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnSave, btn)
-    btn = self.toolbar.AddTool(toolId=-1,
+    btn = self.toolbar.AddTool(-1,
       label="Delete reflection",
       bitmap=bitmaps.fetch_icon_bitmap("actions","editdelete"), # FIXME
       shortHelp="Delete reflection",
@@ -441,6 +443,8 @@ class HKLViewFrame (wx.Frame) :
   def SetupMenus (self) :
     self.menubar = wx.MenuBar(-1)
     self.file_menu = wx.Menu()
+    if wx.VERSION < (4,0):
+      self.file_menu.Append = self.file_menu.AppendItem
     self.menubar.Append(self.file_menu, "File")
     item = wx.MenuItem(self.file_menu, -1, "Load data...\tCtrl-O")
     self.Bind(wx.EVT_MENU, self.OnLoadFile, item)
@@ -450,6 +454,8 @@ class HKLViewFrame (wx.Frame) :
       examples_dir = os.path.join(phenix_dir, "phenix_examples")
       if (os.path.isdir(examples_dir)) :
         submenu = wx.Menu()
+        if wx.VERSION < (4,0):
+          submenu.Append = self.file_menu.AppendItem
         self.file_menu.AppendSubMenu(submenu, "Load example data")
         examples_and_data = [
           ("p9-sad", "p9.sca"),
@@ -480,13 +486,13 @@ class HKLViewFrame (wx.Frame) :
     item = wx.MenuItem(self.file_menu, -1, "Show 2D view")
     self.file_menu.Append(item)
     self.Bind(wx.EVT_MENU, self.OnShow2D, item)
-    btn = self.toolbar.AddTool(toolId=-1,
+    btn = self.toolbar.AddTool(-1,
       label="Show 2D view",
       bitmap=icons.hklview_2d.GetBitmap(),
       shortHelp="Show 2D view",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnShow2D, btn)
-    btn = self.toolbar.AddTool(toolId=-1,
+    btn = self.toolbar.AddTool(-1,
       label="Clear labels",
       bitmap=icons.clear_left.GetBitmap(),
       shortHelp="Clear labels",
@@ -788,7 +794,7 @@ class HKLViewFrame2D (HKLViewFrame) :
     item = wx.MenuItem(self.file_menu, -1, "Show 3D view")
     self.file_menu.Append(item)
     self.Bind(wx.EVT_MENU, self.OnShow3D, item)
-    btn = self.toolbar.AddTool(toolId=-1,
+    btn = self.toolbar.AddTool(-1,
       label="Show 3D view",
       bitmap=icons.hklview_3d.GetBitmap(),
       shortHelp="Show 3D view",

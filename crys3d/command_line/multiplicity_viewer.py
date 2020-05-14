@@ -41,7 +41,10 @@ def run (args) :
     usage_string="%s f_obs.mtz [options]" %libtbx.env.dispatcher_name)
   settings = pcl.work.extract()
   a = wxtbx.app.CCTBXApp(0)
-  app_icon = wx.Icon()
+  if wx.VERSION >= (4,0):
+    app_icon = wx.Icon()
+  else:
+    app_icon = wx.EmptyIcon()
   app_icon.CopyFromBitmap(icons.hklview_3d.GetBitmap())
   if wx.VERSION >= (4,0):
     tb_icon = wx.adv.TaskBarIcon(wx.adv.TBI_DOCK)
