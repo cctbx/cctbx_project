@@ -1,8 +1,11 @@
 """
 Script to copy and update libtbx_env contents
+
+Usage: libtbx.python update_libtbx_env.py
 """
 from __future__ import absolute_import, division, print_function
 
+import argparse
 import os
 import shutil
 import sys
@@ -10,11 +13,10 @@ import sys
 from libtbx.path import absolute_path
 
 # =============================================================================
-def copy_libtbx_env():
+def get_default_dir():
   '''
-  Function that copies libtbx_env from $LIBTBX_BUILD to sys.prefix
-  If $LIBTBX_BUILD is not set, no copy is done. If libtbx_env does not
-  exist, an IOError is raised.
+  Function that returns the default location of libtbx_env in an installation.
+  The default location is ${PREFIX}/share/cctbx
 
   Parameters
   ----------
@@ -22,32 +24,56 @@ def copy_libtbx_env():
 
   Returns
   -------
-    path or 0: if the file is copied, the newly created path is returned
+    path of the default location
   '''
-  value = 0
+  base_dir = sys.prefix
+  if sys.platform == 'win32':
+    base_dir = os.path.join(sys.prefix, 'Library')
+  default_dir = os.path.join(base_dir, 'share', 'cctbx')
+
+  return default_dir
+
+# =============================================================================
+def copy_libtbx_env(default_dir=None):
+  '''
+  Function that copies libtbx_env from $LIBTBX_BUILD to sys.prefix
+  If $LIBTBX_BUILD is not set, no copy is done. If libtbx_env does not
+  exist, an IOError is raised.
+
+  Parameters
+  ----------
+    default_dir: str
+      The directory to copy libtbx_env
+
+  Returns
+  -------
+    path or None: if the file is copied, the newly created path is returned
+  '''
+  value = None
+  if default_dir is None:
+    default_dir = get_default_dir()
   if os.getenv('LIBTBX_BUILD') is not None:
     src = os.path.join(os.getenv('LIBTBX_BUILD'), 'libtbx_env')
-    sys_prefix = sys.prefix
-    if sys.platform == 'darwin' and 'python.app' in sys_prefix:
-      sys_prefix = sys_prefix.split('python.app')[0]
-    if sys.platform == 'win32':
-      sys_prefix = os.path.join(sys_prefix, 'Library')
-    dst = os.path.join(sys_prefix, 'libtbx_env')
+    dst = os.path.join(default_dir, 'libtbx_env')
     if not os.path.isfile(src):
       raise IOError(
         'The "libtbx_env" file does not exist in {src}.'.format(src=src))
+    if not os.path.exists(default_dir):
+      # assumes that only the last level needs to be created.
+      os.mkdir(default_dir)
     value = shutil.copy(src, dst)
   return value
 
 # =============================================================================
-def update_libtbx_env():
+def update_libtbx_env(default_dir=None):
   '''
   Function that updates libtbx_env so that modules can be loaded from
   standard locations in $PREFIX
 
   Parameters
   ----------
-    None
+    default_dir: str
+    The directory to copy libtbx_env
 
   Returns
   -------
@@ -58,6 +84,9 @@ def update_libtbx_env():
   if os.getenv('LIBTBX_BUILD') is not None:
     del os.environ['LIBTBX_BUILD']
   import libtbx.load_env
+
+  if default_dir is None:
+    default_dir = get_default_dir()
 
   sys_prefix = sys.prefix
   if sys.platform == 'darwin' and 'python.app' in sys_prefix:
@@ -128,14 +157,29 @@ def update_libtbx_env():
     module.process_command_line_directories()
 
   # repickle
+  env.build_path = absolute_path(default_dir)
   env.pickle()
 
   return 0
 
 # =============================================================================
 def run():
-  copy_libtbx_env()
-  update_libtbx_env()
+  parser = argparse.ArgumentParser(description=__doc__,
+    formatter_class=argparse.RawDescriptionHelpFormatter)
+
+  # default location is ${PREFIX}/share/cctbx
+  default_dir = get_default_dir()
+
+  parser.add_argument(
+    '--default-dir', '--default_dir', default=default_dir, type=str,
+    help="""The new default for the location of libtbx_env. By default,
+      the new location is ${PREFIX}/share/cctbx. This feature is not
+      fully supported yet.""")
+
+  namespace = parser.parse_args()
+
+  copy_libtbx_env(default_dir=namespace.default_dir)
+  update_libtbx_env(default_dir=namespace.default_dir)
 
   return 0
 
