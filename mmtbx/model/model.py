@@ -3251,7 +3251,7 @@ class manager(object):
           continue
         duplicate_prevention[chain_id_key] = False
         chain_ids_match_dict[c.id] = []
-        cid = c.id if len(c.id) == 2 else " "+c.id
+        cid = c.id
         try:
           ind = all_cids.index(cid)
         except ValueError:

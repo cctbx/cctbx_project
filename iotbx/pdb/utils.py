@@ -13,9 +13,9 @@ def __permutations(iterable, r=None): # XXX This may go to libtbx or scitbx
 
 def all_chain_ids():
   """
-  !!! There is a problem with this functionality illustrated in
+  Test is in
   iotbx/regression/tst_all_chain_ids.py
-  Leading whitespace is an issue.
+  There should not be leading whitespace for one letter chain ids.
 
   Returns all possible 2 character chain IDs for PDB format files.
   In general, returns single character chains first.
@@ -27,8 +27,8 @@ def all_chain_ids():
   second_char_lower = product(chars, lowerchars)
   first_char_lower = product(lowerchars, chars)
   both_char_lower = __permutations(iterable = lowerchars, r = 2)
-  #result = [c for c in chars]+[c for c in lowerchars]+\
-  result = [" "+c for c in chars]+[" "+c for c in lowerchars]+\
+  # result = [" "+c for c in chars]+[" "+c for c in lowerchars]+\
+  result = [c for c in chars]+[c for c in lowerchars]+\
          ["".join(p) for p in both_char_upper]+\
          ["".join(p) for p in second_char_lower]+\
          ["".join(p) for p in first_char_lower]+\

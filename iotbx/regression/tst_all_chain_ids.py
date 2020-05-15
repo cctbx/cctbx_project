@@ -32,7 +32,8 @@ def test_1():
   chain_ids = [chain.id for chain in h.only_model().chains()]
   print (chain_ids)
   # Note leading whitespaces starting with chain D:
-  assert chain_ids == ['A', 'B', 'C', ' D', ' E', ' F', ' G', ' H', ' I', ' J', ' K', ' L', ' M', ' N', ' O', ' P', ' Q', ' R', ' S', ' T', ' U', ' V', ' W', ' X', ' Y', ' Z', ' 0']
+  # assert chain_ids == ['A', 'B', 'C', ' D', ' E', ' F', ' G', ' H', ' I', ' J', ' K', ' L', ' M', ' N', ' O', ' P', ' Q', ' R', ' S', ' T', ' U', ' V', ' W', ' X', ' Y', ' Z', ' 0']
+  assert chain_ids == ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0']
 
   # Set of test cases
   A_selections = ["chain A", "chain 'A'", "chain ' A'"]
@@ -52,8 +53,9 @@ def test_1():
     n_atoms = h.select(chD).atoms_size()
     print("chD:", n_atoms)
     n_atoms_D.append(n_atoms)
-  assert n_atoms_D == [44, 0, 44]
+  assert n_atoms_D == [44, 44, 0]
   print ("Is intenal expansion consistent?", n_atoms_A == n_atoms_D)
+  assert n_atoms_A == n_atoms_D
 
   # BUT!!!! if we dump the expanded model and re-load it, everyting is consistent.
   expanded_lines = model.model_as_pdb()
@@ -77,6 +79,7 @@ def test_1():
     n_atoms_D.append(n_atoms)
   assert n_atoms_D == [44, 44, 0]
   print ("Is reading from pdb consistent?", n_atoms_A == n_atoms_D)
+  assert n_atoms_A == n_atoms_D
 
 if (__name__ == "__main__"):
   test_1()
