@@ -212,7 +212,7 @@ def get_angle_proxies_for_bond(coordination):
         p = geometry_restraints.angle_proxy(
           i_seqs=[a3.i_seq, a1.i_seq, a2.i_seq],
           angle_ideal=angle_ideal,
-          weight=1./weight**2,
+          weight=weight,
           origin_id=origin_ids.get_origin_id('metal coordination'))
         angles.append(p)
   return angles
