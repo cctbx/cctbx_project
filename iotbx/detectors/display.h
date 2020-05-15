@@ -824,7 +824,7 @@ class generic_flex_image: public FlexImage<double>{
           readout_polygon.push_back(point_p);
         }
       }
-      std::swap<scitbx::vec2<double> >(readout_polygon[2],readout_polygon[3]);
+      std::swap(readout_polygon[2],readout_polygon[3]);
       if (scitbx::math::convex_polygons_intersect_2D(window_polygon, readout_polygon)) {
         windowed_readouts.push_back(k);
       }
@@ -873,7 +873,7 @@ class generic_flex_image: public FlexImage<double>{
         readout_polygon.push_back(point_p);
       }
       }
-      std::swap<scitbx::vec2<double> >(readout_polygon[2],readout_polygon[3]);
+      std::swap(readout_polygon[2],readout_polygon[3]);
       if (scitbx::math::convex_polygons_intersect_2D(window_polygon, readout_polygon)) {
         windowed_readouts.push_back(k);
       }
