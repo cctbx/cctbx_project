@@ -6,9 +6,9 @@ trigger: none
 # skip pull requests
 pr: none
 
-# only weekly builds on Friday
+# only weekly builds on Friday Pacific
 schedules:
-- cron: '0 5 * * 5'
+- cron: '0 5 * * 6'
   displayName: Weekly build
   branches:
     include:
