@@ -325,7 +325,7 @@ class map_manager(map_reader,write_ccp4_map):
      log=sys.stdout):
     # Shift a model object to match the working map (based
     #    on self.origin_shift_grid_units)
-    shift_manager=self.get_shift_manager(reverse=reverse)
+    shift_manager=self.get_shift_manager(model=model,reverse=reverse)
     if(shift_manager.shift_cart is not None):
       print ("\nMap origin is not at (0,0,0): shifting the map and model.",
        file=log)
@@ -333,7 +333,7 @@ class map_manager(map_reader,write_ccp4_map):
       model._process_input_model()
     return model
 
-  def get_shift_manager(self,reverse=False,ncs_object=None):
+  def get_shift_manager(self,reverse=False,ncs_object=None,model=None):
     if not reverse: # usual
       origin_shift=self.origin_shift_grid_units
     else:  # go backwards
@@ -342,10 +342,11 @@ class map_manager(map_reader,write_ccp4_map):
 
     import mmtbx.utils
     shift_manager = mmtbx.utils.shift_origin(
-      working_map_n_xyz=self.working_map_n_xyz,
+      xray_structure=model.get_xray_structure(),
+      n_xyz=self.working_map_n_xyz,
       ncs_object=ncs_object,
       origin_grid_units=origin_shift,
-      crystal_symmetry = model.crystal_symmetry())
+      crystal_symmetry = self.crystal_symmetry())
     return shift_manager
 
 

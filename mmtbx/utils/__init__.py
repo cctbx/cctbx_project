@@ -2310,10 +2310,11 @@ class shift_origin(object):
                      crystal_symmetry=None, ncs_object=None,
                      origin_grid_units=None,
                      n_xyz=None,
-                     map_shift_tracker=None ):
+                     ):
     # Optionally supply n_xyz and origin_grid_units instead of map_data
 
     assert [pdb_hierarchy, xray_structure].count(None)==1
+    sites_cart=None
     if(pdb_hierarchy is not None):
       assert crystal_symmetry is not None
       sites_cart = pdb_hierarchy.atoms().extract_xyz()
@@ -2346,8 +2347,6 @@ class shift_origin(object):
       self.xray_structure_box = self.xray_structure # NONSENSE XXX
     if([self.pdb_hierarchy,sites_cart_shifted].count(None)==0):
       self.pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
-
-    self.map_shift_tracker=map_shift_tracker
 
   def get_original_cs(self):
     return self.crystal_symmetry
