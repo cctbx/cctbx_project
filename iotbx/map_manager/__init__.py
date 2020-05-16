@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 import sys
+from libtbx import group_args
 
 from iotbx.mrcfile import map_reader, write_ccp4_map
 
@@ -188,6 +189,11 @@ class map_manager(map_reader,write_ccp4_map):
      file_name=None,  # Normally initialize by reading from a file
      map_manager_object=None, # Also can initialize with existing map_manager
      map_data=None,    # and optional map_data
+     unit_cell_grid=None,  # Optional specificatino of unit cell, space group
+     unit_cell_parameters=None,    # and origin shift instead of map_manager
+     space_group_number=None,
+     origin_shift_grid_units=None,
+     working_map_n_xyz=None,
      ):
 
     '''
@@ -197,6 +203,10 @@ class map_manager(map_reader,write_ccp4_map):
 
       Alternative is initialize with existing map_manager object and
         optional map_data
+
+      Final alternative is to specify unit_cell_grid, unit_cell_parameters,
+        space_group_number, origin_shift_grid_units and
+        map_data or working_map_n_xyz
 
       NOTE: Different from map_reader, map_manager ALWAYS converts
       map_data to flex.double and does not save any extra information except
@@ -216,10 +226,31 @@ class map_manager(map_reader,write_ccp4_map):
       self.convert_to_double()
 
     # Initialization with map_manager and map_data objects
-    else:
+    elif map_manager_object:
       self.initialize_with_map_manager(
         map_manager_object=map_manager_object,
         map_data=map_data)
+    elif unit_cell_grid and unit_cell_parameters and \
+          (space_group_number is not None) and \
+          (origin_shift_grid_units is not None) and \
+          (map_data or working_map_n_xyz):
+      manager_object=group_args(
+        unit_cell_grid=unit_cell_grid,
+        unit_cell_parameters=unit_cell_parameters,
+        space_group_number=space_group_number,
+        origin_shift_grid_units=origin_shift_grid_units,
+        _map_data=None,
+        working_map_n_xyz=working_map_n_xyz)
+
+      self.initialize_with_map_manager(
+        map_manager_object=map_manager_object,
+        map_data=map_data)
+
+    else:
+      raise Sorry("You need to initialize map_manager with a file, another "+
+        "map_manager, or by specifying unit_cell_grid,unit_cell_parameters, "+
+        "space_group_number, origin_shift_grid_units, and "+
+       "a map_data object or working_map_n_xyz")
 
   def initialize_with_map_manager(self,
        map_manager_object=None,
@@ -238,6 +269,8 @@ class map_manager(map_reader,write_ccp4_map):
      if map_data:
        self.data=map_data
        self.convert_to_double()
+       if self._map_data.all() != self.working_map_n_xyz:
+         raise Sorry("Map gridding (%s) does not match gridding specified by input map_manager (%s)" %(str(self._map_data.all()),str(self.working_map_n_xyz)))
 
   def set_origin_shift_grid_units(self,origin_shift_grid_units,
       allow_non_zero_previous_value=False):
