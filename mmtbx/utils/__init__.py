@@ -2306,8 +2306,13 @@ class set_map_to_value(object):
       standard_deviation = -1)
 
 class shift_origin(object):
-  def __init__(self, map_data, pdb_hierarchy=None, xray_structure=None,
-                     crystal_symmetry=None, ncs_object=None):
+  def __init__(self, map_data=None, pdb_hierarchy=None, xray_structure=None,
+                     crystal_symmetry=None, ncs_object=None,
+                     origin_grid_units=None,
+                     n_xyz=None,
+                     map_shift_tracker=None ):
+    # Optionally supply n_xyz and origin_grid_units instead of map_data
+
     assert [pdb_hierarchy, xray_structure].count(None)==1
     if(pdb_hierarchy is not None):
       assert crystal_symmetry is not None
@@ -2328,7 +2333,9 @@ class shift_origin(object):
       map_data         = self.map_data,
       ncs_object       = self.ncs_object,
       sites_cart       = sites_cart,
-      crystal_symmetry = crystal_symmetry)
+      crystal_symmetry = crystal_symmetry,
+      origin_grid_units=origin_grid_units,
+      n_xyz            =n_xyz)
     self.map_data       = soin.map_data
     self.ncs_object     = soin.ncs_object
     self.shift_cart     = soin.shift_cart
@@ -2339,6 +2346,8 @@ class shift_origin(object):
       self.xray_structure_box = self.xray_structure # NONSENSE XXX
     if([self.pdb_hierarchy,sites_cart_shifted].count(None)==0):
       self.pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
+
+    self.map_shift_tracker=map_shift_tracker
 
   def get_original_cs(self):
     return self.crystal_symmetry

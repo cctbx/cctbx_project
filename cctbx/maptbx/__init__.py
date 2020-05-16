@@ -136,18 +136,35 @@ def assert_same_gridding(map_1, map_2,
   if([f1,f2,f3].count(True)!=3):
     raise Sorry(Sorry_message)
 
-def shift_origin_if_needed(map_data, sites_cart=None, crystal_symmetry=None,
-    ncs_object=None):
-  shift_needed = not \
+def shift_origin_if_needed(map_data=None,
+    sites_cart=None,
+    crystal_symmetry=None,
+    ncs_object=None,
+    origin_grid_units=None,
+    n_xyz=None,
+    ):
+
+  if not map_data:
+    assert origin_grid_units and n_xyz
+    shift_needed=True
+
+  else: # usual
+    shift_needed = not \
     (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
      map_data.is_0_based())
+
   shift_frac = None
   shift_cart = None
   if(shift_needed):
-    N = map_data.all()
-    O = map_data.origin()
+    if map_data:
+      N = map_data.all()
+      O = map_data.origin()
+      map_data = map_data.shift_origin()
+    else:
+      N=n_xyz
+      O=origin_grid_units
+
     original_origin_grid_units=O
-    map_data = map_data.shift_origin()
     original_origin_cart=(0,0,0)
     if crystal_symmetry:
       if(not crystal_symmetry.space_group().type().number() in [0,1]):

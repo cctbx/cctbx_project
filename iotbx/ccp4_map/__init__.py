@@ -11,30 +11,41 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
 
   def show_summary(self, out=None, prefix=""):
     if (out is None) : out = sys.stdout
-    print(prefix + "header_min: ", self.header_min, file=out)
-    print(prefix + "header_max: ", self.header_max, file=out)
-    print(prefix + "header_mean:", self.header_mean, file=out)
-    print(prefix + "header_rms: ", self.header_rms, file=out)
+    if hasattr(self,'header_min'):
+      print(prefix + "header_min: ", self.header_min, file=out)
+      print(prefix + "header_max: ", self.header_max, file=out)
+      print(prefix + "header_mean:", self.header_mean, file=out)
+      print(prefix + "header_rms: ", self.header_rms, file=out)
     print(prefix + "unit cell grid:", self.unit_cell_grid, file=out)
     print(prefix + "unit cell parameters:", self.unit_cell_parameters, file=out)
     print(prefix + "space group number:  ", self.space_group_number, file=out)
-    print(prefix + "map origin:", self.data.origin(), file=out)
-    print(prefix + "map grid:  ", self.data.all(), file=out)
-    print(prefix + "pixel size: (%.4f, %.4f, %.4f) " %(
-      self.pixel_sizes()), file=out)
+    data=self.get_available_map_data()
+    if not data:
+      print("No map data available")
+    else:
+      print(prefix + "map origin:", data.origin(), file=out)
+      print(prefix + "map grid:  ", data.all(), file=out)
+      print(prefix + "pixel size: (%.4f, %.4f, %.4f) " %(
+        self.pixel_sizes()), file=out)
+    if hasattr(self,'origin_shift_grid_units'):
+      print(prefix + "map origin_offset_grid_units:",
+          self.origin_shift_grid_units, file=out)
 
   def pixel_sizes(self):
     # Return tuple with pixel size in each direction (normally all the same)
     cs=self.crystal_symmetry()
     cell_params=cs.unit_cell().parameters()[:3]
-    map_all=self.data.all()
+    map_all=self.get_available_map_data().all()
     pa=cell_params[0]/map_all[0]
     pb=cell_params[1]/map_all[1]
     pc=cell_params[2]/map_all[2]
     return (pa,pb,pc)
 
   def crystal_symmetry(self,sorry_message_if_incompatible=None):
-    # This is "crystal_symmetry" of a box the size of the map that is present
+    '''
+      This is "crystal_symmetry" of a box the size of the map that is present
+    '''
+
     from cctbx import crystal
     map_all = self.map_data().all()
     if(map_all != self.unit_cell_grid):
@@ -59,21 +70,68 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
       return self.unit_cell_crystal_symmetry()
 
   def unit_cell_crystal_symmetry(self):
+    '''
+     This is the cell dimensions and angles of the full unit_cell
+    '''
     from cctbx import crystal
     return crystal.symmetry(self.unit_cell().parameters(),
       self.space_group_number)
 
 
   def unit_cell(self):
+    '''
+     This is the full unit_cell
+    '''
     from cctbx import uctbx
     return uctbx.unit_cell(self.unit_cell_parameters)
 
   def statistics(self):
     from cctbx import maptbx
-    return maptbx.statistics(self.data)
+    return maptbx.statistics(self.get_available_map_data())
+
+  def get_available_map_data(self):
+    # Return _map_data (flex.double array) if available
+    #  otherwise, return self.data (original flex array)
+
+    if hasattr(self,'_map_data') and self._map_data:
+      return self._map_data
+    elif hasattr(self,'data') and self.data:
+      return self.data
+    else:
+      return None
+
+  def get_origin(self):
+    data=self.get_available_map_data()
+    if data:
+      return data.origin()
+    else:
+      return None
+
+  def get_working_map_n_xyz(self):
+    data=self.get_available_map_data()
+    if data:
+      return data.all()
+    elif hasattr(self,'working_map_n_xyz'):
+      return self.working_map_n_xyz
+    else:
+      return None
 
   def map_data(self):
-    return self.data.as_double()
+
+    # Normally input data is converted to double and stored in _map_data
+
+    if hasattr(self,'_map_data') and self._map_data:
+      return self._map_data
+
+    elif hasattr(self,'data') and self.data:
+      return self.data.as_double()
+
+    else:
+      return None
+
+  def convert_to_double(self):
+    self._map_data=self.map_data()
+    self.data=None
 
   def is_similar_map(self, other):
     f1 = self.crystal_symmetry().is_similar_symmetry(other.crystal_symmetry())
