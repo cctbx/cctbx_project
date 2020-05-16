@@ -1014,10 +1014,10 @@ Wait for the command to finish, then try again.""" % vars())
     with target_file.open('w') as f:
       if sys.platform == 'win32':  # windows
         print('@setlocal', file=f)
-        print('@set LIBTBX_BUILD=%~dp0', file=f)
-        print('@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%', file=f)
-        print(r'@for %%F in ("%LIBTBX_BUILD%") do @set LIBTBX_BUILD=%%~dpF', file=f)
-        print('@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%', file=f)
+        # print('@set LIBTBX_BUILD=%~dp0', file=f)
+        # print('@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%', file=f)
+        # print(r'@for %%F in ("%LIBTBX_BUILD%") do @set LIBTBX_BUILD=%%~dpF', file=f)
+        # print('@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%', file=f)
         print('@set LIBTBX_DISPATCHER_NAME=%~nx0', file=f)
         def write_dispatcher_include(where):
           for line in self.dispatcher_include(where=where):
@@ -1068,8 +1068,8 @@ Wait for the command to finish, then try again.""" % vars())
         print('#', file=f)
         print(_SHELLREALPATH_CODE, file=f)
         print('unset PYTHONHOME', file=f)
-        print('LIBTBX_BUILD="$(shellrealpath "$0" && cd "$(dirname "$RESULT")/.." && pwd)"', file=f)
-        print('export LIBTBX_BUILD', file=f)
+        print('LIBTBX_PREFIX="$(shellrealpath "$0" && cd "$(dirname "$RESULT")/.." && pwd)"', file=f)
+        print('export LIBTBX_PREFIX', file=f)
         print('LIBTBX_PYEXE_BASENAME="%s"' % self.python_exe.basename(), file=f)
         print('export LIBTBX_PYEXE_BASENAME', file=f)
         source_is_py = False
@@ -1123,7 +1123,7 @@ Wait for the command to finish, then try again.""" % vars())
             print('  export LD_PRELOAD', file=f)
             print('fi', file=f)
         print('LIBTBX_PYEXE="%s"' % (
-          self.python_exe.dirname() / "$LIBTBX_PYEXE_BASENAME").sh_value(), file=f)
+          self.python_exe.dirname() / "$LIBTBX_PYEXE_BASENAME").sh_value(anchor_var='LIBTBX_PREFIX'), file=f)
         print('export LIBTBX_PYEXE', file=f)
 
         if (source_file is not None):
@@ -1140,7 +1140,7 @@ Wait for the command to finish, then try again.""" % vars())
                       source_file=source_file)) > 3):
               start_python = True
           if (not start_python and not source_is_python_exe):
-            cmd += ' "%s"' % source_file.sh_value()
+            cmd += ' "%s"' % source_file.sh_value(anchor_var='LIBTBX_PREFIX')
           print('if [ -n "$LIBTBX__VALGRIND_FLAG__" ]; then', file=f)
           print("  exec $LIBTBX_VALGRIND"+cmd, '"$@"', file=f)
           tmp_reloc = os.path.basename(source_file.relocatable)
