@@ -70,10 +70,21 @@ from iotbx_pdb_hierarchy_ext import *
 
 from six.moves import cStringIO as StringIO
 from copy import deepcopy
-import sys
+import sys,os
 import math
 
 time_model_show = 0.0
+
+def convert_to_model_input(model_input,log=sys.stdout):
+  # if model_input is a file name, read it and convert to pdb_input object
+  if type(model_input)==type("abc") and (
+      (model_input.endswith(".cif") or model_input.endswith(".pdb")) and
+      os.path.isfile(model_input)):
+    try:
+      return iotbx.pdb.input(model_input)
+    except Exception,e:
+      print ("Unable to read %s as a model" %(model_input),e,file=log)
+  return model_input
 
 def find_common_water_resseq_max(pdb_hierarchy):
   get_class = iotbx.pdb.common_residue_names_get_class
@@ -195,7 +206,7 @@ class manager(object):
 
     self._xray_structure = xray_structure
     self._pdb_hierarchy = pdb_hierarchy
-    self._model_input = model_input
+    self._model_input = convert_to_model_input(model_input) # Allow file input
     self._restraint_objects = restraint_objects
     self._monomer_parameters = monomer_parameters
     self._pdb_interpretation_params = None
