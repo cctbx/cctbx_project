@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
-from libtbx import  adopt_init_args
 import sys
 
 from iotbx.mrcfile import map_reader, write_ccp4_map
@@ -419,5 +418,3 @@ def shift_origin_of_map(map_data,previous_origin_shift=None):
     else:
       full_shift=previous_origin_shift
     return map_data,full_shift
-
-
