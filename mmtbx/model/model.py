@@ -360,6 +360,16 @@ class manager(object):
     return cls(model_input = None, pdb_hierarchy=hierarchy,
        crystal_symmetry=crystal_symmetry)
 
+  @classmethod
+  def read_model(cls, file_name):
+    """
+    This can be used for very basic toy scripts, never for general Phenix
+    production code since it is very simplyfied and does not handle e.g.
+    restraint files etc, see manager.__init__() for all the possible items.
+    Moreover, IO should be handled via program_template machinery.
+    """
+    inp = iotbx.pdb.input(file_name)
+    return cls(model_input=inp)
 
   @staticmethod
   def get_default_pdb_interpretation_scope():
