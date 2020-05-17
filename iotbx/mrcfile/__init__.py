@@ -65,7 +65,7 @@ class map_reader(utils):
      ignore_all_errors=False,
      verbose=None):
 
-     self.read_map(file_name=file_name,
+     self.read_map_file(file_name=file_name,
        internal_standard_order=internal_standard_order,
        header_only=header_only,
        ignore_missing_machine_stamp=ignore_missing_machine_stamp,
@@ -73,7 +73,7 @@ class map_reader(utils):
        ignore_all_errors=ignore_all_errors,
        verbose=verbose)
 
-  def read_map(self, file_name=None,
+  def read_map_file(self, file_name=None,
      internal_standard_order=INTERNAL_STANDARD_ORDER,
      header_only=False,
      ignore_missing_machine_stamp=True,

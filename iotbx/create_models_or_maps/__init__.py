@@ -17,7 +17,7 @@ def generate_model(
       output_model_file_name=None,
       random_seed=None,
       shake=None,
-      log=sys.stdout,**ignored_kw):
+      log=sys.stdout,**pass_through_kw):
 
   '''
     generate_model: Simple utility for generating a model for testing purposes.
@@ -125,7 +125,7 @@ def shake_model(model,shake=None,log=sys.stdout):
 
 def generate_map_coefficients(model=None,output_map_coeffs_file_name=None,
         high_resolution=3,scattering_table='electron',
-       log=sys.stdout,**ignored_kw):
+       log=sys.stdout,**pass_through_kw):
 
   '''
     generate_map_coefficients  Convenience function to create
@@ -139,7 +139,7 @@ def generate_map_coefficients(model=None,output_map_coeffs_file_name=None,
   '''
 
   if not model:
-    model=generate_model(log=log,**ignored_kw)
+    model=generate_model(log=log,**pass_through_kw)
 
   # get map coefficients
   from mmtbx.utils import fmodel_from_xray_structure
@@ -175,7 +175,9 @@ def generate_map(map_coeffs=None,
    low_resolution_real_space_noise_fraction=0,
    high_resolution_real_space_noise_fraction=0,
    output_map_file_name=None,
-   log=sys.stdout, **ignored_kw):
+   log=sys.stdout,
+   **pass_through_kw):   # pass_through_kw picks up all the keywords that are to be
+                    # passed to other routines
 
   '''
     generate_map
@@ -192,6 +194,26 @@ def generate_map(map_coeffs=None,
     Also the relative contribution of each type of noise vs resolution
     can be controlled.
 
+    Full list of keywords that can be supplied. These affect
+    generate_model, generate_map_coefficients and generate_map:
+
+      model_file_name=None  # file to read model from
+      n_residues=10,  # how many residues to include
+      b_iso=30,  # what b_iso to set all the atoms to
+      box_buffer=5,  # buffer around atoms
+      start_res=None,  # residue to start with
+      space_group_number=1,  # space group number for model and map
+      output_model_file_name=None,  # file name for model (if any)
+      random_seed=None,  # random seed for shake
+      shake=None,  # rms offset for each atom if any
+      scattering_table='electron',  # scattering table, electron n_gaussian
+      gridding=None,  # optional gridding for map
+      low_resolution_fourier_noise_fraction=0, # fourier noise lowres
+      high_resolution_fourier_noise_fraction=0, # hires
+      low_resolution_real_space_noise_fraction=0, # real-space noise lowres
+      high_resolution_real_space_noise_fraction=0, # real-space noise hires
+      output_map_file_name=None,   # optional output map file namd
+
   '''
 
   if gridding:
@@ -202,10 +224,9 @@ def generate_map(map_coeffs=None,
       for x in str(gridding).replace(",","").split():
         gridding.append(int(x))
 
-
   if not map_coeffs:  # get map coefficients
     map_coeffs=generate_map_coefficients(
-     high_resolution=high_resolution,log=log,**ignored_kw)
+     high_resolution=high_resolution,log=log,**pass_through_kw)
 
   if high_resolution:
     map_coeffs=map_coeffs.resolution_filter(d_min=high_resolution)
@@ -246,7 +267,6 @@ def run(**kw):
 
   elif kw.get('generate_map','None').lower()=='true':
     mm=generate_map(**kw)
-
 
 if __name__=="__main__":
   kw={}

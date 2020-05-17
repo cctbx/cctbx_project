@@ -31,6 +31,15 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
       print(prefix + "map origin_offset_grid_units:",
           self.origin_shift_grid_units, file=out)
 
+    if hasattr(self,'_model') and self._model:
+      print (prefix + "Associated model with",
+          self._model.get_hierarchy().overall_counts().n_residues,"residues",
+           file=out)
+
+    if self.high_resolution():
+      print (prefix + "High-resolution limit of map: ",self.high_resolution(),
+            file=out)
+
   def pixel_sizes(self):
     # Return tuple with pixel size in each direction (normally all the same)
     cs=self.crystal_symmetry()
@@ -132,6 +141,18 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
   def convert_to_double(self):
     self._map_data=self.map_data()
     self.data=None
+
+  def high_resolution(self):
+    if hasattr(self,'_high_resolution'):
+      return self._high_resolution
+    else:
+      return None
+
+  def model(self):
+    if hasattr(self,'_model'):
+      return self._model
+    else:
+      return None
 
   def is_similar_map(self, other):
     f1 = self.crystal_symmetry().is_similar_symmetry(other.crystal_symmetry())
