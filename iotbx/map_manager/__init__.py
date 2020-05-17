@@ -355,8 +355,6 @@ class map_manager(map_reader,write_ccp4_map):
     #    on -self.origin_shift_grid_units)
     return shift_model_to_match_working_map(model=model,reverse=True)
 
-
-
   def map_shift_tracker(self):
     # Produces map_manager with no data so it is small but still knows how
     #   to write out maps

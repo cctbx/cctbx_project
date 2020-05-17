@@ -82,7 +82,7 @@ def convert_to_model_input(model_input,log=sys.stdout):
       os.path.isfile(model_input)):
     try:
       return iotbx.pdb.input(model_input)
-    except Exception,e:
+    except Exception as e:
       print ("Unable to read %s as a model" %(model_input),e,file=log)
   return model_input
 
