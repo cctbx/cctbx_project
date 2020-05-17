@@ -109,8 +109,8 @@ def generate_model(
     print ("Writing model with %s residues and b_iso=%s from %s to %s" %(
       n_residues,b_iso,file_name,output_model_file_name),file=log)
   else:
-    print ("Generated model with %s residues from %s " %(
-      n_residues,file_name),file=log)
+    print ("Generated model with %s residues and b_iso=%s from %s " %(
+      n_residues,b_iso,file_name),file=log)
   return model
 
 def shake_model(model,shake=None,log=sys.stdout):
@@ -164,6 +164,9 @@ def generate_map_coefficients(model=None,output_map_coeffs_file_name=None,
       file_name=output_map_coeffs_file_name)
     print("Writing map coefficients to resolution of %s A to %s" %(
        high_resolution,output_map_coeffs_file_name),file=log)
+  else:
+    print("Generated map coefficients to resolution of %s A " %(
+      high_resolution),file=log)
   return f_model
 
 def generate_map(map_coeffs=None,
@@ -228,6 +231,9 @@ def generate_map(map_coeffs=None,
 
   if output_map_file_name:
     mm.write_map(output_map_file_name)
+  else:
+    print("Generated map with origin at %s and size of %s" %(
+      mm.map_data().origin(),mm.map_data().all()),file=log)
 
   return mm
 
