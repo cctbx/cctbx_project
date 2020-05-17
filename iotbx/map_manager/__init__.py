@@ -189,7 +189,7 @@ class map_manager(map_reader,write_ccp4_map):
      file_name=None,  # Normally initialize by reading from a file
      map_manager_object=None, # Also can initialize with existing map_manager
      map_data=None,    # and optional map_data
-     unit_cell_grid=None,  # Optional specificatino of unit cell, space group
+     unit_cell_grid=None,  # Optional specification of unit cell, space group
      unit_cell_parameters=None,    # and origin shift instead of map_manager
      space_group_number=None,
      origin_shift_grid_units=None,
@@ -243,7 +243,7 @@ class map_manager(map_reader,write_ccp4_map):
         working_map_n_xyz=working_map_n_xyz)
 
       self.initialize_with_map_manager(
-        map_manager_object=map_manager_object,
+        map_manager_object=manager_object,
         map_data=map_data)
 
     else:
@@ -412,8 +412,8 @@ class map_manager(map_reader,write_ccp4_map):
     # NOTE crystal_symmetry and unit_cell_grid are for entire cell
 
     if map_data.origin() == (0,0,0):  # Usual
-      print("Writing map with origin at %s to %s" %(
-        str(origin_shift_grid_units),file_name),file=log)
+      print("Writing map with origin at %s and size of %s to %s" %(
+        str(origin_shift_grid_units),str(map_data.all()),file_name),file=log)
       write_ccp4_map(
         file_name   = file_name,
         crystal_symmetry = crystal_symmetry, # unit cell and space group
