@@ -52,7 +52,7 @@ def exercise_with_tst_input_map(use_mrcfile=None,file_name=None):
   assert not m.data.is_padded()
   out = StringIO()
   m.show_summary(out=out)
-  assert ("map grid:   (16, 8, 16)" in out.getvalue())
+  assert ("map cell grid: (16, 8, 16)" in out.getvalue())
   uc = m.unit_cell()
   assert approx_equal(m.unit_cell_parameters, m.unit_cell().parameters())
   assert approx_equal(m.grid_unit_cell().parameters(),
