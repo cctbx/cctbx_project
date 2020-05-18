@@ -340,7 +340,13 @@ class map_manager(map_reader,write_ccp4_map):
           " also specify allow_non_zero_previous_value=True")
         return
 
-    self.origin_shift_grid_units=origin_grid_units
+    if self.origin_shift_grid_units in [None,(0,0,0)]:
+      self.origin_shift_grid_units=origin_grid_units
+    else:
+      new_origin=[]
+      for a,b in zip(self.origin_shift_grid_units,origin_grid_units):
+        new_origin.append(a+b)
+      self.origin_shift_grid_units=new_origin
 
   def shift_origin(self,map_data=None,update_shift=None,log=sys.stdout):
     # Shift the origin of the map to (0,0,0) and
@@ -354,11 +360,19 @@ class map_manager(map_reader,write_ccp4_map):
       else:
         update_shift=True
 
-    if self._map_data and not map_data: # usual
-      self._map_data,origin_shift_grid_units=shift_origin_of_map(
-         self._map_data,self.origin_shift_grid_units)
-      if update_shift:
-         self.origin_shift_grid_units=origin_shift_grid_units
+    if self._map_data and not map_data:
+      if self._map_data.origin() != (0,0,0):
+        # usual
+        self._map_data,origin_shift_grid_units=shift_origin_of_map(
+          self._map_data,self.origin_shift_grid_units)
+        if update_shift:
+          self.origin_shift_grid_units=origin_shift_grid_units
+          if self._model and origin_shift_grid_units not in [None,(0,0,0)]:
+            # shift the model
+            self._model=self.shift_model_to_match_working_map(model=self._model,
+              log=log)
+      else:
+        print ("Map is already at (0,0,0)",file=log)
 
     elif map_data: # supplied map_data. Shift, optionally save updated shift,
          # and return shifted map
@@ -372,9 +386,6 @@ class map_manager(map_reader,write_ccp4_map):
     else:
       print ("No map to shift",file=log)
 
-    if self._model:  # shift the model
-      self._model=self.shift_model_to_match_working_map(model=self._model,
-       log=log)
 
   def shift_ncs_to_match_working_map(self,ncs_object=None,reverse=False):
     # Shift an ncs object to match the working map (based
