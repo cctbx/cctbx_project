@@ -46,9 +46,6 @@ class map_manager(map_reader,write_ccp4_map):
       as working_map_n_xyz=self.get_working_map_n_xyz()
     And (5) you want the space-group number in case it is not 1
 
-    All of these items are available as a single map_manager object with:
-     map_shift_tracker=self.map_shift_tracker()
-
    Normal usage:
 
      Read in a map:
@@ -84,18 +81,6 @@ class map_manager(map_reader,write_ccp4_map):
      Or write out the map with map_shift_tracker:
        map_shift_tracker.write_map(file_name='output_map.ccp4',
          map_data=map_data)
-
-     Shift a model object to match the working origin of the map:
-       shifted_model=mm.shift_model_to_match_working_map(model)
-
-     Shift a ncs object to match the working origin of the map:
-       shifted_ncs=mm.shift_ncs_to_match_working_map(ncs_object)
-
-     NOTE: If you run map_and_model=iotbx.map_and_model separately, you can
-       update your map_shift_tracker with:
-         origin_shift=map_and_model.original_origin_grid_units()
-         map_shift_tracker.set_origin_and_gridding(origin_shift)
-
 
    See http://www.ccpem.ac.uk/mrc_format/mrc2014.php for MRC format
    See https://pypi.org/project/mrcfile/ for mrcfile library documentation
@@ -192,7 +177,6 @@ class map_manager(map_reader,write_ccp4_map):
      file_name=None,  # Normally initialize by reading from a file
      map_manager_object=None, # Also can initialize with existing map_manager
      map_data=None,    # and optional map_data
-     model=None,    # and optional model
      unit_cell_grid=None,  # Optional specification of unit cell, space group
      unit_cell_parameters=None,    # and origin shift instead of map_manager
      space_group_number=None,
@@ -226,14 +210,12 @@ class map_manager(map_reader,write_ccp4_map):
     # Usual initialization with a file
     if file_name is not None:
       self.read_map(file_name=file_name)
-      self._model=None
 
     # Initialization with map_manager and map_data objects
     elif map_manager_object:
       self.initialize_with_map_manager(
         map_manager_object=map_manager_object,
         map_data=map_data,
-        model=model,
         high_resolution=high_resolution,log=log)
     elif unit_cell_grid and unit_cell_parameters and \
           (space_group_number is not None) and \
@@ -251,7 +233,6 @@ class map_manager(map_reader,write_ccp4_map):
       self.initialize_with_map_manager(
         map_manager_object=manager_object,
         map_data=map_data,
-        model=model,
         high_resolution=high_resolution,log=log)
 
     else:
@@ -264,13 +245,11 @@ class map_manager(map_reader,write_ccp4_map):
      self.working_map_n_xyz=None
      self._map_data=None
      self.data=None
-     self._model=None
      self._high_resolution=None
 
   def initialize_with_map_manager(self,
        map_manager_object=None,
        map_data=None,
-       model=None,
        high_resolution=None,log=sys.stdout):
 
      mmo=map_manager_object
@@ -283,14 +262,10 @@ class map_manager(map_reader,write_ccp4_map):
      self.working_map_n_xyz= mmo.working_map_n_xyz
      self._map_data=mmo._map_data
      self.data=None
-     self._model=None
      self._high_resolution=high_resolution
 
      if map_data:
        self.add_map_data(map_data,overwrite_map_gridding=True,log=log)
-
-     if model:
-       self.add_model(model,log=log)
 
   def read_map(self,file_name=None,log=sys.stdout):
       print("Reading map from %s " %(file_name),file=log)
@@ -301,30 +276,6 @@ class map_manager(map_reader,write_ccp4_map):
       # Save gridding, convert to double and delete original data
       self.working_map_n_xyz=self.get_working_map_n_xyz()
       self.convert_to_double()
-
-  def read_model(self,file_name=None,log=sys.stdout):
-      print("Reading model from %s " %(file_name),file=log)
-      if self._model:
-        print("NOTE: Removing existing model",file=log)
-      from iotbx.pdb import input
-      inp=input(file_name=file_name)
-      from mmtbx.model import manager as model_manager
-      model = model_manager(model_input=inp)
-      self.add_model(model,log=log)
-
-  def add_model(self,model,log=sys.stdout):
-       self._model=model
-       # Check that model crystal_symmetry matches either full or working
-       # crystal_symmetry of map
-       if (not self._model.crystal_symmetry().is_similar_symmetry(
-           self.crystal_symmetry()) ) and (
-           not self._model.crystal_symmetry().is_similar_symmetry(
-           self.unit_cell_crystal_symmetry())):
-         raise Sorry( "Symmetry of model: \n%s\n\ndoes not match " %(
-          self._model.crystal_symmetry())+
-          "that of the map that is present: "+
-           " \n%s\n or that of the full map:\n%s\n" %(
-          self.crystal_symmetry(),self.unit_cell_crystal_symmetry()))
 
   def add_map_data(self,map_data,overwrite_map_gridding=None,log=sys.stdout):
        self.data=map_data
@@ -399,10 +350,6 @@ class map_manager(map_reader,write_ccp4_map):
           self._map_data,self.origin_shift_grid_units)
         if update_shift:
           self.origin_shift_grid_units=origin_shift_grid_units
-          if self._model and origin_shift_grid_units not in [None,(0,0,0)]:
-            # shift the model
-            self._model=self.shift_model_to_match_working_map(model=self._model,
-              log=log)
       else:
         print ("Map is already at (0,0,0)",file=log)
 
@@ -418,50 +365,6 @@ class map_manager(map_reader,write_ccp4_map):
     else:
       print ("No map to shift",file=log)
 
-
-  def shift_ncs_to_match_working_map(self,ncs_object=None,reverse=False):
-    # Shift an ncs object to match the working map (based
-    #    on self.origin_shift_grid_units)
-    shift_manager=self.get_coordinate_shift(reverse=reverse,
-      ncs_object=ncs_object)
-    return shift_manager.ncs_object # shifted ncs object
-
-  def shift_ncs_to_match_original_map(self,ncs_object=None):
-    return shift_ncs_to_match_working_map(ncs_object=ncs_object,
-      reverse=True)
-
-  def shift_model_to_match_working_map(self,model=None,reverse=False,
-     log=sys.stdout):
-    # Shift a model object to match the working map (based
-    #    on self.origin_shift_grid_units)
-    coordinate_shift=self.get_coordinate_shift(
-       reverse=reverse)
-    if(coordinate_shift !=(0,0,0)):
-      print ("\nMap origin is not at (0,0,0): shifting the model by %s" %(
-         str(coordinate_shift)), file=log)
-      sites_cart=model.get_sites_cart()
-      sites_cart+=coordinate_shift
-      model.set_sites_cart(sites_cart)
-      model._process_input_model()
-    return model
-
-  def get_coordinate_shift(self,reverse=False):
-    if not reverse: # usual
-      origin_shift=self.origin_shift_grid_units
-    else:  # go backwards
-      a=self.origin_shift_grid_units
-      origin_shift=[-a[0],-a[1],-a[2]]
-
-    coordinate_shift=[]
-    for shift_grid_units,spacing in zip(origin_shift,self.pixel_sizes()):
-      coordinate_shift.append(shift_grid_units*spacing)
-    return coordinate_shift
-
-  def shift_model_to_match_original_map(self,model=None):
-    # Shift a model object to match the original map (based
-    #    on -self.origin_shift_grid_units)
-    return self.shift_model_to_match_working_map(model=model,reverse=True)
-
   def map_shift_tracker(self):
     # Produces map_manager with no data so it is small but still knows how
     #   to write out maps
@@ -469,32 +372,6 @@ class map_manager(map_reader,write_ccp4_map):
     mst._map_data=None
     from copy import deepcopy
     return deepcopy(mst)
-
-  def write_model(self,
-     file_name=None,
-     log=sys.stdout):
-    if not self._model:
-      print ("No model to write out",file=log)
-    elif not file_name:
-      print ("Need file name to write model",file=log)
-    else:
-
-      # See if we need to shift model
-      if self.origin_shift_grid_units != (0,0,0):  # shift it
-        model=self._model.deep_copy()
-        print("Shifting model to match original map",file=log)
-        model=self.shift_model_to_match_original_map(
-          model=model)
-      else:
-        model=self._model
-
-      f=open(file_name,'w')
-      print(model.model_as_pdb(),file=f)
-      f.close()
-      print("Wrote model with %s residues to %s" %(
-         model.get_hierarchy().overall_counts().n_residues,
-         file_name),file=log)
-
 
   def write_map(self,
      file_name=None,
@@ -567,52 +444,21 @@ class map_manager(map_reader,write_ccp4_map):
       new_map_manager.shift_origin()
       new_map_manager.write_map(file_name=file_name)
 
-  #  High-level map manipulation tools with methods mostly imported
-
-  def map_as_fourier_coefficients(self,
-    high_resolution=None,
-    log=sys.stdout):
-
-    '''
-       Convert a map to Fourier coefficients to a resolution of high_resolution.
-       Generates error if the resolution is not possible given the gridding
-       of the map.
-    '''
-
-
-  def generate_map(self,
-     log=sys.stdout,
-     **kw):  # Accepts keywords for generate_model, generate_map_coefficients,
-             #  and generate_map and all are passed to generate_model etc.
-
-
-    '''
-      Simple interface to iotbx.create_models_or_maps to generate a map
-      Simple use:
-       mm=map_manager.generate_map()  # generates a small map (and model)
-       map is in mm.map_data()
-       model is in mm.model()
-      Advanced use...see keywords in iotbx.create_models_or_maps.generate_map
-    '''
-
-    print("\nGenerating new map data\n",file=log)
-    if self._map_data:
-      print("NOTE: replacing existing map data\n",file=log)
-    if self._model and  not kw.get('file_name','None').lower()=='none':
-      print("NOTE: using existing model to generate map data\n",file=log)
-      model=self._model
-    else:
-      model=None
-
-    from iotbx.create_models_or_maps import generate_model,\
-       generate_map_coefficients,generate_map
-
-    if not model:
-      model=generate_model(**kw)
-    map_coeffs=generate_map_coefficients(model=model,**kw)
-    mm=generate_map(map_coeffs=map_coeffs,**kw)
-    mm.show_summary()
-    self.__init__(map_manager_object=mm,model=model)
+  def is_similar(self,other=None,tol=0.5):
+    from libtbx.test_utils import approx_equal
+    # Check to make sure gridding and symmetry is similar
+    if self.origin_shift_grid_units != other.origin_shift_grid_units:
+      return False
+    if self.space_group_number != other.space_group_number:
+      return False
+    if self.working_map_n_xyz != other.working_map_n_xyz:
+      return False
+    if self.unit_cell_grid != other.unit_cell_grid:
+      return False
+    if not approx_equal(tuple(self.unit_cell_parameters),
+         tuple(other.unit_cell_parameters),tol=tol):
+      return False
+    return True
 
 def shift_origin_of_map(map_data,previous_origin_shift=None):
 
@@ -629,3 +475,4 @@ def shift_origin_of_map(map_data,previous_origin_shift=None):
     else:
       full_shift=previous_origin_shift
     return map_data,full_shift
+
