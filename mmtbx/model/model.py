@@ -1441,6 +1441,11 @@ class manager(object):
     """
     return self._ncs_groups
 
+  def unset_setup_ncs_constraints_groups(self):
+    self._ncs_groups=None
+    self._ncs_obj=None
+    self._master_sel=None
+
   def setup_cartesian_ncs_groups(self, ncs_params=None, log=null_out()):
     import mmtbx.ncs.cartesian_restraints
     cartesian_ncs = mmtbx.ncs.cartesian_restraints.cartesian_ncs_manager(
