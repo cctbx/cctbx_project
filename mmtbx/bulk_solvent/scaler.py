@@ -15,7 +15,6 @@ import scitbx.math
 from cctbx import miller
 import mmtbx.arrays
 import scitbx.math
-import cctbx.xray
 from libtbx import group_args
 from libtbx.test_utils import approx_equal
 
