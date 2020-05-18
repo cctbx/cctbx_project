@@ -100,14 +100,14 @@ class TextCtrlValidator(wx.Validator):
       #   value = value.decode("utf-8")
       if (value == ""):
         ctrl.SetBackgroundColour(
-          wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
+          wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
         return True
       reformatted = self.CheckFormat(value)
       if isinstance(reformatted, str):
         reformatted = to_unicode(reformatted)
       ctrl.SetValue(reformatted)
       ctrl.SetBackgroundColour(
-        wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
+        wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
       #ctrl.SetFocus()
       ctrl.Refresh()
       return True
