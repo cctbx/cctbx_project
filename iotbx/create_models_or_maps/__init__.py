@@ -170,6 +170,7 @@ def generate_map_coefficients(model=None,output_map_coeffs_file_name=None,
 def generate_map(map_coeffs=None,
    high_resolution=3,
    gridding=None,
+   origin_grid_units=None,
    low_resolution_fourier_noise_fraction=0,
    high_resolution_fourier_noise_fraction=0,
    low_resolution_real_space_noise_fraction=0,
@@ -184,7 +185,8 @@ def generate_map(map_coeffs=None,
 
     Convenience method to calculate a map and
     optionally add noise to it.  Supply map coefficients (miller_array
-    object) and types of noise to add, along with optional gridding (nx,ny,nz).
+    object) and types of noise to add, along with optional gridding (nx,ny,nz),
+    and origin_grid_units.
 
     Not implemented:
     Unique aspect of this noise generation is that it can be specified
@@ -208,6 +210,7 @@ def generate_map(map_coeffs=None,
       shake=None,  # rms offset for each atom if any
       scattering_table='electron',  # scattering table, electron n_gaussian
       gridding=None,  # optional gridding for map
+      origin_grid_units=None,  # optional origin for map
       low_resolution_fourier_noise_fraction=0, # fourier noise lowres
       high_resolution_fourier_noise_fraction=0, # hires
       low_resolution_real_space_noise_fraction=0, # real-space noise lowres
@@ -245,7 +248,7 @@ def generate_map(map_coeffs=None,
     unit_cell_parameters=map_coeffs.crystal_symmetry().unit_cell().parameters(),
     space_group_number=map_coeffs.crystal_symmetry().space_group().info(
          ).symbol_and_number().split('(')[0],
-    origin_shift_grid_units=(0,0,0),
+    origin_grid_units=origin_grid_units,
     working_map_n_xyz=map_data.all())
 
   if output_map_file_name:

@@ -11,24 +11,31 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
 
   def show_summary(self, out=None, prefix=""):
     if (out is None) : out = sys.stdout
+    data=self.get_available_map_data()
+
     if hasattr(self,'header_min'):
       print(prefix + "header_min: ", self.header_min, file=out)
       print(prefix + "header_max: ", self.header_max, file=out)
       print(prefix + "header_mean:", self.header_mean, file=out)
       print(prefix + "header_rms: ", self.header_rms, file=out)
+    print("\n"+prefix + "Information about FULL UNIT CELL:",file=out)
     print(prefix + "unit cell grid:", self.unit_cell_grid, file=out)
     print(prefix + "unit cell parameters:", self.unit_cell_parameters, file=out)
     print(prefix + "space group number:  ", self.space_group_number, file=out)
-    data=self.get_available_map_data()
+
     if not data:
       print("No map data available")
     else:
+      print("\n"+prefix + "Information about the PART OF MAP THAT IS PRESENT:",
+       file=out)
+      print(prefix + "map cell grid:", data.all(), file=out)
+      print(prefix + "map cell parameters:",
+        self.crystal_symmetry().unit_cell().parameters(), file=out)
       print(prefix + "map origin:", data.origin(), file=out)
-      print(prefix + "map grid:  ", data.all(), file=out)
       print(prefix + "pixel size: (%.4f, %.4f, %.4f) " %(
         self.pixel_sizes()), file=out)
     if hasattr(self,'origin_shift_grid_units'):
-      print(prefix + "map origin_offset_grid_units:",
+      print(prefix + "Shift (grid units) to place origin at original position:",
           self.origin_shift_grid_units, file=out)
 
     if hasattr(self,'_model') and self._model:
