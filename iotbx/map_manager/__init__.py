@@ -94,7 +94,7 @@ class map_manager(map_reader,write_ccp4_map):
      NOTE: If you run map_and_model=iotbx.map_and_model separately, you can
        update your map_shift_tracker with:
          origin_shift=map_and_model.original_origin_grid_units()
-         map_shift_tracker.set_origin_shift_grid_units(origin_shift)
+         map_shift_tracker.set_origin(origin_shift)
 
 
    See http://www.ccpem.ac.uk/mrc_format/mrc2014.php for MRC format
@@ -225,6 +225,7 @@ class map_manager(map_reader,write_ccp4_map):
     # Usual initialization with a file
     if file_name is not None:
       self.read_map(file_name=file_name)
+      self._model=None
 
     # Initialization with map_manager and map_data objects
     elif map_manager_object:
@@ -289,7 +290,7 @@ class map_manager(map_reader,write_ccp4_map):
 
   def read_map(self,file_name=None,log=sys.stdout):
       print("Reading map from %s " %(file_name),file=log)
-      if self._map_data:
+      if hasattr(self,'_map_data') and self._map_data:
         print("NOTE: Removing existing map_data",file=log)
 
       self.read_map_file(file_name=file_name)  # in mrcfile/__init__.py
@@ -329,12 +330,17 @@ class map_manager(map_reader,write_ccp4_map):
           " does not match gridding specified by input map_manager (%s)" %(
             str(self.working_map_n_xyz))))
 
-  def set_origin_shift_grid_units(self,origin_shift_grid_units,
+  def set_origin(self,origin_grid_units,
       allow_non_zero_previous_value=False):
     if not allow_non_zero_previous_value:
-      assert self.origin_shift_grid_units in [None,(0,0,0)] # make sure we
+      if (not self.origin_shift_grid_units in [None,(0,0,0)]):
+              # make sure we
               #   didn't already shift it
-    self.origin_shift_grid_units=origin_shift_grid_units
+        print("Origin shift is already set...cannot change it unless you"+
+          " also specify allow_non_zero_previous_value=True")
+        return
+
+    self.origin_shift_grid_units=origin_grid_units
 
   def shift_origin(self,map_data=None,update_shift=None,log=sys.stdout):
     # Shift the origin of the map to (0,0,0) and
@@ -387,12 +393,13 @@ class map_manager(map_reader,write_ccp4_map):
     #    on self.origin_shift_grid_units)
     shift_manager=self.get_shift_manager(model=model.deep_copy(),
        reverse=reverse)
-    if(shift_manager.shift_cart is not None):
+    if(shift_manager.shift_cart is not None
+        and shift_manager.shift_cart!=(0,0,0)):
       print ("\nMap origin is not at (0,0,0): shifting the model by %s" %(
          str(shift_manager.shift_cart)), file=log)
       '''
-      model.set_shift_manager(shift_manager = shift_manager)
       model._process_input_model()
+      model.set_shift_manager(shift_manager = shift_manager)
       '''
       sites_cart=model.get_sites_cart()
       sites_cart+=shift_manager.shift_cart
@@ -558,7 +565,7 @@ class map_manager(map_reader,write_ccp4_map):
     print("\nGenerating new map data\n",file=log)
     if self._map_data:
       print("NOTE: replacing existing map data\n",file=log)
-    if self._model and not kw.get('file_name','None').lower()=='none':
+    if self._model and  not kw.get('file_name','None').lower()=='none':
       print("NOTE: using existing model to generate map data\n",file=log)
       model=self._model
     else:
