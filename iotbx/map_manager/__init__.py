@@ -237,7 +237,7 @@ class map_manager(map_reader,write_ccp4_map):
 
     else:
       # Initialize with nothing
-     print("Initializing empty map_manager object",file=log)
+     print("Initializing empty map_manager ",file=log)
      self.unit_cell_grid=None
      self.unit_cell_parameters=None
      self.space_group_number=None
@@ -293,6 +293,36 @@ class map_manager(map_reader,write_ccp4_map):
             " does not match gridding specified by input map_manager (%s)" %(
               str(self.working_map_n_xyz))))
 
+  def read_mtz(self,file_name=None,log=sys.stdout):
+    # read in map stored as mtz dataset and convert to map and add resulting
+    #  map_data.
+    #  NOTE: use data_manager for this
+
+    # Requires that self.working_map_n_xyz is defined
+    if not self.working_map_n_xyz:
+      print("read_mtz requires initialization with a map...you can "+
+        "get a map_manager object sm that can read an mtz file from "+
+        "an existing one that is initialized called mm with:"+
+        " sm=mm.map_shift_manager().  Then sm.read_mtz(%s) " %(file_name),
+        file=log)
+
+    import iotbx.mtz
+    mtz_object = iotbx.mtz.object(file_name=file_name)
+    map_coeffs = mtz_object.as_miller_arrays()[0]
+    print ("Read %s map coefficients from %s" %(file_name),file=log)
+
+    # convert to map
+    map_data=self.fourier_coefficients_as_map(map_coeffs=map_coeffs)
+    self.add_map_data(map_data,log=log)
+    if self.map_data():
+      print ("Converted map coefficients to map_data and replaced existing"+
+        "map_data",file=log)
+    else:
+      print ("Converted map coefficients to map_data and saved new map_data",
+        file=log)
+    print ("Returning map coefficients",file=log)
+    return map_coeffs
+
   def set_origin_and_gridding(self,origin_grid_units,
       gridding=None,
       allow_non_zero_previous_value=False,log=sys.stdout):
@@ -331,6 +361,13 @@ class map_manager(map_reader,write_ccp4_map):
             str(new_unit_cell_parameters)),file=log)
 
 
+  def already_shifted(self):
+    # Check if origin is already at (0,0,0)
+    if self._map_data.origin() == (0,0,0):
+      return True
+    else:
+      return False
+
   def shift_origin(self,map_data=None,update_shift=None,log=sys.stdout):
     # Shift the origin of the map to (0,0,0) and
     #  optionally update origin_shift_grid_units
@@ -344,14 +381,14 @@ class map_manager(map_reader,write_ccp4_map):
         update_shift=True
 
     if self._map_data and not map_data:
-      if self._map_data.origin() != (0,0,0):
+      if self.already_shifted():
+        print ("Map is already at (0,0,0)",file=log)
+      else:
         # usual
         self._map_data,origin_shift_grid_units=shift_origin_of_map(
           self._map_data,self.origin_shift_grid_units)
         if update_shift:
           self.origin_shift_grid_units=origin_shift_grid_units
-      else:
-        print ("Map is already at (0,0,0)",file=log)
 
     elif map_data: # supplied map_data. Shift, optionally save updated shift,
          # and return shifted map
@@ -500,7 +537,7 @@ class map_manager(map_reader,write_ccp4_map):
        high_resolution.
        Requires that this map_manager has origin at (0,0,0) (i.e.,
        shift_origin())
-       Uses mmtbx.command_line.map_to_structure_factors.calculate_inverse_fft
+       Uses miller_array.fft_map to do the work
     '''
     assert map_coeffs
     assert self.map_data()
@@ -522,6 +559,22 @@ class map_manager(map_reader,write_ccp4_map):
     map_data=fft_map.real_map_unpadded()
     return map_data
 
+  def generate_map(self,
+     log=sys.stdout,
+     **kw):  # Accepts keywords for generate_model, generate_map_coefficients,
+             #  and generate_map and all are passed to generate_model etc.
+    '''
+      Simple interface to iotbx.create_models_or_maps to generate a map
+      Simple use:
+       mm=map_manager.generate_map()  # generates a small map (and model)
+       map is in mm.map_data()
+       model is in mm.model()
+      Advanced use...see keywords in iotbx.create_models_or_maps.generate_map
+    '''
+    from iotbx.map_model_manager import map_model_manager
+    mmm=map_model_manager()
+    mmm.generate_map(log=log,**kw)  # generate small map
+    self.__init__(map_manager_object=mmm._map_manager)  # make this map_manager the new map
 
 def shift_origin_of_map(map_data,previous_origin_shift=None):
 

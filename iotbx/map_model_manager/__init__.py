@@ -73,9 +73,9 @@ class map_model_manager:
     '''
       Simple interface to iotbx.create_models_or_maps to generate a map
       Simple use:
-       mm=map_manager.generate_map()  # generates a small map (and model)
-       map is in mm.map_data()
-       model is in mm.model()
+       mm=map_model_manager.generate_map()  # generates a small map (and model)
+       map is in mm._map_manager().map_data()
+       model is in mm._model()
       Advanced use...see keywords in iotbx.create_models_or_maps.generate_map
     '''
 
@@ -165,7 +165,7 @@ class map_model_manager:
          model.get_hierarchy().overall_counts().n_residues,
          file_name),file=log)
 
-  def add_map(self,map_manager=None,log=sys.stdout):
+  def add_map_manager(self,map_manager=None,log=sys.stdout):
     # Add a map and make sure its symmetry is similar to others
     self._map_manager=map_manager
     self.check_crystal_symmetry(map_manager.crystal_symmetry(),log=log)
@@ -175,8 +175,8 @@ class map_model_manager:
     # Add a model and make sure its symmetry is similar to others
     # Check that model crystal_symmetry matches either full or working
     # crystal_symmetry of map
-    self._model=model
     self.check_crystal_symmetry(model.crystal_symmetry(),log=log)
+    self._model=model
 
   def check_crystal_symmetry(self,crystal_symmetry,
      text_on_failure='Symmetry of model',log=sys.stdout):
@@ -185,13 +185,12 @@ class map_model_manager:
       if crystal_symmetry.is_similar_symmetry(cs):
         ok=True
         break
-    if 1: # ZZZnot ok:
+    if not ok:
       raise Sorry("Crystal symmetry of %s" %(text_on_failure)+
       "\n%s\n" %(crystal_symmetry) +
-      "does not match " %(
-       "that of the map that is present: "+
+      "does not match that of the map that is present: "+
         " \n%s\n or that of the full map:\n%s\n" %(
-       self.crystal_symmetry(),self.unit_cell_crystal_symmetry())))
+       self.crystal_symmetry(),self.unit_cell_crystal_symmetry()))
 
   def add_ncs_object(self,ncs_object=None,log=sys.stdout):
     # Add an NCS object
@@ -200,7 +199,7 @@ class map_model_manager:
   def read_map(self,file_name=None,log=sys.stdout):
     # Read in a map and make sure its symmetry is similar to others
     mm=map_manager(file_name)
-    self.add_map(mm,log=log)
+    self.add_map_manager(mm,log=log)
 
   def read_model(self,file_name=None,log=sys.stdout):
     print("Reading model from %s " %(file_name),file=log)
@@ -222,10 +221,18 @@ class map_model_manager:
 
   def shift_origin(self,update_shift=None,log=sys.stdout):
     # shift the origin of all maps/models to (0,0,0)
+    if not self._map_manager:
+      print ("No information about origin available",file=log)
+      return
+    if self._map_manager.already_shifted():
+      print("Origin is already at (0,0,0), no shifting done",file=log)
+      return
     self._map_manager.shift_origin()
-    self._model=self.shift_model_to_match_working_map(
-       model=self._model,log=log)
-    self._ncs_object=self.shift_ncs_to_match_working_map(
+    if self._model:
+      self._model=self.shift_model_to_match_working_map(
+        model=self._model,log=log)
+    if self._ncs_object:
+      self._ncs_object=self.shift_ncs_to_match_working_map(
        ncs_object=self._ncs_object, log=log)
 
   def shift_ncs_to_match_working_map(self,ncs_object=None,reverse=False,
