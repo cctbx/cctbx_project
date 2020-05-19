@@ -283,5 +283,3 @@ class map_model_manager:
        Generates error if the resolution is not possible given the gridding
        of the map.
     '''
-
-
