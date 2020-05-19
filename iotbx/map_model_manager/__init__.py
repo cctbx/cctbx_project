@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 import sys
-from libtbx import group_args
 from iotbx.map_manager import map_manager
 
 class map_model_manager:
