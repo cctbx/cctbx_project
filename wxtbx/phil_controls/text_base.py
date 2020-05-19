@@ -75,9 +75,9 @@ class ValidatedTextCtrl(wx.TextCtrl, phil_controls.PhilCtrl):
     else :
       self.SetBackgroundColour((200,200,200))
 
-class TextCtrlValidator(wx.PyValidator):
+class TextCtrlValidator(wx.Validator):
   def __init__(self):
-    wx.PyValidator.__init__(self)
+    wx.Validator.__init__(self)
     self.Bind(wx.EVT_TEXT_ENTER, self.OnEnter)
 
   def Clone(self):
@@ -100,14 +100,14 @@ class TextCtrlValidator(wx.PyValidator):
       #   value = value.decode("utf-8")
       if (value == ""):
         ctrl.SetBackgroundColour(
-          wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
+          wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
         return True
       reformatted = self.CheckFormat(value)
       if isinstance(reformatted, str):
         reformatted = to_unicode(reformatted)
       ctrl.SetValue(reformatted)
       ctrl.SetBackgroundColour(
-        wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
+        wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
       #ctrl.SetFocus()
       ctrl.Refresh()
       return True

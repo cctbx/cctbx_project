@@ -10,6 +10,9 @@ import iotbx.phil
 import libtbx.load_env
 from cctbx import crystal
 import wx
+if wx.VERSION >= (4, 0):
+  import wx.adv
+
 import sys
 from six.moves import range
 from six.moves import zip
@@ -38,12 +41,15 @@ def run (args) :
     usage_string="%s f_obs.mtz [options]" %libtbx.env.dispatcher_name)
   settings = pcl.work.extract()
   a = wxtbx.app.CCTBXApp(0)
-  app_icon = wx.EmptyIcon()
+  if wx.VERSION >= (4,0):
+    app_icon = wx.Icon()
+  else:
+    app_icon = wx.EmptyIcon()
   app_icon.CopyFromBitmap(icons.hklview_3d.GetBitmap())
-  if (wx.VERSION >= (2,9)) :
+  if wx.VERSION >= (4,0):
+    tb_icon = wx.adv.TaskBarIcon(wx.adv.TBI_DOCK)
+  else:
     tb_icon = wx.TaskBarIcon(wx.TBI_DOCK)
-  else :
-    tb_icon = wx.TaskBarIcon()
   tb_icon.SetIcon(app_icon, "CCTBX multiplicity viewer")
   a.hklview_settings = settings
   viewer_class = MultiplicityViewFrame
@@ -100,8 +106,6 @@ class MultiplicityViewFrame(HKLViewFrame):
 
   def load_reflections_file (self, file_name, set_array=True,
       data_only=True) :
-    if (isinstance(file_name, unicode)) :
-      file_name = str(file_name)
     if (file_name != "") :
       from iotbx.reflection_file_reader import any_reflection_file
       from iotbx.gui_tools.reflections import get_array_description
@@ -340,9 +344,9 @@ class MultiplicityViewFrame2D(MultiplicityViewFrame, HKLViewFrame2D):
     self.view_3d.Raise()
 
 
-class ColourBar (wx.PyPanel):
+class ColourBar(wx.Panel):
   def __init__ (self, *args, **kwds) :
-    wx.PyPanel.__init__(self, *args, **kwds)
+    wx.Panel.__init__(self, *args, **kwds)
     font = wx.Font(14, wx.MODERN, wx.NORMAL, wx.NORMAL)
     self.SetFont(font)
     self.Bind(wx.EVT_PAINT, self.OnPaint)
