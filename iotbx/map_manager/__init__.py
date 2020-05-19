@@ -460,6 +460,69 @@ class map_manager(map_reader,write_ccp4_map):
       return False
     return True
 
+
+  def map_as_fourier_coefficients(self,
+    high_resolution=None,
+    resolution_factor=0.333,
+    box=False,
+    log=sys.stdout):
+
+    '''
+       Convert a map to Fourier coefficients to a resolution of high_resolution.
+       If resolution not available, truncate to resolution that is available.
+       If resolution is not specified, use highest resolution giving
+       grid spacing <= resolution_factor * resolution.
+       Requires that the map have origin at (0,0,0) (i.e., shift_origin())
+       If box, return complete set of structure factors available using full
+        box of grid points in FFT.
+       Uses mmtbx.command_line.map_to_structure_factors.calculate_inverse_fft
+    '''
+    assert self.map_data()
+    assert self.map_data().origin()==(0,0,0)
+
+    from mmtbx.command_line.map_to_structure_factors import \
+       calculate_inverse_fft
+    return calculate_inverse_fft(map_data=self.map_data(),
+     crystal_symmetry=self.crystal_symmetry(),
+     d_min=high_resolution,
+     box=box,
+     resolution_factor=resolution_factor,
+     out=log)
+
+  def fourier_coefficients_as_map(self,
+    map_coeffs=None,
+    high_resolution=None,
+    log=sys.stdout):
+
+    '''
+       Convert Fourier coefficients into to a real-space map with gridding
+       matching this existing map_manager. Optional resolution cutoff of
+       high_resolution.
+       Requires that this map_manager has origin at (0,0,0) (i.e.,
+       shift_origin())
+       Uses mmtbx.command_line.map_to_structure_factors.calculate_inverse_fft
+    '''
+    assert map_coeffs
+    assert self.map_data()
+    assert self.map_data().origin()==(0,0,0)
+
+    crystal_symmetry=self.crystal_symmetry()
+    n_real=self.map_data().all()
+
+    from cctbx import maptbx
+    from cctbx.maptbx import crystal_gridding
+    cg=crystal_gridding(
+        unit_cell=crystal_symmetry.unit_cell(),
+        space_group_info=crystal_symmetry.space_group_info(),
+        pre_determined_n_real=n_real)
+    fft_map = map_coeffs.fft_map(
+       crystal_gridding=cg,
+       symmetry_flags=maptbx.use_space_group_symmetry)
+    fft_map.apply_volume_scaling()
+    map_data=fft_map.real_map_unpadded()
+    return map_data
+
+
 def shift_origin_of_map(map_data,previous_origin_shift=None):
 
     assert map_data

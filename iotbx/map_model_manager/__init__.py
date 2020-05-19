@@ -273,13 +273,3 @@ class map_model_manager:
     #    on -self._map_manager.origin_shift_grid_units)
     return self.shift_model_to_match_working_map(model=model,reverse=True)
 
-
-  def map_as_fourier_coefficients(self,
-    high_resolution=None,
-    log=sys.stdout):
-
-    '''
-       Convert a map to Fourier coefficients to a resolution of high_resolution.
-       Generates error if the resolution is not possible given the gridding
-       of the map.
-    '''
