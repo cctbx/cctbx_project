@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_to_structure_factors
 
 import iotbx.ccp4_map
-from cctbx import miller, crystal
+from cctbx import miller
 from cctbx.array_family import flex
 import mmtbx.utils
 import sys
