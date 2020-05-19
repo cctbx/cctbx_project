@@ -181,6 +181,6 @@ def run_group(symbol):
   assert approx_equal(gu_a2, gu_fd2, eps=1.e-6)
 
 if (__name__ == "__main__"):
-  for i in [1,]:#range(1,231):
+  for i in range(1,231)[:10]: # XXX Do first 10 (to save time)
     print(i)
     run_group(i)

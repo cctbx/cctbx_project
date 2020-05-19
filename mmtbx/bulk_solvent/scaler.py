@@ -98,6 +98,7 @@ class run(object):
     self.auto = auto
     self.bin_selections = bin_selections
     self.k_exp_overall, self.b_exp_overall = None,None
+    self.u_star = None
     if(self.bin_selections is None):
       self.bin_selections = self.f_obs.log_binning()
     # If R-free flags are bad - discard them and use all reflections instead.
@@ -161,16 +162,22 @@ class run(object):
       if(self.bulk_solvent):
         if(cycle==0):
           r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
+          if(verbose):
+            print("    r(set_k_isotropic_exp): %6.4f"%r_start, file=self.log)
           r_start = self.k_mask_grid_search(r_start=r_start)
           if(verbose):
             print("    r(bulk_solvent_grid_search): %6.4f"%r_start, file=self.log)
           r_start = self.set_k_isotropic_exp(r_start = r_start,  verbose=verbose)
+          if(verbose):
+            print("    r(set_k_isotropic_exp): %6.4f"%r_start, file=self.log)
         else:
           r_start = self.bulk_solvent_scaling(r_start = r_start)
+          if(verbose):
+            print("    r(bulk_solvent_scaling): %6.4f"%r_start, file=self.log)
       # anisotropic scale
       if([try_poly, try_expanal, try_expmin].count(True)):
         if(verbose): print("    anisotropic scaling:", file=log)
-        self.anisotropic_scaling(r_start = r_start)
+        r_start = self.anisotropic_scaling(r_start = r_start)
       if(self.auto_convergence and self.is_converged(r_start=r_start0,
          tolerance=self.auto_convergence_tolerance)):
         break
@@ -205,32 +212,34 @@ class run(object):
     return result
 
   def set_k_isotropic_exp(self, r_start, verbose, b_lower_limit = -100):
+    k_iso   = flex.double(self.core.k_isotropic.size(), 1) # Done at start only!
+    k_aniso = flex.double(self.core.k_isotropic.size(), 1) # Done at start only!
     arrays = mmtbx.arrays.init(
       f_calc          = self.core.f_calc,
       f_masks         = self.core.f_mask(),
-      k_isotropic     = self.core.k_isotropic,
-      k_anisotropic   = self.core.k_anisotropic,
+      k_isotropic     = k_iso,
+      k_anisotropic   = k_aniso,
       k_masks         = self.core.k_mask())
     sel = self.selection_work.data()
     #
-    # This fast analytic does not guarantee the lowest R, so...
+    # At least in one example this gives more accurate answer but higher R than start!
     #
-    #rf = scitbx.math.gaussian_fit_1d_analytical(
-    #  x = flex.sqrt(self.ss).select(sel),
-    #  y = self.f_obs.data().select(sel),
-    #  z = abs(arrays.f_model).data().select(sel))
-    #if(rf.b < b_lower_limit): return r_start
-    #k = rf.a * flex.exp(-self.ss * rf.b)
-    #r = self.try_scale(k_isotropic_exp = k)
+    rf = scitbx.math.gaussian_fit_1d_analytical(
+      x = flex.sqrt(self.ss).select(sel),
+      y = self.f_obs.data().select(sel),
+      z = abs(arrays.f_model).data().select(sel))
+    if(rf.b < b_lower_limit): return r_start
+    k = rf.a * flex.exp(-self.ss * rf.b)
+    r = self.try_scale(k_isotropic_exp = k)
     #
-    # ...use a slower grid search version of the same
+    # At least in one example this gives less accurate answer but lower R than start!
     #
-    o = bulk_solvent.f_kb_scaled(
-      f1 = self.f_obs.data().select(sel),
-      f2 = flex.abs(arrays.f_model.data()).select(sel),
-      b_range = flex.double(range(-100,100,5)),
-      ss = self.ss.select(sel))
-    k = o.k() * flex.exp(-self.ss * o.b())
+    #o = bulk_solvent.f_kb_scaled(
+    #  f1 = self.f_obs.data().select(sel),
+    #  f2 = flex.abs(arrays.f_model.data()).select(sel),
+    #  b_range = flex.double(range(-100,100,1)),
+    #  ss = self.ss.select(sel))
+    #k = o.k() * flex.exp(-self.ss * o.b())
     #
     self.core = self.core.update(k_isotropic_exp = k)
     return self.r_factor()
@@ -356,6 +365,11 @@ class run(object):
       k_mask_bin.append(k_mask_bin_)
       k_mask.set_selected(selection, k_mask_bin_)
       k_isotropic.set_selected(selection, k_isotropic_bin_)
+
+    k_mask_bin_smooth = self.smooth(k_mask_bin)
+    k_mask = self.populate_bin_to_individual_k_mask_linear_interpolation(
+      k_mask_bin = k_mask_bin_smooth)
+
     self.core = self.core.update(k_masks = k_mask, k_isotropic = k_isotropic)
     # ????
     self.bss_result.k_mask_bin_orig   = k_mask_bin
@@ -375,6 +389,8 @@ class run(object):
     if((r_start<=self.r_final) or
        (r_start>self.r_final and abs(r_start-self.r_final)<tolerance)):
       result = True
+    diff = abs(round(r_start,4)-round(self.r_final,4))
+    if(diff<tolerance): result = True
     return result
 
   def show(self):
@@ -607,6 +623,7 @@ class run(object):
     if(self.try_expmin):
       zero = self.f_obs.select(sel).customized_copy(data =
         flex.complex_double(f_obs.size(), 0))
+      if(self.u_star is None): self.u_star = [0,0,0,0,0,0]
       fm = mmtbx.f_model.manager_kbu(
         f_obs         = self.f_obs.select(sel),
         f_calc        = self.core.f_model_no_aniso_scale.select(sel),
@@ -621,9 +638,10 @@ class run(object):
         ss      = self.ss,
         k_sols  = [0,],
         b_sols  = [0,],
-        u_star  = [0,0,0,0,0,0])
+        u_star  = self.u_star)
       obj.minimize_u()
       u_star = obj.kbu.u_star()
+      self.u_star = u_star
       scale_matrix_expmin = adptbx.u_as_b(adptbx.u_star_as_u_cart(uc, u_star))
       k_anisotropic_expmin = ext.k_anisotropic(mi_all, u_star)
       r_expmin = self.try_scale(k_anisotropic = k_anisotropic_expmin)
@@ -656,6 +674,7 @@ class run(object):
       if(self.verbose):
         self.format_scale_matrix()
         print("      r_final  : %6.4f"%r_aniso, file=self.log)
+    return r_best
 
   def overall_isotropic_kb_estimate(self):
     k_total = self.core.k_isotropic * self.core.k_anisotropic * \
