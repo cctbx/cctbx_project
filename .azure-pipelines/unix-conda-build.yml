@@ -88,8 +88,8 @@ steps:
     cd build
     source setpaths.sh
     libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx
-    make -j 4
-    make -j 4
+    libtbx.scons -j 4
+    libtbx.scons -j 4
   displayName: Configure and Build
 
 # test

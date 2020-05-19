@@ -1,7 +1,12 @@
 # Script for building CCTBX
 # macOS image descriptions
+# https://github.com/actions/virtual-environments/blob/master/images/macos/macos-10.15-Readme.md
 # https://github.com/Microsoft/azure-pipelines-image-generation/blob/master/images/macos/macos-10.14-Readme.md
-# https://github.com/Microsoft/azure-pipelines-image-generation/blob/master/images/macos/macos-10.13-Readme.md
+#
+# Parameters:
+#   vmImage: [10, 14]  # macOs version
+#   xcode_version: [11, 3, 1]  # xCode version
+#   modules: <modules artifact name>
 
 jobs:
 - job: ${{ format('{0}_{1}', format('macOS_{0}', join('_', parameters.vmImage)), format('xcode_{0}', join('_', parameters.xcode_version)) ) }}
@@ -32,6 +37,9 @@ jobs:
         PYTHON_VERSION: py38
         MODULES: ${{ parameters.modules }}
 
+  variables:
+    artifact_name: ${{ format('xcode_{0}', join('_', parameters.xcode_version))  }}_$(PYTHON_VERSION)
+
   steps:
   - script: |
       echo "Selecting Xcode version ${{ join('.', parameters.xcode_version) }}"
@@ -46,5 +54,50 @@ jobs:
       rm ~/uninstall_homebrew
     displayName: Remove homebrew
 
+  # download cached build directory for CI builds
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProjectId)'
+      pipeline: 2
+      artifact: '$(artifact_name)'
+      path: $(Pipeline.Workspace)
+    displayName: Download cached build
+    condition: >
+      and(eq(variables['Build.DefinitionName'], 'CI'),
+          eq('${{ join('_', parameters.xcode_version) }}', '11_3_1'))
+    continueOnError: true
+
+  - script: |
+      cd $(Pipeline.Workspace)
+      tar -xf build.tar
+    displayName: Extract build tarball
+    condition: >
+      and(eq(variables['Build.DefinitionName'], 'CI'),
+          eq('${{ join('_', parameters.xcode_version) }}', '11_3_1'))
+    continueOnError: true
+
   # build
   - template: ./unix-conda-build.yml
+
+  # preserve permissions
+  - script: |
+      cd $(Pipeline.Workspace)
+      tar -chf build.tar build
+    displayName: Build tarball
+    condition: >
+      and(eq(variables['Build.DefinitionName'], 'Full'),
+          or(eq(variables['Build.Reason'], 'Schedule'),
+             eq(variables['Build.Reason'], 'Manual')),
+          eq('${{ join('_', parameters.xcode_version) }}', '11_3_1'))
+    continueOnError: true
+
+  # cache build directory every night for CI builds
+  - publish: $(Pipeline.Workspace)/build.tar
+    artifact: $(artifact_name)
+    condition: >
+      and(eq(variables['Build.DefinitionName'], 'Full'),
+          or(eq(variables['Build.Reason'], 'Schedule'),
+             eq(variables['Build.Reason'], 'Manual')),
+          eq('${{ join('_', parameters.xcode_version) }}', '11_3_1'))
+    continueOnError: true
