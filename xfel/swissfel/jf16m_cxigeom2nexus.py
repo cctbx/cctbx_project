@@ -52,16 +52,16 @@ phil_scope = parse("""
     .help = Whether the data being analyzed is raw data from the JF16M or has \
             been corrected and padded.
   nexus_details {
-    instrument_name = Bernina SwissMX
+    instrument_name = SwissFEL ARAMIS BEAMLINE ESB
       .type = str
       .help = Name of instrument
     instrument_short_name = ESB
       .type = str
       .help = short name for instrument, perhaps the acronym
-    source_name = SwissFEL
+    source_name = SwissFEL ARAMIS
       .type = str
       .help = Name of the neutron or x-ray storage ring/facility
-    source_short_name = SwissFEL
+    source_short_name = SwissFEL ARAMIS
       .type = str
       .help = short name for source, perhaps the acronym
     start_time = None
