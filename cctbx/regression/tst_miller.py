@@ -171,6 +171,21 @@ Completeness with d_max=infinity: 1
   assert s.indices().size() == 1
   assert s.anomalous_flag()
 
+
+def exercise_generate_bijvoet_mates_set():
+  sg_info = sgtbx.space_group_info("P422")
+  cs = sg_info.any_compatible_crystal_symmetry(volume=1000)
+  for anom in [True, False]:
+    miller_set = miller.build_set(
+      crystal_symmetry=cs,
+      anomalous_flag=anom,
+      d_min=2.0,
+    )
+    bm = miller_set.generate_bivoet_mates()
+    assert bm.anomalous_flag()
+    assert bm.completeness() == 1
+
+
 def exercise_union_of_sets():
   xs = crystal.symmetry(unit_cell=(10,10,10,90,90,90), space_group_symbol="P1")
   ms = miller.set(xs, flex.miller_index())
@@ -2559,6 +2574,7 @@ def exercise_structure_factors_from_map_and_asu_map(d_min=2.):
     assert approx_equal(rfactor(x=fc,y=fc_from_asu_map), 0.0)
 
 def run(args):
+  exercise_generate_bijvoet_mates_set()
   exercise_counting_sorted_n_bins_reflections_per_bin()
   exercise_counting_sorted_no_empty_bins()
   exercise_neighbor_average()

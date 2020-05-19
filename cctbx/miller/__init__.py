@@ -1867,6 +1867,22 @@ class set(crystal.symmetry):
       sele &= (self.indices() != hkl)
     return self.select(sele)
 
+  def generate_bivoet_mates(self):
+    """
+    If the array is not already anomalous, expand the miller indices to generate
+    anomalous pairs.
+    """
+    if (self.anomalous_flag()): return self
+    sel = ~self.centric_flags().data()
+    indices = self.indices().deep_copy()
+    indices.extend(-indices.select(sel))
+    return set(
+        crystal_symmetry=self,
+        indices=indices,
+        anomalous_flag=True,
+    )
+
+
 def build_set(crystal_symmetry, anomalous_flag, d_min=None, d_max=None,
               max_index=None):
   """
