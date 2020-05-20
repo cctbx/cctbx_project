@@ -147,7 +147,7 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
 
   def convert_to_double(self):
     self._map_data=self.map_data()
-    self.data=None
+    self.data=self._map_data # XXX for backwards compatibility. Should be None.
 
   def high_resolution(self):
     if hasattr(self,'_high_resolution'):

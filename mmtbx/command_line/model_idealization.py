@@ -959,7 +959,7 @@ def get_map_from_hkl(hkl_file_object, params, xrs, log):
 
 def get_map_from_map(map_file_object, params, xrs, log):
   print("Processing input CCP4 map file...", file=log)
-  map_data = map_file_object.file_content.data.as_double()
+  map_data = map_file_object.file_content.map_data()
   try:
     # map_cs = map_content.file_object.crystal_symmetry()
     map_cs = map_file_object.crystal_symmetry()

@@ -1695,11 +1695,15 @@ class info_object:
     print("\n"+50*"="+"\n", file=out)
 
 class make_ccp4_map: # just a holder so map_to_structure_factors will run
+  # XXX Replace with map_manager
   def __init__(self,map=None,unit_cell=None):
     self.data=map
     self.unit_cell_parameters=unit_cell.parameters()
     self.space_group_number=1
     self.unit_cell_grid=map.all()
+
+  def map_data(self):
+    return self.data
 
   def crystal_symmetry(self):
     return crystal.symmetry(self.unit_cell_parameters,
@@ -2474,7 +2478,7 @@ def get_map_object(file_name=None,must_allow_sharpening=None,
   if file_name.endswith(".xplor"):
     import iotbx.xplor.map
     m = iotbx.xplor.map.reader(file_name=file_name)
-    m.unit_cell_grid=m.data.all() # just so we have something
+    m.unit_cell_grid=m.map_data().all() # just so we have something
     m.space_group_number=0 # so we have something
   else:
     from iotbx import mrcfile
@@ -2489,9 +2493,9 @@ def get_map_object(file_name=None,must_allow_sharpening=None,
       raise Sorry("Input map is already modified and should not be sharpened")
     if get_map_labels:
       map_labels=m.labels
-  print("ORIGIN: ",m.data.origin(), file=out)
-  print("EXTENT: ",m.data.all(), file=out)
-  print("IS PADDED: ",m.data.is_padded(), file=out)
+  print("ORIGIN: ",m.map_data().origin(), file=out)
+  print("EXTENT: ",m.map_data().all(), file=out)
+  print("IS PADDED: ",m.map_data().is_padded(), file=out)
 
   map_data=m.data
   acc=map_data.accessor()
@@ -2501,9 +2505,9 @@ def get_map_object(file_name=None,must_allow_sharpening=None,
   if(shift_needed):
     map_data = map_data.shift_origin()
     origin_shift=(
-      m.data.origin()[0]/m.data.all()[0],
-      m.data.origin()[1]/m.data.all()[1],
-      m.data.origin()[2]/m.data.all()[2])
+      m.map_data().origin()[0]/m.map_data().all()[0],
+      m.map_data().origin()[1]/m.map_data().all()[1],
+      m.map_data().origin()[2]/m.map_data().all()[2])
     origin_frac=origin_shift  # NOTE: fraction of NEW cell
   else:
     origin_frac=(0.,0.,0.)

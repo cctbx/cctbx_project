@@ -146,21 +146,21 @@ def run(args, log=None, ccp4_map=None,
   if(m.space_group_number > 1):
     raise Sorry("Input map space group: %d. Must be P1."%m.space_group_number)
   broadcast(m="Input map information:", log=log)
-  print("m.all()   :", m.data.all(), file=out)
-  print("m.focus() :", m.data.focus(), file=out)
-  print("m.origin():", m.data.origin(), file=out)
-  print("m.nd()    :", m.data.nd(), file=out)
-  print("m.size()  :", m.data.size(), file=out)
-  print("m.focus_size_1d():", m.data.focus_size_1d(), file=out)
-  print("m.is_0_based()   :", m.data.is_0_based(), file=out)
-  print("map: min/max/mean:", flex.min(m.data), flex.max(m.data), flex.mean(m.data), file=out)
+  print("m.all()   :", m.map_data().all(), file=out)
+  print("m.focus() :", m.map_data().focus(), file=out)
+  print("m.origin():", m.map_data().origin(), file=out)
+  print("m.nd()    :", m.map_data().nd(), file=out)
+  print("m.size()  :", m.map_data().size(), file=out)
+  print("m.focus_size_1d():", m.map_data().focus_size_1d(), file=out)
+  print("m.is_0_based()   :", m.map_data().is_0_based(), file=out)
+  print("map: min/max/mean:", flex.min(m.map_data()), flex.max(m.map_data()), flex.mean(m.map_data()), file=out)
   print("unit cell:", m.unit_cell_parameters, file=out)
   #
 
   # Instead use ccp4 map crystal_symmetry and classify according to the case
   cs = m.crystal_symmetry()
 
-  if m.unit_cell_grid == m.data.all():
+  if m.unit_cell_grid == m.map_data().all():
     print("\nOne unit cell of data is present in map", file=out)
   else:
     if params.keep_origin:
@@ -172,9 +172,9 @@ def run(args, log=None, ccp4_map=None,
     print("New cell will be: (%.3f, %.3f, %.3f, %.1f, %.1f, %.1f) A " %(
        cs.unit_cell().parameters()), file=out)
     print("New unit cell grid will be: (%s, %s, %s) "%(
-      m.data.all()), file=out)
+      m.map_data().all()), file=out)
 
-  map_data=m.data
+  map_data=m.map_data()
 
   # Get origin in grid units and new position of origin in grid units
   original_origin=map_data.origin()
