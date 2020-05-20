@@ -7,6 +7,7 @@ from xfel.euxfel.read_geom import read_geom
 from libtbx.phil import parse
 import six
 from libtbx.utils import Sorry
+import datetime
 
 phil_scope = parse("""
   unassembled_file = None
@@ -28,6 +29,14 @@ phil_scope = parse("""
     .type = path
     .help = Overrides wavelength. Reads the pulse IDs in the provided file \
             to get a list of wavelengths for the master.
+  include_spectra = False
+    .type = bool
+    .help = If true, 2D spectral data will be included in the master file, \
+            as read from the beam_file.
+  energy_offset = None
+    .type = float
+    .help = If set, add this offset (in eV) to the energy axis in the \
+            spectra in the beam file and to the per-shot wavelength.
   mask_file = None
     .type = str
     .help = Path to file with external bad pixel mask.
@@ -42,6 +51,43 @@ phil_scope = parse("""
     .type = bool
     .help = Whether the data being analyzed is raw data from the JF16M or has \
             been corrected and padded.
+  nexus_details {
+    instrument_name = SwissFEL ARAMIS BEAMLINE ESB
+      .type = str
+      .help = Name of instrument
+    instrument_short_name = ESB
+      .type = str
+      .help = short name for instrument, perhaps the acronym
+    source_name = SwissFEL ARAMIS
+      .type = str
+      .help = Name of the neutron or x-ray storage ring/facility
+    source_short_name = SwissFEL ARAMIS
+      .type = str
+      .help = short name for source, perhaps the acronym
+    start_time = None
+      .type = str
+      .help = ISO 8601 time/date of the first data point collected in UTC, \
+              using the Z suffix to avoid confusion with local time
+    end_time = None
+      .type = str
+      .help = ISO 8601 time/date of the last data point collected in UTC, \
+              using the Z suffix to avoid confusion with local time. \
+              This field should only be filled when the value is accurately \
+              observed. If the data collection aborts or otherwise prevents \
+              accurate recording of the end_time, this field should be omitted
+    end_time_estimated = None
+      .type = str
+      .help = ISO 8601 time/date of the last data point collected in UTC, \
+              using the Z suffix to avoid confusion with local time. \
+              This field may be filled with a value estimated before an \
+              observed value is avilable.
+    sample_name = None
+      .type = str
+      .help = Descriptive name of sample
+    total_flux = None
+      .type = float
+      .help = flux incident on beam plane in photons per second
+  }
 """)
 
 
@@ -98,8 +144,16 @@ class jf16m_cxigeom2nexus(object):
     '''
     output_file_name = self.params.output_file if self.params.output_file is not None else os.path.splitext(self.params.unassembled_file)[0]+'_master.h5'
     f = h5py.File(output_file_name, 'w')
+    f.attrs['NX_class'] = 'NXroot'
+    f.attrs['file_name'] = os.path.basename(output_file_name)
+    f.attrs['file_time'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    f.attrs['HDF5_Version'] = h5py.version.hdf5_version
     entry = f.create_group('entry')
     entry.attrs['NX_class'] = 'NXentry'
+    if self.params.nexus_details.start_time: entry['start_time'] = self.params.nexus_details.start_time
+    if self.params.nexus_details.end_time: entry['end_time'] = self.params.nexus_details.end_time
+    if self.params.nexus_details.end_time_estimated: entry['end_time_estimated'] = self.params.nexus_details.end_time_estimated
+
     # --> definition
     self._create_scalar(entry, 'definition', 'S4', np.string_('NXmx'))
     # --> data
@@ -113,8 +167,23 @@ class jf16m_cxigeom2nexus(object):
     # --> sample
     sample = entry.create_group('sample')
     sample.attrs['NX_class'] = 'NXsample'
-    beam = sample.create_group('beam')
+    if self.params.nexus_details.sample_name: sample['name'] = self.params.nexus_details.sample_name
+    sample['depends_on'] = '.' # This script does not support scans/gonios
+    # --> source
+    source = entry.create_group('source')
+    source.attrs['NX_class'] = 'NXsource'
+    source['name'] = self.params.nexus_details.source_name
+    source['name'].attrs['short_name'] = self.params.nexus_details.source_short_name
+    # --> instrument
+    instrument = entry.create_group('instrument')
+    instrument.attrs['NX_class'] = 'NXinstrument'
+    instrument["name"] = self.params.nexus_details.instrument_name
+    instrument["name"].attrs["short_name"] = self.params.nexus_details.instrument_short_name
+    beam = instrument.create_group('beam')
     beam.attrs['NX_class'] = 'NXbeam'
+    if self.params.nexus_details.total_flux:
+      self._create_scalar(beam, 'total_flux', 'f', self.params.nexus_details.total_flux)
+      beam['total_flux'].attrs['units'] = 'Hz'
     if self.params.wavelength is None and self.params.beam_file is None:
       wavelengths = h5py.File(self.params.unassembled_file, 'r')['instrument/photon_wavelength_A']
       beam.create_dataset('incident_wavelength', (1,), data=np.mean(wavelengths), dtype='f8')
@@ -128,17 +197,39 @@ class jf16m_cxigeom2nexus(object):
       beam_pulse_ids = beam_h5['data/SARFE10-PSSS059:SPECTRUM_CENTER/pulse_id'][()]
       beam_energies = beam_h5['data/SARFE10-PSSS059:SPECTRUM_CENTER/data'][()]
       energies = np.ndarray((len(data_pulse_ids),), dtype='f8')
+      if self.params.include_spectra:
+        beam_spectra_x = beam_h5['data/SARFE10-PSSS059:SPECTRUM_X/data'][()]
+        beam_spectra_y = beam_h5['data/SARFE10-PSSS059:SPECTRUM_Y/data'][()]
+        spectra_x = np.ndarray((len(data_pulse_ids),beam_spectra_x.shape[1]), dtype='f8')
+        spectra_y = np.ndarray((len(data_pulse_ids),beam_spectra_y.shape[1]), dtype='f8')
+
       for i, pulse_id in enumerate(data_pulse_ids):
-        energies[i] = beam_energies[np.where(beam_pulse_ids==pulse_id)[0][0]]
+        where = np.where(beam_pulse_ids==pulse_id)[0][0]
+        energies[i] = beam_energies[where]
+        if self.params.include_spectra:
+          spectra_x[i] = beam_spectra_x[where]
+          spectra_y[i] = beam_spectra_y[where]
+
+      if self.params.energy_offset:
+        energies += self.params.energy_offset
       wavelengths = 12398.4187/energies
-      beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
+
+      if self.params.include_spectra:
+        if self.params.energy_offset:
+          spectra_x += self.params.energy_offset
+        beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
+        if (spectra_x == spectra_x[0]).all(): # check if all rows are the same
+          spectra_x = spectra_x[0]
+        beam.create_dataset('incident_wavelength_1Dspectrum', spectra_x.shape, data=12398.4187/spectra_x, dtype=spectra_x.dtype)
+        beam.create_dataset('incident_wavelength_1Dspectrum_weight', spectra_y.shape, data=spectra_y, dtype=spectra_y.dtype)
+        beam['incident_wavelength_1Dspectrum'].attrs['units'] = 'angstrom'
+        beam['incident_wavelength'].attrs['variant'] = 'incident_wavelength_1Dspectrum'
+      else:
+        beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
     else:
       assert self.params.wavelength is not None, "Provide a wavelength"
       beam.create_dataset('incident_wavelength', (1,), data=self.params.wavelength, dtype='f8')
     beam['incident_wavelength'].attrs['units'] = 'angstrom'
-    # --> instrument
-    instrument = entry.create_group('instrument')
-    instrument.attrs['NX_class'] = 'NXinstrument'
     jf16m = instrument.create_group('JF16M')
     jf16m.attrs['NX_class'] = 'NXdetector_group'
     jf16m.create_dataset('group_index', data = list(range(1,3)), dtype='i')
@@ -146,10 +237,23 @@ class jf16m_cxigeom2nexus(object):
     jf16m.create_dataset('group_names',(2,), data=data, dtype='S12')
     jf16m.create_dataset('group_parent',(2,), data=[-1,1], dtype='i')
     jf16m.create_dataset('group_type', (2,), data=[1,2], dtype='i')
-    transformations = jf16m.create_group('transformations')
+    detector = instrument.create_group('ELE_D0')
+    detector.attrs['NX_class']  = 'NXdetector'
+    detector['description'] = 'JUNGFRAU 16M'
+    detector['depends_on'] = '/entry/instrument/ELE_D0/transformations/AXIS_RAIL'
+    detector['gain_setting'] = 'auto'
+    detector['sensor_material'] = 'Si'
+    self._create_scalar(detector, 'sensor_thickness', 'f', 320.)
+    self._create_scalar(detector, 'bit_depth_readout', 'i', 16)
+    self._create_scalar(detector, 'count_time', 'f', 10)
+    self._create_scalar(detector, 'frame_time', 'f', 40)
+    detector['sensor_thickness'].attrs['units'] = 'microns'
+    detector['count_time'].attrs['units'] = 'us'
+    detector['frame_time'].attrs['units'] = 'us'
+    transformations = detector.create_group('transformations')
     transformations.attrs['NX_class'] = 'NXtransformations'
     # Create AXIS leaves for RAIL, D0 and different hierarchical levels of detector
-    self.create_vector(transformations, 'AXIS_RAIL', self.params.detector_distance, depends_on='.', equipment='detector', equipment_component='detector_arm',transformation_type='translation', units='mm', vector=(0., 0., 1.))
+    self.create_vector(transformations, 'AXIS_RAIL', self.params.detector_distance, depends_on='.', equipment='detector', equipment_component='detector_arm',transformation_type='translation', units='mm', vector=(0., 0., 1.), offset=(0.,0.,0.))
     self.create_vector(transformations, 'AXIS_D0', 0.0, depends_on='AXIS_RAIL', equipment='detector', equipment_component='detector_arm',transformation_type='rotation', units='degrees', vector=(0., 0., -1.), offset=self.hierarchy.local_origin, offset_units = 'mm')
     # Add 4 quadrants
     # Nexus coordiate system, into the board         JF16M detector
@@ -186,12 +290,10 @@ class jf16m_cxigeom2nexus(object):
         asic_fast = (module_fast - (n_fast_asics-1)*gap) / n_fast_asics # includes border but not gap
         asic_slow = (module_slow - (n_slow_asics-1)*gap) / n_slow_asics # includes border but not gap
 
-    detector = instrument.create_group('ELE_D0')
-    detector.attrs['NX_class']  = 'NXdetector'
     array_name = 'ARRAY_D0'
 
     if self.params.mask_file is not None:
-      detector.create_dataset('pixel_mask_applied', (1,), data=[True], dtype='uint32')
+      self._create_scalar(detector, 'pixel_mask_applied', 'b', True)
       #detector['pixel_mask'] = h5py.ExternalLink(self.params.mask_file, "mask") # If mask was formatted right, could use this
       mask = h5py.File(self.params.mask_file, 'r')['mask'][()].astype(np.int32)
       detector.create_dataset('pixel_mask', mask.shape, data=mask==0, dtype=mask.dtype)

@@ -1867,6 +1867,22 @@ class set(crystal.symmetry):
       sele &= (self.indices() != hkl)
     return self.select(sele)
 
+  def generate_bivoet_mates(self):
+    """
+    If the array is not already anomalous, expand the miller indices to generate
+    anomalous pairs.
+    """
+    if (self.anomalous_flag()): return self
+    sel = ~self.centric_flags().data()
+    indices = self.indices().deep_copy()
+    indices.extend(-indices.select(sel))
+    return set(
+        crystal_symmetry=self,
+        indices=indices,
+        anomalous_flag=True,
+    )
+
+
 def build_set(crystal_symmetry, anomalous_flag, d_min=None, d_max=None,
               max_index=None):
   """
@@ -4591,6 +4607,40 @@ class array(set):
       spindle_flags=spindle_flags,
       scale_intensities_for_scalepack_merge=
         scale_intensities_for_scalepack_merge)
+
+  def write_mtz(self,
+        file_name=None,
+        column_root_label=None,
+        column_types=None,
+        label_decorator=None,
+        title=None,
+        crystal_name="crystal",
+        project_name="project",
+        dataset_name="dataset",
+        wavelength=None):
+
+    """
+     Simple version of write_mtz for a single array
+    """
+
+    if column_root_label is None:
+      if self.info() and self.info().labels:
+        column_root_label=self.info().labels[0]
+      else:
+        column_root_label="F"
+
+    mtz_dataset = self.as_mtz_dataset(
+        column_root_label=column_root_label,
+        column_types=column_types,
+        label_decorator=label_decorator,
+        title=title,
+        crystal_name=crystal_name,
+        project_name=project_name,
+        dataset_name=dataset_name,
+        wavelength=wavelength)
+
+    mtz_object = mtz_dataset.mtz_object()
+    mtz_object.write(file_name = file_name)
 
   def as_mtz_dataset(self,
         column_root_label,

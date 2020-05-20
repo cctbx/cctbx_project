@@ -63,7 +63,7 @@ output {
     self.out_mtz_names = []
     fnames = self.data_manager.get_miller_array_names()
     for fname in fnames:
-      cif_reader = iotbx.cif.reader(file_path=fname)
+      cif_reader = self.data_manager.get_miller_array(filename=fname).file_content()
       cif_model = cif_reader.model()
       dummy_cs = crystal.symmetry(
             unit_cell=None,

@@ -191,9 +191,7 @@ def f_w_binning(miller_array, max_bins=60, min_bin_size=40, log=None):
         if bin.size() < min_bin_size:
           max_bins = max_bins - 1
           if max_bins == 0:
-            print("not enough reflections for accurate binning\n"+ \
-                          "** skipping French-Wilson scaling **", file=log)
-            return False
+            raise ValueError("Too few reflections for accurate binning.")
           print("bin too small, trying %d bins" % max_bins, file=log)
           bin_success = False
           break
@@ -361,11 +359,23 @@ def french_wilson_scale(
   make_sub_header("Scaling input intensities via French-Wilson Method",
     out=log)
   print("Trying %d bins..." % params.max_bins, file=log)
-  if not f_w_binning(miller_array=miller_array,
-              max_bins=params.max_bins,
-              min_bin_size=params.min_bin_size,
-              log=log):
-    return None
+  try:
+    f_w_binning(
+      miller_array=miller_array,
+      max_bins=params.max_bins,
+      min_bin_size=params.min_bin_size,
+      log=log
+    )
+  except ValueError:
+    try:
+      miller_array.setup_binner_counting_sorted(reflections_per_bin=5)
+    except AssertionError:
+      print(
+        "Too few reflections for accurate binning.\n"
+        "** Skipping French-Wilson scaling **",
+        file=log
+      )
+      return None
   print("Number of bins = %d" % miller_array.binner().n_bins_used(), file=log)
   new_I = flex.double()
   new_sigma_I = flex.double()

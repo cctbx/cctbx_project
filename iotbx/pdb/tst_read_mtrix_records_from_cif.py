@@ -189,7 +189,7 @@ def exercise():
   pdb_inp1 = iotbx.pdb.input(source_info=None, lines=test_pdb)
   pdb_inp2 = iotbx.pdb.input(source_info=None, lines=test_cif)
   model1 = mmtbx.model.manager(pdb_inp1)
-  model2 = mmtbx.model.manager(pdb_inp1)
+  model2 = mmtbx.model.manager(pdb_inp2)
   trans_obj1 = iotbx.ncs.input(hierarchy=model1.get_hierarchy())
   trans_obj2 = iotbx.ncs.input(hierarchy=model2.get_hierarchy())
 

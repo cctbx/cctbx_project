@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_to_structure_factors
 
 import iotbx.ccp4_map
-from cctbx import miller, crystal
+from cctbx import miller
 from cctbx.array_family import flex
 import mmtbx.utils
 import sys
@@ -146,30 +146,21 @@ def run(args, log=None, ccp4_map=None,
   if(m.space_group_number > 1):
     raise Sorry("Input map space group: %d. Must be P1."%m.space_group_number)
   broadcast(m="Input map information:", log=log)
-  print("m.all()   :", m.data.all(), file=out)
-  print("m.focus() :", m.data.focus(), file=out)
-  print("m.origin():", m.data.origin(), file=out)
-  print("m.nd()    :", m.data.nd(), file=out)
-  print("m.size()  :", m.data.size(), file=out)
-  print("m.focus_size_1d():", m.data.focus_size_1d(), file=out)
-  print("m.is_0_based()   :", m.data.is_0_based(), file=out)
-  print("map: min/max/mean:", flex.min(m.data), flex.max(m.data), flex.mean(m.data), file=out)
+  print("m.all()   :", m.map_data().all(), file=out)
+  print("m.focus() :", m.map_data().focus(), file=out)
+  print("m.origin():", m.map_data().origin(), file=out)
+  print("m.nd()    :", m.map_data().nd(), file=out)
+  print("m.size()  :", m.map_data().size(), file=out)
+  print("m.focus_size_1d():", m.map_data().focus_size_1d(), file=out)
+  print("m.is_0_based()   :", m.map_data().is_0_based(), file=out)
+  print("map: min/max/mean:", flex.min(m.map_data()), flex.max(m.map_data()), flex.mean(m.map_data()), file=out)
   print("unit cell:", m.unit_cell_parameters, file=out)
   #
-  if not space_group_number:
-    space_group_number=1
-  if space_group_number <=1:
-     symmetry_flags=None
-  else:
-    symmetry_flags = maptbx.use_space_group_symmetry,
-
-  #cs = crystal.symmetry(m.unit_cell_parameters, space_group_number)
-  # this will not work if m.unit_cell_grid != m.data.all()
 
   # Instead use ccp4 map crystal_symmetry and classify according to the case
   cs = m.crystal_symmetry()
 
-  if m.unit_cell_grid == m.data.all():
+  if m.unit_cell_grid == m.map_data().all():
     print("\nOne unit cell of data is present in map", file=out)
   else:
     if params.keep_origin:
@@ -181,9 +172,9 @@ def run(args, log=None, ccp4_map=None,
     print("New cell will be: (%.3f, %.3f, %.3f, %.1f, %.1f, %.1f) A " %(
        cs.unit_cell().parameters()), file=out)
     print("New unit cell grid will be: (%s, %s, %s) "%(
-      m.data.all()), file=out)
+      m.map_data().all()), file=out)
 
-  map_data=m.data
+  map_data=m.map_data()
 
   # Get origin in grid units and new position of origin in grid units
   original_origin=map_data.origin()
@@ -212,48 +203,20 @@ def run(args, log=None, ccp4_map=None,
       origin=new_origin)
   else:
     shift_cart=(0,0,0,)
-
-  map_data = maptbx.shift_origin_if_needed(map_data = map_data).map_data
-  # generate complete set of Miller indices up to given high resolution d_min
-  n_real = map_data.focus()
-  crystal_gridding = maptbx.crystal_gridding(
-    unit_cell         = cs.unit_cell(),
-    space_group_info  = cs.space_group_info(),
-    symmetry_flags     = symmetry_flags,
-    pre_determined_n_real = n_real)
-  #
   d_min = params.d_min
-  if(d_min is None and not params.box):
-    d_min = maptbx.d_min_from_map(
-      map_data  = map_data,
-      unit_cell = cs.unit_cell(),
-      resolution_factor = params.resolution_factor)
-    print("\nResolution of map coefficients using "+\
-       "resolution_factor of %.2f: %.1f A\n" %(params.resolution_factor,d_min), file=out)
-  if(d_min is None):
-    # box of reflections in |h|<N1/2, |k|<N2/2, 0<=|l|<N3/2
-    f_obs_cmpl = miller.structure_factor_box_from_map(
-      map              = map_data.as_double(),
-      crystal_symmetry = cs,
-      include_000      = True)
-  else:
-    complete_set = miller.build_set(
-      crystal_symmetry = cs,
-      anomalous_flag   = False,
-      d_min            = d_min)
-    try:
-      f_obs_cmpl = complete_set.structure_factors_from_map(
-        map            = map_data.as_double(),
-        use_scale      = True,
-        anomalous_flag = False,
-        use_sg         = False)
-    except Exception as e:
-      if(str(e) == "cctbx Error: Miller index not in structure factor map."):
-        msg = "Too high resolution requested. Try running with larger d_min."
-        raise Sorry(msg)
-      else:
-        raise Sorry(str(e))
+  box = params.box
+  resolution_factor = params.resolution_factor
 
+  # Shift the map data if necessary
+  map_data = maptbx.shift_origin_if_needed(map_data = map_data).map_data
+
+  f_obs_cmpl=calculate_inverse_fft(
+     map_data=map_data,
+     crystal_symmetry=cs,
+     d_min=params.d_min,
+     box=params.box,
+     resolution_factor=params.resolution_factor,
+     out=out)
 
   if params.scale_max is not None:
     f_obs_cmpl = f_obs_cmpl.apply_scaling(target_max=params.scale_max)
@@ -319,6 +282,73 @@ def run(args, log=None, ccp4_map=None,
     print("  file name:", params.output_file_name, file=log)
     mtz_object = mtz_dataset.mtz_object()
     mtz_object.write(file_name = params.output_file_name)
+
+def calculate_inverse_fft(map_data=None,
+     crystal_symmetry=None,
+     d_min=None,
+     box=False,
+     resolution_factor=0.333,
+     out=sys.stdout):
+
+  '''
+    Combines two possible methods of generating the complete set of
+      indices.  Box means supply all possible reflections that can be
+      calculated using the gridding in map_data in the FFT.
+      Otherwise, generate Miller indices inside a sphere of resolution.
+      This may be faster if the box is large and most indices in the box
+      are not going to be used.
+    If box=True, supply full box of reflections (all possible)
+    Otherwise, generate complete set of Miller indices up to
+     given high resolution d_min. If d_min not specified,
+     use minimum resolution allowed with gridding available and
+     requested resolution_factor (1/2 is finest available, 1/3 is typical)
+  '''
+
+  n_real = map_data.focus()
+
+  # Choose d_min and make sure it is bigger than smallest allowed
+
+  if(d_min is None and not box):
+    d_min = maptbx.d_min_from_map(
+      map_data  = map_data,
+      unit_cell = crystal_symmetry.unit_cell(),
+      resolution_factor = resolution_factor)
+    print("\nResolution of map coefficients using "+\
+     "resolution_factor of %.2f: %.1f A\n" %(resolution_factor,d_min), file=out)
+  elif (not box):  # make sure d_min is big enough
+    d_min_allowed = maptbx.d_min_from_map(
+      map_data  = map_data,
+      unit_cell = crystal_symmetry.unit_cell(),
+      resolution_factor = 0.5)
+    if d_min < d_min_allowed:
+      print("\nResolution of map coefficients allowed by gridding is %.3f " %(
+        d_min_allowed),file=out)
+      d_min=d_min_allowed
+
+  if(d_min is None):
+    # box of reflections in |h|<N1/2, |k|<N2/2, 0<=|l|<N3/2
+    f_obs_cmpl = miller.structure_factor_box_from_map(
+      map              = map_data.as_double(),
+      crystal_symmetry = crystal_symmetry,
+      include_000      = True)
+  else:
+    complete_set = miller.build_set(
+      crystal_symmetry = crystal_symmetry,
+      anomalous_flag   = False,
+      d_min            = d_min)
+    try:
+      f_obs_cmpl = complete_set.structure_factors_from_map(
+        map            = map_data.as_double(),
+        use_scale      = True,
+        anomalous_flag = False,
+        use_sg         = False)
+    except Exception as e:
+      if(str(e) == "cctbx Error: Miller index not in structure factor map."):
+        msg = "Too high resolution requested. Try running with larger d_min."
+        raise Sorry(msg)
+      else:
+        raise Sorry(str(e))
+  return f_obs_cmpl
 
 if(__name__ == "__main__"):
   run(sys.argv[1:])

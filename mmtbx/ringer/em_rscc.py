@@ -45,14 +45,14 @@ em_rscc.py model.pdb map.ccp4
   pdb_in = cmdline.get_file(params.model).file_object
   m = cmdline.get_file(params.map).file_object
   print("Input electron density map:", file=out)
-  print("m.all()   :", m.data.all(), file=out)
-  print("m.focus() :", m.data.focus(), file=out)
-  print("m.origin():", m.data.origin(), file=out)
-  print("m.nd()    :", m.data.nd(), file=out)
-  print("m.size()  :", m.data.size(), file=out)
-  print("m.focus_size_1d():", m.data.focus_size_1d(), file=out)
-  print("m.is_0_based()   :", m.data.is_0_based(), file=out)
-  print("map: min/max/mean:", flex.min(m.data), flex.max(m.data), flex.mean(m.data), file=out)
+  print("m.all()   :", m.map_data().all(), file=out)
+  print("m.focus() :", m.map_data().focus(), file=out)
+  print("m.origin():", m.map_data().origin(), file=out)
+  print("m.nd()    :", m.map_data().nd(), file=out)
+  print("m.size()  :", m.map_data().size(), file=out)
+  print("m.focus_size_1d():", m.map_data().focus_size_1d(), file=out)
+  print("m.is_0_based()   :", m.map_data().is_0_based(), file=out)
+  print("map: min/max/mean:", flex.min(m.map_data()), flex.max(m.map_data()), flex.mean(m.map_data()), file=out)
   print("unit cell:", m.unit_cell_parameters, file=out)
   symm = crystal.symmetry(
     space_group_symbol="P1",
@@ -66,11 +66,11 @@ em_rscc.py model.pdb map.ccp4
   cg = maptbx.crystal_gridding(
     unit_cell=symm.unit_cell(),
     space_group_info=symm.space_group_info(),
-    pre_determined_n_real=m.data.all())
+    pre_determined_n_real=m.map_data().all())
   fc_map = fc.fft_map(
     crystal_gridding=cg).apply_sigma_scaling().real_map_unpadded()
-  assert (fc_map.all() == fc_map.focus() == m.data.all())
-  em_data = m.data.as_double()
+  assert (fc_map.all() == fc_map.focus() == m.map_data().all())
+  em_data = m.map_data()
   unit_cell_for_interpolation = m.grid_unit_cell()
   frac_matrix = unit_cell_for_interpolation.fractionalization_matrix()
   sites_cart = xrs.sites_cart()

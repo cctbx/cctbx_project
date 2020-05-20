@@ -9,7 +9,7 @@
 jobs:
 - job: conda_packages
   pool:
-    vmImage: ubuntu-16.04
+    vmImage: ubuntu-latest
   timeoutInMinutes: 360
   strategy:
     maxParallel: 3
@@ -43,7 +43,7 @@ jobs:
         mkdir -p ${directory}
         cd ${directory}
         echo Downloading ${filename} to ${directory}
-        wget ${url}
+        wget --retry-connrefused ${url}
         cd ..
         if [ "$(OS)" = "win-64" ]; then
           echo ${directory}\\${filename} >> filenames.txt

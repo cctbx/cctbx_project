@@ -1297,7 +1297,7 @@ Wait for the command to finish, then try again.""" % vars())
                                   #'afitt.python',
                                  ]:
       return
-    if self.build_options.skip_phenix_dispatchers and 'phenix' in target_file.basename():
+    if "phenix" not in self.module_dict and self.build_options.skip_phenix_dispatchers and "phenix" in target_file.basename():
       return
     reg = self._dispatcher_registry.setdefault(target_file, source_file)
     if reg != source_file:

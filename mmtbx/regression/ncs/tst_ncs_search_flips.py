@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import iotbx.ncs
 import iotbx.pdb
 import mmtbx.ncs.ncs_utils as nu
-from mmtbx.secondary_structure.build import calculate_rmsd_smart
+from mmtbx.secondary_structure.build.ss_idealization import calculate_rmsd_smart
 
 test_pdb_1 = """\
 CRYST1  272.680  272.680  272.680  90.00  90.00  90.00 F 2 3        96

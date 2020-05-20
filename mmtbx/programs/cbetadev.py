@@ -17,7 +17,7 @@ Deviations of >= 0.25A are considered outliers
 Options:
 
   model=input_file      input PDB file
-  output=text or kin    select type of output
+  output=text, kin, or bullseye    select type of output
   outliers_only=False   suppress non-outlier results
 
 Example:
@@ -28,7 +28,7 @@ Example:
   master_phil_str = """
   include scope mmtbx.validation.molprobity_cmdline_phil_str
     cbetadev {
-      output = *text kin
+      output = *text kin bullseye
         .type = choice
         .help = '''choose output type'''
       apply_phi_psi_correction = False
@@ -57,6 +57,9 @@ Example:
       quiet=False)
     if self.params.cbetadev.output == "kin":
       self.logger.write(result.as_kinemage())
+    elif self.params.cbetadev.output == "bullseye":
+      filebase = os.path.basename(self.data_manager.get_model_names()[0])
+      self.logger.write(result.as_bullseye_kinemage(pdbid=filebase))
     elif self.params.verbose:
       #pdb_file_str = os.path.basename(self.params.model)[:-4]
       #get input file name from data manager, strip file extension

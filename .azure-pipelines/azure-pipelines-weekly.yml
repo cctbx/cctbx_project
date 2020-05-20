@@ -1,0 +1,65 @@
+# Weekly builds
+
+# no continuous integration builds
+trigger: none
+
+# skip pull requests
+pr: none
+
+# only weekly builds on Friday Pacific
+schedules:
+- cron: '0 5 * * 6'
+  displayName: Weekly build
+  branches:
+    include:
+    - master
+
+stages:
+- stage: Preparation
+  displayName: Download
+  jobs:
+    - template: ./download-source.yml
+      parameters:
+        optimization: 3
+    - template: ./download-conda.yml
+    - template: ./download-source.yml
+      parameters:
+        optimization: 2
+    - template: ./download-source.yml
+      parameters:
+        optimization: 1
+    - template: ./download-source.yml
+      parameters:
+        optimization: 0
+
+- stage: Build_3
+  displayName: Build and test -O3
+  dependsOn: Preparation
+  jobs:
+    - template: ./full-build.yml
+      parameters:
+        modules: modules3
+
+- stage: Build_2
+  displayName: Build and test -O2
+  dependsOn: Preparation
+  jobs:
+    - template: ./full-build.yml
+      parameters:
+        modules: modules2
+
+- stage: Build_1
+  displayName: Build and test -O1
+  dependsOn: Preparation
+  jobs:
+    - template: ./full-build.yml
+      parameters:
+        modules: modules1
+
+- stage: Build_0
+  displayName: Build and test -O0
+  dependsOn: Preparation
+  jobs:
+    - template: ./full-build.yml
+      parameters:
+        modules: modules0

@@ -21,9 +21,10 @@ from dials.util import show_mail_on_error
 from dials.util.options import OptionParser
 from libtbx.phil import parse
 from dxtbx.model.experiment_list import ExperimentListFactory
-from scitbx.array_family import flex
+from dials.array_family import flex
 import numpy as np
 from libtbx import easy_pickle
+from dxtbx.model.experiment_list import ExperimentList
 
 import io # fix buffering py2/3
 
@@ -73,6 +74,11 @@ xtc_phil_str = '''
     integrate = True
       .type = bool
       .help = Integrated indexed images. Ignored if index=False
+    coset = False
+      .expert_level = 2
+      .type = bool
+      .help = Within the integrate dispatcher, integrate a sublattice coset intended to represent \
+              negative control spots with no Bragg diffraction.
     dump_strong = False
       .type = bool
       .help = Save strongly diffracting images to cbf format
@@ -312,6 +318,12 @@ xtc_phil_str = '''
     integrated_experiments_filename = %s_integrated.expt
       .type = str
       .help = The filename for final integrated reflections.
+    coset_filename = %s_coset%d.refl
+      .type = str
+      .help = The filename for final coset reflections.
+    coset_experiments_filename = %s_coset%d.expt
+      .type = str
+      .help = The filename for saving final coset experimental models.
     profile_filename = None
       .type = str
       .help = The filename for output reflection profile parameters
@@ -518,6 +530,10 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
             print("format.cbf.%s"%(deprecated_strs[i]%deprecated_params[i]), "has changed to format.cbf.cspad.%s"%(deprecated_strs[i]%deprecated_params[i]))
       raise
 
+    if params.dispatch.coset:
+      self.all_coset_experiments = ExperimentList()
+      self.all_coset_reflections = flex.reflection_table()
+
     # Check inputs
     if params.input.experiment is None or \
        params.input.run_num is None or \
@@ -565,8 +581,6 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     self.load_reference_geometry()
 
     if params.output.composite_output:
-      from dxtbx.model.experiment_list import ExperimentList
-      from dials.array_family import flex
       #self.all_strong_reflections = flex.reflection_table() # no composite strong pickles yet
       self.all_indexed_experiments = ExperimentList()
       self.all_indexed_reflections = flex.reflection_table()
@@ -580,6 +594,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       self.refined_experiments_filename_template    = params.output.refined_experiments_filename
       self.integrated_filename_template             = params.output.integrated_filename
       self.integrated_experiments_filename_template = params.output.integrated_experiments_filename
+      self.coset_filename_template                  = params.output.coset_filename
+      self.coset_experiments_filename_template      = params.output.coset_experiments_filename
       self.reindexedstrong_filename_template        = params.output.reindexedstrong_filename
 
     # Don't allow the strong reflections to be written unless there are enough to
@@ -944,7 +960,6 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         experiments = refiner.get_experiments()
         reflections = combined_reflections.select(refiner.selection_used_for_refinement())
 
-        from dxtbx.model import ExperimentList
         experiments.as_file(os.path.join(reint_dir, "refined.expt"))
         reflections.as_pickle(os.path.join(reint_dir, "refined.refl"))
 
@@ -1145,6 +1160,12 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         self.params.output.integrated_filename = os.path.join(self.params.output.output_dir, self.integrated_filename_template%("idx-" + s))
       if "%s" in self.integrated_experiments_filename_template:
         self.params.output.integrated_experiments_filename = os.path.join(self.params.output.output_dir, self.integrated_experiments_filename_template%("idx-" + s))
+      if "%s" in self.coset_filename_template:
+        self.params.output.coset_filename = os.path.join(self.params.output.output_dir, self.coset_filename_template%("idx-" + s,
+          self.params.integration.coset.transformation))
+      if "%s" in self.coset_experiments_filename_template:
+        self.params.output.coset_experiments_filename = os.path.join(self.params.output.output_dir, self.coset_experiments_filename_template%("idx-" + s,
+          self.params.integration.coset.transformation))
       if "%s" in self.reindexedstrong_filename_template:
         self.params.output.reindexedstrong_filename = os.path.join(self.params.output.output_dir, self.reindexedstrong_filename_template%("idx-" + s))
 
@@ -1363,6 +1384,10 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       self.params.output.refined_experiments_filename    = os.path.join(self.params.output.output_dir, self.params.output.refined_experiments_filename%("idx-" + s))
       self.params.output.integrated_filename             = os.path.join(self.params.output.output_dir, self.params.output.integrated_filename%("idx-" + s))
       self.params.output.integrated_experiments_filename = os.path.join(self.params.output.output_dir, self.params.output.integrated_experiments_filename%("idx-" + s))
+      self.params.output.coset_filename                  = os.path.join(self.params.output.output_dir, self.params.output.coset_filename%("idx-" + s,
+        self.params.integration.coset.transformation))
+      self.params.output.coset_experiments_filename      = os.path.join(self.params.output.output_dir, self.params.output.coset_experiments_filename%("idx-" + s,
+        self.params.integration.coset.transformation))
       self.params.output.reindexedstrong_filename        = os.path.join(self.params.output.output_dir, self.params.output.reindexedstrong_filename%("idx-" + s))
 
     super(InMemScript, self).finalize()

@@ -1058,6 +1058,8 @@ class Builder(object):
       wxpython4=False,
       config_flags=[],
       use_conda=None,
+      python='27',
+      no_boost_src=False,
     ):
     if nproc is None:
       self.nproc=1
@@ -1078,7 +1080,7 @@ class Builder(object):
     self.name = '%s-%s'%(self.category, self.platform)
     # Platform configuration.
     python_executable = 'python'
-    self.python3 = python3
+    self.python3 = python.startswith('3')
     if python3:
       python_executable = 'python3'
     self.wxpython4 = wxpython4
@@ -1102,6 +1104,8 @@ class Builder(object):
     # builder
     self.config_flags = config_flags
     self.use_conda = use_conda
+    self.python = python
+    self.no_boost_src = no_boost_src
     self.add_init()
 
     # Cleanup
@@ -1118,12 +1122,31 @@ class Builder(object):
 
     # Add 'hot' sources
     if hot:
-      list(map(self.add_module, self.get_hot()))
+      # conda builds do not need eigen (disabled), scons
+      hot = self.get_hot()
+      if self.use_conda is not None:
+        for module in ['scons']:
+          # SCons conda package may cause issues with procrunner on Python 2.7
+          # https://stackoverflow.com/questions/24453387/scons-attributeerror-builtin-function-or-method-object-has-no-attribute-disp
+          if module == 'scons' and self.python == '27':
+            continue
+          try:
+            hot.remove(module)
+          except ValueError:
+            pass
+      list(map(self.add_module, hot))
 
     # Add svn sources.
     self.revert=revert
     if update:
-      list(map(self.add_module, self.get_codebases()))
+      # check if boost needs to be downloaded
+      codebases = self.get_codebases()
+      if self.no_boost_src:
+        try:
+          codebases.remove('boost')
+        except ValueError:
+          pass
+      list(map(self.add_module, codebases))
 
     # always remove .pyc files
     self.remove_pyc()
@@ -1691,9 +1714,7 @@ environment exists in or is defined by {conda_env}.
         # check for existing miniconda3 installation
         if not os.path.isdir('mc3'):
           flags.append('--install_conda')
-        # check if --python3 is set
-        if self.python3:
-          flags.append('--python=36')
+        flags.append('--python={python}'.format(python=self.python))
         command = [
           'python',
           self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build',
@@ -1879,6 +1900,7 @@ class CCIBuilder(Builder):
     'cbflib',
     'dxtbx',
     'scitbx',
+    'crys3d',
     'libtbx',
     'iotbx',
     'mmtbx',
@@ -2669,16 +2691,14 @@ def run(root=None):
                     help="Builds software with mpi functionality",
                     action="store_true",
                     default=False)
-  parser.add_argument("--python3",
-                    dest="python3",
-                    help="Install a Python3 interpreter. This is unsupported and purely for development purposes.",
-                    action="store_true",
-                    default=False)
-  parser.add_argument("--wxpython4",
-                    dest="wxpython4",
-                    help="Install wxpython4 instead of wxpython3. This is unsupported and purely for development purposes.",
-                    action="store_true",
-                    default=False)
+  python_args = parser.add_mutually_exclusive_group(required=False)
+  python_args.add_argument('--python',
+                    default='27', type=str, nargs='?', const='27',
+                    choices=['27', '36', '37', '38'],
+                    help="""When set, a specific Python version of the
+conda environment will be used. This only affects environments selected with
+the --builder flag. For non-conda dependencies, "36", "37", and "38" implies
+Python 3.7.""")
   parser.add_argument("--config-flags", "--config_flags",
                     dest="config_flags",
                     help="""Pass flags to the configuration step. Flags should
@@ -2693,11 +2713,19 @@ existing conda environment or a file defining a conda environment can be
 provided. The build will use that environment instead of creating a default one
 for the builder. If the currently active conda environment is to be used for
 building, $CONDA_PREFIX should be the argument for this flag. Otherwise, a new
-environment will be created. The --python3 flag will be ignored when there is
+environment will be created. The --python flag will be ignored when there is
 an argument for this flag. Specifying an environment is for developers that
 maintain their own conda environment.""",
                     default=None, nargs='?', const='')
-
+  parser.add_argument("--no-boost-src", "--no_boost_src",
+                      dest="no_boost_src",
+                      help="""When set, the reduced Boost source code is not
+downloaded into the modules directory. This enables the usage of an existing
+installation of Boost in the same directory as the Python for configuration.
+For example, this flag should be used if the conda package for Boost is
+available. This flag only affects the "update" step.""",
+                      action="store_true",
+                      default=False)
   parser.add_argument("--build-dir",
                      dest="build_dir",
                      help="directory where the build will be. Should be at the same level as modules! default is 'build'",
@@ -2780,10 +2808,12 @@ maintain their own conda environment.""",
     force_base_build=options.force_base_build,
     enable_shared=options.enable_shared,
     mpi_build=options.mpi_build,
-    python3=options.python3,
-    wxpython4=options.wxpython4,
+    python3=False,
+    wxpython4=False,
     config_flags=options.config_flags,
     use_conda=options.use_conda,
+    python=options.python,
+    no_boost_src=options.no_boost_src,
   ).run()
   print("\nBootstrap success: %s" % ", ".join(actions))
 

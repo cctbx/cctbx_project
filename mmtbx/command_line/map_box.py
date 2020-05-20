@@ -491,13 +491,13 @@ Parameters:"""%h
 
     af = any_file(fn)
     if (af.file_type == 'ccp4_map'):
-      origin=af.file_content.data.origin()
+      origin=af.file_content.map_data().origin()
       if params.output_origin_match_this_file:
         params.output_origin_grid_units=origin
         print("Origin of (%s,%s,%s) taken from %s" %(
            origin[0],origin[1],origin[2],fn))
       else:
-        all=af.file_content.data.all()
+        all=af.file_content.map_data().all()
         params.lower_bounds=origin
         print("Lower bounds of (%s,%s,%s) taken from %s" %(
            params.lower_bounds[0],params.lower_bounds[1],
@@ -560,7 +560,7 @@ Parameters:"""%h
       ccp4_map = inputs.ccp4_map
       ccp4_map.show_summary(prefix="  ",out=log)
       if not crystal_symmetry: crystal_symmetry=ccp4_map.crystal_symmetry()
-      map_data = ccp4_map.data #map_data()
+      map_data = ccp4_map.map_data()
       input_unit_cell_grid=ccp4_map.unit_cell_grid
       input_unit_cell=ccp4_map.unit_cell_parameters
       input_map_labels=ccp4_map.get_labels()
@@ -586,7 +586,7 @@ Parameters:"""%h
       print_statistics.make_sub_header("CCP4 map", out=log)
       h_ccp4_map = af.file_content
       h_ccp4_map.show_summary(prefix="  ",out=log)
-      h_map_data = h_ccp4_map.data
+      h_map_data = h_ccp4_map.map_data()
       half_map_data_list.append(h_map_data)
       half_map_labels_list.append(h_ccp4_map.get_labels())
 

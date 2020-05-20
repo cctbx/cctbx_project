@@ -305,9 +305,14 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log,
       a1, a2 = atoms[gi[0][0]], atoms[gi[0][1]]
       e1 = a1.element.strip().upper()
       e2 = a2.element.strip().upper()
-      condition_00 = [a1.i_seq in psel, a2.i_seq in psel].count(True)==2
+      #
+      condition_00_ = psel[a1.i_seq] and psel[a2.i_seq]
+      condition_00 = flex.bool([condition_00_])
       for gi1_ in gi[1]:
-        condition_00 = condition_00 and (atoms[gi1_].i_seq in psel)
+        condition_00.append(condition_00_ and psel[atoms[gi1_].i_seq])
+      condition_00 = condition_00.all_eq(True)
+      if condition_00: continue
+      #
       condition_1 = [e1,e2].count("H")==0 and [e1,e2].count("D")==0
       # condition 2: all atoms to rotate are H or D
       condition_2 = True
@@ -323,7 +328,7 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log,
         for gi1i in gi[1]:
           rot_atoms.append(atoms[gi1i].i_seq)
         result.append([axis, rot_atoms])
-    if(len(result)>0 is not None): return result
+    if(len(result)>0): return result
     else: return None
   def analyze_group_general(g, atoms, bps, psel):
     result = []
@@ -335,9 +340,14 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log,
       a1, a2 = atoms[gi[0][0]], atoms[gi[0][1]]
       e1 = a1.element.strip().upper()
       e2 = a2.element.strip().upper()
-      condition_00 = [a1.i_seq in psel, a2.i_seq in psel].count(True)==2
+      #
+      condition_00_ = psel[a1.i_seq] and psel[a2.i_seq]
+      condition_00 = flex.bool([condition_00_])
       for gi1_ in gi[1]:
-        condition_00 = condition_00 and (atoms[gi1_].i_seq in psel)
+        condition_00.append(condition_00_ and psel[atoms[gi1_].i_seq])
+      condition_00 = condition_00.all_eq(True)
+      if condition_00: continue
+      #
       condition_1 = [e1,e2].count("H")==0 and [e1,e2].count("D")==0
       s1 = set(gi[1])
       if(condition_1):
@@ -362,15 +372,16 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log,
             s = list(s1 & s2)
             if(len(s)>0): condition_3 = True
           #
-          if(condition_1 and condition_2 and condition_3 and not condition_00):
+          if(condition_1 and condition_2 and condition_3):
+          #if(condition_1 and condition_2 and condition_3 and not condition_00):
             axis = [a1.i_seq, a2.i_seq]
             rot_atoms = []
             in_plane = False
             for i in bonds_involved_into:
-              if(atoms[i].i_seq in psel): in_plane = True
+              if(psel[atoms[i].i_seq]): in_plane = True
               rot_atoms.append(atoms[i].i_seq)
             if(not in_plane): result.append([axis, rot_atoms])
-    if(len(result)>0 is not None): return result
+    if(len(result)>0): return result
     else: return None
   def helper_1(residue, mon_lib_srv, log, result, psel):
     fr = rotatable_bonds.axes_and_atoms_aa_specific(
@@ -423,9 +434,10 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log,
         result.append(r)
   #
   if(restraints_manager is not None):
-    psel = flex.size_t()
+    psel = flex.bool(pdb_hierarchy.atoms().size(), False)
     for p in restraints_manager.geometry.planarity_proxies:
-      psel.extend(p.i_seqs)
+      for i in p.i_seqs:
+        psel[i] = True
   # very handy for debugging: do not remove
   #NAMES = pdb_hierarchy.atoms().extract_name()
   #
@@ -449,7 +461,9 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log,
                  continue
             hd = False
             for a in residue.atoms():
-              if(a.element_is_hydrogen()): hd=True
+              if(a.element_is_hydrogen()):
+                hd=True
+                break
             if(not hd): continue
             if(get_class(name=residue.resname)=="common_amino_acid" and not last):
               if(use_shortcut):

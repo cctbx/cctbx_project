@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex as flex# import dependency
 import os,time
 from libtbx.utils import Sorry
+
 from iotbx.ccp4_map import utils  # utilities in common with ccp4_map
 import mrcfile
 import warnings
@@ -11,53 +12,68 @@ import numpy as np
 from six.moves import range
 from six.moves import zip
 
-#  mrcfile
 
-#  Access to ccp4/mrc maps in a fashion parallel to iotbx.ccp4_map except
-#    using mrcfile libraries instead of cmap libraries from ccp4-em
+# ====== HARD-WIRED DEFAULTS SEE DOC STRINGS BELOW FOR INFO =====
 
-#  See http://www.ccpem.ac.uk/mrc_format/mrc2014.php for MRC format
-#  See https://pypi.org/project/mrcfile/ for mrcfile library documentation
+INTERNAL_STANDARD_ORDER=[3,2,1]  # THIS CANNOT BE MODIFIED
 
-#  Same conventions as iotbx.ccp4_map
-
-#  Default is to write maps with INTERNAL_STANDARD_ORDER of axes of [3,2,1]
-#    corresponding to columns in Z, rows in Y, sections in X to match
-#    flex array layout.  This can be modified by changing the values in
-#    output_axis_order.
-
-#  Hard-wired to convert input maps of any order to
-#    INTERNAL_STANDARD_ORDER = [3,2,1] before conversion to flex arrays
-#    This is not modifiable.
-
-INTERNAL_STANDARD_ORDER=[3,2,1]
-
-# Standard limitations and associated message.
-# These can be checked with: limitations=mrc.get_limitations()
-#   which returns a group_args object with a list of limitations and a list
-#   of corresponding error messages, or None if there are none
-#   see phenix.show_map_info for example
-# These limitations can also be accessed with specific calls placed below:
-#  For example:
-#  mrc.can_be_sharpened()  returns False if "extract_unique" is present
-
-# Map labels that are not limitations can be accessed with:
-#     additional_labels=mrc.get_additional_labels()
-
-STANDARD_LIMITATIONS_DICT={
+STANDARD_LIMITATIONS_DICT={  # THIS CAN BE MODIFIED AND ADDED TO
     "extract_unique":
      "This map is masked around unique region and not suitable for auto-sharpening.",
     "map_is_sharpened":
      "This map is auto-sharpened and not suitable for further auto-sharpening.",
     "map_is_density_modified": "This map has been density modified.",
      }
+# ======= END OF HARD-WIRED DEFAULTS SEE DOC STRINGS BELOW FOR INFO ====
+
+
+# NORMALLY:   Use the map_manager class to read, write and manipulate maps
+#             Do not use these routines directly unless necessary
 
 
 class map_reader(utils):
 
-  # Read an mrc/ccp4 map file
+  '''
+   NOTE: See doc for iotbx.map_manager for further information on maps
+
+   Read an mrc/ccp4 map file
+     NOTE: the values of nxstart,nystart,nzstart refer to columns, rows,
+        sections, not to X,Y,Z.  The must be mapped using mapc,mapr,maps
+        to get the value of "origin" that phenix uses to indicate the
+        lower left corner of the map
+      self.origin is self.nxstart_nystart_nzstart mapped to represent the
+       origin in XYZ directions
+
+     NOTE phenix calls "origin" the position of the lower left corner
+       of the map.
+     mrcfile calls "origin" the value of the field "origin" which is 3
+       real numbers indicating the placement of the grid point (0,0,0) relative
+       to an external reference frame (typically that of a model)
+
+     Here we will use "external_origin" to refer to the mrc origin and
+     "origin" for nxstart_nystart_nzstart.
+
+
+  '''
+
 
   def __init__(self, file_name=None,
+     internal_standard_order=INTERNAL_STANDARD_ORDER,
+     header_only=False,
+     ignore_missing_machine_stamp=True,
+     print_warning_messages=False,
+     ignore_all_errors=False,
+     verbose=None):
+
+     self.read_map_file(file_name=file_name,
+       internal_standard_order=internal_standard_order,
+       header_only=header_only,
+       ignore_missing_machine_stamp=ignore_missing_machine_stamp,
+       print_warning_messages=print_warning_messages,
+       ignore_all_errors=ignore_all_errors,
+       verbose=verbose)
+
+  def read_map_file(self, file_name=None,
      internal_standard_order=INTERNAL_STANDARD_ORDER,
      header_only=False,
      ignore_missing_machine_stamp=True,
@@ -174,6 +190,7 @@ class map_reader(utils):
     # Ready with self.data as float flex array. For normal use convert to
     # double with map_data=self.data.as_double()
 
+
   # Code to check for specific text in map labels limiting the use of the map
 
   def cannot_be_sharpened(self):
@@ -229,14 +246,62 @@ class map_reader(utils):
     return STANDARD_LIMITATIONS_DICT.get(label,None)
 
 class write_ccp4_map:
+  '''
+     Write an mrc/CCP4 map file
+     Always writes with column,row,section (mapc,mapr,maps) of (3,2,1)
+      Columns are Z, rows are Y, sections in X.  This matches the shape of
+      flex arrays.  Could be changed without difficulty by transposing the
+      numpy array as is done in the map_reader class.
 
-    # Write an mrc/CCP4 map file
-    # Always writes with column,row,section (mapc,mapr,maps) of (3,2,1)
-    #  Columns are Z, rows are Y, sections in X.  This matches the shape of
-    #  flex arrays.  Could be changed without difficulty by transposing the
-    #  numpy array as is done in the map_reader class.
+     Class parallel to iotbx.ccp4_map.write_ccp4_map
 
-    # Class parallel to iotbx.ccp4_map.write_ccp4_map
+       The parameter map_data should be a flex array (normally flex double)
+
+       Options:
+
+       Specify unit_cell_grid, or gridding_first and gridding_last,
+          or take grid values from map_data.
+       If gridding_first and last supplied, input map origin must be at (0,0,0)
+
+       Specify crystal_symmetry or unit_cell and space_group
+
+       Specify labels (80-character information lines) or not.  Normally
+        these should be specified to retain information from previous maps.
+
+       Notes on grid values:
+
+       All input grid values, cell dimensions, etc are along X,Y,Z
+
+       Definitions:
+
+         unit_cell_grid (grid units along axes of full unit cell)
+
+         nxyz_start (starting point of map to be written out, in grid units,
+         nxyz_end (ending point of map to be written out, in grid units,
+          optionally set with gridding_first and gridding_last if input map
+          has origin at (0,0,0))
+
+         mapc,mapr,maps (assignment of the axes to X, Y and Z in numpy array
+           on input or output using mrcfile.  Columns are mapc (X=1, Y=2, Z=3),
+           rows are mapr (X=1, Y=2, Z=3), sections are maps (X=1, Y=2, Z=3).
+         Phenix writes maps with (mapc,mapr,maps)=(3,2,1).  Many other
+           programs use (1,2,3). This routine can read any order.
+
+        origin of flex array (grid point of lower left point in the map)
+        all of flex array (number of grid points in each direction)
+
+        Examples:
+        For map_data with origin=(0,0,0) and all=(3,3,3) the map runs from
+          0 to 2 in each direction, total elements = 27.  nxyz_start=(0,0,0)
+          nxyz_end=(2,2,2).
+
+        For map_data with origin=(5,5,5) and all=(3,3,3) the map runs from
+          5 to 7 in each direction, total elements = 27.  nxyz_start=(5,5,5)
+          nxyz_end=(7,7,7).  map_data.all()=(3,3,3). map_data.focus()=(8,8,8)
+
+      Make sure map is unpadded
+
+  '''
 
   def __init__(self,
       file_name=None,
@@ -255,51 +320,6 @@ class write_ccp4_map:
       verbose=None,
       ):
 
-    #  The parameter map_data should be a flex array (normally flex double)
-
-    #  Options:
-
-    #  Specify unit_cell_grid, or gridding_first and gridding_last,
-    #     or take grid values from map_data.
-    #  If gridding_first and last supplied, input map origin must be at (0,0,0)
-
-    #  Specify crystal_symmetry or unit_cell and space_group
-
-    #  Specify labels (80-character information lines) or not.  Normally
-    #   these should be specified to retain information from previous maps.
-
-    #  Notes on grid values:
-
-    #  All input grid values, cell dimensions, etc are along X,Y,Z
-
-    #  Definitions:
-
-    #    unit_cell_grid (grid units along axes of full unit cell)
-
-    #    nxyz_start (starting point of map to be written out, in grid units,
-    #    nxyz_end (ending point of map to be written out, in grid units,
-    #     optionally set with gridding_first and gridding_last if input map
-    #     has origin at (0,0,0))
-
-    #    mapc,mapr,maps (assignment of the axes to X, Y and Z in numpy array
-    #      on input or output using mrcfile.  Columns are mapc (X=1, Y=2, Z=3),
-    #      rows are mapr (X=1, Y=2, Z=3), sections are maps (X=1, Y=2, Z=3).
-    #    Phenix writes maps with (mapc,mapr,maps)=(3,2,1).  Many other
-    #      programs use (1,2,3). This routine can read any order.
-
-    #   origin of flex array (grid point of lower left point in the map)
-    #   all of flex array (number of grid points in each direction)
-
-    #   Examples:
-    #   For map_data with origin=(0,0,0) and all=(3,3,3) the map runs from
-    #     0 to 2 in each direction, total elements = 27.  nxyz_start=(0,0,0)
-    #     nxyz_end=(2,2,2).
-
-    #   For map_data with origin=(5,5,5) and all=(3,3,3) the map runs from
-    #     5 to 7 in each direction, total elements = 27.  nxyz_start=(5,5,5)
-    #     nxyz_end=(7,7,7).  map_data.all()=(3,3,3). map_data.focus()=(8,8,8)
-
-    # Make sure map is unpadded
 
     if map_data.is_padded(): # copied from cctbx/miller/__init__.py
       map_data=maptbx.copy(map_data, flex.grid(map_data.focus()))
@@ -357,7 +377,7 @@ class write_ccp4_map:
       if unit_cell_grid is None:
         # Assumes map_data.all() is the entire unit cell
         unit_cell_grid=map_data.all()
-        # Note: if map_data.origin()!=(0,0,0) this grid corresponds to the
+        # Note: if map_data.origin()==(0,0,0) this grid corresponds to the
         #  box of density that is present.
       else:
         assert len(unit_cell_grid)==3
@@ -540,56 +560,57 @@ def select_output_labels(labels,max_labels=10):
 
 def get_standard_order(mapc,mapr,maps,internal_standard_order=None,
     reverse=False):
+  '''
 
-  # Phenix standard order is 3,2,1 (columns Z, rows Y, sections in X).
-  #     Convert everything to this order.
+    Phenix standard order is 3,2,1 (columns Z, rows Y, sections in X).
+        Convert everything to this order.
 
-  # This is the order that allows direct conversion of a numpy 3D array
-  #  with axis order (mapc,mapr,maps) to a flex array.
+    This is the order that allows direct conversion of a numpy 3D array
+     with axis order (mapc,mapr,maps) to a flex array.
 
-  # For reverse=True, supply order that converts flex array to numpy 3D array
-  #  with order (mapc,mapr,maps)
+    For reverse=True, supply order that converts flex array to numpy 3D array
+     with order (mapc,mapr,maps)
 
-  # Note that this does not mean input or output maps have to be in this order.
-  #  It just means that before conversion of numpy to flex or vice-versa
-  #  the array has to be in this order.
+    Note that this does not mean input or output maps have to be in this order.
+     It just means that before conversion of numpy to flex or vice-versa
+     the array has to be in this order.
 
-  #  Note that MRC standard order for input/ouput is 1,2,3.
+     Note that MRC standard order for input/ouput is 1,2,3.
 
-  #  NOTE: numpy arrays indexed from 0 so this is equivalent to
-  #   order of 2,1,0 in the numpy array
+     NOTE: numpy arrays indexed from 0 so this is equivalent to
+      order of 2,1,0 in the numpy array
 
-  # NOTE:  MRC format allows data axes to be swapped using the header
-  #   mapc mapr and maps fields. However the mrcfile library does not
-  #   attempt to swap the axes and assigns the columns to X, rows to Y and
-  #   sections to Z. The data array is indexed C-style, so data values can
-  #   be accessed using mrc.data[z][y][x].
+    NOTE:  MRC format allows data axes to be swapped using the header
+      mapc mapr and maps fields. However the mrcfile library does not
+      attempt to swap the axes and assigns the columns to X, rows to Y and
+      sections to Z. The data array is indexed C-style, so data values can
+      be accessed using mrc.data[z][y][x].
 
-  # NOTE: normal expectation is that phenix will read/write with the
-  #   order 3,2,1. This means X-sections (index=3), Y rows (index=2),
-  #   Z columns (index=1). This correxponds to
-  #    mapc (columns) =   3 or Z
-  #    mapr (rows)    =   2 or Y
-  #    maps (sections) =  1 or X
+    NOTE: normal expectation is that phenix will read/write with the
+      order 3,2,1. This means X-sections (index=3), Y rows (index=2),
+      Z columns (index=1). This correxponds to
+       mapc (columns) =   3 or Z
+       mapr (rows)    =   2 or Y
+       maps (sections) =  1 or X
 
-  # In the numpy array (2,1,0 instead of 3,2,1):
+    In the numpy array (2,1,0 instead of 3,2,1):
 
-  # To transpose, specify i0,i1,i2 where:
-  #     i0=2 means input axis 0 becomes output axis 2
-  #     NOTE:  axes are 0,1,2 etc, not 1,2,3
-  #   Examples:
-  #     np.transpose(a,(0,1,2))  does nothing
-  #     np.transpose(a,(1,2,0)) output axis 0 is input axis 1
-  #
+    To transpose, specify i0,i1,i2 where:
+        i0=2 means input axis 0 becomes output axis 2
+        NOTE:  axes are 0,1,2 etc, not 1,2,3
+      Examples:
+        np.transpose(a,(0,1,2))  does nothing
+        np.transpose(a,(1,2,0)) output axis 0 is input axis 1
 
 
-  # We want output axes to always be 2,1,0 and input axes for numpy array are
-  #   (mapc-1,mapr-1,maps-1):
+    We want output axes to always be 2,1,0 and input axes for numpy array are
+      (mapc-1,mapr-1,maps-1):
 
-  # For example, in typical phenix usage, the transposition is:
-  #   i_mapc=3    i_mapc_np=2
-  #   i_mapr=2    i_mapr_np=1
-  #   i_maps=1    i_maps_np=0
+    For example, in typical phenix usage, the transposition is:
+      i_mapc=3    i_mapc_np=2
+      i_mapr=2    i_mapr_np=1
+      i_maps=1    i_maps_np=0
+  '''
 
   assert internal_standard_order==INTERNAL_STANDARD_ORDER  # This is hard-wired for flex array
 
@@ -742,3 +763,4 @@ def subtract_list(list_a,list_b):
   for a,b in zip(list_a,list_b):
     new_list.append(a-b)
   return new_list
+

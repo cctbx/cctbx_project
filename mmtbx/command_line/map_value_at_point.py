@@ -135,7 +135,7 @@ def run(args, log = sys.stdout):
   if(len(reflection_files) != 0):
     map_3d = map_from_reflection_file(reflection_files=reflection_files, params=params)
   else:
-    map_3d = processed_args.ccp4_map.data.as_double()
+    map_3d = processed_args.ccp4_map.map_data()
   print("Map values at specified points:")
   for point in params.point:
     point_frac = unit_cell.fractionalize(point)

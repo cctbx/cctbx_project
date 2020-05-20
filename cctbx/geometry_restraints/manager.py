@@ -1074,7 +1074,7 @@ class manager(Base_geometry):
     bonded_distance_cutoff = min(bonded_distance_cutoff,
         max_distance_between_connecting_atoms)+0.1
     t2 = time.time()
-    # print "bonded_distance_cutoff:", bonded_distance_cutoff
+    # print("bonded_distance_cutoff", bonded_distance_cutoff)
     # make asu mappings
     all_asu_mappings = self.crystal_symmetry.special_position_settings().\
         asu_mappings(buffer_thickness=bonded_distance_cutoff)
@@ -1089,6 +1089,7 @@ class manager(Base_geometry):
     proxies_i_seqs = {}
     proxies_iselection = []
     for np, p in enumerate(proxies):
+      # print('p iseqs', p.i_seqs)
       proxies_i_seqs[p.i_seqs] = np
       proxies_i_seqs[(p.i_seqs[1], p.i_seqs[0])] = np
       for i in list(p.i_seqs):
@@ -1096,6 +1097,7 @@ class manager(Base_geometry):
           proxies_iselection.append(i)
     # Not sure whether we want to sort it...
     # proxies_iselection = flex.size_t(sorted(proxies_iselection))
+    # print('proxies_i_seqs', proxies_i_seqs)
     proxies_iselection = flex.size_t(proxies_iselection)
     t4 = time.time()
 
@@ -1128,6 +1130,9 @@ class manager(Base_geometry):
       r_a_index[value] = index
     n_added_proxies = 0
     for pair in pair_generator:
+      # !!! Warning !!! pairs here may come reverted: (32,24) and (24,32) and
+      # they may result in different rt_mx_ji. Therefore in the next for cycle
+      # we need to make sure we are picking correct rt_mx_ji
       pair_in_origninal_indeces = (r_a_index[pair.i_seq], r_a_index[pair.j_seq])
       n_proxy = None
       # Is this pair should be restrained?
@@ -1141,39 +1146,48 @@ class manager(Base_geometry):
       # Sanity check (not necessary because of 'continue' in previous line)
       # print "  n_proxy", n_proxy
       if n_proxy is not None:
-        # print "Adding to options,", n_proxy, rt_mx_ji_options
+        # print("Adding to options,", n_proxy, rt_mx_ji_options)
         #Trying to find rt_mx_ji for connecting atoms
         rt_mx_i = conn_asu_mappings.get_rt_mx_i(pair)
         rt_mx_j = conn_asu_mappings.get_rt_mx_j(pair)
         rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
         rt_mx_ji_options[n_proxy].append(rt_mx_ji)
-        # print "  pair:",  pair.i_seq, pair.j_seq, "n_proxy ", n_proxy,rt_mx_ji
-    # print "rt_mx_ji_options:", rt_mx_ji_options
+        # print("  pair:",  pair.i_seq, pair.j_seq, "n_proxy ", n_proxy,rt_mx_ji)
+    # print ("rt_mx_ji_options:", rt_mx_ji_options)
     # for i, opts in enumerate(rt_mx_ji_options):
-    #   print "  ",i,
+    #   print("  ",i,' ', end='')
     #   for o in opts:
-    #     print o,",",
-    #   print
-    # print
-    # print "STARTING TO PICK rt_mx_ji for proxies"
+    #     print(o,",", end='')
+    #   print()
+    # print()
+    # print("STARTING TO PICK rt_mx_ji for proxies")
     for proxy, rt_mx_ji_option in zip(proxies, rt_mx_ji_options):
-      # print "rt_mx_ji_options:",
+      # print("rt_mx_ji_options:",end='')
       # for op in rt_mx_ji_option:
-      #   print op,
-      # print
-      # print "  choose rt_mx_ji"
+      #   print (op,' | ' , end='')
+      # print()
+      # print("  choose rt_mx_ji")
       rt_mx_ji = None
-      if len(rt_mx_ji_option) >= 1:
+      if len(rt_mx_ji_option) == 1:
         rt_mx_ji = rt_mx_ji_option[0]
       if len(rt_mx_ji_option) > 1:
         # search for unit mx or pick the first one
         for rmj in rt_mx_ji_option:
           if rmj.is_unit_mx():
             rt_mx_ji = rmj
+        if rt_mx_ji is None:
+          # no unit mx found and we have >1 options, need to pick correct one
+          for rmj in rt_mx_ji_option:
+            t_rt_mx_i = all_asu_mappings.get_rt_mx(proxy.i_seqs[0], 0)
+            t_rt_mx_j = t_rt_mx_i.multiply(rmj)
+            j_sym = all_asu_mappings.find_i_sym(proxy.i_seqs[1], t_rt_mx_j)
+            # print('checking j_sym', j_sym, proxy.i_seqs[0], proxy.i_seqs[1])
+            if j_sym >= 0:
+              rt_mx_ji = rmj
       # Add new defined bond
-      # print "  chosen rt_mx_ji", rt_mx_ji
+      # print ("  chosen rt_mx_ji", rt_mx_ji)
       if rt_mx_ji is not None:
-        # print "  Adding new bond:", proxy.i_seqs[0], proxy.i_seqs[1], rt_mx_ji
+        # print("  Adding new bond:", proxy.i_seqs[0], proxy.i_seqs[1], rt_mx_ji)
         all_bonds_asu_table.add_pair(
           i_seq=proxy.i_seqs[0],
           j_seq=proxy.i_seqs[1],
@@ -1192,6 +1206,7 @@ class manager(Base_geometry):
             )
         n_added_proxies += 1
     t6 = time.time()
+    # print('n_added_proxies', n_added_proxies)
     # update self.shell_sym_tables with new bonds
     shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
       pair_asu_table=all_bonds_asu_table,

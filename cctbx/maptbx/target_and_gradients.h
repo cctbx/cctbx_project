@@ -367,8 +367,8 @@ score(
   af::const_ref<std::size_t> const& selection,
   af::shared<af::tiny<std::size_t, 2> > bonded_pairs,
   af::const_ref<MapFloatType > const& weights,
-  MapFloatType const& max_map_value,
-  MapFloatType const& min_map_value)
+  af::const_ref<MapFloatType > const& max_map_value,
+  af::const_ref<MapFloatType > const& min_map_value)
 {
   MapFloatType status = 1;
   MapFloatType result = 0;
@@ -377,7 +377,7 @@ score(
     MapFloatType mv = eight_point_interpolation(
       density_map,
       unit_cell.fractionalize(sites_cart[i]));
-    if(mv < min_map_value || mv > max_map_value)  {
+    if(mv < min_map_value[i] || mv > max_map_value[i])  {
       status=-1;
       break;
     }

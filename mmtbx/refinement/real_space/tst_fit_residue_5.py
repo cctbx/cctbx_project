@@ -76,6 +76,10 @@ def exercise(pdb_poor_str, i_pdb = 0, d_min = 1.0, resolution_factor = 0.25):
     resolution_factor = resolution_factor)
   #
   get_class = iotbx.pdb.common_residue_names_get_class
+  cmv = mmtbx.refinement.real_space.common_map_values(
+    pdb_hierarchy = t.ph_poor,
+    unit_cell     = t.xrs_poor.crystal_symmetry().unit_cell(),
+    map_data      = t.target_map)
   for model in t.ph_poor.models():
     for chain in model.chains():
       for residue in chain.only_conformer().residues():
@@ -91,6 +95,7 @@ def exercise(pdb_poor_str, i_pdb = 0, d_min = 1.0, resolution_factor = 0.25):
             mon_lib_srv     = t.mon_lib_srv,
             rotamer_manager = t.rotamer_manager,
             real_space_gradients_delta  = d_min*resolution_factor,
+            cmv = cmv,
             geometry_restraints_manager = grm)
           sites_final = residue.atoms().extract_xyz()
           t1 = time.time()-t0
@@ -102,7 +107,7 @@ def exercise(pdb_poor_str, i_pdb = 0, d_min = 1.0, resolution_factor = 0.25):
     ph_answer          = t.ph_answer,
     ph_refined         = t.ph_poor,
     exclude_atom_names = ["CD1","CD2","CE1","CE2"],
-    tol                = 0.30)
+    tol                = 0.36)
 
 if(__name__ == "__main__"):
   exercise(pdb_poor_str = pdb_poor, resolution_factor=0.2)

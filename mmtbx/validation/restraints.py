@@ -127,6 +127,13 @@ class chirality(restraint):
     from mmtbx.kinemage.validation import chiral_outlier_as_kinemage
     return chiral_outlier_as_kinemage(self)
 
+  def as_table_row_phenix(self):
+    """
+    Values for populating ListCtrl in Phenix GUI.
+    """
+    atoms_str = ", ".join([ a.id_str() for a in self.atoms_info ])
+    return [ atoms_str, self.target, self.model, self.score, self.outlier_type() ]
+
   def is_pseudochiral(self):
     #Certain atoms are treated like chiral centers because they bond to atoms that have different names without chemical difference.
     #VAL CB bonds to CG1 and CG2, for example.
@@ -428,6 +435,10 @@ class chiralities(restraint_validation):
   restraint_type = "chirality"
   restraint_label = "Chiral volume"
   kinemage_header = "@subgroup {chiral devs} dominant\n"
+  gui_list_headers = ["Atoms","Ideal value","Model value",
+                      "Deviation (sigmas)","Probable cause"]
+  gui_formats = ["%s", "%.3f", "%.3f", "%.1f", "%s"]
+  wx_column_widths = [250, 100, 100, 180, 250]
   def get_result_class(self) : return chirality
 
   def get_outliers(self, proxies, unit_cell, sites_cart, pdb_atoms,

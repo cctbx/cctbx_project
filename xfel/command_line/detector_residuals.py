@@ -238,6 +238,10 @@ plots {
     .type = bool
     .help = Plot mean offset for spot predictions from observations in \
             deltaXY_by_deltapsi plot
+  include_scale_bar_in_pixels = 0
+    .type = float (value_min=0)
+    .help = For each panel in the deltaXY_by_deltapsi plot, show xy scale \
+            bars. Length of the scale bar is specified here in pixels.
 }
 
 save_pdf = False
@@ -480,7 +484,13 @@ class ResidualsPlotter(object):
     if self.params.plots.include_offset_dots:
       panel_center = panel.get_lab_coord(offset[0:2])
       ax.scatter(panel_center[0], panel_center[1], c='k', s=self.params.dot_size)
-      ax.scatter(flex.mean(lab_coords_x), flex.mean(lab_coords_y), c='k', s=self.params.dot_size)
+      if self.params.plots.include_scale_bar_in_pixels > 0:
+        pxlsz0,pxlsz1 = panel.get_pixel_size()
+        ax.plot([panel_center[0],panel_center[0]],
+                [panel_center[1],panel_center[1]+self.params.plots.include_scale_bar_in_pixels*pxlsz1*self.delta_scalar], 'k-')
+        ax.plot([panel_center[0],panel_center[0]+self.params.plots.include_scale_bar_in_pixels*pxlsz0*self.delta_scalar],
+                [panel_center[1],panel_center[1]], 'k-')
+      ax.scatter(flex.mean(lab_coords_x), flex.mean(lab_coords_y), c='b', s=self.params.dot_size)
       print(panel.get_name(), (flex.mean(lab_coords_x) - panel_center[0])/self.delta_scalar, (flex.mean(lab_coords_y) - panel_center[0])/self.delta_scalar)
 
     return sm, color_vals

@@ -265,12 +265,7 @@ class ramachandran_manager(object):
     self.new_to_old_conversion = {"general":"ala", "glycine":"gly",
         "cis-proline":"pro", "trans-proline":"pro", "pre-proline":"prepro",
         "isoleucine or valine":"ala"}
-    self.bool_atom_selection = None
-    if self.params.selection is None:
-      self.bool_atom_selection = flex.bool(pdb_hierarchy.atoms_size(), True)
-    else:
-      cache = pdb_hierarchy.atom_selection_cache()
-      self.bool_atom_selection = cache.selection(self.params.selection)
+    bool_atom_selection = self._determine_bool_atom_selection(pdb_hierarchy)
     fao = [self.params.favored, self.params.allowed, self.params.outlier]
     if initialize:
       if 'oldfield' in fao:
@@ -290,6 +285,15 @@ class ramachandran_manager(object):
         hierarchy = pdb_hierarchy)
     self.initialize = False
 
+  def _determine_bool_atom_selection(self, hierarchy):
+    bool_atom_selection = None
+    if self.params.selection is None:
+      bool_atom_selection = flex.bool(hierarchy.atoms_size(), True)
+    else:
+      cache = hierarchy.atom_selection_cache()
+      bool_atom_selection = cache.selection(self.params.selection)
+    return bool_atom_selection
+
   def proxy_select(self, n_seq, iselection):
     new_manager = ramachandran_manager(
       pdb_hierarchy = self.hierarchy,
@@ -307,7 +311,8 @@ class ramachandran_manager(object):
     allowed = ramalyze.RAMALYZE_ALLOWED
     outlier = ramalyze.RAMALYZE_OUTLIER
     self.hierarchy = hierarchy
-    selected_h = hierarchy.select(self.bool_atom_selection)
+    bool_atom_selection = self._determine_bool_atom_selection(hierarchy)
+    selected_h = hierarchy.select(bool_atom_selection)
     n_seq = flex.max(selected_h.atoms().extract_i_seq())
     # Drop all previous proxies
     self._oldfield_proxies = ext.shared_phi_psi_proxy()

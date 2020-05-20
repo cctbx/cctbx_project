@@ -60,12 +60,12 @@ def exercise(use_map, i_pdb, d_min = 1.5, resolution_factor = 0.1):
     vdw_radii         = None,
     crystal_symmetry  = t.crystal_symmetry,
     map_data          = map_data,
-    do_all            = True,
     backbone_sample   = False,
     rotatable_hd      = t.rotatable_hd,
     rotamer_manager   = t.rotamer_manager,
     sin_cos_table     = t.sin_cos_table,
     mon_lib_srv       = t.mon_lib_srv)
+  result.show()
   result.pdb_hierarchy.write_pdb_file(file_name = "refined_%s.pdb"%str(i_pdb),
     crystal_symmetry = t.crystal_symmetry)
   #
@@ -97,5 +97,6 @@ def exercise(use_map, i_pdb, d_min = 1.5, resolution_factor = 0.1):
 if(__name__ == "__main__"):
   t0 = time.time()
   for i_pdb, use_map in enumerate([True, False]):
+    print("use_map", use_map, "-"*20)
     exercise(use_map=use_map, i_pdb=i_pdb)
   print("Time: %6.4f"%(time.time()-t0))

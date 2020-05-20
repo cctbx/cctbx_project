@@ -50,7 +50,3 @@ stages:
       parameters:
         vmImage: [10, 14]
         xcode_version: [10, 1]
-#    - template: ./base-osx.yml
-#      parameters:
-#        vmImage: [10, 13]
-#        xcode_version: [9, 4, 1]

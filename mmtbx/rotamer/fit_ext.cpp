@@ -28,8 +28,8 @@ namespace {
       self.radii,
       self.weights,
       self.bonded_pairs,
-      self.max_map_value,
-      self.min_map_value);
+      self.ref_map_max,
+      self.ref_map_min);
   }
 
   boost::python::tuple
@@ -51,22 +51,22 @@ namespace {
                 af::shared<double> const&,
                 af::shared<double> const&,
                 boost::python::list const&,
-                double const&,
-                double const&>
+                af::shared<double> const&,
+                af::shared<double> const&>
                                ((arg("sites_cart"),
                                  arg("sites_cart_start"),
                                  arg("radii"),
                                  arg("weights"),
                                  arg("bonded_pairs"),
-                                 arg("max_map_value"),
-                                 arg("min_map_value"))))
+                                 arg("ref_map_max"),
+                                 arg("ref_map_min"))))
       .add_property("sites_cart",       make_getter(&moving<>::sites_cart,       rbv()))
       .add_property("sites_cart_start", make_getter(&moving<>::sites_cart_start, rbv()))
       .add_property("radii",            make_getter(&moving<>::radii,            rbv()))
       .add_property("weights",          make_getter(&moving<>::weights,          rbv()))
       .add_property("bonded_pairs",     make_getter(&moving<>::bonded_pairs,     rbv()))
-      .add_property("max_map_value",    make_getter(&moving<>::max_map_value,     rbv()))
-      .add_property("min_map_value",    make_getter(&moving<>::min_map_value,     rbv()))
+      .add_property("ref_map_max",      make_getter(&moving<>::ref_map_max,     rbv()))
+      .add_property("ref_map_min",      make_getter(&moving<>::ref_map_min,     rbv()))
       .enable_pickling()
       .def("__getinitargs__", getinitargs_moving)
     ;

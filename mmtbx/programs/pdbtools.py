@@ -90,3 +90,7 @@ gui
 
   def get_results(self):
     return self.result
+
+# So master_phil_str can be called
+master_phil_str = Program.master_phil_str
+

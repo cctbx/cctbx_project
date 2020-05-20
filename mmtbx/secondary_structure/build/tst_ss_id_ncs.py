@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from mmtbx.secondary_structure import build as ssb
+from mmtbx.secondary_structure.build import ss_idealization as ssb
 import iotbx.pdb
 import mmtbx.model
 from six.moves import cStringIO as StringIO
@@ -260,6 +260,7 @@ def exercise():
   rm = ssb.substitute_ss(
       model,
       log=log)
+  rm.run()
   # with open("res.pdb", 'w') as f:
     # f.write(model.model_as_pdb())
 
@@ -268,8 +269,10 @@ def exercise():
   for d in dif:
     assert approx_equal(d, (0,0,0), eps=0.005)
   log_cont = log.getvalue()
-  assert log_cont.find("skipping, not in NCS master") > 0
-  # print log_cont
+  # print("===========================")
+  # print (log_cont)
+  # print("===========================")
+  assert log_cont.find("1 element(s) were skipped because they are in NCS copies") > 0
   print("OK")
 
 

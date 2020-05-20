@@ -96,7 +96,10 @@ class geometry(object):
     if(self.from_restraints is not None):
       mi,ma,me = self.from_restraints.chirality_deviations()
       n = self.from_restraints.n_chirality_proxies
-    return group_args(min = mi, max = ma, mean = me, n = n)
+      outliers = self.from_restraints.get_chirality_outliers(
+        sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
+        sigma_threshold=4)
+    return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
 
   def dihedral(self):
     mi,ma,me,n = 0,0,0,0

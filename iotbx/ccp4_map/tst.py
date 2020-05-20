@@ -46,13 +46,13 @@ def exercise_with_tst_input_map(use_mrcfile=None,file_name=None):
     82.095001220703125, 37.453998565673828, 69.636001586914062,
     90.0, 101.47599792480469, 90.0))
   assert m.space_group_number == 5
-  assert m.data.origin() == (0, 0, 0)
-  assert m.data.all() == (16, 8, 16)
+  assert m.map_data().origin() == (0, 0, 0)
+  assert m.map_data().all() == (16, 8, 16)
   assert approx_equal(m.pixel_sizes(),(5.130937576293945, 4.6817498207092285, 4.352250099182129))
-  assert not m.data.is_padded()
+  assert not m.map_data().is_padded()
   out = StringIO()
   m.show_summary(out=out)
-  assert ("map grid:   (16, 8, 16)" in out.getvalue())
+  assert ("map cell grid: (16, 8, 16)" in out.getvalue())
   uc = m.unit_cell()
   assert approx_equal(m.unit_cell_parameters, m.unit_cell().parameters())
   assert approx_equal(m.grid_unit_cell().parameters(),
@@ -66,7 +66,7 @@ def exercise_with_tst_input_map(use_mrcfile=None,file_name=None):
   from scitbx.array_family import flex
   from cctbx import uctbx, sgtbx
 
-  real_map=m.data.as_double()
+  real_map=m.map_data().as_double()
   grid_start=(5,5,5)
   grid_end=(9,10,11)
 
@@ -93,16 +93,16 @@ def exercise_with_tst_input_map(use_mrcfile=None,file_name=None):
       labels=flex.std_string(["iotbx.ccp4_map.tst"]))
     m = iotbx.ccp4_map.map_reader(file_name='shifted_map.ccp4')
 
-  print(m.data.origin(),m.data.all())
+  print(m.map_data().origin(),m.map_data().all())
   print("GRID:",m.unit_cell_grid)
   assert m.unit_cell_grid == (16, 8, 16)
   assert approx_equal(m.unit_cell_parameters, (
     82.095001220703125, 37.453998565673828, 69.636001586914062,
     90.0, 101.47599792480469, 90.0))
   assert m.space_group_number == 1
-  print(m.data.origin(),m.data.all())
-  assert m.data.origin() == (5,5,5)
-  assert m.data.all() == (5,6,7)
+  print(m.map_data().origin(),m.map_data().all())
+  assert m.map_data().origin() == (5,5,5)
+  assert m.map_data().all() == (5,6,7)
 
 def exercise_with_tst_input_map_2(use_mrcfile=None,file_name=None):
   if not file_name:
@@ -116,13 +116,13 @@ def exercise_with_tst_input_map_2(use_mrcfile=None,file_name=None):
     m = mrcfile.map_reader(file_name=file_name,verbose=True)
   else:
     m = iotbx.ccp4_map.map_reader(file_name=file_name)
-  print(m.unit_cell_grid,m.data.origin(),m.data.all(),m.unit_cell_parameters, end=' ')
+  print(m.unit_cell_grid,m.map_data().origin(),m.map_data().all(),m.unit_cell_parameters, end=' ')
   assert m.unit_cell_grid == (55, 59, 61)
   assert approx_equal(m.unit_cell_parameters,
     (24.53101921081543, 24.61971664428711, 26.457056045532227,
       90.0, 90.0, 90.0))
-  assert m.data.origin() == (20, 21, 22)
-  assert m.data.all() == (11, 20, 29)
+  assert m.map_data().origin() == (20, 21, 22)
+  assert m.map_data().all() == (11, 20, 29)
 
 
 def exercise_crystal_symmetry_from_ccp4_map(use_mrcfile=None):
@@ -153,8 +153,8 @@ def exercise(args,use_mrcfile=None):
     print("unit cell grid:", m.unit_cell_grid)
     print("unit cell parameters:", m.unit_cell_parameters)
     print("space group number:  ", m.space_group_number)
-    print("map origin:", m.data.origin())
-    print("map grid:  ", m.data.all())
+    print("map origin:", m.map_data().origin())
+    print("map grid:  ", m.map_data().all())
     map_stats = maptbx.statistics(m.data)
     assert approx_equal(map_stats.min(), m.header_min)
     assert approx_equal(map_stats.max(), m.header_max)
