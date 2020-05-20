@@ -89,7 +89,8 @@ jobs:
       and(eq(variables['Build.DefinitionName'], 'Full'),
           or(eq(variables['Build.Reason'], 'Schedule'),
              eq(variables['Build.Reason'], 'Manual')),
-          eq('${{ join('_', parameters.xcode_version) }}', '11_3_1'))
+          eq('${{ join('_', parameters.xcode_version) }}', '11_3_1'),
+          eq(variables['System.StageAttempt'], 1))
     continueOnError: true
 
   # cache build directory every night for CI builds
@@ -99,5 +100,6 @@ jobs:
       and(eq(variables['Build.DefinitionName'], 'Full'),
           or(eq(variables['Build.Reason'], 'Schedule'),
              eq(variables['Build.Reason'], 'Manual')),
-          eq('${{ join('_', parameters.xcode_version) }}', '11_3_1'))
+          eq('${{ join('_', parameters.xcode_version) }}', '11_3_1'),
+          eq(variables['System.StageAttempt'], 1))
     continueOnError: true

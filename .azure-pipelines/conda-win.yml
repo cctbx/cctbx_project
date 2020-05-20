@@ -204,7 +204,8 @@ jobs:
     condition: >
       and(eq(variables['Build.DefinitionName'], 'Full'),
           or(eq(variables['Build.Reason'], 'Schedule'),
-             eq(variables['Build.Reason'], 'Manual')))
+             eq(variables['Build.Reason'], 'Manual')),
+          eq(variables['System.StageAttempt'], 1))
     continueOnError: true
 
   # cache build directory every night for CI builds
@@ -213,5 +214,6 @@ jobs:
     condition: >
       and(eq(variables['Build.DefinitionName'], 'Full'),
           or(eq(variables['Build.Reason'], 'Schedule'),
-             eq(variables['Build.Reason'], 'Manual')))
+             eq(variables['Build.Reason'], 'Manual')),
+          eq(variables['System.StageAttempt'], 1))
     continueOnError: true
