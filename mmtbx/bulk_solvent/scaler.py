@@ -696,7 +696,7 @@ class run(object):
         self.core = self.core.update(k_anisotropic = k_anisotropic_expmin)
         if(self.verbose):
           self.format_scale_matrix(m=scale_matrix_expmin)
-        return
+        return self.r_factor()
     # select best
     r = [(r_expanal, k_anisotropic_expanal, scale_matrix_expanal),
          (r_poly,    k_anisotropic_poly,    scale_matrix_poly),
