@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.jungfrau_metrics
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -54,8 +55,10 @@ verbose = False
 input {
   refl_glob = None
     .type = str
+    .optional = False
   expt_glob = None
     .type = str
+    .optional = False
 }
 
 include scope xfel.command_line.cspad_detector_congruence.phil_scope
@@ -263,16 +266,16 @@ class Script(object):
       # compare "true" and estimated transform parameters
       if self.params.verbose:
         print("Similarity transform:")
-        print(f"Scale: {model.scale:.5f}, "
-        f"Translation(μm): ({1000.*model.translation[0]:7.2f}, "
-        f"{1000.*model.translation[1]:7.2f}), "
-        f"Rotation (°): {(180./math.pi)*model.rotation:.4f}")
+        print("Scale: %.5f,"%(model.scale),
+        "Translation(μm): (%7.2f,"%(1000.*model.translation[0]),
+        "%7.2f),"%(1000.*model.translation[1]),
+        "Rotation (°): %.4f"%((180./math.pi)*model.rotation))
       print("RANSAC:")
-      print(f"Scale: {model_robust.scale:.5f}, "
-      f"Translation(μm): ({1000.*model_robust.translation[0]:7.2f}, "
-      f"{1000.*model_robust.translation[1]:7.2f}), "
-      f"Rotation (°): {(180./math.pi)*model_robust.rotation:.4f},"
-      " Outliers:",outliers.count(True)
+      print("Scale: %.5f,"%(model_robust.scale),
+      "Translation(μm): (%7.2f,"%(1000.*model_robust.translation[0]),
+      "%7.2f),"%(1000.*model_robust.translation[1]),
+      "Rotation (°): %.4f,"%((180./math.pi)*model_robust.rotation),
+      "Outliers:",outliers.count(True)
       )
       """from documentation:
       X = a0 * x - b0 * y + a1 = s * x * cos(rotation) - s * y * sin(rotation) + a1
@@ -316,6 +319,8 @@ class Script(object):
     ''' Parse the options. '''
     # Parse the command line arguments
     params, options = self.parser.parse_args(show_diff_phil=True)
+    assert params.input.refl_glob is not None, "Must give a input.refl_glob= string"
+    assert params.input.expt_glob is not None, "Must give a input.expt_glob= string"
     self.params = params
 
     self.build_reflections()
