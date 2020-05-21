@@ -4,9 +4,6 @@ from iotbx.data_manager import DataManager
 from iotbx.map_model_manager import map_model_manager
 from libtbx.test_utils import approx_equal
 
-import libtbx.load_env
-import libtbx.phil
-
 def test_01():
 
   data_dir = os.path.dirname(os.path.abspath(__file__))
