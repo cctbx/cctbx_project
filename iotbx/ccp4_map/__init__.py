@@ -63,7 +63,8 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
     '''
 
     from cctbx import crystal
-    map_all = self.map_data().all()
+    map_all=self.get_working_map_n_xyz()
+
     if(map_all != self.unit_cell_grid):
       # map that is present is not exactly one unit cell. Calculate cell params
       a,b,c, al,be,ga = self.unit_cell().parameters()

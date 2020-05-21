@@ -24,6 +24,8 @@ class map_manager(map_reader,write_ccp4_map):
    the new map_data object you supply should match the existing one (i.e.,
    both origin-shifted in the same way).
 
+   You can also get a new_map_manager with the customized_copy() method.
+
    NOTE: MRC Maps may not represent the entire unit cell.  Normally maps that
     have an origin (corner with minimum i,j,k) that is not zero will be
     shifted at a later stage to have the origin at (0,0,0), along with
@@ -176,7 +178,7 @@ class map_manager(map_reader,write_ccp4_map):
 
   def __init__(self,
      file_name=None,  # Normally initialize by reading from a file
-     data_manager=None, # Can associate with a data_manager
+     data_manager=None, # Can associate with a data_manager XXX Not implemented
      map_manager_object=None, # Also can initialize with existing map_manager
      map_data=None,    # and optional map_data
      unit_cell_grid=None,  # Optional specification of unit cell, space group
@@ -320,13 +322,14 @@ class map_manager(map_reader,write_ccp4_map):
       print("read_mtz requires initialization with a map...you can "+
         "get a map_manager object sm that can read an mtz file from "+
         "an existing one that is initialized called mm with:"+
-        " sm=mm.map_shift_manager().  Then sm.read_mtz(%s) " %(file_name),
+        " sm=mm.map_shift_tracker().  Then sm.read_mtz(%s) " %(file_name),
         file=log)
 
     import iotbx.mtz
     mtz_object = iotbx.mtz.object(file_name=file_name)
     map_coeffs = mtz_object.as_miller_arrays()[0]
-    print ("Read %s map coefficients from %s" %(file_name),file=log)
+    print ("Read %s map coefficients from %s" %(map_coeffs.size(),
+       file_name),file=log)
 
     # convert to map
     map_data=self.fourier_coefficients_as_map(map_coeffs=map_coeffs)
@@ -596,11 +599,14 @@ class map_manager(map_reader,write_ccp4_map):
        Uses miller_array.fft_map to do the work
     '''
     assert map_coeffs
-    assert self.map_data()
-    assert self.map_data().origin()==(0,0,0)
+    assert (self.map_data() and self.map_data().origin()==(0,0,0) ) or (
+       self.working_map_n_xyz)
 
     crystal_symmetry=self.crystal_symmetry()
-    n_real=self.map_data().all()
+    if self.map_data():
+      n_real=self.map_data().all()
+    else:
+      n_real=self.working_map_n_xyz
 
     from cctbx import maptbx
     from cctbx.maptbx import crystal_gridding
