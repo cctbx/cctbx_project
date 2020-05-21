@@ -412,6 +412,7 @@ class MillerArrayDataManager(DataManagerBase):
       labels = self._get_array_labels(datatype, filename=filename)
     else:
       if (not isinstance(labels, list)):
+        print ("ZZFF",labels)
         raise Sorry('The labels argument should be a list of labels')
     storage_dict = getattr(self, '_%s_arrays' % datatype)
     self._check_miller_array_storage_dict(datatype, storage_dict, filename)

@@ -1,0 +1,194 @@
+
+Summary of NCS information
+Thu May 21 14:48:36 2020
+/net/anaconda/raid1/terwill/misc
+
+
+
+
+
+new_ncs_group
+new_operator
+
+rota_matrix    1.0000    0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth   14.4035    7.4690    0.2556
+CHAIN A
+RMSD 0
+MATCHING 3
+  RESSEQ 1:3
+
+new_operator
+
+rota_matrix    0.6235    0.7818   -0.0000
+rota_matrix   -0.7818    0.6235   -0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth    -4.0535   11.5839   -0.0001
+
+center_orth   14.7250   11.8645    0.2556
+CHAIN B
+RMSD 0.000355430694039
+MATCHING 3
+  RESSEQ 1:3
+
+new_operator
+
+rota_matrix   -0.2225    0.9749    0.0000
+rota_matrix   -0.9749   -0.2225    0.0000
+rota_matrix    0.0000   -0.0000    1.0000
+tran_orth     2.4752   21.9747   -0.0002
+
+center_orth   11.4882   14.8567    0.2556
+CHAIN C
+RMSD 0.000374774984544
+MATCHING 3
+  RESSEQ 1:3
+
+new_operator
+
+rota_matrix   -0.9010    0.4339    0.0000
+rota_matrix   -0.4339   -0.9010    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth    14.6710   23.3479   -0.0004
+
+center_orth    7.1305   14.1904    0.2556
+CHAIN D
+RMSD 0.000402303805956
+MATCHING 3
+  RESSEQ 1:3
+
+new_operator
+
+rota_matrix   -0.9010   -0.4339    0.0000
+rota_matrix    0.4339   -0.9010    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth    23.3482   14.6705   -0.0005
+
+center_orth    4.9341   10.3694    0.2556
+CHAIN E
+RMSD 0.000412025096865
+MATCHING 3
+  RESSEQ 1:3
+
+new_operator
+
+rota_matrix   -0.2225   -0.9749   -0.0000
+rota_matrix    0.9749   -0.2225   -0.0000
+rota_matrix    0.0000   -0.0000    1.0000
+tran_orth    21.9747    2.4757   -0.0001
+
+center_orth    6.5526    6.2705    0.2556
+CHAIN F
+RMSD 0.000371368187344
+MATCHING 3
+  RESSEQ 1:3
+
+new_operator
+
+rota_matrix    0.6235   -0.7818   -0.0000
+rota_matrix    0.7818    0.6235   -0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth    11.5836   -4.0535   -0.0001
+
+center_orth   10.7668    4.9796    0.2556
+CHAIN G
+RMSD 0.000378433804578
+MATCHING 3
+  RESSEQ 1:3
+
+new_operator
+
+rota_matrix   -1.0000    0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000   -1.0000
+tran_orth    20.0000    0.0000   20.0000
+
+center_orth    5.5965    7.4690   19.7444
+CHAIN H
+RMSD 1.00008146338e-15
+MATCHING 3
+  RESSEQ 1:3
+
+new_operator
+
+rota_matrix   -0.6235    0.7818    0.0000
+rota_matrix    0.7818    0.6235   -0.0000
+rota_matrix   -0.0000   -0.0000   -1.0000
+tran_orth     8.4164   -4.0532   20.0001
+
+center_orth    5.2755   11.8650   19.7444
+CHAIN I
+RMSD 0.000461200205593
+MATCHING 3
+  RESSEQ 1:3
+
+new_operator
+
+rota_matrix    0.2225    0.9749    0.0000
+rota_matrix    0.9749   -0.2225    0.0000
+rota_matrix    0.0000    0.0000   -1.0000
+tran_orth    -1.9753    2.4757   19.9997
+
+center_orth    8.5124   14.8568   19.7444
+CHAIN J
+RMSD 0.00038612957729
+MATCHING 3
+  RESSEQ 1:3
+
+new_operator
+
+rota_matrix    0.9010    0.4339   -0.0000
+rota_matrix    0.4339   -0.9010   -0.0000
+rota_matrix   -0.0000    0.0000   -1.0000
+tran_orth    -3.3475   14.6713   20.0000
+
+center_orth   12.8687   14.1904   19.7444
+CHAIN K
+RMSD 0.00040425195883
+MATCHING 3
+  RESSEQ 1:3
+
+new_operator
+
+rota_matrix    0.9010   -0.4339   -0.0000
+rota_matrix   -0.4339   -0.9010   -0.0000
+rota_matrix    0.0000    0.0000   -1.0000
+tran_orth     5.3301   23.3488   19.9995
+
+center_orth   15.0650   10.3694   19.7444
+CHAIN L
+RMSD 0.000385936054049
+MATCHING 3
+  RESSEQ 1:3
+
+new_operator
+
+rota_matrix    0.2225   -0.9749   -0.0000
+rota_matrix   -0.9749   -0.2225   -0.0000
+rota_matrix    0.0000    0.0000   -1.0000
+tran_orth    17.5241   21.9753   19.9998
+
+center_orth   13.4480    6.2701   19.7444
+CHAIN M
+RMSD 0.000390003569196
+MATCHING 3
+  RESSEQ 1:3
+
+new_operator
+
+rota_matrix   -0.6235   -0.7818    0.0000
+rota_matrix   -0.7818    0.6235    0.0000
+rota_matrix   -0.0000   -0.0000   -1.0000
+tran_orth    24.0528   11.5833   20.0004
+
+center_orth    9.2338    4.9789   19.7444
+CHAIN N
+RMSD 0.000458586891212
+MATCHING 3
+  RESSEQ 1:3
+
+
+

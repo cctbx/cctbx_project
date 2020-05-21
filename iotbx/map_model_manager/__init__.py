@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry,null_out
 import sys
 from iotbx.map_manager import map_manager
 
@@ -63,6 +63,11 @@ class map_model_manager:
       print("Model summary:",file=log)
       print("Residues: %s" %(
        self._model.get_hierarchy().overall_counts().n_residues),file=log)
+
+    if self._ncs_object:
+      print("NCS summary:",file=log)
+      print("Operators: %s" %(
+       self._ncs_object.max_operators()),file=log)
 
   def generate_map(self,
      log=sys.stdout,
@@ -154,7 +159,7 @@ class map_model_manager:
         model=self._model.deep_copy()
         print("Shifting model to match original map",file=log)
         model=self.shift_model_to_match_original_map(
-          model=model)
+          model=model,log=log)
       else:
         model=self._model
 
@@ -171,11 +176,14 @@ class map_model_manager:
     self.check_crystal_symmetry(map_manager.crystal_symmetry(),log=log)
     # if existing:  check that map_manager.is_similar(other_map_manager)
 
-  def add_model(self,model=None,log=sys.stdout):
+  def add_model(self,model=None,set_model_log_to_null=True,
+     log=sys.stdout):
     # Add a model and make sure its symmetry is similar to others
     # Check that model crystal_symmetry matches either full or working
     # crystal_symmetry of map
     self.check_crystal_symmetry(model.crystal_symmetry(),log=log)
+    if set_model_log_to_null:
+      model.set_log(null_out())
     self._model=model
 
   def check_crystal_symmetry(self,crystal_symmetry,
@@ -210,8 +218,8 @@ class map_model_manager:
     self.add_model(model,log=log)
 
 
-  def read_ncs_object(self,file_name=None,log=sys.stdout):
-    # Read in an NCS object and make sure its symmetry is similar to others
+  def read_ncs_file(self,file_name=None,log=sys.stdout):
+    # Read in an NCS file and make sure its symmetry is similar to others
     from mmtbx.ncs.ncs import ncs
     ncs_object=ncs()
     ncs_object.read_ncs(file_name=file_name, log=log)
@@ -240,15 +248,16 @@ class map_model_manager:
     # Shift an ncs object to match the working map (based
     #    on self._map_manager.origin_shift_grid_units)
     coordinate_shift=self.get_coordinate_shift(reverse=reverse)
-    ncs_object=ncs_object.coordinate_shift(coordinate_shift) # ZZZ
+    ncs_object=ncs_object.coordinate_offset(coordinate_shift) # ZZZ
     return ncs_object
 
   def shift_ncs_to_match_original_map(self,ncs_object=None,log=sys.stdout):
-    return shift_ncs_to_match_working_map(ncs_object=ncs_object,
+    return self.shift_ncs_to_match_working_map(ncs_object=ncs_object,
       reverse=True,log=log)
 
   def get_coordinate_shift(self,reverse=False):
-    if not reverse: # usual
+    if reverse: # Get origin shift in grid units == position of original origin
+                #  on the current grid
       origin_shift=self._map_manager.origin_shift_grid_units
     else:  # go backwards
       a=self._map_manager.origin_shift_grid_units
@@ -262,12 +271,13 @@ class map_model_manager:
   def shift_model_to_match_working_map(self,model=None,reverse=False,
      log=sys.stdout):
 
-    # Shift a model object to match the working map (based
+    # Deep-copy and Shift a model object to match the working map (based
     #    on self._map_manager.origin_shift_grid_units)
     coordinate_shift=self.get_coordinate_shift(
        reverse=reverse)
+    model=model.deep_copy()
     if(coordinate_shift !=(0,0,0)):
-      print ("\nMap origin is not at (0,0,0): shifting the model by %s" %(
+      print ("\nShifting model by %s" %(
          str(coordinate_shift)), file=log)
       sites_cart=model.get_sites_cart()
       sites_cart+=coordinate_shift
@@ -275,8 +285,9 @@ class map_model_manager:
       model._process_input_model()
     return model
 
-  def shift_model_to_match_original_map(self,model=None):
+  def shift_model_to_match_original_map(self,model=None,log=sys.stdout):
     # Shift a model object to match the original map (based
     #    on -self._map_manager.origin_shift_grid_units)
-    return self.shift_model_to_match_working_map(model=model,reverse=True)
+    return self.shift_model_to_match_working_map(model=model,reverse=True,
+      log=log)
 

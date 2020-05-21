@@ -4620,7 +4620,7 @@ class array(set):
         wavelength=None):
 
     """
-     Simple version of write_mtz for a single array
+     Simple version of write_mtz for a single array, typically map coefficients
     """
 
     if column_root_label is None:
