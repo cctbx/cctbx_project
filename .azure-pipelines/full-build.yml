@@ -33,7 +33,7 @@ jobs:
   - template: ./conda-linux.yml
     parameters:
       distribution: ubuntu
-      version: ['14', '04']
+      version: ['20', '04']
       modules: ${{ parameters.modules }}
   - template: ./conda-osx.yml
     parameters:
