@@ -8,7 +8,7 @@ import os
 from scitbx.array_family import flex
 from cctbx import maptbx
 from cctbx.maptbx import crystal_gridding
-from cctbx import maptbx
+from cctbx import miller
 
 class map_manager(map_reader,write_ccp4_map):
 
@@ -555,39 +555,21 @@ class map_manager(map_reader,write_ccp4_map):
     return True
 
 
-  def map_as_fourier_coefficients(self,
-    high_resolution=None,
-    resolution_factor=0.333,
-    box=False,
-    log=sys.stdout):
-
+  def map_as_fourier_coefficients(self, high_resolution=None):
     '''
-       Convert a map to Fourier coefficients to a resolution of high_resolution.
-       If resolution not available, truncate to resolution that is available.
-       If resolution is not specified, use highest resolution giving
-       grid spacing <= resolution_factor * resolution.
-       Requires that the map have origin at (0,0,0) (i.e., shift_origin())
-       If box, return complete set of structure factors available using full
-        box of grid points in FFT.
-
+       Convert a map to Fourier coefficients to a resolution of high_resolution,
+       if high_resolution is provided, otherwise box full of map coefficients
+       will be created.
        NOTE: Fourier coefficients are relative the working origin (not
        original origin).  A map calculated from the Fourier coefficients will
        superimpose on the working (current map) without origin shifts.
-
-       Uses mmtbx.command_line.map_to_structure_factors.calculate_inverse_fft
-
     '''
     assert self.map_data()
     assert self.map_data().origin()==(0,0,0)
-
-    from mmtbx.command_line.map_to_structure_factors import \
-       calculate_inverse_fft
-    return calculate_inverse_fft(map_data=self.map_data(),
-     crystal_symmetry=self.crystal_symmetry(),
-     d_min=high_resolution,
-     box=box,
-     resolution_factor=resolution_factor,
-     out=log)
+    return miller.structure_factor_box_from_map(
+      crystal_symmetry = self.crystal_symmetry(),
+      map              = self.map_data(),
+      d_min            = high_resolution)
 
   def fourier_coefficients_as_map(self, map_coeffs):
     '''
