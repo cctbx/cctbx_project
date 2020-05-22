@@ -2,8 +2,10 @@ from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 import sys
 from libtbx import group_args
-
+import iotbx.mtz
 from iotbx.mrcfile import map_reader, write_ccp4_map
+import os
+from scitbx.array_family import flex
 
 class map_manager(map_reader,write_ccp4_map):
 
@@ -213,7 +215,7 @@ class map_manager(map_reader,write_ccp4_map):
     # Initialize origin shift representing position of original origin in
     #  grid units.  If map is shifted, this is updated to reflect where
     #  to place current origin to superimpose map on original map.
-
+    self.log = log
     self.origin_shift_grid_units=(0,0,0)
     self.data_manager=None
 
@@ -312,35 +314,34 @@ class map_manager(map_reader,write_ccp4_map):
             " does not match gridding specified by input map_manager (%s)" %(
               str(self.working_map_n_xyz))))
 
-  def read_mtz(self,file_name=None,log=sys.stdout):
+  def _print(self, m):
+    if(self.log is not None and not self.log.closed):
+      print(m, file=self.log)
+
+  def read_mtz(self, file_name):
+    assert os.path.isfile(file_name)
     # read in map stored as mtz dataset and convert to map and add resulting
     #  map_data.
     #  NOTE: use data_manager for this
-
     # Requires that self.working_map_n_xyz is defined
-    if not self.working_map_n_xyz:
-      print("read_mtz requires initialization with a map...you can "+
-        "get a map_manager object sm that can read an mtz file from "+
-        "an existing one that is initialized called mm with:"+
-        " sm=mm.map_shift_tracker().  Then sm.read_mtz(%s) " %(file_name),
-        file=log)
-
-    import iotbx.mtz
+    assert self.working_map_n_xyz is not None
     mtz_object = iotbx.mtz.object(file_name=file_name)
+    miller_arrays = mtz_object.as_miller_arrays()
+    assert len(miller_arrays) == 1
     map_coeffs = mtz_object.as_miller_arrays()[0]
-    print ("Read %s map coefficients from %s" %(map_coeffs.size(),
-       file_name),file=log)
-
+    assert isinstance(map_coeffs.data(), flex.complex_double)
+    self._print(
+      "Read %s map coefficients from %s" %(map_coeffs.size(), file_name))
     # convert to map
     map_data=self.fourier_coefficients_as_map(map_coeffs=map_coeffs)
-    self.add_map_data(map_data,log=log)
+    self.add_map_data(map_data, log=self.log)
     if self.map_data():
-      print ("Converted map coefficients to map_data and replaced existing"+
-        "map_data",file=log)
+      self._print(
+        "Converted map coefficients to map_data and replaced existing map_data")
     else:
-      print ("Converted map coefficients to map_data and saved new map_data",
-        file=log)
-    print ("Returning map coefficients",file=log)
+      self._print(
+        "Converted map coefficients to map_data and saved new map_data")
+    self._print("Returning map coefficients")
     return map_coeffs
 
   def set_origin_and_gridding(self,origin_grid_units,
@@ -653,4 +654,3 @@ def shift_origin_of_map(map_data,previous_origin_shift=None):
     else:
       full_shift=previous_origin_shift
     return map_data,full_shift
-
