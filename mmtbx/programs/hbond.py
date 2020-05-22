@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 from libtbx.program_template import ProgramTemplate
 import mmtbx.nci.hbond
+from libtbx.utils import null_out
 
 # =============================================================================
 
@@ -27,6 +28,7 @@ Usage example:
     print('Using model: %s' % self.data_manager.get_default_model_name(),
       file=self.logger)
     model = self.data_manager.get_model()
+    model.set_log(log = null_out())
     self.results = mmtbx.nci.hbond.find(model = model)
     self.results.show(log = self.logger)
     print("-"*79, file=self.logger)
