@@ -7,7 +7,6 @@ from iotbx.mrcfile import map_reader, write_ccp4_map
 import os
 from scitbx.array_family import flex
 from cctbx import maptbx
-from cctbx.maptbx import crystal_gridding
 from cctbx import miller
 
 class map_manager(map_reader,write_ccp4_map):
@@ -384,51 +383,32 @@ class map_manager(map_reader,write_ccp4_map):
          str(current_unit_cell_parameters),
             str(new_unit_cell_parameters)),file=log)
 
-
   def already_shifted(self):
     # Check if origin is already at (0,0,0)
-    if self._map_data.origin() == (0,0,0):
+    if self._map_data is not None and self._map_data.origin() == (0,0,0):
       return True
     else:
       return False
 
-  def shift_origin(self,map_data=None,update_shift=None,log=sys.stdout):
-    # Shift the origin of the map to (0,0,0) and
-    #  optionally update origin_shift_grid_units
-    #  if map_data is supplied, update_shift default=False
-    #  if map_data is not supplied, update_shift default=True
-
-    if update_shift is None:
-      if map_data:
-        update_shift=False
-      else:
-        update_shift=True
-
-    if self._map_data and not map_data:
-      if self.already_shifted():
-        print ("Map is already at (0,0,0)",file=log)
-      else:
-        # usual
-        self._map_data,origin_shift_grid_units=shift_origin_of_map(
-          self._map_data,self.origin_shift_grid_units)
-        if update_shift:
-          self.origin_shift_grid_units=origin_shift_grid_units
-
-    elif map_data: # supplied map_data. Shift, optionally save updated shift,
-         # and return shifted map
-
-      shifted_map_data,origin_shift_grid_units=shift_origin_of_map(
-        map_data,self.origin_shift_grid_units)
-      if update_shift:
-         self.origin_shift_grid_units=origin_shift_grid_units
-      return shifted_map_data
-
-    else:
-      print ("No map to shift",file=log)
+  def shift_origin(self):
+    '''
+    Shift the origin of the map to (0,0,0) and update origin_shift_grid_units
+    '''
+    if(self._map_data is None): return
+    if(self.origin_shift_grid_units is None):
+      self.origin_shift_grid_units=(0,0,0)
+    new_origin_shift = self._map_data.origin()
+    if new_origin_shift != (0,0,0):
+      self._map_data = self._map_data.shift_origin()
+      full_shift=[]
+      for a,b in zip(self.origin_shift_grid_units,new_origin_shift):
+        full_shift.append(a+b)
+      self.origin_shift_grid_units = full_shift
 
   def map_shift_tracker(self):
     # Produces map_manager with no data so it is small but still knows how
     #   to write out maps
+    # PVA: Should it be a shift manager (for clarity)?
     mst=map_manager(map_manager_object=self)
     mst._map_data=None
     from copy import deepcopy
@@ -607,19 +587,3 @@ class map_manager(map_reader,write_ccp4_map):
     mmm=map_model_manager()
     mmm.generate_map(log=log,**kw)  # generate small map
     self.__init__(map_manager_object=mmm._map_manager)  # make this map_manager the new map
-
-def shift_origin_of_map(map_data,previous_origin_shift=None):
-
-    assert map_data
-    if not previous_origin_shift:
-      previous_origin_shift=(0,0,0)
-
-    new_origin_shift=map_data.origin()
-    if new_origin_shift != (0,0,0):
-      map_data=map_data.shift_origin() # have to use return value
-      full_shift=[]
-      for a,b in zip(previous_origin_shift,new_origin_shift):
-        full_shift.append(a+b)
-    else:
-      full_shift=previous_origin_shift
-    return map_data,full_shift
