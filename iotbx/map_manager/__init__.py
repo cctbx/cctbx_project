@@ -6,6 +6,8 @@ import iotbx.mtz
 from iotbx.mrcfile import map_reader, write_ccp4_map
 import os
 from scitbx.array_family import flex
+from cctbx import maptbx
+from cctbx.maptbx import crystal_gridding
 
 class map_manager(map_reader,write_ccp4_map):
 
@@ -586,41 +588,30 @@ class map_manager(map_reader,write_ccp4_map):
      resolution_factor=resolution_factor,
      out=log)
 
-  def fourier_coefficients_as_map(self,
-    map_coeffs=None,
-    high_resolution=None,
-    log=sys.stdout):
-
+  def fourier_coefficients_as_map(self, map_coeffs):
     '''
        Convert Fourier coefficients into to a real-space map with gridding
-       matching this existing map_manager. Optional resolution cutoff of
-       high_resolution.
+       matching this existing map_manager.
        Requires that this map_manager has origin at (0,0,0) (i.e.,
        shift_origin())
-       Uses miller_array.fft_map to do the work
     '''
     assert map_coeffs
+    assert isinstance(map_coeffs.data(), flex.complex_double)
     assert (self.map_data() and self.map_data().origin()==(0,0,0) ) or (
        self.working_map_n_xyz)
-
-    crystal_symmetry=self.crystal_symmetry()
     if self.map_data():
       n_real=self.map_data().all()
     else:
       n_real=self.working_map_n_xyz
-
-    from cctbx import maptbx
-    from cctbx.maptbx import crystal_gridding
-    cg=crystal_gridding(
-        unit_cell=crystal_symmetry.unit_cell(),
-        space_group_info=crystal_symmetry.space_group_info(),
-        pre_determined_n_real=n_real)
+    cg = crystal_gridding(
+      unit_cell             = self.crystal_symmetry().unit_cell(),
+      space_group_info      = self.crystal_symmetry().space_group_info(),
+      pre_determined_n_real = n_real)
     fft_map = map_coeffs.fft_map(
-       crystal_gridding=cg,
-       symmetry_flags=maptbx.use_space_group_symmetry)
+      crystal_gridding = cg,
+      symmetry_flags   = maptbx.use_space_group_symmetry)
     fft_map.apply_volume_scaling()
-    map_data=fft_map.real_map_unpadded()
-    return map_data
+    return fft_map.real_map_unpadded()
 
   def generate_map(self,
      log=sys.stdout,
