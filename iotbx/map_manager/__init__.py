@@ -8,6 +8,7 @@ import os
 from scitbx.array_family import flex
 from cctbx import maptbx
 from cctbx.maptbx import crystal_gridding
+from cctbx import maptbx
 
 class map_manager(map_reader,write_ccp4_map):
 
@@ -603,15 +604,10 @@ class map_manager(map_reader,write_ccp4_map):
       n_real=self.map_data().all()
     else:
       n_real=self.working_map_n_xyz
-    cg = crystal_gridding(
-      unit_cell             = self.crystal_symmetry().unit_cell(),
-      space_group_info      = self.crystal_symmetry().space_group_info(),
-      pre_determined_n_real = n_real)
-    fft_map = map_coeffs.fft_map(
-      crystal_gridding = cg,
-      symmetry_flags   = maptbx.use_space_group_symmetry)
-    fft_map.apply_volume_scaling()
-    return fft_map.real_map_unpadded()
+    return maptbx.map_coefficients_to_map(
+      map_coeffs       = map_coeffs,
+      crystal_symmetry = self.crystal_symmetry(),
+      n_real           = n_real)
 
   def generate_map(self,
      log=sys.stdout,

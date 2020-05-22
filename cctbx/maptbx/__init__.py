@@ -1323,6 +1323,18 @@ def d_min_from_map(map_data, unit_cell, resolution_factor=1./2.):
     c/nz/resolution_factor
   return max(d1,d2,d3)
 
+def map_coefficients_to_map(map_coeffs, crystal_symmetry, n_real):
+  assert isinstance(map_coeffs.data(), flex.complex_double)
+  cg = crystal_gridding(
+    unit_cell             = crystal_symmetry.unit_cell(),
+    space_group_info      = crystal_symmetry.space_group_info(),
+    pre_determined_n_real = n_real)
+  fft_map = map_coeffs.fft_map(
+    crystal_gridding = cg,
+    symmetry_flags   = use_space_group_symmetry)
+  fft_map.apply_volume_scaling()
+  return fft_map.real_map_unpadded()
+
 def map_to_map_coefficients(m, cs, d_min):
   import cctbx.miller
   fft = fftpack.real_to_complex_3d([i for i in m.all()])
