@@ -11,7 +11,7 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
 
   def show_summary(self, out=None, prefix=""):
     if (out is None) : out = sys.stdout
-    data=self.get_available_map_data()
+    data=self.map_data()
 
     if hasattr(self,'header_min'):
       print(prefix + "header_min: ", self.header_min, file=out)
@@ -49,9 +49,12 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
 
   def pixel_sizes(self):
     # Return tuple with pixel size in each direction (normally all the same)
+    data=self.map_data()
+    if not data:
+      return None
     cs=self.crystal_symmetry()
     cell_params=cs.unit_cell().parameters()[:3]
-    map_all=self.get_available_map_data().all()
+    map_all=data.all()
     pa=cell_params[0]/map_all[0]
     pb=cell_params[1]/map_all[1]
     pc=cell_params[2]/map_all[2]
@@ -62,8 +65,11 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
       This is "crystal_symmetry" of a box the size of the map that is present
     '''
 
+    data=self.map_data()
+    if not data:
+      return None
     from cctbx import crystal
-    map_all=self.get_working_map_n_xyz()
+    map_all=self.data.all()
 
     if(map_all != self.unit_cell_grid):
       # map that is present is not exactly one unit cell. Calculate cell params
@@ -104,51 +110,23 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
 
   def statistics(self):
     from cctbx import maptbx
-    return maptbx.statistics(self.get_available_map_data())
-
-  def get_available_map_data(self):
-    # Return _map_data (flex.double array) if available
-    #  otherwise, return self.data (original flex array)
-
-    if hasattr(self,'_map_data') and self._map_data:
-      return self._map_data
-    elif hasattr(self,'data') and self.data:
-      return self.data
-    else:
-      return None
+    return maptbx.statistics(self.map_data())
 
   def get_origin(self):
-    data=self.get_available_map_data()
+    data=self.map_data()
     if data:
       return data.origin()
     else:
       return None
 
-  def get_working_map_n_xyz(self):
-    data=self.get_available_map_data()
-    if data:
-      return data.all()
-    elif hasattr(self,'working_map_n_xyz'):
-      return self.working_map_n_xyz
-    else:
-      return None
-
   def map_data(self):
 
-    # Normally input data is converted to double and stored in _map_data
+    '''
+       Input data is converted to double and stored in self.data
+       self.map_data() always returns self.data
+    '''
 
-    if hasattr(self,'_map_data') and self._map_data:
-      return self._map_data
-
-    elif hasattr(self,'data') and self.data:
-      return self.data.as_double()
-
-    else:
-      return None
-
-  def convert_to_double(self):
-    self._map_data=self.map_data()
-    self.data=self._map_data # XXX for backwards compatibility. Should be None.
+    return self.data
 
   def high_resolution(self):
     if hasattr(self,'_high_resolution'):
@@ -156,16 +134,13 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
     else:
       return None
 
-  def model(self):
-    if hasattr(self,'_model'):
-      return self._model
-    else:
-      return None
-
   def is_similar_map(self, other):
     f1 = self.crystal_symmetry().is_similar_symmetry(other.crystal_symmetry())
     s = self.map_data()
     o = other.map_data()
+    if not s or not o:
+      return None
+
     f2 = s.focus()  == o.focus()
     f3 = s.origin() == o.origin()
     f4 = s.all()    == o.all()
@@ -191,4 +166,3 @@ class _():
 
   def dummy(self):
     pass # don't do anything
-

@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import os
+import libtbx.load_env
 from iotbx.data_manager import DataManager
 from iotbx.map_model_manager import map_model_manager
 from libtbx.test_utils import approx_equal
@@ -79,5 +80,8 @@ def test_01():
 # ----------------------------------------------------------------------------
 
 if (__name__ == '__main__'):
-  test_01()
+  if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
+    test_01()
+  else:
+    print('Skip test_01, chem_data not available')
   print ("OK")

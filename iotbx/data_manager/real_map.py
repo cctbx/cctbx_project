@@ -66,7 +66,6 @@ class RealMapDataManager(DataManagerBase):
       map_manager.write_map(
         file_name = filename,
         log=null_out(),
-        use_data_manager_if_available=False # prevent recursion
       )
     except IOError as err:
       raise Sorry('There was an error with writing %s.\n%s' %

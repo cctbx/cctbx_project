@@ -1,10 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 import sys
-from libtbx import group_args
-import iotbx.mtz
 from iotbx.mrcfile import map_reader, write_ccp4_map
-import os
 from scitbx.array_family import flex
 from cctbx import maptbx
 from cctbx import miller
@@ -14,21 +11,18 @@ class map_manager(map_reader,write_ccp4_map):
   '''
    map_manager, includes map_reader and write_ccp4_map
 
-   Normally use map_manager to read, write, and carry information about
-   maps.  Map_manager keeps track of the origin shifts and also the
+   Use map_manager to read, write, and carry information about
+   one map.  Map_manager keeps track of the origin shifts and also the
    original full unit cell and cell dimensions.  It writes out the map
    in the same place as it was read in.
 
-   Map_manager also has high-level tools to manipulate maps and to get
-   lower-level objects.
+   You normally create a new map_manager by initializing map_manager with a
+   file name.  Then you apply the shift_origin() method and the map is
+   shifted to place the origin at (0,0,0) and the original origin is
+   recorded as self.origin_shift_grid_units.
 
-   You can create a new map_manager by initializing map_manager with an
-   existing map_manager and a new map_data object. The new map_manager
-   will contain the original origin shifts and full unit cell, etc, so
-   the new map_data object you supply should match the existing one (i.e.,
-   both origin-shifted in the same way).
-
-   You can also get a new_map_manager with the customized_copy() method.
+   You can also create a map_manager with a map_data object (3D flex.double()
+   array) along with the meta-data below.
 
    NOTE: MRC Maps may not represent the entire unit cell.  Normally maps that
     have an origin (corner with minimum i,j,k) that is not zero will be
@@ -36,21 +30,18 @@ class map_manager(map_reader,write_ccp4_map):
     any models and ncs objects (typically done with iotbx.map_and_model).
     To be able to write out a map in the same place as it was read in
     after shifting the origin and/or boxing the map, you need to keep track
-    of 5 things.  These are:
+    of 4 things.  These are:
     1. unit_cell_grid: grid representing one full unit cell as read in.
-        Available from map_manager as self.unit_cell_grid
+        Saved in map_manager as self.unit_cell_grid
     2. unit_cell_parameters: dimensions of one full unit cell
+        Saved in map_manager as self.unit_cell_parameters
     3. origin_shift_grid_units: the shift in grid units to apply to the
        working map to superimpose it on the original map. When you read the
        map in this is (0,0,0). If you shift the map origin from (i,j,k) to
        (0,0,0) then the origin_shift_grid_units is (i,j,k).
-       The shift you can get from map_and_model if you use it,
-          is origin_shift=map_and_model.original_origin_grid_units()
+         Saved in map_manager as self.origin_shift_grid_units
 
-    Also (4) you will want to note the gridding of the part of the map that is
-      present (nx,ny,nz), available from the map_manager
-      as working_map_n_xyz=self.get_working_map_n_xyz()
-    And (5) you want the space-group number in case it is not 1
+    And (4) you want the space-group number in case it is not 1
 
    Normal usage:
 
@@ -59,7 +50,7 @@ class map_manager(map_reader,write_ccp4_map):
      Summarize:
        mm.show_summary()
 
-     Optionally shift origin of map to (0,0,0) (you can do this here
+     Normally shift origin of map to (0,0,0) (you can do this here
          or you can use iotbx.map_and_model to shift models and maps together):
        mm.shift_origin()
 
@@ -72,23 +63,10 @@ class map_manager(map_reader,write_ccp4_map):
      Get the crystal_symmetry of the whole unit cell (even if not present):
        unit_cell_cs=mm.unit_cell_crystal_symmetry()
 
-     Optional:
-       Get a map_manager object that just contains info on how to shift. You
-         can do anything with the map_shift_tracker you can do with the
-         original map_manage except you supply the map_data separately:
-       map_shift_tracker=mm.map_shift_tracker()
-         NOTE: if you shift the map AFTER setting up map_shift_tracker use:
-          shifted_map=map_shift_tracker.shift_origin(map_data,update_shift=True)
-         so that map_shift_tracker knows about the shift.  If you shift
-         another map with same map_shift_tracker, use update_shift=False
-
-     Write out the map:
+     Write out the map in map_data() in original location:
        mm.write_map(file_name='output_map.ccp4')
 
-     Or write out the map with map_shift_tracker:
-       map_shift_tracker.write_map(file_name='output_map.ccp4',
-         map_data=map_data)
-
+   --------     CONVENTIONS  --------------
    See http://www.ccpem.ac.uk/mrc_format/mrc2014.php for MRC format
    See https://pypi.org/project/mrcfile/ for mrcfile library documentation
 
@@ -177,176 +155,105 @@ class map_manager(map_reader,write_ccp4_map):
       i_mapc=3    i_mapc_np=2
       i_mapr=2    i_mapr_np=1
       i_maps=1    i_maps_np=0
+
+   --------     END CONVENTIONS  --------------
+
   '''
 
 
   def __init__(self,
      file_name=None,  # Normally initialize by reading from a file
-     data_manager=None, # Can associate with a data_manager XXX Not implemented
-     map_manager_object=None, # Also can initialize with existing map_manager
-     map_data=None,    # and optional map_data
-     unit_cell_grid=None,  # Optional specification of unit cell, space group
-     unit_cell_parameters=None,    # and origin shift instead of map_manager
-     space_group_number=None,
-     origin_grid_units=None,
-     working_map_n_xyz=None,
-     high_resolution=None,  # optional resolution used to create map
+     map_data=None,    # Alternatively supply map_data and following metadata
+     unit_cell_grid=None,  # gridding of full unit cell
+     unit_cell_parameters=None,    # Parameters of full unit cell
+     space_group_number=None,      # normally 1 for cryo-EM data
+     origin_shift_grid_units=None, # position of first point in map in full cell
      log=sys.stdout,
      ):
 
     '''
       Allows simple version of reading a map file or blank initialization
 
-      Can call with file_name to read map file.
+      Normally call with file_name to read map file in CCP4/MRC format.
 
-      Alternative is initialize with existing map_manager object and
-        optional map_data, or blank initialization
+      Alternative is initialize with map_data and metadata
+       (specify unit_cell_grid, unit_cell_parameters,
+        space_group_number, origin_shift_grid_units)
 
-      Final alternative is to specify unit_cell_grid, unit_cell_parameters,
-        space_group_number, origin_grid_units and
-        map_data or working_map_n_xyz
+      NOTE: As of 2020-05-22 both map_reader and map_manager ALWAYS convert
+      map_data to flex.double.
 
-      NOTE: Different from map_reader, map_manager ALWAYS converts
-      map_data to flex.double and does not save any extra information about
+      Map_manager does not save any extra information about
       the map except the details specified in this __init__.
 
       After reading you can access map data with self.map_data()
         and other attributes (see class utils in ccp4_map/__init__py)
     '''
 
+    # Initialize log filestream
+    self.log = log
+
     # Initialize origin shift representing position of original origin in
     #  grid units.  If map is shifted, this is updated to reflect where
     #  to place current origin to superimpose map on original map.
-    self.log = log
+
     self.origin_shift_grid_units=(0,0,0)
-    self.data_manager=None
 
     # Usual initialization with a file
+
     if file_name is not None:
       self.read_map(file_name=file_name,log=log)
-      self.data_manager=data_manager
+      # Sets self.unit_cell_grid, self.unit_cell_parameters,
+      #   self.space_group_number, self.data
+      # Does not set self.origin_shift_grid_units
 
-    # Initialization with map_manager and map_data objects
-    elif map_manager_object:
-      self.initialize_with_map_manager(
-        map_manager_object=map_manager_object,
-        map_data=map_data,
-        data_manager=data_manager,
-        high_resolution=high_resolution,log=log)
-    elif unit_cell_grid and unit_cell_parameters and \
-          (space_group_number is not None) and \
-          (map_data or working_map_n_xyz):
-      if origin_grid_units is None:
-        origin_grid_units=(0,0,0)
-      manager_object=group_args(
-        unit_cell_grid=unit_cell_grid,
-        unit_cell_parameters=unit_cell_parameters,
-        space_group_number=space_group_number,
-        origin_shift_grid_units=origin_grid_units,
-        _map_data=None,
-        working_map_n_xyz=working_map_n_xyz)
-
-      self.initialize_with_map_manager(
-        map_manager_object=manager_object,
-        map_data=map_data,
-        data_manager=data_manager,
-        high_resolution=high_resolution,log=log)
+    # Initialization with map_data object and metadata
 
     else:
-      # Initialize with nothing except data_manager
-     print("Initializing empty map_manager ",file=log)
-     self.unit_cell_grid=None
-     self.unit_cell_parameters=None
-     self.space_group_number=None
-     self.origin_shift_grid_units=None
-     self.working_map_n_xyz=None
-     self._map_data=None
-     self.data=None
-     self._high_resolution=None
-     self.data_manager=data_manager
+      assert map_data and unit_cell_grid and unit_cell_parameters
 
-  def initialize_with_map_manager(self,
-       map_manager_object=None,
-       data_manager=None,
-       map_data=None,
-       high_resolution=None,log=sys.stdout):
+      if space_group_number is None:
+        space_group_number=1
+      if origin_shift_grid_units is None:
+        origin_shift_grid_units=(0,0,0)
 
-     mmo=map_manager_object
-
-     self.unit_cell_grid= mmo.unit_cell_grid
-     self.unit_cell_parameters= mmo.unit_cell_parameters
-     self.space_group_number= mmo.space_group_number
-
-     self.origin_shift_grid_units= mmo.origin_shift_grid_units
-     self.working_map_n_xyz= mmo.working_map_n_xyz
-     self._map_data=mmo._map_data
-     self.data=None
-     self._high_resolution=high_resolution
-
-     if data_manager: # replace data_manager
-       self.data_manager=data_manager
-
-     if map_data:
-       self.add_map_data(map_data,overwrite_map_gridding=True,log=log)
+      self.unit_cell_grid=unit_cell_grid
+      self.unit_cell_parameters=unit_cell_parameters
+      self.space_group_number=space_group_number
+      self.origin_shift_grid_units=origin_shift_grid_units
+      self.data=map_data
 
   def read_map(self,file_name=None,log=sys.stdout):
+      '''
+       Read map using mrcfile/__init__.py
+       Sets self.unit_cell_grid, self.unit_cell_parameters,
+         self.space_group_number, self.data
+       Does not set self.origin_shift_grid_units
+      '''
+
       print("Reading map from %s " %(file_name),file=log)
-      if hasattr(self,'_map_data') and self._map_data:
-        print("NOTE: Removing existing map_data",file=log)
 
       self.read_map_file(file_name=file_name)  # in mrcfile/__init__.py
-      # Save gridding, convert to double and delete original data
-      self.working_map_n_xyz=self.get_working_map_n_xyz()
-      self.convert_to_double()
 
-  def add_map_data(self,map_data,overwrite_map_gridding=None,log=sys.stdout):
-       # NOTE: Used to initialize, replacing existing map data
-       self.data=map_data
-       self._map_data=None
-       self.convert_to_double()
-       if self._map_data.all() != self.working_map_n_xyz:
-         if overwrite_map_gridding:
-           print("Note: Map gridding (%s) " %(str(self._map_data.all())),
-            " is changed from input map_manager (%s)" %(
-              str(self.working_map_n_xyz)),"Assuming map has been boxed",
-              file=log)
-           self.working_map_n_xyz=self._map_data.all()
-         else:
-           raise Sorry("Map gridding (%s) " %(str(self._map_data.all()) +
-            " does not match gridding specified by input map_manager (%s)" %(
-              str(self.working_map_n_xyz))))
+  def replace_map_data(self,map_data,overwrite_map_gridding=None,log=sys.stdout):
+    # NOTE: Used to initialize, replacing existing map data
+    if self.map_data() and self.map_data().all() != map_data.all():
+      if overwrite_map_gridding:
+        print("Note: Map gridding (%s) " %(str(map_data.all())),
+         " is changed from input map_manager (%s)" %(
+           str(self.map_data().all())),"Assuming map has been boxed",
+           file=log)
+      else:
+        raise Sorry("Map gridding (%s) " %(str(map_data.all()) +
+         " does not match gridding specified by input map_manager (%s)" %(
+           str(self.map_data().all()))))
+    self.data=map_data
 
   def _print(self, m):
     if(self.log is not None and not self.log.closed):
       print(m, file=self.log)
 
-  def read_mtz(self, file_name):
-    assert os.path.isfile(file_name)
-    # read in map stored as mtz dataset and convert to map and add resulting
-    #  map_data.
-    #  NOTE: use data_manager for this
-    # Requires that self.working_map_n_xyz is defined
-    assert self.working_map_n_xyz is not None
-    mtz_object = iotbx.mtz.object(file_name=file_name)
-    miller_arrays = mtz_object.as_miller_arrays()
-    assert len(miller_arrays) == 1
-    map_coeffs = mtz_object.as_miller_arrays()[0]
-    assert isinstance(map_coeffs.data(), flex.complex_double)
-    self._print(
-      "Read %s map coefficients from %s" %(map_coeffs.size(), file_name))
-    # convert to map
-    map_data=self.fourier_coefficients_as_map(map_coeffs=map_coeffs)
-    self.add_map_data(map_data, log=self.log)
-    if self.map_data():
-      self._print(
-        "Converted map coefficients to map_data and replaced existing map_data")
-    else:
-      self._print(
-        "Converted map coefficients to map_data and saved new map_data")
-    self._print("Returning map coefficients")
-    return map_coeffs
-
-  def set_origin_and_gridding(self,origin_grid_units,
+  def set_origin_and_gridding(self,origin_shift_grid_units,
       gridding=None,
       allow_non_zero_previous_value=False,log=sys.stdout):
     if not allow_non_zero_previous_value:
@@ -358,10 +265,10 @@ class map_manager(map_reader,write_ccp4_map):
         return
 
     if self.origin_shift_grid_units in [None,(0,0,0)]:
-      self.origin_shift_grid_units=origin_grid_units
+      self.origin_shift_grid_units=origin_shift_grid_units
     else:
       new_origin=[]
-      for a,b in zip(self.origin_shift_grid_units,origin_grid_units):
+      for a,b in zip(self.origin_shift_grid_units,origin_shift_grid_units):
         new_origin.append(a+b)
       self.origin_shift_grid_units=new_origin
 
@@ -385,7 +292,7 @@ class map_manager(map_reader,write_ccp4_map):
 
   def already_shifted(self):
     # Check if origin is already at (0,0,0)
-    if self._map_data is not None and self._map_data.origin() == (0,0,0):
+    if self.map_data() is not None and self.map_data().origin() == (0,0,0):
       return True
     else:
       return False
@@ -394,25 +301,16 @@ class map_manager(map_reader,write_ccp4_map):
     '''
     Shift the origin of the map to (0,0,0) and update origin_shift_grid_units
     '''
-    if(self._map_data is None): return
+    if(self.map_data() is None): return
     if(self.origin_shift_grid_units is None):
       self.origin_shift_grid_units=(0,0,0)
-    new_origin_shift = self._map_data.origin()
+    new_origin_shift = self.map_data().origin()
     if new_origin_shift != (0,0,0):
-      self._map_data = self._map_data.shift_origin()
+      self.data=self.map_data().shift_origin()
       full_shift=[]
       for a,b in zip(self.origin_shift_grid_units,new_origin_shift):
         full_shift.append(a+b)
       self.origin_shift_grid_units = full_shift
-
-  def map_shift_tracker(self):
-    # Produces map_manager with no data so it is small but still knows how
-    #   to write out maps
-    # PVA: Should it be a shift manager (for clarity)?
-    mst=map_manager(map_manager_object=self)
-    mst._map_data=None
-    from copy import deepcopy
-    return deepcopy(mst)
 
   def write_map(self,
      file_name=None,
@@ -422,7 +320,6 @@ class map_manager(map_reader,write_ccp4_map):
      origin_shift_grid_units=None, # optional origin shift (grid units) to apply
      labels=None,  # optional list of output labels
      verbose=None,
-     use_data_manager_if_available=True,
      log=sys.stdout,
      ):
 
@@ -440,17 +337,8 @@ class map_manager(map_reader,write_ccp4_map):
       origin_shift_grid_units is optional origin shift (grid units) to apply
       labels are optional list of strings describing the map
 
-      If data_manager is available and use_data_manager_if_available, do the
-      write through the data_manager and only file_name and map_data are used
     '''
 
-    if self.data_manager and use_data_manager_if_available:
-      if map_data is None:
-        mm=self
-      else:
-        mm=self.customized_copy(map_data=map_data)
-      self.data_manager.write_map_with_map_manager(mm,filename=file_name)
-      return
 
     if not file_name:
       raise Sorry("Need file_name for write_map")
@@ -498,25 +386,29 @@ class map_manager(map_reader,write_ccp4_map):
       new_map_manager.write_map(file_name=file_name,log=log)
 
   def deep_copy(self):
-    ''' Return a deep copy of this map_manager object'''
-    from copy import deepcopy
-    return deepcopy(self)
+    '''
+      Return a deep copy of this map_manager object
+      Uses customized_copy to deepcopy everything except map_data,
+        and explicitly deepcopies map_data here
+    '''
+    return self.customized_copy(map_data=self.map_data().deep_copy())
 
   def customized_copy(self,map_data=None,
-     keep_data_manager=True, log=sys.stdout):
-    dc=self.deep_copy()
-    dc.add_map_data(map_data,overwrite_map_gridding=False,log=log)
-    if keep_data_manager:
-      dc.add_data_manager(self.data_manager)
-    else:
-      dc.remove_data_manager()
-    return dc
+     log=sys.stdout):
+    '''
+      Return a deepcopy of this map_manager, replacing map_data with
+      supplied map_data
+    '''
 
-  def add_data_manager(self,data_manager):
-    self.data_manager=data_manager
-
-  def remove_data_manager(self):
-    self.data_manager=None
+    assert map_data is not None # Require map data for the copy
+    from copy import deepcopy
+    return map_manager(
+      map_data=map_data,  # not a deep copy, just whatever was supplied
+      unit_cell_grid=deepcopy(self.unit_cell_grid),
+      unit_cell_parameters=deepcopy(self.unit_cell_parameters),
+      space_group_number=self.space_group_number,
+      origin_shift_grid_units=deepcopy(self.origin_shift_grid_units)
+      )
 
   def is_similar(self,other=None,eps=0.5):
     from libtbx.test_utils import approx_equal
@@ -525,7 +417,7 @@ class map_manager(map_reader,write_ccp4_map):
       return False
     if self.space_group_number != other.space_group_number:
       return False
-    if self.working_map_n_xyz != other.working_map_n_xyz:
+    if self.map_data().all()!= other.map_data().all():
       return False
     if self.unit_cell_grid != other.unit_cell_grid:
       return False
@@ -548,42 +440,34 @@ class map_manager(map_reader,write_ccp4_map):
     assert self.map_data().origin()==(0,0,0)
     return miller.structure_factor_box_from_map(
       crystal_symmetry = self.crystal_symmetry(),
+      include_000      = True,
       map              = self.map_data(),
       d_min            = high_resolution)
 
-  def fourier_coefficients_as_map(self, map_coeffs):
+  def fourier_coefficients_as_map(self, map_coeffs,
+       n_real=None):
     '''
        Convert Fourier coefficients into to a real-space map with gridding
        matching this existing map_manager.
+
+       If this map_manager does not have map already, it is required that
+       the parameter n_real (equivalent to self.map_data.all() if the map is
+       present) is supplied.
+
        Requires that this map_manager has origin at (0,0,0) (i.e.,
-       shift_origin())
+       shift_origin() has been applied if necessary)
     '''
     assert map_coeffs
     assert isinstance(map_coeffs.data(), flex.complex_double)
     assert (self.map_data() and self.map_data().origin()==(0,0,0) ) or (
-       self.working_map_n_xyz)
+       n_real is not None)
+    if self.map_data():
+      assert n_real is None
+
     if self.map_data():
       n_real=self.map_data().all()
-    else:
-      n_real=self.working_map_n_xyz
+
     return maptbx.map_coefficients_to_map(
       map_coeffs       = map_coeffs,
       crystal_symmetry = self.crystal_symmetry(),
       n_real           = n_real)
-
-  def generate_map(self,
-     log=sys.stdout,
-     **kw):  # Accepts keywords for generate_model, generate_map_coefficients,
-             #  and generate_map and all are passed to generate_model etc.
-    '''
-      Simple interface to iotbx.create_models_or_maps to generate a map
-      Simple use:
-       mm=map_manager.generate_map()  # generates a small map (and model)
-       map is in mm.map_data()
-       model is in mm.model()
-      Advanced use...see keywords in iotbx.create_models_or_maps.generate_map
-    '''
-    from iotbx.map_model_manager import map_model_manager
-    mmm=map_model_manager()
-    mmm.generate_map(log=log,**kw)  # generate small map
-    self.__init__(map_manager_object=mmm._map_manager)  # make this map_manager the new map

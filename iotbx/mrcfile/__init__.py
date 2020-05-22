@@ -174,7 +174,8 @@ class map_reader(utils):
     # Get the data. Note that the map file may have axes in any order. The
     #  order is defined by mapc, mapr, maps (columns, rows, sections).
     # Convert everything to the order 3,2,1 (X-sections, Y-rows, Z-columns).
-    #  self.data is a flex float array (same as ccp4_map.reader.data)
+    #  self.data is going to be a  flex double array (It originally was
+    # float, same as ccp4_map.reader.data but now it is converted to double)
 
     self.data=numpy_map_as_flex_standard_order(np_array=mrc.data,
        mapc=mrc.header.mapc,mapr=mrc.header.mapr,maps=mrc.header.maps,
@@ -187,8 +188,11 @@ class map_reader(utils):
       g=grid(grid_start,grid_end)
       self.data.reshape(g)
 
-    # Ready with self.data as float flex array. For normal use convert to
-    # double with map_data=self.data.as_double()
+    # Convert to double from float (NEW 2020-05-22)
+    self.data=self.data.as_double()
+
+    # Ready with self.data as flex.double() array.
+    # Get the data with map_data=self.data or map_data=self.map_data()
 
 
   # Code to check for specific text in map labels limiting the use of the map
@@ -320,6 +324,8 @@ class write_ccp4_map:
       verbose=None,
       ):
 
+
+    assert map_data  # should never be called without map_data
 
     if map_data.is_padded(): # copied from cctbx/miller/__init__.py
       map_data=maptbx.copy(map_data, flex.grid(map_data.focus()))
@@ -763,4 +769,3 @@ def subtract_list(list_a,list_b):
   for a,b in zip(list_a,list_b):
     new_list.append(a-b)
   return new_list
-
