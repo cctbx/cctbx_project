@@ -59,6 +59,12 @@ input {
   expt_glob = None
     .type = str
     .optional = False
+  predictions_glob = None
+    .type = str
+    .help = instead of refl_glob, give separate globs for predictions refls["xyzcalc.mm"] and observations refls["xyzobs.mm.value"]
+  observations_glob = None
+    .type = str
+    .help = instead of refl_glob, give separate globs for predictions refls["xyzcalc.mm"] and observations refls["xyzobs.mm.value"]
 }
 
 include scope xfel.command_line.cspad_detector_congruence.phil_scope
@@ -100,7 +106,7 @@ class Script(object):
       check_format=False,
       epilog=help_message)
 
-  def build_reflections(self):
+  def build_statistics(self,refl_gen):
 
     n_total = 0
     n_file = 0
@@ -116,12 +122,11 @@ class Script(object):
     cumCALC = {}
     run_nos = {}
 
-    all_refl_list = glob.glob(self.params.input.refl_glob)
-    print ("Reading %d refl files, printing the first 10"%(len(all_refl_list)))
-    for strfile in all_refl_list:
-      run_match = RUN.match(strfile)
+    print ("Reading %d refl files, printing the first 10"%(len(refl_gen)))
+    for item in refl_gen:
+      run_match = RUN.match(item["strfile"])
       run_token = int(run_match.group(1)); run_nos[run_token]=run_nos.get(run_token,0); run_nos[run_token]+=1
-      strong_refls = flex.reflection_table.from_file(strfile)
+      strong_refls = item["strong_refls"]
       nrefls = len(strong_refls)
       deltax[run_token] = deltax.get(run_token, flex.double())
       deltay[run_token] = deltay.get(run_token, flex.double())
@@ -129,7 +134,7 @@ class Script(object):
       OBS = flex.vec2_double()
       CALC = flex.vec2_double()
 
-      if n_file < 10: print (strfile, nrefls)
+      if n_file < 10: print (item["strfile"], nrefls)
       n_total += nrefls
       n_file += 1
       fcalc = strong_refls["xyzcal.mm"]
@@ -185,7 +190,7 @@ class Script(object):
     print ("Total number of files and reflections for each run")
     print ("Average Delta-x,Deltay in microns, along with standard error of the mean, and RMSD(model-obs)")
     print ()
-    print ("Run  n_file n_refl   <Δx>(μm)     <Δy>(μm)  RMSD Δx(μm)  RMSD Δy(μm)  <distance*Δr/r>(μm)")
+    print ("Run  n_file  n_refl  <Δx>(μm)     <Δy>(μm)  RMSD Δx(μm)  RMSD Δy(μm)  <distance*Δr/r>(μm)")
 
     for irun in self.ordered_run_nos:
       Sx = flex.mean_and_variance(1000.*self.deltax[irun])
@@ -266,15 +271,15 @@ class Script(object):
       # compare "true" and estimated transform parameters
       if self.params.verbose:
         print("Similarity transform:")
-        print("Scale: %.5f,"%(model.scale),
+        print("%2d"%isensor, "Scale: %.5f,"%(model.scale),
         "Translation(μm): (%7.2f,"%(1000.*model.translation[0]),
         "%7.2f),"%(1000.*model.translation[1]),
-        "Rotation (°): %.4f"%((180./math.pi)*model.rotation))
+        "Rotation (°): %7.4f"%((180./math.pi)*model.rotation))
       print("RANSAC:")
-      print("Scale: %.5f,"%(model_robust.scale),
+      print("%2d"%isensor, "Scale: %.5f,"%(model_robust.scale),
       "Translation(μm): (%7.2f,"%(1000.*model_robust.translation[0]),
       "%7.2f),"%(1000.*model_robust.translation[1]),
-      "Rotation (°): %.4f,"%((180./math.pi)*model_robust.rotation),
+      "Rotation (°): %7.4f,"%((180./math.pi)*model_robust.rotation),
       "Outliers:",outliers.count(True)
       )
       """from documentation:
@@ -315,20 +320,106 @@ class Script(object):
         print ( "     %3d %7.2f        %7.2f        %6d\n"%(isensor,1000.*flex.mean(cumD[0]), 1000.*flex.mean(cumD[1]), len(cumD[0])))
       print("----\n")
 
+  def build_reflections_generator(self):
+    help = """the application accepts two mutually exclusive input formats
+    1) indexed strong spots and corresponding predictions from input.refl_glob
+    2) strong from input.observations_glob, predictions from input.predictions_glob"""
+    assert (self.params.input.refl_glob is not None).__xor__(
+           (self.params.input.observations_glob is not None) and
+            self.params.input.predictions_glob is not None
+           ), help
+    if self.params.input.refl_glob is not None:
+      class all_refl_list:
+        def __init__(O): O._all_file_list = glob.glob(self.params.input.refl_glob)
+        def __len__(O): return len(O._all_file_list)
+        def __iter__(O):
+          for item in O._all_file_list:
+            yield dict(strfile = item, strong_refls=flex.reflection_table.from_file(item))
+      return all_refl_list()
+
+    else:
+      class all_refl_list:
+        def __init__(O):
+          O.pred_list = glob.glob(self.params.input.predictions_glob)
+          O.obs_list = glob.glob(self.params.input.observations_glob)
+          O.obs_reverse_lookup = {}
+          for obs in O.obs_list:
+              run_match = RUN.match(obs)
+              run_token = int(run_match.group(1))
+              event_match = EVENT.match(obs)
+              event_token = int(event_match.group(1))
+              O.obs_reverse_lookup[(run_token,event_token)] = obs
+        def __len__(O): return len(O.pred_list)
+        def __iter__(O):
+          from cctbx.miller import match_indices
+          n_total = 0
+          n_file = 0
+          n_reindex = 0
+          n_matches = 0
+          n_strong_no_integration = 0
+          n_integrated = 0
+          n_common = 0
+          n_weak = 0
+
+          for item in O.pred_list:
+            run_match = RUN.match(item)
+            run_token = int(run_match.group(1))
+            event_match = EVENT.match(item)
+            event_token = int(event_match.group(1))
+            obs = O.obs_reverse_lookup[(run_token,event_token)]
+            strong_refls = flex.reflection_table.from_file(obs)
+            nrefls = len(strong_refls)
+            ri = reindex_miller = strong_refls["miller_index"]
+            select_indexed = reindex_miller != (0,0,0)
+            reindex = (select_indexed).count(True)
+            strong_and_indexed = strong_refls.select(select_indexed)
+
+            print (obs, nrefls, reindex)
+            n_total += nrefls
+            n_file += 1
+            n_reindex += reindex
+
+            int_refls = flex.reflection_table.from_file(item)
+            ii = integration_miller = int_refls["miller_index"]
+            MM = match_indices(strong_and_indexed["miller_index"], int_refls["miller_index"])
+            #print("  Strong+indexed",reindex, "integrated",len(ii), "in common",len(MM.pairs()),
+            #"indexed but no integration", len(MM.singles(0)), "integrated weak", len(MM.singles(1)))
+            n_integrated += len(ii)
+            n_common += len(MM.pairs())
+            n_strong_no_integration += len(MM.singles(0))
+            n_weak += len(MM.singles(1))
+
+            P = MM.pairs()
+            A = P.column(0)
+            B = P.column(1)
+            strong_and_indexed = strong_and_indexed.select(A)
+            int_refls = int_refls.select(B)
+            # transfer over the calculated positions from integrate2 to strong refls
+
+            strong_and_indexed["xyzcal.mm"] = int_refls["xyzcal.mm"]
+            strong_and_indexed["xyzcal.px"] = int_refls["xyzcal.px"]
+            strong_and_indexed["delpsical.rad"] = int_refls["delpsical.rad"]
+            yield dict(strfile = item, strong_refls=strong_and_indexed)
+          print ("Grand total is %d from %d files of which %d reindexed"%(n_total,n_file, n_reindex))
+          print ("TOT Strong+indexed",n_reindex, "integrated",n_integrated, "in common",
+          n_common, "indexed but no integration", n_strong_no_integration, "integrated weak", n_weak)
+      return all_refl_list()
+
   def run(self):
     ''' Parse the options. '''
     # Parse the command line arguments
     params, options = self.parser.parse_args(show_diff_phil=True)
-    assert params.input.refl_glob is not None, "Must give a input.refl_glob= string"
     assert params.input.expt_glob is not None, "Must give a input.expt_glob= string"
     self.params = params
 
-    self.build_reflections()
-    print("Finished reading total refl files",self.n_total)
+    generate_refls = self.build_reflections_generator()
+    assert generate_refls is not None
+
+    self.build_statistics(refl_gen = generate_refls)
+    print("Finished reading total refl files",self.n_file)
 
     self.per_run_analysis()
     self.per_sensor_analysis()
-
 
 if __name__ == '__main__':
   script = Script()
