@@ -64,8 +64,7 @@ class RealMapDataManager(DataManagerBase):
     try:
       from libtbx.utils import null_out
       map_manager.write_map(
-        file_name = filename,
-        log=null_out(),
+        file_name = filename
       )
     except IOError as err:
       raise Sorry('There was an error with writing %s.\n%s' %

@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry,null_out
 import sys
 from iotbx.mrcfile import map_reader, write_ccp4_map
 from scitbx.array_family import flex
@@ -15,6 +15,10 @@ class map_manager(map_reader,write_ccp4_map):
    one map.  Map_manager keeps track of the origin shifts and also the
    original full unit cell and cell dimensions.  It writes out the map
    in the same place as it was read in.
+
+   Map_manager also keeps track of any changes in magnification. These
+   are reflected in changes in unit_cell and crystal_symmetry cell dimensions
+   and angles.
 
    You normally create a new map_manager by initializing map_manager with a
    file name.  Then you apply the shift_origin() method and the map is
@@ -42,6 +46,12 @@ class map_manager(map_reader,write_ccp4_map):
          Saved in map_manager as self.origin_shift_grid_units
 
     And (4) you want the space-group number in case it is not 1
+
+   Magnification (pixel size scaling) of a map: there is no parameter
+   describing magnification of an MRC map.  Changes in scaling are
+   recorded in map_manager as changes in unit_cell_parameters. If there
+   is any scaling, a note is written out as a label when the map is written out.
+
 
    Normal usage:
 
@@ -168,6 +178,12 @@ class map_manager(map_reader,write_ccp4_map):
      unit_cell_parameters=None,    # Parameters of full unit cell
      space_group_number=None,      # normally 1 for cryo-EM data
      origin_shift_grid_units=None, # position of first point in map in full cell
+     input_file_name=None,         # Name of input file (source of info)
+     program_name=None,            # Name of program working on the manager
+     limitations=None,             # key from STANDARD_LIMITATIONS_DICT
+     labels=None,                  # labels (list of 80-char strings) for output
+     original_unit_cell_parameters=None,  # original values
+     original_space_group_number=None,    # original vallue
      log=sys.stdout,
      ):
 
@@ -177,8 +193,9 @@ class map_manager(map_reader,write_ccp4_map):
       Normally call with file_name to read map file in CCP4/MRC format.
 
       Alternative is initialize with map_data and metadata
-       (specify unit_cell_grid, unit_cell_parameters,
-        space_group_number, origin_shift_grid_units)
+       Required: specify unit_cell_grid, unit_cell_parameters,
+        space_group_number, origin_shift_grid_units
+       Optional: specify input_file_name,program_name,limitations,labels
 
       NOTE: As of 2020-05-22 both map_reader and map_manager ALWAYS convert
       map_data to flex.double.
@@ -191,25 +208,40 @@ class map_manager(map_reader,write_ccp4_map):
     '''
 
     # Initialize log filestream
-    self.log = log
+    self.set_log(log)
 
     # Initialize origin shift representing position of original origin in
     #  grid units.  If map is shifted, this is updated to reflect where
     #  to place current origin to superimpose map on original map.
 
-    self.origin_shift_grid_units=(0,0,0)
+    self.original_unit_cell_parameters=None
+    self.original_space_group_number=None
+
+    # Initialize program_name, limitations, labels
+    self.input_file_name=None  # Name of input file (source of this manager)
+    self.program_name=None  # Name of program doing work
+    self.limitations=None   # optional list from STANDARD_LIMITATIONS_DICT
+    self.labels=None   # up to 10 80-char strings can be written out
+                       # initialized with labels from incoming file
 
     # Usual initialization with a file
 
     if file_name is not None:
-      self.read_map(file_name=file_name,log=log)
+      self.read_map(file_name=file_name)
       # Sets self.unit_cell_grid, self.unit_cell_parameters,
       #   self.space_group_number, self.data
       # Does not set self.origin_shift_grid_units
 
-    # Initialization with map_data object and metadata
+      # Set starting values:
+      self.origin_shift_grid_units=(0,0,0)
+      self.set_original_unit_cell_parameters()
+      self.set_original_space_group_number()
 
     else:
+      '''
+         Initialization with map_data object and metadata
+      '''
+
       assert map_data and unit_cell_grid and unit_cell_parameters
 
       if space_group_number is None:
@@ -222,8 +254,16 @@ class map_manager(map_reader,write_ccp4_map):
       self.space_group_number=space_group_number
       self.origin_shift_grid_units=origin_shift_grid_units
       self.data=map_data
+      self.original_unit_cell_parameters=original_unit_cell_parameters
+      self.original_space_group_number=original_space_group_number
 
-  def read_map(self,file_name=None,log=sys.stdout):
+  def set_log(self,log=sys.stdout):
+    '''
+       Set output log file
+    '''
+    self.log = log
+
+  def read_map(self,file_name=None):
       '''
        Read map using mrcfile/__init__.py
        Sets self.unit_cell_grid, self.unit_cell_parameters,
@@ -231,18 +271,22 @@ class map_manager(map_reader,write_ccp4_map):
        Does not set self.origin_shift_grid_units
       '''
 
-      print("Reading map from %s " %(file_name),file=log)
+      self._print("Reading map from %s " %(file_name))
 
       self.read_map_file(file_name=file_name)  # in mrcfile/__init__.py
 
-  def replace_map_data(self,map_data,overwrite_map_gridding=None,log=sys.stdout):
-    # NOTE: Used to initialize, replacing existing map data
+  def replace_map_data(self,map_data,overwrite_map_gridding=None):
+    '''
+      Replace map_data with supplied map data. If dimensions of supplied
+      map_data are not the same as existing map data and
+      overwrite_map_gridding is not set, stop with error.
+    '''
+
     if self.map_data() and self.map_data().all() != map_data.all():
       if overwrite_map_gridding:
-        print("Note: Map gridding (%s) " %(str(map_data.all())),
+        self._print("Note: Map gridding (%s) " %(str(map_data.all())),
          " is changed from input map_manager (%s)" %(
-           str(self.map_data().all())),"Assuming map has been boxed",
-           file=log)
+           str(self.map_data().all())),"Assuming map has been boxed")
       else:
         raise Sorry("Map gridding (%s) " %(str(map_data.all()) +
          " does not match gridding specified by input map_manager (%s)" %(
@@ -250,18 +294,91 @@ class map_manager(map_reader,write_ccp4_map):
     self.data=map_data
 
   def _print(self, m):
-    if(self.log is not None and not self.log.closed):
+    if (self.log is not None) and (type(self.log) != type(null_out())) and (
+        not self.log.closed):
       print(m, file=self.log)
+
+  def set_original_unit_cell_parameters(self,unit_cell_parameters=None):
+    '''
+      Set value of original unit_cell_parameters to supplied value
+      If none supplied, use current values
+    '''
+    from copy import deepcopy
+    if unit_cell_parameters is None:
+      unit_cell_parameters=self.unit_cell_parameters
+    self.original_unit_cell_parameters=deepcopy(unit_cell_parameters)
+
+  def set_original_space_group_number(self,space_group_number=None):
+    '''
+      Set value of original space_group_number to supplied value
+      If none supplied, use current value
+    '''
+    if space_group_number is None:
+      space_group_number=self.space_group_number
+    self.original_space_group_number=space_group_number
+
+  def set_space_group_number(self,space_group_number=None):
+    assert space_group_number is not None
+    self.space_group_number=space_group_number
+
+  def set_unit_cell_parameters(self,unit_cell_parameters):
+    ''' Specify magnification by setting unit_cell parameters'''
+
+    assert len(list(unit_cell_parameters)) in [3,6]
+    if len(list(unit_cell_parameters))==3:
+      unit_cell_parameters=list(unit_cell_parameters)+list(
+          self.unit_cell_parameters[3:])
+
+    self.unit_cell_parameters=unit_cell_parameters
+    self._print ("Setting unit_cell_parameters directly")
+    self._print("New cell parameters: (%.3f, %.3f, %.3f, %.2f, %.2f, %.2f)" %(
+      tuple(self.unit_cell_parameters)))
+    self._print("Effective magnification: (%.3f, %.3f, %.3f) " %(
+       self.get_magnification()))
+
+  def apply_magnification(self,magnification):
+    '''
+      Apply magnification (1 or 3 numbers)  to unit_cell_parameters.
+        Magnification is applied along
+      cell edges, not necessarily orthogonal.
+    '''
+    if type(magnification) in [type(1),type(1.)]:
+      m=(magnification,magnification,magnification)
+    else:
+      m=magnification
+    self._print("Applying magnification (%.3f, %.3f, %.3f) to map" %(
+       m))
+    new_abc=list(flex.double(self.unit_cell_parameters[:3])*flex.double(m))
+    self.unit_cell_parameters=tuple(new_abc+list(self.unit_cell_parameters[3:]))
+    self._print("New cell parameters: (%.3f, %.3f, %.3f, %.2f, %.2f, %.2f)" %(
+      self.unit_cell_parameters))
+
+  def get_magnification(self):
+    '''
+      Compare current and original unit_cell_parameters
+    '''
+    if not self.original_unit_cell_parameters:
+      return (1,1,1)
+    else:
+      print (self.unit_cell_parameters[:3],self.original_unit_cell_parameters)
+      return tuple ( flex.double(self.unit_cell_parameters[:3]) / flex.double(
+         self.original_unit_cell_parameters[:3]))
 
   def set_origin_and_gridding(self,origin_shift_grid_units,
       gridding=None,
-      allow_non_zero_previous_value=False,log=sys.stdout):
+      allow_non_zero_previous_value=False):
+    '''
+       Specify origin_shift_grid_units of part of map that is present and
+       optionally redefine the  definition of the unit cell,
+       keeping the grid spacing the same.
+    '''
+
     if not allow_non_zero_previous_value:
       if (not self.origin_shift_grid_units in [None,(0,0,0)]):
               # make sure we
               #   didn't already shift it
-        print("Origin shift is already set...cannot change it unless you"+
-          " also specify allow_non_zero_previous_value=True",file=log)
+        self._print("Origin shift is already set...cannot change it unless you"+
+          " also specify allow_non_zero_previous_value=True")
         return
 
     if self.origin_shift_grid_units in [None,(0,0,0)]:
@@ -284,11 +401,11 @@ class map_manager(map_reader,write_ccp4_map):
        self.unit_cell_parameters=\
           new_unit_cell_parameters+list(current_unit_cell_parameters[3:])
        self.unit_cell_grid=gridding
-       print ("Resetting gridding of full unit cell from %s to %s" %(
-         str(current_unit_cell_grid),str(gridding)),file=log)
-       print ("Resetting dimensions of full unit cell from %s to %s" %(
+       self._print ("Resetting gridding of full unit cell from %s to %s" %(
+         str(current_unit_cell_grid),str(gridding)))
+       self._print ("Resetting dimensions of full unit cell from %s to %s" %(
          str(current_unit_cell_parameters),
-            str(new_unit_cell_parameters)),file=log)
+            str(new_unit_cell_parameters)))
 
   def already_shifted(self):
     # Check if origin is already at (0,0,0)
@@ -312,15 +429,44 @@ class map_manager(map_reader,write_ccp4_map):
         full_shift.append(a+b)
       self.origin_shift_grid_units = full_shift
 
+  def set_program_name(self,program_name=None):
+    '''
+      Set name of program doing work on this map_manager for output
+      (string)
+    '''
+    self.program_name=program_name
+    self._print("Program name of %s added" %(program_name))
+
+  def add_limitation(self,limitation=None):
+    '''
+      Add a limitation from STANDARD_LIMITATIONS_DICT
+      Supply the key (such as "map_is_sharpened")
+    '''
+    from iotbx.mrcfile import STANDARD_LIMITATIONS_DICT
+    assert limitation in STANDARD_LIMITATIONS_DICT.keys()
+
+    if not self.limitations:
+      self.limitations=[]
+    self.limitations.append(limitation)
+    self._print("Limitation of %s ('%s') added to map_manager" %(
+      limitation,STANDARD_LIMITATIONS_DICT[limitation]))
+
+  def add_label(self,label=None):
+    '''
+     Add a label (up to 80-character string) to write to output map.
+     Default is to specify the program name and date
+    '''
+    assert type(label)==type("abc")
+
+    if not self.labels:
+      self.labels=[]
+    if len(label)>80:  label=label[:80]
+    self.labels.append(label)
+    self._print("Label added: %s " %(label))
+
   def write_map(self,
-     file_name=None,
-     map_data=None,  # map_data to be written out
-     crystal_symmetry=None,  # optional crystal_symmetry of region present
-     unit_cell_grid=None,  # optional gridding of full unit cell
-     origin_shift_grid_units=None, # optional origin shift (grid units) to apply
-     labels=None,  # optional list of output labels
+     file_name=None, # Name of file to be written
      verbose=None,
-     log=sys.stdout,
      ):
 
     '''
@@ -330,12 +476,9 @@ class map_manager(map_reader,write_ccp4_map):
       map_data is map_data object with 3D values for map. If not supplied,
         use self.map_data()
 
-      Normally only file_name and map_data needs to be supplied. Optional below:
-      crystal_symmetry is crystal.symmetry object describing unit cell and
-        space group. If not supplied, use self.unit_cell_crystal_symmetry()
-      unit_cell_grid is gridding of full unit cell, normally self.unit_cell_grid
-      origin_shift_grid_units is optional origin shift (grid units) to apply
-      labels are optional list of strings describing the map
+      Normally call with file_name (file to be written)
+      Output labels are generated from existing self.labels,
+      self.program_name, and self.limitations
 
     '''
 
@@ -343,28 +486,24 @@ class map_manager(map_reader,write_ccp4_map):
     if not file_name:
       raise Sorry("Need file_name for write_map")
 
-    if labels and (type(labels) != type([1,2,3]) or \
-         type(labels[0])!=type("ABC")):
-      raise Sorry("Output labels must be a list of text strings")
+    if not self.map_data():
+      raise Sorry("Need map_data for write_map")
+    map_data=self.map_data()
 
-    if not map_data:
-      if not self.map_data():
-        raise Sorry("Need map_data for write_map")
-      # Take map_data from self if not supplied
-      map_data=self.map_data()
+    from iotbx.mrcfile import create_output_labels
+    labels=create_output_labels(
+      program_name=self.program_name,
+      input_file_name=self.input_file_name,
+      input_labels=self.labels,
+      limitations=self.limitations)
 
-    # Take other values from self unless supplied
-    if not crystal_symmetry: # Use crystal symmetry of entire cell
-      crystal_symmetry=self.unit_cell_crystal_symmetry()
-    if not unit_cell_grid: # and gridding of entire cell
-      unit_cell_grid=self.unit_cell_grid
-    if not origin_shift_grid_units: # and origin shift to apply
-      origin_shift_grid_units=self.origin_shift_grid_units
-    # NOTE crystal_symmetry and unit_cell_grid are for entire cell
+    crystal_symmetry=self.unit_cell_crystal_symmetry()
+    unit_cell_grid=self.unit_cell_grid
+    origin_shift_grid_units=self.origin_shift_grid_units
 
     if map_data.origin() == (0,0,0):  # Usual
-      print("Writing map with origin at %s and size of %s to %s" %(
-        str(origin_shift_grid_units),str(map_data.all()),file_name),file=log)
+      self._print("Writing map with origin at %s and size of %s to %s" %(
+        str(origin_shift_grid_units),str(map_data.all()),file_name))
       write_ccp4_map(
         file_name   = file_name,
         crystal_symmetry = crystal_symmetry, # unit cell and space group
@@ -374,16 +513,17 @@ class map_manager(map_reader,write_ccp4_map):
         labels      = labels,
         verbose=verbose)
     else: # map_data has not been shifted to (0,0,0).  Shift it and then write
-      print("Writing map after shifting origin",file=log)
+      self._print("Writing map after shifting origin")
       if self.origin_shift_grid_units and origin_shift_grid_units!=(0,0,0):
-        print ("WARNING: map_data has origin at %s " %(str(map_data.origin())),
+        self._print (
+          "WARNING: map_data has origin at %s " %(str(map_data.origin())),
          " and this map_manager will apply additional origin shift of %s " %(
-          str(self.origin_shift_grid_units)), file=log)
+          str(self.origin_shift_grid_units)))
 
-      new_map_manager=map_manager(map_manager_object=self,
-         map_data=map_data.deep_copy())
-      new_map_manager.shift_origin()
-      new_map_manager.write_map(file_name=file_name,log=log)
+      new_mm=self.deep_copy()
+      new_mm.set_log(self.log)
+      new_mm.shift_origin()
+      new_mm.write_map(file_name=file_name)
 
   def deep_copy(self):
     '''
@@ -393,11 +533,11 @@ class map_manager(map_reader,write_ccp4_map):
     '''
     return self.customized_copy(map_data=self.map_data().deep_copy())
 
-  def customized_copy(self,map_data=None,
-     log=sys.stdout):
+  def customized_copy(self,map_data=None):
     '''
       Return a deepcopy of this map_manager, replacing map_data with
-      supplied map_data
+      supplied map_data.  If map_data is not supplied, map_data is
+      set to None.
     '''
 
     assert map_data is not None # Require map data for the copy
@@ -407,12 +547,19 @@ class map_manager(map_reader,write_ccp4_map):
       unit_cell_grid=deepcopy(self.unit_cell_grid),
       unit_cell_parameters=deepcopy(self.unit_cell_parameters),
       space_group_number=self.space_group_number,
-      origin_shift_grid_units=deepcopy(self.origin_shift_grid_units)
-      )
+      origin_shift_grid_units=deepcopy(self.origin_shift_grid_units),
+      input_file_name=self.input_file_name,
+      program_name=self.program_name,
+      limitations=self.limitations,
+      labels=self.labels,
+      original_unit_cell_parameters=deepcopy(
+         self.original_unit_cell_parameters),
+      original_space_group_number=self.original_space_group_number,
+       )
 
   def is_similar(self,other=None,eps=0.5):
     from libtbx.test_utils import approx_equal
-    # Check to make sure gridding and symmetry is similar
+    # Check to make sure origin, gridding and symmetry are similar
     if self.origin_shift_grid_units != other.origin_shift_grid_units:
       return False
     if self.space_group_number != other.space_group_number:

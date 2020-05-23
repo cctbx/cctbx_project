@@ -143,7 +143,7 @@ class map_model_manager:
     elif not file_name:
       print ("Need file name to write map",file=log)
     else:
-      self._map_manager.write_map(file_name=file_name,log=log)
+      self._map_manager.write_map(file_name=file_name)
 
   def write_model(self,
      file_name=None,
