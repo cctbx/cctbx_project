@@ -66,7 +66,12 @@ input {
     .type = str
     .help = instead of refl_glob, give separate globs for predictions refls["xyzcalc.mm"] and observations refls["xyzobs.mm.value"]
 }
-
+dispatch {
+  by_run = True
+    .type = bool
+    .help = if True, print out a per-run metric analysis. \
+            Assumes the run number is encoded in the file name as done in the regex RUN below.
+}
 include scope xfel.command_line.cspad_detector_congruence.phil_scope
 ''', process_includes=True)
 
@@ -124,13 +129,14 @@ class Script(object):
 
     print ("Reading %d refl files, printing the first 10"%(len(refl_gen)))
     for item in refl_gen:
-      run_match = RUN.match(item["strfile"])
-      run_token = int(run_match.group(1)); run_nos[run_token]=run_nos.get(run_token,0); run_nos[run_token]+=1
       strong_refls = item["strong_refls"]
       nrefls = len(strong_refls)
-      deltax[run_token] = deltax.get(run_token, flex.double())
-      deltay[run_token] = deltay.get(run_token, flex.double())
-      delRoverR[run_token] = delRoverR.get(run_token, flex.double())
+      if self.params.dispatch.by_run==True:
+        run_match = RUN.match(item["strfile"])
+        run_token = int(run_match.group(1)); run_nos[run_token]=run_nos.get(run_token,0); run_nos[run_token]+=1
+        deltax[run_token] = deltax.get(run_token, flex.double())
+        deltay[run_token] = deltay.get(run_token, flex.double())
+        delRoverR[run_token] = delRoverR.get(run_token, flex.double())
       OBS = flex.vec2_double()
       CALC = flex.vec2_double()
 
@@ -159,8 +165,6 @@ class Script(object):
       for irefl in range(len(strong_refls)):
         sum_delta_x += (fcalc[irefl][0] - fobs[irefl][0])
         sum_delta_y += (fcalc[irefl][1] - fobs[irefl][1])
-        deltax[run_token].append( (fcalc[irefl][0] - fobs[irefl][0]) )
-        deltay[run_token].append( (fcalc[irefl][1] - fobs[irefl][1]) )
         panel = D[panno[irefl]]
         panel_deltax[panno[irefl]].append( (fcalc[irefl][0] - fobs[irefl][0]) )
         panel_deltay[panno[irefl]].append( (fcalc[irefl][1] - fobs[irefl][1]) )
@@ -169,12 +173,17 @@ class Script(object):
         cumCALC[panno[irefl]//8].append(panel.get_lab_coord(fcalc[irefl][0:2]))
         cumOBS[panno[irefl]//8].append(panel.get_lab_coord(fobs[irefl][0:2]))
         cumPANNO[panno[irefl]//8].append(panno[irefl])
+      if self.params.dispatch.by_run==True:
+        for irefl in range(len(strong_refls)):
+          deltax[run_token].append( (fcalc[irefl][0] - fobs[irefl][0]) )
+          deltay[run_token].append( (fcalc[irefl][1] - fobs[irefl][1]) )
 
       R_sq = CALC.dot(CALC)
       DIFF = CALC-OBS
       Dr_over_r = (DIFF.dot(CALC))/R_sq
-      for irefl in range(len(strong_refls)):
-        delRoverR[run_token].append( Dr_over_r[irefl] )
+      if self.params.dispatch.by_run==True:
+        for irefl in range(len(strong_refls)):
+          delRoverR[run_token].append( Dr_over_r[irefl] )
 
       from libtbx import adopt_init_args
       obj = dict(n_total=n_total, n_file=n_file, sum_delta_x=sum_delta_x,
@@ -418,7 +427,8 @@ class Script(object):
     self.build_statistics(refl_gen = generate_refls)
     print("Finished reading total refl files",self.n_file)
 
-    self.per_run_analysis()
+    if self.params.dispatch.by_run==True:
+      self.per_run_analysis()
     self.per_sensor_analysis()
 
 if __name__ == '__main__':
