@@ -37,8 +37,7 @@ class constructed_with_xray_structure(object):
 
     args = (xs.unit_cell(),
             xs.space_group(),
-            xs.scatterers(),
-            self.scatterer_contribution) + args
+            xs.scatterers()) + args + (self.scatterer_contribution,)
     super(constructed_with_xray_structure, self).__init__(*args, **kwds)
     self.xray_structure = xray_structure
 
@@ -73,9 +72,9 @@ def f_calc_modulus_squared(xray_structure,
                                                         reflections=reflections)
   else:
     return f_calc_modulus_squared_with_custom_trigonometry(xray_structure,
-                                                           exp_i_2pi_functor,
-                                                           table_file_name=table_file_name,
-                                                           reflections=reflections)
+                                                           table_file_name,
+                                                           reflections,
+                                                           exp_i_2pi_functor)
 def f_calc_modulus(xray_structure,
                    exp_i_2pi_functor=None):
   if exp_i_2pi_functor is None:
