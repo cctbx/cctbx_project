@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from libtbx.utils import Sorry,null_out
+from libtbx.utils import Sorry,null_out,to_str
 import sys
 from iotbx.mrcfile import map_reader, write_ccp4_map
 from scitbx.array_family import flex
@@ -236,6 +236,10 @@ class map_manager(map_reader,write_ccp4_map):
       self.origin_shift_grid_units=(0,0,0)
       self.set_original_unit_cell_parameters()
       self.set_original_space_group_number()
+
+      # make sure labels are strings
+      if self.labels is not None:
+        self.labels = [to_str(label, codec='utf8') for label in self.labels]
 
     else:
       '''
