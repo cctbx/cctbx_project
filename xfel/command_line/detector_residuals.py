@@ -81,6 +81,17 @@ residuals {
   recompute_outliers = False
     .type = bool
     .help = If True, use sauter_poon to recompute outliers and remove them
+  mcd_filter {
+    enable = False
+      .type = bool
+      .help = on the DeltaPsi plot, apply a 3-feature MCD filter
+    mahalanobis = 7
+      .type = float(value_min=0.)
+      .help = cutoff level expressed as a multivariate Gaussian std dev
+    keep = *inliers outliers
+      .type = choice
+      .help = this should be obvious.  Either keep the good ones or the bad ones.
+  }
 }
 
 repredict
@@ -479,7 +490,15 @@ class ResidualsPlotter(object):
     lab_coords = panel.get_lab_coord(mm_panel_coords)
 
     lab_coords_x, lab_coords_y, _ = lab_coords.parts()
-    ax.scatter(lab_coords_x, lab_coords_y, c = data, norm=norm, cmap = cmap, linewidths=0, s=self.params.dot_size)
+    if self.params.residuals.mcd_filter.enable:
+      from xfel.metrology.panel_fitting import Panel_MCD_Filter
+      MCD = Panel_MCD_Filter(lab_coords_x, lab_coords_y, data, i_panel = reflections["panel"][0],
+                      delta_scalar = self.delta_scalar, params = self.params)
+      sX,sY,sPsi = MCD.scatter_coords()
+      MCD.plot_contours(ax,show=False) # run this to pre-compute the center position
+      ax.scatter(sX, sY, c = sPsi, norm=norm, cmap = cmap, linewidths=0, s=self.params.dot_size)
+    else:
+      ax.scatter(lab_coords_x, lab_coords_y, c = data, norm=norm, cmap = cmap, linewidths=0, s=self.params.dot_size)
 
     if self.params.plots.include_offset_dots:
       panel_center = panel.get_lab_coord(offset[0:2])
@@ -491,6 +510,9 @@ class ResidualsPlotter(object):
         ax.plot([panel_center[0],panel_center[0]+self.params.plots.include_scale_bar_in_pixels*pxlsz0*self.delta_scalar],
                 [panel_center[1],panel_center[1]], 'k-')
       ax.scatter(flex.mean(lab_coords_x), flex.mean(lab_coords_y), c='b', s=self.params.dot_size)
+      if self.params.residuals.mcd_filter.enable:
+        ax.scatter(MCD.robust_model_XY.location_[0],
+                   MCD.robust_model_XY.location_[1], c='r', s=self.params.dot_size)
       print(panel.get_name(), (flex.mean(lab_coords_x) - panel_center[0])/self.delta_scalar, (flex.mean(lab_coords_y) - panel_center[0])/self.delta_scalar)
 
     return sm, color_vals
