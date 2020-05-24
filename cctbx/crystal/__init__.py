@@ -1373,12 +1373,11 @@ class show_dihedral_angles(object):
             label += "*%s" %j
           s += label
       s += " %6.2f" % d.angle
-      print >> out, s
+      print(s, file=out)
 
     self.dihedrals = angles.dihedrals
     for i, rt_mx in enumerate(rt_mxs):
-      print >> out, "*%s" %(i+1),
-      print >> out, rt_mx
+      print("*%s %s" %(i+1, rt_mx), file=out)
 
 class sym_pair(libtbx.slots_getstate_setstate):
 
