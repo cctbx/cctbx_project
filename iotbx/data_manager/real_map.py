@@ -62,7 +62,6 @@ class RealMapDataManager(DataManagerBase):
                   (filename, overwrite))
 
     try:
-      from libtbx.utils import null_out
       map_manager.write_map(
         file_name = filename
       )
