@@ -786,7 +786,7 @@ public:
       std::ostream &output) const;
 
   virtual void store(uctbx::unit_cell const &unit_cell) const;
-
+  virtual void validate();
 };
 
 /// Scatterer fdp that is an independent parameter
