@@ -9,7 +9,6 @@ stages:
   displayName: Download
   jobs:
     - template: ./.azure-pipelines/download-source.yml
-    - template: ./.azure-pipelines/download-conda.yml
 
 - stage: Build
   displayName: Build and test

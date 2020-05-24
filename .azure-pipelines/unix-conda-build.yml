@@ -16,11 +16,11 @@ steps:
 - checkout: none
 
 - task: DownloadPipelineArtifact@2
-  displayName: Download modules tarball
   inputs:
     source: 'current'
     artifact: $(MODULES)
     path: $(Pipeline.Workspace)
+  displayName: Download modules tarball
 
 - script: |
     cd $(Pipeline.Workspace)
@@ -34,13 +34,13 @@ steps:
 
 # install miniconda
 - task: DownloadPipelineArtifact@2
-  displayName: Download miniconda
   inputs:
     source: 'specific'
     project: '$(System.TeamProjectId)'
     pipeline: 4
     artifact: 'miniconda'
     path: $(Pipeline.Workspace)/miniconda
+  displayName: Download miniconda
 
 - script: |
     set -x -e
@@ -49,11 +49,22 @@ steps:
 
 # create conda environment
 - task: DownloadPipelineArtifact@2
-  displayName: Download conda packages
   inputs:
     source: 'current'
     artifact: $(PYTHON_VERSION)_$(OS)
     path: $(Pipeline.Workspace)/channel
+  displayName: Download conda packages
+  condition: eq(variables['Build.DefinitionName'], 'Full')
+
+- task: DownloadPipelineArtifact@2
+  inputs:
+    source: 'specific'
+    project: '$(System.TeamProjectId)'
+    pipeline: 2
+    artifact: $(PYTHON_VERSION)_$(OS)
+    path: $(Pipeline.Workspace)/channel
+  displayName: Download conda packages
+  condition: ne(variables['Build.DefinitionName'], 'Full')
 
 - script: |
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh

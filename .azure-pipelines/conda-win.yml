@@ -118,25 +118,23 @@ jobs:
       call %CONDA%\condabin\conda.bat install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
     displayName: Create conda environment
 
-  # download cached build directory for CI builds
+  # download weekly cached build directory for builds
   - task: DownloadPipelineArtifact@2
     inputs:
       source: 'specific'
       project: '$(System.TeamProjectId)'
-      pipeline: 2
+      pipeline: 8
       artifact: '$(artifact_name)'
       path: $(Pipeline.Workspace)
     displayName: Download cached build
-    condition: >
-      eq(variables['Build.DefinitionName'], 'CI')
+    condition: ne(variables['Build.DefinitionName'], 'Update build cache')
     continueOnError: true
 
   - script: |
       cd $(Pipeline.Workspace)
       tar -xf build.tar
     displayName: Extract build tarball
-    condition: >
-      eq(variables['Build.DefinitionName'], 'CI')
+    condition: ne(variables['Build.DefinitionName'], 'Update build cache')
     continueOnError: true
 
   # build
@@ -196,24 +194,26 @@ jobs:
       testResultsFormat: 'JUnit'
       testResultsFiles: '$(Pipeline.Workspace)\tests\output.xml'
 
-  # preserve permissions
+# preserve permissions
   - script: |
       cd $(Pipeline.Workspace)
       tar -chf build.tar build
     displayName: Build tarball
     condition: >
-      and(eq(variables['Build.DefinitionName'], 'Full'),
+      and(eq(variables['Build.DefinitionName'], 'Update build cache'),
           or(eq(variables['Build.Reason'], 'Schedule'),
              eq(variables['Build.Reason'], 'Manual')),
-          eq(variables['System.StageAttempt'], 1))
+          eq(variables['System.StageAttempt'], 1),
+          eq('${{ parameters.modules }}', 'modules'))
     continueOnError: true
 
-  # cache build directory every night for CI builds
+  # cache build directory every week for regular optimization build
   - publish: $(Pipeline.Workspace)/build.tar
     artifact: $(artifact_name)
     condition: >
-      and(eq(variables['Build.DefinitionName'], 'Full'),
+      and(eq(variables['Build.DefinitionName'], 'Update build cache'),
           or(eq(variables['Build.Reason'], 'Schedule'),
              eq(variables['Build.Reason'], 'Manual')),
-          eq(variables['System.StageAttempt'], 1))
+          eq(variables['System.StageAttempt'], 1),
+          eq('${{ parameters.modules }}', 'modules'))
     continueOnError: true

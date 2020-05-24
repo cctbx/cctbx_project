@@ -17,6 +17,11 @@ schedules:
     - master
   always: true
 
+resources:
+  pipelines:
+  - pipeline: data_cache
+    source: 'Update data'
+
 jobs:
 - job: artifacts
   pool:

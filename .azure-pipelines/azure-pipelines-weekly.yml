@@ -1,9 +1,7 @@
-# Weekly builds
+# Weekly builds to test optimization flags
 
-# no continuous integration builds
+# no continuous integration builds or pull requests
 trigger: none
-
-# skip pull requests
 pr: none
 
 # only weekly builds on Friday Pacific
@@ -21,7 +19,6 @@ stages:
     - template: ./download-source.yml
       parameters:
         optimization: 3
-    - template: ./download-conda.yml
     - template: ./download-source.yml
       parameters:
         optimization: 2
