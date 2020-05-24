@@ -13,7 +13,7 @@ namespace scitbx { namespace math { namespace numerical {
   template <typename float_t>
   struct differential {
     typedef scitbx::af::shared<float_t> out_array_t;
-    
+
     static float_t get_delta() {
       static const float_t delta = sqrt(std::numeric_limits<float_t>::epsilon());
       return delta;
