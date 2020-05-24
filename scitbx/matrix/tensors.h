@@ -37,7 +37,7 @@ namespace scitbx { namespace matrix { namespace tensors {
   class tensor_base {
     heir_t &self() { return *(heir_t*)this; }
     const heir_t &self() const { return *(heir_t*)this; }
- 
+
   protected:
     /* https://en.wikipedia.org/wiki/Heap%27s_algorithm
     initialises equivalent map indices
@@ -74,7 +74,7 @@ namespace scitbx { namespace matrix { namespace tensors {
         get_multiplicity_()[i] = utils::calc_multiplicity(mps, heir_t::rank());
       }
     }
-    
+
     static std::vector<size_t> &get_multiplicity_() {
       static std::vector<size_t> multiplicity(heir_t::size());
       return multiplicity;
