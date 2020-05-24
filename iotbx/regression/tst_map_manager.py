@@ -113,7 +113,7 @@ def test_01():
 
   # Add a label
   mm_read.add_label('TEST LABEL')
-  assert mm_read.labels[-1]=='TEST LABEL'
+  assert mm_read.labels[0]=='TEST LABEL'
   mm_read.write_map('map_with_labels.mrc')
   new_mm=map_manager('map_with_labels.mrc')
   assert 'TEST LABEL' in new_mm.labels

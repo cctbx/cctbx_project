@@ -465,7 +465,9 @@ class map_manager(map_reader,write_ccp4_map):
     if not self.labels:
       self.labels=[]
     if len(label)>80:  label=label[:80]
-    self.labels.append(label)
+    self.labels.reverse()  # put at beginning
+    self.labels.append(to_str(label, codec='utf8')) # make sure it is a string
+    self.labels.reverse()
     self._print("Label added: %s " %(label))
 
   def write_map(self,
