@@ -35,10 +35,10 @@ def test_01():
   assert approx_equal(full_cs.unit_cell().parameters()[0] ,149.4066,eps=0.01)
 
   # write map directly:
-  mm.write_map('test.ccp4')
+  mm.write_map('test_direct.ccp4')
 
   # read back directly
-  new_mm=map_manager('test.ccp4')
+  new_mm=map_manager('test_direct.ccp4')
   assert (not new_mm.is_similar(mm))
 
   new_mm.shift_origin()
