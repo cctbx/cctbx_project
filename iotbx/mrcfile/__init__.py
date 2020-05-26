@@ -3,7 +3,6 @@ import cctbx.array_family.flex as flex# import dependency
 import os,time
 from libtbx.utils import Sorry
 
-from iotbx.ccp4_map import utils  # utilities in common with ccp4_map
 import mrcfile
 import warnings
 from scitbx.array_family.flex import grid
@@ -27,14 +26,14 @@ STANDARD_LIMITATIONS_DICT={  # THIS CAN BE MODIFIED AND ADDED TO
 # ======= END OF HARD-WIRED DEFAULTS SEE DOC STRINGS BELOW FOR INFO ====
 
 
-# NORMALLY:   Use the map_manager class to read, write and manipulate maps
-#             Do not use these routines directly unless necessary
 
 
-class map_reader(utils):
+class map_reader:
 
   '''
    NOTE: See doc for iotbx.map_manager for further information on maps
+   NORMALLY:   Use the map_manager class to read, write and manipulate maps
+              Do not use these routines directly unless necessary
 
    Read an mrc/ccp4 map file
      NOTE: the values of nxstart,nystart,nzstart refer to columns, rows,
@@ -110,8 +109,6 @@ class map_reader(utils):
     # Read memory-mapped for speed. Permissive to allow reading files with
     # no machine stamp.
 
-    # Set the same attributes that are set in ccp4_map.reader()
-
     # Note: the numpy function tolist() returns the python objects we need
 
     self.header_min=mrc.header.dmin.tolist() # returns float
@@ -156,14 +153,21 @@ class map_reader(utils):
     self.external_origin=tuple(mrc.header.origin.tolist())
 
     # Unit cell parameters (size of full unit cell in A)
-    self.unit_cell_parameters=tuple(
+    unit_cell_parameters=tuple(
           mrc.header.cella.tolist()+
           mrc.header.cellb.tolist())
 
     # Space group number (1 for cryo-EM data)
-    self.space_group_number=mrc.header.ispg.tolist()
-    if self.space_group_number <= 0:
-      self.space_group_number=1
+    space_group_number=mrc.header.ispg.tolist()
+    if space_group_number <= 0:
+      space_group_number=1
+
+    from cctbx import crystal
+    self._unit_cell_crystal_symmetry=crystal.symmetry(
+      unit_cell_parameters,
+      space_group_number)
+
+    self._crystal_symmetry=None # Set this after reading data
 
     if verbose:
       mrc.print_header()
@@ -193,6 +197,26 @@ class map_reader(utils):
 
     # Ready with self.data as flex.double() array.
     # Get the data with map_data=self.data or map_data=self.map_data()
+
+    map_all=self.data.all()
+
+    self.set_crystal_symmetry_of_partial_map(map_all=map_all)
+
+  def set_crystal_symmetry_of_partial_map(self,map_all=None):
+    a,b,c, al,be,ga = self.unit_cell_crystal_symmetry().unit_cell().parameters()
+    a = a * map_all[0]/self.unit_cell_grid[0]
+    b = b * map_all[1]/self.unit_cell_grid[1]
+    c = c * map_all[2]/self.unit_cell_grid[2]
+    if tuple(map_all) == tuple(self.unit_cell_grid[:3]):
+      space_group_number_use=self.unit_cell_crystal_symmetry(
+         ).space_group().info().type().number()
+    else:
+      space_group_number_use=1  # use Space group 1 (P 1) for any partial cell
+
+    from cctbx import crystal
+    self._crystal_symmetry=crystal.symmetry((a,b,c, al,be,ga),
+         space_group_number_use)
+
 
 
   # Code to check for specific text in map labels limiting the use of the map
@@ -249,9 +273,133 @@ class map_reader(utils):
   def get_limitation(self,label):
     return STANDARD_LIMITATIONS_DICT.get(label,None)
 
+  def show_summary(self, out=None, prefix=""):
+    if (out is None) :
+      import sys
+      out = sys.stdout
+    data=self.map_data()
+
+    if hasattr(self,'header_min'):
+      print(prefix + "header_min: ", self.header_min, file=out)
+      print(prefix + "header_max: ", self.header_max, file=out)
+      print(prefix + "header_mean:", self.header_mean, file=out)
+      print(prefix + "header_rms: ", self.header_rms, file=out)
+    print("\n"+prefix + "Information about FULL UNIT CELL:",file=out)
+    print(prefix + "unit cell grid:", self.unit_cell_grid, file=out)
+    print(prefix + "unit cell parameters:", self.unit_cell_crystal_symmetry().unit_cell().parameters(), file=out)
+    print(prefix + "space group number:  ", self.unit_cell_crystal_symmetry().space_group().info().type().number(), file=out)
+
+    if not data:
+      print("No map data available")
+    else:
+      print("\n"+prefix + "Information about the PART OF MAP THAT IS PRESENT:",
+       file=out)
+      print(prefix + "map cell grid:", data.all(), file=out)
+      print(prefix + "map cell parameters:",
+        self.crystal_symmetry().unit_cell().parameters(), file=out)
+      print(prefix + "map origin:", data.origin(), file=out)
+      print(prefix + "pixel size: (%.4f, %.4f, %.4f) " %(
+        self.pixel_sizes()), file=out)
+    if hasattr(self,'origin_shift_grid_units'):
+      print(prefix + "Shift (grid units) to place origin at original position:",
+          self.origin_shift_grid_units, file=out)
+
+    if hasattr(self,'_model') and self._model:
+      print (prefix + "Associated model with",
+          self._model.get_hierarchy().overall_counts().n_residues,"residues",
+           file=out)
+
+    if self.high_resolution():
+      print (prefix + "High-resolution limit of map: ",self.high_resolution(),
+            file=out)
+
+  def pixel_sizes(self):
+    # Return tuple with pixel size in each direction (normally all the same)
+    data=self.map_data()
+    if not data:
+      return None
+    cs=self.crystal_symmetry()
+    cell_params=cs.unit_cell().parameters()[:3]
+    map_all=data.all()
+    pa=cell_params[0]/map_all[0]
+    pb=cell_params[1]/map_all[1]
+    pc=cell_params[2]/map_all[2]
+    return (pa,pb,pc)
+
+  def crystal_symmetry(self):
+    '''
+      This is "crystal_symmetry" of a box the size of the map that is present
+    '''
+    return self._crystal_symmetry
+
+  def unit_cell_crystal_symmetry(self):
+    '''
+     This is the cell dimensions and angles of the full unit_cell
+    '''
+    return self._unit_cell_crystal_symmetry
+
+
+  def statistics(self):
+    from cctbx import maptbx
+    return maptbx.statistics(self.map_data())
+
+  def get_origin(self):
+    data=self.map_data()
+    if data:
+      return data.origin()
+    else:
+      return None
+
+  def map_data(self):
+
+    '''
+       Input data is converted to double and stored in self.data
+       self.map_data() always returns self.data
+    '''
+
+    return self.data
+
+  def high_resolution(self):
+    if hasattr(self,'_high_resolution'):
+      return self._high_resolution
+    else:
+      return None
+
+  def is_similar_map(self, other):
+    f1 = self.crystal_symmetry().is_similar_symmetry(other.crystal_symmetry())
+    s = self.map_data()
+    o = other.map_data()
+    if not s or not o:
+      return None
+
+    f2 = s.focus()  == o.focus()
+    f3 = s.origin() == o.origin()
+    f4 = s.all()    == o.all()
+    if([f1,f2,f3,f4].count(False)>0): return False
+    else: return True
+
+  def grid_unit_cell(self):
+    """
+    This is a unit cell describing one pixel of the map.
+    It is used in maptbx.non_crystallographic_eight_point_interpolation.
+    This grid_unit_cell is the original unit cell divided by the original
+    grid size.
+    """
+    from cctbx import uctbx
+    unit_cell_parameters=self.unit_cell_crystal_symmetry().unit_cell().parameters()
+    a = unit_cell_parameters[0] / self.unit_cell_grid[0]
+    b = unit_cell_parameters[1] / self.unit_cell_grid[1]
+    c = unit_cell_parameters[2] / self.unit_cell_grid[2]
+    alpha,beta,gamma = unit_cell_parameters[3:6]
+    return uctbx.unit_cell((a,b,c,alpha,beta,gamma))
+
 class write_ccp4_map:
   '''
+     NORMALLY:   Use the map_manager class to read, write and manipulate maps
+                Do not use these routines directly unless necessary
+
      Write an mrc/CCP4 map file
+
      Always writes with column,row,section (mapc,mapr,maps) of (3,2,1)
       Columns are Z, rows are Y, sections in X.  This matches the shape of
       flex arrays.  Could be changed without difficulty by transposing the

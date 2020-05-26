@@ -34,24 +34,21 @@ class map_manager(map_reader,write_ccp4_map):
     any models and ncs objects (typically done with iotbx.map_and_model).
     To be able to write out a map in the same place as it was read in
     after shifting the origin and/or boxing the map, you need to keep track
-    of 4 things.  These are:
+    of 3 things.  These are:
     1. unit_cell_grid: grid representing one full unit cell as read in.
         Saved in map_manager as self.unit_cell_grid
-    2. unit_cell_parameters: dimensions of one full unit cell
-        Saved in map_manager as self.unit_cell_parameters
+    2. unit_cell_crystal_symmetry: dimensions and space group of full unit cell
+        Saved in map_manager as self._unit_cell_crystal_symmetry
     3. origin_shift_grid_units: the shift in grid units to apply to the
        working map to superimpose it on the original map. When you read the
        map in this is (0,0,0). If you shift the map origin from (i,j,k) to
        (0,0,0) then the origin_shift_grid_units is (i,j,k).
          Saved in map_manager as self.origin_shift_grid_units
 
-    And (4) you want the space-group number in case it is not 1
-
-   Magnification (pixel size scaling) of a map: there is no parameter
+   Magnification (pixel size scaling) of a map: there is no general parameter
    describing magnification of an MRC map.  Changes in scaling are
-   recorded in map_manager as changes in unit_cell_parameters. If there
-   is any scaling, a note is written out as a label when the map is written out.
-
+   recorded in map_manager as changes in the scaling matrix/translation that
+   relates grid points in a map to real-space position.
 
    Normal usage:
 
@@ -175,15 +172,13 @@ class map_manager(map_reader,write_ccp4_map):
      file_name=None,  # Normally initialize by reading from a file
      map_data=None,    # Alternatively supply map_data and following metadata
      unit_cell_grid=None,  # gridding of full unit cell
-     unit_cell_parameters=None,    # Parameters of full unit cell
-     space_group_number=None,      # normally 1 for cryo-EM data
+     unit_cell_crystal_symmetry=None,    # Crystal_symmetry of full unit cell
      origin_shift_grid_units=None, # position of first point in map in full cell
      input_file_name=None,         # Name of input file (source of info)
      program_name=None,            # Name of program working on the manager
      limitations=None,             # key from STANDARD_LIMITATIONS_DICT
      labels=None,                  # labels (list of 80-char strings) for output
-     original_unit_cell_parameters=None,  # original values
-     original_space_group_number=None,    # original vallue
+     original_unit_cell_crystal_symmetry=None,  # original values
      log=sys.stdout,
      ):
 
@@ -193,8 +188,8 @@ class map_manager(map_reader,write_ccp4_map):
       Normally call with file_name to read map file in CCP4/MRC format.
 
       Alternative is initialize with map_data and metadata
-       Required: specify unit_cell_grid, unit_cell_parameters,
-        space_group_number, origin_shift_grid_units
+       Required: specify unit_cell_grid, unit_cell_crystal_symmetry,
+        origin_shift_grid_units
        Optional: specify input_file_name,program_name,limitations,labels
 
       NOTE: As of 2020-05-22 both map_reader and map_manager ALWAYS convert
@@ -214,8 +209,7 @@ class map_manager(map_reader,write_ccp4_map):
     #  grid units.  If map is shifted, this is updated to reflect where
     #  to place current origin to superimpose map on original map.
 
-    self.original_unit_cell_parameters=None
-    self.original_space_group_number=None
+    self.original_unit_cell_crystal_symmetry=None
 
     # Initialize program_name, limitations, labels
     self.input_file_name=None  # Name of input file (source of this manager)
@@ -228,14 +222,15 @@ class map_manager(map_reader,write_ccp4_map):
 
     if file_name is not None:
       self.read_map(file_name=file_name)
-      # Sets self.unit_cell_grid, self.unit_cell_parameters,
-      #   self.space_group_number, self.data
+      # Sets self.unit_cell_grid, self._unit_cell_crystal_symmetry, self.data,
+      #  self._crystal_symmetry
+      #  Sets also self.external_origin
+
       # Does not set self.origin_shift_grid_units
 
       # Set starting values:
       self.origin_shift_grid_units=(0,0,0)
-      self.set_original_unit_cell_parameters()
-      self.set_original_space_group_number()
+      self.set_original_unit_cell_crystal_symmetry()
 
       # make sure labels are strings
       if self.labels is not None:
@@ -246,20 +241,18 @@ class map_manager(map_reader,write_ccp4_map):
          Initialization with map_data object and metadata
       '''
 
-      assert map_data and unit_cell_grid and unit_cell_parameters
+      assert map_data and unit_cell_grid and unit_cell_crystal_symmetry
 
-      if space_group_number is None:
-        space_group_number=1
       if origin_shift_grid_units is None:
         origin_shift_grid_units=(0,0,0)
 
       self.unit_cell_grid=unit_cell_grid
-      self.unit_cell_parameters=unit_cell_parameters
-      self.space_group_number=space_group_number
+      self._unit_cell_crystal_symmetry=unit_cell_crystal_symmetry
       self.origin_shift_grid_units=origin_shift_grid_units
       self.data=map_data
-      self.original_unit_cell_parameters=original_unit_cell_parameters
-      self.original_space_group_number=original_space_group_number
+      self.set_crystal_symmetry_of_partial_map(map_all=map_data.all())
+      self.original_unit_cell_crystal_symmetry=\
+        original_unit_cell_crystal_symmetry
 
   def set_log(self,log=sys.stdout):
     '''
@@ -270,8 +263,8 @@ class map_manager(map_reader,write_ccp4_map):
   def read_map(self,file_name=None):
       '''
        Read map using mrcfile/__init__.py
-       Sets self.unit_cell_grid, self.unit_cell_parameters,
-         self.space_group_number, self.data
+       Sets self.unit_cell_grid, self._unit_cell_crystal_symmetry,self.data
+           self._crystal_symmetry
        Does not set self.origin_shift_grid_units
       '''
 
@@ -302,71 +295,15 @@ class map_manager(map_reader,write_ccp4_map):
         not self.log.closed):
       print(m, file=self.log)
 
-  def set_original_unit_cell_parameters(self,unit_cell_parameters=None):
+  def set_original_unit_cell_crystal_symmetry(self,
+       unit_cell_crystal_symmetry=None):
     '''
-      Set value of original unit_cell_parameters to supplied value
-      If none supplied, use current values
+      Set value of original unit_cell_crystal_symmetry to supplied value
     '''
-    from copy import deepcopy
-    if unit_cell_parameters is None:
-      unit_cell_parameters=self.unit_cell_parameters
-    self.original_unit_cell_parameters=deepcopy(unit_cell_parameters)
-
-  def set_original_space_group_number(self,space_group_number=None):
-    '''
-      Set value of original space_group_number to supplied value
-      If none supplied, use current value
-    '''
-    if space_group_number is None:
-      space_group_number=self.space_group_number
-    self.original_space_group_number=space_group_number
-
-  def set_space_group_number(self,space_group_number=None):
-    assert space_group_number is not None
-    self.space_group_number=space_group_number
-
-  def set_unit_cell_parameters(self,unit_cell_parameters):
-    ''' Specify magnification by setting unit_cell parameters'''
-
-    assert len(list(unit_cell_parameters)) in [3,6]
-    if len(list(unit_cell_parameters))==3:
-      unit_cell_parameters=list(unit_cell_parameters)+list(
-          self.unit_cell_parameters[3:])
-
-    self.unit_cell_parameters=unit_cell_parameters
-    self._print ("Setting unit_cell_parameters directly")
-    self._print("New cell parameters: (%.3f, %.3f, %.3f, %.2f, %.2f, %.2f)" %(
-      tuple(self.unit_cell_parameters)))
-    self._print("Effective magnification: (%.3f, %.3f, %.3f) " %(
-       self.get_magnification()))
-
-  def apply_magnification(self,magnification):
-    '''
-      Apply magnification (1 or 3 numbers)  to unit_cell_parameters.
-        Magnification is applied along
-      cell edges, not necessarily orthogonal.
-    '''
-    if type(magnification) in [type(1),type(1.)]:
-      m=(magnification,magnification,magnification)
+    if unit_cell_crystal_symmetry:
+      self.original_unit_cell_crystal_symmetry=unit_cell_crystal_symmetry
     else:
-      m=magnification
-    self._print("Applying magnification (%.3f, %.3f, %.3f) to map" %(
-       m))
-    new_abc=list(flex.double(self.unit_cell_parameters[:3])*flex.double(m))
-    self.unit_cell_parameters=tuple(new_abc+list(self.unit_cell_parameters[3:]))
-    self._print("New cell parameters: (%.3f, %.3f, %.3f, %.2f, %.2f, %.2f)" %(
-      self.unit_cell_parameters))
-
-  def get_magnification(self):
-    '''
-      Compare current and original unit_cell_parameters
-    '''
-    if not self.original_unit_cell_parameters:
-      return (1,1,1)
-    else:
-      print (self.unit_cell_parameters[:3],self.original_unit_cell_parameters)
-      return tuple ( flex.double(self.unit_cell_parameters[:3]) / flex.double(
-         self.original_unit_cell_parameters[:3]))
+      self.original_unit_cell_crystal_symmetry=self.unit_cell_crystal_symmetry()
 
   def set_origin_and_gridding(self,origin_shift_grid_units,
       gridding=None,
@@ -394,7 +331,8 @@ class map_manager(map_reader,write_ccp4_map):
       self.origin_shift_grid_units=new_origin
 
     if gridding: # reset definition of full unit cell.  Keep grid spacing
-       current_unit_cell_parameters=self.unit_cell_parameters
+       current_unit_cell_parameters=self.unit_cell_crystal_symmetry(
+            ).unit_cell().parameters()
        current_unit_cell_grid=self.unit_cell_grid
        new_unit_cell_parameters=[]
        for a,g,new_g in zip(
@@ -402,8 +340,13 @@ class map_manager(map_reader,write_ccp4_map):
          new_a=a*new_g/g
          new_unit_cell_parameters.append(new_a)
 
-       self.unit_cell_parameters=\
+       unit_cell_parameters=\
           new_unit_cell_parameters+list(current_unit_cell_parameters[3:])
+       from cctbx import crystal
+       self._unit_cell_crystal_symmetry=crystal.symmetry(
+          unit_cell_parameters,
+          self._unit_cell_crystal_symmetry.space_group().info().type().number())
+
        self.unit_cell_grid=gridding
        self._print ("Resetting gridding of full unit cell from %s to %s" %(
          str(current_unit_cell_grid),str(gridding)))
@@ -551,31 +494,27 @@ class map_manager(map_reader,write_ccp4_map):
     return map_manager(
       map_data=map_data,  # not a deep copy, just whatever was supplied
       unit_cell_grid=deepcopy(self.unit_cell_grid),
-      unit_cell_parameters=deepcopy(self.unit_cell_parameters),
-      space_group_number=self.space_group_number,
+      unit_cell_crystal_symmetry=self.unit_cell_crystal_symmetry(),
       origin_shift_grid_units=deepcopy(self.origin_shift_grid_units),
       input_file_name=self.input_file_name,
       program_name=self.program_name,
       limitations=self.limitations,
       labels=self.labels,
-      original_unit_cell_parameters=deepcopy(
-         self.original_unit_cell_parameters),
-      original_space_group_number=self.original_space_group_number,
-       )
+      original_unit_cell_crystal_symmetry=\
+         self.original_unit_cell_crystal_symmetry,
+     )
 
   def is_similar(self,other=None,eps=0.5):
     from libtbx.test_utils import approx_equal
     # Check to make sure origin, gridding and symmetry are similar
     if self.origin_shift_grid_units != other.origin_shift_grid_units:
       return False
-    if self.space_group_number != other.space_group_number:
+    if not self.unit_cell_crystal_symmetry().is_similar_symmetry(
+      other.unit_cell_crystal_symmetry()):
       return False
     if self.map_data().all()!= other.map_data().all():
       return False
     if self.unit_cell_grid != other.unit_cell_grid:
-      return False
-    if not approx_equal(tuple(self.unit_cell_parameters),
-         tuple(other.unit_cell_parameters),eps=eps):
       return False
     return True
 

@@ -56,8 +56,7 @@ def test_01():
   # Initialize with parameters
   mm_para=map_manager(
      unit_cell_grid= mm.unit_cell_grid,
-     unit_cell_parameters= mm.unit_cell_parameters,
-     space_group_number= mm.space_group_number,
+     unit_cell_crystal_symmetry= mm.unit_cell_crystal_symmetry(),
      origin_shift_grid_units= mm.origin_shift_grid_units,
      map_data=mm.map_data())
   assert mm_para.is_similar(mm)
@@ -74,34 +73,6 @@ def test_01():
   mm_read.set_origin_and_gridding((10,10,10),gridding=(100,100,100))
   assert (mm_read.is_similar(mm))  # not shifted as it failed
   assert (mm_read.already_shifted())
-
-  # Apply magnification
-  mm_read.apply_magnification((1.1,1.2,1.3))
-  assert mm_read.get_magnification()==(1.1,1.2,1.3)
-  magnified_uc_params=mm_read.unit_cell_parameters
-
-
-  # Apply magnification by specifying unit_cell_dimensions
-  mm_read=map_manager(data_ccp4)
-  mm_read.shift_origin()
-  mm_read.set_unit_cell_parameters(magnified_uc_params)
-  assert mm_read.get_magnification()==(1.1,1.2,1.3)
-  mm_read.set_unit_cell_parameters(magnified_uc_params[:3])
-  assert mm_read.get_magnification()==(1.1,1.2,1.3)
-
-  # Change space-group
-  mm_copy=mm_read.deep_copy()
-  assert mm_copy.is_similar(mm_read)
-  mm_copy.set_space_group_number(0)
-  assert not mm_copy.is_similar(mm_read)
-
-  # check that new cell params are written out in customized_copy
-  mm_cust=mm_read.customized_copy(map_data=mm_read.map_data().deep_copy())
-  assert mm_cust.get_magnification()==mm_read.get_magnification()
-
-  mm_cust_new=mm_copy.customized_copy(map_data=mm_read.map_data().deep_copy())
-  assert mm_cust_new.is_similar(mm_copy)
-  assert not mm_cust_new.is_similar(mm_read)
 
   # Set program name
   mm_read.set_program_name('test program')

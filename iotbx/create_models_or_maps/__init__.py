@@ -245,9 +245,7 @@ def generate_map(map_coeffs=None,
   from iotbx.map_manager import map_manager
   mm=map_manager(map_data=map_data,
     unit_cell_grid=map_data.all(),
-    unit_cell_parameters=map_coeffs.crystal_symmetry().unit_cell().parameters(),
-    space_group_number=map_coeffs.crystal_symmetry().space_group().info(
-         ).symbol_and_number().split('(')[0],
+    unit_cell_crystal_symmetry=map_coeffs.crystal_symmetry(),
     origin_shift_grid_units=origin_shift_grid_units)
 
   if output_map_file_name:

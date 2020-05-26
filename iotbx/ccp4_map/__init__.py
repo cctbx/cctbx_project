@@ -7,7 +7,7 @@ ext = boost.python.import_ext("iotbx_ccp4_map_ext")
 from iotbx_ccp4_map_ext import *
 import iotbx_ccp4_map_ext as ext
 
-class utils :  # These routines are used by both ccp4_map and mrcfile
+class utils :  # These routines are used by ccp4_map
 
   def show_summary(self, out=None, prefix=""):
     if (out is None) : out = sys.stdout
@@ -149,8 +149,9 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
 
   def grid_unit_cell(self):
     """
-    If we want to use maptbx.non_crystallographic_eight_point_interpolation,
-    the "unit cell" is actually the original unit cell divided by the original
+    This is a unit cell describing one pixel of the map.
+    It is used in maptbx.non_crystallographic_eight_point_interpolation.
+    This grid_unit_cell is the original unit cell divided by the original
     grid size.
     """
     from cctbx import uctbx

@@ -42,10 +42,10 @@ def exercise_with_tst_input_map(use_mrcfile=None,file_name=None):
   assert approx_equal(m.header_mean, 0)
   assert approx_equal(m.header_rms, 0.140116646886)
   assert m.unit_cell_grid == (16, 8, 16)
-  assert approx_equal(m.unit_cell_parameters, (
+  assert approx_equal(m.unit_cell_crystal_symmetry().unit_cell().parameters(), (
     82.095001220703125, 37.453998565673828, 69.636001586914062,
     90.0, 101.47599792480469, 90.0))
-  assert m.space_group_number == 5
+  assert m.unit_cell_crystal_symmetry().space_group().info().type().number()==5
   assert m.map_data().origin() == (0, 0, 0)
   assert m.map_data().all() == (16, 8, 16)
   assert approx_equal(m.pixel_sizes(),(5.130937576293945, 4.6817498207092285, 4.352250099182129))
@@ -53,8 +53,8 @@ def exercise_with_tst_input_map(use_mrcfile=None,file_name=None):
   out = StringIO()
   m.show_summary(out=out)
   assert ("map cell grid: (16, 8, 16)" in out.getvalue())
-  uc = m.unit_cell()
-  assert approx_equal(m.unit_cell_parameters, m.unit_cell().parameters())
+  uc = m.unit_cell_crystal_symmetry().unit_cell()
+  assert approx_equal(m.unit_cell_crystal_symmetry().unit_cell().parameters(), m.unit_cell_crystal_symmetry().unit_cell().parameters())
   assert approx_equal(m.grid_unit_cell().parameters(),
     (5.13094, 4.68175, 4.35225, 90, 101.476, 90))
 
@@ -73,7 +73,7 @@ def exercise_with_tst_input_map(use_mrcfile=None,file_name=None):
   if use_mrcfile:
     iotbx.mrcfile.write_ccp4_map(
       file_name="shifted_map.mrc",
-      unit_cell=uctbx.unit_cell(m.unit_cell().parameters()),
+      unit_cell=uctbx.unit_cell(m.unit_cell_crystal_symmetry().unit_cell().parameters()),
       space_group=sgtbx.space_group_info("P1").group(),
       gridding_first=grid_start,
       gridding_last=grid_end,
@@ -96,10 +96,10 @@ def exercise_with_tst_input_map(use_mrcfile=None,file_name=None):
   print(m.map_data().origin(),m.map_data().all())
   print("GRID:",m.unit_cell_grid)
   assert m.unit_cell_grid == (16, 8, 16)
-  assert approx_equal(m.unit_cell_parameters, (
+  assert approx_equal(m.unit_cell_crystal_symmetry().unit_cell().parameters(), (
     82.095001220703125, 37.453998565673828, 69.636001586914062,
     90.0, 101.47599792480469, 90.0))
-  assert m.space_group_number == 1
+  assert m.unit_cell_crystal_symmetry().space_group().info().type().number()== 1
   print(m.map_data().origin(),m.map_data().all())
   assert m.map_data().origin() == (5,5,5)
   assert m.map_data().all() == (5,6,7)
@@ -116,9 +116,9 @@ def exercise_with_tst_input_map_2(use_mrcfile=None,file_name=None):
     m = mrcfile.map_reader(file_name=file_name,verbose=True)
   else:
     m = iotbx.ccp4_map.map_reader(file_name=file_name)
-  print(m.unit_cell_grid,m.map_data().origin(),m.map_data().all(),m.unit_cell_parameters, end=' ')
+  print(m.unit_cell_grid,m.map_data().origin(),m.map_data().all(),m.unit_cell_crystal_symmetry().unit_cell().parameters(), end=' ')
   assert m.unit_cell_grid == (55, 59, 61)
-  assert approx_equal(m.unit_cell_parameters,
+  assert approx_equal(m.unit_cell_crystal_symmetry().unit_cell().parameters(),
     (24.53101921081543, 24.61971664428711, 26.457056045532227,
       90.0, 90.0, 90.0))
   assert m.map_data().origin() == (20, 21, 22)
@@ -241,8 +241,7 @@ def exercise_writer(use_mrcfile=None,output_axis_order=[3,2,1]):
   assert cc > 0.999
   print("\nMRCFILE with 4x5x6 map and axis order %s %s" %(output_axis_order,cc))
 
-  assert approx_equal(input_real_map.unit_cell_parameters,
-                      unit_cell.parameters())
+  assert approx_equal(input_real_map.unit_cell_crystal_symmetry().unit_cell().parameters(), unit_cell.parameters())
   assert approx_equal(real_map_mmm.min, input_real_map.header_min,eps=0.001)
   assert approx_equal(real_map_mmm.min, input_map_mmm.min,eps=0.001)
 
@@ -280,7 +279,7 @@ def exercise_writer(use_mrcfile=None,output_axis_order=[3,2,1]):
     m2=m.map_data().as_double().as_1d()
     cc=flex.linear_correlation(m1,m2).coefficient()
     assert cc > 0.999
-    assert approx_equal(m.unit_cell_parameters, (1,1,1,90,90,90))
+    assert approx_equal(m.unit_cell_crystal_symmetry().unit_cell().parameters(), (1,1,1,90,90,90))
     assert approx_equal(mmm.min, m.header_min)
     assert approx_equal(mmm.max, m.header_max)
     #

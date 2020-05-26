@@ -551,8 +551,10 @@ Parameters:"""%h
     # or read CCP4 map
     elif ( (inputs.ccp4_map is not None) or
            (params.ccp4_map_file is not None) ):
+      print ("ZZB",params.ccp4_map_file)
       if (params.ccp4_map_file is not None):
         af = any_file(params.ccp4_map_file)
+        print ("ZZC",af,dir(af),af.file_type,dir(af.file_content))
         if (af.file_type == 'ccp4_map'):
           inputs.ccp4_map = af.file_content
           inputs.ccp4_map_file_name = params.ccp4_map_file
@@ -562,7 +564,7 @@ Parameters:"""%h
       if not crystal_symmetry: crystal_symmetry=ccp4_map.crystal_symmetry()
       map_data = ccp4_map.map_data()
       input_unit_cell_grid=ccp4_map.unit_cell_grid
-      input_unit_cell=ccp4_map.unit_cell_parameters
+      input_unit_cell=ccp4_map.unit_cell_crystal_symmetry().unit_cell().parameters()
       input_map_labels=ccp4_map.get_labels()
 
       if inputs.ccp4_map_file_name.endswith(".ccp4"):
@@ -767,13 +769,13 @@ Parameters:"""%h
   if (inputs and
     inputs.crystal_symmetry and inputs.ccp4_map and
     inputs.crystal_symmetry.unit_cell().parameters() and
-     inputs.ccp4_map.unit_cell_parameters  ) and (
+     inputs.ccp4_map.unit_cell_crystal_symmetry().unit_cell().parameters()  ) and (
        inputs.crystal_symmetry.unit_cell().parameters() !=
-       inputs.ccp4_map.unit_cell_parameters):
+       inputs.ccp4_map.unit_cell_crystal_symmetry().unit_cell().parameters()):
     print("\nNOTE: Input CCP4 map is only part of unit cell:", file=log)
     print("Full unit cell ('unit cell parameters'): "+\
       "(%.1f, %.1f, %.1f, %.1f, %.1f, %.1f) A" %tuple(
-        inputs.ccp4_map.unit_cell_parameters), file=log)
+        inputs.ccp4_map.unit_cell_crystal_symmetry().unit_cell().parameters()), file=log)
     print("Size of CCP4 map 'map unit cell':        "+\
       "(%.1f, %.1f, %.1f, %.1f, %.1f, %.1f) A" %tuple(
        inputs.crystal_symmetry.unit_cell().parameters()), file=log)
@@ -782,7 +784,7 @@ Parameters:"""%h
     print("Map unit cell as grid units:  (%s, %s, %s)" %(
       map_data.all()), file=log)
 
-    box.unit_cell_parameters_from_ccp4_map=inputs.ccp4_map.unit_cell_parameters
+    box.unit_cell_parameters_from_ccp4_map=inputs.ccp4_map.unit_cell_crystal_symmetry().unit_cell().parameters()
     box.unit_cell_parameters_deduced_from_map_grid=\
        inputs.crystal_symmetry.unit_cell().parameters()
 

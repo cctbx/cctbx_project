@@ -2487,8 +2487,8 @@ def get_map_object(file_name=None,must_allow_sharpening=None,
       m.header_min, m.header_max, m.header_mean, m.header_rms), file=out)
     print("grid: ",m.unit_cell_grid, file=out)
     print("cell:  %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f  " %tuple(
-       m.unit_cell_parameters), file=out)
-    print("SG: ",m.space_group_number, file=out)
+       m.unit_cell_crystal_symmetry().unit_cell().parameters()), file=out)
+    print("SG: ",m.unit_cell_crystal_symmetry().space_group().info().type().number(), file=out)
     if must_allow_sharpening and m.cannot_be_sharpened():
       raise Sorry("Input map is already modified and should not be sharpened")
     if get_map_labels:
@@ -2534,13 +2534,13 @@ def get_map_object(file_name=None,must_allow_sharpening=None,
   from cctbx import crystal
   from cctbx import sgtbx
   from cctbx import uctbx
-  if m.space_group_number==0:
+  if m.unit_cell_crystal_symmetry().space_group().info().type().number()==0:
     n=1 # fix mrc formatting
   else:
-    n=m.space_group_number
-  if hasattr(m,'unit_cell_parameters'):
+    n=m.unit_cell_crystal_symmetry().space_group().info().type().number()
+  if hasattr(m,'crystal_symmetry'):
     space_group_info=sgtbx.space_group_info(number=n)
-    unit_cell=uctbx.unit_cell(m.unit_cell_parameters)
+    unit_cell=m.crystal_symmetry().unit_cell()
     original_unit_cell_grid=m.unit_cell_grid
     original_crystal_symmetry=crystal.symmetry(
       unit_cell=unit_cell,space_group_info=space_group_info)
@@ -4832,8 +4832,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     if not crystal_symmetry:
       crystal_symmetry=ccp4_map.crystal_symmetry() # 2018-07-18
       tracking_data.set_full_crystal_symmetry(
-        crystal.symmetry(ccp4_map.unit_cell().parameters(),
-         ccp4_map.space_group_number))
+         ccp4_map.unit_cell_crystal_symmetry())
       tracking_data.set_full_unit_cell_grid(ccp4_map.unit_cell_grid)
     map_data=ccp4_map.data.as_double()
   else:
