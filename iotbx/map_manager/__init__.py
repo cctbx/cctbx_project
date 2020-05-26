@@ -505,7 +505,6 @@ class map_manager(map_reader,write_ccp4_map):
      )
 
   def is_similar(self,other=None):
-    from libtbx.test_utils import approx_equal
     # Check to make sure origin, gridding and symmetry are similar
     if self.origin_shift_grid_units != other.origin_shift_grid_units:
       return False
