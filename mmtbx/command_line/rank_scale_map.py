@@ -3,7 +3,6 @@ from __future__ import absolute_import, division, print_function
 
 from cctbx import maptbx
 import iotbx.mrcfile
-from cctbx import crystal
 from libtbx.utils import Sorry
 from scitbx.array_family import flex
 import sys, time

@@ -12,7 +12,6 @@ Reference:
 
 from __future__ import absolute_import, division, print_function
 import iotbx.phil
-from cctbx import crystal
 from cctbx import maptbx
 from scitbx.array_family import flex
 import sys
