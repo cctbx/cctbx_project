@@ -58,6 +58,7 @@ def make_atom_id(atom, index):
 def get_stats(data):
   mean=data.min_max_mean().mean
   sd=data.standard_deviation_of_the_sample()
+  assert data.size(), 'no data - may mean no Hydrogen atoms'
   x=data-mean
   skew=kurtosis=None
   if sd:
