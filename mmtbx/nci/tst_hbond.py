@@ -1344,6 +1344,18 @@ def exercise_07():
       assert [r_.i, r_.j] == [15,33]
     else: assert 0
 
+def exercise_08():
+  from libtbx import easy_run
+  f=file('exercise_08_01.pdb', 'wb')
+  f.write(pdb_str_01)
+  del f
+  cmd = 'phenix.hbond exercise_08_01.pdb'
+  rc = easy_run.go(cmd)
+  for line in rc.stdout_lines:
+    if line.find('Per residue')>-1: break
+  else:
+    assert 'no Pre'
+
 if __name__ == '__main__':
   t0 = time.time()
   exercise_00()
@@ -1354,4 +1366,5 @@ if __name__ == '__main__':
   exercise_05()
   exercise_06()
   exercise_07()
+  exercise_08()
   print("OK. Time: %6.3f"%(time.time()-t0))
