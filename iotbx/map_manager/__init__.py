@@ -192,6 +192,17 @@ class map_manager(map_reader,write_ccp4_map):
         origin_shift_grid_units
        Optional: specify input_file_name,program_name,limitations,labels
 
+      NOTE on "crystal_symmetry" objects
+      There are two objects that are "crystal_symmetry" objects:
+      A.  unit_cell_crystal_symmetry():  This is the symmetry of the
+        entire unit cell. It can be any space group. The dimensions
+        correspond to the dimensions of unit_cell_grid.
+
+      B.  crystal_symmetry():  This is the symmetry of the part of the map
+        that is present.  If the entire map is present, this can be any
+        space group. Otherwise it is set to P 1 (no symmetry other than unity).
+        The dimensions correspond to the dimensions of the map_data.all().
+
       NOTE: As of 2020-05-22 both map_reader and map_manager ALWAYS convert
       map_data to flex.double.
 

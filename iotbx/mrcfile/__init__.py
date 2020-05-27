@@ -203,10 +203,18 @@ class map_reader:
     self.set_crystal_symmetry_of_partial_map(map_all=map_all)
 
   def set_crystal_symmetry_of_partial_map(self,map_all=None):
+    '''
+      This sets the crystal_symmetry of a partial map based on the
+      gridding of the part of the map that is present.
+      If exactly the entire map is present, use space group of
+      entire map, otherwise use space group P1
+    '''
+
     a,b,c, al,be,ga = self.unit_cell_crystal_symmetry().unit_cell().parameters()
     a = a * map_all[0]/self.unit_cell_grid[0]
     b = b * map_all[1]/self.unit_cell_grid[1]
     c = c * map_all[2]/self.unit_cell_grid[2]
+
     if tuple(map_all) == tuple(self.unit_cell_grid[:3]):
       space_group_number_use=self.unit_cell_crystal_symmetry(
          ).space_group().info().type().number()
