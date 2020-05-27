@@ -71,6 +71,23 @@ dispatch {
     .type = bool
     .help = if True, print out a per-run metric analysis. \
             Assumes the run number is encoded in the file name as done in the regex RUN below.
+  by_panel_mcd_filter = True
+    .type = bool
+    .help = finally, repeat the sensor analysis but with panel-level 3 feature MCD filter
+}
+residuals {
+  mcd_filter {
+    enable = False
+      .type = bool
+      .help = on the DeltaPsi plot, apply a 3-feature MCD filter \
+              FIXME refactor this so it is not repeated from detector_residuals
+    mahalanobis_distance = 7
+      .type = float(value_min=0.)
+      .help = cutoff level expressed as a multivariate Gaussian std dev
+    keep = *inliers outliers
+      .type = choice
+      .help = this should be obvious.  Either keep the good ones or the bad ones.
+  }
 }
 include scope xfel.command_line.cspad_detector_congruence.phil_scope
 ''', process_includes=True)

@@ -85,7 +85,7 @@ residuals {
     enable = False
       .type = bool
       .help = on the DeltaPsi plot, apply a 3-feature MCD filter
-    mahalanobis = 7
+    mahalanobis_distance = 7
       .type = float(value_min=0.)
       .help = cutoff level expressed as a multivariate Gaussian std dev
     keep = *inliers outliers

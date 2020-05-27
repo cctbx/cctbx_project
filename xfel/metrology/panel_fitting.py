@@ -52,7 +52,7 @@ the refls using a Mahalanobis cutoff.
       if verbose: print( "%s=%7.2f±%6.2f"%(feature, robust_cov.location_[idx_report], diag_elem),end=" ")
 
     disc = flex.double(robust_cov.mahalanobis(X=colorcode_set)) # this metric represents malahanobis ** 2
-    disc_select = disc < (params.residuals.mcd_filter.mahalanobis)**2
+    disc_select = disc < (params.residuals.mcd_filter.mahalanobis_distance)**2
     if params.residuals.mcd_filter.keep == "outliers":
       disc_select = (disc_select==False)
     if verbose: print("OK %4.1f%%"%(100*(disc_select.count(True))/len(training_data)))
