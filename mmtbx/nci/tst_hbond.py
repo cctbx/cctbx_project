@@ -1346,9 +1346,8 @@ def exercise_07():
 
 def exercise_08():
   from libtbx import easy_run
-  f=file('exercise_08_01.pdb', 'wb')
-  f.write(pdb_str_01)
-  del f
+  with open('exercise_08_01.pdb', 'w') as f:
+    f.write(pdb_str_01)
   cmd = 'phenix.hbond exercise_08_01.pdb'
   rc = easy_run.go(cmd)
   for line in rc.stdout_lines:
