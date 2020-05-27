@@ -368,14 +368,14 @@ void MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::calculat
 
 void MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::calculateFGLeastSquares()
 {
-  // Normalisation term (number of datasets)
-  double norm_all = 1. / (double)(n_dst * n_atm);
+  // Normalisation term (none)
+  double norm_all = 1.;
 
   // Normalisation term for atomic level
   double norm_res = 0.0; // if unchanged, atomic level will not be optimised
   if (atomic_mask_total > 0)
   {
-    // Upweights by term n_all/n_calc to simulate being calculated over all datasets
+    // Upweights by term n_all/n_calc to immitate being calculated over all datasets
     norm_res = norm_all * (double)(n_dst) / (double)(atomic_mask_total);
   }
 
@@ -496,7 +496,8 @@ void MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::calculat
 {
 
   // common multiplier for all terms
-  double multiplier = weight_sum_amp / n_atm;
+  double multiplier_all = weight_sum_amp;
+  double multiplier_res = multiplier_all * (double)n_dst;
 
   //
   // calculate functional and gradients
@@ -505,11 +506,11 @@ void MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::calculat
   //
   for (size_t i_base=0; i_base<n_base; i_base++)
   {
-    // Extract dataset weight
+    // Extract dataset
     size_t i_dst = base_dataset_hash[i_base];
-    // normalise by additional dataset weight/n_dst (which is ~ 1/n_dst)
-    functional += (multiplier * dataset_weights[i_dst] / n_dst) * current_amplitudes[i_base];
-    gradients[i_base] += (multiplier * dataset_weights[i_dst] / n_dst);
+    // weight by dataset weight
+    functional += multiplier_all * dataset_weights[i_dst] * current_amplitudes[i_base];
+    gradients[i_base] += multiplier_all * dataset_weights[i_dst];
   }
   //
   // atomic terms
@@ -520,9 +521,9 @@ void MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::calculat
     size_t i_opt = n_base + i_atm;
     sym m = current_amplitudes[i_opt] * atomic_uijs[i_atm];
     res_amp = (m[0] + m[1] + m[2]) / 3.0;
-    // normalise by average dataset weight (which is ~ 1)
-    functional += multiplier * average_dataset_weight * res_amp;
-    gradients[i_opt] += multiplier * average_dataset_weight;
+    // weight by average_dataset_weight
+    functional += multiplier_res * average_dataset_weight * res_amp;
+    gradients[i_opt] += multiplier_res * average_dataset_weight;
   }
 }
 
@@ -530,7 +531,8 @@ void MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::calculat
 {
 
   // common multiplier for all terms
-  double multiplier = weight_sum_sqr_amp / n_atm;
+  double multiplier_all = weight_sum_sqr_amp;
+  double multiplier_res = multiplier_all * (double)n_dst;
 
   //
   // calculate functional and gradients
@@ -539,11 +541,11 @@ void MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::calculat
   //
   for (size_t i_base=0; i_base<n_base; i_base++)
   {
-    // Extract dataset weight
+    // Extract dataset
     size_t i_dst = base_dataset_hash[i_base];
-    // normalise by additional dataset weight/n_dst (which is ~ 1/n_dst)
-    functional += (multiplier * dataset_weights[i_dst] / n_dst) * current_amplitudes[i_base] * current_amplitudes[i_base];
-    gradients[i_base] += 2.0 * (multiplier * dataset_weights[i_dst] / n_dst) * current_amplitudes[i_base];
+    // weight by dataset weight
+    functional += multiplier_all * dataset_weights[i_dst] * current_amplitudes[i_base] * current_amplitudes[i_base];
+    gradients[i_base] += 2.0 * multiplier_all * dataset_weights[i_dst] * current_amplitudes[i_base];
   }
   //
   // atomic terms
@@ -554,9 +556,9 @@ void MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::calculat
     size_t i_opt = n_base + i_atm;
     sym m = current_amplitudes[i_opt] * atomic_uijs[i_atm];
     res_amp = (m[0] + m[1] + m[2]) / 3.0;
-    // normalise by average dataset weight (which is ~ 1)
-    functional += multiplier * average_dataset_weight * res_amp * res_amp;
-    gradients[i_opt] += 2.0 * multiplier * average_dataset_weight * res_amp;
+    // weight by average_dataset_weight
+    functional += multiplier_res * average_dataset_weight * res_amp * res_amp;
+    gradients[i_opt] += 2.0 * multiplier_res * average_dataset_weight * res_amp;
   }
 }
 
@@ -564,7 +566,7 @@ void MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::calculat
 {
 
   // common multiplier for all terms
-  double multiplier = weight_sum_amp_sqr / n_atm;
+  double multiplier_all = weight_sum_amp_sqr;
 
   //
   // calculate amplitude sums
@@ -593,7 +595,7 @@ void MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::calculat
   //
   for (size_t i_dst=0; i_dst<n_dst; i_dst++)
   {
-    functional += (multiplier * dataset_weights[i_dst] / n_dst) * ( dst_amp_sum[i_dst] + res_amp_sum ) * ( dst_amp_sum[i_dst] + res_amp_sum );
+    functional += (multiplier_all * dataset_weights[i_dst]) * ( dst_amp_sum[i_dst] + res_amp_sum ) * ( dst_amp_sum[i_dst] + res_amp_sum );
   }
 
   // Calculate gradients
@@ -603,7 +605,7 @@ void MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::calculat
   for (size_t i_base=0; i_base<n_base; i_base++)
   {
     size_t i_dst = base_dataset_hash[i_base];
-    gradients[i_base] += 2.0 * (multiplier * dataset_weights[i_dst] / n_dst) * ( dst_amp_sum[i_dst] + res_amp_sum );
+    gradients[i_base] += 2.0 * (multiplier_all * dataset_weights[i_dst]) * ( dst_amp_sum[i_dst] + res_amp_sum );
   }
   //
   // atomic terms
@@ -613,7 +615,7 @@ void MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::calculat
     size_t i_opt = n_base + i_atm;
     for (size_t i_dst=0; i_dst<n_dst; i_dst++)
     {
-      gradients[i_opt] += 2.0 * (multiplier * dataset_weights[i_dst] / n_dst) * ( dst_amp_sum[i_dst] + res_amp_sum );
+      gradients[i_opt] += 2.0 * (multiplier_all * dataset_weights[i_dst]) * ( dst_amp_sum[i_dst] + res_amp_sum );
     }
   }
 }
