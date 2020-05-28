@@ -167,12 +167,17 @@ def exercise(debug=False):
     relative_path="phenix_regression/reflection_files/i_anomalous.mtz",
     test=os.path.isfile)
   assert hkl_file is not None
-  args = [hkl_file]
+
+  # Test that merged anomalous data are already merged.
   try:
-    result = merging_statistics.run(args, out=out)
+    merging_statistics.run([hkl_file, "anomalous=True"], out=out)
   except Sorry as e:
     assert str(e) == 'The data in i_anomalous(+),SIGi_anomalous(+),i_anomalous(-),SIGi_anomalous(-) are already merged.  Only unmerged (but scaled) data may be used in this program.'
   else: raise Exception_expected
+
+  # Test that merged anomalous data can still be merged as non-anomalous data.
+  merging_statistics.run([hkl_file], out=out)
+
   # test use_internal_variance option
   out = StringIO()
   hkl_file = libtbx.env.find_in_repositories(
