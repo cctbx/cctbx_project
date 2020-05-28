@@ -399,5 +399,3 @@ class map_model_manager:
     mm.show_summary()
     self._map_manager=mm
     self._model=model
-
-
