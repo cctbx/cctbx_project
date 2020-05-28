@@ -13,7 +13,7 @@ of Bragg spots from a refl table.  Calculate a 3-feature fit using Minimum
 Covariance Determinat, using Δx, Δy, ΔΨ(deg) as the 3 features.  Then filter
 the refls using a Mahalanobis cutoff.
 """
-  def __init__(self, lab_coords_x, lab_coords_y, data, i_panel, delta_scalar, params, verbose=False):
+  def __init__(self, lab_coords_x, lab_coords_y, data, i_panel, delta_scalar, params, verbose=True):
     training_data = []
 
     mean_x = flex.mean(lab_coords_x)
