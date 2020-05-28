@@ -69,41 +69,6 @@ class map_model_manager:
       print("Operators: %s" %(
        self._ncs_object.max_operators()),file=log)
 
-  def generate_map(self,
-     log=sys.stdout,
-     **kw):  # Accepts keywords for generate_model, generate_map_coefficients,
-             #  and generate_map and all are passed to generate_model etc.
-
-
-    '''
-      Simple interface to iotbx.create_models_or_maps to generate a map
-      Simple use:
-       mm=map_model_manager.generate_map()  # generates a small map (and model)
-       map is in mm._map_manager().map_data()
-       model is in mm._model()
-      Advanced use...see keywords in iotbx.create_models_or_maps.generate_map
-    '''
-
-    print("\nGenerating new map data\n",file=log)
-    if self._map_manager:
-      print("NOTE: replacing existing map data\n",file=log)
-    if self._model and  not kw.get('file_name','None').lower()=='none':
-      print("NOTE: using existing model to generate map data\n",file=log)
-      model=self._model
-    else:
-      model=None
-
-    from iotbx.create_models_or_maps import generate_model,\
-       generate_map_coefficients,generate_map
-
-    if not model:
-      model=generate_model(**kw)
-    map_coeffs=generate_map_coefficients(model=model,**kw)
-    mm=generate_map(map_coeffs=map_coeffs,**kw)
-    mm.show_summary()
-    self._map_manager=mm
-    self._model=model
-
   def expected_crystal_symmetries(self):
     expected=[]
     if self.crystal_symmetry():
@@ -290,4 +255,149 @@ class map_model_manager:
     #    on -self._map_manager.origin_shift_grid_units)
     return self.shift_model_to_match_working_map(model=model,reverse=True,
       log=log)
+
+  def generate_map(self,
+      output_map_file_name=None,
+      map_coeffs=None,
+      high_resolution=3,
+      gridding=None,
+      origin_shift_grid_units=None,
+      low_resolution_fourier_noise_fraction=0,
+      high_resolution_fourier_noise_fraction=0,
+      low_resolution_real_space_noise_fraction=0,
+      high_resolution_real_space_noise_fraction=0,
+      low_resolution_noise_cutoff=None,
+      model=None,
+      output_map_coeffs_file_name=None,
+      scattering_table='electron',
+      file_name=None,
+      n_residues=10,
+      start_res=None,
+      b_iso=30,
+      box_buffer=5,
+      space_group_number=1,
+      output_model_file_name=None,
+      shake=None,
+      random_seed=None,
+      log=sys.stdout):
+
+    '''
+      Generate a map using generate_model and generate_map_coefficients
+
+      Summary:
+      --------
+
+      Calculate a map and optionally add noise to it.  Supply map
+      coefficients (miller_array object) and types of noise to add,
+      along with optional gridding (nx,ny,nz), and origin_shift_grid_units.
+      Optionally create map coefficients from a model and optionally
+      generate a model.
+
+      Unique aspect of this noise generation is that it can be specified
+      whether the noise is local in real space (every point in a map
+      gets a random value before Fourier filtering), or local in Fourier
+      space (every Fourier coefficient gets a complex random offset).
+      Also the relative contribution of each type of noise vs resolution
+      can be controlled.
+
+      Parameters:
+      -----------
+
+      Used in generate_map:
+      -----------------------
+
+      output_map_file_name (string, None):  Output map file (MRC/CCP4 format)
+      map_coeffs (miller.array object, None) : map coefficients
+      high_resolution (float, 3):      high_resolution limit (A)
+      gridding (tuple (nx,ny,nz), None):  Gridding of map (optional)
+      origin_shift_grid_units (tuple (ix,iy,iz), None):  Move location of
+          origin of resulting map to (ix,iy,iz) before writing out
+      low_resolution_fourier_noise_fraction (float, 0): Low-res Fourier noise
+      high_resolution_fourier_noise_fraction (float, 0): High-res Fourier noise
+      low_resolution_real_space_noise_fraction(float, 0): Low-res
+          real-space noise
+      high_resolution_real_space_noise_fraction (float, 0): High-res
+          real-space noise
+      low_resolution_noise_cutoff (float, None):  Low resolution where noise
+          starts to be added
+
+
+      Pass-through to generate_map_coefficients (if map_coeffs is None):
+      -----------------------
+      model (model.manager object, None):    model to use
+      output_map_coeffs_file_name (string, None): output model file name
+      high_resolution (float, 3):   High-resolution limit for map coeffs (A)
+      scattering_table (choice, 'electron'): choice of scattering table
+           All choices: wk1995 it1992 n_gaussian neutron electron
+
+      Pass-through to generate_model (used if map_coeffs and model are None):
+      -------------------------------
+
+      file_name (string, None):  File containing model (PDB, CIF format)
+      n_residues (int, 10):      Number of residues to include
+      start_res (int, None):     Starting residue number
+      b_iso (float, 30):         B-value (ADP) to use for all atoms
+      box_buffer (float, 5):     Buffer (A) around model
+      space_group_number (int, 1):  Space group to use
+      output_model_file_name (string, None):  File for output model
+      shake (float, None):       RMS variation to add (A) in shake
+      random_seed (int, None):    Random seed for shake
+
+    '''
+
+
+    print("\nGenerating new map data\n",file=log)
+    if self._map_manager:
+      print("NOTE: replacing existing map data\n",file=log)
+    if self._model and  file_name:
+      print("NOTE: using existing model to generate map data\n",file=log)
+      model=self._model
+    else:
+      model=None
+
+    from iotbx.create_models_or_maps import generate_model,\
+       generate_map_coefficients
+    from iotbx.create_models_or_maps import generate_map as generate_map_data
+
+    if not model and not map_coeffs:
+      model=generate_model(
+        file_name=file_name,
+        n_residues=n_residues,
+        start_res=start_res,
+        b_iso=b_iso,
+        box_buffer=box_buffer,
+        space_group_number=space_group_number,
+        output_model_file_name=output_model_file_name,
+        shake=shake,
+        random_seed=random_seed,
+        log=log)
+
+    if not map_coeffs:
+      map_coeffs=generate_map_coefficients(model=model,
+        high_resolution=high_resolution,
+        output_map_coeffs_file_name=output_map_coeffs_file_name,
+        scattering_table=scattering_table,
+        log=log)
+
+    mm=generate_map_data(
+      output_map_file_name=output_map_file_name,
+      map_coeffs=map_coeffs,
+      high_resolution=high_resolution,
+      gridding=gridding,
+      origin_shift_grid_units=origin_shift_grid_units,
+      low_resolution_fourier_noise_fraction=\
+        low_resolution_fourier_noise_fraction,
+      high_resolution_fourier_noise_fraction=\
+        high_resolution_fourier_noise_fraction,
+      low_resolution_real_space_noise_fraction=\
+        low_resolution_real_space_noise_fraction,
+      high_resolution_real_space_noise_fraction=\
+        high_resolution_real_space_noise_fraction,
+      low_resolution_noise_cutoff=low_resolution_noise_cutoff,
+      log=log)
+
+    mm.show_summary()
+    self._map_manager=mm
+    self._model=model
+
 

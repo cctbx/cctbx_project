@@ -121,6 +121,15 @@ class symmetry(object):
   def unit_cell(self):
     return self._unit_cell
 
+  def space_group_number(self):
+    sgi = self._space_group_info
+    if sgi and sgi.group() and sgi.group().info() and \
+       sgi.group().info().type() and \
+       (sgi.group().info().type().number() is not None):
+      return sgi.group().info().type().number()
+    else:
+      return None
+
   def space_group_info(self):
     return self._space_group_info
 

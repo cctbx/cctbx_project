@@ -167,7 +167,7 @@ class map_reader:
       unit_cell_parameters,
       space_group_number)
 
-    self._crystal_symmetry=None # Set this after reading data
+    self._crystal_symmetry=None # Set this below after reading data
 
     if verbose:
       mrc.print_header()
@@ -200,24 +200,40 @@ class map_reader:
 
     map_all=self.data.all()
 
-    self.set_crystal_symmetry_of_partial_map(map_all=map_all)
+    # Set self._crystal_symmetry which is crystal symmetry of part of map
+    #  that is present
 
-  def set_crystal_symmetry_of_partial_map(self,map_all=None):
+    self.set_crystal_symmetry_of_partial_map()
+
+    # Set self.unit_cell_parameters self.space_group_number in case anyone
+    #  still uses them
+    self.set_legacy_parameters()
+
+  def set_legacy_parameters(self):
+
+    # Set legacy unit_cell_parameters. Do not use these now.
+    if self.unit_cell_crystal_symmetry():
+      self.unit_cell_parameters=self.unit_cell().parameters()
+      self.space_group_number=self.unit_cell_crystal_symmetry(
+         ).space_group_number()
+
+  def set_crystal_symmetry_of_partial_map(self):
     '''
       This sets the crystal_symmetry of a partial map based on the
       gridding of the part of the map that is present.
       If exactly the entire map is present, use space group of
       entire map, otherwise use space group P1
     '''
+    map_all=self.map_data().all()
 
-    a,b,c, al,be,ga = self.unit_cell_crystal_symmetry().unit_cell().parameters()
+    a,b,c, al,be,ga = self.unit_cell().parameters()
     a = a * map_all[0]/self.unit_cell_grid[0]
     b = b * map_all[1]/self.unit_cell_grid[1]
     c = c * map_all[2]/self.unit_cell_grid[2]
 
     if tuple(map_all) == tuple(self.unit_cell_grid[:3]):
       space_group_number_use=self.unit_cell_crystal_symmetry(
-         ).space_group().info().type().number()
+          ).space_group_number()
     else:
       space_group_number_use=1  # use Space group 1 (P 1) for any partial cell
 
@@ -294,8 +310,8 @@ class map_reader:
       print(prefix + "header_rms: ", self.header_rms, file=out)
     print("\n"+prefix + "Information about FULL UNIT CELL:",file=out)
     print(prefix + "unit cell grid:", self.unit_cell_grid, file=out)
-    print(prefix + "unit cell parameters:", self.unit_cell_crystal_symmetry().unit_cell().parameters(), file=out)
-    print(prefix + "space group number:  ", self.unit_cell_crystal_symmetry().space_group().info().type().number(), file=out)
+    print(prefix + "unit cell parameters:", self.unit_cell().parameters(), file=out)
+    print(prefix + "space group number:  ", self.unit_cell_crystal_symmetry().space_group_number(), file=out)
 
     if not data:
       print("No map data available")
@@ -339,6 +355,17 @@ class map_reader:
       This is "crystal_symmetry" of a box the size of the map that is present
     '''
     return self._crystal_symmetry
+
+
+  def unit_cell(self):
+    '''
+     This is the cell dimensions and angles of the full unit_cell
+    '''
+    cs=self.unit_cell_crystal_symmetry()
+    if cs:
+      return cs.unit_cell()
+    else:
+      return None
 
   def unit_cell_crystal_symmetry(self):
     '''
@@ -394,7 +421,7 @@ class map_reader:
     grid size.
     """
     from cctbx import uctbx
-    unit_cell_parameters=self.unit_cell_crystal_symmetry().unit_cell().parameters()
+    unit_cell_parameters=self.unit_cell().parameters()
     a = unit_cell_parameters[0] / self.unit_cell_grid[0]
     b = unit_cell_parameters[1] / self.unit_cell_grid[1]
     c = unit_cell_parameters[2] / self.unit_cell_grid[2]

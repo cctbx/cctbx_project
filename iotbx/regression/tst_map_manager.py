@@ -74,6 +74,10 @@ def test_01():
   assert (mm_read.is_similar(mm))  # not shifted as it failed
   assert (mm_read.already_shifted())
 
+  # Set input_file name
+  mm_read.set_input_file_name('test input_file')
+  assert mm_read.input_file_name=='test input_file'
+
   # Set program name
   mm_read.set_program_name('test program')
   assert mm_read.program_name=='test program'

@@ -11,6 +11,10 @@ class map_manager(map_reader,write_ccp4_map):
   '''
    map_manager, includes map_reader and write_ccp4_map
 
+   This class is intended to be the principal mechanism for reading
+   and writing map information.  It is intended to be used by the
+   iotbx.data_manager for both of these purposes.
+
    Use map_manager to read, write, and carry information about
    one map.  Map_manager keeps track of the origin shifts and also the
    original full unit cell and cell dimensions.  It writes out the map
@@ -50,7 +54,7 @@ class map_manager(map_reader,write_ccp4_map):
    recorded in map_manager as changes in the scaling matrix/translation that
    relates grid points in a map to real-space position.
 
-   Normal usage:
+   Normal usage (NOTE: read/write should normally be done through data_manager):
 
      Read in a map:
        mm=map_manager('input_map.mrc')
@@ -169,28 +173,22 @@ class map_manager(map_reader,write_ccp4_map):
 
 
   def __init__(self,
-     file_name=None,  # Normally initialize by reading from a file
-     map_data=None,    # Alternatively supply map_data and following metadata
-     unit_cell_grid=None,  # gridding of full unit cell
-     unit_cell_crystal_symmetry=None,    # Crystal_symmetry of full unit cell
-     origin_shift_grid_units=None, # position of first point in map in full cell
-     input_file_name=None,         # Name of input file (source of info)
-     program_name=None,            # Name of program working on the manager
-     limitations=None,             # key from STANDARD_LIMITATIONS_DICT
-     labels=None,                  # labels (list of 80-char strings) for output
-     original_unit_cell_crystal_symmetry=None,  # original values
+     file_name=None,  # USUAL: Initialize from file: No other information used
+     map_data=None,   # OR map_data, unit_cell_grid,unit_cell_crystal_symmetry
+     unit_cell_grid=None,
+     unit_cell_crystal_symmetry=None,
+     origin_shift_grid_units=None, # OPTIONAL first point in map in full cell
      log=sys.stdout,
      ):
 
     '''
-      Allows simple version of reading a map file or blank initialization
+      Allows reading a map file or initialization with map_data
 
       Normally call with file_name to read map file in CCP4/MRC format.
 
       Alternative is initialize with map_data and metadata
-       Required: specify unit_cell_grid, unit_cell_crystal_symmetry,
-        origin_shift_grid_units
-       Optional: specify input_file_name,program_name,limitations,labels
+       Required: specify map_data,unit_cell_grid, unit_cell_crystal_symmetry
+       Optional: specify origin_shift_grid_units
 
       NOTE on "crystal_symmetry" objects
       There are two objects that are "crystal_symmetry" objects:
@@ -224,28 +222,21 @@ class map_manager(map_reader,write_ccp4_map):
 
     # Initialize program_name, limitations, labels
     self.input_file_name=None  # Name of input file (source of this manager)
-    self.program_name=None  # Name of program doing work
-    self.limitations=None   # optional list from STANDARD_LIMITATIONS_DICT
-    self.labels=None   # up to 10 80-char strings can be written out
-                       # initialized with labels from incoming file
+    self.program_name=None  # Name of program using this manager
+    self.limitations=None  # List of limitations from STANDARD_LIMITATIONS_DICT
+    self.labels=None  # List of labels (usually from input file) to be written
 
     # Usual initialization with a file
 
     if file_name is not None:
-      self.read_map(file_name=file_name)
+      self._read_map(file_name=file_name)
       # Sets self.unit_cell_grid, self._unit_cell_crystal_symmetry, self.data,
-      #  self._crystal_symmetry
-      #  Sets also self.external_origin
+      #  self._crystal_symmetry.  Sets also self.external_origin
 
-      # Does not set self.origin_shift_grid_units
+      # read_map does not set self.origin_shift_grid_units. Set them here:
 
       # Set starting values:
       self.origin_shift_grid_units=(0,0,0)
-      self.set_original_unit_cell_crystal_symmetry()
-
-      # make sure labels are strings
-      if self.labels is not None:
-        self.labels = [to_str(label, codec='utf8') for label in self.labels]
 
     else:
       '''
@@ -254,24 +245,39 @@ class map_manager(map_reader,write_ccp4_map):
 
       assert map_data and unit_cell_grid and unit_cell_crystal_symmetry
 
-      if origin_shift_grid_units is None:
-        origin_shift_grid_units=(0,0,0)
-
+      # Required initialization information:
+      self.data=map_data
       self.unit_cell_grid=unit_cell_grid
       self._unit_cell_crystal_symmetry=unit_cell_crystal_symmetry
+      self.original_unit_cell_crystal_symmetry=unit_cell_crystal_symmetry
+
+      # Calculate values for self._crystal_symmetry
+      self.set_crystal_symmetry_of_partial_map()
+
+      # Optional initialization information
+      if origin_shift_grid_units is None:
+        origin_shift_grid_units=(0,0,0)
       self.origin_shift_grid_units=origin_shift_grid_units
-      self.data=map_data
-      self.set_crystal_symmetry_of_partial_map(map_all=map_data.all())
-      self.original_unit_cell_crystal_symmetry=\
-        original_unit_cell_crystal_symmetry
+
+    # Initialization steps always done:
+
+    # Set up crystal_symmetry for portion of map that is present
+    self.set_original_unit_cell_crystal_symmetry()
+
+    # make sure labels are strings
+    if self.labels is not None:
+      self.labels = [to_str(label, codec='utf8') for label in self.labels]
 
   def set_log(self,log=sys.stdout):
     '''
        Set output log file
     '''
-    self.log = log
+    if log is None:
+      self.log=sys.stdout
+    else:
+      self.log = log
 
-  def read_map(self,file_name=None):
+  def _read_map(self,file_name=None):
       '''
        Read map using mrcfile/__init__.py
        Sets self.unit_cell_grid, self._unit_cell_crystal_symmetry,self.data
@@ -356,7 +362,7 @@ class map_manager(map_reader,write_ccp4_map):
        from cctbx import crystal
        self._unit_cell_crystal_symmetry=crystal.symmetry(
           unit_cell_parameters,
-          self._unit_cell_crystal_symmetry.space_group().info().type().number())
+          self._unit_cell_crystal_symmetry.space_group_number())
 
        self.unit_cell_grid=gridding
        self._print ("Resetting gridding of full unit cell from %s to %s" %(
@@ -387,6 +393,23 @@ class map_manager(map_reader,write_ccp4_map):
         full_shift.append(a+b)
       self.origin_shift_grid_units = full_shift
 
+  def shift_map_data_to_match_original(self,map_data=None):
+    '''
+     Shift origin of a map_data object to match self.origin_shift_grid_units
+     Input map_data object must have origin at (0,0,0) and
+      this map_manager must be already_shifted
+    '''
+    assert self.already_shifted()
+    if not self.origin_shift_grid_units:
+      return map_data
+    new_end=[]
+    for o,m in zip(self.origin_shift_grid_units,map_data.all()):
+      new_end.append(o+m)
+    acc=flex.grid(self.origin_shift_grid_units,new_end)
+    acc.show_summary()
+    map_data.reshape(acc)
+    return map_data
+
   def set_program_name(self,program_name=None):
     '''
       Set name of program doing work on this map_manager for output
@@ -414,8 +437,6 @@ class map_manager(map_reader,write_ccp4_map):
      Add a label (up to 80-character string) to write to output map.
      Default is to specify the program name and date
     '''
-    assert type(label)==type("abc")
-
     if not self.labels:
       self.labels=[]
     if len(label)>80:  label=label[:80]
@@ -423,6 +444,9 @@ class map_manager(map_reader,write_ccp4_map):
     self.labels.append(to_str(label, codec='utf8')) # make sure it is a string
     self.labels.reverse()
     self._print("Label added: %s " %(label))
+
+  def set_input_file_name(self,input_file_name=None):
+    self.input_file_name=input_file_name
 
   def write_map(self,
      file_name=None, # Name of file to be written
@@ -502,18 +526,26 @@ class map_manager(map_reader,write_ccp4_map):
 
     assert map_data is not None # Require map data for the copy
     from copy import deepcopy
-    return map_manager(
+    mm=map_manager(
       map_data=map_data,  # not a deep copy, just whatever was supplied
       unit_cell_grid=deepcopy(self.unit_cell_grid),
       unit_cell_crystal_symmetry=self.unit_cell_crystal_symmetry(),
       origin_shift_grid_units=deepcopy(self.origin_shift_grid_units),
-      input_file_name=self.input_file_name,
-      program_name=self.program_name,
-      limitations=self.limitations,
-      labels=self.labels,
-      original_unit_cell_crystal_symmetry=\
-         self.original_unit_cell_crystal_symmetry,
      )
+    if self.labels:
+       for label in self.labels:
+         mm.add_label(label)
+    if self.limitations:
+       for limitation in self.limitations:
+         mm.add_limitation(limitation)
+    if self.program_name:
+       mm.set_program_name(self.program_name)
+    if self.input_file_name:
+       mm.set_input_file_name(self.input_file_name)
+    if self.original_unit_cell_crystal_symmetry:
+       mm.set_original_unit_cell_crystal_symmetry(
+          self.original_unit_cell_crystal_symmetry)
+    return mm
 
   def is_similar(self,other=None):
     # Check to make sure origin, gridding and symmetry are similar

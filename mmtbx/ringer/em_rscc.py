@@ -52,7 +52,7 @@ em_rscc.py model.pdb map.ccp4
   print("m.focus_size_1d():", m.map_data().focus_size_1d(), file=out)
   print("m.is_0_based()   :", m.map_data().is_0_based(), file=out)
   print("map: min/max/mean:", flex.min(m.map_data()), flex.max(m.map_data()), flex.mean(m.map_data()), file=out)
-  print("unit cell:", m.unit_cell_crystal_symmetry().unit_cell().parameters(), file=out)
+  print("unit cell:", m.unit_cell().parameters(), file=out)
   symm = m.unit_cell_crystal_symmetry()
   xrs = pdb_in.input.xray_structure_simple(crystal_symmetry=symm)
   print("Setting up electron scattering table (d_min=%g)" % params.d_min, file=out)
