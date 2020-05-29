@@ -144,7 +144,7 @@ jobs:
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
       python bootstrap.py build --builder=cctbx --use-conda=%CONDA_PREFIX% --nproc=4
       call .\build\setpaths.bat
-      call libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx
+      call libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx phenix_regression phenix_examples
       cd build
       call libtbx.scons -j 4
       call libtbx.scons -j 4
@@ -157,7 +157,7 @@ jobs:
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
       python bootstrap.py build --builder=cctbx --use-conda=%CONDA_PREFIX% --nproc=4
       call .\build\setpaths.bat
-      call libtbx.configure cma_es fable rstbx simtbx spotfinder cbflib_adaptbx
+      call libtbx.configure cma_es fable rstbx simtbx spotfinder cbflib_adaptbx phenix_regression phenix_examples
       cd build
       call libtbx.scons -j 4
       call libtbx.scons -j 4

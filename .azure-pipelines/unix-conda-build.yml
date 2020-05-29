@@ -98,7 +98,7 @@ steps:
     python bootstrap.py build --builder=cctbx --use-conda=${CONDA_PREFIX} --nproc=4
     cd build
     source setpaths.sh
-    libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx
+    libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx phenix_regression phenix_examples
     libtbx.scons -j 4
     libtbx.scons -j 4
   displayName: Configure and Build

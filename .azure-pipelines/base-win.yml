@@ -75,7 +75,7 @@ jobs:
       call "C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat" amd64
       python bootstrap.py build --builder=cctbx --nproc=4
       call .\build\setpaths.bat
-      call libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx
+      call libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx phenix_examples phenix_regression
       cd build
       call libtbx.scons -j 4
       call libtbx.scons -j 4

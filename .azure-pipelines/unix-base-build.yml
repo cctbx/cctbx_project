@@ -39,7 +39,7 @@ steps:
     python bootstrap.py build --builder=cctbx --nproc=4
     cd build
     source setpaths.sh
-    libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx
+    libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx phenix_examples phenix_regression
     make -j 4
     make -j 4
   displayName: Configure and Build
