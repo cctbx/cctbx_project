@@ -62,6 +62,13 @@ def exercise_around_model():
   for bi in boxes:
     for bj in boxes:
       assert approx_equal(bi.map_data, bj.map_data)
+  #
+  # IF you are about to change this - THINK TWICE!
+  #
+  import inspect
+  r = inspect.getargspec(cctbx.maptbx.box.around_model.__init__)
+  assert r.args == ['self', 'map_data', 'cushion', 'xray_structure',
+    'pdb_hierarchy', 'crystal_symmetry'], r.args
 
 if (__name__ == "__main__"):
   exercise_around_model()

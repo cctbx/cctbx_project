@@ -49,8 +49,8 @@ class around_model(object):
     # extract map box
     self.map_data = maptbx.copy(map_data,self.gridding_first,self.gridding_last)
     # get shift vector as result of boxing
-    shift_frac = [-self.map_data.origin()[i]/na[i] for i in range(3)]
-    shift_cart = cs.unit_cell().orthogonalize(shift_frac)
+    self.shift_frac = [-self.map_data.origin()[i]/na[i] for i in range(3)]
+    self.shift_cart = cs.unit_cell().orthogonalize(self.shift_frac)
     # this makes the box 'forget' about its parent -- the original box
     self.map_data.reshape(flex.grid(self.map_data.all()))
     # get crystal symmetry of the box
@@ -61,7 +61,7 @@ class around_model(object):
       unit_cell = box_uc, space_group="P1")
     # new xray_structure or pdb_hierarchy
     sites_frac_new = box_uc.fractionalize(
-      uc.orthogonalize(sites_frac+shift_frac))
+      uc.orthogonalize(sites_frac+self.shift_frac))
     sites_cart_new = box_uc.orthogonalize(sites_frac_new)
     self.xray_structure, self.pdb_hierarchy = None,None
     if(xray_structure is not None):
