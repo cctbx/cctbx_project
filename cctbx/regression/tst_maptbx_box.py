@@ -18,6 +18,7 @@ def get_random_structure_and_map():
   fft_map.apply_volume_scaling()
   ph = iotbx.pdb.input(
     source_info=None, lines=xrs.as_pdb_file()).construct_hierarchy()
+  ph.atoms().set_xyz(xrs.sites_cart())
   return group_args(
     xray_structre = xrs,
     pdb_hierarchy = ph,
@@ -34,11 +35,33 @@ def exercise_around_model():
     pdb_hierarchy  = mm.pdb_hierarchy,
     crystal_symmetry = mm.xray_structre.crystal_symmetry(),
     cushion        = 5)
+  box3 = cctbx.maptbx.box.around_model(
+    map_data         = mm.map_data,
+    pdb_hierarchy    = mm.pdb_hierarchy,
+    xray_structure   = mm.xray_structre,
+    crystal_symmetry = mm.xray_structre.crystal_symmetry(),
+    cushion          = 5)
+  box4 = cctbx.maptbx.box.around_model(
+    map_data         = mm.map_data,
+    pdb_hierarchy    = mm.pdb_hierarchy,
+    xray_structure   = mm.xray_structre,
+    cushion          = 5)
   assert approx_equal(
     box1.xray_structure.sites_cart(),
-    box2.pdb_hierarchy.atoms().extract_xyz(),
-    0.001) # because pdb_hierarchy obtained from xray_structure via PDB file
-  assert approx_equal(box1.map_data, box2.map_data)
+    box2.pdb_hierarchy.atoms().extract_xyz())
+  assert approx_equal(
+    box3.xray_structure.sites_cart(),
+    box4.xray_structure.sites_cart())
+  assert approx_equal(
+    box3.pdb_hierarchy.atoms().extract_xyz(),
+    box4.pdb_hierarchy.atoms().extract_xyz())
+  assert approx_equal(
+    box3.pdb_hierarchy.atoms().extract_xyz(),
+    box4.xray_structure.sites_cart())
+  boxes = [box1, box2, box3, box4]
+  for bi in boxes:
+    for bj in boxes:
+      assert approx_equal(bi.map_data, bj.map_data)
 
 if (__name__ == "__main__"):
   exercise_around_model()

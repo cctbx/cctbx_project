@@ -1,15 +1,16 @@
 from __future__ import absolute_import, division, print_function
-from scitbx.array_family import flex
-from cctbx import maptbx
 from libtbx.math_utils import ifloor, iceil
-from cctbx import uctbx
+from libtbx.test_utils import approx_equal
+from scitbx.array_family import flex
 from cctbx import crystal
+from cctbx import maptbx
+from cctbx import uctbx
 from cctbx import xray
 
 class around_model(object):
   """
   Extract map box around model. Model can be either xray_structure or
-  (pdb_hierarchy and crystal_symmetry).
+  (pdb_hierarchy and crystal_symmetry) or both (xray_structure and pdb_hierarchy).
   """
   def __init__(self,
                map_data,
@@ -17,16 +18,22 @@ class around_model(object):
                xray_structure=None,
                pdb_hierarchy=None,
                crystal_symmetry=None):
-    if(xray_structure is not None):
-      assert [pdb_hierarchy, crystal_symmetry].count(None) == 2
-      cs = xray_structure.crystal_symmetry()
-      uc = cs.unit_cell()
-      sites_frac = xray_structure.sites_frac()
-    else:
+    # safeguards
+    if(xray_structure is None):
       assert [pdb_hierarchy, crystal_symmetry].count(None) == 0
       cs = crystal_symmetry
       uc = cs.unit_cell()
       sites_frac = uc.fractionalize(pdb_hierarchy.atoms().extract_xyz())
+    else:
+      if(crystal_symmetry is not None):
+        assert crystal_symmetry.is_similar_symmetry(
+          xray_structure.crystal_symmetry())
+      if(pdb_hierarchy is not None):
+        assert approx_equal(xray_structure.sites_cart(),
+          pdb_hierarchy.atoms().extract_xyz())
+      cs = xray_structure.crystal_symmetry()
+      uc = cs.unit_cell()
+      sites_frac = xray_structure.sites_frac()
     assert cushion >= 0
     # convert cushion into fractional vector
     cushion_frac = flex.double(uc.fractionalize((cushion,)*3))
@@ -62,6 +69,6 @@ class around_model(object):
       scatterers.set_sites(sites_frac_new)
       sp = crystal.special_position_settings(self.crystal_symmetry)
       self.xray_structure = xray.structure(sp, scatterers)
-    else:
+    if(pdb_hierarchy is not None):
       self.pdb_hierarchy = pdb_hierarchy.deep_copy()
       self.pdb_hierarchy.atoms().set_xyz(sites_cart_new)
