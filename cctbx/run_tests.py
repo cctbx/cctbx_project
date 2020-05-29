@@ -144,6 +144,7 @@ tst_list_base = [
    "$D/regression/tst_connectivity.py",
    "$D/regression/tst_diffuse.py",
    "$D/regression/tst_grm_modifications.py",
+   "$D/regression/tst_maptbx_box.py",
   ]
 
 # failing tests on Python 3
