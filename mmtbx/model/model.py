@@ -1419,7 +1419,7 @@ class manager(object):
     """
     return self._ncs_groups
 
-  def unset_setup_ncs_constraints_groups(self):
+  def unset_ncs_constraints_groups(self):
     self._ncs_groups=None
     self._ncs_obj=None
     self._master_sel=None
