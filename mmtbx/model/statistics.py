@@ -14,7 +14,7 @@ from mmtbx.validation.cbetadev import cbetadev
 from mmtbx.validation.clashscore import clashscore
 from mmtbx.validation.utils import molprobity_score
 from mmtbx.validation import omegalyze
-# from mmtbx.validation import cablam # DISABLED
+from mmtbx.validation import cablam
 from cctbx import adptbx
 import six
 
@@ -177,21 +177,18 @@ class geometry(object):
           # it contains 1 probe output, which can be GigaBytes!
       )
 
-  #
-  # DISABLED untill cctbx_project/mmtbx/validation/regression/tst_cablam_2.py fixed
-  #
-  #def cablam(self):
-  #  result = cablam.cablamalyze(self.pdb_hierarchy, outliers_only=False,
-  #    out=null_out(), quiet=True) # XXX Why it is different from others?
-  #  gui_table = group_args(column_labels = result.gui_list_headers,
-  #                         column_formats = result.gui_formats,
-  #                         data = result.as_gui_table_data(include_zoom=True),
-  #                         column_widths = result.wx_column_widths)
-  #  return group_args(
-  #    outliers    = result.percent_outliers(),
-  #    disfavored  = result.percent_disfavored(),
-  #    ca_outliers = result.percent_ca_outliers(),
-  #    gui_table   = gui_table)
+  def cablam(self):
+    result = cablam.cablamalyze(self.pdb_hierarchy, outliers_only=False,
+      out=null_out(), quiet=True) # XXX Why it is different from others?
+    gui_table = group_args(column_labels = result.gui_list_headers,
+                           column_formats = result.gui_formats,
+                           data = result.as_gui_table_data(include_zoom=True),
+                           column_widths = result.wx_column_widths)
+    return group_args(
+      outliers    = result.percent_outliers(),
+      disfavored  = result.percent_disfavored(),
+      ca_outliers = result.percent_ca_outliers(),
+      gui_table   = gui_table)
 
   def rama_z_score(self):
     return rama_z.rama_z(models = [self.model], log = null_out()).get_result()
@@ -245,14 +242,14 @@ class geometry(object):
          c_beta           = self.c_beta(),
          clash            = self.clash(),
          molprobity_score = self.mp_score(),
-         # cablam           = self.cablam(), # DISABLED
+         cablam           = self.cablam(),
          omega            = self.omega(),
          rama_z           = self.rama_z_score())
     if(slim):
       delattr(self.cached_result.ramachandran, "ramalyze")
       delattr(self.cached_result.clash,        "clashes")
       delattr(self.cached_result.rotamer,      "rotalyze")
-      #delattr(self.cached_result.cablam,       "gui_table") # DISABLED
+      delattr(self.cached_result.cablam,       "gui_table")
       delattr(self.cached_result.omega,        "omegalyze")
       delattr(self.cached_result.c_beta,       "cbetadev")
       delattr(self.cached_result.angle,        "outliers")
