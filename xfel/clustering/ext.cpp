@@ -10,9 +10,6 @@
 #include <algorithm>
 
 namespace sx_clustering {
-  void foo2(){
-    std::cout<<"HELLO foo2"<<std::endl;
-  }
 
   struct Rodriguez_Laio_clustering_2014 {
 
@@ -145,7 +142,6 @@ namespace boost_python { namespace {
           (arg_("cluster_id"))))
     ;
 
-    def("foo2",&sx_clustering::foo2);
   }
 
 }
