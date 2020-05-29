@@ -17,7 +17,6 @@ namespace rstbx { namespace boost_python { namespace {
     using namespace boost::python;
 
     typedef return_value_policy<return_by_value> rbv;
-    typedef default_call_policies dcp;
 
     class_<xfel1>("xfel1",init<>())
       .def("set_indices",&xfel1::set_indices)
