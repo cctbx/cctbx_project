@@ -93,13 +93,13 @@ def generate_model(
   # Read in coordinates and cut out the part of the model we want
 
   from mmtbx.model import manager as model_manager
-  model=model_manager(file_name)
+  import iotbx.pdb
+  model=model_manager(iotbx.pdb.input(file_name=file_name))
   selection=model.selection('resseq %s:%s' %(start_res,start_res+n_residues-1))
   model=model.select(selection)
 
   # shift the model and return it with new crystal_symmetry
 
-  import iotbx.pdb
   from scitbx.matrix import col
   from cctbx import crystal
   ph=model.get_hierarchy()
