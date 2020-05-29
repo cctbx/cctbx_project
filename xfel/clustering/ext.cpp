@@ -131,8 +131,6 @@ namespace boost_python { namespace {
   void
   sx_clustering_init_module() {
     using namespace boost::python;
-    typedef return_value_policy<return_by_value> rbv;
-    typedef default_call_policies dcp;
 
     class_<Rodriguez_Laio_clustering_2014>("Rodriguez_Laio_clustering_2014",no_init)
       .def(init<>())
