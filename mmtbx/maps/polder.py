@@ -351,7 +351,13 @@ class compute_polder_map():
 
   # ---------------------------------------------------------------------------
 
-  def get_polder_diff_map(self, f_obs, r_free_flags, f_calc, f_mask, xrs_selected):
+  def get_polder_diff_map(self,
+                          f_obs,
+                          r_free_flags,
+                          f_calc,
+                          f_mask,
+                          xrs_selected,
+                          box_cushion):
     fmodel = mmtbx.f_model.manager(
       f_obs        = f_obs,
       r_free_flags = r_free_flags,
@@ -371,14 +377,25 @@ class compute_polder_map():
     return mmtbx.utils.extract_box_around_model_and_map(
       xray_structure = xrs_selected,
       map_data       = map_data,
-      box_cushion    = 2.1)
+      box_cushion    = box_cushion)
 
   # ---------------------------------------------------------------------------
 
   def validate_polder_map(self,
                           selection_bool,
                           xray_structure_noligand,
-                          mask_data_polder):
+                          mask_data_polder,
+                          box_cushion = 2.1):
+    '''
+    The parameter box_cushion is hardcoded to be 2.1
+    The value is related to the site_radii used for CC calculation (box_cushion - 0.1)
+    Ideally the site_radii are calculated according to resolution, atom type and B factor for each atom
+    However, for the purpose of polder map validation, it is a reasonable approximation
+    to use 2.0.
+    If this value is changed, it will affect the values of the CCs and therefore also the
+    output messages (see mmtbx/programs/polder.py --> result_message)
+    So modify this value with caution.
+    '''
   # Significance check
     fmodel = mmtbx.f_model.manager(
      f_obs          = self.f_obs,
@@ -410,19 +427,22 @@ class compute_polder_map():
       r_free_flags = fmodel.r_free_flags(),
       f_calc = f_calc,
       f_mask = f_mask,
-      xrs_selected = xrs_selected)
+      xrs_selected = xrs_selected,
+      box_cushion = box_cushion)
     box_2 = self.get_polder_diff_map(
       f_obs = f_obs_2,
       r_free_flags = fmodel.r_free_flags(),
       f_calc = f_calc,
       f_mask = f_mask,
-      xrs_selected = xrs_selected)
+      xrs_selected = xrs_selected,
+      box_cushion = box_cushion)
     box_3 = self.get_polder_diff_map(
       f_obs = fmodel.f_obs(),
       r_free_flags = fmodel.r_free_flags(),
       f_calc = f_calc,
       f_mask = f_mask,
-      xrs_selected = xrs_selected)
+      xrs_selected = xrs_selected,
+      box_cushion = box_cushion)
 
     sites_cart_box = box_1.xray_structure_box.sites_cart()
     sel = maptbx.grid_indices_around_sites(
@@ -430,7 +450,7 @@ class compute_polder_map():
       fft_n_real = box_1.map_box.focus(),
       fft_m_real = box_1.map_box.all(),
       sites_cart = sites_cart_box,
-      site_radii = flex.double(sites_cart_box.size(), 2.0))
+      site_radii = flex.double(sites_cart_box.size(), box_cushion-0.1))
     b1 = box_1.map_box.select(sel).as_1d()
     b2 = box_2.map_box.select(sel).as_1d()
     b3 = box_3.map_box.select(sel).as_1d()
