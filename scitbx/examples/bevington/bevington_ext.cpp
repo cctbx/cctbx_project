@@ -22,9 +22,6 @@ namespace boost_python { namespace {
   scaling_init_module() {
     using namespace boost::python;
 
-    typedef return_value_policy<return_by_value> rbv;
-    typedef default_call_policies dcp;
-
     class_<linear_ls_eigen_wrapper>("linear_ls_eigen_wrapper", no_init)
       .def(init<int>(arg("n_parameters")))
       .def("n_parameters", &linear_ls_eigen_wrapper::n_parameters)

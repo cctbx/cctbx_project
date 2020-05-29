@@ -170,7 +170,6 @@ namespace chebyshev{
   chebyshev_base<FloatType>
   ::cheb_base_f(scitbx::af::const_ref<FloatType> const& x_in)
   {
-    typedef FloatType f_t;
     scitbx::af::shared<FloatType> result(x_in.size(),0);
     for (unsigned ii=0;ii<x_in.size();ii++){
       result[ii]=cheb_base_f(x_in[ii]);
