@@ -70,7 +70,7 @@ from iotbx_pdb_hierarchy_ext import *
 
 from six.moves import cStringIO as StringIO
 from copy import deepcopy
-import sys,os
+import sys
 import math
 
 time_model_show = 0.0
