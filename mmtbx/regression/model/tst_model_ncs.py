@@ -124,11 +124,40 @@ HETATM   35  C2  NDG L 646      61.028 -14.273  81.262  1.00 69.80           C
     for j in i:
       assert approx_equal(new_xyz[j], new_xyz[i[0]], eps=1e-4)
 
+def exercise_set_sites_cart_no_ncs():
+  inp = iotbx.pdb.input(lines=pdb_str_5, source_info=None)
+  model = mmtbx.model.manager(model_input=inp, expand_with_mtrix=False)
+  model.search_for_ncs()
+  nrgl = model.get_ncs_groups()
+  nrgl._show()
+  print ('n model atoms:', model.get_number_of_atoms())
+  print ('n master atoms:', model.get_master_selection().count(True))
+  print ('n master atoms:', model.get_master_selection().iselection().size())
+  print ('n master atoms:', model.get_master_hierarchy().atoms_size())
+
+  assert model.get_master_selection().count(True) ==\
+      model.get_master_selection().iselection().size() ==\
+      model.get_master_hierarchy().atoms_size()
+
+  h = model.get_hierarchy()
+  # Warning: here here mh is not deep-copy, therefore when we change atom coords
+  # they are changing in model.get_hierarchy() as well
+  mh = model.get_master_hierarchy()
+  new_sites_cart = flex.vec3_double([(1.0, 1.0, 1.0)]*42)
+  mh.atoms().set_xyz(new_sites_cart)
+  model.set_sites_cart_from_hierarchy(multiply_ncs=True)
+  h = model.get_hierarchy()
+  new_xyz=h.atoms().extract_xyz()
+  # print('h sites:', list(new_xyz))
+  # checking if setting went as supposed:
+  for j in range(42):
+    assert approx_equal(new_xyz[j], (1.0, 1.0, 1.0), eps=1e-4)
+
 def run():
   exercise_set_sites_cart_ncs()
   exercise_set_sites_cart_ncs_with_extra_atoms()
+  exercise_set_sites_cart_no_ncs()
   print(format_cpu_times())
-
 
 if (__name__ == "__main__"):
   run()

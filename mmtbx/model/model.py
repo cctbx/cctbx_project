@@ -1422,6 +1422,7 @@ class manager(object):
   def unset_ncs_constraints_groups(self):
     self._ncs_groups=None
     self._ncs_obj=None
+    # shouldn't be None, probably flex.bool(self.get_number_of_atoms(), True)
     self._master_sel=None
 
   def setup_cartesian_ncs_groups(self, ncs_params=None, log=null_out()):
