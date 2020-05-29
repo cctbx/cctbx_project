@@ -20,7 +20,7 @@ def test_01():
   mm = dm.get_real_map()
   mm.shift_origin()
   mm.show_summary()
-  dm.write_map_with_map_manager(mm, filename='test.ccp4', overwrite=True)
+  dm.write_map_with_map_manager(mm, filename='test_map_manager.ccp4', overwrite=True)
 
   # get map_data
   map_data=mm.map_data()
@@ -110,14 +110,14 @@ def test_01():
 
 
 
-  dm.process_real_map_file('test.ccp4')
-  new_mm=dm.get_real_map('test.ccp4')
+  dm.process_real_map_file('test_map_manager.ccp4')
+  new_mm=dm.get_real_map('test_map_manager.ccp4')
   new_mm.show_summary()
   assert (not new_mm.is_similar(mm))
   new_mm.shift_origin()
   new_mm.show_summary()
   assert new_mm.is_similar(mm)
-  os.remove('test.ccp4')
+  os.remove('test_map_manager.ccp4')
 
   # Convert to map coeffs, write out, read back, convert back to map
 
