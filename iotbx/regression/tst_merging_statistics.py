@@ -241,7 +241,7 @@ def exercise(debug=False):
   assert app.expected_delta == 0.9
   d = result.overall.as_dict()
   for k in ("anom_probability_plot_all_data", "anom_probability_plot_expected_delta"):
-    assert d[k].keys() == ["slope", "intercept", "n_pairs", "expected_delta"]
+    assert list(d[k].keys()) == ["slope", "intercept", "n_pairs", "expected_delta"], list(d[k].keys())
   out = StringIO()
   result.overall.show_anomalous_probability_plot(out)
   assert not show_diff(out.getvalue(),
