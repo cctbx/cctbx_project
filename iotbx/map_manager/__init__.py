@@ -283,29 +283,13 @@ class map_manager(map_reader,write_ccp4_map):
        Sets self.unit_cell_grid, self._unit_cell_crystal_symmetry,self.data
            self._crystal_symmetry
        Does not set self.origin_shift_grid_units
+       Does set self.input_file_name
       '''
 
       self._print("Reading map from %s " %(file_name))
 
       self.read_map_file(file_name=file_name)  # in mrcfile/__init__.py
-
-  def replace_map_data(self,map_data,overwrite_map_gridding=None):
-    '''
-      Replace map_data with supplied map data. If dimensions of supplied
-      map_data are not the same as existing map data and
-      overwrite_map_gridding is not set, stop with error.
-    '''
-
-    if self.map_data() and self.map_data().all() != map_data.all():
-      if overwrite_map_gridding:
-        self._print("Note: Map gridding (%s) " %(str(map_data.all())),
-         " is changed from input map_manager (%s)" %(
-           str(self.map_data().all())),"Assuming map has been boxed")
-      else:
-        raise Sorry("Map gridding (%s) " %(str(map_data.all()) +
-         " does not match gridding specified by input map_manager (%s)" %(
-           str(self.map_data().all()))))
-    self.data=map_data
+      self.input_file_name=file_name
 
   def _print(self, m):
     if (self.log is not None) and (type(self.log) != type(null_out())) and (
@@ -322,30 +306,31 @@ class map_manager(map_reader,write_ccp4_map):
     else:
       self.original_unit_cell_crystal_symmetry=self.unit_cell_crystal_symmetry()
 
-  def set_origin_and_gridding(self,origin_shift_grid_units,
-      gridding=None,
-      allow_non_zero_previous_value=False):
+  def set_original_origin_and_gridding(self,original_origin=None,
+      gridding=None):
     '''
-       Specify origin_shift_grid_units of part of map that is present and
+       Specify original origin of map that is present and
        optionally redefine the  definition of the unit cell,
        keeping the grid spacing the same.
+
+       This allows redefining the location of the map that is present
+       within the full unit cell.  It also allows redefining the
+       unit cell itself.  Only use this to create a new partial map
+       in a defined location.
+
+       Previous definition of the location of the map that is present
+       is discarded.
     '''
 
-    if not allow_non_zero_previous_value:
-      if (not self.origin_shift_grid_units in [None,(0,0,0)]):
-              # make sure we
-              #   didn't already shift it
-        self._print("Origin shift is already set...cannot change it unless you"+
-          " also specify allow_non_zero_previous_value=True")
-        return
+    if (self.origin_shift_grid_units != (0,0,0)) or (not self.origin_is_zero()):
+      self.shift_origin()
+      self._print("Previous origin shift of %s will be discarded" %(
+        str(self.origin_shift_grid_units)))
 
-    if self.origin_shift_grid_units in [None,(0,0,0)]:
-      self.origin_shift_grid_units=origin_shift_grid_units
-    else:
-      new_origin=[]
-      for a,b in zip(self.origin_shift_grid_units,origin_shift_grid_units):
-        new_origin.append(a+b)
-      self.origin_shift_grid_units=new_origin
+    # Set the origin
+    self.origin_shift_grid_units=original_origin
+    self._print("New origin shift will be %s " %(
+        str(self.origin_shift_grid_units)))
 
     if gridding: # reset definition of full unit cell.  Keep grid spacing
        current_unit_cell_parameters=self.unit_cell_crystal_symmetry(
@@ -371,44 +356,99 @@ class map_manager(map_reader,write_ccp4_map):
          str(current_unit_cell_parameters),
             str(new_unit_cell_parameters)))
 
-  def already_shifted(self):
-    # Check if origin is already at (0,0,0)
-    if self.map_data() is not None and self.map_data().origin() == (0,0,0):
+  def origin_is_zero(self):
+    if not self.map_data():
+      return None
+    elif self.map_data().origin()==(0,0,0):
       return True
     else:
       return False
 
-  def shift_origin(self):
+  def shift_origin(self,desired_origin=(0,0,0)):
     '''
-    Shift the origin of the map to (0,0,0) and update origin_shift_grid_units
+    Shift the origin of the map to desired_origin
+        (normally desired_origin=(0,0,0) and update origin_shift_grid_units
+    Origin is the value of self.map_data().origin()
+    origin_shift_grid_units is the shift to apply to self.map_data() to
+      superimpose it on the original map.
+
+    If you shift the origin by (di,dj,dk) then add -(di,dj,dk) to
+      the current origin_shift_grid_units.
+
+    If current origin is at (a,b,c) and
+       desired origin=(d,e,f) and
+       existing origin_shift_grid_units is (g,h,i):
+
+    the shift to make is  (d,e,f) - (a,b,c)
+
+    the new value of origin_shift_grid_units will be (g,h,i)+(a,b,c)-(d,e,f)
+       or new origin_shift_grid_units is: (g,h,i)- shift
+
+    the new origin of map_data will be (d,e,f)
+
     '''
+
     if(self.map_data() is None): return
+
+    if(desired_origin is None):
+      desired_origin=(0,0,0)
+    desired_origin=tuple(desired_origin)
+
     if(self.origin_shift_grid_units is None):
       self.origin_shift_grid_units=(0,0,0)
-    new_origin_shift = self.map_data().origin()
-    if new_origin_shift != (0,0,0):
-      self.data=self.map_data().shift_origin()
-      full_shift=[]
-      for a,b in zip(self.origin_shift_grid_units,new_origin_shift):
-        full_shift.append(a+b)
-      self.origin_shift_grid_units = full_shift
 
-  def shift_map_data_to_match_original(self,map_data=None):
+    # Current origin and shift to apply
+    current_origin=self.map_data().origin()
+
+    # Original location of first element of map
+    map_corner_original_location=add_tuples(current_origin,
+         self.origin_shift_grid_units)
+
+    shift_to_apply=subtract_tuples(desired_origin,current_origin)
+
+    assert add_tuples(current_origin,shift_to_apply)==desired_origin
+
+    # Apply the shift
+
+    if shift_to_apply != (0,0,0):
+      # map will start at desired_origin and have current size:
+      new_end=add_tuples(desired_origin,self.map_data().all())
+      acc=flex.grid(desired_origin,new_end)
+      self.map_data().reshape(acc)
+
+    # New origin_shift_grid_units
+    self.origin_shift_grid_units=subtract_tuples(
+        self.origin_shift_grid_units,shift_to_apply)
+
+    # Checks
+    new_current_origin=self.map_data().origin()
+    assert new_current_origin==desired_origin
+
+    assert add_tuples(current_origin,shift_to_apply)==desired_origin
+
+    # Original location of first element of map should agree with previous
+
+    assert map_corner_original_location == add_tuples(new_current_origin,
+         self.origin_shift_grid_units)
+
+
+  def shift_origin_to_match_original(self):
     '''
-     Shift origin of a map_data object to match self.origin_shift_grid_units
-     Input map_data object must have origin at (0,0,0) and
-      this map_manager must be already_shifted
+     Shift origin by self.origin_shift_grid_units to place origin in its
+     original location
     '''
-    assert self.already_shifted()
-    if not self.origin_shift_grid_units:
-      return map_data
-    new_end=[]
-    for o,m in zip(self.origin_shift_grid_units,map_data.all()):
-      new_end.append(o+m)
-    acc=flex.grid(self.origin_shift_grid_units,new_end)
-    acc.show_summary()
-    map_data.reshape(acc)
-    return map_data
+    original_origin=add_tuples(self.map_data().origin(),
+                               self.origin_shift_grid_units)
+
+    self.shift_origin(desired_origin=original_origin)
+
+  def set_input_file_name(self,input_file_name=None):
+    '''
+      Set input file name. Used in _read_map and in customized_copy
+    '''
+
+    self.input_file_name=input_file_name
+
 
   def set_program_name(self,program_name=None):
     '''
@@ -444,9 +484,6 @@ class map_manager(map_reader,write_ccp4_map):
     self.labels.append(to_str(label, codec='utf8')) # make sure it is a string
     self.labels.reverse()
     self._print("Label added: %s " %(label))
-
-  def set_input_file_name(self,input_file_name=None):
-    self.input_file_name=input_file_name
 
   def write_map(self,
      file_name=None, # Name of file to be written
@@ -497,6 +534,7 @@ class map_manager(map_reader,write_ccp4_map):
         labels      = labels,
         verbose=verbose)
     else: # map_data has not been shifted to (0,0,0).  Shift it and then write
+          # and then shift back
       self._print("Writing map after shifting origin")
       if self.origin_shift_grid_units and origin_shift_grid_units!=(0,0,0):
         self._print (
@@ -504,10 +542,13 @@ class map_manager(map_reader,write_ccp4_map):
          " and this map_manager will apply additional origin shift of %s " %(
           str(self.origin_shift_grid_units)))
 
-      new_mm=self.deep_copy()
-      new_mm.set_log(self.log)
-      new_mm.shift_origin()
-      new_mm.write_map(file_name=file_name)
+      # Save where we are
+      current_origin=map_data.origin()
+
+      # Set origin at (0,0,0)
+      self.shift_origin(desired_origin=(0,0,0))
+      self.write_map(file_name=file_name)
+      self.shift_origin(desired_origin=current_origin)
 
   def deep_copy(self):
     '''
@@ -605,3 +646,23 @@ class map_manager(map_reader,write_ccp4_map):
       map_coeffs       = map_coeffs,
       crystal_symmetry = self.crystal_symmetry(),
       n_real           = n_real)
+
+def negate_tuple(t1):
+  new_list=[]
+  for a in t1:
+    new_list.append(-a)
+  return tuple(new_list)
+
+
+def subtract_tuples(t1,t2):
+  new_list=[]
+  for a,b in zip(t1,t2):
+    new_list.append(a-b)
+  return tuple(new_list)
+
+def add_tuples(t1,t2):
+  new_list=[]
+  for a,b in zip(t1,t2):
+    new_list.append(a+b)
+  return tuple(new_list)
+

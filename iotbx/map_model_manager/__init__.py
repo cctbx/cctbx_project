@@ -192,15 +192,16 @@ class map_model_manager:
        self.ncs_object.set_unit_ncs()
     self.add_ncs_object(ncs_object)
 
-  def shift_origin(self,update_shift=None,log=sys.stdout):
-    # shift the origin of all maps/models to (0,0,0)
+  def shift_origin(self,desired_origin=(0,0,0), log=sys.stdout):
+    # shift the origin of all maps/models to desired_origin (usually (0,0,0))
     if not self._map_manager:
       print ("No information about origin available",file=log)
       return
-    if self._map_manager.already_shifted():
-      print("Origin is already at (0,0,0), no shifting done",file=log)
+    if self._map_manager.map_data().origin()==desired_origin:
+      print("Origin is already at %s, no shifting done" %(desired_origin),
+        file=log)
       return
-    self._map_manager.shift_origin()
+    self._map_manager.shift_origin(desired_origin=desired_origin)
     if self._model:
       self._model=self.shift_model_to_match_working_map(
         model=self._model,log=log)
@@ -213,7 +214,7 @@ class map_model_manager:
     # Shift an ncs object to match the working map (based
     #    on self._map_manager.origin_shift_grid_units)
     coordinate_shift=self.get_coordinate_shift(reverse=reverse)
-    ncs_object=ncs_object.coordinate_offset(coordinate_shift) # ZZZ
+    ncs_object=ncs_object.coordinate_offset(coordinate_shift)
     return ncs_object
 
   def shift_ncs_to_match_original_map(self,ncs_object=None,log=sys.stdout):
@@ -238,6 +239,7 @@ class map_model_manager:
 
     # Deep-copy and Shift a model object to match the working map (based
     #    on self._map_manager.origin_shift_grid_units)
+    # *** To be replaced ***
     coordinate_shift=self.get_coordinate_shift(
        reverse=reverse)
     model=model.deep_copy()

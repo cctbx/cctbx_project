@@ -20,9 +20,27 @@ def test_01():
   mm = dm.get_real_map()
   mm.shift_origin()
   mm.show_summary()
-  dm.write_map_with_map_manager(mm, filename='test_map_manager.ccp4', overwrite=True)
+  dm.write_map_with_map_manager(mm,
+    filename='test_map_manager.ccp4', overwrite=True)
+  os.remove('test_map_manager.ccp4')
+
+  # test writing and reading file without shifting origin
+  dm = DataManager(['miller_array','real_map', 'phil'])
+  dm.set_overwrite(True)
+  dm.process_real_map_file(data_ccp4)
+  mm = dm.get_real_map()
+  mm.show_summary()
+  dm.write_map_with_map_manager(mm,
+    filename='test_map_manager.ccp4', overwrite=True)
+
+  new_mm=map_manager('test_map_manager.ccp4')
+  assert (new_mm.is_similar(mm))
+  new_mm.shift_origin()
+  assert (not new_mm.is_similar(mm))
+
 
   # get map_data
+  mm.shift_origin()
   map_data=mm.map_data()
   assert approx_equal(map_data[15,10,19], 0.38,eps=0.01)
 
@@ -63,20 +81,13 @@ def test_01():
 
   # Adjust origin and gridding:
   mm_read=map_manager(data_ccp4)
-  mm_read.set_origin_and_gridding((10,10,10),gridding=(100,100,100))
-  assert (not mm_read.is_similar(mm))
-  assert (not mm_read.already_shifted())
-
-  # Adjust origin and gridding should fail if origin already shifted:
-  mm_read=map_manager(data_ccp4)
   mm_read.shift_origin()
-  mm_read.set_origin_and_gridding((10,10,10),gridding=(100,100,100))
-  assert (mm_read.is_similar(mm))  # not shifted as it failed
-  assert (mm_read.already_shifted())
-
-  # Set input_file name
-  mm_read.set_input_file_name('test input_file')
-  assert mm_read.input_file_name=='test input_file'
+  mm.show_summary()
+  mm_read.show_summary()
+  mm_read.set_original_origin_and_gridding((10,10,10),gridding=(100,100,100))
+  mm_read.show_summary()
+  assert (not mm_read.is_similar(mm))
+  assert (mm_read.origin_is_zero())
 
   # Set program name
   mm_read.set_program_name('test program')
@@ -105,8 +116,8 @@ def test_01():
   mm.set_log(sys.stdout)
 
   # Add map_data
-  mm_read.replace_map_data(map_data=mm.map_data().deep_copy())
-  assert mm_read.is_similar(mm)
+  new_mm=mm_read.customized_copy(map_data=mm.map_data().deep_copy())
+  assert new_mm.is_similar(mm)
 
 
 
