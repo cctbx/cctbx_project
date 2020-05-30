@@ -6,7 +6,6 @@ import os
 from iotbx.data_manager import DataManagerBase
 from libtbx import Auto
 from libtbx.utils import Sorry
-from scitbx.array_family import flex
 
 # =============================================================================
 class RealMapDataManager(DataManagerBase):
