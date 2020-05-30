@@ -20,8 +20,7 @@ def test_01():
   mm = dm.get_real_map()
   mm.shift_origin()
   mm.show_summary()
-  dm.write_map_with_map_manager(mm,
-    filename='test_map_manager.ccp4', overwrite=True)
+  dm.write_real_map_file(mm, filename='test_map_manager.ccp4', overwrite=True)
   os.remove('test_map_manager.ccp4')
 
   # test writing and reading file without shifting origin
@@ -30,14 +29,12 @@ def test_01():
   dm.process_real_map_file(data_ccp4)
   mm = dm.get_real_map()
   mm.show_summary()
-  dm.write_map_with_map_manager(mm,
-    filename='test_map_manager.ccp4', overwrite=True)
+  dm.write_real_map_file(mm, filename='test_map_manager.ccp4', overwrite=True)
 
   new_mm=map_manager('test_map_manager.ccp4')
   assert (new_mm.is_similar(mm))
   new_mm.shift_origin()
   assert (not new_mm.is_similar(mm))
-
 
   # get map_data
   mm.shift_origin()

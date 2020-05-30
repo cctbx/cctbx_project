@@ -448,7 +448,7 @@ def test_real_map_datatype():
   # test writing and reading file
   mm = dm.get_real_map()
   mm.shift_origin()
-  dm.write_map_with_map_manager(mm, filename='test.ccp4', overwrite=True)
+  dm.write_real_map_file(mm, filename='test.ccp4', overwrite=True)
   dm.process_real_map_file('test.ccp4')
   new_mm=dm.get_real_map('test.ccp4')
   assert (not new_mm.is_similar(mm))
