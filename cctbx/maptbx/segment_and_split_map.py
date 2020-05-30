@@ -2546,7 +2546,7 @@ def get_map_object(file_name=None,must_allow_sharpening=None,
     n=m.unit_cell_crystal_symmetry().space_group_number()
   if hasattr(m,'crystal_symmetry'):
     space_group_info=sgtbx.space_group_info(number=n)
-    unit_cell=m.crystal_symmetry().unit_cell()
+    unit_cell=m.unit_cell_crystal_symmetry().unit_cell()
     original_unit_cell_grid=m.unit_cell_grid
     original_crystal_symmetry=crystal.symmetry(
       unit_cell=unit_cell,space_group_info=space_group_info)
