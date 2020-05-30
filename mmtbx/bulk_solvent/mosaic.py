@@ -5,7 +5,7 @@ import math
 from libtbx import adopt_init_args
 import scitbx.lbfgs
 from mmtbx.bulk_solvent import kbu_refinery
-  
+
 # Utilities used by algorithm 2 ------------------------------------------------
 
 class minimizer(object):
@@ -26,7 +26,7 @@ class minimizer(object):
     #print "step: %4d"%self.cntr, "target:", t, "params:", \
     #  " ".join(["%10.6f"%i for i in self.x]), math.log(t)
     return t,g
-    
+
 class minimizer2(object):
 
   def __init__(self, calculator, min_iterations=0, max_iterations=2000):
@@ -72,7 +72,7 @@ class tg(object):
     self.t = None
     self.g = None
     self.d = None
-  
+
   def update_target_and_grads(self, x):
     self.x = x
     s = 1 #180/math.pi
@@ -110,7 +110,7 @@ class tg(object):
         tmp2 = flex.double(self.i_obs.data().size(),0)
         for m, km in enumerate(self.x):
           zz = flex.real( self.F[j].data()*flex.conj(self.F[m].data()) )
-          tmp1 += km * zz 
+          tmp1 += km * zz
           tmp2 += zz
           #pj = self.F[j].phases().data()*s
           #pm = self.F[m].phases().data()*s
@@ -119,11 +119,11 @@ class tg(object):
           #tmp += km * Fj*Fm*flex.cos(pj-pm)
         d.append(flex.sum(tmp1*tmp1 + tmp2))
       self.d=d
-    
+
   def target(self): return self.t
-   
+
   def gradients(self): return self.g
-  
+
   def curvatures(self): return self.d
 #-------------------------------------------------------------------------------
 
@@ -134,7 +134,7 @@ def algorithm_2(i_obs, F, x):
     m = minimizer2(max_iterations=100, calculator=calculator).run(use_curvatures=True)
     print ("step: %4d"%m.cntr, "target:", m.calculator.target(), "params:", \
       " ".join(["%10.6f"%i for i in m.x]) )
-  
+
 
 def algorithm_3(i_obs, F):
   """
@@ -147,7 +147,7 @@ def algorithm_3(i_obs, F):
   # Compute and store Gnm
   for n, Fn in enumerate(F):
     for m, Fm in enumerate(F):
-      if m < n: 
+      if m < n:
         continue
       Gnm.append( flex.real( Fn.data()*flex.conj(Fm.data()) ) )
       cs[(n,m)] = cntr
@@ -191,7 +191,7 @@ def algorithm_3(i_obs, F):
     t2 = t2 / (2*len(F))
     lnK.append( 1/len(F)*(t1-t2) )
   return [math.exp(x) for x in lnK]
-  
+
 def algorithm_4(f_obs, fc, F, max_cycles=100, auto_converge_eps=1.e-7):
   """
   Phased simultaneous search
@@ -231,5 +231,5 @@ def algorithm_4(f_obs, fc, F, max_cycles=100, auto_converge_eps=1.e-7):
     else:
       max_diff = flex.max(flex.abs(flex.double(x_prev)-flex.double(x_)))
       if(max_diff<=auto_converge_eps): break
-      x_prev = x_[:] 
+      x_prev = x_[:]
   return x_
