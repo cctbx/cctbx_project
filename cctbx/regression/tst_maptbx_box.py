@@ -6,6 +6,8 @@ from cctbx.development import random_structure
 import cctbx.maptbx.box
 from libtbx import group_args
 import iotbx.pdb
+from iotbx.map_manager import map_manager
+import mmtbx.model
 
 def get_random_structure_and_map():
   xrs = random_structure.xray_structure(
@@ -19,56 +21,45 @@ def get_random_structure_and_map():
   ph = iotbx.pdb.input(
     source_info=None, lines=xrs.as_pdb_file()).construct_hierarchy()
   ph.atoms().set_xyz(xrs.sites_cart())
-  return group_args(
-    xray_structre = xrs,
-    pdb_hierarchy = ph,
-    map_data      = fft_map.real_map_unpadded())
+  map_data = fft_map.real_map_unpadded()
+  mm = map_manager(
+    unit_cell_grid             = map_data.accessor().all(),
+    unit_cell_crystal_symmetry = fc.crystal_symmetry(),
+    origin_shift_grid_units    = (0,0,0),
+    map_data                   = map_data)
+  model = mmtbx.model.manager(
+    model_input=None, pdb_hierarchy=ph, crystal_symmetry=fc.crystal_symmetry())
+  return group_args(model = model, mm = mm)
 
 def exercise_around_model():
-  mm = get_random_structure_and_map()
-  box1 = cctbx.maptbx.box.around_model(
-    map_data       = mm.map_data,
-    xray_structure = mm.xray_structre,
-    cushion        = 5)
-  box2 = cctbx.maptbx.box.around_model(
-    map_data       = mm.map_data,
-    pdb_hierarchy  = mm.pdb_hierarchy,
-    crystal_symmetry = mm.xray_structre.crystal_symmetry(),
-    cushion        = 5)
-  box3 = cctbx.maptbx.box.around_model(
-    map_data         = mm.map_data,
-    pdb_hierarchy    = mm.pdb_hierarchy,
-    xray_structure   = mm.xray_structre,
-    crystal_symmetry = mm.xray_structre.crystal_symmetry(),
-    cushion          = 5)
-  box4 = cctbx.maptbx.box.around_model(
-    map_data         = mm.map_data,
-    pdb_hierarchy    = mm.pdb_hierarchy,
-    xray_structure   = mm.xray_structre,
-    cushion          = 5)
-  assert approx_equal(
-    box1.xray_structure.sites_cart(),
-    box2.pdb_hierarchy.atoms().extract_xyz())
-  assert approx_equal(
-    box3.xray_structure.sites_cart(),
-    box4.xray_structure.sites_cart())
-  assert approx_equal(
-    box3.pdb_hierarchy.atoms().extract_xyz(),
-    box4.pdb_hierarchy.atoms().extract_xyz())
-  assert approx_equal(
-    box3.pdb_hierarchy.atoms().extract_xyz(),
-    box4.xray_structure.sites_cart())
-  boxes = [box1, box2, box3, box4]
-  for bi in boxes:
-    for bj in boxes:
-      assert approx_equal(bi.map_data, bj.map_data)
+  mam = get_random_structure_and_map()
+  map_data_orig   = mam.mm.map_data()
+  sites_frac_orig = mam.model.get_sites_frac()
+  sites_cart_orig = mam.model.get_sites_cart()
+  cs_orig         = mam.model.crystal_symmetry()
+  box = cctbx.maptbx.box.around_model(
+    map_manager = mam.mm,
+    model       = mam.model,
+    cushion     = 5)
+  new_mm1 = box.apply_to_map()
+  new_mm2 = box.apply_to_map(map_manager=mam.mm)
+  assert approx_equal(new_mm1.map_data(), new_mm2.map_data())
+  new_model1 = box.apply_to_model()
+  new_model2 = box.apply_to_model(model=mam.model)
+  assert new_model1.crystal_symmetry().is_similar_symmetry(
+         new_model2.crystal_symmetry())
+  # make sure things are not changed in-place
+  assert approx_equal(box.map_manager.map_data(), map_data_orig)
+  assert approx_equal(box.model.get_sites_frac(), sites_frac_orig)
+  assert approx_equal(box.model.get_sites_cart(), sites_cart_orig)
+  assert cs_orig.is_similar_symmetry(box.model.crystal_symmetry())
+  assert cs_orig.is_similar_symmetry(box.map_manager.crystal_symmetry())
   #
   # IF you are about to change this - THINK TWICE!
   #
   import inspect
   r = inspect.getargspec(cctbx.maptbx.box.around_model.__init__)
-  assert r.args == ['self', 'map_data', 'cushion', 'xray_structure',
-    'pdb_hierarchy', 'crystal_symmetry'], r.args
+  assert r.args == ['self', 'map_manager', 'model', 'cushion'], r.args
 
 if (__name__ == "__main__"):
   exercise_around_model()
