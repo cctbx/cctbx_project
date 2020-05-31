@@ -5,6 +5,11 @@ import math
 from libtbx import adopt_init_args
 import scitbx.lbfgs
 from mmtbx.bulk_solvent import kbu_refinery
+from cctbx import maptbx
+import mmtbx.masks
+import boost.python
+asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+from libtbx import group_args
 
 # Utilities used by algorithm 2 ------------------------------------------------
 
@@ -72,6 +77,8 @@ class tg(object):
     self.t = None
     self.g = None
     self.d = None
+    self.sum_i_obs = flex.sum(self.i_obs.data())
+    self.update_target_and_grads(x=x)
 
   def update_target_and_grads(self, x):
     self.x = x
@@ -120,26 +127,104 @@ class tg(object):
         d.append(flex.sum(tmp1*tmp1 + tmp2))
       self.d=d
 
-  def target(self): return self.t
+  def target(self): return self.t/self.sum_i_obs
 
-  def gradients(self): return self.g
+  def gradients(self): return self.g/self.sum_i_obs
 
-  def curvatures(self): return self.d
+  def curvatures(self): return self.d/self.sum_i_obs
 #-------------------------------------------------------------------------------
 
-def algorithm_2(i_obs, F, x):
+def get_mask(xray_structure, ma, grid_step, for_test):
+  sgt = xray_structure.space_group().type()
+  cg = maptbx.crystal_gridding(
+    unit_cell        = xray_structure.unit_cell(),
+    space_group_info = xray_structure.space_group_info(),
+    symmetry_flags   = maptbx.use_space_group_symmetry,
+    step             = grid_step)
+  n_real = cg.n_real()
+  mask_p1 = mmtbx.masks.mask_from_xray_structure(
+    xray_structure        = xray_structure,
+    p1                    = True,
+    for_structure_factors = True,
+    n_real                = n_real,
+    in_asu                = False).mask_data
+  maptbx.unpad_in_place(map=mask_p1)
+  mask_asu = asu_map_ext.asymmetric_map(sgt, mask_p1).data()
+  if(for_test): mask_p1 = None
+  f_mask = ma.structure_factors_from_asu_map(
+    asu_map_data = mask_asu,
+    n_real       = n_real) # YES, n_real, not mask_asu.accessor().all() which IS WRONG
+  return group_args(
+    data_p1  = mask_p1,
+    data_asu = mask_asu,
+    n_real   = n_real,
+    f_mask   = f_mask)
+
+def mosaic_f_mask(mask_data_asu, ma, n_real, for_test):
+  co = maptbx.connectivity(map_data=mask_data_asu, threshold=0.01)
+  conn_asu = co.result().as_double()
+  z = zip(co.regions(),range(0,co.regions().size()))
+  sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+  zero_one = None
+  if(for_test):
+    zero_one = conn_asu * 0
+    f_mask_data = ma.data() * 0
+  result_1 = conn_asu * 0
+  f_masks  = []
+  for p in sorted_by_volume:
+    v, i = p
+    if(i==0): continue
+    s = conn_asu==i
+    if(for_test):
+      zero_one = zero_one.set_selected(s, 1)
+    #
+    mdi = result_1.deep_copy()
+    mdi = mdi.set_selected(s, 1)
+    f_mask_i = ma.structure_factors_from_asu_map(
+      asu_map_data = mdi, n_real = n_real)
+    f_masks.append(f_mask_i)
+    if(for_test):
+      f_mask_data += f_mask_i.data()
+    #
+  f_mask = None
+  if(for_test):
+    f_mask = ma.customized_copy(data = f_mask_data)
+  return group_args(
+    data = zero_one, f_mask = f_mask, f_masks = f_masks)
+
+def algorithm_2(i_obs, fc, f_masks, x, use_curvatures=True):
+  """
+  Unphased one-step search
+  """
+  def fixx(x):
+    s=x<0
+    mean = flex.mean(x)
+    if mean<0: mean=0
+    x=x.set_selected(s,mean)
+    if(x[0]<0): x[0]=1
+    return x
+  F = [fc]+f_masks
   calculator = tg(i_obs = i_obs, F=F, x = x)
-  for it in xrange(1):
-    m = minimizer(max_iterations=1000, calculator=calculator)
-    m = minimizer2(max_iterations=100, calculator=calculator).run(use_curvatures=True)
-    print ("step: %4d"%m.cntr, "target:", m.calculator.target(), "params:", \
-      " ".join(["%10.6f"%i for i in m.x]) )
+  for it in xrange(10):
+    m = minimizer(max_iterations=100, calculator=calculator)
+    calculator = tg(i_obs = i_obs, F=F, x = fixx(m.x))
+#    m = minimizer2(max_iterations=100, calculator=calculator).run(use_curvatures=True)
+#    #print ("step: %4d"%m.cntr, "target:", m.calculator.target(), "params:", \
+#    #  " ".join(["%10.6f"%i for i in m.x]) )
+#    calculator = tg(i_obs = i_obs, F=F, x = m.x)
+  if(use_curvatures):
+    for it in xrange(10):
+      m = minimizer(max_iterations=100, calculator=calculator)
+      calculator = tg(i_obs = i_obs, F=F, x = fixx(m.x))
+      m = minimizer2(max_iterations=100, calculator=calculator).run(use_curvatures=True)
+      calculator = tg(i_obs = i_obs, F=F, x = fixx(m.x))
+  return m.x
 
-
-def algorithm_3(i_obs, F):
+def algorithm_3(i_obs, fc, f_masks):
   """
   Unphased two-step search
   """
+  F = [fc]+f_masks
   Gnm = []
   cs = {}
   cntr=0
@@ -192,10 +277,12 @@ def algorithm_3(i_obs, F):
     lnK.append( 1/len(F)*(t1-t2) )
   return [math.exp(x) for x in lnK]
 
-def algorithm_4(f_obs, fc, F, max_cycles=100, auto_converge_eps=1.e-7):
+def algorithm_4(f_obs, fc, f_masks, max_cycles=100, auto_converge_eps=1.e-7):
   """
   Phased simultaneous search
   """
+  fc = fc.deep_copy()
+  F = [fc]+f_masks
   x_res = None
   cntr = 0
   x_prev = None

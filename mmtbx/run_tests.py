@@ -159,6 +159,7 @@ general_tests = [
   "$D/bulk_solvent/tst_flat_nonuniform.py",
   "$D/bulk_solvent/tst_aniso_scaler.py",
   "$D/bulk_solvent/tst_kb_sol_u_star_fd.py",
+  "$D/bulk_solvent/tst_mosaic.py",
   #
   "$D/invariant_domain.py",
   # restraints
