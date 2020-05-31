@@ -5,7 +5,7 @@ jobs:
 - job: modules
   pool:
     vmImage: ubuntu-latest
-  timeoutInMinutes: 360
+  timeoutInMinutes: 90
 
   steps:
 

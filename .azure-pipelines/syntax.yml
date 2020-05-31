@@ -4,7 +4,7 @@ jobs:
 - job: syntax
   pool:
     vmImage: ubuntu-latest
-  timeoutInMinutes: 360
+  timeoutInMinutes: 90
   strategy:
     maxParallel: 10
     matrix:

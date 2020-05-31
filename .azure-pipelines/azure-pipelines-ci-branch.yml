@@ -4,9 +4,11 @@
 # skip pull requests
 pr: none
 
+# batch builds for branches
 trigger:
+  batch: true
   branches:
-    include:
+    exclude:
       - master
 
 stages:

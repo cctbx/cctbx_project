@@ -48,23 +48,28 @@ steps:
   displayName: Install miniconda
 
 # create conda environment
+# fresh downloads for "Update build cache" and "Full" pipelines
 - task: DownloadPipelineArtifact@2
   inputs:
     source: 'current'
     artifact: $(PYTHON_VERSION)_$(OS)
     path: $(Pipeline.Workspace)/channel
   displayName: Download conda packages
-  condition: eq(variables['Build.DefinitionName'], 'Full')
+  condition: >
+    or(eq(variables['Build.DefinitionName'], 'Update build cache'),
+       eq(variables['Build.DefinitionName'], 'Full'))
 
 - task: DownloadPipelineArtifact@2
   inputs:
     source: 'specific'
     project: '$(System.TeamProjectId)'
-    pipeline: 2
+    pipeline: 8
     artifact: $(PYTHON_VERSION)_$(OS)
     path: $(Pipeline.Workspace)/channel
-  displayName: Download conda packages
-  condition: ne(variables['Build.DefinitionName'], 'Full')
+  displayName: Download cached conda packages
+  condition: >
+    and(ne(variables['Build.DefinitionName'], 'Update build cache'),
+        ne(variables['Build.DefinitionName'], 'Full'))
 
 - script: |
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh

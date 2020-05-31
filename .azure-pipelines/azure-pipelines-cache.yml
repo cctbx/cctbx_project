@@ -1,13 +1,13 @@
-# Weekly update of build cache artifacts
+# Daily update of build cache artifacts
 
 # no continuous integration builds or pull requests
 trigger: none
 pr: none
 
-# weekly builds on Saturday Pacific
+# Daily builds
 schedules:
-- cron: '0 5 * * 0'
-  displayName: Weekly rebuild of cache artifacts
+- cron: '0 1 * * *'
+  displayName: Daily rebuild of cache artifacts
   branches:
     include:
     - master
@@ -17,6 +17,7 @@ stages:
   displayName: Download
   jobs:
     - template: ./download-source.yml
+    - template: ./download-conda.yml
 
 - stage: Build
   displayName: Build and test

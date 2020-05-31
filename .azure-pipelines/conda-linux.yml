@@ -11,7 +11,7 @@ jobs:
 - job: ${{ format('{0}_{1}', parameters.distribution, join('_', parameters.version) ) }}
   pool:
     vmImage: ubuntu-latest
-  timeoutInMinutes: 360
+  timeoutInMinutes: 90
   strategy:
     maxParallel: 2
     matrix:
@@ -91,7 +91,9 @@ jobs:
       echo $(System.DefinitionID)
     displayName: Show System variables
 
-  # download weekly cached build directory for builds
+  # download daily cached build directory for builds
+  # always do builds from scratch for "Update build cache" and "Weekly"
+  # pipelines
   - task: DownloadPipelineArtifact@2
     inputs:
       source: 'specific'
@@ -100,15 +102,20 @@ jobs:
       artifact: '$(artifact_name)'
       path: $(Pipeline.Workspace)
     displayName: Download cached build
-    condition: ne(variables['Build.DefinitionName'], 'Update build cache')
+    condition: >
+      and(ne(variables['Build.DefinitionName'], 'Update build cache'),
+          ne(variables['Build.DefinitionName'], 'Weekly'))
     continueOnError: true
 
   - script: |
       cd $(Pipeline.Workspace)
       tar -xf build.tar
     displayName: Extract build tarball
-    condition: ne(variables['Build.DefinitionName'], 'Update build cache')
+    condition: >
+      and(ne(variables['Build.DefinitionName'], 'Update build cache'),
+          ne(variables['Build.DefinitionName'], 'Weekly'))
     continueOnError: true
+    failOnStderr: false
 
   # build
   - template: ./unix-conda-build.yml

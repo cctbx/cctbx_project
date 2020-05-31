@@ -10,7 +10,7 @@ jobs:
 - job: win_64
   pool:
     vmImage: vs2017-win2016
-  timeoutInMinutes: 360
+  timeoutInMinutes: 90
   strategy:
     maxParallel: 2
     matrix:
@@ -118,7 +118,9 @@ jobs:
       call %CONDA%\condabin\conda.bat install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
     displayName: Create conda environment
 
-  # download weekly cached build directory for builds
+  # download daily cached build directory for builds
+  # always do builds from scratch for "Update build cache" and "Weekly"
+  # pipelines
   - task: DownloadPipelineArtifact@2
     inputs:
       source: 'specific'
@@ -127,15 +129,20 @@ jobs:
       artifact: '$(artifact_name)'
       path: $(Pipeline.Workspace)
     displayName: Download cached build
-    condition: ne(variables['Build.DefinitionName'], 'Update build cache')
+    condition: >
+      and(ne(variables['Build.DefinitionName'], 'Update build cache'),
+          ne(variables['Build.DefinitionName'], 'Weekly'))
     continueOnError: true
 
   - script: |
       cd $(Pipeline.Workspace)
       tar -xf build.tar
     displayName: Extract build tarball
-    condition: ne(variables['Build.DefinitionName'], 'Update build cache')
+    condition: >
+      and(ne(variables['Build.DefinitionName'], 'Update build cache'),
+          ne(variables['Build.DefinitionName'], 'Weekly'))
     continueOnError: true
+    failOnStderr: false
 
   # build
   - script: |

@@ -10,7 +10,7 @@ jobs:
 - job: conda_packages
   pool:
     vmImage: ubuntu-latest
-  timeoutInMinutes: 360
+  timeoutInMinutes: 90
   strategy:
     maxParallel: 3
     matrix:

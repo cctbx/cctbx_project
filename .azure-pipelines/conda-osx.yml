@@ -12,7 +12,7 @@ jobs:
 - job: ${{ format('{0}_{1}', format('macOS_{0}', join('_', parameters.vmImage)), format('xcode_{0}', join('_', parameters.xcode_version)) ) }}
   pool:
     vmImage: ${{ format('macOS-{0}', join('.', parameters.vmImage)) }}
-  timeoutInMinutes: 360
+  timeoutInMinutes: 90
   strategy:
     maxParallel: 2
     matrix:
@@ -54,7 +54,9 @@ jobs:
       rm ~/uninstall_homebrew
     displayName: Remove homebrew
 
-  # download weekly cached build directory for builds
+  # download daily cached build directory for builds
+  # always do builds from scratch for "Update build cache" and "Weekly"
+  # pipelines
   - task: DownloadPipelineArtifact@2
     inputs:
       source: 'specific'
@@ -63,15 +65,20 @@ jobs:
       artifact: '$(artifact_name)'
       path: $(Pipeline.Workspace)
     displayName: Download cached build
-    condition: ne(variables['Build.DefinitionName'], 'Update build cache')
+    condition: >
+      and(ne(variables['Build.DefinitionName'], 'Update build cache'),
+          ne(variables['Build.DefinitionName'], 'Weekly'))
     continueOnError: true
 
   - script: |
       cd $(Pipeline.Workspace)
       tar -xf build.tar
     displayName: Extract build tarball
-    condition: ne(variables['Build.DefinitionName'], 'Update build cache')
+    condition: >
+      and(ne(variables['Build.DefinitionName'], 'Update build cache'),
+          ne(variables['Build.DefinitionName'], 'Weekly'))
     continueOnError: true
+    failOnStderr: false
 
   # build
   - template: ./unix-conda-build.yml
