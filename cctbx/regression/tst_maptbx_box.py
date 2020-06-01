@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from libtbx.test_utils import approx_equal
 from cctbx.sgtbx import space_group_info
@@ -33,9 +33,9 @@ def get_random_structure_and_map():
 
 def exercise_around_model():
   mam = get_random_structure_and_map()
-  map_data_orig   = mam.mm.map_data()
-  sites_frac_orig = mam.model.get_sites_frac()
-  sites_cart_orig = mam.model.get_sites_cart()
+  map_data_orig   = mam.mm.map_data().deep_copy()
+  sites_frac_orig = mam.model.get_sites_frac().deep_copy()
+  sites_cart_orig = mam.model.get_sites_cart().deep_copy()
   cs_orig         = mam.model.crystal_symmetry()
   box = cctbx.maptbx.box.around_model(
     map_manager = mam.mm,
@@ -48,6 +48,8 @@ def exercise_around_model():
   new_model2 = box.apply_to_model(model=mam.model)
   assert new_model1.crystal_symmetry().is_similar_symmetry(
          new_model2.crystal_symmetry())
+  # make sure things did change
+  assert new_mm2.map_data().size() != map_data_orig.size()
   # make sure things are not changed in-place
   assert approx_equal(box.map_manager.map_data(), map_data_orig)
   assert approx_equal(box.model.get_sites_frac(), sites_frac_orig)

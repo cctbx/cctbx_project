@@ -9,6 +9,10 @@ import mmtbx.model
 class around_model(object):
   """
   Extract map box around atomic model. Box is in P1 and has origin at (0,0,0).
+
+  Input map_manager must have origin (working position) at (0,0,0)
+  Input model coordinates must correspond to working position of map_manager
+
   """
   def __init__(self, map_manager, model, cushion):
     self.map_manager = map_manager
@@ -32,6 +36,10 @@ class around_model(object):
     frac_max = sites_frac.max()
     frac_max = list(flex.double(frac_max)+cushion_frac)
     frac_min = list(flex.double(frac_min)-cushion_frac)
+
+    # XXX What happens if frac_min < 0 or frac_max >= 1? This means that
+    #   model is outside the starting box...
+
     # find corner grid nodes
     all_orig = map_data.all()
     self.gridding_first = [ifloor(f*n) for f,n in zip(frac_min, all_orig)]
@@ -50,27 +58,67 @@ class around_model(object):
 
   def apply_to_map(self, map_manager=None):
     if(map_manager is None):
-      map_data = self.map_manager.map_data()
+      # Apply to data already present
+      map_manager = self.map_manager
     else:
+      # Apply to a map_manager that is similar to the one used to generate
+      #   this around_model object
       assert map_manager.crystal_symmetry().is_similar_symmetry(
         self.map_manager.crystal_symmetry())
+
       ma1 = map_manager.map_data().accessor()
       ma2 = self.map_manager.map_data().accessor()
       assert ma1.all()    == ma2.all()
       assert ma1.origin() == ma2.origin()
       assert ma1.focus()  == ma2.focus()
-      map_data = map_manager.map_data()
+
+    map_data = map_manager.map_data()
     map_box = maptbx.copy(map_data, self.gridding_first, self.gridding_last)
     map_box.reshape(flex.grid(self.box_all))
-    return iotbx.map_manager.map_manager(
-      unit_cell_grid             = map_box.accessor().all(),
-      unit_cell_crystal_symmetry = self.crystal_symmetry,
-      origin_shift_grid_units    = (0,0,0),
-      map_data                   = map_box)
+
+    # Create new map_manager object:
+    #   Use original values for:
+    #     unit_cell_grid    (gridding of original full unit cell)
+    #     unit_cell_crystal_symmetry  (symmetry of original full unit cell)
+    #     input_file_name
+
+    #   Use new (boxed) values for:
+    #     map_data
+    #     crystal_symmetry   (symmetry of the part of the map that is present)
+
+    #   Update:
+    #     origin_shift_grid_units  (position in the original map of the
+    #                                 (0,0,0) grid point in map_box)
+    #     labels  (add label specifying boxing operation)
+
+    # New origin_shift_grid_units:
+    origin_shift_grid_units=[
+       self.gridding_first[i]+map_manager.origin_shift_grid_units[i]
+        for i in range(3)]
+
+    # New labels:
+    new_label="Boxed map %s to %s based on model" %(
+      str(tuple(self.gridding_first)),str(tuple(self.gridding_last)))
+
+    #   Set up new map_manager
+    new_map_manager=iotbx.map_manager.map_manager(
+      unit_cell_grid             = map_manager.unit_cell_grid,
+      unit_cell_crystal_symmetry = map_manager.unit_cell_crystal_symmetry(),
+      origin_shift_grid_units    = origin_shift_grid_units,
+      map_data                   = map_box,
+      log                        = null_out())
+
+    # Add the label
+    new_map_manager.add_label(new_label)
+
+    return new_map_manager
 
   def apply_to_model(self, model=None):
-    if(model is None): model = self.model
+    if(model is None):
+      # Apply to model already present
+      model = self.model
     else:
+      # Apply to similar model
       assert model.crystal_symmetry().is_similar_symmetry(
         self.model.crystal_symmetry())
     box_uc = self.crystal_symmetry.unit_cell()
