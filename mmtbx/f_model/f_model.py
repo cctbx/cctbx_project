@@ -1450,11 +1450,15 @@ class manager(manager_mixin):
         bulk_solvent_and_scaling = True,
         remove_outliers = True,
         show = False,
+        bulk_solvent=True,
         verbose=None,
         log = None):
     self.alpha_beta_cache = None
     self.apply_scale_k1_to_f_obs()
     from mmtbx.bulk_solvent import f_model_all_scales
+    import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
+    params = bss.master_params.extract()
+    params.bulk_solvent=bulk_solvent
     o = f_model_all_scales.run(
       fmodel               = self,
       apply_back_trace     = apply_back_trace,

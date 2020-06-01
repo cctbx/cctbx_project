@@ -10,6 +10,7 @@ import mmtbx.masks
 import boost.python
 asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from libtbx import group_args
+from mmtbx import bulk_solvent
 
 # Utilities used by algorithm 2 ------------------------------------------------
 
@@ -161,7 +162,8 @@ def get_mask(xray_structure, ma, grid_step, for_test):
     f_mask   = f_mask)
 
 def mosaic_f_mask(mask_data_asu, ma, n_real, for_test):
-  co = maptbx.connectivity(map_data=mask_data_asu, threshold=0.01)
+  co = maptbx.connectivity(map_data=mask_data_asu, threshold=0.01,
+    preprocess_against_shallow=True)
   conn_asu = co.result().as_double()
   z = zip(co.regions(),range(0,co.regions().size()))
   sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
@@ -192,16 +194,45 @@ def mosaic_f_mask(mask_data_asu, ma, n_real, for_test):
   return group_args(
     data = zero_one, f_mask = f_mask, f_masks = f_masks)
 
+def algorithm_0(f_obs, fc, f_masks):
+  """
+  Grid search
+  """
+  k_mask_trial_range=[]
+  s = 0
+  while s<10:
+    k_mask_trial_range.append(s)
+    s+=0.001
+  r = []
+  fc_data = fc.data()
+  for i, f_mask in enumerate(f_masks):
+    #print("mask ",i)
+    assert f_obs.data().size() == fc.data().size()
+    assert f_mask.data().size() == fc.data().size()
+    #print (bulk_solvent.r_factor(f_obs.data(),fc_data))
+    kmask_, k_ = \
+      bulk_solvent.k_mask_and_k_overall_grid_search(
+        f_obs.data(),
+        fc_data,
+        f_mask.data(),
+        flex.double(k_mask_trial_range),
+        flex.bool(fc.data().size(),True))
+    r.append(kmask_)
+    fc_data += fc_data*k_ + kmask_*f_mask.data()
+    #print (bulk_solvent.r_factor(f_obs.data(),fc_data + kmask_*f_mask.data(),k_))
+  r = [1,]+r
+  return r
+
 def algorithm_2(i_obs, fc, f_masks, x, use_curvatures=True):
   """
   Unphased one-step search
   """
   def fixx(x):
-    s=x<0
-    mean = flex.mean(x)
-    if mean<0: mean=0
-    x=x.set_selected(s,mean)
-    if(x[0]<0): x[0]=1
+    #s=x<0
+    #mean = flex.mean(x)
+    #if mean<0: mean=0
+    #x=x.set_selected(s,mean)
+    #if(x[0]<0): x[0]=1
     return x
   F = [fc]+f_masks
   calculator = tg(i_obs = i_obs, F=F, x = x)
