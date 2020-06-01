@@ -89,6 +89,7 @@ jobs:
       echo $(System.TeamProject)
       echo $(System.TeamProjectId)
       echo $(System.DefinitionID)
+      echo $(DayOfWeek)
     displayName: Show System variables
 
   # download daily cached build directory for builds
