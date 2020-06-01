@@ -15,12 +15,12 @@ stages:
 - stage: Preparation
   displayName: Download
   jobs:
-    - template: ./.azure-pipelines/download-source.yml
+    - template: ./download-source.yml
 
 - stage: Build
   displayName: Build and test
   dependsOn: Preparation
   jobs:
-    - template: ./.azure-pipelines/ci-build.yml
+    - template: ./ci-build.yml
       parameters:
         modules: modules
