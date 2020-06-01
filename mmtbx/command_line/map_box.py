@@ -362,73 +362,163 @@ def remove_element(text_list,element=None):
         new_text_list.append(x)
     return new_text_list
 
-def run(args, crystal_symmetry=None,
-     ncs_object=None,
-     pdb_hierarchy=None,
-     map_data=None,
-     mask_data=None,
-     half_map_data_list=None,
-     half_map_labels_list=None,
-     lower_bounds=None,
-     upper_bounds=None,
-     write_output_files=True,
-     log=None):
-  h = "phenix.map_box: extract box with model and map around selected atoms"
-  if(log is None): log = sys.stdout
-  print_statistics.make_header(h, out=log)
-  default_message="""\
+def get_model_from_inputs(
+    model=None,
+    pdb_hierarchy=None,
+    file_names=None,
+    crystal_symmetry=None,
+    log=sys.stdout):
 
-%s.
+  print_statistics.make_sub_header("pdb model", out=log)
 
-Usage:
-  phenix.map_box model.pdb map_coefficients.mtz selection="chain A and resseq 1:10"
+  if pdb_hierarchy:  # convert to model object . XXX should come in this way
+    model= mmtbx.model.manager(
+          model_input = pdb_hierarchy.as_pdb_input(),
+          crystal_symmetry = crystal_symmetry,
+          log = log)
 
-or
+  if len(file_names)>0:
+    file_name=file_names[0]
+    from iotbx.data_manager import DataManager
+    dm = DataManager()
+    dm.set_overwrite(True)
+    dm.process_model_file(file_name)
+    model = dm.get_model(file_name)
+    if not model.crystal_symmetry():
+      model.set_crystal_symmetry_if_undefined(crystal_symmetry)
+      model._process_input_model()
 
-  phenix.map_box map.ccp4 density_select=True
+  if not model:  # construct dummy model
+    from cctbx.array_family import flex
+    pdb_hierarchy=iotbx.pdb.input(
+      source_info='',lines=flex.split_lines('')).construct_hierarchy()
+    model= mmtbx.model.manager(
+          model_input = pdb_hierarchy.as_pdb_input(),
+          crystal_symmetry = crystal_symmetry,
+          log = log)
+  return model
 
-Parameters:"""%h
-  if(len(args) == 0 and not pdb_hierarchy):
-    print(default_message)
-    master_phil.show(prefix="  ")
-    return
+def get_map_manager_objects(
+    params=None,
+    inputs=None,
+    crystal_symmetry=None,
+    ccp4_map=None,
+    mask_as_map_manager=None,
+    half_map_data_list_as_map_managers=None,
+     map_data=None,  # XXX
+     mask_data=None, # XXX
+     half_map_data_list=None,  # XXX
+     log=sys.stdout):
 
-  # Process inputs ignoring symmetry conflicts just to get the value of
-  #   ignore_symmetry_conflicts...
+  # Map or map coefficients
+  map_coeff = None
+  resolution_from_map_coeffs = None
+  input_unit_cell_grid=None
+  input_unit_cell=None
+  input_map_labels=None
+  map_or_map_coeffs_prefix=None
 
-  inputs = mmtbx.utils.process_command_line_args(args = args,
-      cmd_cs=crystal_symmetry,
-      master_params = master_phil,
-      suppress_symmetry_related_errors=True)
-  params = inputs.params.extract()
+  if map_data and not ccp4_map:  # convert to map_manager
+    from iotbx.map_manager import map_manager
+    ccp4_map=map_manager(map_data=map_data,
+      unit_cell_grid=map_data.all(),
+      unit_cell_crystal_symmetry=crystal_symmetry)
 
-  # Now process inputs for real and write a nice error message if necessary.
-  try:
-    inputs = mmtbx.utils.process_command_line_args(args = args,
-      cmd_cs=crystal_symmetry,
-      master_params = master_phil,
-      suppress_symmetry_related_errors=params.ignore_symmetry_conflicts)
-  except Exception as e:
-    if str(e).find("symmetry mismatch ")>1:
-      raise Sorry(str(e)+"\nTry 'ignore_symmetry_conflicts=True'")
-    else:
-      raise e
+  elif (not ccp4_map):
+    # read first mtz file
+    if ( (len(inputs.reflection_file_names) > 0) or
+         (params.map_coefficients_file is not None) ):
+      # file in phil takes precedent
+      if (params.map_coefficients_file is not None):
+        if (len(inputs.reflection_file_names) == 0):
+          inputs.reflection_file_names.append(params.map_coefficients_file)
+        else:
+          inputs.reflection_file_names[0] = params.map_coefficients_file
+      map_coeff = reflection_file_utils.extract_miller_array_from_file(
+        file_name = inputs.reflection_file_names[0],
+        label     = params.label,
+        type      = "complex",
+        log       = log)
+      resolution_from_map_coeffs = map_coeff.d_min()
+      if not crystal_symmetry: crystal_symmetry=map_coeff.crystal_symmetry()
+      fft_map = map_coeff.fft_map(resolution_factor=params.resolution_factor)
+      fft_map.apply_sigma_scaling()
+      map_data = fft_map.real_map_unpadded()
+      map_or_map_coeffs_prefix=os.path.basename(
+         inputs.reflection_file_names[0][:-4])
+      # Convert map_data to map_manager object
+      from iotbx.map_manager import map_manager
+      ccp4_map=map_manager(map_data=map_data,
+        unit_cell_grid=map_data.all(),
+        unit_cell_crystal_symmetry=crystal_symmetry)
+      ccp4_map.set_input_file_name(inputs.reflection_file_names[0])
 
-  params = inputs.params.extract()
-  master_phil.format(python_object=params).show(out=log)
+    # or read CCP4 map
+    elif ( (inputs.ccp4_map is not None) or
+           (params.ccp4_map_file is not None) ):
+      if (params.ccp4_map_file is not None):
+        af = any_file(params.ccp4_map_file)
+        if (af.file_type == 'ccp4_map'):
+          inputs.ccp4_map = af.file_content
+          inputs.ccp4_map_file_name = params.ccp4_map_file
+      print_statistics.make_sub_header("CCP4 map", out=log)
+      ccp4_map = inputs.ccp4_map
+      ccp4_map.show_summary(prefix="  ",out=log)
+      if not crystal_symmetry: crystal_symmetry=ccp4_map.crystal_symmetry()
+      map_data = ccp4_map.map_data()
+      input_unit_cell_grid=ccp4_map.unit_cell_grid
+      input_unit_cell=ccp4_map.unit_cell().parameters()
+      input_map_labels=ccp4_map.get_labels()
 
-  # Overwrite params with parameters in call if available
-  if lower_bounds:
-     params.lower_bounds=lower_bounds
-  if upper_bounds:
-     params.upper_bounds=upper_bounds
+      if inputs.ccp4_map_file_name.endswith(".ccp4"):
+        map_or_map_coeffs_prefix=os.path.basename(
+          inputs.ccp4_map_file_name[:-5])
+      else:
+        map_or_map_coeffs_prefix=os.path.basename(
+          inputs.ccp4_map_file_name[:-4])
 
-  # PDB file
-  if params.pdb_file and not inputs.pdb_file_names and not pdb_hierarchy:
-    inputs.pdb_file_names=[params.pdb_file]
+  if params.half_map_list and (not half_map_data_list) and \
+       (not half_map_data_list_as_map_managers):
+    print ("Reading half-maps",params.half_map_list)
+    half_map_data_list_as_map_managers=[]
+    for fn in params.half_map_list:
+      print("Reading half map from %s" %(fn),file=log)
+      af = any_file(fn)
+      print_statistics.make_sub_header("CCP4 map", out=log)
+      h_ccp4_map = af.file_content
+      h_ccp4_map.show_summary(prefix="  ",out=log)
+      half_map_data_list_as_map_managers.append(h_ccp4_map)
+
+  if mask_data and (not mask_as_map_manager):
+    from iotbx.map_manager import map_manager
+    mask_as_map_manager=map_manager(map_data=mask_data.as_double(),
+        unit_cell_grid=mask_data.all(),
+        unit_cell_crystal_symmetry=crystal_symmetry)
+
+  if len(inputs.pdb_file_names)>0:
+    output_prefix=os.path.basename(inputs.pdb_file_names[0])[:-4]
+  else:
+    output_prefix=map_or_map_coeffs_prefix
+
+  return ccp4_map,mask_as_map_manager,\
+    half_map_data_list_as_map_managers, \
+    output_prefix,resolution_from_map_coeffs
+
+def check_parameters(inputs=None, params=None, 
+   model=None,
+   ncs_object=None,
+   half_map_data_list=None,
+   half_map_data_list_as_map_managers=None,
+   pdb_hierarchy=None,
+   log=sys.stdout):
+
+  if params.half_map_list and (not half_map_data_list):
+    if not params.extract_unique:
+      raise Sorry("Can only use half_map_with extract_unique")
+
   if(len(inputs.pdb_file_names)!=1 and not params.density_select and not
-    params.mask_select and not
-    pdb_hierarchy and not params.keep_map_size and not params.upper_bounds
+    params.mask_select and not pdb_hierarchy and 
+     not model and not params.keep_map_size and not params.upper_bounds
      and not params.extract_unique and not params.bounds_match_this_file):
     raise Sorry("PDB file is needed unless extract_unique, "+
       "density_select, mask_select, keep_map_size \nor bounds are set .")
@@ -455,15 +545,113 @@ Parameters:"""%h
         "Please supply a symmetry file or symmetry for extract_unique (you "+
        "\ncan try symmetry=ALL if you do not know your symmetry or "+
         "symmetry=C1 if \nthere is none)")
-      from mmtbx.ncs.ncs import ncs
-      ncs_object=ncs()
-      ncs_object.set_unit_ncs()
 
   if params.keep_input_unit_cell_and_grid and (
       (params.output_unit_cell_grid is not None ) or
       (params.output_unit_cell is not None ) ):
     raise Sorry("If you set keep_input_unit_cell_and_grid then you cannot "+\
        "set \noutput_unit_cell_grid or output_unit_cell")
+
+def print_default_message(log=sys.stdout):
+  h = "phenix.map_box: extract box with model and map around selected atoms"
+  print_statistics.make_header(h, out=log)
+  default_message="""\
+
+%s.
+
+Usage:
+  phenix.map_box model.pdb map_coefficients.mtz selection="chain A and resseq 1:10"
+
+or
+
+  phenix.map_box map.ccp4 density_select=True
+
+Parameters:"""%h
+
+def process_inputs(args=None,
+  crystal_symmetry=None,
+  log=sys.stdout):
+
+  # Process inputs ignoring symmetry conflicts just to get the value of
+  #   ignore_symmetry_conflicts...
+
+  inputs = mmtbx.utils.process_command_line_args(args = args,
+      cmd_cs=crystal_symmetry,
+      master_params = master_phil,
+      suppress_symmetry_related_errors=True)
+  params = inputs.params.extract()
+
+  # Now process inputs for real and write a nice error message if necessary.
+  try:
+    inputs = mmtbx.utils.process_command_line_args(args = args,
+      cmd_cs=crystal_symmetry,
+      master_params = master_phil,
+      suppress_symmetry_related_errors=params.ignore_symmetry_conflicts)
+  except Exception as e:
+    if str(e).find("symmetry mismatch ")>1:
+      raise Sorry(str(e)+"\nTry 'ignore_symmetry_conflicts=True'")
+    else:
+      raise e
+
+  params = inputs.params.extract()
+  master_phil.format(python_object=params).show(out=log)
+
+  return inputs,params
+
+def get_origin_or_bounds_from_ccp4_file(params=None,log=sys.stdout):
+  if params.output_origin_match_this_file:
+    fn=params.output_origin_match_this_file
+    if params.bounds_match_this_file:
+      raise Sorry("Cannot match origin and bounds at same time")
+  else:
+    fn=params.bounds_match_this_file
+  if not params.ccp4_map_file:
+    raise Sorry(
+     "Need to specify your input file with ccp4_map_file=xxx if you use "+
+      "output_origin_match_this_file=xxxx or bounds_match_this_file=xxxx")
+
+  af = any_file(fn)
+  if (af.file_type == 'ccp4_map'):
+    origin=af.file_content.map_data().origin()
+    if params.output_origin_match_this_file:
+      params.output_origin_grid_units=origin
+      print("Origin of (%s,%s,%s) taken from %s" %(
+         origin[0],origin[1],origin[2],fn))
+    else:
+      all=af.file_content.map_data().all()
+      params.lower_bounds=origin
+      print("Lower bounds of (%s,%s,%s) taken from %s" %(
+         params.lower_bounds[0],params.lower_bounds[1],
+           params.lower_bounds[2],fn))
+      params.upper_bounds=list(col(origin)+col(all)-col((1,1,1)))
+      print("upper bounds of (%s,%s,%s) taken from %s" %(
+         params.upper_bounds[0],params.upper_bounds[1],
+          params.upper_bounds[2],fn))
+      params.bounds_are_absolute=True
+  else:
+    raise Sorry("Unable to interpret %s as map file" %(fn))
+
+  return params
+
+def modify_params(params=None,
+    inputs=None,
+    model=None,
+    pdb_hierarchy=None,
+    write_output_files=None,
+    upper_bounds=None,
+    lower_bounds=None,
+    log=sys.stdout):
+
+  # PDB file
+  if params.pdb_file and not inputs.pdb_file_names and not pdb_hierarchy \
+      and not model:
+    inputs.pdb_file_names=[params.pdb_file]
+
+  # Overwrite params with parameters in call if available
+  if lower_bounds:
+     params.lower_bounds=lower_bounds
+  if upper_bounds:
+     params.upper_bounds=upper_bounds
 
   if (write_output_files) and ("mtz" in params.output_format) and (
        (params.keep_origin) and (not params.keep_map_size)):
@@ -477,125 +665,24 @@ Parameters:"""%h
     params.output_format=remove_element(params.output_format,element='mtz')
 
 
-  if params.output_origin_match_this_file or params.bounds_match_this_file:
-    if params.output_origin_match_this_file:
-      fn=params.output_origin_match_this_file
-      if params.bounds_match_this_file:
-        raise Sorry("Cannot match origin and bounds at same time")
-    else:
-      fn=params.bounds_match_this_file
-    if not params.ccp4_map_file:
-      raise Sorry(
-       "Need to specify your input file with ccp4_map_file=xxx if you use "+
-        "output_origin_match_this_file=xxxx or bounds_match_this_file=xxxx")
 
-    af = any_file(fn)
-    if (af.file_type == 'ccp4_map'):
-      origin=af.file_content.map_data().origin()
-      if params.output_origin_match_this_file:
-        params.output_origin_grid_units=origin
-        print("Origin of (%s,%s,%s) taken from %s" %(
-           origin[0],origin[1],origin[2],fn))
-      else:
-        all=af.file_content.map_data().all()
-        params.lower_bounds=origin
-        print("Lower bounds of (%s,%s,%s) taken from %s" %(
-           params.lower_bounds[0],params.lower_bounds[1],
-             params.lower_bounds[2],fn))
-        params.upper_bounds=list(col(origin)+col(all)-col((1,1,1)))
-        print("upper bounds of (%s,%s,%s) taken from %s" %(
-           params.upper_bounds[0],params.upper_bounds[1],
-            params.upper_bounds[2],fn))
-        params.bounds_are_absolute=True
-    else:
-      raise Sorry("Unable to interpret %s as map file" %(fn))
+  # XXX Get origin or bounds from a ccp4 file
+
+  if params.output_origin_match_this_file or params.bounds_match_this_file:
+    params=get_origin_or_bounds_from_ccp4_file(params=params,log=log)
+
 
   if params.output_origin_grid_units is not None and params.keep_origin:
     params.keep_origin=False
     print("Setting keep_origin=False as output_origin_grid_units is set")
-  print_statistics.make_sub_header("pdb model", out=log)
-  if len(inputs.pdb_file_names)>0:
-    pdb_inp = iotbx.pdb.input(file_name=inputs.pdb_file_names[0])
-    pdb_hierarchy = pdb_inp.construct_hierarchy()
-  if pdb_hierarchy:
-    pdb_atoms = pdb_hierarchy.atoms()
-    pdb_atoms.reset_i_seq()
-  else:
-    pdb_hierarchy=None
-  # Map or map coefficients
-  map_coeff = None
-  input_unit_cell_grid=None
-  input_unit_cell=None
-  input_map_labels=None
-  if (not map_data):
-    # read first mtz file
-    if ( (len(inputs.reflection_file_names) > 0) or
-         (params.map_coefficients_file is not None) ):
-      # file in phil takes precedent
-      if (params.map_coefficients_file is not None):
-        if (len(inputs.reflection_file_names) == 0):
-          inputs.reflection_file_names.append(params.map_coefficients_file)
-        else:
-          inputs.reflection_file_names[0] = params.map_coefficients_file
-      map_coeff = reflection_file_utils.extract_miller_array_from_file(
-        file_name = inputs.reflection_file_names[0],
-        label     = params.label,
-        type      = "complex",
-        log       = log)
-      if not crystal_symmetry: crystal_symmetry=map_coeff.crystal_symmetry()
-      fft_map = map_coeff.fft_map(resolution_factor=params.resolution_factor)
-      fft_map.apply_sigma_scaling()
-      map_data = fft_map.real_map_unpadded()
-      map_or_map_coeffs_prefix=os.path.basename(
-         inputs.reflection_file_names[0][:-4])
-    # or read CCP4 map
-    elif ( (inputs.ccp4_map is not None) or
-           (params.ccp4_map_file is not None) ):
-      print ("ZZB",params.ccp4_map_file)
-      if (params.ccp4_map_file is not None):
-        af = any_file(params.ccp4_map_file)
-        print ("ZZC",af,dir(af),af.file_type,dir(af.file_content))
-        if (af.file_type == 'ccp4_map'):
-          inputs.ccp4_map = af.file_content
-          inputs.ccp4_map_file_name = params.ccp4_map_file
-      print_statistics.make_sub_header("CCP4 map", out=log)
-      ccp4_map = inputs.ccp4_map
-      ccp4_map.show_summary(prefix="  ",out=log)
-      if not crystal_symmetry: crystal_symmetry=ccp4_map.crystal_symmetry()
-      map_data = ccp4_map.map_data()
-      input_unit_cell_grid=ccp4_map.unit_cell_grid
-      input_unit_cell=ccp4_map.unit_cell().parameters()
-      input_map_labels=ccp4_map.get_labels()
 
-      if inputs.ccp4_map_file_name.endswith(".ccp4"):
-        map_or_map_coeffs_prefix=os.path.basename(
-          inputs.ccp4_map_file_name[:-5])
-      else:
-        map_or_map_coeffs_prefix=os.path.basename(
-          inputs.ccp4_map_file_name[:-4])
-  else: # have map_data
-    map_or_map_coeffs_prefix=None
 
-  if params.half_map_list and (not half_map_data_list):
-    if not params.extract_unique:
-      raise Sorry("Can only use half_map_with extract_unique")
-    print ("Reading half-maps",params.half_map_list)
-    half_map_data_list=[]
-    half_map_labels_list=[]
-    for fn in params.half_map_list:
-      print("Reading half map from %s" %(fn),file=log)
-      af = any_file(fn)
-      print_statistics.make_sub_header("CCP4 map", out=log)
-      h_ccp4_map = af.file_content
-      h_ccp4_map.show_summary(prefix="  ",out=log)
-      h_map_data = h_ccp4_map.map_data()
-      half_map_data_list.append(h_map_data)
-      half_map_labels_list.append(h_ccp4_map.get_labels())
+  return params
 
-  if params.map_scale_factor:
-    print("Applying scale factor of %s to map data on read-in" %(
-       params.map_scale_factor))
-    map_data=map_data*params.map_scale_factor
+def get_origin_to_match(
+   params=None,
+   n_real=None,
+   crystal_symmetry=None):
 
   if params.output_origin_grid_units is not None:
     origin_to_match=tuple(params.output_origin_grid_units)
@@ -605,96 +692,99 @@ Parameters:"""%h
   if origin_to_match:
     sc=[]
     for x,o,a in zip(crystal_symmetry.unit_cell().parameters()[:3],
-        origin_to_match,
-        map_data.all()):
+        origin_to_match, n_real):
       sc.append(-x*o/a)
     shift_cart_for_origin_to_match=tuple(sc)
   else:
     origin_to_match=None
     shift_cart_for_origin_to_match=None
 
+  return origin_to_match,shift_cart_for_origin_to_match
 
+def apply_selection_to_model(params=None,model=None,log=sys.stdout):
 
-  if crystal_symmetry and not inputs.crystal_symmetry:
-    inputs.crystal_symmetry=crystal_symmetry
-
-  # final check that map_data exists
-  if(map_data is None):
-    raise Sorry("Map or map coefficients file is needed.")
-
-  if len(inputs.pdb_file_names)>0:
-    output_prefix=os.path.basename(inputs.pdb_file_names[0])[:-4]
-  else:
-    output_prefix=map_or_map_coeffs_prefix
-
-  if not pdb_hierarchy: # get an empty hierarchy
-    from cctbx.array_family import flex
-    pdb_hierarchy=iotbx.pdb.input(
-      source_info='',lines=flex.split_lines('')).construct_hierarchy()
-  xray_structure = pdb_hierarchy.extract_xray_structure(
-    crystal_symmetry=inputs.crystal_symmetry)
-  xray_structure.show_summary(f=log)
-  #
   if not params.selection: params.selection="all"
-  selection = pdb_hierarchy.atom_selection_cache().selection(
-    string = params.selection)
+  selection = model.selection(params.selection)
   if selection.size():
     print_statistics.make_sub_header("atom selection", out=log)
     print("Selection string: selection='%s'"%params.selection, file=log)
     print("  selects %d atoms from total %d atoms."%(selection.count(True),
         selection.size()), file=log)
-  sites_cart_all = xray_structure.sites_cart()
+  sites_cart_all = model.get_xray_structure().sites_cart()
   sites_cart = sites_cart_all.select(selection)
-  selection = xray_structure.selection_within(
+  selection = model.get_xray_structure().selection_within(
     radius    = params.selection_radius,
     selection = selection)
 
+  print("  Final selection is %d atoms from total %d atoms."%(
+        selection.count(True),
+        selection.size()), file=log)
+
+  model=model.select(selection)
+  return model
+
+def get_ncs_object(params=None,
+    ncs_object=None,
+    log=sys.stdout):
   if not ncs_object:
     from mmtbx.ncs.ncs import ncs
     ncs_object=ncs()
     if params.symmetry_file:
       ncs_object.read_ncs(params.symmetry_file,log=log)
       print("Total of %s operators read" %(ncs_object.max_operators()), file=log)
-  if not ncs_object or ncs_object.max_operators()<1:
+  if ncs_object.max_operators()<1:
       print("No symmetry available", file=log)
-  if ncs_object:
-    n_ops=max(1,ncs_object.max_operators())
+
+  return ncs_object
+
+def get_sequence_and_molecular_mass(params=None,ncs_object=None,
+   log=sys.stdout):
+
+  if (not params.extract_unique) and (not params.mask_select):
+    return  params,None  # no sequence
+
+  if params.sequence_file:
+    if ncs_object.max_operators()> 1: # get unique part of sequence
+      remove_duplicates=True
+    else:
+      remove_duplicates=False
+    from iotbx.bioinformatics import get_sequences
+    sequence=(" ".join(get_sequences(file_name=params.sequence_file,
+      remove_duplicates=remove_duplicates)))
   else:
-    n_ops=1
+    sequence=None
 
-  # Get sequence if extract_unique is set
-  sequence=None
-  if params.extract_unique or params.mask_select:
-    if params.sequence_file:
-      if n_ops > 1: # get unique part of sequence
-        remove_duplicates=True
-      else:
-        remove_duplicates=False
-      from iotbx.bioinformatics import get_sequences
-      sequence=(" ".join(get_sequences(file_name=params.sequence_file,
-        remove_duplicates=remove_duplicates)))
+  if params.chain_type in ['None',None]: params.chain_type=None
+  if sequence and not params.molecular_mass:
+    # get molecular mass from sequence
+    from iotbx.bioinformatics import text_from_chains_matching_chain_type
+    if params.chain_type in [None,'PROTEIN']:
+      n_protein=len(text_from_chains_matching_chain_type(
+        text=sequence,chain_type='PROTEIN'))
+    else:
+      n_protein=0
+    if params.chain_type in [None,'RNA']:
+      n_rna=len(text_from_chains_matching_chain_type(
+        text=sequence,chain_type='RNA'))
+    else:
+      n_rna=0
+    if params.chain_type in [None,'DNA']:
+      n_dna=len(text_from_chains_matching_chain_type(
+       text=sequence,chain_type='DNA'))
+    else:
+      n_dna=0
+    params.molecular_mass=ncs_object.max_operators()*(
+         n_protein*110+(n_rna+n_dna)*330)
+    print("\nEstimate of molecular mass is %.0f " %(
+        params.molecular_mass), file=log)
+  return params,sequence
 
-    if params.chain_type in ['None',None]: params.chain_type=None
-    if sequence and not params.molecular_mass:
-      # get molecular mass from sequence
-      from iotbx.bioinformatics import text_from_chains_matching_chain_type
-      if params.chain_type in [None,'PROTEIN']:
-        n_protein=len(text_from_chains_matching_chain_type(
-          text=sequence,chain_type='PROTEIN'))
-      else:
-        n_protein=0
-      if params.chain_type in [None,'RNA']:
-        n_rna=len(text_from_chains_matching_chain_type(
-          text=sequence,chain_type='RNA'))
-      else:
-        n_rna=0
-      if params.chain_type in [None,'DNA']:
-        n_dna=len(text_from_chains_matching_chain_type(
-         text=sequence,chain_type='DNA'))
-      else:
-        n_dna=0
-      params.molecular_mass=n_ops*(n_protein*110+(n_rna+n_dna)*330)
-      print("\nEstimate of molecular mass is %.0f " %(params.molecular_mass), file=log)
+def print_what_will_happen(
+   params=None,
+   model=None,
+   log=sys.stdout):
+
+
   if params.density_select or params.mask_select:
     print_statistics.make_sub_header(
     "Extracting box around selected density and writing output files", out=log)
@@ -707,7 +797,8 @@ Parameters:"""%h
   if params.get_half_height_width and params.density_select:
     print("\nHalf width at half height will be used to id boundaries", file=log)
 
-  if params.soft_mask and sites_cart_all.size()>0:
+  if params.soft_mask and model and \
+      model.get_xray_structure().sites_cart().size()>0:
     print("\nSoft mask will be applied to model-based mask", file=log)
   elif params.soft_mask:
     print ("\nSoft mask will be applied to outside of map box",file=log)
@@ -719,14 +810,172 @@ Parameters:"""%h
     print("Bounds for cut out map are (%s,%s,%s) to (%s,%s,%s)" %(
      tuple(list(params.lower_bounds)+list(params.upper_bounds))), file=log)
 
-  if mask_data:
-    mask_data=mask_data.as_double()
+def print_notes(params=None,
+    box=None,
+    crystal_symmetry=None,
+    ccp4_map=None,
+    log=sys.stdout):
+
+  if params.mask_select and box.get_solvent_content():
+    print("\nSolvent content used in mask_select: %.3f " %(
+      box.get_solvent_content()),file=log)
+
+  if (ccp4_map and
+    crystal_symmetry and 
+    crystal_symmetry.unit_cell().parameters() and
+     ccp4_map.unit_cell().parameters()  ) and (
+       crystal_symmetry.unit_cell().parameters() !=
+       ccp4_map.unit_cell().parameters()):
+    print("\nNOTE: Input CCP4 map is only part of unit cell:", file=log)
+    print("Full unit cell ('unit cell parameters'): "+\
+      "(%.1f, %.1f, %.1f, %.1f, %.1f, %.1f) A" %tuple(
+        ccp4_map.unit_cell().parameters()), file=log)
+    print("Size of CCP4 map 'map unit cell':        "+\
+      "(%.1f, %.1f, %.1f, %.1f, %.1f, %.1f) A" %tuple(
+       crystal_symmetry.unit_cell().parameters()), file=log)
+    print("Full unit cell as grid units: (%s, %s, %s)" %(
+      ccp4_map.unit_cell_grid), file=log)
+    print("Map unit cell as grid units:  (%s, %s, %s)" %(
+      ccp4_map.map_data().all()), file=log)
+
+  if box.pdb_outside_box_msg:
+    print(box.pdb_outside_box_msg, file=log)
+
+def run(args, 
+     ncs_object=None,  # ncs object
+     model=None,  # model.manager object
+     ccp4_map=None,  # map_manager object
+     mask_as_map_manager=None, # map_manager object
+     half_map_data_list_as_map_managers=None,  # map_manager objects
+     crystal_symmetry=None,  # XXX remove
+     pdb_hierarchy=None, #XXX remove
+     map_data=None,  # XXX remove
+     mask_data=None, # XXX remove
+     half_map_data_list=None,  # XXX remove
+     half_map_labels_list=None, # XXX remove
+     lower_bounds=None,
+     upper_bounds=None,
+     write_output_files=True,
+     log=None):
+
+  if (log is None): log = sys.stdout
+
+
+  if(len(args) == 0 and not pdb_hierarchy):
+    print_default_message(log=log)
+    master_phil.show(prefix="  ")
+    return
+
+  # Read files with file reader and get parameters
+  inputs,params=process_inputs(args=args,
+    crystal_symmetry=crystal_symmetry,
+    log=log)
+
+
+  # Custom changes in parameters based on input files and supplied bounds
+  params=modify_params(params=params,
+    inputs=inputs,
+    model=model,
+    pdb_hierarchy=pdb_hierarchy, # XXX remove later
+    write_output_files=write_output_files,
+    upper_bounds=upper_bounds,
+    lower_bounds=lower_bounds,
+    log=log)
+
+  # Check parameters and issue error messages if necessary
+  check_parameters(inputs=inputs, params=params,
+    model=model,
+    ncs_object=ncs_object,
+    pdb_hierarchy=pdb_hierarchy, # remove later XXX
+    half_map_data_list_as_map_managers=half_map_data_list_as_map_managers,
+    half_map_data_list=half_map_data_list,
+    log=log)
+
+  # Get model object (replaces pdb_hierarchy)
+  model=get_model_from_inputs(
+    model=model,
+    pdb_hierarchy=pdb_hierarchy,
+    file_names=inputs.pdb_file_names,
+    crystal_symmetry=inputs.crystal_symmetry,
+    log=log)
+
+  # Apply selection to model if desired
+  model=apply_selection_to_model(params=params,model=model,log=log)
+
+  # Use model crystal_symmetry
+  crystal_symmetry=model.crystal_symmetry()
+
+  xray_structure=model.get_xray_structure().show_summary(f=log)
+
+  # Get map_manager objects
+  
+  # XXX get rid of most of these as they are part of mm objects
+  ccp4_map,mask_as_map_manager,half_map_data_list_as_map_managers, \
+    output_prefix,resolution_from_map_coeffs=get_map_manager_objects(
+      params=params,
+      inputs=inputs,
+      ccp4_map=ccp4_map,
+      mask_as_map_manager=mask_as_map_manager,
+      half_map_data_list_as_map_managers=half_map_data_list_as_map_managers,
+      crystal_symmetry=crystal_symmetry,
+      map_data=map_data,  # XXX delete
+      mask_data=mask_data, # XXX  delete
+      half_map_data_list=half_map_data_list,  # XXX delete
+      log=log)
+
+
+  # Apply a scale factor to map data on read-in if requested
+  if params.map_scale_factor:
+    print("Applying scale factor of %s to map data on read-in" %(
+       params.map_scale_factor))
+    ccp4_map=ccp4_map.customized_copy(
+      map_data=ccp4_map.map_data()*params.map_scale_factor)
+
+  # Get output origin to match, if any
+  origin_to_match,shift_cart_for_origin_to_match=get_origin_to_match(
+     params=params,crystal_symmetry=crystal_symmetry,
+     n_real=ccp4_map.map_data().all())
+
+  # final check that map_data exists
+  if(ccp4_map.map_data is None):
+    raise Sorry("Map or map coefficients file is needed.")
+
+
+
+
+  ncs_object=get_ncs_object(params=params,
+      ncs_object=ncs_object,log=log)
+
+  # XXX Shift origin of maps, model, ncs_object here
+
+
+  # Get sequence if extract_unique or mask_select is set
+  params,sequence=get_sequence_and_molecular_mass(params=params,
+    ncs_object=ncs_object,
+    log=log)
+
+  # Summarize what will happen
+  print_what_will_happen(params=params,
+    model=None,
+    log=log)
+
+  # Run now
+
+  # XXX for now:
+  if mask_as_map_manager:
+    mask_data=mask_as_map_manager.map_data()
+  else: 
+    mask_data=None
+
   box = mmtbx.utils.extract_box_around_model_and_map(
-    xray_structure   = xray_structure,
-    map_data         = map_data.as_double(),
-    mask_data        = mask_data,
+    xray_structure   = model.get_xray_structure(), # replace with model
+    map_data         = ccp4_map.map_data(),  # XXX replace with ccp4_map
+    mask_data        = mask_data,  # XXX replace with mask_as_map_manager
+    half_map_data_list    = half_map_data_list, # XXX replace with half_map_data_list_as_map_managers
+    sequence              = sequence,
+    ncs_object            = ncs_object,
     box_cushion      = params.box_cushion,
-    selection        = selection,
+    selection        = None,   #  XXX remove; did it above 
     mask_select      = params.mask_select,
     density_select   = params.density_select,
     threshold        = params.density_select_threshold,
@@ -750,52 +999,35 @@ Parameters:"""%h
     mask_expand_ratio = params.mask_expand_ratio,
     keep_low_density      = params.keep_low_density,
     chain_type            = params.chain_type,
-    sequence              = sequence,
     solvent_content       = params.solvent_content,
     molecular_mass        = params.molecular_mass,
     resolution            = params.resolution,
-    ncs_object            = ncs_object,
     symmetry              = params.symmetry,
-    half_map_data_list    = half_map_data_list,
     )
 
-  ph_box = pdb_hierarchy.select(selection)
+  ph_box=model.get_hierarchy()  # XXX get rid of this later
   ph_box.adopt_xray_structure(box.xray_structure_box)
   box.hierarchy=ph_box
 
-  if params.mask_select:
-    print("\nSolvent content used in mask_select: %.3f " %(
-      box.get_solvent_content()),file=log)
-  if (inputs and
-    inputs.crystal_symmetry and inputs.ccp4_map and
-    inputs.crystal_symmetry.unit_cell().parameters() and
-     inputs.ccp4_map.unit_cell().parameters()  ) and (
-       inputs.crystal_symmetry.unit_cell().parameters() !=
-       inputs.ccp4_map.unit_cell().parameters()):
-    print("\nNOTE: Input CCP4 map is only part of unit cell:", file=log)
-    print("Full unit cell ('unit cell parameters'): "+\
-      "(%.1f, %.1f, %.1f, %.1f, %.1f, %.1f) A" %tuple(
-        inputs.ccp4_map.unit_cell().parameters()), file=log)
-    print("Size of CCP4 map 'map unit cell':        "+\
-      "(%.1f, %.1f, %.1f, %.1f, %.1f, %.1f) A" %tuple(
-       inputs.crystal_symmetry.unit_cell().parameters()), file=log)
-    print("Full unit cell as grid units: (%s, %s, %s)" %(
-      inputs.ccp4_map.unit_cell_grid), file=log)
-    print("Map unit cell as grid units:  (%s, %s, %s)" %(
-      map_data.all()), file=log)
 
-    box.unit_cell_parameters_from_ccp4_map=inputs.ccp4_map.unit_cell().parameters()
-    box.unit_cell_parameters_deduced_from_map_grid=\
-       inputs.crystal_symmetry.unit_cell().parameters()
+  # XXX for now:
 
-  else:
-    box.unit_cell_parameters_from_ccp4_map=None
-    box.unit_cell_parameters_deduced_from_map_grid=None
+  input_unit_cell_grid=ccp4_map.unit_cell_grid
+  input_unit_cell=ccp4_map.unit_cell()
+  input_map_labels=ccp4_map.labels
+  half_map_labels_list=[]
+  if half_map_data_list_as_map_managers:
+    for hm in half_map_data_list_as_map_managers:
+      half_map_labels_list.append(hm.labels)
+  # XXX end for now
 
+  # Print out any notes about the output files
+  print_notes(params=params,box=box,
+    crystal_symmetry=crystal_symmetry,
+    ccp4_map=ccp4_map,
+    log=log)
 
-
-  if box.pdb_outside_box_msg:
-    print(box.pdb_outside_box_msg, file=log)
+  # Write the output files
 
   # NOTE: box object is always shifted to place origin at (0,0,0)
 
@@ -824,6 +1056,7 @@ Parameters:"""%h
   from copy import deepcopy
   output_box=deepcopy(box)  # won't use box below here except to return it
 
+  # XXX alternatively, use box, but put it back to what it is here afterwards
 
   print("\nBox cell dimensions: (%.2f, %.2f, %.2f) A" %(
       box.box_crystal_symmetry.unit_cell().parameters()[:3]), file=log)
@@ -958,7 +1191,7 @@ Parameters:"""%h
     output_crystal_symmetry=output_box.xray_structure_box.crystal_symmetry()
   # ==========  Done check/set output unit cell grid and cell parameters =====
 
-  if write_output_files:
+  if write_output_files:  # XXX write with data_manager and model.manager and map_manager
     # Write PDB file
     if ph_box.overall_counts().n_residues>0:
 
@@ -1008,32 +1241,29 @@ Parameters:"""%h
        output_external_origin=params.output_external_origin)
      print("Writing boxed map "+\
           "to CCP4 formatted file:   %s"%file_name, file=log)
-     if not params.half_map_list:
-        params.half_map_list=[]
-     if not output_box.map_box_half_map_list:
-       output_box.map_box_half_map_list=[]
-     if not half_map_labels_list:
-       half_map_labels_list=len(output_box.map_box_half_map_list)*[None]
-     for hm,labels,fn in zip(
-       output_box.map_box_half_map_list,
-       half_map_labels_list,
-       params.half_map_list):  # half maps matching
-       labels=create_output_labels(program_name=program_name,
-         input_file_name=fn,
-         input_labels=labels,
-         limitations=limitations,
-         output_labels=params.output_map_labels)
-       hm_fn="%s_box.ccp4" %( ".".join(os.path.basename(fn).split(".")[:-1]))
-       output_box.write_ccp4_map(file_name=hm_fn,
-         map_data=hm,
-         output_crystal_symmetry=output_crystal_symmetry,
-         output_mean=params.output_ccp4_map_mean,
-         output_sd=params.output_ccp4_map_sd,
-         output_unit_cell_grid=output_unit_cell_grid,
-         shift_back=shift_back,
-         output_map_labels=labels,
-         output_external_origin=params.output_external_origin)
-       print ("Writing boxed half map to: %s " %(hm_fn),file=log)
+
+     if  half_map_data_list_as_map_managers:
+       for hm,labels,hm_mm in zip(
+         output_box.map_box_half_map_list,
+         half_map_data_list_as_map_managers):
+       
+         labels=create_output_labels(program_name=program_name,
+           input_file_name=hm_mm.input_file_name,
+           input_labels=hm_mm.labels,
+           limitations=limitations,
+           output_labels=params.output_map_labels)
+         hm_fn="%s_box.ccp4" %(
+            ".".join(os.path.basename(hm_mm.input_file_name).split(".")[:-1]))
+         output_box.write_ccp4_map(file_name=hm_fn,
+           map_data=hm,
+           output_crystal_symmetry=output_crystal_symmetry,
+           output_mean=params.output_ccp4_map_mean,
+           output_sd=params.output_ccp4_map_sd,
+           output_unit_cell_grid=output_unit_cell_grid,
+           shift_back=shift_back,
+           output_map_labels=labels,
+           output_external_origin=params.output_external_origin)
+         print ("Writing boxed half map to: %s " %(hm_fn),file=log)
 
     # Write xplor map.  Shift back if keep_origin=True
     if("xplor" in params.output_format):
@@ -1055,8 +1285,8 @@ Parameters:"""%h
 
      print("Writing map coefficients "+\
          "to MTZ file: %s"%file_name, file=log)
-     if(map_coeff is not None):
-       d_min = map_coeff.d_min()
+     if(resolution_from_map_coeffs is not None):
+       d_min = resolution_from_map_coeffs
      elif params.resolution is not None:
        d_min = params.resolution
      else:
