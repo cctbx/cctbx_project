@@ -504,7 +504,7 @@ def get_map_manager_objects(
     half_map_data_list_as_map_managers, \
     output_prefix,resolution_from_map_coeffs
 
-def check_parameters(inputs=None, params=None, 
+def check_parameters(inputs=None, params=None,
    model=None,
    ncs_object=None,
    half_map_data_list=None,
@@ -517,7 +517,7 @@ def check_parameters(inputs=None, params=None,
       raise Sorry("Can only use half_map_with extract_unique")
 
   if(len(inputs.pdb_file_names)!=1 and not params.density_select and not
-    params.mask_select and not pdb_hierarchy and 
+    params.mask_select and not pdb_hierarchy and
      not model and not params.keep_map_size and not params.upper_bounds
      and not params.extract_unique and not params.bounds_match_this_file):
     raise Sorry("PDB file is needed unless extract_unique, "+
@@ -821,7 +821,7 @@ def print_notes(params=None,
       box.get_solvent_content()),file=log)
 
   if (ccp4_map and
-    crystal_symmetry and 
+    crystal_symmetry and
     crystal_symmetry.unit_cell().parameters() and
      ccp4_map.unit_cell().parameters()  ) and (
        crystal_symmetry.unit_cell().parameters() !=
@@ -841,7 +841,7 @@ def print_notes(params=None,
   if box.pdb_outside_box_msg:
     print(box.pdb_outside_box_msg, file=log)
 
-def run(args, 
+def run(args,
      ncs_object=None,  # ncs object
      model=None,  # model.manager object
      ccp4_map=None,  # map_manager object
@@ -908,7 +908,7 @@ def run(args,
   xray_structure=model.get_xray_structure().show_summary(f=log)
 
   # Get map_manager objects
-  
+
   # XXX get rid of most of these as they are part of mm objects
   ccp4_map,mask_as_map_manager,half_map_data_list_as_map_managers, \
     output_prefix,resolution_from_map_coeffs=get_map_manager_objects(
@@ -964,7 +964,7 @@ def run(args,
   # XXX for now:
   if mask_as_map_manager:
     mask_data=mask_as_map_manager.map_data()
-  else: 
+  else:
     mask_data=None
 
   box = mmtbx.utils.extract_box_around_model_and_map(
@@ -975,7 +975,7 @@ def run(args,
     sequence              = sequence,
     ncs_object            = ncs_object,
     box_cushion      = params.box_cushion,
-    selection        = None,   #  XXX remove; did it above 
+    selection        = None,   #  XXX remove; did it above
     mask_select      = params.mask_select,
     density_select   = params.density_select,
     threshold        = params.density_select_threshold,
@@ -1246,7 +1246,7 @@ def run(args,
        for hm,labels,hm_mm in zip(
          output_box.map_box_half_map_list,
          half_map_data_list_as_map_managers):
-       
+
          labels=create_output_labels(program_name=program_name,
            input_file_name=hm_mm.input_file_name,
            input_labels=hm_mm.labels,
