@@ -940,14 +940,10 @@ def run(args,
   if(ccp4_map.map_data is None):
     raise Sorry("Map or map coefficients file is needed.")
 
-
-
-
   ncs_object=get_ncs_object(params=params,
       ncs_object=ncs_object,log=log)
 
   # XXX Shift origin of maps, model, ncs_object here
-
 
   # Get sequence if extract_unique or mask_select is set
   params,sequence=get_sequence_and_molecular_mass(params=params,
@@ -975,7 +971,6 @@ def run(args,
     sequence              = sequence,
     ncs_object            = ncs_object,
     box_cushion      = params.box_cushion,
-    selection        = None,   #  XXX remove; did it above
     mask_select      = params.mask_select,
     density_select   = params.density_select,
     threshold        = params.density_select_threshold,

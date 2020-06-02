@@ -2381,7 +2381,6 @@ class extract_box_around_model_and_map(object):
                map_data,
                box_cushion,
                mask_data=None,
-               selection=None,
                density_select=None,
                mask_select=None,
                threshold=None,
@@ -2423,10 +2422,7 @@ class extract_box_around_model_and_map(object):
     self.ncs_object = soo.ncs_object
     self.crystal_symmetry = soo.crystal_symmetry
     self.shift_cart = soo.shift_cart
-    if(selection is None):
-      xray_structure_selected = soo.xray_structure.deep_copy_scatterers()
-    else:
-      xray_structure_selected = soo.xray_structure.select(selection=selection)
+    xray_structure_selected = soo.xray_structure.deep_copy_scatterers()
     cushion = flex.double(cs.unit_cell().fractionalize((box_cushion,)*3))
 
     if (extract_unique): # extracts just au density (not everything in the

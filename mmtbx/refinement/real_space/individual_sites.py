@@ -340,12 +340,11 @@ class box_refinement_manager(object):
         if state:
           iselection.append(i)
       box = utils.extract_box_around_model_and_map(
-        xray_structure = self.xray_structure,
+        xray_structure = self.xray_structure.select(selection=selection_within),
         map_data       = self.target_map,
-        selection      = selection_within,
         box_cushion    = box_cushion)
       new_unit_cell = box.xray_structure_box.unit_cell()
-      geo_box = self.geometry_restraints_manager.select(box.selection)
+      geo_box = self.geometry_restraints_manager.select(selection_within)
       geo_box = geo_box.discard_symmetry(new_unit_cell=new_unit_cell)
       geo_box.shift_sites_cart(box.shift_cart) # disaster happens otherwise
       map_box = box.map_box

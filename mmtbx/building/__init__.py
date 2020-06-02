@@ -387,6 +387,9 @@ class box_build_refine_base(object):
     import mmtbx.restraints
     import mmtbx.utils
     from scitbx.array_family import flex
+
+    # WARNING: NO TESTS RUN THIS MODULE 
+
     self.iselection = selection.iselection()
     if (geometry_restraints_manager is None):
       if (self.processed_pdb_file is None):
@@ -404,9 +407,8 @@ class box_build_refine_base(object):
       radius    = selection_buffer_radius,
       selection = selection)
     self.box = mmtbx.utils.extract_box_around_model_and_map(
-      xray_structure   = xray_structure,
+      xray_structure   = xray_structure.select(selection=selection_within),
       map_data         = target_map,
-      selection        = self.selection_within,
       box_cushion      = box_cushion)
     self.hd_selection_box = self.box.xray_structure_box.hd_selection()
     self.n_sites_box = self.box.xray_structure_box.sites_cart().size()
@@ -415,7 +417,7 @@ class box_build_refine_base(object):
     if (self.target_map_rsr_box is None):
       self.target_map_rsr_box = self.target_map_box
     self.unit_cell_box = self.box.xray_structure_box.unit_cell()
-    self.geo_box = grm.geometry.select(self.box.selection
+    self.geo_box = grm.geometry.select(selection_within
       ).discard_symmetry(new_unit_cell=self.unit_cell_box)
     self.box_restraints_manager = mmtbx.restraints.manager(
       geometry      = self.geo_box,
