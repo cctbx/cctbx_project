@@ -558,20 +558,32 @@ class map_manager(map_reader,write_ccp4_map):
     '''
     return self.customized_copy(map_data=self.map_data().deep_copy())
 
-  def customized_copy(self,map_data=None):
+  def customized_copy(self,map_data=None,origin_shift_grid_units=None):
     '''
       Return a deepcopy of this map_manager, replacing map_data with
-      supplied map_data.  If map_data is not supplied, map_data is
-      set to None.
+      supplied map_data.
+
+      NOTE: Map_data must have origin at (0,0,0)
+
+      NOTE: It is permissible for map_data to have different bounds than
+      the current self.map_data.  In this case you must specify a new
+      value of origin_shift_grid_units corresponding to this new map_data.
     '''
 
-    assert map_data is not None # Require map data for the copy
     from copy import deepcopy
+
+    assert map_data is not None # Require map data for the copy
+    assert map_data.origin() == (0,0,0)
+
+    if origin_shift_grid_units is None:  # use existing origin shift
+      assert map_data.all() == self.map_data().all() # bounds must be same
+      origin_shift_grid_units=deepcopy(self.origin_shift_grid_units)
+
     mm=map_manager(
       map_data=map_data,  # not a deep copy, just whatever was supplied
       unit_cell_grid=deepcopy(self.unit_cell_grid),
       unit_cell_crystal_symmetry=self.unit_cell_crystal_symmetry(),
-      origin_shift_grid_units=deepcopy(self.origin_shift_grid_units),
+      origin_shift_grid_units=origin_shift_grid_units,
      )
     if self.labels:
        for label in self.labels:

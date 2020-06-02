@@ -100,16 +100,14 @@ class around_model(object):
     new_label="Boxed map %s to %s based on model" %(
       str(tuple(self.gridding_first)),str(tuple(self.gridding_last)))
 
-    #   Set up new map_manager
-    new_map_manager=iotbx.map_manager.map_manager(
-      unit_cell_grid             = map_manager.unit_cell_grid,
-      unit_cell_crystal_symmetry = map_manager.unit_cell_crystal_symmetry(),
-      origin_shift_grid_units    = origin_shift_grid_units,
-      map_data                   = map_box,
-      log                        = null_out())
+    #  Set up new map_manager.
+    #  NOTE: origin_shift_grid_units is required as bounds have changed
+    new_map_manager=map_manager.customized_copy(map_data=map_box,
+      origin_shift_grid_units=origin_shift_grid_units)
 
     # Add the label
     new_map_manager.add_label(new_label)
+    new_map_manager.show_summary()
 
     return new_map_manager
 

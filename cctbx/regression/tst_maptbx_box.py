@@ -8,8 +8,15 @@ from libtbx import group_args
 import iotbx.pdb
 from iotbx.map_manager import map_manager
 import mmtbx.model
+from scitbx.array_family import flex
 
-def get_random_structure_and_map():
+def get_random_structure_and_map(random_seed=1):
+
+  import random
+  random.seed(random_seed)
+  i=random.randint(1,714717)
+  flex.set_random_seed(i)
+  
   xrs = random_structure.xray_structure(
     space_group_info = space_group_info(19),
     volume_per_atom  = 25.,
