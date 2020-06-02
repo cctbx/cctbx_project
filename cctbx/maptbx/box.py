@@ -107,7 +107,6 @@ class around_model(object):
 
     # Add the label
     new_map_manager.add_label(new_label)
-    new_map_manager.show_summary()
 
     return new_map_manager
 
