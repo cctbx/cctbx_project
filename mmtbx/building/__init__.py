@@ -388,7 +388,7 @@ class box_build_refine_base(object):
     import mmtbx.utils
     from scitbx.array_family import flex
 
-    # WARNING: NO TESTS RUN THIS MODULE 
+    # WARNING: NO TESTS RUN THIS MODULE
 
     self.iselection = selection.iselection()
     if (geometry_restraints_manager is None):
