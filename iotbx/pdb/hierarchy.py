@@ -972,12 +972,16 @@ class _():
   def get_label_seq_id(self, atom_group):
     if not hasattr(self, '_label_seq_id_dict'):
       # make it
+      prev_ac_key = ''
       self._label_seq_id_dict = {}
       for chain in self.models()[0].chains():
         label_seq_id = 0
         for rg in chain.residue_groups():
           for ag in rg.atom_groups():
-            label_seq_id += 1
+            cur_ac_key = chain.id + rg.resseq + rg.icode
+            if cur_ac_key != prev_ac_key:
+              label_seq_id += 1
+              prev_ac_key = cur_ac_key
             label_seq_id_str='.'
             comp_id = ag.resname.strip()
             residue_class = common_residue_names_get_class(comp_id)
