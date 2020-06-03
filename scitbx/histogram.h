@@ -169,9 +169,9 @@ namespace scitbx {
       void
       assign_to_slot(ValueType const& d)
       {
-	if (!std::isnan(d)) {
-	  slots_[get_i_slot(d)]++;
-	}
+        if (!std::isnan(d)) {
+          slots_[get_i_slot(d)]++;
+        }
       }
 
       template <typename DataType>
