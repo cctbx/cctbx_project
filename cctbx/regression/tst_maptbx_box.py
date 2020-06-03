@@ -47,7 +47,8 @@ def exercise_around_model():
   box = cctbx.maptbx.box.around_model(
     map_manager = mam.mm,
     model       = mam.model,
-    cushion     = 5)
+    cushion     = 5,
+    wrapping    = True)
   new_mm1 = box.apply_to_map()
   new_mm2 = box.apply_to_map(map_manager=mam.mm)
   assert approx_equal(new_mm1.map_data(), new_mm2.map_data())
@@ -63,12 +64,51 @@ def exercise_around_model():
   assert approx_equal(box.model.get_sites_cart(), sites_cart_orig)
   assert cs_orig.is_similar_symmetry(box.model.crystal_symmetry())
   assert cs_orig.is_similar_symmetry(box.map_manager.crystal_symmetry())
+  assert new_mm1.map_data().as_1d().count(0)==0
+
+  # Now without wrapping...
+  box = cctbx.maptbx.box.around_model(
+    map_manager = mam.mm,
+    model       = mam.model,
+    cushion     = 5,
+    wrapping    = False)
+  new_mm3 = box.apply_to_map()
+  new_model3 = box.apply_to_model()
+  # make sure things did change
+  assert new_mm3.map_data().size() != map_data_orig.size()
+  assert new_mm3.map_data().size() == new_mm2.map_data().size()
+  # make sure things are not changed in-place
+  assert approx_equal(box.map_manager.map_data(), map_data_orig)
+  assert approx_equal(box.model.get_sites_frac(), sites_frac_orig)
+  assert approx_equal(box.model.get_sites_cart(), sites_cart_orig)
+  assert cs_orig.is_similar_symmetry(box.model.crystal_symmetry())
+  assert cs_orig.is_similar_symmetry(box.map_manager.crystal_symmetry())
+  assert new_mm3.map_data().as_1d().count(0)==132624
+
+  # Now specify bounds directly
+  box = cctbx.maptbx.box.with_bounds(
+    map_manager = mam.mm,
+    lower_bounds= (-11, -10, -10),
+    upper_bounds= (36, 42, 54),
+    wrapping    = False)
+  new_mm4 = box.apply_to_map()
+  new_model4 = box.apply_to_model(model=mam.model)
+  # make sure things did change
+  assert new_mm4.map_data().size() != map_data_orig.size()
+  assert new_mm4.map_data().size() == new_mm2.map_data().size()
+  # make sure things are not changed in-place
+  assert approx_equal(box.map_manager.map_data(), map_data_orig)
+  assert cs_orig.is_similar_symmetry(box.map_manager.crystal_symmetry())
+  assert new_mm4.map_data().as_1d().count(0)==132624
+
   #
   # IF you are about to change this - THINK TWICE!
   #
   import inspect
   r = inspect.getargspec(cctbx.maptbx.box.around_model.__init__)
-  assert r.args == ['self', 'map_manager', 'model', 'cushion'], r.args
+  assert r.args == ['self', 'map_manager', 'model', 'cushion','wrapping'], r.args
+  r = inspect.getargspec(cctbx.maptbx.box.with_bounds.__init__)
+  assert r.args == ['self', 'map_manager', 'lower_bounds', 'upper_bounds','wrapping'], r.args
 
 if (__name__ == "__main__"):
   exercise_around_model()
