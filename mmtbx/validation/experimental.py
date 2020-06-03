@@ -203,7 +203,7 @@ class real_space(validation):
 
         # check that model crystal symmetry matches map crystal symmetry
         mmi = map_and_model.input(
-          map_data = map_object.map_data(),
+          mm    = map_object,
           model = model)
 
         rsc_object = map_model_cc.map_model_cc(

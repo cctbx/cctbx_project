@@ -63,6 +63,16 @@ def test_01():
   new_mm=mm.deep_copy()
   assert new_mm.is_similar(mm)
 
+  # deep_copy a map without shifting origin
+  dm = DataManager(['miller_array','real_map', 'phil'])
+  dm.set_overwrite(True)
+  dm.process_real_map_file(data_ccp4)
+  omm = dm.get_real_map()
+  omm.show_summary()
+  new_omm=omm.deep_copy()
+  assert new_omm.is_similar(omm)
+  assert (not new_omm.is_similar(mm))
+
   # customized_copy
   new_mm=mm.customized_copy(map_data=mm.map_data().deep_copy())
   assert new_mm.is_similar(mm)
@@ -127,6 +137,12 @@ def test_01():
   assert new_mm.is_similar(mm)
   os.remove('test_map_manager.ccp4')
 
+  # Check origin_shifts
+  print (new_mm.origin_shift_grid_units)
+  print (new_mm.origin_shift_cart())
+  assert approx_equal(new_mm.origin_shift_grid_units,(100,100,100))
+  assert approx_equal(new_mm.origin_shift_cart(),
+       (74.70333099365234, 72.30750274658205, 73.7437515258789))
   # Convert to map coeffs, write out, read back, convert back to map
 
   map_coeffs = mm.map_as_fourier_coefficients(high_resolution = 3)

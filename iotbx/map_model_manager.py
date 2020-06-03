@@ -198,7 +198,7 @@ class map_model_manager:
       print ("No information about origin available",file=log)
       return
     if self._map_manager.map_data().origin()==desired_origin:
-      print("Origin is already at %s, no shifting done" %(desired_origin),
+      print("Origin is already at %s, no shifting done" %(str(desired_origin)),
         file=log)
       return
     self._map_manager.shift_origin(desired_origin=desired_origin)

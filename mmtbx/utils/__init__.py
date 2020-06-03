@@ -2377,10 +2377,13 @@ class shift_origin(object):
 
 class extract_box_around_model_and_map(object):
   def __init__(self,
-               xray_structure, # safe to pass here, does not change
-               map_data,
-               box_cushion,
+               xray_structure=None, # safe to pass here, does not change
+               map_data=None,
                mask_data=None,
+               box_cushion=None,
+               model=None, # model object, replaces xray_structure
+               mm=None, # map_manager, replaces map_data
+               mask_mm=None, # mask map_manager, replaces mask_data
                density_select=None,
                mask_select=None,
                threshold=None,
@@ -2413,6 +2416,20 @@ class extract_box_around_model_and_map(object):
                half_map_data_list=None,
                    ):
     adopt_init_args(self, locals())
+
+    # XXX Just for transition
+    if model and not xray_structure:
+      xray_structure=model.get_xray_structure()
+      self.xray_structure=xray_structure
+    if mm and not map_data:
+      map_data=mm.map_data()
+      self.map_data=map_data
+    if mask_mm and not mask_data:
+      mask_data=mask_mm.map_data()
+      self._mask_data=mask_data
+    # XXX Just for transition
+
+
     cs = xray_structure.crystal_symmetry()
     origin_as_input=self.map_data.origin()
     soo = shift_origin(map_data=self.map_data,

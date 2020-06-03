@@ -555,8 +555,22 @@ class map_manager(map_reader,write_ccp4_map):
       Return a deep copy of this map_manager object
       Uses customized_copy to deepcopy everything except map_data,
         and explicitly deepcopies map_data here
+
+      If origin is not currently at (0,0,0) shift it there and then shift back
+      In this case self.origin_shift_grid_units must be zero
     '''
-    return self.customized_copy(map_data=self.map_data().deep_copy())
+    if self.origin_is_zero():# all set
+      return self.customized_copy(map_data=self.map_data().deep_copy())
+    else:
+      assert self.origin_shift_grid_units==(0,0,0)
+      # shift origin
+      self.shift_origin()
+      # deep copy
+      new_mm=self.customized_copy(map_data=self.map_data().deep_copy())
+      # shift both back
+      new_mm.shift_origin_to_match_original()
+      self.shift_origin_to_match_original()
+      return new_mm
 
   def customized_copy(self,map_data=None,origin_shift_grid_units=None):
     '''
@@ -613,6 +627,16 @@ class map_manager(map_reader,write_ccp4_map):
       return False
     return True
 
+  def grid_units_to_cart(self,grid_units):
+    ''' Convert grid units to cartesian coordinates '''
+    x=grid_units[0]/self.unit_cell_grid[0]
+    y=grid_units[1]/self.unit_cell_grid[1]
+    z=grid_units[2]/self.unit_cell_grid[2]
+    return self.unit_cell().orthogonalize(tuple((x,y,z)))
+
+  def origin_shift_cart(self):
+    ''' Return the origin shift in cartesian coordinates'''
+    return self.grid_units_to_cart(self.origin_shift_grid_units)
 
   def map_as_fourier_coefficients(self, high_resolution=None):
     '''
