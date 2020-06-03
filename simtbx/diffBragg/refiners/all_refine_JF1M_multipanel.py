@@ -163,14 +163,17 @@ class RefineAll_JF1M_MultiPanel(RefineRot):
         # for the different hierarchy levels?
         node = det[self._panel_id]
         orig = node.get_local_origin()
+        # FIXME needed when refining detector geometry
         xpos = self.origin_xstart + self.idx_from_pid[self._panel_id]
         new_originZ = self.x[xpos]
         new_origin = orig[0], orig[1], new_originZ
+        #new_origin = orig[0], orig[1], orig[2]
         node.set_local_frame(node.get_local_fast_axis(),
                              node.get_local_slow_axis(),
                              new_origin)
         self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
         self.D.update_dxtbx_geoms(det, self.S.beam.nanoBragg_constructor_beam, self._panel_id)
+        #self.D.beam_center_mm = det[self._panel_id].get_beam_centre(self.S.beam.nanoBragg_constructor_beam.get_s0())
         '''
         det = self.S.detector
         node = det[self._panel_id]
@@ -304,7 +307,8 @@ class RefineAll_JF1M_MultiPanel(RefineRot):
                     g[self.n_spots + i_spot] += (db*one_minus_k_over_Lambda).sum()
                     g[self.n_spots*2 + i_spot] += (dc*one_minus_k_over_Lambda).sum()
 
-                if self.plot_images: # and self.iterations==0:
+
+                if self.plot_images and self.show_plotted_images: # and self.iterations==0:
                     import pylab as plt
                 if self.plot_images and self.iterations % self.plot_stride == 0:
                     if self.plot_residuals:
@@ -330,10 +334,11 @@ class RefineAll_JF1M_MultiPanel(RefineRot):
                         vmin = m-s
                         m2 = self.model_Lambda.mean()
                         s2 = self.model_Lambda.std()
-                        self.ax1.images[0].set_data(self.model_Lambda)
-                        self.ax1.images[0].set_clim(vmin, vmax)
-                        self.ax2.images[0].set_data(Imeas)
-                        self.ax2.images[0].set_clim(vmin, vmax)
+                        if self.show_plotted_images:
+                          self.ax1.images[0].set_data(self.model_Lambda)
+                          self.ax1.images[0].set_clim(vmin, vmax)
+                          self.ax2.images[0].set_data(Imeas)
+                          self.ax2.images[0].set_clim(vmin, vmax)
                         self.store_model_Lambda.append(self.model_Lambda)
                         self.store_Imeas.append(Imeas)
                         self.store_vmax.append(vmax)
