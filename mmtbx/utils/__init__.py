@@ -2608,7 +2608,6 @@ class extract_box_around_model_and_map(object):
     else:
       from cctbx.maptbx.box import get_bounds_of_valid_region,\
           copy_and_zero_map_outside_bounds
-      from libtbx import group_args
       bounds_info=get_bounds_of_valid_region(map_data=map_data,
          gridding_first=self.gridding_first,
          gridding_last=self.gridding_last)
