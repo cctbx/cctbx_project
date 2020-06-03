@@ -7,11 +7,19 @@ import cctbx.maptbx.box
 from libtbx import group_args
 import iotbx.pdb
 from iotbx.map_manager import map_manager
+from iotbx.map_model_manager import map_model_manager
 import mmtbx.model
 from scitbx.array_family import flex
 
-def get_random_structure_and_map(random_seed=1):
+def get_random_structure_and_map(
+   use_static_structure=False,
+   random_seed=171413,
+  ):
 
+  if use_static_structure:
+    mmm=map_model_manager()
+    mmm.generate_map()
+    return group_args(model = mmm.model(), mm = mmm.map_manager())
   import random
   random.seed(random_seed)
   i=random.randint(1,714717)
@@ -39,16 +47,19 @@ def get_random_structure_and_map(random_seed=1):
   return group_args(model = model, mm = mm)
 
 def exercise_around_model():
-  mam = get_random_structure_and_map()
+  mam = get_random_structure_and_map(use_static_structure=True)
+
   map_data_orig   = mam.mm.map_data().deep_copy()
   sites_frac_orig = mam.model.get_sites_frac().deep_copy()
   sites_cart_orig = mam.model.get_sites_cart().deep_copy()
   cs_orig         = mam.model.crystal_symmetry()
+
   box = cctbx.maptbx.box.around_model(
     map_manager = mam.mm,
     model       = mam.model,
-    cushion     = 5,
+    cushion     = 10,
     wrapping    = True)
+
   new_mm1 = box.apply_to_map()
   new_mm2 = box.apply_to_map(map_manager=mam.mm)
   assert approx_equal(new_mm1.map_data(), new_mm2.map_data())
@@ -70,7 +81,7 @@ def exercise_around_model():
   box = cctbx.maptbx.box.around_model(
     map_manager = mam.mm,
     model       = mam.model,
-    cushion     = 5,
+    cushion     = 10,
     wrapping    = False)
   new_mm3 = box.apply_to_map()
   new_model3 = box.apply_to_model()
@@ -83,13 +94,13 @@ def exercise_around_model():
   assert approx_equal(box.model.get_sites_cart(), sites_cart_orig)
   assert cs_orig.is_similar_symmetry(box.model.crystal_symmetry())
   assert cs_orig.is_similar_symmetry(box.map_manager.crystal_symmetry())
-  assert new_mm3.map_data().as_1d().count(0)==132624
+  assert new_mm3.map_data().as_1d().count(0)==81264
 
   # Now specify bounds directly
   box = cctbx.maptbx.box.with_bounds(
     map_manager = mam.mm,
-    lower_bounds= (-11, -10, -10),
-    upper_bounds= (36, 42, 54),
+    lower_bounds= (-7, -7, -7),
+    upper_bounds= (37, 47, 39),
     wrapping    = False)
   new_mm4 = box.apply_to_map()
   new_model4 = box.apply_to_model(model=mam.model)
@@ -99,7 +110,7 @@ def exercise_around_model():
   # make sure things are not changed in-place
   assert approx_equal(box.map_manager.map_data(), map_data_orig)
   assert cs_orig.is_similar_symmetry(box.map_manager.crystal_symmetry())
-  assert new_mm4.map_data().as_1d().count(0)==132624
+  assert new_mm4.map_data().as_1d().count(0)==81264
 
   #
   # IF you are about to change this - THINK TWICE!
