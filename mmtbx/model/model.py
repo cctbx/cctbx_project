@@ -965,7 +965,7 @@ class manager(object):
         atoms = atoms.select(~ias_selection)
       grm_geometry = self.get_restraints_manager().geometry
       grm_geometry.pair_proxies(sites_cart)
-      struct_conn_loop = grm_geometry.get_struct_conn_mmcif(atoms)
+      struct_conn_loop = grm_geometry.get_struct_conn_mmcif(hierarchy_to_output)
       cif_block.add_loop(struct_conn_loop)
       self.get_model_statistics_info()
     # outputting HELIX/SHEET records

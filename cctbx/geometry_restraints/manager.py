@@ -1775,37 +1775,34 @@ class manager(Base_geometry):
     for bond in list(simple)+list(asu):
       yield bond
 
-  def get_struct_conn_mmcif(self, atoms):
+  def get_struct_conn_mmcif(self, hierarchy):
     from iotbx.pdb.utils import all_label_asym_ids
+    atoms = hierarchy.atoms()
     label_asym_ids = all_label_asym_ids()
-    def _atom_info(atom, use_label_asym_ids=False):
-      if use_label_asym_ids:
-        return [atom.parent().resname,
-                label_asym_ids[atom.tmp],
-                atom.parent().parent().resseq.strip(),
-                atom.name.strip(),
-               ]
-      else:
-        return [atom.parent().resname,
+    def _atom_info(atom):
+      return [  # auth
+                atom.parent().resname,
                 atom.parent().parent().parent().id,
                 atom.parent().parent().resseq.strip(),
                 atom.name.strip(),
+                # label
+                atom.parent().resname,
+                label_asym_ids[atom.tmp],
+                hierarchy.get_label_seq_id(atom.parent()),
+                atom.name.strip(),
+                '.', # role
                ]
+      return res
     def _atom_info_grouped(bond):
       row = []
       if hasattr(bond, 'i_seqs'):
-        row += _atom_info(atoms[bond.i_seqs[0]])
-        row += _atom_info(atoms[bond.i_seqs[0]], use_label_asym_ids=True)
-        row.append('.')      # role
-        row += _atom_info(atoms[bond.i_seqs[1]])
-        row += _atom_info(atoms[bond.i_seqs[1]], use_label_asym_ids=True)
+        i1 = bond.i_seqs[0]
+        i2 = bond.i_seqs[1]
       else:
-        row += _atom_info(atoms[bond.i_seq])
-        row += _atom_info(atoms[bond.i_seq], use_label_asym_ids=True)
-        row.append('.')      # role
-        row += _atom_info(atoms[bond.j_seq])
-        row += _atom_info(atoms[bond.j_seq], use_label_asym_ids=True)
-      row.append('.')      # role
+        i1 = bond.i_seq
+        i2 = bond.j_seq
+      row += _atom_info(atoms[i1])
+      row += _atom_info(atoms[i2])
       #row.append('1_555') # symmetry!
       return row
     from cctbx.geometry_restraints.auto_linking_types import origin_ids

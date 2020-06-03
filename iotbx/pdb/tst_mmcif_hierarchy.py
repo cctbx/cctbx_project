@@ -1,10 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import cStringIO as StringIO
 
-from libtbx.test_utils import approx_equal
-from libtbx.test_utils import Exception_expected
-from libtbx.test_utils import show_diff
-
+from libtbx.test_utils import approx_equal, Exception_expected, \
+    show_diff, assert_lines_in_text
+from libtbx.utils import null_out
 import iotbx.cif
 from iotbx.pdb.mmcif import pdb_hierarchy_builder
 import mmtbx.model
@@ -1000,6 +999,81 @@ ATOM    905  OD2BASP A 102      -6.873  -5.171  32.545  0.37  7.65           O
       '6', '6', '6', '6', '6', '6', '6', '6', '6', '6', '6', '6', '6', '6', '6', '6']
   print (c_block)
 
+def exercise_struct_conn():
+  inp_pdb = """\
+CRYST1   44.400   44.400   23.500  90.00  90.00  90.00 I 4          16
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      0.022523  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.022523  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.042553        0.00000
+ATOM      1  N   GLY A  11      15.491   7.050  17.165  1.00 11.44           N
+ATOM      2  CA  GLY A  11      14.946   7.550  15.888  1.00  9.78           C
+ATOM      3  C   GLY A  11      16.011   7.604  14.814  1.00  8.93           C
+ATOM      4  O   GLY A  11      17.199   7.619  15.115  1.00  9.57           O
+ATOM      5  N   CYS A  12      15.573   7.664  13.560  1.00  8.03           N
+ATOM      6  CA  CYS A  12      16.451   7.725  12.392  1.00  7.79           C
+ATOM      7  C   CYS A  12      17.632   8.685  12.512  1.00  7.45           C
+ATOM      8  O   CYS A  12      18.784   8.309  12.282  1.00  7.87           O
+ATOM      9  CB  CYS A  12      15.625   8.123  11.166  1.00  8.65           C
+ATOM     10  SG  CYS A  12      16.605   8.617   9.709  1.00  8.63           S
+ATOM     11  N   CYS A  13      17.350   9.917  12.903  1.00  6.87           N
+ATOM     12  CA  CYS A  13      18.395  10.922  12.972  1.00  7.33           C
+ATOM     13  C   CYS A  13      19.516  10.679  13.975  1.00  7.43           C
+ATOM     14  O   CYS A  13      20.563  11.324  13.891  1.00  7.90           O
+ATOM     15  CB  CYS A  13      17.781  12.307  13.162  1.00  6.99           C
+ATOM     16  SG  CYS A  13      16.557  12.741  11.885  1.00  7.67           S
+ATOM     17  N   SER A  14      19.306   9.770  14.923  1.00  6.76           N
+ATOM     18  CA  SER A  14      20.343   9.480  15.909  1.00  7.99           C
+ATOM     19  C   SER A  14      21.439   8.582  15.332  1.00  8.60           C
+ATOM     20  O   SER A  14      22.515   8.453  15.920  1.00  9.95           O
+ATOM     21  CB ASER A  14      19.727   8.798  17.132  0.50  7.83           C
+ATOM     22  CB BSER A  14      19.734   8.854  17.167  0.50 10.09           C
+ATOM     23  OG ASER A  14      18.735   9.612  17.726  0.50  5.30           O
+ATOM     24  OG BSER A  14      19.092   7.628  16.880  0.50 14.05           O
+ATOM     25  N   ASP A  15      21.158   7.966  14.185  1.00  9.05           N
+ATOM     26  CA  ASP A  15      22.091   7.072  13.504  1.00 11.01           C
+ATOM     27  C   ASP A  15      22.718   7.829  12.338  1.00 10.20           C
+ATOM     28  O   ASP A  15      22.002   8.379  11.500  1.00  9.65           O
+ATOM     29  CB  ASP A  15      21.331   5.843  12.981  1.00 15.07           C
+ATOM     30  CG  ASP A  15      22.219   4.897  12.195  1.00 20.18           C
+ATOM     31  OD1 ASP A  15      22.975   4.126  12.823  1.00 21.78           O
+ATOM     32  OD2 ASP A  15      22.167   4.933  10.947  1.00 23.21           O
+ATOM     33  N   PRO A  16      24.060   7.821  12.228  1.00  8.44           N
+ATOM     34  CA  PRO A  16      24.749   8.532  11.145  1.00  9.67           C
+ATOM     35  C   PRO A  16      24.277   8.210   9.729  1.00  8.82           C
+ATOM     36  O   PRO A  16      24.070   9.119   8.925  1.00 10.54           O
+ATOM     37  CB  PRO A  16      26.218   8.138  11.347  1.00 11.63           C
+ATOM     38  CG  PRO A  16      26.309   7.904  12.817  1.00 12.94           C
+ATOM     39  CD  PRO A  16      25.030   7.139  13.102  1.00 10.76           C
+ATOM     40  N   ARG A  17      24.108   6.929   9.419  1.00  8.68           N
+ATOM     41  CA  ARG A  17      23.676   6.528   8.084  1.00  9.56           C
+ATOM     42  C   ARG A  17      22.276   7.054   7.747  1.00  9.72           C
+ATOM     43  O   ARG A  17      22.071   7.674   6.698  1.00  9.91           O
+ATOM     44  CB  ARG A  17      23.725   5.008   7.943  1.00 11.21           C
+ATOM     45  N   CYS A  18      21.326   6.846   8.652  1.00  8.44           N
+ATOM     46  CA  CYS A  18      19.960   7.306   8.421  1.00  7.65           C
+ATOM     47  C   CYS A  18      19.905   8.830   8.372  1.00  7.49           C
+ATOM     48  O   CYS A  18      19.215   9.416   7.536  1.00  7.83           O
+ATOM     49  CB  CYS A  18      19.028   6.785   9.512  1.00  7.84           C
+ATOM     50  SG  CYS A  18      17.281   6.837   8.999  1.00  9.23           S
+ATOM     51  N   ASN A  19      20.665   9.463   9.259  1.00  7.27           N
+ATOM     52  CA  ASN A  19      20.743  10.917   9.336  1.00  7.72           C
+ATOM     53  C   ASN A  19      21.202  11.491   7.986  1.00  8.16           C
+ATOM     54  O   ASN A  19      20.573  12.399   7.436  1.00  8.23           O
+ATOM     55  CB  ASN A  19      21.728  11.303  10.453  1.00  8.17           C
+ATOM     56  CG  ASN A  19      21.815  12.796  10.677  1.00  8.02           C
+ATOM     57  OD1 ASN A  19      22.199  13.544   9.786  1.00  9.20           O
+ATOM     58  ND2 ASN A  19      21.495  13.232  11.887  1.00  7.24           N
+"""
+  inp = iotbx.pdb.input(source_info=None, lines=inp_pdb)
+  m = mmtbx.model.manager(model_input=inp, build_grm=True, log=null_out())
+  cif_txt = m.model_as_mmcif()
+  # print(m.model_as_mmcif())
+  assert_lines_in_text(cif_txt,
+      "C00001 disulf CYS A 12 SG CYS A 2 SG . CYS A 18 SG CYS A 8 SG . 'Comput. Cryst. Newsl. (2015), 6, 13-13.'")
+
 def run():
   exercise_cif_show()
   exercise_fp_fdp()
@@ -1009,6 +1083,7 @@ def run():
   exercise_question_mark_for_altloc()
   exercise_label_seq_id_with_ac()
   exercise_label_seq_id_with_ac_2()
+  exercise_struct_conn()
 
 if __name__ == '__main__':
   run()
