@@ -7,6 +7,7 @@ from libtbx.utils import null_out
 import iotbx.cif
 from iotbx.pdb.mmcif import pdb_hierarchy_builder
 import mmtbx.model
+import libtbx.load_env
 from six.moves import range
 
 input_1ab1 = """\
@@ -1083,7 +1084,10 @@ def run():
   exercise_question_mark_for_altloc()
   exercise_label_seq_id_with_ac()
   exercise_label_seq_id_with_ac_2()
-  exercise_struct_conn()
+  if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
+    exercise_struct_conn()
+  else:
+    print('chem_data not present, skipping exercise_struct_conn')
 
 if __name__ == '__main__':
   run()
