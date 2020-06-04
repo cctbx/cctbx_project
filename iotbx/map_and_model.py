@@ -253,5 +253,3 @@ def get_map_counts(map_data, crystal_symmetry=None):
     d_min_corner = maptbx.d_min_corner(map_data=map_data,
       unit_cell = crystal_symmetry.unit_cell()))
   return map_counts
-
-
