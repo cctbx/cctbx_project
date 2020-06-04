@@ -1986,6 +1986,7 @@ class PhaserBuilder(CCIBuilder):
 
   def add_tests(self):
     self.add_test_parallel(module='phaser_regression') # run phaser_regression/run_tests.py file
+    """
     self.add_test_command('phaser_regression.regression', # run Gabors tests
                           args=['all',
                                 '-o',
@@ -1994,6 +1995,7 @@ class PhaserBuilder(CCIBuilder):
                                 '%s' %self.nproc,
                                 ],
     )
+    """
 
   def add_base(self, extra_opts=[]):
     # skip unnecessary base packages when building phaser only
