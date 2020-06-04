@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry,null_out
 import sys
 from iotbx.map_manager import map_manager
+from scitbx.array_family import flex
 
 class map_model_manager:
 
@@ -198,9 +199,8 @@ class map_model_manager:
       print ("No information about origin available",file=log)
       return
     if self._map_manager.map_data().origin()==desired_origin:
-      print("Origin is already at %s, no shifting done" %(str(desired_origin)),
-        file=log)
-      return
+      print("Origin is already at %s, no shifts will be applied" %(
+       str(desired_origin)), file=log)
     self._map_manager.shift_origin(desired_origin=desired_origin)
     if self._model:
       self._model=self.shift_model_to_match_working_map(
@@ -230,26 +230,35 @@ class map_model_manager:
       origin_shift=[-a[0],-a[1],-a[2]]
 
     coordinate_shift=[]
-    for shift_grid_units,spacing in zip(origin_shift,self._map_manager.pixel_sizes()):
+    for shift_grid_units,spacing in zip(
+       origin_shift,self._map_manager.pixel_sizes()):
       coordinate_shift.append(shift_grid_units*spacing)
     return coordinate_shift
 
   def shift_model_to_match_working_map(self,model=None,reverse=False,
      log=sys.stdout):
 
-    # Deep-copy and Shift a model object to match the working map (based
+    # Shift a model object to match the working map (based
     #    on self._map_manager.origin_shift_grid_units)
-    # *** To be replaced ***
+
     coordinate_shift=self.get_coordinate_shift(
        reverse=reverse)
-    model=model.deep_copy()
+
+    xrs=model.get_xray_structure()
     if(coordinate_shift !=(0,0,0)):
       print ("\nShifting model by %s" %(
          str(coordinate_shift)), file=log)
-      sites_cart=model.get_sites_cart()
+      sites_cart=xrs.sites_cart()
       sites_cart+=coordinate_shift
-      model.set_sites_cart(sites_cart)
-      model._process_input_model()
+      xrs.set_sites_cart(sites_cart)
+
+    sm=shift_manager(
+        shift_cart=coordinate_shift,
+        original_crystal_symmetry=self.unit_cell_crystal_symmetry(),
+        shifted_crystal_symmetry=model.crystal_symmetry(),
+        xray_structure_box=xrs)
+    model.set_shift_manager(shift_manager= sm) # do this even if no shift
+
     return model
 
   def shift_model_to_match_original_map(self,model=None,log=sys.stdout):
@@ -401,3 +410,41 @@ class map_model_manager:
     mm.show_summary()
     self._map_manager=mm
     self._model=model
+
+class shift_manager:
+  '''
+    Class to replace shift_manager in mmtbx.utils.extract_box_around_model_and_map
+    XXX In progress
+  '''
+
+  def __init__(self,
+    shift_cart=None,
+    original_crystal_symmetry=None,
+    shifted_crystal_symmetry=None,
+    xray_structure_box=None,
+       ):
+
+    assert shift_cart is not None
+    assert original_crystal_symmetry is not None
+    assert shifted_crystal_symmetry is not None
+    assert xray_structure_box is not None
+
+    self.shift_cart=shift_cart
+    self.original_crystal_symmetry=original_crystal_symmetry
+    self.shifted_crystal_symmetry=shifted_crystal_symmetry
+    self.xray_structure_box=xray_structure_box
+
+
+  def get_original_cs(self):
+    return self.original_crystal_symmetry
+
+  def get_shifted_cs(self):
+    return self.shifted_crystal_symmetry
+
+  def shift_back(self, pdb_hierarchy):
+    sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    shift_back = [-self.shift_cart[0], -self.shift_cart[1], -self.shift_cart[2]]
+    sites_cart_shifted = sites_cart+\
+      flex.vec3_double(sites_cart.size(), shift_back)
+    pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
+

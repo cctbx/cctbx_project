@@ -62,8 +62,8 @@ def test_01():
   shifted_model=mmm.shift_model_to_match_working_map(model=model)
   model_in_original_position=mmm.shift_model_to_match_original_map(
       model=shifted_model)
-  assert (not approx_equal(model.get_sites_cart(),
-                      shifted_model.get_sites_cart(),out=None))
+  assert (approx_equal(model.get_sites_cart(), # not a copy
+                      shifted_model.get_sites_cart()))
   assert approx_equal(model.get_sites_cart(),
                       model_in_original_position.get_sites_cart())
 
