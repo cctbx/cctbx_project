@@ -1250,6 +1250,19 @@ class manager(manager_mixin):
         km      = km))
     return result
 
+  def show_short(self, show_k_mask=True, log=None):
+    if(log is None): log = sys.stdout
+    if(show_k_mask):
+      fmt="%7.3f-%-7.3f %6.2f %5d %5d %6.4f %9.3f %9.3f %5.3f   %s"
+      print("   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> ktotal  kmask", file=log)
+      for b in self.bins():
+        print(fmt % (b.d_max,b.d_min,b.cmpl,b.nw,b.nf,b.r,b.fo_mean,b.fm_mean,b.ki*b.ka,b.km), file=log)
+    else:
+      fmt="%7.3f-%-7.3f %6.2f %5d %5d %6.4f %9.3f %9.3f %5.3f"
+      print("   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> ktotal", file=log)
+      for b in self.bins():
+        print(fmt % (b.d_max,b.d_min,b.cmpl,b.nw,b.nf,b.r,b.fo_mean,b.fm_mean,b.ki*b.ka), file=log)
+
   def show(self, log=None, suffix=None, show_header=True, show_approx=True):
     if(log is None): log = sys.stdout
     l="Statistics in resolution bins"
@@ -1450,15 +1463,11 @@ class manager(manager_mixin):
         bulk_solvent_and_scaling = True,
         remove_outliers = True,
         show = False,
-        bulk_solvent=True,
         verbose=None,
         log = None):
     self.alpha_beta_cache = None
     self.apply_scale_k1_to_f_obs()
     from mmtbx.bulk_solvent import f_model_all_scales
-    import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
-    params = bss.master_params.extract()
-    params.bulk_solvent=bulk_solvent
     o = f_model_all_scales.run(
       fmodel               = self,
       apply_back_trace     = apply_back_trace,

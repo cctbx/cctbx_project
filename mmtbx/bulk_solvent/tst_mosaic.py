@@ -1082,6 +1082,10 @@ def run():
   inp = common_inputs(k_sols=k_sols, for_test=True)
   mask, mm, f_obs, i_obs, fc = inp.mask, inp.mm, inp.f_obs, inp.i_obs, inp.fc
   # Check masks and F_mask calculated different ways add up
+  mi,ma = flex.min(mm.data), flex.max(mm.data)
+  assert approx_equal(mi,0) and approx_equal(ma,1), [mi,ma]
+  mi,ma = flex.min(mask.data_asu), flex.max(mask.data_asu)
+  assert approx_equal(mi,0) and approx_equal(ma,1), [mi,ma]
   assert approx_equal(mm.data, mask.data_asu)
   assert approx_equal(mm.f_mask.data(), mask.f_mask.data())
   # Initial k_sols for finite differences test and minimization (algorithm_2)
@@ -1110,6 +1114,12 @@ def run():
   r = mosaic.algorithm_2(
     i_obs = i_obs, fc = fc, f_masks=mm.f_masks, x = flex.double(x))
   assert approx_equal(r, [1,]+k_sols)
+  #
+  r = mosaic.algorithm_2(
+    i_obs = i_obs, fc = fc, f_masks=mm.f_masks, x = flex.double(x),
+    use_curvatures = False)
+  assert approx_equal(r, [1,]+k_sols, 1.e-3)
+
 
 
 if (__name__ == "__main__"):

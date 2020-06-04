@@ -11,6 +11,7 @@ import boost.python
 asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from libtbx import group_args
 from mmtbx import bulk_solvent
+from mmtbx.ncs import tncs
 
 # Utilities used by algorithm 2 ------------------------------------------------
 
@@ -81,6 +82,9 @@ class tg(object):
     self.sum_i_obs = flex.sum(self.i_obs.data())
     self.update_target_and_grads(x=x)
 
+  def update(self, x):
+    self.update_target_and_grads(x = x)
+
   def update_target_and_grads(self, x):
     self.x = x
     s = 1 #180/math.pi
@@ -132,6 +136,8 @@ class tg(object):
 
   def gradients(self): return self.g/self.sum_i_obs
 
+  def gradient(self): return self.gradients()
+
   def curvatures(self): return self.d/self.sum_i_obs
 #-------------------------------------------------------------------------------
 
@@ -163,7 +169,7 @@ def get_mask(xray_structure, ma, grid_step, for_test):
 
 def mosaic_f_mask(mask_data_asu, ma, n_real, for_test):
   co = maptbx.connectivity(map_data=mask_data_asu, threshold=0.01,
-    preprocess_against_shallow=True)
+    preprocess_against_shallow = not for_test) # Cannot do it with ASU map
   conn_asu = co.result().as_double()
   z = zip(co.regions(),range(0,co.regions().size()))
   sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
@@ -175,6 +181,7 @@ def mosaic_f_mask(mask_data_asu, ma, n_real, for_test):
   f_masks  = []
   for p in sorted_by_volume:
     v, i = p
+    #print ("volume:",v, "region_id",i)
     if(i==0): continue
     s = conn_asu==i
     if(for_test):
@@ -200,7 +207,7 @@ def algorithm_0(f_obs, fc, f_masks):
   """
   k_mask_trial_range=[]
   s = 0
-  while s<10:
+  while s<1:
     k_mask_trial_range.append(s)
     s+=0.001
   r = []
@@ -227,28 +234,25 @@ def algorithm_2(i_obs, fc, f_masks, x, use_curvatures=True):
   """
   Unphased one-step search
   """
-  def fixx(x):
-    #s=x<0
-    #mean = flex.mean(x)
-    #if mean<0: mean=0
-    #x=x.set_selected(s,mean)
-    #if(x[0]<0): x[0]=1
-    return x
   F = [fc]+f_masks
   calculator = tg(i_obs = i_obs, F=F, x = x)
   for it in xrange(10):
-    m = minimizer(max_iterations=100, calculator=calculator)
-    calculator = tg(i_obs = i_obs, F=F, x = fixx(m.x))
-#    m = minimizer2(max_iterations=100, calculator=calculator).run(use_curvatures=True)
-#    #print ("step: %4d"%m.cntr, "target:", m.calculator.target(), "params:", \
-#    #  " ".join(["%10.6f"%i for i in m.x]) )
-#    calculator = tg(i_obs = i_obs, F=F, x = m.x)
+    if(use_curvatures):
+      m = minimizer(max_iterations=100, calculator=calculator)
+    else:
+      m = tncs.minimizer(
+        potential       = calculator,
+        use_bounds      = 2,
+        lower_bound     = flex.double(x.size(), 0),
+        upper_bound     = flex.double(x.size(), 10),
+        initial_values  = x).run()
+    calculator = tg(i_obs = i_obs, F=F, x = m.x)
   if(use_curvatures):
     for it in xrange(10):
       m = minimizer(max_iterations=100, calculator=calculator)
-      calculator = tg(i_obs = i_obs, F=F, x = fixx(m.x))
+      calculator = tg(i_obs = i_obs, F=F, x = m.x)
       m = minimizer2(max_iterations=100, calculator=calculator).run(use_curvatures=True)
-      calculator = tg(i_obs = i_obs, F=F, x = fixx(m.x))
+      calculator = tg(i_obs = i_obs, F=F, x = m.x)
   return m.x
 
 def algorithm_3(i_obs, fc, f_masks):
