@@ -388,6 +388,16 @@ def get_model_from_inputs(
       model.set_crystal_symmetry_if_undefined(crystal_symmetry)
       model._process_input_model()
 
+    if crystal_symmetry and (
+      not model.crystal_symmetry().is_similar_symmetry(crystal_symmetry)):
+      print ("\nWarning: replacing model crystal symmetry:\n" +
+        "(%s) \nwith input crystal symmetry:\n (%s)\n" %(
+         str(model.crystal_symmetry()),str(crystal_symmetry)),file=log)
+      model= mmtbx.model.manager(
+          model_input = model.get_hierarchy().as_pdb_input(),
+          crystal_symmetry = crystal_symmetry,
+          log = log)
+
   if not model:  # construct dummy model
     from cctbx.array_family import flex
     pdb_hierarchy=iotbx.pdb.input(
@@ -902,8 +912,8 @@ def run(args,
   # Apply selection to model if desired
   model=apply_selection_to_model(params=params,model=model,log=log)
 
-  # Use model crystal_symmetry
-  crystal_symmetry=model.crystal_symmetry()
+  # Use inputs.crystal_symmetry (precedence there is for map)
+  crystal_symmetry=inputs.crystal_symmetry
 
   xray_structure=model.get_xray_structure().show_summary(f=log)
 

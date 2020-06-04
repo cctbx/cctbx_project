@@ -577,12 +577,23 @@ class map_manager(map_reader,write_ccp4_map):
       Return a deepcopy of this map_manager, replacing map_data with
       supplied map_data.
 
-      NOTE: Map_data must have origin at (0,0,0)
-
       NOTE: It is permissible for map_data to have different bounds than
       the current self.map_data.  In this case you must specify a new
       value of origin_shift_grid_units corresponding to this new map_data.
+
+      NOTE: if origin is not at (0,0,0) then shift origin, copy, shift
+      both origins back.
+      This requires that self.origin_shift_grid_units==(0,0,0)
     '''
+    if not self.origin_is_zero():
+      assert self.origin_shift_grid_units==(0,0,0)
+      # shift origin
+      self.shift_origin()
+      new_mm=self.deep_copy()
+      # shift both back
+      new_mm.shift_origin_to_match_original()
+      self.shift_origin_to_match_original()
+      return new_mm
 
     from copy import deepcopy
 
