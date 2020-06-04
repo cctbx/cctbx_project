@@ -1985,7 +1985,8 @@ class PhaserBuilder(CCIBuilder):
   ]
 
   def add_tests(self):
-    self.add_test_command('phaser_regression.regression',
+    self.add_test_parallel(module='phaser_regression') # run phaser_regression/run_tests.py file
+    self.add_test_command('phaser_regression.regression', # run Gabors tests
                           args=['all',
                                 '-o',
                                 'terse_failed',
