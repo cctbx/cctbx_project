@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry,null_out,to_str
+from libtbx import group_args
 import sys
 from iotbx.mrcfile import map_reader, write_ccp4_map
 from scitbx.array_family import flex
@@ -390,6 +391,33 @@ class map_manager(map_reader,write_ccp4_map):
 
     if(self.map_data() is None): return
 
+    # Figure out what the shifts are (in grid units)
+    shift_info=self.get_shift_info(desired_origin=desired_origin)
+
+    # Update the value of origin_shift_grid_units
+    #  This is position of the origin of the new map in the full unit cell grid
+    self.origin_shift_grid_units=shift_info.new_origin_shift_grid_units
+
+    # Shift map_data if necessary
+    if shift_info.shift_to_apply != (0,0,0):
+      # map will start at desired_origin and have current size:
+      acc=flex.grid(shift_info.desired_origin,shift_info.new_end)
+      self.map_data().reshape(acc)
+
+    # Checks
+    new_current_origin=self.map_data().origin()
+    assert new_current_origin==shift_info.desired_origin
+
+    assert add_tuples(shift_info.current_origin,shift_info.shift_to_apply
+        )==shift_info.desired_origin
+
+    # Original location of first element of map should agree with previous
+
+    assert shift_info.map_corner_original_location == add_tuples(
+       new_current_origin, self.origin_shift_grid_units)
+
+  def get_shift_info(self,desired_origin=None):
+
     if(desired_origin is None):
       desired_origin=(0,0,0)
     desired_origin=tuple(desired_origin)
@@ -408,29 +436,23 @@ class map_manager(map_reader,write_ccp4_map):
 
     assert add_tuples(current_origin,shift_to_apply)==desired_origin
 
-    # Apply the shift
-
-    if shift_to_apply != (0,0,0):
-      # map will start at desired_origin and have current size:
-      new_end=add_tuples(desired_origin,self.map_data().all())
-      acc=flex.grid(desired_origin,new_end)
-      self.map_data().reshape(acc)
-
-    # New origin_shift_grid_units
-    self.origin_shift_grid_units=subtract_tuples(
+    new_origin_shift_grid_units=subtract_tuples(
         self.origin_shift_grid_units,shift_to_apply)
 
-    # Checks
-    new_current_origin=self.map_data().origin()
-    assert new_current_origin==desired_origin
+    current_end=add_tuples(current_origin,self.map_data().all())
+    new_end=add_tuples(desired_origin,self.map_data().all())
 
-    assert add_tuples(current_origin,shift_to_apply)==desired_origin
-
-    # Original location of first element of map should agree with previous
-
-    assert map_corner_original_location == add_tuples(new_current_origin,
-         self.origin_shift_grid_units)
-
+    shift_info=group_args(
+      map_corner_original_location=map_corner_original_location,
+      current_origin=current_origin,
+      current_end=current_end,
+      current_origin_shift_grid_units=self.origin_shift_grid_units,
+      shift_to_apply=shift_to_apply,
+      desired_origin=desired_origin,
+      new_end=new_end,
+      new_origin_shift_grid_units=new_origin_shift_grid_units,
+       )
+    return shift_info
 
   def shift_origin_to_match_original(self):
     '''
@@ -553,59 +575,69 @@ class map_manager(map_reader,write_ccp4_map):
   def deep_copy(self):
     '''
       Return a deep copy of this map_manager object
-      Uses customized_copy to deepcopy everything except map_data,
-        and explicitly deepcopies map_data here
+      Uses customized_copy to deepcopy everything including map_data
 
-      If origin is not currently at (0,0,0) shift it there and then shift back
-      In this case self.origin_shift_grid_units must be zero
+      Origin does not have to be at (0,0,0) to apply
     '''
-    if self.origin_is_zero():# all set
-      return self.customized_copy(map_data=self.map_data().deep_copy())
-    else:
-      assert self.origin_shift_grid_units==(0,0,0)
-      # shift origin
-      self.shift_origin()
-      # deep copy
-      new_mm=self.customized_copy(map_data=self.map_data().deep_copy())
-      # shift both back
-      new_mm.shift_origin_to_match_original()
-      self.shift_origin_to_match_original()
-      return new_mm
+    return self.customized_copy(map_data=self.map_data())
 
-  def customized_copy(self,map_data=None,origin_shift_grid_units=None):
+  def customized_copy(self,map_data=None,origin_shift_grid_units=None,
+      use_deep_copy_for_map_data=True):
     '''
-      Return a deepcopy of this map_manager, replacing map_data with
+      Return a customized deep_copy of this map_manager, replacing map_data with
       supplied map_data.
+
+      The map_data will be deep_copied before using it unless
+      use_deep_copy_for_map_data=False
+
+      Normally this customized_copy is applied with a map_manager
+      that has already shifted the origin to (0,0,0) with shift_origin.
+
+      Normally the new map_data will have the same dimensions of the current
+      map_data. Normally new map_data will also have origin at (0,0,0).
 
       NOTE: It is permissible for map_data to have different bounds than
       the current self.map_data.  In this case you must specify a new
       value of origin_shift_grid_units corresponding to this new map_data.
+      This new origin_shift_grid_units specifies the original position in the
+      full unit cell grid of the most-negative corner grid point of the
+      new map_data. The new map_manager will still have the same unit
+      cell dimensions and grid as the original.
 
-      NOTE: if origin is not at (0,0,0) then shift origin, copy, shift
-      both origins back.
-      This requires that self.origin_shift_grid_units==(0,0,0)
+      NOTE: It is permissible to get a customized copy before shifting the
+      origin.  Applying with non-zero origin requires that:
+         self.origin_shift_grid_units==(0,0,0)
+         origin_shift_grid_units=(0,0,0)
+         map_data.all() (size in each direction)  of current and new maps
+            are the same.
+         origins of current and new maps are the same
     '''
-    if not self.origin_is_zero():
-      assert self.origin_shift_grid_units==(0,0,0)
-      # shift origin
-      self.shift_origin()
-      new_mm=self.deep_copy()
-      # shift both back
-      new_mm.shift_origin_to_match_original()
-      self.shift_origin_to_match_original()
-      return new_mm
+
+    # Do not alter map_data unless use_deep_copy_for_map_data=False
+
+    if use_deep_copy_for_map_data:
+      map_data=map_data.deep_copy()
 
     from copy import deepcopy
-
     assert map_data is not None # Require map data for the copy
-    assert map_data.origin() == (0,0,0)
 
-    if origin_shift_grid_units is None:  # use existing origin shift
+    if map_data.origin() != (0,0,0):
+
+      # Make sure all the assumptions are satisfied so we can just copy
+      assert self.origin_shift_grid_units==(0,0,0)
+      assert origin_shift_grid_units in [None, (0,0,0)]
+      assert self.map_data().all()==map_data.all()
+      assert self.map_data().origin()==map_data.origin()
+
+      # Now just go ahead and copy using origin_shift_grid_units=(0,0,0)
+      origin_shift_grid_units=(0,0,0)
+
+    elif origin_shift_grid_units is None:  # use existing origin shift
       assert map_data.all() == self.map_data().all() # bounds must be same
       origin_shift_grid_units=deepcopy(self.origin_shift_grid_units)
 
     mm=map_manager(
-      map_data=map_data,  # not a deep copy, just whatever was supplied
+      map_data=map_data,
       unit_cell_grid=deepcopy(self.unit_cell_grid),
       unit_cell_crystal_symmetry=self.unit_cell_crystal_symmetry(),
       origin_shift_grid_units=origin_shift_grid_units,
