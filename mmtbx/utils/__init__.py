@@ -3233,7 +3233,7 @@ def check_and_set_crystal_symmetry(
   for model in models:
     cs = model.crystal_symmetry()
     if(cs is None or cs.is_empty()):
-      model.set_crystal_symmetry_if_undefined(crystal_symmetry)
+      model.set_crystal_symmetry(crystal_symmetry)
   if(len(map_inps)>1):
     m0 = map_inps[0].map_data()
     for m in map_inps[1:]:

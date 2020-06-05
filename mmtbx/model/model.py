@@ -495,29 +495,22 @@ class manager(object):
   def set_ss_annotation(self, ann):
     self._ss_annotation = ann
 
-  def set_crystal_symmetry_if_undefined(self, cs, force=False):
-    """
-    Function to set crystal symmetry if it is not defined yet.
-    Special case when incoming cs is the same to self._crystal_symmetry,
-    then just do nothing for compatibility with existing code.
-    It would be better to remove this function at all.
-
-    This function can be used ONLY straight after initialization of model,
-    when no xray_structure is constructed yet.
-
-    The keyword force=True sets cs even if it is defined.
-    """
-    assert self._xray_structure is None
-    is_empty_cs = self._crystal_symmetry is None or (
-        self._crystal_symmetry.unit_cell() is None and
-        self._crystal_symmetry.space_group() is None)
-    if not is_empty_cs:
-      if self._crystal_symmetry.is_similar_symmetry(cs):
-        return
-    if not force:
-      assert is_empty_cs, "%s,%s" % (
-          self._crystal_symmetry.show_summary(), cs.show_summary())
-    self._crystal_symmetry = cs
+  def set_crystal_symmetry(self, crystal_symmetry):
+    if(self.crystal_symmetry() is None):
+      assert self._xray_structure is None
+      self._crystal_symmetry = crystal_symmetry
+    else:
+      xrs = self.get_xray_structure()
+      same_symmetry = xrs.crystal_symmetry().is_similar_symmetry(
+        crystal_symmetry)
+      scattering_table = xrs.scattering_type_registry().last_table()
+      scatterers = xrs.scatterers()
+      sp = crystal.special_position_settings(crystal_symmetry)
+      self._xray_structure = xray.structure(sp, scatterers)
+      self._crystal_symmetry = crystal_symmetry
+      self.setup_scattering_dictionaries(scattering_table = scattering_table)
+      if(not same_symmetry):
+        self.unset_restraints_manager()
 
   def set_refinement_flags(self, flags):
     self.refinement_flags = flags

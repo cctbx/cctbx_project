@@ -385,7 +385,7 @@ def get_model_from_inputs(
     dm.process_model_file(file_name)
     model = dm.get_model(file_name)
     if not model.crystal_symmetry():
-      model.set_crystal_symmetry_if_undefined(crystal_symmetry)
+      model.set_crystal_symmetry(crystal_symmetry)
       model._process_input_model()
 
     if crystal_symmetry and (
