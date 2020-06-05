@@ -98,6 +98,18 @@ class diffBragg: public nanoBragg{
   void zero_raw_pixel_rois();
   void set_ucell_derivative_matrix(int refine_id, af::shared<double> const& value);
   void set_ucell_second_derivative_matrix(int refine_id, af::shared<double> const& value);
+  void init_Fhkl2();
+  inline void free_Fhkl2(){
+      if(Fhkl2 != NULL) {
+        for (h0=0; h0<=h_range;h0++) {
+          for (k0=0; k0<=k_range;k0++) {
+            free(Fhkl2[h0][k0]);
+          }
+          free(Fhkl2[h0]);
+        }
+        free(Fhkl2);
+      }
+  }
   //void reset_derivative_pixels(int refine_id);
 
   /* methods for interacting with the derivative managers */
@@ -218,7 +230,10 @@ class diffBragg: public nanoBragg{
   double scale_term2 ;
   double scale_term ;
 
-
+  double ***Fhkl2;  // = NULL
+  af::shared<double> pythony_amplitudes2;
+  bool complex_miller;
+  double F_cell2; // for storing the imaginary component
 
 }; // end of diffBragg
 
