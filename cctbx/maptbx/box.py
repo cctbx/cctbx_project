@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx.math_utils import ifloor, iceil
 from cctbx import crystal, maptbx, uctbx
 from scitbx.array_family import flex
+from libtbx import adopt_init_args
 from libtbx.utils import null_out
 from libtbx import group_args
 import iotbx.map_manager
@@ -26,26 +27,19 @@ class around_model(object):
     region, those points are set to zero.
 
   """
-  def __init__(self, map_manager=None, model=None, cushion=None,
-      wrapping=None):
-    self.map_manager = map_manager
-    self.model = model
-    self.wrapping = wrapping
-
+  def __init__(self, map_manager, model, cushion, wrapping):
+    adopt_init_args(self, locals())
     self.basis_for_boxing_string='using model, wrapping=%s'  %(wrapping)
-
     # safeguards
-    assert wrapping is not None
+    assert isinstance(wrapping, bool)
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
     assert isinstance(model, mmtbx.model.manager)
     assert self.map_manager.map_data().accessor().origin() == (0,0,0)
     assert map_manager.crystal_symmetry().is_similar_symmetry(
       model.crystal_symmetry())
     assert cushion >= 0
-
     if wrapping:
       assert map_manager.unit_cell_grid==map_manager.map_data().all()
-
     # get items needed to do the shift
     cs = map_manager.crystal_symmetry()
     uc = cs.unit_cell()
@@ -58,21 +52,17 @@ class around_model(object):
     frac_max = sites_frac.max()
     frac_max = list(flex.double(frac_max)+cushion_frac)
     frac_min = list(flex.double(frac_min)-cushion_frac)
-
     # find corner grid nodes
     all_orig = map_data.all()
     self.gridding_first = [ifloor(f*n) for f,n in zip(frac_min, all_orig)]
     self.gridding_last  = [ iceil(f*n) for f,n in zip(frac_max, all_orig)]
-
     # Ready with gridding...set up shifts and box crystal_symmetry
     self.set_shifts_and_crystal_symmetry()
 
   def set_shifts_and_crystal_symmetry(self):
     # set items needed to do the shift
-
     cs = self.map_manager.crystal_symmetry()
     uc = cs.unit_cell()
-
     self.box_all=[j-i+1 for i,j in zip(self.gridding_first,self.gridding_last)]
     # get shift vector as result of boxing
     all_orig = self.map_manager.map_data().all()
@@ -100,62 +90,52 @@ class around_model(object):
       assert ma1.all()    == ma2.all()
       assert ma1.origin() == ma2.origin()
       assert ma1.focus()  == ma2.focus()
-
     map_data = map_manager.map_data()
-
     # Check if map is all valid
     bounds_info=get_bounds_of_valid_region(map_data=map_data,
       gridding_first=self.gridding_first,
       gridding_last=self.gridding_last)
-
     if self.wrapping or bounds_info.inside_allowed_bounds:
       # Just copy everything
       map_box = maptbx.copy(map_data, self.gridding_first, self.gridding_last)
       # Note: map_box gridding is self.gridding_first to self.gridding_last
-
     else: # Need to copy and then zero outside of defined region
       map_box=copy_and_zero_map_outside_bounds(map_data=map_data,
          bounds_info=bounds_info)
-
     #  Now reshape map_box to put origin at (0,0,0)
     map_box.reshape(flex.grid(self.box_all))
-
+    #
     # Create new map_manager object:
     #   Use original values for:
     #     unit_cell_grid    (gridding of original full unit cell)
     #     unit_cell_crystal_symmetry  (symmetry of original full unit cell)
     #     input_file_name
-
     #   Use new (boxed) values for:
     #     map_data
     #     crystal_symmetry   (symmetry of the part of the map that is present)
-
     #   Update:
     #     origin_shift_grid_units  (position in the original map of the
     #                                 (0,0,0) grid point in map_box)
     #     labels  (add label specifying boxing operation)
-
+    #
     # New origin_shift_grid_units:
     origin_shift_grid_units=[
-       self.gridding_first[i]+map_manager.origin_shift_grid_units[i]
+      self.gridding_first[i]+map_manager.origin_shift_grid_units[i]
         for i in range(3)]
-
     # New labels:
     new_label="Boxed %s to %s %s" %(
       str(tuple(self.gridding_first)),str(tuple(self.gridding_last)),
       self.basis_for_boxing_string)
-
     #  Set up new map_manager.
     #  NOTE: origin_shift_grid_units is required as bounds have changed
     new_map_manager=map_manager.customized_copy(map_data=map_box,
       origin_shift_grid_units=origin_shift_grid_units)
-
     # Add the label
     new_map_manager.add_label(new_label)
-
     return new_map_manager
 
   def apply_to_model(self, model=None):
+    # This changes model inplace
     if(model is None):
       # Apply to model already present
       model = self.model
@@ -163,13 +143,19 @@ class around_model(object):
       # Apply to similar model
       assert model.crystal_symmetry().is_similar_symmetry(
         self.map_manager.crystal_symmetry())
-
     box_uc = self.crystal_symmetry.unit_cell()
     uc     = model.crystal_symmetry().unit_cell()
     sites_frac = model.get_sites_frac()
     sites_frac_new = box_uc.fractionalize(
       uc.orthogonalize(sites_frac+self.shift_frac))
     sites_cart_new = box_uc.orthogonalize(sites_frac_new)
+    #
+    # XXX This beaks phenix_regression/match_maps/tst_match_maps_001.py
+    #
+    #model.set_sites_cart(sites_cart = sites_cart_new)
+    #model.set_crystal_symmetry(crystal_symmetry = self.crystal_symmetry)
+    #return model
+    #
     pdb_hierarchy = model.get_hierarchy().deep_copy()
     pdb_hierarchy.atoms().set_xyz(sites_cart_new)
     return mmtbx.model.manager(
