@@ -261,6 +261,7 @@ class manager(object):
           # Could get rid of this 'if' clause, but I want to avoid construction of
           # atom_selection_cache and selections when there is no segids in pdb
           # which is majority of cases.
+          whole_annotation = iotbx.pdb.secondary_structure.annotation(helices=[], sheets=[])
           for segid in segids:
             isel = self.selection_cache.selection("segid '%s'" % segid).iselection()
             selected_pdb_h = self.pdb_hierarchy.select(isel)
@@ -271,6 +272,8 @@ class manager(object):
                   prefix_scope="secondary_structure",
                   add_segid=segid)
                 ss_params.append(ss_phil)
+                whole_annotation.add_helices_and_sheets_simple(other_annot=annot)
+          annot = whole_annotation
         else:
           if self.pdb_hierarchy.contains_protein():
             annot = self.find_sec_str(pdb_hierarchy=self.pdb_hierarchy)
