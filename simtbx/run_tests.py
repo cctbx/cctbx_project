@@ -6,6 +6,7 @@ tst_list = (
     "$D/nanoBragg/tst_nanoBragg_minimal.py",
     "$D/nanoBragg/tst_nanoBragg_mosaic.py",
     "$D/nanoBragg/tst_gaussian_mosaicity.py",
+    "$D/diffBragg/tests/tst_diffBragg_Fhkl_complex.py",
     "$D/diffBragg/tests/tst_diffBragg_change_of_basis.py",
     "$D/diffBragg/tests/tst_diffBragg_update_dxtbx_geoms.py",
     "$D/diffBragg/tests/tst_diffBragg_deriv_rois.py",

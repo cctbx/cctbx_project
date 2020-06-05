@@ -146,7 +146,14 @@ class SimData:
 
     def update_Fhkl_tuple(self):
         if self.crystal.miller_array is not None:
-            self.D.Fhkl_tuple = self.crystal.miller_array.indices(), self.crystal.miller_array.data()
+            if self.crystal.miller_is_complex:
+                print("USING COMPLEX ARRAY!")
+                Freal, Fimag = zip(*[(val.real, val.imag) for val in self.crystal.miller_array.data()])
+                Freal = flex.double(Freal)
+                Fimag = flex.double(Fimag)
+                self.D.Fhkl_tuple_complex = self.crystal.miller_array.indices(), Freal, Fimag
+            else:
+                self.D.Fhkl_tuple = self.crystal.miller_array.indices(), self.crystal.miller_array.data()
 
     def _crystal_properties(self):
         self.D.xtal_shape = self.crystal.xtal_shape

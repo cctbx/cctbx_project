@@ -73,8 +73,12 @@ class nanoBragg_crystal(object):
 
     @miller_array.setter
     def miller_array(self, val):
-        if str(val.observation_type) == "xray.intensity":
-            val = val.as_amplitude_array()
+        if isinstance(val.data()[0], complex):
+            self.miller_is_complex = True
+        else:
+            self.miller_is_complex = False
+            if str(val.observation_type) == "xray.intensity":
+                val = val.as_amplitude_array()
         val = val.expand_to_p1()
         val = val.generate_bijvoet_mates()
         self._miller_array = val
