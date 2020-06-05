@@ -1,7 +1,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 #include <boost/python.hpp>
 #include <simtbx/diffBragg/src/diffBragg.h>
-//#include <boost/python/tuple.hpp>
 
 using namespace boost::python;
 namespace simtbx{
@@ -86,6 +85,46 @@ namespace boost_python { namespace {
       return boost::python::make_tuple(frange,srange);
   }
 
+  static void  set_Fhkl_tuple_complex(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& value) {
+      diffBragg.pythony_indices = extract<nanoBragg::indices >(value[0]);
+      diffBragg.pythony_amplitudes = extract<nanoBragg::af::shared<double> >(value[1]);
+      diffBragg.pythony_amplitudes2 = extract<nanoBragg::af::shared<double> >(value[2]);
+      /* re-initialize ***Fhkl array */
+      diffBragg.init_Fhkl();
+      diffBragg.init_Fhkl2();
+      diffBragg.complex_miller = true;
+  }
+
+  static boost::python::tuple get_Fhkl_tuple_complex(simtbx::nanoBragg::diffBragg diffBragg) {
+      int h,k,l;
+      double temp;
+      int hkls = diffBragg.h_range*diffBragg.k_range*diffBragg.l_range;
+      diffBragg.pythony_indices = nanoBragg::indices(hkls,nanoBragg::af::init_functor_null<scitbx::vec3<int> >());
+      diffBragg.pythony_amplitudes = nanoBragg::af::shared<double>(hkls,nanoBragg::af::init_functor_null<double>());
+      diffBragg.pythony_amplitudes2 = nanoBragg::af::shared<double>(hkls,nanoBragg::af::init_functor_null<double>());
+      int i=0;
+      for(h=diffBragg.h_min;h<=diffBragg.h_max;++h){
+          for(k=diffBragg.k_min;k<=diffBragg.k_max;++k){
+              for(l=diffBragg.l_min;l<=diffBragg.l_max;++l){
+                  if ( (h<=diffBragg.h_max) && (h>=diffBragg.h_min) && (k<=diffBragg.k_max)
+                    && (k>=diffBragg.k_min) && (l<=diffBragg.l_max) && (l>=diffBragg.l_min)  ) {
+                      /* populate all stored values */
+                      nanoBragg::miller_t hkl (h,k,l);
+                      diffBragg.pythony_indices[i] = hkl;
+                      temp = diffBragg.Fhkl[h-diffBragg.h_min][k-diffBragg.k_min][l-diffBragg.l_min];
+                      diffBragg.pythony_amplitudes[i] = temp;
+                      temp = diffBragg.Fhkl2[h-diffBragg.h_min][k-diffBragg.k_min][l-diffBragg.l_min];
+                      diffBragg.pythony_amplitudes2[i] = temp;
+                      ++i;
+                  }
+              }
+          }
+      }
+      /* return a tuple so there is no confusion about order of initialization */
+      return boost::python::make_tuple(diffBragg.pythony_indices,diffBragg.pythony_amplitudes, diffBragg.pythony_amplitudes2);
+      //return boost::python::make_tuple(diffBragg.pythony_indices,diffBragg.pythony_amplitudes, diffBragg.pythony_amplitudes2);
+  }
+
   void diffBragg_init_module() {
     using namespace boost::python;
     typedef return_value_policy<return_by_value> rbv;
@@ -139,6 +178,8 @@ namespace boost_python { namespace {
 
       .def("update_dxtbx_geoms", &simtbx::nanoBragg::diffBragg::update_dxtbx_geoms,
            "update the geometries with new dxtbx models, number of pixels should remain constant")
+
+      .def("free_Fhkl2",&simtbx::nanoBragg::diffBragg::free_Fhkl2)
 
       .add_property("region_of_interest",
              make_function(&get_roi,rbv()),
@@ -196,6 +237,10 @@ namespace boost_python { namespace {
                      make_setter(&simtbx::nanoBragg::diffBragg::update_oversample_during_refinement,dcp()),
                      "Allows oversample to change as Ncells abc changes")
 
+      .add_property("Fhkl_tuple_complex",
+            make_function(&get_Fhkl_tuple_complex,rbv()),
+            make_function(&set_Fhkl_tuple_complex,dcp()),
+            "hkl and Freal and Fcomplex as a 3-tuple of (indices ,flex-double, flex-double). experimental")
 
     ; // end of diffBragg extention
 

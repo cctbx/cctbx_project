@@ -463,7 +463,7 @@ def compare_with_ground_truth(a, b, c, dxcryst_models, symbol="C121", verbose=Fa
     return angles
 
 
-def fcalc_from_pdb(resolution, algorithm=None, wavelength=0.9, anom=True, ucell=None, symbol=None):
+def fcalc_from_pdb(resolution, algorithm=None, wavelength=0.9, anom=True, ucell=None, symbol=None, as_amplitudes=True):
     # borrowed from tst_nanoBragg_basic
     pdb_lines = """HEADER TEST
 CRYST1   50.000   60.000   70.000  90.00  90.00  90.00 P 1
@@ -497,7 +497,8 @@ END
     P1_primitive_xray_structure = primitive_xray_structure.expand_to_p1()
     fcalc = P1_primitive_xray_structure.structure_factors(
         d_min=resolution, anomalous_flag=anom, algorithm=algorithm).f_calc()
-    fcalc = fcalc.amplitudes().set_observation_type_xray_amplitude()
+    if as_amplitudes:
+        fcalc = fcalc.amplitudes().set_observation_type_xray_amplitude()
     return fcalc
 
 def nearest_non_zero(lst, idx):
