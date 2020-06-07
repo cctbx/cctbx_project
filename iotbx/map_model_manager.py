@@ -3,6 +3,7 @@ from libtbx.utils import Sorry,null_out
 import sys
 from iotbx.map_manager import map_manager
 from scitbx.array_family import flex
+from libtbx import adopt_init_args
 
 class map_model_manager:
 
@@ -423,17 +424,9 @@ class shift_manager:
     shifted_crystal_symmetry=None,
     xray_structure_box=None,
        ):
+    adopt_init_args(self, locals())
 
-    assert shift_cart is not None
-    assert original_crystal_symmetry is not None
-    assert shifted_crystal_symmetry is not None
-    assert xray_structure_box is not None
-
-    self.shift_cart=shift_cart
-    self.original_crystal_symmetry=original_crystal_symmetry
-    self.shifted_crystal_symmetry=shifted_crystal_symmetry
-    self.xray_structure_box=xray_structure_box
-
+    assert self.shift_cart is not None
 
   def get_original_cs(self):
     return self.original_crystal_symmetry
@@ -442,9 +435,18 @@ class shift_manager:
     return self.shifted_crystal_symmetry
 
   def shift_back(self, pdb_hierarchy):
+    assert pdb_hierarchy is not None
     sites_cart = pdb_hierarchy.atoms().extract_xyz()
     shift_back = [-self.shift_cart[0], -self.shift_cart[1], -self.shift_cart[2]]
     sites_cart_shifted = sites_cart+\
       flex.vec3_double(sites_cart.size(), shift_back)
     pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
+
+  def deep_copy(self):
+    from copy import deepcopy
+    return shift_manager(
+      shift_cart=deepcopy(self.shift_cart),
+      original_crystal_symmetry=deepcopy(self.original_crystal_symmetry),
+      shifted_crystal_symmetry=deepcopy(self.shifted_crystal_symmetry),
+      xray_structure_box=deepcopy(self.xray_structure_box))
 

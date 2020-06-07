@@ -496,10 +496,35 @@ class manager(object):
     self._ss_annotation = ann
 
   def set_crystal_symmetry(self, crystal_symmetry):
-    if(self.crystal_symmetry() is None):
+    '''
+      Set the crystal_symmetry, keeping sites_cart the same
+
+      Uses set_crystal_symmetry_and_sites_cart because sites_cart have to
+      be replaced in either case.
+    '''
+
+    self.set_crystal_symmetry_and_sites_cart(crystal_symmetry,
+      self.get_sites_cart())
+
+  def set_crystal_symmetry_and_sites_cart(self, crystal_symmetry, sites_cart):
+
+    '''
+      Set the crystal symmetry and then replace sites_cart with supplied sites
+    '''
+
+    assert crystal_symmetry is not None
+
+    if(self.crystal_symmetry() is None and sites_cart is None):
+      # Just replace self._crystal_symmetry. There must be no xray_structure
+      #   and no sites_cart supplied
       assert self._xray_structure is None
+      assert sites_cart is None
       self._crystal_symmetry = crystal_symmetry
     else:
+      assert sites_cart is not None
+      # Changing crystal_symmetry changes sites_frac but keeps sites_cart same
+
+      # Reset _crystal_symmetry
       xrs = self.get_xray_structure()
       same_symmetry = xrs.crystal_symmetry().is_similar_symmetry(
         crystal_symmetry)
@@ -508,9 +533,81 @@ class manager(object):
       sp = crystal.special_position_settings(crystal_symmetry)
       self._xray_structure = xray.structure(sp, scatterers)
       self._crystal_symmetry = crystal_symmetry
+
+      # Put sites_cart in
+      self._xray_structure.set_sites_cart(sites_cart)
+
       self.setup_scattering_dictionaries(scattering_table = scattering_table)
       if(not same_symmetry):
+        self.get_hierarchy(sync_with_xray_structure=True)
+        # This syncs pdb_hierarchy with xray_structure
         self.unset_restraints_manager()
+
+  def shift_model_and_set_crystal_symmetry(self,
+       shift_cart=None, # shift to apply
+       crystal_symmetry=None, # optional new crystal symmetry
+       ):
+
+    '''
+      Method to apply a coordinate shift to a model object and keep track of
+      it with shift_manager
+
+      Takes into account any previous shifts by looking at existing
+      shift_manager for shift_cart and original_crystal_symmetry
+    '''
+
+    # checks
+    assert shift_cart is not None
+
+    # Get a shift_manager that knows about original_crystal_symmetry
+    #   and any prevous shift_cart
+    sm=self.get_shift_manager()
+    if sm:
+      if hasattr(sm,'deep_copy'): # XXX temporary backwards compatibility
+        sm=sm.deep_copy() # do not want to modify the previous one
+      original_crystal_symmetry=sm.get_original_cs()
+    else:
+      original_crystal_symmetry=self.crystal_symmetry()
+
+    # Get the new crystal symmetry to apply
+    if not crystal_symmetry:
+      crystal_symmetry=self.crystal_symmetry()
+
+    # Make a shift_manager if necessary
+    if not sm:
+      # New one:fill in shift_cart as (0,0,0), original_crystal_symmetry,
+      #   and shifted_crystal_symmetry
+
+      from iotbx.map_model_manager import shift_manager
+      sm=shift_manager(
+          shift_cart=(0,0,0),
+          original_crystal_symmetry=original_crystal_symmetry,
+          shifted_crystal_symmetry=crystal_symmetry,
+          xray_structure_box=None, # fill in later
+        )
+
+    # Get the total shift since original
+    total_shift=[sm_sc+sc for sm_sc,sc in zip(sm.shift_cart,shift_cart)]
+
+    # New coordinates after applying shift_cart
+    sites_cart_new = self.get_sites_cart() + shift_cart
+
+    #Set symmetry and sites_cart
+    self.set_crystal_symmetry_and_sites_cart(crystal_symmetry, sites_cart_new)
+
+    # Set up new shift_manager with updated shift_cart,
+    #  and xray_structure_box
+    # NOTE: sm.shift_cart is now the total shift since original position of this
+    #   model, it is not the shift in this step alone. It is the shift which
+    #   reversed will put the model back where it belongs
+
+    sm.shift_cart=total_shift
+    sm.xray_structure_box=self.get_xray_structure()
+
+    # Now this is the new shift_manager
+    #  NOTE: set_shift_manager() is not needed because
+    #     set_crystal_symmetry_and_sites_cart() carries out same function
+    self._shift_manager=sm
 
   def set_refinement_flags(self, flags):
     self.refinement_flags = flags
@@ -782,7 +879,6 @@ class manager(object):
     if self._shift_manager is not None and not do_not_shift_back:
       self._shift_manager.shift_back(hierarchy_to_output)
     return hierarchy_to_output
-
 
   def shift_origin(self, origin_shift_cart=None):
     if not origin_shift_cart or origin_shift_cart==(0,0,0):

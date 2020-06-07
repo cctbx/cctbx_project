@@ -56,26 +56,11 @@ class input(object):
       self._crystal_symmetry=self._model.crystal_symmetry()
 
     # Decide what to do if conflicting crystal_symmetry
-    if self._crystal_symmetry and self._model and (
+    if (self._crystal_symmetry and self._model and (
        not self._crystal_symmetry.is_similar_symmetry(
-          self._model.crystal_symmetry())):
+          self._model.crystal_symmetry()))):
       if ignore_symmetry_conflicts: # take crystal_symmetry overwrite model
-        # Use set_xray_structrure to reset crystal_symmetry in model
-        xrs=self._model.get_xray_structure()
-        sites_cart=xrs.sites_cart() # cartesian coordinates same in both cells
-        new_sites_frac=self._crystal_symmetry(
-           ).unit_cell().fractionalize(sites_cart)  # fractional in new cell
-        # modify xrs to have correct sites_frac and wrong crystal_symmetry:
-        xrs = xrs.replace_sites_frac(new_sites_frac)
-        from cctbx import crystal
-        sp = crystal.special_position_settings(self._crystal_symmetry)
-        from cctbx import xray
-        xrs = xray.structure( sp,xrs.scatterers())
-        # Now we have correct symmetry and fractional sites
-        assert xrs.crystal_symmetry(
-           ).is_similar_symmetry(self._crystal_symmetry)
-        self._model.set_xray_structure(xrs) # set it in the model
-
+        self._model.set_crystal_symmetry(self._crystal_symmetry)
       else: # stop
         assert self._crystal_symmetry.is_similar_symmetry(
          self._model.crystal_symmetry())
@@ -114,7 +99,7 @@ class input(object):
     self._model=mmm.model()  # this model knows about shift so far
     self._map_manager=mmm.map_manager()  # map_manager also knows about shift
     if self._model:
-      self._shift_manager=self._model.get_shift_manager()
+      self._shift_manager=self._model.get_shift_manager() # XXX save original
 
     # Shift origins of all other maps
     for m in [self._map_manager_1,self._map_manager_2]+\
@@ -188,6 +173,8 @@ class input(object):
           self._shift_manager.shift_cart)
 
       # Save shift_manager so other programs can use it. NOTE: This is big
+      # XXX Do this with model routine now...
+
       self._shift_manager=box_result
       # Update model and crystal_symmetry with new values
       self._model.set_shift_manager(shift_manager= box_result)
