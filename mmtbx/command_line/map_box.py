@@ -901,21 +901,9 @@ def run(args,
     half_map_data_list=half_map_data_list,
     log=log)
 
-  # Get model object (replaces pdb_hierarchy)
-  model=get_model_from_inputs(
-    model=model,
-    pdb_hierarchy=pdb_hierarchy,
-    file_names=inputs.pdb_file_names,
-    crystal_symmetry=inputs.crystal_symmetry,
-    log=log)
-
-  # Apply selection to model if desired
-  model=apply_selection_to_model(params=params,model=model,log=log)
-
   # Use inputs.crystal_symmetry (precedence there is for map)
   crystal_symmetry=inputs.crystal_symmetry
 
-  xray_structure=model.get_xray_structure().show_summary(f=log)
 
   # Get map_manager objects
 
@@ -940,6 +928,23 @@ def run(args,
        params.map_scale_factor))
     ccp4_map=ccp4_map.customized_copy(
       map_data=ccp4_map.map_data()*params.map_scale_factor)
+
+  # Use ccp4_map crystal_symmetry if not set
+  if ccp4_map and not crystal_symmetry:
+    crystal_symmetry=ccp4_map.unit_cell_crystal_symmetry()
+
+
+  # Get model object (replaces pdb_hierarchy)
+  model=get_model_from_inputs(
+    model=model,
+    pdb_hierarchy=pdb_hierarchy,
+    file_names=inputs.pdb_file_names,
+    crystal_symmetry=crystal_symmetry,
+    log=log)
+
+  # Apply selection to model if desired
+  model=apply_selection_to_model(params=params,model=model,log=log)
+  xray_structure=model.get_xray_structure().show_summary(f=log)
 
   # Get output origin to match, if any
   origin_to_match,shift_cart_for_origin_to_match=get_origin_to_match(

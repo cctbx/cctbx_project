@@ -1666,7 +1666,7 @@ def sharpen2(map, xray_structure, resolution, file_name_prefix):
   return fo_sharp, map_data
 
 def loc_res(map,
-            pdb_hierarchy,
+            model,  #pdb_hierarchy,
             crystal_symmetry,
             chunk_size=10,
             soft_mask_radius=3.,
@@ -1682,6 +1682,7 @@ def loc_res(map,
   from cctbx import miller
   import mmtbx.utils
 
+
   mmm = map.as_1d().min_max_mean().as_tuple()
   map = map-mmm[2]
   map = map/map.sample_standard_deviation()
@@ -1690,6 +1691,7 @@ def loc_res(map,
     space_group_info      = crystal_symmetry.space_group_info(),
     pre_determined_n_real = map.accessor().all())
   #
+  pdb_hierarchy=model.get_hierarchy()
   ph_dc = pdb_hierarchy.deep_copy()
   xrs = pdb_hierarchy.extract_xray_structure(crystal_symmetry=crystal_symmetry)
   mmtbx.utils.setup_scattering_dictionaries(
@@ -1707,16 +1709,23 @@ def loc_res(map,
   chunk_selections = pdb_hierarchy.chunk_selections(
     residues_per_chunk=chunk_size)
   #
+  from iotbx.map_manager import map_manager
+  mm=map_manager(map_data=map,
+    unit_cell_crystal_symmetry=crystal_symmetry,
+    unit_cell_grid=map.all())
+
   for chunk_sel in chunk_selections:
     ph_sel  = pdb_hierarchy.select(chunk_sel).deep_copy()
     xrs_sel = xrs.select(chunk_sel)
+    model_sel=model.select(chunk_sel)
     box = mmtbx.utils.extract_box_around_model_and_map(
-      xray_structure   = xrs_sel,
-      map_data         = map,
+      model            = model_sel,
+      mm               = mm,
       box_cushion      = 3,
       soft_mask        = True,
       soft_mask_radius = soft_mask_radius,
       mask_atoms       = True)
+
     #####
     fo = miller.structure_factor_box_from_map(
       crystal_symmetry = box.xray_structure_box.crystal_symmetry(),
