@@ -3,7 +3,6 @@ from libtbx.math_utils import ifloor, iceil
 from cctbx import crystal, maptbx, uctbx
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
-from libtbx.utils import null_out
 from libtbx import group_args
 import iotbx.map_manager
 import mmtbx.model
