@@ -13,6 +13,7 @@ from libtbx.utils import Sorry, user_plus_sys_time, null_out
 from libtbx import group_args, str_utils
 
 import iotbx.pdb
+import iotbx.map_model_manager
 import iotbx.cif.model
 import iotbx.ncs
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
@@ -539,8 +540,9 @@ class manager(object):
 
       self.setup_scattering_dictionaries(scattering_table = scattering_table)
       if(not same_symmetry):
-        self.get_hierarchy(sync_with_xray_structure=True)
-        # This syncs pdb_hierarchy with xray_structure
+        # This syncs internals and pdb_hierarchy with xray_structure
+        self.set_sites_cart_from_xrs()
+        # GRM is not valid if the symmetry is changed
         self.unset_restraints_manager()
 
   def shift_model_and_set_crystal_symmetry(self,
@@ -578,8 +580,7 @@ class manager(object):
       # New one:fill in shift_cart as (0,0,0), original_crystal_symmetry,
       #   and shifted_crystal_symmetry
 
-      from iotbx.map_model_manager import shift_manager
-      sm=shift_manager(
+      sm = iotbx.map_model_manager.shift_manager(
           shift_cart=(0,0,0),
           original_crystal_symmetry=original_crystal_symmetry,
           shifted_crystal_symmetry=crystal_symmetry,
@@ -885,7 +886,7 @@ class manager(object):
       return self.deep_copy()
     else:
       new_model=self.deep_copy()
-      sites_cart=new_model.get_hierarchy().atoms().extract_xyz()
+      sites_cart=new_model.get_sites_cart()
       sites_cart+=origin_shift_cart
       new_model.set_sites_cart(sites_cart)
       return new_model
@@ -1798,8 +1799,7 @@ class manager(object):
       scatterer labels do not match the atom labels.
     """
     if(sync_with_xray_structure and self._xray_structure is not None):
-      self._pdb_hierarchy.adopt_xray_structure(
-        xray_structure = self._xray_structure)
+      self.set_sites_cart_from_xrs()
     return self._pdb_hierarchy
 
   def set_sites_cart_from_hierarchy(self, multiply_ncs=False):
