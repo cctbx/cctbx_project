@@ -97,7 +97,7 @@ if args.plot:
 # ---------
 
 ##
-# find the Qx, Qy, Qz of the 1,0,0 Bragg spot
+# find the Qx, Qy, Qz of the 10,-9,1 Bragg spot
 a,b,c,_,_,_ = cryst.get_unit_cell().parameters()
 Amat = [[a,0,0], [0,b,0], [0,0,c]]
 Amat_inv = np.linalg.inv(Amat)
