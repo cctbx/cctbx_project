@@ -290,6 +290,14 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
 
     init_raw_pixels_roi();
     initialize_managers();
+
+    Fhkl2 = NULL;
+    F_cell2 = 0;
+    complex_miller = false;
+    pythony_amplitudes2.clear();
+ 
+
+
     }
 
 
@@ -477,6 +485,57 @@ void diffBragg::refine(int refine_id){
         origin_managers[0]->initialize(sdim, fdim);
     }
 }
+
+
+void diffBragg::init_Fhkl2()
+{
+    /* This should only be called if init_Fhkl has already been called with python indices/amplitudes*/
+    /* free any previous allocations */
+    if(Fhkl2 != NULL) {
+        for (h0=0; h0<=h_range;h0++) {
+            for (k0=0; k0<=k_range;k0++) {
+                free(Fhkl2[h0][k0]);
+            }
+            free(Fhkl2[h0]);
+        }
+        free(Fhkl2);
+    }
+
+    /* allocate memory for 3d arrays */
+    Fhkl2 = (double***) calloc(h_range+1,sizeof(double**));
+    if(Fhkl2==NULL){perror("ERROR");exit(9);};
+    for (h0=0; h0<=h_range;h0++) {
+        Fhkl2[h0] = (double**) calloc(k_range+1,sizeof(double*));
+        if(Fhkl2[h0]==NULL){perror("ERROR");exit(9);};
+        for (k0=0; k0<=k_range;k0++) {
+            Fhkl2[h0][k0] = (double*) calloc(l_range+1,sizeof(double));
+            if(Fhkl2[h0][k0]==NULL){perror("ERROR");exit(9);};
+        }
+    }
+    for (h0=0; h0<h_range;h0++) {
+        for (k0=0; k0<k_range;k0++) {
+            for (l0=0; l0<l_range;l0++) {
+                Fhkl2[h0][k0][l0] = 0;
+            }
+        }
+    }
+    Fhkl2[-h_min][-k_min][-l_min] = 0;
+
+    if(verbose) printf("initializing Fhkl2 with pythony indices and amplitudes\n");
+    miller_t hkl;
+    for (i=0; i < pythony_indices.size(); ++i)
+    {
+        hkl = pythony_indices[i];
+        F_cell = pythony_amplitudes2[i];
+        h0 = hkl[0];
+        k0 = hkl[1];
+        l0 = hkl[2];
+        Fhkl2[h0-h_min][k0-k_min][l0-l_min]=F_cell;
+    }
+    Fhkl2[-h_min][-k_min][-l_min] = 0;
+    if(verbose) printf("done initializing Fhkl2:\n");
+}
+
 
 void diffBragg::set_ucell_derivative_matrix(int refine_id, af::shared<double> const& value){
     int ucell_param_idx = refine_id-3;  // its just how the API works, pass in 3 for first ucell matrix
@@ -995,14 +1054,18 @@ void diffBragg::add_diffBragg_spots()
                                     if ( (h0<=h_max) && (h0>=h_min) && (k0<=k_max) && (k0>=k_min) && (l0<=l_max) && (l0>=l_min)  ) {
                                         /* just take nearest-neighbor */
                                         F_cell = Fhkl[h0-h_min][k0-k_min][l0-l_min];
+                                        if (complex_miller) F_cell2 = Fhkl2[h0-h_min][k0-k_min][l0-l_min];
                                     }
                                     else
                                     {
                                         F_cell = default_F; // usually zero
+                                        if (complex_miller) F_cell2 = 0;
                                     }
                                 }
 
                                 //F_cell = Fhkl[h0-h_min][k0-k_min][l0-l_min];
+                                if (complex_miller)
+                                  F_cell = sqrt(F_cell*F_cell + F_cell2*F_cell2);
 
                                 /* now we have the structure factor for this pixel */
 
