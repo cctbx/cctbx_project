@@ -721,7 +721,7 @@ builder.""".format(filename=filename, builder=builder))
         filename=os.path.join(prefix, 'vcredist_x64.exe'))
 
 # ---------------------------------------------------------------------------
-  def create_dev_environment(self, svn=True, git=True):
+  def create_dev_environment(self, svn=False, git=True):
     """
     Create a separate environment for development tools. Packages from
     the conda-forge channel are used.
