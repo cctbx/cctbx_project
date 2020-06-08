@@ -1,6 +1,11 @@
 """
 Tests nanoBragg geometry
 
+usage:
+libtbx.python tst_nanoBragg_geom.py --plot  # PASSES
+libtbx.python tst_nanoBragg_geom.py --plot --rotations 0.1 0.1  # FAILS
+libtbx.python tst_nanoBragg_geom.py --plot --rotations 0.1 0.1  --updatecenter # PASSES
+
 Determines where a Bragg peak should be with sub-pixel accuracy
 and then simulates an image and verifie that the centroid is within
 0.25 pixels of its predicted spot
@@ -22,65 +27,8 @@ from dxtbx.model.beam import BeamFactory
 from dxtbx.model.crystal import CrystalFactory
 from dxtbx.model.detector import DetectorFactory
 from simtbx.nanoBragg import shapetype
-from IPython import embed
 
-#from scipy import odr
-
-#def print_circ(x,y,z):
-#    x = x[0] + x[1]*1j
-#    y = y[0] + y[1]*1j
-#    z = z[0] + z[1]*1j
-#    w = z - x
-#    w /= y-x
-#    c = (x - y) * (w - abs(w) ** 2) / 2j / w.imag - x
-#    print('(x%+.3f)^2+(y%+.3f)^2 = %.3f^2' % (c.real, c.imag, abs(c + x)))
-#    return -c.real, -c.imag, abs(c+x)
-#
-#def calc_estimate(data):
-#    xc0, yc0 = data.x.mean(axis=1)
-#    r0 = np.sqrt((data.x[0]-xc0)**2 +(data.x[1] -yc0)**2).mean()
-#    return xc0, yc0, r0
-#
-#
-#def circle_jacobian_beta( beta, x):
-#    xc,yc,r = beta
-#    xi,yi = x
-#    df_db    = np.empty(( len(beta), x.shape[1]))
-#    df_db[0] =  2*(xc-xi)                     # d_f/dxc
-#    df_db[1] =  2*(yc-yi)                     # d_f/dyc
-#    df_db[2] = -2*r                           # d_f/dr
-#    return df_db
-#
-#
-#def circle_jacobian_data(beta, x):
-#    xc,yc,r = beta
-#    xi,yi = x
-#    df_dx = np.empty_like(x)
-#    df_dx[0] = 2*(xi-xc)
-#    df_dx[1] = 2*(yi-yc)
-#    return df_dx
-#
-#
-#def fit_circle(x,y, beta0=None):
-#    f_circle = lambda beta, x: (x[0] - beta[0]) ** 2 \
-#                               + (x[1] - beta[1]) ** 2 - beta[2] ** 2
-#    model = odr.Model(f_circle,
-#                      implicit=True,
-#                      estimate=calc_estimate,
-#                      fjacd=circle_jacobian_data,
-#                      fjacb=circle_jacobian_beta)
-#    #       use odr module to fit data to model
-#    pts = np.row_stack([x,y])
-#
-#    lsc_data = odr.Data(pts, y=1)
-#    lsc_odr = odr.ODR(lsc_data, model, beta0=beta0)
-#    lsc_odr.set_job(deriv=3)
-#    lsc_odr.set_iprint(iter=1, iter_step=1)
-#    lsc_out = lsc_odr.run()
-#    beta_fit = lsc_out.beta
-#    return beta_fit
-
-
+# MAKE DXTBX BEAM
 # dxtbx beam model description
 beam_descr = {'direction': (0.0, 0.0, 1.0),
              'divergence': 0.0,
@@ -90,8 +38,10 @@ beam_descr = {'direction': (0.0, 0.0, 1.0),
              'sigma_divergence': 0.0,
              'transmission': 1.0,
              'wavelength': 1.3}
+beam = BeamFactory.from_dict(beam_descr)
 
 
+# MAKE DXTBX CRYSTAL
 a,b,c = 80,60,40
 # dxtbx crystal description
 cryst_descr = {'__id__': 'crystal',
@@ -99,7 +49,10 @@ cryst_descr = {'__id__': 'crystal',
               'real_space_b': (0, b, 0),
               'real_space_c': (0, 0, c),
               'space_group_hall_symbol': ' P 2 2ab'}
+cryst = CrystalFactory.from_dict(cryst_descr)
 
+
+# MAKE DXTBX DETECTOR
 # monolithic camera description
 det_descr = {'panels':
                [{'fast_axis': (-1.0, 0.0, 0.0),
@@ -119,17 +72,14 @@ det_descr = {'panels':
                  'thickness': 0.0,
                  'trusted_range': (0.0, 65536.0),
                  'type': ''}]}
-
-
-beam = BeamFactory.from_dict(beam_descr)
 whole_det = DetectorFactory.from_dict(det_descr)
-cryst = CrystalFactory.from_dict(cryst_descr)
+
 
 # rotate the panel
 panel = whole_det[0]
-rotx, roty = args.rotations
-panel.rotate_around_origin(axis=(1,0,0), angle=rotx, deg=True)
-panel.rotate_around_origin(axis=(0,1,0), angle=roty, deg=True)
+pitch, yaw = args.rotations
+panel.rotate_around_origin(axis=(1,0,0), angle=pitch, deg=True)
+panel.rotate_around_origin(axis=(0,1,0), angle=yaw, deg=True)
 
 if args.plot:
     print("PLotting the detector model")
