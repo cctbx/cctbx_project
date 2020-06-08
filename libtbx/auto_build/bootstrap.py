@@ -2275,7 +2275,7 @@ class PhenixBuilder(CCIBuilder):
       # prepend path for check
       dev_env = os.path.join('.', 'dev_env', 'bin')
       if sys.platform == 'win32':
-        dev_env = os.path.join('.', 'Library', 'bin')
+        dev_env = os.path.join('.', 'dev_env', 'Library', 'bin')
         os.environ['PATH'] = os.path.abspath(dev_env) + ';'  + os.environ['PATH']
       else:
         os.environ['PATH'] = os.path.abspath(dev_env) + ':'  + os.environ['PATH']
