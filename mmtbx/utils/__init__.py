@@ -2559,49 +2559,52 @@ class extract_box_around_model_and_map(object):
     xray_structure_box = xray_structure_box.replace_sites_frac(sites_frac)
     self.xray_structure_box = xray.structure(
        sp,xray_structure_box.scatterers())
+    # Just for transition:
+    from iotbx.map_manager import map_manager
+    map_box_as_map_manager=map_manager(
+      map_data=self.map_box,
+      unit_cell_grid=self.map_box.all(),
+      unit_cell_crystal_symmetry=self.xray_structure_box.crystal_symmetry())
+
+    # Translate for this call
+    if value_outside_atoms=="mean":
+      set_outside_to_mean_inside=True
+    else:
+      set_outside_to_mean_inside=False
+
     if(mask_atoms):
-      import boost.python
-      cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
-      radii = flex.double(
-        self.xray_structure_box.sites_frac().size(), mask_atoms_atom_radius)
-      mask = cctbx_maptbx_ext.mask(
-        sites_frac                  = self.xray_structure_box.sites_frac(),
-        unit_cell                   = self.xray_structure_box.unit_cell(),
-        n_real                      = self.map_box.all(),
-        mask_value_inside_molecule  = 1,
-        mask_value_outside_molecule = 0,
-        radii                       = radii)
-      if(soft_mask):
-        # make the mask a soft mask
-        maptbx.unpad_in_place(map=mask)
-        mask = maptbx.smooth_map(
-          map              = mask,
-          crystal_symmetry = self.box_crystal_symmetry,
-          rad_smooth       = soft_mask_radius)
-      self.map_box = self.map_box*mask
-      if(value_outside_atoms is not None):
-        assert not soft_mask
-        assert value_outside_atoms=='mean'
-        #  make mean outside==mean inside
-        one_d=self.map_box.as_1d()
-        n_zero=mask.count(0)
-        n_tot=mask.size()
-        mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
-        self.map_box=self.map_box+(1-mask)*mean_in_box
+
+      from cctbx.maptbx.mask import create_mask_around_atoms
+      cm=create_mask_around_atoms(xray_structure=self.xray_structure_box,
+         mask_atoms_atom_radius=mask_atoms_atom_radius,
+         n_real=self.map_box.all())
+      if soft_mask:
+        cm.soft_mask(soft_mask_radius=soft_mask_radius)
+
+      new_mm=cm.apply_mask_to_other_map_manager(map_box_as_map_manager,
+         set_outside_to_mean_inside=
+            set_outside_to_mean_inside)
+      self.map_box=new_mm.map_data()
+
+
     elif (soft_mask):
+
+      # Apply soft mask to outside edge of map
       assert resolution is not None
       if soft_mask_radius is None:
         soft_mask_radius=resolution
-      from cctbx.maptbx.segment_and_split_map import set_up_and_apply_soft_mask
-      self.map_box,smoothed_mask_data=\
-         set_up_and_apply_soft_mask(
-       map_data=self.map_box.deep_copy(),
-       shift_origin=False,
-       crystal_symmetry=self.box_crystal_symmetry,
-       resolution=resolution,
-       grid_units_for_boundary=None,
-       radius=soft_mask_radius,
-        )
+
+      from cctbx.maptbx.mask import create_mask_around_edges
+
+      cm=create_mask_around_edges(map_manager=map_box_as_map_manager,
+        soft_mask_radius=soft_mask_radius)
+
+      cm.soft_mask(soft_mask_radius=soft_mask_radius)
+
+      new_mm=cm.apply_mask_to_other_map_manager(map_box_as_map_manager,
+         set_outside_to_mean_inside=
+            set_outside_to_mean_inside)
+      self.map_box=new_mm.map_data()
 
   def get_solvent_content(self):
     return self.solvent_content
@@ -3372,3 +3375,4 @@ class run_reduce_with_timeout(easy_run.fully_buffered):
         join_stdout_stderr=join_stdout_stderr,
         stdout_splitlines=stdout_splitlines,
         bufsize=bufsize)
+

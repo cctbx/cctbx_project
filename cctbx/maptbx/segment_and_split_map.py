@@ -4272,14 +4272,31 @@ def apply_soft_mask(map_data=None,
 
   original_mask_data=mask_data.deep_copy()
 
+  smoothed_mask_data=smooth_mask_data(mask_data=mask_data,
+    crystal_symmetry=crystal_symmetry,
+    threshold=threshold,
+    rad_smooth=rad_smooth)
 
-  # Smooth the mask in place. First make it a binary mask
+  masked_map=apply_mask_to_map(mask_data=original_mask_data,
+     smoothed_mask_data=smoothed_mask_data,
+     map_data=map_data,
+     set_outside_to_mean_inside=set_outside_to_mean_inside,
+     set_mean_to_zero=set_mean_to_zero,
+     threshold=threshold,
+     verbose=verbose,
+     out=out)
+  return masked_map,smoothed_mask_data
+
+def smooth_mask_data(mask_data=None,
+    crystal_symmetry=None,
+    threshold=0.5,
+    rad_smooth=None):
+
+  # Smooth a mask in place. First make it a binary mask
   s = mask_data > threshold  # s marks inside mask
   mask_data = mask_data.set_selected(~s, 0)  # outside mask==0
   mask_data = mask_data.set_selected( s, 1)
   if mask_data.count(1)  and mask_data.count(0): # something to do
-    if verbose:
-      print("Smoothing mask...", file=out)
     maptbx.unpad_in_place(map=mask_data)
     mask_data = maptbx.smooth_map(
       map              = mask_data,
@@ -4288,32 +4305,24 @@ def apply_soft_mask(map_data=None,
 
     # Make sure that mask_data max value is now 1, scale if not
     max_mask_data_value=mask_data.as_1d().min_max_mean().max
-    if max_mask_data_value > 1.e-30 and max_mask_data_value!=1.0:
+    if max_mask_data_value < 1.e-30 and max_mask_data_value!=1.0: # XXX
       mask_data=mask_data*(1./max_mask_data_value)
-      if verbose:
-        print("Scaling mask by %.2f to yield maximum of 1.0 " %(
-           1./max_mask_data_value), file=out)
   else:
-    if verbose:
-      print("Not smoothing mask that is a constant...", file=out)
+    pass
+  return mask_data
 
-  masked_map,smoothed_mask_data=apply_mask_to_map(mask_data=original_mask_data,
-     smoothed_mask_data=mask_data,map_data=map_data,
-     set_outside_to_mean_inside=set_outside_to_mean_inside,
-     set_mean_to_zero=set_mean_to_zero,
-     threshold=threshold,
-     verbose=verbose,
-     out=out)
-  return masked_map,smoothed_mask_data
 
 def apply_mask_to_map(mask_data=None,
     smoothed_mask_data=None,
     set_outside_to_mean_inside=None,
     set_mean_to_zero=None,
     map_data=None,
-    threshold=None,
+    threshold=0.5,
     verbose=None,
     out=sys.stdout):
+
+  if not mask_data:
+    mask_data=smoothed_mask_data
 
   s = mask_data > threshold  # s marks inside mask
   # get mean inside or outside mask
@@ -4337,7 +4346,9 @@ def apply_mask_to_map(mask_data=None,
   #   smoothly going from one to the other based on mask_data
 
   # set_to_mean will be a constant map with value equal to inside or outside
-  if set_outside_to_mean_inside or mean_value_out is None:
+  if (set_outside_to_mean_inside is False):
+    target_value_for_outside=0
+  elif set_outside_to_mean_inside or mean_value_out is None:
     target_value_for_outside=mean_value_in
     if verbose:
       print("Setting value outside mask to mean inside (%.2f)" %(
@@ -4361,7 +4372,7 @@ def apply_mask_to_map(mask_data=None,
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
     map_data=masked_map, verbose=verbose,out=out)
 
-  return masked_map,smoothed_mask_data
+  return masked_map
 
 def estimate_expand_size(
        crystal_symmetry=None,
@@ -8090,6 +8101,27 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
   return new_map_data, new_crystal_symmetry,\
     smoothed_mask_data,original_map_data
 
+def get_zero_boundary_map(
+   map_data=None,
+   grid_units_for_boundary=None,
+   crystal_symmetry=None,
+   radius=None):
+
+    assert grid_units_for_boundary or (crystal_symmetry and radius)
+
+    # grid_units is how many grid units are about equal to soft_mask_radius
+    if grid_units_for_boundary is None:
+      grid_units=get_grid_units(map_data=map_data,
+        crystal_symmetry=crystal_symmetry,radius=radius,out=null_out())
+      grid_units=int(0.5+0.5*grid_units)
+    else:
+      grid_units=grid_units_for_boundary
+
+    from cctbx import maptbx
+    zero_boundary_map=maptbx.zero_boundary_box_map(
+       map_data,grid_units).result()
+    return zero_boundary_map
+
 def set_up_and_apply_soft_mask(map_data=None,shift_origin=None,
   crystal_symmetry=None,resolution=None,
   grid_units_for_boundary=None,
@@ -8103,17 +8135,13 @@ def set_up_and_apply_soft_mask(map_data=None,shift_origin=None,
     new_acc=map_data.accessor()
 
     # Add soft boundary to mean around outside of mask
-    # grid_units is how many grid units are about equal to soft_mask_radius
-    if grid_units_for_boundary is None:
-      grid_units=get_grid_units(map_data=map_data,
-        crystal_symmetry=crystal_symmetry,radius=radius,out=out)
-      grid_units=int(0.5+0.5*grid_units)
-    else:
-      grid_units=grid_units_for_boundary
 
-    from cctbx import maptbx
-    zero_boundary_map=maptbx.zero_boundary_box_map(
-       map_data,grid_units).result()
+    zero_boundary_map=get_zero_boundary_map(
+     map_data=map_data,
+     grid_units_for_boundary=grid_units_for_boundary,
+     crystal_symmetry=crystal_symmetry,
+     radius=radius)
+
     # this map is zero's around the edge and 1 in the middle
     # multiply zero_boundary_map--smoothed & new_map_data and return
     print("Applying soft mask to boundary of cut out map", file=out)

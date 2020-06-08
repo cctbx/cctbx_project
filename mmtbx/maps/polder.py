@@ -356,7 +356,7 @@ class compute_polder_map():
                           r_free_flags,
                           f_calc,
                           f_mask,
-                          xrs_selected,
+                          model_selected,
                           box_cushion):
     fmodel = mmtbx.f_model.manager(
       f_obs        = f_obs,
@@ -373,11 +373,14 @@ class compute_polder_map():
       crystal_gridding     = self.crystal_gridding,
       fourier_coefficients = mc_diff)
     fft_map.apply_sigma_scaling()
-    map_data = fft_map.real_map_unpadded()
-    return mmtbx.utils.extract_box_around_model_and_map(
-      xray_structure = xrs_selected,
-      map_data       = map_data,
-      box_cushion    = box_cushion)
+    mm= fft_map.as_map_manager()
+
+    import iotbx.map_and_model
+    inputs=iotbx.map_and_model.input(
+      model=model_selected.deep_copy(),
+      map_manager=mm,
+      box=True)
+    return inputs.shift_manager()
 
   # ---------------------------------------------------------------------------
 
@@ -412,6 +415,7 @@ class compute_polder_map():
       force_update_f_mask = True)
   ## PVA: do we need it? fmodel.update_all_scales(remove_outliers=False)
     f_obs_2 = abs(fmodel.f_model())
+    model_selected = self.model.select(selection_bool)
     pdb_hierarchy_selected = self.pdb_hierarchy.select(selection_bool)
     xrs_selected = pdb_hierarchy_selected.extract_xray_structure(
       crystal_symmetry = self.cs)
@@ -427,21 +431,21 @@ class compute_polder_map():
       r_free_flags = fmodel.r_free_flags(),
       f_calc = f_calc,
       f_mask = f_mask,
-      xrs_selected = xrs_selected,
+      model_selected = model_selected,
       box_cushion = box_cushion)
     box_2 = self.get_polder_diff_map(
       f_obs = f_obs_2,
       r_free_flags = fmodel.r_free_flags(),
       f_calc = f_calc,
       f_mask = f_mask,
-      xrs_selected = xrs_selected,
+      model_selected = model_selected,
       box_cushion = box_cushion)
     box_3 = self.get_polder_diff_map(
       f_obs = fmodel.f_obs(),
       r_free_flags = fmodel.r_free_flags(),
       f_calc = f_calc,
       f_mask = f_mask,
-      xrs_selected = xrs_selected,
+      model_selected = model_selected,
       box_cushion = box_cushion)
 
     sites_cart_box = box_1.xray_structure_box.sites_cart()

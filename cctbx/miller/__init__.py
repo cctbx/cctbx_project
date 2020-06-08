@@ -5875,6 +5875,16 @@ class fft_map(maptbx.crystal_gridding):
     else:
       return flex.real(self._complex_map)
 
+  def as_map_manager(self,in_place=True):
+    '''
+     Create a map_manager object from real_map_unpadded version of this map
+    '''
+    map_data=self.real_map_unpadded(in_place=in_place)
+    from iotbx.map_manager import map_manager
+    return map_manager(map_data=map_data,
+      unit_cell_crystal_symmetry=self.crystal_symmetry(),
+      unit_cell_grid=map_data.all())
+
   def real_map_unpadded(self, in_place=True):
     """
     Extract the real component of the FFT'd map, removing any padding required

@@ -182,6 +182,28 @@ class input(object):
       assert self._crystal_symmetry.is_similar_symmetry(
         self._map_manager.crystal_symmetry())
 
+  def mask_all_maps_around_model(self,
+      mask_atoms_atom_radius=None,
+      set_outside_to_mean_inside=None,
+      soft_mask=None,
+      soft_mask_radius=None):
+    assert mask_atoms_atom_radius is not None
+    assert (not soft_mask) or (soft_mask_radius is not None)
+    assert self.model() is not None
+
+    # Apply a mask to all maps. Overwrites values in these maps
+
+    for mm in self.all_map_managers():
+      if not mm: continue
+      mm.create_mask_around_atoms(
+         model=self.model(),
+         mask_atoms_atom_radius=mask_atoms_atom_radius)
+      if soft_mask:
+        mm.soft_mask(soft_mask_radius=soft_mask_radius)
+      mm.apply_mask(
+         set_outside_to_mean_inside=\
+           set_outside_to_mean_inside)
+
   def original_origin_cart(self):
     assert self._original_origin_cart is not None
     return self._original_origin_cart
@@ -203,6 +225,13 @@ class input(object):
   def map_data_2(self):
     if self.map_manager_2():
       return self.map_manager_2().map_data()
+
+  def all_map_managers(self):
+    all_map_managers_list=[]
+    for x in [self.map_manager()]+[self.map_manager_1()]+\
+        [self.map_manager_2()]+ self.map_manager_list():
+      if x: all_map_managers_list.append(x)
+    return all_map_managers_list
 
   def map_data_list(self):
     map_data_list=[]

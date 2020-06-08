@@ -126,6 +126,10 @@ def test_01():
   new_mm=mm_read.customized_copy(map_data=mm.map_data().deep_copy())
   assert new_mm.is_similar(mm)
 
+  # replace data
+  new_mm.set_map_data(map_data=mm.map_data().deep_copy())
+  assert new_mm.is_similar(mm)
+
 
 
   dm.process_real_map_file('test_map_manager.ccp4')

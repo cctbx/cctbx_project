@@ -220,6 +220,7 @@ class map_manager(map_reader,write_ccp4_map):
     #  to place current origin to superimpose map on original map.
 
     self.original_unit_cell_crystal_symmetry=None
+    self._created_mask=None
 
     # Initialize program_name, limitations, labels
     self.input_file_name=None  # Name of input file (source of this manager)
@@ -571,6 +572,67 @@ class map_manager(map_reader,write_ccp4_map):
       self.shift_origin(desired_origin=(0,0,0))
       self.write_map(file_name=file_name)
       self.shift_origin(desired_origin=current_origin)
+
+  def create_mask_around_edges(self,
+      soft_mask_radius=None):
+    '''
+      Use cctbx.maptbx.mask.create_mask_around_edges to create a mask around
+      edges of model
+    '''
+
+    assert soft_mask_radius is not None
+
+    from cctbx.maptbx.mask import create_mask_around_edges as cm
+    self._created_mask=cm(map_manager=self,
+      soft_mask_radius=soft_mask_radius)
+
+  def create_mask_around_atoms(self,model=None,
+      mask_atoms_atom_radius=None):
+    '''
+      Use cctbx.maptbx.mask.create_mask_around_atoms to create a mask around
+      atoms in model
+    '''
+
+    assert model is not None
+    assert mask_atoms_atom_radius is not None
+
+    from cctbx.maptbx.mask import create_mask_around_atoms as cm
+    self._created_mask=cm(map_manager=self,
+      model=model,
+      mask_atoms_atom_radius=mask_atoms_atom_radius)
+
+  def soft_mask(self,soft_mask_radius=None):
+    '''
+      Make mask a soft mask. Just uses method in create_mask_around_atoms
+    '''
+    assert self._created_mask is not None
+    self._created_mask.soft_mask(soft_mask_radius=soft_mask_radius)
+
+  def apply_mask(self, set_outside_to_mean_inside=False):
+    '''
+      Replace map_data with masked version based on current mask
+      Just uses method in create_mask_around_atoms
+    '''
+
+    assert self._created_mask is not None
+    new_mm=self._created_mask.apply_mask_to_other_map_manager(
+      other_map_manager=self,
+      set_outside_to_mean_inside=set_outside_to_mean_inside)
+    self.set_map_data(map_data=new_mm.map_data())  # replace map data
+
+  def set_map_data(self,map_data=None):
+    '''
+      Replace self.data with map_data. The two maps must have same gridding
+
+      NOTE: This uses selections to copy all the data in map_data into
+      self.data.  The map_data object is not associated with self.data, the
+      data is simply copied.  Also as self.data is modified in place, any
+      objects that currently are just pointers to self.data are affected.
+    '''
+    assert self.map_data().origin()==map_data.origin()
+    assert self.map_data().all()==map_data.all()
+    sel=flex.bool(map_data.size(),True)
+    self.data.as_1d().set_selected(sel,map_data.as_1d())
 
   def deep_copy(self):
     '''
