@@ -130,6 +130,18 @@ def test_01():
   new_mm.set_map_data(map_data=mm.map_data().deep_copy())
   assert new_mm.is_similar(mm)
 
+  # Apply a mask to edges of a map
+  assert approx_equal(new_mm.map_data().as_1d().min_max_mean().max,
+                          mm.map_data().as_1d().min_max_mean().max)
+  assert approx_equal( (new_mm.map_data()[0],mm.map_data()[0]),
+         (0.0, 0.0))
+  new_mm.create_mask_around_edges(soft_mask_radius=3)
+  new_mm.soft_mask(soft_mask_radius=3)
+  assert approx_equal(new_mm.map_data().as_1d().min_max_mean().max,
+                          mm.map_data().as_1d().min_max_mean().max)
+  new_mm.apply_mask(set_outside_to_mean_inside=True)
+  assert approx_equal( (new_mm.map_data()[0],mm.map_data()[0]),
+         (0.0116267086024, 0.0))
 
 
   dm.process_real_map_file('test_map_manager.ccp4')

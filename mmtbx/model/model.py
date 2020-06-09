@@ -881,31 +881,13 @@ class manager(object):
       self._shift_manager.shift_back(hierarchy_to_output)
     return hierarchy_to_output
 
-  def shift_origin(self, origin_shift_cart=None):
-    if not origin_shift_cart or origin_shift_cart==(0,0,0):
-      return self.deep_copy()
-    else:
-      new_model=self.deep_copy()
-      sites_cart=new_model.get_sites_cart()
-      sites_cart+=origin_shift_cart
-      new_model.set_sites_cart(sites_cart)
-      return new_model
-
   def model_as_pdb(self,
       output_cs = True,
       atoms_reset_serial_first_value=None,
-      do_not_shift_back = False,
-      origin_shift_cart=None):
+      do_not_shift_back = False):
     """
     move all the writing here later.
     """
-
-    if origin_shift_cart:
-      return self.shift_origin(
-        origin_shift_cart=origin_shift_cart).model_as_pdb(output_cs=output_cs,
-        atoms_reset_serial_first_value=atoms_reset_serial_first_value,
-        do_not_shift_back=do_not_shift_back,
-        origin_shift_cart=None)
 
     if do_not_shift_back and self._shift_manager is None:
       do_not_shift_back = False
@@ -1014,20 +996,8 @@ class manager(object):
       output_cs = True,
       additional_blocks = None,
       align_columns = False,
-      origin_shift_cart = None,
       do_not_shift_back = False,
       keep_original_loops = False):
-
-    if origin_shift_cart:
-      return self.shift_origin(
-        origin_shift_cart=origin_shift_cart).model_as_mmcif(
-        cif_block_name=cif_block_name,
-        output_cs=output_cs,
-        additional_blocks=additional_blocks,
-        align_columns=align_columns,
-        do_not_shift_back=do_not_shift_back,
-        origin_shift_cart=None,
-        keep_original_loops=keep_original_loops)
 
     out = StringIO()
     cif = iotbx.cif.model.cif()
