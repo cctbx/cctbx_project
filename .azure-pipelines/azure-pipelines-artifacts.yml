@@ -80,9 +80,11 @@ jobs:
     displayName: Download phenix_regression
 
   - script: |
-      # svn co svn+ssh://builder@cci.lbl.gov/phenix_regression/trunk phenix_regression
+      # git clone https://gitlab.com/phenix_project/phenix_regression.git
       cd $(System.DefaultWorkingDirectory)/phenix_regression
-      svn update
+      git lfs install --local
+      git pull --rebase
+      git lfs pull
     displayName: Update phenix_regression
 
   - publish: $(System.DefaultWorkingDirectory)/phenix_regression
@@ -99,9 +101,11 @@ jobs:
     displayName: Download phenix_examples
 
   - script: |
-      # svn co svn+ssh://builder@cci.lbl.gov/phenix_examples/trunk phenix_examples
+      # git clone https://gitlab.com/phenix_project/phenix_examples.git
       cd $(System.DefaultWorkingDirectory)/phenix_examples
-      svn update
+      git lfs install --local
+      git pull --rebase
+      git lfs pull
     displayName: Update phenix_examples
 
   - publish: $(System.DefaultWorkingDirectory)/phenix_examples
