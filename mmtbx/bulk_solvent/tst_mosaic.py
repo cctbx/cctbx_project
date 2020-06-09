@@ -1040,15 +1040,18 @@ def common_inputs(k_sols, for_test):
   sgt = xrs.space_group().type()
   fc  = xrs.structure_factors(d_min=4).f_calc()
   #
-  mask = mosaic.get_mask(xray_structure = xrs, ma = fc, grid_step = 0.3, for_test = for_test)
-  mm = mosaic.mosaic_f_mask(mask_data_asu=mask.data_asu, ma=fc, n_real=mask.n_real, for_test = for_test)
+  mm = mosaic.mosaic_f_mask(
+    xray_structure = xrs,
+    miller_array   = fc,
+    step           = 0.5,
+    volume_cutoff  = 6)
   # Make Fobs
   f_bulk_data = flex.complex_double(fc.data().size())
   for f_mask, k_sol in zip(mm.f_masks, k_sols):
     f_bulk_data += f_mask.data() * k_sol
   f_obs = fc.customized_copy(data = flex.abs(fc.data()+f_bulk_data))
   i_obs = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
-  return group_args(mask=mask, mm=mm, f_obs=f_obs, i_obs=i_obs, fc=fc)
+  return group_args(mm=mm, f_obs=f_obs, i_obs=i_obs, fc=fc)
 
 def run2():
   def rfactor(x,y):
@@ -1080,27 +1083,20 @@ def run2():
 def run():
   k_sols = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
   inp = common_inputs(k_sols=k_sols, for_test=True)
-  mask, mm, f_obs, i_obs, fc = inp.mask, inp.mm, inp.f_obs, inp.i_obs, inp.fc
-  # Check masks and F_mask calculated different ways add up
-  mi,ma = flex.min(mm.data), flex.max(mm.data)
-  assert approx_equal(mi,0) and approx_equal(ma,1), [mi,ma]
-  mi,ma = flex.min(mask.data_asu), flex.max(mask.data_asu)
-  assert approx_equal(mi,0) and approx_equal(ma,1), [mi,ma]
-  assert approx_equal(mm.data, mask.data_asu)
-  assert approx_equal(mm.f_mask.data(), mask.f_mask.data())
+  mm, f_obs, i_obs, fc = inp.mm, inp.f_obs, inp.i_obs, inp.fc
   # Initial k_sols for finite differences test and minimization (algorithm_2)
   x = [1,  .01,.01,.01, .01,.01,.01]
   # Finite differences test
-  g_anal = mosaic.tg(i_obs = i_obs, F=[fc]+mm.f_masks, x=x).gradients()
+  g_anal = mosaic.tg(i_obs = i_obs, F=[fc]+mm.f_masks, x=x, use_curvatures=False).gradients()
   e=1.e-6
   g_fd = flex.double()
   for i in [0,1,2,3,4,5,6]:
     x_ = x[:]
     x_[i] = x_[i]+e
-    t1 = mosaic.tg(i_obs = i_obs, F=[fc]+mm.f_masks, x=x_).target()
+    t1 = mosaic.tg(i_obs = i_obs, F=[fc]+mm.f_masks, x=x_, use_curvatures=False).target()
     x_ = x[:]
     x_[i] = x_[i]-e
-    t2 = mosaic.tg(i_obs = i_obs, F=[fc]+mm.f_masks, x=x_).target()
+    t2 = mosaic.tg(i_obs = i_obs, F=[fc]+mm.f_masks, x=x_, use_curvatures=False).target()
     g_fd.append( (t1-t2)/(2*e) )
   assert flex.sum(flex.abs(g_anal-g_fd))*2/flex.sum(flex.abs(g_anal+g_fd))<1.e-9
   #
@@ -1117,9 +1113,8 @@ def run():
   #
   r = mosaic.algorithm_2(
     i_obs = i_obs, fc = fc, f_masks=mm.f_masks, x = flex.double(x),
-    use_curvatures = False)
+    use_curvatures = False, macro_cycles=100)
   assert approx_equal(r, [1,]+k_sols, 1.e-3)
-
 
 
 if (__name__ == "__main__"):
