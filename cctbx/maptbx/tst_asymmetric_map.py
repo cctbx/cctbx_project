@@ -8,6 +8,7 @@ ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_asymmetric_map_ext import *
 from cctbx.array_family import flex
 from cctbx import maptbx
+from libtbx.test_utils import approx_equal
 
 def run_group(symbol):
   group = space_group_info(symbol);
@@ -25,11 +26,21 @@ def run_group(symbol):
   symmetry_flags = maptbx.use_space_group_symmetry
   fftmap = fc.fft_map(symmetry_flags = symmetry_flags)
   grid_size = fftmap.real_map().accessor().focus()
+  ###
+  rm = fftmap.real_map().deep_copy()
+  amap0  = asymmetric_map(struc.space_group().type(), rm)
+  p1_map00 = amap0.symmetry_expanded_map()
+  assert approx_equal(p1_map00, rm)
+  #
+  maptbx.unpad_in_place(rm)
+  amap1  = asymmetric_map(struc.space_group().type(), rm)
+  p1_map10 = amap1.symmetry_expanded_map()
+  assert approx_equal(p1_map00, p1_map10)
+  ###
 
-  # grid_tags = maptbx.grid_tags(grid_size)
-  # grid_tags.build(fftmap.space_group_info().type(), fftmap.symmetry_flags())
-  # print "grid_tags:\n", dir(grid_tags)
-  # grid_tags.verify(real_map)
+  grid_tags = maptbx.grid_tags(grid_size)
+  grid_tags.build(fftmap.space_group_info().type(), fftmap.symmetry_flags())
+  grid_tags.verify(fftmap.real_map())
 
   print("FFT grid_size = ", grid_size)
   amap = asymmetric_map(struc.space_group().type(), fftmap.real_map())
