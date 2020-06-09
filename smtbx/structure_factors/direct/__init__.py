@@ -107,6 +107,6 @@ def generate_isc_table_file(file_name,
       for m in ml:
         idx = [int(x) for x in (m.r() * idx_)]
         out.write("\n%s %s %s" %(idx[0], idx[1], idx[2]))
-        for sci in xrange(xs.scatterers().size()):
+        for sci in range(xs.scatterers().size()):
           val = isc.get(sci, idx_)
           out.write(" %.6f,%.6f" %(val.real, val.imag))

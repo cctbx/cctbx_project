@@ -1225,7 +1225,7 @@ class calculate_dihedrals(object):
                    variance=None):
         libtbx.adopt_init_args(self, locals())
       def __eq__(self, other):
-        for i in xrange(0,4):
+        for i in range(0,4):
           if self.i_seqs[i] != other.i_seqs[i] or self.rt_mxs[i] != other.rt_mxs[i]:
             return False
         return True
@@ -1239,7 +1239,7 @@ class calculate_dihedrals(object):
     if self.dihedral_defs is not None:
       for ad in self.dihedral_defs:
         sites = []
-        for i in xrange(0,4):
+        for i in range(0,4):
           site_frac = ad.rt_mxs[i] * self.sites_frac[ad.seqs[i]]
           sites.append(unit_cell.orthogonalize(site_frac))
         a = geometry.dihedral(sites)
@@ -1306,12 +1306,12 @@ class calculate_dihedrals(object):
                         rtmx_count = [0,0,0,0]
                         # find the most common matrix to eliminate
                         for idx, rt_mx in enumerate(rt_mxs):
-                          for idx1 in xrange(idx+1, 4):
+                          for idx1 in range(idx+1, 4):
                             if rt_mx == rt_mxs[idx1]:
                               rtmx_count[idx] += 1
                         max_idx = rtmx_count.index(max(rtmx_count))
                         rt_mx_inv = rt_mxs[max_idx].inverse()
-                        for i in xrange(0, 4):
+                        for i in range(0, 4):
                           sites[i] = rt_mxs[i].inverse() * sites[i]
                           rt_mxs[i] = rt_mx_inv.multiply(rt_mxs[i])
                           sites[i] = unit_cell.orthogonalize(rt_mxs[i] * sites[i])
