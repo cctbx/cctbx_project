@@ -12,6 +12,8 @@ asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from libtbx import group_args
 from mmtbx import bulk_solvent
 from mmtbx.ncs import tncs
+from libtbx.test_utils import approx_equal
+from collections import OrderedDict
 
 # Utilities used by algorithm 2 ------------------------------------------------
 
@@ -72,7 +74,7 @@ class minimizer2(object):
     return self.x, self.f, self.g, self.d
 
 class tg(object):
-  def __init__(self, x, i_obs, F):
+  def __init__(self, x, i_obs, F, use_curvatures):
     self.x = x
     self.i_obs = i_obs
     self.F = F
@@ -80,6 +82,7 @@ class tg(object):
     self.g = None
     self.d = None
     self.sum_i_obs = flex.sum(self.i_obs.data())
+    self.use_curvatures=use_curvatures
     self.update_target_and_grads(x=x)
 
   def update(self, x):
@@ -115,7 +118,7 @@ class tg(object):
     self.t = t
     self.g = g
     #
-    if 1:#(cuvature):
+    if self.use_curvatures:
       d = flex.double()
       for j in range(len(self.F)):
         tmp1 = flex.double(self.i_obs.data().size(),0)
@@ -141,13 +144,13 @@ class tg(object):
   def curvatures(self): return self.d/self.sum_i_obs
 #-------------------------------------------------------------------------------
 
-def get_mask(xray_structure, ma, grid_step, for_test):
-  sgt = xray_structure.space_group().type()
+def mosaic_f_mask(miller_array, xray_structure, step, volume_cutoff):
+  # compute mask in p1 (via ASU)
   cg = maptbx.crystal_gridding(
     unit_cell        = xray_structure.unit_cell(),
     space_group_info = xray_structure.space_group_info(),
     symmetry_flags   = maptbx.use_space_group_symmetry,
-    step             = grid_step)
+    step             = step)
   n_real = cg.n_real()
   mask_p1 = mmtbx.masks.mask_from_xray_structure(
     xray_structure        = xray_structure,
@@ -156,50 +159,47 @@ def get_mask(xray_structure, ma, grid_step, for_test):
     n_real                = n_real,
     in_asu                = False).mask_data
   maptbx.unpad_in_place(map=mask_p1)
-  mask_asu = asu_map_ext.asymmetric_map(sgt, mask_p1).data()
-  if(for_test): mask_p1 = None
-  f_mask = ma.structure_factors_from_asu_map(
-    asu_map_data = mask_asu,
-    n_real       = n_real) # YES, n_real, not mask_asu.accessor().all() which IS WRONG
-  return group_args(
-    data_p1  = mask_p1,
-    data_asu = mask_asu,
-    n_real   = n_real,
-    f_mask   = f_mask)
-
-def mosaic_f_mask(mask_data_asu, ma, n_real, for_test):
-  co = maptbx.connectivity(map_data=mask_data_asu, threshold=0.01,
-    preprocess_against_shallow = not for_test) # Cannot do it with ASU map
-  conn_asu = co.result().as_double()
+  # conn analysis
+  co = maptbx.connectivity(
+    map_data                   = mask_p1,
+    threshold                  = 0.01,
+    preprocess_against_shallow = True,
+    wrapping                   = False)
+  conn = co.result().as_double()
   z = zip(co.regions(),range(0,co.regions().size()))
   sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
-  zero_one = None
-  if(for_test):
-    zero_one = conn_asu * 0
-    f_mask_data = ma.data() * 0
-  result_1 = conn_asu * 0
-  f_masks  = []
+  f_mask_data = flex.complex_double(miller_array.data().size(), 0)
+  #f_masks  = []
+  FM = OrderedDict()
   for p in sorted_by_volume:
     v, i = p
-    #print ("volume:",v, "region_id",i)
+    volume = v*step**3
+    if(volume_cutoff is not None):
+      if volume < volume_cutoff: continue
     if(i==0): continue
-    s = conn_asu==i
-    if(for_test):
-      zero_one = zero_one.set_selected(s, 1)
-    #
-    mdi = result_1.deep_copy()
-    mdi = mdi.set_selected(s, 1)
-    f_mask_i = ma.structure_factors_from_asu_map(
-      asu_map_data = mdi, n_real = n_real)
-    f_masks.append(f_mask_i)
-    if(for_test):
-      f_mask_data += f_mask_i.data()
-    #
-  f_mask = None
-  if(for_test):
-    f_mask = ma.customized_copy(data = f_mask_data)
-  return group_args(
-    data = zero_one, f_mask = f_mask, f_masks = f_masks)
+    mask_i = flex.double(flex.grid(n_real), 0)
+    mask_i_asu = asu_map_ext.asymmetric_map(
+      miller_array.space_group().type(), mask_i.set_selected(conn==i, 1)).data()
+    volume_asu = (mask_i_asu>0).count(True)*step**3
+    print("volume p1: %12.3f"%volume, "volume asu: %12.3f"%volume_asu,
+          "region_id", i)
+    if(volume_asu<1.e-6): continue
+    f_mask_i = miller_array.structure_factors_from_asu_map(
+      asu_map_data = mask_i_asu, n_real = n_real)
+    #f_masks.append(f_mask_i)
+    f_mask_data += f_mask_i.data()
+    FM.setdefault(round(volume, 3), []).append(f_mask_i.data())
+  # group asu pices corresponding to the same region in P1
+  F_MASKS = []
+  for k,v in zip(FM.keys(), FM.values()):
+    tmp = flex.complex_double(miller_array.data().size(), 0)
+    for v_ in v:
+      tmp+=v_
+    F_MASKS.append(miller_array.customized_copy(data = tmp))
+  #
+  f_mask = miller_array.customized_copy(data = f_mask_data)
+  #
+  return group_args(f_mask = f_mask, f_masks = F_MASKS, n_real=n_real)
 
 def algorithm_0(f_obs, fc, f_masks):
   """
@@ -230,29 +230,31 @@ def algorithm_0(f_obs, fc, f_masks):
   r = [1,]+r
   return r
 
-def algorithm_2(i_obs, fc, f_masks, x, use_curvatures=True):
+def algorithm_2(i_obs, fc, f_masks, x, use_curvatures=True, macro_cycles=10):
   """
   Unphased one-step search
   """
   F = [fc]+f_masks
-  calculator = tg(i_obs = i_obs, F=F, x = x)
-  for it in range(10):
+  calculator = tg(i_obs = i_obs, F=F, x = x, use_curvatures=use_curvatures)
+  for it in xrange(macro_cycles):
     if(use_curvatures):
       m = minimizer(max_iterations=100, calculator=calculator)
     else:
+      upper = flex.double([10.] + [0.65]*(x.size()-1))
+      lower = flex.double([0.1] + [0]*(x.size()-1))
       m = tncs.minimizer(
         potential       = calculator,
         use_bounds      = 2,
-        lower_bound     = flex.double(x.size(), 0),
-        upper_bound     = flex.double(x.size(), 10),
+        lower_bound     = lower,
+        upper_bound     = upper,
         initial_values  = x).run()
-    calculator = tg(i_obs = i_obs, F=F, x = m.x)
+    calculator = tg(i_obs = i_obs, F=F, x = m.x, use_curvatures=use_curvatures)
   if(use_curvatures):
     for it in range(10):
       m = minimizer(max_iterations=100, calculator=calculator)
-      calculator = tg(i_obs = i_obs, F=F, x = m.x)
+      calculator = tg(i_obs = i_obs, F=F, x = m.x, use_curvatures=use_curvatures)
       m = minimizer2(max_iterations=100, calculator=calculator).run(use_curvatures=True)
-      calculator = tg(i_obs = i_obs, F=F, x = m.x)
+      calculator = tg(i_obs = i_obs, F=F, x = m.x, use_curvatures=use_curvatures)
   return m.x
 
 def algorithm_3(i_obs, fc, f_masks):
