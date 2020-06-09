@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 import mmtbx.f_model
-import mmtbx.utils
 import mmtbx.masks
 from mmtbx import map_tools
 from iotbx import phil
