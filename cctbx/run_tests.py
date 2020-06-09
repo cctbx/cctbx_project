@@ -144,12 +144,12 @@ tst_list_base = [
    "$D/regression/tst_connectivity.py",
    "$D/regression/tst_diffuse.py",
    "$D/regression/tst_grm_modifications.py",
-   "$D/regression/tst_maptbx_box.py",
   ]
 
 # failing tests on Python 3
 tst_list_fail_py3 = [
   "$D/xray/boost_python/tst_xray.py",
+   "$D/regression/tst_maptbx_box.py",
   ["$D/regression/tst_xray.py", "I41/acd"],
   ]
 tst_list_fail = list()
