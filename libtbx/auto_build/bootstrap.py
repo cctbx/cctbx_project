@@ -474,6 +474,10 @@ class Toolbox(object):
       destination = os.path.join('modules', module)
     destpath, destdir = os.path.split(destination)
 
+    # default to using ssh for private phenix repositories
+    if module in ['phenix', 'solve_resolve']:
+      use_ssh = True
+
     if os.path.exists(destination):
       if git_available and os.path.exists(os.path.join(destination, '.git')):
         if not open(os.path.join(destination, '.git', 'HEAD'), 'r').read().startswith('ref:'):
@@ -842,9 +846,7 @@ class eigen_module(SourceModule):
 # Phenix repositories
 class phenix_module(SourceModule):
   module = 'phenix'
-  anonymous = ['git',
-               'git@github.com:phenix-project/phenix.git',
-               'https://github.com/phenix-project/phenix.git']
+  anonymous = ['git', 'git@github.com:phenix-project/phenix.git']
 
 class phenix_html(SourceModule):
   module = 'phenix_html'
@@ -888,9 +890,7 @@ class pulchra_module(SourceModule):
 
 class solve_resolve_module(SourceModule):
   module = 'solve_resolve'
-  anonymous = ['git',
-               'git@github.com:phenix-project/solve_resolve.git',
-               'https://github.com/phenix-project/solve_resolve.git']
+  anonymous = ['git', 'git@github.com:phenix-project/solve_resolve.git']
 
 class reel_module(SourceModule):
   module = 'reel'
