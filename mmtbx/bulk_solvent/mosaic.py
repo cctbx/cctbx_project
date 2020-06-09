@@ -12,7 +12,6 @@ asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from libtbx import group_args
 from mmtbx import bulk_solvent
 from mmtbx.ncs import tncs
-from libtbx.test_utils import approx_equal
 from collections import OrderedDict
 
 # Utilities used by algorithm 2 ------------------------------------------------
