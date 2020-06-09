@@ -102,7 +102,7 @@ class tg(object):
     t = flex.sum(diff*diff)/4
     #
     g = flex.double()
-    for j in xrange(len(self.F)):
+    for j in range(len(self.F)):
       tmp = flex.double(self.i_obs.data().size(),0)
       for m, km in enumerate(self.x):
         tmp += km * flex.real( self.F[j].data()*flex.conj(self.F[m].data()) )
@@ -117,7 +117,7 @@ class tg(object):
     #
     if 1:#(cuvature):
       d = flex.double()
-      for j in xrange(len(self.F)):
+      for j in range(len(self.F)):
         tmp1 = flex.double(self.i_obs.data().size(),0)
         tmp2 = flex.double(self.i_obs.data().size(),0)
         for m, km in enumerate(self.x):
@@ -236,7 +236,7 @@ def algorithm_2(i_obs, fc, f_masks, x, use_curvatures=True):
   """
   F = [fc]+f_masks
   calculator = tg(i_obs = i_obs, F=F, x = x)
-  for it in xrange(10):
+  for it in range(10):
     if(use_curvatures):
       m = minimizer(max_iterations=100, calculator=calculator)
     else:
@@ -248,7 +248,7 @@ def algorithm_2(i_obs, fc, f_masks, x, use_curvatures=True):
         initial_values  = x).run()
     calculator = tg(i_obs = i_obs, F=F, x = m.x)
   if(use_curvatures):
-    for it in xrange(10):
+    for it in range(10):
       m = minimizer(max_iterations=100, calculator=calculator)
       calculator = tg(i_obs = i_obs, F=F, x = m.x)
       m = minimizer2(max_iterations=100, calculator=calculator).run(use_curvatures=True)

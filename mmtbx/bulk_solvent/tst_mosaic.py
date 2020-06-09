@@ -1056,7 +1056,7 @@ def run2():
     d = flex.sum(flex.abs(x+y))
     if(d!=0): return n/d
     else:     return None
-  for it in xrange(1):
+  for it in range(1):
     k_sols = flex.random_double(6)
     answer = flex.double([1,])
     answer.extend(k_sols)

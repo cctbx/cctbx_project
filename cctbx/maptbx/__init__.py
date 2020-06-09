@@ -1559,7 +1559,7 @@ Fourier image of specified resolution, etc.
       i_cut = ib0.i_first_inflection_point
     else:
       i_cut = None
-      for i in xrange(ib0.radii.size()):
+      for i in range(ib0.radii.size()):
         if(ib0.image_values[i]<=0):
           rad_cut = ib0.radii[i-1]
           i_cut = i-1
