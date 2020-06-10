@@ -18,6 +18,7 @@ class nanoBragg_crystal(object):
         self.n_mos_domains = 1
         self.thick_mm = 0.1
         self.missetting_matrix = sqr((1, 0, 0, 0, 1, 0, 0, 0, 1))
+        self.fp_fdp = None
 
     @property
     def Omatrix(self):

@@ -127,6 +127,15 @@ namespace boost_python { namespace {
       //return boost::python::make_tuple(diffBragg.pythony_indices,diffBragg.pythony_amplitudes, diffBragg.pythony_amplitudes2);
   }
 
+  static void  set_fp_fdp(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& value) {
+      diffBragg.fp = extract<nanoBragg::af::shared <double> >(value[0]);
+      diffBragg.fdp = extract<nanoBragg::af::shared<double> >(value[1]);
+      diffBragg.using_fp_fdp = true;
+  }
+
+  static boost::python::tuple get_fp_fdp(simtbx::nanoBragg::diffBragg diffBragg) {
+      return boost::python::make_tuple(diffBragg.fp,diffBragg.fdp); 
+  }
 
   void diffBragg_init_module() {
     using namespace boost::python;
@@ -218,6 +227,10 @@ namespace boost_python { namespace {
             make_function(&get_Fhkl_tuple_complex,rbv()),
             make_function(&set_Fhkl_tuple_complex,dcp()),
             "hkl and Freal and Fcomplex as a 3-tuple of (indices ,flex-double, flex-double). experimental")
+      .add_property("fp_fdp",
+            make_function(&get_fp_fdp,rbv()),
+            make_function(&set_fp_fdp,dcp()),
+            "Tuple of fp, fdp values at different energies")
 
     ; // end of diffBragg extention
 

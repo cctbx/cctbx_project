@@ -403,4 +403,45 @@ def convolve_with_psf(image_data, fwhm=27.0, pixel_size=177.8, psf_radius=7):
   psf = makeMoffat_integPSF(fwhm_pixel,xpsf,ypsf)
   convolved_image = convolve(flex.double(image_data), psf)
   return convolved_image.as_numpy_array()
+
+
+def get_complex_fcalc_from_pdb(pdb_file, high_res=2.1, unit_cell_length_tolerance=0.1):
+  from iotbx import file_reader
+  import mmtbx.command_line.fmodel
+  import mmtbx.utils
+  import math
+
+  pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
+  pdb_in.assert_file_type("pdb")
+  xray_structure = pdb_in.file_object.xray_structure_simple()
+  xray_structure.show_summary()
+  phil2 = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params
+  params2 = phil2.extract()
+  # adjust the cutoff of the generated intensities to assure that
+  # statistics will be reported to the desired high-resolution limit
+  # even if the observed unit cell differs slightly from the reference.
+  #
+  # Replacing params.d_min = 2.1
+  # Replacing params.unit_cell_length_tolerance = 0.1
+  params2.high_resolution = high_res / math.pow(
+    1 + unit_cell_length_tolerance, 1 / 3)
+  #if params.d_max is not None:
+  #  params2.low_resolution = params.d_max
+  #params2.output.type = "real"
+  #if (params.include_bulk_solvent) :
+  params2.fmodel.k_sol = 0.435#params.k_sol
+  params2.fmodel.b_sol = 46.0 #params.b_sol
+  params2.structure_factors_accuracy.algorithm = 'direct'
+  #from IPython import embed; embed(); exit()
+  f_model = mmtbx.utils.fmodel_from_xray_structure(
+    xray_structure = xray_structure,
+    f_obs          = None,
+    add_sigmas     = False, # was true
+    params         = params2).f_model
+  if True: #not params.merge_anomalous:
+    f_model = f_model.generate_bijvoet_mates()
+  #i_model = f_model.as_intensity_array().change_basis(params.model_reindex_op).map_to_asu()
+
+  return f_model
+
   

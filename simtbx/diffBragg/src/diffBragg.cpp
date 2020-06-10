@@ -1,5 +1,6 @@
 #include <simtbx/diffBragg/src/diffBragg.h>
 #include <assert.h>
+#include <math.h>
 namespace simtbx {
 namespace nanoBragg {
 
@@ -295,6 +296,9 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     F_cell2 = 0;
     complex_miller = false;
     pythony_amplitudes2.clear();
+    fp.clear();
+    fdp.clear();
+    using_fp_fdp = false;
  
 
 
@@ -710,6 +714,11 @@ void diffBragg::add_diffBragg_spots()
     }
 
     RXYZ = RotMats[0]*RotMats[1]*RotMats[2];
+    if (using_fp_fdp)
+    {
+      SCITBX_ASSERT(fp.size() == sources);
+      SCITBX_ASSERT(fdp.size() == sources);
+  }
 
     //printf("First row: %f | %f | %f \n", RXYZ(0,0), RXYZ(0,1), RXYZ(0,2));
     //printf("Second row: %f | %f | %f \n", RXYZ(1,0), RXYZ(1,1), RXYZ(1,2));
@@ -1065,6 +1074,28 @@ void diffBragg::add_diffBragg_spots()
 
                                 //F_cell = Fhkl[h0-h_min][k0-k_min][l0-l_min];
                                 if (complex_miller)
+                                  double qm = 1.0; // Occupancy of Fe in LS49 is 1.0
+                                  double Bm = 26.58; // B-factor from refinement 
+                                  double S_2 = scattering[0]*scattering[0]+scattering[1]*scattering[1]+scattering[2]*scattering[2];
+
+                                  // FIXME Stuff that needs to be fixed
+                                  double val_fp = -4.0; //fp[source];
+                                  double val_fdp = 4.0; //fdp[source];
+                                  double pre_factor_1 = 1.0; //exp(-Bm*S_2/4.0); // put back occupancy
+                                  double r_dot_h = h0*0.247105-k0*0.003748 + l0*0.142614;
+                                  //
+
+                                  double real_part = val_fp*cos(2*M_PI*r_dot_h) - val_fdp*sin(2*M_PI*r_dot_h);
+                                  double imag_part = val_fp*sin(2*M_PI*r_dot_h) + val_fdp*cos(2*M_PI*r_dot_h);
+                                  double F_Fe_real = pre_factor_1*real_part;
+                                  double F_Fe_imag = pre_factor_1*imag_part;
+          			  std::cout <<  val_fp << " "<< val_fdp<<" "<< S_2 << " "<< r_dot_h  << " "<< h0 <<" "<< k0 << " "<< l0 <<std::endl;
+
+                                  F_cell = F_cell + F_Fe_real;
+                                  F_cell2 = F_cell2 + F_Fe_imag; 
+                		  //F_Fe_real/F_cell >> std;
+ 				  std::cout <<"  percentage fdp/F" << F_Fe_imag << F_cell2 << std::endl;;
+                                  
                                   F_cell = sqrt(F_cell*F_cell + F_cell2*F_cell2);
 
                                 /* now we have the structure factor for this pixel */

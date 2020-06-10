@@ -1,10 +1,10 @@
 if True:
   try:
     import pylab as plt
-    from mpl_toolkits.mplot3d import axes3d
+    #from mpl_toolkits.mplot3d import axes3d
   
-    fig = plt.figure()
-    ax = fig.gca(projection='3d')
+    #fig = plt.figure()
+    #ax = fig.gca(projection='3d')
   except Exception as e:
     pass
 import numpy as np
@@ -30,9 +30,9 @@ class RefineRot(PixelRefinement):
         self.show_plotted_images=show_plotted_images
         if self.plot_images and self.show_plotted_images:
             import pylab as plt
-            from mpl_toolkits.mplot3d import axes3d
-            fig = plt.figure()
-            ax = fig.gca(projection='3d')
+            #from mpl_toolkits.mplot3d import axes3d
+            #fig = plt.figure()
+            #ax = fig.gca(projection='3d')
         self.plot_residuals = plot_residuals
         self.spot_rois = spot_rois
         self.spot_resolution = spot_resolution

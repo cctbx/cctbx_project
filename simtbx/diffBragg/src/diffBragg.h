@@ -174,6 +174,9 @@ class diffBragg: public nanoBragg{
   af::shared<double> pythony_amplitudes2;
   bool complex_miller;
   double F_cell2; // for storing the imaginary component
+  af::shared<double> fp;
+  af::shared<double> fdp;
+  bool using_fp_fdp;
 
 }; // end of diffBragg
 

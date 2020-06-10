@@ -166,6 +166,8 @@ class SimData:
         self.D.mosaic_domains = self.crystal.n_mos_domains
         self.D.set_mosaic_blocks(SimData.Umats(
                 self.crystal.mos_spread_deg, self.crystal.n_mos_domains))
+        if self.crystal.fp_fdp is not None:
+            self.D.fp_fdp = self.crystal.fp_fdp
 
     def _beam_properties(self):
         self.D.xray_beams = self.beam.xray_beams
