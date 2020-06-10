@@ -3,6 +3,7 @@ from six.moves import range
 import os
 import h5py
 import numpy as np
+import subprocess
 from read_geom import read_geom
 from libtbx.phil import parse
 from libtbx.utils import Sorry
@@ -37,6 +38,15 @@ The assumed parameters for the detector can be seen in the __init__ function and
 if they are modified at EU XFEL in the future
 
 '''
+
+
+def get_git_revision_hash():
+  definitions_path = os.path.join(os.path.dirname(sys.argv[0]), 'definitions')
+  current_dir = os.getcwd()
+  os.chdir(definitions_path)
+  definitions_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip()
+  os.chdir(current_dir)
+  return definitions_hash.decode()
 
 
 class agipd_cxigeom2nexus(object):
@@ -86,7 +96,8 @@ class agipd_cxigeom2nexus(object):
     entry = f.create_group('entry')
     entry.attrs['NX_class'] = 'NXentry'
     # --> definition
-    self._create_scalar(entry, 'definition', 'S4', np.string_('NXmx'))
+    definition_string = f"NXmx:{get_git_revision_hash()}"
+    self._create_scalar(entry, 'definition', f'S{len(definition_string)}',np.string_(definition_string))
     # --> data
     data = entry.create_group('data')
     data.attrs['NX_class'] = 'NXdata'
