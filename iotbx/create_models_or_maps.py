@@ -89,6 +89,9 @@ def generate_model(
       file_name=os.path.join(iotbx_regression,'secondary_structure',
          '4a7h_chainC.pdb') # starts at 9
       if not start_res:start_res=9
+  else: # have file_name
+    if start_res is None:
+      start_res=1
 
   # Read in coordinates and cut out the part of the model we want
 

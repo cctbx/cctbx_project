@@ -573,6 +573,32 @@ class map_manager(map_reader,write_ccp4_map):
       self.write_map(file_name=file_name)
       self.shift_origin(desired_origin=current_origin)
 
+  def create_mask_around_density(self,
+      resolution=None,
+      molecular_mass=None,
+      sequence=None,
+      solvent_content=None):
+    '''
+      Use cctbx.maptbx.mask.create_mask_around_density to create a mask automatically
+
+      Parameters are:
+       resolution : required resolution of map
+       molecular_mass: optional mass (Da) of object in density 
+       sequence: optional sequence of object in density 
+       solvent_content : optional solvent_content of map
+
+      
+    '''
+
+    assert resolution is not None
+
+    from cctbx.maptbx.mask import create_mask_around_density as cm
+    self._created_mask=cm(map_manager=self,
+        resolution=resolution,
+        molecular_mass=molecular_mass,
+        sequence=sequence,
+        solvent_content=solvent_content,)
+
   def create_mask_around_edges(self,
       soft_mask_radius=None):
     '''
@@ -619,6 +645,10 @@ class map_manager(map_reader,write_ccp4_map):
       other_map_manager=self,
       set_outside_to_mean_inside=set_outside_to_mean_inside)
     self.set_map_data(map_data=new_mm.map_data())  # replace map data
+
+  def get_created_mask_as_map_manager(self):
+    assert self._created_mask is not None
+    return self._created_mask.map_manager()
 
   def set_map_data(self,map_data=None):
     '''

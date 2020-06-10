@@ -4720,10 +4720,76 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     half_map_data_list=None,
     sharpening_target_pdb_inp=None,
     ncs_object=None,
+    write_files=None,
+    auto_sharpen=None,
+    density_select=None,
+    add_neighbors=None,
+    save_box_map_ncs_au=None,
     sequence=None,
+    wrapping=None,
+    target_ncs_au_file=None,
+    regions_to_keep=None,
+    solvent_content=None,
+    resolution=None,
+    molecular_mass=None,
+    symmetry=None,
+    chain_type=None,
+    keep_low_density=None,
+    box_buffer=None,
+    soft_mask_extract_unique=None,
+    mask_expand_ratio=None,
     out=sys.stdout):
 
   params=get_params_from_args(args)
+
+  # Set params specifically if coming in from call
+  if sequence is not None:
+    params.crystal_info.sequence=sequence
+  if wrapping is not None:
+    params.crystal_info.use_sg_symmetry= (not wrapping)
+  if target_ncs_au_file is not None:
+    params.input_files.target_ncs_au_file=target_ncs_au_file
+  if regions_to_keep is not None:
+    params.map_modification.regions_to_keep=regions_to_keep
+  if solvent_content is not None:
+    params.crystal_info.solvent_content=solvent_content
+  if resolution is not None:
+    params.crystal_info.resolution=resolution
+  if molecular_mass is not None:
+    params.crystal_info.molecular_mass=molecular_mass
+  if symmetry is not None:
+    params.reconstruction_symmetry.symmetry=symmetry
+  if chain_type is not None:
+    params.crystal_info.chain_type=chain_type
+
+  if regions_to_keep is not None:
+    params.map_modification.regions_to_keep=regions_to_keep
+    params.segmentation.iterate_with_remainder=False
+  elif keep_low_density:
+    params.segmentation.iterate_with_remainder=True
+  elif keep_low_density is False:
+    params.segmentation.iterate_with_remainder=False
+  else:
+    pass # just so it is clear this was considered
+
+  if box_buffer is not None:
+    params.output_files.box_buffer=box_buffer
+  if soft_mask_extract_unique is not None:
+    params.map_modification.soft_mask=soft_mask_extract_unique
+
+  if mask_expand_ratio is not None:
+    params.segmentation.mask_expand_ratio=mask_expand_ratio
+  if write_files is not None:
+    params.control.write_files=write_files
+  if auto_sharpen is not None:
+    params.map_modification.auto_sharpen=auto_sharpen
+  if density_select is not None:
+    params.segmentation.density_select=density_select
+  if add_neighbors is not None:
+    params.segmentation.add_neighbors=add_neighbors
+  if save_box_map_ncs_au is not None:
+    params.control.save_box_map_ncs_au=save_box_map_ncs_au
+
 
   print("\nSegment_and_split_map\n", file=out)
   print("Command used: %s\n" %(
@@ -11427,6 +11493,12 @@ def run(args,
      params=None,
      map_data=None,
      crystal_symmetry=None,
+     write_files=None,
+     auto_sharpen=None,
+     density_select=None,
+     add_neighbors=None,
+     save_box_map_ncs_au=None,
+     resolution=None,
      sequence=None,
      half_map_data_list=None,
      ncs_obj=None,
@@ -11436,7 +11508,19 @@ def run(args,
      pdb_hierarchy=None,
      target_xyz=None,
      target_hierarchy=None,
+     target_model=None,
      sharpening_target_pdb_inp=None,
+     wrapping=None,
+     target_ncs_au_file=None,
+     regions_to_keep=None,
+     solvent_content=None,
+     molecular_mass=None,
+     symmetry=None,
+     chain_type=None,
+     keep_low_density=None,
+     box_buffer=None,
+     soft_mask_extract_unique=None,
+     mask_expand_ratio=None,
      out=sys.stdout):
 
   if is_iteration:
@@ -11449,7 +11533,24 @@ def run(args,
        args,map_data=map_data,crystal_symmetry=crystal_symmetry,
        half_map_data_list=half_map_data_list,
        ncs_object=ncs_obj,
+       write_files=write_files,
+       auto_sharpen=auto_sharpen,
+       density_select=density_select,
+       add_neighbors=add_neighbors,
+       save_box_map_ncs_au=save_box_map_ncs_au,
        sequence=sequence,
+       wrapping=wrapping,
+       target_ncs_au_file=target_ncs_au_file,
+       regions_to_keep=regions_to_keep,
+       solvent_content=solvent_content,
+       resolution=resolution,
+       molecular_mass=molecular_mass,
+       symmetry=symmetry,
+       chain_type=chain_type,
+       keep_low_density=keep_low_density,
+       box_buffer=box_buffer,
+       soft_mask_extract_unique=soft_mask_extract_unique,
+       mask_expand_ratio=mask_expand_ratio,
        sharpening_target_pdb_inp=sharpening_target_pdb_inp,out=out)
     if params.control.shift_only:
       return map_data,ncs_obj,tracking_data
@@ -11465,7 +11566,9 @@ def run(args,
        ncs_object=shifted_ncs_object,
        out=out)
 
-    if params.input_files.target_ncs_au_file: # read in target
+    if target_model:
+      target_hierarchy=target_model.get_hierarchy()
+    elif params.input_files.target_ncs_au_file: # read in target
       import iotbx.pdb
       target_hierarchy=iotbx.pdb.input(
          file_name=params.input_files.target_ncs_au_file).construct_hierarchy()

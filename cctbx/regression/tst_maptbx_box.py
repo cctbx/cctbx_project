@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+import os
 import iotbx.pdb
 from libtbx.test_utils import approx_equal
 from cctbx.sgtbx import space_group_info
@@ -8,6 +9,7 @@ from libtbx import group_args
 import iotbx.pdb
 from iotbx.map_manager import map_manager
 from iotbx.map_model_manager import map_model_manager
+from iotbx.data_manager import DataManager
 import mmtbx.model
 from scitbx.array_family import flex
 
@@ -185,14 +187,52 @@ def exercise_around_model():
 
   assert box.map_manager.map_data().as_1d().count(0)==81264
 
+  # Extract using extract_unique
+
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  data_ccp4 = os.path.join(data_dir, 'data','D7.ccp4')
+  data_ncs= os.path.join(data_dir, 'data','D7.ncs_spec')
+  data_seq= os.path.join(data_dir, 'data','D7.seq')
+
+  dm = DataManager(['real_map', 'phil', 'ncs_spec','sequence'])
+  dm.process_real_map_file(data_ccp4)
+  mm=dm.get_real_map(data_ccp4)
+
+  dm.process_ncs_spec_file(data_ncs)
+  ncs_obj=dm.get_ncs_spec(data_ncs)
+
+  dm.process_sequence_file(data_seq)
+  sequence=dm.get_sequence(data_seq)
+  sequence_as_text=sequence[0].sequence
+
+  mm.show_summary()
+
+  box = cctbx.maptbx.box.extract_unique(
+    map_manager = mm.deep_copy(),
+    resolution = 3,
+    box_buffer = 1,
+    sequence = sequence_as_text,
+    ncs_object=ncs_obj, 
+    wrapping    = False,
+   )
+
+  box.map_manager.write_map('new_box.ccp4') 
+
+
+  # Get bounds around density
+  box = cctbx.maptbx.box.around_density(
+    map_manager = mam.mm.deep_copy(),
+    wrapping=False)
+
+
   #
   # IF you are about to change this - THINK TWICE!
   #
   import inspect
   r = inspect.getargspec(cctbx.maptbx.box.around_model.__init__)
-  assert r.args == ['self', 'map_manager', 'model', 'cushion','wrapping'], r.args
+  assert r.args == ['self', 'map_manager', 'model', 'cushion','wrapping', 'log'], r.args
   r = inspect.getargspec(cctbx.maptbx.box.with_bounds.__init__)
-  assert r.args == ['self', 'map_manager', 'lower_bounds', 'upper_bounds','wrapping','model'], r.args
+  assert r.args == ['self', 'map_manager', 'lower_bounds', 'upper_bounds','wrapping','model', 'log'], r.args
 
 if (__name__ == "__main__"):
   exercise_around_model()

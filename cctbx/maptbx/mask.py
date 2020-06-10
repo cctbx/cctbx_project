@@ -203,3 +203,73 @@ class create_mask_around_edges(create_mask_around_atoms):
     self._is_soft_mask=False
     self._is_soft_mask_around_edges=False
 
+class create_mask_around_density(create_mask_around_atoms):
+
+  '''
+    Class to create a map_manager object containing a mask around density 
+
+  '''
+
+  def __init__(self,
+      map_manager=None,
+      resolution=None,
+      molecular_mass=None,
+      sequence=None,
+      solvent_content=None):
+
+    '''
+     Create a mask (map object) with values of 1 near molecule 
+
+     Parameters are:
+       map_manager: source of information about density
+       resolution : required resolution of map
+       molecular_mass: optional mass (Da) of object in density 
+       sequence: optional sequence of object in density 
+       solvent_content : optional solvent_content of map
+    '''
+
+    assert resolution is not None
+    assert (map_manager is not None)
+
+    self._crystal_symmetry=map_manager.crystal_symmetry()
+
+    if (molecular_mass or sequence ) and (
+          not solvent_content):
+      # Try to get a good starting value of solvent_content
+
+      from cctbx.maptbx.segment_and_split_map import get_solvent_fraction
+      solvent_content=get_solvent_fraction(
+           params=None,
+           molecular_mass=molecular_mass,
+           sequence=sequence,
+           do_not_adjust_dalton_scale=True,
+           crystal_symmetry=self._crystal_symmetry,
+           out=null_out())
+
+    # Now use automatic procedure to get a mask
+    from cctbx.maptbx.segment_and_split_map import \
+          get_iterated_solvent_fraction
+
+    self._mask,solvent_fraction=get_iterated_solvent_fraction(
+          crystal_symmetry=self._crystal_symmetry,
+          fraction_of_max_mask_threshold=0.05, #
+          solvent_content=solvent_content,
+          cell_cutoff_for_solvent_from_mask=1, # Use low-res method always
+          use_solvent_content_for_threshold=True,
+          mask_resolution=resolution,
+          return_mask_and_solvent_fraction=True,
+          map=map_manager.map_data(),
+          verbose=False,
+          out=null_out())
+
+    if solvent_fraction is None:
+      raise Sorry("Unable to get solvent fraction in auto-masking")
+
+    # Set up map_manager with this mask
+    self._map_manager=map_manager.customized_copy(map_data=self._mask)
+
+    # Initialize soft mask
+    self._is_soft_mask=False
+    self._is_soft_mask_around_edges=False
+
+

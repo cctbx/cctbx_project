@@ -39,11 +39,6 @@ master_phil = libtbx.phil.parse("""
     .help = File with model indicating which au to choose in extract_unique
     .short_caption = Input target ncs au file
     .type = str
-  half_map_list = None
-    .type = strings
-    .help = Half maps (extract_unique only). Supply file names \
-              separated by spaces
-    .short_caption = Half maps (extract_unique only)
   selection = all
     .type = str
     .help = Atom selection to be applied to input PDB file
@@ -185,7 +180,7 @@ master_phil = libtbx.phil.parse("""
       .short_caption = Soft mask in extract unique
 
   mask_expand_ratio = 1
-      .type = int
+      .type = float
       .help = Mask expansion relative to resolution for extract_unique
       .short_caption = Mask expand ratio
 
@@ -379,6 +374,8 @@ def get_model_from_inputs(
 
   if len(file_names)>0:
     file_name=file_names[0]
+    if not file_name or not os.path.isfile(file_name):
+      raise Sorry("The file %s is missing" %(file_name))
     from iotbx.data_manager import DataManager
     dm = DataManager()
     dm.set_overwrite(True)
@@ -414,10 +411,8 @@ def get_map_manager_objects(
     crystal_symmetry=None,
     ccp4_map=None,
     mask_as_map_manager=None,
-    half_map_data_list_as_map_managers=None,
      map_data=None,  # XXX
      mask_data=None, # XXX
-     half_map_data_list=None,  # XXX
      log=sys.stdout):
 
   # Map or map coefficients
@@ -487,18 +482,6 @@ def get_map_manager_objects(
         map_or_map_coeffs_prefix=os.path.basename(
           inputs.ccp4_map_file_name[:-4])
 
-  if params.half_map_list and (not half_map_data_list) and \
-       (not half_map_data_list_as_map_managers):
-    print ("Reading half-maps",params.half_map_list)
-    half_map_data_list_as_map_managers=[]
-    for fn in params.half_map_list:
-      print("Reading half map from %s" %(fn),file=log)
-      af = any_file(fn)
-      print_statistics.make_sub_header("CCP4 map", out=log)
-      h_ccp4_map = af.file_content
-      h_ccp4_map.show_summary(prefix="  ",out=log)
-      half_map_data_list_as_map_managers.append(h_ccp4_map)
-
   if mask_data and (not mask_as_map_manager):
     from iotbx.map_manager import map_manager
     mask_as_map_manager=map_manager(map_data=mask_data.as_double(),
@@ -511,20 +494,13 @@ def get_map_manager_objects(
     output_prefix=map_or_map_coeffs_prefix
 
   return ccp4_map,mask_as_map_manager,\
-    half_map_data_list_as_map_managers, \
     output_prefix,resolution_from_map_coeffs
 
 def check_parameters(inputs=None, params=None,
    model=None,
    ncs_object=None,
-   half_map_data_list=None,
-   half_map_data_list_as_map_managers=None,
    pdb_hierarchy=None,
    log=sys.stdout):
-
-  if params.half_map_list and (not half_map_data_list):
-    if not params.extract_unique:
-      raise Sorry("Can only use half_map_with extract_unique")
 
   if(len(inputs.pdb_file_names)!=1 and not params.density_select and not
     params.mask_select and not pdb_hierarchy and
@@ -848,7 +824,7 @@ def print_notes(params=None,
     print("Map unit cell as grid units:  (%s, %s, %s)" %(
       ccp4_map.map_data().all()), file=log)
 
-  if box.pdb_outside_box_msg:
+  if hasattr(box,'box.pdb_outside_box_msg') and box.pdb_outside_box_msg:
     print(box.pdb_outside_box_msg, file=log)
 
 def run(args,
@@ -856,13 +832,10 @@ def run(args,
      model=None,  # model.manager object
      ccp4_map=None,  # map_manager object
      mask_as_map_manager=None, # map_manager object
-     half_map_data_list_as_map_managers=None,  # map_manager objects
      crystal_symmetry=None,  # XXX remove
      pdb_hierarchy=None, #XXX remove
      map_data=None,  # XXX remove
      mask_data=None, # XXX remove
-     half_map_data_list=None,  # XXX remove
-     half_map_labels_list=None, # XXX remove
      lower_bounds=None,
      upper_bounds=None,
      write_output_files=True,
@@ -897,8 +870,6 @@ def run(args,
     model=model,
     ncs_object=ncs_object,
     pdb_hierarchy=pdb_hierarchy, # remove later XXX
-    half_map_data_list_as_map_managers=half_map_data_list_as_map_managers,
-    half_map_data_list=half_map_data_list,
     log=log)
 
   # Use inputs.crystal_symmetry (precedence there is for map)
@@ -908,17 +879,15 @@ def run(args,
   # Get map_manager objects
 
   # XXX get rid of most of these as they are part of mm objects
-  ccp4_map,mask_as_map_manager,half_map_data_list_as_map_managers, \
+  ccp4_map,mask_as_map_manager, \
     output_prefix,resolution_from_map_coeffs=get_map_manager_objects(
       params=params,
       inputs=inputs,
       ccp4_map=ccp4_map,
       mask_as_map_manager=mask_as_map_manager,
-      half_map_data_list_as_map_managers=half_map_data_list_as_map_managers,
       crystal_symmetry=crystal_symmetry,
       map_data=map_data,  # XXX delete
       mask_data=mask_data, # XXX  delete
-      half_map_data_list=half_map_data_list,  # XXX delete
       log=log)
 
 
@@ -945,6 +914,15 @@ def run(args,
   # Apply selection to model if desired
   model=apply_selection_to_model(params=params,model=model,log=log)
   xray_structure=model.get_xray_structure().show_summary(f=log)
+
+  # Get model object (replaces pdb_hierarchy)
+  if params.target_ncs_au_file:
+    target_ncs_au_model=get_model_from_inputs(
+      file_names=[params.target_ncs_au_file],
+      crystal_symmetry=crystal_symmetry,
+      log=log)
+  else:
+    target_ncs_au_model=None
 
   # Get output origin to match, if any
   origin_to_match,shift_cart_for_origin_to_match=get_origin_to_match(
@@ -982,7 +960,6 @@ def run(args,
     xray_structure   = model.get_xray_structure(), # replace with model
     map_data         = ccp4_map.map_data(),  # XXX replace with ccp4_map
     mask_data        = mask_data,  # XXX replace with mask_as_map_manager
-    half_map_data_list    = half_map_data_list, # XXX replace with half_map_data_list_as_map_managers
     sequence              = sequence,
     ncs_object            = ncs_object,
     box_cushion      = params.box_cushion,
@@ -1002,7 +979,7 @@ def run(args,
     bounds_are_absolute   = params.bounds_are_absolute,
     zero_outside_original_map   = params.zero_outside_original_map,
     extract_unique        = params.extract_unique,
-    target_ncs_au_file    = params.target_ncs_au_file,
+    target_ncs_au_model   = target_ncs_au_model,
     regions_to_keep       = params.regions_to_keep,
     box_buffer            = params.box_buffer,
     soft_mask_extract_unique = params.soft_mask_extract_unique,
@@ -1025,10 +1002,6 @@ def run(args,
   input_unit_cell_grid=ccp4_map.unit_cell_grid
   input_unit_cell=ccp4_map.unit_cell()
   input_map_labels=ccp4_map.labels
-  half_map_labels_list=[]
-  if half_map_data_list_as_map_managers:
-    for hm in half_map_data_list_as_map_managers:
-      half_map_labels_list.append(hm.labels)
   # XXX end for now
 
   # Print out any notes about the output files
@@ -1251,29 +1224,6 @@ def run(args,
        output_external_origin=params.output_external_origin)
      print("Writing boxed map "+\
           "to CCP4 formatted file:   %s"%file_name, file=log)
-
-     if  half_map_data_list_as_map_managers:
-       for hm,labels,hm_mm in zip(
-         output_box.map_box_half_map_list,
-         half_map_data_list_as_map_managers):
-
-         labels=create_output_labels(program_name=program_name,
-           input_file_name=hm_mm.input_file_name,
-           input_labels=hm_mm.labels,
-           limitations=limitations,
-           output_labels=params.output_map_labels)
-         hm_fn="%s_box.ccp4" %(
-            ".".join(os.path.basename(hm_mm.input_file_name).split(".")[:-1]))
-         output_box.write_ccp4_map(file_name=hm_fn,
-           map_data=hm,
-           output_crystal_symmetry=output_crystal_symmetry,
-           output_mean=params.output_ccp4_map_mean,
-           output_sd=params.output_ccp4_map_sd,
-           output_unit_cell_grid=output_unit_cell_grid,
-           shift_back=shift_back,
-           output_map_labels=labels,
-           output_external_origin=params.output_external_origin)
-         print ("Writing boxed half map to: %s " %(hm_fn),file=log)
 
     # Write xplor map.  Shift back if keep_origin=True
     if("xplor" in params.output_format):
