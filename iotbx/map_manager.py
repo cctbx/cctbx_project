@@ -583,11 +583,11 @@ class map_manager(map_reader,write_ccp4_map):
 
       Parameters are:
        resolution : required resolution of map
-       molecular_mass: optional mass (Da) of object in density 
-       sequence: optional sequence of object in density 
+       molecular_mass: optional mass (Da) of object in density
+       sequence: optional sequence of object in density
        solvent_content : optional solvent_content of map
 
-      
+
     '''
 
     assert resolution is not None
@@ -836,4 +836,3 @@ def add_tuples(t1,t2):
   for a,b in zip(t1,t2):
     new_list.append(a+b)
   return tuple(new_list)
-

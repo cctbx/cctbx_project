@@ -116,7 +116,7 @@ def exercise_mask():
   (-0.01238522486,-0.0514926330954,-0.00401527420775,-0.0514926330954))
 
 
-  # auto-generate mask 
+  # auto-generate mask
   mm=mm_orig.deep_copy()
   orig_map=mm.map_data().deep_copy()
   mm.create_mask_around_density(
@@ -135,10 +135,10 @@ def exercise_mask():
   new_map=mm.map_data()
   print( "Map values before/after mask:",
        orig_map[4322],orig_map[9680], new_map[4322],new_map[9680]),
-  assert approx_equal( 
+  assert approx_equal(
      (orig_map[4322],orig_map[9680], new_map[4322],new_map[9680]),
     (-0.0214128152846,-0.0249896972752,0.0,-0.0249896972752))
-  
+
 
 
 if (__name__ == "__main__"):

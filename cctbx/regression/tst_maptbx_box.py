@@ -212,11 +212,11 @@ def exercise_around_model():
     resolution = 3,
     box_buffer = 1,
     sequence = sequence_as_text,
-    ncs_object=ncs_obj, 
+    ncs_object=ncs_obj,
     wrapping    = False,
    )
 
-  box.map_manager.write_map('new_box.ccp4') 
+  box.map_manager.write_map('new_box.ccp4')
 
 
   # Get bounds around density

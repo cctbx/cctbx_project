@@ -206,7 +206,7 @@ class create_mask_around_edges(create_mask_around_atoms):
 class create_mask_around_density(create_mask_around_atoms):
 
   '''
-    Class to create a map_manager object containing a mask around density 
+    Class to create a map_manager object containing a mask around density
 
   '''
 
@@ -218,13 +218,13 @@ class create_mask_around_density(create_mask_around_atoms):
       solvent_content=None):
 
     '''
-     Create a mask (map object) with values of 1 near molecule 
+     Create a mask (map object) with values of 1 near molecule
 
      Parameters are:
        map_manager: source of information about density
        resolution : required resolution of map
-       molecular_mass: optional mass (Da) of object in density 
-       sequence: optional sequence of object in density 
+       molecular_mass: optional mass (Da) of object in density
+       sequence: optional sequence of object in density
        solvent_content : optional solvent_content of map
     '''
 
@@ -271,5 +271,3 @@ class create_mask_around_density(create_mask_around_atoms):
     # Initialize soft mask
     self._is_soft_mask=False
     self._is_soft_mask_around_edges=False
-
-

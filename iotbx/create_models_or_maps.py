@@ -571,4 +571,3 @@ def scale_map_coeffs(
       map_coeffs       = new_map_coeffs,
       crystal_symmetry = new_map_coeffs.crystal_symmetry(),
       n_real           = n_real)
-

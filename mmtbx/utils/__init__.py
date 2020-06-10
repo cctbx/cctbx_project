@@ -2638,7 +2638,7 @@ class extract_box_around_model_and_map(object):
     mm=map_manager(map_data=self.map_data,  # XXX transition
       unit_cell_crystal_symmetry=self.crystal_symmetry,
       unit_cell_grid=self.map_data.all())
-    
+
     from cctbx.maptbx.box import extract_unique
     box=extract_unique(
       mm,
@@ -2680,7 +2680,7 @@ class extract_box_around_model_and_map(object):
         resolution=self.resolution,
         molecular_mass=self.molecular_mass,
         sequence=self.sequence,
-        solvent_content=self.solvent_content, 
+        solvent_content=self.solvent_content,
         )
       mask_mm=mm.get_created_mask_as_map_manager()
       assert mask_mm
@@ -2694,7 +2694,7 @@ class extract_box_around_model_and_map(object):
        box.gridding_first,mask_mm.map_data().all())]
     frac_max=[l/a for l,a in zip(
        box.gridding_last,mask_mm.map_data().all())]
-    
+
     return frac_min,frac_max
 
   def select_box_with_density(self,
@@ -2726,7 +2726,7 @@ class extract_box_around_model_and_map(object):
        box.gridding_first,mm.map_data().all())]
     frac_max=[l/a for l,a in zip(
        box.gridding_last,mm.map_data().all())]
-    
+
     return frac_min,frac_max
 
   def write_xplor_map(self, file_name="box.xplor",shift_back=None,
@@ -3214,4 +3214,3 @@ class run_reduce_with_timeout(easy_run.fully_buffered):
         join_stdout_stderr=join_stdout_stderr,
         stdout_splitlines=stdout_splitlines,
         bufsize=bufsize)
-

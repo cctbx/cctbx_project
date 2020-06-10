@@ -236,7 +236,7 @@ class around_model(with_bounds):
 
 class extract_unique(with_bounds):
 
-  def __init__(self, map_manager, 
+  def __init__(self, map_manager,
     wrapping=None,
     ncs_object=None,
     target_ncs_au_model=None,
@@ -252,7 +252,7 @@ class extract_unique(with_bounds):
     soft_mask_extract_unique=True,
     mask_expand_ratio=1,
     log=sys.stdout
-    ): 
+    ):
     adopt_init_args(self, locals())
 
     assert isinstance(wrapping, bool)
@@ -333,7 +333,7 @@ class extract_unique(with_bounds):
 
     # Ready with gridding...set up shifts and box crystal_symmetry
     self.set_shifts_and_crystal_symmetry()
-      
+
     return ncs_au_map_data
 
 class around_mask(with_bounds):
@@ -387,7 +387,7 @@ class around_mask(with_bounds):
       v,id=sorted_by_volume[i]
       original_id_from_id[i]=id
     id=1
-    orig_id=original_id_from_id[id]  
+    orig_id=original_id_from_id[id]
 
     # Get lower and upper bounds of this region in grid units
 
@@ -456,7 +456,7 @@ class around_density(with_bounds):
       ii+=1
     x_min,x_max=get_range(value_list,threshold=threshold,
       get_half_height_width=get_half_height_width)
-      
+
     value_list=flex.double()
     for j in range(0,all[1]):
       new_map_data = maptbx.copy(map_data,
@@ -466,7 +466,7 @@ class around_density(with_bounds):
       value_list.append(new_map_data.as_1d().as_double().min_max_mean().max)
     y_min,y_max=get_range(value_list,threshold=threshold,
       get_half_height_width=get_half_height_width)
-      
+
     value_list=flex.double()
     for j in range(0,all[1]):
       new_map_data = maptbx.copy(map_data,
@@ -681,4 +681,3 @@ def copy_and_zero_map_outside_bounds(map_data=None,bounds_info=None):
   new_map=new_map.as_1d()
   new_map.reshape(acc)
   return new_map
-
