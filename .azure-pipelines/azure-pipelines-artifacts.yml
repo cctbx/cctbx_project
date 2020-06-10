@@ -51,17 +51,16 @@ jobs:
     artifact: miniconda
 
   # chem_data
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(System.TeamProjectId)'
-      pipeline: 4
-      artifact: 'chem_data'
-      path: $(System.DefaultWorkingDirectory)/chem_data
+  - download: data_cache
+    artifact: 'chem_data'
     displayName: Download chem_data
 
   - script: |
-      # svn co svn+ssh://builder@cci.lbl.gov/chem_data/trunk chem_data
+      if [ -d "$(Pipeline.Workspace)/data_cache/chem_data" ]; then
+        mv $(Pipeline.Workspace)/data_cache/chem_data $(System.DefaultWorkingDirectory)/chem_data
+      else
+        svn co svn+ssh://builder@cci.lbl.gov/chem_data/trunk chem_data
+      fi
       cd $(System.DefaultWorkingDirectory)/chem_data
       svn update
     displayName: Update chem_data
@@ -70,18 +69,18 @@ jobs:
     artifact: chem_data
 
   # phenix_regression
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(System.TeamProjectId)'
-      pipeline: 4
-      artifact: 'phenix_regression'
-      path: $(System.DefaultWorkingDirectory)/phenix_regression
+  - download: data_cache
+    artifact: 'phenix_regression'
     displayName: Download phenix_regression
 
   - script: |
-      # git clone https://gitlab.com/phenix_project/phenix_regression.git
+      if [ -d "$(Pipeline.Workspace)/data_cache/phenix_regression" ]; then
+        mv $(Pipeline.Workspace)/data_cache/phenix_regression $(System.DefaultWorkingDirectory)/phenix_regression
+      else
+        git clone https://gitlab.com/phenix_project/phenix_regression.git
+      fi
       cd $(System.DefaultWorkingDirectory)/phenix_regression
+      git reset --hard origin/master
       git lfs install --local
       git pull --rebase
       git lfs pull
@@ -91,18 +90,18 @@ jobs:
     artifact: phenix_regression
 
   # phenix_examples
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(System.TeamProjectId)'
-      pipeline: 4
-      artifact: 'phenix_examples'
-      path: $(System.DefaultWorkingDirectory)/phenix_examples
+  - download: data_cache
+    artifact: 'phenix_examples'
     displayName: Download phenix_examples
 
   - script: |
-      # git clone https://gitlab.com/phenix_project/phenix_examples.git
+      if [ -d "$(Pipeline.Workspace)/data_cache/phenix_examples" ]; then
+        mv $(Pipeline.Workspace)/data_cache/phenix_examples $(System.DefaultWorkingDirectory)/phenix_examples
+      else
+        git clone https://gitlab.com/phenix_project/phenix_examples.git
+      fi
       cd $(System.DefaultWorkingDirectory)/phenix_examples
+      git reset --hard origin/master
       git lfs install --local
       git pull --rebase
       git lfs pull
@@ -112,17 +111,16 @@ jobs:
     artifact: phenix_examples
 
   # xfel_regression
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(System.TeamProjectId)'
-      pipeline: 4
-      artifact: 'xfel_regression'
-      path: $(System.DefaultWorkingDirectory)/xfel_regression
+  - download: data_cache
+    artifact: 'xfel_regression'
     displayName: Download xfel_regression
 
   - script: |
-      #svn co svn+ssh://builder@cci.lbl.gov/xfel_regression/trunk xfel_regression
+      if [ -d "$(Pipeline.Workspace)/data_cache/xfel_regression" ]; then
+        mv $(Pipeline.Workspace)/data_cache/xfel_regression $(System.DefaultWorkingDirectory)/xfel_regression
+      else
+        svn co svn+ssh://builder@cci.lbl.gov/xfel_regression/trunk xfel_regression
+      fi
       cd $(System.DefaultWorkingDirectory)/xfel_regression
       svn update
     displayName: Update xfel_regression
