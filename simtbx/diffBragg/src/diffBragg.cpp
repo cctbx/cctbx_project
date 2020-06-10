@@ -369,6 +369,8 @@ void diffBragg::update_dxtbx_geoms(
     /* set orthogonal vector to the detector pixel array */
     cross_product(fdet_vector,sdet_vector,odet_vector);
     unitize(odet_vector,odet_vector);
+    if (! detector_is_righthanded)
+        vector_scale(odet_vector, odet_vector, -1);
 
     /* dxtbx origin is location of outer corner of the first pixel */
     pix0_vector[1] = detector[panel_id].get_origin()[0]/1000.0;
@@ -1076,12 +1078,12 @@ void diffBragg::add_diffBragg_spots()
                                 if (complex_miller)
                                   double qm = 1.0; // Occupancy of Fe in LS49 is 1.0
                                   double Bm = 26.58; // B-factor from refinement 
-                                  double S_2 = scattering[0]*scattering[0]+scattering[1]*scattering[1]+scattering[2]*scattering[2];
+                                  double S_2 = 1.e-20*(scattering[0]*scattering[0]+scattering[1]*scattering[1]+scattering[2]*scattering[2]);
 
                                   // FIXME Stuff that needs to be fixed
-                                  double val_fp = -4.0; //fp[source];
-                                  double val_fdp = 4.0; //fdp[source];
-                                  double pre_factor_1 = 1.0; //exp(-Bm*S_2/4.0); // put back occupancy
+                                  double val_fp = fp[source];
+                                  double val_fdp = fdp[source];
+                                  double pre_factor_1 = exp(-Bm*S_2/4.0); // put back occupancy
                                   double r_dot_h = h0*0.247105-k0*0.003748 + l0*0.142614;
                                   //
 
@@ -1089,12 +1091,12 @@ void diffBragg::add_diffBragg_spots()
                                   double imag_part = val_fp*sin(2*M_PI*r_dot_h) + val_fdp*cos(2*M_PI*r_dot_h);
                                   double F_Fe_real = pre_factor_1*real_part;
                                   double F_Fe_imag = pre_factor_1*imag_part;
-          			  std::cout <<  val_fp << " "<< val_fdp<<" "<< S_2 << " "<< r_dot_h  << " "<< h0 <<" "<< k0 << " "<< l0 <<std::endl;
+          			  //std::cout <<  val_fp << " "<< val_fdp<<" "<< S_2 << " "<< r_dot_h  << " "<< h0 <<" "<< k0 << " "<< l0 <<std::endl;
 
                                   F_cell = F_cell + F_Fe_real;
                                   F_cell2 = F_cell2 + F_Fe_imag; 
                 		  //F_Fe_real/F_cell >> std;
- 				  std::cout <<"  percentage fdp/F" << F_Fe_imag << F_cell2 << std::endl;;
+ 				  //std::cout <<"  percentage fdp/F" << F_Fe_imag << F_cell2 << std::endl;;
                                   
                                   F_cell = sqrt(F_cell*F_cell + F_cell2*F_cell2);
 
