@@ -171,9 +171,10 @@ def exercise_lbfgs_simple(mon_lib_srv, ener_lib, verbose=False):
     params.favored="oldfield"
     params.allowed="oldfield"
     params.outlier="oldfield"
+    params.inject_emsley8k_into_oldfield_favored=False
     rama_manager = ramachandran.ramachandran_manager(
         pdb_hierarchy, params, log)
-    assert rama_manager.get_n_proxies() == 1
+    assert rama_manager.get_n_proxies() == 1, rama_manager.get_n_proxies()
     residual_an = rama_manager.target_and_gradients(
       unit_cell=None,
       sites_cart=sites_cart_1,
@@ -231,6 +232,7 @@ def benchmark_structure(pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0):
 
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+  params.pdb_interpretation.ramachandran_plot_restraints.inject_emsley8k_into_oldfield_favored=False
   model = mmtbx.model.manager(
       model_input=pdb_in,
       pdb_interpretation_params=params,
@@ -349,6 +351,7 @@ def exercise_geo_output(mon_lib_srv, ener_lib):
   params.favored = 'emsley'
   params.allowed = 'emsley'
   params.outlier = 'emsley'
+  params.inject_emsley8k_into_oldfield_favored=False
   rama_manager = ramachandran.ramachandran_manager(
       hierarchy, params, StringIO())
   out = StringIO()
@@ -358,8 +361,6 @@ def exercise_geo_output(mon_lib_srv, ener_lib):
       site_labels=[a.id_str() for a in atoms],
       f=out)
   gv = out.getvalue()
-  #print (gv)
-  #STOP()
   assert not show_diff(gv, """\
 Ramachandran plot restraints (Oldfield): 0
 Sorted by residual:
@@ -423,6 +424,7 @@ Sorted by residual:
   params.favored = 'oldfield'
   params.allowed = 'oldfield'
   params.outlier = 'oldfield'
+  params.inject_emsley8k_into_oldfield_favored=False
   rama_manager = ramachandran.ramachandran_manager(
       hierarchy, params, StringIO())
   out = StringIO()
@@ -504,6 +506,7 @@ def exercise_manager_selection(mon_lib_srv, ener_lib):
   params.favored = 'emsley'
   params.allowed = 'emsley'
   params.outlier = 'emsley'
+  params.inject_emsley8k_into_oldfield_favored=False
   rama_manager = ramachandran.ramachandran_manager(
       hierarchy, params, StringIO())
   out = StringIO()
@@ -581,26 +584,30 @@ def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
     print("Skipping test.")
     return
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
-  params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+  params.pdb_interpretation.ramachandran_plot_restraints.enabled=True
+  params.pdb_interpretation.ramachandran_plot_restraints.inject_emsley8k_into_oldfield_favored=False
   pdb_inp = iotbx.pdb.input(file_name=file_name)
   model = mmtbx.model.manager(
       model_input=pdb_inp,
       pdb_interpretation_params=params,
       log=null_out())
   grm = model.get_restraints_manager().geometry
-  assert grm.ramachandran_manager.get_n_proxies() == 53
+  n = grm.ramachandran_manager.get_n_proxies()
+  assert n == 53, n
 
   # simple selection
-  params.pdb_interpretation.peptide_link.ramachandran_restraints = True
-  params.pdb_interpretation.peptide_link.rama_selection = "chain A and resid 1:7"
+  params.pdb_interpretation.ramachandran_plot_restraints.enabled=True
+  params.pdb_interpretation.ramachandran_plot_restraints.inject_emsley8k_into_oldfield_favored=False
+  params.pdb_interpretation.ramachandran_plot_restraints.selection = "chain A and resid 1:7"
   model.set_pdb_interpretation_params(params)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
   assert nprox == 5, ""+\
       "Want to get 5 rama proxies, got %d" % nprox
   # 7 residues: there are insertion codes
-  params.pdb_interpretation.peptide_link.ramachandran_restraints = True
-  params.pdb_interpretation.peptide_link.rama_selection = "chain A and resid 27:28"
+  params.pdb_interpretation.ramachandran_plot_restraints.enabled=True
+  params.pdb_interpretation.ramachandran_plot_restraints.inject_emsley8k_into_oldfield_favored=False
+  params.pdb_interpretation.ramachandran_plot_restraints.selection ="chain A and resid 27:28"
   model.set_pdb_interpretation_params(params)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
@@ -616,6 +623,7 @@ def exercise_allowed_outliers():
     return
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.ramachandran_plot_restraints.enabled=True
+  params.pdb_interpretation.ramachandran_plot_restraints.inject_emsley8k_into_oldfield_favored=False
   pdb_inp = iotbx.pdb.input(file_name=file_name)
   model = mmtbx.model.manager(
       model_input=pdb_inp,
@@ -700,6 +708,7 @@ def exercise_allowed_outliers_emsley_filling():
   params.pdb_interpretation.ramachandran_plot_restraints.favored="oldfield"
   params.pdb_interpretation.ramachandran_plot_restraints.allowed="emsley"
   params.pdb_interpretation.ramachandran_plot_restraints.outlier=None
+  params.pdb_interpretation.ramachandran_plot_restraints.inject_emsley8k_into_oldfield_favored=False
 
   pdb_inp = iotbx.pdb.input(file_name=file_name)
   model = mmtbx.model.manager(
@@ -805,7 +814,11 @@ ATOM    537  CB  GLU B   3       7.115  11.041  22.731  1.00 20.00           C
       (1, no_ac_pdb),
       ]:
     params = mmtbx.model.manager.get_default_pdb_interpretation_params()
-    params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+    #params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+
+    params.pdb_interpretation.ramachandran_plot_restraints.enabled = True
+    params.pdb_interpretation.ramachandran_plot_restraints.inject_emsley8k_into_oldfield_favored=False
+
     pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
     model = mmtbx.model.manager(
         model_input=pdb_inp,

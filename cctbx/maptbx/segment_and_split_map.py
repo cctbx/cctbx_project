@@ -1695,11 +1695,21 @@ class info_object:
     print("\n"+50*"="+"\n", file=out)
 
 class make_ccp4_map: # just a holder so map_to_structure_factors will run
+  # XXX Replace with map_manager
   def __init__(self,map=None,unit_cell=None):
     self.data=map
     self.unit_cell_parameters=unit_cell.parameters()
     self.space_group_number=1
     self.unit_cell_grid=map.all()
+
+  def unit_cell(self):
+    return self.crystal_symmetry().unit_cell()
+
+  def unit_cell_crystal_symmetry(self):
+    return self.crystal_symmetry()
+
+  def map_data(self):
+    return self.data
 
   def crystal_symmetry(self):
     return crystal.symmetry(self.unit_cell_parameters,
@@ -2474,7 +2484,7 @@ def get_map_object(file_name=None,must_allow_sharpening=None,
   if file_name.endswith(".xplor"):
     import iotbx.xplor.map
     m = iotbx.xplor.map.reader(file_name=file_name)
-    m.unit_cell_grid=m.data.all() # just so we have something
+    m.unit_cell_grid=m.map_data().all() # just so we have something
     m.space_group_number=0 # so we have something
   else:
     from iotbx import mrcfile
@@ -2483,15 +2493,15 @@ def get_map_object(file_name=None,must_allow_sharpening=None,
       m.header_min, m.header_max, m.header_mean, m.header_rms), file=out)
     print("grid: ",m.unit_cell_grid, file=out)
     print("cell:  %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f  " %tuple(
-       m.unit_cell_parameters), file=out)
-    print("SG: ",m.space_group_number, file=out)
+       m.unit_cell().parameters()), file=out)
+    print("SG: ",m.unit_cell_crystal_symmetry().space_group_number(), file=out)
     if must_allow_sharpening and m.cannot_be_sharpened():
       raise Sorry("Input map is already modified and should not be sharpened")
     if get_map_labels:
       map_labels=m.labels
-  print("ORIGIN: ",m.data.origin(), file=out)
-  print("EXTENT: ",m.data.all(), file=out)
-  print("IS PADDED: ",m.data.is_padded(), file=out)
+  print("ORIGIN: ",m.map_data().origin(), file=out)
+  print("EXTENT: ",m.map_data().all(), file=out)
+  print("IS PADDED: ",m.map_data().is_padded(), file=out)
 
   map_data=m.data
   acc=map_data.accessor()
@@ -2501,9 +2511,9 @@ def get_map_object(file_name=None,must_allow_sharpening=None,
   if(shift_needed):
     map_data = map_data.shift_origin()
     origin_shift=(
-      m.data.origin()[0]/m.data.all()[0],
-      m.data.origin()[1]/m.data.all()[1],
-      m.data.origin()[2]/m.data.all()[2])
+      m.map_data().origin()[0]/m.map_data().all()[0],
+      m.map_data().origin()[1]/m.map_data().all()[1],
+      m.map_data().origin()[2]/m.map_data().all()[2])
     origin_frac=origin_shift  # NOTE: fraction of NEW cell
   else:
     origin_frac=(0.,0.,0.)
@@ -2530,13 +2540,13 @@ def get_map_object(file_name=None,must_allow_sharpening=None,
   from cctbx import crystal
   from cctbx import sgtbx
   from cctbx import uctbx
-  if m.space_group_number==0:
+  if m.unit_cell_crystal_symmetry().space_group_number()==0:
     n=1 # fix mrc formatting
   else:
-    n=m.space_group_number
-  if hasattr(m,'unit_cell_parameters'):
+    n=m.unit_cell_crystal_symmetry().space_group_number()
+  if hasattr(m,'crystal_symmetry'):
     space_group_info=sgtbx.space_group_info(number=n)
-    unit_cell=uctbx.unit_cell(m.unit_cell_parameters)
+    unit_cell=m.unit_cell_crystal_symmetry().unit_cell()
     original_unit_cell_grid=m.unit_cell_grid
     original_crystal_symmetry=crystal.symmetry(
       unit_cell=unit_cell,space_group_info=space_group_info)
@@ -4262,14 +4272,31 @@ def apply_soft_mask(map_data=None,
 
   original_mask_data=mask_data.deep_copy()
 
+  smoothed_mask_data=smooth_mask_data(mask_data=mask_data,
+    crystal_symmetry=crystal_symmetry,
+    threshold=threshold,
+    rad_smooth=rad_smooth)
 
-  # Smooth the mask in place. First make it a binary mask
+  masked_map=apply_mask_to_map(mask_data=original_mask_data,
+     smoothed_mask_data=smoothed_mask_data,
+     map_data=map_data,
+     set_outside_to_mean_inside=set_outside_to_mean_inside,
+     set_mean_to_zero=set_mean_to_zero,
+     threshold=threshold,
+     verbose=verbose,
+     out=out)
+  return masked_map,smoothed_mask_data
+
+def smooth_mask_data(mask_data=None,
+    crystal_symmetry=None,
+    threshold=0.5,
+    rad_smooth=None):
+
+  # Smooth a mask in place. First make it a binary mask
   s = mask_data > threshold  # s marks inside mask
   mask_data = mask_data.set_selected(~s, 0)  # outside mask==0
   mask_data = mask_data.set_selected( s, 1)
   if mask_data.count(1)  and mask_data.count(0): # something to do
-    if verbose:
-      print("Smoothing mask...", file=out)
     maptbx.unpad_in_place(map=mask_data)
     mask_data = maptbx.smooth_map(
       map              = mask_data,
@@ -4278,32 +4305,24 @@ def apply_soft_mask(map_data=None,
 
     # Make sure that mask_data max value is now 1, scale if not
     max_mask_data_value=mask_data.as_1d().min_max_mean().max
-    if max_mask_data_value > 1.e-30 and max_mask_data_value!=1.0:
+    if max_mask_data_value < 1.e-30 and max_mask_data_value!=1.0: # XXX
       mask_data=mask_data*(1./max_mask_data_value)
-      if verbose:
-        print("Scaling mask by %.2f to yield maximum of 1.0 " %(
-           1./max_mask_data_value), file=out)
   else:
-    if verbose:
-      print("Not smoothing mask that is a constant...", file=out)
+    pass
+  return mask_data
 
-  masked_map,smoothed_mask_data=apply_mask_to_map(mask_data=original_mask_data,
-     smoothed_mask_data=mask_data,map_data=map_data,
-     set_outside_to_mean_inside=set_outside_to_mean_inside,
-     set_mean_to_zero=set_mean_to_zero,
-     threshold=threshold,
-     verbose=verbose,
-     out=out)
-  return masked_map,smoothed_mask_data
 
 def apply_mask_to_map(mask_data=None,
     smoothed_mask_data=None,
     set_outside_to_mean_inside=None,
     set_mean_to_zero=None,
     map_data=None,
-    threshold=None,
+    threshold=0.5,
     verbose=None,
     out=sys.stdout):
+
+  if not mask_data:
+    mask_data=smoothed_mask_data
 
   s = mask_data > threshold  # s marks inside mask
   # get mean inside or outside mask
@@ -4327,7 +4346,9 @@ def apply_mask_to_map(mask_data=None,
   #   smoothly going from one to the other based on mask_data
 
   # set_to_mean will be a constant map with value equal to inside or outside
-  if set_outside_to_mean_inside or mean_value_out is None:
+  if (set_outside_to_mean_inside is False):
+    target_value_for_outside=0
+  elif set_outside_to_mean_inside or mean_value_out is None:
     target_value_for_outside=mean_value_in
     if verbose:
       print("Setting value outside mask to mean inside (%.2f)" %(
@@ -4351,7 +4372,7 @@ def apply_mask_to_map(mask_data=None,
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
     map_data=masked_map, verbose=verbose,out=out)
 
-  return masked_map,smoothed_mask_data
+  return masked_map
 
 def estimate_expand_size(
        crystal_symmetry=None,
@@ -4699,10 +4720,76 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     half_map_data_list=None,
     sharpening_target_pdb_inp=None,
     ncs_object=None,
+    write_files=None,
+    auto_sharpen=None,
+    density_select=None,
+    add_neighbors=None,
+    save_box_map_ncs_au=None,
     sequence=None,
+    wrapping=None,
+    target_ncs_au_file=None,
+    regions_to_keep=None,
+    solvent_content=None,
+    resolution=None,
+    molecular_mass=None,
+    symmetry=None,
+    chain_type=None,
+    keep_low_density=None,
+    box_buffer=None,
+    soft_mask_extract_unique=None,
+    mask_expand_ratio=None,
     out=sys.stdout):
 
   params=get_params_from_args(args)
+
+  # Set params specifically if coming in from call
+  if sequence is not None:
+    params.crystal_info.sequence=sequence
+  if wrapping is not None:
+    params.crystal_info.use_sg_symmetry= (not wrapping)
+  if target_ncs_au_file is not None:
+    params.input_files.target_ncs_au_file=target_ncs_au_file
+  if regions_to_keep is not None:
+    params.map_modification.regions_to_keep=regions_to_keep
+  if solvent_content is not None:
+    params.crystal_info.solvent_content=solvent_content
+  if resolution is not None:
+    params.crystal_info.resolution=resolution
+  if molecular_mass is not None:
+    params.crystal_info.molecular_mass=molecular_mass
+  if symmetry is not None:
+    params.reconstruction_symmetry.symmetry=symmetry
+  if chain_type is not None:
+    params.crystal_info.chain_type=chain_type
+
+  if regions_to_keep is not None:
+    params.map_modification.regions_to_keep=regions_to_keep
+    params.segmentation.iterate_with_remainder=False
+  elif keep_low_density:
+    params.segmentation.iterate_with_remainder=True
+  elif keep_low_density is False:
+    params.segmentation.iterate_with_remainder=False
+  else:
+    pass # just so it is clear this was considered
+
+  if box_buffer is not None:
+    params.output_files.box_buffer=box_buffer
+  if soft_mask_extract_unique is not None:
+    params.map_modification.soft_mask=soft_mask_extract_unique
+
+  if mask_expand_ratio is not None:
+    params.segmentation.mask_expand_ratio=mask_expand_ratio
+  if write_files is not None:
+    params.control.write_files=write_files
+  if auto_sharpen is not None:
+    params.map_modification.auto_sharpen=auto_sharpen
+  if density_select is not None:
+    params.segmentation.density_select=density_select
+  if add_neighbors is not None:
+    params.segmentation.add_neighbors=add_neighbors
+  if save_box_map_ncs_au is not None:
+    params.control.save_box_map_ncs_au=save_box_map_ncs_au
+
 
   print("\nSegment_and_split_map\n", file=out)
   print("Command used: %s\n" %(
@@ -4828,8 +4915,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     if not crystal_symmetry:
       crystal_symmetry=ccp4_map.crystal_symmetry() # 2018-07-18
       tracking_data.set_full_crystal_symmetry(
-        crystal.symmetry(ccp4_map.unit_cell().parameters(),
-         ccp4_map.space_group_number))
+         ccp4_map.unit_cell_crystal_symmetry())
       tracking_data.set_full_unit_cell_grid(ccp4_map.unit_cell_grid)
     map_data=ccp4_map.data.as_double()
   else:
@@ -5919,11 +6005,12 @@ def get_solvent_content_from_seq_file(params,
   from mmtbx.validation.chain_comparison import \
        extract_unique_part_of_sequences as eups
   print("Unique part of sequences:", file=out)
-  copies_in_unique,base_copies,unique_sequence_dict=eups(sequences)
+  copies_in_unique,base_copies,unique_sequence_dict=eups(sequences,
+     out=out)
   all_unique_sequence=[]
   for seq in copies_in_unique.keys():
     print("Copies: %s  base copies: %s  Sequence: %s" %(
-       copies_in_unique[seq],base_copies,seq))
+       copies_in_unique[seq],base_copies,seq),file=out)
     all_unique_sequence.append(seq)
   if base_copies != ncs_copies:
     print("NOTE: %s copies of unique portion but ncs_copies=%s" %(
@@ -8080,20 +8167,18 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
   return new_map_data, new_crystal_symmetry,\
     smoothed_mask_data,original_map_data
 
-def set_up_and_apply_soft_mask(map_data=None,shift_origin=None,
-  crystal_symmetry=None,resolution=None,
-  grid_units_for_boundary=None,
-  radius=None,out=sys.stdout):
+def get_zero_boundary_map(
+   map_data=None,
+   grid_units_for_boundary=None,
+   crystal_symmetry=None,
+   radius=None):
 
-    acc=map_data.accessor()
-    map_data = map_data.shift_origin()
-    new_acc=map_data.accessor()
+    assert grid_units_for_boundary or (crystal_symmetry and radius)
 
-    # Add soft boundary to mean around outside of mask
     # grid_units is how many grid units are about equal to soft_mask_radius
     if grid_units_for_boundary is None:
       grid_units=get_grid_units(map_data=map_data,
-        crystal_symmetry=crystal_symmetry,radius=radius,out=out)
+        crystal_symmetry=crystal_symmetry,radius=radius,out=null_out())
       grid_units=int(0.5+0.5*grid_units)
     else:
       grid_units=grid_units_for_boundary
@@ -8101,6 +8186,28 @@ def set_up_and_apply_soft_mask(map_data=None,shift_origin=None,
     from cctbx import maptbx
     zero_boundary_map=maptbx.zero_boundary_box_map(
        map_data,grid_units).result()
+    return zero_boundary_map
+
+def set_up_and_apply_soft_mask(map_data=None,shift_origin=None,
+  crystal_symmetry=None,resolution=None,
+  grid_units_for_boundary=None,
+  radius=None,out=None):
+    if out is None:
+      from libtbx.utils import null_out
+      out=null_out()
+
+    acc=map_data.accessor()
+    map_data = map_data.shift_origin()
+    new_acc=map_data.accessor()
+
+    # Add soft boundary to mean around outside of mask
+
+    zero_boundary_map=get_zero_boundary_map(
+     map_data=map_data,
+     grid_units_for_boundary=grid_units_for_boundary,
+     crystal_symmetry=crystal_symmetry,
+     radius=radius)
+
     # this map is zero's around the edge and 1 in the middle
     # multiply zero_boundary_map--smoothed & new_map_data and return
     print("Applying soft mask to boundary of cut out map", file=out)
@@ -11386,6 +11493,12 @@ def run(args,
      params=None,
      map_data=None,
      crystal_symmetry=None,
+     write_files=None,
+     auto_sharpen=None,
+     density_select=None,
+     add_neighbors=None,
+     save_box_map_ncs_au=None,
+     resolution=None,
      sequence=None,
      half_map_data_list=None,
      ncs_obj=None,
@@ -11395,7 +11508,19 @@ def run(args,
      pdb_hierarchy=None,
      target_xyz=None,
      target_hierarchy=None,
+     target_model=None,
      sharpening_target_pdb_inp=None,
+     wrapping=None,
+     target_ncs_au_file=None,
+     regions_to_keep=None,
+     solvent_content=None,
+     molecular_mass=None,
+     symmetry=None,
+     chain_type=None,
+     keep_low_density=None,
+     box_buffer=None,
+     soft_mask_extract_unique=None,
+     mask_expand_ratio=None,
      out=sys.stdout):
 
   if is_iteration:
@@ -11408,7 +11533,24 @@ def run(args,
        args,map_data=map_data,crystal_symmetry=crystal_symmetry,
        half_map_data_list=half_map_data_list,
        ncs_object=ncs_obj,
+       write_files=write_files,
+       auto_sharpen=auto_sharpen,
+       density_select=density_select,
+       add_neighbors=add_neighbors,
+       save_box_map_ncs_au=save_box_map_ncs_au,
        sequence=sequence,
+       wrapping=wrapping,
+       target_ncs_au_file=target_ncs_au_file,
+       regions_to_keep=regions_to_keep,
+       solvent_content=solvent_content,
+       resolution=resolution,
+       molecular_mass=molecular_mass,
+       symmetry=symmetry,
+       chain_type=chain_type,
+       keep_low_density=keep_low_density,
+       box_buffer=box_buffer,
+       soft_mask_extract_unique=soft_mask_extract_unique,
+       mask_expand_ratio=mask_expand_ratio,
        sharpening_target_pdb_inp=sharpening_target_pdb_inp,out=out)
     if params.control.shift_only:
       return map_data,ncs_obj,tracking_data
@@ -11424,7 +11566,9 @@ def run(args,
        ncs_object=shifted_ncs_object,
        out=out)
 
-    if params.input_files.target_ncs_au_file: # read in target
+    if target_model:
+      target_hierarchy=target_model.get_hierarchy()
+    elif params.input_files.target_ncs_au_file: # read in target
       import iotbx.pdb
       target_hierarchy=iotbx.pdb.input(
          file_name=params.input_files.target_ncs_au_file).construct_hierarchy()

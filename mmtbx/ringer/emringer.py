@@ -59,7 +59,7 @@ class emringer(object):
     # sanity check for map and model
     if self.map_inp is not None:
       base = map_and_model.input(
-        map_data         = self.map_inp.map_data(),
+        map_manager               = self.map_inp,
         model            = self.model,
         crystal_symmetry = self.cs_consensus,
         box              = False)

@@ -140,9 +140,10 @@ Section "VC++ 2008 Redistributable" SEC03
 ; VCredist may have to be installed. Wait until it is done.
   File "${COPYDIR}\${SOURCEDIR}\${VCREDIST}"
 ; hack for ExecWait not being able to launch programs requiring UAC elevation.
-; Use start from a cmd script file to that effect.
+; Use start from a cmd script file to that effect. 
+; If running as admin the /q flag allows silent installation of the VCredist.
   FileOpen $0 "redistwait.cmd" "w"
-  FileWrite $0 'start "" /wait "$INSTDIR\${SOURCEDIR}\${VCREDIST}"'
+  FileWrite $0 'start "" /wait "$INSTDIR\${SOURCEDIR}\${VCREDIST}" /q'
   FileClose $0
 ; Use non-UNC path to not confuse cmd.exe
   SetOutPath "$INSTDIR\${SOURCEDIR}"

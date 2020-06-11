@@ -171,14 +171,14 @@ class energies(scitbx.restraints.energies):
       self.number_of_restraints += self.n_reference_coordinate_proxies
       self.residual_sum += self.reference_coordinate_residual_sum
 
-    if (chirality_proxies is None):
+    if (self.chirality_proxies is None):
       self.n_chirality_proxies = None
       self.chirality_residual_sum = 0
     else:
-      self.n_chirality_proxies = len(chirality_proxies)
+      self.n_chirality_proxies = len(self.chirality_proxies)
       self.chirality_residual_sum = geometry_restraints.chirality_residual_sum(
         sites_cart=sites_cart,
-        proxies=chirality_proxies,
+        proxies=self.chirality_proxies,
         gradient_array=self.gradients)
       self.number_of_restraints += self.n_chirality_proxies
       self.residual_sum += self.chirality_residual_sum
@@ -217,6 +217,10 @@ class energies(scitbx.restraints.energies):
 
   def get_dihedral_outliers(self, sites_cart, sigma_threshold=4):
     return self.dihedral_proxies.get_outliers(sites_cart=sites_cart,
+                                              sigma_threshold=sigma_threshold)
+
+  def get_chirality_outliers(self, sites_cart, sigma_threshold=4):
+    return self.chirality_proxies.get_outliers(sites_cart=sites_cart,
                                               sigma_threshold=sigma_threshold)
 
   def bond_deviations_z(self):

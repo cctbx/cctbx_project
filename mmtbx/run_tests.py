@@ -62,6 +62,7 @@ general_tests = [
   "$D/geometry_restraints/torsion_restraints/tst_reference_model_ligands.py",
   # model tests, some more elsewhere in this file
   "$D/regression/model/tst_model_mtrix.py",
+  "$D/regression/model/tst_model_ncs.py",
   "$D/regression/model/tst_model_2.py",
   "$D/regression/model/tst_model_biomt_mtrix.py",
   "$D/regression/model/tst_model_neutralize_scatterers.py",
@@ -115,6 +116,8 @@ general_tests = [
   "$D/monomer_library/tst_chg.py",
   "$D/monomer_library/tst_neutron_distance.py",
   '$D/monomer_library/tst_carbo_linking.py',
+  '$D/monomer_library/tst_glyco_hand.py',
+  '$D/monomer_library/tst_glyco_coordination.py',
   '$D/monomer_library/tst_paral_geo.py',
   #
   "$D/regression/tst_altloc_remediate.py",
@@ -156,6 +159,7 @@ general_tests = [
   "$D/bulk_solvent/tst_flat_nonuniform.py",
   "$D/bulk_solvent/tst_aniso_scaler.py",
   "$D/bulk_solvent/tst_kb_sol_u_star_fd.py",
+  "$D/bulk_solvent/tst_mosaic.py",
   #
   "$D/invariant_domain.py",
   # restraints
@@ -176,6 +180,7 @@ general_tests = [
   "$D/conformation_dependent_library/tst_pH_mechanism.py",
   '$D/conformation_dependent_library/tst_mcl_01.py',
   '$D/conformation_dependent_library/tst_mcl_02.py',
+  '$D/conformation_dependent_library/tst_mcl_03.py',
   "$D/regression/tst_find_ss_structure.py",
   "$D/regression/tst_fix_rotamer_outliers.py",
   "$D/regression/tst_chain_comparison.py",
@@ -393,6 +398,7 @@ probe_tests = [
   # automatic linking
   ["$D/monomer_library/tst_metal_coordination.py", "1"],
   ["$D/monomer_library/tst_metal_coordination.py", "2"],
+  ["$D/monomer_library/tst_metal_coordination.py", "3"],
   ["$D/monomer_library/tst_linking.py", "1"],
   ["$D/monomer_library/tst_linking.py", "2"],
   ["$D/monomer_library/tst_linking.py", "3"],

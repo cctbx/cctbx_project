@@ -1,15 +1,7 @@
-# Nightly builds
+# Full conda builds
 
 # no continuous integration builds
 trigger: none
-
-# only nightly and pull request builds
-schedules:
-- cron: '0 1 * * *'
-  displayName: Nightly build
-  branches:
-    include:
-    - master
 
 stages:
 - stage: Preparation
@@ -22,44 +14,6 @@ stages:
   displayName: Build and test
   dependsOn: Preparation
   jobs:
-    - template: ./conda-win.yml
-    - template: ./conda-linux.yml
+    - template: ./full-build.yml
       parameters:
-        distribution: centos
-        version: [6]
-    - template: ./conda-linux.yml
-      parameters:
-        distribution: centos
-        version: [7]
-    - template: ./conda-linux.yml
-      parameters:
-        distribution: centos
-        version: [8]
-    - template: ./conda-linux.yml
-      parameters:
-        distribution: ubuntu
-        version: ['18', '04']
-    - template: ./conda-linux.yml
-      parameters:
-        distribution: ubuntu
-        version: ['16', '04']
-    - template: ./conda-linux.yml
-      parameters:
-        distribution: ubuntu
-        version: ['14', '04']
-    - template: ./conda-osx.yml
-      parameters:
-        vmImage: [10, 14]
-        xcode_version: [11, 3, 1]
-    - template: ./conda-osx.yml
-      parameters:
-        vmImage: [10, 14]
-        xcode_version: [10, 3]
-    - template: ./conda-osx.yml
-      parameters:
-        vmImage: [10, 14]
-        xcode_version: [10, 2, 1]
-    - template: ./conda-osx.yml
-      parameters:
-        vmImage: [10, 13]
-        xcode_version: [9, 4, 1]
+        modules: modules

@@ -476,6 +476,22 @@ class structure_base(object):
     ph=hierarchy.deep_copy().select(sel)
     return ph.overall_counts().n_residues
 
+  def present_in_hierarchy(self, hierarchy):
+    start_present = False
+    end_present = False
+    start_resseq = self.start_resseq if isinstance(self.start_resseq, str) else self.convert_resseq(self.start_resseq)
+    end_resseq = self.end_resseq if isinstance(self.end_resseq, str) else self.convert_resseq(self.end_resseq)
+    for chain in hierarchy.models()[0].chains():
+      if chain.id == self.start_chain_id:
+        for rg in chain.residue_groups():
+          if rg.resseq == start_resseq:
+            start_present = True
+          if rg.resseq == end_resseq:
+            end_present = True
+          if start_present and end_present:
+            return True
+    return False
+
   def count_h_bonds(self,hierarchy=None,
        max_h_bond_length=None,ss_by_chain=False):
     "Count good and poor H-bonds in this hierarchy"
@@ -725,7 +741,7 @@ class annotation(structure_base):
       if asc is None:
         asc = hierarchy.atom_selection_cache()
       if remove_empty_annotations:
-        result.remove_empty_annotations(hierarchy, asc)
+        result.remove_empty_annotations(hierarchy)
       if concatenate_consecutive_helices:
         result.concatenate_consecutive_helices(hierarchy, asc)
       if split_helices_with_prolines:
@@ -734,22 +750,16 @@ class annotation(structure_base):
         result.filter_sheets_with_long_hbonds(hierarchy, asc)
     return result
 
-  def remove_empty_annotations(self, hierarchy, asc=None):
+  def remove_empty_annotations(self, hierarchy):
     # returns annotation of deleted helices and sheets
-    if asc is None:
-      asc = hierarchy.atom_selection_cache()
     h_indeces_to_delete = []
     sh_indeces_to_delete = []
     for i, h in enumerate(self.helices):
-      selstring = h.as_atom_selections()
-      isel = asc.iselection(selstring[0])
-      if len(isel) == 0:
+      if not h.present_in_hierarchy(hierarchy):
         h_indeces_to_delete.append(i)
     for i, sh in enumerate(self.sheets):
       for st in sh.strands:
-        selstring = st.as_atom_selections()
-        isel = asc.iselection(selstring)
-        if len(isel) == 0:
+        if not st.present_in_hierarchy(hierarchy):
           if i not in sh_indeces_to_delete:
             sh_indeces_to_delete.append(i)
     deleted_helices = []
@@ -1394,6 +1404,11 @@ class annotation(structure_base):
     new_annotation=deepcopy(self)
     new_annotation.sheets=new_sheets
     return new_annotation
+
+  def add_helices_and_sheets_simple(self, other_annot):
+    self.helices += other_annot.helices
+    self.sheets += other_annot.sheets
+    self.renumber_helices_and_sheets()
 
   def combine_annotations(self,hierarchy=None,other=None,
     keep_self=None,

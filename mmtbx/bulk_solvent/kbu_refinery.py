@@ -213,6 +213,7 @@ class tgc(object):
         self.adp_constraints.independent_gradients(all_gradients=self.t_g_c.grad_u_star()))
 
   def curvatures(self):
+    # XXX No curvatures for u_star !
     if(self.refine_k): return self.t_g_c.curv_k_sols()
     if(self.refine_b): return self.t_g_c.curv_b_sols()
     if(self.refine_kb):

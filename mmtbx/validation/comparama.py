@@ -320,7 +320,7 @@ def add_arrows_on_plot(
         l = lines.Line2D(
             xdata = [l_coors[0][0], l_coors[1][0]],
             ydata = [l_coors[0][1], l_coors[1][1]],
-            linewidth=1.7, color=color)
+            linewidth=1.7, color=color, zorder=10)
         p.plot.add_line(l)
     p.plot.add_patch(patches.FancyArrowPatch(
         r[-1][0],

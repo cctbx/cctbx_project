@@ -2680,6 +2680,20 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     text = '\n'.join(text)
     return text
 
+  def format_for_biomt(self,crystal_number=None,skip_identity_if_first=False,
+       ncs_domain_pdb=True):
+
+    serial_number=0
+    from iotbx.mtrix_biomt import container
+
+    result=container()
+    for t,r in zip (
+       self.translations_orth_inv(),self.rota_matrices_inv()):
+      serial_number+=1
+      result.add(r,t,serial_number, coordinates_present=False)
+
+    return result.format_BIOMT_pdb_string()
+
   def format_for_resolve(self,crystal_number=None,skip_identity_if_first=False,
        ncs_domain_pdb=True):
     text="new_ncs_group"
@@ -3785,6 +3799,24 @@ class ncs:
     all_text+="\n"
     return all_text
 
+  def format_all_for_biomt(self,log=None,quiet=False,out=None,):
+    if out==None:
+       out=sys.stdout
+    if log==None:
+      log=sys.stdout
+    else:
+      print("\n\nNCS operators written in BIOMT format :",out.name, file=log)
+    all_text=""
+    if self._ncs_groups and len(self._ncs_groups)>1:
+      print(
+      "\nWARNING: BIOMT format cannot be used for more than one NCS group",
+       "\nOnly writing out one NCS group",file=log)
+    for ncs_group in self._ncs_groups[:1]:
+      text=ncs_group.format_for_biomt()
+      if not quiet: out.write("\n"+text+"\n\n")
+      all_text+="\n"+text
+    return all_text
+
   def format_all_for_resolve(self,log=None,quiet=False,out=None,
       crystal_number=None,skip_identity_if_first=False,ncs_domain_pdb=True):
     if out==None:
@@ -4052,6 +4084,25 @@ MATCHING 11.0
 
 """
 
+test1_ncs_info="""
+new_ncs_group
+new_operator
+
+rota_matrix    1.0000    0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth   0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.3090    0.9500   -0.0000
+rota_matrix   -0.9500    0.3090    0.0000
+rota_matrix    0.0000   -0.0000    1.0000
+tran_orth   -23.0000  147.0000    0.0000
+
+center_orth   0.0000    0.0000    0.0000
+"""
 def euler_frac_to_rot_trans(euler_values,frac,unit_cell):
     # TT get RT in cctbx form from euler angles and fractional translation as
     #   used in phaser. Note: Specific for phaser EULER FRAC
@@ -4087,7 +4138,27 @@ if __name__=="__main__":
      ff.write(text)
      ff.close()
     else:
+
+     print ("Running exercise_1")
+     ncs_object=ncs()
+     ncs_object.read_ncs(lines=test1_ncs_info.splitlines())
+     ncs_lines=ncs_object.format_all_for_group_specification().splitlines()
+     biomt_lines=ncs_object.format_all_for_biomt().splitlines()
+
+     biomt_ncs_object=ncs()
+     biomt_ncs_object.read_ncs(lines=biomt_lines)
+
+     biomt_text=biomt_ncs_object.display_all()
+
+     std_ncs_object=ncs()
+     std_ncs_object.read_ncs(lines=ncs_lines)
+     std_ncs_text=std_ncs_object.display_all()
+     print ("STANDARD \n %s \n BIOMTR \n %s " %(
+       std_ncs_text, biomt_text))
+     for a,b in zip(std_ncs_text.splitlines(),biomt_text.splitlines()):
+       assert a.strip()==b.strip()
      print("OK")
+
   elif len(args)>0 and args[0] and os.path.isfile(args[0]):
     ncs_object=ncs()
     ncs_object.read_ncs(args[0],source_info=args[0])

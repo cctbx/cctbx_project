@@ -32,6 +32,15 @@ output {
   overwrite = True
     .type = bool
 }
+# temporary GUI PHIL
+include scope libtbx.phil.interface.tracking_params
+gui
+  .help = "GUI-specific parameter required for output directory"
+{
+  output_dir = None
+  .type = path
+  .style = output_dir
+}
 """
 
   def validate(self):
@@ -50,7 +59,7 @@ output {
         uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
           sites_cart   = self.model.get_sites_cart(),
           buffer_layer = 5).crystal_symmetry()
-      self.model.set_crystal_symmetry_if_undefined(cs = box_crystal_symmetry)
+      self.model.set_crystal_symmetry(crystal_symmetry = box_crystal_symmetry)
     print('Performing manipulations', file=self.logger)
     self.model = mmtbx.pdbtools.modify(
       model  = self.model,
@@ -77,6 +86,10 @@ output {
     if(cs is None): output_cs = False
     self.data_manager.write_model_file(self.model.model_as_str(
       output_cs=output_cs), ofn)
+    self.result = ofn
 
   def get_results(self):
-    return self.model
+    return self.result
+
+# So master_phil_str can be called
+master_phil_str = Program.master_phil_str

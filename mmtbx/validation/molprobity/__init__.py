@@ -285,6 +285,7 @@ class molprobity(slots_getstate_setstate):
         fmodel = fmodel.resolution_filter(
           d_min=header_info.d_min,
           d_max=header_info.d_max)
+        fmodel.update_all_scales()
       if (flags.rfactors):
         self.data_stats = experimental.data_statistics(fmodel,
           raw_data=raw_data,

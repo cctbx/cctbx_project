@@ -6,6 +6,7 @@ tst_list = (
     "$D/nanoBragg/tst_nanoBragg_minimal.py",
     "$D/nanoBragg/tst_nanoBragg_mosaic.py",
     "$D/nanoBragg/tst_gaussian_mosaicity.py",
+    "$D/nanoBragg/tst_nanoBragg_cbf_write.py",
     )
 
 def run():

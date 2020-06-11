@@ -1,26 +1,47 @@
 # Script for building CCTBX
 # linux image descriptions
-# https://github.com/Microsoft/azure-pipelines-image-generation/blob/master/images/linux/Ubuntu1604-README.md
+# https://github.com/actions/virtual-environments/blob/master/images/linux/Ubuntu1804-README.md
+#
+# Parameters:
+#   distribution: centos, ubuntu
+#   version: [6, 10]
+#   modules: <modules artifact name>
 
 jobs:
 - job: ${{ format('{0}_{1}', parameters.distribution, join('_', parameters.version) ) }}
   pool:
-    vmImage: ubuntu-16.04
-  timeoutInMinutes: 360
+    vmImage: ubuntu-latest
+  timeoutInMinutes: 90
   strategy:
-    maxParallel: 3
+    maxParallel: 2
     matrix:
       python2.7:
         CONDA: Linux
         OS: linux-64
         PYTHON_VERSION: py27
+        MODULES: ${{ parameters.modules }}
       python3.6:
         CONDA: Linux
         OS: linux-64
         PYTHON_VERSION: py36
+        MODULES: ${{ parameters.modules }}
+      python3.7:
+        CONDA: Linux
+        OS: linux-64
+        PYTHON_VERSION: py37
+        MODULES: ${{ parameters.modules }}
+      python3.8:
+        CONDA: Linux
+        OS: linux-64
+        PYTHON_VERSION: py38
+        MODULES: ${{ parameters.modules }}
+
   container:
     image: ${{ parameters.distribution }}:${{ join('.', parameters.version) }}
     options: "--name ci-container -v /usr/bin/docker:/tmp/docker:ro"
+
+  variables:
+    artifact_name: ${{ parameters.distribution }}_${{ join('.', parameters.version) }}_$(PYTHON_VERSION)
 
   steps:
   # https://github.com/ApexAI/performance_test/blob/master/azure-pipelines.yml#L9-L17
@@ -62,5 +83,66 @@ jobs:
     displayName: Install dependencies for Ubuntu
     condition: eq('${{ parameters.distribution }}', 'ubuntu')
 
+  - script: |
+      echo $(System.CollectionId)
+      echo $(System.CollectionUri)
+      echo $(System.TeamProject)
+      echo $(System.TeamProjectId)
+      echo $(System.DefinitionID)
+    displayName: Show System variables
+
+  # download daily cached build directory for builds
+  # always do builds from scratch for "Update build cache" and "Weekly"
+  # pipelines
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(System.TeamProjectId)'
+      pipeline: 8
+      artifact: '$(artifact_name)'
+      path: $(Pipeline.Workspace)
+    displayName: Download cached build
+    condition: >
+      and(ne(variables['Build.DefinitionName'], 'Update build cache'),
+          ne(variables['Build.DefinitionName'], 'Weekly'))
+    continueOnError: true
+
+  - script: |
+      cd $(Pipeline.Workspace)
+      tar -xf build.tar
+    displayName: Extract build tarball
+    condition: >
+      and(ne(variables['Build.DefinitionName'], 'Update build cache'),
+          ne(variables['Build.DefinitionName'], 'Weekly'))
+    continueOnError: true
+    failOnStderr: false
+
   # build
   - template: ./unix-conda-build.yml
+    parameters:
+      distribution: ${{ parameters.distribution }}
+      version: ${{ parameters.version }}
+
+  # preserve permissions
+  - script: |
+      cd $(Pipeline.Workspace)
+      tar -chf build.tar build
+    displayName: Build tarball
+    condition: >
+      and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+          or(eq(variables['Build.Reason'], 'Schedule'),
+             eq(variables['Build.Reason'], 'Manual')),
+          eq(variables['System.StageAttempt'], 1),
+          eq('${{ parameters.modules }}', 'modules'))
+    continueOnError: true
+
+  # cache build directory every week for regular optimization build
+  - publish: $(Pipeline.Workspace)/build.tar
+    artifact: $(artifact_name)
+    condition: >
+      and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+          or(eq(variables['Build.Reason'], 'Schedule'),
+             eq(variables['Build.Reason'], 'Manual')),
+          eq(variables['System.StageAttempt'], 1),
+          eq('${{ parameters.modules }}', 'modules'))
+    continueOnError: true

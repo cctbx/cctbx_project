@@ -10,8 +10,7 @@ from xfel.merging.database.merging_database import mysql_master_phil
 master_phil="""
 dispatch {
   step_list = None
-    .type = str
-    .multiple = True
+    .type = strings
     .help = List of steps to use. None means use the full set of steps to merge.
 }
 input {

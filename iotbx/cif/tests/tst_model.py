@@ -564,7 +564,40 @@ loop_
   s = str(cif_model)
   assert s.strip() == 'data_test'
 
+def test_show_not_modify():
+  """
+  Test that content of the object is not changed during .show()
+  """
+  cif_str = """\
+data_r3p4rsf
+#
+_symmetry.entry_id               3p4r
+_symmetry.space_group_name_H-M   'P 21 21 21'
+_symmetry.Int_Tables_number      19
+#
+loop_
+_symmetry_equiv.id
+_symmetry_equiv.pos_as_xyz
+1 'X,  Y,  Z'
+2 '-X+1/2,  -Y,  Z+1/2'
+3 'X+1/2,  -Y+1/2,  -Z'
+4 '-X,  Y+1/2,  -Z+1/2'
+"""
+  cif_reader = iotbx.cif.reader(input_string=cif_str)
+  model = cif_reader.model()
+  print (model['r3p4rsf']['_symmetry.space_group_name_H-M'])
+  print (list(model['r3p4rsf']['_symmetry_equiv.pos_as_xyz']))
+  assert list(model['r3p4rsf']['_symmetry_equiv.pos_as_xyz']) ==\
+      ['X,  Y,  Z', '-X+1/2,  -Y,  Z+1/2', 'X+1/2,  -Y+1/2,  -Z', '-X,  Y+1/2,  -Z+1/2']
+  s = StringIO()
+  model.show(out=s)
+  print (model['r3p4rsf']['_symmetry.space_group_name_H-M'])
+  print (list(model['r3p4rsf']['_symmetry_equiv.pos_as_xyz']))
+  assert list(model['r3p4rsf']['_symmetry_equiv.pos_as_xyz']) ==\
+      ['X,  Y,  Z', '-X+1/2,  -Y,  Z+1/2', 'X+1/2,  -Y+1/2,  -Z', '-X,  Y+1/2,  -Z+1/2']
+
 if __name__ == '__main__':
   exercise_cif_model()
   test_301()
+  test_show_not_modify()
   print("OK")

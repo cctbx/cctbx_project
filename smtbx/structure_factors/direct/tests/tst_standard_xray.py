@@ -43,6 +43,10 @@ class test_case(object):
                 .set_grad_u_iso(set_grads).set_grad_u_aniso(set_grads)
                 .set_grad_occupancy(set_grads)
       )
+      if self.inelastic_scattering:
+        sc.flags.set_grad_fp(set_grads)
+        sc.flags.set_grad_fdp(set_grads)
+        sc.flags.set_use_fp_fdp(True)
       assert sc.flags.use_u_iso()
       assert sc.flags.use_u_aniso()
     return xs
@@ -87,14 +91,21 @@ class consistency_test_cases(test_case):
         eta_iso = eta[i+3]
         eta_aniso = matrix.col(eta[i+4:i+10])
         eta_occ = eta[i+10]
-        i += 11
+        if self.inelastic_scattering:
+          eta_fp = eta[i+11]
+          eta_fdp = eta[i+12]
+          i += 13
+        else:
+          i += 11
 
         sc_forward.site = matrix.col(sc.site) + eta_site
         sc_forward.u_iso = sc.u_iso + eta_iso
         sc_forward.u_star = matrix.col(sc.u_star) + eta_aniso
         sc_forward.occupancy = sc.occupancy + eta_occ
+        if self.inelastic_scattering:
+          sc_forward.fp = sc.fp + eta_fp
+          sc_forward.fdp = sc.fdp + eta_fdp
       yield direction
-  structures_forward = classmethod(structures_forward)
 
   def do_exercise(self, verbose=False):
     xs = self.xs
@@ -135,10 +146,11 @@ class consistency_test_cases(test_case):
         delta = abs(1 - diff/diff_num)
         deltas.append(delta)
     stats = median_statistics(deltas)
-    tol = 1e-3
-    assert stats.median < tol, (str(space_group_info), stats.median)
-    assert stats.median_absolute_deviation < tol, (str(space_group_info),
-      stats.median_absolute_deviation)
+    tol = 1e-5
+    assert stats.median < tol, (
+        xs.space_group_info().symbol_and_number(), stats.median)
+    assert stats.median_absolute_deviation < tol, (
+        xs.space_group_info().symbol_and_number(), stats.median_absolute_deviation)
 
 class smtbx_against_cctbx_test_case(test_case):
 

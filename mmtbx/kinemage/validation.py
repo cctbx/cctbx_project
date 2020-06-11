@@ -129,6 +129,99 @@ def angle_outlier_as_kinemage(self):
   kin_text += kin_vec(angle_key_full,sites[1],angle_key,new_c)
   return kin_text
 
+def chiral_outlier_as_kinemage(self):
+  """
+  Represent a chiral volume outlier in kinemage
+  """
+  from mmtbx.kinemage import kin_vec
+  outlier_type = self.outlier_type()
+  atoms = self.atoms_info
+  chiral_center = atoms[0]
+  chiral_coords = matrix.rec((chiral_center.xyz[0], chiral_center.xyz[1], chiral_center.xyz[2]),(3,1))
+  legs = [None] #None fills the 0 index, this indexes the same as atoms_info
+  for atom in atoms[1:]:
+    legs.append(matrix.rec((atom.xyz[0], atom.xyz[1], atom.xyz[2]),(3,1)))
+  #legs need to be shortened for visual/selection clarity
+  leg_vs = [None]
+  for leg in legs[1:]:
+    leg_vs.append(leg - chiral_coords)
+  leg_ends = [None,0,0,0]
+  shorten_by = 0.3
+  leg_ends[1] = legs[1] - leg_vs[1].normalize()*shorten_by
+  leg_ends[2] = legs[2] - leg_vs[2].normalize()*shorten_by
+  leg_ends[3] = legs[3] - leg_vs[3].normalize()*shorten_by
+  kin_text = ""
+  #tetrahedron is drawn for all markups
+  kin_text += "@vectorlist {%s %s} color= yellow width= 4\n" %(chiral_center.id_str(), "lines")
+  #draw legs from chiral center
+  kin_text += "{%s %s: %.3f sigma} P %.3f %.3f %.3f\n" % (chiral_center.id_str(),outlier_type,self.score,chiral_coords[0],chiral_coords[1],chiral_coords[2])
+  kin_text += "{%s %s: %.3f sigma} %.3f %.3f %.3f\n" % (atoms[1].id_str(),outlier_type,self.score,leg_ends[1][0],leg_ends[1][1],leg_ends[1][2])
+  kin_text += "{%s %s: %.3f sigma} %.3f %.3f %.3f\n" % (atoms[2].id_str(),outlier_type,self.score,leg_ends[2][0],leg_ends[2][1],leg_ends[2][2])
+  kin_text += "{%s %s: %.3f sigma} %.3f %.3f %.3f\n" % (atoms[3].id_str(),outlier_type,self.score,leg_ends[3][0],leg_ends[3][1],leg_ends[3][2])
+  kin_text += "{%s %s: %.3f sigma} %.3f %.3f %.3f\n" % (atoms[1].id_str(),outlier_type,self.score,leg_ends[1][0],leg_ends[1][1],leg_ends[1][2])
+  kin_text += "{%s %s: %.3f sigma} P %.3f %.3f %.3f\n" % (atoms[2].id_str(),outlier_type,self.score,leg_ends[2][0],leg_ends[2][1],leg_ends[2][2])
+  kin_text += "{%s %s: %.3f sigma} %.3f %.3f %.3f\n" % (chiral_center.id_str(),outlier_type,self.score,chiral_coords[0],chiral_coords[1],chiral_coords[2])
+  kin_text += "{%s %s: %.3f sigma} %.3f %.3f %.3f\n" % (atoms[3].id_str(),outlier_type,self.score,leg_ends[3][0],leg_ends[3][1],leg_ends[3][2])
+
+  if outlier_type == "Chiral handedness swap":
+    #Also add an arrow to suggest mirror operation
+    #create normal to plane of 3 legs, scale to suitable length
+    #m = rec((1, 2, 3, 4), (2, 2))
+    v1 = matrix.rec((atoms[1].xyz[0]-atoms[2].xyz[0], atoms[1].xyz[1]-atoms[2].xyz[1], atoms[1].xyz[2]-atoms[2].xyz[2]), (3,1))
+    v2 = matrix.rec((atoms[1].xyz[0]-atoms[3].xyz[0], atoms[1].xyz[1]-atoms[3].xyz[1], atoms[1].xyz[2]-atoms[3].xyz[2]), (3,1))
+    norm = v1.cross(v2)
+    norm = norm.normalize()
+    p = matrix.rec((chiral_center.xyz[0]+norm[0], chiral_center.xyz[1]+norm[1], chiral_center.xyz[2]+norm[2]),(3,1))
+    arrow_text = "%s %s: %.3f sigma" % (chiral_center.id_str(), outlier_type, self.score)
+    kin_text += kin_vec(chiral_center.id_str(), chiral_center.xyz, arrow_text, p)
+    #Add arrowhead
+    #Move back lone that some line and out along the atoms[1]-atoms[2] line
+    arrow_width = 0.125 * v1.normalize()
+    arrow_end_1 = p - 0.125*norm + arrow_width
+    arrow_end_2 = p - 0.125*norm - arrow_width
+    #draw second arrow rotated 90 degrees, so arrowheaad is visible from more orientations
+    arrow_end_3 = matrix.rotate_point_around_axis(
+        axis_point_1 = chiral_coords,
+        axis_point_2 = p,
+        point        = arrow_end_1,
+        angle        = 90,
+        deg          = True)
+    arrow_end_4 = matrix.rotate_point_around_axis(
+        axis_point_1 = chiral_coords,
+        axis_point_2 = p,
+        point        = arrow_end_2,
+        angle        = 90,
+        deg          = True)
+    kin_text += kin_vec(arrow_text, p, outlier_type, arrow_end_1)
+    kin_text += kin_vec(arrow_text, p, outlier_type, arrow_end_2)
+    kin_text += kin_vec(arrow_text, p, outlier_type, arrow_end_3)
+    kin_text += kin_vec(arrow_text, p, outlier_type, arrow_end_4)
+
+  #draw balls onto atoms of greatest interest
+  kin_text += "@balllist {%s %s} color= yellow radius= 0.15\n" %(chiral_center.id_str(), "balls")
+  if outlier_type != 'Pseudochiral naming error':
+    #"Chiral handedness swap" or "Tetrahedral geometry outlier"
+    #error is located at chiral center, draw ball at chiral center of interest
+    kin_text += "{%s %s: %.3f sigma} %.3f %.3f %.3f\n" % (chiral_center.id_str(),outlier_type,self.score,atoms[0].xyz[0],atoms[0].xyz[1],atoms[0].xyz[2])
+  else:
+    #Pseudochiral naming error
+    #error is probably in naming of the non-center atoms
+    #draw balls on legs, add atomnames as labels to draw attention to naming
+    i = 1
+    while i <= 3:
+      kin_text += "{%s %s: %.3f sigma} %.3f %.3f %.3f\n" % (atoms[i].id_str(),outlier_type,self.score,leg_ends[i][0],leg_ends[i][1],leg_ends[i][2])
+      i+=1
+    kin_text += "@labellist {%s %s} color= white\n" % (chiral_center.id_str(), "labels")
+    #needs to be a different color than balls for readability during overlap
+    #atomnames go on atoms rather than balls to reduce overlap and increase clarity
+    kin_text += "{  %s} %.3f %.3f %.3f\n" % (chiral_center.name.strip(),chiral_center.xyz[0],chiral_center.xyz[1],chiral_center.xyz[2])
+    i = 1
+    while i <= 3:
+      kin_text += "{  %s} %.3f %.3f %.3f\n" % (atoms[i].name.strip(),atoms[i].xyz[0],atoms[i].xyz[1],atoms[i].xyz[2])
+      #leading spaces reduce overlap with the ball already drawn on labeled atom
+      i+=1
+  return kin_text
+
 def get_bond_outliers(bond_proxies, chain, sites_cart, hierarchy):
   i_seq_name_hash = build_name_hash(pdb_hierarchy=hierarchy)
   kin_text = "@subgroup {length devs} dominant\n"

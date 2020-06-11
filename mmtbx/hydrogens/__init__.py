@@ -202,7 +202,96 @@ xh_bond_distance_deviation_limit = 0.0
   .expert_level=2
 """
 
-def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
+def shortcut(residue, first, log):
+  """
+  Avoid TARDY, huge speedup for huge structures!
+  """
+  d = {}
+  for a in residue.atoms():
+    name = a.name.strip().upper()
+    if(name[0]=="D"):
+      name = list(name)
+      name[0]="H"
+      name = "".join(name)
+    d[name] = a.i_seq
+  rn = residue.resname.strip().upper()
+  result = []
+  try:
+    if(first):
+      try: # H1,H2,H3 are missing way to often, also due to reduce bug
+        axis  = [d["CA"], d["N"]]
+        atoms = [d["H1"], d["H2"], d["H3"]]
+        result.append([axis, atoms])
+      except KeyError: pass
+    if  (rn == "MET"):
+      axis  = [d['SD'],  d['CE']           ]
+      atoms = [d['HE1'], d['HE2'], d['HE3']]
+      result.append([axis, atoms])
+    elif(rn == "LYS"):
+      axis  = [d['CE'],  d['NZ']           ]
+      atoms = [d['HZ1'], d['HZ2'], d['HZ3']]
+      result.append([axis, atoms])
+    elif(rn == "SER"):
+      axis  = [d['CB'], d['OG']]
+      atoms = [d['HG']]
+      result.append([axis, atoms])
+    elif(rn == "THR"):
+      axis  = [d['CB'],   d['CG2']            ]
+      atoms = [d['HG21'], d['HG22'], d['HG23']]
+      result.append([axis, atoms])
+      axis  = [d['CB'], d['OG1']]
+      atoms = [d['HG1']         ]
+      result.append([axis, atoms])
+    elif(rn == "LEU"):
+      axis  = [d['CG'],   d['CD1']            ]
+      atoms = [d['HD11'], d['HD12'], d['HD13']]
+      result.append([axis, atoms])
+      axis  = [d['CG'],   d['CD2']            ]
+      atoms = [d['HD21'], d['HD22'], d['HD23']]
+      result.append([axis, atoms])
+    elif(rn == "CYS"):
+      if("HG" in d.keys()): # not a disulfide bridge
+        axis  = [d['CB'], d['SG']]
+        atoms = [d['HG']         ]
+        result.append([axis, atoms])
+    elif(rn == "VAL"):
+      axis  = [d['CB'],   d['CG1']            ]
+      atoms = [d['HG11'], d['HG12'], d['HG13']]
+      result.append([axis, atoms])
+      axis  = [d['CB'],   d['CG2']            ]
+      atoms = [d['HG21'], d['HG22'], d['HG23']]
+      result.append([axis, atoms])
+    elif(rn == "TYR"):
+      axis  = [d['CZ'], d['OH']]
+      atoms = [d['HH']         ]
+      result.append([axis, atoms])
+    elif(rn == "ALA"):
+      axis  = [d['CA'],  d['CB']           ]
+      atoms = [d['HB1'], d['HB2'], d['HB3']]
+      result.append([axis, atoms])
+    elif(rn == "ILE"):
+      axis  = [d['CB'],   d['CG2']            ]
+      atoms = [d['HG21'], d['HG22'], d['HG23']]
+      result.append([axis, atoms])
+      axis  = [d['CG1'],  d['CD1']            ]
+      atoms = [d['HD11'], d['HD12'], d['HD13']]
+      result.append([axis, atoms])
+    elif(rn == "MSE"):
+      axis  =  [d['SE'],  d['CE']           ]
+      atoms =  [d['HE1'], d['HE2'], d['HE3']]
+      result.append([axis, atoms])
+    else:
+      if(len(result)>0): return result
+      else:              return None
+  except KeyError:
+    m="Residue %s %s is missing expected H atoms. Skipping."%(
+      residue.resname, str(residue.resseq))
+    print(m, file=log)
+    return None
+  return result
+
+def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log,
+              use_shortcut=True):
   """
   General tool to identify rotatable H, such as C-O-H, C-H3, in any molecule.
   """
@@ -216,9 +305,14 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
       a1, a2 = atoms[gi[0][0]], atoms[gi[0][1]]
       e1 = a1.element.strip().upper()
       e2 = a2.element.strip().upper()
-      condition_00 = [a1.i_seq in psel, a2.i_seq in psel].count(True)==2
+      #
+      condition_00_ = psel[a1.i_seq] and psel[a2.i_seq]
+      condition_00 = flex.bool([condition_00_])
       for gi1_ in gi[1]:
-        condition_00 = condition_00 and (atoms[gi1_].i_seq in psel)
+        condition_00.append(condition_00_ and psel[atoms[gi1_].i_seq])
+      condition_00 = condition_00.all_eq(True)
+      if condition_00: continue
+      #
       condition_1 = [e1,e2].count("H")==0 and [e1,e2].count("D")==0
       # condition 2: all atoms to rotate are H or D
       condition_2 = True
@@ -234,7 +328,7 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
         for gi1i in gi[1]:
           rot_atoms.append(atoms[gi1i].i_seq)
         result.append([axis, rot_atoms])
-    if(len(result)>0 is not None): return result
+    if(len(result)>0): return result
     else: return None
   def analyze_group_general(g, atoms, bps, psel):
     result = []
@@ -246,9 +340,14 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
       a1, a2 = atoms[gi[0][0]], atoms[gi[0][1]]
       e1 = a1.element.strip().upper()
       e2 = a2.element.strip().upper()
-      condition_00 = [a1.i_seq in psel, a2.i_seq in psel].count(True)==2
+      #
+      condition_00_ = psel[a1.i_seq] and psel[a2.i_seq]
+      condition_00 = flex.bool([condition_00_])
       for gi1_ in gi[1]:
-        condition_00 = condition_00 and (atoms[gi1_].i_seq in psel)
+        condition_00.append(condition_00_ and psel[atoms[gi1_].i_seq])
+      condition_00 = condition_00.all_eq(True)
+      if condition_00: continue
+      #
       condition_1 = [e1,e2].count("H")==0 and [e1,e2].count("D")==0
       s1 = set(gi[1])
       if(condition_1):
@@ -273,15 +372,16 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
             s = list(s1 & s2)
             if(len(s)>0): condition_3 = True
           #
-          if(condition_1 and condition_2 and condition_3 and not condition_00):
+          if(condition_1 and condition_2 and condition_3):
+          #if(condition_1 and condition_2 and condition_3 and not condition_00):
             axis = [a1.i_seq, a2.i_seq]
             rot_atoms = []
             in_plane = False
             for i in bonds_involved_into:
-              if(atoms[i].i_seq in psel): in_plane = True
+              if(psel[atoms[i].i_seq]): in_plane = True
               rot_atoms.append(atoms[i].i_seq)
             if(not in_plane): result.append([axis, rot_atoms])
-    if(len(result)>0 is not None): return result
+    if(len(result)>0): return result
     else: return None
   def helper_1(residue, mon_lib_srv, log, result, psel):
     fr = rotatable_bonds.axes_and_atoms_aa_specific(
@@ -334,9 +434,10 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
         result.append(r)
   #
   if(restraints_manager is not None):
-    psel = flex.size_t()
+    psel = flex.bool(pdb_hierarchy.atoms().size(), False)
     for p in restraints_manager.geometry.planarity_proxies:
-      psel.extend(p.i_seqs)
+      for i in p.i_seqs:
+        psel[i] = True
   # very handy for debugging: do not remove
   #NAMES = pdb_hierarchy.atoms().extract_name()
   #
@@ -347,7 +448,9 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
       residue_groups = chain.residue_groups()
       n_residues = len(residue_groups)
       for i_rg, residue_group in enumerate(residue_groups):
-        first_or_last = i_rg == 0 or i_rg+1 == n_residues
+        first = i_rg == 0
+        last  = i_rg+1 == n_residues
+        first_or_last = first or last
         conformers = residue_group.conformers()
         for conformer in residue_group.conformers():
           for residue in conformer.residues():
@@ -356,8 +459,20 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
             if(get_class(name=residue.resname)=="common_water" and
                len(atoms)==1):
                  continue
-            if(get_class(name=residue.resname)=="common_amino_acid" and not first_or_last):
-              helper_1(residue, mon_lib_srv, log, result, psel)
+            hd = False
+            for a in residue.atoms():
+              if(a.element_is_hydrogen()):
+                hd=True
+                break
+            if(not hd): continue
+            if(get_class(name=residue.resname)=="common_amino_acid" and not last):
+              if(use_shortcut):
+                r_ = shortcut(residue=residue, first=first, log=log)
+                if(r_ is not None): result.extend(r_)
+              else:
+                helper_1(residue, mon_lib_srv, log, result, psel)
+                if(first):
+                  helper_2(atoms, restraints_manager)
             elif(get_class(name=residue.resname)=="common_amino_acid"):
               helper_1(residue, mon_lib_srv, log, result, psel)
               helper_2(atoms, restraints_manager)

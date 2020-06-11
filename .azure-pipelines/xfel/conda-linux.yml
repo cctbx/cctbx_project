@@ -5,8 +5,8 @@
 jobs:
 - job: ${{ format('{0}_{1}', parameters.distribution, join('_', parameters.version) ) }}
   pool:
-    vmImage: ubuntu-16.04
-  timeoutInMinutes: 360
+    vmImage: ubuntu-latest
+  timeoutInMinutes: 90
   strategy:
     maxParallel: 3
     matrix:
@@ -34,7 +34,7 @@ jobs:
 
   - script: |
       sudo yum groupinstall -y 'Development Tools'
-      sudo yum install -y mesa-libGLU-devel mesa-libGL-devel
+      sudo yum install -y mesa-libGLU-devel mesa-libGL-devel tcsh
     displayName: Install dependencies for CentOS
     condition: eq('${{ parameters.distribution }}', 'centos')
 

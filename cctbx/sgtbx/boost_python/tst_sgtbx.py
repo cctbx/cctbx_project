@@ -2429,7 +2429,15 @@ def exercise_fractional_mod():
     sgtbx.fractional_mod_short((0.4, 0.9, 0.7)),
     (0.4, -0.1, -0.3))
 
+
+def exercise_repr():
+  for i in range(1, 231):
+    sgi = sgtbx.space_group_info(number=i)
+    assert eval(repr(sgi)).group() == sgi.group()
+
+
 def run():
+  exercise_repr()
   exercise_symbols()
   exercise_tr_vec()
   exercise_rot_mx()

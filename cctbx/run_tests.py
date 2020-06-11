@@ -149,6 +149,7 @@ tst_list_base = [
 # failing tests on Python 3
 tst_list_fail_py3 = [
   "$D/xray/boost_python/tst_xray.py",
+   "$D/regression/tst_maptbx_box.py",
   ["$D/regression/tst_xray.py", "I41/acd"],
   ]
 tst_list_fail = list()

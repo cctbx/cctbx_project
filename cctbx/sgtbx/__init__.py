@@ -296,6 +296,12 @@ class space_group_info(object):
       cache._lookup_symbol = self.type().lookup_symbol()
     return cache._lookup_symbol
 
+  def __repr__(self):
+    cache = self._space_group_info_cache
+    if (not hasattr(cache, "_lookup_symbol")):
+      cache._lookup_symbol = self.type().lookup_symbol()
+    return 'sgtbx.space_group_info(symbol="%s")' % cache._lookup_symbol
+
   def symbol_and_number(self):
     return "%s (No. %d)" % (str(self), self.type().number())
 

@@ -1421,6 +1421,19 @@ class _():
         site_labels=site_labels, max_items=max_items,
         get_restraints_only=False)
 
+  def get_outliers(self, sites_cart, sigma_threshold):
+    result = []
+    vals = self.get_sorted(by_value="delta", sites_cart=sites_cart)[0]
+    if(vals is None): return result
+    for it in vals:
+      # it: [[iseqs], both_signs(bool), ideal, model, delta, sigma, weight, residual]
+      ind = [int(i) for i in it[0]]
+      delta = abs(it[4])
+      sigma = it[5]
+      if(delta > sigma*sigma_threshold):
+        result.append(ind)
+    return result
+
 @boost.python.inject_into(shared_planarity_proxy)
 class _():
 

@@ -385,41 +385,24 @@ class run(object):
     if self.ncs_obj is not None:
       print("Using NCS constraints:", file=self.log)
       self.ncs_obj.show(format='phil', log=self.log)
-    if hasattr(self.params, "amber"):
-      use_amber = self.params.amber.use_amber
-    if(use_amber):
-      if not self.params.amber.topology_file_name:
-        raise Sorry("Need to supply topology file using amber.topology_file_name=<filename>")
-      if not self.params.amber.coordinate_file_name:
-        raise Sorry("Need to supply topology file using amber.coordinate_file_name=<filename>")
-      run_minimization_amber(
-        selection = self.selection,
-        restraints_manager = self.model.get_restraints_manager(),
-        params = self.params.minimization,
-        pdb_hierarchy = self.model.get_hierarchy(),
-        log = self.log,
-        prmtop = self.params.amber.topology_file_name,
-        ambcrd = self.params.amber.coordinate_file_name,
-      )
-    else:
-      ncs_restraints_group_list = []
-      if self.ncs_obj is not None:
-        ncs_restraints_group_list = self.ncs_obj.get_ncs_restraints_group_list()
-      run_minimization(
-        selection              = self.selection,
-        restraints_manager     = self.model.get_restraints_manager(),
-        riding_h_manager       = self.model.get_riding_h_manager(),
-        params                 = self.params.minimization,
-        pdb_hierarchy          = self.model.get_hierarchy(),
-        cdl                    = self.params.pdb_interpretation.restraints_library.cdl,
-        rdl                    = self.params.pdb_interpretation.restraints_library.rdl,
-        correct_hydrogens      = self.params.pdb_interpretation.correct_hydrogens,
-        fix_rotamer_outliers   = self.params.fix_rotamer_outliers,
-        allow_allowed_rotamers = self.params.allow_allowed_rotamers,
-        states_collector       = self.states_collector,
-        log                    = self.log,
-        ncs_restraints_group_list = ncs_restraints_group_list,
-        mon_lib_srv            = self.model.get_mon_lib_srv())
+    ncs_restraints_group_list = []
+    if self.ncs_obj is not None:
+      ncs_restraints_group_list = self.ncs_obj.get_ncs_restraints_group_list()
+    run_minimization(
+      selection              = self.selection,
+      restraints_manager     = self.model.get_restraints_manager(),
+      riding_h_manager       = self.model.get_riding_h_manager(),
+      params                 = self.params.minimization,
+      pdb_hierarchy          = self.model.get_hierarchy(),
+      cdl                    = self.params.pdb_interpretation.restraints_library.cdl,
+      rdl                    = self.params.pdb_interpretation.restraints_library.rdl,
+      correct_hydrogens      = self.params.pdb_interpretation.correct_hydrogens,
+      fix_rotamer_outliers   = self.params.fix_rotamer_outliers,
+      allow_allowed_rotamers = self.params.allow_allowed_rotamers,
+      states_collector       = self.states_collector,
+      log                    = self.log,
+      ncs_restraints_group_list = ncs_restraints_group_list,
+      mon_lib_srv            = self.model.get_mon_lib_srv())
     self.model.set_sites_cart_from_hierarchy()
 
   def write_pdb_file(self, prefix):

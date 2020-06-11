@@ -27,7 +27,7 @@ class result(object):
   def __init__(self, whole, helix, sheet, loop):
     adopt_init_args(self, locals())
 
-  def as_string(self, prefix):
+  def as_string(self, prefix=''):
     f = format_value
     p = prefix
     w, h, s, l = self.whole, self.helix, self.sheet, self.loop
@@ -35,9 +35,9 @@ class result(object):
     i = "%d"
     strs = [
       "\n%sRama-Z (Ramachandran plot Z-score):"%p,
-      "%sInterpretation: bad < -3 | suspicious < -2 | good > -2" % p,
-      "%sValues for helix/sheet/loop are not additive and are interpreted" % p,
-      "%sindependently." %p,
+      "%sInterpretation: bad |Rama-Z| > 3; suspicious 2 < |Rama-Z| < 3; good |Rama-Z| < 2." % p,
+      "%sScores for whole/helix/sheet/loop are scaled independently;" % p,
+      "%stherefore, the values are not related in a simple manner." % p,
       "%s  whole: %s (%s), residues: %s"%(p, f(d,w.value),f(d,w.std).strip(),f(i,w.n)),
       "%s  helix: %s (%s), residues: %s"%(p, f(d,h.value),f(d,h.std).strip(),f(i,h.n)),
       "%s  sheet: %s (%s), residues: %s"%(p, f(d,s.value),f(d,s.std).strip(),f(i,s.n)),
@@ -46,7 +46,7 @@ class result(object):
     return "\n".join(strs)
 
 class rama_z(object):
-  def __init__(self, model, log):
+  def __init__(self, models, log):
     db_path = libtbx.env.find_in_repositories(
         relative_path="chem_data/rama_z/top8000_rama_z_dict.pkl",
         test=os.path.isfile)
@@ -68,56 +68,60 @@ class rama_z(object):
     self.n_phi_half = 45
     self.n_psi_half = 45
 
-    if model.get_hierarchy().models_size() > 1:
-      hierarchy = iotbx.pdb.hierarchy.root()
-      m = model.get_hierarchy().models()[0].detached_copy()
-      hierarchy.append_model(m)
-      asc = hierarchy.atom_selection_cache()
-    else:
-      hierarchy = model.get_hierarchy()
-      asc = model.get_atom_selection_cache()
+    # this is needed to disable e.g. selection functionality when
+    # multiple models are present
+    self.n_models = len(models)
     self.res_info = []
-    sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
-    ss_params = sec_str_master_phil.fetch().extract()
-    ss_params.secondary_structure.protein.search_method = "from_ca"
-    ss_params.secondary_structure.from_ca_conservative = True
+    for model in models:
+      if model.get_hierarchy().models_size() > 1:
+        hierarchy = iotbx.pdb.hierarchy.root()
+        m = model.get_hierarchy().models()[0].detached_copy()
+        hierarchy.append_model(m)
+        asc = hierarchy.atom_selection_cache()
+      else:
+        hierarchy = model.get_hierarchy()
+        asc = model.get_atom_selection_cache()
+      sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
+      ss_params = sec_str_master_phil.fetch().extract()
+      ss_params.secondary_structure.protein.search_method = "from_ca"
+      ss_params.secondary_structure.from_ca_conservative = True
 
-    self.ssm = ss_manager(hierarchy,
-        atom_selection_cache=asc,
-        geometry_restraints_manager=None,
-        sec_str_from_pdb_file=None,
-        # params=None,
-        params = ss_params.secondary_structure,
-        was_initialized=False,
-        mon_lib_srv=None,
-        verbose=-1,
-        log=null_out(),
-        # log=sys.stdout,
-        )
+      ssm = ss_manager(hierarchy,
+          atom_selection_cache=asc,
+          geometry_restraints_manager=None,
+          sec_str_from_pdb_file=None,
+          # params=None,
+          params = ss_params.secondary_structure,
+          was_initialized=False,
+          mon_lib_srv=None,
+          verbose=-1,
+          log=null_out(),
+          # log=sys.stdout,
+          )
 
-    filtered_ann = self.ssm.actual_sec_str.deep_copy()
-    filtered_ann.remove_short_annotations(
-        helix_min_len=4, sheet_min_len=4, keep_one_stranded_sheets=True)
-    self.helix_sel = asc.selection(filtered_ann.overall_helices_selection())
-    self.sheet_sel = asc.selection(filtered_ann.overall_sheets_selection())
+      filtered_ann = ssm.actual_sec_str.deep_copy()
+      filtered_ann.remove_short_annotations(
+          helix_min_len=4, sheet_min_len=4, keep_one_stranded_sheets=True)
+      self.helix_sel = asc.selection(filtered_ann.overall_helices_selection())
+      self.sheet_sel = asc.selection(filtered_ann.overall_sheets_selection())
 
-    used_atoms = set()
-    for three in generate_protein_threes(hierarchy=hierarchy, geometry=None):
-      main_residue = three[1]
-      phi_psi_atoms = three.get_phi_psi_atoms()
-      if phi_psi_atoms is None:
-        continue
-      phi_atoms, psi_atoms = phi_psi_atoms
-      key = [x.i_seq for x in phi_atoms]+[psi_atoms[-1].i_seq]
-      key = "%s" % key
-      if key not in used_atoms:
-        phi, psi = three.get_phi_psi_angles()
-        rkey = three.get_ramalyze_key()
-        resname = main_residue.resname
-        ss_type = self._figure_out_ss(three)
-        self.res_info.append( ["", rkey, resname, ss_type, phi, psi] )
-        self.residue_counts[ss_type] += 1
-        used_atoms.add(key)
+      used_atoms = set()
+      for three in generate_protein_threes(hierarchy=hierarchy, geometry=None):
+        main_residue = three[1]
+        phi_psi_atoms = three.get_phi_psi_atoms()
+        if phi_psi_atoms is None:
+          continue
+        phi_atoms, psi_atoms = phi_psi_atoms
+        key = [x.i_seq for x in phi_atoms]+[psi_atoms[-1].i_seq]
+        key = "%s" % key
+        if key not in used_atoms:
+          phi, psi = three.get_phi_psi_angles()
+          rkey = three.get_ramalyze_key()
+          resname = main_residue.resname
+          ss_type = self._figure_out_ss(three)
+          self.res_info.append( ["", rkey, resname, ss_type, phi, psi] )
+          self.residue_counts[ss_type] += 1
+          used_atoms.add(key)
     self.residue_counts["W"] = self.residue_counts["H"] + self.residue_counts["S"] + self.residue_counts["L"]
 
   def get_residue_counts(self):
@@ -168,6 +172,8 @@ class rama_z(object):
     return np.std(scores) * ((len(points)-1) ** 0.5)
 
   def get_ss_selections(self):
+    if self.n_models > 1:
+      raise NotImplementedError
     self.loop_sel = flex.bool([True]*self.helix_sel.size())
     self.loop_sel &= ~self.helix_sel
     self.loop_sel &= ~self.sheet_sel

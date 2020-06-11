@@ -167,6 +167,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
                                       verbose=verbose,
                                       )
     if dihedrals is None: return None
+    if None in dihedrals: return None
     key = []
     for phi_or_psi in dihedrals:
       if exact:

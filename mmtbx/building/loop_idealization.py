@@ -6,7 +6,7 @@ from libtbx.utils import Sorry, null_out
 from mmtbx.validation import ramalyze
 from mmtbx.building.loop_closure.ccd import ccd_cpp
 from mmtbx.building.loop_closure import utils, starting_conformations
-from mmtbx.secondary_structure.build import side_chain_placement, \
+from mmtbx.secondary_structure.build.ss_idealization import side_chain_placement, \
     set_xyz_smart
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
 from cctbx import maptbx
@@ -53,6 +53,13 @@ loop_idealization
       Alternatively, when False, the procedure will accept failure and leave \
       a ramachandran outlier intact.
     .expert_level = 1
+  include_allowed = False
+    .type = bool
+    .help = Try to fix residues in allowed Ramachandran region with CCD
+  avoid_allowed_region = False
+    .type = bool
+    .help = If true, CCD will not let residues go to allowed region on \
+      Ramachandran plot
   make_all_trans = True
     .type = bool
     .help = If true, procedure will try to get rid of all twisted and \
@@ -119,7 +126,8 @@ class loop_idealization():
     self.ideal_res_dict = idealized_aa.residue_dict()
     self.n_run = n_run
 
-    iaar_rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load()
+    iaar_rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load(
+      rotamers="favored")
     sin_cos_table = scitbx.math.sin_cos_table(n=10000)
 
     ram = ramalyze.ramalyze(pdb_hierarchy=self.model.get_hierarchy())
@@ -135,7 +143,9 @@ class loop_idealization():
     self.tried_rama_angles = tried_rama_angles
     self.tried_final_rama_angles = tried_final_rama_angles
 
-    berkeley_count = utils.list_rama_outliers_h(self.model.get_hierarchy(), self.model.get_ramachandran_manager()).count("\n")
+    berkeley_count = utils.list_rama_outliers_h(
+        self.model.get_hierarchy(),
+        self.model.get_ramachandran_manager()).count("\n")
     self.berkeley_p_before_minimization_rama_outliers = \
         berkeley_count/float(self.model.get_hierarchy().overall_counts().n_residues)*100
     n_bad_omegas = utils.n_bad_omegas(self.model.get_hierarchy())
@@ -187,6 +197,7 @@ class loop_idealization():
           i += 1
         exclusions, ch_h = self.idealize_chain(
             hierarchy=(cutted_chain_h if cutted_chain_h else chain_h),
+            include_allowed=self.params.include_allowed,
             tried_rama_angles_for_chain=self.tried_rama_angles[chain.id],
             tried_final_rama_angles_for_chain=self.tried_final_rama_angles[chain.id])
         if ch_h is not None:
@@ -303,7 +314,7 @@ class loop_idealization():
     assert isinstance(p_pars.enabled, bool)
     return p_pars
 
-  def idealize_chain(self, hierarchy, tried_rama_angles_for_chain={},
+  def idealize_chain(self, hierarchy, include_allowed=False, tried_rama_angles_for_chain={},
       tried_final_rama_angles_for_chain={}):
     # check no ac:
     for c in hierarchy.chains():
@@ -318,7 +329,8 @@ class loop_idealization():
     ranges_for_idealization = []
     print("rama outliers for input hierarchy:", file=self.log)
     rama_out_resnums = self.get_resnums_of_chain_rama_outliers(
-        working_h)
+        working_h,
+        include_allowed=include_allowed)
     if len(rama_out_resnums) == 0:
       return None, None
     # get list of residue numbers that should be excluded from reference
@@ -546,6 +558,7 @@ class loop_idealization():
       all_angles_combination_f = starting_conformations.get_all_starting_conformations(
           moving_h,
           change_radius,
+          include_allowed=self.params.include_allowed,
           n_outliers=len(out_res_num_list),
           direction_forward=direction_forward,
           cutoff=self.params.variant_number_cutoff,
@@ -647,7 +660,10 @@ class loop_idealization():
           #     direction_forward,
           #     self.params.save_states])
           ccd_obj = ccd_cpp(fixed_ref_atoms_coors, h, moving_ref_atoms_iseqs)
-          ccd_obj.run(direction_forward=direction_forward, save_states=self.params.save_states)
+          ccd_obj.run(
+              direction_forward=direction_forward,
+              save_states=self.params.save_states,
+              avoid_allowed_region=self.params.avoid_allowed_region)
           resulting_rmsd = ccd_obj.resulting_rmsd
           n_iter = ccd_obj.n_iter
 
@@ -855,7 +871,7 @@ class loop_idealization():
           print(i[1:], file=self.log)
     return original_pdb_h
 
-  def get_resnums_of_chain_rama_outliers(self, pdb_hierarchy):
+  def get_resnums_of_chain_rama_outliers(self, pdb_hierarchy, include_allowed=False):
     phi_psi_atoms = utils.get_phi_psi_atoms(pdb_hierarchy, omega=True)
     # pdb_hierarchy.write_pdb_file(file_name="phi_psi_atoms.pdb")
     # print "len phi psi atoms", len(phi_psi_atoms)
@@ -864,7 +880,7 @@ class loop_idealization():
     ranges_for_idealization = []
     # print >> self.log, "rama outliers for input hierarchy:"
     list_of_reference_exclusion = []
-    outp = utils.list_rama_outliers_h(pdb_hierarchy, self.model.get_ramachandran_manager())
+    outp = utils.list_rama_outliers_h(pdb_hierarchy, self.model.get_ramachandran_manager(), include_allowed=include_allowed)
     print(outp, file=self.log)
     for phi_psi_pair, rama_key, omega in phi_psi_atoms:
       if phi_psi_pair[0] is not None and phi_psi_pair[1] is not None:
@@ -875,6 +891,8 @@ class loop_idealization():
         # print phi_psi_pair[0][0].id_str()
         resnum = phi_psi_pair[0][2].parent().parent().resseq
         if ev == ramalyze.RAMALYZE_OUTLIER:
+          result.append(resnum)
+        if include_allowed and ev == ramalyze.RAMALYZE_ALLOWED:
           result.append(resnum)
         if omega is not None and abs(abs(omega)-180) > 30:
           print("Spotted twisted/cis peptide:", resnum, omega, file=self.log)

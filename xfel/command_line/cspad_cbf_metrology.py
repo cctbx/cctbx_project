@@ -576,7 +576,9 @@ def output_geometry(params):
     print(command)
     result = easy_run.fully_buffered(command=command)
     errmsg = "\n".join(result.stderr_lines)
-    if "ImportError" in errmsg and "PSCalib.GeometryAccess" in errmsg:
+    # py2/py3
+    if ("ImportError" in errmsg and "PSCalib.GeometryAccess" in errmsg) or \
+       ("ModuleNotFoundError" in errmsg and "PSCalib" in errmsg):
       print("Not converting to LCLS geometry as PSDM is not available")
       print("Done.")
     else:

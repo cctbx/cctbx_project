@@ -308,7 +308,7 @@ class refine_groups(object):
         xray_structure = xrs_tmp,
         map_data       = map_data,
         box_cushion    = 5,
-        selection      = flex.bool(xrs_tmp.scatterers().size(), True))
+       )
       #
       shift_back = [-box.shift_cart[i] for i in range(3)]
       ph_b       = box.pdb_hierarchy_box

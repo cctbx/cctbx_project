@@ -124,7 +124,55 @@ class dihedral(restraint):
 
 class chirality(restraint):
   def as_kinemage(self):
-    return None
+    from mmtbx.kinemage.validation import chiral_outlier_as_kinemage
+    return chiral_outlier_as_kinemage(self)
+
+  def as_table_row_phenix(self):
+    """
+    Values for populating ListCtrl in Phenix GUI.
+    """
+    atoms_str = ", ".join([ a.id_str() for a in self.atoms_info ])
+    return [ atoms_str, self.target, self.model, self.score, self.outlier_type() ]
+
+  def is_pseudochiral(self):
+    #Certain atoms are treated like chiral centers because they bond to atoms that have different names without chemical difference.
+    #VAL CB bonds to CG1 and CG2, for example.
+    #A large chiral volume outlier relfects a failure to follow chemical naming conventions, not necessarily a major geometry error
+    #So these pseudochiral centers should be treated differently.
+    #
+    #backbone phosphate in nucleic acids
+    #OP1 and OP2 atoms are chemically identical
+    resname = self.atoms_info[0].resname
+    atomname = self.atoms_info[0].name.strip()
+    if atomname == 'P': return True
+    #SF4 and F3S are iron-sulfur clusters with frequent naming problems
+    if resname in ['SF4','F3S']: return True
+    #Val CG1 and CG2 are chemically identical
+    if resname == 'VAL' and atomname == 'CB': return True
+    #LEU CD1 and CD2 are chemically identical
+    if resname == 'LEU' and atomname == 'CG': return True
+    #Otherwise
+    return False
+
+  def is_handedness_swap(self):
+    resname = self.atoms_info[0].resname
+    if resname in ['PRO','DPR']: #proline has slightly different geometry
+      if self.score > 22:
+        return True
+    elif self.score > 20:
+      return True
+    else:
+      return False
+
+  def outlier_type(self):
+    if self.score <= 4: return None
+    if not self.is_handedness_swap():
+      return "Tetrahedral geometry outlier"
+    else:
+      if self.is_pseudochiral():
+        return "Pseudochiral naming error"
+      else:
+        return "Chiral handedness swap"
 
 class planarity(restraint):
   __slots__ = atoms.__slots__ + [
@@ -386,6 +434,11 @@ class dihedrals(restraint_validation):
 class chiralities(restraint_validation):
   restraint_type = "chirality"
   restraint_label = "Chiral volume"
+  kinemage_header = "@subgroup {chiral devs} dominant\n"
+  gui_list_headers = ["Atoms","Ideal value","Model value",
+                      "Deviation (sigmas)","Probable cause"]
+  gui_formats = ["%s", "%.3f", "%.3f", "%.1f", "%s"]
+  wx_column_widths = [250, 100, 100, 180, 250]
   def get_result_class(self) : return chirality
 
   def get_outliers(self, proxies, unit_cell, sites_cart, pdb_atoms,

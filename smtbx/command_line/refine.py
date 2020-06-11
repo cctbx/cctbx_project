@@ -44,13 +44,30 @@ def run(filenames, options):
   else:
     out_root, out_ext = os.path.splitext(output_filename)
 
+  # ...and handle the hkl format specifiers requested by
+  # iotbx.reflection_file_reader
+  if "=amplitudes" in reflections_filename:
+    reflections_realfilename = \
+        reflections_filename[:reflections_filename.find("=amplitudes")]
+  elif "=hklf3" in reflections_filename:
+    reflections_realfilename = \
+        reflections_filename[:reflections_filename.find("=hklf3")]
+  elif "=intensities" in reflections_filename:
+    reflections_realfilename = \
+        reflections_filename[:reflections_filename.find("=intensities")]
+  elif "=hklf4" in reflections_filename:
+    reflections_realfilename = \
+        reflections_filename[:reflections_filename.find("=hklf4")]
+  else:
+    reflections_realfilename = reflections_filename
+
   # check extensions are supported
   for ext in (in_ext, out_ext):
     if ext not in allowed_input_file_extensions:
       raise command_line_error("unsupported extension: %s" % ext)
 
   # Investigate whether input and ouput files do exist, are the same, etc
-  for filename in (input_filename, reflections_filename):
+  for filename in (input_filename, reflections_realfilename):
     if not os.path.isfile(filename):
       raise command_line_error("No such file %s" % filename)
   if os.path.isfile(output_filename):
@@ -68,6 +85,11 @@ def run(filenames, options):
                                      hkl=reflections_filename,
                                      strictly_shelxl=False)
 
+  # Load default anomalous scattering factors if wavelength is available
+  wvl=xm.wavelength
+  if wvl:
+    xm.xray_structure.set_inelastic_form_factors(wvl, 'sasaki')
+
   sgi = xm.xray_structure.space_group_info()
   sg = sgi.group()
   print("Space group: %s" % sgi.type().hall_symbol())
@@ -83,7 +105,7 @@ def run(filenames, options):
   ls = xm.least_squares()
   print("%i atoms" % len(ls.reparametrisation.structure.scatterers()))
   print("%i refined parameters" % ls.reparametrisation.n_independents)
-  steps = lstbx.normal_eqns_solving.naive_iterations(
+  steps = lstbx.normal_eqns_solving.levenberg_marquardt_iterations(
     non_linear_ls=ls,
     n_max_iterations=options.max_cycles,
     gradient_threshold=options.stop_if_max_derivative_below,
@@ -100,7 +122,7 @@ def run(filenames, options):
   if out_ext != '.cif':
     raise NotImplementedError("Write refined structure to %s file" % out_ext)
   with open(output_filename, 'w') as out:
-    xm.xray_structure.as_cif_simple(out)
+    xm.xray_structure.as_cif_simple(out, format="corecif")
 
 here_usage="""\
 refine [options] INPUT

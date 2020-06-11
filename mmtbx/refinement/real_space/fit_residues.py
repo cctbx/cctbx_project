@@ -4,12 +4,10 @@ from libtbx import adopt_init_args
 import iotbx.pdb
 import mmtbx.refinement.real_space
 import mmtbx.refinement.real_space.fit_residue
-import sys
-from cctbx import maptbx
+import sys, time
 from cctbx import crystal
 import boost.python
 cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
-from libtbx.test_utils import approx_equal
 fit_ext = boost.python.import_ext("mmtbx_rotamer_fit_ext")
 
 negate_map_table = {
@@ -33,51 +31,9 @@ negate_map_table = {
   "tyr": 7.7,
   "val": 5,
   "arg": 10,
-  "lys": 8
+  "lys": 8,
+  "pro": 3
 }
-
-def get_mean_side_chain_density_value(hierarchy, map_data, unit_cell):
-  results = flex.double()
-  get_class = iotbx.pdb.common_residue_names_get_class
-  main_chain = ["N","CA","CB","C","O"]
-  for model in hierarchy.models():
-    for chain in model.chains():
-      for residue_group in chain.residue_groups():
-        conformers = residue_group.conformers()
-        if(len(conformers)>1): continue
-        for conformer in residue_group.conformers():
-          residue = conformer.only_residue()
-          if(get_class(residue.resname) != "common_amino_acid"): continue
-          sites_cart = flex.vec3_double()
-          atoms = residue.atoms()
-          for a in atoms:
-            if(a.name.strip() in main_chain): continue
-            sites_cart.append(a.xyz)
-          if(sites_cart.size()==0): continue
-          mv = maptbx.real_space_target_simple(
-            unit_cell   = unit_cell,
-            density_map = map_data,
-            sites_cart  = sites_cart)
-          results.append(mv)
-  return flex.mean_default(results,0)
-
-def get_mean_side_chain_density_value_residue(residue, map_data, unit_cell):
-  results = flex.double()
-  get_class = iotbx.pdb.common_residue_names_get_class
-  main_chain = ["N","CA","CB","C","O"]
-  if(get_class(residue.resname) != "common_amino_acid"): return None
-  sites_cart = flex.vec3_double()
-  atoms = residue.atoms()
-  for a in atoms:
-    if(a.name.strip() in main_chain): continue
-    sites_cart.append(a.xyz)
-  if(sites_cart.size()==0): return None
-  mv = maptbx.real_space_target_simple(
-    unit_cell   = unit_cell,
-    density_map = map_data,
-    sites_cart  = sites_cart)
-  results.append(mv)
-  return flex.mean_default(results,0)
 
 class run(object):
   def __init__(self,
@@ -86,178 +42,135 @@ class run(object):
                rotamer_manager,
                sin_cos_table,
                mon_lib_srv,
-               outliers_only=False,
+               map_data_scale = 2.5,
+               diff_map_data_threshold = -2.5,
+               rotatable_hd=None,
                bselection=None,
                map_data=None,
                vdw_radii=None,
-               do_all=False,
-               backbone_sample=True,
+               backbone_sample=False, # XXX
                diff_map_data=None,
-               massage_map=True,
-               tune_up_only=False,
                log = None):
     adopt_init_args(self, locals())
-    self.did_it_for = 0
-    if(self.do_all): assert not outliers_only
-    if(self.outliers_only): assert not do_all
-    self.number_of_outliers = None
-    self.mean_side_chain_density = None
+    self.processed = 0
+    self.total_time_residue_loop = 0
+    t0 = time.time()
+    self.atoms = self.pdb_hierarchy.atoms()
+    self.cmv = None
     if(self.map_data is not None):
-      self.mean_side_chain_density = get_mean_side_chain_density_value(
-        hierarchy = self.pdb_hierarchy,
-        map_data  = self.map_data,
-        unit_cell = self.crystal_symmetry.unit_cell())
+      self.cmv = mmtbx.refinement.real_space.common_map_values(
+        pdb_hierarchy = self.pdb_hierarchy,
+        unit_cell     = self.crystal_symmetry.unit_cell(),
+        map_data      = self.map_data)
+    self.mes = []
+    if(self.bselection is None):
+      o = mmtbx.refinement.real_space.side_chain_fit_evaluator(
+        pdb_hierarchy           = self.pdb_hierarchy,
+        crystal_symmetry        = self.crystal_symmetry,
+        rotamer_evaluator       = self.rotamer_manager.rotamer_evaluator,
+        map_data                = self.map_data,
+        diff_map_data           = self.diff_map_data,
+        map_data_scale          = self.map_data_scale,
+        diff_map_data_threshold = self.diff_map_data_threshold)
+      self.mes.extend(o.mes)
+      self.bselection = o.sel_all() # or all_possible() ?
     if(self.log is None): self.log = sys.stdout
-    self.sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
-    self.atom_names = flex.std_string(
-      [i.strip() for i in self.pdb_hierarchy.atoms().extract_name()])
-    self.special_position_settings = None
-    self.special_position_indices = None
-    if(self.crystal_symmetry is not None):
-      self.special_position_settings = crystal.special_position_settings(
-        crystal_symmetry = self.crystal_symmetry)
-      self.special_position_indices = self.get_special_position_indices()
+    self.special_position_settings = crystal.special_position_settings(
+      crystal_symmetry = self.crystal_symmetry)
     # Even better would be to pass it here. Ideally just use model
-    self.atom_selection_cache = self.pdb_hierarchy.atom_selection_cache()
-    self.selection_water_as_set = set(self.atom_selection_cache.\
-        selection(string = "water").iselection())
-    if(self.massage_map and self.map_data is not None):
-      self.target_map = self.prepare_target_map()
-    else:
-      self.target_map = map_data
-    print("outliers start: %d"%self.count_outliers(), file=self.log)
+    asc = self.pdb_hierarchy.atom_selection_cache()
+    self.selection_water_as_set = \
+      set(asc.selection(string = "water").iselection())
+    self.target_map = map_data
+    self.mes.append("outliers start: %d"%self.count_outliers())
     #
-    if(not self.tune_up_only):
-      self.loop(function = self.one_residue_iteration)
-      assert approx_equal(self.sites_cart,
-        self.pdb_hierarchy.atoms().extract_xyz())
-      print("outliers after map fit: %d"%self.count_outliers(), file=self.log)
+    self.loop(function = self.one_residue_iteration)
     #
-    if(not outliers_only):
-      print("tune up", file=self.log)
-      assert approx_equal(self.sites_cart,
-        self.pdb_hierarchy.atoms().extract_xyz())
-      self.loop(function = self.one_residue_tune_up)
+    self.mes.append("outliers final: %d"%self.count_outliers())
     #
-    print("outliers final: %d"%self.count_outliers(), file=self.log)
-    assert approx_equal(self.sites_cart,
-      self.pdb_hierarchy.atoms().extract_xyz())
-    #
-    print("Did it for:", self.did_it_for, file=self.log)
-    #
+    self.mes.append("residues processed: %d"%self.processed)
+    if(self.processed > 0):
+      self.mes.append("average time/residue: %6.4f"%(
+        self.total_time_residue_loop/self.processed))
+    self.mes.append("time to fit residues: %6.4f"%(time.time()-t0))
 
-  def get_special_position_indices(self):
-    site_symmetry_table = \
-      self.special_position_settings.site_symmetry_table(
-        sites_cart = self.sites_cart,
-        unconditional_general_position_flags=(
-          self.pdb_hierarchy.atoms().extract_occ() != 1))
-    return site_symmetry_table.special_position_indices()
+  def show(self, prefix=""):
+    for m in self.mes:
+      print("%s%s"%(prefix,m), file=self.log)
+    self.log.flush()
 
   def get_nonbonded_bumpers(self, residue, radius):
     if(self.special_position_settings is None): return None
     if(self.vdw_radii is None): return None
-    #residue_i_selection = residue.atoms().extract_i_seq()
     residue_i_selection = flex.size_t()
     for a in residue.atoms():
       if(not a.name.strip() in ["N", "C", "O"]):
         residue_i_selection.append(a.i_seq)
+    sites_cart = self.atoms.extract_xyz()
     #
-    residue_b_selection = flex.bool(self.sites_cart.size(), residue_i_selection)
+    residue_b_selection = flex.bool(sites_cart.size(), residue_i_selection)
     selection_around_residue = self.special_position_settings.pair_generator(
-      sites_cart      = self.sites_cart,
+      sites_cart      = sites_cart,
       distance_cutoff = radius
         ).neighbors_of(primary_selection = residue_b_selection).iselection()
     selection_around_residue_minus_residue = flex.size_t(
       list(set(selection_around_residue).difference(
         set(residue_i_selection)).difference(self.selection_water_as_set)))
-    sites_cart = self.sites_cart.select(selection_around_residue_minus_residue)
-    atom_names = self.atom_names.select(selection_around_residue_minus_residue)
+    # exclude rotatable H
+    selection_around_residue_minus_residue_minus_rotatableH = flex.size_t()
+    for s in selection_around_residue_minus_residue:
+      if(not self.rotatable_hd[s]):
+        selection_around_residue_minus_residue_minus_rotatableH.append(s)
     #
     radii = flex.double()
-    for an in atom_names:
-      try: radii.append(self.vdw_radii[an]-0.25)
-      except KeyError: radii.append(1.5) # XXX U, Uranium, OXT are problems!
-    #
-    return fit_ext.xyzrad(sites_cart = sites_cart, radii = radii)
-
-  def on_special_position(self, residue):
-    if(self.special_position_indices is None): return False
-    if(self.special_position_indices.size()==0): return False
-    for i_seq in residue.atoms().extract_i_seq():
-      if(i_seq in self.special_position_indices): return True
-    return False
-
-  def prepare_target_map(self): # XXX This may need to go external
-    if(self.map_data is None): return None
-    map_data = self.map_data
-    # truncate map
-    selection = self.atom_selection_cache.selection(
-      string = "element C or element O or element N")
-    mean_atom = flex.double()
-    for i_a, a in enumerate(list(self.pdb_hierarchy.atoms())):
-      if(selection[i_a]):
-        site_frac = self.crystal_symmetry.unit_cell().fractionalize(a.xyz)
-        mean_atom.append(map_data.eight_point_interpolation(site_frac))
-    mean_atom = flex.mean_default(mean_atom,0)
-    map_data = map_data.set_selected(map_data>mean_atom, mean_atom)
-    # Blend maps if applicable
-    if(self.diff_map_data is not None):
-      diff_map_data = self.diff_map_data.deep_copy()
-      sel = diff_map_data < 2.
-      diff_map_data = diff_map_data.set_selected(sel, 0)
-      sel = diff_map_data > 3.
-      diff_map_data = diff_map_data.set_selected(sel, 3)
-      diff_map_data = diff_map_data/3.
-      maptbx.combine_1(map_data=map_data, diff_map=diff_map_data)
-    return map_data
+    sites_cart = flex.vec3_double()
+    for i in selection_around_residue_minus_residue_minus_rotatableH:
+      atom = self.atoms[i]
+      an = atom.name.strip()
+      rad = mmtbx.refinement.real_space.get_radius(
+        atom = atom, vdw_radii = self.vdw_radii)
+      good = True
+      if(self.diff_map_data is not None):
+        sf = self.crystal_symmetry.unit_cell().fractionalize(atom.xyz)
+        mv = self.diff_map_data.eight_point_interpolation(sf)
+        if(mv<-2.): good = False
+      if(residue.resname=="CYS" and atom.parent().resname=="CYS" and an=="SG"):
+        continue
+      if(self.map_data is not None):
+        key = "%s_%s_%s"%(
+          atom.parent().parent().parent().id, atom.parent().resname, an)
+        sf = self.crystal_symmetry.unit_cell().fractionalize(atom.xyz)
+        mv = self.map_data.eight_point_interpolation(sf)
+        if(mv < self.cmv[key]/3): good = False
+      if(good):
+        radii.append(rad)
+        sites_cart.append(atom.xyz)
+    return fit_ext.fixed(sites_cart = sites_cart, radii = radii)
 
   def one_residue_iteration(self, residue):
-    if(residue.resname.strip().upper() in ["ALA","GLY","PRO"]): return
-    if(self.on_special_position(residue=residue)): return
-    if(not self.do_all and self.map_data is not None):
-      need_fix = mmtbx.refinement.real_space.need_sidechain_fit(
-        residue           = residue,
-        rotamer_evaluator = self.rotamer_manager.rotamer_evaluator,
-        mon_lib_srv       = self.mon_lib_srv,
-        unit_cell         = self.crystal_symmetry.unit_cell(),
-        outliers_only     = self.outliers_only,
-        f_map             = self.map_data,
-        fdiff_map         = self.diff_map_data)
-      # XXX Totally ad hoc, to rationalize later!
-      if(not self.outliers_only):
-        mv_r = get_mean_side_chain_density_value_residue(
-          residue   = residue,
-          map_data  = self.map_data,
-          unit_cell = self.crystal_symmetry.unit_cell())
-        if(mv_r is not None and mv_r<self.mean_side_chain_density/2):
-          need_fix = True
-      #
-      if(not need_fix): return
+    t0 = time.time()
     negate_rad = negate_map_table[residue.resname.strip().lower()]
     if(not negate_rad): return
     xyzrad_bumpers = self.get_nonbonded_bumpers(
       residue=residue, radius=negate_rad)
-    unit_cell = None
-    if(self.crystal_symmetry is not None):
-      unit_cell = self.crystal_symmetry.unit_cell()
-    self.did_it_for +=1
+    self.processed +=1
     mmtbx.refinement.real_space.fit_residue.run(
       residue           = residue,
       vdw_radii         = self.vdw_radii,
       xyzrad_bumpers    = xyzrad_bumpers,
       backbone_sample   = self.backbone_sample,
-      unit_cell         = unit_cell,
+      unit_cell         = self.crystal_symmetry.unit_cell(),
       target_map        = self.target_map,
       target_map_for_cb = self.target_map,
       mon_lib_srv       = self.mon_lib_srv,
       rotamer_manager   = self.rotamer_manager,
-      sin_cos_table     = self.sin_cos_table)
-    self.sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
+      rotatable_hd      = self.rotatable_hd,
+      sin_cos_table     = self.sin_cos_table,
+      cmv               = self.cmv,
+      log               = self.log)
+    self.total_time_residue_loop += (time.time()-t0)
 
   def loop(self, function):
-    get_class = iotbx.pdb.common_residue_names_get_class
-    cntr = 0
     for model in self.pdb_hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
@@ -265,49 +178,17 @@ class run(object):
           if(len(conformers)>1): continue
           for conformer in residue_group.conformers():
             residue = conformer.only_residue()
-            if(get_class(residue.resname) != "common_amino_acid"): continue
-            if self.bselection is not None:
-              if not self.bselection[residue.atoms()[0].i_seq]: continue
-            cntr += 1
+            if(not self.bselection[residue.atoms()[0].i_seq]): continue
             function(residue = residue)
-    return cntr
 
   def count_outliers(self):
-    self.number_of_outliers = 0
-    def is_outlier(residue):
-      re = self.rotamer_manager.rotamer_evaluator
-      if(re.evaluate_residue(residue)=="OUTLIER"):
-        self.number_of_outliers += 1
-    total = self.loop(function = is_outlier)
-    result = self.number_of_outliers
-    self.number_of_outliers = None
-    if(total==0): return 0
-    return result
+    o = mmtbx.refinement.real_space.side_chain_fit_evaluator(
+      pdb_hierarchy     = self.pdb_hierarchy,
+      crystal_symmetry  = self.crystal_symmetry,
+      rotamer_evaluator = self.rotamer_manager.rotamer_evaluator)
+    return o.cntr_outliers
 
-  def one_residue_tune_up(self, residue):
-    re = self.rotamer_manager.rotamer_evaluator
-    if(re.evaluate_residue(residue)=="OUTLIER"):
-      sites_cart_start = residue.atoms().extract_xyz()
-      mv1 =  maptbx.real_space_target_simple(
-        unit_cell   = self.crystal_symmetry.unit_cell(),
-        density_map = self.target_map,
-        sites_cart  = sites_cart_start)
-      mmtbx.refinement.real_space.fit_residue.tune_up(
-        residue         = residue,
-        unit_cell       = self.crystal_symmetry.unit_cell(),
-        target_map      = self.target_map,
-        mon_lib_srv     = self.mon_lib_srv,
-        rotamer_manager = self.rotamer_manager.rotamer_evaluator)
-      mv2 =  maptbx.real_space_target_simple(
-        unit_cell   = self.crystal_symmetry.unit_cell(),
-        density_map = self.target_map,
-        sites_cart  = residue.atoms().extract_xyz())
-      pshift = abs(abs(mv1)-abs(mv2)) / ((abs(mv1)+abs(mv2))/2)*100.
-      if(pshift<3):
-        self.sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
-      else:
-        residue.atoms().set_xyz(sites_cart_start)
-
+# XXX Where is this used? Looks like severe duplication!
 class fix_outliers(object):
   def __init__(self,
                pdb_hierarchy,
@@ -352,4 +233,5 @@ class fix_outliers(object):
                     mon_lib_srv     = self.mon_lib_srv,
                     rotamer_manager = self.rotamer_manager,
                     sin_cos_table   = self.sin_cos_table,
-                    accept_only_if_max_shift_is_smaller_than = ac)
+                    accept_only_if_max_shift_is_smaller_than = ac,
+                    log = self.log)

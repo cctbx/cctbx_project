@@ -73,6 +73,31 @@ class cbeta(residue):
       self.deviation, '', #The blank char is a placeholder for optional color
       self.ideal_xyz[0], self.ideal_xyz[1], self.ideal_xyz[2])
 
+  def as_bullseye_point(self):
+    #print a point in kinemage format for the "bulleye" plot of cbdev distribution
+    import numpy as np
+    #original point id format: {4hum  trp A 427; dev=0.090}
+    key = "%s%3s%2s%4s%1s;  dev=%.3f" % (self.altloc.strip(), self.resname.lower(),
+      self.chain_id, self.resseq, self.icode, self.deviation)
+    #convert polar position to cartesian
+    angle = np.radians(self.dihedral_NABB)
+    x = self.deviation * np.cos(angle)
+    y = self.deviation * np.sin(angle)
+    return "{%s} %.3f %.3f 0" % (key,x,y)
+
+  def as_bullseye_label(self):
+    #label a point in the cbdev bulleye, intended for outliers
+    import numpy as np
+    #expected label format: { 4hum  trp A 427}
+    #shorter than full point id, leading space to offset from point
+    key = "  %s%3s%2s%4s%1s" % (self.altloc.strip(), self.resname.lower(),
+      self.chain_id, self.resseq, self.icode)
+    #convert polar position to cartesian
+    angle = np.radians(self.dihedral_NABB)
+    x = self.deviation * np.cos(angle)
+    y = self.deviation * np.sin(angle)
+    return "{%s} %.3f %.3f 0" % (key,x,y)
+
   def as_table_row_phenix(self):
     return [ self.chain_id, "%1s%s %s" % (self.altloc,self.resname, self.resid),
              self.deviation, self.dihedral_NABB ]
@@ -248,6 +273,32 @@ class cbetadev(validation):
         if (chain_id is None) or (chain_id == result.chain_id):
           cbeta_out += result.as_kinemage() + "\n"
     return cbeta_out
+
+  def as_bullseye_kinemage(self, pdbid=""):
+    from mmtbx.validation.molprobity import kinemage_templates
+    header = []
+    header.append(kinemage_templates.cbetadev_bullseye(pdbid=pdbid))
+    header.append("@group {Cbeta dev}")
+    cbeta_main = ["@dotlist {Cb scatter} color= white"]
+    cbeta_main_labels = ["@labellist {outlier labels} color= white"]
+    cbeta_alt = ["@dotlist {alt conf Cb scatter} color= pink"]
+    cbeta_alt_labels = ["@labellist {alt conf outlier labels} color= pinktint"]
+
+    #cbeta_main.append("@dotlist {Cb scatter} color= white")
+    for result in self.results:
+      if result.altloc in ['',' ','A']:
+        cbeta_main.append(result.as_bullseye_point())
+        if result.is_outlier():
+          cbeta_main_labels.append(result.as_bullseye_label())
+      else:
+        cbeta_alt.append(result.as_bullseye_point())
+        if result.is_outlier():
+          cbeta_alt_labels.append(result.as_bullseye_label())
+    #if no residues were added to any of the extra lists, also empty the header for that list
+    if len(cbeta_main_labels) == 1: cbeta_main_labels = []
+    if len(cbeta_alt) == 1: cbeta_alt = []
+    if len(cbeta_alt_labels) == 1: cbeta_alt_labels = []
+    return "\n".join(header + cbeta_main + cbeta_main_labels + cbeta_alt + cbeta_alt_labels)
 
   def as_coot_data(self):
     data = []

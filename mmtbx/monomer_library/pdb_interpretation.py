@@ -382,6 +382,7 @@ master_params_str = """\
         low resolution.  Probably not useful (and maybe even harmful) at \
         resolutions much higher than 3.5A.
       .expert_level = 2
+      .style = hidden
       .short_caption = Ramachandran restraints
     cis_threshold = 45
       .type = float
@@ -5114,6 +5115,9 @@ class build_all_chain_proxies(linking_mixins):
       for proxy in processed_edits.angle_proxies:
         added = self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
         if not added:
+          print ("    Angle is duplicated:", file=log)
+          for i in [0,1,2]:
+            print("      atom %d:" % (i+1), self.pdb_hierarchy.atoms()[proxy.i_seqs[i]].quote(), file=log)
           not_added_proxies.append(proxy)
       for proxy in processed_edits.dihedral_proxies:
         added = self.geometry_proxy_registries.dihedral.add_if_not_duplicated(proxy=proxy)
@@ -5128,7 +5132,7 @@ class build_all_chain_proxies(linking_mixins):
         if not added:
           not_added_proxies.append(proxy)
       if len(not_added_proxies) > 0:
-        raise Sorry("Some restraints were not added because they are already present.")
+        raise Sorry("Some (%d) restraints were not added because they are already present." % len(not_added_proxies))
 
     if params_edits and params_edits.angle:
       processed_edits = self.process_geometry_restraints_edits(
@@ -5598,7 +5602,6 @@ class process(object):
         params_to_pass = rama_params
         if pep_link_params.ramachandran_restraints:
           params_to_pass = pep_link_params
-        # print ('params_to_pass', type(params_to_pass))
         ramachandran_manager = ramachandran.ramachandran_manager(
             pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy,
             params=params_to_pass,

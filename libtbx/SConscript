@@ -775,19 +775,42 @@ int main() {
       raise RuntimeError('conda compilers are not installed.')
 
     # use environment flags
-    env_etc.ccflags_base = []
-    env_etc.cxxflags_base = []
-    libtbx.env.build_options.use_environment_flags = True
-    env_etc.shlinkflags = ['-shared']
-    env_etc.shlinkflags_bpl = env_etc.shlinkflags
-    if sys.platform.startswith('darwin'):
-      env_etc.shlinkflags_bpl += ['-undefined', 'dynamic_lookup']
-    libtbx.env.build_options.env_cxxflags = \
-      libtbx.env.build_options.env_cxxflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
-    libtbx.env.build_options.env_cppflags = \
-      libtbx.env.build_options.env_cppflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
-
-    env_etc.static_libraries = 0
+    if libtbx.env.build_options.use_environment_flags:
+      env_etc.ccflags_base = []
+      env_etc.cxxflags_base = []
+      libtbx.env.build_options.use_environment_flags = True
+      env_etc.shlinkflags = ['-shared']
+      env_etc.shlinkflags_bpl = env_etc.shlinkflags
+      if sys.platform.startswith('darwin'):
+        env_etc.shlinkflags_bpl += ['-undefined', 'dynamic_lookup']
+      libtbx.env.build_options.env_cxxflags = \
+        libtbx.env.build_options.env_cxxflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
+      libtbx.env.build_options.env_cppflags = \
+        libtbx.env.build_options.env_cppflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
+      env_etc.static_libraries = 0
+    else:
+      env_etc.ccflags_base = ["-fPIC", "-fno-strict-aliasing"] + \
+        gcc_common_warn_options() + \
+        ["-DNDEBUG", "-O3", "-funroll-loops"] + \
+        ["-DBOOST_ALL_NO_LIB"]
+      if env_etc.compiler != 'darwin_conda':
+        env_etc.ccflags_base.append("-ffast-math")
+        # -ffast-math changes scitbx/lbfgs/tst_lbfgs_fem.py behavior in Xcode 11.4
+        # minimization steps may be different than fortran standard
+      env_etc.cxxflags_base = []
+      env_etc.shlinkflags = ['-shared']
+      env_etc.shlinkflags_bpl = env_etc.shlinkflags
+      env_etc.static_libraries = 0
+      if sys.platform == 'darwin':
+        env_etc.static_libraries = 1
+        env_etc.shlinkflags_bpl += ['-undefined', 'dynamic_lookup']
+        min_macos = 10.9
+        base_macos_flags = ['-stdlib=libc++',
+                            '-mmacosx-version-min=%s' % min_macos]
+        env_etc.ccflags_base.extend(base_macos_flags)
+        env_etc.cxxflags_base.extend(base_macos_flags)
+        env_etc.shlinkflags.extend(base_macos_flags)
+        env_etc.shlinkflags_bpl.extend(base_macos_flags)
     env_etc.static_bpl = 0
     env_etc.c_link = cc
     env_etc.gcc_version = libtbx.env_config.get_gcc_version(command_name=cc)
@@ -881,6 +904,7 @@ int main() {
         print("which is llvm-gcc", end=' ')
         if env_etc.apple_gcc_builds.llvm is not None:
           print(", LLVM build %i" % env_etc.apple_gcc_builds.llvm, end=' ')
+    xcode_version = None
     try:
       # Print out the version of XCode (but only if we could check the version)
       xcode_version = subprocess.check_output(('xcodebuild', '-version'),
@@ -888,6 +912,11 @@ int main() {
       if hasattr(xcode_version, "decode"):
         xcode_version = xcode_version.decode()
       print(xcode_version)
+      # store just the version of Xcode (e.g. 11.4 becomes [11, 4])
+      try:
+        xcode_version = [int(i) for i in xcode_version.split()[1].split('.')]
+      except Exception:
+        pass
     except subprocess.CalledProcessError:
       print("Not using Xcode")
     print()
@@ -895,7 +924,7 @@ int main() {
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
 
-    min_macos = 10.7
+    min_macos = 10.9
     base_macos_flags = ['-stdlib=libc++', '-mmacosx-version-min=%s' % min_macos]
 
     link_flags = ["-w"] # suppress "source/lib does not exist" warning
@@ -931,7 +960,11 @@ int main() {
       env_etc.cxxflags_base.append("-fcoalesce-templates")
     env_etc.cxxflags_base.append("-DBOOST_ALL_NO_LIB")
     if (libtbx.env.build_options.optimization):
-      opts = ["-DNDEBUG", "-O3", "-ffast-math"]
+      opts = ["-DNDEBUG", "-O3"]
+      # -ffast-math changes scitbx/lbfgs/tst_lbfgs_fem.py behavior in Xcode 11.4
+      # minimization steps may be different than fortran standard
+      if xcode_version is not None and xcode_version < [11, 4]:
+        opts.append("-ffast-math")
       if (cxx == "c++" and env_etc.gcc_version
             and env_etc.gcc_version == 40000):
         opts[1] = "-O2" # Apple's optimizer is broken
@@ -1005,6 +1038,7 @@ if( libtbx.env.build_options.use_environment_flags ):
   else:
     env_etc.shlinkflags = flg
   env_base.Append(LINKFLAGS=flg)
+  env_base.Append(SHLINKFLAGS=flg)
 
 # conda header and library paths
 if (libtbx.env.build_options.use_conda):

@@ -59,7 +59,8 @@ class structure(crystal.special_position_settings):
         site_symmetry_table=None,
         non_unit_occupancy_implies_min_distance_sym_equiv_zero=False,
         scattering_type_registry=None,
-        crystal_symmetry=None):
+        crystal_symmetry=None,
+        wavelength=None):
     assert [special_position_settings, crystal_symmetry].count(None) == 1
     assert scatterers is not None or site_symmetry_table is None
     if (special_position_settings is None):
@@ -79,6 +80,7 @@ class structure(crystal.special_position_settings):
           self._non_unit_occupancy_implies_min_distance_sym_equiv_zero)
     self.scattering_type_registry_params = None
     self.inelastic_form_factors_source = None
+    self.wavelength = wavelength
 
   def _copy_constructor(self, other):
     crystal.special_position_settings._copy_constructor(
@@ -124,7 +126,8 @@ class structure(crystal.special_position_settings):
     cp = structure(self,
       scattering_type_registry=self._scattering_type_registry,
       non_unit_occupancy_implies_min_distance_sym_equiv_zero
-        =self._non_unit_occupancy_implies_min_distance_sym_equiv_zero)
+        =self._non_unit_occupancy_implies_min_distance_sym_equiv_zero,
+      wavelength=self.wavelength)
     cp._scatterers = self._scatterers.deep_copy()
     cp._site_symmetry_table = self._site_symmetry_table.deep_copy()
     return cp
@@ -133,7 +136,8 @@ class structure(crystal.special_position_settings):
         crystal_symmetry=Keep,
         unit_cell=Keep,
         space_group_info=Keep,
-        non_unit_occupancy_implies_min_distance_sym_equiv_zero=Keep):
+        non_unit_occupancy_implies_min_distance_sym_equiv_zero=Keep,
+        wavelength=Keep):
     if (crystal_symmetry is Keep):
       crystal_symmetry = self
     crystal_symmetry = crystal.symmetry.customized_copy(
@@ -143,6 +147,8 @@ class structure(crystal.special_position_settings):
     if (non_unit_occupancy_implies_min_distance_sym_equiv_zero is Keep):
       non_unit_occupancy_implies_min_distance_sym_equiv_zero \
         = self._non_unit_occupancy_implies_min_distance_sym_equiv_zero
+    if (wavelength is Keep):
+      wavelength = self.wavelength
     str = structure(
       special_position_settings=crystal.special_position_settings(
         crystal_symmetry=crystal_symmetry,
@@ -152,7 +158,8 @@ class structure(crystal.special_position_settings):
       scatterers=self._scatterers,
       non_unit_occupancy_implies_min_distance_sym_equiv_zero
         =non_unit_occupancy_implies_min_distance_sym_equiv_zero,
-      scattering_type_registry=self._scattering_type_registry)
+      scattering_type_registry=self._scattering_type_registry,
+      wavelength=wavelength)
     str.inelastic_form_factors_source = self.inelastic_form_factors_source
     return str
 
@@ -249,7 +256,8 @@ class structure(crystal.special_position_settings):
     cp = structure(self,
       non_unit_occupancy_implies_min_distance_sym_equiv_zero
         =self._non_unit_occupancy_implies_min_distance_sym_equiv_zero,
-      scattering_type_registry=self._scattering_type_registry)
+      scattering_type_registry=self._scattering_type_registry,
+      wavelength=self.wavelength)
     new_scatterers = self._scatterers.deep_copy()
     new_scatterers.set_sites(new_sites)
     cp._scatterers = new_scatterers
@@ -315,7 +323,8 @@ class structure(crystal.special_position_settings):
     cp = structure(self,
       non_unit_occupancy_implies_min_distance_sym_equiv_zero
         =self._non_unit_occupancy_implies_min_distance_sym_equiv_zero,
-      scattering_type_registry=self._scattering_type_registry)
+      scattering_type_registry=self._scattering_type_registry,
+      wavelength=self.wavelength)
     new_scatterers = self._scatterers.deep_copy()
     new_scatterers.set_sites(
       self.unit_cell().fractionalize(
@@ -479,6 +488,26 @@ class structure(crystal.special_position_settings):
       assert selection.size() == s.size()
       s.set_occupancies(q_new, selection)
 
+  def shake_fps(self, selection = None):
+    s = self._scatterers
+    q_deltas = flex.double([random.gauss(0,1) for _ in range(s.size())])
+    q_new = q_deltas + flex.double([sc.fp for sc in s])
+    if(selection is None):
+      s.set_fps(q_new)
+    else:
+      assert selection.size() == s.size()
+      s.set_fps(q_new, selection)
+
+  def shake_fdps(self, selection = None):
+    s = self._scatterers
+    q_deltas = flex.double([random.gauss(0,1) for _ in range(s.size())])
+    q_new = q_deltas + flex.double([sc.fdp for sc in s])
+    if(selection is None):
+      s.set_fdps(q_new)
+    else:
+      assert selection.size() == s.size()
+      s.set_fdps(q_new, selection)
+
   def set_occupancies(self, value, selection = None):
     if(selection is not None and isinstance(selection, flex.size_t)):
       selection = flex.bool(self._scatterers.size(), selection)
@@ -494,6 +523,40 @@ class structure(crystal.special_position_settings):
     else:
       assert selection.size() == s.size()
       s.set_occupancies(values, selection)
+    return self
+
+  def set_fps(self, value, selection = None):
+    if(selection is not None and isinstance(selection, flex.size_t)):
+      selection = flex.bool(self._scatterers.size(), selection)
+    s = self._scatterers
+    if(hasattr(value, 'size')):
+      values = value
+      if(selection is not None):
+        assert values.size() == selection.size()
+    else:
+      values = flex.double(s.size(), value)
+    if(selection is None):
+      s.set_fps(values)
+    else:
+      assert selection.size() == s.size()
+      s.set_fps(values, selection)
+    return self
+
+  def set_fdps(self, value, selection = None):
+    if(selection is not None and isinstance(selection, flex.size_t)):
+      selection = flex.bool(self._scatterers.size(), selection)
+    s = self._scatterers
+    if(hasattr(value, 'size')):
+      values = value
+      if(selection is not None):
+        assert values.size() == selection.size()
+    else:
+      values = flex.double(s.size(), value)
+    if(selection is None):
+      s.set_fdps(values)
+    else:
+      assert selection.size() == s.size()
+      s.set_fdps(values, selection)
     return self
 
   def coordinate_degrees_of_freedom_counts(self, selection=None):
@@ -1390,7 +1453,8 @@ class structure(crystal.special_position_settings):
       special_position_settings=self,
       scatterers=self._scatterers.select(sel),
       site_symmetry_table=self._site_symmetry_table.select(sel),
-      scattering_type_registry=self._scattering_type_registry)
+      scattering_type_registry=self._scattering_type_registry,
+      wavelength=self.wavelength)
 
   def select(self, selection, negate=False):
     assert self.scatterers() is not None
@@ -1399,7 +1463,8 @@ class structure(crystal.special_position_settings):
       special_position_settings=self,
       scatterers=self._scatterers.select(selection),
       site_symmetry_table=self._site_symmetry_table.select(selection),
-      scattering_type_registry=self._scattering_type_registry)
+      scattering_type_registry=self._scattering_type_registry,
+      wavelength=self.wavelength)
 
   def select_inplace(self, selection):
     assert self.scatterers() is not None
@@ -1704,7 +1769,8 @@ class structure(crystal.special_position_settings):
     new_structure = structure(
       crystal.special_position_settings(
         crystal.symmetry.cell_equivalent_p1(self)),
-      scattering_type_registry=self._scattering_type_registry)
+      scattering_type_registry=self._scattering_type_registry,
+      wavelength=self.wavelength)
     new_structure._scatterers = self.scatterers().deep_copy()
     new_structure._site_symmetry_table = self.site_symmetry_table().deep_copy()
     return new_structure
@@ -1717,7 +1783,8 @@ class structure(crystal.special_position_settings):
         =crystal.special_position_settings.change_basis(self, cb_op),
       scatterers=ext.change_basis(scatterers=self._scatterers, cb_op=cb_op),
       site_symmetry_table=self._site_symmetry_table.change_basis(cb_op=cb_op),
-      scattering_type_registry=self._scattering_type_registry)
+      scattering_type_registry=self._scattering_type_registry,
+      wavelength=self.wavelength)
 
   def change_hand(self):
     ch_op = self.space_group_info().type().change_of_hand_op()
@@ -1753,7 +1820,8 @@ class structure(crystal.special_position_settings):
         scatterers=self._scatterers,
         site_symmetry_table=self._site_symmetry_table,
         append_number_to_labels=append_number_to_labels),
-      scattering_type_registry=self._scattering_type_registry)
+      scattering_type_registry=self._scattering_type_registry,
+      wavelength=self.wavelength)
     if (sites_mod_positive):
       result = result.sites_mod_positive()
     return result
@@ -1769,7 +1837,8 @@ class structure(crystal.special_position_settings):
     return structure(
       special_position_settings=self,
       scatterers=self.scatterers().sites_mod_positive(),
-      scattering_type_registry=self._scattering_type_registry)
+      scattering_type_registry=self._scattering_type_registry,
+      wavelength=self.wavelength)
 
   def sites_mod_short(self):
     """Get the current structure converted into a structure with short
@@ -1782,7 +1851,8 @@ class structure(crystal.special_position_settings):
     return structure(
       special_position_settings=self,
       scatterers=self.scatterers().sites_mod_short(),
-      scattering_type_registry=self._scattering_type_registry)
+      scattering_type_registry=self._scattering_type_registry,
+      wavelength=self.wavelength)
 
   def apply_shift(self, shift, recompute_site_symmetries=False):
     shifted_scatterers = self.scatterers().deep_copy()
@@ -1795,7 +1865,8 @@ class structure(crystal.special_position_settings):
       special_position_settings=self,
       scatterers=shifted_scatterers,
       site_symmetry_table=site_symmetry_table,
-      scattering_type_registry=self._scattering_type_registry)
+      scattering_type_registry=self._scattering_type_registry,
+      wavelength=self.wavelength)
 
   def random_shift_sites(self, max_shift_cart=0.2):
     shifts = flex.vec3_double(
@@ -1812,7 +1883,8 @@ class structure(crystal.special_position_settings):
       special_position_settings=self,
       scatterers=self._scatterers.select(p),
       site_symmetry_table=self._site_symmetry_table.select(p),
-      scattering_type_registry=self._scattering_type_registry)
+      scattering_type_registry=self._scattering_type_registry,
+      wavelength=self.wavelength)
 
   def as_emma_model(self):
     from cctbx import euclidean_model_matching as emma
@@ -2149,7 +2221,8 @@ class structure(crystal.special_position_settings):
       crystal_symmetry=crystal.symmetry(
         unit_cell=abc,
         space_group_symbol="P1"),
-      scatterers=self.scatterers())
+      scatterers=self.scatterers(),
+      wavelength=self.wavelength)
     result.set_sites_cart(sites_cart)
     return result
 
@@ -2163,15 +2236,16 @@ class structure(crystal.special_position_settings):
       crystal_symmetry=crystal.symmetry(
         unit_cell=[a,a,a],
         space_group_symbol="P1"),
-      scatterers=self.scatterers())
+      scatterers=self.scatterers(),
+      wavelength=self.wavelength)
     result.set_sites_cart(sites_cart)
     return result
 
-  def as_cif_simple(self, out=None, data_name="global"):
+  def as_cif_simple(self, out=None, data_name="global", format="mmCIF"):
     if out is None: out = sys.stdout
     import iotbx.cif
     cif = iotbx.cif.model.cif()
-    cif[data_name] = self.as_cif_block()
+    cif[data_name] = self.as_cif_block(format=format)
     print(cif, file=out)
 
   def as_cif_block(self, covariance_matrix=None,

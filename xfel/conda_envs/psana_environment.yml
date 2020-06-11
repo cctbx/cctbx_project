@@ -1,12 +1,82 @@
 name: psana_env
 channels:
- - phyy-nx
  - lcls-rhel7
  - defaults
  - cctbx
  - conda-forge
  - anaconda
 dependencies:
- - xfel_dependencies
+ # basics
+ - python = 2.7.15
+ - cython >=0.27
+ #- boost >=1.61
+ #- numpy >=1.13 # comes with psana
+ #- scons >=3
+
+ # Python 2/3 compatibility
+ - future >=0.16
+ - six >=1.11
+
+ # psana
+ - psana-conda >=1.4.6
+ - libtiff
+ - mpich2
+ #- icu =54.1 # not needed to specify is msgpack-c isn't installed
+
+ # python
+ - biopython >=1.68
+ - ipython >=3.2.1
+
+ # testing
+ - mock >=2.0.0
+ - pytest >=3.1,<4
+ - pytest-xdist >=1.22
+
+ # documentation
+ - docutils >=0.12
+ - numpydoc >=0.5
+ - sphinx >=1.4.9
+
+ # graphics
+ - pillow >=4.2.1
+ - reportlab >=3.4
+ - wxpython
+ - pyopengl =3.1.0
+
+ # HDF5 (main libraries come with psana)
+ - h5py >=2.7.1
+ - hdf5_plugins                      # [unix]
+
+ # other
+ - libsvm
+ - mrcfile
+ - psutil
+
+ # cctbx channel
+ - libsvm_py
+
+ # dials
+ - jinja2 >=2.9.6
+ #- msgpack-c >=3.1.1 # conflicts with icu
+ - msgpack-python #>=0.6
+ - orderedset >=2.0
+ - procrunner
+ - python-blosc >=1.7
+ - scikit-learn >=0.19.1
+ #- scipy >=1.0 # comes with psana
+ - tqdm =4.23.4
+
+ # xia2
+ - tabulate
+
+ # control math library (use mkl since it's what psana uses)
+ #- nomkl                             # [unix]
+ #- openblas                          # [unix]
+
+ # Phenix
+ - send2trash
+ - PyRTF
+
+ # xfel gui
  - mysql
  - mysql-python

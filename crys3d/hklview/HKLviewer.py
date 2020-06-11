@@ -203,7 +203,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     #self.MillerComboBox.setSizeAdjustPolicy(QComboBox.AdjustToContents)
 
     self.MillerLabel1 = QLabel()
-    self.MillerLabel1.setText("and 'data2' and or 'sigma2' variable from the")
+    self.MillerLabel1.setText("and 'data2' and or 'sigmas2' variable from the")
     self.MillerLabel2 = QLabel()
     self.MillerLabel2.setText("column")
     self.MillerLabel3 = QLabel()
@@ -290,7 +290,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     print("HKL-viewer closing down...")
     nc = 0
     sleeptime = 0.2
-    timeout = 1000
+    timeout = 10
     while not self.canexit and nc < timeout: # until cctbx.python has finished or after 5 sec
       time.sleep(sleeptime)
       self.ProcessMessages()
@@ -1281,7 +1281,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         (strval, idx) = data
         self.operate_arrayidx1 = idx
         if strval=="newdata_1":
-          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data' and or 'sigma' variable")
+          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data' and or 'sigmas' variable")
           self.MillerLabel1.setDisabled(True)
           self.MillerLabel2.setDisabled(True)
           self.MillerComboBox.setDisabled(True)
@@ -1289,7 +1289,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
           self.operate_arrayidx2 = None
           self.makenewdataform.show()
         if strval=="newdata_2":
-          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data1' and or 'sigma1' variable")
+          self.operationlabeltxt.setText("Enter a python expression of " + self.millerarraylabels[idx] + " 'data1' and or 'sigmas1' variable")
           self.MillerLabel1.setEnabled(True)
           self.MillerLabel2.setEnabled(True)
           self.MillerComboBox.setEnabled(True)

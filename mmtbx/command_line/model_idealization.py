@@ -18,7 +18,7 @@ import iotbx.ncs
 import iotbx.phil
 from cctbx import maptbx, miller
 
-from mmtbx.secondary_structure import build as ssb
+from mmtbx.secondary_structure.build import ss_idealization as ssb
 from mmtbx.secondary_structure import manager, sec_str_master_phil
 import mmtbx.utils
 from mmtbx.building.loop_idealization import loop_idealization
@@ -516,14 +516,21 @@ class model_idealization():
         fname_suffix="just_before_rota")
 
     self._update_model_h()
-
+    rotman = mmtbx.idealized_aa_residues.rotamer_manager.load(
+          rotamers="favored")
+    o = mmtbx.refinement.real_space.side_chain_fit_evaluator(
+      pdb_hierarchy      = self.model_h.get_hierarchy(),
+      crystal_symmetry   = self.model.crystal_symmetry(),
+      rotamer_evaluator  = rotman.rotamer_evaluator,
+      map_data           = self.master_map)
     result = mmtbx.refinement.real_space.fit_residues.run(
         vdw_radii         = self.model_h.get_vdw_radii(),
-        bselection        = self.model_h.get_master_selection(),
+        bselection        = o.sel_all(),
         pdb_hierarchy     = self.model_h.get_hierarchy(),
         crystal_symmetry  = self.model.crystal_symmetry(),
         map_data          = self.master_map,
-        rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(),
+        rotamer_manager   = rotman,
+        rotatable_hd      = self.model_h.rotatable_hd_selection(iselection=False),
         sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
         backbone_sample   = False,
         mon_lib_srv       = self.model_h.get_mon_lib_srv(),
@@ -671,7 +678,6 @@ class model_idealization():
       ssb.substitute_ss(
           model = self.model,
           params=self.params.ss_idealization,
-          verbose=self.params.verbose,
           reference_map=self.master_map,
           log=self.log)
       self.log.flush()
@@ -953,7 +959,7 @@ def get_map_from_hkl(hkl_file_object, params, xrs, log):
 
 def get_map_from_map(map_file_object, params, xrs, log):
   print("Processing input CCP4 map file...", file=log)
-  map_data = map_file_object.file_content.data.as_double()
+  map_data = map_file_object.file_content.map_data()
   try:
     # map_cs = map_content.file_object.crystal_symmetry()
     map_cs = map_file_object.crystal_symmetry()

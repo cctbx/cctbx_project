@@ -436,6 +436,8 @@ Found Python version:
   %s
 """ % self.python_exe, file=self.log)
       sys.exit(1)
+    if isinstance(python_version, bytes):
+        python_version = python_version.decode("utf-8")
     python_version = python_version.strip().split('\n')[0].split(':', 3)
     if (int(python_version[0]) == 2 and int(python_version[1]) < 7) or \
        (int(python_version[0]) > 2 and int(python_version[2]) < 0x03040000):
@@ -1250,7 +1252,10 @@ _replace_sysconfig_paths(build_time_vars)
     cert_file = check_output([self.python_exe, '-c',
                               'import certifi; print(certifi.where())'])
     cert_file = cert_file.strip()
-    os.environ['SSL_CERT_FILE'] = cert_file
+    try:
+      os.environ['SSL_CERT_FILE'] = cert_file
+    except TypeError: # str is needed instead of bytes (Python 3)
+      os.environ['SSL_CERT_FILE'] = cert_file.decode("utf-8")
     print('SSL_CERT_FILE environment variable set to %s' % \
       cert_file, file=self.log)
 
@@ -1617,6 +1622,9 @@ _replace_sysconfig_paths(build_time_vars)
     #    print font_cache, os.path.exists(font_cache)
     #    if (os.path.exists(font_cache)):
     #      os.remove(font_cache)
+
+    for dependency in MATPLOTLIB_DEPS:
+      self.build_python_module_pip(dependency[0], package_version=dependency[1])
 
     self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,

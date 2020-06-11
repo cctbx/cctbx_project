@@ -576,3 +576,12 @@ def sum(flex_array, axis=None):
       slices[axis] = slice(i,i+1)
       flex_array_sum += flex_array[slices]
     return flex_array_sum
+
+def _vec3_double_as_numpy_array(flex_array):
+  """
+  A short extension method for converting vec3_double arrays to numpy arrays.
+  """
+  if isinstance(flex_array, type(vec3_double())):
+    return flex_array.as_double().as_numpy_array().reshape(-1, 3)
+
+vec3_double.as_numpy_array = _vec3_double_as_numpy_array

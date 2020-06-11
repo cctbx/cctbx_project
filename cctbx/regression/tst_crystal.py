@@ -23,6 +23,8 @@ def exercise_symmetry():
   assert str(xs.unit_cell()) == "(4, 5, 6, 90, 90, 90)"
   assert xs.unit_cell().is_similar_to(uctbx.unit_cell((4,5,6)))
   assert str(xs.space_group_info()) == "P 2 2 2"
+  assert str(xs.space_group_number()) == "16"
+  assert str(xs.space_group().info().type().number()) == "16"
   assert xs.space_group() == xs.space_group_info().group()
   assert xs.is_compatible_unit_cell()
   try: xs = crystal.symmetry((3,4,5), "P 4 2 2")

@@ -471,9 +471,7 @@ class ice_ring_checker(scaling.xtriage_analysis):
       tmp_ice_ring_bin = tmp_ice_ring - tmp_low_d_star_sq
       tmp_ice_ring_bin = (tmp_ice_ring_bin-tmp_step/2.0)/tmp_step
       tmp_ice_ring_bin = int(tmp_ice_ring_bin+0.5)+1
-      if tmp_ice_ring_bin < 0:
-        tmp_ice_ring_bin = None
-      if tmp_ice_ring_bin > bin_centers.size()-1:
+      if tmp_ice_ring_bin < 0 or tmp_ice_ring_bin > bin_centers.size() - 1:
         tmp_ice_ring_bin = None
       self.ice_ring_bin_location[count] = tmp_ice_ring_bin
       count+=1

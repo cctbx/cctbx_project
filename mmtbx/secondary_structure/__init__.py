@@ -178,6 +178,7 @@ class manager(object):
                 was_initialized=False,
                 mon_lib_srv=None,
                 verbose=-1,
+                show_summary_on=True,
                 log=sys.stdout):
     self.pdb_hierarchy = pdb_hierarchy
     self.mon_lib_srv = mon_lib_srv
@@ -190,6 +191,7 @@ class manager(object):
       self.params.secondary_structure = params
 
     self.verbose = verbose
+    self.show_summary_on = show_summary_on
     self.log = log
     self.def_params = sec_str_master_phil.extract()
     self.stats = {'n_protein_hbonds':0, 'n_na_hbonds':0, 'n_na_hbond_angles':0,
@@ -215,16 +217,19 @@ class manager(object):
   def initialize(self):
     if not self._was_initialized :
       self.find_automatically()
-      self.show_summary()
+      if self.show_summary_on:
+        self.show_summary()
       self._was_initialized = True
 
   def find_automatically(self):
     # find_automatically = self.params.secondary_structure.find_automatically
     protein_found = False
+    use_segid = self.selection_cache.segid.size() > 1
     segids = {}
-    for a in self.pdb_hierarchy.atoms():
-      segids[a.segid] = ""
-    use_segid = len(segids) > 1
+    if use_segid:
+      for si in self.selection_cache.segid.keys():
+        segids[si] = ""
+
     # XXX: check for presence of protein first?
     protein_ss_definition_present = False
     if (len(self.params.secondary_structure.protein.helix) > 1 or
@@ -256,6 +261,7 @@ class manager(object):
           # Could get rid of this 'if' clause, but I want to avoid construction of
           # atom_selection_cache and selections when there is no segids in pdb
           # which is majority of cases.
+          whole_annotation = iotbx.pdb.secondary_structure.annotation(helices=[], sheets=[])
           for segid in segids:
             isel = self.selection_cache.selection("segid '%s'" % segid).iselection()
             selected_pdb_h = self.pdb_hierarchy.select(isel)
@@ -266,6 +272,8 @@ class manager(object):
                   prefix_scope="secondary_structure",
                   add_segid=segid)
                 ss_params.append(ss_phil)
+                whole_annotation.add_helices_and_sheets_simple(other_annot=annot)
+          annot = whole_annotation
         else:
           if self.pdb_hierarchy.contains_protein():
             annot = self.find_sec_str(pdb_hierarchy=self.pdb_hierarchy)
@@ -279,6 +287,13 @@ class manager(object):
       else:
         if (self.sec_str_from_pdb_file is not None):
           # self.actual_sec_str = self.sec_str_from_pdb_file
+          removed_annot = self.sec_str_from_pdb_file.remove_empty_annotations(self.pdb_hierarchy)
+          if not removed_annot.is_empty():
+            print("\n  WARNING! Some SS annotations were removed because the model\n" +\
+                "  does not have atoms for them:", file=self.log)
+            rem_str = '  ' + removed_annot.as_pdb_str()
+            rem_str = rem_str.replace('\n', '\n  ')
+            print(rem_str+'\n', file=self.log)
           ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(
               log=self.log,
               prefix_scope="secondary_structure")

@@ -1,11 +1,15 @@
 # Script for checking out sources and storing it as an artifact
 # The artifact name is "modules"
+#
+# Parameters:
+#   flags: <empty>, --use-conda
+#   optimization: <empty>, 0, 1, 2, 3
 
 jobs:
-- job: modules
+- job: modules${{ parameters.optimization }}
   pool:
-    vmImage: ubuntu-16.04
-  timeoutInMinutes: 360
+    vmImage: ubuntu-latest
+  timeoutInMinutes: 90
 
   steps:
 
@@ -20,8 +24,28 @@ jobs:
 
   - script: |
       cd $(Pipeline.Workspace)
-      python bootstrap.py hot update --builder=cctbx
+      python bootstrap.py hot update --builder=cctbx ${{ parameters.flags }}
     displayName: Download sources
+
+  # change optimization level (linux, macOS)
+  - script: |
+      cd $(Pipeline.Workspace)/modules/cctbx_project/libtbx
+      # Remove -ffast-math
+      sed -i 's/-ffast-math//g' SConscript
+      # Change -O level
+      sed -i 's/-O3/-O${{ parameters.optimization }}/g' SConscript
+    displayName: Changing optimization (linux, macOS)
+    condition: or(eq('${{ parameters.optimization }}', 0), eq('${{ parameters.optimization }}', 1), eq('${{ parameters.optimization }}', 2), eq('${{ parameters.optimization }}', 3))
+
+  # change optimization level (Windows)
+  - script: |
+      cd $(Pipeline.Workspace)/modules/cctbx_project/libtbx
+      # Remove /fp:fast
+      sed -i 's/\/fp:fast//g' SConscript
+      # Change /O2 to /O1
+      sed -i 's/\/O2/\/O1/g' SConscript
+    displayName: Changing optimization (Windows)
+    condition: or(eq('${{ parameters.optimization }}', 0), eq('${{ parameters.optimization }}', 1))
 
   # download test data
   # - task: DownloadPipelineArtifact@2
@@ -59,4 +83,5 @@ jobs:
 
   # publish artifact
   - publish: $(Pipeline.Workspace)/modules.tar
-    artifact: modules
+    artifact: modules${{ parameters.optimization }}
+    continueOnError: true

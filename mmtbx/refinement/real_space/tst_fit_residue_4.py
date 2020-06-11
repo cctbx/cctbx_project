@@ -56,6 +56,7 @@ def exercise(d_min = 1.0, resolution_factor = 0.1):
     pdb_poor          = pdb_poor,
     i_pdb             = 0,
     d_min             = d_min,
+    residues          = ["ARG"],
     resolution_factor = resolution_factor)
   #
   result = mmtbx.refinement.real_space.fit_residues.run(
@@ -63,18 +64,17 @@ def exercise(d_min = 1.0, resolution_factor = 0.1):
     vdw_radii         = t.vdw,
     crystal_symmetry  = t.crystal_symmetry,
     map_data          = t.target_map,
-    do_all            = True,
+    backbone_sample   = True,
+    rotatable_hd      = t.rotatable_hd,
     rotamer_manager   = t.rotamer_manager,
     sin_cos_table     = t.sin_cos_table,
     mon_lib_srv       = t.mon_lib_srv)
   result.pdb_hierarchy.write_pdb_file(file_name = "refined_%s.pdb"%str(0))
   #
-  # Disbaled till solution is found. Good test. See in Coot for test setup.
-  #
-  #mmtbx.refinement.real_space.check_sites_match(
-  #  ph_answer  = t.ph_answer,
-  #  ph_refined = result.pdb_hierarchy,
-  #  tol        = 0.47)
+  mmtbx.refinement.real_space.check_sites_match(
+    ph_answer  = t.ph_answer,
+    ph_refined = result.pdb_hierarchy,
+    tol        = 0.3)
 
 if(__name__ == "__main__"):
   t0 = time.time()

@@ -1836,8 +1836,7 @@ class scope(slots_getstate_setstate):
         sources=None,
         track_unused_definitions=False,
         diff=False,
-        skip_incompatible_objects=False,
-        warn_deprecated=True):
+        skip_incompatible_objects=False):
     combined_objects = []
     if (source is not None or sources is not None):
       assert source is None or sources is None

@@ -2,7 +2,18 @@ from __future__ import absolute_import, division, print_function
 import boost.python
 import cctbx.uctbx # possibly implicit
 ext = boost.python.import_ext("simtbx_nanoBragg_ext")
+from scitbx.array_family import flex
 from simtbx_nanoBragg_ext import *
+from scitbx.matrix import col, sqr
+
+from dxtbx.imageset import MemReader
+from dxtbx.imageset import ImageSet, ImageSetData
+from dxtbx.model.experiment_list import Experiment, ExperimentList
+from dxtbx.model import CrystalFactory
+from dxtbx.model import BeamFactory
+from dxtbx.model import DetectorFactory
+from dxtbx.format import cbf_writer
+
 
 @boost.python.inject_into(ext.nanoBragg)
 class _():
@@ -46,7 +57,7 @@ class _():
       from libtbx.smart_open import for_writing
       outfile = for_writing(file_name=fileout+".gz", gzip_mode="wb")
     else:
-      outfile = open(fileout,"w");
+      outfile = open(fileout,"wb");
 
     outfile.write(("{\nHEADER_BYTES=1024;\nDIM=2;\nBYTE_ORDER=%s;\nTYPE=unsigned_short;\n"%byte_order).encode());
     outfile.write(b"SIZE1=%d;\nSIZE2=%d;\nPIXEL_SIZE=%g;\nDISTANCE=%g;\n"%(
@@ -90,3 +101,134 @@ class _():
     self.to_smv_format_streambuf(streambuf(outfile),intfile_scale,debug_x,debug_y)
 
     outfile.close();
+
+  @property
+  def beam(self):
+    # Does this handle the conventions ? Im always confused about where the beam is pointing, whats s0 and whats beam_vector
+    beam_dict = {'direction': tuple([-1*x for x in self.beam_vector]),  # TODO: is this correct?
+                  'divergence': 0.0,  # TODO
+                  'flux': self.flux,
+                  'polarization_fraction': self.polarization,  #TODO
+                  'polarization_normal': col(self.polar_vector).cross(col(self.beam_vector)),
+                  'sigma_divergence': 0.0,  # TODO
+                  'transmission': 1.0,  #TODO ?
+                  'wavelength': self.wavelength_A}
+    beam = BeamFactory.from_dict(beam_dict)
+    return beam
+
+  @property
+  def crystal(self):
+    crystal = None
+    # dxtbx crystal description
+    if self.Amatrix is not None:
+      A = sqr(self.Amatrix).inverse().elems
+      # is this always P-1 ?
+      real_a = A[0], A[3], A[6]
+      real_b = A[1], A[4], A[7]
+      real_c = A[2], A[5], A[8]
+      cryst_dict = {'__id__': 'crystal',
+                     'real_space_a': real_a,
+                     'real_space_b': real_b,
+                     'real_space_c': real_c,
+                     'space_group_hall_symbol': ' P 1'}
+      crystal = CrystalFactory.from_dict(cryst_dict)
+    return crystal
+
+  @property
+  def detector(self):
+    # monolithic camera description
+    pixsize = self.pixel_size_mm
+    im_shape = self.detpixels_fastslow
+    fdet = self.fdet_vector
+    sdet = self.sdet_vector
+    origin = self.dials_origin_mm
+    det_descr = {'panels':
+                   [{'fast_axis': fdet,
+                     'slow_axis': sdet,
+                     'gain': self.quantum_gain,
+                     'identifier': '',
+                     'image_size': im_shape,
+                     'mask': [],
+                     'material': '',  # TODO
+                     'mu': 0.0,  # TODO
+                     'name': 'Panel',
+                     'origin': origin,
+                     'pedestal': 0.0,
+                     'pixel_size': (pixsize, pixsize),
+                     'px_mm_strategy': {'type': 'SimplePxMmStrategy'},
+                     'raw_image_offset': (0, 0),  # TODO
+                     'thickness': 0.0,  # TODO
+                     'trusted_range': (-1e3, 1e10),  # TODO
+                     'type': ''}]}
+    detector = DetectorFactory.from_dict(det_descr)
+    return detector
+
+  @property
+  def imageset(self):
+    format_class = FormatBraggInMemory(self.raw_pixels)
+    reader = MemReaderNamedPath("virtual_Bragg_path", [format_class])
+    reader.format_class = FormatBraggInMemory
+    imageset_data = ImageSetData(reader, None)
+    imageset = ImageSet(imageset_data)
+    imageset.set_beam(self.beam)
+    imageset.set_detector(self.detector)
+
+    return imageset
+
+  def as_explist(self):
+    """
+    return experiment list for simulated image
+    """
+    exp = Experiment()
+    exp.crystal = self.crystal
+    exp.beam = self.beam
+    exp.detector = self.detector
+    exp.imageset = self.imageset
+    explist = ExperimentList()
+    explist.append(exp)
+
+    return explist
+
+  def to_cbf(self, cbf_filename):
+    writer = cbf_writer.FullCBFWriter(imageset=self.imageset)
+    writer.write_cbf(cbf_filename, index=0)
+
+
+class FormatBraggInMemory:
+
+  def __init__(self, raw_pixels):
+    self.raw_pixels = raw_pixels
+    panel_shape = self.raw_pixels.focus()
+    #self._filenames = ["InMemoryBraggPath"]  # TODO: CBFLib complains if no datablock path provided which comes from path
+    self.mask = flex.bool(flex.grid(panel_shape), True)  # TODO: use nanoBragg internal mask
+
+  def get_path(self, index):
+    if index == 0:
+      return "Virtual"
+    else:
+      raise ValueError("index must be 0 for format %s" % self.__name__)
+
+  def get_raw_data(self):
+    """
+    return as a tuple, multi panel with 1 panel
+    currently nanoBragg doesnt support simulating directly to a multi panel detector
+    so this is the best we can do..
+    """
+    return self.raw_pixels,
+
+  def get_mask(self, goniometer=None):
+    """dummie place holder for mask, consider using internal nanoBragg mask"""
+    return self.mask,
+
+  #def paths(self):
+  #  return ["InMemoryBraggPath"]  # TODO: CBFLib complains if no datablock path provided which comes from path
+
+class MemReaderNamedPath(MemReader):
+
+  def __init__(self, path,  *args, **kwargs):
+    self.dummie_path_name = path
+    super(MemReaderNamedPath, self).__init__(*args, **kwargs)
+
+  def paths(self):
+    """Necessary to have non zero string for CBFLib writer for some reason..."""
+    return ["%s_%d" % (self.dummie_path_name, i) for i, _ in enumerate(self._images)]

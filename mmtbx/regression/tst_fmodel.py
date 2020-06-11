@@ -345,7 +345,7 @@ def exercise_5_bulk_sol_and_scaling(d_min, symbol = "C 2", k_sol = 0.37,
     sf_and_grads_accuracy_params = sfg_params)
   assert fmodel.r_work() > 0.3
   fmodel.update_all_scales(fast=True, remove_outliers=False)
-  assert fmodel.r_work() < 0.04, [fmodel.r_work(), d_min]
+  assert fmodel.r_work() < 0.045, [fmodel.r_work(), d_min]
   # part 2 of test 4
   d=fmodel.k_isotropic()*fmodel.k_anisotropic()*(
     f_calc.data()+fmodel.k_masks()[0]*f_mask.data())
@@ -358,7 +358,7 @@ def exercise_5_bulk_sol_and_scaling(d_min, symbol = "C 2", k_sol = 0.37,
     sf_and_grads_accuracy_params = sfg_params)
   assert fmodel.r_work() > 0.3
   fmodel.update_all_scales(fast=True)
-  assert fmodel.r_work() < 0.04, [fmodel.r_work(), d_min]
+  assert fmodel.r_work() < 0.05, [fmodel.r_work(), d_min]
 
 def exercise_top_largest_f_obs_f_model_differences(threshold_percent=10,
       symbol = "C 2"):

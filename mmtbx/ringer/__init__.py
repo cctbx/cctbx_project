@@ -238,7 +238,7 @@ class iterate_over_residues(object):
 #          EMRinger will assume the map symmetry data is correct and process."""
 #      # If map space group is P1, then check that model space group is also either not present or is P1.
 #      # If both are p1 or model symmetry is not present, then do the shift. Otherwise, no shift.
-#      if space_group_number == 1 and not (crystal_symmetry_model and crystal_symmetry_model.space_group() and crystal_symmetry_model.space_group().info().type().number() != 1):
+#      if space_group_number == 1 and not (crystal_symmetry_model and crystal_symmetry_model.space_group() and crystal_symmetry_model.space_group_number() != 1):
 #        import mmtbx.utils
 #        shift_manager = mmtbx.utils.shift_origin(
 #        map_data = ccp4_map.data.as_double(),

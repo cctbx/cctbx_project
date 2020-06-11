@@ -351,8 +351,7 @@ class hklview_3d:
     self.viewmtrx = None
     self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
-    self.HKLsceneKey = ( 0, False,
-                          self.viewerparams.expand_anomalous, self.viewerparams.expand_to_p1  )
+    self.HKLsceneKey = ( 0, False, self.viewerparams.expand_anomalous, self.viewerparams.expand_to_p1  )
     self.msgqueue = []
     self.websockclient = None
     self.mywebsock = None

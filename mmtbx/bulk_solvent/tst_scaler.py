@@ -71,13 +71,13 @@ def run_0(symbol = "C 2"):
     try_poly       = True,
     try_expanal    = True,
     try_expmin     = True,
-    verbose        = False)
-  print(aso.r_final)
-  print(aso.r_low)
-  print(aso.r_high)
-  assert approx_equal(aso.r_final, 0.00037, 0.00001)
-  assert approx_equal(aso.r_low,   0.00004, 0.00005)
-  assert approx_equal(aso.r_high,  0.00006, 0.00001)
+    verbose        = True)
+  print("r_f:", aso.r_final)
+  print("r_l:", aso.r_low)
+  print("r_h:", aso.r_high)
+  assert aso.r_final < 0.0009, [aso.r_final,  0.0009]
+  assert aso.r_low   < 0.0017,   [aso.r_low,  0.0017]
+  assert aso.r_high  < 0.0006, [aso.r_high,   0.0006]
   assert approx_equal(
     bulk_solvent.r_factor(f_obs.data(), abs(aso.core.f_model).data(), 1),
     bulk_solvent.r_factor(f_obs.data(), abs(aso.core.f_model).data()))

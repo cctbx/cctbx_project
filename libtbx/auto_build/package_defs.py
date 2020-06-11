@@ -62,7 +62,7 @@ DEPENDENCIES_BASE = [
 ]
 OPENSSL_PKG = "openssl-1.0.2s.tar.gz"    # OpenSSL
 PYTHON3_PKG = "Python-3.7.2.tgz"
-PYTHON_PKG = "Python-2.7.17.tgz"
+PYTHON_PKG = "Python-2.7.18.tgz"
 
 # from CCI
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
@@ -133,12 +133,18 @@ GTK_THEME_PKG = "gtk_themes.tar.gz"
 FONT_PKG = "fonts.tar.gz"
 
 MATPLOTLIB_PKG = "matplotlib-2.2.3.tar.gz"
+MATPLOTLIB_DEPS = [
+  ("subprocess32", "3.5.4"),
+  ("backports.functools-lru-cache", "1.6.1"),
+  ("kiwisolver", "1.1.0"),
+]
 # CentOS 5 glibc too old to support matplotlib-2.0.0 dependency (subprocess32)
 # will be fixed in subprocess32 3.5+, https://github.com/google/python-subprocess32/blob/master/ChangeLog
 if (sys.platform.startswith("linux")):
   distribution = platform.dist()
   if ( (distribution[0] == 'redhat') and (distribution[1].startswith('5')) ):
     MATPLOTLIB_PKG = "matplotlib-1.5.1.tar.gz"
+    MATPLOTLIB_DEPS = []  # unknown
 
 PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
 

@@ -345,7 +345,7 @@ class _mtriage(object):
       self.params.compute.fsc_curve_model = False
       self.params.compute.d_fsc_model_05  = False
       self.params.compute.d_fsc_model_0   = False
-      self.params.computed_fsc_model_0143= False
+      self.params.compute.d_fsc_model_0143= False
       self.params.compute.d_model         = False
       self.params.compute.d_model_b0      = False
 

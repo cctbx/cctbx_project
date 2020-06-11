@@ -30,7 +30,8 @@ QUIET = 0
 DEFAULT_VERBOSITY = 1
 EXTRA_VERBOSE = 2 # for nightly builds
 
-def get_test_list(module_name, test_type='tst_list', valgrind=False):
+def get_test_list(module_name, test_type='tst_list', valgrind=False,
+         python_keyword_text=None):
   dist_path = libtbx.env.dist_path(module_name)
   if dist_path is None:
     raise Sorry("'%s' is not a valid CCTBX module." % module_name)
@@ -52,7 +53,8 @@ def get_test_list(module_name, test_type='tst_list', valgrind=False):
   co = group_args(
     verbose=False,
     quick=True,
-    valgrind=valgrind)
+    valgrind=valgrind,
+    python_keyword_text=python_keyword_text)
   for cmd in test_utils.iter_tests_cmd(
       co=co,
       build_dir=build_path,
@@ -61,11 +63,14 @@ def get_test_list(module_name, test_type='tst_list', valgrind=False):
     commands.append(cmd)
   return commands
 
-def get_module_tests(module_name, valgrind=False, slow_tests=False):
-  tst_list = get_test_list(module_name, valgrind=valgrind)
+def get_module_tests(module_name, valgrind=False, slow_tests=False,
+      python_keyword_text=None):
+  tst_list = get_test_list(module_name, valgrind=valgrind,
+     python_keyword_text=python_keyword_text)
   if slow_tests:
     tst_list.extend(get_test_list(module_name, test_type='tst_list_slow',
-                    valgrind=valgrind))
+                    valgrind=valgrind,
+                    python_keyword_text=python_keyword_text))
   return tst_list
 
 def get_module_expected_test_failures(module_name):
@@ -443,13 +448,16 @@ class run_command_list(object):
       print("    "+"\n    ".join(result.stderr_lines), file=sys.stderr)
       sys.stderr.flush()
 
-def make_commands(files):
+def make_commands(files,python_keyword_text=""):
   commands = []
   non_executable = []
   unrecognized = []
   for file_name in files :
     if file_name.endswith('.py'):
-      cmd = 'libtbx.python "%s"'%(file_name)
+      if python_keyword_text:
+        cmd = 'libtbx.python %s "%s"'%(python_keyword_text,file_name)
+      else:
+        cmd = 'libtbx.python "%s"'%(file_name) # usual
     elif file_name.endswith('.sh'):
       # interpreter = 'libtbx.bash'
       cmd = file_name

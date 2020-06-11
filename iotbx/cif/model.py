@@ -626,7 +626,10 @@ class loop(MutableMapping):
     print("loop_", file=out)
     for k in self.keys():
       print(indent + k, file=out)
-    values = list(self._columns.values())
+
+    # !!! Do not change values inside the object while printing
+    self_ = self.deepcopy()
+    values = list(self_._columns.values())
     range_len_values = range(len(values))
     if fmt_str is not None:
       # Pretty printing:
@@ -646,11 +649,11 @@ class loop(MutableMapping):
               break
       if fmt_str is None:
         fmt_str = indent_row + ' '.join(["%s"]*len(values))
-      for i in range(self.size()):
+      for i in range(self_.size()):
         print(fmt_str % tuple([values[j][i] for j in range_len_values]), file=out)
     elif align_columns:
       fmt_str = []
-      for i, (k, v) in enumerate(six.iteritems(self)):
+      for i, (k, v) in enumerate(six.iteritems(self_)):
         for i_v in range(v.size()):
           v[i_v] = format_value(v[i_v])
         # exclude and semicolon text fields from column width calculation
@@ -665,12 +668,12 @@ class loop(MutableMapping):
           width *= -1
         fmt_str.append("%%%is" %width)
       fmt_str = indent_row + "  ".join(fmt_str)
-      for i in range(self.size()):
+      for i in range(self_.size()):
         print((fmt_str %
                        tuple([values[j][i]
                               for j in range_len_values])).rstrip(), file=out)
     else:
-      for i in range(self.size()):
+      for i in range(self_.size()):
         values_to_print = [format_value(values[j][i]) for j in range_len_values]
         print(' '.join([indent] + values_to_print), file=out)
 

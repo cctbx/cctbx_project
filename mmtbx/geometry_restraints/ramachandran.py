@@ -23,16 +23,19 @@ old_master_phil = iotbx.phil.parse("""
     .type = float
     .short_caption = Ramachandran gradients weight
     .expert_level = 1
+    .style = hidden
   scale_allowed = 1.0
     .type = float
     .short_caption = Rescale allowed region pseudo-energy by
+    .style = hidden
   rama_potential = *oldfield emsley
     .type = choice(multi=False)
     .short_caption = Ramachandran potential
     .caption = Oldfield Coot
+    .style = hidden
   oldfield
     .short_caption = Oldfield potential parameters
-    .style = box auto_align
+    .style = box auto_align hidden
   {
     esd = 10.0
       .type = float
@@ -57,6 +60,7 @@ old_master_phil = iotbx.phil.parse("""
     .help = Selection of part of the model for which \
         Ramachandran restraints will be set up.
     .expert_level = 1
+    .style = hidden
   restrain_rama_outliers = True
     .type = bool
     .help = Apply restraints to Ramachandran outliers
@@ -77,13 +81,15 @@ master_phil = iotbx.phil.parse("""\
 ramachandran_plot_restraints {
   enabled = False
     .type = bool
+    .short_caption = Ramachandran restraints
+
   favored = *oldfield emsley emsley8k
     .type = choice(multi=False)
 
-  allowed = oldfield emsley *emsley8k
+  allowed = *oldfield emsley emsley8k
     .type = choice(multi=False)
 
-  outlier = oldfield emsley *emsley8k
+  outlier = *oldfield emsley emsley8k
     .type = choice(multi=False)
 
   selection = None
@@ -92,7 +98,15 @@ ramachandran_plot_restraints {
     .help = Selection of part of the model for which \
         Ramachandran restraints will be set up.
     .expert_level = 1
-  oldfield {
+  inject_emsley8k_into_oldfield_favored = True
+    .type=bool
+    .expert_level = 3
+    .help = Backdoor to disable temporary dirty hack to use both
+  oldfield
+    .short_caption = Oldfield settings
+    .expert_level = 2
+    .style = box
+  {
     weight = 0.
       .type = float
       .expert_level = 2
@@ -122,27 +136,34 @@ ramachandran_plot_restraints {
       .type = float
       .expert_level = 2
   }
-  emsley {
+  emsley
+    .short_caption = Emsley settings
+    .style = box
+  {
     weight = 1.0
       .type = float
-      .short_caption = Ramachandran plot restraints weight
+      .short_caption = Ramachandran plot restraints weight (emsley)
       .expert_level = 1
     scale_allowed = 1.0
       .type = float
       .short_caption = Rescale allowed region pseudo-energy by
   }
-  emsley8k {
-    weight_favored = 10.0
+  emsley8k
+    .short_caption = Emsley8k settings
+    .expert_level = 1
+    .style = box
+  {
+    weight_favored = 5.0
       .type = float
-      .short_caption = Ramachandran plot restraints weight
+      .short_caption = Ramachandran plot restraints weight (emsley8k, favored)
       .expert_level = 1
     weight_allowed = 10.0
       .type = float
-      .short_caption = Ramachandran plot restraints weight
+      .short_caption = Ramachandran plot restraints weight (emsley8k, allowed)
       .expert_level = 1
     weight_outlier = 10.0
       .type = float
-      .short_caption = Ramachandran plot restraints weight
+      .short_caption = Ramachandran plot restraints weight (emsley8k, outlier)
       .expert_level = 1
   }
 }
@@ -244,12 +265,7 @@ class ramachandran_manager(object):
     self.new_to_old_conversion = {"general":"ala", "glycine":"gly",
         "cis-proline":"pro", "trans-proline":"pro", "pre-proline":"prepro",
         "isoleucine or valine":"ala"}
-    self.bool_atom_selection = None
-    if self.params.selection is None:
-      self.bool_atom_selection = flex.bool(pdb_hierarchy.atoms_size(), True)
-    else:
-      cache = pdb_hierarchy.atom_selection_cache()
-      self.bool_atom_selection = cache.selection(self.params.selection)
+    bool_atom_selection = self._determine_bool_atom_selection(pdb_hierarchy)
     fao = [self.params.favored, self.params.allowed, self.params.outlier]
     if initialize:
       if 'oldfield' in fao:
@@ -257,7 +273,10 @@ class ramachandran_manager(object):
           plot_cutoff=self.params.oldfield.plot_cutoff)
       if 'emsley' in fao:
         self._emsley_tables = load_tables()
-      if 'emsley8k' in fao:
+      #
+      ### THIS IS CRUEL. REMOVE ONCE favored/allowed/outlier are made multiple!
+      #
+      if 'emsley8k' in fao or self.params.inject_emsley8k_into_oldfield_favored:
         self._emsley8k_tables = load_emsley8k_tables()
       # get proxies
       self.extract_proxies(pdb_hierarchy)
@@ -265,6 +284,15 @@ class ramachandran_manager(object):
       self.target_phi_psi = self.update_phi_psi_targets_on_init(
         hierarchy = pdb_hierarchy)
     self.initialize = False
+
+  def _determine_bool_atom_selection(self, hierarchy):
+    bool_atom_selection = None
+    if self.params.selection is None:
+      bool_atom_selection = flex.bool(hierarchy.atoms_size(), True)
+    else:
+      cache = hierarchy.atom_selection_cache()
+      bool_atom_selection = cache.selection(self.params.selection)
+    return bool_atom_selection
 
   def proxy_select(self, n_seq, iselection):
     new_manager = ramachandran_manager(
@@ -283,7 +311,8 @@ class ramachandran_manager(object):
     allowed = ramalyze.RAMALYZE_ALLOWED
     outlier = ramalyze.RAMALYZE_OUTLIER
     self.hierarchy = hierarchy
-    selected_h = hierarchy.select(self.bool_atom_selection)
+    bool_atom_selection = self._determine_bool_atom_selection(hierarchy)
+    selected_h = hierarchy.select(bool_atom_selection)
     n_seq = flex.max(selected_h.atoms().extract_i_seq())
     # Drop all previous proxies
     self._oldfield_proxies = ext.shared_phi_psi_proxy()
@@ -319,6 +348,16 @@ class ramachandran_manager(object):
           i_seqs       = i_seqs,
           weight       = 1) # XXX Not used in oldfield
         self.append_oldfield_proxies(proxy, n_seq)
+
+        ### THIS IS CRUEL. REMOVE ONCE favored/allowed/outlier are made multiple!
+        if(self.params.inject_emsley8k_into_oldfield_favored):
+          proxy = ext.phi_psi_proxy(
+            residue_type = text_rama_key,
+            i_seqs       = i_seqs,
+            weight       = 5)
+          self.append_emsley8k_proxies(proxy, n_seq)
+        ###
+
       elif r_type == 'emsley':
         weight = self.params.emsley.weight
         proxy = ext.phi_psi_proxy(

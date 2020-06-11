@@ -142,6 +142,9 @@ class conda_manager(object):
     Updates the current version of conda
   create_environment(builder, filename, copy)
     Uses the known conda installtion to create an environment
+  write_conda_setpaths(prefix, build_dir, conda_env, check_file)
+    Writes an additional script that activates the conda environment before
+    calling the normal setpaths script.
   """
 
   # Currently, there is one monolithic environment
@@ -156,7 +159,9 @@ class conda_manager(object):
     'phenix_tng': os.path.join('phenix', 'conda_envs',
       default_format.format(builder='phenix', version=version,
                             platform=conda_platform[platform.system()])),
-    'xfel': default_file,
+    'xfel': os.path.join('dials', '.conda-envs',
+      default_format.format(builder='dials', version=version,
+                            platform=conda_platform[platform.system()])),
     'xfellegacy': default_file,
     'labelit': default_file,
     'dials': os.path.join('dials', '.conda-envs',
@@ -175,7 +180,7 @@ class conda_manager(object):
   def __init__(self, root_dir=root_dir, conda_base=None, conda_env=None,
                check_file=True, max_retries=5, verbose=False, log=sys.stdout):
     """
-    Constructor that performs that basic check for the conda installation.
+    Constructor that performs a basic check for the conda installation.
     If an installation is not found, the latest version can be downloaded
     and installed.
 
@@ -459,10 +464,10 @@ common compilers provided by conda. Please update your version with
       for env_dir in env_dirs:
         if os.path.isdir(env_dir):
           dirs = os.listdir(env_dir)
-          for dir in dirs:
-            dir = os.path.join(env_dir, dir)
-            if os.path.isdir(dir):
-              environments.add(dir)
+          for _dir in dirs:
+            _dir = os.path.join(env_dir, _dir)
+            if os.path.isdir(_dir):
+              environments.add(_dir)
 
     return environments
 
@@ -559,6 +564,60 @@ channel
       print(output)
 
   # ---------------------------------------------------------------------------
+  def _retry_command(self, command_list, text, prefix):
+    """
+    Internal convenience function for retrying creation/update of a
+    conda environment.
+
+    Parameters
+    ----------
+      command_list: list
+        Command list for check_output
+      text: str
+        Text to be printed. Usually "installion into" or "update of"
+      prefix: str
+        Directory of conda environment
+
+    Returns
+    -------
+      Nothing
+    """
+
+    run_command = check_output
+    if self.verbose:
+      run_command = call
+
+    for retry in range(self.max_retries):
+      retry += 1
+      try:
+        output = run_command(command_list, env=self.env)
+      except Exception:
+        print("""
+*******************************************************************************
+There was a failure in constructing the conda environment.
+Attempt {retry} of {max_retries} will start {retry} minute(s) from {t}.
+*******************************************************************************
+""".format(retry=retry, max_retries=self.max_retries, t=time.asctime()))
+        time.sleep(retry*60)
+      else:
+        break
+    if retry == self.max_retries:
+      raise RuntimeError("""
+The conda environment could not be constructed. Please check that there is a
+working network connection for downloading conda packages.
+""")
+    print('Completed {text}:\n  {prefix}'.format(text=text, prefix=prefix),
+          file=self.log)
+
+    # check that environment file is updated
+    self.environments = self.update_environments()
+    if prefix not in self.environments:
+      raise RuntimeError("""
+The newly installed environment cannot be found in
+${HOME}/.conda/environments.txt.
+""")
+
+  # ---------------------------------------------------------------------------
   def create_environment(self, builder='cctbx', filename=None, python=None,
     copy=False, offline=False):
     """
@@ -599,16 +658,18 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
       filename = os.path.join(
         self.root_dir, 'modules', self.env_locations[builder])
       if python is not None:
-        if python not in ['27', '36']:
+        if python not in ['27', '36', '37', '38']:
           raise RuntimeError(
-            """Only Python 2.7 and 3.6 are currently supported.""")
+            """Only Python 2.7, 3.6, 3.7, and 3.8 are currently supported.""")
         filename = filename.replace('PYTHON_VERSION', python)
     else:
       filename = os.path.abspath(filename)
 
     if not os.path.isfile(filename):
-      raise RuntimeError("""The file, {filename}, is not available""".\
-                         format(filename=filename))
+      raise RuntimeError("""\
+The file, {filename}, is not available. Please contact the developers to make \
+sure that the requested version of Python is supported for the {builder} \
+builder.""".format(filename=filename, builder=builder))
 
     yaml_format = False
     if filename.endswith('yml') or filename.endswith('yaml'):
@@ -642,35 +703,14 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
       command_list.append('--copy')
     if offline and not yaml_format:
       command_list.append('--offline')
-    if builder == "dials":
+    if builder in ["dials", "xfel"]:
       command_list.append("-y")
     # RuntimeError is raised on failure
     print('{text} {builder} environment with:\n  {filename}'.format(
           text=text_messages[0], builder=builder, filename=filename),
           file=self.log)
-    for retry in range(self.max_retries):
-      retry += 1
-      try:
-        output = check_output(command_list, env=self.env)
-      except Exception:
-        print("""
-*******************************************************************************
-There was a failure in constructing the conda environment.
-Attempt {retry} of {max_retries} will start {retry} minute(s) from {t}.
-*******************************************************************************
-""".format(retry=retry, max_retries=self.max_retries, t=time.asctime()))
-        time.sleep(retry*60)
-      else:
-        break
-    if retry == self.max_retries:
-      raise RuntimeError("""
-The conda environment could not be constructed. Please check that there is a
-working network connection for downloading conda packages.
-""")
-    if self.verbose:
-      print(output, file=self.log)
-    print('Completed {text}:\n  {prefix}'.format(text=text_messages[1],
-          prefix=prefix), file=self.log)
+
+    self._retry_command(command_list, text_messages[1], prefix)
 
     # on Windows, also download the Visual C++ 2008 Redistributable
     # use the same version as conda-forge
@@ -680,13 +720,204 @@ working network connection for downloading conda packages.
         url='https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe',
         filename=os.path.join(prefix, 'vcredist_x64.exe'))
 
-    # check that environment file is updated
-    self.environments = self.update_environments()
-    if prefix not in self.environments:
-      raise RuntimeError("""
-The newly installed environment cannot be found in
-${HOME}/.conda/environments.txt.
-""")
+# ---------------------------------------------------------------------------
+  def create_dev_environment(self, svn=False, git=True):
+    """
+    Create a separate environment for development tools. Packages from
+    the conda-forge channel are used.
+
+    Package list:
+      svn
+      git
+      git-lfs
+
+    Parameters
+    ----------
+      svn: bool
+        If set to true, svn is installed. This is useful for Xcode 11.4
+        and later where svn is no longer available.
+      git: bool
+        If set to true, git is installed with git-lfs. This is needed
+        for repositories that use git-lfs.
+
+    Returns
+    -------
+      dev_dir: str
+        The directory with the environment
+    """
+
+    package_list = []
+    if svn:
+      package_list.append('svn')
+    if git:
+      package_list.append('git')
+      package_list.append('git-lfs')
+
+    prefix = os.path.join(self.root_dir, 'dev_env')
+    command = 'create'
+    text_messages = ['Installing', 'installation into']
+    if prefix in self.environments:
+      command = 'update'
+      text_messages = ['Updating', 'update of']
+
+    command_list = [self.conda_exe, command, '-y', '-c', 'conda-forge',
+                    '--prefix', prefix] + package_list
+
+    print('-'*79, file=self.log)
+    print('{text} extra development environment containing:'.format(text=text_messages[0]),
+          file=self.log)
+    for package in package_list:
+      print('  -', package, file=self.log)
+
+    self._retry_command(command_list, text_messages[1], prefix)
+
+    print('-'*79, file=self.log)
+    return prefix
+
+  # ---------------------------------------------------------------------------
+  def write_conda_setpaths(self, prefix='conda', build_dir=None,
+                           conda_env=None, check_file=True):
+    """
+    Write a script similar to setpaths.sh/csh/bat that activates the environment
+    first. This is useful for developers that want to use other software
+    installed in the conda environment without having to manually activate it.
+
+    Parameters
+    ----------
+      prefix: str
+        The prefix for the output file. The output file will be constructed
+        as <prefix>_<script name>.<extension>. The <script name> is the
+        standard setpaths or unsetpaths file, and the <extension> will be
+        the existing extensions for the script (sh, csh, and bat)
+      build_dir: str
+        The build directory where the standard setpaths script resides.
+      conda_env: str
+        The conda environment directory
+      check_file: bool
+        Used to override the check_file attribute
+
+    Returns
+    -------
+      Nothing
+    """
+
+    if check_file is None:
+      check_file = self.check_file
+
+    # check that build_dir is valid
+    if build_dir is None:
+      build_dir = os.getenv('LIBTBX_BUILD')
+    if build_dir is None:
+      raise RuntimeError("""\
+Please run the dispatcher version of libtbx.install_conda or provide a valid
+directory as an argument to the write_conda_setpaths function.""")
+
+    build_dir_error = """\
+Please provide the directory to the setpaths script.
+"""
+    if build_dir is None or not os.path.isdir(build_dir):
+      raise RuntimeError(build_dir_error)
+    if sys.platform == 'win32':
+      if not os.path.isfile(os.path.join(build_dir, 'setpaths.bat')):
+        raise RuntimeError(build_dir_error)
+    else:
+      if not os.path.isfile(os.path.join(build_dir, 'setpaths.sh')) \
+         or not os.path.isfile(os.path.join(build_dir, 'setpaths.csh')):
+        raise RuntimeError(build_dir_error)
+
+    # check conda_env
+    if conda_env is None:
+      conda_env = self.conda_env
+    if conda_env is None:
+      from libtbx.env_config import get_conda_prefix
+      conda_env = get_conda_prefix()
+    conda_env = os.path.abspath(conda_env)
+
+    # -------------------------------------------------------------------------
+    def do_check_file(filename):
+      """
+      Convenience function for checking if the script was written.
+      """
+      if os.path.isfile(filename):
+        print('{filename} has been written successfully.'.format(
+          filename=os.path.basename(filename)))
+      else:
+        raise RuntimeError("""
+{filename} has not been written successfully.""".format(filename=filename))
+    # -------------------------------------------------------------------------
+
+    # Windows
+    if sys.platform == 'win32':
+      script_template = """\
+@ECHO OFF
+CALL {mc3_dir} {conda_env}
+CALL {setpaths}
+"""
+      # activate
+      mc3_dir = os.path.abspath(
+        os.path.join(self.conda_base, 'Scripts', 'activate.bat'))
+      setpaths = os.path.abspath(os.path.join(build_dir, 'setpaths.bat'))
+      filename = os.path.abspath(os.path.join(build_dir, prefix + '_setpaths.bat'))
+      with open(filename, 'w') as f:
+        f.write(script_template.format(
+          mc3_dir=mc3_dir, conda_env=conda_env, setpaths=setpaths))
+      if check_file:
+        do_check_file(filename)
+      # deactivate
+      mc3_dir = 'conda'
+      conda_env = 'deactivate'
+      setpaths = os.path.abspath(os.path.join(build_dir, 'unsetpaths.bat'))
+      filename = os.path.abspath(
+        os.path.join(build_dir, prefix + '_unsetpaths.bat'))
+      with open(filename, 'w') as f:
+        f.write(script_template.format(
+          mc3_dir=mc3_dir, conda_env=conda_env, setpaths=setpaths))
+      if check_file:
+        do_check_file(filename)
+    # linux and macOS
+    else:
+      for ext in ('sh', 'csh'):
+        # activate
+        script_template = """\
+source {mc3_dir}
+{get_old_prompt}
+conda activate {conda_env}
+{set_old_prompt}
+{unset_old_prompt}
+source {setpaths}
+"""
+        mc3_dir = os.path.abspath(
+          os.path.join(self.conda_base, 'etc', 'profile.d', 'conda.' + ext))
+        if ext == 'sh':
+          get_old_prompt = 'LIBTBX_OLD_PS1=$PS1'
+          set_old_prompt = 'PS1=$LIBTBX_OLD_PS1'
+          unset_old_prompt = 'unset LIBTBX_OLD_PS1'
+        else:
+          get_old_prompt = 'set libtbx_old_prompt="$prompt"'
+          set_old_prompt = 'set prompt="$libtbx_old_prompt"'
+          unset_old_prompt = 'unset libtbx_old_prompt'
+        setpaths = os.path.abspath(os.path.join(build_dir, 'setpaths.' + ext))
+        filename = os.path.abspath(
+          os.path.join(build_dir, prefix + '_setpaths.' + ext))
+        with open(filename, 'w') as f:
+          f.write(script_template.format(
+            mc3_dir=mc3_dir, get_old_prompt=get_old_prompt, conda_env=conda_env,
+            set_old_prompt=set_old_prompt, unset_old_prompt=unset_old_prompt,
+            setpaths=setpaths))
+        if check_file:
+          do_check_file(filename)
+        # deactivate
+        script_template = """\
+conda deactivate
+source {setpaths}
+"""
+        setpaths = os.path.abspath(os.path.join(build_dir, 'unsetpaths.' + ext))
+        filename = os.path.abspath(
+          os.path.join(build_dir, prefix + '_unsetpaths.' + ext))
+        with open(filename, 'w') as f:
+          f.write(script_template.format(setpaths=setpaths))
+        if check_file:
+          do_check_file(filename)
 
 # =============================================================================
 def run():
@@ -730,7 +961,7 @@ Example usage:
       same as the ones for bootstrap.py. The default builder is "cctbx." """)
   parser.add_argument(
     '--python', default='27', type=str, nargs='?', const='27',
-    choices=['27', '36'],
+    choices=['27', '36', '37', '38'],
     help="""When set, a specific Python version of the environment will be used.
     This only affects environments selected with the --builder flag.""")
   parser.add_argument(
@@ -750,6 +981,10 @@ Example usage:
       default environment can be overridden by providing a path to the
       environment file.""")
   parser.add_argument(
+    '--install_dev_env', action='store_true',
+    help="""When set, an additional environment named dev_env will be
+    created that contains extra development tools (svn, git, git-lfs).""")
+  parser.add_argument(
     '--conda_base', default=None, type=str, metavar='BASE_DIRECTORY',
     help="""The location of the base conda environment. This is useful for
       systems where there is a multiuser installation of conda. Providing the
@@ -762,6 +997,15 @@ Example usage:
       for when the exact conda environment is known. Providing the path will
       ensure that that environment is used. Using $CONDA_PREFIX as the
       argument will use the currently active environment for building.""")
+  parser.add_argument(
+    '--write_setpaths', default=None, type=str, nargs='?', metavar='PREFIX',
+    const='conda',
+    help="""When set, another script is added that activates the conda
+      environment before sourcing the setpaths script. Optionally, the prefix
+      of the script can be provided. The output files will be named
+      <prefix>_setpaths.<extension> and <prefix>_unsetpaths.<extension>
+      where the extension will be "sh"/"csh" for linux and macOS, and
+      "bat" for Windows.""")
   parser.add_argument(
     '--copy', action='store_true', default=False,
     help="""When set, the new environment has copies, not links to files. This
@@ -804,11 +1048,19 @@ Example usage:
   if namespace.update_conda:
     m.update_conda()
 
+  # if --install_dev_env is set, construct development environment
+  if namespace.install_dev_env:
+    m.create_dev_environment()
+
   # if builder is available, construct environment
   if builder is not None:
     m.create_environment(builder=builder, filename=filename,
                          python=namespace.python,
                          copy=namespace.copy, offline=namespace.offline)
+
+  # if --write_setpaths is set, write the extra script
+  if namespace.write_setpaths is not None:
+    m.write_conda_setpaths(prefix=namespace.write_setpaths, check_file=True)
 
   return 0
 

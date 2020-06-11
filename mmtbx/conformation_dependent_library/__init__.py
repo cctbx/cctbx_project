@@ -129,7 +129,7 @@ def generate_residue_tuples(hierarchy,
     residue_lookup = ['common_rna_dna']
     assert not include_non_standard_residues
   else:
-    assert length<=5
+    assert length<=10
     if length==3:
       if cdl_class:
         LinkedResidues = ThreeProteinResiduesWithCDL
@@ -138,6 +138,7 @@ def generate_residue_tuples(hierarchy,
     elif length==2: LinkedResidues = TwoProteinResidues
     elif length==4: LinkedResidues = FourProteinResidues
     elif length==5: LinkedResidues = FiveProteinResidues
+    else: LinkedResidues = FiveProteinResidues
     residue_lookup = ['common_amino_acid']
     if include_non_standard_residues:
       residue_lookup.append('modified_amino_acid')

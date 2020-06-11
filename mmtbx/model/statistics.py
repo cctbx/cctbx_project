@@ -96,7 +96,10 @@ class geometry(object):
     if(self.from_restraints is not None):
       mi,ma,me = self.from_restraints.chirality_deviations()
       n = self.from_restraints.n_chirality_proxies
-    return group_args(min = mi, max = ma, mean = me, n = n)
+      outliers = self.from_restraints.get_chirality_outliers(
+        sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
+        sigma_threshold=4)
+    return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
 
   def dihedral(self):
     mi,ma,me,n = 0,0,0,0
@@ -188,7 +191,7 @@ class geometry(object):
       gui_table   = gui_table)
 
   def rama_z_score(self):
-    return rama_z.rama_z(model = self.model, log = null_out()).get_result()
+    return rama_z.rama_z(models = [self.model], log = null_out()).get_result()
 
   def omega(self):
     result = omegalyze.omegalyze(pdb_hierarchy=self.pdb_hierarchy, quiet=True)

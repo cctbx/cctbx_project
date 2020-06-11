@@ -31,7 +31,7 @@ elif wx.Platform == '__WXGTK__' :
 else :
   _DEFAULT_PADDING = 6
 
-class SegmentedControl(wx.PyControl):
+class SegmentedControl(wx.Control):
   def __init__(self,
                 parent,
                 id=wx.ID_ANY,
@@ -41,7 +41,7 @@ class SegmentedControl(wx.PyControl):
                 name=wx.ButtonNameStr,
                 border=0,
                 pad=_DEFAULT_PADDING):
-    wx.PyControl.__init__(self, parent, id, pos=pos, size=size,
+    wx.Control.__init__(self, parent, id, pos=pos, size=size,
       style=wx.NO_BORDER,
       name=name)
     self.SetBackgroundStyle(wx.BG_STYLE_CUSTOM)

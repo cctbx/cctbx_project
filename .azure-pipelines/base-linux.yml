@@ -5,10 +5,10 @@
 jobs:
 - job: ${{ format('{0}_{1}', parameters.distribution, join('_', parameters.version) ) }}
   pool:
-    vmImage: ubuntu-16.04
-  timeoutInMinutes: 360
+    vmImage: ubuntu-latest
+  timeoutInMinutes: 120
   strategy:
-    maxParallel: 3
+    maxParallel: 1
     matrix:
       python2.7:
         CONDA: Linux

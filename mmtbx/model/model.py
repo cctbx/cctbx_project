@@ -13,6 +13,7 @@ from libtbx.utils import Sorry, user_plus_sys_time, null_out
 from libtbx import group_args, str_utils
 
 import iotbx.pdb
+import iotbx.map_model_manager
 import iotbx.cif.model
 import iotbx.ncs
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
@@ -349,7 +350,6 @@ class manager(object):
     return cls(model_input = None, pdb_hierarchy=hierarchy,
        crystal_symmetry=crystal_symmetry)
 
-
   @staticmethod
   def get_default_pdb_interpretation_scope():
     """
@@ -418,8 +418,9 @@ class manager(object):
         full_params.geometry_restraints = params.geometry_restraints
       if hasattr(params, "reference_model"):
         full_params.reference_model = params.reference_model
-      if hasattr(params, "schrodinger"):
-        full_params.schrodinger = params.schrodinger
+      for attr in ['amber', 'schrodinger']:
+        if hasattr(params, attr):
+          setattr(full_params, attr, getattr(params, attr))
       self._pdb_interpretation_params = full_params
     self.unset_restraints_manager()
 
@@ -495,29 +496,119 @@ class manager(object):
   def set_ss_annotation(self, ann):
     self._ss_annotation = ann
 
-  def set_crystal_symmetry_if_undefined(self, cs, force=False):
-    """
-    Function to set crystal symmetry if it is not defined yet.
-    Special case when incoming cs is the same to self._crystal_symmetry,
-    then just do nothing for compatibility with existing code.
-    It would be better to remove this function at all.
+  def set_crystal_symmetry(self, crystal_symmetry):
+    '''
+      Set the crystal_symmetry, keeping sites_cart the same
 
-    This function can be used ONLY straight after initialization of model,
-    when no xray_structure is constructed yet.
+      Uses set_crystal_symmetry_and_sites_cart because sites_cart have to
+      be replaced in either case.
+    '''
 
-    The keyword force=True sets cs even if it is defined.
-    """
-    assert self._xray_structure is None
-    is_empty_cs = self._crystal_symmetry is None or (
-        self._crystal_symmetry.unit_cell() is None and
-        self._crystal_symmetry.space_group() is None)
-    if not is_empty_cs:
-      if self._crystal_symmetry.is_similar_symmetry(cs):
-        return
-    if not force:
-      assert is_empty_cs, "%s,%s" % (
-          self._crystal_symmetry.show_summary(), cs.show_summary())
-    self._crystal_symmetry = cs
+    self.set_crystal_symmetry_and_sites_cart(crystal_symmetry,
+      self.get_sites_cart())
+
+  def set_crystal_symmetry_and_sites_cart(self, crystal_symmetry, sites_cart):
+
+    '''
+      Set the crystal symmetry and then replace sites_cart with supplied sites
+    '''
+
+    assert crystal_symmetry is not None
+
+    if(self.crystal_symmetry() is None and sites_cart is None):
+      # Just replace self._crystal_symmetry. There must be no xray_structure
+      #   and no sites_cart supplied
+      assert self._xray_structure is None
+      assert sites_cart is None
+      self._crystal_symmetry = crystal_symmetry
+    else:
+      assert sites_cart is not None
+      # Changing crystal_symmetry changes sites_frac but keeps sites_cart same
+
+      # Reset _crystal_symmetry
+      xrs = self.get_xray_structure()
+      same_symmetry = xrs.crystal_symmetry().is_similar_symmetry(
+        crystal_symmetry)
+      scattering_table = xrs.scattering_type_registry().last_table()
+      scatterers = xrs.scatterers()
+      sp = crystal.special_position_settings(crystal_symmetry)
+      self._xray_structure = xray.structure(sp, scatterers)
+      self._crystal_symmetry = crystal_symmetry
+
+      # Put sites_cart in
+      self._xray_structure.set_sites_cart(sites_cart)
+
+      self.setup_scattering_dictionaries(scattering_table = scattering_table)
+      if(not same_symmetry):
+        # This syncs internals and pdb_hierarchy with xray_structure
+        self.set_sites_cart_from_xrs()
+        # GRM is not valid if the symmetry is changed
+        self.unset_restraints_manager()
+
+  def shift_model_and_set_crystal_symmetry(self,
+       shift_cart=None, # shift to apply
+       crystal_symmetry=None, # optional new crystal symmetry
+       ):
+
+    '''
+      Method to apply a coordinate shift to a model object and keep track of
+      it with shift_manager
+
+      Takes into account any previous shifts by looking at existing
+      shift_manager for shift_cart and original_crystal_symmetry
+    '''
+
+    # checks
+    assert shift_cart is not None
+
+    # Get a shift_manager that knows about original_crystal_symmetry
+    #   and any prevous shift_cart
+    sm=self.get_shift_manager()
+    if sm:
+      if hasattr(sm,'deep_copy'): # XXX temporary backwards compatibility
+        sm=sm.deep_copy() # do not want to modify the previous one
+      original_crystal_symmetry=sm.get_original_cs()
+    else:
+      original_crystal_symmetry=self.crystal_symmetry()
+
+    # Get the new crystal symmetry to apply
+    if not crystal_symmetry:
+      crystal_symmetry=self.crystal_symmetry()
+
+    # Make a shift_manager if necessary
+    if not sm:
+      # New one:fill in shift_cart as (0,0,0), original_crystal_symmetry,
+      #   and shifted_crystal_symmetry
+
+      sm = iotbx.map_model_manager.shift_manager(
+          shift_cart=(0,0,0),
+          original_crystal_symmetry=original_crystal_symmetry,
+          shifted_crystal_symmetry=crystal_symmetry,
+          xray_structure_box=None, # fill in later
+        )
+
+    # Get the total shift since original
+    total_shift=[sm_sc+sc for sm_sc,sc in zip(sm.shift_cart,shift_cart)]
+
+    # New coordinates after applying shift_cart
+    sites_cart_new = self.get_sites_cart() + shift_cart
+
+    #Set symmetry and sites_cart
+    self.set_crystal_symmetry_and_sites_cart(crystal_symmetry, sites_cart_new)
+
+    # Set up new shift_manager with updated shift_cart,
+    #  and xray_structure_box
+    # NOTE: sm.shift_cart is now the total shift since original position of this
+    #   model, it is not the shift in this step alone. It is the shift which
+    #   reversed will put the model back where it belongs
+
+    sm.shift_cart=total_shift
+    sm.xray_structure_box=self.get_xray_structure()
+
+    # Now this is the new shift_manager
+    #  NOTE: set_shift_manager() is not needed because
+    #     set_crystal_symmetry_and_sites_cart() carries out same function
+    self._shift_manager=sm
 
   def set_refinement_flags(self, flags):
     self.refinement_flags = flags
@@ -790,32 +881,13 @@ class manager(object):
       self._shift_manager.shift_back(hierarchy_to_output)
     return hierarchy_to_output
 
-
-  def shift_origin(self, origin_shift_cart=None):
-    if not origin_shift_cart or origin_shift_cart==(0,0,0):
-      return self.deep_copy()
-    else:
-      new_model=self.deep_copy()
-      sites_cart=new_model.get_hierarchy().atoms().extract_xyz()
-      sites_cart+=origin_shift_cart
-      new_model.set_sites_cart(sites_cart)
-      return new_model
-
   def model_as_pdb(self,
       output_cs = True,
       atoms_reset_serial_first_value=None,
-      do_not_shift_back = False,
-      origin_shift_cart=None):
+      do_not_shift_back = False):
     """
     move all the writing here later.
     """
-
-    if origin_shift_cart:
-      return self.shift_origin(
-        origin_shift_cart=origin_shift_cart).model_as_pdb(output_cs=output_cs,
-        atoms_reset_serial_first_value=atoms_reset_serial_first_value,
-        do_not_shift_back=do_not_shift_back,
-        origin_shift_cart=None)
 
     if do_not_shift_back and self._shift_manager is None:
       do_not_shift_back = False
@@ -916,8 +988,7 @@ class manager(object):
     elif self.get_ss_annotation() is not None:
       ss_ann = self.get_ss_annotation()
     if ss_ann is not None:
-      ss_ann.remove_empty_annotations(self.get_hierarchy(),
-          self.get_atom_selection_cache())
+      ss_ann.remove_empty_annotations(self.get_hierarchy())
     return ss_ann
 
   def model_as_mmcif(self,
@@ -925,20 +996,8 @@ class manager(object):
       output_cs = True,
       additional_blocks = None,
       align_columns = False,
-      origin_shift_cart = None,
       do_not_shift_back = False,
       keep_original_loops = False):
-
-    if origin_shift_cart:
-      return self.shift_origin(
-        origin_shift_cart=origin_shift_cart).model_as_mmcif(
-        cif_block_name=cif_block_name,
-        output_cs=output_cs,
-        additional_blocks=additional_blocks,
-        align_columns=align_columns,
-        do_not_shift_back=do_not_shift_back,
-        origin_shift_cart=None,
-        keep_original_loops=keep_original_loops)
 
     out = StringIO()
     cif = iotbx.cif.model.cif()
@@ -966,7 +1025,7 @@ class manager(object):
         atoms = atoms.select(~ias_selection)
       grm_geometry = self.get_restraints_manager().geometry
       grm_geometry.pair_proxies(sites_cart)
-      struct_conn_loop = grm_geometry.get_struct_conn_mmcif(atoms)
+      struct_conn_loop = grm_geometry.get_struct_conn_mmcif(hierarchy_to_output)
       cif_block.add_loop(struct_conn_loop)
       self.get_model_statistics_info()
     # outputting HELIX/SHEET records
@@ -1217,11 +1276,21 @@ class manager(object):
           selection=None,
           log=self.log)
 
-    # Use Schrodinger force field if requested
+    ############################################################################
+    # Switch in external alternative geometry manager. Options include:
+    #  1. Amber force field
+    #  2. Schrodinger force field
+    ############################################################################
     params = self._pdb_interpretation_params
-    if hasattr(params, "schrodinger") and params.schrodinger.use_schrodinger:
+    if hasattr(params, 'amber') and params.amber.use_amber:
+      from amber_adaptbx.manager import digester
+      geometry = digester(geometry, params, log=self.log)
+    elif hasattr(params, "schrodinger") and params.schrodinger.use_schrodinger:
       from phenix_schrodinger import schrodinger_manager
-      geometry = schrodinger_manager(self._pdb_hierarchy, params, cleanup=True, grm=geometry)
+      geometry = schrodinger_manager(self._pdb_hierarchy,
+                                     params,
+                                     cleanup=True,
+                                     grm=geometry)
 
     restraints_manager = mmtbx.restraints.manager(
       geometry      = geometry,
@@ -1409,6 +1478,12 @@ class manager(object):
     This returns ncs_restraints_group_list object
     """
     return self._ncs_groups
+
+  def unset_ncs_constraints_groups(self):
+    self._ncs_groups=None
+    self._ncs_obj=None
+    # shouldn't be None, probably flex.bool(self.get_number_of_atoms(), True)
+    self._master_sel=None
 
   def setup_cartesian_ncs_groups(self, ncs_params=None, log=null_out()):
     import mmtbx.ncs.cartesian_restraints
@@ -1694,8 +1769,7 @@ class manager(object):
       scatterer labels do not match the atom labels.
     """
     if(sync_with_xray_structure and self._xray_structure is not None):
-      self._pdb_hierarchy.adopt_xray_structure(
-        xray_structure = self._xray_structure)
+      self.set_sites_cart_from_xrs()
     return self._pdb_hierarchy
 
   def set_sites_cart_from_hierarchy(self, multiply_ncs=False):
@@ -1927,15 +2001,18 @@ class manager(object):
           scatterers[i].site = scatterers[j].site
     self.set_sites_cart_from_xrs()
 
-  def rotatable_hd_selection(self):
+  def rotatable_hd_selection(self, iselection=True, use_shortcut=True):
     rmh_sel = mmtbx.hydrogens.rotatable(
       pdb_hierarchy      = self.get_hierarchy(),
       mon_lib_srv        = self.get_mon_lib_srv(),
       restraints_manager = self.get_restraints_manager(),
-      log                = self.log)
+      log                = self.log,
+      use_shortcut       = use_shortcut)
     sel_i = []
     for s in rmh_sel: sel_i.extend(s[1])
-    return flex.size_t(sel_i)
+    result = flex.size_t(sel_i)
+    if(iselection): return result
+    else:           return flex.bool(self.size(), result)
 
   def h_counts(self):
     occupancies = self._xray_structure.scatterers().extract_occupancies()
@@ -3087,10 +3164,13 @@ class manager(object):
     if(self.use_ias):
       ias_selection = self.get_ias_selection()
       m = manager(
-        model_input      = None,
-        pdb_hierarchy    = self.get_hierarchy().select(~ias_selection),
-        crystal_symmetry = self.crystal_symmetry(),
-        log              = null_out())
+        model_input        = None,
+        pdb_hierarchy      = self.get_hierarchy().select(~ias_selection),
+        crystal_symmetry   = self.crystal_symmetry(),
+        restraint_objects  = self._restraint_objects,
+        monomer_parameters = self._monomer_parameters,
+        pdb_interpretation_params = self.get_current_pdb_interpretation_params(),
+        log                = null_out())
       m.setup_scattering_dictionaries(scattering_table=scattering_table)
       m.get_restraints_manager()
     else:
@@ -3235,7 +3315,7 @@ class manager(object):
           continue
         duplicate_prevention[chain_id_key] = False
         chain_ids_match_dict[c.id] = []
-        cid = c.id if len(c.id) == 2 else " "+c.id
+        cid = c.id
         try:
           ind = all_cids.index(cid)
         except ValueError:

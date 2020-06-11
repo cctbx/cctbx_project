@@ -19,12 +19,15 @@ class minimization_monitor(object):
       return True
     if self.current_cycle >= self.max_number_of_cycles:
       return False
+    if self.mode == "simple_cycles" and self.current_cycle >= number_of_cycles:
+      return False
     if self.number_of_cycles is not Auto:
       return self.current_cycle < self.number_of_cycles
     elif self.mode == "min_outliers":
       return self.geometry_improved() or not self.geometry_is_ok()
     elif self.mode == "no_outliers":
       return not (self.geometry_is_perfect() or self.converged())
+    return False
 
   def save_cycle_results(self, geometry=None):
     self.current_cycle += 1

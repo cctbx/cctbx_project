@@ -161,6 +161,80 @@ namespace cctbx { namespace xray { namespace {
     }
   }
 
+  af::shared<double>
+  extract_fps(af::const_ref<scatterer<> > const& scatterers)
+  {
+    af::shared<double>
+      result(af::reserve(scatterers.size()));
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      result.push_back(scatterers[i].fp);
+    }
+    return result;
+  }
+
+  void
+  set_fps(
+    af::ref<scatterer<> > const& scatterers,
+    af::const_ref<double> const& fps)
+  {
+    CCTBX_ASSERT(scatterers.size() == fps.size());
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      scatterers[i].fp = fps[i];
+    }
+  }
+
+  void
+  set_fps(
+    af::ref<scatterer<> > const& scatterers,
+    af::const_ref<double> const& fps,
+    af::const_ref<bool> const& selection)
+  {
+    CCTBX_ASSERT(scatterers.size() == fps.size());
+    CCTBX_ASSERT(scatterers.size() == selection.size());
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      if(selection[i]) {
+         scatterers[i].fp = fps[i];
+      }
+    }
+  }
+
+  af::shared<double>
+  extract_fdps(af::const_ref<scatterer<> > const& scatterers)
+  {
+    af::shared<double>
+      result(af::reserve(scatterers.size()));
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      result.push_back(scatterers[i].fdp);
+    }
+    return result;
+  }
+
+  void
+  set_fdps(
+    af::ref<scatterer<> > const& scatterers,
+    af::const_ref<double> const& fdps)
+  {
+    CCTBX_ASSERT(scatterers.size() == fdps.size());
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      scatterers[i].fdp = fdps[i];
+    }
+  }
+
+  void
+  set_fdps(
+    af::ref<scatterer<> > const& scatterers,
+    af::const_ref<double> const& fdps,
+    af::const_ref<bool> const& selection)
+  {
+    CCTBX_ASSERT(scatterers.size() == fdps.size());
+    CCTBX_ASSERT(scatterers.size() == selection.size());
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      if(selection[i]) {
+         scatterers[i].fdp = fdps[i];
+      }
+    }
+  }
+
   int
   n_grad_u_iso(
     af::const_ref<scatterer<> > const& self)
@@ -599,6 +673,8 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("set_sites", cctbx::xray::set_sites,
         (arg("sites")))
       .def("extract_occupancies", cctbx::xray::extract_occupancies)
+      .def("extract_fps", cctbx::xray::extract_fps)
+      .def("extract_fdps", cctbx::xray::extract_fdps)
       .def("extract_grad_u_iso", cctbx::xray::extract_grad_u_iso)
       .def("set_occupancies", (void(*)(
               af::ref<cctbx::xray::scatterer<> > const&,
@@ -609,6 +685,24 @@ namespace scitbx { namespace af { namespace boost_python {
               af::const_ref<double> const&,
               af::const_ref<bool> const&)) cctbx::xray::set_occupancies,
               (arg("occupancies"),arg("selection")))
+      .def("set_fps", (void(*)(
+              af::ref<cctbx::xray::scatterer<> > const&,
+              af::const_ref<double> const&)) cctbx::xray::set_fps,
+              (arg("fps")))
+      .def("set_fps", (void(*)(
+              af::ref<cctbx::xray::scatterer<> > const&,
+              af::const_ref<double> const&,
+              af::const_ref<bool> const&)) cctbx::xray::set_fps,
+              (arg("fps"),arg("selection")))
+      .def("set_fdps", (void(*)(
+              af::ref<cctbx::xray::scatterer<> > const&,
+              af::const_ref<double> const&)) cctbx::xray::set_fdps,
+              (arg("fdps")))
+      .def("set_fdps", (void(*)(
+              af::ref<cctbx::xray::scatterer<> > const&,
+              af::const_ref<double> const&,
+              af::const_ref<bool> const&)) cctbx::xray::set_fdps,
+              (arg("fdps"),arg("selection")))
       .def("adjust_u_iso", cctbx::xray::adjust_u_iso)
       .def("n_grad_u_iso", cctbx::xray::n_grad_u_iso)
       .def("n_grad_u_aniso", cctbx::xray::n_grad_u_aniso)

@@ -474,6 +474,10 @@ class Toolbox(object):
       destination = os.path.join('modules', module)
     destpath, destdir = os.path.split(destination)
 
+    # default to using ssh for private phenix repositories
+    if module in ['phenix', 'solve_resolve']:
+      use_ssh = True
+
     if os.path.exists(destination):
       if git_available and os.path.exists(os.path.join(destination, '.git')):
         if not open(os.path.join(destination, '.git', 'HEAD'), 'r').read().startswith('ref:'):
@@ -842,7 +846,7 @@ class eigen_module(SourceModule):
 # Phenix repositories
 class phenix_module(SourceModule):
   module = 'phenix'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix/trunk']
+  anonymous = ['git', 'git@github.com:phenix-project/phenix.git']
 
 class phenix_html(SourceModule):
   module = 'phenix_html'
@@ -850,11 +854,15 @@ class phenix_html(SourceModule):
 
 class phenix_examples(SourceModule):
   module = 'phenix_examples'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_examples/trunk']
+  anonymous = ['git',
+               'git@gitlab.com:phenix_project/phenix_examples.git',
+               'https://gitlab.com/phenix_project/phenix_examples.git']
 
 class phenix_regression(SourceModule):
   module = 'phenix_regression'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_regression/trunk']
+  anonymous = ['git',
+               'git@gitlab.com:phenix_project/phenix_regression.git',
+               'https://gitlab.com/phenix_project/phenix_regression.git']
 
 class plex_module(SourceModule):
   module = 'Plex'
@@ -882,7 +890,7 @@ class pulchra_module(SourceModule):
 
 class solve_resolve_module(SourceModule):
   module = 'solve_resolve'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/solve_resolve/trunk']
+  anonymous = ['git', 'git@github.com:phenix-project/solve_resolve.git']
 
 class reel_module(SourceModule):
   module = 'reel'
@@ -946,6 +954,13 @@ class dials_regression_module(SourceModule):
   module = 'dials_regression'
   authenticated = ['svn',
                    'svn+ssh://%(cciuser)s@cci.lbl.gov/dials_regression/trunk']
+
+class iota_module(SourceModule):
+  module = 'iota'
+  anonymous = ['git',
+               'git@github.com:ssrl-px/iota.git',
+               'https://github.com/ssrl-px/iota.git',
+               'https://github.com/ssrl-px/iota/archive/master.zip']
 
 class msgpack_module(SourceModule):
   module = 'msgpack'
@@ -1051,6 +1066,8 @@ class Builder(object):
       wxpython4=False,
       config_flags=[],
       use_conda=None,
+      python='27',
+      no_boost_src=False,
     ):
     if nproc is None:
       self.nproc=1
@@ -1071,7 +1088,7 @@ class Builder(object):
     self.name = '%s-%s'%(self.category, self.platform)
     # Platform configuration.
     python_executable = 'python'
-    self.python3 = python3
+    self.python3 = python.startswith('3')
     if python3:
       python_executable = 'python3'
     self.wxpython4 = wxpython4
@@ -1095,6 +1112,8 @@ class Builder(object):
     # builder
     self.config_flags = config_flags
     self.use_conda = use_conda
+    self.python = python
+    self.no_boost_src = no_boost_src
     self.add_init()
 
     # Cleanup
@@ -1111,12 +1130,31 @@ class Builder(object):
 
     # Add 'hot' sources
     if hot:
-      list(map(self.add_module, self.get_hot()))
+      # conda builds do not need eigen (disabled), scons
+      hot = self.get_hot()
+      if self.use_conda is not None:
+        for module in ['scons']:
+          # SCons conda package may cause issues with procrunner on Python 2.7
+          # https://stackoverflow.com/questions/24453387/scons-attributeerror-builtin-function-or-method-object-has-no-attribute-disp
+          if module == 'scons' and self.python == '27':
+            continue
+          try:
+            hot.remove(module)
+          except ValueError:
+            pass
+      list(map(self.add_module, hot))
 
     # Add svn sources.
     self.revert=revert
     if update:
-      list(map(self.add_module, self.get_codebases()))
+      # check if boost needs to be downloaded
+      codebases = self.get_codebases()
+      if self.no_boost_src:
+        try:
+          codebases.remove('boost')
+        except ValueError:
+          pass
+      list(map(self.add_module, codebases))
 
     # always remove .pyc files
     self.remove_pyc()
@@ -1504,7 +1542,7 @@ class Builder(object):
     log = open(os.devnull, 'w')
 
     # environment is provided, so do check that it exists
-    if os.path.isdir(self.use_conda):
+    if self.use_conda is not None and os.path.isdir(self.use_conda):
       check_file = True
       self.use_conda = os.path.abspath(self.use_conda)
     # no path provided or file provided
@@ -1684,9 +1722,7 @@ environment exists in or is defined by {conda_env}.
         # check for existing miniconda3 installation
         if not os.path.isdir('mc3'):
           flags.append('--install_conda')
-        # check if --python3 is set
-        if self.python3:
-          flags.append('--python=36')
+        flags.append('--python={python}'.format(python=self.python))
         command = [
           'python',
           self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build',
@@ -1806,6 +1842,11 @@ environment exists in or is defined by {conda_env}.
         description="permit execution of config_modules.sh",
       ))
 
+    # write extra setpaths script for conda
+    if self.use_conda is not None:
+      self.add_command('libtbx.install_conda', args=['--write_setpaths'],
+                       description='Writing additional setup scripts for conda.')
+
   def add_make(self):
     self.add_command('libtbx.scons', args=['-j',
                                            str(self.nproc),
@@ -1867,6 +1908,7 @@ class CCIBuilder(Builder):
     'cbflib',
     'dxtbx',
     'scitbx',
+    'crys3d',
     'libtbx',
     'iotbx',
     'mmtbx',
@@ -1951,7 +1993,9 @@ class PhaserBuilder(CCIBuilder):
   ]
 
   def add_tests(self):
-    self.add_test_command('phaser_regression.regression',
+    self.add_test_parallel(module='phaser_regression') # run phaser_regression/run_tests.py file
+    """
+    self.add_test_command('phaser_regression.regression', # run Gabors tests
                           args=['all',
                                 '-o',
                                 'terse_failed',
@@ -1959,6 +2003,7 @@ class PhaserBuilder(CCIBuilder):
                                 '%s' %self.nproc,
                                 ],
     )
+    """
 
   def add_base(self, extra_opts=[]):
     # skip unnecessary base packages when building phaser only
@@ -2065,7 +2110,7 @@ class CCTBXBuilder(CCIBuilder):
     pass
 
 class DIALSBuilder(CCIBuilder):
-  CODEBASES_EXTRA = ['dials', 'xia2']
+  CODEBASES_EXTRA = ['dials', 'iota', 'xia2']
   LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
   HOT_EXTRA = ['msgpack']
   def add_tests(self):
@@ -2109,6 +2154,7 @@ class LABELITBuilder(CCIBuilder):
 class XFELLegacyBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'dials',
+    'iota',
     'labelit',
     'cxi_xdr_xes'
   ]
@@ -2138,6 +2184,7 @@ class XFELLegacyBuilder(CCIBuilder):
 class XFELBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'dials',
+    'iota',
     'uc_metrics',
     'ncdist',
   ]
@@ -2192,6 +2239,7 @@ class PhenixBuilder(CCIBuilder):
     'xia2',
     'phaser',
     'phaser_regression',
+    'iota',
   ]
   HOT_EXTRA = ['msgpack']
   LIBTBX_EXTRA = [
@@ -2214,6 +2262,64 @@ class PhenixBuilder(CCIBuilder):
     'iota',
   ]
 
+  def add_module(self, module, workdir=None, module_directory=None):
+    """
+    Add git-lfs command for phenix_examples and phenix_regression
+    If the dev_env directory already exists, it is assumed that git-lfs
+    is available in that directory
+    """
+    super(PhenixBuilder, self).add_module(module, workdir, module_directory)
+
+    # update phenix_regression and phenix_examples with git-lfs
+    if module == 'phenix_examples' or module == 'phenix_regression':
+      # prepend path for check
+      dev_env = os.path.join('.', 'dev_env', 'bin')
+      if sys.platform == 'win32':
+        dev_env = os.path.join('.', 'dev_env', 'Library', 'bin')
+        os.environ['PATH'] = os.path.abspath(dev_env) + ';'  + os.environ['PATH']
+      else:
+        os.environ['PATH'] = os.path.abspath(dev_env) + ':'  + os.environ['PATH']
+
+      svn_is_available = False
+      git_lfs_is_available = False
+
+      # check if git-lfs and svn are available
+      log = open(os.devnull, 'w')
+
+      try:
+        returncode = subprocess.call(['svn', '--version'], stdout=log, stderr=log)
+        if returncode == 0:
+          svn_is_available = True
+      except Exception:
+        pass
+
+      try:
+        returncode = subprocess.call(['git', 'lfs', '--version'], stdout=log, stderr=log)
+        if returncode == 0:
+          git_lfs_is_available = True
+      except Exception:
+        pass
+
+      log.close()
+
+      # set if dev_env will be created in base step
+      self.install_dev_env = False
+      if not svn_is_available or not git_lfs_is_available:
+        self.install_dev_env = True
+
+      # get lfs files
+      if self.install_dev_env:
+        print('*'*79)
+        print("""\
+An environment containing git-lfs and/or svn will be installed during the "base"
+step. Pleaser re-run the "update" step after "base" completes, so that git-lfs
+files for {module} will be downloaded.""".format(module=module))
+        print('*'*79)
+      else:
+        workdir = ['modules', module]
+        self.add_step(self.shell(command=['git', 'lfs', 'install', '--local'], workdir=workdir))
+        self.add_step(self.shell(command=['git', 'lfs', 'pull'], workdir=workdir))
+
   def add_base(self, extra_opts=[]):
     super(PhenixBuilder, self).add_base(
       extra_opts=['--phenix',
@@ -2221,6 +2327,27 @@ class PhenixBuilder(CCIBuilder):
                   '--dials',
                   '--xia2',
                  ] + extra_opts)
+
+    # install extra development environment if necessary
+    if hasattr(self, 'install_dev_env') and self.install_dev_env:
+      if self.use_conda is None:
+        raise RuntimeError("""
+Conda is needed for creating the extra environment with git-lfs. Please add
+"--use-conda" to your bootstrap.py command or make sure git-lfs is available
+in your path. """)
+      self.python_base = self._get_conda_python()
+      if self.python_base.startswith('../conda_base'):
+        self.python_base = self.python_base[1:]  # keep current directory
+      env = {
+        'PYTHONPATH': None,
+        'LD_LIBRARY_PATH': None,
+        'DYLD_LIBRARY_PATH': None
+      }
+      command = [self.python_base,
+                 os.path.join('modules', 'cctbx_project', 'libtbx',
+                              'auto_build', 'install_conda.py'),
+                 '--install_dev_env', '--verbose']
+      self.add_step(self.shell(command=command, workdir=['.']))
 
   def add_install(self):
     Builder.add_install(self)
@@ -2504,6 +2631,7 @@ class QRBuilder(PhenixBuilder):
                           env = self.get_environment()
                           )
     self.add_test_command('qr.test',
+                          # args=['--non_mopac_only'],
                           haltOnFailure=True,
                           env = self.get_environment()
                           )
@@ -2521,7 +2649,7 @@ class QRBuilder(PhenixBuilder):
       "MOPAC_COMMAND"  : "/home/builder/software/mopac/mopac.csh",
     }
     for env, dirs in mopac_envs.items():
-      environment[env] = os.path.join(*dirs)
+      environment[env] = dirs
     return environment
 
 class PhenixTNGBuilder(PhenixBuilder):
@@ -2653,16 +2781,14 @@ def run(root=None):
                     help="Builds software with mpi functionality",
                     action="store_true",
                     default=False)
-  parser.add_argument("--python3",
-                    dest="python3",
-                    help="Install a Python3 interpreter. This is unsupported and purely for development purposes.",
-                    action="store_true",
-                    default=False)
-  parser.add_argument("--wxpython4",
-                    dest="wxpython4",
-                    help="Install wxpython4 instead of wxpython3. This is unsupported and purely for development purposes.",
-                    action="store_true",
-                    default=False)
+  python_args = parser.add_mutually_exclusive_group(required=False)
+  python_args.add_argument('--python',
+                    default='27', type=str, nargs='?', const='27',
+                    choices=['27', '36', '37', '38'],
+                    help="""When set, a specific Python version of the
+conda environment will be used. This only affects environments selected with
+the --builder flag. For non-conda dependencies, "36", "37", and "38" implies
+Python 3.7.""")
   parser.add_argument("--config-flags", "--config_flags",
                     dest="config_flags",
                     help="""Pass flags to the configuration step. Flags should
@@ -2677,11 +2803,19 @@ existing conda environment or a file defining a conda environment can be
 provided. The build will use that environment instead of creating a default one
 for the builder. If the currently active conda environment is to be used for
 building, $CONDA_PREFIX should be the argument for this flag. Otherwise, a new
-environment will be created. The --python3 flag will be ignored when there is
+environment will be created. The --python flag will be ignored when there is
 an argument for this flag. Specifying an environment is for developers that
 maintain their own conda environment.""",
                     default=None, nargs='?', const='')
-
+  parser.add_argument("--no-boost-src", "--no_boost_src",
+                      dest="no_boost_src",
+                      help="""When set, the reduced Boost source code is not
+downloaded into the modules directory. This enables the usage of an existing
+installation of Boost in the same directory as the Python for configuration.
+For example, this flag should be used if the conda package for Boost is
+available. This flag only affects the "update" step.""",
+                      action="store_true",
+                      default=False)
   parser.add_argument("--build-dir",
                      dest="build_dir",
                      help="directory where the build will be. Should be at the same level as modules! default is 'build'",
@@ -2723,6 +2857,10 @@ maintain their own conda environment.""",
       actions.append(options.use_conda)
     options.use_conda = ''
 
+  # Check if the argument to --use-conda starts with '~'
+  if options.use_conda is not None and options.use_conda.startswith('~'):
+    options.use_conda = os.path.expanduser(options.use_conda)
+
   print("Performing actions:", " ".join(actions))
 
   # Check builder
@@ -2760,10 +2898,12 @@ maintain their own conda environment.""",
     force_base_build=options.force_base_build,
     enable_shared=options.enable_shared,
     mpi_build=options.mpi_build,
-    python3=options.python3,
-    wxpython4=options.wxpython4,
+    python3=False,
+    wxpython4=False,
     config_flags=options.config_flags,
     use_conda=options.use_conda,
+    python=options.python,
+    no_boost_src=options.no_boost_src,
   ).run()
   print("\nBootstrap success: %s" % ", ".join(actions))
 

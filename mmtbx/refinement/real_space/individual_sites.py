@@ -340,12 +340,11 @@ class box_refinement_manager(object):
         if state:
           iselection.append(i)
       box = utils.extract_box_around_model_and_map(
-        xray_structure = self.xray_structure,
+        xray_structure = self.xray_structure.select(selection=selection_within),
         map_data       = self.target_map,
-        selection      = selection_within,
         box_cushion    = box_cushion)
       new_unit_cell = box.xray_structure_box.unit_cell()
-      geo_box = self.geometry_restraints_manager.select(box.selection)
+      geo_box = self.geometry_restraints_manager.select(selection_within)
       geo_box = geo_box.discard_symmetry(new_unit_cell=new_unit_cell)
       geo_box.shift_sites_cart(box.shift_cart) # disaster happens otherwise
       map_box = box.map_box
@@ -410,6 +409,7 @@ class minimize_wrapper_with_map():
       refine_ncs_operators=False,
       number_of_cycles=1,
       cycles_to_converge=2,
+      min_mode='simple_cycles',
       log=None):
 
     # completely new way of doing this. using RSR macro-cycle
@@ -431,6 +431,7 @@ class minimize_wrapper_with_map():
     params.refinement.run = "minimization_global+local_grid_search"
     params.refine_ncs_operators=False
     params.output.write_all_states = True
+    params.refinement.macro_cycles = number_of_cycles
     rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load(
         rotamers = "favored")
 
@@ -455,7 +456,13 @@ class minimize_wrapper_with_map():
     model.set_sites_cart_from_hierarchy(res.model.get_hierarchy())
     res.structure_monitor.states_collector.write(file_name="rsr_all_states.pdb")
     return
+
+
+
+
+
     # end ===================================================
+    # Very sophisticated implementation. Need to investigate before removal.
 
     from mmtbx.refinement.geometry_minimization import add_rotamer_restraints
     from mmtbx.refinement.minimization_monitor import minimization_monitor
@@ -480,7 +487,7 @@ class minimize_wrapper_with_map():
         number_of_cycles=number_of_cycles,
         max_number_of_cycles=20,
         cycles_to_converge=cycles_to_converge,
-        mode="no_outliers")
+        mode=min_mode)
     selection_real_space = None
     import mmtbx.refinement.real_space.weight
     self.w = 1

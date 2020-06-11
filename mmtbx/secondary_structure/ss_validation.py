@@ -8,8 +8,7 @@ from six.moves import cStringIO as StringIO
 import sys
 from libtbx import easy_mp
 import mmtbx
-from mmtbx.building.loop_closure.utils import get_phi_psi_atoms, get_rama_score, \
-    rama_evaluate, get_pair_angles
+from mmtbx.building.loop_closure.utils import get_phi_psi_atoms, get_pair_angles
 from libtbx import group_args
 
 import boost.python
@@ -17,6 +16,7 @@ from six.moves import zip
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 from mmtbx.validation import ramalyze
+from phenix.pdb_tools.phi_psi_2_data import phi_psi_2_mask_class
 
 master_phil_str = '''
 ss_validation {
@@ -47,6 +47,7 @@ class gather_ss_stats(object):
     self.r = rama_eval_manager
     if self.r is None:
       self.r = rama_eval()
+    self.pp2m = phi_psi_2_mask_class()
 
   def __call__(self, hsh_tuple):
     temp_annot = iotbx.pdb.secondary_structure.annotation(
@@ -67,6 +68,7 @@ class gather_ss_stats(object):
         atom_selection_cache=self.asc,
         sec_str_from_pdb_file=temp_annot,
         params=ss_params.secondary_structure,
+        show_summary_on=False,
         log = ss_m_log)
     h_bond_proxies, hb_angles = ss_manager.create_protein_hbond_proxies(log=ss_m_log)
 
@@ -87,35 +89,31 @@ class gather_ss_stats(object):
         n_mediocre_hbonds += 1
 
     # Ramachandran outliers and wrong areas
-    sele = ss_manager.selection_cache.selection(temp_annot.as_atom_selections()[0])
+    sele = self.asc.selection(temp_annot.as_atom_selections()[0])
     ss_h = self.pdb_h.select(sele)
     phi_psi_atoms = get_phi_psi_atoms(ss_h)
 
     n_outliers = 0
     n_wrong_region = 0
     for phi_psi_pair, rama_key in phi_psi_atoms:
-      rama_score = get_rama_score(phi_psi_pair, self.r, rama_key)
-      if rama_evaluate(phi_psi_pair, self.r, rama_key) == ramalyze.RAMALYZE_OUTLIER:
+      phi, psi = get_pair_angles(phi_psi_pair)
+      r_eval = self.r.evaluate_angles(rama_key, phi, psi)
+      if r_eval == ramalyze.RAMALYZE_OUTLIER:
         n_outliers += 1
       else:
-        reg = gather_ss_stats.helix_sheet_rama_region(phi_psi_pair)
-        if (reg == 1 and not helix) or (reg == 2 and helix):
+        reg = pp2_helix_sheet_rama_region(phi, psi, self.pp2m)
+        if (helix and reg != 'A') or (not helix and reg !='B'):
           n_wrong_region += 1
           # print "  Wrong region:", phi_psi_pair[0][2].id_str(), reg, helix
-
     del ss_manager
     del ss_params
     return n_hbonds, n_bad_hbonds, n_mediocre_hbonds, hb_lens, n_outliers, n_wrong_region
 
-  @classmethod
-  def helix_sheet_rama_region(cls,phi_psi_pair):
-    # result 1 - helix, 2 - sheet, 0 - other
-    # cutoff: phi < 70 - helix, phi>=70 - sheet
-    phi_psi_angles = get_pair_angles(phi_psi_pair, round_coords=False)
-    if phi_psi_angles[1] < 70:
-      return 1
-    else:
-      return 2
+def pp2_helix_sheet_rama_region(phi, psi, pp2m=None):
+  # result: A - helix, B - sheet.
+  if pp2m is None:
+    pp2m = phi_psi_2_mask_class()
+  return pp2m.get_closest((phi,psi))
 
 def is_ca_and_something(pdb_h):
   asc = pdb_h.atom_selection_cache()

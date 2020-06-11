@@ -1,0 +1,28 @@
+# Daily update of build cache artifacts
+
+# no continuous integration builds or pull requests
+trigger: none
+pr: none
+
+# Daily builds
+schedules:
+- cron: '0 1 * * *'
+  displayName: Daily rebuild of cache artifacts
+  branches:
+    include:
+    - master
+
+stages:
+- stage: Preparation
+  displayName: Download
+  jobs:
+    - template: ./download-source.yml
+    - template: ./download-conda.yml
+
+- stage: Build
+  displayName: Build and test
+  dependsOn: Preparation
+  jobs:
+    - template: ./full-build.yml
+      parameters:
+        modules: modules

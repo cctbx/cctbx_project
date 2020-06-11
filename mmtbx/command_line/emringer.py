@@ -154,7 +154,7 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
     cs_consensus = mmtbx.utils.check_and_set_crystal_symmetry(
       models = [model], map_inps=[map_inp])
     base = map_and_model.input(
-      map_data         = map_inp.map_data(),
+      map_manager               = map_inp,
       model            = model,
       box              = False)
     hierarchy = base.model().get_hierarchy()

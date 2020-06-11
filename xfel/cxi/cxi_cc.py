@@ -249,7 +249,7 @@ def correlation(self,other, include_negatives=False):
     return slope,offset,corr,N
 
 def load_cc_data(params,reindexing_op,output):
-  if reindexing_op is not "h,k,l":
+  if reindexing_op != "h,k,l":
     print("""Recalculating after reindexing the new data with %s
      (it is necessary to pick which indexing choice gives the sensible CC iso):"""%reindexing_op)
   try:

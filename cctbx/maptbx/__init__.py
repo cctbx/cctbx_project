@@ -136,18 +136,35 @@ def assert_same_gridding(map_1, map_2,
   if([f1,f2,f3].count(True)!=3):
     raise Sorry(Sorry_message)
 
-def shift_origin_if_needed(map_data, sites_cart=None, crystal_symmetry=None,
-    ncs_object=None):
-  shift_needed = not \
+def shift_origin_if_needed(map_data=None,
+    sites_cart=None,
+    crystal_symmetry=None,
+    ncs_object=None,
+    origin_grid_units=None,
+    n_xyz=None,
+    ):
+
+  if not map_data:
+    assert origin_grid_units and n_xyz
+    shift_needed=True
+
+  else: # usual
+    shift_needed = not \
     (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
      map_data.is_0_based())
+
   shift_frac = None
   shift_cart = None
   if(shift_needed):
-    N = map_data.all()
-    O = map_data.origin()
+    if map_data:
+      N = map_data.all()
+      O = map_data.origin()
+      map_data = map_data.shift_origin()
+    else:
+      N=n_xyz
+      O=origin_grid_units
+
     original_origin_grid_units=O
-    map_data = map_data.shift_origin()
     original_origin_cart=(0,0,0)
     if crystal_symmetry:
       if(not crystal_symmetry.space_group().type().number() in [0,1]):
@@ -1306,6 +1323,18 @@ def d_min_from_map(map_data, unit_cell, resolution_factor=1./2.):
     c/nz/resolution_factor
   return max(d1,d2,d3)
 
+def map_coefficients_to_map(map_coeffs, crystal_symmetry, n_real):
+  assert isinstance(map_coeffs.data(), flex.complex_double)
+  cg = crystal_gridding(
+    unit_cell             = crystal_symmetry.unit_cell(),
+    space_group_info      = crystal_symmetry.space_group_info(),
+    pre_determined_n_real = n_real)
+  fft_map = map_coeffs.fft_map(
+    crystal_gridding = cg,
+    symmetry_flags   = use_space_group_symmetry)
+  fft_map.apply_volume_scaling()
+  return fft_map.real_map_unpadded()
+
 def map_to_map_coefficients(m, cs, d_min):
   import cctbx.miller
   fft = fftpack.real_to_complex_3d([i for i in m.all()])
@@ -1530,7 +1559,7 @@ Fourier image of specified resolution, etc.
       i_cut = ib0.i_first_inflection_point
     else:
       i_cut = None
-      for i in xrange(ib0.radii.size()):
+      for i in range(ib0.radii.size()):
         if(ib0.image_values[i]<=0):
           rad_cut = ib0.radii[i-1]
           i_cut = i-1
@@ -1637,7 +1666,7 @@ def sharpen2(map, xray_structure, resolution, file_name_prefix):
   return fo_sharp, map_data
 
 def loc_res(map,
-            pdb_hierarchy,
+            model,  #pdb_hierarchy,
             crystal_symmetry,
             chunk_size=10,
             soft_mask_radius=3.,
@@ -1653,6 +1682,7 @@ def loc_res(map,
   from cctbx import miller
   import mmtbx.utils
 
+
   mmm = map.as_1d().min_max_mean().as_tuple()
   map = map-mmm[2]
   map = map/map.sample_standard_deviation()
@@ -1661,6 +1691,7 @@ def loc_res(map,
     space_group_info      = crystal_symmetry.space_group_info(),
     pre_determined_n_real = map.accessor().all())
   #
+  pdb_hierarchy=model.get_hierarchy()
   ph_dc = pdb_hierarchy.deep_copy()
   xrs = pdb_hierarchy.extract_xray_structure(crystal_symmetry=crystal_symmetry)
   mmtbx.utils.setup_scattering_dictionaries(
@@ -1678,16 +1709,23 @@ def loc_res(map,
   chunk_selections = pdb_hierarchy.chunk_selections(
     residues_per_chunk=chunk_size)
   #
+  from iotbx.map_manager import map_manager
+  mm=map_manager(map_data=map,
+    unit_cell_crystal_symmetry=crystal_symmetry,
+    unit_cell_grid=map.all())
+
   for chunk_sel in chunk_selections:
     ph_sel  = pdb_hierarchy.select(chunk_sel).deep_copy()
     xrs_sel = xrs.select(chunk_sel)
+    model_sel=model.select(chunk_sel)
     box = mmtbx.utils.extract_box_around_model_and_map(
-      xray_structure   = xrs_sel,
-      map_data         = map,
+      model            = model_sel,
+      mm               = mm,
       box_cushion      = 3,
       soft_mask        = True,
       soft_mask_radius = soft_mask_radius,
       mask_atoms       = True)
+
     #####
     fo = miller.structure_factor_box_from_map(
       crystal_symmetry = box.xray_structure_box.crystal_symmetry(),

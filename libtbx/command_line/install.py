@@ -230,6 +230,12 @@ warehouse = {
     'configure': False,
     'force-configure': True,
   },
+  "iota": {
+    'pip-auth': 'git@github.com:/ssrl-px/iota',
+    'pip-anon': 'https://github.com/ssrl-px/iota.git',
+    'configure': False,
+    'force-configure': True,
+  },
   'screen19': {
     'pip-auth': 'git@github.com:/xia2/screen19',
     'pip-anon': 'https://github.com/xia2/screen19.git',

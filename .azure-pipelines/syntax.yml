@@ -3,8 +3,8 @@
 jobs:
 - job: syntax
   pool:
-    vmImage: ubuntu-16.04
-  timeoutInMinutes: 360
+    vmImage: ubuntu-latest
+  timeoutInMinutes: 90
   strategy:
     maxParallel: 10
     matrix:
@@ -12,6 +12,11 @@ jobs:
         PYTHON_VERSION: 2.7
       python3.6:
         PYTHON_VERSION: 3.6
+      python3.7:
+        PYTHON_VERSION: 3.7
+      python3.8:
+        PYTHON_VERSION: 3.8
+
 
   steps:
 

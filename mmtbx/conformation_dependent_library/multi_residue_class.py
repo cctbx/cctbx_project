@@ -310,7 +310,7 @@ if __name__=="__main__":
   geometry_restraints_manager = get_geometry_restraints_manager(filename)
   pdb_hierarchy.reset_i_seq_if_necessary()
   from mmtbx.conformation_dependent_library import generate_protein_fragments
-  for i in range(2,6):
+  for i in range(2,11):
     for threes in generate_protein_fragments(pdb_hierarchy,
                                              geometry_restraints_manager,
                                              length=i,

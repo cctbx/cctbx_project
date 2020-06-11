@@ -3,7 +3,12 @@
 # Variables:
 #   CONDA: Linux, MacOSX
 #   OS: linux-64, osx-64
-#   PYTHON_VERSION: py27, py36
+#   PYTHON_VERSION: py27, py36, py37, py38
+#   MODULES: <modules artifact name>
+#
+# Optional Parameters:
+#   distribution: centos, ubuntu
+#   version: [6, 10]
 
 steps:
 
@@ -11,11 +16,11 @@ steps:
 - checkout: none
 
 - task: DownloadPipelineArtifact@2
-  displayName: Download modules tarball
   inputs:
     source: 'current'
-    artifact: modules
+    artifact: $(MODULES)
     path: $(Pipeline.Workspace)
+  displayName: Download modules tarball
 
 - script: |
     cd $(Pipeline.Workspace)
@@ -28,20 +33,43 @@ steps:
   displayName: Link bootstrap.py
 
 # install miniconda
+- task: DownloadPipelineArtifact@2
+  inputs:
+    source: 'specific'
+    project: '$(System.TeamProjectId)'
+    pipeline: 4
+    artifact: 'miniconda'
+    path: $(Pipeline.Workspace)/miniconda
+  displayName: Download miniconda
+
 - script: |
     set -x -e
-    curl -o $(Pipeline.Workspace)/miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-latest-$(CONDA)-x86_64.sh
-    bash $(Pipeline.Workspace)/miniconda.sh -b -u -p $(Pipeline.Workspace)/miniconda
-    export PATH=$(Pipeline.Workspace)/miniconda/bin:$PATH
+    bash $(Pipeline.Workspace)/miniconda/Miniconda3-latest-$(CONDA)-x86_64.sh -b -u -p $(Pipeline.Workspace)/miniconda
   displayName: Install miniconda
 
 # create conda environment
+# fresh downloads for "Update build cache" and "Full" pipelines
 - task: DownloadPipelineArtifact@2
-  displayName: Download conda packages
   inputs:
     source: 'current'
     artifact: $(PYTHON_VERSION)_$(OS)
     path: $(Pipeline.Workspace)/channel
+  displayName: Download conda packages
+  condition: >
+    or(eq(variables['Build.DefinitionName'], 'Update build cache'),
+       eq(variables['Build.DefinitionName'], 'Full'))
+
+- task: DownloadPipelineArtifact@2
+  inputs:
+    source: 'specific'
+    project: '$(System.TeamProjectId)'
+    pipeline: 8
+    artifact: $(PYTHON_VERSION)_$(OS)
+    path: $(Pipeline.Workspace)/channel
+  displayName: Download cached conda packages
+  condition: >
+    and(ne(variables['Build.DefinitionName'], 'Update build cache'),
+        ne(variables['Build.DefinitionName'], 'Full'))
 
 - script: |
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
@@ -60,6 +88,13 @@ steps:
     conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
   displayName: Create conda environment
 
+# - script: |
+#     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
+#     conda remove -y --force -n $(PYTHON_VERSION) boost boost-cpp
+#     conda install -y --no-deps -c cctbx-old-abi -n $(PYTHON_VERSION) boost boost-cpp
+#   displayName: Use Boost from cctbx-old-abi channel
+#   condition: or(eq('${{ parameters.version[0] }}', 6), eq('${{ parameters.version[0] }}', 7), eq('${{ parameters.version[0] }}', 14))
+
 # build
 - script: |
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
@@ -68,9 +103,9 @@ steps:
     python bootstrap.py build --builder=cctbx --use-conda=${CONDA_PREFIX} --nproc=4
     cd build
     source setpaths.sh
-    libtbx.configure cma_es fable rstbx simtbx spotfinder cbflib_adaptbx
-    make -j 4
-    make -j 4
+    libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx phenix_regression phenix_examples
+    libtbx.scons -j 4
+    libtbx.scons -j 4
   displayName: Configure and Build
 
 # test
@@ -83,7 +118,7 @@ steps:
     cd tests
     libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es \
       module=fable module=gltbx module=iotbx module=libtbx module=rstbx \
-      module=scitbx module=simtbx module=smtbx module=spotfinder \
+      module=scitbx module=smtbx module=spotfinder \
       module=annlib_adaptbx module=cbflib_adaptbx \
       nproc=4
   failOnStderr: false

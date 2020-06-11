@@ -41,10 +41,6 @@
 #pragma once
 #endif
 
-#if _MSC_VER > 1800 // [
-#include <stdint.h>
-#else // ] _MSC_VER > 1800 [
-
 #include <limits.h>
 
 // For Visual Studio 6 in C++ mode and for many Visual Studio versions when
@@ -243,17 +239,10 @@ typedef uint64_t  uintmax_t;
 #define UINT64_C(val) val##ui64
 
 // 7.18.4.2 Macros for greatest-width integer constants
-// These #ifndef's are needed to prevent collisions with <boost/cstdint.hpp>.
-// Check out Issue 9 for the details.
-#ifndef INTMAX_C //   [
-#  define INTMAX_C   INT64_C
-#endif // INTMAX_C    ]
-#ifndef UINTMAX_C //  [
-#  define UINTMAX_C  UINT64_C
-#endif // UINTMAX_C   ]
+#define INTMAX_C   INT64_C
+#define UINTMAX_C  UINT64_C
 
 #endif // __STDC_CONSTANT_MACROS ]
 
-#endif // _MSC_VER > 1800 ]
 
 #endif // _MSC_STDINT_H_ ]

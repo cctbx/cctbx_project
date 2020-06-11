@@ -3,11 +3,12 @@ from cctbx.array_family import flex
 from libtbx import adopt_init_args
 import mmtbx.refinement.real_space
 from mmtbx.refinement.real_space import individual_sites
-import math
+import math, sys
 from cctbx import maptbx
 import scitbx.math
 import mmtbx.idealized_aa_residues.rotamer_manager
-import iotbx.pdb
+import collections
+from libtbx import group_args
 
 import boost.python
 from six.moves import range
@@ -18,32 +19,152 @@ def flatten(l):
   return sum(([x] if not (isinstance(x, list) or isinstance(x, flex.size_t))
     else flatten(x) for x in l), [])
 
+###
+# TODO: do not fit residues whose side chains are involced into bonds!
+###
+class monitor(object):
+  def __init__(self, id_str, selection, map_data, unit_cell, weights, pairs,
+               cmv, rotamer_evaluator, log):
+    adopt_init_args(self, locals())
+    self.states = collections.OrderedDict()
+
+  def add(self, residue, state):
+    vals = collections.OrderedDict()
+    target     = 0
+    target_neg = 0
+    exceed_map_max_value = False
+    for i in self.selection:
+      atom = residue.atoms()[i]
+      key = "%s_%s_%s"%(
+        atom.parent().parent().parent().id, atom.parent().resname,
+        atom.name.strip())
+      name = atom.name.strip().upper()
+      element = atom.element.strip().upper()
+      if(element in ["H","D"]): continue
+      mv = self.map_data.eight_point_interpolation(
+        self.unit_cell.fractionalize(atom.xyz))
+      vals[name] = mv
+      if(mv > self.cmv[key]*3 and not element in ["S","SE"]):
+        exceed_map_max_value = True
+      target += mv
+      if(mv < 0): target_neg += mv
+    #
+    rot = self.rotamer_evaluator.evaluate_residue(residue)
+    self.states[state] = group_args(
+      vals       = vals,
+      sites_cart = residue.atoms().extract_xyz(),
+      target     = target,
+      target_neg = target_neg,
+      exceed_map_max_value = exceed_map_max_value,
+      rot        = rot)
+
+  def finalize(self, residue):
+    if(len(self.states.keys())==1 or self.selection.size()==0): return
+    state = "start"
+    S     = self.states["start"]
+    F     = self.states["fitting"]
+    T     = self.states["tuneup"]
+    #
+    if((S.rot=="OUTLIER" and F.rot!="OUTLIER" and not F.exceed_map_max_value) or
+       (F.target>S.target and F.target_neg>=S.target_neg and not F.exceed_map_max_value) or
+       (F.target_neg>S.target_neg) or
+       (S.exceed_map_max_value and not F.exceed_map_max_value)):
+      state = "fitting"
+    N = self.states[state]
+    if((N.rot=="OUTLIER" and T.rot!="OUTLIER" and not T.exceed_map_max_value) or
+       (T.target>N.target and T.target_neg>=S.target_neg and not T.exceed_map_max_value) or
+       (T.target_neg>N.target_neg) or
+       (N.exceed_map_max_value and not T.exceed_map_max_value)):
+      state = "tuneup"
+    #
+    residue.atoms().set_xyz(self.states[state].sites_cart)
+    #
+    if(state != "tuneup"):
+      self.add(residue = residue, state = "revert")
+    #
+
+  def show(self):
+    if(len(self.states.keys())==1 or self.selection.size()==0): return
+    print(self.id_str, file=self.log)
+    for k,v in zip(self.states.keys(), self.states.values()):
+      vals = " ".join(["%s: %5.2f"%(k_, v_)
+        for k_,v_ in zip(v.vals.keys(), v.vals.values())])
+      print("  %7s: score: %7.3f %s %s"%(k, v.target, vals, v.rot), file=self.log)
+
 class run(object):
   def __init__(self,
                residue,
                mon_lib_srv,
                rotamer_manager,
                sin_cos_table,
+               cmv,
+               unit_cell,
+               rotatable_hd=None,
                vdw_radii=None,
                xyzrad_bumpers=None,
                target_map=None,
                target_map_for_cb=None,
-               unit_cell=None,
-               backbone_sample=True,
-               accept_only_if_max_shift_is_smaller_than=None):
+               backbone_sample=False,
+               accept_only_if_max_shift_is_smaller_than=None,
+               log=None):
     adopt_init_args(self, locals())
-    #
-    if(target_map is None):
-      assert not backbone_sample
-    # Initial state
-    rotamer_start = rotamer_manager.rotamer(residue=self.residue)
-    sites_cart_start = self.residue.atoms().extract_xyz()
+    if(self.log is None): self.log = sys.stdout
     self.co = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
       residue         = self.residue,
       mon_lib_srv     = self.mon_lib_srv,
       backbone_sample = True)
-    if(target_map is not None):
-      target_start = self.get_target_value(sites_cart = sites_cart_start)
+    self.m = None
+    if(self.target_map is not None and len(self.co.clusters)>0):
+      # Set weights
+      AN = {"S":16, "O":8, "N":7, "C":6, "SE":34, "H":1}
+      #AN = {"S":1, "O":1, "N":1, "C":1, "SE":1, "H":1}
+      self.weights = flex.double()
+      for atom in self.residue.atoms():
+        self.weights.append(AN[atom.element.strip().upper()])
+      # Bonded pairs
+      exclude = ["C","N","O","CA"]
+      reference = exclude + ["CB"]
+      atoms = self.residue.atoms()
+      self.pairs = []
+      for i, ai in enumerate(atoms):
+        if(ai.name.strip() in reference):
+          mv = self.target_map.eight_point_interpolation(
+            self.unit_cell.fractionalize(ai.xyz))
+        if(ai.name.strip() in exclude): continue
+        if(ai.element.strip().upper() in ["H","S","SE"]): continue
+        for j, aj in enumerate(atoms):
+          if i==j: continue
+          if(aj.name.strip() in exclude): continue
+          if(aj.element.strip().upper() in ["H","S","SE"]): continue
+          d = ai.distance(aj)
+          if d < 1.6:
+            pair = [i,j]
+            pair.sort()
+            if(not pair in self.pairs):
+              self.pairs.append(pair)
+      # Set monitor
+      id_str=""
+      if(self.residue.parent() is not None and
+         self.residue.parent().parent() is not None):
+         id_str+="chain: %s"%(self.residue.parent().parent().id)
+      id_str+=" residue: %s %s"%(self.residue.resname, self.residue.resseq.strip())
+      if(len(self.co.clusters)>1):
+        msel = flex.size_t(flatten(self.co.clusters[1:][0].vector))
+      else:
+        msel = flex.size_t()
+      self.m = monitor(
+        id_str    = id_str,
+        selection = msel,
+        map_data  = self.target_map,
+        unit_cell = self.unit_cell,
+        weights   = self.weights,
+        pairs     = self.pairs,
+        cmv       = self.cmv,
+        rotamer_evaluator = self.rotamer_manager.rotamer_evaluator,
+        log       = self.log)
+      self.m.add(residue = self.residue, state = "start")
+    if(self.target_map is None):
+      assert not backbone_sample
     # Actual calculations
     self.chi_angles = self.rotamer_manager.get_chi_angles(
       resname = self.residue.resname)
@@ -51,12 +172,10 @@ class run(object):
       if(backbone_sample):
         self.fit_c_beta(c_beta_rotation_cluster = self.co.clusters[0])
       self.fit_side_chain(clusters = self.co.clusters[1:])
-      # Final state
-      if(target_map is not None):
-        target_final = self.get_target_value(
-          sites_cart=self.residue.atoms().extract_xyz())
-        if(target_start > target_final):
-          self.residue.atoms().set_xyz(sites_cart_start)
+    if(self.m is not None):
+      self.m.finalize(residue = self.residue)
+      # Too bulky, but very useful. Use for debugging only.
+      #self.m.show()
 
   def get_target_value(self, sites_cart, selection=None, target_map=None):
     if(target_map is None): target_map = self.target_map
@@ -78,7 +197,6 @@ class run(object):
         mon_lib_srv = self.mon_lib_srv,
         residue     = self.residue)
     if(rotamer_iterator is None): return
-    #selection_rsr = flex.size_t(flatten(clusters[0].vector))
     selection_clash = self.co.clash_eval_selection
     selection_rsr   = self.co.rsr_eval_selection
     if(self.target_map is not None):
@@ -87,6 +205,7 @@ class run(object):
         selection  = selection_rsr)
     sites_cart_start = self.residue.atoms().extract_xyz()
     sites_cart_first_rotamer = list(rotamer_iterator)[0][1]
+    # From this point on the coordinates in residue are to initial rotamer!
     self.residue.atoms().set_xyz(sites_cart_first_rotamer)
     axes = []
     atr = []
@@ -94,33 +213,46 @@ class run(object):
       cl = clusters[i]
       axes.append(flex.size_t(cl.axis))
       atr.append(flex.size_t(cl.atoms_to_rotate))
-    sites = self.residue.atoms().extract_xyz()
+    #
     if(self.target_map is not None and self.xyzrad_bumpers is not None):
-      # Get vdW radii
-      radii = flex.double()
-      atom_names = []
+      # Get reference map values
+      ref_map_vals = flex.double()
       for a in self.residue.atoms():
-        atom_names.append(a.name.strip())
-      converter = iotbx.pdb.residue_name_plus_atom_names_interpreter(
-        residue_name=self.residue.resname, atom_names = atom_names)
-      mon_lib_names = converter.atom_name_interpretation.mon_lib_names()
-      for n in mon_lib_names:
-        try: radii.append(self.vdw_radii[n.strip()]-0.25)
-        except KeyError: radii.append(1.5) # XXX U, Uranium, OXT are problems!
-      #
-      xyzrad_residue = ext.xyzrad(sites_cart = sites, radii = radii)
+        key = "%s_%s_%s"%(
+          a.parent().parent().parent().id, a.parent().resname,
+          a.name.strip())
+        ref_map_vals.append(self.cmv[key])
+      # Get radii
+      radii = mmtbx.refinement.real_space.get_radii(
+        residue = self.residue, vdw_radii = self.vdw_radii)
+      # Exclude rotatable H from clash calculation
+      tmp = flex.size_t()
+      for i in selection_clash:
+        if(self.rotatable_hd[self.residue.atoms()[i].i_seq]): continue
+        tmp.append(i)
+      selection_clash = tmp[:]
+      # Ad hoc: S or SE have larger peaks!
+      if(self.residue.resname in ["MET","MSE"]): scale=100
+      else:                                      scale=3
+      moving = ext.moving(
+        sites_cart       = self.residue.atoms().extract_xyz(),
+        sites_cart_start = sites_cart_start,
+        radii            = radii,
+        weights          = self.weights,
+        bonded_pairs     = self.pairs,
+        ref_map_max      = ref_map_vals * scale,
+        ref_map_min      = ref_map_vals / 10)
       #
       ro = ext.fit(
-        target_value             = start_target_value,
-        xyzrad_bumpers           = self.xyzrad_bumpers,
+        fixed                    = self.xyzrad_bumpers,
         axes                     = axes,
         rotatable_points_indices = atr,
         angles_array             = self.chi_angles,
         density_map              = self.target_map,
-        all_points               = xyzrad_residue,
+        moving                   = moving,
         unit_cell                = self.unit_cell,
         selection_clash          = selection_clash,
-        selection_rsr            = selection_rsr,
+        selection_rsr            = selection_rsr, # select atoms to compute map target
         sin_table                = self.sin_cos_table.sin_table,
         cos_table                = self.sin_cos_table.cos_table,
         step                     = self.sin_cos_table.step,
@@ -132,7 +264,7 @@ class run(object):
         rotatable_points_indices = atr,
         angles_array             = self.chi_angles,
         density_map              = self.target_map,
-        all_points               = sites,
+        all_points               = self.residue.atoms().extract_xyz(),
         unit_cell                = self.unit_cell,
         selection                = selection_rsr,
         sin_table                = self.sin_cos_table.sin_table,
@@ -165,6 +297,19 @@ class run(object):
           self.residue.atoms().set_xyz(sites_cart_start)
     else:
       self.residue.atoms().set_xyz(sites_cart_start)
+    if(self.m): self.m.add(residue = self.residue, state = "fitting")
+#    # tune up
+    if(self.target_map is not None):
+      tune_up(
+        target_map           = self.target_map,
+        residue              = self.residue,
+        mon_lib_srv          = self.mon_lib_srv,
+        rotamer_manager      = self.rotamer_manager.rotamer_evaluator,
+        unit_cell            = self.unit_cell,
+        monitor = self.m,
+        torsion_search_start = -30,
+        torsion_search_stop  = 30,
+        torsion_search_step  = 1)
 
   def fit_c_beta(self, c_beta_rotation_cluster):
     selection = flex.size_t(c_beta_rotation_cluster.selection)
@@ -208,10 +353,12 @@ class run_with_minimization(object):
                rms_bonds_limit = 0.03, # XXX probably needs to be much lower
                rms_angles_limit = 3.0, # XXX
                backbone_sample_angle=None,
+               cmv = None,
                allow_modified_residues=False):
     adopt_init_args(self, locals())
     # load rotamer manager
-    self.rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load()
+    self.rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load(
+      rotamers="favored")
     # pre-compute sin and cos tables
     self.sin_cos_table = scitbx.math.sin_cos_table(n=10000)
     self.backbone_atom_names = ["N", "CA", "O", "CB", "C"]
@@ -258,6 +405,7 @@ class run_with_minimization(object):
       unit_cell         = self.xray_structure.unit_cell(),
       residue           = self.residue,
       sin_cos_table     = self.sin_cos_table,
+      cmv               = self.cmv,
       rotamer_manager   = self.rotamer_manager)
     sites_cart_poor = self.xray_structure.sites_cart()
     sites_cart_poor.set_selected(self.residue_iselection,
@@ -350,6 +498,7 @@ class tune_up(object):
                mon_lib_srv,
                rotamer_manager,
                unit_cell,
+               monitor              = None,
                torsion_search_start = -20,
                torsion_search_stop  = 20,
                torsion_search_step  = 2):
@@ -371,6 +520,8 @@ class tune_up(object):
       stop       = self.torsion_search_stop,
       step       = self.torsion_search_step)
     self.residue.atoms().set_xyz(new_xyz=score_residue.sites_cart)
+    if(monitor is not None):
+      monitor.add(residue = self.residue, state = "tuneup")
 
 #
 # These functions are not used anywhere. And not tested anymore.

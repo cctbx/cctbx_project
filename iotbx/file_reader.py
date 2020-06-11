@@ -438,8 +438,9 @@ class any_file_input(object):
     self._file_object = map_object
 
   def _try_as_ccp4_map(self):
-    import iotbx.mrcfile
-    map_object = iotbx.mrcfile.map_reader(file_name=str(self.file_name))
+    from iotbx.map_manager import map_manager
+    from libtbx.utils import null_out
+    map_object=map_manager(file_name=str(self.file_name),log=null_out())
     self._file_type = "ccp4_map"
     self._file_object = map_object
 

@@ -57,9 +57,41 @@ int main() { std::cout << GL_POINT << std::endl; return 0; }
   conf.Finish()
   if (flag and len(output.strip()) != 0) or libtbx.env.build_options.use_conda:
     conf = env.Configure()
-    if (conf.TryCompile("""
+    test_compile_success = conf.TryCompile("""
 #include <gltbx/include_opengl.h>
-""", extension=".cpp")):
+""", extension=".cpp")
+    if not test_compile_success and env_etc.compiler == "unix_conda":
+      conf.Finish()
+      print("gltbx: Attempting to compile with system libraries")
+      alternative_includes = ["/usr/local/include", "/usr/include"]
+      if "CPPPATH" in trial_env:
+        trial_env.Append(CPPPATH=alternative_includes)
+        env.Append(CPPPATH=alternative_includes)
+      else:
+        trial_env["CPPPATH"]=alternative_includes
+        env["CPPPATH"]=alternative_includes
+      alternative_libs = ["/lib64", "/usr/lib64", "/lib", "/usr/lib"]
+      if "LIBPATH" in trial_env:
+        trial_env.Append(LIBPATH=alternative_libs)
+        env.Append(LIBPATH=alternative_libs)
+      else:
+        trial_env["LIBPATH"]=alternative_libs
+        env["LIBPATH"]=alternative_libs
+      conf = trial_env.Configure()
+      test_compile_success = conf.TryCompile("""
+#include <gltbx/include_opengl.h>
+""", extension=".cpp")
+      if test_compile_success:
+        print("gltbx: Will compile with system libraries")
+        if "CPPPATH" in env:
+          env.Append(CPPPATH=alternative_includes)
+        else:
+          env["CPPPATH"]=alternative_includes
+        if "LIBPATH" in env:
+          env.Append(LIBPATH=alternative_libs)
+        else:
+          env["LIBPATH"]=alternative_libs
+    if test_compile_success:
       env_etc.gltbx_has_usable_opengl = True
     conf.Finish()
   #

@@ -1250,6 +1250,19 @@ class manager(manager_mixin):
         km      = km))
     return result
 
+  def show_short(self, show_k_mask=True, log=None):
+    if(log is None): log = sys.stdout
+    if(show_k_mask):
+      fmt="%7.3f-%-7.3f %6.2f %5d %5d %6.4f %9.3f %9.3f %5.3f   %s"
+      print("   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> ktotal  kmask", file=log)
+      for b in self.bins():
+        print(fmt % (b.d_max,b.d_min,b.cmpl,b.nw,b.nf,b.r,b.fo_mean,b.fm_mean,b.ki*b.ka,b.km), file=log)
+    else:
+      fmt="%7.3f-%-7.3f %6.2f %5d %5d %6.4f %9.3f %9.3f %5.3f"
+      print("   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> ktotal", file=log)
+      for b in self.bins():
+        print(fmt % (b.d_max,b.d_min,b.cmpl,b.nw,b.nf,b.r,b.fo_mean,b.fm_mean,b.ki*b.ka), file=log)
+
   def show(self, log=None, suffix=None, show_header=True, show_approx=True):
     if(log is None): log = sys.stdout
     l="Statistics in resolution bins"

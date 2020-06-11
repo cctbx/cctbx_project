@@ -17,15 +17,19 @@ from six.moves import range
 from dials.array_family import flex
 from dials.util import show_mail_on_error
 from scitbx.matrix import col
-from matplotlib import pyplot as plt
-from matplotlib.patches import Polygon
-from matplotlib.colors import Normalize
-from matplotlib import cm
 import numpy as np
 from libtbx.phil import parse
 import libtbx.load_env
 import math
 from six.moves import zip
+
+try:
+  from matplotlib import pyplot as plt
+  from matplotlib.patches import Polygon
+  from matplotlib.colors import Normalize
+  from matplotlib import cm
+except ImportError:
+  pass # Can happen on non-GUI nodes
 
 help_message = '''
 

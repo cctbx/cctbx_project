@@ -1,0 +1,26 @@
+# Templates for linux, macOS, and Windows
+# Based on approach from conda-forge
+
+# skip pull requests
+pr: none
+
+# batch builds for branches
+trigger:
+  batch: true
+  branches:
+    exclude:
+      - master
+
+stages:
+- stage: Preparation
+  displayName: Download
+  jobs:
+    - template: ./download-source.yml
+
+- stage: Build
+  displayName: Build and test
+  dependsOn: Preparation
+  jobs:
+    - template: ./ci-build.yml
+      parameters:
+        modules: modules

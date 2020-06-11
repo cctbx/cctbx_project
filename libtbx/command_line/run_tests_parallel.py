@@ -37,7 +37,13 @@ slow_tests = False
   .help = "If True, also run any tests marked as slow, if any"
 """)
 
-def run(args, return_list_of_tests=None):
+def run(args,
+   return_list_of_tests=None,
+   python_keyword_text="",
+   max_tests=None,
+   start_test=None,
+   tests_to_skip=None):
+
   if (len(args) == 0):
     raise Usage("""libtbx.run_tests_parallel [module=NAME] [directory=path]""")
   user_phil = []
@@ -63,23 +69,28 @@ def run(args, return_list_of_tests=None):
   else:
     cwd = os.getcwd()
     cwd_files = os.listdir(cwd)
-    if (len(cwd_files) > 0):
+    if cwd_files and cwd_files != ["default.profraw"]:
       raise Sorry("Please run this program in an empty directory.")
   if (len(params.directory) == 0) and (len(params.module) == 0):
     raise Sorry("Please specify modules and/or directories to test.")
   all_tests = []
   expected_failure_list = []
   expected_unstable_list = []
-  all_tests.extend(libtbx.test_utils.parallel.make_commands(params.script))
+  if not return_list_of_tests: # (this fails with return_list_of_tests)
+    all_tests.extend(libtbx.test_utils.parallel.make_commands(params.script,
+      python_keyword_text=python_keyword_text))
   for dir_name in params.directory :
     if os.path.split(dir_name)[-1].find("cctbx_project")>-1:
       print('DANGER '*10)
       print('Using the directory option in cctbx_project can be very time consuming')
       print('DANGER '*10)
     dir_tests = libtbx.test_utils.parallel.find_tests(dir_name)
-    all_tests.extend(libtbx.test_utils.parallel.make_commands(dir_tests))
+    all_tests.extend(libtbx.test_utils.parallel.make_commands(dir_tests,
+      python_keyword_text=python_keyword_text))
   for module_name in params.module :
-    module_tests = libtbx.test_utils.parallel.get_module_tests(module_name, slow_tests = params.slow_tests)
+    module_tests = libtbx.test_utils.parallel.get_module_tests(module_name,
+       slow_tests = params.slow_tests,
+       python_keyword_text=python_keyword_text)
     fail_tests = libtbx.test_utils.parallel.\
       get_module_expected_test_failures(module_name)
     unstable_tests = libtbx.test_utils.\
@@ -89,6 +100,21 @@ def run(args, return_list_of_tests=None):
     all_tests.extend(unstable_tests)
     expected_failure_list.extend(fail_tests)
     expected_unstable_list.extend(unstable_tests)
+
+    # remove any specified tests:
+    if tests_to_skip:
+      new_tests=[]
+      for t in all_tests:
+        ok=True
+        for tts in tests_to_skip:
+          if t.find(tts)>-1:
+            ok=False
+        if ok:
+          new_tests.append(t)
+        else:
+          print ("Skipping the test %s" %(t))
+      all_tests=new_tests
+
     # check that test lists are unique
     seen = set()
     duplicates = set()
@@ -98,6 +124,13 @@ def run(args, return_list_of_tests=None):
       else:
         seen.add(t)
     assert len(duplicates) == 0, "Duplicate tests found.\n%s" % list(duplicates)
+  if start_test:
+    all_tests=all_tests[start_test:]
+    print ("Starting with test # %s " %(start_test))
+  if max_tests:
+    all_tests=all_tests[:max_tests]
+    print("Running only %s tests" %(max_tests))
+
   if return_list_of_tests:
     return all_tests
   if (len(all_tests) == 0):

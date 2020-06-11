@@ -173,7 +173,7 @@ if (__name__ == "__main__") :
     destpath = t.name
     t.close()
 
-    dst_cbf.write_widefile(destpath,pycbf.CBF,\
+    dst_cbf.write_widefile(destpath.encode(),pycbf.CBF,\
                            pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
 
     del dst_cbf
