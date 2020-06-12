@@ -933,7 +933,10 @@ class hklview_3d:
     try:
       newdata = None
       newsigmas = None
-      exec(operation)
+      ldic=locals()
+      exec(operation, globals(), ldic)
+      newdata = ldic["newdata"]
+      newsigmas = ldic["newsigmas"]
       newarray._data = newdata
       newarray._sigmas = newsigmas
       return newarray
@@ -958,7 +961,10 @@ class hklview_3d:
     try:
       newdata = None
       newsigmas = None
-      exec(operation)
+      ldic=locals()
+      exec(operation, globals(), ldic)
+      newdata = ldic["newdata"]
+      newsigmas = ldic["newsigmas"]
       newarray._data = newdata
       newarray._sigmas = newsigmas
       return newarray
@@ -2523,8 +2529,8 @@ mysocket.onmessage = function(e)
               //b64 = btoa(blob);
 
               var reader = new FileReader();
-              reader.readAsArrayBuffer(blob);
-              //reader.readAsBinaryString(blob);
+              //reader.readAsArrayBuffer(blob);
+              reader.readAsBinaryString(blob);
               reader.onloadend = function() {
                   //var base64data = reader.result;
                   //var base64data = window.btoa(reader.result);
