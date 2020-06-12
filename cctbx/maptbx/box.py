@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.math_utils import ifloor, iceil
-from libtbx.utils import null_out,Sorry
+from libtbx.utils import Sorry
 from cctbx import crystal, maptbx, uctbx
 from scitbx.array_family import flex
 from libtbx import adopt_init_args

@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import time
-import mmtbx.masks
 from scitbx.array_family import flex
 import boost.python
 asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
