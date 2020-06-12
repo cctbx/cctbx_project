@@ -7,10 +7,17 @@ pr: none
 # Daily builds
 schedules:
 - cron: '0 1 * * *'
-  displayName: Daily rebuild of cache artifacts
+  displayName: Daily update of build cache artifacts
   branches:
     include:
     - master
+
+resources:
+  pipelines:
+  - pipeline: data_cache
+    source: 'Update data cache'
+  - pipeline: build_cache
+    source: 'Update build cache'
 
 stages:
 - stage: Preparation

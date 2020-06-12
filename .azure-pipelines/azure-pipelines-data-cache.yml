@@ -8,10 +8,10 @@
 trigger: none
 pr: none
 
-# update every other hour
+# update every day
 schedules:
-- cron: '30 */2 * * *'
-  displayName: Scheduled update for artifact data
+- cron: '0 0 * * *'
+  displayName: Daily update of data cache artifacts
   branches:
     include:
     - master
@@ -20,7 +20,7 @@ schedules:
 resources:
   pipelines:
   - pipeline: data_cache
-    source: 'Update data'
+    source: 'Update data cache'
 
 jobs:
 - job: artifacts
@@ -51,14 +51,19 @@ jobs:
     artifact: miniconda
 
   # chem_data
-  - download: data_cache
-    artifact: 'chem_data'
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(resources.pipeline.data_cache.projectID)'
+      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+      allowPartiallySucceededBuilds: true
+      artifact: 'chem_data'
+      path: $(System.DefaultWorkingDirectory)/chem_data
     displayName: Download chem_data
+    continueOnError: true
 
   - script: |
-      if [ -d "$(Pipeline.Workspace)/data_cache/chem_data" ]; then
-        mv $(Pipeline.Workspace)/data_cache/chem_data $(System.DefaultWorkingDirectory)/chem_data
-      else
+      if [ ! -d "$(System.DefaultWorkingDirectory)/chem_data" ]; then
         svn co svn+ssh://builder@cci.lbl.gov/chem_data/trunk chem_data
       fi
       cd $(System.DefaultWorkingDirectory)/chem_data
@@ -69,14 +74,19 @@ jobs:
     artifact: chem_data
 
   # phenix_regression
-  - download: data_cache
-    artifact: 'phenix_regression'
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(resources.pipeline.data_cache.projectID)'
+      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+      allowPartiallySucceededBuilds: true
+      artifact: 'phenix_regression'
+      path: $(System.DefaultWorkingDirectory)/phenix_regression
     displayName: Download phenix_regression
+    continueOnError: true
 
   - script: |
-      if [ -d "$(Pipeline.Workspace)/data_cache/phenix_regression" ]; then
-        mv $(Pipeline.Workspace)/data_cache/phenix_regression $(System.DefaultWorkingDirectory)/phenix_regression
-      else
+      if [ ! -d "$(System.DefaultWorkingDirectory)/phenix_regression" ]; then
         git clone https://gitlab.com/phenix_project/phenix_regression.git
       fi
       cd $(System.DefaultWorkingDirectory)/phenix_regression
@@ -90,14 +100,19 @@ jobs:
     artifact: phenix_regression
 
   # phenix_examples
-  - download: data_cache
-    artifact: 'phenix_examples'
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(resources.pipeline.data_cache.projectID)'
+      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+      allowPartiallySucceededBuilds: true
+      artifact: 'phenix_examples'
+      path: $(System.DefaultWorkingDirectory)/phenix_examples
     displayName: Download phenix_examples
+    continueOnError: true
 
   - script: |
-      if [ -d "$(Pipeline.Workspace)/data_cache/phenix_examples" ]; then
-        mv $(Pipeline.Workspace)/data_cache/phenix_examples $(System.DefaultWorkingDirectory)/phenix_examples
-      else
+      if [ ! -d "$(System.DefaultWorkingDirectory)/phenix_examples" ]; then
         git clone https://gitlab.com/phenix_project/phenix_examples.git
       fi
       cd $(System.DefaultWorkingDirectory)/phenix_examples
@@ -111,14 +126,19 @@ jobs:
     artifact: phenix_examples
 
   # xfel_regression
-  - download: data_cache
-    artifact: 'xfel_regression'
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(resources.pipeline.data_cache.projectID)'
+      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+      allowPartiallySucceededBuilds: true
+      artifact: 'xfel_regression'
+      path: $(System.DefaultWorkingDirectory)/xfel_regression
     displayName: Download xfel_regression
+    continueOnError: true
 
   - script: |
-      if [ -d "$(Pipeline.Workspace)/data_cache/xfel_regression" ]; then
-        mv $(Pipeline.Workspace)/data_cache/xfel_regression $(System.DefaultWorkingDirectory)/xfel_regression
-      else
+      if [ ! -d "$(System.DefaultWorkingDirectory)/xfel_regression" ]; then
         svn co svn+ssh://builder@cci.lbl.gov/xfel_regression/trunk xfel_regression
       fi
       cd $(System.DefaultWorkingDirectory)/xfel_regression

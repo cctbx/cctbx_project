@@ -23,11 +23,13 @@ steps:
   displayName: Download modules tarball
 
 - script: |
+    set -x -e
     cd $(Pipeline.Workspace)
     tar -xf modules.tar
   displayName: Extract modules tarball
 
 - script: |
+    set -x -e
     cd $(Pipeline.Workspace)
     ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
   displayName: Link bootstrap.py
@@ -36,8 +38,8 @@ steps:
 - task: DownloadPipelineArtifact@2
   inputs:
     source: 'specific'
-    project: '$(System.TeamProjectId)'
-    pipeline: 4
+    project: '$(resources.pipeline.data_cache.projectID)'
+    pipeline: '$(resources.pipeline.data_cache.pipelineID)'
     artifact: 'miniconda'
     path: $(Pipeline.Workspace)/miniconda
   displayName: Download miniconda
@@ -62,8 +64,8 @@ steps:
 - task: DownloadPipelineArtifact@2
   inputs:
     source: 'specific'
-    project: '$(System.TeamProjectId)'
-    pipeline: 8
+    project: '$(resources.pipeline.build_cache.projectID)'
+    pipeline: '$(resources.pipeline.build_cache.pipelineID)'
     artifact: $(PYTHON_VERSION)_$(OS)
     path: $(Pipeline.Workspace)/channel
   displayName: Download cached conda packages
@@ -72,6 +74,7 @@ steps:
         ne(variables['Build.DefinitionName'], 'Full'))
 
 - script: |
+    set -x -e
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda install -y conda-build
     cd $(Pipeline.Workspace)/channel
@@ -83,6 +86,7 @@ steps:
   displayName: Build local channel
 
 - script: |
+    set -x -e
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
     conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
@@ -97,6 +101,7 @@ steps:
 
 # build
 - script: |
+    set -x -e
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
@@ -110,6 +115,7 @@ steps:
 
 # test
 - script: |
+    set -x -e
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)

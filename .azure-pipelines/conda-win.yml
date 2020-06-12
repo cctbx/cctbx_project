@@ -33,8 +33,14 @@ jobs:
 
   variables:
     artifact_name: win_$(PYTHON_VERSION)
+    day: $(Get-Date -Format dddd)
 
   steps:
+  - powershell: |
+      Write-Host $(day)
+      Write-Host "##vso[task.setVariable variable=day]$(day)"
+    displayName: Get day of week
+
   # install compilers
   - script: |
       choco install vcpython27 -fdv -y --debug
@@ -124,23 +130,24 @@ jobs:
   - task: DownloadPipelineArtifact@2
     inputs:
       source: 'specific'
-      project: '$(System.TeamProjectId)'
-      pipeline: 8
+      project: '$(resources.pipeline.build_cache.projectID)'
+      pipeline: '$(resources.pipeline.build_cache.pipelineID)'
       artifact: '$(artifact_name)'
       path: $(Pipeline.Workspace)
     displayName: Download cached build
     condition: >
-      and(ne(variables['Build.DefinitionName'], 'Update build cache'),
-          ne(variables['Build.DefinitionName'], 'Weekly'))
+      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+             ne(variables['day'], 'Sunday')),
+         eq(variables['Build.DefinitionName'], 'CI'),
+         eq(variables['Build.DefinitionName'], 'CI branch'),
+         eq(variables['Build.DefinitionName'], 'Full'))
     continueOnError: true
 
   - script: |
       cd $(Pipeline.Workspace)
       tar -xf build.tar
     displayName: Extract build tarball
-    condition: >
-      and(ne(variables['Build.DefinitionName'], 'Update build cache'),
-          ne(variables['Build.DefinitionName'], 'Weekly'))
+    condition: succeeded()
     continueOnError: true
     failOnStderr: false
 
@@ -217,10 +224,5 @@ jobs:
   # cache build directory every week for regular optimization build
   - publish: $(Pipeline.Workspace)/build.tar
     artifact: $(artifact_name)
-    condition: >
-      and(eq(variables['Build.DefinitionName'], 'Update build cache'),
-          or(eq(variables['Build.Reason'], 'Schedule'),
-             eq(variables['Build.Reason'], 'Manual')),
-          eq(variables['System.StageAttempt'], 1),
-          eq('${{ parameters.modules }}', 'modules'))
+    condition: succeeded()
     continueOnError: true
