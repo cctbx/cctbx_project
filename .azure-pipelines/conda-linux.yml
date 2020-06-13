@@ -45,8 +45,7 @@ jobs:
     day: Sunday
 
   steps:
-  - bash: |
-      set -x -e
+  - script: |
       day=`date +%A`
       echo $(day)
       echo "##vso[task.setVariable variable=day]$day"
