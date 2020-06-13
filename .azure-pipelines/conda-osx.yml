@@ -47,6 +47,9 @@ jobs:
       Write-Host "##vso[task.setVariable variable=day]$(day)"
     displayName: Get day of week
 
+  - script: echo $(day)
+    displayName: Check day of week
+
   - script: |
       echo "Selecting Xcode version ${{ join('.', parameters.xcode_version) }}"
       sudo xcode-select --switch /Applications/Xcode_${{ join('.', parameters.xcode_version) }}.app/Contents/Developer

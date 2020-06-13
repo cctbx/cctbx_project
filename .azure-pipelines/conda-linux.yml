@@ -42,13 +42,18 @@ jobs:
 
   variables:
     artifact_name: ${{ parameters.distribution }}_${{ join('.', parameters.version) }}_$(PYTHON_VERSION)
-    day: $(Get-Date -Format dddd)
+    day: $(date +%A)
 
   steps:
-  - powershell: |
-      Write-Host $(day)
-      Write-Host "##vso[task.setVariable variable=day]$(day)"
+  - bash: |
+      set -x -e
+      day=`date +%A`
+      echo $(day)
+      echo "##vso[task.setVariable variable=day]$day"
     displayName: Get day of week
+
+  - script: echo $(day)
+    displayName: Check day of week
 
   # https://github.com/ApexAI/performance_test/blob/master/azure-pipelines.yml#L9-L17
 

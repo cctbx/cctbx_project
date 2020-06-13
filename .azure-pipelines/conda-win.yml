@@ -41,6 +41,9 @@ jobs:
       Write-Host "##vso[task.setVariable variable=day]$(day)"
     displayName: Get day of week
 
+  - powershell: Write-Host $(day)
+    displayName: Check day of week
+
   # install compilers
   - script: |
       choco install vcpython27 -fdv -y --debug
