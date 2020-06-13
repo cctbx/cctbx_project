@@ -150,7 +150,12 @@ jobs:
       cd $(Pipeline.Workspace)
       tar -xf build.tar
     displayName: Extract build tarball
-    condition: succeeded()
+    condition: >
+      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+             ne(variables['day'], 'Sunday')),
+         eq(variables['Build.DefinitionName'], 'CI'),
+         eq(variables['Build.DefinitionName'], 'CI branch'),
+         eq(variables['Build.DefinitionName'], 'Full'))
     continueOnError: true
     failOnStderr: false
 
@@ -227,5 +232,10 @@ jobs:
   # cache build directory every week for regular optimization build
   - publish: $(Pipeline.Workspace)/build.tar
     artifact: $(artifact_name)
-    condition: succeeded()
+    condition: >
+      and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+          or(eq(variables['Build.Reason'], 'Schedule'),
+             eq(variables['Build.Reason'], 'Manual')),
+          eq(variables['System.StageAttempt'], 1),
+          eq('${{ parameters.modules }}', 'modules'))
     continueOnError: true
