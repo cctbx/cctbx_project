@@ -11,6 +11,11 @@ schedules:
     include:
     - master
 
+resources:
+  pipelines:
+  - pipeline: data_cache
+    source: 'Update data cache'
+
 stages:
 - stage: Preparation
   displayName: Download
