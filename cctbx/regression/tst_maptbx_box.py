@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import os
 import iotbx.pdb
+import libtbx.load_env
 from libtbx.test_utils import approx_equal
 from cctbx.sgtbx import space_group_info
 from cctbx.development import random_structure
@@ -235,4 +236,7 @@ def exercise_around_model():
   assert r.args == ['self', 'map_manager', 'lower_bounds', 'upper_bounds','wrapping','model', 'log'], r.args
 
 if (__name__ == "__main__"):
-  exercise_around_model()
+  if libtbx.env.has_module('phenix'):
+    exercise_around_model()
+  else:
+    print('phenix is not available, skipping test')
