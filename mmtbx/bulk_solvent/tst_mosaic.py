@@ -1040,8 +1040,8 @@ def common_inputs(k_sols, for_test):
   fc  = xrs.structure_factors(d_min=4).f_calc()
   #
   mm = mosaic.mosaic_f_mask(
-    xray_structure = xrs,
     miller_array   = fc,
+    xray_structure = xrs,
     step           = 0.5,
     volume_cutoff  = 6)
   # Make Fobs
@@ -1067,14 +1067,12 @@ def run2():
     x.extend(flex.random_double(6))
     result1 = mosaic.algorithm_2(
       i_obs          = inp.i_obs,
-      fc             = inp.fc,
-      f_masks        = inp.mm.f_masks,
+      F              = [inp.fc]+inp.mm.f_masks,
       x              = x.deep_copy(),
       use_curvatures = True)
     result2 = mosaic.algorithm_2(
       i_obs          = inp.i_obs,
-      fc             = inp.fc,
-      f_masks        = inp.mm.f_masks,
+      F              = [inp.fc]+inp.mm.f_masks,
       x              = x.deep_copy(),
       use_curvatures = False)
     print (rfactor(answer, result1), rfactor(answer, result2))
@@ -1099,20 +1097,31 @@ def run():
     g_fd.append( (t1-t2)/(2*e) )
   assert flex.sum(flex.abs(g_anal-g_fd))*2/flex.sum(flex.abs(g_anal+g_fd))<1.e-9
   #
-  r = mosaic.algorithm_4(f_obs = f_obs, fc = fc, f_masks = mm.f_masks,
+  r = mosaic.algorithm_4(
+    f_obs = f_obs,
+    F = [fc]+inp.mm.f_masks,
     auto_converge_eps=1.e-9)
   assert approx_equal(r, [1,]+k_sols)
   #
-  r = mosaic.algorithm_3(i_obs = i_obs, fc = fc, f_masks = mm.f_masks)
+  r = mosaic.algorithm_3(
+    i_obs = i_obs,
+    fc = fc,
+    f_masks = mm.f_masks
+    )
   assert approx_equal(r, [1,]+k_sols)
   #
   r = mosaic.algorithm_2(
-    i_obs = i_obs, fc = fc, f_masks=mm.f_masks, x = flex.double(x))
+    i_obs = i_obs,
+    F = [fc]+inp.mm.f_masks,
+    x = flex.double(x))
   assert approx_equal(r, [1,]+k_sols)
   #
   r = mosaic.algorithm_2(
-    i_obs = i_obs, fc = fc, f_masks=mm.f_masks, x = flex.double(x),
-    use_curvatures = False, macro_cycles=100)
+    i_obs = i_obs,
+    F = [fc]+inp.mm.f_masks,
+    x = flex.double(x),
+    use_curvatures = False,
+    macro_cycles=100)
   assert approx_equal(r, [1,]+k_sols, 1.e-3)
 
 
