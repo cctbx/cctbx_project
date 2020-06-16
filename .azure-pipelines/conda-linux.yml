@@ -109,6 +109,7 @@ jobs:
       source: 'specific'
       project: '$(resources.pipeline.build_cache.projectID)'
       pipeline: '$(resources.pipeline.build_cache.pipelineID)'
+      allowPartiallySucceededBuilds: true
       artifact: '$(artifact_name)'
       path: $(Pipeline.Workspace)
     displayName: Download cached build

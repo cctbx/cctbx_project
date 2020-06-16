@@ -4,12 +4,14 @@
 # https://github.com/actions/virtual-environments/blob/master/images/win/Windows2019-Readme.md
 #
 # Parameters:
+#   vmImage: vs2017-win2016, windows-2019
+#   vs: vs2015, vs2017
 #   modules: <modules artifact name>
 
 jobs:
-- job: win_64
+- job: ${{ parameters.vs }}
   pool:
-    vmImage: vs2017-win2016
+    vmImage: ${{ parameters.vmImage }}
   timeoutInMinutes: 90
   strategy:
     maxParallel: 2
@@ -32,7 +34,7 @@ jobs:
         MODULES: ${{ parameters.modules }}
 
   variables:
-    artifact_name: win_$(PYTHON_VERSION)
+    artifact_name: ${{ parameters.vs }}_$(PYTHON_VERSION)
     day: $(Get-Date -Format dddd)
 
   steps:
@@ -47,7 +49,8 @@ jobs:
   # install compilers
   - script: |
       choco install vcpython27 -fdv -y --debug
-    condition: eq(variables['PYTHON_VERSION'], 'py27')
+    condition: and(eq(variables['PYTHON_VERSION'], 'py27'),
+                   eq('${{ parameters.vs }}', 'vs2015'))
     displayName: Install vcpython27.msi
 
   - powershell: |
@@ -71,12 +74,14 @@ jobs:
       Get-ChildItem -Path $batchDir
 
       Get-ChildItem -Path ($batchDir + '\..')
-    condition: eq(variables['PYTHON_VERSION'], 'py27')
+    condition: and(eq(variables['PYTHON_VERSION'], 'py27'),
+                   eq('${{ parameters.vs }}', 'vs2015'))
     displayName: Patch vs2008
 
   - script: |
       choco install microsoft-visual-cpp-build-tools
-    condition: not(eq(variables['PYTHON_VERSION'], 'py27'))
+    condition: and(not(eq(variables['PYTHON_VERSION'], 'py27')),
+                       eq('${{ parameters.vs }}', 'vs2015'))
     displayName: Install Visual C++ Build Tools 2015
 
   # download components
@@ -135,15 +140,19 @@ jobs:
       source: 'specific'
       project: '$(resources.pipeline.build_cache.projectID)'
       pipeline: '$(resources.pipeline.build_cache.pipelineID)'
+      allowPartiallySucceededBuilds: true
       artifact: '$(artifact_name)'
       path: $(Pipeline.Workspace)
     displayName: Download cached build
     condition: >
-      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
-             ne(variables['day'], 'Sunday')),
-         eq(variables['Build.DefinitionName'], 'CI'),
-         eq(variables['Build.DefinitionName'], 'CI branch'),
-         eq(variables['Build.DefinitionName'], 'Full'))
+      and(or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+                 ne(variables['day'], 'Sunday')),
+             eq(variables['Build.DefinitionName'], 'CI'),
+             eq(variables['Build.DefinitionName'], 'CI branch'),
+             eq(variables['Build.DefinitionName'], 'Full')),
+          or(and(eq(variables['PYTHON_VERSION'], 'py27'),
+                 eq('${{ parameters.vs }}', 'vs2015')),
+             ne(variables['PYTHON_VERSION'], 'py27')))
     continueOnError: true
 
   - script: |
@@ -151,15 +160,26 @@ jobs:
       tar -xf build.tar
     displayName: Extract build tarball
     condition: >
-      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
-             ne(variables['day'], 'Sunday')),
-         eq(variables['Build.DefinitionName'], 'CI'),
-         eq(variables['Build.DefinitionName'], 'CI branch'),
-         eq(variables['Build.DefinitionName'], 'Full'))
+      and(or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+                 ne(variables['day'], 'Sunday')),
+             eq(variables['Build.DefinitionName'], 'CI'),
+             eq(variables['Build.DefinitionName'], 'CI branch'),
+             eq(variables['Build.DefinitionName'], 'Full')),
+          or(and(eq(variables['PYTHON_VERSION'], 'py27'),
+                 eq('${{ parameters.vs }}', 'vs2015')),
+             ne(variables['PYTHON_VERSION'], 'py27')))
     continueOnError: true
     failOnStderr: false
 
-  # build
+  # build (cctbx for vs2008 and vs2015, cctbxlite for vs2017)
+  - script: |
+      ECHO ON
+      cd $(Pipeline.Workspace)\modules
+      rmdir /Q /S cbflib
+      rmdir /Q /S dxtbx
+    displayName: Remove modules for cctbxlite builder (vs2017)
+    condition: eq('${{ parameters.vs }}', 'vs2017')
+
   - script: |
       cd $(Pipeline.Workspace)
       call "C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat" amd64
@@ -170,7 +190,8 @@ jobs:
       cd build
       call libtbx.scons -j 4
       call libtbx.scons -j 4
-    condition: eq(variables['PYTHON_VERSION'], 'py27')
+    condition: and(eq(variables['PYTHON_VERSION'], 'py27'),
+                   eq('${{ parameters.vs }}', 'vs2015'))
     displayName: Configure and Build (Python 2)
 
   - script: |
@@ -179,12 +200,27 @@ jobs:
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
       python bootstrap.py build --builder=cctbx --use-conda=%CONDA_PREFIX% --nproc=4
       call .\build\setpaths.bat
-      call libtbx.configure cma_es fable rstbx simtbx spotfinder cbflib_adaptbx phenix_regression phenix_examples
+      call libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx phenix_regression phenix_examples
       cd build
       call libtbx.scons -j 4
       call libtbx.scons -j 4
-    condition: not(eq(variables['PYTHON_VERSION'], 'py27'))
-    displayName: Configure and Build (Python 3)
+    condition: and(not(eq(variables['PYTHON_VERSION'], 'py27')),
+                   eq('${{ parameters.vs }}', 'vs2015'))
+    displayName: Configure and Build (Python 3, vs2015)
+
+  - script: |
+      cd $(Pipeline.Workspace)
+      call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
+      python bootstrap.py build --builder=cctbxlite --use-conda=%CONDA_PREFIX% --nproc=4
+      call .\build\setpaths.bat
+      call libtbx.configure cma_es fable phenix_regression phenix_examples
+      cd build
+      call libtbx.scons -j 4
+      call libtbx.scons -j 4
+    condition: and(not(eq(variables['PYTHON_VERSION'], 'py27')),
+                   eq('${{ parameters.vs }}', 'vs2017'))
+    displayName: Configure and Build (Python 3, vs2017)
 
   # test
   - script: |
@@ -195,8 +231,9 @@ jobs:
       cd tests
       call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx nproc=4
     failOnStderr: false
-    condition: eq(variables['PYTHON_VERSION'], 'py27')
-    displayName: Test (Python 2)
+    condition: and(eq(variables['PYTHON_VERSION'], 'py27'),
+                   eq('${{ parameters.vs }}', 'vs2015'))
+    displayName: Test (Python 2, vs2008)
 
   - script: |
       SET PYTHONLEGACYWINDOWSSTDIO=1
@@ -207,8 +244,22 @@ jobs:
       cd tests
       call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx nproc=4
     failOnStderr: false
-    condition: not(eq(variables['PYTHON_VERSION'], 'py27'))
-    displayName: Test (Python 3)
+    condition: and(not(eq(variables['PYTHON_VERSION'], 'py27')),
+                   eq('${{ parameters.vs }}', 'vs2015'))
+    displayName: Test (Python 3, vs2015)
+
+  - script: |
+      SET PYTHONLEGACYWINDOWSSTDIO=1
+      cd $(Pipeline.Workspace)
+      call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      call .\build\setpaths.bat
+      mkdir tests
+      cd tests
+      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=scitbx module=smtbx nproc=4
+    failOnStderr: false
+    condition: and(not(eq(variables['PYTHON_VERSION'], 'py27')),
+                   eq('${{ parameters.vs }}', 'vs2017'))
+    displayName: Test (Python 3, vs2017)
 
   - task: PublishTestResults@2
     condition: succeededOrFailed()
@@ -226,7 +277,10 @@ jobs:
           or(eq(variables['Build.Reason'], 'Schedule'),
              eq(variables['Build.Reason'], 'Manual')),
           eq(variables['System.StageAttempt'], 1),
-          eq('${{ parameters.modules }}', 'modules'))
+          eq('${{ parameters.modules }}', 'modules'),
+          or(and(eq(variables['PYTHON_VERSION'], 'py27'),
+                 eq('${{ parameters.vs }}', 'vs2015')),
+             ne(variables['PYTHON_VERSION'], 'py27')))
     continueOnError: true
 
   # cache build directory every week for regular optimization build
@@ -237,5 +291,8 @@ jobs:
           or(eq(variables['Build.Reason'], 'Schedule'),
              eq(variables['Build.Reason'], 'Manual')),
           eq(variables['System.StageAttempt'], 1),
-          eq('${{ parameters.modules }}', 'modules'))
+          eq('${{ parameters.modules }}', 'modules'),
+          or(and(eq(variables['PYTHON_VERSION'], 'py27'),
+                 eq('${{ parameters.vs }}', 'vs2015')),
+             ne(variables['PYTHON_VERSION'], 'py27')))
     continueOnError: true
