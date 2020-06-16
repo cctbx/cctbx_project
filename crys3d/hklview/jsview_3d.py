@@ -34,7 +34,7 @@ class MyWebSocketServerProtocol(websockets.server.WebSocketServerProtocol):
     self.onconnect = None
     self.ondisconnect = None
     self.onlostconnect = None
-    super().__init__(*args,**kwargs)
+    super().__init__(*args, max_size=100000000) # allow for saving 100Mb size images
   def connection_open(self) -> None:
     #print("In connection_open()")
     self.client_connected = self.local_address
@@ -1742,7 +1742,7 @@ function CreateWebSocket()
   try
   {
     mysocket = new WebSocket('ws://127.0.0.1:%s/');
-    mysocket.bufferType = "arraybuffer";
+    mysocket.bufferType = "arraybuffer"; // "blob";
     //if (mysocket.readyState !== mysocket.OPEN)
     //  alert('Cannot connect to websocket server! \\nAre the firewall permissions or browser security too strict?');
     //  socket_intentionally_closed = false;
@@ -1797,7 +1797,7 @@ var displaytooltips = true;
 var sockwaitcount = 0;
 
 
-function WebsockSendMsg(msg)
+function WebsockSendMsg(msg, message_is_complete = true)
 {
   try
   {
@@ -1818,11 +1818,16 @@ function WebsockSendMsg(msg)
     if (mysocket.readyState === mysocket.OPEN)
     {
       mysocket.send(msg);
-      mysocket.send( 'Ready ' + pagename + '\\n' );
+      if (message_is_complete == true)
+        mysocket.send( 'Ready ' + pagename + '\\n' );
     }
     else
       if (mysocket.readyState !== mysocket.CONNECTING)
-        alert('Cannot connect to websocket server! \\nAre the firewall permissions or browser security too strict?');
+      {
+        CreateWebSocket();
+        mysocket.send( 'Unscheduled reconnection ' + pagename + '\\n' );
+        //alert('Cannot connect to websocket server! \\nAre the firewall permissions or browser security too strict?');
+      }
   }
   catch(err)
   {
@@ -2528,31 +2533,39 @@ mysocket.onmessage = function(e)
               //bytes.map((byte, i) => blob.slice(i));
               //b64 = btoa(blob);
 
-              var reader = new FileReader();
+              WebsockSendMsg('Imageblob', false);
+              WebsockSendMsg( blob );
+              WebsockSendMsg('ImageWritten ' + pagename);
+              
+              //var reader = new FileReader();
               //reader.readAsArrayBuffer(blob);
-              reader.readAsBinaryString(blob);
-              reader.onloadend = function() {
+              //reader.readAsBinaryString(blob);
+              //var bindata = new ArrayBuffer();
+              //reader.onload = function() 
+              //{
                   //var base64data = reader.result;
                   //var base64data = window.btoa(reader.result);
-                  var bindata = reader.result;
-                  WebsockSendMsg('Imageblob\\n' + bindata.buffer );
-                  /*
-                  var msize = 1000000;
-                  var j = 0;
-                  var chunk = String(base64data.slice(j*msize, (j+1)*msize));
-                  while (chunk != "")
-                  {
-                    WebsockSendMsg('ImageChunk_' + String(j) + '\\n' + chunk);
-                    j++;
-                    chunk = String(base64data.slice(j*msize, (j+1)*msize));
-                  }
-                  WebsockSendMsg('ImageSent');
-                  */
+                 //var bindata = reader.result;
+                 // WebsockSendMsg('Imageblob\\n' + bindata);
+                  // 
+                 // var msize = 1000000;
+                 // var j = 0;
+                 // var chunk = String(base64data.slice(j*msize, (j+1)*msize));
+                 // while (chunk != "")
+                 // {
+                 //  WebsockSendMsg('ImageChunk_' + String(j) + '\\n' + chunk);
+                 //   j++;
+                 //   chunk = String(base64data.slice(j*msize, (j+1)*msize));
+                  //}
+                  //WebsockSendMsg('ImageSent');
+                  //WebsockSendMsg('Imageblob', false);
+                  //WebsockSendMsg( bindata );
+                  //WebsockSendMsg('ImageWritten ' + pagename);
 
-              }
-
+              //}
+              //reader.readAsArrayBuffer(blob);
+              
               //WebsockSendMsg('Imageblob\\n' + b64);
-              //WebsockSendMsg('Imageblob\\n' + String(bytes) );
               //WebsockSendMsg('Imageblob\\n' + bytes );
               /*
               var link = document.getElementById('link');
@@ -2564,7 +2577,7 @@ mysocket.onmessage = function(e)
               */
         } );
 
-      //WebsockSendMsg('MakeImage ' + pagename);
+      //WebsockSendMsg('ImageWritten ' + pagename);
     }
 
     if (msgtype === "Testing")
@@ -2621,6 +2634,7 @@ mysocket.onmessage = function(e)
       await asyncio.sleep(self.sleeptime)
       if self.was_disconnected in [4242, # reload
                                    4241, # javascriptcleanup
+                                   1006, # if WebSocketServerProtocol.close_code is absent
                                    1001, # normal exit
                                    1000 # normal exit
                                    ]:
@@ -2632,13 +2646,22 @@ mysocket.onmessage = function(e)
       message = ""
       try: # use EAFP rather than LBYL style with websockets
         message = await self.mywebsock.recv()
-        self.lastmsg = message
       except Exception as e:
         if self.was_disconnected != 4242:
           self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=1)
         continue
       try:
-        if message != "":
+        if isinstance(self.lastmsg, str) and "Imageblob" in self.lastmsg:
+          #datastr = message[ message.find("\n") + 1: ]
+          with open( self.imagename, "wb") as imgfile:
+            #datastr += "=" * ((4 - len(datastr) % 4) % 4)
+            #datastr = datastr[(len('data:image/png;base64,')):]
+            #blob = base64.b64decode(datastr2)
+            #blob = base64.urlsafe_b64decode(datastr)
+            #blob = base64.b64decode(datastr + '=' * (-len(datastr) % 4) )
+            #blob = base64.b64decode(datastr + b'===' )
+            imgfile.write( message)
+        if isinstance(message, str) and message != "":
           if "Orientation" in message:
             self.ProcessOrientationMessage(message)
           elif 'Received message:' in message:
@@ -2660,16 +2683,6 @@ mysocket.onmessage = function(e)
           elif "Expand" in message:
             self.mprint( message, verbose=2)
             #raise Sorry(message)
-          elif "Imageblob" in message:
-            datastr = message[ message.find("\n") + 1: ]
-            with open( self.imagename, "wb") as imgfile:
-              #datastr += "=" * ((4 - len(datastr) % 4) % 4)
-              #datastr = datastr[(len('data:image/png;base64,')):]
-              #blob = base64.b64decode(datastr2)
-              #blob = base64.urlsafe_b64decode(datastr)
-              #blob = base64.b64decode(datastr + '=' * (-len(datastr) % 4) )
-              #blob = base64.b64decode(datastr + b'===' )
-              imgfile.write(datastr)
           elif "ImageChunk" in message:
             self.imgdatastr += message[ message.find("\n") + 1: ]
           elif "ImageSent" in message:
@@ -2678,7 +2691,7 @@ mysocket.onmessage = function(e)
               blob = base64.b64decode(datastr + '===' )
               imgfile.write(blob)
             self.imgdatastr = ""
-          elif "MakeImage" in message:
+          elif "ImageWritten" in message:
             self.mprint( "Image saved to storage", verbose=0)
           elif "ReturnClipPlaneDistances:" in message:
             datastr = message[ message.find("\n") + 1: ]
@@ -2718,6 +2731,7 @@ mysocket.onmessage = function(e)
               self.mprint( message, verbose=5)
       except Exception as e:
         self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
+      self.lastmsg = message
 
 
   def GetCameraPosRotTrans(self, viewmtrx):
@@ -2876,7 +2890,8 @@ Distance: %s
   async def send_msg_to_browser(self, msgtype, msg=""):
     message = u"" + msgtype + self.msgdelim + str(msg)
     nwait = 0.0
-    while not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
+    while isinstance(self.lastmsg, str) and \
+     not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
       or "CurrentViewOrientation" in self.lastmsg or "AutoViewSet" in self.lastmsg \
       or "ReOrient" in self.lastmsg) or self.websockclient is None:
       await asyncio.sleep(self.sleeptime)

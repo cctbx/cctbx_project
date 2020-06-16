@@ -91,7 +91,7 @@ class SettingsForm(QDialog):
 
 class WebEngineDebugForm(QDialog):
   def __init__(self, parent=None):
-    super(WebEngineDebugForm, self).__init__(parent.window)
+    super(WebEngineDebugForm, self).__init__(None)
     self.setWindowTitle("QtWebEngineDebug")
     browser = QWebEngineView()
     mainLayout = QGridLayout()
@@ -317,6 +317,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       if hasattr(self.webpage, "setInspectedPage"): # older versions of Qt5 hasn't got chromium debug kit
         self.webpage.setUrl("chrome://gpu")
         self.webpagedebugform = WebEngineDebugForm(self)
+        self.webpagedebugform.resize( self.window.size())
       else:
         self.webpage.setUrl("https://webglreport.com/")
     else:
@@ -326,12 +327,11 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
 
 
-
   def onOpenReflectionFile(self):
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getOpenFileName(self.window,
             "Open a reflection file", "",
-            "All Files (*);;MTZ Files (*.mtz);;CIF (*.cif)", "", options)
+            "MTZ Files (*.mtz);;CIF (*.cif);;All Files (*);;", "", options)
     if fileName:
       #self.HKLnameedit.setText(fileName)
       self.window.setWindowTitle("HKL-viewer: " + fileName)
@@ -1384,7 +1384,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getSaveFileName(self.window,
             "Save screenshot to file", "",
-            "All Files (*);;PNG Files (*.png)", "", options)
+            "PNG Files (*.png);;All Files (*)", "", options)
     if fileName:
       self.PhilToJsRender('NGL_HKLviewer.save_image_name = "%s" '%fileName)
 
@@ -1529,9 +1529,10 @@ def run():
       guiobj.fontspinBox.setValue(int(fontsize))
     if splitter1sizes is not None and splitter2sizes is not None and windowsize is not None:
       guiobj.window.resize(windowsize)
+      if guiobj.webpagedebugform and guiobj.devmode:
+        guiobj.webpagedebugform.resize( guiobj.window.size())
       guiobj.splitter.restoreState(splitter1sizes)
       guiobj.splitter_2.restoreState(splitter2sizes)
-
 
     timer = QTimer()
     timer.setInterval(20)
