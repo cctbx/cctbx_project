@@ -141,6 +141,8 @@ class Script(object):
       # Execute worker
       experiments, reflections = worker.run(experiments, reflections)
       self.mpi_logger.log_step_time("STEP_" + worker.__repr__(), True)
+      if experiments:
+        self.mpi_logger.log("Ending step with %d experiments"%len(experiments))
 
     if self.params.output.save_experiments_and_reflections:
       import os

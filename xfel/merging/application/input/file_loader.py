@@ -108,13 +108,14 @@ class simple_file_loader(worker):
     if new_file_list is not None:
       self.logger.log("Received a list of %d json/pickle file pairs"%len(new_file_list))
       for experiments_filename, reflections_filename in new_file_list:
+        self.logger.log("Reading %s %s"%(experiments_filename, reflections_filename))
         experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = False)
         reflections = flex.reflection_table.from_file(reflections_filename)
+        self.logger.log("Data read, prepping")
         # NOTE: had to use slicing below because it selection no longer works...
         reflections.sort("id")
         unique_refl_ids = set(reflections['id'])
         assert len(unique_refl_ids) == len(experiments), "refl table and experiment list should contain data on same experiment "  # TODO: decide if this is true
-        assert min(reflections["id"]) >= 0, "No more -1 in the id column, ideally it should be the numerical index of experiment, but beware that this is not enforced anywhere in the upstream code base"
 
         if 'intensity.sum.value' in reflections:
           reflections['intensity.sum.value.unmodified'] = reflections['intensity.sum.value'] * 1
@@ -142,7 +143,7 @@ class simple_file_loader(worker):
 
           new_id = 0
           if len(all_reflections) > 0:
-            new_id = max(all_reflections['id'])+1
+            new_id = flex.max(all_reflections['id'])+1
 
           # FIXME: it is hard to interperet that a function call returning a changeable property
           eid = refls.experiment_identifiers()
