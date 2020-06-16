@@ -418,7 +418,8 @@ libtbx.scons: Warning: compiling with /MDd:
       if (    libtbx.env.build_options.msvc_arch_flag is not None
           and not is_64bit_architecture):
         opts.append("/arch:%s" %libtbx.env.build_options.msvc_arch_flag)
-      if (env_base["MSVC_VERSION"] != "7.1"):
+      # stick with /fp:precise for VS2017 and later
+      if env_etc.msvc_version > 7 and env_etc.msvc_version < 15:
         opts.append("/fp:fast")
     else:
       opts = ["/Od"]
