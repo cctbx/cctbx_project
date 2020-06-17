@@ -118,19 +118,24 @@ class density_props
   // add argument for dori or sedd
   bool has_silva_interaction(std::string const & silva_type)
     {
-    if(density<0.0001) return false;
     FloatType silva = cal_silva();
     MMTBX_ASSERT(gradient != 0);
     if(silva_type.compare("dori")==0) {
+      if(density<0.0001) return false;
       silva *=(4.0 / (gradient*gradient*gradient));
       silva /=(1.0 + silva);
-      if(silva>=0.9) return true; // it is 0.8 in original Java version.
+      if(silva>=0.8 && silva <= 1) {
+        return true; // it is 0.8 in original Java version.
+      }
       else           return false;
     }
     else if(silva_type.compare("sedd")==0) {
+      if(density<0.1) return false;
       silva *= (4.0 / (std::pow(density, 8)));
       silva = std::log((1.0 + silva));
-      if(silva<=5) return true;
+      if(silva<=5) {
+        return true;
+      }
       else         return false;
     }
     else { // PVA: is this OK to do. Otherwise compiler doesn't like it.
