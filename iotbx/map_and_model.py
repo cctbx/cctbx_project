@@ -1,11 +1,11 @@
 from __future__ import absolute_import, division, print_function
-import mmtbx.model
 from libtbx.utils import Sorry
 from cctbx import maptbx
 from libtbx import group_args
 from scitbx.array_family import flex
 from iotbx.map_model_manager import map_model_manager
 from libtbx.utils import null_out
+from libtbx.test_utils import approx_equal
 
 class input(object):
 
@@ -17,6 +17,7 @@ class input(object):
     inputs=map_and_model.input(
       model=model,
       map_manager=map_manager,
+      wrapping=False,
       box=True)
 
     shifted_model=inputs.model()  # at (0,0,0), knows about shifts
@@ -28,11 +29,13 @@ class input(object):
     Optional:  apply soft mask to map (requires resolution)
   '''
   def __init__(self,
+               model            = None,
                map_manager      = None,  # replaces map_data
+               wrapping         = None,  # Required
                map_manager_1    = None,  # replaces map_data_1
                map_manager_2    = None,  # replaces map_data_2
                map_manager_list = None,  # replaces map_data_list
-               model            = None,
+               ncs_object       = None,
                crystal_symmetry = None,  # optional, used only to check
                box              = True,  # box the map
                box_cushion      = 5.0,   # cushion around model in boxing
@@ -45,25 +48,52 @@ class input(object):
     self._map_manager_1=map_manager_1
     self._map_manager_2=map_manager_2
     self._map_manager_list=map_manager_list
-    self._crystal_symmetry=crystal_symmetry
     self._shift_manager=None
+    self._ncs_object=ncs_object
     # CHECKS
 
-    # Take cs from self.map_manager or model (in that order) if not specified
-    if self._map_manager and not self._crystal_symmetry:
-      self._crystal_symmetry=self._map_manager.crystal_symmetry()
-    if self._model and not self._crystal_symmetry:
-      self._crystal_symmetry=self._model.crystal_symmetry()
+    assert isinstance(wrapping, bool) # must be decided by programmer
 
-    # Decide what to do if conflicting crystal_symmetry
-    if (self._crystal_symmetry and self._model and (
-       not self._crystal_symmetry.is_similar_symmetry(
-          self._model.crystal_symmetry()))):
-      if ignore_symmetry_conflicts: # take crystal_symmetry overwrite model
-        self._model.set_crystal_symmetry(self._crystal_symmetry)
-      else: # stop
-        assert self._crystal_symmetry.is_similar_symmetry(
-         self._model.crystal_symmetry())
+    # Make sure that map_manager is either already shifted to (0,0,0) or has
+    #   origin_shift_grid_unit of (0,0,0).
+    if self._map_manager:
+       assert self._map_manager.origin_is_zero() or \
+          self._map_manager.origin_shift_grid_units==(0,0,0)
+
+    # Normally map_manager unit_cell_crystal_symmetry should match
+    #  model original_crystal_symmetry (and also usually model.crystal_symmetry)
+
+    assert self._map_manager # always need one
+    # ZZZ remove crystal_symmetry input
+
+    # Check symmetry
+    original_map_cs=self._map_manager.unit_cell_crystal_symmetry()
+    working_map_cs=self._map_manager.crystal_symmetry()
+
+    if self._model:
+      ok=False
+      original_model_cs=None
+      if self._model.get_shift_manager() and\
+          self._model.get_shift_manager().original_crystal_symmetry:
+        original_model_cs=\
+           self._model.get_shift_manager().original_crystal_symmetry
+        if original_map_cs.is_similar_symmetry(original_model_cs): # fine
+          ok=True # original model matches original map
+      if (not ok) and original_map_cs.is_similar_symmetry(
+           self._model.crystal_symmetry()):
+        ok=True # model matches original map
+      if (not ok) and working_map_cs.is_similar_symmetry(
+           self._model.crystal_symmetry()):
+        ok=True # model matches working map
+
+      if (not ok) and ignore_symmetry_conflicts:
+        self._model.set_crystal_symmetry(original_map_cs)
+      elif (not ok): # stop
+        raise Sorry("Map and model symmetry do not match"+
+         "\nMap original symmetry: %s\n" %(str(original_map_cs))+
+         "\nMap working symmetry: %s\n" %(str(working_map_cs))+
+         "\nModel original symmetry: %s\n" %(str(original_model_cs))+
+       "\nModel working symmetry: %s\n" %(str(self._model.crystal_symmetry())))
 
     # Make sure we have what is expected: optional model, mm,
     # self._map_manager_1 and self._map_manager_2 or neither,
@@ -91,15 +121,26 @@ class input(object):
     mmm.add_map_manager(self._map_manager)
     if self._model:
       mmm.add_model(self._model,set_model_log_to_null=False) # keep the log
+    if self._ncs_object:
+      mmm.add_ncs_object(self._ncs_object)
     # ALL OK if it does not stop
 
     # Shift origin of model and map_manager to (0,0,0) with
     #    mmm which knows about both
     mmm.shift_origin(log=null_out())
     self._model=mmm.model()  # this model knows about shift so far
+                             # NOTE: NO SHIFTS ALLOWED COMING IN
     self._map_manager=mmm.map_manager()  # map_manager also knows about shift
+    self._ncs_object=mmm.ncs_object()  # ncs object also knows about shift
+    self._crystal_symmetry=self._map_manager.crystal_symmetry()
+
     if self._model:
-      self._shift_manager=self._model.get_shift_manager() # XXX save original
+      self._shift_manager=self._model.get_shift_manager() # XXX save manager
+      # Make sure model shift manager agrees with map_manager shift
+      if self._shift_manager and self._map_manager:
+        assert approx_equal(
+          tuple([-a for a in self._shift_manager.shift_cart]),
+          self._map_manager.origin_shift_cart())
 
     # Shift origins of all other maps
     for m in [self._map_manager_1,self._map_manager_2]+\
@@ -113,71 +154,65 @@ class input(object):
       if m:
         assert self._map_manager.is_similar(m)
 
-    # Save things so they can be accessed easily later
+    # Save origin after origin shift but before any boxing
+    #    so they can be accessed easily later
 
     self._original_origin_grid_units=self._map_manager.origin_shift_grid_units
     self._original_origin_cart=self._map_manager.origin_shift_cart()
 
-    box_result = None
+    #  Save gridding of this original map (after shifting, whole thing):
+    self._gridding_first=(0,0,0)
+    self._gridding_last=self._map_manager.map_data().all()
+
+    # Holder for solvent content used in boxing and transferred to box_object
+    self._solvent_content=None
 
     if(box and model is not None):
 
+      from cctbx.maptbx.box import around_model
       if(self._map_manager_1 is not None):
-        info_1 = mmtbx.utils.extract_box_around_model_and_map(
-          model          = self._model,
-          mm             = self._map_manager_1,
-          soft_mask      = soft_mask,
-          resolution      = resolution,
-          box_cushion    = box_cushion)
-        self._map_manager_1=self._map_manager_1.customized_copy(
-           map_data=info_1.map_box,
-           origin_shift_grid_units=info_1.origin_shift_grid_units())
-
-        info_2 = mmtbx.utils.extract_box_around_model_and_map(
-          model          = self._model,
-          mm             = self._map_manager_2,
-          soft_mask      = soft_mask,
-          resolution      = resolution,
-          box_cushion    = box_cushion)
-        self._map_manager_2=self._map_manager_2.customized_copy(
-           map_data=info_2.map_box,
-           origin_shift_grid_units=info_2.origin_shift_grid_units())
-
+        tmp_box=around_model(
+          map_manager=self._map_manager_1,
+          model=self._model.deep_copy(),
+          cushion=box_cushion,
+          wrapping=wrapping)
+        self._map_manager_1=tmp_box.map_manager()
+        tmp_box=around_model(
+          map_manager=self._map_manager_2,
+          model=self._model.deep_copy(),
+          cushion=box_cushion,
+          wrapping=wrapping)
+        self._map_manager_2=tmp_box.map_manager()
       if self._map_manager_list:
         new_list=[]
         for x in self._map_manager_list:
-          info = mmtbx.utils.extract_box_around_model_and_map(
-            model          = self._model,
-            mm             = x,
-            soft_mask      = soft_mask,
-            resolution      = resolution,
-            box_cushion    = box_cushion)
-          new_list.append(x.customized_copy(
-            map_data=info.map_box,
-            origin_shift_grid_units=info.origin_shift_grid_units()))
+          tmp_box=around_model(
+            map_manager=x,
+            model=self._model.deep_copy(),
+            cushion=box_cushion,
+            wrapping=wrapping)
+          new_list.append(tmp_box.map_manager())
         self._map_manager_list=new_list
-      box_result = mmtbx.utils.extract_box_around_model_and_map(
-        model          = self._model,
-        mm             = self._map_manager,
-        soft_mask      = soft_mask,
-        resolution     = resolution,
-        box_cushion    = box_cushion)
-      self._map_manager=self._map_manager.customized_copy(
-           map_data=box_result.map_box,
-           origin_shift_grid_units=box_result.origin_shift_grid_units())
 
-      # Add previous shift_cart on to box_result.shift_cart to get
-      #   shift since beginning
-      if self._shift_manager: # existing shift
-        box_result.shift_cart=add_tuples(box_result.shift_cart,
-          self._shift_manager.shift_cart)
+      # Make box around model
+      box=around_model(
+        map_manager=self._map_manager,
+        model=self._model,
+        ncs_object=self._ncs_object,
+        cushion=box_cushion,
+        wrapping=wrapping)
 
-      # Save shift_manager so other programs can use it. NOTE: This is big
-      # XXX Do this with model routine now...
+      box_as_mam=box.as_map_and_model()
 
-      self._shift_manager=box_result
-      # Update model and crystal_symmetry with new values
-      self._model.set_shift_manager(shift_manager= box_result)
+      # New map_manager and model know about cumulative shifts (original
+      #   shift to move origin to (0,0,0) plus shift from boxing
+      self._map_manager=box_as_mam.map_manager()
+      self._model=box_as_mam.model()
+      self._ncs_object=box_as_mam.ncs_object()
+
+      self._shift_manager=self._model.get_shift_manager().deep_copy()
+
+      # Update self._crystal_symmetry
       self._crystal_symmetry = self._model.crystal_symmetry()
       assert self._crystal_symmetry.is_similar_symmetry(
         self._map_manager.crystal_symmetry())
@@ -256,6 +291,8 @@ class input(object):
 
   def model(self): return self._model
 
+  def ncs_object(self): return self._ncs_object
+
   def crystal_symmetry(self): return self._crystal_symmetry
 
   def xray_structure(self):
@@ -265,6 +302,15 @@ class input(object):
       return None
 
   def hierarchy(self): return self._model.get_hierarchy()
+
+  def set_gridding_first(self,gridding_first):
+    self._gridding_first=tuple(gridding_first)
+
+  def set_gridding_last(self,gridding_last):
+    self._gridding_last=tuple(gridding_last)
+
+  def set_solvent_content(self,solvent_content):
+    self._solvent_content=solvent_content
 
   def get_counts_and_histograms(self):
     self._counts = get_map_counts(
@@ -285,6 +331,63 @@ class input(object):
     if not hasattr(self,'_map_histograms'):
       self.get_counts_and_histograms()
     return self._map_histograms
+
+  def as_map_and_model(self):
+    '''
+      Return this object (allows using .as_map_and_model() on both
+      map_and_model objects and others including box.around_model() etc.
+    '''
+    return self
+
+  def as_map_model_manager(self):
+    '''
+      Return this object as a map_model_manager
+    '''
+    from iotbx.map_model_manager import map_model_manager
+    mmm=map_model_manager()
+    if self.map_manager():
+      mmm.add_map(self.map_manager())
+    if self.model():
+      mmm.add_model(self.model())
+    if self.ncs_object():
+      mmm.add_ncs_object(self.ncs_object())
+    return mmm
+
+  def as_box_object(self,
+        original_map_data=None,
+        solvent_content=None):
+    '''
+      Create a box_object for backwards compatibility with methods that used
+       extract_box_around_model_and_map
+    '''
+
+    if solvent_content:
+      self.set_solvent_content(solvent_content)
+
+    if self.model():
+       xray_structure_box=self.model().get_xray_structure()
+       hierarchy=self.model().get_hierarchy()
+    else:
+       xray_structure_box=None
+       hierarchy=None
+
+    output_box=box_object(
+      shift_cart=tuple([-x for x in self.map_manager().origin_shift_cart()]),
+      xray_structure_box=xray_structure_box,
+      hierarchy=hierarchy,
+      ncs_object=self.ncs_object(),
+      map_box=self.map_manager().map_data(),
+      map_data=original_map_data,
+      map_box_half_map_list=None,
+      box_crystal_symmetry=self.map_manager().crystal_symmetry(),
+      pdb_outside_box_msg="",
+      gridding_first=self._gridding_first,
+      gridding_last=self._gridding_last,
+      solvent_content=self._solvent_content,
+      origin_shift_grid_units=[
+         -x for x in self.map_manager().origin_shift_grid_units],
+      )
+    return output_box
 
 def get_map_histograms(data, n_slots=20, data_1=None, data_2=None):
   h0, h1, h2 = None, None, None

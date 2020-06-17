@@ -146,6 +146,7 @@ mmtbx.ringer model.pdb map_coeffs.mtz [cif_file ...] [options]
     base = map_and_model.input(
       map_manager               = map_inp,
       model            = model,
+      wrapping = (map_inp.is_full_size()), # XXX NEED TO DECIDE WRAPPING
       box              = False)
     hierarchy = base.model().get_hierarchy()
     map_data = base.map_data()

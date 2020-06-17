@@ -81,6 +81,10 @@ class create_mask_around_atoms(object):
   def is_soft_mask(self):
     return self._is_soft_mask
 
+  def solvent_content(self):
+    if hasattr(self,'_solvent_content'):
+      return self._solvent_content
+
   def crystal_symmetry(self):
     return self._crystal_symmetry
 
@@ -143,7 +147,6 @@ class create_mask_around_atoms(object):
        other_map_manager: map_manager to be masked in place
        set_outside_to_mean_inside:  if True,
           set the value outside mask to the mean inside the mask
-          Requires that the mask is not a soft_mask
        set_mean_to_zero:  Adjust overall mean of map to zero after masking
     '''
 
@@ -189,8 +192,7 @@ class create_mask_around_edges(create_mask_around_atoms):
 
     self._crystal_symmetry=map_manager.crystal_symmetry()
 
-    from cctbx.maptbx.segment_and_split_map import get_zero_boundary_map,\
-        smooth_mask_data
+    from cctbx.maptbx.segment_and_split_map import get_zero_boundary_map
 
     self._mask=get_zero_boundary_map(
       map_data=map_manager.map_data(),
@@ -250,7 +252,7 @@ class create_mask_around_density(create_mask_around_atoms):
     from cctbx.maptbx.segment_and_split_map import \
           get_iterated_solvent_fraction
 
-    self._mask,solvent_fraction=get_iterated_solvent_fraction(
+    self._mask,self._solvent_content=get_iterated_solvent_fraction(
           crystal_symmetry=self._crystal_symmetry,
           fraction_of_max_mask_threshold=0.05, #
           solvent_content=solvent_content,
@@ -262,8 +264,9 @@ class create_mask_around_density(create_mask_around_atoms):
           verbose=False,
           out=null_out())
 
-    if solvent_fraction is None:
-      raise Sorry("Unable to get solvent fraction in auto-masking")
+    if self._solvent_content is None:
+      raise Sorry("Unable to get solvent content in auto-masking")
+
 
     # Set up map_manager with this mask
     self._map_manager=map_manager.customized_copy(map_data=self._mask)

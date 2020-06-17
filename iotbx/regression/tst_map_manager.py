@@ -113,6 +113,23 @@ def test_01():
   assert new_mm.is_in_limitations('map_is_sharpened')
   assert new_mm.labels[0].find('test program')>-1
 
+  # change the cell dimensions
+  mm_read=map_manager(data_ccp4)
+  mm_read.shift_origin()
+  assert mm_read.is_similar(mm)
+  assert approx_equal(mm_read.pixel_sizes(),(0.7470, 0.7231, 0.7374) ,eps=0.001)
+  from cctbx import crystal
+  new_uc_params=list(
+    mm_read.unit_cell_crystal_symmetry().unit_cell().parameters())
+  new_uc_params[0]+=10
+  new_cs=crystal.symmetry(new_uc_params,1)
+  mm_read.set_unit_cell_crystal_symmetry(new_cs)
+  assert not mm_read.crystal_symmetry().is_similar_symmetry(
+      mm.crystal_symmetry())
+  assert not mm_read.is_similar(mm)
+  mm_read.show_summary()
+  assert approx_equal(mm_read.pixel_sizes(),(0.7970, 0.7231, 0.7374) ,eps=0.001)
+
   # Read a map directly
   mm_read=map_manager(data_ccp4)
   mm_read.shift_origin()
@@ -129,6 +146,12 @@ def test_01():
   # replace data
   new_mm.set_map_data(map_data=mm.map_data().deep_copy())
   assert new_mm.is_similar(mm)
+
+  # create a full-sized map from this one
+  mm_full_size=mm_read.deep_copy().as_full_size_map()
+  assert not mm_full_size.is_similar(mm_read)
+  print (mm_full_size.map_data().origin(),mm_read.map_data().origin())
+  print (mm_full_size.map_data().all(),mm_read.map_data().all())
 
   # Apply a mask to edges of a map
   assert approx_equal(new_mm.map_data().as_1d().min_max_mean().max,

@@ -4,6 +4,7 @@ import sys
 from iotbx.map_manager import map_manager
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
+from libtbx.test_utils import approx_equal
 
 class map_model_manager:
 
@@ -56,6 +57,17 @@ class map_model_manager:
     self._model=None
     self._ncs_object=None
 
+  def deep_copy(self):
+    from copy import deepcopy
+    new_mmm=map_model_manager()
+    if self._model:
+      new_mmm.add_model(self._model.deep_copy())
+    if self._map_manager:
+      new_mmm.add_map_manager(self._map_manager.deep_copy())
+    if self._ncs_object:
+      new_mmm.add_model(self._model.deep_copy())
+    return new_mmm
+
   def show_summary(self,log=sys.stdout):
     print ("Summary of maps and models",file=log)
     if self._map_manager:
@@ -70,14 +82,6 @@ class map_model_manager:
       print("NCS summary:",file=log)
       print("Operators: %s" %(
        self._ncs_object.max_operators()),file=log)
-
-  def expected_crystal_symmetries(self):
-    expected=[]
-    if self.crystal_symmetry():
-      expected.append(self.crystal_symmetry())
-    if self.unit_cell_crystal_symmetry():
-      expected.append(self.unit_cell_crystal_symmetry())
-    return expected
 
   def crystal_symmetry(self):
     # Return crystal symmetry of first map, or if not present, of first model
@@ -140,7 +144,13 @@ class map_model_manager:
   def add_map_manager(self,map_manager=None,log=sys.stdout):
     # Add a map and make sure its symmetry is similar to others
     self._map_manager=map_manager
-    self.check_crystal_symmetry(map_manager.crystal_symmetry(),log=log)
+    if self.model():
+      assert map_manager.is_compatible_model(self.model()) # model must match
+      if not map_manager.crystal_symmetry().is_similar_symmetry(
+         self.model().crystal_symmetry()):
+        # Set the crystal symmetry in the model without changing coordinates
+        print("Setting model crystal_symmetry to match map_manager",file=log)
+        self.model().set_crystal_symmetry(map_manager.crystal_symmetry())
     # if existing:  check that map_manager.is_similar(other_map_manager)
 
   def add_model(self,model=None,set_model_log_to_null=True,
@@ -148,24 +158,16 @@ class map_model_manager:
     # Add a model and make sure its symmetry is similar to others
     # Check that model crystal_symmetry matches either full or working
     # crystal_symmetry of map
-    self.check_crystal_symmetry(model.crystal_symmetry(),log=log)
+    if self.map_manager():
+      assert self.map_manager().is_compatible_model(model) # model must match
+      if not self.map_manager().crystal_symmetry().is_similar_symmetry(
+         model.crystal_symmetry()):
+        # Set the crystal symmetry in the model without changing coordinates
+        print("Setting model crystal_symmetry to match map_manager",file=log)
+        model.set_crystal_symmetry(self.map_manager().crystal_symmetry())
     if set_model_log_to_null:
       model.set_log(null_out())
     self._model=model
-
-  def check_crystal_symmetry(self,crystal_symmetry,
-     text_on_failure='Symmetry of model',log=sys.stdout):
-    ok=False
-    for cs in self.expected_crystal_symmetries():
-      if crystal_symmetry.is_similar_symmetry(cs):
-        ok=True
-        break
-    if not ok:
-      raise Sorry("Crystal symmetry of %s" %(text_on_failure)+
-      "\n%s\n" %(crystal_symmetry) +
-      "does not match that of the map that is present: "+
-        " \n%s\n or that of the full map:\n%s\n" %(
-       self.crystal_symmetry(),self.unit_cell_crystal_symmetry()))
 
   def add_ncs_object(self,ncs_object=None,log=sys.stdout):
     # Add an NCS object
@@ -194,6 +196,35 @@ class map_model_manager:
        self.ncs_object.set_unit_ncs()
     self.add_ncs_object(ncs_object)
 
+  def set_original_origin_and_gridding(self,
+      original_origin=None,
+      gridding=None):
+    '''
+     Use map_manager to reset (redefine) the original origin and gridding
+     of the map.
+     You can supply just the original origin in grid units, or just the
+     gridding of the full unit_cell map, or both.
+
+     Update shift_cart for model and ncs object if present.
+
+    '''
+
+    assert self._map_manager is not None
+
+    self._map_manager.set_original_origin_and_gridding(
+         original_origin=original_origin,
+         gridding=gridding)
+
+    # Get the current origin shift based on this new original origin
+    shift_cart=tuple([-x for x in self._map_manager.origin_shift_cart()])
+    if self._model:
+      if self._model.get_shift_manager() is None:
+        self._model.create_shift_manager(original_crystal_symmetry=\
+           self._map_manager.unit_cell_crystal_symmetry())
+      self._model.set_shift_cart(shift_cart)
+    if self._ncs_object:
+      self._ncs_object.set_shift_cart(shift_cart)
+
   def shift_origin(self,desired_origin=(0,0,0), log=sys.stdout):
     # shift the origin of all maps/models to desired_origin (usually (0,0,0))
     if not self._map_manager:
@@ -202,19 +233,74 @@ class map_model_manager:
     if self._map_manager.map_data().origin()==desired_origin:
       print("Origin is already at %s, no shifts will be applied" %(
        str(desired_origin)), file=log)
+      # Do not return here yet XXX...need to set model shift_manager XXX
+
+
+    # Figure out shift of model if incoming map and model already had a shift
+
+    if self._ncs_object or self._model:
+
+      # Figure out shift for model and make sure model and map agree
+      shift_info=self._map_manager.get_shift_info(
+         desired_origin=desired_origin)
+
+      current_origin_shift_cart=self._map_manager.grid_units_to_cart(
+       shift_info.current_origin_shift_grid_units)
+      expected_model_shift_cart=tuple([-x for x in current_origin_shift_cart])
+
+      shift_to_apply_cart=self._map_manager.grid_units_to_cart(
+        shift_info.shift_to_apply)
+      new_origin_shift_cart=self._map_manager.grid_units_to_cart(
+        shift_info.new_origin_shift_grid_units)
+      new_shift_cart=tuple([-x for x in new_origin_shift_cart])
+      # shift_to_apply_cart is coordinate shift we are going to apply
+      #  new_origin_shift_cart is how to get back to original from new location
+      #   current_origin_shift_cart is how to get orig from current location
+      assert approx_equal(shift_to_apply_cart,[-(a-b) for a,b in zip(
+        new_origin_shift_cart,current_origin_shift_cart)])
+
+      # Get shifts already applied to  model and ncs_object
+      #    and check that they match map
+
+      if self._model:
+        sm=self._model.get_shift_manager()
+        if sm and sm.shift_cart:
+          assert approx_equal(sm.shift_cart,expected_model_shift_cart)
+
+      if self._ncs_object:
+        ncs_shift_cart=self._ncs_object.shift_cart()
+        assert approx_equal(ncs_shift_cart,expected_model_shift_cart)
+
+      if self._map_manager.origin_is_zero() and \
+         expected_model_shift_cart==(0,0,0):
+        pass #Need to set model shift_manager still XXX return # nothing to do
+
+    # Apply shift to model, map and ncs object
+
+    # Shift origin of map_manager
     self._map_manager.shift_origin(desired_origin=desired_origin)
+
+    # Shift origin of model  Note this sets model shift_manager
     if self._model:
       self._model=self.shift_model_to_match_working_map(
+        coordinate_shift=shift_to_apply_cart,
+        new_shift_cart=new_shift_cart,
         model=self._model,log=log)
     if self._ncs_object:
       self._ncs_object=self.shift_ncs_to_match_working_map(
-       ncs_object=self._ncs_object, log=log)
+        coordinate_shift=shift_to_apply_cart,
+        new_shift_cart=new_shift_cart,
+        ncs_object=self._ncs_object, log=log)
 
   def shift_ncs_to_match_working_map(self,ncs_object=None,reverse=False,
+    coordinate_shift=None,
+    new_shift_cart=None,
     log=sys.stdout):
     # Shift an ncs object to match the working map (based
     #    on self._map_manager.origin_shift_grid_units)
-    coordinate_shift=self.get_coordinate_shift(reverse=reverse)
+    if coordinate_shift is None:
+      coordinate_shift=self.get_coordinate_shift(reverse=reverse)
+
     ncs_object=ncs_object.coordinate_offset(coordinate_shift)
     return ncs_object
 
@@ -237,28 +323,29 @@ class map_model_manager:
     return coordinate_shift
 
   def shift_model_to_match_working_map(self,model=None,reverse=False,
+     coordinate_shift=None,
+     new_shift_cart=None,
      log=sys.stdout):
 
-    # Shift a model object to match the working map (based
-    #    on self._map_manager.origin_shift_grid_units)
+    '''
+    Shift a model based on the coordinate shift for the working map.
 
-    coordinate_shift=self.get_coordinate_shift(
+    Optionally specify the shift to apply (coordinate shift) and the
+    new value of the shift recorded in the model (new_shift_cart)
+    '''
+
+    if coordinate_shift is None:
+      coordinate_shift=self.get_coordinate_shift(
        reverse=reverse)
+    if new_shift_cart is None:
+      new_shift_cart=coordinate_shift
 
-    xrs=model.get_xray_structure()
-    if(coordinate_shift !=(0,0,0)):
-      print ("\nShifting model by %s" %(
-         str(coordinate_shift)), file=log)
-      sites_cart=xrs.sites_cart()
-      sites_cart+=coordinate_shift
-      xrs.set_sites_cart(sites_cart)
+    model.shift_model_and_set_crystal_symmetry(shift_cart=coordinate_shift,
+      crystal_symmetry=model.crystal_symmetry())  # keep crystal_symmetry
 
-    sm=shift_manager(
-        shift_cart=coordinate_shift,
-        original_crystal_symmetry=self.unit_cell_crystal_symmetry(),
-        shifted_crystal_symmetry=model.crystal_symmetry(),
-        xray_structure_box=xrs)
-    model.set_shift_manager(shift_manager= sm) # do this even if no shift
+    # Allow specifying the final shift_cart:
+    if tuple(new_shift_cart) != tuple(coordinate_shift):
+      model.set_shift_cart(new_shift_cart)
 
     return model
 
@@ -412,27 +499,50 @@ class map_model_manager:
     self._map_manager=mm
     self._model=model
 
+  def as_map_and_model(self):
+
+    '''
+      Return map_and_model object with contents of this class (not a deepcopy)
+
+      Sets wrapping=False XXX
+
+      Sets box=False or recursion will occur.
+
+    '''
+    import iotbx.map_and_model
+    mam=iotbx.map_and_model.input(
+        map_manager=self.map_manager(),
+        model=self.model(),
+        ncs_object=self.ncs_object(),
+        wrapping=False, # At this point it is undefined however
+        box=False # Always
+        )
+    # Keep track of the gridding and solvent_content (if used) in this boxing.
+    return mam
+
+
 class shift_manager:
   '''
-    Class to replace shift_manager in mmtbx.utils.extract_box_around_model_and_map
-    XXX In progress
+    Class to keep track of shifts for a model
+    NOTE: shift_cart is shift that has been applied, shift_back is shift to
+     get back to original.
   '''
 
   def __init__(self,
     shift_cart=None,
     original_crystal_symmetry=None,
-    shifted_crystal_symmetry=None,
-    xray_structure_box=None,
        ):
     adopt_init_args(self, locals())
 
     assert self.shift_cart is not None
 
+  def set_shift_cart(self,shift_cart):
+    shift_cart=tuple(shift_cart)
+    assert len(shift_cart)==3
+    self.shift_cart=shift_cart
+
   def get_original_cs(self):
     return self.original_crystal_symmetry
-
-  def get_shifted_cs(self):
-    return self.shifted_crystal_symmetry
 
   def shift_back(self, pdb_hierarchy):
     assert pdb_hierarchy is not None
@@ -447,6 +557,33 @@ class shift_manager:
     return shift_manager(
       shift_cart=deepcopy(self.shift_cart),
       original_crystal_symmetry=deepcopy(self.original_crystal_symmetry),
-      shifted_crystal_symmetry=deepcopy(self.shifted_crystal_symmetry),
-      xray_structure_box=deepcopy(self.xray_structure_box))
+     )
 
+
+def original_or_current_symmetries_match(model=None,map_manager=None):
+    '''
+      Allow current or original model symmetry to match current or original
+     map symmetry
+    '''
+    from iotbx.map_manager import map_manager as mm
+    from mmtbx.model import manager as model_manager
+
+    assert isinstance(map_manager, mm)
+    assert isinstance(model, model_manager)
+
+    original_map_uc_symmetry=map_manager.unit_cell_crystal_symmetry()
+    current_map_symmetry=map_manager.crystal_symmetry()
+    current_model_symmetry=model.crystal_symmetry()
+
+    if original_map_uc_symmetry.is_similar_symmetry(current_model_symmetry):
+      return True
+    if current_map_symmetry.is_similar_symmetry(current_model_symmetry):
+      return True
+
+    if model.get_shift_manager():
+      original_model_symmetry=model.get_shift_manager().get_original_cs()
+      if original_map_uc_symmetry.is_similar_symmetry(original_model_symmetry):
+        return True
+      if current_map_symmetry.is_similar_symmetry(original_model_symmetry):
+        return True
+    return False

@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import os
 import iotbx.pdb
-import libtbx.load_env
 from libtbx.test_utils import approx_equal
 from cctbx.sgtbx import space_group_info
 from cctbx.development import random_structure
@@ -62,11 +61,11 @@ def exercise_around_model():
     model       = mam.model.deep_copy(),
     cushion     = 10,
     wrapping    = True)
-  new_mm1 = box.map_manager
+  new_mm1 = box.map_manager()
   new_mm2 = box.apply_to_map(map_manager=mam.mm.deep_copy())
   assert approx_equal(new_mm1.map_data(), new_mm2.map_data())
 
-  new_model1 = box.model
+  new_model1 = box.model()
   new_model2 = box.apply_to_model(model=mam.model.deep_copy())
   assert new_model1.crystal_symmetry().is_similar_symmetry(
          new_model2.crystal_symmetry())
@@ -78,47 +77,41 @@ def exercise_around_model():
   assert new_mm2.map_data().size() != map_data_orig.size()
 
   # make sure things are changed in-place and are therefore different from start
-  assert box.map_manager.map_data().size() != map_data_orig.size()
-  assert box.model.get_sites_frac() != sites_frac_orig
-  assert box.model.get_sites_cart() !=  sites_cart_orig
-  assert (not cs_orig.is_similar_symmetry(box.model.crystal_symmetry()))
+  assert box.map_manager().map_data().size() != map_data_orig.size()
+  assert box.model().get_sites_frac() != sites_frac_orig
+  assert box.model().get_sites_cart() !=  sites_cart_orig
+  assert (not cs_orig.is_similar_symmetry(box.model().crystal_symmetry()))
 
   # make sure box, model and map_manager remember original crystal symmetry
-  assert cs_orig.is_similar_symmetry(box.original_crystal_symmetry)
+  assert cs_orig.is_similar_symmetry(box.map_manager().unit_cell_crystal_symmetry())
   assert cs_orig.is_similar_symmetry(
-    box.map_manager.original_unit_cell_crystal_symmetry)
+    box.map_manager().unit_cell_crystal_symmetry())
 
-  assert approx_equal (box.model.get_shift_manager().shift_cart,
+  assert approx_equal (box.model().get_shift_manager().shift_cart,
      [5.229233333333334, 5.061524999999999, 5.162062499999999])
 
-  assert box.model.get_shift_manager(
-      ).shifted_crystal_symmetry.is_similar_symmetry(
-     box.model.crystal_symmetry())
-  assert box.model.get_shift_manager(
+  assert box.model().get_shift_manager(
       ).original_crystal_symmetry.is_similar_symmetry(cs_orig)
-  assert (not box.model.get_shift_manager(
-      ).shifted_crystal_symmetry.is_similar_symmetry(cs_orig))
+  assert (not box.model().crystal_symmetry().is_similar_symmetry(cs_orig))
 
   assert approx_equal(
-     box.model._figure_out_hierarchy_to_output(do_not_shift_back=False
+     box.model()._figure_out_hierarchy_to_output(do_not_shift_back=False
        ).atoms().extract_xyz()[0],
         (14.476, 10.57, 8.342))
 
   # make sure we can stack shifts
-  sel=box.model.selection("resseq 219:219")
-  m_small=box.model.select(selection=sel)
-  # Just until deep_copy() deep-copies shift_manager...
-  m_small._shift_manager=m_small.get_shift_manager().deep_copy()
+  sel=box.model().selection("resseq 219:219")
+  m_small=box.model().select(selection=sel)
 
-  assert approx_equal(box.model.get_shift_manager().shift_cart,
+  assert approx_equal(box.model().get_shift_manager().shift_cart,
      m_small.get_shift_manager().shift_cart)
-  assert not (box.model.get_shift_manager() is m_small.get_shift_manager())
+  assert not (box.model().get_shift_manager() is m_small.get_shift_manager())
 
 
   # Now box again:
   small_box = cctbx.maptbx.box.around_model(
     map_manager = mam.mm,
-    model       = m_small,
+    model       = mam.model.deep_copy(),
     cushion     = 5,
     wrapping    = True)
 
@@ -133,38 +126,38 @@ def exercise_around_model():
     wrapping    = False)
 
   # make sure things are changed in-place and are therefore different from start
-  assert box.map_manager.map_data().size() != map_data_orig.size()
-  assert box.model.get_sites_frac() != sites_frac_orig
-  assert box.model.get_sites_cart() !=  sites_cart_orig
-  assert (not cs_orig.is_similar_symmetry(box.model.crystal_symmetry()))
+  assert box.map_manager().map_data().size() != map_data_orig.size()
+  assert box.model().get_sites_frac() != sites_frac_orig
+  assert box.model().get_sites_cart() !=  sites_cart_orig
+  assert (not cs_orig.is_similar_symmetry(box.model().crystal_symmetry()))
 
   # make sure box, model and map_manager remember original crystal symmetry
-  assert cs_orig.is_similar_symmetry(box.original_crystal_symmetry)
+  assert cs_orig.is_similar_symmetry(box.model().get_shift_manager().original_crystal_symmetry)
   assert cs_orig.is_similar_symmetry(
-    box.map_manager.original_unit_cell_crystal_symmetry)
+    box.map_manager().unit_cell_crystal_symmetry())
 
-  assert box.map_manager.map_data().as_1d().count(0)==81264
+  assert box.map_manager().map_data().as_1d().count(0)==81264
 
   # Now specify bounds directly
-  box = cctbx.maptbx.box.with_bounds(
+  new_box = cctbx.maptbx.box.with_bounds(
     map_manager = mam.mm.deep_copy(),
     lower_bounds= (-7, -7, -7),
     upper_bounds= (37, 47, 39),
     wrapping    = False)
 
-  new_model=box.apply_to_model(mam.model.deep_copy())
+  new_model=new_box.apply_to_model(mam.model.deep_copy())
   # make sure things are changed in-place and are therefore different from start
-  assert box.map_manager.map_data().size() != map_data_orig.size()
+  assert new_box.map_manager().map_data().size() != map_data_orig.size()
   assert new_model.get_sites_frac() != sites_frac_orig
   assert new_model.get_sites_cart() !=  sites_cart_orig
   assert (not cs_orig.is_similar_symmetry(new_model.crystal_symmetry()))
 
   # make sure box, model and map_manager remember original crystal symmetry
-  assert cs_orig.is_similar_symmetry(box.original_crystal_symmetry)
+  assert cs_orig.is_similar_symmetry(box.model().get_shift_manager().original_crystal_symmetry)
   assert cs_orig.is_similar_symmetry(
-    box.map_manager.original_unit_cell_crystal_symmetry)
+    box.map_manager().unit_cell_crystal_symmetry())
 
-  assert box.map_manager.map_data().as_1d().count(0)==81264
+  assert box.map_manager().map_data().as_1d().count(0)==81264
 
   # Now specify bounds directly and init with model
   box = cctbx.maptbx.box.with_bounds(
@@ -174,19 +167,19 @@ def exercise_around_model():
     wrapping    = False,
     model = mam.model.deep_copy())
 
-  new_model=box.model
+  new_model=box.model()
   # make sure things are changed in-place and are therefore different from start
-  assert box.map_manager.map_data().size() != map_data_orig.size()
+  assert box.map_manager().map_data().size() != map_data_orig.size()
   assert new_model.get_sites_frac() != sites_frac_orig
   assert new_model.get_sites_cart() !=  sites_cart_orig
   assert (not cs_orig.is_similar_symmetry(new_model.crystal_symmetry()))
 
   # make sure box, model and map_manager remember original crystal symmetry
-  assert cs_orig.is_similar_symmetry(box.original_crystal_symmetry)
+  assert cs_orig.is_similar_symmetry(box.model().get_shift_manager().original_crystal_symmetry)
   assert cs_orig.is_similar_symmetry(
-    box.map_manager.original_unit_cell_crystal_symmetry)
+    box.map_manager().unit_cell_crystal_symmetry())
 
-  assert box.map_manager.map_data().as_1d().count(0)==81264
+  assert box.map_manager().map_data().as_1d().count(0)==81264
 
   # Extract using extract_unique
 
@@ -217,7 +210,7 @@ def exercise_around_model():
     wrapping    = False,
    )
 
-  box.map_manager.write_map('new_box.ccp4')
+  box.map_manager().write_map('new_box.ccp4')
 
 
   # Get bounds around density
@@ -225,18 +218,41 @@ def exercise_around_model():
     map_manager = mam.mm.deep_copy(),
     wrapping=False)
 
+  # Create a mask
+
+  mm=mam.mm.deep_copy()
+
+  mm.create_mask_around_density(
+        resolution=3,
+        molecular_mass=2100,
+        sequence="GAVAGA",
+        solvent_content=0.5,
+        )
+  mask_mm=mm.get_mask_as_map_manager()
+  assert approx_equal(
+     (mask_mm.map_data().count(0),mask_mm.map_data().count(1),
+      mask_mm.map_data().size()),
+     (19214,19186, 38400))
+
+  # Box around the mask
+  box = cctbx.maptbx.box.around_mask(
+    map_manager = mam.mm.deep_copy(),
+    mask_as_map_manager=mask_mm,
+    wrapping=False,
+    )
+
+  assert (box.gridding_first,box.gridding_last)==([0, 0, 0] ,[29, 39, 31])
+
+
 
   #
   # IF you are about to change this - THINK TWICE!
   #
   import inspect
   r = inspect.getargspec(cctbx.maptbx.box.around_model.__init__)
-  assert r.args == ['self', 'map_manager', 'model', 'cushion','wrapping', 'log'], r.args
+  assert r.args == ['self', 'map_manager', 'model', 'cushion','wrapping', 'ncs_object', 'log'], r.args
   r = inspect.getargspec(cctbx.maptbx.box.with_bounds.__init__)
-  assert r.args == ['self', 'map_manager', 'lower_bounds', 'upper_bounds','wrapping','model', 'log'], r.args
+  assert r.args == ['self', 'map_manager', 'lower_bounds', 'upper_bounds','wrapping','model', 'ncs_object','log'], r.args
 
 if (__name__ == "__main__"):
-  if libtbx.env.has_module('phenix'):
-    exercise_around_model()
-  else:
-    print('phenix is not available, skipping test')
+  exercise_around_model()

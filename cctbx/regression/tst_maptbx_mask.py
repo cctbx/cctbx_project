@@ -124,7 +124,7 @@ def exercise_mask():
     molecular_mass=2000,
     sequence='AVAGS',
     solvent_content=None)
-  mask_mm=mm.get_created_mask_as_map_manager()
+  mask_mm=mm.get_mask_as_map_manager()
   mask_data=mask_mm.map_data()
   print ("Mask zero/one: ",
      mask_data.count(0),mask_data.count(1),mask_data.size())

@@ -2539,7 +2539,6 @@ def get_map_object(file_name=None,must_allow_sharpening=None,
   # now get space group and cell
   from cctbx import crystal
   from cctbx import sgtbx
-  from cctbx import uctbx
   if m.unit_cell_crystal_symmetry().space_group_number()==0:
     n=1 # fix mrc formatting
   else:
@@ -2592,7 +2591,6 @@ def set_up_xrs(crystal_symmetry=None):  # dummy xrs to write out atoms
 
   lines=["ATOM     92  SG  CYS A  10       8.470  28.863  18.423  1.00 22.05           S"] # just a random line to set up x-ray structure
   from cctbx.array_family import flex
-  from cctbx import xray
   pdb_inp=iotbx.pdb.input(source_info="",lines=lines)
   xrs = pdb_inp.xray_structure_simple(crystal_symmetry=crystal_symmetry)
   scatterers = flex.xray_scatterer()
@@ -4328,16 +4326,19 @@ def apply_mask_to_map(mask_data=None,
   # get mean inside or outside mask
   if verbose:
     print("\nStarting map values inside and outside mask:", file=out)
+
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
     verbose=verbose,map_data=map_data, out=out)
 
   if verbose:
     print("\nMask inside and outside values", file=out)
+
   mask_mean_value_in,mask_mean_value_out,mask_fraction_in=get_mean_in_and_out(
       sel=s,map_data=mask_data, verbose=verbose,out=out)
 
   if verbose:
     print("\nSmoothed mask inside and outside values", file=out)
+
   smoothed_mean_value_in,smoothed_mean_value_out,smoothed_fraction_in=\
      get_mean_in_and_out(sel=s,map_data=smoothed_mask_data,
        verbose=verbose,out=out)
@@ -4346,6 +4347,7 @@ def apply_mask_to_map(mask_data=None,
   #   smoothly going from one to the other based on mask_data
 
   # set_to_mean will be a constant map with value equal to inside or outside
+
   if (set_outside_to_mean_inside is False):
     target_value_for_outside=0
   elif set_outside_to_mean_inside or mean_value_out is None:
@@ -4682,8 +4684,8 @@ def get_bounds_for_helical_symmetry(params,
    params.map_modification.restrict_z_distance_for_helical_symmetry/delta_z)
   new_z_first=max(z_first,z_middle-n_z_max)
   new_z_last=min(z_last,z_middle+n_z_max)
-  lower_bounds=deepcopy(box.gridding_first)
-  upper_bounds=deepcopy(box.gridding_last)
+  lower_bounds=list(deepcopy(box.gridding_first))
+  upper_bounds=list(deepcopy(box.gridding_last))
   lower_bounds[2]=new_z_first
   upper_bounds[2]=new_z_last
 
@@ -4873,6 +4875,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         end=' ', file=out)
     try:
       from phenix.autosol.map_to_model import iterated_solvent_fraction
+      dummy=iterated_solvent_fraction # just to import it
     except Exception as e:
       raise Sorry("Please either set box_in_auto_sharpen=False and "+
        "\ndensity_select_in_auto_sharpen=False or \n"+\
@@ -4909,7 +4912,6 @@ def get_params(args,map_data=None,crystal_symmetry=None,
   if map_data:
     pass # ok
   elif params.input_files.map_file:
-    from iotbx import mrcfile
     ccp4_map=iotbx.mrcfile.map_reader(
     file_name=params.input_files.map_file)
     if not crystal_symmetry:
@@ -4927,7 +4929,6 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     if len(params.input_files.half_map_file) != 2:
       raise Sorry("Please supply none or two half_map_file values")
 
-    from iotbx import mrcfile
     half_map_data_list=[]
     half_map_data_list.append(iotbx.mrcfile.map_reader(
        file_name=params.input_files.half_map_file[0]).data.as_double())
@@ -7484,7 +7485,7 @@ def adjust_bounds(params,
   if params is None or params.output_files.box_buffer is None:
      box_buffer=0
   else:
-     box_buffer=params.output_files.box_buffer
+     box_buffer=int(0.5+params.output_files.box_buffer)
   for i in range(3):
     if lower_bounds[i] is None: lower_bounds[i]=0
     if upper_bounds[i] is None: upper_bounds[i]=0
@@ -9397,7 +9398,10 @@ def select_box_map_data(si=None,
     box_map=box.map_box
     box_map=scale_map(box_map,out=out)
     box_crystal_symmetry=box.box_crystal_symmetry
-    box_pdb_inp=box.hierarchy.as_pdb_input()
+    if box.hierarchy:
+      box_pdb_inp=box.hierarchy.as_pdb_input()
+    else:
+      box_pdb_inp=None
     if first_half_map_data:
       print("Getting first map as box", file=out)
       if hierarchy:
@@ -9534,7 +9538,6 @@ def select_box_map_data(si=None,
       smoothed_box_mask_data,original_box_map_data,n_buffer
 
 def inside_zero_one(xyz):
-  from scitbx.array_family import flex
   from scitbx.matrix import col
   offset=xyz-col((0.5,0.5,0.5))
   lower_int=offset.iround().as_vec3_double()

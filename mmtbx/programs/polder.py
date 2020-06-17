@@ -358,7 +358,7 @@ Optional output:
         box      = vr.box_3,
         filename = "box_3_polder.ccp4")
       vr.ph_selected.write_pdb_file(file_name="box_polder.pdb",
-        crystal_symmetry=vr.box_1.box_crystal_symmetry)
+        crystal_symmetry=vr.box_1.model().crystal_symmetry())
     #
     print ('*'*79, file=self.logger)
     message = self.result_message(cc12 = vr.cc12, cc13 = vr.cc13, cc23 = vr.cc23)
@@ -368,12 +368,7 @@ Optional output:
   # ---------------------------------------------------------------------------
 
   def write_map_box(self, box, filename):
-      mrcfile.write_ccp4_map(
-        file_name   = filename,
-        unit_cell   = box.xray_structure_box.unit_cell(),
-        space_group = box.xray_structure_box.space_group(),
-        map_data    = box.map_box,
-        labels      = flex.std_string([""]))
+      box.map_manager().write_map(filename)
 
   # ---------------------------------------------------------------------------
 

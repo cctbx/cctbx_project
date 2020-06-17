@@ -62,6 +62,7 @@ class emringer(object):
         map_manager               = self.map_inp,
         model            = self.model,
         crystal_symmetry = self.cs_consensus,
+        wrapping = (self.map_inp.is_full_size()), # XXX NEED TO DECIDE WRAPPING
         box              = False)
 
       hierarchy = base.model().get_hierarchy()

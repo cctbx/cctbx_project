@@ -3,7 +3,6 @@ from libtbx.math_utils import ifloor, iceil
 from libtbx.utils import Sorry
 from cctbx import crystal, maptbx, uctbx
 from scitbx.array_family import flex
-from libtbx import adopt_init_args
 from libtbx import group_args
 import iotbx.map_manager
 import mmtbx.model
@@ -13,7 +12,12 @@ class with_bounds(object):
   """
   Extract map box using specified lower_bounds and upper_bounds
 
-  Box is in P1 and has origin at (0,0,0).
+  NOTE: changes supplied model and map_manager in place. Call with deep_copy()
+  versions if you do not want them modified.
+
+  Output versions of map_manager and model are in P1 and have origin at (0,0,0).
+
+  Bounds refer to grid position in this box with origin at (0,0,0)
 
   Input map_manager must have origin (working position) at (0,0,0)
   Input model coordinates must correspond to working position of map_manager
@@ -32,8 +36,14 @@ class with_bounds(object):
   """
   def __init__(self, map_manager, lower_bounds, upper_bounds, wrapping,
      model=None,
+     ncs_object=None,
      log=sys.stdout):
-    adopt_init_args(self, locals())
+    self.lower_bounds=lower_bounds
+    self.upper_bounds=upper_bounds
+    self.wrapping=wrapping
+    self._map_manager=map_manager
+    self._model=model
+    self._ncs_object=ncs_object
 
     # safeguards
     assert lower_bounds is not None
@@ -41,15 +51,20 @@ class with_bounds(object):
     assert upper_bounds is not None
     assert isinstance(wrapping, bool)
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
-    assert self.map_manager.map_data().accessor().origin() == (0,0,0)
+    assert self._map_manager.map_data().accessor().origin() == (0,0,0)
     if model:
       assert isinstance(model, mmtbx.model.manager)
       assert map_manager.crystal_symmetry().is_similar_symmetry(
         model.crystal_symmetry())
+    if ncs_object:
+      assert isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
     if wrapping:
       assert map_manager.unit_cell_grid==map_manager.map_data().all()
 
     self.basis_for_boxing_string='supplied bounds, wrapping=%s' %(wrapping)
+
+    # These are lower and upper bounds of map with origin at (0,0,0)
+    #   (not the original map)
 
     self.gridding_first = lower_bounds
     self.gridding_last  = upper_bounds
@@ -57,42 +72,101 @@ class with_bounds(object):
     # Ready with gridding...set up shifts and box crystal_symmetry
     self.set_shifts_and_crystal_symmetry()
 
-    # Apply to model (if present)  and to map_manager so that self.model
-    #  and self.map_manager are boxed versions
+    # Apply boxing to model, ncs, and map (if available)
+    self.apply_to_model_ncs_and_map()
 
-    self.map_manager=self.apply_to_map(self.map_manager)
-    if self.model:
-      self.model=self.apply_to_model(self.model)
+  def as_map_and_model(self):
+    '''
+      Return map_and_model object with contents of this class (not a deepcopy)
+
+      Sets wrapping=False always because this class does not return a full
+      unit cell.
+
+      Sets box=False or recursion will occur.
+
+    '''
+    import iotbx.map_and_model
+    mam=iotbx.map_and_model.input(
+        map_manager=self.map_manager(),
+        model=self.model(),
+        ncs_object=self.ncs_object(),
+        wrapping=False, # Always
+        box=False # Always
+        )
+    # Keep track of the gridding and solvent_content (if used) in this boxing.
+    mam.set_gridding_first(self.gridding_first)
+    mam.set_gridding_last(self.gridding_last)
+    if hasattr(self,'solvent_content') and self.solvent_content is not None:
+      mam.set_solvent_content(self.solvent_content)
+    return mam
+
+  def model(self):
+    return getattr(self,'_model',None)
+
+  def map_manager(self):
+    return getattr(self,'_map_manager',None)
+
+  def ncs_object(self):
+    return getattr(self,'_ncs_object',None)
 
   def set_shifts_and_crystal_symmetry(self):
-    # set items needed to do the shift
-    self.original_crystal_symmetry=\
-        self.map_manager.original_unit_cell_crystal_symmetry
-    self.original_accessor=self.map_manager.map_data().accessor()
+    '''
+      Set items needed to do the shift
 
-    cs = self.original_crystal_symmetry
-    uc = cs.unit_cell()
+      Here self.gridding_first and self.gridding_last are the grid points
+      marking the start and end, in the map with origin at (0,0,0), of the
+      region to be kept.
+    '''
+
+    # Save to check later if another map_manager is used as input
+    self.accessor_at_initialization=self._map_manager.map_data().accessor()
+
+    full_cs = self._map_manager.unit_cell_crystal_symmetry()
+    full_uc = full_cs.unit_cell()
     self.box_all=[j-i+1 for i,j in zip(self.gridding_first,self.gridding_last)]
     # get shift vector as result of boxing
-    all_orig = self.map_manager.map_data().all()
-    self.shift_frac = [-self.gridding_first[i]/all_orig[i] for i in range(3)]
-    self.shift_cart = cs.unit_cell().orthogonalize(self.shift_frac)
+    full_all_orig = self._map_manager.unit_cell_grid
+    self.shift_frac = \
+        [-self.gridding_first[i]/full_all_orig[i] for i in range(3)]
+    self.shift_cart = full_cs.unit_cell().orthogonalize(self.shift_frac)
     # get crystal symmetry of the box
-    p = uc.parameters()
-    abc = [p[i] * self.box_all[i]/all_orig[i] for i in range(3)]
+    p = full_uc.parameters()
+    abc = [p[i] * self.box_all[i]/full_all_orig[i] for i in range(3)]
     box_uc = uctbx.unit_cell(parameters=(abc[0],abc[1],abc[2],p[3],p[4],p[5]))
     self.crystal_symmetry = crystal.symmetry(
       unit_cell = box_uc, space_group="P1")
 
+  def apply_to_model_ncs_and_map(self):
+    '''
+    Apply boxing to to self._model, self._ncs_object, self._map_manager
+    so all are boxed
+
+    Apply to self._map_manager last (so self._map_manager.crystal symmetry()
+      is not changed until here and is used to compare to symmetries of other
+      objects
+    '''
+
+    if self._model:
+      self._model=self.apply_to_model(self._model)
+
+    if self._ncs_object:
+      self._ncs_object=self.apply_to_ncs_object(self._ncs_object)
+
+    # Must be last
+    self._map_manager=self.apply_to_map(self._map_manager)
+
+
   def apply_to_map(self, map_manager):
-    assert map_manager is not None
-    # Apply to a map_manager that is similar to the one used to generate
-    #   this around_model object
-    assert map_manager.crystal_symmetry().is_similar_symmetry(
-      self.original_crystal_symmetry)
+    '''
+     Apply boxing to a map_manager that is similar to the one used to generate
+       this around_model object
+    '''
+    assert isinstance(map_manager, iotbx.map_manager.map_manager)
+    assert map_manager.unit_cell_crystal_symmetry().is_similar_symmetry(
+      self._map_manager.unit_cell_crystal_symmetry())
 
     ma1 = map_manager.map_data().accessor()
-    ma2 = self.original_accessor
+    ma2 = self.accessor_at_initialization
     assert ma1.all()    == ma2.all()
     assert ma1.origin() == ma2.origin()
     assert ma1.focus()  == ma2.focus()
@@ -105,6 +179,11 @@ class with_bounds(object):
       # Just copy everything
       map_box = maptbx.copy(map_data, self.gridding_first, self.gridding_last)
       # Note: map_box gridding is self.gridding_first to self.gridding_last
+    elif not bounds_info.some_valid_points:
+      # Just copy everything and zero
+      map_box = maptbx.copy(map_data, self.gridding_first, self.gridding_last)
+      map_box = map_box * 0.
+
     else: # Need to copy and then zero outside of defined region
       map_box=copy_and_zero_map_outside_bounds(map_data=map_data,
          bounds_info=bounds_info)
@@ -141,21 +220,19 @@ class with_bounds(object):
     return new_map_manager
 
   def apply_to_model(self, model):
-    # Apply to a model that is similar to the one used to generate
-    #   this around_model object
+    '''
+       Apply boxing to a model that is similar to the one used to generate
+       this around_model object
+    '''
 
-    assert model is not None
-    # Allow models where either original or current symmetry  XXX
-    #  match this object's current or original symmetry
-    # This is because some routines do not propagate original symmetry yet
+    assert isinstance(model, mmtbx.model.manager)
 
+    # Allow models where either original or current symmetry
+    #  match this object's original symmetry
 
-    original_uc_symmetry=self.map_manager.original_unit_cell_crystal_symmetry
-    assert (original_uc_symmetry.is_similar_symmetry(
-         model.crystal_symmetry()) or (
-      model.get_shift_manager() and original_uc_symmetry.is_similar_symmetry(
-             model.get_shift_manager().get_original_cs()) ))
+    assert self._map_manager.is_compatible_model(model)
 
+    # Shift the model and add self.shift_cart on to whatever shift was there
     model.shift_model_and_set_crystal_symmetry(
        shift_cart=self.shift_cart, # shift to apply
        crystal_symmetry=self.crystal_symmetry, # new crystal_symmetry
@@ -163,10 +240,21 @@ class with_bounds(object):
 
     return model
 
+  def apply_to_ncs_object(self, ncs_object):
+    '''
+      Apply shifts from this boxing to an ncs_object
+       ncs does keep track of shifts
+    '''
+
+    return ncs_object.coordinate_offset(coordinate_offset=self.shift_cart)
+
 
 class around_model(with_bounds):
   """
   Extract map box around atomic model. Box is in P1 and has origin at (0,0,0).
+
+  NOTE: changes supplied model and map_manager in place. Call with deep_copies
+  if you do not want them modified.
 
   Input map_manager must have origin (working position) at (0,0,0)
   Input model coordinates must correspond to working position of map_manager
@@ -188,30 +276,42 @@ class around_model(with_bounds):
 
   """
   def __init__(self, map_manager, model, cushion, wrapping,
+      ncs_object=None,
       log=sys.stdout):
-    adopt_init_args(self, locals())
+
+    self.wrapping=wrapping
+    self._map_manager=map_manager
+    self._model=model
+    self._ncs_object=ncs_object
+
     self.basis_for_boxing_string='using model, wrapping=%s'  %(wrapping)
+
     # safeguards
     assert isinstance(wrapping, bool)
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
     assert isinstance(model, mmtbx.model.manager)
-    assert self.map_manager.map_data().accessor().origin() == (0,0,0)
+    assert self._map_manager.map_data().accessor().origin() == (0,0,0)
+    if ncs_object:
+      assert isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
 
-    # Make sure original map_manager symmetry matches model or original model
-    original_uc_symmetry=map_manager.original_unit_cell_crystal_symmetry
-    assert (original_uc_symmetry.is_similar_symmetry(
-             model.crystal_symmetry()) or (
-            model.get_shift_manager() and
-            original_uc_symmetry.is_similar_symmetry(
-             model.get_shift_manager().get_original_cs()) ))
+    # Make sure working model and map_manager crystal_symmetry match
+
+    assert map_manager.crystal_symmetry().is_similar_symmetry(
+       model.crystal_symmetry())
 
     assert cushion >= 0
-    if wrapping:
+
+    if wrapping:  # map must be entire unit cell
       assert map_manager.unit_cell_grid==map_manager.map_data().all()
+
+    # NOTE: We are going to use crystal_symmetry and sites_frac based on
+    #   the map_manager (the model could still have different crystal_symmetry)
+
     # get items needed to do the shift
     cs = map_manager.crystal_symmetry()
     uc = cs.unit_cell()
-    sites_frac = model.get_sites_frac()
+    sites_cart = model.get_sites_cart()
+    sites_frac = uc.fractionalize(sites_cart)
     map_data = map_manager.map_data()
     # convert cushion into fractional vector
     cushion_frac = flex.double(uc.fractionalize((cushion,)*3))
@@ -228,17 +328,25 @@ class around_model(with_bounds):
     # Ready with gridding...set up shifts and box crystal_symmetry
     self.set_shifts_and_crystal_symmetry()
 
-    # Apply to model and to map_manager so that self.model()
-    #  and self.map_manager are boxed versions
-
-    self.map_manager=self.apply_to_map(self.map_manager)
-    self.model=self.apply_to_model(self.model)
+    # Apply boxing to model, ncs, and map (if available)
+    self.apply_to_model_ncs_and_map()
 
 class extract_unique(with_bounds):
+
+  '''
+  Identify unique part of density in a map (using ncs object) and create a
+  new map_manager containing this box of density, masked around regions
+  containing density.  Note: the map may be masked between nearby
+  density regions so this map could have many discontinuities.
+
+  NOTE: changes supplied model and map_manager in place. Call with deep_copies
+  if you do not want them modified.
+  '''
 
   def __init__(self, map_manager,
     wrapping=None,
     ncs_object=None,
+    model=None,
     target_ncs_au_model=None,
     regions_to_keep=None,
     solvent_content=None,
@@ -253,64 +361,62 @@ class extract_unique(with_bounds):
     mask_expand_ratio=1,
     log=sys.stdout
     ):
-    adopt_init_args(self, locals())
+
+    self.wrapping=wrapping
+    self._map_manager=map_manager
+    self._model=model
+    self._ncs_object=ncs_object
 
     assert isinstance(wrapping, bool)
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
-    assert self.map_manager.map_data().accessor().origin() == (0,0,0)
+    assert self._map_manager.map_data().accessor().origin() == (0,0,0)
     assert resolution
+    if ncs_object:
+      assert isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
+    if model:
+      assert isinstance(model, mmtbx.model.manager)
+      assert map_manager.crystal_symmetry().is_similar_symmetry(
+        model.crystal_symmetry())
+    if wrapping:  # map must be entire unit cell
+      assert map_manager.unit_cell_grid==map_manager.map_data().all()
 
     # Get crystal_symmetry
     self.crystal_symmetry=map_manager.crystal_symmetry()
     # Convert to map_data
     self.map_data=map_manager.map_data()
 
-    boxed_au_map_data=self.run_segment_and_split_map()
-    if not boxed_au_map_data:
-      raise Sorry("Unable to obtain unique part of map")
-
-    # Apply to model (if present)  and to map_manager so that self.model
-    #  and self.map_manager are boxed versions
-
-    self.map_manager=self.apply_to_map(self.map_manager)
-    # And replace map data with boxed asymmetric unit
-    self.map_manager.set_map_data(map_data=boxed_au_map_data)
-
-  def run_segment_and_split_map(self):
     from cctbx.maptbx.segment_and_split_map import run as segment_and_split_map
     assert self.map_data.origin()==(0,0,0)
     args=[]
 
     ncs_group_obj,remainder_ncs_group_obj,tracking_data =\
       segment_and_split_map(args,
-        map_data=self.map_manager.map_data(),
+        map_data=self._map_manager.map_data(),
         crystal_symmetry=self.crystal_symmetry,
-        ncs_obj=self.ncs_object,
-        target_model=self.target_ncs_au_model,
+        ncs_obj=self._ncs_object,
+        target_model=target_ncs_au_model,
         write_files=False,
         auto_sharpen=False,
         add_neighbors=False,
         density_select=False,
         save_box_map_ncs_au=True,
-        resolution=self.resolution,
-        solvent_content=self.solvent_content,
-        chain_type=self.chain_type,
-        sequence=self.sequence,
-        molecular_mass=self.molecular_mass,
-        symmetry=self.symmetry,
-        keep_low_density=self.keep_low_density,
-        regions_to_keep=self.regions_to_keep,
-        box_buffer=self.box_buffer,
-        soft_mask_extract_unique=self.soft_mask_extract_unique,
-        mask_expand_ratio=self.mask_expand_ratio,
-        out=self.log)
+        resolution=resolution,
+        solvent_content=solvent_content,
+        chain_type=chain_type,
+        sequence=sequence,
+        molecular_mass=molecular_mass,
+        symmetry=symmetry,
+        keep_low_density=keep_low_density,
+        regions_to_keep=regions_to_keep,
+        box_buffer=box_buffer,
+        soft_mask_extract_unique=soft_mask_extract_unique,
+        mask_expand_ratio=mask_expand_ratio,
+        out=log)
 
     from scitbx.matrix import col
 
     if not hasattr(tracking_data,'box_map_ncs_au_map_data'):
-      print("WARNING: Extraction of unique part of map failed...",
-        file=self.log)
-      return None,None
+      raise Sorry(" Extraction of unique part of map failed...")
 
     ncs_au_map_data=tracking_data.box_map_ncs_au_map_data
     ncs_au_crystal_symmetry=tracking_data.box_map_ncs_au_crystal_symmetry
@@ -319,7 +425,7 @@ class extract_unique(with_bounds):
     upper_bounds=tuple(
       col(ncs_au_map_data.focus())-col((1,1,1)))
     print("\nBounds for unique part of map: %s to %s " %(
-     str(lower_bounds),str(upper_bounds)),file=self.log)
+     str(lower_bounds),str(upper_bounds)),file=log)
 
     # shift the map so it is in the same position as the box map will be in
     ncs_au_map_data.reshape(flex.grid(ncs_au_map_data.all()))
@@ -334,15 +440,24 @@ class extract_unique(with_bounds):
     # Ready with gridding...set up shifts and box crystal_symmetry
     self.set_shifts_and_crystal_symmetry()
 
-    return ncs_au_map_data
+    # Apply boxing to model, ncs, and map (if available)
+    self.apply_to_model_ncs_and_map()
+
+    # And replace map data with boxed asymmetric unit
+    self._map_manager.set_map_data(map_data=ncs_au_map_data)
+    self._map_manager.add_limitation("extract_unique")
 
 class around_mask(with_bounds):
   """
-  Extract map box around masked region of a map
+  Extract map box around masked region of a map that represents a mask
+  You need to supply the mask as a map_manager object
 
   Box is in P1 and has origin at (0,0,0).
 
   Input map_manager must have origin (working position) at (0,0,0)
+
+  Returns boxed version of map_manager supplied.  Object will contain
+  the boxed version of mask as self.mask_as_map_manager.
 
   Wrapping must be specified on initialization
     wrapping=True means that grid points outside of the unit cell can be
@@ -357,13 +472,23 @@ class around_mask(with_bounds):
 
   """
   def __init__(self, map_manager, wrapping,
+     mask_as_map_manager=None,
+     model=None,
+     ncs_object=None,
+     box_cushion=3,
      log=sys.stdout):
-    adopt_init_args(self, locals())
+
+    self.wrapping=wrapping
+    self._map_manager=map_manager
+    self._model=model
+    self._ncs_object=ncs_object
 
     # safeguards
     assert isinstance(wrapping, bool)
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
-    assert self.map_manager.map_data().accessor().origin() == (0,0,0)
+    assert isinstance(mask_as_map_manager, iotbx.map_manager.map_manager)
+    assert self._map_manager.map_data().accessor().origin() == (0,0,0)
+    assert map_manager.is_similar(mask_as_map_manager)
     if wrapping:
       assert map_manager.unit_cell_grid==map_manager.map_data().all()
 
@@ -373,7 +498,7 @@ class around_mask(with_bounds):
 
     from cctbx.maptbx.segment_and_split_map import get_co
     co,sorted_by_volume,min_b,max_b=get_co(
-       map_data=map_manager.map_data(),
+       map_data=mask_as_map_manager.map_data(),
        threshold=0.5,
        wrapping=False)
 
@@ -394,12 +519,25 @@ class around_mask(with_bounds):
     self.gridding_first = min_b[orig_id]
     self.gridding_last  = max_b[orig_id]
 
+    # Increase range of bounds by box_cushion
+    cs=map_manager.crystal_symmetry()
+    cushion=flex.double(cs.unit_cell().fractionalize((box_cushion,)*3))
+    all_orig = map_manager.map_data().all()
+    self.gridding_first = [max(0,ifloor((gf/n-c)*n)) for c,gf,n in zip(
+       cushion, self.gridding_first, all_orig)]
+    self.gridding_last  = [ min(n-1,iceil((gf+c)*n)) for c,gf,n in zip(
+       cushion, self.gridding_last, all_orig)]
+
+
     # Ready with gridding...set up shifts and box crystal_symmetry
     self.set_shifts_and_crystal_symmetry()
 
-    # Apply to map_manager so that self.map_manager is boxed version
+    self.apply_to_model_ncs_and_map()
 
-    self.map_manager=self.apply_to_map(self.map_manager)
+    # Also apply to mask_as_map_manager so that mask_as_map_manager is boxed
+    mask_as_map_manager=self.apply_to_map(mask_as_map_manager)
+    self.mask_as_map_manager=mask_as_map_manager # save it
+
 
 class around_density(with_bounds):
   """
@@ -423,15 +561,23 @@ class around_density(with_bounds):
   """
   def __init__(self, map_manager, wrapping,
      threshold=0.05,
+     box_cushion=3.,
      get_half_height_width=True,
+     model=None,
+     ncs_object=None,
      log=sys.stdout):
-    adopt_init_args(self, locals())
+
+    self.wrapping=wrapping
+    self._map_manager=map_manager
+    self._model=model
+    self._ncs_object=ncs_object
 
     # safeguards
     assert threshold is not None
+    assert box_cushion is not None
     assert isinstance(wrapping, bool)
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
-    assert self.map_manager.map_data().accessor().origin() == (0,0,0)
+    assert self._map_manager.map_data().accessor().origin() == (0,0,0)
     if wrapping:
       assert map_manager.unit_cell_grid==map_manager.map_data().all()
 
@@ -490,17 +636,19 @@ class around_density(with_bounds):
     # Get lower and upper bounds of this region in grid units
     frac_min=(x_min,y_min,z_min)
     frac_max=(x_max,y_max,z_max)
+    cs=map_manager.crystal_symmetry()
+    cushion=flex.double(cs.unit_cell().fractionalize((box_cushion,)*3))
     all_orig = map_data.all()
-    self.gridding_first = [ifloor(f*n) for f,n in zip(frac_min, all_orig)]
-    self.gridding_last  = [ iceil(f*n) for f,n in zip(frac_max, all_orig)]
-
+    self.gridding_first = [max(0,ifloor((f-c)*n)) for c,f,n in zip(
+       cushion, frac_min, all_orig)]
+    self.gridding_last  = [ min(n-1,iceil((f+c)*n)) for c,f,n in zip(
+       cushion, frac_max, all_orig)]
 
     # Ready with gridding...set up shifts and box crystal_symmetry
     self.set_shifts_and_crystal_symmetry()
 
-    # Apply to map_manager so that self.map_manager is boxed version
-
-    self.map_manager=self.apply_to_map(self.map_manager)
+    # Apply boxing to model, ncs, and map (if available)
+    self.apply_to_model_ncs_and_map()
 
 def get_range(value_list, threshold=None, ignore_ends=True,
      keep_near_ends_frac=0.02, half_height_width=2., get_half_height_width=None,
@@ -591,6 +739,7 @@ def get_bounds_of_valid_region(map_data=None,
   lower_allowed_bounds=[]
   upper_allowed_bounds=[]
   inside_allowed_bounds=True
+  some_valid_points=True
   for o,a,f,l in zip(map_data.origin(),map_data.all(),
      gridding_first,gridding_last):
     # Available map goes from o to o+a
@@ -613,17 +762,22 @@ def get_bounds_of_valid_region(map_data=None,
     #  Otherwise, after shifting origin, last valid grid point is l-f
 
 
-    lower_allowed_bounds.append(max(o,f)) # first valid grid point
-    upper_allowed_bounds.append(min(l,o+a-1)) # last valid grid point
+    first_valid=max(o,f) # first valid grid point
+    last_valid=min(l,o+a-1) # last valid grid point
+    lower_allowed_bounds.append(first_valid)
+    upper_allowed_bounds.append(last_valid)
     if f < o or l >= a+o:
       inside_allowed_bounds=False
+    if last_valid <= first_valid:
+      some_valid_points=False
 
   return group_args(
      lower_allowed_bounds=lower_allowed_bounds,
      upper_allowed_bounds=upper_allowed_bounds,
      gridding_first=gridding_first,
      gridding_last=gridding_last,
-     inside_allowed_bounds=inside_allowed_bounds)
+     inside_allowed_bounds=inside_allowed_bounds,
+     some_valid_points=some_valid_points)
 
 def copy_and_zero_map_outside_bounds(map_data=None,bounds_info=None):
   '''
@@ -650,9 +804,6 @@ def copy_and_zero_map_outside_bounds(map_data=None,bounds_info=None):
   # Make sure we are working with a flex.double array
   if type(map_copy) != type(flex.double()): # must be double
     map_copy=map_copy.as_double()
-
-  # Now zero out everything outside of the valid region
-
 
   # Make sure this map matches the bounds_info
   assert tuple(map_copy.origin())==tuple(bounds_info.gridding_first)

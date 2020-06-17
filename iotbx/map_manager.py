@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from libtbx.utils import Sorry,null_out,to_str
+from libtbx.utils import null_out,to_str
 from libtbx import group_args
 import sys
 from iotbx.mrcfile import map_reader, write_ccp4_map
@@ -219,7 +219,6 @@ class map_manager(map_reader,write_ccp4_map):
     #  grid units.  If map is shifted, this is updated to reflect where
     #  to place current origin to superimpose map on original map.
 
-    self.original_unit_cell_crystal_symmetry=None
     self._created_mask=None
 
     # Initialize program_name, limitations, labels
@@ -251,9 +250,10 @@ class map_manager(map_reader,write_ccp4_map):
       self.data=map_data
       self.unit_cell_grid=unit_cell_grid
       self._unit_cell_crystal_symmetry=unit_cell_crystal_symmetry
-      self.original_unit_cell_crystal_symmetry=unit_cell_crystal_symmetry
 
       # Calculate values for self._crystal_symmetry
+      # Must always run this method after changing
+      #    self._unit_cell_crystal_symmetry  or self.unit_cell_grid
       self.set_crystal_symmetry_of_partial_map()
 
       # Optional initialization information
@@ -262,9 +262,6 @@ class map_manager(map_reader,write_ccp4_map):
       self.origin_shift_grid_units=origin_shift_grid_units
 
     # Initialization steps always done:
-
-    # Set up crystal_symmetry for portion of map that is present
-    self.set_original_unit_cell_crystal_symmetry()
 
     # make sure labels are strings
     if self.labels is not None:
@@ -294,21 +291,35 @@ class map_manager(map_reader,write_ccp4_map):
       self.input_file_name=file_name
 
   def _print(self, m):
-    if (self.log is not None) and (type(self.log) != type(null_out())) and (
+    if (self.log is not None) and hasattr(self.log,'closed') and (
         not self.log.closed):
       print(m, file=self.log)
 
-  def set_original_unit_cell_crystal_symmetry(self,
-       unit_cell_crystal_symmetry=None):
+  def set_unit_cell_crystal_symmetry(self,crystal_symmetry):
     '''
-      Set value of original unit_cell_crystal_symmetry to supplied value
-    '''
-    if unit_cell_crystal_symmetry:
-      self.original_unit_cell_crystal_symmetry=unit_cell_crystal_symmetry
-    else:
-      self.original_unit_cell_crystal_symmetry=self.unit_cell_crystal_symmetry()
+      Specify the dimensions and space group of unit cell.  This also changes
+      the crystal_symmetry of the part that is present and the grid spacing.
 
-  def set_original_origin_and_gridding(self,original_origin=None,
+      Purpose is to redefine the dimensions of the map without changing values
+      of the map.  Normally used to correct the dimensions of a map
+      where something was defined incorrectly.
+
+      Does not change self.unit_cell_grid
+
+       Fundamental parameters set:
+        self._unit_cell_crystal_symmetry: dimensions of full unit cell
+        self._crystal_symmetry: dimensions of part of unit cell that is present
+    '''
+
+    from cctbx import crystal
+    assert isinstance(crystal_symmetry, crystal.symmetry)
+    self._unit_cell_crystal_symmetry=crystal_symmetry
+
+    # Always follow a set of _unit_cell_crystal_symmetry with this:
+    self.set_crystal_symmetry_of_partial_map()
+
+  def set_original_origin_and_gridding(self,
+      original_origin=None,
       gridding=None):
     '''
        Specify original origin of map that is present and
@@ -322,16 +333,23 @@ class map_manager(map_reader,write_ccp4_map):
 
        Previous definition of the location of the map that is present
        is discarded.
+
+       Fundamental parameters set:
+        self.origin_shift_grid_units: shift to place origin in original location
+        self._unit_cell_crystal_symmetry: dimensions of full unit cell
+        self.unit_cell_grid: grid units of full unit cell
     '''
 
-    if (self.origin_shift_grid_units != (0,0,0)) or (not self.origin_is_zero()):
-      self.shift_origin()
-      self._print("Previous origin shift of %s will be discarded" %(
-        str(self.origin_shift_grid_units)))
+    if original_origin:
+      if (self.origin_shift_grid_units != (0,0,0)) or (
+          not self.origin_is_zero()):
+        self.shift_origin()
+        self._print("Previous origin shift of %s will be discarded" %(
+          str(self.origin_shift_grid_units)))
 
-    # Set the origin
-    self.origin_shift_grid_units=original_origin
-    self._print("New origin shift will be %s " %(
+      # Set the origin
+      self.origin_shift_grid_units=original_origin
+      self._print("New origin shift will be %s " %(
         str(self.origin_shift_grid_units)))
 
     if gridding: # reset definition of full unit cell.  Keep grid spacing
@@ -352,11 +370,20 @@ class map_manager(map_reader,write_ccp4_map):
           self._unit_cell_crystal_symmetry.space_group_number())
 
        self.unit_cell_grid=gridding
-       self._print ("Resetting gridding of full unit cell from %s to %s" %(
-         str(current_unit_cell_grid),str(gridding)))
-       self._print ("Resetting dimensions of full unit cell from %s to %s" %(
-         str(current_unit_cell_parameters),
+       if current_unit_cell_grid != gridding:
+         self._print ("Resetting gridding of full unit cell from %s to %s" %(
+           str(current_unit_cell_grid),str(gridding)))
+         self._print ("Resetting dimensions of full unit cell from %s to %s" %(
+           str(current_unit_cell_parameters),
             str(new_unit_cell_parameters)))
+
+       # Always run after setting unit_cell_grid or _unit_cell_crystal_symmetry
+       # This time it should not change anything
+       original_crystal_symmetry=self.crystal_symmetry()
+       self.set_crystal_symmetry_of_partial_map()
+       new_crystal_symmetry=self.crystal_symmetry()
+       assert original_crystal_symmetry.is_similar_symmetry(
+         new_crystal_symmetry)
 
   def origin_is_zero(self):
     if not self.map_data():
@@ -495,7 +522,7 @@ class map_manager(map_reader,write_ccp4_map):
     self._print("Limitation of %s ('%s') added to map_manager" %(
       limitation,STANDARD_LIMITATIONS_DICT[limitation]))
 
-  def add_label(self,label=None):
+  def add_label(self,label=None,verbose=False):
     '''
      Add a label (up to 80-character string) to write to output map.
      Default is to specify the program name and date
@@ -506,7 +533,8 @@ class map_manager(map_reader,write_ccp4_map):
     self.labels.reverse()  # put at beginning
     self.labels.append(to_str(label, codec='utf8')) # make sure it is a string
     self.labels.reverse()
-    self._print("Label added: %s " %(label))
+    if verbose:
+      self._print("Label added: %s " %(label))
 
   def write_map(self,
      file_name=None, # Name of file to be written
@@ -561,7 +589,7 @@ class map_manager(map_reader,write_ccp4_map):
       self._print("Writing map after shifting origin")
       if self.origin_shift_grid_units and origin_shift_grid_units!=(0,0,0):
         self._print (
-          "WARNING: map_data has origin at %s " %(str(map_data.origin())),
+          "WARNING: map_data has origin at %s " %(str(map_data.origin()))+
          " and this map_manager will apply additional origin shift of %s " %(
           str(self.origin_shift_grid_units)))
 
@@ -646,7 +674,10 @@ class map_manager(map_reader,write_ccp4_map):
       set_outside_to_mean_inside=set_outside_to_mean_inside)
     self.set_map_data(map_data=new_mm.map_data())  # replace map data
 
-  def get_created_mask_as_map_manager(self):
+  def delete_mask(self):
+    self._created_mask=None
+
+  def get_mask_as_map_manager(self):
     assert self._created_mask is not None
     return self._created_mask.map_manager()
 
@@ -663,6 +694,54 @@ class map_manager(map_reader,write_ccp4_map):
     assert self.map_data().all()==map_data.all()
     sel=flex.bool(map_data.size(),True)
     self.data.as_1d().set_selected(sel,map_data.as_1d())
+
+  def as_full_size_map(self):
+    '''
+      Create a full-size map that with the current map inside it, padded by zero
+
+      A little tricky because the starting map is going to have its origin at
+      (0,0,0) but the map we are creating will have that point at
+      self.origin_shift_grid_units.
+
+      First use box.with_bounds to create map from -self.origin_shift_grid_units
+       to -self.origin_shift_grid_units+self.unit_cell_grid-(1,1,1).  Then
+      shift that map to place origin at (0,0,0)
+
+    '''
+
+    working_lower_bounds=self.origin_shift_grid_units
+    working_upper_bounds=tuple([i+j-1 for i,j in zip(working_lower_bounds,
+      self.map_data().all())])
+    lower_bounds=tuple([-i for i in self.origin_shift_grid_units])
+    upper_bounds=tuple([i+j-1 for i,j in zip(lower_bounds,self.unit_cell_grid)])
+    new_lower_bounds=tuple([i+j for i,j in zip(
+      lower_bounds,self.origin_shift_grid_units)])
+    new_upper_bounds=tuple([i+j for i,j in zip(
+      upper_bounds,self.origin_shift_grid_units)])
+    print("\nCreating full-size map padding outside of current map with zero",
+      file=self.log)
+    print("Bounds of current map: %s to %s" %(
+     str(working_lower_bounds),str(working_upper_bounds)),file=self.log)
+    print("Bounds of new map: %s to %s" %(
+     str(new_lower_bounds),str(new_upper_bounds)),file=self.log)
+
+    from cctbx.maptbx.box import with_bounds
+    box=with_bounds(self,
+       lower_bounds=lower_bounds,
+       upper_bounds=upper_bounds,
+       wrapping=False,
+       log=self.log)
+    box.map_manager().set_original_origin_and_gridding(original_origin=(0,0,0))
+
+    box.map_manager().add_label(
+       "Restored full size from box %s - %s, pad with zero" %(
+     str(working_lower_bounds),str(working_upper_bounds)))
+    assert box.map_manager().origin_shift_grid_units==(0,0,0)
+    assert box.map_manager().map_data().origin()==(0,0,0)
+    assert box.map_manager().map_data().all()==box.map_manager().unit_cell_grid
+    assert box.map_manager().unit_cell_crystal_symmetry().is_similar_symmetry(
+      box.map_manager().crystal_symmetry())
+    return box.map_manager()
 
   def deep_copy(self):
     '''
@@ -744,14 +823,21 @@ class map_manager(map_reader,write_ccp4_map):
        mm.set_program_name(self.program_name)
     if self.input_file_name:
        mm.set_input_file_name(self.input_file_name)
-    if self.original_unit_cell_crystal_symmetry:
-       mm.set_original_unit_cell_crystal_symmetry(
-          self.original_unit_cell_crystal_symmetry)
     return mm
+
+  def is_full_size(self):
+    '''
+      Report if map is full unit cell
+    '''
+    if self.map_data().all() == self.unit_cell_grid:
+      return True
+    else:
+      return False
 
   def is_similar(self,other=None):
     # Check to make sure origin, gridding and symmetry are similar
-    if self.origin_shift_grid_units != other.origin_shift_grid_units:
+    if tuple(self.origin_shift_grid_units) != tuple(
+        other.origin_shift_grid_units):
       return False
     if not self.unit_cell_crystal_symmetry().is_similar_symmetry(
       other.unit_cell_crystal_symmetry()):
@@ -772,6 +858,11 @@ class map_manager(map_reader,write_ccp4_map):
   def origin_shift_cart(self):
     ''' Return the origin shift in cartesian coordinates'''
     return self.grid_units_to_cart(self.origin_shift_grid_units)
+
+  def is_compatible_model(self,model):
+    from iotbx.map_model_manager import original_or_current_symmetries_match
+    return original_or_current_symmetries_match(model=model,
+       map_manager=self)
 
   def map_as_fourier_coefficients(self, high_resolution=None):
     '''

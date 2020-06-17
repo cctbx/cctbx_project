@@ -378,8 +378,9 @@ class compute_polder_map():
     inputs=iotbx.map_and_model.input(
       model=model_selected.deep_copy(),
       map_manager=mm,
+      wrapping = (mm.is_full_size()), # XXX NEED TO DECIDE WRAPPING
       box=True)
-    return inputs.shift_manager()
+    return inputs
 
   # ---------------------------------------------------------------------------
 
@@ -447,16 +448,16 @@ class compute_polder_map():
       model_selected = model_selected,
       box_cushion = box_cushion)
 
-    sites_cart_box = box_1.xray_structure_box.sites_cart()
+    sites_cart_box = box_1.model().get_xray_structure().sites_cart()
     sel = maptbx.grid_indices_around_sites(
-      unit_cell  = box_1.xray_structure_box.unit_cell(),
-      fft_n_real = box_1.map_box.focus(),
-      fft_m_real = box_1.map_box.all(),
+      unit_cell  = box_1.model().get_xray_structure().unit_cell(),
+      fft_n_real = box_1.map_manager().map_data().focus(),
+      fft_m_real = box_1.map_manager().map_data().all(),
       sites_cart = sites_cart_box,
       site_radii = flex.double(sites_cart_box.size(), box_cushion-0.1))
-    b1 = box_1.map_box.select(sel).as_1d()
-    b2 = box_2.map_box.select(sel).as_1d()
-    b3 = box_3.map_box.select(sel).as_1d()
+    b1 = box_1.map_manager().map_data().select(sel).as_1d()
+    b2 = box_2.map_manager().map_data().select(sel).as_1d()
+    b3 = box_3.map_manager().map_data().select(sel).as_1d()
     # Map 1: calculated Fobs with ligand
     # Map 2: calculated Fobs without ligand
     # Map 3: real Fobs data
@@ -476,7 +477,7 @@ class compute_polder_map():
     d12 = maptbx.discrepancy_function(map_1=b1, map_2=b2, cutoffs=cutoffs)
     d13 = maptbx.discrepancy_function(map_1=b1, map_2=b3, cutoffs=cutoffs)
     d23 = maptbx.discrepancy_function(map_1=b2, map_2=b3, cutoffs=cutoffs)
-    pdb_hierarchy_selected.adopt_xray_structure(box_1.xray_structure_box)
+    pdb_hierarchy_selected.adopt_xray_structure(box_1.model().get_xray_structure())
     return group_args(
       box_1 = box_1,
       box_2 = box_2,
