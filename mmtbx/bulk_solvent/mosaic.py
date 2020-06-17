@@ -14,6 +14,7 @@ from mmtbx import bulk_solvent
 from mmtbx.ncs import tncs
 from collections import OrderedDict
 import mmtbx.f_model
+import sys
 
 # Utilities used by algorithm 2 ------------------------------------------------
 
@@ -153,6 +154,90 @@ def write_map_file(crystal_symmetry, map_data, file_name):
     map_data    = map_data,
     labels      = flex.std_string([""]))
 
+class refinery(object):
+  def __init__(self, fmodel, fv, alg, log = sys.stdout):
+    assert alg in ["alg2", "alg4"]
+    self.log = log
+    self.f_calc = fmodel.f_calc()
+    self.f_obs  = fmodel.f_obs()
+    self.r_free_flags = fmodel.r_free_flags()
+    self.F = [self.f_calc.deep_copy()] + fv.keys()
+    self.bin_selections = fmodel.f_obs().log_binning(
+      n_reflections_in_lowest_resolution_bin = max(100,int(len(self.F)*100)))
+    self._print(fmodel.r_factors(prefix="start: "))
+    for it in xrange(3):
+      self._print("cycle: %2d"%it)
+      self._print("  volumes: "+" ".join([str(fv[f]) for f in self.F[1:]]))
+      f_obs   = self.f_obs.deep_copy()
+      k_total = fmodel.k_isotropic()*fmodel.k_anisotropic()*fmodel.scale_k1()
+      f_obs   = f_obs.customized_copy(data = self.f_obs.data()/k_total)
+      i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
+      K_MASKS = OrderedDict()
+      for i_bin, sel in enumerate(self.bin_selections):
+        d_max, d_min = f_obs.select(sel).d_max_min()
+        bin = "  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min)
+        F = [f.select(sel) for f in self.F]
+        # algorithm_4
+        if(alg=="alg4"):
+          k_masks = algorithm_4(
+            f_obs             = f_obs.select(sel),
+            F                 = F,
+            auto_converge_eps = 0.0001)
+        # algorithm_2
+        if(alg=="alg2"):
+          k_masks = algorithm_2(
+            i_obs          = i_obs.select(sel),
+            F              = F,
+            x              = self._get_x_init(i_bin),
+            use_curvatures = False)
+        self._print(bin+" ".join(["%6.2f"%k for k in k_masks]))
+        K_MASKS[sel] = k_masks
+      #
+      f_calc_data = self.f_calc.data().deep_copy()
+      f_bulk_data = flex.complex_double(fmodel.f_calc().data().size(), 0)
+      for sel, k_masks in zip(K_MASKS.keys(), K_MASKS.values()):
+        f_bulk_data_ = flex.complex_double(sel.count(True), 0)
+        for i_mask, k_mask in enumerate(k_masks):
+          if i_mask==0:
+            f_calc_data = f_calc_data.set_selected(sel,
+              f_calc_data.select(sel)*k_mask)
+            continue
+          f_bulk_data_ += self.F[i_mask].data().select(sel)*k_mask
+        f_bulk_data = f_bulk_data.set_selected(sel,f_bulk_data_)
+      #
+      self.update_F(K_MASKS)
+      f_bulk = fmodel.f_calc().customized_copy(data = f_bulk_data)
+      self.fmodel = mmtbx.f_model.manager(
+        f_obs          = self.f_obs,
+        r_free_flags   = self.r_free_flags,
+        f_calc         = self.f_obs.customized_copy(data = f_calc_data),
+        f_mask         = f_bulk,
+        k_mask         = flex.double(f_obs.data().size(),1))
+      #
+      self.fmodel.update_all_scales(remove_outliers=False)
+      self._print(self.fmodel.r_factors(prefix="  "))
+      self.mc = fmodel.electron_density_map().map_coefficients(
+        map_type   = "mFobs-DFmodel",
+        isotropize = True,
+        exclude_free_r_reflections = False)
+
+  def _print(self, m):
+    if(self.log is not None):
+      print(m, file=self.log)
+
+  def update_F(self, K_MASKS):
+    tmp = []
+    for i_mask, F in enumerate(self.F):
+      k_masks = [k_masks_bin[i_mask] for k_masks_bin in K_MASKS.values()]
+      if(i_mask == 0):      tmp.append(self.F[0])
+      elif k_masks[0]>=0.1: tmp.append(F)
+      self.F = tmp[:]
+
+  def _get_x_init(self, i_bin):
+    k_maks1_init = 0.35 - i_bin*0.35/len(self.bin_selections)
+    x = flex.double([1,k_maks1_init])
+    x.extend( flex.double(len(self.F)-2, 0.1))
+    return x
 
 class mosaic_f_mask(object):
   def __init__(self,
@@ -160,6 +245,7 @@ class mosaic_f_mask(object):
                xray_structure,
                step,
                volume_cutoff,
+               log = sys.stdout,
                f_obs=None,
                r_free_flags=None,
                f_calc=None,
@@ -181,7 +267,7 @@ class mosaic_f_mask(object):
       n_real                = self.n_real,
       in_asu                = False).mask_data
     maptbx.unpad_in_place(map=mask_p1)
-    solvent_content = 100.*mask_p1.count(1)/mask_p1.size()
+    self.solvent_content = 100.*mask_p1.count(1)/mask_p1.size()
     if(write_masks):
       write_map_file(crystal_symmetry=xray_structure.crystal_symmetry(),
         map_data=mask_p1, file_name="mask_whole.mrc")
@@ -199,10 +285,14 @@ class mosaic_f_mask(object):
     f_mask_data_0 = flex.complex_double(miller_array.data().size(), 0)
     #f_masks  = []
     FM = OrderedDict()
+    self.FV = OrderedDict()
+    self.mc = None
     diff_map = None
     mean_diff_map = None
-    print("   volume_p1    uc(%)   volume_asu  id  <mFo-DFc>")
-    for p in sorted_by_volume:
+    self.regions = OrderedDict()
+    print("   volume_p1    uc(%)   volume_asu  id   mFo-DFc: min,max,mean,sd",
+      file=log)
+    for i_seq, p in enumerate(sorted_by_volume):
       v, i = p
       volume = v*step**3
       uc_fraction = v*100./self.conn.size()
@@ -222,14 +312,25 @@ class mosaic_f_mask(object):
         f_mask_data += f_mask_i.data()
       if(uc_fraction < 5 and diff_map is None):
         diff_map = self.compute_diff_map(f_mask_data = f_mask_data_0)
+      mi,ma,me,sd = None,None,None,None
       if(diff_map is not None):
+        blob = diff_map.select(selection.iselection())
         mean_diff_map = flex.mean(diff_map.select(selection.iselection()))
+        mi,ma,me = flex.min(blob), flex.max(blob), flex.mean(blob)
+        sd = blob.sample_standard_deviation()
 
       print("%12.3f"%volume, "%8.4f"%round(uc_fraction,4),
             "%12.3f"%volume_asu, "%3d"%i,
-            "%7s"%str(None) if diff_map is None else "%7.3f"%mean_diff_map)
+            "%7s"%str(None) if diff_map is None else "%7.3f %7.3f %7.3f %7.3f"%(
+              mi,ma,me,sd), file=log)
 
-      #if(mean_diff_map is not None and mean_diff_map<=0): continue
+      self.regions[i_seq] = group_args(
+        id          = i,
+        volume      = volume,
+        uc_fraction = uc_fraction,
+        diff_map    = group_args(mi=mi, ma=ma, me=me, sd=sd))
+
+      if(mean_diff_map is not None and mean_diff_map<=0): continue
 
       if(not(i==1 or uc_fraction>5)):
         f_mask_i = miller_array.structure_factors_from_asu_map(
@@ -237,6 +338,7 @@ class mosaic_f_mask(object):
         f_mask_data += f_mask_i.data()
 
       FM.setdefault(round(volume, 3), []).append(f_mask_i.data())
+      self.FV[f_mask_i] = round(volume, 3)
 
     # group asu pices corresponding to the same region in P1
     F_MASKS = []
@@ -263,11 +365,11 @@ class mosaic_f_mask(object):
     fmodel.update_all_scales(remove_outliers=True)
     #print ("r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free()))
     #fmodel.show(show_header=False, show_approx=False)
-    mc = fmodel.electron_density_map().map_coefficients(
+    self.mc = fmodel.electron_density_map().map_coefficients(
       map_type   = "mFobs-DFmodel",
       isotropize = True,
       exclude_free_r_reflections = False)
-    fft_map = mc.fft_map(crystal_gridding = self.crystal_gridding)
+    fft_map = self.mc.fft_map(crystal_gridding = self.crystal_gridding)
     fft_map.apply_sigma_scaling()
     return fft_map.real_map_unpadded()
 
@@ -278,7 +380,7 @@ class mosaic_f_mask(object):
       write_map_file(
         crystal_symmetry = self.crystal_symmetry,
         map_data         = mask_i,
-        file_name        = "mask_%s.mrc"%str(round(volume,0)))
+        file_name        = "mask_%s.mrc"%str(round(volume,3)))
     tmp = asu_map_ext.asymmetric_map(
       self.crystal_symmetry.space_group().type(), mask_i).data()
     return tmp
@@ -322,8 +424,10 @@ def algorithm_2(i_obs, F, x, use_curvatures=True, macro_cycles=10):
     if(use_curvatures):
       m = minimizer(max_iterations=100, calculator=calculator)
     else:
-      upper = flex.double([10] + [0.65]*(x.size()-1))
-      lower = flex.double([0.1] + [0]*(x.size()-1))
+      upper = flex.double([10] + [5]*(x.size()-1))
+      lower = flex.double([0.1] + [-5]*(x.size()-1))
+      #upper = flex.double([10] + [4.65]*(x.size()-1))
+      #lower = flex.double([0.1] + [0]*(x.size()-1))
       m = tncs.minimizer(
         potential       = calculator,
         use_bounds      = 2,
