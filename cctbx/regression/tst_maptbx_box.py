@@ -12,6 +12,7 @@ from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
 import mmtbx.model
 from scitbx.array_family import flex
+import libtbx.load_env
 
 def get_random_structure_and_map(
    use_static_structure = False,
@@ -255,4 +256,7 @@ def exercise_around_model():
   assert r.args  ==  ['self', 'map_manager', 'lower_bounds', 'upper_bounds', 'wrapping', 'model', 'ncs_object', 'log'], r.args
 
 if (__name__  ==  "__main__"):
-  exercise_around_model()
+  if libtbx.env.has_module('phenix'):
+    exercise_around_model()
+  else:
+    print('phenix is not available, skipping test')
