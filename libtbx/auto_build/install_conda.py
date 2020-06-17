@@ -164,9 +164,15 @@ class conda_manager(object):
                             platform=conda_platform[platform.system()])),
     'xfellegacy': default_file,
     'labelit': default_file,
-    'dials': os.path.join('dials', '.conda-envs',
+    'dials-old': os.path.join('dials', '.conda-envs',
       default_format.format(builder='dials', version=version,
                             platform=conda_platform[platform.system()])),
+    'dials': os.path.join('dials', '.conda-envs',
+             {
+                 "Darwin": "macos.txt",
+                 "Linux": "linux.txt",
+                 "Windows": "windows.txt",
+             }[platform.system()]),
     'external': default_file,
     'molprobity': default_file,
     'qrefine': default_file,
@@ -175,6 +181,9 @@ class conda_manager(object):
       default_format.format(builder='phaser_tng', version=version,
                             platform=conda_platform[platform.system()]))
   }
+  # A set of builders where the environment files do not specify the python
+  # version
+  env_without_python = [ "dials" ]
 
   # ---------------------------------------------------------------------------
   def __init__(self, root_dir=root_dir, conda_base=None, conda_env=None,
@@ -654,6 +663,9 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
     if self.conda_base is None:
       raise RuntimeError("""A conda installation is not available.""")
 
+    if builder == "dials" and python in ("27", "36"):
+      builder = "dials-old"
+
     if filename is None:
       filename = os.path.join(
         self.root_dir, 'modules', self.env_locations[builder])
@@ -703,8 +715,17 @@ builder.""".format(filename=filename, builder=builder))
       command_list.append('--copy')
     if offline and not yaml_format:
       command_list.append('--offline')
-    if builder in ["dials", "xfel"]:
+    if builder in ("dials", "dials-old", "xfel"):
       command_list.append("-y")
+    if builder in self.env_without_python:
+      python_version = tuple(int(i) for i in (python or "36"))
+      python_requirement = "conda-forge::python>=%s.%s,<%s.%s" % (
+          python_version[0],
+          python_version[1],
+          python_version[0],
+          python_version[1] + 1,
+      )
+      command_list.append(python_requirement)
     # RuntimeError is raised on failure
     print('{text} {builder} environment with:\n  {filename}'.format(
           text=text_messages[0], builder=builder, filename=filename),
