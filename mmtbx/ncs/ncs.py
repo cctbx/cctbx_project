@@ -3792,7 +3792,7 @@ class ncs:
     return tuple([-a for a in self.shift_cart()])
 
   def as_ncs_spec_string(self):
-    ''' 
+    '''
      shifts to original location and returns text string
     '''
     shifted_ncs=self.coordinate_offset(coordinate_offset=self.shift_back_cart())
