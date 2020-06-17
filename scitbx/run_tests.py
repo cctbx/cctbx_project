@@ -151,9 +151,11 @@ tst_list_fail_gcc = [
   ]
 tst_list_fail = list()
 gcc_version = get_gcc_version()
+build_options = libtbx.env.build_options
 if gcc_version is None:
   gcc_version = 0
-if sys.platform.startswith('linux') and gcc_version > 50000:
+if ((sys.platform.startswith('linux') and gcc_version > 50000)
+    or (build_options.use_conda and build_options.compiler == 'conda')):
   tst_list_fail += tst_list_fail_gcc
 else:
   tst_list_base += tst_list_fail_gcc
