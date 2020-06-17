@@ -61,18 +61,18 @@ steps:
     or(eq(variables['Build.DefinitionName'], 'Update build cache'),
        eq(variables['Build.DefinitionName'], 'Full'))
 
-- task: DownloadPipelineArtifact@2
-  inputs:
-    source: 'specific'
-    project: '$(resources.pipeline.build_cache.projectID)'
-    pipeline: '$(resources.pipeline.build_cache.pipelineID)'
-    allowPartiallySucceededBuilds: true
-    artifact: $(PYTHON_VERSION)_$(OS)
-    path: $(Pipeline.Workspace)/channel
-  displayName: Download cached conda packages
-  condition: >
-    and(ne(variables['Build.DefinitionName'], 'Update build cache'),
-        ne(variables['Build.DefinitionName'], 'Full'))
+# - task: DownloadPipelineArtifact@2
+#   inputs:
+#     source: 'specific'
+#     project: '$(resources.pipeline.build_cache.projectID)'
+#     pipeline: '$(resources.pipeline.build_cache.pipelineID)'
+#     allowPartiallySucceededBuilds: true
+#     artifact: $(PYTHON_VERSION)_$(OS)
+#     path: $(Pipeline.Workspace)/channel
+#   displayName: Download cached conda packages
+#   condition: >
+#     and(ne(variables['Build.DefinitionName'], 'Update build cache'),
+#         ne(variables['Build.DefinitionName'], 'Full'))
 
 - script: |
     set -x -e

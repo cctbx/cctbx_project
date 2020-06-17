@@ -135,42 +135,42 @@ jobs:
   # download daily cached build directory for builds
   # always do builds from scratch for "Update build cache" and "Weekly"
   # pipelines
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(resources.pipeline.build_cache.projectID)'
-      pipeline: '$(resources.pipeline.build_cache.pipelineID)'
-      allowPartiallySucceededBuilds: true
-      allowFailedBuilds: true
-      artifact: '$(artifact_name)'
-      path: $(Pipeline.Workspace)
-    displayName: Download cached build
-    condition: >
-      and(or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
-                 ne(variables['day'], 'Sunday')),
-             eq(variables['Build.DefinitionName'], 'CI'),
-             eq(variables['Build.DefinitionName'], 'CI branch'),
-             eq(variables['Build.DefinitionName'], 'Full')),
-          or(and(eq(variables['PYTHON_VERSION'], 'py27'),
-                 eq('${{ parameters.vs }}', 'vs2015')),
-             ne(variables['PYTHON_VERSION'], 'py27')))
-    continueOnError: true
+  # - task: DownloadPipelineArtifact@2
+  #   inputs:
+  #     source: 'specific'
+  #     project: '$(resources.pipeline.build_cache.projectID)'
+  #     pipeline: '$(resources.pipeline.build_cache.pipelineID)'
+  #     allowPartiallySucceededBuilds: true
+  #     allowFailedBuilds: true
+  #     artifact: '$(artifact_name)'
+  #     path: $(Pipeline.Workspace)
+  #   displayName: Download cached build
+  #   condition: >
+  #     and(or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+  #                ne(variables['day'], 'Sunday')),
+  #            eq(variables['Build.DefinitionName'], 'CI'),
+  #            eq(variables['Build.DefinitionName'], 'CI branch'),
+  #            eq(variables['Build.DefinitionName'], 'Full')),
+  #         or(and(eq(variables['PYTHON_VERSION'], 'py27'),
+  #                eq('${{ parameters.vs }}', 'vs2015')),
+  #            ne(variables['PYTHON_VERSION'], 'py27')))
+  #   continueOnError: true
 
-  - script: |
-      cd $(Pipeline.Workspace)
-      tar -xf build.tar
-    displayName: Extract build tarball
-    condition: >
-      and(or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
-                 ne(variables['day'], 'Sunday')),
-             eq(variables['Build.DefinitionName'], 'CI'),
-             eq(variables['Build.DefinitionName'], 'CI branch'),
-             eq(variables['Build.DefinitionName'], 'Full')),
-          or(and(eq(variables['PYTHON_VERSION'], 'py27'),
-                 eq('${{ parameters.vs }}', 'vs2015')),
-             ne(variables['PYTHON_VERSION'], 'py27')))
-    continueOnError: true
-    failOnStderr: false
+  # - script: |
+  #     cd $(Pipeline.Workspace)
+  #     tar -xf build.tar
+  #   displayName: Extract build tarball
+  #   condition: >
+  #     and(or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+  #                ne(variables['day'], 'Sunday')),
+  #            eq(variables['Build.DefinitionName'], 'CI'),
+  #            eq(variables['Build.DefinitionName'], 'CI branch'),
+  #            eq(variables['Build.DefinitionName'], 'Full')),
+  #         or(and(eq(variables['PYTHON_VERSION'], 'py27'),
+  #                eq('${{ parameters.vs }}', 'vs2015')),
+  #            ne(variables['PYTHON_VERSION'], 'py27')))
+  #   continueOnError: true
+  #   failOnStderr: false
 
   # build (cctbx for vs2008 and vs2015, cctbxlite for vs2017)
   - script: |

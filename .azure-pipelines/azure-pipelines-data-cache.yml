@@ -19,10 +19,10 @@ schedules:
     - master
   always: true
 
-resources:
-  pipelines:
-  - pipeline: data_cache
-    source: 'Update data cache'
+# resources:
+#   pipelines:
+#   - pipeline: data_cache
+#     source: 'Update data cache'
 
 jobs:
 - job: artifacts
@@ -53,16 +53,16 @@ jobs:
     artifact: miniconda
 
   # chem_data
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(resources.pipeline.data_cache.projectID)'
-      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
-      allowPartiallySucceededBuilds: true
-      artifact: 'chem_data'
-      path: $(System.DefaultWorkingDirectory)/chem_data
-    displayName: Download chem_data
-    continueOnError: true
+  # - task: DownloadPipelineArtifact@2
+  #   inputs:
+  #     source: 'specific'
+  #     project: '$(resources.pipeline.data_cache.projectID)'
+  #     pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+  #     allowPartiallySucceededBuilds: true
+  #     artifact: 'chem_data'
+  #     path: $(System.DefaultWorkingDirectory)/chem_data
+  #   displayName: Download chem_data
+  #   continueOnError: true
 
   - script: |
       if [ ! -d "$(System.DefaultWorkingDirectory)/chem_data" ]; then
@@ -76,16 +76,16 @@ jobs:
     artifact: chem_data
 
   # phenix_regression
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(resources.pipeline.data_cache.projectID)'
-      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
-      allowPartiallySucceededBuilds: true
-      artifact: 'phenix_regression'
-      path: $(System.DefaultWorkingDirectory)/phenix_regression
-    displayName: Download phenix_regression
-    continueOnError: true
+  # - task: DownloadPipelineArtifact@2
+  #   inputs:
+  #     source: 'specific'
+  #     project: '$(resources.pipeline.data_cache.projectID)'
+  #     pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+  #     allowPartiallySucceededBuilds: true
+  #     artifact: 'phenix_regression'
+  #     path: $(System.DefaultWorkingDirectory)/phenix_regression
+  #   displayName: Download phenix_regression
+  #   continueOnError: true
 
   - script: |
       if [ ! -d "$(System.DefaultWorkingDirectory)/phenix_regression" ]; then
@@ -102,16 +102,16 @@ jobs:
     artifact: phenix_regression
 
   # phenix_examples
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(resources.pipeline.data_cache.projectID)'
-      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
-      allowPartiallySucceededBuilds: true
-      artifact: 'phenix_examples'
-      path: $(System.DefaultWorkingDirectory)/phenix_examples
-    displayName: Download phenix_examples
-    continueOnError: true
+  # - task: DownloadPipelineArtifact@2
+  #   inputs:
+  #     source: 'specific'
+  #     project: '$(resources.pipeline.data_cache.projectID)'
+  #     pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+  #     allowPartiallySucceededBuilds: true
+  #     artifact: 'phenix_examples'
+  #     path: $(System.DefaultWorkingDirectory)/phenix_examples
+  #   displayName: Download phenix_examples
+  #   continueOnError: true
 
   - script: |
       if [ ! -d "$(System.DefaultWorkingDirectory)/phenix_examples" ]; then
@@ -128,16 +128,16 @@ jobs:
     artifact: phenix_examples
 
   # xfel_regression
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      source: 'specific'
-      project: '$(resources.pipeline.data_cache.projectID)'
-      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
-      allowPartiallySucceededBuilds: true
-      artifact: 'xfel_regression'
-      path: $(System.DefaultWorkingDirectory)/xfel_regression
-    displayName: Download xfel_regression
-    continueOnError: true
+  # - task: DownloadPipelineArtifact@2
+  #   inputs:
+  #     source: 'specific'
+  #     project: '$(resources.pipeline.data_cache.projectID)'
+  #     pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+  #     allowPartiallySucceededBuilds: true
+  #     artifact: 'xfel_regression'
+  #     path: $(System.DefaultWorkingDirectory)/xfel_regression
+  #   displayName: Download xfel_regression
+  #   continueOnError: true
 
   - script: |
       if [ ! -d "$(System.DefaultWorkingDirectory)/xfel_regression" ]; then

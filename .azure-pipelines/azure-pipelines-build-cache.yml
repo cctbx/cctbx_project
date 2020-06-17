@@ -18,8 +18,8 @@ resources:
   pipelines:
   - pipeline: data_cache
     source: 'Update data cache'
-  - pipeline: build_cache
-    source: 'Update build cache'
+#   - pipeline: build_cache
+#     source: 'Update build cache'
 
 stages:
 - stage: Preparation
