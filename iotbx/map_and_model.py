@@ -20,7 +20,7 @@ class input(object):
       map_manager = map_manager,
       ncs_object = ncs_object)
 
-    mam.box_around_model(wrapping=False, box_cushion=3) 
+    mam.box_around_model(wrapping=False, box_cushion=3)
 
     shifted_model = mam.model()  # at (0, 0, 0), knows about shifts
     shifted_map_manager = mam.map_manager() # also at (0, 0, 0) knows shifts
@@ -166,7 +166,7 @@ class input(object):
   def box_around_model(self,
      wrapping = None,
      box_cushion = 5.):
-  
+
     '''
        Box all maps around the model, shift origin of maps, model, ncs_object
 
