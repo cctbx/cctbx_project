@@ -492,11 +492,11 @@ class manager(object):
 
   def create_shift_manager(self,original_crystal_symmetry=None,shift_cart=None):
     '''
-      Set up a shift manager with current crystal_symmetry and optionally 
+      Set up a shift manager with current crystal_symmetry and optionally
       setting original crystal symmetry. Optionally set shift that has been
-      applied.  
+      applied.
 
-      Normally used to set up a shift_manager with zero shift_cart and 
+      Normally used to set up a shift_manager with zero shift_cart and
       original_crystal_symmetry equal to crystal_symmetry
     '''
     assert self.get_shift_manager() is None
@@ -520,7 +520,7 @@ class manager(object):
       Method to apply a coordinate shift to a model object and keep track of
       it with shift_manager
 
-      NOTE: Normally use this method along with shift_model_back() to 
+      NOTE: Normally use this method along with shift_model_back() to
       shift the coordinates of the model
 
       Sets the new crystal_symmetry
@@ -577,7 +577,7 @@ class manager(object):
     self._shift_manager=sm
 
   def shift_model_back(self):
-    ''' 
+    '''
       Shift the model back to its original position and restore original
       crystal_symmetry.
 
@@ -617,7 +617,7 @@ class manager(object):
     '''
       Set the crystal_symmetry, keeping sites_cart the same
 
-      NOTE: Normally instead use 
+      NOTE: Normally instead use
         shift_model_and_set_crystal_symmetry(shift_cart=shift_cart) and
       shift_model_back() to shift the coordinates of the model.
 
@@ -636,8 +636,8 @@ class manager(object):
         shift_model_and_set_crystal_symmetry(shift_cart=shift_cart) and
       shift_model_back() to shift the coordinates of the model.
 
-      If there is no xray_structure and no sites_cart are supplied this 
-      sets self._crystal_symmetry and updates. This is used to set 
+      If there is no xray_structure and no sites_cart are supplied this
+      sets self._crystal_symmetry and updates. This is used to set
       crystal_symmetry in a model that has coordinates but no crystal_symmetry
 
       If existing xray_structure and xray_structure.crystal_symmetry is similar
@@ -652,7 +652,7 @@ class manager(object):
     assert crystal_symmetry is not None  # must supply crystal_symmetry
 
 
-    if(self.crystal_symmetry() is None):  
+    if(self.crystal_symmetry() is None):
       # Set self._crystal_symmetry. There must be no xray_structure
       #   and no sites_cart supplied
       assert self._xray_structure is None
@@ -712,7 +712,7 @@ class manager(object):
       return (0,0,0)
 
   def set_shift_cart(self,shift_cart):
-    ''' 
+    '''
       Change the value of the recorded coordinate shift applied to a model
       without changing anything about the model.  This effectively changes
       the output shift that is going to be applied to this model when it is
