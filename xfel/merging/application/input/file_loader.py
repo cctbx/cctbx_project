@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 import os
-import numpy as np
 from dxtbx.model.experiment_list import ExperimentListFactory
 from dials.array_family import flex
 from six.moves import range
@@ -112,16 +111,17 @@ class simple_file_loader(worker):
         experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = False)
         reflections = flex.reflection_table.from_file(reflections_filename)
         self.logger.log("Data read, prepping")
-        # NOTE: had to use slicing below because it selection no longer works...
-        reflections.sort("id")
-        unique_refl_ids = set(reflections['id'])
-        assert len(unique_refl_ids) == len(experiments), "refl table and experiment list should contain data on same experiment "  # TODO: decide if this is true
 
         if 'intensity.sum.value' in reflections:
           reflections['intensity.sum.value.unmodified'] = reflections['intensity.sum.value'] * 1
         if 'intensity.sum.variance' in reflections:
           reflections['intensity.sum.variance.unmodified'] = reflections['intensity.sum.variance'] * 1
 
+        new_ids = flex.int(len(reflections), -1)
+        new_identifiers = flex.std_string(len(reflections))
+        eid = reflections.experiment_identifiers()
+        for k in eid.keys():
+          del eid[k]
         for experiment_id, experiment in enumerate(experiments):
           if experiment.identifier is None or len(experiment.identifier) == 0:
             experiment.identifier = create_experiment_identifier(experiment, experiments_filename, experiment_id)
@@ -129,29 +129,18 @@ class simple_file_loader(worker):
           all_experiments.append(experiment)
 
           # select reflections of the current experiment
-          # FIXME the selection was broke for me, it raised
-          #    RuntimeError: boost::bad_get: failed value get using boost::get
-          #refls = reflections.select(reflections['id'] == experiment_id)
-          # NOTE: this is a hack due to the broken expereimnt_id selection above
-          exp_id_pos = np.where(reflections['id'] == experiment_id)[0]
-          assert exp_id_pos.size, "no refls in this experiment"  # NOTE: maybe we can relax this assertion ?
-          refls = reflections[exp_id_pos[0]: exp_id_pos[-1]+1]
+          refls_sel = reflections['id'] == experiment_id
 
-          #FIXME: how will this work if reading in multiple composite mode experiment jsons?
-          # Reflection experiment 'id' is supposed to be unique within this rank; 'exp_id' (i.e. experiment identifier) is supposed to be unique globally
-          refls['exp_id'] = flex.std_string(len(refls), experiment.identifier)
+          # Reflection experiment 'id' is unique within this rank; 'exp_id' (i.e. experiment identifier) is unique globally
+          new_identifiers.set_selected(refls_sel, experiment.identifier)
 
-          new_id = 0
-          if len(all_reflections) > 0:
-            new_id = flex.max(all_reflections['id'])+1
-
-          # FIXME: it is hard to interperet that a function call returning a changeable property
-          eid = refls.experiment_identifiers()
-          for k in eid.keys():
-            del eid[k]
+          new_id = len(all_experiments)-1
           eid[new_id] = experiment.identifier
-          refls['id'] = flex.int(len(refls), new_id)
-          all_reflections.extend(refls)
+          new_ids.set_selected(refls_sel, new_id)
+        assert (new_ids < 0).count(True) == 0, "Not all reflections accounted for"
+        reflections['id'] = new_ids
+        reflections['exp_id'] = new_identifiers
+        all_reflections.extend(reflections)
     else:
       self.logger.log("Received a list of 0 json/pickle file pairs")
     self.logger.log_step_time("LOAD", True)
