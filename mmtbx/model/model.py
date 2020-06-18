@@ -931,7 +931,7 @@ class manager(object):
       self._xray_structure = self.all_chain_proxies.extract_xray_structure()
     else:
       cs = self.crystal_symmetry()
-      #assert cs is not None # You cannot create xray_structure without
+      assert cs is not None # You cannot create xray_structure without
       #                      # crystal symmetry. And if you can then it is wrong.
       self._xray_structure = self._pdb_hierarchy.extract_xray_structure(
           crystal_symmetry=cs)

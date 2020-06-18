@@ -25,6 +25,7 @@ def run(args):
   box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
     sites_cart=model.get_sites_cart(),
     buffer_layer=command_line.options.buffer_layer)
+  model.set_crystal_symmetry(box.crystal_symmetry())
   model.set_sites_cart(box.sites_cart)
   # Bad hack, never repeat. In fact, all the boxing functionality should
   # go into mmtbx.model.manager

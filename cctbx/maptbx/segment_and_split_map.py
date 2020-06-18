@@ -1692,7 +1692,7 @@ class info_object:
       for output_region_map_info in self.output_region_map_info_list:
         output_region_map_info.show_summary(out = out)
 
-    print("\n"+50*" = "+"\n", file = out)
+    print("\n"+50*"="+"\n", file = out)
 
 class make_ccp4_map: # just a holder so map_to_structure_factors will run
   # XXX Replace with map_manager
@@ -10332,9 +10332,9 @@ def auto_sharpen_map_or_map_coeffs(
       working_map = map
 
     # Now identify optimal sharpening params
-    print(80*" = ", file = out)
+    print(80*"=", file = out)
     print("\nRunning auto_sharpen to get sharpening parameters\n", file = out)
-    print(80*" = ", file = out)
+    print(80*"=", file = out)
     result = run_auto_sharpen( # get sharpening parameters standard run
       si = si,
       map_data = working_map,
@@ -10349,9 +10349,9 @@ def auto_sharpen_map_or_map_coeffs(
       return result  # it is a box_sharpening_info object
     else:
       si = result
-    print(80*" = ", file = out)
+    print(80*"=", file = out)
     print("\nDone running auto_sharpen to get sharpening parameters\n", file = out)
-    print(80*" = ", file = out)
+    print(80*"=", file = out)
 
     # Apply the optimal sharpening values and save map in si.map_data
     # First test without sharpening if sharpening_method is b_iso, b and
@@ -10365,9 +10365,9 @@ def auto_sharpen_map_or_map_coeffs(
     else:
       local_si = None
 
-    print(80*" = ", file = out)
+    print(80*"=", file = out)
     print("\nApplying final sharpening to entire map", file = out)
-    print(80*" = ", file = out)
+    print(80*"=", file = out)
     si.sharpen_and_score_map(map_data = working_map, set_b_iso = True, out = out)
     if si.discard_if_worse and local_si and local_si.score > si.score:
        print("Sharpening did not improve map "+\

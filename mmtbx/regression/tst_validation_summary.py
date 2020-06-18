@@ -35,7 +35,11 @@ def exercise():
     model = hierarchy.only_model().detached_copy()
     model.id = str(i+1)
     new_hierarchy.append_model(model)
-  open("tst_validation_summary.pdb", "w").write(new_hierarchy.as_pdb_string())
+  import mmtbx.model
+  model_object = mmtbx.model.manager(
+          model_input = new_hierarchy.as_pdb_input(),
+          crystal_symmetry = pdb_in.file_object.crystal_symmetry())
+  open("tst_validation_summary.pdb", "w").write(model_object.model_as_pdb())
   out2 = StringIO()
   summary = validation_summary.run(args=["tst_validation_summary.pdb"],
     out=out2)

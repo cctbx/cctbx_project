@@ -190,6 +190,8 @@ def exercise():
   pdb_inp2 = iotbx.pdb.input(source_info=None, lines=test_cif)
   model1 = mmtbx.model.manager(pdb_inp1)
   model2 = mmtbx.model.manager(pdb_inp2)
+  model1_crystal_symmetry=model1.crystal_symmetry() 
+
   trans_obj1 = iotbx.ncs.input(hierarchy=model1.get_hierarchy())
   trans_obj2 = iotbx.ncs.input(hierarchy=model2.get_hierarchy())
 
@@ -223,7 +225,8 @@ def exercise():
 MTRIX2   1  0.010826 -0.793178  0.608894       -1.51400
 MTRIX3   1 -0.004354  0.608886  0.793246        0.70450
 """)
-  m = mmtbx.model.manager(pdb_inp)
+  m = mmtbx.model.manager(pdb_inp,
+   crystal_symmetry=model1_crystal_symmetry)
   xrs = m.get_xray_structure()
   m.set_xray_structure(xrs)
 
