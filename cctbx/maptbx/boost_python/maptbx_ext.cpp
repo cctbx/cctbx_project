@@ -490,6 +490,8 @@ namespace {
                      arg("preprocess_against_shallow")=false)))
         .def("result",    &w_t::result)
         .def("regions",   &w_t::regions)
+        .def("merge_symmetry_related_regions", &w_t::merge_symmetry_related_regions,
+            (arg("space_group")))
         .def("volume_cutoff_mask", &w_t::volume_cutoff_mask,
                     (arg("volume_cutoff")))
         .def("get_blobs_boundaries", &w_t::get_blobs_boundaries)
