@@ -8,13 +8,13 @@
 
 #include <boost_adaptbx/boost_range_python.hpp>
 #include <scitbx/boost_python/pair_as_tuple.hpp>
-#include <scitbx/boost_python/iterator_range.hpp>
 
 #include <scitbx/suffixtree/word.hpp>
 #include <scitbx/suffixtree/boost_python/edge_exports.hpp>
 #include <scitbx/suffixtree/boost_python/tree_exports.hpp>
 #include <scitbx/suffixtree/boost_python/object_extensions.hpp>
 #include <scitbx/suffixtree/matching_statistics.hpp>
+#include <scitbx/suffixtree/boost_python/iterator_wrapper.hpp>
 
 namespace scitbx
 {
@@ -41,8 +41,9 @@ struct python_exports
   typedef std::size_t suffix_label_type;
   typedef Tree< word_type, suffix_label_type, BoostHashMapAdapter > tree_type;
   typedef MSI< tree_type, boost::python::stl_input_iterator< glyph_type > > msi_type;
+  typedef scitbx::suffixtree::python::python_iterator< msi_type > msi_python_iterator;
 
-  static boost::python::object get_matching_statistics_range(
+  static msi_python_iterator get_matching_statistics_range(
     tree_type const& tree,
     boost::python::object const& iterable
     )
@@ -52,7 +53,7 @@ struct python_exports
     iter_type begin( iterable );
     iter_type end;
 
-    return scitbx::boost_python::as_iterator(
+    return msi_python_iterator(
       msi_type( tree, begin, end),
       msi_type( tree, end, end )
       );
@@ -109,9 +110,14 @@ struct python_exports
     python::tree_exports< word_type, suffix_label_type, BoostHashMapAdapter >::wrap();
     python::ukkonen_builder_exports< tree_type >::wrap();
 
-    scitbx::boost_python::export_range_as_iterator< msi_type >(
-      "matching_statistics_iterator"
-      );
+/*  class_< msi_range >(
+      "matching_statistics_iterator",
+      no_init
+      )
+      .def( "__iter__", boost::python::iterator< msi_range >() )
+      ; */
+
+    msi_python_iterator::wrap( "matching_statistics_iterator" );
 
     to_python_converter<
       typename msi_type::position_type,
