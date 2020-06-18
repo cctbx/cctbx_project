@@ -377,9 +377,7 @@ class compute_polder_map():
     import iotbx.map_and_model
     inputs=iotbx.map_and_model.input(
       model=model_selected.deep_copy(),
-      map_manager=mm,
-      wrapping = (mm.is_full_size()), # XXX NEED TO DECIDE WRAPPING
-      box=True)
+      map_manager=mm,)
     return inputs
 
   # ---------------------------------------------------------------------------

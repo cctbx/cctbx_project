@@ -111,6 +111,8 @@ def exercise_mask():
   mm.soft_mask(soft_mask_radius = 5)
   mm.apply_mask()
   new_map = mm.map_data()
+  assert approx_equal( (orig_map[0], new_map[0]),
+     (-0.0071372973593,-0.00204624804668))
   assert approx_equal(
    ( orig_map[5215], orig_map[8432], new_map[5215], orig_map[8432]),
   (-0.01238522486, -0.0514926330954, -0.00401527420775, -0.0514926330954))

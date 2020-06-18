@@ -145,9 +145,7 @@ mmtbx.ringer model.pdb map_coeffs.mtz [cif_file ...] [options]
       models = [model], map_inps=[map_inp])
     base = map_and_model.input(
       map_manager               = map_inp,
-      model            = model,
-      wrapping = (map_inp.is_full_size()), # XXX NEED TO DECIDE WRAPPING
-      box              = False)
+      model            = model)
     hierarchy = base.model().get_hierarchy()
     map_data = base.map_data()
     unit_cell = map_inp.grid_unit_cell()

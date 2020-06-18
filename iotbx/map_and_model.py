@@ -4,6 +4,7 @@ from cctbx import maptbx
 from libtbx import group_args
 from scitbx.array_family import flex
 from iotbx.map_model_manager import map_model_manager
+from mmtbx.model import manager as model_manager
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
 
@@ -14,14 +15,16 @@ class input(object):
     track of the shifts.
 
     Typical use:
-    inputs = map_and_model.input(
+    mam = map_and_model.input(
       model = model,
       map_manager = map_manager,
-      wrapping = False,
-      box = True)
+      ncs_object = ncs_object)
 
-    shifted_model = inputs.model()  # at (0, 0, 0), knows about shifts
-    shifted_map_manager = inputs.map_manager() # also at (0, 0, 0) knows shifts
+    mam.box_around_model(wrapping=False, box_cushion=3) 
+
+    shifted_model = mam.model()  # at (0, 0, 0), knows about shifts
+    shifted_map_manager = mam.map_manager() # also at (0, 0, 0) knows shifts
+    shifted_ncs_object = mam.ncs_object() # also at (0, 0, 0) and knows shifts
 
     NOTE: Expects symmetry of model and map_manager to match unless
       ignore_symmetry_conflicts = True
@@ -31,16 +34,10 @@ class input(object):
   def __init__(self,
                model            = None,
                map_manager      = None,  # replaces map_data
-               wrapping         = None,  # Required
                map_manager_1    = None,  # replaces map_data_1
                map_manager_2    = None,  # replaces map_data_2
                map_manager_list = None,  # replaces map_data_list
                ncs_object       = None,
-               crystal_symmetry = None,  # optional, used only to check
-               box              = True,  # box the map
-               box_cushion      = 5.0,   # cushion around model in boxing
-               soft_mask        = None,
-               resolution       = None, # required for soft_mask
                ignore_symmetry_conflicts = False):
 
     self._model = model
@@ -52,7 +49,6 @@ class input(object):
     self._ncs_object = ncs_object
     # CHECKS
 
-    assert isinstance(wrapping, bool) # must be decided by programmer
 
     # Make sure that map_manager is either already shifted to (0, 0, 0) or has
     #   origin_shift_grid_unit of (0, 0, 0).
@@ -167,55 +163,80 @@ class input(object):
     # Holder for solvent content used in boxing and transferred to box_object
     self._solvent_content = None
 
-    if(box and model is not None):
+  def box_around_model(self,
+     wrapping = None,
+     box_cushion = 5.):
+  
+    '''
+       Box all maps around the model, shift origin of maps, model, ncs_object
 
-      from cctbx.maptbx.box import around_model
-      if(self._map_manager_1 is not None):
-        tmp_box = around_model(
-          map_manager = self._map_manager_1,
-          model = self._model.deep_copy(),
-          cushion = box_cushion,
-          wrapping = wrapping)
-        self._map_manager_1 = tmp_box.map_manager()
-        tmp_box = around_model(
-          map_manager = self._map_manager_2,
-          model = self._model.deep_copy(),
-          cushion = box_cushion,
-          wrapping = wrapping)
-        self._map_manager_2 = tmp_box.map_manager()
-      if self._map_manager_list:
-        new_list = []
-        for x in self._map_manager_list:
-          tmp_box = around_model(
-            map_manager = x,
-            model = self._model.deep_copy(),
-            cushion = box_cushion,
-            wrapping = wrapping)
-          new_list.append(tmp_box.map_manager())
-        self._map_manager_list = new_list
+       wrapping must be specified. Wrapping means map is infinite and repeats
+       outside unit cell. Requires a full unit cell in the maps.
+    '''
+    assert isinstance(self._model, model_manager)
+    assert isinstance(wrapping, bool) # must be decided by programmer
+    assert box_cushion is not None
 
-      # Make box around model
-      box = around_model(
-        map_manager = self._map_manager,
-        model = self._model,
-        ncs_object = self._ncs_object,
+    from cctbx.maptbx.box import around_model
+    if(self._map_manager_1 is not None):
+      tmp_box = around_model(
+        map_manager = self._map_manager_1,
+        model = self._model.deep_copy(),
         cushion = box_cushion,
         wrapping = wrapping)
+      self._map_manager_1 = tmp_box.map_manager()
+      tmp_box = around_model(
+        map_manager = self._map_manager_2,
+        model = self._model.deep_copy(),
+        cushion = box_cushion,
+        wrapping = wrapping)
+      self._map_manager_2 = tmp_box.map_manager()
+    if self._map_manager_list:
+      new_list = []
+      for x in self._map_manager_list:
+        tmp_box = around_model(
+          map_manager = x,
+          model = self._model.deep_copy(),
+          cushion = box_cushion,
+          wrapping = wrapping)
+        new_list.append(tmp_box.map_manager())
+      self._map_manager_list = new_list
 
-      box_as_mam = box.as_map_and_model()
+    # Make box around model
+    box = around_model(
+      map_manager = self._map_manager,
+      model = self._model,
+      ncs_object = self._ncs_object,
+      cushion = box_cushion,
+      wrapping = wrapping)
 
-      # New map_manager and model know about cumulative shifts (original
-      #   shift to move origin to (0, 0, 0) plus shift from boxing
-      self._map_manager = box_as_mam.map_manager()
-      self._model = box_as_mam.model()
-      self._ncs_object = box_as_mam.ncs_object()
+    box_as_mam = box.as_map_and_model()
 
-      self._shift_manager = self._model.get_shift_manager().deep_copy()
+    # New map_manager and model know about cumulative shifts (original
+    #   shift to move origin to (0, 0, 0) plus shift from boxing
+    self._map_manager = box_as_mam.map_manager()
+    self._model = box_as_mam.model()
+    self._ncs_object = box_as_mam.ncs_object()
 
-      # Update self._crystal_symmetry
-      self._crystal_symmetry = self._model.crystal_symmetry()
-      assert self._crystal_symmetry.is_similar_symmetry(
-        self._map_manager.crystal_symmetry())
+    self._shift_manager = self._model.get_shift_manager().deep_copy()
+
+    # Update self._crystal_symmetry
+    self._crystal_symmetry = self._model.crystal_symmetry()
+    assert self._crystal_symmetry.is_similar_symmetry(
+      self._map_manager.crystal_symmetry())
+
+
+  def soft_mask_all_maps_around_edges(self,
+      resolution = None,
+      soft_mask_radius = None):
+
+    # Apply a soft mask around edges of all maps. Overwrites values in maps
+
+    for mm in self.all_map_managers():
+      if not mm: continue
+      mm.create_mask_around_edges(
+        soft_mask_radius = soft_mask_radius)
+      mm.apply_mask()
 
   def mask_all_maps_around_model(self,
       mask_atoms_atom_radius = None,

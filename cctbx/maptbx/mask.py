@@ -119,6 +119,7 @@ class create_mask_around_atoms(object):
 
     if soft_mask_radius is None:
       soft_mask_radius = resolution
+    assert not self.is_soft_mask_around_edges()  # do not do it twice
 
     from cctbx.maptbx.segment_and_split_map import get_zero_boundary_map, \
         smooth_mask_data
@@ -130,10 +131,10 @@ class create_mask_around_atoms(object):
 
     original_mask_data = zero_boundary_map.deep_copy()
 
-    smoothed_mask_data = smooth_mask_data(mask_data = zero_boundary_map,
+    self._mask= smooth_mask_data(mask_data = zero_boundary_map,
       crystal_symmetry = self.box_crystal_symmetry,
       rad_smooth = soft_mask_radius)
-
+    self._is_soft_mask_around_edges = True
 
   def apply_mask_to_other_map_manager(self, other_map_manager = None,
      set_outside_to_mean_inside = False,

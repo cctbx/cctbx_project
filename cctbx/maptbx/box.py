@@ -79,19 +79,12 @@ class with_bounds(object):
     '''
       Return map_and_model object with contents of this class (not a deepcopy)
 
-      Sets wrapping = False always because this class does not return a full
-      unit cell.
-
-      Sets box = False or recursion will occur.
-
     '''
     import iotbx.map_and_model
     mam = iotbx.map_and_model.input(
         map_manager = self.map_manager(),
         model = self.model(),
         ncs_object = self.ncs_object(),
-        wrapping = False, # Always
-        box = False # Always
         )
     # Keep track of the gridding and solvent_content (if used) in this boxing.
     mam.set_gridding_first(self.gridding_first)

@@ -986,10 +986,11 @@ def run(args,
   mam = iotbx.map_and_model.input(
     model = model,
     map_manager = ccp4_map,
-    wrapping = params.wrapping,
-    ncs_object = ncs_object,
-    box = box,
-    box_cushion = params.box_cushion)
+    ncs_object = ncs_object)
+  if box:
+    mam.box_around_model(
+      box_cushion = params.box_cushion,
+      wrapping = params.wrapping)
 
   # Map and model and ncs are boxed if requested and
   #   shifted to place origin at (0, 0, 0)
@@ -1416,7 +1417,7 @@ def apply_mask_around_edge_of_box(mam, params = None, log = None):
       set_outside_to_mean_inside = params.set_outside_to_mean_inside)
     return mam
 
-#  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  =
+#  =============================================================================
 # GUI-specific class for running command
 from libtbx import runtime_utils
 from wxGUI2 import utils
@@ -1431,7 +1432,7 @@ class launcher(runtime_utils.target_with_save_result):
     result = run(args = self.args, log = sys.stdout)
     return 0
 
-#  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  =
+#  =============================================================================
 
 if (__name__  ==  "__main__"):
   run(args = sys.argv[1:])

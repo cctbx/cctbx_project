@@ -504,18 +504,12 @@ class map_model_manager:
     '''
       Return map_and_model object with contents of this class (not a deepcopy)
 
-      Sets wrapping = False XXX
-
-      Sets box = False or recursion will occur.
-
     '''
     import iotbx.map_and_model
     mam = iotbx.map_and_model.input(
         map_manager = self.map_manager(),
         model = self.model(),
         ncs_object = self.ncs_object(),
-        wrapping = False, # At this point it is undefined however
-        box = False # Always
         )
     # Keep track of the gridding and solvent_content (if used) in this boxing.
     return mam

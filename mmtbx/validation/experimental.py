@@ -204,7 +204,6 @@ class real_space(validation):
         # check that model crystal symmetry matches map crystal symmetry
         mmi = map_and_model.input(
           map_manager    = map_object,
-          wrapping = (map_object.is_full_size()), # XXX NEED TO DECIDE WRAPPING
           model = model)
 
         rsc_object = map_model_cc.map_model_cc(

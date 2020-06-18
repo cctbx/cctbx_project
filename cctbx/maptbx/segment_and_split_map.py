@@ -1607,7 +1607,7 @@ class info_object:
 
 
   def show_summary(self, out = sys.stdout):
-    print("\n ==  ==  ==  ==  ==   Summary of %s:  ==  ==  ==  == \n" %(self.object_type), file = out)
+    print("\n ==========  Summary of %s:  ======== \n" %(self.object_type), file = out)
     print("Created: %s" %(self.init_asctime), file = out)
     print("\nInput files used:\n", file = out)
     if self.input_map_info:
@@ -10756,7 +10756,7 @@ def run_auto_sharpen(
           sharpening_info_obj = local_si,
           out = null_out())
       """
-      # This is the actual run here  ==  ==  ==  ==  ==  ==  =
+      # This is the actual run here  =============
 
     from libtbx.easy_mp import run_parallel
     results_list = run_parallel(
@@ -10975,7 +10975,7 @@ def run_auto_sharpen(
 
       results_list = []
       for i in range(b_n):
-        #  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==
+      #============================================
         local_si = deepcopy(si).update_with_box_sharpening_info(
           box_sharpening_info_obj = box_sharpening_info_obj)
         local_si.sharpening_method = m
@@ -11064,7 +11064,7 @@ def run_auto_sharpen(
         # ------ END OF SET UP FOR RUN ----------
 
 
-        # This is the actual run here  ==  ==  ==  ==  ==  ==  =
+        # This is the actual run here  =============
 
       from libtbx.easy_mp import run_parallel
       results_list = run_parallel(
@@ -11100,7 +11100,7 @@ def run_auto_sharpen(
           local_best_si = local_si
           local_best_map_and_b = local_map_and_b
 
-        #  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==  ==
+        #  ============================================
         # DONE WITH ALL RUNS
 
       if not local_best_si.is_model_sharpening() and \
@@ -11262,7 +11262,7 @@ def run_sharpen_and_score(f_array = None,
         if not local_map_and_b.final_b_iso:
           local_map_and_b.final_b_iso = local_si.b_iso
 
-        # This is printout below here  ==  ==  ==  ==  ==  ==  ==  =
+        # This is printout below here  ===============
 
         if m == 'resolution_dependent':
           text = \

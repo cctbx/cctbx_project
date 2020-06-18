@@ -1721,7 +1721,8 @@ def loc_res(map,
     model_sel = model.select(chunk_sel)
     mam = iotbx.map_and_model.input(
       model            = model_sel,
-      map_manager      = mm,
+      map_manager      = mm)
+    mam.box_around_model(
       box_cushion      = 3,
       wrapping         = mm.is_full_size(), # XXX NEED TO DECIDE WRAPPING
     )
