@@ -4,7 +4,6 @@
 #include <boost/python/class.hpp>
 #include <boost/python/object.hpp>
 #include <boost/python/errors.hpp>
-#include <boost/python/def.hpp>
 
 namespace scitbx
 {
@@ -21,7 +20,7 @@ boost::python::object passthrough(boost::python::object const& o )
 template<
   typename InputIterator
   >
-struct python_iterator 
+struct python_iterator
 {
   typedef InputIterator iterator;
   typedef typename InputIterator::value_type value_type;
@@ -46,8 +45,13 @@ struct python_iterator
 
   static void wrap(const char* name)
   {
+#if PY_MAJOR_VERSION >= 3
+      const char* nextname = "__next__";
+#else
+      const char* nextname = "next";
+#endif
       boost::python::class_< python_iterator >( name, boost::python::no_init )
-        .def( "next", &python_iterator::next )
+        .def( nextname, &python_iterator::next )
         .def( "__iter__", passthrough )
         ;
   }
