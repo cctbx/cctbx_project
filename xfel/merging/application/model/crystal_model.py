@@ -181,7 +181,7 @@ class crystal_model(worker):
 
     for array in arrays:
       this_label = array.info().label_string().lower()
-      if True not in [this_label=="%s,sig%s"%(tag,tag) for tag in ["iobs","imean", mtz_column_F]]:
+      if True not in ["sig"+tag in this_label for tag in ["iobs","imean", mtz_column_F]]:
         continue
 
       return array.as_intensity_array().change_basis(self.params.scaling.model_reindex_op).map_to_asu()
