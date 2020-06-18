@@ -509,14 +509,18 @@ class HKLViewFrame() :
   def detect_Rfree(self, array):
     from iotbx.reflection_file_utils import looks_like_r_free_flags_info
     info = array.info()
+    newarray = array
     if (array.is_integer_array()) and (looks_like_r_free_flags_info(info)) :
       from iotbx.reflection_file_utils import get_r_free_flags_scores
       score_array = get_r_free_flags_scores([array], None)
       test_flag_value = score_array.test_flag_values[0]
-      array = array.customized_copy(data=(array.data() == test_flag_value))
-      array.set_info(info)
-      array._data = array.data().as_int()
-    return array
+      newarray = array.customized_copy(data=(array.data() == test_flag_value))
+      if isinstance(newarray.data(), flex.int):
+        newarray.set_info(info)
+        newarray._data = array.data().as_int()
+      else:
+        newarray = array
+    return newarray
 
 
   def process_miller_array(self, array) :
