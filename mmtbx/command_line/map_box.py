@@ -580,7 +580,7 @@ def process_inputs(args = None,
       suppress_symmetry_related_errors = params.ignore_symmetry_conflicts)
   except Exception as e:
     if str(e).find("symmetry mismatch ")>1:
-      raise Sorry(str(e)+"\nTry 'ignore_symmetry_conflicts = True'")
+      raise Sorry(str(e)+"\nTry 'ignore_symmetry_conflicts=True'")
     else:
       raise e
 
