@@ -290,11 +290,13 @@ public:
     for (int i = 0; i < n_regions; i++) remap_list[i] = -1;
     remap_list[0] = 0;
     int n_removed_regions = 0;
+    int cur_region_to_fill = 0;
     for (int i = 1; i < n_regions; i++)
     {
       if (remap_list[i]<0) // not assigned yet
       {
-        remap_list[i] = i; // assign to itself (first encounter)
+        cur_region_to_fill += 1;
+        remap_list[i] = cur_region_to_fill;
         // now remap all symmetry-related regions
         int3 cur_coords = region_maximum_coors[i];
         // std::cout << "  cur_coords " << cur_coords << "\n";
@@ -312,13 +314,13 @@ public:
           if (remap_list[reg_on_map] < 0 ) {
             mapped_with_self = true;
             n_removed_regions += 1;
-            remap_list[reg_on_map] = remap_list[i];
+            remap_list[reg_on_map] = cur_region_to_fill;
           }
           else {
             if (reg_on_map < i)
             {
               if (mapped_with_self) {
-                int rl_value = remap_list[i];
+                int rl_value = cur_region_to_fill;
                 for (int j=0; j < n_regions; j++)
                   if (remap_list[j] == rl_value) {
                     n_removed_regions += 1;
@@ -334,7 +336,7 @@ public:
             {
               n_removed_regions += 1;
               mapped_with_self = true;
-              remap_list[reg_on_map] = remap_list[i];
+              remap_list[reg_on_map] = cur_region_to_fill;
             }
           }
         }

@@ -467,6 +467,43 @@ def exercise_expand_mask():
         assert new_mask[i,j,k] == (i in [29,0,1,2,3] and
             j in [29,0,1,2,3] and k in [29,0,1,2,3])
 
+def exercise_wrapping():
+  cmap = flex.double(flex.grid(30,30,30))
+  cmap.fill(1)
+  for i in range(0,5):
+    for j in range(0,5):
+      for k in range(0,5):
+        cmap[i,j,k] = 10
+  for i in range(0,5):
+    for j in range(25,30):
+      for k in range(0,5):
+        cmap[i,j,k] = 10
+  for i in range(0,5):
+    for j in range(0,5):
+      for k in range(25,30):
+        cmap[i,j,k] = 10
+
+  for i in range(25,30):
+    for j in range(0,5):
+      for k in range(0,5):
+        cmap[i,j,k] = 10
+  for i in range(25,30):
+    for j in range(25,30):
+      for k in range(0,5):
+        cmap[i,j,k] = 10
+  for i in range(25,30):
+    for j in range(0,5):
+      for k in range(25,30):
+        cmap[i,j,k] = 10
+
+  n_in_blob = cmap.count(10)
+  co = maptbx.connectivity(map_data=cmap, threshold=5, wrapping=True)
+  dres = co.result().as_double()
+  regs = list(co.regions())
+  minb, maxb = co.get_blobs_boundaries_tuples()
+  assert n_in_blob == 750
+  assert regs == [26250, 750]
+
 def exercise_preprocess_against_shallow():
   # case 1: simple
   cmap = flex.double(flex.grid(30,30,30))
@@ -672,6 +709,7 @@ if __name__ == "__main__":
   exercise_noise_elimination_two_cutoffs() # example and comment
   exercise_get_blobs_boundaries()
   exercise_expand_mask()
+  exercise_wrapping()
   exercise_preprocess_against_shallow()
   exercise_symmetry_related_regions()
   print("OK time =%8.3f"%(time.time() - t0))
