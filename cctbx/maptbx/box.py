@@ -242,7 +242,7 @@ class with_bounds(object):
           ).is_similar_symmetry( model.crystal_symmetry())
 
     else:  # model is initialized: should match
-      assert model.unit_cell_crystal_symmetry() 
+      assert model.unit_cell_crystal_symmetry()
       assert self.map_manager().unit_cell_crystal_symmetry(
          ).is_similar_symmetry( model.unit_cell_crystal_symmetry())
 

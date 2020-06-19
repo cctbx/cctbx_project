@@ -2,8 +2,6 @@ from __future__ import absolute_import, division, print_function
 from libtbx.utils import null_out
 import sys
 from iotbx.map_manager import map_manager
-from scitbx.array_family import flex
-from libtbx import adopt_init_args
 from libtbx.test_utils import approx_equal
 
 class map_model_manager:

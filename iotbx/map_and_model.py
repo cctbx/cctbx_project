@@ -45,7 +45,7 @@ class input(object):
     self._map_manager_1 = map_manager_1
     self._map_manager_2 = map_manager_2
     self._map_manager_list = map_manager_list
-    self._shift_cart = None 
+    self._shift_cart = None
     self._ncs_object = ncs_object
     # CHECKS
 

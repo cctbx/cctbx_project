@@ -13,7 +13,6 @@ from libtbx.utils import Sorry, user_plus_sys_time, null_out
 from libtbx import group_args, str_utils
 
 import iotbx.pdb
-import iotbx.map_model_manager
 import iotbx.cif.model
 import iotbx.ncs
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
@@ -206,7 +205,7 @@ class manager(object):
     # self.crystal_symmetry() - shifted (boxed) one
     # If shift_cart is None - everything is consistent.
     self._shift_cart = None # shift of this model since original location
-    self._unit_cell_crystal_symmetry = None # original crystal symmetry 
+    self._unit_cell_crystal_symmetry = None # original crystal symmetry
 
     self._stop_for_unknowns = stop_for_unknowns
     self._processed_pdb_file = None
@@ -588,7 +587,7 @@ class manager(object):
       Set the unit_cell_crystal_symmetry (original crystal symmetry)
 
       Only used to reset original crystal symmetry of model
-      Requires that there is no shift_cart for this model in 
+      Requires that there is no shift_cart for this model in
     '''
     assert crystal_symmetry is not None
 
@@ -724,7 +723,7 @@ class manager(object):
   def _shift_back(self, pdb_hierarchy):
     assert pdb_hierarchy is not None
     sites_cart = pdb_hierarchy.atoms().extract_xyz()
-    shift_back = [-self._shift_cart[0], -self._shift_cart[1], 
+    shift_back = [-self._shift_cart[0], -self._shift_cart[1],
         -self._shift_cart[2]]
     sites_cart_shifted = sites_cart+\
       flex.vec3_double(sites_cart.size(), shift_back)

@@ -607,7 +607,7 @@ class map_manager(map_reader, write_ccp4_map):
       sequence = None,
       solvent_content = None):
     '''
-      Use cctbx.maptbx.mask.create_mask_around_density to create a 
+      Use cctbx.maptbx.mask.create_mask_around_density to create a
        mask automatically
 
       Parameters are:
