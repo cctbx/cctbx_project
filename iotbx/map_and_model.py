@@ -45,7 +45,7 @@ class input(object):
     self._map_manager_1 = map_manager_1
     self._map_manager_2 = map_manager_2
     self._map_manager_list = map_manager_list
-    self._shift_manager = None
+    self._shift_manager = None # XXX get rid of this
     self._ncs_object = ncs_object
     # CHECKS
 
@@ -60,36 +60,7 @@ class input(object):
     #  model original_crystal_symmetry (and also usually model.crystal_symmetry)
 
     assert self._map_manager # always need one
-    # ZZZ remove crystal_symmetry input
 
-    # Check symmetry
-    original_map_cs = self._map_manager.unit_cell_crystal_symmetry()
-    working_map_cs = self._map_manager.crystal_symmetry()
-
-    if self._model:
-      ok = False
-      original_model_cs = None
-      if self._model.get_shift_manager() and\
-          self._model.get_shift_manager().original_crystal_symmetry:
-        original_model_cs = \
-           self._model.get_shift_manager().original_crystal_symmetry
-        if original_map_cs.is_similar_symmetry(original_model_cs): # fine
-          ok = True # original model matches original map
-      if (not ok) and original_map_cs.is_similar_symmetry(
-           self._model.crystal_symmetry()):
-        ok = True # model matches original map
-      if (not ok) and working_map_cs.is_similar_symmetry(
-           self._model.crystal_symmetry()):
-        ok = True # model matches working map
-
-      if (not ok) and ignore_symmetry_conflicts:
-        self._model.set_crystal_symmetry(original_map_cs)
-      elif (not ok): # stop
-        raise Sorry("Map and model symmetry do not match"+
-         "\nMap original symmetry: %s\n" %(str(original_map_cs))+
-         "\nMap working symmetry: %s\n" %(str(working_map_cs))+
-         "\nModel original symmetry: %s\n" %(str(original_model_cs))+
-       "\nModel working symmetry: %s\n" %(str(self._model.crystal_symmetry())))
 
     # Make sure we have what is expected: optional model, mm,
     # self._map_manager_1 and self._map_manager_2 or neither,
@@ -111,15 +82,17 @@ class input(object):
 
     # READY
 
-    # If model, make a map_model_manager with model and mm and
-    #  let it check symmetry against this one
+    # Make a map_model_manager and check unit_cell and working crystal symmetry
+    #  and shift_cart for model, map, and ncs_object (if present)
+
     mmm = map_model_manager()
     mmm.add_map_manager(self._map_manager)
     if self._model:
       mmm.add_model(self._model, set_model_log_to_null = False) # keep the log
     if self._ncs_object:
       mmm.add_ncs_object(self._ncs_object)
-    # ALL OK if it does not stop
+
+    # All ok here if it did not stop
 
     # Shift origin of model and map_manager to (0, 0, 0) with
     #    mmm which knows about both
@@ -131,7 +104,7 @@ class input(object):
     self._crystal_symmetry = self._map_manager.crystal_symmetry()
 
     if self._model:
-      self._shift_manager = self._model.get_shift_manager() # XXX save manager
+      self._shift_manager = self._model.get_shift_manager()
       # Make sure model shift manager agrees with map_manager shift
       if self._shift_manager and self._map_manager:
         assert approx_equal(

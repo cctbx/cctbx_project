@@ -842,6 +842,9 @@ class map_manager(map_reader, write_ccp4_map):
     if not self.unit_cell_crystal_symmetry().is_similar_symmetry(
       other.unit_cell_crystal_symmetry()):
       return False
+    if not self.crystal_symmetry().is_similar_symmetry(
+      other.crystal_symmetry()):
+      return False
     if self.map_data().all()!=  other.map_data().all():
       return False
     if self.unit_cell_grid !=  other.unit_cell_grid:
@@ -859,10 +862,155 @@ class map_manager(map_reader, write_ccp4_map):
     ''' Return the origin shift in cartesian coordinates'''
     return self.grid_units_to_cart(self.origin_shift_grid_units)
 
-  def is_compatible_model(self, model):
-    from iotbx.map_model_manager import original_or_current_symmetries_match
-    return original_or_current_symmetries_match(model = model,
-       map_manager = self)
+  def set_model_symmetries_and_shift_cart_to_match_map(self,model):
+    '''
+      Set the model original and working crystal_symmetry to match map.
+      Requires that the model be compatible (i.e., not be specified as being
+      different).
+
+      Modifies model in place
+    '''
+
+    ok=self.is_compatible_model(model)  # recheck just to be sure
+    assert ok
+
+    # Check if we really need to do anything
+    if self.is_similar_model(model):
+      return # already fine
+
+    # Set original crystal symmetry to match map unit_cell_crystal_symmetry
+    model.set_original_crystal_symmetry(self.unit_cell_crystal_symmetry())
+
+    # Set crystal_symmetry to match map
+    model.set_crystal_symmetry(self.crystal_symmetry())
+
+    # Set shift_cart (shift since readin) to match -origin_shift_cart for
+    #   map (shift of origin is opposite of shift applied)
+    model.set_shift_cart(tuple([-x for x in self.origin_shift_cart()]))
+
+  def is_similar_ncs_object(self, ncs_object):
+    '''
+      ncs_object is similar to this map_manager if shift_cart is
+      the same as map
+    '''
+
+    ok=True
+    text=""
+
+    map_shift=flex.double(tuple([-x for x in self.origin_shift_cart()]))
+    ncs_object_shift=flex.double(ncs_object.shift_cart())
+    delta=map_shift-ncs_object_shift
+    mmm=delta.min_max_mean()
+    if mmm.min<-0.001 or mmm.max > 0.001: # shifts do not match
+      text="Shift of ncs object (%s) does not match shift of map (%s)" %(
+         str(ncs_object_shift),str(map_shift))
+      ok=False
+   
+    self._warning_message=text
+    return ok
+
+  def is_similar_model(self, model):
+    ''' 
+      Returns true if model has the same original and current symmetry and
+      the same shift_cart as the map
+    '''
+
+    return self.is_compatible_model(model, require_similar=True)
+
+  def is_compatible_model(self, model, require_similar=False):
+    '''
+      Model is compatible with this map_manager if it is not specified as being
+      different.
+
+      They are different if:
+        1. original and current symmetries are present and do not match
+        2. model current symmetry does not match map original or current
+        3. model has a shift_cart (shift applied) different than map shift_cart
+
+      NOTE: a True result does not mean that the model crystal_symmetry matches
+      the map crystal_symmetry.  It does mean that it is reasonable to set the
+      model crystal_symmetry to match the map ones.
+
+      If require_similar is True, then they are different if anything 
+      is different
+    '''
+
+    ok=None
+    text=""
+
+    model_uc=None
+    if model.get_shift_manager():
+      model_uc=model.get_shift_manager().original_crystal_symmetry
+    model_sym=model.crystal_symmetry()
+    map_uc=self.unit_cell_crystal_symmetry()
+    map_sym=self.crystal_symmetry()
+
+    text_model_uc="not defined"
+    if model_uc:
+      text_model_uc=str(model_uc).replace("\n"," ")
+    text_model=str(model_sym).replace("\n"," ")
+    text_map_uc=str(map_uc).replace("\n"," ")
+    text_map=str(map_sym).replace("\n"," ")
+
+    if require_similar and (not model_uc) and (
+       not map_sym.is_similar_symmetry(map_uc)):
+      ok=False
+      text="Model and map are different because require_similar is set and "+\
+          "model does not have original_crystal_symmetry, and " +\
+        "map original (%s) and current (%s) symmetries are different" %(
+         text_map_uc,text_map)
+ 
+    elif  model_uc and (not map_uc.is_similar_symmetry(map_sym) and (
+         (not model_uc.is_similar_symmetry(map_uc)) or
+         (not model_sym.is_similar_symmetry(map_sym) ) )):
+       ok=False# model and map_manager symmetries present and do not match
+       text="Model original (%s) and current (%s) crystal_symmetries " %(
+          text_model_uc,text_model)+\
+          "do not "+\
+          "match map unit_cell (%s) and current (%s) symmetry" %(
+           text_map_uc,text_map)
+    elif (not model_sym.is_similar_symmetry(map_uc)) and (not
+              model_sym.is_similar_symmetry(map_sym)):
+       ok=False# model does not match either map symmetry
+       text="Model current (%s) crystal_symmetry" %(
+          text_model)+\
+          "does not "+\
+          "match map unit_cell (%s) or current (%s) symmetry" %(
+           text_map_uc,text_map)
+
+    else:  # match
+
+       ok=True
+       text="Model original (%s) and current (%s) crystal_symmetries " %(
+          text_model_uc,text_model)+\
+          "are compatible with "+\
+          "map unit_cell (%s) and current (%s) symmetry" %(
+           text_map_uc,text_map)
+
+    assert isinstance(ok, bool)  # must have chosen
+
+    map_shift_cart=tuple([-x for x in self.origin_shift_cart()])
+    if ok and (map_shift_cart != (0,0,0)):
+      if model.get_shift_manager() is None: # map is shifted but not model
+        ok=False
+        text+=" However map is shifted (shift_cart=%s) but model is not" %(
+           str(map_shift_cart))
+      else:
+        map_shift=flex.double(map_shift_cart)
+        model_shift=flex.double(model.get_shift_manager().shift_cart)
+        delta=map_shift-model_shift
+        mmm=delta.min_max_mean()
+        if mmm.min<-0.001 or mmm.max > 0.001: # shifts do not match
+          ok=False
+          text+=" However map shift "+\
+              "(shift_cart=%s) does not match model shift (%s)" %(
+           str(map_shift),str(model_shift))
+    self._warning_message=text
+    return ok
+    
+  def warning_message(self):
+    if hasattr(self,'_warning_message'):
+       return self._warning_message 
 
   def map_as_fourier_coefficients(self, high_resolution = None):
     '''

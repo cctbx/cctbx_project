@@ -12,15 +12,16 @@ class with_bounds(object):
   """
   Extract map box using specified lower_bounds and upper_bounds
 
-  NOTE: changes supplied model and map_manager in place. Call with deep_copy()
-  versions if you do not want them modified.
-
-  Output versions of map_manager and model are in P1 and have origin at (0, 0, 0).
-
-  Bounds refer to grid position in this box with origin at (0, 0, 0)
+  Creates new map_manager and modifies model and ncs_objects in place
 
   Input map_manager must have origin (working position) at (0, 0, 0)
   Input model coordinates must correspond to working position of map_manager
+
+  On initialization new bounds and crystal_symmetry are identified.
+  Then map_manager is replaced with boxed version and shifted model is created
+
+  Output versions of map_manager and model are in P1 and have origin at (0, 0, 0).
+  Bounds refer to grid position in this box with origin at (0, 0, 0)
 
   Wrapping must be specified on initialization
     wrapping = True means that grid points outside of the unit cell can be
@@ -34,7 +35,11 @@ class with_bounds(object):
     region, those points are set to zero.
 
   """
-  def __init__(self, map_manager, lower_bounds, upper_bounds, wrapping,
+  def __init__(self, 
+     map_manager, 
+     lower_bounds, 
+     upper_bounds, 
+     wrapping,
      model = None,
      ncs_object = None,
      log = sys.stdout):
@@ -54,8 +59,7 @@ class with_bounds(object):
     assert self._map_manager.map_data().accessor().origin()  ==  (0, 0, 0)
     if model:
       assert isinstance(model, mmtbx.model.manager)
-      assert map_manager.crystal_symmetry().is_similar_symmetry(
-        model.crystal_symmetry())
+      assert map_manager.is_compatible_model(model)
     if ncs_object:
       assert isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
     if wrapping:
@@ -109,10 +113,13 @@ class with_bounds(object):
       Here self.gridding_first and self.gridding_last are the grid points
       marking the start and end, in the map with origin at (0, 0, 0), of the
       region to be kept.
+
+      Also save the input crystal_symmetry for comparison later
     '''
 
     # Save to check later if another map_manager is used as input
     self.accessor_at_initialization = self._map_manager.map_data().accessor()
+    self.map_crystal_symmetry_at_initialization = self._map_manager.crystal_symmetry()
 
     full_cs = self._map_manager.unit_cell_crystal_symmetry()
     full_uc = full_cs.unit_cell()
@@ -134,9 +141,6 @@ class with_bounds(object):
     Apply boxing to to self._model, self._ncs_object, self._map_manager
     so all are boxed
 
-    Apply to self._map_manager last (so self._map_manager.crystal symmetry()
-      is not changed until here and is used to compare to symmetries of other
-      objects
     '''
 
     if self._model:
@@ -145,7 +149,6 @@ class with_bounds(object):
     if self._ncs_object:
       self._ncs_object = self.apply_to_ncs_object(self._ncs_object)
 
-    # Must be last
     self._map_manager = self.apply_to_map(self._map_manager)
 
 
@@ -155,8 +158,14 @@ class with_bounds(object):
        this around_model object
     '''
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
+
+    # This one should just have similar unit_cell_crystal_symmetry
+    # crystal_symmetry should match self.map_crystal_symmetry_at_initialization
+
     assert map_manager.unit_cell_crystal_symmetry().is_similar_symmetry(
       self._map_manager.unit_cell_crystal_symmetry())
+    assert map_manager.crystal_symmetry().is_similar_symmetry(
+      self.map_crystal_symmetry_at_initialization)
 
     ma1 = map_manager.map_data().accessor()
     ma2 = self.accessor_at_initialization
@@ -204,7 +213,8 @@ class with_bounds(object):
     new_label = "Boxed %s to %s %s" %(
       str(tuple(self.gridding_first)), str(tuple(self.gridding_last)),
       self.basis_for_boxing_string)
-    #  Set up new map_manager.
+    #  Set up new map_manager. This will contain new data and not overwrite
+    #   original
     #  NOTE: origin_shift_grid_units is required as bounds have changed
     new_map_manager = map_manager.customized_copy(map_data = map_box,
       origin_shift_grid_units = origin_shift_grid_units)
@@ -216,14 +226,24 @@ class with_bounds(object):
     '''
        Apply boxing to a model that is similar to the one used to generate
        this around_model object
+
+       Changes the model in place
     '''
 
     assert isinstance(model, mmtbx.model.manager)
 
-    # Allow models where either original or current symmetry
-    #  match this object's original symmetry
+    # This one should just have similar unit_cell_crystal_symmetry for map and
+    #  model and model original_crystal_symmetry should match
+    #   self.map_crystal_symmetry_at_initialization
 
-    assert self._map_manager.is_compatible_model(model)
+
+    assert (
+       (( model.get_shift_manager() is None) and 
+       (self.map_manager().unit_cell_crystal_symmetry().is_similar_symmetry(
+          model.crystal_symmetry()))) or \
+       ( self.map_manager().unit_cell_crystal_symmetry().is_similar_symmetry(
+         model.get_shift_manager().original_crystal_symmetry))
+           )
 
     # Shift the model and add self.shift_cart on to whatever shift was there
     model.shift_model_and_set_crystal_symmetry(
@@ -246,14 +266,16 @@ class around_model(with_bounds):
   """
   Extract map box around atomic model. Box is in P1 and has origin at (0, 0, 0).
 
-  NOTE: changes supplied model and map_manager in place. Call with deep_copies
-  if you do not want them modified.
+  Creates new map_manager and modifies model and ncs_objects in place
 
   Input map_manager must have origin (working position) at (0, 0, 0)
   Input model coordinates must correspond to working position of map_manager
 
   On initialization new bounds and crystal_symmetry are identified.
-  Then map_manager is replaced with boxed version and model is shifted in place.
+  Then map_manager is replaced with boxed version and shifted model is created
+
+  Output versions of map_manager and model are in P1 and have origin at (0, 0, 0).
+  Bounds refer to grid position in this box with origin at (0, 0, 0)
 
   Wrapping must be specified on initialization
     wrapping = True means that grid points outside of the unit cell can be
@@ -289,8 +311,7 @@ class around_model(with_bounds):
 
     # Make sure working model and map_manager crystal_symmetry match
 
-    assert map_manager.crystal_symmetry().is_similar_symmetry(
-       model.crystal_symmetry())
+    assert map_manager.is_compatible_model(model)
 
     assert cushion >=  0
 
@@ -332,8 +353,28 @@ class extract_unique(with_bounds):
   containing density.  Note: the map may be masked between nearby
   density regions so this map could have many discontinuities.
 
-  NOTE: changes supplied model and map_manager in place. Call with deep_copies
-  if you do not want them modified.
+  Creates new map_manager and modifies model and ncs_objects in place
+
+  Input map_manager must have origin (working position) at (0, 0, 0)
+  Input model coordinates must correspond to working position of map_manager
+
+  On initialization new bounds and crystal_symmetry are identified.
+  Then map_manager is replaced with boxed version and shifted model is created
+
+  Output versions of map_manager and model are in P1 and have origin at (0, 0, 0).
+  Bounds refer to grid position in this box with origin at (0, 0, 0)
+
+  Wrapping must be specified on initialization
+    wrapping = True means that grid points outside of the unit cell can be
+    mapped inside with unit translations and box can effectively come
+    from anywhere in space.
+    If wrapping = True, the supplied box must be a complete unit cell so that
+    map_data.all() must be the same as unit_cell_grid.
+
+   wrapping = False means that grid points outside of the unit cell are
+    undefined.  If a box is specified that uses points outside the defined
+    region, those points are set to zero.
+
   '''
 
   def __init__(self, map_manager,
@@ -368,8 +409,7 @@ class extract_unique(with_bounds):
       assert isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
     if model:
       assert isinstance(model, mmtbx.model.manager)
-      assert map_manager.crystal_symmetry().is_similar_symmetry(
-        model.crystal_symmetry())
+      assert map_manager.is_compatible_model(model)
     if wrapping:  # map must be entire unit cell
       assert map_manager.unit_cell_grid == map_manager.map_data().all()
 

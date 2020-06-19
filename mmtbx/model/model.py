@@ -600,7 +600,7 @@ class manager(object):
     '''
       Set the original_crystal_symmetry in the shift_manager
 
-      Only used to resetting crystal symmetry of model
+      Only used to reset original crystal symmetry of model
       Requires that there is no shift_cart for this model in shift_manager
     '''
     if self.get_shift_manager():
@@ -715,8 +715,8 @@ class manager(object):
     '''
       Change the value of the recorded coordinate shift applied to a model
       without changing anything about the model.  This effectively changes
-      the output shift that is going to be applied to this model when it is
-      written out.
+	the output shift that is going to be applied to this model when it is
+	     written out.
 
       NOTE: Normally instead use
         shift_model_and_set_crystal_symmetry(shift_cart=shift_cart) and
@@ -724,7 +724,11 @@ class manager(object):
 
     '''
     if not self.get_shift_manager():
-      self._shi
+      sm = iotbx.map_model_manager.shift_manager(
+          shift_cart=(0,0,0),
+          original_crystal_symmetry=crystal_symmetry,
+        )
+      self._shift_manager = sm
     sm=self.get_shift_manager()
     sm.shift_cart=shift_cart
 

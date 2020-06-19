@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from libtbx.utils import null_out
+from libtbx.utils import null_out, Sorry
 import sys
 from iotbx.map_manager import map_manager
 from scitbx.array_family import flex
@@ -49,6 +49,9 @@ class map_model_manager:
      NOTE: modifies the model, map_manager, and ncs objects. Call with
      deep_copy() of these if originals need to be preserved.
 
+     Input models, maps, and ncs_object must all match in crystal_symmetry,
+     original (unit_cell) crystal_symmetry, and shift_cart (-origin_shift_cart
+     for maps)
 
   '''
 
@@ -145,33 +148,40 @@ class map_model_manager:
     # Add a map and make sure its symmetry is similar to others
     self._map_manager = map_manager
     if self.model():
-      assert map_manager.is_compatible_model(self.model()) # model must match
-      if not map_manager.crystal_symmetry().is_similar_symmetry(
-         self.model().crystal_symmetry()):
-        # Set the crystal symmetry in the model without changing coordinates
-        print("Setting model crystal_symmetry to match map_manager", file = log)
-        self.model().set_crystal_symmetry(map_manager.crystal_symmetry())
-    # if existing:  check that map_manager.is_similar(other_map_manager)
+      self.check_model_and_set_to_match_map()
+
+  def check_model_and_set_to_match_map(self):
+    # Map, model and ncs_object all must have same symmetry and shifts at end
+
+    if self.map_manager() and self.model():
+      # Must be compatible...then set model symmetry if not set
+      ok=self.map_manager().is_compatible_model(self.model())
+      if ok:
+        self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(
+          self.model())  # modifies self.model() in place
+      else:
+         raise Sorry(self.map_manager().warning_message())
+
+    if self.map_manager() and self.ncs_object():
+      # Must be similar...
+      if not self.map_manager().is_similar_ncs_object(self.ncs_object()):
+        raise Sorry(self.map_manager().warning_message())
 
   def add_model(self, model = None, set_model_log_to_null = True,
      log = sys.stdout):
     # Add a model and make sure its symmetry is similar to others
-    # Check that model crystal_symmetry matches either full or working
-    # crystal_symmetry of map
-    if self.map_manager():
-      assert self.map_manager().is_compatible_model(model) # model must match
-      if not self.map_manager().crystal_symmetry().is_similar_symmetry(
-         model.crystal_symmetry()):
-        # Set the crystal symmetry in the model without changing coordinates
-        print("Setting model crystal_symmetry to match map_manager", file = log)
-        model.set_crystal_symmetry(self.map_manager().crystal_symmetry())
+    # Check that model original crystal_symmetry matches full 
+    #    crystal_symmetry of map
     if set_model_log_to_null:
       model.set_log(null_out())
     self._model = model
+    if self.map_manager():
+      self.check_model_and_set_to_match_map()
 
   def add_ncs_object(self, ncs_object = None, log = sys.stdout):
     # Add an NCS object
     self._ncs_object = ncs_object
+    # Check to make sure its shift_cart matches
 
   def read_map(self, file_name = None, log = sys.stdout):
     # Read in a map and make sure its symmetry is similar to others
@@ -554,10 +564,11 @@ class shift_manager:
      )
 
 
-def original_or_current_symmetries_match(model = None, map_manager = None):
+def original_and_current_symmetries_match(model = None, map_manager = None):
     '''
-      Allow current or original model symmetry to match current or original
-     map symmetry
+      Returns true if current and original model symmetry match 
+      current and original map symmetry, respectively (or if model has no
+      original map symmetry)
     '''
     from iotbx.map_manager import map_manager as mm
     from mmtbx.model import manager as model_manager
@@ -569,15 +580,11 @@ def original_or_current_symmetries_match(model = None, map_manager = None):
     current_map_symmetry = map_manager.crystal_symmetry()
     current_model_symmetry = model.crystal_symmetry()
 
-    if original_map_uc_symmetry.is_similar_symmetry(current_model_symmetry):
-      return True
-    if current_map_symmetry.is_similar_symmetry(current_model_symmetry):
-      return True
+    if not current_map_symmetry.is_similar_symmetry(current_model_symmetry):
+      return False
 
     if model.get_shift_manager():
       original_model_symmetry = model.get_shift_manager().get_original_cs()
-      if original_map_uc_symmetry.is_similar_symmetry(original_model_symmetry):
-        return True
-      if current_map_symmetry.is_similar_symmetry(original_model_symmetry):
-        return True
-    return False
+      if not original_map_uc_symmetry.is_similar_symmetry(original_model_symmetry):
+        return False 
+    return True

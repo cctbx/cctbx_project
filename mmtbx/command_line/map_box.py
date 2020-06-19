@@ -981,7 +981,6 @@ def run(args,
   if (params.mask_select):
     box = False
 
-  print (ccp4_map.unit_cell_crystal_symmetry().unit_cell().parameters()[:3], (20, 20, 20))
   import iotbx.map_and_model
   mam = iotbx.map_and_model.input(
     model = model,
@@ -1348,8 +1347,8 @@ def change_output_unit_cell(params = None,
 
     # Now set model crystal_symmetry to match so we can combine them
     if model:
-      model.set_original_crystal_symmetry(new_symmetry)
-      model.set_crystal_symmetry(new_symmetry)
+      model.set_original_crystal_symmetry(ccp4_map.unit_cell_crystal_symmetry())
+      model.set_crystal_symmetry(ccp4_map.crystal_symmetry())
     return ccp4_map, model
 
 def apply_extract_unique(mam,
