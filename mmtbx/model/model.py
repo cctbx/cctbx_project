@@ -715,8 +715,8 @@ class manager(object):
     '''
       Change the value of the recorded coordinate shift applied to a model
       without changing anything about the model.  This effectively changes
-	the output shift that is going to be applied to this model when it is
-	     written out.
+        the output shift that is going to be applied to this model when it is
+             written out.
 
       NOTE: Normally instead use
         shift_model_and_set_crystal_symmetry(shift_cart=shift_cart) and

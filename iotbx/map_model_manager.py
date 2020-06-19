@@ -170,7 +170,7 @@ class map_model_manager:
   def add_model(self, model = None, set_model_log_to_null = True,
      log = sys.stdout):
     # Add a model and make sure its symmetry is similar to others
-    # Check that model original crystal_symmetry matches full 
+    # Check that model original crystal_symmetry matches full
     #    crystal_symmetry of map
     if set_model_log_to_null:
       model.set_log(null_out())
@@ -566,7 +566,7 @@ class shift_manager:
 
 def original_and_current_symmetries_match(model = None, map_manager = None):
     '''
-      Returns true if current and original model symmetry match 
+      Returns true if current and original model symmetry match
       current and original map symmetry, respectively (or if model has no
       original map symmetry)
     '''
@@ -586,5 +586,5 @@ def original_and_current_symmetries_match(model = None, map_manager = None):
     if model.get_shift_manager():
       original_model_symmetry = model.get_shift_manager().get_original_cs()
       if not original_map_uc_symmetry.is_similar_symmetry(original_model_symmetry):
-        return False 
+        return False
     return True

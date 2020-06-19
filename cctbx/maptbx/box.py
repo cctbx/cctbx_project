@@ -35,10 +35,10 @@ class with_bounds(object):
     region, those points are set to zero.
 
   """
-  def __init__(self, 
-     map_manager, 
-     lower_bounds, 
-     upper_bounds, 
+  def __init__(self,
+     map_manager,
+     lower_bounds,
+     upper_bounds,
      wrapping,
      model = None,
      ncs_object = None,
@@ -238,7 +238,7 @@ class with_bounds(object):
 
 
     assert (
-       (( model.get_shift_manager() is None) and 
+       (( model.get_shift_manager() is None) and
        (self.map_manager().unit_cell_crystal_symmetry().is_similar_symmetry(
           model.crystal_symmetry()))) or \
        ( self.map_manager().unit_cell_crystal_symmetry().is_similar_symmetry(

@@ -905,12 +905,12 @@ class map_manager(map_reader, write_ccp4_map):
       text="Shift of ncs object (%s) does not match shift of map (%s)" %(
          str(ncs_object_shift),str(map_shift))
       ok=False
-   
+
     self._warning_message=text
     return ok
 
   def is_similar_model(self, model):
-    ''' 
+    '''
       Returns true if model has the same original and current symmetry and
       the same shift_cart as the map
     '''
@@ -931,7 +931,7 @@ class map_manager(map_reader, write_ccp4_map):
       the map crystal_symmetry.  It does mean that it is reasonable to set the
       model crystal_symmetry to match the map ones.
 
-      If require_similar is True, then they are different if anything 
+      If require_similar is True, then they are different if anything
       is different
     '''
 
@@ -959,7 +959,7 @@ class map_manager(map_reader, write_ccp4_map):
           "model does not have original_crystal_symmetry, and " +\
         "map original (%s) and current (%s) symmetries are different" %(
          text_map_uc,text_map)
- 
+
     elif  model_uc and (not map_uc.is_similar_symmetry(map_sym) and (
          (not model_uc.is_similar_symmetry(map_uc)) or
          (not model_sym.is_similar_symmetry(map_sym) ) )):
@@ -1007,10 +1007,10 @@ class map_manager(map_reader, write_ccp4_map):
            str(map_shift),str(model_shift))
     self._warning_message=text
     return ok
-    
+
   def warning_message(self):
     if hasattr(self,'_warning_message'):
-       return self._warning_message 
+       return self._warning_message
 
   def map_as_fourier_coefficients(self, high_resolution = None):
     '''
