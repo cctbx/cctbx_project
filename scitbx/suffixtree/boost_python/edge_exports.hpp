@@ -123,7 +123,7 @@ struct edge_exports
   {
     edge_ptr->attach_child( value, key );
   }
-  
+
   static boost::python::list node_keys(ptr_type const& edge_ptr)
   {
     boost::python::list result;
