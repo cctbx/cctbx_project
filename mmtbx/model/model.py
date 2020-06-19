@@ -950,6 +950,19 @@ class manager(object):
       self._ener_lib = mmtbx.monomer_library.server.ener_lib()
     return self._ener_lib
 
+  def rotamer_outlier_selection(self):
+    rm = self.get_rotamer_manager()
+    result = flex.bool(self.size(), False)
+    for model in self.get_hierarchy().models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for conformer in residue_group.conformers():
+            for residue in conformer.residues():
+               if(rm.evaluate_residue(residue)=="OUTLIER"):
+                 sel = residue.atoms().extract_i_seq()
+                 result = result.set_selected(sel, True)
+    return result
+
   def get_rotamer_manager(self):
     if self._rotamer_eval is None:
       self._rotamer_eval = RotamerEval(mon_lib_srv=self.get_mon_lib_srv())
