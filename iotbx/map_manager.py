@@ -871,9 +871,6 @@ class map_manager(map_reader, write_ccp4_map):
       Modifies model in place
     '''
 
-    ok=self.is_compatible_model(model)  # recheck just to be sure
-    assert ok
-
     # Check if we really need to do anything
     if self.is_similar_model(model):
       return # already fine
@@ -917,7 +914,7 @@ class map_manager(map_reader, write_ccp4_map):
 
     return self.is_compatible_model(model, require_similar=True)
 
-  def is_compatible_model(self, model, require_similar=False):
+  def is_compatible_model(self, model, require_similar=True):
     '''
       Model is compatible with this map_manager if it is not specified as being
       different.
@@ -957,7 +954,9 @@ class map_manager(map_reader, write_ccp4_map):
       ok=False
       text="Model and map are different because require_similar is set and "+\
           "model does not have original_crystal_symmetry, and " +\
-        "map original (%s) and current (%s) symmetries are different" %(
+        "model symmetry (%s) does not match map original symmetry " %(
+          model_sym) +\
+        "(%s). Current map symmetry is (%s) " %(
          text_map_uc,text_map)
 
     elif  model_uc and (not map_uc.is_similar_symmetry(map_sym) and (

@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from libtbx.utils import null_out, Sorry
+from libtbx.utils import null_out
 import sys
 from iotbx.map_manager import map_manager
 from scitbx.array_family import flex
@@ -155,17 +155,18 @@ class map_model_manager:
 
     if self.map_manager() and self.model():
       # Must be compatible...then set model symmetry if not set
-      ok=self.map_manager().is_compatible_model(self.model())
+      ok=self.map_manager().is_compatible_model(self.model(),
+        require_similar=False)
       if ok:
         self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(
           self.model())  # modifies self.model() in place
       else:
-         raise Sorry(self.map_manager().warning_message())
+         raise AssertionError(self.map_manager().warning_message())
 
     if self.map_manager() and self.ncs_object():
       # Must be similar...
       if not self.map_manager().is_similar_ncs_object(self.ncs_object()):
-        raise Sorry(self.map_manager().warning_message())
+        raise AssertionError(self.map_manager().warning_message())
 
   def add_model(self, model = None, set_model_log_to_null = True,
      log = sys.stdout):
