@@ -232,18 +232,19 @@ class with_bounds(object):
 
     assert isinstance(model, mmtbx.model.manager)
 
-    # This one should just have similar unit_cell_crystal_symmetry for map and
+    # This one should have similar unit_cell_crystal_symmetry for map and
     #  model and model original_crystal_symmetry should match
     #   self.map_crystal_symmetry_at_initialization
 
 
-    assert (
-       (( model.get_shift_manager() is None) and
-       (self.map_manager().unit_cell_crystal_symmetry().is_similar_symmetry(
-          model.crystal_symmetry()))) or \
-       ( self.map_manager().unit_cell_crystal_symmetry().is_similar_symmetry(
-         model.get_shift_manager().original_crystal_symmetry))
-           )
+    if model.shift_cart() is None:  # model not yet initialized for shifts
+       assert self.map_manager().unit_cell_crystal_symmetry(
+          ).is_similar_symmetry( model.crystal_symmetry())
+
+    else:  # model is initialized: should match
+      assert model.unit_cell_crystal_symmetry() 
+      assert self.map_manager().unit_cell_crystal_symmetry(
+         ).is_similar_symmetry( model.unit_cell_crystal_symmetry())
 
     # Shift the model and add self.shift_cart on to whatever shift was there
     model.shift_model_and_set_crystal_symmetry(

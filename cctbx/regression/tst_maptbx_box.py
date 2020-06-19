@@ -88,11 +88,10 @@ def exercise_around_model():
   assert cs_orig.is_similar_symmetry(
     box.map_manager().unit_cell_crystal_symmetry())
 
-  assert approx_equal (box.model().get_shift_manager().shift_cart,
+  assert approx_equal (box.model().shift_cart(),
      [5.229233333333334, 5.061524999999999, 5.162062499999999])
 
-  assert box.model().get_shift_manager(
-      ).original_crystal_symmetry.is_similar_symmetry(cs_orig)
+  assert box.model().unit_cell_crystal_symmetry().is_similar_symmetry(cs_orig)
   assert (not box.model().crystal_symmetry().is_similar_symmetry(cs_orig))
 
   assert approx_equal(
@@ -104,10 +103,8 @@ def exercise_around_model():
   sel = box.model().selection("resseq 219:219")
   m_small = box.model().select(selection = sel)
 
-  assert approx_equal(box.model().get_shift_manager().shift_cart,
-     m_small.get_shift_manager().shift_cart)
-  assert not (box.model().get_shift_manager() is m_small.get_shift_manager())
-
+  assert approx_equal(box.model().shift_cart(),
+     m_small.shift_cart())
 
   # Now box again:
   small_box = cctbx.maptbx.box.around_model(
@@ -133,7 +130,7 @@ def exercise_around_model():
   assert (not cs_orig.is_similar_symmetry(box.model().crystal_symmetry()))
 
   # make sure box, model and map_manager remember original crystal symmetry
-  assert cs_orig.is_similar_symmetry(box.model().get_shift_manager().original_crystal_symmetry)
+  assert cs_orig.is_similar_symmetry(box.model().unit_cell_crystal_symmetry())
   assert cs_orig.is_similar_symmetry(
     box.map_manager().unit_cell_crystal_symmetry())
 
@@ -154,7 +151,7 @@ def exercise_around_model():
   assert (not cs_orig.is_similar_symmetry(new_model.crystal_symmetry()))
 
   # make sure box, model and map_manager remember original crystal symmetry
-  assert cs_orig.is_similar_symmetry(box.model().get_shift_manager().original_crystal_symmetry)
+  assert cs_orig.is_similar_symmetry(box.model().unit_cell_crystal_symmetry())
   assert cs_orig.is_similar_symmetry(
     box.map_manager().unit_cell_crystal_symmetry())
 
@@ -176,7 +173,7 @@ def exercise_around_model():
   assert (not cs_orig.is_similar_symmetry(new_model.crystal_symmetry()))
 
   # make sure box, model and map_manager remember original crystal symmetry
-  assert cs_orig.is_similar_symmetry(box.model().get_shift_manager().original_crystal_symmetry)
+  assert cs_orig.is_similar_symmetry(box.model().unit_cell_crystal_symmetry())
   assert cs_orig.is_similar_symmetry(
     box.map_manager().unit_cell_crystal_symmetry())
 

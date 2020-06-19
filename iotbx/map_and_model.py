@@ -45,7 +45,7 @@ class input(object):
     self._map_manager_1 = map_manager_1
     self._map_manager_2 = map_manager_2
     self._map_manager_list = map_manager_list
-    self._shift_manager = None # XXX get rid of this
+    self._shift_cart = None 
     self._ncs_object = ncs_object
     # CHECKS
 
@@ -104,11 +104,11 @@ class input(object):
     self._crystal_symmetry = self._map_manager.crystal_symmetry()
 
     if self._model:
-      self._shift_manager = self._model.get_shift_manager()
+      self._shift_cart = self._model.shift_cart()
       # Make sure model shift manager agrees with map_manager shift
-      if self._shift_manager and self._map_manager:
+      if self._shift_cart and self._map_manager:
         assert approx_equal(
-          tuple([-a for a in self._shift_manager.shift_cart]),
+          tuple([-a for a in self._shift_cart]),
           self._map_manager.origin_shift_cart())
 
     # Shift origins of all other maps
@@ -191,7 +191,7 @@ class input(object):
     self._model = box_as_mam.model()
     self._ncs_object = box_as_mam.ncs_object()
 
-    self._shift_manager = self._model.get_shift_manager().deep_copy()
+    self._shift_cart = self._model.shift_cart()
 
     # Update self._crystal_symmetry
     self._crystal_symmetry = self._model.crystal_symmetry()
@@ -240,9 +240,6 @@ class input(object):
   def original_origin_grid_units(self):
     assert self._original_origin_grid_units is not None
     return self._original_origin_grid_units
-
-  def shift_manager(self):
-    return self._shift_manager
 
   def map_data(self):
     return self.map_manager().map_data()

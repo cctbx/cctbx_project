@@ -607,7 +607,8 @@ class map_manager(map_reader, write_ccp4_map):
       sequence = None,
       solvent_content = None):
     '''
-      Use cctbx.maptbx.mask.create_mask_around_density to create a mask automatically
+      Use cctbx.maptbx.mask.create_mask_around_density to create a 
+       mask automatically
 
       Parameters are:
        resolution : required resolution of map
@@ -876,7 +877,7 @@ class map_manager(map_reader, write_ccp4_map):
       return # already fine
 
     # Set original crystal symmetry to match map unit_cell_crystal_symmetry
-    model.set_original_crystal_symmetry(self.unit_cell_crystal_symmetry())
+    model.set_unit_cell_crystal_symmetry(self.unit_cell_crystal_symmetry())
 
     # Set crystal_symmetry to match map
     model.set_crystal_symmetry(self.crystal_symmetry())
@@ -936,8 +937,7 @@ class map_manager(map_reader, write_ccp4_map):
     text=""
 
     model_uc=None
-    if model.get_shift_manager():
-      model_uc=model.get_shift_manager().original_crystal_symmetry
+    model_uc=model.unit_cell_crystal_symmetry()
     model_sym=model.crystal_symmetry()
     map_uc=self.unit_cell_crystal_symmetry()
     map_sym=self.crystal_symmetry()
@@ -990,13 +990,13 @@ class map_manager(map_reader, write_ccp4_map):
 
     map_shift_cart=tuple([-x for x in self.origin_shift_cart()])
     if ok and (map_shift_cart != (0,0,0)):
-      if model.get_shift_manager() is None: # map is shifted but not model
+      if model.shift_cart() is None: # map is shifted but not model
         ok=False
         text+=" However map is shifted (shift_cart=%s) but model is not" %(
            str(map_shift_cart))
       else:
         map_shift=flex.double(map_shift_cart)
-        model_shift=flex.double(model.get_shift_manager().shift_cart)
+        model_shift=flex.double(model.shift_cart())
         delta=map_shift-model_shift
         mmm=delta.min_max_mean()
         if mmm.min<-0.001 or mmm.max > 0.001: # shifts do not match

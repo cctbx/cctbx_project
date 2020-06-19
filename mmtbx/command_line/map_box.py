@@ -819,11 +819,10 @@ def print_notes(params = None,
     ccp4_map = None,
     log = sys.stdout):
 
-  if params.mask_select and hasattr(mam, 'shift_manager') and \
-        hasattr(mam.shift_manager(), 'get_solvent_content') and \
-        mam.shift_manager().get_solvent_content():
+  if params.mask_select and hasattr(mam, 'get_solvent_content') and \
+        mam.get_solvent_content():
     print("\nSolvent content used in mask_select: %.3f " %(
-      mam.shift_manager().get_solvent_content()), file = log)
+      mam.get_solvent_content()), file = log)
 
   if (ccp4_map and
     crystal_symmetry and
@@ -1087,13 +1086,11 @@ def run(args,
        gridding = params.output_unit_cell_grid)
 
     if mam.model():
-      #mam.model() # XXX change shift_manager to be same except shift is changed
-      # to mam.map_manager().origin_shift_cart() here
-      mam.model().get_shift_manager().shift_cart = tuple(
-       [-x for x in mam.map_manager().origin_shift_cart()])
+      mam.model().set_shift_cart(tuple(
+       [-x for x in mam.map_manager().origin_shift_cart()]))
     if mam.ncs_object():
-      mam.ncs_object()._shift_cart = tuple(
-       [-x for x in mam.map_manager().origin_shift_cart()])
+      mam.ncs_object().set_shift_cart( tuple(
+       [-x for x in mam.map_manager().origin_shift_cart()]))
 
   # Print out any notes about the output files
   print_notes(params = params, mam = mam,
@@ -1220,7 +1217,6 @@ def run(args,
 class box_object(object):
   '''
     Temporary holder that replaces box in map_box
-    Reconcile this with shift_manager in map_model_manager XXX
   '''
   def __init__(self,
       shift_cart = None,
@@ -1347,7 +1343,8 @@ def change_output_unit_cell(params = None,
 
     # Now set model crystal_symmetry to match so we can combine them
     if model:
-      model.set_original_crystal_symmetry(ccp4_map.unit_cell_crystal_symmetry())
+      model.set_unit_cell_crystal_symmetry(
+        ccp4_map.unit_cell_crystal_symmetry())
       model.set_crystal_symmetry(ccp4_map.crystal_symmetry())
     return ccp4_map, model
 
