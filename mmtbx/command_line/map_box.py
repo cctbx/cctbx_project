@@ -1088,7 +1088,7 @@ def run(args,
     if mam.model():
       mam.model().set_shift_cart(mam.map_manager().shift_cart())
     if mam.ncs_object():
-      mam.ncs_object().set_shift_cart(mam.map_manager().shift_cart()) 
+      mam.ncs_object().set_shift_cart(mam.map_manager().shift_cart())
 
   # Print out any notes about the output files
   print_notes(params = params, mam = mam,

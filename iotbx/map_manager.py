@@ -860,7 +860,7 @@ class map_manager(map_reader, write_ccp4_map):
     return self.unit_cell().orthogonalize(tuple((x, y, z)))
 
   def shift_cart(self):
-    ''' 
+    '''
      Return the shift_cart of this map from its original location.
 
      (the negative of the origin shift ) in cartesian coordinates
