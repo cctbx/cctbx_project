@@ -79,23 +79,23 @@ class with_bounds(object):
     # Apply boxing to model, ncs, and map (if available)
     self.apply_to_model_ncs_and_map()
 
-  def as_map_and_model(self):
+  def as_map_model_manager(self):
     '''
-      Return map_and_model object with contents of this class (not a deepcopy)
+      Return map_model_manager object with contents of this class (not a deepcopy)
 
     '''
-    import iotbx.map_and_model
-    mam = iotbx.map_and_model.input(
+    from iotbx.map_model_manager import map_model_manager
+    mmm = map_model_manager(
         map_manager = self.map_manager(),
         model = self.model(),
         ncs_object = self.ncs_object(),
         )
     # Keep track of the gridding and solvent_content (if used) in this boxing.
-    mam.set_gridding_first(self.gridding_first)
-    mam.set_gridding_last(self.gridding_last)
+    mmm.set_gridding_first(self.gridding_first)
+    mmm.set_gridding_last(self.gridding_last)
     if hasattr(self, 'solvent_content') and self.solvent_content is not None:
-      mam.set_solvent_content(self.solvent_content)
-    return mam
+      mmm.set_solvent_content(self.solvent_content)
+    return mmm
 
   def model(self):
     return getattr(self, '_model', None)

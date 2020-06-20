@@ -374,8 +374,8 @@ class compute_polder_map():
     fft_map.apply_sigma_scaling()
     mm= fft_map.as_map_manager()
 
-    import iotbx.map_and_model
-    inputs=iotbx.map_and_model.input(
+    from iotbx.map_model_manager import map_model_manager
+    inputs=map_model_manager(
       model=model_selected.deep_copy(),
       map_manager=mm,)
     return inputs

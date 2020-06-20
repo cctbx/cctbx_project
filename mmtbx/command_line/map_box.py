@@ -980,8 +980,8 @@ def run(args,
   if (params.mask_select):
     box = False
 
-  import iotbx.map_and_model
-  mam = iotbx.map_and_model.input(
+  from iotbx.map_model_manager import map_model_manager
+  mam = map_model_manager(
     model = model,
     map_manager = ccp4_map,
     ncs_object = ncs_object)

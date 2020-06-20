@@ -1681,7 +1681,7 @@ def loc_res(map,
   from cctbx import maptbx
   from cctbx import miller
   import mmtbx.utils
-  import iotbx.map_and_model
+  from iotbx.map_model_manager import map_model_manager
 
 
   mmm = map.as_1d().min_max_mean().as_tuple()
@@ -1719,28 +1719,28 @@ def loc_res(map,
     ph_sel  = pdb_hierarchy.select(chunk_sel).deep_copy()
     xrs_sel = xrs.select(chunk_sel)
     model_sel = model.select(chunk_sel)
-    mam = iotbx.map_and_model.input(
+    mmm = map_model_manager(
       model            = model_sel,
       map_manager      = mm)
-    mam.box_around_model(
+    mmm.box_around_model(
       box_cushion      = 3,
       wrapping         = mm.is_full_size(), # XXX NEED TO DECIDE WRAPPING
     )
 
-    mam.map_manager().create_mask_around_atoms(model = mam.model(),
+    mmm.map_manager().create_mask_around_atoms(model = mmm.model(),
       mask_atoms_atom_radius = 3.)
-    mam.map_manager().soft_mask(soft_mask_radius = soft_mask_radius)
-    mam.map_manager().apply_mask()
+    mmm.map_manager().soft_mask(soft_mask_radius = soft_mask_radius)
+    mmm.map_manager().apply_mask()
 
     #####
     fo = miller.structure_factor_box_from_map(
-      crystal_symmetry = mam.model().get_xray_structure().crystal_symmetry(),
-      map              = mam.map_manager().map_data())
+      crystal_symmetry = mmm.model().get_xray_structure().crystal_symmetry(),
+      map              = mmm.map_manager().map_data())
     if method == "rscc_d_min_b":
       fo = fo.resolution_filter(d_min = hard_d_min)
-      mam.model().get_xray_structure().set_b_iso(value = 0.0)
+      mmm.model().get_xray_structure().set_b_iso(value = 0.0)
     fc = fo.structure_factors_from_scatterers(
-      xray_structure = mam.model().get_xray_structure()).f_calc()
+      xray_structure = mmm.model().get_xray_structure()).f_calc()
     b_iso = 0
     d_min = 0
     cc = 0
@@ -1788,7 +1788,7 @@ def loc_res(map,
     results.append(d_min)
     results_b.append(b_iso)
 
-    ph_sel.adopt_xray_structure(mam.model().get_xray_structure())
+    ph_sel.adopt_xray_structure(mmm.model().get_xray_structure())
     if (method == "rscc_d_min_b"):
       bs = bs.set_selected(chunk_sel, b_iso)  # b value in B
       occs = occs.set_selected(chunk_sel, d_min) # d_min in occ

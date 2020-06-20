@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import iotbx.phil
 from libtbx import group_args
 from libtbx.utils import Sorry
-from iotbx import map_and_model
+from iotbx.map_model_manager import map_model_manager
 import mmtbx.utils
 from mmtbx.ringer import iterate_over_residues
 from mmtbx.ringer import em_rolling
@@ -58,7 +58,7 @@ class emringer(object):
     map_data, grid_unit_cell = None, None
     # sanity check for map and model
     if self.map_inp is not None:
-      base = map_and_model.input(
+      base = map_model_manager(
         map_manager               = self.map_inp,
         model            = self.model)
 

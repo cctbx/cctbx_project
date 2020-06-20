@@ -3,12 +3,12 @@ from libtbx.utils import Sorry
 from cctbx import maptbx
 from libtbx import group_args
 from scitbx.array_family import flex
-from iotbx.map_model_manager import map_model_manager
+from iotbx.map_model_manager import match_map_model_ncs
 from mmtbx.model import manager as model_manager
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
 
-class input(object):
+class input_no_longer_used(object):
 
   '''
     Class for shifting origin of map(s) and model to (0, 0, 0) and keeping
@@ -82,25 +82,25 @@ class input(object):
 
     # READY
 
-    # Make a map_model_manager and check unit_cell and working crystal symmetry
+    # Make a match_map_model_ncs and check unit_cell and working crystal symmetry
     #  and shift_cart for model, map, and ncs_object (if present)
 
-    mmm = map_model_manager()
-    mmm.add_map_manager(self._map_manager)
+    mmmn = match_map_model_ncs()
+    mmmn.add_map_manager(self._map_manager)
     if self._model:
-      mmm.add_model(self._model, set_model_log_to_null = False) # keep the log
+      mmmn.add_model(self._model, set_model_log_to_null = False) # keep the log
     if self._ncs_object:
-      mmm.add_ncs_object(self._ncs_object)
+      mmmn.add_ncs_object(self._ncs_object)
 
     # All ok here if it did not stop
 
     # Shift origin of model and map_manager to (0, 0, 0) with
-    #    mmm which knows about both
-    mmm.shift_origin(log = null_out())
-    self._model = mmm.model()  # this model knows about shift so far
+    #    mmmn which knows about both
+    mmmn.shift_origin(log = null_out())
+    self._model = mmmn.model()  # this model knows about shift so far
                              # NOTE: NO SHIFTS ALLOWED COMING IN
-    self._map_manager = mmm.map_manager()  # map_manager also knows about shift
-    self._ncs_object = mmm.ncs_object()  # ncs object also knows about shift
+    self._map_manager = mmmn.map_manager()  # map_manager also knows about shift
+    self._ncs_object = mmmn.ncs_object()  # ncs object also knows about shift
     self._crystal_symmetry = self._map_manager.crystal_symmetry()
 
     if self._model:
@@ -330,19 +330,19 @@ class input(object):
     '''
     return self
 
-  def as_map_model_manager(self):
+  def as_match_map_model_ncs(self):
     '''
-      Return this object as a map_model_manager
+      Return this object as a match_map_model_ncs
     '''
-    from iotbx.map_model_manager import map_model_manager
-    mmm = map_model_manager()
+    from iotbx.map_model_manager import match_map_model_ncs
+    mmmn = match_map_model_ncs()
     if self.map_manager():
-      mmm.add_map(self.map_manager())
+      mmmn.add_map(self.map_manager())
     if self.model():
-      mmm.add_model(self.model())
+      mmmn.add_model(self.model())
     if self.ncs_object():
-      mmm.add_ncs_object(self.ncs_object())
-    return mmm
+      mmmn.add_ncs_object(self.ncs_object())
+    return mmmn
 
   def as_box_object(self,
         original_map_data = None,

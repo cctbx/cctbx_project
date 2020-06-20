@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import libtbx.load_env
 from iotbx.data_manager import DataManager
-from iotbx.map_model_manager import map_model_manager
+from iotbx.map_model_manager import match_map_model_ncs, map_model_manager 
 from libtbx.test_utils import approx_equal
 
 def test_01():
@@ -32,35 +32,35 @@ def test_01():
   dm.process_ncs_spec_file(ncs_file)
   ncs = dm.get_ncs_spec(ncs_file)
 
-  mmm = map_model_manager()
-  mmm.add_map_manager(mm)
-  mmm.add_model(model)
-  mmm.add_ncs_object(ncs)
+  mmmn = match_map_model_ncs()
+  mmmn.add_map_manager(mm)
+  mmmn.add_model(model)
+  mmmn.add_ncs_object(ncs)
 
-  original_ncs=mmm.ncs_object()
+  original_ncs=mmmn.ncs_object()
   assert approx_equal((24.0528, 11.5833, 20.0004),
      tuple(original_ncs.ncs_groups()[0].translations_orth()[-1]),
      eps=0.1)
 
-  assert tuple(mmm._map_manager.origin_shift_grid_units) == (0,0,0)
+  assert tuple(mmmn._map_manager.origin_shift_grid_units) == (0,0,0)
 
   # Shift origin to (0,0,0)
-  mmm.shift_origin()
-  assert tuple(mmm._map_manager.origin_shift_grid_units) == (100,100,100)
+  mmmn.shift_origin()
+  assert tuple(mmmn._map_manager.origin_shift_grid_units) == (100,100,100)
 
-  mmm.write_model('s.pdb')
-  mmm.write_map('s.mrc')
+  mmmn.write_model('s.pdb')
+  mmmn.write_map('s.mrc')
 
-  shifted_ncs=mmm.ncs_object()
+  shifted_ncs=mmmn.ncs_object()
   assert approx_equal((-153.758, -74.044, -127.487),
       tuple(shifted_ncs.ncs_groups()[0].translations_orth()[-1]),eps=0.1)
 
 
   # Shift a model and shift it back
 
-  model=mmm.model()
-  shifted_model=mmm.shift_model_to_match_working_map(model=model)
-  model_in_original_position=mmm.shift_model_to_match_original_map(
+  model=mmmn.model()
+  shifted_model=mmmn.shift_model_to_match_working_map(model=model)
+  model_in_original_position=mmmn.shift_model_to_match_original_map(
       model=shifted_model)
   assert (approx_equal(model.get_sites_cart(), # not a copy
                       shifted_model.get_sites_cart()))
@@ -70,6 +70,7 @@ def test_01():
 
   # Generate a map and model
 
+  mmm=map_model_manager()
   mmm.generate_map()
   model=mmm.model()
   mm=mmm.map_manager()
