@@ -48,8 +48,7 @@ class map_model_manager:
      deep_copy() of these if originals need to be preserved.
 
      Input models, maps, and ncs_object must all match in crystal_symmetry,
-     original (unit_cell) crystal_symmetry, and shift_cart (-origin_shift_cart
-     for maps)
+     original (unit_cell) crystal_symmetry, and shift_cart for maps)
 
   '''
 
@@ -225,7 +224,7 @@ class map_model_manager:
          gridding = gridding)
 
     # Get the current origin shift based on this new original origin
-    shift_cart = tuple([-x for x in self._map_manager.origin_shift_cart()])
+    shift_cart = self._map_manager.shift_cart()
     if self._model:
       if self._model.shift_cart() is None:
         self._model.set_unit_cell_crystal_symmetry_and_shift_cart(
@@ -252,20 +251,20 @@ class map_model_manager:
       shift_info = self._map_manager.get_shift_info(
          desired_origin = desired_origin)
 
-      current_origin_shift_cart = self._map_manager.grid_units_to_cart(
-       shift_info.current_origin_shift_grid_units)
-      expected_model_shift_cart = tuple([-x for x in current_origin_shift_cart])
+      current_shift_cart = self._map_manager.grid_units_to_cart(
+       tuple([-x for x in shift_info.current_origin_shift_grid_units]))
+      expected_model_shift_cart = current_shift_cart
 
       shift_to_apply_cart = self._map_manager.grid_units_to_cart(
         shift_info.shift_to_apply)
-      new_origin_shift_cart = self._map_manager.grid_units_to_cart(
-        shift_info.new_origin_shift_grid_units)
-      new_shift_cart = tuple([-x for x in new_origin_shift_cart])
+      new_shift_cart = self._map_manager.grid_units_to_cart(
+        tuple([-x for x in shift_info.new_origin_shift_grid_units]))
+      new_full_shift_cart = new_shift_cart
       # shift_to_apply_cart is coordinate shift we are going to apply
-      #  new_origin_shift_cart is how to get back to original from new location
-      #   current_origin_shift_cart is how to get orig from current location
-      assert approx_equal(shift_to_apply_cart, [-(a-b) for a, b in zip(
-        new_origin_shift_cart, current_origin_shift_cart)])
+      #  new_shift_cart is how to get to new location from original
+      #   current_shift_cart is how to get to current location from original
+      assert approx_equal(shift_to_apply_cart, [(a-b) for a, b in zip(
+        new_shift_cart, current_shift_cart)])
 
       # Get shifts already applied to  model and ncs_object
       #    and check that they match map
@@ -292,12 +291,12 @@ class map_model_manager:
     if self._model:
       self._model = self.shift_model_to_match_working_map(
         coordinate_shift = shift_to_apply_cart,
-        new_shift_cart = new_shift_cart,
+        new_shift_cart = new_full_shift_cart,
         model = self._model, log = log)
     if self._ncs_object:
       self._ncs_object = self.shift_ncs_to_match_working_map(
         coordinate_shift = shift_to_apply_cart,
-        new_shift_cart = new_shift_cart,
+        new_shift_cart = new_full_shift_cart,
         ncs_object = self._ncs_object, log = log)
 
   def shift_ncs_to_match_working_map(self, ncs_object = None, reverse = False,

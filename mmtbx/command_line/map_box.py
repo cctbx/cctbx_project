@@ -1086,11 +1086,9 @@ def run(args,
        gridding = params.output_unit_cell_grid)
 
     if mam.model():
-      mam.model().set_shift_cart(tuple(
-       [-x for x in mam.map_manager().origin_shift_cart()]))
+      mam.model().set_shift_cart(mam.map_manager().shift_cart())
     if mam.ncs_object():
-      mam.ncs_object().set_shift_cart( tuple(
-       [-x for x in mam.map_manager().origin_shift_cart()]))
+      mam.ncs_object().set_shift_cart(mam.map_manager().shift_cart()) 
 
   # Print out any notes about the output files
   print_notes(params = params, mam = mam,
@@ -1114,7 +1112,7 @@ def run(args,
         file = log)
      print("Working origin moved from  coordinates of:"+\
         " (%.2f, %.2f, %.2f) A to (0, 0, 0)\n" %(
-        tuple(mam.map_manager().origin_shift_cart())),
+        tuple([-x for x in mam.map_manager().shift_cart()])),
            file = log)
 
   #  For now, need to return a box object
@@ -1125,7 +1123,7 @@ def run(args,
     xrs = None
     hierarchy = None
   output_box = box_object(
-      shift_cart = tuple([-x for x in mam.map_manager().origin_shift_cart()]),
+      shift_cart = mam.map_manager().shift_cart(),
       xray_structure_box = xrs,
       hierarchy = hierarchy,
       ncs_object = mam.ncs_object(),

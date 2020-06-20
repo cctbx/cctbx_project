@@ -107,9 +107,8 @@ class input(object):
       self._shift_cart = self._model.shift_cart()
       # Make sure model shift manager agrees with map_manager shift
       if self._shift_cart and self._map_manager:
-        assert approx_equal(
-          tuple([-a for a in self._shift_cart]),
-          self._map_manager.origin_shift_cart())
+        assert approx_equal(self._shift_cart,
+          self._map_manager.shift_cart())
 
     # Shift origins of all other maps
     for m in [self._map_manager_1, self._map_manager_2]+\
@@ -127,7 +126,8 @@ class input(object):
     #    so they can be accessed easily later
 
     self._original_origin_grid_units = self._map_manager.origin_shift_grid_units
-    self._original_origin_cart = self._map_manager.origin_shift_cart()
+    self._original_origin_cart = tuple(
+       [-x for x in self._map_manager.shift_cart()])
 
     #  Save gridding of this original map (after shifting, whole thing):
     self._gridding_first = (0, 0, 0)

@@ -178,10 +178,10 @@ def test_01():
 
   # Check origin_shifts
   print (new_mm.origin_shift_grid_units)
-  print (new_mm.origin_shift_cart())
+  print (new_mm.shift_cart())
   assert approx_equal(new_mm.origin_shift_grid_units, (100, 100, 100))
-  assert approx_equal(new_mm.origin_shift_cart(),
-       (74.70333099365234, 72.30750274658205, 73.7437515258789))
+  assert approx_equal(new_mm.shift_cart(),
+       (-74.70333099365234, -72.30750274658205, -73.7437515258789))
   # Convert to map coeffs, write out, read back, convert back to map
 
   map_coeffs = mm.map_as_fourier_coefficients(high_resolution = 3)

@@ -859,9 +859,14 @@ class map_manager(map_reader, write_ccp4_map):
     z = grid_units[2]/self.unit_cell_grid[2]
     return self.unit_cell().orthogonalize(tuple((x, y, z)))
 
-  def origin_shift_cart(self):
-    ''' Return the origin shift in cartesian coordinates'''
-    return self.grid_units_to_cart(self.origin_shift_grid_units)
+  def shift_cart(self):
+    ''' 
+     Return the shift_cart of this map from its original location.
+
+     (the negative of the origin shift ) in cartesian coordinates
+     '''
+    return tuple(
+       [-x for x in self.grid_units_to_cart(self.origin_shift_grid_units)])
 
   def set_model_symmetries_and_shift_cart_to_match_map(self,model):
     '''
@@ -882,9 +887,9 @@ class map_manager(map_reader, write_ccp4_map):
     # Set crystal_symmetry to match map
     model.set_crystal_symmetry(self.crystal_symmetry())
 
-    # Set shift_cart (shift since readin) to match -origin_shift_cart for
+    # Set shift_cart (shift since readin) to match shift_cart for
     #   map (shift of origin is opposite of shift applied)
-    model.set_shift_cart(tuple([-x for x in self.origin_shift_cart()]))
+    model.set_shift_cart(self.shift_cart())
 
   def is_similar_ncs_object(self, ncs_object):
     '''
@@ -895,7 +900,7 @@ class map_manager(map_reader, write_ccp4_map):
     ok=True
     text=""
 
-    map_shift=flex.double(tuple([-x for x in self.origin_shift_cart()]))
+    map_shift=flex.double(self.shift_cart())
     ncs_object_shift=flex.double(ncs_object.shift_cart())
     delta=map_shift-ncs_object_shift
     mmm=delta.min_max_mean()
@@ -988,7 +993,7 @@ class map_manager(map_reader, write_ccp4_map):
 
     assert isinstance(ok, bool)  # must have chosen
 
-    map_shift_cart=tuple([-x for x in self.origin_shift_cart()])
+    map_shift_cart=self.shift_cart()
     if ok and (map_shift_cart != (0,0,0)):
       if model.shift_cart() is None: # map is shifted but not model
         ok=False
