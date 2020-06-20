@@ -25,6 +25,8 @@
 #include <numeric>
 #include <vector>
 
+#include <scitbx/array_family/accessors/c_grid.h>
+
 
 using namespace std;
 namespace mmtbx { namespace pair_interaction {
@@ -124,10 +126,12 @@ class density_props
       if(density<0.0001) return false;
       silva *=(4.0 / (gradient*gradient*gradient));
       silva /=(1.0 + silva);
-      if(silva>=0.8 && silva <= 1) {
+      if(silva>=0.8 && silva <= 1) { // This breaks mmtbx/pair_interaction/tst_02.py
+      //if(silva>=0.9) {
+        //std::cout<<"silva: "<< silva<< std::endl;
         return true; // it is 0.8 in original Java version.
       }
-      else           return false;
+      else return false;
     }
     else if(silva_type.compare("sedd")==0) {
       if(density<0.1) return false;
@@ -138,7 +142,7 @@ class density_props
       }
       else         return false;
     }
-    else { // PVA: is this OK to do. Otherwise compiler doesn't like it.
+    else {
       return false;
     }
     }
@@ -387,6 +391,11 @@ af::shared<vec3<int> > points_and_pairs(
   std::string const & silva_type
   )
 {
+  // Create 2x2 bool map with lengths being max residue number, init with false
+  int max_air = af::max(atom_in_residue.const_ref());
+  af::versa<bool, af::c_grid<2> > pairs;
+  pairs.resize(af::c_grid<2>(max_air+1, max_air+1), false);
+
   af::shared<vec3<int> > interacting_pairs;
   for(std::size_t ix=0; ix < ngrid[0]; ix++) {
     for(std::size_t iy=0; iy < ngrid[1]; iy++) {
@@ -421,13 +430,20 @@ af::shared<vec3<int> > points_and_pairs(
         if(atom_in_residue[atom_id_1] == atom_in_residue[atom_id_2]) continue;
         int ia1 = atom_in_residue[atom_id_1];
         int ia2 = atom_in_residue[atom_id_2];
+
+        vec3<int> pair;
+        if(ia1<ia2) pair = vec3<int>(ia1, ia2, 0);
+        else        pair = vec3<int>(ia2, ia1, 0);
+        if(pairs(pair[0], pair[1]) == true) continue;
+
         bool has_interaction = has_interaction_at_point(
           point, xyz, element_flags, wfc_obj, silva_type);
         if(has_interaction) {
-          vec3<int> pair;
-          if(ia1<ia2) pair = vec3<int>(ia1, ia2, 0);
-          else        pair = vec3<int>(ia2, ia1, 0);
+          pairs(pair[0], pair[1])=true;
           interacting_pairs.push_back(pair);
+          //std::cout<<"pair: "<<pair[0]<<" "<<pair[1]<<std::endl;
+          //std::cout<<"  "<<std::endl;
+
         }
   }}}
   return interacting_pairs;
