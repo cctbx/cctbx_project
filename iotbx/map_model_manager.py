@@ -504,8 +504,8 @@ class map_model_manager(map_model_base):
     new_mmm = map_model_manager()
     new_mmm._model = None
     new_mmm._map_manager = None
-    new_mmm._map_manager_1 = None 
-    new_mmm._map_manager_2 = None 
+    new_mmm._map_manager_1 = None
+    new_mmm._map_manager_2 = None
     new_mmm._map_manager_list = None
     new_mmm._shift_cart = None
     new_mmm._ncs_object = None
@@ -949,7 +949,7 @@ class match_map_model_ncs(map_model_base):
   def as_map_model_manager(self):
 
     '''
-      Return map_model_manager object with contents of this class 
+      Return map_model_manager object with contents of this class
       (not a deepcopy)
 
     '''

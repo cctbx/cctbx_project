@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import libtbx.load_env
 from iotbx.data_manager import DataManager
-from iotbx.map_model_manager import match_map_model_ncs, map_model_manager 
+from iotbx.map_model_manager import match_map_model_ncs, map_model_manager
 from libtbx.test_utils import approx_equal
 
 def test_01():
