@@ -10,14 +10,17 @@ from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
 
 class map_model_base(object):
+  '''
+    Common methods for map_model_manager and r_model and match_map_model_ncs
+  '''
 
-  def write_map(self, file_name = None, log = sys.stdout):
-    if not self._map_manager:
-      print ("No map to write out", file = log)
+  def write_map(self, file_name = None, key='map_manager', log = sys.stdout):
+    if not self._map_dict.get(key):
+      print ("No map to write out with id='%s'" %(key), file = log)
     elif not file_name:
       print ("Need file name to write map", file = log)
     else:
-      self._map_manager.write_map(file_name = file_name)
+      self._map_dict.get('map_manager').write_map(file_name = file_name)
 
   def write_model(self,
      file_name = None,
@@ -35,6 +38,60 @@ class map_model_base(object):
       print("Wrote model with %s residues to %s" %(
          self._model.get_hierarchy().overall_counts().n_residues,
          file_name), file = log)
+
+  def get_map_manager_info(self):
+    '''
+      Return a group_args object specifying a map to be used in boxing and
+      a list of any other maps present
+    '''
+    all_map_manager_ids=self._map_dict.keys()
+    if not all_map_manager_ids:
+      return group_args(target_map_manager_id=None,
+         other_map_manager_ids=[])
+    all_map_manager_ids.sort()
+    target_map_manager_id='map'
+    if not target_map_manager_id in self._map_dict.keys(): # find another
+      target_map_manager_id=all_map_manager_ids[0]
+    other_map_manager_ids=[]
+    for id in all_map_manager_ids:
+      if id != target_map_manager_id:
+        other_map_manager_ids.append(id)
+
+    return group_args(target_map_manager_id=target_map_manager_id,
+         other_map_manager_ids=other_map_manager_ids)
+
+
+class r_model(map_model_base):
+
+  '''
+    Class to hold a model, set of maps/mask and optional ncs object and
+    perform simple boxing and masking operations
+  '''
+  def __init__(self,
+               model            = None,
+               ncs_object       = None,
+               map_dict         = None):
+
+    # Checks
+    assert isinstance(model, model_manager)
+    assert isinstance(map_dict, dict)
+    assert map_dict
+
+    # Make sure first map is already shifted to (0, 0, 0)
+    first_map=map_dict[map_dict.keys()[0]]
+    assert first_map.origin_is_zero()
+
+    for id in map_dict.keys():
+      m=map_dict[id]
+      assert m.origin_is_zero()
+      assert m.is_similar_model(model)
+      assert m.is_similar(first_map)
+
+    # Make sure ncs_object has same shift as model if present
+    if ncs_object:
+      assert ncs_object.shift_cart() == model.shift_cart()
+
+    # All set
 
 class map_model_manager(map_model_base):
 
@@ -54,7 +111,14 @@ class map_model_manager(map_model_base):
     shifted_map_manager = mam.map_manager() # also at (0, 0, 0) knows shifts
     shifted_ncs_object = mam.ncs_object() # also at (0, 0, 0) and knows shifts
 
-    Optional:  apply soft mask to map (requires resolution)
+    Optional after boxing:  apply soft mask to map (requires soft_mask_radius)
+
+    The maps allowed are:
+      map_dict has four special keys with interpretations:
+        map_manager:  full map
+        map_manager_1, map_manager_2: half-maps 1 and 2
+        mask:  a mask
+      All other keys are any strings and are assumed to correspond to other maps
   '''
   def __init__(self,
                model            = None,
@@ -62,13 +126,10 @@ class map_model_manager(map_model_base):
                map_manager_1    = None,  # replaces map_data_1
                map_manager_2    = None,  # replaces map_data_2
                map_manager_list = None,  # replaces map_data_list
+               map_manager_id_list = None,  # string id's for map_managers
                ncs_object       = None):
-
+    self._map_dict={}
     self._model = model
-    self._map_manager = map_manager
-    self._map_manager_1 = map_manager_1
-    self._map_manager_2 = map_manager_2
-    self._map_manager_list = map_manager_list
     self._shift_cart = None
     self._ncs_object = ncs_object
     self._original_origin_grid_units = None
@@ -89,29 +150,38 @@ class map_model_manager(map_model_base):
 
     # Make sure that map_manager is either already shifted to (0, 0, 0) or has
     #   origin_shift_grid_unit of (0, 0, 0).
-    assert self._map_manager.origin_is_zero() or \
-      self._map_manager.origin_shift_grid_units == (0, 0, 0)
+    assert map_manager.origin_is_zero() or \
+      map_manager.origin_shift_grid_units == (0, 0, 0)
 
     # Normally map_manager unit_cell_crystal_symmetry should match
     #  model original_crystal_symmetry (and also usually model.crystal_symmetry)
 
     # Make sure we have what is expected: optional model, mm,
-    # self._map_manager_1 and self._map_manager_2 or neither,
-    #   optional list of self._map_manager_list
+    # map_manager_1 and map_manager_2 or neither,
+    #   optional list of map_manager_list
 
-    if not self._map_manager_list:
-      self._map_manager_list = []
+    if map_manager_list:
+      if map_manager_id_list:
+        assert len(map_manager_list) == len(map_manager_id_list)
+      else:
+        map_manager_id_list=[]
+        for i in xrange(1,len(map_manager_list)+1):
+          map_manager_id_list.append("extra_map_manager_%s" %(i))
 
-    if(not [self._map_manager_1, self._map_manager_2].count(None) in [0, 2]):
+    else:
+      map_manager_list = []
+      map_manager_id_list = []
+
+    if(not [map_manager_1, map_manager_2].count(None) in [0, 2]):
       raise Sorry("None or two half-maps are required.")
-    if(not self._map_manager):
+    if(not map_manager):
       raise Sorry("A map is required.")
 
     # Make sure all map_managers have same gridding and symmetry
-    for m in [self._map_manager_1, self._map_manager_2]+ \
-         self._map_manager_list:
+    for m in [map_manager_1, map_manager_2]+ \
+         map_manager_list:
       if m:
-        assert self._map_manager.is_similar(m)
+        assert map_manager.is_similar(m)
 
     # READY
 
@@ -119,7 +189,7 @@ class map_model_manager(map_model_base):
     #  and shift_cart for model, map, and ncs_object (if present)
 
     mmmn = match_map_model_ncs()
-    mmmn.add_map_manager(self._map_manager)
+    mmmn.add_map_manager(map_manager)
     if self._model:
       mmmn.add_model(self._model, set_model_log_to_null = False) # keep the log
     if self._ncs_object:
@@ -132,42 +202,74 @@ class map_model_manager(map_model_base):
     mmmn.shift_origin(log = null_out())
     self._model = mmmn.model()  # this model knows about shift so far
                              # NOTE: NO SHIFTS ALLOWED COMING IN
-    self._map_manager = mmmn.map_manager()  # map_manager also knows about shift
+    map_manager = mmmn.map_manager()  # map_manager also knows about shift
     self._ncs_object = mmmn.ncs_object()  # ncs object also knows about shift
-    self._crystal_symmetry = self._map_manager.crystal_symmetry()
+    self._crystal_symmetry = map_manager.crystal_symmetry()
+
+    self._shift_cart=map_manager.shift_cart()
 
     if self._model:
-      self._shift_cart = self._model.shift_cart()
       # Make sure model shift manager agrees with map_manager shift
-      if self._shift_cart and self._map_manager:
-        assert approx_equal(self._shift_cart,
-          self._map_manager.shift_cart())
+      assert approx_equal(self._model.shift_cart(), map_manager.shift_cart())
 
     # Shift origins of all other maps
-    for m in [self._map_manager_1, self._map_manager_2]+\
-         self._map_manager_list:
+    for m in [map_manager_1, map_manager_2]+\
+         map_manager_list:
       if m:
         m.shift_origin()
 
     # Make sure all really match:
-    for m in [self._map_manager_1, self._map_manager_2]+\
-        self._map_manager_list:
+    for m in [map_manager_1, map_manager_2]+\
+        map_manager_list:
       if m:
-        assert self._map_manager.is_similar(m)
+        assert map_manager.is_similar(m)
 
     # Save origin after origin shift but before any boxing
     #    so they can be accessed easily later
 
-    self._original_origin_grid_units = self._map_manager.origin_shift_grid_units
+    self._original_origin_grid_units = map_manager.origin_shift_grid_units
     self._original_origin_cart = tuple(
-       [-x for x in self._map_manager.shift_cart()])
+       [-x for x in map_manager.shift_cart()])
 
     #  Save gridding of this original map (after shifting, whole thing):
     self._gridding_first = (0, 0, 0)
-    self._gridding_last = self._map_manager.map_data().all()
+    self._gridding_last = map_manager.map_data().all()
 
     # Holder for solvent content used in boxing and transferred to box_object
     self._solvent_content = None
+
+    # Set up maps, model, ncs as dictionaries (same as used in r_model)
+
+    self.set_up_map_dict(
+      map_manager = map_manager,
+      map_manager_1 = map_manager_1,
+      map_manager_2 = map_manager_2,
+      map_manager_list = map_manager_list,
+      map_manager_id_list = map_manager_id_list)
+
+  def set_up_map_dict(self,
+      map_manager = None,
+      map_manager_1 = None,
+      map_manager_2 = None,
+      map_manager_list = None,
+      map_manager_id_list = None):
+
+    '''
+      map_dict has four special keys with interpretations:
+        map_manager:  full map
+        map_manager_1, map_manager_2: half-maps 1 and 2
+        mask:  a mask
+      All other keys are any strings and are assumed to correspond to other maps
+    '''
+    self._map_dict={}
+    self._map_manager_id_list=map_manager_id_list
+    self._map_dict['map_manager']=map_manager
+    if map_manager_1 and map_manager_2:
+      self._map_dict['map_manager_1']=map_manager_1
+      self._map_dict['map_manager_2']=map_manager_2
+    if map_manager_id_list:
+      for id, m in zip(map_manager_id_list,map_manager_list):
+        self._map_dict[id]=m
 
   def box_around_model(self,
      wrapping = None,
@@ -184,53 +286,32 @@ class map_model_manager(map_model_base):
     assert box_cushion is not None
 
     from cctbx.maptbx.box import around_model
-    if(self._map_manager_1 is not None):
-      tmp_box = around_model(
-        map_manager = self._map_manager_1,
-        model = self._model.deep_copy(),
-        cushion = box_cushion,
-        wrapping = wrapping)
-      self._map_manager_1 = tmp_box.map_manager()
-      tmp_box = around_model(
-        map_manager = self._map_manager_2,
-        model = self._model.deep_copy(),
-        cushion = box_cushion,
-        wrapping = wrapping)
-      self._map_manager_2 = tmp_box.map_manager()
-    if self._map_manager_list:
-      new_list = []
-      for x in self._map_manager_list:
-        tmp_box = around_model(
-          map_manager = x,
-          model = self._model.deep_copy(),
-          cushion = box_cushion,
-          wrapping = wrapping)
-        new_list.append(tmp_box.map_manager())
-      self._map_manager_list = new_list
 
-    # Make box around model
+    map_manager_info=self.get_map_manager_info()
+    assert map_manager_info.target_map_manager_id is not None
+
+    # Make box around model and apply it to model, ncs_object and first map
     box = around_model(
-      map_manager = self._map_manager,
+      map_manager = self._map_dict[map_manager_info.target_map_manager_id],
       model = self._model,
       ncs_object = self._ncs_object,
       cushion = box_cushion,
       wrapping = wrapping)
 
-    box_as_mam = box.as_map_model_manager()
+    self._map_dict[map_manager_info.target_map_manager_id] = box.map_manager()
+    self._model = box.model()
+    self._ncs_object = box.ncs_object()
+    self._shift_cart = box.map_manager().shift_cart()
 
-    # New map_manager and model know about cumulative shifts (original
-    #   shift to move origin to (0, 0, 0) plus shift from boxing
-    self._map_manager = box_as_mam.map_manager()
-    self._model = box_as_mam.model()
-    self._ncs_object = box_as_mam.ncs_object()
+    # Apply the box to all the other maps
+    for id in map_manager_info.other_map_manager_ids:
+      self._map_dict[id] = box.apply_to_map(self._map_dict[id])
 
-    self._shift_cart = self._model.shift_cart()
 
     # Update self._crystal_symmetry
     self._crystal_symmetry = self._model.crystal_symmetry()
     assert self._crystal_symmetry.is_similar_symmetry(
-      self._map_manager.crystal_symmetry())
-
+      self._map_dict[map_manager_info.target_map_manager_id].crystal_symmetry())
 
   def soft_mask_all_maps_around_edges(self,
       resolution = None,
@@ -286,11 +367,25 @@ class map_model_manager(map_model_base):
       return self.map_manager_2().map_data()
 
   def all_map_managers(self):
+    '''
+      Return list of all map_manager objects. Includes
+      map_manager, map_manager_1, map_manager_2, map_manager_list
+    '''
+    all_map_manager_ids = self._map_dict.keys()
+    all_map_manager_ids.sort()
     all_map_managers_list = []
-    for x in [self.map_manager()]+[self.map_manager_1()]+\
-        [self.map_manager_2()]+ self.map_manager_list():
-      if x: all_map_managers_list.append(x)
+    for id in all_map_manager_ids:
+      all_map_managers_list.append(self._map_dict[id])
     return all_map_managers_list
+
+  def map_manager_list(self):
+     '''
+       Return just the map_managers in map_manager_id_list
+     '''
+     mm_list=[]
+     for id in self._map_manager_id_list:
+       mm_list.append(self._map_dict[id])
+     return mm_list
 
   def map_data_list(self):
     map_data_list = []
@@ -299,19 +394,13 @@ class map_model_manager(map_model_base):
     return map_data_list
 
   def map_manager(self):
-     return self._map_manager
+     return self._map_dict.get('map_manager')
 
   def map_manager_1(self):
-     return self._map_manager_1
+     return self._map_dict.get('map_manager_1')
 
   def map_manager_2(self):
-     return self._map_manager_2
-
-  def map_manager_list(self):
-     if self._map_manager_list:
-       return self._map_manager_list
-     else:
-       return []
+     return self._map_dict.get('map_manager_2')
 
   def model(self): return self._model
 
@@ -447,11 +536,11 @@ class map_model_manager(map_model_base):
 
 
     print("\nGenerating new map data\n", file = log)
-    if self._map_manager:
+    if self.map_manager():
       print("NOTE: replacing existing map data\n", file = log)
-    if self._model and  file_name:
+    if self.model() and  file_name:
       print("NOTE: using existing model to generate map data\n", file = log)
-      model = self._model
+      model = self.model()
     else:
       model = None
 
@@ -497,20 +586,16 @@ class map_model_manager(map_model_base):
       log = log)
 
     mm.show_summary()
-    self._map_manager = mm
+    self.set_up_map_dict(map_manager=mm)
     self._model = model
 
   def deep_copy(self):
     new_mmm = map_model_manager()
-    new_mmm._model = None
-    new_mmm._map_manager = None
-    new_mmm._map_manager_1 = None
-    new_mmm._map_manager_2 = None
-    new_mmm._map_manager_list = None
-    new_mmm._shift_cart = None
+
     new_mmm._ncs_object = None
 
     from copy import deepcopy
+    new_mmm._map_manager_id_list = deepcopy(self._map_manager_id_list)
     new_mmm._original_origin_grid_units=deepcopy(
         self._original_origin_grid_units)
     new_mmm._original_origin_cart=deepcopy(self._original_origin_cart)
@@ -518,12 +603,22 @@ class map_model_manager(map_model_base):
     new_mmm._gridding_last=deepcopy(self._gridding_last)
     new_mmm._solvent_content=deepcopy(self._solvent_content)
     if self._model:
-       new_mmm._model=self._model.deep_copy()
-    if self._map_manager:
-       new_mmm._map_manager=self._map_manager.deep_copy()
+      new_mmm._model=self._model.deep_copy()
+    else:
+      new_mmm._model = None
     if self._ncs_object:
        new_mmm._ncs_object=self._ncs_object.deep_copy()
+    new_mmm._map_dict={}
+    for id in self._map_dict.keys():
+      new_mmm._map_dict[id]=self._map_dict[id].deep_copy()
+    new_mmm._shift_cart = deepcopy(self._shift_cart)
     return new_mmm
+
+  def as_r_model(self):
+
+    return r_model( model            = self.model(),
+               ncs_object       = self.ncs_object(),
+               map_dict         = self.map_dict())
 
   def as_map_model_manager(self):
     '''
@@ -581,44 +676,6 @@ class map_model_manager(map_model_base):
          -x for x in self.map_manager().origin_shift_grid_units],
       )
     return output_box
-
-def get_map_histograms(data, n_slots = 20, data_1 = None, data_2 = None):
-  h0, h1, h2 = None, None, None
-  data_min = None
-  hmhcc = None
-  if(data_1 is None):
-    h0 = flex.histogram(data = data.as_1d(), n_slots = n_slots)
-  else:
-    data_min = min(flex.min(data_1), flex.min(data_2))
-    data_max = max(flex.max(data_1), flex.max(data_2))
-    h0 = flex.histogram(data = data.as_1d(), n_slots = n_slots)
-    h1 = flex.histogram(data = data_1.as_1d(), data_min = data_min,
-      data_max = data_max, n_slots = n_slots)
-    h2 = flex.histogram(data = data_2.as_1d(), data_min = data_min,
-      data_max = data_max, n_slots = n_slots)
-    hmhcc = flex.linear_correlation(
-      x = h1.slots().as_double(),
-      y = h2.slots().as_double()).coefficient()
-  return group_args(h_map = h0, h_half_map_1 = h1, h_half_map_2 = h2,
-    _data_min = data_min, half_map_histogram_cc = hmhcc)
-
-def get_map_counts(map_data, crystal_symmetry = None):
-  a = map_data.accessor()
-  map_counts = group_args(
-    origin       = a.origin(),
-    last         = a.last(),
-    focus        = a.focus(),
-    all          = a.all(),
-    min_max_mean = map_data.as_1d().min_max_mean().as_tuple(),
-    d_min_corner = maptbx.d_min_corner(map_data = map_data,
-      unit_cell = crystal_symmetry.unit_cell()))
-  return map_counts
-
-def add_tuples(t1, t2):
-  new_list = []
-  for a, b in zip(t1, t2):
-    new_list.append(a+b)
-  return tuple(new_list)
 
 class match_map_model_ncs(map_model_base):
 
@@ -698,6 +755,31 @@ class match_map_model_ncs(map_model_base):
       print("NCS summary:", file = log)
       print("Operators: %s" %(
        self._ncs_object.max_operators()), file = log)
+
+  def write_map(self, file_name = None, log = sys.stdout):
+    if not self._map_manager:
+      print ("No map to write out", file = log)
+    elif not file_name:
+      print ("Need file name to write map", file = log)
+    else:
+      self._map_manager.write_map(file_name = file_name)
+
+  def write_model(self,
+     file_name = None,
+     log = sys.stdout):
+    if not self._model:
+      print ("No model to write out", file = log)
+    elif not file_name:
+      print ("Need file name to write model", file = log)
+    else:
+      # Write out model
+
+      f = open(file_name, 'w')
+      print(self._model.model_as_pdb(), file = f)
+      f.close()
+      print("Wrote model with %s residues to %s" %(
+         self._model.get_hierarchy().overall_counts().n_residues,
+         file_name), file = log)
 
   def crystal_symmetry(self):
     # Return crystal symmetry of first map, or if not present, of first model
@@ -961,3 +1043,41 @@ class match_map_model_ncs(map_model_base):
         )
     # Keep track of the gridding and solvent_content (if used) in this boxing.
     return mam
+
+def get_map_histograms(data, n_slots = 20, data_1 = None, data_2 = None):
+  h0, h1, h2 = None, None, None
+  data_min = None
+  hmhcc = None
+  if(data_1 is None):
+    h0 = flex.histogram(data = data.as_1d(), n_slots = n_slots)
+  else:
+    data_min = min(flex.min(data_1), flex.min(data_2))
+    data_max = max(flex.max(data_1), flex.max(data_2))
+    h0 = flex.histogram(data = data.as_1d(), n_slots = n_slots)
+    h1 = flex.histogram(data = data_1.as_1d(), data_min = data_min,
+      data_max = data_max, n_slots = n_slots)
+    h2 = flex.histogram(data = data_2.as_1d(), data_min = data_min,
+      data_max = data_max, n_slots = n_slots)
+    hmhcc = flex.linear_correlation(
+      x = h1.slots().as_double(),
+      y = h2.slots().as_double()).coefficient()
+  return group_args(h_map = h0, h_half_map_1 = h1, h_half_map_2 = h2,
+    _data_min = data_min, half_map_histogram_cc = hmhcc)
+
+def get_map_counts(map_data, crystal_symmetry = None):
+  a = map_data.accessor()
+  map_counts = group_args(
+    origin       = a.origin(),
+    last         = a.last(),
+    focus        = a.focus(),
+    all          = a.all(),
+    min_max_mean = map_data.as_1d().min_max_mean().as_tuple(),
+    d_min_corner = maptbx.d_min_corner(map_data = map_data,
+      unit_cell = crystal_symmetry.unit_cell()))
+  return map_counts
+
+def add_tuples(t1, t2):
+  new_list = []
+  for a, b in zip(t1, t2):
+    new_list.append(a+b)
+  return tuple(new_list)
