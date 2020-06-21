@@ -75,7 +75,7 @@ class plotter2:  # compare the transformation of 001 with that of .57735,.57735,
         if plot:
           axis.plot (a2,a3,'r,')
           axis.set_aspect("equal")
-          axis.set_title("Transformation of vector %s"%(str(RLP.elems)))
+          axis.set_title("Transformation of v=%s"%("(%5.3f,%5.3f,%5.3f)"%(RLP.elems)))
           axis.set_xlim(-0.05,0.05)
           axis.set_ylim(-0.05,0.05)
 
