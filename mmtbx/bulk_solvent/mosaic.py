@@ -216,7 +216,7 @@ class refinery(object):
       #
       self.fmodel.update_all_scales(remove_outliers=False)
       self._print(self.fmodel.r_factors(prefix="  "))
-      self.mc = fmodel.electron_density_map().map_coefficients(
+      self.mc = self.fmodel.electron_density_map().map_coefficients(
         map_type   = "mFobs-DFmodel",
         isotropize = True,
         exclude_free_r_reflections = False)
@@ -305,7 +305,7 @@ class mosaic_f_mask(object):
       volume_asu = (mask_i_asu>0).count(True)*step**3
       if(volume_asu<1.e-6): continue
 
-      if(i==1 or uc_fraction>5):
+      if(i_seq==1 or uc_fraction>5):
         f_mask_i = miller_array.structure_factors_from_asu_map(
           asu_map_data = mask_i_asu, n_real = self.n_real)
         f_mask_data_0 += f_mask_i.data()
@@ -323,16 +323,16 @@ class mosaic_f_mask(object):
             "%12.3f"%volume_asu, "%3d"%i,
             "%7s"%str(None) if diff_map is None else "%7.3f %7.3f %7.3f %7.3f"%(
               mi,ma,me,sd), file=log)
-
       self.regions[i_seq] = group_args(
         id          = i,
+        i_seq       = i_seq,
         volume      = volume,
         uc_fraction = uc_fraction,
         diff_map    = group_args(mi=mi, ma=ma, me=me, sd=sd))
 
       if(mean_diff_map is not None and mean_diff_map<=0): continue
 
-      if(not(i==1 or uc_fraction>5)):
+      if(not(i_seq==1 or uc_fraction>5)):
         f_mask_i = miller_array.structure_factors_from_asu_map(
           asu_map_data = mask_i_asu, n_real = self.n_real)
         f_mask_data += f_mask_i.data()
@@ -352,6 +352,9 @@ class mosaic_f_mask(object):
     #
     self.f_mask=f_mask
     self.f_masks=F_MASKS
+    self.do_mosaic = False
+    if(len(self.f_masks)>1):
+      self.do_mosaic = True
     #return group_args(f_mask = f_mask, f_masks = F_MASKS, n_real=n_real)
 
   def compute_diff_map(self, f_mask_data):
