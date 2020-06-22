@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.math_utils import ifloor, iceil
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 from cctbx import crystal, maptbx, uctbx
 from scitbx.array_family import flex
 from libtbx import group_args
@@ -53,11 +53,15 @@ class with_bounds(object):
     # safeguards
     assert lower_bounds is not None
     assert upper_bounds is not None
-    assert upper_bounds is not None
+    assert len(tuple(lower_bounds))==3
+    assert len(tuple(upper_bounds))==3
+    for i in xrange(3):
+      assert list(upper_bounds)[i] > list(lower_bounds)[i]
+
     assert isinstance(wrapping, bool)
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
     assert self._map_manager.map_data().accessor().origin()  ==  (0, 0, 0)
-    if model:
+    if model is not None:
       assert isinstance(model, mmtbx.model.manager)
       assert map_manager.is_compatible_model(model)
     if ncs_object:
@@ -90,21 +94,19 @@ class with_bounds(object):
         model = self.model(),
         ncs_object = self.ncs_object(),
         )
-    # Keep track of the gridding and solvent_content (if used) in this boxing.
+    # Keep track of the gridding in this boxing.
     mmm.set_gridding_first(self.gridding_first)
     mmm.set_gridding_last(self.gridding_last)
-    if hasattr(self, 'solvent_content') and self.solvent_content is not None:
-      mmm.set_solvent_content(self.solvent_content)
     return mmm
 
   def model(self):
-    return getattr(self, '_model', None)
+    return self._model
 
   def map_manager(self):
-    return getattr(self, '_map_manager', None)
+    return self._map_manager
 
   def ncs_object(self):
-    return getattr(self, '_ncs_object', None)
+    return self._ncs_object
 
   def set_shifts_and_crystal_symmetry(self):
     '''
@@ -174,9 +176,9 @@ class with_bounds(object):
     assert ma1.focus()   ==  ma2.focus()
     map_data = map_manager.map_data()
     # Check if map is all valid
-    bounds_info = get_bounds_of_valid_region(map_data = map_data,
-      gridding_first = self.gridding_first,
-      gridding_last = self.gridding_last)
+    bounds_info = get_bounds_of_valid_region(map_data,
+      self.gridding_first,
+      self.gridding_last)
     if self.wrapping or bounds_info.inside_allowed_bounds:
       # Just copy everything
       map_box = maptbx.copy(map_data, self.gridding_first, self.gridding_last)
@@ -187,8 +189,7 @@ class with_bounds(object):
       map_box = map_box * 0.
 
     else: # Need to copy and then zero outside of defined region
-      map_box = copy_and_zero_map_outside_bounds(map_data = map_data,
-         bounds_info = bounds_info)
+      map_box = copy_and_zero_map_outside_bounds(map_data, bounds_info)
     #  Now reshape map_box to put origin at (0, 0, 0)
     map_box.reshape(flex.grid(self.box_all))
 
@@ -349,10 +350,10 @@ class around_model(with_bounds):
 class extract_unique(with_bounds):
 
   '''
-  Identify unique part of density in a map (using ncs object) and create a
-  new map_manager containing this box of density, masked around regions
-  containing density.  Note: the map may be masked between nearby
-  density regions so this map could have many discontinuities.
+  Identify unique part of density in a map (using ncs object if present) 
+  and create a new map_manager containing this box of density, masked 
+  around regions containing density.  Note: the map may be masked between 
+  nearby density regions so this map could have many discontinuities.
 
   Creates new map_manager and modifies model and ncs_objects in place
 
@@ -379,7 +380,7 @@ class extract_unique(with_bounds):
   '''
 
   def __init__(self, map_manager,
-    wrapping = None,
+    wrapping,  # Must be defined True or False
     ncs_object = None,
     model = None,
     target_ncs_au_model = None,
@@ -394,13 +395,15 @@ class extract_unique(with_bounds):
     box_buffer = 5,
     soft_mask_extract_unique = True,
     mask_expand_ratio = 1,
-    log = sys.stdout
-    ):
+    log = None):
 
     self.wrapping = wrapping
     self._map_manager = map_manager
     self._model = model
     self._ncs_object = ncs_object
+
+    if log is None:
+      log = null_out() # Print only if a log is supplied
 
     assert isinstance(wrapping, bool)
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
@@ -408,7 +411,7 @@ class extract_unique(with_bounds):
     assert resolution
     if ncs_object:
       assert isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
-    if model:
+    if model is not None:
       assert isinstance(model, mmtbx.model.manager)
       assert map_manager.is_compatible_model(model)
     if wrapping:  # map must be entire unit cell
@@ -458,6 +461,7 @@ class extract_unique(with_bounds):
     lower_bounds = ncs_au_map_data.origin()
     upper_bounds = tuple(
       col(ncs_au_map_data.focus())-col((1, 1, 1)))
+
     print("\nBounds for unique part of map: %s to %s " %(
      str(lower_bounds), str(upper_bounds)), file = log)
 
@@ -506,7 +510,7 @@ class around_mask(with_bounds):
 
   """
   def __init__(self, map_manager, wrapping,
-     mask_as_map_manager = None,
+     mask_as_map_manager,
      model = None,
      ncs_object = None,
      box_cushion = 3,
@@ -760,9 +764,10 @@ def get_range(value_list, threshold = None, ignore_ends = True,
     return i_low/n_tot, i_high/n_tot
 
 
-def get_bounds_of_valid_region(map_data = None,
-    gridding_first = None,
-    gridding_last = None):
+def get_bounds_of_valid_region(map_data,
+    gridding_first,
+    gridding_last):
+
   '''
     If map_data is sampled from gridding_first to gridding_last with
     maptbx.copy, (1) does the sampling go outside of map_data?
@@ -813,7 +818,7 @@ def get_bounds_of_valid_region(map_data = None,
      inside_allowed_bounds = inside_allowed_bounds,
      some_valid_points = some_valid_points)
 
-def copy_and_zero_map_outside_bounds(map_data = None, bounds_info = None):
+def copy_and_zero_map_outside_bounds(map_data, bounds_info):
   '''
      Copy part of a map and zero outside valid region
 

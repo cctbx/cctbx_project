@@ -212,25 +212,35 @@ class map_manager(map_reader, write_ccp4_map):
         and other attributes (see class utils in ccp4_map/__init__py)
     '''
 
+    assert (file_name is not None) or [map_data,unit_cell_grid,
+        unit_cell_crystal_symmetry].count(None)==0
+
     # Initialize log filestream
     self.set_log(log)
+
+
+    # NOTE: If you add anything here to be initialized, add it to the 
+    #  customized_copy method
+
+    # Initialize mask to be not present
+    self._created_mask = None
+
+    # Initialize program_name, limitations, labels
+    self.file_name = file_name # Name of input file (source of this manager)
+    self.program_name = None  # Name of program using this manager
+    self.limitations = None  # Limitations from STANDARD_LIMITATIONS_DICT
+    self.labels = None  # List of labels (usually from input file) to be written
+
+
 
     # Initialize origin shift representing position of original origin in
     #  grid units.  If map is shifted, this is updated to reflect where
     #  to place current origin to superimpose map on original map.
 
-    self._created_mask = None
-
-    # Initialize program_name, limitations, labels
-    self.input_file_name = None  # Name of input file (source of this manager)
-    self.program_name = None  # Name of program using this manager
-    self.limitations = None  # List of limitations from STANDARD_LIMITATIONS_DICT
-    self.labels = None  # List of labels (usually from input file) to be written
-
     # Usual initialization with a file
 
     if file_name is not None:
-      self._read_map(file_name = file_name)
+      self._read_map()
       # Sets self.unit_cell_grid, self._unit_cell_crystal_symmetry, self.data,
       #  self._crystal_symmetry.  Sets also self.external_origin
 
@@ -276,19 +286,17 @@ class map_manager(map_reader, write_ccp4_map):
     else:
       self.log = log
 
-  def _read_map(self, file_name = None):
+  def _read_map(self):
       '''
        Read map using mrcfile/__init__.py
        Sets self.unit_cell_grid, self._unit_cell_crystal_symmetry, self.data
            self._crystal_symmetry
        Does not set self.origin_shift_grid_units
-       Does set self.input_file_name
+       Does set self.file_name
       '''
+      self._print("Reading map from %s " %(self.file_name))
 
-      self._print("Reading map from %s " %(file_name))
-
-      self.read_map_file(file_name = file_name)  # in mrcfile/__init__.py
-      self.input_file_name = file_name
+      self.read_map_file(file_name = self.file_name)  # in mrcfile/__init__.py
 
   def _print(self, m):
     if (self.log is not None) and hasattr(self.log, 'closed') and (
@@ -436,12 +444,12 @@ class map_manager(map_reader, write_ccp4_map):
     new_current_origin = self.map_data().origin()
     assert new_current_origin == shift_info.desired_origin
 
-    assert add_tuples(shift_info.current_origin, shift_info.shift_to_apply
+    assert add_tuples_int(shift_info.current_origin, shift_info.shift_to_apply
         ) == shift_info.desired_origin
 
     # Original location of first element of map should agree with previous
 
-    assert shift_info.map_corner_original_location  ==  add_tuples(
+    assert shift_info.map_corner_original_location  ==  add_tuples_int(
        new_current_origin, self.origin_shift_grid_units)
 
   def get_shift_info(self, desired_origin = None):
@@ -457,18 +465,18 @@ class map_manager(map_reader, write_ccp4_map):
     current_origin = self.map_data().origin()
 
     # Original location of first element of map
-    map_corner_original_location = add_tuples(current_origin,
+    map_corner_original_location = add_tuples_int(current_origin,
          self.origin_shift_grid_units)
 
-    shift_to_apply = subtract_tuples(desired_origin, current_origin)
+    shift_to_apply = subtract_tuples_int(desired_origin, current_origin)
 
-    assert add_tuples(current_origin, shift_to_apply) == desired_origin
+    assert add_tuples_int(current_origin, shift_to_apply) == desired_origin
 
-    new_origin_shift_grid_units = subtract_tuples(
+    new_origin_shift_grid_units = subtract_tuples_int(
         self.origin_shift_grid_units, shift_to_apply)
 
-    current_end = add_tuples(current_origin, self.map_data().all())
-    new_end = add_tuples(desired_origin, self.map_data().all())
+    current_end = add_tuples_int(current_origin, self.map_data().all())
+    new_end = add_tuples_int(desired_origin, self.map_data().all())
 
     shift_info = group_args(
       map_corner_original_location = map_corner_original_location,
@@ -487,17 +495,17 @@ class map_manager(map_reader, write_ccp4_map):
      Shift origin by self.origin_shift_grid_units to place origin in its
      original location
     '''
-    original_origin = add_tuples(self.map_data().origin(),
+    original_origin = add_tuples_int(self.map_data().origin(),
                                self.origin_shift_grid_units)
 
     self.shift_origin(desired_origin = original_origin)
 
-  def set_input_file_name(self, input_file_name = None):
+  def set_file_name(self, file_name = None):
     '''
       Set input file name. Used in _read_map and in customized_copy
     '''
 
-    self.input_file_name = input_file_name
+    self.file_name = file_name
 
 
   def set_program_name(self, program_name = None):
@@ -565,7 +573,7 @@ class map_manager(map_reader, write_ccp4_map):
     from iotbx.mrcfile import create_output_labels
     labels = create_output_labels(
       program_name = self.program_name,
-      input_file_name = self.input_file_name,
+      input_file_name = self.file_name,
       input_labels = self.labels,
       limitations = self.limitations)
 
@@ -708,7 +716,23 @@ class map_manager(map_reader, write_ccp4_map):
        to -self.origin_shift_grid_units+self.unit_cell_grid-(1, 1, 1).  Then
       shift that map to place origin at (0, 0, 0)
 
+      If the map is full size already, return the map as is
+      If the map is bigger than full size stop as this is not suitable
+
     '''
+
+    # Check to see if this is full size or bigger
+    full_size_minus_working=subtract_tuples_int(self.unit_cell_grid,
+      self.map_data().all())
+
+    # Must not be bigger than full size already
+    assert flex.double(full_size_minus_working).min_max_mean().min >= 0
+
+    if full_size_minus_working == (0, 0, 0): # Exactly full size already. Done
+      assert self.origin_shift_grid_units == (0, 0, 0)
+      assert self.map_data().origin() == (0, 0, 0)
+      return self
+
 
     working_lower_bounds = self.origin_shift_grid_units
     working_upper_bounds = tuple([i+j-1 for i, j in zip(working_lower_bounds,
@@ -719,7 +743,7 @@ class map_manager(map_reader, write_ccp4_map):
       lower_bounds, self.origin_shift_grid_units)])
     new_upper_bounds = tuple([i+j for i, j in zip(
       upper_bounds, self.origin_shift_grid_units)])
-    print("\nCreating full-size map padding outside of current map with zero",
+    print("Creating full-size map padding outside of current map with zero",
       file = self.log)
     print("Bounds of current map: %s to %s" %(
      str(working_lower_bounds), str(working_upper_bounds)), file = self.log)
@@ -759,8 +783,8 @@ class map_manager(map_reader, write_ccp4_map):
       Return a customized deep_copy of this map_manager, replacing map_data with
       supplied map_data.
 
-      The map_data will be deep_copied before using it unless
-      use_deep_copy_for_map_data = False
+      The map_data and any _created_mask will be deep_copied before using 
+      them unless use_deep_copy_for_map_data = False
 
       Normally this customized_copy is applied with a map_manager
       that has already shifted the origin to (0, 0, 0) with shift_origin.
@@ -785,7 +809,7 @@ class map_manager(map_reader, write_ccp4_map):
          origins of current and new maps are the same
     '''
 
-    # Do not alter map_data unless use_deep_copy_for_map_data = False
+    # Make a deep_copy of map_data unless use_deep_copy_for_map_data = False
 
     if use_deep_copy_for_map_data:
       map_data = map_data.deep_copy()
@@ -808,12 +832,25 @@ class map_manager(map_reader, write_ccp4_map):
       assert map_data.all()  ==  self.map_data().all() # bounds must be same
       origin_shift_grid_units = deepcopy(self.origin_shift_grid_units)
 
+    #  Set items in the call to constructor
     mm = map_manager(
       map_data = map_data,
       unit_cell_grid = deepcopy(self.unit_cell_grid),
       unit_cell_crystal_symmetry = self.unit_cell_crystal_symmetry(),
       origin_shift_grid_units = origin_shift_grid_units,
+      log = self.log,
      )
+
+    #  Items not in the call to constructor but set there explicitly: 
+  
+    if self._created_mask:
+      if use_deep_copy_for_map_data: # make deep copy usually
+        mm._created_mask = deepcopy(self._created_mask)
+      else:
+        mm._created_mask = self._created_mask
+    else:
+      mm._created_mask = None
+ 
     if self.labels:
        for label in self.labels:
          mm.add_label(label)
@@ -822,8 +859,10 @@ class map_manager(map_reader, write_ccp4_map):
          mm.add_limitation(limitation)
     if self.program_name:
        mm.set_program_name(self.program_name)
-    if self.input_file_name:
-       mm.set_input_file_name(self.input_file_name)
+    if self.file_name:
+       mm.set_file_name(self.file_name)
+ 
+
     return mm
 
   def is_full_size(self):
@@ -1061,21 +1100,8 @@ class map_manager(map_reader, write_ccp4_map):
       crystal_symmetry = self.crystal_symmetry(),
       n_real           = n_real)
 
-def negate_tuple(t1):
-  new_list = []
-  for a in t1:
-    new_list.append(-a)
-  return tuple(new_list)
+def subtract_tuples_int(t1, t2):
+  return tuple(flex.int(t1)-flex.int(t2))
 
-
-def subtract_tuples(t1, t2):
-  new_list = []
-  for a, b in zip(t1, t2):
-    new_list.append(a-b)
-  return tuple(new_list)
-
-def add_tuples(t1, t2):
-  new_list = []
-  for a, b in zip(t1, t2):
-    new_list.append(a+b)
-  return tuple(new_list)
+def add_tuples_int(t1, t2):
+  return tuple(flex.int(t1)+flex.int(t2))

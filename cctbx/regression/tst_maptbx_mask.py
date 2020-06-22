@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
-from iotbx.map_model_manager import match_map_model_ncs
+from iotbx.map_model_manager import map_model_manager 
 from libtbx import group_args
 
 def get_random_structure_and_map(
@@ -10,7 +10,7 @@ def get_random_structure_and_map(
   ):
 
   if use_static_structure:
-    mmm = match_map_model_ncs()
+    mmm = map_model_manager()
     mmm.generate_map()
     return group_args(model = mmm.model(), mm = mmm.map_manager())
   import random
