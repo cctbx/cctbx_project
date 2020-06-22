@@ -474,6 +474,7 @@ class error_modifier_ev11(worker):
                                                             self.sb*self.sb*reflections['biased_mean'] +
                                                             self.sadd*self.sadd*reflections['biased_mean']**2)
 
+    del reflections['biased_mean']
 
     return reflections
 
