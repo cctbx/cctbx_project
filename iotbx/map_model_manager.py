@@ -165,7 +165,7 @@ class map_model_manager(map_model_base):
         assert len(map_manager_list) == len(map_manager_id_list)
       else:
         map_manager_id_list=[]
-        for i in xrange(1,len(map_manager_list)+1):
+        for i in range(1,len(map_manager_list)+1):
           map_manager_id_list.append("extra_map_manager_%s" %(i))
 
     else:
