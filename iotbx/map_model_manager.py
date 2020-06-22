@@ -44,7 +44,7 @@ class map_model_base(object):
       Return a group_args object specifying a map to be used in boxing and
       a list of any other maps present
     '''
-    all_map_manager_ids=self._map_dict.keys()
+    all_map_manager_ids=list(self._map_dict.keys())
     if not all_map_manager_ids:
       return group_args(target_map_manager_id=None,
          other_map_manager_ids=[])
