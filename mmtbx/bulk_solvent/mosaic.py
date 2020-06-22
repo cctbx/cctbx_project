@@ -165,7 +165,7 @@ class refinery(object):
     self.bin_selections = fmodel.f_obs().log_binning(
       n_reflections_in_lowest_resolution_bin = max(100,int(len(self.F)*100)))
     self._print(fmodel.r_factors(prefix="start: "))
-    for it in xrange(3):
+    for it in range(3):
       self._print("cycle: %2d"%it)
       self._print("  volumes: "+" ".join([str(fv[f]) for f in self.F[1:]]))
       f_obs   = self.f_obs.deep_copy()
@@ -423,7 +423,7 @@ def algorithm_2(i_obs, F, x, use_curvatures=True, macro_cycles=10):
   Unphased one-step search
   """
   calculator = tg(i_obs = i_obs, F=F, x = x, use_curvatures=use_curvatures)
-  for it in xrange(macro_cycles):
+  for it in range(macro_cycles):
     if(use_curvatures):
       m = minimizer(max_iterations=100, calculator=calculator)
     else:

@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+import io
 from libtbx.utils import to_str
 from libtbx import group_args
 import sys
@@ -179,7 +180,7 @@ class map_manager(map_reader, write_ccp4_map):
      unit_cell_grid = None,
      unit_cell_crystal_symmetry = None,
      origin_shift_grid_units = None, # OPTIONAL first point in map in full cell
-     log = sys.stdout,
+     log = None,
      ):
 
     '''
@@ -277,7 +278,20 @@ class map_manager(map_reader, write_ccp4_map):
     if self.labels is not None:
       self.labels = [to_str(label, codec = 'utf8') for label in self.labels]
 
-  def set_log(self, log = sys.stdout):
+  # prevent pickling error in Python 3 with self.log = sys.stdout
+  # unpickling is limited to restoring sys.stdout
+  def __getstate__(self):
+    pickle_dict = self.__dict__.copy()
+    if isinstance(self.log, io.TextIOWrapper):
+      pickle_dict['log'] = None
+    return pickle_dict
+
+  def __setstate__(self, pickle_dict):
+    self.__dict__ = pickle_dict
+    if self.log is None:
+      self.log = sys.stdout
+
+  def set_log(self, log = None):
     '''
        Set output log file
     '''
@@ -592,7 +606,7 @@ class map_manager(map_reader, write_ccp4_map):
     if map_data.origin()  ==  (0, 0, 0):  # Usual
       self._print("Writing map with origin at %s and size of %s to %s" %(
         str(origin_shift_grid_units), str(map_data.all()), file_name))
-      from cStringIO import StringIO
+      from six.moves import cStringIO as StringIO
       f=StringIO()
       write_ccp4_map(
         file_name   = file_name,

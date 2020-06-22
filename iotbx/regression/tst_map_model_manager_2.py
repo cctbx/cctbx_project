@@ -203,4 +203,7 @@ if __name__ == "__main__":
       module_name = "iotbx",
       path = "ccp4_map/tst_input.map")
     args = [file_name]
-  exercise(file_name = args[0])
+  if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
+    exercise(file_name = args[0])
+  else:
+    print('chem_data is not available, skipping')
