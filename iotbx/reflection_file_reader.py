@@ -91,7 +91,6 @@ def try_all_readers(file_name):
     except KeyboardInterrupt: raise
     except Exception: pass
     else: return ("cctbx.miller.array", content)
-    return (None, None)
   try: content = cns_reflection_reader.cns_reflection_file(
     open(file_name))
   except cns_reflection_reader.CNS_input_Error: pass
