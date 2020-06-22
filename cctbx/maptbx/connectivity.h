@@ -320,6 +320,9 @@ public:
           else {
             if (reg_on_map < i)
             {
+              // This branch is not tested and not clear if needed at all,
+              // i.e. if there are such cases.
+              CCTBX_ASSERT(false);
               if (mapped_with_self) {
                 int rl_value = cur_region_to_fill;
                 for (int j=0; j < n_regions; j++)
