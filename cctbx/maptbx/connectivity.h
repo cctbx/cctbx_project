@@ -289,10 +289,12 @@ public:
     af::shared<int> remap_list(n_regions);
     for (int i = 0; i < n_regions; i++) remap_list[i] = -1;
     remap_list[0] = 0;
-    int n_removed_regions = 0;
     int cur_region_to_fill = 0;
     for (int i = 1; i < n_regions; i++)
     {
+      // std::cout << "loop # " << i <<"\n";
+      // for (int j = 0; j < n_regions; j++) std::cout << remap_list[j] <<", ";
+      // std::cout << "\n";
       if (remap_list[i]<0) // not assigned yet
       {
         cur_region_to_fill += 1;
@@ -313,7 +315,6 @@ public:
           // safeguarding a little
           if (remap_list[reg_on_map] < 0 ) {
             mapped_with_self = true;
-            n_removed_regions += 1;
             remap_list[reg_on_map] = cur_region_to_fill;
           }
           else {
@@ -323,18 +324,15 @@ public:
                 int rl_value = cur_region_to_fill;
                 for (int j=0; j < n_regions; j++)
                   if (remap_list[j] == rl_value) {
-                    n_removed_regions += 1;
                     remap_list[j] = reg_on_map;
                   }
               }
               else {
-                n_removed_regions += 1;
                 remap_list[i] = reg_on_map;
               }
             }
             else if (reg_on_map > i)
             {
-              n_removed_regions += 1;
               mapped_with_self = true;
               remap_list[reg_on_map] = cur_region_to_fill;
             }
@@ -343,7 +341,6 @@ public:
       }
     }
     // Here we are done with remap_list, sanity check:
-    // std::cout << "n_removed_regions " << n_removed_regions << "\n";
     // std::cout << "remap_list\n";
     for (int i = 0; i < n_regions; i++)
     {
@@ -354,7 +351,11 @@ public:
     // std::cout << "Correcting other info\n";
     // Need to refill map_new, cut and adjust region_vols,
     // cut region_maximum_values, region_maximum_coors
-    int new_n_regions = n_regions - n_removed_regions;
+    int new_n_regions = -1;
+    for (int i = 0; i < n_regions; i++)
+      if (remap_list[i]> new_n_regions) {
+        new_n_regions = remap_list[i];}
+    new_n_regions += 1;
     region_vols.resize(new_n_regions);
     region_maximum_values.resize(0);
     region_maximum_coors.resize(0);
