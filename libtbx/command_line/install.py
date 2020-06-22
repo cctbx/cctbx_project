@@ -217,7 +217,7 @@ warehouse = {
     'http-zip': { 'url': 'https://github.com/dials/dials_scratch/archive/master.zip', 'trim': 1 },
   },
   'dlstbx': {
-    'git-auth': 'git@gitlab.diamond.ac.uk:scisoft/mx/dlstbx.git',
+    'git-auth': 'git@github.com:/DiamondLightSource/python-dlstbx.git',
   },
   'dxtbx': {
     'git-auth': 'git@github.com:cctbx/dxtbx',
