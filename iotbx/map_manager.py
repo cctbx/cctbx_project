@@ -940,7 +940,7 @@ class map_manager(map_reader, write_ccp4_map):
     #   map (shift of origin is opposite of shift applied)
     model.set_shift_cart(self.shift_cart())
 
-  def is_similar_ncs_object(self, ncs_object):
+  def is_similar_ncs_object(self, ncs_object, tol = 0.001):
     '''
       ncs_object is similar to this map_manager if shift_cart is
       the same as map
@@ -953,7 +953,7 @@ class map_manager(map_reader, write_ccp4_map):
     ncs_object_shift=flex.double(ncs_object.shift_cart())
     delta=map_shift-ncs_object_shift
     mmm=delta.min_max_mean()
-    if mmm.min<-0.001 or mmm.max > 0.001: # shifts do not match
+    if mmm.min < -tol or mmm.max > tol: # shifts do not match
       text="Shift of ncs object (%s) does not match shift of map (%s)" %(
          str(ncs_object_shift),str(map_shift))
       ok=False
@@ -1053,7 +1053,7 @@ class map_manager(map_reader, write_ccp4_map):
         model_shift=flex.double(model.shift_cart())
         delta=map_shift-model_shift
         mmm=delta.min_max_mean()
-        if mmm.min<-0.001 or mmm.max > 0.001: # shifts do not match
+        if mmm.min<-tol or mmm.max > tol: # shifts do not match
           ok=False
           text+=" However map shift "+\
               "(shift_cart=%s) does not match model shift (%s)" %(

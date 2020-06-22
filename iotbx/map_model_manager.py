@@ -87,9 +87,11 @@ class r_model(map_model_base):
       assert m.is_similar_model(model)
       assert m.is_similar(first_map)
 
-    # Make sure ncs_object has same shift as model if present
+    # Make sure model and ncs_object and map all have same shift_cart and
+    #  crystal_symmetry and
+    assert first_map.is_similar_model(model)
     if ncs_object:
-      assert ncs_object.shift_cart() == model.shift_cart()
+      assert first_map.is_similar_ncs_object(ncs_object)
 
     # All set
 
@@ -408,6 +410,9 @@ class map_model_manager(map_model_base):
 
   def crystal_symmetry(self): return self._crystal_symmetry
 
+  def map_dict(self):
+    return self._map_dict
+
   def xray_structure(self):
     if(self.model() is not None):
       return self.model().get_xray_structure()
@@ -615,7 +620,6 @@ class map_model_manager(map_model_base):
     return new_mmm
 
   def as_r_model(self):
-
     return r_model( model            = self.model(),
                ncs_object       = self.ncs_object(),
                map_dict         = self.map_dict())
@@ -731,7 +735,6 @@ class match_map_model_ncs(map_model_base):
     self._ncs_object = None
 
   def deep_copy(self):
-    from copy import deepcopy
     new_mmmn = match_map_model_ncs()
     if self._model:
       new_mmmn.add_model(self._model.deep_copy())
