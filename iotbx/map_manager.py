@@ -226,7 +226,7 @@ class map_manager(map_reader, write_ccp4_map):
     self._created_mask = None
 
     # Initialize program_name, limitations, labels
-    self.file_name = file_name # Name of input file (source of this manager)
+    self.input_file_name = file_name # input file (source of this manager)
     self.program_name = None  # Name of program using this manager
     self.limitations = None  # Limitations from STANDARD_LIMITATIONS_DICT
     self.labels = None  # List of labels (usually from input file) to be written
@@ -239,7 +239,7 @@ class map_manager(map_reader, write_ccp4_map):
 
     # Usual initialization with a file
 
-    if file_name is not None:
+    if self.input_file_name is not None:
       self._read_map()
       # Sets self.unit_cell_grid, self._unit_cell_crystal_symmetry, self.data,
       #  self._crystal_symmetry.  Sets also self.external_origin
@@ -292,11 +292,11 @@ class map_manager(map_reader, write_ccp4_map):
        Sets self.unit_cell_grid, self._unit_cell_crystal_symmetry, self.data
            self._crystal_symmetry
        Does not set self.origin_shift_grid_units
-       Does set self.file_name
+       Does set self.input_file_name
       '''
-      self._print("Reading map from %s " %(self.file_name))
+      self._print("Reading map from %s " %(self.input_file_name))
 
-      self.read_map_file(file_name = self.file_name)  # in mrcfile/__init__.py
+      self.read_map_file(file_name = self.input_file_name)  # mrcfile/__init__.py
 
   def _print(self, m):
     if (self.log is not None) and hasattr(self.log, 'closed') and (
@@ -330,9 +330,17 @@ class map_manager(map_reader, write_ccp4_map):
       original_origin = None,
       gridding = None):
     '''
-       Specify original origin of map that is present and
-       optionally redefine the  definition of the unit cell,
-       keeping the grid spacing the same.
+       Specify the location in the full unit cell grid where the origin of
+       the map that is present is to be placed to match its original position.
+       This is referred to here as the "original" origin, as opposed to the
+       current origin of this map.
+
+       Note that this method does not actually shift the origin of the working
+       map.  It just defines where that origin is going to be placed when
+       restoring the map to its original position.
+
+       Also optionally redefine the definition of the unit cell, keeping the
+       grid spacing the same.
 
        This allows redefining the location of the map that is present
        within the full unit cell.  It also allows redefining the
@@ -394,9 +402,7 @@ class map_manager(map_reader, write_ccp4_map):
          new_crystal_symmetry)
 
   def origin_is_zero(self):
-    if not self.map_data():
-      return None
-    elif self.map_data().origin() == (0, 0, 0):
+    if self.map_data().origin() == (0, 0, 0):
       return True
     else:
       return False
@@ -405,11 +411,12 @@ class map_manager(map_reader, write_ccp4_map):
     '''
     Shift the origin of the map to desired_origin
         (normally desired_origin = (0, 0, 0) and update origin_shift_grid_units
+
     Origin is the value of self.map_data().origin()
     origin_shift_grid_units is the shift to apply to self.map_data() to
       superimpose it on the original map.
 
-    If you shift the origin by (di, dj, dk) then add -(di, dj, dk) to
+    If you shift the origin by (i, j, k) then add -(i, j, k) to
       the current origin_shift_grid_units.
 
     If current origin is at (a, b, c) and
@@ -418,7 +425,8 @@ class map_manager(map_reader, write_ccp4_map):
 
     the shift to make is  (d, e, f) - (a, b, c)
 
-    the new value of origin_shift_grid_units will be (g, h, i)+(a, b, c)-(d, e, f)
+    the new value of origin_shift_grid_units will be:
+       (g, h, i)+(a, b, c)-(d, e, f)
        or new origin_shift_grid_units is: (g, h, i)- shift
 
     the new origin of map_data will be (d, e, f)
@@ -428,7 +436,7 @@ class map_manager(map_reader, write_ccp4_map):
     if(self.map_data() is None): return
 
     # Figure out what the shifts are (in grid units)
-    shift_info = self.get_shift_info(desired_origin = desired_origin)
+    shift_info = self._get_shift_info(desired_origin = desired_origin)
 
     # Update the value of origin_shift_grid_units
     #  This is position of the origin of the new map in the full unit cell grid
@@ -452,8 +460,14 @@ class map_manager(map_reader, write_ccp4_map):
     assert shift_info.map_corner_original_location  ==  add_tuples_int(
        new_current_origin, self.origin_shift_grid_units)
 
-  def get_shift_info(self, desired_origin = None):
+  def _get_shift_info(self, desired_origin = None):
+    '''
+      Utility to calculate the shift necessary (grid units)
+      map to place the origin of the current map
+      at the position defined by desired_origin.
+      See definitions in shift_origin method.
 
+    '''
     if(desired_origin is None):
       desired_origin = (0, 0, 0)
     desired_origin = tuple(desired_origin)
@@ -500,12 +514,12 @@ class map_manager(map_reader, write_ccp4_map):
 
     self.shift_origin(desired_origin = original_origin)
 
-  def set_file_name(self, file_name = None):
+  def set_input_file_name(self, file_name = None):
     '''
       Set input file name. Used in _read_map and in customized_copy
     '''
 
-    self.file_name = file_name
+    self.input_file_name = file_name
 
 
   def set_program_name(self, program_name = None):
@@ -522,7 +536,7 @@ class map_manager(map_reader, write_ccp4_map):
       Supply the key (such as "map_is_sharpened")
     '''
     from iotbx.mrcfile import STANDARD_LIMITATIONS_DICT
-    assert limitation in STANDARD_LIMITATIONS_DICT.keys()
+    assert limitation in list(STANDARD_LIMITATIONS_DICT.keys())
 
     if not self.limitations:
       self.limitations = []
@@ -544,10 +558,7 @@ class map_manager(map_reader, write_ccp4_map):
     if verbose:
       self._print("Label added: %s " %(label))
 
-  def write_map(self,
-     file_name = None, # Name of file to be written
-     verbose = None,
-     ):
+  def write_map(self, file_name):
 
     '''
       Simple version of write
@@ -562,18 +573,15 @@ class map_manager(map_reader, write_ccp4_map):
 
     '''
 
+    # Make sure we have map_data
+    assert self.map_data()
 
-    if not file_name:
-      raise Sorry("Need file_name for write_map")
-
-    if not self.map_data():
-      raise Sorry("Need map_data for write_map")
     map_data = self.map_data()
 
     from iotbx.mrcfile import create_output_labels
     labels = create_output_labels(
       program_name = self.program_name,
-      input_file_name = self.file_name,
+      input_file_name = self.input_file_name,
       input_labels = self.labels,
       limitations = self.limitations)
 
@@ -584,6 +592,8 @@ class map_manager(map_reader, write_ccp4_map):
     if map_data.origin()  ==  (0, 0, 0):  # Usual
       self._print("Writing map with origin at %s and size of %s to %s" %(
         str(origin_shift_grid_units), str(map_data.all()), file_name))
+      from cStringIO import StringIO
+      f=StringIO()
       write_ccp4_map(
         file_name   = file_name,
         crystal_symmetry = crystal_symmetry, # unit cell and space group
@@ -591,7 +601,8 @@ class map_manager(map_reader, write_ccp4_map):
         unit_cell_grid = unit_cell_grid,  # optional gridding of full unit cell
         origin_shift_grid_units = origin_shift_grid_units, # optional origin shift
         labels      = labels,
-        verbose = verbose)
+        out = f)
+      self._print(f.getvalue())
     else: # map_data has not been shifted to (0, 0, 0).  Shift it and then write
           # and then shift back
       self._print("Writing map after shifting origin")
@@ -610,7 +621,7 @@ class map_manager(map_reader, write_ccp4_map):
       self.shift_origin(desired_origin = current_origin)
 
   def create_mask_around_density(self,
-      resolution = None,
+      resolution,
       molecular_mass = None,
       sequence = None,
       solvent_content = None):
@@ -649,8 +660,7 @@ class map_manager(map_reader, write_ccp4_map):
     self._created_mask = cm(map_manager = self,
       soft_mask_radius = soft_mask_radius)
 
-  def create_mask_around_atoms(self, model = None,
-      mask_atoms_atom_radius = None):
+  def create_mask_around_atoms(self, model, mask_atoms_atom_radius):
     '''
       Use cctbx.maptbx.mask.create_mask_around_atoms to create a mask around
       atoms in model
@@ -792,8 +802,8 @@ class map_manager(map_reader, write_ccp4_map):
       Normally the new map_data will have the same dimensions of the current
       map_data. Normally new map_data will also have origin at (0, 0, 0).
 
-      NOTE: It is permissible for map_data to have different bounds than
-      the current self.map_data.  In this case you must specify a new
+      NOTE: It is permissible for map_data to have different bounds or origin
+      than the current self.map_data.  In this case you must specify a new
       value of origin_shift_grid_units corresponding to this new map_data.
       This new origin_shift_grid_units specifies the original position in the
       full unit cell grid of the most-negative corner grid point of the
@@ -859,8 +869,8 @@ class map_manager(map_reader, write_ccp4_map):
          mm.add_limitation(limitation)
     if self.program_name:
        mm.set_program_name(self.program_name)
-    if self.file_name:
-       mm.set_file_name(self.file_name)
+    if self.input_file_name:
+       mm.set_input_file_name(self.input_file_name)
 
 
     return mm
@@ -1060,9 +1070,14 @@ class map_manager(map_reader, write_ccp4_map):
        Convert a map to Fourier coefficients to a resolution of high_resolution,
        if high_resolution is provided, otherwise box full of map coefficients
        will be created.
+
        NOTE: Fourier coefficients are relative the working origin (not
        original origin).  A map calculated from the Fourier coefficients will
        superimpose on the working (current map) without origin shifts.
+
+       This method and fourier_coefficients_as_map interconvert map_data and
+       map_coefficients without changin origin.  Both are intended for use
+       with map_data that has an origin at (0, 0, 0).
     '''
     assert self.map_data()
     assert self.map_data().origin() == (0, 0, 0)
@@ -1084,6 +1099,10 @@ class map_manager(map_reader, write_ccp4_map):
 
        Requires that this map_manager has origin at (0, 0, 0) (i.e.,
        shift_origin() has been applied if necessary)
+
+       NOTE: Assumes that the map_coeffs are in the same frame of reference
+       as this map_manager (i.e., similar to those that would be written out
+       using map_as_fourier_coefficients).
     '''
     assert map_coeffs
     assert isinstance(map_coeffs.data(), flex.complex_double)

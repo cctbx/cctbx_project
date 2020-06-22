@@ -50,7 +50,7 @@ class map_model_base(object):
          other_map_manager_ids=[])
     all_map_manager_ids.sort()
     target_map_manager_id='map'
-    if not target_map_manager_id in self._map_dict.keys(): # find another
+    if not target_map_manager_id in list(self._map_dict.keys()): # find another
       target_map_manager_id=all_map_manager_ids[0]
     other_map_manager_ids=[]
     for id in all_map_manager_ids:
@@ -78,7 +78,7 @@ class r_model(map_model_base):
     assert map_dict
 
     # Make sure first map is already shifted to (0, 0, 0)
-    first_map=map_dict[map_dict.keys()[0]]
+    first_map=map_dict[list(map_dict.keys())[0]]
     assert first_map.origin_is_zero()
 
     for id in map_dict.keys():
@@ -371,7 +371,7 @@ class map_model_manager(map_model_base):
       Return list of all map_manager objects. Includes
       map_manager, map_manager_1, map_manager_2, map_manager_list
     '''
-    all_map_manager_ids = self._map_dict.keys()
+    all_map_manager_ids = list(self._map_dict.keys())
     all_map_manager_ids.sort()
     all_map_managers_list = []
     for id in all_map_manager_ids:
@@ -914,7 +914,7 @@ class match_map_model_ncs(map_model_base):
     if self._ncs_object or self._model:
 
       # Figure out shift for model and make sure model and map agree
-      shift_info = self._map_manager.get_shift_info(
+      shift_info = self._map_manager._get_shift_info(
          desired_origin = desired_origin)
 
       current_shift_cart = self._map_manager.grid_units_to_cart(

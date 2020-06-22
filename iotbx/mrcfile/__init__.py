@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex as flex# import dependency
-import os,time
+import os,time,sys
 from libtbx.utils import Sorry
 
 import mrcfile
@@ -62,7 +62,8 @@ class map_reader:
      ignore_missing_machine_stamp=True,
      print_warning_messages=False,
      ignore_all_errors=False,
-     verbose=None):
+     verbose=None,
+     out=sys.stdout):
 
      self.read_map_file(file_name=file_name,
        internal_standard_order=internal_standard_order,
@@ -70,7 +71,8 @@ class map_reader:
        ignore_missing_machine_stamp=ignore_missing_machine_stamp,
        print_warning_messages=print_warning_messages,
        ignore_all_errors=ignore_all_errors,
-       verbose=verbose)
+       verbose=verbose,
+       out=out)
 
   def read_map_file(self, file_name=None,
      internal_standard_order=INTERNAL_STANDARD_ORDER,
@@ -78,7 +80,8 @@ class map_reader:
      ignore_missing_machine_stamp=True,
      print_warning_messages=False,
      ignore_all_errors=False,
-     verbose=None):
+     verbose=None,
+     out=sys.stdout):
 
     # Check for file
 
@@ -96,7 +99,7 @@ class map_reader:
          text="\n  NOTE: WARNING message for the file '%s':\n  '%s'\n " %(
             file_name,war.message)
          if print_warning_messages:
-           print(text)
+           print(text, file=out)
 
          if ignore_all_errors:
            pass
@@ -170,7 +173,7 @@ class map_reader:
     self._crystal_symmetry=None # Set this below after reading data
 
     if verbose:
-      mrc.print_header()
+      mrc.print_header(print_file=out)
 
     if header_only:
       return
@@ -297,10 +300,7 @@ class map_reader:
   def get_limitation(self,label):
     return STANDARD_LIMITATIONS_DICT.get(label,None)
 
-  def show_summary(self, out=None, prefix=""):
-    if (out is None) :
-      import sys
-      out = sys.stdout
+  def show_summary(self, out=sys.stdout, prefix=""):
     data=self.map_data()
 
     if hasattr(self,'header_min'):
@@ -505,6 +505,7 @@ class write_ccp4_map:
       output_axis_order=INTERNAL_STANDARD_ORDER,
       internal_standard_order=INTERNAL_STANDARD_ORDER,
       verbose=None,
+      out=sys.stdout,
       ):
 
 
