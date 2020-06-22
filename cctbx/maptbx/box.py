@@ -55,7 +55,7 @@ class with_bounds(object):
     assert upper_bounds is not None
     assert len(tuple(lower_bounds))==3
     assert len(tuple(upper_bounds))==3
-    for i in xrange(3):
+    for i in range(3):
       assert list(upper_bounds)[i] > list(lower_bounds)[i]
 
     assert isinstance(wrapping, bool)
@@ -350,9 +350,9 @@ class around_model(with_bounds):
 class extract_unique(with_bounds):
 
   '''
-  Identify unique part of density in a map (using ncs object if present) 
-  and create a new map_manager containing this box of density, masked 
-  around regions containing density.  Note: the map may be masked between 
+  Identify unique part of density in a map (using ncs object if present)
+  and create a new map_manager containing this box of density, masked
+  around regions containing density.  Note: the map may be masked between
   nearby density regions so this map could have many discontinuities.
 
   Creates new map_manager and modifies model and ncs_objects in place

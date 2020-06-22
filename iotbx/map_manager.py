@@ -219,7 +219,7 @@ class map_manager(map_reader, write_ccp4_map):
     self.set_log(log)
 
 
-    # NOTE: If you add anything here to be initialized, add it to the 
+    # NOTE: If you add anything here to be initialized, add it to the
     #  customized_copy method
 
     # Initialize mask to be not present
@@ -783,7 +783,7 @@ class map_manager(map_reader, write_ccp4_map):
       Return a customized deep_copy of this map_manager, replacing map_data with
       supplied map_data.
 
-      The map_data and any _created_mask will be deep_copied before using 
+      The map_data and any _created_mask will be deep_copied before using
       them unless use_deep_copy_for_map_data = False
 
       Normally this customized_copy is applied with a map_manager
@@ -841,8 +841,8 @@ class map_manager(map_reader, write_ccp4_map):
       log = self.log,
      )
 
-    #  Items not in the call to constructor but set there explicitly: 
-  
+    #  Items not in the call to constructor but set there explicitly:
+
     if self._created_mask:
       if use_deep_copy_for_map_data: # make deep copy usually
         mm._created_mask = deepcopy(self._created_mask)
@@ -850,7 +850,7 @@ class map_manager(map_reader, write_ccp4_map):
         mm._created_mask = self._created_mask
     else:
       mm._created_mask = None
- 
+
     if self.labels:
        for label in self.labels:
          mm.add_label(label)
@@ -861,7 +861,7 @@ class map_manager(map_reader, write_ccp4_map):
        mm.set_program_name(self.program_name)
     if self.file_name:
        mm.set_file_name(self.file_name)
- 
+
 
     return mm
 
