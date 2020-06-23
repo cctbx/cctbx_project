@@ -114,6 +114,7 @@ def generate_residue_tuples(hierarchy,
                             include_non_linked=False,
                             backbone_only=True,
                             include_non_standard_residues=False,
+                            allow_poly_ca=False,
                             # CDL specific
                             cdl_class=False,
                             omega_cdl=False,
@@ -147,7 +148,7 @@ def generate_residue_tuples(hierarchy,
     backbone_sel = backbone_asc.selection(retain_selection)
     backbone_hierarchy = hierarchy.select(backbone_sel)
   get_class = iotbx.pdb.common_residue_names_get_class
-  threes = LinkedResidues(geometry, registry=registry, length=length)
+  threes = LinkedResidues(geometry, registry=registry, length=length, allow_poly_ca=allow_poly_ca)
   loop_hierarchy=hierarchy
   if backbone_only: loop_hierarchy=backbone_hierarchy
   for model in loop_hierarchy.models():
@@ -188,6 +189,7 @@ def generate_residue_tuples(hierarchy,
             tmp = LinkedResidues(geometry,
                                  registry=registry,
                                  length=length,
+                                 allow_poly_ca=allow_poly_ca,
                                  include_non_linked=include_non_linked,
                                  )
             for pr in threes: tmp.append(pr)
@@ -218,6 +220,7 @@ def generate_protein_tuples(hierarchy,
                             include_non_linked=False,
                             backbone_only=True,
                             include_non_standard_peptides=False,
+                            allow_poly_ca=False,
                             include_linked_via_restraints_manager=False,
                             # CDL specific
                             cdl_class=False,
@@ -232,6 +235,7 @@ def generate_protein_tuples(hierarchy,
                                       include_non_linked=include_non_linked,
                                       backbone_only=backbone_only,
                                       include_non_standard_residues=include_non_standard_peptides,
+                                      allow_poly_ca=allow_poly_ca,
                                       #include_linked_via_restraints_manager=include_linked_via_restraints_manager,
                                       # CDL specific
                                       cdl_class=cdl_class,
@@ -249,6 +253,7 @@ def generate_protein_threes(hierarchy,
                             backbone_only=True,
                             include_non_standard_peptides=False,
                             include_linked_via_restraints_manager=False,
+                            allow_poly_ca=False,
                             # CDL specific
                             cdl_class=False,
                             omega_cdl=False,
@@ -261,6 +266,7 @@ def generate_protein_threes(hierarchy,
     include_non_linked=include_non_linked,
     backbone_only=backbone_only,
     include_non_standard_peptides=include_non_standard_peptides,
+    allow_poly_ca=allow_poly_ca,
     # include_linked_via_restraints_manager=include_linked_via_restraints_manager,
     cdl_class=cdl_class,
     omega_cdl=omega_cdl,
@@ -275,6 +281,7 @@ def generate_protein_fragments(hierarchy,
                                include_non_linked=False,
                                backbone_only=True,
                                include_non_standard_peptides=False,
+                               allow_poly_ca = False,
                                # include_non_protein_linked=False, # NH2 1KYC
                                # include_linked_via_restraints_manager=False,
                                verbose=False,
@@ -286,6 +293,7 @@ def generate_protein_fragments(hierarchy,
     include_non_linked=include_non_linked,
     backbone_only=backbone_only,
     include_non_standard_residues=include_non_standard_peptides,
+    allow_poly_ca=allow_poly_ca,
     # include_non_protein_linked=include_non_protein_linked,
     # include_linked_via_restraints_manager=include_linked_via_restraints_manager,
     verbose=verbose,

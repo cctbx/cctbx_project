@@ -33,12 +33,14 @@ class ProteinResidues(LinkedResidues):
   def __init__(self,
                geometry,
                length=3, # CDL & other psi/phi apps
+               allow_poly_ca=False,
                registry=None,
                include_non_linked=False,
               ):
     LinkedResidues.__init__(self,
                             geometry,
                             length=length,
+                            allow_poly_ca=allow_poly_ca,
                             registry=registry,
                             include_non_linked=include_non_linked,
                             )
@@ -110,10 +112,10 @@ class ProteinResidues(LinkedResidues):
     Need to add poly-Calpha chains
       CA-CA 4.5 is use in CaBLAM, maybe shorter
     '''
-    if allow_poly_ca:
-      assert 0
+    allow_poly_ca = allow_poly_ca or self.allow_poly_ca
     d2 = None
     bond_cut_off *= bond_cut_off
+    poly_ca_cut_off *= poly_ca_cut_off
     for i, residue in enumerate(self):
       if i==0: continue
       ccn1, outl1 = get_c_ca_n(residue, return_subset=True)
@@ -132,7 +134,20 @@ class ProteinResidues(LinkedResidues):
         break
       n = ccn1[2]
       c = ccn2[0]
-      if n is None or c is None: return False
+      if n is None or c is None:
+        if not allow_poly_ca: return False
+        #poly ca "bonding" is checked only if peptide bond is missing
+        #  and if poly ca chains are allowed
+        ca1 = ccn1[1]
+        ca2 = ccn2[1]
+        if ca1 is None or ca2 is None: return False
+        d2 = distance2(ca1,ca2)
+        if d2<poly_ca_cut_off:
+          bond=True
+          continue
+        else:
+          bond=False
+          break
       if self.bond_params_table is None:
         d2 = distance2(n,c)
         if d2<bond_cut_off: bond=True
