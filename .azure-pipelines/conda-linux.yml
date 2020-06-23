@@ -6,6 +6,8 @@
 #   distribution: centos, ubuntu
 #   version: [6, 10]
 #   modules: <modules artifact name>
+#   template: <build template file>
+#   prefix: <build artifact prefix>
 
 jobs:
 - job: ${{ format('{0}_{1}', parameters.distribution, join('_', parameters.version) ) }}
@@ -41,7 +43,7 @@ jobs:
     options: "--name ci-container -v /usr/bin/docker:/tmp/docker:ro"
 
   variables:
-    artifact_name: ${{ parameters.distribution }}_${{ join('.', parameters.version) }}_$(PYTHON_VERSION)
+    artifact_name: ${{ parameters.prefix }}${{ parameters.distribution }}_${{ join('.', parameters.version) }}_$(PYTHON_VERSION)
     day: Sunday
 
   steps:
@@ -65,7 +67,7 @@ jobs:
 
   - script: |
       sudo yum groupinstall -y 'Development Tools'
-      sudo yum install -y mesa-libGLU-devel mesa-libGL-devel
+      sudo yum install -y mesa-libGLU-devel mesa-libGL-devel tcsh
     displayName: Install dependencies for CentOS
     condition: eq('${{ parameters.distribution }}', 'centos')
 
@@ -110,6 +112,7 @@ jobs:
       project: '$(resources.pipeline.build_cache.projectID)'
       pipeline: '$(resources.pipeline.build_cache.pipelineID)'
       allowPartiallySucceededBuilds: true
+      allowFailedBuilds: true
       artifact: '$(artifact_name)'
       path: $(Pipeline.Workspace)
     displayName: Download cached build
@@ -118,6 +121,7 @@ jobs:
              ne(variables['day'], 'Sunday')),
          eq(variables['Build.DefinitionName'], 'CI'),
          eq(variables['Build.DefinitionName'], 'CI branch'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI'),
          eq(variables['Build.DefinitionName'], 'Full'))
     continueOnError: true
 
@@ -130,12 +134,13 @@ jobs:
              ne(variables['day'], 'Sunday')),
          eq(variables['Build.DefinitionName'], 'CI'),
          eq(variables['Build.DefinitionName'], 'CI branch'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI'),
          eq(variables['Build.DefinitionName'], 'Full'))
     continueOnError: true
     failOnStderr: false
 
   # build
-  - template: ./unix-conda-build.yml
+  - template: ${{ parameters.template }}
     parameters:
       distribution: ${{ parameters.distribution }}
       version: ${{ parameters.version }}

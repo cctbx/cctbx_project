@@ -14,7 +14,7 @@ steps:
   displayName: Download modules tarball
   inputs:
     source: 'current'
-    artifact: modules
+    artifact: xfel_modules
     path: $(Pipeline.Workspace)
 
 - script: |
@@ -29,13 +29,13 @@ steps:
 
 # install miniconda
 - task: DownloadPipelineArtifact@2
-  displayName: Download miniconda
   inputs:
     source: 'specific'
-    project: '$(System.TeamProjectId)'
-    pipeline: 4
+    project: '$(resources.pipeline.data_cache.projectID)'
+    pipeline: '$(resources.pipeline.data_cache.pipelineID)'
     artifact: 'miniconda'
     path: $(Pipeline.Workspace)/miniconda
+  displayName: Download miniconda
 
 - script: |
     set -x -e

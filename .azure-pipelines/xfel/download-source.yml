@@ -2,7 +2,7 @@
 # The artifact name is "modules"
 
 jobs:
-- job: modules
+- job: xfel_modules
   pool:
     vmImage: ubuntu-latest
   timeoutInMinutes: 90
@@ -33,8 +33,8 @@ jobs:
   - task: DownloadPipelineArtifact@2
     inputs:
       source: 'specific'
-      project: '$(System.TeamProjectId)'
-      pipeline: 4
+      project: '$(resources.pipeline.data_cache.projectID)'
+      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
       artifact: 'xfel_regression'
       path: $(Pipeline.Workspace)/modules/xfel_regression
     displayName: Download xfel_regression
@@ -47,4 +47,4 @@ jobs:
 
   # publish artifact
   - publish: $(Pipeline.Workspace)/modules.tar
-    artifact: modules
+    artifact: xfel_modules

@@ -7,6 +7,8 @@
 #   vmImage: [10, 14]  # macOs version
 #   xcode_version: [11, 3, 1]  # xCode version
 #   modules: <modules artifact name>
+#   template: <build template file>
+#   prefix: <build artifact prefix>
 
 jobs:
 - job: ${{ format('{0}_{1}', format('macOS_{0}', join('_', parameters.vmImage)), format('xcode_{0}', join('_', parameters.xcode_version)) ) }}
@@ -38,7 +40,7 @@ jobs:
         MODULES: ${{ parameters.modules }}
 
   variables:
-    artifact_name: ${{ format('xcode_{0}', join('_', parameters.xcode_version))  }}_$(PYTHON_VERSION)
+    artifact_name: ${{ parameters.prefix }}${{ format('xcode_{0}', join('_', parameters.xcode_version))  }}_$(PYTHON_VERSION)
     day: $(Get-Date -Format dddd)
 
   steps:
@@ -72,6 +74,7 @@ jobs:
       project: '$(resources.pipeline.build_cache.projectID)'
       pipeline: '$(resources.pipeline.build_cache.pipelineID)'
       allowPartiallySucceededBuilds: true
+      allowFailedBuilds: true
       artifact: '$(artifact_name)'
       path: $(Pipeline.Workspace)
     displayName: Download cached build
@@ -80,6 +83,7 @@ jobs:
              ne(variables['day'], 'Sunday')),
          eq(variables['Build.DefinitionName'], 'CI'),
          eq(variables['Build.DefinitionName'], 'CI branch'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI'),
          eq(variables['Build.DefinitionName'], 'Full'))
     continueOnError: true
 
@@ -92,12 +96,13 @@ jobs:
              ne(variables['day'], 'Sunday')),
          eq(variables['Build.DefinitionName'], 'CI'),
          eq(variables['Build.DefinitionName'], 'CI branch'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI'),
          eq(variables['Build.DefinitionName'], 'Full'))
     continueOnError: true
     failOnStderr: false
 
   # build
-  - template: ./unix-conda-build.yml
+  - template: ${{ parameters.template }}
 
   # preserve permissions
   - script: |
