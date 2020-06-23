@@ -18,14 +18,14 @@ class MSI : public std::iterator<
   std::input_iterator_tag,
   std::pair<
     typename Tree::length_type,
-    std::pair< typename Tree::const_edge_ptr_type, typename Tree::index_type >
-    >
+    std::pair< typename Tree::edge_ptr_type, typename Tree::index_type >
+    > const
   >
 {
 public:
   typedef Tree tree_type;
   typedef typename tree_type::length_type length_type;
-  typedef typename tree_type::const_edge_ptr_type edge_ptr_type;
+  typedef typename tree_type::edge_ptr_type edge_ptr_type;
   typedef typename tree_type::index_type index_type;
   typedef typename tree_type::word_type word_type;
   typedef typename tree_type::glyph_type glyph_type;
@@ -33,8 +33,8 @@ public:
 
   typedef std::pair< edge_ptr_type, index_type > position_type;
   typedef std::pair< length_type, position_type > value_type;
-  typedef value_type* pointer_type;
-  typedef value_type& reference_type;
+  typedef value_type const* pointer_type;
+  typedef value_type const& reference_type;
 
   typedef InputIterator text_iterator_type;
 
@@ -57,8 +57,8 @@ public:
     );
   ~MSI();
 
-  reference_type operator *();
-  pointer_type operator ->();
+  reference_type operator *() const;
+  pointer_type operator ->() const;
 
   iterator& operator ++();
   iterator operator ++(int);
@@ -128,14 +128,14 @@ MSI< Tree, InputIterator >::operator ++(int)
 
 template< typename Tree, typename InputIterator >
 typename MSI< Tree, InputIterator >::reference_type
-MSI< Tree, InputIterator >::operator *()
+MSI< Tree, InputIterator >::operator *() const
 {
   return result_;
 }
 
 template< typename Tree, typename InputIterator >
 typename MSI< Tree, InputIterator >::pointer_type
-MSI< Tree, InputIterator >::operator ->()
+MSI< Tree, InputIterator >::operator ->() const
 {
   return &result_;
 }

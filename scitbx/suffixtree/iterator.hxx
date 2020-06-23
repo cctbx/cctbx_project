@@ -54,15 +54,15 @@ PreOrder< Edge >::operator ++(int)
 
 
 template< typename Edge >
-typename PreOrder< Edge >::reference_type
-PreOrder< Edge >::operator *()
+typename PreOrder< Edge >::reference
+PreOrder< Edge >::operator *() const
 {
   return at_top_ ? root_ : pos_->second;
 }
 
 template< typename Edge >
-typename PreOrder< Edge >::pointer_type
-PreOrder< Edge >::operator ->()
+typename PreOrder< Edge >::pointer
+PreOrder< Edge >::operator ->() const
 {
   return at_top_ ? &root_ : &( pos_->second );
 }
@@ -145,7 +145,7 @@ PostOrder< Edge >::operator ++()
   }
   else
   {
-    const underlying_iterator& parent = underlying_iterators_deque_.back();
+    const underlying_const_iterator& parent = underlying_iterators_deque_.back();
 
     if ( pos_ != ( parent->second )->end() )
     {
@@ -172,15 +172,15 @@ PostOrder< Edge >::operator ++(int)
 
 
 template< typename Edge >
-typename PostOrder< Edge >::reference_type
-PostOrder< Edge >::operator *()
+typename PostOrder< Edge >::reference
+PostOrder< Edge >::operator *() const
 {
   return at_top_ ? root_ : pos_->second;
 }
 
 template< typename Edge >
-typename PostOrder< Edge >::pointer_type
-PostOrder< Edge >::operator ->()
+typename PostOrder< Edge >::pointer
+PostOrder< Edge >::operator ->() const
 {
   return at_top_ ? &root_ : &( pos_->second );
 }

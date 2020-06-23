@@ -7,14 +7,16 @@
 #include <boost/python/list.hpp>
 #include <boost/python/errors.hpp>
 #include <boost/python/def.hpp>
-#include <boost/python/iterator.hpp>
 
+#include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/functional.hpp>
 
-#include <scitbx/boost_python/iterator_range.hpp>
+#include <scitbx/suffixtree/boost_python/iterator_wrapper.hpp>
 #include <scitbx/suffixtree/edge.hpp>
 #include <scitbx/suffixtree/iterator.hpp>
+
+#include <iostream>
 
 namespace scitbx
 {
@@ -34,9 +36,7 @@ struct edge_exports
 {
   typedef edge::Edge< Glyph, Index, WordLength, SuffixLabel, NodeAdapter > edge_type;
   typedef typename edge_type::ptr_type ptr_type;
-  typedef typename edge_type::const_ptr_type const_ptr_type;
   typedef typename edge_type::weak_ptr_type weak_ptr_type;
-  typedef typename edge_type::const_weak_ptr_type const_weak_ptr_type;
   typedef typename edge_type::index_type index_type;
   typedef typename edge_type::suffix_label_type suffix_label_type;
   typedef typename edge_type::node_type node_type;
@@ -44,9 +44,10 @@ struct edge_exports
   typedef typename edge_type::glyph_type glyph_type;
 
   typedef iterator::PreOrder< edge_type > preorder_iterator;
-  typedef iterator::PreOrder< edge_type const > preorder_const_iterator;
   typedef iterator::PostOrder< edge_type > postorder_iterator;
-  typedef iterator::PostOrder< edge_type const > postorder_const_iterator;
+
+  typedef python_iterator< preorder_iterator > preorder_python_iterator;
+  typedef python_iterator< postorder_iterator > postorder_python_iterator;
 
   static void throw_python_key_error()
   {
@@ -54,59 +55,36 @@ struct edge_exports
     boost::python::throw_error_already_set();
   }
 
-  static const_ptr_type to_const_ptr(ptr_type const& edge_ptr)
-  {
-    return boost::const_pointer_cast< edge_type const >( edge_ptr );
-  }
-
-  static index_type get_start_const(const_ptr_type const& edge_ptr)
-  {
-    return edge_ptr->start();
-  }
-
   static index_type get_start(ptr_type const& edge_ptr)
   {
-    return get_start_const( to_const_ptr( edge_ptr ) );
+    return edge_ptr->get_start();
   }
 
   static void set_start(ptr_type const& edge_ptr, index_type const& start)
   {
-    edge_ptr->start() = start;
-  }
-
-  static index_type get_stop_const(const_ptr_type const& edge_ptr)
-  {
-    return edge_ptr->stop();
+    edge_ptr->set_start( start );
   }
 
   static index_type get_stop(ptr_type const& edge_ptr)
   {
-    return get_stop_const( to_const_ptr( edge_ptr ) );
-  }
-
-  static suffix_label_type get_suffix_label_const(const_ptr_type const& edge_ptr)
-  {
-    return edge_ptr->label();
+    return edge_ptr->get_stop();
   }
 
   static suffix_label_type get_suffix_label(ptr_type const& edge_ptr)
   {
-    return get_suffix_label_const( to_const_ptr( edge_ptr ) );
-  }
-
-  static bool node_contains_const(const_ptr_type const& edge_ptr, glyph_type const& key)
-  {
-    return edge_ptr->find( key ) != edge_ptr->end();
+    return edge_ptr->label();
   }
 
   static bool node_contains(ptr_type const& edge_ptr, glyph_type const& key)
   {
-    return node_contains_const( to_const_ptr( edge_ptr ), key );
-  }
-
-  static bool node_empty_const(const_ptr_type const& edge_ptr)
-  {
-    return edge_ptr->empty();
+    try
+    {
+      return edge_ptr->find( key ) != edge_ptr->end();
+    }
+    catch ( bad_edge_type& e )
+    {
+      return false;
+    }
   }
 
   static bool node_empty(ptr_type const& edge_ptr)
@@ -117,19 +95,6 @@ struct edge_exports
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-type"
 
-  static const_ptr_type node_get_item_const(const_ptr_type const& edge_ptr, glyph_type const& key)
-  {
-    try
-    {
-      return edge_ptr->get_child_with_label( key );
-    }
-
-    catch ( nonexistent& e )
-    {
-        throw_python_key_error();
-    }
-  }
-
   static ptr_type node_get_item(ptr_type const& edge_ptr, glyph_type const& key)
   {
     try
@@ -139,7 +104,12 @@ struct edge_exports
 
     catch ( nonexistent& e )
     {
-        throw_python_key_error();
+      throw_python_key_error();
+    }
+
+    catch ( bad_edge_type& e )
+    {
+      throw_python_key_error();
     }
   }
 
@@ -154,60 +124,48 @@ struct edge_exports
     edge_ptr->attach_child( value, key );
   }
 
-  static boost::python::list node_keys_const(const_ptr_type const& edge_ptr)
-  {
-    boost::python::list result;
-
-    for(
-      typename edge_type::const_iterator it = edge_ptr->begin();
-      it != edge_ptr->end();
-      ++it
-      )
-    {
-      const glyph_type& k = it->first;
-      result.append( k );
-    }
-
-    return result;
-  }
-
   static boost::python::list node_keys(ptr_type const& edge_ptr)
   {
-    return node_keys_const( to_const_ptr( edge_ptr ) );
-  }
-
-  static boost::python::list node_values_const(const_ptr_type const& edge_ptr)
-  {
     boost::python::list result;
 
-    for(
-      typename edge_type::const_iterator it = edge_ptr->begin();
-      it != edge_ptr->end();
-      ++it
-      )
+    try
     {
-      const const_ptr_type& v = it->second;
-      result.append( v );
+      for(
+        typename edge_type::const_iterator it = edge_ptr->begin();
+        it != edge_ptr->end();
+        ++it
+        )
+      {
+        const glyph_type& k = it->first;
+        result.append( k );
+      }
     }
+    catch ( bad_edge_type& e )
+    {}
 
     return result;
   }
 
   static boost::python::list node_values(ptr_type const& edge_ptr)
   {
-    return node_values_const( to_const_ptr( edge_ptr ) );
-  }
+    boost::python::list result;
 
-  static boost::python::object const get_parent_const(const_ptr_type const& edge_ptr)
-  {
     try
     {
-      return boost::python::object( edge_ptr->get_parent() );
+      for(
+        typename edge_type::const_iterator it = edge_ptr->begin();
+        it != edge_ptr->end();
+        ++it
+        )
+      {
+        ptr_type const& v = it->second;
+        result.append( v );
+      }
     }
-    catch ( unavailable& e )
-    {
-      return boost::python::object();
-    }
+    catch ( bad_edge_type& e )
+    {}
+
+    return result;
   }
 
   static boost::python::object const get_parent(ptr_type const& edge_ptr)
@@ -224,19 +182,7 @@ struct edge_exports
 
   static void set_parent(ptr_type const& edge_ptr, ptr_type const& parent)
   {
-    edge_ptr->parent() = parent;
-  }
-
-  static boost::python::object const get_suffix_const(const_ptr_type const& edge_ptr)
-  {
-    try
-    {
-      return boost::python::object( edge_ptr->get_suffix() );
-    }
-    catch ( unavailable& e )
-    {
-      return boost::python::object();
-    }
+    edge_ptr->parent() = weak_ptr_type( parent );
   }
 
   static boost::python::object const get_suffix(ptr_type const& edge_ptr)
@@ -261,24 +207,9 @@ struct edge_exports
     return edge_ptr->is_root();
   }
 
-  static bool is_root_const(const_ptr_type const& edge_ptr)
-  {
-    return edge_ptr->is_root();
-  }
-
   static bool is_leaf(ptr_type const& edge_ptr)
   {
     return edge_ptr->is_leaf();
-  }
-
-  static bool is_leaf_const(const_ptr_type const& edge_ptr)
-  {
-    return edge_ptr->is_leaf();
-  }
-
-  static std::size_t calculate_hash_const(const_ptr_type const& edge_ptr)
-  {
-    return boost::hash_value( edge_ptr );
   }
 
   static std::size_t calculate_hash(ptr_type const& edge_ptr)
@@ -286,61 +217,62 @@ struct edge_exports
     return boost::hash_value( edge_ptr );
   }
 
-  static boost::python::object get_preorder_range(ptr_type const& root)
+  static preorder_python_iterator get_preorder_range(ptr_type const& root)
   {
-    return scitbx::boost_python::as_iterator< preorder_iterator >(
+    return preorder_python_iterator(
       preorder_iterator::begin( root ),
       preorder_iterator::end( root )
       );
   }
 
-  static boost::python::object get_preorder_const_range(const_ptr_type const& root)
-  {
-    return scitbx::boost_python::as_iterator< preorder_const_iterator >(
-      preorder_const_iterator::begin( root ),
-      preorder_const_iterator::end( root )
-      );
-  }
 
-  static boost::python::object get_postorder_range(ptr_type const& root)
+  static postorder_python_iterator get_postorder_range(ptr_type const& root)
   {
-    return scitbx::boost_python::as_iterator< postorder_iterator >(
+    return postorder_python_iterator(
       postorder_iterator::begin( root ),
       postorder_iterator::end( root )
       );
   }
-
-  static boost::python::object get_postorder_const_range(const_ptr_type const& root)
+/*
+  static bool operator_eq_nonconst(ptr_type const& lhs, ptr_type const& rhs)
   {
-    return scitbx::boost_python::as_iterator< postorder_const_iterator >(
-      postorder_const_iterator::begin( root ),
-      postorder_const_iterator::end( root )
-      );
+    return lhs == rhs;
   }
 
+  static bool operator_eq_mixed(ptr_type const& lhs, const_ptr_type const& rhs)
+  {
+    return lhs == rhs;
+  }
+
+  static bool operator_eq_const(const_ptr_type const& lhs, const_ptr_type const& rhs)
+  {
+    return lhs == rhs;
+  }
+*/
   static void wrap()
   {
     using namespace boost::python;
-    scitbx::boost_python::export_range_as_iterator< preorder_iterator >(
-      "preorder_iteration_range"
-      );
-    scitbx::boost_python::export_range_as_iterator< preorder_const_iterator >(
-      "preorder_const_iteration_range"
-      );
 
-    scitbx::boost_python::export_range_as_iterator< postorder_iterator >(
-      "postorder_iteration_range"
-      );
-    scitbx::boost_python::export_range_as_iterator< postorder_const_iterator >(
-      "postorder_const_iteration_range"
-      );
+    preorder_python_iterator::wrap( "preorder_iteration_range" );
+    postorder_python_iterator::wrap( "postorder_iteration_range" );
 
     class_< ptr_type >( "edge", no_init )
-      .def( "root", edge_type::root )
+      .def(
+        "root",
+        edge_type::root
+        )
       .staticmethod( "root" )
-      .def( "branch", edge_type::branch, ( arg( "start" ), arg( "stop" ) ) )
+      .def(
+        "branch",
+        edge_type::branch,
+        ( arg( "start" ), arg( "stop" ) )
+        )
       .staticmethod( "branch" )
-      .def( "leaf", edge_type::leaf, ( arg( "start" ), arg( "length" ), arg( "label" ) ) )
+      .def(
+        "leaf",
+        edge_type::leaf,
+        ( arg( "start" ), arg( "length" ), arg( "label" ) )
+        )
       .staticmethod( "leaf" )
       .add_property( "start",get_start, set_start )
       .add_property( "stop", get_stop )
@@ -359,33 +291,7 @@ struct edge_exports
       .def( "postorder_iteration", get_postorder_range )
       .def( self == self )
       .def( self != self )
-      .def( self == other< const_ptr_type >() )
-      .def( self != other< const_ptr_type >() )
       .def( "__hash__", calculate_hash )
-      ;
-
-    class_< const_ptr_type >( "const_edge", no_init )
-      .def( "from_edge", to_const_ptr )
-      .staticmethod( "from_edge" )
-      .add_property( "start",get_start_const )
-      .add_property( "stop", get_stop_const )
-      .add_property( "label", get_suffix_label_const )
-      .add_property( "parent", get_parent_const )
-      .add_property( "suffix", get_suffix_const )
-      .def( "is_leaf", is_leaf_const )
-      .def( "is_root", is_root_const )
-      .def( "is_empty", node_empty_const )
-      .def( "__contains__", node_contains_const, arg( "key" ) )
-      .def( "__getitem__", node_get_item_const, arg( "key" ) )
-      .def( "keys", node_keys_const )
-      .def( "values", node_values_const )
-      .def( "preorder_iteration", get_preorder_const_range )
-      .def( "postorder_iteration", get_postorder_const_range )
-      .def( self == self )
-      .def( self != self )
-      .def( self == other< ptr_type >() )
-      .def( self != other< ptr_type >() )
-      .def( "__hash__", calculate_hash_const )
       ;
   }
 };
