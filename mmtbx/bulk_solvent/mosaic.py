@@ -287,6 +287,7 @@ class mosaic_f_mask(object):
     FM = OrderedDict()
     self.FV = OrderedDict()
     self.mc = None
+    self.fmodel_largest_mask = None
     diff_map = None
     mean_diff_map = None
     self.regions = OrderedDict()
@@ -360,15 +361,15 @@ class mosaic_f_mask(object):
   def compute_diff_map(self, f_mask_data):
     if(self.f_obs is None): return None
     f_mask = self.f_obs.customized_copy(data = f_mask_data)
-    fmodel = mmtbx.f_model.manager(
+    self.fmodel_largest_mask = mmtbx.f_model.manager(
       f_obs        = self.f_obs,
       r_free_flags = self.r_free_flags,
       f_calc       = self.f_calc,
       f_mask       = f_mask)
-    fmodel.update_all_scales(remove_outliers=True)
+    self.fmodel_largest_mask.update_all_scales(remove_outliers=True)
     #print ("r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free()))
     #fmodel.show(show_header=False, show_approx=False)
-    self.mc = fmodel.electron_density_map().map_coefficients(
+    self.mc = self.fmodel_largest_mask.electron_density_map().map_coefficients(
       map_type   = "mFobs-DFmodel",
       isotropize = True,
       exclude_free_r_reflections = False)

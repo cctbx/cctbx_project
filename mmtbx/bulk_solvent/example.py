@@ -105,6 +105,8 @@ class compute(object):
       r_free_flags   = self.fmodel_2013.r_free_flags(),
       f_calc         = self.fmodel_2013.f_calc(),
       log            = log)
+    print("Using largest mask only", file=log)
+    print(self.mm.fmodel_largest_mask.r_factors(prefix="  "), file=log)
     self.fmodel = mmtbx.f_model.manager(
       f_obs        = self.fmodel_2013.f_obs(),
       r_free_flags = self.fmodel_2013.r_free_flags(),
@@ -189,7 +191,7 @@ def run_one(args):
       regions         = o.mm.regions)
     easy_pickle.dump("%s.pkl"%code, result)
     log.close()
-  except:
+  except: # intentional
     print("FAILED:", file=log)
     traceback.print_exc(file=log)
     log.close()
@@ -211,6 +213,7 @@ def run(cmdargs):
       for args in argss:
         run_one(args)
   else:
+    # Usage: python example.py 4qnn.pdb 4qnn.mtz alg4
     pdb, mtz, alg = cmdargs
     code = os.path.abspath(pdb)[:-4]
     run_one([pdb, mtz, code, alg])
