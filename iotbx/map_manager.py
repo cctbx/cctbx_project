@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 from libtbx.utils import to_str
 from libtbx import group_args
 import sys
-import io
 from cctbx import miller
 from iotbx.mrcfile import map_reader, write_ccp4_map
 from scitbx.array_family import flex
@@ -182,7 +181,7 @@ class map_manager(map_reader, write_ccp4_map):
      unit_cell_grid = None,
      unit_cell_crystal_symmetry = None,
      origin_shift_grid_units = None, # OPTIONAL first point in map in full cell
-     log = None,
+     log = sys.stdout,
      ):
 
     '''
@@ -279,19 +278,6 @@ class map_manager(map_reader, write_ccp4_map):
     # make sure labels are strings
     if self.labels is not None:
       self.labels = [to_str(label, codec = 'utf8') for label in self.labels]
-
-  # prevent pickling error in Python 3 with self.log = sys.stdout
-  # unpickling is limited to restoring sys.stdout
-  def __getstate__(self):
-    pickle_dict = self.__dict__.copy()
-    if isinstance(self.log, io.TextIOWrapper):
-      pickle_dict['log'] = None
-    return pickle_dict
-
-  def __setstate__(self, pickle_dict):
-    self.__dict__ = pickle_dict
-    if self.log is None:
-      self.log = sys.stdout
 
   def set_log(self, log = sys.stdout):
     '''
@@ -600,7 +586,7 @@ class map_manager(map_reader, write_ccp4_map):
     if map_data.origin()  ==  (0, 0, 0):  # Usual
       self._print("Writing map with origin at %s and size of %s to %s" %(
         str(origin_shift_grid_units), str(map_data.all()), file_name))
-      from six.moves import StringIO
+      from cStringIO import StringIO
       f=StringIO()
       write_ccp4_map(
         file_name   = file_name,
@@ -827,7 +813,7 @@ class map_manager(map_reader, write_ccp4_map):
          origins of current and new maps are the same
     '''
 
-    # Make a deep_copy of map_data and _created_mask unless
+    # Make a deep_copy of map_data and _created_mask unless 
     #    use_deep_copy_for_map_data = False
 
     if use_deep_copy_for_map_data:
@@ -861,7 +847,7 @@ class map_manager(map_reader, write_ccp4_map):
     mm.log=self.log
     mm.origin_shift_grid_units = origin_shift_grid_units  # specified above
     mm.data = map_data  # using self.data or a deepcopy (specified above)
-    mm._created_mask = created_mask  # using self._created_mask or a
+    mm._created_mask = created_mask  # using self._created_mask or a 
                                      #deepcopy (specified above)
 
     # Set up _crystal_symmetry for the new object
@@ -1096,7 +1082,7 @@ class map_manager(map_reader, write_ccp4_map):
 
     assert isinstance(map_coeffs, miller.array)
     assert isinstance(map_coeffs.data(), flex.complex_double)
-    assert self.map_data() and self.map_data().origin() == (0, 0, 0)
+    assert self.map_data() and self.map_data().origin() == (0, 0, 0) 
 
     return maptbx.map_coefficients_to_map(
       map_coeffs       = map_coeffs,
