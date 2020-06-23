@@ -631,38 +631,26 @@ END
   # This produces 4 separate blobs
   co = maptbx.connectivity(
       map_data=rmup,
-      threshold=1000,
-      # threshold=1.1,
+      threshold=400,
       wrapping=False,
-      preprocess_against_shallow=True)
+      preprocess_against_shallow=False)
   original_regions = list(co.regions())
   # print ('regions', original_regions)
+  assert len(original_regions) == 5
   beg_mask = co.result()
-  assert beg_mask.count(0) == 32688
-  assert beg_mask.count(1) == 20
-  assert beg_mask.count(2) == 20
-  assert beg_mask.count(3) == 20
-  assert beg_mask.count(4) == 20
-
-  assert original_regions == [32688, 20, 20, 20, 20]
-
-  # workaround to convert to float to write the map. Should be a better way.
-  # v_mask = co.volume_cutoff_mask(0)
-  # dv_mask = flex.double(flex.grid(32, 32, 32))
-  # for i in range(32):
-  #   for j in range(32):
-  #     for k in range(32):
-  #       dv_mask[i,j,k] = v_mask[i,j,k]
+  # dv_mask = co.volume_cutoff_mask(0).as_double() ???
   # write_ccp4_map('volume_mask_1000.ccp4', fc.unit_cell(), fc.space_group(), dv_mask)
 
   co.merge_symmetry_related_regions(space_group=xrs.space_group())
   new_mask = co.result()
-  assert new_mask.count(0) == 32688
-  assert new_mask.count(1) == 40
-  assert new_mask.count(2) == 40
+  assert beg_mask.count(0) == new_mask.count(0)
+  assert beg_mask.count(1) + beg_mask.count(3) == new_mask.count(1)
+  assert beg_mask.count(2) + beg_mask.count(4) == new_mask.count(2)
+  assert sum(original_regions[1:]) == sum(original_regions[1:])
+
 
   new_regions = list(co.regions())
-  assert new_regions == [32688, 40, 40]
+  assert len(new_regions) == 3
   assert list(co.maximum_values()) == []
   assert list(co.maximum_coors()) == []
 
