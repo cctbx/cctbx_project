@@ -827,7 +827,7 @@ class map_manager(map_reader, write_ccp4_map):
          origins of current and new maps are the same
     '''
 
-    # Make a deep_copy of map_data and _created_mask unless 
+    # Make a deep_copy of map_data and _created_mask unless
     #    use_deep_copy_for_map_data = False
 
     if use_deep_copy_for_map_data:
@@ -861,7 +861,7 @@ class map_manager(map_reader, write_ccp4_map):
     mm.log=self.log
     mm.origin_shift_grid_units = origin_shift_grid_units  # specified above
     mm.data = map_data  # using self.data or a deepcopy (specified above)
-    mm._created_mask = created_mask  # using self._created_mask or a 
+    mm._created_mask = created_mask  # using self._created_mask or a
                                      #deepcopy (specified above)
 
     # Set up _crystal_symmetry for the new object
@@ -1096,7 +1096,7 @@ class map_manager(map_reader, write_ccp4_map):
 
     assert isinstance(map_coeffs, miller.array)
     assert isinstance(map_coeffs.data(), flex.complex_double)
-    assert self.map_data() and self.map_data().origin() == (0, 0, 0) 
+    assert self.map_data() and self.map_data().origin() == (0, 0, 0)
 
     return maptbx.map_coefficients_to_map(
       map_coeffs       = map_coeffs,
