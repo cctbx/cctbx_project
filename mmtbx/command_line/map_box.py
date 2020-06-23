@@ -453,7 +453,6 @@ def get_map_manager_objects(
       ccp4_map = map_manager(map_data = map_data,
         unit_cell_grid = map_data.all(),
         unit_cell_crystal_symmetry = crystal_symmetry)
-      ccp4_map.set_input_file_name(inputs.reflection_file_names[0])
 
     # or read CCP4 map
     elif ( (inputs.ccp4_map is not None) or

@@ -1,12 +1,14 @@
 from __future__ import absolute_import, division, print_function
-import io
 from libtbx.utils import to_str
 from libtbx import group_args
 import sys
+import io
+from cctbx import miller
 from iotbx.mrcfile import map_reader, write_ccp4_map
 from scitbx.array_family import flex
 from cctbx import maptbx
 from cctbx import miller
+from copy import deepcopy
 
 class map_manager(map_reader, write_ccp4_map):
 
@@ -291,7 +293,7 @@ class map_manager(map_reader, write_ccp4_map):
     if self.log is None:
       self.log = sys.stdout
 
-  def set_log(self, log = None):
+  def set_log(self, log = sys.stdout):
     '''
        Set output log file
     '''
@@ -528,14 +530,6 @@ class map_manager(map_reader, write_ccp4_map):
 
     self.shift_origin(desired_origin = original_origin)
 
-  def set_input_file_name(self, file_name = None):
-    '''
-      Set input file name. Used in _read_map and in customized_copy
-    '''
-
-    self.input_file_name = file_name
-
-
   def set_program_name(self, program_name = None):
     '''
       Set name of program doing work on this map_manager for output
@@ -606,7 +600,7 @@ class map_manager(map_reader, write_ccp4_map):
     if map_data.origin()  ==  (0, 0, 0):  # Usual
       self._print("Writing map with origin at %s and size of %s to %s" %(
         str(origin_shift_grid_units), str(map_data.all()), file_name))
-      from six.moves import cStringIO as StringIO
+      from six.moves import StringIO
       f=StringIO()
       write_ccp4_map(
         file_name   = file_name,
@@ -833,12 +827,15 @@ class map_manager(map_reader, write_ccp4_map):
          origins of current and new maps are the same
     '''
 
-    # Make a deep_copy of map_data unless use_deep_copy_for_map_data = False
+    # Make a deep_copy of map_data and _created_mask unless 
+    #    use_deep_copy_for_map_data = False
 
     if use_deep_copy_for_map_data:
       map_data = map_data.deep_copy()
+      created_mask = deepcopy(self._created_mask)
+    else:
+      created_mask = self._created_mask
 
-    from copy import deepcopy
     assert map_data is not None # Require map data for the copy
 
     if map_data.origin() !=  (0, 0, 0):
@@ -856,36 +853,19 @@ class map_manager(map_reader, write_ccp4_map):
       assert map_data.all()  ==  self.map_data().all() # bounds must be same
       origin_shift_grid_units = deepcopy(self.origin_shift_grid_units)
 
-    #  Set items in the call to constructor
-    mm = map_manager(
-      map_data = map_data,
-      unit_cell_grid = deepcopy(self.unit_cell_grid),
-      unit_cell_crystal_symmetry = self.unit_cell_crystal_symmetry(),
-      origin_shift_grid_units = origin_shift_grid_units,
-      log = self.log,
-     )
+    # Deepcopy this object and then set map_data and origin_shift_grid_units
 
-    #  Items not in the call to constructor but set there explicitly:
+    mm = deepcopy(self)
 
-    if self._created_mask:
-      if use_deep_copy_for_map_data: # make deep copy usually
-        mm._created_mask = deepcopy(self._created_mask)
-      else:
-        mm._created_mask = self._created_mask
-    else:
-      mm._created_mask = None
+    # Set things that are not necessarily the same as in self:
+    mm.log=self.log
+    mm.origin_shift_grid_units = origin_shift_grid_units  # specified above
+    mm.data = map_data  # using self.data or a deepcopy (specified above)
+    mm._created_mask = created_mask  # using self._created_mask or a 
+                                     #deepcopy (specified above)
 
-    if self.labels:
-       for label in self.labels:
-         mm.add_label(label)
-    if self.limitations:
-       for limitation in self.limitations:
-         mm.add_limitation(limitation)
-    if self.program_name:
-       mm.set_program_name(self.program_name)
-    if self.input_file_name:
-       mm.set_input_file_name(self.input_file_name)
-
+    # Set up _crystal_symmetry for the new object
+    mm.set_crystal_symmetry_of_partial_map() # Required and must be last
 
     return mm
 
@@ -975,15 +955,15 @@ class map_manager(map_reader, write_ccp4_map):
     self._warning_message=text
     return ok
 
-  def is_similar_model(self, model):
+  def is_similar_model(self, model, tol=0.001):
     '''
       Returns true if model has the same original and current symmetry and
       the same shift_cart as the map
     '''
 
-    return self.is_compatible_model(model, require_similar=True)
+    return self.is_compatible_model(model, require_similar=True, tol=tol)
 
-  def is_compatible_model(self, model, require_similar=True):
+  def is_compatible_model(self, model, require_similar=True, tol=0.001):
     '''
       Model is compatible with this map_manager if it is not specified as being
       different.
@@ -1101,15 +1081,10 @@ class map_manager(map_reader, write_ccp4_map):
       map              = self.map_data(),
       d_min            = high_resolution)
 
-  def fourier_coefficients_as_map(self, map_coeffs,
-       n_real = None):
+  def fourier_coefficients_as_map(self, map_coeffs):
     '''
        Convert Fourier coefficients into to a real-space map with gridding
        matching this existing map_manager.
-
-       If this map_manager does not have map already, it is required that
-       the parameter n_real (equivalent to self.map_data.all() if the map is
-       present) is supplied.
 
        Requires that this map_manager has origin at (0, 0, 0) (i.e.,
        shift_origin() has been applied if necessary)
@@ -1118,20 +1093,15 @@ class map_manager(map_reader, write_ccp4_map):
        as this map_manager (i.e., similar to those that would be written out
        using map_as_fourier_coefficients).
     '''
-    assert map_coeffs
-    assert isinstance(map_coeffs.data(), flex.complex_double)
-    assert (self.map_data() and self.map_data().origin() == (0, 0, 0) ) or (
-       n_real is not None)
-    if self.map_data():
-      assert n_real is None
 
-    if self.map_data():
-      n_real = self.map_data().all()
+    assert isinstance(map_coeffs, miller.array)
+    assert isinstance(map_coeffs.data(), flex.complex_double)
+    assert self.map_data() and self.map_data().origin() == (0, 0, 0) 
 
     return maptbx.map_coefficients_to_map(
       map_coeffs       = map_coeffs,
       crystal_symmetry = self.crystal_symmetry(),
-      n_real           = n_real)
+      n_real           = self.map_data().all())
 
 def subtract_tuples_int(t1, t2):
   return tuple(flex.int(t1)-flex.int(t2))

@@ -6,6 +6,7 @@ from libtbx import group_args
 from scitbx.array_family import flex
 from iotbx.map_manager import map_manager
 from mmtbx.model import manager as model_manager
+import mmtbx.ncs.ncs
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
 
@@ -13,6 +14,42 @@ class map_model_base(object):
   '''
     Common methods for map_model_manager and r_model and match_map_model_ncs
   '''
+
+  def model(self):
+    ''' Get the model '''
+    return self._model
+
+  def ncs_object(self):
+    ''' Get the ncs_object '''
+    return self._ncs_object
+
+  def map_manager(self):
+    ''' Get the map as a map_manager object '''
+    return self._map_dict.get('map_manager')
+
+  def map_manager_1(self):
+    ''' Get half_map 1 as a map_manager object '''
+    return self._map_dict.get('map_manager_1')
+
+  def map_manager_2(self):
+    ''' Get half_map 2 as a map_manager object '''
+    return self._map_dict.get('map_manager_2')
+
+  def map_manager_mask(self):
+    ''' Get the mask as a map_manager object '''
+    return self._map_dict.get('map_manager_mask')
+
+  def get_map_manager_names(self):
+    ''' Get all the names (keys) for all map_managers'''
+    return list(self.map_dict().keys())
+
+  def get_map_manager(self, map_manager_name):
+    ''' Get a map_manager with the name map_manager_name'''
+    return self.map_dict().get(map_manager_name)
+
+  def map_dict(self):
+    ''' Get the dictionary of all maps and masks as map_manager objects'''
+    return self._map_dict
 
   def write_map(self, file_name = None, key='map_manager', log = sys.stdout):
     if not self._map_dict.get(key):
@@ -66,21 +103,65 @@ class r_model(map_model_base):
   '''
     Class to hold a model, set of maps/mask and optional ncs object and
     perform simple boxing and masking operations
+
+    The model and ncs_object can be accessed with self.model()
+      and self.ncs_object()
+
+    Any map can be accessed using: self.get_map_manager(map_manager_name)
+
+    For convenience, four special maps can be accessed directly:
+      self.map_manager() : the main map
+      self.map_manager_1():  half-map 1
+      self.map_manager_2():  half_map 2
+      self.map_manager_mask():  a mask
+
+    For the four maps above, map_manager_names are 'map_manager',
+       'map_manager_1', 'map_manager_2', and 'map_manager_mask'.
+
+    For all maps, the map_manager_name is the key specified for that map_manager
+    in map_dict in the call.
   '''
+
   def __init__(self,
                model            = None,
                ncs_object       = None,
                map_dict         = None):
 
+    # Save the model, ncs_object and map_dict (get them with self.model() etc)
+    self._map_dict = map_dict
+    self._model = model
+    self._ncs_object = ncs_object
+
+    # Make sure all the assumptions about model, ncs_object and map are ok
+    self.check_inputs()
+
+    # Ready to go
+
+
+  def check_inputs(self):
+    '''
+     Make sure that model, map and ncs objects are correct types
+     Make sure that all have same crystal_symmetry, unit_cell_crystal_symmetry
+     Make sure all are shifted to place origin at (0, 0, 0,0 and
+       all have the same shift_cart()
+    '''
+
     # Checks
+
+    model=self.model()
+    map_dict=self.map_dict()
+    ncs_object=self.ncs_object()
+
     assert isinstance(model, model_manager)
     assert isinstance(map_dict, dict)
-    assert map_dict
+    assert map_dict != {}
+    assert (not ncs_object) or (isinstance(ncs_object, mmtbx.ncs.ncs.ncs))
 
     # Make sure first map is already shifted to (0, 0, 0)
     first_map=map_dict[list(map_dict.keys())[0]]
     assert first_map.origin_is_zero()
 
+    # Make sure all other maps and model are similar
     for id in map_dict.keys():
       m=map_dict[id]
       assert m.origin_is_zero()
@@ -88,12 +169,12 @@ class r_model(map_model_base):
       assert m.is_similar(first_map)
 
     # Make sure model and ncs_object and map all have same shift_cart and
-    #  crystal_symmetry and
+    #  crystal_symmetry and unit_cell_crystal_symmetry
     assert first_map.is_similar_model(model)
     if ncs_object:
       assert first_map.is_similar_ncs_object(ncs_object)
 
-    # All set
+    # All OK
 
 class map_model_manager(map_model_base):
 
@@ -119,7 +200,7 @@ class map_model_manager(map_model_base):
       map_dict has four special keys with interpretations:
         map_manager:  full map
         map_manager_1, map_manager_2: half-maps 1 and 2
-        mask:  a mask
+        map_manager_mask:  a mask as a map_mnager
       All other keys are any strings and are assumed to correspond to other maps
   '''
   def __init__(self,
@@ -260,7 +341,7 @@ class map_model_manager(map_model_base):
       map_dict has four special keys with interpretations:
         map_manager:  full map
         map_manager_1, map_manager_2: half-maps 1 and 2
-        mask:  a mask
+        map_manager_mask:  a mask in a map_manager
       All other keys are any strings and are assumed to correspond to other maps
     '''
     self._map_dict={}
@@ -395,23 +476,10 @@ class map_model_manager(map_model_base):
       map_data_list.append(mm.map_data())
     return map_data_list
 
-  def map_manager(self):
-     return self._map_dict.get('map_manager')
 
-  def map_manager_1(self):
-     return self._map_dict.get('map_manager_1')
-
-  def map_manager_2(self):
-     return self._map_dict.get('map_manager_2')
-
-  def model(self): return self._model
-
-  def ncs_object(self): return self._ncs_object
 
   def crystal_symmetry(self): return self._crystal_symmetry
 
-  def map_dict(self):
-    return self._map_dict
 
   def xray_structure(self):
     if(self.model() is not None):
