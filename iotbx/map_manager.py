@@ -1021,7 +1021,7 @@ class map_manager(map_reader, write_ccp4_map):
     self._warning_message=text
     return ok
 
-  def is_compatible_model(self, model, 
+  def is_compatible_model(self, model,
        require_match_unit_cell_crystal_symmetry=True, tol=0.001):
     '''
       Model is compatible with this map_manager if it is not specified as being
@@ -1036,7 +1036,7 @@ class map_manager(map_reader, write_ccp4_map):
       the map crystal_symmetry.  It does mean that it is reasonable to set the
       model crystal_symmetry to match the map ones.
 
-      If require_match_unit_cell_crystal_symmetry is True, then they are 
+      If require_match_unit_cell_crystal_symmetry is True, then they are
       different if anything is different
     '''
 
