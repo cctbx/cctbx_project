@@ -520,6 +520,7 @@ class around_mask(with_bounds):
     self._map_manager = map_manager
     self._model = model
     self._ncs_object = ncs_object
+    assert map_manager.shift_cart()==mask_as_map_manager.shift_cart()
 
     # safeguards
     assert isinstance(wrapping, bool)
@@ -530,8 +531,8 @@ class around_mask(with_bounds):
     if wrapping:
       assert map_manager.unit_cell_grid == map_manager.map_data().all()
 
-    self.basis_for_boxing_string = 'around_mask bounds, wrapping = %s' %(wrapping)
-
+    self.basis_for_boxing_string = 'around_mask bounds, wrapping = %s' %(
+        wrapping)
     # Get a connectivity object that marks all the connected regions in map
 
     from cctbx.maptbx.segment_and_split_map import get_co

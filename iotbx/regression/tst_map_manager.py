@@ -10,7 +10,7 @@ def test_01():
   data_ccp4 = os.path.join(data_dir, 'data',
                           'non_zero_origin_map.ccp4')
   data_pdb = os.path.join(data_dir, 'data',
-                          'non_zero_origin_map.ccp4')
+                          'non_zero_origin_model.pdb')
 
   dm = DataManager(['miller_array', 'real_map', 'phil'])
   dm.set_overwrite(True)
@@ -182,6 +182,7 @@ def test_01():
   assert approx_equal(new_mm.origin_shift_grid_units, (100, 100, 100))
   assert approx_equal(new_mm.shift_cart(),
        (-74.70333099365234, -72.30750274658205, -73.7437515258789))
+
   # Convert to map coeffs, write out, read back, convert back to map
 
   map_coeffs = mm.map_as_fourier_coefficients(high_resolution = 3)
@@ -200,6 +201,54 @@ def test_01():
 
   mm_from_map_coeffs = mm.customized_copy(map_data = map_data_from_map_coeffs)
   assert mm_from_map_coeffs.is_similar(mm)
+
+  # Find map symmetry in this map
+  data_d7 = os.path.join(data_dir, 'data',
+                          'D7.ccp4')
+  dm = DataManager(['miller_array', 'real_map', 'phil', 'model'])
+  dm.process_real_map_file(data_d7)
+  dm.process_model_file(data_pdb)
+  mm = dm.get_real_map(data_d7)
+  model = dm.get_model(data_pdb)
+  mm.shift_origin()
+  mm.set_original_origin_and_gridding(original_origin=(0,0,0))
+  # Box it so it is not so easy
+  from cctbx.maptbx.box import with_bounds
+  box=with_bounds(mm,wrapping=False,lower_bounds=(2,2,2),
+   upper_bounds=(43,43,43))
+  new_mm=box.map_manager()
+  new_mm.find_map_symmetry(symmetry='d7',min_ncs_cc=0.8,
+    include_helical_symmetry=False)
+  ncs_obj=new_mm.ncs_object()
+  assert ncs_obj is not None
+  print ("NCS: ",new_mm.ncs_object().as_ncs_spec_string())
+  another_mm = map_manager(
+     unit_cell_grid =  new_mm.unit_cell_grid,
+     unit_cell_crystal_symmetry =  new_mm.unit_cell_crystal_symmetry(),
+     origin_shift_grid_units =  new_mm.origin_shift_grid_units,
+     map_data = new_mm.map_data(),
+     ncs_object = ncs_obj)
+  assert another_mm.is_similar(new_mm)
+  assert ncs_obj.is_similar_ncs_object(another_mm.ncs_object())
+  assert new_mm.is_similar(another_mm)
+
+  # Adjust model and ncs symmetry to match this map
+  assert model.shift_cart()  is None
+  new_mm.set_model_symmetries_and_shift_cart_to_match_map(model) 
+  assert approx_equal (model.shift_cart() ,
+       (-0.888888888888889, -0.8888888888888891, -0.888888888888889))
+
+  assert not new_mm.is_similar_ncs_object(ncs_obj)
+  new_mm.set_ncs_object_shift_cart_to_match_map(ncs_obj)
+  new_mm.set_ncs_object(ncs_obj)
+  assert new_mm.is_similar_ncs_object(new_mm.ncs_object())
+  new_mm.show_summary()
+
+  new_mm.shift_origin(desired_origin=(11,1,1))
+  assert new_mm.is_similar_ncs_object(new_mm.ncs_object())
+  new_mm.shift_origin()
+  assert new_mm.is_similar_ncs_object(new_mm.ncs_object())
+
 
 if (__name__  ==  '__main__'):
   test_01()

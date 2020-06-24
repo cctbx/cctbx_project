@@ -156,14 +156,14 @@ def write_map_file(crystal_symmetry, map_data, file_name):
 
 class refinery(object):
   def __init__(self, fmodel, fv, alg, log = sys.stdout):
-    assert alg in ["alg0","alg2", "alg4"]
+    assert alg in ["alg2", "alg4"]
     self.log = log
     self.f_calc = fmodel.f_calc()
     self.f_obs  = fmodel.f_obs()
     self.r_free_flags = fmodel.r_free_flags()
     self.F = [self.f_calc.deep_copy()] + fv.keys()
     self.bin_selections = fmodel.f_obs().log_binning(
-      n_reflections_in_lowest_resolution_bin = max(500,int(len(self.F)*100)))
+      n_reflections_in_lowest_resolution_bin = max(100,int(len(self.F)*100)))
     self._print(fmodel.r_factors(prefix="start: "))
     for it in range(3):
       self._print("cycle: %2d"%it)
@@ -177,11 +177,6 @@ class refinery(object):
         d_max, d_min = f_obs.select(sel).d_max_min()
         bin = "  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min)
         F = [f.select(sel) for f in self.F]
-        # algorithm_0
-        if(alg=="alg0"):
-          k_masks = algorithm_0(
-            f_obs = f_obs.select(sel),
-            F     = F)
         # algorithm_4
         if(alg=="alg4"):
           k_masks = algorithm_4(
@@ -354,15 +349,14 @@ class mosaic_f_mask(object):
         tmp+=v_
       F_MASKS.append(miller_array.customized_copy(data = tmp))
     #
-    f_mask   = miller_array.customized_copy(data = f_mask_data)
-    f_mask_0 = miller_array.customized_copy(data = f_mask_data_0)
+    f_mask = miller_array.customized_copy(data = f_mask_data)
     #
-    self.f_mask    = f_mask
-    self.f_mask_0  = f_mask_0
-    self.f_masks   = F_MASKS
+    self.f_mask=f_mask
+    self.f_masks=F_MASKS
     self.do_mosaic = False
     if(len(self.f_masks)>1):
       self.do_mosaic = True
+    #return group_args(f_mask = f_mask, f_masks = F_MASKS, n_real=n_real)
 
   def compute_diff_map(self, f_mask_data):
     if(self.f_obs is None): return None
@@ -539,7 +533,7 @@ def algorithm_4(f_obs, F, max_cycles=100, auto_converge_eps=1.e-7):
     if x_res is None: x_res  = flex.double(x)
     else:             x_res += flex.double(x)
     x_ = [x[0]] + list(x_res[1:])
-    #print("iteration:", cntr, " ".join(["%10.6f"%i for i in x_]))
+    #print "iteration:", cntr, " ".join(["%10.6f"%i for i in x_])
     #
     fc_d = fc.data()
     for i, f in enumerate(F):

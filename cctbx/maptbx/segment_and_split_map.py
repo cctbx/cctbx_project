@@ -3518,6 +3518,12 @@ def find_helical_symmetry(params = None,
         max_z_to_test = 2, max_peaks_to_score = 5, out = sys.stdout):
 
   params = deepcopy(params) # so changing them does not go back
+  if not params.crystal_info.resolution:
+    from cctbx.maptbx import d_min_from_map
+    params.crystal_info.resolution = d_min_from_map(
+      map_data, crystal_symmetry.unit_cell(), resolution_factor = 1./4.)
+
+
   if str(params.reconstruction_symmetry.score_basis) == 'None':
     params.reconstruction_symmetry.score_basis = 'cc'
   if params.reconstruction_symmetry.smallest_object is None:
@@ -4740,6 +4746,10 @@ def get_params(args, map_data = None, crystal_symmetry = None,
     box_buffer = None,
     soft_mask_extract_unique = None,
     mask_expand_ratio = None,
+    include_helical_symmetry = None,
+    min_ncs_cc = None,
+    symmetry_center = None,
+    return_params_only = None,
     out = sys.stdout):
 
   params = get_params_from_args(args)
@@ -4761,6 +4771,13 @@ def get_params(args, map_data = None, crystal_symmetry = None,
     params.crystal_info.molecular_mass = molecular_mass
   if symmetry is not None:
     params.reconstruction_symmetry.symmetry = symmetry
+  if min_ncs_cc is not None:
+    params.reconstruction_symmetry.min_ncs_cc = min_ncs_cc
+  if symmetry_center is not None:
+    params.reconstruction_symmetry.symmetry_center = symmetry_center
+  if include_helical_symmetry is not None:
+    params.reconstruction_symmetry.include_helical_symmetry = \
+      include_helical_symmetry
   if chain_type is not None:
     params.crystal_info.chain_type = chain_type
 
@@ -4792,6 +4809,9 @@ def get_params(args, map_data = None, crystal_symmetry = None,
   if save_box_map_ncs_au is not None:
     params.control.save_box_map_ncs_au = save_box_map_ncs_au
 
+
+  if return_params_only:
+    return params
 
   print("\nSegment_and_split_map\n", file = out)
   print("Command used: %s\n" %(
@@ -5418,7 +5438,9 @@ def get_and_apply_soft_mask_to_maps(
     out = sys.stdout):
   smoothed_mask_data = None
   if not resolution:
-    raise Sorry("Need resolution for soft_mask")
+    from cctbx.maptbx import d_min_from_map
+    resolution = d_min_from_map(
+      map_data, crystal_symmetry.unit_cell(), resolution_factor = 1./4.)
 
   if not rad_smooth:
     rad_smooth = resolution

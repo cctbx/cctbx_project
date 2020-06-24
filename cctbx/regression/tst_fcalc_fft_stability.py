@@ -26,12 +26,6 @@ END
   fftmap = fc.fft_map(symmetry_flags = symmetry_flags)
   rmup = fftmap.real_map_unpadded()
   nx, ny, nz = rmup.accessor().all() # 32,32,32
-  if not approx_equal((nx,ny,nz), (32,32,32)):
-    print('Even map dimensions are different???:', file=sys.stderr)
-    print('  ', (nx, ny, nz), file=sys.stderr)
-    print('  ', (32,32,32), file=sys.stderr)
-
-  # print('dimensions:', nx,ny,nz)
   # min, max and mean values on the map
   mmm = rmup.as_1d().min_max_mean().as_tuple()
 

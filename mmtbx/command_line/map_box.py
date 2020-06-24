@@ -1034,6 +1034,7 @@ def run(args,
         sequence = sequence,
         solvent_content = params.solvent_content,
         )
+      cm=mm._created_mask
       mask_as_map_manager = mm.get_mask_as_map_manager()
       if not mask_as_map_manager:
         raise Sorry("Unable to auto-generate mask")

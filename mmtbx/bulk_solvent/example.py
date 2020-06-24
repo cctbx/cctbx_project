@@ -83,10 +83,10 @@ def get_fmodel_init(pdbf, mtzf, log):
     r_free_flags   = r_free_flags,
     xray_structure = xrs)
   fmodel.update_all_scales()
-  print("-"*79, file=log)
   print("Default (A-2013):", file=log)
-  fmodel.show(show_header=False, show_approx=False, log = log)
+  fmodel.update_all_scales(remove_outliers=False)
   print(fmodel.r_factors(), file=log)
+  fmodel.show(show_header=False, show_approx=False, log = log)
   return fmodel, pdb_inp.construct_hierarchy()
 
 class compute(object):
@@ -94,8 +94,7 @@ class compute(object):
     self.log = log
     self.fmodel_2013, self.ph = get_fmodel_init(pdbf=pdbf, mtzf=mtzf, log=log)
     step = min(0.4, self.fmodel_2013.f_calc().d_min()/4)
-    #####
-    print("-"*79, file=log)
+    #
     print("Mosaic", file=log)
     self.mm = mosaic.mosaic_f_mask(
       xray_structure = self.fmodel_2013.xray_structure,
@@ -106,55 +105,22 @@ class compute(object):
       r_free_flags   = self.fmodel_2013.r_free_flags(),
       f_calc         = self.fmodel_2013.f_calc(),
       log            = log)
-    #####
-    print("-"*79, file=log)
-    print("A-2013 with step=0.4A", file=log)
-    self.fmodel_2013_04 = mmtbx.f_model.manager(
+    print("Using largest mask only", file=log)
+    print(self.mm.fmodel_largest_mask.r_factors(prefix="  "), file=log)
+    self.fmodel = mmtbx.f_model.manager(
       f_obs        = self.fmodel_2013.f_obs(),
       r_free_flags = self.fmodel_2013.r_free_flags(),
       f_calc       = self.fmodel_2013.f_calc(),
       f_mask       = self.mm.f_mask)
-    self.fmodel_2013_04.update_all_scales(remove_outliers=False)
-    self.fmodel_2013_04.show(show_header=False, show_approx=False, log = log)
-    print(self.fmodel_2013_04.r_factors(prefix="  "), file=log)
-    self.mc_whole_mask = \
-      self.fmodel_2013_04.electron_density_map().map_coefficients(
-        map_type   = "mFobs-DFmodel",
-        isotropize = True,
-        exclude_free_r_reflections = False)
-    #####
-    print("-"*79, file=log)
-    print("A-2013 with step=0.4A, using largest mask only", file=log)
-    self.mm.fmodel_largest_mask.show(show_header=False, show_approx=False, log = log)
-    print(self.mm.fmodel_largest_mask.r_factors(prefix="  "), file=log)
-    self.mc_largest_mask = \
-      self.mm.fmodel_largest_mask.electron_density_map().map_coefficients(
-        map_type   = "mFobs-DFmodel",
-        isotropize = True,
-        exclude_free_r_reflections = False)
-    #####
+    self.fmodel.update_all_scales(remove_outliers=False)
+    self.mc = self.fmodel.electron_density_map().map_coefficients(
+      map_type   = "mFobs-DFmodel",
+      isotropize = True,
+      exclude_free_r_reflections = False)
 
   def do_mosaic(self, alg):
-    print("-"*79, file=self.log)
-    print("Refine k_masks", file=self.log)
-    # fmodel just to do mosaic
-    bin_selections = self.fmodel_2013.f_obs().log_binning(
-      n_reflections_in_lowest_resolution_bin = 500)
-    fmodel = mmtbx.f_model.manager(
-      f_obs          = self.fmodel_2013.f_obs(),
-      r_free_flags   = self.fmodel_2013.r_free_flags(),
-      f_calc         = self.fmodel_2013.f_calc(),
-      f_mask         = self.mm.f_mask,
-      bin_selections = bin_selections)
-    fmodel.update_all_scales(remove_outliers=False)
-    #
-    result = mosaic.refinery(fmodel=fmodel, fv=self.mm.FV, alg=alg,
+    return mosaic.refinery(fmodel=self.fmodel, fv=self.mm.FV, alg=alg,
       log=self.log)
-    print("", file=self.log)
-    #result.fmodel.show(show_header=False, show_approx=False, log = self.log)
-    result.fmodel.show_short(show_k_mask=False, prefix="  ", log = self.log)
-    print(result.fmodel.r_factors(prefix="  "), file=self.log)
-    return result
 
 def get_map(mc, cg):
   fft_map = mc.fft_map(crystal_gridding = cg)
@@ -177,14 +143,11 @@ def run_one(args):
   if(not pdb_inp.get_experiment_type() in
      ["X-RAY DIFFRACTION", "NEUTRON DIFFRACTION"]): return
   #
-  #log = sys.stdout
   log = open("%s.log"%code,"w")
   try:
     # main
     o = compute(pdbf=pdbf, mtzf=mtzf, log=log)
-    log.flush()
     mbs = o.do_mosaic(alg=alg)
-    log.flush()
     ### SKIP
     if(o.fmodel_2013.r_work()>0.45 or
        len(o.mm.regions.values())<1 or
@@ -195,18 +158,17 @@ def run_one(args):
     ###
     # write maps
     if(o.mm.mc is not None):
-      assert approx_equal(o.mm.mc.data(), o.mc_largest_mask.data())
       mtz_dataset = o.mm.mc.as_mtz_dataset(column_root_label='FistMask')
       mtz_dataset.add_miller_array(
-        miller_array=o.mc_whole_mask, column_root_label="WholeMask")
+        miller_array=o.mc, column_root_label="WholeMask")
       mtz_dataset.add_miller_array(
         miller_array=mbs.mc, column_root_label="Mosaic")
       mtz_object = mtz_dataset.mtz_object()
       mtz_object.write(file_name = "%s_mc.mtz"%code)
       # map stats
-      map_FirstMask = get_map(mc=o.mm.mc,         cg=o.mm.crystal_gridding)
-      map_WholeMask = get_map(mc=o.mc_whole_mask, cg=o.mm.crystal_gridding)
-      map_Mosaic    = get_map(mc=mbs.mc,          cg=o.mm.crystal_gridding)
+      map_FirstMask = get_map(mc=o.mm.mc, cg=o.mm.crystal_gridding)
+      map_WholeMask = get_map(mc=o.mc,    cg=o.mm.crystal_gridding)
+      map_Mosaic    = get_map(mc=mbs.mc,  cg=o.mm.crystal_gridding)
       cntr = 0
       for region in o.mm.regions.values():
         region.m_FistMask  = map_stat(m=map_FirstMask, conn = o.mm.conn, i=region.id)
@@ -223,8 +185,8 @@ def run_one(args):
       code            = code,
       d_min           = o.fmodel_2013.f_obs().d_min(),
       r_2013          = o.fmodel_2013.r_factors(as_string=False),
-      r_2013_04       = o.fmodel_2013_04.r_factors(as_string=False),
       r_mosaic        = mbs.fmodel.r_factors(as_string=False),
+      r_finestep      = o.fmodel.r_factors(as_string=False),
       solvent_content = o.mm.solvent_content,
       regions         = o.mm.regions)
     easy_pickle.dump("%s.pkl"%code, result)

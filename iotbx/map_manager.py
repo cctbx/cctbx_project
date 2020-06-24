@@ -8,6 +8,7 @@ from iotbx.mrcfile import map_reader, write_ccp4_map
 from scitbx.array_family import flex
 from cctbx import maptbx
 from cctbx import miller
+import mmtbx.ncs.ncs
 from copy import deepcopy
 
 class map_manager(map_reader, write_ccp4_map):
@@ -182,6 +183,7 @@ class map_manager(map_reader, write_ccp4_map):
      unit_cell_grid = None,
      unit_cell_crystal_symmetry = None,
      origin_shift_grid_units = None, # OPTIONAL first point in map in full cell
+     ncs_object = None, # OPTIONAL ncs_object with map symmetry
      log = None,
      ):
 
@@ -193,6 +195,8 @@ class map_manager(map_reader, write_ccp4_map):
       Alternative is initialize with map_data and metadata
        Required: specify map_data, unit_cell_grid, unit_cell_crystal_symmetry
        Optional: specify origin_shift_grid_units
+
+      Optional in either case: supply ncs_object with map symmetry of full map
 
       NOTE on "crystal_symmetry" objects
       There are two objects that are "crystal_symmetry" objects:
@@ -218,6 +222,7 @@ class map_manager(map_reader, write_ccp4_map):
     assert (file_name is not None) or [map_data,unit_cell_grid,
         unit_cell_crystal_symmetry].count(None)==0
 
+    assert (ncs_object is None) or isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
     # Initialize log filestream
     self.set_log(log)
 
@@ -234,7 +239,8 @@ class map_manager(map_reader, write_ccp4_map):
     self.limitations = None  # Limitations from STANDARD_LIMITATIONS_DICT
     self.labels = None  # List of labels (usually from input file) to be written
 
-
+    # Initialze ncs_object
+    self._ncs_object = ncs_object
 
     # Initialize origin shift representing position of original origin in
     #  grid units.  If map is shifted, this is updated to reflect where
@@ -476,6 +482,10 @@ class map_manager(map_reader, write_ccp4_map):
     assert shift_info.map_corner_original_location  ==  add_tuples_int(
        new_current_origin, self.origin_shift_grid_units)
 
+    # If there is an associated ncs_object, shift it too
+    if self.ncs_object():
+      self.set_ncs_object_shift_cart_to_match_map(self.ncs_object())
+
   def _get_shift_info(self, desired_origin = None):
     '''
       Utility to calculate the shift necessary (grid units)
@@ -529,6 +539,16 @@ class map_manager(map_reader, write_ccp4_map):
                                self.origin_shift_grid_units)
 
     self.shift_origin(desired_origin = original_origin)
+
+  def set_ncs_object(self, ncs_object):
+    '''
+      set the ncs object for this map_manager.  Incoming ncs_object must
+     be compatible (shift_cart values must match).  Incoming ncs_object is
+     deep_copied.
+    '''
+    assert isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
+    assert self.is_similar_ncs_object(ncs_object)
+    self._ncs_object = deepcopy(ncs_object)
 
   def set_program_name(self, program_name = None):
     '''
@@ -863,6 +883,10 @@ class map_manager(map_reader, write_ccp4_map):
     mm.data = map_data  # using self.data or a deepcopy (specified above)
     mm._created_mask = created_mask  # using self._created_mask or a
                                      #deepcopy (specified above)
+    if self._ncs_object:
+      mm._ncs_object = self._ncs_object.deep_copy()
+    else:
+      mm._ncs_object = None
 
     # Set up _crystal_symmetry for the new object
     mm.set_crystal_symmetry_of_partial_map() # Required and must be last
@@ -880,19 +904,47 @@ class map_manager(map_reader, write_ccp4_map):
 
   def is_similar(self, other = None):
     # Check to make sure origin, gridding and symmetry are similar
+    self._warning_message=""
+
     if tuple(self.origin_shift_grid_units) !=  tuple(
         other.origin_shift_grid_units):
+      self._warning_message="Origin shift grid units "+  \
+        "(%s) does not match other (%s)" %(
+        str(self.origin_shift_grid_units),str(other.origin_shift_grid_units))
       return False
     if not self.unit_cell_crystal_symmetry().is_similar_symmetry(
       other.unit_cell_crystal_symmetry()):
+      self._warning_message="Unit cell crystal symmetry"+ \
+        "(%s) does not match other (%s)" %(
+        str(self.unit_cell_crystal_symmetry()),
+         str(other.unit_cell_crystal_symmetry()))
       return False
     if not self.crystal_symmetry().is_similar_symmetry(
       other.crystal_symmetry()):
+      self._warning_message="Crystal symmetry"+ \
+        "(%s) does not match other (%s)" %(
+        str(self.crystal_symmetry()),
+         str(other.crystal_symmetry()))
       return False
     if self.map_data().all()!=  other.map_data().all():
+      self._warning_message="Existing map gridding "+ \
+        "(%s) does not match other (%s)" %(
+         str(self.map_data().all()),str(other.map_data().all()))
       return False
     if self.unit_cell_grid !=  other.unit_cell_grid:
+      self._warning_message="Full map gridding "+ \
+        "(%s) does not match other (%s)" %(
+         str(self.map_data().all()),str(other.map_data().all()))
       return False
+
+    # Make sure ncs objects are similar if both have one
+    if self.ncs_object() is not None:
+      if not other.ncs_object().is_similar_ncs_object(self.ncs_object()):
+        text1=self.ncs_object().as_ncs_spec_string()
+        text2=other.ncs_object().as_ncs_spec_string()
+        self._warning_message="NCS object:\n%s\n does not match other:\n%s" %(
+          text1,text2)
+        return False
     return True
 
   def grid_units_to_cart(self, grid_units):
@@ -901,6 +953,9 @@ class map_manager(map_reader, write_ccp4_map):
     y = grid_units[1]/self.unit_cell_grid[1]
     z = grid_units[2]/self.unit_cell_grid[2]
     return self.unit_cell().orthogonalize(tuple((x, y, z)))
+
+  def ncs_object(self):
+    return self._ncs_object
 
   def shift_cart(self):
     '''
@@ -911,12 +966,23 @@ class map_manager(map_reader, write_ccp4_map):
     return tuple(
        [-x for x in self.grid_units_to_cart(self.origin_shift_grid_units)])
 
+  def set_ncs_object_shift_cart_to_match_map(self, ncs_object):
+    '''
+      Set the ncs_object shift_cart to match map
+
+      Overwrites any information in ncs_object on shift_cart
+      Modifies ncs_object in place
+    '''
+
+    # Set shift_cart (shift since readin) to match shift_cart for
+    #   map (shift of origin is opposite of shift applied)
+    ncs_object.set_shift_cart(self.shift_cart())
+
   def set_model_symmetries_and_shift_cart_to_match_map(self,model):
     '''
       Set the model original and working crystal_symmetry to match map.
-      Requires that the model be compatible (i.e., not be specified as being
-      different).
 
+      Overwrites any information in model on symmetry and shift_cart
       Modifies model in place
     '''
 
@@ -1058,6 +1124,80 @@ class map_manager(map_reader, write_ccp4_map):
   def warning_message(self):
     if hasattr(self,'_warning_message'):
        return self._warning_message
+
+  def ncs_cc(self):
+    if hasattr(self,'_ncs_cc'):
+       return self._ncs_cc
+
+  def find_map_symmetry(self,
+      include_helical_symmetry = False,
+      symmetry_center = None,
+      min_ncs_cc = None, 
+      symmetry = None):
+    '''
+       Use run_get_symmetry_from_map tool in segment_and_split_map to find
+       map symmetry and save it as an mmtbx.ncs.ncs.ncs object
+
+       Here map symmetry is the reconstruction symmetry used to generate the
+       map. Normally it is essentially perfect symmetry and normally the
+       principal axes are aligned with x,y,z and normally the center is at
+       the original center of the map.
+
+       Sets self._warning_message if failure, sets self._ncs_object and
+           self._ncs_cc if success
+
+       This procedure may fail if the above assumptions do not hold.
+       Optional center of map can be supplied, and minimum NCS correlation
+       can also be supplied
+
+       Requires that map_manager is already shifted to place origin at (0, 0, 0)
+
+       Assumes that center of symmetry is at (1/2, 1/2, 1/2) in the full map
+
+       It is optional to include search for helical symmetry. Reason is that
+       this is much slower than other symmetries.
+
+       symmetry (symbol such as c1, O, D7) can be supplied and search will be
+       limited to that symmetry
+    '''
+
+    assert self.origin_is_zero()
+
+    self._warning_message = ""
+    self._ncs_cc = None
+
+    from cctbx.maptbx.segment_and_split_map import \
+       run_get_ncs_from_map, get_params
+
+    if symmetry_center is None:
+      # Most likely map center is (1/2,1/2,1/2) in full grid
+      full_unit_cell=self.unit_cell_crystal_symmetry(
+            ).unit_cell().parameters()[:3]
+      symmetry_center=[]
+      for x, sc in zip(full_unit_cell, self.shift_cart()):
+        symmetry_center.append(0.5*x + sc)
+      symmetry_center = tuple(symmetry_center)
+
+    params = get_params(args=[],
+      symmetry = symmetry,
+      include_helical_symmetry = include_helical_symmetry,
+      symmetry_center = symmetry_center,
+      min_ncs_cc = min_ncs_cc,
+      return_params_only = True,
+      )
+
+
+    new_ncs_obj, ncs_cc, ncs_score = run_get_ncs_from_map(params = params,
+      map_data = self.map_data(),
+      crystal_symmetry = self.crystal_symmetry(),
+      out = sys.stdout, #self.log,
+      )
+    if new_ncs_obj:
+      self._ncs_object = new_ncs_obj
+      self._ncs_cc = ncs_cc
+    else:
+      self._warning_message = "No map symmetry found; ncs_cc cutoff of %s" %(
+        min_ncs_cc)
 
   def map_as_fourier_coefficients(self, high_resolution = None):
     '''

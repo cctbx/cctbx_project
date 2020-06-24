@@ -39,7 +39,6 @@ def exercise(file_name, out = sys.stdout):
           map_manager_list =  [m.deep_copy(),m.deep_copy(),m.deep_copy()],
           map_manager_id_list = ["extra_1","extra_2","map_manager_mask"],
           model     = model.deep_copy(),)
-
   r_model=mam.as_r_model()
 
   print (r_model.map_manager())
@@ -47,10 +46,14 @@ def exercise(file_name, out = sys.stdout):
   print (r_model.map_manager_1())
   print (r_model.map_manager_2())
   print (r_model.map_manager_mask())
-  print (r_model.ncs_object())
-  all_map_names=r_model.get_map_manager_names()
+  print (r_model.map_manager().ncs_object())
+  all_map_names=r_model.map_manager_id_list()
   for id in all_map_names:
     print("Map_manager %s: %s " %(id,r_model.get_map_manager(id)))
+
+  new_r_model=r_model.deep_copy()
+  assert r_model.map_manager().map_data()[0]==new_r_model.map_manager().map_data()[0]
+
   print ("OK")
 
 if __name__ == "__main__":

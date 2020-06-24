@@ -146,10 +146,7 @@ tst_list = [
    "$D/regression/tst_connectivity.py",
    "$D/regression/tst_diffuse.py",
    "$D/regression/tst_grm_modifications.py",
-  ]
-
-tst_list_expected_unstable = [
-  "$D/regression/tst_fcalc_fft_stability.py",
+   "$D/regression/tst_fcalc_fft_stability.py",
   ]
 
 def run():
