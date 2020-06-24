@@ -118,7 +118,7 @@ class compute(object):
     self.fmodel_2013_04.show(show_header=False, show_approx=False, log = log)
     print(self.fmodel_2013_04.r_factors(prefix="  "), file=log)
     self.mc_whole_mask = \
-      self.mm.fmodel_largest_mask.electron_density_map().map_coefficients(
+      self.fmodel_2013_04.electron_density_map().map_coefficients(
         map_type   = "mFobs-DFmodel",
         isotropize = True,
         exclude_free_r_reflections = False)
