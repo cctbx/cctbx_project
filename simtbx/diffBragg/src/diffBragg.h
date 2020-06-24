@@ -2,6 +2,7 @@
 #include <simtbx/nanoBragg/nanoBragg.h>
 #include <vector>
 #include <boost/ptr_container/ptr_vector.hpp>
+#include <boost/python.hpp>
 //#include <boost/python/numpy.hpp>
 
 namespace simtbx {
@@ -37,6 +38,7 @@ class Ncells_manager: public derivative_manager{
     Ncells_manager();
     virtual ~Ncells_manager(){}
     void increment(double dI_increment, double dI2_increment);
+    //bool single_parameter;  // refine a single parameter (Na=Nb=Nc), or else all 3 parameters (Na, Nb, Nc)
 };
 
 
@@ -117,10 +119,14 @@ class diffBragg: public nanoBragg{
   void update_dxtbx_geoms(const dxtbx::model::Detector& detector, const dxtbx::model::Beam& beam,
         int panel_id);
   void set_value( int refine_id, double value);
+  void set_ncells_values( boost::python::tuple const& values);
+  boost::python::tuple get_ncells_values();
   double get_value( int refine_id);
   af::flex_double get_derivative_pixels(int refine_id);
   af::flex_double get_second_derivative_pixels(int refine_id);
   af::flex_double get_raw_pixels_roi();
+  boost::python::tuple get_ncells_derivative_pixels();
+  boost::python::tuple get_ncells_second_derivative_pixels();
 
   /* override to cache some of the polarization calc variables to use in derivatives*/
   double polarization_factor(double kahn_factor, double *incident, double *diffracted, double *axis);
@@ -145,7 +151,7 @@ class diffBragg: public nanoBragg{
   mat3 Bmatrix;
   mat3 Omatrix;
   mat3 UBO;
-  mat3 Bmat_realspace, NABC;
+  mat3 Bmat_realspace, NABC, dN;
   mat3 RXYZ;
   std::vector<mat3> RotMats;
   std::vector<mat3> dRotMats, d2RotMats;
@@ -169,6 +175,8 @@ class diffBragg: public nanoBragg{
   std::vector<boost::shared_ptr<ucell_manager> > ucell_managers;
   std::vector<boost::shared_ptr<Ncells_manager> > Ncells_managers;
   std::vector<boost::shared_ptr<origin_manager> > origin_managers;
+
+
 
   boost::shared_ptr<Fcell_manager> fcell_man;
   double* floatimage_roi;
@@ -234,6 +242,8 @@ class diffBragg: public nanoBragg{
   af::shared<double> pythony_amplitudes2;
   bool complex_miller;
   double F_cell2; // for storing the imaginary component
+
+  bool isotropic_ncells;
 
 }; // end of diffBragg
 

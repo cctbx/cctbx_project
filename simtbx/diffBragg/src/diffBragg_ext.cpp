@@ -7,16 +7,17 @@ namespace simtbx{
 namespace diffBragg{
 namespace boost_python { namespace {
 
+  static void  set_Nabc_aniso(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& values) {
+      diffBragg.isotropic_ncells=false;
+      diffBragg.set_ncells_values(values);
+  }
+
+  static boost::python::tuple get_Nabc_aniso(simtbx::nanoBragg::diffBragg const& diffBragg) {
+      return boost::python::make_tuple(diffBragg.Na, diffBragg.Nb, diffBragg.Nc);
+  }
+
   static void  set_Nabc(simtbx::nanoBragg::diffBragg& diffBragg, double const& value) {
-      //diffBragg.Na = value;
-      //diffBragg.Nb = value;
-      //diffBragg.Nc = value;
-      ///* clear things that might override it */
-      //diffBragg.xtal_size_x = -1;
-      //diffBragg.xtal_size_y = -1;
-      //diffBragg.xtal_size_z = -1;
-      //diffBragg.update_oversample();
-      diffBragg.set_value(9, value); // FIXME 9 means Ncells parameter, fix this API
+      diffBragg.set_value(9, value); //  9 means Ncells parameter
   }
 
   static double get_Nabc(simtbx::nanoBragg::diffBragg const& diffBragg) {
@@ -160,6 +161,14 @@ namespace boost_python { namespace {
 
       .def("set_value", &simtbx::nanoBragg::diffBragg::set_value, "set value of the refinement parameter")
 
+      .def("set_ncells_values", &simtbx::nanoBragg::diffBragg::set_ncells_values, "set Ncells values as a 3-tuple (Na, Nb, Nc)")
+
+      .def("get_ncells_values", &simtbx::nanoBragg::diffBragg::get_ncells_values, "get Ncells values as a 3-tuple (Na, Nb, Nc)")
+
+      .def("get_ncells_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_ncells_derivative_pixels, "get derivatives of intensity w.r.t (Na, Nb, Nc)")
+
+      .def("get_ncells_second_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_ncells_second_derivative_pixels, "get second derivatives of intensity w.r.t (Na, Nb, Nc)")
+
       .def("set_ucell_derivative_matrix",  &simtbx::nanoBragg::diffBragg::set_ucell_derivative_matrix, "Boo-ya")
 
       .def("set_ucell_second_derivative_matrix",  &simtbx::nanoBragg::diffBragg::set_ucell_second_derivative_matrix,
@@ -230,12 +239,22 @@ namespace boost_python { namespace {
       .add_property("Ncells_abc",
              make_function(&get_Nabc,rbv()),
              make_function(&set_Nabc,dcp()),
-             "Get number of mosaic domains along an axis")
+             "number of mosaic domains along an axis")
+
+      .add_property("Ncells_abc_aniso",
+             make_function(&get_Nabc_aniso,rbv()),
+             make_function(&set_Nabc_aniso,dcp()),
+             "number of mosaic domains along an axis, can be anisotropic")
 
       .add_property("update_oversample_during_refinement",
                      make_getter(&simtbx::nanoBragg::diffBragg::update_oversample_during_refinement,rbv()),
                      make_setter(&simtbx::nanoBragg::diffBragg::update_oversample_during_refinement,dcp()),
                      "Allows oversample to change as Ncells abc changes")
+
+      .add_property("isotropic_ncells",
+                     make_getter(&simtbx::nanoBragg::diffBragg::isotropic_ncells,rbv()),
+                     make_setter(&simtbx::nanoBragg::diffBragg::isotropic_ncells,dcp()),
+                     "refine (Na, Nb, Nc) as three independent parameters")
 
       .add_property("Fhkl_tuple_complex",
             make_function(&get_Fhkl_tuple_complex,rbv()),
