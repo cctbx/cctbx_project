@@ -2897,7 +2897,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
    abs_tol_t=default_abs_tol_t,
    rel_tol_t=default_rel_tol_t):
     '''
-     return True if all operations of self match one of other 
+     return True if all operations of self match one of other
     '''
 
     if len(self.rota_matrices_inv()) < 1:
@@ -4286,7 +4286,7 @@ class ncs:
    rel_tol_t=default_rel_tol_t):
     '''
       Determine if self and other are similar ncs objects
-      ncs groups do not have to be in same order 
+      ncs groups do not have to be in same order
     '''
     if not self._ncs_groups and not other._ncs_groups:
       return True  # nothing there for either one
@@ -4523,7 +4523,7 @@ if __name__=="__main__":
      new_ncs_obj._ncs_groups=deepcopy(std_ncs_object._ncs_groups)
      offset_ncs=std_ncs_object.deep_copy(coordinate_offset=(10,10,10))
      assert not offset_ncs.is_similar_ncs_object(biomt_ncs_object)
-     new_ncs_obj._ncs_groups.append(deepcopy(offset_ncs._ncs_groups[0])) 
+     new_ncs_obj._ncs_groups.append(deepcopy(offset_ncs._ncs_groups[0]))
      second_ncs_obj=ncs()
      second_ncs_obj._ncs_groups=deepcopy(offset_ncs._ncs_groups)
      second_ncs_obj._ncs_groups.append(deepcopy(std_ncs_object._ncs_groups[0]))

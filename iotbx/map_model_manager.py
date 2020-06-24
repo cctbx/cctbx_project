@@ -85,7 +85,7 @@ class r_model(map_model_base):
     For all maps, the map_manager_id is the key specified for that map_manager
     in map_dict in the call.
 
-    Map reconstruction symmetry information as a ncs_object is available from 
+    Map reconstruction symmetry information as a ncs_object is available from
     any of the map_manager objects if it was supplied in the call.
 
     Notes on boxing and "crystal_symmetry" and "unit_cell_crystal_symmetry":
@@ -98,7 +98,7 @@ class r_model(map_model_base):
 
     Normally after cutting out a box of density from a map, that box of density
     is shifted to place its origin at (0,0,0).  The shift in grid units to
-    put it back is available from a shifted map_manager as 
+    put it back is available from a shifted map_manager as
     map_manager.origin_shift_grid_units.
 
     The shift_cart for a map, model, or ncs_object is the shift that has been
@@ -312,7 +312,7 @@ class map_model_manager(map_model_base):
 
     # READY
 
-    # Make a match_map_model_ncs and check unit_cell and 
+    # Make a match_map_model_ncs and check unit_cell and
     #   working crystal symmetry
     #  and shift_cart for model, map, and ncs_object (if present)
 
@@ -331,8 +331,8 @@ class map_model_manager(map_model_base):
     mmmn.shift_origin(log = null_out())
 
     # map_manager, model, ncs_object know about shift
-    map_manager = mmmn.map_manager()  
-    self._model = mmmn.model()  # this model knows about shift 
+    map_manager = mmmn.map_manager()
+    self._model = mmmn.model()  # this model knows about shift
     self._ncs_object = mmmn.ncs_object()  # ncs object also knows about shift
     self._crystal_symmetry = map_manager.crystal_symmetry()
     self._shift_cart=map_manager.shift_cart()
@@ -343,7 +343,7 @@ class map_model_manager(map_model_base):
 
     if self._ncs_object:
       # Make sure ncs_object shift manager agrees with map_manager shift
-      assert approx_equal(self._ncs_object.shift_cart(), 
+      assert approx_equal(self._ncs_object.shift_cart(),
          map_manager.shift_cart())
 
     # Shift origins of all other maps
@@ -497,7 +497,7 @@ class map_model_manager(map_model_base):
     return self._map_dict.get('map_manager')
 
   def ncs_object(self):
-    ''' 
+    '''
       Get the ncs_object
 
       Note that the ncs_object has also been copied to all map_manager objects

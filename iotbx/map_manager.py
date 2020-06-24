@@ -1132,7 +1132,7 @@ class map_manager(map_reader, write_ccp4_map):
   def find_map_symmetry(self,
       include_helical_symmetry = False,
       symmetry_center = None,
-      min_ncs_cc = None, 
+      min_ncs_cc = None,
       symmetry = None):
     '''
        Use run_get_symmetry_from_map tool in segment_and_split_map to find

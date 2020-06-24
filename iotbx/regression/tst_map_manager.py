@@ -234,7 +234,7 @@ def test_01():
 
   # Adjust model and ncs symmetry to match this map
   assert model.shift_cart()  is None
-  new_mm.set_model_symmetries_and_shift_cart_to_match_map(model) 
+  new_mm.set_model_symmetries_and_shift_cart_to_match_map(model)
   assert approx_equal (model.shift_cart() ,
        (-0.888888888888889, -0.8888888888888891, -0.888888888888889))
 

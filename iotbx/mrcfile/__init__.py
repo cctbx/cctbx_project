@@ -328,12 +328,12 @@ class map_reader:
       print(prefix + "Shift (grid units) to place origin at original position:",
           self.origin_shift_grid_units, file=out)
 
-   
+
     if hasattr(self,'_ncs_object') and self._ncs_object:
       print (prefix + "Associated ncs_object with",
           self._ncs_object.max_operators(),"operators",
            file=out)
-   
+
     if hasattr(self,'_model') and self._model:
       print (prefix + "Associated model with",
           self._model.get_hierarchy().overall_counts().n_residues,"residues",
