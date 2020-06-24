@@ -10,6 +10,7 @@ def exercise_02(prefix="tst_mi_test_02"):
   Simple run to completion with SS annotations in PDB file
   """
   h_records = """\
+CRYST1  100.000  100.000  100.000  90.00  90.00  90.00 P 1
 HELIX    1   1 PRO A    3  ALA A   21  1                                  19
 HELIX    2   2 ARG A   23  GLN A   44  1                                  22
 """

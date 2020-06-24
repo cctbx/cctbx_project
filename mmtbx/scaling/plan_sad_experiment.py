@@ -333,7 +333,7 @@ def get_residues_and_ha(seq_file=None,atom_type=None,
   if not seq_file or not os.path.isfile(seq_file):
     raise Sorry("Please supply number of residues or a sequence file")
   objects, non_compliant = any_sequence_format(seq_file)
-  if non_compliant:
+  if non_compliant or (objects is None):
     raise Sorry("Sorry, unable to read the sequence file %s" %(seq_file))
   n_aa, n_met, n_cys = 0, 0, 0
   for seq_obj in objects :

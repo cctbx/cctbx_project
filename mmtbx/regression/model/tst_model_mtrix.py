@@ -4,6 +4,7 @@ import iotbx.pdb
 from libtbx.utils import format_cpu_times, null_out
 
 pdb_str_1="""
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1
 HELIX    1   1 THR A    1  THR A    2  1                                   6
 HELIX    1   1 THR B    1  THR B    2  1                                   6
 SHEET    1   A 2 THR A   1  THR A   3  0

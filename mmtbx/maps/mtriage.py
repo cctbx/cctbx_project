@@ -420,6 +420,14 @@ class _mtriage(object):
       self.map_data_2 = self.map_data_2*self.mask_smooth
 
   def _compute_f_maps(self):
+    assert self.map_data.origin()==(0,0,0)
+    if self.map_data_1 is not None:
+      assert self.map_data_1.origin()==(0,0,0)
+      assert self.map_data.all()==self.map_data_1.all()
+    if self.map_data_2 is not None:
+      assert self.map_data_2.origin()==(0,0,0)
+      assert self.map_data.all()==self.map_data_2.all()
+
     self.f_map = miller.structure_factor_box_from_map(
       map              = self.map_data,
       crystal_symmetry = self.crystal_symmetry)

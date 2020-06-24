@@ -9,7 +9,7 @@ jobs:
 - job: modules${{ parameters.optimization }}
   pool:
     vmImage: ubuntu-latest
-  timeoutInMinutes: 360
+  timeoutInMinutes: 90
 
   steps:
 
@@ -60,20 +60,36 @@ jobs:
   - task: DownloadPipelineArtifact@2
     inputs:
       source: 'specific'
-      project: '$(System.TeamProjectId)'
-      pipeline: 4
+      project: '$(resources.pipeline.data_cache.projectID)'
+      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
       artifact: 'phenix_regression'
       path: $(Pipeline.Workspace)/modules/phenix_regression
     displayName: Download phenix_regression
 
+  - script: |
+      cd $(Pipeline.Workspace)/modules/phenix_regression
+      git reset --hard origin/master
+      git lfs install --local
+      git pull --rebase
+      git lfs pull
+    displayName: Update phenix_regression
+
   - task: DownloadPipelineArtifact@2
     inputs:
       source: 'specific'
-      project: '$(System.TeamProjectId)'
-      pipeline: 4
+      project: '$(resources.pipeline.data_cache.projectID)'
+      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
       artifact: 'phenix_examples'
       path: $(Pipeline.Workspace)/modules/phenix_examples
     displayName: Download phenix_examples
+
+  - script: |
+      cd $(Pipeline.Workspace)/modules/phenix_examples
+      git reset --hard origin/master
+      git lfs install --local
+      git pull --rebase
+      git lfs pull
+    displayName: Update phenix_examples
 
   # preserve permissions
   - script: |

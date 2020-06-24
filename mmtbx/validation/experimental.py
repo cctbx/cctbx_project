@@ -193,7 +193,7 @@ class real_space(validation):
       # use mmtbx/command_line/map_model_cc.py for maps
       self.fsc = None
       if (use_maps):
-        from iotbx import map_and_model
+        from iotbx.map_model_manager import map_model_manager
         from mmtbx.maps import map_model_cc
         from mmtbx.command_line.map_model_cc import get_fsc
         from iotbx.file_reader import any_file
@@ -202,8 +202,8 @@ class real_space(validation):
         map_object = any_file(molprobity_map_params.map_file_name).file_object
 
         # check that model crystal symmetry matches map crystal symmetry
-        mmi = map_and_model.input(
-          map_data = map_object.map_data(),
+        mmi = map_model_manager(
+          map_manager    = map_object,
           model = model)
 
         rsc_object = map_model_cc.map_model_cc(

@@ -1,12 +1,17 @@
 # Script for building CCTBX
 # linux image descriptions
-# https://github.com/Microsoft/azure-pipelines-image-generation/blob/master/images/linux/Ubuntu1604-README.md
+# https://github.com/actions/virtual-environments/blob/master/images/linux/Ubuntu1804-README.md
+#
+# Parameters:
+#   distribution: centos, ubuntu
+#   version: [6, 10]
+#   modules: <modules artifact name>
 
 jobs:
 - job: ${{ format('{0}_{1}', parameters.distribution, join('_', parameters.version) ) }}
   pool:
     vmImage: ubuntu-latest
-  timeoutInMinutes: 360
+  timeoutInMinutes: 90
   strategy:
     maxParallel: 2
     matrix:
@@ -35,7 +40,20 @@ jobs:
     image: ${{ parameters.distribution }}:${{ join('.', parameters.version) }}
     options: "--name ci-container -v /usr/bin/docker:/tmp/docker:ro"
 
+  variables:
+    artifact_name: ${{ parameters.distribution }}_${{ join('.', parameters.version) }}_$(PYTHON_VERSION)
+    day: Sunday
+
   steps:
+  - script: |
+      day=`date +%A`
+      echo $(day)
+      echo "##vso[task.setVariable variable=day]$day"
+    displayName: Get day of week
+
+  - script: echo $(day)
+    displayName: Check day of week
+
   # https://github.com/ApexAI/performance_test/blob/master/azure-pipelines.yml#L9-L17
 
   # centos setup
@@ -75,8 +93,73 @@ jobs:
     displayName: Install dependencies for Ubuntu
     condition: eq('${{ parameters.distribution }}', 'ubuntu')
 
+  - script: |
+      echo $(System.CollectionId)
+      echo $(System.CollectionUri)
+      echo $(System.TeamProject)
+      echo $(System.TeamProjectId)
+      echo $(System.DefinitionID)
+    displayName: Show System variables
+
+  # download daily cached build directory for builds
+  # always do builds from scratch for "Update build cache" on Saturday night (Pacific)
+  # always do builds from scratch for "Weekly" pipeline
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(resources.pipeline.build_cache.projectID)'
+      pipeline: '$(resources.pipeline.build_cache.pipelineID)'
+      allowPartiallySucceededBuilds: true
+      artifact: '$(artifact_name)'
+      path: $(Pipeline.Workspace)
+    displayName: Download cached build
+    condition: >
+      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+             ne(variables['day'], 'Sunday')),
+         eq(variables['Build.DefinitionName'], 'CI'),
+         eq(variables['Build.DefinitionName'], 'CI branch'),
+         eq(variables['Build.DefinitionName'], 'Full'))
+    continueOnError: true
+
+  - script: |
+      cd $(Pipeline.Workspace)
+      tar -xf build.tar
+    displayName: Extract build tarball
+    condition: >
+      or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+             ne(variables['day'], 'Sunday')),
+         eq(variables['Build.DefinitionName'], 'CI'),
+         eq(variables['Build.DefinitionName'], 'CI branch'),
+         eq(variables['Build.DefinitionName'], 'Full'))
+    continueOnError: true
+    failOnStderr: false
+
   # build
   - template: ./unix-conda-build.yml
     parameters:
       distribution: ${{ parameters.distribution }}
       version: ${{ parameters.version }}
+
+  # preserve permissions
+  - script: |
+      cd $(Pipeline.Workspace)
+      tar -chf build.tar build
+    displayName: Build tarball
+    condition: >
+      and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+          or(eq(variables['Build.Reason'], 'Schedule'),
+             eq(variables['Build.Reason'], 'Manual')),
+          eq(variables['System.StageAttempt'], 1),
+          eq('${{ parameters.modules }}', 'modules'))
+    continueOnError: true
+
+  # cache build directory every week for regular optimization build
+  - publish: $(Pipeline.Workspace)/build.tar
+    artifact: $(artifact_name)
+    condition: >
+      and(eq(variables['Build.DefinitionName'], 'Update build cache'),
+          or(eq(variables['Build.Reason'], 'Schedule'),
+             eq(variables['Build.Reason'], 'Manual')),
+          eq(variables['System.StageAttempt'], 1),
+          eq('${{ parameters.modules }}', 'modules'))
+    continueOnError: true

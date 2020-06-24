@@ -6,7 +6,6 @@ stages:
   displayName: Download
   jobs:
     - template: ./download-source.yml
-    - template: ./download-conda.yml
 
 - stage: Build
   displayName: Build and test
@@ -16,6 +15,10 @@ stages:
       parameters:
         distribution: centos
         version: [6]
+    - template: ./conda-psana.yml
+      parameters:
+        distribution: centos
+        version: [7]
     - template: ./conda-osx.yml
       parameters:
         vmImage: [10, 14]

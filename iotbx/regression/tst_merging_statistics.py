@@ -11,7 +11,7 @@ import sys
 
 
 def exercise(debug=False):
-  if (not libtbx.env.has_module("phenix_regression")):
+  if not libtbx.env.has_module("phenix_regression"):
     print("phenix_regression not configured, skipping.")
     return
   hkl_file = libtbx.env.find_in_repositories(
@@ -24,12 +24,12 @@ def exercise(debug=False):
     "unit_cell=113.949,113.949,32.474,90,90,90",
     "loggraph=True",
   ]
-  if (debug):
+  if debug:
     args.append("debug=True")
     print(" ".join(args))
   out = StringIO()
   result = merging_statistics.run(args, out=out)
-  if (debug):
+  if debug:
     print(out.getvalue())
   assert ("R-merge: 0.073" in out.getvalue())
   assert ("R-meas:  0.079" in out.getvalue())
@@ -48,23 +48,23 @@ def exercise(debug=False):
   # test resolution cutoffs
   args2 = list(args[:-1]) + ["high_resolution=2.5", "low_resolution=15"]
   out = StringIO()
-  result = merging_statistics.run(args2, out=out)
-  if (debug):
+  merging_statistics.run(args2, out=out)
+  if debug:
     print(out.getvalue())
   assert ("Resolution: 14.96 - 2.50" in out.getvalue())
   # extend binning
   args2 = list(args[:-1]) + ["high_resolution=1.5", "low_resolution=100",
     "--extend_d_max_min"]
   out = StringIO()
-  result = merging_statistics.run(args2, out=out)
-  if (debug):
+  merging_statistics.run(args2, out=out)
+  if debug:
     print(out.getvalue())
   assert ("Resolution: 100.00 - 1.50" in out.getvalue())
   assert ("  1.55   1.50      0      0    0.00   0.00       0.0     0.0     None     None     None   0.000   0.000""" in out.getvalue())
   args2 = args + ["json.file_name=merging_stats.json", "json.indent=2",
                   "mmcif.file_name=merging_stats.mmcif", "mmcif.data_name=test"]
   out = StringIO()
-  result = merging_statistics.run(args2, out=out)
+  merging_statistics.run(args2, out=out)
   assert os.path.exists("merging_stats.json")
   with open("merging_stats.json", "rb") as f:
     import json
@@ -107,15 +107,15 @@ def exercise(debug=False):
   # these should crash
   args2 = list(args[:-1]) + ["high_resolution=15", "low_resolution=2.5"]
   try :
-    result = merging_statistics.run(args2, out=out)
-  except Sorry as s :
+    merging_statistics.run(args2, out=out)
+  except Sorry:
     pass
   else :
     raise Exception_expected
   args2 = list(args[:-1]) + ["high_resolution=1.5", "low_resolution=1.6"]
   try :
-    result = merging_statistics.run(args2, out=out)
-  except Sorry as s :
+    merging_statistics.run(args2, out=out)
+  except Sorry:
     pass
   else :
     raise Exception_expected
@@ -126,12 +126,12 @@ def exercise(debug=False):
     "unit_cell=113.949,113.949,32.474,90,90,90",
     "loggraph=True",
   ]
-  if (debug):
+  if debug:
     args.append("debug=True")
     print(" ".join(args))
   out = StringIO()
-  result = merging_statistics.run(args, out=out)
-  if (debug):
+  merging_statistics.run(args, out=out)
+  if debug:
     print(out.getvalue())
   assert (" 28.49   3.76  15737   1224   12.86  99.84   47967.0    11.6    0.482    0.500    0.135   0.973  -0.513" in out.getvalue()), out.getvalue()
   # exercise 2: estimate resolution cutoffs (and symmetry_file argument)
@@ -149,8 +149,8 @@ def exercise(debug=False):
     "--estimate_cutoffs",
   ]
   out = StringIO()
-  result = merging_statistics.run(args, out=out)
-  if (debug):
+  merging_statistics.run(args, out=out)
+  if debug:
     print(out.getvalue())
   for line in """\
   resolution of all data          :   2.000
@@ -167,12 +167,17 @@ def exercise(debug=False):
     relative_path="phenix_regression/reflection_files/i_anomalous.mtz",
     test=os.path.isfile)
   assert hkl_file is not None
-  args = [hkl_file]
+
+  # Test that merged anomalous data are already merged.
   try:
-    result = merging_statistics.run(args, out=out)
+    merging_statistics.run([hkl_file, "anomalous=True"], out=out)
   except Sorry as e:
     assert str(e) == 'The data in i_anomalous(+),SIGi_anomalous(+),i_anomalous(-),SIGi_anomalous(-) are already merged.  Only unmerged (but scaled) data may be used in this program.'
   else: raise Exception_expected
+
+  # Test that merged anomalous data can still be merged as non-anomalous data.
+  merging_statistics.run([hkl_file], out=out)
+
   # test use_internal_variance option
   out = StringIO()
   hkl_file = libtbx.env.find_in_repositories(
@@ -236,7 +241,7 @@ def exercise(debug=False):
   assert app.expected_delta == 0.9
   d = result.overall.as_dict()
   for k in ("anom_probability_plot_all_data", "anom_probability_plot_expected_delta"):
-    assert d[k].keys() == ["slope", "intercept", "n_pairs", "expected_delta"]
+    assert list(d[k].keys()) == ["slope", "intercept", "n_pairs", "expected_delta"], list(d[k].keys())
   out = StringIO()
   result.overall.show_anomalous_probability_plot(out)
   assert not show_diff(out.getvalue(),
@@ -259,6 +264,6 @@ Anomalous probability plot (expected delta = 0.9):
   assert len(result.bins) == 12
 
 
-if (__name__ == "__main__"):
+if __name__ == "__main__":
   exercise(debug=("--debug" in sys.argv))
   print("OK")

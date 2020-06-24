@@ -162,7 +162,9 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
   if (data_type in ["fasta", "seq"]):
     # XXX the RCSB doesn't appear to have a simple URL for FASTA files
     if (url is None) : # TODO PDBe equivalent doesn't exist?
-      url = "https://www.rcsb.org/pdb/download/downloadFastaFiles.do?structureIdList=%s&compressionType=uncompressed" % id
+      # url = "https://www.rcsb.org/pdb/download/downloadFastaFiles.do?structureIdList=%s&compressionType=uncompressed" % id
+      # Seems that this url should be working:
+      url = "https://www.rcsb.org/fasta/entry/%s" % id
     try :
       data = libtbx.utils.urlopen(url)
     except HTTPError as e :

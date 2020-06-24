@@ -76,7 +76,8 @@ class run(object):
                try_expanal = True,
                try_expmin = False,
                verbose=False):
-
+    if(log is None): log = sys.stdout
+    self.d_hilo = 6
     assert f_obs.indices().all_eq(r_free_flags.indices())
     self.log = log
     self.scale_method = scale_method
@@ -121,7 +122,6 @@ class run(object):
         k_isotropic       = None,
         k_mask_fit_params = None)
     self.bss_result = init_result()
-    if(log is None): log = sys.stdout
     if(verbose):
       print("-"*80, file=log)
       print("Overall, iso- and anisotropic scaling and bulk-solvent modeling:", file=log)
@@ -161,15 +161,26 @@ class run(object):
       # bulk-solvent and overall isotropic scale
       if(self.bulk_solvent):
         if(cycle==0):
-          r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
-          if(verbose):
-            print("    r(set_k_isotropic_exp): %6.4f"%r_start, file=self.log)
-          r_start = self.k_mask_grid_search(r_start=r_start)
-          if(verbose):
-            print("    r(bulk_solvent_grid_search): %6.4f"%r_start, file=self.log)
-          r_start = self.set_k_isotropic_exp(r_start = r_start,  verbose=verbose)
-          if(verbose):
-            print("    r(set_k_isotropic_exp): %6.4f"%r_start, file=self.log)
+          # NEW
+          #use_highres = False
+          #if(self.f_obs.d_min() < self.d_hilo - 2):
+          #  use_highres = True
+          #if(use_highres):
+          #  r_start = self.anisotropic_scaling(r_start = r_start, use_highres=True)
+          #else:
+          #  r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
+          #
+          #r_start = self.k_mask_grid_search(r_start=r_start)
+          #
+          #if(use_highres):
+          #  r_start = self.anisotropic_scaling(r_start = r_start, use_highres=True)
+          #else:
+          #  r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
+          # OLD
+          for mic in [1,2]:
+            r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
+            r_start = self.k_mask_grid_search(r_start=r_start)
+            r_start = self.set_k_isotropic_exp(r_start = r_start,  verbose=verbose)
         else:
           r_start = self.bulk_solvent_scaling(r_start = r_start)
           if(verbose):
@@ -177,7 +188,7 @@ class run(object):
       # anisotropic scale
       if([try_poly, try_expanal, try_expmin].count(True)):
         if(verbose): print("    anisotropic scaling:", file=log)
-        r_start = self.anisotropic_scaling(r_start = r_start)
+        r_start = self.anisotropic_scaling(r_start = r_start, use_highres=False)
       if(self.auto_convergence and self.is_converged(r_start=r_start0,
          tolerance=self.auto_convergence_tolerance)):
         break
@@ -212,6 +223,9 @@ class run(object):
     return result
 
   def set_k_isotropic_exp(self, r_start, verbose, b_lower_limit = -100):
+    if(self.verbose):
+      print("    set_k_isotropic_exp:", file=self.log)
+      print("      r_start: %6.4f"%r_start)
     k_iso   = flex.double(self.core.k_isotropic.size(), 1) # Done at start only!
     k_aniso = flex.double(self.core.k_isotropic.size(), 1) # Done at start only!
     arrays = mmtbx.arrays.init(
@@ -229,20 +243,33 @@ class run(object):
       y = self.f_obs.data().select(sel),
       z = abs(arrays.f_model).data().select(sel))
     if(rf.b < b_lower_limit): return r_start
-    k = rf.a * flex.exp(-self.ss * rf.b)
-    r = self.try_scale(k_isotropic_exp = k)
+    k1 = rf.a * flex.exp(-self.ss * rf.b)
+    r1 = self.try_scale(k_isotropic_exp = k1)
     #
     # At least in one example this gives less accurate answer but lower R than start!
     #
-    #o = bulk_solvent.f_kb_scaled(
-    #  f1 = self.f_obs.data().select(sel),
-    #  f2 = flex.abs(arrays.f_model.data()).select(sel),
-    #  b_range = flex.double(range(-100,100,1)),
-    #  ss = self.ss.select(sel))
-    #k = o.k() * flex.exp(-self.ss * o.b())
+    o = bulk_solvent.f_kb_scaled(
+      f1 = self.f_obs.data().select(sel),
+      f2 = flex.abs(arrays.f_model.data()).select(sel),
+      b_range = flex.double(range(-100,100,1)),
+      ss = self.ss.select(sel))
+    k2 = o.k() * flex.exp(-self.ss * o.b())
+    r2 = self.try_scale(k_isotropic_exp = k2)
     #
-    self.core = self.core.update(k_isotropic_exp = k)
-    return self.r_factor()
+    if(r1<r2):
+      r = r1
+      k = k1
+    else:
+      r = r2
+      k = k2
+    if(r<r_start):
+      self.core = self.core.update(k_isotropic_exp = k)
+    r = self.r_factor()
+    if(self.verbose):
+      print("      r1: %6.4f"%r1)
+      print("      r2: %6.4f"%r2)
+      print("      r_final: %6.4f"%r)
+    return r
 
   def try_scale(self,
                 k_isotropic_exp=None,
@@ -346,7 +373,11 @@ class run(object):
     return scale*scale_k1
 
   def k_mask_grid_search(self, r_start):
-    k_mask_trial_range = flex.double([i/1000. for i in range(0,650,50)])
+    if(self.verbose):
+      print("    k_mask_grid_search:", file=self.log)
+      print("      r_start: %6.4f"%r_start)
+    #k_mask_trial_range = flex.double([i/1000. for i in range(0,650,50)])
+    k_mask_trial_range = flex.double([i/1000. for i in range(0,1010,10)])
     k_mask             = flex.double(self.f_obs.size(), 0)
     k_mask_bin         = flex.double()
     k_isotropic        = flex.double(self.f_obs.size(), 0)
@@ -370,13 +401,18 @@ class run(object):
     k_mask = self.populate_bin_to_individual_k_mask_linear_interpolation(
       k_mask_bin = k_mask_bin_smooth)
 
-    self.core = self.core.update(k_masks = k_mask, k_isotropic = k_isotropic)
-    # ????
-    self.bss_result.k_mask_bin_orig   = k_mask_bin
-    self.bss_result.k_mask_bin_smooth = k_mask_bin#_smooth
-    self.bss_result.k_mask            = k_mask
-    self.bss_result.k_isotropic       = k_isotropic
-    return self.r_factor()
+    r_try = self.try_scale(k_mask = k_mask, k_isotropic = k_isotropic)
+    if(r_try<r_start):
+      self.core = self.core.update(k_masks = k_mask, k_isotropic = k_isotropic)
+      # ????
+      self.bss_result.k_mask_bin_orig   = k_mask_bin
+      self.bss_result.k_mask_bin_smooth = k_mask_bin_smooth
+      self.bss_result.k_mask            = k_mask
+      self.bss_result.k_isotropic       = k_isotropic
+    r = self.r_factor()
+    if(self.verbose):
+      print("      r_final: %6.4f"%r)
+    return r
 
   def apply_overall_scale(self):
     scale_k1 = bulk_solvent.scale(self.f_obs.data(),
@@ -457,6 +493,9 @@ class run(object):
     return scale_k1
 
   def bulk_solvent_scaling(self, r_start):
+    if(self.verbose):
+      print("    bulk_solvent_scaling:", file=self.log)
+      print("      r_start: %6.4f"%r_start)
     k_mask     = flex.double(self.f_obs.size(), -1)
     k_mask_bin = flex.double()
     k_mask_trial_range = flex.double([i/1000. for i in range(0,1000,10)])
@@ -503,6 +542,7 @@ class run(object):
       elif(self.scale_method == "combo"):
         r = flex.double()
         k = flex.double()
+        #
         x0 = self.bss_result.k_mask_bin_orig[i_cas]
         k_mask.set_selected(selection, x0)
         r0 = self.try_scale(k_mask = k_mask, selection=selection)
@@ -544,8 +584,14 @@ class run(object):
     k_mask = self.populate_bin_to_individual_k_mask_linear_interpolation(
       k_mask_bin = k_mask_bin_smooth)
     k_isotropic = self._k_isotropic_as_scale_k1(r_start=r_start,k_mask = k_mask)
-    self.core = self.core.update(k_isotropic = k_isotropic, k_masks = k_mask)
-    return self.r_factor()
+
+    r_try = self.try_scale(k_mask = k_mask, k_isotropic = k_isotropic)
+    if(r_try<r_start):
+      self.core = self.core.update(k_isotropic = k_isotropic, k_masks = k_mask)
+    r = self.r_factor()
+    if(self.verbose):
+      print("      r_final: %6.4f"%r)
+    return r
 
   def smooth(self, x):
     result = moving_average(x = x)
@@ -577,12 +623,18 @@ class run(object):
       print("      V1:",\
         ",".join([str("%8.4f"%i).strip() for i in v1]), file=out)
 
-  def anisotropic_scaling(self, r_start):
+  def anisotropic_scaling(self, r_start, use_highres):
     r_expanal, r_poly, r_expmin = None,None,None
     k_anisotropic_expanal, k_anisotropic_poly, \
       k_anisotropic_expmin = None, None, None
     scale_matrix_expanal, scale_matrix_poly, scale_matrix_expmin= None,None,None
     sel         = self.selection_work.data()
+
+    if(use_highres):
+      sel_ = self.f_obs.d_spacings().data() < self.d_hilo
+      sel = sel & sel_
+
+
     f_model_abs = flex.abs(self.core.f_model_no_aniso_scale.data().select(sel))
     f_obs       = self.f_obs.data().select(sel)
     mi          = self.f_obs.indices().select(sel)
@@ -650,7 +702,7 @@ class run(object):
         self.core = self.core.update(k_anisotropic = k_anisotropic_expmin)
         if(self.verbose):
           self.format_scale_matrix(m=scale_matrix_expmin)
-        return
+        return self.r_factor()
     # select best
     r = [(r_expanal, k_anisotropic_expanal, scale_matrix_expanal),
          (r_poly,    k_anisotropic_poly,    scale_matrix_poly),

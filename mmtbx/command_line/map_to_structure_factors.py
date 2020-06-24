@@ -143,8 +143,8 @@ def run(args, log=None, ccp4_map=None,
     raise Sorry("Map file is needed.")
   #
   m = ccp4_map
-  if(m.space_group_number > 1):
-    raise Sorry("Input map space group: %d. Must be P1."%m.space_group_number)
+  if(m.unit_cell_crystal_symmetry().space_group_number()> 1):
+    raise Sorry("Input map space group: %d. Must be P1."%m.unit_cell_crystal_symmetry().space_group_number())
   broadcast(m="Input map information:", log=log)
   print("m.all()   :", m.map_data().all(), file=out)
   print("m.focus() :", m.map_data().focus(), file=out)
@@ -154,7 +154,7 @@ def run(args, log=None, ccp4_map=None,
   print("m.focus_size_1d():", m.map_data().focus_size_1d(), file=out)
   print("m.is_0_based()   :", m.map_data().is_0_based(), file=out)
   print("map: min/max/mean:", flex.min(m.map_data()), flex.max(m.map_data()), flex.mean(m.map_data()), file=out)
-  print("unit cell:", m.unit_cell_parameters, file=out)
+  print("unit cell:", m.unit_cell().parameters(), file=out)
   #
 
   # Instead use ccp4 map crystal_symmetry and classify according to the case

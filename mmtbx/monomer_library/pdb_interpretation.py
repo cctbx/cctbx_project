@@ -157,6 +157,9 @@ restraints_library_str = """
     rdl = False
       .type = bool
       .style = hidden
+    rdl_selection = *all TRP
+      .type = choice(multi=True)
+      .style = hidden
     hpdl = False
       .type = bool
       .style = hidden
@@ -5337,6 +5340,7 @@ class build_all_chain_proxies(linking_mixins):
         #current_geometry=model.xray_structure,
         rdl_proxies=rdl_proxies,
         data_version="8000",
+        rdl_selection=getattr(self.params.restraints_library, "rdl_selection", None),
         log=log,
         verbose=False,
         )

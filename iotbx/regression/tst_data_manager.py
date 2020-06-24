@@ -427,6 +427,37 @@ YTGDHYATFSLIDQTC
   os.remove(seq_filename)
 
 # -----------------------------------------------------------------------------
+def test_real_map_datatype():
+
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  data_ccp4 = os.path.join(data_dir, 'data',
+                          'non_zero_origin_map.ccp4')
+
+  dm = DataManager(['real_map', 'phil'])
+  dm.process_real_map_file(data_ccp4)
+
+  # test custom PHIL
+  dm.write_phil_file(dm.export_phil_scope().as_str(),
+                     filename='test.phil', overwrite=True)
+  loaded_phil = iotbx.phil.parse(file_name='test.phil')
+  new_dm = DataManager(['real_map', 'phil'])
+  new_dm.load_phil_scope(loaded_phil)
+  assert(data_ccp4 == new_dm.get_default_real_map_name())
+  os.remove('test.phil')
+
+  # test writing and reading file
+  mm = dm.get_real_map()
+  mm.shift_origin()
+  dm.write_real_map_file(mm, filename='test.ccp4', overwrite=True)
+  dm.process_real_map_file('test.ccp4')
+  new_mm=dm.get_real_map('test.ccp4')
+  assert (not new_mm.is_similar(mm))
+  new_mm.shift_origin()
+  assert new_mm.is_similar(mm)
+
+  os.remove('test.ccp4')
+
+# -----------------------------------------------------------------------------
 def test_miller_array_datatype():
 
   data_dir = os.path.dirname(os.path.abspath(__file__))
@@ -639,9 +670,11 @@ if (__name__ == '__main__'):
   test_model_datatype()
   test_sequence_datatype()
   test_miller_array_datatype()
+  test_real_map_datatype()
   test_default_filenames()
 
   if (libtbx.env.find_in_repositories(relative_path='chem_data') is not None):
     test_model_and_restraint()
   else:
     print('Skip test_model_and_restraint, chem_data not available')
+  print ("OK")

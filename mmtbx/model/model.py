@@ -70,21 +70,10 @@ from iotbx_pdb_hierarchy_ext import *
 
 from six.moves import cStringIO as StringIO
 from copy import deepcopy
-import sys,os
+import sys
 import math
 
 time_model_show = 0.0
-
-def convert_to_model_input(model_input,log=sys.stdout):
-  # if model_input is a file name, read it and convert to pdb_input object
-  if type(model_input)==type("abc") and (
-      (model_input.endswith(".cif") or model_input.endswith(".pdb")) and
-      os.path.isfile(model_input)):
-    try:
-      return iotbx.pdb.input(model_input)
-    except Exception as e:
-      print ("Unable to read %s as a model" %(model_input),e,file=log)
-  return model_input
 
 def find_common_water_resseq_max(pdb_hierarchy):
   get_class = iotbx.pdb.common_residue_names_get_class
@@ -206,16 +195,17 @@ class manager(object):
 
     self._xray_structure = xray_structure
     self._pdb_hierarchy = pdb_hierarchy
-    self._model_input = convert_to_model_input(model_input) # Allow file input
+    self._model_input = model_input
     self._restraint_objects = restraint_objects
     self._monomer_parameters = monomer_parameters
     self._pdb_interpretation_params = None
     self.set_pdb_interpretation_params(pdb_interpretation_params)
-    # Important! if shift_manager is not None, model_input - in original coords,
+    # Important! if shift_cart is not None, model_input - in original coords,
     # self.get_hierarchy(), self.get_xray_structure, self.get_sites_cart - in shifted coords.
     # self.crystal_symmetry() - shifted (boxed) one
-    # If shift_manager is None - everything is consistent.
-    self._shift_manager = None # mmtbx.utils.extract_box_around_model_and_map
+    # If shift_cart is None - everything is consistent.
+    self._shift_cart = None # shift of this model since original location
+    self._unit_cell_crystal_symmetry = None # original crystal symmetry
 
     self._stop_for_unknowns = stop_for_unknowns
     self._processed_pdb_file = None
@@ -360,17 +350,6 @@ class manager(object):
     return cls(model_input = None, pdb_hierarchy=hierarchy,
        crystal_symmetry=crystal_symmetry)
 
-  @classmethod
-  def read_model(cls, file_name):
-    """
-    This can be used for very basic toy scripts, never for general Phenix
-    production code since it is very simplyfied and does not handle e.g.
-    restraint files etc, see manager.__init__() for all the possible items.
-    Moreover, IO should be handled via program_template machinery.
-    """
-    inp = iotbx.pdb.input(file_name)
-    return cls(model_input=inp)
-
   @staticmethod
   def get_default_pdb_interpretation_scope():
     """
@@ -407,15 +386,6 @@ class manager(object):
 
   def get_stop_for_unknowns(self):
     return self._stop_for_unknowns
-
-  def set_shift_manager(self, shift_manager):
-    self._shift_manager = shift_manager
-    if shift_manager is not None:
-      self.set_xray_structure(self._shift_manager.xray_structure_box)
-      self.unset_restraints_manager()
-
-  def get_shift_manager(self):
-    return self._shift_manager
 
   def set_pdb_interpretation_params(self, params):
     #
@@ -517,29 +487,247 @@ class manager(object):
   def set_ss_annotation(self, ann):
     self._ss_annotation = ann
 
-  def set_crystal_symmetry_if_undefined(self, cs, force=False):
-    """
-    Function to set crystal symmetry if it is not defined yet.
-    Special case when incoming cs is the same to self._crystal_symmetry,
-    then just do nothing for compatibility with existing code.
-    It would be better to remove this function at all.
+  def set_unit_cell_crystal_symmetry_and_shift_cart(self,
+       unit_cell_crystal_symmetry=None,
+       shift_cart=None):
+    '''
+      Set up record of shift_cart (shift since unit_cell location) and
+      unit_cell_crystal_symmetry
 
-    This function can be used ONLY straight after initialization of model,
-    when no xray_structure is constructed yet.
+      Normally used to set up info with zero shift_cart and
+      unit_cell_crystal_symmetry equal to crystal_symmetry
+    '''
+    assert self.shift_cart() is None
+    if not shift_cart:
+      shift_cart = (0,0,0)
+      if not unit_cell_crystal_symmetry:
+        unit_cell_crystal_symmetry = self.crystal_symmetry()
 
-    The keyword force=True sets cs even if it is defined.
-    """
-    assert self._xray_structure is None
-    is_empty_cs = self._crystal_symmetry is None or (
-        self._crystal_symmetry.unit_cell() is None and
-        self._crystal_symmetry.space_group() is None)
-    if not is_empty_cs:
-      if self._crystal_symmetry.is_similar_symmetry(cs):
-        return
-    if not force:
-      assert is_empty_cs, "%s,%s" % (
-          self._crystal_symmetry.show_summary(), cs.show_summary())
-    self._crystal_symmetry = cs
+    self._shift_cart = shift_cart
+    self._unit_cell_crystal_symmetry=unit_cell_crystal_symmetry
+
+  def shift_model_and_set_crystal_symmetry(self,
+       shift_cart = None, # shift to apply
+       crystal_symmetry = None, # required new crystal symmetry
+       ):
+
+    '''
+      Method to apply a coordinate shift to a model object and keep track of
+      it self._shift_cart
+
+      NOTE: Normally use this method along with shift_model_back() to
+      shift the coordinates of the model
+
+      Sets the new crystal_symmetry
+      Maintains any existing unit_cell_crystal_symmetry
+
+      Takes into account any previous shifts by looking at existing
+      shift_cart and unit_cell_crystal_symmetry
+    '''
+
+    # checks
+    assert shift_cart is not None
+
+    # Get shift info  that knows about unit_cell_crystal_symmetry
+    #   and any prevous shift_cart
+
+    unit_cell_crystal_symmetry = self.unit_cell_crystal_symmetry()
+    if not unit_cell_crystal_symmetry:
+      unit_cell_crystal_symmetry = self.crystal_symmetry()
+
+    if self._shift_cart is not None:
+       original_shift_cart = self._shift_cart
+    else:
+       original_shift_cart = (0, 0, 0)
+
+    # Get the new crystal symmetry to apply
+    if not crystal_symmetry:
+      crystal_symmetry = self.crystal_symmetry()
+
+
+    # Get the total shift since original
+    total_shift=[sm_sc+sc for sm_sc,sc in zip(original_shift_cart,shift_cart)]
+
+    # New coordinates after applying shift_cart
+    sites_cart_new = self.get_sites_cart() + shift_cart
+
+    #Set symmetry and sites_cart
+    self.set_crystal_symmetry_and_sites_cart(crystal_symmetry, sites_cart_new)
+
+    # Set up new shift info with updated shift_cart,
+
+    # NOTE: sm.shift_cart is now the total shift since original position of this
+    #   model, it is not the shift in this step alone. It is the shift which
+    #   reversed will put the model back where it belongs
+
+    self._shift_cart = total_shift
+    self._unit_cell_crystal_symmetry =  unit_cell_crystal_symmetry
+
+  def shift_model_back(self):
+    '''
+      Shift the model back to its original position and restore original
+      crystal_symmetry.
+
+      Normally use this method to shift coordinates back to original position
+      if needed (in most cases this is not necessary because the model
+      is automatically shifted back when it is written out).
+
+      Requires that shifts have been set up
+    '''
+    assert self.shift_cart() is not None
+    shift_cart_to_apply=tuple([-x for x in self.shift_cart()])  # Shift to apply
+
+    self.shift_model_and_set_crystal_symmetry(
+     shift_cart = shift_cart_to_apply,
+     crystal_symmetry = self._unit_cell_crystal_symmetry)
+
+
+  def set_unit_cell_crystal_symmetry(self, crystal_symmetry):
+    '''
+      Set the unit_cell_crystal_symmetry (original crystal symmetry)
+
+      Only used to reset original crystal symmetry of model
+      Requires that there is no shift_cart for this model in
+    '''
+    assert crystal_symmetry is not None
+
+    if self._shift_cart is None:
+      self._shift_cart = (0, 0, 0)
+    else:
+      assert self._shift_cart == (0 ,0 ,0)
+
+    self._unit_cell_crystal_symmetry = crystal_symmetry
+
+  def set_crystal_symmetry(self, crystal_symmetry):
+    '''
+      Set the crystal_symmetry, keeping sites_cart the same
+
+      NOTE: Normally instead use
+        shift_model_and_set_crystal_symmetry(shift_cart=shift_cart) and
+      shift_model_back() to shift the coordinates of the model.
+
+      Uses set_crystal_symmetry_and_sites_cart because sites_cart have to
+      be replaced in either case.
+    '''
+
+    self.set_crystal_symmetry_and_sites_cart(crystal_symmetry,None)
+
+  def set_crystal_symmetry_and_sites_cart(self, crystal_symmetry, sites_cart):
+
+    '''
+      Set the crystal symmetry and then replace sites_cart with supplied sites
+
+      NOTE: Normally instead use
+        shift_model_and_set_crystal_symmetry(shift_cart=shift_cart) and
+      shift_model_back() to shift the coordinates of the model.
+
+      If there is no xray_structure and no sites_cart are supplied this
+      sets self._crystal_symmetry and updates. This is used to set
+      crystal_symmetry in a model that has coordinates but no crystal_symmetry
+
+      If existing xray_structure and xray_structure.crystal_symmetry is similar
+       to supplied crystal_symmetry, just replace sites_cart and update
+
+      If existing xray_structure and supplied crystal_symmetry is new, make a
+      new xray_structure and put in the supplied sites_cart and update. If no
+      sites_cart, use existing.
+
+    '''
+
+    assert crystal_symmetry is not None  # must supply crystal_symmetry
+
+
+    if(self.crystal_symmetry() is None):
+      # Set self._crystal_symmetry. There must be no xray_structure
+      #   and no sites_cart supplied
+      assert self._xray_structure is None
+      assert sites_cart is None
+      self._crystal_symmetry = crystal_symmetry
+
+    if self.crystal_symmetry().is_similar_symmetry(crystal_symmetry):
+      # Keep the xray_structure but change sites_cart if present and update
+
+      xrs=self.get_xray_structure() # Make sure xrs is set up
+
+      # make self._crystal_symmetry identical to xrs crystal_symmetry
+      self._crystal_symmetry = xrs.crystal_symmetry()
+
+      # set the sites_cart if supplied
+      if sites_cart:
+        self._xray_structure.set_sites_cart(sites_cart)
+
+      self.set_sites_cart_from_xrs()  # update hierarchy
+      self._update_has_hd()
+
+    else:  # Make a new xray_structure with new symmetry and put in sites
+
+      xrs=self.get_xray_structure() # Make sure xrs is set up
+
+      if sites_cart is None:
+        sites_cart=xrs.sites_cart()
+
+      # Changing crystal_symmetry changes sites_frac but keeps sites_cart same
+
+      # Reset _crystal_symmetry
+      scattering_table = xrs.scattering_type_registry().last_table()
+      scatterers = xrs.scatterers()
+      sp = crystal.special_position_settings(crystal_symmetry)
+      self._xray_structure = xray.structure(sp, scatterers)
+      self._crystal_symmetry = \
+        self._xray_structure.crystal_symmetry() # make it identical
+
+      # Put sites_cart in
+      self._xray_structure.set_sites_cart(sites_cart)
+
+      self.setup_scattering_dictionaries(scattering_table = scattering_table)
+      # This syncs internals and pdb_hierarchy with xray_structure
+      self.set_sites_cart_from_xrs()
+      # GRM is not valid if the symmetry is changed
+      self.unset_restraints_manager()
+
+  def unit_cell_crystal_symmetry(self):
+    if self._unit_cell_crystal_symmetry is not None:
+      return self._unit_cell_crystal_symmetry
+
+    else:
+      return None
+
+  def shift_cart(self):
+    '''
+      Return the value of the shift_cart, if available.
+    '''
+    if self._shift_cart:
+      return self._shift_cart
+    else:
+      return None
+
+  def set_shift_cart(self,shift_cart):
+    '''
+      Change the value of the recorded coordinate shift applied to a model
+      without changing anything about the model.  This effectively changes
+        the output shift that is going to be applied to this model when it is
+             written out.
+
+      NOTE: Normally instead use
+        shift_model_and_set_crystal_symmetry(shift_cart=shift_cart) and
+      shift_model_back() to shift the coordinates of the model.
+
+    '''
+    if not self._shift_cart:  # set shift_cart and _unit_cell_crystal_symmetry
+      self._shift_cart = shift_cart
+      self._unit_cell_crystal_symmetry = crystal_symmetry
+    else:
+      self._shift_cart = shift_cart
+      assert self._unit_cell_crystal_symmetry is not None
+
+  def _shift_back(self, pdb_hierarchy):
+    assert pdb_hierarchy is not None
+    sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    shift_back = [-self._shift_cart[0], -self._shift_cart[1],
+        -self._shift_cart[2]]
+    sites_cart_shifted = sites_cart+\
+      flex.vec3_double(sites_cart.size(), shift_back)
+    pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
 
   def set_refinement_flags(self, flags):
     self.refinement_flags = flags
@@ -744,7 +932,7 @@ class manager(object):
       self._xray_structure = self.all_chain_proxies.extract_xray_structure()
     else:
       cs = self.crystal_symmetry()
-      #assert cs is not None # You cannot create xray_structure without
+      assert cs is not None # You cannot create xray_structure without
       #                      # crystal symmetry. And if you can then it is wrong.
       self._xray_structure = self._pdb_hierarchy.extract_xray_structure(
           crystal_symmetry=cs)
@@ -758,6 +946,19 @@ class manager(object):
     if self._ener_lib is None:
       self._ener_lib = mmtbx.monomer_library.server.ener_lib()
     return self._ener_lib
+
+  def rotamer_outlier_selection(self):
+    rm = self.get_rotamer_manager()
+    result = flex.bool(self.size(), False)
+    for model in self.get_hierarchy().models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for conformer in residue_group.conformers():
+            for residue in conformer.residues():
+               if(rm.evaluate_residue(residue)=="OUTLIER"):
+                 sel = residue.atoms().extract_i_seq()
+                 result = result.set_selected(sel, True)
+    return result
 
   def get_rotamer_manager(self):
     if self._rotamer_eval is None:
@@ -797,10 +998,10 @@ class manager(object):
     if not output_cs:
       return None
     if do_not_shift_back:
-      return self._shift_manager.get_shifted_cs()
+      return self._crystal_symmetry
     else:
-      if self._shift_manager is not None:
-        return self._shift_manager.get_original_cs()
+      if self._shift_cart is not None:
+        return self.unit_cell_crystal_symmetry()
       else:
         return self.crystal_symmetry()
 
@@ -808,38 +1009,19 @@ class manager(object):
     hierarchy_to_output = self.get_hierarchy()
     if hierarchy_to_output is not None:
       hierarchy_to_output = hierarchy_to_output.deep_copy()
-    if self._shift_manager is not None and not do_not_shift_back:
-      self._shift_manager.shift_back(hierarchy_to_output)
+    if (self._shift_cart is not None) and (not do_not_shift_back):
+      self._shift_back(hierarchy_to_output)
     return hierarchy_to_output
-
-
-  def shift_origin(self, origin_shift_cart=None):
-    if not origin_shift_cart or origin_shift_cart==(0,0,0):
-      return self.deep_copy()
-    else:
-      new_model=self.deep_copy()
-      sites_cart=new_model.get_hierarchy().atoms().extract_xyz()
-      sites_cart+=origin_shift_cart
-      new_model.set_sites_cart(sites_cart)
-      return new_model
 
   def model_as_pdb(self,
       output_cs = True,
       atoms_reset_serial_first_value=None,
-      do_not_shift_back = False,
-      origin_shift_cart=None):
+      do_not_shift_back = False):
     """
     move all the writing here later.
     """
 
-    if origin_shift_cart:
-      return self.shift_origin(
-        origin_shift_cart=origin_shift_cart).model_as_pdb(output_cs=output_cs,
-        atoms_reset_serial_first_value=atoms_reset_serial_first_value,
-        do_not_shift_back=do_not_shift_back,
-        origin_shift_cart=None)
-
-    if do_not_shift_back and self._shift_manager is None:
+    if do_not_shift_back and self._shift_cart is None:
       do_not_shift_back = False
     cs_to_output = self._figure_out_cs_to_output(
         do_not_shift_back=do_not_shift_back, output_cs=output_cs)
@@ -946,20 +1128,8 @@ class manager(object):
       output_cs = True,
       additional_blocks = None,
       align_columns = False,
-      origin_shift_cart = None,
       do_not_shift_back = False,
       keep_original_loops = False):
-
-    if origin_shift_cart:
-      return self.shift_origin(
-        origin_shift_cart=origin_shift_cart).model_as_mmcif(
-        cif_block_name=cif_block_name,
-        output_cs=output_cs,
-        additional_blocks=additional_blocks,
-        align_columns=align_columns,
-        do_not_shift_back=do_not_shift_back,
-        origin_shift_cart=None,
-        keep_original_loops=keep_original_loops)
 
     out = StringIO()
     cif = iotbx.cif.model.cif()
@@ -987,7 +1157,7 @@ class manager(object):
         atoms = atoms.select(~ias_selection)
       grm_geometry = self.get_restraints_manager().geometry
       grm_geometry.pair_proxies(sites_cart)
-      struct_conn_loop = grm_geometry.get_struct_conn_mmcif(atoms)
+      struct_conn_loop = grm_geometry.get_struct_conn_mmcif(hierarchy_to_output)
       cif_block.add_loop(struct_conn_loop)
       self.get_model_statistics_info()
     # outputting HELIX/SHEET records
@@ -1441,9 +1611,10 @@ class manager(object):
     """
     return self._ncs_groups
 
-  def unset_setup_ncs_constraints_groups(self):
+  def unset_ncs_constraints_groups(self):
     self._ncs_groups=None
     self._ncs_obj=None
+    # shouldn't be None, probably flex.bool(self.get_number_of_atoms(), True)
     self._master_sel=None
 
   def setup_cartesian_ncs_groups(self, ncs_params=None, log=null_out()):
@@ -1730,8 +1901,7 @@ class manager(object):
       scatterer labels do not match the atom labels.
     """
     if(sync_with_xray_structure and self._xray_structure is not None):
-      self._pdb_hierarchy.adopt_xray_structure(
-        xray_structure = self._xray_structure)
+      self.set_sites_cart_from_xrs()
     return self._pdb_hierarchy
 
   def set_sites_cart_from_hierarchy(self, multiply_ncs=False):
@@ -2630,7 +2800,8 @@ class manager(object):
       # extracting info used in .geo files.
       new_restraints_manager.geometry.pair_proxies(
           sites_cart = self.get_sites_cart().select(selection))
-    new_shift_manager = self._shift_manager
+    new_shift_cart = deepcopy(self._shift_cart)
+    new_unit_cell_crystal_symmetry = deepcopy(self._unit_cell_crystal_symmetry)
     new_riding_h_manager = None
     if self.riding_h_manager is not None:
       new_riding_h_manager = self.riding_h_manager.select(selection)
@@ -2665,10 +2836,8 @@ class manager(object):
       if new_an_gr.iselection.size() > 0:
         new_anom_groups.append(new_an_gr)
     new.set_anomalous_scatterer_groups(new_anom_groups)
-    # do not use set_shift_manager for this because shifted xray_str and hierarchy
-    # are used here and being cutted. We need only shift_back and get_..._cs
-    # functionality form shift_manager at the moment
-    new._shift_manager = new_shift_manager
+    new._shift_cart = new_shift_cart
+    new._unit_cell_crystal_symmetry = new_unit_cell_crystal_symmetry
     new._processed_pdb_files_srv = self._processed_pdb_files_srv
     if self.ncs_constraints_present():
       new_ncs_groups = self._ncs_groups.select(selection)

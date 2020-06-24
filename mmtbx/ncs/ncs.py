@@ -3359,6 +3359,7 @@ class ncs:
     self._exclude_d=exclude_d
     self._ncs_obj = None
     self._ncs_name = None # an optional name like "D3"
+    self._shift_cart = (0,0,0)  # shift to place object in original location
 
   def deep_copy(self,change_of_basis_operator=None,unit_cell=None,
       coordinate_offset=None,
@@ -3374,6 +3375,11 @@ class ncs:
     new.source_info=self.source_info
     new._ncs_name=self._ncs_name
     new._ncs_read=self._ncs_read
+    from copy import deepcopy
+    new._shift_cart=deepcopy(self._shift_cart)  # shift_cart is what was applied
+    if coordinate_offset:
+       new._shift_cart=tuple(
+         [a+b for a,b in zip(new._shift_cart,coordinate_offset)])
     # deep_copy over all the ncs groups:
     for ncs_group in self._ncs_groups:
       new_group=ncs_group.deep_copy(
@@ -3401,6 +3407,12 @@ class ncs:
     if scale_factor is None:
        raise Sorry("For magnification a scale factor is required.")
     return self.deep_copy(scale_factor=scale_factor)
+
+  def set_shift_cart(self,shift_cart):
+    self._shift_cart=shift_cart
+
+  def shift_cart(self):
+    return self._shift_cart
 
   def coordinate_offset(self,coordinate_offset=None,unit_cell=None,
       new_unit_cell=None):
@@ -3770,6 +3782,22 @@ class ncs:
     log.write(text)
     return text
 
+  def shift_cart(self):
+    if self._shift_cart:
+      return self._shift_cart
+    else:
+      return (0,0,0)
+
+  def shift_back_cart(self):
+    return tuple([-a for a in self.shift_cart()])
+
+  def as_ncs_spec_string(self):
+    '''
+     shifts to original location and returns text string
+    '''
+    shifted_ncs=self.coordinate_offset(coordinate_offset=self.shift_back_cart())
+    return shifted_ncs.format_all_for_group_specification(
+         log=null_out(),quiet=True,out=null_out())
 
   def format_all_for_group_specification(self,log=None,quiet=True,out=None,
        file_name=None):
@@ -3779,7 +3807,7 @@ class ncs:
        out=sys.stdout
     if log==None:
       log=sys.stdout
-    else:
+    elif hasattr(out,'name'):
       print("NCS written as ncs object information to:"\
         ,out.name, file=log)
     all_text=""

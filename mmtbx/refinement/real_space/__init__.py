@@ -199,8 +199,7 @@ def common_map_values(pdb_hierarchy, unit_cell, map_data):
     for chain in model.chains():
       for residue_group in chain.residue_groups():
         conformers = residue_group.conformers()
-        if(len(conformers)>1): continue
-        for conformer in residue_group.conformers():
+        for conformer in conformers:
           residue = conformer.only_residue()
           for atom in residue.atoms():
             sf = unit_cell.fractionalize(atom.xyz)

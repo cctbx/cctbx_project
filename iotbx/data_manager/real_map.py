@@ -6,7 +6,6 @@ import os
 from iotbx.data_manager import DataManagerBase
 from libtbx import Auto
 from libtbx.utils import Sorry
-from scitbx.array_family import flex
 
 # =============================================================================
 class RealMapDataManager(DataManagerBase):
@@ -46,10 +45,7 @@ class RealMapDataManager(DataManagerBase):
       filename += '.mrc'
     return filename
 
-  def write_real_map_file(self, unit_cell, space_group, map_data, labels,
-                          filename=Auto, overwrite=Auto):
-    # WAS: wrapper for iotbx.ccp4_map.write_ccp4_map
-    # NOW: moved to mrcfile (https://github.com/ccpem/mrcfile)
+  def write_real_map_file(self, map_manager, filename=Auto, overwrite=Auto):
 
     # default options
     if (filename is Auto):
@@ -61,26 +57,10 @@ class RealMapDataManager(DataManagerBase):
     if (os.path.isfile(filename) and (not overwrite)):
       raise Sorry('%s already exists and overwrite is set to %s.' %
                   (filename, overwrite))
-    import iotbx.mrcfile
-
-    # check labels (maybe other arugments?)
-    if (not isinstance(labels, flex.std_string)):
-      try:
-        labels = flex.std_string(labels)
-      except Exception as err:
-        # trap Boost.Python.ArgumentError
-        if (str(err).startswith('Python argument types in')):
-          raise Sorry('A list of strings is required for the "labels" argument')
-        else:
-          raise
 
     try:
-      iotbx.mrcfile.write_ccp4_map(
-        file_name = filename,
-        unit_cell = unit_cell,
-        space_group = space_group,
-        map_data = map_data,
-        labels = labels
+      map_manager.write_map(
+        file_name = filename
       )
     except IOError as err:
       raise Sorry('There was an error with writing %s.\n%s' %

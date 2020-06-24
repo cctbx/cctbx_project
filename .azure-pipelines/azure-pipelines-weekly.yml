@@ -1,9 +1,7 @@
-# Weekly builds
+# Weekly builds to test optimization flags
 
-# no continuous integration builds
+# no continuous integration builds or pull requests
 trigger: none
-
-# skip pull requests
 pr: none
 
 # only weekly builds on Friday Pacific
@@ -14,6 +12,13 @@ schedules:
     include:
     - master
 
+resources:
+  pipelines:
+  - pipeline: data_cache
+    source: 'Update data cache'
+  - pipeline: build_cache
+    source: 'Update build cache'
+
 stages:
 - stage: Preparation
   displayName: Download
@@ -21,7 +26,6 @@ stages:
     - template: ./download-source.yml
       parameters:
         optimization: 3
-    - template: ./download-conda.yml
     - template: ./download-source.yml
       parameters:
         optimization: 2

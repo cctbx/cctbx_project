@@ -56,12 +56,14 @@ def make_atom_id(atom, index):
     altloc = atom.parent().altloc)
 
 def get_stats(data):
-  if(data.size()<50): return None
   mean=data.min_max_mean().mean
   sd=data.standard_deviation_of_the_sample()
+  assert data.size(), 'no data - may mean no Hydrogen atoms'
   x=data-mean
-  skew=(x**3).min_max_mean().mean/sd**3
-  kurtosis=(x**4).min_max_mean().mean/sd**4
+  skew=kurtosis=None
+  if sd:
+    skew=(x**3).min_max_mean().mean/sd**3
+    kurtosis=(x**4).min_max_mean().mean/sd**4
   return group_args(mean=mean, sd=sd, skew=skew, kurtosis=kurtosis)
 
 master_phil_str = '''
@@ -541,10 +543,14 @@ class find(object):
     print("Total:       %d"%c.n,     file=log)
     print("Symmetry:    %d"%c.n_sym, file=log)
     print("Per residue: %7.4f"%c.bpr,   file=log)
-    print("            Mean      SD    Skew   Kurtosis",   file=log)
-    printit(c.theta_1, "theta_1:")
-    printit(c.theta_2, "theta_2:")
-    printit(c.d_HA,    "d_HA:")
+    min_stat_limit=50
+    if c.n<min_stat_limit:
+      print('Statistics not displayed due to low number of H bonds found.')
+    else:
+      print("            Mean      SD    Skew   Kurtosis",   file=log)
+      printit(c.theta_1, "theta_1:")
+      printit(c.theta_2, "theta_2:")
+      printit(c.d_HA,    "d_HA:")
 
   def show(self, log = sys.stdout, sym_only=False):
     for r in self.result:

@@ -16,6 +16,9 @@ sf4_coordination = {
     ("FE", "S")      : [  2.311, 0.006*2],
     ("S", "FE", "S") : [113.97,  8.764*2],
   },
+  'HIS' : {
+    ('FE', 'N')        : [  2.04,  0.05],
+  }
 }
 fes_coordination = {
   'CYS' : {
@@ -78,8 +81,8 @@ def get_lookup(a1, a2, a3=None):
 def get_distance_ideal_and_weight(a1, a2):
   ligand_lookup = get_lookup(a1, a2)
   key = (a1.element.strip().upper(), a2.element.strip().upper())
-  assert key in ligand_lookup, ' Atom pair %s %s not found in MCL' % (a1.quote(),
-                                                                      a2.quote())
+  if key not in ligand_lookup:
+    return None, ' Atom pair %s %s not found in MCL' % (a1.quote(), a2.quote())
   distance_ideal=ligand_lookup[key][0]
   weight=1.0/ligand_lookup[key][1]**2
   return distance_ideal, weight
@@ -166,6 +169,9 @@ def get_bond_proxies(coordination):
   if coordination is None: return bonds
   for a1, a2 in coordination:
     distance_ideal, weight = get_distance_ideal_and_weight(a1, a2)
+    if distance_ideal is None:
+      print(weight)
+      continue
     p = geometry_restraints.bond_simple_proxy(
       i_seqs=[a1.i_seq, a2.i_seq],
       distance_ideal=distance_ideal,

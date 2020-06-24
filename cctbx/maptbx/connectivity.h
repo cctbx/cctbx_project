@@ -1,11 +1,18 @@
 #ifndef CCTBX_MAPTBX_CONNECTIVITY_H
 #define CCTBX_MAPTBX_CONNECTIVITY_H
 
-#include <scitbx/array_family/accessors/c_grid.h>
 
+// This needed for grid_symop.h inclusion for some reason
+#include <cctbx/sgtbx/direct_space_asu/proto/asymmetric_unit.h>
+
+#include <scitbx/array_family/accessors/c_grid.h>
+#include <cctbx/sgtbx/space_group_type.h>
+#include <mmtbx/masks/grid_symop.h>
+#include <cctbx/maptbx/asymmetric_map.h>
 
 namespace cctbx { namespace maptbx {
 
+using scitbx::af::int3;
 //! Map connectivity analysis.
 
 
@@ -258,6 +265,112 @@ public:
     }
     region_vols[0] = v0;
     n_regions = cur_reg;
+  }
+
+  void merge_symmetry_related_regions(cctbx::sgtbx::space_group &space_group)
+  {
+    // copy-paste from asymmetric_map.cpp asymmetric_map::grid_symops()
+    // sgtbx::space_group group = this->space_group();
+    unsigned short order = space_group.order_z();
+    CCTBX_ASSERT( order>0 );
+    const int3 n = map_dimensions;
+    CCTBX_ASSERT( n[0]>0 && n[1]>0 && n[2] >0 );
+    std::vector<cctbx::sgtbx::grid_symop> symops;
+    symops.reserve(order);
+    for(size_t i=0; i<order; ++i)
+    {
+      sgtbx::grid_symop grsym( space_group(i), n );
+      symops.push_back(grsym);
+    }
+    CCTBX_ASSERT( symops.size() == order );
+    // return symops;
+    // end of copy-paste
+    int n_regions = region_vols.size();
+    af::shared<int> remap_list(n_regions);
+    for (int i = 0; i < n_regions; i++) remap_list[i] = -1;
+    remap_list[0] = 0;
+    int cur_region_to_fill = 0;
+    for (int i = 1; i < n_regions; i++)
+    {
+      // std::cout << "loop # " << i <<"\n";
+      // for (int j = 0; j < n_regions; j++) std::cout << remap_list[j] <<", ";
+      // std::cout << "\n";
+      if (remap_list[i]<0) // not assigned yet
+      {
+        cur_region_to_fill += 1;
+        remap_list[i] = cur_region_to_fill;
+        // now remap all symmetry-related regions
+        int3 cur_coords = region_maximum_coors[i];
+        // std::cout << "  cur_coords " << cur_coords << "\n";
+        // If 0th symop is always self, we can start from 1...
+        for(size_t symop=0; symop<symops.size(); symop++)
+        {
+          bool mapped_with_self=false;
+          int3 sym_pos = symops[symop].apply_to(cur_coords);
+          scitbx::int3 pos_in_cell(sym_pos);
+          translate_into_cell(pos_in_cell, n);
+          int reg_on_map = map_new(pos_in_cell);
+          // std::cout << "    sym: " << sym_pos << " -> " << pos_in_cell
+          //           << " region " << reg_on_map << "\n";
+          // safeguarding a little
+          if (remap_list[reg_on_map] < 0 ) {
+            mapped_with_self = true;
+            remap_list[reg_on_map] = cur_region_to_fill;
+          }
+          else {
+            if (reg_on_map < i)
+            {
+              if (mapped_with_self) {
+                // This branch is not tested and not clear if needed at all,
+                // i.e. if there are such cases.
+                CCTBX_ASSERT(false);
+                int rl_value = cur_region_to_fill;
+                for (int j=0; j < n_regions; j++)
+                  if (remap_list[j] == rl_value) {
+                    remap_list[j] = reg_on_map;
+                  }
+              }
+              else {
+                remap_list[i] = reg_on_map;
+              }
+            }
+            else if (reg_on_map > i)
+            {
+              mapped_with_self = true;
+              remap_list[reg_on_map] = cur_region_to_fill;
+            }
+          }
+        }
+      }
+    }
+    // Here we are done with remap_list, sanity check:
+    // std::cout << "remap_list\n";
+    for (int i = 0; i < n_regions; i++)
+    {
+      // std::cout << remap_list[i] << ", ";
+      CCTBX_ASSERT(remap_list[i] >=0);
+    }
+    // std::cout << "\n";
+    // std::cout << "Correcting other info\n";
+    // Need to refill map_new, cut and adjust region_vols,
+    // cut region_maximum_values, region_maximum_coors
+    int new_n_regions = -1;
+    for (int i = 0; i < n_regions; i++)
+      if (remap_list[i]> new_n_regions) {
+        new_n_regions = remap_list[i];}
+    new_n_regions += 1;
+    region_vols.resize(new_n_regions);
+    region_maximum_values.resize(0);
+    region_maximum_coors.resize(0);
+    for (int i=0; i<new_n_regions; i++) region_vols[i] = 0;
+    for (int i = 0; i < map_dimensions[0]; i++) {
+      for (int j = 0; j < map_dimensions[1]; j++) {
+        for (int k = 0; k < map_dimensions[2]; k++) {
+          map_new(i,j,k) = remap_list[map_new(i,j,k)];
+          region_vols[map_new(i,j,k)] += 1;
+        }
+      }
+    }
   }
 
   af::versa<int, af::c_grid<3> > result() {return map_new;}

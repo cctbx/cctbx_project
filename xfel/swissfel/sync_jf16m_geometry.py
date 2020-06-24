@@ -68,7 +68,7 @@ def run(args):
   detector = experiments.detectors()[0]
   root = detector.hierarchy()
 
-  transformations = h5['entry/instrument/JF16M/transformations']
+  transformations = h5['entry/instrument/ELE_D0/transformations']
   rail = transformations['AXIS_RAIL']
   offset, angle, vector = get_settings(root, apply_dxtbx_to_nexus=True)
   rail[0] = offset[2] # distance

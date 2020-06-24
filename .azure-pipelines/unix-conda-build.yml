@@ -16,31 +16,33 @@ steps:
 - checkout: none
 
 - task: DownloadPipelineArtifact@2
-  displayName: Download modules tarball
   inputs:
     source: 'current'
     artifact: $(MODULES)
     path: $(Pipeline.Workspace)
+  displayName: Download modules tarball
 
 - script: |
+    set -x -e
     cd $(Pipeline.Workspace)
     tar -xf modules.tar
   displayName: Extract modules tarball
 
 - script: |
+    set -x -e
     cd $(Pipeline.Workspace)
     ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
   displayName: Link bootstrap.py
 
 # install miniconda
 - task: DownloadPipelineArtifact@2
-  displayName: Download miniconda
   inputs:
     source: 'specific'
-    project: '$(System.TeamProjectId)'
-    pipeline: 4
+    project: '$(resources.pipeline.data_cache.projectID)'
+    pipeline: '$(resources.pipeline.data_cache.pipelineID)'
     artifact: 'miniconda'
     path: $(Pipeline.Workspace)/miniconda
+  displayName: Download miniconda
 
 - script: |
     set -x -e
@@ -48,14 +50,32 @@ steps:
   displayName: Install miniconda
 
 # create conda environment
+# fresh downloads for "Update build cache" and "Full" pipelines
 - task: DownloadPipelineArtifact@2
-  displayName: Download conda packages
   inputs:
     source: 'current'
     artifact: $(PYTHON_VERSION)_$(OS)
     path: $(Pipeline.Workspace)/channel
+  displayName: Download conda packages
+  condition: >
+    or(eq(variables['Build.DefinitionName'], 'Update build cache'),
+       eq(variables['Build.DefinitionName'], 'Full'))
+
+- task: DownloadPipelineArtifact@2
+  inputs:
+    source: 'specific'
+    project: '$(resources.pipeline.build_cache.projectID)'
+    pipeline: '$(resources.pipeline.build_cache.pipelineID)'
+    allowPartiallySucceededBuilds: true
+    artifact: $(PYTHON_VERSION)_$(OS)
+    path: $(Pipeline.Workspace)/channel
+  displayName: Download cached conda packages
+  condition: >
+    and(ne(variables['Build.DefinitionName'], 'Update build cache'),
+        ne(variables['Build.DefinitionName'], 'Full'))
 
 - script: |
+    set -x -e
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda install -y conda-build
     cd $(Pipeline.Workspace)/channel
@@ -67,6 +87,7 @@ steps:
   displayName: Build local channel
 
 - script: |
+    set -x -e
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
     conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
@@ -81,19 +102,21 @@ steps:
 
 # build
 - script: |
+    set -x -e
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
     python bootstrap.py build --builder=cctbx --use-conda=${CONDA_PREFIX} --nproc=4
     cd build
     source setpaths.sh
-    libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx
-    make -j 4
-    make -j 4
+    libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx phenix_regression phenix_examples
+    libtbx.scons -j 4
+    libtbx.scons -j 4
   displayName: Configure and Build
 
 # test
 - script: |
+    set -x -e
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)

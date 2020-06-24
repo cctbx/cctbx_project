@@ -18,51 +18,42 @@ namespace iterator
 {
 
 template< typename Edge >
-struct Selector
+struct IteratorTraits
 {
-  typedef edge::Traits< Edge > traits;
-  typedef typename traits::iterator iterator;
-  typedef typename traits::ptr_type value_type;
-  typedef value_type ptr_type;
+  typedef Edge edge_type;
+  typedef typename edge_type::const_iterator underlying_const_iterator;
+  typedef typename std::forward_iterator_tag iterator_category;
+  typedef typename edge_type::ptr_type ptr_type;
+  typedef ptr_type const value_type;
 
-  typedef typename boost::mpl::if_<
-    typename traits::selector_type,
-    typename Edge::const_ptr_type const&,
-    typename Edge::ptr_type&
-    >::type reference;
+  typedef std::ptrdiff_t difference_type;
 
-  typedef typename boost::mpl::if_<
-    typename traits::selector_type,
-    typename Edge::const_ptr_type* const,
-    typename Edge::ptr_type*
-    >::type pointer;
+  typedef value_type& reference;
+  typedef value_type* pointer;
 };
 
 template< typename Edge >
-class PreOrder : public std::iterator<
-  std::forward_iterator_tag,
-  typename Selector< Edge >::value_type,
-  std::ptrdiff_t,
-  typename Selector< Edge >::reference,
-  typename Selector< Edge >::pointer
-  >
+class PreOrder
 {
 public:
   typedef Edge edge_type;
-  typedef Selector< Edge > selector_type;
-  typedef typename selector_type::value_type value_type;
-  typedef typename selector_type::reference reference_type;
-  typedef typename selector_type::pointer pointer_type;
-  typedef typename selector_type::iterator underlying_iterator;
-  typedef typename selector_type::ptr_type ptr_type;
+  typedef IteratorTraits< Edge > traits_type;
+  typedef typename traits_type::iterator_category iterator_category;
+  typedef typename traits_type::value_type value_type;
+  typedef typename traits_type::difference_type difference_type;
+  typedef typename traits_type::reference reference;
+  typedef typename traits_type::pointer pointer;
+  typedef typename traits_type::underlying_const_iterator
+    underlying_const_iterator;
+  typedef typename traits_type::ptr_type ptr_type;
 
   typedef PreOrder iterator;
 
 private:
   ptr_type root_;
   bool at_top_;
-  underlying_iterator pos_;
-  std::deque< underlying_iterator > underlying_iterators_deque_;
+  underlying_const_iterator pos_;
+  std::deque< underlying_const_iterator > underlying_iterators_deque_;
 
 private:
   PreOrder(ptr_type const& root, bool at_top);
@@ -74,8 +65,8 @@ public:
 public:
   ~PreOrder();
 
-  reference_type operator *();
-  pointer_type operator ->();
+  reference operator *() const;
+  pointer operator ->() const;
 
   iterator& operator ++();
   iterator operator ++(int);
@@ -88,30 +79,27 @@ template< typename Edge >
 bool operator !=(PreOrder< Edge > const& lhs, PreOrder< Edge > const& rhs);
 
 template< typename Edge >
-class PostOrder : public std::iterator<
-  std::forward_iterator_tag,
-  typename Selector< Edge >::value_type,
-  std::ptrdiff_t,
-  typename Selector< Edge >::reference,
-  typename Selector< Edge >::pointer
-  >
+class PostOrder
 {
 public:
   typedef Edge edge_type;
-  typedef Selector< Edge > selector_type;
-  typedef typename selector_type::value_type value_type;
-  typedef typename selector_type::reference reference_type;
-  typedef typename selector_type::pointer pointer_type;
-  typedef typename selector_type::iterator underlying_iterator;
-  typedef typename selector_type::ptr_type ptr_type;
+  typedef IteratorTraits< Edge > traits_type;
+  typedef typename traits_type::iterator_category iterator_category;
+  typedef typename traits_type::value_type value_type;
+  typedef typename traits_type::difference_type difference_type;
+  typedef typename traits_type::reference reference;
+  typedef typename traits_type::pointer pointer;
+  typedef typename traits_type::underlying_const_iterator
+    underlying_const_iterator;
+  typedef typename traits_type::ptr_type ptr_type;
 
   typedef PostOrder iterator;
 
 private:
   ptr_type root_;
   bool at_top_;
-  underlying_iterator pos_;
-  std::deque< underlying_iterator > underlying_iterators_deque_;
+  underlying_const_iterator pos_;
+  std::deque< underlying_const_iterator > underlying_iterators_deque_;
 
 private:
   PostOrder(ptr_type const& root, bool at_top);
@@ -123,8 +111,8 @@ public:
 public:
   ~PostOrder();
 
-  reference_type operator *();
-  pointer_type operator ->();
+  reference operator *() const;
+  pointer operator ->() const;
 
   iterator& operator ++();
   iterator operator ++(int);

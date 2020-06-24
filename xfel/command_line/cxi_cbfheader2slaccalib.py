@@ -39,8 +39,8 @@ class GeometryAccessFromCspadCBF(GeometryAccess):
 
     img = dxtbx.load(self.path)
     cbf = img._cbf_handle
-    cbf.find_category("diffrn_source")
-    cbf.find_column("type")
+    cbf.find_category(b"diffrn_source")
+    cbf.find_column(b"type")
 
     self.dict_of_comments = {
       "TITLE"     : "Geometry parameters of CSPAD",

@@ -13,13 +13,7 @@ namespace python
 std::size_t
 hash_value(const object& obj)
 {
-#if PY_MAJOR_VERSION >= 3
-  typedef Py_hash_t hash_t;
-#else // Py2
-  typedef long hash_t;
-#endif
-  hash_t raw = extract<hash_t>( obj.attr( "__hash__" )() );
-  return boost::hash_value( raw );
+  return boost::hash_value( PyObject_Hash( obj.ptr() ) );
 }
 
 std::ostream&

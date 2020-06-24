@@ -3,6 +3,18 @@ import time
 
 ''' mpi4py wrapper: emulating mpi4py behavior for a single rank when the real mpi4py is not installed '''
 
+class mpiEmulator(object):
+
+  SUM = "SUM"
+  MAX = "MAX"
+  MIN = "MIN"
+  # TODO: implement more operations as needed
+
+  def Wtime(self):
+    return time.time()
+  def Finalize(self):
+    pass
+
 class mpiCommEmulator(object):
   def Get_rank(self):
     return 0
@@ -17,7 +29,7 @@ class mpiCommEmulator(object):
       return data
     else:
       assert False, "Unsupported MPI reduce operation %s"%(operation)
-  def allreduce(self, data, operation):
+  def allreduce(self, data, operation=mpiEmulator.SUM):
     return self.reduce(data, operation, 0)
   def alltoall(self, items):
     return items
@@ -31,18 +43,7 @@ class mpiCommEmulator(object):
     import sys
     sys.exit()
 
-class mpiEmulator(object):
-  COMM_WORLD = mpiCommEmulator()
-
-  SUM = "SUM"
-  MAX = "MAX"
-  MIN = "MIN"
-  # TODO: implement more operations as needed
-
-  def Wtime(self):
-    return time.time()
-  def Finalize(self):
-    pass
+mpiEmulator.COMM_WORLD = mpiCommEmulator()
 
 try:
   from mpi4py import MPI

@@ -97,11 +97,6 @@ def run(ph, core=None):
   for element in element_types:
     wfc_obj=load_wfc(element)
     element_wfc_dict[element]=wfc_obj
-    #print element
-    #print dir(wfc_obj)
-    #STOP()
-
-
   # End of stage 1
   if(core is not None):
     core_atoms=[]
@@ -122,6 +117,7 @@ def run(ph, core=None):
     del atom_list
     #
     interactions=get_interactions(sub_ph,atom_in_residue,silva_type='sedd',core=core)
+    print("interactions(sedd)(cpp)", interactions)
     new_core=[]
     #print("1. interactions got: ",len(interactions))
     for pair in interactions:
@@ -129,22 +125,41 @@ def run(ph, core=None):
         new_core+=pair
     new_core=list(set(new_core)|set(core))
     #print("new core:",new_core)
-    #
     interactions=get_interactions(sub_ph, atom_in_residue, silva_type='dori', core=new_core)
+    print("interactions (cpp):", interactions)
     #print("2. interactions got: ",len(interactions))
     interaction_mols=new_core
-    for item in interactions:
-      if(len(set(item).intersection(set(new_core)))>0):
-        interaction_mols=interaction_mols+list(item)
-    interaction_atoms=[]
-    for i in range(len(core_atoms)):
-      core_atoms[i]=core_atoms[i].serial_as_int()
-    #print("3. interaction mols:",set(interaction_mols))
-    for mol_id in interaction_mols:
-      ams=[a.serial_as_int() for a in atoms_group_dict[mol_id]]
-      interaction_atoms+=ams
 
-    return(list(set(core_atoms)), list(set(interaction_atoms)), list(set(interaction_mols)))
+    ###
+    if 0: # From Min's code (Python version of Java code)
+      mol_id_dict=dict(zip(mols,range(1,len(mols)+1)))
+      id_mol_dict=dict(zip(range(1,len(mols)+1),mols))
+      for item in interactions:
+        pair=[mol_id_dict[item[0]],mol_id_dict[item[1]]]
+        if(len(set(pair)&set(new_core))>0):
+          interaction_mols+=pair
+      interaction_mols=list(set(interaction_mols))
+      interaction_atoms=[]
+      for i in range(len(core_atoms)):
+        core_atoms[i]=core_atoms[i].serial_as_int()
+      for mol_id in interaction_mols:
+          mol=id_mol_dict[mol_id]
+          ams=[a.serial_as_int() for a in atoms_group_dict[mol]]
+          interaction_atoms+=ams
+          return(core_atoms,interaction_atoms,interaction_mols)
+    else: # Rationalized version of the above
+      for item in interactions:
+        if(len(set(item).intersection(set(new_core)))>0):
+          interaction_mols=interaction_mols+list(item)
+      interaction_atoms=[]
+      for i in range(len(core_atoms)):
+        core_atoms[i]=core_atoms[i].serial_as_int()
+      #print("3. interaction mols:",set(interaction_mols))
+      for mol_id in interaction_mols:
+        ams=[a.serial_as_int() for a in atoms_group_dict[mol_id]]
+        interaction_atoms+=ams
+      return(list(set(core_atoms)), list(set(interaction_atoms)), list(set(interaction_mols)))
+    ###
   else:
     return get_interactions(ph, atom_in_residue)
 
@@ -170,10 +185,12 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
   xyz = ph.atoms().extract_xyz()
   xyz_min=xyz.min()
   xyz_max=xyz.max()
-  #print(xyz_min,xyz_max)
   xyz_step = [
     int(math.floor((xyz_max[i]-xyz_min[i])/step_size)+1) for i in range(3)]
-  #print("points to process:",xyz_step[0]*xyz_step[1]*xyz_step[2])
+  print("xyz_min,xyz_max",xyz_min,xyz_max)
+  print("step_size", step_size)
+  print("xyz_step", xyz_step)
+  print("points to process:",xyz_step[0]*xyz_step[1]*xyz_step[2])
   interacting_pairs = ext.points_and_pairs(
     ngrid           = xyz_step,
     step_size       = step_size,
@@ -183,6 +200,7 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
     element_flags   = element_flags,
     wfc_obj         = wave_functions,
     silva_type      = silva_type)
+  print("interacting_pairs", list(set(list((interacting_pairs)))) )
   tmp = []
   for it in interacting_pairs:
     pair = [int(it[0]),int(it[1])]

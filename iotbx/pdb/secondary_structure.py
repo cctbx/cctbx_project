@@ -1405,6 +1405,11 @@ class annotation(structure_base):
     new_annotation.sheets=new_sheets
     return new_annotation
 
+  def add_helices_and_sheets_simple(self, other_annot):
+    self.helices += other_annot.helices
+    self.sheets += other_annot.sheets
+    self.renumber_helices_and_sheets()
+
   def combine_annotations(self,hierarchy=None,other=None,
     keep_self=None,
     max_h_bond_length=None,

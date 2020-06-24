@@ -10,6 +10,7 @@
 #  included in the root directory of this package.
 #
 # LIBTBX_SET_DISPATCHER_NAME cspad.detector_shifts
+# LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.detector_shifts
 #
 from __future__ import absolute_import, division, print_function
 from six.moves import range
@@ -61,22 +62,26 @@ class Script(ParentScript):
 
   def run(self):
     ''' Parse the options. '''
-    from dials.util.options import flatten_experiments, flatten_reflections
     # Parse the command line arguments
     params, options = self.parser.parse_args(show_diff_phil=True)
     self.params = params
-    experiments = flatten_experiments(params.input.experiments)
-    reflections = flatten_reflections(params.input.reflections)
+
+    if (len(params.input.experiments), len(params.input.reflections)) != (2,2):
+      raise Sorry("Please provide a reference and a moving set of experiments")
+    experiments1 = params.input.experiments[0].data
+    experiments2 = params.input.experiments[1].data
+    reflections1 = params.input.reflections[0].data
+    reflections2 = params.input.reflections[1].data
 
     # Find all detector objects
     detectors = []
-    detectors.extend(experiments.detectors())
+    detectors.extend(experiments1.detectors())
+    detectors.extend(experiments2.detectors())
 
     # Verify inputs
     if len(detectors) != 2:
       raise Sorry("Please provide a reference and a moving set of experiments")
 
-    reflections = reflections[1]
     detector = detectors[1]
 
     if not hasattr(detector, 'hierarchy'):
@@ -96,7 +101,8 @@ class Script(ParentScript):
     rf = col(reference_root.get_fast_axis())
     rs = col(reference_root.get_slow_axis())
     r_norm = col(reference_root.get_normal())
-    s0 = col(flex.vec3_double([col(b.get_s0()) for b in experiments.beams()]).mean())
+    all_beams = experiments1.beams() + experiments2.beams()
+    s0 = col(flex.vec3_double([col(b.get_s0()) for b in all_beams]).mean())
 
     summary_table_header = ["Hierarchy","Delta XY","Delta XY","R Offsets","R Offsets","T Offsets","T Offsets","Z Offsets","Z Offsets","dR Norm","dR Norm","dT Norm","dT Norm","Local dNorm", "Local dNorm", "Rot Z","Rot Z"]
     summary_table_header2 = ["Level","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma"]
@@ -140,7 +146,8 @@ class Script(ParentScript):
                                              iterate_detector_at_level(moving_root, 0, level))):
         weight = 0
         for panel_id, p in enumerate(iterate_panels(pg2)):
-          weight += len(reflections.select(reflections['panel'] == id_from_name(detector, p.get_name())))
+          weight += len(reflections1.select(reflections1['panel'] == id_from_name(detector, p.get_name()))) + \
+                    len(reflections2.select(reflections2['panel'] == id_from_name(detector, p.get_name())))
         weights.append(weight)
 
         bc = col(pg1.get_beam_centre_lab(s0))

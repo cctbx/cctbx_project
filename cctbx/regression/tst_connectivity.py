@@ -36,6 +36,7 @@ END
   fc = xrs.structure_factors(d_min = 1., algorithm = "direct").f_calc()
   fft_map = miller.fft_map(crystal_gridding=cg, fourier_coefficients=fc)
   map_data = fft_map.real_map_unpadded()
+
   # pass map and threshold value
   co = maptbx.connectivity(map_data=map_data, threshold=100.)
   # get 'map' of the same size with integers: 0 where below threshold,
@@ -466,6 +467,43 @@ def exercise_expand_mask():
         assert new_mask[i,j,k] == (i in [29,0,1,2,3] and
             j in [29,0,1,2,3] and k in [29,0,1,2,3])
 
+def exercise_wrapping():
+  cmap = flex.double(flex.grid(30,30,30))
+  cmap.fill(1)
+  for i in range(0,5):
+    for j in range(0,5):
+      for k in range(0,5):
+        cmap[i,j,k] = 10
+  for i in range(0,5):
+    for j in range(25,30):
+      for k in range(0,5):
+        cmap[i,j,k] = 10
+  for i in range(0,5):
+    for j in range(0,5):
+      for k in range(25,30):
+        cmap[i,j,k] = 10
+
+  for i in range(25,30):
+    for j in range(0,5):
+      for k in range(0,5):
+        cmap[i,j,k] = 10
+  for i in range(25,30):
+    for j in range(25,30):
+      for k in range(0,5):
+        cmap[i,j,k] = 10
+  for i in range(25,30):
+    for j in range(0,5):
+      for k in range(25,30):
+        cmap[i,j,k] = 10
+
+  n_in_blob = cmap.count(10)
+  co = maptbx.connectivity(map_data=cmap, threshold=5, wrapping=True)
+  dres = co.result().as_double()
+  regs = list(co.regions())
+  minb, maxb = co.get_blobs_boundaries_tuples()
+  assert n_in_blob == 750
+  assert regs == [26250, 750]
+
 def exercise_preprocess_against_shallow():
   # case 1: simple
   cmap = flex.double(flex.grid(30,30,30))
@@ -560,6 +598,97 @@ def exercise_preprocess_against_shallow():
   assert co.preprocessing_changed_voxels == 7
   assert co.preprocessing_n_passes == 3
 
+def write_ccp4_map(fname, unit_cell, space_group, map_data):
+  from iotbx import mrcfile
+  mrcfile.write_ccp4_map(
+      file_name=fname,
+      unit_cell=unit_cell,
+      space_group=space_group,
+      #gridding_first=(0,0,0),# This causes a bug (map gets shifted)
+      #gridding_last=n_real,  # This causes a bug (map gets shifted)
+      map_data=map_data,
+      labels=flex.std_string([""]))
+
+
+
+def exercise_symmetry_related_regions():
+  pdb_str="""
+CRYST1   10.000  10.000   10.000  90.00  90.00  90.00 P 4
+HETATM    1  C    C      1       2.000   2.000   2.000  1.00 20.00           C
+HETATM    2  C    C      2       4.000   4.000   4.000  1.00 20.00           C
+END
+"""
+
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  xrs = pdb_inp.xray_structure_simple()
+  # xrs.show_summary()
+  d_min = 1.
+  fc = xrs.structure_factors(d_min=d_min).f_calc()
+  symmetry_flags = maptbx.use_space_group_symmetry
+  fftmap = fc.fft_map(symmetry_flags = symmetry_flags)
+  rmup = fftmap.real_map_unpadded()
+  # print ('rmup size', rmup.accessor().focus())
+  # This produces 4 separate blobs
+  co = maptbx.connectivity(
+      map_data=rmup,
+      threshold=400,
+      wrapping=False,
+      preprocess_against_shallow=False)
+  original_regions = list(co.regions())
+  # print ('regions', original_regions)
+  assert len(original_regions) == 5
+  beg_mask = co.result()
+  # dv_mask = co.volume_cutoff_mask(0).as_double() ???
+  # write_ccp4_map('volume_mask_1000.ccp4', fc.unit_cell(), fc.space_group(), dv_mask)
+
+  co.merge_symmetry_related_regions(space_group=xrs.space_group())
+  new_mask = co.result()
+  assert beg_mask.count(0) == new_mask.count(0)
+  assert beg_mask.count(1) + beg_mask.count(3) == new_mask.count(1)
+  assert beg_mask.count(2) + beg_mask.count(4) == new_mask.count(2)
+  assert sum(original_regions[1:]) == sum(original_regions[1:])
+
+
+  new_regions = list(co.regions())
+  assert len(new_regions) == 3
+  assert list(co.maximum_values()) == []
+  assert list(co.maximum_coors()) == []
+
+  # ======================================================================
+  # At this threshold 2 carbons merge. But one of the blob is cutted,
+  # therefore producing 3 separate regions in unit cell
+  co = maptbx.connectivity(
+      map_data=rmup,
+      # threshold=1000,
+      threshold=1.1,
+      wrapping=False,
+      preprocess_against_shallow=True)
+  original_regions = list(co.regions())
+  assert len(original_regions) == 4
+  # print ('regions', original_regions)
+  beg_mask = co.result()
+  # Particular numbers here seem to be platform-dependent
+  # These should work on Mac
+  # assert beg_mask.count(0) == 29019
+  # assert beg_mask.count(1) == 1885
+  # assert beg_mask.count(2) == 1714
+  # assert beg_mask.count(3) == 150
+
+  # assert original_regions == [29019, 1885, 1714, 150]
+  co.merge_symmetry_related_regions(space_group=xrs.space_group())
+  new_mask = co.result()
+  # assert new_mask.count(0) == 29019
+  # assert new_mask.count(1) == 3749
+  assert beg_mask.count(0) == new_mask.count(0)
+  assert beg_mask.count(1) + beg_mask.count(2) + beg_mask.count(3) == new_mask.count(1)
+
+  new_regions = list(co.regions())
+  assert len(new_regions) == 2
+  # print('new regs', new_regions)
+  # assert new_regions == [29019, 3749]
+  assert list(co.maximum_values()) == []
+  assert list(co.maximum_coors()) == []
+
 
 if __name__ == "__main__":
   t0 = time.time()
@@ -574,5 +703,7 @@ if __name__ == "__main__":
   exercise_noise_elimination_two_cutoffs() # example and comment
   exercise_get_blobs_boundaries()
   exercise_expand_mask()
+  exercise_wrapping()
   exercise_preprocess_against_shallow()
+  exercise_symmetry_related_regions()
   print("OK time =%8.3f"%(time.time() - t0))

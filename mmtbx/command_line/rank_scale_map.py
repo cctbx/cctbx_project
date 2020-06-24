@@ -3,7 +3,6 @@ from __future__ import absolute_import, division, print_function
 
 from cctbx import maptbx
 import iotbx.mrcfile
-from cctbx import crystal
 from libtbx.utils import Sorry
 from scitbx.array_family import flex
 import sys, time
@@ -41,8 +40,7 @@ def run(args):
     ccp4_map = iotbx.mrcfile.map_reader(file_name=args[0])
   except Exception: # XXX should probably be RuntimeError?
     raise Sorry("Not a valid file (provide CCP4 formatted map file).")
-  cs = crystal.symmetry(ccp4_map.unit_cell().parameters(),
-    ccp4_map.space_group_number)
+  cs = ccp4_map.crystal_symmetry()
   m = ccp4_map.data.as_double()
   # show general statistics
   show_overall_statistics(m=m, header="Map basic info (%s):"%args[0])

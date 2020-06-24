@@ -1250,6 +1250,19 @@ class manager(manager_mixin):
         km      = km))
     return result
 
+  def show_short(self, show_k_mask=True, log=None, prefix=""):
+    if(log is None): log = sys.stdout
+    if(show_k_mask):
+      fmt="%s%7.3f-%-7.3f %6.2f %5d %5d %6.4f %9.3f %9.3f %5.3f   %s"
+      print("%s   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> ktotal  kmask"%prefix, file=log)
+      for b in self.bins():
+        print(fmt % (prefix,b.d_max,b.d_min,b.cmpl,b.nw,b.nf,b.r,b.fo_mean,b.fm_mean,b.ki*b.ka,b.km), file=log)
+    else:
+      fmt="%s%7.3f-%-7.3f %6.2f %5d %5d %6.4f %9.3f %9.3f %5.3f"
+      print("%s   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> ktotal"%prefix, file=log)
+      for b in self.bins():
+        print(fmt % (prefix,b.d_max,b.d_min,b.cmpl,b.nw,b.nf,b.r,b.fo_mean,b.fm_mean,b.ki*b.ka), file=log)
+
   def show(self, log=None, suffix=None, show_header=True, show_approx=True):
     if(log is None): log = sys.stdout
     l="Statistics in resolution bins"
@@ -2133,6 +2146,12 @@ class manager(manager_mixin):
     f = self.select(self.bin_selections[len(self.bin_selections)-1])
     return mmtbx.bulk_solvent.r_factor(
       f.f_obs_work().data(), f.f_model_work().data())
+
+  def r_factors(self, prefix="", as_string=True):
+    rw,rf,rh,rl=self.r_work(),self.r_free(),self.r_work_high(),self.r_work_low()
+    f = "%s r_work=%6.4f r_free=%6.4f r_high=%6.4f r_low=%6.4f"
+    if(as_string): return f%(prefix, rw,rf,rh,rl)
+    else:          return group_args(rw=rw,rf=rf,rh=rh,rl=rl)
 
   def r_overall_low_high(self, d = 6.0):
     r_work = self.r_work()

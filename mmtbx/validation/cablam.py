@@ -560,7 +560,7 @@ class cablam_result(residue):
       self.outlier = True
     #secondary structure
     #This is semi-duplicated from assemble_secondary_structure
-    if not self.prevres or not self.nextres:
+    if not self.prevres or not self.nextres or not self.prevres.scores or not self.nextres.scores:
       #alpha, beta, and threeten defaults are already None
       return
     if ((self.scores.alpha >= ALPHA_CUTOFF or self.scores.threeten >=THREETEN_CUTOFF)
@@ -975,9 +975,9 @@ class cablamalyze(validation):
         for result_id in result_ids:
           result = conf.results[result_id]
           #is it evaluable?
-          if not result.prevres:
+          if not result.prevres or not result.prevres.scores:
             continue
-          if not result.has_ca or not result.nextres:
+          if not result.has_ca or not result.nextres or not result.nextres.scores:
             if helix_in_progress:
               records.append(secondary_structure_segment(start=record_start, end=result.prevres, segment_type=helix_in_progress, segment_length=record_length))
               helix_in_progress = False
@@ -1026,14 +1026,14 @@ class cablamalyze(validation):
         record_start = None
         for result_id in result_ids:
           result = conf.results[result_id]
-          if not result.prevres:
+          if not result.prevres or not result.prevres.scores:
             continue
-          if not result.has_ca or not result.nextres:
+          if not result.has_ca or not result.nextres or result.nextres.scores:
             if strand_in_progress:
               records.append(secondary_structure_segment(start=record_start, end=result.prevres, segment_type='beta', segment_length=record_length))
               strand_in_progress = False
             continue
-          if result.scores.beta >= BETA_CUTOFF and result.prevres.scores.beta >= BETA_CUTOFF and result.nextres.scores.beta >= BETA_CUTOFF:
+          if result.scores and result.prevres.scores and result.nextres.scores and result.scores.beta >= BETA_CUTOFF and result.prevres.scores.beta >= BETA_CUTOFF and result.nextres.scores.beta >= BETA_CUTOFF:
             if strand_in_progress:
               record_length += 1
               continue

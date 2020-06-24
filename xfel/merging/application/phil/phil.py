@@ -48,7 +48,7 @@ input {
     ranks_per_node = 68
         .type = int
         .help = number of MPI ranks per node
-    balance = global per_node
+    balance = *global per_node
       .type = choice
       .multiple = False
       .help = Balance the input file load by distributing experiments uniformly over all available ranks (global) or over the ranks on each node (per_node)

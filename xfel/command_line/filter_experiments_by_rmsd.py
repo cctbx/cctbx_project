@@ -17,10 +17,14 @@ from six.moves import range
 from dials.array_family import flex
 from dials.util import show_mail_on_error
 from scitbx.matrix import col
-from matplotlib import pyplot as plt
 from libtbx.phil import parse
 import libtbx.load_env
 import math
+
+try:
+  from matplotlib import pyplot as plt
+except ImportError: # Can happen on non-GUI nodes
+  pass
 
 help_message = '''
 Filter a set of experiments and reflections from a multi-experiment job by overall RMSD

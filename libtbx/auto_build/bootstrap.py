@@ -474,6 +474,10 @@ class Toolbox(object):
       destination = os.path.join('modules', module)
     destpath, destdir = os.path.split(destination)
 
+    # default to using ssh for private phenix repositories
+    if module in ['phenix', 'solve_resolve']:
+      use_ssh = True
+
     if os.path.exists(destination):
       if git_available and os.path.exists(os.path.join(destination, '.git')):
         if not open(os.path.join(destination, '.git', 'HEAD'), 'r').read().startswith('ref:'):
@@ -842,7 +846,7 @@ class eigen_module(SourceModule):
 # Phenix repositories
 class phenix_module(SourceModule):
   module = 'phenix'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix/trunk']
+  anonymous = ['git', 'git@github.com:phenix-project/phenix.git']
 
 class phenix_html(SourceModule):
   module = 'phenix_html'
@@ -850,11 +854,15 @@ class phenix_html(SourceModule):
 
 class phenix_examples(SourceModule):
   module = 'phenix_examples'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_examples/trunk']
+  anonymous = ['git',
+               'git@gitlab.com:phenix_project/phenix_examples.git',
+               'https://gitlab.com/phenix_project/phenix_examples.git']
 
 class phenix_regression(SourceModule):
   module = 'phenix_regression'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_regression/trunk']
+  anonymous = ['git',
+               'git@gitlab.com:phenix_project/phenix_regression.git',
+               'https://gitlab.com/phenix_project/phenix_regression.git']
 
 class plex_module(SourceModule):
   module = 'Plex'
@@ -882,7 +890,7 @@ class pulchra_module(SourceModule):
 
 class solve_resolve_module(SourceModule):
   module = 'solve_resolve'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/solve_resolve/trunk']
+  anonymous = ['git', 'git@github.com:phenix-project/solve_resolve.git']
 
 class reel_module(SourceModule):
   module = 'reel'
@@ -1534,7 +1542,7 @@ class Builder(object):
     log = open(os.devnull, 'w')
 
     # environment is provided, so do check that it exists
-    if os.path.isdir(self.use_conda):
+    if self.use_conda is not None and os.path.isdir(self.use_conda):
       check_file = True
       self.use_conda = os.path.abspath(self.use_conda)
     # no path provided or file provided
@@ -1985,7 +1993,9 @@ class PhaserBuilder(CCIBuilder):
   ]
 
   def add_tests(self):
-    self.add_test_command('phaser_regression.regression',
+    self.add_test_parallel(module='phaser_regression') # run phaser_regression/run_tests.py file
+    """
+    self.add_test_command('phaser_regression.regression', # run Gabors tests
                           args=['all',
                                 '-o',
                                 'terse_failed',
@@ -1993,6 +2003,7 @@ class PhaserBuilder(CCIBuilder):
                                 '%s' %self.nproc,
                                 ],
     )
+    """
 
   def add_base(self, extra_opts=[]):
     # skip unnecessary base packages when building phaser only
@@ -2251,6 +2262,64 @@ class PhenixBuilder(CCIBuilder):
     'iota',
   ]
 
+  def add_module(self, module, workdir=None, module_directory=None):
+    """
+    Add git-lfs command for phenix_examples and phenix_regression
+    If the dev_env directory already exists, it is assumed that git-lfs
+    is available in that directory
+    """
+    super(PhenixBuilder, self).add_module(module, workdir, module_directory)
+
+    # update phenix_regression and phenix_examples with git-lfs
+    if module == 'phenix_examples' or module == 'phenix_regression':
+      # prepend path for check
+      dev_env = os.path.join('.', 'dev_env', 'bin')
+      if sys.platform == 'win32':
+        dev_env = os.path.join('.', 'dev_env', 'Library', 'bin')
+        os.environ['PATH'] = os.path.abspath(dev_env) + ';'  + os.environ['PATH']
+      else:
+        os.environ['PATH'] = os.path.abspath(dev_env) + ':'  + os.environ['PATH']
+
+      svn_is_available = False
+      git_lfs_is_available = False
+
+      # check if git-lfs and svn are available
+      log = open(os.devnull, 'w')
+
+      try:
+        returncode = subprocess.call(['svn', '--version'], stdout=log, stderr=log)
+        if returncode == 0:
+          svn_is_available = True
+      except Exception:
+        pass
+
+      try:
+        returncode = subprocess.call(['git', 'lfs', '--version'], stdout=log, stderr=log)
+        if returncode == 0:
+          git_lfs_is_available = True
+      except Exception:
+        pass
+
+      log.close()
+
+      # set if dev_env will be created in base step
+      self.install_dev_env = False
+      if not svn_is_available or not git_lfs_is_available:
+        self.install_dev_env = True
+
+      # get lfs files
+      if self.install_dev_env:
+        print('*'*79)
+        print("""\
+An environment containing git-lfs and/or svn will be installed during the "base"
+step. Pleaser re-run the "update" step after "base" completes, so that git-lfs
+files for {module} will be downloaded.""".format(module=module))
+        print('*'*79)
+      else:
+        workdir = ['modules', module]
+        self.add_step(self.shell(command=['git', 'lfs', 'install', '--local'], workdir=workdir))
+        self.add_step(self.shell(command=['git', 'lfs', 'pull'], workdir=workdir))
+
   def add_base(self, extra_opts=[]):
     super(PhenixBuilder, self).add_base(
       extra_opts=['--phenix',
@@ -2258,6 +2327,27 @@ class PhenixBuilder(CCIBuilder):
                   '--dials',
                   '--xia2',
                  ] + extra_opts)
+
+    # install extra development environment if necessary
+    if hasattr(self, 'install_dev_env') and self.install_dev_env:
+      if self.use_conda is None:
+        raise RuntimeError("""
+Conda is needed for creating the extra environment with git-lfs. Please add
+"--use-conda" to your bootstrap.py command or make sure git-lfs is available
+in your path. """)
+      self.python_base = self._get_conda_python()
+      if self.python_base.startswith('../conda_base'):
+        self.python_base = self.python_base[1:]  # keep current directory
+      env = {
+        'PYTHONPATH': None,
+        'LD_LIBRARY_PATH': None,
+        'DYLD_LIBRARY_PATH': None
+      }
+      command = [self.python_base,
+                 os.path.join('modules', 'cctbx_project', 'libtbx',
+                              'auto_build', 'install_conda.py'),
+                 '--install_dev_env', '--verbose']
+      self.add_step(self.shell(command=command, workdir=['.']))
 
   def add_install(self):
     Builder.add_install(self)

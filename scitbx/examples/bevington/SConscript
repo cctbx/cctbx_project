@@ -4,6 +4,10 @@ Import("env_base", "env_etc")
 
 try:
   env_etc.eigen_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../eigen"))
+  if not os.path.isdir(env_etc.eigen_dist) and hasattr(env_etc, "conda_cpppath"):
+    for candidate in env_etc.conda_cpppath:
+      if os.path.isdir(os.path.join(candidate, "eigen3")):
+        env_etc.eigen_dist = os.path.abspath(os.path.join(os.path.join(candidate, "eigen3")))
   if os.path.isdir(env_etc.eigen_dist):
     env_etc.eigen_include = env_etc.eigen_dist
     env_etc.scitbx_ex_bev_common_includes = [

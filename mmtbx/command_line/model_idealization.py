@@ -226,8 +226,6 @@ class model_idealization():
 
     # various checks, shifts, trims
     self.cs = self.original_cs = self.model.crystal_symmetry()
-    if self.model.get_shift_manager() is not None:
-      self.cs = self.model.get_shift_manager().box_crystal_symmetry
 
     # check self.cs (copy-paste from secondary_sturcure_restraints)
     corrupted_cs = False
@@ -1086,7 +1084,8 @@ def run(args):
         work_params,
         xrs=model.get_xray_structure(),
         log=log)
-    model.set_shift_manager(shift_manager)
+    model.shift_model_and_set_crystal_symmetry(
+      shift_cart=shift_manager.shift_cart)
     # model.get_hierarchy().write_pdb_file("junk_shift.pdb")
 
   hkl_content = input_objects.get_file(work_params.hkl_file_name)

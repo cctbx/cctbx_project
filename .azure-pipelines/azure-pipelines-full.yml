@@ -1,15 +1,14 @@
-# Nightly builds
+# Full conda builds
 
 # no continuous integration builds
 trigger: none
 
-# only nightly and pull request builds
-schedules:
-- cron: '0 1 * * *'
-  displayName: Nightly build
-  branches:
-    include:
-    - master
+resources:
+  pipelines:
+  - pipeline: data_cache
+    source: 'Update data cache'
+  - pipeline: build_cache
+    source: 'Update build cache'
 
 stages:
 - stage: Preparation

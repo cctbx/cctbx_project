@@ -4620,7 +4620,7 @@ class array(set):
         wavelength=None):
 
     """
-     Simple version of write_mtz for a single array
+     Simple version of write_mtz for a single array, typically map coefficients
     """
 
     if column_root_label is None:
@@ -5874,6 +5874,16 @@ class fft_map(maptbx.crystal_gridding):
       return self._real_map
     else:
       return flex.real(self._complex_map)
+
+  def as_map_manager(self,in_place=True):
+    '''
+     Create a map_manager object from real_map_unpadded version of this map
+    '''
+    map_data=self.real_map_unpadded(in_place=in_place)
+    from iotbx.map_manager import map_manager
+    return map_manager(map_data=map_data,
+      unit_cell_crystal_symmetry=self.crystal_symmetry(),
+      unit_cell_grid=map_data.all())
 
   def real_map_unpadded(self, in_place=True):
     """

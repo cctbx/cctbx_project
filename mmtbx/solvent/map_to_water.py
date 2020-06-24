@@ -39,7 +39,7 @@ def _debug_show_all_plots(
       ###
       v = flex.double()
       r = flex.double()
-      for p in [p/20 for p in xrange(0,21)]:
+      for p in [p/20 for p in range(0,21)]:
         xp = center_cart[0] + p * (xc-center_cart[0])
         yp = center_cart[1] + p * (yc-center_cart[1])
         zp = center_cart[2] + p * (zc-center_cart[2])

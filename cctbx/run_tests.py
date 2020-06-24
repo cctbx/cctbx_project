@@ -1,9 +1,8 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
-import sys
 import libtbx.load_env
 
-tst_list_base = [
+tst_list = [
   "$D/regression/tst_miller_double_step_filtration.py",
   "$D/miller/tst_reindexing.py",
   "$D/miller/tst_map_to_asu_isym.py",
@@ -17,6 +16,8 @@ tst_list_base = [
   "$D/regression/tst_adp_aniso_restraints.py",
   "$D/math/boost_python/tst_math.py",
   "$D/xray/boost_python/tst_targets_fd.py",
+  "$D/xray/boost_python/tst_xray.py",
+  ["$D/regression/tst_xray.py", "I41/acd"],
   "$D/xray/targets/tst_r1.py",
   "$D/xray/targets/tst_shelxl_wght_ls.py",
   "$D/xray/boost_python/tst_f_model.py",
@@ -136,6 +137,7 @@ tst_list_base = [
    "$D/maptbx/tst_atom_curves.py",
    "$D/maptbx/tst_atom_radius_as_central_peak_width.py",
    "$D/maptbx/tst_get_percentile_cutoffs.py",
+   "$D/regression/tst_maptbx_box.py",
    "$D/regression/tst_sphericity.py",
    "$D/regression/tst_miller_statistics.py",
    "$D/merging/brehm_diederichs.py",
@@ -146,20 +148,9 @@ tst_list_base = [
    "$D/regression/tst_grm_modifications.py",
   ]
 
-# failing tests on Python 3
-tst_list_fail_py3 = [
-  "$D/xray/boost_python/tst_xray.py",
-  ["$D/regression/tst_xray.py", "I41/acd"],
+tst_list_expected_unstable = [
+  "$D/regression/tst_fcalc_fft_stability.py",
   ]
-tst_list_fail = list()
-if sys.version_info[0] > 2:
-  tst_list_fail += tst_list_fail_py3
-else:
-  tst_list_base += tst_list_fail_py3
-
-# final lists
-tst_list = tst_list_base
-tst_list_expected_failures = tst_list_fail
 
 def run():
   build_dir = libtbx.env.under_build("cctbx")

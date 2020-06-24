@@ -62,6 +62,7 @@ general_tests = [
   "$D/geometry_restraints/torsion_restraints/tst_reference_model_ligands.py",
   # model tests, some more elsewhere in this file
   "$D/regression/model/tst_model_mtrix.py",
+  "$D/regression/model/tst_model_ncs.py",
   "$D/regression/model/tst_model_2.py",
   "$D/regression/model/tst_model_biomt_mtrix.py",
   "$D/regression/model/tst_model_neutralize_scatterers.py",
@@ -158,6 +159,7 @@ general_tests = [
   "$D/bulk_solvent/tst_flat_nonuniform.py",
   "$D/bulk_solvent/tst_aniso_scaler.py",
   "$D/bulk_solvent/tst_kb_sol_u_star_fd.py",
+  "$D/bulk_solvent/tst_mosaic.py",
   #
   "$D/invariant_domain.py",
   # restraints
@@ -178,6 +180,7 @@ general_tests = [
   "$D/conformation_dependent_library/tst_pH_mechanism.py",
   '$D/conformation_dependent_library/tst_mcl_01.py',
   '$D/conformation_dependent_library/tst_mcl_02.py',
+  '$D/conformation_dependent_library/tst_mcl_03.py',
   "$D/regression/tst_find_ss_structure.py",
   "$D/regression/tst_fix_rotamer_outliers.py",
   "$D/regression/tst_chain_comparison.py",

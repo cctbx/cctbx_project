@@ -201,7 +201,7 @@ def exercise_00(prefix="tst_polder_box"):
   print("Omit       : %7.3f %7.3f %7.3f"%mmm_o)
   #
   assert approx_equal(mmm_mp, [-1.863, 1.483, -0.165], eps=0.15)
-  assert approx_equal(mmm_o,  [-0.903, 0.290, -0.246], eps=0.15)
+  assert approx_equal(mmm_o,  [-0.772, 0.445, -0.119], eps=0.15)
 
 
 if (__name__ == "__main__"):
