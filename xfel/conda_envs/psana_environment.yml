@@ -60,7 +60,7 @@ dependencies:
  #- msgpack-c >=3.1.1 # conflicts with icu
  - msgpack-python #>=0.6
  - orderedset >=2.0
- - procrunner
+ - procrunner <2.0 # py2 not support in procrunner 2.0
  - python-blosc >=1.7
  - scikit-learn >=0.19.1
  #- scipy >=1.0 # comes with psana
