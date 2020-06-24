@@ -1,4 +1,4 @@
-
+from __future__ import absolute_import division, print_function
 from simtbx.nanoBragg import shapetype
 from simtbx.nanoBragg import nanoBragg
 from dxtbx.model.crystal import CrystalFactory
@@ -82,9 +82,9 @@ if __name__ == "__main__":
         if not np.allclose(img, img_cuda, rtol=0, atol=0.1):
             failed_shapes.append( repr(shape))
     if failed_shapes:
-        print ("\nThe following shape models failed the test:")
+        print("\nThe following shape models failed the test:")
         for shape in failed_shapes:
-            print ("  %s failed the test miserably" % shape)
+            print("  %s failed the test miserably" % shape)
         assert False, "This test has failed"
     else:
         print("OK")
