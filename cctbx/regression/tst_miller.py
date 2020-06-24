@@ -800,7 +800,7 @@ def exercise_array():
   sa = ma.resolution_filter(d_min=2)
   assert sa.indices().size() == 10
   sa = ma.resolution_filter(d_min=2, negate=True)
-  assert sa.indices().size() == 38
+  assert sa.indices().size() == 39, sa.indices().size()
   ma = ma.d_spacings()
   ma = miller.array(ma, ma.data(), ma.data().deep_copy())
   assert ma.indices().size() == 48

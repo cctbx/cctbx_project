@@ -1,6 +1,7 @@
 #ifndef SCITBX_ARRAY_FAMILY_MISC_FUNCTIONS_H
 #define SCITBX_ARRAY_FAMILY_MISC_FUNCTIONS_H
 
+#include <boost/math/special_functions/next.hpp>
 #include <boost/type_traits/is_unsigned.hpp>
 #include <cmath>
 #include <cstdlib>
@@ -91,6 +92,23 @@ namespace scitbx { namespace fn {
     FloatType diff = a - b;
     if (diff < 0.) diff = -diff;
     if (diff <= tolerance) return true;
+    return false;
+  }
+
+  //! Floating point equality based on units in the last place (ulp)
+  // This avoids having to scale the machine epsilon, which is 1 ulp away from 1.
+  // https://www.boost.org/doc/libs/1_70_0/libs/math/doc/html/math_toolkit/next_float/float_distance.html
+  // x == y becomes x is within ulp units of y, float_distance(a, b) <= ulp
+  // This should not be used for values near 0 because the distances
+  // between values near 0 are much smaller, so there could be many more
+  // ulps between small numbers.
+  template<typename FloatType>
+  bool
+  approx_equal_ulp(FloatType const& a,
+                   FloatType const& b,
+                   int const& ulp) {
+    int diff = boost::math::float_distance(a, b);
+    if (diff <= ulp) return true;
     return false;
   }
 

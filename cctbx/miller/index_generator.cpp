@@ -1,4 +1,5 @@
 #include <cctbx/miller/index_generator.h>
+#include <scitbx/array_family/misc_functions.h>
 #include <scitbx/array_family/tiny_algebra.h>
 
 namespace cctbx { namespace miller {
@@ -69,7 +70,9 @@ namespace cctbx { namespace miller {
           }
           else {
             double d_star_sq = unit_cell_.d_star_sq(reference_h);
-            if (d_star_sq != 0 && d_star_sq <= d_star_sq_max_
+            if (d_star_sq != 0
+                && ((d_star_sq < d_star_sq_max_)
+                    || scitbx::fn::approx_equal(d_star_sq, d_star_sq_max_, 1.0e-12))
                 && !set_phase_info(reference_h)) {
               return reference_h;
             }
@@ -87,7 +90,9 @@ namespace cctbx { namespace miller {
             }
             else {
               double d_star_sq = unit_cell_.d_star_sq(h);
-              if (d_star_sq != 0 && d_star_sq <= d_star_sq_max_
+              if (d_star_sq != 0
+                  && ((d_star_sq < d_star_sq_max_)
+                      || scitbx::fn::approx_equal(d_star_sq, d_star_sq_max_, 1.0e-12))
                   && !set_phase_info(h)) {
                 return h;
               }
