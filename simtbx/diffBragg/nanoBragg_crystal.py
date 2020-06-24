@@ -20,6 +20,7 @@ class nanoBragg_crystal(object):
         self.symbol = "P43212"
         self.missetting_matrix = sqr((1, 0, 0, 0, 1, 0, 0, 0, 1))
         self.miller_array = nanoBragg_crystal.dummie_Fhkl(ucell, self.symbol)
+        self.isotropic_ncells = True
         self.dxtbx_crystal = nanoBragg_crystal.dxtbx_crystal_from_ucell_and_symbol(
             ucell_tuple_Adeg=ucell, symbol=self.symbol)
 

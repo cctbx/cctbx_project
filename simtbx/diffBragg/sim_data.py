@@ -167,7 +167,11 @@ class SimData:
         self.D.Bmatrix = self.crystal.dxtbx_crystal.get_B() #
         self.D.Umatrix = self.crystal.dxtbx_crystal.get_U()
 
-        self.D.Ncells_abc = self.crystal.Ncells_abc[0]
+        if self.crystal.isotropic_ncells:
+            self.D.Ncells_abc = self.crystal.Ncells_abc[0]
+        else:
+            self.D.Ncells_abc_aniso = self.crystal.Ncells_abc
+
         self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
         self.D.mosaic_domains = self.crystal.n_mos_domains
         self.D.set_mosaic_blocks(SimData.Umats(
