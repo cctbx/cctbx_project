@@ -462,7 +462,7 @@ class GlobalRefiner(PixelRefinement):
         self.rotY_xpos = {}
         self.rotZ_xpos = {}
         self.ucell_xstart = {}
-        self.ncells_xpos = {}
+        self.ncells_xstart = {}
         self.originZ_xpos = {}
         self.spot_scale_xpos = {}
         self.n_panels = {}
@@ -569,21 +569,22 @@ class GlobalRefiner(PixelRefinement):
 
 
             if self.global_ncells_param:
-                self.ncells_xpos[i_shot] = _global_pos
+                self.ncells_xstart[i_shot] = _global_pos
                 _global_pos += self.n_ncells_param
             else:
-                self.ncells_xpos[i_shot] = _local_pos
+                self.ncells_xstart[i_shot] = _local_pos
                 _local_pos += self.n_ncells_param
-                ncells_xval = np_log(self.S.crystal.Ncells_abc[0]-3)
-                # TODO: each shot gets own starting Ncells
-                if self.rescale_params:
-                    self.Xall[self.ncells_xpos[i_shot]] = 1  #ncells_xval
-                else:
-                    self.Xall[self.ncells_xpos[i_shot]] = ncells_xval
+                for i_ncells in range(self.n_ncells_param):
+                    ncells_xval = np_log(self.S.crystal.Ncells_abc[i_ncells]-3)
+                    # TODO: each shot gets own starting Ncells
+                    if self.rescale_params:
+                        self.Xall[self.ncells_xstart[i_shot] + i_ncells] = 1
+                    else:
+                        self.Xall[self.ncells_xstart[i_shot] + i_ncells] = ncells_xval
             # set refinement flags
             if self.refine_ncells:
                 for i_ncells in range(self.n_ncells_param):  # note n_ncells_param is always 1 currently
-                    self.is_being_refined[self.ncells_xpos[i_shot] + i_ncells] = True
+                    self.is_being_refined[self.ncells_xstart[i_shot] + i_ncells] = True
 
             if self.global_originZ_param:
                 self.originZ_xpos[i_shot] = _global_pos
@@ -643,11 +644,12 @@ class GlobalRefiner(PixelRefinement):
 
             if self.global_ncells_param:
                 # TODO have parameter for global init of Ncells , right now its handled in the global_bboxes scripts
-                if self.rescale_params:
-                    ncells_xval = 1
-                else:
-                    ncells_xval = np_log(self.S.crystal.Ncells_abc[0] - 3)
-                self.Xall[self.ncells_xpos[0]] = ncells_xval
+                for i_ncells in range(self.n_ncells_param):
+                    if self.rescale_params:
+                        ncells_xval = 1
+                    else:
+                        ncells_xval = np_log(self.S.crystal.Ncells_abc[i_ncells] - 3)
+                    self.Xall[self.ncells_xstart[0] + i_ncells] = ncells_xval
 
             if self.global_originZ_param:
                 # TODO have parameter for global init of originZ param , right now its handled in the global_bboxes scripts
@@ -926,8 +928,13 @@ class GlobalRefiner(PixelRefinement):
                 PD[i_uc] = name
 
             # save the ncells identifier
-            i_ncells = self.ncells_xpos[i_shot]
-            PD[i_ncells] = "m"
+            if self.n_ncells_param == 1:
+                ncells_names = ("m",)
+            else:  # only other choice is n_ncells_param=3
+                ncells_names = "Na", "Nb", "Nc"
+            for i_nc in range(self.n_ncells_param):
+                i_ncells = self.ncells_xstart[i_shot] + i_nc
+                PD[i_ncells] = ncells_names[i_nc]
 
             # save spot scale indentifier
             i_scale = self.spot_scale_xpos[i_shot]
@@ -965,7 +972,8 @@ class GlobalRefiner(PixelRefinement):
             for i_uc in range(self.n_ucell_param):
                 self.bmatrix_sel[self.ucell_xstart[i_shot] + i_uc] = False
 
-            self.ncells_sel[self.ncells_xpos[i_shot]] = False
+            for i_ncells in range(self.n_ncells_param):
+                self.ncells_sel[self.ncells_xstart[i_shot] + i_ncells] = False
             self.spot_scale_sel[self.spot_scale_xpos[i_shot]] = False
 
             self.origin_sel[self.originZ_xpos[i_shot]] = False
@@ -1020,14 +1028,27 @@ class GlobalRefiner(PixelRefinement):
         return val
 
     def _get_m_val(self, i_shot):
-        val = self.Xall[self.ncells_xpos[i_shot]]
-        if self.rescale_params:
-            sig = self.m_sigma
-            init = self.m_init[i_shot] 
-            val = np_exp(sig*(val-1))*(init-3) + 3
+        vals = []
+        if self.S.D.isotropic_ncells:
+            val = self.Xall[self.ncells_xstart[i_shot]]
+            if self.rescale_params:
+                sig = self.m_sigma
+                init = self.m_init[i_shot]
+                val = np_exp(sig*(val-1))*(init-3) + 3
+            else:
+                val = np_exp(val)+3
+            vals.append(val)
         else:
-            val = np_exp(val)+3
-        return val
+            for i_ncell in range(self.n_ncells_param):
+                val = self.Xall[self.ncells_xstart[i_shot] + i_ncell]
+                if self.rescale_params:
+                    sig = self.m_sigma
+                    init = self.m_init[i_shot][i_ncell]
+                    val = np_exp(sig * (val - 1)) * (init - 3) + 3
+                else:
+                    val = np_exp(val) + 3
+                vals.append(val)
+        return vals
 
     def _get_spot_scale(self, i_shot):
         val = self.Xall[self.spot_scale_xpos[i_shot]]
@@ -1098,14 +1119,14 @@ class GlobalRefiner(PixelRefinement):
 
         if self.global_ncells_param:
             if lst_is_x:
-                ncells_vals = [self._get_m_val(0)] * len(rotx)
+                ncells_vals = [self._get_m_val(0)[0]] * len(rotx)
             else:
-                ncells_vals = [lst[self.ncells_xpos[0]]] * len(rotx)
+                ncells_vals = [lst[self.ncells_xstart[0]]] * len(rotx)
         else:
             if lst_is_x:
-                ncells_vals = [self._get_m_val(i_shot) for i_shot in range(self.n_shots)]
+                ncells_vals = [self._get_m_val(i_shot)[0] for i_shot in range(self.n_shots)]
             else:
-                ncells_vals = [lst[self.ncells_xpos[i_shot]] for i_shot in range(self.n_shots)]
+                ncells_vals = [lst[self.ncells_xstart[i_shot]] for i_shot in range(self.n_shots)]
 
         if self.global_originZ_param:
             if lst_is_x:
@@ -1130,7 +1151,6 @@ class GlobalRefiner(PixelRefinement):
         else:
             scale_vals_truths = None
 
-        # TODO generalize for non tetragonal case
         if self.global_ucell_param:
             if lst_is_x:
                 ucparams = self._get_ucell_vars(0)
@@ -1261,8 +1281,11 @@ class GlobalRefiner(PixelRefinement):
             self.D.set_value(2, self._get_rotZ(self._i_shot))
 
     def _update_ncells(self):
-        val = self._get_m_val(self._i_shot)
-        self.D.set_value(self._ncells_id, val)
+        vals = self._get_m_val(self._i_shot)
+        if self.D.isotropic_ncells:
+            self.D.set_value(self._ncells_id, vals[0])
+        else:
+            self.D.set_ncells_values(tuple(vals))
 
     def _update_dxtbx_detector(self):
         # TODO: verify that all panels have same local origin to start with..
@@ -1324,12 +1347,27 @@ class GlobalRefiner(PixelRefinement):
                     self.ucell_d2I_dtheta2[i] = SG*self.D.get_second_derivative_pixels(3 + i).as_numpy_array()
 
     def _extract_mosaic_parameter_m_derivative_pixels(self):
-        self.m_dI_dtheta = self.m_d2I_dtheta2 = 0
         SG = self.scale_fac * self.G2
-        if self.refine_ncells:
-            self.m_dI_dtheta = SG*self.D.get_derivative_pixels(self._ncells_id).as_numpy_array()
+        if self.D.isotropic_ncells:  # TODO remove need for if/else
+            self.m_dI_dtheta = self.m_d2I_dtheta2 = 0
+            if self.refine_ncells:
+                self.m_dI_dtheta = SG*self.D.get_derivative_pixels(self._ncells_id).as_numpy_array()
+                if self.calc_curvatures:
+                    self.m_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(self._ncells_id).as_numpy_array()
+            self.m_dI_dtheta = [self.m_dI_dtheta]
+            self.m_d2I_dtheta2 = [self.m_d2I_dtheta2]
+        else:
+            self.m_dI_dtheta = [0] * self.n_ncells_param
+            self.m_d2I_dtheta2 = [0] * self.n_ncells_param
+            derivs = self.D.get_ncells_derivative_pixels()
             if self.calc_curvatures:
-                self.m_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(self._ncells_id).as_numpy_array()
+                second_derivs = self.D.get_ncells_second_derivative_pixels()
+            for i_ncell in range(self.n_ncells_param):
+                d = derivs[i_ncell].as_numpy_array()
+                self.m_dI_dtheta[i_ncell] = SG*d
+                if self.calc_curvatures:
+                    d2 = second_derivs[i_ncell].as_numpy_array()
+                    self.m_d2I_dtheta2[i_ncell] = SG*d2
 
     def _extract_originZ_derivative_pixels(self):
         self.detdist_dI_dtheta = self.detdist_d2I_dtheta2 = 0
@@ -1635,24 +1673,25 @@ class GlobalRefiner(PixelRefinement):
 
     def _mosaic_parameter_m_derivatives(self):
         if self.refine_ncells:
-            theta = self._get_m_val(self._i_shot)  # mosaic parameter "m"
-            theta_minus_three = theta - 3
-            sig = self.m_sigma
-            if self.rescale_params:
-                # case 3 rescaling
-                sig_theta_minus_three = sig*theta_minus_three
-                d = self.m_dI_dtheta*sig_theta_minus_three
-                d2 = self.m_d2I_dtheta2*(sig_theta_minus_three*sig_theta_minus_three) + \
-                     self.m_dI_dtheta*(sig*sig_theta_minus_three)
-            else:
-                # case 4 rescaling with theta_o = 3
-                d = self.m_dI_dtheta*theta_minus_three
-                d2 = self.m_d2I_dtheta2*(theta_minus_three*theta_minus_three) + self.m_dI_dtheta*theta_minus_three
+            thetas = self._get_m_val(self._i_shot)  # mosaic parameters "m"
+            for i_ncell in range(self.n_ncells_param):
+                theta_minus_three = thetas[i_ncell] - 3
+                sig = self.m_sigma
+                if self.rescale_params:
+                    # case 3 rescaling
+                    sig_theta_minus_three = sig*theta_minus_three
+                    d = self.m_dI_dtheta[i_ncell]*sig_theta_minus_three
+                    d2 = self.m_d2I_dtheta2[i_ncell]*(sig_theta_minus_three*sig_theta_minus_three) + \
+                         self.m_dI_dtheta[i_ncell]*(sig*sig_theta_minus_three)
+                else:
+                    # case 4 rescaling with theta_o = 3
+                    d = self.m_dI_dtheta[i_ncell]*theta_minus_three
+                    d2 = self.m_d2I_dtheta2[i_ncell]*(theta_minus_three*theta_minus_three) + self.m_dI_dtheta[i_ncell]*theta_minus_three
 
-            xpos = self.ncells_xpos[self._i_shot]
-            self.grad[xpos] += self._grad_accumulate(d)
-            if self.calc_curvatures:
-                self.curv[xpos] += self._curv_accumulate(d, d2)
+                xpos = self.ncells_xstart[self._i_shot] + i_ncell
+                self.grad[xpos] += self._grad_accumulate(d)
+                if self.calc_curvatures:
+                    self.curv[xpos] += self._curv_accumulate(d, d2)
 
     def _originZ_derivatives(self):
         if self.refine_detdist:
@@ -2334,7 +2373,7 @@ class GlobalRefiner(PixelRefinement):
                 ang_off = 999
 
             out_str = "shot %d: MEAN UCELL ERROR=%.4f, ANG OFF %.4f" % (i_shot, mn_err, ang_off)
-            ncells_val = self._get_m_val(i_shot)  #np.exp(self.Xall[self.ncells_xpos[i_shot]]) + 3
+            ncells_val = self._get_m_val(i_shot)[0]
             ncells_resid = abs(ncells_val - self.gt_ncells)
 
             if mn_err < 0.01 and ang_off < 0.004 and ncells_resid < 0.1:
