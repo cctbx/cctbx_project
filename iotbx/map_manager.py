@@ -547,7 +547,7 @@ class map_manager(map_reader, write_ccp4_map):
      deep_copied.
     '''
     assert isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
-    assert self.is_similar_ncs_object(ncs_object)
+    assert self.is_compatible_ncs_object(ncs_object)
     self._ncs_object = deepcopy(ncs_object)
 
   def set_program_name(self, program_name = None):
@@ -987,7 +987,7 @@ class map_manager(map_reader, write_ccp4_map):
     '''
 
     # Check if we really need to do anything
-    if self.is_similar_model(model):
+    if self.is_compatible_model(model):
       return # already fine
 
     # Set original crystal symmetry to match map unit_cell_crystal_symmetry
@@ -1000,9 +1000,9 @@ class map_manager(map_reader, write_ccp4_map):
     #   map (shift of origin is opposite of shift applied)
     model.set_shift_cart(self.shift_cart())
 
-  def is_similar_ncs_object(self, ncs_object, tol = 0.001):
+  def is_compatible_ncs_object(self, ncs_object, tol = 0.001):
     '''
-      ncs_object is similar to this map_manager if shift_cart is
+      ncs_object is compatible with this map_manager if shift_cart is
       the same as map
     '''
 
@@ -1021,15 +1021,8 @@ class map_manager(map_reader, write_ccp4_map):
     self._warning_message=text
     return ok
 
-  def is_similar_model(self, model, tol=0.001):
-    '''
-      Returns true if model has the same original and current symmetry and
-      the same shift_cart as the map
-    '''
-
-    return self.is_compatible_model(model, require_similar=True, tol=tol)
-
-  def is_compatible_model(self, model, require_similar=True, tol=0.001):
+  def is_compatible_model(self, model, 
+       require_match_unit_cell_crystal_symmetry=True, tol=0.001):
     '''
       Model is compatible with this map_manager if it is not specified as being
       different.
@@ -1043,8 +1036,8 @@ class map_manager(map_reader, write_ccp4_map):
       the map crystal_symmetry.  It does mean that it is reasonable to set the
       model crystal_symmetry to match the map ones.
 
-      If require_similar is True, then they are different if anything
-      is different
+      If require_match_unit_cell_crystal_symmetry is True, then they are 
+      different if anything is different
     '''
 
     ok=None
@@ -1063,10 +1056,11 @@ class map_manager(map_reader, write_ccp4_map):
     text_map_uc=str(map_uc).replace("\n"," ")
     text_map=str(map_sym).replace("\n"," ")
 
-    if require_similar and (not model_uc) and (
+    if require_match_unit_cell_crystal_symmetry and (not model_uc) and (
        not map_sym.is_similar_symmetry(map_uc)):
       ok=False
-      text="Model and map are different because require_similar is set and "+\
+      text="Model and map are different because "+\
+          "require_match_unit_cell_crystal_symmetry is set and "+\
           "model does not have original_crystal_symmetry, and " +\
         "model symmetry (%s) does not match map original symmetry " %(
           model_sym) +\

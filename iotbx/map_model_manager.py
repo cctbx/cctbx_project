@@ -162,12 +162,12 @@ class r_model(map_model_base):
     for id in map_dict.keys():
       m=map_dict[id]
       assert m.origin_is_zero()
-      assert m.is_similar_model(model)
+      assert m.is_compatible_model(model)
       assert m.is_similar(first_map)
 
     # Make sure model and map all have same shift_cart and
     #  crystal_symmetry and unit_cell_crystal_symmetry
-    assert first_map.is_similar_model(model)
+    assert first_map.is_compatible_model(model)
 
     # All OK
 
@@ -985,7 +985,7 @@ class match_map_model_ncs(map_model_base):
     if self.map_manager() and self.model():
       # Must be compatible...then set model symmetry if not set
       ok=self.map_manager().is_compatible_model(self.model(),
-        require_similar=False)
+        require_match_unit_cell_crystal_symmetry=False)
       if ok:
         self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(
           self.model())  # modifies self.model() in place
@@ -994,7 +994,7 @@ class match_map_model_ncs(map_model_base):
 
     if self.map_manager() and self.ncs_object():
       # Must be similar...
-      if not self.map_manager().is_similar_ncs_object(self.ncs_object()):
+      if not self.map_manager().is_compatible_ncs_object(self.ncs_object()):
         raise AssertionError(self.map_manager().warning_message())
 
   def add_model(self, model = None, set_model_log_to_null = True,
