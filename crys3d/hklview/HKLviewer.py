@@ -91,8 +91,15 @@ class SettingsForm(QDialog):
 
 class WebEngineDebugForm(QDialog):
   def __init__(self, parent=None):
-    super(WebEngineDebugForm, self).__init__(None)
-    self.setWindowTitle("QtWebEngineDebug")
+    super(WebEngineDebugForm, self).__init__(None, 
+                        Qt.WindowMinimizeButtonHint | # Want minimise and maximise buttons on window. 
+                        Qt.WindowMaximizeButtonHint | # As they are not the default for QDialog we must
+                        Qt.WindowCloseButtonHint |    # add them with flags at creation
+                        Qt.CustomizeWindowHint |
+                        Qt.WindowTitleHint |
+                        Qt.WindowSystemMenuHint
+                        )
+    self.setWindowTitle("Chrome QtWebEngineDebug")
     browser = QWebEngineView()
     mainLayout = QGridLayout()
     mainLayout.addWidget(browser, 0, 0)
@@ -1510,6 +1517,8 @@ def run():
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += QWebEngineViewFlags
 
     from PySide2.QtWidgets import QApplication
+    # ensure QWebEngineView scales correctly on a screen with high DPI
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer(app)
 

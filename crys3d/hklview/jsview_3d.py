@@ -35,6 +35,7 @@ class MyWebSocketServerProtocol(websockets.server.WebSocketServerProtocol):
     self.ondisconnect = None
     self.onlostconnect = None
     super().__init__(*args, max_size=100000000) # allow for saving 100Mb size images
+    #super().__init__(*args,**kwargs) # crashes if saving images bigger than 1Mb
   def connection_open(self) -> None:
     #print("In connection_open()")
     self.client_connected = self.local_address
@@ -346,8 +347,10 @@ class hklview_3d:
     self.colourgradientvalues = []
     self.isinjected = False
     self.UseOSBrowser = ""
+    ldic=locals()
     if 'UseOSBrowser' in kwds:
-      exec("self.UseOSBrowser = kwds['UseOSBrowser']")
+      exec("UseOSBrowser = kwds['UseOSBrowser']", globals(), ldic)
+      self.UseOSBrowser = ldic["UseOSBrowser"]
     self.viewmtrx = None
     self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
@@ -1824,9 +1827,19 @@ function WebsockSendMsg(msg, message_is_complete = true)
     else
       if (mysocket.readyState !== mysocket.CONNECTING)
       {
-        CreateWebSocket();
-        mysocket.send( 'Unscheduled reconnection ' + pagename + '\\n' );
-        //alert('Cannot connect to websocket server! \\nAre the firewall permissions or browser security too strict?');
+        sleep(200).then(()=> {
+            if (mysocket.readyState !== mysocket.OPEN )
+            {
+              //alert('Closing socket');
+              mysocket.close(4242, 'Refreshing ' + pagename); // not sure this is ever received by server
+              //window.location.reload(true);
+              //alert('Creating socket');
+              CreateWebSocket();
+            }
+            return;
+          }
+        );
+        //alert('Cannot send data! \\nAre the firewall permissions or browser security too strict?');
       }
   }
   catch(err)
@@ -2528,56 +2541,20 @@ mysocket.onmessage = function(e)
                 trim: false,
                 transparent: false
             } ).then( function( blob ){
-              //NGL.download( blob, "example.png" );
-              //bytes = new Uint8Array(blob.size);
-              //bytes.map((byte, i) => blob.slice(i));
-              //b64 = btoa(blob);
 
               WebsockSendMsg('Imageblob', false);
               WebsockSendMsg( blob );
               WebsockSendMsg('ImageWritten ' + pagename);
               
-              //var reader = new FileReader();
-              //reader.readAsArrayBuffer(blob);
-              //reader.readAsBinaryString(blob);
-              //var bindata = new ArrayBuffer();
-              //reader.onload = function() 
-              //{
-                  //var base64data = reader.result;
-                  //var base64data = window.btoa(reader.result);
-                 //var bindata = reader.result;
-                 // WebsockSendMsg('Imageblob\\n' + bindata);
-                  // 
-                 // var msize = 1000000;
-                 // var j = 0;
-                 // var chunk = String(base64data.slice(j*msize, (j+1)*msize));
-                 // while (chunk != "")
-                 // {
-                 //  WebsockSendMsg('ImageChunk_' + String(j) + '\\n' + chunk);
-                 //   j++;
-                 //   chunk = String(base64data.slice(j*msize, (j+1)*msize));
-                  //}
-                  //WebsockSendMsg('ImageSent');
-                  //WebsockSendMsg('Imageblob', false);
-                  //WebsockSendMsg( bindata );
-                  //WebsockSendMsg('ImageWritten ' + pagename);
-
-              //}
-              //reader.readAsArrayBuffer(blob);
-              
-              //WebsockSendMsg('Imageblob\\n' + b64);
-              //WebsockSendMsg('Imageblob\\n' + bytes );
               /*
               var link = document.getElementById('link');
               var canvas = stage.viewer.renderer.domElement;
-              link.setAttribute('download', 'C:/Users/oeffner/Buser/HKLviewerTests/MintyPaper.png');
+              link.setAttribute('download', 'C:/Users/Oeffner/OeffnerStuff/Work/HKLviewerTests/MintyPaper.png');
               //link.setAttribute('href', canvas.toDataURL("image/png").replace("image/png", "image/octet-stream"));
               link.setAttribute('href', blob);
               link.click();
               */
         } );
-
-      //WebsockSendMsg('ImageWritten ' + pagename);
     }
 
     if (msgtype === "Testing")
@@ -2633,14 +2610,14 @@ mysocket.onmessage = function(e)
     while True:
       await asyncio.sleep(self.sleeptime)
       if self.was_disconnected in [4242, # reload
-                                   4241, # javascriptcleanup
-                                   1006, # if WebSocketServerProtocol.close_code is absent
-                                   1001, # normal exit
-                                   1000 # normal exit
-                                   ]:
+                                    4241, # javascriptcleanup
+                                    1006, # WebSocketServerProtocol.close_code is absent
+                                    1001, # normal exit
+                                    1000 
+                                    ]:
         return # shutdown
       if self.viewerparams.scene_id is None or self.miller_array is None \
-         or self.websockclient is None or self.mywebsock.client_connected is None:
+          or self.websockclient is None or self.mywebsock.client_connected is None:
         await asyncio.sleep(self.sleeptime)
         continue
       message = ""
@@ -2651,16 +2628,10 @@ mysocket.onmessage = function(e)
           self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=1)
         continue
       try:
-        if isinstance(self.lastmsg, str) and "Imageblob" in self.lastmsg:
-          #datastr = message[ message.find("\n") + 1: ]
+        if isinstance(message, bytes) and isinstance(self.lastmsg, str) and "Imageblob" in self.lastmsg:
           with open( self.imagename, "wb") as imgfile:
-            #datastr += "=" * ((4 - len(datastr) % 4) % 4)
-            #datastr = datastr[(len('data:image/png;base64,')):]
-            #blob = base64.b64decode(datastr2)
-            #blob = base64.urlsafe_b64decode(datastr)
-            #blob = base64.b64decode(datastr + '=' * (-len(datastr) % 4) )
-            #blob = base64.b64decode(datastr + b'===' )
             imgfile.write( message)
+
         if isinstance(message, str) and message != "":
           if "Orientation" in message:
             self.ProcessOrientationMessage(message)
@@ -2682,15 +2653,6 @@ mysocket.onmessage = function(e)
             self.mprint( message, verbose=0)
           elif "Expand" in message:
             self.mprint( message, verbose=2)
-            #raise Sorry(message)
-          elif "ImageChunk" in message:
-            self.imgdatastr += message[ message.find("\n") + 1: ]
-          elif "ImageSent" in message:
-            with open( self.imagename, "wb") as imgfile:
-              datastr = self.imgdatastr #[(len('data:image/png;base64,')):]
-              blob = base64.b64decode(datastr + '===' )
-              imgfile.write(blob)
-            self.imgdatastr = ""
           elif "ImageWritten" in message:
             self.mprint( "Image saved to storage", verbose=0)
           elif "ReturnClipPlaneDistances:" in message:
@@ -2819,6 +2781,7 @@ Distance: %s
   async def WebSockHandler(self, mywebsock, path):
     self.mprint("Entering WebSockHandler", verbose=1)
     if self.websockclient is not None or self.ishandling:
+      await mywebsock.close()
       return
     self.ishandling = True
     mywebsock.onconnect = self.OnConnectWebsocketClient
@@ -2841,9 +2804,12 @@ Distance: %s
         nwait = 0.0
         await asyncio.sleep(self.sleeptime)
         if self.was_disconnected in [4242, # reload
-                                     1006 # if WebSocketServerProtocol.close_code is absent
+                                     4241, # javascriptcleanup
+                                     1006, # WebSocketServerProtocol.close_code is absent
+                                     1001, # normal exit
+                                     1000 
                                      ]:
-          return
+          return # shutdown
         if self.javascriptcleaned or self.was_disconnected == 4241: # or self.was_disconnected == 1001:
           self.mprint("Shutting down WebBrowser message queue", verbose=1)
           return
@@ -2878,6 +2844,7 @@ Distance: %s
     self.mprint(msg , verbose=1 )
     self.was_disconnected = close_code
     self.websockclient = None
+    self.ishandling = False
 
 
   def OnDisconnectWebsocketClient(self, client, close_code, close_reason):
@@ -2885,6 +2852,7 @@ Distance: %s
     self.mprint(msg , verbose=1 )
     self.was_disconnected = close_code
     self.websockclient = None
+    self.ishandling = False
 
 
   async def send_msg_to_browser(self, msgtype, msg=""):
@@ -3523,27 +3491,21 @@ def LoopSendMessages():
 
 # WS server example
 import asyncio
-import math, time
 import websockets
 
-class myClass(object):
-  async def time(self, mysocket, path):
-    x = 0
-    #for i in range(1000):
-    while True:
-      x += 0.2
-      msg = u" X= %f" %x
-      await mysocket.send( msg )
-      message = await mysocket.recv()
-      print( message)
-      await asyncio.sleep(0.2)
-  def startserver(self):
-    start_server = websockets.serve(self.time, '127.0.0.1', 7894)
-    asyncio.get_event_loop().run_until_complete(start_server)
-    asyncio.get_event_loop().run_forever()
+async def hello(websocket, path):
+  while True:
+    name = await websocket.recv()
+    print(f"< {name}")
+    greeting = f"Hello {name}!"
+    await websocket.send(greeting)
+    if name=="STOP":
+      return
+    await asyncio.sleep(0.2)
 
-obj=myClass()
-obj.startserver()
+start_server = websockets.serve(hello, "localhost", 8765)
+asyncio.get_event_loop().run_until_complete(start_server)
+asyncio.get_event_loop().run_forever()
 
 
 
@@ -3552,14 +3514,14 @@ import asyncio
 import websockets
 
 async def hello():
-    uri = "ws://localhost:7894"
-    async with websockets.connect(uri) as websocket:
-      while True:
-        name = input("What's your name? ")
-        await websocket.send(name)
-        print(f"> {name}")
-        greeting = await websocket.recv()
-        print(f"< {greeting}")
+  uri = "ws://localhost:8765"
+  async with websockets.connect(uri) as websocket:
+    while True:
+      name = input("What's your name?\n" )
+      await websocket.send(name)
+      print(f"> {name}")
+      greeting = await websocket.recv()
+      print(f"< {greeting}")
 
 asyncio.get_event_loop().run_until_complete(hello())
 

@@ -512,6 +512,8 @@ class HKLViewFrame() :
       from iotbx.reflection_file_utils import get_r_free_flags_scores
       score_array = get_r_free_flags_scores([array], None)
       test_flag_value = score_array.test_flag_values[0]
+      if test_flag_value not in array.data(): 
+        return array # for the few cases where a miller array cannot be considered as a valid Rfree array
       array = array.customized_copy(data=(array.data() == test_flag_value))
       array.set_info(info)
       array._data = array.data().as_int()
