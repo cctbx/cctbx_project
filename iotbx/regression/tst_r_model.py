@@ -80,7 +80,7 @@ def exercise(file_name, out = sys.stdout):
   s = (new_r_model.get_map_manager('mask').map_data() > 0.5)
   assert approx_equal( (s.count(True),s.size()), (35,2048))
 
-  # Mask around edges 
+  # Mask around edges
   r_model=dc.deep_copy()
   r_model.create_mask_around_edges()
   s = (r_model.get_map_manager('mask').map_data() > 0.5)

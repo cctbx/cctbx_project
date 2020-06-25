@@ -241,7 +241,7 @@ class create_mask_around_density(create_mask_around_atoms):
       resolution = d_min_from_map(
            map_data=map_manager.map_data(),
            unit_cell=map_manager.crystal_symmetry().unit_cell())
- 
+
     self._crystal_symmetry = map_manager.crystal_symmetry()
 
     if (molecular_mass or sequence ) and (

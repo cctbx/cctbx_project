@@ -118,14 +118,14 @@ class map_model_base(object):
       mm.initialize_map_data(map_value = map_value)
 
   def not_box_around_model(self,
-    cushion, 
+    cushion,
     wrapping,  # put this in map_manager XXX
     selection_string = None,
     soft_mask = False):
 
    '''
      Select part of model specified by selection_string (all if not present).
-     Box this r_model around the selection and return a new r_model object 
+     Box this r_model around the selection and return a new r_model object
 
      Specify cushion = distance of closest atom to edge of box
      Optionally make a soft mask around the edges of the box
@@ -151,7 +151,7 @@ class map_model_base(object):
     assert self.model() is not None
 
     '''
-      Generate mask around atoms and apply to all maps. 
+      Generate mask around atoms and apply to all maps.
       Overwrites values in these maps
 
       Optionally set the value outside the mask equal to the mean inside,
@@ -160,7 +160,7 @@ class map_model_base(object):
 
       Optional: radius around atoms for masking
       Optional: soft mask  (default = True)
-        Radius will be soft_mask_radius 
+        Radius will be soft_mask_radius
         (default radius is resolution calculated from gridding)
         If soft mask is set, mask_atoms_atom_radius increased by
 
@@ -217,7 +217,7 @@ class map_model_base(object):
       mask_key = 'mask',
       set_outside_to_mean_inside = False):
     '''
-      Apply the mask in 'mask' to maps specified by map_keys. 
+      Apply the mask in 'mask' to maps specified by map_keys.
       If map_keys is None apply to all
 
       Optionally set the value outside the mask equal to the mean inside,
@@ -261,7 +261,7 @@ class map_model_base(object):
       Optional: radius around edge for masking
         (default radius is resolution calculated from gridding)
 
-      Generates new entry in map_manager dictionary with key of 
+      Generates new entry in map_manager dictionary with key of
       mask_key (default='mask') replacing any existing entry with that key
     '''
 
@@ -278,8 +278,8 @@ class map_model_base(object):
 
     # Put the mask in map_dict keyed with mask_key
     self.set_map_manager(mask_key, cm.map_manager())
-   
-  def create_mask_around_atoms(self, 
+
+  def create_mask_around_atoms(self,
      mask_atoms_atom_radius = 3,
      soft_mask = False,
      soft_mask_radius = None,
@@ -290,12 +290,12 @@ class map_model_base(object):
 
       Optional: radius around atoms for masking
       Optional: soft mask  (default = True)
-        Radius will be soft_mask_radius 
+        Radius will be soft_mask_radius
         (default radius is resolution calculated from gridding)
         If soft mask is set, mask_atoms_atom_radius increased by
           soft_mask_radius
 
-      Generates new entry in map_manager dictionary with key of 
+      Generates new entry in map_manager dictionary with key of
       mask_key (default='mask') replacing any existing entry with that key
     '''
 
@@ -318,23 +318,23 @@ class map_model_base(object):
     # Put the mask in map_dict keyed with mask_key
     self.set_map_manager(mask_key, cm.map_manager())
 
-  def create_mask_around_density(self, 
+  def create_mask_around_density(self,
      solvent_content = None,
      soft_mask = True,
      soft_mask_radius = None,
      mask_key = 'mask' ):
 
     '''
-      Generate mask based on density in map_manager.  
+      Generate mask based on density in map_manager.
       Does not apply the mask to anything.
 
       Optional:  supply approximate solvent fraction
 
       Optional: soft mask  (default = True)
-        Radius will be soft_mask_radius 
+        Radius will be soft_mask_radius
         (default radius is resolution calculated from gridding)
 
-      Generates new entry in map_manager dictionary with key of 
+      Generates new entry in map_manager dictionary with key of
       mask_key (default='mask') replacing any existing entry with that key
     '''
 
@@ -478,7 +478,7 @@ class r_model(map_model_base):
     for id in info.other_map_manager_id_list:
       text += "\n%s: %s" %(id,str(self.get_map_manager(id)))
     return text
-    
+
   def _check_inputs(self):
     '''
      Make sure that model, map and ncs objects are correct types
@@ -546,7 +546,7 @@ class map_model_manager(map_model_base):
       All other keys are any strings and are assumed to correspond to other maps
 
     Note:  It is permissible to call with no map_manger, but supplying
-      both map_manager_1 and map_manager_2.  In this case, the working 
+      both map_manager_1 and map_manager_2.  In this case, the working
       map_manager will be the average of map_manager_1 and map_manager_2
 
     Note:  mam.map_manager() contains mam.ncs_object(), so it is not necessary
@@ -721,8 +721,8 @@ class map_model_manager(map_model_base):
       map_manager must be present
     '''
 
-   
-    assert map_manager is not None 
+
+    assert map_manager is not None
     self._map_dict={}
     self._extra_map_manager_id_list=extra_map_manager_id_list
     self._map_dict['map_manager']=map_manager
@@ -749,7 +749,7 @@ class map_model_manager(map_model_base):
      wrapping = None,
      box_cushion = 5.):
     '''
-       Box all maps around the model, shift origin of maps, model 
+       Box all maps around the model, shift origin of maps, model
        Replaces existing map_managers and shifts model in place
 
        Normally used immediately after setting up this map_model_manager to
@@ -1101,7 +1101,7 @@ class match_map_model_ncs:
   '''
    match_map_model_ncs
 
-   Use: Container to hold map, model, ncs object and check 
+   Use: Container to hold map, model, ncs object and check
    consistency and shift origin
 
    Normal usage:
@@ -1330,7 +1330,7 @@ class match_map_model_ncs:
       assert approx_equal(shift_to_apply_cart, [(a-b) for a, b in zip(
         new_shift_cart, current_shift_cart)])
 
-      # Get shifts already applied to  model 
+      # Get shifts already applied to  model
       #    and check that they match map
 
       if self._model:
@@ -1465,4 +1465,3 @@ def get_map_counts(map_data, crystal_symmetry = None):
     d_min_corner = maptbx.d_min_corner(map_data = map_data,
       unit_cell = crystal_symmetry.unit_cell()))
   return map_counts
-

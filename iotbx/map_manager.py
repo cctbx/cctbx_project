@@ -311,7 +311,7 @@ class map_manager(map_reader, write_ccp4_map):
     if self._ncs_object:
       text += "  %s" %str(self._ncs_object)
     return text
- 
+
 
   def set_log(self, log = sys.stdout):
     '''
@@ -1007,7 +1007,7 @@ class map_manager(map_reader, write_ccp4_map):
       Modifies ncs_object in place
 
       Do not use this to try to shift the ncs object. That is done in
-      the ncs object itself with ncs_object.coordinate_shift(shift_cart) 
+      the ncs object itself with ncs_object.coordinate_shift(shift_cart)
     '''
 
     # Set shift_cart (shift since readin) to match shift_cart for

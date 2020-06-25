@@ -395,7 +395,7 @@ class manager(object):
       nchains = 0
     return "Model manager (%s chains: %s residues %s shift_cart %s)" %(
       str(self.crystal_symmetry()).replace("\n"," "),
-      str(nchains), 
+      str(nchains),
       str(nres),
       str(self.shift_cart()))
 

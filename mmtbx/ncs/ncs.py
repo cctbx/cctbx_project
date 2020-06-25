@@ -2209,7 +2209,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
   def __repr__(self):
     return "ncs group with %s ops" %(self._n_ncs_oper)
-  
+
   def apply_cob_to_vector(self,vector=None,
          change_of_basis_operator=None,
          coordinate_offset=None,

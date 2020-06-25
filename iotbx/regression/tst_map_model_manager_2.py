@@ -81,7 +81,7 @@ def exercise(file_name, out = sys.stdout):
   print ("Shifted model:\n", shifted_model.model_as_pdb())
 
 
-  mam.mask_all_maps_around_atoms(mask_atoms_atom_radius = 3, 
+  mam.mask_all_maps_around_atoms(mask_atoms_atom_radius = 3,
      set_outside_to_mean_inside=True, soft_mask=False)
   print ("Mean before masking", mam.map_data().as_1d().min_max_mean().mean)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().mean,
