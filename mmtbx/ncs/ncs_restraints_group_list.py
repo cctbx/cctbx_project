@@ -101,23 +101,12 @@ class NCS_restraint_group(object):
     # Looks like there's no tests for this functionality
     #
     from mmtbx.ncs.ncs_search import get_bool_selection_to_keep
-    from scitbx_array_family_flex_ext import reindexing_array
 
     if len(hierarchy.select(self.master_iselection).only_model().chains()) == 1:
       return [self.deep_copy()]
-
-    atoms = hierarchy.atoms()
-    for a in hierarchy.atoms():
-      a.tmp = a.i_seq
-    r_a = list(reindexing_array(hierarchy.atoms_size(), self.master_iselection.as_int()))
-    r_a_index = [0]*(hierarchy.atoms_size()+1)
-    for index, value in enumerate(r_a):
-      r_a_index[value] = index
-
     result = []
     selected_h = hierarchy.select(self.master_iselection)
     assert self.master_iselection.size() == selected_h.atoms_size()
-
     # shortcut (same chain ids)
     c_ids = [c.id for c in selected_h.only_model().chains()]
     if len(set(c_ids)) == 1:
@@ -125,8 +114,7 @@ class NCS_restraint_group(object):
       return [self.deep_copy()]
 
     for chain in selected_h.only_model().chains():
-      c_iseqs = flex.size_t([r_a_index[x] for x in chain.atoms().extract_i_seq()])
-      c_iseqs = flex.size_t(atoms[iseq].i_seq for iseq in c_iseqs)
+      c_iseqs = chain.atoms().extract_i_seq()
       to_keep = get_bool_selection_to_keep(
           big_selection=self.master_iselection,
           small_selection=c_iseqs)
