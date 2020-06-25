@@ -1,0 +1,42 @@
+# This workflow will mirror the master branch to
+# https://github.com/dials/cctbx
+# whenever the build is stable.
+# This is determined by checking the Azure 'CI' job outcome.
+
+name: mirror when stable
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  master:
+    runs-on: ubuntu-latest
+    if: github.repository == 'cctbx/cctbx_project'
+
+    steps:
+    - name: Wait for Azure CI build to complete
+      uses: Anthchirp/action-wait-for-check@4699210ccc66e2a13260803fadbb77085421b891
+            # Original repository: https://github.com/fountainhead/action-wait-for-check
+            # This is tagged version v1.0.0, but do not use version tags
+            # https://julienrenaux.fr/2019/12/20/github-actions-security-risk/
+      id: wait-for-build
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        checkName: CI
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        intervalSeconds: 144
+        timeoutSeconds: 10800
+
+    - name: Advance stable branch
+      if: steps.wait-for-build.outputs.conclusion == 'success'
+      uses: Anthchirp/action-git-sync@02caad7f05c90ad630ef4c78717fdb2785191802
+            # Original repository: https://github.com/wei/git-sync
+            # This is tagged version v2, but do not use version tags
+            # https://julienrenaux.fr/2019/12/20/github-actions-security-risk/
+      with:
+        source_repo: "cctbx/cctbx_project"
+        source_branch: "master"
+        destination_repo: "dials/cctbx"
+        destination_branch: "master"
+        ssh_private_key: ${{ secrets.DIALS_REPOSITORY_KEY }}
