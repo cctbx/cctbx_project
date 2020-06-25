@@ -251,6 +251,7 @@ namespace cctbx { namespace xray {
       unsigned site;
       unsigned u_iso;
       unsigned u_aniso;
+      unsigned u_anharmonic;
       unsigned occupancy;
       unsigned fp;
       unsigned fdp;
@@ -263,6 +264,7 @@ namespace cctbx { namespace xray {
         : site(0),
           u_iso(0),
           u_aniso(0),
+          u_anharmonic(0),
           occupancy(0),
           fp(0),
           fdp(0),
@@ -290,7 +292,7 @@ namespace cctbx { namespace xray {
 
       unsigned
       n_parameters() const {
-        return site + u_iso + u_aniso + occupancy + fp + fdp;
+        return site + u_iso + u_aniso + u_anharmonic + occupancy + fp + fdp;
       }
   };
 
@@ -305,7 +307,15 @@ namespace cctbx { namespace xray {
                         af::const_ref<ScattererType> const& scatterers)
         : grad_flags_counts_core()
       {
-        for(std::size_t i=0;i<scatterers.size();i++) process(scatterers[i].flags);
+        for(std::size_t i=0;i<scatterers.size();i++) {
+          process(scatterers[i].flags);
+          if (scatterers[i].flags.grad_u_aniso() &&
+            scatterers[i].flags.use_u_aniso() &&
+            scatterers[i].anharmonic_adp)
+          {
+            u_anharmonic += 25;
+          }
+        }
       }
   };
 

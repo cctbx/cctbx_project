@@ -140,6 +140,65 @@ namespace smtbx { namespace refinement { namespace constraints {
               sparse_matrix_type *jacobian_transpose)
   {}
 
+  // Anharmonic ADP
+
+  af::ref<double> anharmonic_adp_parameter::components() {
+    return value.ref();
+  }
+
+  // asu ADP
+
+  void asu_anharmonic_adp_parameter::set_variable(bool f) {
+    if (f) scatterer->flags.set_use_u_aniso(true);
+    scatterer->flags.set_grad_u_aniso(f);
+  }
+
+  bool asu_anharmonic_adp_parameter::is_variable() const {
+    return scatterer->flags.use_u_aniso() && scatterer->flags.grad_u_aniso();
+  }
+
+  void
+    asu_anharmonic_adp_parameter
+    ::write_component_annotations_for(scatterer_type const *scatterer,
+      std::ostream &output) const
+  {
+    if (scatterer == this->scatterer) {
+      const std::vector<std::vector<int> > &r3_indices =
+        scitbx::matrix::tensors::tensor_rank_3<double>::get_indices();
+      for (size_t i = 0; i < r3_indices.size(); i++) {
+        const std::vector<int> &idx = r3_indices[i];
+        output << scatterer->label << ".C"
+          << (char)('1' + idx[0])
+          << (char)('1' + idx[1])
+          << (char)('1' + idx[2]) << ',';
+      }
+      const std::vector<std::vector<int> > &r4_indices =
+        scitbx::matrix::tensors::tensor_rank_4<double>::get_indices();
+      for (size_t i = 0; i < r4_indices.size(); i++) {
+        const std::vector<int> &idx = r4_indices[i];
+        output << scatterer->label << ".D"
+          << (char)('1' + idx[0])
+          << (char)('1' + idx[1])
+          << (char)('1' + idx[2])
+          << (char)('1' + idx[3]) << ',';
+      }
+    }
+  }
+
+  void asu_anharmonic_adp_parameter::store(uctbx::unit_cell const &unit_cell) const {
+    for (size_t i = 0; i < 10; i++) {
+      scatterer->anharmonic_adp->C[i] = value[i];
+    }
+    for (size_t i = 0; i < 15; i++) {
+      scatterer->anharmonic_adp->D[i] = value[i + 10];
+    }
+  }
+
+  void independent_anharmonic_adp_parameter
+    ::linearise(uctbx::unit_cell const &unit_cell,
+      sparse_matrix_type *jacobian_transpose)
+  {}
+
   // Occupancy
 
   void asu_occupancy_parameter::set_variable(bool f) {
@@ -233,10 +292,10 @@ namespace smtbx { namespace refinement { namespace constraints {
   }
 
   void asu_fdp_parameter::validate() {
-    if (value < 0) value *= -1;
+    if (value < 0) {
+      value *= -1;
+    }
   }
-
-
   // reparametrisation
 
   void reparametrisation

@@ -7,7 +7,7 @@
 #include <scitbx/array_family/accessors/packed_matrix.h>
 #include <scitbx/matrix/matrix_vector_operations.h>
 #include <tbxx/optional_copy.hpp>
-
+#include <scitbx/numerical.h>
 #include <vector>
 
 namespace cctbx { namespace geometry {
@@ -350,6 +350,127 @@ namespace cctbx { namespace geometry {
         }
       }
     }
+  };
+
+  template<typename FloatType>
+  class dihedral {
+    typedef scitbx::vec3<FloatType> vec_t;
+    struct evaluator {
+      FloatType epsilon;
+      evaluator(FloatType epsilon = 1.e-16)
+        : epsilon(epsilon)
+      {}
+      FloatType calculate(af::const_ref<vec_t> const &sites)const {
+        vec_t d10 = sites[1] - sites[0],
+          d21 = sites[2] - sites[1],
+          d32 = sites[3] - sites[2];
+        if (d21.length_sq() < epsilon) {
+          return 0;
+        }
+        vec_t x = d21.cross(d32);
+        return std::atan2(d21.length()*(d10*x), d10.cross(d21)*x)
+          / scitbx::constants::pi_180;
+      }
+    };
+  public:
+
+    dihedral(af::tiny<scitbx::vec3<FloatType>, 4> const &sites_)
+      :
+      sites(sites_)
+    {
+      dihedral_model = evaluator().calculate(sites.const_ref());
+    }
+
+    //! Gradient of the dihedral angle with respect to the sites.
+    /*! The formula for the gradients is singular when the middle bond length
+    is 0. In this case, when the middle bond squared length is less than
+    epsilon, the gradients are set to 0.
+            See also:
+          http://salilab.org/modeller/manual/manual.html,
+          "Features and their derivatives"
+     */
+    af::tiny<vec_t, 4> d_angle_d_sites(FloatType epsilon = 1.e-16) const {
+      af::tiny<vec_t, 4> grads;
+      vec_t ij = sites[0] - sites[1];
+      vec_t kj = sites[2] - sites[1];
+      vec_t kl = sites[3] - sites[2];
+      if (kj.length_sq() < epsilon) {
+        return grads;
+      }
+      vec_t mj = ij.cross(kj);
+      vec_t nk = kj.cross(kl);
+      const FloatType kj_ql = kj.length_sq();
+      const FloatType kj_l = sqrt(kj_ql);
+      grads[0] = mj * (kj_l / mj.length_sq());
+      grads[3] = -(nk*(kj_l / nk.length_sq()));
+      grads[1] =
+        grads[0] * (ij*kj / kj_ql - 1.0) - grads[3] * (kl*kj / kj_ql);
+      grads[2] =
+        grads[3] * (kl*kj / kj_ql - 1.0) - grads[0] * (ij*kj / kj_ql);
+      for (std::size_t i = 0; i < 4; i++) {
+        grads[i] /= scitbx::constants::pi_180;
+      }
+      return grads;
+    }
+
+    // The gradient of the angle wrt the elements of the unit cell parameters
+    scitbx::af::shared<FloatType>
+      d_angle_d_cell_params(cctbx::uctbx::unit_cell const &unit_cell) const
+    {
+      cctbx::uctbx::numerical_d_cell d_cell(unit_cell, sites.const_ref());
+      return d_cell.calculate(evaluator());
+    }
+
+    // The variance of the angle taking into account only the errors in the sites
+    FloatType
+      variance(
+        af::const_ref<FloatType, af::packed_u_accessor> const &covariance_matrix,
+        cctbx::uctbx::unit_cell const &unit_cell,
+        optional_container<af::shared<sgtbx::rt_mx> > const &sym_ops) const
+    {
+      CCTBX_ASSERT(covariance_matrix.size() == 78);
+      af::tiny<scitbx::vec3<FloatType>, 4> grads = d_angle_d_sites();
+      for (std::size_t i = 0; i < 4; i++) {
+        if (sym_ops && !sym_ops[i].is_unit_mx()) {
+          scitbx::mat3<double> r_inv_cart
+            = unit_cell.orthogonalization_matrix()
+            * sym_ops[i].r().inverse().as_double()
+            * unit_cell.fractionalization_matrix();
+          grads[i] = r_inv_cart * grads[i];
+        }
+      }
+      return detail::variance_impl(grads, covariance_matrix);
+    }
+
+    /*! The variance of the angle taking into account errors in the sites
+        and errors in the unit cell parameters.
+
+        Under the assumption that the errors in the sites are uncorrelated with
+        the errors in the unit cell parameters, then
+
+          sigma^2(f) = sigma^2(f,sites) + sigma^2(f,cell)
+     */
+    FloatType
+      variance(
+        af::const_ref<FloatType, af::packed_u_accessor> const &covariance_matrix,
+        af::const_ref<FloatType, af::packed_u_accessor> const &
+        cell_covariance_matrix,
+        cctbx::uctbx::unit_cell const &unit_cell,
+        optional_container<af::shared<sgtbx::rt_mx> > const &sym_ops) const
+    {
+      CCTBX_ASSERT(cell_covariance_matrix.size() == 21);
+      FloatType var = variance(covariance_matrix, unit_cell, sym_ops);
+      scitbx::af::shared<FloatType>
+        d_angle_d_cell = d_angle_d_cell_params(unit_cell);
+      var += scitbx::matrix::quadratic_form_packed_u(
+        6, cell_covariance_matrix.begin(), d_angle_d_cell.begin());
+      return var;
+    }
+
+    //! Cartesian coordinates of sites forming the angle.
+    af::tiny<scitbx::vec3<FloatType>, 4> sites;
+    //! Value of angle formed by the sites.
+    FloatType dihedral_model;
   };
 
 }} //cctbx::geometry

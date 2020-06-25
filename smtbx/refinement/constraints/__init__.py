@@ -89,8 +89,8 @@ class _():
 #
 #Directions are defined as follows:
 # static id x y z
-# vector id [scatterer idices] - at least 2
-# normal id [scatterer idices] - at least 3
+# vector id [scatterer indices] - at least 2
+# normal id [scatterer indices] - at least 3
 #There are convinience functions for creating static directions:
 #  constraints.static_direction.calc_best_plane_normal
 #  constraints.static_direction.calc_best_line
@@ -294,10 +294,18 @@ class reparametrisation(ext.reparametrisation):
         site_symm = self.site_symmetry_table_.get(i_scatterer)
         if site_symm.is_point_group_1():
           u = self.add(independent_u_star_parameter, sc)
+          if sc.is_anharmonic_adp():
+            anh = self.add(independent_anharmonic_adp_parameter, sc)
+            self.asu_scatterer_parameters[i_scatterer].anharmonic_adp = anh
         else:
           u = self.add(special_position_u_star_parameter,
                        site_symm,
                        sc)
+          if sc.is_anharmonic_adp():
+            anh = self.add(special_position_anharmonic_adp_parameter,
+                         site_symm,
+                         sc)
+            self.asu_scatterer_parameters[i_scatterer].anharmonic_adp = anh
       self.asu_scatterer_parameters[i_scatterer].u = u
     return u
 

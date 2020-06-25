@@ -125,6 +125,55 @@ class angles_as_cif_loop(object):
     self.angles = angles.angles
     self.variances = angles.variances
 
+class dihedral_angles_as_cif_loop(object):
+  def __init__(self,
+               angles,
+               space_group_info,
+               site_labels,
+               include_bonds_to_hydrogen=False,
+               eps=2e-16):
+    fmt = "%.1f"
+    self.loop = model.loop(header=(
+      "_geom_torsion_atom_site_label_1",
+      "_geom_torsion_atom_site_label_2",
+      "_geom_torsion_atom_site_label_3",
+      "_geom_torsion_atom_site_label_4",
+      "_geom_torsion",
+      "_geom_torsion_site_symmetry_1",
+      "_geom_torsion_site_symmetry_2",
+      "_geom_torsion_site_symmetry_3",
+      "_geom_torsion_site_symmetry_4"
+    ))
+    for a in angles:
+      i_seq, j_seq, k_seq, l_seq = a.i_seqs
+      if (not include_bonds_to_hydrogen
+          and (site_labels[i_seq].startswith('H') or
+               site_labels[j_seq].startswith('H') or
+               site_labels[k_seq].startswith('H') or
+               site_labels[l_seq].startswith('H'))):
+        continue
+      sym_code_i = space_group_info.cif_symmetry_code(a.rt_mxs[0])
+      sym_code_j = space_group_info.cif_symmetry_code(a.rt_mxs[1])
+      sym_code_k = space_group_info.cif_symmetry_code(a.rt_mxs[2])
+      sym_code_l = space_group_info.cif_symmetry_code(a.rt_mxs[3])
+      if sym_code_i == "1": sym_code_i = "."
+      if sym_code_j == "1": sym_code_j = "."
+      if sym_code_k == "1": sym_code_k = "."
+      if sym_code_l == "1": sym_code_l = "."
+      if a.variance is not None and a.variance > eps:
+        angle = format_float_with_su(a.angle, math.sqrt(a.variance))
+      else:
+        angle = fmt % a.angle
+      self.loop.add_row((site_labels[i_seq],
+                         site_labels[j_seq],
+                         site_labels[k_seq],
+                         site_labels[l_seq],
+                         angle,
+                         sym_code_i,
+                         sym_code_j,
+                         sym_code_k,
+                         sym_code_l,
+                         ))
 
 class hbond(object):
   def __init__(self, d_seq, a_seq, rt_mx=None):

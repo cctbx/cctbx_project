@@ -3,7 +3,9 @@
 
 #include <cctbx/sgtbx/site_constraints.h>
 #include <cctbx/sgtbx/tensor_rank_2.h>
+#include <cctbx/sgtbx/tensors.h>
 #include <cctbx/uctbx.h>
+#include <scitbx/matrix/tensors.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -50,13 +52,16 @@ namespace cctbx { namespace sgtbx {
   //! Base class for site_symmetry, holding the essential results.
   class site_symmetry_ops
   {
-    public:
-      //! Default constructor. Some data members are not initialized!
+  public:
+    typedef tensor_rank_2::constraints<> tensor_rank_2_constraints_t;
+    //typedef tensors::constraints<double, scitbx::matrix::tensors::tensor_rank_2<double> >
+    //  tensor_rank_2_constraints_t;
+    typedef tensors::constraints<double, scitbx::matrix::tensors::tensor_rank_3<double> >
+      tensor_rank_3_constraints_t;
+    typedef tensors::constraints<double, scitbx::matrix::tensors::tensor_rank_4<double> >
+      tensor_rank_4_constraints_t;
+    //! Default constructor. Some data members are not initialized!
       site_symmetry_ops()
-      :
-        have_site_constraints_(false),
-        have_adp_constraints_(false),
-        have_cartesian_adp_constraints_(false)
       {}
 
       /*! \brief Number of distinct symmetrically equivalent positions
@@ -171,23 +176,44 @@ namespace cctbx { namespace sgtbx {
       sgtbx::site_constraints<> const&
       site_constraints() const
       {
-        if (!have_site_constraints_) {
-          site_constraints_ = sgtbx::site_constraints<>(matrices_.const_ref());
-          have_site_constraints_ = true;
+        if (!site_constraints_) {
+          site_constraints_ = boost::shared_ptr<sgtbx::site_constraints<> >(
+            new sgtbx::site_constraints<>(matrices_.const_ref()));
         }
-        return site_constraints_;
+        return *site_constraints_;
       }
 
       //! Return reference to cached tensor_rank_2::constraints instance.
-      tensor_rank_2::constraints<> const&
+      tensor_rank_2_constraints_t const&
       adp_constraints() const
       {
-        if (!have_adp_constraints_) {
-          adp_constraints_ = tensor_rank_2::constraints<>(
-            matrices_.const_ref(), 1, true);
-          have_adp_constraints_ = true;
+        if (!adp_constraints_) {
+          adp_constraints_ = boost::shared_ptr<tensor_rank_2_constraints_t>(
+            new tensor_rank_2_constraints_t(matrices_.const_ref(), 1, true));
         }
-        return adp_constraints_;
+        return *adp_constraints_;
+      }
+
+      //! Return reference to cached tensor_rank_3 constraints instance.
+      tensor_rank_3_constraints_t const&
+        tensor_rank_3_constraints() const
+      {
+        if (!tensor_rank_3_constraints_) {
+          tensor_rank_3_constraints_ = boost::shared_ptr<tensor_rank_3_constraints_t>(
+            new tensor_rank_3_constraints_t(matrices_.const_ref(), 1, true));
+        }
+        return *tensor_rank_3_constraints_;
+      }
+
+      //! Return reference to cached tensor_rank_4 constraints instance.
+      tensor_rank_4_constraints_t const&
+        tensor_rank_4_constraints() const
+      {
+        if (!tensor_rank_4_constraints_) {
+          tensor_rank_4_constraints_ = boost::shared_ptr<tensor_rank_4_constraints_t>(
+            new tensor_rank_4_constraints_t(matrices_.const_ref(), 1, true));
+        }
+        return *tensor_rank_4_constraints_;
       }
 
       //! Return reference to cached constraints on u_cart
@@ -200,13 +226,14 @@ namespace cctbx { namespace sgtbx {
       cartesian_adp_constraints(uctbx::unit_cell const& unit_cell,
                                 bool recompute=false) const
       {
-        if (recompute || !have_cartesian_adp_constraints_) {
-          cartesian_adp_constraints_ = tensor_rank_2::cartesian_constraints<>(
-            unit_cell,
-            matrices_.const_ref());
-          have_cartesian_adp_constraints_ = true;
+        if (recompute || !cartesian_adp_constraints_) {
+          cartesian_adp_constraints_ =
+            boost::shared_ptr< tensor_rank_2::cartesian_constraints<> >(
+              new tensor_rank_2::cartesian_constraints<>(
+                unit_cell,
+                matrices_.const_ref()));
         }
-        return cartesian_adp_constraints_;
+        return *cartesian_adp_constraints_;
       }
 
       //! Support for Python's pickle facility. Do not use for other purposes.
@@ -217,30 +244,24 @@ namespace cctbx { namespace sgtbx {
       :
         multiplicity_(multiplicity),
         special_op_(special_op),
-        matrices_(matrices),
-        have_site_constraints_(false),
-        have_adp_constraints_(false),
-        have_cartesian_adp_constraints_(false)
+        matrices_(matrices)
       {}
 
     protected:
       int multiplicity_;
       rt_mx special_op_;
       af::shared<rt_mx> matrices_;
-      mutable bool have_site_constraints_;
-      mutable sgtbx::site_constraints<> site_constraints_;
-      mutable bool have_adp_constraints_;
-      mutable tensor_rank_2::constraints<> adp_constraints_;
-      mutable bool have_cartesian_adp_constraints_;
-      mutable tensor_rank_2::cartesian_constraints<> cartesian_adp_constraints_;
+      mutable boost::shared_ptr<sgtbx::site_constraints<> > site_constraints_;
+      mutable boost::shared_ptr<tensor_rank_2_constraints_t> adp_constraints_;
+      mutable boost::shared_ptr<tensor_rank_3_constraints_t> tensor_rank_3_constraints_;
+      mutable boost::shared_ptr<tensor_rank_4_constraints_t> tensor_rank_4_constraints_;
+      mutable boost::shared_ptr < tensor_rank_2::cartesian_constraints<> >
+        cartesian_adp_constraints_;
 
       site_symmetry_ops(int multiplicity, int r_den, int t_den)
       :
         multiplicity_(multiplicity),
-        special_op_(r_den, t_den),
-        have_site_constraints_(false),
-        have_adp_constraints_(false),
-        have_cartesian_adp_constraints_(false)
+        special_op_(r_den, t_den)
       {}
   };
 

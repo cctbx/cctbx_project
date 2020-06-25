@@ -72,6 +72,8 @@ namespace {
                                make_setter(&w_t::u_iso, dcp()))
         .add_property("u_star", make_getter(&w_t::u_star, rbv()),
                                 make_setter(&w_t::u_star, dcp()))
+        .add_property("anharmonic_adp", make_getter(&w_t::anharmonic_adp, rbv()),
+                                        make_setter(&w_t::anharmonic_adp, dcp()))
         .def_readwrite("flags", &w_t::flags)
         .def("set_use_u", &w_t::set_use_u, (arg("iso"),arg("aniso")))
         .def("set_use_u_iso_only", &w_t::set_use_u_iso_only)
@@ -89,6 +91,7 @@ namespace {
             &w_t::is_positive_definite_u, (
           arg("unit_cell"),
           arg("u_cart_tolerance")))
+        .def("is_anharmonic_adp", &w_t::is_anharmonic_adp)
         .def("u_iso_or_equiv", &w_t::u_iso_or_equiv, (arg("unit_cell")))
         .def("b_iso", &w_t::b_iso)
         .def("u_cart_plus_u_iso", &w_t::u_cart_plus_u_iso, (arg("unit_cell")))

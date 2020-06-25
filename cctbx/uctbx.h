@@ -6,6 +6,7 @@
 #include <boost/optional.hpp>
 #include <scitbx/constants.h>
 #include <scitbx/sym_mat3.h>
+#include <scitbx/numerical.h>
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/small.h>
 #include <scitbx/array_family/shared.h>
@@ -1232,6 +1233,66 @@ namespace cctbx {
     unit_shifts() const
     {
       return fractional<>(diff_mod - diff_raw).unit_shifts();
+    }
+  };
+
+  /* numerically calculates derivatives of the given evaluator by cell
+  parameters
+  */
+  struct numerical_d_cell {
+    typedef double float_t;
+    af::double6 cell;
+    af::shared<scitbx::vec3<float_t> > sites_frac;
+
+    template <typename evaluator_t> struct functor {
+      numerical_d_cell& base;
+      const evaluator_t& evaluator;
+      functor(numerical_d_cell& base_, evaluator_t const &evaluator_)
+        : base(base_),
+        evaluator(evaluator_)
+      {}
+      float_t calculate(size_t idx) const {
+        return evaluator.calculate(
+          base.orthogonalise().const_ref()
+        );
+      }
+    };
+
+    numerical_d_cell(unit_cell const &cell_,
+      af::const_ref<scitbx::vec3<float_t> > const &sites_cart)
+    : cell(cell_.parameters()),
+      sites_frac(cell_.fractionalize(sites_cart))
+    {
+      cell[3] *= scitbx::constants::pi_180;
+      cell[4] *= scitbx::constants::pi_180;
+      cell[5] *= scitbx::constants::pi_180;
+    }
+
+    template <typename evaluator_t>
+    scitbx::af::shared<float_t> calculate(evaluator_t const &evaluator) {
+      functor<evaluator_t> f(*this, evaluator);
+      return scitbx::math::numerical::differential<float_t>::diff_4(cell, f);
+    }
+
+    af::shared<scitbx::vec3<float_t> > orthogonalise() const {
+      const double
+        cA = cos(cell[3]),
+        cB = cos(cell[4]),
+        cG = cos(cell[5]), sG = sin(cell[5]),
+        m[5] = {
+          cell[1] * cG, cell[2] * cB, cell[1] * sG, -cell[2] * (cB*cG - cA) / sG,
+          cell[2] * sqrt(1 - cA * cA - cB * cB - cG * cG + 2 * cA*cB*cG) / sG
+      };
+      af::shared<scitbx::vec3<float_t> > rv(
+        sites_frac.size(),
+        af::init_functor_null<scitbx::vec3<float_t> >());
+      for (size_t i = 0; i < sites_frac.size(); i++) {
+        rv[i][0] = sites_frac[i][0] * cell[0] + sites_frac[i][1] * m[0] +
+          sites_frac[i][2] * m[1];
+        rv[i][1] = sites_frac[i][1] * m[2] + sites_frac[i][2] * m[3];
+        rv[i][2] = sites_frac[i][2] * m[4];
+      }
+      return rv;
     }
   };
 
