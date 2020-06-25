@@ -207,6 +207,9 @@ Ncells_opt = RUC._get_m_val(0)
 print("Ncells optimized: ", Ncells_opt)
 print("Ncells GT: ", ncells_gt)
 
+deviation = np.sqrt(sum((np.array(Ncells_opt) - np.array(ncells_gt))**2))
+assert deviation < .3
+
 print("I AM ZIM")
 print("OK!")
 
