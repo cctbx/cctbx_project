@@ -4325,8 +4325,10 @@ def apply_mask_to_map(mask_data = None,
     verbose = None,
     out = sys.stdout):
 
-  if not mask_data:
+  if smoothed_mask_data and not mask_data:
     mask_data = smoothed_mask_data
+  elif mask_data and not smoothed_mask_data:
+    smoothed_mask_data = mask_data
 
   s = mask_data > threshold  # s marks inside mask
   # get mean inside or outside mask

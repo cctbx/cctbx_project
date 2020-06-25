@@ -245,6 +245,7 @@ def test_01():
   new_mm.show_summary()
 
   new_mm.shift_origin(desired_origin=(11,1,1))
+  print (new_mm.shift_cart(),new_mm.ncs_object().shift_cart())
   assert new_mm.is_compatible_ncs_object(new_mm.ncs_object())
   new_mm.shift_origin()
   assert new_mm.is_compatible_ncs_object(new_mm.ncs_object())

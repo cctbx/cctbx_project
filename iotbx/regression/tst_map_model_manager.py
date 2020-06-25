@@ -46,6 +46,7 @@ def test_01():
 
   # Shift origin to (0,0,0)
   mmmn.shift_origin()
+  new_ncs=mmmn.ncs_object()
   assert tuple(mmmn._map_manager.origin_shift_grid_units) == (100,100,100)
 
   mmmn.write_model('s.pdb')

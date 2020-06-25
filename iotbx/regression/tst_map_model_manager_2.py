@@ -65,7 +65,7 @@ def exercise(file_name, out = sys.stdout):
           map_manager =  m,
           model     = model.deep_copy(),
     )
-  mam.box_around_model(wrapping=False)
+  mam.box_all_maps_around_model_and_shift_origin(wrapping=False)
 
   shifted_model = mam.model()
   shifted_map_data = mam.map_data()
@@ -81,37 +81,38 @@ def exercise(file_name, out = sys.stdout):
   print ("Shifted model:\n", shifted_model.model_as_pdb())
 
 
-  mam.mask_all_maps_around_model(mask_atoms_atom_radius = 3)
+  mam.mask_all_maps_around_atoms(mask_atoms_atom_radius = 3, 
+     set_outside_to_mean_inside=True, soft_mask=False)
   print ("Mean before masking", mam.map_data().as_1d().min_max_mean().mean)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().mean,
-      0.0206697368172)
+      -0.0585683621466)
   print ("Max before masking", mam.map_data().as_1d().min_max_mean().max)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().max,
-      0.0212015361391)
+      -0.0585683621466)
 
-  mam.mask_all_maps_around_model(mask_atoms_atom_radius = 3, soft_mask = True,
-    soft_mask_radius = 5)
+  mam.mask_all_maps_around_atoms(mask_atoms_atom_radius = 3, soft_mask = True,
+    soft_mask_radius = 5, set_outside_to_mean_inside=True)
   print ("Mean after first masking", mam.map_data().as_1d().min_max_mean().mean)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().mean,
-      0.020645824847)
+      -0.0585683621466)
   print ("Max after first masking", mam.map_data().as_1d().min_max_mean().max)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().max,
-      0.0206886199007)
-  mam.mask_all_maps_around_model(mask_atoms_atom_radius = 3,
-     set_outside_to_mean_inside = True)
+      -0.0585683621466)
+  mam.mask_all_maps_around_atoms(mask_atoms_atom_radius = 3,
+     set_outside_to_mean_inside = True, soft_mask=False)
   print ("Mean after second masking", mam.map_data().as_1d().min_max_mean().mean)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().mean,
-     0.0165785992734)
+     -0.0585683621466)
   print ("Max after second masking", mam.map_data().as_1d().min_max_mean().max)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().max,
-      0.0165785992734)
-  mam.soft_mask_all_maps_around_edges( soft_mask_radius = 3)
+      -0.0585683621466)
+  mam.mask_all_maps_around_edges( soft_mask_radius = 3)
   print ("Mean after masking edges", mam.map_data().as_1d().min_max_mean().mean)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().mean,
-      0.00397886382563)
+      -0.0140564069152)
   print ("Max after masking edges", mam.map_data().as_1d().min_max_mean().max)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().max,
-      0.0165785992734)
+      -0.0)
 
 
   print ("\nWriting map_data and model in shifted position (origin at 0, 0, 0)")
@@ -186,8 +187,8 @@ def exercise(file_name, out = sys.stdout):
           ncs_object =  ncs_object,
           map_manager_1 =  m.deep_copy(),
           map_manager_2 =  m.deep_copy(),
-          map_manager_list =  [m.deep_copy(),m.deep_copy()],
-          map_manager_id_list = ["extra_1","extra_2"],
+          extra_map_manager_list =  [m.deep_copy(),m.deep_copy()],
+          extra_map_manager_id_list = ["extra_1","extra_2"],
           model     = model.deep_copy(),
     )
 

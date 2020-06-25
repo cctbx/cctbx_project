@@ -233,6 +233,9 @@ class map_manager(map_reader, write_ccp4_map):
     # Initialize mask to be not present
     self._created_mask = None
 
+    # Initialize that this is not a mask
+    self._is_mask = False
+
     # Initialize program_name, limitations, labels
     self.input_file_name = file_name # input file (source of this manager)
     self.program_name = None  # Name of program using this manager
@@ -298,6 +301,17 @@ class map_manager(map_reader, write_ccp4_map):
     self.__dict__ = pickle_dict
     if self.log is None:
       self.log = sys.stdout
+
+  def __repr__(self):
+    text = "Map manager %s, %s, (present: %s), origin shift %s" %(
+      str(self.unit_cell_crystal_symmetry()).replace("\n"," "),
+      str(self.unit_cell_grid),
+      str(self.map_data().all()),
+      str(self.origin_shift_grid_units))
+    if self._ncs_object:
+      text += "  %s" %str(self._ncs_object)
+    return text
+ 
 
   def set_log(self, log = sys.stdout):
     '''
@@ -423,6 +437,15 @@ class map_manager(map_reader, write_ccp4_map):
        assert original_crystal_symmetry.is_similar_symmetry(
          new_crystal_symmetry)
 
+  def is_mask(self):
+    ''' Is this a mask '''
+    return self._is_mask
+
+  def set_is_mask(self, value=True):
+    ''' define if this is a mask'''
+    assert isinstance(value, bool)
+    self._is_mask = value
+
   def origin_is_zero(self):
     if self.map_data().origin() == (0, 0, 0):
       return True
@@ -483,8 +506,8 @@ class map_manager(map_reader, write_ccp4_map):
        new_current_origin, self.origin_shift_grid_units)
 
     # If there is an associated ncs_object, shift it too
-    if self.ncs_object():
-      self.set_ncs_object_shift_cart_to_match_map(self.ncs_object())
+    if self._ncs_object:
+      self._ncs_object=self._ncs_object.coordinate_offset(shift_info.shift_to_apply_cart)
 
   def _get_shift_info(self, desired_origin = None):
     '''
@@ -518,6 +541,8 @@ class map_manager(map_reader, write_ccp4_map):
     current_end = add_tuples_int(current_origin, self.map_data().all())
     new_end = add_tuples_int(desired_origin, self.map_data().all())
 
+    shift_to_apply_cart = self.grid_units_to_cart(shift_to_apply)
+
     shift_info = group_args(
       map_corner_original_location = map_corner_original_location,
       current_origin = current_origin,
@@ -527,6 +552,7 @@ class map_manager(map_reader, write_ccp4_map):
       desired_origin = desired_origin,
       new_end = new_end,
       new_origin_shift_grid_units = new_origin_shift_grid_units,
+      shift_to_apply_cart = shift_to_apply_cart,
        )
     return shift_info
 
@@ -727,6 +753,13 @@ class map_manager(map_reader, write_ccp4_map):
   def get_mask_as_map_manager(self):
     assert self._created_mask is not None
     return self._created_mask.map_manager()
+
+  def initialize_map_data(self, map_value = 0):
+    '''
+      Set all values of map_data to map_value
+    '''
+    s = (self.map_data() != map_value )
+    self.map_data().set_selected(s, map_value)
 
   def set_map_data(self, map_data = None):
     '''
@@ -972,6 +1005,9 @@ class map_manager(map_reader, write_ccp4_map):
 
       Overwrites any information in ncs_object on shift_cart
       Modifies ncs_object in place
+
+      Do not use this to try to shift the ncs object. That is done in
+      the ncs object itself with ncs_object.coordinate_shift(shift_cart) 
     '''
 
     # Set shift_cart (shift since readin) to match shift_cart for

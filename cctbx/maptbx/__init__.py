@@ -1722,7 +1722,7 @@ def loc_res(map,
     mmm = map_model_manager(
       model            = model_sel,
       map_manager      = mm)
-    mmm.box_around_model(
+    mmm.box_all_maps_around_model_and_shift_origin(
       box_cushion      = 3,
       wrapping         = mm.is_full_size(), # XXX NEED TO DECIDE WRAPPING
     )

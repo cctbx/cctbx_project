@@ -293,7 +293,7 @@ class around_model(with_bounds):
 
   """
   def __init__(self, map_manager, model, cushion, wrapping,
-      ncs_object = None,
+      ncs_object = None,  # Get rid of this XXX
       log = sys.stdout):
 
     self.wrapping = wrapping

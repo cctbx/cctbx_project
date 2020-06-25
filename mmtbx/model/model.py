@@ -381,6 +381,25 @@ class manager(object):
   def set_log(self, log):
     self.log = log
 
+  def __repr__(self):
+    """
+      Summarize the model_manager
+    """
+    h = self.get_hierarchy()
+    if h:
+      counts = h.overall_counts()
+      nres = counts.n_residues
+      nchains = counts.n_chains
+    else:
+      nres = 0
+      nchains = 0
+    return "Model manager (%s chains: %s residues %s shift_cart %s)" %(
+      str(self.crystal_symmetry()).replace("\n"," "),
+      str(nchains), 
+      str(nres),
+      str(self.shift_cart()))
+
+
   def set_stop_for_unknowns(self, value):
     self._stop_for_unknowns=value
 

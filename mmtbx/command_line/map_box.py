@@ -985,7 +985,7 @@ def run(args,
     map_manager = ccp4_map,
     ncs_object = ncs_object)
   if box:
-    mam.box_around_model(
+    mam.box_all_maps_around_model_and_shift_origin(
       box_cushion = params.box_cushion,
       wrapping = params.wrapping)
 

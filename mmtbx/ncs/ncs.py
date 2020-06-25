@@ -2207,6 +2207,9 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self._have_helical_symmetry=False
     self._have_point_group_symmetry=False
 
+  def __repr__(self):
+    return "ncs group with %s ops" %(self._n_ncs_oper)
+  
   def apply_cob_to_vector(self,vector=None,
          change_of_basis_operator=None,
          coordinate_offset=None,
@@ -3661,6 +3664,12 @@ class ncs:
     self._ncs_obj = None
     self._ncs_name = None # an optional name like "D3"
     self._shift_cart = (0,0,0)  # shift to place object in original location
+
+  def __repr__(self):
+    text = "ncs_object groups: %s  " %(len(self._ncs_groups))
+    for g in self._ncs_groups:
+      text+=str(g)
+    return text
 
   def deep_copy(self,change_of_basis_operator=None,unit_cell=None,
       coordinate_offset=None,

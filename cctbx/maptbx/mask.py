@@ -65,6 +65,9 @@ class create_mask_around_atoms(object):
       self._map_manager = map_man(map_data = self._mask,
         unit_cell_crystal_symmetry = self.crystal_symmetry(),
         unit_cell_grid = self._mask.all())
+
+    self._map_manager.set_is_mask(True)
+
     # Initialize soft mask
     self._is_soft_mask = False
     self._is_soft_mask_around_edges = False
@@ -100,8 +103,8 @@ class create_mask_around_atoms(object):
     from cctbx.maptbx.segment_and_split_map import smooth_mask_data
 
     self._mask = smooth_mask_data(mask_data = self._mask,
-    crystal_symmetry = self._crystal_symmetry,
-    rad_smooth = soft_mask_radius)
+      crystal_symmetry = self._crystal_symmetry,
+       rad_smooth = soft_mask_radius)
 
   def soft_mask_around_edges(self,
       resolution = None,
@@ -154,7 +157,6 @@ class create_mask_around_atoms(object):
     assert other_map_manager.is_similar(self.map_manager())
     assert other_map_manager.map_data().origin() == (0, 0, 0)
 
-    assert not self.is_soft_mask()
     from cctbx.maptbx.segment_and_split_map import apply_mask_to_map
     new_map_data = apply_mask_to_map(mask_data = self._mask,
       smoothed_mask_data = self._mask,
@@ -201,6 +203,7 @@ class create_mask_around_edges(create_mask_around_atoms):
       radius = soft_mask_radius)
     # Set up map_manager with this mask
     self._map_manager = map_manager.customized_copy(map_data = self._mask)
+    self._map_manager.set_is_mask(True)
 
     # Initialize soft mask
     self._is_soft_mask = False
@@ -225,15 +228,20 @@ class create_mask_around_density(create_mask_around_atoms):
 
      Parameters are:
        map_manager: source of information about density
-       resolution : required resolution of map
+       resolution : optional resolution of map
        molecular_mass: optional mass (Da) of object in density
        sequence: optional sequence of object in density
        solvent_content : optional solvent_content of map
     '''
 
-    assert resolution is not None
     assert (map_manager is not None)
 
+    if not resolution:
+      from cctbx.maptbx import d_min_from_map
+      resolution = d_min_from_map(
+           map_data=map_manager.map_data(),
+           unit_cell=map_manager.crystal_symmetry().unit_cell())
+ 
     self._crystal_symmetry = map_manager.crystal_symmetry()
 
     if (molecular_mass or sequence ) and (
@@ -271,6 +279,7 @@ class create_mask_around_density(create_mask_around_atoms):
 
     # Set up map_manager with this mask
     self._map_manager = map_manager.customized_copy(map_data = self._mask)
+    self._map_manager.set_is_mask(True)
 
     # Initialize soft mask
     self._is_soft_mask = False
