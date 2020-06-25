@@ -51,8 +51,19 @@ def exercise(file_name, out = sys.stdout):
   for id in all_map_names:
     print("Map_manager %s: %s " %(id,r_model.get_map_manager(id)))
 
+  # Make a deep_copy
   new_r_model=r_model.deep_copy()
   assert r_model.map_manager().map_data()[0]==new_r_model.map_manager().map_data()[0]
+
+  # Make a customized_copy
+  new_r_model=r_model.customized_copy(model=r_model.model())
+  assert new_r_model.model() is r_model.model()
+  assert not new_r_model.map_dict() is r_model.map_dict()
+
+  new_r_model=r_model.customized_copy(model=r_model.model(),map_dict=r_model.map_dict())
+  assert new_r_model.model() is r_model.model()
+  assert new_r_model.map_dict() is r_model.map_dict()
+  
 
   print ("OK")
 

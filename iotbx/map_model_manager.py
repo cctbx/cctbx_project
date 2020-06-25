@@ -126,6 +126,29 @@ class r_model(map_model_base):
 
     # Ready to go
 
+  def customized_copy(self, model = None, map_dict = None):
+    '''
+      Produce a copy of this r_model object, replacing maps or model or both
+    '''
+
+    # Require that something is new otherwise this is a deep_copy
+    assert isinstance(model, model_manager) or isinstance(map_dict, dict)
+
+    if model: # take new model without deep_copy
+      new_model = model
+    else:  # just keep model
+      new_model = self.model().deep_copy()
+
+
+    if map_dict: # take new map_dict without deep_copy
+      new_map_dict = map_dict
+    else:  # deep_copy existing map_dict
+      new_map_dict = {}
+      for id in self.map_manager_id_list():
+        new_map_dict[id]=self.get_map_manager(id).deep_copy()
+
+    return r_model(model = new_model, map_dict = new_map_dict)
+
   def deep_copy(self):
     '''
       Produce a deep copy of this r_model object
