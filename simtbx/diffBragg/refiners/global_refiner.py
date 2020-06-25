@@ -885,7 +885,7 @@ class GlobalRefiner(PixelRefinement):
 
             proc_idx = -1
             if self.PROC_IDX is not None:
-                proc_idx = self.PROC_IDX[i_shot]
+                proc_idx = int(self.PROC_IDX[i_shot])
 
             img_fname = fname
             parameter_dict[img_fname] = {}
