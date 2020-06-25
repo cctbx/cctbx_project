@@ -76,6 +76,7 @@ class run(object):
                try_expanal = True,
                try_expmin = False,
                verbose=False):
+    if(log is None): log = sys.stdout
     self.d_hilo = 6
     assert f_obs.indices().all_eq(r_free_flags.indices())
     self.log = log
@@ -121,7 +122,6 @@ class run(object):
         k_isotropic       = None,
         k_mask_fit_params = None)
     self.bss_result = init_result()
-    if(log is None): log = sys.stdout
     if(verbose):
       print("-"*80, file=log)
       print("Overall, iso- and anisotropic scaling and bulk-solvent modeling:", file=log)
@@ -162,24 +162,25 @@ class run(object):
       if(self.bulk_solvent):
         if(cycle==0):
           # NEW
-          use_highres = False
-          if(self.f_obs.d_min() < self.d_hilo - 2):
-            use_highres = True
-          if(use_highres):
-            r_start = self.anisotropic_scaling(r_start = 99, use_highres=True)
-          else:
-            r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
-
-          r_start = self.k_mask_grid_search(r_start=r_start)
-
-          if(use_highres):
-            r_start = self.anisotropic_scaling(r_start = 99, use_highres=True)
-          else:
-            r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
-          # OLD
-          #r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
+          #use_highres = False
+          #if(self.f_obs.d_min() < self.d_hilo - 2):
+          #  use_highres = True
+          #if(use_highres):
+          #  r_start = self.anisotropic_scaling(r_start = r_start, use_highres=True)
+          #else:
+          #  r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
+          #
           #r_start = self.k_mask_grid_search(r_start=r_start)
-          #r_start = self.set_k_isotropic_exp(r_start = r_start,  verbose=verbose)
+          #
+          #if(use_highres):
+          #  r_start = self.anisotropic_scaling(r_start = r_start, use_highres=True)
+          #else:
+          #  r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
+          # OLD
+          for mic in [1,2]:
+            r_start = self.set_k_isotropic_exp(r_start = r_start, verbose=verbose)
+            r_start = self.k_mask_grid_search(r_start=r_start)
+            r_start = self.set_k_isotropic_exp(r_start = r_start,  verbose=verbose)
         else:
           r_start = self.bulk_solvent_scaling(r_start = r_start)
           if(verbose):
@@ -400,12 +401,14 @@ class run(object):
     k_mask = self.populate_bin_to_individual_k_mask_linear_interpolation(
       k_mask_bin = k_mask_bin_smooth)
 
-    self.core = self.core.update(k_masks = k_mask, k_isotropic = k_isotropic)
-    # ????
-    self.bss_result.k_mask_bin_orig   = k_mask_bin
-    self.bss_result.k_mask_bin_smooth = k_mask_bin_smooth
-    self.bss_result.k_mask            = k_mask
-    self.bss_result.k_isotropic       = k_isotropic
+    r_try = self.try_scale(k_mask = k_mask, k_isotropic = k_isotropic)
+    if(r_try<r_start):
+      self.core = self.core.update(k_masks = k_mask, k_isotropic = k_isotropic)
+      # ????
+      self.bss_result.k_mask_bin_orig   = k_mask_bin
+      self.bss_result.k_mask_bin_smooth = k_mask_bin_smooth
+      self.bss_result.k_mask            = k_mask
+      self.bss_result.k_isotropic       = k_isotropic
     r = self.r_factor()
     if(self.verbose):
       print("      r_final: %6.4f"%r)
@@ -581,7 +584,10 @@ class run(object):
     k_mask = self.populate_bin_to_individual_k_mask_linear_interpolation(
       k_mask_bin = k_mask_bin_smooth)
     k_isotropic = self._k_isotropic_as_scale_k1(r_start=r_start,k_mask = k_mask)
-    self.core = self.core.update(k_isotropic = k_isotropic, k_masks = k_mask)
+
+    r_try = self.try_scale(k_mask = k_mask, k_isotropic = k_isotropic)
+    if(r_try<r_start):
+      self.core = self.core.update(k_isotropic = k_isotropic, k_masks = k_mask)
     r = self.r_factor()
     if(self.verbose):
       print("      r_final: %6.4f"%r)
