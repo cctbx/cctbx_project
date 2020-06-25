@@ -63,7 +63,7 @@ def exercise(file_name, out = sys.stdout):
   new_r_model=r_model.customized_copy(model=r_model.model(),map_dict=r_model.map_dict())
   assert new_r_model.model() is r_model.model()
   assert new_r_model.map_dict() is r_model.map_dict()
-  
+
 
   print ("OK")
 
