@@ -543,11 +543,12 @@ class run(object):
         r = flex.double()
         k = flex.double()
         #
-        x0 = self.bss_result.k_mask_bin_orig[i_cas]
-        k_mask.set_selected(selection, x0)
-        r0 = self.try_scale(k_mask = k_mask, selection=selection)
-        r.append(r0)
-        k.append(x0)
+        if(self.bss_result.k_mask_bin_orig is not None):
+          x0 = self.bss_result.k_mask_bin_orig[i_cas]
+          k_mask.set_selected(selection, x0)
+          r0 = self.try_scale(k_mask = k_mask, selection=selection)
+          r.append(r0)
+          k.append(x0)
         #
         fmv = flex.min(flex.abs(f_mask).select(selection_use))
         if(abs(fmv)>1.e-9):
