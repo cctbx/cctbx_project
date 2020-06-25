@@ -167,6 +167,8 @@ restraints_library_str = """
 """
 ideal_ligands = ['SF4', 'F3S', 'DVT']
 ideal_ligands_str = ' '.join(ideal_ligands)
+symmetric_amino_acids = ['ARG', 'ASP', 'GLU', 'PHE', 'TYR', 'LEU', 'VAL']
+symmetric_amino_acids_str = ' '.join(symmetric_amino_acids)
 master_params_str = """\
   %(restraints_library_str)s
   sort_atoms = True
@@ -175,8 +177,8 @@ master_params_str = """\
   superpose_ideal_ligand = *None all %(ideal_ligands_str)s
     .type = choice(multi=True)
     .short_caption = Substitute correctly oriented SF4 metal cluster
-  flip_symmetric_amino_acids = False
-    .type = bool
+  flip_symmetric_amino_acids = *all %(symmetric_amino_acids_str)s None
+    .type = choice(multi=True)
     .short_caption = Flip symmetric amino acids to conform to IUPAC convention
     .style = noauto
   disable_uc_volume_vs_n_atoms_check = False
@@ -3024,7 +3026,9 @@ class build_all_chain_proxies(linking_mixins):
                                                    )
       if info: print(info, file=log)
     if self.params.flip_symmetric_amino_acids:
-      info = self.pdb_hierarchy.flip_symmetric_amino_acids()
+      info = self.pdb_hierarchy.flip_symmetric_amino_acids(
+        flip_symmetric_amino_acids=self.params.flip_symmetric_amino_acids,
+        )
       if info:
         print("\n  Symmetric amino acids flipped", file=log)
         print(info, file=log)
@@ -3034,7 +3038,9 @@ class build_all_chain_proxies(linking_mixins):
       self.pdb_inp = pdb.input(source_info=None, lines=temp_string)
       self.pdb_hierarchy = self.pdb_inp.construct_hierarchy(sort_atoms=self.params.sort_atoms)
       if self.params.flip_symmetric_amino_acids:
-        self.pdb_hierarchy.flip_symmetric_amino_acids()
+        self.pdb_hierarchy.flip_symmetric_amino_acids(
+          flip_symmetric_amino_acids=self.params.flip_symmetric_amino_acids,
+          )
     self.pdb_atoms = self.pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
     self.counts = self.pdb_hierarchy.overall_counts()
