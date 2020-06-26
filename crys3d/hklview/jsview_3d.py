@@ -35,6 +35,7 @@ class MyWebSocketServerProtocol(websockets.server.WebSocketServerProtocol):
     self.ondisconnect = None
     self.onlostconnect = None
     super().__init__(*args, max_size=100000000) # allow for saving 100Mb size images
+    #super().__init__(*args, max_size=10000 )
     #super().__init__(*args,**kwargs) # crashes if saving images bigger than 1Mb
   def connection_open(self) -> None:
     #print("In connection_open()")
@@ -1749,6 +1750,11 @@ function CreateWebSocket()
     //if (mysocket.readyState !== mysocket.OPEN)
     //  alert('Cannot connect to websocket server! \\nAre the firewall permissions or browser security too strict?');
     //  socket_intentionally_closed = false;
+    mysocket.onerror = function(e) { onError(e)  };
+    mysocket.onopen = function(e) { onOpen(e)  };
+    mysocket.onclose = function(e) { onClose(e)  };
+    mysocket.onmessage = function(e) { onMessage(e)  };
+
   }
   catch(err)
   {
@@ -1833,7 +1839,7 @@ function WebsockSendMsg(msg, message_is_complete = true)
               //alert('Closing socket');
               mysocket.close(4242, 'Refreshing ' + pagename); // not sure this is ever received by server
               //window.location.reload(true);
-              //alert('Creating socket');
+              alert('Creating socket');
               CreateWebSocket();
             }
             return;
@@ -1902,15 +1908,15 @@ async function RenderRequest()
 }
 
 // Log errors to debugger of your browser
-mysocket.onerror = function(error)
+function onError(e)
 {
-  msg = 'WebSocket Error ' + error;
+  msg = 'WebSocket Error ' + e;
   console.log(msg);
   dbgmsg =msg;
 };
 
 
-mysocket.onopen = function(e)
+function onOpen(e)
 {
   msg = '%s now connected via websocket to ' + pagename + '\\n';
   WebsockSendMsg(msg);
@@ -1919,7 +1925,7 @@ mysocket.onopen = function(e)
 };
 
 
-mysocket.onclose = function(e)
+function onClose(e)
 {
   msg = '%s now disconnecting from websocket ' + pagename + '\\n';
   WebsockSendMsg(msg);
@@ -1927,7 +1933,7 @@ mysocket.onclose = function(e)
 };
 
 
-mysocket.onmessage = function(e)
+function onMessage(e)
 {
   var c,
   si;
@@ -2613,6 +2619,7 @@ mysocket.onmessage = function(e)
                                     4241, # javascriptcleanup
                                     1006, # WebSocketServerProtocol.close_code is absent
                                     1001, # normal exit
+                                    1005,
                                     1000 
                                     ]:
         return # shutdown
@@ -2629,6 +2636,7 @@ mysocket.onmessage = function(e)
         continue
       try:
         if isinstance(message, bytes) and isinstance(self.lastmsg, str) and "Imageblob" in self.lastmsg:
+          self.mprint( "Saving image to file", verbose=1)
           with open( self.imagename, "wb") as imgfile:
             imgfile.write( message)
 
@@ -2653,8 +2661,10 @@ mysocket.onmessage = function(e)
             self.mprint( message, verbose=0)
           elif "Expand" in message:
             self.mprint( message, verbose=2)
+          elif "Imageblob" in message:
+            self.mprint( "Image to be received", verbose=1)
           elif "ImageWritten" in message:
-            self.mprint( "Image saved to storage", verbose=0)
+            self.mprint( "Image saved to file", verbose=0)
           elif "ReturnClipPlaneDistances:" in message:
             datastr = message[ message.find("\n") + 1: ]
             lst = datastr.split(",")
@@ -2780,9 +2790,13 @@ Distance: %s
 
   async def WebSockHandler(self, mywebsock, path):
     self.mprint("Entering WebSockHandler", verbose=1)
-    if self.websockclient is not None or self.ishandling:
+    if self.was_disconnected == 1006:
       await mywebsock.close()
-      return
+    if self.websockclient is not None or self.ishandling:
+      #self.was_disconnected = 1006
+      await mywebsock.wait_closed()
+      await asyncio.sleep(0.5)
+      #return
     self.ishandling = True
     mywebsock.onconnect = self.OnConnectWebsocketClient
     self.OnConnectWebsocketClient(mywebsock.client_connected)
@@ -2807,6 +2821,7 @@ Distance: %s
                                      4241, # javascriptcleanup
                                      1006, # WebSocketServerProtocol.close_code is absent
                                      1001, # normal exit
+                                     1005,
                                      1000 
                                      ]:
           return # shutdown
@@ -2869,8 +2884,9 @@ Distance: %s
       if nwait > 2.0 and self.browserisopen:
         self.mprint("ERROR: No handshake from browser!", verbose=0 )
         self.mprint("failed sending " + msgtype, verbose=1)
-        self.mprint("Reopening webpage again", verbose=0)
-        break
+        self.was_disconnected = 1005
+        #break
+        return False
     if self.browserisopen and self.websockclient is not None or self.mywebsock.client_connected is not None:
       try: # use EAFP rather than LBYL style with websockets
         await self.mywebsock.send( message )
