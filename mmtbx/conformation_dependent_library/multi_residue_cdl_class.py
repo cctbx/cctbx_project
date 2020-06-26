@@ -185,6 +185,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
                     average=True,
                     verbose=False,
                     ):
+    verbose=1
     def _get_angle_proxy(names):
       angle_proxy = cdl_proxies.get(tuple(names), None)
       if angle_proxy is None:
