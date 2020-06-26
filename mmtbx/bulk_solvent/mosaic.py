@@ -164,6 +164,18 @@ class refinery(object):
     self.F = [self.f_calc.deep_copy()] + fv.keys()
     self.bin_selections = fmodel.f_obs().log_binning(
       n_reflections_in_lowest_resolution_bin = max(500,int(len(self.F)*100)))
+    # Massage bin selections
+    #
+    ds = fmodel.f_obs().d_spacings().data()
+    last = flex.bool(ds.size(), False)
+    new = []
+    for s in self.bin_selections:
+      m = flex.min(ds.select(s))
+      if(m>3): new.append(s)
+      else:    last = last | s
+    new.append(last)
+    self.bin_selections = new[:]
+    #
     self._print(fmodel.r_factors(prefix="start: "))
     for it in range(3):
       self._print("cycle: %2d"%it)

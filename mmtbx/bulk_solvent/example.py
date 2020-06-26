@@ -106,33 +106,34 @@ class compute(object):
       r_free_flags   = self.fmodel_2013.r_free_flags(),
       f_calc         = self.fmodel_2013.f_calc(),
       log            = log)
-    #####
-    print("-"*79, file=log)
-    print("A-2013 with step=0.4A", file=log)
-    self.fmodel_2013_04 = mmtbx.f_model.manager(
-      f_obs        = self.fmodel_2013.f_obs(),
-      r_free_flags = self.fmodel_2013.r_free_flags(),
-      f_calc       = self.fmodel_2013.f_calc(),
-      f_mask       = self.mm.f_mask)
-    self.fmodel_2013_04.update_all_scales(remove_outliers=False)
-    self.fmodel_2013_04.show(show_header=False, show_approx=False, log = log)
-    print(self.fmodel_2013_04.r_factors(prefix="  "), file=log)
-    self.mc_whole_mask = \
-      self.mm.fmodel_largest_mask.electron_density_map().map_coefficients(
-        map_type   = "mFobs-DFmodel",
-        isotropize = True,
-        exclude_free_r_reflections = False)
-    #####
-    print("-"*79, file=log)
-    print("A-2013 with step=0.4A, using largest mask only", file=log)
-    self.mm.fmodel_largest_mask.show(show_header=False, show_approx=False, log = log)
-    print(self.mm.fmodel_largest_mask.r_factors(prefix="  "), file=log)
-    self.mc_largest_mask = \
-      self.mm.fmodel_largest_mask.electron_density_map().map_coefficients(
-        map_type   = "mFobs-DFmodel",
-        isotropize = True,
-        exclude_free_r_reflections = False)
-    #####
+    if(self.mm.do_mosaic):
+      #####
+      print("-"*79, file=log)
+      print("A-2013 with step=0.4A", file=log)
+      self.fmodel_2013_04 = mmtbx.f_model.manager(
+        f_obs        = self.fmodel_2013.f_obs(),
+        r_free_flags = self.fmodel_2013.r_free_flags(),
+        f_calc       = self.fmodel_2013.f_calc(),
+        f_mask       = self.mm.f_mask)
+      self.fmodel_2013_04.update_all_scales(remove_outliers=False)
+      self.fmodel_2013_04.show(show_header=False, show_approx=False, log = log)
+      print(self.fmodel_2013_04.r_factors(prefix="  "), file=log)
+      self.mc_whole_mask = \
+        self.fmodel_2013_04.electron_density_map().map_coefficients(
+          map_type   = "mFobs-DFmodel",
+          isotropize = True,
+          exclude_free_r_reflections = False)
+      #####
+      print("-"*79, file=log)
+      print("A-2013 with step=0.4A, using largest mask only", file=log)
+      self.mm.fmodel_largest_mask.show(show_header=False, show_approx=False, log = log)
+      print(self.mm.fmodel_largest_mask.r_factors(prefix="  "), file=log)
+      self.mc_largest_mask = \
+        self.mm.fmodel_largest_mask.electron_density_map().map_coefficients(
+          map_type   = "mFobs-DFmodel",
+          isotropize = True,
+          exclude_free_r_reflections = False)
+      #####
 
   def do_mosaic(self, alg):
     print("-"*79, file=self.log)
@@ -190,7 +191,7 @@ def run_one(args):
        len(o.mm.regions.values())<1 or
        not o.mm.do_mosaic):
       log.close()
-      os.remove("%s.log"%code)
+      if(os.path.isfile("%s.log"%code)): os.remove("%s.log"%code)
       return
     ###
     # write maps
