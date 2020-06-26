@@ -358,7 +358,7 @@ def exercise_5_bulk_sol_and_scaling(d_min, symbol = "C 2", k_sol = 0.37,
     sf_and_grads_accuracy_params = sfg_params)
   assert fmodel.r_work() > 0.3
   fmodel.update_all_scales(fast=True)
-  assert fmodel.r_work() < 0.05, [fmodel.r_work(), d_min]
+  assert fmodel.r_work() < 0.052, [fmodel.r_work(), d_min]
 
 def exercise_top_largest_f_obs_f_model_differences(threshold_percent=10,
       symbol = "C 2"):

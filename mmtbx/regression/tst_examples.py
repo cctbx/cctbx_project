@@ -24,7 +24,7 @@ def exercise():
     (script_file, pdb_file, mtz_file)).raise_if_errors()
   for l in result.stdout_lines:
     print(l)
-  assert ("CC(obs-calc): 0.950" in result.stdout_lines)
+  assert ("CC(obs-calc): 0.949" in result.stdout_lines)
   print("OK")
 
 if (__name__ == "__main__"):
