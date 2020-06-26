@@ -174,7 +174,7 @@ def run_one(args):
   # FILER OUT NON-P1 and non X-ray/neutron
   pdb_inp = iotbx.pdb.input(file_name=pdbf)
   cs = pdb_inp.crystal_symmetry()
-  if(cs.space_group_number() != 1): return
+  #if(cs.space_group_number() != 1): return
   if(not pdb_inp.get_experiment_type() in
      ["X-RAY DIFFRACTION", "NEUTRON DIFFRACTION"]): return
   #
@@ -225,6 +225,7 @@ def run_one(args):
       r_2013          = o.fmodel_2013.r_factors(as_string=False),
       r_2013_04       = o.fmodel_2013_04.r_factors(as_string=False),
       r_mosaic        = mbs.fmodel.r_factors(as_string=False),
+      r_largest_mask  = o.mm.fmodel_largest_mask.r_factors(as_string=False),
       solvent_content = o.mm.solvent_content,
       regions         = o.mm.regions)
     easy_pickle.dump("%s.pkl"%code, result)

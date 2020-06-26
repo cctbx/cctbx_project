@@ -294,6 +294,7 @@ class mosaic_f_mask(object):
       threshold                  = 0.01,
       preprocess_against_shallow = True,
       wrapping                   = True)
+    co.merge_symmetry_related_regions(space_group=xray_structure.space_group())
     del mask_p1
     self.conn = co.result().as_double()
     z = zip(co.regions(),range(0,co.regions().size()))
@@ -448,8 +449,10 @@ def algorithm_2(i_obs, F, x, use_curvatures=True, macro_cycles=10):
     else:
       upper = flex.double([10] + [5]*(x.size()-1))
       lower = flex.double([0.1] + [-5]*(x.size()-1))
-      #upper = flex.double([10] + [4.65]*(x.size()-1))
+      #upper = flex.double([10] + [0.65]*(x.size()-1))
       #lower = flex.double([0.1] + [0]*(x.size()-1))
+      #upper = flex.double([1] + [5.65]*(x.size()-1))
+      #lower = flex.double([1] + [-5]*(x.size()-1))
       m = tncs.minimizer(
         potential       = calculator,
         use_bounds      = 2,
