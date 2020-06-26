@@ -173,7 +173,7 @@ class refinery(object):
       m = flex.min(ds.select(s))
       if(m>3): new.append(s)
       else:    last = last | s
-    new.append(last)
+    if(last.count(True)>0): new.append(last)
     self.bin_selections = new[:]
     #
     self._print(fmodel.r_factors(prefix="start: "))
