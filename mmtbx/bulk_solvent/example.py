@@ -184,8 +184,6 @@ def run_one(args):
     # main
     o = compute(pdbf=pdbf, mtzf=mtzf, log=log)
     log.flush()
-    mbs = o.do_mosaic(alg=alg)
-    log.flush()
     ### SKIP
     if(o.fmodel_2013.r_work()>0.45 or
        len(o.mm.regions.values())<1 or
@@ -194,6 +192,7 @@ def run_one(args):
       if(os.path.isfile("%s.log"%code)): os.remove("%s.log"%code)
       return
     ###
+    mbs = o.do_mosaic(alg=alg)
     # write maps
     if(o.mm.mc is not None):
       assert approx_equal(o.mm.mc.data(), o.mc_largest_mask.data())
