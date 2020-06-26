@@ -43,15 +43,22 @@ def round_to_int(d, n=10, wrap=True):
 def round_to_ten(d):
   return round_to_int(d, 10)
 
+children = {'PRO' : ['HYP']} # prePRO
+parents = { # should be done automatically
+  'HYP' : 'PRO',
+  }
+
 def get_res_type_group(resname1, resname2):
   resname1=resname1.strip()
   resname2=resname2.strip()
-  if resname2=="PRO":
+  # check for prePro
+  if resname2=="PRO" or resname2 in children['PRO']:
     lookup = before_pro_groups
   else:
     lookup = not_before_pro_groups
+  # find four other sub-classes
   for key in lookup:
-    if resname1 in lookup[key]:
+    if resname1 in lookup[key] or parents.get(resname1, '???') in lookup[key]:
       return key
   return None
 

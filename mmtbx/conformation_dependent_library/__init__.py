@@ -144,7 +144,7 @@ def generate_residue_tuples(hierarchy,
     elif length==5: LinkedResidues = FiveProteinResidues
     else: LinkedResidues = FiveProteinResidues
     residue_lookup = ['common_amino_acid']
-    if include_non_standard_residues:
+    if include_non_standard_residues or 1:
       residue_lookup.append('modified_amino_acid')
     if include_d_amino_acids:
       residue_lookup.append('d_amino_acid')
@@ -340,6 +340,7 @@ def update_restraints(hierarchy,
                       cdl_proxies=None,
                       cis_pro_eh99=False, # use EH99 for cis-PRO
                       cdl_svl=False, # use CDL-SVL
+                      include_non_standard_peptides=False,
                       ideal=True,
                       esd=True,
                       esd_factor=1.,
@@ -366,6 +367,7 @@ def update_restraints(hierarchy,
     geometry,
     cdl_class=True,
     retain_selection="name ca or name c or name n or name o or name cb or name h or name cd or name cg",
+    include_non_standard_peptides=include_non_standard_peptides,
     #verbose=verbose,
     ):
     if cdl_svl:
@@ -386,6 +388,8 @@ def update_restraints(hierarchy,
         restraint_values = get_restraint_values(threes, interpolate=interpolate)
         # print('CDL %s %s' % (threes, restraint_values))
 
+    print(threes)
+    print(restraint_values)
     if restraint_values is None: continue
 
     if restraint_values[0]=="I":
