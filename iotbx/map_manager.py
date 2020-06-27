@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import to_str
-from libtbx import group_args
+from libtbx import group_args, Auto
+from libtbx.test_utils import approx_equal
 import sys
 import io
 from cctbx import miller
@@ -24,6 +25,11 @@ class map_manager(map_reader, write_ccp4_map):
    one map.  Map_manager keeps track of the origin shifts and also the
    original full unit cell and cell dimensions.  It writes out the map
    in the same place as it was read in.
+
+   Note on wrapping:  Wrapping means that the map value outside the map 
+   boundaries can be obtained as the value inside the boundaries, (translated
+   by some multiple of the unit cell translations.)  Normally crystallographic
+   maps can be wrapped and cryo EM maps cannot.
 
    Map_manager also keeps track of any changes in magnification. These
    are reflected in changes in unit_cell and crystal_symmetry cell dimensions
@@ -178,12 +184,13 @@ class map_manager(map_reader, write_ccp4_map):
 
 
   def __init__(self,
-     file_name = None,  # USUAL: Initialize from file: No other information used
+     file_name = None,  # USUAL: Initialize from file and specify wrapping
      map_data = None,   # OR map_data, unit_cell_grid, unit_cell_crystal_symmetry
      unit_cell_grid = None,
      unit_cell_crystal_symmetry = None,
      origin_shift_grid_units = None, # OPTIONAL first point in map in full cell
      ncs_object = None, # OPTIONAL ncs_object with map symmetry
+     wrapping = Auto,   # OPTIONAL determined from input limitations and data
      log = None,
      ):
 
@@ -220,9 +227,11 @@ class map_manager(map_reader, write_ccp4_map):
     '''
 
     assert (file_name is not None) or [map_data,unit_cell_grid,
-        unit_cell_crystal_symmetry].count(None)==0
+        unit_cell_crystal_symmetry, wrapping].count(None)==0
 
     assert (ncs_object is None) or isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
+    assert (wrapping is Auto) or isinstance(wrapping, bool)
+
     # Initialize log filestream
     self.set_log(log)
 
@@ -261,6 +270,7 @@ class map_manager(map_reader, write_ccp4_map):
       # Set starting values:
       self.origin_shift_grid_units = (0, 0, 0)
 
+
     else:
       '''
          Initialization with map_data object and metadata
@@ -284,6 +294,9 @@ class map_manager(map_reader, write_ccp4_map):
       self.origin_shift_grid_units = origin_shift_grid_units
 
     # Initialization steps always done:
+
+    # Set the wrapping
+    self._choose_wrapping(wrapping)
 
     # make sure labels are strings
     if self.labels is not None:
@@ -338,6 +351,28 @@ class map_manager(map_reader, write_ccp4_map):
     if (self.log is not None) and hasattr(self.log, 'closed') and (
         not self.log.closed):
       print(m, file = self.log)
+
+  def _choose_wrapping(self, wrapping):
+      ''' 
+       Choose wrapping based on input value and characteristics of the map
+      '''
+
+      # Set wrapping. 
+      #  XXX Note: very small gridding (< 5 in full cell) will default to 
+      #     wrapping=False
+
+      if wrapping is not Auto and wrapping is not None:  # specified in call
+        self._wrapping = wrapping 
+        if wrapping:
+          assert self.is_full_size()  # must be full size for wrapping
+      elif (self.wrapping_from_input_file() is not None): 
+        self._wrapping = self.wrapping_from_input_file() # from input file
+      elif not self.is_full_size():
+        self._wrapping = False  # not full size, cannot be wrapped
+      elif (wrapping is Auto) and (not self.is_consistent_with_wrapping()):
+        self._wrapping = False  # edges not similar or approximately constant 
+      else:
+        self._wrapping = True  # can be wrapped
 
   def set_unit_cell_crystal_symmetry(self, crystal_symmetry):
     '''
@@ -632,6 +667,18 @@ class map_manager(map_reader, write_ccp4_map):
 
     map_data = self.map_data()
 
+    # Add limitation on wrapping
+    # remove any labels about wrapping
+    assert self.wrapping() is not None
+    new_labels=[]
+    for key in ["wrapping_outside_cell","no_wrapping_outside_cell"]:
+      self.remove_limitation(key)
+    if self.wrapping():
+      self.add_limitation("wrapping_outside_cell")
+    else:
+      self.add_limitation("no_wrapping_outside_cell")
+
+
     from iotbx.mrcfile import create_output_labels
     labels = create_output_labels(
       program_name = self.program_name,
@@ -825,7 +872,6 @@ class map_manager(map_reader, write_ccp4_map):
     box = with_bounds(self,
        lower_bounds = lower_bounds,
        upper_bounds = upper_bounds,
-       wrapping = False,
        log = self.log)
     box.map_manager().set_original_origin_and_gridding(original_origin = (0, 0, 0))
 
@@ -878,6 +924,10 @@ class map_manager(map_reader, write_ccp4_map):
          map_data.all() (size in each direction)  of current and new maps
             are the same.
          origins of current and new maps are the same
+
+       NOTE: wrapping is normally copied from original map, but if new map is 
+       not full size then wrapping is always set to False.
+
     '''
 
     # Make a deep_copy of map_data and _created_mask unless
@@ -906,6 +956,9 @@ class map_manager(map_reader, write_ccp4_map):
       assert map_data.all()  ==  self.map_data().all() # bounds must be same
       origin_shift_grid_units = deepcopy(self.origin_shift_grid_units)
 
+    # Keep track of change in shift_cart 
+    original_shift_cart=self.shift_cart()
+
     # Deepcopy this object and then set map_data and origin_shift_grid_units
 
     mm = deepcopy(self)
@@ -916,15 +969,42 @@ class map_manager(map_reader, write_ccp4_map):
     mm.data = map_data  # using self.data or a deepcopy (specified above)
     mm._created_mask = created_mask  # using self._created_mask or a
                                      #deepcopy (specified above)
-    if self._ncs_object:
-      mm._ncs_object = self._ncs_object.deep_copy()
-    else:
-      mm._ncs_object = None
+    if mm.wrapping() and not mm.is_full_size():
+      mm.set_wrapping(False)
 
     # Set up _crystal_symmetry for the new object
     mm.set_crystal_symmetry_of_partial_map() # Required and must be last
 
+    # Keep track of change in shift_cart 
+    delta_origin_shift_grid_units = tuple([new - orig for new, orig in zip (
+        origin_shift_grid_units, self.origin_shift_grid_units)])
+    delta_shift_cart = tuple([-x for x in self.grid_units_to_cart(
+       delta_origin_shift_grid_units)])
+    new_shift_cart= tuple([
+        o+d for o,d in zip(original_shift_cart,delta_shift_cart)])
+
+    if self._ncs_object:
+      mm._ncs_object = self._ncs_object.deep_copy(
+        coordinate_offset=delta_shift_cart)
+      assert approx_equal(mm.shift_cart(),mm._ncs_object.shift_cart())
+    else:
+      mm._ncs_object = None
+
+
     return mm
+
+  def set_wrapping(self, wrapping_value):
+    '''
+       Set wrapping to be wrapping_value
+    '''
+    assert isinstance(wrapping_value, bool)
+    self._wrapping = wrapping_value
+
+  def wrapping(self):
+    '''
+      Report if map can be wrapped
+    '''
+    return self._wrapping
 
   def is_full_size(self):
     '''
@@ -935,6 +1015,111 @@ class map_manager(map_reader, write_ccp4_map):
     else:
       return False
 
+  def is_consistent_with_wrapping(self, relative_sd_tol = 0.01,
+     minimum_correlation_relative_to_control = 3,
+     minimum_significant_cc=0.2,maximum_significant_cc=0.4):
+    '''
+      Report if this map looks like it is a crystallographic map and can be
+      wrapped
+
+      If it is not full size...no wrapping
+      If very small...cannot tell
+      If has all zeroes (or some other constant) ... no wrapping 
+      If edges (zero plane vs 1 plane) are not about as similar as
+        two planes separated by one grid unit ... no wrapping
+    '''
+    if not self.is_full_size():
+      return False
+    if self.map_data().origin() != (0, 0, 0):
+      return False 
+
+    map_data = self.map_data()
+    all = list(map_data.all())
+    middle_plus_one_data = flex.double()
+    middle_data = flex.double()
+    boundary_zero_data = flex.double()
+    boundary_zero_one_data = flex.double()
+    boundary_one_data = flex.double()
+    boundary_data = flex.double()
+
+    if all[0] < 5:
+      return False # XXX very small unit_cell grid ... assume it is really a box
+
+    for i in (0, all[0]//2, 1+all[0]//2, all[0]-1):
+      new_map_data = maptbx.copy(map_data,
+         tuple((i, 0, 0)),
+         tuple((i, all[1], all[2])))
+      boundary_data.extend(new_map_data.as_1d())
+      if i == 0:
+        boundary_zero_data.extend(new_map_data.as_1d())
+      elif i == all[0]//2:
+        middle_data.extend(new_map_data.as_1d())
+      elif i == 1+all[0]//2:
+        middle_plus_one_data.extend(new_map_data.as_1d())
+      else:
+        boundary_one_data.extend(new_map_data.as_1d())
+
+    for j in (0, all[1]//2, 1+all[1]//2, all[1]-1):
+      new_map_data = maptbx.copy(map_data,
+         tuple((0, j, 0)),
+         tuple((all[0], j, all[2])))
+      boundary_data.extend(new_map_data.as_1d())
+      if j == 0:
+        boundary_zero_data.extend(new_map_data.as_1d())
+      elif j == all[1]//2:
+        middle_data.extend(new_map_data.as_1d())
+      elif j == 1+all[1]//2:
+        middle_plus_one_data.extend(new_map_data.as_1d())
+      else:
+        boundary_one_data.extend(new_map_data.as_1d())
+    for k in (0, all[2]//2, 1 + all[2]//2, all[2]-1):
+      new_map_data = maptbx.copy(map_data,
+         tuple((0, 0, k)),
+         tuple((all[0], all[1], k)))
+      boundary_data.extend(new_map_data.as_1d())
+      if k == 0:
+        boundary_zero_data.extend(new_map_data.as_1d())
+      elif k == all[2]//2:
+        middle_data.extend(new_map_data.as_1d())
+      elif k == 1+all[2]//2:
+        middle_plus_one_data.extend(new_map_data.as_1d())
+      else:
+        boundary_one_data.extend(new_map_data.as_1d())
+    mmm = boundary_data.min_max_mean()
+    sd = boundary_data.standard_deviation_of_the_sample()
+    sd_overall = map_data.as_1d().standard_deviation_of_the_sample()
+
+    cc_boundary_zero_one= flex.linear_correlation(boundary_zero_data,
+       boundary_one_data).coefficient()
+    cc_negative_control = flex.linear_correlation(boundary_zero_data,
+       middle_data).coefficient()
+    cc_positive_control= flex.linear_correlation(middle_data,
+      middle_plus_one_data).coefficient()
+    # Expect that negative controls about zero, positive control high,
+    #  then cc_boundary_zero_one like negative_control means boundaries differ
+    #  then cc_boundary_zero_one like positive means boundaries similar
+
+    if sd < relative_sd_tol * sd_overall:
+      sd_on_edges_is_large = False
+    else:
+      sd_on_edges_is_large = True 
+
+    significant_cc = min(maximum_significant_cc,max(minimum_significant_cc,
+        minimum_correlation_relative_to_control * abs(cc_negative_control) ))
+    if (cc_positive_control > significant_cc) and (
+        cc_boundary_zero_one > significant_cc) and (
+        abs(cc_positive_control-cc_boundary_zero_one) < significant_cc):
+      correlation_of_edges_is_high = True
+    else:
+      correlation_of_edges_is_high = False
+    if sd_on_edges_is_large and correlation_of_edges_is_high:
+      return True
+    else:
+      return False 
+
+ 
+
+ 
   def is_similar(self, other = None):
     # Check to make sure origin, gridding and symmetry are similar
     self._warning_message=""
@@ -970,6 +1155,12 @@ class map_manager(map_reader, write_ccp4_map):
          str(self.map_data().all()),str(other.map_data().all()))
       return False
 
+    # Make sure wrapping is same for all
+    if self.wrapping() !=  other.wrapping():
+      self._warning_message="Wrapping "+ "(%s) does not match other (%s)" %(
+         str(self.wrapping()),str(other.wrapping()))
+      return False
+
     # Make sure ncs objects are similar if both have one
     if self.ncs_object() is not None:
       if not other.ncs_object().is_similar_ncs_object(self.ncs_object()):
@@ -978,6 +1169,7 @@ class map_manager(map_reader, write_ccp4_map):
         self._warning_message="NCS object:\n%s\n does not match other:\n%s" %(
           text1,text2)
         return False
+
     return True
 
   def grid_units_to_cart(self, grid_units):

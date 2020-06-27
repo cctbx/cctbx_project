@@ -79,6 +79,25 @@ def test_01():
      model.get_sites_cart()[0], (14.476, 10.57, 8.34) ,eps=0.01)
   assert approx_equal(mm.map_data()[10,10,10],-0.0195,eps=0.001)
 
+  # Check on wrapping
+  assert not mm.wrapping()  # this one should not wrap because it is zero at edges
+
+  # Make a new one with no buffer so it is not zero at edges
+  mmm=map_model_manager()
+  mmm.generate_map(box_buffer=0)
+  mm=mmm.map_manager()
+  assert mm.wrapping()
+
+  # now box it
+  sel=mmm.model().selection("resseq 221:221")
+  new_model=mmm.model().select(sel)
+  new_mmm=map_model_manager(model=new_model,map_manager=mm)
+  new_mmm.box_all_maps_around_model_and_shift_origin()
+  new_mm=new_mmm.map_manager()
+   
+  assert not new_mm.wrapping()
+  assert not new_mm.is_consistent_with_wrapping()
+
 # ----------------------------------------------------------------------------
 
 if (__name__ == '__main__'):

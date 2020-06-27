@@ -119,7 +119,6 @@ class map_model_base(object):
 
   def not_box_around_model(self,
     cushion,
-    wrapping,  # put this in map_manager XXX
     selection_string = None,
     soft_mask = False):
 
@@ -135,7 +134,6 @@ class map_model_base(object):
    box = around_model(self.map_manager(),
      self.model(),
      cushion = cushion,
-     wrapping = wrapping,
      log = null_out())
 
    box.map_manager()
@@ -228,7 +226,7 @@ class map_model_base(object):
     '''
 
     assert (map_keys is None) or isinstance(map_keys, list)
-    # ZZassert isinstance(set_outside_to_mean_inside, bool)
+    # ZZassert isinstance(set_outside_to_mean_inside, bool) # XXX
     mask_mm = self.get_map_manager(mask_key)
     assert mask_mm is not None
     assert mask_mm.is_mask()
@@ -353,7 +351,17 @@ class map_model_base(object):
     # Put the mask in map_dict keyed with mask_key
     self.set_map_manager(mask_key, cm.map_manager())
 
-
+  def force_wrapping_if_neccesary(self, map_manager):
+    if self._force_wrapping is None:
+      return
+    else:
+      map_manager.set_wrapping(self._force_wrapping)
+      if not map_manager.is_full_size():
+        self._warning_message = "WARNING: wrapping set to True, but "+\
+             "map is not full size"
+  
+  def warning_message(self):
+    return self._warning_message
 
 class r_model(map_model_base):
 
@@ -423,11 +431,15 @@ class r_model(map_model_base):
 
   def __init__(self,
                model            = None,
-               map_dict         = None):
+               map_dict         = None,
+               wrapping         = None,
+      ):
 
     # Save the model, ncs_object and map_dict (get them with self.model() etc)
     self._map_dict = map_dict
     self._model = model
+    self._force_wrapping = wrapping
+    self._warning_message = None
 
     # Make sure all the assumptions about model, ncs_object and map are ok
     self._check_inputs()
@@ -455,7 +467,8 @@ class r_model(map_model_base):
       for id in self.map_manager_id_list():
         new_map_dict[id]=self.get_map_manager(id).deep_copy()
 
-    return r_model(model = new_model, map_dict = new_map_dict)
+    return r_model(model = new_model, map_dict = new_map_dict,
+      wrapping = self._force_wrapping)
 
   def deep_copy(self):
     '''
@@ -466,7 +479,8 @@ class r_model(map_model_base):
     for id in self.map_manager_id_list():
       new_map_dict[id]=self.get_map_manager(id).deep_copy()
 
-    return r_model(model = new_model, map_dict = new_map_dict)
+    return r_model(model = new_model, map_dict = new_map_dict,
+      wrapping = self._force_wrapping)
 
   def __repr__(self):
     text = "r_model: "
@@ -530,7 +544,7 @@ class map_model_manager(map_model_base):
       ncs_object = ncs_object)
 
     mam.box_all_maps_around_model_and_shift_origin(
-        wrapping=False, box_cushion=3)
+        box_cushion=3)
 
     shifted_model = mam.model()  # at (0, 0, 0), knows about shifts
     shifted_map_manager = mam.map_manager() # also at (0, 0, 0) knows shifts
@@ -552,6 +566,9 @@ class map_model_manager(map_model_base):
     Note:  mam.map_manager() contains mam.ncs_object(), so it is not necessary
     to keep both.
 
+    Note: set wrapping of all maps to match map_manager if they differ. Set
+    all to be wrapping if it is set
+
   '''
 
   def __init__(self,
@@ -561,7 +578,8 @@ class map_model_manager(map_model_base):
                map_manager_2    = None,  # replaces map_data_2
                extra_map_manager_list = None,  # replaces map_data_list
                extra_map_manager_id_list = None,  # string id's for map_managers
-               ncs_object       = None):
+               ncs_object       = None,   # Overwrite ncs_objects
+               wrapping         = None):  # Overwrite wrapping for all maps
     self._map_dict={}
     self._model = model
     self._shift_cart = None
@@ -571,6 +589,8 @@ class map_model_manager(map_model_base):
     self._gridding_first = None
     self._gridding_last = None
     self._solvent_content = None
+    self._force_wrapping = wrapping 
+    self._warning_message = None
 
     # If map_manager_1 and map_manager_2 are supplied but no map_manager,
     #   create map_manager as average of map_manager_1 and map_manager_2
@@ -588,8 +608,22 @@ class map_model_manager(map_model_base):
       assert not ncs_object and not model
       return  # do not do anything
 
-    # CHECKS
+    # Overwrite wrapping if requested
+    # Take wrapping from map_manager otherwise for all maps
+    
+    if self._force_wrapping is None:
+      wrapping = map_manager.wrapping()
+    else:
+      wrapping = self._force_wrapping
 
+    if not extra_map_manager_list:
+        extra_map_manager_list=[]
+    for m in [map_manager, map_manager_1, map_manager_2]+ \
+         extra_map_manager_list:
+        if m:
+          m.set_wrapping(wrapping)
+      
+    # CHECKS
 
     # Make sure that map_manager is either already shifted to (0, 0, 0) or has
     #   origin_shift_grid_unit of (0, 0, 0).
@@ -624,7 +658,8 @@ class map_model_manager(map_model_base):
     for m in [map_manager_1, map_manager_2]+ \
          extra_map_manager_list:
       if m:
-        assert map_manager.is_similar(m)
+        if not map_manager.is_similar(m):
+          raise AssertionError(map_manager.warning_message())
 
     # READY
 
@@ -746,8 +781,8 @@ class map_model_manager(map_model_base):
 
 
   def box_all_maps_around_model_and_shift_origin(self,
-     wrapping = None,
-     box_cushion = 5.):
+     box_cushion = 5.,
+     log = sys.stdout):
     '''
        Box all maps around the model, shift origin of maps, model
        Replaces existing map_managers and shifts model in place
@@ -755,11 +790,8 @@ class map_model_manager(map_model_base):
        Normally used immediately after setting up this map_model_manager to
        work with boxed maps and model.
 
-       wrapping must be specified. Wrapping means map is infinite and repeats
-       outside unit cell. Requires a full unit cell in the maps.
     '''
     assert isinstance(self._model, model_manager)
-    assert isinstance(wrapping, bool) # must be decided by programmer
     assert box_cushion is not None
 
     from cctbx.maptbx.box import around_model
@@ -772,8 +804,10 @@ class map_model_manager(map_model_base):
       map_manager = self._map_dict[map_manager_info.map_manager_id],
       model = self._model,
       cushion = box_cushion,
-      wrapping = wrapping)
+      wrapping = self._force_wrapping)
 
+    if box.warning_message():
+      print("%s" %(box.warning_message()), file = log)
     self._map_dict[map_manager_info.map_manager_id] = box.map_manager()
     self._model = box.model()
     self._shift_cart = box.map_manager().shift_cart()
@@ -782,12 +816,10 @@ class map_model_manager(map_model_base):
     for id in map_manager_info.other_map_manager_id_list:
       self._map_dict[id] = box.apply_to_map(self._map_dict[id])
 
-
     # Update self._crystal_symmetry
     self._crystal_symmetry = self._model.crystal_symmetry()
     assert self._crystal_symmetry.is_similar_symmetry(
       self._map_dict[map_manager_info.map_manager_id].crystal_symmetry())
-
 
   def extra_map_manager_list(self):
      '''
@@ -1034,6 +1066,7 @@ class map_model_manager(map_model_base):
     for id in self._map_dict.keys():
       new_mmm._map_dict[id]=self._map_dict[id].deep_copy()
     new_mmm._shift_cart = deepcopy(self._shift_cart)
+    new_mmm._force_wrapping = deepcopy(self._force_wrapping)
     return new_mmm
 
   def as_r_model(self):

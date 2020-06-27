@@ -211,7 +211,7 @@ def exercise_writer(use_mrcfile=None,output_axis_order=[3,2,1]):
     from iotbx.mrcfile import create_output_labels
     labels=create_output_labels(
        program_name='test',
-       limitations=['extract_unique'],
+       limitations=['extract_unique','no_wrapping_outside_cell'],
        output_labels=['test label'],
        )
     iotbx.mrcfile.write_ccp4_map(
@@ -233,6 +233,10 @@ def exercise_writer(use_mrcfile=None,output_axis_order=[3,2,1]):
       map_data=real_map_data,
       labels=flex.std_string(["iotbx.ccp4_map.tst"]))
     input_real_map = iotbx.ccp4_map.map_reader(file_name="four_five_six.map")
+
+  if use_mrcfile:
+    assert not input_real_map.wrapping_from_input_file()
+
 
   input_map_data=input_real_map.map_data()
   real_map_mmm = real_map_data.as_1d().min_max_mean()

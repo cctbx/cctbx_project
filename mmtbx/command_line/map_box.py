@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 
 import mmtbx.utils
 import mmtbx.model
-from libtbx import adopt_init_args
+from libtbx import adopt_init_args, Auto
 from mmtbx.refinement import print_statistics
 import libtbx.phil
 from libtbx.utils import Sorry
@@ -325,7 +325,7 @@ master_phil = libtbx.phil.parse("""
     .help = Ignore unit cell from model if it conflicts with the map.
     .short_caption = Ignore symmetry conflicts
 
-  wrapping = False
+  wrapping = Auto
     .type = bool
     .help = Assume map ends at map boundaries. Alternative is wrap around.
     .short_caption = Wrapping
@@ -945,6 +945,10 @@ def run(args,
   if(ccp4_map.map_data is None):
     raise Sorry("Map or map coefficients file is needed.")
 
+  # Set wrapping if specified:
+  if params.wrapping is not Auto:
+    ccp4_map.set_wrapping(params.wrapping)
+
   ncs_object = get_ncs_object(params = params,
       ncs_object = ncs_object, log = log)
 
@@ -986,8 +990,7 @@ def run(args,
     ncs_object = ncs_object)
   if box:
     mam.box_all_maps_around_model_and_shift_origin(
-      box_cushion = params.box_cushion,
-      wrapping = params.wrapping)
+      box_cushion = params.box_cushion)
 
   # Map and model and ncs are boxed if requested and
   #   shifted to place origin at (0, 0, 0)
@@ -1006,21 +1009,17 @@ def run(args,
     mam = with_bounds(mam.map_manager(), # actually a box
          params.lower_bounds,
          params.upper_bounds,
-         params.wrapping,
          model = mam.model(),
-         ncs_object = mam.ncs_object(),
          log = log)
 
   elif params.density_select:  # Box it with density_select
     assert not box # should not have used boxing
     from cctbx.maptbx.box import around_density
     mam = around_density(mam.map_manager(), # actually a box
-         params.wrapping,
          box_cushion = params.box_cushion,
          threshold = params.density_select_threshold,
          get_half_height_width = params.get_half_height_width,
          model = mam.model(),
-         ncs_object = mam.ncs_object(),
          log = log)
 
   elif params.mask_select:  # Box it with mask_select
@@ -1040,11 +1039,9 @@ def run(args,
         raise Sorry("Unable to auto-generate mask")
 
     mam = around_mask(mam.map_manager(), # actually a box
-         params.wrapping,
          mask_as_map_manager = mask_as_map_manager,
          box_cushion = params.box_cushion,
          model = mam.model(),
-         ncs_object = mam.ncs_object(),
          log = log)
 
   # Now mask map if requested
@@ -1087,8 +1084,13 @@ def run(args,
 
     if mam.model():
       mam.model().set_shift_cart(mam.map_manager().shift_cart())
-    if mam.ncs_object():
-      mam.ncs_object().set_shift_cart(mam.map_manager().shift_cart())
+
+  if params.wrapping is not Auto:
+    mam.map_manager().set_wrapping(params.wrapping)
+    if params.wrapping and (
+       not mam.map_manager().is_consistent_with_wrapping()):
+      print("\nWARNING: This map is not consistent with wrapping but wrapping"+
+        " is set to True",file = log)
 
   # Print out any notes about the output files
   print_notes(params = params, mam = mam,
@@ -1126,7 +1128,7 @@ def run(args,
       shift_cart = mam.map_manager().shift_cart(),
       xray_structure_box = xrs,
       hierarchy = hierarchy,
-      ncs_object = mam.ncs_object(),
+      ncs_object = mam.map_manager().ncs_object(),
       map_box = mam.map_manager().map_data(),
       map_data = ccp4_map.map_data(),
       map_box_half_map_list = None,
@@ -1141,7 +1143,7 @@ def run(args,
   if write_output_files:
     model = mam.model()
     map_manager = mam.map_manager()
-    ncs_object = mam.ncs_object()
+    ncs_object = mam.map_manager().ncs_object()
     from iotbx.data_manager import DataManager
     dm = DataManager(datatypes = ['model', 'ncs_spec', 'real_map', 'miller_array'])
     dm.set_overwrite(True)
@@ -1355,8 +1357,6 @@ def apply_extract_unique(mam,
     from cctbx.maptbx.box import extract_unique
     new_mam = extract_unique(
       mam.map_manager(),
-      wrapping = False,  # always False here
-      ncs_object = mam.ncs_object(),
       model = mam.model(),
       target_ncs_au_model = target_ncs_au_model,
       sequence = sequence,

@@ -90,6 +90,10 @@ master_params_str = """
   include_mask = True
     .type = bool
     .help = "Keep mask"
+  wrapping = None
+    .type = bool
+    .help = You can ignore the wrapping information from map files and set it
+    .expert_level = 2
 """
 
 def show_histogram(map_histograms, log):

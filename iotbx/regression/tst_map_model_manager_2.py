@@ -65,7 +65,7 @@ def exercise(file_name, out = sys.stdout):
           map_manager =  m,
           model     = model.deep_copy(),
     )
-  mam.box_all_maps_around_model_and_shift_origin(wrapping=False)
+  mam.box_all_maps_around_model_and_shift_origin()
 
   shifted_model = mam.model()
   shifted_map_data = mam.map_data()

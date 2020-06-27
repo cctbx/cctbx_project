@@ -17,6 +17,10 @@ from six.moves import zip
 INTERNAL_STANDARD_ORDER=[3,2,1]  # THIS CANNOT BE MODIFIED
 
 STANDARD_LIMITATIONS_DICT={  # THIS CAN BE MODIFIED AND ADDED TO
+    "no_wrapping_outside_cell":
+     "Values outside boundaries have no meaning",
+    "wrapping_outside_cell":
+     "Values outside boundaries are wrapped inside",
     "extract_unique":
      "This map is masked around unique region and not suitable for auto-sharpening.",
     "map_is_sharpened":
@@ -255,6 +259,31 @@ class map_reader:
       return True
     return False
 
+  def wrapping_from_input_file(self):
+    if self.is_in_limitations("no_wrapping_outside_cell"):
+      return False # cannot wrap outside cell
+    elif self.is_in_limitations("wrapping_outside_cell"):
+      return True # can wrap outside cell
+    else:
+      return None # no information
+   
+   
+  def remove_limitation(self,text):
+    limitations=self.get_limitations()
+    new_labels=[]
+    if not self.labels:
+      return new_labels
+    for label in self.labels:
+      text_matches_key=False
+      for key,message in zip(limitations.limitations,
+         limitations.messages):
+        if label==message and key==text:
+          text_matches_key=True
+          break
+      if not text_matches_key:
+        new_labels.append(label)
+    return new_labels
+
   def is_in_limitations(self,text):
     limitations=self.get_limitations()
     if not limitations:
@@ -288,14 +317,11 @@ class map_reader:
         if limitation_message:
           limitations.append(label.strip())
           limitation_messages.append(limitation_message.strip())
-    if limitations:
-      from libtbx import group_args
-      return group_args(
+    from libtbx import group_args
+    return group_args(
        limitations=limitations,
        messages=limitation_messages,
       )
-    else:
-      return None
 
   def get_limitation(self,label):
     return STANDARD_LIMITATIONS_DICT.get(label,None)
@@ -328,6 +354,11 @@ class map_reader:
       print(prefix + "Shift (grid units) to place origin at original position:",
           self.origin_shift_grid_units, file=out)
 
+    if hasattr(self,'wrapping'):
+      print(prefix + 
+       "Wrapping (using unit_cell_translations to get map values) allowed:",
+          self.wrapping(), file=out)
+      
 
     if hasattr(self,'_ncs_object') and self._ncs_object:
       print (prefix + "Associated ncs_object with",
@@ -730,7 +761,7 @@ def create_output_labels(
   for label in output_map_labels:
     if not label in final_labels:
       final_labels.append(label)
-  final_labels=final_labels[:10]
+  final_labels=select_output_labels(final_labels)
   return final_labels
 
 def select_output_labels(labels,max_labels=10):

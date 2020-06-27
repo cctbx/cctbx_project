@@ -197,6 +197,8 @@ def exercise_around_model():
   sequence = dm.get_sequence(data_seq)
   sequence_as_text = sequence[0].sequence
 
+  map_model_mgr=map_model_manager(map_manager=mm,ncs_object=ncs_obj)
+  mm=map_model_mgr.map_manager()
   mm.show_summary()
 
   box = cctbx.maptbx.box.extract_unique(
@@ -204,7 +206,6 @@ def exercise_around_model():
     resolution = 3,
     box_buffer = 1,
     sequence = sequence_as_text,
-    ncs_object = ncs_obj,
     wrapping    = False,
    )
 
@@ -248,9 +249,9 @@ def exercise_around_model():
   #
   import inspect
   r = inspect.getargspec(cctbx.maptbx.box.around_model.__init__)
-  assert r.args  ==  ['self', 'map_manager', 'model', 'cushion', 'wrapping', 'ncs_object', 'log'], r.args
+  assert r.args  ==  ['self', 'map_manager', 'model', 'cushion', 'wrapping', 'log'], r.args
   r = inspect.getargspec(cctbx.maptbx.box.with_bounds.__init__)
-  assert r.args  ==  ['self', 'map_manager', 'lower_bounds', 'upper_bounds', 'wrapping', 'model', 'ncs_object', 'log'], r.args
+  assert r.args  ==  ['self', 'map_manager', 'lower_bounds', 'upper_bounds', 'model', 'wrapping', 'log'], r.args
 
 if (__name__  ==  "__main__"):
   if libtbx.env.has_module('phenix'):

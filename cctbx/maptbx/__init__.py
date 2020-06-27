@@ -1724,7 +1724,6 @@ def loc_res(map,
       map_manager      = mm)
     mmm.box_all_maps_around_model_and_shift_origin(
       box_cushion      = 3,
-      wrapping         = mm.is_full_size(), # XXX NEED TO DECIDE WRAPPING
     )
 
     mmm.map_manager().create_mask_around_atoms(model = mmm.model(),

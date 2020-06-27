@@ -12,6 +12,8 @@ def test_01():
   data_pdb = os.path.join(data_dir, 'data',
                           'non_zero_origin_model.pdb')
 
+  mm=map_manager(data_ccp4)
+
   dm = DataManager(['miller_array', 'real_map', 'phil'])
   dm.set_overwrite(True)
   dm.process_real_map_file(data_ccp4)
@@ -214,7 +216,7 @@ def test_01():
   mm.set_original_origin_and_gridding(original_origin=(0,0,0))
   # Box it so it is not so easy
   from cctbx.maptbx.box import with_bounds
-  box=with_bounds(mm,wrapping=False,lower_bounds=(2,2,2),
+  box=with_bounds(mm,lower_bounds=(2,2,2),
    upper_bounds=(43,43,43))
   new_mm=box.map_manager()
   new_mm.find_map_symmetry(symmetry='d7',min_ncs_cc=0.8,

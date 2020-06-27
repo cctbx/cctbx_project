@@ -12,7 +12,7 @@ class with_bounds(object):
   """
   Extract map box using specified lower_bounds and upper_bounds
 
-  Creates new map_manager and modifies model and ncs_objects in place
+  Creates new map_manager and modifies model in place
 
   Input map_manager must have origin (working position) at (0, 0, 0)
   Input model coordinates must correspond to working position of map_manager
@@ -23,7 +23,7 @@ class with_bounds(object):
   Output versions of map_manager and model are in P1 and have origin at (0, 0, 0).
   Bounds refer to grid position in this box with origin at (0, 0, 0)
 
-  Wrapping must be specified on initialization
+  Wrapping: 
     wrapping = True means that grid points outside of the unit cell can be
     mapped inside with unit translations and box can effectively come
     from anywhere in space.
@@ -39,16 +39,14 @@ class with_bounds(object):
      map_manager,
      lower_bounds,
      upper_bounds,
-     wrapping,
      model = None,
-     ncs_object = None,
+     wrapping = None,
      log = sys.stdout):
     self.lower_bounds = lower_bounds
     self.upper_bounds = upper_bounds
-    self.wrapping = wrapping
     self._map_manager = map_manager
     self._model = model
-    self._ncs_object = ncs_object
+
 
     # safeguards
     assert lower_bounds is not None
@@ -58,18 +56,18 @@ class with_bounds(object):
     for i in range(3):
       assert list(upper_bounds)[i] > list(lower_bounds)[i]
 
-    assert isinstance(wrapping, bool)
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
+
     assert self._map_manager.map_data().accessor().origin()  ==  (0, 0, 0)
     if model is not None:
       assert isinstance(model, mmtbx.model.manager)
       assert map_manager.is_compatible_model(model)
-    if ncs_object:
-      assert isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
-    if wrapping:
-      assert map_manager.unit_cell_grid == map_manager.map_data().all()
 
-    self.basis_for_boxing_string = 'supplied bounds, wrapping = %s' %(wrapping)
+    self._force_wrapping = wrapping
+    if wrapping is None:
+      wrapping = self.map_manager().wrapping()
+    self.basis_for_boxing_string = 'supplied bounds, wrapping = %s' %(
+      wrapping)
 
     # These are lower and upper bounds of map with origin at (0, 0, 0)
     #   (not the original map)
@@ -92,7 +90,6 @@ class with_bounds(object):
     mmm = map_model_manager(
         map_manager = self.map_manager(),
         model = self.model(),
-        ncs_object = self.ncs_object(),
         )
     # Keep track of the gridding in this boxing.
     mmm.set_gridding_first(self.gridding_first)
@@ -106,7 +103,10 @@ class with_bounds(object):
     return self._map_manager
 
   def ncs_object(self):
-    return self._ncs_object
+    if self.map_manager():
+      return self.map_manager().ncs_object()
+    else:
+      return None
 
   def set_shifts_and_crystal_symmetry(self):
     '''
@@ -138,18 +138,20 @@ class with_bounds(object):
     self.crystal_symmetry = crystal.symmetry(
       unit_cell = box_uc, space_group = "P1")
 
+    self._warning_message = None
+
+  def warning_message(self):
+    return self._warning_message
+
   def apply_to_model_ncs_and_map(self):
     '''
-    Apply boxing to to self._model, self._ncs_object, self._map_manager
+    Apply boxing to to self._model,  self._map_manager
     so all are boxed
 
     '''
 
     if self._model:
       self._model = self.apply_to_model(self._model)
-
-    if self._ncs_object:
-      self._ncs_object = self.apply_to_ncs_object(self._ncs_object)
 
     self._map_manager = self.apply_to_map(self._map_manager)
 
@@ -158,6 +160,9 @@ class with_bounds(object):
     '''
      Apply boxing to a map_manager that is similar to the one used to generate
        this around_model object
+
+     Also apply to its ncs_object, if any
+
     '''
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
 
@@ -179,17 +184,26 @@ class with_bounds(object):
     bounds_info = get_bounds_of_valid_region(map_data,
       self.gridding_first,
       self.gridding_last)
-    if self.wrapping or bounds_info.inside_allowed_bounds:
+
+    # Allow override of wrapping
+    if self._force_wrapping is not None:
+      wrapping = self._force_wrapping
+    else:
+      wrapping = map_manager.wrapping()
+
+    if wrapping or bounds_info.inside_allowed_bounds:
       # Just copy everything
       map_box = maptbx.copy(map_data, self.gridding_first, self.gridding_last)
       # Note: map_box gridding is self.gridding_first to self.gridding_last
     elif not bounds_info.some_valid_points:
-      # Just copy everything and zero
+      # No valid points, Just copy everything and zero
       map_box = maptbx.copy(map_data, self.gridding_first, self.gridding_last)
       map_box = map_box * 0.
 
     else: # Need to copy and then zero outside of defined region
       map_box = copy_and_zero_map_outside_bounds(map_data, bounds_info)
+      self._warning_message="WARNING: boxed map is larger than original"+\
+         " and wrapping=False\n...setting unknown values to zero"
     #  Now reshape map_box to put origin at (0, 0, 0)
     map_box.reshape(flex.grid(self.box_all))
 
@@ -219,6 +233,13 @@ class with_bounds(object):
     #  NOTE: origin_shift_grid_units is required as bounds have changed
     new_map_manager = map_manager.customized_copy(map_data = map_box,
       origin_shift_grid_units = origin_shift_grid_units)
+    if self._force_wrapping:
+      # Set the wrapping of the new map
+      new_map_manager.set_wrapping(self._force_wrapping)
+      if self._force_wrapping and (not new_map_manager.is_full_size()):
+        self._warning_message = "WARNING: wrapping set to True, but "+\
+             "map is not full size"
+
     # Add the label
     new_map_manager.add_label(new_label)
     return new_map_manager
@@ -268,7 +289,7 @@ class around_model(with_bounds):
   """
   Extract map box around atomic model. Box is in P1 and has origin at (0, 0, 0).
 
-  Creates new map_manager and modifies model and ncs_objects in place
+  Creates new map_manager and modifies model in place
 
   Input map_manager must have origin (working position) at (0, 0, 0)
   Input model coordinates must correspond to working position of map_manager
@@ -279,7 +300,7 @@ class around_model(with_bounds):
   Output versions of map_manager and model are in P1 and have origin at (0, 0, 0).
   Bounds refer to grid position in this box with origin at (0, 0, 0)
 
-  Wrapping must be specified on initialization
+  Wrapping: 
     wrapping = True means that grid points outside of the unit cell can be
     mapped inside with unit translations and box can effectively come
     from anywhere in space.
@@ -292,24 +313,23 @@ class around_model(with_bounds):
 
 
   """
-  def __init__(self, map_manager, model, cushion, wrapping,
-      ncs_object = None,  # Get rid of this XXX
+  def __init__(self, map_manager, model, cushion,
+      wrapping = None,
       log = sys.stdout):
 
-    self.wrapping = wrapping
     self._map_manager = map_manager
     self._model = model
-    self._ncs_object = ncs_object
 
-    self.basis_for_boxing_string = 'using model, wrapping = %s'  %(wrapping)
+    self._force_wrapping = wrapping
+    if wrapping is None:
+      wrapping = self.map_manager().wrapping()
+    self.basis_for_boxing_string = 'using_model, wrapping = %s' %(
+      wrapping)
 
     # safeguards
-    assert isinstance(wrapping, bool)
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
     assert isinstance(model, mmtbx.model.manager)
     assert self._map_manager.map_data().accessor().origin()  ==  (0, 0, 0)
-    if ncs_object:
-      assert isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
 
     # Make sure working model and map_manager crystal_symmetry match
 
@@ -317,7 +337,7 @@ class around_model(with_bounds):
 
     assert cushion >=  0
 
-    if wrapping:  # map must be entire unit cell
+    if self.map_manager().wrapping():  # map must be entire unit cell
       assert map_manager.unit_cell_grid == map_manager.map_data().all()
 
     # NOTE: We are going to use crystal_symmetry and sites_frac based on
@@ -355,7 +375,7 @@ class extract_unique(with_bounds):
   around regions containing density.  Note: the map may be masked between
   nearby density regions so this map could have many discontinuities.
 
-  Creates new map_manager and modifies model and ncs_objects in place
+  Creates new map_manager and modifies model in place
 
   Input map_manager must have origin (working position) at (0, 0, 0)
   Input model coordinates must correspond to working position of map_manager
@@ -366,7 +386,7 @@ class extract_unique(with_bounds):
   Output versions of map_manager and model are in P1 and have origin at (0, 0, 0).
   Bounds refer to grid position in this box with origin at (0, 0, 0)
 
-  Wrapping must be specified on initialization
+  Wrapping:
     wrapping = True means that grid points outside of the unit cell can be
     mapped inside with unit translations and box can effectively come
     from anywhere in space.
@@ -380,8 +400,6 @@ class extract_unique(with_bounds):
   '''
 
   def __init__(self, map_manager,
-    wrapping,  # Must be defined True or False
-    ncs_object = None,
     model = None,
     target_ncs_au_model = None,
     regions_to_keep = None,
@@ -395,26 +413,28 @@ class extract_unique(with_bounds):
     box_buffer = 5,
     soft_mask_extract_unique = True,
     mask_expand_ratio = 1,
+    wrapping = None,
     log = None):
 
-    self.wrapping = wrapping
     self._map_manager = map_manager
     self._model = model
-    self._ncs_object = ncs_object
+
+    self._force_wrapping = wrapping
+    if wrapping is None:
+      wrapping = self.map_manager().wrapping()
+    self.basis_for_boxing_string = 'extract_unique, wrapping = %s' %(
+      wrapping)
 
     if log is None:
       log = null_out() # Print only if a log is supplied
 
-    assert isinstance(wrapping, bool)
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
     assert self._map_manager.map_data().accessor().origin()  ==  (0, 0, 0)
     assert resolution
-    if ncs_object:
-      assert isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
     if model is not None:
       assert isinstance(model, mmtbx.model.manager)
       assert map_manager.is_compatible_model(model)
-    if wrapping:  # map must be entire unit cell
+    if self.map_manager().wrapping():  # map must be entire unit cell
       assert map_manager.unit_cell_grid == map_manager.map_data().all()
 
     # Get crystal_symmetry
@@ -430,7 +450,7 @@ class extract_unique(with_bounds):
       segment_and_split_map(args,
         map_data = self._map_manager.map_data(),
         crystal_symmetry = self.crystal_symmetry,
-        ncs_obj = self._ncs_object,
+        ncs_obj = self._map_manager.ncs_object(),
         target_model = target_ncs_au_model,
         write_files = False,
         auto_sharpen = False,
@@ -470,7 +490,6 @@ class extract_unique(with_bounds):
     assert col(ncs_au_map_data.all()) == \
         col(upper_bounds)-col(lower_bounds)+col((1, 1, 1))
 
-    self.basis_for_boxing_string = 'extract unique, wrapping = %s' %(self.wrapping)
 
     self.gridding_first = lower_bounds
     self.gridding_last  = upper_bounds
@@ -497,7 +516,7 @@ class around_mask(with_bounds):
   Returns boxed version of map_manager supplied.  Object will contain
   the boxed version of mask as self.mask_as_map_manager.
 
-  Wrapping must be specified on initialization
+  Wrapping: 
     wrapping = True means that grid points outside of the unit cell can be
     mapped inside with unit translations and box can effectively come
     from anywhere in space.
@@ -509,30 +528,31 @@ class around_mask(with_bounds):
     region, those points are set to zero.
 
   """
-  def __init__(self, map_manager, wrapping,
+  def __init__(self, map_manager, 
      mask_as_map_manager,
      model = None,
-     ncs_object = None,
      box_cushion = 3,
+     wrapping = None,
      log = sys.stdout):
 
-    self.wrapping = wrapping
     self._map_manager = map_manager
     self._model = model
-    self._ncs_object = ncs_object
     assert map_manager.shift_cart()==mask_as_map_manager.shift_cart()
 
     # safeguards
-    assert isinstance(wrapping, bool)
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
     assert isinstance(mask_as_map_manager, iotbx.map_manager.map_manager)
     assert self._map_manager.map_data().accessor().origin()  ==  (0, 0, 0)
     assert map_manager.is_similar(mask_as_map_manager)
-    if wrapping:
+    if self.map_manager().wrapping():
       assert map_manager.unit_cell_grid == map_manager.map_data().all()
 
+    self._force_wrapping = wrapping
+    if wrapping is None:
+      wrapping = self.map_manager().wrapping()
     self.basis_for_boxing_string = 'around_mask bounds, wrapping = %s' %(
-        wrapping)
+      wrapping)
+
     # Get a connectivity object that marks all the connected regions in map
 
     from cctbx.maptbx.segment_and_split_map import get_co
@@ -586,7 +606,7 @@ class around_density(with_bounds):
 
   Input map_manager must have origin (working position) at (0, 0, 0)
 
-  Wrapping must be specified on initialization
+  Wrapping: 
     wrapping = True means that grid points outside of the unit cell can be
     mapped inside with unit translations and box can effectively come
     from anywhere in space.
@@ -598,29 +618,30 @@ class around_density(with_bounds):
     region, those points are set to zero.
 
   """
-  def __init__(self, map_manager, wrapping,
+  def __init__(self, map_manager, 
      threshold = 0.05,
      box_cushion = 3.,
      get_half_height_width = True,
      model = None,
-     ncs_object = None,
+     wrapping = None,
      log = sys.stdout):
 
-    self.wrapping = wrapping
     self._map_manager = map_manager
     self._model = model
-    self._ncs_object = ncs_object
 
     # safeguards
     assert threshold is not None
     assert box_cushion is not None
-    assert isinstance(wrapping, bool)
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
     assert self._map_manager.map_data().accessor().origin()  ==  (0, 0, 0)
-    if wrapping:
+    if self.map_manager().wrapping():
       assert map_manager.unit_cell_grid == map_manager.map_data().all()
 
-    self.basis_for_boxing_string = 'around_density, wrapping = %s' %(wrapping)
+    self._force_wrapping = wrapping
+    if wrapping is None:
+      wrapping = self.map_manager().wrapping()
+    self.basis_for_boxing_string = 'around_density, wrapping = %s' %(
+      wrapping)
 
 
     # Select box where data are positive (> threshold*max)
