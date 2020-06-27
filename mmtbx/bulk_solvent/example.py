@@ -185,7 +185,7 @@ def run_one(args):
     o = compute(pdbf=pdbf, mtzf=mtzf, log=log)
     log.flush()
     ### SKIP
-    if(o.fmodel_2013.r_work()>0.45 or
+    if(o.fmodel_2013.r_work()>0.30 or
        len(o.mm.regions.values())<1 or
        not o.mm.do_mosaic):
       log.close()
