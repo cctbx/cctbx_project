@@ -266,8 +266,8 @@ class map_reader:
       return True # can wrap outside cell
     else:
       return None # no information
-   
-   
+
+
   def remove_limitation(self,text):
     limitations=self.get_limitations()
     new_labels=[]
@@ -355,10 +355,10 @@ class map_reader:
           self.origin_shift_grid_units, file=out)
 
     if hasattr(self,'wrapping'):
-      print(prefix + 
+      print(prefix +
        "Wrapping (using unit_cell_translations to get map values) allowed:",
           self.wrapping(), file=out)
-      
+
 
     if hasattr(self,'_ncs_object') and self._ncs_object:
       print (prefix + "Associated ncs_object with",

@@ -23,7 +23,7 @@ class with_bounds(object):
   Output versions of map_manager and model are in P1 and have origin at (0, 0, 0).
   Bounds refer to grid position in this box with origin at (0, 0, 0)
 
-  Wrapping: 
+  Wrapping:
     wrapping = True means that grid points outside of the unit cell can be
     mapped inside with unit translations and box can effectively come
     from anywhere in space.
@@ -300,7 +300,7 @@ class around_model(with_bounds):
   Output versions of map_manager and model are in P1 and have origin at (0, 0, 0).
   Bounds refer to grid position in this box with origin at (0, 0, 0)
 
-  Wrapping: 
+  Wrapping:
     wrapping = True means that grid points outside of the unit cell can be
     mapped inside with unit translations and box can effectively come
     from anywhere in space.
@@ -516,7 +516,7 @@ class around_mask(with_bounds):
   Returns boxed version of map_manager supplied.  Object will contain
   the boxed version of mask as self.mask_as_map_manager.
 
-  Wrapping: 
+  Wrapping:
     wrapping = True means that grid points outside of the unit cell can be
     mapped inside with unit translations and box can effectively come
     from anywhere in space.
@@ -528,7 +528,7 @@ class around_mask(with_bounds):
     region, those points are set to zero.
 
   """
-  def __init__(self, map_manager, 
+  def __init__(self, map_manager,
      mask_as_map_manager,
      model = None,
      box_cushion = 3,
@@ -606,7 +606,7 @@ class around_density(with_bounds):
 
   Input map_manager must have origin (working position) at (0, 0, 0)
 
-  Wrapping: 
+  Wrapping:
     wrapping = True means that grid points outside of the unit cell can be
     mapped inside with unit translations and box can effectively come
     from anywhere in space.
@@ -618,7 +618,7 @@ class around_density(with_bounds):
     region, those points are set to zero.
 
   """
-  def __init__(self, map_manager, 
+  def __init__(self, map_manager,
      threshold = 0.05,
      box_cushion = 3.,
      get_half_height_width = True,

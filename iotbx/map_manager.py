@@ -26,7 +26,7 @@ class map_manager(map_reader, write_ccp4_map):
    original full unit cell and cell dimensions.  It writes out the map
    in the same place as it was read in.
 
-   Note on wrapping:  Wrapping means that the map value outside the map 
+   Note on wrapping:  Wrapping means that the map value outside the map
    boundaries can be obtained as the value inside the boundaries, (translated
    by some multiple of the unit cell translations.)  Normally crystallographic
    maps can be wrapped and cryo EM maps cannot.
@@ -353,24 +353,24 @@ class map_manager(map_reader, write_ccp4_map):
       print(m, file = self.log)
 
   def _choose_wrapping(self, wrapping):
-      ''' 
+      '''
        Choose wrapping based on input value and characteristics of the map
       '''
 
-      # Set wrapping. 
-      #  XXX Note: very small gridding (< 5 in full cell) will default to 
+      # Set wrapping.
+      #  XXX Note: very small gridding (< 5 in full cell) will default to
       #     wrapping=False
 
       if wrapping is not Auto and wrapping is not None:  # specified in call
-        self._wrapping = wrapping 
+        self._wrapping = wrapping
         if wrapping:
           assert self.is_full_size()  # must be full size for wrapping
-      elif (self.wrapping_from_input_file() is not None): 
+      elif (self.wrapping_from_input_file() is not None):
         self._wrapping = self.wrapping_from_input_file() # from input file
       elif not self.is_full_size():
         self._wrapping = False  # not full size, cannot be wrapped
       elif (wrapping is Auto) and (not self.is_consistent_with_wrapping()):
-        self._wrapping = False  # edges not similar or approximately constant 
+        self._wrapping = False  # edges not similar or approximately constant
       else:
         self._wrapping = True  # can be wrapped
 
@@ -925,7 +925,7 @@ class map_manager(map_reader, write_ccp4_map):
             are the same.
          origins of current and new maps are the same
 
-       NOTE: wrapping is normally copied from original map, but if new map is 
+       NOTE: wrapping is normally copied from original map, but if new map is
        not full size then wrapping is always set to False.
 
     '''
@@ -956,7 +956,7 @@ class map_manager(map_reader, write_ccp4_map):
       assert map_data.all()  ==  self.map_data().all() # bounds must be same
       origin_shift_grid_units = deepcopy(self.origin_shift_grid_units)
 
-    # Keep track of change in shift_cart 
+    # Keep track of change in shift_cart
     original_shift_cart=self.shift_cart()
 
     # Deepcopy this object and then set map_data and origin_shift_grid_units
@@ -975,7 +975,7 @@ class map_manager(map_reader, write_ccp4_map):
     # Set up _crystal_symmetry for the new object
     mm.set_crystal_symmetry_of_partial_map() # Required and must be last
 
-    # Keep track of change in shift_cart 
+    # Keep track of change in shift_cart
     delta_origin_shift_grid_units = tuple([new - orig for new, orig in zip (
         origin_shift_grid_units, self.origin_shift_grid_units)])
     delta_shift_cart = tuple([-x for x in self.grid_units_to_cart(
@@ -1024,14 +1024,14 @@ class map_manager(map_reader, write_ccp4_map):
 
       If it is not full size...no wrapping
       If very small...cannot tell
-      If has all zeroes (or some other constant) ... no wrapping 
+      If has all zeroes (or some other constant) ... no wrapping
       If edges (zero plane vs 1 plane) are not about as similar as
         two planes separated by one grid unit ... no wrapping
     '''
     if not self.is_full_size():
       return False
     if self.map_data().origin() != (0, 0, 0):
-      return False 
+      return False
 
     map_data = self.map_data()
     all = list(map_data.all())
@@ -1102,7 +1102,7 @@ class map_manager(map_reader, write_ccp4_map):
     if sd < relative_sd_tol * sd_overall:
       sd_on_edges_is_large = False
     else:
-      sd_on_edges_is_large = True 
+      sd_on_edges_is_large = True
 
     significant_cc = min(maximum_significant_cc,max(minimum_significant_cc,
         minimum_correlation_relative_to_control * abs(cc_negative_control) ))
@@ -1115,11 +1115,11 @@ class map_manager(map_reader, write_ccp4_map):
     if sd_on_edges_is_large and correlation_of_edges_is_high:
       return True
     else:
-      return False 
+      return False
 
- 
 
- 
+
+
   def is_similar(self, other = None):
     # Check to make sure origin, gridding and symmetry are similar
     self._warning_message=""

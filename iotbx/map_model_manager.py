@@ -359,7 +359,7 @@ class map_model_base(object):
       if not map_manager.is_full_size():
         self._warning_message = "WARNING: wrapping set to True, but "+\
              "map is not full size"
-  
+
   def warning_message(self):
     return self._warning_message
 
@@ -589,7 +589,7 @@ class map_model_manager(map_model_base):
     self._gridding_first = None
     self._gridding_last = None
     self._solvent_content = None
-    self._force_wrapping = wrapping 
+    self._force_wrapping = wrapping
     self._warning_message = None
 
     # If map_manager_1 and map_manager_2 are supplied but no map_manager,
@@ -610,7 +610,7 @@ class map_model_manager(map_model_base):
 
     # Overwrite wrapping if requested
     # Take wrapping from map_manager otherwise for all maps
-    
+
     if self._force_wrapping is None:
       wrapping = map_manager.wrapping()
     else:
@@ -622,7 +622,7 @@ class map_model_manager(map_model_base):
          extra_map_manager_list:
         if m:
           m.set_wrapping(wrapping)
-      
+
     # CHECKS
 
     # Make sure that map_manager is either already shifted to (0, 0, 0) or has

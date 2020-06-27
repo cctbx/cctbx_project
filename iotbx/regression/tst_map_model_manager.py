@@ -94,7 +94,7 @@ def test_01():
   new_mmm=map_model_manager(model=new_model,map_manager=mm)
   new_mmm.box_all_maps_around_model_and_shift_origin()
   new_mm=new_mmm.map_manager()
-   
+
   assert not new_mm.wrapping()
   assert not new_mm.is_consistent_with_wrapping()
 
