@@ -1042,10 +1042,11 @@ class map_manager(map_reader, write_ccp4_map):
     boundary_one_data = flex.double()
     boundary_data = flex.double()
 
-    if all[0] < 5:
-      return False # XXX very small unit_cell grid ... assume it is really a box
+    ok=True
 
+    unique_list=[]
     for i in (0, all[0]//2, 1+all[0]//2, all[0]-1):
+      if not i in unique_list: unique_list.append(i)
       new_map_data = maptbx.copy(map_data,
          tuple((i, 0, 0)),
          tuple((i, all[1], all[2])))
@@ -1058,8 +1059,11 @@ class map_manager(map_reader, write_ccp4_map):
         middle_plus_one_data.extend(new_map_data.as_1d())
       else:
         boundary_one_data.extend(new_map_data.as_1d())
-
+    if len(unique_list) != 4: ok=False
+     
+    unique_list=[]
     for j in (0, all[1]//2, 1+all[1]//2, all[1]-1):
+      if not j in unique_list: unique_list.append(j)
       new_map_data = maptbx.copy(map_data,
          tuple((0, j, 0)),
          tuple((all[0], j, all[2])))
@@ -1072,7 +1076,11 @@ class map_manager(map_reader, write_ccp4_map):
         middle_plus_one_data.extend(new_map_data.as_1d())
       else:
         boundary_one_data.extend(new_map_data.as_1d())
+    if len(unique_list) != 4: ok=False
+     
+    unique_list=[]
     for k in (0, all[2]//2, 1 + all[2]//2, all[2]-1):
+      if not k in unique_list: unique_list.append(k)
       new_map_data = maptbx.copy(map_data,
          tuple((0, 0, k)),
          tuple((all[0], all[1], k)))
@@ -1085,10 +1093,13 @@ class map_manager(map_reader, write_ccp4_map):
         middle_plus_one_data.extend(new_map_data.as_1d())
       else:
         boundary_one_data.extend(new_map_data.as_1d())
+    if len(unique_list) != 4: ok=False
+    if not ok:
+      return False # Can't tell but assume boxed
+
     mmm = boundary_data.min_max_mean()
     sd = boundary_data.standard_deviation_of_the_sample()
     sd_overall = map_data.as_1d().standard_deviation_of_the_sample()
-
     cc_boundary_zero_one= flex.linear_correlation(boundary_zero_data,
        boundary_one_data).coefficient()
     cc_negative_control = flex.linear_correlation(boundary_zero_data,
