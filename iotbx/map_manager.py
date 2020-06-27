@@ -1060,7 +1060,7 @@ class map_manager(map_reader, write_ccp4_map):
       else:
         boundary_one_data.extend(new_map_data.as_1d())
     if len(unique_list) != 4: ok=False
-     
+
     unique_list=[]
     for j in (0, all[1]//2, 1+all[1]//2, all[1]-1):
       if not j in unique_list: unique_list.append(j)
@@ -1077,7 +1077,7 @@ class map_manager(map_reader, write_ccp4_map):
       else:
         boundary_one_data.extend(new_map_data.as_1d())
     if len(unique_list) != 4: ok=False
-     
+
     unique_list=[]
     for k in (0, all[2]//2, 1 + all[2]//2, all[2]-1):
       if not k in unique_list: unique_list.append(k)
