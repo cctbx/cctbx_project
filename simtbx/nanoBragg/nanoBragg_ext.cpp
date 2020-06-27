@@ -1934,6 +1934,10 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       /* actual run of the spot simulation, CUDA version */
       .def("add_nanoBragg_spots_cuda",&nanoBragg::add_nanoBragg_spots_cuda,
        "actually run the spot simulation, going pixel-by-pixel over the region-of-interest, CUDA version")
+      .def("add_nanoBragg_spots_nvtx", & nanoBragg::add_nanoBragg_spots_nvtx,
+       "NVTX tags for add_nanoBragg_spots")
+      .def("add_nanoBragg_spots_cuda_nvtx", & nanoBragg::add_nanoBragg_spots_cuda_nvtx,
+       "NVTX tags for add_nanoBragg_spots_cuda")
 #endif
 
       /* actual run of the background simulation */

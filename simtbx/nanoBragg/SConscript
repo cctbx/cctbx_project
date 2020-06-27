@@ -27,6 +27,9 @@ if (env_etc.enable_cuda):
   Import("env_boost_python_ext")
   env_bpl = env_boost_python_ext.Clone()
 
+  # add NVIDIA Tools Extension NVTX
+  env_bpl.Prepend(NVCCFLAGS=["-lnvToolsExt"])
+
   # For now do all calculations in double precision to agree with CPU tests
   env_bpl.Prepend(NVCCFLAGS=["-DCUDAREAL=double"])
 
@@ -36,7 +39,10 @@ if (env_etc.enable_cuda):
   # Guard against possibility that *.cu code is not there
   if "nanoBraggCUDA.cu" in os.listdir(os.path.join(env_etc.simtbx_dist,"nanoBragg")):
     env_bpl.Prepend(NVCCFLAGS=["-DHAVE_NANOBRAGG_SPOTS_CUDA"])
-    cuda_src = ["nanoBraggCUDA.cu"]
+    cuda_src = [
+        "nanoBraggCUDA.cu",
+        "nanoBragg_nvtx.cu"
+    ]
   else:  cuda_src = []
 
   env_etc.include_registry.append(
@@ -49,6 +55,12 @@ if (env_etc.enable_cuda):
     target = "#lib/libsimtbx_nanoBraggCUDA",
     source = cuda_src + ["nanoBragg_cuda.cpp"])
   env.Prepend(LIBS=["simtbx_nanoBraggCUDA"])
+
+  # Add NVTX to build env -- needed to link the .so file
+  lib_path = os.environ["LD_LIBRARY_PATH"].split(":")
+  env.Prepend(LIBS=["nvToolsExt"],
+              LIBPATH=[pth for pth in lib_path if "cuda" in pth])
+
 
 env.Prepend(LIBS=["omptbx"])
 env.SharedLibrary(

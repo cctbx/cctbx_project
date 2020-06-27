@@ -576,6 +576,8 @@ class nanoBragg {
     void add_nanoBragg_spots_nks(boost_adaptbx::python::streambuf &);
 #ifdef NANOBRAGG_HAVE_CUDA
     void add_nanoBragg_spots_cuda();
+    void add_nanoBragg_spots_nvtx();
+    void add_nanoBragg_spots_cuda_nvtx();
 #endif
 
     /* member function for triggering background simulation */
