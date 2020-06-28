@@ -578,6 +578,9 @@ class nanoBragg {
     void add_nanoBragg_spots_cuda();
     void add_nanoBragg_spots_nvtx();
     void add_nanoBragg_spots_cuda_nvtx();
+    void add_noise_nvtx();
+    void to_smv_format_nvtx(std::string const & fileout, double intfile_scale,
+                            int debug_x, int debug_y);
 #endif
 
     /* member function for triggering background simulation */

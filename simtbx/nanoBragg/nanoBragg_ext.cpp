@@ -1932,12 +1932,29 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
                      "Which device to simulate on. ")
 
       /* actual run of the spot simulation, CUDA version */
-      .def("add_nanoBragg_spots_cuda",&nanoBragg::add_nanoBragg_spots_cuda,
-       "actually run the spot simulation, going pixel-by-pixel over the region-of-interest, CUDA version")
-      .def("add_nanoBragg_spots_nvtx", & nanoBragg::add_nanoBragg_spots_nvtx,
-       "NVTX tags for add_nanoBragg_spots")
-      .def("add_nanoBragg_spots_cuda_nvtx", & nanoBragg::add_nanoBragg_spots_cuda_nvtx,
-       "NVTX tags for add_nanoBragg_spots_cuda")
+      .def("add_nanoBragg_spots_cuda",
+           & nanoBragg::add_nanoBragg_spots_cuda,
+           "actually run the spot simulation, going pixel-by-pixel over the region-of-interest, CUDA version")
+
+      .def("add_nanoBragg_spots_nvtx",
+           & nanoBragg::add_nanoBragg_spots_nvtx,
+           "NVTX tags for add_nanoBragg_spots")
+
+      .def("add_nanoBragg_spots_cuda_nvtx",
+           & nanoBragg::add_nanoBragg_spots_cuda_nvtx,
+           "NVTX tags for add_nanoBragg_spots_cuda")
+
+      .def("add_noise_nvtx",
+           & nanoBragg::add_noise_nvtx,
+           "NVTX tags for add_noise")
+
+      .def("to_smv_format_nvtx",
+           & nanoBragg::to_smv_format_nvtx,
+           (arg_("fileout"),
+            arg_("intfile_scale")=0,
+            arg_("debug_x")=-1,
+            arg("debug_y")=-1),
+           "NVTX tags for to_smv_format")
 #endif
 
       /* actual run of the background simulation */
