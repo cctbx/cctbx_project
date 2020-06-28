@@ -34,7 +34,7 @@ def simulate_shot(distance, shape=shapetype.Tophat, cuda=True, seed=None,
     SIM.progress_meter = True
 
     SIM.wavelength_A = 1.2
-    SIM.flux         = 1e13
+    SIM.flux         = 1e12
     SIM.beamsize_mm  = 0.005
     SIM.polarization = 1
 
@@ -92,8 +92,13 @@ def load_smv(frame_idx, frame_prefix="frame"):
     return data
 
 
-def render_shot(img, frame_idx, img_min, img_max, frame_prefix="frame"):
-    imshow(img, norm=LogNorm(vmin=img_min, vmax=img_max))
+
+def render_shot(img, frame_idx, img_min, img_max, log_scale=True,
+                frame_prefix="frame"):
+    if log_scale:
+        imshow(img, norm=LogNorm(vmin=img_min, vmax=img_max))
+    else:
+        imshow(img, vmin=img_min, vmax=img_max)
     colorbar()
     savefig(f"{frame_prefix}_{frame_idx:03}.png")
     close("all")
@@ -106,16 +111,19 @@ if __name__ == "__main__":
 
     n_step    = 480
     dist_min  = 100
-    dist_max  = 2000
+    dist_max  = 200
     dist_step = lambda i: dist_min + i*(dist_max-dist_min)/n_step
 
     for i in range(n_step):
 
         sim = simulate_shot(dist_step(i))
-        save_smv(sim, i, frame_prefix=path_prefix)
+        # save_smv(sim, i, frame_prefix=path_prefix)
 
         raw_pixels = sim.raw_pixels.as_numpy_array()
-        smv_pixels = load_smv(i, frame_prefix=path_prefix)
+        # smv_pixels = load_smv(i, frame_prefix=path_prefix)
 
-        render_shot(raw_pixels, i,  50,   300, frame_prefix=path_prefix + "_raw")
-        render_shot(smv_pixels, i, 1e3, 5.5e4, frame_prefix=path_prefix + "_smv")
+        render_shot(raw_pixels, i, 40, 140, frame_prefix=path_prefix + "_raw",
+                    log_scale=False)
+        render_shot(raw_pixels, i, 40, 140, frame_prefix=path_prefix + "_log",
+                    log_scale=True)
+        # render_shot(smv_pixels, i, 1e3, 5.5e4, frame_prefix=path_prefix + "_smv")
