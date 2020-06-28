@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from libtbx.utils import to_str
+from libtbx.utils import to_str, null_out
 from libtbx import group_args, Auto
 from libtbx.test_utils import approx_equal
 import sys
@@ -331,7 +331,7 @@ class map_manager(map_reader, write_ccp4_map):
        Set output log file
     '''
     if log is None:
-      self.log = sys.stdout
+      self.log = null_out() 
     else:
       self.log = log
 

@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 
 from iotbx.data_manager import DataManagerBase
 from libtbx import Auto
+import os
 
 # =============================================================================
 class NcsSpecDataManager(DataManagerBase):
@@ -43,11 +44,32 @@ class NcsSpecDataManager(DataManagerBase):
       filename += '.ncs_spec'
     return filename
 
-  def write_ncs_spec_file(self, ncs_str, filename=Auto, overwrite=Auto):
-    if filename is Auto:
+  def write_ncs_spec_file(self, ncs_object, filename=Auto, overwrite=Auto):
+
+   # default options
+    if (filename is Auto):
       filename = self.get_default_output_ncs_spec_filename()
-    self._write_text(NcsSpecDataManager.datatype, ncs_str,
+
+    if (overwrite is Auto):
+      overwrite = self._overwrite
+
+    # check arguments
+    if (os.path.isfile(filename) and (not overwrite)):
+      raise Sorry('%s already exists and overwrite is set to %s.' %
+                  (filename, overwrite))
+
+    ncs_str = ncs_object.as_ncs_spec_string() 
+    try:
+      self._write_text(NcsSpecDataManager.datatype, ncs_str,
                      filename=filename, overwrite=overwrite)
+    except IOError as err:
+      raise Sorry('There was an error with writing %s.\n%s' %
+                  (filename, err))
+
+    self._output_files.append(filename)
+    self._output_types.append(NcsSpecDataManager.datatype)
+
+
 
 # =============================================================================
 # end

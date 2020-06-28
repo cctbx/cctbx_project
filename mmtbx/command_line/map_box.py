@@ -1163,8 +1163,7 @@ def run(args,
         filename =  "%s_box.ncs_spec"%output_prefix
       else:
         filename =  "%s.ncs_spec"%params.output_file_name_prefix
-      dm.write_ncs_spec_file(
-         ncs_object.as_ncs_spec_string(), filename = filename)
+      dm.write_ncs_spec_file(ncs_object, filename = filename)
       print("\nWriting symmetry to %s" %( filename), file = log)
 
     # Write ccp4 map.
