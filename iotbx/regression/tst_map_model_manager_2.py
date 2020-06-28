@@ -193,6 +193,29 @@ def exercise(file_name, out = sys.stdout):
     )
 
 
+  # make a map_model_manager with lots of maps and model and ncs and run
+  # with wrapping and ignore_symmetry_conflicts on
+  from mmtbx.ncs.ncs import ncs
+  ncs_object=ncs()
+  ncs_object.set_unit_ncs()
+  m.set_ncs_object(ncs_object.deep_copy())
+  mam2 = map_model_manager(
+          map_manager =  m.deep_copy(),
+          ncs_object =  ncs_object.deep_copy(),
+          map_manager_1 =  m.deep_copy(),
+          map_manager_2 =  m.deep_copy(),
+          extra_map_manager_list =  [m.deep_copy(),m.deep_copy()],
+          extra_map_manager_id_list = ["extra_1","extra_2"],
+          model     = model.deep_copy(),
+          ignore_symmetry_conflicts = True,
+          wrapping = m.wrapping(),
+    )
+  assert mam.map_manager().is_similar(mam2.map_manager())
+  assert mam.map_manager().is_similar(mam2.map_manager_1())
+  assert mam.map_manager().is_similar(mam2.extra_map_manager_list()[1])
+  assert mam.model().shift_cart() == mam2.model().shift_cart()
+
+
 
   print ("OK")
 

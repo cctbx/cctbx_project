@@ -579,6 +579,7 @@ class map_model_manager(map_model_base):
                extra_map_manager_list = None,  # replaces map_data_list
                extra_map_manager_id_list = None,  # string id's for map_managers
                ncs_object       = None,   # Overwrite ncs_objects
+               ignore_symmetry_conflicts = None,  # allow mismatch of symmetry
                wrapping         = None):  # Overwrite wrapping for all maps
     self._map_dict={}
     self._model = model
@@ -590,6 +591,7 @@ class map_model_manager(map_model_base):
     self._gridding_last = None
     self._solvent_content = None
     self._force_wrapping = wrapping
+    self._ignore_symmetry_conflicts = wrapping
     self._warning_message = None
 
     # If map_manager_1 and map_manager_2 are supplied but no map_manager,
@@ -615,6 +617,8 @@ class map_model_manager(map_model_base):
       wrapping = map_manager.wrapping()
     else:
       wrapping = self._force_wrapping
+      if wrapping and (not map_manager.is_full_size()):
+        raise Sorry("You cannot use wrapping=True if the map is not full size")
 
     if not extra_map_manager_list:
         extra_map_manager_list=[]
@@ -622,6 +626,24 @@ class map_model_manager(map_model_base):
          extra_map_manager_list:
         if m:
           m.set_wrapping(wrapping)
+
+    # if ignore_symmetry_conflicts, take all symmetry information from 
+    #  map_manager and apply it to everything
+    if ignore_symmetry_conflicts:
+      if ncs_object:
+        ncs_object.set_shift_cart(map_manager.shift_cart())
+      map_manager.set_model_symmetries_and_shift_cart_to_match_map(model)
+      if map_manager_1:
+        map_manager_1 = map_manager.customized_copy(
+          map_data=map_manager_1.map_data())
+      if map_manager_2:
+        map_manager_2 = map_manager.customized_copy(
+          map_data=map_manager_2.map_data())
+      new_extra_map_manager_list = []
+      for m in extra_map_manager_list:
+        new_extra_map_manager_list.append(map_manager.customized_copy(
+          map_data=m.map_data()))
+      extra_map_manager_list = new_extra_map_manager_list
 
     # CHECKS
 
@@ -659,7 +681,10 @@ class map_model_manager(map_model_base):
          extra_map_manager_list:
       if m:
         if not map_manager.is_similar(m):
-          raise AssertionError(map_manager.warning_message())
+          raise Sorry("Map manager '%s' is not similar to '%s': %s" %(
+           m.input_file_name,map_manager.input_file_name,
+            map_manager.warning_message())+
+            "\nTry 'ignore_symmetry_conflicts=True'")
 
     # READY
 
@@ -808,6 +833,7 @@ class map_model_manager(map_model_base):
 
     if box.warning_message():
       print("%s" %(box.warning_message()), file = log)
+      self._warning_message = box.warning_message()
     self._map_dict[map_manager_info.map_manager_id] = box.map_manager()
     self._model = box.model()
     self._shift_cart = box.map_manager().shift_cart()
@@ -820,6 +846,12 @@ class map_model_manager(map_model_base):
     self._crystal_symmetry = self._model.crystal_symmetry()
     assert self._crystal_symmetry.is_similar_symmetry(
       self._map_dict[map_manager_info.map_manager_id].crystal_symmetry())
+
+  def extra_map_manager_id_list(self):
+    '''
+     Return list of ids for extra_map_managers
+    '''
+    return self._extra_map_manager_id_list
 
   def extra_map_manager_list(self):
      '''
@@ -1258,7 +1290,11 @@ class match_map_model_ncs:
         self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(
           self.model())  # modifies self.model() in place
       else:
-         raise AssertionError(self.map_manager().warning_message())
+          raise Sorry("Model is not similar to '%s': %s" %(
+           self.map_manager().input_file_name,
+            self.map_manager().warning_message())+
+            "\nTry 'ignore_symmetry_conflicts=True'")
+
 
   def add_model(self, model = None, set_model_log_to_null = True,
      log = sys.stdout):

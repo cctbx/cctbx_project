@@ -968,8 +968,8 @@ def run(args,
   if params.output_unit_cell and \
      tuple(params.output_unit_cell)!= tuple(ccp4_map.unit_cell().parameters()):
     ccp4_map, model = change_output_unit_cell(params = params,
-     ccp4_map = ccp4_map,
-     model = model)
+       ccp4_map = ccp4_map,
+       model = model)
 
 
   # Decide if we are going to box at the beginning:

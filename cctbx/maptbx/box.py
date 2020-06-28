@@ -199,6 +199,8 @@ class with_bounds(object):
       # No valid points, Just copy everything and zero
       map_box = maptbx.copy(map_data, self.gridding_first, self.gridding_last)
       map_box = map_box * 0.
+      self._warning_message="WARNING: boxed map is entirely outside map"+\
+         " and wrapping=False\n...setting all values to zero"
 
     else: # Need to copy and then zero outside of defined region
       map_box = copy_and_zero_map_outside_bounds(map_data, bounds_info)

@@ -425,6 +425,8 @@ class map_manager(map_reader, write_ccp4_map):
         self.origin_shift_grid_units: shift to place origin in original location
         self._unit_cell_crystal_symmetry: dimensions of full unit cell
         self.unit_cell_grid: grid units of full unit cell
+
+       At end, recheck wrapping
     '''
 
     if original_origin:
@@ -471,6 +473,9 @@ class map_manager(map_reader, write_ccp4_map):
        new_crystal_symmetry = self.crystal_symmetry()
        assert original_crystal_symmetry.is_similar_symmetry(
          new_crystal_symmetry)
+
+       if self.wrapping() and not self.is_full_size():
+         self.set_wrapping(False)
 
   def is_mask(self):
     ''' Is this a mask '''
@@ -1016,15 +1021,16 @@ class map_manager(map_reader, write_ccp4_map):
       return False
 
   def is_consistent_with_wrapping(self, relative_sd_tol = 0.01,
-     minimum_correlation_relative_to_control = 3,
-     minimum_significant_cc=0.2,maximum_significant_cc=0.4):
+     minimum_control_signal = 0.5,
+     minimum_relative_cc = 0.5):
     '''
       Report if this map looks like it is a crystallographic map and can be
       wrapped
 
       If it is not full size...no wrapping
+      If origin is not at zero...no wrapping
       If very small...cannot tell
-      If has all zeroes (or some other constant) ... no wrapping
+      If has all zeroes (or some other constant on edges) ... no wrapping
       If edges (zero plane vs 1 plane) are not about as similar as
         two planes separated by one grid unit ... no wrapping
     '''
@@ -1042,6 +1048,7 @@ class map_manager(map_reader, write_ccp4_map):
     boundary_one_data = flex.double()
     boundary_data = flex.double()
 
+    # Keep track of whether the planes of density are sampled properly
     ok=True
 
     unique_list=[]
@@ -1106,30 +1113,33 @@ class map_manager(map_reader, write_ccp4_map):
        middle_data).coefficient()
     cc_positive_control= flex.linear_correlation(middle_data,
       middle_plus_one_data).coefficient()
-    # Expect that negative controls about zero, positive control high,
-    #  then cc_boundary_zero_one like negative_control means boundaries differ
-    #  then cc_boundary_zero_one like positive means boundaries similar
 
+
+    # Expect boundaries all about zero for cryo-EM map, non-zero for x-ray
     if sd < relative_sd_tol * sd_overall:
       sd_on_edges_is_large = False
     else:
       sd_on_edges_is_large = True
 
-    significant_cc = min(maximum_significant_cc,max(minimum_significant_cc,
-        minimum_correlation_relative_to_control * abs(cc_negative_control) ))
-    if (cc_positive_control > significant_cc) and (
-        cc_boundary_zero_one > significant_cc) and (
-        abs(cc_positive_control-cc_boundary_zero_one) < significant_cc):
-      correlation_of_edges_is_high = True
+    # Expect that negative controls about zero, positive control high near 1,
+    #  then cc_boundary_zero_one like negative_control means planes at
+    #  boundaries differ, and cc_boundary_zero_one like positive means 
+    #  boundaries similar (as in wrapped)
+
+    if (cc_positive_control - cc_negative_control) < minimum_control_signal:
+      correlation_of_edges_is_high = None
     else:
-      correlation_of_edges_is_high = False
+      relative_cc = (cc_boundary_zero_one - cc_negative_control)/(
+         cc_positive_control - cc_negative_control)
+      if relative_cc > minimum_relative_cc:
+        correlation_of_edges_is_high = True
+      else:
+        correlation_of_edges_is_high = False
+
     if sd_on_edges_is_large and correlation_of_edges_is_high:
-      return True
-    else:
+      return True  # Looks like it is wrapped
+    else: #  (not sd_on_edges_is_large) or (not correlation_of_edges_is_high):
       return False
-
-
-
 
   def is_similar(self, other = None):
     # Check to make sure origin, gridding and symmetry are similar
@@ -1173,11 +1183,12 @@ class map_manager(map_reader, write_ccp4_map):
       return False
 
     # Make sure ncs objects are similar if both have one
-    if self.ncs_object() is not None:
+    if (self.ncs_object() is not None) and (
+        other.ncs_object() is not None):
       if not other.ncs_object().is_similar_ncs_object(self.ncs_object()):
         text1=self.ncs_object().as_ncs_spec_string()
         text2=other.ncs_object().as_ncs_spec_string()
-        self._warning_message="NCS object:\n%s\n does not match other:\n%s" %(
+        self._warning_message="NCS objects do not match:\n%s\n does not match other:\n%s" %(
           text1,text2)
         return False
 
@@ -1229,11 +1240,13 @@ class map_manager(map_reader, write_ccp4_map):
     if self.is_compatible_model(model):
       return # already fine
 
-    # Set original crystal symmetry to match map unit_cell_crystal_symmetry
-    model.set_unit_cell_crystal_symmetry(self.unit_cell_crystal_symmetry())
 
-    # Set crystal_symmetry to match map
+    # Set crystal_symmetry to match map. This changes the xray_structure.
     model.set_crystal_symmetry(self.crystal_symmetry())
+
+    # Set original crystal symmetry to match map unit_cell_crystal_symmetry
+    # This just changes a specification in the map, nothing else changes
+    model.set_unit_cell_crystal_symmetry(self.unit_cell_crystal_symmetry())
 
     # Set shift_cart (shift since readin) to match shift_cart for
     #   map (shift of origin is opposite of shift applied)
@@ -1282,15 +1295,13 @@ class map_manager(map_reader, write_ccp4_map):
     ok=None
     text=""
 
-    model_uc=None
     model_uc=model.unit_cell_crystal_symmetry()
     model_sym=model.crystal_symmetry()
     map_uc=self.unit_cell_crystal_symmetry()
     map_sym=self.crystal_symmetry()
 
     text_model_uc="not defined"
-    if model_uc:
-      text_model_uc=str(model_uc).replace("\n"," ")
+    text_model_uc=str(model_uc).replace("\n"," ")
     text_model=str(model_sym).replace("\n"," ")
     text_map_uc=str(map_uc).replace("\n"," ")
     text_map=str(map_sym).replace("\n"," ")
@@ -1315,14 +1326,22 @@ class map_manager(map_reader, write_ccp4_map):
           "do not "+\
           "match map unit_cell (%s) and current (%s) symmetry" %(
            text_map_uc,text_map)
-    elif (not model_sym.is_similar_symmetry(map_uc)) and (not
+    elif model_sym and (not model_sym.is_similar_symmetry(map_uc)) and (not
               model_sym.is_similar_symmetry(map_sym)):
        ok=False# model does not match either map symmetry
        text="Model current (%s) crystal_symmetry" %(
           text_model)+\
-          "does not "+\
+          " does not "+\
           "match map unit_cell (%s) or current (%s) symmetry" %(
            text_map_uc,text_map)
+
+    elif require_match_unit_cell_crystal_symmetry and (
+        not model_sym) and (not model_uc):
+       ok=False # model does not have any symmetry so it does not match
+       text="Model has no symmetry and cannot match any map"
+    elif (not model_sym) and (not model_uc):
+       ok=True # model does not have any symmetry so anything is ok
+       text="Model has no symmetry and can match any map symmetry"
 
     else:  # match
 
