@@ -6,7 +6,7 @@ from simtbx.nanoBragg import nanoBragg, shapetype
 import numpy as np
 from dxtbx.model.crystal import CrystalFactory
 from scitbx.matrix import sqr
-def main(shape=shapetype.Tophat, cuda=False, seed=None):
+def main(shape=shapetype.Tophat, cuda=False, seed=None, new_cuda=False):
     SIM = nanoBragg(detpixels_slowfast=(2048,2048), pixel_size_mm=0.05,
                     verbose=10, oversample=0)
     # Defaults 
@@ -42,23 +42,28 @@ def main(shape=shapetype.Tophat, cuda=False, seed=None):
     if cuda:
         # NOTE: uncomment the following 4 lines and comment the add_nanoBragg_spots_cuda() call
         # in order to use current dev-mode code!
-        #SIM.allocate_cuda()
-        #SIM.add_nanoBragg_spots_cuda_update()
-        #SIM.get_raw_pixels_cuda()
-        #SIM.deallocate_cuda()
-        SIM.add_nanoBragg_spots_cuda_nvtx()
+        if new_cuda:
+            # TODO: `allocate_cuda` doesn't seem to be defined anywhere
+            SIM.allocate_cuda()
+            SIM.add_nanoBragg_spots_cuda_update()
+            SIM.get_raw_pixels_cuda()
+            SIM.deallocate_cuda()
+        else:
+            SIM.add_nanoBragg_spots_cuda_nvtx()
     else:
         SIM.add_nanoBragg_spots_nvtx()
-    SIM.add_noise()
+    SIM.add_noise_nvtx()
     #SIM.raw_pixels += 
-    SIM.to_smv_format(fileout="intimage_001.img")
+    SIM.to_smv_format_nvtx(fileout="intimage_001.img")
     img = SIM.raw_pixels.as_numpy_array()
     return img
 
 
-img = main(cuda=True)
+img = main(cuda=True, new_cuda=False)
 # Call twice -- to give cudaMalloc a chance
-img = main(cuda=True)
+img = main(cuda=True, new_cuda=False)
+# TODO: new_cuda is broken
+#img = main(cuda=True, new_cuda=True)
 img = main(cuda=False)
 
 #import pylab as plt
