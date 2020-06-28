@@ -54,7 +54,7 @@ class thread_with_callback_and_wait(threading.Thread):
     return result
 
   def resume(self, last_iteration=False):
-    if (self.isAlive()):
+    if (self.is_alive()):
       self._queue.put(last_iteration)
     return self
 

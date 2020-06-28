@@ -1238,7 +1238,7 @@ class map_manager(map_reader, write_ccp4_map):
 
       NOTE: This does not shift the coordinates in model.  It is used
       to fix crystal symmetry and set shift_cart, not to actually shift
-      a model.  
+      a model.
       For shifting a model, use:
          model.shift_model_and_set_crystal_symmetry(shift_cart=shift_cart)
     '''

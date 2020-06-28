@@ -144,7 +144,7 @@ def exercise(file_name, out = sys.stdout):
   new_mm_1=rm.map_manager()
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
     ((24, 20, 20),(24, 20, 20)))
- 
+
 
 
   print ("OK")

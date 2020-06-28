@@ -398,7 +398,7 @@ class map_model_base(object):
     if selection_string:
       sel = model.selection(selection_string)
       model = model.select(sel)
-    
+
     # Make box around model and apply it to model, first map
     box = around_model(
       map_manager = self._map_dict[map_manager_info.map_manager_id],
@@ -662,7 +662,7 @@ class map_model_manager(map_model_base):
                ignore_symmetry_conflicts = None,  # allow mismatch of symmetry
                wrapping         = None):  # Overwrite wrapping for all maps
     self._map_dict={}
-    self._model_dict = {} 
+    self._model_dict = {}
     self._shift_cart = None
     self._original_origin_grid_units = None
     self._original_origin_cart = None
@@ -716,7 +716,7 @@ class map_model_manager(map_model_base):
       if extra_model_list:
         for m in extra_model_list:
           map_manager.set_model_symmetries_and_shift_cart_to_match_map(m)
-          
+
       if map_manager_1:
         map_manager_1 = map_manager.customized_copy(
           map_data=map_manager_1.map_data())
@@ -804,7 +804,7 @@ class map_model_manager(map_model_base):
 
     # map_manager, model, ncs_object know about shift
     map_manager = mmmn.map_manager()
-    if model: 
+    if model:
        assert mmmn.model() is not None # make sure we got it
     model = mmmn.model()  # this model knows about shift
 
@@ -899,8 +899,8 @@ class map_model_manager(map_model_base):
     '''
       map_dict has one special key with interpretation:
         model:  standard model
-      All other keys are any strings and are assumed to correspond to other 
-      models. 
+      All other keys are any strings and are assumed to correspond to other
+      models.
     '''
 
     self._model_dict={}
