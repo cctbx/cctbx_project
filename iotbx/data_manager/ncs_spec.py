@@ -58,7 +58,7 @@ class NcsSpecDataManager(DataManagerBase):
       raise Sorry('%s already exists and overwrite is set to %s.' %
                   (filename, overwrite))
 
-    ncs_str = ncs_object.as_ncs_spec_string() 
+    ncs_str = ncs_object.as_ncs_spec_string()
     try:
       self._write_text(NcsSpecDataManager.datatype, ncs_str,
                      filename=filename, overwrite=overwrite)

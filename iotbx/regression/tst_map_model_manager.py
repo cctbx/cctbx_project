@@ -90,13 +90,24 @@ def test_01():
 
   # now box it
   sel=mmm.model().selection("resseq 221:221")
-  new_model=mmm.model().select(sel)
-  new_mmm=map_model_manager(model=new_model,map_manager=mm)
+  new_model=mmm.model().deep_copy().select(sel)
+  new_mmm=map_model_manager(model=new_model,map_manager=mm.deep_copy())
   new_mmm.box_all_maps_around_model_and_shift_origin()
   new_mm=new_mmm.map_manager()
 
   assert not new_mm.wrapping()
   assert not new_mm.is_consistent_with_wrapping()
+
+  # now box it with selection
+  new_mmm_1=map_model_manager(model=mmm.model().deep_copy(),map_manager=mm.deep_copy())
+  new_mmm_1.box_all_maps_around_model_and_shift_origin(
+      selection_string="resseq 221:221")
+  new_mm_1=new_mmm_1.map_manager()
+
+  assert not new_mm_1.wrapping()
+  assert not new_mm_1.is_consistent_with_wrapping()
+  assert new_mm_1.map_data().all()== new_mm.map_data().all()
+
 
 # ----------------------------------------------------------------------------
 

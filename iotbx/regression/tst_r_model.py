@@ -50,7 +50,7 @@ def exercise(file_name, out = sys.stdout):
   print (r_model.map_manager().ncs_object())
   all_map_names=r_model.map_manager_id_list()
   for id in all_map_names:
-    print("Map_manager %s: %s " %(id,r_model.get_map_manager(id)))
+    print("Map_manager %s: %s " %(id,r_model.get_map_manager_by_id(id)))
 
   # Make a deep_copy
   dc=r_model.deep_copy()
@@ -58,11 +58,12 @@ def exercise(file_name, out = sys.stdout):
   assert r_model.map_manager().map_data()[0]==new_r_model.map_manager().map_data()[0]
 
   # Make a customized_copy
-  new_r_model=r_model.customized_copy(model=r_model.model())
+  new_r_model=r_model.customized_copy(model_dict={'model':r_model.model()})
   assert new_r_model.model() is r_model.model()
   assert not new_r_model.map_dict() is r_model.map_dict()
 
-  new_r_model=r_model.customized_copy(model=r_model.model(),map_dict=r_model.map_dict())
+  new_r_model=r_model.customized_copy(model_dict={'model':r_model.model()},
+    map_dict=r_model.map_dict())
   assert new_r_model.model() is r_model.model()
   assert new_r_model.map_dict() is r_model.map_dict()
   print (r_model)
@@ -73,23 +74,23 @@ def exercise(file_name, out = sys.stdout):
 
   # Create a soft mask around model
   new_r_model.create_mask_around_atoms(mask_atoms_atom_radius=8,soft_mask=True)
-  s = (new_r_model.get_map_manager('mask').map_data() > 0.5)
+  s = (new_r_model.get_map_manager_by_id('mask').map_data() > 0.5)
   assert approx_equal( (s.count(True),s.size()), (339,2048))
 
   new_r_model.create_mask_around_atoms(soft_mask=False, mask_atoms_atom_radius=8)
-  s = (new_r_model.get_map_manager('mask').map_data() > 0.5)
+  s = (new_r_model.get_map_manager_by_id('mask').map_data() > 0.5)
   assert approx_equal( (s.count(True),s.size()), (35,2048))
 
   # Mask around edges
   r_model=dc.deep_copy()
   r_model.create_mask_around_edges()
-  s = (r_model.get_map_manager('mask').map_data() > 0.5)
+  s = (r_model.get_map_manager_by_id('mask').map_data() > 0.5)
   assert approx_equal( (s.count(True),s.size()), (1176,2048))
 
   # Mask around density
   r_model=dc.deep_copy()
   r_model.create_mask_around_density(soft_mask=False)
-  s = (r_model.get_map_manager('mask').map_data() > 0.5)
+  s = (r_model.get_map_manager_by_id('mask').map_data() > 0.5)
   assert approx_equal( (s.count(True),s.size()), (856,2048))
 
   # Apply the mask to one map
@@ -123,13 +124,27 @@ def exercise(file_name, out = sys.stdout):
   s = (r_model.map_manager().map_data() != 0.)
   assert approx_equal( (s.count(True),s.size()), (2048,2048))
   assert approx_equal ((r_model.map_manager().map_data()[2047]),-0.0759598612785)
-  s = (r_model.get_map_manager('mask').map_data() >  0).as_1d()
+  s = (r_model.get_map_manager_by_id('mask').map_data() >  0).as_1d()
   inside = r_model.map_manager().map_data().as_1d().select(s)
   outside = r_model.map_manager().map_data().as_1d().select(~s)
   assert approx_equal ((inside.min_max_mean().max,outside.min_max_mean().max),
    (0.317014873028,-0.0159585822888))
 
 
+  # Make a new map and model, get r_model and box with selection
+  mmm=map_model_manager()
+  mmm.generate_map(box_buffer=0)
+  rm=mmm.as_r_model()
+  new_mm_1=rm.map_manager()
+  assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
+     ((18, 25, 20),(18, 25, 20)))
+
+  rm.box_all_maps_around_model_and_shift_origin(
+      selection_string="resseq 221:221")
+  new_mm_1=rm.map_manager()
+  assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
+    ((24, 20, 20),(24, 20, 20)))
+ 
 
 
   print ("OK")

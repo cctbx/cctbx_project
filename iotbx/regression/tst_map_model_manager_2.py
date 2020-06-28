@@ -187,6 +187,8 @@ def exercise(file_name, out = sys.stdout):
           ncs_object =  ncs_object,
           map_manager_1 =  m.deep_copy(),
           map_manager_2 =  m.deep_copy(),
+          extra_model_list =  [model.deep_copy(),model.deep_copy()],
+          extra_model_id_list = ["model_1","model_2"],
           extra_map_manager_list =  [m.deep_copy(),m.deep_copy()],
           extra_map_manager_id_list = ["extra_1","extra_2"],
           model     = model.deep_copy(),
@@ -204,6 +206,8 @@ def exercise(file_name, out = sys.stdout):
           ncs_object =  ncs_object.deep_copy(),
           map_manager_1 =  m.deep_copy(),
           map_manager_2 =  m.deep_copy(),
+          extra_model_list =  [model.deep_copy(),model.deep_copy()],
+          extra_model_id_list = ["model_1","model_2"],
           extra_map_manager_list =  [m.deep_copy(),m.deep_copy()],
           extra_map_manager_id_list = ["extra_1","extra_2"],
           model     = model.deep_copy(),
@@ -214,6 +218,7 @@ def exercise(file_name, out = sys.stdout):
   assert mam.map_manager().is_similar(mam2.map_manager_1())
   assert mam.map_manager().is_similar(mam2.extra_map_manager_list()[1])
   assert mam.model().shift_cart() == mam2.model().shift_cart()
+  assert mam.model().shift_cart() == mam2.get_model_by_id('model_2').shift_cart()
 
 
 

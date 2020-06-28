@@ -236,11 +236,10 @@ class with_bounds(object):
     new_map_manager = map_manager.customized_copy(map_data = map_box,
       origin_shift_grid_units = origin_shift_grid_units)
     if self._force_wrapping:
-      # Set the wrapping of the new map
-      new_map_manager.set_wrapping(self._force_wrapping)
-      if self._force_wrapping and (not new_map_manager.is_full_size()):
-        self._warning_message = "WARNING: wrapping set to True, but "+\
-             "map is not full size"
+      # Set the wrapping of the new map if it is possible
+      if (self._force_wrapping and (new_map_manager.is_full_size())) or \
+       ( (not self._force_wrapping) and (not new_map_manager.is_full_size())):
+        new_map_manager.set_wrapping(self._force_wrapping)
 
     # Add the label
     new_map_manager.add_label(new_label)

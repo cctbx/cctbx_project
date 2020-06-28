@@ -253,6 +253,8 @@ def exercise_around_model():
   r = inspect.getargspec(cctbx.maptbx.box.with_bounds.__init__)
   assert r.args  ==  ['self', 'map_manager', 'lower_bounds', 'upper_bounds', 'model', 'wrapping', 'log'], r.args
 
+  print ("OK")
+
 if (__name__  ==  "__main__"):
   if libtbx.env.has_module('phenix'):
     exercise_around_model()

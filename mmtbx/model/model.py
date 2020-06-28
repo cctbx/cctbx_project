@@ -393,11 +393,16 @@ class manager(object):
     else:
       nres = 0
       nchains = 0
-    return "Model manager (%s chains: %s residues %s shift_cart %s)" %(
-      str(self.crystal_symmetry()).replace("\n"," "),
+    if self.shift_cart():
+      sc = tuple(self.shift_cart())
+    else:
+      sc = (0, 0, 0)
+    return "Model manager "+\
+      "\n%s\nChains: %s Residues %s \nWorking coordinate shift %s)" %(
+      str(self.unit_cell_crystal_symmetry()).replace("\n"," "),
       str(nchains),
       str(nres),
-      str(self.shift_cart()))
+      str(sc))
 
 
   def set_stop_for_unknowns(self, value):

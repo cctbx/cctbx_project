@@ -316,13 +316,14 @@ class map_manager(map_reader, write_ccp4_map):
       self.log = sys.stdout
 
   def __repr__(self):
-    text = "Map manager %s, %s, (present: %s), origin shift %s" %(
+    text = "Map manager (from %s)" %(self.input_file_name)+\
+       "\n%s, \nUnit-cell grid: %s, (present: %s), origin shift %s" %(
       str(self.unit_cell_crystal_symmetry()).replace("\n"," "),
       str(self.unit_cell_grid),
       str(self.map_data().all()),
       str(self.origin_shift_grid_units))
     if self._ncs_object:
-      text += "  %s" %str(self._ncs_object)
+      text += "\n%s" %str(self._ncs_object)
     return text
 
 
@@ -331,7 +332,7 @@ class map_manager(map_reader, write_ccp4_map):
        Set output log file
     '''
     if log is None:
-      self.log = null_out() 
+      self.log = null_out()
     else:
       self.log = log
 
@@ -1234,6 +1235,12 @@ class map_manager(map_reader, write_ccp4_map):
 
       Overwrites any information in model on symmetry and shift_cart
       Modifies model in place
+
+      NOTE: This does not shift the coordinates in model.  It is used
+      to fix crystal symmetry and set shift_cart, not to actually shift
+      a model.  
+      For shifting a model, use:
+         model.shift_model_and_set_crystal_symmetry(shift_cart=shift_cart)
     '''
 
     # Check if we really need to do anything

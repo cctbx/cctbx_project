@@ -2208,7 +2208,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self._have_point_group_symmetry=False
 
   def __repr__(self):
-    return "ncs group with %s ops" %(self._n_ncs_oper)
+    return "NCS group with %s ops" %(self._n_ncs_oper)
 
   def apply_cob_to_vector(self,vector=None,
          change_of_basis_operator=None,
@@ -3666,7 +3666,7 @@ class ncs:
     self._shift_cart = (0,0,0)  # shift to place object in original location
 
   def __repr__(self):
-    text = "ncs_object groups: %s  " %(len(self._ncs_groups))
+    text = "NCS object with %s groups: " %(len(self._ncs_groups))
     for g in self._ncs_groups:
       text+=str(g)
     return text
