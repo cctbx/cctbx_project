@@ -1123,7 +1123,7 @@ class map_manager(map_reader, write_ccp4_map):
 
     # Expect that negative controls about zero, positive control high near 1,
     #  then cc_boundary_zero_one like negative_control means planes at
-    #  boundaries differ, and cc_boundary_zero_one like positive means 
+    #  boundaries differ, and cc_boundary_zero_one like positive means
     #  boundaries similar (as in wrapped)
 
     if (cc_positive_control - cc_negative_control) < minimum_control_signal:

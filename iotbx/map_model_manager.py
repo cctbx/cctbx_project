@@ -627,7 +627,7 @@ class map_model_manager(map_model_base):
         if m:
           m.set_wrapping(wrapping)
 
-    # if ignore_symmetry_conflicts, take all symmetry information from 
+    # if ignore_symmetry_conflicts, take all symmetry information from
     #  map_manager and apply it to everything
     if ignore_symmetry_conflicts:
       if ncs_object:
