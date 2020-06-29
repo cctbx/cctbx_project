@@ -29,6 +29,7 @@ tst_list_base = [
   "$D/shelx/tst_hklf.py",
   "$D/shelx/tst_writer.py",
   "$D/shelx/tst_fvar_encoding.py",
+  "$D/pdb/tst_pdb.py",
   "$D/pdb/tst_mmcif.py",
   "$D/pdb/tst_mmcif_hierarchy.py",
   "$D/pdb/tst_mmcif_hierarchy_2.py",
@@ -127,17 +128,6 @@ if sys.platform == 'win32':
   tst_list_fail += tst_list_windows_fail
 else:
   tst_list_base += tst_list_windows_fail
-
-# failing tests on macOS and linux, Python 3.6
-tst_list_unix_fail = [
-  "$D/pdb/tst_pdb.py",
-  ]
-
-if ((sys.platform == 'darwin' or sys.platform.startswith('linux')) and
-    sys.version_info > (3, 0)):
-  tst_list_fail += tst_list_unix_fail
-else:
-  tst_list_base += tst_list_unix_fail
 
 # unstable test on Python 3.6 (seems to be only on Azure Pipelines)
 tst_list_py3_unstable = [

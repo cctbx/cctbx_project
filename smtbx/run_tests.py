@@ -1,12 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
-import sys
-
 from libtbx import test_utils
 from libtbx.test_utils.pytest import discover
 import libtbx.load_env
 
-tst_list_base = [
+tst_list = [
     ["$D/absolute_structure/tests/tst_absolute_structure.py",
      "--fix_random_seeds"],
     "$D/ab_initio/tests/tst_ab_initio_ext.py",
@@ -25,29 +23,16 @@ tst_list_base = [
      '--normal_eqns_solving_method=naive'],
     ["$D/refinement/constraints/tests/tst_constrained_structure.py",
      '--normal_eqns_solving_method=levenberg-marquardt'],
+    ["$D/refinement/restraints/tests/tst_restraints.py",
+     '--verbose', '--scatterers=5', '--resolution=0.2'],
     "$D/regression/tst_commandline_refine.py",
     "$D/regression/tst_commandline_anomrefine.py",
 ] + discover()
-
-# failing tests on Python 3
-tst_list_fail_py3 = [
-  ["$D/refinement/restraints/tests/tst_restraints.py",
-     '--verbose', '--scatterers=5', '--resolution=0.2'],
-  ]
-tst_list_fail = list()
-if sys.version_info[0] > 2:
-  tst_list_fail += tst_list_fail_py3
-else:
-  tst_list_base += tst_list_fail_py3
 
 # unstable test
 tst_list_expected_unstable = [
   "$D/refinement/tests/tst_least_squares.py",
   ]
-
-# final lists
-tst_list = tst_list_base
-tst_list_expected_failures = tst_list_fail
 
 def run():
   build_dir = libtbx.env.under_build("smtbx")
