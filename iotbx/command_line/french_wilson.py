@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.french_wilson
+# LIBTBX_SET_DISPATCHER_NAME iotbx.french_wilson
 
 import libtbx.phil
 from libtbx import runtime_utils
@@ -87,8 +88,8 @@ def run(args, out=sys.stdout):
     ignore_all_zeros = True,
     parameter_scope = 'french_wilson',
     parameter_name = 'intensity_labels')
-  import cStringIO
-  xray_data_server.err = cStringIO.StringIO()
+  from six.moves import cStringIO as StringIO
+  xray_data_server.err = StringIO()
   try :
     r_free_flags, test_flag_value = xray_data_server.get_r_free_flags(
       file_name = params.file_name,
