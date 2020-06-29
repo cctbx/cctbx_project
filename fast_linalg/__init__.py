@@ -13,6 +13,8 @@ except ImportError:
 if not env.initialised and try_to_initialise:
   if sys.platform[:3] == "win":
     lib_path = "openblas.dll"
+  elif sys.platform == "darwin":
+    lib_path = "libopenblas.dylib"
   else:
     lib_path = "libopenblas.so"
   try:
