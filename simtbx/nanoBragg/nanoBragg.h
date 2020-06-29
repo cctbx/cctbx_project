@@ -22,6 +22,12 @@
 #include <boost_adaptbx/python_streambuf.h>
 #include <omptbx/omp_or_stubs.h>
 
+
+#ifdef NANOBRAGG_HAVE_CUDA
+#include <simtbx/nanoBragg/cuda_struct.h>
+#endif
+
+
 using boost::math::erf;
 using boost::math::isnan;
 #define isnan(X) boost::math::isnan(X)
@@ -449,6 +455,7 @@ class nanoBragg {
 
 #ifdef NANOBRAGG_HAVE_CUDA
     int device_Id;
+    cudaPointers cpo;
 #endif
     /* special options */
 //    bool calculate_noise; // = 1;
@@ -575,9 +582,21 @@ class nanoBragg {
     void add_nanoBragg_spots();
     void add_nanoBragg_spots_nks(boost_adaptbx::python::streambuf &);
 #ifdef NANOBRAGG_HAVE_CUDA
+    // One-Shot version -- allocation, HtoD, DtoH, and deallocation all in one
+    // function -- add_nanoBragg_spots_cuda
     void add_nanoBragg_spots_cuda();
-    void add_nanoBragg_spots_nvtx();
     void add_nanoBragg_spots_cuda_nvtx();
+
+    // Broken-Up version, allocation, HtoD, DtoH, and deallocation in seperate
+    // functions
+    void allocate_cuda();
+    void add_energy_channel_cuda();
+    void add_nanoBragg_spots_cuda_update();
+    void get_raw_pixels_cuda();
+    void deallocate_cuda();
+
+    // NVTX versions of CPU functions
+    void add_nanoBragg_spots_nvtx();
     void add_noise_nvtx();
     void to_smv_format_nvtx(std::string const & fileout, double intfile_scale,
                             int debug_x, int debug_y);
