@@ -138,7 +138,7 @@ class with_bounds(object):
     self.crystal_symmetry = crystal.symmetry(
       unit_cell = box_uc, space_group = "P1")
 
-    self._warning_message = None
+    self._warning_message = ""
 
   def warning_message(self):
     return self._warning_message
@@ -199,12 +199,12 @@ class with_bounds(object):
       # No valid points, Just copy everything and zero
       map_box = maptbx.copy(map_data, self.gridding_first, self.gridding_last)
       map_box = map_box * 0.
-      self._warning_message="WARNING: boxed map is entirely outside map"+\
+      self._warning_message += "\nWARNING: boxed map is entirely outside map"+\
          " and wrapping=False\n...setting all values to zero"
 
     else: # Need to copy and then zero outside of defined region
       map_box = copy_and_zero_map_outside_bounds(map_data, bounds_info)
-      self._warning_message="WARNING: boxed map is larger than original"+\
+      self._warning_message += "\nWARNING: boxed map is larger than original"+\
          " and wrapping=False\n...setting unknown values to zero"
     #  Now reshape map_box to put origin at (0, 0, 0)
     map_box.reshape(flex.grid(self.box_all))
@@ -259,7 +259,6 @@ class with_bounds(object):
     #  model and model original_crystal_symmetry should match
     #   self.map_crystal_symmetry_at_initialization
 
-
     if model.shift_cart() is None:  # model not yet initialized for shifts
        assert self.map_manager().unit_cell_crystal_symmetry(
           ).is_similar_symmetry( model.crystal_symmetry())
@@ -275,6 +274,11 @@ class with_bounds(object):
        crystal_symmetry = self.crystal_symmetry, # new crystal_symmetry
        )
 
+    # if wrapping is False, check to see if model is outside the box
+    if not self.map_manager().wrapping():
+      if not model.is_inside_working_cell():
+        self._warning_message += "\nWARNING: Model is not entirely "+\
+          "inside working cell and wrapping is False"
     return model
 
   def apply_to_ncs_object(self, ncs_object):

@@ -3414,6 +3414,18 @@ class manager(object):
         self.u_aniso_gradients = u_aniso_gradients
     return result()
 
+  def is_inside_working_cell(self):
+    """
+      Return True if all fractional coordinates are inside (0,1)
+    """
+    sites_frac = self.get_sites_frac()
+    min_value=flex.double(sites_frac.min()).min_max_mean().min
+    max_value=flex.double(sites_frac.max()).min_max_mean().max
+    if min_value >= 0 and max_value <= 1:
+      return True
+    else:
+      return False
+
   def is_same_model(self, other):
     """
     Return True if models are the same, False otherwise.

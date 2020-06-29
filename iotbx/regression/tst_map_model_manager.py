@@ -71,7 +71,8 @@ def test_01():
 
   # Generate a map and model
 
-  mmm=map_model_manager()
+  import sys
+  mmm=map_model_manager(log=sys.stdout)
   mmm.generate_map()
   model=mmm.model()
   mm=mmm.map_manager()

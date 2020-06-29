@@ -14,6 +14,21 @@ class map_model_base(object):
   '''
     Common methods for map_model_manager and r_model
   '''
+
+  def set_log(self, log = sys.stdout):
+    '''
+       Set output log file
+    '''
+    if log is None:
+      self.log = null_out()
+    else:
+      self.log = log
+
+  def _print(self, m):
+    if (self.log is not None) and hasattr(self.log, 'closed') and (
+        not self.log.closed):
+      print(m, file = self.log)
+
   def ncs_object(self):
     return self.map_manager().ncs_object()
 
@@ -85,9 +100,9 @@ class map_model_base(object):
 
   def write_map(self, file_name = None, key='map_manager', log = sys.stdout):
     if not self._map_dict.get(key):
-      print ("No map to write out with id='%s'" %(key), file = log)
+      self._print ("No map to write out with id='%s'" %(key))
     elif not file_name:
-      print ("Need file name to write map", file = log)
+      self._print ("Need file name to write map")
     else:
       self._map_dict.get('map_manager').write_map(file_name = file_name)
 
@@ -95,18 +110,18 @@ class map_model_base(object):
      file_name = None,
      log = sys.stdout):
     if not self.model():
-      print ("No model to write out", file = log)
+      self._print ("No model to write out")
     elif not file_name:
-      print ("Need file name to write model", file = log)
+      self._print ("Need file name to write model")
     else:
       # Write out model
 
       f = open(file_name, 'w')
-      print(self.model().model_as_pdb(), file = f)
+      self._print(self.model().model_as_pdb(), file = f)
       f.close()
-      print("Wrote model with %s residues to %s" %(
+      self._print("Wrote model with %s residues to %s" %(
          self.model().get_hierarchy().overall_counts().n_residues,
-         file_name), file = log)
+         file_name))
 
   def get_map_manager_info(self):
     '''
@@ -307,10 +322,11 @@ class map_model_base(object):
       map_manager_info = map_manager_info, log = log)
 
   def _finish_boxing(self, box, model_info, map_manager_info,
-    log=sys.stdout):
+    log=None):
+    if log is None: log = null_out()
     if box.warning_message():
-      print("%s" %(box.warning_message()), file = log)
       self._warning_message = box.warning_message()
+      self._print("%s" %(box.warning_message()))
     self._map_dict[map_manager_info.map_manager_id] = box.map_manager()
     self._model_dict[model_info.model_id] = box.model()
     self._shift_cart = box.map_manager().shift_cart()
@@ -621,7 +637,11 @@ class r_model(map_model_base):
                model_dict       = None,  # models
                map_dict         = None,  # Maps as map_managers
                wrapping         = None,  # Use only to force wrapping value
+               log              = None,  # Log file (default is null_out())
       ):
+
+    # set the log file
+    self.set_log(log = log)
 
     # Save the model(s) and map_dict (get model with self.model() etc)
     self._map_dict = map_dict
@@ -783,7 +803,13 @@ class map_model_manager(map_model_base):
                extra_map_manager_id_list = None,  # string id's for map_managers
                ncs_object       = None,   # Overwrite ncs_objects
                ignore_symmetry_conflicts = None,  # allow mismatch of symmetry
-               wrapping         = None):  # Overwrite wrapping for all maps
+               wrapping         = None,  # Overwrite wrapping for all maps
+               log              = None):
+
+    # Set the log stream
+    self.set_log(log = log)
+
+    # Initialize
     self._map_dict={}
     self._model_dict = {}
     self._shift_cart = None
@@ -1222,11 +1248,11 @@ class map_model_manager(map_model_base):
     '''
 
 
-    print("\nGenerating new map data\n", file = log)
+    self._print("\nGenerating new map data\n")
     if self.map_manager():
-      print("NOTE: replacing existing map data\n", file = log)
+      self._print("NOTE: replacing existing map data\n")
     if self.model() and  file_name:
-      print("NOTE: using existing model to generate map data\n", file = log)
+      self._print("NOTE: using existing model to generate map data\n")
       model = self.model()
     else:
       model = None
@@ -1392,7 +1418,11 @@ class match_map_model_ncs:
 
   '''
 
-  def __init__(self, ):
+  def __init__(self, log = None):
+
+    # Set output stream
+    self.set_log(log = log)
+
     self._map_manager = None
     self._model = None
 
@@ -1405,25 +1435,39 @@ class match_map_model_ncs:
     return new_mmmn
 
   def show_summary(self, log = sys.stdout):
-    print ("Summary of maps and models", file = log)
+    self._print ("Summary of maps and models")
     if self._map_manager:
-      print("Map summary:", file = log)
+      self._print("Map summary:")
       self._map_manager.show_summary(out = log)
     if self._model:
-      print("Model summary:", file = log)
-      print("Residues: %s" %(
-       self._model.get_hierarchy().overall_counts().n_residues), file = log)
+      self._print("Model summary:")
+      self._print("Residues: %s" %(
+       self._model.get_hierarchy().overall_counts().n_residues))
 
     if self.ncs_object():
-      print("NCS summary:", file = log)
-      print("Operators: %s" %(
-       self.ncs_object().max_operators()), file = log)
+      self._print("NCS summary:")
+      self._print("Operators: %s" %(
+       self.ncs_object().max_operators()))
+
+  def set_log(self, log = sys.stdout):
+    '''
+       Set output log file
+    '''
+    if log is None:
+      self.log = null_out()
+    else:
+      self.log = log
+
+  def _print(self, m):
+    if (self.log is not None) and hasattr(self.log, 'closed') and (
+        not self.log.closed):
+      self._print(m, file = self.log)
 
   def write_map(self, file_name = None, log = sys.stdout):
     if not self._map_manager:
-      print ("No map to write out", file = log)
+      self._print ("No map to write out")
     elif not file_name:
-      print ("Need file name to write map", file = log)
+      self._print ("Need file name to write map")
     else:
       self._map_manager.write_map(file_name = file_name)
 
@@ -1431,18 +1475,18 @@ class match_map_model_ncs:
      file_name = None,
      log = sys.stdout):
     if not self._model:
-      print ("No model to write out", file = log)
+      self._print ("No model to write out")
     elif not file_name:
-      print ("Need file name to write model", file = log)
+      self._print ("Need file name to write model")
     else:
       # Write out model
 
       f = open(file_name, 'w')
       print(self._model.model_as_pdb(), file = f)
       f.close()
-      print("Wrote model with %s residues to %s" %(
+      self._print("Wrote model with %s residues to %s" %(
          self._model.get_hierarchy().overall_counts().n_residues,
-         file_name), file = log)
+         file_name))
 
   def crystal_symmetry(self):
     # Return crystal symmetry of map, or if not present, of model
@@ -1472,7 +1516,7 @@ class match_map_model_ncs:
     else:
       return None
 
-  def add_map_manager(self, map_manager = None, log = sys.stdout):
+  def add_map_manager(self, map_manager = None):
     # Add a map and make sure its symmetry is similar to others
     self._map_manager = map_manager
     if self.model():
@@ -1495,8 +1539,7 @@ class match_map_model_ncs:
             "\nTry 'ignore_symmetry_conflicts=True'")
 
 
-  def add_model(self, model = None, set_model_log_to_null = True,
-     log = sys.stdout):
+  def add_model(self, model = None, set_model_log_to_null = True):
     # Add a model and make sure its symmetry is similar to others
     # Check that model original crystal_symmetry matches full
     #    crystal_symmetry of map
@@ -1506,7 +1549,7 @@ class match_map_model_ncs:
     if self.map_manager():
       self.check_model_and_set_to_match_map_if_necessary()
 
-  def add_ncs_object(self, ncs_object = None, log = sys.stdout):
+  def add_ncs_object(self, ncs_object = None):
     # Add an NCS object
     # Must already have a map_manager
 
@@ -1515,18 +1558,18 @@ class match_map_model_ncs:
     # Check to make sure its shift_cart matches
     self.check_model_and_set_to_match_map_if_necessary()
 
-  def read_map(self, file_name = None, log = sys.stdout):
+  def read_map(self, file_name = None):
     # Read in a map and make sure its symmetry is similar to others
     mm = map_manager(file_name)
-    self.add_map_manager(mm, log = log)
+    self.add_map_manager(mm)
 
   def read_model(self, file_name = None, log = sys.stdout):
-    print("Reading model from %s " %(file_name), file = log)
+    self._print("Reading model from %s " %(file_name))
     from iotbx.pdb import input
     inp = input(file_name = file_name)
     from mmtbx.model import manager as model_manager
     model = model_manager(model_input = inp)
-    self.add_model(model, log = log)
+    self.add_model(model)
 
 
   def read_ncs_file(self, file_name = None, log = sys.stdout):
@@ -1569,11 +1612,11 @@ class match_map_model_ncs:
   def shift_origin(self, desired_origin = (0, 0, 0), log = sys.stdout):
     # shift the origin of all maps/models to desired_origin (usually (0, 0, 0))
     if not self._map_manager:
-      print ("No information about origin available", file = log)
+      self._print ("No information about origin available")
       return
     if self._map_manager.map_data().origin() == desired_origin:
-      print("Origin is already at %s, no shifts will be applied" %(
-       str(desired_origin)), file = log)
+      self._print("Origin is already at %s, no shifts will be applied" %(
+       str(desired_origin)))
 
     # Figure out shift of model if incoming map and model already had a shift
 
