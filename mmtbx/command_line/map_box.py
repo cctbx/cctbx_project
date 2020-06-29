@@ -1366,8 +1366,8 @@ def apply_extract_unique(mam,
       symmetry = params.symmetry,
       chain_type = params.chain_type,
       keep_low_density = params.keep_low_density,
-      box_buffer = params.box_cushion,
-      soft_mask_extract_unique = params.soft_mask_extract_unique,
+      box_cushion = params.box_cushion,
+      soft_mask = params.soft_mask_extract_unique,
       mask_expand_ratio = params.mask_expand_ratio,
       )
     return new_mam  # XXX actually it is a box not an mam

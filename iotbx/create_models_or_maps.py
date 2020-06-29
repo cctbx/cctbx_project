@@ -16,7 +16,7 @@ def generate_model(
       n_residues=10,
       start_res=None,
       b_iso=30,
-      box_buffer=5,
+      box_cushion=5,
       space_group_number=1,
       output_model_file_name=None,
       shake=None,
@@ -34,7 +34,7 @@ def generate_model(
     Generate a model from a user-specified file or from some examples available
     in the cctbx.  Cut out specified number of residues, shift to place on
     positive side of origin, optionally set b values to b_iso,
-    place in box with buffering of box_buffer on all
+    place in box with buffering of box_cushion on all
     edges, optionally randomly shift (shake) atomic positions by rms of shake A,
     and write out to output_model_file_name and return model object.
 
@@ -44,7 +44,7 @@ def generate_model(
       n_residues (int, 10):      Number of residues to include
       start_res (int, None):     Starting residue number
       b_iso (float, 30):         B-value (ADP) to use for all atoms
-      box_buffer (float, 5):     Buffer (A) around model
+      box_cushion (float, 5):     Buffer (A) around model
       space_group_number (int, 1):  Space group to use
       output_model_file_name (string, None):  File for output model
       shake (float, None):       RMS variation to add (A) in shake
@@ -59,7 +59,7 @@ def generate_model(
 
   space_group_number=int(space_group_number)
   n_residues=int(n_residues)
-  box_buffer=float(box_buffer)
+  box_cushion=float(box_cushion)
   if start_res:
     start_res=int(start_res)
   if shake:
@@ -108,8 +108,8 @@ def generate_model(
   ph=model.get_hierarchy()
   sites_cart=ph.atoms().extract_xyz()
   sites_cart=sites_cart-col(sites_cart.min())+col(
-      (box_buffer,box_buffer,box_buffer))
-  box_end=col(sites_cart.max())+col((box_buffer,box_buffer,box_buffer))
+      (box_cushion,box_cushion,box_cushion))
+  box_end=col(sites_cart.max())+col((box_cushion,box_cushion,box_cushion))
   a,b,c=box_end
   crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
   ph.atoms().set_xyz(sites_cart)

@@ -1396,10 +1396,13 @@ class info_object:
     import time
     self.init_asctime = time.asctime()
 
-  def set_box_map_ncs_au_map_data(self, box_map_ncs_au_map_data = None,
+  def set_box_map_ncs_au_map_data(self,
+       box_map_ncs_au_map_data = None,
+       box_mask_ncs_au_map_data = None,
        box_map_ncs_au_half_map_data_list = None,
        box_map_ncs_au_crystal_symmetry = None):
     self.box_map_ncs_au_map_data = box_map_ncs_au_map_data.deep_copy()
+    self.box_mask_ncs_au_map_data = box_mask_ncs_au_map_data.deep_copy()
     self.box_map_ncs_au_half_map_data_list = []
     for hm in box_map_ncs_au_half_map_data_list:
        self.box_map_ncs_au_half_map_data_list.append(hm.deep_copy())
@@ -1408,6 +1411,10 @@ class info_object:
       self.box_map_ncs_au_map_data = self.shift_map_back(
         map_data = self.box_map_ncs_au_map_data,
         crystal_symmetry = self.box_map_ncs_au_crystal_symmetry,
+        shift_cart = self.origin_shift)
+      self.box_mask_ncs_au_map_data = self.shift_mask_back(
+        mask_data = self.box_mask_ncs_au_map_data,
+        crystal_symmetry = self.box_mask_ncs_au_crystal_symmetry,
         shift_cart = self.origin_shift)
 
       new_hm_list = []
@@ -7904,6 +7911,7 @@ def write_output_files(params,
        tracking_data.set_box_map_ncs_au_map_data(
        box_map_ncs_au_crystal_symmetry = box_crystal_symmetry,
        box_map_ncs_au_map_data = box_map_ncs_au,
+       box_mask_ncs_au_map_data = box_mask_ncs_au,
        box_map_ncs_au_half_map_data_list = half_map_data_list_au_box,
        )
 

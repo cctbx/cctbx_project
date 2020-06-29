@@ -112,6 +112,7 @@ class create_mask_around_atoms(object):
     '''
     Create a new soft mask around the edges of box
 
+
     Parameters:
       resolution:    Resolution to be used in smoothing
       soft_mask_radius:   Distance over which the edge mask affects the map
@@ -167,6 +168,36 @@ class create_mask_around_atoms(object):
 
     return self.map_manager().customized_copy(map_data = new_map_data)
 
+class create_mask_with_map_data(create_mask_around_atoms):
+
+  '''
+    Class to create a map_manager object containing a supplied mask
+
+  '''
+
+  def __init__(self, map_data,
+      map_manager = None):
+
+    '''
+     Create a mask (map object) with values supplied in map_data
+    '''
+    assert isinstance(map_data, flex.double)
+    assert map_manager.map_data().all() == map_data.all()
+    assert map_data.origin() == (0,0,0)
+    assert map_manager.origin_is_zero()
+
+    self._crystal_symmetry = map_manager.crystal_symmetry()
+
+    self._mask = map_data
+
+    # Set up map_manager with this mask
+    self._map_manager = map_manager.customized_copy(map_data = self._mask)
+    self._map_manager.set_is_mask(True)
+
+    # Initialize soft mask
+    self._is_soft_mask = False
+    self._is_soft_mask_around_edges = False
+
 class create_mask_around_edges(create_mask_around_atoms):
 
   '''
@@ -181,6 +212,9 @@ class create_mask_around_edges(create_mask_around_atoms):
 
     '''
      Create a mask (map object) with values of 1 except at the map boundaries
+
+     This will not be a soft mask. To make it a soft mask, follow this with
+       soft_mask(soft_mask_radius = soft_mask_radius)
 
      Parameters are:
        soft_mask_radius:  radius for masking
@@ -260,7 +294,6 @@ class create_mask_around_density(create_mask_around_atoms):
     # Now use automatic procedure to get a mask
     from cctbx.maptbx.segment_and_split_map import \
           get_iterated_solvent_fraction
-
     self._mask, self._solvent_content = get_iterated_solvent_fraction(
           crystal_symmetry = self._crystal_symmetry,
           fraction_of_max_mask_threshold = 0.05, #

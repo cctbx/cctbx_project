@@ -16,6 +16,8 @@ class map_model_base(object):
   '''
 
 
+  # Methods for printing
+
   def set_log(self, log = sys.stdout):
     '''
        Set output log file
@@ -33,6 +35,8 @@ class map_model_base(object):
     if (self.log is not None) and hasattr(self.log, 'closed') and (
         not self.log.closed):
       print(m, file = self.log)
+
+  # Methods for obtaining models, map_managers, symmetry, ncs_objects
 
   def ncs_object(self):
     return self.map_manager().ncs_object()
@@ -103,6 +107,8 @@ class map_model_base(object):
     ''' Get a map_manager with the name map_manager_id'''
     return self.map_dict().get(map_manager_id)
 
+  # Methods for writing maps and models
+
   def write_map(self, file_name = None, key='map_manager', log = sys.stdout):
     if not self._map_dict.get(key):
       self._print ("No map to write out with id='%s'" %(key))
@@ -122,11 +128,13 @@ class map_model_base(object):
       # Write out model
 
       f = open(file_name, 'w')
-      self._print(self.model().model_as_pdb(), file = f)
+      print(self.model().model_as_pdb(), file = f)
       f.close()
       self._print("Wrote model with %s residues to %s" %(
          self.model().get_hierarchy().overall_counts().n_residues,
          file_name))
+
+  # Methods for identifying which map_manager and model to use
 
   def get_map_manager_info(self):
     '''
@@ -167,6 +175,8 @@ class map_model_base(object):
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
     self.map_dict()[map_manager_id] = map_manager
 
+  # Methods for manipulation of maps
+
   def initialize_maps(self, map_value = 0):
     '''
       Set values of all maps to map_value
@@ -176,11 +186,107 @@ class map_model_base(object):
     for mm in self.map_managers():
       mm.initialize_map_data(map_value = map_value)
 
+  # Methods for boxing maps (changing the dimensions of the maps)
+  # These methods change the contents of the current object (they do not
+  #  create a new object)
+
+  def box_all_maps_with_bounds_and_shift_origin(self,
+     lower_bounds,
+     upper_bounds):
+    '''
+       Box all maps using specified bounds, shift origin of maps, model
+       Replaces existing map_managers and shifts model in place
+
+       NOTE: This changes the gridding and shift_cart of the maps and model
+
+       Can be used in map_model_manager to work with boxed maps
+       and model or in r_model to re-box all maps and model
+
+       The lower_bounds and upper_bounds define the region to be boxed. These
+       bounds are relative to the current map with origin at (0, 0, 0).
+
+    '''
+    assert lower_bounds is not None and upper_bounds is not None
+    assert len(tuple(lower_bounds)) == 3
+    assert len(tuple(upper_bounds)) == 3
+
+    from cctbx.maptbx.box import with_bounds
+
+    map_manager_info=self.get_map_manager_info()
+    map_manager = self._map_dict[map_manager_info.map_manager_id]
+    assert map_manager is not None
+
+    model_info=self.get_model_info()
+    model = self._model_dict[model_info.model_id]
+
+    # Make box with bounds and apply it to model, first map
+    box = with_bounds(
+      map_manager = self._map_dict[map_manager_info.map_manager_id],
+      lower_bounds = lower_bounds,
+      upper_bounds = upper_bounds,
+      model = model,
+      wrapping = self._force_wrapping,
+      log = self.log)
+    # Now box is a copy of map_manager and model that is boxed
+
+    # Now apply boxing to other maps and models and then insert them into
+    #  this r_model object, replacing what is here.
+    self._finish_boxing(box = box, model_info = model_info,
+      map_manager_info = map_manager_info, log = log)
+
+  def box_all_maps_around_model_and_shift_origin(self,
+     selection_string = None,
+     box_cushion = 5.):
+    '''
+       Box all maps around the model, shift origin of maps, model
+       Replaces existing map_managers and shifts model in place
+
+       NOTE: This changes the gridding and shift_cart of the maps and model
+
+       Can be used in map_model_manager to work with boxed maps
+       and model or in r_model to re-box all maps and model
+
+       Requires a model
+
+       The box_cushion defines how far away from the nearest atoms the new
+       box boundaries will be placed
+
+       The selection_string defines what part of the model to keep ('ALL' is
+        default)
+    '''
+    assert isinstance(self.model(), model_manager)
+    assert box_cushion is not None
+
+    from cctbx.maptbx.box import around_model
+
+    map_manager_info=self.get_map_manager_info()
+    assert map_manager_info.map_manager_id is not None
+    model_info=self.get_model_info()
+    assert model_info.model_id is not None # required for box_around_model
+    model = self._model_dict[model_info.model_id]
+
+    if selection_string:
+      sel = model.selection(selection_string)
+      model = model.select(sel)
+
+    # Make box around model and apply it to model, first map
+    box = around_model(
+      map_manager = self._map_dict[map_manager_info.map_manager_id],
+      model = model,
+      box_cushion = box_cushion,
+      wrapping = self._force_wrapping,
+      log = self.log)
+    # Now box is a copy of map_manager and model that is boxed
+
+    # Now apply boxing to other maps and models and then insert them into
+    #  this r_model object, replacing what is here.
+    self._finish_boxing(box = box, model_info = model_info,
+      map_manager_info = map_manager_info)
+
   def box_all_maps_around_density_and_shift_origin(self,
      box_cushion = 5.,
      threshold = 0.05,
-     map_key = 'map_manager',
-     log = sys.stdout):
+     map_key = 'map_manager'):
     '''
        Box all maps around the density in map_key map (default is map_manager)
        shift origin of maps, model
@@ -226,62 +332,12 @@ class map_model_base(object):
     #  this r_model object, replacing what is here.
 
     self._finish_boxing(box = box, model_info = model_info,
-      map_manager_info = map_manager_info, log = log)
-
-  def box_all_maps_around_model_and_shift_origin(self,
-     selection_string = None,
-     box_cushion = 5.,
-     log = sys.stdout):
-    '''
-       Box all maps around the model, shift origin of maps, model
-       Replaces existing map_managers and shifts model in place
-
-       NOTE: This changes the gridding and shift_cart of the maps and model
-
-       Can be used in map_model_manager to work with boxed maps
-       and model or in r_model to re-box all maps and model
-
-       Requires a model
-
-       The box_cushion defines how far away from the nearest atoms the new
-       box boundaries will be placed
-
-       The selection_string defines what part of the model to keep ('ALL' is
-        default)
-    '''
-    assert isinstance(self.model(), model_manager)
-    assert box_cushion is not None
-
-    from cctbx.maptbx.box import around_model
-
-    map_manager_info=self.get_map_manager_info()
-    assert map_manager_info.map_manager_id is not None
-    model_info=self.get_model_info()
-    assert model_info.model_id is not None # required for box_around_model
-    model = self._model_dict[model_info.model_id]
-
-    if selection_string:
-      sel = model.selection(selection_string)
-      model = model.select(sel)
-
-    # Make box around model and apply it to model, first map
-    box = around_model(
-      map_manager = self._map_dict[map_manager_info.map_manager_id],
-      model = model,
-      box_cushion = box_cushion,
-      wrapping = self._force_wrapping)
-    # Now box is a copy of map_manager and model that is boxed
-
-    # Now apply boxing to other maps and models and then insert them into
-    #  this r_model object, replacing what is here.
-    self._finish_boxing(box = box, model_info = model_info,
-      map_manager_info = map_manager_info, log = log)
+      map_manager_info = map_manager_info)
 
   def box_all_maps_around_mask_and_shift_origin(self,
      selection_string = None,
      box_cushion = 5.,
-     mask_key = 'mask',
-     log = sys.stdout):
+     mask_key = 'mask'):
     '''
        Box all maps around specified mask, shift origin of maps, model
        Replaces existing map_managers and shifts model in place
@@ -318,17 +374,101 @@ class map_model_base(object):
       mask_as_map_manager = mask_mm,
       model = model,
       box_cushion = box_cushion,
-      wrapping = self._force_wrapping)
+      wrapping = self._force_wrapping,
+      log = self.log)
     # Now box is a copy of map_manager and model that is boxed
 
     # Now apply boxing to other maps and models and then insert them into
     #  this r_model object, replacing what is here.
     self._finish_boxing(box = box, model_info = model_info,
-      map_manager_info = map_manager_info, log = log)
+      map_manager_info = map_manager_info)
 
-  def _finish_boxing(self, box, model_info, map_manager_info,
-    log=None):
-    if log is None: log = null_out()
+  def box_all_maps_around_unique_and_shift_origin(self,
+     resolution,
+     solvent_content = None,
+     sequence = None,
+     molecular_mass = None,
+     soft_mask = True,
+     chain_type = 'PROTEIN',
+     box_cushion = 5,
+     target_ncs_au_model = None,
+     regions_to_keep = None,
+     symmetry = None,
+     mask_expand_ratio = 1):
+    '''
+       Box all maps using bounds obtained with extract_unique,
+       shift origin of maps, model, and mask around unique region
+
+       Replaces existing map_managers and shifts model in place
+
+       NOTE: This changes the gridding and shift_cart of the maps and model
+       and masks the map
+
+       Normally supply just resolution and sequence; other options match
+       all possible ways that segment_and_split_map can estimate solvent_content
+
+       Must supply one of (sequence, solvent_content, molecular_mass)
+
+       Symmetry is optional symmetry (i.e., D7 or C1). Used as alternative to
+       ncs_object supplied in map_manager
+
+
+       Additional parameters:
+         mask_expand_ratio:   allows increasing masking radius beyond default at
+                              final stage of masking
+         solvent_content:  fraction of cell not occupied by macromolecule
+         sequence:         one-letter code of sequence of entire molecule
+         chain_type:       PROTEIN or RNA or DNA
+         molecular_mass:    Molecular mass (Da) of entire molecule
+         target_ncs_au_model: model marking center of location to choose as
+                              unique, if possible
+         box_cushion:        buffer around unique region to be boxed
+         soft_mask:  use soft mask
+    '''
+    from cctbx.maptbx.box import extract_unique
+
+    map_manager_info=self.get_map_manager_info()
+    map_manager = self._map_dict[map_manager_info.map_manager_id]
+    assert isinstance(map_manager, iotbx.map_manager.map_manager)
+    assert resolution is not None
+    assert (sequence, solvent_content, molecular_mass).count(None) == 2
+
+    model_info=self.get_model_info()
+    model = self._model_dict[model_info.model_id]
+
+    # Make box with bounds and apply it to model, first map
+    box = extract_unique(
+      map_manager = map_manager,
+      model = model,
+      wrapping = self._force_wrapping,
+      target_ncs_au_model = target_ncs_au_model,
+      regions_to_keep = regions_to_keep,
+      solvent_content = solvent_content,
+      resolution = resolution,
+      sequence = sequence,
+      molecular_mass = molecular_mass,
+      symmetry = symmetry,
+      chain_type = chain_type,
+      box_cushion = box_cushion,
+      soft_mask = soft_mask,
+      mask_expand_ratio = mask_expand_ratio,
+      log = self.log)
+
+    # Now box is a copy of map_manager and model that is boxed
+
+    # Now apply boxing to other maps and models and then insert them into
+    #  this r_model object, replacing what is here.
+    self._finish_boxing(box = box, model_info = model_info,
+      map_manager_info = map_manager_info)
+
+    # Now apply masking to all other maps (not done in _finish_boxing)
+    for id in map_manager_info.other_map_manager_id_list:
+      self._map_dict[id] = box.apply_extract_unique_mask(
+        self._map_dict[id],
+        resolution = resolution,
+        soft_mask = soft_mask)
+
+  def _finish_boxing(self, box, model_info, map_manager_info):
     if box.warning_message():
       self._warning_message = box.warning_message()
       self._print("%s" %(box.warning_message()))
@@ -343,6 +483,10 @@ class map_model_base(object):
     # Apply the box to all the other models
     for id in model_info.other_model_id_list:
       self._model_dict[id] = box.apply_to_model(self._model_dict[id])
+
+  # Methods for masking maps ( creating masks and applying masks to maps)
+  # These methods change the contents of the current object (they do not
+  #  create a new object)
 
   def mask_all_maps_around_atoms(self,
       mask_atoms_atom_radius = 3,
@@ -564,6 +708,8 @@ class map_model_base(object):
 
     # Put the mask in map_dict keyed with mask_key
     self.set_map_manager(mask_key, cm.map_manager())
+
+  # General methods
 
   def warning_message(self):
     return self._warning_message
@@ -1207,7 +1353,7 @@ class map_model_manager(map_model_base):
       n_residues = 10,
       start_res = None,
       b_iso = 30,
-      box_buffer = 5,
+      box_cushion = 5,
       space_group_number = 1,
       output_model_file_name = None,
       shake = None,
@@ -1270,7 +1416,7 @@ class map_model_manager(map_model_base):
       n_residues (int, 10):      Number of residues to include
       start_res (int, None):     Starting residue number
       b_iso (float, 30):         B-value (ADP) to use for all atoms
-      box_buffer (float, 5):     Buffer (A) around model
+      box_cushion (float, 5):     Buffer (A) around model
       space_group_number (int, 1):  Space group to use
       output_model_file_name (string, None):  File for output model
       shake (float, None):       RMS variation to add (A) in shake
@@ -1298,7 +1444,7 @@ class map_model_manager(map_model_base):
         n_residues = n_residues,
         start_res = start_res,
         b_iso = b_iso,
-        box_buffer = box_buffer,
+        box_cushion = box_cushion,
         space_group_number = space_group_number,
         output_model_file_name = output_model_file_name,
         shake = shake,

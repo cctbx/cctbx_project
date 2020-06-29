@@ -380,6 +380,14 @@ class extract_unique(with_bounds):
   around regions containing density.  Note: the map may be masked between
   nearby density regions so this map could have many discontinuities.
 
+  NOTE: This method carries out both boxing and masking. Its effect is
+  similar to create_box_with_bounds, where the bounds are defined by the
+  asymmetric part of the map, followed by masking around that asymmetric part
+  of the map.
+
+  NOTE: ncs_object from map_manager will be used to identify the unique
+  part of the map.
+
   Creates new map_manager and modifies model in place
 
   Input map_manager must have origin (working position) at (0, 0, 0)
@@ -415,14 +423,16 @@ class extract_unique(with_bounds):
     symmetry = None,
     chain_type = 'PROTEIN',
     keep_low_density = True,  # default from map_box
-    box_buffer = 5,
-    soft_mask_extract_unique = True,
+    box_cushion= 5,
+    soft_mask = True,
     mask_expand_ratio = 1,
     wrapping = None,
     log = None):
 
     self._map_manager = map_manager
     self._model = model
+
+    self._mask_data = None
 
     self._force_wrapping = wrapping
     if wrapping is None:
@@ -435,7 +445,7 @@ class extract_unique(with_bounds):
 
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
     assert self._map_manager.map_data().accessor().origin()  ==  (0, 0, 0)
-    assert resolution
+    assert resolution is not None
     if model is not None:
       assert isinstance(model, mmtbx.model.manager)
       assert map_manager.is_compatible_model(model)
@@ -445,10 +455,10 @@ class extract_unique(with_bounds):
     # Get crystal_symmetry
     self.crystal_symmetry = map_manager.crystal_symmetry()
     # Convert to map_data
-    self.map_data = map_manager.map_data()
 
     from cctbx.maptbx.segment_and_split_map import run as segment_and_split_map
-    assert self.map_data.origin() == (0, 0, 0)
+    assert self._map_manager.map_data().origin() == (0, 0, 0)
+
     args = []
 
     ncs_group_obj, remainder_ncs_group_obj, tracking_data  = \
@@ -470,31 +480,29 @@ class extract_unique(with_bounds):
         symmetry = symmetry,
         keep_low_density = keep_low_density,
         regions_to_keep = regions_to_keep,
-        box_buffer = box_buffer,
-        soft_mask_extract_unique = soft_mask_extract_unique,
+        box_buffer = box_cushion,
+        soft_mask_extract_unique = soft_mask,
         mask_expand_ratio = mask_expand_ratio,
         out = log)
 
     from scitbx.matrix import col
 
-    if not hasattr(tracking_data, 'box_map_ncs_au_map_data'):
+    if not hasattr(tracking_data, 'box_mask_ncs_au_map_data'):
       raise Sorry(" Extraction of unique part of map failed...")
 
-    ncs_au_map_data = tracking_data.box_map_ncs_au_map_data
-    ncs_au_crystal_symmetry = tracking_data.box_map_ncs_au_crystal_symmetry
+    ncs_au_mask_data = tracking_data.box_mask_ncs_au_map_data
 
-    lower_bounds = ncs_au_map_data.origin()
+    lower_bounds = ncs_au_mask_data.origin()
     upper_bounds = tuple(
-      col(ncs_au_map_data.focus())-col((1, 1, 1)))
+      col(ncs_au_mask_data.focus())-col((1, 1, 1)))
 
     print("\nBounds for unique part of map: %s to %s " %(
      str(lower_bounds), str(upper_bounds)), file = log)
 
     # shift the map so it is in the same position as the box map will be in
-    ncs_au_map_data.reshape(flex.grid(ncs_au_map_data.all()))
-    assert col(ncs_au_map_data.all()) == \
+    ncs_au_mask_data.reshape(flex.grid(ncs_au_mask_data.all()))
+    assert col(ncs_au_mask_data.all()) == \
         col(upper_bounds)-col(lower_bounds)+col((1, 1, 1))
-
 
     self.gridding_first = lower_bounds
     self.gridding_last  = upper_bounds
@@ -505,9 +513,42 @@ class extract_unique(with_bounds):
     # Apply boxing to model, ncs, and map (if available)
     self.apply_to_model_ncs_and_map()
 
-    # And replace map data with boxed asymmetric unit
-    self._map_manager.set_map_data(map_data = ncs_au_map_data)
-    self._map_manager.add_limitation("extract_unique")
+    # Note that at this point, self._map_manager has been boxed
+    assert ncs_au_mask_data.all() == self._map_manager.map_data().all()
+    self._mask_data = ncs_au_mask_data
+
+    # Now separately apply the mask to the boxed map
+    self.apply_extract_unique_mask(
+       self._map_manager,
+       resolution = resolution,
+       soft_mask = soft_mask)
+
+  def apply_extract_unique_mask(self,
+      map_manager,
+      resolution,
+      soft_mask):
+    '''
+      This procedure matches what is done in segment_and_split_map
+      It comes at the end of extract_unique and can be applied to additional
+      map_manager objects if desired.
+    '''
+    assert self._mask_data is not None
+
+    map_manager.create_mask_with_map_data(map_data = self._mask_data)
+
+    if soft_mask: # Make the mask a soft mask if requested
+      map_manager.soft_mask(soft_mask_radius = resolution)
+      map_manager.apply_mask()
+      # Now mask around edges
+      map_manager.create_mask_around_edges(soft_mask_radius = resolution)
+      map_manager.soft_mask(soft_mask_radius = resolution)
+      map_manager.apply_mask()
+
+    else:  # just apply the mask
+      map_manager.apply_mask()
+
+    # And add limitation to map
+    map_manager.add_limitation("extract_unique")
 
 class around_mask(with_bounds):
   """

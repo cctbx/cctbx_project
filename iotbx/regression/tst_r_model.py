@@ -142,29 +142,38 @@ def exercise(file_name, out = sys.stdout):
 
   # Make a new map and model, get r_model and box with selection
   mmm=map_model_manager()
-  mmm.generate_map(box_buffer=0)
+  mmm.generate_map(box_cushion=0)
   rm=mmm.as_r_model()
   new_mm_1=rm.map_manager()
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
      ((18, 25, 20),(18, 25, 20)))
 
+  # box around model
   rm.box_all_maps_around_model_and_shift_origin(
       selection_string="resseq 221:221")
   new_mm_1=rm.map_manager()
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
     ((24, 20, 20),(24, 20, 20)))
 
+  # box around density
   rm.box_all_maps_around_density_and_shift_origin(box_cushion=0)
   new_mm_1=rm.map_manager()
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
     ((22, 18, 18),(22, 18, 18)))
 
+  # create mask around density, then box around mask (i.e., box around density)
   rm.create_mask_around_density(soft_mask=False)
   rm.box_all_maps_around_mask_and_shift_origin(box_cushion=3)
   new_mm_1=rm.map_manager()
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
     ((22, 18, 18),(22, 18, 18)))
 
+  # box with bounds
+  rm.box_all_maps_with_bounds_and_shift_origin(lower_bounds=(10,10,10),
+     upper_bounds=(15,15,15))
+  new_mm_1=rm.map_manager()
+  assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
+    ((6, 6, 6),(6, 6, 6)))
 
 
   print ("OK")

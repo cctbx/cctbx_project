@@ -727,6 +727,27 @@ class map_manager(map_reader, write_ccp4_map):
       self.write_map(file_name = file_name)
       self.shift_origin(desired_origin = current_origin)
 
+  def create_mask_with_map_data(self, map_data):
+    '''
+      Set mask to be map_data
+
+      Does not apply the mask (use apply_mask_to_map etc for that)
+
+      Uses cctbx.maptbx.mask.create_mask_with_mask_data to do it
+
+      Requires origin to be zero of both self and new mask
+    '''
+
+    assert isinstance(map_data, flex.double)
+    assert self.map_data().all() == map_data.all()
+    assert map_data.origin() == (0,0,0)
+    assert self.origin_is_zero()
+
+    from cctbx.maptbx.mask import create_mask_with_map_data as cm
+    self._created_mask = cm(map_data = map_data,
+      map_manager = self)
+
+
   def create_mask_around_density(self,
       resolution,
       molecular_mass = None,
@@ -735,6 +756,8 @@ class map_manager(map_reader, write_ccp4_map):
     '''
       Use cctbx.maptbx.mask.create_mask_around_density to create a
        mask automatically
+
+      Does not apply the mask (use apply_mask_to_map etc for that)
 
       Parameters are:
        resolution : required resolution of map
@@ -758,7 +781,10 @@ class map_manager(map_reader, write_ccp4_map):
       soft_mask_radius = None):
     '''
       Use cctbx.maptbx.mask.create_mask_around_edges to create a mask around
-      edges of model
+      edges of map.  Does not make a soft mask.  For a soft mask,
+      follow with soft_mask(soft_mask_radius =soft_mask_radius)
+
+      Does not apply the mask (use apply_mask_to_map etc for that)
     '''
 
     assert soft_mask_radius is not None
@@ -771,6 +797,8 @@ class map_manager(map_reader, write_ccp4_map):
     '''
       Use cctbx.maptbx.mask.create_mask_around_atoms to create a mask around
       atoms in model
+
+      Does not apply the mask (use apply_mask_to_map etc for that)
     '''
 
     assert model is not None

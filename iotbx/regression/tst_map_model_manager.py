@@ -85,7 +85,7 @@ def test_01():
 
   # Make a new one with no buffer so it is not zero at edges
   mmm=map_model_manager()
-  mmm.generate_map(box_buffer=0)
+  mmm.generate_map(box_cushion=0)
   mm=mmm.map_manager()
   assert mm.wrapping()
 

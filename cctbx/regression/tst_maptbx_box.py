@@ -204,13 +204,22 @@ def exercise_around_model():
   box = cctbx.maptbx.box.extract_unique(
     map_manager = mm.deep_copy(),
     resolution = 3,
-    box_buffer = 1,
+    box_cushion = 1,
     sequence = sequence_as_text,
+    soft_mask = True,
     wrapping    = False,
    )
 
   box.map_manager().write_map('new_box.ccp4')
 
+  # run again from map_manager
+
+  map_model_mgr.box_all_maps_around_unique_and_shift_origin(
+    resolution = 3,
+    box_cushion= 1,
+    sequence = sequence_as_text,
+    soft_mask = True,
+   )
 
   # Get bounds around density
   box = cctbx.maptbx.box.around_density(
