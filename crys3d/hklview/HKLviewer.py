@@ -91,8 +91,8 @@ class SettingsForm(QDialog):
 
 class WebEngineDebugForm(QDialog):
   def __init__(self, parent=None):
-    super(WebEngineDebugForm, self).__init__(None, 
-                        Qt.WindowMinimizeButtonHint | # Want minimise and maximise buttons on window. 
+    super(WebEngineDebugForm, self).__init__(None,
+                        Qt.WindowMinimizeButtonHint | # Want minimise and maximise buttons on window.
                         Qt.WindowMaximizeButtonHint | # As they are not the default for QDialog we must
                         Qt.WindowCloseButtonHint |    # add them with flags at creation
                         Qt.CustomizeWindowHint |
@@ -334,7 +334,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
 
 
-  def Browser_download_requested(self, download_item) -> None:
+  def Browser_download_requested(self, download_item):
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getSaveFileName(self.window,
             "Save screenshot to file", download_item.path(),
@@ -346,7 +346,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       download_item.finished.connect(self._download_finished)
 
 
-  def _download_finished(self) -> None:
+  def _download_finished(self):
     file_path = self.download_item.path()
     print(f"File Downloaded to: {file_path}")
 

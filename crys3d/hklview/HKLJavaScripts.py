@@ -360,7 +360,7 @@ catch(err)
   WebsockSendMsg('JavaScriptError: ' + err.stack );
 }
 
-    """ 
+    """
 
 
 def imgPy2orPy3savestr():
@@ -1284,4 +1284,3 @@ function onMessage(e)
 };
 
     """
-

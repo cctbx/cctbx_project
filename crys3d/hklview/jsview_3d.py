@@ -17,7 +17,6 @@ import os.path, time, copy
 import libtbx
 import webbrowser, tempfile
 from six.moves import range
-import base64
 
 
 
@@ -1268,10 +1267,10 @@ function MakeHKL_Axis(mshape)
 
     self.NGLscriptstr = ""
     if not blankscene:
-      self.NGLscriptstr = HKLJavaScripts.NGLscriptstr % ( self.ngl_settings.tooltip_alpha, 
-        '\"' + self.camera_type + '\"', axisfuncstr, spherebufferstr, 
+      self.NGLscriptstr = HKLJavaScripts.NGLscriptstr % ( self.ngl_settings.tooltip_alpha,
+        '\"' + self.camera_type + '\"', axisfuncstr, spherebufferstr,
         negativeradiistr, colourscriptstr)
-    WebsockMsgHandlestr = HKLJavaScripts.WebsockMsgHandlestr %(self.websockport, cntbin, 
+    WebsockMsgHandlestr = HKLJavaScripts.WebsockMsgHandlestr %(self.websockport, cntbin,
              str(self.verbose>=2).lower(), self.__module__, self.__module__, qualitystr )
 
     self.NGLscriptstr = WebsockMsgHandlestr + self.NGLscriptstr
