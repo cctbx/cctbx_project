@@ -90,10 +90,10 @@ class test_sequence(unittest.TestCase):
       description = description_tmplt % "A"
       )
 
-    self.assert_( seq1 != seq2 )
-    self.assert_( seq1 != seq3 )
-    self.assert_( seq1 != fasta1 )
-    self.assert_( seq1 != pir1 )
+    self.assertTrue( seq1 != seq2 )
+    self.assertTrue( seq1 != seq3 )
+    self.assertTrue( seq1 != fasta1 )
+    self.assertTrue( seq1 != pir1 )
 
 
 class test_fasta_sequence(unittest.TestCase):
@@ -317,7 +317,7 @@ class test_alignment(unittest.TestCase):
       gap = "#"
       )
 
-    self.assert_( c is not self.alignment1 )
+    self.assertTrue( c is not self.alignment1 )
     self.assertEqual( c.alignments, [ "AB", "BA" ] )
     self.assertEqual( c.names, [ "XY", "YX" ] )
     self.assertEqual( c.gap, "#" )
