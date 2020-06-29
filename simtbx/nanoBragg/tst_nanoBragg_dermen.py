@@ -63,7 +63,7 @@ img = main(cuda=True, new_cuda=False)
 # Call twice -- to give cudaMalloc a chance
 img = main(cuda=True, new_cuda=False)
 # TODO: new_cuda is broken
-#img = main(cuda=True, new_cuda=True)
+img = main(cuda=True, new_cuda=True)
 img = main(cuda=False)
 
 #import pylab as plt
