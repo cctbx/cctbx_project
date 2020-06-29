@@ -232,7 +232,7 @@ class map_model_base(object):
     # Now apply boxing to other maps and models and then insert them into
     #  this r_model object, replacing what is here.
     self._finish_boxing(box = box, model_info = model_info,
-      map_manager_info = map_manager_info, log = log)
+      map_manager_info = map_manager_info)
 
   def box_all_maps_around_model_and_shift_origin(self,
      selection_string = None,
