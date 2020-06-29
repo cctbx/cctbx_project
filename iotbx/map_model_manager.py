@@ -15,6 +15,7 @@ class map_model_base(object):
     Common methods for map_model_manager and r_model
   '''
 
+
   def set_log(self, log = sys.stdout):
     '''
        Set output log file
@@ -25,6 +26,10 @@ class map_model_base(object):
       self.log = log
 
   def _print(self, m):
+    '''
+      Print to log if it is present
+    '''
+
     if (self.log is not None) and hasattr(self.log, 'closed') and (
         not self.log.closed):
       print(m, file = self.log)
@@ -697,6 +702,19 @@ class r_model(map_model_base):
     return r_model(model_dict = new_model_dict, map_dict = new_map_dict,
       wrapping = self._force_wrapping)
 
+  # prevent pickling error in Python 3 with self.log = sys.stdout
+  # unpickling is limited to restoring sys.stdout
+  def __getstate__(self):
+    pickle_dict = self.__dict__.copy()
+    if isinstance(self.log, io.TextIOWrapper):
+      pickle_dict['log'] = None
+    return pickle_dict
+
+  def __setstate__(self, pickle_dict):
+    self.__dict__ = pickle_dict
+    if self.log is None:
+      self.log = sys.stdout
+
   def __repr__(self):
     text = "r_model: "
     if self.model():
@@ -1058,6 +1076,19 @@ class map_model_manager(map_model_base):
     if extra_model_id_list:
       for id, m in zip(extra_model_id_list,extra_model_list):
         self._model_dict[id]=m
+
+  # prevent pickling error in Python 3 with self.log = sys.stdout
+  # unpickling is limited to restoring sys.stdout
+  def __getstate__(self):
+    pickle_dict = self.__dict__.copy()
+    if isinstance(self.log, io.TextIOWrapper):
+      pickle_dict['log'] = None
+    return pickle_dict
+
+  def __setstate__(self, pickle_dict):
+    self.__dict__ = pickle_dict
+    if self.log is None:
+      self.log = sys.stdout
 
   def __repr__(self):
     text = "Map_model_manager: "
@@ -1425,6 +1456,19 @@ class match_map_model_ncs:
 
     self._map_manager = None
     self._model = None
+
+  # prevent pickling error in Python 3 with self.log = sys.stdout
+  # unpickling is limited to restoring sys.stdout
+  def __getstate__(self):
+    pickle_dict = self.__dict__.copy()
+    if isinstance(self.log, io.TextIOWrapper):
+      pickle_dict['log'] = None
+    return pickle_dict
+
+  def __setstate__(self, pickle_dict):
+    self.__dict__ = pickle_dict
+    if self.log is None:
+      self.log = sys.stdout
 
   def deep_copy(self):
     new_mmmn = match_map_model_ncs()
