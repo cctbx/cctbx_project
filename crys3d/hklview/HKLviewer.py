@@ -91,8 +91,15 @@ class SettingsForm(QDialog):
 
 class WebEngineDebugForm(QDialog):
   def __init__(self, parent=None):
-    super(WebEngineDebugForm, self).__init__(parent.window)
-    self.setWindowTitle("QtWebEngineDebug")
+    super(WebEngineDebugForm, self).__init__(None, 
+                        Qt.WindowMinimizeButtonHint | # Want minimise and maximise buttons on window. 
+                        Qt.WindowMaximizeButtonHint | # As they are not the default for QDialog we must
+                        Qt.WindowCloseButtonHint |    # add them with flags at creation
+                        Qt.CustomizeWindowHint |
+                        Qt.WindowTitleHint |
+                        Qt.WindowSystemMenuHint
+                        )
+    self.setWindowTitle("Chrome QWebEngineDebug")
     browser = QWebEngineView()
     mainLayout = QGridLayout()
     mainLayout.addWidget(browser, 0, 0)
@@ -313,6 +320,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     # omitting name for QWebEngineProfile() means it is private/off-the-record with no cache files
     self.webprofile = QWebEngineProfile(parent=self.BrowserBox)
     self.webpage = QWebEnginePage( self.webprofile, self.BrowserBox)
+    self.webpage.profile().downloadRequested.connect(self.Browser_download_requested)
     if self.devmode:
       if hasattr(self.webpage, "setInspectedPage"): # older versions of Qt5 hasn't got chromium debug kit
         self.webpage.setUrl("chrome://gpu")
@@ -325,6 +333,22 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.BrowserBox.setPage(self.webpage)
     self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
 
+
+  def Browser_download_requested(self, download_item) -> None:
+    options = QFileDialog.Options()
+    fileName, filtr = QFileDialog.getSaveFileName(self.window,
+            "Save screenshot to file", download_item.path(),
+            "PNG Files (*.png);;All Files (*)", "", options)
+    if fileName:
+      download_item.setPath(fileName)
+      download_item.accept()
+      self.download_item = download_item
+      download_item.finished.connect(self._download_finished)
+
+
+  def _download_finished(self) -> None:
+    file_path = self.download_item.path()
+    print(f"File Downloaded to: {file_path}")
 
 
   def onOpenReflectionFile(self):
@@ -1503,6 +1527,8 @@ def run():
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += QWebEngineViewFlags
 
     from PySide2.QtWidgets import QApplication
+    # ensure QWebEngineView scales correctly on a screen with high DPI
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer(app)
 
@@ -1522,9 +1548,10 @@ def run():
       guiobj.fontspinBox.setValue(int(fontsize))
     if splitter1sizes is not None and splitter2sizes is not None and windowsize is not None:
       guiobj.window.resize(windowsize)
+      if guiobj.webpagedebugform and guiobj.devmode:
+        guiobj.webpagedebugform.resize( guiobj.window.size())
       guiobj.splitter.restoreState(splitter1sizes)
       guiobj.splitter_2.restoreState(splitter2sizes)
-
 
     timer = QTimer()
     timer.setInterval(20)
