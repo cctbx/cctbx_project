@@ -314,7 +314,7 @@ class around_model(with_bounds):
 
 
   """
-  def __init__(self, map_manager, model, cushion,
+  def __init__(self, map_manager, model, box_cushion,
       wrapping = None,
       log = sys.stdout):
 
@@ -336,7 +336,7 @@ class around_model(with_bounds):
 
     assert map_manager.is_compatible_model(model)
 
-    assert cushion >=  0
+    assert box_cushion >=  0
 
     if self.map_manager().wrapping():  # map must be entire unit cell
       assert map_manager.unit_cell_grid == map_manager.map_data().all()
@@ -350,8 +350,8 @@ class around_model(with_bounds):
     sites_cart = model.get_sites_cart()
     sites_frac = uc.fractionalize(sites_cart)
     map_data = map_manager.map_data()
-    # convert cushion into fractional vector
-    cushion_frac = flex.double(uc.fractionalize((cushion, )*3))
+    # convert box_cushion into fractional vector
+    cushion_frac = flex.double(uc.fractionalize((box_cushion, )*3))
     # find fractional corners
     frac_min = sites_frac.min()
     frac_max = sites_frac.max()

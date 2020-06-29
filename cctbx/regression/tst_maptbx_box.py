@@ -60,7 +60,7 @@ def exercise_around_model():
   box = cctbx.maptbx.box.around_model(
     map_manager = mam.mm,
     model       = mam.model.deep_copy(),
-    cushion     = 10,
+    box_cushion     = 10,
     wrapping    = True)
   new_mm1 = box.map_manager()
   new_mm2 = box.apply_to_map(map_manager = mam.mm.deep_copy())
@@ -110,7 +110,7 @@ def exercise_around_model():
   small_box = cctbx.maptbx.box.around_model(
     map_manager = mam.mm,
     model       = mam.model.deep_copy(),
-    cushion     = 5,
+    box_cushion     = 5,
     wrapping    = True)
 
   # Make sure nothing was zeroed out in this map (wrapping = True)
@@ -120,7 +120,7 @@ def exercise_around_model():
   box = cctbx.maptbx.box.around_model(
     map_manager = mam.mm,
     model       = mam.model.deep_copy(),
-    cushion     = 10,
+    box_cushion     = 10,
     wrapping    = False)
 
   # make sure things are changed in-place and are therefore different from start
@@ -249,7 +249,7 @@ def exercise_around_model():
   #
   import inspect
   r = inspect.getargspec(cctbx.maptbx.box.around_model.__init__)
-  assert r.args  ==  ['self', 'map_manager', 'model', 'cushion', 'wrapping', 'log'], r.args
+  assert r.args  ==  ['self', 'map_manager', 'model', 'box_cushion', 'wrapping', 'log'], r.args
   r = inspect.getargspec(cctbx.maptbx.box.with_bounds.__init__)
   assert r.args  ==  ['self', 'map_manager', 'lower_bounds', 'upper_bounds', 'model', 'wrapping', 'log'], r.args
 

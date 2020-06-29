@@ -156,6 +156,173 @@ class map_model_base(object):
     for mm in self.map_managers():
       mm.initialize_map_data(map_value = map_value)
 
+  def box_all_maps_around_density_and_shift_origin(self,
+     box_cushion = 5.,
+     threshold = 0.05,
+     map_key = 'map_manager',
+     log = sys.stdout):
+    '''
+       Box all maps around the density in map_key map (default is map_manager)
+       shift origin of maps, model
+       Replaces existing map_managers and shifts model in place
+
+       NOTE: This changes the gridding and shift_cart of the maps and model
+
+       Can be used in map_model_manager to work with boxed maps
+       and model or in r_model to re-box all maps and model
+
+       Does not require a model, but a model can be supplied.  If model is
+       supplied, it is possible that the model will be outside the density
+       after boxing.
+       To avoid this, use box_all_maps_around_model_and_shift_origin instead.
+
+       The box_cushion defines how far away from the nearest density the new
+       box boundaries will be placed
+
+       The threshold defines how much (relative to maximum in map)  above
+       mean value of map near edges is significant and should count as density.
+
+    '''
+    assert box_cushion is not None
+
+    from cctbx.maptbx.box import around_density
+
+    map_manager_info=self.get_map_manager_info()
+    assert map_manager_info.map_manager_id is not None
+    model_info=self.get_model_info()
+    model = self._model_dict[model_info.model_id]
+
+    # Make box around model and apply it to model, first map
+    box = around_density(
+      map_manager = self._map_dict[map_manager_info.map_manager_id],
+      model       = model,
+      box_cushion = box_cushion,
+      threshold   = threshold,
+      wrapping    = self._force_wrapping)
+
+    # Now box is a copy of map_manager and model that is boxed
+
+    # Now apply boxing to other maps and models and then insert them into
+    #  this r_model object, replacing what is here.
+
+    self._finish_boxing(box = box, model_info = model_info,
+      map_manager_info = map_manager_info, log = log)
+
+  def box_all_maps_around_model_and_shift_origin(self,
+     selection_string = None,
+     box_cushion = 5.,
+     log = sys.stdout):
+    '''
+       Box all maps around the model, shift origin of maps, model
+       Replaces existing map_managers and shifts model in place
+
+       NOTE: This changes the gridding and shift_cart of the maps and model
+
+       Can be used in map_model_manager to work with boxed maps
+       and model or in r_model to re-box all maps and model
+
+       Requires a model
+
+       The box_cushion defines how far away from the nearest atoms the new
+       box boundaries will be placed
+
+       The selection_string defines what part of the model to keep ('ALL' is
+        default)
+    '''
+    assert isinstance(self.model(), model_manager)
+    assert box_cushion is not None
+
+    from cctbx.maptbx.box import around_model
+
+    map_manager_info=self.get_map_manager_info()
+    assert map_manager_info.map_manager_id is not None
+    model_info=self.get_model_info()
+    assert model_info.model_id is not None # required for box_around_model
+    model = self._model_dict[model_info.model_id]
+
+    if selection_string:
+      sel = model.selection(selection_string)
+      model = model.select(sel)
+
+    # Make box around model and apply it to model, first map
+    box = around_model(
+      map_manager = self._map_dict[map_manager_info.map_manager_id],
+      model = model,
+      box_cushion = box_cushion,
+      wrapping = self._force_wrapping)
+    # Now box is a copy of map_manager and model that is boxed
+
+    # Now apply boxing to other maps and models and then insert them into
+    #  this r_model object, replacing what is here.
+    self._finish_boxing(box = box, model_info = model_info,
+      map_manager_info = map_manager_info, log = log)
+
+  def box_all_maps_around_mask_and_shift_origin(self,
+     selection_string = None,
+     box_cushion = 5.,
+     mask_key = 'mask',
+     log = sys.stdout):
+    '''
+       Box all maps around specified mask, shift origin of maps, model
+       Replaces existing map_managers and shifts model in place
+
+       NOTE: This changes the gridding and shift_cart of the maps and model
+
+       Requires a mask
+
+       The box_cushion defines how far away from the edge of the mask the new
+       box boundaries will be placed
+
+    '''
+    assert isinstance(self.model(), model_manager)
+    assert box_cushion is not None
+
+    from cctbx.maptbx.box import around_mask
+
+    map_manager_info=self.get_map_manager_info()
+    assert map_manager_info.map_manager_id is not None
+    map_manager = self._map_dict[map_manager_info.map_manager_id]
+
+    mask_mm = self.get_map_manager_by_id(mask_key)
+    assert mask_mm is not None
+    assert mask_mm.is_mask()
+
+    assert mask_mm is not map_manager  # mask and map cannot be the same
+
+    model_info=self.get_model_info()
+    model = self._model_dict[model_info.model_id]
+
+    # Make box around mask and apply it to model, first map
+    box = around_mask(
+      map_manager = map_manager,
+      mask_as_map_manager = mask_mm,
+      model = model,
+      box_cushion = box_cushion,
+      wrapping = self._force_wrapping)
+    # Now box is a copy of map_manager and model that is boxed
+
+    # Now apply boxing to other maps and models and then insert them into
+    #  this r_model object, replacing what is here.
+    self._finish_boxing(box = box, model_info = model_info,
+      map_manager_info = map_manager_info, log = log)
+
+  def _finish_boxing(self, box, model_info, map_manager_info,
+    log=sys.stdout):
+    if box.warning_message():
+      print("%s" %(box.warning_message()), file = log)
+      self._warning_message = box.warning_message()
+    self._map_dict[map_manager_info.map_manager_id] = box.map_manager()
+    self._model_dict[model_info.model_id] = box.model()
+    self._shift_cart = box.map_manager().shift_cart()
+
+    # Apply the box to all the other maps
+    for id in map_manager_info.other_map_manager_id_list:
+      self._map_dict[id] = box.apply_to_map(self._map_dict[id])
+
+    # Apply the box to all the other models
+    for id in model_info.other_model_id_list:
+      self._model_dict[id] = box.apply_to_model(self._model_dict[id])
+
   def mask_all_maps_around_atoms(self,
       mask_atoms_atom_radius = 3,
       set_outside_to_mean_inside = False,
@@ -168,6 +335,8 @@ class map_model_base(object):
     '''
       Generate mask around atoms and apply to all maps.
       Overwrites values in these maps
+
+      NOTE: Does not change the gridding or shift_cart of the maps and model
 
       Optionally set the value outside the mask equal to the mean inside,
         changing smoothly from actual values inside the mask to the constant
@@ -187,7 +356,6 @@ class map_model_base(object):
         soft_mask_radius = d_min_from_map(
           map_data=self.map_manager().map_data(),
           unit_cell=self.map_manager().crystal_symmetry().unit_cell())
-      mask_atoms_atom_radius += soft_mask_radius
     self.create_mask_around_atoms(
          soft_mask = soft_mask,
          soft_mask_radius = soft_mask_radius,
@@ -201,7 +369,9 @@ class map_model_base(object):
       mask_key = 'mask'):
     '''
       Apply a soft mask around edges of all maps. Overwrites values in maps
-      use 'mask' as the mask key
+      Use 'mask' as the mask key
+
+      NOTE: Does not change the gridding or shift_cart of the maps and model
     '''
 
     self.create_mask_around_edges(soft_mask_radius = soft_mask_radius,
@@ -220,12 +390,13 @@ class map_model_base(object):
         value outside (otherwise outside everything is set to zero)
 
       Optionally use any mask specified by mask_key
+
+      NOTE: Does not change the gridding or shift_cart of the map
     '''
 
     self.apply_mask_to_maps(map_keys = [map_key],
       mask_key = mask_key,
       set_outside_to_mean_inside = set_outside_to_mean_inside)
-
 
   def apply_mask_to_maps(self,
       map_keys = None,
@@ -240,6 +411,8 @@ class map_model_base(object):
         value outside (otherwise outside everything is set to zero)
 
       Optionally use any mask specified by mask_key
+
+      NOTE: Does not change the gridding or shift_cart of the maps
     '''
 
     assert (map_keys is None) or isinstance(map_keys, list)
@@ -270,8 +443,9 @@ class map_model_base(object):
      soft_mask_radius = None,
      mask_key = 'mask' ):
     '''
-      Generate soft mask around edges of mask
+      Generate new mask map_manager with soft mask around edges of mask
       Does not apply the mask to anything.
+      Normally follow with apply_mask_to_map or apply_mask_to_maps
 
       Optional: radius around edge for masking
         (default radius is resolution calculated from gridding)
@@ -302,6 +476,7 @@ class map_model_base(object):
 
     '''
       Generate mask based on model.  Does not apply the mask to anything.
+      Normally follow with apply_mask_to_map or apply_mask_to_maps
 
       Optional: radius around atoms for masking
       Optional: soft mask  (default = True)
@@ -342,6 +517,7 @@ class map_model_base(object):
     '''
       Generate mask based on density in map_manager.
       Does not apply the mask to anything.
+      Normally follow with apply_mask_to_map or apply_mask_to_maps
 
       Optional:  supply approximate solvent fraction
 
@@ -367,59 +543,6 @@ class map_model_base(object):
 
     # Put the mask in map_dict keyed with mask_key
     self.set_map_manager(mask_key, cm.map_manager())
-
-  def box_all_maps_around_model_and_shift_origin(self,
-     selection_string = None,
-     box_cushion = 5.,
-     log = sys.stdout):
-    '''
-       Box all maps around the model, shift origin of maps, model
-       Replaces existing map_managers and shifts model in place
-
-       Can be used immediately in map_model_manager to
-       work with boxed maps and model or in r_model to re-box all maps and model
-
-       Requires a model
-
-       The selection_string defines what part of the model to keep ('ALL' is
-        default)
-    '''
-    assert isinstance(self.model(), model_manager)
-    assert box_cushion is not None
-
-    from cctbx.maptbx.box import around_model
-
-    map_manager_info=self.get_map_manager_info()
-    assert map_manager_info.map_manager_id is not None
-    model_info=self.get_model_info()
-    assert model_info.model_id is not None # required for box_around_model
-
-    model = self._model_dict[model_info.model_id]
-    if selection_string:
-      sel = model.selection(selection_string)
-      model = model.select(sel)
-
-    # Make box around model and apply it to model, first map
-    box = around_model(
-      map_manager = self._map_dict[map_manager_info.map_manager_id],
-      model = model,
-      cushion = box_cushion,
-      wrapping = self._force_wrapping)
-
-    if box.warning_message():
-      print("%s" %(box.warning_message()), file = log)
-      self._warning_message = box.warning_message()
-    self._map_dict[map_manager_info.map_manager_id] = box.map_manager()
-    self._model_dict[model_info.model_id] = box.model()
-    self._shift_cart = box.map_manager().shift_cart()
-
-    # Apply the box to all the other maps
-    for id in map_manager_info.other_map_manager_id_list:
-      self._map_dict[id] = box.apply_to_map(self._map_dict[id])
-
-    # Apply the box to all the other models
-    for id in model_info.other_model_id_list:
-      self._model_dict[id] = box.apply_to_model(self._model_dict[id])
 
   def warning_message(self):
     return self._warning_message
@@ -497,7 +620,7 @@ class r_model(map_model_base):
   def __init__(self,
                model_dict       = None,  # models
                map_dict         = None,  # Maps as map_managers
-               wrapping         = None,  # Normally do not supply this
+               wrapping         = None,  # Use only to force wrapping value
       ):
 
     # Save the model(s) and map_dict (get model with self.model() etc)
