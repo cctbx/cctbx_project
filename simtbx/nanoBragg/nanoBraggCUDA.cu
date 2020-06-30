@@ -204,6 +204,8 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
 	double polar_vector_unitized[4];
 	cpu_unitize(polar_vector, polar_vector_unitized);
 
+        nvtxRangePushA("nanoBraggSpotsCUDA:Fhkl_pack");
+
         // Copy Fhkl -- 3D array of arrays (of arrays) into a 1-D array
 	CUDAREAL * cu_Fhkl = NULL;
         int hklsize = h_range * k_range * l_range;
@@ -217,6 +219,8 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
                 }
             }
         }
+
+        nvtxRangePop();
 
 
         nvtxRangePushA("nanoBraggSpotsCUDA:cudaMalloc");
@@ -367,6 +371,8 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
 	*sumn = 0;
 	*omega_sum = 0.0;
 
+        nvtxRangePushA("nanoBraggSpotsCUDA:Fhkl_unpack");
+
 	for (int i = 0; i < total_pixels; i++) {
 		if (!rangemap[i]) {
 			continue;
@@ -382,6 +388,9 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
 		++(*sumn);
 		*omega_sum += omega_reduction[i];
 	}
+
+        nvtxRangePop();
+
 	free(rangemap);
 	free(omega_reduction);
 	free(max_I_x_reduction);
