@@ -124,6 +124,7 @@ class density_props
     MMTBX_ASSERT(gradient != 0);
     if(silva_type.compare("dori")==0) {
       if(density<0.0001) return false;
+      if(gradient==0) return false;
       silva *=(4.0 / (gradient*gradient*gradient));
       silva /=(1.0 + silva);
       if(silva>=0.8 && silva <= 1) { // This breaks mmtbx/pair_interaction/tst_02.py
