@@ -89,6 +89,18 @@ void Fcell_manager::increment( double value, double value2)
     dI += value;
     dI2 += value2;
 };
+// END Fcell manager
+
+// begin lambda_manager
+lambda_manager::lambda_manager(){}
+
+void lambda_manager::increment( double value, double value2)
+{
+    dI += value;
+    dI2 += value2;
+};
+//END lambda manager
+
 
 //BEGIN unit cell manager
 ucell_manager::ucell_manager(){}
@@ -218,6 +230,10 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     boost::shared_ptr<Ncells_manager> nc2 = boost::shared_ptr<Ncells_manager>(new Ncells_manager());
     boost::shared_ptr<Ncells_manager> nc3 = boost::shared_ptr<Ncells_manager>(new Ncells_manager());
 
+
+    boost::shared_ptr<lambda_manager> lam1 = boost::shared_ptr<lambda_manager>(new lambda_manager());
+    boost::shared_ptr<lambda_manager> lam2 = boost::shared_ptr<lambda_manager>(new lambda_manager());
+
     boost::shared_ptr<origin_manager> orig0 = boost::shared_ptr<origin_manager>(new origin_manager());
 
     //boost::shared_ptr<Fcell_manager> fcell_man = boost::shared_ptr<Fcell_manager>(new Fcell_manager());
@@ -241,6 +257,12 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     orig0->refine_me = false;
     orig0->dk = vec3(0,0,1);
 
+    lam1->refine_me= false;
+    lam2->refine_me= false;
+
+    lambda_managers.push_back(lam1);
+    lambda_managers.push_back(lam2);
+
     rot_managers.push_back(rotX);
     rot_managers.push_back(rotY);
     rot_managers.push_back(rotZ);
@@ -262,6 +284,12 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     only_save_omega_kahn = false;
     compute_curvatures = true;
     isotropic_ncells = true;
+
+    lambda_managers[0]->value = 0;
+    lambda_managers[1]->value = 1;
+    use_lambda_coefficients = false;
+    //source_lambda0 = 0;
+    //source_lambda1 = 1;
 
     // set ucell gradients, Bmatrix is upper triangular in diffBragg?
     // note setting these derivatives is only useful for parameter reduction code where one computes chain rule
@@ -438,6 +466,11 @@ void diffBragg::initialize_managers()
 
     if (fcell_man->refine_me)
         fcell_man->initialize(sdim, fdim, compute_curvatures);
+
+    for (int i_lam=0; i_lam < 2; i_lam++){
+        if (lambda_managers[i_lam]->refine_me)
+            lambda_managers[i_lam]->initialize(sdim, fdim, compute_curvatures);
+    }
 }
 
 void diffBragg::vectorize_umats()
@@ -489,6 +522,15 @@ void diffBragg::refine(int refine_id){
     else if(refine_id==11){
         fcell_man->refine_me=true;
         fcell_man->initialize(sdim, fdim, compute_curvatures);
+    }
+
+    else if (refine_id==12){
+        use_lambda_coefficients = true;
+        for (int i_lam=0; i_lam <2 ; i_lam ++){
+            lambda_managers[i_lam]->refine_me=true;
+            lambda_managers[i_lam]->initialize(sdim, fdim, compute_curvatures);
+        }
+
     }
 }
 
@@ -677,6 +719,13 @@ boost::python::tuple diffBragg::get_ncells_derivative_pixels(){
     return derivative_pixels;
 }
 
+boost::python::tuple diffBragg::get_lambda_derivative_pixels(){
+    boost::python::tuple derivative_pixels;
+    derivative_pixels = boost::python::make_tuple(lambda_managers[0]->raw_pixels,
+        lambda_managers[1]->raw_pixels);
+    return derivative_pixels;
+}
+
 boost::python::tuple diffBragg::get_ncells_second_derivative_pixels(){
     SCITBX_ASSERT(Ncells_managers[0]->refine_me);
     SCITBX_ASSERT(Ncells_managers[1]->refine_me);
@@ -838,6 +887,13 @@ void diffBragg::add_diffBragg_spots()
                 }
             }
 
+            for (int i_lam=0; i_lam < 2; i_lam ++){
+                if (lambda_managers[i_lam]->refine_me){
+                    lambda_managers[i_lam]->dI =0;
+                    lambda_managers[i_lam]->dI2 =0;
+                }
+            }
+
             if (origin_managers[0]->refine_me){
                 origin_managers[0]->dI=0;
                 origin_managers[0]->dI2=0;
@@ -912,6 +968,16 @@ void diffBragg::add_diffBragg_spots()
                         incident[2] = -source_Y[source];
                         incident[3] = -source_Z[source];
                         lambda = source_lambda[source];
+
+                        if (use_lambda_coefficients){
+                            double lambda_angstrom = (lambda_managers[0]->value) + (lambda_managers[1]->value)*source;
+                            lambda = lambda_angstrom * 1e-10;
+                        }
+
+                        if (lambda_managers[0]->refine_me || lambda_managers[1]->refine_me){
+                            lambda_managers[0]->dg_dlambda = 1;
+                            lambda_managers[1]->dg_dlambda = source;
+                        }
                         //vec3 incident_0 = vec3(incident[1], incident[2], incident[3]);
 
                         /* construct the incident beam unit vector while recovering source distance */
@@ -1013,18 +1079,8 @@ void diffBragg::add_diffBragg_spots()
                                 NABC[7] = 0;
                                 NABC[8] = Nc;
 
-                                dN[0] = 0; // for computing derivative at a later step
-                                dN[1] = 0;
-                                dN[2] = 0;
-                                dN[3] = 0;
-                                dN[4] = 0;
-                                dN[5] = 0;
-                                dN[6] = 0;
-                                dN[7] = 0;
-                                dN[8] = 0;
-
                                 double C = 2 / 0.63 * fudge;
-                                double m = Na;
+                                //double m = Na;
                                 vec3 delta_H = (H_vec - H0_vec);
                                 vec3 V = NABC*delta_H;// (H_vec- H0_vec);
 
@@ -1175,235 +1231,245 @@ void diffBragg::add_diffBragg_spots()
                                     printf("hkl= %f %f %f  hkl1= %d %d %d  Fcell=%f\n", h,k,l,h0,k0,l0, F_cell);
 
 
-                                /* checkpoint for rotataion derivatives */
-                                if (isotropic_ncells){ // isotropic Ncells used in manuscript so preserving the derivative form here..
-                                    double two_C_m_squared = 2*C*m*m;
-                                    mat3 UBOt = Umatrix*Bmat_realspace*(Omatrix.transpose());
-                                    if (rot_managers[0]->refine_me){
-                                        mat3 RyRzUBOt = RotMats[1]*RotMats[2]*UBOt;
-                                        vec3 delta_H_prime = (UMATS[mos_tic]*dRotMats[0]*RyRzUBOt).transpose()*q_vec;
-                                        double coef = delta_H*delta_H_prime;
-                                        double value = -two_C_m_squared * coef * Iincrement;
+                                ///* checkpoint for rotataion derivatives */
+                                //if (isotropic_ncells){ // isotropic Ncells used in manuscript so preserving the derivative form here..
+                                //    double two_C_m_squared = 2*C*m*m;
+                                //    mat3 UBOt = Umatrix*Bmat_realspace*(Omatrix.transpose());
+                                //    if (rot_managers[0]->refine_me){
+                                //        mat3 RyRzUBOt = RotMats[1]*RotMats[2]*UBOt;
+                                //        vec3 delta_H_prime = (UMATS[mos_tic]*dRotMats[0]*RyRzUBOt).transpose()*q_vec;
+                                //        double coef = delta_H*delta_H_prime;
+                                //        double value = -two_C_m_squared * coef * Iincrement;
 
-                                        double value2 =0;
-                                        if (compute_curvatures) {
-                                            vec3 delta_H_dbl_prime = (UMATS[mos_tic]*d2RotMats[0]*RyRzUBOt).transpose()*q_vec;
-                                            double coef2 = delta_H_prime*delta_H_prime;
-                                            double coef3 = delta_H*delta_H_dbl_prime;
-                                            value2 = -two_C_m_squared * (value *coef + Iincrement*(coef2 + coef3));
-                                        }
-                                        rot_managers[0]->increment(value, value2);
+                                //        double value2 =0;
+                                //        if (compute_curvatures) {
+                                //            vec3 delta_H_dbl_prime = (UMATS[mos_tic]*d2RotMats[0]*RyRzUBOt).transpose()*q_vec;
+                                //            double coef2 = delta_H_prime*delta_H_prime;
+                                //            double coef3 = delta_H*delta_H_dbl_prime;
+                                //            value2 = -two_C_m_squared * (value *coef + Iincrement*(coef2 + coef3));
+                                //        }
+                                //        rot_managers[0]->increment(value, value2);
+                                //    }
+                                //    if (rot_managers[1]->refine_me){
+                                //        mat3 UmosRx = UMATS[mos_tic]*RotMats[0];
+                                //        mat3 RzUBOt = RotMats[2]*UBOt;
+                                //        vec3 delta_H_prime =(UmosRx*dRotMats[1]*RzUBOt).transpose()*q_vec;
+                                //        double coef = delta_H*delta_H_prime;
+                                //        double value = -two_C_m_squared*coef*Iincrement;
+
+                                //        double value2=0;
+                                //        if (compute_curvatures){
+                                //            vec3 delta_H_dbl_prime = (UmosRx*d2RotMats[1]*RzUBOt).transpose()*q_vec;
+                                //            double coef2 = delta_H_prime*delta_H_prime;
+                                //            double coef3 = delta_H*delta_H_dbl_prime;
+                                //            value2 = -two_C_m_squared * (value *coef + Iincrement*(coef2 + coef3));
+                                //        }
+                                //        rot_managers[1]->increment(value, value2);
+                                //    }
+                                //    if (rot_managers[2]->refine_me){
+                                //        mat3 UmosRxRy = UMATS[mos_tic]*RotMats[0]*RotMats[1];
+                                //        vec3 delta_H_prime = (UmosRxRy*dRotMats[2]*UBOt).transpose()*q_vec;
+                                //        double coef = delta_H*delta_H_prime;
+                                //        double value = -two_C_m_squared * coef * Iincrement;
+
+                                //        double value2=0;
+                                //        if (compute_curvatures){
+                                //            vec3 delta_H_dbl_prime = (UmosRxRy*d2RotMats[2]*UBOt).transpose()*q_vec;
+                                //            double coef2 = delta_H_prime*delta_H_prime;
+                                //            double coef3 = delta_H*delta_H_dbl_prime;
+                                //            value2 = -two_C_m_squared * (value *coef + Iincrement*(coef2 + coef3));
+                                //        }
+                                //        rot_managers[2]->increment(value, value2);
+                                //    }
+
+                                //    /*Checkpoint for unit cell derivatives*/
+                                //    mat3 Ot = Omatrix.transpose();
+                                //    for(int i_uc=0; i_uc < 6; i_uc++ ){
+                                //        if (ucell_managers[i_uc]->refine_me){
+                                //            mat3 UmosRxRyRzU = UMATS_RXYZ[mos_tic]*Umatrix;
+
+                                //            vec3 delta_H_prime = ((UmosRxRyRzU*(ucell_managers[i_uc]->dB)*Ot).transpose()*q_vec);
+                                //            double coef = delta_H*delta_H_prime;
+                                //            double value = -two_C_m_squared * coef * Iincrement;
+
+                                //            double value2 =0;
+                                //            if (compute_curvatures){
+                                //                vec3 delta_H_dbl_prime = ((UmosRxRyRzU*(ucell_managers[i_uc]->dB2)*Ot).transpose()*q_vec);
+                                //                double coef2 = delta_H_prime*delta_H_prime;
+                                //                double coef3 = delta_H*delta_H_dbl_prime;
+                                //                value2 = -two_C_m_squared * (value *coef + Iincrement*(coef2 + coef3));
+                                //            }
+
+                                //            ucell_managers[i_uc]->increment(value, value2);
+                                //        }
+                                //    } /*end ucell deriv */
+
+                                //    /* Checkpoint for Ncells manager */
+                                //    if (Ncells_managers[0]->refine_me){
+                                //            double hsqr = delta_H*delta_H;
+                                //            double six_by_m = 6/m;
+                                //            double two_C_hsqr = 2*C*hsqr;
+                                //            double deriv_coef = (six_by_m - two_C_hsqr*m);
+                                //            double value = Iincrement*deriv_coef;
+                                //            double value2=0;
+                                //            if (compute_curvatures){
+                                //                value2 = Iincrement*(-six_by_m/m - two_C_hsqr)
+                                //                            + deriv_coef * value;
+                                //            }
+
+                                //            Ncells_managers[0]->increment(value, value2);
+
+                                //    } /* end Ncells manager deriv */
+
+                                //    /* Checkpoint for Origin manager */
+                                //    if (origin_managers[0]->refine_me){
+                                //        origin_managers[0]->increment(
+                                //            V,  NABC, UBO, k_diffracted, o_vec, airpath, lambda*1e10,
+                                //            hrad_sqr, F_cell, F_latt, fudge,
+                                //            source_I[source], capture_fraction, omega_pixel, pixel_size);
+                                //    } /* end origin manager deriv */
+
+                                //    /* checkpoint for Fcell manager */
+                                //    if (fcell_man->refine_me){
+                                //        //double value = 2*F_cell*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
+                                //        double value = 2*Iincrement/F_cell ;
+                                //        double value2=0;
+                                //        if (compute_curvatures){
+                                //            //value2 = 2*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
+                                //            value2 = value/F_cell;
+                                //        }
+                                //        fcell_man->increment(value, value2);
+                                //    } /* end of fcell man deriv */
+                                //}
+
+                                double two_C = 2*C;
+                                mat3 UBOt = Umatrix*Bmat_realspace*(Omatrix.transpose());
+                                if (rot_managers[0]->refine_me){
+                                    mat3 RyRzUBOt = RotMats[1]*RotMats[2]*UBOt;
+                                    vec3 delta_H_prime = (UMATS[mos_tic]*dRotMats[0]*RyRzUBOt).transpose()*q_vec;
+                                    double V_dot_dV = V*(NABC*delta_H_prime);
+                                    double value = -two_C * V_dot_dV * Iincrement;
+
+                                    double value2 =0;
+                                    if (compute_curvatures) {
+                                        vec3 delta_H_dbl_prime = (UMATS[mos_tic]*d2RotMats[0]*RyRzUBOt).transpose()*q_vec;
+                                        double dV_dot_dV = (NABC*delta_H_prime)*(NABC*delta_H_prime);
+                                        double dV2_dot_V = (NABC*delta_H)*(NABC*delta_H_dbl_prime);
+                                        value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
                                     }
-                                    if (rot_managers[1]->refine_me){
-                                        mat3 UmosRx = UMATS[mos_tic]*RotMats[0];
-                                        mat3 RzUBOt = RotMats[2]*UBOt;
-                                        vec3 delta_H_prime =(UmosRx*dRotMats[1]*RzUBOt).transpose()*q_vec;
-                                        double coef = delta_H*delta_H_prime;
-                                        double value = -two_C_m_squared*coef*Iincrement;
+                                    rot_managers[0]->increment(value, value2);
+                                }
+                                if (rot_managers[1]->refine_me){
+                                    mat3 UmosRx = UMATS[mos_tic]*RotMats[0];
+                                    mat3 RzUBOt = RotMats[2]*UBOt;
+                                    vec3 delta_H_prime =(UmosRx*dRotMats[1]*RzUBOt).transpose()*q_vec;
+                                    double V_dot_dV = V*(NABC*delta_H_prime);
+                                    double value = -two_C * V_dot_dV * Iincrement;
 
-                                        double value2=0;
-                                        if (compute_curvatures){
-                                            vec3 delta_H_dbl_prime = (UmosRx*d2RotMats[1]*RzUBOt).transpose()*q_vec;
-                                            double coef2 = delta_H_prime*delta_H_prime;
-                                            double coef3 = delta_H*delta_H_dbl_prime;
-                                            value2 = -two_C_m_squared * (value *coef + Iincrement*(coef2 + coef3));
-                                        }
-                                        rot_managers[1]->increment(value, value2);
+                                    double value2=0;
+                                    if (compute_curvatures){
+                                        vec3 delta_H_dbl_prime = (UmosRx*d2RotMats[1]*RzUBOt).transpose()*q_vec;
+                                        double dV_dot_dV = (NABC*delta_H_prime)*(NABC*delta_H_prime);
+                                        double dV2_dot_V = (NABC*delta_H)*(NABC*delta_H_dbl_prime);
+                                        value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
                                     }
-                                    if (rot_managers[2]->refine_me){
-                                        mat3 UmosRxRy = UMATS[mos_tic]*RotMats[0]*RotMats[1];
-                                        vec3 delta_H_prime = (UmosRxRy*dRotMats[2]*UBOt).transpose()*q_vec;
-                                        double coef = delta_H*delta_H_prime;
-                                        double value = -two_C_m_squared * coef * Iincrement;
+                                    rot_managers[1]->increment(value, value2);
+                                }
+                                if (rot_managers[2]->refine_me){
+                                    mat3 UmosRxRy = UMATS[mos_tic]*RotMats[0]*RotMats[1];
+                                    vec3 delta_H_prime = (UmosRxRy*dRotMats[2]*UBOt).transpose()*q_vec;
+                                    double V_dot_dV = V*(NABC*delta_H_prime);
+                                    double value = -two_C * V_dot_dV * Iincrement;
 
-                                        double value2=0;
-                                        if (compute_curvatures){
-                                            vec3 delta_H_dbl_prime = (UmosRxRy*d2RotMats[2]*UBOt).transpose()*q_vec;
-                                            double coef2 = delta_H_prime*delta_H_prime;
-                                            double coef3 = delta_H*delta_H_dbl_prime;
-                                            value2 = -two_C_m_squared * (value *coef + Iincrement*(coef2 + coef3));
-                                        }
-                                        rot_managers[2]->increment(value, value2);
+                                    double value2=0;
+                                    if (compute_curvatures){
+                                        vec3 delta_H_dbl_prime = (UmosRxRy*d2RotMats[2]*UBOt).transpose()*q_vec;
+                                        double dV_dot_dV = (NABC*delta_H_prime)*(NABC*delta_H_prime);
+                                        double dV2_dot_V = (NABC*delta_H)*(NABC*delta_H_dbl_prime);
+                                        value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
                                     }
-
-                                    /*Checkpoint for unit cell derivatives*/
-                                    mat3 Ot = Omatrix.transpose();
-                                    for(int i_uc=0; i_uc < 6; i_uc++ ){
-                                        if (ucell_managers[i_uc]->refine_me){
-                                            mat3 UmosRxRyRzU = UMATS_RXYZ[mos_tic]*Umatrix;
-
-                                            vec3 delta_H_prime = ((UmosRxRyRzU*(ucell_managers[i_uc]->dB)*Ot).transpose()*q_vec);
-                                            double coef = delta_H*delta_H_prime;
-                                            double value = -two_C_m_squared * coef * Iincrement;
-
-                                            double value2 =0;
-                                            if (compute_curvatures){
-                                                vec3 delta_H_dbl_prime = ((UmosRxRyRzU*(ucell_managers[i_uc]->dB2)*Ot).transpose()*q_vec);
-                                                double coef2 = delta_H_prime*delta_H_prime;
-                                                double coef3 = delta_H*delta_H_dbl_prime;
-                                                value2 = -two_C_m_squared * (value *coef + Iincrement*(coef2 + coef3));
-                                            }
-
-                                            ucell_managers[i_uc]->increment(value, value2);
-                                        }
-                                    } /*end ucell deriv */
-
-                                    /* Checkpoint for Ncells manager */
-                                    if (Ncells_managers[0]->refine_me){
-                                            double hsqr = delta_H*delta_H;
-                                            double six_by_m = 6/m;
-                                            double two_C_hsqr = 2*C*hsqr;
-                                            double deriv_coef = (six_by_m - two_C_hsqr*m);
-                                            double value = Iincrement*deriv_coef;
-                                            double value2=0;
-                                            if (compute_curvatures){
-                                                value2 = Iincrement*(-six_by_m/m - two_C_hsqr)
-                                                            + deriv_coef * value;
-                                            }
-
-                                            Ncells_managers[0]->increment(value, value2);
-
-                                    } /* end Ncells manager deriv */
-
-                                    /* Checkpoint for Origin manager */
-                                    if (origin_managers[0]->refine_me){
-                                        origin_managers[0]->increment(
-                                            V,  NABC, UBO, k_diffracted, o_vec, airpath, lambda*1e10,
-                                            hrad_sqr, F_cell, F_latt, fudge,
-                                            source_I[source], capture_fraction, omega_pixel, pixel_size);
-                                    } /* end origin manager deriv */
-
-                                    /* checkpoint for Fcell manager */
-                                    if (fcell_man->refine_me){
-                                        //double value = 2*F_cell*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
-                                        double value = 2*Iincrement/F_cell ;
-                                        double value2=0;
-                                        if (compute_curvatures){
-                                            //value2 = 2*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
-                                            value2 = value/F_cell;
-                                        }
-                                        fcell_man->increment(value, value2);
-                                    } /* end of fcell man deriv */
+                                    rot_managers[2]->increment(value, value2);
                                 }
 
-                                else{
-                                    double two_C = 2*C;
-                                    mat3 UBOt = Umatrix*Bmat_realspace*(Omatrix.transpose());
-                                    if (rot_managers[0]->refine_me){
-                                        mat3 RyRzUBOt = RotMats[1]*RotMats[2]*UBOt;
-                                        vec3 delta_H_prime = (UMATS[mos_tic]*dRotMats[0]*RyRzUBOt).transpose()*q_vec;
+                                /*Checkpoint for unit cell derivatives*/
+                                mat3 Ot = Omatrix.transpose();
+                                for(int i_uc=0; i_uc < 6; i_uc++ ){
+                                    if (ucell_managers[i_uc]->refine_me){
+                                        mat3 UmosRxRyRzU = UMATS_RXYZ[mos_tic]*Umatrix;
+
+                                        vec3 delta_H_prime = ((UmosRxRyRzU*(ucell_managers[i_uc]->dB)*Ot).transpose()*q_vec);
                                         double V_dot_dV = V*(NABC*delta_H_prime);
                                         double value = -two_C * V_dot_dV * Iincrement;
 
                                         double value2 =0;
-                                        if (compute_curvatures) {
-                                            vec3 delta_H_dbl_prime = (UMATS[mos_tic]*d2RotMats[0]*RyRzUBOt).transpose()*q_vec;
+                                        if (compute_curvatures){
+                                            vec3 delta_H_dbl_prime = ((UmosRxRyRzU*(ucell_managers[i_uc]->dB2)*Ot).transpose()*q_vec);
                                             double dV_dot_dV = (NABC*delta_H_prime)*(NABC*delta_H_prime);
                                             double dV2_dot_V = (NABC*delta_H)*(NABC*delta_H_dbl_prime);
-                                            value2 = two_C*(V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV);
+                                            value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
                                         }
-                                        rot_managers[0]->increment(value, value2);
-                                    }
-                                    if (rot_managers[1]->refine_me){
-                                        mat3 UmosRx = UMATS[mos_tic]*RotMats[0];
-                                        mat3 RzUBOt = RotMats[2]*UBOt;
-                                        vec3 delta_H_prime =(UmosRx*dRotMats[1]*RzUBOt).transpose()*q_vec;
-                                        double V_dot_dV = V*(NABC*delta_H_prime);
-                                        double value = -two_C * V_dot_dV * Iincrement;
 
-                                        double value2=0;
-                                        if (compute_curvatures){
-                                            vec3 delta_H_dbl_prime = (UmosRx*d2RotMats[1]*RzUBOt).transpose()*q_vec;
-                                            double dV_dot_dV = (NABC*delta_H_prime)*(NABC*delta_H_prime);
-                                            double dV2_dot_V = (NABC*delta_H)*(NABC*delta_H_dbl_prime);
-                                            value2 = two_C*(V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV);
-                                        }
-                                        rot_managers[1]->increment(value, value2);
+                                        ucell_managers[i_uc]->increment(value, value2);
                                     }
-                                    if (rot_managers[2]->refine_me){
-                                        mat3 UmosRxRy = UMATS[mos_tic]*RotMats[0]*RotMats[1];
-                                        vec3 delta_H_prime = (UmosRxRy*dRotMats[2]*UBOt).transpose()*q_vec;
-                                        double V_dot_dV = V*(NABC*delta_H_prime);
-                                        double value = -two_C * V_dot_dV * Iincrement;
+                                } /*end ucell deriv */
 
+                                /* Checkpoint for Ncells manager */
+                                if (Ncells_managers[0]->refine_me){
+                                    int num_ncell_deriv = 1;
+                                    if (not isotropic_ncells)
+                                        num_ncell_deriv = 3;
+                                    for (int i_nc=0; i_nc < num_ncell_deriv; i_nc++) {
+                                        int _i = i_nc*3 + i_nc; // diagonal term
+                                        mat3 dN;
+                                        dN[_i] = 1;
+                                        double N_i = NABC[_i];
+                                        vec3 dV_dN = dN*delta_H;
+                                        double deriv_coef = (1/N_i - C*dV_dN*V);
+                                        double value = 2*Iincrement*deriv_coef;
                                         double value2=0;
-                                        if (compute_curvatures){
-                                            vec3 delta_H_dbl_prime = (UmosRxRy*d2RotMats[2]*UBOt).transpose()*q_vec;
-                                            double dV_dot_dV = (NABC*delta_H_prime)*(NABC*delta_H_prime);
-                                            double dV2_dot_V = (NABC*delta_H)*(NABC*delta_H_dbl_prime);
-                                            value2 = two_C*(V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV);
+                                        if(compute_curvatures){
+                                            dN[_i] = 0; // TODO check maths
+                                            value2 = ( -1/N_i/N_i - C*dV_dN*dV_dN)*2*Iincrement;
+                                            value2 += deriv_coef*2*value;
                                         }
-                                        rot_managers[2]->increment(value, value2);
+                                        Ncells_managers[i_nc]->increment(value, value2);
                                     }
 
-                                    /*Checkpoint for unit cell derivatives*/
-                                    mat3 Ot = Omatrix.transpose();
-                                    for(int i_uc=0; i_uc < 6; i_uc++ ){
-                                        if (ucell_managers[i_uc]->refine_me){
-                                            mat3 UmosRxRyRzU = UMATS_RXYZ[mos_tic]*Umatrix;
+                                } /* end Ncells manager deriv */
 
-                                            vec3 delta_H_prime = ((UmosRxRyRzU*(ucell_managers[i_uc]->dB)*Ot).transpose()*q_vec);
-                                            double V_dot_dV = V*(NABC*delta_H_prime);
-                                            double value = -two_C * V_dot_dV * Iincrement;
+                                /* Checkpoint for Origin manager */
+                                if (origin_managers[0]->refine_me){
+                                    origin_managers[0]->increment(
+                                        V,  NABC, UBO, k_diffracted, o_vec, airpath, lambda*1e10,
+                                        hrad_sqr, F_cell, F_latt, fudge,
+                                        source_I[source], capture_fraction, omega_pixel, pixel_size);
+                                } /* end origin manager deriv */
 
-                                            double value2 =0;
-                                            if (compute_curvatures){
-                                                vec3 delta_H_dbl_prime = ((UmosRxRyRzU*(ucell_managers[i_uc]->dB2)*Ot).transpose()*q_vec);
-                                                double dV_dot_dV = (NABC*delta_H_prime)*(NABC*delta_H_prime);
-                                                double dV2_dot_V = (NABC*delta_H)*(NABC*delta_H_dbl_prime);
-                                                value2 = two_C*(V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV);
-                                            }
+                                /* checkpoint for Fcell manager */
+                                if (fcell_man->refine_me){
+                                    //double value = 2*F_cell*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
+                                    double value = 2*Iincrement/F_cell ;
+                                    double value2=0;
+                                    if (compute_curvatures){
+                                        //value2 = 2*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
+                                        value2 = value/F_cell;
+                                    }
+                                    fcell_man->increment(value, value2);
+                                } /* end of fcell man deriv */
 
-                                            ucell_managers[i_uc]->increment(value, value2);
-                                        }
-                                    } /*end ucell deriv */
-
-                                    /* Checkpoint for Ncells manager */
-                                    if (Ncells_managers[0]->refine_me){
-                                        for (int i_nc=0; i_nc < 3; i_nc++) {
-                                            int _i = i_nc*3 + i_nc; // diagonal term
-                                            dN[0] = 0; // dN is the derivative of NABC matrix (NABC is diagonal matrix with elems Na, Nb, Nc)
-                                            dN[4] = 0;
-                                            dN[8] = 0;
-                                            dN[_i] = 1;
-                                            double N_i = NABC[_i];
-                                            vec3 dV_dN = dN*delta_H;
-                                            double deriv_coef = (1/N_i - C*dV_dN*V);
-                                            double value = 2*Iincrement*deriv_coef;
-                                            double value2=0;
-                                            if(compute_curvatures){
-                                                dN[_i] = 0; // TODO check maths
-                                                //vec3 dV_dN_second = dN*delta_H; // = 0
-                                                //value2 = ( -1/N_i/N_i - C*dV_dN_second*V - C*dV_dN*dV_dN)*2*Iincrement;
-                                                value2 = ( -1/N_i/N_i - C*dV_dN*dV_dN)*2*Iincrement;
-                                                value2 += deriv_coef*2*value;
-                                            }
-                                            Ncells_managers[i_nc]->increment(value, value2);
-                                        }
-
-                                    } /* end Ncells manager deriv */
-
-                                    /* Checkpoint for Origin manager */
-                                    if (origin_managers[0]->refine_me){
-                                        origin_managers[0]->increment(
-                                            V,  NABC, UBO, k_diffracted, o_vec, airpath, lambda*1e10,
-                                            hrad_sqr, F_cell, F_latt, fudge,
-                                            source_I[source], capture_fraction, omega_pixel, pixel_size);
-                                    } /* end origin manager deriv */
-
-                                    /* checkpoint for Fcell manager */
-                                    if (fcell_man->refine_me){
-                                        //double value = 2*F_cell*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
-                                        double value = 2*Iincrement/F_cell ;
-                                        double value2=0;
-                                        if (compute_curvatures){
-                                            //value2 = 2*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
-                                            value2 = value/F_cell;
-                                        }
-                                        fcell_man->increment(value, value2);
-                                    } /* end of fcell man deriv */
-
+                                /*checkpoint for lambda manager*/
+                                for(int i_lam=0; i_lam < 2; i_lam++){
+                                    if (lambda_managers[i_lam]->refine_me){
+                                        double lambda_ang = lambda*1e10;
+                                        double NH_dot_V = (NABC*H_vec)*V;
+                                        double coef = NH_dot_V*two_C*(lambda_managers[i_lam]->dg_dlambda) / lambda_ang;
+                                        double value = coef*Iincrement;
+                                        double value2 =0;
+                                        //if (compute_curvatures)
+                                        lambda_managers[i_lam]->increment(value, value2);
+                                    }
                                 }
+                                /*end of lambda deriv*/
                             }
                             /* end of mosaic loop */
                         }
@@ -1439,7 +1505,6 @@ void diffBragg::add_diffBragg_spots()
             k_incident_ave[2] = incident[3];
             k_incident_ave *= (1./k_incident_ave.length());
 
-
             /* polarization factor */
             if(!nopolar){
                 /* TODO: what about divergence and different incident vectors ? perhaps do for averagce incident vec */
@@ -1453,7 +1518,7 @@ void diffBragg::add_diffBragg_spots()
                 om=1;  // if we hit this case it means we applied the correction already
 
             // final scale term to being everything to photon number units
-            scale_term =r_e_sqr*fluence*spot_scale*polar*om / steps;
+            scale_term = r_e_sqr*fluence*spot_scale*polar*om / steps;
 
             if(only_save_omega_kahn)
                 floatimage[i] += polar*omega_pixel_ave;
@@ -1475,7 +1540,6 @@ void diffBragg::add_diffBragg_spots()
             //SCITBX_ASSERT( roi_ss < roi_sdim);
             //SCITBX_ASSERT(roi_i >= 0);
             //SCITBX_ASSERT(roi_i < (roi_fdim*roi_sdim) ) ;
-
             floatimage_roi[roi_i] += scale_term*I;
 
             /* udpate the rotation derivative images*/
@@ -1518,6 +1582,15 @@ void diffBragg::add_diffBragg_spots()
                 double value2 = scale_term*fcell_man->dI2;
                 fcell_man->increment_image(roi_i, value, value2, compute_curvatures);
             }/* end Fcell deriv image increment */
+
+            /*update the lambda derivative images*/
+            for (int i_lam=0 ; i_lam < 2 ; i_lam++){
+                if (lambda_managers[i_lam]->refine_me){
+                    double value = scale_term*lambda_managers[i_lam]->dI;
+                    double value2 = scale_term*lambda_managers[i_lam]->dI2;
+                    lambda_managers[i_lam]->increment_image(roi_i, value, value2, compute_curvatures);
+                }
+            }/* end lambda deriv image increment */
 
             /* update origin derivative image */
             if (origin_managers[0]->refine_me){
@@ -1687,6 +1760,11 @@ void diffBragg::add_diffBragg_spots()
                     SCITBX_EXAMINE(dN[6]);
                     SCITBX_EXAMINE(dN[7]);
                     SCITBX_EXAMINE(dN[8]);
+                    //double lambda_coef0 = lambda_managers[0]->value;
+                    //double lambda_coef1 = lambda_managers[1]->value;
+                    SCITBX_EXAMINE(lambda_managers[0]->value);
+                    SCITBX_EXAMINE(lambda_managers[1]->value);
+                    SCITBX_EXAMINE(use_lambda_coefficients);
                     printf("real-space cell vectors (Angstrom):\n");
                     printf("     %-10s  %-10s  %-10s\n","a","b","c");
                     printf("X: %11.8f %11.8f %11.8f\n",a[1]*1e10,b[1]*1e10,c[1]*1e10);

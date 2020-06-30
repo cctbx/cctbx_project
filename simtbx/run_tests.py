@@ -20,6 +20,8 @@ tst_list = (
     ["$D/diffBragg/tests/tst_diffBragg_ncells_property_anisotropic.py", "--idx 0"],
     ["$D/diffBragg/tests/tst_diffBragg_ncells_property_anisotropic.py", "--idx 1"],
     ["$D/diffBragg/tests/tst_diffBragg_ncells_property_anisotropic.py", "--idx 2"],
+    ["$D/diffBragg/tests/tst_diffBragg_lambda_coefficients.py", "--idx 0"],
+    ["$D/diffBragg/tests/tst_diffBragg_lambda_coefficients.py", "--idx 1"],
     "$D/diffBragg/tests/tst_diffBragg_ncells_refine.py",
     "$D/diffBragg/tests/tst_diffBragg_ncells_aniso_refine.py",
     ["$D/diffBragg/tests/tst_diffBragg_originZ_refine.py", "--curvatures"],
