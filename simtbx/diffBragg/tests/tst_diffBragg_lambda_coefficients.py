@@ -49,15 +49,17 @@ S.D.lambda_coefficients = lambda0_GT, lambda1_GT
 S.D.spot_scale = 100000
 S.D.Ncells_abc = 12
 
-S.D.refine(12)
+if args.idx == 0:
+    S.D.refine(12)
+else:
+    S.D.refine(13)
 S.D.initialize_managers()
 S.D.region_of_interest = ((0, 1023), (0, 1023))
 
 S.D.add_diffBragg_spots()
 img = S.D.raw_pixels.as_numpy_array()
 derivs = S.D.get_lambda_derivative_pixels()
-deriv0 = derivs[0].as_numpy_array()
-deriv1 = derivs[1].as_numpy_array()
+deriv = derivs[0].as_numpy_array()
 
 S.D.raw_pixels *= 0
 S.D.use_lambda_coefficients = False
@@ -66,7 +68,7 @@ test_img = S.D.raw_pixels.as_numpy_array()
 assert np.allclose(img,test_img)
 S.D.use_lambda_coefficients = True
 S.D.raw_pixels *= 0
-print ("OK")
+print("OK")
 
 bragg = img > 1e-1  # select bragg scattering regions
 
@@ -90,7 +92,7 @@ for i_shift, en_shift in enumerate(energy_shifts):
     delta_b = lambda1_GT*b_percs[i_shift]
 
     if args.idx == 0:
-        new_waves = np.arange(Nwave)*(lambda1_GT) + lambda0_GT + delta_a
+        new_waves = np.arange(Nwave)*lambda1_GT + lambda0_GT + delta_a
         shift = delta_a
     else:
         new_waves = np.arange(Nwave) * (lambda1_GT + delta_b) + lambda0_GT
@@ -113,9 +115,9 @@ for i_shift, en_shift in enumerate(energy_shifts):
     fdiff = (img2 - img) / shift
 
     if args.idx == 0:
-        error = np.abs(fdiff[bragg] - deriv0[bragg]).mean()
+        error = np.abs(fdiff[bragg] - deriv[bragg]).mean()
     else:
-        error = np.abs(fdiff[bragg] - deriv1[bragg]).mean()
+        error = np.abs(fdiff[bragg] - deriv[bragg]).mean()
 
     all_error.append(error)
 
