@@ -348,7 +348,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
   def _download_finished(self):
     file_path = self.download_item.path()
-    print(f"File Downloaded to: {file_path}")
+    print("File Downloaded to: %s" %file_path)
 
 
   def onOpenReflectionFile(self):
