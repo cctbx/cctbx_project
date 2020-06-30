@@ -86,6 +86,21 @@ namespace boost_python { namespace {
       return boost::python::make_tuple(frange,srange);
   }
 
+  void set_lambda_coef(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& values){
+      double coef0 = extract<double>(values[0]);
+      double coef1 = extract<double>(values[1]);
+      diffBragg.lambda_managers[0]->value = coef0;
+      diffBragg.lambda_managers[1]->value = coef1;
+      diffBragg.use_lambda_coefficients = true;
+  }
+
+  static boost::python::tuple get_lambda_coef(simtbx::nanoBragg::diffBragg const& diffBragg) {
+      double coef0=diffBragg.lambda_managers[0]->value;
+      double coef1=diffBragg.lambda_managers[1]->value;
+      return boost::python::make_tuple(coef0, coef1);
+  }
+
+
   static void  set_Fhkl_tuple_complex(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& value) {
       diffBragg.pythony_indices = extract<nanoBragg::indices >(value[0]);
       diffBragg.pythony_amplitudes = extract<nanoBragg::af::shared<double> >(value[1]);
@@ -169,6 +184,8 @@ namespace boost_python { namespace {
 
       .def("get_ncells_second_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_ncells_second_derivative_pixels, "get second derivatives of intensity w.r.t (Na, Nb, Nc)")
 
+      .def("get_lambda_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_lambda_derivative_pixels, "get derivatives of intensity w.r.t (lambda0, lambda1) as a 2-tuple")
+
       .def("set_ucell_derivative_matrix",  &simtbx::nanoBragg::diffBragg::set_ucell_derivative_matrix, "Boo-ya")
 
       .def("set_ucell_second_derivative_matrix",  &simtbx::nanoBragg::diffBragg::set_ucell_second_derivative_matrix,
@@ -209,7 +226,6 @@ namespace boost_python { namespace {
                      make_getter(&simtbx::nanoBragg::diffBragg::compute_curvatures,rbv()),
                      make_setter(&simtbx::nanoBragg::diffBragg::compute_curvatures,dcp()),
                     "Whether to compute the curvatures")
-
 
       .add_property("only_save_omega_kahn",
                      make_getter(&simtbx::nanoBragg::diffBragg::only_save_omega_kahn,rbv()),
@@ -256,10 +272,20 @@ namespace boost_python { namespace {
                      make_setter(&simtbx::nanoBragg::diffBragg::isotropic_ncells,dcp()),
                      "refine (Na, Nb, Nc) as three independent parameters")
 
+      .add_property("use_lambda_coefficients",
+                     make_getter(&simtbx::nanoBragg::diffBragg::use_lambda_coefficients,rbv()),
+                     make_setter(&simtbx::nanoBragg::diffBragg::use_lambda_coefficients,dcp()),
+                     "represent wavelength using coefficients a + b*source where a,b are coefficients and source is the source index")
+
       .add_property("Fhkl_tuple_complex",
             make_function(&get_Fhkl_tuple_complex,rbv()),
             make_function(&set_Fhkl_tuple_complex,dcp()),
             "hkl and Freal and Fcomplex as a 3-tuple of (indices ,flex-double, flex-double). experimental")
+
+      .add_property("lambda_coefficients",
+             make_function(&get_lambda_coef,rbv()),
+             make_function(&set_lambda_coef,dcp()),
+             "coefficients for source_lambda refinement: `lambda = coef0 + coef1*source`  where `source` is the source index")
 
     ; // end of diffBragg extention
 

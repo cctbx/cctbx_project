@@ -38,8 +38,9 @@ Nwave = 5
 waves = np.linspace(wave-wave*0.002, wave+wave*0.002, Nwave)
 fluxes = np.ones(Nwave) * flux / Nwave
 
-lambda0_GT = 0
-lambda1_GT = 1
+lambda0_GT = waves[0]
+lambda1_GT = waves[1] - waves[0]
+assert np.allclose(waves, np.arange(Nwave) * lambda1_GT + lambda0_GT)
 
 S.beam.spectrum = list(zip(waves, fluxes))
 S.detector = sim_data.SimData.simple_detector(180, 0.1, (1024, 1024))
@@ -48,17 +49,15 @@ S.D.lambda_coefficients = lambda0_GT, lambda1_GT
 S.D.spot_scale = 100000
 S.D.Ncells_abc = 12
 
-if args.idx == 0:
-    S.D.refine(12)
-else:
-    S.D.refine(13)
+S.D.refine(12)
 S.D.initialize_managers()
 S.D.region_of_interest = ((0, 1023), (0, 1023))
 
 S.D.add_diffBragg_spots()
 img = S.D.raw_pixels.as_numpy_array()
 derivs = S.D.get_lambda_derivative_pixels()
-deriv = derivs[0].as_numpy_array()
+deriv0 = derivs[0].as_numpy_array()
+deriv1 = derivs[1].as_numpy_array()
 
 S.D.raw_pixels *= 0
 S.D.use_lambda_coefficients = False
@@ -67,7 +66,7 @@ test_img = S.D.raw_pixels.as_numpy_array()
 assert np.allclose(img,test_img)
 S.D.use_lambda_coefficients = True
 S.D.raw_pixels *= 0
-print("OK")
+print ("OK")
 
 bragg = img > 1e-1  # select bragg scattering regions
 
@@ -82,20 +81,20 @@ ENERGY_CONV = 1e10*constants.c*constants.h / constants.electron_volt
 energy_shifts = 0.1, .3, .5, 1, 3, 5, 10   # in electron volt
 b_percs = 0.001, 0.002, 0.004, 0.008,  0.016, 0.032, 0.064
 reference_energy = ENERGY_CONV / wave
-
 for i_shift, en_shift in enumerate(energy_shifts):
 
     wave_shifted = ENERGY_CONV / (reference_energy + en_shift)
     wave_shift = wave - wave_shifted
     delta_a = wave_shift
+
     delta_b = lambda1_GT*b_percs[i_shift]
 
     if args.idx == 0:
-        shift = b_percs[i_shift]*0.01
-        new_waves = waves*lambda1_GT + lambda0_GT+shift
+        new_waves = np.arange(Nwave)*(lambda1_GT) + lambda0_GT + delta_a
+        shift = delta_a
     else:
-        shift = b_percs[i_shift]*0.01
-        new_waves = waves*(lambda1_GT+shift) + lambda0_GT
+        new_waves = np.arange(Nwave) * (lambda1_GT + delta_b) + lambda0_GT
+        shift = delta_b
 
     en = np.mean(ENERGY_CONV/new_waves)
 
@@ -114,9 +113,9 @@ for i_shift, en_shift in enumerate(energy_shifts):
     fdiff = (img2 - img) / shift
 
     if args.idx == 0:
-        error = np.abs(fdiff[bragg] - deriv[bragg]).mean()
+        error = np.abs(fdiff[bragg] - deriv0[bragg]).mean()
     else:
-        error = np.abs(fdiff[bragg] - deriv[bragg]).mean()
+        error = np.abs(fdiff[bragg] - deriv1[bragg]).mean()
 
     all_error.append(error)
 
@@ -137,9 +136,9 @@ if args.plot:
     #plt.close()
     plt.plot(shifts, all_error, 'o')
     plt.show()
-    #if args.curvatures:
-    #    plt.plot(shifts2, all_error2, 'o')
-    #    plt.show()
+    if args.curvatures:
+        plt.plot(shifts2, all_error2, 'o')
+        plt.show()
 
 l = linregress(shifts, all_error)
 assert l.rvalue > .9999  # this is definitely a line!
