@@ -563,7 +563,7 @@ Usage:
   cmdline_phil = []
   for arg in args :
     if os.path.isfile(arg):
-      if iotbx.pdb.is_pdb_file(arg):
+      if iotbx.pdb.is_pdb_file(arg) or iotbx.pdb.is_pdb_mmcif_file(arg):
         pdb_phil = libtbx.phil.parse("pdb_file=%s" % os.path.abspath(arg))
         cmdline_phil.append(pdb_phil)
       else:
@@ -577,7 +577,9 @@ Usage:
   working_phil = master_phil.fetch(sources=cmdline_phil)
   params = working_phil.extract()
   pdb_file_name = params.pdb_file
-  if (pdb_file_name is None) or (not iotbx.pdb.is_pdb_file(pdb_file_name)):
+  if ((pdb_file_name is None) or
+      (not iotbx.pdb.is_pdb_file(pdb_file_name) and
+          not iotbx.pdb.is_pdb_mmcif_file(pdb_file_name))):
     print("A model file is required.")
     return
   if (params.nproc is None):
