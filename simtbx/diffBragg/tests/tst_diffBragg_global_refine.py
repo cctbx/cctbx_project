@@ -31,6 +31,9 @@ parser.add_argument("--perturbfcell", type=float, default=None, help="perturbati
 parser.add_argument("--fractionperturbed", type=float, default=0.1, help="Fraction of Fhkl to perturn")
 parser.add_argument("--fcellsigmascale", type=float, default=None)
 parser.add_argument("--outdir", type=str, default=None, help="output directory for refinement data")
+parser.add_argument("--spectra", action="store_true", help="test with a refinable spectrum")
+parser.add_argument("--perturbSpectra", action="store_true", help="perturb the spectrum")
+parser.add_argument("--refineSpectra", action="store_true", help="refine the spectrum")
 args = parser.parse_args()
 
 
@@ -71,6 +74,7 @@ shot_hkl={}
 shot_panel_ids={}
 nspot_per_shot = {}
 shot_originZ_init = {}
+
 # GLOBAL PARAMETERS
 
 all_c_before = []
@@ -157,6 +161,32 @@ for i_shot in range(N_SHOTS):
 
     # initialize the simulator
     SIM = SimData()
+    if args.spectra:
+        from cxid9114.parameters import ENERGY_CONV
+        from scipy.signal import windows
+        spec = SIM.beam.spectrum
+        total_flux = spec[0][1]
+        wave = spec[0][0]
+
+        en = ENERGY_CONV / wave
+        delta_en = 1.5
+        ens = np.arange(en - 5, en + 6, delta_en)
+        waves = ENERGY_CONV / ens
+        num_energies = len(ens)
+        fluxes = np.ones(num_energies) * total_flux / num_energies
+        fluxes = fluxes*windows.hanning(num_energies)
+        fluxes /= fluxes.sum()
+        fluxes *= total_flux
+        SIM.beam.spectrum = list(zip(waves, fluxes))
+
+        spectrum_GT = list(zip(waves, fluxes))
+        gt_lambda0 = waves[0]
+        gt_lambda1 = waves[1] - waves[0]
+        spec_idx = np.arange(num_energies)
+        assert np.allclose(waves, gt_lambda0 + spec_idx*gt_lambda1)
+        lam0, lam1 = gt_lambda0, gt_lambda1
+
+
     SIM.detector = DET_gt
     all_dets.append(DET_gt)
 
@@ -184,7 +214,7 @@ for i_shot in range(N_SHOTS):
     SIM.instantiate_diffBragg(oversample=0)
     SIM.D.nopolar = False
     SIM.D.default_F = 0
-    SIM.D.progress_meter = False
+    SIM.D.progress_meter = True # False
     #SIM.water_path_mm = 0.005
     SIM.water_path_mm = 0.15
     SIM.air_path_mm = 0.1
@@ -347,11 +377,22 @@ for i_shot in range(N_SHOTS):
 
     Hi_asu = utils.map_hkl_list(HKLi, anomalous_flag=True, symbol=symbol)
 
-    shot_ucell_managers[i_shot]= UcellMan
-    shot_rois[i_shot]= spot_roi
-    shot_nanoBragg_rois[i_shot]= nanoBragg_rois
-    shot_roi_imgs[i_shot]= roi_imgs
-    shot_spectra[i_shot]= SIM.beam.spectrum
+    shot_ucell_managers[i_shot] = UcellMan
+    shot_rois[i_shot] = spot_roi
+    shot_nanoBragg_rois[i_shot] = nanoBragg_rois
+    shot_roi_imgs[i_shot] = roi_imgs
+    shot_spectra[i_shot] = SIM.beam.spectrum
+    if args.perturbSpectra:
+        assert args.spectra
+        np.random.seed(3142019)
+        lam0 = np.random.normal(gt_lambda0, gt_lambda0 * 0.002)
+        lam1 = np.random.normal(gt_lambda1, abs(gt_lambda1) * 0.002)
+        waves_perturbed = lam0 + spec_idx * lam1
+        print("ENERGY TRUTH=%.4f" % (ENERGY_CONV/gt_lambda0))
+        print("ENERGY PERTURBED=%.4f" % (ENERGY_CONV/lam0))
+        shot_spectra[i_shot] = list(zip(waves_perturbed, fluxes))
+        SIM.beam.spectrum = list(zip(waves_perturbed, fluxes))
+
     shot_crystal_GTs[i_shot]= C
     shot_crystal_models[i_shot]= SIM.crystal.dxtbx_crystal
     shot_xrel[i_shot]= xrel
@@ -443,7 +484,10 @@ n_local_unknowns = nrotation_param + nscale_param + ntilt_param + ndetz_param + 
 nfcell_param = len(idx_from_asu)
 ngain_param = 1
 
-n_global_unknowns = nfcell_param + ngain_param + n_global_m_param + n_global_ucell_param
+n_spectra_param = 0
+if args.refineSpectra:
+    n_spectra_param = 2
+n_global_unknowns = nfcell_param + ngain_param + n_global_m_param + n_global_ucell_param + n_spectra_param
 n_total_unknowns = n_local_unknowns + n_global_unknowns
 
 RUC = GlobalRefiner(
@@ -472,6 +516,13 @@ RUC = GlobalRefiner(
     shot_originZ_init=shot_originZ_init,
     sgsymbol=symbol,
     omega_kahn=[omega_kahn])
+
+
+if args.refineSpectra:
+    RUC.refine_spectra = True
+    RUC.n_spectra_param = 2
+    RUC.spectra_coefficients_sigma = 1, 1
+    RUC.spectra_coefficients_init = lam0, lam1
 
 RUC.output_dir = args.outdir
 # dummie info (used only in real situations)

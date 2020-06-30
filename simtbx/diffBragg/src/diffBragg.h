@@ -49,6 +49,14 @@ class Fcell_manager: public derivative_manager{
     void increment(double value, double value2);
 };
 
+class lambda_manager: public derivative_manager{
+  public:
+    lambda_manager();
+    virtual ~lambda_manager(){}
+    void increment(double value, double value2);
+    double dg_dlambda;
+};
+
 
 class ucell_manager: public derivative_manager{
   public:
@@ -128,6 +136,8 @@ class diffBragg: public nanoBragg{
   boost::python::tuple get_ncells_derivative_pixels();
   boost::python::tuple get_ncells_second_derivative_pixels();
 
+  boost::python::tuple get_lambda_derivative_pixels();
+
   /* override to cache some of the polarization calc variables to use in derivatives*/
   double polarization_factor(double kahn_factor, double *incident, double *diffracted, double *axis);
 
@@ -175,10 +185,9 @@ class diffBragg: public nanoBragg{
   std::vector<boost::shared_ptr<ucell_manager> > ucell_managers;
   std::vector<boost::shared_ptr<Ncells_manager> > Ncells_managers;
   std::vector<boost::shared_ptr<origin_manager> > origin_managers;
-
-
-
+  std::vector<boost::shared_ptr<lambda_manager> > lambda_managers;
   boost::shared_ptr<Fcell_manager> fcell_man;
+
   double* floatimage_roi;
   af::flex_double raw_pixels_roi;
 
@@ -245,6 +254,8 @@ class diffBragg: public nanoBragg{
 
   bool isotropic_ncells;
 
+  double source_lambda0, source_lambda1;
+  bool use_lambda_coefficients;
 }; // end of diffBragg
 
 } // end of namespace nanoBragg

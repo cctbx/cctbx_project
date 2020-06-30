@@ -318,6 +318,7 @@ class GlobalRefiner(PixelRefinement):
         self._ncells_id = 9  # diffBragg internal index for Ncells derivative manager
         self._originZ_id = 10  # diffBragg internal index for originZ derivative manager
         self._fcell_id = 11  # diffBragg internal index for Fcell derivative manager
+        self._spectra_refine_id = 12  # diffBragg interneal index for lambda derivatives
 
         if log_of_init_crystal_scales is None:
             log_of_init_crystal_scales = {s: 0 for s in self.shot_ids}
@@ -610,6 +611,10 @@ class GlobalRefiner(PixelRefinement):
                 self.is_being_refined[self.spot_scale_xpos[i_shot]] = True
 
         self.fcell_xstart = _global_pos
+
+        if self.refine_spectra:
+            self.spectra_coef_xstart = self.fcell_xstart + self.n_global_fcell
+
         self.gain_xpos = self.n_total_params - 1
 
         # tally up HKL multiplicity
@@ -658,6 +663,14 @@ class GlobalRefiner(PixelRefinement):
                 else:
                     self.Xall[self.originZ_xpos[0]] = self.S.detector[0].get_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
                     #self.Xall[self.originZ_xpos[0]] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
+
+            if self.refine_spectra:
+                for i_spec_coef in range(self.n_spectra_param):
+                    xpos = self.spectra_coef_xstart + i_spec_coef
+                    self.is_being_refined[xpos] = True
+                    self.Xall[xpos] = 1
+                    if not self.rescale_params:
+                        raise NotImplementedError("Cant refine spectra without rescale params")
 
             print("----loading fcell data")
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index
@@ -832,6 +845,8 @@ class GlobalRefiner(PixelRefinement):
             self.D.refine(self._originZ_id)
         if self.refine_Fcell:
             self.D.refine(self._fcell_id)
+        if self.refine_spectra:
+            self.D.refine(self._spectra_refine_id)
         self.D.initialize_managers()
 
     def determine_parameter_freeze_order(self):
@@ -1006,6 +1021,21 @@ class GlobalRefiner(PixelRefinement):
             return self.rotZ_sigma * (self.Xall[self.rotZ_xpos[i_shot]] - 1) + 0.0
         else:
             return self.Xall[self.rotZ_xpos[i_shot]]
+
+    def _get_spectra_coefficients(self):
+        vals = []
+        if self.rescale_params:
+            for i in range(self.n_spectra_param):
+                xval = self.Xall[self.spectra_coef_xstart + i]
+                sig = self.spectra_coefficients_sigma[i]
+                init = self.spectra_coefficients_init[i]
+                val = sig*(xval-1) + init
+                vals.append(val)
+        else:
+            assert NotImplementedError
+        return vals
+
+
 
     def _get_ucell_vars(self, i_shot):
         all_p = []
@@ -1253,6 +1283,12 @@ class GlobalRefiner(PixelRefinement):
                 data[p1_idx] = new_Fcell_amplitude  # set the data with the new value
         self.S.D.Fhkl_tuple = idx, data  # update nanoBragg again  # TODO: add flag to not re-allocate in nanoBragg!
 
+    def _update_spectra_coefficients(self):
+        if not self.refine_spectra:
+            return
+        coeffs = self._get_spectra_coefficients()
+        self.D.lambda_coefficients = tuple(coeffs)
+
     def _set_background_plane(self, i_spot):
         if self.bg_extracted:
             self.bg_coef = self._get_bg_coef(self._i_shot)
@@ -1313,6 +1349,15 @@ class GlobalRefiner(PixelRefinement):
         if self.recenter:
             s0 = self.S.beam.nanoBragg_constructor_beam.get_s0()
             assert ALL_CLOSE(node.get_beam_centre(s0), self.D.beam_center_mm)
+
+    def _extract_spectra_coefficient_derivatives(self):
+        self.spectra_derivs = [0]*self.n_spectra_param
+        if self.refine_spectra:
+            SG = self.scale_fac * self.G2
+            derivs = self.D.get_lambda_derivative_pixels()
+            for i_coef in range(self.n_spectra_param):
+                self.spectra_derivs[i_coef] = SG*derivs[i_coef].as_numpy_array()
+
 
     def _extract_Umatrix_derivative_pixels(self):
         self.rotX_dI_dtheta = self.rotY_dI_dtheta = self.rotZ_dI_dtheta = 0
@@ -1392,6 +1437,7 @@ class GlobalRefiner(PixelRefinement):
         self._extract_mosaic_parameter_m_derivative_pixels()
         self._extract_originZ_derivative_pixels()
         self._extract_Fcell_derivative_pixels()
+        self._extract_spectra_coefficient_derivatives()
 
     def _update_ucell(self):
         if self.rescale_params:
@@ -1441,6 +1487,7 @@ class GlobalRefiner(PixelRefinement):
             self.G2 = self.gain_fac ** 2
 
             self._update_Fcell()  # update the structure factor with the new x
+            self._update_spectra_coefficients()  # updates the diffBragg lambda coefficients if refinining spectra
 
             if self.CRYSTAL_GT is not None:
                 self._initialize_GT_crystal_misorientation_analysis()
@@ -1506,6 +1553,7 @@ class GlobalRefiner(PixelRefinement):
                     self._spot_scale_derivatives()
                     self._gain_factor_derivatives()
                     self._Fcell_derivatives(i_spot)
+                    self._spectra_derivatives()
                     # Done with derivative accumulation
 
             #    self.image_corr[self._i_shot] = self.image_corr[self._i_shot] / self.image_corr_norm[self._i_shot]
@@ -1623,6 +1671,26 @@ class GlobalRefiner(PixelRefinement):
             second_derivs = [self.rotX_d2I_dtheta2, self.rotY_d2I_dtheta2, self.rotZ_d2I_dtheta2]
 
         return second_derivs
+
+    def _get_spectra_first_derivs(self):
+        if self.refine_spectra:
+            assert self.rescale_params
+            derivs = []
+            for i_coef in range(self.n_spectra_param):
+                d = self.spectra_derivs[i_coef]
+                sigma = self.spectra_coefficients_sigma[i_coef]
+                derivs.append(d * sigma)
+            return derivs
+
+    def _spectra_derivatives(self):
+        if self.refine_spectra:
+            derivs = self._get_spectra_first_derivs()
+            xstart = self.spectra_coef_xstart
+            for i_coef in range(self.n_spectra_param):
+                d = derivs[i_coef]
+                self.grad[xstart + i_coef] += self._grad_accumulate(d)
+                if self.calc_curvatures:
+                    raise NotImplementedError
 
     def _Umatrix_derivatives(self):
         if self.refine_Umatrix:
