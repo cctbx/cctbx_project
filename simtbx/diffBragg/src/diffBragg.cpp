@@ -524,13 +524,11 @@ void diffBragg::refine(int refine_id){
         fcell_man->initialize(sdim, fdim, compute_curvatures);
     }
 
-    else if (refine_id==12){
+    else if (refine_id==12 || refine_id==13){
         use_lambda_coefficients = true;
-        for (int i_lam=0; i_lam <2 ; i_lam ++){
-            lambda_managers[i_lam]->refine_me=true;
-            lambda_managers[i_lam]->initialize(sdim, fdim, compute_curvatures);
-        }
-
+        int i_lam = refine_id-12;
+        lambda_managers[i_lam]->refine_me=true;
+        lambda_managers[i_lam]->initialize(sdim, fdim, compute_curvatures);
     }
 }
 
@@ -669,6 +667,9 @@ double diffBragg::get_value(int refine_id){
 /* End parameter set/get */
 
 af::flex_double diffBragg::get_derivative_pixels(int refine_id){
+
+    SCITBX_ASSERT(refine_id >=0 && refine_id <= 13);
+
     if (refine_id>=0 and refine_id < 3){
         SCITBX_ASSERT(rot_managers[refine_id]->refine_me);
         return rot_managers[refine_id]->raw_pixels;
@@ -684,8 +685,14 @@ af::flex_double diffBragg::get_derivative_pixels(int refine_id){
         return Ncells_managers[0]->raw_pixels;
     else if (refine_id==10)
         return origin_managers[0]->raw_pixels;
-    else
+    else if (refine_id==11)
         return fcell_man->raw_pixels;
+    else if (refine_id==12)
+        return lambda_managers[0]->raw_pixels;
+    else // (refine_id==13)
+        return lambda_managers[1]->raw_pixels;
+    //else
+    //   printf("WARNING: refine id should be between 0 and 13\n");
 }
 
 
@@ -720,9 +727,19 @@ boost::python::tuple diffBragg::get_ncells_derivative_pixels(){
 }
 
 boost::python::tuple diffBragg::get_lambda_derivative_pixels(){
+    SCITBX_ASSERT(lambda_managers[0]->refine_me || lambda_managers[1]->refine_me);
+
     boost::python::tuple derivative_pixels;
-    derivative_pixels = boost::python::make_tuple(lambda_managers[0]->raw_pixels,
-        lambda_managers[1]->raw_pixels);
+    if (lambda_managers[0]->refine_me && lambda_managers[1]->refine_me){
+        derivative_pixels = boost::python::make_tuple(lambda_managers[0]->raw_pixels,
+            lambda_managers[1]->raw_pixels);
+    }
+    else{
+        if (lambda_managers[0]->refine_me)
+            derivative_pixels = boost::python::make_tuple(lambda_managers[0]->raw_pixels);
+        else if (lambda_managers[1]->refine_me)
+            derivative_pixels = boost::python::make_tuple(lambda_managers[1]->raw_pixels);
+    }
     return derivative_pixels;
 }
 
@@ -887,12 +904,6 @@ void diffBragg::add_diffBragg_spots()
                 }
             }
 
-            for (int i_lam=0; i_lam < 2; i_lam ++){
-                if (lambda_managers[i_lam]->refine_me){
-                    lambda_managers[i_lam]->dI =0;
-                    lambda_managers[i_lam]->dI2 =0;
-                }
-            }
 
             if (origin_managers[0]->refine_me){
                 origin_managers[0]->dI=0;
@@ -906,6 +917,13 @@ void diffBragg::add_diffBragg_spots()
             if (fcell_man->refine_me){
                 fcell_man->dI = 0;
                 fcell_man->dI2 = 0;
+            }
+
+            for (int i_lam=0; i_lam < 2; i_lam ++){
+                if (lambda_managers[i_lam]->refine_me){
+                    lambda_managers[i_lam]->dI =0;
+                    lambda_managers[i_lam]->dI2 =0;
+                }
             }
 
             /* loop over sub-pixels */

@@ -43,7 +43,9 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.PROC_IDX = None   # dict of {rank_shot_index: agg_file_index }
         self.BBOX_IDX = None   # dict of {rank_bbox_index: agg_file_index }
 
-        self.refine_spectra = 0
+        self.refine_spectra = False
+        self.refine_lambda0 = False
+        self.refine_lambda1 = False
         self.n_spectra_param = 0
         self.spectra_coefficients_sigma = 1, 1
         self.spectra_coefficients_init = None
@@ -166,6 +168,22 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     #def m_init(self):
     #    if self.S is not None:
     #        return self.S.crystal.Ncells_abc[0]
+    @property
+    def refine_lambda0(self):
+        return self._refine_lambda0
+
+    @refine_lambda0.setter
+    def refine_lambda0(self, val):
+        self._refine_lambda0 = val
+
+
+    @property
+    def refine_lambda1(self):
+        return self._refine_lambda1
+
+    @refine_lambda1.setter
+    def refine_lambda1(self, val):
+        self._refine_lambda1 = val
 
     @property
     def refine_spectra(self):
@@ -173,8 +191,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
 
     @refine_spectra.setter
     def refine_spectra(self, val):
-        #if val:
-        #    assert self.n_spectra_param > 0
+        self.refine_lambda0 = val
+        self.refine_lambda1 = val
         self._refine_spectra = val
 
     @property
