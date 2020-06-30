@@ -115,7 +115,7 @@ class map_model_base(object):
     ''' Get all the names (ids) for all map_managers'''
     return list(self.map_dict().keys())
 
-  def get_map_coeffs_list_from_id_list(self, id_list,
+  def _get_map_coeffs_list_from_id_list(self, id_list,
     mask_id = None):
     '''
       Get maps identified by map_id_list
@@ -123,7 +123,7 @@ class map_model_base(object):
       Return map_data from (masked) maps, converted to
         structure factors, as list
     '''
-    map_data_list = self.get_map_data_list_from_id_list(id_list,
+    map_data_list = self._get_map_data_list_from_id_list(id_list,
       mask_id = mask_id)
     map_coeffs_list = []
     from cctbx import miller
@@ -134,7 +134,7 @@ class map_model_base(object):
       map_coeffs_list.append(map_coeffs)
     return map_coeffs_list
 
-  def get_map_data_list_from_id_list(self, id_list,
+  def _get_map_data_list_from_id_list(self, id_list,
     mask_id = None):
     '''
       Get maps identified by map_id_list
@@ -165,6 +165,33 @@ class map_model_base(object):
     ''' Get a map_manager with the name map_id'''
     return self.map_dict().get(map_id)
 
+  def add_model_by_id(self, model, model_id,
+     overwrite = True):
+    '''
+     Add a new model
+     Must be similar to existing map_managers
+     Overwrites any existing with the same id unless overwrite = False
+    '''
+    assert isinstance(model, mmtbx.model.manager)
+    if not overwrite:
+      assert not model_id in self.model_id_list # must not duplicate
+    assert self.map_manager().is_compatible_model(model)
+
+    self._model_dict[model_id] = model
+
+  def add_map_manager_by_id(self, map_manager, map_id,
+     overwrite = True):
+    '''
+     Add a new map_manager
+     Must be similar to existing
+     Overwrites any existing with the same id unless overwrite = False
+    '''
+    assert isinstance(map_manager, iotbx.map_manager.map_manager)
+    if not overwrite:
+      assert not map_id in self.map_id_list # must not duplicate
+    assert map_manager.is_similar(self.map_manager())
+    self._map_dict[map_id] = map_manager
+
   def remove_map_manager_by_id(self, map_id = 'extra'):
     '''
      Remove this map manager
@@ -186,32 +213,6 @@ class map_model_base(object):
 
     self._map_dict[new_map_id] = map_manager.deep_copy()
 
-  def add_map_manager_by_id(self, map_manager, map_id,
-     overwrite = True):
-    '''
-     Add a new map_manager
-     Must be similar to existing
-     Overwrites any existing with the same id unless overwrite = False
-    '''
-    assert isinstance(map_manager, iotbx.map_manager.map_manager)
-    if not overwrite:
-      assert not map_id in self.map_id_list # must not duplicate
-    assert map_manager.is_similar(self.map_manager())
-    self._map_dict[map_id] = map_manager
-
-  def add_model_by_id(self, model, model_id,
-     overwrite = True):
-    '''
-     Add a new model
-     Must be similar to existing map_managers
-     Overwrites any existing with the same id unless overwrite = False
-    '''
-    assert isinstance(model, mmtbx.model.manager)
-    if not overwrite:
-      assert not model_id in self.model_id_list # must not duplicate
-    assert self.map_manager().is_compatible_model(model)
-
-    self._model_dict[model_id] = model
 
   # Methods for writing maps and models
 
@@ -242,7 +243,7 @@ class map_model_base(object):
 
   # Methods for identifying which map_manager and model to use
 
-  def get_map_manager_info(self):
+  def _get_map_info(self):
     '''
       Return a group_args object specifying the map_manager and
       a list of any other maps present
@@ -259,7 +260,7 @@ class map_model_base(object):
     return group_args(map_id=map_id,
          other_map_id_list=other_map_id_list)
 
-  def get_model_info(self):
+  def _get_model_info(self):
     '''
       Return a group_args object specifying the model and
       a list of any other models present
@@ -275,11 +276,6 @@ class map_model_base(object):
 
     return group_args(model_id=model_id,
          other_model_id_list=other_model_id_list)
-
-  def set_map_manager(self, map_id, map_manager):
-    ''' Set a map_manager with the name map_id'''
-    assert isinstance(map_manager, iotbx.map_manager.map_manager)
-    self.map_dict()[map_id] = map_manager
 
   # Methods for manipulation of maps
 
@@ -333,11 +329,11 @@ class map_model_base(object):
 
     from cctbx.maptbx.box import with_bounds
 
-    map_manager_info=self.get_map_manager_info()
-    map_manager = self._map_dict[map_manager_info.map_id]
+    map_info=self._get_map_info()
+    map_manager = self._map_dict[map_info.map_id]
     assert map_manager is not None
 
-    model_info=self.get_model_info()
+    model_info=self._get_model_info()
     model = self._model_dict[model_info.model_id]
 
     if extract_box: # make sure everything is deep_copy
@@ -345,7 +341,7 @@ class map_model_base(object):
 
     # Make box with bounds and apply it to model, first map
     box = with_bounds(
-      map_manager = self._map_dict[map_manager_info.map_id],
+      map_manager = self._map_dict[map_info.map_id],
       lower_bounds = lower_bounds,
       upper_bounds = upper_bounds,
       model = model,
@@ -357,7 +353,7 @@ class map_model_base(object):
     #  either this r_model object, replacing what is there (extract_box=False)
     #  or create and return a new r_model object (extract_box=True)
     return self._finish_boxing(box = box, model_info = model_info,
-      map_manager_info = map_manager_info,
+      map_info = map_info,
       extract_box = extract_box)
 
   def extract_all_maps_around_model(self,
@@ -398,9 +394,9 @@ class map_model_base(object):
 
     from cctbx.maptbx.box import around_model
 
-    map_manager_info=self.get_map_manager_info()
-    assert map_manager_info.map_id is not None
-    model_info=self.get_model_info()
+    map_info=self._get_map_info()
+    assert map_info.map_id is not None
+    model_info=self._get_model_info()
     assert model_info.model_id is not None # required for box_around_model
     model = self._model_dict[model_info.model_id]
 
@@ -413,7 +409,7 @@ class map_model_base(object):
     # Make box around model and apply it to model, first map
     # This step modifies model in place and creates a new map_manager
     box = around_model(
-      map_manager = self._map_dict[map_manager_info.map_id],
+      map_manager = self._map_dict[map_info.map_id],
       model = model,
       box_cushion = box_cushion,
       wrapping = self._force_wrapping,
@@ -424,7 +420,7 @@ class map_model_base(object):
     #  either this r_model object, replacing what is there (extract_box=False)
     #  or create and return a new r_model object (extract_box=True)
     return self._finish_boxing(box = box, model_info = model_info,
-      map_manager_info = map_manager_info,
+      map_info = map_info,
       extract_box = extract_box)
 
   def extract_all_maps_around_density(self,
@@ -475,16 +471,16 @@ class map_model_base(object):
 
     from cctbx.maptbx.box import around_density
 
-    map_manager_info=self.get_map_manager_info()
-    assert map_manager_info.map_id is not None
-    model_info=self.get_model_info()
+    map_info=self._get_map_info()
+    assert map_info.map_id is not None
+    model_info=self._get_model_info()
     model = self._model_dict[model_info.model_id]
     if extract_box: # make sure everything is deep_copy
       model = model.deep_copy()
 
     # Make box around model and apply it to model, first map
     box = around_density(
-      map_manager = self._map_dict[map_manager_info.map_id],
+      map_manager = self._map_dict[map_info.map_id],
       model       = model,
       box_cushion = box_cushion,
       threshold   = threshold,
@@ -496,7 +492,7 @@ class map_model_base(object):
     #  either this r_model object, replacing what is there (extract_box=False)
     #  or create and return a new r_model object (extract_box=True)
     return self._finish_boxing(box = box, model_info = model_info,
-      map_manager_info = map_manager_info,
+      map_info = map_info,
       extract_box = extract_box)
 
   def extract_all_maps_around_mask(self,
@@ -537,9 +533,9 @@ class map_model_base(object):
 
     from cctbx.maptbx.box import around_mask
 
-    map_manager_info=self.get_map_manager_info()
-    assert map_manager_info.map_id is not None
-    map_manager = self._map_dict[map_manager_info.map_id]
+    map_info=self._get_map_info()
+    assert map_info.map_id is not None
+    map_manager = self._map_dict[map_info.map_id]
 
     mask_mm = self.get_map_manager_by_id(mask_id)
     assert mask_mm is not None
@@ -547,7 +543,7 @@ class map_model_base(object):
 
     assert mask_mm is not map_manager  # mask and map cannot be the same
 
-    model_info=self.get_model_info()
+    model_info=self._get_model_info()
     model = self._model_dict[model_info.model_id]
     if extract_box: # make sure everything is deep_copy
       model = model.deep_copy()
@@ -566,7 +562,7 @@ class map_model_base(object):
     #  either this r_model object, replacing what is there (extract_box=False)
     #  or create and return a new r_model object (extract_box=True)
     return self._finish_boxing(box = box, model_info = model_info,
-      map_manager_info = map_manager_info,
+      map_info = map_info,
       extract_box = extract_box)
 
   def extract_all_maps_around_unique(self,
@@ -652,13 +648,13 @@ class map_model_base(object):
     '''
     from cctbx.maptbx.box import extract_unique
 
-    map_manager_info=self.get_map_manager_info()
-    map_manager = self._map_dict[map_manager_info.map_id]
+    map_info=self._get_map_info()
+    map_manager = self._map_dict[map_info.map_id]
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
     assert resolution is not None
     assert (sequence, solvent_content, molecular_mass).count(None) == 2
 
-    model_info=self.get_model_info()
+    model_info=self._get_model_info()
     model = self._model_dict[model_info.model_id]
     if extract_box: # make sure everything is deep_copy
       model = model.deep_copy()
@@ -687,14 +683,14 @@ class map_model_base(object):
     #  either this r_model object, replacing what is there (extract_box=False)
     #  or create and return a new r_model object (extract_box=True)
     other = self._finish_boxing(box = box, model_info = model_info,
-      map_manager_info = map_manager_info,
+      map_info = map_info,
       extract_box = extract_box)
 
     if not extract_box:
       other = self #  modifying this object
 
     # Now apply masking to all other maps (not done in _finish_boxing)
-    for id in map_manager_info.other_map_id_list:
+    for id in map_info.other_map_id_list:
       other._map_dict[id] = box.apply_extract_unique_mask(
         self._map_dict[id],
         resolution = resolution,
@@ -703,7 +699,7 @@ class map_model_base(object):
     if extract_box:
       return other
 
-  def _finish_boxing(self, box, model_info, map_manager_info,
+  def _finish_boxing(self, box, model_info, map_info,
     extract_box = False):
 
     '''
@@ -716,16 +712,16 @@ class map_model_base(object):
       self._print("%s" %(box.warning_message()))
 
     if extract_box:
-      other = self.empty_copy() # making a new object
+      other = self._empty_copy() # making a new object
     else:
       other = self #  modifying this object
 
 
-    other._map_dict[map_manager_info.map_id] = box.map_manager()
+    other._map_dict[map_info.map_id] = box.map_manager()
     other._model_dict[model_info.model_id] = box.model()
 
     # Apply the box to all the other maps
-    for id in map_manager_info.other_map_id_list:
+    for id in map_info.other_map_id_list:
       other._map_dict[id] = box.apply_to_map(self._map_dict[id])
 
     # Apply the box to all the other models
@@ -794,6 +790,28 @@ class map_model_base(object):
       mask_id = mask_id)
     self.apply_mask_to_maps(mask_id = mask_id)
 
+  def mask_all_maps_around_density(self,
+     solvent_content = None,
+     soft_mask = True,
+     soft_mask_radius = None,
+     mask_id = 'mask',
+     map_id = 'map_manager'):
+    '''
+      Apply a soft mask around density.  Mask calculated using map_id and
+      written to mask_id . Overwrites values in maps
+      Default is to use 'mask' as the mask id
+
+      NOTE: Does not change the gridding or shift_cart of the maps and model
+    '''
+
+    self.create_mask_around_density(
+      solvent_content = solvent_content,
+      soft_mask  = soft_mask,
+      soft_mask_radius = soft_mask_radius,
+      mask_id = mask_id,
+      map_id = map_id)
+    self.apply_mask_to_maps(mask_id = mask_id)
+
   def create_masked_copies_of_maps(self,
     map_id_list = None,
     mask_id = 'mask'):
@@ -804,7 +822,7 @@ class map_model_base(object):
 
    new_map_id_list = []
    for id in list(map_id_list):
-     new_id = self.generate_new_map_id()
+     new_id = self._generate_new_map_id()
      self.duplicate_map_manager(id,new_id)
      self.apply_mask_to_map(map_id=new_id, mask_id = mask_id)
      new_map_id_list.append(new_id)
@@ -898,7 +916,8 @@ class map_model_base(object):
     cm.soft_mask(soft_mask_radius = soft_mask_radius)
 
     # Put the mask in map_dict ided with mask_id
-    self.set_map_manager(mask_id, cm.map_manager())
+    self.add_map_manager_by_id(map_manager = cm.map_manager(),
+      map_id = mask_id)
 
   def create_mask_around_atoms(self,
      mask_atoms_atom_radius = 3,
@@ -938,16 +957,18 @@ class map_model_base(object):
       cm.soft_mask(soft_mask_radius = soft_mask_radius)
 
     # Put the mask in map_dict ided with mask_id
-    self.set_map_manager(mask_id, cm.map_manager())
+    self.add_map_manager_by_id(map_manager = cm.map_manager(),
+      map_id = mask_id)
 
   def create_mask_around_density(self,
      solvent_content = None,
      soft_mask = True,
      soft_mask_radius = None,
-     mask_id = 'mask' ):
+     mask_id = 'mask',
+     map_id = 'map_manager' ):
 
     '''
-      Generate mask based on density in map_manager.
+      Generate mask based on density in map_manager (map_id defines it).
       Does not apply the mask to anything.
       Normally follow with apply_mask_to_map or apply_mask_to_maps
 
@@ -966,34 +987,40 @@ class map_model_base(object):
        isinstance(soft_mask_radius, (int, float))
     assert isinstance(soft_mask, bool)
 
+    map_manager = self.get_map_manager_by_id(map_id)
+    assert map_manager is not None # Need a map to create mask around density
     from cctbx.maptbx.mask import create_mask_around_density
-    cm = create_mask_around_density(map_manager = self.map_manager(),
+    cm = create_mask_around_density(map_manager = map_manager,
         solvent_content = solvent_content)
 
     if soft_mask: # Make the create_mask object contain a soft mask
       if not soft_mask_radius:
         from cctbx.maptbx import d_min_from_map
         soft_mask_radius = d_min_from_map(
-           map_data=self.map_manager().map_data(),
-           unit_cell=self.map_manager().crystal_symmetry().unit_cell())
+           map_data=map_manager.map_data(),
+           unit_cell=map_manager.crystal_symmetry().unit_cell())
       cm.soft_mask(soft_mask_radius = soft_mask_radius)
 
-    # Put the mask in map_dict ided with mask_id
-    self.set_map_manager(mask_id, cm.map_manager())
+    # Put the mask in map_dict id'ed with mask_id
+    self.add_map_manager_by_id(map_manager = cm.map_manager(),
+      map_id = mask_id)
 
   # Methods for recombining models
-  def get_model_from_other(self, other):
+  def get_model_from_other(self, other,
+     other_model_id = 'model'):
     '''
-     Take a model from other_r_model with any boxing and origin shifts and
-     put it in the same reference frame as the current model.  Used to build
-     up a model from pieces that were worked on in separate boxes.
+     Take a model with id other_model_id from other_r_model with any
+     boxing and origin shifts allowed, and put it in the same reference
+     frame as the current model.  Used to build up a model from pieces
+     that were worked on in separate boxes.
 
      Changes model from other in place
 
      Parameters:  other:  Other map_model_manager or r_model containing a model
     '''
     assert isinstance(other, (map_model_manager, r_model))
-    other_model = other.model()
+    other_model = other.get_model_by_id(other_model_id)
+    assert other_model is not None # Need model for get_model_from_other
     coordinate_shift = tuple(
       [s - o for s,o in zip(self.shift_cart(),other.shift_cart())])
     other_model.shift_model_and_set_crystal_symmetry(
@@ -1039,7 +1066,8 @@ class map_model_base(object):
 
     map_data = map_manager.fourier_coefficients_as_map(map_coeffs)
     new_map_manager = map_manager.customized_copy(map_data = map_data)
-    self.add_map_manager_by_id(new_map_manager, map_id)
+    self.add_map_manager_by_id(map_manager = new_map_manager,
+      map_id = map_id)
 
 
   def resolution_filter(self,
@@ -1091,7 +1119,7 @@ class map_model_base(object):
 
     assert isinstance(resolution, (int, float))
 
-    f_map_1, f_map_2 = self.get_map_coeffs_list_from_id_list(
+    f_map_1, f_map_2 = self._get_map_coeffs_list_from_id_list(
       id_list = [map_id_1, map_id_2],
       mask_id = mask_id)
 
@@ -1102,9 +1130,6 @@ class map_model_base(object):
         other = f_map_2, bin_width = bin_width, fsc_cutoff = fsc_cutoff)
 
     return fsc_curve
-
-
-
 
 
   def map_map_cc(self,
@@ -1182,7 +1207,7 @@ class map_model_base(object):
 
   # General methods
 
-  def generate_new_map_id(self):
+  def _generate_new_map_id(self):
     '''
      Create a unique map_id
     '''
@@ -1194,7 +1219,7 @@ class map_model_base(object):
       if not id in used_id_list:
         return id
 
-  def generate_new_model_id(self):
+  def _generate_new_model_id(self):
     '''
      Create a unique model_id
     '''
@@ -1343,7 +1368,7 @@ class r_model(map_model_base):
 
     return new_rm
 
-  def empty_copy(self):
+  def _empty_copy(self):
     '''
       Return a copy with no data
     '''
@@ -1374,11 +1399,11 @@ class r_model(map_model_base):
     text = "r_model: "
     if self.model():
       text += "\n%s" %(str(self.model()))
-    map_manager_info = self.get_map_manager_info()
-    model_info = self.get_model_info()
+    map_info = self._get_map_info()
+    model_info = self._get_model_info()
     if self.map_manager():
       text += "\nmap_manager: %s" %(str(self.map_manager()))
-    for id in map_manager_info.other_map_id_list:
+    for id in map_info.other_map_id_list:
       text += "\n%s: %s" %(id,str(self.get_map_manager_by_id(id)))
     for id in model_info.other_model_id_list:
       text += "\n%s: %s" %(id,str(self.get_model_by_id(id)))
@@ -1770,11 +1795,11 @@ class map_model_manager(map_model_base):
     text = "Map_model_manager: "
     if self.model():
       text += "\n %s" %(str(self.model()))
-    map_manager_info = self.get_map_manager_info()
-    model_info = self.get_model_info()
+    map_info = self._get_map_info()
+    model_info = self._get_model_info()
     if self.map_manager():
       text += "\nmap_manager: %s" %(str(self.map_manager()))
-    for id in map_manager_info.other_map_id_list:
+    for id in map_info.other_map_id_list:
       text += "\n%s: %s" %(id,str(self.get_map_manager_by_id(id)))
     for id in model_info.other_model_id_list:
       text += "\n%s: %s" %(id,str(self.get_model_by_id(id)))
@@ -2009,7 +2034,7 @@ class map_model_manager(map_model_base):
     self.set_up_map_dict(map_manager=mm)
     self.set_up_model_dict(model=model)
 
-  def empty_copy(self):
+  def _empty_copy(self):
     '''
       Return a copy with no data
     '''

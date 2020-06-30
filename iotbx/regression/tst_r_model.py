@@ -104,8 +104,22 @@ def exercise(file_name, out = sys.stdout):
   assert len(rm.model_id_list()) == 2
 
   # Initialize a map
-  new_r_model.initialize_maps(map_value=6)
-  assert new_r_model.map_manager().map_data()[225] == 6
+  rm1=new_r_model.deep_copy()
+  rm1.initialize_maps(map_value=6)
+  assert rm1.map_manager().map_data()[225] == 6
+
+  # Create mask around density and apply to all maps
+  rm1=new_r_model.deep_copy()
+  rm1.mask_all_maps_around_density(solvent_content=0.5,
+    soft_mask=True,)
+  s = (rm1.get_map_manager_by_id('mask').map_data() > 0.5)
+  assert approx_equal( (s.count(True),s.size()), (1024,2048))
+
+  # Create mask around edges and apply to all maps
+  rm1=new_r_model.deep_copy()
+  rm1.mask_all_maps_around_edges()
+  s = (rm1.get_map_manager_by_id('mask').map_data() > 0.5)
+  assert approx_equal( (s.count(True),s.size()), (1176,2048))
 
   # Create a soft mask around model and apply to all maps
   new_r_model.mask_all_maps_around_atoms(mask_atoms_atom_radius=8,
