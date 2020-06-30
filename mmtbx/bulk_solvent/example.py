@@ -74,31 +74,52 @@ def get_data(mtzf, xrs):
   f_obs = determine_data_and_flags_result.f_obs
   return f_obs, determine_data_and_flags_result.r_free_flags
 
-def get_fmodel_init(pdbf, mtzf, log):
+def get_fmodel(pdbf, mtzf, log):
   pdb_inp = iotbx.pdb.input(file_name=pdbf)
   xrs = pdb_inp.xray_structure_simple()
+  #
+  selection = xrs.scatterers().extract_occupancies() > 0
+  selection = selection | xrs.hd_selection()
+  xrs = xrs.select(selection)
+  #
   f_obs, r_free_flags = get_data(mtzf=mtzf, xrs=xrs)
-  fmodel = mmtbx.f_model.manager(
+  dummy = mmtbx.f_model.manager(
     f_obs          = f_obs,
     r_free_flags   = r_free_flags,
     xray_structure = xrs)
-  fmodel.update_all_scales()
+  f_mask = mosaic.get_f_mask(
+    xrs  = dummy.xray_structure,
+    ma   = dummy.f_obs(),
+    step = dummy.f_obs().d_min()/4)
+  fmodel = mmtbx.f_model.manager(
+    f_obs        = dummy.f_obs(),
+    r_free_flags = dummy.r_free_flags(),
+    f_calc       = dummy.f_calc(),
+    f_mask       = f_mask)
+  fmodel.update_all_scales(remove_outliers=True)
   print("-"*79, file=log)
   print("Default (A-2013):", file=log)
   fmodel.show(show_header=False, show_approx=False, log = log)
   print(fmodel.r_factors(), file=log)
-  return fmodel, pdb_inp.construct_hierarchy()
+  return fmodel, pdb_inp.construct_hierarchy(), xrs
 
 class compute(object):
   def __init__(self, pdbf, mtzf, log, volume_cutoff=30):
     self.log = log
-    self.fmodel_2013, self.ph = get_fmodel_init(pdbf=pdbf, mtzf=mtzf, log=log)
+    # Default A-2013
+    self.fmodel_2013, self.ph, self.xrs = get_fmodel(pdbf=pdbf, mtzf=mtzf, log=log)
+    #
     step = min(0.4, self.fmodel_2013.f_calc().d_min()/4)
+    #
+    self.f_mask_04 = mosaic.get_f_mask(
+      xrs  = self.xrs,
+      ma   = self.fmodel_2013.f_obs(),
+      step = step)
     #####
     print("-"*79, file=log)
     print("Mosaic", file=log)
     self.mm = mosaic.mosaic_f_mask(
-      xray_structure = self.fmodel_2013.xray_structure,
+      xray_structure = self.xrs,
       miller_array   = self.fmodel_2013.f_calc(),
       step           = step,
       volume_cutoff  = volume_cutoff,
@@ -114,8 +135,8 @@ class compute(object):
         f_obs        = self.fmodel_2013.f_obs(),
         r_free_flags = self.fmodel_2013.r_free_flags(),
         f_calc       = self.fmodel_2013.f_calc(),
-        f_mask       = self.mm.f_mask)
-      self.fmodel_2013_04.update_all_scales(remove_outliers=False)
+        f_mask       = self.f_mask_04)
+      self.fmodel_2013_04.update_all_scales(remove_outliers=True)
       self.fmodel_2013_04.show(show_header=False, show_approx=False, log = log)
       print(self.fmodel_2013_04.r_factors(prefix="  "), file=log)
       self.mc_whole_mask = \
@@ -142,10 +163,10 @@ class compute(object):
     bin_selections = self.fmodel_2013.f_obs().log_binning(
       n_reflections_in_lowest_resolution_bin = 500)
     fmodel = mmtbx.f_model.manager(
-      f_obs          = self.fmodel_2013.f_obs(),
-      r_free_flags   = self.fmodel_2013.r_free_flags(),
-      f_calc         = self.fmodel_2013.f_calc(),
-      f_mask         = self.mm.f_mask,
+      f_obs          = self.fmodel_2013_04.f_obs(),
+      r_free_flags   = self.fmodel_2013_04.r_free_flags(),
+      f_calc         = self.fmodel_2013_04.f_calc(),
+      f_mask         = self.fmodel_2013_04.f_masks()[0],
       bin_selections = bin_selections)
     fmodel.update_all_scales(remove_outliers=False)
     #
@@ -171,10 +192,10 @@ def map_stat(m, conn, i):
 
 def run_one(args):
   pdbf, mtzf, code, alg = args
-  # FILER OUT NON-P1 and non X-ray/neutron
+  # FILTER OUT NON-P1 and non X-ray/neutron
   pdb_inp = iotbx.pdb.input(file_name=pdbf)
   cs = pdb_inp.crystal_symmetry()
-  #if(cs.space_group_number() != 1): return
+  if(cs.space_group_number() != 1): return
   if(not pdb_inp.get_experiment_type() in
      ["X-RAY DIFFRACTION", "NEUTRON DIFFRACTION"]): return
   #
