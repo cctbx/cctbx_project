@@ -531,8 +531,8 @@ class manager(object):
     self._unit_cell_crystal_symmetry=unit_cell_crystal_symmetry
 
   def shift_model_and_set_crystal_symmetry(self,
-       shift_cart = None, # shift to apply
-       crystal_symmetry = None, # required new crystal symmetry
+       shift_cart,     # shift to apply
+       crystal_symmetry = None, # optional new crystal symmetry
        ):
 
     '''
@@ -551,6 +551,9 @@ class manager(object):
 
     # checks
     assert shift_cart is not None
+    assert len(list(shift_cart)) == 3
+    assert (crystal_symmetry is None) or isinstance(
+      crystal_symmetry,  crystal.symmetry)
 
     # Get shift info  that knows about unit_cell_crystal_symmetry
     #   and any prevous shift_cart

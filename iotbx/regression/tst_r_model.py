@@ -4,6 +4,7 @@ import os, sys
 from libtbx.utils import Sorry
 from libtbx.test_utils import approx_equal
 from mmtbx.model import manager as model_manager
+from iotbx.data_manager import DataManager
 
 def exercise(file_name, out = sys.stdout):
   if not os.path.isfile(file_name):
@@ -52,6 +53,10 @@ def exercise(file_name, out = sys.stdout):
   for id in all_map_names:
     print("Map_manager %s: %s " %(id,r_model.get_map_manager_by_id(id)))
 
+  dm = DataManager(['model','miller_array', 'real_map', 'phil'])
+  dm.set_overwrite(True)
+
+
   # Make a deep_copy
   dc=r_model.deep_copy()
   new_r_model=r_model.deep_copy()
@@ -67,6 +72,36 @@ def exercise(file_name, out = sys.stdout):
   assert new_r_model.model() is r_model.model()
   assert new_r_model.map_dict() is r_model.map_dict()
   print (r_model)
+
+  # Add a map
+  rm = dc.deep_copy()
+  print (rm.map_manager_id_list())
+  assert len(rm.map_manager_id_list()) == 6
+  rm.add_map_manager_by_id(rm.map_manager().deep_copy(),'new_map_manager')
+  print (rm.map_manager_id_list())
+  assert len(rm.map_manager_id_list()) == 7
+
+  # duplicate a map
+  rm = dc.deep_copy()
+  print (rm.map_manager_id_list())
+  assert len(rm.map_manager_id_list()) == 6
+  rm.duplicate_map_manager('map_manager','new_map_manager')
+  print (rm.map_manager_id_list())
+  assert len(rm.map_manager_id_list()) == 7
+
+  # resolution_filter a map
+  rm = dc.deep_copy()
+  print (rm.map_manager_id_list())
+  rm.duplicate_map_manager('map_manager','new_map_manager')
+  rm.resolution_filter(map_id='new_map_manager',high_resolution=3.5,low_resolution=6)
+
+  # Add a model
+  rm = dc.deep_copy()
+  print (rm.model_id_list())
+  assert len(rm.model_id_list()) == 1
+  rm.add_model_by_id(rm.model().deep_copy(),'new_model')
+  print (rm.model_id_list())
+  assert len(rm.model_id_list()) == 2
 
   # Initialize a map
   new_r_model.initialize_maps(map_value=6)
@@ -111,7 +146,7 @@ def exercise(file_name, out = sys.stdout):
   assert approx_equal ((r_model.map_manager().map_data()[225]),-0.0418027862906)
 
   # Apply any mask to one map
-  r_model.apply_mask_to_map('map_manager',mask_key='mask')
+  r_model.apply_mask_to_map('map_manager',mask_id='mask')
   s = (r_model.map_manager().map_data() > 0.)
   assert approx_equal( (s.count(True),s.size()), (424,2048))
   s = (r_model.map_manager().map_data() != 0.)
@@ -149,6 +184,14 @@ def exercise(file_name, out = sys.stdout):
   new_mm_1=rm.map_manager()
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
      ((18, 25, 20),(18, 25, 20)))
+
+  # Get map-model CC
+  dc=rm_dc.deep_copy()
+  dm.write_real_map_file(dc.map_manager(), filename = 'map_manager.ccp4')
+  dm.write_model_file(dc.model(), filename = 'model.ccp4')
+  print (dc.map_manager_id_list() ,dc.model_id_list())
+  cc=dc.map_model_cc(resolution=3)
+  assert approx_equal (cc, 0.999999657768)
 
   # box around model
   rm=rm_dc.deep_copy()
@@ -240,8 +283,29 @@ def exercise(file_name, out = sys.stdout):
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
     ((24, 20, 20),(18, 25, 20)))
 
+  # extract a box and then restore model into same reference as current r_model
+  rm=rm_dc.deep_copy()
+  rm.box_all_maps_with_bounds_and_shift_origin(lower_bounds=(2,2,2),
+     upper_bounds=(17,17,17))
+  print("rm:",rm.model().get_sites_cart()[0],rm.map_manager().origin_is_zero())
+  # extract a box
+  box_rm=rm.extract_all_maps_with_bounds(lower_bounds=(10,10,10),
+     upper_bounds=(15,15,15))
+  box_model=box_rm.model()
+  matched_box_model=rm.get_model_from_other(box_rm)
+  assert approx_equal(matched_box_model.get_sites_cart()[0],rm.model().get_sites_cart()[0])
 
-  print ("OK")
+  # Convert a map to fourier coefficients
+  rm=rm_dc.deep_copy()
+  ma=rm.map_as_fourier_coefficients(high_resolution=3)
+  assert approx_equal(ma.d_min(),3.01655042414)
+
+
+  rm.add_map_from_fourier_coefficients(ma, map_id='new_map_manager')
+  cc=flex.linear_correlation(
+   rm.get_map_manager_by_id('map_manager').map_data().as_1d(),
+   rm.get_map_manager_by_id('new_map_manager').map_data().as_1d()).coefficient()
+  assert (cc >= 0.99)
 
 if __name__ == "__main__":
   args = sys.argv[1:]
@@ -257,3 +321,4 @@ if __name__ == "__main__":
     print("Skipped: Requires phenix module")
 
   print ("OK")
+

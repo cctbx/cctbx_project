@@ -49,6 +49,10 @@ class map_model_base(object):
     ''' Get the unit_cell_crystal_symmetry (full or original symmetry)'''
     return self.map_manager().unit_cell_crystal_symmetry()
 
+  def shift_cart(self):
+    ''' get the shift_cart (shift since original location)'''
+    return self.map_manager().shift_cart()
+
   def map_dict(self):
     ''' Get the dictionary of all maps and masks as map_manager objects'''
     return self._map_dict
@@ -69,7 +73,7 @@ class map_model_base(object):
     return self._model_dict.get('model')
 
   def model_id_list(self):
-    ''' Get all the names (keys) for all models'''
+    ''' Get all the names (ids) for all models'''
     return list(self.model_dict().keys())
 
   def get_model_by_id(self, model_id):
@@ -100,18 +104,57 @@ class map_model_base(object):
     return self._map_dict.get('map_manager_mask')
 
   def map_manager_id_list(self):
-    ''' Get all the names (keys) for all map_managers'''
+    ''' Get all the names (ids) for all map_managers'''
     return list(self.map_dict().keys())
 
   def get_map_manager_by_id(self, map_manager_id):
     ''' Get a map_manager with the name map_manager_id'''
     return self.map_dict().get(map_manager_id)
 
+  def duplicate_map_manager(self,
+    map_manager_id = 'map_manager',
+    new_map_manager_id='new_map_manager'):
+    '''
+     Duplicate (deep_copy) map_manager
+     Overwrites any existing with the new id
+    '''
+    map_manager = self.get_map_manager_by_id(map_manager_id)
+    assert isinstance(map_manager, iotbx.map_manager.map_manager)
+
+    self._map_dict[new_map_manager_id] = map_manager.deep_copy()
+
+  def add_map_manager_by_id(self, map_manager, map_manager_id,
+     overwrite = True):
+    '''
+     Add a new map_manager
+     Must be similar to existing
+     Overwrites any existing with the same id unless overwrite = False
+    '''
+    assert isinstance(map_manager, iotbx.map_manager.map_manager)
+    if not overwrite:
+      assert not map_manager_id in self.map_manager_id_list # must not duplicate
+    assert map_manager.is_similar(self.map_manager())
+    self._map_dict[map_manager_id] = map_manager
+
+  def add_model_by_id(self, model, model_id,
+     overwrite = True):
+    '''
+     Add a new model
+     Must be similar to existing map_managers
+     Overwrites any existing with the same id unless overwrite = False
+    '''
+    assert isinstance(model, mmtbx.model.manager)
+    if not overwrite:
+      assert not model_id in self.model_id_list # must not duplicate
+    assert self.map_manager().is_compatible_model(model)
+
+    self._model_dict[model_id] = model
+
   # Methods for writing maps and models
 
-  def write_map(self, file_name = None, key='map_manager', log = sys.stdout):
-    if not self._map_dict.get(key):
-      self._print ("No map to write out with id='%s'" %(key))
+  def write_map(self, file_name = None, id='map_manager', log = sys.stdout):
+    if not self._map_dict.get(id):
+      self._print ("No map to write out with id='%s'" %(id))
     elif not file_name:
       self._print ("Need file name to write map")
     else:
@@ -324,23 +367,23 @@ class map_model_base(object):
   def extract_all_maps_around_density(self,
      box_cushion = 5.,
      threshold = 0.05,
-     map_key = 'map_manager'):
+     map_id = 'map_manager'):
     '''
       Runs box_all_maps_around_density_and_shift_origin with extract_box=True
     '''
     return self.box_all_maps_around_density_and_shift_origin(
      box_cushion = box_cushion,
      threshold = threshold,
-     map_key = map_key,
+     map_id = map_id,
      extract_box = True)
 
   def box_all_maps_around_density_and_shift_origin(self,
      box_cushion = 5.,
      threshold = 0.05,
-     map_key = 'map_manager',
+     map_id = 'map_manager',
      extract_box = False):
     '''
-       Box all maps around the density in map_key map (default is map_manager)
+       Box all maps around the density in map_id map (default is map_manager)
        shift origin of maps, model
 
        If extract_box=True:  Creates new object with deep_copies.
@@ -396,20 +439,20 @@ class map_model_base(object):
   def extract_all_maps_around_mask(self,
      selection_string = None,
      box_cushion = 5.,
-     mask_key = 'mask'):
+     mask_id = 'mask'):
     '''
       Runs box_all_maps_around_mask_and_shift_origin with extract_box=True
     '''
     return self.box_all_maps_around_mask_and_shift_origin(
      selection_string = None,
      box_cushion = 5.,
-     mask_key = mask_key,
+     mask_id = mask_id,
      extract_box = True)
 
   def box_all_maps_around_mask_and_shift_origin(self,
      selection_string = None,
      box_cushion = 5.,
-     mask_key = 'mask',
+     mask_id = 'mask',
      extract_box = False):
     '''
        Box all maps around specified mask, shift origin of maps, model
@@ -435,7 +478,7 @@ class map_model_base(object):
     assert map_manager_info.map_manager_id is not None
     map_manager = self._map_dict[map_manager_info.map_manager_id]
 
-    mask_mm = self.get_map_manager_by_id(mask_key)
+    mask_mm = self.get_map_manager_by_id(mask_id)
     assert mask_mm is not None
     assert mask_mm.is_mask()
 
@@ -638,7 +681,7 @@ class map_model_base(object):
       set_outside_to_mean_inside = False,
       soft_mask = False,
       soft_mask_radius = None,
-      mask_key = 'mask'):
+      mask_id = 'mask'):
     assert mask_atoms_atom_radius is not None
     assert self.model() is not None
 
@@ -658,7 +701,7 @@ class map_model_base(object):
         (default radius is resolution calculated from gridding)
         If soft mask is set, mask_atoms_atom_radius increased by
 
-      Optionally use any mask specified by mask_key
+      Optionally use any mask specified by mask_id
     '''
     if soft_mask:
       if not soft_mask_radius:
@@ -670,73 +713,73 @@ class map_model_base(object):
          soft_mask = soft_mask,
          soft_mask_radius = soft_mask_radius,
          mask_atoms_atom_radius = mask_atoms_atom_radius)
-    self.apply_mask_to_maps(mask_key = mask_key,
+    self.apply_mask_to_maps(mask_id = mask_id,
          set_outside_to_mean_inside = \
            set_outside_to_mean_inside)
 
   def mask_all_maps_around_edges(self,
       soft_mask_radius = None,
-      mask_key = 'mask'):
+      mask_id = 'mask'):
     '''
       Apply a soft mask around edges of all maps. Overwrites values in maps
-      Use 'mask' as the mask key
+      Use 'mask' as the mask id
 
       NOTE: Does not change the gridding or shift_cart of the maps and model
     '''
 
     self.create_mask_around_edges(soft_mask_radius = soft_mask_radius,
-      mask_key = mask_key)
-    self.apply_mask_to_maps(mask_key = mask_key)
+      mask_id = mask_id)
+    self.apply_mask_to_maps(mask_id = mask_id)
 
   def apply_mask_to_map(self,
-      map_key,
-      mask_key = 'mask',
+      map_id,
+      mask_id = 'mask',
       set_outside_to_mean_inside = False):
     '''
-      Apply the mask in 'mask' to map specified by map_key
+      Apply the mask in 'mask' to map specified by map_id
 
       Optionally set the value outside the mask equal to the mean inside,
         changing smoothly from actual values inside the mask to the constant
         value outside (otherwise outside everything is set to zero)
 
-      Optionally use any mask specified by mask_key
+      Optionally use any mask specified by mask_id
 
       NOTE: Does not change the gridding or shift_cart of the map
     '''
 
-    self.apply_mask_to_maps(map_keys = [map_key],
-      mask_key = mask_key,
+    self.apply_mask_to_maps(map_ids = [map_id],
+      mask_id = mask_id,
       set_outside_to_mean_inside = set_outside_to_mean_inside)
 
   def apply_mask_to_maps(self,
-      map_keys = None,
-      mask_key = 'mask',
+      map_ids = None,
+      mask_id = 'mask',
       set_outside_to_mean_inside = False):
     '''
-      Apply the mask in 'mask' to maps specified by map_keys.
-      If map_keys is None apply to all
+      Apply the mask in 'mask' to maps specified by map_ids.
+      If map_ids is None apply to all
 
       Optionally set the value outside the mask equal to the mean inside,
         changing smoothly from actual values inside the mask to the constant
         value outside (otherwise outside everything is set to zero)
 
-      Optionally use any mask specified by mask_key
+      Optionally use any mask specified by mask_id
 
       NOTE: Does not change the gridding or shift_cart of the maps
     '''
 
-    assert (map_keys is None) or isinstance(map_keys, list)
+    assert (map_ids is None) or isinstance(map_ids, list)
     assert isinstance(set_outside_to_mean_inside, bool)
-    mask_mm = self.get_map_manager_by_id(mask_key)
+    mask_mm = self.get_map_manager_by_id(mask_id)
     assert mask_mm is not None
     assert mask_mm.is_mask()
 
     from cctbx.maptbx.segment_and_split_map import apply_mask_to_map
 
-    if map_keys is None:
-      map_keys = list(self._map_dict.keys())
-    for map_key in map_keys:
-      mm=self.get_map_manager_by_id(map_key)
+    if map_ids is None:
+      map_ids = list(self._map_dict.keys())
+    for map_id in map_ids:
+      mm=self.get_map_manager_by_id(map_id)
       if mm.is_mask(): continue  # don't apply to a mask
       if set_outside_to_mean_inside in [None, True]:
       # smoothly go from actual value inside mask to target value outside
@@ -751,7 +794,7 @@ class map_model_base(object):
 
   def create_mask_around_edges(self,
      soft_mask_radius = None,
-     mask_key = 'mask' ):
+     mask_id = 'mask' ):
     '''
       Generate new mask map_manager with soft mask around edges of mask
       Does not apply the mask to anything.
@@ -760,8 +803,8 @@ class map_model_base(object):
       Optional: radius around edge for masking
         (default radius is resolution calculated from gridding)
 
-      Generates new entry in map_manager dictionary with key of
-      mask_key (default='mask') replacing any existing entry with that key
+      Generates new entry in map_manager dictionary with id of
+      mask_id (default='mask') replacing any existing entry with that id
     '''
 
     if not soft_mask_radius:
@@ -775,14 +818,14 @@ class map_model_base(object):
       soft_mask_radius = soft_mask_radius)
     cm.soft_mask(soft_mask_radius = soft_mask_radius)
 
-    # Put the mask in map_dict keyed with mask_key
-    self.set_map_manager(mask_key, cm.map_manager())
+    # Put the mask in map_dict ided with mask_id
+    self.set_map_manager(mask_id, cm.map_manager())
 
   def create_mask_around_atoms(self,
      mask_atoms_atom_radius = 3,
      soft_mask = False,
      soft_mask_radius = None,
-     mask_key = 'mask' ):
+     mask_id = 'mask' ):
 
     '''
       Generate mask based on model.  Does not apply the mask to anything.
@@ -795,8 +838,8 @@ class map_model_base(object):
         If soft mask is set, mask_atoms_atom_radius increased by
           soft_mask_radius
 
-      Generates new entry in map_manager dictionary with key of
-      mask_key (default='mask') replacing any existing entry with that key
+      Generates new entry in map_manager dictionary with id of
+      mask_id (default='mask') replacing any existing entry with that id
     '''
 
     if soft_mask:
@@ -815,14 +858,14 @@ class map_model_base(object):
     if soft_mask: # Make the create_mask object contain a soft mask
       cm.soft_mask(soft_mask_radius = soft_mask_radius)
 
-    # Put the mask in map_dict keyed with mask_key
-    self.set_map_manager(mask_key, cm.map_manager())
+    # Put the mask in map_dict ided with mask_id
+    self.set_map_manager(mask_id, cm.map_manager())
 
   def create_mask_around_density(self,
      solvent_content = None,
      soft_mask = True,
      soft_mask_radius = None,
-     mask_key = 'mask' ):
+     mask_id = 'mask' ):
 
     '''
       Generate mask based on density in map_manager.
@@ -835,8 +878,8 @@ class map_model_base(object):
         Radius will be soft_mask_radius
         (default radius is resolution calculated from gridding)
 
-      Generates new entry in map_manager dictionary with key of
-      mask_key (default='mask') replacing any existing entry with that key
+      Generates new entry in map_manager dictionary with id of
+      mask_id (default='mask') replacing any existing entry with that id
     '''
 
     from cctbx.maptbx.mask import create_mask_around_density
@@ -851,8 +894,126 @@ class map_model_base(object):
            unit_cell=self.map_manager().crystal_symmetry().unit_cell())
       cm.soft_mask(soft_mask_radius = soft_mask_radius)
 
-    # Put the mask in map_dict keyed with mask_key
-    self.set_map_manager(mask_key, cm.map_manager())
+    # Put the mask in map_dict ided with mask_id
+    self.set_map_manager(mask_id, cm.map_manager())
+
+  # Methods for recombining models
+  def get_model_from_other(self, other):
+    '''
+     Take a model from other_r_model with any boxing and origin shifts and
+     put it in the same reference frame as the current model.  Used to build
+     up a model from pieces that were worked on in separate boxes.
+
+     Changes model from other in place
+
+     Parameters:  other:  Other map_model_manager or r_model containing a model
+    '''
+    assert isinstance(other, (map_model_manager, r_model))
+    other_model = other.model()
+    coordinate_shift = tuple(
+      [s - o for s,o in zip(self.shift_cart(),other.shift_cart())])
+    other_model.shift_model_and_set_crystal_symmetry(
+        shift_cart = coordinate_shift)
+    matched_other_model = other_model
+    return matched_other_model
+
+  # Methods for producing Fourier coefficients and calculating maps
+
+  def map_as_fourier_coefficients(self,
+      high_resolution = None,
+      low_resolution = None,
+      map_id = 'map_manager'):
+    '''
+     Return Miller array to resolution specified based on map with id map_id
+
+     Note that the map_manager is always zero-based (origin at (0,0,0)).
+     The Fourier coefficients represent the map in this location at (0, 0, 0)
+    '''
+
+    # Checks
+    map_manager = self.get_map_manager_by_id(map_id)
+    assert map_manager is not None
+
+    return map_manager.map_as_fourier_coefficients(
+      high_resolution = high_resolution,
+      low_resolution = low_resolution,
+      )
+
+  def add_map_from_fourier_coefficients(self,
+      map_coeffs,
+      map_id = 'map_from_fourier_coefficients'):
+    '''
+     Create map_manager from map_coeffs and add it to maps with map_id
+     The map_coeffs must refer to a map with origin at (0, 0, 0) such as
+     is produced by map_as_fourier_coefficients.
+
+    '''
+
+    # Checks
+    map_manager = self.map_manager()
+    assert map_manager is not None
+
+    map_data = map_manager.fourier_coefficients_as_map(map_coeffs)
+    new_map_manager = map_manager.customized_copy(map_data = map_data)
+    self.add_map_manager_by_id(new_map_manager, map_id)
+
+
+  def resolution_filter(self,
+      high_resolution = None,
+      low_resolution = None,
+      map_id = 'map_manager',
+      ):
+    '''
+      Resolution-filter a map with range of high_resolution to low_resolution
+
+      Typically used along with duplicate_map_manager to create a new map and
+      filter it:
+        rm.duplicate_map_manager(map_id='map_manager',
+          new_map_id='resolution_filtered')
+        rm.resolution_filter(map_id = 'resolution_filtered',)
+
+    '''
+
+    assert (high_resolution,low_resolution).count(None) < 2 # need some limits
+
+    map_coeffs = self.map_as_fourier_coefficients(map_id = map_id,
+      high_resolution = high_resolution,
+      low_resolution = low_resolution)
+
+    self.add_map_from_fourier_coefficients(map_coeffs,
+      map_id = map_id)
+
+
+  # Methods for comparing maps, models and calculating FSC values
+
+  def map_model_cc(self,
+      resolution,
+      map_id = 'map_manager',
+      model_id = 'model',
+      selection_string = None,
+      atom_radius = None):
+
+    model = self.get_model_by_id(model_id)
+    map_manager= self.get_map_manager_by_id(map_id)
+    assert model and map_manager
+
+    if selection_string:
+      sel = model.selection(selection_string)
+      model = model.select(sel)
+
+    from mmtbx.maps.mtriage import get_atom_radius
+    atom_radius = get_atom_radius(
+      xray_structure = model.get_xray_structure(),
+      resolution     = resolution,
+      radius         = atom_radius)
+
+    from mmtbx.maps.correlation import from_map_and_xray_structure_or_fmodel
+    cc_calculator = from_map_and_xray_structure_or_fmodel(
+      xray_structure = model.get_xray_structure(),
+      map_data       = map_manager.map_data(),
+      d_min          = resolution)
+    cc = cc_calculator.cc(atom_radius = atom_radius)
+    return cc
 
   # General methods
 
@@ -871,8 +1032,8 @@ class r_model(map_model_base):
     There must be a map_manager with the id 'map_manager'
 
     The model if present can be accessed with: self.model()
-    There can be additional models in model_dict. The key for model is 'model'
-    and the keys for the other models can be any strings.
+    There can be additional models in model_dict. The id for model is 'model'
+    and the ids for the other models can be any strings.
 
     Any map can be accessed using: self.get_map_manager_by_id(map_manager_id)
 
@@ -882,10 +1043,10 @@ class r_model(map_model_base):
       self.map_manager_2():  half_map 2
       self.map_manager_mask():  a mask
 
-    For the four maps above, map_manager_id_list keys are 'map_manager',
+    For the four maps above, map_manager_id_list ids are 'map_manager',
        'map_manager_1', 'map_manager_2', and 'map_manager_mask'.
 
-    For all maps, the map_manager_id is the key specified for that map_manager
+    For all maps, the map_manager_id is the id specified for that map_manager
     in map_dict in the call.
 
     Map reconstruction symmetry information as a ncs_object is available from
@@ -1120,11 +1281,11 @@ class map_model_manager(map_model_base):
     Optional after boxing:  apply soft mask to map (requires soft_mask_radius)
 
     The maps allowed are:
-      map_dict has four special keys with interpretations:
+      map_dict has four special ids with interpretations:
         map_manager:  full map
         map_manager_1, map_manager_2: half-maps 1 and 2
         map_manager_mask:  a mask as a map_mnager
-      All other keys are any strings and are assumed to correspond to other maps
+      All other ids are any strings and are assumed to correspond to other maps
 
     Note:  It is permissible to call with no map_manger, but supplying
       both map_manager_1 and map_manager_2.  In this case, the working
@@ -1365,11 +1526,11 @@ class map_model_manager(map_model_base):
       extra_map_manager_id_list = None):
 
     '''
-      map_dict has four special keys with interpretations:
+      map_dict has four special ids with interpretations:
         map_manager:  full map
         map_manager_1, map_manager_2: half-maps 1 and 2
         map_manager_mask:  a mask in a map_manager
-      All other keys are any strings and are assumed to correspond to other maps
+      All other ids are any strings and are assumed to correspond to other maps
       map_manager must be present
     '''
 
@@ -1391,9 +1552,9 @@ class map_model_manager(map_model_base):
       extra_model_id_list = None):
 
     '''
-      map_dict has one special key with interpretation:
+      map_dict has one special id with interpretation:
         model:  standard model
-      All other keys are any strings and are assumed to correspond to other
+      All other ids are any strings and are assumed to correspond to other
       models.
     '''
 

@@ -1486,7 +1486,8 @@ class map_manager(map_reader, write_ccp4_map):
       self._warning_message = "No map symmetry found; ncs_cc cutoff of %s" %(
         min_ncs_cc)
 
-  def map_as_fourier_coefficients(self, high_resolution = None):
+  def map_as_fourier_coefficients(self, high_resolution = None,
+     low_resolution = None):
     '''
        Convert a map to Fourier coefficients to a resolution of high_resolution,
        if high_resolution is provided, otherwise box full of map coefficients
@@ -1502,11 +1503,14 @@ class map_manager(map_reader, write_ccp4_map):
     '''
     assert self.map_data()
     assert self.map_data().origin() == (0, 0, 0)
-    return miller.structure_factor_box_from_map(
+    ma = miller.structure_factor_box_from_map(
       crystal_symmetry = self.crystal_symmetry(),
       include_000      = True,
       map              = self.map_data(),
       d_min            = high_resolution)
+    if low_resolution is not None:
+      ma.resolution_filter(d_min = high_resolution, d_max = low_resolution)
+    return ma
 
   def fourier_coefficients_as_map(self, map_coeffs):
     '''
