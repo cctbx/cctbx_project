@@ -245,24 +245,15 @@ def exercise(file_name, out = sys.stdout):
 
 if __name__ == "__main__":
   args = sys.argv[1:]
+  import libtbx.load_env
   if not args:
-    import libtbx.load_env
     file_name = libtbx.env.under_dist(
       module_name = "iotbx",
       path = "ccp4_map/tst_input.map")
     args = [file_name]
-  exercise(file_name = args[0])
-
-
+  if libtbx.env.has_module("phenix"):
+    exercise(file_name = args[0])
+  else:
+    print("Skipped: Requires phenix module")
 
   print ("OK")
-
-if __name__ == "__main__":
-  args = sys.argv[1:]
-  if not args:
-    import libtbx.load_env
-    file_name = libtbx.env.under_dist(
-      module_name = "iotbx",
-      path = "ccp4_map/tst_input.map")
-    args = [file_name]
-  exercise(file_name = args[0])
