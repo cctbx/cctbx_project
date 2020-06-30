@@ -1025,7 +1025,7 @@ class h_test(scaling.xtriage_analysis):
           twin_law=twin_law,
           fraction=fraction)
       except ValueError:
-        if (miller_array.completeness < 0.05) : # XXX could check for anomalous
+        if miller_array.completeness() < 0.05 : # XXX could check for anomalous
           raise Sorry("These data are severely incomplete, which breaks the "+
             "H-test for twinning.  We recommend that you use a full data set "+
             "in Xtriage, otherwise the statistical analyses may be invalid.")
