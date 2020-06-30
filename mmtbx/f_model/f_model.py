@@ -1234,7 +1234,7 @@ class manager(manager_mixin):
       ka       = flex.mean(k_anisotropic.select(sel))
       r        = mmtbx.bulk_solvent.r_factor(
         f_obs.select(sel_work).data(),
-        f_model.select(sel_work).data(), 1)
+        f_model.select(sel_work).data())
       km = " ".join(["%5.3f"%flex.mean(km_.select(sel)) for km_ in k_masks])
       result.append(group_args(
         d_min   = d_min,
@@ -2139,6 +2139,26 @@ class manager(manager_mixin):
 
   def r_work_low(self):
     f = self.select(self.bin_selections[0])
+
+    # Scan for best k
+    #fo, fc = f.f_obs_work().data(), f.f_model_work().data()
+    #scale = mmtbx.bulk_solvent.scale(fo, fc)
+    #r1 = mmtbx.bulk_solvent.r_factor(fo, fc, scale)
+    #r1_ = mmtbx.bulk_solvent.r_factor(fo, fc)
+    #assert approx_equal(r1, r1_)
+    #
+    #r2=r1
+    #k_best = scale
+    #k=scale-0.5
+    #while k<=scale+0.5:
+    #  r2_ = mmtbx.bulk_solvent.r_factor(fo, fc,k)
+    #  if(r2_<r2):
+    #    k_best = k
+    #    r2 = r2_
+    #  k+=0.01
+    #return mmtbx.bulk_solvent.r_factor(
+    #  f.f_obs_work().data(), f.f_model_work().data(), k_best)
+
     return mmtbx.bulk_solvent.r_factor(
       f.f_obs_work().data(), f.f_model_work().data())
 
