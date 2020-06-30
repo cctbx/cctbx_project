@@ -15,6 +15,11 @@ from mmtbx.ncs import tncs
 from collections import OrderedDict
 import mmtbx.f_model
 import sys
+from libtbx.test_utils import approx_equal
+
+from mmtbx import masks
+from cctbx.masks import vdw_radii_from_xray_structure
+ext = boost.python.import_ext("mmtbx_masks_ext")
 
 # Utilities used by algorithm 2 ------------------------------------------------
 
@@ -162,21 +167,10 @@ class refinery(object):
     self.f_obs  = fmodel.f_obs()
     self.r_free_flags = fmodel.r_free_flags()
     self.F = [self.f_calc.deep_copy()] + fv.keys()
-    self.bin_selections = fmodel.f_obs().log_binning(
-      n_reflections_in_lowest_resolution_bin = max(500,int(len(self.F)*100)))
-    # Massage bin selections
+
+    self.bin_selections = self.get_bin_selections()
     #
-    ds = fmodel.f_obs().d_spacings().data()
-    last = flex.bool(ds.size(), False)
-    new = []
-    for s in self.bin_selections:
-      m = flex.min(ds.select(s))
-      if(m>3): new.append(s)
-      else:    last = last | s
-    if(last.count(True)>0): new.append(last)
-    self.bin_selections = new[:]
-    #
-    self._print(fmodel.r_factors(prefix="start: "))
+    #self._print(fmodel.r_factors(prefix="start: "))
     for it in range(3):
       self._print("cycle: %2d"%it)
       self._print("  volumes: "+" ".join([str(fv[f]) for f in self.F[1:]]))
@@ -185,6 +179,9 @@ class refinery(object):
       f_obs   = f_obs.customized_copy(data = self.f_obs.data()/k_total)
       i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
       K_MASKS = OrderedDict()
+
+      self.bin_selections = self.get_bin_selections()
+
       for i_bin, sel in enumerate(self.bin_selections):
         d_max, d_min = f_obs.select(sel).d_max_min()
         bin = "  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min)
@@ -232,11 +229,27 @@ class refinery(object):
         k_mask         = flex.double(f_obs.data().size(),1))
       #
       self.fmodel.update_all_scales(remove_outliers=False)
-      self._print(self.fmodel.r_factors(prefix="  "))
+      #self._print(self.fmodel.r_factors(prefix="  "))
       self.mc = self.fmodel.electron_density_map().map_coefficients(
         map_type   = "mFobs-DFmodel",
         isotropize = True,
         exclude_free_r_reflections = False)
+
+  def get_bin_selections(self):
+    bin_selections = self.f_obs.log_binning(
+      n_reflections_in_lowest_resolution_bin = max(100,int(len(self.F)*100)))
+    #
+    ds = self.f_obs.d_spacings().data()
+    last = flex.bool(ds.size(), False)
+    new = []
+    for s in bin_selections:
+      m = flex.min(ds.select(s))
+      if(m>3): new.append(s)
+      else:    last = last | s
+    if(last.count(True)>0): new.append(last)
+    bin_selections = new[:]
+    #
+    return bin_selections
 
   def _print(self, m):
     if(self.log is not None):
@@ -255,6 +268,68 @@ class refinery(object):
     x = flex.double([1,k_maks1_init])
     x.extend( flex.double(len(self.F)-2, 0.1))
     return x
+
+def get_f_mask(xrs, ma, step):
+  crystal_gridding = maptbx.crystal_gridding(
+    unit_cell        = xrs.unit_cell(),
+    space_group_info = xrs.space_group_info(),
+    symmetry_flags   = maptbx.use_space_group_symmetry,
+    step             = step)
+  n_real = crystal_gridding.n_real()
+  atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
+  mask_params = masks.mask_master_params.extract()
+  grid_step_factor = ma.d_min()/step
+#  # 1
+#  asu_mask = ext.atom_mask(
+#    unit_cell                = xrs.unit_cell(),
+#    group                    = xrs.space_group(),
+#    resolution               = ma.d_min(),
+#    grid_step_factor         = grid_step_factor,
+#    solvent_radius           = mask_params.solvent_radius,
+#    shrink_truncation_radius = mask_params.shrink_truncation_radius)
+#  asu_mask.compute(xrs.sites_frac(), atom_radii)
+#  fm_asu = asu_mask.structure_factors(ma.indices())
+#  f_mask_1 = ma.set().array(data = fm_asu)
+#  print (asu_mask.grid_size())
+  # 2
+  asu_mask = ext.atom_mask(
+    unit_cell                = xrs.unit_cell(),
+    space_group              = xrs.space_group(),
+    gridding_n_real          = n_real,
+    solvent_radius           = mask_params.solvent_radius,
+    shrink_truncation_radius = mask_params.shrink_truncation_radius)
+  asu_mask.compute(xrs.sites_frac(), atom_radii)
+  fm_asu = asu_mask.structure_factors(ma.indices())
+  f_mask_2 = ma.set().array(data = fm_asu)
+#  # 3
+#  mask_params.grid_step_factor = grid_step_factor
+#  mask_manager = masks.manager(
+#    miller_array      = ma,
+#    miller_array_twin = None,
+#    mask_params       = mask_params)
+#  f_mask_3 = mask_manager.shell_f_masks(xray_structure=xrs, force_update=True)[0]
+#  # 4
+#  mask_p1 = mmtbx.masks.mask_from_xray_structure(
+#    xray_structure        = xrs,
+#    p1                    = True,
+#    for_structure_factors = True,
+#    n_real                = n_real,
+#    in_asu                = False).mask_data
+#  maptbx.unpad_in_place(map=mask_p1)
+#  mask = asu_map_ext.asymmetric_map(
+#    xrs.crystal_symmetry().space_group().type(), mask_p1).data()
+#  f_mask_4 = ma.structure_factors_from_asu_map(
+#    asu_map_data = mask, n_real = n_real)
+#  ##
+#  print (flex.mean(abs(f_mask_1).data()))
+#  print (flex.mean(abs(f_mask_2).data()))
+#  print (flex.mean(abs(f_mask_3).data()))
+#  print (flex.mean(abs(f_mask_4).data()))
+#  STOP()
+#  assert approx_equal(f_mask_1.data(), f_mask_2.data())
+#  assert approx_equal(f_mask_1.data(), f_mask_3.data())
+#  assert approx_equal(f_mask_1.data(), f_mask_4.data())
+  return f_mask_2
 
 class mosaic_f_mask(object):
   def __init__(self,
@@ -277,6 +352,7 @@ class mosaic_f_mask(object):
       symmetry_flags   = maptbx.use_space_group_symmetry,
       step             = step)
     self.n_real = self.crystal_gridding.n_real()
+    # XXX Where do we want to deal with H and occ==0?
     mask_p1 = mmtbx.masks.mask_from_xray_structure(
       xray_structure        = xray_structure,
       p1                    = True,
@@ -299,9 +375,7 @@ class mosaic_f_mask(object):
     self.conn = co.result().as_double()
     z = zip(co.regions(),range(0,co.regions().size()))
     sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
-    f_mask_data   = flex.complex_double(miller_array.data().size(), 0)
     f_mask_data_0 = flex.complex_double(miller_array.data().size(), 0)
-    #f_masks  = []
     FM = OrderedDict()
     self.FV = OrderedDict()
     self.mc = None
@@ -313,24 +387,26 @@ class mosaic_f_mask(object):
       file=log)
     for i_seq, p in enumerate(sorted_by_volume):
       v, i = p
+      # skip macromolecule
+      if(i==0): continue
+      # skip small volume
       volume = v*step**3
       uc_fraction = v*100./self.conn.size()
       if(volume_cutoff is not None):
         if volume < volume_cutoff: continue
-      if(i==0): continue
 
       selection = self.conn==i
       mask_i_asu = self.compute_i_mask_asu(selection=selection, volume=volume)
       volume_asu = (mask_i_asu>0).count(True)*step**3
-      if(volume_asu<1.e-6): continue
 
       if(i_seq==1 or uc_fraction>5):
         f_mask_i = miller_array.structure_factors_from_asu_map(
           asu_map_data = mask_i_asu, n_real = self.n_real)
         f_mask_data_0 += f_mask_i.data()
-        f_mask_data += f_mask_i.data()
+
       if(uc_fraction < 5 and diff_map is None):
         diff_map = self.compute_diff_map(f_mask_data = f_mask_data_0)
+
       mi,ma,me,sd = None,None,None,None
       if(diff_map is not None):
         blob = diff_map.select(selection.iselection())
@@ -342,6 +418,9 @@ class mosaic_f_mask(object):
             "%12.3f"%volume_asu, "%3d"%i,
             "%7s"%str(None) if diff_map is None else "%7.3f %7.3f %7.3f %7.3f"%(
               mi,ma,me,sd), file=log)
+
+      if(mean_diff_map is not None and mean_diff_map<=0): continue
+
       self.regions[i_seq] = group_args(
         id          = i,
         i_seq       = i_seq,
@@ -349,32 +428,18 @@ class mosaic_f_mask(object):
         uc_fraction = uc_fraction,
         diff_map    = group_args(mi=mi, ma=ma, me=me, sd=sd))
 
-      if(mean_diff_map is not None and mean_diff_map<=0): continue
-
       if(not(i_seq==1 or uc_fraction>5)):
         f_mask_i = miller_array.structure_factors_from_asu_map(
           asu_map_data = mask_i_asu, n_real = self.n_real)
-        f_mask_data += f_mask_i.data()
 
       FM.setdefault(round(volume, 3), []).append(f_mask_i.data())
       self.FV[f_mask_i] = round(volume, 3)
-
-    # group asu pices corresponding to the same region in P1
-    F_MASKS = []
-    for k,v in zip(FM.keys(), FM.values()):
-      tmp = flex.complex_double(miller_array.data().size(), 0)
-      for v_ in v:
-        tmp+=v_
-      F_MASKS.append(miller_array.customized_copy(data = tmp))
     #
-    f_mask   = miller_array.customized_copy(data = f_mask_data)
     f_mask_0 = miller_array.customized_copy(data = f_mask_data_0)
     #
-    self.f_mask    = f_mask
     self.f_mask_0  = f_mask_0
-    self.f_masks   = F_MASKS
     self.do_mosaic = False
-    if(len(self.f_masks)>1):
+    if(len(self.FV.keys())>1):
       self.do_mosaic = True
 
   def compute_diff_map(self, f_mask_data):
@@ -447,10 +512,10 @@ def algorithm_2(i_obs, F, x, use_curvatures=True, macro_cycles=10):
     if(use_curvatures):
       m = minimizer(max_iterations=100, calculator=calculator)
     else:
-      upper = flex.double([10] + [5]*(x.size()-1))
-      lower = flex.double([0.1] + [-5]*(x.size()-1))
-      #upper = flex.double([10] + [0.65]*(x.size()-1))
-      #lower = flex.double([0.1] + [0]*(x.size()-1))
+      #upper = flex.double([10] + [5]*(x.size()-1))
+      #lower = flex.double([0.1] + [-5]*(x.size()-1))
+      upper = flex.double([10] + [0.65]*(x.size()-1))
+      lower = flex.double([0.1] + [0]*(x.size()-1))
       #upper = flex.double([1] + [5.65]*(x.size()-1))
       #lower = flex.double([1] + [-5]*(x.size()-1))
       m = tncs.minimizer(
