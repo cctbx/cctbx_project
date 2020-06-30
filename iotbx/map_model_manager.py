@@ -190,12 +190,27 @@ class map_model_base(object):
   # These methods change the contents of the current object (they do not
   #  create a new object)
 
-  def box_all_maps_with_bounds_and_shift_origin(self,
+  def extract_all_maps_with_bounds(self,
      lower_bounds,
      upper_bounds):
     '''
+      Runs box_all_maps_with_bounds_and_shift_origin with extract_box=True
+    '''
+    return self.box_all_maps_with_bounds_and_shift_origin(
+      lower_bounds = lower_bounds,
+      upper_bounds = upper_bounds,
+      extract_box = True)
+
+  def box_all_maps_with_bounds_and_shift_origin(self,
+     lower_bounds,
+     upper_bounds,
+     extract_box = False):
+    '''
        Box all maps using specified bounds, shift origin of maps, model
        Replaces existing map_managers and shifts model in place
+
+       If extract_box=True:  Creates new object with deep_copies.
+       Otherwise: replaces existing map_managers and shifts model in place
 
        NOTE: This changes the gridding and shift_cart of the maps and model
 
@@ -219,6 +234,9 @@ class map_model_base(object):
     model_info=self.get_model_info()
     model = self._model_dict[model_info.model_id]
 
+    if extract_box: # make sure everything is deep_copy
+      model = model.deep_copy()
+
     # Make box with bounds and apply it to model, first map
     box = with_bounds(
       map_manager = self._map_dict[map_manager_info.map_manager_id],
@@ -230,16 +248,31 @@ class map_model_base(object):
     # Now box is a copy of map_manager and model that is boxed
 
     # Now apply boxing to other maps and models and then insert them into
-    #  this r_model object, replacing what is here.
-    self._finish_boxing(box = box, model_info = model_info,
-      map_manager_info = map_manager_info)
+    #  either this r_model object, replacing what is there (extract_box=False)
+    #  or create and return a new r_model object (extract_box=True)
+    return self._finish_boxing(box = box, model_info = model_info,
+      map_manager_info = map_manager_info,
+      extract_box = extract_box)
 
-  def box_all_maps_around_model_and_shift_origin(self,
+  def extract_all_maps_around_model(self,
      selection_string = None,
      box_cushion = 5.):
     '''
+      Runs box_all_maps_around_model_and_shift_origin with extract_box=True
+    '''
+    return self.box_all_maps_around_model_and_shift_origin(
+      selection_string = selection_string,
+      box_cushion = box_cushion,
+      extract_box = True)
+
+  def box_all_maps_around_model_and_shift_origin(self,
+     selection_string = None,
+     box_cushion = 5.,
+     extract_box = False):
+    '''
        Box all maps around the model, shift origin of maps, model
-       Replaces existing map_managers and shifts model in place
+       If extract_box=True:  Creates new object with deep_copies.
+       Otherwise: replaces existing map_managers and shifts model in place
 
        NOTE: This changes the gridding and shift_cart of the maps and model
 
@@ -268,8 +301,11 @@ class map_model_base(object):
     if selection_string:
       sel = model.selection(selection_string)
       model = model.select(sel)
+    elif extract_box: # make sure everything is deep_copy
+      model = model.deep_copy()
 
     # Make box around model and apply it to model, first map
+    # This step modifies model in place and creates a new map_manager
     box = around_model(
       map_manager = self._map_dict[map_manager_info.map_manager_id],
       model = model,
@@ -279,17 +315,37 @@ class map_model_base(object):
     # Now box is a copy of map_manager and model that is boxed
 
     # Now apply boxing to other maps and models and then insert them into
-    #  this r_model object, replacing what is here.
-    self._finish_boxing(box = box, model_info = model_info,
-      map_manager_info = map_manager_info)
+    #  either this r_model object, replacing what is there (extract_box=False)
+    #  or create and return a new r_model object (extract_box=True)
+    return self._finish_boxing(box = box, model_info = model_info,
+      map_manager_info = map_manager_info,
+      extract_box = extract_box)
 
-  def box_all_maps_around_density_and_shift_origin(self,
+  def extract_all_maps_around_density(self,
      box_cushion = 5.,
      threshold = 0.05,
      map_key = 'map_manager'):
     '''
+      Runs box_all_maps_around_density_and_shift_origin with extract_box=True
+    '''
+    return self.box_all_maps_around_density_and_shift_origin(
+     box_cushion = box_cushion,
+     threshold = threshold,
+     map_key = map_key,
+     extract_box = True)
+
+  def box_all_maps_around_density_and_shift_origin(self,
+     box_cushion = 5.,
+     threshold = 0.05,
+     map_key = 'map_manager',
+     extract_box = False):
+    '''
        Box all maps around the density in map_key map (default is map_manager)
        shift origin of maps, model
+
+       If extract_box=True:  Creates new object with deep_copies.
+       Otherwise: replaces existing map_managers and shifts model in place
+
        Replaces existing map_managers and shifts model in place
 
        NOTE: This changes the gridding and shift_cart of the maps and model
@@ -317,6 +373,8 @@ class map_model_base(object):
     assert map_manager_info.map_manager_id is not None
     model_info=self.get_model_info()
     model = self._model_dict[model_info.model_id]
+    if extract_box: # make sure everything is deep_copy
+      model = model.deep_copy()
 
     # Make box around model and apply it to model, first map
     box = around_density(
@@ -329,18 +387,36 @@ class map_model_base(object):
     # Now box is a copy of map_manager and model that is boxed
 
     # Now apply boxing to other maps and models and then insert them into
-    #  this r_model object, replacing what is here.
+    #  either this r_model object, replacing what is there (extract_box=False)
+    #  or create and return a new r_model object (extract_box=True)
+    return self._finish_boxing(box = box, model_info = model_info,
+      map_manager_info = map_manager_info,
+      extract_box = extract_box)
 
-    self._finish_boxing(box = box, model_info = model_info,
-      map_manager_info = map_manager_info)
-
-  def box_all_maps_around_mask_and_shift_origin(self,
+  def extract_all_maps_around_mask(self,
      selection_string = None,
      box_cushion = 5.,
      mask_key = 'mask'):
     '''
+      Runs box_all_maps_around_mask_and_shift_origin with extract_box=True
+    '''
+    return self.box_all_maps_around_mask_and_shift_origin(
+     selection_string = None,
+     box_cushion = 5.,
+     mask_key = mask_key,
+     extract_box = True)
+
+  def box_all_maps_around_mask_and_shift_origin(self,
+     selection_string = None,
+     box_cushion = 5.,
+     mask_key = 'mask',
+     extract_box = False):
+    '''
        Box all maps around specified mask, shift origin of maps, model
        Replaces existing map_managers and shifts model in place
+
+       If extract_box=True:  Creates new object with deep_copies.
+       Otherwise: replaces existing map_managers and shifts model in place
 
        NOTE: This changes the gridding and shift_cart of the maps and model
 
@@ -367,6 +443,8 @@ class map_model_base(object):
 
     model_info=self.get_model_info()
     model = self._model_dict[model_info.model_id]
+    if extract_box: # make sure everything is deep_copy
+      model = model.deep_copy()
 
     # Make box around mask and apply it to model, first map
     box = around_mask(
@@ -379,9 +457,41 @@ class map_model_base(object):
     # Now box is a copy of map_manager and model that is boxed
 
     # Now apply boxing to other maps and models and then insert them into
-    #  this r_model object, replacing what is here.
-    self._finish_boxing(box = box, model_info = model_info,
-      map_manager_info = map_manager_info)
+    #  either this r_model object, replacing what is there (extract_box=False)
+    #  or create and return a new r_model object (extract_box=True)
+    return self._finish_boxing(box = box, model_info = model_info,
+      map_manager_info = map_manager_info,
+      extract_box = extract_box)
+
+  def extract_all_maps_around_unique(self,
+     resolution,
+     solvent_content = None,
+     sequence = None,
+     molecular_mass = None,
+     soft_mask = True,
+     chain_type = 'PROTEIN',
+     box_cushion = 5,
+     target_ncs_au_model = None,
+     regions_to_keep = None,
+     symmetry = None,
+     mask_expand_ratio = 1):
+
+    '''
+      Runs box_all_maps_around_mask_and_shift_origin with extract_box=True
+    '''
+    return self.box_all_maps_around_unique_and_shift_origin(
+     resolution,
+     solvent_content = solvent_content,
+     sequence = sequence,
+     molecular_mass = molecular_mass,
+     soft_mask = soft_mask,
+     chain_type = chain_type,
+     box_cushion = box_cushion,
+     target_ncs_au_model = target_ncs_au_model,
+     regions_to_keep = regions_to_keep,
+     symmetry = symmetry,
+     mask_expand_ratio = mask_expand_ratio,
+     extract_box = True)
 
   def box_all_maps_around_unique_and_shift_origin(self,
      resolution,
@@ -394,10 +504,14 @@ class map_model_base(object):
      target_ncs_au_model = None,
      regions_to_keep = None,
      symmetry = None,
-     mask_expand_ratio = 1):
+     mask_expand_ratio = 1,
+     extract_box = False):
     '''
        Box all maps using bounds obtained with extract_unique,
        shift origin of maps, model, and mask around unique region
+
+       If extract_box=True:  Creates new object with deep_copies.
+       Otherwise: replaces existing map_managers and shifts model in place
 
        Replaces existing map_managers and shifts model in place
 
@@ -417,13 +531,18 @@ class map_model_base(object):
          mask_expand_ratio:   allows increasing masking radius beyond default at
                               final stage of masking
          solvent_content:  fraction of cell not occupied by macromolecule
-         sequence:         one-letter code of sequence of entire molecule
-         chain_type:       PROTEIN or RNA or DNA
-         molecular_mass:    Molecular mass (Da) of entire molecule
+         sequence:        one-letter code of sequence of unique part of molecule
+         chain_type:       PROTEIN or RNA or DNA. Used with sequence to estimate
+                            molecular_mass
+         molecular_mass:    Molecular mass (Da) of entire molecule used to
+                            estimate solvent_content
          target_ncs_au_model: model marking center of location to choose as
-                              unique, if possible
+                              unique
          box_cushion:        buffer around unique region to be boxed
          soft_mask:  use soft mask
+         keep_low_density:  keep low density regions
+         regions_to_keep:   Allows choosing just highest-density contiguous
+                            region (regions_to_keep=1) or a few
     '''
     from cctbx.maptbx.box import extract_unique
 
@@ -435,8 +554,10 @@ class map_model_base(object):
 
     model_info=self.get_model_info()
     model = self._model_dict[model_info.model_id]
+    if extract_box: # make sure everything is deep_copy
+      model = model.deep_copy()
 
-    # Make box with bounds and apply it to model, first map
+    # Make box with extract_unique and apply it to model, first map
     box = extract_unique(
       map_manager = map_manager,
       model = model,
@@ -457,32 +578,56 @@ class map_model_base(object):
     # Now box is a copy of map_manager and model that is boxed
 
     # Now apply boxing to other maps and models and then insert them into
-    #  this r_model object, replacing what is here.
-    self._finish_boxing(box = box, model_info = model_info,
-      map_manager_info = map_manager_info)
+    #  either this r_model object, replacing what is there (extract_box=False)
+    #  or create and return a new r_model object (extract_box=True)
+    other = self._finish_boxing(box = box, model_info = model_info,
+      map_manager_info = map_manager_info,
+      extract_box = extract_box)
+
+    if not extract_box:
+      other = self #  modifying this object
 
     # Now apply masking to all other maps (not done in _finish_boxing)
     for id in map_manager_info.other_map_manager_id_list:
-      self._map_dict[id] = box.apply_extract_unique_mask(
+      other._map_dict[id] = box.apply_extract_unique_mask(
         self._map_dict[id],
         resolution = resolution,
         soft_mask = soft_mask)
 
-  def _finish_boxing(self, box, model_info, map_manager_info):
+    if extract_box:
+      return other
+
+  def _finish_boxing(self, box, model_info, map_manager_info,
+    extract_box = False):
+
+    '''
+       If extract_box is False, modify this object in place.
+       If extract_box is True , create a new object of same type and return it
+    '''
+
     if box.warning_message():
       self._warning_message = box.warning_message()
       self._print("%s" %(box.warning_message()))
-    self._map_dict[map_manager_info.map_manager_id] = box.map_manager()
-    self._model_dict[model_info.model_id] = box.model()
-    self._shift_cart = box.map_manager().shift_cart()
+
+    if extract_box:
+      other = self.empty_copy() # making a new object
+    else:
+      other = self #  modifying this object
+
+
+    other._map_dict[map_manager_info.map_manager_id] = box.map_manager()
+    other._model_dict[model_info.model_id] = box.model()
 
     # Apply the box to all the other maps
     for id in map_manager_info.other_map_manager_id_list:
-      self._map_dict[id] = box.apply_to_map(self._map_dict[id])
+      other._map_dict[id] = box.apply_to_map(self._map_dict[id])
 
     # Apply the box to all the other models
     for id in model_info.other_model_id_list:
-      self._model_dict[id] = box.apply_to_model(self._model_dict[id])
+      other._model_dict[id] = box.apply_to_model(self._model_dict[id])
+
+    if extract_box:
+      return other
 
   # Methods for masking maps ( creating masks and applying masks to maps)
   # These methods change the contents of the current object (they do not
@@ -821,7 +966,6 @@ class r_model(map_model_base):
         new_model_dict[id]=self.get_map_manager_by_id(id).deep_copy()
 
 
-
     if map_dict: # take new map_dict without deep_copy
       new_map_dict = map_dict
     else:  # deep_copy existing map_dict
@@ -845,8 +989,24 @@ class r_model(map_model_base):
     for id in self.map_manager_id_list():
       new_map_dict[id]=self.get_map_manager_by_id(id).deep_copy()
 
-    return r_model(model_dict = new_model_dict, map_dict = new_map_dict,
+    new_rm = r_model(model_dict = new_model_dict, map_dict = new_map_dict,
       wrapping = self._force_wrapping)
+
+    return new_rm
+
+  def empty_copy(self):
+    '''
+      Return a copy with no data
+    '''
+    new_mmm = r_model()
+    new_mmm._map_dict={}
+    new_mmm._model_dict={}
+    new_mmm._extra_map_manager_id_list = []
+    new_mmm._extra_map_manager_list = []
+    new_mmm._original_origin_cart = None
+    new_mmm._gridding_first = None
+    new_mmm._gridding_last = None
+    return new_mmm
 
   # prevent pickling error in Python 3 with self.log = sys.stdout
   # unpickling is limited to restoring sys.stdout
@@ -888,6 +1048,9 @@ class r_model(map_model_base):
     model_dict=self.model_dict()
     map_dict=self.map_dict()
 
+    if not model_dict and not map_dict:
+      return # Nothing to do; just made empty object
+
     assert isinstance(model_dict, dict)
     assert isinstance(map_dict, dict)
     assert map_dict != {}
@@ -915,6 +1078,25 @@ class r_model(map_model_base):
 
     # All OK
 
+  def as_map_model_manager(self):
+
+    '''
+      Return map_model_manager object with contents of this class
+      (not a deepcopy)
+
+    '''
+    from iotbx.map_model_manager import map_model_manager
+    new_mmm=map_model_manager()
+    new_mmm._model_dict = self.model_dict()
+    new_mmm._map_dict = self.map_dict()
+    new_mmm._force_wrapping = self._force_wrapping
+    new_mmm._extra_map_manager_list = []
+    new_mmm._extra_map_manager_id_list = []
+    for id in self.map_manager_id_list():
+      if not self.get_map_manager_by_id(id) is self.map_manager():
+        new_mmm._extra_map_manager_list.append(self.get_map_manager_by_id(id))
+        new_mmm._extra_map_manager_id_list.append(id)
+    return new_mmm
 
 class map_model_manager(map_model_base):
 
@@ -976,7 +1158,6 @@ class map_model_manager(map_model_base):
     # Initialize
     self._map_dict={}
     self._model_dict = {}
-    self._shift_cart = None
     self._original_origin_grid_units = None
     self._original_origin_cart = None
     self._gridding_first = None
@@ -1479,6 +1660,20 @@ class map_model_manager(map_model_base):
     self.set_up_map_dict(map_manager=mm)
     self.set_up_model_dict(model=model)
 
+  def empty_copy(self):
+    '''
+      Return a copy with no data
+    '''
+    new_mmm = map_model_manager()
+    new_mmm._map_dict={}
+    new_mmm._model_dict={}
+    new_mmm._extra_map_manager_id_list = []
+    new_mmm._extra_map_manager_list = []
+    new_mmm._original_origin_cart = None
+    new_mmm._gridding_first = None
+    new_mmm._gridding_last = None
+    return new_mmm
+
   def deep_copy(self):
     new_mmm = map_model_manager()
 
@@ -1499,12 +1694,11 @@ class map_model_manager(map_model_base):
     for id in self._map_dict.keys():
       new_mmm._map_dict[id]=self._map_dict[id].deep_copy()
 
-    new_mmm._shift_cart = deepcopy(self._shift_cart)
     new_mmm._force_wrapping = deepcopy(self._force_wrapping)
     return new_mmm
 
   def as_r_model(self):
-    return r_model( model_dict        = self.model_dict(),
+    return     r_model( model_dict = self.model_dict(),
                map_dict         = self.map_dict())
 
   def as_map_model_manager(self):
@@ -1930,7 +2124,6 @@ class match_map_model_ncs:
         map_manager = self.map_manager(),
         model = self.model(),
         )
-    # Keep track of the gridding and solvent_content (if used) in this boxing.
     return mam
 
 #   Misc methods XXX to be removed

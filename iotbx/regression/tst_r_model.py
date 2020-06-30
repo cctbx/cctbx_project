@@ -144,36 +144,101 @@ def exercise(file_name, out = sys.stdout):
   mmm=map_model_manager()
   mmm.generate_map(box_cushion=0)
   rm=mmm.as_r_model()
+  rm_dc=rm.deep_copy()
+
   new_mm_1=rm.map_manager()
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
      ((18, 25, 20),(18, 25, 20)))
 
   # box around model
+  rm=rm_dc.deep_copy()
   rm.box_all_maps_around_model_and_shift_origin(
       selection_string="resseq 221:221")
   new_mm_1=rm.map_manager()
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
+    ((18, 25, 20),(24, 20, 20)))
+
+  # extract_around_model (get new r_model)
+  new_rm_dc=rm_dc.extract_all_maps_around_model(
+      selection_string="resseq 221:221")
+  new_mm_1a=new_rm_dc.map_manager()
+  assert approx_equal( (mmm.map_data().all(),new_mm_1a.map_data().all()),
+    ((18, 25, 20),(24, 20, 20)))
+  assert approx_equal(new_mm_1.map_data(),new_mm_1a.map_data())
+
+  # box around_density
+  rm2=rm_dc.deep_copy()
+  rm2.box_all_maps_around_density_and_shift_origin(box_cushion=0)
+  new_mm_2=rm2.map_manager()
+  assert approx_equal( (mmm.map_data().all(),new_mm_2.map_data().all()),
+    ((18, 25, 20),(16, 23, 18)))
+
+  # extract_around_density (get new r_model)
+  rm2=rm_dc.deep_copy()
+  rm2_b=rm2.extract_all_maps_around_density(box_cushion=0)
+  new_mm_2=rm2_b.map_manager()
+  assert approx_equal( (mmm.map_data().all(),new_mm_2.map_data().all()),
+    ((18, 25, 20),(16, 23, 18)))
+
+  # Repeat as map_model_manager:
+  mmm=rm_dc.as_map_model_manager().deep_copy()
+  mmm.box_all_maps_around_model_and_shift_origin(
+      selection_string="resseq 221:221")
+  new_mm_1a=mmm.map_manager()
+  assert approx_equal( (mmm.map_data().all(),new_mm_1a.map_data().all()),
     ((24, 20, 20),(24, 20, 20)))
+  assert approx_equal(new_mm_1.map_data(),new_mm_1a.map_data())
 
   # box around density
   rm.box_all_maps_around_density_and_shift_origin(box_cushion=0)
   new_mm_1=rm.map_manager()
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
-    ((22, 18, 18),(22, 18, 18)))
+    ((24, 20 , 20),(22, 18, 18)))
+
+  # extract around density (get new r_model)
+  rm1=rm_dc.deep_copy()
+  rm1.extract_all_maps_around_density(box_cushion=0)
+  new_mm_1=rm1.map_manager()
+  assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
+    ((24, 20 , 20),(18, 25, 20)))
 
   # create mask around density, then box around mask (i.e., box around density)
   rm.create_mask_around_density(soft_mask=False)
   rm.box_all_maps_around_mask_and_shift_origin(box_cushion=3)
   new_mm_1=rm.map_manager()
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
-    ((22, 18, 18),(22, 18, 18)))
+    ((24, 20 , 20),(22, 18, 18)))
 
   # box with bounds
   rm.box_all_maps_with_bounds_and_shift_origin(lower_bounds=(10,10,10),
      upper_bounds=(15,15,15))
   new_mm_1=rm.map_manager()
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
-    ((6, 6, 6),(6, 6, 6)))
+    ((24, 20, 20),(6, 6, 6)))
+
+  # extract with bounds
+  rm=rm_dc.deep_copy()
+  rm_1=rm.extract_all_maps_with_bounds(lower_bounds=(10,10,10),
+     upper_bounds=(15,15,15))
+  new_mm_1=rm_1.map_manager()
+  assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
+    ((24, 20, 20),(6, 6, 6)))
+
+  # box with unique
+  rm=rm_dc.deep_copy()
+  rm.box_all_maps_around_unique_and_shift_origin(
+      molecular_mass=2500,resolution=3)
+  new_mm_1=rm.map_manager()
+  assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
+    ((24, 20, 20),(18, 25, 20)))
+
+  # extract with unique
+  rm=rm_dc.deep_copy()
+  rm_1=rm.extract_all_maps_around_unique(
+      molecular_mass=2500,resolution=3)
+  new_mm_1=rm_1.map_manager()
+  assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
+    ((24, 20, 20),(18, 25, 20)))
 
 
   print ("OK")

@@ -410,6 +410,24 @@ class extract_unique(with_bounds):
     undefined.  If a box is specified that uses points outside the defined
     region, those points are set to zero.
 
+
+      Additional parameters:
+         mask_expand_ratio:   allows increasing masking radius beyond default at
+                              final stage of masking
+         solvent_content:  fraction of cell not occupied by macromolecule
+         sequence:        one-letter code of sequence of unique part of molecule
+         chain_type:       PROTEIN or RNA or DNA. Used with sequence to estimate
+                            molecular_mass
+         molecular_mass:    Molecular mass (Da) of entire molecule used to
+                            estimate solvent_content
+         target_ncs_au_model: model marking center of location to choose as
+                              unique
+         box_cushion:        buffer around unique region to be boxed
+         soft_mask:  use soft mask
+         keep_low_density:  keep low density regions
+         regions_to_keep:   Allows choosing just highest-density contiguous
+                            region (regions_to_keep=1) or a few
+
   '''
 
   def __init__(self, map_manager,
