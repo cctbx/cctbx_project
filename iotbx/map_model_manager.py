@@ -80,10 +80,18 @@ class map_model_base(object):
     ''' Get a model with the name model_id'''
     return self.model_dict().get(model_id)
 
+  def remove_model_by_id(self, model_id = 'extra'):
+    '''
+     Remove this model
+     Note: you cannot remove 'model' ... you can only replace it
+   '''
+    assert map_id != 'model'
+    del self._model_dict[map_id]
+
   def map_managers(self):
     ''' Get all the map_managers as a list'''
     map_manager_list = []
-    for id in self.map_manager_id_list():
+    for id in self.map_id_list():
       map_manager_list.append(self.get_map_manager_by_id(id))
     return map_manager_list
 
@@ -103,27 +111,82 @@ class map_model_base(object):
     ''' Get the mask as a map_manager object '''
     return self._map_dict.get('map_manager_mask')
 
-  def map_manager_id_list(self):
+  def map_id_list(self):
     ''' Get all the names (ids) for all map_managers'''
     return list(self.map_dict().keys())
 
-  def get_map_manager_by_id(self, map_manager_id):
-    ''' Get a map_manager with the name map_manager_id'''
-    return self.map_dict().get(map_manager_id)
+  def get_map_coeffs_list_from_id_list(self, id_list,
+    mask_id = None):
+    '''
+      Get maps identified by map_id_list
+      Optionally mask them with mask_id
+      Return map_data from (masked) maps, converted to
+        structure factors, as list
+    '''
+    map_data_list = self.get_map_data_list_from_id_list(id_list,
+      mask_id = mask_id)
+    map_coeffs_list = []
+    from cctbx import miller
+    for map_data in map_data_list:
+      map_coeffs = miller.structure_factor_box_from_map(
+        map              = map_data,
+        crystal_symmetry = self.crystal_symmetry())
+      map_coeffs_list.append(map_coeffs)
+    return map_coeffs_list
+
+  def get_map_data_list_from_id_list(self, id_list,
+    mask_id = None):
+    '''
+      Get maps identified by map_id_list
+      Optionally mask them with mask_id
+      Return map_data from (masked) maps as list
+    '''
+
+    map_data_list = []
+    if mask_id is None: # just get the map_data
+      for id in id_list:
+        map_data_list.append(self.get_map_manager_by_id(id).map_data())
+    else:
+      assert mask_id in self.map_id_list() and \
+        self.get_map_manager_by_id(mask_id).is_mask()
+      # Create masked copies of all masks and get list of their id's
+      new_map_id_list = self.create_masked_copies_of_maps(
+         map_id_list = id_list,
+         mask_id = mask_id)
+      # Get their map data (masked)
+      for id in new_map_id_list:
+        map_data_list.append(self.get_map_manager_by_id(id).map_data())
+      # Clean up dummy mask managers
+      for id in new_map_id_list:
+        self.remove_map_manager_by_id(id)
+    return map_data_list
+
+  def get_map_manager_by_id(self, map_id):
+    ''' Get a map_manager with the name map_id'''
+    return self.map_dict().get(map_id)
+
+  def remove_map_manager_by_id(self, map_id = 'extra'):
+    '''
+     Remove this map manager
+     Note: you cannot remove 'map_manager' ... you can only replace it
+   '''
+    assert map_id != 'map_manager'
+    del self._map_dict[map_id]
+
 
   def duplicate_map_manager(self,
-    map_manager_id = 'map_manager',
-    new_map_manager_id='new_map_manager'):
+    map_id = 'map_manager',
+    new_map_id='new_map_manager'):
     '''
      Duplicate (deep_copy) map_manager
      Overwrites any existing with the new id
     '''
-    map_manager = self.get_map_manager_by_id(map_manager_id)
+    map_manager = self.get_map_manager_by_id(map_id)
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
 
-    self._map_dict[new_map_manager_id] = map_manager.deep_copy()
+    self._map_dict[new_map_id] = map_manager.deep_copy()
 
-  def add_map_manager_by_id(self, map_manager, map_manager_id,
+  def add_map_manager_by_id(self, map_manager, map_id,
      overwrite = True):
     '''
      Add a new map_manager
@@ -132,9 +195,9 @@ class map_model_base(object):
     '''
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
     if not overwrite:
-      assert not map_manager_id in self.map_manager_id_list # must not duplicate
+      assert not map_id in self.map_id_list # must not duplicate
     assert map_manager.is_similar(self.map_manager())
-    self._map_dict[map_manager_id] = map_manager
+    self._map_dict[map_id] = map_manager
 
   def add_model_by_id(self, model, model_id,
      overwrite = True):
@@ -184,17 +247,17 @@ class map_model_base(object):
       Return a group_args object specifying the map_manager and
       a list of any other maps present
     '''
-    all_map_manager_id_list=list(self._map_dict.keys())
-    assert all_map_manager_id_list
-    all_map_manager_id_list.sort()
-    map_manager_id='map_manager'
-    other_map_manager_id_list=[]
-    for id in all_map_manager_id_list:
-      if id != map_manager_id:
-        other_map_manager_id_list.append(id)
+    all_map_id_list=list(self._map_dict.keys())
+    assert all_map_id_list
+    all_map_id_list.sort()
+    map_id='map_manager'
+    other_map_id_list=[]
+    for id in all_map_id_list:
+      if id != map_id:
+        other_map_id_list.append(id)
 
-    return group_args(map_manager_id=map_manager_id,
-         other_map_manager_id_list=other_map_manager_id_list)
+    return group_args(map_id=map_id,
+         other_map_id_list=other_map_id_list)
 
   def get_model_info(self):
     '''
@@ -213,10 +276,10 @@ class map_model_base(object):
     return group_args(model_id=model_id,
          other_model_id_list=other_model_id_list)
 
-  def set_map_manager(self, map_manager_id, map_manager):
-    ''' Set a map_manager with the name map_manager_id'''
+  def set_map_manager(self, map_id, map_manager):
+    ''' Set a map_manager with the name map_id'''
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
-    self.map_dict()[map_manager_id] = map_manager
+    self.map_dict()[map_id] = map_manager
 
   # Methods for manipulation of maps
 
@@ -271,7 +334,7 @@ class map_model_base(object):
     from cctbx.maptbx.box import with_bounds
 
     map_manager_info=self.get_map_manager_info()
-    map_manager = self._map_dict[map_manager_info.map_manager_id]
+    map_manager = self._map_dict[map_manager_info.map_id]
     assert map_manager is not None
 
     model_info=self.get_model_info()
@@ -282,7 +345,7 @@ class map_model_base(object):
 
     # Make box with bounds and apply it to model, first map
     box = with_bounds(
-      map_manager = self._map_dict[map_manager_info.map_manager_id],
+      map_manager = self._map_dict[map_manager_info.map_id],
       lower_bounds = lower_bounds,
       upper_bounds = upper_bounds,
       model = model,
@@ -336,7 +399,7 @@ class map_model_base(object):
     from cctbx.maptbx.box import around_model
 
     map_manager_info=self.get_map_manager_info()
-    assert map_manager_info.map_manager_id is not None
+    assert map_manager_info.map_id is not None
     model_info=self.get_model_info()
     assert model_info.model_id is not None # required for box_around_model
     model = self._model_dict[model_info.model_id]
@@ -350,7 +413,7 @@ class map_model_base(object):
     # Make box around model and apply it to model, first map
     # This step modifies model in place and creates a new map_manager
     box = around_model(
-      map_manager = self._map_dict[map_manager_info.map_manager_id],
+      map_manager = self._map_dict[map_manager_info.map_id],
       model = model,
       box_cushion = box_cushion,
       wrapping = self._force_wrapping,
@@ -413,7 +476,7 @@ class map_model_base(object):
     from cctbx.maptbx.box import around_density
 
     map_manager_info=self.get_map_manager_info()
-    assert map_manager_info.map_manager_id is not None
+    assert map_manager_info.map_id is not None
     model_info=self.get_model_info()
     model = self._model_dict[model_info.model_id]
     if extract_box: # make sure everything is deep_copy
@@ -421,7 +484,7 @@ class map_model_base(object):
 
     # Make box around model and apply it to model, first map
     box = around_density(
-      map_manager = self._map_dict[map_manager_info.map_manager_id],
+      map_manager = self._map_dict[map_manager_info.map_id],
       model       = model,
       box_cushion = box_cushion,
       threshold   = threshold,
@@ -475,8 +538,8 @@ class map_model_base(object):
     from cctbx.maptbx.box import around_mask
 
     map_manager_info=self.get_map_manager_info()
-    assert map_manager_info.map_manager_id is not None
-    map_manager = self._map_dict[map_manager_info.map_manager_id]
+    assert map_manager_info.map_id is not None
+    map_manager = self._map_dict[map_manager_info.map_id]
 
     mask_mm = self.get_map_manager_by_id(mask_id)
     assert mask_mm is not None
@@ -590,7 +653,7 @@ class map_model_base(object):
     from cctbx.maptbx.box import extract_unique
 
     map_manager_info=self.get_map_manager_info()
-    map_manager = self._map_dict[map_manager_info.map_manager_id]
+    map_manager = self._map_dict[map_manager_info.map_id]
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
     assert resolution is not None
     assert (sequence, solvent_content, molecular_mass).count(None) == 2
@@ -631,7 +694,7 @@ class map_model_base(object):
       other = self #  modifying this object
 
     # Now apply masking to all other maps (not done in _finish_boxing)
-    for id in map_manager_info.other_map_manager_id_list:
+    for id in map_manager_info.other_map_id_list:
       other._map_dict[id] = box.apply_extract_unique_mask(
         self._map_dict[id],
         resolution = resolution,
@@ -658,11 +721,11 @@ class map_model_base(object):
       other = self #  modifying this object
 
 
-    other._map_dict[map_manager_info.map_manager_id] = box.map_manager()
+    other._map_dict[map_manager_info.map_id] = box.map_manager()
     other._model_dict[model_info.model_id] = box.model()
 
     # Apply the box to all the other maps
-    for id in map_manager_info.other_map_manager_id_list:
+    for id in map_manager_info.other_map_id_list:
       other._map_dict[id] = box.apply_to_map(self._map_dict[id])
 
     # Apply the box to all the other models
@@ -730,6 +793,22 @@ class map_model_base(object):
     self.create_mask_around_edges(soft_mask_radius = soft_mask_radius,
       mask_id = mask_id)
     self.apply_mask_to_maps(mask_id = mask_id)
+
+  def create_masked_copies_of_maps(self,
+    map_id_list = None,
+    mask_id = 'mask'):
+   '''
+    Create masked copies of all maps identified by map_id_list (default is all)
+    Return list of map_id for masked versions
+   '''
+
+   new_map_id_list = []
+   for id in list(map_id_list):
+     new_id = self.generate_new_map_id()
+     self.duplicate_map_manager(id,new_id)
+     self.apply_mask_to_map(map_id=new_id, mask_id = mask_id)
+     new_map_id_list.append(new_id)
+   return new_map_id_list
 
   def apply_mask_to_map(self,
       map_id,
@@ -882,6 +961,11 @@ class map_model_base(object):
       mask_id (default='mask') replacing any existing entry with that id
     '''
 
+    assert solvent_content is None or isinstance(solvent_content, (int, float))
+    assert soft_mask_radius is None or \
+       isinstance(soft_mask_radius, (int, float))
+    assert isinstance(soft_mask, bool)
+
     from cctbx.maptbx.mask import create_mask_around_density
     cm = create_mask_around_density(map_manager = self.map_manager(),
         solvent_content = solvent_content)
@@ -973,6 +1057,8 @@ class map_model_base(object):
         rm.resolution_filter(map_id = 'resolution_filtered',)
 
     '''
+    assert high_resolution is None or isinstance(high_resolution, (int,float))
+    assert low_resolution is None or isinstance(low_resolution, (int,float))
 
     assert (high_resolution,low_resolution).count(None) < 2 # need some limits
 
@@ -985,6 +1071,85 @@ class map_model_base(object):
 
 
   # Methods for comparing maps, models and calculating FSC values
+
+  def map_map_fsc(self,
+      map_id_1 = 'map_manager',
+      map_id_2 = 'map_manager',
+      resolution = None,
+      mask_id = None,
+      mask_cutoff = 0.5,
+      min_bin_width = 20,
+      n_bins = 2000,
+      fsc_cutoff = 0.143):
+    '''
+      Return the map-map FSC for these two maps, optionally masked with mask_id
+      Returns fsc object which contains d_min which is d_min where fsc
+        drops to fsc_cutoff, and sub-object fsc with arrays d, d_inv and
+        fsc which are the FSC curve
+
+    '''
+
+    assert isinstance(resolution, (int, float))
+
+    f_map_1, f_map_2 = self.get_map_coeffs_list_from_id_list(
+      id_list = [map_id_1, map_id_2],
+      mask_id = mask_id)
+
+    bin_width=max(min_bin_width,int(0.5+f_map_1.size()/n_bins))
+
+    # Get the FSC between map1 and map2
+    fsc_curve = f_map_1.d_min_from_fsc(
+        other = f_map_2, bin_width = bin_width, fsc_cutoff = fsc_cutoff)
+
+    return fsc_curve
+
+
+
+
+
+  def map_map_cc(self,
+      map_id = 'map_manager',
+      other_map_id = 'map_manager',
+      mask_id = None,
+      mask_cutoff = 0.5):
+
+   map_map_info = self._get_map_map_info(
+     map_id = map_id,
+     other_map_id = other_map_id,
+     mask_id = mask_id,
+     mask_cutoff = mask_cutoff)
+   return flex.linear_correlation(map_map_info.map_data_1d_1,
+     map_map_info.map_data_1d_2).coefficient()
+
+  def _get_map_map_info(self,
+     map_id = None,
+     other_map_id = None,
+     mask_id = None,
+     mask_cutoff = None):
+
+   '''
+     Check inputs and return selected parts of the two maps
+   '''
+   map1 = self.get_map_manager_by_id(map_id)
+   map2 = self.get_map_manager_by_id(other_map_id)
+   assert map1 and map2
+
+   # Get the selection if any
+   mask_map_manager = self.get_map_manager_by_id(mask_id)
+   if mask_map_manager:
+     assert mask_map_manager.is_mask()
+     mask_data = mask_map_manager.map_data()
+     sel = (mask_data.as_1d() > mask_cutoff)
+     map_data_1d_1 = map1.map_data().as_1d().select(sel)
+     map_data_1d_2 = map2.map_data().as_1d().select(sel)
+   else:
+
+     map_data_1d_1 = map1.map_data().as_1d()
+     map_data_1d_2 = map2.map_data().as_1d()
+   return group_args(
+    map_data_1d_1 = map_data_1d_1,
+    map_data_1d_2 = map_data_1d_2)
+
 
   def map_model_cc(self,
       resolution,
@@ -1017,6 +1182,29 @@ class map_model_base(object):
 
   # General methods
 
+  def generate_new_map_id(self):
+    '''
+     Create a unique map_id
+    '''
+    used_id_list = self.map_id_list()
+    i = 0
+    while True:
+      i += 1
+      id = "temp_%s" %(i)
+      if not id in used_id_list:
+        return id
+
+  def generate_new_model_id(self):
+    '''
+     Create a unique model_id
+    '''
+    used_id_list = self.model_id_list()
+    i = 0
+    while (True):
+      id = "temp_%s" %(i)
+      if not id in used_id_list:
+        return id
+
   def warning_message(self):
     return self._warning_message
 
@@ -1035,7 +1223,7 @@ class r_model(map_model_base):
     There can be additional models in model_dict. The id for model is 'model'
     and the ids for the other models can be any strings.
 
-    Any map can be accessed using: self.get_map_manager_by_id(map_manager_id)
+    Any map can be accessed using: self.get_map_manager_by_id(map_id)
 
     For convenience, four special maps can be accessed directly:
       self.map_manager() : the main map
@@ -1043,10 +1231,10 @@ class r_model(map_model_base):
       self.map_manager_2():  half_map 2
       self.map_manager_mask():  a mask
 
-    For the four maps above, map_manager_id_list ids are 'map_manager',
+    For the four maps above, map_id_list ids are 'map_manager',
        'map_manager_1', 'map_manager_2', and 'map_manager_mask'.
 
-    For all maps, the map_manager_id is the id specified for that map_manager
+    For all maps, the map_id is the id specified for that map_manager
     in map_dict in the call.
 
     Map reconstruction symmetry information as a ncs_object is available from
@@ -1123,7 +1311,7 @@ class r_model(map_model_base):
       new_model_dict = model_dict
     else:  # deep_copy existing model_dict
       new_model_dict = {}
-      for id in self.map_manager_id_list():
+      for id in self.map_id_list():
         new_model_dict[id]=self.get_map_manager_by_id(id).deep_copy()
 
 
@@ -1131,7 +1319,7 @@ class r_model(map_model_base):
       new_map_dict = map_dict
     else:  # deep_copy existing map_dict
       new_map_dict = {}
-      for id in self.map_manager_id_list():
+      for id in self.map_id_list():
         new_map_dict[id]=self.get_map_manager_by_id(id).deep_copy()
 
     return r_model(model_dict = new_model_dict, map_dict = new_map_dict,
@@ -1147,7 +1335,7 @@ class r_model(map_model_base):
     for id in self.model_id_list():
       new_model_dict[id]=self.get_model_by_id(id).deep_copy()
 
-    for id in self.map_manager_id_list():
+    for id in self.map_id_list():
       new_map_dict[id]=self.get_map_manager_by_id(id).deep_copy()
 
     new_rm = r_model(model_dict = new_model_dict, map_dict = new_map_dict,
@@ -1162,7 +1350,7 @@ class r_model(map_model_base):
     new_mmm = r_model()
     new_mmm._map_dict={}
     new_mmm._model_dict={}
-    new_mmm._extra_map_manager_id_list = []
+    new_mmm._extra_map_id_list = []
     new_mmm._extra_map_manager_list = []
     new_mmm._original_origin_cart = None
     new_mmm._gridding_first = None
@@ -1190,7 +1378,7 @@ class r_model(map_model_base):
     model_info = self.get_model_info()
     if self.map_manager():
       text += "\nmap_manager: %s" %(str(self.map_manager()))
-    for id in map_manager_info.other_map_manager_id_list:
+    for id in map_manager_info.other_map_id_list:
       text += "\n%s: %s" %(id,str(self.get_map_manager_by_id(id)))
     for id in model_info.other_model_id_list:
       text += "\n%s: %s" %(id,str(self.get_model_by_id(id)))
@@ -1252,11 +1440,11 @@ class r_model(map_model_base):
     new_mmm._map_dict = self.map_dict()
     new_mmm._force_wrapping = self._force_wrapping
     new_mmm._extra_map_manager_list = []
-    new_mmm._extra_map_manager_id_list = []
-    for id in self.map_manager_id_list():
+    new_mmm._extra_map_id_list = []
+    for id in self.map_id_list():
       if not self.get_map_manager_by_id(id) is self.map_manager():
         new_mmm._extra_map_manager_list.append(self.get_map_manager_by_id(id))
-        new_mmm._extra_map_manager_id_list.append(id)
+        new_mmm._extra_map_id_list.append(id)
     return new_mmm
 
 class map_model_manager(map_model_base):
@@ -1307,7 +1495,7 @@ class map_model_manager(map_model_base):
                extra_model_list = None,
                extra_model_id_list = None,  # string id's for models
                extra_map_manager_list = None,
-               extra_map_manager_id_list = None,  # string id's for map_managers
+               extra_map_id_list = None,  # string id's for map_managers
                ncs_object       = None,   # Overwrite ncs_objects
                ignore_symmetry_conflicts = None,  # allow mismatch of symmetry
                wrapping         = None,  # Overwrite wrapping for all maps
@@ -1399,15 +1587,15 @@ class map_model_manager(map_model_base):
     #   optional list of extra_map_manager_list and extra_model_list
 
     if extra_map_manager_list:
-      if extra_map_manager_id_list:
-        assert len(extra_map_manager_list) == len(extra_map_manager_id_list)
+      if extra_map_id_list:
+        assert len(extra_map_manager_list) == len(extra_map_id_list)
       else:
-        extra_map_manager_id_list=[]
+        extra_map_id_list=[]
         for i in range(1,len(extra_map_manager_list)+1):
-          extra_map_manager_id_list.append("extra_map_manager_%s" %(i))
+          extra_map_id_list.append("extra_map_manager_%s" %(i))
     else:
       extra_map_manager_list = []
-      extra_map_manager_id_list = []
+      extra_map_id_list = []
 
     if extra_model_list:
       if extra_model_id_list:
@@ -1511,7 +1699,7 @@ class map_model_manager(map_model_base):
       map_manager_1 = map_manager_1,
       map_manager_2 = map_manager_2,
       extra_map_manager_list = extra_map_manager_list,
-      extra_map_manager_id_list = extra_map_manager_id_list)
+      extra_map_id_list = extra_map_id_list)
 
     self.set_up_model_dict(
       model = model,
@@ -1523,7 +1711,7 @@ class map_model_manager(map_model_base):
       map_manager_1 = None,
       map_manager_2 = None,
       extra_map_manager_list = None,
-      extra_map_manager_id_list = None):
+      extra_map_id_list = None):
 
     '''
       map_dict has four special ids with interpretations:
@@ -1537,13 +1725,13 @@ class map_model_manager(map_model_base):
 
     assert map_manager is not None
     self._map_dict={}
-    self._extra_map_manager_id_list=extra_map_manager_id_list
+    self._extra_map_id_list=extra_map_id_list
     self._map_dict['map_manager']=map_manager
     if map_manager_1 and map_manager_2:
       self._map_dict['map_manager_1']=map_manager_1
       self._map_dict['map_manager_2']=map_manager_2
-    if extra_map_manager_id_list:
-      for id, m in zip(extra_map_manager_id_list,extra_map_manager_list):
+    if extra_map_id_list:
+      for id, m in zip(extra_map_id_list,extra_map_manager_list):
         self._map_dict[id]=m
 
   def set_up_model_dict(self,
@@ -1586,24 +1774,24 @@ class map_model_manager(map_model_base):
     model_info = self.get_model_info()
     if self.map_manager():
       text += "\nmap_manager: %s" %(str(self.map_manager()))
-    for id in map_manager_info.other_map_manager_id_list:
+    for id in map_manager_info.other_map_id_list:
       text += "\n%s: %s" %(id,str(self.get_map_manager_by_id(id)))
     for id in model_info.other_model_id_list:
       text += "\n%s: %s" %(id,str(self.get_model_by_id(id)))
     return text
 
-  def extra_map_manager_id_list(self):
+  def extra_map_id_list(self):
     '''
      Return list of ids for extra_map_managers
     '''
-    return self._extra_map_manager_id_list
+    return self._extra_map_id_list
 
   def extra_map_manager_list(self):
      '''
-       Return just the map_managers in extra_map_manager_id_list
+       Return just the map_managers in extra_map_id_list
      '''
      mm_list=[]
-     for id in self.extra_map_manager_id_list():
+     for id in self.extra_map_id_list():
        mm_list.append(self._map_dict[id])
      return mm_list
 
@@ -1828,7 +2016,7 @@ class map_model_manager(map_model_base):
     new_mmm = map_model_manager()
     new_mmm._map_dict={}
     new_mmm._model_dict={}
-    new_mmm._extra_map_manager_id_list = []
+    new_mmm._extra_map_id_list = []
     new_mmm._extra_map_manager_list = []
     new_mmm._original_origin_cart = None
     new_mmm._gridding_first = None
@@ -1839,8 +2027,8 @@ class map_model_manager(map_model_base):
     new_mmm = map_model_manager()
 
     from copy import deepcopy
-    new_mmm._extra_map_manager_id_list = deepcopy(
-        self._extra_map_manager_id_list)
+    new_mmm._extra_map_id_list = deepcopy(
+        self._extra_map_id_list)
     new_mmm._original_origin_grid_units=deepcopy(
         self._original_origin_grid_units)
     new_mmm._original_origin_cart=deepcopy(self._original_origin_cart)

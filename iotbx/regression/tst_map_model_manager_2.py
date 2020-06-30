@@ -190,7 +190,7 @@ def exercise(file_name, out = sys.stdout):
           extra_model_list =  [model.deep_copy(),model.deep_copy()],
           extra_model_id_list = ["model_1","model_2"],
           extra_map_manager_list =  [m.deep_copy(),m.deep_copy()],
-          extra_map_manager_id_list = ["extra_1","extra_2"],
+          extra_map_id_list = ["extra_1","extra_2"],
           model     = model.deep_copy(),
     )
 
@@ -209,7 +209,7 @@ def exercise(file_name, out = sys.stdout):
           extra_model_list =  [model.deep_copy(),model.deep_copy()],
           extra_model_id_list = ["model_1","model_2"],
           extra_map_manager_list =  [m.deep_copy(),m.deep_copy()],
-          extra_map_manager_id_list = ["extra_1","extra_2"],
+          extra_map_id_list = ["extra_1","extra_2"],
           model     = model.deep_copy(),
           ignore_symmetry_conflicts = True,
           wrapping = m.wrapping(),

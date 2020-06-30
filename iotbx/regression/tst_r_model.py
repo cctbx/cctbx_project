@@ -39,7 +39,7 @@ def exercise(file_name, out = sys.stdout):
           map_manager_1 =  m.deep_copy(),
           map_manager_2 =  m.deep_copy(),
           extra_map_manager_list =  [m.deep_copy(),m.deep_copy(),m.deep_copy()],
-          extra_map_manager_id_list = ["extra_1","extra_2","map_manager_mask"],
+          extra_map_id_list = ["extra_1","extra_2","map_manager_mask"],
           model     = model.deep_copy(),)
   r_model=mam.as_r_model()
 
@@ -49,7 +49,7 @@ def exercise(file_name, out = sys.stdout):
   print (r_model.map_manager_2())
   print (r_model.map_manager_mask())
   print (r_model.map_manager().ncs_object())
-  all_map_names=r_model.map_manager_id_list()
+  all_map_names=r_model.map_id_list()
   for id in all_map_names:
     print("Map_manager %s: %s " %(id,r_model.get_map_manager_by_id(id)))
 
@@ -75,23 +75,23 @@ def exercise(file_name, out = sys.stdout):
 
   # Add a map
   rm = dc.deep_copy()
-  print (rm.map_manager_id_list())
-  assert len(rm.map_manager_id_list()) == 6
+  print (rm.map_id_list())
+  assert len(rm.map_id_list()) == 6
   rm.add_map_manager_by_id(rm.map_manager().deep_copy(),'new_map_manager')
-  print (rm.map_manager_id_list())
-  assert len(rm.map_manager_id_list()) == 7
+  print (rm.map_id_list())
+  assert len(rm.map_id_list()) == 7
 
   # duplicate a map
   rm = dc.deep_copy()
-  print (rm.map_manager_id_list())
-  assert len(rm.map_manager_id_list()) == 6
+  print (rm.map_id_list())
+  assert len(rm.map_id_list()) == 6
   rm.duplicate_map_manager('map_manager','new_map_manager')
-  print (rm.map_manager_id_list())
-  assert len(rm.map_manager_id_list()) == 7
+  print (rm.map_id_list())
+  assert len(rm.map_id_list()) == 7
 
   # resolution_filter a map
   rm = dc.deep_copy()
-  print (rm.map_manager_id_list())
+  print (rm.map_id_list())
   rm.duplicate_map_manager('map_manager','new_map_manager')
   rm.resolution_filter(map_id='new_map_manager',high_resolution=3.5,low_resolution=6)
 
@@ -185,13 +185,32 @@ def exercise(file_name, out = sys.stdout):
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
      ((18, 25, 20),(18, 25, 20)))
 
-  # Get map-model CC
+
+  # Get map-map FSC
   dc=rm_dc.deep_copy()
-  dm.write_real_map_file(dc.map_manager(), filename = 'map_manager.ccp4')
-  dm.write_model_file(dc.model(), filename = 'model.ccp4')
-  print (dc.map_manager_id_list() ,dc.model_id_list())
-  cc=dc.map_model_cc(resolution=3)
-  assert approx_equal (cc, 0.999999657768)
+  dc.duplicate_map_manager(map_id='map_manager',new_map_id='filtered')
+  dc.resolution_filter(high_resolution=3.5, low_resolution=6, map_id='filtered')
+  dc.create_mask_around_atoms()
+  fsc_curve=dc.map_map_fsc(
+      map_id_1='map_manager',map_id_2='filtered',mask_id='mask',
+      resolution=3,fsc_cutoff = 0.97)
+  assert approx_equal(fsc_curve.d_min, 3.43091149578)
+  assert approx_equal (fsc_curve.fsc.fsc[-1],0.942973996865)
+
+  # Get map-map CC
+  dc=rm_dc.deep_copy()
+  dc.duplicate_map_manager(map_id='map_manager',new_map_id='filtered')
+  dc.resolution_filter(high_resolution=3.5, low_resolution=6, map_id='filtered')
+  cc=dc.map_map_cc('map_manager','filtered')
+  assert approx_equal(cc , 0.955283969999)
+
+  # Get map-map CC with mask
+  dc=rm_dc.deep_copy()
+  dc.duplicate_map_manager(map_id='map_manager',new_map_id='filtered')
+  dc.resolution_filter(high_resolution=3.5, low_resolution=6, map_id='filtered')
+  dc.create_mask_around_density(mask_id='filtered')
+  cc=dc.map_map_cc('map_manager','filtered',mask_id='mask')
+  assert approx_equal(cc , 0.629060115596)
 
   # box around model
   rm=rm_dc.deep_copy()
@@ -307,6 +326,13 @@ def exercise(file_name, out = sys.stdout):
    rm.get_map_manager_by_id('new_map_manager').map_data().as_1d()).coefficient()
   assert (cc >= 0.99)
 
+  # Get map-model CC
+  dc=rm_dc.extract_all_maps_around_model(
+      selection_string="(name ca or name cb or name c or name o) "+
+        "and resseq 221:221", box_cushion=0)
+  cc=dc.map_model_cc(resolution=3)
+  assert approx_equal (cc, 0.413802839326)
+
 if __name__ == "__main__":
   args = sys.argv[1:]
   import libtbx.load_env
@@ -321,4 +347,3 @@ if __name__ == "__main__":
     print("Skipped: Requires phenix module")
 
   print ("OK")
-
