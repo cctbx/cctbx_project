@@ -377,7 +377,7 @@ class compute_polder_map():
     from iotbx.map_model_manager import map_model_manager
     inputs=map_model_manager(
       model=model_selected.deep_copy(),
-      map_manager=mm,)
+      map_manager=mm,) # no need to allow ignore_symmetry_conflicts
     return inputs
 
   # ---------------------------------------------------------------------------

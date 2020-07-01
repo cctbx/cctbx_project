@@ -706,7 +706,9 @@ class manager(object):
       # Put sites_cart in
       self._xray_structure.set_sites_cart(sites_cart)
 
-      self.setup_scattering_dictionaries(scattering_table = scattering_table)
+      if scattering_table: # if not there, were not any scattering tables before
+        self.setup_scattering_dictionaries(scattering_table = scattering_table)
+
       # This syncs internals and pdb_hierarchy with xray_structure
       self.set_sites_cart_from_xrs()
       # GRM is not valid if the symmetry is changed

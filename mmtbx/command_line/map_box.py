@@ -388,19 +388,8 @@ def get_model_from_inputs(
     dm.set_overwrite(True)
     dm.process_model_file(file_name)
     model = dm.get_model(file_name)
-    if not model.crystal_symmetry():
+    if crystal_symmetry and not model.crystal_symmetry():
       model.set_crystal_symmetry(crystal_symmetry)
-      model._process_input_model()
-
-    if crystal_symmetry and (
-      not model.crystal_symmetry().is_similar_symmetry(crystal_symmetry)):
-      print ("\nWarning: replacing model crystal symmetry:\n" +
-        "(%s) \nwith input crystal symmetry:\n (%s)\n" %(
-         str(model.crystal_symmetry()), str(crystal_symmetry)), file = log)
-      model =  mmtbx.model.manager(
-          model_input = model.get_hierarchy().as_pdb_input(),
-          crystal_symmetry = crystal_symmetry,
-          log = log)
 
   return model
 
@@ -562,8 +551,7 @@ def process_inputs(args = None,
   crystal_symmetry = None,
   log = sys.stdout):
 
-  # Process inputs ignoring symmetry conflicts just to get the value of
-  #   ignore_symmetry_conflicts...
+  # Process inputs ignoring symmetry conflicts
 
   inputs = mmtbx.utils.process_command_line_args(args = args,
       cmd_cs = crystal_symmetry,
@@ -571,19 +559,6 @@ def process_inputs(args = None,
       suppress_symmetry_related_errors = True)
   params = inputs.params.extract()
 
-  # Now process inputs for real and write a nice error message if necessary.
-  try:
-    inputs = mmtbx.utils.process_command_line_args(args = args,
-      cmd_cs = crystal_symmetry,
-      master_params = master_phil,
-      suppress_symmetry_related_errors = params.ignore_symmetry_conflicts)
-  except Exception as e:
-    if str(e).find("symmetry mismatch ")>1:
-      raise Sorry(str(e)+"\nTry 'ignore_symmetry_conflicts=True'")
-    else:
-      raise e
-
-  params = inputs.params.extract()
   master_phil.format(python_object = params).show(out = log)
 
   return inputs, params
@@ -705,23 +680,10 @@ def apply_selection_to_model(params = None, model = None, log = sys.stdout):
   if not model:
      return
 
-  if not params.selection: params.selection = "all"
+  if not params.selection or params.selection == "all":
+    return model
+
   selection = model.selection(params.selection)
-  if selection.size():
-    print_statistics.make_sub_header("atom selection", out = log)
-    print("Selection string: selection = '%s'"%params.selection, file = log)
-    print("  selects %d atoms from total %d atoms."%(selection.count(True),
-        selection.size()), file = log)
-  sites_cart_all = model.get_xray_structure().sites_cart()
-  sites_cart = sites_cart_all.select(selection)
-  selection = model.get_xray_structure().selection_within(
-    radius    = params.selection_radius,
-    selection = selection)
-
-  print("  Final selection is %d atoms from total %d atoms."%(
-        selection.count(True),
-        selection.size()), file = log)
-
   model = model.select(selection)
   return model
 
@@ -987,7 +949,8 @@ def run(args,
   mam = map_model_manager(
     model = model,
     map_manager = ccp4_map,
-    ncs_object = ncs_object)
+    ncs_object = ncs_object,
+    ignore_symmetry_conflicts = params.ignore_symmetry_conflicts)
   if box:
     mam.box_all_maps_around_model_and_shift_origin(
       box_cushion = params.box_cushion)

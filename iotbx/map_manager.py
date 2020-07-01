@@ -1182,15 +1182,15 @@ class map_manager(map_reader, write_ccp4_map):
       return False
     if not self.unit_cell_crystal_symmetry().is_similar_symmetry(
       other.unit_cell_crystal_symmetry()):
-      self._warning_message="Unit cell crystal symmetry"+ \
-        "(%s) does not match other (%s)" %(
+      self._warning_message="Unit cell crystal symmetry:"+ \
+        "\n%s\n does not match other:\n%s\n" %(
         str(self.unit_cell_crystal_symmetry()),
          str(other.unit_cell_crystal_symmetry()))
       return False
     if not self.crystal_symmetry().is_similar_symmetry(
       other.crystal_symmetry()):
-      self._warning_message="Crystal symmetry"+ \
-        "(%s) does not match other (%s)" %(
+      self._warning_message="Crystal symmetry:"+ \
+        "\n%s\ndoes not match other: \n%s\n" %(
         str(self.crystal_symmetry()),
          str(other.crystal_symmetry()))
       return False
@@ -1347,27 +1347,27 @@ class map_manager(map_reader, write_ccp4_map):
       text="Model and map are different because "+\
           "require_match_unit_cell_crystal_symmetry is set and "+\
           "model does not have original_crystal_symmetry, and " +\
-        "model symmetry (%s) does not match map original symmetry " %(
+        "model symmetry: \n%s\n does not match map original symmetry:" %(
           model_sym) +\
-        "(%s). Current map symmetry is (%s) " %(
+        "\n%s\n. Current map symmetry is: \n%s\n " %(
          text_map_uc,text_map)
 
     elif  model_uc and (not map_uc.is_similar_symmetry(map_sym) and (
          (not model_uc.is_similar_symmetry(map_uc)) or
          (not model_sym.is_similar_symmetry(map_sym) ) )):
        ok=False# model and map_manager symmetries present and do not match
-       text="Model original (%s) and current (%s) crystal_symmetries " %(
+       text="Model original symmetry: \n%s\n and current symmetry :\n%s\n" %(
           text_model_uc,text_model)+\
-          "do not "+\
-          "match map unit_cell (%s) and current (%s) symmetry" %(
+          "do not match map unit_cell symmetry:"+\
+         " \n%s\n and map current symmetry: \n%s\n symmetry" %(
            text_map_uc,text_map)
     elif model_sym and (not model_sym.is_similar_symmetry(map_uc)) and (not
               model_sym.is_similar_symmetry(map_sym)):
        ok=False# model does not match either map symmetry
-       text="Model current (%s) crystal_symmetry" %(
+       text="Model current symmetry: \n%s\n" %(
           text_model)+\
-          " does not "+\
-          "match map unit_cell (%s) or current (%s) symmetry" %(
+          " does not match map unit_cell symmetry:"+\
+           " \n%s\n or map current symmetry: \n%s\n" %(
            text_map_uc,text_map)
 
     elif require_match_unit_cell_crystal_symmetry and (
@@ -1381,10 +1381,10 @@ class map_manager(map_reader, write_ccp4_map):
     else:  # match
 
        ok=True
-       text="Model original (%s) and current (%s) crystal_symmetries " %(
+       text="Model original symmetry: \n%s\n and current symmetry: \n%s\n" %(
           text_model_uc,text_model)+\
           "are compatible with "+\
-          "map unit_cell (%s) and current (%s) symmetry" %(
+          "map unit_cell symmetry:\n%s\n and current map symmetry:\n%s\n" %(
            text_map_uc,text_map)
 
     assert isinstance(ok, bool)  # must have chosen

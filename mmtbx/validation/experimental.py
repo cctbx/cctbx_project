@@ -195,7 +195,8 @@ class real_space(validation):
       if (use_maps):
         from iotbx.map_model_manager import map_model_manager
         from mmtbx.maps import map_model_cc
-        from mmtbx.command_line.map_model_cc import get_fsc
+        #  XXX no longer exists from mmtbx.maps.import get_fsc
+        from mmtbx.maps.mtriage import get_fsc  # XXX replaced above
         from iotbx.file_reader import any_file
         params = map_model_cc.master_params().extract()
         params.map_model_cc.resolution = molprobity_map_params.d_min
@@ -262,9 +263,9 @@ class real_space(validation):
         # the real-space correlation, since these are used as the basis for
         # the multi-criterion plot in Phenix.  The show() method will only
         # print outliers, however.
-        if (result_.residue.resname != 'HOH'): # water is handled by waters.py
+        if (result.resname != 'HOH'): # water is handled by waters.py
           self.everything.append(result)
-          if result_.residue.resname in one_letter_given_three_letter:
+          if result.resname in one_letter_given_three_letter:
             self.protein.append(result)
           else:
             self.other.append(result)

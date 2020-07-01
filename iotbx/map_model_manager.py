@@ -2342,7 +2342,7 @@ class match_map_model_ncs:
         self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(
           self.model())  # modifies self.model() in place
       else:
-          raise Sorry("Model is not similar to '%s': %s" %(
+          raise Sorry("Model is not similar to '%s': \n%s" %(
            self.map_manager().input_file_name,
             self.map_manager().warning_message())+
             "\nTry 'ignore_symmetry_conflicts=True'")

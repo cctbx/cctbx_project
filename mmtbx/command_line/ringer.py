@@ -59,6 +59,9 @@ grid_spacing = 1./5
 gui = False
   .type = bool
   .style = hidden
+ignore_symmetry_conflicts = False
+  .type = bool
+  .help = Allow running with PDB file with symmetry that does not match map
 output_base = None
   .type = str
 output_dir = None
@@ -141,11 +144,11 @@ mmtbx.ringer model.pdb map_coeffs.mtz [cif_file ...] [options]
     ccp4_map_in = file_reader.any_file(params.map_file, force_type="ccp4_map")
     ccp4_map_in.check_file_type("ccp4_map")
     map_inp = ccp4_map_in.file_object
-    cs_consensus = mmtbx.utils.check_and_set_crystal_symmetry(
-      models = [model], map_inps=[map_inp])
     base = map_model_manager(
       map_manager               = map_inp,
-      model            = model)
+      model            = model,
+      ignore_symmetry_conflicts = params.ignore_symmetry_conflicts)
+    cs_consensus = base.crystal_symmetry()
     hierarchy = base.model().get_hierarchy()
     map_data = base.map_data()
     unit_cell = map_inp.grid_unit_cell()

@@ -25,6 +25,9 @@ rolling_window_threshold = 0
   .help = Threshold for calculating statistics across rolling windows of residues
 skip_alt_confs = True
   .type = bool
+ignore_symmetry_conflicts = False
+  .type = bool
+  .help = Allows using PDB file with symmetry that does not match map
 nproc = 1
   .type = int
   .short_caption = Number of processors
@@ -49,22 +52,23 @@ class emringer(object):
     if (self.miller_array is None and self.map_inp is None):
       raise Sorry("Map or map coefficients are required.")
     # Sanity check for crystal symmetry
-    if (self.map_inp is not None):
-      self.cs_consensus = mmtbx.utils.check_and_set_crystal_symmetry(
-        models = [self.model], map_inps=[self.map_inp])
+    if (self.map_inp is not None and self.model is not None):
+      self.base = map_model_manager(
+        map_manager      = self.map_inp,
+        model            = self.model,
+        ignore_symmetry_conflicts = self.params.ignore_symmetry_conflicts)
+
+      self.cs_consensus = self.base.crystal_symmetry()
+    else:
+      self.base = None
 
   def run(self):
     hierarchy = self.model.get_hierarchy()
     map_data, grid_unit_cell = None, None
-    # sanity check for map and model
-    if self.map_inp is not None:
-      base = map_model_manager(
-        map_manager               = self.map_inp,
-        model            = self.model)
-
-      hierarchy = base.model().get_hierarchy()
-      map_data = base.map_data()
-      grid_unit_cell = self.map_inp.grid_unit_cell()
+    if self.base is not None:
+      hierarchy = self.base.model().get_hierarchy()
+      map_data = self.base.map_manager().map_data()
+      grid_unit_cell = self.base.map_manager().grid_unit_cell()
 
     hierarchy.atoms().reset_i_seq()
 

@@ -1,13 +1,10 @@
 from __future__ import absolute_import, division, print_function
-import os
-from iotbx.data_manager import DataManager
 from iotbx.map_manager import map_manager
 from iotbx.map_model_manager import map_model_manager
 from cctbx.maptbx import box
 from cctbx.maptbx.mask import create_mask_around_edges, \
       create_mask_around_atoms, create_mask_around_density
 import cctbx
-from libtbx.test_utils import approx_equal
 import inspect
 
 def get_method_text(key, base_method_name):
@@ -22,7 +19,7 @@ def get_method_text(key, base_method_name):
   if key == 'create_mask':
     return "map_model_manager.create_mask_%s" %(base_method_name)
   else:
-    raise AssertionError,"unknown key for get_method_text"
+    raise AssertionError("unknown key for get_method_text")
 
 def get_method(key, base_method_name):
   if key == 'init':
@@ -44,7 +41,7 @@ def get_method(key, base_method_name):
     method_name = "create_mask_%s" %(base_method_name)
     return  getattr(map_model_manager, method_name)
   else:
-    raise AssertionError,"unknown key for get_method"
+    raise AssertionError("unknown key for get_method")
 
 def check_args(text, method,expected_args,group_text):
     found_args = inspect.getargspec(method).args
