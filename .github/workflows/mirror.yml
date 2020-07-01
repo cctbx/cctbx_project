@@ -10,7 +10,7 @@ on:
       - master
 
 jobs:
-  master:
+  sync:
     runs-on: ubuntu-latest
     if: github.repository == 'cctbx/cctbx_project'
 
@@ -25,18 +25,30 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         checkName: CI
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
-        intervalSeconds: 144
-        timeoutSeconds: 10800
+        intervalSeconds: 300
+        timeoutSeconds: 36000
+
+    - name: Check out repository
+      if: steps.wait-for-build.outputs.conclusion == 'success'
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: '0'
+
+    - name: Install SSH key
+      if: steps.wait-for-build.outputs.conclusion == 'success'
+      uses: Anthchirp/action-ssh-key@b4a94d05b860c19f609854947327a4882269b7c1
+            # Original repository: https://github.com/shimataro/ssh-key-action
+            # This is PR https://github.com/shimataro/ssh-key-action/pull/122
+            # in the branch feature/github-key, but do not use branch names
+            # https://julienrenaux.fr/2019/12/20/github-actions-security-risk/
+      with:
+         key: ${{ secrets.DIALS_REPOSITORY_KEY }}
+         name: id_rsa # optional
 
     - name: Advance stable branch
       if: steps.wait-for-build.outputs.conclusion == 'success'
-      uses: Anthchirp/action-git-sync@02caad7f05c90ad630ef4c78717fdb2785191802
-            # Original repository: https://github.com/wei/git-sync
-            # This is tagged version v2, but do not use version tags
-            # https://julienrenaux.fr/2019/12/20/github-actions-security-risk/
-      with:
-        source_repo: "cctbx/cctbx_project"
-        source_branch: "master"
-        destination_repo: "dials/cctbx"
-        destination_branch: "master"
-        ssh_private_key: ${{ secrets.DIALS_REPOSITORY_KEY }}
+      run: |
+        git remote add mirror git@github.com:dials/cctbx.git
+        git rev-parse HEAD
+        git status
+        git push -f mirror HEAD:master
