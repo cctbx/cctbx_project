@@ -1048,7 +1048,7 @@ def run(args,
 
   if (params.extract_unique):  # mask around unique part of map and rebox
     # NOTE: actually returns box not mam XXX
-    mam = apply_extract_unique(mam, params = params,
+    mam = apply_around_unique(mam, params = params,
        sequence = sequence,
        target_ncs_au_model = target_ncs_au_model,
        log = log)
@@ -1347,14 +1347,14 @@ def change_output_unit_cell(params = None,
       model.set_crystal_symmetry(ccp4_map.crystal_symmetry())
     return ccp4_map, model
 
-def apply_extract_unique(mam,
+def apply_around_unique(mam,
       params = None,
       sequence = None,
       target_ncs_au_model = None,
       log = None):
 
-    from cctbx.maptbx.box import extract_unique
-    new_mam = extract_unique(
+    from cctbx.maptbx.box import around_unique
+    new_mam = around_unique(
       mam.map_manager(),
       model = mam.model(),
       target_ncs_au_model = target_ncs_au_model,

@@ -372,7 +372,7 @@ class around_model(with_bounds):
     # Apply boxing to model, ncs, and map (if available)
     self.apply_to_model_ncs_and_map()
 
-class extract_unique(with_bounds):
+class around_unique(with_bounds):
 
   '''
   Identify unique part of density in a map (using ncs object if present)
@@ -455,7 +455,7 @@ class extract_unique(with_bounds):
     self._force_wrapping = wrapping
     if wrapping is None:
       wrapping = self.map_manager().wrapping()
-    self.basis_for_boxing_string = 'extract_unique, wrapping = %s' %(
+    self.basis_for_boxing_string = 'around_unique, wrapping = %s' %(
       wrapping)
 
     if log is None:
@@ -536,18 +536,18 @@ class extract_unique(with_bounds):
     self._mask_data = ncs_au_mask_data
 
     # Now separately apply the mask to the boxed map
-    self.apply_extract_unique_mask(
+    self.apply_around_unique_mask(
        self._map_manager,
        resolution = resolution,
        soft_mask = soft_mask)
 
-  def apply_extract_unique_mask(self,
+  def apply_around_unique_mask(self,
       map_manager,
       resolution,
       soft_mask):
     '''
       This procedure matches what is done in segment_and_split_map
-      It comes at the end of extract_unique and can be applied to additional
+      It comes at the end of around_unique and can be applied to additional
       map_manager objects if desired.
     '''
     assert self._mask_data is not None

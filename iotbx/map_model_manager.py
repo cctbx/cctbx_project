@@ -435,6 +435,7 @@ class map_model_base(object):
   def extract_all_maps_around_density(self,
      box_cushion = 5.,
      threshold = 0.05,
+     get_half_height_width = True,
      map_id = 'map_manager'):
     '''
       Runs box_all_maps_around_density_and_shift_origin with extract_box=True
@@ -442,6 +443,7 @@ class map_model_base(object):
     return self.box_all_maps_around_density_and_shift_origin(
      box_cushion = box_cushion,
      threshold = threshold,
+     get_half_height_width = get_half_height_width,
      map_id = map_id,
      extract_box = True)
 
@@ -449,6 +451,7 @@ class map_model_base(object):
      box_cushion = 5.,
      threshold = 0.05,
      map_id = 'map_manager',
+     get_half_height_width = True,
      extract_box = False):
     '''
        Box all maps around the density in map_id map (default is map_manager)
@@ -493,6 +496,7 @@ class map_model_base(object):
       model       = model,
       box_cushion = box_cushion,
       threshold   = threshold,
+      get_half_height_width = get_half_height_width,
       wrapping    = self._force_wrapping)
 
     # Now box is a copy of map_manager and model that is boxed
@@ -505,20 +509,17 @@ class map_model_base(object):
       extract_box = extract_box)
 
   def extract_all_maps_around_mask(self,
-     selection_string = None,
      box_cushion = 5.,
      mask_id = 'mask'):
     '''
       Runs box_all_maps_around_mask_and_shift_origin with extract_box=True
     '''
     return self.box_all_maps_around_mask_and_shift_origin(
-     selection_string = None,
      box_cushion = 5.,
      mask_id = mask_id,
      extract_box = True)
 
   def box_all_maps_around_mask_and_shift_origin(self,
-     selection_string = None,
      box_cushion = 5.,
      mask_id = 'mask',
      extract_box = False):
@@ -584,6 +585,7 @@ class map_model_base(object):
      box_cushion = 5,
      target_ncs_au_model = None,
      regions_to_keep = None,
+     keep_low_density = True,
      symmetry = None,
      mask_expand_ratio = 1):
 
@@ -600,6 +602,7 @@ class map_model_base(object):
      box_cushion = box_cushion,
      target_ncs_au_model = target_ncs_au_model,
      regions_to_keep = regions_to_keep,
+     keep_low_density = keep_low_density,
      symmetry = symmetry,
      mask_expand_ratio = mask_expand_ratio,
      extract_box = True)
@@ -614,11 +617,12 @@ class map_model_base(object):
      box_cushion = 5,
      target_ncs_au_model = None,
      regions_to_keep = None,
+     keep_low_density = True,
      symmetry = None,
      mask_expand_ratio = 1,
      extract_box = False):
     '''
-       Box all maps using bounds obtained with extract_unique,
+       Box all maps using bounds obtained with around_unique,
        shift origin of maps, model, and mask around unique region
 
        If extract_box=True:  Creates new object with deep_copies.
@@ -655,7 +659,7 @@ class map_model_base(object):
          regions_to_keep:   Allows choosing just highest-density contiguous
                             region (regions_to_keep=1) or a few
     '''
-    from cctbx.maptbx.box import extract_unique
+    from cctbx.maptbx.box import around_unique
 
     map_info=self._get_map_info()
     map_manager = self._map_dict[map_info.map_id]
@@ -668,8 +672,8 @@ class map_model_base(object):
     if extract_box: # make sure everything is deep_copy
       model = model.deep_copy()
 
-    # Make box with extract_unique and apply it to model, first map
-    box = extract_unique(
+    # Make box with around_unique and apply it to model, first map
+    box = around_unique(
       map_manager = map_manager,
       model = model,
       wrapping = self._force_wrapping,
@@ -970,6 +974,7 @@ class map_model_base(object):
       map_id = mask_id)
 
   def create_mask_around_density(self,
+     resolution = None,
      solvent_content = None,
      soft_mask = True,
      soft_mask_radius = None,
@@ -981,6 +986,7 @@ class map_model_base(object):
       Does not apply the mask to anything.
       Normally follow with apply_mask_to_map or apply_mask_to_maps
 
+      Optional:  supply working resolution
       Optional:  supply approximate solvent fraction
 
       Optional: soft mask  (default = True)
@@ -1000,7 +1006,8 @@ class map_model_base(object):
     assert map_manager is not None # Need a map to create mask around density
     from cctbx.maptbx.mask import create_mask_around_density
     cm = create_mask_around_density(map_manager = map_manager,
-        solvent_content = solvent_content)
+        solvent_content = solvent_content,
+        resolution = resolution)
 
     if soft_mask: # Make the create_mask object contain a soft mask
       if not soft_mask_radius:

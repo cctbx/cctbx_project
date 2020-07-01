@@ -179,7 +179,7 @@ def exercise_around_model():
 
   assert box.map_manager().map_data().as_1d().count(0) == 81264
 
-  # Extract using extract_unique
+  # Extract using around_unique
 
   data_dir = os.path.dirname(os.path.abspath(__file__))
   data_ccp4 = os.path.join(data_dir, 'data', 'D7.ccp4')
@@ -201,7 +201,7 @@ def exercise_around_model():
   mm=map_model_mgr.map_manager()
   mm.show_summary()
 
-  box = cctbx.maptbx.box.extract_unique(
+  box = cctbx.maptbx.box.around_unique(
     map_manager = mm.deep_copy(),
     resolution = 3,
     box_cushion = 1,

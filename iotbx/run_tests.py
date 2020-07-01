@@ -13,6 +13,7 @@ tst_list_base = [
   "$D/regression/tst_map_manager.py",
   "$D/regression/tst_map_model_manager.py",
   "$D/regression/tst_map_model_manager_2.py",
+  "$D/regression/tst_map_model_manager_call_consistency.py",
   "$D/ranges.py",
   "$D/regression/tst_crystal_symmetry_from_any.py",
   "$D/regression/tst_poscar.py",
