@@ -38,9 +38,8 @@ Nwave = 5
 waves = np.linspace(wave-wave*0.002, wave+wave*0.002, Nwave)
 fluxes = np.ones(Nwave) * flux / Nwave
 
-lambda0_GT = waves[0]
-lambda1_GT = waves[1] - waves[0]
-assert np.allclose(waves, np.arange(Nwave) * lambda1_GT + lambda0_GT)
+lambda0_GT = 0
+lambda1_GT = 1
 
 S.beam.spectrum = list(zip(waves, fluxes))
 S.detector = sim_data.SimData.simple_detector(180, 0.1, (1024, 1024))
@@ -83,20 +82,20 @@ ENERGY_CONV = 1e10*constants.c*constants.h / constants.electron_volt
 energy_shifts = 0.1, .3, .5, 1, 3, 5, 10   # in electron volt
 b_percs = 0.001, 0.002, 0.004, 0.008,  0.016, 0.032, 0.064
 reference_energy = ENERGY_CONV / wave
+
 for i_shift, en_shift in enumerate(energy_shifts):
 
     wave_shifted = ENERGY_CONV / (reference_energy + en_shift)
     wave_shift = wave - wave_shifted
     delta_a = wave_shift
-
     delta_b = lambda1_GT*b_percs[i_shift]
 
     if args.idx == 0:
-        new_waves = np.arange(Nwave)*lambda1_GT + lambda0_GT + delta_a
-        shift = delta_a
+        shift = b_percs[i_shift]*0.01
+        new_waves = waves*lambda1_GT + lambda0_GT+shift
     else:
-        new_waves = np.arange(Nwave) * (lambda1_GT + delta_b) + lambda0_GT
-        shift = delta_b
+        shift = b_percs[i_shift]*0.01
+        new_waves = waves*(lambda1_GT+shift) + lambda0_GT
 
     en = np.mean(ENERGY_CONV/new_waves)
 
@@ -138,9 +137,9 @@ if args.plot:
     #plt.close()
     plt.plot(shifts, all_error, 'o')
     plt.show()
-    if args.curvatures:
-        plt.plot(shifts2, all_error2, 'o')
-        plt.show()
+    #if args.curvatures:
+    #    plt.plot(shifts2, all_error2, 'o')
+    #    plt.show()
 
 l = linregress(shifts, all_error)
 assert l.rvalue > .9999  # this is definitely a line!
