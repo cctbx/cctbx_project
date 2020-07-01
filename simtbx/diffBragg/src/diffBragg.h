@@ -161,7 +161,7 @@ class diffBragg: public nanoBragg{
   mat3 Bmatrix;
   mat3 Omatrix;
   mat3 UBO;
-  mat3 Bmat_realspace, NABC, dN;
+  mat3 Bmat_realspace, NABC; //, dN;
   mat3 RXYZ;
   std::vector<mat3> RotMats;
   std::vector<mat3> dRotMats, d2RotMats;

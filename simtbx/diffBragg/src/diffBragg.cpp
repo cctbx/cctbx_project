@@ -1097,6 +1097,8 @@ void diffBragg::add_diffBragg_spots()
                                 NABC[6] = 0;
                                 NABC[7] = 0;
                                 NABC[8] = Nc;
+                                //for (int i_dN=0; i_dN < 9; i_dN++)
+                                //    dN[i_dN] = 0; //NOTE why is this necessary ?
 
                                 double C = 2 / 0.63 * fudge;
                                 //double m = Na;
@@ -1439,7 +1441,7 @@ void diffBragg::add_diffBragg_spots()
                                         num_ncell_deriv = 3;
                                     for (int i_nc=0; i_nc < num_ncell_deriv; i_nc++) {
                                         int _i = i_nc*3 + i_nc; // diagonal term
-                                        mat3 dN;
+                                        mat3 dN = mat3(0,0,0,0,0,0,0,0,0);
                                         dN[_i] = 1;
                                         double N_i = NABC[_i];
                                         vec3 dV_dN = dN*delta_H;
@@ -1770,15 +1772,15 @@ void diffBragg::add_diffBragg_spots()
                     SCITBX_EXAMINE(Na);
                     SCITBX_EXAMINE(Nb);
                     SCITBX_EXAMINE(Nc);
-                    SCITBX_EXAMINE(dN[0]);
-                    SCITBX_EXAMINE(dN[1]);
-                    SCITBX_EXAMINE(dN[2]);
-                    SCITBX_EXAMINE(dN[3]);
-                    SCITBX_EXAMINE(dN[4]);
-                    SCITBX_EXAMINE(dN[5]);
-                    SCITBX_EXAMINE(dN[6]);
-                    SCITBX_EXAMINE(dN[7]);
-                    SCITBX_EXAMINE(dN[8]);
+                    //SCITBX_EXAMINE(dN[0]);
+                    //SCITBX_EXAMINE(dN[1]);
+                    //SCITBX_EXAMINE(dN[2]);
+                    //SCITBX_EXAMINE(dN[3]);
+                    //SCITBX_EXAMINE(dN[4]);
+                    //SCITBX_EXAMINE(dN[5]);
+                    //SCITBX_EXAMINE(dN[6]);
+                    //SCITBX_EXAMINE(dN[7]);
+                    //SCITBX_EXAMINE(dN[8]);
                     //double lambda_coef0 = lambda_managers[0]->value;
                     //double lambda_coef1 = lambda_managers[1]->value;
                     SCITBX_EXAMINE(lambda_managers[0]->value);
