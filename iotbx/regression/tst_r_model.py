@@ -56,6 +56,45 @@ def exercise(file_name, out = sys.stdout):
   dm = DataManager(['model','miller_array', 'real_map', 'phil'])
   dm.set_overwrite(True)
 
+  # Create a model with ncs
+  from iotbx.regression.ncs.tst_ncs import pdb_str_5
+  file_name='tst_r_model.pdb'
+  f=open(file_name,'w')
+  print (pdb_str_5, file = f)
+  f.close()
+  mmm=map_model_manager()
+  mmm.generate_map(box_cushion=0, file_name=file_name,n_residues=500)
+  ncs_rm=mmm.as_r_model()
+  assert ncs_rm.model().get_sites_cart().size() == 126
+  assert approx_equal (ncs_rm.model().get_sites_cart()[0],
+    (23.560999999999996, 8.159, 10.660000000000002))
+  unique_rm=ncs_rm.extract_all_maps_around_model(select_unique_by_ncs=True)
+  assert unique_rm.model().get_sites_cart().size() == 42
+  assert approx_equal (unique_rm.model().get_sites_cart()[0],
+    (18.740916666666664, 13.1794, 16.10544))
+
+  assert (unique_rm.model().get_sites_cart()[0] !=
+     ncs_rm.model().get_sites_cart()[0])  # it was a deep copy
+  shifted_back_unique_model=mmm.get_model_from_other(unique_rm.deep_copy())
+  assert approx_equal (shifted_back_unique_model.get_sites_cart()[0],
+    (23.560999999999996, 8.158999999999997, 10.66))
+
+  sites_cart=unique_rm.model().get_sites_cart()
+  sites_cart[0]=(1,1,1)
+  unique_rm.model().get_hierarchy().atoms().set_xyz(sites_cart)
+  # Note; setting xyz in hierarchy does not set xrs by itself. do that now:
+  unique_rm.model().set_sites_cart_from_hierarchy(multiply_ncs=False)
+
+  assert approx_equal (unique_rm.model().get_sites_cart()[0], (1,1,1))
+  ncs_rm.propagate_model_from_other(other = unique_rm,
+    model_id = 'model',
+    other_model_id = 'model')
+  assert approx_equal (ncs_rm.model().get_sites_cart()[0],
+     (5.820083333333333, -4.020400000000001, -4.445440000000001))
+  assert approx_equal (ncs_rm.model().get_sites_cart()[42],
+     (38.41904613024224, 17.233251085893276, 2.5547442135142524))
+
+
 
   # Make a deep_copy
   dc=r_model.deep_copy()

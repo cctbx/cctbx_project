@@ -358,6 +358,7 @@ class map_model_base(object):
 
   def extract_all_maps_around_model(self,
      selection_string = None,
+     select_unique_by_ncs = False,
      box_cushion = 5.):
     '''
       Runs box_all_maps_around_model_and_shift_origin with extract_box=True
@@ -365,11 +366,13 @@ class map_model_base(object):
     return self.box_all_maps_around_model_and_shift_origin(
       selection_string = selection_string,
       box_cushion = box_cushion,
+      select_unique_by_ncs = select_unique_by_ncs,
       extract_box = True)
 
   def box_all_maps_around_model_and_shift_origin(self,
      selection_string = None,
      box_cushion = 5.,
+     select_unique_by_ncs = False,
      extract_box = False):
     '''
        Box all maps around the model, shift origin of maps, model
@@ -388,6 +391,8 @@ class map_model_base(object):
 
        The selection_string defines what part of the model to keep ('ALL' is
         default)
+       If select_unique_by_ncs is set, select the unique part of the model
+       automatically.  Any selection in selection_string will not be applied.
     '''
     assert isinstance(self.model(), model_manager)
     assert box_cushion is not None
@@ -400,7 +405,11 @@ class map_model_base(object):
     assert model_info.model_id is not None # required for box_around_model
     model = self._model_dict[model_info.model_id]
 
-    if selection_string:
+    if select_unique_by_ncs:
+      model.search_for_ncs()
+      sel = model.get_master_selection()
+      model = model.select(sel)
+    elif selection_string:
       sel = model.selection(selection_string)
       model = model.select(sel)
     elif extract_box: # make sure everything is deep_copy
@@ -1006,6 +1015,41 @@ class map_model_base(object):
       map_id = mask_id)
 
   # Methods for recombining models
+
+  def propagate_model_from_other(self, other,
+     model_id = 'model',
+     other_model_id = 'model'):
+    '''
+    Import a model from other with get_model_from_other (other_model_id),
+    then set coordinates of corresponding atoms in model_id
+
+    The model in other must have been extracted from the model in this object
+    or one just like it with select_unique_by_ncs=True, and no atoms can
+    have been added or removed.
+
+    '''
+
+    # Get the imported hierarchy, shifted to match location of working one
+    ph_imported_unique = self.get_model_from_other(other,
+       other_model_id = other_model_id).get_hierarchy()
+
+    # Get unique part of working hierarchy. Note this is not a deep_copy,
+    #  so modifying it changes original hierarchy and can be propagated
+
+    model = self.get_model_by_id(model_id)
+    model.search_for_ncs()
+    ph_working_unique = model.get_master_hierarchy()
+    assert ph_imported_unique.is_similar_hierarchy(
+       ph_working_unique) # hierarchies must match
+
+    # Replace the coordinates in ph_working_unique with ph_imported_unique
+
+    new_coords=ph_imported_unique.atoms().extract_xyz()
+    ph_working_unique.atoms().set_xyz(new_coords)
+
+    # And propagate these sites to rest of molecule with internal ncs
+    model.set_sites_cart_from_hierarchy(multiply_ncs=True)
+
   def get_model_from_other(self, other,
      other_model_id = 'model'):
     '''
