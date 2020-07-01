@@ -425,6 +425,7 @@ class _mtriage(object):
 
   def _compute_f_maps(self):
     assert self.map_data.origin()==(0,0,0)
+    assert self.map_data.as_1d().count(0) != self.map_data.size() # need data
     if self.map_data_1 is not None:
       assert self.map_data_1.origin()==(0,0,0)
       assert self.map_data.all()==self.map_data_1.all()
