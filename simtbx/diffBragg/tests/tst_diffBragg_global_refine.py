@@ -537,7 +537,7 @@ if args.refineSpectra:
     RUC.refine_spectra = True
     RUC.n_spectra_param = 2
     RUC.spectra_coefficients_sigma = .01, .01
-    RUC.spectra_coefficients_init = lam0, lam1
+    RUC.spectra_coefficients_init = 0, 1
 
 RUC.output_dir = args.outdir
 # dummie info (used only in real situations)
@@ -713,7 +713,7 @@ if args.testUmatrix:
 
 if args.testSpectra:
     coef = RUC._get_spectra_coefficients()
-    waves_refined = coef[0] + coef[1] * spec_idx
+    waves_refined = coef[0] + coef[1]*waves_perturbed
     fluxsum = sum(fluxes)
     en_ref_com = ENERGY_CONV / (sum(fluxes * waves_refined) / fluxsum)
     en_com = ENERGY_CONV / (sum(fluxes * waves) / fluxsum)
