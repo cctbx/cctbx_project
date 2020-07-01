@@ -987,14 +987,15 @@ void diffBragg::add_diffBragg_spots()
                         incident[3] = -source_Z[source];
                         lambda = source_lambda[source];
 
+                        double lambda_ang = lambda*1e10;
                         if (use_lambda_coefficients){
-                            double lambda_angstrom = (lambda_managers[0]->value) + (lambda_managers[1]->value)*source;
-                            lambda = lambda_angstrom * 1e-10;
+                            lambda_ang = (lambda_managers[0]->value) + (lambda_managers[1]->value)*lambda_ang;
+                            lambda = lambda_ang*1e-10;
                         }
 
                         if (lambda_managers[0]->refine_me || lambda_managers[1]->refine_me){
                             lambda_managers[0]->dg_dlambda = 1;
-                            lambda_managers[1]->dg_dlambda = source;
+                            lambda_managers[1]->dg_dlambda = lambda_ang;
                         }
                         //vec3 incident_0 = vec3(incident[1], incident[2], incident[3]);
 
