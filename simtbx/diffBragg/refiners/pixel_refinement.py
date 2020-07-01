@@ -176,7 +176,6 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     def refine_lambda0(self, val):
         self._refine_lambda0 = val
 
-
     @property
     def refine_lambda1(self):
         return self._refine_lambda1

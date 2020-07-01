@@ -613,8 +613,7 @@ class GlobalRefiner(PixelRefinement):
 
         self.fcell_xstart = _global_pos
 
-        if self.refine_lambda0 or self.refine_lambda1:
-            self.spectra_coef_xstart = self.fcell_xstart + self.n_global_fcell
+        self.spectra_coef_xstart = self.fcell_xstart + self.n_global_fcell
 
         self.gain_xpos = self.n_total_params - 1
 
@@ -665,14 +664,14 @@ class GlobalRefiner(PixelRefinement):
                     self.Xall[self.originZ_xpos[0]] = self.S.detector[0].get_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
                     #self.Xall[self.originZ_xpos[0]] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
 
-            if self.refine_lambda0 or self.refine_lambda1:
-                lambda_is_refined = self.refine_lambda0, self.refine_lambda1
-                for i_spec_coef in range(self.n_spectra_param):
-                    xpos = self.spectra_coef_xstart + i_spec_coef
-                    self.is_being_refined[xpos] = lambda_is_refined[i_spec_coef]
-                    self.Xall[xpos] = 1
-                    if not self.rescale_params:
-                        raise NotImplementedError("Cant refine spectra without rescale params")
+            #if self.refine_lambda0 or self.refine_lambda1:
+            lambda_is_refined = self.refine_lambda0, self.refine_lambda1
+            for i_spec_coef in range(self.n_spectra_param):
+                xpos = self.spectra_coef_xstart + i_spec_coef
+                self.is_being_refined[xpos] = lambda_is_refined[i_spec_coef]
+                self.Xall[xpos] = 1
+                if not self.rescale_params:
+                    raise NotImplementedError("Cant refine spectra without rescale params")
 
             print("----loading fcell data")
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index
