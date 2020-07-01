@@ -155,6 +155,25 @@ class compute(object):
           isotropize = True,
           exclude_free_r_reflections = False)
       #####
+      print("-"*79, file=log)
+      print("A-2013 with step=0.4A, using filtered mask (no small/negative volumes)", file=log)
+      F_MASK_FIL = self.mm.FV.keys()[0].data()
+      for k in self.mm.FV.keys()[1:]:
+        F_MASK_FIL = F_MASK_FIL + k.data()
+      F_MASK_FIL = self.fmodel_2013.f_obs().set().array(data = F_MASK_FIL)
+      self.fmodel_filtered = mmtbx.f_model.manager(
+        f_obs        = self.fmodel_2013.f_obs(),
+        r_free_flags = self.fmodel_2013.r_free_flags(),
+        f_calc       = self.fmodel_2013.f_calc(),
+        f_mask       = F_MASK_FIL)
+      self.fmodel_filtered.update_all_scales(remove_outliers=True)
+      self.fmodel_filtered.show(show_header=False, show_approx=False, log = log)
+      print(self.fmodel_filtered.r_factors(prefix="  "), file=log)
+      self.mc_filtered = \
+        self.fmodel_filtered.electron_density_map().map_coefficients(
+          map_type   = "mFobs-DFmodel",
+          isotropize = True,
+          exclude_free_r_reflections = False)
 
   def do_mosaic(self, alg):
     print("-"*79, file=self.log)
@@ -227,11 +246,13 @@ def run_one(args):
       # map stats
       map_FirstMask = get_map(mc=o.mm.mc,         cg=o.mm.crystal_gridding)
       map_WholeMask = get_map(mc=o.mc_whole_mask, cg=o.mm.crystal_gridding)
+      map_Filtered  = get_map(mc=o.mc_filtered,   cg=o.mm.crystal_gridding)
       map_Mosaic    = get_map(mc=mbs.mc,          cg=o.mm.crystal_gridding)
       cntr = 0
       for region in o.mm.regions.values():
         region.m_FistMask  = map_stat(m=map_FirstMask, conn = o.mm.conn, i=region.id)
         region.m_WholeMask = map_stat(m=map_WholeMask, conn = o.mm.conn, i=region.id)
+        region.m_Filtered  = map_stat(m=map_Filtered,  conn = o.mm.conn, i=region.id)
         region.m_Mosaic    = map_stat(m=map_Mosaic,    conn = o.mm.conn, i=region.id)
         if(region.diff_map.me is not None):
           cntr += 1
@@ -245,6 +266,7 @@ def run_one(args):
       d_min           = o.fmodel_2013.f_obs().d_min(),
       r_2013          = o.fmodel_2013.r_factors(as_string=False),
       r_2013_04       = o.fmodel_2013_04.r_factors(as_string=False),
+      r_filtered      = o.fmodel_filtered.r_factors(as_string=False),
       r_mosaic        = mbs.fmodel.r_factors(as_string=False),
       r_largest_mask  = o.mm.fmodel_largest_mask.r_factors(as_string=False),
       solvent_content = o.mm.solvent_content,
