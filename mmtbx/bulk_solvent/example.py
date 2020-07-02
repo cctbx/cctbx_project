@@ -58,7 +58,14 @@ def get_files_sorted(pdb_files, hkl_files):
   sizes = sizes.select(sel)
   return pdbs, mtzs, codes, sizes
 
-def get_data(mtzf, xrs):
+def get_data(pdbf, mtzf):
+  pdb_inp = iotbx.pdb.input(file_name=pdbf)
+  xrs = pdb_inp.xray_structure_simple()
+  #
+  selection = xrs.scatterers().extract_occupancies() > 0
+  selection = selection | xrs.hd_selection()
+  xrs = xrs.select(selection)
+  #
   reflection_file = reflection_file_reader.any_reflection_file(
     file_name=mtzf, ensure_read_access=False)
   rfs = reflection_file_utils.reflection_file_server(
@@ -71,129 +78,108 @@ def get_data(mtzf, xrs):
     keep_going              = True,
     extract_r_free_flags    = False,
     log                     = null_out())
-  f_obs = determine_data_and_flags_result.f_obs
-  return f_obs, determine_data_and_flags_result.r_free_flags
-
-def get_fmodel(pdbf, mtzf, log):
-  pdb_inp = iotbx.pdb.input(file_name=pdbf)
-  xrs = pdb_inp.xray_structure_simple()
-  #
-  selection = xrs.scatterers().extract_occupancies() > 0
-  selection = selection | xrs.hd_selection()
-  xrs = xrs.select(selection)
-  #
-  f_obs, r_free_flags = get_data(mtzf=mtzf, xrs=xrs)
-  dummy = mmtbx.f_model.manager(
+  f_obs        = determine_data_and_flags_result.f_obs
+  r_free_flags = determine_data_and_flags_result.r_free_flags
+  fmodel = mmtbx.f_model.manager(
+    f_obs          = determine_data_and_flags_result.f_obs,
+    r_free_flags   = determine_data_and_flags_result.r_free_flags,
+    xray_structure = xrs)
+  def f_obs():        return fmodel.f_obs()
+  def r_free_flags(): return fmodel.r_free_flags()
+  def f_calc():       return fmodel.f_calc()
+  return group_args(
     f_obs          = f_obs,
     r_free_flags   = r_free_flags,
-    xray_structure = xrs)
-  f_mask = mosaic.get_f_mask(
-    xrs  = dummy.xray_structure,
-    ma   = dummy.f_obs(),
-    step = dummy.f_obs().d_min()/4)
+    xray_structure = fmodel.xray_structure,
+    f_calc         = f_calc)
+
+def get_fmodel(o, f_mask, remove_outliers, log):
   fmodel = mmtbx.f_model.manager(
-    f_obs        = dummy.f_obs(),
-    r_free_flags = dummy.r_free_flags(),
-    f_calc       = dummy.f_calc(),
-    f_mask       = f_mask)
-  fmodel.update_all_scales(remove_outliers=True)
-  print("-"*79, file=log)
-  print("Default (A-2013):", file=log)
+    f_obs          = o.f_obs(),
+    r_free_flags   = o.r_free_flags(),
+    f_calc         = o.f_calc(),
+    bin_selections = o.bin_selections,
+    f_mask         = f_mask)
+  fmodel.update_all_scales(remove_outliers=False)
   fmodel.show(show_header=False, show_approx=False, log = log)
-  print(fmodel.r_factors(), file=log)
-  return fmodel, pdb_inp.construct_hierarchy(), xrs
+  print(fmodel.r_factors(prefix="  "), file=log)
+  mc = fmodel.electron_density_map().map_coefficients(
+    map_type   = "mFobs-DFmodel",
+    isotropize = True,
+    exclude_free_r_reflections = False)
+  return group_args(fmodel = fmodel, mc = mc)
 
 class compute(object):
   def __init__(self, pdbf, mtzf, log, volume_cutoff=30):
     self.log = log
-    # Default A-2013
-    self.fmodel_2013, self.ph, self.xrs = get_fmodel(pdbf=pdbf, mtzf=mtzf, log=log)
-    #
-    step = min(0.4, self.fmodel_2013.f_calc().d_min()/4)
-    #
-    self.f_mask_04 = mosaic.get_f_mask(
-      xrs  = self.xrs,
-      ma   = self.fmodel_2013.f_obs(),
-      step = step)
-    #####
+    # Get objects out of files, and set grid step
+    D = get_data(pdbf, mtzf)
+    step = min(0.4, D.f_obs().d_min()/4)
+    # Compute masks and F_masks (Mosaic)
     print("-"*79, file=log)
     print("Mosaic", file=log)
     self.mm = mosaic.mosaic_f_mask(
-      xray_structure = self.xrs,
-      miller_array   = self.fmodel_2013.f_calc(),
+      xray_structure = D.xray_structure,
+      miller_array   = D.f_obs(),
       step           = step,
       volume_cutoff  = volume_cutoff,
-      f_obs          = self.fmodel_2013.f_obs(),
-      r_free_flags   = self.fmodel_2013.r_free_flags(),
-      f_calc         = self.fmodel_2013.f_calc(),
+      f_obs          = D.f_obs(),
+      r_free_flags   = D.r_free_flags(),
+      f_calc         = D.f_calc(),
       log            = log)
+    #
     if(self.mm.do_mosaic):
-      #####
+      # Define bins: once and for all downstream calculations
+      D.bin_selections = D.f_obs().log_binning(
+        n_reflections_in_lowest_resolution_bin = 100*len(self.mm.FV.keys()))
+      #
       print("-"*79, file=log)
-      print("A-2013 with step=0.4A", file=log)
-      self.fmodel_2013_04 = mmtbx.f_model.manager(
-        f_obs        = self.fmodel_2013.f_obs(),
-        r_free_flags = self.fmodel_2013.r_free_flags(),
-        f_calc       = self.fmodel_2013.f_calc(),
-        f_mask       = self.f_mask_04)
-      self.fmodel_2013_04.update_all_scales(remove_outliers=True)
-      self.fmodel_2013_04.show(show_header=False, show_approx=False, log = log)
-      print(self.fmodel_2013_04.r_factors(prefix="  "), file=log)
-      self.mc_whole_mask = \
-        self.fmodel_2013_04.electron_density_map().map_coefficients(
-          map_type   = "mFobs-DFmodel",
-          isotropize = True,
-          exclude_free_r_reflections = False)
-      #####
+      print("A-2013, all defaults (except set binning)", file=log)
+      f_mask = mosaic.get_f_mask(
+        xrs  = D.xray_structure,
+        ma   = D.f_obs(),
+        step = D.f_obs().d_min()/4)
+      self.fmodel_2013 = get_fmodel(
+        o = D, f_mask = f_mask, remove_outliers = True, log = self.log).fmodel
+      #
       print("-"*79, file=log)
-      print("A-2013 with step=0.4A, using largest mask only", file=log)
-      self.mm.fmodel_largest_mask.show(show_header=False, show_approx=False, log = log)
-      print(self.mm.fmodel_largest_mask.r_factors(prefix="  "), file=log)
-      self.mc_largest_mask = \
-        self.mm.fmodel_largest_mask.electron_density_map().map_coefficients(
-          map_type   = "mFobs-DFmodel",
-          isotropize = True,
-          exclude_free_r_reflections = False)
-      #####
+      print("A-2013, step=0.4A", file=log)
+      f_mask_04 = mosaic.get_f_mask(
+        xrs  = D.xray_structure,
+        ma   = self.fmodel_2013.f_obs(),
+        step = step)
+      o = get_fmodel(o = self.fmodel_2013, f_mask = f_mask_04,
+        remove_outliers = False, log = self.log)
+      self.fmodel_2013_04 = o.fmodel
+      self.mc_whole_mask  = o.mc
+      #
       print("-"*79, file=log)
-      print("A-2013 with step=0.4A, using filtered mask (no small/negative volumes)", file=log)
-      F_MASK_FIL = self.mm.FV.keys()[0].data()
-      for k in self.mm.FV.keys()[1:]:
-        F_MASK_FIL = F_MASK_FIL + k.data()
-      F_MASK_FIL = self.fmodel_2013.f_obs().set().array(data = F_MASK_FIL)
-      self.fmodel_filtered = mmtbx.f_model.manager(
-        f_obs        = self.fmodel_2013.f_obs(),
-        r_free_flags = self.fmodel_2013.r_free_flags(),
-        f_calc       = self.fmodel_2013.f_calc(),
-        f_mask       = F_MASK_FIL)
-      self.fmodel_filtered.update_all_scales(remove_outliers=True)
-      self.fmodel_filtered.show(show_header=False, show_approx=False, log = log)
-      print(self.fmodel_filtered.r_factors(prefix="  "), file=log)
-      self.mc_filtered = \
-        self.fmodel_filtered.electron_density_map().map_coefficients(
-          map_type   = "mFobs-DFmodel",
-          isotropize = True,
-          exclude_free_r_reflections = False)
+      print("A-2013, step=0.4A, using largest mask only", file=log)
+      o = get_fmodel(o = self.fmodel_2013, f_mask = self.mm.f_mask_0,
+        remove_outliers = False, log = self.log)
+      self.fmodel_largest_mask = o.fmodel
+      self.mc_largest_mask     = o.mc
+      #
+      print("-"*79, file=log)
+      print("A-2013, step=0.4A, filtered mask (no small/negative volumes)", file=log)
+      f_mask_fil = self.mm.FV.keys()[0].data()
+      for fm in self.mm.FV.keys()[1:]:
+        f_mask_fil = f_mask_fil + fm.data()
+      f_mask_fil = self.fmodel_2013.f_obs().set().array(data = f_mask_fil)
+      o = get_fmodel(o = self.fmodel_2013, f_mask = f_mask_fil,
+        remove_outliers = False, log = self.log)
+      self.fmodel_filtered = o.fmodel
+      self.mc_filtered     = o.mc
 
   def do_mosaic(self, alg):
     print("-"*79, file=self.log)
     print("Refine k_masks", file=self.log)
-    # fmodel just to do mosaic
-    bin_selections = self.fmodel_2013.f_obs().log_binning(
-      n_reflections_in_lowest_resolution_bin = 500)
-    fmodel = mmtbx.f_model.manager(
-      f_obs          = self.fmodel_2013_04.f_obs(),
-      r_free_flags   = self.fmodel_2013_04.r_free_flags(),
-      f_calc         = self.fmodel_2013_04.f_calc(),
-      f_mask         = self.fmodel_2013_04.f_masks()[0],
-      bin_selections = bin_selections)
-    fmodel.update_all_scales(remove_outliers=False)
-    #
-    result = mosaic.refinery(fmodel=fmodel, fv=self.mm.FV, alg=alg,
-      log=self.log)
+    # Use Fmodel based on largest mask!
+    result = mosaic.refinery(
+      fmodel=self.fmodel_largest_mask, fv=self.mm.FV, alg=alg, log=self.log)
     print("", file=self.log)
-    #result.fmodel.show(show_header=False, show_approx=False, log = self.log)
-    result.fmodel.show_short(show_k_mask=False, prefix="  ", log = self.log)
+    result.fmodel.show(show_header=False, show_approx=False, log = self.log)
+    #result.fmodel.show_short(show_k_mask=False, prefix="  ", log = self.log)
     print(result.fmodel.r_factors(prefix="  "), file=self.log)
     return result
 
@@ -218,8 +204,8 @@ def run_one(args):
   if(not pdb_inp.get_experiment_type() in
      ["X-RAY DIFFRACTION", "NEUTRON DIFFRACTION"]): return
   #
-  #log = sys.stdout
-  log = open("%s.log"%code,"w")
+  log = sys.stdout
+  #log = open("%s.log"%code,"w")
   try:
     # main
     o = compute(pdbf=pdbf, mtzf=mtzf, log=log)
@@ -235,8 +221,7 @@ def run_one(args):
     mbs = o.do_mosaic(alg=alg)
     # write maps
     if(o.mm.mc is not None):
-      assert approx_equal(o.mm.mc.data(), o.mc_largest_mask.data())
-      mtz_dataset = o.mm.mc.as_mtz_dataset(column_root_label='FistMask')
+      mtz_dataset = o.mc_largest_mask.as_mtz_dataset(column_root_label='FistMask')
       mtz_dataset.add_miller_array(
         miller_array=o.mc_whole_mask, column_root_label="WholeMask")
       mtz_dataset.add_miller_array(
@@ -268,7 +253,7 @@ def run_one(args):
       r_2013_04       = o.fmodel_2013_04.r_factors(as_string=False),
       r_filtered      = o.fmodel_filtered.r_factors(as_string=False),
       r_mosaic        = mbs.fmodel.r_factors(as_string=False),
-      r_largest_mask  = o.mm.fmodel_largest_mask.r_factors(as_string=False),
+      r_largest_mask  = o.fmodel_largest_mask.r_factors(as_string=False),
       solvent_content = o.mm.solvent_content,
       regions         = o.mm.regions)
     easy_pickle.dump("%s.pkl"%code, result)

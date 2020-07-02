@@ -168,7 +168,18 @@ class refinery(object):
     self.r_free_flags = fmodel.r_free_flags()
     self.F = [self.f_calc.deep_copy()] + fv.keys()
 
-    self.bin_selections = self.get_bin_selections()
+    self.bin_selections = fmodel.bin_selections #self.get_bin_selections()
+    #
+    #ds = self.f_obs.d_spacings().data()
+    #last = flex.bool(ds.size(), False)
+    #new = []
+    #for s in bin_selections:
+    #  m = flex.min(ds.select(s))
+    #  if(m>3): new.append(s)
+    #  else:    last = last | s
+    #if(last.count(True)>0): new.append(last)
+    #bin_selections = new[:]
+    #
     #
     #self._print(fmodel.r_factors(prefix="start: "))
     for it in range(3):
@@ -180,10 +191,10 @@ class refinery(object):
       i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
       K_MASKS = OrderedDict()
 
-      self.bin_selections = self.get_bin_selections()
 
       for i_bin, sel in enumerate(self.bin_selections):
         d_max, d_min = f_obs.select(sel).d_max_min()
+        if d_min<3: continue
         bin = "  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min)
         F = [f.select(sel) for f in self.F]
         # algorithm_0
@@ -225,31 +236,35 @@ class refinery(object):
         f_obs          = self.f_obs,
         r_free_flags   = self.r_free_flags,
         f_calc         = self.f_obs.customized_copy(data = f_calc_data),
+        #f_mask         = fmodel.f_masks()[0],#f_bulk,
+        bin_selections=self.bin_selections,
         f_mask         = f_bulk,
-        k_mask         = flex.double(f_obs.data().size(),1))
+        k_mask         = flex.double(f_obs.data().size(),1)
+        )
+
+
+      #self.fmodel = mmtbx.f_model.manager(
+      #  f_obs          = self.f_obs,
+      #  r_free_flags   = self.r_free_flags,
+      #  f_calc         = self.f_obs.customized_copy(data = f_calc_data+f_bulk_data),
+      #  f_mask         = fmodel.f_masks()[0],#f_bulk,
+      #  bin_selections=self.bin_selections,
+      #  #f_mask         = f_bulk,
+      #  k_mask         = flex.double(f_obs.data().size(),1)
+      #  )
+
+
+
       #
       self.fmodel.update_all_scales(remove_outliers=False)
+
+
       #self._print(self.fmodel.r_factors(prefix="  "))
       self.mc = self.fmodel.electron_density_map().map_coefficients(
         map_type   = "mFobs-DFmodel",
         isotropize = True,
         exclude_free_r_reflections = False)
 
-  def get_bin_selections(self):
-    bin_selections = self.f_obs.log_binning(
-      n_reflections_in_lowest_resolution_bin = max(100,int(len(self.F)*100)))
-    #
-    ds = self.f_obs.d_spacings().data()
-    last = flex.bool(ds.size(), False)
-    new = []
-    for s in bin_selections:
-      m = flex.min(ds.select(s))
-      if(m>3): new.append(s)
-      else:    last = last | s
-    if(last.count(True)>0): new.append(last)
-    bin_selections = new[:]
-    #
-    return bin_selections
 
   def _print(self, m):
     if(self.log is not None):
@@ -379,7 +394,6 @@ class mosaic_f_mask(object):
     FM = OrderedDict()
     self.FV = OrderedDict()
     self.mc = None
-    self.fmodel_largest_mask = None
     diff_map = None
     mean_diff_map = None
     self.regions = OrderedDict()
@@ -445,15 +459,13 @@ class mosaic_f_mask(object):
   def compute_diff_map(self, f_mask_data):
     if(self.f_obs is None): return None
     f_mask = self.f_obs.customized_copy(data = f_mask_data)
-    self.fmodel_largest_mask = mmtbx.f_model.manager(
+    fmodel = mmtbx.f_model.manager(
       f_obs        = self.f_obs,
       r_free_flags = self.r_free_flags,
       f_calc       = self.f_calc,
       f_mask       = f_mask)
-    self.fmodel_largest_mask.update_all_scales(remove_outliers=True)
-    #print ("r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free()))
-    #fmodel.show(show_header=False, show_approx=False)
-    self.mc = self.fmodel_largest_mask.electron_density_map().map_coefficients(
+    fmodel.update_all_scales(remove_outliers=True)
+    self.mc = fmodel.electron_density_map().map_coefficients(
       map_type   = "mFobs-DFmodel",
       isotropize = True,
       exclude_free_r_reflections = False)
@@ -516,6 +528,9 @@ def algorithm_2(i_obs, F, x, use_curvatures=True, macro_cycles=10):
       #lower = flex.double([0.1] + [-5]*(x.size()-1))
       upper = flex.double([10] + [0.65]*(x.size()-1))
       lower = flex.double([0.1] + [0]*(x.size()-1))
+
+      #upper = flex.double([1] + [0.65]*(x.size()-1))
+      #lower = flex.double([1] + [0]*(x.size()-1))
       #upper = flex.double([1] + [5.65]*(x.size()-1))
       #lower = flex.double([1] + [-5]*(x.size()-1))
       m = tncs.minimizer(
