@@ -33,6 +33,10 @@ if rank == 0:
     from scipy.stats import linregress
     from scipy.stats import pearsonr
     from numpy import log as np_log
+    from numpy import sin as SIN
+    from numpy import cos as COS
+    from numpy import arcsin as ASIN
+
     from numpy import exp as np_exp
     from numpy import load as np_load
     from numpy import all as np_all
@@ -71,6 +75,7 @@ else:
     PATHJOIN = MAKEDIRS = EXISTS = None
     JSON_DUMP = None
     mean = unique = np_log = np_exp = np_all = norm = median = std = None
+    SIN = COS = ASIN = None
     ALL_CLOSE=NAN = ARRAY = SAVE = SAVEZ = ONES_LIKE = STD = ABS = PI= None
     WHERE = None
     SQRT = None
@@ -90,6 +95,9 @@ else:
     PixelRefinement = None
 
 if has_mpi:
+    SIN = comm.bcast(SIN)
+    COS = comm.bcast(COS)
+    ASIN = comm.bcast(ASIN)
     PATHJOIN = comm.bcast(PATHJOIN)
     MAKEDIRS = comm.bcast(MAKEDIRS)
     WHERE = comm.bcast(WHERE)
@@ -1032,13 +1040,15 @@ class GlobalRefiner(PixelRefinement):
                 xval = self.Xall[self.spectra_coef_xstart + i]
                 sig = self.spectra_coefficients_sigma[i]
                 init = self.spectra_coefficients_init[i]
-                val = sig*(xval-1) + init
+                low, high = self.lambda_coef_ranges[i]
+                rng = high-low
+                sin_arg = sig*(xval-1) + ASIN(2*(init-low)/rng - 1)
+                val = (SIN(sin_arg) + 1)*rng/2 + low
+                #val = sig*(xval-1) + init
                 vals.append(val)
         else:
             assert NotImplementedError
         return vals
-
-
 
     def _get_ucell_vars(self, i_shot):
         all_p = []
@@ -1679,9 +1689,19 @@ class GlobalRefiner(PixelRefinement):
             assert self.rescale_params
             derivs = []
             for i_coef in range(self.n_spectra_param):
-                d = self.spectra_derivs[i_coef]
+                dI_dtheta = self.spectra_derivs[i_coef]
+
+                # TODO make this part of a `parameter class`, so other parameters can borrow same code when using bounds
+                init = self.spectra_coefficients_init[i_coef]
                 sigma = self.spectra_coefficients_sigma[i_coef]
-                derivs.append(d * sigma)
+                x = self.Xall[self.spectra_coef_xstart + i_coef]
+                low, high = self.lambda_coef_ranges[i_coef]
+                rng = high - low
+                cos_arg = sigma * (x-1) + ASIN(2*(init-low)/rng - 1)
+                dtheta_dx = rng/2 * COS(cos_arg) * sigma
+                d = dI_dtheta * dtheta_dx
+                derivs.append(d)
+                #derivs.append(dI_dtheta * sigma)
             return derivs
 
     def _spectra_derivatives(self):

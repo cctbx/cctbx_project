@@ -538,6 +538,7 @@ if args.refineSpectra:
     RUC.n_spectra_param = 2
     RUC.spectra_coefficients_sigma = .01, .01
     RUC.spectra_coefficients_init = 0, 1
+    RUC.lambda_coef_ranges = [(-0.01, 0.01), (0.95, 1.05)]
 
 RUC.output_dir = args.outdir
 # dummie info (used only in real situations)

@@ -49,6 +49,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.n_spectra_param = 0
         self.spectra_coefficients_sigma = 1, 1
         self.spectra_coefficients_init = None
+        self.lambda_coef_ranges = [(-0.2, 0.2), (0.5, 2)]  # sensible min,max for lambda coefficients
 
         self.rotX_sigma = 0.003
         self.rotY_sigma = 0.003
@@ -66,9 +67,9 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         #self.ucell_inits = {0: [79.1, 38.2]} # deprecated, just uses UCELL MANAGERS now 
         self.m_init = {0: 10}  # TODO make setting these properties a requirement
         self.spot_scale_init = {0: 1} # TODO make setting these properties a requirement
-        self.print_all_corr=True
+        self.print_all_corr = True
 
-        self.pause_after_iteration=0.001
+        self.pause_after_iteration = 0.001
 
         self.compute_image_model_correlation = False
         self.spot_print_stride = 1000
