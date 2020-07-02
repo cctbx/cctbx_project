@@ -15,7 +15,21 @@ jobs:
     if: github.repository == 'cctbx/cctbx_project'
 
     steps:
+    - name: Wait for Azure Checks to complete
+      uses: Anthchirp/action-wait-for-check@4699210ccc66e2a13260803fadbb77085421b891
+            # Original repository: https://github.com/fountainhead/action-wait-for-check
+            # This is tagged version v1.0.0, but do not use version tags
+            # https://julienrenaux.fr/2019/12/20/github-actions-security-risk/
+      id: wait-for-checks
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        checkName: Checks
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        intervalSeconds: 300
+        timeoutSeconds: 28800
+
     - name: Wait for Azure CI build to complete
+      if: steps.wait-for-checks.outputs.conclusion == 'success'
       uses: Anthchirp/action-wait-for-check@4699210ccc66e2a13260803fadbb77085421b891
             # Original repository: https://github.com/fountainhead/action-wait-for-check
             # This is tagged version v1.0.0, but do not use version tags
@@ -29,13 +43,13 @@ jobs:
         timeoutSeconds: 36000
 
     - name: Check out repository
-      if: steps.wait-for-build.outputs.conclusion == 'success'
+      if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-build.outputs.conclusion == 'success'
       uses: actions/checkout@v2
       with:
         fetch-depth: '0'
 
     - name: Install SSH key
-      if: steps.wait-for-build.outputs.conclusion == 'success'
+      if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-build.outputs.conclusion == 'success'
       uses: Anthchirp/action-ssh-key@b4a94d05b860c19f609854947327a4882269b7c1
             # Original repository: https://github.com/shimataro/ssh-key-action
             # This is PR https://github.com/shimataro/ssh-key-action/pull/122
@@ -46,7 +60,7 @@ jobs:
          name: id_rsa # optional
 
     - name: Advance stable branch
-      if: steps.wait-for-build.outputs.conclusion == 'success'
+      if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-build.outputs.conclusion == 'success'
       run: |
         git remote add mirror git@github.com:dials/cctbx.git
         git rev-parse HEAD
