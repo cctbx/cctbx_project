@@ -3,7 +3,6 @@ import iotbx.phil
 from libtbx import group_args
 from libtbx.utils import Sorry
 from iotbx.map_model_manager import map_model_manager
-import mmtbx.utils
 from mmtbx.ringer import iterate_over_residues
 from mmtbx.ringer import em_rolling
 from mmtbx.ringer import em_scoring
