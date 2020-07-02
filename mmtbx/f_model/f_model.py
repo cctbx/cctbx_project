@@ -682,6 +682,14 @@ class manager(manager_mixin):
       k_anisotropic = None
     else:
       k_anisotropic = self.arrays.core.k_anisotropic.select(selection)
+    #
+    bin_selections = self.bin_selections
+    if(bin_selections is not None):
+      tmp = []
+      for bs in bin_selections:
+        tmp.append(bs.select(selection))
+      bin_selections = tmp[:]
+    #
     result = manager(
       f_obs                        = self.f_obs().select(selection=selection),
       r_free_flags                 = self._r_free_flags.select(selection=selection),
@@ -703,6 +711,7 @@ class manager(manager_mixin):
       k_mask                       = new_k_masks,
       k_isotropic                  = k_isotropic,
       k_anisotropic                = k_anisotropic,
+      bin_selections               = bin_selections,
       _target_memory               = self._target_memory,
       n_resolution_bins_output     = self.n_resolution_bins_output,
       k_sol                        = self.k_sol,
