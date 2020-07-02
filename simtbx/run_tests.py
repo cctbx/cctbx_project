@@ -40,6 +40,8 @@ tst_list = (
     ["$D/diffBragg/tests/tst_diffBragg_global_refine.py",
         "--nshots 1 --rescale --spotscale --umatrix --ncells " +
         "--bmatrix --bg --fcell --testbg --testfcell --testUmatrix --maxcalls 50"],
+    ["$D/diffBragg/tests/tst_diffBragg_global_refine.py", "--nshots 1 --rescale --spectra  --maxcalls 150  --nshots 1 " +
+        "--refineSpectra  --testSpectra  --perturbSpectra"],
     ["$D/diffBragg/tests/tst_diffBragg_global_refine_older.py", "--spotscale --umatrix --bmatrix --ncells --curvatures --rescale"],
     )
 
