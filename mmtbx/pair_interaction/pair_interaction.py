@@ -16,7 +16,7 @@ ext = boost.python.import_ext("mmtbx_pair_interaction_ext")
 
 dat_path = libtbx.env.find_in_repositories("qrefine")
 qr_unit_tests_data = os.path.join(dat_path,"tests","unit","data_files")
-A2B=1.8897161646320724
+A2B=1.8897259885789
 global results
 results=[]
 global mol_pair_has_interaction
