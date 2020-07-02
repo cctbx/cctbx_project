@@ -165,6 +165,14 @@ class map_model_base(object):
     ''' Get a map_manager with the name map_id'''
     return self.map_dict().get(map_id)
 
+  def get_map_data_by_id(self, map_id):
+    ''' Get map_data from a map_manager with the name map_id'''
+    map_manager = self.get_map_manager_by_id(map_id)
+    if map_manager:
+      return map_manager.map_data()
+    else:
+      return None
+
   def add_model_by_id(self, model, model_id,
      overwrite = True):
     '''
@@ -185,8 +193,10 @@ class map_model_base(object):
      Add a new map_manager
      Must be similar to existing
      Overwrites any existing with the same id unless overwrite = False
+     Is a mask if is_mask is set
     '''
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
+    assert isinstance(overwrite, bool)
     if not overwrite:
       assert not map_id in self.map_id_list # must not duplicate
     assert map_manager.is_similar(self.map_manager())
@@ -1237,6 +1247,7 @@ class map_model_base(object):
     model = self.get_model_by_id(model_id)
     map_manager= self.get_map_manager_by_id(map_id)
     assert model and map_manager
+    assert resolution is not None
 
     if selection_string:
       sel = model.selection(selection_string)
@@ -1426,7 +1437,7 @@ class r_model(map_model_base):
     new_mmm = r_model()
     new_mmm._map_dict={}
     new_mmm._model_dict={}
-    new_mmm._extra_map_id_list = []
+    new_mmm._extra_map_manager_id_list = []
     new_mmm._extra_map_manager_list = []
     new_mmm._original_origin_cart = None
     new_mmm._gridding_first = None
@@ -1516,11 +1527,11 @@ class r_model(map_model_base):
     new_mmm._map_dict = self.map_dict()
     new_mmm._force_wrapping = self._force_wrapping
     new_mmm._extra_map_manager_list = []
-    new_mmm._extra_map_id_list = []
+    new_mmm._extra_map_manager_id_list = []
     for id in self.map_id_list():
       if not self.get_map_manager_by_id(id) is self.map_manager():
         new_mmm._extra_map_manager_list.append(self.get_map_manager_by_id(id))
-        new_mmm._extra_map_id_list.append(id)
+        new_mmm._extra_map_manager_id_list.append(id)
     return new_mmm
 
 class map_model_manager(map_model_base):
@@ -1571,7 +1582,7 @@ class map_model_manager(map_model_base):
                extra_model_list = None,
                extra_model_id_list = None,  # string id's for models
                extra_map_manager_list = None,
-               extra_map_id_list = None,  # string id's for map_managers
+               extra_map_manager_id_list = None,  # string id's for map_managers
                ncs_object       = None,   # Overwrite ncs_objects
                ignore_symmetry_conflicts = None,  # allow mismatch of symmetry
                wrapping         = None,  # Overwrite wrapping for all maps
@@ -1663,15 +1674,15 @@ class map_model_manager(map_model_base):
     #   optional list of extra_map_manager_list and extra_model_list
 
     if extra_map_manager_list:
-      if extra_map_id_list:
-        assert len(extra_map_manager_list) == len(extra_map_id_list)
+      if extra_map_manager_id_list:
+        assert len(extra_map_manager_list) == len(extra_map_manager_id_list)
       else:
-        extra_map_id_list=[]
+        extra_map_manager_id_list=[]
         for i in range(1,len(extra_map_manager_list)+1):
-          extra_map_id_list.append("extra_map_manager_%s" %(i))
+          extra_map_manager_id_list.append("extra_map_manager_%s" %(i))
     else:
       extra_map_manager_list = []
-      extra_map_id_list = []
+      extra_map_manager_id_list = []
 
     if extra_model_list:
       if extra_model_id_list:
@@ -1739,7 +1750,9 @@ class map_model_manager(map_model_base):
 
     # Shift origins of all the extra models:
     for m in extra_model_list:
-      m.shift_model_and_set_crystal_symmetry(shift_cart=model.shift_cart())
+      m.shift_model_and_set_crystal_symmetry(
+          shift_cart=map_manager.shift_cart())
+      assert approx_equal(m.shift_cart(), map_manager.shift_cart())
 
     # Transfer ncs_object to all map_managers if one is present
     if self.ncs_object():
@@ -1775,7 +1788,7 @@ class map_model_manager(map_model_base):
       map_manager_1 = map_manager_1,
       map_manager_2 = map_manager_2,
       extra_map_manager_list = extra_map_manager_list,
-      extra_map_id_list = extra_map_id_list)
+      extra_map_manager_id_list = extra_map_manager_id_list)
 
     self.set_up_model_dict(
       model = model,
@@ -1787,7 +1800,7 @@ class map_model_manager(map_model_base):
       map_manager_1 = None,
       map_manager_2 = None,
       extra_map_manager_list = None,
-      extra_map_id_list = None):
+      extra_map_manager_id_list = None):
 
     '''
       map_dict has four special ids with interpretations:
@@ -1801,13 +1814,13 @@ class map_model_manager(map_model_base):
 
     assert map_manager is not None
     self._map_dict={}
-    self._extra_map_id_list=extra_map_id_list
+    self._extra_map_manager_id_list=extra_map_manager_id_list
     self._map_dict['map_manager']=map_manager
     if map_manager_1 and map_manager_2:
       self._map_dict['map_manager_1']=map_manager_1
       self._map_dict['map_manager_2']=map_manager_2
-    if extra_map_id_list:
-      for id, m in zip(extra_map_id_list,extra_map_manager_list):
+    if extra_map_manager_id_list:
+      for id, m in zip(extra_map_manager_id_list,extra_map_manager_list):
         self._map_dict[id]=m
 
   def set_up_model_dict(self,
@@ -1856,18 +1869,18 @@ class map_model_manager(map_model_base):
       text += "\n%s: %s" %(id,str(self.get_model_by_id(id)))
     return text
 
-  def extra_map_id_list(self):
+  def extra_map_manager_id_list(self):
     '''
      Return list of ids for extra_map_managers
     '''
-    return self._extra_map_id_list
+    return self._extra_map_manager_id_list
 
   def extra_map_manager_list(self):
      '''
-       Return just the map_managers in extra_map_id_list
+       Return just the map_managers in extra_map_manager_id_list
      '''
      mm_list=[]
-     for id in self.extra_map_id_list():
+     for id in self.extra_map_manager_id_list():
        mm_list.append(self._map_dict[id])
      return mm_list
 
@@ -2092,7 +2105,7 @@ class map_model_manager(map_model_base):
     new_mmm = map_model_manager()
     new_mmm._map_dict={}
     new_mmm._model_dict={}
-    new_mmm._extra_map_id_list = []
+    new_mmm._extra_map_manager_id_list = []
     new_mmm._extra_map_manager_list = []
     new_mmm._original_origin_cart = None
     new_mmm._gridding_first = None
@@ -2103,8 +2116,8 @@ class map_model_manager(map_model_base):
     new_mmm = map_model_manager()
 
     from copy import deepcopy
-    new_mmm._extra_map_id_list = deepcopy(
-        self._extra_map_id_list)
+    new_mmm._extra_map_manager_id_list = deepcopy(
+        self._extra_map_manager_id_list)
     new_mmm._original_origin_grid_units=deepcopy(
         self._original_origin_grid_units)
     new_mmm._original_origin_cart=deepcopy(self._original_origin_cart)

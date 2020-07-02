@@ -744,7 +744,7 @@ class manager(object):
     '''
     if not self._shift_cart:  # set shift_cart and _unit_cell_crystal_symmetry
       self._shift_cart = shift_cart
-      self._unit_cell_crystal_symmetry = crystal_symmetry
+      self._unit_cell_crystal_symmetry = self.crystal_symmetry()
     else:
       self._shift_cart = shift_cart
       assert self._unit_cell_crystal_symmetry is not None

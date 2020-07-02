@@ -33,13 +33,15 @@ def exercise(file_name, out = sys.stdout):
   from mmtbx.ncs.ncs import ncs
   ncs_object=ncs()
   ncs_object.set_unit_ncs()
+  mask_mm=m.deep_copy()
+  mask_mm.set_is_mask(True)
   mam = map_model_manager(
           map_manager =  m,
           ncs_object =  ncs_object,
           map_manager_1 =  m.deep_copy(),
           map_manager_2 =  m.deep_copy(),
           extra_map_manager_list =  [m.deep_copy(),m.deep_copy(),m.deep_copy()],
-          extra_map_id_list = ["extra_1","extra_2","map_manager_mask"],
+          extra_map_manager_id_list = ["extra_1","extra_2","map_manager_mask"],
           model     = model.deep_copy(),)
   r_model=mam.as_r_model()
 
