@@ -163,10 +163,10 @@ class refinery(object):
   def __init__(self, fmodel, fv, alg, log = sys.stdout):
     assert alg in ["alg0","alg2", "alg4"]
     self.log = log
-    self.f_calc = fmodel.f_calc()
+    self.f_calc = fmodel.f_model_no_scales()#fmodel.f_calc()
     self.f_obs  = fmodel.f_obs()
     self.r_free_flags = fmodel.r_free_flags()
-    self.F = [self.f_calc.deep_copy()] + fv.keys()
+    self.F = [self.f_calc.deep_copy()] + fv.keys()[1:]
 
     self.bin_selections = fmodel.bin_selections
     #
@@ -180,6 +180,8 @@ class refinery(object):
       i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
       K_MASKS = OrderedDict()
 
+      #self.bin_selections = self.f_obs.log_binning(
+      #  n_reflections_in_lowest_resolution_bin = 100*len(self.F))
 
       for i_bin, sel in enumerate(self.bin_selections):
         d_max, d_min = f_obs.select(sel).d_max_min()
@@ -206,6 +208,11 @@ class refinery(object):
             use_curvatures = False)
         self._print(bin+" ".join(["%6.2f"%k for k in k_masks]))
         K_MASKS[sel] = k_masks
+      #
+      #print()
+      #self.update_k_masks(K_MASKS)
+      #for k_masks in K_MASKS.values():
+      #  self._print(bin+" ".join(["%6.2f"%k for k in k_masks]))
       #
       f_calc_data = self.f_calc.data().deep_copy()
       f_bulk_data = flex.complex_double(fmodel.f_calc().data().size(), 0)
@@ -253,6 +260,18 @@ class refinery(object):
         map_type   = "mFobs-DFmodel",
         isotropize = True,
         exclude_free_r_reflections = False)
+
+  def update_k_masks(self, K_MASKS):
+    tmp = []
+    for i_mask, F in enumerate(self.F):
+      k_masks = [k_masks_bin[i_mask] for k_masks_bin in K_MASKS.values()]
+      found = False
+      for i_bin, k_masks_bin in enumerate(K_MASKS.values()):
+        if(not found and k_masks_bin[i_mask]<=0.009):
+          found = True
+          K_MASKS.values()[i_bin][i_mask]=0
+        elif found:
+          K_MASKS.values()[i_bin][i_mask]=0
 
 
   def _print(self, m):
