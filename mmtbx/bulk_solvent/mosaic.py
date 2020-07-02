@@ -168,18 +168,7 @@ class refinery(object):
     self.r_free_flags = fmodel.r_free_flags()
     self.F = [self.f_calc.deep_copy()] + fv.keys()
 
-    self.bin_selections = fmodel.bin_selections #self.get_bin_selections()
-    #
-    #ds = self.f_obs.d_spacings().data()
-    #last = flex.bool(ds.size(), False)
-    #new = []
-    #for s in bin_selections:
-    #  m = flex.min(ds.select(s))
-    #  if(m>3): new.append(s)
-    #  else:    last = last | s
-    #if(last.count(True)>0): new.append(last)
-    #bin_selections = new[:]
-    #
+    self.bin_selections = fmodel.bin_selections
     #
     #self._print(fmodel.r_factors(prefix="start: "))
     for it in range(3):
