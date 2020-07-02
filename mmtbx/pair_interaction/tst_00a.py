@@ -1,10 +1,8 @@
 from __future__ import absolute_import, division, print_function
-import iotbx.pdb
 from mmtbx.pair_interaction import pair_interaction
 from libtbx.test_utils import approx_equal
 import boost.python
 ext = boost.python.import_ext("mmtbx_pair_interaction_ext")
-import numpy as np
 
 def test_density_props_cpp():
   # This matches numbers from NCIPLOT (FORTRAN code).
