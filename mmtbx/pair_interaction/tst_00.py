@@ -34,5 +34,5 @@ if __name__=="__main__":
   h = [-0.02470403, -0.01459848, -0.01459848, -0.01459848,  0.04055025,
         0.06837132, -0.01459848,  0.06837132,  0.04055025]
   assert approx_equal(r.density, 0.027461463669643152)
-  assert approx_equal(r.gradient_vector, [-0.00832535, 0.03899142, 0.03899142])
+  assert approx_equal(r.gradient_vector, [0.00832535, -0.03899142, -0.03899142])
   assert approx_equal(r.hessian, h)
