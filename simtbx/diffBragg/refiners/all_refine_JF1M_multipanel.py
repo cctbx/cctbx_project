@@ -13,7 +13,7 @@ from dxtbx.model import Panel
 class RefineAll_JF1M_MultiPanel(RefineRot):
 
     def __init__(self, ucell_manager, rotXYZ_refine=(True, True, True), init_gain=1, init_scale=1,
-                 panel_id=0,init_local_spotscale=[], *args, **kwargs):
+                 panel_id=0,init_local_spotscale=[], timestamp=None, *args, **kwargs):
         """
         :param ucell_manager:
         :param rotXYZ_refine:
@@ -48,6 +48,7 @@ class RefineAll_JF1M_MultiPanel(RefineRot):
         self.store_init_vmax = []
         self.store_init_vmin = []
         self.refine_local_spotscale=False
+        self.timestamp = timestamp
 
     def _setup(self):
         # total number of refinement parameters
@@ -348,7 +349,7 @@ class RefineAll_JF1M_MultiPanel(RefineRot):
                           self.store_init_Imeas.append(Imeas)
                           self.store_init_vmax.append(vmax)
                           self.store_init_vmin.append(vmin)
-                    if True:
+                    if self.show_plotted_images:
                         plt.suptitle("Iterations = %d, image %d / %d, res=%.2f"
                                      % (self.iterations, i_spot+1, self.n_spots, self.spot_resolution[i_spot]))
                         self.fig.canvas.draw()
@@ -438,11 +439,12 @@ class RefineAll_JF1M_MultiPanel(RefineRot):
         rotY = self.x[self.rotY_xpos]
         rotZ = self.x[self.rotZ_xpos]
         rot_labels = ["rotX=%+3.7g" % rotX, "rotY=%+3.7g" % rotY, "rotZ=%+3.4g" % rotZ]
-        print("%s: residual=%3.8g, ncells=%f, detdist=%3.8g, gain=%3.4g, scale=%4.8g"
+        print("%s: negative log-likelihood=%3.8g, ncells=%f, detdist=%3.8g, gain=%3.4g, scale=%4.8g"
               % (message, target, self.x[self.ncells_xpos], self.x[-3], self.x[-2]**2, self.x[-1]**2))
         print ("Ucell: %s *** Missets: %s" %
                (", ".join(ucell_labels),  ", ".join(rot_labels)))
         print("\n")
+        print ("SCATTERING_LOG_LIKELIHOOD, %s, %.f"%(self.timestamp, target))
         #print (["Local spotscales = "]+["%3.7g"%yy for yy in self.x[:]])
         print ('------------------------------------------------------------------')
         for i in range(self.n_bg//3):
