@@ -665,10 +665,8 @@ class manager(object):
 
 
     if(self.crystal_symmetry() is None):
-      # Set self._crystal_symmetry. There must be no xray_structure
-      #   and no sites_cart supplied
-      assert self._xray_structure is None
-      assert sites_cart is None
+      # Set self._crystal_symmetry.
+      assert self._xray_structure is None # can't have xrs without crystal sym
       self._crystal_symmetry = crystal_symmetry
 
     if self.crystal_symmetry().is_similar_symmetry(crystal_symmetry):
@@ -737,17 +735,17 @@ class manager(object):
         the output shift that is going to be applied to this model when it is
              written out.
 
+      Also for backwards compatibility make sure
+      self._unit_cell_crystal_symmetry is set if self._crystal_symmetry is set
+
       NOTE: Normally instead use
         shift_model_and_set_crystal_symmetry(shift_cart=shift_cart) and
       shift_model_back() to shift the coordinates of the model.
 
     '''
-    if not self._shift_cart:  # set shift_cart and _unit_cell_crystal_symmetry
-      self._shift_cart = shift_cart
+    self._shift_cart = shift_cart
+    if not self._unit_cell_crystal_symmetry: # set  _unit_cell_crystal_symmetry
       self._unit_cell_crystal_symmetry = self.crystal_symmetry()
-    else:
-      self._shift_cart = shift_cart
-      assert self._unit_cell_crystal_symmetry is not None
 
   def _shift_back(self, pdb_hierarchy):
     assert pdb_hierarchy is not None

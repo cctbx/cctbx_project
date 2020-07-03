@@ -65,7 +65,9 @@ class map_model_base(object):
     ''' Get all the models as a list'''
     model_list = []
     for id in self.model_id_list():
-      model_list.append(self.get_model_by_id(id))
+      m = self.get_model_by_id(id)
+      if m is not None:
+        model_list.append(m)
     return model_list
 
   def model(self):
@@ -74,7 +76,11 @@ class map_model_base(object):
 
   def model_id_list(self):
     ''' Get all the names (ids) for all models'''
-    return list(self.model_dict().keys())
+    mil = []
+    for id in self.model_dict().keys():
+      if self.get_model_by_id(id) is not None:
+        mil.append(id)
+    return mil
 
   def get_model_by_id(self, model_id):
     ''' Get a model with the name model_id'''
@@ -92,7 +98,9 @@ class map_model_base(object):
     ''' Get all the map_managers as a list'''
     map_manager_list = []
     for id in self.map_id_list():
-      map_manager_list.append(self.get_map_manager_by_id(id))
+      mm = self.get_map_manager_by_id(id)
+      if mm:
+        map_manager_list.append(mm)
     return map_manager_list
 
   def map_manager(self):
@@ -112,8 +120,12 @@ class map_model_base(object):
     return self._map_dict.get('map_manager_mask')
 
   def map_id_list(self):
-    ''' Get all the names (ids) for all map_managers'''
-    return list(self.map_dict().keys())
+    ''' Get all the names (ids) for all map_managers that are present'''
+    mil = []
+    for id in self.map_dict().keys():
+      if self.get_map_manager_by_id(id) is not None:
+        mil.append(id)
+    return mil
 
   def _get_map_coeffs_list_from_id_list(self, id_list,
     mask_id = None):
@@ -182,7 +194,7 @@ class map_model_base(object):
     '''
     assert isinstance(model, mmtbx.model.manager)
     if not overwrite:
-      assert not model_id in self.model_id_list # must not duplicate
+      assert not model_id in self.model_id_list() # must not duplicate
     assert self.map_manager().is_compatible_model(model)
 
     self._model_dict[model_id] = model
@@ -198,7 +210,7 @@ class map_model_base(object):
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
     assert isinstance(overwrite, bool)
     if not overwrite:
-      assert not map_id in self.map_id_list # must not duplicate
+      assert not map_id in self.map_id_list() # must not duplicate
     assert map_manager.is_similar(self.map_manager())
     self._map_dict[map_id] = map_manager
 
@@ -1751,7 +1763,8 @@ class map_model_manager(map_model_base):
     # Shift origins of all the extra models:
     for m in extra_model_list:
       m.shift_model_and_set_crystal_symmetry(
-          shift_cart=map_manager.shift_cart())
+          shift_cart=map_manager.shift_cart(),
+          crystal_symmetry=map_manager.crystal_symmetry())
       assert approx_equal(m.shift_cart(), map_manager.shift_cart())
 
     # Transfer ncs_object to all map_managers if one is present
