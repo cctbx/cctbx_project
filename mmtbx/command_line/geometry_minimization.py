@@ -328,6 +328,8 @@ class run(object):
     pdb_combined = combine_unique_pdb_files(file_names = self.pdb_file_names)
     pdb_inp = iotbx.pdb.input(lines=pdb_combined.raw_records, source_info=None)
     if(cs is None):
+      cs=pdb_inp.crystal_symmetry()
+    if(cs is None):
       is_non_crystallographic_unit_cell = True
       cs = pdb_inp.xray_structure_simple().\
           cubic_unit_cell_around_centered_scatterers(
