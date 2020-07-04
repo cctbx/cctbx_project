@@ -687,8 +687,12 @@ class manager(manager_mixin):
     if(bin_selections is not None):
       tmp = []
       for bs in bin_selections:
-        tmp.append(bs.select(selection))
-      bin_selections = tmp[:]
+        bs_ = bs.select(selection)
+        tmp.append(bs_)
+        if(bs_.count(True)==0):
+          tmp = None
+          break
+      bin_selections = tmp
     #
     result = manager(
       f_obs                        = self.f_obs().select(selection=selection),
