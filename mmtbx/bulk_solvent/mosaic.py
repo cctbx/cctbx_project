@@ -160,15 +160,20 @@ def write_map_file(crystal_symmetry, map_data, file_name):
     labels      = flex.std_string([""]))
 
 class refinery(object):
-  def __init__(self, fmodel, fv, alg, log = sys.stdout):
+  def __init__(self, fmodel, fv, anomaly, alg, log = sys.stdout):
     assert alg in ["alg0","alg2", "alg4"]
     self.log = log
-    self.f_calc = fmodel.f_model_no_scales()#fmodel.f_calc()
     self.f_obs  = fmodel.f_obs()
     self.r_free_flags = fmodel.r_free_flags()
-    self.F = [self.f_calc.deep_copy()] + fv.keys()[1:]
+    if(anomaly):
+      self.f_calc = fmodel.f_calc()
+      self.F = [self.f_calc.deep_copy()] + fv.keys()
+    else:
+      self.f_calc = fmodel.f_model_no_scales()
+      self.F = [self.f_calc.deep_copy()] + fv.keys()[1:]
 
     self.bin_selections = fmodel.bin_selections
+
     #
     #self._print(fmodel.r_factors(prefix="start: "))
     for it in range(3):
@@ -185,7 +190,7 @@ class refinery(object):
 
       for i_bin, sel in enumerate(self.bin_selections):
         d_max, d_min = f_obs.select(sel).d_max_min()
-        if d_min<3: continue
+        if d_max<3: continue
         bin = "  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min)
         F = [f.select(sel) for f in self.F]
         # algorithm_0
@@ -292,7 +297,7 @@ class refinery(object):
     x.extend( flex.double(len(self.F)-2, 0.1))
     return x
 
-def get_f_mask(xrs, ma, step):
+def get_f_mask(xrs, ma, step, option = 2):
   crystal_gridding = maptbx.crystal_gridding(
     unit_cell        = xrs.unit_cell(),
     space_group_info = xrs.space_group_info(),
@@ -302,57 +307,63 @@ def get_f_mask(xrs, ma, step):
   atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
   mask_params = masks.mask_master_params.extract()
   grid_step_factor = ma.d_min()/step
-#  # 1
-#  asu_mask = ext.atom_mask(
-#    unit_cell                = xrs.unit_cell(),
-#    group                    = xrs.space_group(),
-#    resolution               = ma.d_min(),
-#    grid_step_factor         = grid_step_factor,
-#    solvent_radius           = mask_params.solvent_radius,
-#    shrink_truncation_radius = mask_params.shrink_truncation_radius)
-#  asu_mask.compute(xrs.sites_frac(), atom_radii)
-#  fm_asu = asu_mask.structure_factors(ma.indices())
-#  f_mask_1 = ma.set().array(data = fm_asu)
-#  print (asu_mask.grid_size())
+  # 1
+  if(option==1):
+    asu_mask = ext.atom_mask(
+      unit_cell                = xrs.unit_cell(),
+      group                    = xrs.space_group(),
+      resolution               = ma.d_min(),
+      grid_step_factor         = grid_step_factor,
+      solvent_radius           = mask_params.solvent_radius,
+      shrink_truncation_radius = mask_params.shrink_truncation_radius)
+    asu_mask.compute(xrs.sites_frac(), atom_radii)
+    fm_asu = asu_mask.structure_factors(ma.indices())
+    f_mask = ma.set().array(data = fm_asu)
   # 2
-  asu_mask = ext.atom_mask(
-    unit_cell                = xrs.unit_cell(),
-    space_group              = xrs.space_group(),
-    gridding_n_real          = n_real,
-    solvent_radius           = mask_params.solvent_radius,
-    shrink_truncation_radius = mask_params.shrink_truncation_radius)
-  asu_mask.compute(xrs.sites_frac(), atom_radii)
-  fm_asu = asu_mask.structure_factors(ma.indices())
-  f_mask_2 = ma.set().array(data = fm_asu)
-#  # 3
-#  mask_params.grid_step_factor = grid_step_factor
-#  mask_manager = masks.manager(
-#    miller_array      = ma,
-#    miller_array_twin = None,
-#    mask_params       = mask_params)
-#  f_mask_3 = mask_manager.shell_f_masks(xray_structure=xrs, force_update=True)[0]
-#  # 4
-#  mask_p1 = mmtbx.masks.mask_from_xray_structure(
-#    xray_structure        = xrs,
-#    p1                    = True,
-#    for_structure_factors = True,
-#    n_real                = n_real,
-#    in_asu                = False).mask_data
-#  maptbx.unpad_in_place(map=mask_p1)
-#  mask = asu_map_ext.asymmetric_map(
-#    xrs.crystal_symmetry().space_group().type(), mask_p1).data()
-#  f_mask_4 = ma.structure_factors_from_asu_map(
-#    asu_map_data = mask, n_real = n_real)
-#  ##
-#  print (flex.mean(abs(f_mask_1).data()))
-#  print (flex.mean(abs(f_mask_2).data()))
-#  print (flex.mean(abs(f_mask_3).data()))
-#  print (flex.mean(abs(f_mask_4).data()))
-#  STOP()
-#  assert approx_equal(f_mask_1.data(), f_mask_2.data())
-#  assert approx_equal(f_mask_1.data(), f_mask_3.data())
-#  assert approx_equal(f_mask_1.data(), f_mask_4.data())
-  return f_mask_2
+  elif(option==2):
+    asu_mask = ext.atom_mask(
+      unit_cell                = xrs.unit_cell(),
+      space_group              = xrs.space_group(),
+      gridding_n_real          = n_real,
+      solvent_radius           = mask_params.solvent_radius,
+      shrink_truncation_radius = mask_params.shrink_truncation_radius)
+    asu_mask.compute(xrs.sites_frac(), atom_radii)
+    fm_asu = asu_mask.structure_factors(ma.indices())
+    f_mask = ma.set().array(data = fm_asu)
+  # 3
+  elif(option==3):
+    mask_params.grid_step_factor = grid_step_factor
+    mask_manager = masks.manager(
+      miller_array      = ma,
+      miller_array_twin = None,
+      mask_params       = mask_params)
+    f_mask = mask_manager.shell_f_masks(xray_structure=xrs, force_update=True)[0]
+  # 4
+  elif(option==4):
+    mask_p1 = mmtbx.masks.mask_from_xray_structure(
+      xray_structure        = xrs,
+      p1                    = True,
+      for_structure_factors = True,
+      n_real                = n_real,
+      in_asu                = False).mask_data
+    maptbx.unpad_in_place(map=mask_p1)
+    mask = asu_map_ext.asymmetric_map(
+      xrs.crystal_symmetry().space_group().type(), mask_p1).data()
+    f_mask = ma.structure_factors_from_asu_map(
+      asu_map_data = mask, n_real = n_real)
+  elif(option==5):
+    o = mmtbx.masks.bulk_solvent(
+      xray_structure              = xrs,
+      ignore_zero_occupancy_atoms = False,
+      solvent_radius              = mask_params.solvent_radius,
+      shrink_truncation_radius    = mask_params.shrink_truncation_radius,
+      ignore_hydrogen_atoms       = False,
+      gridding_n_real             = n_real,
+      atom_radii                  = atom_radii)
+    f_mask = o.structure_factors(ma)
+  else: assert 0
+  #
+  return f_mask
 
 class mosaic_f_mask(object):
   def __init__(self,
@@ -407,6 +418,13 @@ class mosaic_f_mask(object):
     self.regions = OrderedDict()
     print("   volume_p1    uc(%)   volume_asu  id   mFo-DFc: min,max,mean,sd",
       file=log)
+    # Check if self.anomaly
+    self.anomaly = False
+    if(len(sorted_by_volume) > 2):
+      uc_fractions = [
+        round(p[0]*100./self.conn.size(), 0) for p in sorted_by_volume[1:]]
+      if(uc_fractions[0]/4 < uc_fractions[1]): self.anomaly = True
+    #
     for i_seq, p in enumerate(sorted_by_volume):
       v, i = p
       # skip macromolecule
@@ -424,9 +442,10 @@ class mosaic_f_mask(object):
       if(i_seq==1 or uc_fraction>5):
         f_mask_i = miller_array.structure_factors_from_asu_map(
           asu_map_data = mask_i_asu, n_real = self.n_real)
-        f_mask_data_0 += f_mask_i.data()
+        if(not self.anomaly):
+          f_mask_data_0 += f_mask_i.data()
 
-      if(uc_fraction < 5 and diff_map is None):
+      if(uc_fraction < 5 and diff_map is None and not self.anomaly):
         diff_map = self.compute_diff_map(f_mask_data = f_mask_data_0)
 
       mi,ma,me,sd = None,None,None,None
@@ -455,11 +474,13 @@ class mosaic_f_mask(object):
           asu_map_data = mask_i_asu, n_real = self.n_real)
 
       FM.setdefault(round(volume, 3), []).append(f_mask_i.data())
-      self.FV[f_mask_i] = round(volume, 3)
+      self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
     #
     f_mask_0 = miller_array.customized_copy(data = f_mask_data_0)
     #
-    self.f_mask_0  = f_mask_0
+    self.f_mask_0 = None
+    if(not self.anomaly):
+      self.f_mask_0 = miller_array.customized_copy(data = f_mask_data_0)
     self.do_mosaic = False
     if(len(self.FV.keys())>1):
       self.do_mosaic = True
@@ -500,7 +521,7 @@ def algorithm_0(f_obs, F):
   fc, f_masks = F[0], F[1:]
   k_mask_trial_range=[]
   s = 0
-  while s<0.4:
+  while s<1:
     k_mask_trial_range.append(s)
     s+=0.001
   r = []

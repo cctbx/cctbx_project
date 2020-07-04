@@ -153,12 +153,15 @@ class compute(object):
       self.fmodel_2013_04 = o.fmodel
       self.mc_whole_mask  = o.mc
       #
-      print("-"*79, file=log)
-      print("A-2013, step=0.4A, using largest mask only", file=log)
-      o = get_fmodel(o = self.fmodel_2013, f_mask = self.mm.f_mask_0,
-        remove_outliers = False, log = self.log)
-      self.fmodel_largest_mask = o.fmodel
-      self.mc_largest_mask     = o.mc
+      self.fmodel_largest_mask = None
+      self.mc_largest_mask     = None
+      if(self.mm.f_mask_0 is not None):
+        print("-"*79, file=log)
+        print("A-2013, step=0.4A, using largest mask only", file=log)
+        o = get_fmodel(o = self.fmodel_2013, f_mask = self.mm.f_mask_0,
+          remove_outliers = False, log = self.log)
+        self.fmodel_largest_mask = o.fmodel
+        self.mc_largest_mask     = o.mc
       #
       print("-"*79, file=log)
       print("A-2013, step=0.4A, filtered mask (no small/negative volumes)", file=log)
@@ -175,8 +178,16 @@ class compute(object):
     print("-"*79, file=self.log)
     print("Refine k_masks", file=self.log)
     # Use Fmodel based on largest mask!
+    if(self.fmodel_largest_mask is not None):
+      fmodel = self.fmodel_largest_mask
+    else:
+      fmodel = self.fmodel_2013
     result = mosaic.refinery(
-      fmodel=self.fmodel_largest_mask, fv=self.mm.FV, alg=alg, log=self.log)
+      fmodel  = fmodel,
+      fv      = self.mm.FV,
+      anomaly = self.mm.anomaly,
+      alg     = alg,
+      log     = self.log)
     print("", file=self.log)
     result.fmodel.show(show_header=False, show_approx=False, log = self.log)
     #result.fmodel.show_short(show_k_mask=False, prefix="  ", log = self.log)
@@ -211,9 +222,8 @@ def run_one(args):
     o = compute(pdbf=pdbf, mtzf=mtzf, log=log)
     log.flush()
     ### SKIP
-    if(o.fmodel_2013.r_work()>0.30 or
-       len(o.mm.regions.values())<1 or
-       not o.mm.do_mosaic):
+    if(not o.mm.do_mosaic or o.fmodel_2013.r_work()>0.30 or
+       len(o.mm.regions.values())<1):
       log.close()
       if(os.path.isfile("%s.log"%code)): os.remove("%s.log"%code)
       return
@@ -246,6 +256,9 @@ def run_one(args):
           assert approx_equal(region.diff_map.ma, region.m_FistMask.ma)
       assert cntr>0
     #
+    r_largest_mask = None
+    if(o.fmodel_largest_mask is not None):
+      r_largest_mask = o.fmodel_largest_mask.r_factors(as_string=False)
     result = group_args(
       code            = code,
       d_min           = o.fmodel_2013.f_obs().d_min(),
@@ -253,7 +266,7 @@ def run_one(args):
       r_2013_04       = o.fmodel_2013_04.r_factors(as_string=False),
       r_filtered      = o.fmodel_filtered.r_factors(as_string=False),
       r_mosaic        = mbs.fmodel.r_factors(as_string=False),
-      r_largest_mask  = o.fmodel_largest_mask.r_factors(as_string=False),
+      r_largest_mask  = r_largest_mask,
       solvent_content = o.mm.solvent_content,
       regions         = o.mm.regions)
     easy_pickle.dump("%s.pkl"%code, result)
