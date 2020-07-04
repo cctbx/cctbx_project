@@ -15,7 +15,6 @@ from mmtbx.ncs import tncs
 from collections import OrderedDict
 import mmtbx.f_model
 import sys
-from libtbx.test_utils import approx_equal
 
 from mmtbx import masks
 from cctbx.masks import vdw_radii_from_xray_structure
