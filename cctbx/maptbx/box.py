@@ -204,7 +204,7 @@ class with_bounds(object):
 
     else: # Need to copy and then zero outside of defined region
       map_box = copy_and_zero_map_outside_bounds(map_data, bounds_info)
-      self._warning_message += "\nWARNING: boxed map is larger than original"+\
+      self._warning_message += "\nWARNING: boxed map goes outside original map"+\
          " and wrapping=False\n...setting unknown values to zero"
     #  Now reshape map_box to put origin at (0, 0, 0)
     map_box.reshape(flex.grid(self.box_all))
