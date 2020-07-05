@@ -82,6 +82,13 @@ nproc = 1
   .style = renderer:draw_nproc_widget
 show_gui = False
   .type = bool
+wrapping = None
+  .type = bool
+  .help = You can specify that the map wraps around the unit cell
+ignore_symmetry_conflicts = False
+  .type = bool
+  .help = You can specify that the model and map symmetryies to not have to \
+      match
 output_base = None
   .type = str
 output_dir = None
@@ -151,11 +158,11 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
     ccp4_map_in = cmdline.get_file(params.map_file)
     ccp4_map_in.check_file_type("ccp4_map")
     map_inp = ccp4_map_in.file_object
-    cs_consensus = mmtbx.utils.check_and_set_crystal_symmetry(
-      models = [model], map_inps = [map_inp])
     base = map_model_manager(
       map_manager               = map_inp,
-      model            = model)
+      model            = model,
+      wrapping = params.wrapping,
+      ignore_symmetry_conflicts = params.ignore_symmetry_conflicts)
     hierarchy = base.model().get_hierarchy()
     map_data = base.map_data()
     unit_cell = map_inp.grid_unit_cell()
