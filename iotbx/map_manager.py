@@ -1316,7 +1316,7 @@ class map_manager(map_reader, write_ccp4_map):
     return ok
 
   def is_compatible_model(self, model,
-       require_match_unit_cell_crystal_symmetry=True, 
+       require_match_unit_cell_crystal_symmetry=True,
         absolute_angle_tolerance = 0.01,
         absolute_length_tolerance = 0.01,
         shift_tol = 0.001):

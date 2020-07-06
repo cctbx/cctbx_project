@@ -1598,8 +1598,8 @@ class map_model_manager(map_model_base):
                ncs_object       = None,   # Overwrite ncs_objects
                ignore_symmetry_conflicts = None,  # allow mismatch of symmetry
                wrapping         = None,  # Overwrite wrapping for all maps
-               absolute_angle_tolerance = 0.01,  # angle tolerance for symmetry 
-	       absolute_length_tolerance = 0.01,  # length tolerance 
+               absolute_angle_tolerance = 0.01,  # angle tolerance for symmetry
+               absolute_length_tolerance = 0.01,  # length tolerance
                log              = None):
 
     # Set the log stream
@@ -1739,7 +1739,7 @@ class map_model_manager(map_model_base):
         ignore_symmetry_conflicts = ignore_symmetry_conflicts)
     mmmn.add_map_manager(map_manager)
     if model:
-      mmmn.add_model(model, 
+      mmmn.add_model(model,
         set_model_log_to_null = False,
         ) # keep the log
     if ncs_object:
@@ -2392,7 +2392,7 @@ class match_map_model_ncs:
             "\nTry 'ignore_symmetry_conflicts=True'")
 
 
-  def add_model(self, model = None, 
+  def add_model(self, model = None,
         set_model_log_to_null = True):
     # Add a model and make sure its symmetry is similar to others
     # Check that model original crystal_symmetry matches full
