@@ -238,7 +238,7 @@ class map_model_base(object):
 
   # Methods for writing maps and models
 
-  def write_map(self, file_name = None, id='map_manager', log = sys.stdout):
+  def write_map(self, file_name = None, id='map_manager'):
     if not self._map_dict.get(id):
       self._print ("No map to write out with id='%s'" %(id))
     elif not file_name:
@@ -247,8 +247,7 @@ class map_model_base(object):
       self._map_dict.get('map_manager').write_map(file_name = file_name)
 
   def write_model(self,
-     file_name = None,
-     log = sys.stdout):
+     file_name = None):
     if not self.model():
       self._print ("No model to write out")
     elif not file_name:
@@ -1750,7 +1749,7 @@ class map_model_manager(map_model_base):
     # Shift origin of model and map_manager and ncs_object to (0, 0, 0) with
     #    mmmn which knows about all of them
 
-    mmmn.shift_origin(log = null_out())
+    mmmn.shift_origin()
 
     # map_manager, model, ncs_object know about shift
     map_manager = mmmn.map_manager()
@@ -1997,8 +1996,7 @@ class map_model_manager(map_model_base):
       space_group_number = 1,
       output_model_file_name = None,
       shake = None,
-      random_seed = None,
-      log = sys.stdout):
+      random_seed = None):
 
     '''
       Generate a map using generate_model and generate_map_coefficients
@@ -2089,14 +2087,14 @@ class map_model_manager(map_model_base):
         output_model_file_name = output_model_file_name,
         shake = shake,
         random_seed = random_seed,
-        log = log)
+        log = self.log)
 
     if not map_coeffs:
       map_coeffs = generate_map_coefficients(model = model,
         high_resolution = high_resolution,
         output_map_coeffs_file_name = output_map_coeffs_file_name,
         scattering_table = scattering_table,
-        log = log)
+        log = self.log)
 
     mm = generate_map_data(
       output_map_file_name = output_map_file_name,
@@ -2113,7 +2111,7 @@ class map_model_manager(map_model_base):
       high_resolution_real_space_noise_fraction = \
         high_resolution_real_space_noise_fraction,
       low_resolution_noise_cutoff = low_resolution_noise_cutoff,
-      log = log)
+      log = self.log)
 
     mm.show_summary()
     self.set_up_map_dict(map_manager=mm)
@@ -2285,11 +2283,11 @@ class match_map_model_ncs:
       new_mmmn.add_map_manager(self._map_manager.deep_copy())
     return new_mmmn
 
-  def show_summary(self, log = sys.stdout):
+  def show_summary(self):
     self._print ("Summary of maps and models")
     if self._map_manager:
       self._print("Map summary:")
-      self._map_manager.show_summary(out = log)
+      self._map_manager.show_summary(out = self.log)
     if self._model:
       self._print("Model summary:")
       self._print("Residues: %s" %(
@@ -2314,7 +2312,7 @@ class match_map_model_ncs:
         not self.log.closed):
       self._print(m, file = self.log)
 
-  def write_map(self, file_name = None, log = sys.stdout):
+  def write_map(self, file_name = None):
     if not self._map_manager:
       self._print ("No map to write out")
     elif not file_name:
@@ -2323,8 +2321,7 @@ class match_map_model_ncs:
       self._map_manager.write_map(file_name = file_name)
 
   def write_model(self,
-     file_name = None,
-     log = sys.stdout):
+     file_name = None):
     if not self._model:
       self._print ("No model to write out")
     elif not file_name:
@@ -2417,7 +2414,7 @@ class match_map_model_ncs:
     mm = map_manager(file_name)
     self.add_map_manager(mm)
 
-  def read_model(self, file_name = None, log = sys.stdout):
+  def read_model(self, file_name = None):
     self._print("Reading model from %s " %(file_name))
     from iotbx.pdb import input
     inp = input(file_name = file_name)
@@ -2426,11 +2423,11 @@ class match_map_model_ncs:
     self.add_model(model)
 
 
-  def read_ncs_file(self, file_name = None, log = sys.stdout):
+  def read_ncs_file(self, file_name = None):
     # Read in an NCS file and make sure its symmetry is similar to others
     from mmtbx.ncs.ncs import ncs
     ncs_object = ncs()
-    ncs_object.read_ncs(file_name = file_name, log = log)
+    ncs_object.read_ncs(file_name = file_name, log = self.log)
     if ncs_object.max_operators()<2:
        self.ncs_object.set_unit_ncs()
     self.add_ncs_object(ncs_object)
@@ -2463,7 +2460,7 @@ class match_map_model_ncs:
            self._map_manager.unit_cell_crystal_symmetry())
       self._model.set_shift_cart(shift_cart)
 
-  def shift_origin(self, desired_origin = (0, 0, 0), log = sys.stdout):
+  def shift_origin(self, desired_origin = (0, 0, 0)):
     # shift the origin of all maps/models to desired_origin (usually (0, 0, 0))
     if not self._map_manager:
       self._print ("No information about origin available")
@@ -2517,12 +2514,11 @@ class match_map_model_ncs:
       self._model = self.shift_model_to_match_working_map(
         coordinate_shift = shift_to_apply_cart,
         new_shift_cart = new_full_shift_cart,
-        model = self._model, log = log)
+        model = self._model)
 
   def shift_ncs_to_match_working_map(self, ncs_object = None, reverse = False,
     coordinate_shift = None,
-    new_shift_cart = None,
-    log = sys.stdout):
+    new_shift_cart = None):
     # Shift an ncs object to match the working map (based
     #    on self._map_manager.origin_shift_grid_units)
     if coordinate_shift is None:
@@ -2531,9 +2527,9 @@ class match_map_model_ncs:
     ncs_object = ncs_object.coordinate_offset(coordinate_shift)
     return ncs_object
 
-  def shift_ncs_to_match_original_map(self, ncs_object = None, log = sys.stdout):
+  def shift_ncs_to_match_original_map(self, ncs_object = None):
     return self.shift_ncs_to_match_working_map(ncs_object = ncs_object,
-      reverse = True, log = log)
+      reverse = True)
 
   def get_coordinate_shift(self, reverse = False):
     if reverse: # Get origin shift in grid units  ==  position of original origin
@@ -2551,8 +2547,7 @@ class match_map_model_ncs:
 
   def shift_model_to_match_working_map(self, model = None, reverse = False,
      coordinate_shift = None,
-     new_shift_cart = None,
-     log = sys.stdout):
+     new_shift_cart = None):
 
     '''
     Shift a model based on the coordinate shift for the working map.
@@ -2576,11 +2571,10 @@ class match_map_model_ncs:
 
     return model
 
-  def shift_model_to_match_original_map(self, model = None, log = sys.stdout):
+  def shift_model_to_match_original_map(self, model = None):
     # Shift a model object to match the original map (based
     #    on -self._map_manager.origin_shift_grid_units)
-    return self.shift_model_to_match_working_map(model = model, reverse = True,
-      log = log)
+    return self.shift_model_to_match_working_map(model = model, reverse = True)
 
   def as_map_model_manager(self):
 
