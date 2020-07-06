@@ -51,16 +51,16 @@ def run_group(symbol, preprocess_against_shallow):
   print("Regions in P1")
   regions_p1 = list(co.regions())
   s1 = flex.sum(flex.int(regions_p1))
-  print regions_p1, s1
+  print(regions_p1, s1)
   conn_map_p1 = co.result().as_double()
-  print flex.min(conn_map_p1), flex.max(conn_map_p1)
+  print(flex.min(conn_map_p1), flex.max(conn_map_p1))
   #
   print("Merge symmetry related")
   co.merge_symmetry_related_regions(space_group = xrs.space_group())
   conn_map_p1_merged = co.result().as_double()
   regions_p1_merged = list(co.regions())
   s2 = flex.sum(flex.int(regions_p1_merged))
-  print list(regions_p1_merged), s2
+  print(list(regions_p1_merged), s2)
   amap = asu_map_ext.asymmetric_map(sgt, conn_map_p1_merged)
   conn_map_asu = amap.data()
   conn_map_p1_restored = amap.symmetry_expanded_map()
