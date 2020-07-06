@@ -37,7 +37,6 @@ from libtbx import easy_pickle
 from libtbx.str_utils import make_header
 from libtbx import runtime_utils
 from libtbx.utils import Sorry
-import mmtbx.utils
 from iotbx.map_model_manager import map_model_manager
 import time
 import os
