@@ -1,7 +1,8 @@
-# This workflow will mirror the master branch to
-# https://github.com/dials/cctbx
+# This workflow will mirror the master branch
+# from https://github.com/cctbx/cctbx_project
+#  to  https://github.com/dials/cctbx
 # whenever the build is stable.
-# This is determined by checking the Azure 'CI' job outcome.
+# This is determined by checking the Azure CI run outcomes.
 
 name: mirror when stable
 on:
@@ -26,10 +27,24 @@ jobs:
         checkName: Checks
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
         intervalSeconds: 300
-        timeoutSeconds: 28800
+        timeoutSeconds: 21300
 
-    - name: Wait for Azure CI build to complete
+    - name: Wait for Azure XFEL CI build to complete
       if: steps.wait-for-checks.outputs.conclusion == 'success'
+      uses: Anthchirp/action-wait-for-check@4699210ccc66e2a13260803fadbb77085421b891
+            # Original repository: https://github.com/fountainhead/action-wait-for-check
+            # This is tagged version v1.0.0, but do not use version tags
+            # https://julienrenaux.fr/2019/12/20/github-actions-security-risk/
+      id: wait-for-xfel-build
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        checkName: XFEL CI
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        intervalSeconds: 300
+        timeoutSeconds: 21300
+
+    - name: Wait for main Azure CI build to complete
+      if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-xfel-build.outputs.conclusion == 'success'
       uses: Anthchirp/action-wait-for-check@4699210ccc66e2a13260803fadbb77085421b891
             # Original repository: https://github.com/fountainhead/action-wait-for-check
             # This is tagged version v1.0.0, but do not use version tags
@@ -40,16 +55,16 @@ jobs:
         checkName: CI
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
         intervalSeconds: 300
-        timeoutSeconds: 36000
+        timeoutSeconds: 21300
 
     - name: Check out repository
-      if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-build.outputs.conclusion == 'success'
+      if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-xfel-build.outputs.conclusion == 'success' && steps.wait-for-build.outputs.conclusion == 'success'
       uses: actions/checkout@v2
       with:
         fetch-depth: '0'
 
     - name: Install SSH key
-      if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-build.outputs.conclusion == 'success'
+      if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-xfel-build.outputs.conclusion == 'success' && steps.wait-for-build.outputs.conclusion == 'success'
       uses: Anthchirp/action-ssh-key@b4a94d05b860c19f609854947327a4882269b7c1
             # Original repository: https://github.com/shimataro/ssh-key-action
             # This is PR https://github.com/shimataro/ssh-key-action/pull/122
@@ -59,8 +74,8 @@ jobs:
          key: ${{ secrets.DIALS_REPOSITORY_KEY }}
          name: id_rsa # optional
 
-    - name: Advance stable branch
-      if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-build.outputs.conclusion == 'success'
+    - name: Mirror stable branch
+      if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-xfel-build.outputs.conclusion == 'success' && steps.wait-for-build.outputs.conclusion == 'success'
       run: |
         git remote add mirror git@github.com:dials/cctbx.git
         git rev-parse HEAD
