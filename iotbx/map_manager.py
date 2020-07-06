@@ -1170,7 +1170,10 @@ class map_manager(map_reader, write_ccp4_map):
     else: #  (not sd_on_edges_is_large) or (not correlation_of_edges_is_high):
       return False
 
-  def is_similar(self, other = None):
+  def is_similar(self, other = None,
+     absolute_angle_tolerance = 0.01,
+     absolute_length_tolerance = 0.01,
+     ):
     # Check to make sure origin, gridding and symmetry are similar
     self._warning_message=""
 
@@ -1181,14 +1184,18 @@ class map_manager(map_reader, write_ccp4_map):
         str(self.origin_shift_grid_units),str(other.origin_shift_grid_units))
       return False
     if not self.unit_cell_crystal_symmetry().is_similar_symmetry(
-      other.unit_cell_crystal_symmetry()):
+      other.unit_cell_crystal_symmetry(),
+      absolute_angle_tolerance = absolute_angle_tolerance,
+      absolute_length_tolerance = absolute_length_tolerance,):
       self._warning_message="Unit cell crystal symmetry:"+ \
         "\n%s\n does not match other:\n%s\n" %(
         str(self.unit_cell_crystal_symmetry()),
          str(other.unit_cell_crystal_symmetry()))
       return False
     if not self.crystal_symmetry().is_similar_symmetry(
-      other.crystal_symmetry()):
+      other.crystal_symmetry(),
+      absolute_angle_tolerance = absolute_angle_tolerance,
+      absolute_length_tolerance = absolute_length_tolerance):
       self._warning_message="Crystal symmetry:"+ \
         "\n%s\ndoes not match other: \n%s\n" %(
         str(self.crystal_symmetry()),
@@ -1309,7 +1316,10 @@ class map_manager(map_reader, write_ccp4_map):
     return ok
 
   def is_compatible_model(self, model,
-       require_match_unit_cell_crystal_symmetry=True, tol=0.001):
+       require_match_unit_cell_crystal_symmetry=True, 
+        absolute_angle_tolerance = 0.01,
+        absolute_length_tolerance = 0.01,
+        shift_tol = 0.001):
     '''
       Model is compatible with this map_manager if it is not specified as being
       different.
@@ -1342,7 +1352,10 @@ class map_manager(map_reader, write_ccp4_map):
     text_map=str(map_sym).replace("\n"," ")
 
     if require_match_unit_cell_crystal_symmetry and (not model_uc) and (
-       not map_sym.is_similar_symmetry(map_uc)):
+       not map_sym.is_similar_symmetry(map_uc,
+        absolute_angle_tolerance = absolute_angle_tolerance,
+        absolute_length_tolerance = absolute_length_tolerance,
+         )):
       ok=False
       text="Model and map are different because "+\
           "require_match_unit_cell_crystal_symmetry is set and "+\
@@ -1352,17 +1365,32 @@ class map_manager(map_reader, write_ccp4_map):
         "\n%s\n. Current map symmetry is: \n%s\n " %(
          text_map_uc,text_map)
 
-    elif  model_uc and (not map_uc.is_similar_symmetry(map_sym) and (
-         (not model_uc.is_similar_symmetry(map_uc)) or
-         (not model_sym.is_similar_symmetry(map_sym) ) )):
+    elif  model_uc and (not map_uc.is_similar_symmetry(map_sym,
+        absolute_angle_tolerance = absolute_angle_tolerance,
+        absolute_length_tolerance = absolute_length_tolerance,
+         ) and (
+         (not model_uc.is_similar_symmetry(map_uc,
+        absolute_angle_tolerance = absolute_angle_tolerance,
+        absolute_length_tolerance = absolute_length_tolerance,
+        )) or
+         (not model_sym.is_similar_symmetry(map_sym,
+        absolute_angle_tolerance = absolute_angle_tolerance,
+        absolute_length_tolerance = absolute_length_tolerance,
+         ) ) )):
        ok=False# model and map_manager symmetries present and do not match
        text="Model original symmetry: \n%s\n and current symmetry :\n%s\n" %(
           text_model_uc,text_model)+\
           "do not match map unit_cell symmetry:"+\
          " \n%s\n and map current symmetry: \n%s\n symmetry" %(
            text_map_uc,text_map)
-    elif model_sym and (not model_sym.is_similar_symmetry(map_uc)) and (not
-              model_sym.is_similar_symmetry(map_sym)):
+    elif model_sym and (not model_sym.is_similar_symmetry(map_uc,
+        absolute_angle_tolerance = absolute_angle_tolerance,
+        absolute_length_tolerance = absolute_length_tolerance,
+        )) and (not
+              model_sym.is_similar_symmetry(map_sym,
+        absolute_angle_tolerance = absolute_angle_tolerance,
+        absolute_length_tolerance = absolute_length_tolerance,
+        )):
        ok=False# model does not match either map symmetry
        text="Model current symmetry: \n%s\n" %(
           text_model)+\
@@ -1400,7 +1428,7 @@ class map_manager(map_reader, write_ccp4_map):
         model_shift=flex.double(model.shift_cart())
         delta=map_shift-model_shift
         mmm=delta.min_max_mean()
-        if mmm.min<-tol or mmm.max > tol: # shifts do not match
+        if mmm.min<-shift_tol or mmm.max > shift_tol: # shifts do not match
           ok=False
           text+=" However map shift "+\
               "(shift_cart=%s) does not match model shift (%s)" %(

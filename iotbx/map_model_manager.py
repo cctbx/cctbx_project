@@ -1598,6 +1598,8 @@ class map_model_manager(map_model_base):
                ncs_object       = None,   # Overwrite ncs_objects
                ignore_symmetry_conflicts = None,  # allow mismatch of symmetry
                wrapping         = None,  # Overwrite wrapping for all maps
+               absolute_angle_tolerance = 0.01,  # angle tolerance for symmetry 
+	       absolute_length_tolerance = 0.01,  # length tolerance 
                log              = None):
 
     # Set the log stream
@@ -1612,7 +1614,6 @@ class map_model_manager(map_model_base):
     self._gridding_last = None
     self._solvent_content = None
     self._force_wrapping = wrapping
-    self._ignore_symmetry_conflicts = wrapping
     self._warning_message = None
 
     # If map_manager_1 and map_manager_2 are supplied but no map_manager,
@@ -1717,8 +1718,11 @@ class map_model_manager(map_model_base):
     # Make sure all map_managers have same gridding and symmetry
     for m in [map_manager_1, map_manager_2]+ \
          extra_map_manager_list:
-      if m:
-        if not map_manager.is_similar(m):
+      if m and (not ignore_symmetry_conflicts):
+        if not map_manager.is_similar(m,
+           absolute_angle_tolerance = absolute_angle_tolerance,
+           absolute_length_tolerance = absolute_length_tolerance,
+          ):
           raise Sorry("Map manager '%s' is not similar to '%s': %s" %(
            m.input_file_name,map_manager.input_file_name,
             map_manager.warning_message())+
@@ -1729,11 +1733,15 @@ class map_model_manager(map_model_base):
     # Make a match_map_model_ncs and check unit_cell and
     #   working crystal symmetry
     #  and shift_cart for model, map, and ncs_object (if present)
-
-    mmmn = match_map_model_ncs()
+    mmmn = match_map_model_ncs(
+        absolute_angle_tolerance = absolute_angle_tolerance,
+        absolute_length_tolerance = absolute_length_tolerance,
+        ignore_symmetry_conflicts = ignore_symmetry_conflicts)
     mmmn.add_map_manager(map_manager)
     if model:
-      mmmn.add_model(model, set_model_log_to_null = False) # keep the log
+      mmmn.add_model(model, 
+        set_model_log_to_null = False,
+        ) # keep the log
     if ncs_object:
       mmmn.add_ncs_object(ncs_object) # overwrites anything in map_manager
 
@@ -2238,15 +2246,23 @@ class match_map_model_ncs:
      If map_manager contains an ncs_object and an ncs_object is supplied,
      the map_manager receives the supplied ncs_object
 
+     absolute_angle_tolerance and absolute_length_tolerance are tolerances
+     for crystal_symmetry.is_similar_symmetry()
   '''
 
-  def __init__(self, log = None):
+  def __init__(self, log = None,
+     ignore_symmetry_conflicts = None,
+     absolute_angle_tolerance = 0.01,
+     absolute_length_tolerance = 0.01, ):
 
     # Set output stream
     self.set_log(log = log)
 
     self._map_manager = None
     self._model = None
+    self._absolute_angle_tolerance = absolute_angle_tolerance
+    self._absolute_length_tolerance = absolute_length_tolerance
+    self._ignore_symmetry_conflicts = ignore_symmetry_conflicts
 
   # prevent pickling error in Python 3 with self.log = sys.stdout
   # unpickling is limited to restoring sys.stdout
@@ -2363,8 +2379,10 @@ class match_map_model_ncs:
     if self.map_manager() and self.model():
       # Must be compatible...then set model symmetry if not set
       ok=self.map_manager().is_compatible_model(self.model(),
+        absolute_angle_tolerance = self._absolute_angle_tolerance,
+        absolute_length_tolerance = self._absolute_length_tolerance,
         require_match_unit_cell_crystal_symmetry=False)
-      if ok:
+      if ok or self._ignore_symmetry_conflicts:
         self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(
           self.model())  # modifies self.model() in place
       else:
@@ -2374,7 +2392,8 @@ class match_map_model_ncs:
             "\nTry 'ignore_symmetry_conflicts=True'")
 
 
-  def add_model(self, model = None, set_model_log_to_null = True):
+  def add_model(self, model = None, 
+        set_model_log_to_null = True):
     # Add a model and make sure its symmetry is similar to others
     # Check that model original crystal_symmetry matches full
     #    crystal_symmetry of map
