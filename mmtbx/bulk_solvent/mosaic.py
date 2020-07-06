@@ -173,13 +173,17 @@ class refinery(object):
 
     self.bin_selections = fmodel.bin_selections
 
+    #fmodel.show(show_header=False, show_approx=False, log = log)
     #
-    #self._print(fmodel.r_factors(prefix="start: "))
     for it in range(3):
       self._print("cycle: %2d"%it)
       self._print("  volumes: "+" ".join([str(fv[f]) for f in self.F[1:]]))
       f_obs   = self.f_obs.deep_copy()
-      k_total = fmodel.k_isotropic()*fmodel.k_anisotropic()*fmodel.scale_k1()
+      if it==0:
+        k_total = fmodel.k_isotropic()*fmodel.k_anisotropic()*fmodel.scale_k1()
+      else:
+        k_total = \
+          self.fmodel.k_isotropic()*self.fmodel.k_anisotropic()*self.fmodel.scale_k1()*fmodel.arrays.core.k_isotropic_exp
       f_obs   = f_obs.customized_copy(data = self.f_obs.data()/k_total)
       i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
       K_MASKS = OrderedDict()
@@ -192,17 +196,42 @@ class refinery(object):
         if d_max<3: continue
         bin = "  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min)
         F = [f.select(sel) for f in self.F]
+        k_total_sel = k_total.select(sel)
+
+        #r00=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, F[0].data()*k_total_sel)
+
+
         # algorithm_0
-        if(alg=="alg0"):
+        if (alg=="alg0"):
           k_masks = algorithm_0(
             f_obs = f_obs.select(sel),
-            F     = F)
+            F     = [f.deep_copy() for f in F],
+            kt=k_total_sel)
+
+        #fd = flex.complex_double(F[0].data().size())
+        #for i,f in enumerate(F):
+        #  fd = fd + f.data()*k_masks0[i]
+        #r0=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, fd*k_total_sel)
+
+        #for i,f in enumerate(F):
+        #  km = k_masks[i]
+        #  if km<=0: km=0.01
+        #  if i==0: F[i] = f.set().array(data = f.data()*km)
+        #  else:    F[i] = f.set().array(data = f.data()*km)
+        #FF = [f.set().array(data = f.data()*0.35) for i,f in enumerate(F)]
+
         # algorithm_4
-        if(alg=="alg4"):
+        if (alg=="alg4"):
           k_masks = algorithm_4(
             f_obs             = f_obs.select(sel),
             F                 = F,
             auto_converge_eps = 0.0001)
+
+        #fd = flex.complex_double(F[0].data().size())
+        #for i,f in enumerate(F):
+        #  fd = fd + f.data()*k_masks4[i]
+        #r4=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, fd*k_total_sel)
+
         # algorithm_2
         if(alg=="alg2"):
           k_masks = algorithm_2(
@@ -210,7 +239,11 @@ class refinery(object):
             F              = F,
             x              = self._get_x_init(i_bin),
             use_curvatures = False)
-        self._print(bin+" ".join(["%6.2f"%k for k in k_masks]))
+
+        #if r0<r4: k_masks = k_masks0
+        #else:     k_masks = k_masks4
+
+        self._print(bin+" ".join(["%6.2f"%k for k in k_masks])+" %6.4f %6.4f %6.4f"%(0,0,0))
         K_MASKS[sel] = k_masks
       #
       #print()
@@ -513,7 +546,7 @@ class mosaic_f_mask(object):
       self.crystal_symmetry.space_group().type(), mask_i).data()
     return tmp
 
-def algorithm_0(f_obs, F):
+def algorithm_0(f_obs, F, kt):
   """
   Grid search
   """
@@ -522,7 +555,7 @@ def algorithm_0(f_obs, F):
   s = 0
   while s<1:
     k_mask_trial_range.append(s)
-    s+=0.001
+    s+=0.0001
   r = []
   fc_data = fc.data()
   for i, f_mask in enumerate(f_masks):
@@ -532,9 +565,9 @@ def algorithm_0(f_obs, F):
     #print (bulk_solvent.r_factor(f_obs.data(),fc_data))
     kmask_, k_ = \
       bulk_solvent.k_mask_and_k_overall_grid_search(
-        f_obs.data(),
-        fc_data,
-        f_mask.data(),
+        f_obs.data()*kt,
+        fc_data*kt,
+        f_mask.data()*kt,
         flex.double(k_mask_trial_range),
         flex.bool(fc.data().size(),True))
     r.append(kmask_)
