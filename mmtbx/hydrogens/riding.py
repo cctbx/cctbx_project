@@ -168,7 +168,7 @@ class manager(object):
   def n_parameters(self):
     return self.not_hd_selection.count(True)*3
 
-  def idealize(self,
+  def idealize_riding_h_positions(self,
                sites_cart = None,
                pdb_hierarchy = None,
                xray_structure = None,

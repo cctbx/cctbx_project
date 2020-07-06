@@ -28,7 +28,7 @@ def exercise(pdb_str, eps):
   model.setup_riding_h_manager()
   riding_h_manager = model.get_riding_h_manager()
 
-  riding_h_manager.idealize(xray_structure=xray_structure)
+  riding_h_manager.idealize_riding_h_positions(xray_structure=xray_structure)
 
   sites_cart = xray_structure.sites_cart()
 
@@ -57,7 +57,7 @@ def exercise(pdb_str, eps):
           sites_cart_[i_site][j]+e[j]*sign for j in range(3)]
         xray_structure_.set_sites_cart(sites_cart_)
         # after shift, recalculate H position
-        riding_h_manager.idealize(
+        riding_h_manager.idealize_riding_h_positions(
           xray_structure=xray_structure_)
         sites_cart_ = xray_structure_.sites_cart()
         ts.append(geometry_restraints.energies_sites(

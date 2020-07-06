@@ -1913,7 +1913,7 @@ class manager(object):
         flags = self.refinement_flags.sites_individual
       else:
         flags = None
-      self.riding_h_manager.idealize(
+      self.riding_h_manager.idealize_riding_h_positions(
         sites_cart=sites_cart,
         selection_bool = flags)
       self.set_sites_cart(sites_cart)
