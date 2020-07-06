@@ -7,8 +7,10 @@ from mmtbx.model import manager as model_manager
 from iotbx.data_manager import DataManager
 
 def exercise(file_name, out = sys.stdout):
+
+  # Set up source data
   if not os.path.isfile(file_name):
-    raise Sorry("Missing the file: %s" %(file_name)+"\n"+"Please run with phenix.python read_write_mrc.py my_mrcfile.mrc")
+    raise Sorry("Missing the file: %s" %(file_name)+"\n")
 
   print ("Reading from %s" %(file_name))
   from iotbx.map_manager import map_manager
@@ -64,38 +66,53 @@ def exercise(file_name, out = sys.stdout):
   f=open(file_name,'w')
   print (pdb_str_5, file = f)
   f.close()
+
+  # Generate map data from this model (it has ncs)
   mmm=map_model_manager()
   mmm.generate_map(box_cushion=0, file_name=file_name,n_residues=500)
   ncs_rm=mmm.as_r_model()
+
+  # Make sure this model has 126 sites (42 sites times 3-fold ncs)
   assert ncs_rm.model().get_sites_cart().size() == 126
   assert approx_equal (ncs_rm.model().get_sites_cart()[0],
     (23.560999999999996, 8.159, 10.660000000000002))
+
+  # Get just unique part (42 sites)
   unique_rm=ncs_rm.extract_all_maps_around_model(select_unique_by_ncs=True)
   assert unique_rm.model().get_sites_cart().size() == 42
   assert approx_equal (unique_rm.model().get_sites_cart()[0],
     (18.740916666666664, 13.1794, 16.10544))
 
+  # Make sure that the extraction did not change the original but does change
+  #   the extracted part
   assert (unique_rm.model().get_sites_cart()[0] !=
-     ncs_rm.model().get_sites_cart()[0])  # it was a deep copy
+     ncs_rm.model().get_sites_cart()[0])  # it was a deep copy so original stays
+
+  # Shift back the extracted part and make sure it matches the original now
   shifted_back_unique_model=mmm.get_model_from_other(unique_rm.deep_copy())
   assert approx_equal (shifted_back_unique_model.get_sites_cart()[0],
     (23.560999999999996, 8.158999999999997, 10.66))
 
+  # Change the extracted model
   sites_cart=unique_rm.model().get_sites_cart()
   sites_cart[0]=(1,1,1)
   unique_rm.model().get_hierarchy().atoms().set_xyz(sites_cart)
   # Note; setting xyz in hierarchy does not set xrs by itself. do that now:
   unique_rm.model().set_sites_cart_from_hierarchy(multiply_ncs=False)
 
+  # Make sure we really changed it
   assert approx_equal (unique_rm.model().get_sites_cart()[0], (1,1,1))
+
+  # Now propagate all the changes in this unique part to entire original model
+  #   using NCS
   ncs_rm.propagate_model_from_other(other = unique_rm,
     model_id = 'model',
     other_model_id = 'model')
+  # ...and check that copy 1 and copy 2 both change
   assert approx_equal (ncs_rm.model().get_sites_cart()[0],
      (5.820083333333333, -4.020400000000001, -4.445440000000001))
   assert approx_equal (ncs_rm.model().get_sites_cart()[42],
      (38.41904613024224, 17.233251085893276, 2.5547442135142524))
-
 
 
   # Make a deep_copy

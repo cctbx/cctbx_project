@@ -8,8 +8,11 @@ from mmtbx.model import manager as model_manager
 from iotbx import mrcfile
 
 def exercise(file_name, out = sys.stdout):
+
+  # Set up source data
+
   if not os.path.isfile(file_name):
-    raise Sorry("Missing the file: %s" %(file_name)+"\n"+"Please run with phenix.python read_write_mrc.py my_mrcfile.mrc")
+    raise Sorry("Missing the file: %s" %(file_name)+"\n")
 
   print ("Reading from %s" %(file_name))
   from iotbx.map_manager import map_manager
@@ -58,7 +61,7 @@ def exercise(file_name, out = sys.stdout):
 
 
   # Move map and a model to place origin at (0, 0, 0)
-  # If you don't care about original model and map, skip the deep_copy() below
+  # map data is new copy but model is shifted in place.
 
   from iotbx.map_model_manager import map_model_manager
   mam = map_model_manager(
@@ -81,6 +84,11 @@ def exercise(file_name, out = sys.stdout):
   print ("Shifted model:\n", shifted_model.model_as_pdb())
 
 
+  # Save the map_model manager
+  mam_dc=mam.deep_copy()
+
+  # Mask map around atoms
+  mam=mam_dc.deep_copy()
   mam.mask_all_maps_around_atoms(mask_atoms_atom_radius = 3,
      set_outside_to_mean_inside=True, soft_mask=False)
   print ("Mean before masking", mam.map_data().as_1d().min_max_mean().mean)
@@ -90,14 +98,18 @@ def exercise(file_name, out = sys.stdout):
   assert approx_equal(mam.map_data().as_1d().min_max_mean().max,
       -0.0585683621466)
 
+  # Mask map around atoms, with soft mask
+  mam=mam_dc.deep_copy()
   mam.mask_all_maps_around_atoms(mask_atoms_atom_radius = 3, soft_mask = True,
     soft_mask_radius = 5, set_outside_to_mean_inside=True)
   print ("Mean after first masking", mam.map_data().as_1d().min_max_mean().mean)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().mean,
-      -0.0585683621466)
+      0.0114157497816)
   print ("Max after first masking", mam.map_data().as_1d().min_max_mean().max)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().max,
-      -0.0585683621466)
+       0.236853733659)
+
+  # Mask map around atoms again
   mam.mask_all_maps_around_atoms(mask_atoms_atom_radius = 3,
      set_outside_to_mean_inside = True, soft_mask=False)
   print ("Mean after second masking", mam.map_data().as_1d().min_max_mean().mean)
@@ -106,13 +118,16 @@ def exercise(file_name, out = sys.stdout):
   print ("Max after second masking", mam.map_data().as_1d().min_max_mean().max)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().max,
       -0.0585683621466)
+
+  # Mask around edges
+  mam=mam_dc.deep_copy()
   mam.mask_all_maps_around_edges( soft_mask_radius = 3)
   print ("Mean after masking edges", mam.map_data().as_1d().min_max_mean().mean)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().mean,
-      -0.0140564069152)
+      0.0155055604192)
   print ("Max after masking edges", mam.map_data().as_1d().min_max_mean().max)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().max,
-      -0.0)
+      0.249827131629)
 
 
   print ("\nWriting map_data and model in shifted position (origin at 0, 0, 0)")
@@ -169,6 +184,8 @@ def exercise(file_name, out = sys.stdout):
          crystal_symmetry = crystal_symmetry)
   assert new_model_from_cif.model_as_pdb() == model.model_as_pdb()
 
+  # Read the original file again in case we modified m in any previous tests
+  m = map_manager(file_name)
 
   file_name = output_file_name
   print ("Reading from %s" %(file_name))

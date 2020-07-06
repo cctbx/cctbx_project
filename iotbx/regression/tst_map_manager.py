@@ -6,39 +6,62 @@ from libtbx.test_utils import approx_equal
 
 def test_01():
 
+  # Source data (map and model)
+
   data_dir = os.path.dirname(os.path.abspath(__file__))
   data_ccp4 = os.path.join(data_dir, 'data',
                           'non_zero_origin_map.ccp4')
   data_pdb = os.path.join(data_dir, 'data',
                           'non_zero_origin_model.pdb')
 
-  mm=map_manager(data_ccp4)
 
-  dm = DataManager(['miller_array', 'real_map', 'phil'])
+  # Read in map data with data_manager
+  dm = DataManager(['real_map'])
   dm.set_overwrite(True)
+
+  # Next step uses map_manager to do the actual reading
   dm.process_real_map_file(data_ccp4)
+  mm = dm.get_real_map()
+
+  # Shift the origin of the map; starts at (100,100,100)
+  print (mm.map_data().origin())
+  assert mm.map_data().origin() == (100,100,100)
+  assert mm.origin_shift_grid_units == (0,0,0)
+  mm.shift_origin()
+  assert mm.map_data().origin() == (0,0,0)
+  assert mm.origin_shift_grid_units == (100,100,100)
+  mm.show_summary()
 
   # test writing and reading file
-  mm = dm.get_real_map()
-  mm.shift_origin()
-  mm.show_summary()
-  dm.write_real_map_file(mm, filename = 'test_map_manager.ccp4', overwrite = True)
+  dm.write_real_map_file(mm, filename = 'test_map_manager.ccp4',
+     overwrite = True)
+  dm.process_real_map_file('test_map_manager.ccp4')
+  new_mm=dm.get_real_map('test_map_manager.ccp4')
   os.remove('test_map_manager.ccp4')
+  new_mm.shift_origin()
+  # Check whether gridding and crystal_symmetry are similar for mm, new_mm
+  assert new_mm.is_similar(mm)
+  assert approx_equal(new_mm.map_data()[3125],mm.map_data()[3125])
+
 
   # test writing and reading file without shifting origin
-  dm = DataManager(['miller_array', 'real_map', 'phil'])
+  dm = DataManager(['real_map'])
   dm.set_overwrite(True)
   dm.process_real_map_file(data_ccp4)
   mm = dm.get_real_map()
   mm.show_summary()
-  dm.write_real_map_file(mm, filename = 'test_map_manager.ccp4', overwrite = True)
-
+  dm.write_real_map_file(mm, filename = 'test_map_manager.ccp4',
+     overwrite = True)
   new_mm = map_manager('test_map_manager.ccp4')
   assert (new_mm.is_similar(mm))
   new_mm.shift_origin()
   assert (not new_mm.is_similar(mm))
 
   # get map_data
+  dm = DataManager(['real_map'])
+  dm.set_overwrite(True)
+  dm.process_real_map_file(data_ccp4)
+  mm = dm.get_real_map()
   mm.shift_origin()
   map_data = mm.map_data()
   assert approx_equal(map_data[15, 10, 19], 0.38, eps = 0.01)
@@ -49,7 +72,8 @@ def test_01():
 
   # and full cell symmetry
   full_cs = mm.unit_cell_crystal_symmetry()
-  assert approx_equal(full_cs.unit_cell().parameters()[0] , 149.4066, eps = 0.01)
+  assert approx_equal(full_cs.unit_cell().parameters()[0] ,
+       149.4066, eps = 0.01)
 
   # write map directly:
   mm.write_map('test_direct.ccp4')
@@ -60,13 +84,16 @@ def test_01():
 
   new_mm.shift_origin()
   assert mm.is_similar(new_mm)
+  assert approx_equal(new_mm.map_data()[3125],mm.map_data()[3125])
 
   # deep_copy
   new_mm = mm.deep_copy()
   assert new_mm.is_similar(mm)
+  assert approx_equal(new_mm.map_data()[3125],mm.map_data()[3125])
 
   # deep_copy a map without shifting origin
-  dm = DataManager(['miller_array', 'real_map', 'phil'])
+  # Make a DataManager that can write a map coeffs file too
+  dm = DataManager(['miller_array', 'real_map'])
   dm.set_overwrite(True)
   dm.process_real_map_file(data_ccp4)
   omm = dm.get_real_map()
@@ -93,7 +120,8 @@ def test_01():
   mm_read.shift_origin()
   mm.show_summary()
   mm_read.show_summary()
-  mm_read.set_original_origin_and_gridding((10, 10, 10), gridding = (100, 100, 100))
+  mm_read.set_original_origin_and_gridding((10, 10, 10),
+       gridding = (100, 100, 100))
   mm_read.show_summary()
   assert (not mm_read.is_similar(mm))
   assert (mm_read.origin_is_zero())
@@ -119,7 +147,8 @@ def test_01():
   mm_read = map_manager(data_ccp4)
   mm_read.shift_origin()
   assert mm_read.is_similar(mm)
-  assert approx_equal(mm_read.pixel_sizes(), (0.7470, 0.7231, 0.7374) , eps = 0.001)
+  assert approx_equal(mm_read.pixel_sizes(),
+        (0.7470, 0.7231, 0.7374) , eps = 0.001)
   from cctbx import crystal
   new_uc_params = list(
     mm_read.unit_cell_crystal_symmetry().unit_cell().parameters())
@@ -130,7 +159,8 @@ def test_01():
       mm.crystal_symmetry())
   assert not mm_read.is_similar(mm)
   mm_read.show_summary()
-  assert approx_equal(mm_read.pixel_sizes(), (0.7970, 0.7231, 0.7374) , eps = 0.001)
+  assert approx_equal(mm_read.pixel_sizes(),
+       (0.7970, 0.7231, 0.7374) , eps = 0.001)
 
   # Read a map directly
   mm_read = map_manager(data_ccp4)
@@ -195,7 +225,8 @@ def test_01():
 
   array_labels = dm.get_miller_array_labels("map_coeffs.mtz")
   labels = array_labels[0]
-  dm.get_reflection_file_server(filenames = ["map_coeffs.mtz"], labels = [labels])
+  dm.get_reflection_file_server(filenames = ["map_coeffs.mtz"],
+       labels = [labels])
   miller_arrays = dm.get_miller_arrays()
   new_map_coeffs = miller_arrays[0]
   map_data_from_map_coeffs = mm.fourier_coefficients_as_map(
@@ -204,17 +235,18 @@ def test_01():
   mm_from_map_coeffs = mm.customized_copy(map_data = map_data_from_map_coeffs)
   assert mm_from_map_coeffs.is_similar(mm)
 
-  # Find map symmetry in this map
+  # Find map symmetry in a map
   data_d7 = os.path.join(data_dir, 'data',
                           'D7.ccp4')
-  dm = DataManager(['miller_array', 'real_map', 'phil', 'model'])
+  dm = DataManager(['real_map',  'model'])
   dm.process_real_map_file(data_d7)
   dm.process_model_file(data_pdb)
   mm = dm.get_real_map(data_d7)
   model = dm.get_model(data_pdb)
   mm.shift_origin()
   mm.set_original_origin_and_gridding(original_origin=(0,0,0))
-  # Box it so it is not so easy
+
+  # Box it so it is not so easy to find symmetry
   from cctbx.maptbx.box import with_bounds
   box=with_bounds(mm,lower_bounds=(2,2,2),
    upper_bounds=(43,43,43))

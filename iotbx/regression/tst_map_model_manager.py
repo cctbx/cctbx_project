@@ -7,6 +7,8 @@ from libtbx.test_utils import approx_equal
 
 def test_01():
 
+  # Source data
+
   data_dir = os.path.dirname(os.path.abspath(__file__))
   data_ccp4 = os.path.join(data_dir, 'data',
                           'non_zero_origin_map.ccp4')
@@ -15,10 +17,12 @@ def test_01():
   data_ncs_spec = os.path.join(data_dir, 'data',
                           'non_zero_origin_ncs_spec.ncs_spec')
 
+  # DataManager
+
   dm = DataManager(['ncs_spec','model', 'real_map', 'phil'])
   dm.set_overwrite(True)
 
-  # Read in map and model
+  # Read in map and model and ncs
 
   map_file=data_ccp4
   dm.process_real_map_file(map_file)
@@ -37,6 +41,9 @@ def test_01():
   mmmn.add_model(model)
   mmmn.add_ncs_object(ncs)
 
+  # Save it
+  mmmn_dc=mmmn.deep_copy()
+
   original_ncs=mmmn.ncs_object()
   assert approx_equal((24.0528, 11.5833, 20.0004),
      tuple(original_ncs.ncs_groups()[0].translations_orth()[-1]),
@@ -45,6 +52,7 @@ def test_01():
   assert tuple(mmmn._map_manager.origin_shift_grid_units) == (0,0,0)
 
   # Shift origin to (0,0,0)
+  mmmn=mmmn_dc.deep_copy()  # fresh version of match_map_model_ncs
   mmmn.shift_origin()
   new_ncs=mmmn.ncs_object()
   assert tuple(mmmn._map_manager.origin_shift_grid_units) == (100,100,100)
@@ -59,6 +67,7 @@ def test_01():
 
   # Shift a model and shift it back
 
+  mmmn=mmmn_dc.deep_copy()  # fresh version of match_map_model_ncs
   model=mmmn.model()
   shifted_model=mmmn.shift_model_to_match_working_map(model=model)
   model_in_original_position=mmmn.shift_model_to_match_original_map(
@@ -79,6 +88,8 @@ def test_01():
   assert approx_equal(
      model.get_sites_cart()[0], (14.476, 10.57, 8.34) ,eps=0.01)
   assert approx_equal(mm.map_data()[10,10,10],-0.0195,eps=0.001)
+  # Save it
+  mmm_dc=mmm.deep_copy()
 
   # Check on wrapping
   assert not mm.wrapping()  # this one should not wrap because it is zero at edges
@@ -100,7 +111,8 @@ def test_01():
   assert not new_mm.is_consistent_with_wrapping()
 
   # now box it with selection
-  new_mmm_1=map_model_manager(model=mmm.model().deep_copy(),map_manager=mm.deep_copy())
+  new_mmm_1=map_model_manager(
+      model=mmm.model().deep_copy(),map_manager=mm.deep_copy())
   new_mmm_1.box_all_maps_around_model_and_shift_origin(
       selection_string="resseq 221:221")
   new_mm_1=new_mmm_1.map_manager()
