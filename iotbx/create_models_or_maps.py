@@ -580,3 +580,32 @@ def scale_map_coeffs(
       map_coeffs       = new_map_coeffs,
       crystal_symmetry = new_map_coeffs.crystal_symmetry(),
       n_real           = n_real)
+
+def get_map_from_map_coeffs(map_coeffs = None, crystal_symmetry = None,
+     n_real = None, apply_sigma_scaling = True):
+    from cctbx import maptbx
+    from cctbx.maptbx import crystal_gridding
+    if not crystal_symmetry:
+      crystal_symmetry = map_coeffs.crystal_symmetry()
+    if map_coeffs.crystal_symmetry().space_group_info()!=  \
+       crystal_symmetry.space_group_info():
+      assert str(map_coeffs.crystal_symmetry().space_group_info()
+          ).replace(" ", "").lower() == 'p1'
+      # use map_coeffs.crystal_symmetry
+      crystal_symmetry = map_coeffs.crystal_symmetry()
+    if n_real:
+      cg = crystal_gridding(
+        unit_cell = crystal_symmetry.unit_cell(),
+        space_group_info = crystal_symmetry.space_group_info(),
+        pre_determined_n_real = n_real)
+    else:
+      cg = None
+    fft_map = map_coeffs.fft_map( resolution_factor = 0.25,
+       crystal_gridding = cg,
+       symmetry_flags = maptbx.use_space_group_symmetry)
+    if apply_sigma_scaling:
+      fft_map.apply_sigma_scaling()
+    else:
+      fft_map.apply_volume_scaling()
+    map_data = fft_map.real_map_unpadded()
+    return map_data
