@@ -177,7 +177,7 @@ master_params_str = """\
   superpose_ideal_ligand = *None all %(ideal_ligands_str)s
     .type = choice(multi=True)
     .short_caption = Substitute correctly oriented SF4 metal cluster
-  flip_symmetric_amino_acids = all %(symmetric_amino_acids_str)s *None
+  flip_symmetric_amino_acids = *all %(symmetric_amino_acids_str)s None
     .type = choice(multi=True)
     .short_caption = Flip symmetric amino acids to conform to IUPAC convention
     .style = noauto
