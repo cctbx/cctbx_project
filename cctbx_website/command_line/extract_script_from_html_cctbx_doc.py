@@ -1,0 +1,82 @@
+from __future__ import division, print_function
+from html.parser import HTMLParser
+import os
+
+# ------------------------------------------------------------------------------
+
+class MyHTMLParser(HTMLParser):
+  '''
+  This is a customized class to extract code from an html file
+
+  Anything that is between <pre></pre> tags will be considered code.
+  So only code in the html file that is to be executed in the script
+  should be between these tags
+  '''
+
+  def __init__(self):
+    HTMLParser.__init__(self)
+    self.is_code = False
+    #self.code_str = list()
+    self.code_str = ''
+
+  def handle_starttag(self, tag, attrs):
+    #print("Encountered a start tag:", tag)
+    if tag == 'pre':
+      self.is_code = True
+
+  def handle_endtag(self, tag):
+    #print("Encountered an end tag :", tag)
+    if tag == 'pre':
+      self.is_code = False
+
+  def handle_data(self, data):
+    #print("Encountered some data  :", data)
+    if self.is_code == True:
+      self.code_str = self.code_str + data
+      #self.code_str.extend(data.strip().splitlines())
+
+  def return_result(self):
+    return self.code_str
+
+# ------------------------------------------------------------------------------
+
+def run():
+  '''
+  Walk through directory cctbx_project/cctbx_website/
+
+  Extract code snippets from all .html files in the directory and store them
+  in a script with the same basename
+
+  For example:
+  template.html --> template.py
+
+  The file template.py will be tested as part of cctbx tests.
+  '''
+  # this is one directory up: /cctbx_project/cctbx_website/
+  directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+  for filename in os.listdir(directory):
+    # look at all .html files
+    if filename.endswith(".html"):
+      fn = os.path.join(directory, filename)
+      with open(fn, 'r') as html_file:
+        # get code in html file
+        data = html_file.read()
+        parser = MyHTMLParser()
+        parser.feed(data)
+        code_str = parser.return_result()
+        # get filename
+        base = os.path.splitext(filename)[0]
+        # save code in script and put it in folder cctbx_website/examples/
+        dest_dir = os.path.join(directory, 'examples')
+        if (not os.path.isdir(dest_dir)):
+          os.makedirs(dest_dir)
+        script_filename = os.path.join(dest_dir, base+'.py')
+        with open(script_filename, 'w') as file:
+          file.write(code_str.strip())
+    else:
+      continue
+
+
+if __name__ == '__main__':
+  run()
