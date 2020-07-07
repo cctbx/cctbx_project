@@ -349,18 +349,15 @@ density_props<double> atom_density_props(
 
 density_props<double> build_density_props_obj(
   vec3<double> const&              p,
-  af::shared<vec3<double> > const& a_xyz,
-  af::shared<int> const&           element_flags,
+  af::const_ref<vec3<double> > const& a_xyz,
+  af::const_ref<int> const&           element_flags,
   boost::python::list const& wfc_obj)
 {
   density_props<double> density_props_obj = density_props<double>();
   for(std::size_t i=0; i < a_xyz.size(); i++) {
-    vec3<double> d_vector = a_xyz[i] - p;
-    double dx = d_vector[0];
-    double dy = d_vector[1];
-    double dz = d_vector[2];
-    double d = std::sqrt(dx*dx + dy*dy + dz*dz); // norm
-    if(d<10) {
+    vec3<double> diff = a_xyz[i] - p;
+    double dist_sq = diff[0]*diff[0] + diff[1]*diff[1] + diff[2]*diff[2];
+    if(dist_sq<100) {
       wfc tmp = boost::python::extract<wfc>(wfc_obj[element_flags[i]])();
       density_props_obj.add(atom_density_props(p, a_xyz[i], tmp));
     }
@@ -404,11 +401,13 @@ af::shared<vec3<int> > points_and_pairs(
 
   af::shared<vec3<int> > interacting_pairs;
   for(std::size_t ix=0; ix < ngrid[0]; ix++) {
+    double stx = xyz_min[0]+ix*step_size;
     for(std::size_t iy=0; iy < ngrid[1]; iy++) {
+      double sty = xyz_min[1]+iy*step_size;
       for(std::size_t iz=0; iz < ngrid[2]; iz++) {
         vec3<double> point = vec3<double>(
-          xyz_min[0]+ix*step_size,
-          xyz_min[1]+iy*step_size,
+          stx,
+          sty,
           xyz_min[2]+iz*step_size);
         int first  = 999999;
         int second = 999999;
@@ -417,7 +416,7 @@ af::shared<vec3<int> > points_and_pairs(
         for(std::size_t j=0; j < xyz.size(); j++) {
           vec3<double> diff = xyz[j] - point;
           double dist_sq = diff[0]*diff[0] + diff[1]*diff[1] + diff[2]*diff[2];
-          if(dist_sq >= 200) continue;
+          if(dist_sq >= 100) continue;
           if(dist_sq < first) {
             second = first;
             first = dist_sq;
@@ -443,15 +442,12 @@ af::shared<vec3<int> > points_and_pairs(
         if(pairs(pair[0], pair[1]) == true) continue;
 
         density_props<double> density_props_obj = build_density_props_obj(
-          point, xyz, element_flags, wfc_obj);
+          point, xyz.const_ref(), element_flags.const_ref(), wfc_obj);
         bool has_interaction = density_props_obj.has_silva_interaction(silva_type);
 
         if(has_interaction) {
           pairs(pair[0], pair[1])=true;
           interacting_pairs.push_back(pair);
-          //double dori = density_props_obj.get_dori_value();
-          //std::printf("pair: %2d %2d point: %f %f %f dori: %f\n",
-          //  pair[0],pair[1], point[0],point[1],point[2], dori);
         }
   }}}
   return interacting_pairs;
