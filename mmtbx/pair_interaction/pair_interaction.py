@@ -114,10 +114,11 @@ def run(ph, core=None):
     for atom in set(core_atoms+non_core_atoms_filtered):
       selection[atom_list.index(atom)-1]=True
     sub_ph=ph.select(selection)
+    atom_in_residue_selected = list(flex.int(atom_in_residue).select(selection))
     del atom_list
     #
-    interactions=get_interactions(sub_ph,atom_in_residue,silva_type='sedd',core=core)
-    print("interactions(sedd)(cpp)", interactions)
+    interactions=get_interactions(sub_ph,atom_in_residue_selected,silva_type='sedd',core=core)
+    #print("interactions(sedd)(cpp)", interactions)
     new_core=[]
     #print("1. interactions got: ",len(interactions))
     for pair in interactions:
@@ -125,8 +126,8 @@ def run(ph, core=None):
         new_core+=pair
     new_core=list(set(new_core)|set(core))
     #print("new core:",new_core)
-    interactions=get_interactions(sub_ph, atom_in_residue, silva_type='dori', core=new_core)
-    print("interactions (cpp):", interactions)
+    interactions=get_interactions(sub_ph, atom_in_residue_selected, silva_type='dori', core=new_core)
+    #print("interactions(dori) (cpp):", interactions)
     #print("2. interactions got: ",len(interactions))
     interaction_mols=new_core
 
@@ -149,7 +150,7 @@ def run(ph, core=None):
           return(core_atoms,interaction_atoms,interaction_mols)
     else: # Rationalized version of the above
       for item in interactions:
-        if(len(set(item).intersection(set(new_core)))>0):
+        if(len(set(item).intersection(set(core)))>0):
           interaction_mols=interaction_mols+list(item)
       interaction_atoms=[]
       for i in range(len(core_atoms)):
@@ -187,10 +188,10 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
   xyz_max=xyz.max()
   xyz_step = [
     int(math.floor((xyz_max[i]-xyz_min[i])/step_size)+1) for i in range(3)]
-  print("xyz_min,xyz_max",xyz_min,xyz_max)
-  print("step_size", step_size)
-  print("xyz_step", xyz_step)
-  print("points to process:",xyz_step[0]*xyz_step[1]*xyz_step[2])
+  #print("xyz_min,xyz_max",xyz_min,xyz_max)
+  #print("step_size", step_size)
+  #print("xyz_step", xyz_step)
+  #print("points to process:",xyz_step[0]*xyz_step[1]*xyz_step[2])
   interacting_pairs = ext.points_and_pairs(
     ngrid           = xyz_step,
     step_size       = step_size,
@@ -200,7 +201,7 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
     element_flags   = element_flags,
     wfc_obj         = wave_functions,
     silva_type      = silva_type)
-  print("interacting_pairs", list(set(list((interacting_pairs)))) )
+  #print("interacting_pairs", list(set(list((interacting_pairs)))) )
   tmp = []
   for it in interacting_pairs:
     pair = [int(it[0]),int(it[1])]
