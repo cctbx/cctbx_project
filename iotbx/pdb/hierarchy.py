@@ -1468,9 +1468,12 @@ class _():
   def flip_symmetric_amino_acids(self, flip_symmetric_amino_acids=True):
     import time
     from cctbx import geometry_restraints
+    print('flip_symmetric_amino_acids',flip_symmetric_amino_acids)
     if flip_symmetric_amino_acids is None: return
     if flip_symmetric_amino_acids is True: flip_symmetric_amino_acids=['all']
     if 'None' in flip_symmetric_amino_acids: return
+    print('flip_symmetric_amino_acids',flip_symmetric_amino_acids)
+    assert flip_symmetric_amino_acids
     data = {
       "ARG" : {"dihedral" : ["CD", "NE", "CZ", "NH1"],
                "value"    : [0, 1],
