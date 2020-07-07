@@ -201,17 +201,35 @@ END
 
   # test reading/writing PDB
   test_filename = 'test_model.pdb'
+  test_output_filename = 'test_model_output.pdb'
   test_eff = 'model.eff'
   dm = DataManager(['model'])
   dm.process_model_str(test_filename, model_str)
-  dm.write_model_file(model_str, filename=test_filename, overwrite=True)
-  assert(test_filename in dm.get_model_names())
-  m = dm.get_model(test_filename)
+  dm.write_model_file(model_str, filename=test_output_filename, overwrite=True)
+  m = dm.get_model(test_output_filename)
+  assert(test_output_filename in dm.get_model_names())
   dm.write_model_file(m, overwrite=True)
   pdb_filename = 'cctbx_program.pdb'
   assert(os.path.exists(pdb_filename))
   dm.process_model_file(pdb_filename)
   assert(not dm.get_model(pdb_filename).input_model_format_cif())
+  dm.write_model_file(m, test_filename, overwrite=True)
+
+  # test reading PDB writing CIF
+  test_filename = 'test_model.pdb'
+  test_output_filename = 'test_model.cif'
+  dm = DataManager(['model'])
+  dm.process_model_str(test_filename, model_str)
+  m = dm.get_model(test_filename)
+  dm.write_model_file(m, filename=test_output_filename, format='cif',
+      overwrite=True)
+  m = dm.get_model(test_output_filename)
+  assert(test_output_filename in dm.get_model_names())
+  dm.write_model_file(m, overwrite=True)
+  cif_filename = 'cctbx_program.cif'
+  assert(os.path.exists(cif_filename))
+  dm.process_model_file(cif_filename)
+  assert(dm.get_model(cif_filename).input_model_format_cif())
 
   # test type
   assert(dm.get_model_type() == 'x_ray')

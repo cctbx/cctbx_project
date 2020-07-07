@@ -1484,6 +1484,9 @@ class map_manager(map_reader, write_ccp4_map):
     from cctbx.maptbx.segment_and_split_map import \
        run_get_ncs_from_map, get_params
 
+    if symmetry is None:
+      symmetry = 'ALL'
+
     if symmetry_center is None:
       # Most likely map center is (1/2,1/2,1/2) in full grid
       full_unit_cell=self.unit_cell_crystal_symmetry(
@@ -1505,7 +1508,7 @@ class map_manager(map_reader, write_ccp4_map):
     new_ncs_obj, ncs_cc, ncs_score = run_get_ncs_from_map(params = params,
       map_data = self.map_data(),
       crystal_symmetry = self.crystal_symmetry(),
-      out = sys.stdout, #self.log,
+      out = self.log,
       )
     if new_ncs_obj:
       self._ncs_object = new_ncs_obj

@@ -1989,7 +1989,7 @@ class map_model_manager(map_model_base):
       output_map_coeffs_file_name = None,
       scattering_table = 'electron',
       file_name = None,
-      n_residues = 10,
+      n_residues = None,
       start_res = None,
       b_iso = 30,
       box_cushion = 5,

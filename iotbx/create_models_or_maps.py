@@ -13,7 +13,7 @@ from scitbx.array_family import flex
 
 def generate_model(
       file_name=None,
-      n_residues=10,
+      n_residues=None,
       start_res=None,
       b_iso=30,
       box_cushion=5,
@@ -58,7 +58,8 @@ def generate_model(
   # Get the parameters
 
   space_group_number=int(space_group_number)
-  n_residues=int(n_residues)
+  if n_residues is not None:
+    n_residues=int(n_residues)
   box_cushion=float(box_cushion)
   if start_res:
     start_res=int(start_res)
@@ -74,6 +75,8 @@ def generate_model(
   # Choose file with coordinates
 
   if not file_name:
+    if not n_residues:
+      n_residues = 10 # default
     import libtbx.load_env
     iotbx_regression = os.path.join(libtbx.env.find_in_repositories("iotbx"),
       'regression')
@@ -92,12 +95,18 @@ def generate_model(
   else: # have file_name
     if start_res is None:
       start_res=1
+    if not n_residues:
+      n_residues = 100000 #  a big number
 
   # Read in coordinates and cut out the part of the model we want
 
+  from iotbx.data_manager import DataManager
   from mmtbx.model import manager as model_manager
-  import iotbx.pdb
-  model=model_manager(iotbx.pdb.input(file_name=file_name))
+
+  dm = DataManager(['model'])
+  dm.process_model_file(file_name)
+  model = dm.get_model(file_name)
+
   selection=model.selection('resseq %s:%s' %(start_res,start_res+n_residues-1))
   model=model.select(selection)
 
