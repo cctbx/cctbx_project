@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 from lxml import etree, objectify
 import logging
+import numpy as np
 
 LOGGING_FORMAT = "%(levelname)s: %(message)s"
 logging.basicConfig(level=logging.INFO, format=LOGGING_FORMAT)
@@ -122,8 +123,13 @@ class Agipd2nexus:
     def create_group(self, h5file: h5py.File, lx_elem: objectify.ObjectifiedElement, lx_parent: str) -> None:
         """
         Create a new h5.Group attached to the `parent_elem`
+
+        The group name might be provided in the `group_rules`, otherwise it is created on the fly
+        either by reducing `NXblah` to `blah` or from the `name` attribute
+
+        Group rules might contain additional actions like creation specific content
         """
-        NXname = lx_elem.attrib['type']
+        NXname = lx_elem.attrib['type']     # TODO: the name might be contained in the `name` attribute
         if NXname.startswith('NX'):
             name = NXname.replace('NX', '')
         else:
@@ -134,10 +140,14 @@ class Agipd2nexus:
         full_path = '/'.join([root_path, name])
         parent = h5file[root_path]
         if full_path in self.group_rules:
-            new_group = parent.create_group(self.group_rules[full_path])
+            for n in self.group_rules[full_path]['names']:
+                new_group = parent.create_group(n)
+                new_group.attrs['NX_class'] = NXname
+                logger.info(f"group {n} was created")
         else:
             new_group = parent.create_group(name)
-        new_group.attrs['NX_class'] = NXname
+            new_group.attrs['NX_class'] = NXname
+            logger.info(f"group {name} was created")
 
     def create_field(self, h5file: h5py.File, lx_elem: objectify.ObjectifiedElement, lx_parent: str) -> None:
         NXname = lx_elem.attrib['name']
@@ -147,7 +157,14 @@ class Agipd2nexus:
         # parent = h5file[path]
         logger.debug(f"FIELD: {lx_parent} --> {NXname}")
         if full_path in self.field_rules:
-            h5file[full_path] = self.field_rules[full_path]
+            if isinstance(self.field_rules[full_path], dict):
+                vector = self.field_rules[full_path]
+                h5file[full_path] = np.array(vector.pop('value'), dtype='f')
+                for key, attribute in vector.items():
+                    h5file[full_path].attrs[key] = attribute
+            else:
+                h5file[full_path] = self.field_rules[full_path]
+            logger.info(f"field {full_path} was added")
         else:
             h5file[full_path] = 'XXX'
 
@@ -194,14 +211,29 @@ class Ruleset(Agipd2nexus):
         self.n_asics = 8
 
         self.field_rules = {
-            'entry/definition': f"NXmx:{get_git_revision_hash()}",      # TODO: _create_scalar
-            'entry/start_time': str(self.params.nexus_details.start_time),
-            'entry/end_time': str(self.params.nexus_details.start_time),
-            'entry/end_time_estimated': str(self.params.nexus_details.start_time),
+            'entry/definition': np.str(f"NXmx:{get_git_revision_hash()}"),      # TODO: _create_scalar?
+            'entry/start_time': np.str(self.params.nexus_details.start_time),
+            'entry/end_time': np.str(self.params.nexus_details.start_time),
+            'entry/end_time_estimated': np.str(self.params.nexus_details.start_time),
+            'entry/data/data': h5py.ExternalLink(self.params.cxi_file, "entry_1/data_1/data"),
+            'entry/instrument/detector_group/group_index': np.array(list(range(1, 3)), dtype='i'),
+            'entry/instrument/detector_group/group_names': np.array([np.string_('AGIPD'), np.string_('ELE_D0')],
+                                                                    dtype='S12'),
+            'entry/instrument/detector_group/group_parent': np.array([-1, 1], dtype='i'),
+            'entry/instrument/detector_group/trtansformations/AXIS_D0':
+                {'value': 0.0, 'depends_on': 'AXIS_RAIL', 'equipment': 'detector',
+                 'equipment_component': 'detector_arm',
+                 'transformation_type': 'rotation', 'units': 'degrees', 'vector': (0., 0., -1.),
+                 'offset': self.hierarchy.local_origin, 'offset_units': 'mm'},
+            #
+            # self.create_vector(transformations, 'AXIS_D0', 0.0, depends_on='AXIS_RAIL', equipment='detector',
+            #                    equipment_component='detector_arm', transformation_type='rotation', units='degrees',
+            #                    vector=(0., 0., -1.), offset=self.hierarchy.local_origin, offset_units='mm')
+
         }
         self.group_rules = {
-            'NXdetector': ['ELE_D0'],
-            'NXdetector_group': ['AGIPD'],
+            'NXdetector': {'names': ['ELE_D0']},
+            'NXdetector_group': {'names': ['AGIPD']},
 
         }
 
