@@ -70,7 +70,9 @@ mmm.write_model("model.pdb")     # write out a model in PDB format
 
 <p>Now we have a model and a map that we can work with, written out as files to model.pdb and map.mrc so we can read them in at any time. If you have a visualization tool like Coot or ChimeraX, you can look at the map and model and see that the map looks like an outline of the model.</p>
 
-<p>The map_model_manager can take a model fragment from cctbx examples and calculate a map for it. Here, we have the example model and map obtained using default options for the generate_map method. The model represents a small helical fragment.</p>
+<p>The map_model_manager can take a model fragment from cctbx examples and calculate a map for it. The image below shows the example model and map obtained using default options for the <code>generate_map()</code> method. The model represents a small helical fragment.</p>
+
+<img src="{% static 'img/doc_high_level_objects.png' %}" alt="map_and_model" >
 
 <p>Tip:
 Change the values for high_resolution or b_iso and have a look how the calculated map changes.
