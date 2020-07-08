@@ -11,6 +11,57 @@ from scitbx.array_family import flex
 
 '''
 
+def get_map_manager(map_data,unit_cell_dimensions=None,crystal_symmetry=None):
+  '''
+      Get a minimal map_manager in SG p1 from any map_data and
+      if unit_cell_dimensions.  Assume cell angles are 90,90,90
+      Shift origin to (0,0,0)
+  '''
+  assert unit_cell_dimensions or crystal_symmetry
+
+  from iotbx.map_manager import map_manager
+  map_data.shift_origin()
+
+  if not crystal_symmetry:
+    from cctbx import crystal
+    crystal_symmetry=crystal.symmetry(
+        tuple(list(unit_cell_dimensions[:3])+[90,90,90]), 1)
+  mm=map_manager(map_data=map_data,
+    unit_cell_grid = map_data.all(),
+    unit_cell_crystal_symmetry = crystal_symmetry,
+    origin_shift_grid_units = (0,0,0))
+  return mm
+
+def read_map_and_model(file_name_1,file_name_2):
+  '''
+    Identify which file is map and which is model, read in and
+    create map_model_manager
+  '''
+
+  map_file_name = None
+  model_file_name = None
+  for f in [file_name_1,file_name_2]:
+    for ending in ['.ccp4','.mrc','.map']:
+      if f.endswith(ending):
+        map_file_name = f
+    for ending in ['.pdb','.cif']:
+      if f.endswith(ending):
+        model_file_name = f
+  if not map_file_name or not model_file_name:
+    raise Sorry("Unable to identify map and model from %s and %s" %(
+     file_name_1, file_name_2))
+
+  from iotbx.data_manager import DataManager
+  from iotbx.map_model_manager import  map_model_manager
+  dm = DataManager()
+  dm.process_real_map_file(map_file_name)
+  mm = dm.get_real_map(map_file_name)
+
+  dm.process_model_file(model_file_name)
+  model = dm.get_model(model_file_name)
+  mam = map_model_manager(model=model,map_manager=mm)
+  return mam
+
 def generate_model(
       file_name=None,
       n_residues=None,
