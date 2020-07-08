@@ -34,9 +34,9 @@ Number of blocks: 1
 """ % cbf)
   print("OK")
 
-# unstable test
+# unstable test though should now be stable
 tst_list_expected_unstable = [
-  "$D/excercise_compression.py"
+  "$D/exercise_compression.py"
   ]
 
 tst_list = [
