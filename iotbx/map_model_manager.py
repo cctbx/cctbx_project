@@ -1280,6 +1280,26 @@ class map_model_base(object):
 
   # General methods
 
+  def set_original_origin_grid_units(self, original_origin_grid_units = None):
+    '''
+     Reset (redefine) the original origin of the maps and models (apply an
+      origin shift in effect).
+
+     Procedure is: calculate shift_cart and set origin_shift_grid_units and
+       shift_cart everywhere
+
+    '''
+    assert self.map_manager() is not None
+
+    shift_cart=self.map_manager().grid_units_to_cart(
+      [-i for i in original_origin_grid_units])
+    for model in self.models():
+      model.set_shift_cart(shift_cart)
+    for map_manager in self.map_managers():
+      map_manager.set_original_origin_and_gridding(
+      original_origin=original_origin_grid_units)
+
+
   def _generate_new_map_id(self):
     '''
      Create a unique map_id
