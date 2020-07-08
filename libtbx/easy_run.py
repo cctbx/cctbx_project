@@ -1,7 +1,4 @@
 from __future__ import absolute_import, division, print_function
-# avoid DeprecationWarning of imp warning as per conda_base\lib\site-packages\past\translation\__init__.py
-from past.translation import remove_hooks
-remove_hooks()
 
 import os
 import subprocess
