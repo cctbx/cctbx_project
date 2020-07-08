@@ -1,0 +1,153 @@
+{% extends "tutorials_cctbx/header_new.html" %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="container">
+
+<div class="row">
+
+<!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
+<div class="col-sm-9">
+
+<!-- EDIT START -->
+
+<!-- Do not indent! Otherwise, the code will have indentation, and break.-->
+<h2><center>Reading and writing files:  the cctbx DataManager</center></h2>
+
+<h3 class="mt-5">Introduction</h3>
+
+<p>When you write a script that performs some actions on data or a model, you have to start with reading the file. Once the action is done, you probably want to write the files. To do this conveniently, you can use the cctbx DataManager. The DataManager lets you read and write files describing atomic models, restraints, reflection data files, symmetry files, sequence files, and MRC/CCP4 format map files. In this section we will see how to read in and write information from some of these file types.</p>
+
+<p>Let’s set up and initialize a DataManager so that it can read and write files for us:</p>
+
+<pre class="codeDL"><code>from iotbx.data_manager import DataManager    # Load in the DataManager
+dm = DataManager()                            # Initialize the DataManager and call it dm
+dm.set_overwrite(True)       # tell the DataManager to overwrite files with the same name
+</code></pre>
+
+<p>The DataManager always knows how to read and write model and map files. If you want it to work with additional file types you need to tell it about them when you initialize it. That would be done like this (you can specify whichever file types you want to work with):</p>
+
+<pre class="codeDL"><code>dm_many_functions = DataManager(datatypes = ["model", "real_map",
+  "phil", "ncs_spec", "miller_array", "map_coefficients", "sequence", "restraint"])   # DataManager data types
+</code></pre>
+
+<p>The datatypes are:</p>
+<ul>
+  <li>model: a file containing coordinates and other features of a model</li>
+  <li>real_map: a density map on a grid</li>
+  <li>phil: a file containing parameters</li>
+  <li>ncs_spec: a file with map or model symmetry information</li>
+  <li>miller_array: a file with any number of arrays of Fourier data</li>
+  <li>map_coefficients: a file with one array of Fourier coefficients representing a map</li>
+  <li>sequence: a file with sequence information </li>
+  <li>restraint: a file with geometric restraints to be applied to a model</li>
+</ul>
+
+<h3 class="mt-5">Reading and writing model information</h3>
+
+<p>The DataManager <code>dm</code> knows how to read and write model files. A model file contains 3-D coordinates of atoms in a model as well as other information such as the fractional “occupancy” and “atomic displacement parameters” or B-factors for each atom.  It also contains information on the space group and unit cell dimensions (the box that the model is placed in).</p>
+
+<p>The format for model files is typically either “PDB” (extension .pdb) or “mmCIF” (extension .cif).  Both can be read and written by the DataManager. The DataManager first sets things up with the method <code>process_model_file</code> and then it creates useful objects like a model object with methods like <code>get_model</code>. Let’s read in a model from a file called “model.pdb”:</p>
+
+<pre class="codeDL"><code>model_filename="model.pdb"                         #   Name of model file
+dm.process_model_file(model_filename)              #   Read in data from model file
+model = dm.get_model(model_filename)               #   Deliver model object with model info
+</code></pre>
+
+<p>Here we defined the name of the file we want to read from (model_filename), read in the information with the DataManager dm, and created a new model object called model containing information about this model. If we had restraint information about this model that we wanted to load in, we would load that restraint information from a restraints file with the <code>process_restraint_file()</code> method before creating the model object with get_model().</p>
+
+<p>We will see in detail later how to use models, change them, and make new models. For now, let’s see how to write our model out as a new file. We can use the DataManager to do this:</p>
+
+<pre class="codeDL"><code>dm.write_model_file(model,filename="output_model.pdb") # write model to a file
+</code></pre>
+
+<p>Note that the DataManager can write either in PDB or CIF format. By default it writes out whichever format was used when the model was read in, or PDB format if the model was not read in from a file. You can specify which format you want with a keyword: extension="pdb".</p>
+
+<h3 class="mt-5">Reading and writing map information</h3>
+
+<p>Now let’s read in a map file with the DataManager dm. The format for these is called CCP4 or MRC (they are pretty much the same). The DataManager first sets things up with commands like <code>process_real_map_file()</code> and then it creates useful objects like a map object with the command <code>get_real_map()</code>:</p>
+
+<pre class="codeDL"><code>map_filename="map.mrc"                    #   Name of map file
+dm.process_real_map_file(map_filename)    #   Read in data from map file
+mm = dm.get_real_map(map_filename)        #   Deliver map_manager object with map info
+</code></pre>
+
+<p>Now we have a map_manager object called mm that has information about the map that was read from map.mrc. We can write out a new map file using the DataManager just as we did for the model:</p>
+
+<pre class="codeDL"><code>dm.write_real_map_file(mm,filename="output_map") # write map
+</code></pre>
+
+<h3 class="mt-5">Reading and writing reflection information</h3>
+
+<p>Crystallographic reflection data and other Fourier-space data is often stored in binary “MTZ”-formatted data files. These can be read and written by the DataManager. We can create some Fourier data from our map and write it out. First let’s convert our map to Fourier coefficients (we’ll see more about this here (<--LINK)):</p>
+
+<pre class="codeDL"><code>map_coeffs = mm.map_as_fourier_coefficients(high_resolution = 3)    # map represented by Fourier coefficients
+</code></pre>
+
+<p>Now map_coeffs are Fourier coefficients corresponding to the map in map_manager mm, up to a resolution of 3 A. We can write these map coefficients out as an “MTZ” file with our DataManager. It takes a couple steps because we need to specify all the things that are going to go into this MTZ file. First we create an mtz_dataset from our map_coeffs Fourier coefficients:</p>
+
+<pre class="codeDL"><code>mtz_dataset = map_coeffs.as_mtz_dataset(column_root_label='FC')    # create an mtz dataset
+</code></pre>
+
+<p>You have to indicate a column_root_label. Although you can choose any name you like for the label, there are many conventional choices, such as FC for calculated structure factors, I for intensities, and so on (see http://www.ccp4.ac.uk/html/mtzformat.html for other conventional choices). Also there is a restriction of 30 characters for the length of the label.</p>
+
+<p>At this stage, if we have additional data that we want to write out, we can append it to the mtz_dataset like this (we won’t do it this time but you can see how it works:</p>
+
+<pre class="codeDL"><code>#  mtz_dataset.add_miller_array(
+#                 miller_array      = some_other_array_like_map_coeffs,
+#                 column_root_label = column_root_label_other_array)
+</code></pre>
+
+<p>Then we create an object that knows how to write the MTZ format:</p>
+
+<pre class="codeDL"><code>mtz_object=mtz_dataset.mtz_object()      # extract an object that knows mtz format
+</code></pre>
+
+<p>and finally we write out those Fourier coefficients with our DataManager (note that in this case the filename is the full file name with the .mtz suffix):</p>
+
+<pre class="codeDL"><code>dm.write_miller_array_file(mtz_object, filename="map_coeffs.mtz") # write map coeffs as MTZ
+</code></pre>
+
+<p>We can also read in  Fourier coefficients with our DataManager. An MTZ file may contain one or more arrays of data. These arrays are indexed by a 3D reciprocal space lattice (h,k,l) and for each index may have one or more data for a single “array”. One array can be  map coefficients with a complex number as data for each index (as in the map_coeffs object we have worked with). Alternatively one array can be experimental amplitudes and their sigmas. So one array can consist of several “columns” in the mtz file.  In cctbx these arrays are called miller_arrays; they are the basic unit of Fourier data that are worked with. Each miller_array has an associated label string that is used to identify it (and also a data type). Label strings for a complex array typically look like, “FC,PHIFC” which stands for amplitude and phase.</p>
+
+<p>Let’s read the Fourier coefficients from  map_coeffs.mtz.  First, let’s figure out what the label string is for the one array in this file:</p>
+
+<pre class="codeDL"><code>array_labels = dm.get_miller_array_labels("map_coeffs.mtz")   # List of labels in map_coeffs.mtz
+labels=array_labels[0]    #  select the first (only) label string
+labels                    # print out the first label string
+</code></pre>
+
+<p>This label string (labels) is “FC,PHIFC”. Now let’s read the file in with DataManager, selecting just the array that we are interested in. We do this by calling the get_reflection_file_server method with a list of file names (in this case just one entry) and a list of label strings (just one this time).  The DataManager then reads in and stores just the matching arrays:</p>
+
+<pre class="codeDL"><code>dm.get_reflection_file_server(filenames=["map_coeffs.mtz"],      # read reflection data.
+     labels=[labels])                       # file names and labels are matching lists
+</code></pre>
+
+<p>Now we can get all the arrays that we selected based on their label strings:</p>
+
+<pre class="codeDL"><code>miller_arrays=dm.get_miller_arrays()   # extract selected arrays
+</code></pre>
+
+<p>and we can take the first (only) one and call it map_coeffs. It is a miller_array object that is like the map_coeffs object that we created from the map object in the beginning of this section:</p>
+
+<pre class="codeDL"><code>map_coeffs=miller_arrays[0]    # select the first array in the list called miller_arrays
+</code></pre>
+
+<!-- EDIT END -->
+
+<!-- DO NOT EDIT ANYTHING BELOW!!!! -->
+</div> <!-- end col-sm-9 -->
+
+<!-- automatic table of contents
+     located in the sidebar; will move to the top on a small screen -->
+<div class="col-sm-3">
+  <nav id="toc" data-toggle="toc" class="sticky-top"></nav>
+</div> <!-- end col-sm-3 -->
+
+</div> <!-- end row -->
+
+</div> <!-- end container -->
+
+{% endblock %}
