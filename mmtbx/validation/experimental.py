@@ -1,4 +1,6 @@
 
+# NOT USED ANYWHERE. STILL EXISTS FOR BACKWARDS COMPATIBILITY. PLEASE REMOVE ONCE READY!
+
 """
 Model validation against experimental data, in both real and reciprocal space.
 This does not actually handle any of the scaling and fmodel calculations,
@@ -369,4 +371,3 @@ def merging_and_model_statistics(
     anomalous=anomalous,
     use_internal_variance=use_internal_variance,
     sigma_filtering=None) # no need, since it was done here
-

@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from mmtbx.pair_interaction import pair_interaction
 from six.moves import range
+from libtbx.test_utils import approx_equal
 
 pdb_str = """
 REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "./data_files/2lvr.pdb"
@@ -509,17 +510,38 @@ HETATM  492 ZN    ZN A 101      21.619  12.238  13.602  1.00  0.22          Zn
 TER
 END
 """
+def normalize(x):
+  r = []
+  for x_ in x:
+    x_ = list(x_)
+    x_.sort()
+    r.append(x_)
+  r.sort()
+  return r
 
 def run():
   """
   Exercise buffer region of cluster.
   """
-  bc_clusters = [[1, 2], [3, 4, 5, 13, 14, 15, 16, 17, 18, 19, 20, 21], [6, 7, 8, 9, 10, 11, 12, 22, 23, 26, 31], [24, 25, 27, 28, 29, 30]]
-  bc_qms = [[1, 2, 3, 4], [1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17,
-                           18, 19, 20, 21, 22, 23, 24, 25],
-            [3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 31],
-            [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]]
-  check_buffer(bc_clusters, bc_qms)
+  bc_clusters = [[1, 2],
+                 [3, 4, 5, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+                 [6, 7, 8, 9, 10, 11, 12, 22, 23, 26, 31],
+                 [24, 25, 27, 28, 29, 30]]
+  bc_qms = [
+    [1, 2, 3, 4],
+    [1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    [3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 31],
+    [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]]
+
+  qms_calculated = []
+  for i in range(len(bc_clusters)):
+    pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
+    ph = pdb_inp.construct_hierarchy()
+    core_atoms, qm_atoms, qm_molecules = pair_interaction.run(ph, bc_clusters[i])
+    qms_calculated.append(list(qm_molecules))
+  bc_qms = normalize(bc_qms)
+  qms_calculated = normalize(qms_calculated)
+  assert approx_equal(bc_qms, qms_calculated)
 
 def check_buffer(clusters, qms):
   qms_calculated = []
