@@ -232,6 +232,10 @@ class map_manager(map_reader, write_ccp4_map):
     assert (ncs_object is None) or isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
     assert (wrapping is Auto) or isinstance(wrapping, bool)
 
+    if origin_shift_grid_units is not None:
+      origin_shift_grid_units = tuple(origin_shift_grid_units)
+      assert len(origin_shift_grid_units) ==3
+
     # Initialize log filestream
     self.set_log(log)
 
@@ -1138,11 +1142,14 @@ class map_manager(map_reader, write_ccp4_map):
     sd_overall = map_data.as_1d().standard_deviation_of_the_sample()
     cc_boundary_zero_one= flex.linear_correlation(boundary_zero_data,
        boundary_one_data).coefficient()
-    cc_negative_control = flex.linear_correlation(boundary_zero_data,
-       middle_data).coefficient()
     cc_positive_control= flex.linear_correlation(middle_data,
       middle_plus_one_data).coefficient()
 
+    # Make negative control with randomized order of data
+    middle_data_random_perm= middle_data.select(
+         flex.random_permutation(len(middle_data)))
+    cc_negative_control = flex.linear_correlation(boundary_zero_data,
+       middle_data_random_perm).coefficient()
 
     # Expect boundaries all about zero for cryo-EM map, non-zero for x-ray
     if sd < relative_sd_tol * sd_overall:
@@ -1157,6 +1164,8 @@ class map_manager(map_reader, write_ccp4_map):
 
     if (cc_positive_control - cc_negative_control) < minimum_control_signal:
       correlation_of_edges_is_high = None
+      relative_cc = None
+
     else:
       relative_cc = (cc_boundary_zero_one - cc_negative_control)/(
          cc_positive_control - cc_negative_control)
@@ -1164,7 +1173,6 @@ class map_manager(map_reader, write_ccp4_map):
         correlation_of_edges_is_high = True
       else:
         correlation_of_edges_is_high = False
-
     if sd_on_edges_is_large and correlation_of_edges_is_high:
       return True  # Looks like it is wrapped
     else: #  (not sd_on_edges_is_large) or (not correlation_of_edges_is_high):
