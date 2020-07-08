@@ -35,12 +35,9 @@ Number of blocks: 1
   print("OK")
 
 # unstable test though should now be stable
-tst_list_expected_unstable = [
-  "$D/exercise_compression.py"
-  ]
-
 tst_list = [
   tst_run,
+  "$D/exercise_compression.py"
   ]
 
 def run():
