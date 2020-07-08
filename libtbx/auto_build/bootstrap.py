@@ -1918,6 +1918,11 @@ class CCIBuilder(Builder):
   ]
   LIBTBX_EXTRA = []
 
+  def get_libtbx_configure(self):
+    configlst = super(CCIBuilder, self).get_libtbx_configure()
+    configlst.append('--enable_cxx11')
+    return configlst
+
 ##### CCTBX-derived packages #####
 
 class MOLPROBITYBuilder(Builder):
