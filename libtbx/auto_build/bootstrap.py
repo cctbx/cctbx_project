@@ -2134,6 +2134,11 @@ class DIALSBuilder(CCIBuilder):
   def rebuild_docs(self):
     pass
 
+  def get_libtbx_configure(self):
+    configlst = super(DIALSBuilder, self).get_libtbx_configure()
+    configlst.append('--enable_cxx11')
+    return configlst
+
 class LABELITBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['labelit', 'dials']
   LIBTBX_EXTRA = ['labelit', 'dials']
