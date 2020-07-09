@@ -14,3 +14,6 @@ if (not env_etc.no_boost_python):
   env_bpl.SharedLibrary(
     target="#lib/mmtbx_bulk_solvent_ext",
     source=["bulk_solvent_ext.cpp", "bulk_solvent.cpp"])
+  env_bpl.SharedLibrary(
+    target="#lib/mmtbx_mosaic_ext",
+    source=["mosaic_ext.cpp"])
