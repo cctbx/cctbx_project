@@ -10,6 +10,7 @@ tst_list_base = [
   "$D/regression/tst_pdb_cif_inputs.py",
   "$D/regression/tst_data_manager.py",
   "$D/regression/tst_r_model.py",
+  "$D/regression/tst_map_manager_wrapping.py",
   "$D/regression/tst_map_manager.py",
   "$D/regression/tst_map_model_manager.py",
   "$D/regression/tst_map_model_manager_2.py",
