@@ -38,9 +38,9 @@ template <typename FloatType, typename ComplexType>
    af::shared<FloatType> b(dim);
    af::versa<FloatType, af::mat_grid> A(af::mat_grid(dim, dim), 0);
    for(std::size_t j=0; j < dim; j++) {
-     af::shared<FloatType> Fj = F[j];
+     af::shared<ComplexType> Fj = F[j];
      for(std::size_t n=0; n < dim; n++) {
-       af::shared<FloatType> Fn = F[n];
+       af::shared<ComplexType> Fn = F[n];
        FloatType Gjn = 0;
        for(std::size_t i=0; i < size; i++) {
          Gjn += std::real(Fj[i]*std::conj(Fn[i]));
@@ -64,7 +64,7 @@ template <typename FloatType, typename ComplexType>
    return x;
 
 
-
+   // LSE example
    //std::size_t n = 2;
    //af::versa<FloatType, af::mat_grid> m(af::mat_grid(n, n), 0);
    //m(0,0)=1;
