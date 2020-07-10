@@ -3,8 +3,6 @@ from __future__ import absolute_import, division, print_function
 import wxtbx.bitmaps
 from libtbx.queuing_system_utils import sge_utils
 from libtbx.utils import Sorry
-from functools import cmp_to_key
-from past.builtins import cmp
 import wx
 try :
   from wx.lib.agw.genericmessagedialog import GenericMessageDialog
@@ -53,17 +51,13 @@ class qsub_list_data(object):
       else :
         self._sort_descending = False
     if col == 0 :
-      cmp_fn = lambda x, y: cmp(int(x.job_id), int(y.job_id))
-      self._data.sort(key=cmp_to_key(cmp_fn))
+      self._data.sort(key=lambda element: int(element.job_id))
     elif col == 4 :
       fmt = "%m/%d/%Y %H:%M:%S"
-      cmp_fn = lambda x, y: cmp(time.strptime(x.submit, fmt),
-                                time.strptime(y.submit, fmt))
-      self._data.sort(key=cmp_to_key(cmp_fn))
+      self._data.sort(key=lambda element: time.strptime(element.submit, fmt))
     else :
       attr = job_attrs[col]
-      cmp_fn = lambda x, y: cmp(getattr(x, attr), getattr(y, attr))
-      self._data.sort(key=cmp_to_key(cmp_fn))
+      self._data.sort(key=lambda element: getattr(element, attr))
     if self._sort_descending :
       self._data.reverse()
     self._sortby = col
