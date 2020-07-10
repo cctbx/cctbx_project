@@ -147,7 +147,7 @@ def run(ph, core=None):
           mol=id_mol_dict[mol_id]
           ams=[a.serial_as_int() for a in atoms_group_dict[mol]]
           interaction_atoms+=ams
-          return(core_atoms,interaction_atoms,interaction_mols)
+      return(core_atoms,interaction_atoms,interaction_mols)
     else: # Rationalized version of the above
       for item in interactions:
         if(len(set(item).intersection(set(core)))>0):
