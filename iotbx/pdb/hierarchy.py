@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 import boost.python
-from functools import cmp_to_key
 ext = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
 from libtbx.str_utils import show_sorted_by_counts
@@ -14,7 +13,6 @@ from cctbx.array_family import flex
 import six
 from six.moves import cStringIO as StringIO
 from six.moves import range, zip
-from past.builtins import cmp
 import collections
 import warnings
 import math
@@ -1293,8 +1291,7 @@ class _():
                 continue
               mean_occ = flex.mean(atom_group.atoms().extract_occ())
               atom_groups_and_occupancies.append((atom_group, mean_occ))
-            cmp_fn = lambda a,b: cmp(b[1], a[1])
-            atom_groups_and_occupancies.sort(key=cmp_to_key(cmp_fn))
+            atom_groups_and_occupancies.sort(key=lambda element: element[1], reverse=True)
             for atom_group, occ in atom_groups_and_occupancies[1:] :
               residue_group.remove_atom_group(atom_group=atom_group)
             single_conf, occ = atom_groups_and_occupancies[0]
@@ -1837,8 +1834,7 @@ class _():
       groups = list(groups.values())
       if (len(groups) != 0):
         for group in groups: group.sort()
-        def group_cmp(a, b): return cmp(a[0], b[0])
-        groups.sort(key=cmp_to_key(group_cmp))
+        groups.sort(key=lambda element: element[0])
         result.append(groups)
       for i in isolated_var_occ:
         result.append([[i]])
@@ -1863,9 +1859,7 @@ class _():
     for i_rg in range(n_rg):
       if (done[i_rg]): continue
       process_range(i_rg, i_rg+1)
-    def groups_cmp(a, b):
-      return cmp(a[0][0], b[0][0])
-    result.sort(key=cmp_to_key(groups_cmp))
+    result.sort(key=lambda element: element[0][0])
     return result
 
   def get_residue_names_and_classes(self):
