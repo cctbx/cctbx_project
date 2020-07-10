@@ -9,7 +9,7 @@
 namespace mmtbx { namespace mosaic {
 
 
-template <typename FloatType=double, typename ComplexType=std::complex<double> >
+template <typename FloatType, typename ComplexType>
  af::shared<FloatType>
  alg4(
    boost::python::list        const& F_,
@@ -24,40 +24,48 @@ template <typename FloatType=double, typename ComplexType=std::complex<double> >
    }
    int size = f_obs.size();
 
+   //af::shared<ComplexType> fc_d = F[0];
+   //af::shared<FloatType> x_res(dim, 0);
+   //af::shared<FloatType> x_prev(dim, 0);
+   //int cntr = 0;
+   //while(true) {
 
-
-   af::shared<FloatType> b(dim);
-   af::versa<FloatType, af::mat_grid> A(af::mat_grid(dim, dim), 0);
-   for(std::size_t j=0; j < dim; j++) {
-     af::shared<ComplexType> Fj = F[j];
-     for(std::size_t n=0; n < dim; n++) {
-       af::shared<ComplexType> Fn = F[n];
-       FloatType Gjn = 0;
-       for(std::size_t i=0; i < size; i++) {
-         Gjn += std::real(Fj[i]*std::conj(Fn[i]));
+     af::shared<FloatType> b(dim);
+     af::versa<FloatType, af::mat_grid> A(af::mat_grid(dim, dim), 0);
+     for(std::size_t j=0; j < dim; j++) {
+       af::shared<ComplexType> Fj = F[j];
+       for(std::size_t n=0; n < dim; n++) {
+         af::shared<ComplexType> Fn = F[n];
+         FloatType Gjn = 0;
+         for(std::size_t i=0; i < size; i++) {
+           Gjn += std::real(Fj[i]*std::conj(Fn[i]));
+         }
+         A(j,n) = Gjn;
        }
-       A(j,n) = Gjn;
+       FloatType Hj = 0;
+       for(std::size_t i=0; i < size; i++) {
+         Hj += std::real(Fj[i]*std::conj(f_obs[i]));
+       }
+       b[j] = Hj;
      }
-     FloatType Hj = 0;
-     for(std::size_t i=0; i < size; i++) {
-       Hj += std::real(Fj[i]*std::conj(f_obs[i]));
-     }
-     b[j] = Hj;
-   }
-   // Solve SoLE A*x=b: x = A_inv*b
-   af::versa<FloatType, af::c_grid<2> > A_inv(
-      scitbx::matrix::packed_u_as_symmetric(
-        scitbx::matrix::eigensystem::real_symmetric<FloatType>(
-          A.const_ref(), /*relative_epsilon*/ 1.e-9,/*absolute_epsilon*/ 1.e-9)
-            .generalized_inverse_as_packed_u().const_ref()
-            )
-            );
-   af::shared<FloatType> x = af::matrix_multiply(
-     A_inv.const_ref(), b.const_ref());
+     // Solve SoLE A*x=b: x = A_inv*b
+     af::versa<FloatType, af::c_grid<2> > A_inv(
+        scitbx::matrix::packed_u_as_symmetric(
+          scitbx::matrix::eigensystem::real_symmetric<FloatType>(
+            A.const_ref(), /*relative_epsilon*/ 1.e-9,/*absolute_epsilon*/ 1.e-9)
+              .generalized_inverse_as_packed_u().const_ref()
+              )
+              );
+     af::shared<FloatType> x = af::matrix_multiply(
+       A_inv.const_ref(), b.const_ref());
+     //
+     
+   //  for(std::size_t i=0; i < dim; i++) {
+   //    if(i==0) continue;
+   //    x[i]
+   //  }
    //
-
-
-
+   //}
 
    return x;
  };
