@@ -21,17 +21,12 @@ namespace {
     using boost::python::arg;
     typedef return_value_policy<return_by_value> rbv;
 
-
    def("alg4",
       (af::shared<double>(*)
         (boost::python::list const& F,
-         af::const_ref<std::complex<double> > const& f_obs,
-         double                const& k
-         //af::const_ref<bool>   const& selection,
-         //af::shared<double>           data
+         af::const_ref<std::complex<double> > const& f_obs
          )) alg4);
    ;
-
 
   }
 
