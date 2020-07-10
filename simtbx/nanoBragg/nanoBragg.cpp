@@ -1,6 +1,9 @@
 #include <simtbx/nanoBragg/nanoBragg.h>
 
 
+// HACK
+#include "timemory/library.h"
+
 //Contributed by James Holton, UCSF,LBNL,SLAC.
 
 namespace simtbx {
@@ -255,6 +258,9 @@ nanoBragg::nanoBragg(
         int oversample, // =0 =auto
         int verbose)    // =0
 {
+
+    timemory_push_region("nanoBragg:cpp");
+
     /* initialize to sensible default values */
     init_defaults();
 
@@ -291,6 +297,8 @@ nanoBragg::nanoBragg(
 
     /* sensible initialization of all unititialized values */
     reconcile_parameters();
+
+    timemory_pop_region("nanoBragg:cpp");
 }
 
 

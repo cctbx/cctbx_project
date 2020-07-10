@@ -2,13 +2,31 @@
 # -*- coding: utf-8 -*-
 
 
+
+from timemory.component import WallClock
+
+
 from simtbx.nanoBragg import nanoBragg, shapetype
 import numpy as np
 from dxtbx.model.crystal import CrystalFactory
 from scitbx.matrix import sqr
+
+
+
+
+
+
 def main(shape=shapetype.Tophat, cuda=False, seed=None, new_cuda=False):
+
+    wc = WallClock("nanoBragg:py")
+
+    wc.push()
+    wc.start()
     SIM = nanoBragg(detpixels_slowfast=(2048,2048), pixel_size_mm=0.05,
                     verbose=10, oversample=0)
+    wc.stop()
+    wc.pop()
+
     # Defaults 
     cr = {'__id__': 'crystal',
           'real_space_a': (200, 0, 0),
@@ -59,9 +77,9 @@ def main(shape=shapetype.Tophat, cuda=False, seed=None, new_cuda=False):
     return img
 
 
-img = main(cuda=True, new_cuda=False)
+# img = main(cuda=True, new_cuda=False)
 # Call twice -- to give cudaMalloc a chance
-img = main(cuda=True, new_cuda=False)
+# img = main(cuda=True, new_cuda=False)
 # TODO: new_cuda is broken
 #img = main(cuda=True, new_cuda=True)
 img = main(cuda=False)
