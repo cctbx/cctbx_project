@@ -27,15 +27,7 @@ def iiexps_mul(a, b):
   return result
 
 def iiexps_as_tuples(iiexps):
-  from past.builtins import cmp
-  from functools import cmp_to_key
-  def cmp_iiexp(a, b):
-    result = cmp(a[0], b[0])
-    if (result != 0): return result
-    return cmp(a[1], b[1])
-  result = list(iiexps.items())
-  result.sort(key=cmp_to_key(cmp_iiexp))
-  return tuple(result)
+  return tuple(sorted(iiexps.items()))
 
 class term(object):
 
