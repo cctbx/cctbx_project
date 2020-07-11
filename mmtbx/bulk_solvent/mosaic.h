@@ -10,8 +10,10 @@
 
 namespace mmtbx { namespace mosaic {
 
+typedef std::complex<double> ComplexType;
 
-template <typename FloatType, typename ComplexType=std::complex<double> >
+// Phased simultaneous search (alg4). Python equivalent exists.
+template <typename FloatType>
  af::shared<FloatType>
  alg4(
    boost::python::list      const& F_,
