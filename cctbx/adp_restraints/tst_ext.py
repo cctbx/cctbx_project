@@ -8,12 +8,10 @@ from cctbx.adp_restraints import adp_restraint_params
 import scitbx
 from scitbx import matrix
 import libtbx.load_env
-import math, os, sys
+import math, os
 from six.moves import cStringIO as StringIO
 import cctbx.xray
 from libtbx.test_utils import approx_equal
-from six.moves import range
-from six.moves import zip
 
 def finite_difference_gradients(restraint_type,
                                 proxy,
