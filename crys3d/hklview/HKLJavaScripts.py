@@ -117,7 +117,8 @@ PickingProxyfunc = function(pickingProxy)
       tooltip.innerText = current_ttip;
       tooltip.style.bottom = cp.y + 7 + "px";
       tooltip.style.left = cp.x + 8 + "px";
-      tooltip.style.fontSize = "smaller";
+      //tooltip.style.fontSize = "smaller";
+      tooltip.style.fontSize = "10px";
       tooltip.style.display = "block";
     }
   }

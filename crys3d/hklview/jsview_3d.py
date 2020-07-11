@@ -265,21 +265,22 @@ class hklview_3d:
     if 'mprint' in kwds:
       self.mprint = kwds['mprint']
     self.nbinvalsboundaries = 0
+    self.websockport = 7894
+    if 'websockport' in kwds:
+      self.websockport = kwds['websockport']
     tempdir = tempfile.gettempdir()
-    self.hklfname = os.path.join(tempdir, "hkl.htm" )
+    # ensure unique file name by including port number in filename
+    self.hklfname = os.path.join(tempdir, "hkl_%d.htm" %self.websockport )
     if os.path.isfile(self.hklfname):
       os.remove(self.hklfname)
     if 'htmlfname' in kwds and kwds['htmlfname']:
       self.hklfname = kwds['htmlfname']
     self.hklfname = os.path.abspath( self.hklfname )
-    self.jscriptfname = os.path.join(tempdir, "hkljstr.js")
+    self.jscriptfname = os.path.join(tempdir, "hkljstr_%d.js" %self.websockport)
     if os.path.isfile(self.jscriptfname):
       os.remove(self.jscriptfname)
     if 'jscriptfname' in kwds and kwds['jscriptfname'] != "":
       self.jscriptfname = kwds['jscriptfname']
-    self.websockport = 7894
-    if 'websockport' in kwds:
-      self.websockport = kwds['websockport']
     self.send_info_to_gui = None
     if 'send_info_to_gui' in kwds:
       self.send_info_to_gui = kwds['send_info_to_gui']
