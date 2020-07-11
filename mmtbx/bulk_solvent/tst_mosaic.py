@@ -1097,11 +1097,13 @@ def run():
     g_fd.append( (t1-t2)/(2*e) )
   assert flex.sum(flex.abs(g_anal-g_fd))*2/flex.sum(flex.abs(g_anal+g_fd))<1.e-9
   #
-  r = mosaic.algorithm_4(
-    f_obs = f_obs,
-    F = [fc]+inp.mm.FV.keys(),
-    auto_converge_eps=1.e-9)
-  assert approx_equal(r, [1,]+k_sols)
+  for use_cpp in [True, False]:
+    r = mosaic.algorithm_4(
+      f_obs             = f_obs,
+      F                 = [fc]+inp.mm.FV.keys(),
+      auto_converge_eps = 1.e-9,
+      use_cpp           = use_cpp)
+    assert approx_equal(r, [1,]+k_sols)
   #
   r = mosaic.algorithm_3(
     i_obs = i_obs,

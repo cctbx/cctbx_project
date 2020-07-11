@@ -15,8 +15,6 @@ from mmtbx.ncs import tncs
 from collections import OrderedDict
 import mmtbx.f_model
 import sys
-from libtbx.test_utils import approx_equal
-
 
 from mmtbx import masks
 from cctbx.masks import vdw_radii_from_xray_structure
@@ -669,47 +667,46 @@ def algorithm_3(i_obs, fc, f_masks):
     lnK.append( 1/len(F)*(t1-t2) )
   return [math.exp(x) for x in lnK]
 
-def algorithm_4(f_obs, F, max_cycles=100, auto_converge_eps=1.e-7):
+def algorithm_4(f_obs, F, max_cycles=100, auto_converge_eps=1.e-7, use_cpp=True):
   """
-  Phased simultaneous search
+  Phased simultaneous search (alg4)
   """
   fc, f_masks = F[0], F[1:]
   fc = fc.deep_copy()
   F = [fc]+F[1:]
+  # C++ version
+  if(use_cpp):
+    return mosaic_ext.alg4([f.data() for f in F], f_obs.data(), max_cycles,
+      auto_converge_eps)
+  # Python version (1.2-3 times slower, but much more readable!)
   x_res = flex.double(len(F), 0)
   cntr = 0
   x_prev = None
   while True:
     f_obs_cmpl = f_obs.phase_transfer(phase_source=fc)
-    x = list( mosaic_ext.alg4([f.data() for f in F], f_obs_cmpl.data()) )
-    # Python analogue of line above.
-    #A = []
-    #b = []
-    #for j, Fj in enumerate(F):
-    #  A_rows = []
-    #  for n, Fn in enumerate(F):
-    #    Gjn = flex.real( Fj.data()*flex.conj(Fn.data()) )
-    #    A_rows.append( flex.sum(Gjn) )
-    #  Hj = flex.real( Fj.data()*flex.conj(f_obs_cmpl.data()) )
-    #  b.append(flex.sum(Hj))
-    #  A.extend(A_rows)
-    #A = matrix.sqr(A)
-    #A_1 = A.inverse()
-    #b = matrix.col(b)
-    #x = A_1 * b
-    #assert approx_equal(x, x_)
+    A = []
+    b = []
+    for j, Fj in enumerate(F):
+      A_rows = []
+      for n, Fn in enumerate(F):
+        Gjn = flex.real( Fj.data()*flex.conj(Fn.data()) )
+        A_rows.append( flex.sum(Gjn) )
+      Hj = flex.real( Fj.data()*flex.conj(f_obs_cmpl.data()) )
+      b.append(flex.sum(Hj))
+      A.extend(A_rows)
+    A = matrix.sqr(A)
+    A_1 = A.inverse()
+    b = matrix.col(b)
+    x = A_1 * b
     #
-
     fc_d = fc.data()
     for i, f in enumerate(F):
       if i == 0: continue
       fc_d += x[i]*f.data()
     fc = fc.customized_copy(data = fc_d)
-
     x_res += flex.double(x)
     x_ = [x[0]] + list(x_res[1:])
     #
-
     cntr+=1
     if(cntr>max_cycles): break
     if(x_prev is None): x_prev = x_[:]
