@@ -1,24 +1,8 @@
 from __future__ import absolute_import, division, print_function
-import sys
-from six.moves import range
 
-if (getattr(sys, "api_version", 0) >= 1013):
-
-  class dict_with_default_0(dict):
-
-    def __missing__(self, key):
-      return 0
-
-else:
-
-  class dict_with_default_0(dict):
-
-    def __getitem__(self, key):
-      try: return dict.__getitem__(self, key)
-      except KeyError: pass
-      val = 0
-      dict.__setitem__(self, key, val)
-      return val
+class dict_with_default_0(dict):
+  def __missing__(self, key):
+    return 0
 
 def iiexps_mul(a, b):
   result = dict_with_default_0(a)

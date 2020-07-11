@@ -828,14 +828,12 @@ def exercise_push_back_etc():
   assert list(a) == [1,2]
   a.insert(-1, 3)
   assert list(a) == [1,3,2]
-  vi = sys.version_info
-  if (not (vi[0] == 2 and vi[1] < 3)): # skipping test under Python 2.2 since
-    for i in range(-3,4):             # l.insert(-2, 5) doesn't work right
-      c = a.deep_copy()
-      l = list(a)
-      c.insert(i, 5)
-      l.insert(i, 5)
-      assert list(c) == l
+  for i in range(-3,4):
+    c = a.deep_copy()
+    l = list(a)
+    c.insert(i, 5)
+    l.insert(i, 5)
+    assert list(c) == l
   for i in [-5, -4, 4, 5]:
     try: a.insert(i, 5)
     except IndexError: pass
@@ -1277,10 +1275,7 @@ def exercise_arith_inplace_operators():
   assert tuple(a) == (12, 10)
   a -= flex.int((4, 3))
   assert tuple(a) == (8, 7)
-  if ("".join([str(n) for n in sys.version_info[:3]]) > "221"):
-    a *= a
-  else:
-    a = flex.int((64, 49))
+  a *= a
   assert tuple(a) == (64, 49)
   a /= flex.int((2, 1))
   assert tuple(a) == (32, 49)
