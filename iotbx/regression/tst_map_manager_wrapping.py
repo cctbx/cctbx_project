@@ -19,7 +19,6 @@ def run():
   result = flex.bool()
   for sgn in range(1,231):
     group = space_group_info(sgn)
-    print("\n== space group %d"%sgn)
     xrs = random_structure.xray_structure(
       space_group_info       = group,
       volume_per_atom        = 25.,
@@ -37,7 +36,7 @@ def run():
       unit_cell_grid             = map_data.accessor().all(),
       unit_cell_crystal_symmetry = xrs.crystal_symmetry(),
       origin_shift_grid_units    = [0,0,0])
-    assert mm.is_consistent_with_wrapping()
+    assert mm.is_consistent_with_wrapping() in [True,None]
     assert mm.map_data().all() == n_real
     mm.as_full_size_map()
     new_mm=mm.as_full_size_map()
@@ -49,7 +48,7 @@ def run():
     upper_bounds=tuple([x-1 for x in mm.map_data().all()])
     mmm.box_all_maps_with_bounds_and_shift_origin(lower_bounds=(1,1,1), upper_bounds=upper_bounds)
     mm=mmm.map_manager()
-    assert not mm.is_consistent_with_wrapping()
+    assert mm.is_consistent_with_wrapping() in [None,False]
     assert mm.map_data().all() != n_real
     new_mm=mm.as_full_size_map()
     assert new_mm.map_data().all() == n_real
@@ -57,3 +56,4 @@ def run():
 
 if (__name__ == "__main__"):
   run()
+  print ("OK")

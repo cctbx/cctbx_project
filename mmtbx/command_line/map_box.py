@@ -35,6 +35,10 @@ master_phil = libtbx.phil.parse("""
     .help = Input map file (CCP4/mrc format).
     .short_caption = Input map file
     .type = str
+  mask_file_name = None
+    .help = Input mask file (CCP4/mrc format).
+    .short_caption = Input mask file
+    .type = str
   target_ncs_au_file = None
     .help = File with model indicating which au to choose in extract_unique
     .short_caption = Input target ncs au file
@@ -469,6 +473,9 @@ def get_map_manager_objects(
     mask_as_map_manager = map_manager(map_data = mask_data.as_double(),
         unit_cell_grid = mask_data.all(),
         unit_cell_crystal_symmetry = crystal_symmetry)
+  if (not mask_as_map_manager) and params.mask_file_name:
+    mask_as_map_manager = read_map_file_with_data_manager(
+        params.mask_file_name)
 
   if len(inputs.pdb_file_names)>0:
     output_prefix = os.path.basename(inputs.pdb_file_names[0])[:-4]

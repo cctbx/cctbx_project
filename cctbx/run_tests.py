@@ -4,6 +4,7 @@ import libtbx.load_env
 
 tst_list = [
   "$D/regression/tst_miller_double_step_filtration.py",
+  "$D/regression/tst_map_is_periodic.py",
   "$D/miller/tst_reindexing.py",
   "$D/miller/tst_map_to_asu_isym.py",
   "$D/regression/tst_miller_data_manipulation.py",

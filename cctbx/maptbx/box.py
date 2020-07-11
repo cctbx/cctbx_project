@@ -617,13 +617,22 @@ class around_mask(with_bounds):
     self.basis_for_boxing_string = 'around_mask bounds, wrapping = %s' %(
       wrapping)
 
+    # Make sure the map goes from 0 to 1
+    map_data = mask_as_map_manager.map_data()
+    mmm = map_data.as_1d().min_max_mean()
+    minimum = mmm.min
+    range_of_values = mmm.max - mmm.min
+    map_data = (map_data - minimum ) / max(1.e-10,range_of_values)
+
+
     # Get a connectivity object that marks all the connected regions in map
 
     from cctbx.maptbx.segment_and_split_map import get_co
     co, sorted_by_volume, min_b, max_b = get_co(
-       map_data = mask_as_map_manager.map_data(),
+       map_data = map_data,
        threshold = 0.5,
        wrapping = False)
+
 
     if len(sorted_by_volume)<2:  # didn't work
       raise Sorry("No mask obtained...")
@@ -646,9 +655,9 @@ class around_mask(with_bounds):
     cs = map_manager.crystal_symmetry()
     cushion = flex.double(cs.unit_cell().fractionalize((box_cushion, )*3))
     all_orig = map_manager.map_data().all()
-    self.gridding_first = [max(0, ifloor((gf/n-c)*n)) for c, gf, n in zip(
+    self.gridding_first = [max(0, ifloor(gf-c*n)) for c, gf, n in zip(
        cushion, self.gridding_first, all_orig)]
-    self.gridding_last  = [ min(n-1, iceil((gf+c)*n)) for c, gf, n in zip(
+    self.gridding_last  = [min(n-1, iceil(gl+c*n)) for c, gl, n in zip(
        cushion, self.gridding_last, all_orig)]
 
 

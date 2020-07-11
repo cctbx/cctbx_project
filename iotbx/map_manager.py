@@ -1053,130 +1053,32 @@ class map_manager(map_reader, write_ccp4_map):
     else:
       return False
 
-  def is_consistent_with_wrapping(self, relative_sd_tol = 0.01,
-     minimum_control_signal = 0.5,
-     minimum_relative_cc = 0.5):
+  def is_consistent_with_wrapping(self, relative_sd_tol = 0.01):
     '''
       Report if this map looks like it is a crystallographic map and can be
       wrapped
 
       If it is not full size...no wrapping
       If origin is not at zero...no wrapping
-      If very small...cannot tell
+      If it is not periodic, no wrapping
+      If very small or resolution_factor for map is close to 0.5...cannot tell
       If has all zeroes (or some other constant on edges) ... no wrapping
-      If edges (zero plane vs 1 plane) are not about as similar as
-        two planes separated by one grid unit ... no wrapping
+
+      Returns True, False, or None (unsure)
+
     '''
     if not self.is_full_size():
       return False
+
     if self.map_data().origin() != (0, 0, 0):
       return False
-
-    map_data = self.map_data()
-    all = list(map_data.all())
-    middle_plus_one_data = flex.double()
-    middle_data = flex.double()
-    boundary_zero_data = flex.double()
-    boundary_zero_one_data = flex.double()
-    boundary_one_data = flex.double()
-    boundary_data = flex.double()
-
-    # Keep track of whether the planes of density are sampled properly
-    ok=True
-
-    unique_list=[]
-    for i in (0, all[0]//2, 1+all[0]//2, all[0]-1):
-      if not i in unique_list: unique_list.append(i)
-      new_map_data = maptbx.copy(map_data,
-         tuple((i, 0, 0)),
-         tuple((i, all[1], all[2])))
-      boundary_data.extend(new_map_data.as_1d())
-      if i == 0:
-        boundary_zero_data.extend(new_map_data.as_1d())
-      elif i == all[0]//2:
-        middle_data.extend(new_map_data.as_1d())
-      elif i == 1+all[0]//2:
-        middle_plus_one_data.extend(new_map_data.as_1d())
-      else:
-        boundary_one_data.extend(new_map_data.as_1d())
-    if len(unique_list) != 4: ok=False
-
-    unique_list=[]
-    for j in (0, all[1]//2, 1+all[1]//2, all[1]-1):
-      if not j in unique_list: unique_list.append(j)
-      new_map_data = maptbx.copy(map_data,
-         tuple((0, j, 0)),
-         tuple((all[0], j, all[2])))
-      boundary_data.extend(new_map_data.as_1d())
-      if j == 0:
-        boundary_zero_data.extend(new_map_data.as_1d())
-      elif j == all[1]//2:
-        middle_data.extend(new_map_data.as_1d())
-      elif j == 1+all[1]//2:
-        middle_plus_one_data.extend(new_map_data.as_1d())
-      else:
-        boundary_one_data.extend(new_map_data.as_1d())
-    if len(unique_list) != 4: ok=False
-
-    unique_list=[]
-    for k in (0, all[2]//2, 1 + all[2]//2, all[2]-1):
-      if not k in unique_list: unique_list.append(k)
-      new_map_data = maptbx.copy(map_data,
-         tuple((0, 0, k)),
-         tuple((all[0], all[1], k)))
-      boundary_data.extend(new_map_data.as_1d())
-      if k == 0:
-        boundary_zero_data.extend(new_map_data.as_1d())
-      elif k == all[2]//2:
-        middle_data.extend(new_map_data.as_1d())
-      elif k == 1+all[2]//2:
-        middle_plus_one_data.extend(new_map_data.as_1d())
-      else:
-        boundary_one_data.extend(new_map_data.as_1d())
-    if len(unique_list) != 4: ok=False
-    if not ok:
-      return False # Can't tell but assume boxed
-
-    mmm = boundary_data.min_max_mean()
-    sd = boundary_data.standard_deviation_of_the_sample()
-    sd_overall = map_data.as_1d().standard_deviation_of_the_sample()
-    cc_boundary_zero_one= flex.linear_correlation(boundary_zero_data,
-       boundary_one_data).coefficient()
-    cc_positive_control= flex.linear_correlation(middle_data,
-      middle_plus_one_data).coefficient()
-
-    # Make negative control with randomized order of data
-    middle_data_random_perm= middle_data.select(
-         flex.random_permutation(len(middle_data)))
-    cc_negative_control = flex.linear_correlation(boundary_zero_data,
-       middle_data_random_perm).coefficient()
-
-    # Expect boundaries all about zero for cryo-EM map, non-zero for x-ray
-    if sd < relative_sd_tol * sd_overall:
-      sd_on_edges_is_large = False
-    else:
-      sd_on_edges_is_large = True
-
-    # Expect that negative controls about zero, positive control high near 1,
-    #  then cc_boundary_zero_one like negative_control means planes at
-    #  boundaries differ, and cc_boundary_zero_one like positive means
-    #  boundaries similar (as in wrapped)
-
-    if (cc_positive_control - cc_negative_control) < minimum_control_signal:
-      correlation_of_edges_is_high = None
-      relative_cc = None
-
-    else:
-      relative_cc = (cc_boundary_zero_one - cc_negative_control)/(
-         cc_positive_control - cc_negative_control)
-      if relative_cc > minimum_relative_cc:
-        correlation_of_edges_is_high = True
-      else:
-        correlation_of_edges_is_high = False
-    if sd_on_edges_is_large and correlation_of_edges_is_high:
-      return True  # Looks like it is wrapped
-    else: #  (not sd_on_edges_is_large) or (not correlation_of_edges_is_high):
+    from cctbx.maptbx import is_periodic, is_bounded_by_constant
+    if is_bounded_by_constant(self.map_data()):  # Looks like a cryo-EM map
       return False
+
+    # Go with whether it looks periodic (cell translations give similar values
+    #  or transform of high-res data is mostly at edges of cell)
+    return is_periodic(self.map_data())  # Can be None if unsure
 
   def is_similar(self, other = None,
      absolute_angle_tolerance = 0.01,
