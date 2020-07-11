@@ -16,9 +16,22 @@
 <!-- Do not indent! Otherwise, the code will have indentation, and break.-->
 <h2><center>Reading and writing files: the cctbx DataManager</center></h2>
 
-<h3 class="mt-5">Introduction</h3>
+<h3 class="mt-5">The cctbx DataManager</h3>
 
 <p>When you write a script that performs some actions on data or a model, you have to start with reading the file. Once the action is done, you probably want to write the files. To do this conveniently, you can use the cctbx DataManager. The DataManager lets you read and write files describing atomic models, restraints, reflection data files, symmetry files, sequence files, and MRC/CCP4 format map files. In this section we will see how to read in and write information from some of these file types.</p>
+
+<h3 class="mt-5">Preparation: Get a library model</h3>
+
+<p>Let’s work with a library model that we can obtain with the map_model_manager (revisit <a href="{% url 'doc_high_level_objects' %}">this page</a> if you need a refresher on high level objects):</p>
+
+<pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager      #   load in the map_model_manager
+mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
+mmm.generate_map()              #   get a model from a small library model and calculate a map for it
+mmm.write_map("map.mrc")        #   write out a map in ccp4/mrc format
+mmm.write_model("model.pdb")    #   write out a model in PDB format
+</code></pre>
+
+<h3 class="mt-5">Setting up the DataManager</h3>
 
 <p>Let’s set up and initialize a DataManager so that it can read and write files for us:</p>
 
@@ -27,11 +40,13 @@ dm = DataManager()                            # Initialize the DataManager and c
 dm.set_overwrite(True)       # tell the DataManager to overwrite files with the same name
 </code></pre>
 
-<p>The DataManager always knows how to read and write model and map files. If you want it to work with additional file types you need to tell it about them when you initialize it. That would be done like this (you can specify whichever file types you want to work with):</p>
+<p>The DataManager is always aware of all supported file types, such as models, maps, reflection data, map coefficients, sequences, restraints and more. But it is possible to set up a DataManger object that is only aware of a subset of these data types that you want to work with:</p>
 
 <pre class="codeDL"><code>dm_many_functions = DataManager(datatypes = ["model", "real_map",
-  "phil", "ncs_spec", "miller_array", "map_coefficients", "sequence", "restraint"])   # DataManager data types
+  "phil", "restraint"])   # DataManager data types
 </code></pre>
+
+<p>This is useful for writing programs that only need certain data types to work. The DataManager will then return a message if it encounters a data type that is not going to be used in any way by the program. This prevents users from unknowingly adding unnecessary data. For simple scripts, the full DataManager is most likely sufficient.</p>
 
 <p>The datatypes are:</p>
 <ul>
