@@ -652,32 +652,38 @@ function onMessage(e)
     if (msgtype === "alpha")
     {
       bin = parseInt(val[0]);
-      alphas[bin] = parseFloat(val[1]);
-      shapebufs[bin].setParameters({opacity: alphas[bin]});
-      for (var g=0; g < nrots; g++ )
-        br_shapebufs[bin][g].setParameters({opacity: alphas[bin]});
-      //stage.viewer.requestRender();
-      RenderRequest();
+      if (bin < shapebufs.length)
+      {
+        alphas[bin] = parseFloat(val[1]);
+        shapebufs[bin].setParameters({opacity: alphas[bin]});
+        for (var g=0; g < nrots; g++ )
+          br_shapebufs[bin][g].setParameters({opacity: alphas[bin]});
+        //stage.viewer.requestRender();
+        RenderRequest();
+      }
     }
 
     if (msgtype === "colour")
     {
       bin = parseInt(val[0]);
-      si =  parseInt(val[1]);
-      colours[bin][3*si] = parseFloat(val[2]);
-      colours[bin][3*si+1] = parseFloat(val[3]);
-      colours[bin][3*si+2] = parseFloat(val[4]);
-      shapebufs[bin].setAttributes({ color: colours[bin] });
-
-      for (var g=0; g < nrots; g++ )
+      if (bin < shapebufs.length)
       {
-        br_colours[bin][3*si] = parseFloat(val[2]);
-        br_colours[bin][3*si+1] = parseFloat(val[3]);
-        br_colours[bin][3*si+2] = parseFloat(val[4]);
-        br_shapebufs[bin][g].setAttributes({ color: br_colours[bin] });
+        si =  parseInt(val[1]);
+        colours[bin][3*si] = parseFloat(val[2]);
+        colours[bin][3*si+1] = parseFloat(val[3]);
+        colours[bin][3*si+2] = parseFloat(val[4]);
+        shapebufs[bin].setAttributes({ color: colours[bin] });
+
+        for (var g=0; g < nrots; g++ )
+        {
+          br_colours[bin][3*si] = parseFloat(val[2]);
+          br_colours[bin][3*si+1] = parseFloat(val[3]);
+          br_colours[bin][3*si+2] = parseFloat(val[4]);
+          br_shapebufs[bin][g].setAttributes({ color: br_colours[bin] });
+        }
+        //stage.viewer.requestRender();
+        RenderRequest();
       }
-      //stage.viewer.requestRender();
-      RenderRequest();
     }
 
     if (msgtype === "DisplayTooltips")

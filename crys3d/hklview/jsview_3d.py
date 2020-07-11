@@ -229,6 +229,7 @@ class hklview_3d:
     self.colstraliases = ""
     self.binvals = []
     self.binvalsboundaries = []
+    self.oldnbinvalsboundaries = None
     self.proc_arrays = []
     self.HKLscene = []
     self.HKLscenes = []
@@ -1094,6 +1095,11 @@ function MakeHKL_Axis(mshape)
           self.bindata = self.HKLscene_from_dict(ibinarray).ampl
 
     self.nbinvalsboundaries = len(self.binvalsboundaries)
+    # avoid resetting opacities of bins unless we change the number of bins
+    if self.oldnbinvalsboundaries != self.nbinvalsboundaries:
+      self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(self.nbinvalsboundaries + 1) ])
+    self.oldnbinvalsboundaries = self.nbinvalsboundaries
+
     # Un-binnable data is scene data values where there's no matching reflection in the bin data
     # Put these in a separate bin and be diligent with the book keeping!
     for ibin in range(self.nbinvalsboundaries+1): # adding the extra bin for un-binnable data
@@ -1218,8 +1224,9 @@ function MakeHKL_Axis(mshape)
         negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
       cntbin += 1
 
-    #self.ngl_settings.bin_opacities = str([ "1.0, %d"%e for e in range(cntbin) ])
-    self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
+    if self.ngl_settings.bin_opacities == "":
+      self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
+
     self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
                           "bin_infotpls": self.bin_infotpls,
                           "bin_data_label": colstr,
