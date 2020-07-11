@@ -12,8 +12,6 @@ from libtbx import group_args
 from math import sqrt
 import os
 import sys
-from functools import cmp_to_key
-from past.builtins import cmp
 from six.moves import zip
 
 def parse_database(file_name):
@@ -103,8 +101,7 @@ def symmetry_search(
     scores.append(group_args(entry=entry,
       rmsd=rmsd,
       volume_ratio=entry_volume/input_volume))
-  cmp_fn = lambda x,y: cmp(x.rmsd, y.rmsd)
-  scores.sort(key=cmp_to_key(cmp_fn))
+  scores.sort(key=lambda element: element.rmsd)
   return scores
 
 def download_crystal_db():

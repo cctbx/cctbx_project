@@ -21,7 +21,6 @@ from libtbx.str_utils import show_string
 from libtbx.utils import flat_list, Sorry, user_plus_sys_time, plural_s
 from libtbx.utils import format_exception
 from libtbx import Auto, group_args, slots_getstate_setstate
-from past.builtins import cmp
 from six.moves import cStringIO as StringIO
 import string
 import sys, os
@@ -1826,7 +1825,7 @@ Corrupt CIF link definition:
     print('_'*80)
   for m in matches:
     if verbose: _show_match(m)
-    if (cmp(m, matches[0]) != 0): break
+    if m != matches[0]: break
     best_matches.append(m)
   match = best_matches[0]
   if (not match.is_proper_match()):

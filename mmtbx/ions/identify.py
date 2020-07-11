@@ -31,8 +31,6 @@ from math import sqrt
 from six.moves import cStringIO as StringIO
 import time
 import sys
-from functools import cmp_to_key
-from past.builtins import cmp
 from six.moves import zip
 from six.moves import range
 from six import string_types
@@ -158,6 +156,11 @@ def ion_master_phil():
 # various constants
 WATER, WATER_POOR, LIGHT_ION, HEAVY_ION = range(4)
 NUC_PHOSPHATE_BINDING = ["MG", "CA", "MN"]
+
+def _sign(x):
+  if x > 0: return 1
+  if x < 0: return -1
+  return 0
 
 class manager(object):
   """
@@ -1300,8 +1303,7 @@ class manager(object):
           map_stats = self.map_stats(water_i_seq)
           ions.append((water_i_seq, [final_choice], map_stats.two_fofc))
 
-    cmp_fn = lambda a, b: cmp(b[2], a[2])
-    return sorted(ions, key=cmp_to_key(cmp_fn))
+    return sorted(ions, key=lambda element: element[2], reverse=True)
 
   def validate_ion(self, i_seq, out = sys.stdout, debug = True):
     """
@@ -1957,8 +1959,8 @@ class AtomProperties(object):
                 # XXX probably just O
               self.bad_coords[identity].append(contact)
               inaccuracies.add(self.BAD_COORD_RESIDUE)
-        elif (cmp(0, mmtbx.ions.server.get_charge(contact.atom)) ==
-              cmp(0, ion_params.charge)):
+        elif (_sign(mmtbx.ions.server.get_charge(contact.atom)) ==
+              _sign(ion_params.charge)):
           # Check if coordinating atom is of opposite charge
           self.bad_coords[identity].append(contact)
           inaccuracies.add(self.LIKE_COORD)

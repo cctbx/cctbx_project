@@ -25,8 +25,6 @@ from libtbx.str_utils import StringIO, wordwrap
 from libtbx.utils import null_out
 from libtbx import runtime_utils
 import libtbx.callbacks # import dependency
-from functools import cmp_to_key
-from past.builtins import cmp
 from six.moves import cStringIO as StringIO
 import os
 import sys
@@ -1005,8 +1003,7 @@ class summary(mmtbx.scaling.xtriage_analysis):
   def __init__(self, issues, sort=True):
     self._issues = issues
     if (sort):
-      cmp_fn = lambda a,b: cmp(b[0], a[0])
-      self._issues.sort(key=cmp_to_key(cmp_fn))
+      self._issues.sort(key=lambda element: element[0], reverse=True)
 
   @property
   def n_problems(self):

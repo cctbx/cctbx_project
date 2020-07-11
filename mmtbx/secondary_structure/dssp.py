@@ -16,8 +16,6 @@ from libtbx import group_args, adopt_init_args
 from six.moves import cStringIO as StringIO
 import time
 import sys
-from functools import cmp_to_key
-from past.builtins import cmp
 
 master_phil = libtbx.phil.parse("""
 file_name = None
@@ -582,8 +580,7 @@ class dssp(object):
     t2 = time.time()
     if (self.params.verbosity >= 1):
       print("Time to find bridges: %.3fs" % (t2-t1), file=self.log)
-    cmp_fn = lambda a,b: cmp(a.i_res, b.i_res)
-    bridges.sort(key=cmp_to_key(cmp_fn))
+    bridges.sort(key=lambda element: element.i_res)
     if (self.params.verbosity >= 2):
       for B in bridges :
         B.show(out=self.log)

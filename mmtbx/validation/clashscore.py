@@ -13,7 +13,6 @@ import iotbx.pdb
 import os
 import re
 import sys
-from past.builtins import cmp
 import six
 
 class clash(atoms):
@@ -48,7 +47,9 @@ class clash(atoms):
              abs(self.overlap) ]
 
   def __cmp__(self, other) : # sort in descending order
-    return cmp(self.overlap, other.overlap)
+    if self.overlap < other.overlap: return -1
+    if self.overlap > other.overlap: return 1
+    return 0
 
 class clashscore(validation):
   __slots__ = validation.__slots__ + [
@@ -220,7 +221,7 @@ class probe_line_info(object): # this is parent
     assert self.overlap_value is not None
     atom1 = decode_atom_string(self.srcAtom,  use_segids)
     atom2 = decode_atom_string(self.targAtom, use_segids)
-    if (cmp(self.srcAtom, self.targAtom) < 0):
+    if (self.srcAtom < self.targAtom):
       atoms = [ atom1, atom2 ]
     else:
       atoms = [ atom2, atom1 ]
@@ -337,7 +338,7 @@ class probe_clashscore_manager(object):
 
   def put_group_into_dict(self, line_info, clash_hash, hbond_hash):
     key = line_info.targAtom+line_info.srcAtom
-    if (cmp(line_info.srcAtom,line_info.targAtom) < 0):
+    if (line_info.srcAtom < line_info.targAtom):
       key = line_info.srcAtom+line_info.targAtom
     if self.condensed_probe:
       if (line_info.type == "bo"):
