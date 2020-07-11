@@ -8,8 +8,6 @@ import os
 import sys
 from six.moves import range
 
-_have_maxtasksperchild = (sys.version_info[:2] >= (2,7))
-
 _problem_cache = Auto
 
 # Patch Python 2.7 multiprocessing module to avoid unnecessary file operations
@@ -74,7 +72,7 @@ def get_processes(processes):
   :returns: actual number of processes to use
   """
   if (processes in [None, Auto]):
-    if (os.name == "nt") or (sys.version_info < (2,6)):
+    if os.name == "nt":
       return 1
     from libtbx import introspection
     auto_adjust = (processes is Auto)
@@ -359,7 +357,7 @@ def pool_map(
           sub_name_format=func_wrapper[16:])
       else:
         raise RuntimeError("Unknown func_wrapper keyword: %s" % func_wrapper)
-      if (maxtasksperchild is Auto and _have_maxtasksperchild):
+      if (maxtasksperchild is Auto):
         maxtasksperchild = 1
       if (chunksize is Auto):
         chunksize = 1
@@ -374,7 +372,7 @@ def pool_map(
   processes = get_processes(processes)
   # XXX since we want to be able to call this function on Windows too, reset
   # processes to 1
-  if (os.name == "nt") or (sys.version_info < (2,6)):
+  if os.name == "nt":
     processes = 1
   if (args is not None):
     iterable = args
