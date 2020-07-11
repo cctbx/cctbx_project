@@ -1,5 +1,6 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 #include <scitbx/random.h>
+#include <scitbx/random_legacy_boost_1_63.h>
 
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
@@ -11,12 +12,24 @@ namespace {
   struct mersenne_twister_wrappers
   {
     typedef random::mersenne_twister w_t;
+    typedef random_legacy_boost_1_63::mersenne_twister wl_t;
 
     static void
     wrap()
     {
       using namespace boost::python;
       using boost::python::arg;
+      class_<wl_t>("mersenne_twister_legacy_boost_1_63",
+        "Results for seeded random r3 rotation matrices changed as of Boost 1.70.\n"
+        "This class restores the legacy behavior.",
+        no_init)
+        .def(init<unsigned>((arg("seed")=0)))
+        .def(init<boost_random::mt19937 &>())
+        .def("random_double_unit_quaternion",
+          &wl_t::random_double_unit_quaternion)
+        .def("random_double_r3_rotation_matrix",
+          &wl_t::random_double_r3_rotation_matrix)
+      ;
       class_<w_t>("mersenne_twister", no_init)
         .def(init<unsigned>((arg("seed")=0)))
         .def(init<boost_random::mt19937 &>())
