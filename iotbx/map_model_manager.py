@@ -1654,19 +1654,20 @@ class map_model_manager(map_model_base):
     # Overwrite wrapping if requested
     # Take wrapping from map_manager otherwise for all maps
 
-    if self._force_wrapping is None:
-      wrapping = map_manager.wrapping()
-    else:
+    if isinstance(self._force_wrapping, bool):
       wrapping = self._force_wrapping
       if wrapping and (not map_manager.is_full_size()):
         raise Sorry("You cannot use wrapping=True if the map is not full size")
+    else:
+      wrapping = map_manager.wrapping()
 
+    assert wrapping in [True, False]
     if not extra_map_manager_list:
-        extra_map_manager_list=[]
+      extra_map_manager_list=[]
     for m in [map_manager, map_manager_1, map_manager_2]+ \
-         extra_map_manager_list:
-        if m:
-          m.set_wrapping(wrapping)
+       extra_map_manager_list:
+      if m:
+        m.set_wrapping(wrapping)
 
     # if ignore_symmetry_conflicts, take all symmetry information from
     #  map_manager and apply it to everything
@@ -1999,6 +2000,7 @@ class map_model_manager(map_model_base):
       map_coeffs = None,
       high_resolution = 3,
       gridding = None,
+      wrapping = False,
       origin_shift_grid_units = None,
       low_resolution_fourier_noise_fraction = 0,
       high_resolution_fourier_noise_fraction = 0,
@@ -2057,7 +2059,7 @@ class map_model_manager(map_model_base):
           real-space noise
       low_resolution_noise_cutoff (float, None):  Low resolution where noise
           starts to be added
-
+      wrapping:  Defines if map is to be specified as wrapped
 
       Pass-through to generate_map_coefficients (if map_coeffs is None):
       -----------------------
@@ -2121,6 +2123,7 @@ class map_model_manager(map_model_base):
       map_coeffs = map_coeffs,
       high_resolution = high_resolution,
       gridding = gridding,
+      wrapping = wrapping,
       origin_shift_grid_units = origin_shift_grid_units,
       low_resolution_fourier_noise_fraction = \
         low_resolution_fourier_noise_fraction,

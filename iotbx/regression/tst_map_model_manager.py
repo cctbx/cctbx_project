@@ -98,7 +98,8 @@ def test_01():
   mmm=map_model_manager()
   mmm.generate_map(box_cushion=0)
   mm=mmm.map_manager()
-  assert mm.wrapping()
+  # check its compatibility with wrapping
+  assert mm.is_consistent_with_wrapping()
 
   # now box it
   sel=mmm.model().selection("resseq 221:221")

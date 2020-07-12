@@ -1675,6 +1675,7 @@ def loc_res(map,
             b_range_low = -200,
             b_range_high = 500,
             fsc_cutoff = 0.143,
+            wrapping = False,
             verbose = False,
             log = sys.stdout):
   assert method in ["fsc", "rscc", "rscc_d_min_b"]
@@ -1713,7 +1714,8 @@ def loc_res(map,
   from iotbx.map_manager import map_manager
   mm = map_manager(map_data = map,
     unit_cell_crystal_symmetry = crystal_symmetry,
-    unit_cell_grid = map.all())
+    unit_cell_grid = map.all(),
+    wrapping = wrapping)
 
   for chunk_sel in chunk_selections:
     ph_sel  = pdb_hierarchy.select(chunk_sel).deep_copy()
@@ -1803,7 +1805,6 @@ def loc_res(map,
 
 def is_bounded_by_constant(map_data,
      relative_sd_tol = 0.1):
-
     ''' Determine if this map is bounded on all sides by values that are
        zero or a constant, within relative tolerance of relative_sd_tol to
        the SD of the map as a whole
@@ -1994,11 +1995,14 @@ def get_diff_score_towards_periodic(map_data,
 
     return diff_score_towards_periodic
 
-def get_edge_score_towards_periodic(map_data):
+def get_edge_score_towards_periodic(map_data,
+  use_minimum = True):
     '''
       Measure of whether facing edges have correlated data with correlation
      similar to that found for adjacent planes and different than randomly
      chosen points
+
+     If use_minimum is set, take minimum of values on all pairs of faces
 
     '''
 
@@ -2077,15 +2081,16 @@ def get_edge_score_towards_periodic(map_data):
       boundary_one_data=boundary_one_data_local,
       one_data=one_data_local,))
 
-    relative_cc = get_relative_cc(
-      boundary_zero_data=boundary_zero_data,
-      boundary_one_data=boundary_one_data,
-      one_data=one_data,)
-
     # use lowest value of relative_cc for any pair of faces so
     #  we can detect any faces that are trimmed
 
-    relative_cc=lowest_relative_cc
+    if use_minimum:
+      relative_cc=lowest_relative_cc
+    else:
+      relative_cc = get_relative_cc(
+        boundary_zero_data=boundary_zero_data,
+        boundary_one_data=boundary_one_data,
+        one_data=one_data,)
 
     edge_score_towards_periodic = max(0,min(1,relative_cc ))
 
@@ -2113,7 +2118,7 @@ def get_relative_cc(
     #  boundaries differ, and cc_boundary_zero_one like positive means
     #  boundaries similar (as in wrapped)
 
-    relative_cc = (cc_boundary_zero_one - cc_negative_control)/(
+    relative_cc = (cc_boundary_zero_one - cc_negative_control)/max(1.e-10,
          cc_positive_control - cc_negative_control)
     return relative_cc
 

@@ -5883,7 +5883,8 @@ class fft_map(maptbx.crystal_gridding):
     from iotbx.map_manager import map_manager
     return map_manager(map_data=map_data,
       unit_cell_crystal_symmetry=self.crystal_symmetry(),
-      unit_cell_grid=map_data.all())
+      unit_cell_grid=map_data.all(),
+      wrapping=True)
 
   def real_map_unpadded(self, in_place=True):
     """

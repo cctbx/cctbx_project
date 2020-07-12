@@ -249,7 +249,7 @@ def exercise(file_name, out = sys.stdout):
 
   # Make a new map and model, get r_model and box with selection
   mmm=map_model_manager()
-  mmm.generate_map(box_cushion=0)
+  mmm.generate_map(box_cushion=0,wrapping=True)
   rm=mmm.as_r_model()
   rm_dc=rm.deep_copy()
 

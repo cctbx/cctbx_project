@@ -112,7 +112,8 @@ def test_01():
      unit_cell_grid =  mm.unit_cell_grid,
      unit_cell_crystal_symmetry =  mm.unit_cell_crystal_symmetry(),
      origin_shift_grid_units =  mm.origin_shift_grid_units,
-     map_data = mm.map_data())
+     map_data = mm.map_data(),
+     wrapping = False)
   assert mm_para.is_similar(mm)
 
   # Adjust origin and gridding:
@@ -261,7 +262,8 @@ def test_01():
      unit_cell_crystal_symmetry =  new_mm.unit_cell_crystal_symmetry(),
      origin_shift_grid_units =  new_mm.origin_shift_grid_units,
      map_data = new_mm.map_data(),
-     ncs_object = ncs_obj)
+     ncs_object = ncs_obj,
+     wrapping = False)
   assert another_mm.is_similar(new_mm)
   assert ncs_obj.is_similar_ncs_object(another_mm.ncs_object())
   assert new_mm.is_similar(another_mm)

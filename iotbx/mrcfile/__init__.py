@@ -357,7 +357,7 @@ class map_reader:
     if hasattr(self,'wrapping'):
       print(prefix +
        "Wrapping (using unit_cell_translations to get map values) allowed:",
-          self.wrapping(), file=out)
+          self.wrapping(), file=out) # don't try too hard
 
 
     if hasattr(self,'_ncs_object') and self._ncs_object:

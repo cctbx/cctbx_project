@@ -31,6 +31,11 @@ class map_manager(map_reader, write_ccp4_map):
    by some multiple of the unit cell translations.)  Normally crystallographic
    maps can be wrapped and cryo EM maps cannot.
 
+   Wrapping must be specified on initialization if not read from a file. If
+   read from a file, the value from the file labels is used if available, 
+   otherwise it is assumed to be wrapping = False unless specified (normal 
+   for a cryo-EM map.
+
    Map_manager also keeps track of any changes in magnification. These
    are reflected in changes in unit_cell and crystal_symmetry cell dimensions
    and angles.
@@ -190,7 +195,7 @@ class map_manager(map_reader, write_ccp4_map):
      unit_cell_crystal_symmetry = None,
      origin_shift_grid_units = None, # OPTIONAL first point in map in full cell
      ncs_object = None, # OPTIONAL ncs_object with map symmetry
-     wrapping = Auto,   # OPTIONAL determined from input limitations and data
+     wrapping = Auto,   # VALUE REQUIRED if not read from file
      log = None,
      ):
 
@@ -255,7 +260,11 @@ class map_manager(map_reader, write_ccp4_map):
     self.limitations = None  # Limitations from STANDARD_LIMITATIONS_DICT
     self.labels = None  # List of labels (usually from input file) to be written
 
-    # Initialze ncs_object
+    # Initialize wrapping
+    self._wrapping = None
+    self._cannot_figure_out_wrapping = None
+
+    # Initialize ncs_object
     self._ncs_object = ncs_object
 
     # Initialize origin shift representing position of original origin in
@@ -274,6 +283,14 @@ class map_manager(map_reader, write_ccp4_map):
       # Set starting values:
       self.origin_shift_grid_units = (0, 0, 0)
 
+      # Assume this map is not wrapped unless wrapping is set
+      if isinstance(wrapping, bool):  # Take it...
+        self._wrapping = wrapping
+      elif self.wrapping_from_input_file() is not None:
+        self._wrapping = self.wrapping_from_input_file()
+      else:
+        self._wrapping = False
+
 
     else:
       '''
@@ -281,11 +298,15 @@ class map_manager(map_reader, write_ccp4_map):
       '''
 
       assert map_data and unit_cell_grid and unit_cell_crystal_symmetry
+      # wrapping must be specified
+
+      assert wrapping in [True, False]
 
       # Required initialization information:
       self.data = map_data
       self.unit_cell_grid = unit_cell_grid
       self._unit_cell_crystal_symmetry = unit_cell_crystal_symmetry
+      self._wrapping = wrapping
 
       # Calculate values for self._crystal_symmetry
       # Must always run this method after changing
@@ -299,8 +320,9 @@ class map_manager(map_reader, write_ccp4_map):
 
     # Initialization steps always done:
 
-    # Set the wrapping
-    self._choose_wrapping(wrapping)
+    # Make sure map is full size if wrapping is set
+    if self._wrapping:
+      assert self.is_full_size()
 
     # make sure labels are strings
     if self.labels is not None:
@@ -356,28 +378,6 @@ class map_manager(map_reader, write_ccp4_map):
     if (self.log is not None) and hasattr(self.log, 'closed') and (
         not self.log.closed):
       print(m, file = self.log)
-
-  def _choose_wrapping(self, wrapping):
-      '''
-       Choose wrapping based on input value and characteristics of the map
-      '''
-
-      # Set wrapping.
-      #  XXX Note: very small gridding (< 5 in full cell) will default to
-      #     wrapping=False
-
-      if wrapping is not Auto and wrapping is not None:  # specified in call
-        self._wrapping = wrapping
-        if wrapping:
-          assert self.is_full_size()  # must be full size for wrapping
-      elif (self.wrapping_from_input_file() is not None):
-        self._wrapping = self.wrapping_from_input_file() # from input file
-      elif not self.is_full_size():
-        self._wrapping = False  # not full size, cannot be wrapped
-      elif (wrapping is Auto) and (not self.is_consistent_with_wrapping()):
-        self._wrapping = False  # edges not similar or approximately constant
-      else:
-        self._wrapping = True  # can be wrapped
 
   def set_unit_cell_crystal_symmetry(self, crystal_symmetry):
     '''
@@ -479,7 +479,7 @@ class map_manager(map_reader, write_ccp4_map):
        assert original_crystal_symmetry.is_similar_symmetry(
          new_crystal_symmetry)
 
-       if self.wrapping() and not self.is_full_size():
+       if not self.is_full_size():
          self.set_wrapping(False)
 
   def is_mask(self):
@@ -677,12 +677,12 @@ class map_manager(map_reader, write_ccp4_map):
 
     map_data = self.map_data()
 
-    # Add limitation on wrapping
+    assert isinstance(self.wrapping(), bool)
     # remove any labels about wrapping
-    assert self.wrapping() is not None
-    new_labels=[]
     for key in ["wrapping_outside_cell","no_wrapping_outside_cell"]:
       self.remove_limitation(key)
+    # Add limitation on wrapping
+    new_labels=[]
     if self.wrapping():
       self.add_limitation("wrapping_outside_cell")
     else:
@@ -1007,7 +1007,7 @@ class map_manager(map_reader, write_ccp4_map):
     mm.data = map_data  # using self.data or a deepcopy (specified above)
     mm._created_mask = created_mask  # using self._created_mask or a
                                      #deepcopy (specified above)
-    if mm.wrapping() and not mm.is_full_size():
+    if not mm.is_full_size():
       mm.set_wrapping(False)
 
     # Set up _crystal_symmetry for the new object
@@ -1037,10 +1037,13 @@ class map_manager(map_reader, write_ccp4_map):
     '''
     assert isinstance(wrapping_value, bool)
     self._wrapping = wrapping_value
+    if self._wrapping:
+      assert self.is_full_size()
 
   def wrapping(self):
     '''
       Report if map can be wrapped
+
     '''
     return self._wrapping
 
@@ -1064,6 +1067,9 @@ class map_manager(map_reader, write_ccp4_map):
       If very small or resolution_factor for map is close to 0.5...cannot tell
       If has all zeroes (or some other constant on edges) ... no wrapping
 
+      relative_sd_tol defines how close to constant values at edges must be
+      to qualify as "constant"
+
       Returns True, False, or None (unsure)
 
     '''
@@ -1073,12 +1079,14 @@ class map_manager(map_reader, write_ccp4_map):
     if self.map_data().origin() != (0, 0, 0):
       return False
     from cctbx.maptbx import is_periodic, is_bounded_by_constant
-    if is_bounded_by_constant(self.map_data()):  # Looks like a cryo-EM map
+    if is_bounded_by_constant(self.map_data(),
+       relative_sd_tol = relative_sd_tol):  # Looks like a cryo-EM map
       return False
 
     # Go with whether it looks periodic (cell translations give similar values
     #  or transform of high-res data is mostly at edges of cell)
     return is_periodic(self.map_data())  # Can be None if unsure
+
 
   def is_similar(self, other = None,
      absolute_angle_tolerance = 0.01,
@@ -1123,9 +1131,10 @@ class map_manager(map_reader, write_ccp4_map):
       return False
 
     # Make sure wrapping is same for all
-    if self.wrapping() !=  other.wrapping():
+    if ( self.wrapping() !=  other.wrapping()):
       self._warning_message="Wrapping "+ "(%s) does not match other (%s)" %(
-         str(self.wrapping()),str(other.wrapping()))
+         str(self.wrapping()),
+         str(other.wrapping()))
       return False
 
     # Make sure ncs objects are similar if both have one
@@ -1134,8 +1143,8 @@ class map_manager(map_reader, write_ccp4_map):
       if not other.ncs_object().is_similar_ncs_object(self.ncs_object()):
         text1=self.ncs_object().as_ncs_spec_string()
         text2=other.ncs_object().as_ncs_spec_string()
-        self._warning_message="NCS objects do not match:\n%s\n does not match other:\n%s" %(
-          text1,text2)
+        self._warning_message="NCS objects do not match"+ \
+           ":\n%s\n does not match other:\n%s" %( text1,text2)
         return False
 
     return True

@@ -186,9 +186,11 @@ class with_bounds(object):
       self.gridding_last)
 
     # Allow override of wrapping
-    if self._force_wrapping is not None:
+    if isinstance(self._force_wrapping, bool):
       wrapping = self._force_wrapping
     else:
+      # Get wrapping from map_manager. If it is not defined and
+      #  bounds are outside allowed, try to get the wrapping
       wrapping = map_manager.wrapping()
 
     if wrapping or bounds_info.inside_allowed_bounds:
@@ -200,12 +202,13 @@ class with_bounds(object):
       map_box = maptbx.copy(map_data, self.gridding_first, self.gridding_last)
       map_box = map_box * 0.
       self._warning_message += "\nWARNING: boxed map is entirely outside map"+\
-         " and wrapping=False\n...setting all values to zero"
+         " and wrapping=%s\n...setting all values to zero" %(wrapping)
 
     else: # Need to copy and then zero outside of defined region
       map_box = copy_and_zero_map_outside_bounds(map_data, bounds_info)
-      self._warning_message += "\nWARNING: boxed map goes outside original map"+\
-         " and wrapping=False\n...setting unknown values to zero"
+      self._warning_message += \
+            "\nWARNING: boxed map goes outside original map"+\
+         " and wrapping=%s\n...setting unknown values to zero" %(wrapping)
     #  Now reshape map_box to put origin at (0, 0, 0)
     map_box.reshape(flex.grid(self.box_all))
 

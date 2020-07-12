@@ -2436,7 +2436,8 @@ class extract_box_around_model_and_map(object):
     map_box_as_map_manager=map_manager(
       map_data=self.map_box,
       unit_cell_grid=self.map_box.all(),
-      unit_cell_crystal_symmetry=self.xray_structure_box.crystal_symmetry())
+      unit_cell_crystal_symmetry=self.xray_structure_box.crystal_symmetry(),
+      wrapping = False) # boxed map is never ok to wrap
 
   def get_solvent_content(self):
     return self.solvent_content
