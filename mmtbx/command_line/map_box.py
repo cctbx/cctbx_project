@@ -429,7 +429,6 @@ def get_map_manager_objects(
       unit_cell_grid = map_data.all(),
       unit_cell_crystal_symmetry = crystal_symmetry,
       wrapping = params.wrapping)
-
   elif (not ccp4_map):
 
     # read first mtz file
@@ -1080,7 +1079,6 @@ def run(args,
     if params.output_unit_cell_grid:
       print ("Setting gridding of unit cell of final map to be at %s" %(
        str(params.output_unit_cell_grid)), file = log)
-
     mam.map_manager().set_original_origin_and_gridding(
        original_origin = params.output_origin_grid_units,
        gridding = params.output_unit_cell_grid)

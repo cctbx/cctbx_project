@@ -39,7 +39,6 @@ def run():
       wrapping                   = True)
     assert mm.is_consistent_with_wrapping() in [True,None]
     assert mm.map_data().all() == n_real
-    mm.as_full_size_map()
     new_mm=mm.as_full_size_map()
     assert new_mm.map_data().all() == n_real
 

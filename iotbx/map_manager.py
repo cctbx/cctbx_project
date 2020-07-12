@@ -248,6 +248,9 @@ class map_manager(map_reader, write_ccp4_map):
     # NOTE: If you add anything here to be initialized, add it to the
     #  customized_copy method
 
+    # Initialize that we don't have crystal_symmetry:
+    self._crystal_symmetry = None
+
     # Initialize mask to be not present
     self._created_mask = None
 
@@ -290,7 +293,6 @@ class map_manager(map_reader, write_ccp4_map):
         self._wrapping = self.wrapping_from_input_file()
       else:
         self._wrapping = False
-
 
     else:
       '''
@@ -433,7 +435,6 @@ class map_manager(map_reader, write_ccp4_map):
 
        At end, recheck wrapping
     '''
-
     if original_origin:
       if (self.origin_shift_grid_units !=  (0, 0, 0)) or (
           not self.origin_is_zero()):
@@ -447,6 +448,9 @@ class map_manager(map_reader, write_ccp4_map):
         str(self.origin_shift_grid_units)))
 
     if gridding: # reset definition of full unit cell.  Keep grid spacing
+
+       # If gridding does not match original, set space group always to P1
+
        current_unit_cell_parameters = self.unit_cell_crystal_symmetry(
             ).unit_cell().parameters()
        current_unit_cell_grid = self.unit_cell_grid
@@ -458,10 +462,15 @@ class map_manager(map_reader, write_ccp4_map):
 
        unit_cell_parameters = \
           new_unit_cell_parameters+list(current_unit_cell_parameters[3:])
+
+       if current_unit_cell_grid !=  gridding:
+         space_group_number_use = 1
+       else:
+         space_group_number_use = \
+            self._unit_cell_crystal_symmetry.space_group_number()
        from cctbx import crystal
        self._unit_cell_crystal_symmetry = crystal.symmetry(
-          unit_cell_parameters,
-          self._unit_cell_crystal_symmetry.space_group_number())
+          unit_cell_parameters, space_group_number_use)
 
        self.unit_cell_grid = gridding
        if current_unit_cell_grid !=  gridding:
@@ -888,8 +897,6 @@ class map_manager(map_reader, write_ccp4_map):
       assert self.origin_shift_grid_units == (0, 0, 0)
       assert self.map_data().origin() == (0, 0, 0)
       return self
-
-
     working_lower_bounds = self.origin_shift_grid_units
     working_upper_bounds = tuple([i+j-1 for i, j in zip(working_lower_bounds,
       self.map_data().all())])
@@ -919,8 +926,16 @@ class map_manager(map_reader, write_ccp4_map):
     assert box.map_manager().origin_shift_grid_units == (0, 0, 0)
     assert box.map_manager().map_data().origin() == (0, 0, 0)
     assert box.map_manager().map_data().all() == box.map_manager().unit_cell_grid
-    assert box.map_manager().unit_cell_crystal_symmetry().is_similar_symmetry(
-      box.map_manager().crystal_symmetry())
+    if box.map_manager().unit_cell_crystal_symmetry().space_group_number() == 1:
+      assert box.map_manager().unit_cell_crystal_symmetry().is_similar_symmetry(
+        box.map_manager().crystal_symmetry())
+    else:
+      assert box.map_manager().crystal_symmetry().space_group_number() == 1
+      from cctbx import crystal
+      assert box.map_manager().crystal_symmetry().is_similar_symmetry(
+        crystal.symmetry(
+           box.map_manager().unit_cell_crystal_symmetry().unit_cell(),
+           1))
     return box.map_manager()
 
   def deep_copy(self):
