@@ -32,8 +32,8 @@ class map_manager(map_reader, write_ccp4_map):
    maps can be wrapped and cryo EM maps cannot.
 
    Wrapping must be specified on initialization if not read from a file. If
-   read from a file, the value from the file labels is used if available, 
-   otherwise it is assumed to be wrapping = False unless specified (normal 
+   read from a file, the value from the file labels is used if available,
+   otherwise it is assumed to be wrapping = False unless specified (normal
    for a cryo-EM map.
 
    Map_manager also keeps track of any changes in magnification. These
