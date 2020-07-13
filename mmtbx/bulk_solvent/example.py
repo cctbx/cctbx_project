@@ -299,7 +299,9 @@ def write_map_file(cg, mc, file_name):
 
 
 def run(cmdargs):
-  if(len(cmdargs)==0):
+  if(len(cmdargs)==1):
+    alg = cmdargs[0]
+    assert alg in ["alg0", "alg2", "alg4"]
     NPROC=50
     pdbs, mtzs, codes, sizes = get_files_sorted(pdb_files, hkl_files)
     argss = []
@@ -315,8 +317,11 @@ def run(cmdargs):
       for args in argss:
         run_one(args)
   else:
+    assert len(cmdargs) == 3
     # Usage: python example.py 4qnn.pdb 4qnn.mtz alg4
     pdb, mtz, alg = cmdargs
+    assert os.path.isfile(pdb)
+    assert os.path.isfile(mtz)
     code = os.path.abspath(pdb)[:-4]
     run_one([pdb, mtz, code, alg])
 
