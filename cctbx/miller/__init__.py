@@ -5948,7 +5948,8 @@ class fft_map(maptbx.crystal_gridding):
                    file_name,
                    gridding_first=None,
                    gridding_last=None,
-                   labels=["cctbx.miller.fft_map"]):
+                   labels=["Values outside boundaries are wrapped inside",
+                           "fft_map from Phenix"]):
     """
     Write the real component of the map to a CCP4-format file.
     """
