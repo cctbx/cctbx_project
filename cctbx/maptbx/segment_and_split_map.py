@@ -14,7 +14,7 @@ import libtbx.callbacks # import dependency
 from libtbx import group_args
 from six.moves import range
 from six.moves import zip
-from iotbx.create_models_or_maps import get_map_from_map_coeffs
+from cctbx.development.create_models_or_maps import get_map_from_map_coeffs
 
 master_phil = iotbx.phil.parse("""
 

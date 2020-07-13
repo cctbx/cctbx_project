@@ -193,9 +193,9 @@ END
 model = dm.get_model(model_filename)               #   Deliver model object with model info
 </code></pre>
 
-<p>Now let’s use that model, along with its symmetry information, to generate map coefficients. We’ll use a tool that is found in <code>iotbx.create_models_or_maps</code> called <code>generate_map_coefficients</code> that makes it easy to get map coefficients from a model:</p>
+<p>Now let’s use that model, along with its symmetry information, to generate map coefficients. We’ll use a tool that is found in <code>cctbx.development.create_models_or_maps</code> called <code>generate_map_coefficients</code> that makes it easy to get map coefficients from a model:</p>
 
-<pre class="codeDL"><code>from iotbx.create_models_or_maps import generate_map_coefficients   # import the tool
+<pre class="codeDL"><code>from cctbx.development.create_models_or_maps import generate_map_coefficients   # import the tool
 
 map_coeffs = generate_map_coefficients(  # generate map coeffs from model
       model=model,                       # Required model
@@ -205,7 +205,7 @@ map_coeffs = generate_map_coefficients(  # generate map coeffs from model
 
 <p>Note that we have to set the high-resolution limit (3 Angstroms) and tell the tool whether we are working with cryo-EM (scattering_table='electron') or X-ray (scattering_table='n_gaussian'). We can use these map coefficients to calculate a map, or use them directly for some other purpose. Let’s make a map using these map coefficients:</p>
 
-<pre class="codeDL"><code>from iotbx.create_models_or_maps import get_map_from_map_coeffs   #  import the tool
+<pre class="codeDL"><code>from cctbx.development.create_models_or_maps import get_map_from_map_coeffs   #  import the tool
 map_data = get_map_from_map_coeffs(map_coeffs = map_coeffs)   #  create map from map coeffs
 </code></pre>
 
