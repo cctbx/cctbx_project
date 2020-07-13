@@ -302,11 +302,11 @@ def run(cmdargs):
   if(len(cmdargs)==1):
     alg = cmdargs[0]
     assert alg in ["alg0", "alg2", "alg4"]
-    NPROC=50
+    NPROC=25
     pdbs, mtzs, codes, sizes = get_files_sorted(pdb_files, hkl_files)
     argss = []
     for pdb, mtz, code in zip(pdbs, mtzs, codes):
-      argss.append([pdb, mtz, code, "alg4"])
+      argss.append([pdb, mtz, code, alg])
     if(NPROC>1):
       stdout_and_results = easy_mp.pool_map(
         processes    = NPROC,
