@@ -66,7 +66,7 @@ ATOM      8  CD2 LEU B 219      10.092   8.808   8.540  1.00 30.00           C
 
 <!-- ----------------------------------------------------------------------- -->
 
-<h3 class="mt-3">Accessing attributes of a model with the Model manager</h3>
+<h3 class="mt-3">Setting up an example model</h3>
 
 <p>The cctbx model manager lets you view and change many attributes of a model. Let’s work with a library model that we can obtain with the map_model_manager (revisit <a href="{% url 'doc_high_level_objects' %}">this page</a> if you need a refresher on high level objects):</p>
 
@@ -85,6 +85,12 @@ dm.set_overwrite(True)         #   tell the DataManager to overwrite files with 
 model_filename="model.pdb"                         #   Name of model file
 model = dm.get_model(model_filename)               #   Deliver model object with model info
 </code></pre>
+
+<p>Below is a figure of the model. It represents a short helical fragment.</p>
+
+<img src="{% static 'img/doc_model_manager_3.png' %}" alt="doc_model_manager_3">
+
+<h3 class="mt-3">Accessing attributes of a model with the Model manager</h3>
 
 <p>Now let’s get an array containing the coordinates of the atoms in our model:</p>
 
@@ -119,6 +125,10 @@ print (model.get_sites_cart()[0])            # print coordinate of first atom
 
 <pre class="codeDL"><code>dm.write_model_file(model, "shifted_model.pdb", overwrite=True)
 </code></pre>
+
+<p>Below is a figure showing the initial model (shown as lines) and the shifted model (blue stick representation).</p>
+
+<img src="{% static 'img/doc_model_manager_4.png' %}" alt="doc_model_manager_4">
 
 <!-- ----------------------------------------------------------------------- -->
 
@@ -203,29 +213,13 @@ map_data = get_map_from_map_coeffs(map_coeffs = map_coeffs)   #  create map from
 
 <p>If you already have a map_manager object mm and you want this map to match that map_manager, you can use the map_manager object to calculate map_data:</p>
 
-<pre class="codeDL"><code>map_data = mm.fourier_coefficients_as_map(map_coeffs)   # generate map from map coeffs
+<pre class="codeDL"><code># map_data = mm.fourier_coefficients_as_map(map_coeffs)   # generate map from map coeffs
 </code></pre>
 
-<p>In this case it is also easy to create a new map_manager containing this map data (we will see more about the map_manager next):</p>
+<p>In this case it is also easy to create a new map_manager containing this map data (see the map_manager documentation):</p>
 
-<pre class="codeDL"><code>mm_model_map = mm.customized_copy(map_data = map_data)
+<pre class="codeDL"><code># mm_model_map = mm.customized_copy(map_data = map_data)
 </code></pre>
-
-<!--
-<h4>sub-subtitle</h4>
-
-<h3 class="mt-3">Subtitle_2</h3>
-
-ATOM      1  N   LEU B 219      14.476  10.570   8.342  1.00 30.00           N
-
-<pre class="codeDL"><code>
-</code></pre>
-
-
-which yields (the CRYST1 line is the crystal symmetry, the SCALE lines describe how to convert between cartesian and fractional coordinates, then the ATOM lines describing the N atoms in each residue, starting with the N of residue 219 which is a LEU (leucine) residue in chain B, with coordinates (14.476,  10.570,   8.342 ), an occupancy of 1.00 and a B-value of 30, and an atom type of N):
-
--->
-
 
 
 <!-- EDIT END -->
