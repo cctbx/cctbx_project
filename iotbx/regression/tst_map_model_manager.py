@@ -122,6 +122,18 @@ def test_01():
   assert not new_mm_1.is_consistent_with_wrapping()
   assert new_mm_1.map_data().all()== new_mm.map_data().all()
 
+  # create map_model_manager with just half-maps
+  mm1=mm.deep_copy()
+  mm2=mm.deep_copy()
+  map_data=mm2.map_data()
+  map_data+=1.
+  new_mmm=map_model_manager(model=mmm.model().deep_copy(),
+    map_manager_1=mm1,
+    map_manager_2=mm2)
+  assert new_mmm._map_dict.get('map_manager') is None # should not be any yet
+  assert approx_equal(new_mmm.map_manager().map_data()[232],
+     mm.deep_copy().map_data()[232]+0.5)
+  assert new_mmm._map_dict.get('map_manager') is not None # now should be there
 
 # ----------------------------------------------------------------------------
 

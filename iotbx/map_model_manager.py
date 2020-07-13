@@ -104,8 +104,29 @@ class map_model_base(object):
     return map_manager_list
 
   def map_manager(self):
-    ''' Get the map_manager '''
-    return self._map_dict.get('map_manager')
+    '''
+      Get the map_manager
+
+      If not present, calculate it from map_manager_1 and map_manager_2
+      and set it.
+    '''
+
+    map_manager = self._map_dict.get('map_manager')
+
+
+    if (not map_manager):
+      # If map_manager_1 and map_manager_2 are supplied but no map_manager,
+      #   create map_manager as average of map_manager_1 and map_manager_2
+
+      map_manager_1 = self._map_dict.get('map_manager_1')
+      map_manager_2 = self._map_dict.get('map_manager_2')
+      if map_manager_1 and map_manager_2:
+
+        map_manager = map_manager_1.customized_copy(map_data =
+          0.5 * (map_manager_1.map_data() + map_manager_2.map_data()))
+        self._map_dict['map_manager'] = map_manager
+
+    return map_manager
 
   def map_manager_1(self):
     ''' Get half_map 1 as a map_manager object '''
@@ -174,8 +195,16 @@ class map_model_base(object):
     return map_data_list
 
   def get_map_manager_by_id(self, map_id):
-    ''' Get a map_manager with the name map_id'''
-    return self.map_dict().get(map_id)
+    '''
+      Get a map_manager with the name map_id
+      If map_id is 'map_manager' specifically return self.map_manager()
+      so that it will create a map_manager from map_manager_1 and map_manager_2
+      if map_manager is not present
+    '''
+    if map_id == 'map_manager':
+      return self.map_manager()
+    else:
+      return self.map_dict().get(map_id)
 
   def get_map_data_by_id(self, map_id):
     ''' Get map_data from a map_manager with the name map_id'''
@@ -1590,15 +1619,26 @@ class map_model_manager(map_model_base):
       map_dict has four special ids with interpretations:
         map_manager:  full map
         map_manager_1, map_manager_2: half-maps 1 and 2
-        map_manager_mask:  a mask as a map_mnager
+        map_manager_mask:  a mask as a map_manager
       All other ids are any strings and are assumed to correspond to other maps
 
     Note:  It is permissible to call with no map_manger, but supplying
       both map_manager_1 and map_manager_2.  In this case, the working
-      map_manager will be the average of map_manager_1 and map_manager_2
+      map_manager will be the average of map_manager_1 and map_manager_2. This
+      will be created the first time map_manager is referenced.
 
     Note:  mam.map_manager() contains mam.ncs_object(), so it is not necessary
     to keep both.
+
+    Note: model objects may contain internal ncs objects.  These are separate from
+    those in the map_managers and separate from ncs_object in the call to
+    map_model_manager.
+
+    The ncs_object describes the NCS of the map and is a property of the map. It
+    must be shared by all maps
+
+    The model ncs objects describe the NCS of the individual model. They can differ
+    between models and between models and maps.
 
     Note: set wrapping of all maps to match map_manager if they differ. Set
     all to be wrapping if it is set
@@ -1614,12 +1654,22 @@ class map_model_manager(map_model_base):
                extra_model_id_list = None,  # string id's for models
                extra_map_manager_list = None,
                extra_map_manager_id_list = None,  # string id's for map_managers
-               ncs_object       = None,   # Overwrite ncs_objects
+               ncs_object       = None,   # Overwrite map_manager ncs_objects
                ignore_symmetry_conflicts = None,  # allow mismatch of symmetry
                wrapping         = None,  # Overwrite wrapping for all maps
                absolute_angle_tolerance = 0.01,  # angle tolerance for symmetry
                absolute_length_tolerance = 0.01,  # length tolerance
                log              = None):
+
+    # Checks
+    if extra_model_list is None: extra_model_list = []
+    if extra_map_manager_list is None: extra_map_manager_list = []
+    for m in [model] + extra_model_list:
+      assert (m is None) or isinstance(m, model_manager)
+    for mm in [map_manager, map_manager_1, map_manager_2] + extra_map_manager_list:
+      assert (mm is None) or isinstance(mm, iotbx.map_manager.map_manager)
+    assert (ncs_object is None) or isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
+
 
     # Set the log stream
     self.set_log(log = log)
@@ -1635,31 +1685,37 @@ class map_model_manager(map_model_base):
     self._force_wrapping = wrapping
     self._warning_message = None
 
-    # If map_manager_1 and map_manager_2 are supplied but no map_manager,
-    #   create map_manager as average of map_manager_1 and map_manager_2
-
-    if (map_manager_1 and map_manager_2) and (not map_manager):
-      map_manager = map_manager_1.customized_copy(map_data =
-        0.5 * (map_manager_1.map_data() + map_manager_2.map_data()))
 
     # If no map_manager now, do not do anything and make sure there
     #    was nothing else supplied
 
-    if not map_manager:
-      assert not map_manager_1 and not map_manager_2 and \
-        not extra_map_manager_list
+    if (not map_manager) and (not map_manager_1) and (not map_manager_2):
+      assert not extra_map_manager_list
       assert not ncs_object and not model
       return  # do not do anything
 
+    # Now make sure we have map manager or half maps at least
+    assert map_manager or (map_manager_1 and map_manager_2)
+
+    # A map_manager to check against others. It will be either map_manager or
+    #   map_manager_1
+
+    if map_manager:
+      any_map_manager = map_manager
+      any_map_manager_is_map_manager = True
+    else:
+      any_map_manager = map_manager_1
+      any_map_manager_is_map_manager = False
+
     # Overwrite wrapping if requested
-    # Take wrapping from map_manager otherwise for all maps
+    # Take wrapping from any_map_manager otherwise for all maps
 
     if isinstance(self._force_wrapping, bool):
       wrapping = self._force_wrapping
-      if wrapping and (not map_manager.is_full_size()):
+      if wrapping and (not any_map_manager.is_full_size()):
         raise Sorry("You cannot use wrapping=True if the map is not full size")
     else:
-      wrapping = map_manager.wrapping()
+      wrapping = any_map_manager.wrapping()
 
     assert wrapping in [True, False]
     if not extra_map_manager_list:
@@ -1670,39 +1726,39 @@ class map_model_manager(map_model_base):
         m.set_wrapping(wrapping)
 
     # if ignore_symmetry_conflicts, take all symmetry information from
-    #  map_manager and apply it to everything
+    #  any_map_manager and apply it to everything
     if ignore_symmetry_conflicts:
       if ncs_object:
-        ncs_object.set_shift_cart(map_manager.shift_cart())
+        ncs_object.set_shift_cart(any_map_manager.shift_cart())
       if model:
-        map_manager.set_model_symmetries_and_shift_cart_to_match_map(model)
+        any_map_manager.set_model_symmetries_and_shift_cart_to_match_map(model)
       if extra_model_list:
         for m in extra_model_list:
-          map_manager.set_model_symmetries_and_shift_cart_to_match_map(m)
+          any_map_manager.set_model_symmetries_and_shift_cart_to_match_map(m)
 
-      if map_manager_1:
-        map_manager_1 = map_manager.customized_copy(
+      if map_manager_1 and (map_manager_1 is not any_map_manager):
+        map_manager_1 = any_map_manager.customized_copy(
           map_data=map_manager_1.map_data())
       if map_manager_2:
-        map_manager_2 = map_manager.customized_copy(
+        map_manager_2 = any_map_manager.customized_copy(
           map_data=map_manager_2.map_data())
       new_extra_map_manager_list = []
       for m in extra_map_manager_list:
-        new_extra_map_manager_list.append(map_manager.customized_copy(
+        new_extra_map_manager_list.append(any_map_manager.customized_copy(
           map_data=m.map_data()))
       extra_map_manager_list = new_extra_map_manager_list
 
     # CHECKS
 
-    # Make sure that map_manager is either already shifted to (0, 0, 0) or has
+    # Make sure that any_map_manager is either already shifted to (0, 0, 0) or has
     #   origin_shift_grid_unit of (0, 0, 0).
-    assert map_manager.origin_is_zero() or \
-      map_manager.origin_shift_grid_units == (0, 0, 0)
+    assert any_map_manager.origin_is_zero() or \
+      tuple(any_map_manager.origin_shift_grid_units) == (0, 0, 0)
 
-    # Normally map_manager unit_cell_crystal_symmetry should match
+    # Normally any_map_manager unit_cell_crystal_symmetry should match
     #  model original_crystal_symmetry (and also usually model.crystal_symmetry)
 
-    # Make sure we have what is expected: optional model, mm,
+    # Make sure we have what is expected: optional model, mm or
     # map_manager_1 and map_manager_2 or neither,
     #   optional list of extra_map_manager_list and extra_model_list
 
@@ -1732,19 +1788,20 @@ class map_model_manager(map_model_base):
 
     if(not [map_manager_1, map_manager_2].count(None) in [0, 2]):
       raise Sorry("None or two half-maps are required.")
-    if(not map_manager):
+
+    if(not any_map_manager):
       raise Sorry("A map is required.")
 
     # Make sure all map_managers have same gridding and symmetry
-    for m in [map_manager_1, map_manager_2]+ \
+    for m in [map_manager, map_manager_1, map_manager_2]+ \
          extra_map_manager_list:
       if m and (not ignore_symmetry_conflicts):
-        if not map_manager.is_similar(m,
+        if not any_map_manager.is_similar(m,
            absolute_angle_tolerance = absolute_angle_tolerance,
            absolute_length_tolerance = absolute_length_tolerance,
           ):
           raise Sorry("Map manager '%s' is not similar to '%s': %s" %(
-           m.input_file_name,map_manager.input_file_name,
+           m.file_name,any_map_manager.file_name,
             map_manager.warning_message())+
             "\nTry 'ignore_symmetry_conflicts=True'")
 
@@ -1757,43 +1814,50 @@ class map_model_manager(map_model_base):
         absolute_angle_tolerance = absolute_angle_tolerance,
         absolute_length_tolerance = absolute_length_tolerance,
         ignore_symmetry_conflicts = ignore_symmetry_conflicts)
-    mmmn.add_map_manager(map_manager)
+    mmmn.add_map_manager(any_map_manager)
     if model:
       mmmn.add_model(model,
         set_model_log_to_null = False,
         ) # keep the log
     if ncs_object:
-      mmmn.add_ncs_object(ncs_object) # overwrites anything in map_manager
+      mmmn.add_ncs_object(ncs_object) # overwrites anything in any_map_manager
 
     # All ok here if it did not stop
 
-    # Shift origin of model and map_manager and ncs_object to (0, 0, 0) with
+    # Shift origin of model and any_map_manager and ncs_object to (0, 0, 0) with
     #    mmmn which knows about all of them
 
     mmmn.shift_origin()
 
-    # map_manager, model, ncs_object know about shift
-    map_manager = mmmn.map_manager()
+    # any_map_manager, model, ncs_object know about shift
+
+    any_map_manager = mmmn.map_manager()
+    # Put shifted map in the right place. It is either map_manager or map_manager_1
+    if any_map_manager_is_map_manager:
+      map_manager = any_map_manager
+    else:
+      map_manager_1 = any_map_manager
+
     if model:
        assert mmmn.model() is not None # make sure we got it
     model = mmmn.model()  # this model knows about shift
 
     if model:
-      # Make sure model shift manager agrees with map_manager shift
-      assert approx_equal(model.shift_cart(), map_manager.shift_cart())
+      # Make sure model shift manager agrees with any_map_manager shift
+      assert approx_equal(model.shift_cart(), any_map_manager.shift_cart())
 
-    # Shift origins of all other maps
-    for m in [map_manager_1, map_manager_2]+\
+    # Shift origins of all maps (shifting again does nothing, but still skip)
+    for m in [map_manager, map_manager_1, map_manager_2]+\
          extra_map_manager_list:
-      if m:
+      if m and (not m is any_map_manager):
         m.shift_origin()
 
     # Shift origins of all the extra models:
     for m in extra_model_list:
       m.shift_model_and_set_crystal_symmetry(
-          shift_cart=map_manager.shift_cart(),
+          shift_cart=any_map_manager.shift_cart(),
           crystal_symmetry=map_manager.crystal_symmetry())
-      assert approx_equal(m.shift_cart(), map_manager.shift_cart())
+      assert approx_equal(m.shift_cart(), any_map_manager.shift_cart())
 
     # Transfer ncs_object to all map_managers if one is present
     if self.ncs_object():
@@ -1803,22 +1867,21 @@ class map_model_manager(map_model_base):
           m.set_ncs_object(self.ncs_object())
 
     # Make sure all really match:
-    for m in [map_manager_1, map_manager_2]+\
+    for m in [map_manager, map_manager_1, map_manager_2]+\
         extra_map_manager_list:
-      if m:
-        if not map_manager.is_similar(m):
-          raise AssertionError(map_manager.warning_message())
+      if m and not any_map_manager.is_similar(m):
+          raise AssertionError(any_map_manager.warning_message())
 
     # Save origin after origin shift but before any boxing
     #    so they can be accessed easily later
 
-    self._original_origin_grid_units = map_manager.origin_shift_grid_units
+    self._original_origin_grid_units = any_map_manager.origin_shift_grid_units
     self._original_origin_cart = tuple(
-       [-x for x in map_manager.shift_cart()])
+       [-x for x in any_map_manager.shift_cart()])
 
     #  Save gridding of this original map (after shifting, whole thing):
     self._gridding_first = (0, 0, 0)
-    self._gridding_last = map_manager.map_data().all()
+    self._gridding_last = any_map_manager.map_data().all()
 
     # Holder for solvent content used in boxing and transferred to box_object
     self._solvent_content = None
@@ -1853,7 +1916,8 @@ class map_model_manager(map_model_base):
     '''
 
 
-    assert map_manager is not None
+    assert (map_manager is not None) or (
+       (map_manager_1 is not None) and (map_manager_2 is not None))
     self._map_dict={}
     self._extra_map_manager_id_list=extra_map_manager_id_list
     self._map_dict['map_manager']=map_manager
@@ -2376,6 +2440,9 @@ class match_map_model_ncs:
       return None
 
   def map_manager(self):
+    '''
+      Return the map_manager
+    '''
     return self._map_manager
 
   def model(self):
@@ -2407,7 +2474,7 @@ class match_map_model_ncs:
           self.model())  # modifies self.model() in place
       else:
           raise Sorry("Model is not similar to '%s': \n%s" %(
-           self.map_manager().input_file_name,
+           self.map_manager().file_name,
             self.map_manager().warning_message())+
             "\nTry 'ignore_symmetry_conflicts=True'")
 

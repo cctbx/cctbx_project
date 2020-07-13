@@ -258,7 +258,7 @@ class map_manager(map_reader, write_ccp4_map):
     self._is_mask = False
 
     # Initialize program_name, limitations, labels
-    self.input_file_name = file_name # input file (source of this manager)
+    self.file_name = file_name # input file (source of this manager)
     self.program_name = None  # Name of program using this manager
     self.limitations = None  # Limitations from STANDARD_LIMITATIONS_DICT
     self.labels = None  # List of labels (usually from input file) to be written
@@ -276,7 +276,7 @@ class map_manager(map_reader, write_ccp4_map):
 
     # Usual initialization with a file
 
-    if self.input_file_name is not None:
+    if self.file_name is not None:
       self._read_map()
       # Sets self.unit_cell_grid, self._unit_cell_crystal_symmetry, self.data,
       #  self._crystal_symmetry.  Sets also self.external_origin
@@ -344,7 +344,7 @@ class map_manager(map_reader, write_ccp4_map):
       self.log = sys.stdout
 
   def __repr__(self):
-    text = "Map manager (from %s)" %(self.input_file_name)+\
+    text = "Map manager (from %s)" %(self.file_name)+\
        "\n%s, \nUnit-cell grid: %s, (present: %s), origin shift %s" %(
       str(self.unit_cell_crystal_symmetry()).replace("\n"," "),
       str(self.unit_cell_grid),
@@ -370,11 +370,11 @@ class map_manager(map_reader, write_ccp4_map):
        Sets self.unit_cell_grid, self._unit_cell_crystal_symmetry, self.data
            self._crystal_symmetry
        Does not set self.origin_shift_grid_units
-       Does set self.input_file_name
+       Does set self.file_name
       '''
-      self._print("Reading map from %s " %(self.input_file_name))
+      self._print("Reading map from %s " %(self.file_name))
 
-      self.read_map_file(file_name = self.input_file_name)  # mrcfile/__init__.py
+      self.read_map_file(file_name = self.file_name)  # mrcfile/__init__.py
 
   def _print(self, m):
     if (self.log is not None) and hasattr(self.log, 'closed') and (
@@ -701,7 +701,7 @@ class map_manager(map_reader, write_ccp4_map):
     from iotbx.mrcfile import create_output_labels
     labels = create_output_labels(
       program_name = self.program_name,
-      input_file_name = self.input_file_name,
+      input_file_name = self.file_name,
       input_labels = self.labels,
       limitations = self.limitations)
 
@@ -790,8 +790,7 @@ class map_manager(map_reader, write_ccp4_map):
         sequence = sequence,
         solvent_content = solvent_content, )
 
-  def create_mask_around_edges(self,
-      soft_mask_radius = None):
+  def create_mask_around_edges(self, soft_mask_radius):
     '''
       Use cctbx.maptbx.mask.create_mask_around_edges to create a mask around
       edges of map.  Does not make a soft mask.  For a soft mask,
