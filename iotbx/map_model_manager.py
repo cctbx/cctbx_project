@@ -2065,6 +2065,7 @@ class map_model_manager(map_model_base):
   def generate_map(self,
       high_resolution = 3,
       origin_shift_grid_units = None,
+      file_name = None,
       model = None,
       n_residues = None,
       b_iso = 30,
@@ -2094,8 +2095,11 @@ class map_model_manager(map_model_base):
       Parameters:
       -----------
 
-      model (model.manager object, None):    model to use
-      n_residues (int, 10):      Number of residues to include
+      model (model.manager object, None):    model to use (as is)
+      file_name (path , None):    file containing coordinates to use (instead
+                                  of default model)
+      n_residues (int, 10):      Number of residues to include (from default
+                                  model or file_name)
       b_iso (float, 30):         B-value (ADP) to use for all atoms
       box_cushion (float, 5):     Buffer (A) around model
       high_resolution (float, 3):      high_resolution limit (A)
@@ -2125,6 +2129,7 @@ class map_model_manager(map_model_base):
 
     if not model:
       model = generate_model(
+        file_name = file_name,
         n_residues = n_residues,
         b_iso = b_iso,
         box_cushion = box_cushion,
