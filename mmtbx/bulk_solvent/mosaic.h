@@ -12,6 +12,107 @@ namespace mmtbx { namespace mosaic {
 
 typedef std::complex<double> ComplexType;
 
+
+template <typename FloatType=double>
+class alg2_tg
+{
+public:
+  alg2_tg() {}
+
+  alg2_tg(
+    boost::python::list      const& F_,
+    af::const_ref<FloatType> const& i_obs_)
+  :
+  dim(boost::python::len(F_)),
+  size(i_obs_.size()),
+  target_(0),
+  gradient_(boost::python::len(F_)),
+  F_conj(boost::python::len(F_)),
+  F(boost::python::len(F_)),
+  i_obs(i_obs_.size()),
+  i_obs_sum(0)
+  {
+   for(std::size_t i=0; i < size; i++) {
+     i_obs[i] = i_obs_[i];
+     i_obs_sum += i_obs_[i];
+   }
+   // Extract Fs
+   for(std::size_t i=0; i < dim; i++) {
+     boost::python::extract<af::const_ref<ComplexType> > elem_proxy_1(F_[i]);
+     af::const_ref<ComplexType> fm = elem_proxy_1();
+     F[i] = fm;
+     MMTBX_ASSERT(fm.size() == i_obs.size());
+   }
+   // Pre-compute complex conj
+   for(std::size_t i=0; i < dim; i++) {
+     af::shared<ComplexType> f(size);
+     for(std::size_t j=0; j < size; j++) {
+       f[j]=std::conj(F[i][j]);
+     }
+     F_conj[i] = f;
+   }
+   //
+   for(std::size_t n=0; n < dim; n++) {
+      for(std::size_t m=0; m < dim; m++) {
+        for(std::size_t i=0; i < size; i++) {
+          precompute.push_back( std::real( F[n][i]* F_conj[m][i] ) );
+        }
+      }
+    }
+  }
+
+  void update(af::const_ref<FloatType> const& x) {
+    MMTBX_ASSERT(x.size() == dim);
+    gradient_.fill(0);
+    af::shared<FloatType> i_model(i_obs.size());
+    i_model.fill(0);
+    std::size_t index = 0;
+    for(std::size_t n=0; n < dim; n++) {
+      for(std::size_t m=0; m < dim; m++) {
+        FloatType xnm = x[n]*x[m];
+        for(std::size_t i=0; i < size; i++) {
+          i_model[i] += xnm * precompute[index];
+          index+=1;
+        }
+      }
+    }
+    // target
+    for(std::size_t i=0; i < size; i++) {
+      FloatType diff = i_model[i] - i_obs[i];
+      target_ += (diff*diff);
+    }
+    target_ /= (4*i_obs_sum);
+    // grads
+    af::shared<FloatType> tmp(i_obs.size());
+    index = 0;
+    for(std::size_t n=0; n < dim; n++) {
+      tmp.fill(0);
+      for(std::size_t m=0; m < dim; m++) {
+        for(std::size_t i=0; i < size; i++) {
+          tmp[i] += x[m] * precompute[index];
+          index+=1;
+        }
+      }
+      for(std::size_t i=0; i < size; i++) {
+        gradient_[n] += (tmp[i] * ( i_model[i] - i_obs[i] ))/i_obs_sum;
+      }
+    }
+  }
+
+  FloatType target()               { return target_; }
+  af::shared<FloatType> gradient() { return gradient_; }
+
+private:
+  FloatType target_;
+  af::shared<FloatType> gradient_;
+  af::shared<af::shared<ComplexType> > F_conj;
+  std::size_t dim, size;
+  af::shared<af::const_ref<ComplexType> > F;
+  af::shared<FloatType> i_obs;
+  FloatType i_obs_sum;
+  af::shared<FloatType> precompute;
+};
+
 // Phased simultaneous search (alg4). Python equivalent exists.
 template <typename FloatType>
  af::shared<FloatType>
@@ -28,6 +129,7 @@ template <typename FloatType>
      boost::python::extract<af::const_ref<ComplexType> > elem_proxy_1(F_[i]);
      af::const_ref<ComplexType>  fm = elem_proxy_1();
      F[i] = fm;
+     MMTBX_ASSERT(fm.size() == f_obs.size());
    }
    //
    int size = f_obs.size();

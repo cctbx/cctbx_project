@@ -1082,7 +1082,7 @@ def run():
   inp = common_inputs(k_sols=k_sols, for_test=True)
   mm, f_obs, i_obs, fc = inp.mm, inp.f_obs, inp.i_obs, inp.fc
   # Initial k_sols for finite differences test and minimization (algorithm_2)
-  x = [1,  .01,.01,.01, .01,.01,.01]
+  x = flex.double([1,  .01,.01,.01, .01,.01,.01])
   # Finite differences test
   g_anal = mosaic.tg(i_obs = i_obs, F=[fc]+mm.FV.keys(), x=x, use_curvatures=False).gradients()
   e=1.e-6
@@ -1130,6 +1130,5 @@ def run():
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
-  run2()
   print ("Total time: %-8.4f"%(time.time()-t0))
   print ("OK")

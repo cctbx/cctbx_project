@@ -15,6 +15,7 @@ from mmtbx.ncs import tncs
 from collections import OrderedDict
 import mmtbx.f_model
 import sys
+from libtbx.test_utils import approx_equal
 
 from mmtbx import masks
 from cctbx.masks import vdw_radii_from_xray_structure
@@ -87,8 +88,16 @@ class tg(object):
     self.t = None
     self.g = None
     self.d = None
-    self.sum_i_obs = flex.sum(self.i_obs.data())
+    # Needed to do sums from small to large to prefent loss
+    s = flex.sort_permutation(self.i_obs.data())
+    self.i_obs = self.i_obs.select(s)
+    self.F = [f.select(s) for f in self.F]
+    #
+    self.sum_i_obs = flex.sum(self.i_obs.data()) # needed for Python version
     self.use_curvatures=use_curvatures
+    self.tgo = mosaic_ext.alg2_tg(
+      F     = [f.data() for f in self.F],
+      i_obs = self.i_obs.data())
     self.update_target_and_grads(x=x)
 
   def update(self, x):
@@ -96,34 +105,46 @@ class tg(object):
 
   def update_target_and_grads(self, x):
     self.x = x
-    s = 1 #180/math.pi
-    i_model = flex.double(self.i_obs.data().size(),0)
-    for n, kn in enumerate(self.x):
-      for m, km in enumerate(self.x):
-        tmp = self.F[n].data()*flex.conj(self.F[m].data())
-        i_model += kn*km*flex.real(tmp)
-        #pn = self.F[n].phases().data()*s
-        #pm = self.F[m].phases().data()*s
-        #Fn = flex.abs(self.F[n].data())
-        #Fm = flex.abs(self.F[m].data())
-        #i_model += kn*km*Fn*Fm*flex.cos(pn-pm)
-    diff = i_model - self.i_obs.data()
-    t = flex.sum(diff*diff)/4
-    #
-    g = flex.double()
-    for j in range(len(self.F)):
-      tmp = flex.double(self.i_obs.data().size(),0)
-      for m, km in enumerate(self.x):
-        tmp += km * flex.real( self.F[j].data()*flex.conj(self.F[m].data()) )
-        #pj = self.F[j].phases().data()*s
-        #pm = self.F[m].phases().data()*s
-        #Fj = flex.abs(self.F[j].data())
-        #Fm = flex.abs(self.F[m].data())
-        #tmp += km * Fj*Fm*flex.cos(pj-pm)
-      g.append(flex.sum(diff*tmp))
-    self.t = t
-    self.g = g
-    #
+    self.tgo.update(self.x)
+    self.t = self.tgo.target()
+    self.g = self.tgo.gradient()
+#
+# Reference implementation in Python
+#    s = 1 #180/math.pi
+#    i_model = flex.double(self.i_obs.data().size(),0)
+#    for n, kn in enumerate(self.x):
+#      for m, km in enumerate(self.x):
+#        tmp = self.F[n].data()*flex.conj(self.F[m].data())
+#        i_model += kn*km*flex.real(tmp)
+#        #pn = self.F[n].phases().data()*s
+#        #pm = self.F[m].phases().data()*s
+#        #Fn = flex.abs(self.F[n].data())
+#        #Fm = flex.abs(self.F[m].data())
+#        #i_model += kn*km*Fn*Fm*flex.cos(pn-pm)
+#    diff = i_model - self.i_obs.data()
+#    #print (flex.min(diff), flex.max(diff))
+#    t = flex.sum(diff*diff)/4
+#    #
+#    g = flex.double()
+#    for j in range(len(self.F)):
+#      tmp = flex.double(self.i_obs.data().size(),0)
+#      for m, km in enumerate(self.x):
+#        tmp += km * flex.real( self.F[j].data()*flex.conj(self.F[m].data()) )
+#        #pj = self.F[j].phases().data()*s
+#        #pm = self.F[m].phases().data()*s
+#        #Fj = flex.abs(self.F[j].data())
+#        #Fm = flex.abs(self.F[m].data())
+#        #tmp += km * Fj*Fm*flex.cos(pj-pm)
+#      g.append(flex.sum(diff*tmp))
+#    self.t = t/self.sum_i_obs
+#    self.g = g/self.sum_i_obs
+#    print (self.t,t1)
+#    print (list(self.g))
+#    print (list(g1))
+#    print ()
+#    assert approx_equal(self.t, t1, 5)
+#    assert approx_equal(self.g, g1, 1.e-6)
+#
     if self.use_curvatures:
       d = flex.double()
       for j in range(len(self.F)):
@@ -141,9 +162,9 @@ class tg(object):
         d.append(flex.sum(tmp1*tmp1 + tmp2))
       self.d=d
 
-  def target(self): return self.t/self.sum_i_obs
+  def target(self): return self.t
 
-  def gradients(self): return self.g/self.sum_i_obs
+  def gradients(self): return self.g
 
   def gradient(self): return self.gradients()
 

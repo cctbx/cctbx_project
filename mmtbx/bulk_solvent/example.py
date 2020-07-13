@@ -66,6 +66,8 @@ def get_data(pdbf, mtzf):
   selection = selection | xrs.hd_selection()
   xrs = xrs.select(selection)
   #
+  #xrs.switch_to_neutron_scattering_dictionary()
+  #
   reflection_file = reflection_file_reader.any_reflection_file(
     file_name=mtzf, ensure_read_access=False)
   rfs = reflection_file_utils.reflection_file_server(
@@ -211,6 +213,7 @@ def run_one(args):
   # FILTER OUT NON-P1 and non X-ray/neutron
   pdb_inp = iotbx.pdb.input(file_name=pdbf)
   cs = pdb_inp.crystal_symmetry()
+  #
   if(cs.space_group_number() != 1): return
   if(not pdb_inp.get_experiment_type() in
      ["X-RAY DIFFRACTION", "NEUTRON DIFFRACTION"]): return
@@ -243,6 +246,11 @@ def run_one(args):
       map_WholeMask = get_map(mc=o.mc_whole_mask, cg=o.mm.crystal_gridding)
       map_Filtered  = get_map(mc=o.mc_filtered,   cg=o.mm.crystal_gridding)
       map_Mosaic    = get_map(mc=mbs.mc,          cg=o.mm.crystal_gridding)
+      ###
+      #write_map_file(cg=o.mm.crystal_gridding, mc=o.mm.mc,         file_name="first.ccp4")
+      #write_map_file(cg=o.mm.crystal_gridding, mc=o.mc_whole_mask, file_name="whole.ccp4")
+      #write_map_file(cg=o.mm.crystal_gridding, mc=mbs.mc,          file_name="mosaic.ccp4")
+      ###
       cntr = 0
       for region in o.mm.regions.values():
         region.m_FistMask  = map_stat(m=map_FirstMask, conn = o.mm.conn, i=region.id)
@@ -275,6 +283,20 @@ def run_one(args):
     print("FAILED:", file=log)
     traceback.print_exc(file=log)
     log.close()
+
+
+def write_map_file(cg, mc, file_name):
+  from iotbx import mrcfile
+  fft_map = mc.fft_map(crystal_gridding=cg)
+  fft_map.apply_sigma_scaling()
+  map_data = fft_map.real_map_unpadded()
+  mrcfile.write_ccp4_map(
+    file_name   = file_name,
+    unit_cell   = cg.unit_cell(),
+    space_group = cg.space_group(),
+    map_data    = map_data,
+    labels      = flex.std_string([""]))
+
 
 def run(cmdargs):
   if(len(cmdargs)==0):

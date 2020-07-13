@@ -21,6 +21,18 @@ namespace {
     using boost::python::arg;
     typedef return_value_policy<return_by_value> rbv;
 
+  class_<alg2_tg<> >(
+      "alg2_tg")
+      .def(init<
+         boost::python::list   const&,
+         af::const_ref<double> const&>(
+             (arg("F"),
+              arg("i_obs"))))
+      .def("target",   &alg2_tg<>::target)
+      .def("gradient", &alg2_tg<>::gradient)
+      .def("update",   &alg2_tg<>::update)
+   ;
+
    def("alg4",
       (af::shared<double>(*)
         (boost::python::list   const& F,
