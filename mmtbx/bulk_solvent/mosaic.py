@@ -192,10 +192,7 @@ class refinery(object):
     else:
       self.f_calc = fmodel.f_model_no_scales()
       self.F = [self.f_calc.deep_copy()] + fv.keys()[1:]
-
     self.bin_selections = fmodel.bin_selections
-
-    #fmodel.show(show_header=False, show_approx=False, log = log)
     #
     for it in range(3):
       self._print("cycle: %2d"%it)
@@ -222,9 +219,8 @@ class refinery(object):
 
         #r00=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, F[0].data()*k_total_sel)
 
-
         # algorithm_0
-        if (alg=="alg0"):
+        if(alg=="alg0"):
           k_masks = algorithm_0(
             f_obs = f_obs.select(sel),
             F     = [f.deep_copy() for f in F],
@@ -232,7 +228,7 @@ class refinery(object):
 
         #fd = flex.complex_double(F[0].data().size())
         #for i,f in enumerate(F):
-        #  fd = fd + f.data()*k_masks0[i]
+        #  fd = fd + f.data()*k_masks[i]
         #r0=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, fd*k_total_sel)
 
         #for i,f in enumerate(F):
@@ -243,7 +239,7 @@ class refinery(object):
         #FF = [f.set().array(data = f.data()*0.35) for i,f in enumerate(F)]
 
         # algorithm_4
-        if (alg=="alg4"):
+        if(alg=="alg4"):
           k_masks = algorithm_4(
             f_obs             = f_obs.select(sel),
             F                 = F,
@@ -251,7 +247,7 @@ class refinery(object):
 
         #fd = flex.complex_double(F[0].data().size())
         #for i,f in enumerate(F):
-        #  fd = fd + f.data()*k_masks4[i]
+        #  fd = fd + f.data()*k_masks[i]
         #r4=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, fd*k_total_sel)
 
         # algorithm_2
@@ -262,10 +258,13 @@ class refinery(object):
             x              = self._get_x_init(i_bin),
             use_curvatures = False)
 
-        #if r0<r4: k_masks = k_masks0
-        #else:     k_masks = k_masks4
+        #fd = flex.complex_double(F[0].data().size())
+        #for i,f in enumerate(F):
+        #  fd = fd + f.data()*k_masks[i]
+        #r2=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, fd*k_total_sel)
 
-        self._print(bin+" ".join(["%6.2f"%k for k in k_masks])+" %6.4f %6.4f %6.4f"%(0,0,0))
+        #self._print(bin+" ".join(["%6.2f"%k for k in k_masks])+" %6.4f %6.4f %6.4f %6.4f"%(r00,r0,r4, r2))
+        self._print(bin+" ".join(["%6.2f"%k for k in k_masks]))
         K_MASKS[sel] = k_masks
       #
       #print()
@@ -609,13 +608,13 @@ def algorithm_2(i_obs, F, x, use_curvatures=True, macro_cycles=10):
     else:
       #upper = flex.double([10] + [5]*(x.size()-1))
       #lower = flex.double([0.1] + [-5]*(x.size()-1))
-      upper = flex.double([10] + [0.65]*(x.size()-1))
-      lower = flex.double([0.1] + [0]*(x.size()-1))
+      #upper = flex.double([10] + [0.65]*(x.size()-1))
+      #lower = flex.double([0.1] + [0]*(x.size()-1))
 
       #upper = flex.double([1] + [0.65]*(x.size()-1))
       #lower = flex.double([1] + [0]*(x.size()-1))
-      #upper = flex.double([1] + [5.65]*(x.size()-1))
-      #lower = flex.double([1] + [-5]*(x.size()-1))
+      upper = flex.double([1] + [5.65]*(x.size()-1))
+      lower = flex.double([1] + [-5]*(x.size()-1))
       m = tncs.minimizer(
         potential       = calculator,
         use_bounds      = 2,
