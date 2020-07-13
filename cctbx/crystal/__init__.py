@@ -512,7 +512,7 @@ def select_crystal_symmetry(
       if cs and not cs.is_nonsense() and not cs.is_empty():
         is_similar_cs = cs0.is_similar_symmetry(cs,
            absolute_angle_tolerance=absolute_angle_tolerance,
-           absolute_length_tolerance=absolute_angle_tolerance)
+           absolute_length_tolerance=absolute_length_tolerance)
         if(not is_similar_cs):
           msg = "Crystal symmetry mismatch between different files.\n"
           msg += "%s %s\n" % (cs0.unit_cell(), cs0.space_group_info())
