@@ -1,4 +1,4 @@
-
+from __future__ import absolute_import, division, print_function
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 parser = ArgumentParser("Visualize prediction offsets for a single shot experiment",
