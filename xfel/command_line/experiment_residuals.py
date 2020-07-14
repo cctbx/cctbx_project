@@ -28,8 +28,8 @@ import pylab as plt
 fig = plt.figure()
 projection = None
 if args.threed:
-    from mpl_toolkits.mplot3d import Axes3D
-    projection="3d"
+  from mpl_toolkits.mplot3d import Axes3D
+  projection="3d"
 ax = plt.gca(projection=projection)
 
 R = flex.reflection_table.from_file(args.refl)
@@ -39,22 +39,22 @@ nref = len(R)
 
 xyz = np.zeros((nref, 3))
 for i_ref in range(nref):
-    x, y, _ = R[i_ref]["xyzobs.mm.value"]
-    xcal, ycal, _ = R[i_ref]["xyzcal.mm"]
-    pid = R[i_ref]['panel']
-    panel = DET[pid]
-    xyz_lab = panel.get_lab_coord((x,y))
-    xyz_cal_lab = panel.get_lab_coord((xcal, ycal))
-    xyz[i_ref] = xyz_lab
+  x, y, _ = R[i_ref]["xyzobs.mm.value"]
+  xcal, ycal, _ = R[i_ref]["xyzcal.mm"]
+  pid = R[i_ref]['panel']
+  panel = DET[pid]
+  xyz_lab = panel.get_lab_coord((x,y))
+  xyz_cal_lab = panel.get_lab_coord((xcal, ycal))
+  xyz[i_ref] = xyz_lab
 
-    diff = np.array(xyz_lab) - np.array(xyz_cal_lab)
-    diff_scale = diff*args.lscale
-    if args.threed:
-        ax.plot( *zip(xyz_lab, diff_scale+xyz_cal_lab), color=args.lcolor)
-    else:
-        x, y, _ = xyz_lab
-        ax.arrow(x, y, diff_scale[0], diff_scale[1], head_width=args.headwid, head_length=args.headlen, color=args.lcolor,
-              length_includes_head=not args.noarrow)
+  diff = np.array(xyz_lab) - np.array(xyz_cal_lab)
+  diff_scale = diff*args.lscale
+  if args.threed:
+    ax.plot( *zip(xyz_lab, diff_scale+xyz_cal_lab), color=args.lcolor)
+  else:
+    x, y, _ = xyz_lab
+    ax.arrow(x, y, diff_scale[0], diff_scale[1], head_width=args.headwid, head_length=args.headlen, color=args.lcolor,
+             length_includes_head=not args.noarrow)
 
 delpsi = R['delpsical.rad']
 xvals, yvals, zvals = xyz.T
@@ -62,13 +62,13 @@ xvals, yvals, zvals = xyz.T
 vmax = max(abs(delpsi))
 vmin = -vmax
 if args.clim is not None:
-    vmin, vmax = args.clim
+  vmin, vmax = args.clim
 
 scatt_arg = xvals, yvals
 if args.threed:
-    scatt_arg = scatt_arg + (zvals,)
+  scatt_arg = scatt_arg + (zvals,)
 scat = ax.scatter(*scatt_arg, s=args.mark_scale, c=delpsi, cmap=args.scatt_cmap, vmin=vmin, vmax=vmax, zorder=2,
-            edgecolors=args.edgecolor, linewidths=args.edgewidth)
+                  edgecolors=args.edgecolor, linewidths=args.edgewidth)
 
 cbar = plt.colorbar(scat)
 cbar.ax.set_ylabel("$\Delta \psi$", rotation=270, labelpad=15)
