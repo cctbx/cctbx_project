@@ -1503,8 +1503,6 @@ class r_model(map_model_base):
     new_mmm._model_dict={}
     new_mmm._extra_map_manager_id_list = []
     new_mmm._extra_map_manager_list = []
-    new_mmm._gridding_first = None
-    new_mmm._gridding_last = None
     return new_mmm
 
   # prevent pickling error in Python 3 with self.log = sys.stdout
@@ -1680,10 +1678,6 @@ class map_model_manager(map_model_base):
     # Initialize
     self._map_dict={}
     self._model_dict = {}
-    self._original_origin_grid_units = None
-    self._gridding_first = None
-    self._gridding_last = None
-    self._solvent_content = None
     self._force_wrapping = wrapping
     self._warning_message = None
 
@@ -1876,18 +1870,6 @@ class map_model_manager(map_model_base):
       if m and not any_map_manager.is_similar(m):
           raise AssertionError(any_map_manager.warning_message())
 
-    # Save origin after origin shift but before any boxing
-    #    so they can be accessed easily later
-
-    self._original_origin_grid_units = any_map_manager.origin_shift_grid_units
-
-    #  Save gridding of this original map (after shifting, whole thing):
-    self._gridding_first = (0, 0, 0)
-    self._gridding_last = any_map_manager.map_data().all()
-
-    # Holder for solvent content used in boxing and transferred to box_object
-    self._solvent_content = None
-
     # Set up maps, model, as dictionaries (same as used in r_model)
     self.set_up_map_dict(
       map_manager = map_manager,
@@ -1993,14 +1975,6 @@ class map_model_manager(map_model_base):
 
      return [self._map_dict[id] for id in self.extra_map_manager_id_list()]
 
-  def original_origin_cart(self):
-    any_map_manager = self.map_managers()[0]
-    return tuple( [-x for x in any_map_manager.shift_cart()])
-
-  def original_origin_grid_units(self):
-    assert self._original_origin_grid_units is not None
-    return self._original_origin_grid_units
-
   def map_data(self):
     return self.map_manager().map_data()
 
@@ -2032,15 +2006,6 @@ class map_model_manager(map_model_base):
       return None
 
   def hierarchy(self): return self.model().get_hierarchy()
-
-  def set_gridding_first(self, gridding_first):
-    self._gridding_first = tuple(gridding_first)
-
-  def set_gridding_last(self, gridding_last):
-    self._gridding_last = tuple(gridding_last)
-
-  def set_solvent_content(self, solvent_content):
-    self._solvent_content = solvent_content
 
   def get_counts_and_histograms(self):
     self._counts = get_map_counts(
@@ -2162,8 +2127,6 @@ class map_model_manager(map_model_base):
     new_mmm._model_dict={}
     new_mmm._extra_map_manager_id_list = []
     new_mmm._extra_map_manager_list = []
-    new_mmm._gridding_first = None
-    new_mmm._gridding_last = None
     return new_mmm
 
   def deep_copy(self):
@@ -2173,11 +2136,6 @@ class map_model_manager(map_model_base):
     from copy import deepcopy
     new_mmm._extra_map_manager_id_list = deepcopy(
         self._extra_map_manager_id_list)
-    new_mmm._original_origin_grid_units=deepcopy(
-        self._original_origin_grid_units)
-    new_mmm._gridding_first=deepcopy(self._gridding_first)
-    new_mmm._gridding_last=deepcopy(self._gridding_last)
-    new_mmm._solvent_content=deepcopy(self._solvent_content)
 
     new_mmm._model_dict={}
     for id in self._model_dict.keys():
@@ -2222,42 +2180,6 @@ class map_model_manager(map_model_base):
     if self.ncs_object():
       mmmn.add_ncs_object(self.ncs_object())
     return mmmn
-
-  def as_box_object(self,
-        original_map_data = None,
-        solvent_content = None):
-    '''
-      Create a box_object for backwards compatibility with methods that used
-       extract_box_around_model_and_map
-    '''
-
-    if solvent_content:
-      self.set_solvent_content(solvent_content)
-
-    if self.model():
-       xray_structure_box = self.model().get_xray_structure()
-       hierarchy = self.model().get_hierarchy()
-    else:
-       xray_structure_box = None
-       hierarchy = None
-
-    output_box = box_object(
-      shift_cart = tuple([-x for x in self.map_manager().origin_shift_cart()]),
-      xray_structure_box = xray_structure_box,
-      hierarchy = hierarchy,
-      ncs_object = self.ncs_object(),
-      map_box = self.map_manager().map_data(),
-      map_data = original_map_data,
-      map_box_half_map_list = None,
-      box_crystal_symmetry = self.map_manager().crystal_symmetry(),
-      pdb_outside_box_msg = "",
-      gridding_first = self._gridding_first,
-      gridding_last = self._gridding_last,
-      solvent_content = self._solvent_content,
-      origin_shift_grid_units = [
-         -x for x in self.map_manager().origin_shift_grid_units],
-      )
-    return output_box
 
 class match_map_model_ncs:
   '''

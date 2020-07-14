@@ -21,7 +21,7 @@ def exercise(file_name, out = sys.stdout):
   print ("Header information from %s:" %(file_name))
   m.show_summary(out = out)
 
-  map_data = m.map_data()
+  map_data = m.map_data().deep_copy()
   crystal_symmetry = m.crystal_symmetry()
   unit_cell_parameters = m.crystal_symmetry().unit_cell().parameters()
 
@@ -70,14 +70,11 @@ def exercise(file_name, out = sys.stdout):
     )
   mam.box_all_maps_around_model_and_shift_origin()
 
+  shifted_crystal_symmetry = mam.model().crystal_symmetry()
   shifted_model = mam.model()
   shifted_map_data = mam.map_data()
-  original_origin_grid_units = mam.original_origin_grid_units()
-  original_origin_cart = mam.original_origin_cart()
 
   print ("\nOriginal map origin (grid units):", map_data.origin())
-  print ("\nOriginal map origin (grid units, from mam):", mam.original_origin_grid_units())
-  print ("\nOriginal map origin (cartesian):", mam.original_origin_cart())
   print ("Original model:\n", model.model_as_pdb())
 
   print ("Shifted map origin:", shifted_map_data.origin())
@@ -136,7 +133,7 @@ def exercise(file_name, out = sys.stdout):
   print ("Writing to %s" %(output_file_name))
   mrcfile.write_ccp4_map(
       file_name = output_file_name,
-      crystal_symmetry = crystal_symmetry,
+      crystal_symmetry = shifted_crystal_symmetry,
       map_data = shifted_map_data, )
 
   output_file_name = 'shifted_model.pdb'
@@ -146,15 +143,15 @@ def exercise(file_name, out = sys.stdout):
 
 
   print ("\nWriting map_data and model in original position (origin at %s)" %(
-      str(mam.original_origin_grid_units())))
+      str(mam.map_manager().origin_shift_grid_units)))
 
   output_file_name = 'new_map_original_position.ccp4'
   print ("Writing to %s" %(output_file_name))
   mrcfile.write_ccp4_map(
       file_name = output_file_name,
-      crystal_symmetry = crystal_symmetry,
+      crystal_symmetry = shifted_crystal_symmetry,
       map_data = shifted_map_data,
-      origin_shift_grid_units = original_origin_grid_units)
+      origin_shift_grid_units = mam.map_manager().origin_shift_grid_units)
   print (shifted_model.model_as_pdb())
   output_pdb_file_name = 'new_model_original_position.pdb'
   f = open(output_pdb_file_name, 'w')
@@ -184,16 +181,20 @@ def exercise(file_name, out = sys.stdout):
          crystal_symmetry = crystal_symmetry)
   assert new_model_from_cif.model_as_pdb() == model.model_as_pdb()
 
-  # Read the original file again in case we modified m in any previous tests
+  # Read and box the original file again in case we modified m in any 
+  #   previous tests
   m = map_manager(file_name)
+  mam=map_model_manager(model=model.deep_copy(),map_manager=m)
+  mam.box_all_maps_around_model_and_shift_origin()
 
   file_name = output_file_name
   print ("Reading from %s" %(file_name))
   new_map = iotbx.mrcfile.map_reader(file_name = file_name, verbose = False)
+  new_map.data = new_map.data.shift_origin()
   print ("Header information from %s:" %(file_name))
   new_map.show_summary(out = out)
-  assert new_map.map_data().origin() == m.map_data().origin()
-  assert new_map.crystal_symmetry().is_similar_symmetry(m.crystal_symmetry())
+  assert new_map.map_data().origin() == mam.map_manager().map_data().origin()
+  assert new_map.crystal_symmetry().is_similar_symmetry(mam.map_manager().crystal_symmetry())
 
   # make a map_model_manager with lots of maps and model and ncs
   from mmtbx.ncs.ncs import ncs
