@@ -125,7 +125,7 @@ crystal.symmetry(<br>
 
 <p>We have been working with the map_manager object mm and we have seen that there are many commands available in mm like <code>mm.show_summary()</code>. We can find all available methods with the <code>help</code> command. You use it like this:</p>
 
-<pre class="codeDL"><code>help(mm)
+<pre class="codeDL"><code># help(mm)
 </code></pre>
 
 <p>The help command writes out something like this, summarizing the class and giving information on each member of the class.</p>
@@ -158,7 +158,7 @@ class map_manager(iotbx.mrcfile.map_reader, iotbx.mrcfile.write_ccp4_map)<br>
 
 <p>You can get information on just one specific method with the help function too:</p>
 
-<pre class="codeDL"><code>help(mm.map_as_fourier_coefficients)
+<pre class="codeDL"><code># help(mm.map_as_fourier_coefficients)
 </code></pre>
 
 <!-- ----------------------------------------------------------------------- -->
@@ -245,7 +245,8 @@ map_data.size()   # how many points in the original array (the same)
 
 <p>And let’s see what the standard deviation of the values in  map_data is, using the 1d view:</p>
 
-<pre class="codeDL"><code>map_data_1d.standard_deviation_of_the_sample()  #  standard deviation of data in map_data</code></pre>
+<pre class="codeDL"><code>map_data_1d.standard_deviation_of_the_sample()  #  standard deviation of data in map_data
+</code></pre>
 
 <p>which produces:</p>
 
