@@ -68,7 +68,9 @@ def exercise(file_name, out = sys.stdout):
           map_manager =  m,
           model     = model.deep_copy(),
     )
+  print ("ORIGINALZZ",mam)
   mam.box_all_maps_around_model_and_shift_origin()
+  print ("boxedORIGINALZZ",mam)
 
   shifted_crystal_symmetry = mam.model().crystal_symmetry()
   shifted_model = mam.model()
@@ -83,9 +85,13 @@ def exercise(file_name, out = sys.stdout):
 
   # Save the map_model manager
   mam_dc=mam.deep_copy()
+  print ("dc",mam)
+  print ("dc mam_dc",mam_dc)
 
   # Mask map around atoms
   mam=mam_dc.deep_copy()
+  print ("dc mam_dc dc",mam_dc)
+  print (mam)
   mam.mask_all_maps_around_atoms(mask_atoms_atom_radius = 3,
      set_outside_to_mean_inside=True, soft_mask=False)
   print ("Mean before masking", mam.map_data().as_1d().min_max_mean().mean)
@@ -181,7 +187,7 @@ def exercise(file_name, out = sys.stdout):
          crystal_symmetry = crystal_symmetry)
   assert new_model_from_cif.model_as_pdb() == model.model_as_pdb()
 
-  # Read and box the original file again in case we modified m in any 
+  # Read and box the original file again in case we modified m in any
   #   previous tests
   m = map_manager(file_name)
   mam=map_model_manager(model=model.deep_copy(),map_manager=m)
@@ -234,7 +240,8 @@ def exercise(file_name, out = sys.stdout):
     )
   assert mam.map_manager().is_similar(mam2.map_manager())
   assert mam.map_manager().is_similar(mam2.map_manager_1())
-  assert mam.map_manager().is_similar(mam2.extra_map_manager_list()[1])
+  for m in mam2.map_managers():
+    assert mam.map_manager().is_similar(m)
   assert mam.model().shift_cart() == mam2.model().shift_cart()
   assert mam.model().shift_cart() == mam2.get_model_by_id('model_2').shift_cart()
 
