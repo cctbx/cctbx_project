@@ -2,9 +2,7 @@ from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.rank_scale_map
 
 from cctbx import maptbx
-import iotbx.mrcfile
 from libtbx.utils import Sorry
-from scitbx.array_family import flex
 import sys, time
 from iotbx.data_manager import DataManager
 
