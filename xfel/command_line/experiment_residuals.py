@@ -3,9 +3,9 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 parser = ArgumentParser("Visualize prediction offsets for a single shot experiment",
                         formatter_class=ArgumentDefaultsHelpFormatter)
-parser.add_argument("--expt", help="path to a refined experiment file", type=str, required=True)
-parser.add_argument("--refl", help="path to an indexed reflection file (strong spots with assigned miller indices)",
-                    type=str, required=True)
+parser.add_argument("expt", help="path to a refined experiment file", type=str) #, required=True)
+parser.add_argument("refl", help="path to an indexed reflection file (strong spots with assigned miller indices)",
+                    type=str) #, required=True)
 parser.add_argument("--line-scale", dest="lscale", help="scale the offset vector by this amount", default=25, type=float)
 parser.add_argument("--line-color", dest="lcolor", help="display the offset vector with this color", default="#777777", type=str)
 parser.add_argument("--scatter-color", dest="scatt_cmap", help="display the scatter points with this pylab colormap", default="bwr", type=str)
@@ -72,6 +72,7 @@ scat = ax.scatter(*scatt_arg, s=args.mark_scale, c=delpsi, cmap=args.scatt_cmap,
 
 cbar = plt.colorbar(scat)
 cbar.ax.set_ylabel("$\Delta \psi$", rotation=270, labelpad=15)
-plt.gca().set_aspect("equal")
+ax.set_aspect("equal")
+ax.set_facecolor(args.axcol)
 plt.title("Arrow points to prediction")
 plt.show()
