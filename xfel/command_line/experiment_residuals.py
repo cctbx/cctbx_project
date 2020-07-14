@@ -1,78 +1,140 @@
 from __future__ import absolute_import, division, print_function
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+# LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.experiment_residuals
 
-parser = ArgumentParser("Visualize prediction offsets for a single shot experiment",
-                        formatter_class=ArgumentDefaultsHelpFormatter)
-parser.add_argument("expt", help="path to a refined experiment file", type=str) #, required=True)
-parser.add_argument("refl", help="path to an indexed reflection file (strong spots with assigned miller indices)",
-                    type=str) #, required=True)
-parser.add_argument("--line-scale", dest="lscale", help="scale the offset vector by this amount", default=25, type=float)
-parser.add_argument("--line-color", dest="lcolor", help="display the offset vector with this color", default="#777777", type=str)
-parser.add_argument("--scatter-color", dest="scatt_cmap", help="display the scatter points with this pylab colormap", default="bwr", type=str)
-parser.add_argument("--clim", nargs=2, default=None, help="colormap limits e.g. --clim -0.01 0.01", type=float)
-parser.add_argument("--face-color", dest="axcol", default='w', help="pylab axis face color", type=str)
-parser.add_argument("--mark-scale", dest="mark_scale", default=15, help="scale of plot marker", type=int)
-parser.add_argument("--edge-color", dest="edgecolor", help="color of marker edge", default="#777777", type=str)
-parser.add_argument("--edge-width", dest="edgewidth", help="width of marker edge", default=0.5, type=float)
-parser.add_argument("--arrow-length", dest="headlen", help="length of pylab arrow head", default=0.5, type=float)
-parser.add_argument("--arrow-width", dest="headwid", help="width of pylab arrow head", default=0.5, type=float)
-parser.add_argument("--no-arrow", dest="noarrow", action="store_true", help="do not add arrows to plot")
-parser.add_argument("--three-d", dest="threed", action="store_true", help="display plot in 3D (for 3D detector models)")
-args = parser.parse_args()
 
+from libtbx.phil import parse
 from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentListFactory
 import numpy as np
 import pylab as plt
+from dials.util import show_mail_on_error
 
-fig = plt.figure()
-projection = None
-if args.threed:
-  from mpl_toolkits.mplot3d import Axes3D
-  projection="3d"
-ax = plt.gca(projection=projection)
+help_message = '''
+Visualize prediction offsets for a single shot experiment
 
-R = flex.reflection_table.from_file(args.refl)
-El = ExperimentListFactory.from_json_file(args.expt, check_format=False)
-DET = El.detectors()[0]
-nref = len(R)
+Example:
 
-xyz = np.zeros((nref, 3))
-for i_ref in range(nref):
-  x, y, _ = R[i_ref]["xyzobs.mm.value"]
-  xcal, ycal, _ = R[i_ref]["xyzcal.mm"]
-  pid = R[i_ref]['panel']
-  panel = DET[pid]
-  xyz_lab = panel.get_lab_coord((x,y))
-  xyz_cal_lab = panel.get_lab_coord((xcal, ycal))
-  xyz[i_ref] = xyz_lab
+  cctbx.xfel.experiment_residuals refined.expt indexed.refl
+'''
 
-  diff = np.array(xyz_lab) - np.array(xyz_cal_lab)
-  diff_scale = diff*args.lscale
-  if args.threed:
-    ax.plot( *zip(xyz_lab, diff_scale+xyz_cal_lab), color=args.lcolor)
-  else:
-    x, y, _ = xyz_lab
-    ax.arrow(x, y, diff_scale[0], diff_scale[1], head_width=args.headwid, head_length=args.headlen, color=args.lcolor,
-             length_includes_head=not args.noarrow)
+phil_scope = parse('''
+lscale = 10
+  .type = float 
+  .help = scale the offset vector by this amount 
+lcolor = #777777
+  .type = str
+  .help = display the offset vector with this color 
+scatt_cmap = bwr
+  .type = str
+  .help = display the scatter points with this pylab colormap 
+clim = None 
+  .type = floats(size=2)
+  .help = colormap limits e.g. clim=[-0.01, 0.01] 
+axcol = w
+  .type = str
+  .help = pylab axis face color
+mark_scale = 15
+  .type = int
+  .help = scale of scatter plot marker 
+edge_color = #777777
+  .type = str
+  .help = color of marker edge
+edge_width = 0.5
+  .type = float
+  .help = width of marker edge
+headlen = 0.5 
+  .type = float
+  .help = length of pylab arrow head
+headwid = 0.5
+  .type = float
+  .help = width of pylab arrow head
+noarrow = False
+  .type = bool
+  .help = do not add arrows to plot
+threed = False
+  .type = bool
+  .help = make a 3d plot for e.g. tilted detectors, experimental
+''', process_includes=True)
 
-delpsi = R['delpsical.rad']
-xvals, yvals, zvals = xyz.T
 
-vmax = max(abs(delpsi))
-vmin = -vmax
-if args.clim is not None:
-  vmin, vmax = args.clim
+class Script:
 
-scatt_arg = xvals, yvals
-if args.threed:
-  scatt_arg = scatt_arg + (zvals,)
-scat = ax.scatter(*scatt_arg, s=args.mark_scale, c=delpsi, cmap=args.scatt_cmap, vmin=vmin, vmax=vmax, zorder=2,
-                  edgecolors=args.edgecolor, linewidths=args.edgewidth)
+  def __init__(self):
+    from dials.util.options import OptionParser
+    #import libtbx.load_env
 
-cbar = plt.colorbar(scat)
-cbar.ax.set_ylabel("$\Delta \psi$", rotation=270, labelpad=15)
-ax.set_aspect("equal")
-ax.set_facecolor(args.axcol)
-plt.title("Arrow points to prediction")
-plt.show()
+    # Create the option parser
+    #usage = "usage: %s experiment1.expt experiment2.expt reflections1.refl reflections2.refl" % libtbx.env.dispatcher_name
+    self.parser = OptionParser(
+      usage="",
+      sort_options=True,
+      phil=phil_scope,
+      read_experiments=True,
+      read_reflections=True,
+      check_format=False,
+      epilog=help_message)
+
+  def run(self):
+    ''' Parse the options. '''
+    from dials.util.options import flatten_experiments, flatten_reflections
+    # Parse the command line arguments
+    args, options = self.parser.parse_args(show_diff_phil=True)
+
+    # do stuff
+    #fig = plt.figure()
+    projection = None
+    if args.threed:
+      from mpl_toolkits.mplot3d import Axes3D
+      projection="3d"
+    ax = plt.gca(projection=projection)
+
+    El = flatten_experiments(args.input.experiments)
+    R = flatten_reflections(args.input.reflections)[0]
+    DET = El.detectors()[0]
+    nref = len(R)
+
+    xyz = np.zeros((nref, 3))
+    for i_ref in range(nref):
+      x, y, _ = R[i_ref]["xyzobs.mm.value"]
+      xcal, ycal, _ = R[i_ref]["xyzcal.mm"]
+      pid = R[i_ref]['panel']
+      panel = DET[pid]
+      xyz_lab = panel.get_lab_coord((x,y))
+      xyz_cal_lab = panel.get_lab_coord((xcal, ycal))
+      xyz[i_ref] = xyz_lab
+
+      diff = np.array(xyz_lab) - np.array(xyz_cal_lab)
+      diff_scale = diff*args.lscale
+      if args.threed:
+        ax.plot( *zip(xyz_lab, diff_scale+xyz_cal_lab), color=args.lcolor)
+      else:
+        x, y, _ = xyz_lab
+        ax.arrow(x, y, diff_scale[0], diff_scale[1], head_width=args.headwid, head_length=args.headlen, color=args.lcolor,
+                 length_includes_head=not args.noarrow)
+
+    delpsi = R['delpsical.rad']
+    xvals, yvals, zvals = xyz.T
+
+    vmax = max(abs(delpsi))
+    vmin = -vmax
+    if args.clim is not None:
+      vmin, vmax = args.clim
+
+    scatt_arg = xvals, yvals
+    if args.threed:
+      scatt_arg = scatt_arg + (zvals,)
+    scat = ax.scatter(*scatt_arg, s=args.mark_scale, c=delpsi, cmap=args.scatt_cmap, vmin=vmin, vmax=vmax, zorder=2,
+                      edgecolors=args.edge_color, linewidths=args.edge_width)
+
+    cbar = plt.colorbar(scat)
+    cbar.ax.set_ylabel("$\Delta \psi$", rotation=270, labelpad=15)
+    ax.set_aspect("equal")
+    ax.set_facecolor(args.axcol)
+    plt.title("Arrow points to prediction")
+    plt.show()
+
+
+if __name__ == '__main__':
+  with show_mail_on_error():
+    script = Script()
+    script.run()
