@@ -49,9 +49,6 @@ headwid = 0.5
 noarrow = False
   .type = bool
   .help = do not add arrows to plot
-threed = False
-  .type = bool
-  .help = make a 3d plot for e.g. tilted detectors, experimental
 cbarshrink = 0.5
   .type = float
   .help = factor by which to shrink the displayed colorbar
@@ -78,12 +75,7 @@ class Script:
     params, options = self.parser.parse_args(show_diff_phil=True)
 
     # do stuff
-    if params.threed:
-      from mpl_toolkits.mplot3d import Axes3D
-      fig = plt.figure()
-      ax = Axes3D(fig)
-    else:
-      ax = plt.gca() #projection=projection)
+    ax = plt.gca()
 
     El = flatten_experiments(params.input.experiments)
     R = flatten_reflections(params.input.reflections)[0]
@@ -102,12 +94,9 @@ class Script:
 
       diff = np.array(xyz_lab) - np.array(xyz_cal_lab)
       diff_scale = diff*params.lscale
-      if params.threed:
-        ax.plot( *zip(xyz_lab, diff_scale+xyz_cal_lab), color=params.lcolor)
-      else:
-        x, y, _ = xyz_lab
-        ax.arrow(x, y, diff_scale[0], diff_scale[1], head_width=params.headwid, head_length=params.headlen, color=params.lcolor,
-                 length_includes_head=not params.noarrow)
+      x, y, _ = xyz_lab
+      ax.arrow(x, y, diff_scale[0], diff_scale[1], head_width=params.headwid, head_length=params.headlen, color=params.lcolor,
+               length_includes_head=not params.noarrow)
 
     delpsi = R['delpsical.rad']
     xvals, yvals, zvals = xyz.T
@@ -118,8 +107,6 @@ class Script:
       vmin, vmax = params.clim
 
     scatt_arg = xvals, yvals
-    if params.threed:
-      scatt_arg = scatt_arg + (zvals,)
     scat = ax.scatter(*scatt_arg, s=params.mark_scale, c=delpsi, cmap=params.scatt_cmap, vmin=vmin, vmax=vmax, zorder=2,
                       edgecolors=params.edge_color, linewidths=params.edge_width)
 
