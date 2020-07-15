@@ -635,7 +635,7 @@ class map_model_manager(object):
     elif not file_name:
       self._print ("Need file name to write map")
     else:
-      self._map_dict.get('map_manager').write_map(file_name = file_name)
+      self._map_dict.get(id).write_map(file_name = file_name)
 
   def write_model(self,
      file_name = None):
