@@ -189,6 +189,14 @@ def exercise(file_name, out = sys.stdout):
   s = (new_mam.get_map_manager_by_id('mask').map_data() > 0.5)
   assert approx_equal( (s.count(True),s.size()), (294,2048))
 
+  # Create a soft mask around model and do not do anything with it, wrapping =true
+  dummy_mam=new_mam.deep_copy()
+  dummy_mam.map_manager().set_wrapping(True)
+  dummy_mam.create_mask_around_atoms(mask_atoms_atom_radius=8,
+      soft_mask=True)
+  s = (dummy_mam.get_map_manager_by_id('mask').map_data() > 0.5)
+  assert approx_equal( (s.count(True),s.size()), (339,2048))
+
   # Create a sharp mask around model and do not do anything with it
   new_mam.create_mask_around_atoms(soft_mask=False,
      mask_atoms_atom_radius=8)
