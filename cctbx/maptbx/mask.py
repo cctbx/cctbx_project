@@ -18,7 +18,8 @@ class create_mask_around_atoms(object):
       xray_structure = None,
       mask_atoms_atom_radius = None,
       n_real = None,
-      map_manager = None):
+      map_manager = None,
+      wrapping = None):
 
     '''
      Create a mask (map object) with values of 1 near atoms in xray_structure
@@ -29,11 +30,15 @@ class create_mask_around_atoms(object):
        mask_atoms_atom_radius:  radius around atoms to mask
        n_real:  dimensions of map to create, e.g., existing map_data.all()
        map_manager: alternate source of information for n_real. origin (0, 0, 0)
+         and source of wrapping
+       wrapping:  Whether map wraps around unit cell boundaries, where unit
+         cell is that defined by xray_structure or model
     '''
 
     assert (model is not None) or (xray_structure is not None)
     assert mask_atoms_atom_radius is not None
     assert (n_real is not None) or (map_manager is not None)
+    assert (map_manager is not None) or isinstance(wrapping, bool)
 
     if not n_real:
       assert map_manager.map_data().origin() == (0, 0, 0)
@@ -46,6 +51,11 @@ class create_mask_around_atoms(object):
     else:
       self._crystal_symmetry = xray_structure.crystal_symmetry()
 
+    if map_manager and wrapping is None:
+      wrapping = map_manager.wrapping()
+
+    assert wrapping is not None
+
     import boost.python
     cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
     radii = flex.double(
@@ -56,7 +66,8 @@ class create_mask_around_atoms(object):
       n_real                      = n_real,
       mask_value_inside_molecule  = 1,
       mask_value_outside_molecule = 0,
-      radii                       = radii)
+      radii                       = radii,
+      wrapping                    = wrapping)
     # Set up map_manager with this mask
     if map_manager:
       self._map_manager = map_manager.customized_copy(map_data = self._mask)
