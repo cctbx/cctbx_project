@@ -1,10 +1,8 @@
 from __future__ import absolute_import, division, print_function
+
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.experiment_residuals
 
-
 from libtbx.phil import parse
-from dials.array_family import flex
-from dxtbx.model.experiment_list import ExperimentListFactory
 import numpy as np
 import pylab as plt
 from dials.util import show_mail_on_error
@@ -18,31 +16,31 @@ Example:
 '''
 
 phil_scope = parse('''
-lscale = 10
-  .type = float 
-  .help = scale the offset vector by this amount 
+lscale = 25
+  .type = float
+  .help = scale the offset vector by this amount
 lcolor = #777777
   .type = str
-  .help = display the offset vector with this color 
+  .help = display the offset vector with this color
 scatt_cmap = bwr
   .type = str
-  .help = display the scatter points with this pylab colormap 
-clim = None 
+  .help = display the scatter points with this pylab colormap
+clim = None
   .type = floats(size=2)
-  .help = colormap limits e.g. clim=[-0.01, 0.01] 
+  .help = colormap limits e.g. clim=[-0.01, 0.01]
 axcol = w
   .type = str
   .help = pylab axis face color
 mark_scale = 15
   .type = int
-  .help = scale of scatter plot marker 
+  .help = scale of scatter plot marker
 edge_color = #777777
   .type = str
   .help = color of marker edge
 edge_width = 0.5
   .type = float
   .help = width of marker edge
-headlen = 0.5 
+headlen = 0.5
   .type = float
   .help = length of pylab arrow head
 headwid = 0.5
@@ -54,6 +52,9 @@ noarrow = False
 threed = False
   .type = bool
   .help = make a 3d plot for e.g. tilted detectors, experimental
+cbarshrink = 0.5
+  .type = float
+  .help = factor by which to shrink the displayed colorbar
 ''', process_includes=True)
 
 
@@ -61,10 +62,7 @@ class Script:
 
   def __init__(self):
     from dials.util.options import OptionParser
-    #import libtbx.load_env
 
-    # Create the option parser
-    #usage = "usage: %s experiment1.expt experiment2.expt reflections1.refl reflections2.refl" % libtbx.env.dispatcher_name
     self.parser = OptionParser(
       usage="",
       sort_options=True,
@@ -77,19 +75,18 @@ class Script:
   def run(self):
     ''' Parse the options. '''
     from dials.util.options import flatten_experiments, flatten_reflections
-    # Parse the command line arguments
-    args, options = self.parser.parse_args(show_diff_phil=True)
+    params, options = self.parser.parse_args(show_diff_phil=True)
 
     # do stuff
-    #fig = plt.figure()
-    projection = None
-    if args.threed:
+    if params.threed:
       from mpl_toolkits.mplot3d import Axes3D
-      projection="3d"
-    ax = plt.gca(projection=projection)
+      fig = plt.figure()
+      ax = Axes3D(fig)
+    else:
+      ax = plt.gca() #projection=projection)
 
-    El = flatten_experiments(args.input.experiments)
-    R = flatten_reflections(args.input.reflections)[0]
+    El = flatten_experiments(params.input.experiments)
+    R = flatten_reflections(params.input.reflections)[0]
     DET = El.detectors()[0]
     nref = len(R)
 
@@ -104,33 +101,34 @@ class Script:
       xyz[i_ref] = xyz_lab
 
       diff = np.array(xyz_lab) - np.array(xyz_cal_lab)
-      diff_scale = diff*args.lscale
-      if args.threed:
-        ax.plot( *zip(xyz_lab, diff_scale+xyz_cal_lab), color=args.lcolor)
+      diff_scale = diff*params.lscale
+      if params.threed:
+        ax.plot( *zip(xyz_lab, diff_scale+xyz_cal_lab), color=params.lcolor)
       else:
         x, y, _ = xyz_lab
-        ax.arrow(x, y, diff_scale[0], diff_scale[1], head_width=args.headwid, head_length=args.headlen, color=args.lcolor,
-                 length_includes_head=not args.noarrow)
+        ax.arrow(x, y, diff_scale[0], diff_scale[1], head_width=params.headwid, head_length=params.headlen, color=params.lcolor,
+                 length_includes_head=not params.noarrow)
 
     delpsi = R['delpsical.rad']
     xvals, yvals, zvals = xyz.T
 
     vmax = max(abs(delpsi))
     vmin = -vmax
-    if args.clim is not None:
-      vmin, vmax = args.clim
+    if params.clim is not None:
+      vmin, vmax = params.clim
 
     scatt_arg = xvals, yvals
-    if args.threed:
+    if params.threed:
       scatt_arg = scatt_arg + (zvals,)
-    scat = ax.scatter(*scatt_arg, s=args.mark_scale, c=delpsi, cmap=args.scatt_cmap, vmin=vmin, vmax=vmax, zorder=2,
-                      edgecolors=args.edge_color, linewidths=args.edge_width)
+    scat = ax.scatter(*scatt_arg, s=params.mark_scale, c=delpsi, cmap=params.scatt_cmap, vmin=vmin, vmax=vmax, zorder=2,
+                      edgecolors=params.edge_color, linewidths=params.edge_width)
 
-    cbar = plt.colorbar(scat)
-    cbar.ax.set_ylabel("$\Delta \psi$", rotation=270, labelpad=15)
+    cbar = plt.colorbar(scat, shrink=params.cbarshrink)
+
+    cbar.ax.set_title("$\Delta \psi$")
     ax.set_aspect("equal")
-    ax.set_facecolor(args.axcol)
-    plt.title("Arrow points to prediction")
+    ax.set_facecolor(params.axcol)
+    plt.suptitle("Arrow points to prediction")
     plt.show()
 
 
