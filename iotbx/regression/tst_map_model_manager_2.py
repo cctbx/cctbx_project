@@ -107,7 +107,7 @@ def exercise(file_name, out = sys.stdout):
     soft_mask_radius = 5, set_outside_to_mean_inside=True)
   print ("Mean after first masking", mam.map_data().as_1d().min_max_mean().mean)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().mean,
-      0.0114157497816)
+      -0.00177661714805)
   print ("Max after first masking", mam.map_data().as_1d().min_max_mean().max)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().max,
        0.236853733659)
