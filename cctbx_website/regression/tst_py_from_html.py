@@ -1,5 +1,6 @@
 from __future__ import division, print_function
 import os
+import sys
 from libtbx import easy_run
 
 def run():
@@ -33,13 +34,17 @@ def run():
   os.rmdir(tmp_dir)
 
   # print info if fail or success; print stderr if failed
+  return_code = 0
   for l in results:
     if (l[1] == 0): re = 'ran successfully'
     else: re = 'failed'
     print('%s %s  ' % (l[0], re))
     if l[1] != 0:
+      return_code = 1
       for line in l[3]:
-        print('\t', line)
+        print('\t', line, file=sys.stderr)
+
+  return return_code
 
 if __name__ == '__main__':
-  run()
+  sys.exit(run())

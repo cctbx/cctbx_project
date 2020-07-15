@@ -1905,6 +1905,7 @@ class CCIBuilder(Builder):
   # Configure for these cctbx packages
   LIBTBX = [
     'cctbx',
+    'cctbx_website',
     'cbflib',
     'dxtbx',
     'scitbx',
@@ -2064,6 +2065,7 @@ class CCTBXLiteBuilder(CCIBuilder):
   # Configure for these cctbx packages
   LIBTBX = [
     'cctbx',
+    'cctbx_website',
     'scitbx',
     'libtbx',
     'iotbx',
