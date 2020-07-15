@@ -5,6 +5,12 @@ from libtbx import easy_run
 import libtbx.load_env
 
 general_tests = [
+  # pair interaction
+  "$D/pair_interaction/tst_00.py",
+  "$D/pair_interaction/tst_01.py",
+  "$D/pair_interaction/tst_02.py",
+  "$D/pair_interaction/tst_03.py",
+  "$D/pair_interaction/tst_04.py",
   # ions SVM
   "$D/ions/svm/tst_classifier.py",
   "$D/ions/tst_pick_ca_svm.py",

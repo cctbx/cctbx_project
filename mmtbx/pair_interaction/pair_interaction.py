@@ -130,36 +130,18 @@ def run(ph, core=None):
     #print("interactions(dori) (cpp):", interactions)
     #print("2. interactions got: ",len(interactions))
     interaction_mols=new_core
-
     ###
-    if 0: # From Min's code (Python version of Java code)
-      mol_id_dict=dict(zip(mols,range(1,len(mols)+1)))
-      id_mol_dict=dict(zip(range(1,len(mols)+1),mols))
-      for item in interactions:
-        pair=[mol_id_dict[item[0]],mol_id_dict[item[1]]]
-        if(len(set(pair)&set(new_core))>0):
-          interaction_mols+=pair
-      interaction_mols=list(set(interaction_mols))
-      interaction_atoms=[]
-      for i in range(len(core_atoms)):
-        core_atoms[i]=core_atoms[i].serial_as_int()
-      for mol_id in interaction_mols:
-          mol=id_mol_dict[mol_id]
-          ams=[a.serial_as_int() for a in atoms_group_dict[mol]]
-          interaction_atoms+=ams
-      return(core_atoms,interaction_atoms,interaction_mols)
-    else: # Rationalized version of the above
-      for item in interactions:
-        if(len(set(item).intersection(set(core)))>0):
-          interaction_mols=interaction_mols+list(item)
-      interaction_atoms=[]
-      for i in range(len(core_atoms)):
-        core_atoms[i]=core_atoms[i].serial_as_int()
-      #print("3. interaction mols:",set(interaction_mols))
-      for mol_id in interaction_mols:
-        ams=[a.serial_as_int() for a in atoms_group_dict[mol_id]]
-        interaction_atoms+=ams
-      return(list(set(core_atoms)), list(set(interaction_atoms)), list(set(interaction_mols)))
+    for item in interactions:
+      if(len(set(item).intersection(set(core)))>0):
+        interaction_mols=interaction_mols+list(item)
+    interaction_atoms=[]
+    for i in range(len(core_atoms)):
+      core_atoms[i]=core_atoms[i].i_seq+1
+    #print("3. interaction mols:",set(interaction_mols))
+    for mol_id in interaction_mols:
+      ams=[a.i_seq+1 for a in atoms_group_dict[mol_id]]
+      interaction_atoms+=ams
+    return(list(set(core_atoms)), list(set(interaction_atoms)), list(set(interaction_mols)))
     ###
   else:
     return get_interactions(ph, atom_in_residue)
