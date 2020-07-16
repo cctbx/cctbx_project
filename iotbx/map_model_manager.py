@@ -1783,6 +1783,7 @@ class map_model_manager(object):
       b_iso = 30,
       box_cushion = 5,
       scattering_table = 'electron',
+      fractional_error = None,
       gridding = None,
       wrapping = False,
      ):
@@ -1821,18 +1822,18 @@ class map_model_manager(object):
       wrapping:  Defines if map is to be specified as wrapped
       scattering_table (choice, 'electron'): choice of scattering table
            All choices: wk1995 it1992 n_gaussian neutron electron
-
+      fractional_error:  resolution-dependent fractional error, ranging from
+           zero at low resolution to fractional_error at high-resolution. Can
+           be more than 1.
     '''
 
 
     self._print("\nGenerating new map data\n")
     if self.map_manager():
       self._print("NOTE: replacing existing map data\n")
-    if self.model():
+    if self.model() and (not model):
       self._print("NOTE: using existing model to generate map data\n")
       model = self.model()
-    else:
-      model = None
 
     from cctbx.development.create_models_or_maps import generate_model, \
        generate_map_coefficients
@@ -1847,7 +1848,6 @@ class map_model_manager(object):
         box_cushion = box_cushion,
         space_group_number = 1,
         log = self.log)
-
     map_coeffs = generate_map_coefficients(model = model,
         high_resolution = high_resolution,
         scattering_table = scattering_table,
@@ -1859,6 +1859,7 @@ class map_model_manager(object):
       gridding = gridding,
       wrapping = wrapping,
       origin_shift_grid_units = origin_shift_grid_units,
+      high_resolution_real_space_noise_fraction = fractional_error,
       log = self.log)
 
     mm.show_summary()

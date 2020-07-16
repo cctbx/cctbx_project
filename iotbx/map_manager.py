@@ -1446,6 +1446,7 @@ class map_manager(map_reader, write_ccp4_map):
     if new_ncs_obj:
       self._ncs_object = new_ncs_obj
       self._ncs_cc = ncs_cc
+      self._ncs_object.set_shift_cart(self.shift_cart())
     else:
       self._warning_message = "No map symmetry found; ncs_cc cutoff of %s" %(
         min_ncs_cc)
