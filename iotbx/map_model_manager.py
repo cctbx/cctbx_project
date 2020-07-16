@@ -1783,7 +1783,7 @@ class map_model_manager(object):
       b_iso = 30,
       box_cushion = 5,
       scattering_table = 'electron',
-      fractional_error = None,
+      fractional_error = 0.0,
       gridding = None,
       wrapping = False,
      ):

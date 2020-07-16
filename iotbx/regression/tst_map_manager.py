@@ -274,7 +274,10 @@ def test_01():
   assert approx_equal (model.shift_cart() ,
        (-0.888888888888889, -0.8888888888888891, -0.888888888888889))
 
+  assert new_mm.is_compatible_ncs_object(ncs_obj)
+  ncs_obj.set_shift_cart((0,0,0))
   assert not new_mm.is_compatible_ncs_object(ncs_obj)
+
   new_mm.set_ncs_object_shift_cart_to_match_map(ncs_obj)
   new_mm.set_ncs_object(ncs_obj)
   assert new_mm.is_compatible_ncs_object(new_mm.ncs_object())
