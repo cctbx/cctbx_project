@@ -581,7 +581,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
           if self.NewHKLscenes:
             self.BinDataComboBox.clear()
-            self.BinDataComboBox.addItems(["Resolution"] + self.scenearraylabels )
+            self.BinDataComboBox.addItems(["Resolution", "Singletons"] + self.scenearraylabels )
             self.BinDataComboBox.view().setMinimumWidth(self.comboviewwidth)
             #self.BinDataComboBox.setCurrentIndex(-1) # unselect the first item in the list
             self.NewHKLscenes = False
@@ -869,10 +869,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
   def onBindataComboSelchange(self,i):
     if self.BinDataComboBox.currentText():
-      if self.BinDataComboBox.currentIndex() > 0:
-        bin_scene_label = str(self.BinDataComboBox.currentIndex()-1)
+      if self.BinDataComboBox.currentIndex() > 1:
+        bin_scene_label = str(self.BinDataComboBox.currentIndex()-2)
       else:
-        bin_scene_label = "Resolution"
+        bin_scene_label = self.BinDataComboBox.currentText()
       self.PhilToJsRender("NGL_HKLviewer.bin_scene_label = %s" % bin_scene_label )
       bin_opacitieslst = []
       for i in range(self.nbins):

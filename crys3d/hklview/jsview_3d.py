@@ -831,6 +831,9 @@ class hklview_3d:
       binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
       binvals = list( 1.0/flex.double(binvals) )
       nuniquevalues = len(set(list(dres)))
+    elif self.binscenelabel=="Singletons":
+        binvals = [ -1.5, -0.5, 0.5, 1.5 ]
+        nuniquevalues = len(binvals)
     else:
       bindata = self.HKLscene_from_dict(int(self.binscenelabel)).data.deep_copy()
       if isinstance(bindata, flex.complex_double):
@@ -891,6 +894,7 @@ class hklview_3d:
     # lets user specify a one line python expression operating on data, sigmas
     data = millarr.data()
     sigmas = millarr.sigmas()
+    indices = millarr.indices()
     dres = millarr.unit_cell().d( millarr.indices() )
     newarray = millarr.deep_copy()
     self.mprint("Creating new miller array through the operation: %s" %operation)
@@ -1063,6 +1067,8 @@ function MakeHKL_Axis(mshape)
     dres = self.scene.dres
     if self.binscenelabel=="Resolution":
       colstr = "dres"
+    elif self.binscenelabel=="Singletons":
+      colstr = "Singleton"
     else:
       if not blankscene:
         colstr = self.HKLscene_from_dict(int(self.binscenelabel)).work_array.info().label_string()
@@ -1082,6 +1088,9 @@ function MakeHKL_Axis(mshape)
       if self.binscenelabel=="Resolution":
         self.binvalsboundaries = self.binvals
         self.bindata = 1.0/self.scene.dres
+      elif self.binscenelabel=="Singletons":
+        self.binvalsboundaries = self.binvals
+        self.bindata = self.scene.singletonsiness
       else:
         ibinarray= int(self.binscenelabel)
         self.binvalsboundaries = [ self.HKLMinData_from_dict(ibinarray) - 0.1 , self.HKLMaxData_from_dict(ibinarray) + 0.1 ]
@@ -1128,7 +1137,6 @@ function MakeHKL_Axis(mshape)
     if nrefls > 0 and self.bindata.size() != points.size():
       raise Sorry("Not the same number of reflections in bin-data and displayed data")
 
-    flexbinvalsboundaries = flex.double(self.binvalsboundaries)
     start_time = time.time()
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array

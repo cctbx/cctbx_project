@@ -277,6 +277,7 @@ class scene(object):
       self.radians = flex.double(data.size(), float('nan'))
       self.ampl = flex.double(data.size(), float('nan'))
       self.sigmas = None
+      self.singletonsiness = flex.double(data.size(), 0.0 )
       if isinstance(data, flex.bool):
         self.r_free_mode = True
         data_as_float = flex.double(data.size(), 0.0)
@@ -318,6 +319,10 @@ class scene(object):
           self.sigmas = array.sigmas()
         else:
           self.sigmas = None
+      if array.anomalous_flag() and array.is_unique_set_under_symmetry():
+        # label singletons with 1 or -1 if any
+        self.singletonsiness.set_selected( array.match_bijvoet_mates()[1].singles("+"), 1.0 )
+        self.singletonsiness.set_selected( array.match_bijvoet_mates()[1].singles("-"), -1.0 )
       work_array = array
     except Exception as e:
       print(to_str(e) + "".join(traceback.format_stack(limit=10)))
