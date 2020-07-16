@@ -132,8 +132,9 @@ class compute(object):
     #
     if(self.mm.do_mosaic):
       # Define bins: once and for all downstream calculations
-      D.bin_selections = D.f_obs().log_binning(
-        n_reflections_in_lowest_resolution_bin = 100*len(self.mm.FV.keys()))
+      #D.bin_selections = D.f_obs().log_binning(
+      #  n_reflections_in_lowest_resolution_bin = 100*len(self.mm.FV.keys()))
+      D.bin_selections = D.f_obs().log_binning()
       #
       print("-"*79, file=log)
       print("A-2013, all defaults (except set binning)", file=log)
