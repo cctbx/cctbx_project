@@ -230,7 +230,7 @@ jobs:
       call .\build\setpaths.bat
       mkdir tests
       cd tests
-      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx nproc=4
+      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cctbx_website module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx nproc=4
     failOnStderr: false
     condition: and(eq(variables['PYTHON_VERSION'], 'py27'),
                    eq('${{ parameters.vs }}', 'vs2015'))
@@ -243,7 +243,7 @@ jobs:
       call .\build\setpaths.bat
       mkdir tests
       cd tests
-      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx nproc=4
+      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cctbx_website module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx nproc=4
     failOnStderr: false
     condition: and(not(eq(variables['PYTHON_VERSION'], 'py27')),
                    eq('${{ parameters.vs }}', 'vs2015'))
@@ -256,7 +256,7 @@ jobs:
       call .\build\setpaths.bat
       mkdir tests
       cd tests
-      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=scitbx module=smtbx nproc=4
+      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cctbx_website module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=scitbx module=smtbx nproc=4
     failOnStderr: false
     condition: and(not(eq(variables['PYTHON_VERSION'], 'py27')),
                    eq('${{ parameters.vs }}', 'vs2017'))
