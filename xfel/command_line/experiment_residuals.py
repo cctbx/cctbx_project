@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx.phil import parse
 import numpy as np
 import pylab as plt
+import sys
 from dials.util import show_mail_on_error
 
 help_message = '''
@@ -52,6 +53,12 @@ noarrow = False
 cbarshrink = 0.5
   .type = float
   .help = factor by which to shrink the displayed colorbar
+exper_id = 0
+  .type = int
+  .help = experiment id (if experiment file is multi-shot)
+title = None
+  .type = str
+  .help = title of the plot
 ''', process_includes=True)
 
 
@@ -70,16 +77,37 @@ class Script:
       epilog=help_message)
 
   def run(self):
-    ''' Parse the options. '''
     from dials.util.options import flatten_experiments, flatten_reflections
     params, options = self.parser.parse_args(show_diff_phil=True)
+
+    if len(params.input.experiments) > 1:
+      print("Please only pass a single experiment file. Exiting...")
+      sys.exit()
+    if len(params.input.reflections) > 1:
+      print("Please only pass a single reflection file. Exiting...")
+      sys.exit()
 
     # do stuff
     ax = plt.gca()
 
     El = flatten_experiments(params.input.experiments)
     R = flatten_reflections(params.input.reflections)[0]
-    DET = El.detectors()[0]
+
+    nexper = len(El)
+    nexper_in_refl = len(set(R["id"]))
+    if not nexper == nexper_in_refl:
+      print("There are %d experiments and %d possible reflection sets, experiment and reflection table out of sync"
+            % (nexper, nexper_in_refl))
+      sys.exit()
+    if params.exper_id < 0:
+      print("Exper Id must be greater than 0")
+      sys.exit()
+    if params.exper_id > nexper:
+      print("exper_id must be less than maximum number of experiments (=%d)" % nexper)
+
+    DET = El[params.exper_id].detector
+    R = R.select(R["id"] == params.exper_id)
+
     nref = len(R)
 
     xyz = np.zeros((nref, 3))
@@ -115,7 +143,10 @@ class Script:
     cbar.ax.set_title("$\Delta \psi$")
     ax.set_aspect("equal")
     ax.set_facecolor(params.axcol)
-    plt.suptitle("Arrow points to prediction")
+    title = "Arrow points to prediction"
+    if params.title is not None:
+      title = params.title
+    ax.set_title(title)
     plt.show()
 
 
