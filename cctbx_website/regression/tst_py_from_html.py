@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 import os
 import sys
+import libtbx.load_env
 from libtbx import easy_run
 
 def run():
@@ -19,9 +20,14 @@ def run():
   os.chdir(tmp_dir)
 
   results = list()
+  skipped = list()
   # loop through all .py files in "examples"
   for script in os.listdir(examples_dir):
     cmd = 'libtbx.python ' + os.path.join(examples_dir, script)
+    if script in ['doc_map_manager.py', 'doc_model_map_manager.py'] \
+      and not libtbx.env.has_module('phenix'):
+      skipped.append(script)
+      continue
     r = easy_run.fully_buffered(cmd)
     results.append([script, r.return_code, r.stdout_lines, r.stderr_lines])
     # remove files once done
@@ -43,6 +49,8 @@ def run():
       return_code = 1
       for line in l[3]:
         print('\t', line, file=sys.stderr)
+  for l in skipped:
+    print('%s skipped' % l)
 
   return return_code
 
