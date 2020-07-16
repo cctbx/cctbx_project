@@ -207,8 +207,8 @@ class refinery(object):
       i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
       K_MASKS = OrderedDict()
 
-      #self.bin_selections = self.f_obs.log_binning(
-      #  n_reflections_in_lowest_resolution_bin = 100*len(self.F))
+      self.bin_selections = self.f_obs.log_binning(
+        n_reflections_in_lowest_resolution_bin = 100*len(self.F))
 
       for i_bin, sel in enumerate(self.bin_selections):
         d_max, d_min = f_obs.select(sel).d_max_min()
@@ -291,27 +291,20 @@ class refinery(object):
         r_free_flags   = self.r_free_flags,
         f_calc         = self.f_obs.customized_copy(data = f_calc_data),
         #f_mask         = fmodel.f_masks()[0],#f_bulk,
-        bin_selections=self.bin_selections,
+        bin_selections = self.bin_selections,
         f_mask         = f_bulk,
         k_mask         = flex.double(f_obs.data().size(),1)
         )
-
-
-      #self.fmodel = mmtbx.f_model.manager(
-      #  f_obs          = self.f_obs,
-      #  r_free_flags   = self.r_free_flags,
-      #  f_calc         = self.f_obs.customized_copy(data = f_calc_data+f_bulk_data),
-      #  f_mask         = fmodel.f_masks()[0],#f_bulk,
-      #  bin_selections=self.bin_selections,
-      #  #f_mask         = f_bulk,
-      #  k_mask         = flex.double(f_obs.data().size(),1)
-      #  )
-
-
-
-      #
       self.fmodel.update_all_scales(remove_outliers=False)
-
+      #
+      self.fmodel = mmtbx.f_model.manager(
+        f_obs          = self.f_obs,
+        r_free_flags   = self.r_free_flags,
+        f_calc         = self.f_obs.customized_copy(data = f_calc_data),
+        f_mask         = self.fmodel.f_bulk(),
+        k_mask         = flex.double(f_obs.data().size(),1)
+        )
+      self.fmodel.update_all_scales(remove_outliers=False)
 
       #self._print(self.fmodel.r_factors(prefix="  "))
       self.mc = self.fmodel.electron_density_map().map_coefficients(
