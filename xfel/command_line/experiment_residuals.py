@@ -104,6 +104,7 @@ class Script:
       sys.exit()
     if params.exper_id > nexper:
       print("exper_id must be less than maximum number of experiments (=%d)" % nexper)
+      sys.exit()
 
     DET = El[params.exper_id].detector
     R = R.select(R["id"] == params.exper_id)
