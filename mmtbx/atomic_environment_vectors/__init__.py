@@ -89,13 +89,17 @@ class diff_class(OrderedDict):
     return outl
 
 # This is format class of AEV. It makes print of AEV more clearly.
-class format_class(OrderedDict):
+class format_class(dict):
+  def __init__(self, length_of_radial=None):
+    self.length_of_radial=length_of_radial
+
   def __repr__(self):
     outl = '...\n'
-    for key, item in self.items():
+    for key, item in sorted(self.items()):
       outl += '  %s :' % (key)
-      for v in item:
-        print (v)
+      for i, v in enumerate(item):
+        # print (v)
+        if i==self.length_of_radial: outl+='|'
         outl += '%0.4f, ' % v
       outl += '\n'
     return outl
@@ -104,19 +108,32 @@ class AEV(object):
   """
   Cite paper...
   """
-
-  def __init__(self, model):
+  def __init__( self,
+                model,
+                rs_values = [2.0, 3.8, 5.2, 5.5, 6.2, 7.0, 8.6, 10.0],
+                # probe distances (A) for radial
+                # Rj = [2.1, 2.2, 2.5], NOT USED!!!
+                cutoff = 8.1,
+                # radial cutoff distance
+                ts_values = [0.392699, 1.178097, 1.963495, 2.748894],
+                # probe angles (rad) for angular
+                angular_rs_values = [3.8, 5.2, 5.5, 6.2],
+                # probe distances (A) for angular
+                angular_zeta = 8
+                # ???
+                ):
     self.hierarchy = model.get_hierarchy()
     self.geometry_restraints_manager = model.get_restraints_manager().geometry
-    self.rs_values = [2.0, 3.8, 5.2, 5.5, 6.2, 7.0, 8.6, 10.0]
-    self.Rj = [2.1, 2.2, 2.5]
-    self.cutoff = 8.1
-    self.ts_values = [0.392699, 1.178097, 1.963495, 2.748894]
-    self.angular_rs_values = [3.8, 5.2, 5.5, 6.2]
-    self.angular_zeta = 8
-    self.EAEVs = format_class()
-    self.MAEVs = format_class()
-    self.BAEVs = format_class()
+    self.rs_values = rs_values
+    # NOT USED!!!
+    # self.Rj = Rj
+    self.cutoff = cutoff
+    self.ts_values = ts_values
+    self.angular_rs_values = angular_rs_values
+    self.angular_zeta = angular_zeta
+    self.EAEVs = format_class(length_of_radial=len(self.rs_values))
+    self.MAEVs = format_class(length_of_radial=len(self.rs_values))
+    self.BAEVs = format_class(length_of_radial=len(self.rs_values))
     self.center_atom     = None
     self.chain_hierarchy = None
     self.generate_AEV()
@@ -128,22 +145,23 @@ class AEV(object):
     result['E'] = self.EAEVs.values()[-1]
     return result
 
-  def generate_ca(self):
+  def generate_ca(self, length=5):
     """
     ???
     """
+    # faster with atom selection to CA re CJW update
     protain_fragments = generate_protein_fragments(
       hierarchy = self.chain_hierarchy,
       geometry = self.geometry_restraints_manager,
       include_non_standard_peptides=True,
-      length=5)
+      length=length)
     for five in protain_fragments:
       rc = []
       for residue in five:
         for atom in residue.atoms():
           if atom.name == ' CA ':
             rc.append(atom)
-      if len(rc) == 5:
+      if len(rc) == length:
         yield rc
 
   def generate_AEV(self):

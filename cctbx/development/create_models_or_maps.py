@@ -272,6 +272,7 @@ def generate_map(
       map_coeffs=None,  # Required
       high_resolution=3,
       gridding=None,
+      wrapping=False,
       origin_shift_grid_units=None,
       low_resolution_fourier_noise_fraction=0,
       high_resolution_fourier_noise_fraction=0,
@@ -403,7 +404,8 @@ def generate_map(
   mm=map_manager(map_data=map_data,
     unit_cell_grid=map_data.all(),
     unit_cell_crystal_symmetry=map_coeffs.crystal_symmetry(),
-    origin_shift_grid_units=origin_shift_grid_units)
+    origin_shift_grid_units=origin_shift_grid_units,
+    wrapping=wrapping)
 
   if output_map_file_name:
     mm.write_map(output_map_file_name)

@@ -229,7 +229,12 @@ class map_reader:
       This sets the crystal_symmetry of a partial map based on the
       gridding of the part of the map that is present.
       If exactly the entire map is present, use space group of
-      entire map, otherwise use space group P1
+      current self._crystal_symmetry, otherwise use space group P1
+
+      Note that self._crystal_symmetry space group might not match
+      self._unit_cell_crystal_symmetry (space group of entire map) because
+      map may already have been boxed.
+
     '''
     map_all=self.map_data().all()
 
@@ -239,9 +244,14 @@ class map_reader:
     c = c * map_all[2]/self.unit_cell_grid[2]
 
     if tuple(map_all) == tuple(self.unit_cell_grid[:3]):
-      space_group_number_use=self.unit_cell_crystal_symmetry(
+      # Take space group we have...
+      if self.crystal_symmetry():  # use sg of existing box crystal symmetry
+        space_group_number_use=self.crystal_symmetry(
           ).space_group_number()
-    else:
+      else:  # otherwise take the sg of crystal symmetry of full cell
+        space_group_number_use=self.unit_cell_crystal_symmetry(
+           ).space_group_number()
+    else: # boxed, use P1 always
       space_group_number_use=1  # use Space group 1 (P 1) for any partial cell
 
     from cctbx import crystal
@@ -357,7 +367,7 @@ class map_reader:
     if hasattr(self,'wrapping'):
       print(prefix +
        "Wrapping (using unit_cell_translations to get map values) allowed:",
-          self.wrapping(), file=out)
+          self.wrapping(), file=out) # don't try too hard
 
 
     if hasattr(self,'_ncs_object') and self._ncs_object:

@@ -123,10 +123,21 @@ steps:
     source ./build/setpaths.sh
     mkdir tests
     cd tests
-    libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es \
-      module=fable module=gltbx module=iotbx module=libtbx module=rstbx \
-      module=scitbx module=smtbx module=spotfinder \
-      module=annlib_adaptbx module=cbflib_adaptbx \
+    libtbx.run_tests_parallel \
+      module=annlib_adaptbx \
+      module=boost_adaptbx \
+      module=cbflib_adaptbx \
+      module=cctbx \
+      module=cctbx_website \
+      module=cma_es \
+      module=fable \
+      module=gltbx \
+      module=iotbx \
+      module=libtbx \
+      module=rstbx \
+      module=scitbx \
+      module=smtbx \
+      module=spotfinder \
       nproc=4
   failOnStderr: false
   displayName: Test

@@ -167,7 +167,7 @@ def test_02():
 
   init_arg_dict = {
      'around_atoms':['self', 'mask_atoms_atom_radius', 'model',
-          'xray_structure', 'map_manager','n_real'],
+          'xray_structure', 'map_manager','n_real', 'wrapping'],
      'around_edges':['self', 'soft_mask_radius', 'map_manager'],
      'around_density':['self', 'map_manager','resolution','molecular_mass',
         'sequence','solvent_content'],
@@ -181,7 +181,7 @@ def test_02():
   }
   assert init_arg_dict.keys() == method_arg_dict.keys()
 
-  # create_mask_around_edges
+  #  Check them out...
   for base_method_name in init_arg_dict.keys():
     print ("\nExpected and actual args in calls for %s" %(base_method_name))
     group_text ="""

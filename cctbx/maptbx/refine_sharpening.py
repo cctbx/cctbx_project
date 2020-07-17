@@ -719,7 +719,7 @@ def apply_target_scale_factors(f_array=None,phases=None,
 def calculate_map(map_coeffs=None,crystal_symmetry=None,n_real=None):
 
   if crystal_symmetry is None: crystal_symmetry=map_coeffs.crystal_symmetry()
-  from iotbx.create_models_or_maps import get_map_from_map_coeffs
+  from cctbx.development.create_models_or_maps import get_map_from_map_coeffs
   map_data=get_map_from_map_coeffs(
      map_coeffs=map_coeffs,crystal_symmetry=crystal_symmetry, n_real=n_real)
   return map_data

@@ -21,17 +21,26 @@ namespace {
     using boost::python::arg;
     typedef return_value_policy<return_by_value> rbv;
 
+  class_<alg2_tg<> >(
+      "alg2_tg")
+      .def(init<
+         boost::python::list   const&,
+         af::const_ref<double> const&>(
+             (arg("F"),
+              arg("i_obs"))))
+      .def("target",   &alg2_tg<>::target)
+      .def("gradient", &alg2_tg<>::gradient)
+      .def("update",   &alg2_tg<>::update)
+   ;
 
    def("alg4",
       (af::shared<double>(*)
-        (boost::python::list const& F,
-         af::const_ref<std::complex<double> > const& f_obs,
-         double                const& k
-         //af::const_ref<bool>   const& selection,
-         //af::shared<double>           data
+        (boost::python::list   const& F,
+         af::const_ref<double> const& f_obs,
+         int                   const& max_cycles,
+         double                const& auto_converge_eps
          )) alg4);
    ;
-
 
   }
 

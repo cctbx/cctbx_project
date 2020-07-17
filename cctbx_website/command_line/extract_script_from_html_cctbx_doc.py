@@ -1,4 +1,5 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
+from io import open
 from html.parser import HTMLParser
 import os
 
@@ -59,21 +60,21 @@ def run():
     # look at all .html files
     if filename.endswith(".html"):
       fn = os.path.join(directory, filename)
-      with open(fn, 'r') as html_file:
+      with open(fn, 'r', encoding='utf-8') as html_file:
         # get code in html file
         data = html_file.read()
-        parser = MyHTMLParser()
-        parser.feed(data)
-        code_str = parser.return_result()
-        # get filename
-        base = os.path.splitext(filename)[0]
-        # save code in script and put it in folder cctbx_website/examples/
-        dest_dir = os.path.join(directory, 'examples')
-        if (not os.path.isdir(dest_dir)):
-          os.makedirs(dest_dir)
-        script_filename = os.path.join(dest_dir, base+'.py')
-        with open(script_filename, 'w') as file:
-          file.write(code_str.strip())
+      parser = MyHTMLParser()
+      parser.feed(data)
+      code_str = parser.return_result()
+      # get filename
+      base = os.path.splitext(filename)[0]
+      # save code in script and put it in folder cctbx_website/examples/
+      dest_dir = os.path.join(directory, 'examples')
+      if (not os.path.isdir(dest_dir)):
+        os.makedirs(dest_dir)
+      script_filename = os.path.join(dest_dir, base+'.py')
+      with open(script_filename, 'w', encoding='utf-8') as file:
+        file.write(code_str.strip())
     else:
       continue
 

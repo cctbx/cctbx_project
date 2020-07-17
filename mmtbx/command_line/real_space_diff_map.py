@@ -34,6 +34,17 @@ master_params_str = """
     .type = float
   scattering_table = wk1995  it1992  *n_gaussian  neutron electron
     .type = choice
+  wrapping = False
+    .type = bool
+    .short_caption = Wrapping
+    .help = Wrapping defines whether values outside map boundary can be mapped \
+            inside with unit cell translations. Normally True for crystal \
+            structures and False for cryo-EM
+  ignore_symmetry_conflicts = None
+    .type = bool
+    .short_caption = Ignore symmetry conflicts
+    .help = Ignore symmetry differences between input model and map (use values \
+            from map).
 """
 
 def master_params():
@@ -49,27 +60,32 @@ def run(args, log=sys.stdout):
   print(legend, file=log)
   print("-"*79, file=log)
   inputs = mmtbx.utils.process_command_line_args(args = args,
-    master_params = master_params())
+    master_params = master_params(),
+    suppress_symmetry_related_errors = True)
   params = inputs.params.extract()
   # model
   broadcast(m="Input PDB:", log=log)
   file_names = inputs.pdb_file_names
   if(len(file_names) != 1): raise Sorry("PDB file has to given.")
-  pi = iotbx.pdb.input(file_name = file_names[0])
-  h = pi.construct_hierarchy()
-  xrs = pi.xray_structure_simple(crystal_symmetry=inputs.crystal_symmetry)
-  xrs.scattering_type_registry(table = params.scattering_table)
-  xrs.show_summary(f=log, prefix="  ")
+  from iotbx.data_manager import DataManager
+  dm = DataManager()
+  dm.set_overwrite(True)
+  model = dm.get_model(file_names[0])
+
   # map
   broadcast(m="Input map:", log=log)
   if(inputs.ccp4_map is None): raise Sorry("Map file has to given.")
+
+  from iotbx.map_model_manager import map_model_manager
+  mam = map_model_manager(model = model, map_manager = inputs.ccp4_map,
+     wrapping = params.wrapping,
+     ignore_symmetry_conflicts = params.ignore_symmetry_conflicts)
+
+  mam.model().setup_scattering_dictionaries(
+     scattering_table=params.scattering_table)
+  mam.model().get_xray_structure().show_summary(f=log, prefix="  ")
   inputs.ccp4_map.show_summary(prefix="  ")
-  map_data = inputs.ccp4_map.map_data()
-  # shift origin if needed
-  soin = maptbx.shift_origin_if_needed(map_data=map_data,
-    sites_cart=xrs.sites_cart(), crystal_symmetry=xrs.crystal_symmetry())
-  map_data = soin.map_data
-  xrs.set_sites_cart(soin.sites_cart)
+
   # estimate resolution
   d_min = params.resolution
   if(d_min is None):
@@ -77,26 +93,25 @@ def run(args, log=sys.stdout):
   print("  d_min: %6.4f"%d_min, file=log)
   #
   result_obj = compdiff(
-    map_data_obs = map_data,
-    xrs          = xrs,
+    map_data_obs = mam.map_manager().map_data(), # NOTE this will always wrap map
+    xrs          = mam.model().get_xray_structure(),
     d_min        = d_min,
     vector_map   = False)
-  write_ccp4_map(
-    map_data    = result_obj.map_result,
-    unit_cell   = xrs.unit_cell(),
-    space_group = xrs.space_group(),
-    file_name   = "map_model_difference_1.ccp4")
+
+  output_map_manager=mam.map_manager().customized_copy(
+      map_data=result_obj.map_result)
+  dm.write_real_map_file(output_map_manager, "map_model_difference_1.ccp4")
+
   #
   result_obj = compdiff(
-    map_data_obs = map_data,
-    xrs          = xrs,
+    map_data_obs = mam.map_manager().map_data(),
+    xrs          = mam.model().get_xray_structure(),
     d_min        = d_min,
     vector_map   = True)
-  write_ccp4_map(
-    map_data    = result_obj.map_result,
-    unit_cell   = xrs.unit_cell(),
-    space_group = xrs.space_group(),
-    file_name   = "map_model_difference_2.ccp4")
+
+  output_map_manager=mam.map_manager().customized_copy(
+      map_data=result_obj.map_result)
+  dm.write_real_map_file(output_map_manager, "map_model_difference_2.ccp4")
 
 def scale_k1(x,y):
   x = x.as_1d()

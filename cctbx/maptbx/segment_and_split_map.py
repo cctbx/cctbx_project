@@ -14,7 +14,7 @@ import libtbx.callbacks # import dependency
 from libtbx import group_args
 from six.moves import range
 from six.moves import zip
-from iotbx.create_models_or_maps import get_map_from_map_coeffs
+from cctbx.development.create_models_or_maps import get_map_from_map_coeffs
 
 master_phil = iotbx.phil.parse("""
 
@@ -5140,6 +5140,8 @@ def get_params(args, map_data = None, crystal_symmetry = None,
     from mmtbx.command_line.map_box import run as run_map_box
     args.append("keep_input_unit_cell_and_grid = False") # for new defaults
 
+    assert params.crystal_info.use_sg_symmetry is not None
+    wrapping = (not params.crystal_info.use_sg_symmetry)
     if params.segmentation.lower_bounds and params.segmentation.upper_bounds:
       bounds_supplied = True
       print("\nRunning map_box with supplied bounds", file = out)
@@ -5150,6 +5152,7 @@ def get_params(args, map_data = None, crystal_symmetry = None,
           lower_bounds = params.segmentation.lower_bounds,
           upper_bounds = params.segmentation.upper_bounds,
           write_output_files = params.output_files.write_output_maps,
+          wrapping = wrapping,
           log = out)
     else:
       bounds_supplied = False
@@ -5158,6 +5161,7 @@ def get_params(args, map_data = None, crystal_symmetry = None,
        crystal_symmetry = crystal_symmetry,
        ncs_object = ncs_obj,
        write_output_files = params.output_files.write_output_maps,
+       wrapping = wrapping,
        log = out)
 
     # Run again to select au box
@@ -5188,6 +5192,7 @@ def get_params(args, map_data = None, crystal_symmetry = None,
           map_data = map_data,
           crystal_symmetry = crystal_symmetry,
           ncs_object = ncs_obj,
+          wrapping = wrapping,
           upper_bounds = upper_bounds, log = out)
         box.map_box = box.map_box.as_double()  # Do we need double?
         shifted_unique_closest_sites = unique_closest_sites+box.shift_cart
@@ -5204,6 +5209,7 @@ def get_params(args, map_data = None, crystal_symmetry = None,
         crystal_symmetry = crystal_symmetry,
         ncs_object = ncs_obj,
         lower_bounds = lower_bounds, upper_bounds = upper_bounds,
+        wrapping = wrapping,
         write_output_files = params.output_files.write_output_maps,
         log = out)
 
@@ -9393,9 +9399,11 @@ def select_box_map_data(si = None,
     local_hierarchy = None
     if hierarchy:
        local_hierarchy = hierarchy.deep_copy() # run_map_box modifies its argument
+    assert isinstance(si.wrapping, bool) # wrapping must be defined
     box = run_map_box(args,
         map_data = map_data, pdb_hierarchy = local_hierarchy,
        write_output_files = False,
+       wrapping = si.wrapping,
        crystal_symmetry = crystal_symmetry, log = out)
 
     lower_bounds = box.gridding_first
@@ -9418,6 +9426,7 @@ def select_box_map_data(si = None,
        lower_bounds = lower_bounds,
        upper_bounds = upper_bounds,
        crystal_symmetry = crystal_symmetry,
+       wrapping = si.wrapping,
        log = out)
       box_first_half_map = box_first.map_box.as_double()
     else:
@@ -9433,6 +9442,7 @@ def select_box_map_data(si = None,
        lower_bounds = lower_bounds,
        upper_bounds = upper_bounds,
        crystal_symmetry = crystal_symmetry,
+       wrapping = si.wrapping,
        log = out)
       box_second_half_map = box_second.map_box.as_double()
     else:

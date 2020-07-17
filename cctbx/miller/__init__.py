@@ -5883,7 +5883,8 @@ class fft_map(maptbx.crystal_gridding):
     from iotbx.map_manager import map_manager
     return map_manager(map_data=map_data,
       unit_cell_crystal_symmetry=self.crystal_symmetry(),
-      unit_cell_grid=map_data.all())
+      unit_cell_grid=map_data.all(),
+      wrapping=True)
 
   def real_map_unpadded(self, in_place=True):
     """
@@ -5947,7 +5948,8 @@ class fft_map(maptbx.crystal_gridding):
                    file_name,
                    gridding_first=None,
                    gridding_last=None,
-                   labels=["cctbx.miller.fft_map"]):
+                   labels=["Values outside boundaries are wrapped inside",
+                           "fft_map from Phenix"]):
     """
     Write the real component of the map to a CCP4-format file.
     """

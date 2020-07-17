@@ -8,17 +8,35 @@
 
 <div class="row">
 
-<!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
 <div class="col-sm-9">
-
+<!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
 <!-- EDIT START -->
 
 <!-- Do not indent! Otherwise, the code will have indentation, and break.-->
-<h2><center>Reading and writing files:  the cctbx DataManager</center></h2>
+<h2><center>Reading and writing files: the cctbx DataManager</center></h2>
 
-<h3 class="mt-5">Introduction</h3>
+<p class="lead mt-4">Learn how to use the cctbx DataManager. It lets you read and write files that describe experimental data, models, restraints and so on. This tutorial shows how to set up the DataManager, and how to read and write information for models, maps and reflection information.</p>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-5">The cctbx DataManager</h3>
 
 <p>When you write a script that performs some actions on data or a model, you have to start with reading the file. Once the action is done, you probably want to write the files. To do this conveniently, you can use the cctbx DataManager. The DataManager lets you read and write files describing atomic models, restraints, reflection data files, symmetry files, sequence files, and MRC/CCP4 format map files. In this section we will see how to read in and write information from some of these file types.</p>
+
+<h3 class="mt-3">Preparation: Get a library model</h3>
+
+<p>Let’s work with a library model that we can obtain with the map_model_manager (revisit <a href="{% url 'doc_high_level_objects' %}">this page</a> if you need a refresher on high level objects):</p>
+
+<pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager      #   load in the map_model_manager
+mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
+mmm.generate_map()              #   get a model from a small library model and calculate a map for it
+mmm.write_map("map.mrc")        #   write out a map in ccp4/mrc format
+mmm.write_model("model.pdb")    #   write out a model in PDB format
+</code></pre>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Setting up the DataManager</h3>
 
 <p>Let’s set up and initialize a DataManager so that it can read and write files for us:</p>
 
@@ -27,11 +45,13 @@ dm = DataManager()                            # Initialize the DataManager and c
 dm.set_overwrite(True)       # tell the DataManager to overwrite files with the same name
 </code></pre>
 
-<p>The DataManager always knows how to read and write model and map files. If you want it to work with additional file types you need to tell it about them when you initialize it. That would be done like this (you can specify whichever file types you want to work with):</p>
+<p>The DataManager is always aware of all supported file types, such as models, maps, reflection data, map coefficients, sequences, restraints and more. But it is possible to set up a DataManger object that is only aware of a subset of these data types that you want to work with:</p>
 
 <pre class="codeDL"><code>dm_many_functions = DataManager(datatypes = ["model", "real_map",
-  "phil", "ncs_spec", "miller_array", "map_coefficients", "sequence", "restraint"])   # DataManager data types
+  "phil", "restraint"])   # DataManager data types
 </code></pre>
+
+<p>This is useful for writing programs that only need certain data types to work. The DataManager will then return a message if it encounters a data type that is not going to be used in any way by the program. This prevents users from unknowingly adding unnecessary data. For simple scripts, the full DataManager is most likely sufficient.</p>
 
 <p>The datatypes are:</p>
 <ul>
@@ -45,7 +65,9 @@ dm.set_overwrite(True)       # tell the DataManager to overwrite files with the 
   <li>restraint: a file with geometric restraints to be applied to a model</li>
 </ul>
 
-<h3 class="mt-5">Reading and writing model information</h3>
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Reading and writing model information</h3>
 
 <p>The DataManager <code>dm</code> knows how to read and write model files. A model file contains 3-D coordinates of atoms in a model as well as other information such as the fractional “occupancy” and “atomic displacement parameters” or B-factors for each atom.  It also contains information on the space group and unit cell dimensions (the box that the model is placed in).</p>
 
@@ -65,7 +87,9 @@ model = dm.get_model(model_filename)               #   Deliver model object with
 
 <p>Note that the DataManager can write either in PDB or CIF format. By default it writes out whichever format was used when the model was read in, or PDB format if the model was not read in from a file. You can specify which format you want with a keyword: extension="pdb".</p>
 
-<h3 class="mt-5">Reading and writing map information</h3>
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Reading and writing map information</h3>
 
 <p>Now let’s read in a map file with the DataManager dm. The format for these is called CCP4 or MRC (they are pretty much the same). The DataManager first sets things up with commands like <code>process_real_map_file()</code> and then it creates useful objects like a map object with the command <code>get_real_map()</code>:</p>
 
@@ -79,7 +103,9 @@ mm = dm.get_real_map(map_filename)        #   Deliver map_manager object with ma
 <pre class="codeDL"><code>dm.write_real_map_file(mm,filename="output_map") # write map
 </code></pre>
 
-<h3 class="mt-5">Reading and writing reflection information</h3>
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Reading and writing reflection information</h3>
 
 <p>Crystallographic reflection data and other Fourier-space data is often stored in binary “MTZ”-formatted data files. These can be read and written by the DataManager. We can create some Fourier data from our map and write it out. First let’s convert our map to Fourier coefficients (we’ll see more about this here (<--LINK)):</p>
 
@@ -136,7 +162,6 @@ labels                    # print out the first label string
 </code></pre>
 
 <!-- EDIT END -->
-
 <!-- DO NOT EDIT ANYTHING BELOW!!!! -->
 </div> <!-- end col-sm-9 -->
 

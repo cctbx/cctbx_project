@@ -828,8 +828,13 @@ class HKLViewFrame() :
         datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list(ampls) ) )
         datalst.append( (self.viewer.match_valarrays[id].info().labels[-1] + u" \u00b0", list(phases)) )
       elif self.viewer.match_valarrays[id].sigmas() is not None:
-        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list(self.viewer.match_valarrays[id].data()))  )
-        datalst.append( (self.viewer.match_valarrays[id].info().labels[-1], list(self.viewer.match_valarrays[id].sigmas()))  )
+        labels = self.viewer.match_valarrays[id].info().labels
+        # Labels could be something like ['I(+)', 'SIGI(+)', 'I(-)', 'SIGI(-)'].
+        # So group datalabels and sigmalabels separately assuming that sigma column contain the three letters "sig"
+        datalabel = "".join([ e for e in labels if "sig" in e.lower()])
+        sigmalabel = "".join([ e for e in labels if "sig" not in e.lower()])
+        datalst.append( (datalabel, list(self.viewer.match_valarrays[id].data()))  )
+        datalst.append( (sigmalabel, list(self.viewer.match_valarrays[id].sigmas()))  )
       elif self.viewer.match_valarrays[id].is_integer_array():
         list_with_nans = [ e if not e==display.inanval else display.nanval for e in self.viewer.match_valarrays[id].data() ]
         if self.viewer.array_infotpls[id][0] == 'FreeR_flag': # want True or False back

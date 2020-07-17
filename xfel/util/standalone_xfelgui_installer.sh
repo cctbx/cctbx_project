@@ -11,7 +11,7 @@ if [ $# -lt 1 ]
    exit
 fi
 
-WORKING=$1
+WORKING=$(realpath $1)
 cd $WORKING
 
 # Download and install the latest build of DIALS

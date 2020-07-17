@@ -36,6 +36,8 @@ def test_01():
   dm.process_ncs_spec_file(ncs_file)
   ncs = dm.get_ncs_spec(ncs_file)
 
+  ncs_dc = ncs.deep_copy()
+
   mmmn = match_map_model_ncs()
   mmmn.add_map_manager(mm)
   mmmn.add_model(model)
@@ -43,6 +45,22 @@ def test_01():
 
   # Save it
   mmmn_dc=mmmn.deep_copy()
+
+  # Make sure we can add an ncs object that is either shifted or not
+  mmmn_dcdc=mmmn.deep_copy()
+  new_mmmn = match_map_model_ncs()
+  new_mmmn.add_map_manager(mmmn_dcdc.map_manager())
+  new_mmmn.add_model(mmmn_dcdc.model())
+  new_mmmn.add_ncs_object(mmmn_dcdc.ncs_object())
+  assert new_mmmn.ncs_object().shift_cart() == new_mmmn.map_manager().shift_cart()
+
+  mmmn_dcdc=mmmn.deep_copy()
+  new_mmmn = match_map_model_ncs()
+  new_mmmn.add_map_manager(mmmn_dcdc.map_manager())
+  new_mmmn.add_model(mmmn_dcdc.model())
+  new_mmmn.add_ncs_object(ncs_dc)
+  assert new_mmmn.ncs_object().shift_cart() == new_mmmn.map_manager().shift_cart()
+
 
   original_ncs=mmmn.ncs_object()
   assert approx_equal((24.0528, 11.5833, 20.0004),
@@ -98,7 +116,9 @@ def test_01():
   mmm=map_model_manager()
   mmm.generate_map(box_cushion=0)
   mm=mmm.map_manager()
-  assert mm.wrapping()
+  # check its compatibility with wrapping
+  assert mm.is_consistent_with_wrapping()
+  mmm.show_summary()
 
   # now box it
   sel=mmm.model().selection("resseq 221:221")
@@ -121,7 +141,26 @@ def test_01():
   assert not new_mm_1.is_consistent_with_wrapping()
   assert new_mm_1.map_data().all()== new_mm.map_data().all()
 
+  # create map_model_manager with just half-maps
+  mm1=mm.deep_copy()
+  mm2=mm.deep_copy()
+  map_data=mm2.map_data()
+  map_data+=1.
+  new_mmm=map_model_manager(model=mmm.model().deep_copy(),
+    map_manager_1=mm1,
+    map_manager_2=mm2)
+  assert new_mmm._map_dict.get('map_manager') is None # should not be any yet
+  assert approx_equal(new_mmm.map_manager().map_data()[232],
+     mm.deep_copy().map_data()[232]+0.5)
+  assert new_mmm._map_dict.get('map_manager') is not None # now should be there
 
+  # generate map data from a model
+  mm1=mm.deep_copy()
+  mm2=mm.deep_copy()
+  new_mmm=map_model_manager(model=mmm.model().deep_copy(), map_manager=mm1)
+  mmm.generate_map(model=mmm.model())
+  mm=mmm.map_manager()
+  mmm.show_summary()
 # ----------------------------------------------------------------------------
 
 if (__name__ == '__main__'):

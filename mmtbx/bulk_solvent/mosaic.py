@@ -15,10 +15,12 @@ from mmtbx.ncs import tncs
 from collections import OrderedDict
 import mmtbx.f_model
 import sys
+from libtbx.test_utils import approx_equal
 
 from mmtbx import masks
 from cctbx.masks import vdw_radii_from_xray_structure
 ext = boost.python.import_ext("mmtbx_masks_ext")
+mosaic_ext = boost.python.import_ext("mmtbx_mosaic_ext")
 
 # Utilities used by algorithm 2 ------------------------------------------------
 
@@ -86,8 +88,16 @@ class tg(object):
     self.t = None
     self.g = None
     self.d = None
-    self.sum_i_obs = flex.sum(self.i_obs.data())
+    # Needed to do sums from small to large to prefent loss
+    s = flex.sort_permutation(self.i_obs.data())
+    self.i_obs = self.i_obs.select(s)
+    self.F = [f.select(s) for f in self.F]
+    #
+    self.sum_i_obs = flex.sum(self.i_obs.data()) # needed for Python version
     self.use_curvatures=use_curvatures
+    self.tgo = mosaic_ext.alg2_tg(
+      F     = [f.data() for f in self.F],
+      i_obs = self.i_obs.data())
     self.update_target_and_grads(x=x)
 
   def update(self, x):
@@ -95,34 +105,46 @@ class tg(object):
 
   def update_target_and_grads(self, x):
     self.x = x
-    s = 1 #180/math.pi
-    i_model = flex.double(self.i_obs.data().size(),0)
-    for n, kn in enumerate(self.x):
-      for m, km in enumerate(self.x):
-        tmp = self.F[n].data()*flex.conj(self.F[m].data())
-        i_model += kn*km*flex.real(tmp)
-        #pn = self.F[n].phases().data()*s
-        #pm = self.F[m].phases().data()*s
-        #Fn = flex.abs(self.F[n].data())
-        #Fm = flex.abs(self.F[m].data())
-        #i_model += kn*km*Fn*Fm*flex.cos(pn-pm)
-    diff = i_model - self.i_obs.data()
-    t = flex.sum(diff*diff)/4
-    #
-    g = flex.double()
-    for j in range(len(self.F)):
-      tmp = flex.double(self.i_obs.data().size(),0)
-      for m, km in enumerate(self.x):
-        tmp += km * flex.real( self.F[j].data()*flex.conj(self.F[m].data()) )
-        #pj = self.F[j].phases().data()*s
-        #pm = self.F[m].phases().data()*s
-        #Fj = flex.abs(self.F[j].data())
-        #Fm = flex.abs(self.F[m].data())
-        #tmp += km * Fj*Fm*flex.cos(pj-pm)
-      g.append(flex.sum(diff*tmp))
-    self.t = t
-    self.g = g
-    #
+    self.tgo.update(self.x)
+    self.t = self.tgo.target()
+    self.g = self.tgo.gradient()
+#
+# Reference implementation in Python
+#    s = 1 #180/math.pi
+#    i_model = flex.double(self.i_obs.data().size(),0)
+#    for n, kn in enumerate(self.x):
+#      for m, km in enumerate(self.x):
+#        tmp = self.F[n].data()*flex.conj(self.F[m].data())
+#        i_model += kn*km*flex.real(tmp)
+#        #pn = self.F[n].phases().data()*s
+#        #pm = self.F[m].phases().data()*s
+#        #Fn = flex.abs(self.F[n].data())
+#        #Fm = flex.abs(self.F[m].data())
+#        #i_model += kn*km*Fn*Fm*flex.cos(pn-pm)
+#    diff = i_model - self.i_obs.data()
+#    #print (flex.min(diff), flex.max(diff))
+#    t = flex.sum(diff*diff)/4
+#    #
+#    g = flex.double()
+#    for j in range(len(self.F)):
+#      tmp = flex.double(self.i_obs.data().size(),0)
+#      for m, km in enumerate(self.x):
+#        tmp += km * flex.real( self.F[j].data()*flex.conj(self.F[m].data()) )
+#        #pj = self.F[j].phases().data()*s
+#        #pm = self.F[m].phases().data()*s
+#        #Fj = flex.abs(self.F[j].data())
+#        #Fm = flex.abs(self.F[m].data())
+#        #tmp += km * Fj*Fm*flex.cos(pj-pm)
+#      g.append(flex.sum(diff*tmp))
+#    self.t = t/self.sum_i_obs
+#    self.g = g/self.sum_i_obs
+#    print (self.t,t1)
+#    print (list(self.g))
+#    print (list(g1))
+#    print ()
+#    assert approx_equal(self.t, t1, 5)
+#    assert approx_equal(self.g, g1, 1.e-6)
+#
     if self.use_curvatures:
       d = flex.double()
       for j in range(len(self.F)):
@@ -140,9 +162,9 @@ class tg(object):
         d.append(flex.sum(tmp1*tmp1 + tmp2))
       self.d=d
 
-  def target(self): return self.t/self.sum_i_obs
+  def target(self): return self.t
 
-  def gradients(self): return self.g/self.sum_i_obs
+  def gradients(self): return self.g
 
   def gradient(self): return self.gradients()
 
@@ -170,10 +192,7 @@ class refinery(object):
     else:
       self.f_calc = fmodel.f_model_no_scales()
       self.F = [self.f_calc.deep_copy()] + fv.keys()[1:]
-
     self.bin_selections = fmodel.bin_selections
-
-    #fmodel.show(show_header=False, show_approx=False, log = log)
     #
     for it in range(3):
       self._print("cycle: %2d"%it)
@@ -188,8 +207,8 @@ class refinery(object):
       i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
       K_MASKS = OrderedDict()
 
-      #self.bin_selections = self.f_obs.log_binning(
-      #  n_reflections_in_lowest_resolution_bin = 100*len(self.F))
+      self.bin_selections = self.f_obs.log_binning(
+        n_reflections_in_lowest_resolution_bin = 100*len(self.F))
 
       for i_bin, sel in enumerate(self.bin_selections):
         d_max, d_min = f_obs.select(sel).d_max_min()
@@ -200,9 +219,8 @@ class refinery(object):
 
         #r00=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, F[0].data()*k_total_sel)
 
-
         # algorithm_0
-        if (alg=="alg0"):
+        if(alg=="alg0"):
           k_masks = algorithm_0(
             f_obs = f_obs.select(sel),
             F     = [f.deep_copy() for f in F],
@@ -210,7 +228,7 @@ class refinery(object):
 
         #fd = flex.complex_double(F[0].data().size())
         #for i,f in enumerate(F):
-        #  fd = fd + f.data()*k_masks0[i]
+        #  fd = fd + f.data()*k_masks[i]
         #r0=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, fd*k_total_sel)
 
         #for i,f in enumerate(F):
@@ -221,7 +239,7 @@ class refinery(object):
         #FF = [f.set().array(data = f.data()*0.35) for i,f in enumerate(F)]
 
         # algorithm_4
-        if (alg=="alg4"):
+        if(alg=="alg4"):
           k_masks = algorithm_4(
             f_obs             = f_obs.select(sel),
             F                 = F,
@@ -229,7 +247,7 @@ class refinery(object):
 
         #fd = flex.complex_double(F[0].data().size())
         #for i,f in enumerate(F):
-        #  fd = fd + f.data()*k_masks4[i]
+        #  fd = fd + f.data()*k_masks[i]
         #r4=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, fd*k_total_sel)
 
         # algorithm_2
@@ -240,10 +258,13 @@ class refinery(object):
             x              = self._get_x_init(i_bin),
             use_curvatures = False)
 
-        #if r0<r4: k_masks = k_masks0
-        #else:     k_masks = k_masks4
+        #fd = flex.complex_double(F[0].data().size())
+        #for i,f in enumerate(F):
+        #  fd = fd + f.data()*k_masks[i]
+        #r2=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, fd*k_total_sel)
 
-        self._print(bin+" ".join(["%6.2f"%k for k in k_masks])+" %6.4f %6.4f %6.4f"%(0,0,0))
+        #self._print(bin+" ".join(["%6.2f"%k for k in k_masks])+" %6.4f %6.4f %6.4f %6.4f"%(r00,r0,r4, r2))
+        self._print(bin+" ".join(["%6.2f"%k for k in k_masks]))
         K_MASKS[sel] = k_masks
       #
       #print()
@@ -270,27 +291,20 @@ class refinery(object):
         r_free_flags   = self.r_free_flags,
         f_calc         = self.f_obs.customized_copy(data = f_calc_data),
         #f_mask         = fmodel.f_masks()[0],#f_bulk,
-        bin_selections=self.bin_selections,
+        bin_selections = self.bin_selections,
         f_mask         = f_bulk,
         k_mask         = flex.double(f_obs.data().size(),1)
         )
-
-
-      #self.fmodel = mmtbx.f_model.manager(
-      #  f_obs          = self.f_obs,
-      #  r_free_flags   = self.r_free_flags,
-      #  f_calc         = self.f_obs.customized_copy(data = f_calc_data+f_bulk_data),
-      #  f_mask         = fmodel.f_masks()[0],#f_bulk,
-      #  bin_selections=self.bin_selections,
-      #  #f_mask         = f_bulk,
-      #  k_mask         = flex.double(f_obs.data().size(),1)
-      #  )
-
-
-
-      #
       self.fmodel.update_all_scales(remove_outliers=False)
-
+      #
+      self.fmodel = mmtbx.f_model.manager(
+        f_obs          = self.f_obs,
+        r_free_flags   = self.r_free_flags,
+        f_calc         = self.f_obs.customized_copy(data = f_calc_data),
+        f_mask         = self.fmodel.f_bulk(),
+        k_mask         = flex.double(f_obs.data().size(),1)
+        )
+      self.fmodel.update_all_scales(remove_outliers=False)
 
       #self._print(self.fmodel.r_factors(prefix="  "))
       self.mc = self.fmodel.electron_density_map().map_coefficients(
@@ -587,13 +601,13 @@ def algorithm_2(i_obs, F, x, use_curvatures=True, macro_cycles=10):
     else:
       #upper = flex.double([10] + [5]*(x.size()-1))
       #lower = flex.double([0.1] + [-5]*(x.size()-1))
-      upper = flex.double([10] + [0.65]*(x.size()-1))
-      lower = flex.double([0.1] + [0]*(x.size()-1))
+      #upper = flex.double([10] + [0.65]*(x.size()-1))
+      #lower = flex.double([0.1] + [0]*(x.size()-1))
 
       #upper = flex.double([1] + [0.65]*(x.size()-1))
       #lower = flex.double([1] + [0]*(x.size()-1))
-      #upper = flex.double([1] + [5.65]*(x.size()-1))
-      #lower = flex.double([1] + [-5]*(x.size()-1))
+      upper = flex.double([1] + [5.65]*(x.size()-1))
+      lower = flex.double([1] + [-5]*(x.size()-1))
       m = tncs.minimizer(
         potential       = calculator,
         use_bounds      = 2,
@@ -666,14 +680,19 @@ def algorithm_3(i_obs, fc, f_masks):
     lnK.append( 1/len(F)*(t1-t2) )
   return [math.exp(x) for x in lnK]
 
-def algorithm_4(f_obs, F, max_cycles=100, auto_converge_eps=1.e-7):
+def algorithm_4(f_obs, F, max_cycles=100, auto_converge_eps=1.e-7, use_cpp=True):
   """
-  Phased simultaneous search
+  Phased simultaneous search (alg4)
   """
   fc, f_masks = F[0], F[1:]
   fc = fc.deep_copy()
   F = [fc]+F[1:]
-  x_res = None
+  # C++ version
+  if(use_cpp):
+    return mosaic_ext.alg4([f.data() for f in F], f_obs.data(), max_cycles,
+      auto_converge_eps)
+  # Python version (1.2-3 times slower, but much more readable!)
+  x_res = flex.double(len(F), 0)
   cntr = 0
   x_prev = None
   while True:
@@ -692,16 +711,15 @@ def algorithm_4(f_obs, F, max_cycles=100, auto_converge_eps=1.e-7):
     A_1 = A.inverse()
     b = matrix.col(b)
     x = A_1 * b
-    if x_res is None: x_res  = flex.double(x)
-    else:             x_res += flex.double(x)
-    x_ = [x[0]] + list(x_res[1:])
-    #print("iteration:", cntr, " ".join(["%10.6f"%i for i in x_]))
     #
     fc_d = fc.data()
     for i, f in enumerate(F):
       if i == 0: continue
       fc_d += x[i]*f.data()
     fc = fc.customized_copy(data = fc_d)
+    x_res += flex.double(x)
+    x_ = [x[0]] + list(x_res[1:])
+    #
     cntr+=1
     if(cntr>max_cycles): break
     if(x_prev is None): x_prev = x_[:]

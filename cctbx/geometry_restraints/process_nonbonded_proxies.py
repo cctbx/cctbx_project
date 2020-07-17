@@ -664,6 +664,11 @@ class manager():
       return is_hbond
 
     crystal_symmetry = self.model.crystal_symmetry()
+    if crystal_symmetry is not None:
+      fm = crystal_symmetry.unit_cell().fractionalization_matrix()
+      om = crystal_symmetry.unit_cell().orthogonalization_matrix()
+    else:
+      fm, om = None, None
     rt_mx_ji = None
     if symop is not None:
       rt_mx_ji = sgtbx.rt_mx(str(symop))
@@ -674,8 +679,8 @@ class manager():
       Hs       = self.Hs,
       fsc0     = fsc0,
       rt_mx_ji = rt_mx_ji,
-      fm       = crystal_symmetry.unit_cell().fractionalization_matrix(),
-      om       = crystal_symmetry.unit_cell().orthogonalization_matrix(),
+      fm       = fm,
+      om       = om,
       atoms    = self.atoms)
 
     d_HA = A.distance(H)

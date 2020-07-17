@@ -229,6 +229,7 @@ class hklview_3d:
     self.colstraliases = ""
     self.binvals = []
     self.binvalsboundaries = []
+    self.oldnbinvalsboundaries = None
     self.proc_arrays = []
     self.HKLscene = []
     self.HKLscenes = []
@@ -265,21 +266,22 @@ class hklview_3d:
     if 'mprint' in kwds:
       self.mprint = kwds['mprint']
     self.nbinvalsboundaries = 0
+    self.websockport = 7894
+    if 'websockport' in kwds:
+      self.websockport = kwds['websockport']
     tempdir = tempfile.gettempdir()
-    self.hklfname = os.path.join(tempdir, "hkl.htm" )
+    # ensure unique file name by including port number in filename
+    self.hklfname = os.path.join(tempdir, "hkl_%d.htm" %self.websockport )
     if os.path.isfile(self.hklfname):
       os.remove(self.hklfname)
     if 'htmlfname' in kwds and kwds['htmlfname']:
       self.hklfname = kwds['htmlfname']
     self.hklfname = os.path.abspath( self.hklfname )
-    self.jscriptfname = os.path.join(tempdir, "hkljstr.js")
+    self.jscriptfname = os.path.join(tempdir, "hkljstr_%d.js" %self.websockport)
     if os.path.isfile(self.jscriptfname):
       os.remove(self.jscriptfname)
     if 'jscriptfname' in kwds and kwds['jscriptfname'] != "":
       self.jscriptfname = kwds['jscriptfname']
-    self.websockport = 7894
-    if 'websockport' in kwds:
-      self.websockport = kwds['websockport']
     self.send_info_to_gui = None
     if 'send_info_to_gui' in kwds:
       self.send_info_to_gui = kwds['send_info_to_gui']
@@ -829,6 +831,9 @@ class hklview_3d:
       binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
       binvals = list( 1.0/flex.double(binvals) )
       nuniquevalues = len(set(list(dres)))
+    elif self.binscenelabel=="Singletons":
+        binvals = [ -1.5, -0.5, 0.5, 1.5 ]
+        nuniquevalues = len(binvals)
     else:
       bindata = self.HKLscene_from_dict(int(self.binscenelabel)).data.deep_copy()
       if isinstance(bindata, flex.complex_double):
@@ -889,6 +894,7 @@ class hklview_3d:
     # lets user specify a one line python expression operating on data, sigmas
     data = millarr.data()
     sigmas = millarr.sigmas()
+    indices = millarr.indices()
     dres = millarr.unit_cell().d( millarr.indices() )
     newarray = millarr.deep_copy()
     self.mprint("Creating new miller array through the operation: %s" %operation)
@@ -1061,6 +1067,8 @@ function MakeHKL_Axis(mshape)
     dres = self.scene.dres
     if self.binscenelabel=="Resolution":
       colstr = "dres"
+    elif self.binscenelabel=="Singletons":
+      colstr = "Singleton"
     else:
       if not blankscene:
         colstr = self.HKLscene_from_dict(int(self.binscenelabel)).work_array.info().label_string()
@@ -1080,6 +1088,9 @@ function MakeHKL_Axis(mshape)
       if self.binscenelabel=="Resolution":
         self.binvalsboundaries = self.binvals
         self.bindata = 1.0/self.scene.dres
+      elif self.binscenelabel=="Singletons":
+        self.binvalsboundaries = self.binvals
+        self.bindata = self.scene.singletonsiness
       else:
         ibinarray= int(self.binscenelabel)
         self.binvalsboundaries = [ self.HKLMinData_from_dict(ibinarray) - 0.1 , self.HKLMaxData_from_dict(ibinarray) + 0.1 ]
@@ -1093,6 +1104,11 @@ function MakeHKL_Axis(mshape)
           self.bindata = self.HKLscene_from_dict(ibinarray).ampl
 
     self.nbinvalsboundaries = len(self.binvalsboundaries)
+    # avoid resetting opacities of bins unless we change the number of bins
+    if self.oldnbinvalsboundaries != self.nbinvalsboundaries:
+      self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(self.nbinvalsboundaries + 1) ])
+    self.oldnbinvalsboundaries = self.nbinvalsboundaries
+
     # Un-binnable data is scene data values where there's no matching reflection in the bin data
     # Put these in a separate bin and be diligent with the book keeping!
     for ibin in range(self.nbinvalsboundaries+1): # adding the extra bin for un-binnable data
@@ -1121,7 +1137,6 @@ function MakeHKL_Axis(mshape)
     if nrefls > 0 and self.bindata.size() != points.size():
       raise Sorry("Not the same number of reflections in bin-data and displayed data")
 
-    flexbinvalsboundaries = flex.double(self.binvalsboundaries)
     start_time = time.time()
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
@@ -1217,8 +1232,9 @@ function MakeHKL_Axis(mshape)
         negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
       cntbin += 1
 
-    #self.ngl_settings.bin_opacities = str([ "1.0, %d"%e for e in range(cntbin) ])
-    self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
+    if self.ngl_settings.bin_opacities == "":
+      self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
+
     self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
                           "bin_infotpls": self.bin_infotpls,
                           "bin_data_label": colstr,

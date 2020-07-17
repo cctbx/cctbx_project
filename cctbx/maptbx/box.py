@@ -186,9 +186,11 @@ class with_bounds(object):
       self.gridding_last)
 
     # Allow override of wrapping
-    if self._force_wrapping is not None:
+    if isinstance(self._force_wrapping, bool):
       wrapping = self._force_wrapping
     else:
+      # Get wrapping from map_manager. If it is not defined and
+      #  bounds are outside allowed, try to get the wrapping
       wrapping = map_manager.wrapping()
 
     if wrapping or bounds_info.inside_allowed_bounds:
@@ -200,12 +202,13 @@ class with_bounds(object):
       map_box = maptbx.copy(map_data, self.gridding_first, self.gridding_last)
       map_box = map_box * 0.
       self._warning_message += "\nWARNING: boxed map is entirely outside map"+\
-         " and wrapping=False\n...setting all values to zero"
+         " and wrapping=%s\n...setting all values to zero" %(wrapping)
 
     else: # Need to copy and then zero outside of defined region
       map_box = copy_and_zero_map_outside_bounds(map_data, bounds_info)
-      self._warning_message += "\nWARNING: boxed map goes outside original map"+\
-         " and wrapping=False\n...setting unknown values to zero"
+      self._warning_message += \
+            "\nWARNING: boxed map goes outside original map"+\
+         " and wrapping=%s\n...setting unknown values to zero" %(wrapping)
     #  Now reshape map_box to put origin at (0, 0, 0)
     map_box.reshape(flex.grid(self.box_all))
 
@@ -617,13 +620,22 @@ class around_mask(with_bounds):
     self.basis_for_boxing_string = 'around_mask bounds, wrapping = %s' %(
       wrapping)
 
+    # Make sure the map goes from 0 to 1
+    map_data = mask_as_map_manager.map_data()
+    mmm = map_data.as_1d().min_max_mean()
+    minimum = mmm.min
+    range_of_values = mmm.max - mmm.min
+    map_data = (map_data - minimum ) / max(1.e-10,range_of_values)
+
+
     # Get a connectivity object that marks all the connected regions in map
 
     from cctbx.maptbx.segment_and_split_map import get_co
     co, sorted_by_volume, min_b, max_b = get_co(
-       map_data = mask_as_map_manager.map_data(),
+       map_data = map_data,
        threshold = 0.5,
        wrapping = False)
+
 
     if len(sorted_by_volume)<2:  # didn't work
       raise Sorry("No mask obtained...")
@@ -646,9 +658,9 @@ class around_mask(with_bounds):
     cs = map_manager.crystal_symmetry()
     cushion = flex.double(cs.unit_cell().fractionalize((box_cushion, )*3))
     all_orig = map_manager.map_data().all()
-    self.gridding_first = [max(0, ifloor((gf/n-c)*n)) for c, gf, n in zip(
+    self.gridding_first = [max(0, ifloor(gf-c*n)) for c, gf, n in zip(
        cushion, self.gridding_first, all_orig)]
-    self.gridding_last  = [ min(n-1, iceil((gf+c)*n)) for c, gf, n in zip(
+    self.gridding_last  = [min(n-1, iceil(gl+c*n)) for c, gl, n in zip(
        cushion, self.gridding_last, all_orig)]
 
 
