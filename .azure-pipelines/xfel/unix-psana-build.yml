@@ -55,7 +55,8 @@ steps:
     source $(Pipeline.Workspace)/miniconda/etc/profile.d/conda.sh
     conda activate psana_env
     cd $(Pipeline.Workspace)
-    python bootstrap.py build --builder=xfel --use-conda=${CONDA_PREFIX} --nproc=4
+    rm -rf modules/boost
+    python bootstrap.py --builder=xfel --use-conda $CONDA_PREFIX --nproc=4 --config-flags="--compiler=conda" --config-flags="--use_environment_flags" --config-flags="--enable_cxx11" --config-flags="--no_bin_python" --no-boost-src build
   displayName: Configure and Build
 
 # test
