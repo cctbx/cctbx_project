@@ -2559,3 +2559,81 @@ class TaskDialog(BaseDialog):
       self.task.parameters = parameters
 
     e.Skip()
+
+class SelectTasksDialog(BaseDialog):
+  def __init__(self, parent, dataset,
+               label_style='bold',
+               content_style='normal',
+               db=None,
+               *args, **kwargs):
+    BaseDialog.__init__(self, parent, label_style=label_style,
+                        content_style=content_style, *args, **kwargs)
+
+    self.db = db
+    self.dataset = dataset
+
+    self.top_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+    self.button_panel = wx.Panel(self)
+    self.button_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.button_panel.SetSizer(self.button_sizer)
+
+    self.tasks_panel = ScrolledPanel(self, size=(500, 400))
+
+    # Populate tasks with current values from db
+    self.dataset_tasks = [t for t in dataset.tasks]
+    self.dataset_task_ids = [t.id for t in self.dataset_tasks]
+    self.all_tasks = self.db.get_all_tasks()
+    choices = []
+    selected = []
+    for task in self.all_tasks:
+      selected.append(task.id in self.dataset_task_ids)
+      desc = "[%d] %s"%(task.id, task.type)
+      if task.trial is not None:
+        desc += " (trial %d)"%task.trial.trial
+
+      choices.append(desc)
+
+    self.tasks_list = gctr.CheckListCtrl(self.tasks_panel,
+                                         label='Select tasks',
+                                         label_size=(40, -1),
+                                         label_style='normal',
+                                         ctrl_size=(450, 350),
+                                         direction='vertical',
+                                         choices=choices)
+    for i in range(len(selected)):
+      self.tasks_list.ctr.Check(i, selected[i])
+
+    self.tasks_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.tasks_panel.SetSizer(self.tasks_sizer)
+
+    self.tasks_sizer.Add(self.tasks_list, 1, flag=wx.EXPAND)
+
+    # Add panels to main sizer
+    self.top_sizer.Add(self.button_panel,
+                       flag=wx.LEFT, border=10)
+    self.top_sizer.Add(self.tasks_panel,
+                       flag=wx.EXPAND | wx.RIGHT | wx.LEFT, border=10)
+    self.main_sizer.Add(self.top_sizer,
+                        flag=wx.EXPAND| wx.TOP | wx.BOTTOM, border=10)
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                   flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                   border=10)
+
+    self.Layout()
+    self.SetTitle('Select tasks')
+
+    # Button bindings
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def onOK(self, e):
+    for task in self.dataset_tasks:
+      self.dataset.remove_task(task)
+
+    for i, task in enumerate(self.all_tasks):
+      if self.tasks_list.ctr.IsChecked(i):
+        self.dataset.add_task(task)
+
+    e.Skip()

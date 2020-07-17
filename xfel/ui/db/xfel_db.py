@@ -835,6 +835,9 @@ class xfel_db_application(db_application):
   def get_task(self, task_id):
     return Task(self, task_id)
 
+  def get_all_tasks(self):
+    return self.get_all_x(Task, "task")
+
 # Deprecated, but preserved here in case it proves useful later
 """
 class sacla_run_finder(object):
