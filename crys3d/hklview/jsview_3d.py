@@ -1228,8 +1228,8 @@ function MakeHKL_Axis(mshape)
   """
       spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n  alphas.push(1.0);\n" %cntbin
 
-      if ibin <self.nbinvalsboundaries and self.binvalsboundaries[ibin] < 0.0:
-        negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
+      #if ibin <self.nbinvalsboundaries and self.binvalsboundaries[ibin] < 0.0:
+      #  negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
       cntbin += 1
 
     if self.ngl_settings.bin_opacities == "":
@@ -1270,11 +1270,6 @@ function MakeHKL_Axis(mshape)
 
     """ % (colourgradstrs, colourlabel, fomlabel)
 
-
-    #negativeradiistr = ""
-    #for ibin in range(self.nbinvalsboundaries):
-    #  if self.binvalsboundaries[ibin] < 0.0:
-    #    negativeradiistr += "shapebufs[%d].setParameters({metalness: 1})\n" %ibin
     qualitystr = """ , { disableImpostor: true
                   , sphereDetail: 0 } // rather than default value of 2 icosahedral subdivisions
             """

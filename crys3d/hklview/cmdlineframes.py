@@ -831,8 +831,8 @@ class HKLViewFrame() :
         labels = self.viewer.match_valarrays[id].info().labels
         # Labels could be something like ['I(+)', 'SIGI(+)', 'I(-)', 'SIGI(-)'].
         # So group datalabels and sigmalabels separately assuming that sigma column contain the three letters "sig"
-        datalabel = "".join([ e for e in labels if "sig" in e.lower()])
-        sigmalabel = "".join([ e for e in labels if "sig" not in e.lower()])
+        datalabel = ",".join([ e for e in labels if "sig" not in e.lower()])
+        sigmalabel = ",".join([ e for e in labels if "sig" in e.lower()])
         datalst.append( (datalabel, list(self.viewer.match_valarrays[id].data()))  )
         datalst.append( (sigmalabel, list(self.viewer.match_valarrays[id].sigmas()))  )
       elif self.viewer.match_valarrays[id].is_integer_array():
