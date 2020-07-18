@@ -369,6 +369,8 @@ class hklview_3d:
                        "slice_axis",
                        "slice_mode",
                        "slice_index",
+                       "sigma_color",
+                       "sigma_radius",
                        "scene_id",
                        "scale",
                        "nth_power_scale_radii"
@@ -627,6 +629,8 @@ class hklview_3d:
                          self.viewerparams.show_missing,
                          self.viewerparams.show_only_missing,
                          self.viewerparams.show_systematic_absences,
+                         self.viewerparams.sigma_radius,
+                         self.viewerparams.sigma_color,
                          self.viewerparams.scene_id,
                          self.viewerparams.scale,
                          self.viewerparams.nth_power_scale_radii
@@ -662,6 +666,8 @@ class hklview_3d:
                                 self.viewerparams.show_missing,
                                 self.viewerparams.show_only_missing,
                                 self.viewerparams.show_systematic_absences,
+                                self.viewerparams.sigma_radius,
+                                self.viewerparams.sigma_color,
                                 sceneid,
                                 self.viewerparams.scale,
                                 self.viewerparams.nth_power_scale_radii
@@ -685,6 +691,8 @@ class hklview_3d:
                               self.viewerparams.show_missing,
                               self.viewerparams.show_only_missing,
                               self.viewerparams.show_systematic_absences,
+                              self.viewerparams.sigma_radius,
+                              self.viewerparams.sigma_color,
                               self.viewerparams.scene_id,
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
@@ -710,6 +718,8 @@ class hklview_3d:
                               self.viewerparams.show_missing,
                               self.viewerparams.show_only_missing,
                               self.viewerparams.show_systematic_absences,
+                              self.viewerparams.sigma_radius,
+                              self.viewerparams.sigma_color,
                               scene_id,
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
@@ -742,6 +752,8 @@ class hklview_3d:
                       self.viewerparams.show_missing,
                       self.viewerparams.show_only_missing,
                       self.viewerparams.show_systematic_absences,
+                      self.viewerparams.sigma_radius,
+                      self.viewerparams.sigma_color,
                       sceneid,
                       self.viewerparams.scale,
                       self.viewerparams.nth_power_scale_radii

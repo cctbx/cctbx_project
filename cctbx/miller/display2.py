@@ -372,7 +372,8 @@ class scene(object):
         data_for_radii = sigmas * self.multiplicities.as_double()
       assert data_for_radii.size() == data.size()
     elif (settings.sigma_radius) and sigmas is not None:
-      data_for_radii = sigmas.as_double()
+      data_for_radii, self.nth_power_scale_radii = nth_power_scale(flex.abs(sigmas.as_double().deep_copy()),
+                                       settings.nth_power_scale_radii)
     else :
       data_for_radii, self.nth_power_scale_radii = nth_power_scale(flex.abs(data.deep_copy()),
                                        settings.nth_power_scale_radii)

@@ -1268,10 +1268,17 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     # action taken
     for i,scenelabel in enumerate(self.scenearraylabels):
       if self.millerarraylabels[row] == scenelabel or self.millerarraylabels[row] + " + " in scenelabel:
-        #print(i, scenelabel)
-        myqa = QAction("Display %s data" %scenelabel, self.window, triggered=self.testaction)
-        myqa.setData((i, row))
-        self.millertablemenu.addAction(myqa)
+        if self.array_infotpls[i][6] != (None, None): # i.e. has sigmas
+          myqa = QAction("Display data of %s" %scenelabel, self.window, triggered=self.testaction)
+          myqa.setData((i, row))
+          self.millertablemenu.addAction(myqa)
+          myqa = QAction("Display sigmas of %s" %scenelabel, self.window, triggered=self.testaction)
+          myqa.setData((i + 1000, row)) # want to show the sigmas rather than the data if we add 1000
+          self.millertablemenu.addAction(myqa)
+        else:
+          myqa = QAction("Display %s" %scenelabel, self.window, triggered=self.testaction)
+          myqa.setData((i, row))
+          self.millertablemenu.addAction(myqa)
     myqa = QAction("Make new data as a function of this data...", self.window, triggered=self.testaction)
     myqa.setData( ("newdata_1", row ))
     self.millertablemenu.addAction(myqa)
@@ -1323,7 +1330,27 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def DisplayData(self, idx, row):
-    self.PhilToJsRender("NGL_HKLviewer.viewer.scene_id = %d" %idx)
+    # want to show the sigmas rather than the data if idx we add 1000
+    if (idx - 1000) >= 0:
+      idx = idx - 1000
+      philstr = """
+      NGL_HKLviewer.viewer
+      {
+        sigma_radius = True
+        sigma_color = True
+        scene_id = %d
+      }
+      """ %idx
+    else:
+      philstr = """
+      NGL_HKLviewer.viewer
+      {
+        sigma_radius = False
+        sigma_color = False
+        scene_id = %d
+      }
+      """ %idx
+    self.PhilToJsRender(philstr)
     if self.fileisvalid:
       self.functionTabWidget.setEnabled(True)
       self.expandAnomalouscheckbox.setEnabled(True)
