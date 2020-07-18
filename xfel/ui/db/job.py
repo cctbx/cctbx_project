@@ -539,7 +539,7 @@ class EnsembleRefinementJob(Job):
                self.app.params.mp.nproc,
                self.app.params.mp.nproc_per_node,
                self.app.params.mp.method,
-               '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script]),
+               '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script if p]),
                self.app.params.output_folder,
                self.trial.trial,
                self.rungroup.id,

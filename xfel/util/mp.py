@@ -165,13 +165,13 @@ class get_submit_command(object):
   def write_script(self):
     command_str = " ".join([self.command] + self.args)
     f = open(self.submit_path, 'wb')
-    f.write("#! %s\n" % self.shell_path)
+    f.write(b"#! %s\n" % self.shell_path.encode())
     for line in self.options_inside_submit_script:
-      f.write("%s\n" % line)
+      f.write(b"%s\n" % line.encode())
     for line in self.source_env_scripts:
-      f.write("%s\n" % line)
-    f.write("\n")
-    f.write("%s\n" % command_str)
+      f.write(b"%s\n" % line.encode())
+    f.write(b"\n")
+    f.write(b"%s\n" % command_str.encode())
     f.close()
     self.make_executable(self.submit_path)
 
@@ -182,9 +182,9 @@ class get_submit_command(object):
     path, ext = os.path.splitext(self.submit_path)
     encapsulate_path = path + "_submit" + ext
     f = open(encapsulate_path, 'wb')
-    f.write("#! /bin/%s\n\n" % ext[1:])
-    f.write(self.generate_submit_command())
-    f.write("\n")
+    f.write(b"#! /bin/%s\n\n" % ext[1:].encode())
+    f.write(self.generate_submit_command().encode())
+    f.write(b"\n")
 
   def __call__(self):
     self.customize_for_method()

@@ -432,7 +432,7 @@ class SpinCtrl(CtrlBase):
     CtrlBase.__init__(self, parent=parent, label_style=label_style)
 
     ctr_box = wx.FlexGridSizer(1, 3, 0, 10)
-    self.txt = wx.StaticText(self, label=label.decode('utf-8'),
+    self.txt = wx.StaticText(self, label=label,
                              size=label_size)
     self.txt.SetFont(self.font)
 

@@ -464,7 +464,7 @@ class Script(object):
     if os.path.isfile(phil_path):
       os.remove(phil_path)
     with open(phil_path, "wb") as phil_outfile:
-      phil_outfile.write(diff_str + "\n")
+      phil_outfile.write(diff_str.encode() + b"\n")
     if clustering:
       script = script_to_expand_over_clusters(
         self.params.refinement.input.experiments[0].replace("FILENAME", self.filename),
@@ -478,7 +478,7 @@ class Script(object):
 
   def run(self):
     '''Execute the script.'''
-    runs = ["r%04d" % r if isinstance(r, int) else r for r in self.params.striping.run]
+    runs = ["r%04d" % int(r) if r.isnumeric() else r for r in self.params.striping.run]
     if self.params.striping.run:
       print("processing runs " + ", ".join(runs))
     if self.params.striping.rungroup:
@@ -515,7 +515,7 @@ class Script(object):
           os.remove(chunk_path)
         with open(chunk_path, "wb") as outfile:
           for i in (0, 1): # expts then refls
-            outfile.write("\n".join(chunk[i]) + "\n")
+            outfile.write(("\n".join(chunk[i]) + "\n").encode())
 
         # set up the params for dials.combine_experiments
         custom_parts = ["  input {"]
