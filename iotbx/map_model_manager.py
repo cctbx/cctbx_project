@@ -661,6 +661,8 @@ class map_model_manager(object):
       a list of any other maps present
     '''
     all_map_id_list=list(self._map_dict.keys())
+    # We are going to need id='map_manager'   create if if missing
+    assert self.map_manager() is not None # creates it
     assert all_map_id_list
     all_map_id_list.sort()
     map_id='map_manager'
