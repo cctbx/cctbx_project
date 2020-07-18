@@ -247,6 +247,8 @@ def generate_map_coefficients(
   from mmtbx.command_line.fmodel import master_phil
   fmodel_params=master_phil.extract()
 
+  assert model.crystal_symmetry() is not None # Need crystal_symmetry in model
+
   xrs=model.get_xray_structure()
 
   fmodel_params.high_resolution=float(high_resolution)
