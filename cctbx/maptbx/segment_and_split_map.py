@@ -9179,7 +9179,7 @@ def set_up_si(var_dict = None, crystal_symmetry = None,
         crystal_symmetry = crystal_symmetry, molecular_mass = molecular_mass,
         out = out)
 
-    # Test to see if we can use adjusted_path_length as target 
+    # Test to see if we can use adjusted_path_length as target
     if local_params.map_modification.sharpening_target == \
             'adjusted_path_length':
       print(
