@@ -349,7 +349,10 @@ def get_residues_and_ha(seq_file=None,atom_type=None,
   # if data file is specified, use it to get crystal_symmetry and then estimate
   # residues and ha using that information and seq_file. Otherwise guess
   if data and os.path.isfile(data):
-    from phenix.command_line.ncs_and_number_of_ha import ncs_and_number_of_ha
+    try:
+      from phenix.command_line.ncs_and_number_of_ha import ncs_and_number_of_ha
+    except Exception as e: # not available
+      return n_aa,number_of_sites,number_of_s,solvent_fraction,ncs_copies
     args=["data=%s" %(data)]
     if seq_file: args.append("seq_file=%s" %(seq_file))
     if atom_type: args.append("atom_type=%s" %(atom_type))

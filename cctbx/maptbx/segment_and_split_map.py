@@ -4847,6 +4847,7 @@ def get_params(args, map_data = None, crystal_symmetry = None,
         params.crystal_info.sequence = open(params.input_files.seq_file).read()
     print("Read sequence from %s" %(params.input_files.seq_file), file = out)
 
+
   if not params.crystal_info.resolution and (
      params.map_modification.b_iso is not None or \
       params.map_modification.auto_sharpen
@@ -4873,7 +4874,9 @@ def get_params(args, map_data = None, crystal_symmetry = None,
   if (params.map_modification.residual_target == 'adjusted_sa' or
      params.map_modification.sharpening_target == 'adjusted_sa') and \
      (params.map_modification.box_in_auto_sharpen or
-       params.map_modification.density_select_in_auto_sharpen):
+       params.map_modification.density_select_in_auto_sharpen) and (
+      params.map_modification.auto_sharpen):
+
     print("Checking to make sure we can use adjusted_sa as target...",
         end = ' ', file = out)
     try:
@@ -8818,7 +8821,11 @@ def get_adjusted_path_length(
     crystal_symmetry = None,
     resolution = None,
     out = sys.stdout):
-  from phenix.autosol.trace_and_build import trace_and_build
+  try:
+    from phenix.autosol.trace_and_build import trace_and_build
+  except Exception as e: # Not available
+    return 0
+
   from phenix.programs.trace_and_build import master_phil_str
   import iotbx.phil
   tnb_params = iotbx.phil.parse(master_phil_str).extract()
@@ -9171,6 +9178,19 @@ def set_up_si(var_dict = None, crystal_symmetry = None,
        solvent_fraction = get_solvent_fraction_from_molecular_mass(
         crystal_symmetry = crystal_symmetry, molecular_mass = molecular_mass,
         out = out)
+
+    # Test to see if we can use adjusted_path_length as target 
+    if local_params.map_modification.sharpening_target == \
+            'adjusted_path_length':
+      print(
+       "Checking to make sure we can use 'adjusted_path_length'as target...",
+          end = ' ', file = out)
+      try:
+        from phenix.autosol.trace_and_build import trace_and_build
+      except Exception as e:
+        raise Sorry("Please set sharpening target to something other than "+
+          "adjusted_path_length (not available)")
+      print("OK", file = out)
 
 
 
