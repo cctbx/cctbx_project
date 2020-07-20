@@ -10,7 +10,6 @@ from scitbx import graphics_utils
 from scitbx import matrix
 import scitbx.math
 from libtbx.utils import Sorry, to_str
-#from websocket_server import WebsocketServer
 import asyncio
 import websockets
 from typing import Optional
@@ -25,7 +24,6 @@ import os.path, time, copy
 import libtbx
 import webbrowser, tempfile
 from six.moves import range
-import base64
 
 
 
@@ -267,6 +265,7 @@ class hklview_3d:
     self.colstraliases = ""
     self.binvals = []
     self.binvalsboundaries = []
+    self.oldnbinvalsboundaries = None
     self.proc_arrays = []
     self.HKLscene = []
     self.HKLscenes = []
@@ -306,21 +305,22 @@ class hklview_3d:
     if 'mprint' in kwds:
       self.mprint = kwds['mprint']
     self.nbinvalsboundaries = 0
+    self.websockport = 7894
+    if 'websockport' in kwds:
+      self.websockport = kwds['websockport']
     tempdir = tempfile.gettempdir()
-    self.hklfname = os.path.join(tempdir, "hkl.htm" )
+    # ensure unique file name by including port number in filename
+    self.hklfname = os.path.join(tempdir, "hkl_%d.htm" %self.websockport )
     if os.path.isfile(self.hklfname):
       os.remove(self.hklfname)
     if 'htmlfname' in kwds and kwds['htmlfname']:
       self.hklfname = kwds['htmlfname']
     self.hklfname = os.path.abspath( self.hklfname )
-    self.jscriptfname = os.path.join(tempdir, "hkljstr.js")
+    self.jscriptfname = os.path.join(tempdir, "hkljstr_%d.js" %self.websockport)
     if os.path.isfile(self.jscriptfname):
       os.remove(self.jscriptfname)
     if 'jscriptfname' in kwds and kwds['jscriptfname'] != "":
       self.jscriptfname = kwds['jscriptfname']
-    self.websockport = 7894
-    if 'websockport' in kwds:
-      self.websockport = kwds['websockport']
     self.send_info_to_gui = None
     if 'send_info_to_gui' in kwds:
       self.send_info_to_gui = kwds['send_info_to_gui']
@@ -413,6 +413,8 @@ class hklview_3d:
                        "slice_axis",
                        "slice_mode",
                        "slice_index",
+                       "sigma_color",
+                       "sigma_radius",
                        "scene_id",
                        "scale",
                        "nth_power_scale_radii"
@@ -667,6 +669,8 @@ class hklview_3d:
                          self.viewerparams.show_missing,
                          self.viewerparams.show_only_missing,
                          self.viewerparams.show_systematic_absences,
+                         self.viewerparams.sigma_radius,
+                         self.viewerparams.sigma_color,
                          self.viewerparams.scene_id,
                          self.viewerparams.scale,
                          self.viewerparams.nth_power_scale_radii
@@ -702,6 +706,8 @@ class hklview_3d:
                                 self.viewerparams.show_missing,
                                 self.viewerparams.show_only_missing,
                                 self.viewerparams.show_systematic_absences,
+                                self.viewerparams.sigma_radius,
+                                self.viewerparams.sigma_color,
                                 sceneid,
                                 self.viewerparams.scale,
                                 self.viewerparams.nth_power_scale_radii
@@ -725,6 +731,8 @@ class hklview_3d:
                               self.viewerparams.show_missing,
                               self.viewerparams.show_only_missing,
                               self.viewerparams.show_systematic_absences,
+                              self.viewerparams.sigma_radius,
+                              self.viewerparams.sigma_color,
                               self.viewerparams.scene_id,
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
@@ -750,6 +758,8 @@ class hklview_3d:
                               self.viewerparams.show_missing,
                               self.viewerparams.show_only_missing,
                               self.viewerparams.show_systematic_absences,
+                              self.viewerparams.sigma_radius,
+                              self.viewerparams.sigma_color,
                               scene_id,
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
@@ -782,6 +792,8 @@ class hklview_3d:
                       self.viewerparams.show_missing,
                       self.viewerparams.show_only_missing,
                       self.viewerparams.show_systematic_absences,
+                      self.viewerparams.sigma_radius,
+                      self.viewerparams.sigma_color,
                       sceneid,
                       self.viewerparams.scale,
                       self.viewerparams.nth_power_scale_radii
@@ -871,6 +883,9 @@ class hklview_3d:
       binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
       binvals = list( 1.0/flex.double(binvals) )
       nuniquevalues = len(set(list(dres)))
+    elif self.binscenelabel=="Singletons":
+        binvals = [ -1.5, -0.5, 0.5, 1.5 ]
+        nuniquevalues = len(binvals)
     else:
       bindata = self.HKLscene_from_dict(int(self.binscenelabel)).data.deep_copy()
       if isinstance(bindata, flex.complex_double):
@@ -940,8 +955,8 @@ class hklview_3d:
       ldic=locals()
       exec(operation, globals(), ldic)
       newdata = ldic["newdata"]
-      newsigmas = ldic["newsigmas"]
       newarray._data = newdata
+      newsigmas = ldic["newsigmas"]
       newarray._sigmas = newsigmas
       return newarray
     except Exception as e:
@@ -968,8 +983,8 @@ class hklview_3d:
       ldic=locals()
       exec(operation, globals(), ldic)
       newdata = ldic["newdata"]
-      newsigmas = ldic["newsigmas"]
       newarray._data = newdata
+      newsigmas = ldic["newsigmas"]
       newarray._sigmas = newsigmas
       return newarray
     except Exception as e:
@@ -1109,6 +1124,8 @@ function MakeHKL_Axis(mshape)
     dres = self.scene.dres
     if self.binscenelabel=="Resolution":
       colstr = "dres"
+    elif self.binscenelabel=="Singletons":
+      colstr = "Singleton"
     else:
       if not blankscene:
         colstr = self.HKLscene_from_dict(int(self.binscenelabel)).work_array.info().label_string()
@@ -1128,6 +1145,9 @@ function MakeHKL_Axis(mshape)
       if self.binscenelabel=="Resolution":
         self.binvalsboundaries = self.binvals
         self.bindata = 1.0/self.scene.dres
+      elif self.binscenelabel=="Singletons":
+        self.binvalsboundaries = self.binvals
+        self.bindata = self.scene.singletonsiness
       else:
         ibinarray= int(self.binscenelabel)
         self.binvalsboundaries = [ self.HKLMinData_from_dict(ibinarray) - 0.1 , self.HKLMaxData_from_dict(ibinarray) + 0.1 ]
@@ -1141,7 +1161,11 @@ function MakeHKL_Axis(mshape)
           self.bindata = self.HKLscene_from_dict(ibinarray).ampl
 
     self.nbinvalsboundaries = len(self.binvalsboundaries)
-    # Un-binnable data is scene data values where there's no matching reflection in the bin data
+    # avoid resetting opacities of bins unless we change the number of bins
+    if self.oldnbinvalsboundaries != self.nbinvalsboundaries:
+      self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(self.nbinvalsboundaries + 1) ])
+    self.oldnbinvalsboundaries = self.nbinvalsboundaries
+    # Un-binnable data are scene data values where there are no matching reflections in the bin data
     # Put these in a separate bin and be diligent with the book keeping!
     for ibin in range(self.nbinvalsboundaries+1): # adding the extra bin for un-binnable data
       colours.append([]) # colours and positions are 3 x size of data()
@@ -1169,7 +1193,6 @@ function MakeHKL_Axis(mshape)
     if nrefls > 0 and self.bindata.size() != points.size():
       raise Sorry("Not the same number of reflections in bin-data and displayed data")
 
-    flexbinvalsboundaries = flex.double(self.binvalsboundaries)
     start_time = time.time()
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
@@ -1261,12 +1284,11 @@ function MakeHKL_Axis(mshape)
   """
       spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n  alphas.push(1.0);\n" %cntbin
 
-      if ibin <self.nbinvalsboundaries and self.binvalsboundaries[ibin] < 0.0:
-        negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
       cntbin += 1
 
-    #self.ngl_settings.bin_opacities = str([ "1.0, %d"%e for e in range(cntbin) ])
-    self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
+    if self.ngl_settings.bin_opacities == "":
+      self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
+
     self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
                           "bin_infotpls": self.bin_infotpls,
                           "bin_data_label": colstr,
@@ -1302,11 +1324,6 @@ function MakeHKL_Axis(mshape)
 
     """ % (colourgradstrs, colourlabel, fomlabel)
 
-
-    #negativeradiistr = ""
-    #for ibin in range(self.nbinvalsboundaries):
-    #  if self.binvalsboundaries[ibin] < 0.0:
-    #    negativeradiistr += "shapebufs[%d].setParameters({metalness: 1})\n" %ibin
     qualitystr = """ , { disableImpostor: true
                   , sphereDetail: 0 } // rather than default value of 2 icosahedral subdivisions
             """
@@ -1315,11 +1332,11 @@ function MakeHKL_Axis(mshape)
 
     self.NGLscriptstr = ""
     if not blankscene:
-      self.NGLscriptstr = HKLJavaScripts.NGLscriptstr % ( self.ngl_settings.tooltip_alpha, 
-        '\"' + self.camera_type + '\"', axisfuncstr, spherebufferstr, 
+      self.NGLscriptstr = HKLJavaScripts.NGLscriptstr % ( self.ngl_settings.tooltip_alpha,
+        '\"' + self.camera_type + '\"', axisfuncstr, spherebufferstr,
         negativeradiistr, colourscriptstr)
 
-    WebsockMsgHandlestr = HKLJavaScripts.WebsockMsgHandlestr %(self.websockport, cntbin, 
+    WebsockMsgHandlestr = HKLJavaScripts.WebsockMsgHandlestr %(self.websockport, cntbin,
              str(self.verbose>=2).lower(), self.__module__, self.__module__, qualitystr )
 
     self.NGLscriptstr = WebsockMsgHandlestr + self.NGLscriptstr
@@ -1350,7 +1367,7 @@ function MakeHKL_Axis(mshape)
                                     1006, # WebSocketServerProtocol.close_code is absent
                                     1001, # normal exit
                                     1005,
-                                    1000 
+                                    1000
                                     ]:
         return # shutdown
       if self.viewerparams.scene_id is None or self.miller_array is None \
@@ -1557,7 +1574,7 @@ Distance: %s
                                      1006, # WebSocketServerProtocol.close_code is absent
                                      1001, # normal exit
                                      1005,
-                                     1000 
+                                     1000
                                      ]:
           return # shutdown
         if self.javascriptcleaned or self.was_disconnected == 4241: # or self.was_disconnected == 1001:

@@ -91,8 +91,8 @@ class SettingsForm(QDialog):
 
 class WebEngineDebugForm(QDialog):
   def __init__(self, parent=None):
-    super(WebEngineDebugForm, self).__init__(None, 
-                        Qt.WindowMinimizeButtonHint | # Want minimise and maximise buttons on window. 
+    super(WebEngineDebugForm, self).__init__(None,
+                        Qt.WindowMinimizeButtonHint | # Want minimise and maximise buttons on window.
                         Qt.WindowMaximizeButtonHint | # As they are not the default for QDialog we must
                         Qt.WindowCloseButtonHint |    # add them with flags at creation
                         Qt.CustomizeWindowHint |
@@ -338,7 +338,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getOpenFileName(self.window,
             "Open a reflection file", "",
-            "MTZ Files (*.mtz);;CIF (*.cif);;All Files (*);;", "", options)
+            "MTZ Files (*.mtz);;HKL Files (*.hkl);;CIF (*.cif);;SCA Files (*.sca);;All Files (*)", "", options)
     if fileName:
       #self.HKLnameedit.setText(fileName)
       self.window.setWindowTitle("HKL-viewer: " + fileName)
@@ -565,7 +565,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
           if self.NewHKLscenes:
             self.BinDataComboBox.clear()
-            self.BinDataComboBox.addItems(["Resolution"] + self.scenearraylabels )
+            self.BinDataComboBox.addItems(["Resolution", "Singletons"] + self.scenearraylabels )
             self.BinDataComboBox.view().setMinimumWidth(self.comboviewwidth)
             #self.BinDataComboBox.setCurrentIndex(-1) # unselect the first item in the list
             self.NewHKLscenes = False
@@ -853,10 +853,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
   def onBindataComboSelchange(self,i):
     if self.BinDataComboBox.currentText():
-      if self.BinDataComboBox.currentIndex() > 0:
-        bin_scene_label = str(self.BinDataComboBox.currentIndex()-1)
+      if self.BinDataComboBox.currentIndex() > 1:
+        bin_scene_label = str(self.BinDataComboBox.currentIndex()-2)
       else:
-        bin_scene_label = "Resolution"
+        bin_scene_label = self.BinDataComboBox.currentText()
       self.PhilToJsRender("NGL_HKLviewer.bin_scene_label = %s" % bin_scene_label )
       bin_opacitieslst = []
       for i in range(self.nbins):
@@ -1252,10 +1252,17 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     # action taken
     for i,scenelabel in enumerate(self.scenearraylabels):
       if self.millerarraylabels[row] == scenelabel or self.millerarraylabels[row] + " + " in scenelabel:
-        #print(i, scenelabel)
-        myqa = QAction("Display %s data" %scenelabel, self.window, triggered=self.testaction)
-        myqa.setData((i, row))
-        self.millertablemenu.addAction(myqa)
+        if self.array_infotpls[i][6] != (None, None): # i.e. has sigmas
+          myqa = QAction("Display data of %s" %scenelabel, self.window, triggered=self.testaction)
+          myqa.setData((i, row))
+          self.millertablemenu.addAction(myqa)
+          myqa = QAction("Display sigmas of %s" %scenelabel, self.window, triggered=self.testaction)
+          myqa.setData((i + 1000, row)) # want to show the sigmas rather than the data if we add 1000
+          self.millertablemenu.addAction(myqa)
+        else:
+          myqa = QAction("Display %s" %scenelabel, self.window, triggered=self.testaction)
+          myqa.setData((i, row))
+          self.millertablemenu.addAction(myqa)
     myqa = QAction("Make new data as a function of this data...", self.window, triggered=self.testaction)
     myqa.setData( ("newdata_1", row ))
     self.millertablemenu.addAction(myqa)
@@ -1307,7 +1314,27 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def DisplayData(self, idx, row):
-    self.PhilToJsRender("NGL_HKLviewer.viewer.scene_id = %d" %idx)
+    # want to show the sigmas rather than the data if idx we add 1000
+    if (idx - 1000) >= 0:
+      idx = idx - 1000
+      philstr = """
+      NGL_HKLviewer.viewer
+      {
+        sigma_radius = True
+        sigma_color = True
+        scene_id = %d
+      }
+      """ %idx
+    else:
+      philstr = """
+      NGL_HKLviewer.viewer
+      {
+        sigma_radius = False
+        sigma_color = False
+        scene_id = %d
+      }
+      """ %idx
+    self.PhilToJsRender(philstr)
     if self.fileisvalid:
       self.functionTabWidget.setEnabled(True)
       self.expandAnomalouscheckbox.setEnabled(True)

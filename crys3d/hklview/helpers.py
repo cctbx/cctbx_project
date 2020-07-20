@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 
 from PySide2.QtCore import Qt, QEvent, QAbstractTableModel, QModelIndex
 from PySide2.QtGui import QCursor
-from PySide2.QtWidgets import ( QCheckBox, QTableWidget, QAction, QMenu, 
+from PySide2.QtWidgets import ( QCheckBox, QTableWidget, QAction, QMenu,
       QTableView, QDialog,  QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox
      )
 import math, csv
@@ -161,9 +161,9 @@ class MillerArrayTableModel(QAbstractTableModel):
     """
     self.layoutAboutToBeChanged.emit()
     if order == Qt.AscendingOrder:
-      print(self.columnheaderdata[col] + " sort AscendingOrder")
+      #print(self.columnheaderdata[col] + " sort AscendingOrder")
       self._data = sorted(self._data, key= lambda data: self.minvals[col] if math.isnan(data[col]) else data[col])
     if order == Qt.DescendingOrder:
-      print(self.columnheaderdata[col] + " sort DescendingOrder")
+      #print(self.columnheaderdata[col] + " sort DescendingOrder")
       self._data = sorted(self._data, key= lambda data: self.minvals[col] if math.isnan(data[col]) else data[col], reverse=True)
     self.layoutChanged.emit()

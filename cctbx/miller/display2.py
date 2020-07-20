@@ -166,7 +166,8 @@ class scene(object):
       #if (self.slice_selection.count(True) == 0):
         #raise ValueError("No data selected!")
     index_span = array.index_span()
-    self.colourlabel = self.miller_array.info().labels[0]
+    self.colourlabel = ",".join([ e for e in self.miller_array.info().labels
+                                   if "phi" not in e.lower() and  "sig" not in e.lower()])
     self.d_min = array.d_min()
     self.min_dist = 0.0
     self.nth_power_scale_radii = settings.nth_power_scale_radii
@@ -277,6 +278,7 @@ class scene(object):
       self.radians = flex.double(data.size(), float('nan'))
       self.ampl = flex.double(data.size(), float('nan'))
       self.sigmas = None
+      self.singletonsiness = flex.double(data.size(), 0.0 )
       if isinstance(data, flex.bool):
         self.r_free_mode = True
         data_as_float = flex.double(data.size(), 0.0)
@@ -318,6 +320,10 @@ class scene(object):
           self.sigmas = array.sigmas()
         else:
           self.sigmas = None
+      if array.anomalous_flag() and array.is_unique_set_under_symmetry():
+        # Label singletons with 1 or -1 if any. True singletons are only acentric
+        self.singletonsiness.set_selected( array.select_acentric().match_bijvoet_mates()[1].singles("+"), 1.0 )
+        self.singletonsiness.set_selected( array.select_acentric().match_bijvoet_mates()[1].singles("-"), -1.0 )
       work_array = array
     except Exception as e:
       print(to_str(e) + "".join(traceback.format_stack(limit=10)))
@@ -349,10 +355,10 @@ class scene(object):
       data_for_colors = self.radians
       foms_for_colours = self.foms
        # assuming last part of the labels indicates the phase label as in ["FCALC","PHICALC"]
-      self.colourlabel = self.miller_array.info().labels[-1]
+      self.colourlabel = ",".join([ e for e in self.miller_array.info().labels if "phi" in e.lower()])
     elif (settings.sigma_color) and sigmas is not None:
       data_for_colors = sigmas.as_double()
-      self.colourlabel = self.miller_array.info().labels[-1]
+      self.colourlabel = ",".join([ e for e in self.miller_array.info().labels if "sig" in e.lower()])
     else :
       data_for_colors = flex.abs(data.deep_copy())
     uc = self.work_array.unit_cell()
@@ -366,7 +372,8 @@ class scene(object):
         data_for_radii = sigmas * self.multiplicities.as_double()
       assert data_for_radii.size() == data.size()
     elif (settings.sigma_radius) and sigmas is not None:
-      data_for_radii = sigmas.as_double()
+      data_for_radii, self.nth_power_scale_radii = nth_power_scale(flex.abs(sigmas.as_double().deep_copy()),
+                                       settings.nth_power_scale_radii)
     else :
       data_for_radii, self.nth_power_scale_radii = nth_power_scale(flex.abs(data.deep_copy()),
                                        settings.nth_power_scale_radii)
