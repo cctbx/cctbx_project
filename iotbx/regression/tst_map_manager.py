@@ -297,9 +297,10 @@ def test_01():
   gaussian=mm.gaussian_blur(smoothing_radius=1)
   binary=mm.binary_filter(cutoff=0.5)
   assert approx_equal(
-   (mm.map_data().as_1d()[1073],filtered.map_data().as_1d()[1073],
+     (mm.map_data().as_1d()[1073],filtered.map_data().as_1d()[1073],
+       high_filtered.map_data().as_1d()[1073],
        gaussian.map_data().as_1d()[1073],binary.map_data().as_1d()[1073]),
-       (0.0171344596893,0.0811464515165,0.0149086679298,0.0))
+      (0.0171344596893,0.0542743884852,0.0171344596893,0.0149086679298,0.0))
 
   info=mm.get_density_along_line((5,5,5),(10,10,10))
   assert approx_equal([info.along_density_values[4]]+list(info.along_sites[4]),
