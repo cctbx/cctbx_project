@@ -245,7 +245,6 @@ class hklview_3d:
     self.sceneisdirty = True
     self.imagename = None
     self.imgdatastr = ""
-    self.imgcount = 0
     self.hkl_scenes_info = []
     self.match_valarrays = []
     self.array_infostrs = []
@@ -338,6 +337,8 @@ class hklview_3d:
       nwait += self.sleeptime
     if os.path.isfile(self.hklfname):
       os.remove(self.hklfname)
+    if os.path.isfile(self.jscriptfname):
+      os.remove(self.jscriptfname)
     self.mprint("Destroying hklview_3d", 1)
 
 
@@ -1120,8 +1121,7 @@ function MakeHKL_Axis(mshape)
     if self.oldnbinvalsboundaries != self.nbinvalsboundaries:
       self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(self.nbinvalsboundaries + 1) ])
     self.oldnbinvalsboundaries = self.nbinvalsboundaries
-
-    # Un-binnable data is scene data values where there's no matching reflection in the bin data
+    # Un-binnable data are scene data values where there are no matching reflections in the bin data
     # Put these in a separate bin and be diligent with the book keeping!
     for ibin in range(self.nbinvalsboundaries+1): # adding the extra bin for un-binnable data
       colours.append([]) # colours and positions are 3 x size of data()
@@ -1240,8 +1240,6 @@ function MakeHKL_Axis(mshape)
   """
       spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n  alphas.push(1.0);\n" %cntbin
 
-      #if ibin <self.nbinvalsboundaries and self.binvalsboundaries[ibin] < 0.0:
-      #  negativeradiistr += "shapebufs[%d].setParameters({metalness: 1});\n" %cntbin
       cntbin += 1
 
     if self.ngl_settings.bin_opacities == "":
