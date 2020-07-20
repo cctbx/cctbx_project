@@ -289,6 +289,22 @@ def test_01():
   new_mm.shift_origin()
   assert new_mm.is_compatible_ncs_object(new_mm.ncs_object())
 
+  # filter a map
+  dm = DataManager()
+  mm = dm.get_real_map(data_d7)
+  filtered=mm.low_pass_filter(d_min=4)
+  high_filtered=mm.high_pass_filter(d_max=4)
+  gaussian=mm.gaussian_blur(smoothing_radius=1)
+  binary=mm.binary_filter(cutoff=0.5)
+  assert approx_equal(
+   (mm.map_data().as_1d()[1073],filtered.map_data().as_1d()[1073],
+       gaussian.map_data().as_1d()[1073],binary.map_data().as_1d()[1073]),
+       (0.0171344596893,0.0811464515165,0.0149086679298,0.0))
+
+  info=mm.get_density_along_line((5,5,5),(10,10,10))
+  assert approx_equal([info.along_density_values[4]]+list(info.along_sites[4]),
+    [-0.562231123447 , 8.0, 8.0, 8.0])
+
 
 if (__name__  ==  '__main__'):
   test_01()
