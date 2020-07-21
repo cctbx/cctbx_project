@@ -993,9 +993,7 @@ class map_manager(map_reader, write_ccp4_map):
     assert d_max is not None
 
     map_coeffs = self.map_as_fourier_coefficients(low_resolution = d_max)
-    map_data_high_res = self.fourier_coefficients_as_map(
-       map_coeffs=map_coeffs)
-    return self.customized_copy(map_data=map_data_high_res)
+    return self.fourier_coefficients_as_map( map_coeffs=map_coeffs)
 
   def low_pass_filter(self, d_min):
     '''
@@ -1006,9 +1004,7 @@ class map_manager(map_reader, write_ccp4_map):
     assert d_min is not None
 
     map_coeffs = self.map_as_fourier_coefficients(high_resolution = d_min)
-    map_data_low_res = self.fourier_coefficients_as_map(
-       map_coeffs=map_coeffs)
-    return self.customized_copy(map_data=map_data_low_res)
+    return self.fourier_coefficients_as_map( map_coeffs=map_coeffs)
 
   def gaussian_blur(self, smoothing_radius):
     '''
@@ -1622,7 +1618,7 @@ class map_manager(map_reader, write_ccp4_map):
   def fourier_coefficients_as_map(self, map_coeffs):
     '''
        Convert Fourier coefficients into to a real-space map with gridding
-       matching this existing map_manager.
+       matching this existing map_manager.  Returns a map_manager object.
 
        Requires that this map_manager has origin at (0, 0, 0) (i.e.,
        shift_origin() has been applied if necessary)
@@ -1636,10 +1632,12 @@ class map_manager(map_reader, write_ccp4_map):
     assert isinstance(map_coeffs.data(), flex.complex_double)
     assert self.map_data() and self.map_data().origin() == (0, 0, 0)
 
-    return maptbx.map_coefficients_to_map(
-      map_coeffs       = map_coeffs,
-      crystal_symmetry = self.crystal_symmetry(),
-      n_real           = self.map_data().all())
+    return self.customized_copy(
+      map_data=maptbx.map_coefficients_to_map(
+        map_coeffs       = map_coeffs,
+        crystal_symmetry = self.crystal_symmetry(),
+        n_real           = self.map_data().all())
+      )
 
 def subtract_tuples_int(t1, t2):
   return tuple(flex.int(t1)-flex.int(t2))

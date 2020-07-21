@@ -230,10 +230,9 @@ def test_01():
        labels = [labels])
   miller_arrays = dm.get_miller_arrays()
   new_map_coeffs = miller_arrays[0]
-  map_data_from_map_coeffs = mm.fourier_coefficients_as_map(
+  mm_from_map_coeffs = mm.fourier_coefficients_as_map(
       map_coeffs = new_map_coeffs)
 
-  mm_from_map_coeffs = mm.customized_copy(map_data = map_data_from_map_coeffs)
   assert mm_from_map_coeffs.is_similar(mm)
 
   # Find map symmetry in a map
