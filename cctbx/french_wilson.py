@@ -338,6 +338,8 @@ def french_wilson_scale(
     raise Sorry(("The input intensities have uniform values (%g); this is probably "+
       "a bug in one of the data processing and/or conversion programs.") %
       miller_array.data()[0])
+  # Phil defaults are set in master_phil above - they should be kept in sync with the
+  # default arguments for this function
   if params and params.max_bins:
     max_bins = params.max_bins
   if params and params.min_bin_size:
