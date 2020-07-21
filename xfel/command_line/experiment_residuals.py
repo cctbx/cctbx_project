@@ -58,9 +58,9 @@ cbarshrink = 0.5
 exper_id = 0
   .type = int
   .help = experiment id (if experiment file is multi-shot)
-title = None
+title_tag = None
   .type = str
-  .help = title of the plot
+  .help = add this tag to the title of the plots
 plot_rad_trans = False
   .type = bool
   .help = if True, will display a histogram of radial and transverse offsets
@@ -123,6 +123,7 @@ class Script:
       sys.exit()
 
     DET = El[params.exper_id].detector
+    pixsize = tuple([x*1000 for x in DET[0].get_pixel_size()])
     R = R.select(R["id"] == params.exper_id)
 
     columns = 'delpsical.rad', 'xyzobs.mm.value', 'panel', 'xyzcal.mm'
@@ -202,22 +203,24 @@ class Script:
     cbar.ax.set_title("$\Delta \psi$")
     ax.set_aspect("equal")
     ax.set_facecolor(params.axcol)
-    title = "Arrow points to prediction"
-    if params.title is not None:
-      title = params.title
+    title = "prediction offsets (arrow points to prediction)"
+    title_radtrans = "radial/transverse components"
+    if params.title_tag is not None:
+      title += ": %s" % params.title_tag
+      title_radtrans += ": %s" % params.title_tag
     ax.set_title(title)
 
     if params.plot_rad_trans:
       plt.figure()
       plt.hist(all_rad, bins='auto', histtype='step')
       plt.hist(all_trans, bins='auto', histtype='step')
-      plt.gca().set_title(title)
+      plt.gca().set_title(title_radtrans)
       rad_mn, rad_sig = np.mean(all_rad), np.std(all_rad)
       trans_mn, trans_sig = np.mean(all_trans), np.std(all_trans)
-      rad_str = r"radial: %.3f $\pm$ %.4f" % (rad_mn, rad_sig)
-      trans_str = r"transverse: %.3f $\pm$ %.4f" % (trans_mn, trans_sig)
+      rad_str = r"radial: %.2f $\pm$ %.2f $\mu m$" % (rad_mn, rad_sig)
+      trans_str = r"transverse: %.2f $\pm$ %.2f $\mu m$" % (trans_mn, trans_sig)
       plt.legend((rad_str, trans_str))
-      plt.xlabel("microns")
+      plt.xlabel(r"microns (1 pixel = %.1f $\mu m$ x %.1f $\mu m$)" % pixsize)
       plt.ylabel("number of spots")
 
     plt.show()
