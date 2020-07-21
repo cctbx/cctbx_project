@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import to_str, null_out
+from libtbx import group_args
 from libtbx import group_args, Auto
 from libtbx.test_utils import approx_equal
 import sys
@@ -7,6 +8,7 @@ import io
 from cctbx import miller
 from iotbx.mrcfile import map_reader, write_ccp4_map
 from scitbx.array_family import flex
+from scitbx.matrix import col
 from cctbx import maptbx
 from cctbx import miller
 import mmtbx.ncs.ncs
@@ -937,6 +939,142 @@ class map_manager(map_reader, write_ccp4_map):
            1))
     return box.map_manager()
 
+
+  def density_at_sites(self, sites):
+    '''
+    Return flex.double list of density values corresponding to sites (cartesian
+     coordinates in A)
+    '''
+    assert isinstance(sites, flex.vec3_double)
+
+    density_values = flex.double()
+    for site in sites:
+      point_frac = self.crystal_symmetry().unit_cell().fractionalize(site)
+      density_values.append(
+         self.map_data().eight_point_interpolation(point_frac))
+    return density_values
+
+  def get_density_along_line(self,
+      start_site = None,
+      end_site = None,
+      n_along_line = 10,
+      include_ends = True):
+
+    '''
+      Return group_args object with density values and coordinates
+      along a line segment from start_site to end_site
+      (cartesian coordinates in A) with n_along_line sampling points.
+      Optionally include/exclude ends.
+    '''
+    along_sites = flex.vec3_double()
+    if include_ends:
+      start = 0
+      end = n_along_line+1
+    else:
+      start = 1
+      end = n_along_line
+
+    for i in range(start, end):
+      weight = (i/n_along_line)
+      along_line_site = col(start_site)*weight+col(end_site)*(1-weight)
+      along_sites.append(along_line_site)
+    along_density_values = self.density_at_sites(sites = along_sites)
+    return group_args(
+     along_density_values = along_density_values,
+       along_sites = along_sites)
+
+
+  def high_pass_filter(self, d_max):
+    '''
+      High-pass filter the map in map_manager at resolution of d_max
+      and return a customized_copy
+
+    '''
+    assert d_max is not None
+
+    map_coeffs = self.map_as_fourier_coefficients(low_resolution = d_max)
+    return self.fourier_coefficients_as_map( map_coeffs=map_coeffs)
+
+  def low_pass_filter(self, d_min):
+    '''
+      Low-pass filter the map in map_manager at resolution of d_min
+      and return a customized_copy
+
+    '''
+    assert d_min is not None
+
+    map_coeffs = self.map_as_fourier_coefficients(high_resolution = d_min)
+    return self.fourier_coefficients_as_map( map_coeffs=map_coeffs)
+
+  def gaussian_blur(self, smoothing_radius):
+    '''
+      Low-pass filter the map in map_manager at resolution of d_min and
+      return a customized_copy
+    '''
+    assert smoothing_radius is not None
+
+    map_data = self.map_data()
+    from cctbx.maptbx import smooth_map
+    smoothed_map_data = smooth_map(
+        map              = map_data,
+        crystal_symmetry = self.crystal_symmetry(),
+        rad_smooth       = smoothing_radius)
+    return self.customized_copy(map_data=smoothed_map_data)
+
+
+  def binary_filter(self, cutoff = 0.5):
+    '''
+      Return a binary filter (value at pixel i,j,k=1 if average of all
+      27 pixels within 1 of this one is > cutoff, otherwise 0)
+    '''
+
+    assert self.origin_is_zero()
+    from cctbx import maptbx
+
+    map_data=self.map_data()
+
+    # We are going to produce values for all pixels at least 1 away from all
+    #  edges. Values on edge will be zero
+
+    base_first=(1,1,1)
+    base_last=tuple([x-1 for x in map_data.all()])
+
+    # Create an empty map with dimensions 2 smaller than original in each dir
+
+    base_map_data=maptbx.copy(map_data, base_first , base_last)
+    base_map_data=base_map_data.shift_origin()
+    base_map_data = base_map_data * 0  # empty map
+
+    # offset base_map_data -1,0,1 in each direction and average values
+    for i in range(-1,2):
+      for j in range(-1,2):
+        for k in range(-1,2):
+          first = tuple([bf + ii for bf, ii in zip(base_first,(i,j,k))])
+          last  = tuple([bl + ii for bl, ii in zip(base_last,(i,j,k))])
+          shifted_map_data=maptbx.copy(map_data, first , last)
+          shifted_map_data=shifted_map_data.shift_origin()
+          base_map_data += shifted_map_data
+
+    # Get average of all neighboring points
+    base_map_data = base_map_data/27
+
+    # Choose average > cutoff
+    s = (base_map_data > cutoff)
+    base_map_data.set_selected(s,1)
+    base_map_data.set_selected(~s,0)
+
+    # Copy results back into full map
+    start_full_box=(-1,-1,-1)
+    end_full_box=tuple([x-2 for x in map_data.all()])
+    map_copy=maptbx.copy(base_map_data,start_full_box,end_full_box)
+    map_copy=map_copy.shift_origin()  # now looks like our original but binary
+
+    new_map = maptbx.set_box_copy_inside(0, # copies inside, zero outside bounds
+      map_data_to   = map_copy,  # not really to, "from" would be accurate
+      start         = base_first,
+      end           = base_last)
+    return self.customized_copy(map_data=new_map)
+
   def deep_copy(self):
     '''
       Return a deep copy of this map_manager object
@@ -1480,7 +1618,7 @@ class map_manager(map_reader, write_ccp4_map):
   def fourier_coefficients_as_map(self, map_coeffs):
     '''
        Convert Fourier coefficients into to a real-space map with gridding
-       matching this existing map_manager.
+       matching this existing map_manager.  Returns a map_manager object.
 
        Requires that this map_manager has origin at (0, 0, 0) (i.e.,
        shift_origin() has been applied if necessary)
@@ -1494,10 +1632,12 @@ class map_manager(map_reader, write_ccp4_map):
     assert isinstance(map_coeffs.data(), flex.complex_double)
     assert self.map_data() and self.map_data().origin() == (0, 0, 0)
 
-    return maptbx.map_coefficients_to_map(
-      map_coeffs       = map_coeffs,
-      crystal_symmetry = self.crystal_symmetry(),
-      n_real           = self.map_data().all())
+    return self.customized_copy(
+      map_data=maptbx.map_coefficients_to_map(
+        map_coeffs       = map_coeffs,
+        crystal_symmetry = self.crystal_symmetry(),
+        n_real           = self.map_data().all())
+      )
 
 def subtract_tuples_int(t1, t2):
   return tuple(flex.int(t1)-flex.int(t2))

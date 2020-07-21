@@ -1529,8 +1529,7 @@ class map_model_manager(object):
     map_manager = self.map_manager()
     assert map_manager is not None
 
-    map_data = map_manager.fourier_coefficients_as_map(map_coeffs)
-    new_map_manager = map_manager.customized_copy(map_data = map_data)
+    new_map_manager = map_manager.fourier_coefficients_as_map(map_coeffs)
     self.add_map_manager_by_id(map_manager = new_map_manager,
       map_id = map_id)
 

@@ -343,14 +343,13 @@ dm.write_miller_array_file(mtz_object, filename="map_coeffs_low_res.mtz") #write
 
 <p>A Fourier representation of a map (Fourier coefficients such as map_coeffs_low_res) can be converted back into a real-space map.  The map_manager mm has a tool that we can use for this calculation:</p>
 
-<pre class="codeDL"><code>map_data_low_res = mm.fourier_coefficients_as_map(    # convert to real space
+<pre class="codeDL"><code>mm_low_res = mm.fourier_coefficients_as_map(    # convert to real space
      map_coeffs=map_coeffs_low_res)
 </code></pre>
 
-<p>We have just created a new map map_data_low_res that is a low-resolution version of our original map. In effect, we have smoothed our map by Fourier inversion, truncation of high-frequency terms, and conversion back to a map. We can write out our low-resolution map:</p>
+<p>We have just created a new map mm_low_res that is a low-resolution version of our original map_manager. In effect, we have smoothed our map by Fourier inversion, truncation of high-frequency terms, and conversion back to a map. We can write out our low-resolution map:</p>
 
-<pre class="codeDL"><code>mm_lowres=mm.customized_copy(map_data=map_data_low_res)    #  new map_manager with data from map_data_low_res
-dm.write_real_map_file(mm_lowres,filename="map_low_res.mrc", overwrite=True) # write map
+<pre class="codeDL"><code>dm.write_real_map_file(mm_lowres,filename="map_low_res.mrc", overwrite=True) # write map
 </code></pre>
 
 <p>If you have software such as Coot or ChimeraX on your computer you can look at the maps in map.mrc and map_low_res.mrc and compare them and you will see that map.mrc shows much more fine detail than map_low_res.mrc.</p>
