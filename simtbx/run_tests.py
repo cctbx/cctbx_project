@@ -8,7 +8,6 @@ tst_list = (
     "$D/nanoBragg/tst_gaussian_mosaicity.py",
     "$D/nanoBragg/tst_gaussian_mosaicity2.py",
     "$D/nanoBragg/tst_nanoBragg_cbf_write.py",
-    "$D/diffBragg/tests/tst_diffBragg_all_refine.py",
     "$D/diffBragg/tests/tst_diffBragg_Fhkl_complex.py",
     "$D/diffBragg/tests/tst_diffBragg_change_of_basis.py",
     "$D/diffBragg/tests/tst_diffBragg_update_dxtbx_geoms.py",
