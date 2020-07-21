@@ -6,7 +6,9 @@ from libtbx.phil import parse
 import numpy as np
 import pylab as plt
 import sys
+import os
 from dials.util import show_mail_on_error
+import h5py
 
 help_message = '''
 Visualize prediction offsets for a single shot experiment
@@ -59,6 +61,20 @@ exper_id = 0
 title = None
   .type = str
   .help = title of the plot
+plot_rad_trans = False
+  .type = bool
+  .help = if True, will display a histogram of radial and transverse offsets
+output {
+  file = None
+    .type = str
+    .help = path to an optional hdf5 file storing useful output
+  overwrite = False
+    .type = bool
+    .help = force an overwrite
+  only = False
+    .type = bool
+    .help = if True, only write an output file, and don't display plots
+}
 ''', process_includes=True)
 
 
@@ -109,9 +125,22 @@ class Script:
     DET = El[params.exper_id].detector
     R = R.select(R["id"] == params.exper_id)
 
+    columns = 'delpsical.rad', 'xyzobs.mm.value', 'panel', 'xyzcal.mm'
+    misses = 0
+    for col in columns:
+      if col not in R[0].keys():
+        print("reflection file missing column %s" % col)
+        misses += 1
+    if misses > 0:
+      print("Please reformat refl file to include above columns")
+      sys.exit()
+
     nref = len(R)
 
     xyz = np.zeros((nref, 3))
+    all_rad = []
+    all_trans = []
+    all_diff = []
     for i_ref in range(nref):
       x, y, _ = R[i_ref]["xyzobs.mm.value"]
       xcal, ycal, _ = R[i_ref]["xyzcal.mm"]
@@ -122,10 +151,39 @@ class Script:
       xyz[i_ref] = xyz_lab
 
       diff = np.array(xyz_lab) - np.array(xyz_cal_lab)
+
+      # rad is the unit vector pointing to the observation
+      xy_lab = np.array((xyz_lab[0], xyz_lab[1]))
+      rad = xy_lab / np.linalg.norm(xy_lab)
+      trans = np.array([-rad[1], rad[0]])
+
+      rad_component = np.dot(diff[:2], rad)
+      trans_component = np.dot(diff[:2], trans)
+
       diff_scale = diff*params.lscale
       x, y, _ = xyz_lab
       ax.arrow(x, y, diff_scale[0], diff_scale[1], head_width=params.headwid, head_length=params.headlen, color=params.lcolor,
                length_includes_head=not params.noarrow)
+      all_rad.append(rad_component*1000)
+      all_trans.append(trans_component*1000)
+      all_diff.append(diff*1000)
+
+    if params.output.file is not None:
+      if os.path.exists(params.output.file) and not params.output.overwrite:
+        print("File %s exists, to overwrite use output.overwrite=True" % params.output.file)
+        sys.exit()
+      with h5py.File(params.output.file, 'w') as h5:
+        h5.create_dataset("radial_offset", data=all_rad)
+        h5.create_dataset("transverse_offset", data=all_trans)
+        h5.create_dataset("vectors_from_obs_to_cal", data=all_diff)
+        exper_filename = params.input.experiments[0].filename
+        refl_filename = params.input.reflections[0].filename
+        h5.create_dataset("exper_filename", data=np.array([exper_filename], dtype=np.string_))
+        h5.create_dataset("refl_filename", data=np.array([refl_filename], dtype=np.string_))
+      print("Output saved to file %s" % params.output.file)
+      if params.output.only:
+        print("Done.")
+        sys.exit()
 
     delpsi = R['delpsical.rad']
     xvals, yvals, zvals = xyz.T
@@ -148,6 +206,20 @@ class Script:
     if params.title is not None:
       title = params.title
     ax.set_title(title)
+
+    if params.plot_rad_trans:
+      plt.figure()
+      plt.hist(all_rad, bins='auto', histtype='step')
+      plt.hist(all_trans, bins='auto', histtype='step')
+      plt.gca().set_title(title)
+      rad_mn, rad_sig = np.mean(all_rad), np.std(all_rad)
+      trans_mn, trans_sig = np.mean(all_trans), np.std(all_trans)
+      rad_str = r"radial: %.3f $\pm$ %.4f" % (rad_mn, rad_sig)
+      trans_str = r"transverse: %.3f $\pm$ %.4f" % (trans_mn, trans_sig)
+      plt.legend((rad_str, trans_str))
+      plt.xlabel("microns")
+      plt.ylabel("number of spots")
+
     plt.show()
 
 
