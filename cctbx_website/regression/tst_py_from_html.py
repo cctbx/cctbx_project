@@ -24,7 +24,8 @@ def run():
   # loop through all .py files in "examples"
   for script in os.listdir(examples_dir):
     cmd = 'libtbx.python ' + os.path.join(examples_dir, script)
-    if script in ['doc_map_manager.py', 'doc_model_map_manager.py'] \
+    #if script in ['doc_map_manager.py', 'doc_model_map_manager.py'] \
+    if script in [] \
       and not libtbx.env.has_module('phenix'):
       skipped.append(script)
       continue
