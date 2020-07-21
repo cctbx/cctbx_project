@@ -311,6 +311,8 @@ def french_wilson_scale(
       params=None,
       sigma_iobs_rejection_criterion=None,
       merge=False,
+      min_bin_size=40,
+      max_bins=60,
       log=None):
   from cctbx.array_family import flex
   if not miller_array.is_xray_intensity_array():
@@ -336,10 +338,12 @@ def french_wilson_scale(
     raise Sorry(("The input intensities have uniform values (%g); this is probably "+
       "a bug in one of the data processing and/or conversion programs.") %
       miller_array.data()[0])
-  if params == None:
-    params = master_phil.extract()
-  if (params.max_bins is None) : # XXX reset in case of user error
-    params.max_bins = 60
+  # Phil defaults are set in master_phil above - they should be kept in sync with the
+  # default arguments for this function
+  if params and params.max_bins:
+    max_bins = params.max_bins
+  if params and params.min_bin_size:
+    min_bin_size = params.min_bin_size
   if log == None:
     log = sys.stdout
   if (sigma_iobs_rejection_criterion is None):
@@ -358,12 +362,12 @@ def french_wilson_scale(
   rejected = []
   make_sub_header("Scaling input intensities via French-Wilson Method",
     out=log)
-  print("Trying %d bins..." % params.max_bins, file=log)
+  print("Trying %d bins..." % max_bins, file=log)
   try:
     f_w_binning(
       miller_array=miller_array,
-      max_bins=params.max_bins,
-      min_bin_size=params.min_bin_size,
+      max_bins=max_bins,
+      min_bin_size=min_bin_size,
       log=log
     )
   except ValueError:
