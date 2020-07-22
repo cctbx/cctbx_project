@@ -152,14 +152,14 @@ def exercise_mask():
 
   from cctbx.maptbx import binary_filter
   bf=binary_filter(map_data,mean+sd).result()
-  new_mask_mm=mm.customized_copy(map_data=bf)
+  direct_mask_mm=mm.customized_copy(map_data=bf)
 
   map_data=mm.map_data()
   mean=map_data.as_1d().min_max_mean().mean
   sd=map_data.as_1d().standard_deviation_of_the_sample()
 
-  old_mask_mm=mm.binary_filter(mean+sd)
-  mam=map_model_manager(map_manager_1=old_mask_mm,map_manager_2=new_mask_mm)
+  manager_mask_mm=mm.binary_filter(mean+sd)
+  mam=map_model_manager(map_manager_1=direct_mask_mm,map_manager_2=manager_mask_mm)
   assert approx_equal(mam.map_map_cc(map_id='map_manager_1',other_map_id='map_manager_2'),1)
 
 
