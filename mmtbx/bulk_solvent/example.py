@@ -97,12 +97,12 @@ def get_data(pdbf, mtzf):
     f_calc         = f_calc)
 
 def get_fmodel(o, f_mask, remove_outliers, log):
+  fo, fm = o.f_obs().common_sets(f_mask)
+  fc, fm = o.f_calc().common_sets(f_mask)
   fmodel = mmtbx.f_model.manager(
-    f_obs          = o.f_obs(),
-    r_free_flags   = o.r_free_flags(),
-    f_calc         = o.f_calc(),
-    bin_selections = o.bin_selections,
-    f_mask         = f_mask)
+    f_obs  = fo,
+    f_calc = fc,
+    f_mask = fm)
   fmodel.update_all_scales(
     remove_outliers         = remove_outliers,
     apply_scale_k1_to_f_obs = False # XXX REMOVE!
@@ -121,33 +121,30 @@ class compute(object):
     # Get objects out of files, and set grid step
     D = get_data(pdbf, mtzf)
     step = min(0.4, D.f_obs().d_min()/4)
+    #
+    print("-"*79, file=log)
+    print("A-2013, all defaults (except set binning)", file=log)
+    f_mask = mosaic.get_f_mask(
+      xrs  = D.xray_structure,
+      ma   = D.f_obs(),
+      step = D.f_obs().d_min()/4)
+    self.fmodel_2013 = get_fmodel(
+      o = D, f_mask = f_mask, remove_outliers = True, log = self.log).fmodel
+    #
     # Compute masks and F_masks (Mosaic)
     print("-"*79, file=log)
     print("Mosaic", file=log)
     self.mm = mosaic.mosaic_f_mask(
       xray_structure = D.xray_structure,
-      miller_array   = D.f_obs(),
+      miller_array   = self.fmodel_2013.f_obs(),
       step           = step,
       volume_cutoff  = volume_cutoff,
-      f_obs          = D.f_obs(),
-      r_free_flags   = D.r_free_flags(),
-      f_calc         = D.f_calc(),
+      f_obs          = self.fmodel_2013.f_obs(),
+      r_free_flags   = self.fmodel_2013.r_free_flags(),
+      f_calc         = self.fmodel_2013.f_calc(),
       log            = log)
     #
     if(self.mm.do_mosaic):
-      # Define bins: once and for all downstream calculations
-      #D.bin_selections = D.f_obs().log_binning(
-      #  n_reflections_in_lowest_resolution_bin = 100*len(self.mm.FV.keys()))
-      D.bin_selections = D.f_obs().log_binning()
-      #
-      print("-"*79, file=log)
-      print("A-2013, all defaults (except set binning)", file=log)
-      f_mask = mosaic.get_f_mask(
-        xrs  = D.xray_structure,
-        ma   = D.f_obs(),
-        step = D.f_obs().d_min()/4)
-      self.fmodel_2013 = get_fmodel(
-        o = D, f_mask = f_mask, remove_outliers = True, log = self.log).fmodel
       #
       print("-"*79, file=log)
       print("A-2013, step=0.4A", file=log)
@@ -175,7 +172,7 @@ class compute(object):
       f_mask_fil = self.mm.FV.keys()[0].data()
       for fm in self.mm.FV.keys()[1:]:
         f_mask_fil = f_mask_fil + fm.data()
-      f_mask_fil = self.fmodel_2013.f_obs().set().array(data = f_mask_fil)
+      f_mask_fil = self.mm.FV.keys()[0].set().array(data = f_mask_fil)
       o = get_fmodel(o = self.fmodel_2013, f_mask = f_mask_fil,
         remove_outliers = False, log = self.log)
       self.fmodel_filtered = o.fmodel
