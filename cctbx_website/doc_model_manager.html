@@ -198,11 +198,11 @@ model = dm.get_model(model_filename)               #   Deliver model object with
 
 map_coeffs = generate_map_coefficients(  # generate map coeffs from model
       model=model,                       # Required model
-      high_resolution=3,                 # Specify resolution
+      d_min=3,                           # Specify resolution
       scattering_table='electron')       # Specify scattering table
 </code></pre>
 
-<p>Note that we have to set the high-resolution limit (3 Angstroms) and tell the tool whether we are working with cryo-EM (scattering_table='electron') or X-ray (scattering_table='n_gaussian'). We can use these map coefficients to calculate a map, or use them directly for some other purpose. Let’s make a map using these map coefficients:</p>
+<p>Note that we have to set the high-resolution limit (d_min = 3 Angstroms) and tell the tool whether we are working with cryo-EM (scattering_table='electron') or X-ray (scattering_table='n_gaussian'). We can use these map coefficients to calculate a map, or use them directly for some other purpose. Let’s make a map using these map coefficients:</p>
 
 <pre class="codeDL"><code>from cctbx.development.create_models_or_maps import get_map_from_map_coeffs   #  import the tool
 map_data = get_map_from_map_coeffs(map_coeffs = map_coeffs)   #  create map from map coeffs

@@ -218,7 +218,7 @@ def test_01():
 
   # Convert to map coeffs, write out, read back, convert back to map
 
-  map_coeffs = mm.map_as_fourier_coefficients(high_resolution = 3)
+  map_coeffs = mm.map_as_fourier_coefficients(d_min = 3)
   mtz_dataset = map_coeffs.as_mtz_dataset(column_root_label = 'F')
   mtz_object = mtz_dataset.mtz_object()
   dm.write_miller_array_file(mtz_object, filename = "map_coeffs.mtz")
@@ -291,8 +291,8 @@ def test_01():
   # filter a map
   dm = DataManager()
   mm = dm.get_real_map(data_d7)
-  filtered=mm.low_pass_filter(d_min=3.5)
-  high_filtered=mm.high_pass_filter(d_max=4)
+  filtered=mm.resolution_filter(d_min=3.5)
+  high_filtered=mm.resolution_filter(d_max=4)
   gaussian=mm.gaussian_blur(smoothing_radius=1)
   binary=mm.binary_filter(cutoff=0.5)
   assert approx_equal(

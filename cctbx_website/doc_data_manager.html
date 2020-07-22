@@ -109,7 +109,7 @@ mm = dm.get_real_map(map_filename)        #   Deliver map_manager object with ma
 
 <p>Crystallographic reflection data and other Fourier-space data is often stored in binary “MTZ”-formatted data files. These can be read and written by the DataManager. We can create some Fourier data from our map and write it out. First let’s convert our map to Fourier coefficients (we’ll see more about this here (<--LINK)):</p>
 
-<pre class="codeDL"><code>map_coeffs = mm.map_as_fourier_coefficients(high_resolution = 3)    # map represented by Fourier coefficients
+<pre class="codeDL"><code>map_coeffs = mm.map_as_fourier_coefficients(d_min = 3)    # map represented by Fourier coefficients
 </code></pre>
 
 <p>Now map_coeffs are Fourier coefficients corresponding to the map in map_manager mm, up to a resolution of 3 A. We can write these map coefficients out as an “MTZ” file with our DataManager. It takes a couple steps because we need to specify all the things that are going to go into this MTZ file. First we create an mtz_dataset from our map_coeffs Fourier coefficients:</p>

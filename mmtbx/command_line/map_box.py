@@ -1206,7 +1206,7 @@ def run(args,
        d_min = maptbx.d_min_from_map(map_data = mam.map_manager().map_data(),
          unit_cell = mam.map_manager().crystal_symmetry().unit_cell())
      map_coeffs = mam.map_manager().map_as_fourier_coefficients(
-       high_resolution = d_min)
+       d_min = d_min)
      mtz_dataset = map_coeffs.as_mtz_dataset(column_root_label = 'F')
      mtz_object = mtz_dataset.mtz_object()
      dm.write_miller_array_file(mtz_object, filename = file_name)

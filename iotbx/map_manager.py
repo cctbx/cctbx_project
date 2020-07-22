@@ -984,31 +984,22 @@ class map_manager(map_reader, write_ccp4_map):
        along_sites = along_sites)
 
 
-  def high_pass_filter(self, d_max):
+  def resolution_filter(self, d_min = None, d_max = None):
     '''
-      High-pass filter the map in map_manager at resolution of d_max
-      and return a customized_copy
-
-    '''
-    assert d_max is not None
-
-    map_coeffs = self.map_as_fourier_coefficients(low_resolution = d_max)
-    return self.fourier_coefficients_as_map( map_coeffs=map_coeffs)
-
-  def low_pass_filter(self, d_min):
-    '''
-      Low-pass filter the map in map_manager at resolution of d_min
-      and return a customized_copy
+      High- or low-pass filter the map in map_manager.
+      Remove all components with resolution < d_min or > d_max
+      and return a customized_copy.
+      Either d_min or d_max or both can be None.
 
     '''
-    assert d_min is not None
 
-    map_coeffs = self.map_as_fourier_coefficients(high_resolution = d_min)
+    map_coeffs = self.map_as_fourier_coefficients(d_min = d_min,
+      d_max = d_max)
     return self.fourier_coefficients_as_map( map_coeffs=map_coeffs)
 
   def gaussian_blur(self, smoothing_radius):
     '''
-      Low-pass filter the map in map_manager at resolution of d_min and
+      Gaussian blur the map in map_manager with given smoothing radius
       return a customized_copy
     '''
     assert smoothing_radius is not None
@@ -1589,12 +1580,14 @@ class map_manager(map_reader, write_ccp4_map):
       self._warning_message = "No map symmetry found; ncs_cc cutoff of %s" %(
         min_ncs_cc)
 
-  def map_as_fourier_coefficients(self, high_resolution = None,
-     low_resolution = None):
+  def map_as_fourier_coefficients(self, d_min = None,
+     d_max = None):
     '''
-       Convert a map to Fourier coefficients to a resolution of high_resolution,
-       if high_resolution is provided, otherwise box full of map coefficients
+       Convert a map to Fourier coefficients to a resolution of d_min,
+       if d_min is provided, otherwise box full of map coefficients
        will be created.
+
+       Filter results with low resolution of d_max if provided
 
        NOTE: Fourier coefficients are relative the working origin (not
        original origin).  A map calculated from the Fourier coefficients will
@@ -1610,9 +1603,9 @@ class map_manager(map_reader, write_ccp4_map):
       crystal_symmetry = self.crystal_symmetry(),
       include_000      = True,
       map              = self.map_data(),
-      d_min            = high_resolution)
-    if low_resolution is not None:
-      ma.resolution_filter(d_min = high_resolution, d_max = low_resolution)
+      d_min            = d_min )
+    if d_max is not None:
+      ma.resolution_filter(d_min = d_min, d_max = d_max)
     return ma
 
   def fourier_coefficients_as_map(self, map_coeffs):

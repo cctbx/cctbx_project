@@ -1496,8 +1496,8 @@ class map_model_manager(object):
   # Methods for producing Fourier coefficients and calculating maps
 
   def map_as_fourier_coefficients(self,
-      high_resolution = None,
-      low_resolution = None,
+      d_min = None,
+      d_max = None,
       map_id = 'map_manager'):
     '''
      Return Miller array to resolution specified based on map with id map_id
@@ -1511,8 +1511,8 @@ class map_model_manager(object):
     assert map_manager is not None
 
     return map_manager.map_as_fourier_coefficients(
-      high_resolution = high_resolution,
-      low_resolution = low_resolution,
+      d_min = d_min,
+      d_max = d_max,
       )
 
   def add_map_from_fourier_coefficients(self,
@@ -1535,12 +1535,12 @@ class map_model_manager(object):
 
 
   def resolution_filter(self,
-      high_resolution = None,
-      low_resolution = None,
+      d_min = None,
+      d_max = None,
       map_id = 'map_manager',
       ):
     '''
-      Resolution-filter a map with range of high_resolution to low_resolution
+      Resolution-filter a map with range of d_min to d_max
 
       Typically used along with duplicate_map_manager to create a new map and
       filter it:
@@ -1549,14 +1549,14 @@ class map_model_manager(object):
         rm.resolution_filter(map_id = 'resolution_filtered',)
 
     '''
-    assert high_resolution is None or isinstance(high_resolution, (int,float))
-    assert low_resolution is None or isinstance(low_resolution, (int,float))
+    assert d_min is None or isinstance(d_min, (int,float))
+    assert d_max is None or isinstance(d_max, (int,float))
 
-    assert (high_resolution,low_resolution).count(None) < 2 # need some limits
+    assert (d_min,d_max).count(None) < 2 # need some limits
 
     map_coeffs = self.map_as_fourier_coefficients(map_id = map_id,
-      high_resolution = high_resolution,
-      low_resolution = low_resolution)
+      d_min = d_min,
+      d_max = d_max)
 
     self.add_map_from_fourier_coefficients(map_coeffs,
       map_id = map_id)
@@ -1776,7 +1776,7 @@ class map_model_manager(object):
   #  Convenience methods
 
   def generate_map(self,
-      high_resolution = 3,
+      d_min = 3,
       origin_shift_grid_units = None,
       file_name = None,
       model = None,
@@ -1816,7 +1816,7 @@ class map_model_manager(object):
                                   model or file_name)
       b_iso (float, 30):         B-value (ADP) to use for all atoms
       box_cushion (float, 5):     Buffer (A) around model
-      high_resolution (float, 3):      high_resolution limit (A)
+      d_min (float, 3):      high_resolution limit (A)
       gridding (tuple (nx, ny, nz), None):  Gridding of map (optional)
       origin_shift_grid_units (tuple (ix, iy, iz), None):  Move location of
           origin of resulting map to (ix, iy, iz) before writing out
@@ -1824,7 +1824,7 @@ class map_model_manager(object):
       scattering_table (choice, 'electron'): choice of scattering table
            All choices: wk1995 it1992 n_gaussian neutron electron
       fractional_error:  resolution-dependent fractional error, ranging from
-           zero at low resolution to fractional_error at high-resolution. Can
+           zero at low resolution to fractional_error at d_min. Can
            be more than 1.
     '''
 
@@ -1850,13 +1850,13 @@ class map_model_manager(object):
         space_group_number = 1,
         log = self.log)
     map_coeffs = generate_map_coefficients(model = model,
-        high_resolution = high_resolution,
+        d_min = d_min,
         scattering_table = scattering_table,
         log = self.log)
 
     mm = generate_map_data(
       map_coeffs = map_coeffs,
-      high_resolution = high_resolution,
+      d_min = d_min,
       gridding = gridding,
       wrapping = wrapping,
       origin_shift_grid_units = origin_shift_grid_units,
