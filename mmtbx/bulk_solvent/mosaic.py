@@ -181,7 +181,7 @@ def write_map_file(crystal_symmetry, map_data, file_name):
     labels      = flex.std_string([""]))
 
 class refinery(object):
-  def __init__(self, fmodel, fv, anomaly, alg, log = sys.stdout):
+  def __init__(self, fmodel, fv, alg, anomaly=True, log = sys.stdout):
     assert alg in ["alg0","alg2", "alg4"]
     self.log = log
     self.f_obs  = fmodel.f_obs()
@@ -198,11 +198,8 @@ class refinery(object):
       self._print("cycle: %2d"%it)
       self._print("  volumes: "+" ".join([str(fv[f]) for f in self.F[1:]]))
       f_obs   = self.f_obs.deep_copy()
-      if it==0:
-        k_total = fmodel.k_isotropic()*fmodel.k_anisotropic()*fmodel.scale_k1()
-      else:
-        k_total = \
-          self.fmodel.k_isotropic()*self.fmodel.k_anisotropic()*self.fmodel.scale_k1()*fmodel.arrays.core.k_isotropic_exp
+      if it==0: k_total = fmodel.k_total()
+      else:     k_total = self.fmodel.k_total()
       f_obs   = f_obs.customized_copy(data = self.f_obs.data()/k_total)
       i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
       K_MASKS = OrderedDict()
@@ -231,19 +228,15 @@ class refinery(object):
         #  fd = fd + f.data()*k_masks[i]
         #r0=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, fd*k_total_sel)
 
-        #for i,f in enumerate(F):
-        #  km = k_masks[i]
-        #  if km<=0: km=0.01
-        #  if i==0: F[i] = f.set().array(data = f.data()*km)
-        #  else:    F[i] = f.set().array(data = f.data()*km)
-        #FF = [f.set().array(data = f.data()*0.35) for i,f in enumerate(F)]
-
         # algorithm_4
         if(alg=="alg4"):
+          if it==0: phase_source = fmodel.f_model_no_scales().select(sel)
+          else:     phase_source = self.fmodel.f_model_no_scales().select(sel)
           k_masks = algorithm_4(
             f_obs             = f_obs.select(sel),
             F                 = F,
-            auto_converge_eps = 0.0001)
+            auto_converge_eps = 0.0001,
+            phase_source = phase_source)
 
         #fd = flex.complex_double(F[0].data().size())
         #for i,f in enumerate(F):
@@ -312,18 +305,17 @@ class refinery(object):
         isotropize = True,
         exclude_free_r_reflections = False)
 
-  def update_k_masks(self, K_MASKS):
-    tmp = []
-    for i_mask, F in enumerate(self.F):
-      k_masks = [k_masks_bin[i_mask] for k_masks_bin in K_MASKS.values()]
-      found = False
-      for i_bin, k_masks_bin in enumerate(K_MASKS.values()):
-        if(not found and k_masks_bin[i_mask]<=0.009):
-          found = True
-          K_MASKS.values()[i_bin][i_mask]=0
-        elif found:
-          K_MASKS.values()[i_bin][i_mask]=0
-
+  #def update_k_masks(self, K_MASKS):
+  #  tmp = []
+  #  for i_mask, F in enumerate(self.F):
+  #    k_masks = [k_masks_bin[i_mask] for k_masks_bin in K_MASKS.values()]
+  #    found = False
+  #    for i_bin, k_masks_bin in enumerate(K_MASKS.values()):
+  #      if(not found and k_masks_bin[i_mask]<=0.009):
+  #        found = True
+  #        K_MASKS.values()[i_bin][i_mask]=0
+  #      elif found:
+  #        K_MASKS.values()[i_bin][i_mask]=0
 
   def _print(self, m):
     if(self.log is not None):
@@ -680,7 +672,8 @@ def algorithm_3(i_obs, fc, f_masks):
     lnK.append( 1/len(F)*(t1-t2) )
   return [math.exp(x) for x in lnK]
 
-def algorithm_4(f_obs, F, max_cycles=100, auto_converge_eps=1.e-7, use_cpp=True):
+def algorithm_4(f_obs, F, phase_source, max_cycles=100, auto_converge_eps=1.e-7,
+                use_cpp=True):
   """
   Phased simultaneous search (alg4)
   """
@@ -689,14 +682,17 @@ def algorithm_4(f_obs, F, max_cycles=100, auto_converge_eps=1.e-7, use_cpp=True)
   F = [fc]+F[1:]
   # C++ version
   if(use_cpp):
-    return mosaic_ext.alg4([f.data() for f in F], f_obs.data(), max_cycles,
+    return mosaic_ext.alg4(
+      [f.data() for f in F],
+      f_obs.data(),
+      phase_source.data(),
+      max_cycles,
       auto_converge_eps)
   # Python version (1.2-3 times slower, but much more readable!)
-  x_res = flex.double(len(F), 0)
   cntr = 0
   x_prev = None
   while True:
-    f_obs_cmpl = f_obs.phase_transfer(phase_source=fc)
+    f_obs_cmpl = f_obs.phase_transfer(phase_source = phase_source)
     A = []
     b = []
     for j, Fj in enumerate(F):
@@ -712,13 +708,11 @@ def algorithm_4(f_obs, F, max_cycles=100, auto_converge_eps=1.e-7, use_cpp=True)
     b = matrix.col(b)
     x = A_1 * b
     #
-    fc_d = fc.data()
+    fc_d = flex.complex_double(phase_source.indices().size(), 0)
     for i, f in enumerate(F):
-      if i == 0: continue
-      fc_d += x[i]*f.data()
-    fc = fc.customized_copy(data = fc_d)
-    x_res += flex.double(x)
-    x_ = [x[0]] + list(x_res[1:])
+      fc_d += f.data()*x[i]
+    phase_source = phase_source.customized_copy(data = fc_d)
+    x_ = x[:]
     #
     cntr+=1
     if(cntr>max_cycles): break

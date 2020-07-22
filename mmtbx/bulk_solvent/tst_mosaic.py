@@ -1100,6 +1100,7 @@ def run():
   for use_cpp in [True, False]:
     r = mosaic.algorithm_4(
       f_obs             = f_obs,
+      phase_source      = fc,
       F                 = [fc]+inp.mm.FV.keys(),
       auto_converge_eps = 1.e-9,
       use_cpp           = use_cpp)
