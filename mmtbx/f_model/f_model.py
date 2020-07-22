@@ -1476,10 +1476,12 @@ class manager(manager_mixin):
         bulk_solvent_and_scaling = True,
         remove_outliers = True,
         show = False,
+        apply_scale_k1_to_f_obs=True, # XXX REMOVE!
         verbose=None,
         log = None):
     self.alpha_beta_cache = None
-    self.apply_scale_k1_to_f_obs()
+    if(apply_scale_k1_to_f_obs):      # XXX REMOVE!
+      self.apply_scale_k1_to_f_obs()  # XXX REMOVE!
     from mmtbx.bulk_solvent import f_model_all_scales
     o = f_model_all_scales.run(
       fmodel               = self,
@@ -1713,6 +1715,10 @@ class manager(manager_mixin):
 
   def k_isotropic_work(self):
     return self.arrays.k_isotropic_work
+
+  def k_total(self):
+    return self.k_isotropic()*self.k_anisotropic()*self.scale_k1()*\
+      self.arrays.core.k_isotropic_exp
 
   def f_obs_work(self):
     return self.arrays.f_obs_work
