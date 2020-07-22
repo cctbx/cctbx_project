@@ -79,12 +79,13 @@ def get_data(pdbf, mtzf):
     reflection_file_server  = rfs,
     keep_going              = True,
     extract_r_free_flags    = False,
+    force_non_anomalous     = True,
     log                     = null_out())
   f_obs        = determine_data_and_flags_result.f_obs
   r_free_flags = determine_data_and_flags_result.r_free_flags
   fmodel = mmtbx.f_model.manager(
-    f_obs          = determine_data_and_flags_result.f_obs,
-    r_free_flags   = determine_data_and_flags_result.r_free_flags,
+    f_obs          = f_obs,
+    r_free_flags   = r_free_flags,
     xray_structure = xrs)
   def f_obs():        return fmodel.f_obs()
   def r_free_flags(): return fmodel.r_free_flags()
@@ -102,7 +103,10 @@ def get_fmodel(o, f_mask, remove_outliers, log):
     f_calc         = o.f_calc(),
     bin_selections = o.bin_selections,
     f_mask         = f_mask)
-  fmodel.update_all_scales(remove_outliers=False)
+  fmodel.update_all_scales(
+    remove_outliers         = remove_outliers,
+    apply_scale_k1_to_f_obs = False # XXX REMOVE!
+    )
   fmodel.show(show_header=False, show_approx=False, log = log)
   print(fmodel.r_factors(prefix="  "), file=log)
   mc = fmodel.electron_density_map().map_coefficients(
@@ -180,13 +184,8 @@ class compute(object):
   def do_mosaic(self, alg):
     print("-"*79, file=self.log)
     print("Refine k_masks", file=self.log)
-    # Use Fmodel based on largest mask!
-    if(self.fmodel_largest_mask is not None):
-      fmodel = self.fmodel_largest_mask
-    else:
-      fmodel = self.fmodel_2013
     result = mosaic.refinery(
-      fmodel  = fmodel,
+      fmodel  = self.fmodel_2013_04,
       fv      = self.mm.FV,
       anomaly = self.mm.anomaly,
       alg     = alg,
