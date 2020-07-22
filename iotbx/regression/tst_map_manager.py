@@ -294,7 +294,7 @@ def test_01():
   filtered=mm.resolution_filter(d_min=3.5)
   high_filtered=mm.resolution_filter(d_max=4)
   gaussian=mm.gaussian_blur(smoothing_radius=1)
-  binary=mm.binary_filter(cutoff=0.5)
+  binary=mm.binary_filter(threshold=0.5)
   assert approx_equal(
      (mm.map_data().as_1d()[1073],filtered.map_data().as_1d()[1073],
        high_filtered.map_data().as_1d()[1073],

@@ -1012,58 +1012,19 @@ class map_manager(map_reader, write_ccp4_map):
     return self.customized_copy(map_data=smoothed_map_data)
 
 
-  def binary_filter(self, cutoff = 0.5):
+  def binary_filter(self, threshold = 0.5):
     '''
       Return a binary filter (value at pixel i,j,k=1 if average of all
-      27 pixels within 1 of this one is > cutoff, otherwise 0)
+      27 pixels within 1 of this one is > threshold, otherwise 0)
     '''
 
     assert self.origin_is_zero()
-    from cctbx import maptbx
 
     map_data=self.map_data()
 
-    # We are going to produce values for all pixels at least 1 away from all
-    #  edges. Values on edge will be zero
-
-    base_first=(1,1,1)
-    base_last=tuple([x-1 for x in map_data.all()])
-
-    # Create an empty map with dimensions 2 smaller than original in each dir
-
-    base_map_data=maptbx.copy(map_data, base_first , base_last)
-    base_map_data=base_map_data.shift_origin()
-    base_map_data = base_map_data * 0  # empty map
-
-    # offset base_map_data -1,0,1 in each direction and average values
-    for i in range(-1,2):
-      for j in range(-1,2):
-        for k in range(-1,2):
-          first = tuple([bf + ii for bf, ii in zip(base_first,(i,j,k))])
-          last  = tuple([bl + ii for bl, ii in zip(base_last,(i,j,k))])
-          shifted_map_data=maptbx.copy(map_data, first , last)
-          shifted_map_data=shifted_map_data.shift_origin()
-          base_map_data += shifted_map_data
-
-    # Get average of all neighboring points
-    base_map_data = base_map_data/27
-
-    # Choose average > cutoff
-    s = (base_map_data > cutoff)
-    base_map_data.set_selected(s,1)
-    base_map_data.set_selected(~s,0)
-
-    # Copy results back into full map
-    start_full_box=(-1,-1,-1)
-    end_full_box=tuple([x-2 for x in map_data.all()])
-    map_copy=maptbx.copy(base_map_data,start_full_box,end_full_box)
-    map_copy=map_copy.shift_origin()  # now looks like our original but binary
-
-    new_map = maptbx.set_box_copy_inside(0, # copies inside, zero outside bounds
-      map_data_to   = map_copy,  # not really to, "from" would be accurate
-      start         = base_first,
-      end           = base_last)
-    return self.customized_copy(map_data=new_map)
+    from cctbx.maptbx import binary_filter
+    bf=binary_filter(map_data,threshold).result()
+    return self.customized_copy(map_data=bf)
 
   def deep_copy(self):
     '''

@@ -1597,8 +1597,8 @@ class map_model_manager(object):
 
 
   def map_map_cc(self,
-      map_id = 'map_manager',
-      other_map_id = 'map_manager',
+      map_id = 'map_manager_1',
+      other_map_id = 'map_manager_2',
       mask_id = None,
       mask_cutoff = 0.5):
 
