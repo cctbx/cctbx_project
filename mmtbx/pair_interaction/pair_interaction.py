@@ -2,8 +2,6 @@ from __future__ import division
 import os
 import time
 import math
-import iotbx
-import iotbx.pdb
 import libtbx.load_env
 from scitbx.array_family import flex
 import numpy as np
