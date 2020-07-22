@@ -4,6 +4,7 @@ from scitbx.matrix import sqr
 from simtbx.nanoBragg import shapetype, nanoBragg
 from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
 from simtbx.nanoBragg.nanoBragg_beam import NBbeam
+from copy import deepcopy
 
 
 def Amatrix_dials2nanoBragg(crystal):
@@ -274,24 +275,27 @@ class SimData:
   def generate_simulated_image(self, instantiate=False):
     if instantiate:
       self.instantiate_nanoBragg()
-    print('add spots')
     self._add_nanoBragg_spots()
     self.D.raw_pixels /= len(self.beam.xray_beams)
     self._add_background()
     if self.include_noise:
-      print('add noise')
       self._add_noise()
-    print('Done!')
     return self.D.raw_pixels.as_numpy_array()
 
   def _add_nanoBragg_spots(self):
     rois = self.rois
     if rois is None:
       rois = [self._full_roi]
+    _rawpix = None # cuda_add_spots doesnt add spots, it resets each time.. hence we need this
     for roi in rois:
       self.D.region_of_interest = roi
       if self.using_cuda:
         self.D.add_nanoBragg_spots_cuda()
+        if _rawpix is None and len(rois) > 1:
+          _rawpix = deepcopy(self.D.raw_pixels)
+        elif _rawpix is not None:
+          _rawpix += self.D.raw_pixels
+
       elif self.using_omp:
         from boost.python import streambuf  # will deposit printout into dummy StringIO as side effect
         from six.moves import StringIO
@@ -299,11 +303,8 @@ class SimData:
       else:
         self.D.add_nanoBragg_spots()
 
-
-    if self.using_cuda:
-      self.D.add_nanoBragg_spots_cuda()
-    else:
-      self.D.add_nanoBragg_spots()
+    if self.using_cuda and _rawpix is not None:
+      self.D.raw_pixels = _rawpix
 
   def _add_background(self):
     if self.background_raw_pixels is not None:

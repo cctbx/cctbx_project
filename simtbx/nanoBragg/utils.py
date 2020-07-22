@@ -123,7 +123,7 @@ def sim_background(DETECTOR, BEAM, wavelengths, wavelength_weights, total_flux, 
     Fbg_vs_stol = flex.vec2_double([
       (0, 2.57), (0.0365, 2.58), (0.07, 2.8), (0.12, 5), (0.162, 8), (0.2, 6.75), (0.18, 7.32),
       (0.216, 6.75), (0.236, 6.5), (0.28, 4.5), (0.3, 4.3), (0.345, 4.36), (0.436, 3.77), (0.5, 3.17)])
-  SIM.flux = total_flux
+  SIM.flux = sum(weights)
   SIM.Fbg_vs_stol = Fbg_vs_stol
   SIM.amorphous_sample_thick_mm = sample_thick_mm
   SIM.amorphous_density_gcm3 = density_gcm3
