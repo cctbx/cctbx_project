@@ -3114,7 +3114,7 @@ def get_ncs_from_map(params = None,
   if not results_list:
     return None, None, None
 
-  results_list.sort()
+  results_list.sort(key = lambda x: x[0])
   results_list.reverse()
 
   # Rescore top n_rescore
@@ -3135,7 +3135,7 @@ def get_ncs_from_map(params = None,
         print("symmetry:", symmetry, " no score", ncs_obj.max_operators(), file = out)
       else:
         rescore_list.append([score, cc_avg, ncs_obj, symmetry])
-    rescore_list.sort()
+    rescore_list.sort(key = lambda x: x[0])
     rescore_list.reverse()
     results_list = rescore_list
   if len(results_list) == 1:
@@ -3608,7 +3608,7 @@ def find_helical_symmetry(params = None,
           new_helical_rot_deg, new_helical_trans_z_angstrom, ncs_score, ncs_cc), file = out)
       score_list.append(
        [ncs_score, ncs_cc, new_helical_rot_deg, new_helical_trans_z_angstrom])
-    score_list.sort()
+    score_list.sort(key = lambda x: x[0])
     score_list.reverse()
     done = False
     for ncs_score, ncs_cc, helical_rot_deg, helical_trans_z_angstrom in \
@@ -4003,7 +4003,7 @@ def get_helical_trans_z_angstrom(params = None,
   sort_list = []
   for d, value in zip(d_list, value_list):
     sort_list.append([value, d])
-  sort_list.sort()
+  sort_list.sort(key = lambda x: x[0])
   sort_list.reverse()
   likely_z_translations = []
   dis_min = params.crystal_info.resolution/4
@@ -6465,7 +6465,7 @@ def sort_by_ncs_overlap(matches, equiv_dict_ncs_copy_dict_id):
     for id1 in matches:
       key, n = top_key(equiv_dict_ncs_copy_dict_id[id1]) # Take top ncs_copy
       sort_list.append([n, id1])
-    sort_list.sort()
+    sort_list.sort(key = lambda x: x[0])
     sort_list.reverse()
     key_list = []
     for n, id1 in sort_list:
@@ -10805,7 +10805,7 @@ def run_auto_sharpen(
     sort_list = []
     for result in results_list:
       sort_list.append([result.id, result])
-    sort_list.sort()
+    sort_list.sort(key = lambda x: x[0])
     for id, result in sort_list:
       local_si = result.local_si
 
@@ -11113,7 +11113,7 @@ def run_auto_sharpen(
       sort_list = []
       for result in results_list:
         sort_list.append([result.id, result])
-      sort_list.sort()
+      sort_list.sort(key = lambda x: x[0])
       for id, result in sort_list:
         local_si = result.local_si
         local_map_and_b = result.local_map_and_b
