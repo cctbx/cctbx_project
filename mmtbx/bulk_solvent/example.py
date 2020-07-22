@@ -187,7 +187,8 @@ class compute(object):
     result = mosaic.refinery(
       fmodel  = self.fmodel_2013_04,
       fv      = self.mm.FV,
-      anomaly = self.mm.anomaly,
+      #anomaly = self.mm.anomaly,
+      anomaly = True, # Refine all contributions at once!
       alg     = alg,
       log     = self.log)
     print("", file=self.log)
