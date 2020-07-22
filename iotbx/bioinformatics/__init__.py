@@ -1977,7 +1977,7 @@ def chain_type_and_residues(text=None,chain_type=None,likely_chain_types=None):
     'DNA':"gact",
     'RNA':"gacu",}
   if chain_type not in [None,'None']:
-    for key in letter_dict.keys():
+    for key in list(letter_dict.keys()):
       if key != chain_type:
         del letter_dict[key]
   # Get all allowed letters
