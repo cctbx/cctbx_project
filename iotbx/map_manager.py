@@ -940,19 +940,18 @@ class map_manager(map_reader, write_ccp4_map):
     return box.map_manager()
 
 
-  def density_at_sites(self, sites):
+  def density_at_sites_cart(self, sites_cart):
     '''
     Return flex.double list of density values corresponding to sites (cartesian
      coordinates in A)
     '''
-    assert isinstance(sites, flex.vec3_double)
+    assert isinstance(sites_cart, flex.vec3_double)
 
-    density_values = flex.double()
-    for site in sites:
-      point_frac = self.crystal_symmetry().unit_cell().fractionalize(site)
-      density_values.append(
-         self.map_data().eight_point_interpolation(point_frac))
-    return density_values
+    from cctbx.maptbx import real_space_target_simple_per_site
+    return real_space_target_simple_per_site(
+      unit_cell = self.crystal_symmetry().unit_cell(),
+      density_map = self.map_data(),
+      sites_cart = sites_cart)
 
   def get_density_along_line(self,
       start_site = None,
@@ -978,7 +977,7 @@ class map_manager(map_reader, write_ccp4_map):
       weight = (i/n_along_line)
       along_line_site = col(start_site)*weight+col(end_site)*(1-weight)
       along_sites.append(along_line_site)
-    along_density_values = self.density_at_sites(sites = along_sites)
+    along_density_values = self.density_at_sites_cart(sites_cart = along_sites)
     return group_args(
      along_density_values = along_density_values,
        along_sites = along_sites)
