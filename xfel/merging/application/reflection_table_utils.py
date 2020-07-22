@@ -132,4 +132,4 @@ class reflection_table_utils(object):
       # generate some empty slices if necessary
       empty_slices = max(0, n_slices - generated_slices)
       for i in range(empty_slices):
-        yield reflection_table_stub()
+        yield reflection_table_stub(reflections)

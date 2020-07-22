@@ -14,15 +14,11 @@ class hkl_group(worker):
   def __repr__(self):
     return "Group symmetry-reduced HKLs"
 
-  def distribute_reflection_table(self):
+  def distribute_reflection_table(self, reflections):
     '''Create a reflection table for storing reflections distributed over hkl chunks'''
     table = flex.reflection_table()
-    table['miller_index_asymmetric']  = flex.miller_index()
-    table['intensity.sum.value']      = flex.double()
-    table['intensity.sum.variance']   = flex.double()
-    table['intensity.sum.value.unmodified']      = flex.double()
-    table['intensity.sum.variance.unmodified']   = flex.double()
-    table['exp_id']                   = flex.std_string()
+    for key in reflections:
+      table[key] = type(reflections[key])()
     return table
 
   def run(self, experiments, reflections):
@@ -31,7 +27,7 @@ class hkl_group(worker):
 
     # set up hkl chunks to be used for all-to-all; every avialable rank participates in all-to-all, even a rank that doesn't load any data
     self.logger.log_step_time("SETUP_CHUNKS")
-    self.setup_hkl_chunks()
+    self.setup_hkl_chunks(reflections)
     self.logger.log_step_time("SETUP_CHUNKS", True)
 
     # for the ranks, which have loaded the data, distribute the reflections over the hkl chunks
@@ -54,7 +50,7 @@ class hkl_group(worker):
 
     return experiments, alltoall_reflections
 
-  def setup_hkl_chunks(self):
+  def setup_hkl_chunks(self, reflections):
     '''Set up a list of reflection tables, or chunks, for distributing reflections'''
     # split the full miller set into chunks; the number of chunks is equal to the number of ranks
     import numpy as np
@@ -63,7 +59,7 @@ class hkl_group(worker):
     # initialize a list of hkl chunks - reflection tables to store distributed reflections
     self.hkl_chunks = []
     for i in range(len(self.hkl_split_set)):
-      self.hkl_chunks.append(self.distribute_reflection_table())
+      self.hkl_chunks.append(self.distribute_reflection_table(reflections))
 
   def distribute_reflections_over_hkl_chunks(self, reflections):
     '''Distribute reflections, according to their HKLs, over pre-set HKL chunks'''
