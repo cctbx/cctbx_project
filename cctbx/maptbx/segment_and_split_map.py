@@ -2414,6 +2414,7 @@ class ncs_group_object:
     if not ncs_related_regions: ncs_related_regions = []
     if not self_and_ncs_related_regions: self_and_ncs_related_regions = []
     if not map_files_written: map_files_written = []
+    if not max_cell_dim: max_cell_dim = 0.
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
 
@@ -6425,7 +6426,7 @@ def remove_bad_regions(params = None,
   out = sys.stdout):
 
   worst_list = []
-  for id in duplicate_dict.keys():
+  for id in list(duplicate_dict.keys()):
     fract = duplicate_dict[id]/edited_volume_list[id-1]
     if duplicate_dict[id] and fract >= params.segmentation.max_overlap_fraction:
       worst_list.append([fract, id])
