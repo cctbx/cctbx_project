@@ -29,8 +29,12 @@ class minimizer(object):
     adopt_init_args(self, locals())
     self.x = self.calculator.x
     self.cntr=0
+    exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
+      ignore_line_search_failed_step_at_lower_bound=True,
+      )
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
+      exception_handling_params=exception_handling_params,
       termination_params=scitbx.lbfgs.termination_parameters(
         max_iterations=max_iterations))
 
