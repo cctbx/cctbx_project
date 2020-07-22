@@ -117,10 +117,11 @@ private:
 template <typename FloatType>
  af::shared<FloatType>
  alg4(
-   boost::python::list      const& F_,
-   af::const_ref<FloatType> const& f_obs,
-   int                      const& max_cycles,
-   FloatType                const& auto_converge_eps)
+   boost::python::list        const& F_,
+   af::const_ref<FloatType>   const& f_obs,
+   af::const_ref<ComplexType> const& phase_source,
+   int                        const& max_cycles,
+   FloatType                  const& auto_converge_eps)
  {
    int dim = boost::python::len(F_);
    // Extract Fs
@@ -130,12 +131,13 @@ template <typename FloatType>
      af::const_ref<ComplexType>  fm = elem_proxy_1();
      F[i] = fm;
      MMTBX_ASSERT(fm.size() == f_obs.size());
+     MMTBX_ASSERT(fm.size() == phase_source.size());
    }
    //
    int size = f_obs.size();
    // Get copy of F[0] which Fc
-   af::shared<ComplexType> fc_d(F[0].size());
-   for(std::size_t i=0; i < size; i++) fc_d[i]=F[0][i];
+   af::shared<ComplexType> fc_d(phase_source.size());
+   for(std::size_t i=0; i < size; i++) fc_d[i]=phase_source[i];
    // Pre-compute complex conj
    af::shared<af::shared<ComplexType> > F_CONJ(dim);
    for(std::size_t i=0; i < dim; i++) {
@@ -146,7 +148,6 @@ template <typename FloatType>
      F_CONJ[i] = f;
    }
    // Refinement iterations
-   af::shared<FloatType> x_res(dim, 0);
    af::shared<FloatType> x_prev(dim, 0);
    af::shared<FloatType> x_(dim, 0);
    int cntr = 0;
@@ -161,14 +162,11 @@ template <typename FloatType>
      }
      // Construct A and b of the system of linear equations A*x=b
      for(std::size_t j=0; j < dim; j++) {
-       af::const_ref<ComplexType> Fj;
-       if(j==0) Fj = fc_d.const_ref();
-       else     Fj = F[j];
+       af::const_ref<ComplexType> Fj = F[j];
        for(std::size_t n=0; n < dim; n++) {
          FloatType Gjn = 0;
          for(std::size_t i=0; i < size; i++) {
-           if(n==0) Gjn += std::real(Fj[i]*std::conj(fc_d[i]) );
-           else     Gjn += std::real(Fj[i]*F_CONJ[n][i] );
+           Gjn += std::real(Fj[i]*F_CONJ[n][i] );
          }
          A(j,n) = Gjn;
        }
@@ -189,15 +187,14 @@ template <typename FloatType>
      af::shared<FloatType> x = af::matrix_multiply(
        A_inv.const_ref(), b.const_ref());
      // Update F[0] (Fcalc)
+     fc_d.fill(0);
      for(std::size_t i=0; i < dim; i++) {
-       if(i==0) continue;
+       //if(i==0) continue;
        for(std::size_t j=0; j < size; j++) {
          fc_d[j] += x[i] * F[i][j];
        }
      }
-     x_res = x_res + x;
-     x_[0]=x[0];
-     for(std::size_t i=1; i < dim; i++) x_[i] = x_res[i];
+     for(std::size_t i=0; i < dim; i++) x_[i] = x[i];
      //
      cntr+=1;
      // Exit endless loop conditions
@@ -205,7 +202,7 @@ template <typename FloatType>
      if(cntr==0) { for(std::size_t i=0; i < dim; i++) x_prev[i] = x_[i]; }
      else {
        FloatType max_diff = std::abs(x_prev[0]-x_[0]);
-       for(std::size_t i=1; i < dim; i++) {
+       for(std::size_t i=0; i < dim; i++) {
          FloatType tmp = std::abs( x_prev[i]-x_[i] );
          if(tmp>max_diff) max_diff=tmp;
        }
