@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 # from mmtbx.ncs.ncs_utils import convert_phil_format
 import sys, os, string
+from operator import itemgetter
 from libtbx.utils import Sorry
 from libtbx.utils import null_out
 import scitbx.rigid_body
@@ -2450,7 +2451,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       id=self.index_from_chain_id.get(x)
       assert id is not None
       sort_list.append([id,x])
-    sort_list.sort(key = lambda x: x[0])
+    sort_list.sort(key=itemgetter(0))
     new_group=[]
     for [id,x] in sort_list:
       new_group.append(x)
@@ -3107,7 +3108,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     for r,t,c in zip(rota_matrices_inv_sav,translations_orth_inv_sav,self._centers):
       z_value=t[2]
       sort_list.append([z_value,r,t,c])
-    sort_list.sort(key = lambda x: x[0])
+    sort_list.sort(key=itemgetter(0))
     z_first,r_first,t_first,c_first=sort_list[0]
     z_last,r_last,t_last,c_last=sort_list[-1]
     z_next_to_last,r_next_to_last,t_next_to_last,c_next_to_last=sort_list[-2]
@@ -3429,7 +3430,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     for r,t,c in zip(rota_matrices_inv_sav,translations_orth_inv_sav,self._centers):
       z_value=t[2]
       sort_list.append([z_value,r,t,c])
-    sort_list.sort(key = lambda x: x[0])
+    sort_list.sort(key=itemgetter(0))
     z_first,r_first,t_first,c_first=sort_list[0]
     z_last,r_last,t_last,c_last=sort_list[-1]
     z_next_to_last,r_next_to_last,t_next_to_last,c_next_to_last=sort_list[-2]
