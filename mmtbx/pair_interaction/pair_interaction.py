@@ -7,7 +7,6 @@ import iotbx.pdb
 import libtbx.load_env
 from scitbx.array_family import flex
 import numpy as np
-from qrefine.super_cell import expand
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
 
@@ -15,7 +14,10 @@ import boost.python
 ext = boost.python.import_ext("mmtbx_pair_interaction_ext")
 
 dat_path = libtbx.env.find_in_repositories("qrefine")
-qr_unit_tests_data = os.path.join(dat_path,"tests","unit","data_files")
+qr_unit_tests_data = None
+if(dat_path is not None):
+  qr_unit_tests_data = os.path.join(dat_path,"tests","unit","data_files")
+
 A2B=1.8897259885789
 global results
 results=[]
@@ -26,6 +28,7 @@ global wave_functions
 wave_functions = []
 
 def load_wfc(element):
+  element = element.lower()
   folder = libtbx.env.find_in_repositories("mmtbx/pair_interaction")
   for fn in os.listdir(folder):
     if(fn.startswith(element) and fn.endswith(".pkl")):
@@ -192,34 +195,3 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
   #print(interacting_pairs)
   #print("Time ",(time.time()-t0))
   return interacting_pairs
-
-if __name__=="__main__":
-  f=qr_unit_tests_data+"/1yjp.pdb"
-  #print("1. clustering")
-  pdb_inp = iotbx.pdb.input(f)
-  ph = pdb_inp.construct_hierarchy()
-  #print(dir(ph))
-  #print(len(list(ph.residue_groups())))
-  run(ph)
-  #print("2. fragment for residues 1 and 2")
-  pdb_inp = iotbx.pdb.input(f)
-  ph = pdb_inp.construct_hierarchy()
-  #print(run(ph,core=[1,2]))
-  #print("3. clustering within expanded ph")
-  pdb_inp = iotbx.pdb.input(f)
-  cs=pdb_inp.crystal_symmetry()
-  ph = pdb_inp.construct_hierarchy()
-  expansion = expand(
-      pdb_hierarchy        = ph,
-      crystal_symmetry     = cs,
-      select_within_radius = 10.0).ph_super_sphere
-  run(expansion)
-  #print("4. fragment for residues 1 and 2 within expanded ph")
-  pdb_inp = iotbx.pdb.input(f)
-  ph = pdb_inp.construct_hierarchy()
-  cs=pdb_inp.crystal_symmetry()
-  expansion = expand(
-      pdb_hierarchy        = ph,
-      crystal_symmetry     = cs,
-      select_within_radius = 10.0).ph_super_sphere
-  run(expansion,core=[1,2])
