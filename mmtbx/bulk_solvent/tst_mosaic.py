@@ -1040,7 +1040,8 @@ def common_inputs(k_sols, for_test):
   fc  = xrs.structure_factors(d_min=4).f_calc()
   #
   mm = mosaic.mosaic_f_mask(
-    miller_array   = fc,
+    f_obs          = abs(fc),
+    #f_calc         = fc,
     xray_structure = xrs,
     step           = 0.5,
     volume_cutoff  = 6)

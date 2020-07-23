@@ -438,7 +438,7 @@ class mosaic_f_mask(object):
                step,
                volume_cutoff,
                f_obs,
-               f_calc,
+               f_calc=None,
                log = sys.stdout,
                write_masks=False):
     adopt_init_args(self, locals())
@@ -559,7 +559,7 @@ class mosaic_f_mask(object):
     return self.f_obs.set().array(data = data)
 
   def compute_diff_map(self, f_mask_data):
-    if(self.f_obs is None): return None
+    if(self.f_calc is None): return None
     f_mask = self.f_obs.customized_copy(data = f_mask_data)
     fmodel = mmtbx.f_model.manager(
       f_obs  = self.f_obs,
