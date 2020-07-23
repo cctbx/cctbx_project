@@ -190,6 +190,8 @@ class refinery(object):
     self.log = log
     self.f_obs  = fmodel.f_obs()
     self.r_free_flags = fmodel.r_free_flags()
+    d_spacings = self.f_obs.d_spacings().data()
+    dsel = d_spacings > 3
     if(anomaly):
       self.f_calc = fmodel.f_calc()
       self.F = [self.f_calc.deep_copy()] + fv.keys()
@@ -210,6 +212,29 @@ class refinery(object):
 
       self.bin_selections = self.f_obs.log_binning(
         n_reflections_in_lowest_resolution_bin = 100*len(self.F))
+
+      #for i_bin, sel in enumerate(self.bin_selections):
+      #  d_max, d_min = f_obs.select(sel).d_max_min()
+      #  print ("  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min), sel.count(True))
+      #print()
+
+      #tmp_bin_selections = []
+      #for i_bin, sel in enumerate(self.bin_selections):
+      #  ds = d_spacings.select(sel)
+      #  mi, ma = flex.min(ds), flex.max(ds)
+      #  if mi < 3 and ma > 3:
+      #    sel = sel.set_selected(~dsel, False)
+      #    tmp_bin_selections[i_bin-1] = self.bin_selections[i_bin-1] | sel
+      #    break
+      #  else:
+      #    tmp_bin_selections.append(sel)
+      #self.bin_selections = tmp[:]
+
+      #for i_bin, sel in enumerate(self.bin_selections):
+      #  d_max, d_min = f_obs.select(sel).d_max_min()
+      #  print ("  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min), sel.count(True))
+      #
+      #STOP()
 
       for i_bin, sel in enumerate(self.bin_selections):
         d_max, d_min = f_obs.select(sel).d_max_min()
@@ -409,17 +434,18 @@ def get_f_mask(xrs, ma, step, option = 2):
 
 class mosaic_f_mask(object):
   def __init__(self,
-               miller_array,
                xray_structure,
                step,
                volume_cutoff,
+               f_obs,
+               f_calc,
                log = sys.stdout,
-               f_obs=None,
-               r_free_flags=None,
-               f_calc=None,
                write_masks=False):
     adopt_init_args(self, locals())
-    assert [f_obs, f_calc, r_free_flags].count(None) in [0,3]
+    #
+    self.dsel = f_obs.d_spacings().data()>=3
+    self.miller_array = f_obs.select(self.dsel)
+    #
     self.crystal_symmetry = self.xray_structure.crystal_symmetry()
     # compute mask in p1 (via ASU)
     self.crystal_gridding = maptbx.crystal_gridding(
@@ -451,7 +477,7 @@ class mosaic_f_mask(object):
     self.conn = co.result().as_double()
     z = zip(co.regions(),range(0,co.regions().size()))
     sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
-    f_mask_data_0 = flex.complex_double(miller_array.data().size(), 0)
+    f_mask_data_0 = flex.complex_double(f_obs.data().size(), 0)
     FM = OrderedDict()
     self.FV = OrderedDict()
     self.mc = None
@@ -482,8 +508,7 @@ class mosaic_f_mask(object):
       volume_asu = (mask_i_asu>0).count(True)*step**3
 
       if(i_seq==1 or uc_fraction>5):
-        f_mask_i = miller_array.structure_factors_from_asu_map(
-          asu_map_data = mask_i_asu, n_real = self.n_real)
+        f_mask_i = self.compute_f_mask_i(mask_i_asu)
         if(not self.anomaly):
           f_mask_data_0 += f_mask_i.data()
 
@@ -512,29 +537,35 @@ class mosaic_f_mask(object):
         diff_map    = group_args(mi=mi, ma=ma, me=me, sd=sd))
 
       if(not(i_seq==1 or uc_fraction>5)):
-        f_mask_i = miller_array.structure_factors_from_asu_map(
-          asu_map_data = mask_i_asu, n_real = self.n_real)
+        f_mask_i = self.compute_f_mask_i(mask_i_asu)
 
       FM.setdefault(round(volume, 3), []).append(f_mask_i.data())
       self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
     #
-    f_mask_0 = miller_array.customized_copy(data = f_mask_data_0)
+    f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
     #
     self.f_mask_0 = None
     if(not self.anomaly):
-      self.f_mask_0 = miller_array.customized_copy(data = f_mask_data_0)
+      self.f_mask_0 = f_obs.customized_copy(data = f_mask_data_0)
     self.do_mosaic = False
     if(len(self.FV.keys())>1):
       self.do_mosaic = True
+
+  def compute_f_mask_i(self, mask_i_asu):
+    f_mask_i = self.miller_array.structure_factors_from_asu_map(
+      asu_map_data = mask_i_asu, n_real = self.n_real)
+    data = flex.complex_double(self.dsel.size(), 0)
+    data = data.set_selected(self.dsel, f_mask_i.data())
+    return self.f_obs.set().array(data = data)
 
   def compute_diff_map(self, f_mask_data):
     if(self.f_obs is None): return None
     f_mask = self.f_obs.customized_copy(data = f_mask_data)
     fmodel = mmtbx.f_model.manager(
-      f_obs        = self.f_obs,
-      r_free_flags = self.r_free_flags,
-      f_calc       = self.f_calc,
-      f_mask       = f_mask)
+      f_obs  = self.f_obs,
+      f_calc = self.f_calc,
+      f_mask = f_mask)
+    fmodel = fmodel.select(self.dsel)
     fmodel.update_all_scales(remove_outliers=True)
     self.mc = fmodel.electron_density_map().map_coefficients(
       map_type   = "mFobs-DFmodel",

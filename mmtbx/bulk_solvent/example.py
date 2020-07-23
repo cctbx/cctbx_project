@@ -105,7 +105,6 @@ def get_fmodel(o, f_mask, remove_outliers, log):
     f_mask = fm)
   fmodel.update_all_scales(
     remove_outliers         = remove_outliers,
-    apply_scale_k1_to_f_obs = False # XXX REMOVE!
     )
   fmodel.show(show_header=False, show_approx=False, log = log)
   print(fmodel.r_factors(prefix="  "), file=log)
@@ -136,11 +135,9 @@ class compute(object):
     print("Mosaic", file=log)
     self.mm = mosaic.mosaic_f_mask(
       xray_structure = D.xray_structure,
-      miller_array   = self.fmodel_2013.f_obs(),
       step           = step,
       volume_cutoff  = volume_cutoff,
       f_obs          = self.fmodel_2013.f_obs(),
-      r_free_flags   = self.fmodel_2013.r_free_flags(),
       f_calc         = self.fmodel_2013.f_calc(),
       log            = log)
     #
