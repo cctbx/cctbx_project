@@ -11,7 +11,7 @@ from pathlib import Path
 from lxml import etree, objectify
 import logging
 import numpy as np
-# from datetime import datetime as dt
+from datetime import datetime as dt
 from typing import Union, Any
 from enum import Enum, auto
 from collections import Counter
@@ -99,20 +99,24 @@ class NxType(Enum):
 
 
 class NexusElement:
-    def __init__(self, name: str, value: Any, nxtype: NxType, dtype: str, full_path: str = '', parent: str = '') -> None:
-        self.name = name
+    def __init__(self, full_path: str, value: Any, nxtype: NxType, dtype: str, parent: str = '',
+                 attrs: dict = None) -> None:
         self.value = value
         self.dtype = dtype
         self.type = nxtype
         self.parent = parent
         self.full_path = full_path
+        self.attrs = attrs
 
     def push(self, h5file):
         """ Write an element to the file """
         if self.full_path:
             h5file[self.full_path] = self.value
+            if self.attrs:
+                for k, v in self.attrs.items():
+                    h5file[self.full_path].attrs[k] = v
         else:
-            logger.warning(f"Cannot push {self.name} to {self.full_path}")
+            logger.error(f"Cannot push {self.name}")
 
 
 def get_git_revision_hash() -> str:
@@ -198,6 +202,8 @@ class Agipd2nexus:
                 h5file[full_path] = np.array(vector.pop('value'), dtype='f')
                 for key, attribute in vector.items():
                     h5file[full_path].attrs[key] = attribute
+            elif isinstance(self.field_rules[full_path], NexusElement):
+                self.field_rules[full_path].push(h5file)
             else:
                 h5file[full_path] = self.field_rules[full_path]
             logger.debug(f"field {full_path} was added")
@@ -205,21 +211,34 @@ class Agipd2nexus:
 
         else:
             logger.debug(f"Add {full_path} from definition")
-            field = NexusElement(name=name, value='XXX', nxtype=NxType.field, dtype='f', full_path=full_path)
+            field = NexusElement(full_path=full_path, value='XXX', nxtype=NxType.field, dtype='f')
             field.push(h5file)
             self.stat['fields from defs'] += 1
 
-    def create_attribute(self, h5file, elem):
-        path = elem.attrib['parent'] + '/' + elem.attrib['name']
-        # h5file[elem.attrib['parent']] = elem.attrib['value']
+    def create_attribute(self, h5file: h5py.File, elem):
+        NXname = elem.attrib['name']
+        name = NXname.replace('NX', '')
+        if isinstance(elem, objectify.ObjectifiedElement):
+            root_path = self.get_root_path(elem)
+            full_path = '/'.join([root_path, name])
+
+        h5file[full_path] = elem.attrib['value']
         self.stat['attr'] += 1
 
     def create_nexus_master_file(self):
         f = h5py.File(self.output_file_name, 'w')
         logger.info(f"file {self.output_file_name} was created")
 
-        for elem in root.getiterator(('group', 'field')):
-            parent = elem.getparent().attrib['type']
+        for k, v in self.global_attrs.items():
+            f.attrs[k] = v
+
+        for elem in root.getiterator(('group', 'field', 'attribute')):
+            try:
+                parent = elem.getparent().attrib['type']
+            except KeyError:
+                # that's an attribute
+                parent = elem.getparent().attrib['name']
+
             if parent == 'group':
                 # create root element of the file
                 entry = f.create_group('entry')
@@ -237,6 +256,11 @@ class Agipd2nexus:
                     # optional field, skip
                     continue
                 self.create_field(f, elem)
+            elif elem.tag == 'attribute':
+                if 'optional' in elem.keys() and elem.attrib['optional'] == 'true':
+                    continue
+                logger.warning(f"Adding attr {elem.attrib['name']}")
+                # self.create_attribute(f, elem)
         for path, elem in self.additional_elements.items():
             if elem.type == NxType.field:
                 field = elem
@@ -282,7 +306,9 @@ class Ruleset(Agipd2nexus):
                  'equipment_component': 'detector_arm',
                  'transformation_type': 'rotation', 'units': 'degrees', 'vector': (0., 0., -1.),
                  'offset': self.hierarchy.local_origin, 'offset_units': 'mm'},
-
+            'entry/source/name': NexusElement(full_path='entry/source/name', value=self.params.nexus_details.source_name,
+                                              nxtype=NxType.field, dtype='s',
+                                              attrs={'short_name': self.params.nexus_details.source_short_name}),
         }
         self.group_rules = {
             'NXdetector': {'names': ['ELE_D0']},
@@ -290,18 +316,22 @@ class Ruleset(Agipd2nexus):
 
         }
         self.additional_elements = {
-            # 'file_name': NexusElement(name='file_name', nxtype=NxType.attribute, parent='/', dtype=np.str,
-            #                           value=self.output_file_name),
             'entry/instrument/detector_group/group_type':
-                NexusElement(name='group_type', nxtype=NxType.field, value=[1, 2], dtype='i')
+                NexusElement(full_path='entry/instrument/detector_group/group_type',
+                             nxtype=NxType.field, value=[1, 2], dtype='i')
         }
-
+        self.global_attrs = {
+            'NXclass': 'NXroot',
+            'file_name': self.output_file_name,
+            'file_time': str(dt.now()),
+            'HDF5_Version': '1.2.3'
+        }
 
 if __name__ == '__main__':
   nexus_helper = Ruleset(sys.argv[1:])
   nexus_helper.create_nexus_master_file()
   logger.info("Stats:\n\t" + "\n\t".join(f"{k}: {v}" for k, v in nexus_helper.stat.items()))
-  # os.system(f'h5glance {nexus_helper.output_file_name} --attrs')
+  os.system(f'h5glance {nexus_helper.output_file_name} --attrs')
   # os.system(f"{path_to_cnxvalidate} -l definitions ~/xfel/examples/swissFEL_example/spb/{nexus_helper.output_file_name}"
-  #           f" | grep group_type")
-  # os.system(f"{path_to_cnxvalidate} -l definitions ~/xfel/examples/swissFEL_example/spb/{nexus_helper.output_file_name}")
+  #           f" | grep source")
+  os.system(f"{path_to_cnxvalidate} -l definitions ~/xfel/examples/swissFEL_example/spb/{nexus_helper.output_file_name}")
