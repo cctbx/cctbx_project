@@ -272,6 +272,20 @@ def get_c_symmetry(n=None,is_d=False,two_fold_along_x=None,ncs_name=None):
 
   return ncs_object
 
+def remove_extra(text):
+  new_text=""
+  for t in text:
+    if not t.lower() in "()abcdefghijklmnopqrstuvwxyz":
+      new_text+=t
+  return new_text
+
+def value(str):
+  try:
+    return int(remove_extra(str[1:]))
+  except Exception as e:
+    return 0
+
+
 def generate_ncs_ops(symmetry=None,
    helical_rot_deg=None,
    helical_trans_z_angstrom=None,
@@ -299,11 +313,11 @@ def generate_ncs_ops(symmetry=None,
   elif symmetry.lower().startswith("d"):
     sym_type='D'
     if len(symmetry)>1:
-      sym_n=int(symmetry[1:])
+      sym_n=value(symmetry)
   elif symmetry.lower().startswith("c"):
     sym_type='C'
     if len(symmetry)>1:
-      sym_n=int(symmetry[1:])
+      sym_n=value(symmetry)
   elif symmetry.lower() in ['helical','helix']:
     sym_type='helical'
 

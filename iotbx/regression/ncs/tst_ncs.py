@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
-import iotbx.ncs
 from libtbx.test_utils import approx_equal, show_diff
 from scitbx import matrix
-import iotbx.ncs as ncs
 from iotbx import pdb
 import mmtbx.model
+import iotbx.ncs
+import iotbx.ncs as ncs
 
 pdb_str_1="""\
 MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
@@ -372,6 +372,18 @@ ATOM     85  SD  MET B 228      -7.511 -19.311  16.335  1.00 30.00           S
 ATOM     86  CE  MET B 228      -7.660 -21.082  16.598  1.00 30.00           C
 TER
 """
+def exercise_02():
+  """
+  Generate ncs operators
+  """
+  from mmtbx.ncs.ncs import generate_ncs_ops
+  assert generate_ncs_ops(symmetry='d7')[0].max_operators()==14
+  assert generate_ncs_ops(symmetry='c7')[0].max_operators()==7
+  assert generate_ncs_ops(symmetry='o')[0].max_operators()==24
+  assert generate_ncs_ops(symmetry='t')[0].max_operators()==12
+  assert generate_ncs_ops(symmetry='i')[0].max_operators()==60
+
+
 def exercise_03():
   """
   Verify that there are no errors processing the write command
@@ -557,6 +569,7 @@ def exercise_08():
   assert model.get_number_of_atoms() == 7
 
 if(__name__=='__main__'):
+  exercise_02()
   exercise_03()
   exercise_04()
   exercise_05()
