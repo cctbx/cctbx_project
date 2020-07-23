@@ -986,20 +986,23 @@ class map_manager(map_reader, write_ccp4_map):
   def resolution_filter(self, d_min = None, d_max = None):
     '''
       High- or low-pass filter the map in map_manager.
+      Changes and overwrites contents of this map_manager.
       Remove all components with resolution < d_min or > d_max
-      and return a customized_copy.
       Either d_min or d_max or both can be None.
+      To make a low_pass filter with cutoff at 3 A, set d_min=3
+      To make a high_pass filter with cutoff at 2 A, set d_max=2
 
     '''
-
     map_coeffs = self.map_as_fourier_coefficients(d_min = d_min,
       d_max = d_max)
-    return self.fourier_coefficients_as_map( map_coeffs=map_coeffs)
+    mm = self.fourier_coefficients_as_map_manager( map_coeffs=map_coeffs)
+    self.set_map_data(map_data = mm.map_data())  # replace map data
 
-  def gaussian_blur(self, smoothing_radius):
+
+  def gaussian_filter(self, smoothing_radius):
     '''
-      Gaussian blur the map in map_manager with given smoothing radius
-      return a customized_copy
+      Gaussian blur the map in map_manager with given smoothing radius.
+      Changes and overwrites contents of this map_manager.
     '''
     assert smoothing_radius is not None
 
@@ -1009,13 +1012,13 @@ class map_manager(map_reader, write_ccp4_map):
         map              = map_data,
         crystal_symmetry = self.crystal_symmetry(),
         rad_smooth       = smoothing_radius)
-    return self.customized_copy(map_data=smoothed_map_data)
-
+    self.set_map_data(map_data = smoothed_map_data)  # replace map data
 
   def binary_filter(self, threshold = 0.5):
     '''
-      Return a binary filter (value at pixel i,j,k=1 if average of all
-      27 pixels within 1 of this one is > threshold, otherwise 0)
+      Apply a binary filter to the map (value at pixel i,j,k=1 if average
+      of all 27 pixels within 1 of this one is > threshold, otherwise 0)
+      Changes and overwrites contents of this map_manager.
     '''
 
     assert self.origin_is_zero()
@@ -1024,7 +1027,7 @@ class map_manager(map_reader, write_ccp4_map):
 
     from cctbx.maptbx import binary_filter
     bf=binary_filter(map_data,threshold).result()
-    return self.customized_copy(map_data=bf)
+    self.set_map_data(map_data = bf)  # replace map data
 
   def deep_copy(self):
     '''
@@ -1553,7 +1556,7 @@ class map_manager(map_reader, write_ccp4_map):
        original origin).  A map calculated from the Fourier coefficients will
        superimpose on the working (current map) without origin shifts.
 
-       This method and fourier_coefficients_as_map interconvert map_data and
+       This method and fourier_coefficients_as_map_manager interconvert map_data and
        map_coefficients without changin origin.  Both are intended for use
        with map_data that has an origin at (0, 0, 0).
     '''
@@ -1565,13 +1568,15 @@ class map_manager(map_reader, write_ccp4_map):
       map              = self.map_data(),
       d_min            = d_min )
     if d_max is not None:
-      ma.resolution_filter(d_min = d_min, d_max = d_max)
+      ma=ma.resolution_filter(d_min = d_min, d_max = d_max)
+      # NOTE: miller array resolution_filter produces a new array.
+      # Methods in map_manager that are _filter() change the existing array.
     return ma
 
-  def fourier_coefficients_as_map(self, map_coeffs):
+  def fourier_coefficients_as_map_manager(self, map_coeffs):
     '''
        Convert Fourier coefficients into to a real-space map with gridding
-       matching this existing map_manager.  Returns a map_manager object.
+        matching this existing map_manager.  Returns a map_manager object.
 
        Requires that this map_manager has origin at (0, 0, 0) (i.e.,
        shift_origin() has been applied if necessary)

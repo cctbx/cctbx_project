@@ -230,7 +230,7 @@ def test_01():
        labels = [labels])
   miller_arrays = dm.get_miller_arrays()
   new_map_coeffs = miller_arrays[0]
-  mm_from_map_coeffs = mm.fourier_coefficients_as_map(
+  mm_from_map_coeffs = mm.fourier_coefficients_as_map_manager(
       map_coeffs = new_map_coeffs)
 
   assert mm_from_map_coeffs.is_similar(mm)
@@ -291,19 +291,40 @@ def test_01():
   # filter a map
   dm = DataManager()
   mm = dm.get_real_map(data_d7)
-  filtered=mm.resolution_filter(d_min=3.5)
-  high_filtered=mm.resolution_filter(d_max=4)
-  gaussian=mm.gaussian_blur(smoothing_radius=1)
-  binary=mm.binary_filter(threshold=0.5)
+
+  low_pass_filtered=mm.deep_copy()
+  low_pass_filtered.resolution_filter(d_min=2.5)
+
+  high_pass_filtered=mm.deep_copy()
+  high_pass_filtered.resolution_filter(d_max=2.5)
+
+  gaussian=mm.deep_copy()
+  gaussian.gaussian_filter(smoothing_radius=1)
+
+  binary=mm.deep_copy()
+  binary.binary_filter(threshold=0.5)
+
   assert approx_equal(
-     (mm.map_data().as_1d()[1073],filtered.map_data().as_1d()[1073],
-       high_filtered.map_data().as_1d()[1073],
+     (mm.map_data().as_1d()[1073],low_pass_filtered.map_data().as_1d()[1073],
+       high_pass_filtered.map_data().as_1d()[1073],
        gaussian.map_data().as_1d()[1073],binary.map_data().as_1d()[1073]),
-      (0.0171344596893,0.095435975914,0.0171344596893,0.0149086679298,0.0))
+      (0.0171344596893,0.0227163900537,-0.0072717454565,0.0149086679298,0.0))
 
   info=mm.get_density_along_line((5,5,5),(10,10,10))
   assert approx_equal([info.along_density_values[4]]+list(info.along_sites[4]),
     [-0.562231123447 , 8.0, 8.0, 8.0])
+  from iotbx.map_model_manager import map_model_manager
+  extra_map_manager_id_list = ["low_pass_filtered","high_pass_filtered","gaussian","binary"]
+
+
+  expected_cc= [ 0.999920243317,0.0129365545729,0.971491994253,0.733986499746]
+  mam=map_model_manager(
+    map_manager=mm,
+    extra_map_manager_list =  [low_pass_filtered, high_pass_filtered, gaussian, binary],
+    extra_map_manager_id_list = extra_map_manager_id_list,)
+  for other_id,cc in zip(extra_map_manager_id_list,expected_cc):
+   assert approx_equal(cc,
+      mam.map_map_cc(map_id='map_manager',other_map_id=other_id) )
 
 
 if (__name__  ==  '__main__'):

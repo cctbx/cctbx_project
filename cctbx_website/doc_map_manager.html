@@ -145,7 +145,7 @@ class map_manager(iotbx.mrcfile.map_reader, iotbx.mrcfile.write_ccp4_map)<br>
 … (more text)<br>
 |  Methods defined here:<br>
 …<br>
- |  fourier_coefficients_as_map(self, map_coeffs=None, d_min=None, log=&lt;open file '&lt;stdout&gt;', mode 'w'&gt;)<br>
+ |  fourier_coefficients_as_map_manager(self, map_coeffs=None, d_min=None, log=&lt;open file '&lt;stdout&gt;', mode 'w'&gt;)<br>
  |      Convert Fourier coefficients into to a real-space map with gridding<br>
  |      matching this existing map_manager. Optional resolution cutoff of<br>
  |      d_min.<br>
@@ -343,7 +343,7 @@ dm.write_miller_array_file(mtz_object, filename="map_coeffs_low_res.mtz") #write
 
 <p>A Fourier representation of a map (Fourier coefficients such as map_coeffs_low_res) can be converted back into a real-space map.  The map_manager mm has a tool that we can use for this calculation:</p>
 
-<pre class="codeDL"><code>mm_low_res = mm.fourier_coefficients_as_map(    # convert to real space
+<pre class="codeDL"><code>mm_low_res = mm.fourier_coefficients_as_map_manager(    # convert to real space
      map_coeffs=map_coeffs_low_res)
 </code></pre>
 
