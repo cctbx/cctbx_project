@@ -142,12 +142,12 @@ class tg(object):
 #      g.append(flex.sum(diff*tmp))
 #    self.t = t/self.sum_i_obs
 #    self.g = g/self.sum_i_obs
-#    print (self.t,t1)
-#    print (list(self.g))
-#    print (list(g1))
-#    print ()
-#    assert approx_equal(self.t, t1, 5)
-#    assert approx_equal(self.g, g1, 1.e-6)
+#    #print (self.t,t1)
+#    #print (list(self.g))
+#    #print (list(g1))
+#    #print ()
+#    #assert approx_equal(self.t, t1, 5)
+#    #assert approx_equal(self.g, g1, 1.e-6)
 #
     if self.use_curvatures:
       d = flex.double()
@@ -192,12 +192,17 @@ class refinery(object):
     self.r_free_flags = fmodel.r_free_flags()
     d_spacings = self.f_obs.d_spacings().data()
     dsel = d_spacings > 3
-    if(anomaly):
-      self.f_calc = fmodel.f_calc()
-      self.F = [self.f_calc.deep_copy()] + fv.keys()
-    else:
-      self.f_calc = fmodel.f_model_no_scales()
-      self.F = [self.f_calc.deep_copy()] + fv.keys()[1:]
+    k_mask_overall = fmodel.k_masks()[0]
+    #if(anomaly):
+    #  self.f_calc = fmodel.f_calc()
+    #  self.F = [self.f_calc.deep_copy()] + fv.keys()
+    #else:
+    #  self.f_calc = fmodel.f_model_no_scales()
+    #  self.F = [self.f_calc.deep_copy()] + fv.keys()[1:]
+
+    self.f_calc = fmodel.f_model_no_scales()
+    self.F      = [self.f_calc.deep_copy()] + fv.keys()
+
     self.bin_selections = fmodel.bin_selections
     #
     for it in range(3):
@@ -286,7 +291,9 @@ class refinery(object):
         #r2=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, fd*k_total_sel)
 
         #self._print(bin+" ".join(["%6.2f"%k for k in k_masks])+" %6.4f %6.4f %6.4f %6.4f"%(r00,r0,r4, r2))
-        self._print(bin+" ".join(["%6.2f"%k for k in k_masks]))
+        k_mean = flex.mean(k_mask_overall.select(sel))
+        k_masks = [k_mean + k for k in k_masks]
+        self._print(bin+" ".join(["%6.2f"%k for k in k_masks]) )
         K_MASKS[sel] = k_masks
       #
       #print()
@@ -351,6 +358,7 @@ class refinery(object):
       print(m, file=self.log)
 
   def update_F(self, K_MASKS):
+    #return
     tmp = []
     for i_mask, F in enumerate(self.F):
       k_masks = [k_masks_bin[i_mask] for k_masks_bin in K_MASKS.values()]
@@ -527,7 +535,7 @@ class mosaic_f_mask(object):
             "%7s"%str(None) if diff_map is None else "%7.3f %7.3f %7.3f %7.3f"%(
               mi,ma,me,sd), file=log)
 
-      if(mean_diff_map is not None and mean_diff_map<=0): continue
+      if(uc_fraction<1 and mean_diff_map is not None and mean_diff_map<=0): continue
 
       self.regions[i_seq] = group_args(
         id          = i,
@@ -626,15 +634,15 @@ def algorithm_2(i_obs, F, x, use_curvatures=True, macro_cycles=10):
     if(use_curvatures):
       m = minimizer(max_iterations=100, calculator=calculator)
     else:
-      #upper = flex.double([10] + [5]*(x.size()-1))
-      #lower = flex.double([0.1] + [-5]*(x.size()-1))
+      upper = flex.double([10] + [5]*(x.size()-1))
+      lower = flex.double([0.1] + [-5]*(x.size()-1))
       #upper = flex.double([10] + [0.65]*(x.size()-1))
       #lower = flex.double([0.1] + [0]*(x.size()-1))
 
       #upper = flex.double([1] + [0.65]*(x.size()-1))
       #lower = flex.double([1] + [0]*(x.size()-1))
-      upper = flex.double([1] + [5.65]*(x.size()-1))
-      lower = flex.double([1] + [-5]*(x.size()-1))
+      #upper = flex.double([1] + [5.65]*(x.size()-1))
+      #lower = flex.double([1] + [-5]*(x.size()-1))
       m = tncs.minimizer(
         potential       = calculator,
         use_bounds      = 2,
