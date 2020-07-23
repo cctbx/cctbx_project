@@ -130,7 +130,19 @@ PickingProxyfunc = function(pickingProxy)
 };
 
 
-function ColourChart(millerlabel, fomlabel)
+function getTextWidth(text, fsize=8) 
+{
+  // re-use canvas object for better performance
+  var canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
+  var context = canvas.getContext("2d");
+  context.font = "sans-serif";
+  context.font.fontSize = fsize.toString() + "px";
+  var metrics = context.measureText(text);
+  return metrics.width;
+}
+
+
+function ColourChart(millerlabel, fomlabel, fontsize = 10)
 {
   var ih = 3,
   topr = 35,
@@ -146,7 +158,6 @@ function ColourChart(millerlabel, fomlabel)
     wp2 = 15;
     fomlabelheight = 0;
   }
-
   var wp3 = wp + colourgradvalarray.length * wp2 + 2;
 
   totalheight = ih*colourgradvalarray[0].length + 35 + fomlabelheight;
@@ -156,7 +167,8 @@ function ColourChart(millerlabel, fomlabel)
   addDivBox("", topr2, lp, wp3, totalheight, 'rgba(255, 255, 255, 1.0)');
 
   // print label of the miller array used for colouring
-  addDivBox(millerlabel, topr2, lp, wp, 20);
+  lblwidth = getTextWidth(millerlabel, fontsize);
+  addDivBox(millerlabel, topr2, lp, lblwidth + 5, 20, 'rgba(255, 255, 255, 1.0)', fsize=fontsize);
 
   if (colourgradvalarray.length > 1)
   {
@@ -166,15 +178,15 @@ function ColourChart(millerlabel, fomlabel)
     fomwp = wp3;
     fomtop2 = fomtop - 13;
     // print the 1 number
-    addDivBox("1", fomtop2, fomlp, fomwp, 20);
+    addDivBox("1", fomtop2, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
     // print the 0.5 number
     leftp = fomlp + 0.48 * gl * colourgradvalarray.length;
-    addDivBox("0.5", fomtop2, leftp, fomwp, 20);
+    addDivBox("0.5", fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
     // print the FOM label
-    addDivBox(fomlabel, fomtop, fomlp, fomwp, 20);
+    addDivBox(fomlabel, fomtop, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
     // print the 0 number
     leftp = fomlp + 0.96 * gl * colourgradvalarray.length;
-    addDivBox("0", fomtop2, leftp, fomwp, 20);
+    addDivBox("0", fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
   }
 
   for (j = 0; j < colourgradvalarray[0].length; j++)
@@ -184,7 +196,7 @@ function ColourChart(millerlabel, fomlabel)
     topv = j*ih + topr;
     toptxt = topv - 5;
     // print value of miller array if present in colourgradvalarray[0][j][0]
-    addDivBox(val, toptxt, lp, wp, ih);
+    addDivBox(val, toptxt, lp, wp, ih, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
   }
 
   // draw the colour gradient
@@ -385,7 +397,7 @@ function sleep(ms) {
 }
 
 
-function createElement(name, properties, style)
+function createElement(name, properties, style, fsize=10)
 {
 // utility function used in for loop over colourgradvalarray
   var el = document.createElement(name);
@@ -396,8 +408,7 @@ function createElement(name, properties, style)
       display: "block",
       position: "absolute",
       fontFamily: "sans-serif",
-      //fontSize: "smaller",
-      fontSize: "12px",
+      fontSize: fsize.toString() + "px",
   }
   );
   return el;
@@ -417,7 +428,7 @@ function addElement(el)
 }
 
 
-function addDivBox(txt, t, l, w, h, bgcolour="rgba(255, 255, 255, 0.0)")
+function addDivBox(txt, t, l, w, h, bgcolour="rgba(255, 255, 255, 0.0)", fsize=10)
 {
   divbox = createElement("div",
   {
@@ -430,7 +441,8 @@ function addDivBox(txt, t, l, w, h, bgcolour="rgba(255, 255, 255, 0.0)")
     left: l.toString() + "px",
     width: w.toString() + "px",
     height: h.toString() + "px",
-  }
+  },
+  fsize
   );
   addElement(divbox);
 }

@@ -69,10 +69,13 @@ class ArrayInfo:
     if (millarr.unit_cell() is None) or (millarr.space_group() is None) :
       raise Sorry("No space group info is present in data")
     data = millarr.data()
+    self.datatype = ""
     if (isinstance(data, flex.int)):
       data = flex.double([e for e in data if e!= display.inanval])
+      self.datatype = "isint"
     if millarr.is_complex_array():
       data = flex.abs(millarr.data())
+      self.datatype = "iscomplex"
     #data = [e for e in data if not math.isnan(e)]
     data = graphics_utils.NoNansArray( data, data[0] ) # assuming data[0] isn't NaN
     self.maxdata = flex.max( data )
@@ -80,6 +83,7 @@ class ArrayInfo:
     self.maxsigmas = self.minsigmas = None
     if millarr.sigmas() is not None:
       data = millarr.sigmas()
+      self.datatype = "hassigmas"
       #data = [e for e in data if not math.isnan(e)]
       data = graphics_utils.NoNansArray( data, data[0] ) # assuming data[0] isn't NaN
       self.maxsigmas = flex.max( data )
@@ -89,9 +93,10 @@ class ArrayInfo:
     self.labels = self.desc = ""
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if millarr.info():
-      self.labels = millarr.info().label_string()
+      #self.labels = millarr.info().label_string()
+      self.labels = millarr.info().labels
       if fomlabel:
-        self.labels = millarr.info().label_string() + " + " + fomlabel
+        self.labels = [ millarr.info().label_string() + " + " + fomlabel ]
       self.desc = get_array_description(millarr)
     self.span = ("?" , "?")
     self.spginf = millarr.space_group_info().symbol_and_number()
@@ -105,7 +110,7 @@ class ArrayInfo:
       mprint(to_str(e))
     issymunique = millarr.is_unique_set_under_symmetry()
     isanomalous = millarr.anomalous_flag()
-    self.infotpl = ( self.labels, self.desc, self.spginf, millarr.indices().size(), self.span,
+    self.infotpl = ( ",".join(self.labels), self.desc, self.spginf, millarr.indices().size(), self.span,
      self.minmaxdata, self.minmaxsigs, (roundoff(dmin), roundoff(dmax)), issymunique, isanomalous )
     self.infostr = "%s (%s), space group: %s, %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
 
@@ -133,6 +138,7 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
   if (settings.inbrowser==True):
     settings.expand_anomalous = False
     settings.expand_to_p1 = False
+
   for (fomsarray, fidx) in fomsarrays_idx:
     hklscene = display.scene(miller_array=proc_array, merge=merge,
       settings=settings, foms_array=fomsarray, fullprocessarray=True )
@@ -158,7 +164,7 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
       scenemindata.append( ainf.mindata )
       scenemaxsigmas.append(ainf.maxsigmas)
       sceneminsigmas.append(ainf.minsigmas)
-      scenearrayinfos.append((ainf.infostr, pidx, fidx, ainf.labels))
+      scenearrayinfos.append([ainf.infostr, pidx, fidx, ainf.labels, ainf.datatype])
       #self.mprint("%d, %s" %(i, infostr) )
       #i +=1
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
@@ -223,7 +229,7 @@ class hklview_3d:
     self.camera_type = "orthographic"
     self.primitivetype = "SphereBuffer"
     self.url = ""
-    self.binscenelabel = "Resolution"
+    self.bin_labels_type_idx = ("Resolution",  "", -1)
     self.colour_scene_id = None
     self.radii_scene_id = None
     #self.scene_id = None
@@ -440,11 +446,11 @@ class hklview_3d:
                       "show_only_missing",
                       "show_systematic_absences",
                       "scene_bin_thresholds",
-                      "bin_scene_label",
+                      "bin_labels_type_idx",
                       "nbins"
                       )
        ):
-      self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.bin_scene_label, curphilparam.nbins)
+      self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.bin_labels_type_idx, curphilparam.nbins)
       self.sceneisdirty = True
 
     if has_phil_path(diff_phil, "camera_type"):
@@ -453,6 +459,7 @@ class hklview_3d:
     if has_phil_path(diff_phil, "miller_array_operations"):
       self.viewerparams.scene_id = len(self.HKLscenedict)-1
       self.set_scene(self.viewerparams.scene_id)
+      self.params.miller_array_operations = ""
 
     if self.viewerparams.scene_id is not None:
       if not self.isinjected:
@@ -680,6 +687,8 @@ class hklview_3d:
       if self.HKLscene:
         self.mprint("Using cached HKL scene", verbose=1)
         return True
+    if self.has_new_miller_array:
+      self.identify_suitable_fomsarrays()
     self.mprint("Constructing HKL scenes", verbose=0)
     assert(self.proc_arrays)
     if scene_id is None:
@@ -737,7 +746,8 @@ class hklview_3d:
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
                               )
-      self.SendInfoToGUI({ "hklscenes_arrays": hkl_scenes_info, "NewHKLscenes" : True })
+      scenearraylabeltypes = [ (e[3], e[4], e[1]) for e in hkl_scenes_info ]
+      self.SendInfoToGUI({ "scene_array_label_types": scenearraylabeltypes, "NewHKLscenes" : True })
     else:
       idx = self.scene_id_to_array_id(scene_id)
       (hklscenes, scenemaxdata,
@@ -871,9 +881,10 @@ class hklview_3d:
     return None
 
 
-  def calc_bin_thresholds(self, bin_scene_label, nbins):
-    self.binscenelabel = bin_scene_label
-    if self.binscenelabel=="Resolution":
+  def calc_bin_thresholds(self, bin_labels_type_idx, nbins):
+    self.bin_labels_type_idx = eval(bin_labels_type_idx)
+    binscenelabel = self.bin_labels_type_idx[0]
+    if binscenelabel=="Resolution":
       warray = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).work_array
       dres = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).dres
       uc = warray.unit_cell()
@@ -883,12 +894,18 @@ class hklview_3d:
       binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
       binvals = list( 1.0/flex.double(binvals) )
       nuniquevalues = len(set(list(dres)))
-    elif self.binscenelabel=="Singletons":
+    elif binscenelabel=="Singletons":
         binvals = [ -1.5, -0.5, 0.5, 1.5 ]
         nuniquevalues = len(binvals)
     else:
-      bindata = self.HKLscene_from_dict(int(self.binscenelabel)).data.deep_copy()
-      if isinstance(bindata, flex.complex_double):
+      actualscene = self.bin_labels_type_idx[2]
+      datatype = self.bin_labels_type_idx[1]
+      label = self.HKLscene_from_dict(actualscene).work_array.info().label_string()
+      if datatype == "hassigmas" and label == "Sigmas of " + binscenelabel:
+        bindata = self.HKLscene_from_dict(actualscene).sigmas.deep_copy()
+      else:
+        bindata = self.HKLscene_from_dict(actualscene).data.deep_copy()
+      if datatype == "iscomplex":
         raise Sorry("Cannot order complex data values for binning.")
       selection = flex.sort_permutation( bindata )
       bindata_sorted = bindata.select(selection)
@@ -912,14 +929,20 @@ class hklview_3d:
     self.nuniqueval = nuniquevalues
 
 
-  def MatchBinArrayToSceneArray(self, ibinarray):
-    # match bindata with data(scene_id)
-    if self.binscenelabel=="Resolution":
+  def MatchBinArrayToSceneArray(self):
+    # match bindata with data or sigmas
+    if self.bin_labels_type_idx[0] == "Resolution":
       return 1.0/self.scene.dres
+    ibinarray = self.bin_labels_type_idx[2]
+    labels = self.HKLscene_from_dict( ibinarray ).work_array.info().labels
     # get the array id that is mapped through an HKLscene id
-    binarraydata = self.HKLscene_from_dict(ibinarray).data
+    if self.bin_labels_type_idx[1] == "hassigmas" and labels[1] == self.bin_labels_type_idx[0]:
+      binarraydata = self.HKLscene_from_dict( ibinarray ).sigmas
+    else:
+      binarraydata = self.HKLscene_from_dict( ibinarray ).data
     scenearraydata = self.HKLscene_from_dict(self.viewerparams.scene_id).data
-    matchindices = miller.match_indices(self.HKLscene_from_dict(self.viewerparams.scene_id).indices, self.HKLscene_from_dict(ibinarray).indices )
+    matchindices = miller.match_indices(self.HKLscene_from_dict(self.viewerparams.scene_id).indices, 
+                                        self.HKLscene_from_dict(ibinarray).indices )
     matched_binarray = binarraydata.select( matchindices.pairs().column(1) )
     #valarray.sort(by_value="packed_indices")
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -944,10 +967,10 @@ class hklview_3d:
 
   def OperateOn1MillerArray(self, millarr, operation):
     # lets user specify a one line python expression operating on data, sigmas
-    data = millarr.data()
-    sigmas = millarr.sigmas()
-    dres = millarr.unit_cell().d( millarr.indices() )
     newarray = millarr.deep_copy()
+    data = newarray.data()
+    sigmas = newarray.sigmas()
+    dres = newarray.unit_cell().d( newarray.indices() )
     self.mprint("Creating new miller array through the operation: %s" %operation)
     try:
       newdata = None
@@ -967,8 +990,8 @@ class hklview_3d:
   def OperateOn2MillerArrays(self, millarr1, millarr2, operation):
     # lets user specify a one line python expression operating on data1 and data2
     matchindices = miller.match_indices(millarr1.indices(), millarr2.indices() )
-    matcharr1 = millarr1.select( matchindices.pairs().column(0) )
-    matcharr2 = millarr2.select( matchindices.pairs().column(1) )
+    matcharr1 = millarr1.select( matchindices.pairs().column(0) ).deep_copy()
+    matcharr2 = millarr2.select( matchindices.pairs().column(1) ).deep_copy()
     data1 = matcharr1.data()
     data2 = matcharr2.data()
     sigmas1 = matcharr1.sigmas()
@@ -1115,20 +1138,20 @@ function MakeHKL_Axis(mshape)
       points = flex.vec3_double( [ ] )
       colors = flex.vec3_double( [ ] )
       radii = flex.double( [ ] )
-      self.binscenelabel = "Resolution"
+      self.bin_labels_type_idx = ("Resolution",  "", -1)
     else:
       points = self.scene.points
 
     nrefls = points.size()
     hkls = self.scene.indices
     dres = self.scene.dres
-    if self.binscenelabel=="Resolution":
+    if self.bin_labels_type_idx[0] =="Resolution":
       colstr = "dres"
-    elif self.binscenelabel=="Singletons":
+    elif self.bin_labels_type_idx[0] =="Singletons":
       colstr = "Singleton"
     else:
       if not blankscene:
-        colstr = self.HKLscene_from_dict(int(self.binscenelabel)).work_array.info().label_string()
+        colstr = self.HKLscene_from_dict(self.bin_labels_type_idx[2]).work_array.info().label_string()
     data = self.scene.data
     if not blankscene:
       colourlabel = self.HKLscene_from_dict(self.colour_scene_id).colourlabel
@@ -1142,21 +1165,25 @@ function MakeHKL_Axis(mshape)
 
     self.binvalsboundaries = []
     if not blankscene:
-      if self.binscenelabel=="Resolution":
+      if self.bin_labels_type_idx[0] =="Resolution":
         self.binvalsboundaries = self.binvals
         self.bindata = 1.0/self.scene.dres
-      elif self.binscenelabel=="Singletons":
+      elif self.bin_labels_type_idx[0] =="Singletons":
         self.binvalsboundaries = self.binvals
         self.bindata = self.scene.singletonsiness
       else:
-        ibinarray= int(self.binscenelabel)
-        self.binvalsboundaries = [ self.HKLMinData_from_dict(ibinarray) - 0.1 , self.HKLMaxData_from_dict(ibinarray) + 0.1 ]
+        ibinarray= self.bin_labels_type_idx[2]
+        labels = self.HKLscene_from_dict(ibinarray).work_array.info().labels
+        if self.bin_labels_type_idx[1] == "hassigmas" and labels[1] == self.bin_labels_type_idx[0]:
+          self.binvalsboundaries = [ self.HKLMinSigmas_from_dict(ibinarray) - 0.1 , self.HKLMaxSigmas_from_dict(ibinarray) + 0.1 ]
+        else:
+          self.binvalsboundaries = [ self.HKLMinData_from_dict(ibinarray) - 0.1 , self.HKLMaxData_from_dict(ibinarray) + 0.1 ]
         self.binvalsboundaries.extend( self.binvals )
         self.binvalsboundaries.sort()
         if self.binvalsboundaries[0] < 0.0:
           self.binvalsboundaries.append(0.0)
           self.binvalsboundaries.sort()
-        self.bindata = self.MatchBinArrayToSceneArray(ibinarray)
+        self.bindata = self.MatchBinArrayToSceneArray()
         if self.HKLscene_from_dict(ibinarray).work_array.is_complex_array():
           self.bindata = self.HKLscene_from_dict(ibinarray).ampl
 
