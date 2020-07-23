@@ -20,7 +20,7 @@ def get_map_manager(map_data,unit_cell_dimensions=None,crystal_symmetry=None):
   assert unit_cell_dimensions or crystal_symmetry
 
   from iotbx.map_manager import map_manager
-  map_data.shift_origin()
+  map_data = map_data.shift_origin()
 
   if not crystal_symmetry:
     from cctbx import crystal
