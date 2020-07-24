@@ -105,6 +105,7 @@ def get_fmodel(o, f_mask, remove_outliers, log):
     f_mask = fm)
   fmodel.update_all_scales(
     remove_outliers         = remove_outliers,
+    apply_scale_k1_to_f_obs = False
     )
   fmodel.show(show_header=False, show_approx=False, log = log)
   print(fmodel.r_factors(prefix="  "), file=log)

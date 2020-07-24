@@ -1475,11 +1475,13 @@ class manager(manager_mixin):
         refine_hd_scattering_method = "fast",
         bulk_solvent_and_scaling = True,
         remove_outliers = True,
+        apply_scale_k1_to_f_obs=True,
         show = False,
         verbose=None,
         log = None):
     self.alpha_beta_cache = None
-    self.apply_scale_k1_to_f_obs()
+    if(apply_scale_k1_to_f_obs):
+      self.apply_scale_k1_to_f_obs()
     from mmtbx.bulk_solvent import f_model_all_scales
     o = f_model_all_scales.run(
       fmodel               = self,

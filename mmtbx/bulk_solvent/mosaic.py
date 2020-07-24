@@ -22,6 +22,8 @@ from cctbx.masks import vdw_radii_from_xray_structure
 ext = boost.python.import_ext("mmtbx_masks_ext")
 mosaic_ext = boost.python.import_ext("mmtbx_mosaic_ext")
 
+APPLY_SCALE_K1_TO_FOBS = False
+
 def moving_average(x, n):
   r = []
   for i, xi in enumerate(x):
@@ -217,7 +219,7 @@ class refinery(object):
     #  self.f_calc = fmodel.f_model_no_scales()
     #  self.F = [self.f_calc.deep_copy()] + fv.keys()[1:]
     #
-    for it in range(4):
+    for it in range(3):
       if it>0:
         self.F = [self.fmodel.f_model_no_scales().deep_copy()] + self.F[1:]
       self._print("cycle: %2d"%it)
@@ -328,7 +330,8 @@ class refinery(object):
           f_mask         = self.F[1],
           k_mask         = flex.double(f_obs.data().size(),1)
           )
-        self.fmodel.update_all_scales(remove_outliers=False)
+        self.fmodel.update_all_scales(remove_outliers=False,
+          apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
       else:
         self.fmodel = mmtbx.f_model.manager(
           f_obs          = self.f_obs,
@@ -338,16 +341,20 @@ class refinery(object):
           f_mask         = f_bulk,
           k_mask         = flex.double(f_obs.data().size(),1)
           )
-        self.fmodel.update_all_scales(remove_outliers=False)
+        self.fmodel.update_all_scales(remove_outliers=False,
+          apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
         #
         self.fmodel = mmtbx.f_model.manager(
           f_obs          = self.f_obs,
           r_free_flags   = self.r_free_flags,
-          f_calc         = self.f_obs.customized_copy(data = f_calc_data),
+          #f_calc         = self.f_obs.customized_copy(data = f_calc_data),
+          f_calc         = self.fmodel.f_calc(),
           f_mask         = self.fmodel.f_bulk(),
           k_mask         = flex.double(f_obs.data().size(),1)
           )
-        self.fmodel.update_all_scales(remove_outliers=False)
+        self.fmodel.update_all_scales(remove_outliers=False,
+          apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
+        self._print(self.fmodel.r_factors(prefix="  "))
 
       #self._print(self.fmodel.r_factors(prefix="  "))
       self.mc = self.fmodel.electron_density_map().map_coefficients(
@@ -587,7 +594,8 @@ class mosaic_f_mask(object):
       f_calc = self.f_calc,
       f_mask = f_mask)
     fmodel = fmodel.select(self.dsel)
-    fmodel.update_all_scales(remove_outliers=True)
+    fmodel.update_all_scales(remove_outliers=True,
+      apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
     self.mc = fmodel.electron_density_map().map_coefficients(
       map_type   = "mFobs-DFmodel",
       isotropize = True,
