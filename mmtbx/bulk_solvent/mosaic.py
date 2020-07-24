@@ -186,39 +186,28 @@ def write_map_file(crystal_symmetry, map_data, file_name):
 
 class refinery(object):
   def __init__(self, fmodel, fv, alg, anomaly=True, log = sys.stdout):
-    assert alg in ["alg0","alg2", "alg4"]
-    self.log = log
-    self.f_obs  = fmodel.f_obs()
-    self.r_free_flags = fmodel.r_free_flags()
-    d_spacings = self.f_obs.d_spacings().data()
-    dsel = d_spacings > 3
-    k_mask_overall = fmodel.k_masks()[0]
+    assert alg in ["alg0","alg2", "alg4", None]
+    self.log            = log
+    self.f_obs          = fmodel.f_obs()
+    self.r_free_flags   = fmodel.r_free_flags()
+    d_spacings          = self.f_obs.d_spacings().data()
+    dsel                = d_spacings > 3
+    k_mask_overall      = fmodel.k_masks()[0]
+    self.bin_selections = fmodel.bin_selections
+    #
+    self.f_calc         = fmodel.f_model_no_scales()
+    self.F              = [self.f_calc.deep_copy()] + fv.keys()
+    #
     #if(anomaly):
     #  self.f_calc = fmodel.f_calc()
     #  self.F = [self.f_calc.deep_copy()] + fv.keys()
     #else:
     #  self.f_calc = fmodel.f_model_no_scales()
     #  self.F = [self.f_calc.deep_copy()] + fv.keys()[1:]
-
-    self.f_calc = fmodel.f_model_no_scales()
-    self.F      = [self.f_calc.deep_copy()] + fv.keys()
-
-    self.bin_selections = fmodel.bin_selections
     #
     for it in range(3):
-      if it==0:
-        self.f_calc = fmodel.f_model_no_scales()
-        self.F      = [self.f_calc.deep_copy()] + self.F[1:]
-      else:
-        self.f_calc = self.fmodel.f_model_no_scales()
-        self.F      = [self.f_calc.deep_copy()] + self.F[1:]
-      #if it==0:
-      #  self.f_calc = fmodel.f_calc()
-      #  self.F      = [self.f_calc.deep_copy()] + fv.keys()
-      #else:
-      #  self.f_calc = self.fmodel.f_model_no_scales()
-      #  self.F      = [self.f_calc.deep_copy()] + fv.keys()
-
+      if it>0:
+        self.F = [self.fmodel.f_model_no_scales().deep_copy()] + self.F[1:]
       self._print("cycle: %2d"%it)
       self._print("  volumes: "+" ".join([str(fv[f]) for f in self.F[1:]]))
       f_obs   = self.f_obs.deep_copy()
@@ -231,11 +220,6 @@ class refinery(object):
       self.bin_selections = self.f_obs.log_binning(
         n_reflections_in_lowest_resolution_bin = 100*len(self.F))
 
-      #for i_bin, sel in enumerate(self.bin_selections):
-      #  d_max, d_min = f_obs.select(sel).d_max_min()
-      #  print ("  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min), sel.count(True))
-      #print()
-
       #tmp_bin_selections = []
       #for i_bin, sel in enumerate(self.bin_selections):
       #  ds = d_spacings.select(sel)
@@ -247,12 +231,6 @@ class refinery(object):
       #  else:
       #    tmp_bin_selections.append(sel)
       #self.bin_selections = tmp[:]
-
-      #for i_bin, sel in enumerate(self.bin_selections):
-      #  d_max, d_min = f_obs.select(sel).d_max_min()
-      #  print ("  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min), sel.count(True))
-      #
-      #STOP()
 
       for i_bin, sel in enumerate(self.bin_selections):
         d_max, d_min = f_obs.select(sel).d_max_min()
@@ -305,9 +283,9 @@ class refinery(object):
 
         #self._print(bin+" ".join(["%6.2f"%k for k in k_masks])+" %6.4f %6.4f %6.4f %6.4f"%(r00,r0,r4, r2))
         k_mean = flex.mean(k_mask_overall.select(sel))
-        k_masks = [k_masks[0]]+[k_mean + k for k in k_masks[1:]]
-        self._print(bin+" ".join(["%6.2f"%k for k in k_masks]) )
-        K_MASKS[sel] = k_masks
+        k_masks_plus = [k_masks[0]]+[k_mean + k for k in k_masks[1:]]
+        self._print(bin+" ".join(["%6.2f"%k for k in k_masks_plus]) )
+        K_MASKS[sel] = [k_masks, k_masks_plus]
       #
       #print()
       #self.update_k_masks(K_MASKS)
@@ -317,6 +295,7 @@ class refinery(object):
       f_calc_data = self.f_calc.data().deep_copy()
       f_bulk_data = flex.complex_double(fmodel.f_calc().data().size(), 0)
       for sel, k_masks in zip(K_MASKS.keys(), K_MASKS.values()):
+        k_masks = k_masks[0] # 1 is shifted!
         f_bulk_data_ = flex.complex_double(sel.count(True), 0)
         for i_mask, k_mask in enumerate(k_masks):
           if i_mask==0:
@@ -343,7 +322,6 @@ class refinery(object):
           f_obs          = self.f_obs,
           r_free_flags   = self.r_free_flags,
           f_calc         = self.f_obs.customized_copy(data = f_calc_data),
-          #f_mask         = fmodel.f_masks()[0],#f_bulk,
           bin_selections = self.bin_selections,
           f_mask         = f_bulk,
           k_mask         = flex.double(f_obs.data().size(),1)
@@ -385,7 +363,7 @@ class refinery(object):
     #return
     tmp = []
     for i_mask, F in enumerate(self.F):
-      k_masks = [k_masks_bin[i_mask] for k_masks_bin in K_MASKS.values()]
+      k_masks = [k_masks_bin[1][i_mask] for k_masks_bin in K_MASKS.values()]
       if(i_mask == 0):      tmp.append(self.F[0])
       elif k_masks[0]>=0.1: tmp.append(F)
       self.F = tmp[:]
