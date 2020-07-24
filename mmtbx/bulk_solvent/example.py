@@ -179,7 +179,7 @@ class compute(object):
     print("-"*79, file=self.log)
     print("Refine k_masks", file=self.log)
     result = mosaic.refinery(
-      fmodel  = self.fmodel_2013_04,
+      fmodel  = self.fmodel_filtered, #self.fmodel_2013_04,
       fv      = self.mm.FV,
       #anomaly = self.mm.anomaly,
       anomaly = True, # Refine all contributions at once!
