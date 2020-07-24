@@ -138,7 +138,10 @@ def DataManager(datatypes=None, phil=None, logger=None):
       if hasattr(parent_class, 'datatype'):
         class_datatypes.add(parent_class.datatype)
         parent_classes.append(parent_class)
-        manager_classes.remove(parent_class)
+        try:  # remove parent class and add back later
+          manager_classes.remove(parent_class)
+        except ValueError:  # parent class already removed
+          pass
   datatypes = list(class_datatypes)
   manager_classes += parent_classes
 
