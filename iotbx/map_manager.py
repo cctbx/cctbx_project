@@ -940,6 +940,12 @@ class map_manager(map_reader, write_ccp4_map):
     return box.map_manager()
 
 
+  def cc_to_other_map_manager(self, other_map_manager):
+    assert self.is_similar(other_map_manager)
+
+    return flex.linear_correlation(self.map_data().as_1d(),
+     other_map_manager.map_data().as_1d()).coefficient()
+
   def density_at_sites_cart(self, sites_cart):
     '''
     Return flex.double list of density values corresponding to sites (cartesian

@@ -32,6 +32,9 @@ def test_01():
   assert mm.origin_shift_grid_units == (100,100,100)
   mm.show_summary()
 
+  # test cc_to_other_map
+  assert mm.cc_to_other_map_manager(mm) == 1
+
   # test writing and reading file
   dm.write_real_map_file(mm, filename = 'test_map_manager.ccp4',
      overwrite = True)

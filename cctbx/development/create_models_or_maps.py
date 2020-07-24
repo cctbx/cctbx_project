@@ -11,14 +11,15 @@ from scitbx.array_family import flex
 
 '''
 
-def get_map_manager(map_data,unit_cell_dimensions=None,crystal_symmetry=None):
+def get_map_manager(map_data,wrapping,
+     unit_cell_dimensions=None,crystal_symmetry=None,):
   '''
       Get a minimal map_manager in SG p1 from any map_data and
       if unit_cell_dimensions.  Assume cell angles are 90,90,90
       Shift origin to (0,0,0)
   '''
   assert unit_cell_dimensions or crystal_symmetry
-
+  assert isinstance(wrapping, bool)
   from iotbx.map_manager import map_manager
   map_data = map_data.shift_origin()
 
@@ -29,7 +30,8 @@ def get_map_manager(map_data,unit_cell_dimensions=None,crystal_symmetry=None):
   mm=map_manager(map_data=map_data,
     unit_cell_grid = map_data.all(),
     unit_cell_crystal_symmetry = crystal_symmetry,
-    origin_shift_grid_units = (0,0,0))
+    origin_shift_grid_units = (0,0,0),
+    wrapping = wrapping)
   return mm
 
 def read_map_and_model(file_name_1,file_name_2):
@@ -331,7 +333,7 @@ def generate_map(
       pass # already fine
     else:
       gridding=[]
-      for x in str(gridding).replace(",","").split():
+      for x in str(gridding).replace("(","").replace(")","").replace("[","").replace("]","").replace(",","").split():
         gridding.append(int(x))
   low_resolution_fourier_noise_fraction=float(
      low_resolution_fourier_noise_fraction)
