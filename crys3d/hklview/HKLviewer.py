@@ -570,15 +570,17 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
           if self.NewHKLscenes:
             self.BinDataComboBox.clear()
-            self.BinDataComboBox.addItem("Resolution",  ["''", -1] )
-            self.BinDataComboBox.addItem("Singletons", ["''", -2] )
-            for labels,labeltype,idx in self.scenearraylabeltypes:
+            self.BinDataComboBox.addItem("Resolution",  ["''", -1, -1] )
+            self.BinDataComboBox.addItem("Singletons", ["''", -2, -1] )
+            for labels,labeltype,idx,sceneid in self.scenearraylabeltypes:
               label = ",".join(labels)
-              self.BinDataComboBox.addItem(label, ["'" + labeltype + "'", idx])
+              if labeltype not in  ["iscomplex", "iscomplex_fom"]:
+                self.BinDataComboBox.addItem(label, ["'" + labeltype + "'", idx, sceneid])
               if labeltype == "hassigmas":
-                self.BinDataComboBox.addItem("Sigmas of " + label, ["'" + labeltype + "'", idx])
+                self.BinDataComboBox.addItem("Sigmas of " + label, ["'" + labeltype + "'", idx, sceneid])
               if labeltype == "iscomplex":
-                self.BinDataComboBox.addItem("Phases of " + label, ["'" + labeltype + "'", idx])
+                self.BinDataComboBox.addItem("Phases of " + label, ["'" + labeltype + "'", idx, sceneid])
+                self.BinDataComboBox.addItem("Amplitudes of " + label, ["'" + labeltype + "'", idx, sceneid])
               #for label in labels:
               #  self.BinDataComboBox.addItem(label, ["'" + labeltype + "'", idx])
             self.BinDataComboBox.view().setMinimumWidth(self.comboviewwidth)
@@ -1248,7 +1250,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.MillerTableContextMenuHandler(QCursor.pos(), row)
     if self.millertable.mousebutton == QEvent.MouseButtonDblClick:
       # quickly display data with a double click
-      for sceneid,(scenelabel,labeltype,arrayid) in enumerate(self.scenearraylabeltypes):
+      for sceneid,(scenelabel,labeltype,arrayid,sceneid) in enumerate(self.scenearraylabeltypes):
         if row == arrayid:
           self.DisplayData(sceneid, row)
           break
@@ -1263,7 +1265,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     # Tag menu items with data being int or a (string, int) tuple.
     # These are being checked for in onMillerTableMenuAction() and appropriate
     # action taken
-    for i,(scenelabel,labeltype,arrayid) in enumerate(self.scenearraylabeltypes):
+    for i,(scenelabel,labeltype,arrayid,sceneid) in enumerate(self.scenearraylabeltypes):
       scenelabelstr = ",".join(scenelabel)
       if self.millerarraylabels[row] == scenelabelstr or self.millerarraylabels[row] + " + " in scenelabelstr:
         if labeltype == "hassigmas":

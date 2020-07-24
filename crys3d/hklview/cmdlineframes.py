@@ -360,7 +360,7 @@ class HKLViewFrame() :
     self.params = self.currentphil.fetch().extract()
     self.viewer.viewerparams = self.params.NGL_HKLviewer.viewer
     self.viewer.params = self.params.NGL_HKLviewer
-    self.params.NGL_HKLviewer.bin_labels_type_idx = "('Resolution', '', -1)"
+    self.params.NGL_HKLviewer.bin_labels_type_idx = "('Resolution', '', -1, -1)"
     self.params.NGL_HKLviewer.using_space_subgroup = False
     self.viewer.symops = []
     self.viewer.sg = None
@@ -895,7 +895,7 @@ class HKLViewFrame() :
 
   def set_scene_bin_thresholds(self, binvals = None, bin_labels_type_idx = None,  nbins = 6):
     if bin_labels_type_idx is None:
-      bin_labels_type_idx = "('Resolution', '', -1)"
+      bin_labels_type_idx = "('Resolution', '', -1, -1)"
     #else:
     #  bin_labels_type_idx = eval(bin_labels_type_idx)
     if binvals:
@@ -907,7 +907,7 @@ class HKLViewFrame() :
 
   def SetSceneBinLabel(self, bin_labels_type_idx = None ):
     if bin_labels_type_idx is None:
-      bin_labels_type_idx = "('Resolution', '', -1)"
+      bin_labels_type_idx = "('Resolution', '', -1, -1)"
     #else:
     #  bin_labels_type_idx = eval(bin_labels_type_idx )
     self.params.NGL_HKLviewer.bin_labels_type_idx = bin_labels_type_idx
@@ -1228,7 +1228,7 @@ NGL_HKLviewer {
   scene_bin_thresholds = None
     .type = float
     .multiple = True
-  bin_labels_type_idx = "('Resolution', '', -1)"
+  bin_labels_type_idx = "('Resolution', '', -1, -1)"
     .type = str
   nbins = 1
     .type = int(value_min=1, value_max=20)

@@ -97,6 +97,7 @@ class ArrayInfo:
       self.labels = millarr.info().labels
       if fomlabel:
         self.labels = [ millarr.info().label_string() + " + " + fomlabel ]
+        self.datatype = "iscomplex_fom"
       self.desc = get_array_description(millarr)
     self.span = ("?" , "?")
     self.spginf = millarr.space_group_info().symbol_and_number()
@@ -746,7 +747,7 @@ class hklview_3d:
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
                               )
-      scenearraylabeltypes = [ (e[3], e[4], e[1]) for e in hkl_scenes_info ]
+      scenearraylabeltypes = [ (e[3], e[4], e[1], sceneid) for sceneid,e in enumerate(hkl_scenes_info) ]
       self.SendInfoToGUI({ "scene_array_label_types": scenearraylabeltypes, "NewHKLscenes" : True })
     else:
       idx = self.scene_id_to_array_id(scene_id)
@@ -898,15 +899,7 @@ class hklview_3d:
         binvals = [ -1.5, -0.5, 0.5, 1.5 ]
         nuniquevalues = len(binvals)
     else:
-      actualscene = self.bin_labels_type_idx[2]
-      datatype = self.bin_labels_type_idx[1]
-      label = self.HKLscene_from_dict(actualscene).work_array.info().label_string()
-      if datatype == "hassigmas" and label == "Sigmas of " + binscenelabel:
-        bindata = self.HKLscene_from_dict(actualscene).sigmas.deep_copy()
-      else:
-        bindata = self.HKLscene_from_dict(actualscene).data.deep_copy()
-      if datatype == "iscomplex":
-        raise Sorry("Cannot order complex data values for binning.")
+      bindata, dummy = self.get_matched_binarray()
       selection = flex.sort_permutation( bindata )
       bindata_sorted = bindata.select(selection)
       # get binvals by dividing bindata_sorted with nbins
@@ -929,18 +922,34 @@ class hklview_3d:
     self.nuniqueval = nuniquevalues
 
 
+  def get_matched_binarray(self):
+    sceneid = self.bin_labels_type_idx[3]
+    datatype = self.bin_labels_type_idx[1]
+    binscenelabel = self.bin_labels_type_idx[0]
+    label = self.HKLscene_from_dict(sceneid).work_array.info().label_string()
+    if datatype == "hassigmas" and binscenelabel == "Sigmas of " + label:
+      bindata = self.HKLscene_from_dict(sceneid).sigmas.deep_copy()
+      binvalsboundaries = [ self.HKLMinSigmas_from_dict(sceneid) - 0.1 , self.HKLMaxSigmas_from_dict(sceneid) + 0.1 ]
+    elif datatype == "iscomplex" and "Phases of " + label in binscenelabel:
+      bindata = self.HKLscene_from_dict(sceneid).phases.deep_copy()
+      # preselect centric reflections, i.e. those with phi = 0 or 180
+      binvalsboundaries = [-0.01, 0.01, 179.99, 180.01, 359.99, 360]
+    elif datatype == "iscomplex" and "Amplitudes of " + label in binscenelabel:
+      bindata = self.HKLscene_from_dict(sceneid).ampl.deep_copy()
+      binvalsboundaries = [ self.HKLMinData_from_dict(sceneid) - 0.1 , self.HKLMaxData_from_dict(sceneid) + 0.1 ]
+    else:
+      bindata = self.HKLscene_from_dict(sceneid).data.deep_copy()
+      binvalsboundaries = [ self.HKLMinData_from_dict(sceneid) - 0.1 , self.HKLMaxData_from_dict(sceneid) + 0.1 ]
+    return bindata, binvalsboundaries
+
+
   def MatchBinArrayToSceneArray(self):
     # match bindata with data or sigmas
     if self.bin_labels_type_idx[0] == "Resolution":
       return 1.0/self.scene.dres
-    ibinarray = self.bin_labels_type_idx[2]
-    labels = self.HKLscene_from_dict( ibinarray ).work_array.info().labels
-    # get the array id that is mapped through an HKLscene id
-    if self.bin_labels_type_idx[1] == "hassigmas" and labels[1] == self.bin_labels_type_idx[0]:
-      binarraydata = self.HKLscene_from_dict( ibinarray ).sigmas
-    else:
-      binarraydata = self.HKLscene_from_dict( ibinarray ).data
+    binarraydata, dummy = self.get_matched_binarray()
     scenearraydata = self.HKLscene_from_dict(self.viewerparams.scene_id).data
+    ibinarray = self.bin_labels_type_idx[3]
     matchindices = miller.match_indices(self.HKLscene_from_dict(self.viewerparams.scene_id).indices, 
                                         self.HKLscene_from_dict(ibinarray).indices )
     matched_binarray = binarraydata.select( matchindices.pairs().column(1) )
@@ -1151,7 +1160,7 @@ function MakeHKL_Axis(mshape)
       colstr = "Singleton"
     else:
       if not blankscene:
-        colstr = self.HKLscene_from_dict(self.bin_labels_type_idx[2]).work_array.info().label_string()
+        colstr = self.HKLscene_from_dict(self.bin_labels_type_idx[3]).work_array.info().label_string()
     data = self.scene.data
     if not blankscene:
       colourlabel = self.HKLscene_from_dict(self.colour_scene_id).colourlabel
@@ -1172,20 +1181,13 @@ function MakeHKL_Axis(mshape)
         self.binvalsboundaries = self.binvals
         self.bindata = self.scene.singletonsiness
       else:
-        ibinarray= self.bin_labels_type_idx[2]
-        labels = self.HKLscene_from_dict(ibinarray).work_array.info().labels
-        if self.bin_labels_type_idx[1] == "hassigmas" and labels[1] == self.bin_labels_type_idx[0]:
-          self.binvalsboundaries = [ self.HKLMinSigmas_from_dict(ibinarray) - 0.1 , self.HKLMaxSigmas_from_dict(ibinarray) + 0.1 ]
-        else:
-          self.binvalsboundaries = [ self.HKLMinData_from_dict(ibinarray) - 0.1 , self.HKLMaxData_from_dict(ibinarray) + 0.1 ]
+        dummy, self.binvalsboundaries = self.get_matched_binarray()
         self.binvalsboundaries.extend( self.binvals )
         self.binvalsboundaries.sort()
         if self.binvalsboundaries[0] < 0.0:
           self.binvalsboundaries.append(0.0)
           self.binvalsboundaries.sort()
         self.bindata = self.MatchBinArrayToSceneArray()
-        if self.HKLscene_from_dict(ibinarray).work_array.is_complex_array():
-          self.bindata = self.HKLscene_from_dict(ibinarray).ampl
 
     self.nbinvalsboundaries = len(self.binvalsboundaries)
     # avoid resetting opacities of bins unless we change the number of bins
@@ -1318,7 +1320,7 @@ function MakeHKL_Axis(mshape)
 
     self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
                           "bin_infotpls": self.bin_infotpls,
-                          "bin_data_label": colstr,
+                          "bin_data_label": self.bin_labels_type_idx[0],
                           "tooltip_opacity": self.ngl_settings.tooltip_alpha
                          } )
 
