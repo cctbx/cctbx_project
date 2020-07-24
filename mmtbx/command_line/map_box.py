@@ -1086,7 +1086,7 @@ def run(args,
     if mam.model():
       mam.model().set_shift_cart(mam.map_manager().shift_cart())
 
-  if params.wrapping in [True, False]:
+  if params.wrapping in [True, False] and mam.map_manager().is_full_size():
     mam.map_manager().set_wrapping(params.wrapping)
     if params.wrapping and params.check_wrapping and (
        not mam.map_manager().is_consistent_with_wrapping()):
