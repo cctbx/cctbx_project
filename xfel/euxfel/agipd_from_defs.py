@@ -223,10 +223,14 @@ class Ruleset(Agipd2nexus):
         # constructor of the parent class first
         Agipd2nexus.__init__(self, args)
 
-        if self.params.detector_distance == None:
-            # FIXME: should be taken from the `geom` file
-            self.params.detector_distance = 177.0  # Set detector distance arbitrarily if nothing is provided
         self.hierarchy = read_geom(self.params.geom_file)
+        if self.params.detector_distance == None:
+            # try to take from the geometry file:
+            if self.hierarchy.detector_distance:
+                self.params.detector_distance = self.hierarchy.detector_distance
+            else:
+                raise Sorry("Detector distance is undefined! You should set it either in `.phil` or in `.geom` files, "
+                            "or pass as a command line argument: `detector_distance=123.45` (in mm)")
         self.n_quads = 4
         self.n_modules = 4
         self.n_asics = 8

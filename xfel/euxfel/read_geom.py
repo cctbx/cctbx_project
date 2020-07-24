@@ -18,6 +18,7 @@ phil_scope = parse("""
 class PanelGroup(dict):
     def __init__(self):
         self.center = None
+        self.detector_distance = None
         self.local_origin = None
         self.local_fast = col((1, 0, 0))
         self.local_slow = col((0, 1, 0))
@@ -105,6 +106,9 @@ def read_geom(geom_file: str) -> PanelGroup:
     # IE parents are listed in reverse order of immediacy (p0 is the parent of p0a0 and q0 is the parent of p0)
 
     hierarchy = PanelGroup()
+
+    if 'clen' in geometry:
+        hierarchy.detector_distance = float(geometry['clen']) * 1000
 
     def add_node(panel, parent, parents, depth):
         if depth == len(parents):
