@@ -51,5 +51,9 @@ def tst_01():
 
 
 if (__name__ == "__main__"):
-  tst_01()
+  import libtbx.load_env
+  if libtbx.env.find_in_repositories(relative_path="chem_data") is None:
+    print("Skipping exercise(): chem_data directory not available")
+  else:
+    tst_01()
   print ("OK")
