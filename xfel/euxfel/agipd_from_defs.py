@@ -23,6 +23,7 @@ logger = logging.getLogger()
 p = Path(__file__)
 path_to_defs = p.parent / 'definitions/applications/NXmx.nxdl.xml'
 path_to_cnxvalidate = "~/github/cnxvalidate/build/nxvalidate"
+path_to_phil = p.parent / "AGIPD.phil"
 
 root = objectify.parse(str(path_to_defs))
 
@@ -32,64 +33,8 @@ for elem in root.getiterator():
     except ValueError:
         print(f"Error with {elem.tag}")
 
-phil_scope = parse("""
-  cxi_file = None
-    .type = str
-    .help = cheetah file used to read in image data(.cxi).
-  geom_file = None
-    .type = str
-    .help = geometry file to be read in for AGIPD detector (.geom).
-  detector_distance = None
-    .type = float
-    .help = AGIPD Detector distance
-  wavelength = None
-    .type = float
-    .help = AGIPD wavelength override
-  mode = vds cxi
-    .type = choice
-    .optional = False
-    .help = Input data file format. VDS: virtual data set. CXI: \
-            Cheetah file format.
-
-  nexus_details {
-    instrument_name = SwissFEL ARAMIS BEAMLINE ESB
-      .type = str
-      .help = Name of instrument
-    instrument_short_name = ESB
-      .type = str
-      .help = short name for instrument, perhaps the acronym
-    source_name = SwissFEL ARAMIS
-      .type = str
-      .help = Name of the neutron or x-ray storage ring/facility
-    source_short_name = SwissFEL ARAMIS
-      .type = str
-      .help = short name for source, perhaps the acronym
-    start_time = None
-      .type = str
-      .help = ISO 8601 time/date of the first data point collected in UTC, \
-              using the Z suffix to avoid confusion with local time
-    end_time = None
-      .type = str
-      .help = ISO 8601 time/date of the last data point collected in UTC, \
-              using the Z suffix to avoid confusion with local time. \
-              This field should only be filled when the value is accurately \
-              observed. If the data collection aborts or otherwise prevents \
-              accurate recording of the end_time, this field should be omitted
-    end_time_estimated = None
-      .type = str
-      .help = ISO 8601 time/date of the last data point collected in UTC, \
-              using the Z suffix to avoid confusion with local time. \
-              This field may be filled with a value estimated before an \
-              observed value is avilable.
-    sample_name = None
-      .type = str
-      .help = Descriptive name of sample
-    total_flux = None
-      .type = float
-      .help = flux incident on beam plane in photons per second
-  }
-
-""")
+with open(path_to_phil) as phil:
+    phil_scope = parse(phil.read())
 
 class NxType(Enum):
     """ Enumeration for elements withing NeXus schema """
