@@ -206,6 +206,19 @@ class refinery(object):
     self.bin_selections = fmodel.bin_selections
     #
     for it in range(3):
+      if it==0:
+        self.f_calc = fmodel.f_model_no_scales()
+        self.F      = [self.f_calc.deep_copy()] + self.F[1:]
+      else:
+        self.f_calc = self.fmodel.f_model_no_scales()
+        self.F      = [self.f_calc.deep_copy()] + self.F[1:]
+      #if it==0:
+      #  self.f_calc = fmodel.f_calc()
+      #  self.F      = [self.f_calc.deep_copy()] + fv.keys()
+      #else:
+      #  self.f_calc = self.fmodel.f_model_no_scales()
+      #  self.F      = [self.f_calc.deep_copy()] + fv.keys()
+
       self._print("cycle: %2d"%it)
       self._print("  volumes: "+" ".join([str(fv[f]) for f in self.F[1:]]))
       f_obs   = self.f_obs.deep_copy()
@@ -292,7 +305,7 @@ class refinery(object):
 
         #self._print(bin+" ".join(["%6.2f"%k for k in k_masks])+" %6.4f %6.4f %6.4f %6.4f"%(r00,r0,r4, r2))
         k_mean = flex.mean(k_mask_overall.select(sel))
-        k_masks = [k_mean + k for k in k_masks]
+        k_masks = [k_masks[0]]+[k_mean + k for k in k_masks[1:]]
         self._print(bin+" ".join(["%6.2f"%k for k in k_masks]) )
         K_MASKS[sel] = k_masks
       #
@@ -315,25 +328,36 @@ class refinery(object):
       #
       self.update_F(K_MASKS)
       f_bulk = fmodel.f_calc().customized_copy(data = f_bulk_data)
-      self.fmodel = mmtbx.f_model.manager(
-        f_obs          = self.f_obs,
-        r_free_flags   = self.r_free_flags,
-        f_calc         = self.f_obs.customized_copy(data = f_calc_data),
-        #f_mask         = fmodel.f_masks()[0],#f_bulk,
-        bin_selections = self.bin_selections,
-        f_mask         = f_bulk,
-        k_mask         = flex.double(f_obs.data().size(),1)
-        )
-      self.fmodel.update_all_scales(remove_outliers=False)
-      #
-      self.fmodel = mmtbx.f_model.manager(
-        f_obs          = self.f_obs,
-        r_free_flags   = self.r_free_flags,
-        f_calc         = self.f_obs.customized_copy(data = f_calc_data),
-        f_mask         = self.fmodel.f_bulk(),
-        k_mask         = flex.double(f_obs.data().size(),1)
-        )
-      self.fmodel.update_all_scales(remove_outliers=False)
+
+      if(len(self.F)==2):
+        self.fmodel = mmtbx.f_model.manager(
+          f_obs          = self.f_obs,
+          r_free_flags   = self.r_free_flags,
+          f_calc         = fmodel.f_calc(),
+          f_mask         = self.F[1],
+          k_mask         = flex.double(f_obs.data().size(),1)
+          )
+        self.fmodel.update_all_scales(remove_outliers=False)
+      else:
+        self.fmodel = mmtbx.f_model.manager(
+          f_obs          = self.f_obs,
+          r_free_flags   = self.r_free_flags,
+          f_calc         = self.f_obs.customized_copy(data = f_calc_data),
+          #f_mask         = fmodel.f_masks()[0],#f_bulk,
+          bin_selections = self.bin_selections,
+          f_mask         = f_bulk,
+          k_mask         = flex.double(f_obs.data().size(),1)
+          )
+        self.fmodel.update_all_scales(remove_outliers=False)
+        #
+        self.fmodel = mmtbx.f_model.manager(
+          f_obs          = self.f_obs,
+          r_free_flags   = self.r_free_flags,
+          f_calc         = self.f_obs.customized_copy(data = f_calc_data),
+          f_mask         = self.fmodel.f_bulk(),
+          k_mask         = flex.double(f_obs.data().size(),1)
+          )
+        self.fmodel.update_all_scales(remove_outliers=False)
 
       #self._print(self.fmodel.r_factors(prefix="  "))
       self.mc = self.fmodel.electron_density_map().map_coefficients(
@@ -451,7 +475,7 @@ class mosaic_f_mask(object):
                write_masks=False):
     adopt_init_args(self, locals())
     #
-    self.dsel = f_obs.d_spacings().data()>=3
+    self.dsel = f_obs.d_spacings().data()>=0
     self.miller_array = f_obs.select(self.dsel)
     #
     self.crystal_symmetry = self.xray_structure.crystal_symmetry()
@@ -601,7 +625,7 @@ def algorithm_0(f_obs, F, kt):
   """
   fc, f_masks = F[0], F[1:]
   k_mask_trial_range=[]
-  s = 0
+  s = -1
   while s<1:
     k_mask_trial_range.append(s)
     s+=0.0001
