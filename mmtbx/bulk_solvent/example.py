@@ -297,7 +297,7 @@ def run(cmdargs):
   if(len(cmdargs)==1):
     alg = cmdargs[0]
     assert alg in ["alg0", "alg2", "alg4"]
-    NPROC=75
+    NPROC=30
     pdbs, mtzs, codes, sizes = get_files_sorted(pdb_files, hkl_files)
     argss = []
     for pdb, mtz, code in zip(pdbs, mtzs, codes):
