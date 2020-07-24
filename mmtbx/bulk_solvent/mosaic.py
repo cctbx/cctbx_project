@@ -22,6 +22,18 @@ from cctbx.masks import vdw_radii_from_xray_structure
 ext = boost.python.import_ext("mmtbx_masks_ext")
 mosaic_ext = boost.python.import_ext("mmtbx_mosaic_ext")
 
+def moving_average(x, n):
+  r = []
+  for i, xi in enumerate(x):
+    s = 0
+    cntr = 0
+    for j in range(max(0,i-n), min(i+n+1, len(x))):
+      s+=x[j]
+      cntr+=1
+    s = s/cntr
+    r.append(s)
+  return r
+
 # Utilities used by algorithm 2 ------------------------------------------------
 
 class minimizer(object):
@@ -205,7 +217,7 @@ class refinery(object):
     #  self.f_calc = fmodel.f_model_no_scales()
     #  self.F = [self.f_calc.deep_copy()] + fv.keys()[1:]
     #
-    for it in range(3):
+    for it in range(4):
       if it>0:
         self.F = [self.fmodel.f_model_no_scales().deep_copy()] + self.F[1:]
       self._print("cycle: %2d"%it)
@@ -360,12 +372,11 @@ class refinery(object):
       print(m, file=self.log)
 
   def update_F(self, K_MASKS):
-    #return
     tmp = []
     for i_mask, F in enumerate(self.F):
       k_masks = [k_masks_bin[1][i_mask] for k_masks_bin in K_MASKS.values()]
-      if(i_mask == 0):      tmp.append(self.F[0])
-      elif k_masks[0]>=0.1: tmp.append(F)
+      if(i_mask == 0):                        tmp.append(self.F[0])
+      elif moving_average(k_masks,2)[0]>=0.03: tmp.append(F)
       self.F = tmp[:]
 
   def _get_x_init(self, i_bin):
