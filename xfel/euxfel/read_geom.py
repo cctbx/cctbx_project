@@ -1,9 +1,7 @@
-from __future__ import absolute_import, division, print_function
 import sys, os
 from scitbx.matrix import col
 from libtbx.phil import parse
 from libtbx.utils import Sorry
-import six
 
 help_str = """Converts a CrystFEL file to DIALS json format."""
 
@@ -17,21 +15,43 @@ phil_scope = parse("""
 """)
 
 
-class panel_group(dict):
+class PanelGroup(dict):
     def __init__(self):
         self.center = None
         self.local_origin = None
         self.local_fast = col((1, 0, 0))
         self.local_slow = col((0, 1, 0))
 
+    def setup_centers(self) -> None:
+        if self.center is not None:     # the center is already defined
+            return
+        center = col((0.0, 0.0, 0.0))
+        for key, child in self.items():
+            if isinstance(child, PanelGroup):
+                if child.center is None:
+                    child.setup_centers()
+                center += child.center
+            else:
+                center += child['center']
+        center /= len(self)
+        self.center = center
 
-# Function to read in the crystFEL .geom file.
-def read_geom(geom_file):
+    def setup_local_frames(self) -> None:
+        for key, child in self.items():
+            if isinstance(child, PanelGroup):
+                child.local_origin = child.center - self.center
+                child.setup_local_frames()
+            else:
+                child['local_origin'] = child['origin'] - self.center
+
+
+def read_geom(geom_file: str) -> PanelGroup:
+    """Function to read in the CrystFEL .geom file."""
     panels = {}
     rigid_groups = {}
     collections = {}
 
-    def known_panels():
+    def known_panels() -> set:
         all_keys = []
         for value in rigid_groups.values():
             all_keys.extend(value)
@@ -41,22 +61,29 @@ def read_geom(geom_file):
 
     pixel_size = None
 
-    for line in open(geom_file):
-        line = line.split(';')[0]
-        if len(line.split("=")) != 2: continue
-        key, value = [w.strip() for w in line.split("=")]
-        if key == 'res':
-            pixel_size = 1000 / float(value)  # mm
-        elif "rigid_group" in key:
+    with open(geom_file) as geom:
+        lines = geom.readlines()
+
+    lines = (line.split(';')[0] for line in lines)      # cut out comments
+    lines = (line for line in lines if len(line.split("=")) == 2)
+    geometry = dict(map(lambda x: x.strip(), line.split('=')) for line in lines)    # noqa
+
+    if 'res' in geometry:
+        pixel_size = 1000 / float(geometry.pop('res'))  # mm
+    else:
+        raise KeyError("Pixel size is not defined!")
+
+    for key, value in geometry.items():
+        if "rigid_group" in key:
             if "collection" in key:
                 collections[key.split('rigid_group_collection_')[1]] = value.split(',')
             else:
                 rigid_groups[key.split('rigid_group_')[1]] = value.split(',')
         else:
-            if '/' not in key: continue
+            if '/' not in key:
+                continue
             panel = key.split("/")[0].strip()
             key = key.split("/")[1].strip()
-            value = line.split("=")[-1].strip()
             if panel not in known_panels(): continue
             if panel not in panels:
                 panels[panel] = {}
@@ -77,14 +104,14 @@ def read_geom(geom_file):
     # example of parents entry:  parents['p0a0'] = ['q0', 'p0']
     # IE parents are listed in reverse order of immediacy (p0 is the parent of p0a0 and q0 is the parent of p0)
 
-    hierarchy = panel_group()
+    hierarchy = PanelGroup()
 
     def add_node(panel, parent, parents, depth):
         if depth == len(parents):
             parent[panel] = panels[panel]
         else:
             if parents[depth] not in parent:
-                parent[parents[depth]] = panel_group()
+                parent[parents[depth]] = PanelGroup()
             add_node(panel, parent[parents[depth]], parents, depth + 1)
 
     for panel in panels:
@@ -111,46 +138,17 @@ def read_geom(geom_file):
         panels[panel]['fast'] = panels[panel]['local_fast'] = parse_vector(panels[panel]['fs']).normalize()
         panels[panel]['slow'] = panels[panel]['local_slow'] = parse_vector(panels[panel]['ss']).normalize()
         center_fast = panels[panel]['fast'] * pixel_size * (
-                    int(panels[panel]['max_fs']) - int(panels[panel]['min_fs']) + 1) / 2.0
+                int(panels[panel]['max_fs']) - int(panels[panel]['min_fs']) + 1) / 2.0
         center_slow = panels[panel]['slow'] * pixel_size * (
-                    int(panels[panel]['max_ss']) - int(panels[panel]['min_ss']) + 1) / 2.0
+                int(panels[panel]['max_ss']) - int(panels[panel]['min_ss']) + 1) / 2.0
         panels[panel]['center'] = panels[panel]['origin'] + center_fast + center_slow
         panels[panel]['pixel_size'] = pixel_size
 
     assert 'pixel_size' not in panels
 
-    def setup_centers(node):
-        if not isinstance(node, panel_group):
-            return
-        if node.center is not None:
-            return
-
-        center = col((0.0, 0.0, 0.0))
-        for key, child in six.iteritems(node):
-            if isinstance(child, panel_group):
-                if child.center is None:
-                    setup_centers(child)
-                center += child.center
-            else:
-                center += child['center']
-        center /= len(node)
-        node.center = center
-
-    setup_centers(hierarchy)
-
-    def setup_local_frames(node):
-        if not isinstance(node, panel_group):
-            return
-
-        for key, child in six.iteritems(node):
-            if isinstance(child, panel_group):
-                child.local_origin = child.center - node.center
-                setup_local_frames(child)
-            else:
-                child['local_origin'] = child['origin'] - node.center
-
+    hierarchy.setup_centers()
     hierarchy.local_origin = hierarchy.center
-    setup_local_frames(hierarchy)
+    hierarchy.setup_local_frames()
     return hierarchy
 
 
@@ -175,9 +173,9 @@ def run(args):
 
     # Plot the detector model highlighting the hierarchical structure of the detector
     def plot_node(cummulative, node, name):
-        if isinstance(node, panel_group):
+        if isinstance(node, PanelGroup):
             plt.arrow(cummulative[0], cummulative[1], node.local_origin[0], node.local_origin[1])
-            for childname, child in six.iteritems(node):
+            for childname, child in node.items():
                 plot_node(cummulative + node.local_origin, child, childname)
         else:
             plt.arrow(cummulative[0], cummulative[1], node['local_origin'][0], node['local_origin'][1])
