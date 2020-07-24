@@ -177,7 +177,7 @@ recompute_mosaicity {
 reintegration_str = '''
 reintegration {
   enable = True
-  include scope dials.command_line.integrate.phil_scope
+  include scope xfel.merging.command_line.mpi_integrate.phil_scope
   input {
     experiments = None
     reflections = None
@@ -187,39 +187,17 @@ reintegration {
 
 reintegration_override_str = '''
 reintegration{
+  dispatch {
+    step_list = input balance integrate
+  }
   output {
-    experiments = FILENAME_reintegrated_CLUSTER.expt
-    reflections = FILENAME_reintegrated_CLUSTER.refl
-    log = FILENAME_reintegrate_CLUSTER.log
-    debug_log = FILENAME_reintegrate_CLUSTER.debug.log
-  }
-  integration {
-    integrator = auto 3d flat3d 2d single2d *stills volume
-    profile {
-      fitting = False
-    }
-    background {
-      algorithm = simple
-      simple {
-        outlier {
-          algorithm = plane
-        }
-        model {
-          algorithm = linear2d
-        }
-      }
-    }
-  }
-  profile {
-    gaussian_rs {
-      min_spots {
-        overall = 0
-      }
-    }
+    prefix = FILENAME_reintegrated_CLUSTER
+    save_experiments_and_reflections = True
   }
   input {
-    experiments = FILENAME_refined_CLUSTER.expt
-    reflections = FILENAME_refined_CLUSTER.refl
+    path = .
+    experiments_suffix = FILENAME_refined_CLUSTER.expt
+    reflections_suffix = FILENAME_refined_CLUSTER.refl
   }
 }
 '''
@@ -235,8 +213,8 @@ postprocessing {
 postprocessing_override_str = """
 postprocessing {
   input {
-    experiments = FILENAME_reintegrated_CLUSTER.expt
-    reflections = FILENAME_reintegrated_CLUSTER.refl
+    experiments = FILENAME_reintegrated_CLUSTER*.expt
+    reflections = FILENAME_reintegrated_CLUSTER*.refl
   }
   output {
     filename = FILENAME_CLUSTER_ITER_extracted.refl
@@ -537,9 +515,8 @@ class Script(object):
 
         # reintegration
         if self.params.reintegration.enable:
-          custom_parts = ["  integration.mp.nproc = %d" % self.params.mp.nproc]
-          self.set_up_section("reintegration", "dials.integrate",
-            custom_parts=custom_parts, clustering=self.clustering)
+          self.set_up_section("reintegration", "mpirun -n %d cctbx.xfel.mpi_integrate"% self.params.mp.nproc,
+            clustering=self.clustering)
 
         # extract results to integration pickles for merging
         if self.params.postprocessing.enable:
