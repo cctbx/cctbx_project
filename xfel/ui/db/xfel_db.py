@@ -323,7 +323,7 @@ class xfel_db_application(db_application):
       import os
       exp_prefix = self.params.facility.lcls.experiment[0:3].upper()
       xtc_dir = os.path.join(os.environ.get('SIT_PSDM_DATA', '/reg/d/psdm'), exp_prefix, self.params.facility.lcls.experiment, 'xtc')
-      return [{'run':str(r.id)} for r in match_runs(xtc_dir, False)]
+      return [{'run':str(r.id)} for r in sorted(match_runs(xtc_dir, False), key=lambda x:x.id)]
     else:
       from xfel.xpp.simulate import file_table
       query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s" % (self.params.facility.lcls.experiment)

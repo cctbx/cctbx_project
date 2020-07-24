@@ -48,6 +48,13 @@ mp_phil_str = '''
       .type = str
       .multiple = True
       .help = Path to script sourcing a particular environment (optional)
+    local {
+      include_mp_in_command = True
+        .type = bool
+        .help = Whether to decorate command with appropiate multiprocessing \
+                arguments. If False, it's assumed the multiprocessing  \
+                arguments are provided by the calling program.
+    }
     shifter {
       submit_command = "sbatch "
         .type = str
@@ -197,10 +204,11 @@ class get_submit_command(object):
 class get_local_submit_command(get_submit_command):
 
   def customize_for_method(self):
-    if self.params.use_mpi:
-      self.command = "mpirun -n %d %s mp.method=mpi" % (self.params.nproc, self.command)
-    elif self.params.nproc > 1:
-      self.command += " mp.nproc=%d" % self.params.nproc
+    if self.params.local.include_mp_in_command:
+      if self.params.use_mpi:
+        self.command = "mpirun -n %d %s mp.method=mpi" % (self.params.nproc, self.command)
+      elif self.params.nproc > 1:
+        self.command += " mp.nproc=%d" % self.params.nproc
 
   def generate_submit_command(self):
     return self.submit_path
@@ -441,12 +449,12 @@ class get_slurm_submit_command(get_submit_command):
       self.options_inside_submit_script.append(nproc_str)
 
     # -o <outfile>
-    out_str = "#SBATCH --output=%s.%%j" % os.path.join(self.stdoutdir, self.log_name)
+    out_str = "#SBATCH --output=%s" % os.path.join(self.stdoutdir, self.log_name)
     self.options_inside_submit_script.append(out_str)
 
     # [-j oe/-e <errfile>] (optional)
     if self.err_name is not None:
-      err_str = "#SBATCH --error=%s.%%j" % os.path.join(self.stdoutdir, self.err_name)
+      err_str = "#SBATCH --error=%s" % os.path.join(self.stdoutdir, self.err_name)
       self.options_inside_submit_script.append(err_str)
 
     # -q <queue>

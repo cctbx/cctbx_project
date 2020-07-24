@@ -276,8 +276,8 @@ def do_submit(command, submit_path, stdoutdir, mp_params, job_name, dry_run=Fals
   if mp_params.method in ['lsf', 'sge', 'pbs']:
     parts = submit_command.split(" ")
     script = open(parts.pop(-1), "rb")
-    run_command = script.read().split("\n")[-2]
-    command = " ".join(parts + [run_command])
+    run_command = script.read().split(b"\n")[-2]
+    command = " ".join(parts + [run_command.decode()])
   else:
     command = submit_command
   print(command)
