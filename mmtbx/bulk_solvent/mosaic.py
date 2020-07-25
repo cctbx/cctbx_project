@@ -209,7 +209,8 @@ class refinery(object):
     k_mask_overall      = fmodel.k_masks()[0]
     self.bin_selections = fmodel.bin_selections
     #
-    self.f_calc         = fmodel.f_model_no_scales()
+    k_total = fmodel.k_total()
+    self.f_calc         = fmodel.f_model()
     self.F              = [self.f_calc.deep_copy()] + fv.keys()
     #
     #if(anomaly):
@@ -221,7 +222,7 @@ class refinery(object):
     #
     for it in range(3):
       if it>0:
-        self.F = [self.fmodel.f_model_no_scales().deep_copy()] + self.F[1:]
+        self.F = [self.fmodel.f_model().deep_copy()] + self.F[1:]
       self._print("cycle: %2d"%it)
       self._print("  volumes: "+" ".join([str(fv[f]) for f in self.F[1:]]))
       f_obs   = self.f_obs.deep_copy()
@@ -252,6 +253,7 @@ class refinery(object):
         bin = "  bin %2d: %5.2f-%-5.2f: "%(i_bin, d_max, d_min)
         F = [f.select(sel) for f in self.F]
         k_total_sel = k_total.select(sel)
+        F_scaled = [F[0].deep_copy()]+[f.customized_copy(data=f.data()*k_total_sel) for f in F[1:]]
 
         #r00=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, F[0].data()*k_total_sel)
 
@@ -259,7 +261,7 @@ class refinery(object):
         if(alg=="alg0"):
           k_masks = algorithm_0(
             f_obs = f_obs.select(sel),
-            F     = [f.deep_copy() for f in F],
+            F     = F_scaled,
             kt=k_total_sel)
 
         #fd = flex.complex_double(F[0].data().size())
@@ -269,11 +271,11 @@ class refinery(object):
 
         # algorithm_4
         if(alg=="alg4"):
-          if it==0: phase_source = fmodel.f_model_no_scales().select(sel)
-          else:     phase_source = self.fmodel.f_model_no_scales().select(sel)
+          if it==0: phase_source = fmodel.f_model().select(sel)
+          else:     phase_source = self.fmodel.f_model().select(sel)
           k_masks = algorithm_4(
-            f_obs             = f_obs.select(sel),
-            F                 = F,
+            f_obs             = self.f_obs.select(sel),
+            F                 = F_scaled,
             auto_converge_eps = 0.0001,
             phase_source = phase_source)
 
@@ -286,7 +288,7 @@ class refinery(object):
         if(alg=="alg2"):
           k_masks = algorithm_2(
             i_obs          = i_obs.select(sel),
-            F              = F,
+            F              = F_scaled,
             x              = self._get_x_init(i_bin),
             use_curvatures = False)
 
