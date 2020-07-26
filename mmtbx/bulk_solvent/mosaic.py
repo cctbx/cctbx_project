@@ -200,7 +200,7 @@ def write_map_file(crystal_symmetry, map_data, file_name):
 
 class refinery(object):
   def __init__(self, fmodel, fv, alg, anomaly=True, log = sys.stdout):
-    assert alg in ["alg0","alg2", "alg4", None]
+    assert alg in ["alg0", "alg2", "alg4", None]
     self.log            = log
     self.f_obs          = fmodel.f_obs()
     self.r_free_flags   = fmodel.r_free_flags()
