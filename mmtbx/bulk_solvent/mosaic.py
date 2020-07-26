@@ -213,13 +213,6 @@ class refinery(object):
     self.f_calc         = fmodel.f_model()
     self.F              = [self.f_calc.deep_copy()] + fv.keys()
     #
-    #if(anomaly):
-    #  self.f_calc = fmodel.f_calc()
-    #  self.F = [self.f_calc.deep_copy()] + fv.keys()
-    #else:
-    #  self.f_calc = fmodel.f_model_no_scales()
-    #  self.F = [self.f_calc.deep_copy()] + fv.keys()[1:]
-    #
     for it in range(3):
       #
       if alg is not None: ALG = alg
@@ -234,24 +227,11 @@ class refinery(object):
       f_obs   = self.f_obs.deep_copy()
       if it==0: k_total = fmodel.k_total()
       else:     k_total = self.fmodel.k_total()
-      f_obs   = f_obs.customized_copy(data = self.f_obs.data()/k_total)
       i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
       K_MASKS = OrderedDict()
 
       self.bin_selections = self.f_obs.log_binning(
         n_reflections_in_lowest_resolution_bin = 100*len(self.F))
-
-      #tmp_bin_selections = []
-      #for i_bin, sel in enumerate(self.bin_selections):
-      #  ds = d_spacings.select(sel)
-      #  mi, ma = flex.min(ds), flex.max(ds)
-      #  if mi < 3 and ma > 3:
-      #    sel = sel.set_selected(~dsel, False)
-      #    tmp_bin_selections[i_bin-1] = self.bin_selections[i_bin-1] | sel
-      #    break
-      #  else:
-      #    tmp_bin_selections.append(sel)
-      #self.bin_selections = tmp[:]
 
       for i_bin, sel in enumerate(self.bin_selections):
         d_max, d_min = f_obs.select(sel).d_max_min()
