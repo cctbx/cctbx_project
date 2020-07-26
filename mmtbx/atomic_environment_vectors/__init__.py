@@ -62,7 +62,7 @@ def compare(aev_values_dict):
   perfect_helix = generate_perfect_helix()
   def set_vals(result, d):
     for key1, value1 in d.items():
-      if value1 != []:
+      if value1 != [] and value != []:
         cc = flex.linear_correlation(
           x=flex.double(value), y=flex.double(value1)).coefficient()
         result.setdefault(key1, OrderedDict())
@@ -89,9 +89,11 @@ class diff_class(OrderedDict):
     return outl
 
 # This is format class of AEV. It makes print of AEV more clearly.
-class format_class(dict):
+class format_class(OrderedDict):
   def __init__(self, length_of_radial=None):
+    OrderedDict.__init__(self)
     self.length_of_radial=length_of_radial
+
 
   def __repr__(self):
     outl = '...\n'
@@ -106,7 +108,8 @@ class format_class(dict):
 
 class AEV(object):
   """
-  Cite paper...
+  Smith J S, Isayev O, Roitberg A E. ANI-1: an extensible neural network potential with DFT
+  accuracy at force field computational cost[J]. Chemical science, 2017, 8(4): 3192-3203.
   """
   def __init__( self,
                 model,
@@ -147,7 +150,7 @@ class AEV(object):
 
   def generate_ca(self, length=5):
     """
-    ???
+    Geting all C-alpha atoms from an whole pdb file.
     """
     # faster with atom selection to CA re CJW update
     protain_fragments = generate_protein_fragments(
@@ -211,7 +214,7 @@ class AEV(object):
 
   def cutf(self, distance):
     """
-    Formula number ???, page number ???
+    Formula (2), page 3194
     """
     if distance <= self.cutoff:
       Fc = 0.5 * math.cos(math.pi * distance / self.cutoff) + 0.5
@@ -221,7 +224,7 @@ class AEV(object):
 
   def calculate(self, atom_list):
     """
-    Formula number ???, page number ???
+    Formula (3) and (4), page 3194
     """
     n = 4.0
     l = 8.0
