@@ -1086,7 +1086,7 @@ def run(args,
     if mam.model():
       mam.model().set_shift_cart(mam.map_manager().shift_cart())
 
-  if params.wrapping in [True, False]:
+  if params.wrapping in [True, False] and mam.map_manager().is_full_size():
     mam.map_manager().set_wrapping(params.wrapping)
     if params.wrapping and params.check_wrapping and (
        not mam.map_manager().is_consistent_with_wrapping()):
@@ -1206,7 +1206,7 @@ def run(args,
        d_min = maptbx.d_min_from_map(map_data = mam.map_manager().map_data(),
          unit_cell = mam.map_manager().crystal_symmetry().unit_cell())
      map_coeffs = mam.map_manager().map_as_fourier_coefficients(
-       high_resolution = d_min)
+       d_min = d_min)
      mtz_dataset = map_coeffs.as_mtz_dataset(column_root_label = 'F')
      mtz_object = mtz_dataset.mtz_object()
      dm.write_miller_array_file(mtz_object, filename = file_name)

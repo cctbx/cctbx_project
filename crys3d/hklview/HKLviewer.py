@@ -325,6 +325,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       if hasattr(self.webpage, "setInspectedPage"): # older versions of Qt5 hasn't got chromium debug kit
         self.webpage.setUrl("chrome://gpu")
         self.webpagedebugform = WebEngineDebugForm(self)
+        self.webpagedebugform.resize( self.window.size())
       else:
         self.webpage.setUrl("https://webglreport.com/")
     else:
@@ -355,7 +356,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getOpenFileName(self.window,
             "Open a reflection file", "",
-            "All Files (*);;MTZ Files (*.mtz);;CIF (*.cif)", "", options)
+            "MTZ Files (*.mtz);;HKL Files (*.hkl);;CIF (*.cif);;SCA Files (*.sca);;All Files (*)", "", options)
     if fileName:
       #self.HKLnameedit.setText(fileName)
       self.window.setWindowTitle("HKL-viewer: " + fileName)
@@ -462,6 +463,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 item.setFlags(item.flags() ^ Qt.ItemIsSelectable )
                 self.binstable.setItem(row, col, item)
+            if self.bin_opacities:
+              self.update_table_opacities()
 
           if self.infodict.get("bin_opacities"):
             self.bin_opacities = self.infodict["bin_opacities"]
@@ -1268,10 +1271,17 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     # action taken
     for i,scenelabel in enumerate(self.scenearraylabels):
       if self.millerarraylabels[row] == scenelabel or self.millerarraylabels[row] + " + " in scenelabel:
-        #print(i, scenelabel)
-        myqa = QAction("Display %s data" %scenelabel, self.window, triggered=self.testaction)
-        myqa.setData((i, row))
-        self.millertablemenu.addAction(myqa)
+        if self.array_infotpls[i][6] != (None, None): # i.e. has sigmas
+          myqa = QAction("Display data of %s" %scenelabel, self.window, triggered=self.testaction)
+          myqa.setData((i, row))
+          self.millertablemenu.addAction(myqa)
+          myqa = QAction("Display sigmas of %s" %scenelabel, self.window, triggered=self.testaction)
+          myqa.setData((i + 1000, row)) # want to show the sigmas rather than the data if we add 1000
+          self.millertablemenu.addAction(myqa)
+        else:
+          myqa = QAction("Display %s" %scenelabel, self.window, triggered=self.testaction)
+          myqa.setData((i, row))
+          self.millertablemenu.addAction(myqa)
     myqa = QAction("Make new data as a function of this data...", self.window, triggered=self.testaction)
     myqa.setData( ("newdata_1", row ))
     self.millertablemenu.addAction(myqa)
@@ -1323,7 +1333,27 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def DisplayData(self, idx, row):
-    self.PhilToJsRender("NGL_HKLviewer.viewer.scene_id = %d" %idx)
+    # want to show the sigmas rather than the data if idx we add 1000
+    if (idx - 1000) >= 0:
+      idx = idx - 1000
+      philstr = """
+      NGL_HKLviewer.viewer
+      {
+        sigma_radius = True
+        sigma_color = True
+        scene_id = %d
+      }
+      """ %idx
+    else:
+      philstr = """
+      NGL_HKLviewer.viewer
+      {
+        sigma_radius = False
+        sigma_color = False
+        scene_id = %d
+      }
+      """ %idx
+    self.PhilToJsRender(philstr)
     if self.fileisvalid:
       self.functionTabWidget.setEnabled(True)
       self.expandAnomalouscheckbox.setEnabled(True)
@@ -1404,7 +1434,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def onSaveImageBtn(self):
-    self.PhilToJsRender('NGL_HKLviewer.save_image_name = "testimage.png" ')
+    self.PhilToJsRender('NGL_HKLviewer.save_image_name = "dummy.png" ')
+    # eventual file name prompted to us by Browser_download_requested()
 
 
   def onDrawReciprocUnitCellBoxClick(self):
@@ -1515,14 +1546,14 @@ def run():
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
     if QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
-      QWebEngineViewFlags = ""
+      QWebEngineViewFlags = " --disable-web-security" # for chromium
       print("testing if WebGL works in QWebEngineView....")
       cmdargs = [ sys.executable, QtChromiumCheck.__file__ ]
       webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       procout, procerr = webglproc.communicate()
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       if not "WebGL works" in procout.decode():
-        QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist"
+        QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist "
     if "verbose" in sys.argv[1:]:
       print("using flags for QWebEngineView: " + QWebEngineViewFlags)
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += QWebEngineViewFlags

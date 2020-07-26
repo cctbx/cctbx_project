@@ -149,7 +149,7 @@ def exercise(file_name, out = sys.stdout):
   mam = dc.deep_copy()
   print (mam.map_id_list())
   mam.duplicate_map_manager('map_manager','new_map_manager')
-  mam.resolution_filter(map_id='new_map_manager',high_resolution=3.5,low_resolution=6)
+  mam.resolution_filter(map_id='new_map_manager',d_min=3.5,d_max=6)
 
   # Add a model
   mam = dc.deep_copy()
@@ -267,25 +267,25 @@ def exercise(file_name, out = sys.stdout):
   # Get map-map FSC
   dc=mam_dc.deep_copy()
   dc.duplicate_map_manager(map_id='map_manager',new_map_id='filtered')
-  dc.resolution_filter(high_resolution=3.5, low_resolution=6, map_id='filtered')
+  dc.resolution_filter(d_min=3.5, d_max=10, map_id='filtered')
   dc.create_mask_around_atoms()
   fsc_curve=dc.map_map_fsc(
       map_id_1='map_manager',map_id_2='filtered',mask_id='mask',
-      resolution=3,fsc_cutoff = 0.97)
-  assert approx_equal(fsc_curve.d_min, 3.43091149578)
-  assert approx_equal (fsc_curve.fsc.fsc[-1],0.942973996865)
+      resolution=3.5,fsc_cutoff = 0.97)
+  assert approx_equal(fsc_curve.d_min, 3.91175024213)
+  assert approx_equal (fsc_curve.fsc.fsc[-1],0.695137718033)
 
   # Get map-map CC
   dc=mam_dc.deep_copy()
   dc.duplicate_map_manager(map_id='map_manager',new_map_id='filtered')
-  dc.resolution_filter(high_resolution=3.5, low_resolution=6, map_id='filtered')
+  dc.resolution_filter(d_min=3.5, d_max=6, map_id='filtered')
   cc=dc.map_map_cc('map_manager','filtered')
-  assert approx_equal(cc , 0.955283969999)
+  assert approx_equal(cc , 0.681217537475)
 
   # Get map-map CC with mask
   dc=mam_dc.deep_copy()
   dc.duplicate_map_manager(map_id='map_manager',new_map_id='filtered')
-  dc.resolution_filter(high_resolution=3.5, low_resolution=6, map_id='filtered')
+  dc.resolution_filter(d_min=3.5, d_max=6, map_id='filtered')
   dc.create_mask_around_density(mask_id='filtered')
   cc=dc.map_map_cc('map_manager','filtered',mask_id='mask')
   assert approx_equal(cc , 0.629060115596)
@@ -394,7 +394,7 @@ def exercise(file_name, out = sys.stdout):
 
   # Convert a map to fourier coefficients
   mam=mam_dc.deep_copy()
-  ma=mam.map_as_fourier_coefficients(high_resolution=3)
+  ma=mam.map_as_fourier_coefficients(d_min=3)
   assert approx_equal(ma.d_min(),3.01655042414)
 
 

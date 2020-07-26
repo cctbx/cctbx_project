@@ -1475,11 +1475,13 @@ class manager(manager_mixin):
         refine_hd_scattering_method = "fast",
         bulk_solvent_and_scaling = True,
         remove_outliers = True,
+        apply_scale_k1_to_f_obs=True,
         show = False,
         verbose=None,
         log = None):
     self.alpha_beta_cache = None
-    self.apply_scale_k1_to_f_obs()
+    if(apply_scale_k1_to_f_obs):
+      self.apply_scale_k1_to_f_obs()
     from mmtbx.bulk_solvent import f_model_all_scales
     o = f_model_all_scales.run(
       fmodel               = self,
@@ -1527,16 +1529,14 @@ class manager(manager_mixin):
     self.russ = o.russ
     return o.russ
 
-  def apply_scale_k1_to_f_obs(self, threshold=10):
-    assert threshold > 0
-    k_total = self.k_isotropic()*self.k_anisotropic()
-    if(k_total.all_ne(1.0)): return
+  def apply_scale_k1_to_f_obs(self):
     r_start = self.r_work()
     fo = self.f_obs().data()
     fc = abs(self.f_model()).data()
     sc = flex.sum(fo*fc)/flex.sum(fc*fc)
-    if(sc == 0 or (abs(sc)<threshold and abs(sc)>1./threshold) or
-       self.twin_law is not None): return
+    if sc < 1.1 and sc > 0.9: return
+    if sc == 0: return
+    if self.twin_law is not None: return
     sigmas = self.f_obs().sigmas()
     if(sigmas is not None):
       sigmas = sigmas/sc
@@ -1713,6 +1713,10 @@ class manager(manager_mixin):
 
   def k_isotropic_work(self):
     return self.arrays.k_isotropic_work
+
+  def k_total(self):
+    return self.k_isotropic()*self.k_anisotropic()*self.scale_k1()*\
+      self.arrays.core.k_isotropic_exp
 
   def f_obs_work(self):
     return self.arrays.f_obs_work

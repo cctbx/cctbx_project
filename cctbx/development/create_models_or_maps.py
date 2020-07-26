@@ -11,16 +11,17 @@ from scitbx.array_family import flex
 
 '''
 
-def get_map_manager(map_data,unit_cell_dimensions=None,crystal_symmetry=None):
+def get_map_manager(map_data,wrapping,
+     unit_cell_dimensions=None,crystal_symmetry=None,):
   '''
       Get a minimal map_manager in SG p1 from any map_data and
       if unit_cell_dimensions.  Assume cell angles are 90,90,90
       Shift origin to (0,0,0)
   '''
   assert unit_cell_dimensions or crystal_symmetry
-
+  assert isinstance(wrapping, bool)
   from iotbx.map_manager import map_manager
-  map_data.shift_origin()
+  map_data = map_data.shift_origin()
 
   if not crystal_symmetry:
     from cctbx import crystal
@@ -29,7 +30,8 @@ def get_map_manager(map_data,unit_cell_dimensions=None,crystal_symmetry=None):
   mm=map_manager(map_data=map_data,
     unit_cell_grid = map_data.all(),
     unit_cell_crystal_symmetry = crystal_symmetry,
-    origin_shift_grid_units = (0,0,0))
+    origin_shift_grid_units = (0,0,0),
+    wrapping = wrapping)
   return mm
 
 def read_map_and_model(file_name_1,file_name_2):
@@ -212,7 +214,7 @@ def shake_model(model,shake=None,log=sys.stdout):
 def generate_map_coefficients(
       model=None,  # Required model
       output_map_coeffs_file_name=None,
-      high_resolution=3,
+      d_min=3,
       scattering_table='electron',
       log=sys.stdout):
   '''
@@ -221,7 +223,7 @@ def generate_map_coefficients(
     This function typically accessed and tested through map_model_manager
 
     Summary:  Supply model.manager object or parameters for generate_model,
-    high_resolution limit and optional scattering_table ("electron"
+    high_resolution limit of d_min and optional scattering_table ("electron"
     for cryo-EM, "n_gaussian" for x-ray) and optional
     output_map_coeffs_file_name.
 
@@ -233,7 +235,7 @@ def generate_map_coefficients(
 
       model (model.manager object, None):    model to use
       output_map_coeffs_file_name (string, None): output model file name
-      high_resolution (float, 3):   High-resolution limit for map coeffs (A)
+      d_min (float, 3):   High-resolution limit for map coeffs (A)
       scattering_table (choice, 'electron'): choice of scattering table
            All choices: wk1995 it1992 n_gaussian neutron electron
 
@@ -247,9 +249,11 @@ def generate_map_coefficients(
   from mmtbx.command_line.fmodel import master_phil
   fmodel_params=master_phil.extract()
 
+  assert model.crystal_symmetry() is not None # Need crystal_symmetry in model
+
   xrs=model.get_xray_structure()
 
-  fmodel_params.high_resolution=float(high_resolution)
+  fmodel_params.high_resolution=float(d_min)
   fmodel_params.scattering_table=scattering_table
 
   fmodel=fmodel_from_xray_structure(
@@ -261,16 +265,16 @@ def generate_map_coefficients(
     f_model.as_mtz_dataset(column_root_label='FWT').mtz_object().write(
       file_name=output_map_coeffs_file_name)
     print("Writing map coefficients to resolution of %s A to %s" %(
-       high_resolution,output_map_coeffs_file_name),file=log)
+       d_min,output_map_coeffs_file_name),file=log)
   else:
     print("Generated map coefficients to resolution of %s A " %(
-      high_resolution),file=log)
+      d_min),file=log)
   return f_model
 
 def generate_map(
       output_map_file_name=None,
       map_coeffs=None,  # Required
-      high_resolution=3,
+      d_min=3,
       gridding=None,
       wrapping=False,
       origin_shift_grid_units=None,
@@ -309,7 +313,7 @@ def generate_map(
 
       output_map_file_name (string, None):  Output map file (MRC/CCP4 format)
       map_coeffs (miller.array object, None) : map coefficients
-      high_resolution (float, 3):      high_resolution limit (A)
+      d_min(float, 3):      high_resolution limit (A)
       gridding (tuple (nx,ny,nz), None):  Gridding of map (optional)
       origin_shift_grid_units (tuple (ix,iy,iz), None):  Move location of
           origin of resulting map to (ix,iy,iz) before writing out
@@ -329,7 +333,7 @@ def generate_map(
       pass # already fine
     else:
       gridding=[]
-      for x in str(gridding).replace(",","").split():
+      for x in str(gridding).replace("(","").replace(")","").replace("[","").replace("]","").replace(",","").split():
         gridding.append(int(x))
   low_resolution_fourier_noise_fraction=float(
      low_resolution_fourier_noise_fraction)
@@ -342,9 +346,9 @@ def generate_map(
   if low_resolution_noise_cutoff:
      low_resolution_noise_cutoff=float(low_resolution_noise_cutoff)
 
-  if high_resolution:
-    high_resolution=float(high_resolution)
-    map_coeffs=map_coeffs.resolution_filter(d_min=high_resolution)
+  if d_min:
+    d_min=float(d_min)
+    map_coeffs=map_coeffs.resolution_filter(d_min=d_min)
 
   # Calculate a map from Fourier coefficients:
   from cctbx.maptbx.segment_and_split_map import get_map_from_map_coeffs
@@ -374,7 +378,7 @@ def generate_map(
         low_resolution_fourier_noise_fraction,
      high_resolution_fourier_noise_fraction=
         high_resolution_fourier_noise_fraction,
-     high_resolution=high_resolution,
+     d_min=d_min,
      low_resolution_noise_cutoff=low_resolution_noise_cutoff,
      log=log)
   else:
@@ -388,7 +392,7 @@ def generate_map(
         low_resolution_real_space_noise_fraction,
      high_resolution_real_space_noise_fraction=
         high_resolution_real_space_noise_fraction,
-     high_resolution=high_resolution,
+     d_min=d_min,
      low_resolution_noise_cutoff=low_resolution_noise_cutoff,
      log=log)
   else:
@@ -440,7 +444,7 @@ def get_real_space_noise_map(map_data=None,
      map_coeffs=None,
      low_resolution_real_space_noise_fraction=None,
      high_resolution_real_space_noise_fraction=None,
-     high_resolution=None,
+     d_min=None,
      low_resolution_noise_cutoff=None,
      log=sys.stdout):
 
@@ -500,7 +504,7 @@ def get_fourier_noise_map(n_real=None,
      map_coeffs=None,
      low_resolution_fourier_noise_fraction=None,
      high_resolution_fourier_noise_fraction=None,
-     high_resolution=None,
+     d_min=None,
      low_resolution_noise_cutoff=None,
      log=sys.stdout):
 

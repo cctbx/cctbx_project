@@ -996,6 +996,7 @@ class set(crystal.symmetry):
   def resolution_filter(self, d_max=0, d_min=0, negate=0):
     """
     Select a subset within the indicated resolution range.
+    Returns a new miller array (does not change existing array)
 
     :param d_max: Low-resolution cutoff
     :param d_min: High-resolution cutoff

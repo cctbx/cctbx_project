@@ -75,7 +75,8 @@ class create_mask_around_atoms(object):
       from iotbx.map_manager import map_manager as map_man
       self._map_manager = map_man(map_data = self._mask,
         unit_cell_crystal_symmetry = self.crystal_symmetry(),
-        unit_cell_grid = self._mask.all())
+        unit_cell_grid = self._mask.all(),
+        wrapping = wrapping)
 
     self._map_manager.set_is_mask(True)
 

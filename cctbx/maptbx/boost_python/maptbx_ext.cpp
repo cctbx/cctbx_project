@@ -550,6 +550,17 @@ namespace {
       ;
     }
 
+    {
+      typedef binary_filter w_t;
+      class_<w_t>("binary_filter", no_init)
+        .def(init<af::const_ref<double, af::flex_grid<> > const&,
+            float const& > ((
+              arg("map"),
+              arg("threshold"))))
+        .def("result",    &w_t::result)
+      ;
+    }
+
     def("copy",
       (af::versa<float, af::flex_grid<> >(*)
         (af::const_ref<float, af::flex_grid<> > const&,

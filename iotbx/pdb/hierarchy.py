@@ -7,6 +7,9 @@ from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s, null_out
 from libtbx import Auto, dict_with_default_0, group_args
 from iotbx.pdb import hy36encode, hy36decode, common_residue_names_get_class
+from iotbx.pdb import amino_acid_codes
+from iotbx.pdb.modified_aa_names import lookup as aa_3_as_1_mod
+from iotbx.pdb.modified_rna_dna_names import lookup as na_3_as_1_mod
 from iotbx.pdb.utils import all_chain_ids, all_label_asym_ids
 import iotbx.cif.model
 from cctbx import crystal
@@ -1352,7 +1355,6 @@ class _():
   def truncate_to_poly(self, atom_names_set=set()):
     pdb_atoms = self.atoms()
     pdb_atoms.reset_i_seq()
-    from iotbx.pdb import amino_acid_codes
     aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
     for model in self.models():
       for chain in model.chains():
@@ -1905,14 +1907,11 @@ class _():
     assert ((isinstance(substitute_unknown, str)) and
             (len(substitute_unknown) == 1))
     rn_seq, residue_classes = self.get_residue_names_and_classes()
-    n_aa = residue_classes["common_amino_acid"]
-    n_na = residue_classes["common_rna_dna"]
+    n_aa = residue_classes["common_amino_acid"] + residue_classes["modified_amino_acid"]
+    n_na = residue_classes["common_rna_dna"] + residue_classes["modified_rna_dna"]
     seq = []
     if (n_aa > n_na):
-      from iotbx.pdb import amino_acid_codes
       aa_3_as_1 = amino_acid_codes.one_letter_given_three_letter
-      aa_3_as_1_mod = \
-        amino_acid_codes.one_letter_given_three_letter_modified_aa
       for rn in rn_seq:
         if (rn in aa_3_as_1_mod):
           seq.append(aa_3_as_1_mod.get(rn, substitute_unknown))
@@ -1920,6 +1919,8 @@ class _():
           seq.append(aa_3_as_1.get(rn, substitute_unknown))
     elif (n_na != 0):
       for rn in rn_seq:
+        if rn in na_3_as_1_mod:
+          rn = na_3_as_1_mod.get(rn, "N")
         seq.append({
           "A": "A",
           "C": "C",
@@ -2237,14 +2238,11 @@ class _():
     assert ((isinstance(substitute_unknown, str)) and
             (len(substitute_unknown) == 1))
     rn_seq, residue_classes = self.get_residue_names_and_classes()
-    n_aa = residue_classes["common_amino_acid"]
-    n_na = residue_classes["common_rna_dna"]
+    n_aa = residue_classes["common_amino_acid"] + residue_classes["modified_amino_acid"]
+    n_na = residue_classes["common_rna_dna"] + residue_classes["modified_rna_dna"]
     seq = []
     if (n_aa > n_na):
-      from iotbx.pdb import amino_acid_codes
       aa_3_as_1 = amino_acid_codes.one_letter_given_three_letter
-      aa_3_as_1_mod = \
-        amino_acid_codes.one_letter_given_three_letter_modified_aa
       for rn in rn_seq:
         if (rn in aa_3_as_1_mod):
           seq.append(aa_3_as_1_mod.get(rn, substitute_unknown))
@@ -2252,6 +2250,8 @@ class _():
           seq.append(aa_3_as_1.get(rn, substitute_unknown))
     elif (n_na != 0):
       for rn in rn_seq:
+        if rn in na_3_as_1_mod:
+          rn = na_3_as_1_mod.get(rn, "N")
         seq.append({
           "A": "A",
           "C": "C",

@@ -11,10 +11,6 @@ import sys
 from functools import cmp_to_key
 from past.builtins import cmp
 from six.moves import range
-if (sys.version_info[2] >= 6):
-  import warnings
-  warnings.simplefilter('ignore', DeprecationWarning)
-  warnings.simplefilter('ignore', UserWarning) # for matplotlib 1.5.1
 
 # explicitly set locale for matplotlib 2.0.0, otherwise, on macOS,
 # locale.getpreferredencoding(do_setlocale=False) returns an empty string

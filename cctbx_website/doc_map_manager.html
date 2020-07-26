@@ -145,16 +145,16 @@ class map_manager(iotbx.mrcfile.map_reader, iotbx.mrcfile.write_ccp4_map)<br>
 … (more text)<br>
 |  Methods defined here:<br>
 …<br>
- |  fourier_coefficients_as_map(self, map_coeffs=None, high_resolution=None, log=&lt;open file '&lt;stdout&gt;', mode 'w'&gt;)<br>
+ |  fourier_coefficients_as_map_manager(self, map_coeffs=None, d_min=None, log=&lt;open file '&lt;stdout&gt;', mode 'w'&gt;)<br>
  |      Convert Fourier coefficients into to a real-space map with gridding<br>
  |      matching this existing map_manager. Optional resolution cutoff of<br>
- |      high_resolution.<br>
+ |      d_min.<br>
 …<br>
- |  map_as_fourier_coefficients(self, high_resolution=None, resolution_factor=0.333, box=False, log=&lt;open file '&lt;stdout&gt;', mode 'w'&gt;)<br>
- |      Convert a map to Fourier coefficients to a resolution of high_resolution.
+ |  map_as_fourier_coefficients(self, d_min =None, resolution_factor=0.333, box=False, log=&lt;open file '&lt;stdout&gt;', mode 'w'&gt;)<br>
+ |      Convert a map to Fourier coefficients to a resolution of dmin.
 </samp></p></div>
 
-<p>The help function can be used to see what parameter you might want to use for a particular method. In the help message above, for example, the method <code>map_as_fourier_coefficients()</code> has a parameter listed as “high_resolution=None”.  That means that there is a parameter called high_resolution and its default value is “None”, or not defined. We’ll be setting that parameter later. This method also has a parameter called “resolution_factor” and it has a value of 0.333 (we won’t be setting that parameter here).</p>
+<p>The help function can be used to see what parameter you might want to use for a particular method. In the help message above, for example, the method <code>map_as_fourier_coefficients()</code> has a parameter listed as “d_min=None”.  That means that there is a parameter called d_min and its default value is “None”, or not defined. We’ll be setting that parameter later. This method also has a parameter called “resolution_factor” and it has a value of 0.333 (we won’t be setting that parameter here).</p>
 
 <p>You can get information on just one specific method with the help function too:</p>
 
@@ -294,7 +294,7 @@ mm = dm.get_real_map(map_file)                 #   Deliver map_manager object wi
 <p>Now let’s convert the real-space map to its Fourier equivalent:</p>
 
 <pre class="codeDL"><code>map_coeffs = mm.map_as_fourier_coefficients(  # map represented by Fourier coefficients
-     high_resolution = 3)
+     d_min = 3)
 </code></pre>
 
 <p>The key parameter is the high_resolution limit of 3 Angstroms. This tells the <code>map_as_fourier_coefficients</code> method to include high-frequency components up to 3 Angstroms.</p>
@@ -343,14 +343,13 @@ dm.write_miller_array_file(mtz_object, filename="map_coeffs_low_res.mtz") #write
 
 <p>A Fourier representation of a map (Fourier coefficients such as map_coeffs_low_res) can be converted back into a real-space map.  The map_manager mm has a tool that we can use for this calculation:</p>
 
-<pre class="codeDL"><code>map_data_low_res = mm.fourier_coefficients_as_map(    # convert to real space
+<pre class="codeDL"><code>mm_low_res = mm.fourier_coefficients_as_map_manager(    # convert to real space
      map_coeffs=map_coeffs_low_res)
 </code></pre>
 
-<p>We have just created a new map map_data_low_res that is a low-resolution version of our original map. In effect, we have smoothed our map by Fourier inversion, truncation of high-frequency terms, and conversion back to a map. We can write out our low-resolution map:</p>
+<p>We have just created a new map mm_low_res that is a low-resolution version of our original map_manager. In effect, we have smoothed our map by Fourier inversion, truncation of high-frequency terms, and conversion back to a map. We can write out our low-resolution map:</p>
 
-<pre class="codeDL"><code>mm_lowres=mm.customized_copy(map_data=map_data_low_res)    #  new map_manager with data from map_data_low_res
-dm.write_real_map_file(mm_lowres,filename="map_low_res.mrc", overwrite=True) # write map
+<pre class="codeDL"><code>dm.write_real_map_file(mm_low_res,filename="map_low_res.mrc", overwrite=True) # write map
 </code></pre>
 
 <p>If you have software such as Coot or ChimeraX on your computer you can look at the maps in map.mrc and map_low_res.mrc and compare them and you will see that map.mrc shows much more fine detail than map_low_res.mrc.</p>

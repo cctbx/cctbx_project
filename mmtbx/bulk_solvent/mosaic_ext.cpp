@@ -35,10 +35,11 @@ namespace {
 
    def("alg4",
       (af::shared<double>(*)
-        (boost::python::list   const& F,
-         af::const_ref<double> const& f_obs,
-         int                   const& max_cycles,
-         double                const& auto_converge_eps
+        (boost::python::list                  const& F,
+         af::const_ref<double>                const& f_obs,
+         af::const_ref<std::complex<double> > const& phase_source,
+         int                                  const& max_cycles,
+         double                               const& auto_converge_eps
          )) alg4);
    ;
 

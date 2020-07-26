@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from operator import itemgetter
 import iotbx.phil
 import iotbx.pdb
 import iotbx.mrcfile
@@ -2413,6 +2414,7 @@ class ncs_group_object:
     if not ncs_related_regions: ncs_related_regions = []
     if not self_and_ncs_related_regions: self_and_ncs_related_regions = []
     if not map_files_written: map_files_written = []
+    if not max_cell_dim: max_cell_dim = 0.
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
 
@@ -3114,7 +3116,7 @@ def get_ncs_from_map(params = None,
   if not results_list:
     return None, None, None
 
-  results_list.sort()
+  results_list.sort(key=itemgetter(0))
   results_list.reverse()
 
   # Rescore top n_rescore
@@ -3135,7 +3137,7 @@ def get_ncs_from_map(params = None,
         print("symmetry:", symmetry, " no score", ncs_obj.max_operators(), file = out)
       else:
         rescore_list.append([score, cc_avg, ncs_obj, symmetry])
-    rescore_list.sort()
+    rescore_list.sort(key=itemgetter(0))
     rescore_list.reverse()
     results_list = rescore_list
   if len(results_list) == 1:
@@ -3608,7 +3610,7 @@ def find_helical_symmetry(params = None,
           new_helical_rot_deg, new_helical_trans_z_angstrom, ncs_score, ncs_cc), file = out)
       score_list.append(
        [ncs_score, ncs_cc, new_helical_rot_deg, new_helical_trans_z_angstrom])
-    score_list.sort()
+    score_list.sort(key=itemgetter(0))
     score_list.reverse()
     done = False
     for ncs_score, ncs_cc, helical_rot_deg, helical_trans_z_angstrom in \
@@ -4003,7 +4005,7 @@ def get_helical_trans_z_angstrom(params = None,
   sort_list = []
   for d, value in zip(d_list, value_list):
     sort_list.append([value, d])
-  sort_list.sort()
+  sort_list.sort(key=itemgetter(0))
   sort_list.reverse()
   likely_z_translations = []
   dis_min = params.crystal_info.resolution/4
@@ -4847,6 +4849,7 @@ def get_params(args, map_data = None, crystal_symmetry = None,
         params.crystal_info.sequence = open(params.input_files.seq_file).read()
     print("Read sequence from %s" %(params.input_files.seq_file), file = out)
 
+
   if not params.crystal_info.resolution and (
      params.map_modification.b_iso is not None or \
       params.map_modification.auto_sharpen
@@ -4873,7 +4876,9 @@ def get_params(args, map_data = None, crystal_symmetry = None,
   if (params.map_modification.residual_target == 'adjusted_sa' or
      params.map_modification.sharpening_target == 'adjusted_sa') and \
      (params.map_modification.box_in_auto_sharpen or
-       params.map_modification.density_select_in_auto_sharpen):
+       params.map_modification.density_select_in_auto_sharpen) and (
+      params.map_modification.auto_sharpen):
+
     print("Checking to make sure we can use adjusted_sa as target...",
         end = ' ', file = out)
     try:
@@ -5876,7 +5881,7 @@ def get_co(map_data = None, threshold = None, wrapping = None):
   rr = rr[1:]
   if rr:
     z = zip(regions, rr)
-    sorted_by_volume = sorted(z, key = lambda x: x[0], reverse = True)
+    sorted_by_volume = sorted(z, key=itemgetter(0), reverse = True)
   else:
     sorted_by_volume = []
   sorted_by_volume = [(regions_0, rr_0)]+sorted_by_volume
@@ -6421,7 +6426,7 @@ def remove_bad_regions(params = None,
   out = sys.stdout):
 
   worst_list = []
-  for id in duplicate_dict.keys():
+  for id in list(duplicate_dict.keys()):
     fract = duplicate_dict[id]/edited_volume_list[id-1]
     if duplicate_dict[id] and fract >= params.segmentation.max_overlap_fraction:
       worst_list.append([fract, id])
@@ -6462,7 +6467,7 @@ def sort_by_ncs_overlap(matches, equiv_dict_ncs_copy_dict_id):
     for id1 in matches:
       key, n = top_key(equiv_dict_ncs_copy_dict_id[id1]) # Take top ncs_copy
       sort_list.append([n, id1])
-    sort_list.sort()
+    sort_list.sort(key=itemgetter(0))
     sort_list.reverse()
     key_list = []
     for n, id1 in sort_list:
@@ -8818,7 +8823,11 @@ def get_adjusted_path_length(
     crystal_symmetry = None,
     resolution = None,
     out = sys.stdout):
-  from phenix.autosol.trace_and_build import trace_and_build
+  try:
+    from phenix.autosol.trace_and_build import trace_and_build
+  except Exception as e: # Not available
+    return 0
+
   from phenix.programs.trace_and_build import master_phil_str
   import iotbx.phil
   tnb_params = iotbx.phil.parse(master_phil_str).extract()
@@ -9171,6 +9180,19 @@ def set_up_si(var_dict = None, crystal_symmetry = None,
        solvent_fraction = get_solvent_fraction_from_molecular_mass(
         crystal_symmetry = crystal_symmetry, molecular_mass = molecular_mass,
         out = out)
+
+    # Test to see if we can use adjusted_path_length as target
+    if local_params.map_modification.sharpening_target == \
+            'adjusted_path_length':
+      print(
+       "Checking to make sure we can use 'adjusted_path_length'as target...",
+          end = ' ', file = out)
+      try:
+        from phenix.autosol.trace_and_build import trace_and_build
+      except Exception as e:
+        raise Sorry("Please set sharpening target to something other than "+
+          "adjusted_path_length (not available)")
+      print("OK", file = out)
 
 
 
@@ -10785,7 +10807,7 @@ def run_auto_sharpen(
     sort_list = []
     for result in results_list:
       sort_list.append([result.id, result])
-    sort_list.sort()
+    sort_list.sort(key=itemgetter(0))
     for id, result in sort_list:
       local_si = result.local_si
 
@@ -11093,7 +11115,7 @@ def run_auto_sharpen(
       sort_list = []
       for result in results_list:
         sort_list.append([result.id, result])
-      sort_list.sort()
+      sort_list.sort(key=itemgetter(0))
       for id, result in sort_list:
         local_si = result.local_si
         local_map_and_b = result.local_map_and_b

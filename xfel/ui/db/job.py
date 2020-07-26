@@ -621,7 +621,7 @@ class ScalingJob(Job):
       f.write("input.experiments_suffix=%s\n"%expt_suffix)
       f.write("input.reflections_suffix=%s\n"%refl_suffix)
       f.write("output.output_dir=%s\n"%output_path)
-      f.write("output.prefix=%s\n"%self.dataset.name)
+      f.write("output.prefix=%s_%d\n"%(self.task.type, self.task.id))
       f.write(self.task.parameters)
 
     self.write_submit_phil(submit_phil_path, target_phil_path)
@@ -696,7 +696,10 @@ class _job(object):
 
   def __eq__(self, other):
     ret = True
-    for subitem_name in ['trial', 'rungroup', 'run', 'task', 'dataset']:
+    check = ['trial', 'rungroup', 'run', 'task']
+    if getattr(self, 'task') and self.task.scope == 'global':
+      check.append('dataset')
+    for subitem_name in check:
       subitem = getattr(self, subitem_name)
       other_subitem_id = getattr(other, subitem_name + '_id')
       if subitem is None:
@@ -789,7 +792,7 @@ def submit_all_jobs(app):
         if task.type == 'indexing':
           job = _job(trial, rungroup, run)
         else:
-          job = _job(trial, rungroup, run, task, dataset)
+          job = _job(trial, rungroup, run, task)
         try:
           submitted_job = submitted_jobs[submitted_jobs.index(job)]
         except ValueError:
@@ -820,9 +823,8 @@ def submit_all_jobs(app):
                                  rungroup_id = rungroup.id,
                                  run_id = run.id,
                                  task_id = task.id,
-                                 dataset_id = dataset.id,
                                  status = "SUBMITTED")
-        j.trial = job.trial; j.rungroup = job.rungroup; j.run = job.run; j.task = job.task; j.dataset = dataset
+        j.trial = job.trial; j.rungroup = job.rungroup; j.run = job.run; j.task = job.task
         try:
           j.submission_id = j.submit(previous_job)
         except Exception as e:

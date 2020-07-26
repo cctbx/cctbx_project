@@ -160,9 +160,9 @@ class MillerArrayTableModel(QAbstractTableModel):
     """
     self.layoutAboutToBeChanged.emit()
     if order == Qt.AscendingOrder:
-      print(self.columnheaderdata[col] + " sort AscendingOrder")
+      #print(self.columnheaderdata[col] + " sort AscendingOrder")
       self._data = sorted(self._data, key= lambda data: self.minvals[col] if math.isnan(data[col]) else data[col])
     if order == Qt.DescendingOrder:
-      print(self.columnheaderdata[col] + " sort DescendingOrder")
+      #print(self.columnheaderdata[col] + " sort DescendingOrder")
       self._data = sorted(self._data, key= lambda data: self.minvals[col] if math.isnan(data[col]) else data[col], reverse=True)
     self.layoutChanged.emit()

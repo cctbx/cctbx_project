@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import to_str, null_out
+from libtbx import group_args
 from libtbx import group_args, Auto
 from libtbx.test_utils import approx_equal
 import sys
@@ -7,6 +8,7 @@ import io
 from cctbx import miller
 from iotbx.mrcfile import map_reader, write_ccp4_map
 from scitbx.array_family import flex
+from scitbx.matrix import col
 from cctbx import maptbx
 from cctbx import miller
 import mmtbx.ncs.ncs
@@ -937,6 +939,102 @@ class map_manager(map_reader, write_ccp4_map):
            1))
     return box.map_manager()
 
+
+  def cc_to_other_map_manager(self, other_map_manager):
+    assert self.is_similar(other_map_manager)
+
+    return flex.linear_correlation(self.map_data().as_1d(),
+     other_map_manager.map_data().as_1d()).coefficient()
+
+  def density_at_sites_cart(self, sites_cart):
+    '''
+    Return flex.double list of density values corresponding to sites (cartesian
+     coordinates in A)
+    '''
+    assert isinstance(sites_cart, flex.vec3_double)
+
+    from cctbx.maptbx import real_space_target_simple_per_site
+    return real_space_target_simple_per_site(
+      unit_cell = self.crystal_symmetry().unit_cell(),
+      density_map = self.map_data(),
+      sites_cart = sites_cart)
+
+  def get_density_along_line(self,
+      start_site = None,
+      end_site = None,
+      n_along_line = 10,
+      include_ends = True):
+
+    '''
+      Return group_args object with density values and coordinates
+      along a line segment from start_site to end_site
+      (cartesian coordinates in A) with n_along_line sampling points.
+      Optionally include/exclude ends.
+    '''
+    along_sites = flex.vec3_double()
+    if include_ends:
+      start = 0
+      end = n_along_line+1
+    else:
+      start = 1
+      end = n_along_line
+
+    for i in range(start, end):
+      weight = (i/n_along_line)
+      along_line_site = col(start_site)*weight+col(end_site)*(1-weight)
+      along_sites.append(along_line_site)
+    along_density_values = self.density_at_sites_cart(sites_cart = along_sites)
+    return group_args(
+     along_density_values = along_density_values,
+       along_sites = along_sites)
+
+
+  def resolution_filter(self, d_min = None, d_max = None):
+    '''
+      High- or low-pass filter the map in map_manager.
+      Changes and overwrites contents of this map_manager.
+      Remove all components with resolution < d_min or > d_max
+      Either d_min or d_max or both can be None.
+      To make a low_pass filter with cutoff at 3 A, set d_min=3
+      To make a high_pass filter with cutoff at 2 A, set d_max=2
+
+    '''
+    map_coeffs = self.map_as_fourier_coefficients(d_min = d_min,
+      d_max = d_max)
+    mm = self.fourier_coefficients_as_map_manager( map_coeffs=map_coeffs)
+    self.set_map_data(map_data = mm.map_data())  # replace map data
+
+
+  def gaussian_filter(self, smoothing_radius):
+    '''
+      Gaussian blur the map in map_manager with given smoothing radius.
+      Changes and overwrites contents of this map_manager.
+    '''
+    assert smoothing_radius is not None
+
+    map_data = self.map_data()
+    from cctbx.maptbx import smooth_map
+    smoothed_map_data = smooth_map(
+        map              = map_data,
+        crystal_symmetry = self.crystal_symmetry(),
+        rad_smooth       = smoothing_radius)
+    self.set_map_data(map_data = smoothed_map_data)  # replace map data
+
+  def binary_filter(self, threshold = 0.5):
+    '''
+      Apply a binary filter to the map (value at pixel i,j,k=1 if average
+      of all 27 pixels within 1 of this one is > threshold, otherwise 0)
+      Changes and overwrites contents of this map_manager.
+    '''
+
+    assert self.origin_is_zero()
+
+    map_data=self.map_data()
+
+    from cctbx.maptbx import binary_filter
+    bf=binary_filter(map_data,threshold).result()
+    self.set_map_data(map_data = bf)  # replace map data
+
   def deep_copy(self):
     '''
       Return a deep copy of this map_manager object
@@ -1451,18 +1549,20 @@ class map_manager(map_reader, write_ccp4_map):
       self._warning_message = "No map symmetry found; ncs_cc cutoff of %s" %(
         min_ncs_cc)
 
-  def map_as_fourier_coefficients(self, high_resolution = None,
-     low_resolution = None):
+  def map_as_fourier_coefficients(self, d_min = None,
+     d_max = None):
     '''
-       Convert a map to Fourier coefficients to a resolution of high_resolution,
-       if high_resolution is provided, otherwise box full of map coefficients
+       Convert a map to Fourier coefficients to a resolution of d_min,
+       if d_min is provided, otherwise box full of map coefficients
        will be created.
+
+       Filter results with low resolution of d_max if provided
 
        NOTE: Fourier coefficients are relative the working origin (not
        original origin).  A map calculated from the Fourier coefficients will
        superimpose on the working (current map) without origin shifts.
 
-       This method and fourier_coefficients_as_map interconvert map_data and
+       This method and fourier_coefficients_as_map_manager interconvert map_data and
        map_coefficients without changin origin.  Both are intended for use
        with map_data that has an origin at (0, 0, 0).
     '''
@@ -1472,15 +1572,17 @@ class map_manager(map_reader, write_ccp4_map):
       crystal_symmetry = self.crystal_symmetry(),
       include_000      = True,
       map              = self.map_data(),
-      d_min            = high_resolution)
-    if low_resolution is not None:
-      ma.resolution_filter(d_min = high_resolution, d_max = low_resolution)
+      d_min            = d_min )
+    if d_max is not None:
+      ma=ma.resolution_filter(d_min = d_min, d_max = d_max)
+      # NOTE: miller array resolution_filter produces a new array.
+      # Methods in map_manager that are _filter() change the existing array.
     return ma
 
-  def fourier_coefficients_as_map(self, map_coeffs):
+  def fourier_coefficients_as_map_manager(self, map_coeffs):
     '''
        Convert Fourier coefficients into to a real-space map with gridding
-       matching this existing map_manager.
+        matching this existing map_manager.  Returns a map_manager object.
 
        Requires that this map_manager has origin at (0, 0, 0) (i.e.,
        shift_origin() has been applied if necessary)
@@ -1494,10 +1596,12 @@ class map_manager(map_reader, write_ccp4_map):
     assert isinstance(map_coeffs.data(), flex.complex_double)
     assert self.map_data() and self.map_data().origin() == (0, 0, 0)
 
-    return maptbx.map_coefficients_to_map(
-      map_coeffs       = map_coeffs,
-      crystal_symmetry = self.crystal_symmetry(),
-      n_real           = self.map_data().all())
+    return self.customized_copy(
+      map_data=maptbx.map_coefficients_to_map(
+        map_coeffs       = map_coeffs,
+        crystal_symmetry = self.crystal_symmetry(),
+        n_real           = self.map_data().all())
+      )
 
 def subtract_tuples_int(t1, t2):
   return tuple(flex.int(t1)-flex.int(t2))

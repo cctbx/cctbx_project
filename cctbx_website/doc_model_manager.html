@@ -198,26 +198,21 @@ model = dm.get_model(model_filename)               #   Deliver model object with
 
 map_coeffs = generate_map_coefficients(  # generate map coeffs from model
       model=model,                       # Required model
-      high_resolution=3,                 # Specify resolution
+      d_min=3,                           # Specify resolution
       scattering_table='electron')       # Specify scattering table
 </code></pre>
 
-<p>Note that we have to set the high-resolution limit (3 Angstroms) and tell the tool whether we are working with cryo-EM (scattering_table='electron') or X-ray (scattering_table='n_gaussian'). We can use these map coefficients to calculate a map, or use them directly for some other purpose. Let’s make a map using these map coefficients:</p>
+<p>Note that we have to set the high-resolution limit (d_min = 3 Angstroms) and tell the tool whether we are working with cryo-EM (scattering_table='electron') or X-ray (scattering_table='n_gaussian'). We can use these map coefficients to calculate a map, or use them directly for some other purpose. Let’s make a map using these map coefficients:</p>
 
 <pre class="codeDL"><code>from cctbx.development.create_models_or_maps import get_map_from_map_coeffs   #  import the tool
 map_data = get_map_from_map_coeffs(map_coeffs = map_coeffs)   #  create map from map coeffs
 </code></pre>
 
-<p>Here the array map_data corresponds to the map data (not a map_manager object). Note that this map will be on a grid that is automatically chosen. If you want to specify the grid, you can use the keyword <code>n_grid</code>, for example n_real=(36,27,95).</p>
+<p>Here the array map_data corresponds to the map data (not a map_manager object). Note that this map will be on a grid that is automatically chosen. If you want to specify the grid, you can use the keyword <code>n_real</code>, for example n_real=(36,27,95).</p>
 
-<p>If you already have a map_manager object mm and you want this map to match that map_manager, you can use the map_manager object to calculate map_data:</p>
+<p>If you already have a map_manager object mm and you want this map to match that map_manager, you can use the map_manager object to calculate map_data and put it in a new map_manager matching the current one:</p>
 
-<pre class="codeDL"><code># map_data = mm.fourier_coefficients_as_map(map_coeffs)   # generate map from map coeffs
-</code></pre>
-
-<p>In this case it is also easy to create a new map_manager containing this map data (see the map_manager documentation):</p>
-
-<pre class="codeDL"><code># mm_model_map = mm.customized_copy(map_data = map_data)
+<pre class="codeDL"><code># mm_model_map= mm.fourier_coefficients_as_map_manager(map_coeffs)   # generate map from map coeffs
 </code></pre>
 
 

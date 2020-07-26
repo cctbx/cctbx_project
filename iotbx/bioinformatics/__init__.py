@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from operator import itemgetter
 from libtbx.utils import Abort
 from libtbx import group_args
 from six.moves import cStringIO as StringIO
@@ -1976,7 +1977,7 @@ def chain_type_and_residues(text=None,chain_type=None,likely_chain_types=None):
     'DNA':"gact",
     'RNA':"gacu",}
   if chain_type not in [None,'None']:
-    for key in letter_dict.keys():
+    for key in list(letter_dict.keys()):
       if key != chain_type:
         del letter_dict[key]
   # Get all allowed letters
@@ -2009,7 +2010,7 @@ def chain_type_and_residues(text=None,chain_type=None,likely_chain_types=None):
   score_list=[]
   for chain_type in letter_dict.keys():
     score_list.append([count_dict[chain_type],chain_type])
-  score_list.sort()
+  score_list.sort(key=itemgetter(0))
   score_list.reverse()
   ok_list=[]
   best_score=score_list[0][0]
@@ -2034,7 +2035,7 @@ def chain_type_and_residues(text=None,chain_type=None,likely_chain_types=None):
   score_list=[]
   for chain_type in ok_list:
     score_list.append([non_allowed_count_dict[chain_type],chain_type])
-  score_list.sort()
+  score_list.sort(key=itemgetter(0))
   ok_list=[]
   best_score=score_list[0][0]
   for score,chain_type in score_list:
@@ -2050,7 +2051,7 @@ def chain_type_and_residues(text=None,chain_type=None,likely_chain_types=None):
   score_list=[]
   for chain_type in ok_list:
     score_list.append([len(letter_dict[chain_type]),chain_type])
-  score_list.sort()
+  score_list.sort(key=itemgetter(0))
   ok_list=[]
   best_score=score_list[0][0]
   for score,chain_type in score_list:

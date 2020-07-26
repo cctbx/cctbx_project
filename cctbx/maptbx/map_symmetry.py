@@ -113,6 +113,17 @@ class map_symmetry:
     self.score=ncs_score
 
   def find_ncs_from_density(self):
+
+    # First test to make sure the function is available
+    try:
+      from phenix.command_line.find_ncs_from_density import \
+       find_ncs_from_density as find_ncs
+    except Exception as e:
+      ncs_cc=None
+      ncs_object=None
+      ncs_score=None
+      return ncs_object,ncs_cc,ncs_score
+
     print ("Finding symmetry in map by search for matching density",
        file=self.log)
     # Write out mtz file to search in...
@@ -127,8 +138,6 @@ class map_symmetry:
     args=["%s" %(map_coeffs_file),"map_operators_inside_unit_cell=True"]
     if self.params.crystal_info.resolution:
       args.append("resolution=%s" %(self.params.crystal_info.resolution))
-    from phenix.command_line.find_ncs_from_density import \
-       find_ncs_from_density as find_ncs
     find_ncs_from_density=find_ncs( args,out=self.log)
     if hasattr(find_ncs_from_density,'ncs_object') and \
         find_ncs_from_density.ncs_object:
