@@ -1468,12 +1468,7 @@ class _():
   def flip_symmetric_amino_acids(self, flip_symmetric_amino_acids=True):
     import time
     from cctbx import geometry_restraints
-    print('flip_symmetric_amino_acids',flip_symmetric_amino_acids)
-    if flip_symmetric_amino_acids is None: return
-    if flip_symmetric_amino_acids is True: flip_symmetric_amino_acids=['all']
-    if 'None' in flip_symmetric_amino_acids: return
-    print('flip_symmetric_amino_acids',flip_symmetric_amino_acids)
-    assert flip_symmetric_amino_acids==['ARG']
+    if flip_symmetric_amino_acids is [] or flip_symmetric_amino_acids is None: return
     data = {
       "ARG" : {"dihedral" : ["CD", "NE", "CZ", "NH1"],
                "value"    : [0, 1],
@@ -1523,9 +1518,6 @@ class _():
     info = ""
     for rg in self.residue_groups():
       for ag in rg.atom_groups():
-        if 'all' in flip_symmetric_amino_acids: pass
-        else:
-          if ag.resname not in flip_symmetric_amino_acids: continue
         flip_data = data.get(ag.resname, None)
         if flip_data is None: continue
         assert not ('dihedral' in flip_data and 'chiral' in flip_data)
@@ -1592,6 +1584,7 @@ class _():
             info += ' "%s" <-> "%s"' % (atom1.name.strip(),
                                         atom2.name.strip())
           info += '\n'
+    if not info: info = '    None\n'
     info += '  Time to flip residues: %0.2fs\n' % (time.time()-t0)
     return info
 
