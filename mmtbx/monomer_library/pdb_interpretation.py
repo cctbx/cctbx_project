@@ -174,13 +174,13 @@ master_params_str = """\
   sort_atoms = True
     .type = bool
     .short_caption = Sort atoms in input pdb so they would be in the same order
+  flip_symmetric_amino_acids = True
+    .type = bool
+    .short_caption = Flip symmetric amino acids to conform to IUPAC convention
+    .style = noauto
   superpose_ideal_ligand = *None all %(ideal_ligands_str)s
     .type = choice(multi=True)
     .short_caption = Substitute correctly oriented SF4 metal cluster
-  flip_symmetric_amino_acids = *all %(symmetric_amino_acids_str)s
-    .type = choice(multi=True)
-    .short_caption = Flip symmetric amino acids to conform to IUPAC convention
-    .style = noauto
   disable_uc_volume_vs_n_atoms_check = False
     .type = bool
     .short_caption = Disable check of unit cell volume to be compatible with the \
