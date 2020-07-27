@@ -5923,8 +5923,12 @@ class process(object):
       hierarchy                   = new_h,
       params                      = self.all_chain_proxies.params.ncs_search,
       log                         = self.log)
-    print("Found NCS groups:", file=self.log)
-    print(ncs_obj.print_ncs_phil_param(), file=self.log)
+    if(self.log is not None):
+      print("Found NCS groups:", file=self.log)
+      if(len(ncs_obj.get_ncs_restraints_group_list())>0):
+        print(ncs_obj.print_ncs_phil_param(), file=self.log)
+      else:
+        print("  found none.", file=self.log)
     return ncs_obj
 
 def run(
