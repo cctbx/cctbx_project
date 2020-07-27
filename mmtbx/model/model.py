@@ -284,10 +284,9 @@ class manager(object):
         # self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy()
         self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy(
             self._pdb_interpretation_params.pdb_interpretation.sort_atoms)
-    # Perform the flipping of symmertric amino acids - swaps the coordinates
-    print(self._pdb_interpretation_params.pdb_interpretation.flip_symmetric_amino_acids)
-    self._pdb_hierarchy.flip_symmetric_amino_acids(
-      flip_symmetric_amino_acids=self._pdb_interpretation_params.pdb_interpretation.flip_symmetric_amino_acids)
+        # Perform the flipping of symmertric amino acids - swaps the coordinates
+        self._pdb_hierarchy.flip_symmetric_amino_acids(
+          flip_symmetric_amino_acids=self._pdb_interpretation_params.pdb_interpretation.flip_symmetric_amino_acids)
     # Move this away from constructor
     self._update_atom_selection_cache()
     self._update_pdb_atoms()
