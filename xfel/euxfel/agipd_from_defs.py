@@ -36,6 +36,7 @@ for elem in root.getiterator():
 with open(path_to_phil) as phil:
     phil_scope = parse(phil.read())
 
+
 class NxType(Enum):
     """ Enumeration for elements withing NeXus schema """
     group = auto()
@@ -80,7 +81,7 @@ class Agipd2nexus:
         self.field_rules = {}
         self.additional_elements = {}
         self.params_from_phil(args)
-        self.output_file_name = os.path.splitext(self.params.cxi_file)[0] + '_master.h5'
+        self.output_file_name = os.path.splitext(self.params.cxi_file)[0] + '_master_from_defs.h5'
         self.stat = Counter()
 
     def params_from_phil(self, args):
@@ -263,8 +264,8 @@ class Ruleset(Agipd2nexus):
                  'transformation_type': 'rotation', 'units': 'degrees', 'vector': (0., 0., -1.),
                  'offset': self.hierarchy.local_origin, 'offset_units': 'mm'},
             'entry/instrument/beam/incident_wavelength':
-                NexusElement(full_path='entry/instrument/beam/incident_wavelength',
-                             value=self.params.wavelength, nxtype=NxType.field, dtype='f'),
+                NexusElement(full_path='entry/instrument/beam/incident_wavelength', value=self.params.wavelength,
+                             nxtype=NxType.field, dtype='f', attrs={'units': 'angstrom'}),
             'entry/source/name': NexusElement(full_path='entry/source/name', value=self.params.nexus_details.source_name,
                                               nxtype=NxType.field, dtype='s',
                                               attrs={'short_name': self.params.nexus_details.source_short_name}),
