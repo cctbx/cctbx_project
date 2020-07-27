@@ -1075,7 +1075,7 @@ void diffBragg::add_diffBragg_spots()
                                 }
 
                                 //F_cell = Fhkl[h0-h_min][k0-k_min][l0-l_min];
-                                if (complex_miller)
+                                if (complex_miller) {
                                   double qm = 1.0; // Occupancy of Fe in LS49 is 1.0
                                   double Bm = 26.58; // B-factor from refinement 
                                   double S_2 = 1.e-20*(scattering[0]*scattering[0]+scattering[1]*scattering[1]+scattering[2]*scattering[2]);
@@ -1099,6 +1099,7 @@ void diffBragg::add_diffBragg_spots()
  				  //std::cout <<"  percentage fdp/F" << F_Fe_imag << F_cell2 << std::endl;;
                                   
                                   F_cell = sqrt(F_cell*F_cell + F_cell2*F_cell2);
+                                }
 
                                 /* now we have the structure factor for this pixel */
 
