@@ -18,7 +18,8 @@ phil_scope = parse("""
 class PanelGroup(dict):
     def __init__(self):
         self.center = None
-        self.detector_distance = None
+        self.detector_distance = None       # in mm
+        self.incident_wavelength = None     # in angstrom
         self.local_origin = None
         self.local_fast = col((1, 0, 0))
         self.local_slow = col((0, 1, 0))
@@ -108,7 +109,9 @@ def read_geom(geom_file: str) -> PanelGroup:
     hierarchy = PanelGroup()
 
     if 'clen' in geometry:
-        hierarchy.detector_distance = float(geometry['clen']) * 1000
+        hierarchy.detector_distance = float(geometry.pop('clen')) * 1000
+    if 'photon_energy' in geometry:     # h * c / e = 1.23984198E-6 [SI] -- eV to angstrom which itself is [1E-10 SI]
+        hierarchy.incident_wavelength = 1.23984198E4 / float(geometry.pop('photon_energy'))
 
     def add_node(panel, parent, parents, depth):
         if depth == len(parents):

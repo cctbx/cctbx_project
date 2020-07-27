@@ -231,6 +231,13 @@ class Ruleset(Agipd2nexus):
             else:
                 raise Sorry("Detector distance is undefined! You should set it either in `.phil` or in `.geom` files, "
                             "or pass as a command line argument: `detector_distance=123.45` (in mm)")
+        if self.params.wavelength == None:
+            # try to take from the geometry file:
+            if self.hierarchy.incident_wavelength:
+                self.params.wavelength = self.hierarchy.incident_wavelength
+            else:
+                raise Sorry("Incident wavelength is undefined! You should set it either in `.phil` or in `.geom` files, "
+                            "or pass as a command line argument: `wavelength=1.2345` (in angstrom)")
         self.n_quads = 4
         self.n_modules = 4
         self.n_asics = 8
@@ -255,6 +262,9 @@ class Ruleset(Agipd2nexus):
                  'equipment_component': 'detector_arm',
                  'transformation_type': 'rotation', 'units': 'degrees', 'vector': (0., 0., -1.),
                  'offset': self.hierarchy.local_origin, 'offset_units': 'mm'},
+            'entry/instrument/beam/incident_wavelength':
+                NexusElement(full_path='entry/instrument/beam/incident_wavelength',
+                             value=self.params.wavelength, nxtype=NxType.field, dtype='f'),
             'entry/source/name': NexusElement(full_path='entry/source/name', value=self.params.nexus_details.source_name,
                                               nxtype=NxType.field, dtype='s',
                                               attrs={'short_name': self.params.nexus_details.source_short_name}),
