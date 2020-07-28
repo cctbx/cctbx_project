@@ -1584,8 +1584,8 @@ class _():
               setattr(atom2, attr, tmp)
             info += ' "%s" <-> "%s"' % (atom1.name.strip(),
                                         atom2.name.strip())
-            print(atom1.format_atom_record())
-            print(atom2.format_atom_record())
+            # print(atom1.format_atom_record())
+            # print(atom2.format_atom_record())
             # assert 0
           info += '\n'
     if not info: info = '    None\n'
