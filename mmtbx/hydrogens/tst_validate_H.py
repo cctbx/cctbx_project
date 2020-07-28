@@ -407,10 +407,10 @@ ATOM      3  C   TYR A 139      12.362   7.771   6.227  1.00 10.00           C
 ATOM      4  O   TYR A 139      12.955   8.272   7.181  1.00 10.00           O
 ATOM      5  CB  TYR A 139      10.540   6.098   6.617  1.00 10.00           C
 ATOM      6  CG  TYR A 139       9.063   5.805   6.749  1.00 10.00           C
-ATOM      7  CD1 TYR A 139       8.316   5.391   5.654  1.00 10.00           C
-ATOM      8  CD2 TYR A 139       8.414   5.943   7.969  1.00 10.00           C
-ATOM      9  CE1 TYR A 139       6.966   5.122   5.770  1.00 10.00           C
-ATOM     10  CE2 TYR A 139       7.064   5.676   8.095  1.00 10.00           C
+ATOM      8  CD1 TYR A 139       8.316   5.391   5.654  1.00 10.00           C
+ATOM      7  CD2 TYR A 139       8.414   5.943   7.969  1.00 10.00           C
+ATOM     10  CE1 TYR A 139       6.966   5.122   5.770  1.00 10.00           C
+ATOM      9  CE2 TYR A 139       7.064   5.676   8.095  1.00 10.00           C
 ATOM     11  CZ  TYR A 139       6.345   5.266   6.993  1.00 10.00           C
 ATOM     12  OH  TYR A 139       5.000   5.000   7.113  1.00 10.00           O
 ATOM     13  HA ATYR A 139      10.443   8.186   7.059  0.50 10.00           H
@@ -674,6 +674,7 @@ def get_results_from_validate_H(neutron_distances, pdb_str):
     input_string = grand_master_phil_str, process_includes = True)
   pi_params = pdb_interpretation_phil.extract()
   pi_params.pdb_interpretation.use_neutron_distances = neutron_distances
+  pi_params.pdb_interpretation.flip_symmetric_amino_acids=False
 
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
@@ -969,6 +970,7 @@ def exercise6():
 # Bond CD2--HD2, observed: 1.209, delta from target: -0.129
 # ------------------------------------------------------------------------------
 def exercise7():
+  print('exercise7')
   results = get_results_from_validate_H(
     neutron_distances = True,
     pdb_str = pdb_str7)
@@ -981,6 +983,8 @@ def exercise7():
     [' A 139 ATYR  HD2', 1.209, 1.08 ] ]
 
   for item, answer in zip(outliers_bonds, outliers_bond_answer):
+    print(item)
+    print(answer)
     assert (item[0].strip() == answer[0].strip()) # pdb_str
     assert (item[5] is not None)                  # make sure xyz exist
     assert approx_equal(item[2],answer[1], 1.e-2) # bond length model

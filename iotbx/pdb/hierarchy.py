@@ -1586,6 +1586,7 @@ class _():
                                         atom2.name.strip())
             print(atom1.format_atom_record())
             print(atom2.format_atom_record())
+            # assert 0
           info += '\n'
     if not info: info = '    None\n'
     info += '  Time to flip residues: %0.2fs\n' % (time.time()-t0)
