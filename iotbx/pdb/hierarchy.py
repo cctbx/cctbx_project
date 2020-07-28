@@ -1578,11 +1578,14 @@ class _():
               break
             flips_stored.append([atom1,atom2])
           for atom1, atom2 in flips_stored:
-            tmp = atom1.xyz
-            atom1.xyz = atom2.xyz
-            atom2.xyz = tmp
+            for attr in ['xyz', 'b']:
+              tmp = getattr(atom1, attr)
+              setattr(atom1, attr, getattr(atom2, attr))
+              setattr(atom2, attr, tmp)
             info += ' "%s" <-> "%s"' % (atom1.name.strip(),
                                         atom2.name.strip())
+            print(atom1.format_atom_record())
+            print(atom2.format_atom_record())
           info += '\n'
     if not info: info = '    None\n'
     info += '  Time to flip residues: %0.2fs\n' % (time.time()-t0)
