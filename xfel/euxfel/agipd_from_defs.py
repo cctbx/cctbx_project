@@ -221,7 +221,7 @@ class Agipd2nexus:
             elif elem.tag == 'field':
                 if 'minOccurs' in elem.keys() and elem.attrib['minOccurs'] == '0':
                     logger.debug(f">>> FIELD {elem.attrib['name']} is optional")
-                    # optional field, skip
+                    # an optional field, skip
                     continue
                 self.create_field(f, elem)
             elif elem.tag == 'attribute':
@@ -234,10 +234,8 @@ class Agipd2nexus:
                 field = elem
                 setattr(field, 'full_path', path)
                 field.push(f)
+                logger.info(f"Additional elem was added to {path}")
                 self.stat['fields from add'] += 1
-
-        #     elif elem.type == NxType.attribute:
-        #         self.create_attribute(f, elem)
 
 
 class Ruleset(Agipd2nexus):
@@ -288,6 +286,7 @@ class Ruleset(Agipd2nexus):
             'entry/instrument/beam/incident_wavelength':
                 NexusElement(full_path='entry/instrument/beam/incident_wavelength', value=self.params.wavelength,
                              nxtype=NxType.field, dtype='f', attrs={'units': 'angstrom'}),
+            'entry/instrument/ELE_D0/data': h5py.SoftLink('/entry/data/data'),
             'entry/sample/depends_on': np.str('.'),
             'entry/source/name': NexusElement(full_path='entry/source/name', value=self.params.nexus_details.source_name,
                                               nxtype=NxType.field, dtype='s',
@@ -297,11 +296,23 @@ class Ruleset(Agipd2nexus):
             'entry/instrument/AGIPD/group_type':
                 NexusElement(full_path='entry/instrument/AGIPD/group_type',
                              nxtype=NxType.field, value=[1, 2], dtype='i'),
-            # 'entry/instrument/AGIPD/transformations/AXIS_D0':
-            #     {'value': 0.0, 'depends_on': 'AXIS_RAIL', 'equipment': 'detector',
-            #      'equipment_component': 'detector_arm',
-            #      'transformation_type': 'rotation', 'units': 'degrees', 'vector': (0., 0., -1.),
-            #      'offset': self.hierarchy.local_origin, 'offset_units': 'mm'},
+            'entry/instrument/ELE_D0/transformations/AXIS_D0':
+                NexusElement(full_path='entry/instrument/ELE_D0/transformations/AXIS_D0',
+                             value=0.0, dtype='f', nxtype=NxType.field,
+                             attrs={'depends_on': 'AXIS_RAIL', 'equipment': 'detector',
+                                    'equipment_component': 'detector_arm',
+                                    'offset': self.hierarchy.local_origin, 'offset_units': 'mm',
+                                    'transformation_type': 'rotation', 'units': 'degrees',
+                                    'vector': (0., 0., -1.),
+                                    }),
+            'entry/instrument/ELE_D0/transformations/AXIS_RAIL':
+                NexusElement(full_path='entry/instrument/ELE_D0/transformations/AXIS_RAIL',
+                             value=self.params.detector_distance, dtype='f', nxtype=NxType.field,
+                             attrs={'depends_on': '.', 'equipment': 'detector',
+                                    'equipment_component': 'detector_arm',
+                                    'transformation_type': 'translation', 'units': 'mm',
+                                    'vector': (0., 0., 1.),
+                                    }),
         }
         self.global_attrs = {
             'NXclass': 'NXroot',
