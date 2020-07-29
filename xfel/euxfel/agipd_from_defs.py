@@ -96,11 +96,33 @@ class Agipd2nexus:
                     raise Sorry("Unrecognized argument: %s" % arg)
         self.params = phil_scope.fetch(sources=user_phil).extract()
 
-    @staticmethod
-    def get_root_path(tree_elem: etree) -> str:
+    def translate_groups(self, h5_path: str):
+        local_path = h5_path[:]
+        for NXname, local_name in self.group_rules.items():
+            local_path = local_path.replace(NXname, local_name['names'])
+        return local_path
+
+    def get_root_path(self, tree_elem: etree) -> str:
         """ return a NeXus path (e.g. `entry/instrument/detector_group`) from an lxml tree element """
-        l = list(x.attrib['type'].replace('NX', '') for x in tree_elem.iterancestors())
-        return '/'.join(l[:-1][::-1])
+        ancestor_list = list(x.attrib['type'] for x in tree_elem.iterancestors())
+        for j, elem in enumerate(ancestor_list):
+            for NXname, local_name in self.group_rules.items():
+                # check if we use our own names
+                if 'names' not in local_name:
+                    continue
+                if len(local_name['names']) > 1:
+                    raise NotImplementedError("Check all possibilities")
+                if elem == NXname:
+                    ancestor_list[j] = local_name['names'][0]
+        root_path = '/'.join(ancestor_list[:-1][::-1])  # concatenate values in the reverse order
+        return root_path.replace('NX', '')
+
+    @staticmethod
+    def get_nxdlPath(h5_path: h5py.Group) -> str:
+        par = h5_path.parent.attrs.get('NX_class')
+        if par == b'NXentry':
+            return par.decode()
+        return f'{Agipd2nexus.get_nxdlPath(h5_path.parent)}/{par.decode()}'
 
     def create_group(self, h5file: h5py.File, lx_elem: objectify.ObjectifiedElement, lx_parent: str) -> None:
         """
@@ -119,13 +141,12 @@ class Agipd2nexus:
             return
         logger.debug(f"GROUP: {lx_parent} --> {NXname}")
         root_path = self.get_root_path(lx_elem)
-        full_path = '/'.join([root_path, name])
         parent = h5file[root_path]
-        if full_path in self.group_rules:
-            for n in self.group_rules[full_path]['names']:
+        if NXname in self.group_rules and 'names' in self.group_rules[NXname]:
+            for n in self.group_rules[NXname]['names']:
                 new_group = parent.create_group(n)
                 new_group.attrs['NX_class'] = NXname
-                logger.debug(f"group {n} was created")
+                logger.debug(f"group {n} was created from a rule")
                 self.stat['groups from rules'] += 1
         else:
             new_group = parent.create_group(name)
@@ -192,7 +213,8 @@ class Agipd2nexus:
                 continue
 
             if elem.tag == 'group':
-                if 'minOccurs' in elem.keys() and elem.attrib['minOccurs'] == '0':
+                if 'minOccurs' in elem.keys() and elem.attrib['minOccurs'] == '0' \
+                        and elem.attrib['type'] not in self.group_rules:
                     # print(f">>> GROUP {elem.attrib['type']} is optional")
                     continue
                 self.create_group(f, elem, parent)
@@ -243,6 +265,11 @@ class Ruleset(Agipd2nexus):
         self.n_modules = 4
         self.n_asics = 8
 
+        self.group_rules = {
+            'NXdetector': {'names': ['ELE_D0']},
+            'NXdetector_group': {'names': ['AGIPD']},
+            'NXtransformations': {},
+        }
         self.field_rules = {
             # 'entry/definition': np.str(f"NXmx:{get_git_revision_hash()}"),      # TODO: _create_scalar?
             'entry/definition': np.str(f"NXmx"),      # TODO: _create_scalar?
@@ -254,31 +281,27 @@ class Ruleset(Agipd2nexus):
             # 'entry/end_time_estimated': np.str(self.params.nexus_details.end_time_estimated),
             'entry/end_time_estimated': np.str('2000-10-10T01:00:00.000Z'),
             'entry/data/data': h5py.ExternalLink(self.params.cxi_file, "entry_1/data_1/data"),
-            'entry/instrument/detector_group/group_index': np.array(list(range(1, 3)), dtype='i'), # XXX: why 16, not 2?
-            'entry/instrument/detector_group/group_names': np.array([np.string_('AGIPD'), np.string_('ELE_D0')],
+            'entry/instrument/AGIPD/group_index': np.array(list(range(1, 3)), dtype='i'), # XXX: why 16, not 2?
+            'entry/instrument/AGIPD/group_names': np.array([np.string_('AGIPD'), np.string_('ELE_D0')],
                                                                     dtype='S12'),
-            'entry/instrument/detector_group/group_parent': np.array([-1, 1], dtype='i'),
-            'entry/instrument/detector_group/trtansformations/AXIS_D0':
-                {'value': 0.0, 'depends_on': 'AXIS_RAIL', 'equipment': 'detector',
-                 'equipment_component': 'detector_arm',
-                 'transformation_type': 'rotation', 'units': 'degrees', 'vector': (0., 0., -1.),
-                 'offset': self.hierarchy.local_origin, 'offset_units': 'mm'},
+            'entry/instrument/AGIPD/group_parent': np.array([-1, 1], dtype='i'),
             'entry/instrument/beam/incident_wavelength':
                 NexusElement(full_path='entry/instrument/beam/incident_wavelength', value=self.params.wavelength,
                              nxtype=NxType.field, dtype='f', attrs={'units': 'angstrom'}),
+            'entry/sample/depends_on': np.str('.'),
             'entry/source/name': NexusElement(full_path='entry/source/name', value=self.params.nexus_details.source_name,
                                               nxtype=NxType.field, dtype='s',
                                               attrs={'short_name': self.params.nexus_details.source_short_name}),
         }
-        self.group_rules = {
-            'NXdetector': {'names': ['ELE_D0']},
-            'NXdetector_group': {'names': ['AGIPD']},
-
-        }
         self.additional_elements = {
-            'entry/instrument/detector_group/group_type':
-                NexusElement(full_path='entry/instrument/detector_group/group_type',
-                             nxtype=NxType.field, value=[1, 2], dtype='i')
+            'entry/instrument/AGIPD/group_type':
+                NexusElement(full_path='entry/instrument/AGIPD/group_type',
+                             nxtype=NxType.field, value=[1, 2], dtype='i'),
+            # 'entry/instrument/AGIPD/transformations/AXIS_D0':
+            #     {'value': 0.0, 'depends_on': 'AXIS_RAIL', 'equipment': 'detector',
+            #      'equipment_component': 'detector_arm',
+            #      'transformation_type': 'rotation', 'units': 'degrees', 'vector': (0., 0., -1.),
+            #      'offset': self.hierarchy.local_origin, 'offset_units': 'mm'},
         }
         self.global_attrs = {
             'NXclass': 'NXroot',
@@ -287,11 +310,12 @@ class Ruleset(Agipd2nexus):
             'HDF5_Version': '1.2.3'
         }
 
+
 if __name__ == '__main__':
   nexus_helper = Ruleset(sys.argv[1:])
   nexus_helper.create_nexus_master_file()
   logger.info("Stats:\n\t" + "\n\t".join(f"{k}: {v}" for k, v in nexus_helper.stat.items()))
   os.system(f'h5glance {nexus_helper.output_file_name} --attrs')
   # os.system(f"{path_to_cnxvalidate} -l definitions ~/xfel/examples/swissFEL_example/spb/{nexus_helper.output_file_name}"
-  #           f" | grep source")
+  #           f" | grep sample")
   os.system(f"{path_to_cnxvalidate} -l definitions ~/xfel/examples/swissFEL_example/spb/{nexus_helper.output_file_name}")
