@@ -29,6 +29,8 @@ import os
 import re
 import libtbx.load_env
 
+import mmtbx.chemical_components as chemical_components
+
 #{{{ get_summary
 def get_summary():
   summary = """
@@ -132,13 +134,76 @@ def build_hash(remediated_out, custom_dict, user_dict):
 #}}}
 #------------------------------------------------------------------
 
+def justify_atom_names(atom_name):
+  if (len(atom_name) == 4):
+    return atom_name
+  if (len(atom_name) == 3):
+    if (atom_name == "H3T"):
+      return atom_name.ljust(4)
+    if (atom_name[1] == "H"):
+      return atom_name.ljust(4)
+    return atom_name.rjust(4)
+  else:
+    return atom_name.center(4)
+
+
+def build_hash_from_chem_components(residue_name, convert_to_new=True):
+  atom_exch = {}
+  na_bases = ["  A", "  C", "  T", "  G", "  I", "  U"]
+  residues_to_test = [ residue_name ]
+  if (residue_name in na_bases):
+    residues_to_test.append(" D"+residue_name[2])
+  for residue in residues_to_test:
+    if (chemical_components.is_code(residue)):
+      #sys.stderr.write(residue_name+" is in chem_components\n")
+
+      new_atom_names = chemical_components.get_atom_names(residue, alternate=False)
+      old_atom_names = chemical_components.get_atom_names(residue, alternate=True)
+      if (len(new_atom_names) == len(old_atom_names)):
+        for new_atom, old_atom in zip(new_atom_names, old_atom_names):
+          if not (new_atom == old_atom):
+            justified_old_atom = justify_atom_names(old_atom)
+            new_entry = justify_atom_names(new_atom)+" "+residue_name
+            old_entry = justified_old_atom+" "+residue_name
+            if convert_to_new:
+              atom_exch[old_entry] = new_entry
+              #check for 1HA, 2HA, etc, which don't seem to always be in chem components as possible old names
+              if re.match(r' H[A-Z]\d', justified_old_atom):
+                digit_first_hydrogen = justified_old_atom[3]+justified_old_atom[1:3]+" "
+                atom_exch[digit_first_hydrogen+" "+residue_name] = new_entry
+            else:
+              atom_exch[new_entry] = old_entry
+  return atom_exch
+
+
+def remediate_atomic_line(line, atom_exch):
+  #--make any left-justified residue names right-justified------------------
+  if re.match(r'.{17}([a-zA-Z0-9])  ',line):
+    line = re.sub(r'\A(.{17})(.)\s\s',r'\g<1>  \g<2>',line)
+  elif re.match(r'.{17}([a-zA-Z0-9][a-zA-Z0-9]) ',line):
+    line = re.sub(r'\A(.{17})(..)\s',r'\g<1> \g<2>',line)
+  #-------------------------------------------------------------------------
+
+  #--pre-screen for CNS Xplor RNA base names and Coot RNA base names--------
+  if re.match(r'.{17}(GUA|ADE|CYT|THY|URI)',line):
+    line = re.sub(r'\A(.{17})(.)..',r'\g<1>  \g<2>',line)
+  elif re.match(r'.{17}(OIP| Ar| Gr| Cr| Ur)',line):
+    line = re.sub(r'\A(.{17}).(.).',r'\g<1>  \g<2>',line)
+  #-------------------------------------------------------------------------
+
+  entry = line[12:20]
+  clean_entry = entry[0:4] + " " + entry[5:8]
+  if clean_entry in atom_exch:
+    line = line.replace(clean_entry[0:4],atom_exch[clean_entry][0:4],1)
+  return line
+
 #{{{ remediate
 #----PDB routine---------------------------------------------------
 def remediate(filename, atom_exch, remediated_out, remark4, f=None):
   if f == None:
     f = sys.stdout
   previous = None
-  current = None
+  current = ""
   print_line = ""
   remark_flag = False
   remark_block = False
@@ -175,34 +240,18 @@ def remediate(filename, atom_exch, remediated_out, remark4, f=None):
       if remark_flag == False:
         print_line += remark4 + "\n"
         remark_flag = True
-      #--make any left-justified residue names right-justified------------------
-      if re.match(r'.{17}([a-zA-Z0-9])  ',line):
-        line = re.sub(r'\A(.{17})(.)\s\s',r'\g<1>  \g<2>',line)
-      elif re.match(r'.{17}([a-zA-Z0-9][a-zA-Z0-9]) ',line):
-        line = re.sub(r'\A(.{17})(..)\s',r'\g<1> \g<2>',line)
-      #-------------------------------------------------------------------------
-
-      #--pre-screen for CNS Xplor RNA base names and Coot RNA base names--------
-      if re.match(r'.{17}(GUA|ADE|CYT|THY|URI)',line):
-        line = re.sub(r'\A(.{17})(.)..',r'\g<1>  \g<2>',line)
-      elif re.match(r'.{17}(OIP| Ar| Gr| Cr| Ur)',line):
-        line = re.sub(r'\A(.{17}).(.).',r'\g<1>  \g<2>',line)
-      #-------------------------------------------------------------------------
-
-      entry = line[12:20]
       previous = current
       current = line[18:26]
-      clean_entry = entry[0:4] + " " + entry[5:8]
-      if clean_entry in atom_exch:
-        line = line.replace(clean_entry[0:4],atom_exch[clean_entry][0:4],1)
+      residue_name = line[17:20]
+      chem_comp_atom_exch = build_hash_from_chem_components(residue_name, remediated_out)
+      #sys.stderr.write(str(chem_comp_atom_exch)+"\n")
+      line = remediate_atomic_line(line, chem_comp_atom_exch)
     elif (remark_flag == False) and (remark_block == True): #deal with non-remark lines stuck in the top before main record types
       print_line += remark4 + "\n"
       remark_flag = True
-    if previous == None:
-      previous = current
     if previous == current:
       print_line += line + "\n"
-    elif previous != current:
+    elif previous != current: # appears to check an entire residue for dna residue names
       if re.search(r'^.{12}.\S..  .[ACTGIU]',print_line):
         if re.search(r'O2[\'|\*]   .',print_line) == None:
           DNA_base = previous[1]
@@ -220,36 +269,21 @@ def remediate(filename, atom_exch, remediated_out, remark4, f=None):
           if re.search('1H   '+res,print_line) or re.search('2H   '+res,print_line):
             print_line = re.sub(' HN2 '+res,'2H   '+res,print_line)
       print_line=print_line.rstrip("\n")
-      print(print_line, file=f)
+
+      if not (print_line == ""):
+        print(print_line, file=f)
       print_line = line + "\n"
-  pdb_file.close()
-
-  if re.search(r'^.{12}.\S..  .[ACTGIU]',print_line):
-    if re.search(r'O2[\'|\*]   .',print_line) == None:
-      DNA_base = previous[1]
-      if remediated_out == True:
-        print_line = re.sub(r'(?m)(^.{12}.\S..)   '+DNA_base,r'\g<1>  D'+DNA_base,print_line)
-        print_line = re.sub(r'(?m)(^TER.{15}) '+DNA_base+' ',r'\g<1>D'+DNA_base+' ',print_line)
-      else:
-        print_line = re.sub(r'(?m)(^.{12}.\S..)  D'+DNA_base,r'\g<1>   '+DNA_base,print_line)
-        print_line = re.sub(r'(?m)(^TER.{15})D'+DNA_base+' ',r'\g<1> '+DNA_base+' ',print_line)
-
-    if remediated_out == False:
-      m = aa_re.search(print_line)
-      if m:
-        res = m.group(1)
-        if re.search('1H   '+res,print_line) or re.search('2H   '+res,print_line):
-          print_line = re.sub(' HN2 '+res,'2H   '+res,print_line)
-
   print_line=print_line.rstrip("\n")
   print(print_line, file=f)
+  pdb_file.close()
+
 #}}}
 
 def remediator(params, log=None):
   if log == None:
     log = sys.stderr
   custom_dict = False
-  remedidated_out = True
+  remediated_out = True
   user_dict = ""
   file_name = params.file_name
   if params.version == "3.2":
