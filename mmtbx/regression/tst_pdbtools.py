@@ -15,17 +15,12 @@ from six.moves import cStringIO as StringIO
 from six.moves import zip
 from libtbx import easy_run
 
-from mmtbx import monomer_library
-params = monomer_library.pdb_interpretation.master_params.extract()
-params.flip_symmetric_amino_acids = False
-
 class xray_structure_plus(object):
   def __init__(self, file_name):
     log = StringIO()
     pdb_inp = iotbx.pdb.input(file_name=file_name)
     self.model = mmtbx.model.manager(
         model_input = pdb_inp,
-        pdb_interpretation_params = params,
         process_input = True,
         log = log)
     self.xray_structure = self.model.get_xray_structure()
