@@ -12,9 +12,10 @@ from lxml import etree, objectify
 import logging
 import numpy as np
 from datetime import datetime as dt
-from typing import Union, Any
+from typing import Union, Any, List
 from enum import Enum, auto
 from collections import Counter
+from itertools import product
 
 LOGGING_FORMAT = "%(levelname)s: %(message)s"
 logging.basicConfig(level=logging.INFO, format=LOGGING_FORMAT)
@@ -102,20 +103,41 @@ class Agipd2nexus:
             local_path = local_path.replace(NXname, local_name['names'])
         return local_path
 
-    def get_root_path(self, tree_elem: etree) -> str:
-        """ return a NeXus path (e.g. `entry/instrument/detector_group`) from an lxml tree element """
+    def get_root_path(self, tree_elem: etree) -> List[str]:
+        """ return a NeXus path (e.g. `entry/instrument/detector_group`) from an lxml tree element
+
+        The trickery is that we compare the path's elements with the group names which we want to rename
+        and substitute those path's elements accordingly.
+        And if for a certain element we need to create several groups, then paths get duplicated with those names:
+
+        Example:
+            we have `entry/instrument/detector_group` in the schema, and
+            `detector_group` are [`DET_1`, `DET_2`]. Then we've got two paths as the result:
+            [`entry/instrument/DET_1`, `entry/instrument/DET_2`]
+
+        """
         ancestor_list = list(x.attrib['type'] for x in tree_elem.iterancestors())
         for j, elem in enumerate(ancestor_list):
-            for NXname, local_name in self.group_rules.items():
+            # an `elem` might occur in the `group_rules` no more than once!
+            if elem in self.group_rules:
+                # for NXname, local_names in self.group_rules.items():
                 # check if we use our own names
-                if 'names' not in local_name:
+                if 'names' not in self.group_rules[elem]:
                     continue
-                if len(local_name['names']) > 1:
-                    raise NotImplementedError("Check all possibilities")
-                if elem == NXname:
-                    ancestor_list[j] = local_name['names'][0]
-        root_path = '/'.join(ancestor_list[:-1][::-1])  # concatenate values in the reverse order
-        return root_path.replace('NX', '')
+                local_names = self.group_rules[elem]['names']
+                if len(local_names) == 1:
+                    ancestor_list[j] = [local_names[0]]
+                else:
+                    ancestor_list[j] = []
+                    for local_name in local_names:
+                        # iterate through many identical groups
+                        ancestor_list[j] += [local_name]
+            else:
+                ancestor_list[j] = [elem]
+
+        ancestor_list = ancestor_list[:-1][::-1]  # drop the last element and reverse the order
+        root_path = ['/'.join(path).replace('NX', '') for path in product(*ancestor_list)]  # concatenate the values
+        return root_path
 
     @staticmethod
     def get_nxdlPath(h5_path: h5py.Group) -> str:
@@ -140,47 +162,49 @@ class Agipd2nexus:
             logger.warning(f'name {NXname} is not a correct NX-name')
             return
         logger.debug(f"GROUP: {lx_parent} --> {NXname}")
-        root_path = self.get_root_path(lx_elem)
-        parent = h5file[root_path]
-        if NXname in self.group_rules and 'names' in self.group_rules[NXname]:
-            for n in self.group_rules[NXname]['names']:
-                new_group = parent.create_group(n)
+        root_paths = self.get_root_path(lx_elem)
+        for root_path in root_paths:
+            parent = h5file[root_path]
+            if NXname in self.group_rules and 'names' in self.group_rules[NXname]:
+                for n in self.group_rules[NXname]['names']:
+                    new_group = parent.create_group(n)
+                    new_group.attrs['NX_class'] = NXname
+                    logger.debug(f"group {n} was created from a rule")
+                    self.stat['groups from rules'] += 1
+            else:
+                new_group = parent.create_group(name)
                 new_group.attrs['NX_class'] = NXname
-                logger.debug(f"group {n} was created from a rule")
-                self.stat['groups from rules'] += 1
-        else:
-            new_group = parent.create_group(name)
-            new_group.attrs['NX_class'] = NXname
-            logger.debug(f"group {name} was created")
-            self.stat['groups from defs'] += 1
+                logger.debug(f"group {name} was created")
+                self.stat['groups from defs'] += 1
 
     def create_field(self, h5file: h5py.File,
                      lx_elem: Union[objectify.ObjectifiedElement, dict]) -> None:
         NXname = lx_elem.attrib['name']
         name = NXname.replace('NX', '')
         if isinstance(lx_elem, objectify.ObjectifiedElement):
-            root_path = self.get_root_path(lx_elem)
-            full_path = '/'.join([root_path, name])
+            root_paths = self.get_root_path(lx_elem)
+            full_paths = ['/'.join([path, name]) for path in root_paths]
 
-        if full_path in self.field_rules:
-            logger.debug(f"Add {full_path} from a rule")
-            if isinstance(self.field_rules[full_path], dict):
-                vector = self.field_rules[full_path]
-                h5file[full_path] = np.array(vector.pop('value'), dtype='f')
-                for key, attribute in vector.items():
-                    h5file[full_path].attrs[key] = attribute
-            elif isinstance(self.field_rules[full_path], NexusElement):
-                self.field_rules[full_path].push(h5file)
+        for full_path in full_paths:
+            if full_path in self.field_rules:
+                logger.debug(f"Add {full_path} from a rule")
+                if isinstance(self.field_rules[full_path], dict):
+                    vector = self.field_rules[full_path]
+                    h5file[full_path] = np.array(vector.pop('value'), dtype='f')
+                    for key, attribute in vector.items():
+                        h5file[full_path].attrs[key] = attribute
+                elif isinstance(self.field_rules[full_path], NexusElement):
+                    self.field_rules[full_path].push(h5file)
+                else:
+                    h5file[full_path] = self.field_rules[full_path]
+                logger.debug(f"field {full_path} was added")
+                self.stat['fields from rules'] += 1
+    
             else:
-                h5file[full_path] = self.field_rules[full_path]
-            logger.debug(f"field {full_path} was added")
-            self.stat['fields from rules'] += 1
-
-        else:
-            logger.debug(f"Add {full_path} from definition")
-            field = NexusElement(full_path=full_path, value='XXX', nxtype=NxType.field, dtype='f')
-            field.push(h5file)
-            self.stat['fields from defs'] += 1
+                logger.debug(f"Add {full_path} from definition")
+                field = NexusElement(full_path=full_path, value='XXX', nxtype=NxType.field, dtype='f')
+                field.push(h5file)
+                self.stat['fields from defs'] += 1
 
     def create_attribute(self, h5file: h5py.File, elem):
         NXname = elem.attrib['name']
@@ -293,6 +317,7 @@ class Ruleset(Agipd2nexus):
             'NXdetector': {'names': ['ELE_D0']},
             'NXdetector_group': {'names': ['AGIPD']},
             'NXtransformations': {},
+            'NXdetector_module': {'names': ['DET_MODULE_1', 'DET_MODULE_2']}
         }
         array_name = 'ARRAY_D0'
         t_path = 'entry/instrument/ELE_D0/transformations/'
