@@ -9,6 +9,7 @@ from mmtbx.utils import run_reduce_with_timeout
 from libtbx.utils import Sorry
 from libtbx import easy_run
 import libtbx.load_env
+import libtbx.math_utils
 import iotbx.pdb
 import os
 import re
@@ -47,9 +48,7 @@ class clash(atoms):
              abs(self.overlap) ]
 
   def __cmp__(self, other) : # sort in descending order
-    if self.overlap < other.overlap: return -1
-    if self.overlap > other.overlap: return 1
-    return 0
+    return libtbx.math_utils.cmp(self.overlap, other.overlap)
 
 class clashscore(validation):
   __slots__ = validation.__slots__ + [
