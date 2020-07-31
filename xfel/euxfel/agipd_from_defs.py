@@ -317,7 +317,7 @@ class Ruleset(Agipd2nexus):
             'NXdetector': {'names': ['ELE_D0']},
             'NXdetector_group': {'names': ['AGIPD']},
             'NXtransformations': {},
-            'NXdetector_module': {'names': ['DET_MODULE_1', 'DET_MODULE_2']}
+            'NXdetector_module': {'names': []}  # 'names' will be populated below
         }
         array_name = 'ARRAY_D0'
         t_path = 'entry/instrument/ELE_D0/transformations/'
@@ -354,6 +354,10 @@ class Ruleset(Agipd2nexus):
                     a_elem = Transform(a_name, 0.0, attrs={'depends_on': m_name, 'equipment_component': 'detector_asic',
                                                            'offset': asic_vector})
                     det_dict[t_path + a_name] = a_elem
+                    det_module_name = array_name + f"Q{quad}M{module_num}A{asic_num}"
+                    # populate ``group_rules`` with detector modules
+                    self.group_rules['NXdetector_module']['names'] += [det_module_name]
+
         self.field_rules = {
             # 'entry/definition': np.str(f"NXmx:{get_git_revision_hash()}"),      # TODO: _create_scalar?
             'entry/definition': np.str(f"NXmx"),      # TODO: _create_scalar?
