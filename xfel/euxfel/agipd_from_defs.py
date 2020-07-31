@@ -32,7 +32,7 @@ for elem in root.getiterator():
     try:
         elem.tag = etree.QName(elem).localname
     except ValueError:
-        print(f"Error with {elem.tag}")
+        logger.warning(f"Error with {elem.tag}")
 
 with open(path_to_phil) as phil:
     phil_scope = parse(phil.read())
@@ -201,8 +201,8 @@ class Agipd2nexus:
                 self.stat['fields from rules'] += 1
     
             else:
-                logger.debug(f"Add {full_path} from definition")
-                field = NexusElement(full_path=full_path, value='XXX', nxtype=NxType.field, dtype='f')
+                logger.warning(f"Add {full_path} from definition as `7.7777777`")
+                field = NexusElement(full_path=full_path, value=7.7777777, nxtype=NxType.field, dtype='f')
                 field.push(h5file)
                 self.stat['fields from defs'] += 1
 
@@ -239,7 +239,6 @@ class Agipd2nexus:
             if elem.tag == 'group':
                 if 'minOccurs' in elem.keys() and elem.attrib['minOccurs'] == '0' \
                         and elem.attrib['type'] not in self.group_rules:
-                    # print(f">>> GROUP {elem.attrib['type']} is optional")
                     continue
                 self.create_group(f, elem, parent)
             elif elem.tag == 'field':
@@ -251,14 +250,13 @@ class Agipd2nexus:
             elif elem.tag == 'attribute':
                 if 'optional' in elem.keys() and elem.attrib['optional'] == 'true':
                     continue
-                logger.warning(f"Adding attr {elem.attrib['name']}")
-                # self.create_attribute(f, elem)
+                logger.debug(f"Adding attr {elem.attrib['name']}")
         for path, elem in self.additional_elements.items():
             if elem.type == NxType.field:
                 field = elem
                 setattr(field, 'full_path', path)
                 field.push(f)
-                logger.info(f"Additional elem was added to {path}")
+                logger.debug(f"Additional elem was added to {path}")
                 self.stat['fields from add'] += 1
 
 
@@ -269,14 +267,14 @@ class Ruleset(Agipd2nexus):
         Agipd2nexus.__init__(self, args)
 
         self.hierarchy = read_geom(self.params.geom_file)
-        if self.params.detector_distance == None:
+        if self.params.detector_distance is None:
             # try to take from the geometry file:
             if self.hierarchy.detector_distance:
                 self.params.detector_distance = self.hierarchy.detector_distance
             else:
                 raise Sorry("Detector distance is undefined! You should set it either in `.phil` or in `.geom` files, "
                             "or pass as a command line argument: `detector_distance=123.45` (in mm)")
-        if self.params.wavelength == None:
+        if self.params.wavelength is None:
             # try to take from the geometry file:
             if self.hierarchy.incident_wavelength:
                 self.params.wavelength = self.hierarchy.incident_wavelength
@@ -436,5 +434,5 @@ if __name__ == '__main__':
   logger.info("Stats:\n\t" + "\n\t".join(f"{k}: {v}" for k, v in nexus_helper.stat.items()))
   os.system(f'h5glance {nexus_helper.output_file_name} --attrs')
   # os.system(f"{path_to_cnxvalidate} -l definitions ~/xfel/examples/swissFEL_example/spb/{nexus_helper.output_file_name}"
-  #           f" | grep sample")
+  #           f" | grep distance")
   # os.system(f"{path_to_cnxvalidate} -l definitions ~/xfel/examples/swissFEL_example/spb/{nexus_helper.output_file_name}")
