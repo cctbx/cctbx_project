@@ -27,13 +27,13 @@ namespace sx_merging {
    */
   struct hkl_splitter_visitor : public boost::static_visitor<void> {
     dials::af::reflection_table &src;
-    typename dials::af::reflection_table::key_type key;
+    dials::af::reflection_table::key_type key;
     const std::map<miller_index_t, size_t> chunk_lookup;
     const std::vector<dials::af::reflection_table> tables;
     dials::af::shared<miller_index_t> src_hkls;
 
     hkl_splitter_visitor(dials::af::reflection_table &src_,
-                                   typename dials::af::reflection_table::key_type key_,
+                                   dials::af::reflection_table::key_type key_,
                                    const std::map<miller_index_t, size_t> &chunk_lookup_,
                                    const std::vector<dials::af::reflection_table> &tables_)
 
@@ -97,13 +97,13 @@ namespace sx_merging {
    */
   struct experiment_id_splitter_visitor : public boost::static_visitor<void> {
     dials::af::reflection_table &src;
-    typename dials::af::reflection_table::key_type key;
+    dials::af::reflection_table::key_type key;
     const std::map<std::string, size_t> chunk_lookup;
     const std::vector<dials::af::reflection_table> tables;
     dials::af::shared<std::string> expt_ids;
 
     experiment_id_splitter_visitor(dials::af::reflection_table &src_,
-                                   typename dials::af::reflection_table::key_type key_,
+                                   dials::af::reflection_table::key_type key_,
                                    const std::map<std::string, size_t> &chunk_lookup_,
                                    const std::vector<dials::af::reflection_table> &tables_)
 
