@@ -535,6 +535,7 @@ class EnsembleRefinementJob(Job):
     striping.stripe=False
     striping.dry_run=True
     striping.output_folder={}
+    reintegration.integration.lookup.mask={}
     mp.local.include_mp_in_command=False
     """.format(self.app.params.mp.queue if len(self.app.params.mp.queue) > 0 else None,
                self.app.params.mp.nproc,
@@ -547,6 +548,7 @@ class EnsembleRefinementJob(Job):
                self.run.run,
                target_phil_path,
                path,
+               self.rungroup.untrusted_pixel_mask_path,
                ).split()
 
     commands = Script(arguments).run()
