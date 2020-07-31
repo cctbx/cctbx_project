@@ -320,7 +320,8 @@ class Ruleset(Agipd2nexus):
             'NXdetector_module': {'names': []}  # 'names' will be populated below
         }
         array_name = 'ARRAY_D0'
-        t_path = 'entry/instrument/ELE_D0/transformations/'
+        det_path = 'entry/instrument/ELE_D0/'
+        t_path = det_path + 'transformations/'
 
         class Transform(NexusElement):
             def __init__(self, name: str, value: Any = 0.0, attrs: dict = None) -> None:
@@ -330,7 +331,9 @@ class Ruleset(Agipd2nexus):
                 NexusElement.__init__(self, full_path=t_path + name, value=value, nxtype=NxType.field, dtype='f',
                                       attrs={**default_attrs, **attrs})
 
-        det_dict = {}
+        det_field_rules = {}        # extends mandatory field rules
+        det_additional_rules = {}   # additional transformation elements (fields) for the detector
+
         for quad in range(self.n_quads):    # iterate quadrants
             q_key = f"q{quad}"
             q_name = f"AXIS_D0Q{quad}"
@@ -338,14 +341,14 @@ class Ruleset(Agipd2nexus):
 
             q_elem = Transform(q_name, 0.0, attrs={'depends_on': 'AXIS_D0', 'offset': quad_vector,
                                                    'equipment_component': 'detector_quad'})
-            det_dict[t_path + q_name] = q_elem
+            det_additional_rules[t_path + q_name] = q_elem
             for module_num in range(self.n_modules):    # iterate modules within a quadrant
                 m_key = f"p{(quad * self.n_modules) + module_num}"
                 m_name = f"AXIS_D0Q{quad}M{module_num}"
                 module_vector = self.hierarchy[q_key][m_key].local_origin.elems
                 m_elem = Transform(m_name, 0.0, attrs={'depends_on': q_name, 'equipment_component': 'detector_module',
                                                        'offset': module_vector})
-                det_dict[t_path + m_name] = m_elem
+                det_additional_rules[t_path + m_name] = m_elem
                 for asic_num in range(self.n_asics):    # iterate asics within a module
                     a_key = f"p{(quad * self.n_modules) + module_num}a{asic_num}"
                     a_name = f"AXIS_D0Q{quad}M{module_num}A{asic_num}"
@@ -353,10 +356,30 @@ class Ruleset(Agipd2nexus):
 
                     a_elem = Transform(a_name, 0.0, attrs={'depends_on': m_name, 'equipment_component': 'detector_asic',
                                                            'offset': asic_vector})
-                    det_dict[t_path + a_name] = a_elem
+                    det_additional_rules[t_path + a_name] = a_elem
                     det_module_name = array_name + f"Q{quad}M{module_num}A{asic_num}"
-                    # populate ``group_rules`` with detector modules
+                    # populate ``group_rules`` with detector modules:
                     self.group_rules['NXdetector_module']['names'] += [det_module_name]
+                    def full_m_name(name: str) -> str: return det_path + det_module_name + '/' + name
+                    det_field_rules[full_m_name('data_origin')] = np.array(
+                        [(quad * self.n_modules) + module_num, asic_slow * asic_num, 0], dtype='i')
+                    det_field_rules[full_m_name('data_size')] = np.array([1, asic_slow, asic_fast], dtype='i')
+
+                    fast = self.hierarchy[q_key][m_key][a_key]['local_fast'].elems
+                    slow = self.hierarchy[q_key][m_key][a_key]['local_slow'].elems
+
+                    det_field_rules[full_m_name('fast_pixel_direction')] = NexusElement(
+                        full_path=full_m_name('fast_pixel_direction'), value=pixel_size, dtype='f', nxtype=NxType.field,
+                        attrs={'depends_on': t_path + f'AXIS_D0Q{quad}M{module_num}A{asic_num}',
+                               'transformation_type': 'translation', 'units': 'mm', 'vector': fast,
+                               'offset': (0., 0., 0.)}
+                    )
+                    det_field_rules[full_m_name('slow_pixel_direction')] = NexusElement(
+                        full_path=full_m_name('slow_pixel_direction'), value=pixel_size, dtype='f', nxtype=NxType.field,
+                        attrs={'depends_on': t_path + f'AXIS_D0Q{quad}M{module_num}A{asic_num}',
+                               'transformation_type': 'translation', 'units': 'mm', 'vector': slow,
+                               'offset': (0., 0., 0.)}
+                    )
 
         self.field_rules = {
             # 'entry/definition': np.str(f"NXmx:{get_git_revision_hash()}"),      # TODO: _create_scalar?
@@ -382,6 +405,7 @@ class Ruleset(Agipd2nexus):
                                               nxtype=NxType.field, dtype='s',
                                               attrs={'short_name': self.params.nexus_details.source_short_name}),
         }
+        self.field_rules = {**self.field_rules, **det_field_rules}
         self.additional_elements = {
             'entry/instrument/AGIPD/group_type':
                 NexusElement(full_path='entry/instrument/AGIPD/group_type', value=[1, 2],
@@ -397,7 +421,7 @@ class Ruleset(Agipd2nexus):
                                                        'vector': (0., 0., 1.),
                                                        }),
         }
-        self.additional_elements = {**self.additional_elements, **det_dict}
+        self.additional_elements = {**self.additional_elements, **det_additional_rules}
         self.global_attrs = {
             'NXclass': 'NXroot',
             'file_name': self.output_file_name,
