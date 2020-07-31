@@ -19,6 +19,7 @@ from libtbx import slots_getstate_setstate, \
   slots_getstate_setstate_default_initializer
 from libtbx.utils import null_out
 import libtbx.phil
+import operator
 import sys
 from libtbx import adopt_init_args
 import mmtbx.real_space
@@ -402,7 +403,7 @@ def create_omit_regions(xray_structure,
     groups.append(group)
   if (optimize_binning):
     # http://en.wikipedia.org/wiki/Bin_packing_problem
-    groups = sorted(groups, key=lambda element: element.n_atoms, reverse=True)
+    groups = sorted(groups, key=operator.attrgetter("n_atoms"), reverse=True)
     while True :
       n_combined = 0
       i_group = 0

@@ -29,6 +29,7 @@ import libtbx.load_env
 import libtbx.phil
 from math import sqrt
 from six.moves import cStringIO as StringIO
+import operator
 import time
 import sys
 from six.moves import zip
@@ -1303,7 +1304,7 @@ class manager(object):
           map_stats = self.map_stats(water_i_seq)
           ions.append((water_i_seq, [final_choice], map_stats.two_fofc))
 
-    return sorted(ions, key=lambda element: element[2], reverse=True)
+    return sorted(ions, key=operator.itemgetter(2), reverse=True)
 
   def validate_ion(self, i_seq, out = sys.stdout, debug = True):
     """

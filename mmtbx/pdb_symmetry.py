@@ -10,6 +10,7 @@ import libtbx.load_env
 from libtbx import easy_pickle
 from libtbx import group_args
 from math import sqrt
+import operator
 import os
 import sys
 from six.moves import zip
@@ -101,7 +102,7 @@ def symmetry_search(
     scores.append(group_args(entry=entry,
       rmsd=rmsd,
       volume_ratio=entry_volume/input_volume))
-  scores.sort(key=lambda element: element.rmsd)
+  scores.sort(key=operator.attrgetter("rmsd"))
   return scores
 
 def download_crystal_db():

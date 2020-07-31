@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import slots_getstate_setstate, \
     slots_getstate_setstate_default_initializer
+import operator
 import sys
 from six.moves import zip
 
@@ -66,7 +67,7 @@ def get_sorted_clashes(
         id_str_j=site_labels[proxy.j_seq], #pdb_atoms[proxy.j_seq].id_str(),
         overlap=overlap)
       clashes.append(clash)
-  clashes.sort(key=lambda element: element.overlap, reverse=True)
+  clashes.sort(key=operator.attrgetter("overlap"), reverse=True)
   return clashes
 
 def show_altloc_clashes(

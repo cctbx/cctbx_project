@@ -26,6 +26,7 @@ from libtbx.utils import null_out
 from libtbx import runtime_utils
 import libtbx.callbacks # import dependency
 from six.moves import cStringIO as StringIO
+import operator
 import os
 import sys
 
@@ -1003,7 +1004,7 @@ class summary(mmtbx.scaling.xtriage_analysis):
   def __init__(self, issues, sort=True):
     self._issues = issues
     if (sort):
-      self._issues.sort(key=lambda element: element[0], reverse=True)
+      self._issues.sort(key=operator.itemgetter(0), reverse=True)
 
   @property
   def n_problems(self):

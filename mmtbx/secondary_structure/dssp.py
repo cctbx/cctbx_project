@@ -14,6 +14,7 @@ import libtbx.phil
 from libtbx.utils import null_out
 from libtbx import group_args, adopt_init_args
 from six.moves import cStringIO as StringIO
+import operator
 import time
 import sys
 
@@ -580,7 +581,7 @@ class dssp(object):
     t2 = time.time()
     if (self.params.verbosity >= 1):
       print("Time to find bridges: %.3fs" % (t2-t1), file=self.log)
-    bridges.sort(key=lambda element: element.i_res)
+    bridges.sort(key=operator.attrgetter("i_res"))
     if (self.params.verbosity >= 2):
       for B in bridges :
         B.show(out=self.log)

@@ -8,6 +8,7 @@ from libtbx.utils import Sorry, Usage, null_out
 from libtbx import adopt_init_args
 from libtbx import runtime_utils
 import libtbx.phil
+import operator
 import os
 import sys
 from six.moves import zip
@@ -308,7 +309,7 @@ def sort_hetatms(
         chain.remove_residue_group(rg)
     if (len(waters_and_b_iso) > 0):
       if (params.sort_waters_by != "none"):
-        waters_and_b_iso.sort(key=lambda element: element[1])
+        waters_and_b_iso.sort(key=operator.itemgetter(1))
       for water, b_iso in waters_and_b_iso :
         chain.append_residue_group(water)
   if (params.renumber):

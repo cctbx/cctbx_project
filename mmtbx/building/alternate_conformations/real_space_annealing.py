@@ -7,6 +7,7 @@ from libtbx.utils import null_out
 from libtbx import easy_mp
 import random
 import time
+import operator
 import os
 import sys
 from six.moves import range
@@ -196,7 +197,7 @@ class refine_into_difference_density(object):
               hierarchy.
     """
     if (log is None) : log = null_out()
-    trials = sorted(self.get_trials(), key=lambda element: element.cc, reverse=True)
+    trials = sorted(self.get_trials(), key=operator.attrgetter("cc"), reverse=True)
     filtered = []
     for k, trial in enumerate(trials):
       hierarchy = self.pdb_hierarchy.deep_copy()

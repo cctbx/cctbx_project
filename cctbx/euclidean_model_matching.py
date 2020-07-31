@@ -1,4 +1,6 @@
 from __future__ import absolute_import, division, print_function
+
+import operator
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
@@ -292,7 +294,7 @@ class match_refine(object):
     self.eliminate_weak_pairs()
     self.ref_eucl_rt = sgtbx_rt_mx_as_matrix_rt(self.eucl_symop) \
                      + self.adjusted_shift
-    self.pairs.sort(key=lambda element: element[0])
+    self.pairs.sort(key=operator.itemgetter(0))
     self.singles1.sort()
     self.singles2.sort()
     self.calculate_rms()

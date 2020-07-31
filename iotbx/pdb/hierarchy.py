@@ -14,6 +14,7 @@ import six
 from six.moves import cStringIO as StringIO
 from six.moves import range, zip
 import collections
+import operator
 import warnings
 import math
 import sys
@@ -1291,7 +1292,7 @@ class _():
                 continue
               mean_occ = flex.mean(atom_group.atoms().extract_occ())
               atom_groups_and_occupancies.append((atom_group, mean_occ))
-            atom_groups_and_occupancies.sort(key=lambda element: element[1], reverse=True)
+            atom_groups_and_occupancies.sort(key=operator.itemgetter(1), reverse=True)
             for atom_group, occ in atom_groups_and_occupancies[1:] :
               residue_group.remove_atom_group(atom_group=atom_group)
             single_conf, occ = atom_groups_and_occupancies[0]
@@ -1834,7 +1835,7 @@ class _():
       groups = list(groups.values())
       if (len(groups) != 0):
         for group in groups: group.sort()
-        groups.sort(key=lambda element: element[0])
+        groups.sort(key=operator.itemgetter(0))
         result.append(groups)
       for i in isolated_var_occ:
         result.append([[i]])

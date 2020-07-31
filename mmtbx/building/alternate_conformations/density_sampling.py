@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import libtbx.phil
+import operator
 import time
 import sys
 from six.moves import range
@@ -126,7 +127,7 @@ def screen_residue(
       if (good_maps) : #and (conf_trans.rmsd > params.rmsd_min):
         translations.append(conf_trans)
     if (len(translations) > 0):
-      translations.sort(key=lambda element: element.mean_fofc, reverse=True)
+      translations.sort(key=operator.attrgetter("mean_fofc"), reverse=True)
       good_confs.append(translations[0])
   if (n_confs > 1) and (len(good_confs) != 0):
     for conf in good_confs :
