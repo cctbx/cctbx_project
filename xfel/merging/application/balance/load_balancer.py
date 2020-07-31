@@ -63,7 +63,7 @@ class load_balancer(worker):
 
     # Distribute reflections over experiment chunks
     self.logger.log_step_time("LB_REF_DISTR")
-    self.distribute_reflections_over_experiment_chunks_python(reflections)
+    self.distribute_reflections_over_experiment_chunks_cpp(reflections)
     reflections.clear()
     del experiments
     self.logger.log_step_time("LB_REF_DISTR", True)
