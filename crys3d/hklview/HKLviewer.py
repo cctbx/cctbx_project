@@ -144,6 +144,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     self.zmq_context = None
     self.unfeedback = False
+    self.cctbxpythonversion = None
 
     self.mousespeed_labeltxt = QLabel()
     self.mousespeed_labeltxt.setText("Mouse speed:")
@@ -334,6 +335,23 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.BrowserBox.setAttribute(Qt.WA_DeleteOnClose)
 
 
+  def Browser_download_requested(self, download_item):
+    options = QFileDialog.Options()
+    fileName, filtr = QFileDialog.getSaveFileName(self.window,
+            "Save screenshot to file", download_item.path(),
+            "PNG Files (*.png);;All Files (*)", "", options)
+    if fileName:
+      download_item.setPath(fileName)
+      download_item.accept()
+      self.download_item = download_item
+      download_item.finished.connect(self._download_finished)
+
+
+  def _download_finished(self):
+    file_path = self.download_item.path()
+    print("File Downloaded to: %s" %file_path)
+
+
   def onOpenReflectionFile(self):
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getOpenFileName(self.window,
@@ -396,6 +414,14 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         msg = zlib.decompress(binmsg)
         nan = float("nan") # workaround for "evaluating" any NaN values in the messages received
         msgstr = msg.decode()
+
+        if "cctbx.python.version:" in msgstr:
+          self.cctbxpythonversion = msgstr
+          if self.cctbxpythonversion == 'cctbx.python.version: 2':
+            # use NGL's download feature for images since websocket_server fails to handle large streams
+            self.webpage.profile().downloadRequested.connect(self.Browser_download_requested)
+          return
+
         self.infodict = eval(msgstr)
         if self.infodict:
           if self.infodict.get("WebGL_error"):
@@ -709,6 +735,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.fontsize = val
     self.app.setFont(font);
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
+    if self.cctbxpythonversion: # then connection to cctbx has been established
+      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.fontsize = %d" %val)
 
 
   def onClearTextBuffer(self):
@@ -1431,12 +1459,16 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def onSaveImageBtn(self):
-    options = QFileDialog.Options()
-    fileName, filtr = QFileDialog.getSaveFileName(self.window,
-            "Save screenshot to file", "",
-            "PNG Files (*.png);;All Files (*)", "", options)
-    if fileName:
-      self.PhilToJsRender('NGL_HKLviewer.save_image_name = "%s" '%fileName)
+    if self.cctbxpythonversion == 'cctbx.python.version: 3': # streaming image over websockets
+      options = QFileDialog.Options()
+      fileName, filtr = QFileDialog.getSaveFileName(self.window,
+              "Save screenshot to file", "",
+              "PNG Files (*.png);;All Files (*)", "", options)
+      if fileName:
+        self.PhilToJsRender('NGL_HKLviewer.save_image_name = "%s" '%fileName)
+    else:
+      self.PhilToJsRender('NGL_HKLviewer.save_image_name = "dummy.png" ')
+      # eventual file name prompted to us by Browser_download_requested(
 
 
   def onDrawReciprocUnitCellBoxClick(self):
@@ -1519,6 +1551,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
 def run():
+  #time.sleep(10)
   try:
     import PySide2.QtCore
     Qtversion = str(PySide2.QtCore.qVersion())

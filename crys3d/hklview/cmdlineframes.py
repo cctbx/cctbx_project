@@ -288,10 +288,14 @@ class HKLViewFrame() :
       self.guisocket.connect("tcp://127.0.0.1:%s" %self.guiSocketPort )
       self.STOP = False
       self.mprint("starting socketthread", 1)
-      self.msgqueuethrd = threading.Thread(target = self.zmq_listen )
+      # name this thread to ensure any asyncio functions are called only from main thread
+      self.msgqueuethrd = threading.Thread(target = self.zmq_listen, name="zmq_thread" )
       self.msgqueuethrd.daemon = True
       self.msgqueuethrd.start()
       kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by hklview_3d
+      pyversion = "cctbx.python.version: " + str(sys.version_info[0])
+      # tell gui what python version we are
+      self.SendInfoToGUI(pyversion )
     kwds['websockport'] = self.find_free_port()
     kwds['parent'] = self
     self.viewer = view_3d.hklview_3d( **kwds )
@@ -1028,6 +1032,11 @@ class HKLViewFrame() :
       self.__exit__()
       return False
     return True
+
+
+  def SetFontSize(self, val):
+    self.params.NGL_HKLviewer.viewer.NGL.fontsize = val
+    self.update_settings()
 
 
   def ShowUnitCell(self, val):

@@ -10,51 +10,18 @@ from scitbx import graphics_utils
 from scitbx import matrix
 import scitbx.math
 from libtbx.utils import Sorry, to_str
-import asyncio
-import websockets
-from typing import Optional
-from websockets.exceptions import (
-    ConnectionClosed,
-    ConnectionClosedError,
-    ConnectionClosedOK,
-)
 import threading, math, sys, cmath
+if sys.version_info[0] > 2: # using websockets which is superior to websocket_server
+  from crys3d.hklview.WebBrowserMessengerPy3 import WBmessenger
+else: # using websocket_server
+  from crys3d.hklview.WebBrowserMessengerPy2 import WBmessenger
+
 from time import sleep
 import os.path, time, copy
 import libtbx
 import webbrowser, tempfile
 from six.moves import range
 
-
-
-class MyWebSocketServerProtocol(websockets.server.WebSocketServerProtocol):
-  def __init__(self, *args, **kwargs):
-    self.client_connected = None
-    self.onconnect = None
-    self.ondisconnect = None
-    self.onlostconnect = None
-    super().__init__(*args, max_size=100000000) # allow for saving 100Mb size images
-    #super().__init__(*args, max_size=10000, close_timeout=1 )
-  def connection_open(self) -> None:
-    #print("In connection_open()")
-    self.client_connected = self.local_address
-    if self.onconnect:
-      self.onconnect(self.client_connected)
-    super().connection_open()
-  def connection_lost(self, exc: Optional[Exception]) -> None:
-    #print("In connection_lost()")
-    self.client_connected = None
-    if self.onlostconnect and hasattr(self, "close_code"):
-      self.onlostconnect(self.client_connected, self.close_code, self.close_reason)
-    super().connection_lost(exc)
-  #"""
-  def connection_closed_exc(self) -> ConnectionClosed:
-    #print("In connection_closed_exc()")
-    self.client_connected = None
-    if self.ondisconnect:
-      self.ondisconnect(self.client_connected, self.close_code, self.close_reason)
-    super().connection_closed_exc()
-  #"""
 
 def has_phil_path(philobj, *paths): # variable number of arguments
   for path in paths:
@@ -230,7 +197,7 @@ class hklview_3d:
     self.camera_type = "orthographic"
     self.primitivetype = "SphereBuffer"
     self.url = ""
-    self.bin_labels_type_idx = ("Resolution",  "", -1)
+    self.bin_labels_type_idx = ("Resolution",  "", -1, -1)
     self.colour_scene_id = None
     self.radii_scene_id = None
     #self.scene_id = None
@@ -297,8 +264,6 @@ class hklview_3d:
     self.bin_infotpls = []
     self.mapcoef_fom_dict = {}
     self.sceneid_from_arrayid = []
-    self.was_disconnected = None
-    self.ishandling = False
     self.parent = None
     if 'parent' in kwds:
       self.parent = kwds['parent']
@@ -363,18 +328,13 @@ class hklview_3d:
     self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
     self.HKLsceneKey = ( 0, False, self.viewerparams.expand_anomalous, self.viewerparams.expand_to_p1  )
-    self.msgqueue = []
-    self.websockclient = None
-    self.mywebsock = None
-    self.websockeventloop = None
     self.handshakewait = 5
     if 'handshakewait' in kwds:
       self.handshakewait = eval(kwds['handshakewait'])
     self.lastmsg = "" # "Ready"
-    self.browserisopen = False
-    self.msgdelim = ":\n"
-    self.StartWebsocket()
-    self.isterminating = False
+    self.WBmessenger = WBmessenger(self)
+    self.AddToBrowserMsgQueue = self.WBmessenger.AddToBrowserMsgQueue
+    self.WBmessenger.StartWebsocket()
     self.javascriptcleaned = False
 
 
@@ -382,8 +342,9 @@ class hklview_3d:
     # not called unless instantiated with a "with hklview_3d ... " statement
     self.JavaScriptCleanUp()
     nwait = 0
-    while not self.isterminating and nwait < 5:
-      sleep(self.sleeptime)
+    while not self.WBmessenger.isterminating and nwait < 5:
+      #sleep(self.sleeptime)
+      self.WBmessenger.Sleep(self.sleeptime)
       nwait += self.sleeptime
     if os.path.isfile(self.hklfname):
       os.remove(self.hklfname)
@@ -422,6 +383,7 @@ class hklview_3d:
                        "slice_index",
                        "sigma_color",
                        "sigma_radius",
+                       "fontsize",
                        "scene_id",
                        "scale",
                        "nth_power_scale_radii"
@@ -950,7 +912,7 @@ class hklview_3d:
     binarraydata, dummy = self.get_matched_binarray()
     scenearraydata = self.HKLscene_from_dict(self.viewerparams.scene_id).data
     ibinarray = self.bin_labels_type_idx[3]
-    matchindices = miller.match_indices(self.HKLscene_from_dict(self.viewerparams.scene_id).indices, 
+    matchindices = miller.match_indices(self.HKLscene_from_dict(self.viewerparams.scene_id).indices,
                                         self.HKLscene_from_dict(ibinarray).indices )
     matched_binarray = binarraydata.select( matchindices.pairs().column(1) )
     #valarray.sort(by_value="packed_indices")
@@ -1060,9 +1022,11 @@ class hklview_3d:
     # make arrow font size roughly proportional to radius of highest resolution shell
     #fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/3.0)))
     if not self.miller_array:
-      fontsize = str(1.0)
+      fontsize = 1.0
     else:
-      fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/2.0)))
+      fontsize = 1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/2.0))
+    #fontsize *= self.viewerparams.NGL.fontsize/7.0
+    fontsize = str(self.viewerparams.NGL.fontsize)
 
     if blankscene:
       axisfuncstr = "\nvar MakeHKL_Axis = function() { };\n"
@@ -1084,7 +1048,8 @@ function MakeHKL_Axis(mshape)
   mshape.addText( %s, [ 0, 1, 0 ], fontsize, 'k');
   mshape.addText( %s, [ 1, 0, 0 ], fontsize, 'l');
 };
-    """ %(fontsize, str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart),
+    """ %(fontsize, str(Hstararrowstart), str(Hstararrowend),
+          str(Kstararrowstart),
           str(Kstararrowend), str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt,
           Kstararrowtxt, Lstararrowtxt)
     if not blankscene:
@@ -1147,7 +1112,7 @@ function MakeHKL_Axis(mshape)
       points = flex.vec3_double( [ ] )
       colors = flex.vec3_double( [ ] )
       radii = flex.double( [ ] )
-      self.bin_labels_type_idx = ("Resolution",  "", -1)
+      self.bin_labels_type_idx = ("Resolution",  "", -1, -1)
     else:
       points = self.scene.points
 
@@ -1377,7 +1342,8 @@ function MakeHKL_Axis(mshape)
       if self.WaitforHandshake():
         nwait = 0
         while self.viewmtrx is None and nwait < self.handshakewait:
-          time.sleep(self.sleeptime)
+          #time.sleep(self.sleeptime)
+          self.WBmessenger.Sleep(self.sleeptime)
           nwait += self.sleeptime
       self.GetClipPlaneDistances()
       self.GetBoundingBox()
@@ -1388,100 +1354,83 @@ function MakeHKL_Axis(mshape)
     self.lastscene_id = self.viewerparams.scene_id
 
 
-  async def OnWebsocketClientMessage(self):
-    while True:
-      await asyncio.sleep(self.sleeptime)
-      if self.was_disconnected in [4242, # reload
-                                    4241, # javascriptcleanup
-                                    1006, # WebSocketServerProtocol.close_code is absent
-                                    1001, # normal exit
-                                    1005,
-                                    1000
-                                    ]:
-        return # shutdown
-      if self.viewerparams.scene_id is None or self.miller_array is None \
-          or self.websockclient is None or self.mywebsock.client_connected is None:
-        await asyncio.sleep(self.sleeptime)
-        continue
-      message = ""
-      try: # use EAFP rather than LBYL style with websockets
-        message = await self.mywebsock.recv()
-      except Exception as e:
-        if self.was_disconnected != 4242:
-          self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=1)
-        continue
-      try:
-        if isinstance(message, bytes) and isinstance(self.lastmsg, str) and "Imageblob" in self.lastmsg:
-          self.mprint( "Saving image to file", verbose=1)
-          with open( self.imagename, "wb") as imgfile:
-            imgfile.write( message)
+  def ProcessMessage(self, message):
+    try:
+      if sys.version_info[0] > 2:
+        ustr = str
+      else:
+        ustr = unicode
+      if isinstance(message, bytes) and isinstance(self.lastmsg, ustr) and "Imageblob" in self.lastmsg:
+        self.mprint( "Saving image to file", verbose=1)
+        with open( self.imagename, "wb") as imgfile:
+          imgfile.write( message)
 
-        if isinstance(message, str) and message != "":
-          if "Orientation" in message:
-            self.ProcessOrientationMessage(message)
-          elif 'Received message:' in message:
-            self.mprint( message, verbose=2)
-          elif "websocket" in message:
-            self.mprint( message, verbose=1)
-          elif "Refreshing" in message or "disconnecting" in message:
-            self.mprint( message, verbose=1)
-            await asyncio.sleep(self.sleeptime)
-          elif "AutoViewSet" in message:
-            self.set_volatile_params()
-          elif "JavaScriptCleanUpDone:" in message:
-            self.mprint( message, verbose=1)
-            await asyncio.sleep(0.5) # time for browser to clean up
-            if not self.isnewfile:
-              self.StopWebsocket()
-          elif "JavaScriptError:" in message:
-            self.mprint( message, verbose=0)
-          elif "Expand" in message:
-            self.mprint( message, verbose=2)
-          elif "Connection lost" in message:
-            self.mprint( message, verbose=1)
-          elif "Imageblob" in message:
-            self.mprint( "Image to be received", verbose=1)
-          elif "ImageWritten" in message:
-            self.mprint( "Image saved to file", verbose=0)
-          elif "ReturnClipPlaneDistances:" in message:
-            datastr = message[ message.find("\n") + 1: ]
-            lst = datastr.split(",")
-            flst = [float(e) for e in lst]
-            self.clipNear = flst[0]
-            self.clipFar = flst[1]
-            self.cameraPosZ = flst[2]
-          elif "ReturnBoundingBox:" in message:
-            datastr = message[ message.find("\n") + 1: ]
-            lst = datastr.split(",")
-            flst = [float(e) for e in lst]
-            self.boundingX = flst[0]
-            self.boundingY = flst[1]
-            self.boundingZ = flst[2]
-          elif "ReturnMouseSpeed" in message:
-            datastr = message[ message.find("\n") + 1: ]
-            lst = datastr.split(",")
-            flst = [float(e) for e in lst]
-            if flst[0] is not None and not cmath.isnan(flst[0]):
-              self.ngl_settings.mouse_sensitivity = flst[0]
-          elif "tooltip_id:" in message:
-            ttipids = message.split("tooltip_id:")[1]
-            hklid = eval(message.split("tooltip_id:")[1])[0]
-            sym_id = eval(message.split("tooltip_id:")[1])[1]
-            is_friedel_mate = eval(message.split("tooltip_id:")[1])[2]
-            rotmx = None
-            hkls = self.scene.indices
-            if not is_friedel_mate:
-              ttip = self.GetTooltipOnTheFly(hklid, sym_id)
-            else:
-              hklid = hklid % len(hkls)
-              ttip = self.GetTooltipOnTheFly(hklid, sym_id, anomalous=True)
-            self.AddToBrowserMsgQueue("ShowThisTooltip", ttip)
+      if isinstance(message, ustr) and message != "":
+        if "Orientation" in message:
+          self.ProcessOrientationMessage(message)
+        elif 'Received message:' in message:
+          self.mprint( message, verbose=2)
+        elif "websocket" in message:
+          self.mprint( message, verbose=1)
+        elif "Refreshing" in message or "disconnecting" in message:
+          self.mprint( message, verbose=1)
+          self.WBmessenger.Sleep(self.sleeptime)
+        elif "AutoViewSet" in message:
+          self.set_volatile_params()
+        elif "JavaScriptCleanUpDone:" in message:
+          self.mprint( message, verbose=1)
+          self.WBmessenger.Sleep(0.5) # time for browser to clean up
+          if not self.isnewfile:
+            self.WBmessenger.StopWebsocket()
+        elif "JavaScriptError:" in message:
+          self.mprint( message, verbose=0)
+        elif "Expand" in message:
+          self.mprint( message, verbose=2)
+        elif "Connection lost" in message:
+          self.mprint( message, verbose=1)
+        elif "Imageblob" in message:
+          self.mprint( "Image to be received", verbose=1)
+        elif "ImageWritten" in message:
+          self.mprint( "Image saved to file", verbose=0)
+        elif "ReturnClipPlaneDistances:" in message:
+          datastr = message[ message.find("\n") + 1: ]
+          lst = datastr.split(",")
+          flst = [float(e) for e in lst]
+          self.clipNear = flst[0]
+          self.clipFar = flst[1]
+          self.cameraPosZ = flst[2]
+        elif "ReturnBoundingBox:" in message:
+          datastr = message[ message.find("\n") + 1: ]
+          lst = datastr.split(",")
+          flst = [float(e) for e in lst]
+          self.boundingX = flst[0]
+          self.boundingY = flst[1]
+          self.boundingZ = flst[2]
+        elif "ReturnMouseSpeed" in message:
+          datastr = message[ message.find("\n") + 1: ]
+          lst = datastr.split(",")
+          flst = [float(e) for e in lst]
+          if flst[0] is not None and not cmath.isnan(flst[0]):
+            self.ngl_settings.mouse_sensitivity = flst[0]
+        elif "tooltip_id:" in message:
+          ttipids = message.split("tooltip_id:")[1]
+          hklid = eval(message.split("tooltip_id:")[1])[0]
+          sym_id = eval(message.split("tooltip_id:")[1])[1]
+          is_friedel_mate = eval(message.split("tooltip_id:")[1])[2]
+          rotmx = None
+          hkls = self.scene.indices
+          if not is_friedel_mate:
+            ttip = self.GetTooltipOnTheFly(hklid, sym_id)
           else:
-            if "Ready " in message:
-              self.mprint( message, verbose=5)
-      except Exception as e:
-        self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
-      self.lastmsg = message
+            hklid = hklid % len(hkls)
+            ttip = self.GetTooltipOnTheFly(hklid, sym_id, anomalous=True)
+          self.AddToBrowserMsgQueue("ShowThisTooltip", ttip)
+        else:
+          if "Ready " in message:
+            self.mprint( message, verbose=5)
+    except Exception as e:
+      self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
+    self.lastmsg = message
 
 
   def GetCameraPosRotTrans(self, viewmtrx):
@@ -1554,137 +1503,18 @@ Distance: %s
 
   def WaitforHandshake(self, sec=5):
     nwait = 0
-    while not self.browserisopen :
-      time.sleep(self.sleeptime)
+    while not self.WBmessenger.browserisopen :
+      #time.sleep(self.sleeptime)
+      self.WBmessenger.Sleep(self.sleeptime)
       nwait += self.sleeptime
       if nwait > sec:
         return False
     return True
 
 
-  def AddToBrowserMsgQueue(self, msgtype, msg=""):
-    self.msgqueue.append( (msgtype, msg) )
-
-
-  async def WebSockHandler(self, mywebsock, path):
-    self.mprint("Entering WebSockHandler", verbose=1)
-    #if self.was_disconnected == 1006:
-    #  await mywebsock.close()
-    if hasattr(self.mywebsock, "state") and self.mywebsock.state == 2 and self.websockclient is not None:
-      await self.mywebsock.wait_closed()
-
-    if self.websockclient is not None or self.ishandling:
-      #self.was_disconnected = 1006
-      #await mywebsock.wait_closed()
-      await asyncio.sleep(0.5)
-      #return
-    self.ishandling = True
-    mywebsock.onconnect = self.OnConnectWebsocketClient
-    self.OnConnectWebsocketClient(mywebsock.client_connected)
-    mywebsock.ondisconnect = self.OnDisconnectWebsocketClient
-    mywebsock.onlostconnect = self.OnLostConnectWebsocketClient
-    self.mywebsock = mywebsock
-    getmsgtask = asyncio.ensure_future(self.OnWebsocketClientMessage())
-    sendmsgtask = asyncio.ensure_future(self.WebBrowserMsgQueue())
-    await getmsgtask
-    await sendmsgtask
-    self.mprint("Exiting WebSockHandler", verbose=1)
-    self.ishandling = False
-    #await asyncio.gather(self.OnWebsocketClientMessage(), self.WebBrowserMsgQueue())
-
-
-  async def WebBrowserMsgQueue(self):
-    while True:
-      try:
-        nwait = 0.0
-        await asyncio.sleep(self.sleeptime)
-        if self.was_disconnected in [4242, # reload
-                                     4241, # javascriptcleanup
-                                     1006, # WebSocketServerProtocol.close_code is absent
-                                     1001, # normal exit
-                                     1005,
-                                     1000
-                                     ]:
-          return # shutdown
-        if self.javascriptcleaned or self.was_disconnected == 4241: # or self.was_disconnected == 1001:
-          self.mprint("Shutting down WebBrowser message queue", verbose=1)
-          return
-        if len(self.msgqueue):
-          pendingmessagetype, pendingmessage = self.msgqueue[0]
-          gotsent = await self.send_msg_to_browser(pendingmessagetype, pendingmessage)
-          while not self.browserisopen:  #self.websockclient:
-            await asyncio.sleep(self.sleeptime)
-            nwait += self.sleeptime
-            if nwait > self.handshakewait or self.javascriptcleaned or not self.viewerparams.scene_id is not None:
-              continue
-          if gotsent:
-            self.msgqueue.remove( self.msgqueue[0] )
-      except Exception as e:
-        self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
-
-
-  def OnConnectWebsocketClient(self, client):
-    self.websockclient = client
-    self.mprint( "Browser connected " + str( self.websockclient ), verbose=1 )
-    self.was_disconnected = None
-    if self.lastviewmtrx and self.viewerparams.scene_id is not None:
-      self.set_volatile_params()
-      self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
-      self.AddToBrowserMsgQueue("ReOrient", self.lastviewmtrx)
-    else:
-      self.SetAutoView()
-
-
-  def OnLostConnectWebsocketClient(self, client, close_code, close_reason):
-    msg =  "Browser lost connection %s, code %d, reason: %s" %(str(self.websockclient), close_code, close_reason)
-    self.mprint(msg , verbose=1 )
-    self.was_disconnected = close_code
-    self.websockclient = None
-    self.ishandling = False
-
-
-  def OnDisconnectWebsocketClient(self, client, close_code, close_reason):
-    msg =  "Browser disconnected %s, code %d, reason: %s" %(str(self.websockclient), close_code, close_reason)
-    self.mprint(msg , verbose=1 )
-    self.was_disconnected = close_code
-    self.websockclient = None
-    self.ishandling = False
-
-
-  async def send_msg_to_browser(self, msgtype, msg=""):
-    message = u"" + msgtype + self.msgdelim + str(msg)
-    nwait = 0.0
-    while isinstance(self.lastmsg, str) and \
-     not ("Ready" in self.lastmsg or "tooltip_id" in self.lastmsg \
-      or "CurrentViewOrientation" in self.lastmsg or "AutoViewSet" in self.lastmsg \
-      or "ReOrient" in self.lastmsg) or self.websockclient is None:
-      await asyncio.sleep(self.sleeptime)
-      nwait += self.sleeptime
-      if self.was_disconnected != None:
-        return False
-      if nwait > 2.0 and self.browserisopen:
-        self.mprint("ERROR: No handshake from browser!", verbose=0 )
-        self.mprint("failed sending " + msgtype, verbose=1)
-        self.was_disconnected = 1005
-        #break
-        return False
-    if self.browserisopen and self.websockclient is not None or self.mywebsock.client_connected is not None:
-      try: # use EAFP rather than LBYL style with websockets
-        await self.mywebsock.send( message )
-        return True
-      except Exception as e:
-        if self.was_disconnected != 4242:
-          self.mprint( str(e) + "\n" + traceback.format_exc(limit=10), verbose=1)
-        self.websockclient = None
-        return False
-    else:
-      self.OpenBrowser()
-    return False
-
-
   def OpenBrowser(self):
-    if self.viewerparams.scene_id is not None and not self.websockclient \
-       and not self.browserisopen or self.isnewfile:
+    if self.viewerparams.scene_id is not None and not self.WBmessenger.websockclient \
+       and not self.WBmessenger.browserisopen or self.isnewfile:
       NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
       htmlstr = self.hklhtml %(NGLlibpath, os.path.abspath( self.jscriptfname))
       htmlstr += self.htmldiv
@@ -1703,43 +1533,10 @@ Distance: %s
           self.mprint("Could not open web browser, %s" %self.UseOSBrowser)
           return False
       self.SendInfoToGUI({ "html_url": self.url } )
-      self.browserisopen = True
+      self.WBmessenger.browserisopen = True
       self.isnewfile = False
       return True
     return False
-
-
-  def StartWebsocket(self):
-    try:
-      if self.websockeventloop is not None:
-        self.mprint("websockeventloop already running", verbose=1)
-        return
-      if self.websockeventloop is None:
-        self.websockeventloop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.websockeventloop)
-        if self.debug is not None:
-          self.websockeventloop.set_debug(True)
-      self.server = websockets.serve(self.WebSockHandler, '127.0.0.1',
-                                     self.websockport,
-                                     create_protocol=MyWebSocketServerProtocol
-                                     )
-      self.websockeventloop.run_until_complete(self.server)
-      self.mprint("starting WebSockHandler on port %s" %str(self.websockport), verbose=1)
-      # run_forever() blocks execution so put in a separate thread
-      self.wst = threading.Thread(target=self.websockeventloop.run_forever)
-      self.wst.daemon = True
-      self.wst.start()
-      if not self.server:
-        raise Sorry("Could not connect to web browser")
-    except Exception as e:
-      self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
-
-
-  def StopWebsocket(self):
-    self.isterminating = True
-    self.javascriptcleaned = True
-    self.mprint("Shutting down websockeventloop", verbose=1)
-    self.websockeventloop.stop()
 
 
   def set_camera_type(self):
@@ -2058,7 +1855,8 @@ Distance: %s
     if self.WaitforHandshake():
       nwait = 0
       while self.ngl_settings.mouse_sensitivity is None and nwait < 5:
-        time.sleep(self.sleeptime)
+        #time.sleep(self.sleeptime)
+        self.WBmessenger.Sleep(self.sleeptime)
         nwait += self.sleeptime
 
 
@@ -2077,7 +1875,8 @@ Distance: %s
     if self.WaitforHandshake():
       nwait = 0
       while self.clipFar is None and nwait < self.handshakewait:
-        time.sleep(self.sleeptime)
+        #time.sleep(self.sleeptime)
+        self.WBmessenger.Sleep(self.sleeptime)
         nwait += self.sleeptime
       self.mprint("clipnear, clipfar, cameraPosZ: %s, %s %s" \
                  %(self.clipNear, self.clipFar, self.cameraPosZ), 2)
@@ -2092,7 +1891,8 @@ Distance: %s
     if self.WaitforHandshake():
       nwait = 0
       while self.boundingX is None and nwait < self.handshakewait:
-        time.sleep(self.sleeptime)
+        #time.sleep(self.sleeptime)
+        self.WBmessenger.Sleep(self.sleeptime)
         nwait += self.sleeptime
       self.mprint("boundingXYZ: %s, %s %s" \
          %(self.boundingX, self.boundingY, self.boundingZ), verbose=2)
@@ -2200,8 +2000,10 @@ ngl_philstr = """
     .type = float
   bin_opacities = ""
     .type = str
-  tooltip_alpha = 0.85
+  tooltip_alpha = 0.70
     .type = float
+  fontsize = 9
+    .type = int
   show_tooltips = none *click hover
     .type = choice
   fixorientation = False

@@ -117,8 +117,7 @@ PickingProxyfunc = function(pickingProxy)
       tooltip.innerText = current_ttip;
       tooltip.style.bottom = cp.y + 7 + "px";
       tooltip.style.left = cp.x + 8 + "px";
-      //tooltip.style.fontSize = "smaller";
-      tooltip.style.fontSize = "10px";
+      tooltip.style.fontSize = fontsize.toString() + "px";
       tooltip.style.display = "block";
     }
   }
@@ -130,19 +129,18 @@ PickingProxyfunc = function(pickingProxy)
 };
 
 
-function getTextWidth(text, fsize=8) 
+function getTextWidth(text, fsize=8)
 {
   // re-use canvas object for better performance
   var canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
   var context = canvas.getContext("2d");
-  context.font = "sans-serif";
-  context.font.fontSize = fsize.toString() + "px";
+  context.font = fsize.toString() + "px sans-serif";
   var metrics = context.measureText(text);
   return metrics.width;
 }
 
 
-function ColourChart(millerlabel, fomlabel, fontsize = 10)
+function ColourChart(millerlabel, fomlabel)
 {
   var ih = 3,
   topr = 35,
@@ -405,10 +403,10 @@ function createElement(name, properties, style, fsize=10)
   Object.assign(el.style, style);
   Object.assign(el.style,
   {
-      display: "block",
-      position: "absolute",
-      fontFamily: "sans-serif",
-      fontSize: fsize.toString() + "px",
+    display: "block",
+    position: "absolute",
+    fontFamily: "sans-serif",
+    fontSize: fsize.toString() + "px",
   }
   );
   return el;
