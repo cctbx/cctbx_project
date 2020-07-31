@@ -263,11 +263,72 @@ class Ruleset(Agipd2nexus):
         self.n_modules = 4
         self.n_asics = 8
 
+        # ==== CREATE DETECTOR MODULES ====
+        """
+        Add 4 quadrants
+        Nexus coordiate system, into the board            AGIPD detector
+             o --------> (+x)                             Q3=(12,13,14,15) Q0=(0,1,2,3)
+             |                                                        o
+             |                                            Q2=(8,9,10,11)   Q1=(4,5,6,7)
+             v
+            (+y)
+        """
+        panels = []
+        for q, quad in self.hierarchy.items():
+            for m, module in quad.items():
+                panels.extend([module[key] for key in module])
+        fast = max([int(panel['max_fs']) for panel in panels])+1
+        slow = max([int(panel['max_ss']) for panel in panels])+1
+        pixel_size = panels[0]['pixel_size']
+        assert [pixel_size == panels[i+1]['pixel_size'] for i in range(len(panels)-1)].count(False) == 0
+
+        quad_fast = fast
+        quad_slow = slow * self.n_quads
+        module_fast = quad_fast
+        module_slow = quad_slow // self.n_quads
+        asic_fast = module_fast
+        asic_slow = module_slow // self.n_asics
+
         self.group_rules = {
             'NXdetector': {'names': ['ELE_D0']},
             'NXdetector_group': {'names': ['AGIPD']},
             'NXtransformations': {},
         }
+        array_name = 'ARRAY_D0'
+        t_path = 'entry/instrument/ELE_D0/transformations/'
+
+        class Transform(NexusElement):
+            def __init__(self, name: str, value: Any = 0.0, attrs: dict = None) -> None:
+                default_attrs = {'equipment': 'detector', 'transformation_type': 'rotation', 'units': 'degrees',
+                                 'offset_units': 'mm', 'vector': (0., 0., -1.)
+                                 }
+                NexusElement.__init__(self, full_path=t_path + name, value=value, nxtype=NxType.field, dtype='f',
+                                      attrs={**default_attrs, **attrs})
+
+        det_dict = {}
+        for quad in range(self.n_quads):    # iterate quadrants
+            q_key = f"q{quad}"
+            q_name = f"AXIS_D0Q{quad}"
+            quad_vector = self.hierarchy[q_key].local_origin.elems
+
+            q_elem = Transform(q_name, 0.0, attrs={'depends_on': 'AXIS_D0', 'offset': quad_vector,
+                                                   'equipment_component': 'detector_quad'})
+            det_dict[t_path + q_name] = q_elem
+            for module_num in range(self.n_modules):    # iterate modules within a quadrant
+                m_key = f"p{(quad * self.n_modules) + module_num}"
+                m_name = f"AXIS_D0Q{quad}M{module_num}"
+                module_vector = self.hierarchy[q_key][m_key].local_origin.elems
+                m_elem = Transform(m_name, 0.0, attrs={'depends_on': q_name, 'equipment_component': 'detector_module',
+                                                       'offset': module_vector})
+                det_dict[t_path + m_name] = m_elem
+                for asic_num in range(self.n_asics):    # iterate asics within a module
+                    a_key = f"p{(quad * self.n_modules) + module_num}a{asic_num}"
+                    a_name = f"AXIS_D0Q{quad}M{module_num}A{asic_num}"
+                    asic_vector = self.hierarchy[q_key][m_key][a_key]['local_origin'].elems
+
+                    a_elem = Transform(a_name, 0.0, attrs={'depends_on': m_name, 'equipment_component': 'detector_asic',
+                                                           'offset': asic_vector})
+                    det_dict[t_path + a_name] = a_elem
         self.field_rules = {
             # 'entry/definition': np.str(f"NXmx:{get_git_revision_hash()}"),      # TODO: _create_scalar?
             'entry/definition': np.str(f"NXmx"),      # TODO: _create_scalar?
@@ -294,26 +355,20 @@ class Ruleset(Agipd2nexus):
         }
         self.additional_elements = {
             'entry/instrument/AGIPD/group_type':
-                NexusElement(full_path='entry/instrument/AGIPD/group_type',
-                             nxtype=NxType.field, value=[1, 2], dtype='i'),
-            'entry/instrument/ELE_D0/transformations/AXIS_D0':
-                NexusElement(full_path='entry/instrument/ELE_D0/transformations/AXIS_D0',
-                             value=0.0, dtype='f', nxtype=NxType.field,
-                             attrs={'depends_on': 'AXIS_RAIL', 'equipment': 'detector',
-                                    'equipment_component': 'detector_arm',
-                                    'offset': self.hierarchy.local_origin, 'offset_units': 'mm',
-                                    'transformation_type': 'rotation', 'units': 'degrees',
-                                    'vector': (0., 0., -1.),
-                                    }),
-            'entry/instrument/ELE_D0/transformations/AXIS_RAIL':
-                NexusElement(full_path='entry/instrument/ELE_D0/transformations/AXIS_RAIL',
-                             value=self.params.detector_distance, dtype='f', nxtype=NxType.field,
-                             attrs={'depends_on': '.', 'equipment': 'detector',
-                                    'equipment_component': 'detector_arm',
-                                    'transformation_type': 'translation', 'units': 'mm',
-                                    'vector': (0., 0., 1.),
-                                    }),
+                NexusElement(full_path='entry/instrument/AGIPD/group_type', value=[1, 2],
+                             nxtype=NxType.field, dtype='i'),
+            f'{t_path}/AXIS_D0': Transform('AXIS_D0', value=0.0, attrs={'depends_on': 'AXIS_RAIL',
+                                                                        'equipment_component': 'detector_arm',
+                                                                        'offset': self.hierarchy.local_origin}),
+            f'{t_path}/AXIS_RAIL': NexusElement(full_path=t_path + 'AXIS_RAIL', dtype='f', nxtype=NxType.field,
+                                                value=self.params.detector_distance,
+                                                attrs={'depends_on': '.', 'equipment': 'detector',
+                                                       'equipment_component': 'detector_arm',
+                                                       'transformation_type': 'translation', 'units': 'mm',
+                                                       'vector': (0., 0., 1.),
+                                                       }),
         }
+        self.additional_elements = {**self.additional_elements, **det_dict}
         self.global_attrs = {
             'NXclass': 'NXroot',
             'file_name': self.output_file_name,
@@ -329,4 +384,4 @@ if __name__ == '__main__':
   os.system(f'h5glance {nexus_helper.output_file_name} --attrs')
   # os.system(f"{path_to_cnxvalidate} -l definitions ~/xfel/examples/swissFEL_example/spb/{nexus_helper.output_file_name}"
   #           f" | grep sample")
-  os.system(f"{path_to_cnxvalidate} -l definitions ~/xfel/examples/swissFEL_example/spb/{nexus_helper.output_file_name}")
+  # os.system(f"{path_to_cnxvalidate} -l definitions ~/xfel/examples/swissFEL_example/spb/{nexus_helper.output_file_name}")
