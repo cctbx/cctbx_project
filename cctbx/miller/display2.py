@@ -166,8 +166,7 @@ class scene(object):
       #if (self.slice_selection.count(True) == 0):
         #raise ValueError("No data selected!")
     index_span = array.index_span()
-    self.colourlabel = ",".join([ e for e in self.miller_array.info().labels
-                                   if "phi" not in e.lower() and  "sig" not in e.lower()])
+    self.colourlabel = self.miller_array.info().label_string()
     self.d_min = array.d_min()
     self.min_dist = 0.0
     self.nth_power_scale_radii = settings.nth_power_scale_radii
@@ -355,10 +354,10 @@ class scene(object):
       data_for_colors = self.radians
       foms_for_colours = self.foms
        # assuming last part of the labels indicates the phase label as in ["FCALC","PHICALC"]
-      self.colourlabel = ",".join([ e for e in self.miller_array.info().labels if "phi" in e.lower()])
+      self.colourlabel = "Phase of " + self.miller_array.info().label_string()
     elif (settings.sigma_color) and sigmas is not None:
       data_for_colors = sigmas.as_double()
-      self.colourlabel = ",".join([ e for e in self.miller_array.info().labels if "sig" in e.lower()])
+      self.colourlabel = "Sigma of " + self.miller_array.info().label_string()
     else :
       data_for_colors = flex.abs(data.deep_copy())
     uc = self.work_array.unit_cell()

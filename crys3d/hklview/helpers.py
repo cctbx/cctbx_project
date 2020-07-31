@@ -3,11 +3,12 @@ from __future__ import absolute_import, division, print_function
 
 from PySide2.QtCore import Qt, QEvent, QAbstractTableModel, QModelIndex
 from PySide2.QtGui import QCursor
-from PySide2.QtWidgets import ( QCheckBox, QTableWidget, QAction, QMenu, QTableView,
-      QDialog,  QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox
+from PySide2.QtWidgets import ( QCheckBox, QTableWidget, QAction, QMenu,
+      QTableView, QDialog,  QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox
      )
 import math, csv
 from io import StringIO
+
 
 class HeaderDataTableWidget(QTableWidget):
   def __init__(self, *args, **kwargs):
