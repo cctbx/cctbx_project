@@ -1,7 +1,8 @@
 # Full conda builds
 
-# no continuous integration builds
-trigger: none
+# no continuous integration builds except for release branches
+trigger:
+- releases/*
 
 resources:
   pipelines:
