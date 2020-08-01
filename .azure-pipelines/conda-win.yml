@@ -12,7 +12,7 @@ jobs:
 - job: ${{ parameters.vs }}
   pool:
     vmImage: ${{ parameters.vmImage }}
-  timeoutInMinutes: 90
+  timeoutInMinutes: 120
   strategy:
     maxParallel: 2
     matrix:
