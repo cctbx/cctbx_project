@@ -52,7 +52,7 @@ class hkl_group(worker):
 
     self.logger.log_step_time("GROUP", True)
 
-    return experiments, alltoall_reflections
+    return None, alltoall_reflections
 
   def setup_hkl_chunks(self, reflections):
     '''Set up a list of reflection tables, or chunks, for distributing reflections'''
