@@ -2,7 +2,10 @@
 
 # no continuous integration builds except for release branches
 trigger:
-- releases/*
+  batch: true
+  branches:
+    include:
+      - releases/*
 
 resources:
   pipelines:
