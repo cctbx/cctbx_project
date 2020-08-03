@@ -1,18 +1,16 @@
 from __future__ import absolute_import, division, print_function
-from libtbx.math_utils import roundoff
 import traceback
 from libtbx.utils import Sorry, to_str
-import threading, math, sys, cmath
-from time import sleep
-import os.path, time, copy
+import threading, sys
+import os.path, time
 
 import asyncio
 import websockets
 from typing import Optional
 from websockets.exceptions import (
-    ConnectionClosed,
-    ConnectionClosedError,
-    ConnectionClosedOK,
+  ConnectionClosed,
+  ConnectionClosedError,
+  ConnectionClosedOK,
 )
 
 class MyWebSocketServerProtocol(websockets.server.WebSocketServerProtocol):
@@ -22,7 +20,6 @@ class MyWebSocketServerProtocol(websockets.server.WebSocketServerProtocol):
     self.ondisconnect = None
     self.onlostconnect = None
     super().__init__(*args, max_size=100000000) # allow for saving 100Mb size images
-    #super().__init__(*args, max_size=10000, close_timeout=1 )
   def connection_open(self) -> None:
     #print("In connection_open()")
     self.client_connected = self.local_address
@@ -35,14 +32,12 @@ class MyWebSocketServerProtocol(websockets.server.WebSocketServerProtocol):
     if self.onlostconnect and hasattr(self, "close_code"):
       self.onlostconnect(self.client_connected, self.close_code, self.close_reason)
     super().connection_lost(exc)
-  #"""
   def connection_closed_exc(self) -> ConnectionClosed:
     #print("In connection_closed_exc()")
     self.client_connected = None
     if self.ondisconnect:
       self.ondisconnect(self.client_connected, self.close_code, self.close_reason)
     super().connection_closed_exc()
-  #"""
 
 
 class WBmessenger(object):

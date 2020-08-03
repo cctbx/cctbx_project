@@ -1,10 +1,8 @@
 from __future__ import absolute_import, division, print_function
-from libtbx.math_utils import roundoff
 import traceback
 from libtbx.utils import Sorry, to_str
-import threading, math, sys, cmath
-from time import sleep
-import os.path, time, copy
+import threading
+import time
 
 from websocket_server import WebsocketServer
 
@@ -73,7 +71,7 @@ class WBmessenger(object):
     try:
       while True:
         nwait = 0.0
-        sleep(self.sleeptime)
+        time.sleep(self.sleeptime)
         if self.parent.javascriptcleaned:
           self.mprint("Shutting down WebBrowser message queue", verbose=1)
           return
@@ -81,7 +79,7 @@ class WBmessenger(object):
           pendingmessagetype, pendingmessage = self.msgqueue[0]
           gotsent = self.send_msg_to_browser(pendingmessagetype, pendingmessage)
           while not self.browserisopen:  #self.websockclient:
-            sleep(self.sleeptime)
+            time.sleep(self.sleeptime)
             nwait += self.sleeptime
             if nwait > self.parent.handshakewait or self.parent.javascriptcleaned or not self.viewerparams.scene_id is not None:
               return
@@ -127,7 +125,7 @@ class WBmessenger(object):
       while not ("Ready" in self.parent.lastmsg or "tooltip_id" in self.parent.lastmsg \
         or "CurrentViewOrientation" in self.parent.lastmsg or "AutoViewSet" in self.parent.lastmsg \
         or "ReOrient" in self.parent.lastmsg or self.websockclient is None):
-        sleep(self.sleeptime)
+        time.sleep(self.sleeptime)
         nwait += self.sleeptime
         if nwait > 2.0 and self.browserisopen:
           self.mprint("ERROR: No handshake from browser!", verbose=0 )
