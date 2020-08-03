@@ -8,6 +8,7 @@ from scitbx.python_utils import command_line
 from libtbx import easy_run
 from boost import rational
 import sys, os
+from libtbx.math_utils import cmp
 from six.moves import range
 from six.moves import zip
 
@@ -236,12 +237,7 @@ def grid_asu(
 
 def compare_redundancies(a, b):
   # Deprecated. Do not use
-  if len(b[1]) < len(a[1]):
-    return -1
-  elif len(b[1]) > len(a[1]):
-    return 1
-  else:
-    return 0
+  return cmp(len(b[1]), len(a[1]))
 
 def sort_redundancies(redundancies):
   return sorted(redundancies.items(), key=lambda element: len(element[1]), reverse=True)

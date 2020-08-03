@@ -32,6 +32,7 @@ from six.moves import cStringIO as StringIO
 import operator
 import time
 import sys
+from libtbx.math_utils import cmp
 from six.moves import zip
 from six.moves import range
 from six import string_types
@@ -157,11 +158,6 @@ def ion_master_phil():
 # various constants
 WATER, WATER_POOR, LIGHT_ION, HEAVY_ION = range(4)
 NUC_PHOSPHATE_BINDING = ["MG", "CA", "MN"]
-
-def _sign(x):
-  if x > 0: return 1
-  if x < 0: return -1
-  return 0
 
 class manager(object):
   """
@@ -1960,8 +1956,8 @@ class AtomProperties(object):
                 # XXX probably just O
               self.bad_coords[identity].append(contact)
               inaccuracies.add(self.BAD_COORD_RESIDUE)
-        elif (_sign(mmtbx.ions.server.get_charge(contact.atom)) ==
-              _sign(ion_params.charge)):
+        elif (cmp(0, mmtbx.ions.server.get_charge(contact.atom)) ==
+              cmp(0, ion_params.charge)):
           # Check if coordinating atom is of opposite charge
           self.bad_coords[identity].append(contact)
           inaccuracies.add(self.LIKE_COORD)

@@ -6,6 +6,7 @@ from libtbx.test_utils import Exception_expected, approx_equal, \
   not_approx_equal, show_diff
 import libtbx.math_utils
 from six.moves import cStringIO as StringIO
+from libtbx.math_utils import cmp
 from six.moves import range
 from six.moves import cPickle as pickle
 import six
@@ -1112,15 +1113,8 @@ def exercise_operators():
   assert a.all_le(9)
   assert not a.all_ge(b)
   assert a.all_ge(2)
-  if tuple(a) < tuple(b):
-      assert flex.order(a, b) == -1
-      assert flex.order(b, a) == 1
-  elif tuple(a) > tuple(b):
-      assert flex.order(a, b) == 1
-      assert flex.order(b, a) == -1
-  else:
-      assert flex.order(a, b) == 0
-      assert flex.order(b, a) == 0
+  assert flex.order(a, b) == cmp(tuple(a), tuple(b))
+  assert flex.order(b, a) == cmp(tuple(b), tuple(a))
   assert flex.order(a, a) == 0
   b = a.deep_copy()
   assert flex.order(a, b) == 0

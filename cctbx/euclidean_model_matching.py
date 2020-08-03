@@ -252,12 +252,8 @@ def generate_singles(n, i):
 
 def pair_sort_function(pair_a, pair_b):
   # Deprecated. Do not use
-  if pair_a[0] < pair_b[0]:
-    return -1
-  elif pair_a[0] > pair_b[0]:
-    return 1
-  else:
-    return 0
+  from libtbx.math_utils import cmp
+  return cmp(pair_a[0], pair_b[0])
 
 def inside_zero_one(c):
   new_c=[]
@@ -466,16 +462,10 @@ class match_refine(object):
 
 def match_sort_function(match_a, match_b):
   # Deprecated. Do not use
-  if len(match_a.pairs) < len(match_b.pairs):
-    return 1
-  elif len(match_a.pairs) > len(match_b.pairs):
-    return -1
-  if match_a.rms < match_b.rms:
-    return -1
-  elif match_a.rms > match_b.rms:
-    return 1
-  else:
-    return 0
+  from libtbx.math_utils import cmp
+  i = -cmp(len(match_a.pairs), len(match_b.pairs))
+  if (i): return i
+  return cmp(match_a.rms, match_b.rms)
 
 def weed_refined_matches(space_group_number, refined_matches,
                          rms_penalty_per_site):

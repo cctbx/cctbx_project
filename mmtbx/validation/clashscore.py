@@ -6,10 +6,10 @@ All-atom contact analysis.  Requires Reduce and Probe (installed separately).
 from __future__ import absolute_import, division, print_function
 from mmtbx.validation import validation, atoms, atom_info, residue
 from mmtbx.utils import run_reduce_with_timeout
+from libtbx.math_utils import cmp
 from libtbx.utils import Sorry
 from libtbx import easy_run
 import libtbx.load_env
-import libtbx.math_utils
 import iotbx.pdb
 import os
 import re
@@ -48,7 +48,7 @@ class clash(atoms):
              abs(self.overlap) ]
 
   def __cmp__(self, other) : # sort in descending order
-    return libtbx.math_utils.cmp(self.overlap, other.overlap)
+    return cmp(self.overlap, other.overlap)
 
 class clashscore(validation):
   __slots__ = validation.__slots__ + [

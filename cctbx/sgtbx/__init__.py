@@ -833,8 +833,5 @@ def compare_cb_op_as_hkl(a, b):
   # Deprecated. Do not use.
   if (len(a) < len(b)): return -1
   if (len(a) > len(b)): return  1
-  if a < b:
-    return -1
-  elif a > b:
-    return 1
-  return 0
+  from libtbx.math_utils import cmp
+  return cmp(a, b)
