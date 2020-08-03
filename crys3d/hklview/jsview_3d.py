@@ -553,30 +553,33 @@ class hklview_3d:
         continue # already have tooltips for the scene without the associated fom
       datval = None
       if hkl in hklscene.work_array.indices():
-        datval = hklscene.work_array.data_at_first_index(hkl)
+        datvals = list( hklscene.work_array.select(hklscene.work_array.indices() == hkl).data() )
+        if hklscene.work_array.sigmas() is not None:
+          sigvals = list( hklscene.work_array.select(hklscene.work_array.indices() == hkl).sigmas() )
       else:
         if id >= hklscene.data.size():
           continue
-        datval = hklscene.data[id]
-      if datval is not None and (not (math.isnan( abs(datval) ) or datval == display.inanval)):
-        if hklscene.work_array.is_complex_array():
-          ampl = abs(datval)
-          phase = cmath.phase(datval) * 180.0/math.pi
-          # purge nan values from array to avoid crash in fmod_positive()
-          # and replace the nan values with an arbitrary float value
-          if math.isnan(phase):
-            phase = 42.4242
-          # Cast negative degrees to equivalent positive degrees
-          phase = phase % 360.0
-        spbufttip +="\\n" + hklscene.work_array.info().label_string() + ': '
-        if hklscene.work_array.is_complex_array():
-          spbufttip += str(roundoff(ampl, 2)) + ", " + str(roundoff(phase, 1)) + \
-            "\'+ String.fromCharCode(176) +\'" # degree character
-        elif hklscene.work_array.sigmas() is not None:
-          sigma = hklscene.work_array.sigma_at_first_index(hkl)
-          spbufttip += str(roundoff(datval, 2)) + ", " + str(roundoff(sigma, 2))
-        else:
-          spbufttip += str(roundoff(datval, 2))
+        datvals = [ hklscene.data[id] ]
+      for i,datval in enumerate(datvals):
+        if not (math.isnan( abs(datval) ) or datval == display.inanval):
+          if hklscene.work_array.is_complex_array():
+            ampl = abs(datval)
+            phase = cmath.phase(datval) * 180.0/math.pi
+            # purge nan values from array to avoid crash in fmod_positive()
+            # and replace the nan values with an arbitrary float value
+            if math.isnan(phase):
+              phase = 42.4242
+            # Cast negative degrees to equivalent positive degrees
+            phase = phase % 360.0
+          spbufttip +="\\n" + hklscene.work_array.info().label_string() + ': '
+          if hklscene.work_array.is_complex_array():
+            spbufttip += str(roundoff(ampl, 2)) + ", " + str(roundoff(phase, 1)) + \
+              "\'+ String.fromCharCode(176) +\'" # degree character
+          elif hklscene.work_array.sigmas() is not None:
+            sigma = sigvals[i]
+            spbufttip += str(roundoff(datval, 2)) + ", " + str(roundoff(sigma, 2))
+          else:
+            spbufttip += str(roundoff(datval, 2))
     spbufttip += '\\n\\n%d,%d,%d' %(id, sym_id, anomalous) # compared by the javascript
     spbufttip += '\''
     return spbufttip
