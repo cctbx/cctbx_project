@@ -993,7 +993,8 @@ class CalibrationDialog(BaseDialog):
     self.trial_runs.ctr.Clear()
     trial = self.db.get_all_trials()[self.trial_number.ctr.GetSelection()]
     runs = [str(i.run) for i in trial.runs]
-    self.trial_runs.ctr.InsertItems(items=runs, pos=0)
+    if runs:
+      self.trial_runs.ctr.InsertItems(items=runs, pos=0)
 
   def onBrowse(self, e):
     ''' Open dialog for selecting PHIL file '''
@@ -1120,7 +1121,8 @@ class TrialTagSelectionDialog(BaseDialog):
           tag_ids.append(tag.id)
           self.tag_names.append(tag.name)
 
-    self.trial_tags.ctr.InsertItems(items=self.tag_names, pos=0)
+    if self.tag_names:
+      self.trial_tags.ctr.InsertItems(items=self.tag_names, pos=0)
 
   def onOK(self, e):
     from xfel.ui.db import get_run_path
@@ -1345,8 +1347,8 @@ class TagDialog(BaseDialog):
     # Populate tags with current values from db
     if len(self.db_tags) > 0:
       for tag in self.db_tags:
-        self.tag_list.InsertStringItem(self.index, str(tag.name))
-        self.tag_list.SetStringItem(self.index, 1, str(tag.comment))
+        self.tag_list.InsertItem(self.index, str(tag.name))
+        self.tag_list.SetItem(self.index, 1, str(tag.comment))
         self.tag_list.SetItemData(self.index, tag.tag_id)
         self.index += 1
 
@@ -1378,8 +1380,8 @@ class TagDialog(BaseDialog):
     ''' Add a string item to list; focus on item & provide default tag name'''
     new_tag = ('default tag {}'.format(self.index), '', self.index)
     self.new_tags.append(new_tag)
-    self.tag_list.InsertStringItem(self.index, new_tag[0])
-    self.tag_list.SetStringItem(self.index, 1, new_tag[1])
+    self.tag_list.InsertItem(self.index, new_tag[0])
+    self.tag_list.SetItem(self.index, 1, new_tag[1])
     self.tag_list.SetItemData(self.index, -1)
     #self.tag_list.Select(self.index)
     #self.tag_list.Focus(self.index)
@@ -1414,13 +1416,13 @@ class TagDialog(BaseDialog):
 
       # Update names for edited tags
       all_items = [(self.tag_list.GetItemData(i),
-                    self.tag_list.GetItem(itemId=i, col=0),
-                    self.tag_list.GetItem(itemId=i, col=1))
+                    self.tag_list.GetItem(itemIdx=i, col=0),
+                    self.tag_list.GetItem(itemIdx=i, col=1))
                     for i in range(self.tag_list.GetItemCount())]
 
       self.db_tags = self.db.get_all_tags()
       tag_ids = [i.tag_id for i in self.db_tags]
-      new_tag_names = [i[1].m_text for i in all_items]
+      new_tag_names = [i[1].GetText() for i in all_items]
 
       if len([i for i in new_tag_names if new_tag_names.count(i) > 1]) != 0:
         wx.MessageBox('Need a unique tag name!', 'Warning',
@@ -1429,10 +1431,10 @@ class TagDialog(BaseDialog):
         for item in all_items:
           if item[0] in tag_ids:
             tag = self.db.get_tag(tag_id=item[0])
-            tag.name = item[1].m_text
-            tag.comment = item[2].m_text
+            tag.name = item[1].GetText()
+            tag.comment = item[2].GetText()
           elif item[0] == -1:
-            self.db.create_tag(name=item[1].m_text, comment=item[2].m_text)
+            self.db.create_tag(name=item[1].GetText(), comment=item[2].GetText())
 
     except Exception as exception:
       print(str(exception))
@@ -2412,7 +2414,7 @@ class DatasetDialog(BaseDialog):
     if tag_names:
       self.tag_checklist.ctr.InsertItems(items=tag_names, pos=0)
       checked = [tag_idx for tag_idx, tag_name in enumerate(tag_names) if tag_name in self.dataset_tagnames]
-      self.tag_checklist.ctr.SetChecked(checked)
+      self.tag_checklist.ctr.SetCheckedItems(checked)
 
   def onOK(self, e):
     name = self.name.ctr.GetValue()
@@ -2431,7 +2433,7 @@ class DatasetDialog(BaseDialog):
       self.dataset.name = name
       self.dataset.comment = comment
 
-    checked = self.tag_checklist.ctr.GetChecked()
+    checked = self.tag_checklist.ctr.GetCheckedItems()
     for tag_idx, tag in enumerate(self.all_tags):
       if tag_idx in checked:
         if tag.name not in self.dataset_tagnames:

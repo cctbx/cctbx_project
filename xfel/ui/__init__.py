@@ -159,7 +159,7 @@ def save_cached_settings(params):
 
   try:
     f = open(settings_file.encode('utf8'), 'wb')
-    f.write(diff_phil.as_str())
+    f.write(diff_phil.as_str().encode('utf8'))
     f.close()
   except IOError:
     raise Sorry('Unable to write %s.' % settings_file)

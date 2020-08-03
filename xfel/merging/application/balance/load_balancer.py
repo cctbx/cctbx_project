@@ -11,14 +11,11 @@ class load_balancer(worker):
   def __repr__(self):
     return 'Balance input data load'
 
-  def reflection_table_stub(self):
+  def reflection_table_stub(self, reflections):
     '''Return an empty reflection table with the same format as the reflection table input to this class'''
     table = flex.reflection_table()
-    table['miller_index']             = flex.miller_index()
-    table['intensity.sum.value']      = flex.double()
-    table['intensity.sum.variance']   = flex.double()
-    table['exp_id']                   = flex.std_string()
-    table['s1']                       = flex.vec3_double()
+    for key in reflections:
+      table[key] = type(reflections[key])()
     return table
 
   def divide_list_into_chunks(self, list_, n): # n - number of chunks
@@ -146,11 +143,12 @@ class load_balancer(worker):
   def distribute_reflections_over_experiment_chunks_python(self, reflections):
     self.split_reflections = []
     for i in range(len(self.split_experiments)):
-      self.split_reflections.append(self.reflection_table_stub())
+      self.split_reflections.append(self.reflection_table_stub(reflections))
 
     for i in range(len(self.split_experiments)):
-      for experiment in self.split_experiments[i]:
+      for expt_idx, experiment in enumerate(self.split_experiments[i]):
         refls = reflections.select(reflections['exp_id'] == experiment.identifier)
+        refls['id'] = flex.int(len(refls), expt_idx)
         self.split_reflections[i].extend(refls)
 
   def distribute_reflections_over_experiment_chunks_cpp(self, reflections):
@@ -160,7 +158,7 @@ class load_balancer(worker):
     # initialize a list of reflection chunks
     self.split_reflections = []
     for i in range(len(self.split_experiments)):
-      self.split_reflections.append(self.reflection_table_stub())
+      self.split_reflections.append(self.reflection_table_stub(reflections))
 
     if reflection_count > 0:
       # set up two lists to be passed to the C++ extension: experiment ids and chunk ids. It's basically a hash table to look up chunk ids by experiment identifier
