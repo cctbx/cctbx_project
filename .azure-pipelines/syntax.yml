@@ -27,11 +27,20 @@ jobs:
     displayName: Add conda to PATH
 
   - script: |
-      conda create -y -n py${PYTHON_VERSION} python=${PYTHON_VERSION} six future scons
+      conda create -y -n py$(PYTHON_VERSION) python=$(PYTHON_VERSION) six future scons
     displayName: Create conda environment
 
   - script: |
-      source activate py${PYTHON_VERSION}
+      set -x -e
+      cd $(Pipeline.Workspace)/modules/cctbx_project
+      for f in `cat .azure-pipelines/py2_syntax_exceptions.txt`; do
+        echo Removing $f
+        rm $f; done
+    displayName: Remove Python 3 only files for Python 2 syntax check
+    condition: eq(variables['PYTHON_VERSION'], '2.7')
+
+  - script: |
+      source activate py$(PYTHON_VERSION)
       cd $(Pipeline.Workspace)
       mkdir build
       cd build
@@ -40,13 +49,13 @@ jobs:
     displayName: Configure libtbx
 
   - script: |
-      source activate py${PYTHON_VERSION}
+      source activate py$(PYTHON_VERSION)
       source $(Pipeline.Workspace)/build/setpaths.sh
       libtbx.py_compile_all -v .
     displayName: Check syntax
 
   - script: |
-      source activate py${PYTHON_VERSION}
+      source activate py$(PYTHON_VERSION)
       source $(Pipeline.Workspace)/build/setpaths.sh
       libtbx.find_clutter
     displayName: Check for clutter
