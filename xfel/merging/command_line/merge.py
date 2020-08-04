@@ -149,10 +149,17 @@ class Script(object):
       if 'id' not in reflections:
         from dials.array_family import flex
         id_ = flex.int(len(reflections), -1)
-        for expt_number, expt in enumerate(experiments):
-          sel = reflections['exp_id'] == expt.identifier
-          id_.set_selected(sel, expt_number)
+        if experiments:
+          for expt_number, expt in enumerate(experiments):
+            sel = reflections['exp_id'] == expt.identifier
+            id_.set_selected(sel, expt_number)
+        else:
+          for expt_number, exp_id in enumerate(set(reflections['exp_id'])):
+            sel = reflections['exp_id'] == exp_id
+            id_.set_selected(sel, expt_number)
         reflections['id'] = id_
+
+        assert (reflections['id'] == -1).count(True) == 0, ((reflections['id'] == -1).count(True), len(reflections))
 
       if self.mpi_helper.size == 1:
         filename_suffix = ""
@@ -160,7 +167,8 @@ class Script(object):
         filename_suffix = "_%06d"%self.mpi_helper.rank
 
       reflections.as_pickle(os.path.join(self.params.output.output_dir, "%s%s.refl"%(self.params.output.prefix, filename_suffix)))
-      experiments.as_file(os.path.join(self.params.output.output_dir, "%s%s.expt"%(self.params.output.prefix, filename_suffix)))
+      if experiments:
+        experiments.as_file(os.path.join(self.params.output.output_dir, "%s%s.expt"%(self.params.output.prefix, filename_suffix)))
 
     self.mpi_logger.log_step_time("TOTAL", True)
 

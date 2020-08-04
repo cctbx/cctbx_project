@@ -535,21 +535,26 @@ class EnsembleRefinementJob(Job):
     striping.stripe=False
     striping.dry_run=True
     striping.output_folder={}
+    reintegration.integration.lookup.mask={}
+    mp.local.include_mp_in_command=False
     """.format(self.app.params.mp.queue if len(self.app.params.mp.queue) > 0 else None,
                self.app.params.mp.nproc,
                self.app.params.mp.nproc_per_node,
                self.app.params.mp.method,
-               '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script]),
+               '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script if p]),
                self.app.params.output_folder,
                self.trial.trial,
                self.rungroup.id,
                self.run.run,
                target_phil_path,
                path,
+               self.rungroup.untrusted_pixel_mask_path,
                ).split()
 
     commands = Script(arguments).run()
     submission_ids = []
+    if self.app.params.mp.method == 'local':
+      self.status = "RUNNING"
     for command in commands:
       try:
         result = easy_run.fully_buffered(command=command)
@@ -558,7 +563,10 @@ class EnsembleRefinementJob(Job):
         if not "Warning: job being submitted without an AFS token." in str(e):
           raise e
       submission_ids.append(get_submission_id(result, self.app.params.mp.method))
-    return ",".join(submission_ids)
+    if self.app.params.mp.method == 'local':
+      self.status = "DONE"
+    else:
+      return ",".join(submission_ids)
 
 class ScalingJob(Job):
   def delete(self, output_only=False):

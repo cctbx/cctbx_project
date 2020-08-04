@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 from PySide2.QtCore import QTimer
 
 from PySide2.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
-from PySide2.QtWidgets import QApplication
+#from PySide2.QtWidgets import QApplication
 import sys, os
 
 
@@ -99,7 +99,10 @@ class MyQWebEnginePage(QWebEnginePage):
 
 
 if (__name__ == "__main__") :
+  from PySide2.QtWidgets import QApplication
   app1 = QApplication(sys.argv)
+  app1.aboutToQuit.connect(lambda :print("about to quit"))
+
   # give the browser time to instatiate and then close down gracefully
   QTimer.singleShot(10000, app1.quit ) # in case pageloadFinished() is never executed
   browser = QWebEngineView()
@@ -119,3 +122,4 @@ if (__name__ == "__main__") :
   #print('WebGL=' + str(webpage.webglsupport),)
 
   app1.exec_()
+  print("app has quit")

@@ -200,7 +200,7 @@ def write_map_file(crystal_symmetry, map_data, file_name):
 
 class refinery(object):
   def __init__(self, fmodel, fv, alg, anomaly=True, log = sys.stdout):
-    assert alg in ["alg0","alg2", "alg4", None]
+    assert alg in ["alg0", "alg2", "alg4", None]
     self.log            = log
     self.f_obs          = fmodel.f_obs()
     self.r_free_flags   = fmodel.r_free_flags()
@@ -213,14 +213,13 @@ class refinery(object):
     self.f_calc         = fmodel.f_model()
     self.F              = [self.f_calc.deep_copy()] + fv.keys()
     #
-    #if(anomaly):
-    #  self.f_calc = fmodel.f_calc()
-    #  self.F = [self.f_calc.deep_copy()] + fv.keys()
-    #else:
-    #  self.f_calc = fmodel.f_model_no_scales()
-    #  self.F = [self.f_calc.deep_copy()] + fv.keys()[1:]
-    #
     for it in range(3):
+      #
+      if alg is not None: ALG = alg
+      else:
+        if it ==0: ALG = "alg4"
+        else:      ALG = "alg2"
+      #
       if it>0:
         self.F = [self.fmodel.f_model().deep_copy()] + self.F[1:]
       self._print("cycle: %2d"%it)
@@ -228,24 +227,11 @@ class refinery(object):
       f_obs   = self.f_obs.deep_copy()
       if it==0: k_total = fmodel.k_total()
       else:     k_total = self.fmodel.k_total()
-      f_obs   = f_obs.customized_copy(data = self.f_obs.data()/k_total)
       i_obs   = f_obs.customized_copy(data = f_obs.data()*f_obs.data())
       K_MASKS = OrderedDict()
 
       self.bin_selections = self.f_obs.log_binning(
         n_reflections_in_lowest_resolution_bin = 100*len(self.F))
-
-      #tmp_bin_selections = []
-      #for i_bin, sel in enumerate(self.bin_selections):
-      #  ds = d_spacings.select(sel)
-      #  mi, ma = flex.min(ds), flex.max(ds)
-      #  if mi < 3 and ma > 3:
-      #    sel = sel.set_selected(~dsel, False)
-      #    tmp_bin_selections[i_bin-1] = self.bin_selections[i_bin-1] | sel
-      #    break
-      #  else:
-      #    tmp_bin_selections.append(sel)
-      #self.bin_selections = tmp[:]
 
       for i_bin, sel in enumerate(self.bin_selections):
         d_max, d_min = f_obs.select(sel).d_max_min()
@@ -258,7 +244,7 @@ class refinery(object):
         #r00=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, F[0].data()*k_total_sel)
 
         # algorithm_0
-        if(alg=="alg0"):
+        if(ALG=="alg0"):
           k_masks = algorithm_0(
             f_obs = f_obs.select(sel),
             F     = F_scaled,
@@ -270,7 +256,7 @@ class refinery(object):
         #r0=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, fd*k_total_sel)
 
         # algorithm_4
-        if(alg=="alg4"):
+        if(ALG=="alg4"):
           if it==0: phase_source = fmodel.f_model().select(sel)
           else:     phase_source = self.fmodel.f_model().select(sel)
           k_masks = algorithm_4(
@@ -285,7 +271,7 @@ class refinery(object):
         #r4=bulk_solvent.r_factor(f_obs.select(sel).data()*k_total_sel, fd*k_total_sel)
 
         # algorithm_2
-        if(alg=="alg2"):
+        if(ALG=="alg2"):
           k_masks = algorithm_2(
             i_obs          = i_obs.select(sel),
             F              = F_scaled,
@@ -302,6 +288,9 @@ class refinery(object):
         k_masks_plus = [k_masks[0]]+[k_mean + k for k in k_masks[1:]]
         self._print(bin+" ".join(["%6.2f"%k for k in k_masks_plus]) )
         K_MASKS[sel] = [k_masks, k_masks_plus]
+      #
+      if(len(self.F)==2): break # stop and fall back onto using largest mask
+      #
       #
       #print()
       #self.update_k_masks(K_MASKS)
@@ -389,10 +378,11 @@ class refinery(object):
       self.F = tmp[:]
 
   def _get_x_init(self, i_bin):
-    k_maks1_init = 0.35 - i_bin*0.35/len(self.bin_selections)
-    x = flex.double([1,k_maks1_init])
-    x.extend( flex.double(len(self.F)-2, 0.1))
-    return x
+    return flex.double([1] + [1]*len(self.F[1:]))
+    #k_maks1_init = 0.35 - i_bin*0.35/len(self.bin_selections)
+    #x = flex.double([1,k_maks1_init])
+    #x.extend( flex.double(len(self.F)-2, 0.1))
+    #return x
 
 def get_f_mask(xrs, ma, step, option = 2):
   crystal_gridding = maptbx.crystal_gridding(
@@ -657,8 +647,10 @@ def algorithm_2(i_obs, F, x, use_curvatures=True, macro_cycles=10):
     if(use_curvatures):
       m = minimizer(max_iterations=100, calculator=calculator)
     else:
-      upper = flex.double([10] + [5]*(x.size()-1))
-      lower = flex.double([0.1] + [-5]*(x.size()-1))
+      upper = flex.double([1.1] + [1]*(x.size()-1))
+      lower = flex.double([0.9] + [-1]*(x.size()-1))
+      #upper = flex.double([10] + [5]*(x.size()-1))
+      #lower = flex.double([0.1] + [-5]*(x.size()-1))
       #upper = flex.double([10] + [0.65]*(x.size()-1))
       #lower = flex.double([0.1] + [0]*(x.size()-1))
 

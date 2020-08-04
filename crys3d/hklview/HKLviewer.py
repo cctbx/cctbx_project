@@ -144,6 +144,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     self.zmq_context = None
     self.unfeedback = False
+    self.cctbxpythonversion = None
 
     self.mousespeed_labeltxt = QLabel()
     self.mousespeed_labeltxt.setText("Mouse speed:")
@@ -255,7 +256,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.currentphilstringdict = {}
     self.hklscenes_arrays = []
     self.millerarraylabels = []
-    self.scenearraylabels = []
+    self.scenearraylabeltypes = []
     self.array_infotpls = []
     self.matching_arrays = []
     self.bin_infotpls = None
@@ -320,7 +321,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     # omitting name for QWebEngineProfile() means it is private/off-the-record with no cache files
     self.webprofile = QWebEngineProfile(parent=self.BrowserBox)
     self.webpage = QWebEnginePage( self.webprofile, self.BrowserBox)
-    self.webpage.profile().downloadRequested.connect(self.Browser_download_requested)
     if self.devmode:
       if hasattr(self.webpage, "setInspectedPage"): # older versions of Qt5 hasn't got chromium debug kit
         self.webpage.setUrl("chrome://gpu")
@@ -385,7 +385,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.PhilToJsRender('NGL_HKLviewer.savefilename = "%s"' %fileName )
 
 
-
   def SettingsDialog(self):
     self.settingsform.show()
 
@@ -415,6 +414,14 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         msg = zlib.decompress(binmsg)
         nan = float("nan") # workaround for "evaluating" any NaN values in the messages received
         msgstr = msg.decode()
+
+        if "cctbx.python.version:" in msgstr:
+          self.cctbxpythonversion = msgstr
+          if self.cctbxpythonversion == 'cctbx.python.version: 2':
+            # use NGL's download feature for images since websocket_server fails to handle large streams
+            self.webpage.profile().downloadRequested.connect(self.Browser_download_requested)
+          return
+
         self.infodict = eval(msgstr)
         if self.infodict:
           if self.infodict.get("WebGL_error"):
@@ -431,12 +438,12 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
                 self.currentphilstringdict[k] = v
             self.UpdateGUI()
 
-          if self.infodict.get("hklscenes_arrays"):
-            self.hklscenes_arrays = self.infodict.get("hklscenes_arrays", [])
-            self.scenearraylabels = [ e[3] for e in self.hklscenes_arrays ]
+          if self.infodict.get("scene_array_label_types"):
+            self.scenearraylabeltypes = self.infodict.get("scene_array_label_types", [])
 
           if self.infodict.get("array_infotpls"):
             self.array_infotpls = self.infodict.get("array_infotpls",[])
+            #self.millerarraylabels = [ ",".join(e[0]) for e in self.array_infotpls ]
             self.millerarraylabels = [ e[0] for e in self.array_infotpls ]
 
           if self.infodict.get("bin_data_label"):
@@ -578,13 +585,30 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
             self.millertable.setRowCount(len(self.array_infotpls))
             for n,millarr in enumerate(self.array_infotpls):
               for m,elm in enumerate(millarr):
-                self.millertable.setItem(n, m, QTableWidgetItem(str(elm)))
+                if m == 0:
+                  #label = ",".join(elm)
+                  label = elm
+                  self.millertable.setItem(n, m, QTableWidgetItem(label))
+                else:
+                  self.millertable.setItem(n, m, QTableWidgetItem(str(elm)))
             #self.functionTabWidget.setDisabled(True)
             self.NewFileLoaded = False
 
           if self.NewHKLscenes:
             self.BinDataComboBox.clear()
-            self.BinDataComboBox.addItems(["Resolution", "Singletons"] + self.scenearraylabels )
+            self.BinDataComboBox.addItem("Resolution",  ["''", -1, -1] )
+            self.BinDataComboBox.addItem("Singletons", ["''", -2, -1] )
+            for labels,labeltype,idx,sceneid in self.scenearraylabeltypes:
+              label = ",".join(labels)
+              if labeltype not in  ["iscomplex", "iscomplex_fom"]:
+                self.BinDataComboBox.addItem(label, ["'" + labeltype + "'", idx, sceneid])
+              if labeltype == "hassigmas":
+                self.BinDataComboBox.addItem("Sigmas of " + label, ["'" + labeltype + "'", idx, sceneid])
+              if labeltype == "iscomplex":
+                self.BinDataComboBox.addItem("Phases of " + label, ["'" + labeltype + "'", idx, sceneid])
+                self.BinDataComboBox.addItem("Amplitudes of " + label, ["'" + labeltype + "'", idx, sceneid])
+              #for label in labels:
+              #  self.BinDataComboBox.addItem(label, ["'" + labeltype + "'", idx])
             self.BinDataComboBox.view().setMinimumWidth(self.comboviewwidth)
             #self.BinDataComboBox.setCurrentIndex(-1) # unselect the first item in the list
             self.NewHKLscenes = False
@@ -711,6 +735,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.fontsize = val
     self.app.setFont(font);
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
+    if self.cctbxpythonversion: # then connection to cctbx has been established
+      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.fontsize = %d" %val)
 
 
   def onClearTextBuffer(self):
@@ -870,20 +896,17 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.PhilToJsRender("NGL_HKLviewer.viewer.slice_index = %d" %self.sliceindex)
 
 
-  def onBindataComboSelchange(self,i):
+  def onBindataComboSelchange(self, i):
     if self.BinDataComboBox.currentText():
-      if self.BinDataComboBox.currentIndex() > 1:
-        bin_scene_label = str(self.BinDataComboBox.currentIndex()-2)
-      else:
-        bin_scene_label = self.BinDataComboBox.currentText()
-      self.PhilToJsRender("NGL_HKLviewer.bin_scene_label = %s" % bin_scene_label )
+      currentlabel = self.BinDataComboBox.currentText()
+      currentdata = self.BinDataComboBox.currentData()
+      bin_labels_type_idx = str( [currentlabel] + currentdata )
+      self.PhilToJsRender("NGL_HKLviewer.bin_labels_type_idx = %s" % bin_labels_type_idx )
       bin_opacitieslst = []
-      for i in range(self.nbins):
-        bin_opacitieslst.append((1.0, i)) #   ("1.0, %d" %i)
+      for j in range(self.nbins):
+        bin_opacitieslst.append((1.0, j))
       self.bin_opacities = str(bin_opacitieslst)
       self.OpaqueAllCheckbox.setCheckState(Qt.Checked)
-      #self.OpaqueAllCheckbox.setTristate(false)
-      #self.PhilToJsRender('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities)
 
 
   def update_table_opacities(self, allalpha=None):
@@ -1255,9 +1278,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.MillerTableContextMenuHandler(QCursor.pos(), row)
     if self.millertable.mousebutton == QEvent.MouseButtonDblClick:
       # quickly display data with a double click
-      for i,scenelabel in enumerate(self.scenearraylabels):
-        if self.millerarraylabels[row] == scenelabel:
-          self.DisplayData(i, row)
+      for sceneid,(scenelabel,labeltype,arrayid,sceneid) in enumerate(self.scenearraylabeltypes):
+        if row == arrayid:
+          self.DisplayData(sceneid, row)
+          break
 
 
   def onMillerTableitemSelectionChanged(self):
@@ -1269,17 +1293,18 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     # Tag menu items with data being int or a (string, int) tuple.
     # These are being checked for in onMillerTableMenuAction() and appropriate
     # action taken
-    for i,scenelabel in enumerate(self.scenearraylabels):
-      if self.millerarraylabels[row] == scenelabel or self.millerarraylabels[row] + " + " in scenelabel:
-        if self.array_infotpls[i][6] != (None, None): # i.e. has sigmas
-          myqa = QAction("Display data of %s" %scenelabel, self.window, triggered=self.testaction)
+    for i,(scenelabel,labeltype,arrayid,sceneid) in enumerate(self.scenearraylabeltypes):
+      scenelabelstr = ",".join(scenelabel)
+      if self.millerarraylabels[row] == scenelabelstr or self.millerarraylabels[row] + " + " in scenelabelstr:
+        if labeltype == "hassigmas":
+          myqa = QAction("Display data of %s" %scenelabelstr, self.window, triggered=self.testaction)
           myqa.setData((i, row))
           self.millertablemenu.addAction(myqa)
-          myqa = QAction("Display sigmas of %s" %scenelabel, self.window, triggered=self.testaction)
+          myqa = QAction("Display sigmas of %s" %scenelabelstr, self.window, triggered=self.testaction)
           myqa.setData((i + 1000, row)) # want to show the sigmas rather than the data if we add 1000
           self.millertablemenu.addAction(myqa)
         else:
-          myqa = QAction("Display %s" %scenelabel, self.window, triggered=self.testaction)
+          myqa = QAction("Display %s" %scenelabelstr, self.window, triggered=self.testaction)
           myqa.setData((i, row))
           self.millertablemenu.addAction(myqa)
     myqa = QAction("Make new data as a function of this data...", self.window, triggered=self.testaction)
@@ -1434,8 +1459,16 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def onSaveImageBtn(self):
-    self.PhilToJsRender('NGL_HKLviewer.save_image_name = "dummy.png" ')
-    # eventual file name prompted to us by Browser_download_requested()
+    if self.cctbxpythonversion == 'cctbx.python.version: 3': # streaming image over websockets
+      options = QFileDialog.Options()
+      fileName, filtr = QFileDialog.getSaveFileName(self.window,
+              "Save screenshot to file", "",
+              "PNG Files (*.png);;All Files (*)", "", options)
+      if fileName:
+        self.PhilToJsRender('NGL_HKLviewer.save_image_name = "%s" '%fileName)
+    else:
+      self.PhilToJsRender('NGL_HKLviewer.save_image_name = "dummy.png" ')
+      # eventual file name prompted to us by Browser_download_requested(
 
 
   def onDrawReciprocUnitCellBoxClick(self):
@@ -1518,6 +1551,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
 def run():
+  #time.sleep(10)
   try:
     import PySide2.QtCore
     Qtversion = str(PySide2.QtCore.qVersion())

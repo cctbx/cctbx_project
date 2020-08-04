@@ -94,7 +94,10 @@ class _():
       # The Py3 method brings the full data in one chunk into PyBytes and then populates
       #   the output buffer in Python rather than C++.
       image_bytes = self.raw_pixels_unsigned_short_as_python_bytes(intfile_scale,debug_x,debug_y)
-      outfile.write(image_bytes)
+      ptr = 0; nbytes = len(image_bytes)
+      while (ptr < nbytes): # chunked output necessary to prevent intermittent MemoryError
+        outfile.write(image_bytes[ptr : min(ptr + 65536, nbytes)])
+        ptr += 65536
       outfile.close();
       return
     from boost.python import streambuf

@@ -11,7 +11,20 @@ if [ $# -lt 1 ]
    exit
 fi
 
-WORKING=$(realpath $1)
+# Make sure an absolute path was provided. If not, print a warning
+target_file=$(basename $1)
+pushd $(dirname $1) >/dev/null
+target_dir_phys=$(pwd -P)
+popd >/dev/null
+
+if [ "$target_dir_phys/$target_file" != "$1" ]
+then
+  echo "Warning: Please give an absolute path to the installation directory."
+  read -p "Proceed anyway? y/[n] " run_anyway
+  if [ "$run_anyway" != "y" ]; then exit; fi
+fi
+
+WORKING=$1
 cd $WORKING
 
 # Download and install the latest build of DIALS

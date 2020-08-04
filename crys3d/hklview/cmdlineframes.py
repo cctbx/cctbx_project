@@ -288,10 +288,14 @@ class HKLViewFrame() :
       self.guisocket.connect("tcp://127.0.0.1:%s" %self.guiSocketPort )
       self.STOP = False
       self.mprint("starting socketthread", 1)
-      self.msgqueuethrd = threading.Thread(target = self.zmq_listen )
+      # name this thread to ensure any asyncio functions are called only from main thread
+      self.msgqueuethrd = threading.Thread(target = self.zmq_listen, name="zmq_thread" )
       self.msgqueuethrd.daemon = True
       self.msgqueuethrd.start()
       kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by hklview_3d
+      pyversion = "cctbx.python.version: " + str(sys.version_info[0])
+      # tell gui what python version we are
+      self.SendInfoToGUI(pyversion )
     kwds['websockport'] = self.find_free_port()
     kwds['parent'] = self
     self.viewer = view_3d.hklview_3d( **kwds )
@@ -360,18 +364,18 @@ class HKLViewFrame() :
     self.params = self.currentphil.fetch().extract()
     self.viewer.viewerparams = self.params.NGL_HKLviewer.viewer
     self.viewer.params = self.params.NGL_HKLviewer
-    self.params.NGL_HKLviewer.bin_scene_label = 'Resolution'
+    self.params.NGL_HKLviewer.bin_labels_type_idx = "('Resolution', '', -1, -1)"
     self.params.NGL_HKLviewer.using_space_subgroup = False
     self.viewer.symops = []
     self.viewer.sg = None
     self.viewer.proc_arrays = []
     self.viewer.HKLscenedict = {}
     self.viewer.sceneisdirty = True
+    self.viewer.isnewfile = True
     if self.viewer.miller_array:
       self.viewer.params.viewer.scene_id = None
-      self.viewer.DrawNGLJavaScript( blankscene=True)
+      self.viewer.JavaScriptCleanUp()
     self.viewer.miller_array = None
-    self.viewer.isnewfile = True
     self.viewer.lastviewmtrx = None
     return self.viewer.params
 
@@ -437,12 +441,12 @@ class HKLViewFrame() :
         self.viewer.lastscene_id = phl.viewer.scene_id
 
       if view_3d.has_phil_path(diff_phil, "scene_id", "merge_data", "show_missing", \
-         "show_only_missing", "show_systematic_absences", "nbins", "bin_scene_label",\
+         "show_only_missing", "show_systematic_absences", "nbins", "bin_labels_type_idx",\
          "scene_bin_thresholds"):
         if self.set_scene(phl.viewer.scene_id):
           self.update_space_group_choices()
           self.set_scene_bin_thresholds(binvals=phl.scene_bin_thresholds,
-                                         bin_scene_label=phl.bin_scene_label,
+                                         bin_labels_type_idx=phl.bin_labels_type_idx,
                                          nbins=phl.nbins )
 
       if view_3d.has_phil_path(diff_phil, "spacegroup_choice"):
@@ -482,10 +486,9 @@ class HKLViewFrame() :
         self.viewer.settings = phl.viewer
         self.settings = phl.viewer
 
-      msg, self.params.NGL_HKLviewer = self.viewer.update_settings(diff_phil, phl)
+      self.params.NGL_HKLviewer = self.viewer.update_settings(diff_phil, phl)
       # parameters might have been changed. So update self.currentphil accordingly
       self.currentphil = self.master_phil.format(python_object = self.params)
-      self.mprint( msg, verbose=1)
       self.NewFileLoaded = False
       phl.mouse_moved = False
       self.SendCurrentPhilValues()
@@ -658,7 +661,6 @@ class HKLViewFrame() :
     miller_array_operations_lst = []
     if self.params.NGL_HKLviewer.miller_array_operations:
       miller_array_operations_lst = eval(self.params.NGL_HKLviewer.miller_array_operations)
-
     miller_array_operations_lst.append( ( operation, label, arrid1, arrid2 ) )
     self.params.NGL_HKLviewer.miller_array_operations = str( miller_array_operations_lst )
     self.update_settings()
@@ -676,7 +678,6 @@ class HKLViewFrame() :
           break
       if isunique:
         unique_miller_array_operations_lst.append( (operation, label, arrid1, arrid2) )
-
     self.params.NGL_HKLviewer.miller_array_operations = str(unique_miller_array_operations_lst)
     from copy import deepcopy
     millarr1 = deepcopy(self.procarrays[arrid1])
@@ -896,16 +897,24 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def set_scene_bin_thresholds(self, binvals=None, bin_scene_label="Resolution", nbins=6):
+  def set_scene_bin_thresholds(self, binvals = None, bin_labels_type_idx = None,  nbins = 6):
+    if bin_labels_type_idx is None:
+      bin_labels_type_idx = "('Resolution', '', -1, -1)"
+    #else:
+    #  bin_labels_type_idx = eval(bin_labels_type_idx)
     if binvals:
       binvals = list( 1.0/flex.double(binvals) )
     else:
-      binvals, nuniquevalues = self.viewer.calc_bin_thresholds(bin_scene_label, nbins)
+      binvals, nuniquevalues = self.viewer.calc_bin_thresholds(bin_labels_type_idx, nbins)
     self.viewer.UpdateBinValues( binvals, nuniquevalues )
 
 
-  def SetSceneBinLabel(self, bin_scene_label="Resolution"):
-    self.params.NGL_HKLviewer.bin_scene_label = bin_scene_label
+  def SetSceneBinLabel(self, bin_labels_type_idx = None ):
+    if bin_labels_type_idx is None:
+      bin_labels_type_idx = "('Resolution', '', -1, -1)"
+    #else:
+    #  bin_labels_type_idx = eval(bin_labels_type_idx )
+    self.params.NGL_HKLviewer.bin_labels_type_idx = bin_labels_type_idx
     self.update_settings()
 
 
@@ -1023,6 +1032,11 @@ class HKLViewFrame() :
       self.__exit__()
       return False
     return True
+
+
+  def SetFontSize(self, val):
+    self.params.NGL_HKLviewer.viewer.NGL.fontsize = val
+    self.update_settings()
 
 
   def ShowUnitCell(self, val):
@@ -1223,7 +1237,7 @@ NGL_HKLviewer {
   scene_bin_thresholds = None
     .type = float
     .multiple = True
-  bin_scene_label = 'Resolution'
+  bin_labels_type_idx = "('Resolution', '', -1, -1)"
     .type = str
   nbins = 1
     .type = int(value_min=1, value_max=20)
@@ -1250,7 +1264,7 @@ def run():
   """
   utility function for passing keyword arguments more directly to HKLViewFrame()
   """
-  #time.sleep(40)
+  #time.sleep(15)
   # dirty hack for parsing a file path with spaces of a browser if not using default
   args = sys.argv[1:]
   sargs = " ".join(args)

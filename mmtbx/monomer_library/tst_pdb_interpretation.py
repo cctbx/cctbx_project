@@ -14,6 +14,9 @@ import sys
 from cctbx.array_family import flex
 from six.moves import zip
 
+params = monomer_library.pdb_interpretation.master_params.extract()
+params.flip_symmetric_amino_acids = False
+
 def exercise_handle_case_insensitive(mon_lib_srv, ener_lib):
   def check(a, r, e):
     raw_records = ("""\
@@ -24,6 +27,7 @@ HETATM    1 %s    %s F   1      -7.869  17.488  18.637  1.00 30.00          %s
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
       file_name=None,
+      params=params,
       raw_records=raw_records,
       log=log)
     log_lines = log.getvalue().splitlines()
@@ -489,6 +493,7 @@ _chem_comp_plane_atom.dist_esd
     ener_lib=ener_lib,
     file_name=None,
     raw_records=raw_records,
+    params=params,
     force_symmetry=True,
     log=log)
   grm = processed_pdb_file.geometry_restraints_manager()
@@ -530,6 +535,7 @@ END
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
     file_name=None,
+    params=params,
     raw_records=raw_records,
     force_symmetry=True)
   xray_structure = processed_pdb_file.xray_structure()
@@ -539,6 +545,7 @@ END
   processed_pdb_file = monomer_library.pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
+    params=params,
     file_name=None,
     raw_records=raw_records,
     force_symmetry=True)
@@ -561,6 +568,7 @@ END
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
     file_name=None,
+    params=params,
     raw_records=raw_records,
     log=log)
   looking_for = "Ad-hoc single atom residues: "
@@ -1016,7 +1024,7 @@ def exercise_hydrogen_deuterium_aliases():
       return
     file_paths.append(file_path)
   log = StringIO()
-  monomer_library.pdb_interpretation.run(args=file_paths, log=log)
+  monomer_library.pdb_interpretation.run(args=file_paths, params=params, log=log)
   assert not block_show_diff(
     log.getvalue(), """\
   Histogram of bond lengths:
@@ -1041,7 +1049,7 @@ def exercise_corrupt_cif_link():
     file_paths.append(file_path)
   log = StringIO()
   try:
-    monomer_library.pdb_interpretation.run(args=file_paths, log=log)
+    monomer_library.pdb_interpretation.run(args=file_paths, params=params, log=log)
   except Sorry as e:
     assert str(e).startswith("Corrupt CIF link definition:")
   else: raise Exception_expected
@@ -1060,7 +1068,7 @@ def exercise_dna_cns_cy5_th6():
       return
     file_paths.append(file_path)
   log = StringIO()
-  monomer_library.pdb_interpretation.run(args=file_paths, log=log)
+  monomer_library.pdb_interpretation.run(args=file_paths, params=params, log=log)
   assert not block_show_diff(log.getvalue(), """\
         Number of residues, atoms: 12, 244
           Classifications: %s
@@ -1082,6 +1090,7 @@ def exercise_sym_excl_indices(mon_lib_srv, ener_lib):
   log = StringIO()
   pdb_interpretation_params = monomer_library.pdb_interpretation.master_params.extract()
   pdb_interpretation_params.sort_atoms=False
+  pdb_interpretation_params.flip_symmetric_amino_acids=False
   processed_pdb_file = monomer_library.pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
@@ -1121,6 +1130,7 @@ def exercise_auto_alias_h_h1():
     file_paths.append(file_path)
   log = StringIO()
   processed_pdb_file = monomer_library.pdb_interpretation.run(
+        params=params,
     args=file_paths, log=log)
   assert log.getvalue().find("Modifications used: {'NH3': 1}") >= 0
   assert processed_pdb_file.all_chain_proxies.fatal_problems_message() is None
@@ -1135,6 +1145,7 @@ def exercise_d_aa_resnames():
     return
   log = StringIO()
   processed_pdb_file = monomer_library.pdb_interpretation.run(
+        params=params,
     args=[file_path], log=log)
   assert log.getvalue().find("'PEPT-D': 1") >= 0
   assert log.getvalue().find("'NH1NOTPRO': 1") >= 0
@@ -1151,6 +1162,7 @@ def exercise_d_amino_acid_chain_perfect_in_box_peptide_plane():
   log = StringIO()
   pdb_interpretation_params = monomer_library.pdb_interpretation.master_params.extract()
   pdb_interpretation_params.sort_atoms=False
+  pdb_interpretation_params.flip_symmetric_amino_acids=False
   pdb_interpretation_params.peptide_link.apply_peptide_plane=True
   processed_pdb_file = monomer_library.pdb_interpretation.run(
     args=[file_path], params=pdb_interpretation_params, log=log)
@@ -1170,10 +1182,12 @@ def exercise_d_amino_acid_chain_perfect_in_box():
   log = StringIO()
   pdb_interpretation_params = monomer_library.pdb_interpretation.master_params.extract()
   pdb_interpretation_params.sort_atoms=False
+  pdb_interpretation_params.flip_symmetric_amino_acids=False
   processed_pdb_file = monomer_library.pdb_interpretation.run(
     args=[file_path], params=pdb_interpretation_params, log=log)
   grm = processed_pdb_file.geometry_restraints_manager()
   lv = log.getvalue()
+  print(lv)
   assert lv.find("Classifications: {'peptide': 16}") >= 0
   assert lv.find("'PEPT-D': 1") >= 0
   assert lv.find("'TRANS': 14") >= 0
@@ -1185,19 +1199,19 @@ Simple disulfide: pdb=" SG  DCY A   4 " - pdb=" SG  DCY A  19 " distance=2.03
   assert not block_show_diff(lv, """\
   Bond restraints: 121
   Sorted by residual:
-  bond pdb=" CG  DPR A   7 "
-       pdb=" CD  DPR A   7 "
+  bond pdb=" CZ  DAR A  14 "
+       pdb=" NH2 DAR A  14 "
     ideal  model  delta    sigma   weight residual
-    1.503  1.507 -0.004 3.40e-02 8.65e+02 1.39e-02
+    1.330  1.326  0.004 1.30e-02 5.92e+03 1.15e-01
 """)
   assert not block_show_diff(lv, """\
   Bond angle restraints: 161
   Sorted by residual:
-  angle pdb=" C   DIL A  10 "
-        pdb=" CA  DIL A  10 "
-        pdb=" CB  DIL A  10 "
+  angle pdb=" NE  DAR A  14 "
+        pdb=" CZ  DAR A  14 "
+        pdb=" NH1 DAR A  14 "
       ideal   model   delta    sigma   weight residual
-     111.60  109.11    2.49 2.00e+00 2.50e-01 1.55e+00
+     121.50  120.07    1.43 1.00e+00 1.00e+00 2.04e+00
 """)
   assert not block_show_diff(lv, """\
   Dihedral angle restraints: 50
@@ -1248,6 +1262,7 @@ def exercise_asp_glu_acid():
     else:
       log = StringIO()
       processed_pdb_file = monomer_library.pdb_interpretation.run(
+        params=params,
         args=[file_path], log=log)
       if (resname == "ASP"):
         pat = "Modifications used: {'ACID-ASP': 1}"
@@ -1271,6 +1286,7 @@ def exercise_rna_dna_synonyms():
   else :
     log = StringIO()
     processed_pdb_file = monomer_library.pdb_interpretation.run(
+        params=params,
       args=[pdb_file, cif_file], log=log)
     msg = processed_pdb_file.all_chain_proxies.fatal_problems_message(
       ignore_unknown_scattering_types=False,

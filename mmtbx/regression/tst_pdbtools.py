@@ -15,12 +15,16 @@ from six.moves import cStringIO as StringIO
 from six.moves import zip
 from libtbx import easy_run
 
+full_params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+full_params.pdb_interpretation.flip_symmetric_amino_acids=False
+
 class xray_structure_plus(object):
   def __init__(self, file_name):
     log = StringIO()
     pdb_inp = iotbx.pdb.input(file_name=file_name)
     self.model = mmtbx.model.manager(
         model_input = pdb_inp,
+        pdb_interpretation_params = full_params,
         process_input = True,
         log = log)
     self.xray_structure = self.model.get_xray_structure()
@@ -71,10 +75,10 @@ ATOM     15  CA  PHE A   1       7.000   7.000   7.000  1.00 17.18           C
 ANISOU   15  CA  PHE A   1      931   2249   3347   1119   1342   2337       C
 ATOM     13  CB  PHE B   2      11.715   4.672   7.185  1.00 34.89           C
 ATOM     14  CG  PHE B   2      10.876   4.117   8.301  1.00 35.22           C
-ATOM     15  CD1 PHE B   2      10.127   2.966   8.118  1.00 35.30           C
-ATOM     16  CD2 PHE B   2      10.836   4.746   9.534  1.00 35.63           C
-ATOM     17  CE1 PHE B   2       9.355   2.454   9.143  1.00 35.88           C
-ATOM     18  CE2 PHE B   2      10.066   4.239  10.563  1.00 36.30           C
+ATOM     15  CD2 PHE B   2      10.127   2.966   8.118  1.00 35.30           C
+ATOM     16  CD1 PHE B   2      10.836   4.746   9.534  1.00 35.63           C
+ATOM     17  CE2 PHE B   2       9.355   2.454   9.143  1.00 35.88           C
+ATOM     18  CE1 PHE B   2      10.066   4.239  10.563  1.00 36.30           C
 ATOM     19  CZ  PHE B   2       9.324   3.091  10.367  1.00 36.47           C
 ATOM     20  C   PHE B   2      11.961   6.316   5.313  1.00 34.38           C
 ATOM     21  O   PHE B   2      11.902   5.976   4.132  1.00 34.72           O
@@ -285,8 +289,9 @@ def check_adp_to_aniso(
 
 def check_sites_shake(
       cmd, xrsp_init, output, selection, selection_str, shake, verbose,
-      tolerance=1.e-3):
+      tolerance=1.e-2):
   remove_files(output)
+  print(cmd)
   run_command(command=cmd, verbose=verbose)
   xrsp = xray_structure_plus(file_name = output)
   assert approx_equal(xrsp.occ,    xrsp_init.occ,tolerance)

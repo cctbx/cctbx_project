@@ -15,6 +15,7 @@ def exercise_adopting_ref_tors_restraints_h():
   model = mmtbx.model.manager(model_input = inp_2)
 
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  # params.pdb_interpretation.flip_symmetric_amino_acids=False
   params.reference_model.enabled=True
   params.reference_model.sigma = 2
 

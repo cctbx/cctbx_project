@@ -6,7 +6,7 @@ jobs:
 - job: win_64
   pool:
     vmImage: vs2017-win2016
-  timeoutInMinutes: 90
+  timeoutInMinutes: 120
   strategy:
     maxParallel: 1
     matrix:

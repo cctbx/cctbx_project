@@ -174,13 +174,13 @@ master_params_str = """\
   sort_atoms = True
     .type = bool
     .short_caption = Sort atoms in input pdb so they would be in the same order
+  flip_symmetric_amino_acids = True
+    .type = bool
+    .short_caption = Flip symmetric amino acids to conform to IUPAC convention
+    .style = noauto
   superpose_ideal_ligand = *None all %(ideal_ligands_str)s
     .type = choice(multi=True)
     .short_caption = Substitute correctly oriented SF4 metal cluster
-  flip_symmetric_amino_acids = all %(symmetric_amino_acids_str)s *None
-    .type = choice(multi=True)
-    .short_caption = Flip symmetric amino acids to conform to IUPAC convention
-    .style = noauto
   disable_uc_volume_vs_n_atoms_check = False
     .type = bool
     .short_caption = Disable check of unit cell volume to be compatible with the \
@@ -3029,7 +3029,7 @@ class build_all_chain_proxies(linking_mixins):
       info = self.pdb_hierarchy.flip_symmetric_amino_acids(
         flip_symmetric_amino_acids=self.params.flip_symmetric_amino_acids,
         )
-      if info:
+      if info and log is not None:
         print("\n  Symmetric amino acids flipped", file=log)
         print(info, file=log)
     if atom_selection_string is not None:
@@ -5923,8 +5923,12 @@ class process(object):
       hierarchy                   = new_h,
       params                      = self.all_chain_proxies.params.ncs_search,
       log                         = self.log)
-    print("Found NCS groups:", file=self.log)
-    print(ncs_obj.print_ncs_phil_param(), file=self.log)
+    if(self.log is not None):
+      print("Found NCS groups:", file=self.log)
+      if(len(ncs_obj.get_ncs_restraints_group_list())>0):
+        print(ncs_obj.print_ncs_phil_param(), file=self.log)
+      else:
+        print("  found none.", file=self.log)
     return ncs_obj
 
 def run(
