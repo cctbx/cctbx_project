@@ -145,10 +145,10 @@ def update_libtbx_env(default_dir=None):
       env.path_utility = env.as_relocatable_path(
         os.path.join(abs(new_paths[0]), 'command_line', 'path_utility.py'))
       # remove configure and refresh for now
-      for target in ['configure.sh', 'configure.bat', 'refresh.sh', 'refresh.bat']:
-        target_file = os.path.join(abs(new_paths[0]), 'command_line', target)
-        if os.path.isfile(target_file):
-          os.remove(target_file)
+      # for target in ['configure.sh', 'configure.bat', 'refresh.sh', 'refresh.bat']:
+      #   target_file = os.path.join(abs(new_paths[0]), 'command_line', target)
+      #   if os.path.isfile(target_file):
+      #     os.remove(target_file)
 
   # update dispatchers
   env.reset_dispatcher_bookkeeping()
