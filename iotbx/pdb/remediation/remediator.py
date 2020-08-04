@@ -110,12 +110,10 @@ def build_hash(remediated_out, custom_dict, user_dict):
       line=line.rstrip()
       new, old = line.split(':')
       atom_exch[old] = new
-    remark4 = "REMARK   4 REMEDIATOR VALIDATED PDB VERSION 3.2 COMPLIANT".ljust(80)
   else: #converting to old
     for line in f:
       new, old = line.split(':')
       atom_exch[new] = old
-    remark4 = "REMARK   4 REMEDIATOR VALIDATED PDB VERSION 2.3 COMPLIANT".ljust(80)
   if custom_dict == True:
     user_f = open(user_dict)
     if remediated_out == True: #converting to remediated
@@ -130,7 +128,7 @@ def build_hash(remediated_out, custom_dict, user_dict):
         atom_exch[new] = old
     user_f.close()
   f.close()
-  return atom_exch, remark4
+  return atom_exch
 #}}}
 #------------------------------------------------------------------
 
@@ -199,7 +197,7 @@ def remediate_atomic_line(line, atom_exch):
 
 #{{{ remediate
 #----PDB routine---------------------------------------------------
-def remediate(filename, atom_exch, remediated_out, remark4, f=None):
+def remediate(filename, remediated_out, remark4, f=None):
   if f == None:
     f = sys.stdout
   previous = None
@@ -287,8 +285,10 @@ def remediator(params, log=None):
   user_dict = ""
   file_name = params.file_name
   if params.version == "3.2":
+    remark4 = "REMARK   4 REMEDIATOR VALIDATED PDB VERSION 3.2 COMPLIANT".ljust(80)
     remediated_out = True
   elif params.version == "2.3":
+    remark4 = "REMARK   4 REMEDIATOR VALIDATED PDB VERSION 2.3 COMPLIANT".ljust(80)
     remediated_out = False
   if params.dict != None:
     custom_dict = True
@@ -297,20 +297,20 @@ def remediator(params, log=None):
     f = open(params.output_file, "w")
   else:
     f = sys.stdout
-  atom_exch, remark4 = build_hash(remediated_out,
+  atom_exch = build_hash(remediated_out,
                                   custom_dict,
                                   user_dict)
   if remediated_out:
     remediated_alt = False
   else:
     remediated_alt = True
-  alt_atom_exch, remark4_dump = build_hash(remediated_alt,
+  alt_atom_exch = build_hash(remediated_alt,
                                            custom_dict,
                                            user_dict)
   count, res_count = \
     pre_screen_file(file_name, atom_exch, alt_atom_exch)
   if count > 0 or res_count > 0:
-    remediate(params.file_name, atom_exch, remediated_out, remark4, f)
+    remediate(params.file_name, remediated_out, remark4, f)
     if params.output_file != None:
       f.close()
   else:
