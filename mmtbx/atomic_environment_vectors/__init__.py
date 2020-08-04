@@ -56,20 +56,27 @@ def compare(aev_values_dict):
   """
   Compare perfect helix with a target structure and get correlation coefficient
   values. The result include 3 direction AEVs CC values. If the c-alpha doesn't
-  have BAEVs or EAEVs the CC values are 0.
+  have BAEVs or EAEVs the CC values are None.
   """
   result = diff_class()
   perfect_helix = generate_perfect_helix()
-  def set_vals(result, d):
+  def pretty_aev(v):
+    outl = 'AEV'
+    for i in v:
+      outl += ' %0.3f' % i
+    return outl
+  def set_vals(result, d, verbose=False):
     for key1, value1 in d.items():
       if value1 != [] and value != []:
         cc = flex.linear_correlation(
           x=flex.double(value), y=flex.double(value1)).coefficient()
-        result.setdefault(key1, OrderedDict())
-        result[key1].setdefault(key, cc)
       else:
-        result.setdefault(key1, OrderedDict())
-        result[key1].setdefault(key, 1)
+        cc = None
+      result.setdefault(key1, OrderedDict())
+      result[key1].setdefault(key, cc)
+      if verbose:
+        print('comparing\n%s\n%s' % (pretty_aev(value), pretty_aev(value1)))
+        print('  CC = %0.3f' % cc)
   for key,value in perfect_helix.items():
     if   key == 'B': set_vals(result=result, d=aev_values_dict.BAEVs)
     elif key == 'M': set_vals(result=result, d=aev_values_dict.MAEVs)
@@ -84,7 +91,10 @@ class diff_class(OrderedDict):
       outl += '  %s :' % (key)
       for key1,value in item.items():
         outl += ' %s: '%key1
-        outl += '%0.2f, ' % value
+        if value is None:
+          outl += 'None, '
+        else:
+          outl += '%0.2f, ' % value
       outl += '\n'
     return outl
 
