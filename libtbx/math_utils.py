@@ -3,6 +3,14 @@ from builtins import object
 import math
 from six.moves import range
 
+def cmp(x, y):
+  """
+  cmp(x, y) -> integer
+
+  Return negative if x<y, zero if x==y, positive if x>y.
+  """
+  return (x > y) - (x < y)
+
 def round2(x, d=0):
   '''
   Python 3 defaults to rounding to the nearest even number (round half to even),

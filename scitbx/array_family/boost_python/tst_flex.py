@@ -6,7 +6,7 @@ from libtbx.test_utils import Exception_expected, approx_equal, \
   not_approx_equal, show_diff
 import libtbx.math_utils
 from six.moves import cStringIO as StringIO
-from past.builtins import cmp
+from libtbx.math_utils import cmp
 from six.moves import range
 from six.moves import cPickle as pickle
 import six
