@@ -879,7 +879,7 @@ def get_bounds_of_valid_region(map_data,
   some_valid_points = True
   for o, a, f, l in zip(map_data.origin(), map_data.all(),
      gridding_first, gridding_last):
-    # Available map goes from o to o+a
+    # Available map goes from o to o+a-1
     # Requested map goes from f to l
 
     # If f is less than o, first valid grid point is o.

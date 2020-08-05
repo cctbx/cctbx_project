@@ -1038,7 +1038,7 @@ def run(args,
       if not mask_as_map_manager:
         raise Sorry("Unable to auto-generate mask")
 
-    mam = around_mask(mam.map_manager(), # actually a box
+    mam = around_mask(mam.map_manager(), # actually a box, shifted
          mask_as_map_manager = mask_as_map_manager,
          box_cushion = params.box_cushion,
          model = mam.model(),
