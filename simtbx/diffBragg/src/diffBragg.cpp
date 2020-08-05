@@ -101,6 +101,23 @@ void lambda_manager::increment( double value, double value2)
 };
 //END lambda manager
 
+// begin panel_manager
+panel_manager::panel_manager(){}
+
+void panel_manager::increment( double Iincrement, double omega_pixel, mat3 M,
+    double pix2, vec3 o, vec3 k_diffracted, double per_k, double per_k3, double per_k5, vec3 V)
+{
+    double G = dk*k_diffracted;
+    vec3 dk_hat = -per_k3*G*k_diffracted + per_k*dk;
+    double coef = (M*dk_hat)*V;
+    //printf("AFTER %f\n", coef);
+    double coef2 = -3*pix2*per_k5*G * (o*k_diffracted);
+    coef2 += pix2*per_k3*(o*dk);
+    double value = coef*Iincrement + coef2*Iincrement/omega_pixel;
+    dI += value;
+    dI2 += 0;
+};
+//END panel_manager
 
 //BEGIN unit cell manager
 ucell_manager::ucell_manager(){}
@@ -193,7 +210,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     nanoBragg(detector, beam, verbose, panel_id)
     {
 
-    mat3 EYE = mat3(1,0,0,0,1,0,0,0,1);
+    EYE = mat3(1,0,0,0,1,0,0,0,1);
     Omatrix = mat3(1,0,0,0,1,0,0,0,1);
     psi = 0;
 
@@ -230,15 +247,25 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     boost::shared_ptr<Ncells_manager> nc2 = boost::shared_ptr<Ncells_manager>(new Ncells_manager());
     boost::shared_ptr<Ncells_manager> nc3 = boost::shared_ptr<Ncells_manager>(new Ncells_manager());
 
-
     boost::shared_ptr<lambda_manager> lam1 = boost::shared_ptr<lambda_manager>(new lambda_manager());
     boost::shared_ptr<lambda_manager> lam2 = boost::shared_ptr<lambda_manager>(new lambda_manager());
 
-    boost::shared_ptr<origin_manager> orig0 = boost::shared_ptr<origin_manager>(new origin_manager());
+    boost::shared_ptr<panel_manager> orig0 = boost::shared_ptr<panel_manager>(new panel_manager());
+    boost::shared_ptr<panel_manager> origX = boost::shared_ptr<panel_manager>(new panel_manager());
+    boost::shared_ptr<panel_manager> origY = boost::shared_ptr<panel_manager>(new panel_manager());
+    //boost::shared_ptr<origin_manager> orig0 = boost::shared_ptr<origin_manager>(new origin_manager());
 
     //boost::shared_ptr<Fcell_manager> fcell_man = boost::shared_ptr<Fcell_manager>(new Fcell_manager());
     fcell_man = boost::shared_ptr<Fcell_manager>(new Fcell_manager());
     fcell_man->refine_me = false;
+
+    panel_rot_man = boost::shared_ptr<panel_manager>(new panel_manager());
+    panel_rot_man->refine_me = false;
+
+    panels.push_back(panel_rot_man);
+    panels.push_back(orig0);
+    panels.push_back(origX);
+    panels.push_back(origY);
 
     rotX->refine_me = false;
     rotY->refine_me = false;
@@ -256,6 +283,12 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
 
     orig0->refine_me = false;
     orig0->dk = vec3(0,0,1);
+
+    origX->refine_me = false;
+    origX->dk = vec3(1,0,0);
+
+    origY->refine_me = false;
+    origY->dk = vec3(0,1,0);
 
     lam1->refine_me= false;
     lam2->refine_me= false;
@@ -278,7 +311,6 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     Ncells_managers.push_back(nc2);
     Ncells_managers.push_back(nc3);
 
-    origin_managers.push_back(orig0);
     update_oversample_during_refinement = true;
     oversample_omega = true;
     only_save_omega_kahn = false;
@@ -321,11 +353,42 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     pythony_amplitudes2.clear();
     }
 
+void diffBragg::rotate_fs_ss_vecs(double panel_rot_ang){
+
+    vec3 fs_vec = vec3(fdet_vector[1], fdet_vector[2], fdet_vector[3]);
+    vec3 ss_vec = vec3(sdet_vector[1], sdet_vector[2], sdet_vector[3]);
+
+    panR = mat3(0,0,0,0,0,0,0,0,0);
+    panR[1] = -odet_vector[3];
+    panR[2] = odet_vector[2];
+    panR[3] = odet_vector[3];
+    panR[5] = -odet_vector[1];
+    panR[6] = -odet_vector[2];
+    panR[7] = odet_vector[1];
+    panR2 = panR*panR;
+
+    mat3 panel_rot = EYE + panR*sin(panel_rot_ang) + panR2*(1-cos(panel_rot_ang));
+
+    boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[0]);
+    pan_rot->dR = panR*cos(panel_rot_ang) + panR2*sin(panel_rot_ang);
+    pan_rot->value = panel_rot_ang;
+
+    pan_rot->dS = (pan_rot->dR)*ss_vec;
+    pan_rot->dF = (pan_rot->dR)*fs_vec;
+
+    fs_vec = panel_rot * fs_vec;
+    ss_vec = panel_rot * ss_vec;
+    for (int i=0; i < 3; i++){
+        fdet_vector[i+1] = fs_vec[i];
+        sdet_vector[i+1] = ss_vec[i];
+    }
+}
 
 void diffBragg::update_dxtbx_geoms(
     const dxtbx::model::Detector& detector,
     const dxtbx::model::Beam& beam,
-    int panel_id){
+    int panel_id,
+    double panel_rot_ang){
 
     /* BEAM properties first */
 
@@ -373,12 +436,11 @@ void diffBragg::update_dxtbx_geoms(
     /* direction in 3-space of detector axes */
     SCITBX_ASSERT (beam_convention == CUSTOM);
 
-    /* typically: 1 0 0 */
     fdet_vector[1] = detector[panel_id].get_fast_axis()[0];
     fdet_vector[2] = detector[panel_id].get_fast_axis()[1];
     fdet_vector[3] = detector[panel_id].get_fast_axis()[2];
     unitize(fdet_vector,fdet_vector);
-    /* typically: 0 -1 0 */
+
     sdet_vector[1] = detector[panel_id].get_slow_axis()[0];
     sdet_vector[2] = detector[panel_id].get_slow_axis()[1];
     sdet_vector[3] = detector[panel_id].get_slow_axis()[2];
@@ -394,17 +456,33 @@ void diffBragg::update_dxtbx_geoms(
     pix0_vector[2] = detector[panel_id].get_origin()[1]/1000.0;
     pix0_vector[3] = detector[panel_id].get_origin()[2]/1000.0;
 
+    //if (panel_rot_ang != 0)
+    rotate_fs_ss_vecs(panel_rot_ang);
+
     Fclose = Xclose = -dot_product(pix0_vector,fdet_vector);
     Sclose = Yclose = -dot_product(pix0_vector,sdet_vector);
     close_distance = distance =  dot_product(pix0_vector,odet_vector);
 
     /* set beam centre */
+    mat3 dmat = mat3(fdet_vector[1], sdet_vector[1], pix0_vector[1]*1000,
+                    fdet_vector[2], sdet_vector[2], pix0_vector[2]*1000,
+                    fdet_vector[3], sdet_vector[3], pix0_vector[3]*1000);
+    mat3 Dmat = dmat.inverse();
+    vec3 s0 = vec3(beam.get_s0()[0], beam.get_s0()[1], beam.get_s0()[2]);
+    vec3 dxtbx_v = Dmat*s0;
+    SCITBX_ASSERT(dxtbx_v[2] > 0);
+
+    double rotated_center_x = dxtbx_v[0] / dxtbx_v[2];
+    double rotated_center_y = dxtbx_v[1] / dxtbx_v[2];
+
     scitbx::vec2<double> dials_bc = detector[panel_id].get_beam_centre(beam.get_s0());
+    dials_bc[0] = rotated_center_x;
+    dials_bc[1] = rotated_center_y;
     Xbeam = dials_bc[0]/1000.0;
     Ybeam = dials_bc[1]/1000.0;
 
     /* detector sensor layer properties */
-    detector_thick   = detector[panel_id].get_thickness();
+    detector_thick = detector[panel_id].get_thickness();
     temp = detector[panel_id].get_mu();        // is this really a mu? or mu/rho ?
     if(temp>0.0) detector_attnlen = 1.0/temp;
 
@@ -461,8 +539,13 @@ void diffBragg::initialize_managers()
         if (Ncells_managers[i_nc]->refine_me)
             Ncells_managers[i_nc]->initialize(sdim, fdim, compute_curvatures);
     }
-    if (origin_managers[0]->refine_me)
-        origin_managers[0]->initialize(sdim, fdim, compute_curvatures);
+
+    boost::shared_ptr<panel_manager> pan_orig;
+    for (int i_pan_orig=0; i_pan_orig  < 3; i_pan_orig ++){
+        pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[1+i_pan_orig]);
+        if (pan_orig->refine_me)
+            pan_orig->initialize(sdim, fdim, compute_curvatures);
+    }
 
     if (fcell_man->refine_me)
         fcell_man->initialize(sdim, fdim, compute_curvatures);
@@ -471,6 +554,10 @@ void diffBragg::initialize_managers()
         if (lambda_managers[i_lam]->refine_me)
             lambda_managers[i_lam]->initialize(sdim, fdim, compute_curvatures);
     }
+
+    boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[0]);
+    if (pan_rot->refine_me)
+        pan_rot->initialize(sdim, fdim, compute_curvatures);
 }
 
 void diffBragg::vectorize_umats()
@@ -516,8 +603,9 @@ void diffBragg::refine(int refine_id){
         }
     }
     else if (refine_id==10){
-        origin_managers[0]->refine_me=true;
-        origin_managers[0]->initialize(sdim, fdim, compute_curvatures);
+        boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[1]);
+        pan_orig->refine_me=true;
+        pan_orig->initialize(sdim, fdim, compute_curvatures);
     }
     else if(refine_id==11){
         fcell_man->refine_me=true;
@@ -529,6 +617,25 @@ void diffBragg::refine(int refine_id){
         int i_lam = refine_id-12;
         lambda_managers[i_lam]->refine_me=true;
         lambda_managers[i_lam]->initialize(sdim, fdim, compute_curvatures);
+    }
+
+    else if (refine_id==14){
+        boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[0]);
+        pan_rot->refine_me=true;
+        rotate_fs_ss_vecs(0);
+        pan_rot->initialize(sdim, fdim, compute_curvatures);
+    }
+
+    else if (refine_id==15){
+        boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[2]);
+        pan_orig->refine_me=true;
+        pan_orig->initialize(sdim, fdim, compute_curvatures);
+    }
+
+    else if (refine_id==16){
+        boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[3]);
+        pan_orig->refine_me=true;
+        pan_orig->initialize(sdim, fdim, compute_curvatures);
     }
 }
 
@@ -668,7 +775,7 @@ double diffBragg::get_value(int refine_id){
 
 af::flex_double diffBragg::get_derivative_pixels(int refine_id){
 
-    SCITBX_ASSERT(refine_id >=0 && refine_id <= 13);
+    SCITBX_ASSERT(refine_id >=0 && refine_id <= 16);
 
     if (refine_id>=0 and refine_id < 3){
         SCITBX_ASSERT(rot_managers[refine_id]->refine_me);
@@ -683,14 +790,28 @@ af::flex_double diffBragg::get_derivative_pixels(int refine_id){
         }
     else if (refine_id==9)
         return Ncells_managers[0]->raw_pixels;
-    else if (refine_id==10)
-        return origin_managers[0]->raw_pixels;
+    else if (refine_id==10){
+        boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[1]);
+        return pan_orig->raw_pixels;
+        }
     else if (refine_id==11)
         return fcell_man->raw_pixels;
     else if (refine_id==12)
         return lambda_managers[0]->raw_pixels;
-    else // (refine_id==13)
+    else if  (refine_id==13)
         return lambda_managers[1]->raw_pixels;
+    else if (refine_id==14){
+        boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[0]);
+        return pan_rot->raw_pixels;
+    }
+    else if (refine_id==15){
+        boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[2]);
+        return pan_orig->raw_pixels;
+    }
+    else{ //(refine_id==10){
+        boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[3]);
+        return pan_orig->raw_pixels;
+    }
     //else
     //   printf("WARNING: refine id should be between 0 and 13\n");
 }
@@ -710,8 +831,15 @@ af::flex_double diffBragg::get_second_derivative_pixels(int refine_id){
         }
     else if (refine_id == 9)
         return Ncells_managers[0]->raw_pixels2;
-    else if (refine_id==10)
-        return origin_managers[0]->raw_pixels2;
+    else if (refine_id==10){
+        boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[1]);
+        return pan_orig->raw_pixels2;}
+    else if (refine_id==15){
+        boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[2]);
+        return pan_orig->raw_pixels2;}
+    else if (refine_id==16){
+        boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[3]);
+        return pan_orig->raw_pixels2;}
     else
         return fcell_man->raw_pixels2;
 }
@@ -904,14 +1032,17 @@ void diffBragg::add_diffBragg_spots()
                 }
             }
 
-
-            if (origin_managers[0]->refine_me){
-                origin_managers[0]->dI=0;
-                origin_managers[0]->dI2=0;
-                origin_managers[0]->FF=0;
-                origin_managers[0]->FdF=0;
-                origin_managers[0]->dFdF=0;
-                origin_managers[0]->FdF2=0;
+            boost::shared_ptr<panel_manager> pan_orig;
+            for (int i_pan_orig=0; i_pan_orig <3; i_pan_orig ++){
+                pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[1+i_pan_orig]);
+                if (pan_orig->refine_me){
+                    pan_orig->dI=0;
+                    pan_orig->dI2=0;
+                    //pan_orig->FF=0;
+                    //pan_orig->FdF=0;
+                    //pan_orig->dFdF=0;
+                    //pan_orig->FdF2=0;
+                }
             }
 
             if (fcell_man->refine_me){
@@ -924,6 +1055,12 @@ void diffBragg::add_diffBragg_spots()
                     lambda_managers[i_lam]->dI =0;
                     lambda_managers[i_lam]->dI2 =0;
                 }
+            }
+
+            boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[0]);
+            if (pan_rot->refine_me){
+                pan_rot->dI=0;
+                pan_rot->dI2=0;
             }
 
             /* loop over sub-pixels */
@@ -945,6 +1082,22 @@ void diffBragg::add_diffBragg_spots()
                         pixel_pos[2] = Fdet*fdet_vector[2]+Sdet*sdet_vector[2]+Odet*odet_vector[2]+pix0_vector[2];
                         pixel_pos[3] = Fdet*fdet_vector[3]+Sdet*sdet_vector[3]+Odet*odet_vector[3]+pix0_vector[3];
                         pixel_pos[0] = 0.0;
+
+                        for (int i_k=0;i_k < 1; i_k++){
+                            pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[i_k]);
+                            if (pan_rot->refine_me){
+                                pan_rot->dk = Fdet*(pan_rot->dF) + Sdet*(pan_rot->dS);
+                            //vec3 dk = panel_rot_man->dk;
+                            //vec3 dF = panel_rot_man->dF;
+                            //SCITBX_EXAMINE(dk[0]);
+                            //SCITBX_EXAMINE(dk[1]);
+                            //SCITBX_EXAMINE(dk[2]);
+                            //SCITBX_EXAMINE(dF[0]);
+                            //SCITBX_EXAMINE(dF[1]);
+                            //SCITBX_EXAMINE(dF[2]);
+                            }
+                        }
+
                         if(curved_detector) {
                             /* construct detector pixel that is always "distance" from the sample */
                                 vector[1]=distance*beam_vector[1];
@@ -978,8 +1131,6 @@ void diffBragg::add_diffBragg_spots()
                         }
 
                     /* loop over sources now */
-
-
                     for(source=0;source<sources;++source){
                         /* retrieve stuff from cache */
                         incident[1] = -source_X[source];
@@ -1459,20 +1610,43 @@ void diffBragg::add_diffBragg_spots()
                                 } /* end Ncells manager deriv */
 
                                 /* Checkpoint for Origin manager */
-                                if (origin_managers[0]->refine_me){
-                                    origin_managers[0]->increment(
-                                        V,  NABC, UBO, k_diffracted, o_vec, airpath, lambda*1e10,
-                                        hrad_sqr, F_cell, F_latt, fudge,
-                                        source_I[source], capture_fraction, omega_pixel, pixel_size);
-                                } /* end origin manager deriv */
+
+                                for (int i_pan_orig=0; i_pan_orig < 3; i_pan_orig++){
+                                    pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[1+i_pan_orig]);
+                                    if (pan_orig->refine_me){
+                                        //pan_orig->increment(
+                                        //    V,  NABC, UBO, k_diffracted, o_vec, airpath, lambda*1e10,
+                                        //    hrad_sqr, F_cell, F_latt, fudge,
+                                        //    source_I[source], capture_fraction, omega_pixel, pixel_size);
+                                        double per_k = 1/airpath;
+                                        double per_k3 = pow(per_k,3);
+                                        double per_k5 = pow(per_k,5);
+                                        double lambda_ang = lambda*1e10;
+
+                                        mat3 M = -two_C*(NABC*UBO)/lambda_ang;
+                                        pan_orig->increment(Iincrement, omega_pixel, M, subpixel_size*subpixel_size,
+                                            o_vec, k_diffracted, per_k,  per_k3, per_k5, V);
+                                    } /* end origin manager deriv */
+                                }
+
+                                pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[0]);
+                                //boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[0]);
+                                if(pan_rot->refine_me){
+                                    double per_k = 1/airpath;
+                                    double per_k3 = pow(per_k,3);
+                                    double per_k5 = pow(per_k,5);
+                                    double lambda_ang = lambda*1e10;
+
+                                    mat3 M = -two_C*(NABC*UBO)/lambda_ang;
+                                    pan_rot->increment(Iincrement, omega_pixel, M, subpixel_size*subpixel_size,
+                                        o_vec, k_diffracted, per_k,  per_k3, per_k5, V);
+                                }
 
                                 /* checkpoint for Fcell manager */
                                 if (fcell_man->refine_me){
-                                    //double value = 2*F_cell*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
                                     double value = 2*Iincrement/F_cell ;
                                     double value2=0;
                                     if (compute_curvatures){
-                                        //value2 = 2*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
                                         value2 = value/F_cell;
                                     }
                                     fcell_man->increment(value, value2);
@@ -1613,87 +1787,103 @@ void diffBragg::add_diffBragg_spots()
                 }
             }/* end lambda deriv image increment */
 
+            pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[0]);
+            if(pan_rot->refine_me){
+                double value = scale_term*pan_rot->dI;
+                double value2 = scale_term*pan_rot->dI2;
+                pan_rot->increment_image(roi_i, value, value2, compute_curvatures);
+            }/* end panel rot deriv image increment */
+
+            for (int i_pan_orig=0; i_pan_orig < 3; i_pan_orig++){
+                pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[1 + i_pan_orig]);
+                if(pan_orig->refine_me){
+                    double value = scale_term*pan_orig->dI;
+                    double value2 = scale_term*pan_orig->dI2;
+                    pan_orig->increment_image(roi_i, value, value2, compute_curvatures);
+                }/* end panel orig deriv image increment */
+            }
             /* update origin derivative image */
-            if (origin_managers[0]->refine_me){
-                /* TODO: REMOVE THIS RESTRICTION */
-                SCITBX_ASSERT(!oversample_omega);
 
-                // helpful definitions..
-                vec3 dk = origin_managers[0]->dk;
-                per_k = 1/airpath_ave;
-                per_k2 = per_k*per_k;
-                per_k3 = per_k*per_k2;
-                per_k4 = per_k2*per_k2;
-                per_k5 = per_k2*per_k3;
-                per_k6 = per_k3*per_k3;
-                per_k7 = per_k3*per_k4;
-                G = dk*k_diffracted_ave;
-                double o_dot_k = o_vec*k_diffracted_ave;
-                double o_dot_dk = o_vec*dk;
+            //if (pan_orig->refine_me){
+            //    /* TODO: REMOVE THIS RESTRICTION */
+            //    SCITBX_ASSERT(!oversample_omega);
 
-                /* solid angle pix (Omega) derivative */
-                pp = pixel_size*pixel_size; // this is total pixel size not sub pixel size
-                dOmega = - 3*pp*per_k5*G*(o_vec*k_diffracted_ave) + pp*per_k3*(o_vec*dk);
-                dOmega2 = 15*pp*per_k7*G*G*(o_vec*k_diffracted_ave)
-                        - 3*pp*per_k5*(dk*dk)*(o_vec*k_diffracted_ave)
-                        -6*pp*per_k5*G*(o_vec*dk);
+            //    // helpful definitions..
+            //    vec3 dk = pan_orig->dk;
+            //    per_k = 1/airpath_ave;
+            //    per_k2 = per_k*per_k;
+            //    per_k3 = per_k*per_k2;
+            //    per_k4 = per_k2*per_k2;
+            //    per_k5 = per_k2*per_k3;
+            //    per_k6 = per_k3*per_k3;
+            //    per_k7 = per_k3*per_k4;
+            //    G = dk*k_diffracted_ave;
+            //    double o_dot_k = o_vec*k_diffracted_ave;
+            //    double o_dot_dk = o_vec*dk;
 
-                /* polarization correction derivative */
-                /* here, u = cos^2 (2\theta) */
-                du = 2*per_k2*o_dot_k*o_dot_dk - 2*per_k4*G*o_dot_k*o_dot_k;
-                du2 = 8*per_k6*G*G*o_dot_k*o_dot_k - 2*per_k4*(dk*dk)*o_dot_k*o_dot_k
-                    -8*per_k4*G*o_dot_k*o_dot_dk + 2*per_k2*o_dot_dk*o_dot_dk;
+            //    /* solid angle pix (Omega) derivative */
+            //    pp = pixel_size*pixel_size; // this is total pixel size not sub pixel size
+            //    dOmega = - 3*pp*per_k5*G*(o_vec*k_diffracted_ave) + pp*per_k3*(o_vec*dk);
+            //    dOmega2 = 15*pp*per_k7*G*G*(o_vec*k_diffracted_ave)
+            //            - 3*pp*per_k5*(dk*dk)*(o_vec*k_diffracted_ave)
+            //            -6*pp*per_k5*G*(o_vec*dk);
 
-                /* kahn factor is the variable called 'polarization' */
-                /* helpful definitions*/
-                w = kBi/kEi;
-                w2=w*w;
-                BperE2=kBi/kEi/kEi;
-                dkE = dk*Ei_vec;
-                dkB = dk*Bi_vec;
-                v = (dkB/kEi - BperE2*dkE);
-                dv = - 2*dkB*dkE/kEi/kEi + 2*BperE2/kEi  * dkE*dkE;
-                dpsi = -1/(1+w2) * v;
-                dpsi2 = -2*w/(1+w2)/(1+w2)*v*v + 1/(1+w2)*dv;
+            //    /* polarization correction derivative */
+            //    /* here, u = cos^2 (2\theta) */
+            //    du = 2*per_k2*o_dot_k*o_dot_dk - 2*per_k4*G*o_dot_k*o_dot_k;
+            //    du2 = 8*per_k6*G*G*o_dot_k*o_dot_k - 2*per_k4*(dk*dk)*o_dot_k*o_dot_k
+            //        -8*per_k4*G*o_dot_k*o_dot_dk + 2*per_k2*o_dot_dk*o_dot_dk;
 
-                c2psi = cos(2*psi);
-                s2psi = sin(2*psi);
-                gam_cos2psi = polarization * c2psi; /* kahn factor is called gamma in my notes*/
-                gam_sin2psi = polarization * s2psi;
+            //    /* kahn factor is the variable called 'polarization' */
+            //    /* helpful definitions*/
+            //    w = kBi/kEi;
+            //    w2=w*w;
+            //    BperE2=kBi/kEi/kEi;
+            //    dkE = dk*Ei_vec;
+            //    dkB = dk*Bi_vec;
+            //    v = (dkB/kEi - BperE2*dkE);
+            //    dv = - 2*dkB*dkE/kEi/kEi + 2*BperE2/kEi  * dkE*dkE;
+            //    dpsi = -1/(1+w2) * v;
+            //    dpsi2 = -2*w/(1+w2)/(1+w2)*v*v + 1/(1+w2)*dv;
 
-                if (!nopolar){
-                    dpolar = du*(1 + gam_cos2psi) + 2*dpsi*gam_sin2psi*(1-u);
-                    dpolar /= 2;
-                    dpolar2 = du2*(1 + gam_cos2psi) - 2*gam_sin2psi*du*dpsi + 2*gam_sin2psi*(1-u)*dpsi2
-                            + 4*gam_cos2psi*(1-u)*dpsi*dpsi - 2*gam_sin2psi*du*dpsi;
-                    dpolar2/=2;
+            //    c2psi = cos(2*psi);
+            //    s2psi = sin(2*psi);
+            //    gam_cos2psi = polarization * c2psi; /* kahn factor is called gamma in my notes*/
+            //    gam_sin2psi = polarization * s2psi;
 
-                }
-                else{
-                    dpolar=0;
-                    dpolar2=0;
-                }
+            //    if (!nopolar){
+            //        dpolar = du*(1 + gam_cos2psi) + 2*dpsi*gam_sin2psi*(1-u);
+            //        dpolar /= 2;
+            //        dpolar2 = du2*(1 + gam_cos2psi) - 2*gam_sin2psi*du*dpsi + 2*gam_sin2psi*(1-u)*dpsi2
+            //                + 4*gam_cos2psi*(1-u)*dpsi*dpsi - 2*gam_sin2psi*du*dpsi;
+            //        dpolar2/=2;
 
-                FF = origin_managers[0]->FF;
-                FdF = origin_managers[0]->FdF;
-                dFdF = origin_managers[0]->dFdF;
-                FdF2 = origin_managers[0]->FdF2;
+            //    }
+            //    else{
+            //        dpolar=0;
+            //        dpolar2=0;
+            //    }
 
-                /* om is the average solid angle in the pixel (average over sub pixels) */
-                // first derivative of intensity
-                origin_dI = dpolar*om*FF + polar*dOmega*FF + polar*om*FdF;
+            //    FF = pan_orig->FF;
+            //    FdF = pan_orig->FdF;
+            //    dFdF = pan_orig->dFdF;
+            //    FdF2 = pan_orig->FdF2;
 
-                // second derivative of intensity
-                origin_dI2 = dpolar2*om*FF +  dpolar*FdF*om + dpolar*FF*dOmega
-                        + dpolar *FdF*om + polar*dFdF*om + polar*FdF2*om + polar*FdF*dOmega
-                        +dpolar*FF*dOmega + polar*FdF*dOmega + polar*FF*dOmega2;
+            //    /* om is the average solid angle in the pixel (average over sub pixels) */
+            //    // first derivative of intensity
+            //    origin_dI = dpolar*om*FF + polar*dOmega*FF + polar*om*FdF;
 
-                // different scale term here than above because polar and omega terms have originZ dependence
-                scale_term2 = r_e_sqr*fluence*spot_scale/steps;
-                origin_dI *= scale_term2;
-                origin_dI2 *= scale_term2;
-                origin_managers[0]->increment_image(roi_i, origin_dI, origin_dI2, compute_curvatures);
-            } /*end origigin deriv image increment */
+            //    // second derivative of intensity
+            //    origin_dI2 = dpolar2*om*FF +  dpolar*FdF*om + dpolar*FF*dOmega
+            //            + dpolar *FdF*om + polar*dFdF*om + polar*FdF2*om + polar*FdF*dOmega
+            //            +dpolar*FF*dOmega + polar*FdF*dOmega + polar*FF*dOmega2;
+
+            //    // different scale term here than above because polar and omega terms have originZ dependence
+            //    scale_term2 = r_e_sqr*fluence*spot_scale/steps;
+            //    origin_dI *= scale_term2;
+            //    origin_dI2 *= scale_term2;
+            //    pan_orig->increment_image(roi_i, origin_dI, origin_dI2, compute_curvatures);
+            //} /*end origigin deriv image increment */
 
             if(floatimage[i] > max_I) {
                 max_I = floatimage[i];
@@ -1800,8 +1990,9 @@ void diffBragg::add_diffBragg_spots()
                     printf("Ncell managers refine status: %d, value=%f\n", Ncells_managers[0]->refine_me,
                             Ncells_managers[0]->value);
                     printf("Fcell manager refine status: %d\n", fcell_man->refine_me);
-                    printf("Origin managers refine status: %d, value=%f\n", origin_managers[0]->refine_me,
-                            origin_managers[0]->value);
+                    //boost::shared_ptr<origin_manager> pan_orig = boost::dynamic_pointer_cast<origin_manager>(panels[1]);
+                    //printf("Origin managers refine status: %d, value=%f\n", pan_orig->refine_me,
+                    //        pan_orig->value);
                     printf("Bmatrix_real:\n%11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n %11.8f %11.8f %11.8f\n",
                         Bmat_realspace[0], Bmat_realspace[1], Bmat_realspace[2],
                         Bmat_realspace[3], Bmat_realspace[4], Bmat_realspace[5],

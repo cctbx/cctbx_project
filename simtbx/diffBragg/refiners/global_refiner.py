@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import time
 try:
     from mpi4py import MPI
@@ -20,6 +20,8 @@ class Bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+
+from dxtbx.model import Panel, Detector
 
 if rank == 0:
     import os
@@ -55,7 +57,7 @@ if rank == 0:
     from os import makedirs as MAKEDIRS
     from os.path import exists as EXISTS
     from os.path import join as PATHJOIN
-    
+
     from simtbx.diffBragg.refiners import BreakToUseCurvatures
     from scitbx.array_family import flex
     from cctbx.array_family import flex as cctbx_flex
@@ -105,13 +107,13 @@ if has_mpi:
     EXISTS = comm.bcast(EXISTS)
     JSON_DUMP = comm.bcast(JSON_DUMP)
     ALL_CLOSE= comm.bcast(ALL_CLOSE)
-    ARRAY =comm.bcast(ARRAY) 
-    PI =comm.bcast(PI) 
-    SAVE = comm.bcast(SAVE) 
-    SAVEZ = comm.bcast(SAVEZ) 
-    ONES_LIKE = comm.bcast(ONES_LIKE) 
-    STD = comm.bcast(STD) 
-    ABS = comm.bcast(ABS) 
+    ARRAY =comm.bcast(ARRAY)
+    PI =comm.bcast(PI)
+    SAVE = comm.bcast(SAVE)
+    SAVEZ = comm.bcast(SAVEZ)
+    ONES_LIKE = comm.bcast(ONES_LIKE)
+    STD = comm.bcast(STD)
+    ABS = comm.bcast(ABS)
     mean = comm.bcast(mean, root=0)
     Counter = comm.bcast(Counter, root=0)
     linregress = comm.bcast(linregress, root=0)
@@ -215,7 +217,7 @@ class GlobalRefiner(PixelRefinement):
         self.perturb_fcell = perturb_fcell
         # dictionaries whose keys are the shot indices
         self.UCELL_MAN = shot_ucell_managers
-        self.CRYSTAL_SCALE_TRUTH = all_crystal_scales  # ground truth of crystal scale factors.. 
+        self.CRYSTAL_SCALE_TRUTH = all_crystal_scales  # ground truth of crystal scale factors..
         # cache shot ids and make sure they are identical in all other input dicts
         self.shot_ids = sorted(shot_ucell_managers.keys())
         self.big_dump = False
@@ -234,13 +236,13 @@ class GlobalRefiner(PixelRefinement):
         if shot_bg_coef is not None:
             self.shot_bg_coef = self._check_keys(shot_bg_coef)
         self.background_estimate = background_estimate
-        
+
         self.selection_flags = selection_flags
-        if self.selection_flags is not None: 
+        if self.selection_flags is not None:
             if rank==0:
                 print("check selection flags")
             self.selection_flags = self._check_keys(self.selection_flags)
-        
+
         # sanity check: no repeats of the same shot
         assert len(self.shot_ids) == len(set(self.shot_ids))
 
@@ -325,6 +327,9 @@ class GlobalRefiner(PixelRefinement):
 
         self._ncells_id = 9  # diffBragg internal index for Ncells derivative manager
         self._originZ_id = 10  # diffBragg internal index for originZ derivative manager
+        self._panelRot_id = 14  # diffBragg internal index for originZ derivative manager
+        self._panelX_id = 15  # diffBragg internal index for originZ derivative manager
+        self._panelY_id = 16  # diffBragg internal index for originZ derivative manager
         self._fcell_id = 11  # diffBragg internal index for Fcell derivative manager
         self._lambda0_id = 12  # diffBragg interneal index for lambda derivatives
         self._lambda1_id = 13  # diffBragg interneal index for lambda derivatives
@@ -489,7 +494,7 @@ class GlobalRefiner(PixelRefinement):
             self.pid_from_idx[i_shot] = {i: pid for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
             self.idx_from_pid[i_shot] = {pid: i for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
             self.n_panels[i_shot] = len(self.pid_from_idx[i_shot])
-            
+
             if self.bg_extracted:
                 self.bg_coef_xpos[i_shot] = _local_pos
                 self.Xall[self.bg_coef_xpos[i_shot]] = 1
@@ -503,7 +508,7 @@ class GlobalRefiner(PixelRefinement):
                 self.bg_b_xstart[i_shot] = []
                 self.bg_c_xstart[i_shot] = []
                 _spot_start = _local_pos
-                
+
                 for i_spot in range(n_spots):
                     self.bg_a_xstart[i_shot].append(_spot_start)
                     self.bg_b_xstart[i_shot].append(self.bg_a_xstart[i_shot][i_spot] + 1)
@@ -605,7 +610,7 @@ class GlobalRefiner(PixelRefinement):
                 if self.rescale_params:
                     self.Xall[self.originZ_xpos[i_shot]] = 1
                 else:
-                    self.Xall[self.originZ_xpos[i_shot]] =self.S.detector[0].get_origin()[2]  #TODO fixme local_origin vs origin
+                    self.Xall[self.originZ_xpos[i_shot]] = self.S.detector[0].get_origin()[2]  #TODO fixme local_origin vs origin
             # set refinement flag
             if self.refine_detdist:
                 self.is_being_refined[self.originZ_xpos[i_shot]] = True
@@ -622,6 +627,10 @@ class GlobalRefiner(PixelRefinement):
         self.fcell_xstart = _global_pos
 
         self.spectra_coef_xstart = self.fcell_xstart + self.n_global_fcell
+
+        self.panelRot_xstart = self.spectra_coef_xstart + self.n_spectra_param
+
+        self.panelXY_xstart = self.panelRot_xstart + self.n_panel_rot_param
 
         self.gain_xpos = self.n_total_params - 1
 
@@ -679,10 +688,27 @@ class GlobalRefiner(PixelRefinement):
                 self.is_being_refined[xpos] = lambda_is_refined[i_spec_coef]
                 self.Xall[xpos] = 1
                 if not self.rescale_params:
-                    raise NotImplementedError("Cant refine spectra without rescale params")
+                    raise NotImplementedError("Cant refine spectra without rescale_params=True")
+
+            for i_pan_rot in range(self.n_panel_rot_param):
+                xpos = self.panelRot_xstart + i_pan_rot
+                if self.refine_panelRot:
+                    assert self.rescale_params
+                    self.is_being_refined[xpos] = True
+                self.Xall[xpos] = 1
+
+            for i_pan_XY in range(self.n_panel_XY_param):
+                xpos = self.panelXY_xstart + i_pan_XY
+                #xpos_Y = self.panelXY_xstart + 2*i_pan_XY + 1
+                self.Xall[xpos] = 1
+                #self.Xall[xpos_Y] = 1
+                if self.refine_panelXY:
+                    assert self.rescale_params
+                    self.is_being_refined[xpos] = True
+                    #self.is_being_refined[xpos_Y] = True
 
             print("----loading fcell data")
-            # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index
+            # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index)
             print("---- -- counting hkl totes")
             self.hkl_frequency = Counter(hkl_totals)
 
@@ -772,7 +798,7 @@ class GlobalRefiner(PixelRefinement):
 
         # reduce then broadcast
         if not rank == 0:
-            self.sigma_for_res_id = None 
+            self.sigma_for_res_id = None
             self.res_group_id_from_fcell_index = None
             self.fcell_init = None
         if self.rescale_params:
@@ -852,6 +878,11 @@ class GlobalRefiner(PixelRefinement):
             self.D.refine(self._ncells_id)
         if self.refine_detdist:
             self.D.refine(self._originZ_id)
+        if self.refine_panelRot:
+            self.D.refine(self._panelRot_id)
+        if self.refine_panelXY:
+            self.D.refine(self._panelX_id)
+            self.D.refine(self._panelY_id)
         if self.refine_Fcell:
             self.D.refine(self._fcell_id)
         if self.refine_lambda0:
@@ -1016,7 +1047,7 @@ class GlobalRefiner(PixelRefinement):
 
     def _get_rotX(self, i_shot):
         if self.rescale_params:
-            # FIXME ? 
+            # FIXME ?
             return self.rotX_sigma*(self.Xall[self.rotX_xpos[i_shot]]-1) + 0.0
         else:
             return self.Xall[self.rotX_xpos[i_shot]]
@@ -1062,6 +1093,35 @@ class GlobalRefiner(PixelRefinement):
             all_p.append(p)
         return all_p
 
+    def _get_panelRot_val(self, panel_id):
+        if self.n_panel_rot_param == 0:
+            return
+        panel_group_id = self.panel_group_from_id[panel_id]
+        val = self.Xall[self.panelRot_xstart + panel_group_id]
+        sig = self.panelRot_sigma
+        init = self.panelRot_init[panel_group_id]
+        val = sig*(val-1) + init
+        return val
+
+    def _get_panelXY_val(self, panel_id):
+        if self.n_panel_XY_param == 0:
+            return
+
+        panel_group_id = self.panel_group_from_id[panel_id]
+
+        xpos_X = self.panelXY_xstart + 2*panel_group_id
+        valX = self.Xall[xpos_X]
+        sigX = self.panelX_sigma
+        initX = self.panelX_init[panel_group_id]
+        valX = sigX*(valX-1) + initX
+
+        valY = self.Xall[xpos_X+1]
+        sigY = self.panelY_sigma
+        initY = self.panelY_init[panel_group_id]
+        valY = sigY*(valY-1) + initY
+
+        return valX, valY
+
     def _get_originZ_val(self, i_shot):
         val = self.Xall[self.originZ_xpos[i_shot]]
         if self.rescale_params:
@@ -1102,7 +1162,7 @@ class GlobalRefiner(PixelRefinement):
         else:
             val = np_exp(val)
         return val
-    
+
     def _get_bg_coef(self, i_shot):
         assert (self.rescale_params)
         val = self.Xall[self.bg_coef_xpos[i_shot]]
@@ -1337,11 +1397,10 @@ class GlobalRefiner(PixelRefinement):
 
     def _update_dxtbx_detector(self):
         # TODO: verify that all panels have same local origin to start with..
-        det = self.S.detector
         self.S.panel_id = self._panel_id
         # TODO: select hierarchy level at this point
         # NOTE: what does fast-axis and slow-axis mean for the different hierarchy levels?
-        node = det[self._panel_id]
+        node_dict = self.S.detector[self._panel_id].to_dict()
         #from IPython import embed
         #embed()
         #orig = node.get_local_origin()
@@ -1350,17 +1409,39 @@ class GlobalRefiner(PixelRefinement):
         #node.set_local_frame(node.get_local_fast_axis(),
         #                     node.get_local_slow_axis(),
         #                     new_local_origin)
-        orig = node.get_origin()
+        orig = node_dict['origin']
         new_originZ = self._get_originZ_val(self._i_shot)
-        new_origin = orig[0], orig[1], new_originZ
-        node.set_frame(node.get_fast_axis(),
-                             node.get_slow_axis(),
-                             new_origin)
-        self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
-        self.D.update_dxtbx_geoms(det, self.S.beam.nanoBragg_constructor_beam, self._panel_id)
-        if self.recenter:
-            s0 = self.S.beam.nanoBragg_constructor_beam.get_s0()
-            assert ALL_CLOSE(node.get_beam_centre(s0), self.D.beam_center_mm)
+
+        newX = orig[0]
+        newY = orig[1]
+        new_XY = self._get_panelXY_val(self._panel_id)
+        if new_XY is not None:
+            newX_offset, newY_offset = new_XY
+            newX += newX_offset
+            newY += newY_offset
+        new_origin = newX, newY, new_originZ
+
+        node_dict["origin"] = new_origin
+        node = Panel.from_dict(node_dict)
+        #node.set_frame(node.get_fast_axis(),
+        #                     node.get_slow_axis(),
+        #                     new_origin)
+
+        #assert node.get_origin() == det[0].get_origin()
+        new_det = Detector()
+        new_det.add_panel(node)
+        #self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
+        panel_rot_ang = 0
+        if self.refine_panelRot:
+            panel_rot_ang = self._get_panelRot_val(self._panel_id)
+            assert panel_rot_ang is not None
+        #if self._i_spot == 0:
+        #    embed()
+        self.D.update_dxtbx_geoms(new_det, self.S.beam.nanoBragg_constructor_beam, self._panel_id, panel_rot_ang)
+        #self.D.update_dxtbx_geoms(self.S.detector, self.S.beam.nanoBragg_constructor_beam, self._panel_id, panel_rot_ang)
+        #if self.recenter:
+        #    s0 = self.S.beam.nanoBragg_constructor_beam.get_s0()
+        #    assert ALL_CLOSE(node.get_beam_centre(s0), self.D.beam_center_mm)
 
     def _extract_spectra_coefficient_derivatives(self):
         self.spectra_derivs = [0]*self.n_spectra_param
@@ -1434,6 +1515,23 @@ class GlobalRefiner(PixelRefinement):
             if self.calc_curvatures:
                 self.detdist_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(self._originZ_id).as_numpy_array()
 
+    def _extract_panelRot_derivative_pixels(self):
+        self.panelRot_dI_dtheta = self.panelRot_d2I_dtheta2 = 0
+        SG = self.scale_fac*self.G2
+        if self.refine_panelRot:
+            self.panelRot_dI_dtheta = SG*self.D.get_derivative_pixels(self._panelRot_id).as_numpy_array()
+            if self.calc_curvatures:
+                self.panelRot_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(self._panelRot_id).as_numpy_array()
+
+    def _extract_panelXY_derivative_pixels(self):
+        self.panelX_dI_dtheta = self.panelX_d2I_dtheta2 = 0
+        self.panelY_dI_dtheta = self.panelY_d2I_dtheta2 = 0
+        SG = self.scale_fac*self.G2
+        if self.refine_panelXY:
+            self.panelX_dI_dtheta = SG*self.D.get_derivative_pixels(self._panelX_id).as_numpy_array()
+            self.panelY_dI_dtheta = SG*self.D.get_derivative_pixels(self._panelY_id).as_numpy_array()
+        # TODO: curvatures
+
     def _extract_Fcell_derivative_pixels(self):
         self.fcell_deriv = self.fcell_second_deriv = 0
         if self.refine_Fcell:
@@ -1450,6 +1548,8 @@ class GlobalRefiner(PixelRefinement):
         self._extract_originZ_derivative_pixels()
         self._extract_Fcell_derivative_pixels()
         self._extract_spectra_coefficient_derivatives()
+        self._extract_panelRot_derivative_pixels()
+        self._extract_panelXY_derivative_pixels()
 
     def _update_ucell(self):
         if self.rescale_params:
@@ -1517,7 +1617,8 @@ class GlobalRefiner(PixelRefinement):
                 self._update_rotXYZ()
                 n_spots = len(self.NANOBRAGG_ROIS[self._i_shot])
                 for i_spot in range(n_spots):
-                    
+                    self._i_spot = i_spot
+
                     if self.selection_flags is not None:
                         if self._i_shot not in self.selection_flags:
                             continue
@@ -1532,6 +1633,12 @@ class GlobalRefiner(PixelRefinement):
 
                     self.Imeas = self.ROI_IMGS[self._i_shot][i_spot]
                     self._update_dxtbx_detector()
+                    if i_spot == 0:
+                        if self.refine_panelRot:
+                            print("ROT ANGLE : %.4f" % self._get_panelRot_val(self._panel_id))
+
+                        if self.refine_panelXY:
+                            print("XY: %.4f %f" % self._get_panelXY_val(self._panel_id))
                     self._run_diffBragg_current(i_spot)
                     self._set_background_plane(i_spot)
                     self._extract_pixel_data()
@@ -1562,6 +1669,8 @@ class GlobalRefiner(PixelRefinement):
                     self._Bmatrix_derivatives()
                     self._mosaic_parameter_m_derivatives()
                     self._originZ_derivatives()
+                    self._panelRot_derivatives()
+                    self._panelXY_derivatives()
                     self._spot_scale_derivatives()
                     self._gain_factor_derivatives()
                     self._Fcell_derivatives(i_spot)
@@ -1785,6 +1894,29 @@ class GlobalRefiner(PixelRefinement):
                 if self.calc_curvatures:
                     self.curv[xpos] += self._curv_accumulate(d, d2)
 
+    def _panelRot_derivatives(self):
+        if self.refine_panelRot:
+            d = self.panelRot_dI_dtheta*self.panelRot_sigma
+            d2 = self.panelRot_d2I_dtheta2*(self.panelRot_sigma*self.panelRot_sigma)
+
+            xpos = self.panelRot_xstart + self.panel_group_from_id[self._panel_id]
+
+            self.grad[xpos] += self._grad_accumulate(d)
+            if self.calc_curvatures:
+                self.curv[xpos] += self._curv_accumulate(d, d2)
+
+    def _panelXY_derivatives(self):
+        if self.refine_panelXY:
+            d_X = self.panelX_dI_dtheta*self.panelX_sigma
+            d_Y = self.panelY_dI_dtheta*self.panelY_sigma
+            #d2_X = d2_Y = 0 #TODO: curvatires
+
+            xpos_X = self.panelXY_xstart + 2*self.panel_group_from_id[self._panel_id]
+            xpos_Y = xpos_X + 1
+
+            self.grad[xpos_X] += self._grad_accumulate(d_X)
+            self.grad[xpos_Y] += self._grad_accumulate(d_Y)
+
     def _originZ_derivatives(self):
         if self.refine_detdist:
             if self.rescale_params:
@@ -1805,7 +1937,7 @@ class GlobalRefiner(PixelRefinement):
         miller_idx = self.ASU[self._i_shot][i_spot]
         # get multiplicity of this index
         multi = self.hkl_frequency[self.idx_from_asu[miller_idx]]
-        # check if we are freezing this index during refinement 
+        # check if we are freezing this index during refinement
         freeze_this_hkl = False
         if self.freeze_idx is not None:
             freeze_this_hkl = self.freeze_idx[miller_idx]
@@ -2101,6 +2233,10 @@ class GlobalRefiner(PixelRefinement):
             refine_str += "bkgrnd, "
         if self.refine_detdist:
             refine_str += "originZ, "
+        if self.refine_panelRot:
+            refine_str += "panelRot, "
+        if self.refine_panelXY:
+            refine_str += "panelXY, "
         return refine_str
 
     def _print_iteration_header(self):
@@ -2438,7 +2574,7 @@ class GlobalRefiner(PixelRefinement):
                 a = self.Xall[self.ucell_xstart[0] + i]
 
             if i == 3:
-                a = a * 180 /PI 
+                a = a * 180 /PI
 
             s += "%.4f " % a
             A.append(a)

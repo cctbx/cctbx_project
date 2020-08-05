@@ -5,8 +5,6 @@ This test checks the setter and getter for Ncells parameter
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--plot", action='store_true')
-parser.add_argument("--curvatures", action='store_true')
-parser.add_argument("--idx", default=0, help="0=Na, 1=Nb, 2=Nc", type=int, choices=[0,1,2])
 args = parser.parse_args()
 
 import numpy as np
@@ -15,8 +13,6 @@ from scipy.stats import linregress
 from scipy.spatial.transform import Rotation
 from simtbx.diffBragg import sim_data
 from scitbx.matrix import sqr, rec
-from dxtbx.model import Detector,Panel
-from IPython import embed
 from cctbx import uctbx
 from dxtbx.model import Crystal
 
@@ -39,20 +35,19 @@ S.detector = sim_data.SimData.simple_detector(180, 0.1, (1024, 1024))
 
 DET = S.detector
 BEAM = S.beam.nanoBragg_constructor_beam
-panel_dict = DET[0].to_dict()
-fdet_orig = panel_dict["fast_axis"]
-sdet_orig = panel_dict["slow_axis"]
-panel = Panel.from_dict(panel_dict)
-Dnew = Detector()
-Dnew.add_panel(panel)
+#panel_dict = DET[0].to_dict()
+#fdet_orig = panel_dict["fast_axis"]
+#sdet_orig = panel_dict["slow_axis"]
+#panel = Panel.from_dict(panel_dict)
+#Dnew = Detector()
+#Dnew.add_panel(panel)
 
-
-S.detector = Dnew
+S.detector = DET #Dnew
 
 S.instantiate_diffBragg(verbose=0, oversample=0)
 S.D.spot_scale = 100000
 S.D.compute_curvatures = False
-S.D.nopolar=False
+S.D.nopolar = True
 
 S.D.refine(panel_rot_id)
 S.D.initialize_managers()
@@ -83,7 +78,6 @@ for i_shift, angle_deg in enumerate(angles):
     fdiff = (img2 - img) /angle_rad
     error = np.abs(fdiff[bragg] - deriv[bragg]).mean()
     all_error.append(error)
-    embed()
 
     print("error=%f, step=%f radians" % (error, angle_rad))
     #test_ang = np.arccos(np.dot(S.D.fdet_vector, fdet_orig))

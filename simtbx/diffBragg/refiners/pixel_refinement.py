@@ -58,6 +58,19 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.originZ_sigma = 0.01
         self.m_sigma = 0.05
         self.spot_scale_sigma = 0.0001
+
+        self.panel_group_from_id = {0: 0}  # dict of panel_id: initial_rotation, should be same length of detector
+
+        self.panelRot_sigma = 1e-3
+        self.panelRot_init = {0: 0}  # dict of panel_group_id: initial_rotation
+        self.n_panel_rot_param = 0  # 1 for each group
+
+        self.panelX_sigma = 0.000001
+        self.panelY_sigma = 0.000001
+        self.panelX_init = {0: 0}  # dict of panel_group_id: initial originX
+        self.panelY_init = {0: 0}  # dict of panel_group_id: initial originY
+        self.n_panel_XY_param = 0  # 2 for each group
+
         self.a_sigma = 0.05
         self.b_sigma = 0.05
         self.c_sigma = 0.1
@@ -122,6 +135,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.refine_gain_fac = False  # whether to refine the gain factor
         self.refine_ncells = False  # whether to refine Ncells abc
         self.refine_detdist = False  # whether to refine the detdist
+        self.refine_panelXY = False  # whether to refine panel origin X and Y components
+        self.refine_panelRot = False  # whether to refine the panel rotation
         self.refine_Umatrix = False  # whether to refine the Umatrix
         self.refine_Bmatrix = False  # whether to refine the Bmatrx
         self.refine_crystal_scale = False  # whether to refine the crystal scale factor
@@ -569,7 +584,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     @refine_background_planes.setter
     def refine_background_planes(self, val):
         if not isinstance(val, bool):
-            raise ValueError("refine background planes should be a boolean")
+            raise ValueError("refine should be a boolean")
         self._refine_background_planes = val
 
     @property
@@ -579,7 +594,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     @refine_Amatrix.setter
     def refine_Amatrix(self, val):
         if not isinstance(val, bool):
-            raise ValueError("refine background planes should be a boolean")
+            raise ValueError("refine should be a boolean")
         self._refine_Amatrix = val
 
     @property
@@ -589,7 +604,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     @refine_Umatrix.setter
     def refine_Umatrix(self, val):
         if not isinstance(val, bool):
-            raise ValueError("refine background planes should be a boolean")
+            raise ValueError("refine should be a boolean")
         self._refine_Umatrix = val
 
     @property
@@ -599,7 +614,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     @refine_Bmatrix.setter
     def refine_Bmatrix(self, val):
         if not isinstance(val, bool):
-            raise ValueError("refine background planes should be a boolean")
+            raise ValueError("refine should be a boolean")
         self._refine_Bmatrix = val
 
     @property
@@ -609,7 +624,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     @refine_crystal_scale.setter
     def refine_crystal_scale(self, val):
         if not isinstance(val, bool):
-            raise ValueError("refine background planes should be a boolean")
+            raise ValueError("refine  should be a boolean")
         self._refine_crystal_scale = val
 
     @property
@@ -619,8 +634,28 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     @refine_gain_fac.setter
     def refine_gain_fac(self, val):
         if not isinstance(val, bool):
-            raise ValueError("refine background planes should be a boolean")
+            raise ValueError("refine should be a boolean")
         self._refine_gain_fac = val
+
+    @property
+    def refine_panelXY(self):
+        return self._refine_panelXY
+
+    @refine_panelXY.setter
+    def refine_panelXY(self, val):
+        if not isinstance(val, bool):
+            raise ValueError("refine should be a boolean")
+        self._refine_panelXY = val
+
+    @property
+    def refine_panelRot(self):
+        return self._refine_panelRot
+
+    @refine_panelRot.setter
+    def refine_panelRot(self, val):
+        if not isinstance(val, bool):
+            raise ValueError("refine should be a boolean")
+        self._refine_panelRot = val
 
     @property
     def refine_detdist(self):
@@ -629,7 +664,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     @refine_detdist.setter
     def refine_detdist(self, val):
         if not isinstance(val, bool):
-            raise ValueError("refine background planes should be a boolean")
+            raise ValueError("refine should be a boolean")
         self._refine_detdist = val
 
     @property
@@ -639,7 +674,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     @refine_ncells.setter
     def refine_ncells(self, val):
         if not isinstance(val, bool):
-            raise ValueError("refine background planes should be a boolean")
+            raise ValueError("refine should be a boolean")
         self._refine_ncells = val
 
     def compute_functional_gradients_diag(self):
