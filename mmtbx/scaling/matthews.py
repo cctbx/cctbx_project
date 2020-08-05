@@ -150,7 +150,7 @@ class p_vm_calculator(object):
     tot_p -= tmp[3]
     if (int(n_copies)==1):
       print("Too many residues to fit in the ASU", file=self.out)
-      print("  resetting numer of residues in monomer to %5.0f" \
+      print("  resetting number of residues in monomer to %5.0f" \
             %(self.n_residues/10.0), file=self.out)
       self.n_residues/=10.0
       self.n_bases/=10.0
