@@ -1463,10 +1463,9 @@ class _():
           result.append(residue_range_sel)
     return result
 
-  def flip_symmetric_amino_acids(self, flip_symmetric_amino_acids=True):
+  def flip_symmetric_amino_acids(self):
     import time
     from cctbx import geometry_restraints
-    if flip_symmetric_amino_acids is [] or flip_symmetric_amino_acids is None: return
     data = {
       "ARG" : {"dihedral" : ["CD", "NE", "CZ", "NH1"],
                "value"    : [0, 1],
@@ -1582,9 +1581,6 @@ class _():
               setattr(atom2, attr, tmp)
             info += ' "%s" <-> "%s"' % (atom1.name.strip(),
                                         atom2.name.strip())
-            # print(atom1.format_atom_record())
-            # print(atom2.format_atom_record())
-            # assert 0
           info += '\n'
     if not info: info = '    None\n'
     info += '  Time to flip residues: %0.2fs\n' % (time.time()-t0)
