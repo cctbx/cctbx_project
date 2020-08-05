@@ -10,6 +10,7 @@ namespace nanoBragg {
 
 class derivative_manager{
   public:
+    virtual ~derivative_manager(){}
     derivative_manager();
     void initialize(int sdim, int fdim, bool compute_curvatures);
     af::flex_double raw_pixels;
@@ -20,7 +21,23 @@ class derivative_manager{
     bool refine_me;
     bool second_derivatives;
     void increment_image(int idx, double value, double value2, bool curvatures);
+
 };
+
+class panel_manager: public derivative_manager{
+  public:
+    panel_manager();
+   virtual void foo(){}
+    virtual ~panel_manager(){}
+    //virtual void set_R();
+    void increment(double Iincrement, double omega_pixel, mat3 M, double pix2, vec3 o, vec3 k_diffracted,
+                double per_k, double per_k3, double per_k5, vec3 V);
+    mat3 dR;
+    vec3 dF;
+    vec3 dS;
+    vec3 dk;
+
+}; // end of rot_manager
 
 
 class rot_manager: public derivative_manager{
@@ -103,6 +120,7 @@ class diffBragg: public nanoBragg{
   ~diffBragg(){};
   void initialize_managers();
   void vectorize_umats();
+  void rotate_fs_ss_vecs(double panel_rot_ang);
   void add_diffBragg_spots();
   void init_raw_pixels_roi();
   void zero_raw_pixel_rois();
@@ -125,7 +143,7 @@ class diffBragg: public nanoBragg{
   /* methods for interacting with the derivative managers */
   void refine(int refine_id);
   void update_dxtbx_geoms(const dxtbx::model::Detector& detector, const dxtbx::model::Beam& beam,
-        int panel_id);
+        int panel_id, double panel_rot_ang = 0);
   void set_value( int refine_id, double value);
   void set_ncells_values( boost::python::tuple const& values);
   boost::python::tuple get_ncells_values();
@@ -157,6 +175,7 @@ class diffBragg: public nanoBragg{
   vec3 k_diffracted_ave;
   vec3 k_incident_ave;
 
+  mat3 EYE;
   mat3 Umatrix;
   mat3 Bmatrix;
   mat3 Omatrix;
@@ -166,6 +185,11 @@ class diffBragg: public nanoBragg{
   std::vector<mat3> RotMats;
   std::vector<mat3> dRotMats, d2RotMats;
   std::vector<mat3> R3, R3_2;
+
+  // Panel rotation
+  mat3 panR;
+  mat3 panR2;
+  double panel_rot_ang;
 
   vec3 k_diffracted;
   vec3 o_vec;
@@ -186,7 +210,9 @@ class diffBragg: public nanoBragg{
   std::vector<boost::shared_ptr<Ncells_manager> > Ncells_managers;
   std::vector<boost::shared_ptr<origin_manager> > origin_managers;
   std::vector<boost::shared_ptr<lambda_manager> > lambda_managers;
+  std::vector<boost::shared_ptr<derivative_manager> > panels;
   boost::shared_ptr<Fcell_manager> fcell_man;
+  boost::shared_ptr<panel_manager> panel_rot_man;
 
   double* floatimage_roi;
   af::flex_double raw_pixels_roi;

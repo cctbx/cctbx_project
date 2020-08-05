@@ -12,8 +12,7 @@ tst_list = (
     "$D/diffBragg/tests/tst_diffBragg_change_of_basis.py",
     "$D/diffBragg/tests/tst_diffBragg_update_dxtbx_geoms.py",
     "$D/diffBragg/tests/tst_diffBragg_deriv_rois.py",
-    ["$D/diffBragg/tests/tst_diffBragg_detdist_derivatives.py", "--curvatures --nopolar"],
-    ["$D/diffBragg/tests/tst_diffBragg_detdist_derivatives.py", "--curvatures"],
+    "$D/diffBragg/tests/tst_diffBragg_detdist_derivatives.py",
     "$D/diffBragg/tests/tst_diffBragg_nanoBragg_congruency.py",
     "$D/diffBragg/tests/tst_diffBragg_ncells_property.py",
     ["$D/diffBragg/tests/tst_diffBragg_ncells_property_anisotropic.py", "--idx 0"],
@@ -42,6 +41,10 @@ tst_list = (
     ["$D/diffBragg/tests/tst_diffBragg_global_refine.py", "--nshots 1 --rescale --spectra  --maxcalls 150  --nshots 1 " +
         "--refineSpectra  --testSpectra  --perturbSpectra"],
     ["$D/diffBragg/tests/tst_diffBragg_global_refine_older.py", "--spotscale --umatrix --bmatrix --ncells --curvatures --rescale"],
+    "$D/diffBragg/tests/tst_diffBragg_panel_Rot_XY_refine.py",
+    ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel x"],
+    ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel y"],
+    ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel z"],
     )
 
 

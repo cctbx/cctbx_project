@@ -10,7 +10,6 @@ parser = ArgumentParser()
 parser.add_argument("--plotimages", action='store_true')
 parser.add_argument("--plotlines", action='store_true')
 parser.add_argument("--curvatures",action="store_true")
-parser.add_argument("--nopolar", action="store_true")
 args = parser.parse_args()
 
 from scipy.stats import linregress
@@ -252,8 +251,8 @@ SIM.detector = det
 SIM.instantiate_diffBragg()
 D = SIM.D
 
-D.oversample_omega = False
-D.nopolar = args.nopolar
+D.oversample_omega = True
+D.nopolar = True
 
 D.refine(orig_idx)
 D.initialize_managers()

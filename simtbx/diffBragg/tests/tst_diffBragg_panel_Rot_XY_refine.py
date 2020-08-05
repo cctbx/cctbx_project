@@ -5,7 +5,6 @@ parser.add_argument("--residuals", action='store_true')
 parser.add_argument("--oversample", type=int, default=0)
 parser.add_argument("--curvatures", action="store_true")
 parser.add_argument("--nopolar", action="store_true")
-parser.add_argument("--rescale", action="store_true")
 args = parser.parse_args()
 
 from dxtbx.model.crystal import Crystal
@@ -57,11 +56,12 @@ print("Ground truth originZ=%f" % (SIM.detector[0].get_origin()[2]))
 
 
 # copy the detector and update the origin
-det2 = deepcopy(SIM.detector)
+#det2 = deepcopy(SIM.detector)
 # alter the detector distance by 2 mm
-node_d["origin"] = Origin[0], Origin[1], Origin[2]+3
-det2[0] = Panel.from_dict(node_d)
-print ("Modified originZ=%f" % (det2[0].get_origin()[2]))
+#node_d["origin"] = Origin[0], Origin[1], Origin[2]+3
+#embed()
+#det2[0] = Panel.from_dict(node_d)
+#print ("Modified originZ=%f" % (det2[0].get_origin()[2]))
 
 SIM.crystal = nbcryst
 SIM.instantiate_diffBragg(oversample=0)
@@ -85,22 +85,38 @@ img = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.raw_pixels *= 0
 
 # Simulate the perturbed image for comparison
-SIM.detector = det2
-SIM.D.update_dxtbx_geoms(det2, SIM.beam.nanoBragg_constructor_beam, 0)
+panel_rot_ang = 0 #0.3
+panel_rot_ang_rad = panel_rot_ang * np.pi / 180
+Xshift_mm = 0.1
+Yshift_mm = 0.09
+
+det2 = deepcopy(SIM.detector)
+panel = det2[0]
+orig = list(panel.get_origin())
+orig[0] += Xshift_mm
+orig[1] += Yshift_mm
+from dxtbx.model import Panel
+pan_dict = panel.to_dict()
+pan_dict["origin"] = orig
+pan = Panel.from_dict(pan_dict)
+det2[0] = pan
+
+SIM.D.update_dxtbx_geoms(det2, SIM.beam.nanoBragg_constructor_beam, 0, panel_rot_ang_rad)
 SIM.D.add_diffBragg_spots()
 SIM._add_background()
 SIM._add_noise()
 # Perturbed image:
 img_pet = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.raw_pixels *= 0
+full_roi = SIM.D.region_of_interest
 
 # spot_rois, abc_init , these are inputs to the refiner
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
-spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot)
+spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20) #, plot=args.plot)
 n_spots = len(spot_roi)
-n_kept = 20
+n_kept = 30
 np.random.seed(1)
-idx = np.random.permutation(n_spots)[:n_kept]
+idx = np.random.permutation(n_spots)#[:n_kept]
 spot_roi = spot_roi[idx]
 tilt_abc = tilt_abc[idx]
 print ("I got %d spots!" % tilt_abc.shape[0])
@@ -164,8 +180,12 @@ n_ncell_param = 1
 nfcell_param = len(Hi_asu)
 ngain_param = 1
 ndetz_param = 1
+REFINE_XY = True
+REFINE_ROT = True
+n_panRot_param = 1 * int(REFINE_ROT)
+n_panXY_param = 2 * int(REFINE_XY)
 
-n_global_unknowns = nucell_param + nfcell_param + ngain_param + ndetz_param + n_ncell_param
+n_global_unknowns = nucell_param + nfcell_param + ngain_param + ndetz_param + n_ncell_param + n_panRot_param + n_panXY_param
 n_total_unknowns = n_local_unknowns + n_global_unknowns
 
 SIM.D.oversample_omega = False
@@ -209,8 +229,32 @@ RUC.refine_Bmatrix = False
 RUC.refine_ncells =False
 RUC.refine_crystal_scale = False
 RUC.refine_Fcell = False
-RUC.refine_detdist = True
+RUC.refine_detdist = False
 RUC.refine_gain_fac = False
+RUC.refine_panelRot = REFINE_ROT
+RUC.refine_panelXY = REFINE_XY
+
+RUC.ignore_line_search_failed_step_at_lower_bound = True
+
+RUC.panel_group_from_id = {0: 0}  # panel group ID from panel id
+
+init_rot = 0
+if REFINE_ROT:
+    init_rot = panel_rot_ang_rad
+RUC.panelRot_init = {0: init_rot}
+#RUC.panelRot_init = {0: panel_rot_ang_rad}  # panel group ID versus starting value
+RUC.n_panel_rot_param = 1*int(RUC.refine_panelRot)
+RUC.panelRot_sigma = 0.01
+
+init_X_offset = init_Y_offset = 0
+if REFINE_XY:
+    init_X_offset = Xshift_mm
+    init_Y_offset = Yshift_mm
+RUC.panelX_init = {0: init_X_offset}
+RUC.panelY_init = {0: init_Y_offset}
+RUC.panelX_sigma = 0.1
+RUC.panelY_sigma = 0.1
+RUC.n_panel_XY_param = 2 * int(REFINE_XY)
 
 RUC.ucell_sigmas = [1]*len(UcellMan.variables)
 RUC.ucell_inits = {0:  UcellMan.variables}
@@ -220,15 +264,19 @@ RUC.trad_conv_eps = 1e-5
 RUC.trad_conv = True
 RUC.trial_id = 0
 
-RUC.plot_images = False
+RUC.plot_images = args.plot
+RUC.plot_stride = 1
+RUC.plot_spot_stride = 1
 RUC.setup_plots()
 
-RUC.rescale_params = args.rescale
-RUC.refine_rotZ = True
+RUC.rescale_params = True
+RUC.refine_rotZ = False
 RUC.request_diag_once = False
 RUC.S = SIM
 RUC.has_pre_cached_roi_data = True
 RUC.S.D.update_oversample_during_refinement = False
+RUC.S.D.nopolar = False  # True
+
 RUC.use_curvatures = False
 RUC.use_curvatures_threshold = 10
 RUC.calc_curvatures = args.curvatures
@@ -237,13 +285,37 @@ RUC.verbose = True
 RUC.big_dump = True
 
 RUC.run(setup_only=False)
-if RUC.hit_break_to_use_curvatures:
-    RUC.num_positive_curvatures = 0
-    RUC.use_curvatures = True
-    RUC.run(setup=False)
+#
+#refined_distance = RUC._get_originZ_val(0)
+#assert abs(refined_distance - distance) < 1e-2
 
-refined_distance = RUC._get_originZ_val(0)
-assert abs(refined_distance - distance) < 1e-2
+#SIM.D.update_dxtbx_geoms(SIM.detector, SIM.beam.nanoBragg_constructor_beam, 0, RUC._get_panelRot_val(0))
+#RUC.update
+#SIM.D.update_dxtbx_geoms(SIM.detector, SIM.beam.nanoBragg_constructor_beam, 0, RUC._get_panelRot_val(0))
+#SIM.D.raw_pixels *= 0
+#SIM.D.region_of_interest = full_roi
+#SIM.D.add_diffBragg_spots()
+#SIM._add_background()
+#SIM._add_noise()
+## Perturbed image:
+#img_opt = SIM.D.raw_pixels.as_numpy_array()
+#from itertools import cycle
+#imgs = cycle([img, img_opt])
+#import pylab as plt
+#plt.imshow(next(imgs), vmax=100)
+#while 1:
+#    plt.draw()
+#    plt.pause(0.5)
+#    plt.cla()
+#    plt.imshow(next(imgs), vmax=100)
+#    plt.xlim(0,200)
+#    plt.ylim(200,0)
+
+assert RUC._get_panelRot_val(0)*180 / np.pi < 0.0015
+x, y = RUC._get_panelXY_val(0)
+
+assert abs(x) < 0.0025
+assert abs(y) < 0.0025
+
 print("I AM ZIM")
 print("OK!")
-embed()
