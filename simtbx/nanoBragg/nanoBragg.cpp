@@ -194,12 +194,6 @@ nanoBragg::nanoBragg(
     pix0_vector[1] = detector[panel_id].get_origin()[0]/1000.0;
     pix0_vector[2] = detector[panel_id].get_origin()[1]/1000.0;
     pix0_vector[3] = detector[panel_id].get_origin()[2]/1000.0;
-    user_beam=true;
-    //printf("BOODOPASD\n");
-    //SCITBX_EXAMINE(pix0_vector[1]);
-    //SCITBX_EXAMINE(pix0_vector[2]);
-    //SCITBX_EXAMINE(pix0_vector[3]);
-    //printf("BOODOPASD\n");
     /* what is the point of closest approach between sample and detector? */
     Fclose = Xclose = -dot_product(pix0_vector,fdet_vector);
     Sclose = Yclose = -dot_product(pix0_vector,sdet_vector);
