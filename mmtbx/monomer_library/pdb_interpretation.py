@@ -3025,9 +3025,7 @@ class build_all_chain_proxies(linking_mixins):
                                                    )
       if info: print(info, file=log)
     if self.params.flip_symmetric_amino_acids:
-      info = self.pdb_hierarchy.flip_symmetric_amino_acids(
-        flip_symmetric_amino_acids=self.params.flip_symmetric_amino_acids,
-        )
+      info = self.pdb_hierarchy.flip_symmetric_amino_acids()
       if info and log is not None:
         print("\n  Symmetric amino acids flipped", file=log)
         print(info, file=log)
@@ -3037,9 +3035,7 @@ class build_all_chain_proxies(linking_mixins):
       self.pdb_inp = pdb.input(source_info=None, lines=temp_string)
       self.pdb_hierarchy = self.pdb_inp.construct_hierarchy(sort_atoms=self.params.sort_atoms)
       if self.params.flip_symmetric_amino_acids:
-        self.pdb_hierarchy.flip_symmetric_amino_acids(
-          flip_symmetric_amino_acids=self.params.flip_symmetric_amino_acids,
-          )
+        self.pdb_hierarchy.flip_symmetric_amino_acids()
     self.pdb_atoms = self.pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
     self.counts = self.pdb_hierarchy.overall_counts()

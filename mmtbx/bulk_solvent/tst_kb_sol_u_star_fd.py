@@ -178,7 +178,7 @@ def run_group(symbol):
   assert approx_equal(ck_a, ck_fd, eps=1.e-4)
   assert approx_equal(cb_a, cb_fd, eps=1.e-4)
   assert approx_equal(gu_a, gu_fd, eps=1.e-4)
-  assert approx_equal(gu_a2, gu_fd2, eps=1.e-6)
+  assert approx_equal(gu_a2, gu_fd2, eps=1.e-5)
 
 if (__name__ == "__main__"):
   for i in list(range(1,231))[:10]: # XXX Do first 10 (to save time)
