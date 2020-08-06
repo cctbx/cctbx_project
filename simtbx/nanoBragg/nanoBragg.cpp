@@ -19,10 +19,11 @@ class encapsulated_gaussdev
  * class instance.
  */
   private:
-    int iset=0;
-    double gset=0.; //set value to avoid compiler warnings, but the 0 value must not be used.
+    int iset;
+    double gset; //set value to avoid compiler warnings, but the 0 value must not be used.
     double fac,rsq,v1,v2;
   public:
+    encapsulated_gaussdev() : iset(0), gset(0.) {}
     double operator()(long *idum){
     if (iset == 0) {
         /* no extra deviats handy ... */
