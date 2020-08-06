@@ -121,7 +121,8 @@ double ran1(long *idum);
 double gammln(double xx);
 
 /* return Gaussian deviate with rms=1 and FWHM = 2/sqrt(log(2)) */
-double gaussdev(long *idum);
+//take this out of header.  declare and define in cpp.
+//double gaussdev(long *idum);
 /* return Poissonian deviate given expectation value */
 double poidev(double xm, long *idum);
 
