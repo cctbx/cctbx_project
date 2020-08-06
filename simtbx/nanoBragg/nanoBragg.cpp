@@ -6,6 +6,47 @@
 namespace simtbx {
 namespace nanoBragg {
 
+/* return gaussian deviate with rms=1 and FWHM = 2/sqrt(log(2)) */
+class encapsulated_gaussdev
+{
+/* Convert from a function to a class.
+ * Implemented as a function, the state variable iset
+ * valued at 0 or 1, unintentionally stored global state, thus
+ * producing different gaussian deviates depending on the order in
+ * which images are simulated within a parallel-computing environment.
+ * Despite random seeds being the same, resulting deviates differed.
+ * Switching to a class now forces iset to be initialized for each new
+ * class instance.
+ */
+  private:
+    int iset=0;
+    double gset=0.; //set value to avoid compiler warnings, but the 0 value must not be used.
+    double fac,rsq,v1,v2;
+  public:
+    double operator()(long *idum){
+    if (iset == 0) {
+        /* no extra deviats handy ... */
+
+        /* so pick two uniform deviates on [-1:1] */
+        do {
+            v1=2.0*ran1(idum)-1.0;
+            v2=2.0*ran1(idum)-1.0;
+            rsq=v1*v1+v2*v2;
+        } while (rsq >= 1.0 || rsq == 0);
+        /* restrained to the unit circle */
+
+        /* apply Box-Muller transformation to convert to a normal deviate */
+        fac=sqrt(-2.0*log(rsq)/rsq);
+        gset=v1*fac;
+        iset=1;         /* we now have a spare deviate */
+        return v2*fac;
+    } else {
+        /* there is an extra deviate in gset */
+        iset=0;
+        return gset;
+    }
+    }
+};
 
 /* constructor that takes a dxtbx "panel" detector model */
 nanoBragg::nanoBragg(
@@ -3613,6 +3654,7 @@ nanoBragg::apply_psf(shapetype psf_type, double fwhm_pixels, int user_psf_radius
 void
 nanoBragg::add_noise()
 {
+    encapsulated_gaussdev gaussdev;
     int i = 0;
     long cseed;
 
@@ -4261,6 +4303,7 @@ double poidev(double xm, long *idum)
 {
 //    double gammln(double xx);
 //    double ran1(long *idum);
+    encapsulated_gaussdev gaussdev;
     /* oldm is a flag for whether xm has changed since last call */
     static double sq,alxm,g,oldm=(-1.0);
     double em,t,y;
@@ -4311,39 +4354,6 @@ double poidev(double xm, long *idum)
 
     return em;
 }
-
-
-/* return gaussian deviate with rms=1 and FWHM = 2/sqrt(log(2)) */
-double gaussdev(long *idum)
-{
-//    double ran1(long *idum);
-    static int iset=0;
-    static double gset;
-    double fac,rsq,v1,v2;
-
-    if (iset == 0) {
-        /* no extra deviats handy ... */
-
-        /* so pick two uniform deviates on [-1:1] */
-        do {
-            v1=2.0*ran1(idum)-1.0;
-            v2=2.0*ran1(idum)-1.0;
-            rsq=v1*v1+v2*v2;
-        } while (rsq >= 1.0 || rsq == 0);
-        /* restrained to the unit circle */
-
-        /* apply Box-Muller transformation to convert to a normal deviate */
-        fac=sqrt(-2.0*log(rsq)/rsq);
-        gset=v1*fac;
-        iset=1;         /* we now have a spare deviate */
-        return v2*fac;
-    } else {
-        /* there is an extra deviate in gset */
-        iset=0;
-        return gset;
-    }
-}
-
 
 /* generate Lorentzian deviate with FWHM = 2 */
 double lorentzdev(long *seed) {
