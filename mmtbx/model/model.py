@@ -1328,19 +1328,19 @@ class manager(object):
     self._pdb_hierarchy = self._processed_pdb_file.all_chain_proxies.pdb_hierarchy
     xray_structure_all = \
           self._processed_pdb_file.xray_structure(show_summary = False)
-      # XXX ad hoc manipulation
-      for sc in xray_structure_all.scatterers():
-        lbl=sc.label.split()
-        if("IAS" in lbl and sc.scattering_type=="?" and lbl[1].startswith("IS")):
-          sc.scattering_type = lbl[1]
-      #
-      if(xray_structure_all is None):
-        raise Sorry("Cannot extract xray_structure.")
-      if(xray_structure_all.scatterers().size()==0):
-        raise Sorry("Empty xray_structure.")
-      if self.all_chain_proxies is not None:
-        self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
-      self._xray_structure = xray_structure_all
+    # XXX ad hoc manipulation
+    for sc in xray_structure_all.scatterers():
+      lbl=sc.label.split()
+      if("IAS" in lbl and sc.scattering_type=="?" and lbl[1].startswith("IS")):
+        sc.scattering_type = lbl[1]
+    #
+    if(xray_structure_all is None):
+      raise Sorry("Cannot extract xray_structure.")
+    if(xray_structure_all.scatterers().size()==0):
+      raise Sorry("Empty xray_structure.")
+    if self.all_chain_proxies is not None:
+      self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
+    self._xray_structure = xray_structure_all
 
     self._mon_lib_srv = self._processed_pdb_files_srv.mon_lib_srv
     self._ener_lib = self._processed_pdb_files_srv.ener_lib
