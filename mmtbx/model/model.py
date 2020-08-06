@@ -1325,10 +1325,8 @@ class manager(object):
     if self.all_chain_proxies is None:
       self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
     self._atom_selection_cache = self._processed_pdb_file.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
-    if self._pdb_hierarchy is None:
-      self._pdb_hierarchy = self._processed_pdb_file.all_chain_proxies.pdb_hierarchy
-    if self._xray_structure is None:
-      xray_structure_all = \
+    self._pdb_hierarchy = self._processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    xray_structure_all = \
           self._processed_pdb_file.xray_structure(show_summary = False)
       # XXX ad hoc manipulation
       for sc in xray_structure_all.scatterers():
