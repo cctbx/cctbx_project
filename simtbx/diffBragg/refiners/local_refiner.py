@@ -366,6 +366,8 @@ class LocalRefiner(PixelRefinement):
         if not self.idx_from_asu:  # # TODO just derive from its inverse
             raise ValueError("Need to supply a non empty idx from asu map")
 
+        self.dummie_detector = deepcopy(self.S.detector)  # need to preserve original detector
+
         self._MPI_make_output_dir()
 
         # get the Fhkl information from P1 array internal to nanoBragg
@@ -1305,34 +1307,36 @@ class LocalRefiner(PixelRefinement):
 
     def _update_dxtbx_detector(self):
         self.S.panel_id = self._panel_id
-        node_dict = self.S.detector[self._panel_id].to_dict()
-
-        orig = node_dict['origin']
-        newX = orig[0]
-        newY = orig[1]
-        newZ = orig[2]
-
+        
+        dummie_det = deepcopy(self.S.detector)
+        panel_node = dummie_det[self._panel_id]
+        
+        newX, newY, newZ = panel_node.get_origin()
         new_XY = self._get_panelXY_val(self._panel_id)
         if new_XY is not None:
             newX_offset, newY_offset = new_XY
             newX += newX_offset
             newY += newY_offset
-
         new_originZ = self._get_originZ_val(self._i_shot)
         if new_originZ is not None:
             newZ += new_originZ
 
         new_origin = newX, newY, newZ
+        fast_ax = panel_node.get_fast_axis()
+        slow_ax = panel_node.get_slow_axis()
 
+        node_dict = panel_node.to_dict()  # when casting to dict, origin, fast, slow are local_frame, so we have to reset
         node_dict["origin"] = new_origin
+        node_dict["fast_axis"] = fast_ax
+        node_dict["slow_axis"] = slow_ax 
         node = Panel.from_dict(node_dict)
-        new_det = Detector()
-        new_det.add_panel(node)
+        dummie_det[self._panel_id] = node 
         panel_rot_ang = 0
         if self.refine_panelRot:
             panel_rot_ang = self._get_panelRot_val(self._panel_id)
             assert panel_rot_ang is not None
-        self.D.update_dxtbx_geoms(new_det, self.S.beam.nanoBragg_constructor_beam, self._panel_id, panel_rot_ang)
+        self.D.update_dxtbx_geoms(dummie_det, self.S.beam.nanoBragg_constructor_beam, self._panel_id, panel_rot_ang)
+        
         #if self.recenter:
         #    s0 = self.S.beam.nanoBragg_constructor_beam.get_s0()
         #    assert ALL_CLOSE(node.get_beam_centre(s0), self.D.beam_center_mm)
