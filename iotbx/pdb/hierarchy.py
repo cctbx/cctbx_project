@@ -1466,6 +1466,7 @@ class _():
   def flip_symmetric_amino_acids(self):
     import time
     from cctbx import geometry_restraints
+    from scitbx.math import dihedral_angle
     data = {
       "ARG" : {"dihedral" : ["CD", "NE", "CZ", "NH1"],
                "value"    : [0, 1],
@@ -1520,23 +1521,14 @@ class _():
         assert not ('dihedral' in flip_data and 'chiral' in flip_data)
         flip_it=False
         if 'dihedral' in flip_data:
-          dihedral_i_seqs = []
+          sites = []
           for d in flip_data["dihedral"]:
             atom = ag.get_atom(d)
             if atom is None: break
-            dihedral_i_seqs.append(atom.i_seq)
-          if len(dihedral_i_seqs)!=4: continue
-          proxy = geometry_restraints.dihedral_proxy(
-            i_seqs=dihedral_i_seqs,
-            angle_ideal=flip_data["value"][0],
-            weight=flip_data["value"][1],
-            periodicity=1
-          )
-          dihedral = geometry_restraints.dihedral(
-            sites_cart=sites_cart,
-            proxy=proxy,
-          )
-          if abs(dihedral.delta)>360./flip_data["value"][1]/4: # does this work
+            sites.append(atom.xyz)
+          if len(sites)!=4: continue
+          dihedral = dihedral_angle(sites=sites, deg=True)
+          if abs(dihedral)>360./flip_data["value"][1]/4:
             flip_it=True
         elif 'chiral' in flip_data:
           chiral_i_seqs = []

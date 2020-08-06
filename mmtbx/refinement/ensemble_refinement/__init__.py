@@ -29,8 +29,7 @@ from six.moves import cPickle as pickle
 import random
 import gzip
 import math
-import time
-import os
+import time, os
 import sys
 from six.moves import range
 
