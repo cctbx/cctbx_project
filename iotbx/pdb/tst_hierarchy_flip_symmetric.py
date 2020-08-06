@@ -350,6 +350,10 @@ def run():
       assert abs(d-values[code][i])<1, '%s %s' % (d, values[code][i])
 
 if __name__=="__main__":
-  args = sys.argv[1:]
-  del sys.argv[1:]
-  run(*tuple(args))
+  import libtbx.load_env
+  if libtbx.env.find_in_repositories('chem_data') is not None:
+    args = sys.argv[1:]
+    del sys.argv[1:]
+    run(*tuple(args))
+  else:
+    print('chem_data is missing, skipping test')
