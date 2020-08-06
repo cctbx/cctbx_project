@@ -5,7 +5,6 @@ parser.add_argument("--residuals", action='store_true')
 parser.add_argument("--oversample", type=int, default=0)
 parser.add_argument("--curvatures", action="store_true")
 parser.add_argument("--nopolar", action="store_true")
-parser.add_argument("--rescale", action="store_true")
 args = parser.parse_args()
 
 from dxtbx.model.crystal import Crystal
@@ -85,7 +84,6 @@ img = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.raw_pixels *= 0
 
 # Simulate the perturbed image for comparison
-SIM.detector = det2
 SIM.D.update_dxtbx_geoms(det2, SIM.beam.nanoBragg_constructor_beam, 0)
 SIM.D.add_diffBragg_spots()
 SIM._add_background()
@@ -169,7 +167,7 @@ n_global_unknowns = nucell_param + nfcell_param + ngain_param + ndetz_param + n_
 n_total_unknowns = n_local_unknowns + n_global_unknowns
 
 SIM.D.oversample_omega = False
-starting_originZ = SIM.detector[0].get_origin()[2]
+starting_originZ_shift = 3  # 3 mm offset  #SIM.detector[0].get_origin()[2]
 RUC = GlobalRefiner(
     n_total_params=n_total_unknowns,
     n_local_params=n_local_unknowns,
@@ -190,7 +188,7 @@ RUC = GlobalRefiner(
     shot_panel_ids={0: [0]*nspot},
     log_of_init_crystal_scales=None,
     all_crystal_scales=None,
-    shot_originZ_init={0: starting_originZ},
+    shot_originZ_init={0: starting_originZ_shift},
     perturb_fcell=False,
     global_ncells=True,
     global_ucell=True,
@@ -223,7 +221,11 @@ RUC.trial_id = 0
 RUC.plot_images = False
 RUC.setup_plots()
 
-RUC.rescale_params = args.rescale
+RUC.originZ_range = -20, 20
+if args.curvatures:
+    RUC.originZ_range = None
+
+RUC.rescale_params = True
 RUC.refine_rotZ = True
 RUC.request_diag_once = False
 RUC.S = SIM
@@ -242,8 +244,7 @@ if RUC.hit_break_to_use_curvatures:
     RUC.use_curvatures = True
     RUC.run(setup=False)
 
-refined_distance = RUC._get_originZ_val(0)
-assert abs(refined_distance - distance) < 1e-2
+refined_distance_offset = RUC._get_originZ_val(0)
+assert abs(refined_distance_offset) < 1e-2
 print("I AM ZIM")
 print("OK!")
-embed()
