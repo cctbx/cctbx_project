@@ -2427,7 +2427,7 @@ class LocalRefiner(PixelRefinement):
     def Fobs_Fref_Rfactor(self, use_binning=False, auto_scale=False):
         if auto_scale:
             # TODO check for convergence of minimizer and warn if it faile, then set scale factor to 1 ?
-            self.r1_scale = minimize(GlobalRefiner._rfactor_minimizer_target,
+            self.r1_scale = minimize(LocalRefiner._rfactor_minimizer_target,
                                      x0=[1], args=(self.Fobs, self.Fref_aligned),
                                      method='Nelder-Mead').x[0]
         else:
