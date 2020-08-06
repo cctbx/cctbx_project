@@ -691,21 +691,17 @@ class SourceModule(object):
 # On Windows due to absence of rsync we use pscp from the Putty programs.
 class ccp4io_module(SourceModule):
   module = 'ccp4io'
-  anonymous = ['curl', [
-    'http://cci.lbl.gov/repositories/ccp4io.gz',
-    'https://drive.google.com/uc?id=1EF6AqowSrVnse7pRtRmIsvhS6Q0dsSLT&export=download',
-  ]]
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'ccp4io.tar.gz', '/net/cci/auto_build/repositories/ccp4io']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
+  anonymous = ['git',
+               'git@github.com:cctbx/ccp4io.git',
+               'https://github.com/cctbx/ccp4io.git',
+               'https://github.com/cctbx/ccp4io/archive/master.zip']
 
 class annlib_module(SourceModule):
   module = 'annlib'
-  anonymous = ['curl', [
-    'http://cci.lbl.gov/repositories/annlib.gz',
-    'https://drive.google.com/uc?id=1YD_KDXrfhJ5ryT97j4yxmbAPoecGLjg0&export=download',
-  ]]
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'annlib.tar.gz', '/net/cci/auto_build/repositories/annlib']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/']
+  anonymous = ['git',
+               'git@github.com:cctbx/annlib.git',
+               'https://github.com/cctbx/annlib.git',
+               'https://github.com/cctbx/annlib/archive/master.zip']
 
 class scons_module(SourceModule):
   module = 'scons'
@@ -728,11 +724,6 @@ class afitt_class(SourceModule):
   authenticated = [
     'scp',
     '%(cciuser)s@cci.lbl.gov:/net/cci-filer2/raid1/auto_build/externals/'+afitt_version+'.gz']
-
-class libsvm_module(SourceModule):
-  module = 'libsvm'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/libsvm.gz']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/libsvm/']
 
 # Core CCTBX repositories
 # These must all provide anonymous access.
@@ -793,11 +784,10 @@ class cbflib_module(SourceModule):
 
 class ccp4io_adaptbx(SourceModule):
   module = 'ccp4io_adaptbx'
-  anonymous = ['curl', [
-    'http://cci.lbl.gov/repositories/ccp4io_adaptbx.gz',
-    'https://drive.google.com/uc?id=1X5kRE90KkV2yTEyF9zb-PHOjjRXjzYvx&export=download',
-    ]]
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/ccp4io_adaptbx/trunk']
+  anonymous = ['git',
+               'git@github.com:cctbx/ccp4io_adaptbx.git',
+               'https://github.com/cctbx/ccp4io_adaptbx.git',
+               'https://github.com/cctbx/ccp4io_adaptbx/archive/master.zip']
 
 class annlib_adaptbx(SourceModule):
   module = 'annlib_adaptbx'
@@ -808,27 +798,24 @@ class annlib_adaptbx(SourceModule):
 
 class tntbx_module(SourceModule):
   module = 'tntbx'
-  anonymous = ['curl', [
-    'http://cci.lbl.gov/repositories/tntbx.gz',
-    'https://drive.google.com/uc?id=1bDE_rF6iL0SeyplHSTNsfJyI1G1h7ZZv&export=download',
-    ]]
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/tntbx/trunk']
+  anonymous = ['git',
+              'git@github.com:cctbx/tntbx.git',
+              'https://github.com/cctbx/tntbx.git',
+              'https://github.com/cctbx/tntbx/archive/master.zip']
 
 class clipper_module(SourceModule):
   module = 'clipper'
-  anonymous = ['curl', [
-    'http://cci.lbl.gov/repositories/clipper.gz',
-    'https://drive.google.com/uc?id=1xWAj59zoyVn26EoIuBrw7KLNRyGjS5wC&export=download',
-    ]]
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/clipper/trunk']
+  anonymous = ['git',
+              'git@github.com:cctbx/clipper.git',
+              'https://github.com/cctbx/clipper.git',
+              'https://github.com/cctbx/clipper/archive/master.zip']
 
 class gui_resources_module(SourceModule):
   module = 'gui_resources'
-  anonymous = ['curl', [
-    'http://cci.lbl.gov/repositories/gui_resources.gz',
-    'https://drive.google.com/uc?id=1TTibOePamkUiIvwDJF-OMmdgX8jdgNUS&export=download',
-  ]]
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/gui_resources/trunk']
+  anonymous = ['git',
+              'git@github.com:cctbx/gui_resources.git',
+              'https://github.com/cctbx/gui_resources.git',
+              'https://github.com/cctbx/gui_resources/archive/master.zip']
 
 class opt_resources_module(SourceModule):
   module = 'opt_resources'
@@ -836,12 +823,10 @@ class opt_resources_module(SourceModule):
 
 class eigen_module(SourceModule):
   module = 'eigen'
-  anonymous = ['curl', [
-    'http://cci.lbl.gov/repositories/eigen.gz',
-    'https://drive.google.com/uc?id=138kErrF35WbnRRARqUczWaroao2w8p1A&export=download',
-  ]]
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'eigen.tar.gz', '/net/cci/auto_build/repositories/eigen']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/eigen/']
+  anonymous = ['git', '-b 3.3.7',
+               'git@github.com:cctbx/eigen.git',
+               'https://github.com/cctbx/eigen.git',
+               'https://github.com/cctbx/eigen/archive/master.zip']
 
 # Phenix repositories
 class phenix_module(SourceModule):
