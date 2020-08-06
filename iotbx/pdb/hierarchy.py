@@ -1465,8 +1465,18 @@ class _():
 
   def flip_symmetric_amino_acids(self):
     import time
-    from cctbx import geometry_restraints
     from scitbx.math import dihedral_angle
+    def chirality_delta(sites, volume_ideal, both_signs):
+      d_01 = sites[1] - sites[0]
+      d_02 = sites[2] - sites[0]
+      d_03 = sites[3] - sites[0]
+      d_02_cross_d_03 = d_02.cross(d_03)
+      volume_model = d_01.dot(d_02_cross_d_03)
+      delta_sign = -1;
+      if both_signs and volume_model < 0:
+        delta_sign = 1
+      delta = volume_ideal + delta_sign * volume_model
+      return delta[0]
     data = {
       "ARG" : {"dihedral" : ["CD", "NE", "CZ", "NH1"],
                "value"    : [0, 1],
@@ -1531,23 +1541,17 @@ class _():
           if abs(dihedral)>360./flip_data["value"][1]/4:
             flip_it=True
         elif 'chiral' in flip_data:
-          chiral_i_seqs = []
+          sites = []
           for d in flip_data["chiral"]:
             atom = ag.get_atom(d)
             if atom is None: break
-            chiral_i_seqs.append(atom.i_seq)
-          if len(chiral_i_seqs)!=4: continue
-          proxy = geometry_restraints.chirality_proxy(
-            i_seqs=chiral_i_seqs,
-            volume_ideal=flip_data["value"][0],
-            both_signs=flip_data['value'][1],
-            weight=flip_data["value"][2],
-          )
-          chiral = geometry_restraints.chirality(
-            sites_cart=sites_cart,
-            proxy=proxy,
-          )
-          if abs(chiral.delta)>2.: # does this work
+            sites.append(atom.xyz)
+          if len(sites)!=4: continue
+          delta = chirality_delta(sites=[flex.vec3_double([xyz]) for xyz in sites],
+                                  volume_ideal=flip_data["value"][0],
+                                  both_signs=flip_data['value'][1],
+                                  )
+          if abs(delta)>2.:
             flip_it=True
         if flip_it:
           info += '    Residue "%s %s %s":' % (
