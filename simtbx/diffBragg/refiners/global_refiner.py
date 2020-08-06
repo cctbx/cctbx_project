@@ -610,7 +610,7 @@ class GlobalRefiner(PixelRefinement):
                 if self.rescale_params:
                     self.Xall[self.originZ_xpos[i_shot]] = 1
                 else:
-                    self.Xall[self.originZ_xpos[i_shot]] = self.S.detector[0].get_origin()[2]  #TODO fixme local_origin vs origin
+                    self.Xall[self.originZ_xpos[i_shot]] = self.shot_originZ_init[i_shot]
             # set refinement flag
             if self.refine_detdist:
                 self.is_being_refined[self.originZ_xpos[i_shot]] = True
@@ -1123,11 +1123,22 @@ class GlobalRefiner(PixelRefinement):
         return valX, valY
 
     def _get_originZ_val(self, i_shot):
+        if not self.refine_detdist:
+            return 0 #None
+
         val = self.Xall[self.originZ_xpos[i_shot]]
         if self.rescale_params:
             sig = self.originZ_sigma
             init = self.shot_originZ_init[i_shot]
-            val = sig*(val-1) + init
+            if self.originZ_range is not None:
+                low, high = self.originZ_range
+                rng = high - low
+                sin_arg = sig * (val - 1) + ASIN(2 * (init - low) / rng - 1)
+                val = (SIN(sin_arg) + 1) * rng / 2 + low
+            else:
+                #NOTE old way:
+                val = sig*(val-1) + init
+            print("<><><><>\nZ=%.4f  %.4f\n><><><><>" % (init, val))
         return val
 
     def _get_m_val(self, i_shot):
@@ -1396,49 +1407,35 @@ class GlobalRefiner(PixelRefinement):
             self.D.set_ncells_values(tuple(vals))
 
     def _update_dxtbx_detector(self):
-        # TODO: verify that all panels have same local origin to start with..
         self.S.panel_id = self._panel_id
-        # TODO: select hierarchy level at this point
-        # NOTE: what does fast-axis and slow-axis mean for the different hierarchy levels?
         node_dict = self.S.detector[self._panel_id].to_dict()
-        #from IPython import embed
-        #embed()
-        #orig = node.get_local_origin()
-        #new_originZ = self._get_originZ_val(self._i_shot)
-        #new_local_origin = orig[0], orig[1], new_originZ
-        #node.set_local_frame(node.get_local_fast_axis(),
-        #                     node.get_local_slow_axis(),
-        #                     new_local_origin)
-        orig = node_dict['origin']
-        new_originZ = self._get_originZ_val(self._i_shot)
 
+        orig = node_dict['origin']
         newX = orig[0]
         newY = orig[1]
+        newZ = orig[2]
+
         new_XY = self._get_panelXY_val(self._panel_id)
         if new_XY is not None:
             newX_offset, newY_offset = new_XY
             newX += newX_offset
             newY += newY_offset
-        new_origin = newX, newY, new_originZ
+
+        new_originZ = self._get_originZ_val(self._i_shot)
+        if new_originZ is not None:
+            newZ += new_originZ
+
+        new_origin = newX, newY, newZ
 
         node_dict["origin"] = new_origin
         node = Panel.from_dict(node_dict)
-        #node.set_frame(node.get_fast_axis(),
-        #                     node.get_slow_axis(),
-        #                     new_origin)
-
-        #assert node.get_origin() == det[0].get_origin()
         new_det = Detector()
         new_det.add_panel(node)
-        #self.S.detector = det  # TODO  update the sim_data detector? maybe not necessary after this point
         panel_rot_ang = 0
         if self.refine_panelRot:
             panel_rot_ang = self._get_panelRot_val(self._panel_id)
             assert panel_rot_ang is not None
-        #if self._i_spot == 0:
-        #    embed()
         self.D.update_dxtbx_geoms(new_det, self.S.beam.nanoBragg_constructor_beam, self._panel_id, panel_rot_ang)
-        #self.D.update_dxtbx_geoms(self.S.detector, self.S.beam.nanoBragg_constructor_beam, self._panel_id, panel_rot_ang)
         #if self.recenter:
         #    s0 = self.S.beam.nanoBragg_constructor_beam.get_s0()
         #    assert ALL_CLOSE(node.get_beam_centre(s0), self.D.beam_center_mm)
@@ -1920,9 +1917,22 @@ class GlobalRefiner(PixelRefinement):
     def _originZ_derivatives(self):
         if self.refine_detdist:
             if self.rescale_params:
-                # case 1 type of rescaling
-                d = self.detdist_dI_dtheta*self.originZ_sigma
-                d2 = self.detdist_d2I_dtheta2*(self.originZ_sigma*self.originZ_sigma)
+                if self.originZ_range is not None:
+                    init = self.shot_originZ_init[self._i_shot]
+                    sigma = self.originZ_sigma
+                    x = self.Xall[self.originZ_xpos[self._i_shot]]
+                    low, high = self.originZ_range
+                    rng = high - low
+                    cos_arg = sigma * (x - 1) + ASIN(2 * (init - low) / rng - 1)
+                    dtheta_dx = rng / 2 * COS(cos_arg) * sigma
+                    d = self.detdist_dI_dtheta * dtheta_dx
+                    d2 = 0  #TODO implement..
+
+                else:
+                    #NOTE old way:
+                    # case 1 type of rescaling
+                    d = self.detdist_dI_dtheta*self.originZ_sigma
+                    d2 = self.detdist_d2I_dtheta2*(self.originZ_sigma*self.originZ_sigma)
             else:
                 d = 1*self.detdist_dI_dtheta
                 d2 = 1*self.detdist_d2I_dtheta2
@@ -1930,6 +1940,8 @@ class GlobalRefiner(PixelRefinement):
             xpos = self.originZ_xpos[self._i_shot]
             self.grad[xpos] += self._grad_accumulate(d)
             if self.calc_curvatures:
+                if self.originZ_range is not None and self.rescale_params:
+                    raise NotImplementedError("You Cannot.")
                 self.curv[xpos] += self._curv_accumulate(d, d2)
 
     def _Fcell_derivatives(self, i_spot):

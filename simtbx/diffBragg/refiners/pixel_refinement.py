@@ -56,6 +56,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.rotZ_sigma = 0.003
         self.ucell_sigmas = [0.1, .1]
         self.originZ_sigma = 0.01
+        self.originZ_range = None #-3, 3
         self.m_sigma = 0.05
         self.spot_scale_sigma = 0.0001
 
