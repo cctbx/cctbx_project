@@ -1621,6 +1621,8 @@ class LocalRefiner(PixelRefinement):
         return self._f, self._g
 
     def _open_model_output_file(self):
+        if not self.I_AM_ROOT:
+           return 
         if self.output_dir is None:
             print("Cannot save without an output dir, continuing without save")
             return
@@ -1634,16 +1636,20 @@ class LocalRefiner(PixelRefinement):
         dirpath = path_join(self.output_dir, "models", dirpath)
         if not os.path.exists(dirpath):
             os.makedirs(dirpath)
-        filepath = path_join(dirpath, "model.h5")
+        filepath = path_join(dirpath, "model_trial%d.h5" %(self.trial_id+1))
         self.model_hout = h5_File(filepath, "w")
         t = time() - t
         self.save_time += t
 
     def _close_model_output_file(self):
+        if not self.I_AM_ROOT:
+           return 
         self.model_hout.close()
         print("Save time took %.4f seconds total" % self.save_time)
 
     def _save_model_to_disk(self):
+        if not self.I_AM_ROOT:
+           return 
         from time import time
         t = time()
         from numpy import nan_to_num
