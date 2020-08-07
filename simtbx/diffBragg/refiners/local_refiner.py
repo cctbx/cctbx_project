@@ -423,6 +423,7 @@ class LocalRefiner(PixelRefinement):
                 _spot_start = _local_pos
 
                 for i_spot in range(n_spots):
+                    self._i_spot = i_spot
                     self.bg_a_xstart[i_shot].append(_spot_start)
                     self.bg_b_xstart[i_shot].append(self.bg_a_xstart[i_shot][i_spot] + 1)
                     self.bg_c_xstart[i_shot].append(self.bg_b_xstart[i_shot][i_spot] + 1)
@@ -1503,6 +1504,10 @@ class LocalRefiner(PixelRefinement):
                 self._MPI_initialize_GT_crystal_misorientation_analysis()
 
             for self._i_shot in self.shot_ids:
+
+                if self.save_model:
+                    self._open_model_output_file()
+
                 if self._i_shot in self.bad_shot_list:
                     continue
                 self.scale_fac = self._get_spot_scale(self._i_shot)
@@ -1541,6 +1546,8 @@ class LocalRefiner(PixelRefinement):
                     self._set_background_plane(i_spot)
                     self._extract_pixel_data()
                     self._evaluate_averageI()
+                    if self.save_model:
+                        self._save_model_to_disk()
 
                     # here we can correlate modelLambda with Imeas
                     self._increment_model_data_correlation()
@@ -1608,7 +1615,67 @@ class LocalRefiner(PixelRefinement):
                 if self.num_positive_curvatures == self.use_curvatures_threshold:
                     raise BreakToUseCurvatures
 
+        if self.save_model:
+            self._close_model_output_file()
+
         return self._f, self._g
+
+    def _open_model_output_file(self):
+        if self.output_dir is None:
+            print("Cannot save without an output dir, continuing without save")
+            return
+        self.save_time = 0
+        from time import time
+        t = time()
+        from os.path import join as path_join
+        from os.path import basename
+        from h5py import File as h5_File
+        dirpath = basename(self.FNAMES[self._i_shot]) + "-model"
+        dirpath = path_join(self.output_dir, "models", dirpath)
+        if not os.path.exists(dirpath):
+            os.makedirs(dirpath)
+        filepath = path_join(dirpath, "model.h5")
+        self.model_hout = h5_File(filepath, "w")
+        t = time() - t
+        self.save_time += t
+
+    def _close_model_output_file(self):
+        self.model_hout.close()
+        print("Save time took %.4f seconds total" % self.save_time)
+
+    def _save_model_to_disk(self):
+        from time import time
+        t = time()
+        from numpy import nan_to_num
+        img_file = self.FNAMES[self._i_shot]
+        proc_name = self.PROC_FNAMES[self._i_shot]
+        proc_idx = self.PROC_IDX[self._i_shot]
+        (x1, x2), (y1, y2) = self.NANOBRAGG_ROIS[self._i_shot][self._i_spot]
+        bbox = x1,x2+1, y1, y2+1
+        miller_idx_asu = self.ASU[self._i_shot][self._i_spot]
+        miller_idx = self.Hi[self._i_shot][self._i_spot]
+        i_fcell = self.idx_from_asu[self.ASU[self._i_shot][self._i_spot]]
+        Famp = self._get_fcell_val(i_fcell)
+        tilt = self.tilt_plane
+        bbox_idx = self.BBOX_IDX[self._i_shot][self._i_spot]
+        bragg = self.model_bragg_spots
+        hi_tag = "%+04d%+04d%+04d" % miller_idx
+        key = "%s-%s" % (img_file, hi_tag)
+        key = key.replace("/", "+-+")
+        self.model_hout.create_dataset("%s/data" % key, data=self.Imeas)
+        self.model_hout.create_dataset("%s/tilt" % key, data=tilt)
+        self.model_hout.create_dataset("%s/bragg" % key, data=bragg)
+        self.model_hout.create_dataset("%s/partial" % key, data=nan_to_num(bragg/Famp/Famp))
+        self.model_hout.create_dataset("%s/Famp" % key, data=[Famp])
+        self.model_hout.create_dataset("%s/bbox" % key, data=bbox)
+        self.model_hout.create_dataset("%s/miller_idx" % key, data=miller_idx)
+        self.model_hout.create_dataset("%s/miller_idx_asu" % key, data=miller_idx_asu)
+        self.model_hout.create_dataset("%s/proc_name" % key, data=np.array(proc_name, np.str_))
+        self.model_hout.create_dataset("%s/proc_idx" % key, data=[proc_idx])
+        self.model_hout.create_dataset("%s/bbox_idx" % key, data=[bbox_idx])
+        self.model_hout.create_dataset("%s/panel" % key, data=[self._panel_id])
+        t = time()-t
+        self.save_time += t
 
     def _increment_model_data_correlation(self):
         if self.image_corr[self._i_shot] is None:
