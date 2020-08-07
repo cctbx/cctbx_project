@@ -1338,9 +1338,9 @@ class LocalRefiner(PixelRefinement):
             assert panel_rot_ang is not None
         self.D.update_dxtbx_geoms(dummie_det, self.S.beam.nanoBragg_constructor_beam, self._panel_id, panel_rot_ang)
         
-        #if self.recenter:
-        #    s0 = self.S.beam.nanoBragg_constructor_beam.get_s0()
-        #    assert ALL_CLOSE(node.get_beam_centre(s0), self.D.beam_center_mm)
+        if self.recenter:
+            s0 = self.S.beam.nanoBragg_constructor_beam.get_s0()
+            assert ALL_CLOSE(node.get_beam_centre(s0), self.D.beam_center_mm)
 
     def _extract_spectra_coefficient_derivatives(self):
         self.spectra_derivs = [0]*self.n_spectra_param
@@ -1622,7 +1622,7 @@ class LocalRefiner(PixelRefinement):
 
     def _open_model_output_file(self):
         if not self.I_AM_ROOT:
-           return 
+            return 
         if self.output_dir is None:
             print("Cannot save without an output dir, continuing without save")
             return
@@ -1637,6 +1637,7 @@ class LocalRefiner(PixelRefinement):
         if not os.path.exists(dirpath):
             os.makedirs(dirpath)
         filepath = path_join(dirpath, "model_trial%d.h5" %(self.trial_id+1))
+        print("Opening model output file %s" % filepath)
         self.model_hout = h5_File(filepath, "w")
         t = time() - t
         self.save_time += t
@@ -1648,11 +1649,13 @@ class LocalRefiner(PixelRefinement):
         print("Save time took %.4f seconds total" % self.save_time)
 
     def _save_model_to_disk(self):
+        
         if not self.I_AM_ROOT:
            return 
         from time import time
         t = time()
         from numpy import nan_to_num
+        #from numpy import str_ as np_str_
         img_file = self.FNAMES[self._i_shot]
         proc_name = self.PROC_FNAMES[self._i_shot]
         proc_idx = self.PROC_IDX[self._i_shot]
@@ -1676,7 +1679,7 @@ class LocalRefiner(PixelRefinement):
         self.model_hout.create_dataset("%s/bbox" % key, data=bbox)
         self.model_hout.create_dataset("%s/miller_idx" % key, data=miller_idx)
         self.model_hout.create_dataset("%s/miller_idx_asu" % key, data=miller_idx_asu)
-        self.model_hout.create_dataset("%s/proc_name" % key, data=np.array(proc_name, np.str_))
+        self.model_hout.create_dataset("%s/proc_name" % key, data=ARRAY(proc_name, "S"))
         self.model_hout.create_dataset("%s/proc_idx" % key, data=[proc_idx])
         self.model_hout.create_dataset("%s/bbox_idx" % key, data=[bbox_idx])
         self.model_hout.create_dataset("%s/panel" % key, data=[self._panel_id])
