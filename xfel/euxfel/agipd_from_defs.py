@@ -45,6 +45,17 @@ class NxType(Enum):
     attribute = auto()
 
 
+class LazyFunc:
+    """ Very primitive version of lazy executor """
+    def __init__(self, *args):
+        self.func, self.loc_src, self.loc_dest = args
+
+    def push(self, h5file: h5py.File):
+        self.func(self.loc_src, h5file[self.loc_dest])
+        # close the source file after usage:
+        self.func.__self__.close()
+
+
 class NexusElement:
     def __init__(self, full_path: str, value: Any, nxtype: NxType, dtype: str, parent: str = '',
                  attrs: dict = None) -> None:
@@ -193,7 +204,7 @@ class Agipd2nexus:
                     h5file[full_path] = np.array(vector.pop('value'), dtype='f')
                     for key, attribute in vector.items():
                         h5file[full_path].attrs[key] = attribute
-                elif isinstance(self.field_rules[full_path], NexusElement):
+                elif isinstance(self.field_rules[full_path], (NexusElement, LazyFunc)):
                     self.field_rules[full_path].push(h5file)
                 else:
                     h5file[full_path] = self.field_rules[full_path]
@@ -217,11 +228,11 @@ class Agipd2nexus:
         self.stat['attr'] += 1
 
     def create_nexus_master_file(self):
-        f = h5py.File(self.output_file_name, 'w')
+        self.out_file = h5py.File(self.output_file_name, 'w')
         logger.info(f"file {self.output_file_name} was created")
 
         for k, v in self.global_attrs.items():
-            f.attrs[k] = v
+            self.out_file.attrs[k] = v
 
         for elem in root.getiterator(('group', 'field', 'attribute')):
             try:
@@ -232,7 +243,7 @@ class Agipd2nexus:
 
             if parent == 'group':
                 # create root element of the file
-                entry = f.create_group('entry')
+                entry = self.out_file.create_group('entry')
                 entry.attrs['NX_class'] = 'NXentry'
                 continue
 
@@ -240,13 +251,13 @@ class Agipd2nexus:
                 if 'minOccurs' in elem.keys() and elem.attrib['minOccurs'] == '0' \
                         and elem.attrib['type'] not in self.group_rules:
                     continue
-                self.create_group(f, elem, parent)
+                self.create_group(self.out_file, elem, parent)
             elif elem.tag == 'field':
                 if 'minOccurs' in elem.keys() and elem.attrib['minOccurs'] == '0':
                     logger.debug(f">>> FIELD {elem.attrib['name']} is optional")
                     # an optional field, skip
                     continue
-                self.create_field(f, elem)
+                self.create_field(self.out_file, elem)
             elif elem.tag == 'attribute':
                 if 'optional' in elem.keys() and elem.attrib['optional'] == 'true':
                     continue
@@ -255,9 +266,10 @@ class Agipd2nexus:
             if elem.type == NxType.field:
                 field = elem
                 setattr(field, 'full_path', path)
-                field.push(f)
+                field.push(self.out_file)
                 logger.debug(f"Additional elem was added to {path}")
                 self.stat['fields from add'] += 1
+        self.out_file.close()
 
 
 class Ruleset(Agipd2nexus):
@@ -267,6 +279,12 @@ class Ruleset(Agipd2nexus):
         Agipd2nexus.__init__(self, args)
 
         self.hierarchy = read_geom(self.params.geom_file)
+
+        if self.params.cxi_file and Path(self.params.cxi_file).exists():
+            cxi = h5py.File(self.params.cxi_file, 'r')
+        else:
+            cxi = None
+
         if self.params.detector_distance is None:
             # try to take from the geometry file:
             if self.hierarchy.detector_distance:
@@ -381,7 +399,7 @@ class Ruleset(Agipd2nexus):
 
         self.field_rules = {
             # 'entry/definition': np.str(f"NXmx:{get_git_revision_hash()}"),      # TODO: _create_scalar?
-            'entry/definition': np.str(f"NXmx"),      # TODO: _create_scalar?
+            'entry/definition': np.str(f"NXmx"),                                # TODO: _create_scalar?
             'entry/file_name': np.str(self.output_file_name),
             # 'entry/start_time': np.str(self.params.nexus_details.start_time),
             'entry/start_time': np.str('2000-10-10T00:00:00.000Z'),     # FIXME: what is the real data?
@@ -389,7 +407,7 @@ class Ruleset(Agipd2nexus):
             'entry/end_time': np.str('2000-10-10T01:00:00.000Z'),
             # 'entry/end_time_estimated': np.str(self.params.nexus_details.end_time_estimated),
             'entry/end_time_estimated': np.str('2000-10-10T01:00:00.000Z'),
-            'entry/data/data': h5py.ExternalLink(self.params.cxi_file, "entry_1/data_1/data"),
+            'entry/data/data': LazyFunc(cxi.copy, "entry_1/data_1/data",  "entry/data"),
             'entry/instrument/AGIPD/group_index': np.array(list(range(1, 3)), dtype='i'), # XXX: why 16, not 2?
             'entry/instrument/AGIPD/group_names': np.array([np.string_('AGIPD'), np.string_('ELE_D0')],
                                                                     dtype='S12'),
@@ -398,6 +416,8 @@ class Ruleset(Agipd2nexus):
                 NexusElement(full_path='entry/instrument/beam/incident_wavelength', value=self.params.wavelength,
                              nxtype=NxType.field, dtype='f', attrs={'units': 'angstrom'}),
             'entry/instrument/ELE_D0/data': h5py.SoftLink('/entry/data/data'),
+            'entry/instrument/ELE_D0/sensor_material': "Unknown",   # FIXME
+            'entry/instrument/ELE_D0/sensor_thickness': 0.0,        # FIXME
             'entry/sample/depends_on': np.str('.'),
             'entry/source/name': NexusElement(full_path='entry/source/name', value=self.params.nexus_details.source_name,
                                               nxtype=NxType.field, dtype='s',
@@ -424,7 +444,7 @@ class Ruleset(Agipd2nexus):
             'NXclass': 'NXroot',
             'file_name': self.output_file_name,
             'file_time': str(dt.now()),
-            'HDF5_Version': '1.2.3'
+            'HDF5_Version': h5py.version.hdf5_version
         }
 
 
