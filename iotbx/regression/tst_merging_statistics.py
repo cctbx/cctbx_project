@@ -217,13 +217,13 @@ def exercise(debug=False):
   assert result.bins[0].cc_anom_significance is True
   assert approx_equal(result.bins[0].cc_anom_critical_value, 0.0873548986308)
   assert approx_equal(result.cc_one_half_overall, 0.931122967496)
-  assert approx_equal(result.cc_one_half_sigma_tau_overall, 0.9343213900704643)
+  assert approx_equal(result.cc_one_half_sigma_tau_overall, 0.9280192675969664)
   assert approx_equal(result.bins[0].cc_one_half, 0.9969293192434535)
-  assert approx_equal(result.bins[0].cc_one_half_sigma_tau, 0.9970705896978537)
+  assert approx_equal(result.bins[0].cc_one_half_sigma_tau, 0.9968045160775104)
   assert result.bins[0].cc_one_half_significance is True
   assert result.bins[0].cc_one_half_sigma_tau_significance is True
   assert approx_equal(result.bins[-1].cc_one_half, 0.675340867481686)
-  assert approx_equal(result.bins[-1].cc_one_half_sigma_tau, 0.7360191500836607)
+  assert approx_equal(result.bins[-1].cc_one_half_sigma_tau, 0.6711734115834956)
   assert result.bins[-1].cc_one_half_significance is True
   assert result.bins[-1].cc_one_half_sigma_tau_significance is True
   #

@@ -5089,12 +5089,13 @@ class array(set):
         sigmas=flex.double(self.size(), 1))
       merging_internal = intensities_copy.merge_equivalents(
         use_internal_variance=True)
-      merged = merging_internal.array()
-      if merged.size() == 1:
+      merged = merging_internal.array().select(
+        merging_internal.redundancies().data() > 1
+      )
+      if merged.size() <= 1:
         cc_one_half = 0
       else:
-        internal_sigmas = merging_internal.array().sigmas()
-        internal_variances = flex.pow2(internal_sigmas)
+        internal_variances = flex.pow2(merged.sigmas())
         mav = flex.mean_and_variance(merged.data())
         var_y = mav.unweighted_sample_variance()
         var_e = 2 * flex.mean(internal_variances)
