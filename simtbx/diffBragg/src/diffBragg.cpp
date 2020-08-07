@@ -502,6 +502,8 @@ void diffBragg::update_dxtbx_geoms(
     /* OMG So important otherwise center walks */
     ORGX=NAN;
     ORGY=NAN;
+    
+    user_beam=true;
 
     init_beam();
     init_beamcenter();
