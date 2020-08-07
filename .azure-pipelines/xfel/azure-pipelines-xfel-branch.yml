@@ -1,9 +1,14 @@
 # Templates for linux, macOS, and Windows
 # Based on approach from conda-forge
 
+# skip pull requests
+pr: none
+
+# batch builds for branches
 trigger:
+  batch: true
   branches:
-    include:
+    exclude:
       - master
 
 resources:
