@@ -1037,7 +1037,7 @@ class LocalRefiner(PixelRefinement):
             else:
                 #NOTE old way:
                 val = sig*(val-1) + init
-            print("<><><><>\nZ=%.4f  %.4f\n><><><><>" % (init, val))
+            #print("<><><><>\nZ=%.4f  %.4f\n><><><><>" % (init, val))
         return val
 
     def _get_m_val(self, i_shot):
@@ -1395,15 +1395,16 @@ class LocalRefiner(PixelRefinement):
         else:
             self.m_dI_dtheta = [0] * self.n_ncells_param
             self.m_d2I_dtheta2 = [0] * self.n_ncells_param
-            derivs = self.D.get_ncells_derivative_pixels()
-            if self.calc_curvatures:
-                second_derivs = self.D.get_ncells_second_derivative_pixels()
-            for i_ncell in range(self.n_ncells_param):
-                d = derivs[i_ncell].as_numpy_array()
-                self.m_dI_dtheta[i_ncell] = SG*d
+            if self.refine_ncells:
+                derivs = self.D.get_ncells_derivative_pixels()
                 if self.calc_curvatures:
-                    d2 = second_derivs[i_ncell].as_numpy_array()
-                    self.m_d2I_dtheta2[i_ncell] = SG*d2
+                    second_derivs = self.D.get_ncells_second_derivative_pixels()
+                for i_ncell in range(self.n_ncells_param):
+                    d = derivs[i_ncell].as_numpy_array()
+                    self.m_dI_dtheta[i_ncell] = SG*d
+                    if self.calc_curvatures:
+                        d2 = second_derivs[i_ncell].as_numpy_array()
+                        self.m_d2I_dtheta2[i_ncell] = SG*d2
 
     def _extract_originZ_derivative_pixels(self):
         self.detdist_dI_dtheta = self.detdist_d2I_dtheta2 = 0
@@ -2139,6 +2140,10 @@ class LocalRefiner(PixelRefinement):
             refine_str += "panelRot, "
         if self.refine_panelXY:
             refine_str += "panelXY, "
+        if self.refine_lambda0:
+            refine_str += "Lambda0 (offset), "
+        if self.refine_lambda1:
+            refine_str += "Lambda1 (scale), "
         return refine_str
 
     def _print_iteration_header(self):
