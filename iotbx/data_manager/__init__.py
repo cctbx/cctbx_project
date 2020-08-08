@@ -143,10 +143,17 @@ def DataManager(datatypes=None, phil=None, logger=None):
         except ValueError:  # parent class already removed
           pass
   datatypes = list(class_datatypes)
-  manager_classes += parent_classes
+
+  # add mixin classes if necessary
+  mixin_classes = []
+  if 'real_map' in datatypes and 'map_coefficients' in datatypes:
+    importlib.import_module('.common', package='iotbx.data_manager')
+    mixin_classes.append(
+      getattr(sys.modules['iotbx.data_manager.common'], 'map_mixins'))
 
   # construct new class and return instance
-  data_manager_class = type('DataManager', tuple(manager_classes), dict())
+  classes = tuple(manager_classes + parent_classes + mixin_classes)
+  data_manager_class = type('DataManager', classes, dict())
   return data_manager_class(datatypes=datatypes, phil=phil, logger=logger)
 
 # =============================================================================
@@ -400,12 +407,11 @@ class DataManagerBase(object):
       if filename == self._get_current_default():
         setattr(self, self._current_default, None)
 
-  def _has_data(self, datatype, expected_n=1, exact_count=False,
-                raise_sorry=False):
-    self._set_datatype(datatype)
-    actual_n = len(self._get_names(datatype))
+  def _check_count(self, datatype, actual_n, expected_n, exact_count, raise_sorry):
+    '''
+    Helper function for _has_data like functions
+    '''
     if exact_count:
-      # exact count required
       if actual_n != expected_n:
         if raise_sorry:
           raise Sorry('%i %s(s) found. Expected exactly %i.' %
@@ -420,6 +426,13 @@ class DataManagerBase(object):
           raise Sorry('%i %s(s) found. Expected at least %i.' %
                       (actual_n, datatype, expected_n))
       return actual_n >= expected_n
+
+  def _has_data(self, datatype, expected_n=1, exact_count=False,
+                raise_sorry=False):
+    self._set_datatype(datatype)
+    actual_n = len(self._get_names(datatype))
+    return self._check_count(
+      datatype, actual_n, expected_n, exact_count, raise_sorry)
 
   def _process_file(self, datatype, filename):
     if filename not in self._get_names(datatype):
