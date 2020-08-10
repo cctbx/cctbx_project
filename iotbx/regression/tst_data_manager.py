@@ -617,6 +617,12 @@ def test_real_map_datatype():
 
 # -----------------------------------------------------------------------------
 def test_map_mixins():
+  regression_dir = libtbx.env.find_in_repositories(
+    relative_path='phenix_regression/maps')
+  if not regression_dir:
+    print('Skipping test, phenix_regression missing')
+    return
+
   dm = DataManager(['real_map'])
   assert not hasattr(dm, 'has_real_maps_or_map_coefficients')
   assert hasattr(dm, 'has_real_maps')
@@ -632,8 +638,6 @@ def test_map_mixins():
   assert hasattr(dm, 'has_real_maps')
   assert hasattr(dm, 'has_map_coefficients')
 
-  regression_dir = libtbx.env.find_in_repositories(
-    relative_path='phenix_regression/maps')
   cwd = os.getcwd()
   model_file = os.path.join(regression_dir, 'test_maps4.pdb')
   mtz_file = os.path.join(regression_dir, 'test_maps4.mtz')
