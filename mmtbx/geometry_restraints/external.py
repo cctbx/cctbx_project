@@ -1,8 +1,8 @@
 
 """
 Accessory module for interfacing phenix.refine (or similar programs) with
-various external third-party software such as Amber, AFITT, DivCon, or
-Rosetta (obsoleted and removed).
+various external third-party software such as Amber, AFITT, DivCon,
+Schrodinger, or Rosetta (obsoleted and removed).
 """
 
 from __future__ import absolute_import, division, print_function
@@ -58,11 +58,29 @@ if (afitt_installed):
 """
 
 # Schrodinger
-schrodinger_installed = False
-if os.environ.get("SCHRODINGER", False):
-  if os.path.exists(os.environ["SCHRODINGER"]):
-    schrodinger_installed = True
+def is_schrodinger_installed(env):
+  """
+  Check if Schrodinger is installed and interface requested. Schrodinger is
+  installed if SCHRODINGER env variable is set to root directory and if
+  PHENIX_SCHRODINGER env variable is set.
 
+  Parameters
+  ----------
+  env: dict
+     Environment dictionary
+
+  Returns
+  -------
+  out : bool
+    Boolean indicating if Schrodinger is installed and requested.
+  """
+  return (
+     env.get('PHENIX_SCHRODINGER', False)
+     and env.get("SCHRODINGER", False)
+     and os.path.exists(env["SCHRODINGER"])
+  )
+
+schrodinger_installed = is_schrodinger_installed(os.environ)
 if schrodinger_installed:
   from glob import glob
   paths = glob(os.path.join(
