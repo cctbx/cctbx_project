@@ -3,7 +3,7 @@ Test Phenix/Schrodinger interface
 
 For now it only checks if Schrodinger is installed and the interface requested.
 """
-
+from __future__ import absolute_import, division, print_function
 import tempfile
 import unittest
 
