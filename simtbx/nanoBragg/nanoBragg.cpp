@@ -6,10 +6,9 @@
 namespace simtbx {
 namespace nanoBragg {
 
-/* return gaussian deviate with rms=1 and FWHM = 2/sqrt(log(2)) */
-class encapsulated_gaussdev
+class encapsulated_twodev
 {
-/* Convert from a function to a class.
+/* Convert gaussdev from a function to a class.
  * Implemented as a function, the state variable iset
  * valued at 0 or 1, unintentionally stored global state, thus
  * producing different gaussian deviates depending on the order in
@@ -17,14 +16,24 @@ class encapsulated_gaussdev
  * Despite random seeds being the same, resulting deviates differed.
  * Switching to a class now forces iset to be initialized for each new
  * class instance.
+ * Furthermore, implement poidev() within the same new class, since
+ * gaussdev() is a dependency of poidev().
  */
   private:
+    // instance variables for gaussdev
     int iset;
     double gset; //set value to avoid compiler warnings, but the 0 value must not be used.
     double fac,rsq,v1,v2;
+    // instance variables for poidev
+    /* oldm is a flag for whether xm has changed since last call */
+    double sq,alxm,g,oldm; //formerly static when poidev was a function
+    double em,t,y;
+
   public:
-    encapsulated_gaussdev() : iset(0), gset(0.) {}
-    double operator()(long *idum){
+    encapsulated_twodev() : iset(0), gset(0.), oldm(-1.0) {}
+
+    /* return gaussian deviate with rms=1 and FWHM = 2/sqrt(log(2)) */
+    double gaussdev(long *idum){
     if (iset == 0) {
         /* no extra deviats handy ... */
 
@@ -47,6 +56,57 @@ class encapsulated_gaussdev
         return gset;
     }
     }
+
+    /* Poisson deviate given expectation value of photon count (xm) */
+    double poidev(double xm, long *idum){
+
+    /* routine below locks up for > 1e6 photons? */
+    if (xm > 1.0e6) {
+        return xm+sqrt(xm)*gaussdev(idum);
+    }
+
+    if (xm < 12.0) {
+        /* use direct method: simulate exponential delays between events */
+        if(xm != oldm) {
+            /* xm is new, compute the exponential */
+            oldm=xm;
+            g=exp(-xm);
+        }
+        /* adding exponential deviates is equivalent to multiplying uniform deviates */
+        /* final comparison is to the pre-computed exponential */
+        em = -1;
+        t = 1.0;
+        do {
+            ++em;
+            t *= ran1(idum);
+        } while (t > g);
+    } else {
+        /* Use rejection method */
+        if(xm != oldm) {
+            /* xm has changed, pre-compute a few things... */
+            oldm=xm;
+            sq=sqrt(2.0*xm);
+            alxm=log(xm);
+            g=xm*alxm-gammln(xm+1.0);
+        }
+        do {
+            do {
+                /* y is a deviate from a lorentzian comparison function */
+                y=tan(M_PI*ran1(idum));
+                /* shift and scale */
+                em=sq*y+xm;
+            } while (em < 0.0);         /* there are no negative Poisson deviates */
+            /* round off to nearest integer */
+            em=floor(em);
+            /* ratio of Poisson distribution to comparison function */
+            /* scale it back by 0.9 to make sure t is never > 1.0 */
+            t=0.9*(1.0+y*y)*exp(em*alxm-gammln(em+1.0)-g);
+        } while (ran1(idum) > t);
+    }
+
+    return em;
+    }
+
 };
 
 /* constructor that takes a dxtbx "panel" detector model */
@@ -3655,7 +3715,7 @@ nanoBragg::apply_psf(shapetype psf_type, double fwhm_pixels, int user_psf_radius
 void
 nanoBragg::add_noise()
 {
-    encapsulated_gaussdev gaussdev;
+    encapsulated_twodev deviates;
     int i = 0;
     long cseed;
 
@@ -3705,10 +3765,10 @@ nanoBragg::add_noise()
 
             /* simulate 1/f noise in source */
             if(flicker_noise > 0.0){
-                expected_photons *= ( 1.0 + flicker_noise * gaussdev( &seed ) );
+                expected_photons *= ( 1.0 + flicker_noise * deviates.gaussdev( &seed ) );
             }
             /* simulate photon-counting error */
-            observed_photons = poidev( expected_photons, &seed );
+            observed_photons = deviates.poidev( expected_photons, &seed );
 
             /* now we overwrite the flex array, it is now observed, rather than expected photons */
             floatimage[i] = observed_photons;
@@ -3755,7 +3815,7 @@ nanoBragg::add_noise()
                 }
 
                 /* calibration is same from shot to shot, but varies from pixel to pixel */
-                floatimage[i] *= ( 1.0 + calibration_noise * gaussdev( &cseed ) );
+                floatimage[i] *= ( 1.0 + calibration_noise * deviates.gaussdev( &cseed ) );
 
                 /* accumulate number of photons, and keep track of max */
                 if(floatimage[i] > max_I) {
@@ -3816,7 +3876,7 @@ nanoBragg::add_noise()
 
                 /* readout noise is in pixel units (adu) */
                 if(readout_noise > 0.0){
-                    adu += readout_noise * gaussdev( &seed );
+                    adu += readout_noise * deviates.gaussdev( &seed );
             }
 
             /* once again, overwriting flex array, this time in ADU units */
@@ -4299,62 +4359,6 @@ double *umat2misset(double umat[9],double *missets)
 
 /* random number generators */
 
-/* Poisson deviate given expectation value of photon count (xm) */
-double poidev(double xm, long *idum)
-{
-//    double gammln(double xx);
-//    double ran1(long *idum);
-    encapsulated_gaussdev gaussdev;
-    /* oldm is a flag for whether xm has changed since last call */
-    static double sq,alxm,g,oldm=(-1.0);
-    double em,t,y;
-
-    /* routine below locks up for > 1e6 photons? */
-    if (xm > 1.0e6) {
-        return xm+sqrt(xm)*gaussdev(idum);
-    }
-
-    if (xm < 12.0) {
-        /* use direct method: simulate exponential delays between events */
-        if(xm != oldm) {
-            /* xm is new, compute the exponential */
-            oldm=xm;
-            g=exp(-xm);
-        }
-        /* adding exponential deviates is equivalent to multiplying uniform deviates */
-        /* final comparison is to the pre-computed exponential */
-        em = -1;
-        t = 1.0;
-        do {
-            ++em;
-            t *= ran1(idum);
-        } while (t > g);
-    } else {
-        /* Use rejection method */
-        if(xm != oldm) {
-            /* xm has changed, pre-compute a few things... */
-            oldm=xm;
-            sq=sqrt(2.0*xm);
-            alxm=log(xm);
-            g=xm*alxm-gammln(xm+1.0);
-        }
-        do {
-            do {
-                /* y is a deviate from a lorentzian comparison function */
-                y=tan(M_PI*ran1(idum));
-                /* shift and scale */
-                em=sq*y+xm;
-            } while (em < 0.0);         /* there are no negative Poisson deviates */
-            /* round off to nearest integer */
-            em=floor(em);
-            /* ratio of Poisson distribution to comparison function */
-            /* scale it back by 0.9 to make sure t is never > 1.0 */
-            t=0.9*(1.0+y*y)*exp(em*alxm-gammln(em+1.0)-g);
-        } while (ran1(idum) > t);
-    }
-
-    return em;
-}
 
 /* generate Lorentzian deviate with FWHM = 2 */
 double lorentzdev(long *seed) {
