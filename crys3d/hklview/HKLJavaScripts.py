@@ -117,7 +117,7 @@ PickingProxyfunc = function(pickingProxy)
       tooltip.innerText = current_ttip;
       tooltip.style.bottom = cp.y + 7 + "px";
       tooltip.style.left = cp.x + 8 + "px";
-      tooltip.style.fontSize = fontsize.toString() + "px";
+      tooltip.style.fontSize = fontsize.toString() + "pt";
       tooltip.style.display = "block";
     }
   }
@@ -134,7 +134,7 @@ function getTextWidth(text, fsize=8)
   // re-use canvas object for better performance
   var canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
   var context = canvas.getContext("2d");
-  context.font = fsize.toString() + "px sans-serif";
+  context.font = fsize.toString() + "pt sans-serif";
   var metrics = context.measureText(text);
   return metrics.width;
 }
@@ -145,12 +145,21 @@ function ColourChart(millerlabel, fomlabel)
   var ih = 3,
   topr = 35,
   topr2 = 10,
-  lp = 10,
-  wp = 60,
+  lp = 10;
+
+  var maxnumberwidth = 0;
+  for (j = 0; j < colourgradvalarray[0].length; j++)
+  {
+    val = colourgradvalarray[0][j][0];
+    maxnumberwidth = Math.max( getTextWidth(val, fontsize), maxnumberwidth );
+  }
+  wp = maxnumberwidth + 5,
+  //wp = 60,
   lp2 = lp + wp,
   gl = 3,
   wp2 = gl,
   fomlabelheight = 25;
+
   if (colourgradvalarray.length === 1)
   {
     wp2 = 15;
@@ -406,7 +415,7 @@ function createElement(name, properties, style, fsize=10)
     display: "block",
     position: "absolute",
     fontFamily: "sans-serif",
-    fontSize: fsize.toString() + "px",
+    fontSize: fsize.toString() + "pt",
   }
   );
   return el;

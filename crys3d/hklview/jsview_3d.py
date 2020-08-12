@@ -551,11 +551,12 @@ class hklview_3d:
     for hklscene in self.HKLscenes:
       if hklscene.isUsingFOMs():
         continue # already have tooltips for the scene without the associated fom
+      sigvals = None
+      if hklscene.work_array.sigmas() is not None:
+        sigvals = list( hklscene.work_array.select(hklscene.work_array.indices() == hkl).sigmas() )
       datval = None
       if hkl in hklscene.work_array.indices():
         datvals = list( hklscene.work_array.select(hklscene.work_array.indices() == hkl).data() )
-        if hklscene.work_array.sigmas() is not None:
-          sigvals = list( hklscene.work_array.select(hklscene.work_array.indices() == hkl).sigmas() )
       else:
         if id >= hklscene.data.size():
           continue
@@ -575,7 +576,7 @@ class hklview_3d:
           if hklscene.work_array.is_complex_array():
             spbufttip += str(roundoff(ampl, 2)) + ", " + str(roundoff(phase, 1)) + \
               "\'+ String.fromCharCode(176) +\'" # degree character
-          elif hklscene.work_array.sigmas() is not None:
+          elif sigvals:
             sigma = sigvals[i]
             spbufttip += str(roundoff(datval, 2)) + ", " + str(roundoff(sigma, 2))
           else:
@@ -590,7 +591,39 @@ class hklview_3d:
       return -1, -1
     return self.HKLInfo_from_dict(idx)[6], self.HKLInfo_from_dict(idx)[7]
 
+  
+  def SupersetMillerArrays(self):
+    self.match_valarrays = []
+    # First loop over all miller arrays to make a superset of hkls of all
+    # miller arrays. Then loop over all miller arrays and extend them with NaNs
+    # as to contain the same hkls as the superset
+    self.mprint("Gathering superset of miller indices...")
+    superset_array = self.proc_arrays[0].deep_copy()
+    set_of_indices = set([])
+    for i,procarray in enumerate(self.proc_arrays):
+      set_of_indices |= set( list(procarray.indices()) )
+    self.mprint("Extending miller arrays to match superset of miller indices...")
+    indiceslst = flex.miller_index( list( set_of_indices ) )
+    for i,procarray in enumerate(self.proc_arrays):
+      # first match indices in currently selected miller array with indices in the other miller arrays
+      matchindices = miller.match_indices(indiceslst, procarray.indices() )
+      valarray = procarray.select( matchindices.pairs().column(1) )
+      #if valarray.anomalous_flag() != superset_array.anomalous_flag():
+      #  superset_array._anomalous_flag = valarray._anomalous_flag
+      #missing = indiceslst.lone_set( valarray.indices() )
 
+      missing = indiceslst.select( miller.match_indices(valarray.indices(), indiceslst ).singles(1))
+
+      # insert NAN values for reflections in self.miller_array not found in procarray
+      valarray = display.ExtendMillerArray(valarray, missing.size(), missing )
+      match_valindices = miller.match_indices(superset_array.indices(), valarray.indices() )
+      match_valarray = valarray.select( match_valindices.pairs().column(1) )
+      match_valarray.sort(by_value="packed_indices")
+      match_valarray.set_info(procarray.info() )
+      self.match_valarrays.append( match_valarray )
+    self.mprint("Done making superset")
+
+  """
   def SupersetMillerArrays(self):
     self.match_valarrays = []
     # First loop over all miller arrays to make a superset of hkls of all
@@ -624,7 +657,7 @@ class hklview_3d:
       match_valarray.set_info(procarray.info() )
       self.match_valarrays.append( match_valarray )
     self.mprint("Done making superset")
-
+  """
 
   def ConstructReciprocalSpace(self, curphilparam, scene_id=None):
     sceneid = scene_id
@@ -949,11 +982,11 @@ class hklview_3d:
     try:
       newdata = None
       newsigmas = None
-      ldic=locals()
+      ldic= {'data': data, 'sigmas': sigmas, 'dres': dres }
       exec(operation, globals(), ldic)
-      newdata = ldic["newdata"]
+      newdata = ldic.get("newdata", None)
       newarray._data = newdata
-      newsigmas = ldic["newsigmas"]
+      newsigmas = ldic.get("newsigmas", None)
       newarray._sigmas = newsigmas
       return newarray
     except Exception as e:
@@ -977,11 +1010,11 @@ class hklview_3d:
     try:
       newdata = None
       newsigmas = None
-      ldic=locals()
+      ldic= {'data1': data1, 'sigmas1': sigmas1, 'data2': data2, 'sigmas2': sigmas2, 'dres': dres }
       exec(operation, globals(), ldic)
-      newdata = ldic["newdata"]
+      newdata = ldic.get("newdata", None)
       newarray._data = newdata
-      newsigmas = ldic["newsigmas"]
+      newsigmas = ldic.get("newsigmas", None)
       newarray._sigmas = newsigmas
       return newarray
     except Exception as e:
