@@ -505,7 +505,8 @@ def parallel_map(
     preserve_order=True,
     preserve_exception_message=False,
     use_manager=False,
-    stacktrace_handling = "ignore"):
+    stacktrace_handling = "ignore",
+    break_condition = None):
   """
   Generic parallel map() implementation for a variety of platforms, including
   the multiprocessing module and supported queuing systems, via the module
@@ -529,6 +530,8 @@ def parallel_map(
   :param qsub_command: command to submit queue jobs (optional)
   :param asynchronous: run queue jobs asynchronously
   :param preserve_exception_message: keeps original exception message
+  :param preserve_order: keeps original order of results
+  :param break_condition:  if break_condition(result) is True, break
   :returns: a list of result objects
   """
   if (params is not None):
@@ -632,6 +635,9 @@ def parallel_map(
         result = res()
         results.append( result )
         callback( result )
+        if break_condition and break_condition(result):
+          manager.terminate()
+          return results
 
     except SetupError as e:
       raise Sorry(e)
@@ -764,8 +770,14 @@ def run_parallel(
    qsub_command='qsub',       # queue command, not supported yet
    nproc=1,                   # number of processors to use
    target_function=None,      # the method to run
-   kw_list=None):             # list of kw dictionaries for target_function
+   kw_list=None,           # list of kw dictionaries for target_function
+   preserve_order=True,
+   break_condition = None):
 
+  '''
+  :param preserve_order: keeps original order of results
+  :param break_condition:  if break_condition(result) is True, break
+  '''
   n=len(kw_list)  # number of jobs to run, one per kw dict
 
   if nproc==1 or n<=1: # just run it for each case in list, no multiprocessing
@@ -789,8 +801,11 @@ def run_parallel(
       processes=nproc,
       callback=None,
       preserve_exception_message=True, # 2016-08-17
+      stacktrace_handling ="excepthook",
       qsub_command=qsub_command,
-      use_manager=True )#  Always use manager 2015-10-13 TT (sys.platform == "win32"))
+      use_manager=True,  #  Always use manager 2015-10-13 TT (sys.platform == "win32"))
+      preserve_order=preserve_order,
+      break_condition = break_condition)
   return results
 
 #  -------  END OF SIMPLE INTERFACE TO MULTIPROCESSING -------------

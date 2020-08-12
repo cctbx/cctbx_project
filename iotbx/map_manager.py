@@ -797,6 +797,7 @@ class map_manager(map_reader, write_ccp4_map):
       Use cctbx.maptbx.mask.create_mask_around_edges to create a mask around
       edges of map.  Does not make a soft mask.  For a soft mask,
       follow with soft_mask(soft_mask_radius =soft_mask_radius)
+      The radius is to define the boundary around the map.
 
       Does not apply the mask (use apply_mask_to_map etc for that)
     '''

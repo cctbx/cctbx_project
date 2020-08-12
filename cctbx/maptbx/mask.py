@@ -56,12 +56,18 @@ class create_mask_around_atoms(object):
 
     assert wrapping is not None
 
+    if (not wrapping) or (self._crystal_symmetry.space_group_number==1):
+      # usual
+      sites_frac = xray_structure.sites_frac()
+    else:  # wrapping and cs: need to expand
+      sites_frac = xray_structure.expand_to_p1().sites_frac()
+
     import boost.python
     cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
     radii = flex.double(
-      xray_structure.sites_frac().size(), mask_atoms_atom_radius)
+      sites_frac.size(), mask_atoms_atom_radius)
     self._mask = cctbx_maptbx_ext.mask(
-      sites_frac                  = xray_structure.sites_frac(),
+      sites_frac                  = sites_frac,
       unit_cell                   = xray_structure.unit_cell(),
       n_real                      = n_real,
       mask_value_inside_molecule  = 1,

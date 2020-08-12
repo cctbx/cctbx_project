@@ -1562,6 +1562,33 @@ class map_model_manager(object):
       map_id = map_id)
 
 
+  # Methods for modifying model or map
+
+  def remove_model_outside_map(self,
+     boundary):
+    '''
+     Remove all the atoms in the model that are well outside the map (more
+     than boundary)
+    '''
+    assert boundary is not None
+
+    if not self.model():
+      return
+
+    sites_cart = self.model().get_sites_cart()
+    a,b,c = self.model().crystal_symmetry().unit_cell().parameters()[:3]
+    x,y,z = sites_cart.parts()
+    s = (
+         (x < -boundary) |
+         (y < -boundary) |
+         (z < -boundary) |
+         (x > a + boundary) |
+         (y > b + boundary) |
+         (z > c + boundary)
+         )
+    self._model = self.model().select(~s)
+
+
   # Methods for comparing maps, models and calculating FSC values
 
   def map_map_fsc(self,
@@ -1655,6 +1682,19 @@ class map_model_manager(object):
     if selection_string:
       sel = model.selection(selection_string)
       model = model.select(sel)
+
+    import mmtbx.maps.correlation
+    five_cc = mmtbx.maps.correlation.five_cc(
+      map               = map_manager.map_data(),
+      xray_structure    = model.get_xray_structure(),
+      d_min             = resolution,
+      compute_cc_mask   = True,
+      compute_cc_box    = False,
+      compute_cc_image  = False,
+      compute_cc_volume = False,
+      compute_cc_peaks  = False,)
+
+    return five_cc.result.cc_mask
 
     from mmtbx.maps.mtriage import get_atom_radius
     atom_radius = get_atom_radius(
