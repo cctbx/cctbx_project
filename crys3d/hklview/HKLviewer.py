@@ -69,16 +69,18 @@ class SettingsForm(QDialog):
     layout.addWidget(parent.mousesensitxtbox,        0, 4, 1, 1)
     layout.addWidget(parent.Fontsize_labeltxt,       1, 0, 1, 1)
     layout.addWidget(parent.fontspinBox,             1, 4, 1, 1)
-    layout.addWidget(parent.cameraPerspectCheckBox,  2, 0, 1, 1)
-    layout.addWidget(parent.bufsize_labeltxt,        3, 0, 1, 1)
-    layout.addWidget(parent.clearbufbtn,             3, 2, 1, 2)
-    layout.addWidget(parent.bufsizespinBox,          3, 4, 1, 1)
+    layout.addWidget(parent.BrowserFontsize_labeltxt, 2, 0, 1, 1)
+    layout.addWidget(parent.browserfontspinBox,      2, 4, 1, 1)
+    layout.addWidget(parent.cameraPerspectCheckBox,  3, 0, 1, 1)
+    layout.addWidget(parent.bufsize_labeltxt,        4, 0, 1, 1)
+    layout.addWidget(parent.clearbufbtn,             4, 2, 1, 2)
+    layout.addWidget(parent.bufsizespinBox,          4, 4, 1, 1)
 
-    layout.addWidget(parent.ttiplabeltxt,            4, 0, 1, 1)
-    layout.addWidget(parent.ttipClickradio,          4, 1, 1, 1)
-    layout.addWidget(parent.ttipHoverradio,          4, 2, 1, 1)
-    layout.addWidget(parent.ttipalphalabeltxt,       4, 3, 1, 1)
-    layout.addWidget(parent.ttipalpha_spinBox,       4, 4, 1, 1)
+    layout.addWidget(parent.ttiplabeltxt,            5, 0, 1, 1)
+    layout.addWidget(parent.ttipClickradio,          5, 1, 1, 1)
+    layout.addWidget(parent.ttipHoverradio,          5, 2, 1, 1)
+    layout.addWidget(parent.ttipalphalabeltxt,       5, 3, 1, 1)
+    layout.addWidget(parent.ttipalpha_spinBox,       5, 4, 1, 1)
 
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
@@ -168,6 +170,13 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.Fontsize_labeltxt.setText("Font size:")
     self.fontsize = self.font.pointSize()
 
+    self.browserfontspinBox = QDoubleSpinBox()
+    self.browserfontspinBox.setSingleStep(1)
+    self.browserfontspinBox.setRange(4, 50)
+    self.browserfontspinBox.setValue(self.font.pointSize())
+    self.browserfontspinBox.valueChanged.connect(self.onBrowserFontsizeChanged)
+    self.BrowserFontsize_labeltxt = QLabel()
+    self.BrowserFontsize_labeltxt.setText("Browser font size:")
 
     self.cameraPerspectCheckBox = QCheckBox()
     self.cameraPerspectCheckBox.setText("Perspective camera")
@@ -202,6 +211,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.ttipalpha_spinBox.valueChanged.connect(self.onTooltipAlphaChanged)
     self.ttipalpha_labeltxt = QLabel()
     self.ttipalpha_labeltxt.setText("Tooltip Opacity:")
+    self.ttip_click_invoke = "hover"
 
     self.settingsform = SettingsForm(self)
     self.webpagedebugform = None
@@ -387,6 +397,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
   def SettingsDialog(self):
     self.settingsform.show()
+    # don't know why valueChanged.connect() method only takes effect from here on
+    self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
 
 
   def ProcessMessages(self):
@@ -722,11 +734,13 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.PhilToJsRender('NGL_HKLviewer.viewer.NGL.tooltip_alpha = %f' %val)
 
 
-  def onShowTooltips(self,val):
-    if self.ttipClickradio.isChecked():
+  def onShowTooltips(self, val):
+    if self.ttipClickradio.isChecked() or val=="click":
       self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.show_tooltips = click")
-    if self.ttipHoverradio.isChecked():
+      self.ttip_click_invoke = "click"
+    if self.ttipHoverradio.isChecked() or val=="hover":
       self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.show_tooltips = hover")
+      self.ttip_click_invoke = "hover"
 
 
   def onFontsizeChanged(self, val):
@@ -735,6 +749,11 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.fontsize = val
     self.app.setFont(font);
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
+    #if self.cctbxpythonversion: # then connection to cctbx has been established
+    #  self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.fontsize = %d" %val)
+
+
+  def onBrowserFontsizeChanged(self, val):
     if self.cctbxpythonversion: # then connection to cctbx has been established
       self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.fontsize = %d" %val)
 
@@ -1573,6 +1592,7 @@ def run():
     settings.beginGroup("PySide2_" + Qtversion)
     QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
     fontsize = settings.value("FontSize", None)
+    ttip_click_invoke = settings.value("ttip_click_invoke", None)
     windowsize = settings.value("windowsize", None)
     splitter1sizes = settings.value("splitter1Sizes", None)
     splitter2sizes = settings.value("splitter2Sizes", None)
@@ -1602,6 +1622,7 @@ def run():
       settings.beginGroup("PySide2_" + Qtversion )
       settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
       settings.setValue("FontSize", guiobj.fontsize )
+      settings.setValue("ttip_click_invoke", guiobj.ttip_click_invoke)
       settings.setValue("windowsize", guiobj.window.size())
       settings.setValue("splitter1Sizes", guiobj.splitter.saveState())
       settings.setValue("splitter2Sizes", guiobj.splitter_2.saveState())
@@ -1609,6 +1630,10 @@ def run():
 
     app.lastWindowClosed.connect(MyAppClosing)
 
+    if ttip_click_invoke is not None:
+      guiobj.onShowTooltips(ttip_click_invoke)
+      guiobj.ttipClickradio.setChecked(ttip_click_invoke == "click")
+      guiobj.ttipHoverradio.setChecked(ttip_click_invoke == "hover")
     if fontsize is not None:
       guiobj.onFontsizeChanged(int(fontsize))
       guiobj.fontspinBox.setValue(int(fontsize))
