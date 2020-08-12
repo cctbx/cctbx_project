@@ -1564,8 +1564,7 @@ class map_model_manager(object):
 
   # Methods for modifying model or map
 
-  def remove_model_outside_map(self,
-     boundary):
+  def remove_model_outside_map(self, boundary):
     '''
      Remove all the atoms in the model that are well outside the map (more
      than boundary)
@@ -1672,7 +1671,7 @@ class map_model_manager(object):
       map_id = 'map_manager',
       model_id = 'model',
       selection_string = None,
-      atom_radius = None):
+      ):
 
     model = self.get_model_by_id(model_id)
     map_manager= self.get_map_manager_by_id(map_id)
@@ -1695,20 +1694,6 @@ class map_model_manager(object):
       compute_cc_peaks  = False,)
 
     return five_cc.result.cc_mask
-
-    from mmtbx.maps.mtriage import get_atom_radius
-    atom_radius = get_atom_radius(
-      xray_structure = model.get_xray_structure(),
-      resolution     = resolution,
-      radius         = atom_radius)
-
-    from mmtbx.maps.correlation import from_map_and_xray_structure_or_fmodel
-    cc_calculator = from_map_and_xray_structure_or_fmodel(
-      xray_structure = model.get_xray_structure(),
-      map_data       = map_manager.map_data(),
-      d_min          = resolution)
-    cc = cc_calculator.cc(atom_radius = atom_radius)
-    return cc
 
   # General methods
 

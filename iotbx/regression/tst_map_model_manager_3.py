@@ -411,6 +411,11 @@ def exercise(file_name, out = sys.stdout):
   cc=dc.map_model_cc(resolution=3)
   assert approx_equal (cc, 0.413802839326)
 
+  # Remove model outside map
+  dc.remove_model_outside_map(boundary=0)
+  assert (mam_dc.model().get_sites_cart().size(),
+     dc.model().get_sites_cart().size()) == (86, 4)
+
 if __name__ == "__main__":
   args = sys.argv[1:]
   import libtbx.load_env
