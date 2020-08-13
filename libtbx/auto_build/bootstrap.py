@@ -2268,7 +2268,6 @@ class PhenixBuilder(CCIBuilder):
     'dials',
     'xia2',
     'prime',
-    'iota',
   ]
 
   def add_module(self, module, workdir=None, module_directory=None):
