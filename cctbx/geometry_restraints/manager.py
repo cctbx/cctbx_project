@@ -100,6 +100,7 @@ class manager(Base_geometry):
       assert (nonbonded_charges.size() == nonbonded_types.size())
     adopt_init_args(self, locals(), exclude=["log"])
     self.reset_internals()
+    from libtbx.introspection import show_stack; show_stack()
 
 # implement explicit pickling for the log object since StringIO doesn't support pickling
   # def __getstate__(self):

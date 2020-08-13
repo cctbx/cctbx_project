@@ -1771,6 +1771,8 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
 
   model.set_refinement_flags(refinement_flags)
   model.get_restraints_manager()
+  print(dir(model))
+  print(model.geometry_restraints_manager)
 
   # Geometry file
   xray_structure = model.get_xray_structure()
@@ -1891,6 +1893,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
 class run_wrapper(object):
   def __init__(self, model, fmodel, raw_data, raw_flags, er_params, log):
     adopt_init_args(self, locals())
+    from libtbx.introspection import show_stack; show_stack()
 
   def __call__(self, ptls, buffer_output=True, write_log=True,
       append_ptls=True):

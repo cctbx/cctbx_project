@@ -906,6 +906,8 @@ class manager(object):
       return self.restraints_manager
     else:
       self.setup_restraints_manager()
+      print(self.restraints_manager)
+      assert 0
       return self.restraints_manager
 
   def set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(self,value):
@@ -1479,6 +1481,10 @@ class manager(object):
     if(self._xray_structure is not None):
       restraints_manager.crystal_symmetry = self._xray_structure.crystal_symmetry()
     self.restraints_manager = restraints_manager
+    print(dir(self.restraints_manager))
+    print(dir(self.restraints_manager.geometry))
+    print(self.restraints_manager.geometry)
+    assert 0
 
     # Here we do all what is necessary when GRM and all related become available
     #
