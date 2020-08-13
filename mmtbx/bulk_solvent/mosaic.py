@@ -7,8 +7,8 @@ import scitbx.lbfgs
 from mmtbx.bulk_solvent import kbu_refinery
 from cctbx import maptbx
 import mmtbx.masks
-import boost.python
-asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+import boost_adaptbx.boost.python as bp
+asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 from libtbx import group_args
 from mmtbx import bulk_solvent
 from mmtbx.ncs import tncs
@@ -19,8 +19,8 @@ from libtbx.test_utils import approx_equal
 
 from mmtbx import masks
 from cctbx.masks import vdw_radii_from_xray_structure
-ext = boost.python.import_ext("mmtbx_masks_ext")
-mosaic_ext = boost.python.import_ext("mmtbx_mosaic_ext")
+ext = bp.import_ext("mmtbx_masks_ext")
+mosaic_ext = bp.import_ext("mmtbx_mosaic_ext")
 
 APPLY_SCALE_K1_TO_FOBS = False
 

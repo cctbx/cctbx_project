@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import time
 from scitbx.array_family import flex
-import boost.python
-asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+import boost_adaptbx.boost.python as bp
+asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 from libtbx.test_utils import approx_equal
 from libtbx import group_args
 from mmtbx.bulk_solvent import mosaic
