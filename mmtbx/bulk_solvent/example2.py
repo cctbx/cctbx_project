@@ -15,12 +15,12 @@ from libtbx import easy_pickle
 import traceback
 from cctbx import maptbx
 from mmtbx import masks
-import boost.python
-asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+import boost_adaptbx.boost.python as bp
+asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 
 
 from cctbx.masks import vdw_radii_from_xray_structure
-ext = boost.python.import_ext("mmtbx_masks_ext")
+ext = bp.import_ext("mmtbx_masks_ext")
 
 pdb_files = "/net/cci/pdb_mirror/pdb/"
 hkl_files = "/net/cci-filer2/raid1/share/pdbmtz/mtz_files/"

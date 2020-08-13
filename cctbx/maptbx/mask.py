@@ -62,8 +62,8 @@ class create_mask_around_atoms(object):
     else:  # wrapping and cs: need to expand
       sites_frac = xray_structure.expand_to_p1().sites_frac()
 
-    import boost.python
-    cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
+    import boost_adaptbx.boost.python as bp
+    cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
     radii = flex.double(
       sites_frac.size(), mask_atoms_atom_radius)
     self._mask = cctbx_maptbx_ext.mask(
