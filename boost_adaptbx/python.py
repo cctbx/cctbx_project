@@ -4,7 +4,6 @@ import inspect
 import os
 import re
 import sys
-import warnings
 
 from libtbx import cpp_function_name
 
