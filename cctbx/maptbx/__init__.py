@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
 import cctbx.sgtbx
 
-import boost_adaptbx.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
 from six.moves import zip
-ext = boost_adaptbx.python.import_ext("cctbx_maptbx_ext")
+ext = bp.import_ext("cctbx_maptbx_ext")
 from cctbx_maptbx_ext import *
 
 from cctbx import crystal
@@ -28,7 +28,7 @@ import scitbx.math
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
 
-@boost_adaptbx.python.inject_into(connectivity)
+@bp.inject_into(connectivity)
 class _():
 
   def get_blobs_boundaries_tuples(self):
@@ -310,7 +310,7 @@ class statistics(ext.statistics):
   def __init__(self, map):
     ext.statistics.__init__(self, map)
 
-@boost_adaptbx.python.inject_into(ext.statistics)
+@bp.inject_into(ext.statistics)
 class _():
 
   def show_summary(self, f = None, prefix = ""):
@@ -323,7 +323,7 @@ class _():
 use_space_group_symmetry = sgtbx.search_symmetry_flags(
   use_space_group_symmetry = True)
 
-@boost_adaptbx.python.inject_into(ext.histogram)
+@bp.inject_into(ext.histogram)
 class _():
 
   """

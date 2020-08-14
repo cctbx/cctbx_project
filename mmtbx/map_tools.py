@@ -13,9 +13,9 @@ from libtbx.utils import null_out
 import mmtbx
 import libtbx
 import random
-import boost_adaptbx.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-mmtbx_f_model_ext = boost_adaptbx.python.import_ext("mmtbx_f_model_ext")
+mmtbx_f_model_ext = bp.import_ext("mmtbx_f_model_ext")
 import mmtbx.masks
 
 def shelx_weight(

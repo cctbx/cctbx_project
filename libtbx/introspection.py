@@ -270,10 +270,10 @@ def number_of_processors(return_value_if_unknown=None):
       else:
         _number_of_processors = n
     if (_number_of_processors is None):
-      try: import boost_adaptbx.python
+      try: import boost_adaptbx.boost.python as bp
       except ImportError: pass
       else:
-        n = boost_adaptbx.python.ext.number_of_processors()
+        n = bp.ext.number_of_processors()
         if (n != 0):
           _number_of_processors = n
     if (_number_of_processors is None):

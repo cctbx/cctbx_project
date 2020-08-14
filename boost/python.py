@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
-from boost_adaptbx.python import *
+from boost_adaptbx.boost.python import *
 import warnings
 
 warnings.warn(
   "importing from boost.python is deprecated; this module will be removed shortly. "
-  "import from boost_adaptbx.python instead. "
+  "import from boost_adaptbx.boost.python instead. "
   "Please see https://github.com/cctbx/cctbx_project/issues/458 for more information.",
   FutureWarning,
   stacklevel=2
@@ -18,7 +18,7 @@ class injector(object):
 
   please use
 
-  @boost_adaptbx.python.inject_into(Crystal)
+  @boost_adaptbx.boost.python.inject_into(Crystal)
   class _(object):
   '''
   class __metaclass__(meta_class):

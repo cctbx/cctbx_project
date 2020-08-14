@@ -2,11 +2,11 @@
 from __future__ import absolute_import, division, print_function
 import cctbx.sgtbx
 
-import boost_adaptbx.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
 from six.moves import zip
-ext = boost_adaptbx.python.import_ext("cctbx_miller_ext")
-asu_map_ext = boost_adaptbx.python.import_ext("cctbx_asymmetric_map_ext")
+ext = bp.import_ext("cctbx_miller_ext")
+asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_miller_ext import *
 
 from cctbx import crystal

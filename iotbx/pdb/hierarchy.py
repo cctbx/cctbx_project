@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
-import boost_adaptbx.python
-ext = boost_adaptbx.python.import_ext("iotbx_pdb_hierarchy_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
 from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s, null_out
@@ -354,8 +354,8 @@ class __hash_eq_mixin(object):
   def __ne__(self, other):
     return not ( self == other )
 
-boost_adaptbx.python.inject(ext.root, __hash_eq_mixin)
-@boost_adaptbx.python.inject_into(ext.root)
+bp.inject(ext.root, __hash_eq_mixin)
+@bp.inject_into(ext.root)
 class _():
 
   __doc__ = """
@@ -1700,8 +1700,8 @@ class _():
       result = result and model.is_ca_only()
     return result
 
-boost_adaptbx.python.inject(ext.model, __hash_eq_mixin)
-@boost_adaptbx.python.inject_into(ext.model)
+bp.inject(ext.model, __hash_eq_mixin)
+@bp.inject_into(ext.model)
 class _():
 
   """
@@ -1761,8 +1761,8 @@ class _():
       result = result and chain.is_ca_only()
     return result
 
-boost_adaptbx.python.inject(ext.chain, __hash_eq_mixin)
-@boost_adaptbx.python.inject_into(ext.chain)
+bp.inject(ext.chain, __hash_eq_mixin)
+@bp.inject_into(ext.chain)
 class _():
 
   """
@@ -2027,8 +2027,8 @@ class _():
     atom_names = self.atoms().extract_name()
     return atom_names.all_eq(" CA ")
 
-boost_adaptbx.python.inject(ext.residue_group, __hash_eq_mixin)
-@boost_adaptbx.python.inject_into(ext.residue_group)
+bp.inject(ext.residue_group, __hash_eq_mixin)
+@bp.inject_into(ext.residue_group)
 class _():
 
   def only_atom_group(self):
@@ -2045,8 +2045,8 @@ class _():
       chain_id = chain.id
     return "%2s%4s%1s" % (chain_id, self.resseq, self.icode)
 
-boost_adaptbx.python.inject(ext.atom_group, __hash_eq_mixin)
-@boost_adaptbx.python.inject_into(ext.atom_group)
+bp.inject(ext.atom_group, __hash_eq_mixin)
+@bp.inject_into(ext.atom_group)
 class _():
 
   def only_atom(self):
@@ -2080,8 +2080,8 @@ class _():
           min_max_mean.max))
     return min_max_mean.mean
 
-boost_adaptbx.python.inject(ext.atom, __hash_eq_mixin)
-@boost_adaptbx.python.inject_into(ext.atom)
+bp.inject(ext.atom, __hash_eq_mixin)
+@bp.inject_into(ext.atom)
 class _():
   __doc__ = """
   The basic unit of the PDB hierarchy (or the PDB input object in general),
@@ -2163,7 +2163,7 @@ class _():
     else:
       return 0
 
-@boost_adaptbx.python.inject_into(ext.conformer)
+@bp.inject_into(ext.conformer)
 class _():
 
   __doc__ = """
@@ -2355,7 +2355,7 @@ class _():
     return resnames
 
 
-@boost_adaptbx.python.inject_into(ext.residue)
+@bp.inject_into(ext.residue)
 class _():
 
   def __getinitargs__(self):
@@ -2400,7 +2400,7 @@ class _():
       return_mon_lib_dna_name=return_mon_lib_dna_name)
 
 
-@boost_adaptbx.python.inject_into(ext.atom_with_labels)
+@bp.inject_into(ext.atom_with_labels)
 class _():
 
   __doc__ = """

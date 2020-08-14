@@ -6,9 +6,9 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 import sys
 
-import boost_adaptbx.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-dtrek_ext = boost_adaptbx.python.import_ext("iotbx_dtrek_ext")
+dtrek_ext = bp.import_ext("iotbx_dtrek_ext")
 
 class reflnlist(object):
 

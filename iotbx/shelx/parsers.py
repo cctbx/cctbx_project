@@ -3,7 +3,7 @@
 from __future__ import absolute_import, division, print_function
 
 from six.moves import zip_longest
-from boost_adaptbx import rational
+from boost_adaptbx.boost import rational
 from collections import OrderedDict
 
 from cctbx import uctbx

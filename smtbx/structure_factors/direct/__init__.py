@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
-import boost_adaptbx.python
-ext = boost_adaptbx.python.import_ext("smtbx_structure_factors_direct_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("smtbx_structure_factors_direct_ext")
 
 class constructed_with_xray_structure(object):
 

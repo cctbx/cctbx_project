@@ -145,8 +145,8 @@ class den_restraints(object):
     elif self.use_model_segid and (not self.use_ref_segid):
       raise Sorry("Working model contains SEGIDs that do not match "+\
                   "the reference model.")
-    import boost_adaptbx.python
-    self.ext = boost_adaptbx.python.import_ext("mmtbx_den_restraints_ext")
+    import boost_adaptbx.boost.python as bp
+    self.ext = bp.import_ext("mmtbx_den_restraints_ext")
     self.params = params
     self.kappa = params.kappa
     self.kappa_burn_in_cycles = params.kappa_burn_in_cycles

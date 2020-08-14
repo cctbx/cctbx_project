@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
-import boost_adaptbx.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-ext = boost_adaptbx.python.import_ext("cctbx_asymmetric_map_ext")
+ext = bp.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_asymmetric_map_ext import *
 from cctbx.array_family import flex
 from cctbx import maptbx
@@ -13,8 +13,8 @@ import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from libtbx.test_utils import approx_equal
 from cctbx import adptbx
 
-import boost_adaptbx.python
-ext = boost_adaptbx.python.import_ext("mmtbx_f_model_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("mmtbx_f_model_ext")
 
 def get_f_masks(xrs, miller_array):
   crystal_gridding = maptbx.crystal_gridding(

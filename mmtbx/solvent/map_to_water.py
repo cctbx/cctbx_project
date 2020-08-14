@@ -3,8 +3,8 @@ from cctbx.array_family import flex
 import iotbx.pdb
 import mmtbx.model
 import iotbx.mrcfile
-import boost_adaptbx.python
-cctbx_maptbx_ext = boost_adaptbx.python.import_ext("cctbx_maptbx_ext")
+import boost_adaptbx.boost.python as bp
+cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
 import time
 from cctbx import maptbx
 from libtbx import adopt_init_args

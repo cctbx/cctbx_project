@@ -120,10 +120,10 @@ floating_point_exceptions = floating_point_exceptions_type()
 class trapping(object):
   """ Synopsis:
 
-      >>> import boost_adaptbx.python
+      >>> import boost_adaptbx.boost.python as bp
       >>> from scitbx.array_family import flex
       >>> a = flex.double((0, 0, 0))
-      >>> with boost_adaptbx.python.trapping(division_by_zero=False):
+      >>> with bp.trapping(division_by_zero=False):
       >>>   b = 1/a
       >>> tuple(b)
       (inf, inf, inf)
@@ -154,7 +154,7 @@ def c_sizeof(typename):
     if (line.startswith(pattern)):
       break
   else:
-    raise RuntimeError('boost_adaptbx.python.platform_info: "%s" not found.' % pattern)
+    raise RuntimeError('bp.platform_info: "%s" not found.' % pattern)
   return int(line[len(pattern):])
 
 sizeof_void_ptr = c_sizeof("void*")
@@ -193,11 +193,11 @@ def inject(target_class, *mixin_classes):
             class _():
               def method(...):
                 ...
-            boost_adaptbx.python.inject(extension_class, _)
+            bp.inject(extension_class, _)
 
       instead of the previous mechanism of
 
-            class _(boost_adaptbx.python.injector, extension_class):
+            class _(bp.injector, extension_class):
               def method(...):
                 ...
 
@@ -217,7 +217,7 @@ def inject_into(target_class, *mixin_classes):
 
      It is used as follows:
 
-           @boost_adaptbx.python.inject_into(extension_class)
+           @bp.inject_into(extension_class)
            class _():
              def method(...):
                ...

@@ -18,7 +18,7 @@ from cctbx.array_family import flex
 import math
 from cctbx import xray
 from cctbx import adptbx
-import boost_adaptbx.python
+import boost_adaptbx.boost.python as bp
 import mmtbx
 from libtbx.math_utils import iround
 from libtbx.utils import user_plus_sys_time, date_and_time, Sorry
@@ -44,7 +44,7 @@ import mmtbx.bulk_solvent
 import six
 from six.moves import zip, range
 
-ext = boost_adaptbx.python.import_ext("mmtbx_f_model_ext")
+ext = bp.import_ext("mmtbx_f_model_ext")
 
 time_bulk_solvent_and_scale         = 0.0
 time_mask                           = 0.0
@@ -1132,7 +1132,7 @@ class manager(manager_mixin):
     mmtbx_masks_asu_mask_obj = mmtbx.masks.asu_mask(
       xray_structure = S_E_L_F.xray_structure.expand_to_p1(sites_mod_positive=True),
       n_real         = crystal_gridding.n_real())
-    asu_map_ext = boost_adaptbx.python.import_ext("cctbx_asymmetric_map_ext")
+    asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
     bulk_solvent_mask = mmtbx_masks_asu_mask_obj.mask_data_whole_uc()
     # residual map
     mc = S_E_L_F.electron_density_map().map_coefficients(

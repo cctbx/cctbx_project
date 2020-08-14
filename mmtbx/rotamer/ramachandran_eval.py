@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
-import boost_adaptbx.python
-ext = boost_adaptbx.python.import_ext("mmtbx_validation_ramachandran_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 
 # maps programatic name to file name

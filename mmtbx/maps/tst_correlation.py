@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
-import boost_adaptbx.python
-asu_map_ext = boost_adaptbx.python.import_ext("cctbx_asymmetric_map_ext")
+import boost_adaptbx.boost.python as bp
+asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 import iotbx.pdb
 from mmtbx.maps import correlation
 from libtbx.test_utils import approx_equal
