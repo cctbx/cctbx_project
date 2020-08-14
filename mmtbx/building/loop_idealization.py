@@ -19,8 +19,8 @@ import scitbx.math
 import mmtbx.idealized_aa_residues.rotamer_manager
 import mmtbx.refinement.real_space.fit_residues
 
-#import boost_adaptbx.python
-#ext = boost_adaptbx.python.import_ext("mmtbx_validation_ramachandran_ext")
+#import boost_adaptbx.boost.python as bp
+#ext = bp.import_ext("mmtbx_validation_ramachandran_ext")
 #from mmtbx_validation_ramachandran_ext import rama_eval
 
 from iotbx.pdb.hybrid_36 import hy36encode, hy36decode

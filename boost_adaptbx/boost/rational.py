@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
-import boost_adaptbx.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-ext = boost_adaptbx.python.import_ext("boost_rational_ext")
+ext = bp.import_ext("boost_rational_ext")
 from boost_rational_ext import *
 
 builtin_int = __builtins__["int"]

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
-import boost_adaptbx.python
-ext = boost_adaptbx.python.import_ext("gltbx_gl_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("gltbx_gl_ext")
 from gltbx_gl_ext import *
 
 def __function_taking_transposed_matrix(f):

@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
-import boost_adaptbx.python
-ext = boost_adaptbx.python.import_ext( "boost_adaptbx_graph_utility_ext" )
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext( "boost_adaptbx_graph_utility_ext" )
 
 def copy_graph(graph):
 

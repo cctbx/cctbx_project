@@ -1,15 +1,15 @@
 from __future__ import absolute_import, division, print_function
 import scitbx.array_family.flex # import dependency
 
-import boost_adaptbx.python
-ext = boost_adaptbx.python.import_ext("scitbx_rigid_body_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("scitbx_rigid_body_ext")
 from scitbx_rigid_body_ext import *
 import math
 from scitbx import matrix
 
 class pickle_import_trigger(object): pass
 
-@boost_adaptbx.python.inject_into(ext.tardy_model)
+@bp.inject_into(ext.tardy_model)
 class _():
 
   def __getinitargs__(O):

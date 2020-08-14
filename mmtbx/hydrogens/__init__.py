@@ -7,11 +7,11 @@ import iotbx.pdb
 import mmtbx.model
 from libtbx.utils import null_out
 
-import boost_adaptbx.python
+import boost_adaptbx.boost.python as bp
 import six
 from six.moves import range
 
-ext = boost_adaptbx.python.import_ext("cctbx_geometry_restraints_ext")
+ext = bp.import_ext("cctbx_geometry_restraints_ext")
 
 def mon_lib_query(residue, mon_lib_srv):
     get_func = getattr(mon_lib_srv, "get_comp_comp_id", None)

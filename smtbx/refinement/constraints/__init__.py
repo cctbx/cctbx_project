@@ -2,9 +2,9 @@ from __future__ import absolute_import, division, print_function
 
 import warnings
 
-import boost_adaptbx.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-ext = boost_adaptbx.python.import_ext("smtbx_refinement_constraints_ext")
+ext = bp.import_ext("smtbx_refinement_constraints_ext")
 from smtbx_refinement_constraints_ext import *
 
 import scitbx.sparse # import dependency
@@ -40,7 +40,7 @@ class ConflictingConstraintWarning(UserWarning):
 bad_connectivity_msg = "Invalid %s constraint involving %s: bad connectivity"
 
 
-@boost_adaptbx.python.inject_into(ext.parameter)
+@bp.inject_into(ext.parameter)
 class _():
 
   def arguments(self):
@@ -66,7 +66,7 @@ class _():
       scatt, self.index)
     return lbl
 
-@boost_adaptbx.python.inject_into(ext.reparametrisation)
+@bp.inject_into(ext.reparametrisation)
 class _():
 
   def __str__(self):

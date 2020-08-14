@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
 # -*- coding: utf-8 -*-
 from cctbx.array_family import flex
-import boost_adaptbx.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
 from six.moves import zip
-ext = boost_adaptbx.python.import_ext("cctbx_crystal_ext")
+ext = bp.import_ext("cctbx_crystal_ext")
 from cctbx_crystal_ext import *
 from cctbx.crystal.find_best_cell import find_best_cell
 from cctbx import sgtbx
@@ -791,7 +791,7 @@ def correct_special_position(
     return site_special_frac
   return unit_cell.orthogonalize(site_special_frac)
 
-@boost_adaptbx.python.inject_into(pair_asu_table)
+@bp.inject_into(pair_asu_table)
 class _():
 
   def as_nested_lists(self):
@@ -1403,7 +1403,7 @@ class sym_pair(libtbx.slots_getstate_setstate):
   def i_seqs(self):
     return (self.i_seq, self.j_seq)
 
-@boost_adaptbx.python.inject_into(pair_sym_table)
+@bp.inject_into(pair_sym_table)
 class _():
 
   def iterator(self):
@@ -1978,5 +1978,5 @@ def unit_crystal_symmetry():
   from cctbx import crystal
   return crystal.symmetry(unit_cell=uc,space_group_info=sg)
 
-boost_adaptbx.python.inject(ext.neighbors_simple_pair_generator, boost_adaptbx.python.py3_make_iterator)
-boost_adaptbx.python.inject_into(ext.neighbors_fast_pair_generator, boost_adaptbx.python.py3_make_iterator)
+bp.inject(ext.neighbors_simple_pair_generator, bp.py3_make_iterator)
+bp.inject_into(ext.neighbors_fast_pair_generator, bp.py3_make_iterator)

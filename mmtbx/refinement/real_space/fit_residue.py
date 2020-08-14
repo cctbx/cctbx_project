@@ -10,9 +10,9 @@ import mmtbx.idealized_aa_residues.rotamer_manager
 import collections
 from libtbx import group_args
 
-import boost_adaptbx.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-ext = boost_adaptbx.python.import_ext("mmtbx_rotamer_fit_ext")
+ext = bp.import_ext("mmtbx_rotamer_fit_ext")
 
 def flatten(l):
   if l is None: return None
@@ -556,8 +556,8 @@ def backrub_move(
     accept_worse_rama=False,
     rotamer_manager=None,
     rama_manager=None):
-  import boost_adaptbx.python
-  ext = boost_adaptbx.python.import_ext("mmtbx_validation_ramachandran_ext")
+  import boost_adaptbx.boost.python as bp
+  ext = bp.import_ext("mmtbx_validation_ramachandran_ext")
   from mmtbx_validation_ramachandran_ext import rama_eval
   from scitbx.matrix import rotate_point_around_axis
   from mmtbx.conformation_dependent_library.multi_residue_class import ThreeProteinResidues, \

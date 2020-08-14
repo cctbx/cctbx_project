@@ -8,8 +8,8 @@ import numpy as np
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
 
-import boost_adaptbx.python
-ext = boost_adaptbx.python.import_ext("mmtbx_pair_interaction_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("mmtbx_pair_interaction_ext")
 
 dat_path = libtbx.env.find_in_repositories("qrefine")
 qr_unit_tests_data = None

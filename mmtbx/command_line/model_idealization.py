@@ -985,8 +985,8 @@ def get_map_from_map(map_file_object, params, xrs, log):
 
   if params.mask_and_he_map:
     print("Masking and histogram equalizing...", file=log)
-    import boost_adaptbx.python
-    cctbx_maptbx_ext = boost_adaptbx.python.import_ext("cctbx_maptbx_ext")
+    import boost_adaptbx.boost.python as bp
+    cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
     xrs_p1 = xray_structure.expand_to_p1(sites_mod_positive=True)
     radii = flex.double(xrs_p1.scatterers().size(), 5.0)
     mask = cctbx_maptbx_ext.mask(

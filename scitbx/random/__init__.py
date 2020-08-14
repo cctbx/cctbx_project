@@ -3,9 +3,9 @@ from __future__ import absolute_import, division, print_function
 import os
 import time
 
-import boost_adaptbx.optional # import dependency
-import boost_adaptbx.python
-boost_adaptbx.python.import_ext("scitbx_random_ext")
+import boost_adaptbx.boost.optional # import dependency
+import boost_adaptbx.boost.python as bp
+bp.import_ext("scitbx_random_ext")
 import scitbx_random_ext
 
 def get_random_seed():
