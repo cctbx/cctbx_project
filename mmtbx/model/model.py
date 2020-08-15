@@ -381,6 +381,13 @@ class manager(object):
     """
     return self._pdb_interpretation_params
 
+  def processed(self):
+    fl = self._processed_pdb_file is not None or \
+         self.all_chain_proxies   is not None or \
+         self._xray_structure     is not None or \
+         self.restraints_manager  is not None
+    return fl
+
   def set_log(self, log):
     self.log = log
 
