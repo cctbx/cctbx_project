@@ -1472,6 +1472,14 @@ class map_manager(map_reader, write_ccp4_map):
     if hasattr(self,'_warning_message'):
        return self._warning_message
 
+  def set_mean_zero_sd_one(self):
+    map_data = self.map_data()
+    map_data = map_data - flex.mean(map_data)
+    sd = map_data.sample_standard_deviation()
+    assert sd != 0
+    map_data = map_data/sd
+    self.set_map_data(map_data)
+
   def ncs_cc(self):
     if hasattr(self,'_ncs_cc'):
        return self._ncs_cc
