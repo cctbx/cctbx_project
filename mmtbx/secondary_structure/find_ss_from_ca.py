@@ -533,17 +533,22 @@ def get_chain_id(hierarchy):
       return chain.id
   return None # nothing there
 
-def get_sequence(hierarchy):
+def get_sequence(hierarchy,one_letter_code=True):
   if not hierarchy:
     return None
-  sequence=[]
-  for model in hierarchy.models():
-    for chain in model.chains():
-      for rg in chain.residue_groups():
-        for atom_group in rg.atom_groups():
-          sequence.append(atom_group.resname)
-          break
-  return sequence
+  if one_letter_code:
+    from iotbx.bioinformatics import get_sequence_from_pdb
+    return get_sequence_from_pdb(
+       hierarchy=hierarchy).replace("\n","").replace(" ","").strip()
+  else:
+    sequence=[]
+    for model in hierarchy.models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          for atom_group in rg.atom_groups():
+            sequence.append(atom_group.resname)
+            break
+    return sequence
 
 def get_atom_list(hierarchy):
   atom_list=[]
