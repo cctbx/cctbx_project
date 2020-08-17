@@ -10,7 +10,7 @@ import sys
 from functools import reduce
 from six.moves import range
 from six.moves import zip
-from libtbx.utils import Sorry, null_out
+from libtbx.utils import Sorry
 
 # Wrap lines that are longer than 'width'
 def wrap(text, width):
