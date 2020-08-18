@@ -1796,7 +1796,7 @@ class test_hhalign_parser(unittest.TestCase):
 def exercise_guess_chain_types():
   from iotbx.bioinformatics import \
      guess_chain_types_from_sequences,text_from_chains_matching_chain_type,\
-     get_sequence_from_pdb, get_sequence_from_hierarchy
+     get_sequence_from_pdb
   print("Testing guess_chain_types ...", end=' ')
   text_rna="""
 >4a17.pdb|Chain=2
