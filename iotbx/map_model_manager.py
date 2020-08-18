@@ -1564,7 +1564,7 @@ class map_model_manager(object):
 
   # Methods for modifying model or map
 
-  def remove_model_outside_map(self, boundary):
+  def remove_model_outside_map(self, boundary, return_as_new_model=False):
     '''
      Remove all the atoms in the model that are well outside the map (more
      than boundary)
@@ -1585,7 +1585,10 @@ class map_model_manager(object):
          (y > b + boundary) |
          (z > c + boundary)
          )
-    self._model = self.model().select(~s)
+    if return_as_new_model:
+      return self.model().select(~s)
+    else:  # usual
+      self._model = self.model().select(~s)
 
 
   # Methods for comparing maps, models and calculating FSC values
