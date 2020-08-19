@@ -399,7 +399,7 @@ class Ruleset(Agipd2nexus):
 
         self.field_rules = {
             # 'entry/definition': np.str(f"NXmx:{get_git_revision_hash()}"),      # TODO: _create_scalar?
-            'entry/definition': np.str(f"NXmx"),                                # TODO: _create_scalar?
+            'entry/definition': np.string_("NXmx"),  # XXX: whoa! this is THE criteria of being a "nexus format"!
             'entry/file_name': np.str(self.output_file_name),
             # 'entry/start_time': np.str(self.params.nexus_details.start_time),
             'entry/start_time': np.str('2000-10-10T00:00:00.000Z'),     # FIXME: what is the real data?
