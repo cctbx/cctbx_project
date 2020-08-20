@@ -164,25 +164,14 @@ def generate_model(
   model=model.select(selection)
 
   # shift the model and return it with new crystal_symmetry
-
-  from scitbx.matrix import col
-  from cctbx import crystal
-  ph=model.get_hierarchy()
-  sites_cart=ph.atoms().extract_xyz()
-  sites_cart=sites_cart-col(sites_cart.min())+col(
-      (box_cushion,box_cushion,box_cushion))
-  box_end=col(sites_cart.max())+col((box_cushion,box_cushion,box_cushion))
-  a,b,c=box_end
-  crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
-  ph.atoms().set_xyz(sites_cart)
+  from cctbx.maptbx.box import shift_and_box_model
+  model = shift_and_box_model(model = model,
+    box_cushion = box_cushion)
 
   if b_iso is not None:
-    b_values=flex.double(sites_cart.size(), b_iso)
+    b_values=flex.double(model.get_sites_cart().size(), b_iso)
+    ph = model.get_hierarchy()
     ph.atoms().set_b(b_values)
-  model=model_manager(
-     ph.as_pdb_input(),
-     crystal_symmetry = crystal_symmetry,
-     log = log)
 
   # Optionally shake model
   if shake:
