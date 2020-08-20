@@ -47,7 +47,7 @@ if (__name__ == "__main__") :
       # Read the detector object using dxtbx
       reader = dxtbx.format.Registry.get_format_class_for_file(params.metrology)
       detector = reader(params.metrology).get_detector()
-    except IOError:
+    except (IOError, TypeError):
       # See if it's a json file
       from dxtbx.model.experiment_list import ExperimentListFactory
       try:
@@ -123,7 +123,7 @@ if (__name__ == "__main__") :
         while True:
           if len(root.get_list_of_children()) == 4 or len(root.get_list_of_children()) == 32:
             break
-          assert len(root.get_list_of_children()) == 1
+          assert len(root.get_list_of_children()) == 1, len(root.get_list_of_children())
           child = root.get_list_of_children()[0]
           child_basis = root_basis * basis_from_geo(child)
 
