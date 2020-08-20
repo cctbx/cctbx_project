@@ -236,9 +236,11 @@ class LocalRefiner(PixelRefinement):
 
         self._ncells_id = 9  # diffBragg internal index for Ncells derivative manager
         self._originZ_id = 10  # diffBragg internal index for originZ derivative manager
-        self._panelRot_id = 14  # diffBragg internal index for originZ derivative manager
-        self._panelX_id = 15  # diffBragg internal index for originZ derivative manager
-        self._panelY_id = 16  # diffBragg internal index for originZ derivative manager
+        self._panelRotO_id = 14  # diffBragg internal index for derivative manager
+        self._panelRotF_id = 17  # diffBragg internal index for derivative manager
+        self._panelRotS_id = 18  # diffBragg internal index for derivative manager
+        self._panelX_id = 15  # diffBragg internal index for  derivative manager
+        self._panelY_id = 16  # diffBragg internal index for  derivative manager
         self._fcell_id = 11  # diffBragg internal index for Fcell derivative manager
         self._lambda0_id = 12  # diffBragg interneal index for lambda derivatives
         self._lambda1_id = 13  # diffBragg interneal index for lambda derivatives
@@ -369,6 +371,11 @@ class LocalRefiner(PixelRefinement):
         self.dummie_detector = deepcopy(self.S.detector)  # need to preserve original detector
 
         self._MPI_make_output_dir()
+
+        if self.refine_panelXY or self.refine_panelRotS or self.refine_panelRotF or self.refine_panelRotO:
+            self.n_panel_groups = len(self.panel_group_from_id)
+        else:
+            self.n_panel_groups = 0
 
         # get the Fhkl information from P1 array internal to nanoBragg
         if self.I_AM_ROOT:
@@ -544,7 +551,7 @@ class LocalRefiner(PixelRefinement):
 
         self.panelRot_xstart = self.spectra_coef_xstart + self.n_spectra_param
 
-        self.panelXY_xstart = self.panelRot_xstart + self.n_panel_rot_param
+        self.panelXY_xstart = self.panelRot_xstart + 3*self.n_panel_groups
 
         self.gain_xpos = self.n_total_params - 1
 
@@ -637,8 +644,12 @@ class LocalRefiner(PixelRefinement):
             self.D.refine(self._ncells_id)
         if self.refine_detdist:
             self.D.refine(self._originZ_id)
-        if self.refine_panelRot:
-            self.D.refine(self._panelRot_id)
+        if self.refine_panelRotO:
+            self.D.refine(self._panelRotO_id)
+        if self.refine_panelRotF:
+            self.D.refine(self._panelRotF_id)
+        if self.refine_panelRotS:
+            self.D.refine(self._panelRotS_id)
         if self.refine_panelXY:
             self.D.refine(self._panelX_id)
             self.D.refine(self._panelY_id)
@@ -693,22 +704,22 @@ class LocalRefiner(PixelRefinement):
                 if not self.rescale_params:
                     raise NotImplementedError("Cant refine spectra without rescale_params=True")
 
-            for i_pan_rot in range(self.n_panel_rot_param):
-                xpos = self.panelRot_xstart + i_pan_rot
-                if self.refine_panelRot:
-                    assert self.rescale_params
-                    self.is_being_refined[xpos] = True
-                self.Xall[xpos] = 1
+            refine_panelRot = self.refine_panelRotO, self.refine_panelRotF, self.refine_panelRotS
+            for i_pan_group in range(self.n_panel_groups):
+                for i_pan_rot in range(3):
+                    xpos = self.panelRot_xstart + 3*i_pan_group + i_pan_rot
+                    if refine_panelRot[i_pan_rot]:
+                        assert self.rescale_params
+                        self.is_being_refined[xpos] = True
+                    self.Xall[xpos] = 1
 
-            for i_pan_XY in range(self.n_panel_XY_param):
-                xpos = self.panelXY_xstart + i_pan_XY
-                # xpos_Y = self.panelXY_xstart + 2*i_pan_XY + 1
-                self.Xall[xpos] = 1
-                # self.Xall[xpos_Y] = 1
-                if self.refine_panelXY:
-                    assert self.rescale_params
-                    self.is_being_refined[xpos] = True
-                    # self.is_being_refined[xpos_Y] = True
+                for i_pan_XY in range(2):
+                    xpos = self.panelXY_xstart + 2*i_pan_group + i_pan_XY
+                    self.Xall[xpos] = 1
+                    if self.refine_panelXY:
+                        assert self.rescale_params
+                        self.is_being_refined[xpos] = True
+                        # self.is_being_refined[xpos_Y] = True
 
             print("----loading fcell data")
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index)
@@ -994,21 +1005,24 @@ class LocalRefiner(PixelRefinement):
         return all_p
 
     def _get_panelRot_val(self, panel_id):
-        if self.n_panel_rot_param == 0:
-            return
-        panel_group_id = self.panel_group_from_id[panel_id]
-        val = self.Xall[self.panelRot_xstart + panel_group_id]
-        sig = self.panelRot_sigma
-        init = self.panelRot_init[panel_group_id]
-        val = sig*(val-1) + init
-        return val
+        vals = [0, 0, 0]
+        refining_rot = self.refine_panelRotO, self.refine_panelRotF, self.refine_panelRotS
+        for i_rot in range(3):
+            if not refining_rot[i_rot]:
+                continue
+            panel_group_id = self.panel_group_from_id[panel_id]
+            val = self.Xall[self.panelRot_xstart + 3*panel_group_id + i_rot]
+            sig = self.panelRot_sigma[i_rot]
+            init = self.panelRot_init[panel_group_id][i_rot]
+            val = sig*(val-1) + init
+            vals[i_rot] = val
+        return vals
 
     def _get_panelXY_val(self, panel_id):
-        if self.n_panel_XY_param == 0:
-            return
+        if not self.refine_panelXY:
+            return 0, 0
 
         panel_group_id = self.panel_group_from_id[panel_id]
-
         xpos_X = self.panelXY_xstart + 2*panel_group_id
         valX = self.Xall[xpos_X]
         sigX = self.panelX_sigma
@@ -1313,11 +1327,10 @@ class LocalRefiner(PixelRefinement):
         panel_node = dummie_det[self._panel_id]
         
         newX, newY, newZ = panel_node.get_origin()
-        new_XY = self._get_panelXY_val(self._panel_id)
-        if new_XY is not None:
-            newX_offset, newY_offset = new_XY
-            newX += newX_offset
-            newY += newY_offset
+
+        newX_offset, newY_offset = self._get_panelXY_val(self._panel_id)
+        newX += newX_offset
+        newY += newY_offset
         new_originZ = self._get_originZ_val(self._i_shot)
         if new_originZ is not None:
             newZ += new_originZ
@@ -1332,11 +1345,9 @@ class LocalRefiner(PixelRefinement):
         node_dict["slow_axis"] = slow_ax 
         node = Panel.from_dict(node_dict)
         dummie_det[self._panel_id] = node 
-        panel_rot_ang = 0
-        if self.refine_panelRot:
-            panel_rot_ang = self._get_panelRot_val(self._panel_id)
-            assert panel_rot_ang is not None
-        self.D.update_dxtbx_geoms(dummie_det, self.S.beam.nanoBragg_constructor_beam, self._panel_id, panel_rot_ang)
+        panel_rot_angO, panel_rot_angF, panel_rot_angS = self._get_panelRot_val(self._panel_id)
+        self.D.update_dxtbx_geoms(dummie_det, self.S.beam.nanoBragg_constructor_beam, self._panel_id,
+                                  panel_rot_angO, panel_rot_angF, panel_rot_angS)
         
         if self.recenter:
             s0 = self.S.beam.nanoBragg_constructor_beam.get_s0()
@@ -1416,12 +1427,17 @@ class LocalRefiner(PixelRefinement):
                 self.detdist_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(self._originZ_id).as_numpy_array()
 
     def _extract_panelRot_derivative_pixels(self):
-        self.panelRot_dI_dtheta = self.panelRot_d2I_dtheta2 = 0
+        self.panelRot_dI_dtheta = [0, 0, 0]
+        self.panelRot_d2I_dtheta2 = [0, 0, 0]
         SG = self.scale_fac*self.G2
-        if self.refine_panelRot:
-            self.panelRot_dI_dtheta = SG*self.D.get_derivative_pixels(self._panelRot_id).as_numpy_array()
-            if self.calc_curvatures:
-                self.panelRot_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(self._panelRot_id).as_numpy_array()
+        refining = [self.refine_panelRotO, self.refine_panelRotF, self.refine_panelRotS]
+        manager_ids = self._panelRotO_id, self._panelRotF_id, self._panelRotS_id
+        for i_rot in range(3):
+            if refining[i_rot]:
+                manager_id = manager_ids[i_rot]
+                self.panelRot_dI_dtheta[i_rot] = SG*self.D.get_derivative_pixels(manager_id).as_numpy_array()
+                if self.calc_curvatures:
+                    self.panelRot_d2I_dtheta2[i_rot] = SG*self.D.get_second_derivative_pixels(manager_id).as_numpy_array()
 
     def _extract_panelXY_derivative_pixels(self):
         self.panelX_dI_dtheta = self.panelX_d2I_dtheta2 = 0
@@ -1473,7 +1489,6 @@ class LocalRefiner(PixelRefinement):
         self.compute_functional_and_gradients()
         return self._f, self._g, self.d
 
-    #@profile
     def compute_functional_and_gradients(self):
         if self.calc_func:
             if self.verbose:
@@ -1537,11 +1552,12 @@ class LocalRefiner(PixelRefinement):
                     self.Imeas = self.ROI_IMGS[self._i_shot][i_spot]
                     self._update_dxtbx_detector()
                     if i_spot == 0:
-                        if self.refine_panelRot:
-                            print("ROT ANGLE : %.4f" % self._get_panelRot_val(self._panel_id))
+                        if self.refine_panelRotO or self.refine_panelRotF or self.refine_panelRotS:
+                            print("ROT ANGLE : %.8f %.8f %.8f (degrees)"
+                                  % tuple(map(lambda x: x*180/PI, self._get_panelRot_val(self._panel_id))))
 
                         if self.refine_panelXY:
-                            print("XY: %.4f %f" % self._get_panelXY_val(self._panel_id))
+                            print("XY: %.8f %8f" % self._get_panelXY_val(self._panel_id))
                     self._run_diffBragg_current(i_spot)
                     self._set_background_plane(i_spot)
                     self._extract_pixel_data()
@@ -1862,15 +1878,18 @@ class LocalRefiner(PixelRefinement):
                     self.curv[xpos] += self._curv_accumulate(d, d2)
 
     def _panelRot_derivatives(self):
-        if self.refine_panelRot:
-            d = self.panelRot_dI_dtheta*self.panelRot_sigma
-            d2 = self.panelRot_d2I_dtheta2*(self.panelRot_sigma*self.panelRot_sigma)
+        refining = self.refine_panelRotO, self.refine_panelRotF, self.refine_panelRotS
+        for i_rot in range(3):
+            if refining[i_rot]:
+                sigma = self.panelRot_sigma[i_rot]
+                d = self.panelRot_dI_dtheta[i_rot]*sigma
+                d2 = self.panelRot_d2I_dtheta2[i_rot]*sigma*sigma
 
-            xpos = self.panelRot_xstart + self.panel_group_from_id[self._panel_id]
+                xpos = self.panelRot_xstart + 3*self.panel_group_from_id[self._panel_id] + i_rot
 
-            self.grad[xpos] += self._grad_accumulate(d)
-            if self.calc_curvatures:
-                self.curv[xpos] += self._curv_accumulate(d, d2)
+                self.grad[xpos] += self._grad_accumulate(d)
+                if self.calc_curvatures:
+                    self.curv[xpos] += self._curv_accumulate(d, d2)
 
     def _panelXY_derivatives(self):
         if self.refine_panelXY:
@@ -2212,8 +2231,12 @@ class LocalRefiner(PixelRefinement):
             refine_str += "bkgrnd, "
         if self.refine_detdist:
             refine_str += "originZ, "
-        if self.refine_panelRot:
-            refine_str += "panelRot, "
+        if self.refine_panelRotO:
+            refine_str += "panelRotO, "
+        if self.refine_panelRotF:
+            refine_str += "panelRotF, "
+        if self.refine_panelRotS:
+            refine_str += "panelRotS, "
         if self.refine_panelXY:
             refine_str += "panelXY, "
         if self.refine_lambda0:

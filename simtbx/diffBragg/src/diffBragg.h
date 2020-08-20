@@ -36,6 +36,8 @@ class panel_manager: public derivative_manager{
     vec3 dF;
     vec3 dS;
     vec3 dk;
+    vec3 F_cross_dS;
+    vec3 dF_cross_S;
 
 }; // end of rot_manager
 
@@ -121,6 +123,7 @@ class diffBragg: public nanoBragg{
   void initialize_managers();
   void vectorize_umats();
   void rotate_fs_ss_vecs(double panel_rot_ang);
+  void rotate_fs_ss_vecs_3D(double panel_rot_angO, double panel_rot_angF, double panel_rot_angS);
   void add_diffBragg_spots();
   void init_raw_pixels_roi();
   void zero_raw_pixel_rois();
@@ -143,7 +146,8 @@ class diffBragg: public nanoBragg{
   /* methods for interacting with the derivative managers */
   void refine(int refine_id);
   void update_dxtbx_geoms(const dxtbx::model::Detector& detector, const dxtbx::model::Beam& beam,
-        int panel_id, double panel_rot_ang = 0);
+        int panel_id, double panel_rot_angO=0,
+        double panel_rot_angF=0,  double panel_rot_angS=0);
   void set_value( int refine_id, double value);
   void set_ncells_values( boost::python::tuple const& values);
   boost::python::tuple get_ncells_values();
@@ -213,6 +217,8 @@ class diffBragg: public nanoBragg{
   std::vector<boost::shared_ptr<derivative_manager> > panels;
   boost::shared_ptr<Fcell_manager> fcell_man;
   boost::shared_ptr<panel_manager> panel_rot_man;
+  boost::shared_ptr<panel_manager> panel_rot_manF;
+  boost::shared_ptr<panel_manager> panel_rot_manS;
 
   double* floatimage_roi;
   af::flex_double raw_pixels_roi;

@@ -5,6 +5,7 @@ This test checks the setter and getter for Ncells parameter
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--plot", action='store_true')
+parser.add_argument("--idx", choices=["odet","sdet", "fdet"], type=str, default="odet")
 args = parser.parse_args()
 
 import numpy as np
@@ -27,7 +28,12 @@ rotation = Rotation.random(num=1, random_state=101)[0]
 Q = rec(rotation.as_quat(), n=(4, 1))
 rot_ang, rot_axis = Q.unit_quaternion_as_axis_and_angle()
 C.rotate_around_origin(rot_axis, rot_ang)
-panel_rot_id = 14  # internal diffBragg index for the panel rotation parameter
+if args.idx == "odet":
+    panel_rot_id = 14  # internal diffBragg index for the panel rotation parameter
+elif args.idx == "fdet":
+    panel_rot_id = 17
+else:
+    panel_rot_id = 18
 
 S = sim_data.SimData()
 S.crystal.dxtbx_crystal = C
@@ -63,12 +69,23 @@ angles = 0.001, 0.002, 0.004, 0.008, 0.016, 0.032
 
 all_error = []
 shifts = []
+from IPython import embed
 for i_shift, angle_deg in enumerate(angles):
-    angle_deg = angle_deg*0.01
+    scale = 0.01
+    if args.idx in ["fdet", "sdet"]:
+        scale = 10
+    angle_deg = angle_deg*scale
 
     angle_rad = angle_deg*np.pi/180.
     shifts.append(angle_rad)
-    S.D.update_dxtbx_geoms(DET, BEAM, 0, angle_rad)
+    if args.idx == "odet":
+        ang1, ang2, ang3 = angle_rad, 0, 0
+    elif args.idx == "fdet":
+        ang1, ang2, ang3 = 0, angle_rad, 0
+    else:
+        ang1, ang2, ang3 = 0, 0, angle_rad
+    S.D.update_dxtbx_geoms(DET, BEAM, 0, ang1, ang2, ang3)
+
     S.D.raw_pixels *= 0
     S.D.region_of_interest = ((0, 1023), (0, 1023))
     #S.D.printout_pixel_fastslow = 10, 10
@@ -79,7 +96,7 @@ for i_shift, angle_deg in enumerate(angles):
     error = np.abs(fdiff[bragg] - deriv[bragg]).mean()
     all_error.append(error)
 
-    print("error=%f, step=%f radians" % (error, angle_rad))
+    print("error=%f, step=%f degrees" % (error, angle_deg))
     #test_ang = np.arccos(np.dot(S.D.fdet_vector, fdet_orig))
     #print("ANGLE between Fdet and starting Fdet = %f, GT ANGLE=%f" % (test_ang*180/np.pi, angle_deg))
     #test_ang = np.arccos(np.dot(S.D.sdet_vector, sdet_orig))

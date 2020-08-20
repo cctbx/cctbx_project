@@ -207,7 +207,9 @@ namespace boost_python { namespace {
              (arg_("detector"),
               arg_("beam"),
               arg_("panel_id")=0,
-              arg_("panel_rot_ang")=0),
+              arg_("panel_rot_angO")=0,
+              arg_("panel_rot_angF")=0,
+              arg_("panel_rot_angS")=0),
            "update the geometries with new dxtbx models, number of pixels should remain constant")
 
       .def("free_Fhkl2",&simtbx::nanoBragg::diffBragg::free_Fhkl2)

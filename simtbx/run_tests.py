@@ -38,10 +38,11 @@ tst_list = (
     ["$D/diffBragg/tests/tst_diffBragg_global_refine.py",
         "--nshots 1 --rescale --spotscale --umatrix --ncells " +
         "--bmatrix --bg --fcell --testbg --testfcell --testUmatrix --maxcalls 50"],
-    ["$D/diffBragg/tests/tst_diffBragg_global_refine.py", "--nshots 1 --rescale --spectra  --maxcalls 150  --nshots 1 " +
+    ["$D/diffBragg/tests/tst_diffBragg_global_refine.py", "--nshots 1 --rescale --spectra  --maxcalls 20  --nshots 1 " +
         "--refineSpectra  --testSpectra  --perturbSpectra"],
     ["$D/diffBragg/tests/tst_diffBragg_global_refine_older.py", "--spotscale --umatrix --bmatrix --ncells --curvatures --rescale"],
-    "$D/diffBragg/tests/tst_diffBragg_panel_Rot_XY_refine.py",
+    ["$D/diffBragg/tests/tst_diffBragg_panel_Rot_XY_refine.py", "--rotO --rotF --rotS"],
+    ["$D/diffBragg/tests/tst_diffBragg_panel_Rot_XY_refine.py", "--XY"],
     ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel x"],
     ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel y"],
     ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel z"],

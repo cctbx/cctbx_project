@@ -112,7 +112,8 @@ void panel_manager::increment( double Iincrement, double omega_pixel, mat3 M,
     double coef = (M*dk_hat)*V;
     //printf("AFTER %f\n", coef);
     double coef2 = -3*pix2*per_k5*G * (o*k_diffracted);
-    coef2 += pix2*per_k3*(o*dk);
+    coef2 += pix2*per_k3*(o*dk); // + F_cross_dS*k_diffracted + dF_cross_S*k_diffracted );
+    //coef2 += pix2*per_k3*(o*dk + F_cross_dS*k_diffracted + dF_cross_S*k_diffracted );
     double value = coef*Iincrement + coef2*Iincrement/omega_pixel;
     dI += value;
     dI2 += 0;
@@ -261,11 +262,24 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
 
     panel_rot_man = boost::shared_ptr<panel_manager>(new panel_manager());
     panel_rot_man->refine_me = false;
+    panel_rot_man->F_cross_dS = vec3(0,0,0);
+    panel_rot_man->dF_cross_S = vec3(0,0,0);
+    panel_rot_manF = boost::shared_ptr<panel_manager>(new panel_manager());
+    panel_rot_manF->refine_me = false;
+    panel_rot_manF->F_cross_dS = vec3(0,0,0);
+    panel_rot_manF->dF_cross_S = vec3(0,0,0);
+
+    panel_rot_manS = boost::shared_ptr<panel_manager>(new panel_manager());
+    panel_rot_manS->refine_me = false;
+    panel_rot_manS->F_cross_dS = vec3(0,0,0);
+    panel_rot_manS->dF_cross_S = vec3(0,0,0);
 
     panels.push_back(panel_rot_man);
     panels.push_back(orig0);
     panels.push_back(origX);
     panels.push_back(origY);
+    panels.push_back(panel_rot_manF);
+    panels.push_back(panel_rot_manS);
 
     rotX->refine_me = false;
     rotY->refine_me = false;
@@ -353,42 +367,92 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     pythony_amplitudes2.clear();
     }
 
-void diffBragg::rotate_fs_ss_vecs(double panel_rot_ang){
+/* BEGIN panel Rot XYZ */
+void diffBragg::rotate_fs_ss_vecs_3D(double panel_rot_angO, double panel_rot_angF, double panel_rot_angS){
 
     vec3 fs_vec = vec3(fdet_vector[1], fdet_vector[2], fdet_vector[3]);
     vec3 ss_vec = vec3(sdet_vector[1], sdet_vector[2], sdet_vector[3]);
 
-    panR = mat3(0,0,0,0,0,0,0,0,0);
-    panR[1] = -odet_vector[3];
-    panR[2] = odet_vector[2];
-    panR[3] = odet_vector[3];
-    panR[5] = -odet_vector[1];
-    panR[6] = -odet_vector[2];
-    panR[7] = odet_vector[1];
-    panR2 = panR*panR;
+    mat3 RO = mat3(0,0,0,0,0,0,0,0,0);
+    RO[1] = -odet_vector[3];
+    RO[2] = odet_vector[2];
+    RO[3] = odet_vector[3];
+    RO[5] = -odet_vector[1];
+    RO[6] = -odet_vector[2];
+    RO[7] = odet_vector[1];
+    mat3 RO2 = RO*RO;
 
-    mat3 panel_rot = EYE + panR*sin(panel_rot_ang) + panR2*(1-cos(panel_rot_ang));
+    mat3 RF = mat3(0,0,0,0,0,0,0,0,0);
+    RF[1] = -fdet_vector[3];
+    RF[2] = fdet_vector[2];
+    RF[3] = fdet_vector[3];
+    RF[5] = -fdet_vector[1];
+    RF[6] = -fdet_vector[2];
+    RF[7] = fdet_vector[1];
+    mat3 RF2 = RF*RF;
+
+    mat3 RS = mat3(0,0,0,0,0,0,0,0,0);
+    RS[1] = -sdet_vector[3];
+    RS[2] = sdet_vector[2];
+    RS[3] = sdet_vector[3];
+    RS[5] = -sdet_vector[1];
+    RS[6] = -sdet_vector[2];
+    RS[7] = sdet_vector[1];
+    mat3 RS2 = RS*RS;
+
+    mat3 rotO = EYE + RO*sin(panel_rot_angO) + RO2*(1-cos(panel_rot_angO));
+    mat3 rotF = EYE + RF*sin(panel_rot_angF) + RF2*(1-cos(panel_rot_angF));
+    mat3 rotS = EYE + RS*sin(panel_rot_angS) + RS2*(1-cos(panel_rot_angS));
 
     boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[0]);
-    pan_rot->dR = panR*cos(panel_rot_ang) + panR2*sin(panel_rot_ang);
-    pan_rot->value = panel_rot_ang;
+    pan_rot->dR = RO*cos(panel_rot_angO) + RO2*sin(panel_rot_angO);
+    pan_rot->value = panel_rot_angO;
+    mat3 ROT = (pan_rot->dR)*rotF*rotS;
+    pan_rot->dF = ROT*fs_vec;
+    pan_rot->dS = ROT*ss_vec;
 
-    pan_rot->dS = (pan_rot->dR)*ss_vec;
-    pan_rot->dF = (pan_rot->dR)*fs_vec;
+    pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[4]);
+    pan_rot->dR = RF*cos(panel_rot_angF) + RF2*sin(panel_rot_angF);
+    pan_rot->value = panel_rot_angF;
+    ROT = rotO*(pan_rot->dR)*rotS;
+    pan_rot->dF = ROT*fs_vec;
+    pan_rot->dS = ROT*ss_vec;
 
-    fs_vec = panel_rot * fs_vec;
-    ss_vec = panel_rot * ss_vec;
+    pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[5]);
+    pan_rot->dR = RS*cos(panel_rot_angS) + RS2*sin(panel_rot_angS);
+    pan_rot->value = panel_rot_angS;
+    ROT = rotO*rotF*(pan_rot->dR);
+    pan_rot->dF = ROT*fs_vec;
+    pan_rot->dS = ROT*ss_vec;
+
+    ROT = rotO*rotF*rotS;
+    fs_vec = ROT*fs_vec;
+    ss_vec = ROT*ss_vec;
     for (int i=0; i < 3; i++){
         fdet_vector[i+1] = fs_vec[i];
         sdet_vector[i+1] = ss_vec[i];
     }
+
+    //int pan_mans[3] = {0,4,5};
+    //for (int i_rot=0; i_rot <3; i_rot++ ){
+    //    int panels_id = pan_mans[i_rot];
+    //    pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[panels_id]);
+    //    pan_rot->F_cross_dS = fs_vec.cross(pan_rot->dS);
+    //    pan_rot->dF_cross_S = (pan_rot->dF).cross(ss_vec);
+    //}
+
+
 }
+/* end panel Rot XYZ */
+
 
 void diffBragg::update_dxtbx_geoms(
     const dxtbx::model::Detector& detector,
     const dxtbx::model::Beam& beam,
     int panel_id,
-    double panel_rot_ang){
+    double panel_rot_angO,
+    double panel_rot_angF,
+    double panel_rot_angS){
 
     /* BEAM properties first */
 
@@ -457,11 +521,44 @@ void diffBragg::update_dxtbx_geoms(
     pix0_vector[3] = detector[panel_id].get_origin()[2]/1000.0;
 
     //if (panel_rot_ang != 0)
-    rotate_fs_ss_vecs(panel_rot_ang);
+    //rotate_fs_ss_vecs(panel_rot_ang);
+    int n_rot_refine = 0;
+    if (panels[0]->refine_me)
+        n_rot_refine ++;
+    if (panels[4]->refine_me)
+        n_rot_refine ++;
+    if (panels[5]->refine_me)
+        n_rot_refine ++;
+    if (n_rot_refine  > 0){
+        rotate_fs_ss_vecs_3D(panel_rot_angO, panel_rot_angF, panel_rot_angS);
 
-    Fclose = Xclose = -dot_product(pix0_vector,fdet_vector);
-    Sclose = Yclose = -dot_product(pix0_vector,sdet_vector);
-    close_distance = distance =  dot_product(pix0_vector,odet_vector);
+        /* reset orthogonal vector to the detector pixel array after rotation */
+        cross_product(fdet_vector,sdet_vector,odet_vector);
+        unitize(odet_vector,odet_vector);
+        if (! detector_is_righthanded)
+            vector_scale(odet_vector, odet_vector, -1);
+
+        boost::shared_ptr<panel_manager> pan_rot;
+        vec3 fs_vec = vec3(fdet_vector[1], fdet_vector[2], fdet_vector[3]);
+        vec3 ss_vec = vec3(sdet_vector[1], sdet_vector[2], sdet_vector[3]);
+        int pan_mans[3] = {0,4,5};
+        for (int i_rot=0; i_rot <3; i_rot++ ){
+            int panels_id = pan_mans[i_rot];
+            pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[panels_id]);
+            if (!detector_is_righthanded){
+                pan_rot->F_cross_dS = (pan_rot->dS).cross(fs_vec);
+                pan_rot->dF_cross_S = ss_vec.cross(pan_rot->dF);
+            }
+            else{
+                pan_rot->F_cross_dS = fs_vec.cross(pan_rot->dS);
+                pan_rot->dF_cross_S = (pan_rot->dF).cross(ss_vec);
+            }
+        }
+    }
+
+    Fclose = Xclose = -dot_product(pix0_vector, fdet_vector);
+    Sclose = Yclose = -dot_product(pix0_vector, sdet_vector);
+    close_distance = distance = dot_product(pix0_vector, odet_vector);
 
     /* set beam centre */
     mat3 dmat = mat3(fdet_vector[1], sdet_vector[1], pix0_vector[1]*1000,
@@ -557,9 +654,14 @@ void diffBragg::initialize_managers()
             lambda_managers[i_lam]->initialize(sdim, fdim, compute_curvatures);
     }
 
-    boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[0]);
-    if (pan_rot->refine_me)
-        pan_rot->initialize(sdim, fdim, compute_curvatures);
+    int panrot_manager_indices[3] = {0,4,5};
+    boost::shared_ptr<panel_manager> pan_rot;
+    for (int i=0; i< 3; i++){
+        int manager_idx = panrot_manager_indices[i];
+        pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[manager_idx]);
+        if (pan_rot->refine_me)
+            pan_rot->initialize(sdim, fdim, compute_curvatures);
+    }
 }
 
 void diffBragg::vectorize_umats()
@@ -624,7 +726,7 @@ void diffBragg::refine(int refine_id){
     else if (refine_id==14){
         boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[0]);
         pan_rot->refine_me=true;
-        rotate_fs_ss_vecs(0);
+        rotate_fs_ss_vecs_3D(0,0,0);
         pan_rot->initialize(sdim, fdim, compute_curvatures);
     }
 
@@ -638,6 +740,18 @@ void diffBragg::refine(int refine_id){
         boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[3]);
         pan_orig->refine_me=true;
         pan_orig->initialize(sdim, fdim, compute_curvatures);
+    }
+    else if (refine_id==17){
+        boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[4]);
+        pan_rot->refine_me=true;
+        rotate_fs_ss_vecs_3D(0,0,0);
+        pan_rot->initialize(sdim, fdim, compute_curvatures);
+    }
+    else if (refine_id==18){
+        boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[5]);
+        pan_rot->refine_me=true;
+        rotate_fs_ss_vecs_3D(0,0,0);
+        pan_rot->initialize(sdim, fdim, compute_curvatures);
     }
 }
 
@@ -777,7 +891,7 @@ double diffBragg::get_value(int refine_id){
 
 af::flex_double diffBragg::get_derivative_pixels(int refine_id){
 
-    SCITBX_ASSERT(refine_id >=0 && refine_id <= 16);
+    SCITBX_ASSERT(refine_id >=0 && refine_id <= 18);
 
     if (refine_id>=0 and refine_id < 3){
         SCITBX_ASSERT(rot_managers[refine_id]->refine_me);
@@ -810,12 +924,18 @@ af::flex_double diffBragg::get_derivative_pixels(int refine_id){
         boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[2]);
         return pan_orig->raw_pixels;
     }
-    else{ //(refine_id==10){
+    else if(refine_id==16){
         boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[3]);
         return pan_orig->raw_pixels;
     }
-    //else
-    //   printf("WARNING: refine id should be between 0 and 13\n");
+    else if(refine_id==17){
+        boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[4]);
+        return pan_rot->raw_pixels;
+    }
+    else{
+        boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[5]);
+        return pan_rot->raw_pixels;
+    }
 }
 
 
@@ -1059,12 +1179,16 @@ void diffBragg::add_diffBragg_spots()
                 }
             }
 
-            boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[0]);
-            if (pan_rot->refine_me){
-                pan_rot->dI=0;
-                pan_rot->dI2=0;
+            boost::shared_ptr<panel_manager> pan_rot;
+            int manager_ids[3] = {0,4,5};
+            for (int i_rot=0; i_rot < 3; i_rot++){
+                int manager_id = manager_ids[i_rot];
+                pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[manager_id]);
+                if (pan_rot->refine_me){
+                    pan_rot->dI=0;
+                    pan_rot->dI2=0;
+                }
             }
-
             /* loop over sub-pixels */
             for(subS=0;subS<oversample;++subS)
             {
@@ -1085,19 +1209,12 @@ void diffBragg::add_diffBragg_spots()
                         pixel_pos[3] = Fdet*fdet_vector[3]+Sdet*sdet_vector[3]+Odet*odet_vector[3]+pix0_vector[3];
                         pixel_pos[0] = 0.0;
 
-                        for (int i_k=0;i_k < 1; i_k++){
-                            pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[i_k]);
-                            if (pan_rot->refine_me){
+                        int panel_rot_manager_ids[3] = {0,4,5};
+                        for (int i_k=0;i_k < 3; i_k++){
+                            int i_manager = panel_rot_manager_ids[i_k];
+                            pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[i_manager]);
+                            if (pan_rot->refine_me)
                                 pan_rot->dk = Fdet*(pan_rot->dF) + Sdet*(pan_rot->dS);
-                            //vec3 dk = panel_rot_man->dk;
-                            //vec3 dF = panel_rot_man->dF;
-                            //SCITBX_EXAMINE(dk[0]);
-                            //SCITBX_EXAMINE(dk[1]);
-                            //SCITBX_EXAMINE(dk[2]);
-                            //SCITBX_EXAMINE(dF[0]);
-                            //SCITBX_EXAMINE(dF[1]);
-                            //SCITBX_EXAMINE(dF[2]);
-                            }
                         }
 
                         if(curved_detector) {
@@ -1631,17 +1748,21 @@ void diffBragg::add_diffBragg_spots()
                                     } /* end origin manager deriv */
                                 }
 
-                                pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[0]);
-                                //boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[0]);
-                                if(pan_rot->refine_me){
-                                    double per_k = 1/airpath;
-                                    double per_k3 = pow(per_k,3);
-                                    double per_k5 = pow(per_k,5);
-                                    double lambda_ang = lambda*1e10;
+                                boost::shared_ptr<panel_manager> pan_rot;
+                                int panel_manager_ids[3] = {0,4,5};
+                                for (int i_pan_rot=0; i_pan_rot < 3; i_pan_rot++){
+                                    int pan_manager_id = panel_manager_ids[i_pan_rot];
+                                    pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[pan_manager_id]);
+                                    if(pan_rot->refine_me){
+                                        double per_k = 1/airpath;
+                                        double per_k3 = pow(per_k,3);
+                                        double per_k5 = pow(per_k,5);
+                                        double lambda_ang = lambda*1e10;
 
-                                    mat3 M = -two_C*(NABC*UBO)/lambda_ang;
-                                    pan_rot->increment(Iincrement, omega_pixel, M, subpixel_size*subpixel_size,
-                                        o_vec, k_diffracted, per_k,  per_k3, per_k5, V);
+                                        mat3 M = -two_C*(NABC*UBO)/lambda_ang;
+                                        pan_rot->increment(Iincrement, omega_pixel, M, subpixel_size*subpixel_size,
+                                            o_vec, k_diffracted, per_k,  per_k3, per_k5, V);
+                                    }
                                 }
 
                                 /* checkpoint for Fcell manager */
@@ -1789,11 +1910,15 @@ void diffBragg::add_diffBragg_spots()
                 }
             }/* end lambda deriv image increment */
 
-            pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[0]);
-            if(pan_rot->refine_me){
-                double value = scale_term*pan_rot->dI;
-                double value2 = scale_term*pan_rot->dI2;
-                pan_rot->increment_image(roi_i, value, value2, compute_curvatures);
+            int pan_manager_ids[3] = {0,4,5};
+            for (int i_pan_rot=0; i_pan_rot < 3; i_pan_rot++){
+                int pan_manager_id = pan_manager_ids[i_pan_rot];
+                pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[pan_manager_id]);
+                if(pan_rot->refine_me){
+                    double value = scale_term*pan_rot->dI;
+                    double value2 = scale_term*pan_rot->dI2;
+                    pan_rot->increment_image(roi_i, value, value2, compute_curvatures);
+                }
             }/* end panel rot deriv image increment */
 
             for (int i_pan_orig=0; i_pan_orig < 3; i_pan_orig++){
