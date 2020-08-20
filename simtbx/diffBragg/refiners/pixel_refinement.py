@@ -62,8 +62,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
 
         self.panel_group_from_id = {0: 0}  # dict of panel_id: initial_rotation, should be same length of detector
 
-        self.panelRot_sigma = 1e-3
-        self.panelRot_init = {0: 0}  # dict of panel_group_id: initial_rotation
+        self.panelRot_sigma = [1e-3]*3
+        self.panelRot_init = {0: [0, 0, 0]}  # dict of panel_group_id: initial_rotation
         self.n_panel_rot_param = 0  # 1 for each group
 
         self.panelX_sigma = 0.000001
@@ -137,7 +137,9 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.refine_ncells = False  # whether to refine Ncells abc
         self.refine_detdist = False  # whether to refine the detdist
         self.refine_panelXY = False  # whether to refine panel origin X and Y components
-        self.refine_panelRot = False  # whether to refine the panel rotation
+        self.refine_panelRotO = False  # whether to refine the panel rotation
+        self.refine_panelRotF = False  # whether to refine the panel rotation
+        self.refine_panelRotS = False  # whether to refine the panel rotation
         self.refine_Umatrix = False  # whether to refine the Umatrix
         self.refine_Bmatrix = False  # whether to refine the Bmatrx
         self.refine_crystal_scale = False  # whether to refine the crystal scale factor
@@ -649,14 +651,34 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self._refine_panelXY = val
 
     @property
-    def refine_panelRot(self):
-        return self._refine_panelRot
+    def refine_panelRotO(self):
+        return self._refine_panelRotO
 
-    @refine_panelRot.setter
-    def refine_panelRot(self, val):
+    @refine_panelRotO.setter
+    def refine_panelRotO(self, val):
         if not isinstance(val, bool):
             raise ValueError("refine should be a boolean")
-        self._refine_panelRot = val
+        self._refine_panelRotO = val
+
+    @property
+    def refine_panelRotF(self):
+        return self._refine_panelRotF
+
+    @refine_panelRotF.setter
+    def refine_panelRotF(self, val):
+        if not isinstance(val, bool):
+            raise ValueError("refine should be a boolean")
+        self._refine_panelRotF = val
+
+    @property
+    def refine_panelRotS(self):
+        return self._refine_panelRotS
+
+    @refine_panelRotS.setter
+    def refine_panelRotS(self, val):
+        if not isinstance(val, bool):
+            raise ValueError("refine should be a boolean")
+        self._refine_panelRotS = val
 
     @property
     def refine_detdist(self):
