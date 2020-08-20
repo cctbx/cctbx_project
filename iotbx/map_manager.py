@@ -33,10 +33,11 @@ class map_manager(map_reader, write_ccp4_map):
    by some multiple of the unit cell translations.)  Normally crystallographic
    maps can be wrapped and cryo EM maps cannot.
 
-   Wrapping must be specified on initialization if not read from a file. If
+   Wrapping should be specified on initialization if not read from a file. If
    read from a file, the value from the file labels is used if available,
    otherwise it is assumed to be wrapping = False unless specified (normal
-   for a cryo-EM map.
+   for a cryo-EM map. If not specified at all, it will need to be specified
+   before a map_model_manager is created or the map_manager is written out.
 
    Map_manager also keeps track of any changes in magnification. These
    are reflected in changes in unit_cell and crystal_symmetry cell dimensions
@@ -197,7 +198,7 @@ class map_manager(map_reader, write_ccp4_map):
      unit_cell_crystal_symmetry = None,
      origin_shift_grid_units = None, # OPTIONAL first point in map in full cell
      ncs_object = None, # OPTIONAL ncs_object with map symmetry
-     wrapping = Auto,   # VALUE REQUIRED if not read from file
+     wrapping = Auto,   # OPTIONAL but recommended if not read from file
      log = None,
      ):
 
@@ -234,7 +235,7 @@ class map_manager(map_reader, write_ccp4_map):
     '''
 
     assert (file_name is not None) or [map_data,unit_cell_grid,
-        unit_cell_crystal_symmetry, wrapping].count(None)==0
+        unit_cell_crystal_symmetry].count(None)==0
 
     assert (ncs_object is None) or isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
     assert (wrapping is Auto) or isinstance(wrapping, bool)
@@ -347,11 +348,12 @@ class map_manager(map_reader, write_ccp4_map):
 
   def __repr__(self):
     text = "Map manager (from %s)" %(self.file_name)+\
-       "\n%s, \nUnit-cell grid: %s, (present: %s), origin shift %s" %(
+        "\n%s, \nUnit-cell grid: %s, (present: %s), origin shift %s " %(
       str(self.unit_cell_crystal_symmetry()).replace("\n"," "),
       str(self.unit_cell_grid),
       str(self.map_data().all()),
-      str(self.origin_shift_grid_units))
+      str(self.origin_shift_grid_units)) + "\n"+\
+      "Working coordinate shift %s" %( str(self.shift_cart()))
     if self._ncs_object:
       text += "\n%s" %str(self._ncs_object)
     return text
@@ -688,7 +690,7 @@ class map_manager(map_reader, write_ccp4_map):
 
     map_data = self.map_data()
 
-    assert isinstance(self.wrapping(), bool)
+    assert isinstance(self.wrapping(), bool)  # need wrapping set to write file
     # remove any labels about wrapping
     for key in ["wrapping_outside_cell","no_wrapping_outside_cell"]:
       self.remove_limitation(key)

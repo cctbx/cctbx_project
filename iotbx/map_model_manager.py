@@ -586,8 +586,8 @@ class map_model_manager(object):
     assert isinstance(model, mmtbx.model.manager)
     if not overwrite:
       assert not model_id in self.model_id_list() # must not duplicate
-    assert self.map_manager().is_compatible_model(model)
-
+    if not self.map_manager().is_compatible_model(model): # needs shifting
+      self.shift_any_model_to_match(model)
     self._model_dict[model_id] = model
 
   def add_map_manager_by_id(self, map_manager, map_id,
@@ -1471,6 +1471,23 @@ class map_model_manager(object):
     # And propagate these sites to rest of molecule with internal ncs
     model.set_sites_cart_from_hierarchy(multiply_ncs=True)
 
+  def shift_any_model_to_match(self, model):
+    '''
+    Take any model and shift it to match the working shift_cart
+    Also sets crystal_symmetry.
+    Changes model in place
+
+     Parameters:  model
+    '''
+    assert isinstance(model, mmtbx.model.manager)
+    if not model.shift_cart():
+      model.set_shift_cart((0, 0, 0))
+    coordinate_shift = tuple(
+      [s - o for s,o in zip(self.shift_cart(),model.shift_cart())])
+    model.shift_model_and_set_crystal_symmetry(
+        shift_cart = coordinate_shift,
+        crystal_symmetry=self.crystal_symmetry())
+
   def get_model_from_other(self, other,
      other_model_id = 'model'):
     '''
@@ -1680,6 +1697,9 @@ class map_model_manager(object):
     map_manager= self.get_map_manager_by_id(map_id)
     assert model and map_manager
     assert resolution is not None
+
+    print (model)
+    print (map_manager)
 
     if selection_string:
       sel = model.selection(selection_string)

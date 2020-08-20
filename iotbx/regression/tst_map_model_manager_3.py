@@ -272,7 +272,7 @@ def exercise(file_name, out = sys.stdout):
   fsc_curve=dc.map_map_fsc(
       map_id_1='map_manager',map_id_2='filtered',mask_id='mask',
       resolution=3.5,fsc_cutoff = 0.97)
-  assert approx_equal(fsc_curve.d_min, 3.91175024213)
+  assert approx_equal(fsc_curve.d_min, 3.91175024213,eps=0.01)
   assert approx_equal (fsc_curve.fsc.fsc[-1],0.695137718033)
 
   # Get map-map CC
@@ -415,6 +415,18 @@ def exercise(file_name, out = sys.stdout):
   dc.remove_model_outside_map(boundary=0)
   assert (mam_dc.model().get_sites_cart().size(),
      dc.model().get_sites_cart().size()) == (86, 4)
+
+  # shift a model to match the map
+  dc=mam_dc.extract_all_maps_around_model(
+      selection_string="(name ca or name cb or name c or name o) "+
+        "and resseq 221:221", box_cushion=0)
+  actual_model=dc.model().deep_copy()
+  working_model=dc.model().deep_copy()
+  working_model.set_shift_cart((0,0,0))
+  working_model.set_sites_cart(working_model.get_sites_cart()-actual_model.shift_cart())
+  dc.shift_any_model_to_match(working_model)
+  assert approx_equal (actual_model.get_sites_cart()[0],working_model.get_sites_cart()[0])
+
 
 if __name__ == "__main__":
   args = sys.argv[1:]
