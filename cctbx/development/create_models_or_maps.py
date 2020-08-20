@@ -54,7 +54,7 @@ def read_map_and_model(file_name_1,file_name_2):
      file_name_1, file_name_2))
 
   from iotbx.data_manager import DataManager
-  from iotbx.map_model_manager import  map_model_manager
+  from iotbx.map_model_manager import map_model_manager
   dm = DataManager()
   dm.process_real_map_file(map_file_name)
   mm = dm.get_real_map(map_file_name)
@@ -154,7 +154,6 @@ def generate_model(
   # Read in coordinates and cut out the part of the model we want
 
   from iotbx.data_manager import DataManager
-  from mmtbx.model import manager as model_manager
 
   dm = DataManager(['model'])
   dm.process_model_file(file_name)
