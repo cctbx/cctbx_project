@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function
 from iotbx.file_reader import any_file
 from iotbx.data_manager import DataManagerBase
 from libtbx import Auto
+from libtbx.utils import Sorry
 
 # =============================================================================
 class RestraintDataManager(DataManagerBase):
