@@ -57,9 +57,7 @@ def check_cmd_line_cryst1(prefix="tst_rama_z_01_cryst1"):
     f.write(pdbtext)
   cmd = "mmtbx.rama_z %s" % (prefix+'.pdb')
   r = easy_run.fully_buffered(cmd)
-  print (dir(r))
-  print (r.return_code)
-  print (r.stderr_lines)
+  assert r.return_code == 0
   stdout = r.stdout_lines
   # print ("\n".join(stdout))
   assert_lines_in_text("\n".join(stdout), """\
