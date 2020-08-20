@@ -3715,7 +3715,8 @@ nanoBragg::apply_psf(shapetype psf_type, double fwhm_pixels, int user_psf_radius
 void
 nanoBragg::add_noise()
 {
-    encapsulated_twodev deviates;
+    encapsulated_twodev image_deviates;
+    encapsulated_twodev pixel_deviates;
     int i = 0;
     long cseed;
 
@@ -3765,10 +3766,10 @@ nanoBragg::add_noise()
 
             /* simulate 1/f noise in source */
             if(flicker_noise > 0.0){
-                expected_photons *= ( 1.0 + flicker_noise * deviates.gaussdev( &seed ) );
+                expected_photons *= ( 1.0 + flicker_noise * image_deviates.gaussdev( &seed ) );
             }
             /* simulate photon-counting error */
-            observed_photons = deviates.poidev( expected_photons, &seed );
+            observed_photons = image_deviates.poidev( expected_photons, &seed );
 
             /* now we overwrite the flex array, it is now observed, rather than expected photons */
             floatimage[i] = observed_photons;
@@ -3815,7 +3816,7 @@ nanoBragg::add_noise()
                 }
 
                 /* calibration is same from shot to shot, but varies from pixel to pixel */
-                floatimage[i] *= ( 1.0 + calibration_noise * deviates.gaussdev( &cseed ) );
+                floatimage[i] *= ( 1.0 + calibration_noise * pixel_deviates.gaussdev( &cseed ) );
 
                 /* accumulate number of photons, and keep track of max */
                 if(floatimage[i] > max_I) {
@@ -3876,7 +3877,7 @@ nanoBragg::add_noise()
 
                 /* readout noise is in pixel units (adu) */
                 if(readout_noise > 0.0){
-                    adu += readout_noise * deviates.gaussdev( &seed );
+                    adu += readout_noise * image_deviates.gaussdev( &seed );
             }
 
             /* once again, overwriting flex array, this time in ADU units */
