@@ -215,6 +215,8 @@ def copy_modules(env, sp_dir=None, link=False):
       for dist_path in env.module_dict[module].dist_paths:
         if dist_path is not None:
           src = abs(dist_path)
+          if module == 'boost' and src.endswith('boost'):
+            continue
           dst = os.path.join(sp_dir, os.path.basename(src))
           if os.path.exists(dst):
             print('  {dst} already exists'.format(dst=dst))
