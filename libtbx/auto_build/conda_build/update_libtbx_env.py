@@ -27,7 +27,10 @@ def get_default_dir():
     path of the default location
   '''
   base_dir = sys.prefix
-  if sys.platform == 'win32':
+  if sys.platform == 'darwin':
+    if 'python.app' in base_dir:
+      base_dir = base_dir.split('python.app')[0]
+  elif sys.platform == 'win32':
     base_dir = os.path.join(sys.prefix, 'Library')
   default_dir = os.path.join(base_dir, 'share', 'cctbx')
 
@@ -158,6 +161,7 @@ def update_libtbx_env(default_dir=None):
 
   # repickle
   env.build_path = absolute_path(default_dir)
+  env.installed = True
   env.pickle()
 
   return 0
