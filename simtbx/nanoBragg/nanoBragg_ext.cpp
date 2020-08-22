@@ -1934,6 +1934,16 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       /* actual run of the spot simulation, CUDA version */
       .def("add_nanoBragg_spots_cuda",&nanoBragg::add_nanoBragg_spots_cuda,
        "actually run the spot simulation, going pixel-by-pixel over the region-of-interest, CUDA version")
+
+      /* new CUDA path */
+      .def("allocate_cuda", &nanoBragg::allocate_cuda,
+       "Allocate and transfer input data on the GPU")
+      .def("add_energy_channel_cuda", &nanoBragg::add_energy_channel_cuda,
+       "Accumulate Fhkl contributions on the GPU")
+      .def("get_raw_pixels_cuda", &nanoBragg::get_raw_pixels_cuda,
+       "Update raw_pixels on host with array from GPU")
+      .def("deallocate_cuda", &nanoBragg::deallocate_cuda,
+       "Deallocate arrays on the GPU")
 #endif
 
       /* actual run of the background simulation */
