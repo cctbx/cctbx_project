@@ -22,6 +22,10 @@
 #include <boost_adaptbx/python_streambuf.h>
 #include <omptbx/omp_or_stubs.h>
 
+#ifdef NANOBRAGG_HAVE_CUDA
+#include <simtbx/nanoBragg/cuda_struct.h>
+#endif
+
 using boost::math::erf;
 using boost::math::isnan;
 #define isnan(X) boost::math::isnan(X)
@@ -444,6 +448,7 @@ class nanoBragg {
 
 #ifdef NANOBRAGG_HAVE_CUDA
     int device_Id;
+    cudaPointers cpo;
 #endif
     /* special options */
 //    bool calculate_noise; // = 1;
@@ -570,6 +575,10 @@ class nanoBragg {
     void add_nanoBragg_spots();
     void add_nanoBragg_spots_nks(boost_adaptbx::python::streambuf &);
 #ifdef NANOBRAGG_HAVE_CUDA
+    void allocate_cuda();
+    void add_energy_channel_cuda();
+    void get_raw_pixels_cuda();
+    void deallocate_cuda();
     void add_nanoBragg_spots_cuda();
 #endif
 
