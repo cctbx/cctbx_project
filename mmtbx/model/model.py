@@ -646,8 +646,10 @@ class manager(object):
       Uses set_crystal_symmetry_and_sites_cart because sites_cart have to
       be replaced in either case.
     '''
-
-    self.set_crystal_symmetry_and_sites_cart(crystal_symmetry,None)
+    if(not self.processed()):
+      self._crystal_symmetry = crystal_symmetry
+    else:
+      self.set_crystal_symmetry_and_sites_cart(crystal_symmetry,None)
 
   def set_crystal_symmetry_and_sites_cart(self, crystal_symmetry, sites_cart):
 
@@ -3442,14 +3444,14 @@ class manager(object):
     Return True if models are the same, False otherwise.
     XXX Can be endlessly fortified.
     """
-    a1 = self.get_hierarchy().atoms()
-    a2 = other.get_hierarchy().atoms()
-    f0 = a1.size() == a2.size()
-    if(not f0): return False
-    f1 = flex.max(flex.sqrt((a1.extract_xyz()-a2.extract_xyz()).dot()))<1.e-3
-    f2 = flex.max(flex.abs((a1.extract_occ()-a2.extract_occ())))<1.e-2
-    f3 = flex.max(flex.abs((a1.extract_b()-a2.extract_b())))<1.e-2
-    f = list(set([f0,f1,f2,f3]))
+    f1 = self.get_hierarchy().is_similar_hierarchy(other.get_hierarchy())
+    f2 = self.get_xray_structure().is_similar(other.get_xray_structure())
+    x1 = self.get_hierarchy().extract_xray_structure(
+      crystal_symmetry = self.crystal_symmetry())
+    x2 = other.get_hierarchy().extract_xray_structure(
+      crystal_symmetry = other.crystal_symmetry())
+    f3 = x1.is_similar(x2)
+    f = list(set([f1,f2,f3]))
     return len(f)==1 and f[0]
 
   def set_refine_individual_sites(self, selection = None):
