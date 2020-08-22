@@ -5,11 +5,16 @@ def main():
     from simtbx.diffBragg.utils import get_diffBragg_instance
 
     D = get_diffBragg_instance()
+    D.nopolar = False
+    D.interpolate = 0
     D.spot_scale = 1e5
     rois = (20, 100, 30, 100), (10, 90, 40, 80)
+    #px = 39,52
     for x1, x2, y1, y2 in rois:
         D.raw_pixels *= 0
         D.region_of_interest = ((x1, x2), (y1, y2))
+        #D.printout_pixel_fastslow = x1+px[0], y1+px[1]
+
         D.add_nanoBragg_spots()
         nano_pixels = D.raw_pixels.as_numpy_array()
         nano_roi_pixels = nano_pixels[y1:y2+1, x1:x2+1]

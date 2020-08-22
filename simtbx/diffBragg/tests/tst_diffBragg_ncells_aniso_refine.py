@@ -14,7 +14,7 @@ from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg import utils
 from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager
-from simtbx.diffBragg.refiners.global_refiner import GlobalRefiner
+from simtbx.diffBragg.refiners.local_refiner import LocalRefiner
 
 
 ucell = (85.2, 96, 124, 90, 105, 90)
@@ -131,7 +131,7 @@ n_total_unknowns = n_local_unknowns + n_global_unknowns
 
 SIM.D.oversample_omega = False
 starting_originZ = SIM.detector[0].get_origin()[2]
-RUC = GlobalRefiner(
+RUC = LocalRefiner(
     n_total_params=n_total_unknowns,
     n_local_params=n_local_unknowns,
     n_global_params=n_global_unknowns,

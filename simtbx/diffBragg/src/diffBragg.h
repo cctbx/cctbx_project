@@ -32,6 +32,9 @@ class panel_manager: public derivative_manager{
     //virtual void set_R();
     void increment(double Iincrement, double omega_pixel, mat3 M, double pix2, vec3 o, vec3 k_diffracted,
                 double per_k, double per_k3, double per_k5, vec3 V);
+
+    af::flex_double get_increment(double Iincrement, double omega_pixel, mat3 M, double pix2, vec3 o, vec3 k_diffracted,
+                double per_k, double per_k3, double per_k5, vec3 V, vec3 _dk);
     mat3 dR;
     vec3 dF;
     vec3 dS;
@@ -183,8 +186,9 @@ class diffBragg: public nanoBragg{
   mat3 Umatrix;
   mat3 Bmatrix;
   mat3 Omatrix;
-  mat3 UBO;
-  mat3 Bmat_realspace, NABC; //, dN;
+  //mat3 UBO;
+  //mat3 Bmat_realspace, NABC; //, dN;
+  mat3 NABC;
   mat3 RXYZ;
   std::vector<mat3> RotMats;
   std::vector<mat3> dRotMats, d2RotMats;
@@ -195,14 +199,14 @@ class diffBragg: public nanoBragg{
   mat3 panR2;
   double panel_rot_ang;
 
-  vec3 k_diffracted;
-  vec3 o_vec;
+  //vec3 k_diffracted;
+  //vec3 o_vec;
   vec3 Ei_vec, Bi_vec;
-  vec3 H_vec, H0_vec;
-  vec3 a_vec, ap_vec;
-  vec3 b_vec, bp_vec;
-  vec3 c_vec, cp_vec;
-  vec3 q_vec; // scattering vector
+  //vec3 H_vec, H0_vec;
+  //vec3 a_vec, ap_vec;
+  //vec3 b_vec, bp_vec;
+  //vec3 c_vec, cp_vec;
+  //vec3 q_vec; // scattering vector
 
   std::vector<mat3> UMATS;
   std::vector<mat3> UMATS_RXYZ;
@@ -222,6 +226,9 @@ class diffBragg: public nanoBragg{
 
   double* floatimage_roi;
   af::flex_double raw_pixels_roi;
+  //af::flex_int raw_pixels_roi;
+  //af::flex_double raw_pixels_roi;
+  //af::flex_double raw_pixels_roi;
 
   bool compute_curvatures;
   bool update_oversample_during_refinement;
