@@ -21,7 +21,7 @@ from dxtbx.model import Panel
 from copy import deepcopy
 import numpy as np
 from scipy.spatial.transform import Rotation
-from simtbx.diffBragg.refiners.global_refiner import GlobalRefiner
+from simtbx.diffBragg.refiners.local_refiner import LocalRefiner
 from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager
 
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
@@ -80,7 +80,6 @@ SIM.add_air = True
 SIM.add_Water = True
 SIM.include_noise = True
 #SIM.D.spot_scale = 1e8
-
 
 SIM.D.add_diffBragg_spots()
 spots = SIM.D.raw_pixels.as_numpy_array()
@@ -203,7 +202,7 @@ n_total_unknowns = n_local_unknowns + n_global_unknowns
 
 SIM.D.oversample_omega = False
 starting_originZ = SIM.detector[0].get_origin()[2]
-RUC = GlobalRefiner(
+RUC = LocalRefiner(
     n_total_params=n_total_unknowns,
     n_local_params=n_local_unknowns,
     n_global_params=n_global_unknowns,

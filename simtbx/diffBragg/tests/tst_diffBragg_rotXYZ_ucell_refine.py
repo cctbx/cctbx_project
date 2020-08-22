@@ -288,11 +288,11 @@ ngain_param = 1
 n_global_unknowns = nfcell_param + ngain_param + n_global_m_param + n_global_ucell_param
 n_total_unknowns = n_local_unknowns + n_global_unknowns
 
-from simtbx.diffBragg.refiners.global_refiner import GlobalRefiner
+from simtbx.diffBragg.refiners.local_refiner import LocalRefiner
 
 shot_originZ_init = {0: SIM.detector[0].get_origin()[2]}
 
-RUC = GlobalRefiner(
+RUC = LocalRefiner(
     n_total_params=n_total_unknowns,
     n_local_params=n_local_unknowns,
     n_global_params=n_global_unknowns,
