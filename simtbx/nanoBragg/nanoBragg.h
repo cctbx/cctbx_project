@@ -120,12 +120,6 @@ double ran1(long *idum);
 /* ln of the gamma function */
 double gammln(double xx);
 
-/* return Gaussian deviate with rms=1 and FWHM = 2/sqrt(log(2)) */
-double gaussdev(long *idum);
-/* return Poissonian deviate given expectation value */
-double poidev(double xm, long *idum);
-
-
 /* Fourier transform of a truncated lattice */
 double sincg(double x, double N);
 /* Fourier transform of a sphere */
