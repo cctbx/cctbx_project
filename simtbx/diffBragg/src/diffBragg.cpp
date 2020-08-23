@@ -1,5 +1,6 @@
 #include <simtbx/diffBragg/src/diffBragg.h>
 #include <assert.h>
+#include <omp.h>
 //#include <algorithm>
 namespace simtbx {
 namespace nanoBragg {
@@ -1048,6 +1049,7 @@ double diffBragg::polarization_factor(double kahn_factor, double *incident, doub
     sin2theta_sqr = 1-cos2theta_sqr;
     u = cos2theta_sqr;
 
+    double _psi=0;
     if(kahn_factor != 0.0){
         //SCITBX_EXAMINE(kahn_factor);
         /* tricky bit here is deciding which direciton the E-vector lies in for each source
@@ -1057,28 +1059,29 @@ double diffBragg::polarization_factor(double kahn_factor, double *incident, doub
         cross_product(axis,incident,B_in);
         /* make it a unit vector */
         unitize(B_in,B_in);
-        Bi_vec[0] = B_in[1];
-        Bi_vec[1] = B_in[2];
-        Bi_vec[2] = B_in[3];
+        //vec3 Bi_vec = vec3(B_in[1], B_in[2], B_in[3]);
+        //Bi_vec[0] = B_in[1];
+        //Bi_vec[1] = B_in[2];
+        //Bi_vec[2] = B_in[3];
 
         /* cross product with incident beam to get E-vector direction */
         cross_product(incident,B_in,E_in);
         /* make it a unit vector */
         unitize(E_in,E_in);
-        Ei_vec[0] = E_in[1];
-        Ei_vec[1] = E_in[2];
-        Ei_vec[2] = E_in[3];
+        //vec3 Ei_vec = vec3(E_in[1], E_in[2], E_in[3]);
+        //Ei_vec[0] = E_in[1];
+        //Ei_vec[1] = E_in[2];
+        //Ei_vec[2] = E_in[3];
 
         /* get components of diffracted ray projected onto the E-B plane */
-        kEi = dot_product(diffracted,E_in);
-        kBi = dot_product(diffracted,B_in);
+        double _kEi = dot_product(diffracted,E_in);
+        double _kBi = dot_product(diffracted,B_in);
 
         /* compute the angle of the diffracted ray projected onto the incident E-B plane */
-        psi = -atan2(kBi,kEi);
+        _psi = -atan2(_kBi,_kEi);
     }
-
     /* correction for polarized incident beam */
-    return 0.5*(1.0 + cos2theta_sqr - kahn_factor*cos(2*psi)*sin2theta_sqr);
+    return 0.5*(1.0 + cos2theta_sqr - kahn_factor*cos(2*_psi)*sin2theta_sqr);
 }
 
 // BEGIN diffBragg_add_spots
@@ -1119,7 +1122,6 @@ void diffBragg::add_diffBragg_spots()
 
     //int min_i= 10000000000;
     //int max_i= -1;
-    int roi_fdim = roi_xmax - roi_xmin+1;
     //int roi_sdim = roi_ymax - roi_ymin+1;
     
     /* ravel the step loops into a single loop */
@@ -1127,10 +1129,11 @@ void diffBragg::add_diffBragg_spots()
     int fpixel_max = std::min( roi_xmax, fpixels-1);
     int nspix_steps = spixel_max - roi_ymin + 1;
     int nfpix_steps = fpixel_max - roi_xmin + 1;
-    int Nsteps = nspix_steps*nfpix_steps*oversample*oversample*detector_thicksteps*sources*phisteps*mosaic_domains;
+    //int Nsteps = nspix_steps*nfpix_steps*oversample*oversample*detector_thicksteps*sources*phisteps*mosaic_domains;
+    int Nsteps = oversample*oversample*detector_thicksteps*sources*phisteps*mosaic_domains;
     int i_step = 0;
-    af::flex_int spix_pos = af::flex_int(Nsteps,0);
-    af::flex_int fpix_pos = af::flex_int(Nsteps,0);
+    //af::flex_int spix_pos = af::flex_int(Nsteps,0);
+    //af::flex_int fpix_pos = af::flex_int(Nsteps,0);
     af::flex_int subS_pos = af::flex_int(Nsteps,0);
     af::flex_int subF_pos = af::flex_int(Nsteps,0);
     af::flex_int thick_pos = af::flex_int(Nsteps,0);
@@ -1140,16 +1143,17 @@ void diffBragg::add_diffBragg_spots()
 
     //i = spixel*fpixels + fpixel;
     /* TODO theres probably a clever way to do this, but oh well */
-    for(spixel=roi_ymin;spixel <= spixel_max;++spixel){
-        for(fpixel=roi_xmin;fpixel <= fpixel_max;++fpixel){
+    // TODO: time me
+    //for(spixel=roi_ymin;spixel <= spixel_max;++spixel){
+    //    for(fpixel=roi_xmin;fpixel <= fpixel_max;++fpixel){
             for(subS=0;subS<oversample;++subS){
                 for(subF=0;subF<oversample;++subF){
                     for(thick_tic=0;thick_tic<detector_thicksteps;++thick_tic){
                         for(source=0;source<sources;++source){
                             for(phi_tic = 0; phi_tic < phisteps; ++phi_tic){
                                 for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
-                                    spix_pos[i_step] = spixel;
-                                    fpix_pos[i_step] = fpixel;
+                                    //spix_pos[i_step] = spixel;
+                                    //fpix_pos[i_step] = fpixel;
                                     subS_pos[i_step] = subS;
                                     subF_pos[i_step] = subF;
                                     thick_pos[i_step] = thick_tic;
@@ -1163,30 +1167,61 @@ void diffBragg::add_diffBragg_spots()
                     }
                 }
             }
-        }
-    }
+        //}
+    //}
 
     sum = sumsqr = 0.0;
     sumn = 0;
     progress_pixel = 0;
     omega_sum = 0.0;
-
     vec3 spindle_vec = vec3(spindle_vector[1], spindle_vector[2], spindle_vector[3]);
-    //int roi_i = -1;
-    //int spixel_max = std::min( roi_ymax, spixels-1);
-    //int fpixel_max = std::min( roi_xmax, fpixels-1);
-    for (int i_step=0; i_step< Nsteps; i_step++){
-        spixel = spix_pos[i_step];
-        fpixel = fpix_pos[i_step];
+
+    int Npix = nfpix_steps*nspix_steps;
+    af::flex_int spix_pos = af::flex_int(Npix,0);
+    af::flex_int fpix_pos = af::flex_int(Npix,0);
+    i_step = 0;
+    for(spixel=roi_ymin;spixel <= spixel_max;++spixel){
+        for(fpixel=roi_xmin;fpixel <= fpixel_max;++fpixel){
+            spix_pos[i_step] = spixel;
+            fpix_pos[i_step] = fpixel;
+            i_step += 1;
+        }
+    }
+
+    /* Loop over 'em steps */
+    #pragma omp parallel for \
+        //shared(Npix, source_X, source_Y, source_Z, source_lambda, source_I, \
+        //    spixel_max, fpixel_max, spixels, fpixels, \
+        //    fdet_vector, sdet_vector, odet_vector, pix0_vector, \
+        //    panels, lambda_managers, fcell_man, rot_managers, ucell_managers, Ncells_managers, \
+        //    dmin, steps, phisteps, spindle_vec, mosaic_domains, mosaic_umats, \
+        //    spot_scale, fluence, floatimage_roi, floatimage, \
+        //    Omatrix, Umatrix, UMATS_RXYZ,Na, Nb, Nc,UMATS,  \
+        //    fudge, h_min, k_min, l_min, h_range, k_range, l_range, verbose, babble, h_max, k_max, l_max, \
+        //    default_F, polarization, polar_vector, \
+        //    roi_xmax, roi_xmin, roi_ymax, roi_ymin, maskimage, Nsteps, \
+        //    subS_pos, subF_pos, thick_pos, source_pos,  phi_pos, mos_pos, \
+        //    fpix_pos, spix_pos, \
+        //    subpixel_size, pixel_size, close_distance, oversample, detector_thickstep, detector_thick, detector_attnlen, \
+        //    use_lambda_coefficients, compute_curvatures, ap, bp, cp, a0, b0, c0, \
+        //    only_save_omega_kahn, complex_miller, Fhkl, Fhkl2, oversample_omega) \
+        //default(none)
+
+    for (int i2=0; i2 < Npix ; i2++ ){
     //for(spixel=roi_ymin;spixel <= spixel_max;++spixel)
     //{
     //    for(fpixel=roi_xmin;fpixel <= fpixel_max;++fpixel)
     //    {
+        int _spixel = spix_pos[i2];
+        int _fpixel = fpix_pos[i2];
+    //for (int i_step=0; i_step< Nsteps; i_step++){
+    //    spixel = spix_pos[i_step];
+    //    fpixel = fpix_pos[i_step];
             /* allow for just one part of detector to be rendered */
             int Ncontinue1=0;
             int Ncontinue2=0;
-            int Npasses = 0;
-            i = spixel*fpixels + fpixel;
+            int Npasses=0;
+            int _i = _spixel*fpixels + _fpixel;
             //if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax)
             //{
             //    ++i; printf("EFFGS\n"); continue;
@@ -1197,123 +1232,51 @@ void diffBragg::add_diffBragg_spots()
             if(maskimage != NULL)
             {
                 /* skip any flagged pixels in the mask */
-                if(maskimage[i] == 0)
+                if(maskimage[_i] == 0)
                 {
                     //++i; //++roi_i;
                     continue;
                 }
             }
+
             /* reset photon count for this pixel */
-            I = 0;
+            double _I = 0;
 
             /* reset derivative photon counts for the various parameters*/
             af::flex_double rot_manager_dI = af::flex_double(3,0);
             af::flex_double rot_manager_dI2 = af::flex_double(3,0);
-            //for (int i_rot =0 ; i_rot < 3 ; i_rot++){
-            //    if (rot_managers[i_rot]->refine_me){
-            //        //rot_managers[i_rot]->dI =0;
-            //        //rot_managers[i_rot]->dI2 =0;
-            //    }
-            //}
             af::flex_double ucell_manager_dI = af::flex_double(6,0);
             af::flex_double ucell_manager_dI2 = af::flex_double(6,0);
-
-            //for (int i_uc =0 ; i_uc < 6 ; i_uc++){
-            //    if (ucell_managers[i_uc]->refine_me){
-            //        ucell_managers[i_uc]->dI =0;
-            //        ucell_managers[i_uc]->dI2 =0;
-            //    }
-            //}
-
             af::flex_double Ncells_manager_dI = af::flex_double(3,0);
             af::flex_double Ncells_manager_dI2 = af::flex_double(3,0);
-
             af::flex_double pan_orig_manager_dI = af::flex_double(3,0);
             af::flex_double pan_orig_manager_dI2 = af::flex_double(3,0);
             af::flex_double pan_rot_manager_dI = af::flex_double(3,0);
             af::flex_double pan_rot_manager_dI2 = af::flex_double(3,0);
-
-            //if (Ncells_managers[0]->refine_me){
-            //    Ncells_managers[0]->dI =0;
-            //    Ncells_managers[0]->dI2 =0;
-            //    if (! isotropic_ncells){
-            //        Ncells_managers[1]->dI =0;
-            //        Ncells_managers[1]->dI2 =0;
-            //        Ncells_managers[2]->dI =0;
-            //        Ncells_managers[2]->dI2 =0;
-            //    }
-            //}
-
-            boost::shared_ptr<panel_manager> pan_orig;
-            //for (int i_pan_orig=0; i_pan_orig <3; i_pan_orig ++){
-            //    pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[1+i_pan_orig]);
-            //    if (pan_orig->refine_me){
-            //        pan_orig->dI=0;
-            //        pan_orig->dI2=0;
-            //        //pan_orig->FF=0;
-            //        //pan_orig->FdF=0;
-            //        //pan_orig->dFdF=0;
-            //        //pan_orig->FdF2=0;
-            //    }
-            //}
             double fcell_manager_dI = 0;
             double fcell_manager_dI2 = 0;
-
-            //if (fcell_man->refine_me){
-            //    fcell_man->dI = 0;
-            //    fcell_man->dI2 = 0;
-            //}
-
             af::flex_double lambda_manager_dI = af::flex_double(2,0);
             af::flex_double lambda_manager_dI2 = af::flex_double(2,0);
-
-            //for (int i_lam=0; i_lam < 2; i_lam ++){
-            //    if (lambda_managers[i_lam]->refine_me){
-            //        lambda_managers[i_lam]->dI =0;
-            //        lambda_managers[i_lam]->dI2 =0;
-            //    }
-            //}
-
+            boost::shared_ptr<panel_manager> pan_orig;
             boost::shared_ptr<panel_manager> pan_rot;
-            //int manager_ids[3] = {0,4,5};
-            //for (int i_rot=0; i_rot < 3; i_rot++){
-            //    int manager_id = manager_ids[i_rot];
-            //    pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[manager_id]);
-            //    if (pan_rot->refine_me){
-            //        pan_rot->dI=0;
-            //        pan_rot->dI2=0;
-            //    }
-            //}
-            
-        /* Loop over 'em steps */
-        //#pragma omp parallel for \
-        //  schedule(auto)\
-        //  shared(source_X, source_Y, source_Z, source_lambda, source_I,
-        //      fdet_vector, sdet_vector, sdet_vector)
-        //  default(none)
-        //for (int i_step=0; i_step< Nsteps; i_step++){
-            subS = subS_pos[i_step];
-            subF = subF_pos[i_step];
-            thick_tic = thick_pos[i_step];
-            source = source_pos[i_step];
-            phi_tic = phi_pos[i_step];
-            mos_tic = mos_pos[i_step];
 
-            int _subS = subS_pos[i_step];
-            int _subF = subF_pos[i_step];
-            int _thick_tic = thick_pos[i_step];
-            int _source = source_pos[i_step];
-            int _phi_tic = phi_pos[i_step];
-            int _mos_tic = mos_pos[i_step];
-            
+        for (int _i_step=0; _i_step < Nsteps; _i_step++){
+
+            int _subS = subS_pos[_i_step];
+            int _subF = subF_pos[_i_step];
+            int _thick_tic = thick_pos[_i_step];
+            int _source = source_pos[_i_step];
+            int _phi_tic = phi_pos[_i_step];
+            int _mos_tic = mos_pos[_i_step];
+
             /* loop over sub-pixels */
             //for(subS=0;subS<oversample;++subS)
             //{
                 //for(subF=0;subF<oversample;++subF)
                 //{
                     /* absolute mm position on detector (relative to its origin) */
-                    double _Fdet = subpixel_size*(fpixel*oversample + _subF ) + subpixel_size/2.0;
-                    double _Sdet = subpixel_size*(spixel*oversample + _subS ) + subpixel_size/2.0;
+                    double _Fdet = subpixel_size*(_fpixel*oversample + _subF ) + subpixel_size/2.0;
+                    double _Sdet = subpixel_size*(_spixel*oversample + _subS ) + subpixel_size/2.0;
                     //double _Fdet = subpixel_size*(fpixel*oversample + subF ) + subpixel_size/2.0;
                     //double _Sdet = subpixel_size*(spixel*oversample + subS ) + subpixel_size/2.0;
 
@@ -1357,7 +1320,7 @@ void diffBragg::add_diffBragg_spots()
 
                         /* option to turn off obliquity effect, inverse-square-law only */
                         if(point_pixel) _omega_pixel = 1.0/_airpath/_airpath;
-                        omega_sum += _omega_pixel;
+                        //omega_sum += _omega_pixel;
 
                         /* now calculate detector thickness effects */
                         double _capture_fraction = 1;
@@ -1373,10 +1336,10 @@ void diffBragg::add_diffBragg_spots()
                     //for(source=0;source<sources;++source){
                         /* retrieve stuff from cache */
                         vec3 _incident;
-                        _incident[0] = -source_X[source];
-                        _incident[1] = -source_Y[source];
-                        _incident[2] = -source_Z[source];
-                        double _lambda = source_lambda[source];
+                        _incident[0] = -source_X[_source];
+                        _incident[1] = -source_Y[_source];
+                        _incident[2] = -source_Z[_source];
+                        double _lambda = source_lambda[_source];
 
                         //std::vector<vec3> = lambda_dg_vectors;
                         double lambda_ang = _lambda*1e10;
@@ -1413,7 +1376,6 @@ void diffBragg::add_diffBragg_spots()
                         /* sweep over phi angles */
                         //for(phi_tic = 0; phi_tic < phisteps; ++phi_tic)
                         // {
-
                             vec3 ap_vec = vec3(ap[1], ap[2], ap[3]);
                             vec3 bp_vec = vec3(bp[1], bp[2], bp[3]);
                             vec3 cp_vec = vec3(cp[1], cp[2], cp[3]);
@@ -1433,6 +1395,12 @@ void diffBragg::add_diffBragg_spots()
                                 //rotate_axis(a0,ap,spindle_vector,_phi);
                                 //rotate_axis(b0,bp,spindle_vector,_phi);
                                 //rotate_axis(c0,cp,spindle_vector,_phi);
+                                // Legacy preserve
+                                for (int ii=0; ii <3; ii++){
+                                    ap[ii+1] = ap_vec[ii];
+                                    bp[ii+1] = bp_vec[ii];
+                                    cp[ii+1] = cp_vec[ii];
+                                }
                             }
                             /* enumerate mosaic domains */
                             //for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic)
@@ -1453,9 +1421,8 @@ void diffBragg::add_diffBragg_spots()
                                 Bmat_realspace[8] = 1e10*cp_vec[2];
 
                                 /* construct fractional Miller indicies */
-                                mat3 UBO = (UMATS_RXYZ[mos_tic] * Umatrix*Bmat_realspace*(Omatrix.transpose())).transpose();
+                                mat3 UBO = (UMATS_RXYZ[_mos_tic] * Umatrix*Bmat_realspace*(Omatrix.transpose())).transpose();
                                 vec3 H_vec = UBO * q_vec;
-                                //vec3 H_vec = (UMATS_RXYZ[mos_tic] * Bmat_realspace).transpose() * q_vec;
                                 double _h = H_vec[0];
                                 double _k = H_vec[1];
                                 double _l = H_vec[2];
@@ -1484,8 +1451,8 @@ void diffBragg::add_diffBragg_spots()
 
                                 /* no need to go further if result will be zero */
                                 if(_F_latt == 0.0 && ! only_save_omega_kahn) {
-                                Ncontinue2 +=1;
-                                continue;
+                                    Ncontinue2 +=1;
+                                    continue;
                                 }
 
 
@@ -1519,8 +1486,8 @@ void diffBragg::add_diffBragg_spots()
                                     _omega_pixel = 1;
 
                                 /* increment to intensity */
-                                double Iincrement = _F_cell*_F_cell*_F_latt*_F_latt*source_I[source]*_capture_fraction*_omega_pixel;
-                                I += Iincrement;  //  F_cell*F_cell*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
+                                double Iincrement = _F_cell*_F_cell*_F_latt*_F_latt*source_I[_source]*_capture_fraction*_omega_pixel;
+                                _I += Iincrement;  //  F_cell*F_cell*F_latt*F_latt*source_I[source]*capture_fraction*omega_pixel;
 
                                 if(verbose > 3)
                                     printf("hkl= %f %f %f  hkl1= %d %d %d  Fcell=%f\n", _h,_k,_l,_h0,_k0,_l0, _F_cell);
@@ -1529,12 +1496,12 @@ void diffBragg::add_diffBragg_spots()
                                 mat3 UBOt = Umatrix*Bmat_realspace*(Omatrix.transpose());
                                 if (rot_managers[0]->refine_me){
                                     mat3 RyRzUBOt = RotMats[1]*RotMats[2]*UBOt;
-                                    vec3 delta_H_prime = (UMATS[mos_tic]*dRotMats[0]*RyRzUBOt).transpose()*q_vec;
+                                    vec3 delta_H_prime = (UMATS[_mos_tic]*dRotMats[0]*RyRzUBOt).transpose()*q_vec;
                                     double V_dot_dV = V*(NABC*delta_H_prime);
                                     double value = -two_C * V_dot_dV * Iincrement;
                                     double value2 =0;
                                     if (compute_curvatures) {
-                                        vec3 delta_H_dbl_prime = (UMATS[mos_tic]*d2RotMats[0]*RyRzUBOt).transpose()*q_vec;
+                                        vec3 delta_H_dbl_prime = (UMATS[_mos_tic]*d2RotMats[0]*RyRzUBOt).transpose()*q_vec;
                                         double dV_dot_dV = (NABC*delta_H_prime)*(NABC*delta_H_prime);
                                         double dV2_dot_V = (NABC*delta_H)*(NABC*delta_H_dbl_prime);
                                         value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
@@ -1544,7 +1511,7 @@ void diffBragg::add_diffBragg_spots()
                                     //rot_managers[0]->increment(value, value2);
                                 }
                                 if (rot_managers[1]->refine_me){
-                                    mat3 UmosRx = UMATS[mos_tic]*RotMats[0];
+                                    mat3 UmosRx = UMATS[_mos_tic]*RotMats[0];
                                     mat3 RzUBOt = RotMats[2]*UBOt;
                                     vec3 delta_H_prime =(UmosRx*dRotMats[1]*RzUBOt).transpose()*q_vec;
                                     double V_dot_dV = V*(NABC*delta_H_prime);
@@ -1562,7 +1529,7 @@ void diffBragg::add_diffBragg_spots()
                                     //rot_managers[1]->increment(value, value2);
                                 }
                                 if (rot_managers[2]->refine_me){
-                                    mat3 UmosRxRy = UMATS[mos_tic]*RotMats[0]*RotMats[1];
+                                    mat3 UmosRxRy = UMATS[_mos_tic]*RotMats[0]*RotMats[1];
                                     vec3 delta_H_prime = (UmosRxRy*dRotMats[2]*UBOt).transpose()*q_vec;
                                     double V_dot_dV = V*(NABC*delta_H_prime);
                                     double value = -two_C * V_dot_dV * Iincrement;
@@ -1583,7 +1550,7 @@ void diffBragg::add_diffBragg_spots()
                                 mat3 Ot = Omatrix.transpose();
                                 for(int i_uc=0; i_uc < 6; i_uc++ ){
                                     if (ucell_managers[i_uc]->refine_me){
-                                        mat3 UmosRxRyRzU = UMATS_RXYZ[mos_tic]*Umatrix;
+                                        mat3 UmosRxRyRzU = UMATS_RXYZ[_mos_tic]*Umatrix;
                                         vec3 delta_H_prime = ((UmosRxRyRzU*(ucell_managers[i_uc]->dB)*Ot).transpose()*q_vec);
                                         double V_dot_dV = V*(NABC*delta_H_prime);
                                         double value = -two_C * V_dot_dV * Iincrement;
@@ -1607,16 +1574,16 @@ void diffBragg::add_diffBragg_spots()
                                     if (not isotropic_ncells)
                                         num_ncell_deriv = 3;
                                     for (int i_nc=0; i_nc < num_ncell_deriv; i_nc++) {
-                                        int _i = i_nc*3 + i_nc; // diagonal term
+                                        int i_diag = i_nc*3 + i_nc; // diagonal term
                                         mat3 dN = mat3(0,0,0,0,0,0,0,0,0);
-                                        dN[_i] = 1;
-                                        double N_i = NABC[_i];
+                                        dN[i_diag] = 1;
+                                        double N_i = NABC[i_diag];
                                         vec3 dV_dN = dN*delta_H;
                                         double deriv_coef = (1/N_i - C*dV_dN*V);
                                         double value = 2*Iincrement*deriv_coef;
                                         double value2=0;
                                         if(compute_curvatures){
-                                            dN[_i] = 0; // TODO check maths
+                                            dN[i_diag] = 0; // TODO check maths
                                             value2 = ( -1/N_i/N_i - C*dV_dN*dV_dN)*2*Iincrement;
                                             value2 += deriv_coef*2*value;
                                         }
@@ -1707,24 +1674,27 @@ void diffBragg::add_diffBragg_spots()
                 /* end of sub-pixel y loop */
             //}
             /* end of sub-pixel x loop */
-			// /// /// ///    } /* end of i_steps loop */
+			} /* end of i_steps loop */
             /* absolute mm position on detector (relative to its origin) */
-            //printf("Pixel %d, %d: Ncont1=%d, Ncont2=%d, Npasses=%d\n" ,fpixel, spixel, Ncontinue1, Ncontinue2, Npasses);
-            Fdet_ave = pixel_size*fpixel + pixel_size/2.0;
-            Sdet_ave = pixel_size*spixel + pixel_size/2.0;
-            Odet_ave = 0; //Odet; // TODO maybe make this more general for thick detectors?
+            if (verbose)
+                printf("Pixel %d, %d: Ncont1=%d, Ncont2=%d, Npasses=%d\n" ,fpixel, spixel, Ncontinue1, Ncontinue2, Npasses);
+            double _Fdet_ave = pixel_size*_fpixel + pixel_size/2.0;
+            double _Sdet_ave = pixel_size*_spixel + pixel_size/2.0;
+            double _Odet_ave = 0; //Odet; // TODO maybe make this more general for thick detectors?
 
-            pixel_pos_ave[1] = Fdet_ave*fdet_vector[1]+Sdet_ave*sdet_vector[1]+Odet_ave*odet_vector[1]+pix0_vector[1];
-            pixel_pos_ave[2] = Fdet_ave*fdet_vector[2]+Sdet_ave*sdet_vector[2]+Odet_ave*odet_vector[2]+pix0_vector[2];
-            pixel_pos_ave[3] = Fdet_ave*fdet_vector[3]+Sdet_ave*sdet_vector[3]+Odet_ave*odet_vector[3]+pix0_vector[3];
-            pixel_pos_ave[0] = 0.0;
+            double _pixel_pos_ave[4] = {0,0,0,0};
+            _pixel_pos_ave[1] = _Fdet_ave*fdet_vector[1]+_Sdet_ave*sdet_vector[1]+_Odet_ave*odet_vector[1]+pix0_vector[1];
+            _pixel_pos_ave[2] = _Fdet_ave*fdet_vector[2]+_Sdet_ave*sdet_vector[2]+_Odet_ave*odet_vector[2]+pix0_vector[2];
+            _pixel_pos_ave[3] = _Fdet_ave*fdet_vector[3]+_Sdet_ave*sdet_vector[3]+_Odet_ave*odet_vector[3]+pix0_vector[3];
 
-            airpath_ave = unitize(pixel_pos_ave,diffracted_ave);
-            omega_pixel_ave = pixel_size*pixel_size/airpath_ave/airpath_ave*close_distance/airpath_ave;
+            double _diffracted_ave[4] = {0,0,0,0};
+            double _airpath_ave = unitize(_pixel_pos_ave,_diffracted_ave);
+            double _omega_pixel_ave = pixel_size*pixel_size/_airpath_ave/_airpath_ave*close_distance/_airpath_ave;
 
-            k_diffracted_ave[0] = pixel_pos_ave[1];
-            k_diffracted_ave[1] = pixel_pos_ave[2];
-            k_diffracted_ave[2] = pixel_pos_ave[3];
+            vec3 _k_diffracted_ave = vec3(pixel_pos_ave[1], pixel_pos_ave[2], pixel_pos_ave[3]);
+            //k_diffracted_ave[0] = pixel_pos_ave[1];
+            //k_diffracted_ave[1] = pixel_pos_ave[2];
+            //k_diffracted_ave[2] = pixel_pos_ave[3];
 
             /* polarization factor */
             //if(!nopolar){
@@ -1734,29 +1704,34 @@ void diffBragg::add_diffBragg_spots()
             //}
             double _polar = 1;
             if (!nopolar){
-                incident[1] = -source_X[0];
-                incident[2] = -source_Y[0];
-                incident[3] = -source_Z[0];
-                double _dummie = unitize(incident, incident);
-                _polar = polarization_factor(polarization, incident, diffracted_ave, polar_vector);
+                double incident_beam[4] = {0,0,0,0};
+                // TODO what about divergence here ?
+                incident_beam[1] = -source_X[0];
+                incident_beam[2] = -source_Y[0];
+                incident_beam[3] = -source_Z[0];
+                unitize(incident_beam, incident_beam); // TODO remove ?
+                _polar = polarization_factor(polarization, incident_beam, _diffracted_ave, polar_vector);
             }
 
+            double _om = 1;
             if (!oversample_omega)
-                om=omega_pixel_ave;
-            else
-                om=1;  // if we hit this case it means we applied the correction already
+                _om=_omega_pixel_ave;
 
             // final scale term to being everything to photon number units
-            scale_term = r_e_sqr*fluence*spot_scale*_polar*om / steps;
+            double _scale_term = r_e_sqr*fluence*spot_scale*_polar*_om / steps;
 
+            double omp_time = omp_get_wtime();
             if(only_save_omega_kahn)
-                floatimage[i] += _polar*omega_pixel_ave;
+                floatimage[_i] = _polar*_omega_pixel_ave;
             else
-                floatimage[i] += scale_term*I;
+                floatimage[_i] = _scale_term*_I;
 
-            int roi_fs = i % fpixels - roi_xmin;
-            int roi_ss = floor(i / fpixels) - roi_ymin ;
+            int roi_fdim = roi_xmax - roi_xmin+1;
+            int roi_fs = _i % fpixels - roi_xmin;
+            int roi_ss = floor(_i / fpixels) - roi_ymin ;
             int roi_i =  roi_ss*roi_fdim + roi_fs ;
+            //printf("THREAD # %d: roi_i=%d\n", omp_get_thread_num() , roi_i);
+
             //SCITBX_EXAMINE(i);
             //SCITBX_EXAMINE(fpixels);
             //SCITBX_EXAMINE(spixels);
@@ -1769,15 +1744,20 @@ void diffBragg::add_diffBragg_spots()
             //SCITBX_ASSERT( roi_ss < roi_sdim);
             //SCITBX_ASSERT(roi_i >= 0);
             //SCITBX_ASSERT(roi_i < (roi_fdim*roi_sdim) ) ;
-            floatimage_roi[roi_i] += scale_term*I;
+            floatimage_roi[roi_i] = _scale_term*_I;
+
+            omp_time = omp_get_wtime()- omp_time;
+            omp_time = omp_time*1000000;
+            if (verbose)
+                printf("THREAD %d, wtime to update floatimage_roi %e microsec\n", omp_get_thread_num(), omp_time);
 
             /* udpate the rotation derivative images*/
             for (int i_rot =0 ; i_rot < 3 ; i_rot++){
                 if (rot_managers[i_rot]->refine_me){
-                    //double value = scale_term*rot_managers[i_rot]->dI;
+                    //double value = _scale_term*rot_managers[i_rot]->dI;
                     //double value2 = scale_term*rot_managers[i_rot]->dI2;
-                    double value = scale_term*rot_manager_dI[i_rot];
-                    double value2 = scale_term*rot_manager_dI2[i_rot];
+                    double value = _scale_term*rot_manager_dI[i_rot];
+                    double value2 = _scale_term*rot_manager_dI2[i_rot];
                     rot_managers[i_rot]->increment_image(roi_i, value, value2, compute_curvatures);
                 }
             } /* end rot deriv image increment */
@@ -1787,8 +1767,8 @@ void diffBragg::add_diffBragg_spots()
                 if (ucell_managers[i_uc]->refine_me){
                     //double value = scale_term*ucell_managers[i_uc]->dI;
                     //double value2 = scale_term*ucell_managers[i_uc]->dI2;
-                    double value = scale_term*ucell_manager_dI[i_uc];
-                    double value2 = scale_term*ucell_manager_dI2[i_uc];
+                    double value = _scale_term*ucell_manager_dI[i_uc];
+                    double value2 = _scale_term*ucell_manager_dI2[i_uc];
                     ucell_managers[i_uc]->increment_image(roi_i, value, value2, compute_curvatures);
                 }
             }/* end ucell deriv image increment */
@@ -1797,16 +1777,16 @@ void diffBragg::add_diffBragg_spots()
             if (Ncells_managers[0]->refine_me){
                 //double value = scale_term*Ncells_managers[0]->dI;
                 //double value2 = scale_term*Ncells_managers[0]->dI2;
-                double value = scale_term*Ncells_manager_dI[0];
-                double value2 = scale_term*Ncells_manager_dI2[0];
+                double value = _scale_term*Ncells_manager_dI[0];
+                double value2 = _scale_term*Ncells_manager_dI2[0];
                 Ncells_managers[0]->increment_image(roi_i, value, value2, compute_curvatures);
                 if (! isotropic_ncells){
-                    value = scale_term*Ncells_manager_dI[1];
-                    value2 = scale_term*Ncells_manager_dI2[1];
+                    value = _scale_term*Ncells_manager_dI[1];
+                    value2 = _scale_term*Ncells_manager_dI2[1];
                     Ncells_managers[1]->increment_image(roi_i, value, value2, compute_curvatures);
 
-                    value = scale_term*Ncells_manager_dI[2];
-                    value2 = scale_term*Ncells_manager_dI2[2];
+                    value = _scale_term*Ncells_manager_dI[2];
+                    value2 = _scale_term*Ncells_manager_dI2[2];
                     Ncells_managers[2]->increment_image(roi_i, value, value2, compute_curvatures);
                 }
             }/* end Ncells deriv image increment */
@@ -1815,8 +1795,8 @@ void diffBragg::add_diffBragg_spots()
             if(fcell_man->refine_me){
                 //double value = scale_term*fcell_man->dI;
                 //double value2 = scale_term*fcell_man->dI2;
-                double value = scale_term*fcell_manager_dI;
-                double value2 = scale_term*fcell_manager_dI2;
+                double value = _scale_term*fcell_manager_dI;
+                double value2 = _scale_term*fcell_manager_dI2;
                 fcell_man->increment_image(roi_i, value, value2, compute_curvatures);
             }/* end Fcell deriv image increment */
 
@@ -1825,8 +1805,8 @@ void diffBragg::add_diffBragg_spots()
                 if (lambda_managers[i_lam]->refine_me){
                     //double value = scale_term*lambda_managers[i_lam]->dI;
                     //double value2 = scale_term*lambda_managers[i_lam]->dI2;
-                    double value = scale_term*lambda_manager_dI[i_lam];
-                    double value2 = scale_term*lambda_manager_dI2[i_lam];
+                    double value = _scale_term*lambda_manager_dI[i_lam];
+                    double value2 = _scale_term*lambda_manager_dI2[i_lam];
                     lambda_managers[i_lam]->increment_image(roi_i, value, value2, compute_curvatures);
                 }
             }/* end lambda deriv image increment */
@@ -1838,8 +1818,8 @@ void diffBragg::add_diffBragg_spots()
                 if(pan_rot->refine_me){
                     //double value = scale_term*pan_rot->dI;
                     //double value2 = scale_term*pan_rot->dI2;
-                    double value = scale_term*pan_rot_manager_dI[i_pan_rot];
-                    double value2 = scale_term*pan_rot_manager_dI2[i_pan_rot];
+                    double value = _scale_term*pan_rot_manager_dI[i_pan_rot];
+                    double value2 = _scale_term*pan_rot_manager_dI2[i_pan_rot];
                     pan_rot->increment_image(roi_i, value, value2, compute_curvatures);
                 }
             }/* end panel rot deriv image increment */
@@ -1849,32 +1829,31 @@ void diffBragg::add_diffBragg_spots()
                 if(pan_orig->refine_me){
                     //double value = scale_term*pan_orig->dI;
                     //double value2 = scale_term*pan_orig->dI2;
-                    double value = scale_term*pan_orig_manager_dI[i_pan_orig];
-                    double value2 = scale_term*pan_orig_manager_dI2[i_pan_orig];
+                    double value = _scale_term*pan_orig_manager_dI[i_pan_orig];
+                    double value2 = _scale_term*pan_orig_manager_dI2[i_pan_orig];
                     pan_orig->increment_image(roi_i, value, value2, compute_curvatures);
                 }/* end panel orig deriv image increment */
             }
             /* update origin derivative image */
-
-            if(floatimage[i] > max_I) {
-                max_I = floatimage[i];
-                max_I_x = Fdet;
-                max_I_y = Sdet;
-                max_I_hkl[0] = h0;
-                max_I_hkl[1] = k0;
-                max_I_hkl[2] = l0;
-            }
-            sum += floatimage[i];
-            sumsqr += floatimage[i]*floatimage[i];
-            ++sumn;
+            //if(floatimage[_i] > max_I) {
+            //    max_I = floatimage[_i];
+            //    max_I_x = Fdet;
+            //    max_I_y = Sdet;
+            //    max_I_hkl[0] = h0;
+            //    max_I_hkl[1] = k0;
+            //    max_I_hkl[2] = l0;
+            //}
+            //sum += floatimage[_i];
+            //sumsqr += floatimage[_i]*floatimage[_i];
+            //++sumn;
 
             if( printout )
             {
-                if((fpixel==printout_fpixel && spixel==printout_spixel) || printout_fpixel < 0)
+                if((_fpixel==printout_fpixel && _spixel==printout_spixel) || printout_fpixel < 0)
                 {
                     twotheta = atan2(sqrt(pixel_pos[2]*pixel_pos[2]+pixel_pos[3]*pixel_pos[3]),pixel_pos[1]);
                     test = sin(twotheta/2.0)/(lambda0*1e10);
-                    printf("%4d %4d : stol = %g or %g\n", fpixel,spixel,stol,test);
+                    printf("%4d %4d : stol = %g or %g\n", _fpixel,_spixel,stol,test);
                     printf("at %g %g %g\n", pixel_pos[1],pixel_pos[2],pixel_pos[3]);
                     printf("hkl= %f %f %f  hkl0= %d %d %d\n", h,k,l,h0,k0,l0);
                     printf(" F_cell=%g  F_latt=%g   I = %g\n", F_cell,F_latt,I);
@@ -1882,57 +1861,56 @@ void diffBragg::add_diffBragg_spots()
                     printf("polar   %15.10g\n", polar);
                     printf("omega   %15.10g\n", omega_pixel);
                     /* some useful printouts for debugging purposes */
-                    SCITBX_EXAMINE(I);
-                    SCITBX_EXAMINE(FF);
-                    SCITBX_EXAMINE(scale_term);
-                    SCITBX_EXAMINE(scale_term2);
-                    SCITBX_EXAMINE(omega_pixel_ave);
-                    SCITBX_EXAMINE(om);
-                    SCITBX_EXAMINE(diffracted_ave[0]);
-                    SCITBX_EXAMINE(diffracted_ave[1]);
-                    SCITBX_EXAMINE(diffracted_ave[2]);
-                    SCITBX_EXAMINE(diffracted_ave[3]);
-                    SCITBX_EXAMINE(diffracted[0]);
-                    SCITBX_EXAMINE(diffracted[1]);
-                    SCITBX_EXAMINE(diffracted[2]);
-                    SCITBX_EXAMINE(diffracted[3]);
-                    SCITBX_EXAMINE(airpath);
-                    SCITBX_EXAMINE(airpath_ave);
-                    SCITBX_EXAMINE(pixel_pos[0]);
-                    SCITBX_EXAMINE(pixel_pos[1]);
-                    SCITBX_EXAMINE(pixel_pos[2]);
-                    SCITBX_EXAMINE(pixel_pos[3]);
-                    SCITBX_EXAMINE(pixel_pos_ave[0]);
-                    SCITBX_EXAMINE(pixel_pos_ave[1]);
-                    SCITBX_EXAMINE(pixel_pos_ave[2]);
-                    SCITBX_EXAMINE(pixel_pos_ave[3]);
-                    SCITBX_EXAMINE(floatimage[i]);
-                    SCITBX_EXAMINE(u);
-                    SCITBX_EXAMINE(du);
-                    SCITBX_EXAMINE(v);
-                    SCITBX_EXAMINE(dv);
-                    SCITBX_EXAMINE(kBi);
-                    SCITBX_EXAMINE(kEi);
-                    SCITBX_EXAMINE(w);
-                    SCITBX_EXAMINE(gam_sin2psi);
-                    SCITBX_EXAMINE(gam_cos2psi);
-                    SCITBX_EXAMINE(dpolar);
-                    SCITBX_EXAMINE(dpolar2);
-                    SCITBX_EXAMINE(dOmega);
-                    SCITBX_EXAMINE(dOmega2);
-                    SCITBX_EXAMINE(FF);
-                    SCITBX_EXAMINE(FdF);
-                    SCITBX_EXAMINE(dFdF);
-                    SCITBX_EXAMINE(FdF2);
-                    SCITBX_EXAMINE(k_diffracted_ave[0]);
-                    SCITBX_EXAMINE(k_diffracted_ave[1]);
-                    SCITBX_EXAMINE(k_diffracted_ave[2]);
-                    SCITBX_EXAMINE(nopolar);
-                    SCITBX_EXAMINE(oversample_omega);
-                    SCITBX_EXAMINE(isotropic_ncells);
-                    SCITBX_EXAMINE(Na);
-                    SCITBX_EXAMINE(Nb);
-                    SCITBX_EXAMINE(Nc);
+                    //SCITBX_EXAMINE(I);
+                    //SCITBX_EXAMINE(FF);
+                    //SCITBX_EXAMINE(scale_term);
+                    //SCITBX_EXAMINE(omega_pixel_ave);
+                    //SCITBX_EXAMINE(om);
+                    //SCITBX_EXAMINE(diffracted_ave[0]);
+                    //SCITBX_EXAMINE(diffracted_ave[1]);
+                    //SCITBX_EXAMINE(diffracted_ave[2]);
+                    //SCITBX_EXAMINE(diffracted_ave[3]);
+                    //SCITBX_EXAMINE(diffracted[0]);
+                    //SCITBX_EXAMINE(diffracted[1]);
+                    //SCITBX_EXAMINE(diffracted[2]);
+                    //SCITBX_EXAMINE(diffracted[3]);
+                    //SCITBX_EXAMINE(airpath);
+                    //SCITBX_EXAMINE(airpath_ave);
+                    //SCITBX_EXAMINE(pixel_pos[0]);
+                    //SCITBX_EXAMINE(pixel_pos[1]);
+                    //SCITBX_EXAMINE(pixel_pos[2]);
+                    //SCITBX_EXAMINE(pixel_pos[3]);
+                    //SCITBX_EXAMINE(pixel_pos_ave[0]);
+                    //SCITBX_EXAMINE(pixel_pos_ave[1]);
+                    //SCITBX_EXAMINE(pixel_pos_ave[2]);
+                    //SCITBX_EXAMINE(pixel_pos_ave[3]);
+                    //SCITBX_EXAMINE(floatimage[_i]);
+                    //SCITBX_EXAMINE(u);
+                    //SCITBX_EXAMINE(du);
+                    //SCITBX_EXAMINE(v);
+                    //SCITBX_EXAMINE(dv);
+                    //SCITBX_EXAMINE(kBi);
+                    //SCITBX_EXAMINE(kEi);
+                    //SCITBX_EXAMINE(w);
+                    //SCITBX_EXAMINE(gam_sin2psi);
+                    //SCITBX_EXAMINE(gam_cos2psi);
+                    //SCITBX_EXAMINE(dpolar);
+                    //SCITBX_EXAMINE(dpolar2);
+                    //SCITBX_EXAMINE(dOmega);
+                    //SCITBX_EXAMINE(dOmega2);
+                    //SCITBX_EXAMINE(FF);
+                    //SCITBX_EXAMINE(FdF);
+                    //SCITBX_EXAMINE(dFdF);
+                    //SCITBX_EXAMINE(FdF2);
+                    //SCITBX_EXAMINE(k_diffracted_ave[0]);
+                    //SCITBX_EXAMINE(k_diffracted_ave[1]);
+                    //SCITBX_EXAMINE(k_diffracted_ave[2]);
+                    //SCITBX_EXAMINE(nopolar);
+                    //SCITBX_EXAMINE(oversample_omega);
+                    //SCITBX_EXAMINE(isotropic_ncells);
+                    //SCITBX_EXAMINE(Na);
+                    //SCITBX_EXAMINE(Nb);
+                    //SCITBX_EXAMINE(Nc);
                     //SCITBX_EXAMINE(dN[0]);
                     //SCITBX_EXAMINE(dN[1]);
                     //SCITBX_EXAMINE(dN[2]);
@@ -1944,9 +1922,9 @@ void diffBragg::add_diffBragg_spots()
                     //SCITBX_EXAMINE(dN[8]);
                     //double lambda_coef0 = lambda_managers[0]->value;
                     //double lambda_coef1 = lambda_managers[1]->value;
-                    SCITBX_EXAMINE(lambda_managers[0]->value);
-                    SCITBX_EXAMINE(lambda_managers[1]->value);
-                    SCITBX_EXAMINE(use_lambda_coefficients);
+                    //SCITBX_EXAMINE(lambda_managers[0]->value);
+                    //SCITBX_EXAMINE(lambda_managers[1]->value);
+                    //SCITBX_EXAMINE(use_lambda_coefficients);
                     printf("real-space cell vectors (Angstrom):\n");
                     printf("     %-10s  %-10s  %-10s\n","a","b","c");
                     printf("X: %11.8f %11.8f %11.8f\n",a[1]*1e10,b[1]*1e10,c[1]*1e10);
@@ -1974,27 +1952,27 @@ void diffBragg::add_diffBragg_spots()
                         Umatrix[6], Umatrix[7], Umatrix[8]);
                 }
             }
-            else
-            {
-                if(progress_meter && verbose && progress_pixels/100 > 0)
-                {
-                    if(progress_pixel % ( progress_pixels/20 ) == 0 ||
-                       ((10*progress_pixel<progress_pixels ||
-                         10*progress_pixel>9*progress_pixels) &&
-                        (progress_pixel % (progress_pixels/100) == 0)))
-                    {
-                        printf("%lu%% done\n",progress_pixel*100/progress_pixels);
-                    }
-                }
-                ++progress_pixel;
-            }
+            //else
+            //{
+            //    if(progress_meter && verbose && progress_pixels/100 > 0)
+            //    {
+            //        if(progress_pixel % ( progress_pixels/20 ) == 0 ||
+            //           ((10*progress_pixel<progress_pixels ||
+            //             10*progress_pixel>9*progress_pixels) &&
+            //            (progress_pixel % (progress_pixels/100) == 0)))
+            //        {
+            //            printf("%lu%% done\n",progress_pixel*100/progress_pixels);
+            //        }
+            //    }
+            //    ++progress_pixel;
+            //}
             //++i;
-        //}
-    //}
-    } /* end of i_steps loop mega steps */
+        //} /* end of fpixels loop */
+    //} /* end of spixels loop */
+    } /* end of i2 steps */
     if(verbose) printf("done with pixel loop\n");
-    if(verbose) printf("solid angle subtended by detector = %g steradian ( %g%% sphere)\n",omega_sum/steps,100*omega_sum/steps/4/M_PI);
-    if(verbose) printf("max_I= %g sum= %g avg= %g\n",max_I,sum,sum/sumn);
+    //if(verbose) printf("solid angle subtended by detector = %g steradian ( %g%% sphere)\n",omega_sum/steps,100*omega_sum/steps/4/M_PI);
+    //if(verbose) printf("max_I= %g sum= %g avg= %g\n",max_I,sum,sum/sumn);
 
 } // END  of add_diffBragg_spots
 // END diffBragg
