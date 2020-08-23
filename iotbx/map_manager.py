@@ -1475,6 +1475,7 @@ class map_manager(map_reader, write_ccp4_map):
        return self._warning_message
 
   def set_mean_zero_sd_one(self):
+    ''' Normalize the map '''
     map_data = self.map_data()
     map_data = map_data - flex.mean(map_data)
     sd = map_data.sample_standard_deviation()
