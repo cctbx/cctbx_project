@@ -33,8 +33,6 @@ class panel_manager: public derivative_manager{
     void increment(double Iincrement, double omega_pixel, mat3 M, double pix2, vec3 o, vec3 k_diffracted,
                 double per_k, double per_k3, double per_k5, vec3 V);
 
-    af::flex_double get_increment(double Iincrement, double omega_pixel, mat3 M, double pix2, vec3 o, vec3 k_diffracted,
-                double per_k, double per_k3, double per_k5, vec3 V, vec3 _dk);
     mat3 dR;
     vec3 dF;
     vec3 dS;
@@ -133,6 +131,8 @@ class diffBragg: public nanoBragg{
   void set_ucell_derivative_matrix(int refine_id, af::shared<double> const& value);
   void set_ucell_second_derivative_matrix(int refine_id, af::shared<double> const& value);
   void init_Fhkl2();
+  af::flex_double get_panel_increment(double Iincrement, double omega_pixel, mat3 M, double pix2, vec3 o, vec3 k_diffracted,
+            double per_k, double per_k3, double per_k5, vec3 V, vec3 _dk);
   inline void free_Fhkl2(){
       if(Fhkl2 != NULL) {
         for (h0=0; h0<=h_range;h0++) {
@@ -218,7 +218,7 @@ class diffBragg: public nanoBragg{
   std::vector<boost::shared_ptr<Ncells_manager> > Ncells_managers;
   std::vector<boost::shared_ptr<origin_manager> > origin_managers;
   std::vector<boost::shared_ptr<lambda_manager> > lambda_managers;
-  std::vector<boost::shared_ptr<derivative_manager> > panels;
+  std::vector<boost::shared_ptr<panel_manager> > panels;
   boost::shared_ptr<Fcell_manager> fcell_man;
   boost::shared_ptr<panel_manager> panel_rot_man;
   boost::shared_ptr<panel_manager> panel_rot_manF;
