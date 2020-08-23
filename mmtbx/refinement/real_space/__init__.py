@@ -142,10 +142,15 @@ class rsr_model(object):
     if(log is None): log = sys.stdout
     print("%smodel-to-map fit, CC_mask: %-6.4f"%(prefix, self.cc_mask), file=log)
     print("%smoved from start:          %-6.4f"%(prefix, self.dist_from_start), file=log)
+    # Update stats and print out if log is set
+    self.update_statistics(prefix = prefix, log = log)
+
+  def update_statistics(self, prefix = None, log = None):
     gs = self.model.geometry_statistics()
     result = None
     if(gs is not None):
-      gs.show(prefix=prefix, log=log, uppercase=False)
+      if (log):
+        gs.show(prefix=prefix, log=log, uppercase=False)
       result = gs.result()
     self.stats_evaluations.append(group_args(
       cc       = self.cc_mask,
