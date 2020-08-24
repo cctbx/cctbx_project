@@ -532,13 +532,10 @@ def select_crystal_symmetry(
       if crystal_symmetry is not None:
         unit_cell = crystal_symmetry.unit_cell()
         if (unit_cell is not None):
-          if result.space_group_info() is None: # nothing at all yet
-            result = crystal_symmetry
-          else:
-            result = symmetry(
-              unit_cell=unit_cell,
-              space_group_info=result.space_group_info(),
-              assert_is_compatible_unit_cell=False)
+          result = symmetry(
+            unit_cell=unit_cell,
+            space_group_info=result.space_group_info(),
+            assert_is_compatible_unit_cell=False)
           break
   for crystal_symmetry in from_coordinate_files:
     if crystal_symmetry is not None:
