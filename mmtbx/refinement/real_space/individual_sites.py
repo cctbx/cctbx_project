@@ -410,6 +410,7 @@ class minimize_wrapper_with_map():
       number_of_cycles=1,
       cycles_to_converge=2,
       min_mode='simple_cycles',
+      # resolution=3.,
       log=None):
 
     # completely new way of doing this. using RSR macro-cycle
@@ -433,6 +434,7 @@ class minimize_wrapper_with_map():
     params.refinement.run = "minimization_global+local_grid_search"
     params.refine_ncs_operators=False
     params.refinement.macro_cycles = number_of_cycles
+    # params.resolution = resolution
     rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load(
         rotamers = "favored")
     rigid_body_selections = [] # no RBR here
