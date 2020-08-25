@@ -915,7 +915,11 @@ class _():
     auth_asym_id = chain.id
     if chain.atoms()[0].segid.strip() != '':
       auth_asym_id = chain.atoms()[0].segid.strip()
-    if auth_asym_id.strip() == '': auth_asym_id = '.'
+    if auth_asym_id.strip() == '':
+      # chain id is empty, segid is empty, just duplicate label_asym_id
+      # since we cannot read mmCIF with empty auth_asym_id. Outputting a file
+      # that we cannot read - bad.
+      auth_asym_id = self.get_label_asym_id(chain.residue_groups()[0])
     return auth_asym_id
 
   def get_label_asym_id_iseq(self, iseq):
