@@ -70,7 +70,7 @@ print("Ground truth originZ=%f" % (SIM.detector[0].get_origin()[2]))
 #print ("Modified originZ=%f" % (det2[0].get_origin()[2]))
 
 SIM.crystal = nbcryst
-SIM.instantiate_diffBragg(oversample=0)
+SIM.instantiate_diffBragg(oversample=args.oversample)
 SIM.D.progress_meter = False
 SIM.D.verbose = 0 #1
 SIM.D.nopolar = args.nopolar

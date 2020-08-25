@@ -4,6 +4,8 @@ def main():
 
     S = SimData()
     S.instantiate_diffBragg()
+    S.D.nopolar = True
+    S.D.oversample = 3
 
     S.D.add_diffBragg_spots()
     S._add_background()
