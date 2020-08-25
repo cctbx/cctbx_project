@@ -1381,7 +1381,10 @@ def enable_cuda_if_possible():
     else:
         raise Sorry("cctbx only supports cuda versions 6-10.2")
 
-    env_base['NVCC'] = 'nvcc'
+    if os.environ.get("CCTBX_WITH_HIP") is not None:
+        env_base['NVCC'] = 'hipcc'
+    else:
+        env_base['NVCC'] = 'nvcc'
     linker_flags = env_base['SHLINKFLAGS']
     for flag in linker_flags:
       if (flag.find(' ') >= 0):
@@ -1392,6 +1395,10 @@ def enable_cuda_if_possible():
     env_base['NVCCSHLINKFLAGS'] = ['-shared'] #,'--linker-options',linker_flags]
 
     cc_flags = env_base['CCFLAGS']
+    if os.environ.get("CCTBX_WITH_HIP") is not None:
+        cc_flags = [c for c in cc_flags
+            if not any([c.find(flag)>-1 for flag in ['openmp', 'unroll-loops', 'no-strict-aliasing', 'fast-math']])]
+
     for flag in cc_flags:
       if (flag.find(' ') >= 0):
         raise RuntimeError(
