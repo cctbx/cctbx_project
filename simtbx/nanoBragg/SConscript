@@ -1,4 +1,5 @@
 Import("env", "env_etc")
+import os
 
 # remove -ffast-math compile option
 nanoBragg_env = env.Clone()
@@ -37,6 +38,8 @@ if (env_etc.enable_cuda):
   if "nanoBraggCUDA.cu" in os.listdir(os.path.join(env_etc.simtbx_dist,"nanoBragg")):
     env_bpl.Prepend(NVCCFLAGS=["-DHAVE_NANOBRAGG_SPOTS_CUDA"])
     cuda_src = ["nanoBraggCUDA.cu"]
+    if os.environ.get("CCTBX_WITH_HIP") is not None:
+      cuda_src = ["nanoBraggCUDA.cpp"]
   else:  cuda_src = []
 
   env_etc.include_registry.append(
@@ -57,3 +60,4 @@ env.SharedLibrary(
     nanoBragg_obj
   ]
 )
+
