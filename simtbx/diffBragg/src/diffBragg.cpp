@@ -1181,17 +1181,17 @@ void diffBragg::add_diffBragg_spots()
     omega_sum = 0.0;
     vec3 spindle_vec = vec3(spindle_vector[1], spindle_vector[2], spindle_vector[3]);
 
-    int Npix = nfpix_steps*nspix_steps;
-    af::flex_int spix_pos = af::flex_int(Npix,0);
-    af::flex_int fpix_pos = af::flex_int(Npix,0);
-    i_step = 0;
-    for(spixel=roi_ymin;spixel <= spixel_max;++spixel){
-        for(fpixel=roi_xmin;fpixel <= fpixel_max;++fpixel){
-            spix_pos[i_step] = spixel;
-            fpix_pos[i_step] = fpixel;
-            i_step += 1;
-        }
-    }
+    //int Npix = nfpix_steps*nspix_steps;
+    //af::flex_int spix_pos = af::flex_int(Npix,0);
+    //af::flex_int fpix_pos = af::flex_int(Npix,0);
+    //i_step = 0;
+    //for(spixel=roi_ymin;spixel <= spixel_max;++spixel){
+    //    for(fpixel=roi_xmin;fpixel <= fpixel_max;++fpixel){
+    //        spix_pos[i_step] = spixel;
+    //        fpix_pos[i_step] = fpixel;
+    //        i_step += 1;
+    //    }
+    //}
 
     std::vector<vec3> dF_vecs;
     std::vector<vec3> dS_vecs;
@@ -1228,14 +1228,15 @@ void diffBragg::add_diffBragg_spots()
     //        use_lambda_coefficients, compute_curvatures, ap, bp, cp, a0, b0, c0, \
     //        only_save_omega_kahn, complex_miller, Fhkl, Fhkl2, oversample_omega) \
     //    default(none)
-    # pragma omp parallel for
-    for (int i2=0; i2 < Npix ; i2++ ){
-    //for(spixel=roi_ymin;spixel <= spixel_max;++spixel)
-    //{
-    //    for(fpixel=roi_xmin;fpixel <= fpixel_max;++fpixel)
-    //    {
-        int _spixel = spix_pos[i2];
-        int _fpixel = fpix_pos[i2];
+    //for (int i2=0; i2 < Npix ; i2++ ){
+    # pragma omp parallel for \
+      collapse(2)
+    for(int _spixel=roi_ymin;_spixel <= spixel_max;++_spixel)
+    {
+        for(int _fpixel=roi_xmin;_fpixel <= fpixel_max;++_fpixel)
+        {
+        //int _spixel = spix_pos[i2];
+        //int _fpixel = fpix_pos[i2];
     //for (int i_step=0; i_step< Nsteps; i_step++){
     //    spixel = spix_pos[i_step];
     //    fpixel = fpix_pos[i_step];
@@ -2033,9 +2034,9 @@ void diffBragg::add_diffBragg_spots()
             //    ++progress_pixel;
             //}
             //++i;
-        //} /* end of fpixels loop */
-    //} /* end of spixels loop */
-    } /* end of i2 steps */
+        } /* end of fpixels loop */
+    } /* end of spixels loop */
+    //} /* end of i2 steps */
     if(verbose) printf("done with pixel loop\n");
     //if(verbose) printf("solid angle subtended by detector = %g steradian ( %g%% sphere)\n",omega_sum/steps,100*omega_sum/steps/4/M_PI);
     //if(verbose) printf("max_I= %g sum= %g avg= %g\n",max_I,sum,sum/sumn);
