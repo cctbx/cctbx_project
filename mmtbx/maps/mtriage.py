@@ -158,7 +158,7 @@ def get_atom_radius(xray_structure=None, resolution=None, radius=None):
       flex.mean(xray_structure.extract_u_iso_or_u_equiv()))
     o = maptbx.atom_curves(scattering_type="C", scattering_table="electron")
     rad_image = o.image(d_min=resolution, b_iso=b_iso,
-      radius_max=max(15.,resolution), radius_step=0.01).radius
+      radius_max=max(15.,resolution), radius_step=0.1).radius
     radii.append(rad_image)
   return max(3, min(10, max(radii)))
 

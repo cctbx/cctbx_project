@@ -200,6 +200,9 @@ def get_radius(atom, vdw_radii):
 
 def common_map_values(pdb_hierarchy, unit_cell, map_data):
   d = {}
+  mainchain=["C","N","O","CA","CB"]
+  get_class = iotbx.pdb.common_residue_names_get_class
+  mean = flex.double()
   for model in pdb_hierarchy.models():
     for chain in model.chains():
       for residue_group in chain.residue_groups():
@@ -209,23 +212,23 @@ def common_map_values(pdb_hierarchy, unit_cell, map_data):
           for atom in residue.atoms():
             sf = unit_cell.fractionalize(atom.xyz)
             mv = map_data.eight_point_interpolation(sf)
+            if(not atom.element_is_hydrogen() and
+               get_class(residue.resname)=="common_amino_acid" and
+               not atom.name.strip().upper() in mainchain and mv>0):
+              mean.append(mv)
             key = "%s_%s_%s"%(chain.id, residue.resname, atom.name.strip())
             d.setdefault(key, flex.double()).append(mv)
+  mean = flex.mean_default(mean,0)
   def mean_filtered(x):
     me = flex.mean_default(x,0)
     sel  = x < me*3
     sel &= x > me/3
     return sel
   result = {}
-  all_vals = flex.double()
-  for v in d.values():
-    all_vals.extend(v)
-  sel = mean_filtered(all_vals)
-  overall_mean = flex.mean_default(all_vals.select(sel),0)
   for k,v in zip(d.keys(), d.values()):
     sel = mean_filtered(v)
     if(sel.count(True)>10): result[k] = flex.mean_default(v.select(sel),0)
-    else:                   result[k] = overall_mean
+    else:                   result[k] = mean
   return result
 
 class side_chain_fit_evaluator(object):
