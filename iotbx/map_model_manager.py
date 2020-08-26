@@ -1968,12 +1968,36 @@ class map_model_manager(object):
     return new_mmm
 
 
+  def model_building(self,
+     resolution,
+     is_xray_map = None,
+     nproc = None,
+     ):
+    '''
+     Return this object as a local_model_building object
+     The model-building object has pointers to model and map_manager, not
+       copies
+      resolution is resolution for Fourier coefficients
+      is_xray_map is True for x-ray map
+      nproc is number of processors to use
+    '''
+
+    from phenix.model_building import local_model_building
+    return local_model_building(
+     map_model_manager = self, # map_model manager
+     resolution = resolution,        # d_min
+     is_xray_map = is_xray_map,   # for cryo-em map
+     nproc= nproc,
+    )
+
   def as_map_model_manager(self):
     '''
       Return this object (allows using .as_map_model_manager() on both
       map_model_manager objects and others including box.around_model() etc.
+
     '''
     return self
+
 
   def as_match_map_model_ncs(self):
     '''
