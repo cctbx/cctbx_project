@@ -414,7 +414,6 @@ class manager(object):
       str(nres),
       str(sc))
 
-
   def set_stop_for_unknowns(self, value):
     self._stop_for_unknowns=value
 
@@ -1647,6 +1646,12 @@ class manager(object):
     This returns ncs_restraints_group_list object
     """
     return self._ncs_groups
+
+  def update_ncs_operators(self):
+    ncs_groups = self.get_ncs_groups()
+    if(ncs_groups is not None):
+      ncs_groups.recalculate_ncs_transforms(
+        asu_site_cart = self.get_sites_cart())
 
   def unset_ncs_constraints_groups(self):
     self._ncs_groups=None
