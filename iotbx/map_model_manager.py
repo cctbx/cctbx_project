@@ -703,8 +703,9 @@ class map_model_manager(object):
       mm.initialize_map_data(map_value = map_value)
 
   # Methods for boxing maps (changing the dimensions of the maps)
-  # These methods change the contents of the current object (they do not
+  # box_all...methods change the contents of the current object (they do not
   #  create a new object)
+  # extract_all... methods make a new object
 
   def extract_all_maps_with_bounds(self,
      lower_bounds,
