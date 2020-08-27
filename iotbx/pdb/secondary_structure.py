@@ -1818,7 +1818,7 @@ class pdb_helix(structure_base):
         ):
     adopt_init_args(self, locals())
     if (length <= 0):
-      raise Sorry("Bad helix length. Check HELIX records.")
+      raise Sorry("Bad helix length. Check HELIX records.\n%s" % self.as_pdb_str())
     if isinstance(self.helix_class, int):
       self.helix_class = self._helix_class_array[helix_class]
     if self.helix_class not in self._helix_class_array:
