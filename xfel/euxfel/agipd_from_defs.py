@@ -336,7 +336,7 @@ class Ruleset(Agipd2nexus):
             'NXdetector_module': {'names': []}  # 'names' will be populated below
         }
         array_name = 'ARRAY_D0'
-        det_path = 'entry/instrument/ELE_D0/'
+        det_path = '/entry/instrument/ELE_D0/'
         t_path = det_path + 'transformations/'
 
         class Transform(NexusElement):
@@ -355,14 +355,15 @@ class Ruleset(Agipd2nexus):
             q_name = f"AXIS_D0Q{quad}"
             quad_vector = self.hierarchy[q_key].local_origin.elems
 
-            q_elem = Transform(q_name, 0.0, attrs={'depends_on': 'AXIS_D0', 'offset': quad_vector,
+            q_elem = Transform(q_name, 0.0, attrs={'depends_on': t_path + 'AXIS_D0', 'offset': quad_vector,
                                                    'equipment_component': 'detector_quad'})
             det_additional_rules[t_path + q_name] = q_elem
             for module_num in range(self.n_modules):    # iterate modules within a quadrant
                 m_key = f"p{(quad * self.n_modules) + module_num}"
                 m_name = f"AXIS_D0Q{quad}M{module_num}"
                 module_vector = self.hierarchy[q_key][m_key].local_origin.elems
-                m_elem = Transform(m_name, 0.0, attrs={'depends_on': q_name, 'equipment_component': 'detector_module',
+                m_elem = Transform(m_name, 0.0, attrs={'depends_on': t_path + q_name,
+                                                       'equipment_component': 'detector_module',
                                                        'offset': module_vector})
                 det_additional_rules[t_path + m_name] = m_elem
                 for asic_num in range(self.n_asics):    # iterate asics within a module
@@ -370,7 +371,8 @@ class Ruleset(Agipd2nexus):
                     a_name = f"AXIS_D0Q{quad}M{module_num}A{asic_num}"
                     asic_vector = self.hierarchy[q_key][m_key][a_key]['local_origin'].elems
 
-                    a_elem = Transform(a_name, 0.0, attrs={'depends_on': m_name, 'equipment_component': 'detector_asic',
+                    a_elem = Transform(a_name, 0.0, attrs={'depends_on': t_path + m_name,
+                                                           'equipment_component': 'detector_asic',
                                                            'offset': asic_vector})
                     det_additional_rules[t_path + a_name] = a_elem
                     det_module_name = array_name + f"Q{quad}M{module_num}A{asic_num}"
@@ -385,13 +387,13 @@ class Ruleset(Agipd2nexus):
                     slow = self.hierarchy[q_key][m_key][a_key]['local_slow'].elems
 
                     det_field_rules[full_m_name('fast_pixel_direction')] = NexusElement(
-                        full_path=full_m_name('fast_pixel_direction'), value=pixel_size, dtype='f', nxtype=NxType.field,
+                        full_path=full_m_name('fast_pixel_direction'), value=[pixel_size], dtype='f', nxtype=NxType.field,
                         attrs={'depends_on': t_path + f'AXIS_D0Q{quad}M{module_num}A{asic_num}',
                                'transformation_type': 'translation', 'units': 'mm', 'vector': fast,
                                'offset': (0., 0., 0.)}
                     )
                     det_field_rules[full_m_name('slow_pixel_direction')] = NexusElement(
-                        full_path=full_m_name('slow_pixel_direction'), value=pixel_size, dtype='f', nxtype=NxType.field,
+                        full_path=full_m_name('slow_pixel_direction'), value=[pixel_size], dtype='f', nxtype=NxType.field,
                         attrs={'depends_on': t_path + f'AXIS_D0Q{quad}M{module_num}A{asic_num}',
                                'transformation_type': 'translation', 'units': 'mm', 'vector': slow,
                                'offset': (0., 0., 0.)}
@@ -399,7 +401,7 @@ class Ruleset(Agipd2nexus):
 
         self.field_rules = {
             # 'entry/definition': np.str(f"NXmx:{get_git_revision_hash()}"),      # TODO: _create_scalar?
-            'entry/definition': np.string_("NXmx"),  # XXX: whoa! this is THE criteria of being a "nexus format"!
+            'entry/definition': np.string_("NXmx"),  # XXX: whoa! this is THE criteria of being a "nexus format"    !
             'entry/file_name': np.str(self.output_file_name),
             # 'entry/start_time': np.str(self.params.nexus_details.start_time),
             'entry/start_time': np.str('2000-10-10T00:00:00.000Z'),     # FIXME: what is the real data?
@@ -428,12 +430,12 @@ class Ruleset(Agipd2nexus):
             'entry/instrument/AGIPD/group_type':
                 NexusElement(full_path='entry/instrument/AGIPD/group_type', value=[1, 2],
                              nxtype=NxType.field, dtype='i'),
-            f'{t_path}/AXIS_D0': Transform('AXIS_D0', value=0.0, attrs={'depends_on': 'AXIS_RAIL',
+            f'{t_path}/AXIS_D0': Transform('AXIS_D0', value=0.0, attrs={'depends_on': t_path + 'AXIS_RAIL',
                                                                         'equipment_component': 'detector_arm',
                                                                         'offset': self.hierarchy.local_origin}),
             f'{t_path}/AXIS_RAIL': NexusElement(full_path=t_path + 'AXIS_RAIL', dtype='f', nxtype=NxType.field,
                                                 value=self.params.detector_distance,
-                                                attrs={'depends_on': '.', 'equipment': 'detector',
+                                                attrs={'depends_on': np.string_('.'), 'equipment': 'detector',
                                                        'equipment_component': 'detector_arm',
                                                        'transformation_type': 'translation', 'units': 'mm',
                                                        'vector': (0., 0., 1.),
@@ -452,7 +454,7 @@ if __name__ == '__main__':
   nexus_helper = Ruleset(sys.argv[1:])
   nexus_helper.create_nexus_master_file()
   logger.info("Stats:\n\t" + "\n\t".join(f"{k}: {v}" for k, v in nexus_helper.stat.items()))
-  os.system(f'h5glance {nexus_helper.output_file_name} --attrs')
+  # os.system(f'h5glance {nexus_helper.output_file_name} --attrs')
   # os.system(f"{path_to_cnxvalidate} -l definitions ~/xfel/examples/swissFEL_example/spb/{nexus_helper.output_file_name}"
-  #           f" | grep distance")
+  #           f" | grep fast_pixel")
   # os.system(f"{path_to_cnxvalidate} -l definitions ~/xfel/examples/swissFEL_example/spb/{nexus_helper.output_file_name}")
