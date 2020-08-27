@@ -189,7 +189,15 @@ class Agipd2nexus:
                 self.stat['groups from defs'] += 1
 
     def create_field(self, h5file: h5py.File,
-                     lx_elem: Union[objectify.ObjectifiedElement, dict]) -> None:
+                     lx_elem: Union[objectify.ObjectifiedElement, dict],
+                     recommended: bool = False) -> None:
+        """
+        The function tries to add a field to the HDF5 hierarchy.
+
+        If there is a `recommended` marker but the element is not in the `field_rules` then it will be skipped.
+        If `recommended == False` then it means the element is mandatory, and even if it is not in the `field_rules`
+        it will be filled with a dummy value `7.7777777`
+        """
         NXname = lx_elem.attrib['name']
         name = NXname.replace('NX', '')
         if isinstance(lx_elem, objectify.ObjectifiedElement):
@@ -212,6 +220,9 @@ class Agipd2nexus:
                 self.stat['fields from rules'] += 1
     
             else:
+                if recommended:
+                    logger.info(f"Recommended element {full_path} is not in the field rules. Skipped")
+                    continue
                 logger.warning(f"Add {full_path} from definition as `7.7777777`")
                 field = NexusElement(full_path=full_path, value=7.7777777, nxtype=NxType.field, dtype='f')
                 field.push(h5file)
@@ -253,11 +264,15 @@ class Agipd2nexus:
                     continue
                 self.create_group(self.out_file, elem, parent)
             elif elem.tag == 'field':
-                if 'minOccurs' in elem.keys() and elem.attrib['minOccurs'] == '0':
+                if ('minOccurs' in elem.keys() and elem.attrib['minOccurs'] == '0') or \
+                   ('optional' in elem.keys() and elem.attrib['optional'] == 'true'):
                     logger.debug(f">>> FIELD {elem.attrib['name']} is optional")
                     # an optional field, skip
                     continue
-                self.create_field(self.out_file, elem)
+                elif 'recommended' in elem.keys() and elem.attrib['recommended'] == 'true':
+                    self.create_field(self.out_file, elem, recommended=True)
+                else:
+                    self.create_field(self.out_file, elem)
             elif elem.tag == 'attribute':
                 if 'optional' in elem.keys() and elem.attrib['optional'] == 'true':
                     continue
@@ -336,7 +351,7 @@ class Ruleset(Agipd2nexus):
             'NXdetector_module': {'names': []}  # 'names' will be populated below
         }
         array_name = 'ARRAY_D0'
-        det_path = '/entry/instrument/ELE_D0/'
+        det_path = 'entry/instrument/ELE_D0/'
         t_path = det_path + 'transformations/'
 
         class Transform(NexusElement):
@@ -398,18 +413,18 @@ class Ruleset(Agipd2nexus):
                                'transformation_type': 'translation', 'units': 'mm', 'vector': slow,
                                'offset': (0., 0., 0.)}
                     )
-
         self.field_rules = {
-            # 'entry/definition': np.str(f"NXmx:{get_git_revision_hash()}"),      # TODO: _create_scalar?
+            # 'entry/definition': np.string_(f"NXmx:{get_git_revision_hash()}"),      # TODO: _create_scalar?
             'entry/definition': np.string_("NXmx"),  # XXX: whoa! this is THE criteria of being a "nexus format"    !
-            'entry/file_name': np.str(self.output_file_name),
-            # 'entry/start_time': np.str(self.params.nexus_details.start_time),
-            'entry/start_time': np.str('2000-10-10T00:00:00.000Z'),     # FIXME: what is the real data?
-            # 'entry/end_time': np.str(self.params.nexus_details.end_time),
-            'entry/end_time': np.str('2000-10-10T01:00:00.000Z'),
-            # 'entry/end_time_estimated': np.str(self.params.nexus_details.end_time_estimated),
-            'entry/end_time_estimated': np.str('2000-10-10T01:00:00.000Z'),
+            'entry/file_name': np.string_(self.output_file_name),
+            # 'entry/start_time': np.string_(self.params.nexus_details.start_time),
+            'entry/start_time': np.string_('2000-10-10T00:00:00.000Z'),     # FIXME: what is the real data?
+            # 'entry/end_time': np.string_(self.params.nexus_details.end_time),
+            'entry/end_time': np.string_('2000-10-10T01:00:00.000Z'),
+            # 'entry/end_time_estimated': np.string_(self.params.nexus_details.end_time_estimated),
+            'entry/end_time_estimated': np.string_('2000-10-10T01:00:00.000Z'),
             'entry/data/data': LazyFunc(cxi.copy, "entry_1/data_1/data",  "entry/data"),
+            'entry/instrument/name': self.params.nexus_details.instrument_name,
             'entry/instrument/AGIPD/group_index': np.array(list(range(1, 3)), dtype='i'), # XXX: why 16, not 2?
             'entry/instrument/AGIPD/group_names': np.array([np.string_('AGIPD'), np.string_('ELE_D0')],
                                                                     dtype='S12'),
@@ -417,14 +432,23 @@ class Ruleset(Agipd2nexus):
             'entry/instrument/beam/incident_wavelength':
                 NexusElement(full_path='entry/instrument/beam/incident_wavelength', value=self.params.wavelength,
                              nxtype=NxType.field, dtype='f', attrs={'units': 'angstrom'}),
+            'entry/instrument/beam/total_flux':
+                NexusElement(full_path='entry/instrument/beam/total_flux',
+                             value=self.params.nexus_details.total_flux,
+                             nxtype=NxType.field, dtype='f', attrs={'units': 'Hz'}),
             'entry/instrument/ELE_D0/data': h5py.SoftLink('/entry/data/data'),
             'entry/instrument/ELE_D0/sensor_material': "Unknown",   # FIXME
             'entry/instrument/ELE_D0/sensor_thickness': 0.0,        # FIXME
-            'entry/sample/depends_on': np.str('.'),
-            'entry/source/name': NexusElement(full_path='entry/source/name', value=self.params.nexus_details.source_name,
+            'entry/sample/depends_on': np.string_('.'),
+            'entry/sample/name': NexusElement(full_path='entry/sample/name',
+                                              value=self.params.nexus_details.sample_name,
+                                              nxtype=NxType.field, dtype='s'),
+            'entry/source/name': NexusElement(full_path='entry/source/name',
+                                              value=self.params.nexus_details.source_name,
                                               nxtype=NxType.field, dtype='s',
                                               attrs={'short_name': self.params.nexus_details.source_short_name}),
         }
+
         self.field_rules = {**self.field_rules, **det_field_rules}
         self.additional_elements = {
             'entry/instrument/AGIPD/group_type':

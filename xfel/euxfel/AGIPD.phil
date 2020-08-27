@@ -46,10 +46,10 @@
               using the Z suffix to avoid confusion with local time. \
               This field may be filled with a value estimated before an \
               observed value is avilable.
-    sample_name = None
+    sample_name = My sample
       .type = str
       .help = Descriptive name of sample
-    total_flux = None
+    total_flux = 1E10
       .type = float
       .help = flux incident on beam plane in photons per second
   }
