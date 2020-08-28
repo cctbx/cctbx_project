@@ -45,8 +45,8 @@
       .help = ISO 8601 time/date of the last data point collected in UTC, \
               using the Z suffix to avoid confusion with local time. \
               This field may be filled with a value estimated before an \
-              observed value is avilable.
-    sample_name = My sample
+              observed value is available.
+    sample_name = MySample
       .type = str
       .help = Descriptive name of sample
     total_flux = 1E10

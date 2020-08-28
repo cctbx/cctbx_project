@@ -147,7 +147,7 @@ class Agipd2nexus:
                 ancestor_list[j] = [elem]
 
         ancestor_list = ancestor_list[:-1][::-1]  # drop the last element and reverse the order
-        root_path = ['/'.join(path).replace('NX', '') for path in product(*ancestor_list)]  # concatenate the values
+        root_path = ['/' + '/'.join(path).replace('NX', '') for path in product(*ancestor_list)]  # concatenate the values
         return root_path
 
     @staticmethod
@@ -351,11 +351,11 @@ class Ruleset(Agipd2nexus):
             'NXdetector_module': {'names': []}  # 'names' will be populated below
         }
         array_name = 'ARRAY_D0'
-        det_path = 'entry/instrument/ELE_D0/'
+        det_path = '/entry/instrument/ELE_D0/'
         t_path = det_path + 'transformations/'
 
         class Transform(NexusElement):
-            def __init__(self, name: str, value: Any = 0.0, attrs: dict = None) -> None:
+            def __init__(self, name: str, value: Any = [0.0], attrs: dict = None) -> None:
                 default_attrs = {'equipment': 'detector', 'transformation_type': 'rotation', 'units': 'degrees',
                                  'offset_units': 'mm', 'vector': (0., 0., -1.)
                                  }
@@ -370,25 +370,25 @@ class Ruleset(Agipd2nexus):
             q_name = f"AXIS_D0Q{quad}"
             quad_vector = self.hierarchy[q_key].local_origin.elems
 
-            q_elem = Transform(q_name, 0.0, attrs={'depends_on': t_path + 'AXIS_D0', 'offset': quad_vector,
-                                                   'equipment_component': 'detector_quad'})
+            q_elem = Transform(q_name, attrs={'depends_on': t_path + 'AXIS_D0', 'offset': quad_vector,
+                                              'equipment_component': 'detector_quad'})
             det_additional_rules[t_path + q_name] = q_elem
             for module_num in range(self.n_modules):    # iterate modules within a quadrant
                 m_key = f"p{(quad * self.n_modules) + module_num}"
                 m_name = f"AXIS_D0Q{quad}M{module_num}"
                 module_vector = self.hierarchy[q_key][m_key].local_origin.elems
-                m_elem = Transform(m_name, 0.0, attrs={'depends_on': t_path + q_name,
-                                                       'equipment_component': 'detector_module',
-                                                       'offset': module_vector})
+                m_elem = Transform(m_name, attrs={'depends_on': t_path + q_name,
+                                                  'equipment_component': 'detector_module',
+                                                  'offset': module_vector})
                 det_additional_rules[t_path + m_name] = m_elem
                 for asic_num in range(self.n_asics):    # iterate asics within a module
                     a_key = f"p{(quad * self.n_modules) + module_num}a{asic_num}"
                     a_name = f"AXIS_D0Q{quad}M{module_num}A{asic_num}"
                     asic_vector = self.hierarchy[q_key][m_key][a_key]['local_origin'].elems
 
-                    a_elem = Transform(a_name, 0.0, attrs={'depends_on': t_path + m_name,
-                                                           'equipment_component': 'detector_asic',
-                                                           'offset': asic_vector})
+                    a_elem = Transform(a_name, attrs={'depends_on': t_path + m_name,
+                                                      'equipment_component': 'detector_asic',
+                                                      'offset': asic_vector})
                     det_additional_rules[t_path + a_name] = a_elem
                     det_module_name = array_name + f"Q{quad}M{module_num}A{asic_num}"
                     # populate ``group_rules`` with detector modules:
@@ -414,36 +414,39 @@ class Ruleset(Agipd2nexus):
                                'offset': (0., 0., 0.)}
                     )
         self.field_rules = {
-            # 'entry/definition': np.string_(f"NXmx:{get_git_revision_hash()}"),      # TODO: _create_scalar?
-            'entry/definition': np.string_("NXmx"),  # XXX: whoa! this is THE criteria of being a "nexus format"    !
-            'entry/file_name': np.string_(self.output_file_name),
-            # 'entry/start_time': np.string_(self.params.nexus_details.start_time),
-            'entry/start_time': np.string_('2000-10-10T00:00:00.000Z'),     # FIXME: what is the real data?
-            # 'entry/end_time': np.string_(self.params.nexus_details.end_time),
-            'entry/end_time': np.string_('2000-10-10T01:00:00.000Z'),
-            # 'entry/end_time_estimated': np.string_(self.params.nexus_details.end_time_estimated),
-            'entry/end_time_estimated': np.string_('2000-10-10T01:00:00.000Z'),
-            'entry/data/data': LazyFunc(cxi.copy, "entry_1/data_1/data",  "entry/data"),
-            'entry/instrument/name': self.params.nexus_details.instrument_name,
-            'entry/instrument/AGIPD/group_index': np.array(list(range(1, 3)), dtype='i'), # XXX: why 16, not 2?
-            'entry/instrument/AGIPD/group_names': np.array([np.string_('AGIPD'), np.string_('ELE_D0')],
+            # '/entry/definition': np.string_(f"NXmx:{get_git_revision_hash()}"),      # TODO: _create_scalar?
+            '/entry/definition': np.string_("NXmx"),  # XXX: whoa! this is THE criteria of being a "nexus format"    !
+            '/entry/file_name': np.string_(self.output_file_name),
+            # '/entry/start_time': np.string_(self.params.nexus_details.start_time),
+            '/entry/start_time': np.string_('2000-10-10T00:00:00.000Z'),     # FIXME: what is the real data?
+            # '/entry/end_time': np.string_(self.params.nexus_details.end_time),
+            '/entry/end_time': np.string_('2000-10-10T01:00:00.000Z'),
+            # '/entry/end_time_estimated': np.string_(self.params.nexus_details.end_time_estimated),
+            '/entry/end_time_estimated': np.string_('2000-10-10T01:00:00.000Z'),
+            '/entry/data/data': LazyFunc(cxi.copy, "entry_1/data_1/data",  "entry/data"),
+            '/entry/instrument/name': self.params.nexus_details.instrument_name,
+            '/entry/instrument/AGIPD/group_index': np.array(list(range(1, 3)), dtype='i'), # XXX: why 16, not 2?
+            '/entry/instrument/AGIPD/group_names': np.array([np.string_('AGIPD'), np.string_('ELE_D0')],
                                                                     dtype='S12'),
-            'entry/instrument/AGIPD/group_parent': np.array([-1, 1], dtype='i'),
-            'entry/instrument/beam/incident_wavelength':
-                NexusElement(full_path='entry/instrument/beam/incident_wavelength', value=self.params.wavelength,
+            '/entry/instrument/AGIPD/group_parent': np.array([-1, 1], dtype='i'),
+            '/entry/instrument/beam/incident_wavelength':
+                NexusElement(full_path='/entry/instrument/beam/incident_wavelength', value=self.params.wavelength,
                              nxtype=NxType.field, dtype='f', attrs={'units': 'angstrom'}),
-            'entry/instrument/beam/total_flux':
-                NexusElement(full_path='entry/instrument/beam/total_flux',
+            '/entry/instrument/beam/total_flux':
+                NexusElement(full_path='/entry/instrument/beam/total_flux',
                              value=self.params.nexus_details.total_flux,
                              nxtype=NxType.field, dtype='f', attrs={'units': 'Hz'}),
-            'entry/instrument/ELE_D0/data': h5py.SoftLink('/entry/data/data'),
-            'entry/instrument/ELE_D0/sensor_material': "Unknown",   # FIXME
-            'entry/instrument/ELE_D0/sensor_thickness': 0.0,        # FIXME
-            'entry/sample/depends_on': np.string_('.'),
-            'entry/sample/name': NexusElement(full_path='entry/sample/name',
+            '/entry/instrument/ELE_D0/data': h5py.SoftLink('/entry/data/data'),
+            '/entry/instrument/ELE_D0/sensor_material': "Si",          # FIXME
+            '/entry/instrument/ELE_D0/sensor_thickness':
+                NexusElement(full_path='/entry/instrument/ELE_D0/sensor_thickness',
+                             value=300.0,     # FIXME
+                             nxtype=NxType.field, dtype='f', attrs={'units': 'microns'}),
+            '/entry/sample/depends_on': np.str('.'),     # XXX: Why not `np.string_`??
+            '/entry/sample/name': NexusElement(full_path='/entry/sample/name',
                                               value=self.params.nexus_details.sample_name,
                                               nxtype=NxType.field, dtype='s'),
-            'entry/source/name': NexusElement(full_path='entry/source/name',
+            '/entry/source/name': NexusElement(full_path='/entry/source/name',
                                               value=self.params.nexus_details.source_name,
                                               nxtype=NxType.field, dtype='s',
                                               attrs={'short_name': self.params.nexus_details.source_short_name}),
@@ -451,14 +454,14 @@ class Ruleset(Agipd2nexus):
 
         self.field_rules = {**self.field_rules, **det_field_rules}
         self.additional_elements = {
-            'entry/instrument/AGIPD/group_type':
-                NexusElement(full_path='entry/instrument/AGIPD/group_type', value=[1, 2],
+            '/entry/instrument/AGIPD/group_type':
+                NexusElement(full_path='/entry/instrument/AGIPD/group_type', value=[1, 2],
                              nxtype=NxType.field, dtype='i'),
-            f'{t_path}/AXIS_D0': Transform('AXIS_D0', value=0.0, attrs={'depends_on': t_path + 'AXIS_RAIL',
-                                                                        'equipment_component': 'detector_arm',
-                                                                        'offset': self.hierarchy.local_origin}),
+            f'{t_path}/AXIS_D0': Transform('AXIS_D0', attrs={'depends_on': t_path + 'AXIS_RAIL',
+                                                             'equipment_component': 'detector_arm',
+                                                             'offset': self.hierarchy.local_origin}),
             f'{t_path}/AXIS_RAIL': NexusElement(full_path=t_path + 'AXIS_RAIL', dtype='f', nxtype=NxType.field,
-                                                value=self.params.detector_distance,
+                                                value=[self.params.detector_distance],
                                                 attrs={'depends_on': np.string_('.'), 'equipment': 'detector',
                                                        'equipment_component': 'detector_arm',
                                                        'transformation_type': 'translation', 'units': 'mm',
@@ -467,7 +470,7 @@ class Ruleset(Agipd2nexus):
         }
         self.additional_elements = {**self.additional_elements, **det_additional_rules}
         self.global_attrs = {
-            'NXclass': 'NXroot',
+            'NX_class': 'NXroot',
             'file_name': self.output_file_name,
             'file_time': str(dt.now()),
             'HDF5_Version': h5py.version.hdf5_version
