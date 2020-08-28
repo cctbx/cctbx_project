@@ -13,6 +13,7 @@ tst_list_base = [
   "$D/tests/tst_tuple.py",
   "$D/tests/tst_stdout.py",
   "$D/tests/tst_stderr_stdout.py",
+  "$D/tests/tst_deprecation_tools.py",
   ]
 
 # failing test on Python 3 or GCC > 7
