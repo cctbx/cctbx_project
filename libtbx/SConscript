@@ -222,10 +222,9 @@ def gcc_common_warn_options():
     # compiler for CentOS 5 does not support -Wno-unused-local-typedefs
     # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=33255
     # flag supported only on gcc releases after September 2011
-    if ( (env_etc.gcc_version == 40407) or (env_etc.gcc_version == 40504) or
-         (env_etc.gcc_version >= 40602) ):
+    if env_etc.gcc_version >= 40800:
       result.append("-Wno-unused-local-typedefs")
-      result.append("-Werror=vla")  # do not allow non-portable extension for dynamic array allocation
+    result.append("-Werror=vla")  # do not allow non-portable extension for dynamic array allocation
   return result
 
 def clang_common_warn_options():
