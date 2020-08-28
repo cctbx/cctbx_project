@@ -1721,6 +1721,11 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   pdb_file = inputs.pdb_file_names[0]
   # Model
   pdb_inp = iotbx.pdb.input(file_name=pdb_file)
+  print(params)
+  print(dir(params))
+  print(dir(params.ensemble_refinement.pdb_interpretation))
+  print(params.ensemble_refinement.pdb_interpretation.amber.use_amber)
+  assert 0
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     restraint_objects = cif_objects,
