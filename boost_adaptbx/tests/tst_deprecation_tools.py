@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from boost_adaptbx.deprecation_tools import deprecate_method
+from boost_adaptbx.boost.python import deprecate_method
 import warnings
 
 

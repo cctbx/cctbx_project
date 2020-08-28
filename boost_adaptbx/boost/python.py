@@ -4,6 +4,7 @@ import inspect
 import os
 import re
 import sys
+import warnings
 
 from libtbx import cpp_function_name
 
@@ -231,6 +232,22 @@ def inject_into(target_class, *mixin_classes):
         pass
       inject(target_class, empty_class, *mixin_classes)
   return _inject
+
+def deprecate_method(boost_object, method_name):
+  original_method = getattr(boost_object, method_name)
+
+  def deprecation_helper(*args, **kwargs):
+    warnings.warn(
+      "The method {method_name} is deprecated and will be removed shortly".format(
+        method_name=method_name
+      ),
+      DeprecationWarning,
+      stacklevel=2,
+    )
+    return original_method(*args, **kwargs)
+
+  setattr(boost_object, method_name, deprecation_helper)
+
 
 def process_docstring_options(env_var="BOOST_ADAPTBX_DOCSTRING_OPTIONS"):
   from_env = os.environ.get(env_var)
