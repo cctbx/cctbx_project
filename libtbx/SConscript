@@ -498,8 +498,8 @@ libtbx.scons: Warning: compiling with /MDd:
     env_etc.libm = ["m"]
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
-    env_etc.gcc_version = libtbx.env_config.get_gcc_version(
-                                                 command_name=env_base['CC'])
+    env_etc.gcc_version = libtbx.env_config.get_gcc_version(command_name=env_base['CC'])
+    print("gcc: %i" %env_etc.gcc_version)
     env_etc.shlibsuffix = env_base['SHLIBSUFFIX']
     env_etc.c_link = env_base['CC']
     env_etc.ccflags_base = [
@@ -608,6 +608,7 @@ else:
     cc = env_etc.compiler.replace("unix_", "")
     cxx = cc.replace("gcc", "g++")
     env_etc.gcc_version = libtbx.env_config.get_gcc_version(command_name=cc)
+    print("gcc: %i" %env_etc.gcc_version)
     env_base.Replace(
       CC=cc,
       SHCC=cc,
