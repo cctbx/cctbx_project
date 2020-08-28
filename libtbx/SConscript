@@ -893,7 +893,7 @@ int main() {
       else:
         env_etc.gcc_is_llvm_gcc = False
 
-    print("On MacOS, using ", end=' ')
+    print("On MacOS, using", end=' ')
     if env_etc.clang_version:
       if env_etc.clang_version[2] is not None:
         print("clang %i.%i.%i" % env_etc.clang_version)
