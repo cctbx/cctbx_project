@@ -4,15 +4,15 @@ import warnings
 
 
 def exercise():
+  # Choose a Boost Python class for which to deprecate a method. Here we
+  # use rational.int.
+  from boost_adaptbx.boost import rational
+
+  original_value = rational.int().numerator()
+  deprecate_method(rational.int, "numerator")
+    
   with warnings.catch_warnings(record=True) as w:
     warnings.simplefilter("always")
-
-    # Choose a Boost Python class for which to deprecate a method. Here we
-    # use rational.int.
-    from boost_adaptbx.boost import rational
-
-    original_value = rational.int().numerator()
-    deprecate_method(rational.int, "numerator")
     new_value = rational.int().numerator()
 
   assert original_value == new_value
