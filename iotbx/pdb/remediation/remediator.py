@@ -28,6 +28,9 @@ import sys
 import os
 import re
 import libtbx.load_env
+import iotbx.pdb
+import mmtbx.model
+from libtbx.utils import null_out
 
 import mmtbx.chemical_components as chemical_components
 
@@ -138,6 +141,8 @@ def justify_atom_names(atom_name):
   if (len(atom_name) == 3):
     if (atom_name == "H3T"):
       return atom_name.ljust(4)
+    if (atom_name[0:2] == "NH"):
+      return atom_name.rjust(4)
     if (atom_name[1] == "H"):
       return atom_name.ljust(4)
     return atom_name.rjust(4)
@@ -145,8 +150,14 @@ def justify_atom_names(atom_name):
     return atom_name.center(4)
 
 
-def build_hash_from_chem_components(residue_name, convert_to_new=True):
+def build_hash_from_chem_components(residue_name, convert_to_new=True, build_all_atoms=False):
   atom_exch = {}
+  amino_acids = [ "ALA","ARG","ASN","ASP","ASX","CSE","CYS","GLN","GLU","GLX","GLY","HIS","ILE",
+    "LEU","LYS","MET","MSE","PHE","PRO","SER","THR","TRP","TYR","VAL" ]
+  if build_all_atoms and (residue_name in amino_acids): # covers the case where the N terminal Hs aren't in chem comps
+    atom_exch[" H1  "+residue_name] = " 1H  "+residue_name
+    atom_exch[" H2  "+residue_name] = " 2H  "+residue_name
+    atom_exch[" H3  "+residue_name] = " 3H  "+residue_name
   na_bases = ["  A", "  C", "  T", "  G", "  I", "  U"]
   residues_to_test = [ residue_name ]
   if (residue_name in na_bases):
@@ -159,19 +170,46 @@ def build_hash_from_chem_components(residue_name, convert_to_new=True):
       old_atom_names = chemical_components.get_atom_names(residue, alternate=True)
       if (len(new_atom_names) == len(old_atom_names)):
         for new_atom, old_atom in zip(new_atom_names, old_atom_names):
-          if not (new_atom == old_atom):
+          if build_all_atoms or not (new_atom == old_atom):
             justified_old_atom = justify_atom_names(old_atom)
             new_entry = justify_atom_names(new_atom)+" "+residue_name
             old_entry = justified_old_atom+" "+residue_name
             if convert_to_new:
               atom_exch[old_entry] = new_entry
               #check for 1HA, 2HA, etc, which don't seem to always be in chem components as possible old names
-              if re.match(r' H[A-Z]\d', justified_old_atom):
+              if not build_all_atoms or re.match(r' H[A-Z]\d', justified_old_atom):
                 digit_first_hydrogen = justified_old_atom[3]+justified_old_atom[1:3]+" "
                 atom_exch[digit_first_hydrogen+" "+residue_name] = new_entry
             else:
               atom_exch[new_entry] = old_entry
   return atom_exch
+
+def get_model_from_file(file_path):
+  pdb_inp = iotbx.pdb.input(file_name = file_path)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    build_grm   = True,
+    stop_for_unknowns = False,
+    log = null_out())
+  return model
+
+def is_model_v3(model):
+  pdb_hierarchy = model.get_hierarchy()
+  atoms = pdb_hierarchy.atoms()
+  residues_dict = {}
+  non_v3_atoms_count = 0
+  for atom in atoms:
+    res_name = atom.id_str()[10:13]
+    if not res_name in residues_dict:
+      residues_dict[res_name] = build_hash_from_chem_components(res_name, convert_to_new=False, build_all_atoms=True)
+      print(res_name+"\n"+str(residues_dict[res_name]))
+    atom_exch_dict = residues_dict[res_name]
+    if not atom.name+" "+res_name in atom_exch_dict:
+      print("|"+atom.name +"| is missing from "+res_name)
+      non_v3_atoms_count=non_v3_atoms_count+1
+    #print(atom.name)
+  return non_v3_atoms_count == 0
+
 
 
 def remediate_atomic_line(line, atom_exch):
@@ -197,7 +235,12 @@ def remediate_atomic_line(line, atom_exch):
 
 #{{{ remediate
 #----PDB routine---------------------------------------------------
-def remediate(filename, remediated_out, remark4, f=None):
+def remediate(filename, remediated_out, f=None):
+  if remediated_out:
+    remark4 = "REMARK   4 REMEDIATOR VALIDATED PDB VERSION 3.2 COMPLIANT".ljust(80)
+  else:
+    remark4 = "REMARK   4 REMEDIATOR VALIDATED PDB VERSION 2.3 COMPLIANT".ljust(80)
+
   if f == None:
     f = sys.stdout
   previous = None
@@ -285,10 +328,8 @@ def remediator(params, log=None):
   user_dict = ""
   file_name = params.file_name
   if params.version == "3.2":
-    remark4 = "REMARK   4 REMEDIATOR VALIDATED PDB VERSION 3.2 COMPLIANT".ljust(80)
     remediated_out = True
   elif params.version == "2.3":
-    remark4 = "REMARK   4 REMEDIATOR VALIDATED PDB VERSION 2.3 COMPLIANT".ljust(80)
     remediated_out = False
   if params.dict != None:
     custom_dict = True
@@ -310,7 +351,7 @@ def remediator(params, log=None):
   count, res_count = \
     pre_screen_file(file_name, atom_exch, alt_atom_exch)
   if count > 0 or res_count > 0:
-    remediate(params.file_name, remediated_out, remark4, f)
+    remediate(params.file_name, remediated_out, f)
     if params.output_file != None:
       f.close()
   else:
