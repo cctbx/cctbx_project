@@ -851,22 +851,17 @@ def submit_all_jobs(app):
       task = dataset.tasks[global_task[1]]
       latest_version = dataset.latest_version
       if latest_version is None:
-        jobs = global_tasks[global_task] # first version
         next_version = 0
-        global_task_submitted = False
       else:
         latest_version_jobs = latest_version.jobs
-        global_task_submitted = any([j.task_id == task.id for j in latest_version_jobs])
-
         latest_verion_job_ids = [j.id for j in latest_version_jobs if j.task_id != task.id]
-        jobs = [j for j in global_tasks[global_task] if j.id not in latest_verion_job_ids]
+        new_jobs = [j for j in global_tasks[global_task] if j.id not in latest_verion_job_ids]
+        if not new_jobs: continue
         next_version = latest_version.version + 1
-      if not jobs and global_task_submitted: continue
 
-      if not global_task_submitted:
-        latest_version = app.create_dataset_version(dataset_id = dataset.id, version=next_version)
-        for job in global_tasks[global_task]:
-          latest_version.add_job(job)
+      latest_version = app.create_dataset_version(dataset_id = dataset.id, version=next_version)
+      for job in global_tasks[global_task]:
+        latest_version.add_job(job)
 
       j = JobFactory.from_args(app,
                                task_id = task.id,
