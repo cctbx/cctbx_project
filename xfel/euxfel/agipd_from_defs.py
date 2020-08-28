@@ -424,7 +424,10 @@ class Ruleset(Agipd2nexus):
             # '/entry/end_time_estimated': np.string_(self.params.nexus_details.end_time_estimated),
             '/entry/end_time_estimated': np.string_('2000-10-10T01:00:00.000Z'),
             '/entry/data/data': LazyFunc(cxi.copy, "entry_1/data_1/data",  "entry/data"),
-            '/entry/instrument/name': self.params.nexus_details.instrument_name,
+            '/entry/instrument/name':
+                NexusElement(full_path='/entry/instrument/name', value=self.params.nexus_details.instrument_name,
+                             nxtype=NxType.field, dtype='s',
+                             attrs={'short_name':self.params.nexus_details.instrument_short_name}),
             '/entry/instrument/AGIPD/group_index': np.array(list(range(1, 3)), dtype='i'), # XXX: why 16, not 2?
             '/entry/instrument/AGIPD/group_names': np.array([np.string_('AGIPD'), np.string_('ELE_D0')],
                                                                     dtype='S12'),
@@ -483,5 +486,5 @@ if __name__ == '__main__':
   logger.info("Stats:\n\t" + "\n\t".join(f"{k}: {v}" for k, v in nexus_helper.stat.items()))
   # os.system(f'h5glance {nexus_helper.output_file_name} --attrs')
   # os.system(f"{path_to_cnxvalidate} -l definitions ~/xfel/examples/swissFEL_example/spb/{nexus_helper.output_file_name}"
-  #           f" | grep fast_pixel")
+  #           f" | grep name")
   # os.system(f"{path_to_cnxvalidate} -l definitions ~/xfel/examples/swissFEL_example/spb/{nexus_helper.output_file_name}")
