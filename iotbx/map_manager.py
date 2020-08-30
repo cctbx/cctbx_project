@@ -199,6 +199,9 @@ class map_manager(map_reader, write_ccp4_map):
      origin_shift_grid_units = None, # OPTIONAL first point in map in full cell
      ncs_object = None, # OPTIONAL ncs_object with map symmetry
      wrapping = Auto,   # OPTIONAL but recommended if not read from file
+     experiment_type = Auto,   # OPTIONAL can set later also
+     scattering_table = Auto,   # OPTIONAL can set later also
+     resolution = Auto,   # OPTIONAL can set later also
      log = None,
      ):
 
@@ -211,7 +214,12 @@ class map_manager(map_reader, write_ccp4_map):
        Required: specify map_data, unit_cell_grid, unit_cell_crystal_symmetry
        Optional: specify origin_shift_grid_units
 
-      Optional in either case: supply ncs_object with map symmetry of full map
+      Optional in either case: supply
+        ncs_object with map symmetry of full map
+        wrapping (True if map repeats infinitely with repeat unit of unit cell)
+        experiment_type (xray cryo_em neutron)
+        scattering_table (electron n_gaussian wk1995 it1992 neutron)
+        resolution (nominal resolution of map)
 
       NOTE on "crystal_symmetry" objects
       There are two objects that are "crystal_symmetry" objects:
@@ -273,6 +281,7 @@ class map_manager(map_reader, write_ccp4_map):
     # Initialize ncs_object
     self._ncs_object = ncs_object
 
+
     # Initialize origin shift representing position of original origin in
     #  grid units.  If map is shifted, this is updated to reflect where
     #  to place current origin to superimpose map on original map.
@@ -289,11 +298,14 @@ class map_manager(map_reader, write_ccp4_map):
       # Set starting values:
       self.origin_shift_grid_units = (0, 0, 0)
 
-      # Assume this map is not wrapped unless wrapping is set
+      # Assume this map is not wrapped unless wrapping is set or is obvious
       if isinstance(wrapping, bool):  # Take it...
         self._wrapping = wrapping
       elif self.wrapping_from_input_file() is not None:
         self._wrapping = self.wrapping_from_input_file()
+      elif self.crystal_symmetry().space_group_number() > 1 and \
+         self.is_full_size():  # crystal structure and full size
+        self._wrapping = True
       else:
         self._wrapping = False
 
@@ -332,6 +344,13 @@ class map_manager(map_reader, write_ccp4_map):
     # make sure labels are strings
     if self.labels is not None:
       self.labels = [to_str(label, codec = 'utf8') for label in self.labels]
+
+    # Initialize experiment type and scattering_table and set defaults
+    self._experiment_type = experiment_type
+    self._scattering_table = scattering_table
+    self._resolution = resolution
+    self._set_up_experiment_type_and_scattering_table_and_resolution()
+
 
   # prevent pickling error in Python 3 with self.log = sys.stdout
   # unpickling is limited to restoring sys.stdout
@@ -631,7 +650,8 @@ class map_manager(map_reader, write_ccp4_map):
      deep_copied.
     '''
     assert isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
-    assert self.is_compatible_ncs_object(ncs_object)
+    if (not self.is_compatible_ncs_object(ncs_object)):
+      self.shift_ncs_object_to_match_map(ncs_object)
     self._ncs_object = deepcopy(ncs_object)
 
   def set_program_name(self, program_name = None):
@@ -766,7 +786,7 @@ class map_manager(map_reader, write_ccp4_map):
 
 
   def create_mask_around_density(self,
-      resolution,
+      resolution = None,
       molecular_mass = None,
       sequence = None,
       solvent_content = None):
@@ -777,7 +797,8 @@ class map_manager(map_reader, write_ccp4_map):
       Does not apply the mask (use apply_mask_to_map etc for that)
 
       Parameters are:
-       resolution : required resolution of map
+       resolution : resolution of map, taken from self.resolution() if not
+          specified
        molecular_mass: optional mass (Da) of object in density
        sequence: optional sequence of object in density
        solvent_content : optional solvent_content of map
@@ -785,7 +806,9 @@ class map_manager(map_reader, write_ccp4_map):
 
     '''
 
-    assert resolution is not None
+    if not resolution:
+      resolution = self.resolution()
+    assert (resolution is not None)
 
     from cctbx.maptbx.mask import create_mask_around_density as cm
     self._created_mask = cm(map_manager = self,
@@ -1146,6 +1169,89 @@ class map_manager(map_reader, write_ccp4_map):
 
     return mm
 
+  def set_experiment_type(self, experiment_type):
+    ''' Set the experiment type
+       xray,neutron, or cryo_em
+       If scattering_table is not defined, it is guessed from experiment_type
+    '''
+    self._experiment_type = experiment_type
+    self._set_up_experiment_type_and_scattering_table_and_resolution()
+
+  def set_scattering_table(self, scattering_table):
+    ''' Set the scattering table (type of scattering)
+       electron:  cryo_em
+       n_gaussian x-ray (standard)
+       wk1995:    x-ray (alternative)
+       it1992:    x-ray (alternative)
+       neutron:   neutron scattering
+    '''
+    self._scattering_table = scattering_table
+    self._set_up_experiment_type_and_scattering_table_and_resolution()
+
+  def set_resolution(self, resolution):
+    ''' Set the nominal resolution of map
+    '''
+    self._resolution = resolution
+
+  def experiment_type(self):
+    return self._experiment_type
+
+  def resolution(self):
+    return self._resolution
+
+  def scattering_table(self):
+    return self._scattering_table
+
+  def ncs_object(self):
+    return self._ncs_object
+
+  def _set_up_experiment_type_and_scattering_table_and_resolution(self):
+    default_scattering_table_dict = {
+     'xray':'n_gaussian',
+     'neutron':'neutron',
+     'cryo_em':'electron',
+     }
+
+    if self._experiment_type not in [None, Auto]:
+      assert self._experiment_type in ['xray','neutron','cryo_em']
+      if self.wrapping() and self._experiment_type=='cryo_em':
+        raise Sorry("Cannot use wrapping if experiment_type is 'cryo_em'")
+
+    else:  # Try to guess experiment_type
+      if self.crystal_symmetry().space_group_number() > 1:
+        # Has space-group symmmetry, not cryo_em
+        self._experiment_type = 'xray'  # could be neutron of course
+      elif self.is_full_size() and self.wrapping() is False:
+        # No space-group symmetry, full size map, no wrapping: cryo_em
+        self._experiment_type = 'cryo_em'  # full size map and no wrapping
+      elif self.is_full_size() and self.wrapping() is True:
+        # P1 symmetry, full size map, wrapping True: xray
+        self._experiment_type = 'xray'  # full size map and wrapping
+      else:
+        # P1 symmetry, not a full-size map...cannot tell
+        self._experiment_type = None
+
+    if self._experiment_type is not None:
+      if self._scattering_table is None:
+        self._scattering_table = default_scattering_table_dict[
+          self._experiment_type]
+
+    if self._scattering_table not in [None, Auto]:
+      assert self._scattering_table in ['electron','n_gaussian',
+       'wk1995','it1992','neutron']
+
+    if self._scattering_table is Auto:
+      self._scattering_table = None
+
+    if self._resolution is Auto:
+      self._resolution = None
+
+    if self._experiment_type is Auto:
+      self._experiment_type = None
+
+    assert not (self._wrapping is Auto)
+
+
   def set_wrapping(self, wrapping_value):
     '''
        Set wrapping to be wrapping_value
@@ -1271,8 +1377,6 @@ class map_manager(map_reader, write_ccp4_map):
     z = grid_units[2]/self.unit_cell_grid[2]
     return self.unit_cell().orthogonalize(tuple((x, y, z)))
 
-  def ncs_object(self):
-    return self._ncs_object
 
   def shift_cart(self):
     '''
@@ -1282,6 +1386,33 @@ class map_manager(map_reader, write_ccp4_map):
      '''
     return tuple(
        [-x for x in self.grid_units_to_cart(self.origin_shift_grid_units)])
+
+  def shift_ncs_object_to_match_map(self,ncs_object):
+    '''
+      Move the ncs_object to match this map
+
+      Note difference from set_ncs_object_shift_cart_to_match_map which
+        sets the shift_cart but does not move the object
+    '''
+    if ncs_object.shift_cart():
+      offset = tuple(
+        [s - n for s, n in zip(self.shift_cart(), ncs_object.shift_cart())])
+      ncs_object.coordinate_shift(offset)
+    else:
+      ncs_object.coordinate_shift(self.shift_cart())
+
+  def shift_model_to_match_map(self, model):
+    '''
+      Move the model to match this map
+      Note difference from set_model_symmetries_and_shift_cart_to_match_map
+       which sets model symmetry and shift_cart but does not move the model
+    '''
+    if model.shift_cart():
+      offset = tuple(
+        [s - n for s, n in zip(self.shift_cart(), model.shift_cart())])
+      model.shift_model_and_set_crystal_symmetry(shift_cart=offset)
+    else:
+      model.shift_model_and_set_crystal_symmetry(shift_cart=self.shift_cart())
 
   def set_ncs_object_shift_cart_to_match_map(self, ncs_object):
     '''
@@ -1574,8 +1705,9 @@ class map_manager(map_reader, write_ccp4_map):
        original origin).  A map calculated from the Fourier coefficients will
        superimpose on the working (current map) without origin shifts.
 
-       This method and fourier_coefficients_as_map_manager interconvert map_data and
-       map_coefficients without changin origin.  Both are intended for use
+       This method and fourier_coefficients_as_map_manager interconvert
+       map_data and
+       map_coefficients without changing origin.  Both are intended for use
        with map_data that has an origin at (0, 0, 0).
     '''
     assert self.map_data()
