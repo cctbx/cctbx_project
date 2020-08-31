@@ -449,6 +449,7 @@ class nanoBragg {
 #ifdef NANOBRAGG_HAVE_CUDA
     int device_Id;
     cudaPointers cpo;
+    new_api_cudaPointers new_api_cpo;
 #endif
     /* special options */
 //    bool calculate_noise; // = 1;
