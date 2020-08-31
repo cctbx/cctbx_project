@@ -395,6 +395,19 @@ __device__ __inline__ static int flatten3dindex(int x, int y, int z, int x_range
 
 __device__ __inline__ CUDAREAL quickFcell_ldg(int hkls, int h_max, int h_min, int k_max, int k_min, int l_min, int l_max, int h0, int k0, int l0, int h_range, int k_range, int l_range, CUDAREAL defaultF, const CUDAREAL * __restrict__ Fhkl);
 
+__global__ void add_array_CUDAKernel(double * lhs, float * rhs, int array_size){
+  const int total_pixels = array_size;
+  const int fstride = gridDim.x * blockDim.x;
+  const int sstride = gridDim.y * blockDim.y;
+  const int stride = fstride * sstride;
+  for (int pixIdx = (blockDim.y * blockIdx.y + threadIdx.y) * fstride + blockDim.x * blockIdx.x + threadIdx.x;
+       pixIdx < total_pixels; pixIdx += stride) {
+    /* position in pixel array */
+    const int j = pixIdx;
+    lhs[j] = lhs[j] + (double)rhs[j]; // specifically add low precision array to high precision array
+    }
+  }
+
 __global__ void nanoBraggSpotsInitCUDAKernel(int spixels, int fpixels, float * floatimage, float * omega_reduction, float * max_I_x_reduction,
 		float * max_I_y_reduction, bool * rangemap) {
 
@@ -1191,7 +1204,8 @@ extern "C" void allocate_cuda_cu(int deviceId, int spixels, int fpixels, int roi
                 int interpolate, double *** Fhkl, int h_min, int h_max, int h_range, int k_min, int k_max, int k_range, int l_min, int l_max, int l_range, int hkls,
                 int nopolar, double polar_vector[4], double polarization, double fudge, int unsigned short * maskimage, float * floatimage /*out*/,
                 double * omega_sum/*out*/, int * sumn /*out*/, double * sum /*out*/, double * sumsqr /*out*/, double * max_I/*out*/, double * max_I_x/*out*/,
-                                 double * max_I_y /*out*/, cudaPointers &cp /* output for pointers */) {
+                                 double * max_I_y /*out*/, cudaPointers &cp /* output for pointers */,
+                new_api_cudaPointers &newapi_cp) {
 
         int total_pixels = spixels * fpixels;
         cudaSetDevice(deviceId);
@@ -1204,10 +1218,13 @@ extern "C" void allocate_cuda_cu(int deviceId, int spixels, int fpixels, int roi
 
         /* clear memory */
         memset(floatimage, 0, sizeof(typeof(*floatimage)) * total_pixels);
+        int n_panels=1; /* one panel for now, extend later */
 
         /*create transfer arguments to device space*/
         cp.cu_spixels = spixels;
         cp.cu_fpixels = fpixels;
+        newapi_cp.cu_slow_pixels = spixels;
+        newapi_cp.cu_fast_pixels = fpixels;
         cp.cu_roi_xmin = roi_xmin;
         cp.cu_roi_xmax = roi_xmax;
         cp.cu_roi_ymin = roi_ymin;
@@ -1357,8 +1374,17 @@ extern "C" void allocate_cuda_cu(int deviceId, int spixels, int fpixels, int roi
 
         float * cu_floatimage = NULL;
         CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_floatimage, sizeof(*cu_floatimage) * total_pixels));
-        CUDA_CHECK_RETURN(cudaMemcpy(cu_floatimage, floatimage, sizeof(*cu_floatimage) * total_pixels, cudaMemcpyHostToDevice));
+        // In contrast to old API, new API initializes its own accumulator, does not take values from CPU
+        // CUDA_CHECK_RETURN(cudaMemcpy(cu_floatimage, floatimage, sizeof(*cu_floatimage) * total_pixels, cudaMemcpyHostToDevice));
         cp.cu_floatimage = cu_floatimage;
+
+        /* separate accumulator image outside the usual nanoBragg data structure.
+           1. accumulate contributions from a sequence of source energy channels computed separately
+           2. represent multiple panels, all same rectangular shape; slowest dimension = n_panels */
+        double * cu_accumulate_floatimage = NULL;
+        CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_accumulate_floatimage, sizeof(*cu_accumulate_floatimage) * total_pixels * n_panels));
+        CUDA_CHECK_RETURN(cudaMemset((void *)cu_accumulate_floatimage, 0, sizeof(*cu_accumulate_floatimage) * total_pixels * n_panels));
+        newapi_cp.cu_accumulate_floatimage = cu_accumulate_floatimage;
 
         float * cu_omega_reduction = NULL;
         CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_omega_reduction, sizeof(*cu_omega_reduction) * total_pixels));
@@ -1402,6 +1428,7 @@ extern "C" void allocate_cuda_cu(int deviceId, int spixels, int fpixels, int roi
         CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_Fhkl, sizeof(*cu_Fhkl) * hklsize));
         CUDA_CHECK_RETURN(cudaMemcpy(cu_Fhkl, FhklLinear, sizeof(*cu_Fhkl) * hklsize, cudaMemcpyHostToDevice));
         cp.cu_Fhkl = cu_Fhkl;
+        free(FhklLinear);
 
         // deallocate host arrays
         // potential memory leaks
@@ -1411,9 +1438,11 @@ extern "C" void allocate_cuda_cu(int deviceId, int spixels, int fpixels, int roi
         free(max_I_y_reduction);
 }
 
-extern "C" void add_energy_channel_cuda_cu(int deviceId, double * source_I, double * source_lambda,
-                                           double *** Fhkl, int h_range, int k_range, int l_range,
-                                           cudaPointers &cp) {
+extern "C" void add_energy_channel_cuda_cu(int deviceId, double * source_I, double * source_lambda, double const& fluence,
+                                           double *** Fhkl, int h_min, int k_min, int l_min, int h_range, int k_range, int l_range,
+                                           cudaPointers &cp, new_api_cudaPointers &newapi_cp) {
+
+        cp.cu_fluence = fluence; // new for this energy channel
         cudaSetDevice(deviceId);
         // transfer source_I, source_lambda, and Fhkl
         // the int arguments are for sizes of the arrays
@@ -1431,6 +1460,7 @@ extern "C" void add_energy_channel_cuda_cu(int deviceId, double * source_I, doub
           }
         }
         CUDA_CHECK_RETURN(cudaMemcpy(cp.cu_Fhkl, FhklLinear, sizeof(*cp.cu_Fhkl) * hklsize, cudaMemcpyHostToDevice));
+        free(FhklLinear);
 
         CUDA_CHECK_RETURN(cudaGetDevice(&deviceId));
         cudaDeviceProp deviceProps = { 0 };
@@ -1466,16 +1496,19 @@ extern "C" void add_energy_channel_cuda_cu(int deviceId, double * source_I, doub
 
         CUDA_CHECK_RETURN(cudaPeekAtLastError());
         CUDA_CHECK_RETURN(cudaDeviceSynchronize());
+
+        add_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(newapi_cp.cu_accumulate_floatimage, cp.cu_floatimage,
+          cp.cu_spixels * cp.cu_fpixels);
 }
 
-extern "C" void get_raw_pixels_cuda_cu(int deviceId, float * floatimage, cudaPointers &cp) {
-  int total_pixels = cp.cu_spixels * cp.cu_fpixels;
+extern "C" void get_raw_pixels_cuda_cu(int deviceId, double * floatimage, new_api_cudaPointers &newapi_cp) {
+  int total_pixels = newapi_cp.cu_slow_pixels * newapi_cp.cu_fast_pixels;
   cudaSetDevice(deviceId);
-  CUDA_CHECK_RETURN(cudaMemcpy(floatimage, cp.cu_floatimage, sizeof(*cp.cu_floatimage) * total_pixels, cudaMemcpyDeviceToHost));
-
+  CUDA_CHECK_RETURN(
+  cudaMemcpy(floatimage, newapi_cp.cu_accumulate_floatimage, sizeof(*newapi_cp.cu_accumulate_floatimage) * total_pixels, cudaMemcpyDeviceToHost));
 }
 
-extern "C" void deallocate_cuda_cu(int deviceId, cudaPointers &cp) {
+extern "C" void deallocate_cuda_cu(int deviceId, cudaPointers &cp, new_api_cudaPointers &newapi_cp) {
         cudaSetDevice(deviceId);
         CUDA_CHECK_RETURN(cudaFree(cp.cu_sdet_vector));
         CUDA_CHECK_RETURN(cudaFree(cp.cu_fdet_vector));
@@ -1483,22 +1516,24 @@ extern "C" void deallocate_cuda_cu(int deviceId, cudaPointers &cp) {
         CUDA_CHECK_RETURN(cudaFree(cp.cu_pix0_vector));
         CUDA_CHECK_RETURN(cudaFree(cp.cu_beam_vector));
         CUDA_CHECK_RETURN(cudaFree(cp.cu_spindle_vector));
-        CUDA_CHECK_RETURN(cudaFree(cp.cu_polar_vector));
-        CUDA_CHECK_RETURN(cudaFree(cp.cu_a0));
-        CUDA_CHECK_RETURN(cudaFree(cp.cu_b0));
-        CUDA_CHECK_RETURN(cudaFree(cp.cu_c0));
         CUDA_CHECK_RETURN(cudaFree(cp.cu_source_X));
         CUDA_CHECK_RETURN(cudaFree(cp.cu_source_Y));
         CUDA_CHECK_RETURN(cudaFree(cp.cu_source_Z));
         CUDA_CHECK_RETURN(cudaFree(cp.cu_source_I));
         CUDA_CHECK_RETURN(cudaFree(cp.cu_source_lambda));
-        CUDA_CHECK_RETURN(cudaFree(cp.cu_FhklParams));
+        CUDA_CHECK_RETURN(cudaFree(cp.cu_a0));
+        CUDA_CHECK_RETURN(cudaFree(cp.cu_b0));
+        CUDA_CHECK_RETURN(cudaFree(cp.cu_c0));
         CUDA_CHECK_RETURN(cudaFree(cp.cu_mosaic_umats));
+        CUDA_CHECK_RETURN(cudaFree(cp.cu_Fhkl));
+        CUDA_CHECK_RETURN(cudaFree(cp.cu_FhklParams));
+        CUDA_CHECK_RETURN(cudaFree(cp.cu_polar_vector));
+        CUDA_CHECK_RETURN(cudaFree(cp.cu_maskimage));
         CUDA_CHECK_RETURN(cudaFree(cp.cu_floatimage));
         CUDA_CHECK_RETURN(cudaFree(cp.cu_omega_reduction));
         CUDA_CHECK_RETURN(cudaFree(cp.cu_max_I_x_reduction));
         CUDA_CHECK_RETURN(cudaFree(cp.cu_max_I_y_reduction));
-        CUDA_CHECK_RETURN(cudaFree(cp.cu_maskimage));
         CUDA_CHECK_RETURN(cudaFree(cp.cu_rangemap));
-
+        // future use: CUDA_CHECK_RETURN(cudaFree(newapi_cp.cu_energy_Fhkl));
+        CUDA_CHECK_RETURN(cudaFree(newapi_cp.cu_accumulate_floatimage));
 }

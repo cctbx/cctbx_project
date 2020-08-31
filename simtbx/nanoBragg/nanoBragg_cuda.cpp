@@ -52,7 +52,7 @@ void allocate_cuda_cu(int deviceId, int spixels, int fpixels, int roi_xmin, int 
                       int mosaic_domains, double * mosaic_umats, double Na,
                       double Nb, double Nc, double V_cell, double water_size,
                       double water_F, double water_MW, double r_e_sqr,
-                      double fluence, double Avogadro, double spot_scsale, int integral_form,
+                      double fluence, double Avogadro, double spot_scale, int integral_form,
                       double default_F, int interpolate, double *** Fhkl,
                       int h_min, int h_max, int h_range, int k_min, int k_max,
                       int k_range, int l_min, int l_max, int l_range, int hkls,
@@ -62,18 +62,19 @@ void allocate_cuda_cu(int deviceId, int spixels, int fpixels, int roi_xmin, int 
                       int * sumn /*out*/, double * sum /*out*/,
                       double * sumsqr /*out*/, double * max_I/*out*/,
                       double * max_I_x/*out*/, double * max_I_y /*out*/,
-                      cudaPointers &cp /* output for pointers */);
+                      cudaPointers &cp /* output for pointers */,
+                      new_api_cudaPointers &newapi_cp);
 
 extern "C"
-void add_energy_channel_cuda_cu(int deviceId, double * source_I, double * source_lambda,
-                                double *** Fhkl, int h_range, int k_range, int l_range,
-                                cudaPointers &cp);
+void add_energy_channel_cuda_cu(int deviceId, double * source_I, double * source_lambda, double const& fluence,
+                                double *** Fhkl, int h_min, int k_min, int l_min, int h_range, int k_range, int l_range,
+                                cudaPointers &cp, new_api_cudaPointers &newapi_cp);
 
 extern "C"
-void get_raw_pixels_cuda_cu(int deviceId, float * floatimage, cudaPointers &cp);
+void get_raw_pixels_cuda_cu(int deviceId, double * floatimage, new_api_cudaPointers &);
 
 extern "C"
-void deallocate_cuda_cu(int deviceId, cudaPointers &cp);
+void deallocate_cuda_cu(int deviceId, cudaPointers &, new_api_cudaPointers &);
 
 namespace simtbx {
 namespace nanoBragg {
@@ -193,7 +194,7 @@ nanoBragg::allocate_cuda() {
                    &sumn, &sum,
                    &sumsqr, &max_I,
                    &max_I_x, &max_I_y,
-                   cpo);
+                   cpo, new_api_cpo);
 #else
   throw SCITBX_ERROR("no CUDA implementation of allocate_cuda");
 #endif
@@ -202,43 +203,26 @@ nanoBragg::allocate_cuda() {
 void nanoBragg::add_energy_channel_cuda() {
 
 #ifdef HAVE_NANOBRAGG_SPOTS_CUDA
-  add_energy_channel_cuda_cu(device_Id, source_I, source_lambda, Fhkl, h_range, k_range, l_range, cpo);
+  add_energy_channel_cuda_cu(device_Id, source_I, source_lambda, fluence, Fhkl, h_min, k_min, l_min, h_range, k_range, l_range, cpo, new_api_cpo);
 #else
   throw SCITBX_ERROR("no CUDA implementation of add_energy_channel_cuda");
 #endif
 }
 
 void nanoBragg::get_raw_pixels_cuda() {
-  /* declare a float version of floatimage for output */
-  float * float_floatimage = new float[raw_pixels.size()];
-
+  /* declare a double version of floatimage for output */
+  double * double_floatimage = raw_pixels.begin();
 #ifdef HAVE_NANOBRAGG_SPOTS_CUDA
-  get_raw_pixels_cuda_cu(device_Id, float_floatimage, cpo);
+  get_raw_pixels_cuda_cu(device_Id, double_floatimage, new_api_cpo);
 #else
   throw SCITBX_ERROR("no CUDA implementation of get_raw_pixels_cuda");
 #endif
-
-  // double * raw_pixels_ptr = raw_pixels.begin();
-  // for (int i=0; i<raw_pixels.size(); i++) {
-  //   *raw_pixels_ptr++ = float_floatimage[i];
-  // }
-
-  // delete[] float_floatimage;
-
-  /* convert float_floatimage to double */
-  for (int i=0; i<raw_pixels.size(); i++) {
-    raw_pixels[i] = double(float_floatimage[i]);
-  }
-  delete[] float_floatimage;
-
   floatimage = raw_pixels.begin();
-
-
 }
 
 void nanoBragg::deallocate_cuda() {
 #ifdef HAVE_NANOBRAGG_SPOTS_CUDA
-  deallocate_cuda_cu(device_Id, cpo);
+  deallocate_cuda_cu(device_Id, cpo, new_api_cpo);
 #else
   throw SCITBX_ERROR("no CUDA implementation of deallocate_cuda");
 #endif
