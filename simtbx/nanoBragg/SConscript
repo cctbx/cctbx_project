@@ -81,10 +81,12 @@ env.timemory_root  = TIMEMORY_ROOT
 
 if env.build_timemory:
     nanoBragg_env.Prepend(LIBS=["timemory"],
-                LIBPATH=[os.path.join(env.timemory_root, "lib64")],
-                CPPPATH=[os.path.join(env.timemory_root, "include")])
+                          LIBPATH=[os.path.join(env.timemory_root, "lib64")],
+                          CPPPATH=[os.path.join(env.timemory_root, "include")],
+                          CPPDEFINES=["HAVE_TIMEMORY"])
     env.Prepend(LIBS=["timemory"],
-                LIBPATH=[os.path.join(env.timemory_root, "lib64")])
+                LIBPATH=[os.path.join(env.timemory_root, "lib64")],
+                CPPDEFINES=["HAVE_TIMEMORY"])
 
 
 
@@ -133,11 +135,6 @@ if (env_etc.enable_cuda):
   lib_path = os.environ["LD_LIBRARY_PATH"].split(":")
   env.Prepend(LIBS=["nvToolsExt"],
               LIBPATH=[pth for pth in lib_path if "cuda" in pth])
-
-# HACK
-# env.Prepend(LIBS=["timemory"],
-#             LIBPATH=["/global/common/cori_cle7/software/timemory/cray-cnl7-haswell/3.0.1/gcc-8.2.0/cuda-10.1.243/python-3.6/lib64"])
-
 
 
 env.Prepend(LIBS=["omptbx"])

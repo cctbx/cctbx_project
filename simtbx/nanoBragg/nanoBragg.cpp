@@ -1,10 +1,26 @@
 #include <simtbx/nanoBragg/nanoBragg.h>
 
 
-// Timemory -- don't import this if not defined
-#include <timemory/library.h>
+//_______________________________________________________________________________
+// Timemory support: this is conditional if HAVE_TIMEORY is defined, otherwise
+// instrumentization code does nothing
+//
 
-//Contributed by James Holton, UCSF,LBNL,SLAC.
+#ifdef HAVE_TIMEORY
+#include <timemory/library.h>
+#define PUSH_REGION(t) timemory_push_region(t)
+#define POP_REGION(t) timemory_push_region(t)
+#else
+#define PUSH_REGION(t) do {} while(0)
+#define POP_REGION(t) do {} while(0)
+#endif
+
+//-------------------------------------------------------------------------------
+
+
+
+
+// Contributed by James Holton, UCSF,LBNL,SLAC.
 
 namespace simtbx {
 namespace nanoBragg {
@@ -259,7 +275,8 @@ nanoBragg::nanoBragg(
         int verbose)    // =0
 {
 
-    timemory_push_region("nanoBragg:cpp");
+    // timemory_push_region("nanoBragg:cpp");
+    PUSH_REGION("nanoBragg:cpp");
 
     /* initialize to sensible default values */
     init_defaults();
@@ -298,7 +315,8 @@ nanoBragg::nanoBragg(
     /* sensible initialization of all unititialized values */
     reconcile_parameters();
 
-    timemory_pop_region("nanoBragg:cpp");
+    // timemory_pop_region("nanoBragg:cpp");
+    POP_REGION("nanoBragg:cpp");
 }
 
 
