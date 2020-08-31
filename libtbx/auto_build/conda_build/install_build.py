@@ -98,7 +98,7 @@ def fix_rpath(src):
     print(libraries)
 
 # =============================================================================
-def copy_build(env, prefix=None, ext_dir=None, link=False):
+def copy_build(env, prefix=None, ext_dir=None, copy_egg=False, link=False):
   """
   Copies the following items,
     1) Binaries from build/exe_dev to $PREFIX/bin
@@ -158,8 +158,9 @@ def copy_build(env, prefix=None, ext_dir=None, link=False):
     if name_dir == 'exe_dev':
       name_dir = 'bin'
     dst_path = os.path.join(prefix, name_dir)
-    filenames = os.listdir(src_path)
-    loop_copy(src_path, dst_path, name, filenames)
+    if os.path.isdir(src_path):
+      filenames = os.listdir(src_path)
+      loop_copy(src_path, dst_path, name, filenames)
 
   # libraries
   # ---------------------------------------------------------------------------
@@ -169,7 +170,7 @@ def copy_build(env, prefix=None, ext_dir=None, link=False):
   all_names = glob.iglob('lib*')
   lib_names = list()
   for name in all_names:
-    if name.endswith('egg-info'):
+    if name.endswith('egg-info') and not copy_egg:
       continue
     lib_names.append(name)
   loop_copy(src_path, dst_path, 'libraries', lib_names)
@@ -181,7 +182,7 @@ def copy_build(env, prefix=None, ext_dir=None, link=False):
   all_names = glob.iglob('*ext.*')
   ext_names = list()
   for name in all_names:
-    if name.endswith('egg-info'):
+    if name.endswith('egg-info') and not copy_egg:
       continue
     ext_names.append(name)
   loop_copy(src_path, dst_path, 'Python extensions', ext_names)
@@ -302,8 +303,6 @@ def remove_build(env, prefix=None, ext_dir=None):
   all_names = glob.iglob('lib*')
   lib_names = list()
   for name in all_names:
-    if name.endswith('egg-info'):
-      continue
     lib_names.append(name)
   loop_remove(dst_path, 'libraries', lib_names)
 
@@ -314,8 +313,6 @@ def remove_build(env, prefix=None, ext_dir=None):
   all_names = glob.iglob('*ext.*')
   ext_names = list()
   for name in all_names:
-    if name.endswith('egg-info'):
-      continue
     ext_names.append(name)
   loop_remove(dst_path, 'Python extensions', ext_names)
 
@@ -380,12 +377,17 @@ def run():
   default_sys_prefix = sys.prefix
   if sys.platform == 'darwin' and 'python.app' in default_sys_prefix:
     default_sys_prefix = default_sys_prefix.split('python.app')[0]
+  default_sys_prefix = os.path.abspath(default_sys_prefix)
   default_sp_dir = None
   default_lib_dynload_dir = None
   for p in sys.path:
-    if default_sp_dir is None and p.endswith('site-packages'):
+    if default_sp_dir is None \
+      and p.startswith(default_sys_prefix) \
+      and p.endswith('site-packages'):
       default_sp_dir = p
-    if default_lib_dynload_dir is None and p.endswith('lib-dynload'):
+    if default_lib_dynload_dir is None \
+      and p.startswith(default_sys_prefix) \
+      and p.endswith('lib-dynload'):
       default_lib_dynload_dir = p
 
   parser.add_argument(
@@ -400,10 +402,12 @@ def run():
     '--ext-dir', '--ext_dir', default=default_lib_dynload_dir, type=str,
     help="""The location where the Python extensions will be installed, by
       default the directory is the lib-dynload location of the calling python.""")
+  parser.add_argument('--preserve-egg-dir', '--preserve_egg_dir', action='store_true',
+    help="""When set, the egg and egg-info directories are copied as well.""")
   parser.add_argument(
     '--fix-rpath', '--fix_rpath', action='store_true',
     help="""When set, the relative paths are fixed for library and extension
-      files.""")
+      files. NOT IMPLEMENTED YET""")
   parser.add_argument(
     '--link', action='store_true',
     help="""When set, instead of copying, symbolic links are created
@@ -428,7 +432,7 @@ by the LIBTBX_BUILD environment variable''')
     remove_modules(env, sp_dir=namespace.sp_dir)
   else:
     copy_build(env, prefix=namespace.prefix, ext_dir=namespace.ext_dir,
-               link=namespace.link)
+               copy_egg=namespace.preserve_egg_dir, link=namespace.link)
     copy_modules(env, sp_dir=namespace.sp_dir, link=namespace.link)
 
   if namespace.fix_rpath:
