@@ -1,4 +1,33 @@
+import os
+
+
+#===============================================================================#
+#                                                                               #
+# nanoeBragg SCons configurations -- sets up the build environment for          #
+# based on the following envorinment variables:                                 #
+#     1. IFF CUDA is available: add CUDA-specific sources                       #
+#     2. If CCTBX_INCLUDE_TIMEMORY = True | On | 1: add Timemory support        #
+#        NOTE: SCons will look in TIMEMORY_ROOT for the Timemory sources/libs   #
+#                                                                               #
+#===============================================================================#
+
+
+
+
+#________________________________________________________________________________
+# SCons Imports
+#
+
 Import("env", "env_etc")
+
+
+
+#________________________________________________________________________________
+# Set up basline nanoBragg_env:
+#  1. Configure flags
+#  2. Add basline sources (CUDA sources -- iff CUDA is enables -- added later)
+#
+
 
 # remove -ffast-math compile option
 nanoBragg_env = env.Clone()
@@ -7,8 +36,12 @@ o = '-ffast-math'
 if o in ccflags:
   ccflags.remove(o)
 nanoBragg_env.Replace(SHCCFLAGS=ccflags)
+
+# conditional flags for CUDA
 if (env_etc.enable_cuda):
   nanoBragg_env.Prepend(CPPDEFINES=["NANOBRAGG_HAVE_CUDA"])
+
+# add basline sources
 nanoBragg_obj = nanoBragg_env.SharedObject(
   source=[
     "nanoBragg_ext.cpp",
@@ -17,9 +50,44 @@ nanoBragg_obj = nanoBragg_env.SharedObject(
   ])
 
 
-# HACK
-nanoBragg_env.Prepend(LIBS=["timemory"],
-                      LIBPATH=["/global/common/cori_cle7/software/timemory/cray-cnl7-haswell/3.0.1/gcc-8.2.0/cuda-10.1.243/python-3.6/lib64"])
+
+#________________________________________________________________________________
+# Add Timeory support -- iff set up to use Timemory
+#
+
+class TimemoryNotDefined(Exception):
+    pass
+
+
+BUILD_TIMEMORY = False
+TIMEMORY_ROOT  = ""
+if "CCTBX_INCLUDE_TIMEMORY" in os.environ:
+    if os.environ["CCTBX_INCLUDE_TIMEMORY"].lower() in ("true", "1", "on"):
+        BUILD_TIMEMORY = True
+        TIMEMORY_ROOT  = os.environ["TIMEMORY_ROOT"]
+
+
+if BUILD_TIMEMORY:
+    print("Building with Timemory support")
+    if not os.path.exists(TIMEMORY_ROOT):
+        raise TimemoryNotDefined
+else:
+    print("Building without Timemory suport")
+
+
+env.build_timemory = BUILD_TIMEMORY
+env.timemory_root  = TIMEMORY_ROOT
+
+
+if env.build_timemory:
+    nanoBragg_env.Prepend(LIBS=["timemory"],
+                LIBPATH=[os.path.join(env.timemory_root, "lib64")],
+                CPPPATH=[os.path.join(env.timemory_root, "include")])
+    env.Prepend(LIBS=["timemory"],
+                LIBPATH=[os.path.join(env.timemory_root, "lib64")])
+
+
+
 
 # compile nanoBraggCUDA.cu if possible
 if (env_etc.enable_cuda):
@@ -67,8 +135,9 @@ if (env_etc.enable_cuda):
               LIBPATH=[pth for pth in lib_path if "cuda" in pth])
 
 # HACK
-env.Prepend(LIBS=["timemory"],
-            LIBPATH=["/global/common/cori_cle7/software/timemory/cray-cnl7-haswell/3.0.1/gcc-8.2.0/cuda-10.1.243/python-3.6/lib64"])
+# env.Prepend(LIBS=["timemory"],
+#             LIBPATH=["/global/common/cori_cle7/software/timemory/cray-cnl7-haswell/3.0.1/gcc-8.2.0/cuda-10.1.243/python-3.6/lib64"])
+
 
 
 env.Prepend(LIBS=["omptbx"])

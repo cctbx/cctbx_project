@@ -1,8 +1,8 @@
 #include <simtbx/nanoBragg/nanoBragg.h>
 
 
-// HACK
-#include "timemory/library.h"
+// Timemory -- don't import this if not defined
+#include <timemory/library.h>
 
 //Contributed by James Holton, UCSF,LBNL,SLAC.
 
