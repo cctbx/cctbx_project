@@ -33,8 +33,9 @@ struct cudaPointers {
 
   CUDAREAL cu_pixel_size, cu_subpixel_size;
   int cu_steps;
-  CUDAREAL cu_detector_thickstep, cu_detector_thicksteps, cu_detector_thick,
-    cu_detector_mu;
+  CUDAREAL cu_detector_thickstep;
+  int cu_detector_thicksteps;
+  CUDAREAL cu_detector_thick, cu_detector_mu;
   CUDAREAL * cu_sdet_vector, * cu_fdet_vector, * cu_odet_vector, * cu_pix0_vector;
   int cu_curved_detector;
   CUDAREAL cu_distance, cu_close_distance;
@@ -64,6 +65,13 @@ struct cudaPointers {
   float * cu_floatimage /*out*/,  * cu_omega_reduction/*out*/,
     * cu_max_I_x_reduction/*out*/, * cu_max_I_y_reduction /*out*/;
   bool * cu_rangemap /*out*/;
+};
+
+struct new_api_cudaPointers {
+  int cu_slow_pixels, cu_fast_pixels, cu_n_panels;
+  int cu_n_energies;
+  CUDAREAL * cu_energy_Fhkl;
+  double * cu_accumulate_floatimage;
 };
 
 #endif
