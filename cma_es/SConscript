@@ -12,8 +12,9 @@ if (not env_etc.no_boost_python):
     env=env_bpl,
     paths=[env_etc.cma_es_include])
 
-env_bpl.SharedLibrary(
-  target = "#lib/cma_es_ext",
-  source = ['cma_es_ext.cpp',
-            'cma/cmaes.cpp',
-            ])
+if not libtbx.env.module_is_installed("cma_es"):
+  env_bpl.SharedLibrary(
+    target = "#lib/cma_es_ext",
+    source = ['cma_es_ext.cpp',
+              'cma/cmaes.cpp',
+              ])

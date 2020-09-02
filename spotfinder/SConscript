@@ -50,27 +50,28 @@ lib_dxtbxspotfinder_sources = [
   "dxtbx_toolbox/distl.cpp",
 ]
 
-if (env_etc.static_libraries): builder = envlm.StaticLibrary
-else:                          builder = envlm.SharedLibrary
-builder(
-    target="#lib/spotfinder",
-    source=lib_spotfinder_sources)
-builder(
-    target="#lib/dxtbxspotfinder",
-    source=lib_dxtbxspotfinder_sources)
+if not libtbx.env.module_is_installed("spotfinder"):
+  if (env_etc.static_libraries): builder = envlm.StaticLibrary
+  else:                          builder = envlm.SharedLibrary
+  builder(
+      target="#lib/spotfinder",
+      source=lib_spotfinder_sources)
+  builder(
+      target="#lib/dxtbxspotfinder",
+      source=lib_dxtbxspotfinder_sources)
 
-if (not env_etc.no_boost_python):
-  Import("env_no_includes_boost_python_ext")
+  if (not env_etc.no_boost_python):
+    Import("env_no_includes_boost_python_ext")
 
-  env_spotfinder_boost_python_ext = env_no_includes_boost_python_ext.Clone()
-  env_spotfinder_boost_python_ext.Prepend(LIBS=[ "scitbx_boost_python"])
-  env_etc.include_registry.append(
-    env=env_spotfinder_boost_python_ext,
-    paths=env_etc.spotfinder_common_includes + [env_etc.python_include])
-  Export("env_spotfinder_boost_python_ext")
-  SConscript("core_toolbox/boost_python/SConscript")
-  SConscript("dxtbx_toolbox/SConscript")
-  SConscript("array_family/SConscript")
+    env_spotfinder_boost_python_ext = env_no_includes_boost_python_ext.Clone()
+    env_spotfinder_boost_python_ext.Prepend(LIBS=[ "scitbx_boost_python"])
+    env_etc.include_registry.append(
+      env=env_spotfinder_boost_python_ext,
+      paths=env_etc.spotfinder_common_includes + [env_etc.python_include])
+    Export("env_spotfinder_boost_python_ext")
+    SConscript("core_toolbox/boost_python/SConscript")
+    SConscript("dxtbx_toolbox/SConscript")
+    SConscript("array_family/SConscript")
 
 #Note regarding the libtbx_config file:
 # rule of thumb for classifying dependencies.  If the package has

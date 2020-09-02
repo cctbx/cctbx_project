@@ -529,7 +529,7 @@ class environment:
     self.lib_path     = r("lib")
     self.include_path = r("include")
 
-  def check_installed_env(self, function, *args):
+  def check_installed_env(self, function, *args, **kwargs):
     """
     Loads the installed environment, if available, and runs the function
     in that environment. This is used in the local environment to check
@@ -537,10 +537,10 @@ class environment:
     """
     installed_env = get_installed_env()
     if installed_env is not None and not self.installed:
-      return getattr(installed_env, function)(*args)
+      return getattr(installed_env, function)(*args, **kwargs)
     return None
 
-  def check_local_env(self, function, *args):
+  def check_local_env(self, function, *args, **kwargs):
     """
     Loads the local environment, if available, and runs the function
     in that environment. This is used in the installed environment to
@@ -548,8 +548,31 @@ class environment:
     """
     local_env = get_local_env()
     if local_env is not None and self.installed:
-      return getattr(local_env, function)(*args)
+      return getattr(local_env, function)(*args, **kwargs)
     return None
+
+  def get_installed_module_path(self, name):
+    """
+    Returns the path to the installed path of a module. The path may not
+    always be stored in the installed environment. None is returned if
+    the module is not installed.
+    """
+    module_path = None
+    installed_env = get_installed_env()
+    if installed_env is not None:
+      for p in installed_env.repository_paths:
+        installed_path = os.path.join(abs(p), name)
+        if os.path.isdir(installed_path):
+          module_path = installed_path
+          break
+    return module_path
+
+  def module_is_installed(self, name):
+    """
+    Returns True if module is in installed environment, False otherwise
+    """
+    module_path = self.get_installed_module_path(name)
+    return module_path is not None
 
   def under_root(self, path, return_relocatable_path=False):
     return abs(self.build_path / '..' / path)
@@ -572,6 +595,12 @@ class environment:
                  return_relocatable_path=False):
     # check installed environment first
     result = self.check_installed_env('_under_dist', module_name, path, None, test, return_relocatable_path)
+    if result is None:
+      result = self.get_installed_module_path(module_name)
+      if result is not None:
+        result = self.as_relocatable_path(result) / path
+        if not return_relocatable_path:
+          result = abs(result)
     if result is not None:
       return result
     # check current environment
@@ -579,7 +608,7 @@ class environment:
     if result is not None:
       return result
     # then check local environment
-    result = self.check_installed_env('_under_dist', module_name, path, default, test, return_relocatable_path)
+    result = self.check_local_env('_under_dist', module_name, path, default, test, return_relocatable_path)
     return result
 
   def _under_dist(self, module_name, path, default=KeyError, test=None,
@@ -600,10 +629,19 @@ class environment:
   def dist_path(self, module_name, default=KeyError,
                 return_relocatable_path=False):
     # check installed environment first
-    result = self.check_installed_env('dist_path', module_name, default, return_relocatable_path)
+    result = self.check_installed_env('_dist_path', module_name, None, return_relocatable_path)
     if result is not None:
       return result
+    # check current environment
+    result = self._dist_path(module_name, None, return_relocatable_path)
+    if result is not None:
+      return result
+    # then check local environment
+    result = self.check_local_env('_dist_path', module_name, default, return_relocatable_path)
+    return result
 
+  def _dist_path(self, module_name, default=KeyError,
+                 return_relocatable_path=False):
     if (default is KeyError):
       result = self.module_dist_paths[module_name]
     else:
@@ -3001,7 +3039,13 @@ def get_local_env():
   Returns the local environment in the current working directory or None
   if it does not exist.
   """
-  return _get_env(os.getcwd())
+  env = None
+  for p in [os.getcwd()] + sys.path:
+    e = _get_env(p)
+    if e is not None:
+      env = e
+      break
+  return env
 
 def get_boost_library_with_python_version(name, libpath):
   """

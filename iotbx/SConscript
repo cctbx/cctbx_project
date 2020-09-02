@@ -14,45 +14,46 @@ env_etc.iotbx_common_includes = [
   env_etc.boost_adaptbx_include,
 ]
 
-if (libtbx.env.has_module("ccp4io")):
-  env_etc.iotbx_common_includes.append(env_etc.ccp4io_include)
+if not libtbx.env.module_is_installed("iotbx"):
+  if (libtbx.env.has_module("ccp4io")):
+    env_etc.iotbx_common_includes.append(env_etc.ccp4io_include)
 
-  iotbx_mtz_env = env_base.Clone(
-    SHLINKFLAGS=env_etc.shlinkflags)
-  env_etc.include_registry.append(
-    env=iotbx_mtz_env,
-    paths=env_etc.iotbx_common_includes)
+    iotbx_mtz_env = env_base.Clone(
+      SHLINKFLAGS=env_etc.shlinkflags)
+    env_etc.include_registry.append(
+      env=iotbx_mtz_env,
+      paths=env_etc.iotbx_common_includes)
 
-  Export("iotbx_mtz_env")
+    Export("iotbx_mtz_env")
 
-if (not env_etc.no_boost_python):
-  Import("env_no_includes_boost_python_ext")
-  env_iotbx_boost_python_ext = env_no_includes_boost_python_ext.Clone()
-  env_etc.include_registry.append(
-    env=env_iotbx_boost_python_ext,
-    paths=env_etc.iotbx_common_includes + [env_etc.python_include])
-  Export("env_iotbx_boost_python_ext")
-  #
-  env = env_no_includes_boost_python_ext.Clone()
-  env_etc.include_registry.append(
-    env=env,
-    paths=[env_etc.libtbx_include,
-           env_etc.boost_include,
-           env_etc.python_include])
-  env.SharedLibrary(
-    target="#lib/iotbx_wildcard_ext",
-    source=["wildcard_ext.cpp"])
+  if (not env_etc.no_boost_python):
+    Import("env_no_includes_boost_python_ext")
+    env_iotbx_boost_python_ext = env_no_includes_boost_python_ext.Clone()
+    env_etc.include_registry.append(
+      env=env_iotbx_boost_python_ext,
+      paths=env_etc.iotbx_common_includes + [env_etc.python_include])
+    Export("env_iotbx_boost_python_ext")
+    #
+    env = env_no_includes_boost_python_ext.Clone()
+    env_etc.include_registry.append(
+      env=env,
+      paths=[env_etc.libtbx_include,
+            env_etc.boost_include,
+            env_etc.python_include])
+    env.SharedLibrary(
+      target="#lib/iotbx_wildcard_ext",
+      source=["wildcard_ext.cpp"])
 
-if (libtbx.env.has_module("ccp4io")):
-  SConscript("mtz/SConscript")
-  SConscript("ccp4_map/SConscript")
+  if (libtbx.env.has_module("ccp4io")):
+    SConscript("mtz/SConscript")
+    SConscript("ccp4_map/SConscript")
 
-SConscript("pdb/SConscript")
-SConscript("xplor/SConscript")
-SConscript("dsn6/SConscript")
+  SConscript("pdb/SConscript")
+  SConscript("xplor/SConscript")
+  SConscript("dsn6/SConscript")
 
-if (not env_etc.no_boost_python):
-  SConscript("detectors/SConscript")
-  SConscript("misc/boost_python/SConscript")
-  SConscript("shelx/SConscript")
-  SConscript("cif/boost_python/SConscript")
+  if (not env_etc.no_boost_python):
+    SConscript("detectors/SConscript")
+    SConscript("misc/boost_python/SConscript")
+    SConscript("shelx/SConscript")
+    SConscript("cif/boost_python/SConscript")
