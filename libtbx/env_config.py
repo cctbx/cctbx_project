@@ -454,6 +454,7 @@ class environment:
     self.reset_dispatcher_support()
     self.set_derived_paths()
     self.python_exe = self.as_relocatable_path(sys.executable)
+    self.installed = False
     # sanity checks
     assert self.python_exe.isfile()
     assert self.python_exe.access(os.X_OK)
@@ -514,7 +515,8 @@ class environment:
     self.missing_optional = set()
 
   def is_ready_for_build(self):
-    return (len(self.missing_for_build) == 0)
+    return True
+    #return (len(self.missing_for_build) == 0)
 
   def as_relocatable_path(self, path):
     if isinstance(path, libtbx.path.path_mixin): return path
@@ -526,6 +528,28 @@ class environment:
     self.exe_path     = r("exe")
     self.lib_path     = r("lib")
     self.include_path = r("include")
+
+  def check_installed_env(self, function, *args):
+    """
+    Loads the installed environment, if available, and runs the function
+    in that environment. This is used in the local environment to check
+    the installed environment.
+    """
+    installed_env = get_installed_env()
+    if installed_env is not None and not self.installed:
+      return getattr(installed_env, function)(*args)
+    return None
+
+  def check_local_env(self, function, *args):
+    """
+    Loads the local environment, if available, and runs the function
+    in that environment. This is used in the installed environment to
+    check the local environment.
+    """
+    local_env = get_local_env()
+    if local_env is not None and self.installed:
+      return getattr(local_env, function)(*args)
+    return None
 
   def under_root(self, path, return_relocatable_path=False):
     return abs(self.build_path / '..' / path)
@@ -546,6 +570,20 @@ class environment:
 
   def under_dist(self, module_name, path, default=KeyError, test=None,
                  return_relocatable_path=False):
+    # check installed environment first
+    result = self.check_installed_env('_under_dist', module_name, path, None, test, return_relocatable_path)
+    if result is not None:
+      return result
+    # check current environment
+    result = self._under_dist(module_name, path, None, test, return_relocatable_path)
+    if result is not None:
+      return result
+    # then check local environment
+    result = self.check_installed_env('_under_dist', module_name, path, default, test, return_relocatable_path)
+    return result
+
+  def _under_dist(self, module_name, path, default=KeyError, test=None,
+                  return_relocatable_path=False):
     if (default is KeyError):
       result = self.module_dist_paths[module_name] / path
     else:
@@ -561,6 +599,11 @@ class environment:
 
   def dist_path(self, module_name, default=KeyError,
                 return_relocatable_path=False):
+    # check installed environment first
+    result = self.check_installed_env('dist_path', module_name, default, return_relocatable_path)
+    if result is not None:
+      return result
+
     if (default is KeyError):
       result = self.module_dist_paths[module_name]
     else:
@@ -725,7 +768,24 @@ Wait for the command to finish, then try again.""" % vars())
 
   def find_dist_path(self, module_name, optional=False,
                      return_relocatable_path=False):
-    if module_name=='amber': return None # because amber_adaptbx is not an adapter
+    result = None
+
+    if module_name=='amber': return result # because amber_adaptbx is not an adapter
+
+    # check installed environment first
+    result = self.check_installed_env('_find_dist_path', module_name, True, return_relocatable_path)
+    if result is not None:
+      return result
+    # check current environment
+    result = self._find_dist_path(module_name, True, return_relocatable_path)
+    if result is not None:
+      return result
+    # then check local environment
+    result = self.check_local_env('_find_dist_path', module_name, optional, return_relocatable_path)
+    return result
+
+  def _find_dist_path(self, module_name, optional=False,
+                      return_relocatable_path=False):
     dist_path = self.command_line_redirections.get(module_name, None)
     if (dist_path is not None):
       return dist_path.self_or_abs_if(return_relocatable_path)
@@ -751,6 +811,9 @@ Wait for the command to finish, then try again.""" % vars())
   def process_module(self, dependent_module, module_name, optional):
     dist_path = self.find_dist_path(module_name, optional=optional)
     if (dist_path is None): return False
+    if abs(dist_path).startswith(sys.prefix):
+      print("{module_name} is already installed".format(module_name=module_name))
+      return True
     new_module = module(env=self, name=module_name, dist_path=dist_path)
     new_name_normcase = op.normcase(new_module.name)
     for name in self.module_dict:
@@ -848,6 +911,19 @@ Wait for the command to finish, then try again.""" % vars())
         = command_line.options.build_boost_python_extensions
     self.reset_module_registry()
     module_names.insert(0, "libtbx")
+
+    # check for installed environment and remove installed modules
+    installed_env = get_installed_env()
+    if installed_env is not None and not self.installed:
+      module_set = set(module_names)
+      for module_name in module_names:
+        if module_name in installed_env.module_dict:
+          module_set.remove(module_name)
+      module_names = list(module_set)
+      if len(module_names) == 0:
+        print("All modules have already been installed. No new configuration is necessary.")
+        sys.exit()
+
     for module_name in module_names:
       self.process_module(
         dependent_module=None, module_name=module_name, optional=False)
@@ -1627,6 +1703,15 @@ alias libtbx.unsetpaths "source '$LIBTBX_BUILD/unsetpaths.csh'"
         "Specified build cache dir does not exist"
     for path in self.repository_paths:
       print('Repository(r"%s")' % abs(path), file=f)
+    # insert modules from installed environment
+    installed_env = get_installed_env()
+    if installed_env is not None:
+      for module in installed_env.module_list:
+        name,path  = list(module.name_and_dist_path_pairs())[-1]
+        for script_name in ["libtbx_SConscript", "SConscript"]:
+          if (path / script_name).isfile():
+            print('SConscript("%s/%s")' % (name, script_name), file=f)
+            break
     for module in self.module_list:
       name,path  = list(module.name_and_dist_path_pairs())[-1]
       for script_name in ["libtbx_SConscript", "SConscript"]:
@@ -1641,7 +1726,15 @@ alias libtbx.unsetpaths "source '$LIBTBX_BUILD/unsetpaths.csh'"
         # make cja seems to get confused if the file is simply overwritten
     f = open_info(self.under_build("Makefile",
                                    return_relocatable_path=True))
+    current_path = os.environ.get('PATH')
     lsj = './bin/libtbx.scons -j "`./bin/libtbx.show_number_of_processors`"'
+    if current_path is not None:
+      for p in current_path.split(':'):
+        if os.path.isdir(p):
+          files = os.listdir(p)
+          if 'libtbx.scons' in files:
+            lsj = 'libtbx.scons -j "`libtbx.show_number_of_processors`"'
+            break
     f.write("""\
 # DO NOT EDIT THIS FILE!
 # This file will be overwritten by the next libtbx/configure.py,
@@ -1702,7 +1795,8 @@ selfx:
   def pickle(self):
     self.reset_dispatcher_support()
     file_name = self.build_path / "libtbx_env"
-    pickle.dump(self, file_name.open("wb"), 0)
+    with file_name.open("wb") as f:
+      pickle.dump(self, f, 0)
 
   def show_module_listing(self):
     print("Relocatable paths anchored at: %s" % abs(self.build_path))
@@ -1969,76 +2063,92 @@ selfx:
     (self.build_path / ".sconf_temp").remove_tree()
 
   def refresh(self):
-    completed_file_name = (self.build_path / "libtbx_refresh_is_completed")
-    completed_file_name.remove()
-    self.assemble_pythonpath()
-    self.show_build_options_and_module_listing()
-    self.reset_dispatcher_bookkeeping()
-    print("Creating files in build directory: %s" \
-      % show_string(abs(self.build_path)))
-    self.write_dispatcher_include_template()
-    self.write_lib_dispatcher_head()
-    self.write_setpath_files()
-    self.pickle()
-    libtbx.env = self
-    os.environ["LIBTBX_BUILD"] = abs(self.build_path) # to support libtbx.load_env
-    if (self.is_ready_for_build()):
-      self.write_SConstruct()
+    # check if self is modifiable
+    if self.installed:
+      print("Installed environments cannot be refreshed.")
+      try:
+        env = unpickle(os.getcwd())
+      except FileNotFoundError:
+        env = None
+      if env is not None:
+        print("Updating environment in {}".format(os.getcwd()))
+        env.refresh()
+        env.pickle()  # need a separate call
+    # continue normally
+    else:
+      completed_file_name = (self.build_path / "libtbx_refresh_is_completed")
+      completed_file_name.remove()
+      self.assemble_pythonpath()
+      self.show_build_options_and_module_listing()
+      self.reset_dispatcher_bookkeeping()
+      print("Creating files in build directory: %s" \
+        % show_string(abs(self.build_path)))
+      self.write_dispatcher_include_template()
+      self.write_lib_dispatcher_head()
+      self.write_setpath_files()
+      self.pickle()
+      libtbx.env = self
+      os.environ["LIBTBX_BUILD"] = abs(self.build_path) # to support libtbx.load_env
+      if (self.is_ready_for_build()):
+        self.write_SConstruct()
+        if (os.name != "nt"):
+          self.write_Makefile()
       if (os.name != "nt"):
-        self.write_Makefile()
-    if (os.name != "nt"):
-      self.write_run_tests_csh()
-    self.clear_bin_directory()
-    if not self.bin_path.isdir():
-      self.bin_path.makedirs()
-    self.relocate_python_paths_if_necessary()
-    python_dispatchers = ["libtbx.python"]
-    if (self.is_development_environment() and not self.no_bin_python):
-      python_dispatchers.append("python")
-    for file_name in python_dispatchers:
-      self._write_dispatcher_in_bin(
-        source_file=self.python_exe,
-        target_file=file_name,
-        source_is_python_exe=True)
-    for module in self.module_list:
-      module.process_command_line_directories()
-      # Reload the libtbx_config in case dependencies have changed
-      module.process_libtbx_config()
+        self.write_run_tests_csh()
+      self.clear_bin_directory()
+      if not self.bin_path.isdir():
+        self.bin_path.makedirs()
+      self.relocate_python_paths_if_necessary()
+      python_dispatchers = ["libtbx.python"]
+      if (self.is_development_environment() and not self.no_bin_python):
+        python_dispatchers.append("python")
+      for file_name in python_dispatchers:
+        self._write_dispatcher_in_bin(
+          source_file=self.python_exe,
+          target_file=file_name,
+          source_is_python_exe=True)
+      for module in self.module_list:
+        module.process_command_line_directories()
+        # Reload the libtbx_config in case dependencies have changed
+        module.process_libtbx_config()
 
-    # Resolve python dependencies in advance of potential use in refresh scripts
-    # Lazy-load the import here as we might not have an environment before this
-    from . import pkg_utils
-    if self.build_options.use_conda:
-      pkg_utils.resolve_module_conda_dependencies(self.module_list)
-    else:
-      pkg_utils.resolve_module_python_dependencies(self.module_list)
+      # Resolve python dependencies in advance of potential use in refresh scripts
+      # Lazy-load the import here as we might not have an environment before this
+      try:
+        from . import pkg_utils
+      except ImportError:
+        from libtbx import pkg_utils
+      if self.build_options.use_conda:
+        pkg_utils.resolve_module_conda_dependencies(self.module_list)
+      else:
+        pkg_utils.resolve_module_python_dependencies(self.module_list)
 
-    for path in self.pythonpath:
-      sys.path.insert(0, abs(path))
-    for module in self.module_list:
-      module.process_libtbx_refresh_py()
-    self.write_python_and_show_path_duplicates()
-    self.generate_entry_point_dispatchers()
-    self.process_exe()
-    self.write_command_version_duplicates()
-    if (os.name != "nt"):     # LD_LIBRARY_PATH for dependencies
-      os.environ[self.ld_library_path_var_name()] = ":".join(
-        [abs(p) for p in self.ld_library_path_additions()])
-    if self.build_options.use_conda:
-      # refresh loaders.cache for gdk-pixbuf on linux due to gtk2
-      if sys.platform.startswith("linux"):
-        conda_base = get_conda_prefix()
-        command = "{conda_base}/bin/gdk-pixbuf-query-loaders"
-        loaders = "{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.so"
-        cache = "{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
-        if os.path.isfile(command.format(conda_base=conda_base)):
-          command = command + " " + loaders + " > " + cache
-          command = command.format(conda_base=conda_base)
-          call(command)
-    else:
-      regenerate_module_files.run(libtbx.env.under_base('.'), only_if_needed=True)
-    self.pickle()
-    print("libtbx_refresh_is_completed", file=completed_file_name.open("w"))
+      for path in self.pythonpath:
+        sys.path.insert(0, abs(path))
+      for module in self.module_list:
+        module.process_libtbx_refresh_py()
+      self.write_python_and_show_path_duplicates()
+      self.generate_entry_point_dispatchers()
+      self.process_exe()
+      self.write_command_version_duplicates()
+      if (os.name != "nt"):     # LD_LIBRARY_PATH for dependencies
+        os.environ[self.ld_library_path_var_name()] = ":".join(
+          [abs(p) for p in self.ld_library_path_additions()])
+      if self.build_options.use_conda:
+        # refresh loaders.cache for gdk-pixbuf on linux due to gtk2
+        if sys.platform.startswith("linux"):
+          conda_base = get_conda_prefix()
+          command = "{conda_base}/bin/gdk-pixbuf-query-loaders"
+          loaders = "{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.so"
+          cache = "{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
+          if os.path.isfile(command.format(conda_base=conda_base)):
+            command = command + " " + loaders + " > " + cache
+            command = command.format(conda_base=conda_base)
+            call(command)
+      else:
+        regenerate_module_files.run(libtbx.env.under_base('.'), only_if_needed=True)
+      self.pickle()
+      print("libtbx_refresh_is_completed", file=completed_file_name.open("w"))
 
   def get_module(self, name, must_exist=True):
     result = self.module_dict.get(name, None)
@@ -2071,6 +2181,7 @@ class module:
         self.dist_paths = [dist_path, None]
     self.conda_required = []
     self.python_required = []
+    self.installed = False
 
   def names_active(self):
     for name,path in zip(self.names, self.dist_paths):
@@ -2784,16 +2895,31 @@ def cold_start(args):
     env.clear_scons_memory()
   env.refresh()
 
-def unpickle():
-  build_path = os.getenv("LIBTBX_BUILD")
+def unpickle(build_path=None, env_name="libtbx_env"):
+  '''
+  Function for loading a libtbx_env file. The build_path and env_name
+  parameters are for checking additional environment files.
+
+  Parameters
+  ----------
+    build_path: str
+      The directory containing the environment file
+    env_name: str
+      The filename for the environment file, default is "libtbx_env"
+
+  Returns
+  -------
+    env: environment object
+  '''
+  # try default location in build directory
   if build_path is None:
-    if sys.platform == 'win32':
-      build_path = os.path.join(sys.prefix, 'Library', 'share', 'cctbx')
-    else:
-      build_path = os.path.join(get_conda_prefix(), 'share', 'cctbx')
+    build_path = os.getenv("LIBTBX_BUILD")
+  # try default installed location
+  if build_path is None:
+    build_path = get_installed_path()
   set_preferred_sys_prefix_and_sys_executable(build_path=build_path)
-  libtbx_env = open(op.join(build_path, "libtbx_env"), "rb")
-  env = pickle.load(libtbx_env)
+  with open(op.join(build_path, env_name), "rb") as libtbx_env:
+    env = pickle.load(libtbx_env)
   if (env.python_version_major_minor != sys.version_info[:2]):
     env.raise_python_version_incompatible()
   if (op.realpath(build_path) != op.realpath(abs(env.build_path))):
@@ -2801,15 +2927,81 @@ def unpickle():
   # XXX backward compatibility 2018-12-10
   if not hasattr(env.build_options, "use_conda"):
     env.build_options.use_conda = False
+  # XXX backward compatibility 2020-08-21
+  # for installed copies of cctbx, the installed environment is not modifiable
+  if not hasattr(env, "installed"):
+    env.installed = False
   return env
 
 def warm_start(args):
-  pre_processed_args = pre_process_args(args=args[1:])
   env = unpickle()
-  env.process_args(pre_processed_args=pre_processed_args)
-  if (pre_processed_args.command_line.options.clear_scons_memory):
-    env.clear_scons_memory()
-  env.refresh()
+  # ---------------------------------------------------------------------------
+  def _warm_start(env, args):
+    pre_processed_args = pre_process_args(args=args[1:])
+    env.process_args(pre_processed_args=pre_processed_args)
+    if (pre_processed_args.command_line.options.clear_scons_memory):
+      env.clear_scons_memory()
+    env.refresh()
+  # ---------------------------------------------------------------------------
+  # check if the loaded environment is modifiable
+  if env.installed:
+    # fix classes
+    from libtbx.env_config import build_options as _build_options
+    from libtbx.env_config import environment as _environment
+    from libtbx.env_config import module as _module
+
+    globals()['build_options'] = _build_options
+    globals()['environment'] = _environment
+    globals()['module'] = _module
+
+    # load an existing, modifiable environment from the current directory
+    if op.exists(op.join(os.getcwd(), "libtbx_env")):
+      env = unpickle(build_path=os.getcwd())
+      _warm_start(env, args)
+    # or create new environment in current directory if it does not exist
+    # currently can only run configuration in the "build" directory, so
+    # "modules" is one level up.
+    else:
+      repository_paths = ['-r', os.path.join('..', 'modules')]
+      cctbx_project = os.path.join('..', 'modules', 'cctbx_project')
+      if os.path.isdir(cctbx_project):
+        repository_paths += ['-r', cctbx_project]
+      cold_start(args + repository_paths + ['--no_bin_python'])
+      env = unpickle(build_path=os.getcwd())
+      env.pickle()  # need separate call
+  # continue normally
+  else:
+    _warm_start(env, args)
+
+def get_installed_path():
+  """
+  Returns the default location of an installed environment
+  """
+  if sys.platform == 'win32':
+    installed_path = os.path.join(sys.prefix, 'Library', 'share', 'cctbx')
+  else:
+    installed_path = os.path.join(get_conda_prefix(), 'share', 'cctbx')
+  return installed_path
+
+def _get_env(build_path, env_name='libtbx_env'):
+  current_env = None
+  if op.isfile(op.join(build_path, env_name)):
+    current_env = unpickle(build_path, env_name)
+  return current_env
+
+def get_installed_env():
+  """
+  Returns the installed environment in the default location or None if
+  it does not exist.
+  """
+  return _get_env(get_installed_path())
+
+def get_local_env():
+  """
+  Returns the local environment in the current working directory or None
+  if it does not exist.
+  """
+  return _get_env(os.getcwd())
 
 def get_boost_library_with_python_version(name, libpath):
   """

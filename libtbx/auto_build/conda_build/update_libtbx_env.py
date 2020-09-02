@@ -99,6 +99,7 @@ def update_libtbx_env(default_dir=None):
 
   # basic path changes
   env = libtbx.env
+  #env.installed = True
   env.build_path = absolute_path(sys_prefix)
   env.set_derived_paths()
   env.exe_path = env.bin_path
@@ -135,11 +136,16 @@ def update_libtbx_env(default_dir=None):
           new_paths[0] = env.as_relocatable_path(new_path)
           new_paths[1] = env.as_relocatable_path(new_path + '_' + module.mate_suffix)
           break
+        if module.name == 'boost' and os.path.isdir(os.path.join(path, 'boost_adaptbx')):
+          new_paths[1] = env.as_relocatable_path(new_path + '_' + module.mate_suffix)
+          break
     dist_paths = module.dist_paths
     for i, path in enumerate(dist_paths):
       if path is not None:
         module.dist_paths[i] = new_paths[i]
     env.module_dist_paths[name] = new_paths[0]
+    if name == 'boost':
+      env.module_dist_paths[name] = relocatable_sys_prefix / 'include'
     name_adaptbx = name + '_' + module.mate_suffix
     if name_adaptbx in env.module_dist_paths:
       env.module_dist_paths[name_adaptbx] = new_paths[1]
