@@ -134,9 +134,12 @@ def copy_build(env, prefix=None, ext_dir=None, link=False):
     print('-'*79)
     for src_file in filenames:
       src = os.path.join(src_path, src_file)
+      if not os.path.exists(src):
+        print('  {src} does not exist'.format(src=src))
+        continue
       dst = os.path.join(dst_path, src_file)
       if os.path.exists(dst):
-        print('  {src} already exists'.format(src=src))
+        print('  {dst} already exists'.format(dst=dst))
       else:
         print('  source:      ' + src)
         print('  destination: ' + dst)
@@ -183,6 +186,16 @@ def copy_build(env, prefix=None, ext_dir=None, link=False):
     ext_names.append(name)
   loop_copy(src_path, dst_path, 'Python extensions', ext_names)
 
+  # extra build stuff
+  # ---------------------------------------------------------------------------
+  share_dir = os.path.join(prefix, 'share', 'cctbx')
+  if not os.path.exists(share_dir):
+    os.mkdir(share_dir)
+  directory_names = []
+  for module in env.module_list:
+    directory_names += module.names_active()
+  loop_copy(abs(env.build_path), share_dir, 'extra build directories', directory_names)
+
   os.chdir(old_cwd)
 
 # =============================================================================
@@ -215,6 +228,7 @@ def copy_modules(env, sp_dir=None, link=False):
       for dist_path in env.module_dict[module].dist_paths:
         if dist_path is not None:
           src = abs(dist_path)
+          # skip boost
           if module == 'boost' and src.endswith('boost'):
             continue
           dst = os.path.join(sp_dir, os.path.basename(src))
@@ -304,6 +318,14 @@ def remove_build(env, prefix=None, ext_dir=None):
       continue
     ext_names.append(name)
   loop_remove(dst_path, 'Python extensions', ext_names)
+
+  # extra build stuff
+  # ---------------------------------------------------------------------------
+  share_dir = os.path.join(prefix, 'share', 'cctbx')
+  directory_names = []
+  for module in env.module_list:
+    directory_names += module.names_active()
+  loop_remove(share_dir, 'extra build directories', directory_names)
 
   os.chdir(old_cwd)
 
