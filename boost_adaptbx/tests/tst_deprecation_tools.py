@@ -10,7 +10,7 @@ def exercise():
 
   original_value = rational.int().numerator()
   deprecate_method(rational.int, "numerator")
-    
+
   with warnings.catch_warnings(record=True) as w:
     warnings.simplefilter("always")
     new_value = rational.int().numerator()
