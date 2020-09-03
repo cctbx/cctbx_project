@@ -54,7 +54,9 @@ def run():
   The file template.py will be tested as part of cctbx tests.
   '''
   # this is one directory up: /cctbx_project/cctbx_website/
-  directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+  parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+  #directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+  directory = os.path.join(parent_dir, 'html_files')
 
   for filename in os.listdir(directory):
     # look at all .html files
@@ -69,7 +71,7 @@ def run():
       # get filename
       base = os.path.splitext(filename)[0]
       # save code in script and put it in folder cctbx_website/examples/
-      dest_dir = os.path.join(directory, 'examples')
+      dest_dir = os.path.join(parent_dir, 'examples')
       if (not os.path.isdir(dest_dir)):
         os.makedirs(dest_dir)
       script_filename = os.path.join(dest_dir, base+'.py')
