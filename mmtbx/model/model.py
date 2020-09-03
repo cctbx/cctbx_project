@@ -919,6 +919,12 @@ class manager(object):
     else:
       return self.ias_manager.get_ias_selection()
 
+  def apply_selection_string(self, selection_string):
+    if not selection_string:
+      return
+    sel = self.selection(selection_string)
+    return self.select(sel)
+
   def selection(self, string, optional=True):
     if self.all_chain_proxies is None:
       return self.get_atom_selection_cache().selection(string, optional=optional)

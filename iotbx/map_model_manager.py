@@ -2033,6 +2033,8 @@ class map_model_manager(object):
 
   def model_building(self,
      nproc = 1,
+     soft_zero_boundary_mask = True,
+     soft_zero_boundary_mask_radius = None,
      ):
     '''
      Return this object as a local_model_building object
@@ -2049,6 +2051,8 @@ class map_model_manager(object):
     from phenix.model_building import local_model_building
     return local_model_building(
      map_model_manager = self, # map_model manager
+     soft_zero_boundary_mask = soft_zero_boundary_mask,
+     soft_zero_boundary_mask_radius = soft_zero_boundary_mask_radius,
      nproc= nproc,
     )
 

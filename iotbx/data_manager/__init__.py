@@ -524,7 +524,10 @@ class DataManagerBase(object):
 
       If prefix is not specified but regression_module and regression_directory        are specified, look there for these files
 
+      model_file can be None, but not map_file
     '''
+
+    assert map_file is not None
 
     if (regression_directory and regression_module) and not prefix:
       import libtbx.load_env
@@ -538,10 +541,14 @@ class DataManagerBase(object):
 
     if prefix:
       map_file = os.path.join(prefix,map_file)
-      model_file = os.path.join(prefix,model_file)
+      if model_file:
+        model_file = os.path.join(prefix,model_file)
 
     mm = self.get_real_map(map_file)
-    model = self.get_model(model_file)
+    if model_file:
+      model = self.get_model(model_file)
+    else:
+      model = None
     from iotbx.map_model_manager import map_model_manager as MapModelManager
     mam = MapModelManager(model=model,map_manager=mm,
       ignore_symmetry_conflicts = ignore_symmetry_conflicts)
