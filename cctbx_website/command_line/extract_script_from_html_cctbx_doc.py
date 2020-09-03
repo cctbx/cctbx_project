@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from io import open
 from html.parser import HTMLParser
 import os
+from libtbx.utils import to_unicode
 
 # ------------------------------------------------------------------------------
 
@@ -41,7 +42,7 @@ class MyHTMLParser(HTMLParser):
 
 # ------------------------------------------------------------------------------
 
-def run():
+def run(parent_dir):
   '''
   Walk through directory cctbx_project/cctbx_website/
 
@@ -54,8 +55,7 @@ def run():
   The file template.py will be tested as part of cctbx tests.
   '''
   # this is one directory up: /cctbx_project/cctbx_website/
-  parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-  #directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+  #parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
   directory = os.path.join(parent_dir, 'html_files')
 
   for filename in os.listdir(directory):
@@ -76,10 +76,16 @@ def run():
         os.makedirs(dest_dir)
       script_filename = os.path.join(dest_dir, base+'.py')
       with open(script_filename, 'w', encoding='utf-8') as file:
+        file.write(to_unicode('from __future__ import absolute_import, division, print_function\n'))
         file.write(code_str.strip())
+        file.write(to_unicode('\n'))
     else:
       continue
 
 
 if __name__ == '__main__':
-  run()
+  import libtbx.load_env
+  for parent_dir in [libtbx.env.dist_path("cctbx_website", default=None),
+    libtbx.env.dist_path("phenix_dev_doc", default=None)]:
+    if parent_dir is not None:
+      run(parent_dir)
