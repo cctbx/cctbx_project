@@ -73,18 +73,21 @@ mp_phil_str = '''
                 to the trial directory as srun.sh and modified. Must contain \
                 exactly one instance of the string <command> (including the <> \
                 brackets) after setting up the necessary environment.
-      partition = regular
+    partition = regular
         .type = str
         .help = Partition to run jobs on, e.g. regular or debug.
       jobname = LCLS_EXP
         .type = str
-        .help = Jobname
-      nnodes = 1
-        .type = int
-        .help = Number of nodes to request with sbatch -N <nnodes>.
-      nproc = 32
-        .type = int
-        .help = Number of processors (total) to request with srun -n <nproc>.
+        .help = Job Name
+      project = None
+        .type = str
+        .help = Name of NERSC project -- formerly "repo"
+  reservation = None
+        .type = str
+        .help = Name of NERSC reservation
+   constraint = haswell
+        .type = str
+        .help = Haswell or KNL
     }
     htcondor {
       executable_path = None
@@ -494,11 +497,18 @@ class get_slurm_submit_command(get_submit_command):
     for arg in self.params.extra_args:
       self.args.append(arg)
 
+
 class get_shifter_submit_command(get_submit_command):
+
+  # def __init__(self, *args, **kwargs):
+  #   super(get_shifter_submit_command, self).__init__(*args, **kwargs)
+  #   # self.destination = os.path.dirname(self.submit_path)
+  #   #  vself.basename = os.path.splitext(os.path.basename(self.submit_path))[0]
 
   def customize_for_method(self):
     # template for sbatch.sh
     self.sbatch_template = self.params.shifter.sbatch_script_template
+    print(self.params.shifter.sbatch_script_template)
     if self.sbatch_template is None:
       raise Sorry("sbatch script template required for shifter")
     sb = open(self.sbatch_template, "rb")
@@ -516,16 +526,25 @@ class get_shifter_submit_command(get_submit_command):
     sr.close()
     self.srun_path = os.path.join(self.destination, "srun.sh")
 
-#    self.destination = os.path.dirname(self.submit_path)
+    # self.destination = os.path.dirname(self.submit_path)
+
 
   def eval_params(self):
-    # -N <nnodes> (optional)
+    # -N <nnodes>
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<nnodes>",
-      str(self.params.shifter.nnodes))
+      str(self.params.nnodes))
+
+    # --tasks-per-node <nproc_per_node> (optional)
+    self.sbatch_contents = self.substitute(self.sbatch_contents, "<nproc_per_node>",
+      str(self.params.nproc_per_node))
+
+    # For now use nproc = nnodes*nproc_per_node
+    # TODO: find a way for the user to specify _either_ nproc_per_node, or nproc
+    nproc = self.params.nnodes * self.params.nproc_per_node
 
     # -n <nproc> (optional)
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<nproc>",
-      str(self.params.shifter.nproc))
+      str(nproc))
 
     # -W <walltime> (optional)
     if self.params.wall_time is not None:
@@ -535,12 +554,21 @@ class get_shifter_submit_command(get_submit_command):
       self.sbatch_contents = self.substitute(self.sbatch_contents, "<walltime>",
         wt_str)
 
-    # -p <partition>
+    # --qos <queue>
+    self.sbatch_contents = self.substitute(self.sbatch_contents, "<queue>",
+      self.params.shifter.partition)
+    # --partition <partition>
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<partition>",
       self.params.shifter.partition)
     # --job-name
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<jobname>",
       self.params.shifter.jobname)
+    # -A
+    self.sbatch_contents = self.substitute(self.sbatch_contents, "<project>",
+      self.params.shifter.project)
+    # --constraint
+    self.sbatch_contents = self.substitute(self.sbatch_contents, "<constraint>",
+      self.params.shifter.constraint)
 
     # <srun_script>
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<srun_script>",
@@ -552,29 +580,39 @@ class get_shifter_submit_command(get_submit_command):
         "<command> %s" % " ".join(self.params.extra_args))
     self.srun_contents = self.substitute(self.srun_contents, "<command>",
       self.command)
+
+
   def generate_submit_command(self):
     return self.params.shifter.submit_command + self.sbatch_path
+
 
   def encapsulate_submit(self):
     pass
 
+
   def generate_sbatch_script(self):
+    print(self.sbatch_path)
     sb = open(self.sbatch_path, "wb")
     sb.write(self.sbatch_contents)
     sb.write("\n")
     sb.close()
     self.make_executable(self.sbatch_path)
 
+
   def generate_srun_script(self):
+    print(self.srun_path)
     sr = open(self.srun_path, "wb")
     sr.write(self.srun_contents)
     sr.write("\n")
     sr.close()
     self.make_executable(self.srun_path)
 
+
   def write_script(self):
     self.generate_sbatch_script()
     self.generate_srun_script()
+
+
 
 class get_htcondor_submit_command(get_submit_command):
   def __init__(self, *args, **kwargs):
@@ -728,6 +766,7 @@ class get_custom_submit_command(get_submit_command):
 def get_submit_command_chooser(command, submit_path, stdoutdir, params,
                                log_name="log.out", err_name="log.err", job_name=None,
                                root_dir=None):
+  print("hi")
   if params.method == "local":
     choice = get_local_submit_command
   elif params.method == "lsf":
