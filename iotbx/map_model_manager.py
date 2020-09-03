@@ -447,9 +447,7 @@ class map_model_manager(object):
   def remove_model_by_id(self, model_id = 'extra'):
     '''
      Remove this model
-     Note: you cannot remove 'model' ... you can only replace it
    '''
-    assert map_id != 'model'
     del self._model_dict[map_id]
 
   def map_managers(self):
@@ -725,6 +723,8 @@ class map_model_manager(object):
     for id in all_model_id_list:
       if id != model_id:
         other_model_id_list.append(id)
+    if not model_id in all_model_id_list:
+      model_id = None
 
     return group_args(model_id=model_id,
          other_model_id_list=other_model_id_list)
@@ -1501,6 +1501,9 @@ class map_model_manager(object):
 
     '''
 
+    if not self.model():
+      return  # nothing to do
+
     # Get the imported hierarchy, shifted to match location of working one
     ph_imported_unique = self.get_model_from_other(other,
        other_model_id = other_model_id).get_hierarchy()
@@ -1749,14 +1752,13 @@ class map_model_manager(object):
       ):
 
     model = self.get_model_by_id(model_id)
+    if not model:
+      return None
     map_manager= self.get_map_manager_by_id(map_id)
     assert model and map_manager
     if not resolution:
       resolution = self.resolution()
     assert resolution is not None
-
-    print (model)
-    print (map_manager)
 
     if selection_string:
       sel = model.selection(selection_string)
