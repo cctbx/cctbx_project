@@ -1642,16 +1642,18 @@ class map_model_manager(object):
     if not self.model():
       return
 
-    sites_cart = self.model().get_sites_cart()
-    a,b,c = self.model().crystal_symmetry().unit_cell().parameters()[:3]
-    x,y,z = sites_cart.parts()
+    sites_frac = self.model().get_sites_frac()
+    bf_a, bf_b, bf_c = self.model().crystal_symmetry().unit_cell(
+        ).fractionalize((boundary, boundary, boundary))
+    ub_a, ub_b, ub_c  = (1+bf_a, 1+bf_b, 1+bf_c)
+    x,y,z = sites_frac.parts()
     s = (
-         (x < -boundary) |
-         (y < -boundary) |
-         (z < -boundary) |
-         (x > a + boundary) |
-         (y > b + boundary) |
-         (z > c + boundary)
+         (x < -bf_a ) |
+         (y < -bf_b) |
+         (z < -bf_c) |
+         (x > ub_a ) |
+         (y > ub_b) |
+         (z > ub_c)
          )
     if return_as_new_model:
       return self.model().select(~s)
