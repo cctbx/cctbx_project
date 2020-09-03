@@ -273,6 +273,8 @@ def get_submission_id(result, method):
 
 def do_submit(command, submit_path, stdoutdir, mp_params, job_name, dry_run=False):
   submit_command = get_submit_command_chooser(command, submit_path, stdoutdir, mp_params, job_name=job_name)
+  from IPython import embed
+  embed()
   if mp_params.method in ['lsf', 'sge', 'pbs']:
     parts = submit_command.split(" ")
     script = open(parts.pop(-1), "rb")
