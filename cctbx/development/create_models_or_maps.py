@@ -34,11 +34,25 @@ def get_map_manager(map_data,wrapping,
     wrapping = wrapping)
   return mm
 
-def read_map_and_model(file_name_1,file_name_2):
+def read_map_and_model(file_name_1,file_name_2, regression_directory = None,
+    prefix = None):
   '''
     Identify which file is map and which is model, read in and
     create map_model_manager
+    If regression_directory is specified, look there for these files, assuming
+    prefix of $PHENIX/modules/phenix_regression/
   '''
+
+  if regression_directory and not prefix:
+    import libtbx.load_env
+    prefix = libtbx.env.under_dist(
+      module_name="phenix_regression",
+      path=regression_directory,
+      test=os.path.isdir)
+
+  if prefix:
+    file_name_1 = os.path.join(prefix,file_name_1)
+    file_name_2 = os.path.join(prefix,file_name_2)
 
   map_file_name = None
   model_file_name = None
@@ -50,7 +64,7 @@ def read_map_and_model(file_name_1,file_name_2):
       if f.endswith(ending):
         model_file_name = f
   if not map_file_name or not model_file_name:
-    raise Sorry("Unable to identify map and model from %s and %s" %(
+    raise Sorry("Unable to guess map and model from %s and %s" %(
      file_name_1, file_name_2))
 
   from iotbx.data_manager import DataManager

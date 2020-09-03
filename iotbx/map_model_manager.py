@@ -1656,7 +1656,7 @@ class map_model_manager(object):
     if return_as_new_model:
       return self.model().select(~s)
     else:  # usual
-      self._model = self.model().select(~s)
+      self.add_model_by_id( self.model().select(~s), 'model')
 
 
   # Methods for comparing maps, models and calculating FSC values
@@ -2028,7 +2028,7 @@ class map_model_manager(object):
 
 
   def model_building(self,
-     nproc = None,
+     nproc = 1,
      ):
     '''
      Return this object as a local_model_building object
