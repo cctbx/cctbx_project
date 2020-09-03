@@ -581,7 +581,7 @@ class AdvancedSettingsDialog(BaseDialog):
     mp_box = wx.StaticBox(self, label='Multiprocessing Options')
     self.mp_sizer = wx.StaticBoxSizer(mp_box, wx.VERTICAL)
 
-    choices = ['local', 'lsf', 'slurm', 'sge', 'pbs', 'htcondor', 'custom']
+    choices = ['local', 'lsf', 'slurm', 'shifter', 'sge', 'pbs', 'htcondor', 'custom']
     self.mp_option = gctr.ChoiceCtrl(self,
                                      label='Multiprocessing:',
                                      label_size=(200, -1),
@@ -610,15 +610,15 @@ class AdvancedSettingsDialog(BaseDialog):
       except ValueError:
         pass
 
-      self.nproc = gctr.SpinCtrl(self,
-                                 label='Number of processors:',
-                                 label_size=(200, -1),
-                                 label_style='normal',
-                                 ctrl_size=(100, -1),
-                                 ctrl_value='%d'%params.mp.nproc,
-                                 ctrl_min=1,
-                                 ctrl_max=1000)
-      self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
+      # self.nproc = gctr.SpinCtrl(self,
+      #                            label='Total number of processors:',
+      #                            label_size=(200, -1),
+      #                            label_style='normal',
+      #                            ctrl_size=(100, -1),
+      #                            ctrl_value='%d'%params.mp.nproc,
+      #                            ctrl_min=1,
+      #                            ctrl_max=1000)
+      # self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
     else:
       # Queue
       self.queue = gctr.TextButtonCtrl(self,
@@ -629,15 +629,25 @@ class AdvancedSettingsDialog(BaseDialog):
                                              if params.mp.queue is not None else '')
       self.mp_sizer.Add(self.queue, flag=wx.EXPAND | wx.ALL, border=10)
 
-      self.nproc = gctr.SpinCtrl(self,
-                                 label='Total number of processors:',
-                                 label_size=(240, -1),
-                                 label_style='normal',
-                                 ctrl_size=(100, -1),
-                                 ctrl_value='%d'%params.mp.nproc,
-                                 ctrl_min=1,
-                                 ctrl_max=1000)
-      self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
+    self.nproc = gctr.SpinCtrl(self,
+                               label='Total number of processors:',
+                               label_size=(240, -1),
+                               label_style='normal',
+                               ctrl_size=(100, -1),
+                               ctrl_value='%d'%params.mp.nproc,
+                               ctrl_min=1,
+                               ctrl_max=1000)
+    self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.nnodes = gctr.SpinCtrl(self,
+                                label='Total number of nodes:',
+                                label_size=(240, -1),
+                                label_style='normal',
+                                ctrl_size=(100, -1),
+                                ctrl_value='%d'%params.mp.nnodes,
+                                ctrl_min=1,
+                                ctrl_max=1000)
+    self.mp_sizer.Add(self.nnodes, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.nproc_per_node = gctr.SpinCtrl(self,
                                         label='Number of processors per node:',
@@ -648,6 +658,16 @@ class AdvancedSettingsDialog(BaseDialog):
                                         ctrl_min=1,
                                         ctrl_max=1000)
     self.mp_sizer.Add(self.nproc_per_node, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.wall_time = gctr.SpinCtrl(self,
+                                   label='Max Walltime (mins):',
+                                   label_size=(240, -1),
+                                   label_style='normal',
+                                   ctrl_size=(100, -1),
+                                   ctrl_value='%d'%params.mp.wall_time if params.mp.wall_time is not None else 1,
+                                   ctrl_min=1,
+                                   ctrl_max=2880)
+    self.mp_sizer.Add(self.wall_time, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.env_script = gctr.TextButtonCtrl(self,
                                      label='Environment setup script:',
@@ -675,6 +695,56 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.htcondor_filesystemdomain, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.main_sizer.Add(self.mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Shifter-specific settings
+    self.shifter_srun_template = gctr.TextButtonCtrl(self,
+                                                     label='Srun Script Template Path:',
+                                                     label_style='bold',
+                                                     label_size=(200, -1),
+                                                     value=params.mp.shifter.srun_script_template \
+                                                     if params.mp.shifter.srun_script_template is not None else '')
+    self.mp_sizer.Add(self.shifter_srun_template, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.shifter_sbatch_template = gctr.TextButtonCtrl(self,
+                                                       label='Sbatch Script Template Path:',
+                                                       label_style='bold',
+                                                       label_size=(200, -1),
+                                                       value=params.mp.shifter.sbatch_script_template \
+                                                       if params.mp.shifter.sbatch_script_template is not None else '')
+    self.mp_sizer.Add(self.shifter_sbatch_template, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.shifter_jobname = gctr.TextButtonCtrl(self,
+                                               label='Job Name:',
+                                               label_style='bold',
+                                               label_size=(200, -1),
+                                               value=params.mp.shifter.jobname \
+                                               if params.mp.shifter.jobname is not None else '')
+    self.mp_sizer.Add(self.shifter_jobname, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.shifter_project = gctr.TextButtonCtrl(self,
+                                               label='NERSC Project (-A):',
+                                               label_style='bold',
+                                               label_size=(200, -1),
+                                               value=params.mp.shifter.project \
+                                               if params.mp.shifter.project is not None else '')
+    self.mp_sizer.Add(self.shifter_project, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.shifter_reservation = gctr.TextButtonCtrl(self,
+                                                   label='NERSC Reservation:',
+                                                   label_style='bold',
+                                                   label_size=(200, -1),
+                                                   value=params.mp.shifter.reservation \
+                                                   if params.mp.shifter.reservation is not None else '')
+    self.mp_sizer.Add(self.shifter_reservation, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.shifter_constraint = gctr.TextButtonCtrl(self,
+                                                  label='Job Constraint:',
+                                                  label_style='bold',
+                                                  label_size=(200, -1),
+                                                  value=params.mp.shifter.constraint \
+                                                  if params.mp.shifter.constraint is not None else '')
+    self.mp_sizer.Add(self.shifter_constraint, flag=wx.EXPAND | wx.ALL, border=10)
+
 
     # Data analysis settings
     analysis_box = wx.StaticBox(self, label='Data Analysis Options')
@@ -738,22 +808,59 @@ class AdvancedSettingsDialog(BaseDialog):
   def updateMultiprocessing(self):
     if self.mp_option.ctr.GetStringSelection() == 'local':
       self.queue.Hide()
+      self.nnodes.Hide()
       self.nproc_per_node.Hide()
       self.env_script.Hide()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
+      self.shifter_srun_template.Hide()
+      self.shifter_sbatch_template.Hide()
+      self.shifter_jobname.Hide()
+      self.shifter_project.Hide()
+      self.shifter_reservation.Hide()
+      self.shifter_constraint.Hide()
+    elif self.mp_option.ctr.GetStringSelection() == 'shifter':
+      self.queue.Show()
+      self.nproc.Hide()
+      self.nnodes.Show()
+      self.nproc_per_node.Show()
+      self.wall_time.Show()
+      self.env_script.Hide()
+      self.htcondor_executable_path.Hide()
+      self.htcondor_filesystemdomain.Hide()
+      self.shifter_srun_template.Show()
+      self.shifter_sbatch_template.Show()
+      self.shifter_jobname.Show()
+      self.shifter_project.Show()
+      self.shifter_reservation.Show()
+      self.shifter_constraint.Show()
     elif self.mp_option.ctr.GetStringSelection() == 'htcondor':
       self.queue.Hide()
+      self.nnodes.Hide()
       self.nproc_per_node.Hide()
       self.env_script.Show()
       self.htcondor_executable_path.Show()
       self.htcondor_filesystemdomain.Show()
+      self.shifter_srun_template.Hide()
+      self.shifter_sbatch_template.Hide()
+      self.shifter_jobname.Hide()
+      self.shifter_project.Hide()
+      self.shifter_reservation.Hide()
+      self.shifter_constraint.Hide()
     else:
       self.queue.Show()
+      self.nnodes.Hide()
       self.nproc_per_node.Show()
       self.env_script.Show()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
+      self.shifter_srun_template.Hide()
+      self.shifter_sbatch_template.Hide()
+      self.shifter_jobname.Hide()
+      self.shifter_project.Hide()
+      self.shifter_reservation.Hide()
+      self.shifter_constraint.Hide()
+
     self.Layout()
     self.Fit()
 
@@ -780,23 +887,56 @@ class AdvancedSettingsDialog(BaseDialog):
       self.custom_dispatcher.Hide()
       self.Layout()
 
+
   def onOK(self, e):
     self.params.dispatcher = self.dispatchers[self.back_end.ctr.GetSelection()]
+
     if self.params.dispatcher == 'custom':
       self.params.dispatcher = self.custom_dispatcher.ctr.GetValue()
+
     self.params.mp.method = self.mp_option.ctr.GetStringSelection()
+
     if self.params.facility.name == 'lcls':
       self.params.mp.queue = self.queue.ctr.GetStringSelection()
     else:
-      self.params.mp.queue = self.queue.ctr.GetValue()
-      self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
-      self.params.mp.env_script = [self.env_script.ctr.GetValue()]
-    self.params.mp.nproc = int(self.nproc.ctr.GetValue())
+      if self.mp_option.ctr.GetStringSelection() == 'shifter':
+        print("follows a")
+        self.params.mp.queue = self.queue.ctr.GetValue()
+        self.params.mp.nnodes = int(self.nnodes.ctr.GetValue())
+        self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
+        self.params.mp.wall_time = int(self.wall_time.ctr.GetValue())
+      else:
+        print("follows b")
+        self.params.mp.queue = self.queue.ctr.GetValue()
+        self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
+        self.params.mp.env_script = [self.env_script.ctr.GetValue()]
+        self.params.mp.nproc = int(self.nproc.ctr.GetValue())
+
+    # Copy htcondor settings into the htcondor phil
     self.params.mp.htcondor.executable_path = self.htcondor_executable_path.ctr.GetValue() \
       if len(self.htcondor_executable_path.ctr.GetValue()) > 0 else None
     self.params.mp.htcondor.filesystemdomain = self.htcondor_filesystemdomain.ctr.GetValue() \
       if len(self.htcondor_filesystemdomain.ctr.GetValue()) > 0 else None
+
+    # Copy shfiter settings into the shifter phil
+    self.params.mp.shifter.sbatch_script_template = self.shifter_sbatch_template.ctr.GetValue() \
+      if len(self.shifter_sbatch_template.ctr.GetValue()) > 0 else None
+
+    print ("asdasdfsd: " + self.params.mp.shifter.sbatch_script_template)
+
+    self.params.mp.shifter.srun_script_template = self.shifter_srun_template.ctr.GetValue() \
+      if len(self.shifter_srun_template.ctr.GetValue()) > 0 else None
+    self.params.mp.shifter.jobname=self.shifter_jobname.ctr.GetValue() \
+      if len(self.shifter_jobname.ctr.GetValue()) > 0 else None
+    self.params.mp.shifter.project=self.shifter_project.ctr.GetValue() \
+      if len(self.shifter_project.ctr.GetValue()) > 0 else None
+    self.params.mp.shifter.reservation=self.shifter_reservation.ctr.GetValue() \
+      if len(self.shifter_reservation.ctr.GetValue()) > 0 else None
+    self.params.mp.shifter.constraint =self.shifter_constraint.ctr.GetValue() \
+      if len(self.shifter_constraint.ctr.GetValue()) > 0 else None
+
     e.Skip()
+
 
 class CalibrationDialog(BaseDialog):
   def __init__(self, parent,
