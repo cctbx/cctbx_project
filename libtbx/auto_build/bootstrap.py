@@ -837,6 +837,12 @@ class phenix_html(SourceModule):
   module = 'phenix_html'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/phenix_html/trunk']
 
+class phenix_dev_doc(SourceModule):
+  module = 'phenix_dev_doc'
+  anonymous = ['git',
+               'git@github.com:phenix-project/phenix_dev_doc.git',
+               'https://github.com/phenix-project/phenix_dev_doc.git']
+
 class phenix_examples(SourceModule):
   module = 'phenix_examples'
   anonymous = ['git',
@@ -2209,6 +2215,7 @@ class PhenixBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'chem_data',
     'phenix',
+    'phenix_dev_doc',
     'phenix_regression',
     'phenix_html',
     'phenix_examples',
@@ -2239,6 +2246,7 @@ class PhenixBuilder(CCIBuilder):
   LIBTBX_EXTRA = [
     'chem_data',
     'phenix',
+    'phenix_dev_doc',
     'phenix_regression',
     'phenix_examples',
     'solve_resolve',
