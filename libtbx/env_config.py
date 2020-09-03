@@ -455,6 +455,8 @@ class environment:
     self.set_derived_paths()
     self.python_exe = self.as_relocatable_path(sys.executable)
     self.installed = False
+    self.installed_modules = []  # used to track installed modules in local env
+    self.installed_order = []
     # sanity checks
     assert self.python_exe.isfile()
     assert self.python_exe.access(os.X_OK)
@@ -630,6 +632,12 @@ class environment:
                 return_relocatable_path=False):
     # check installed environment first
     result = self.check_installed_env('_dist_path', module_name, None, return_relocatable_path)
+    if result is None:
+      result = self.get_installed_module_path(module_name)
+      if result is not None:
+        result = self.as_relocatable_path(result)
+        if not return_relocatable_path:
+          result = abs(result)
     if result is not None:
       return result
     # check current environment
@@ -791,6 +799,25 @@ Wait for the command to finish, then try again.""" % vars())
         test=op.isdir,
         optional=True,
         return_relocatable_path=False):
+    # check installed environment first
+    result = self.check_installed_env(
+      '_find_in_repositories', relative_path, test, True, return_relocatable_path)
+    if result is not None:
+      return result
+    # check current environment
+    result = self._find_in_repositories(relative_path, test, True, return_relocatable_path)
+    if result is not None:
+      return result
+    # then check local environment
+    result = self.check_local_env(
+      '_find_in_repositories', relative_path, test, optional, return_relocatable_path)
+    return result
+
+  def _find_in_repositories(self,
+        relative_path,
+        test=op.isdir,
+        optional=True,
+        return_relocatable_path=False):
     assert len(relative_path) != 0
     for path in self.repository_paths:
       result = path / relative_path
@@ -851,6 +878,12 @@ Wait for the command to finish, then try again.""" % vars())
     if (dist_path is None): return False
     if abs(dist_path).startswith(sys.prefix):
       print("{module_name} is already installed".format(module_name=module_name))
+      installed_env = get_installed_env()
+      if module_name in installed_env.module_dict:
+        self.installed_modules.append(installed_env.module_dict[module_name])
+      else:
+        installed_module = module(env=self, name=module_name, dist_path=dist_path)
+        self.installed_modules.append(installed_module)
       return True
     new_module = module(env=self, name=module_name, dist_path=dist_path)
     new_name_normcase = op.normcase(new_module.name)
@@ -954,9 +987,22 @@ Wait for the command to finish, then try again.""" % vars())
     installed_env = get_installed_env()
     if installed_env is not None and not self.installed:
       module_set = set(module_names)
+      installed_module_names = set([module.name for module in self.installed_modules])
       for module_name in module_names:
-        if module_name in installed_env.module_dict:
-          module_set.remove(module_name)
+        dist_path = installed_env.get_installed_module_path(module_name)
+        if module_name in installed_env.module_dict \
+          or dist_path is not None:
+          try:
+            module_set.remove(module_name)
+            if module_name not in installed_module_names \
+              and module_name != 'boost':
+              from libtbx.env_config import module
+              dist_path = installed_env.as_relocatable_path(dist_path)
+              installed_module = module(env=self, name=module_name, dist_path=dist_path)
+              self.installed_modules.append(installed_module)
+              installed_module_names.add(module_name)
+          except (KeyError, ValueError):
+            pass
       module_names = list(module_set)
       if len(module_names) == 0:
         print("All modules have already been installed. No new configuration is necessary.")
@@ -1739,18 +1785,47 @@ alias libtbx.unsetpaths "source '$LIBTBX_BUILD/unsetpaths.csh'"
       print("CacheDir(%r)" % cache_dir, file=f)
       assert os.path.exists(cache_dir) and os.path.isdir(cache_dir), \
         "Specified build cache dir does not exist"
-    for path in self.repository_paths:
-      print('Repository(r"%s")' % abs(path), file=f)
-    # insert modules from installed environment
+
+    repository_paths = self.repository_paths
+    repository_names = set([abs(p) for p in repository_paths])
+    module_list = self.module_list
+    module_names = set([module.name for module in module_list])
+    # insert repositories and modules from installed environment
     installed_env = get_installed_env()
     if installed_env is not None:
-      for module in installed_env.module_list:
-        name,path  = list(module.name_and_dist_path_pairs())[-1]
-        for script_name in ["libtbx_SConscript", "SConscript"]:
-          if (path / script_name).isfile():
-            print('SConscript("%s/%s")' % (name, script_name), file=f)
+      for repository_path in installed_env.repository_paths:
+        if abs(repository_path) in repository_names:
+          for p in repository_paths:
+            if abs(p) == abs(repository_path):
+              try:
+                repository_paths.remove(p)
+              except ValueError:
+                pass
+      repository_paths = installed_env.repository_paths + repository_paths
+      # collect modules
+      all_modules = installed_env.module_list
+      local_env = get_local_env()
+      if local_env is not None:
+        all_modules += local_env.module_list
+      all_modules += self.module_list
+      # reorder modules
+      module_list = []
+      for ordered_name in installed_env.installed_order:
+        for module in all_modules:
+          if ordered_name == module.name:
+            module_list.append(module)
+            all_modules.remove(module)
             break
-    for module in self.module_list:
+      # add remaining modules
+      module_list_names = set([module.name for module in module_list])
+      for module in all_modules:
+        if module.name not in module_list_names:
+          module_list.append(module)
+          module_list_names.add(module.name)
+
+    for path in repository_paths:
+      print('Repository(r"%s")' % abs(path), file=f)
+    for module in module_list:
       name,path  = list(module.name_and_dist_path_pairs())[-1]
       for script_name in ["libtbx_SConscript", "SConscript"]:
         if (path / script_name).isfile():
@@ -1766,13 +1841,10 @@ alias libtbx.unsetpaths "source '$LIBTBX_BUILD/unsetpaths.csh'"
                                    return_relocatable_path=True))
     current_path = os.environ.get('PATH')
     lsj = './bin/libtbx.scons -j "`./bin/libtbx.show_number_of_processors`"'
-    if current_path is not None:
-      for p in current_path.split(':'):
-        if os.path.isdir(p):
-          files = os.listdir(p)
-          if 'libtbx.scons' in files:
-            lsj = 'libtbx.scons -j "`libtbx.show_number_of_processors`"'
-            break
+    lc = './bin/libtbx.configure'
+    if get_installed_env() is not None:
+      lsj = 'libtbx.scons -j "`libtbx.show_number_of_processors`"'
+      lc = 'libtbx.configure'
     f.write("""\
 # DO NOT EDIT THIS FILE!
 # This file will be overwritten by the next libtbx/configure.py,
@@ -1788,11 +1860,11 @@ bp:
 \t%(lsj)s -k boost_python_tests=1
 
 reconf:
-\t./bin/libtbx.configure .
+\t%(lc)s .
 \t%(lsj)s
 
 redo:
-\t./bin/libtbx.configure . --clear_scons_memory
+\t%(lc)s . --clear_scons_memory
 \t%(lsj)s
 
 clean:
@@ -2219,7 +2291,6 @@ class module:
         self.dist_paths = [dist_path, None]
     self.conda_required = []
     self.python_required = []
-    self.installed = False
 
   def names_active(self):
     for name,path in zip(self.names, self.dist_paths):
@@ -2969,6 +3040,10 @@ def unpickle(build_path=None, env_name="libtbx_env"):
   # for installed copies of cctbx, the installed environment is not modifiable
   if not hasattr(env, "installed"):
     env.installed = False
+  if not hasattr(env, "installed_modules"):
+    env.installed_modules = []
+  if not hasattr(env, "installed_order"):
+    env.installed_order = []
   return env
 
 def warm_start(args):
