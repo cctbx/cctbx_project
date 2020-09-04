@@ -6,7 +6,8 @@ def correct_panel(img, copy=True):
   """
   Distributes the intensity in the larger Jungfrau pixels into smaller
   inserted pixels
-  See: https://doi.org/10.1080/08940886.2018.1528429
+  See: https://doi.org/10.1088/1748-0221/13/11/C11006
+
 
   Parameters
   ==========
