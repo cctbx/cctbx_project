@@ -174,7 +174,7 @@ class get_submit_command(object):
 
   def write_script(self):
     command_str = " ".join([self.command] + self.args)
-    f = open(self.submit_path, 'wb')
+    f = open(self.submit_path, 'w')
     f.write(b"#! %s\n" % self.shell_path.encode())
     for line in self.options_inside_submit_script:
       f.write(b"%s\n" % line.encode())
@@ -191,7 +191,7 @@ class get_submit_command(object):
   def encapsulate_submit(self):
     path, ext = os.path.splitext(self.submit_path)
     encapsulate_path = path + "_submit" + ext
-    f = open(encapsulate_path, 'wb')
+    f = open(encapsulate_path, 'w')
     f.write(b"#! /bin/%s\n\n" % ext[1:].encode())
     f.write(self.generate_submit_command().encode())
     f.write(b"\n")
@@ -511,7 +511,7 @@ class get_shifter_submit_command(get_submit_command):
     print(self.params.shifter.sbatch_script_template)
     if self.sbatch_template is None:
       raise Sorry("sbatch script template required for shifter")
-    sb = open(self.sbatch_template, "rb")
+    sb = open(self.sbatch_template, "r")
     self.sbatch_contents = sb.read()
     self.destination = os.path.dirname(self.submit_path)
     sb.close()
@@ -521,7 +521,7 @@ class get_shifter_submit_command(get_submit_command):
     self.srun_template = self.params.shifter.srun_script_template
     if self.srun_template is None:
       raise Sorry("srun script template required for shifter")
-    sr = open(self.srun_template, "rb")
+    sr = open(self.srun_template, "r")
     self.srun_contents = sr.read()
     sr.close()
     self.srun_path = os.path.join(self.destination, "srun.sh")
@@ -592,7 +592,7 @@ class get_shifter_submit_command(get_submit_command):
 
   def generate_sbatch_script(self):
     print(self.sbatch_path)
-    sb = open(self.sbatch_path, "wb")
+    sb = open(self.sbatch_path, "w")
     sb.write(self.sbatch_contents)
     sb.write("\n")
     sb.close()
@@ -601,7 +601,7 @@ class get_shifter_submit_command(get_submit_command):
 
   def generate_srun_script(self):
     print(self.srun_path)
-    sr = open(self.srun_path, "wb")
+    sr = open(self.srun_path, "w")
     sr.write(self.srun_contents)
     sr.write("\n")
     sr.close()
@@ -715,7 +715,7 @@ class get_custom_submit_command(get_submit_command):
 
   def eval_params(self):
     # any changes to the script to be submitted
-    script = open(self.script_template, "rb")
+    script = open(self.script_template, "r")
     self.script_contents = script.read()
     script.close()
 
@@ -755,7 +755,7 @@ class get_custom_submit_command(get_submit_command):
       self.submit_command_contents = self.substitute(self.submit_command_contents, marker, value)
 
   def write_script(self):
-    f = open(self.submit_path, "wb")
+    f = open(self.submit_path, "w")
     f.write(self.script_contents)
     f.write("\n")
     f.close()
