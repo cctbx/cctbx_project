@@ -27,7 +27,10 @@ mp {{
     sbatch_script_template  = {sbatch_script_template}
     srun_script_template  = {srun_script_template}
     partition  = {nersc_partition}
+    jobname = {nersc_jobname}
+    project = {nersc_project}
     reservation = {nersc_reservation}
+    constraint = {nersc_constraint}
   }}
 }}
 experiment_tag = {experiment_tag}
