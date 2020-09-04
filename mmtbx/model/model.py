@@ -448,6 +448,11 @@ class manager(object):
       self._pdb_interpretation_params = full_params
     self.unset_restraints_manager()
 
+  def set_nonbonded_weight(self, value):
+    params = self.get_current_pdb_interpretation_params()
+    params.pdb_interpretation.nonbonded_weight = value
+    self.set_pdb_interpretation_params(params = params)
+
   def check_consistency(self):
     """
     Primarilly for debugging
