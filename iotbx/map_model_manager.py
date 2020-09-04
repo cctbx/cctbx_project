@@ -47,15 +47,15 @@ class map_model_manager(object):
     Note:  mam.map_manager() contains mam.ncs_object(), so it is not necessary
     to keep both.
 
-    Note: model objects may contain internal ncs objects.  These are separate from
-    those in the map_managers and separate from ncs_object in the call to
+    Note: model objects may contain internal ncs objects.  These are separate
+    from those in the map_managers and separate from ncs_object in the call to
     map_model_manager.
 
     The ncs_object describes the NCS of the map and is a property of the map. It
     must be shared by all maps
 
-    The model ncs objects describe the NCS of the individual model. They can differ
-    between models and between models and maps.
+    The model ncs objects describe the NCS of the individual model. They can
+    differ between models and between models and maps.
 
     Note: set wrapping of all maps to match map_manager if they differ. Set
     all to be wrapping if it is set
@@ -101,11 +101,12 @@ class map_model_manager(object):
 
 
     # If no map_manager now, do not do anything and make sure there
-    #    was nothing else supplied
+    #    was nothing else supplied except possibly a model
 
     if (not map_manager) and (not map_manager_1) and (not map_manager_2):
       assert not extra_map_manager_list
-      assert not ncs_object and not model
+      assert not ncs_object
+      self._model_dict = {'model': model}
       return  # do not do anything
 
     # Now make sure we have map manager or half maps at least
@@ -1941,6 +1942,7 @@ class map_model_manager(object):
     if not d_min:
       d_min = 3  # default
 
+
     self._print("\nGenerating new map data\n")
     if self.map_manager():
       self._print("NOTE: replacing existing map data\n")
@@ -1978,6 +1980,10 @@ class map_model_manager(object):
     mm.show_summary()
     self.set_up_map_dict(map_manager=mm)
     self.set_up_model_dict(model=model)
+
+    # Set the resolution now if not already set
+    if d_min and not self.resolution():
+      self.set_resolution(d_min)
 
   def _empty_copy(self):
     '''

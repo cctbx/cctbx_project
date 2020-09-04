@@ -525,10 +525,9 @@ class DataManagerBase(object):
       If default_directory is not specified but regression_module
       and regression_directory are specified, look there for these files
 
-      model_file can be None, but not map_file
+      model_file or map_file can be None.  If map_file is None, returns a
+      model object
     '''
-
-    assert map_file is not None
 
     if (regression_directory and regression_module) and not default_directory:
       import libtbx.load_env
@@ -541,11 +540,15 @@ class DataManagerBase(object):
         regression_module, regression_directory))
 
     if default_directory:
-      map_file = os.path.join(default_directory,map_file)
+      if map_file:
+        map_file = os.path.join(default_directory,map_file)
       if model_file:
         model_file = os.path.join(default_directory,model_file)
 
-    mm = self.get_real_map(map_file)
+    if map_file:
+      mm = self.get_real_map(map_file)
+    else:
+      mm = None
     if model_file:
       model = self.get_model(model_file)
     else:
