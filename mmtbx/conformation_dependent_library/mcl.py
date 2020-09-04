@@ -137,7 +137,6 @@ def superpose_ideal_residue_coordinates(pdb_hierarchy,
                     #'CLF' : 'Fe', # too flexible
                     'DVT' : 'V',
                     }
-  from iotbx import pdb
   from mmtbx.monomer_library import pdb_interpretation
   t0=time.time()
   rmsd_list = {}
@@ -189,7 +188,37 @@ def superpose_ideal_residue_coordinates(pdb_hierarchy,
     outl += '\n  Time to superpose : %0.2fs\n' % (time.time()-t0)
   return outl
 
+def superpose_ideal_ligand_on_poor_ligand(ideal_hierarchy,
+                                          poor_hierarchy,
+                                          ):
+  """Function superpose an ideal ligand onto the mangled ligand from a
+     ligand fitting procedure
+
+  Args:
+      ideal_hierarchy (pdb_hierarchy): Ideal ligand
+      poor_hierarchy (pdb_hierarchy): Poor ligand with correct c.o.m. and same
+        atom names in order. Could become more sophisticated.
+  """
+  sites_moving = flex.vec3_double()
+  sites_fixed = flex.vec3_double()
+  for atom1, atom2 in zip(ideal_hierarchy.atoms(), poor_hierarchy.atoms()):
+    assert atom1.name==atom2.name, '%s!=%s' % (atom1.quote(),atom2.quote())
+    sites_moving.append(atom1.xyz)
+    sites_fixed.append(atom2.xyz)
+  lsq_fit = superpose.least_squares_fit(
+        reference_sites = sites_fixed,
+        other_sites     = sites_moving)
+  sites_new = ideal_hierarchy.atoms().extract_xyz()
+  sites_new = lsq_fit.r.elems * sites_new + lsq_fit.t.elems
+  # rmsd = sites_fixed.rms_difference(lsq_fit.other_sites_best_fit())
+  ideal_hierarchy.atoms().set_xyz(sites_new)
+  return ideal_hierarchy
+
 if __name__=="__main__":
-  args = sys.argv[1:]
-  del sys.argv[1:]
-  run(*tuple(args))
+  from iotbx import pdb
+  ideal_inp=pdb.pdb_input(sys.argv[1])
+  ideal_hierarchy = ideal_inp.construct_hierarchy()
+  poor_inp=pdb.pdb_input(sys.argv[2])
+  poor_hierarchy = poor_inp.construct_hierarchy()
+  ideal_hierarchy = superpose_ideal_ligand_on_poor_ligand(ideal_hierarchy, poor_hierarchy)
+  ideal_hierarchy.write_pdb_file('new.pdb')
