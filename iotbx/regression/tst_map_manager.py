@@ -291,12 +291,6 @@ def test_01():
   new_mm.shift_origin()
   assert new_mm.is_compatible_ncs_object(new_mm.ncs_object())
 
-  # find_separated atoms in a map
-  dm = DataManager()
-  mm = dm.get_real_map(data_d7)
-  sites_cart = mm.trace_atoms_in_map(1,10,solvent_content_tries = 1)
-  assert sites_cart.size() == 7
-
   # filter a map
   dm = DataManager()
   mm = dm.get_real_map(data_d7)
@@ -335,7 +329,22 @@ def test_01():
    assert approx_equal(cc,
       mam.map_map_cc(map_id='map_manager',other_map_id=other_id) )
 
+# this test requires the solve_resolve module
+def test_02():
+  import libtbx.load_env
+  if libtbx.env.dist_path('solve_resolve') is None:
+    print('test_02 requires the solve_resolve module, skipping')
+    return
+
+  data_d7 = os.path.join(data_dir, 'data', 'D7.ccp4')
+
+  # find_separated atoms in a map
+  dm = DataManager()
+  mm = dm.get_real_map(data_d7)
+  sites_cart = mm.trace_atoms_in_map(1,10,solvent_content_tries = 1)
+  assert sites_cart.size() == 7
 
 if (__name__  ==  '__main__'):
   test_01()
+  test_02()
   print ("OK")
