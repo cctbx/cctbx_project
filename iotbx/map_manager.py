@@ -1692,11 +1692,56 @@ class map_manager(map_reader, write_ccp4_map):
       self._warning_message = "No map symmetry found; ncs_cc cutoff of %s" %(
         min_ncs_cc)
 
+  def resample_on_different_grid(self, n_real):
+    '''
+      Resample the map on a grid of n_real
+    '''
+
+    original_n_real = self.map_data().all()
+    original_shift_cart = self.shift_cart()
+    original_origin_shift_grid_units = self.origin_shift_grid_units
+
+    map_coeffs = self.map_as_fourier_coefficients(d_min = 3)
+    map_data=maptbx.map_coefficients_to_map(
+        map_coeffs       = map_coeffs,
+        crystal_symmetry = map_coeffs.crystal_symmetry(),
+        n_real           = n_real)
+    self.data = map_data
+    self.unit_cell_grid = n_real
+    self._unit_cell_crystal_symmetry = map_coeffs.crystal_symmetry()
+
+    # Can have an origin shift if grid units are a multiple of original
+
+    if original_origin_shift_grid_units != (0,0,0):
+      new_origin_shift_grid_units = []
+      for i in range(3):
+
+        if n_real[i]  > original_n_real[i]:
+          if original_n_real[i] * (n_real[i]//original_n_real[i]) != n_real[i]:
+            raise Sorry(
+             "Cannot resample with origin shift unless new gridding is" +
+             " a multiple of original")
+        elif n_real[i] == original_n_real[i]:
+          pass
+        else:
+          if n_real[i] * (original_n_real[i]//n_real[i]) != original_n_real[i]:
+            raise Sorry(
+             "Cannot resample with origin shift unless new gridding is" +
+             " a multiple of original")
+
+        new_origin_shift_grid_units.append(original_origin_shift_grid_units[i]
+           * (n_real[i]//original_n_real[i]))
+
+    else:
+      new_origin_shift_grid_units = (0,0,0)
+    self.origin_shift_grid_units = new_origin_shift_grid_units
+
   def trace_atoms_in_map(self,
        dist_min,
        n_atoms,
        solvent_content_tries = 10,
-       verbose = None):
+       verbose = None,
+       fine_grid = None):
      '''
        Utility to find positions where about n_atoms atoms separated by
        dist_min can be placed in density in this map along the ridgelines
@@ -1708,6 +1753,10 @@ class map_manager(map_reader, write_ccp4_map):
      assert self.origin_is_zero()
      assert dist_min > 0.01
      assert n_atoms > 0
+
+     if fine_grid:
+       self.resample_on_different_grid(
+         n_real = tuple ([2 * i for i in self.map_data().all()]))
 
      target_atoms = int( 0.5 + n_atoms * 1.5 )
      volume = self.crystal_symmetry().unit_cell().volume()
@@ -1722,9 +1771,11 @@ class map_manager(map_reader, write_ccp4_map):
          new_guess = min(0.99,guess + (i/tries)*(1-guess))
          test_result = self.run_trace(dist_min, target_atoms,1-new_guess)
          if test_result.get_sites_cart().size() >= n_atoms and (
-            abs(test_result.get_sites_cart().size() - target_atoms) <
-            abs(result.get_sites_cart().size() - target_atoms)):
+            ( abs(test_result.get_sites_cart().size() - target_atoms) <
+            abs(result.get_sites_cart().size() - target_atoms)) or
+            (result.get_sites_cart().size() < target_atoms)):
            result = test_result
+
          if result.get_sites_cart().size() >= target_atoms:
            break # done
      else:
@@ -1732,17 +1783,27 @@ class map_manager(map_reader, write_ccp4_map):
          new_guess = max(1.e-10,guess - (i/tries)*guess)
          test_result = self.run_trace(dist_min, target_atoms,1-new_guess)
          if test_result.get_sites_cart().size() >= n_atoms and (
-            abs(test_result.get_sites_cart().size() - target_atoms) <
-            abs(result.get_sites_cart().size() - target_atoms)):
+            ( abs(test_result.get_sites_cart().size() - target_atoms) <
+            abs(result.get_sites_cart().size() - target_atoms)) or
+            (result.get_sites_cart().size() < target_atoms)):
            result = test_result  # best so far
          if test_result.get_sites_cart().size() <= target_atoms:
            break
          else: # still too many, but save
            result = test_result
      if result.get_sites_cart().size() < n_atoms:
-       return result.get_sites_cart() # could not get enough atoms but whatever
+       if fine_grid:  # just didn't work
+         return result.get_sites_cart()
+       else:  #try again with a finer grid
+         return self.trace_atoms_in_map(
+           dist_min,
+           n_atoms,
+           solvent_content_tries = solvent_content_tries,
+           verbose = verbose,
+           fine_grid = True)
      elif result.get_sites_cart().size() == n_atoms:
        return result.get_sites_cart()  # done
+
      else: # pare down
        return select_n_in_biggest_cluster(result.get_sites_cart(),
          n = n_atoms,
