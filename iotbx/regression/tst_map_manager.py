@@ -291,6 +291,12 @@ def test_01():
   new_mm.shift_origin()
   assert new_mm.is_compatible_ncs_object(new_mm.ncs_object())
 
+  # find_separated atoms in a map
+  dm = DataManager()
+  mm = dm.get_real_map(data_d7)
+  sites_cart = mm.trace_atoms_in_map(1,10,solvent_content_tries = 1)
+  assert sites_cart.size() == 7
+
   # filter a map
   dm = DataManager()
   mm = dm.get_real_map(data_d7)

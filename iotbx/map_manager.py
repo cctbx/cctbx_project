@@ -1710,15 +1710,25 @@ class map_manager(map_reader, write_ccp4_map):
 
      volume = self.crystal_symmetry().unit_cell().volume()
      volume_of_atoms = (4/3) * 3.14 * (dist_min)**3 * n_atoms
-     protein_fraction = (volume_of_atoms/volume)
-     solvent_content_guess = 1 - protein_fraction
-
+     protein_fraction_guess = min(0.5,(volume_of_atoms/volume))
+     solvent_content_guess = 1 - protein_fraction_guess
+     pc_low = protein_fraction_guess/10
+     pc_high = min (0.5, protein_fraction_guess * 10)
+     low_count = self.run_trace(dist_min, n_atoms, 1-pc_low).get_sites_cart().size()
+     high_count = self.run_trace(dist_min, n_atoms, 1-pc_high).get_sites_cart().size()
+     if high_count > low_count:
+       best_guess_pc =  pc_low + (pc_high-pc_low)*(
+          n_atoms - low_count)/(high_count - low_count)
+     else:
+       best_guess_pc = pc_low
      best_model = None
      best_diff = None
-     for i in xrange(solvent_content_tries):
-       ratio = (i + 1) / (solvent_content_tries * 0.5)
-       pf = protein_fraction * ratio
-       solvent_content = max(0.0001, min(0.9999,1 - pf))
+     sc_guess = max(0.5, min(1-1.e-6, 1 - best_guess_pc))
+     sc_low = max(0.5, min(1-1.e-6, 1 - 10 * best_guess_pc))
+     sc_high = max(0.5, min(1-1.e-6, 1 - 0.1 * best_guess_pc))
+     for i in xrange(solvent_content_tries+1):
+       ratio = sc_low + (i/solvent_content_tries) * (sc_high - sc_low)
+       solvent_content = max(0.5, min(1-1.e-6,ratio * sc_guess))
        model = self.run_trace(dist_min, n_atoms, solvent_content)
        count = model.get_sites_cart().size()
        diff = abs(count - n_atoms)
