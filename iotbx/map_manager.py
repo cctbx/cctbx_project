@@ -1695,49 +1695,61 @@ class map_manager(map_reader, write_ccp4_map):
   def trace_atoms_in_map(self,
        dist_min,
        n_atoms,
-       solvent_content_tries = 10):
+       solvent_content_tries = 10,
+       verbose = None):
      '''
        Utility to find positions where about n_atoms atoms separated by
        dist_min can be placed in density in this map along the ridgelines
        if possible.
 
-       Tries solvent_content_tries different times to get the right number
-       of atoms.
+       Tries solvent_content_tries different times and then cluster
+       to get the right number of atoms.
      '''
      assert self.origin_is_zero()
      assert dist_min > 0.01
      assert n_atoms > 0
 
+     target_atoms = int( 0.5 + n_atoms * 1.5 )
      volume = self.crystal_symmetry().unit_cell().volume()
-     volume_of_atoms = (4/3) * 3.14 * (dist_min)**3 * n_atoms
-     protein_fraction_guess = min(0.5,(volume_of_atoms/volume))
-     solvent_content_guess = 1 - protein_fraction_guess
-     pc_low = protein_fraction_guess/10
-     pc_high = min (0.5, protein_fraction_guess * 10)
-     low_count = self.run_trace(dist_min, n_atoms, 1-pc_low).get_sites_cart().size()
-     high_count = self.run_trace(dist_min, n_atoms, 1-pc_high).get_sites_cart().size()
-     if high_count > low_count:
-       best_guess_pc =  pc_low + (pc_high-pc_low)*(
-          n_atoms - low_count)/(high_count - low_count)
+     volume_of_atoms = (4/3) * 3.14 * (dist_min)**3 * target_atoms
+     guess = min(0.99,(volume_of_atoms/volume))
+     result= self.run_trace(dist_min, target_atoms,1-guess)
+     tries = max(1,int(solvent_content_tries//2))
+     if result.get_sites_cart().size() == target_atoms:
+       pass # we are there
+     elif result.get_sites_cart().size()< target_atoms: # need more
+       for i in xrange (tries):
+         new_guess = min(0.99,guess + (i/tries)*(1-guess))
+         test_result = self.run_trace(dist_min, target_atoms,1-new_guess)
+         if test_result.get_sites_cart().size() >= n_atoms and (
+            abs(test_result.get_sites_cart().size() - target_atoms) <
+            abs(result.get_sites_cart().size() - target_atoms)):
+           result = test_result
+         if result.get_sites_cart().size() >= target_atoms:
+           break # done
      else:
-       best_guess_pc = pc_low
-     best_model = None
-     best_diff = None
-     sc_guess = max(0.5, min(1-1.e-6, 1 - best_guess_pc))
-     sc_low = max(0.5, min(1-1.e-6, 1 - 10 * best_guess_pc))
-     sc_high = max(0.5, min(1-1.e-6, 1 - 0.1 * best_guess_pc))
-     for i in xrange(solvent_content_tries+1):
-       ratio = sc_low + (i/solvent_content_tries) * (sc_high - sc_low)
-       solvent_content = max(0.5, min(1-1.e-6,ratio * sc_guess))
-       model = self.run_trace(dist_min, n_atoms, solvent_content)
-       count = model.get_sites_cart().size()
-       diff = abs(count - n_atoms)
-       if best_diff is None or diff < best_diff:
-         best_model = model
-         best_diff = diff
-     return best_model.get_sites_cart()
+       for i in xrange (tries): # need fewer
+         new_guess = max(1.e-10,guess - (i/tries)*guess)
+         test_result = self.run_trace(dist_min, target_atoms,1-new_guess)
+         if test_result.get_sites_cart().size() >= n_atoms and (
+            abs(test_result.get_sites_cart().size() - target_atoms) <
+            abs(result.get_sites_cart().size() - target_atoms)):
+           result = test_result  # best so far
+         if test_result.get_sites_cart().size() <= target_atoms:
+           break
+         else: # still too many, but save
+           result = test_result
+     if result.get_sites_cart().size() < n_atoms:
+       return result.get_sites_cart() # could not get enough atoms but whatever
+     elif result.get_sites_cart().size() == n_atoms:
+       return result.get_sites_cart()  # done
+     else: # pare down
+       return select_n_in_biggest_cluster(result.get_sites_cart(),
+         n = n_atoms,
+         dist_min = dist_min)
 
-  def run_trace(self, dist_min, n_atoms, solvent_content):
+  def run_trace(self, dist_min, n_atoms, solvent_content,
+      verbose = None):
     from iotbx.data_manager import DataManager
     dm = DataManager()
     map_data = self.map_data()
@@ -1751,7 +1763,7 @@ class map_manager(map_reader, write_ccp4_map):
      cutoff_trace 0.0
      ncut_trace_min 0
      peaks_sep_only
-     n_target_p 1
+     analyze_trace
     """
     input_text+= "\n rad_mask_trace %s\n" %(2*dist_min)
     input_text+= "\n n_atoms_total %s\n" %(n_atoms)
@@ -1766,7 +1778,7 @@ class map_manager(map_reader, write_ccp4_map):
          mask_cycles=1,
          minor_cycles=0,
          solvent_content=solvent_content,
-         out=null_out())
+         out=sys.stdout if verbose else null_out())
     cmn=result_obj.results
     dm.process_model_str('text',cmn.model_atom_db.pdb_out_as_string)
     model=dm.get_model('text')
@@ -1832,3 +1844,35 @@ def subtract_tuples_int(t1, t2):
 
 def add_tuples_int(t1, t2):
   return tuple(flex.int(t1)+flex.int(t2))
+
+def select_n_in_biggest_cluster(sites_cart,
+   dist_min = None,
+   n = None):
+  ''' select n of sites_cart, taking those near biggest cluster if possible'''
+
+  # Guess size of cluster (n atoms, separated by about dist_min)
+  target_radius = dist_min * float(n)**0.5
+  dist_list = []
+  from scitbx.matrix import col
+  for i in range (sites_cart.size()):
+    diffs = sites_cart.deep_copy() - col(sites_cart[i])
+    norms = diffs.norms()
+    sel = (norms <= target_radius)
+    dist_list.append([sel.count(True),i])
+  dist_list.sort()
+  dist_list.reverse()
+  i = dist_list[0][1]
+
+  # Now take the n points closest to center_point and we are done
+  diffs = sites_cart.deep_copy() - col(sites_cart[i])
+  norms = diffs.norms()
+  sort_list = []
+  for j in range(sites_cart.size()):
+    sort_list.append([norms[j],j])
+  sort_list.sort()
+  new_sites_cart = flex.vec3_double()
+  for k in range(n):
+    new_sites_cart.append(sites_cart[sort_list[k][1]])
+
+  return new_sites_cart
+
