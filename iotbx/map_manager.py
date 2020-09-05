@@ -1805,9 +1805,6 @@ class map_manager(map_reader, write_ccp4_map):
        return result.get_sites_cart()  # done
 
      else: # pare down
-       from iotbx.data_manager import DataManager
-       dm = DataManager()
-       dm.write_model_file(result,'result.pdb')
        return select_n_in_biggest_cluster(result.get_sites_cart(),
          n = n_atoms,
          dist_min = dist_min)
