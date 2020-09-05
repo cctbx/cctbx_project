@@ -1826,7 +1826,7 @@ class map_manager(map_reader, write_ccp4_map):
      peaks_sep_only
      analyze_trace
     """
-    input_text+= "\n rad_mask_trace %s\n" %(2*dist_min)
+    input_text+= "\n rad_mask_trace %s\n" %(dist_min)
     input_text+= "\n n_atoms_total %s\n" %(n_atoms)
     from solve_resolve.resolve_python import resolve_in_memory
     result_obj=resolve_in_memory.run(
