@@ -1692,6 +1692,76 @@ class map_manager(map_reader, write_ccp4_map):
       self._warning_message = "No map symmetry found; ncs_cc cutoff of %s" %(
         min_ncs_cc)
 
+  def trace_atoms_in_map(self,
+       dist_min,
+       n_atoms,
+       solvent_content_tries = 10):
+     '''
+       Utility to find positions where about n_atoms atoms separated by
+       dist_min can be placed in density in this map along the ridgelines
+       if possible.
+
+       Tries solvent_content_tries different times to get the right number
+       of atoms.
+     '''
+     assert self.origin_is_zero()
+     assert dist_min > 0.01
+     assert n_atoms > 0
+
+     volume = self.crystal_symmetry().unit_cell().volume()
+     volume_of_atoms = (4/3) * 3.14 * (dist_min)**3 * n_atoms
+     protein_fraction = (volume_of_atoms/volume)
+     solvent_content_guess = 1 - protein_fraction
+
+     best_model = None
+     best_diff = None
+     for i in xrange(solvent_content_tries):
+       ratio = (i + 1) / (solvent_content_tries * 0.5)
+       pf = protein_fraction * ratio
+       solvent_content = max(0.0001, min(0.9999,1 - pf))
+       model = self.run_trace(dist_min, n_atoms, solvent_content)
+       count = model.get_sites_cart().size()
+       diff = abs(count - n_atoms)
+       if best_diff is None or diff < best_diff:
+         best_model = model
+         best_diff = diff
+     return best_model.get_sites_cart()
+
+  def run_trace(self, dist_min, n_atoms, solvent_content):
+    from iotbx.data_manager import DataManager
+    dm = DataManager()
+    map_data = self.map_data()
+    space_group = self.crystal_symmetry().space_group()
+    unit_cell = self.crystal_symmetry().unit_cell()
+    input_text="""
+
+     no_build
+     trace_chain
+     resolution 1000 3
+     cutoff_trace 0.0
+     ncut_trace_min 0
+     peaks_sep_only
+     n_target_p 1
+    """
+    input_text+= "\n rad_mask_trace %s\n" %(2*dist_min)
+    input_text+= "\n n_atoms_total %s\n" %(n_atoms)
+    from solve_resolve.resolve_python import resolve_in_memory
+    result_obj=resolve_in_memory.run(
+         map=map_data,
+         mask=map_data,
+         space_group=space_group,
+         unit_cell=unit_cell,
+         input_text=input_text,
+         pdb_inp=None,
+         mask_cycles=1,
+         minor_cycles=0,
+         solvent_content=solvent_content,
+         out=null_out())
+    cmn=result_obj.results
+    dm.process_model_str('text',cmn.model_atom_db.pdb_out_as_string)
+    model=dm.get_model('text')
+    return model
+
   def map_as_fourier_coefficients(self, d_min = None,
      d_max = None):
     '''
