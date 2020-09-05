@@ -1805,6 +1805,9 @@ class map_manager(map_reader, write_ccp4_map):
        return result.get_sites_cart()  # done
 
      else: # pare down
+       from iotbx.data_manager import DataManager
+       dm = DataManager()
+       dm.write_model_file(result,'result.pdb')
        return select_n_in_biggest_cluster(result.get_sites_cart(),
          n = n_atoms,
          dist_min = dist_min)
@@ -1908,7 +1911,8 @@ def add_tuples_int(t1, t2):
 
 def select_n_in_biggest_cluster(sites_cart,
    dist_min = None,
-   n = None):
+   n = None,
+   dist_min_ratio = 1.):
   ''' select n of sites_cart, taking those near biggest cluster if possible'''
 
   # Guess size of cluster (n atoms, separated by about dist_min)
@@ -1924,16 +1928,39 @@ def select_n_in_biggest_cluster(sites_cart,
   dist_list.reverse()
   i = dist_list[0][1]
 
-  # Now take the n points closest to center_point and we are done
+  # Now take the n points close to center_point but separated from
+  #  each other and we are done
   diffs = sites_cart.deep_copy() - col(sites_cart[i])
-  norms = diffs.norms()
-  sort_list = []
-  for j in range(sites_cart.size()):
-    sort_list.append([norms[j],j])
-  sort_list.sort()
+  norms = diffs.norms()  # how close each one is to the center point
+  used_sites=flex.bool(sites_cart.size(), False)
+
   new_sites_cart = flex.vec3_double()
-  for k in range(n):
-    new_sites_cart.append(sites_cart[sort_list[k][1]])
+  unused_sites_cart = flex.vec3_double()
+  for j in range(n):  # pick closest to center_point that is at least
+                      # dist_min from all in new_sites_cart
+    found = False
+    for k in range(n):
+      if found: break # go on to next
+      if used_sites[k]: continue
+      ok = False
+      test_sites = sites_cart[k:k+1]
+      if new_sites_cart.size() == 0:
+        ok = True
+      else:
+        dist, id1, id2= new_sites_cart.min_distance_between_any_pair_with_id(
+            test_sites)
+        if dist >= dist_min_ratio*dist_min: # keep it
+           ok = True
+      if ok:
+        new_sites_cart.append(test_sites[0])
+        used_sites[k] = True
+        found = True # go on to next one
+    if not found:  # didn't get anything ... reduce dist_min_ratio
+      if dist_min_ratio >= 0.5:
+        return select_n_in_biggest_cluster(sites_cart,
+          dist_min = dist_min,
+          n = n,
+          dist_min_ratio = dist_min_ratio * 0.9)
 
   return new_sites_cart
 
