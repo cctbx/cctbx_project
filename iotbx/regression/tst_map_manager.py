@@ -332,18 +332,14 @@ def test_01():
 # this test requires the solve_resolve module
 def test_02():
 
-  import libtbx.load_env
-  if libtbx.env.dist_path('solve_resolve') is None:
-    print('test_02 requires the solve_resolve module, skipping')
-    return
-
   data_dir = os.path.dirname(os.path.abspath(__file__))
   data_d7 = os.path.join(data_dir, 'data', 'D7.ccp4')
 
   # find_separated atoms in a map
   dm = DataManager()
   mm = dm.get_real_map(data_d7)
-  sites_cart = mm.trace_atoms_in_map(1,10,solvent_content_tries = 1)
+  sites_cart = mm.trace_atoms_in_map(1,10,solvent_content_tries = 1,
+   uniform_spacing=True)
   assert sites_cart.size() == 10 # Note: zero if not available
 
 if (__name__  ==  '__main__'):
