@@ -1754,7 +1754,6 @@ class map_manager(map_reader, write_ccp4_map):
     # Figure out threshold to give a little more than n points inside biggest
     #  blob
     self.set_mean_zero_sd_one()
-    import math
     from cctbx.maptbx.segment_and_split_map import get_co, get_edited_mask
     threshold = start_value
     max_grid_points = None
