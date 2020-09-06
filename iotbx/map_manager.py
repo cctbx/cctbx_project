@@ -1830,7 +1830,7 @@ class map_manager(map_reader, write_ccp4_map):
     input_text+= "\n n_atoms_total %s\n" %(n_atoms)
     try:  # requires external program
       from solve_resolve.resolve_python import resolve_in_memory
-    except Exception, e:  # return dummy model
+    except Exception as e:  # return dummy model
      import mmtbx.model
      model = mmtbx.model.manager.from_sites_cart(
          sites_cart = flex.vec3_double(),
