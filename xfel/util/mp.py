@@ -557,18 +557,37 @@ class get_shifter_submit_command(get_submit_command):
     # --qos <queue>
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<queue>",
       self.params.shifter.partition)
+
     # --partition <partition>
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<partition>",
       self.params.shifter.partition)
+
     # --job-name
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<jobname>",
       self.params.shifter.jobname)
+
     # -A
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<project>",
       self.params.shifter.project)
+
+    #TODO: find a way to toggle reservations off
+    # --reservation
+    self.sbatch_contents = self.substitute(self.sbatch_contents, "<reservation>",
+      self.params.shifter.reservation)
+
     # --constraint
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<constraint>",
       self.params.shifter.constraint)
+
+    # --constraint
+    self.sbatch_contents = self.substitute(self.sbatch_contents, "<constraint>",
+      self.params.shifter.constraint)
+
+    self.sbatch_contents = self.substitute(self.sbatch_contents, "<out_log>",
+      os.path.join(self.destination , "out.log"))
+
+    self.sbatch_contents = self.substitute(self.sbatch_contents, "<err_log>",
+      os.path.join(self.destination , "err.log"))
 
     # <srun_script>
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<srun_script>",
