@@ -1828,7 +1828,16 @@ class map_manager(map_reader, write_ccp4_map):
     """
     input_text+= "\n rad_mask_trace %s\n" %(dist_min)
     input_text+= "\n n_atoms_total %s\n" %(n_atoms)
-    from solve_resolve.resolve_python import resolve_in_memory
+    try:  # requires external program
+      from solve_resolve.resolve_python import resolve_in_memory
+    except Exception, e:  # return dummy model
+     import mmtbx.model
+     model = mmtbx.model.manager.from_sites_cart(
+         sites_cart = flex.vec3_double(),
+         crystal_symmetry = self.crystal_symmetry())
+     return model
+
+
     result_obj=resolve_in_memory.run(
          map=map_data,
          mask=map_data,
