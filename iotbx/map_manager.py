@@ -1736,16 +1736,83 @@ class map_manager(map_reader, write_ccp4_map):
       new_origin_shift_grid_units = (0,0,0)
     self.origin_shift_grid_units = new_origin_shift_grid_units
 
+  def get_n_real_for_grid_spacing(self, grid_spacing = None):
+    n_real = []
+    for n,a in zip(self.map_data().all(),
+       self.crystal_symmetry().unit_cell().parameters()):
+      spacing = a/n
+      target_n = (spacing/grid_spacing) * n
+      n_real.append(int(target_n + 0.999))
+    return n_real
+
+
+  def find_n_grid_points_in_biggest_blob(self, n = None, n_tries = 100,
+     maximum = 10, start_value = 5, minimum = 0., very_close = 0.001):
+    # Find biggest blob of density and then find n points in highest density
+    # inside this blob
+
+    # Figure out threshold to give a little more than n points inside biggest
+    #  blob
+    self.set_mean_zero_sd_one()
+    import math
+    from cctbx.maptbx.segment_and_split_map import get_co, get_edited_mask
+    threshold = start_value
+    max_grid_points = None
+    for i in range(n_tries):
+      co, sorted_by_volume, min_b, max_b = get_co(
+        map_data = self.map_data(),
+        threshold = threshold, wrapping = self.wrapping())
+      if len(sorted_by_volume)<2:
+        maximum = min(maximum, threshold)
+        max_grid_points = 0
+      else:
+        max_grid_points = sorted_by_volume[1][0]
+        if max_grid_points < n:
+          maximum = max(minimum, min(maximum, threshold))
+        elif max_grid_points > n:
+          minimum = min(maximum, max(minimum, threshold))
+      if max_grid_points and max_grid_points >= n and (
+          max_grid_points <= n +1  or
+          maximum - minimum < very_close):  # we're done
+        break
+      else:
+        threshold = (maximum + minimum) * 0.5
+
+    if not max_grid_points:
+      return flex.vec3_double() # Nothing to do
+
+    # Get a map showing where all the grid points are
+    edited_mask, edited_volume_list, original_id_from_id = get_edited_mask(
+         sorted_by_volume = sorted_by_volume,
+         co = co,
+         max_regions_to_consider = 1,
+         out = null_out())
+
+    # Select all the points in the mask for region
+    assert edited_mask.count(1) == max_grid_points # just making sure
+    from cctbx.maptbx.segment_and_split_map import \
+        get_region_scattered_points_dict
+    scattered_points_dict = get_region_scattered_points_dict(
+      edited_volume_list = edited_volume_list,
+      edited_mask = edited_mask,
+      unit_cell = self.crystal_symmetry().unit_cell(),
+      sampling_rate = 1,)
+    return scattered_points_dict.get(1, flex.vec3_double())
+
   def trace_atoms_in_map(self,
        dist_min,
        n_atoms,
        solvent_content_tries = 10,
        verbose = None,
-       fine_grid = None):
+       fine_grid = None,
+       uniform_spacing = None):
      '''
        Utility to find positions where about n_atoms atoms separated by
        dist_min can be placed in density in this map along the ridgelines
        if possible.
+
+       If uniform_spacing, just try to n_atoms find points on a grid inside
+       density
 
        Tries solvent_content_tries different times and then cluster
        to get the right number of atoms.
@@ -1754,7 +1821,19 @@ class map_manager(map_reader, write_ccp4_map):
      assert dist_min > 0.01
      assert n_atoms > 0
 
-     if fine_grid:
+     if uniform_spacing:
+       n_real = self.get_n_real_for_grid_spacing(grid_spacing = dist_min)
+       self.resample_on_different_grid(
+         n_real = self.get_n_real_for_grid_spacing(grid_spacing = dist_min))
+       sites_cart = self.find_n_grid_points_in_biggest_blob(n = n_atoms)
+       return select_n_in_biggest_cluster(sites_cart,
+         n = n_atoms,
+         dist_min = dist_min,
+         dist_min_ratio = 3.,
+         minimize_density_of_points = True,
+         )
+
+     elif fine_grid:
        self.resample_on_different_grid(
          n_real = tuple ([2 * i for i in self.map_data().all()]))
 
@@ -1909,17 +1988,88 @@ class map_manager(map_reader, write_ccp4_map):
         n_real           = self.map_data().all())
       )
 
+def get_indices_from_index(index = None, all = None):
+        #index = k+j*all[2]+i*(all[1]*all[2])
+        i = index//(all[1]*all[2])
+        j =  (index-i*(all[1]*all[2]))//all[2]
+        k =  index-i*(all[1]*all[2])-j*all[2]
+        assert k+j*all[2]+i*(all[1]*all[2]) == index
+        return (i, j, k)
+
+def get_sites_cart_from_index(
+      indices_list = None,
+      points = None, map_data = None, crystal_symmetry = None, all = None):
+    '''  Get sites_cart from linear (1d) map indices.
+       Supply either map_data or all to provide n_real
+       crystal_symmetry is required
+       Supply either 3D indices (i,j,k) or 1-D indices (points)
+    '''
+
+    if all is None:
+      all = map_data.all()
+    sites_frac = flex.vec3_double()
+    if not indices_list:
+      if not points: return sites_frac # nothing there
+      indices_list = []
+      for point in points:
+        if point is None: continue
+        indices_list.append(get_indices_from_index(index = point, all = all))
+    for indices in indices_list:
+      i, j, k = indices
+      site_frac = tuple((i/all[0], j/all[1], k/all[2]))
+      sites_frac.append(site_frac)
+    sites_cart = crystal_symmetry.unit_cell().orthogonalize(sites_frac)
+    return sites_cart
 def subtract_tuples_int(t1, t2):
   return tuple(flex.int(t1)-flex.int(t2))
 
 def add_tuples_int(t1, t2):
   return tuple(flex.int(t1)+flex.int(t2))
 
+def remove_site_with_most_neighbors(sites_cart):
+  useful_norms_list = []
+  closest_distance = 1.e+30
+  for i in range(sites_cart.size()):
+    compare_xyz = flex.vec3_double(sites_cart.size(), sites_cart[i])
+    delta_xyz = sites_cart - compare_xyz
+    norms = delta_xyz.norms()
+    useful_norms = norms[:i]
+    useful_norms.extend(norms[i+1:])
+    assert useful_norms.size() == sites_cart.size() -1
+    useful_norms_list.append(useful_norms)
+    closest_distance=min(closest_distance,useful_norms.min_max_mean().min)
+
+  distance_list=[]
+  for i in range(sites_cart.size()):
+    useful_norms = useful_norms_list[i]
+    s = (useful_norms <= closest_distance * 1.25)
+    count = s.count(True)
+    distance_list.append([count,i])
+  distance_list.sort()
+  distance_list.reverse()
+  i = distance_list[0][1]
+  new_sites_cart = sites_cart[:i]
+  new_sites_cart.extend(sites_cart[i+1:])
+  return new_sites_cart
+
 def select_n_in_biggest_cluster(sites_cart,
    dist_min = None,
    n = None,
-   dist_min_ratio = 1.):
-  ''' select n of sites_cart, taking those near biggest cluster if possible'''
+   dist_min_ratio = 1.,
+   dist_min_ratio_min = 0.5,
+   minimize_density_of_points = None):
+  '''
+    Select n of sites_cart, taking those near biggest cluster if possible
+    If minimize_density_of_points, remove those with the most neighbors
+  '''
+
+  if sites_cart.size() < 1:
+    return sites_cart
+
+  if minimize_density_of_points:
+    while sites_cart.size() > n:
+      sites_cart = remove_site_with_most_neighbors(sites_cart)
+    return sites_cart
 
   # Guess size of cluster (n atoms, separated by about dist_min)
   target_radius = dist_min * float(n)**0.5
@@ -1962,7 +2112,7 @@ def select_n_in_biggest_cluster(sites_cart,
         used_sites[k] = True
         found = True # go on to next one
     if not found:  # didn't get anything ... reduce dist_min_ratio
-      if dist_min_ratio >= 0.5:
+      if dist_min_ratio >= dist_min_ratio_min:
         return select_n_in_biggest_cluster(sites_cart,
           dist_min = dist_min,
           n = n,
