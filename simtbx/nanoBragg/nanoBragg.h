@@ -579,13 +579,14 @@ class nanoBragg {
     void allocate_cuda();
     void add_energy_channel_cuda();
     void scale_in_place_cuda(double const&);
+    void add_background_cuda();
     void get_raw_pixels_cuda();
     void deallocate_cuda();
     void add_nanoBragg_spots_cuda();
 #endif
 
     /* member function for triggering background simulation */
-    void add_background(int oversample, int source);
+    void add_background(int oversample, int source, bool sort_stable);
 
     /* member function for extracting background from raw image */
     void extract_background(int source);

@@ -1942,6 +1942,8 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
        "Accumulate Fhkl contributions on the GPU")
       .def("scale_in_place_cuda", &nanoBragg::scale_in_place_cuda,
        "Apply a scale factor directly on the GPU")
+      .def("add_background_cuda", &nanoBragg::add_background_cuda,
+       "Add a background field directly on the GPU")
       .def("get_raw_pixels_cuda", &nanoBragg::get_raw_pixels_cuda,
        "Update raw_pixels on host with array from GPU")
       .def("deallocate_cuda", &nanoBragg::deallocate_cuda,
@@ -1950,7 +1952,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
 
       /* actual run of the background simulation */
       .def("add_background",&nanoBragg::add_background,
-        (arg_("oversample")=-1,arg_("source")=-1),
+        (arg_("oversample")=-1,arg_("source")=-1,arg_("sort_stable")=false),
        "run the non-Bragg simulation, adding background from speficied amorphous materials")
 
       /* retrieve radial-median filtered average background from the image */

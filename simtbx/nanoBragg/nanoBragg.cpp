@@ -2983,7 +2983,7 @@ nanoBragg::add_nanoBragg_spots()
    like oversampling pixels and multiple sources.  Providing these arguments
    does NOT change the values of the member variables */
 void
-nanoBragg::add_background( int oversample, int source )
+nanoBragg::add_background( int oversample, int source, bool sort_stable=false )
 {
     int i;
     int source_start = 0;
@@ -3017,6 +3017,7 @@ nanoBragg::add_background( int oversample, int source )
     {
         for(fpixel=0;fpixel<fpixels;++fpixel)
         {
+            if (sort_stable) {nearest=0;}
             /* allow for just one part of detector to be rendered */
             if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax) {
                 invalid_pixel[i] = true;
