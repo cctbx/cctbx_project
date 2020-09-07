@@ -16,6 +16,7 @@ mp {{
   method = {method}
   use_mpi = {use_mpi}
   nproc = {nproc}
+  nnodes = {nnodes}
   nproc_per_node = {nproc_per_node}
   queue = {queue}
   env_script = {env_script}
