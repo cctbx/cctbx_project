@@ -663,6 +663,7 @@ INTERFACE_FOR = {
   "pbspro": (PBSPro, pbspro_evaluate ),
   "condor": ( Condor, condor_evaluate ),
   "slurm": ( Slurm, slurm_evaluate ),
+  "shifter:" (Slurm, slurm_evaluate), # assuming shifter is running on NERSC (slurm) systems
   }
 
 def qsub(
