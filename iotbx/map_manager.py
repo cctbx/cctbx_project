@@ -1755,7 +1755,7 @@ class map_manager(map_reader, write_ccp4_map):
     return n_real
 
   def find_n_highest_grid_points_as_sites_cart(self, n = None,
-    max_tries = 100):
+    n_tolerance = 0, max_tries = 100):
     '''
       Return the n highest grid points in the map as sites_cart
     '''
@@ -1772,281 +1772,55 @@ class map_manager(map_reader, write_ccp4_map):
     if count_low < n or count_high > n:
       return flex.vec3_double()
 
+    last_threshold = None
     while tries < max_tries:
       tries += 1
       threshold = 0.5 * (low_bounds + high_bounds)
       count = (self.map_data() >= threshold ).count(True)
-      print ("ZZB",low_bounds, high_bounds, n, threshold, count)
-      if count == n or low_bounds == high_bounds:
+      if count == n or low_bounds == high_bounds or threshold == last_threshold:
         break
       elif count > n:
         low_bounds = max(low_bounds, threshold)
       else:
         high_bounds = min(high_bounds, threshold)
-    if count != n:
+      last_threshold = threshold
+    if abs (count - n ) > n_tolerance:
       return flex.vec3_double()
     # Now convert to xyz and we are done
     sel = (self.map_data() >= threshold )
-    map_data = self.map_data().deep_copy()
-    map_data.set_selected(sel,1)
-    map_data.set_selected(~sel,0)
+    from scitbx.array_family.flex import grid
+    g = grid(self.map_data().all())
+    mask_data = flex.int(self.map_data().size(),0)
+    mask_data.reshape(g)
+    mask_data.set_selected(sel,1)
+    mask_data.set_selected(~sel,0)
 
-    from cctbx.maptbx.segment_and_split_map import get_co, get_edited_mask, \
-        get_region_scattered_points_dict
-    co, sorted_by_volume, min_b, max_b = get_co(
-        map_data = map_data, threshold = 0.5)
-    edited_mask, edited_volume_list, original_id_from_id = get_edited_mask(
-         sorted_by_volume = sorted_by_volume,
-         co = co,
-         max_regions_to_consider = len(sorted_by_volume) -1,
-         out = null_out())
-    scattered_points_dict = get_region_scattered_points_dict(
-      edited_volume_list = edited_volume_list,
-      edited_mask = edited_mask,
-      unit_cell = self.crystal_symmetry().unit_cell(),
-      sampling_rate = 1)
-    sites_cart = flex.vec3_double()
-    for i in scattered_points_dict.keys():
-      if i == 0: continue
-      sites_cart.extend(scattered_points_dict.get(i,flex.vec3_double()))
-    return sites_cart
+    volume_list = flex.int((sel.count(False),sel.count(True)))
+    sampling_rates = flex.int((1,1))
+    from cctbx.maptbx import sample_all_mask_regions
+    sample_regs_obj = maptbx.sample_all_mask_regions(
+      mask = mask_data,
+      volumes = volume_list,
+      sampling_rates = sampling_rates,
+      unit_cell = self.crystal_symmetry().unit_cell())
 
+    return sample_regs_obj.get_array(1)
 
-
-  def find_n_grid_points_in_biggest_blob(self, n = None,
-     dist_min = None, n_tries = 100,
-     maximum = 10, start_value = 5, minimum = 0.1, very_close = 0.001,
-     min_ratio_to_keep = 0.25):
-    # Find biggest blob of density and then find n points in highest density
-    # inside this blob
-
-    # Figure out threshold to give volume corresponding to n points spaced with
-    #  spacing of dist_min.
-    # Number of grid points inside volume:
-    #     n = n_atoms * (dist_min/grid spacing)**3
-    target_grid_points = 0.125* n * 4 * 3.1415/3
-    for i in range(3):
-      spacing = self.crystal_symmetry().unit_cell(
-         ).parameters()[i]/self.map_data().all()[i]
-      target_grid_points *= dist_min/spacing
-    target_grid_points = int (0.5+ target_grid_points)
-
-    self.write_map('map_used.ccp4')
-    self.set_mean_zero_sd_one()
-    from cctbx.maptbx.segment_and_split_map import get_co, get_edited_mask
-    threshold = start_value
-    max_grid_points = None
-    max_regions_to_consider = 0
-    n_target = target_grid_points
-    for i in range(n_tries):
-      co, sorted_by_volume, min_b, max_b = get_co(
-        map_data = self.map_data(),
-        threshold = threshold, wrapping = self.wrapping())
-      if len(sorted_by_volume)<2:
-        maximum = min(maximum, threshold)
-        sum_large_blobs = 0
-      else:
-        max_grid_points = sorted_by_volume[1][0]
-        sum_large_blobs = 0
-        max_regions_to_consider = 0
-        for i in range(1,len(sorted_by_volume)):
-          grid_points = sorted_by_volume[i][0]
-          if grid_points >= max_grid_points*min_ratio_to_keep:
-            sum_large_blobs += grid_points
-            max_regions_to_consider += 1
-        if sum_large_blobs < n_target:
-          maximum = max(minimum, min(maximum, threshold))
-        elif max_grid_points > n_target:
-          minimum = min(maximum, max(minimum, threshold))
-      if sum_large_blobs and sum_large_blobs >= n_target and (
-          sum_large_blobs <= n_target +1  or
-          maximum - minimum < very_close):  # we're done
-        break
-      else:
-        threshold = (maximum + minimum) * 0.5
-
-    if not sum_large_blobs:
-      return flex.vec3_double() # Nothing to do
-
-    # Get a map showing where all the grid points are
-    edited_mask, edited_volume_list, original_id_from_id = get_edited_mask(
-         sorted_by_volume = sorted_by_volume,
-         co = co,
-         max_regions_to_consider = max_regions_to_consider,
-         out = null_out())
-
-    # Select all the points in the mask for region
-    assert edited_mask.count(1) == max_grid_points # just making sure
-    from cctbx.maptbx.segment_and_split_map import \
-        get_region_scattered_points_dict
-    sampling_rate =  int(0.99+(sum_large_blobs/n))
-    sampling_rate = 1
-    scattered_points_dict = get_region_scattered_points_dict(
-      edited_volume_list = edited_volume_list,
-      edited_mask = edited_mask,
-      unit_cell = self.crystal_symmetry().unit_cell(),
-      sampling_rate = sampling_rate,)
-    sites_cart = flex.vec3_double()
-    for i in range(1, max_regions_to_consider+1):
-      sites_cart.extend(scattered_points_dict.get(i,flex.vec3_double()))
-    import mmtbx.model
-    model = mmtbx.model.manager.from_sites_cart(
-         sites_cart = sites_cart,
-         crystal_symmetry = self.crystal_symmetry())
-    f=open('all.pdb','w')
-    print (model.model_as_pdb(),file=f)
-    f.close()
-    return sites_cart
 
   def trace_atoms_in_map(self,
        dist_min,
-       n_atoms,
-       solvent_content_tries = 10,
-       verbose = None,
-       fine_grid = None,
-       uniform_spacing = None,
-       highest_in_map = True):
+       n_atoms):
      '''
        Utility to find positions where about n_atoms atoms separated by
-       dist_min can be placed in density in this map along the ridgelines
-       if possible.
-
-       If uniform_spacing, just try to n_atoms find points on a grid inside
-       density
-
-       Tries solvent_content_tries different times and then cluster
-       to get the right number of atoms.
+       dist_min can be placed in density in this map
      '''
      assert self.origin_is_zero()
      assert dist_min > 0.01
      assert n_atoms > 0
-
-     working_map_manager = self
-     if uniform_spacing and highest_in_map:
-       # Simple version: set spacing between points, take highest N of these
-       n_real = self.get_n_real_for_grid_spacing(grid_spacing = dist_min)
-       working_map_manager = self.resample_on_different_grid(n_real = n_real)
-       return working_map_manager.find_n_highest_grid_points_as_sites_cart(
+     n_real = self.get_n_real_for_grid_spacing(grid_spacing = dist_min)
+     working_map_manager = self.resample_on_different_grid(n_real = n_real)
+     return working_map_manager.find_n_highest_grid_points_as_sites_cart(
           n = n_atoms)
-
-     elif uniform_spacing:
-       sites_cart = self.find_n_grid_points_in_biggest_blob(n = n_atoms,
-         dist_min = dist_min)
-       if sites_cart.size() > 1.5 * n_atoms:  # try again coarser resampling
-         ratio = ((1.5 * n_atoms)/sites_cart.size())**0.3333
-         n_real = [int (0.5 + i * ratio) for i in self.map_data().all()]
-         working_map_manager = self.resample_on_different_grid(n_real = n_real,)
-         sites_cart = working_map_manager.find_n_grid_points_in_biggest_blob(
-            n = n_atoms, dist_min = dist_min)
-
-       return select_n_in_biggest_cluster(sites_cart,
-         n = n_atoms,
-         dist_min = dist_min,
-         dist_min_ratio = 3.,
-         minimize_density_of_points = True,
-         )
-
-     elif fine_grid:
-       working_map_manager = self.resample_on_different_grid(
-         n_real = tuple ([2 * i for i in self.map_data().all()]))
-
-     target_atoms = int( 0.5 + n_atoms * 1.5 )
-     volume = working_map_manager.crystal_symmetry().unit_cell().volume()
-     volume_of_atoms = (4/3) * 3.14 * (dist_min)**3 * target_atoms
-     guess = min(0.99,(volume_of_atoms/volume))
-     result= working_map_manager.run_trace(dist_min, target_atoms,1-guess)
-     tries = max(1,int(solvent_content_tries//2))
-     if result.get_sites_cart().size() == target_atoms:
-       pass # we are there
-     elif result.get_sites_cart().size()< target_atoms: # need more
-       for i in xrange (tries):
-         new_guess = min(0.99,guess + (i/tries)*(1-guess))
-         test_result = working_map_manager.run_trace(
-             dist_min, target_atoms,1-new_guess)
-         if test_result.get_sites_cart().size() >= n_atoms and (
-            ( abs(test_result.get_sites_cart().size() - target_atoms) <
-            abs(result.get_sites_cart().size() - target_atoms)) or
-            (result.get_sites_cart().size() < target_atoms)):
-           result = test_result
-
-         if result.get_sites_cart().size() >= target_atoms:
-           break # done
-     else:
-       for i in xrange (tries): # need fewer
-         new_guess = max(1.e-10,guess - (i/tries)*guess)
-         test_result = working_map_manager.run_trace(
-           dist_min, target_atoms,1-new_guess)
-         if test_result.get_sites_cart().size() >= n_atoms and (
-            ( abs(test_result.get_sites_cart().size() - target_atoms) <
-            abs(result.get_sites_cart().size() - target_atoms)) or
-            (result.get_sites_cart().size() < target_atoms)):
-           result = test_result  # best so far
-         if test_result.get_sites_cart().size() <= target_atoms:
-           break
-         else: # still too many, but save
-           result = test_result
-     if result.get_sites_cart().size() < n_atoms:
-       if fine_grid:  # just didn't work
-         return result.get_sites_cart()
-       else:  #try again with a finer grid
-         return working_map_manager.trace_atoms_in_map(
-           dist_min,
-           n_atoms,
-           solvent_content_tries = solvent_content_tries,
-           verbose = verbose,
-           fine_grid = True)
-     elif result.get_sites_cart().size() == n_atoms:
-       return result.get_sites_cart()  # done
-
-     else: # pare down
-       return select_n_in_biggest_cluster(result.get_sites_cart(),
-         n = n_atoms,
-         dist_min = dist_min)
-
-  def run_trace(self, dist_min, n_atoms, solvent_content,
-      verbose = None):
-    from iotbx.data_manager import DataManager
-    dm = DataManager()
-    map_data = self.map_data()
-    space_group = self.crystal_symmetry().space_group()
-    unit_cell = self.crystal_symmetry().unit_cell()
-    input_text="""
-
-     no_build
-     trace_chain
-     resolution 1000 3
-     cutoff_trace 0.0
-     ncut_trace_min 0
-     peaks_sep_only
-     analyze_trace
-    """
-    input_text+= "\n rad_mask_trace %s\n" %(dist_min)
-    input_text+= "\n n_atoms_total %s\n" %(n_atoms)
-    try:  # requires external program
-      from solve_resolve.resolve_python import resolve_in_memory
-    except Exception as e:  # return dummy model
-     import mmtbx.model
-     model = mmtbx.model.manager.from_sites_cart(
-         sites_cart = flex.vec3_double(),
-         crystal_symmetry = self.crystal_symmetry())
-     return model
-
-
-    result_obj=resolve_in_memory.run(
-         map=map_data,
-         mask=map_data,
-         space_group=space_group,
-         unit_cell=unit_cell,
-         input_text=input_text,
-         pdb_inp=None,
-         mask_cycles=1,
-         minor_cycles=0,
-         solvent_content=solvent_content,
-         out=sys.stdout if verbose else null_out())
-    cmn=result_obj.results
-    dm.process_model_str('text',cmn.model_atom_db.pdb_out_as_string)
-    model=dm.get_model('text')
-    return model
 
   def map_as_fourier_coefficients(self, d_min = None,
      d_max = None):
