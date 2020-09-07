@@ -1746,20 +1746,31 @@ class map_manager(map_reader, write_ccp4_map):
     return n_real
 
 
-  def find_n_grid_points_in_biggest_blob(self, n = None, n_tries = 100,
+  def find_n_grid_points_in_biggest_blob(self, n = None,
+     dist_min = None, n_tries = 100,
      maximum = 10, start_value = 5, minimum = 0.1, very_close = 0.001,
      min_ratio_to_keep = 0.25):
     # Find biggest blob of density and then find n points in highest density
     # inside this blob
 
-    # Figure out threshold to give a little more than n points inside biggest
-    #  blob
+    # Figure out threshold to give volume corresponding to n points spaced with
+    #  spacing of dist_min.
+    # Number of grid points inside volume:
+    #     n = n_atoms * (dist_min/grid spacing)**3
+    target_grid_points = 0.125* n * 4 * 3.1415/3
+    for i in range(3):
+      spacing = self.crystal_symmetry().unit_cell(
+         ).parameters()[i]/self.map_data().all()[i]
+      target_grid_points *= dist_min/spacing
+    target_grid_points = int (0.5+ target_grid_points)
+
     self.write_map('map_used.ccp4')
     self.set_mean_zero_sd_one()
     from cctbx.maptbx.segment_and_split_map import get_co, get_edited_mask
     threshold = start_value
     max_grid_points = None
     max_regions_to_consider = 0
+    n_target = target_grid_points
     for i in range(n_tries):
       co, sorted_by_volume, min_b, max_b = get_co(
         map_data = self.map_data(),
@@ -1776,12 +1787,12 @@ class map_manager(map_reader, write_ccp4_map):
           if grid_points >= max_grid_points*min_ratio_to_keep:
             sum_large_blobs += grid_points
             max_regions_to_consider += 1
-        if sum_large_blobs < n:
+        if sum_large_blobs < n_target:
           maximum = max(minimum, min(maximum, threshold))
-        elif max_grid_points > n:
+        elif max_grid_points > n_target:
           minimum = min(maximum, max(minimum, threshold))
-      if max_grid_points and max_grid_points >= n and (
-          max_grid_points <= n +1  or
+      if sum_large_blobs and sum_large_blobs >= n_target and (
+          sum_large_blobs <= n_target +1  or
           maximum - minimum < very_close):  # we're done
         break
       else:
@@ -1801,15 +1812,25 @@ class map_manager(map_reader, write_ccp4_map):
     assert edited_mask.count(1) == max_grid_points # just making sure
     from cctbx.maptbx.segment_and_split_map import \
         get_region_scattered_points_dict
+    sampling_rate =  int(0.99+(sum_large_blobs/n))
+    sampling_rate = 1
     scattered_points_dict = get_region_scattered_points_dict(
       edited_volume_list = edited_volume_list,
       edited_mask = edited_mask,
       unit_cell = self.crystal_symmetry().unit_cell(),
-      sampling_rate = 1,)
+      sampling_rate = sampling_rate,)
     sites_cart = flex.vec3_double()
     for i in range(1, max_regions_to_consider+1):
       sites_cart.extend(scattered_points_dict.get(i,flex.vec3_double()))
+    import mmtbx.model
+    model = mmtbx.model.manager.from_sites_cart(
+         sites_cart = sites_cart,
+         crystal_symmetry = self.crystal_symmetry())
+    f=open('all.pdb','w')
+    print (model.model_as_pdb(),file=f)
+    f.close()
     return sites_cart
+
   def trace_atoms_in_map(self,
        dist_min,
        n_atoms,
@@ -1833,10 +1854,14 @@ class map_manager(map_reader, write_ccp4_map):
      assert n_atoms > 0
 
      if uniform_spacing:
-       n_real = self.get_n_real_for_grid_spacing(grid_spacing = dist_min)
-       self.resample_on_different_grid(
-           n_real = self.get_n_real_for_grid_spacing(grid_spacing = dist_min))
-       sites_cart = self.find_n_grid_points_in_biggest_blob(n = n_atoms)
+       sites_cart = self.find_n_grid_points_in_biggest_blob(n = n_atoms,
+         dist_min = dist_min)
+       if sites_cart.size() > 1.5 * n_atoms:  # try again coarser resampling
+         ratio = ((1.5 * n_atoms)/sites_cart.size())**0.3333
+         n_real = [int (0.5 + i * ratio) for i in self.map_data().all()]
+         self.resample_on_different_grid( n_real = n_real,)
+         sites_cart = self.find_n_grid_points_in_biggest_blob(n = n_atoms,
+           dist_min = dist_min)
 
        return select_n_in_biggest_cluster(sites_cart,
          n = n_atoms,
