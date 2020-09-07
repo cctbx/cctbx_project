@@ -73,9 +73,9 @@ def qdel(job_id, platform):
   but primarily used by the Phenix GUI.
   """
   from libtbx import easy_run
-  assert platform in ("sge", "lsf", "pbs", "condor", "pbspro", "slurm")
+  assert platform in ("sge", "lsf", "pbs", "condor", "pbspro", "slurm", "shifter")
   cmd = None
-  if platform in ("sge", "pbs", "pbspro", "slurm"):
+  if platform in ("sge", "pbs", "pbspro", "slurm", "shifter"):
     cmd = "qdel %s" % job_id
   elif platform == "lsf":
     cmd = "bkill %s" % job_id
