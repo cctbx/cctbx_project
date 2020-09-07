@@ -44,8 +44,9 @@ class map_model_mixins(object):
         The name of the model file
       map_files: str or list
         The name(s) of the map files. If there is only one map, the name (str)
-        is sufficient. A list is expected to have only 1 (full) or 3 (full
-        and 2 half-maps) map files. If more than one map file is in the list,
+        is sufficient. A list is expected to have only 1 (full) or 2 (two half-
+        maps) or 3 (full and 2 half-maps) map files. If three map files
+        are in the list,
         the first map file is assumed to be the full map.
       from_phil: bool
         If set to True, the model and map names are retrieved from the
@@ -84,13 +85,18 @@ class map_model_mixins(object):
     mm_1 = None
     mm_2 = None
     if isinstance(map_files, list):
-      if len(map_files) != 1 and len(map_files) != 3:
-        msg = 'Please provide only 1 full map or 1 full map and 2 half maps.\n Found:\n'
+      if len(map_files) != 1 and len(map_files) != 2 and len(map_files) != 3:
+        msg = 'Please provide only 1 full map or 2 half maps or 1 full map and 2 half maps.\n Found:\n'
         for map_file in map_files:
           msg += ('  {map_file}\n'.format(map_file=map_file))
         raise Sorry(msg)
-      mm = self.get_real_map(map_files[0])
-      if len(map_files) == 3:
+      if len(map_files) == 1:
+        mm = self.get_real_map(map_files[0])
+      elif len(map_files) == 2:
+        mm_1 = self.get_real_map(map_files[0])
+        mm_2 = self.get_real_map(map_files[1])
+      elif len(map_files) == 3:
+        mm = self.get_real_map(map_files[0])
         mm_1 = self.get_real_map(map_files[1])
         mm_2 = self.get_real_map(map_files[2])
     else:
