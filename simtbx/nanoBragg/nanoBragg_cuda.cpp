@@ -74,6 +74,10 @@ extern "C"
 void scale_in_place_cuda_cu(int deviceId, double const& scale_factor, new_api_cudaPointers &newapi_cp);
 
 extern "C"
+void add_background_cuda_cu(int deviceId, int, double*, double*, double fluence, double*, double*,
+    double amorphous_molecules, cudaPointers &cp, new_api_cudaPointers &newapi_cp);
+
+extern "C"
 void get_raw_pixels_cuda_cu(int deviceId, double * floatimage, new_api_cudaPointers &);
 
 extern "C"
@@ -217,6 +221,16 @@ void nanoBragg::scale_in_place_cuda(double const& scale_factor) {
   scale_in_place_cuda_cu(device_Id, scale_factor, new_api_cpo);
 #else
   throw SCITBX_ERROR("no CUDA implementation of scale_in_place_cuda");
+#endif
+}
+
+void nanoBragg::add_background_cuda() {
+#ifdef HAVE_NANOBRAGG_SPOTS_CUDA
+  add_background_cuda_cu(device_Id, stols, stol_of, Fbg_of, fluence,
+                         source_I, source_lambda,
+                         amorphous_molecules, cpo, new_api_cpo);
+#else
+  throw SCITBX_ERROR("no CUDA implementation of add_background_cuda");
 #endif
 }
 
