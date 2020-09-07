@@ -1696,7 +1696,6 @@ class JobsTab(BaseTab):
     stopper = JobStopper(self.main.params.mp.method)
     for job in self.all_jobs:
       if job.id in jobs_to_stop:
-        from ipdb import set_trace; set_trace()
         stopper.stop_job(job.submission_id)
 
   def onDeleteJob(self, e):
