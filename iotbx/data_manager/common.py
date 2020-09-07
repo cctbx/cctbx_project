@@ -99,10 +99,15 @@ class map_model_mixins(object):
         mm = self.get_real_map(map_files[0])
         mm_1 = self.get_real_map(map_files[1])
         mm_2 = self.get_real_map(map_files[2])
-    else:
+    elif map_files:
       mm = self.get_real_map(map_files)
+    else:
+      mm = None
 
-    model = self.get_model(model_file)
+    if model_file:
+      model = self.get_model(model_file)
+    else:
+      model = None
 
     mmm = map_model_manager(model=model, map_manager=mm, map_manager_1=mm_1,
       map_manager_2=mm_2, **kwargs)

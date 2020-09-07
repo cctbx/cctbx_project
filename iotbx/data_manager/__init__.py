@@ -509,58 +509,5 @@ class DataManagerBase(object):
     self._output_files.append(filename)
     self._output_types.append(datatype)
 
-  def read_map_and_model(self,
-    map_file = None,
-    model_file = None,
-    regression_module = None,
-    regression_directory = None,
-    default_directory= None,
-    ignore_symmetry_conflicts = None):
-
-    '''
-      Convenience function to read in a map and model and set up a
-       map_model_manager with them
-
-      Identify which file is map and which is model, read in and
-      create and return map_model_manager
-
-      If default_directory is specified, look there for these files.
-
-      If default_directory is not specified but regression_module
-      and regression_directory are specified, look there for these files
-
-      model_file or map_file can be None.  If map_file is None, returns a
-      model object
-    '''
-
-    if (regression_directory and regression_module) and not default_directory:
-      import libtbx.load_env
-      default_directory = libtbx.env.under_dist(
-        module_name=regression_module,
-        path=regression_directory,
-        test=os.path.isdir)
-      if not default_directory:
-        raise Sorry("Unable to find regression module and directory (%s %s)" %(
-        regression_module, regression_directory))
-
-    if default_directory:
-      if map_file:
-        map_file = os.path.join(default_directory,map_file)
-      if model_file:
-        model_file = os.path.join(default_directory,model_file)
-
-    if map_file:
-      mm = self.get_real_map(map_file)
-    else:
-      mm = None
-    if model_file:
-      model = self.get_model(model_file)
-    else:
-      model = None
-    from iotbx.map_model_manager import map_model_manager as MapModelManager
-    mam = MapModelManager(model=model,map_manager=mm,
-      ignore_symmetry_conflicts = ignore_symmetry_conflicts)
-    return mam
-
 # =============================================================================
 # end
