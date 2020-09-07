@@ -150,6 +150,10 @@ def DataManager(datatypes=None, phil=None, logger=None):
     importlib.import_module('.common', package='iotbx.data_manager')
     mixin_classes.append(
       getattr(sys.modules['iotbx.data_manager.common'], 'map_mixins'))
+  if 'model' in datatypes and 'real_map' in datatypes:
+    importlib.import_module('.common', package='iotbx.data_manager')
+    mixin_classes.append(
+      getattr(sys.modules['iotbx.data_manager.common'], 'map_model_mixins'))
 
   # construct new class and return instance
   classes = tuple(manager_classes + parent_classes + mixin_classes)

@@ -11,6 +11,25 @@ from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
 from copy import deepcopy
 
+# Reserved phil scope for MapModelManager
+map_model_phil_str = '''
+map_model {
+  full_map = None
+    .type = path
+    .help = Input full map file
+    .short_caption = Full map filename
+  half_map = None
+    .type = path
+    .multiple = True
+    .help = Input half map files
+    .short_caption = Half map filenames
+  model = None
+    .type = path
+    .help = Input model file
+    .short_caption = Model filename
+}
+'''
+
 class map_model_manager(object):
 
   '''
