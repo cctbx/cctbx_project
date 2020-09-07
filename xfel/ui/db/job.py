@@ -188,6 +188,7 @@ class IndexingJob(Job):
       experiment_tag            = self.app.params.experiment_tag,
       calib_dir                 = self.rungroup.calib_dir,
       nproc                     = self.app.params.mp.nproc,
+      nnodes                    = self.app.params.mp.nnodes,
       nproc_per_node            = self.app.params.mp.nproc_per_node,
       queue                     = self.app.params.mp.queue or None,
       env_script                = self.app.params.mp.env_script[0] if len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
