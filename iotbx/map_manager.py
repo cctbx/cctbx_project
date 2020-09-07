@@ -1701,7 +1701,7 @@ class map_manager(map_reader, write_ccp4_map):
     original_shift_cart = self.shift_cart()
     original_origin_shift_grid_units = self.origin_shift_grid_units
 
-    map_coeffs = self.map_as_fourier_coefficients(d_min = 3)
+    map_coeffs = self.map_as_fourier_coefficients()
     map_data=maptbx.map_coefficients_to_map(
         map_coeffs       = map_coeffs,
         crystal_symmetry = map_coeffs.crystal_symmetry(),
@@ -1747,26 +1747,36 @@ class map_manager(map_reader, write_ccp4_map):
 
 
   def find_n_grid_points_in_biggest_blob(self, n = None, n_tries = 100,
-     maximum = 10, start_value = 5, minimum = 0., very_close = 0.001):
+     maximum = 10, start_value = 5, minimum = 0.1, very_close = 0.001,
+     min_ratio_to_keep = 0.25):
     # Find biggest blob of density and then find n points in highest density
     # inside this blob
 
     # Figure out threshold to give a little more than n points inside biggest
     #  blob
+    self.write_map('map_used.ccp4')
     self.set_mean_zero_sd_one()
     from cctbx.maptbx.segment_and_split_map import get_co, get_edited_mask
     threshold = start_value
     max_grid_points = None
+    max_regions_to_consider = 0
     for i in range(n_tries):
       co, sorted_by_volume, min_b, max_b = get_co(
         map_data = self.map_data(),
         threshold = threshold, wrapping = self.wrapping())
       if len(sorted_by_volume)<2:
         maximum = min(maximum, threshold)
-        max_grid_points = 0
+        sum_large_blobs = 0
       else:
         max_grid_points = sorted_by_volume[1][0]
-        if max_grid_points < n:
+        sum_large_blobs = 0
+        max_regions_to_consider = 0
+        for i in range(1,len(sorted_by_volume)):
+          grid_points = sorted_by_volume[i][0]
+          if grid_points >= max_grid_points*min_ratio_to_keep:
+            sum_large_blobs += grid_points
+            max_regions_to_consider += 1
+        if sum_large_blobs < n:
           maximum = max(minimum, min(maximum, threshold))
         elif max_grid_points > n:
           minimum = min(maximum, max(minimum, threshold))
@@ -1777,14 +1787,14 @@ class map_manager(map_reader, write_ccp4_map):
       else:
         threshold = (maximum + minimum) * 0.5
 
-    if not max_grid_points:
+    if not sum_large_blobs:
       return flex.vec3_double() # Nothing to do
 
     # Get a map showing where all the grid points are
     edited_mask, edited_volume_list, original_id_from_id = get_edited_mask(
          sorted_by_volume = sorted_by_volume,
          co = co,
-         max_regions_to_consider = 1,
+         max_regions_to_consider = max_regions_to_consider,
          out = null_out())
 
     # Select all the points in the mask for region
@@ -1796,8 +1806,10 @@ class map_manager(map_reader, write_ccp4_map):
       edited_mask = edited_mask,
       unit_cell = self.crystal_symmetry().unit_cell(),
       sampling_rate = 1,)
-    return scattered_points_dict.get(1, flex.vec3_double())
-
+    sites_cart = flex.vec3_double()
+    for i in range(1, max_regions_to_consider+1):
+      sites_cart.extend(scattered_points_dict.get(i,flex.vec3_double()))
+    return sites_cart
   def trace_atoms_in_map(self,
        dist_min,
        n_atoms,
@@ -1823,8 +1835,9 @@ class map_manager(map_reader, write_ccp4_map):
      if uniform_spacing:
        n_real = self.get_n_real_for_grid_spacing(grid_spacing = dist_min)
        self.resample_on_different_grid(
-         n_real = self.get_n_real_for_grid_spacing(grid_spacing = dist_min))
+           n_real = self.get_n_real_for_grid_spacing(grid_spacing = dist_min))
        sites_cart = self.find_n_grid_points_in_biggest_blob(n = n_atoms)
+
        return select_n_in_biggest_cluster(sites_cart,
          n = n_atoms,
          dist_min = dist_min,
