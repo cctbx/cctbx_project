@@ -1769,9 +1769,11 @@ class map_model_manager(object):
       map_id = 'map_manager',
       model_id = 'model',
       selection_string = None,
+      model = None,
       ):
 
-    model = self.get_model_by_id(model_id)
+    if not model:
+      model = self.get_model_by_id(model_id)
     if not model:
       return None
     map_manager= self.get_map_manager_by_id(map_id)
