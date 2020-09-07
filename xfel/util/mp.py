@@ -773,7 +773,6 @@ class get_custom_submit_command(get_submit_command):
 def get_submit_command_chooser(command, submit_path, stdoutdir, params,
                                log_name="log.out", err_name="log.err", job_name=None,
                                root_dir=None):
-  print("hi")
   if params.method == "local":
     choice = get_local_submit_command
   elif params.method == "lsf":
