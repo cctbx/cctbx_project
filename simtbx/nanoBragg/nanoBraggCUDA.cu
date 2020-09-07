@@ -408,6 +408,19 @@ __global__ void add_array_CUDAKernel(double * lhs, float * rhs, int array_size){
     }
   }
 
+__global__ void scale_array_CUDAKernel(double scale_factor, double * lhs, int array_size){
+  const int total_pixels = array_size;
+  const int fstride = gridDim.x * blockDim.x;
+  const int sstride = gridDim.y * blockDim.y;
+  const int stride = fstride * sstride;
+  for (int pixIdx = (blockDim.y * blockIdx.y + threadIdx.y) * fstride + blockDim.x * blockIdx.x + threadIdx.x;
+       pixIdx < total_pixels; pixIdx += stride) {
+    /* position in pixel array */
+    const int j = pixIdx;
+    lhs[j] = lhs[j] * scale_factor;
+    }
+}
+
 __global__ void nanoBraggSpotsInitCUDAKernel(int spixels, int fpixels, float * floatimage, float * omega_reduction, float * max_I_x_reduction,
 		float * max_I_y_reduction, bool * rangemap) {
 
@@ -1499,6 +1512,19 @@ extern "C" void add_energy_channel_cuda_cu(int deviceId, double * source_I, doub
 
         add_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(newapi_cp.cu_accumulate_floatimage, cp.cu_floatimage,
           cp.cu_spixels * cp.cu_fpixels);
+}
+
+extern "C"
+void scale_in_place_cuda_cu(int deviceId, double const& scale_factor, new_api_cudaPointers &newapi_cp){
+  cudaSetDevice(deviceId);
+  cudaDeviceProp deviceProps = { 0 };
+  CUDA_CHECK_RETURN(cudaGetDeviceProperties(&deviceProps, deviceId));
+  int smCount = deviceProps.multiProcessorCount;
+  dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+  dim3 numBlocks(smCount * 8, 1);
+  int total_pixels = newapi_cp.cu_slow_pixels * newapi_cp.cu_fast_pixels;
+  scale_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
+          scale_factor, newapi_cp.cu_accumulate_floatimage, total_pixels);
 }
 
 extern "C" void get_raw_pixels_cuda_cu(int deviceId, double * floatimage, new_api_cudaPointers &newapi_cp) {
