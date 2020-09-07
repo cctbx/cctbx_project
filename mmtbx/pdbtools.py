@@ -40,6 +40,10 @@ selection = None
   .short_caption = Modify atom selection
   .input_size=400
   .style = bold noauto
+flip_symmetric_amino_acids = False
+  .type = bool
+  .short_caption = Flip symmetric amino acid side chains
+  .help = Flip symmetric amino acid side chains
 adp
   .help = Scope of options to modify ADP of selected atoms
   .multiple = True
@@ -542,6 +546,10 @@ class modify(object):
     self.xray_structure.shake_adp(selection=selection.flags)
 
   def _process_sites(self):
+    if(self.params.flip_symmetric_amino_acids):
+      self.pdb_hierarchy.flip_symmetric_amino_acids()
+      self.xray_structure.set_sites_cart(
+        sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
     for sites in self.params.sites:
       if (sites.atom_selection is None):
         selection = self.top_selection

@@ -1160,7 +1160,57 @@ TER
 END
 """), pdb_new
 
+def exercise_flip_symmetric_amino_acids(
+  prefix="exercise_flip_symmetric_amino_acids"):
+  pdb_str_in = """
+ATOM   3356  N   ARG H 228      20.811-103.620  24.514  1.00 56.77           N
+ATOM   3357  CA  ARG H 228      21.863-104.460  23.967  1.00 64.89           C
+ATOM   3358  C   ARG H 228      21.258-105.679  23.284  1.00 69.98           C
+ATOM   3359  O   ARG H 228      20.179-106.141  23.657  1.00 70.23           O
+ATOM   3360  CB  ARG H 228      22.810-104.925  25.075  1.00 63.55           C
+ATOM   3361  CG  ARG H 228      23.354-103.810  25.936  1.00 64.01           C
+ATOM   3362  CD  ARG H 228      24.570-104.271  26.712  1.00 65.11           C
+ATOM   3363  NE  ARG H 228      25.126-103.194  27.523  1.00 68.09           N
+ATOM   3364  CZ  ARG H 228      26.373-103.169  27.982  1.00 66.49           C
+ATOM   3365  NH1 ARG H 228      26.790-102.145  28.717  1.00 64.08           N
+ATOM   3366  NH2 ARG H 228      27.205-104.163  27.694  1.00 65.11           N
+TER
+END
+  """
+  pdb_str_out = """
+ATOM   3355  N   ARG H 228      20.811-103.620  24.514  1.00 56.77           N
+ATOM   3356  CA  ARG H 228      21.863-104.460  23.967  1.00 64.89           C
+ATOM   3357  C   ARG H 228      21.258-105.679  23.284  1.00 69.98           C
+ATOM   3358  O   ARG H 228      20.179-106.141  23.657  1.00 70.23           O
+ATOM   3359  CB  ARG H 228      22.810-104.925  25.075  1.00 63.55           C
+ATOM   3360  CG  ARG H 228      23.354-103.810  25.936  1.00 64.01           C
+ATOM   3361  CD  ARG H 228      24.570-104.271  26.712  1.00 65.11           C
+ATOM   3362  NE  ARG H 228      25.126-103.194  27.523  1.00 68.09           N
+ATOM   3363  CZ  ARG H 228      26.373-103.169  27.982  1.00 66.49           C
+ATOM   3364  NH1 ARG H 228      27.205-104.163  27.694  1.00 65.11           N
+ATOM   3365  NH2 ARG H 228      26.790-102.145  28.717  1.00 64.08           N
+TER
+END
+  """
+  pi = iotbx.pdb.input(source_info=None, lines=pdb_str_in)
+  ph_in = pi.construct_hierarchy()
+  pi.write_pdb_file(file_name="%s.pdb"%prefix)
+  cmd = " ".join([
+    "phenix.pdbtools",
+    "%s.pdb"%prefix,
+    "flip_symmetric_amino_acids=True",
+    "output.prefix=%s"%prefix])
+  print(cmd)
+  run_command(command=cmd, verbose=False)
+  h1 = iotbx.pdb.input(source_info=None, lines=pdb_str_out).construct_hierarchy()
+  h2 = iotbx.pdb.input(file_name=
+    "exercise_flip_symmetric_amino_acids_modified.pdb").construct_hierarchy()
+  assert h1.is_similar_hierarchy(h2)
+  ph_in.flip_symmetric_amino_acids()
+  assert h1.is_similar_hierarchy(ph_in)
+
 def exercise(args):
+  exercise_flip_symmetric_amino_acids()
   exercise_switch_rotamers()
   exercise_mmcif_support_2()
   exercise_basic()
