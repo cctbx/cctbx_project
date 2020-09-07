@@ -1694,7 +1694,7 @@ class map_manager(map_reader, write_ccp4_map):
 
   def resample_on_different_grid(self, n_real):
     '''
-      Resample the map on a grid of n_real
+      Resample the map on a grid of n_real and return new map_manager
     '''
 
     original_n_real = self.map_data().all()
@@ -1706,9 +1706,7 @@ class map_manager(map_reader, write_ccp4_map):
         map_coeffs       = map_coeffs,
         crystal_symmetry = map_coeffs.crystal_symmetry(),
         n_real           = n_real)
-    self.data = map_data
-    self.unit_cell_grid = n_real
-    self._unit_cell_crystal_symmetry = map_coeffs.crystal_symmetry()
+
 
     # Can have an origin shift if grid units are a multiple of original
 
@@ -1734,7 +1732,18 @@ class map_manager(map_reader, write_ccp4_map):
 
     else:
       new_origin_shift_grid_units = (0,0,0)
-    self.origin_shift_grid_units = new_origin_shift_grid_units
+
+    return map_manager(
+      map_data = map_data,
+      unit_cell_grid = n_real,
+      unit_cell_crystal_symmetry = map_coeffs.crystal_symmetry(),
+      origin_shift_grid_units = new_origin_shift_grid_units,
+      ncs_object = self.ncs_object(),
+      wrapping = self.wrapping(),
+      experiment_type = self.experiment_type(),
+      scattering_table = self.scattering_table(),
+      resolution = self.resolution(),
+     )
 
   def get_n_real_for_grid_spacing(self, grid_spacing = None):
     n_real = []
@@ -1744,6 +1753,64 @@ class map_manager(map_reader, write_ccp4_map):
       target_n = (spacing/grid_spacing) * n
       n_real.append(int(target_n + 0.999))
     return n_real
+
+  def find_n_highest_grid_points_as_sites_cart(self, n = None,
+    max_tries = 100):
+    '''
+      Return the n highest grid points in the map as sites_cart
+    '''
+
+    # Find threshold to get exactly n points
+    low_bounds = 0.
+    high_bounds = 20
+    self.set_mean_zero_sd_one()
+    tries = 0
+
+    # Check ends
+    count_high = (self.map_data() >= high_bounds).count(True)
+    count_low = (self.map_data() >=  low_bounds).count(True)
+    if count_low < n or count_high > n:
+      return flex.vec3_double()
+
+    while tries < max_tries:
+      tries += 1
+      threshold = 0.5 * (low_bounds + high_bounds)
+      count = (self.map_data() >= threshold ).count(True)
+      print ("ZZB",low_bounds, high_bounds, n, threshold, count)
+      if count == n or low_bounds == high_bounds:
+        break
+      elif count > n:
+        low_bounds = max(low_bounds, threshold)
+      else:
+        high_bounds = min(high_bounds, threshold)
+    if count != n:
+      return flex.vec3_double()
+    # Now convert to xyz and we are done
+    sel = (self.map_data() >= threshold )
+    map_data = self.map_data().deep_copy()
+    map_data.set_selected(sel,1)
+    map_data.set_selected(~sel,0)
+
+    from cctbx.maptbx.segment_and_split_map import get_co, get_edited_mask, \
+        get_region_scattered_points_dict
+    co, sorted_by_volume, min_b, max_b = get_co(
+        map_data = map_data, threshold = 0.5)
+    edited_mask, edited_volume_list, original_id_from_id = get_edited_mask(
+         sorted_by_volume = sorted_by_volume,
+         co = co,
+         max_regions_to_consider = len(sorted_by_volume) -1,
+         out = null_out())
+    scattered_points_dict = get_region_scattered_points_dict(
+      edited_volume_list = edited_volume_list,
+      edited_mask = edited_mask,
+      unit_cell = self.crystal_symmetry().unit_cell(),
+      sampling_rate = 1)
+    sites_cart = flex.vec3_double()
+    for i in scattered_points_dict.keys():
+      if i == 0: continue
+      sites_cart.extend(scattered_points_dict.get(i,flex.vec3_double()))
+    return sites_cart
+
 
 
   def find_n_grid_points_in_biggest_blob(self, n = None,
@@ -1837,7 +1904,8 @@ class map_manager(map_reader, write_ccp4_map):
        solvent_content_tries = 10,
        verbose = None,
        fine_grid = None,
-       uniform_spacing = None):
+       uniform_spacing = None,
+       highest_in_map = True):
      '''
        Utility to find positions where about n_atoms atoms separated by
        dist_min can be placed in density in this map along the ridgelines
@@ -1853,15 +1921,23 @@ class map_manager(map_reader, write_ccp4_map):
      assert dist_min > 0.01
      assert n_atoms > 0
 
-     if uniform_spacing:
+     working_map_manager = self
+     if uniform_spacing and highest_in_map:
+       # Simple version: set spacing between points, take highest N of these
+       n_real = self.get_n_real_for_grid_spacing(grid_spacing = dist_min)
+       working_map_manager = self.resample_on_different_grid(n_real = n_real)
+       return working_map_manager.find_n_highest_grid_points_as_sites_cart(
+          n = n_atoms)
+
+     elif uniform_spacing:
        sites_cart = self.find_n_grid_points_in_biggest_blob(n = n_atoms,
          dist_min = dist_min)
        if sites_cart.size() > 1.5 * n_atoms:  # try again coarser resampling
          ratio = ((1.5 * n_atoms)/sites_cart.size())**0.3333
          n_real = [int (0.5 + i * ratio) for i in self.map_data().all()]
-         self.resample_on_different_grid( n_real = n_real,)
-         sites_cart = self.find_n_grid_points_in_biggest_blob(n = n_atoms,
-           dist_min = dist_min)
+         working_map_manager = self.resample_on_different_grid(n_real = n_real,)
+         sites_cart = working_map_manager.find_n_grid_points_in_biggest_blob(
+            n = n_atoms, dist_min = dist_min)
 
        return select_n_in_biggest_cluster(sites_cart,
          n = n_atoms,
@@ -1871,21 +1947,22 @@ class map_manager(map_reader, write_ccp4_map):
          )
 
      elif fine_grid:
-       self.resample_on_different_grid(
+       working_map_manager = self.resample_on_different_grid(
          n_real = tuple ([2 * i for i in self.map_data().all()]))
 
      target_atoms = int( 0.5 + n_atoms * 1.5 )
-     volume = self.crystal_symmetry().unit_cell().volume()
+     volume = working_map_manager.crystal_symmetry().unit_cell().volume()
      volume_of_atoms = (4/3) * 3.14 * (dist_min)**3 * target_atoms
      guess = min(0.99,(volume_of_atoms/volume))
-     result= self.run_trace(dist_min, target_atoms,1-guess)
+     result= working_map_manager.run_trace(dist_min, target_atoms,1-guess)
      tries = max(1,int(solvent_content_tries//2))
      if result.get_sites_cart().size() == target_atoms:
        pass # we are there
      elif result.get_sites_cart().size()< target_atoms: # need more
        for i in xrange (tries):
          new_guess = min(0.99,guess + (i/tries)*(1-guess))
-         test_result = self.run_trace(dist_min, target_atoms,1-new_guess)
+         test_result = working_map_manager.run_trace(
+             dist_min, target_atoms,1-new_guess)
          if test_result.get_sites_cart().size() >= n_atoms and (
             ( abs(test_result.get_sites_cart().size() - target_atoms) <
             abs(result.get_sites_cart().size() - target_atoms)) or
@@ -1897,7 +1974,8 @@ class map_manager(map_reader, write_ccp4_map):
      else:
        for i in xrange (tries): # need fewer
          new_guess = max(1.e-10,guess - (i/tries)*guess)
-         test_result = self.run_trace(dist_min, target_atoms,1-new_guess)
+         test_result = working_map_manager.run_trace(
+           dist_min, target_atoms,1-new_guess)
          if test_result.get_sites_cart().size() >= n_atoms and (
             ( abs(test_result.get_sites_cart().size() - target_atoms) <
             abs(result.get_sites_cart().size() - target_atoms)) or
@@ -1911,7 +1989,7 @@ class map_manager(map_reader, write_ccp4_map):
        if fine_grid:  # just didn't work
          return result.get_sites_cart()
        else:  #try again with a finer grid
-         return self.trace_atoms_in_map(
+         return working_map_manager.trace_atoms_in_map(
            dist_min,
            n_atoms,
            solvent_content_tries = solvent_content_tries,
