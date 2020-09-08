@@ -276,7 +276,9 @@ class run(object):
     #
     assert approx_equal(self.xray_structure.sites_cart(),
                         self.pdb_hierarchy.atoms().extract_xyz())
-    self.final_cc = self.get_cc(xrs=self.xray_structure)
+    self.final_cc = None
+    if(self.resolution is not None):
+      self.final_cc = self.get_cc(xrs=self.xray_structure)
     self.show_target(prefix="Target(final minimization):")
 
   def ensemble_pdb_hierarchy_refined(self):
@@ -363,21 +365,22 @@ class run(object):
     #
     t0=time.time()
     sites_cart = []
-    if("geometry" in self.score_method):
-      sites_cart.append(self._score_by_geometry(pdb_hierarchy = pdb_hierarchy))
-    if("cc" in self.score_method):
-      sites_cart.append(self._score_by_cc(pdb_hierarchy = pdb_hierarchy))
-    sites_cart_best = None
-    cc_best = -1
-    for sc in sites_cart:
-      cc = self.get_cc(sites_cart=sc)
-      print ("CC:", cc)
-      if(cc>cc_best):
-        cc_best = cc
-        sites_cart_best = sc.deep_copy()
-    self.xray_structure.set_sites_cart(sites_cart = sites_cart_best)
-    self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
-    self.pdb_hierarchy.write_pdb_file(file_name="merged.pdb")
+    if("geometry" in self.score_method or "cc" in self.score_method):
+      if("geometry" in self.score_method):
+        sites_cart.append(self._score_by_geometry(pdb_hierarchy = pdb_hierarchy))
+      if("cc" in self.score_method):
+        sites_cart.append(self._score_by_cc(pdb_hierarchy = pdb_hierarchy))
+      sites_cart_best = None
+      cc_best = -1
+      for sc in sites_cart:
+        cc = self.get_cc(sites_cart=sc)
+        print ("CC:", cc)
+        if(cc>cc_best):
+          cc_best = cc
+          sites_cart_best = sc.deep_copy()
+      self.xray_structure.set_sites_cart(sites_cart = sites_cart_best)
+      self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+      self.pdb_hierarchy.write_pdb_file(file_name="merged.pdb")
     #
     if("merge_models" in self.score_method):
       assert pdb_hierarchy.models_size() == self.number_of_trials, \
