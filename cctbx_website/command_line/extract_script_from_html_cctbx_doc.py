@@ -23,7 +23,7 @@ class MyHTMLParser(HTMLParser):
 
   def handle_starttag(self, tag, attrs):
     #print("Encountered a start tag:", tag)
-    if tag == 'pre':
+    if tag == 'pre' and attrs == [(u'class', u'codeDL')]:
       self.is_code = True
 
   def handle_endtag(self, tag):
