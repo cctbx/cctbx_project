@@ -727,12 +727,6 @@ output {
   assert p.get_default_output_filename() == 'ghi'
   assert dm.get_default_output_filename() == 'ghi'
 
-  # Test convenience functions
-  dm.read_map_and_model(model_file="non_zero_origin_model.pdb",
-    map_file="non_zero_origin_map.ccp4",
-    regression_module=os.path.join("iotbx"),
-    regression_directory=os.path.join("regression","data"))
-
 # -----------------------------------------------------------------------------
 if __name__ == '__main__':
 
