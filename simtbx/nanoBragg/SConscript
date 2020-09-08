@@ -80,14 +80,22 @@ env.timemory_root  = TIMEMORY_ROOT
 
 
 if env.build_timemory:
-    nanoBragg_env.Prepend(LIBS=["timemory"],
-                          LIBPATH=[os.path.join(env.timemory_root, "lib64")],
-                          CPPPATH=[os.path.join(env.timemory_root, "include")],
-                          CPPDEFINES=["HAVE_TIMEMORY"])
-    env.Prepend(LIBS=["timemory"],
-                LIBPATH=[os.path.join(env.timemory_root, "lib64")],
-                CPPDEFINES=["HAVE_TIMEMORY"])
+  # Library path candidates -- add only if they exist (Background: spack will
+  # install to `lib64`, pip/conda installs to `lib`)
+  lib_path  = list()
+  lib_dir   = os.path.join(env.timemory_root, "lib")
+  lib64_dir = os.path.join(env.timemory_root, "lib64")
 
+  if os.path.exists(lib_dir): lib_path.append(lib_dir)
+  if os.path.exists(lib64_dir): lib_path.append(lib64_dir)
+
+  nanoBragg_env.Prepend(LIBS=["timemory"],
+                        LIBPATH=lib_path,
+                        CPPPATH=[os.path.join(env.timemory_root, "include")],
+                        CPPDEFINES=["HAVE_TIMEMORY"])
+  env.Prepend(LIBS=["timemory"],
+              LIBPATH=lib_path,
+              CPPDEFINES=["HAVE_TIMEMORY"])
 
 
 
