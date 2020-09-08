@@ -117,16 +117,29 @@ def strip_shelx_format_extension(file_name):
   return file_name
 
 def splitext(file_name):
-  # XXX The same function name exists ~100 lines below. This one is not
-  # used because the latter overwrites it.
-  file_name = strip_shelx_format_extension(file_name)
-  base, ext = os.path.splitext(file_name)
-  if (ext == ".gz"):
-    base, ext = os.path.splitext(base)
-  return base, ext
+  folder_name, file_only = os.path.split(file_name)
+  period_split = file_only.split(".")
+  compressed = period_split[-1] in compression_extensions
+  if compressed:
+    file_ext = period_split[-2]
+    compress_ext = period_split[-1]
+    file_base = file_only.replace('.' + file_ext + '.' + compress_ext, '')
+  else:
+    file_ext = period_split[-1]
+    compress_ext = None
+    file_base = file_only.replace('.' + file_ext, '')
+
+  # get a list of expected file extensions. Some of these still might not be supported by any_file
+  standard_file_extensions_list = [item for sublist in standard_file_extensions.values() for item in sublist]
+
+  if file_ext not in standard_file_extensions_list:
+    raise Sorry("Couldn't find a supported file extension in %s" % file_name)
+
+  return (file_base, file_ext, compress_ext)
+
 
 def guess_file_type(file_name, extensions=standard_file_extensions):
-  base, ext = splitext(file_name)
+  base, ext, compress_ext = splitext(file_name)
   if (ext == ""):
     return None
   if (ext == ".mtz") : # XXX gross
@@ -146,8 +159,8 @@ def sort_by_file_type(file_names, sort_order=None):
         return len(sort_order) - n
     return 0
   def _sort(f1, f2):
-    base1, ext1 = splitext(f1)
-    base2, ext2 = splitext(f2)
+    base1, ext1, compress_ext1  = splitext(f1)
+    base2, ext2, compress_ext2 = splitext(f2)
     s1 = _score_extension(ext1)
     s2 = _score_extension(ext2)
     if (s1 > s2):
@@ -207,15 +220,7 @@ def any_file(file_name,
       raise_sorry_if_errors=raise_sorry_if_errors,
       raise_sorry_if_not_expected_format=raise_sorry_if_not_expected_format)
 
-def splitext(file_name):
-  # The same function name exists ~100 lines before.
-  # This one is actually used.
-  (file_base, file_ext) = os.path.splitext(file_name)
-  if file_ext in [".gz"] : # XXX: does this work for anything other than pdb?
-    (base2, ext2) = os.path.splitext(file_base)
-    if (ext2 in [".pdb", ".ent", ".cif"]):
-      file_ext = ext2
-  return (file_base, file_ext)
+
 
 class any_file_input(object):
   """
@@ -245,7 +250,7 @@ class any_file_input(object):
     file_name_clean = strip_shelx_format_extension(file_name)
     self.file_size = os.path.getsize(file_name_clean)
     self.get_processed_file = get_processed_file
-    (file_base, file_ext) = splitext(file_name)
+    file_base, file_ext, compress_ext = splitext(file_name)
     file_ext = file_ext.lower()
     if (force_type not in [None, "None"]):
       read_method = getattr(self, "_try_as_%s" % force_type, None)
@@ -637,7 +642,7 @@ class any_file_fast_input(object):
     self.file_type = None
     self.file_server = None
     self.file_description = None
-    file_base, file_ext = splitext(file_name)
+    file_base, file_ext, compress_ext = splitext(file_name)
     for file_type in valid_types :
       if file_ext[1:] in self.__extensions__[file_type] :
         self.file_type = file_type
@@ -683,7 +688,7 @@ class group_files(object):
     for file_name in file_names :
       file_type = guess_file_type(file_name)
       if (file_type == template_format):
-        base, ext = splitext(file_name)
+        base, ext, compress_ext = splitext(file_name)
         templates.append(base)
         template_dirs.append(os.path.dirname(file_name))
         self.grouped_files.append([file_name])
