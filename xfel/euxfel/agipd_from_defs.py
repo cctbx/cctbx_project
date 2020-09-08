@@ -97,6 +97,7 @@ class Agipd2nexus:
         self.stat = Counter()
 
     def params_from_phil(self, args):
+        """`args` are command line arguments"""
         user_phil = []
         for arg in args:
             if os.path.isfile(arg):
@@ -447,7 +448,7 @@ class Ruleset(Agipd2nexus):
                              nxtype=NxType.field, dtype='f', attrs={'units': 'microns'}),
             '/entry/sample/depends_on': np.str('.'),     # XXX: Why not `np.string_`??
             '/entry/sample/name': NexusElement(full_path='/entry/sample/name',
-                                              value=self.params.nexus_details.sample_name,
+                                              value=self.params.sample_name,
                                               nxtype=NxType.field, dtype='s'),
             '/entry/source/name': NexusElement(full_path='/entry/source/name',
                                               value=self.params.nexus_details.source_name,
