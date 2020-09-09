@@ -9,8 +9,7 @@ import mmtbx.model
 
 from cctbx import crystal
 from libtbx.program_template import ProgramTemplate
-from libtbx.utils import null_out, Sorry
-from mmtbx.command_line.maps import run as make_map
+from libtbx.utils import Sorry
 from iotbx.data_manager import DataManager
 from six.moves import zip
 
@@ -617,12 +616,6 @@ def test_real_map_datatype():
 
 # -----------------------------------------------------------------------------
 def test_map_mixins():
-  regression_dir = libtbx.env.find_in_repositories(
-    relative_path='phenix_regression/maps')
-  if not regression_dir:
-    print('Skipping test, phenix_regression missing')
-    return
-
   dm = DataManager(['real_map'])
   assert not hasattr(dm, 'has_real_maps_or_map_coefficients')
   assert hasattr(dm, 'has_real_maps')
@@ -638,15 +631,15 @@ def test_map_mixins():
   assert hasattr(dm, 'has_real_maps')
   assert hasattr(dm, 'has_map_coefficients')
 
-  cwd = os.getcwd()
-  model_file = os.path.join(regression_dir, 'test_maps4.pdb')
-  mtz_file = os.path.join(regression_dir, 'test_maps4.mtz')
-  make_map([model_file, mtz_file, 'output.directory={cwd}'.format(cwd=cwd),
-            'output.prefix=tmm'],
-    use_output_directory=False, log=null_out())
-  real_map_file = 'tmm_2mFo-DFc_map.ccp4'
-  map_coefficients_file = 'tmm_map_coeffs.mtz'
+  real_map_file = libtbx.env.under_dist('iotbx', 'regression/data/D7.ccp4')
+  map_coefficients_file = 'D7.mtz'
+  m = dm.get_real_map(real_map_file)
+  mc = m.map_as_fourier_coefficients(d_min=3)
+  mtz_dataset = mc.as_mtz_dataset(column_root_label='F')
+  mtz_object=mtz_dataset.mtz_object()
+  dm.write_miller_array_file(mtz_object, filename=map_coefficients_file)
 
+  dm = DataManager()
   assert not dm.has_real_maps_or_map_coefficients(expected_n=1, exact_count=True)
   dm.process_real_map_file(real_map_file)
   assert dm.has_real_maps(expected_n=1, exact_count=True)
@@ -657,7 +650,6 @@ def test_map_mixins():
   assert dm.has_real_maps_or_map_coefficients(expected_n=1, exact_count=False)
   assert dm.has_real_maps_or_map_coefficients(expected_n=2, exact_count=True)
 
-  os.remove(real_map_file)
   os.remove(map_coefficients_file)
 
 # -----------------------------------------------------------------------------
