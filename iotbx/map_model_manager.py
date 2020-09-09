@@ -1959,7 +1959,7 @@ class map_model_manager(object):
 
 
     # Set the resolution now if not already set
-    if d_min and not self.resolution():
+    if d_min and self.map_manager() and (not self.resolution()):
       self.set_resolution(d_min)
 
     # Get some value for resolution
