@@ -134,6 +134,7 @@ def splitext(file_name):
     file_ext = '.'+period_split[-1]
     compress_ext = None
     file_base = file_only.replace('.' + file_ext, '')
+  file_base = os.path.join(folder_name, file_base)
 
   return (file_base, file_ext, compress_ext)
 
