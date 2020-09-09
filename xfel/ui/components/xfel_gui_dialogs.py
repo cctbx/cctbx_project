@@ -594,7 +594,7 @@ class AdvancedSettingsDialog(BaseDialog):
       pass
     self.Bind(wx.EVT_CHOICE, self.onMultiprocessingChoice, self.mp_option.ctr)
 
-    if params.facility.name == 'lcls':
+    if params.facility.name == 'lcls' and params.mp.method == 'lsf':
       # Queue
       queues = ['psanaq', 'psanaq', 'psdebugq','psanaidleq', 'psnehhiprioq',
                 'psnehprioq', 'psnehq', 'psfehhiprioq', 'psfehprioq', 'psfehq']
@@ -896,17 +896,15 @@ class AdvancedSettingsDialog(BaseDialog):
 
     self.params.mp.method = self.mp_option.ctr.GetStringSelection()
 
-    if self.params.facility.name == 'lcls':
+    if self.params.facility.name == 'lcls' and self.params.mp.method == "lsf":
       self.params.mp.queue = self.queue.ctr.GetStringSelection()
     else:
       if self.mp_option.ctr.GetStringSelection() == 'shifter':
-        print("follows a")
         self.params.mp.queue = self.queue.ctr.GetValue()
         self.params.mp.nnodes = int(self.nnodes.ctr.GetValue())
         self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
         self.params.mp.wall_time = int(self.wall_time.ctr.GetValue())
       else:
-        print("follows b")
         self.params.mp.queue = self.queue.ctr.GetValue()
         self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
         self.params.mp.env_script = [self.env_script.ctr.GetValue()]
