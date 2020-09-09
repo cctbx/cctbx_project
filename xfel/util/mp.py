@@ -548,7 +548,7 @@ class get_shifter_submit_command(get_submit_command):
 
     # --qos <queue>
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<queue>",
-      self.params.shifter.partition)
+      self.params.queue)
 
     # --partition <partition>
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<partition>",
@@ -566,10 +566,6 @@ class get_shifter_submit_command(get_submit_command):
     # --reservation
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<reservation>",
       self.params.shifter.reservation)
-
-    # --constraint
-    self.sbatch_contents = self.substitute(self.sbatch_contents, "<constraint>",
-      self.params.shifter.constraint)
 
     # --constraint
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<constraint>",
