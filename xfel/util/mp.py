@@ -504,7 +504,6 @@ class get_shifter_submit_command(get_submit_command):
   def customize_for_method(self):
     # template for sbatch.sh
     self.sbatch_template = self.params.shifter.sbatch_script_template
-    print(self.params.shifter.sbatch_script_template)
     if self.sbatch_template is None:
       raise Sorry("sbatch script template required for shifter")
     with open(self.sbatch_template, "r") as sb:
@@ -518,6 +517,8 @@ class get_shifter_submit_command(get_submit_command):
       raise Sorry("srun script template required for shifter")
     with open(self.srun_template, "r") as sr:
       self.srun_contents = sr.read()
+    if self.params.use_mpi:
+      self.command = "%s mp.method=mpi" % (self.command)
     self.srun_path = os.path.join(self.destination, "srun.sh")
 
 
