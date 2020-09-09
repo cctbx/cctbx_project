@@ -1958,6 +1958,11 @@ class map_model_manager(object):
     '''
 
 
+    # Set the resolution now if not already set
+    if d_min and not self.resolution():
+      self.set_resolution(d_min)
+
+    # Get some value for resolution
     if not d_min:
       d_min = self.resolution()
     if not d_min:
@@ -2001,10 +2006,6 @@ class map_model_manager(object):
     mm.show_summary()
     self.set_up_map_dict(map_manager=mm)
     self.set_up_model_dict(model=model)
-
-    # Set the resolution now if not already set
-    if d_min and not self.resolution():
-      self.set_resolution(d_min)
 
   def _empty_copy(self):
     '''
