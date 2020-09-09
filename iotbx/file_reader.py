@@ -29,7 +29,6 @@ from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, to_str
 from six.moves import cPickle as pickle
 import os
-import re
 import sys
 import six
 
@@ -59,7 +58,7 @@ standard_file_extensions = {
   'sdf' : ['sdf'],
   'rosetta' : ['gz'],
 }
-compression_extensions = ["gz", "Z", "bz2", "zip"]
+compression_extensions = ["gz", "Z", "bz2", "zip"] # gz and bz2 work with maps... gz, Z and bz2 work with models
 
 standard_file_descriptions = {
   'pdb'  : "Model",
@@ -117,23 +116,24 @@ def strip_shelx_format_extension(file_name):
   return file_name
 
 def splitext(file_name):
+  """
+  Args:
+    file_name: A plain text string of the file path
+
+  Returns: A tuple of the base filename, the file format extension, and possibly a compression extension
+  """
+
   folder_name, file_only = os.path.split(file_name)
   period_split = file_only.split(".")
   compressed = period_split[-1] in compression_extensions
   if compressed:
-    file_ext = period_split[-2]
-    compress_ext = period_split[-1]
+    file_ext = '.'+period_split[-2]
+    compress_ext = '.'+period_split[-1]
     file_base = file_only.replace('.' + file_ext + '.' + compress_ext, '')
   else:
-    file_ext = period_split[-1]
+    file_ext = '.'+period_split[-1]
     compress_ext = None
     file_base = file_only.replace('.' + file_ext, '')
-
-  # get a list of expected file extensions. Some of these still might not be supported by any_file
-  standard_file_extensions_list = [item for sublist in standard_file_extensions.values() for item in sublist]
-
-  if file_ext not in standard_file_extensions_list:
-    raise Sorry("Couldn't find a supported file extension in %s" % file_name)
 
   return (file_base, file_ext, compress_ext)
 

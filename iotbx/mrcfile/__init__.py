@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex as flex# import dependency
 import os,time,sys
 from libtbx.utils import Sorry
+from iotbx.file_reader import splitext
 
 import mrcfile
 import warnings
@@ -93,31 +94,34 @@ class map_reader:
       raise Sorry("Missing file name for map reader")
     if not os.path.isfile(file_name):
       raise Sorry("Missing file %s for map reader" %(file_name))
+    base_name, file_ext, compress_ext = splitext(file_name)
 
     # Read the data
 
-    with warnings.catch_warnings(record=True) as w:
-      try:
-        mrc=mrcfile.mmap(file_name, mode='r', permissive=True)
-        # Read memory-mapped for speed. Permissive to allow reading files with
-        # no machine stamp.
-        # Here we can deal with them
-        for war in w:
-           text="\n  NOTE: WARNING message for the file '%s':\n  '%s'\n " %(
-              file_name,war.message)
-           if print_warning_messages:
-             print(text, file=out)
 
-           if ignore_all_errors:
-             pass
-           elif str(war.message).find("Unrecognised machine stamp")>-1 and \
-                ignore_missing_machine_stamp:
-             pass
-           else:
-             raise Sorry(text)
-      except ValueError:
-        # if memory-mapped read fails, try the generic open. This catches errors when trying to read compressed files
+    with warnings.catch_warnings(record=True) as w:
+      if compress_ext is None:
+        mrc=mrcfile.mmap(file_name, mode='r', permissive=True)
+        # Read memory-mapped for speed.
+
+      else:
         mrc = mrcfile.open(file_name, mode='r', permissive=True)
+
+      # Permissive to allow reading files with no machine stamp
+      # Here we can deal with them
+      for war in w:
+        text = "\n  NOTE: WARNING message for the file '%s':\n  '%s'\n " % (
+          file_name, war.message)
+        if print_warning_messages:
+          print(text, file=out)
+
+        if ignore_all_errors:
+          pass
+        elif str(war.message).find("Unrecognised machine stamp") > -1 and \
+                ignore_missing_machine_stamp:
+          pass
+        else:
+          raise Sorry(text)
 
 
     # Note: the numpy function tolist() returns the python objects we need
