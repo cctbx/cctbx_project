@@ -112,4 +112,15 @@ class map_model_mixins(object):
     mmm = map_model_manager(model=model, map_manager=mm, map_manager_1=mm_1,
       map_manager_2=mm_2, **kwargs)
 
+    # clean up so that another read of maps and model will read again (these
+    # are shifted when map_model_manager is called)
+    if isinstance(map_files, list):
+      for file_name in map_files[:3]:
+        if file_name:
+          self.remove_real_map(file_name)
+    elif map_files:
+          self.remove_real_map(map_files)
+    if model_file:
+      self.remove_model(model_file)
+
     return mmm
