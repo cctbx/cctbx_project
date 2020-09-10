@@ -131,6 +131,8 @@ class simple_file_loader(worker):
           if experiment.identifier is None or len(experiment.identifier) == 0:
             experiment.identifier = create_experiment_identifier(experiment, experiments_filename, experiment_id)
 
+          if not self.params.input.keep_imagesets:
+            experiment.imageset = None
           all_experiments.append(experiment)
 
           # Reflection experiment 'id' is unique within this rank; 'exp_id' (i.e. experiment identifier) is unique globally
@@ -155,7 +157,6 @@ class simple_file_loader(worker):
     # Do we have any data?
     from xfel.merging.application.utils.data_counter import data_counter
     data_counter(self.params).count(all_experiments, all_reflections)
-
     return all_experiments, all_reflections
 
   def prune_reflection_table_keys(self, reflections):

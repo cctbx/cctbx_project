@@ -16,6 +16,9 @@ dispatch {
 
 input_phil = """
 input {
+  keep_imagesets = False
+    .type = bool
+    .help = If True, keep imagesets attached to experiments
   path = None
     .type = str
     .multiple = True
