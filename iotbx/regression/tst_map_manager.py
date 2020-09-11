@@ -270,6 +270,18 @@ def test_01():
   assert ncs_obj.is_similar_ncs_object(another_mm.ncs_object())
   assert new_mm.is_similar(another_mm)
 
+  # Get resolution
+  assert approx_equal(new_mm.resolution(force=True, method='d99') ,
+    3.73333333333)
+  assert approx_equal(new_mm.resolution(force=True, method='d_min') ,
+    0.888888888889)
+  assert approx_equal(new_mm.resolution(force=True, method='d9') ,
+    0.888888888889)
+  assert approx_equal(new_mm.resolution(force=True, method='d99') ,
+     3.73333333333)
+  assert approx_equal(new_mm.resolution() ,
+    3.73333333333)
+
   # Adjust model and ncs symmetry to match this map
   assert model.shift_cart()  is None
   new_mm.set_model_symmetries_and_shift_cart_to_match_map(model)

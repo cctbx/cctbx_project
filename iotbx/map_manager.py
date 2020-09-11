@@ -1201,14 +1201,39 @@ class map_manager(map_reader, write_ccp4_map):
   def experiment_type(self):
     return self._experiment_type
 
-  def resolution(self):
-    if self._resolution is not None:
+  def resolution(self, force = False, method = 'd99'):
+    ''' Get nominal resolution
+        Return existing if present unless force is True
+        choices:
+                  d9: resolution correlated at 0.9 with original
+                  d99: resolution correlated at 0.99 with original
+                  d999: resolution correlated at 0.999 with original
+                  d_min: d_min_from_map
+    '''
+    if self._resolution is not None and (not force):
       return self._resolution
-    else:
+
+    assert method in ['d99','d9','d999','d_min']
+
+    self._resolution = -1 # now get it
+
+    if method in ['d99','d9','d999']:
+      from cctbx.maptbx import d99
+      if self.origin_is_zero():
+        map_data = self.map_data()
+      else:
+        map_data = self.map_data().deep_copy()
+      d99_object = d99(
+         map = map_data, crystal_symmetry = self.crystal_symmetry())
+
+      self._resolution = getattr(d99_object.result,method,-1)
+
+    if self._resolution <= 0:  # we didn't get it or want to use d_min
       from cctbx.maptbx import d_min_from_map
-      return d_min_from_map(
-         map_data=self.map_data(),
-         unit_cell=self.crystal_symmetry().unit_cell())
+      self._resolution = d_min_from_map(
+           map_data=self.map_data(),
+           unit_cell=self.crystal_symmetry().unit_cell())
+    return self._resolution
 
   def scattering_table(self):
     return self._scattering_table
