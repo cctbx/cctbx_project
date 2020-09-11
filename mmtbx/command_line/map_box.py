@@ -1087,9 +1087,10 @@ def run(args,
       mam.model().shift_model_and_set_crystal_symmetry(
        shift_cart = (0,0,0),
        crystal_symmetry = mam.map_manager().crystal_symmetry())
-      mam.model().set_shift_cart(mam.map_manager().shift_cart())
+      mam.model().set_shift_cart((0,0,0)) # next line requires shift-cart=0,0,0
       mam.model().set_unit_cell_crystal_symmetry(
         mam.map_manager().crystal_symmetry())
+      mam.model().set_shift_cart(mam.map_manager().shift_cart())
 
   if params.wrapping in [True, False] and mam.map_manager().is_full_size():
     mam.map_manager().set_wrapping(params.wrapping)
