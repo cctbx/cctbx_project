@@ -847,6 +847,7 @@ class HKLViewFrame() :
     self.idx_data = hkllst + dreslst + datalst
     self.mprint("Sending table data...", verbose=0)
     mydict = { "tabulate_miller_array": self.idx_data }
+    self.params.NGL_HKLviewer.tabulate_miller_array_ids = "[]" # to allow reopening a closed window again
     self.SendInfoToGUI(mydict)
 
 

@@ -430,6 +430,8 @@ class hklview_3d:
       self.DrawNGLJavaScript()
       self.mprint( "Rendered %d reflections" % self.scene.points.size(), verbose=1)
       self.set_volatile_params()
+    else:
+      self.DrawNGLJavaScript(blankscene=True)
     return curphilparam
 
 
@@ -591,7 +593,7 @@ class hklview_3d:
       return -1, -1
     return self.HKLInfo_from_dict(idx)[6], self.HKLInfo_from_dict(idx)[7]
 
-  
+
   def SupersetMillerArrays(self):
     self.match_valarrays = []
     # First loop over all miller arrays to make a superset of hkls of all
@@ -607,6 +609,7 @@ class hklview_3d:
     for i,procarray in enumerate(self.proc_arrays):
       # first match indices in currently selected miller array with indices in the other miller arrays
       matchindices = miller.match_indices(indiceslst, procarray.indices() )
+      #matchindices = miller.match_indices( procarray.indices(), indiceslst )
       valarray = procarray.select( matchindices.pairs().column(1) )
       #if valarray.anomalous_flag() != superset_array.anomalous_flag():
       #  superset_array._anomalous_flag = valarray._anomalous_flag
@@ -616,6 +619,7 @@ class hklview_3d:
 
       # insert NAN values for reflections in self.miller_array not found in procarray
       valarray = display.ExtendMillerArray(valarray, missing.size(), missing )
+      #match_valarray = valarray
       match_valindices = miller.match_indices(superset_array.indices(), valarray.indices() )
       match_valarray = valarray.select( match_valindices.pairs().column(1) )
       match_valarray.sort(by_value="packed_indices")
@@ -1026,9 +1030,11 @@ class hklview_3d:
     if not self.scene or not self.sceneisdirty:
       return
     if self.miller_array is None :
-      self.mprint( "Select an HKL scene to display reflections" )
-      return
-    self.mprint("Composing JavaScript...")
+      self.mprint( "Select a data set to display reflections" )
+      blankscene = True
+      #return
+    else:
+      self.mprint("Composing JavaScript...")
 
     h_axis = flex.vec3_double([self.scene.axes[0]])
     k_axis = flex.vec3_double([self.scene.axes[1]])
@@ -1386,6 +1392,7 @@ function MakeHKL_Axis(mshape)
       self.OrigClipFar = self.clipFar
       self.OrigClipNear = self.clipNear
       self.SetMouseSpeed( self.ngl_settings.mouse_sensitivity )
+      self.isnewfile = False
     self.sceneisdirty = False
     self.lastscene_id = self.viewerparams.scene_id
 
@@ -1570,7 +1577,7 @@ Distance: %s
           return False
       self.SendInfoToGUI({ "html_url": self.url } )
       self.WBmessenger.browserisopen = True
-      self.isnewfile = False
+      #self.isnewfile = False
       return True
     return False
 
