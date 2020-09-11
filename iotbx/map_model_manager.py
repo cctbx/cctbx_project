@@ -1254,10 +1254,7 @@ class map_model_manager(object):
     '''
     if soft_mask:
       if not soft_mask_radius:
-        from cctbx.maptbx import d_min_from_map
-        soft_mask_radius = d_min_from_map(
-          map_data=self.map_manager().map_data(),
-          unit_cell=self.map_manager().crystal_symmetry().unit_cell())
+        soft_mask_radius = self.resolution()
     self.create_mask_around_atoms(
          soft_mask = soft_mask,
          soft_mask_radius = soft_mask_radius,
@@ -1396,10 +1393,7 @@ class map_model_manager(object):
     '''
 
     if not soft_mask_radius:
-      from cctbx.maptbx import d_min_from_map
-      soft_mask_radius = d_min_from_map(
-         map_data=self.map_manager().map_data(),
-         unit_cell=self.map_manager().crystal_symmetry().unit_cell())
+      soft_mask_radius = self.resolution()
 
     from cctbx.maptbx.mask import create_mask_around_edges
     cm = create_mask_around_edges(map_manager = self.map_manager(),
@@ -1434,10 +1428,7 @@ class map_model_manager(object):
 
     if soft_mask:
       if not soft_mask_radius:
-        from cctbx.maptbx import d_min_from_map
-        soft_mask_radius = d_min_from_map(
-           map_data=self.map_manager().map_data(),
-           unit_cell=self.map_manager().crystal_symmetry().unit_cell())
+        soft_mask_radius = self.resolution()
       mask_atoms_atom_radius += soft_mask_radius
 
     from cctbx.maptbx.mask import create_mask_around_atoms
@@ -1496,10 +1487,7 @@ class map_model_manager(object):
         if resolution:
           soft_mask_radius = resolution
         else:
-          from cctbx.maptbx import d_min_from_map
-          soft_mask_radius = d_min_from_map(
-           map_data=map_manager.map_data(),
-           unit_cell=map_manager.crystal_symmetry().unit_cell())
+          soft_mask_radius = self.resolution()
       cm.soft_mask(soft_mask_radius = soft_mask_radius)
 
     # Put the mask in map_dict id'ed with mask_id
@@ -1718,7 +1706,6 @@ class map_model_manager(object):
         other = f_map_2, bin_width = bin_width, fsc_cutoff = fsc_cutoff)
 
     return fsc_curve
-
 
   def map_map_cc(self,
       map_id = 'map_manager_1',

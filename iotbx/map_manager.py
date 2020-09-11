@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from libtbx.utils import to_str, null_out
-from libtbx import group_args
+from libtbx.utils import to_str, null_out, Sorry
 from libtbx import group_args, Auto
 from libtbx.test_utils import approx_equal
 import sys
@@ -808,7 +807,6 @@ class map_manager(map_reader, write_ccp4_map):
 
     if not resolution:
       resolution = self.resolution()
-    assert (resolution is not None)
 
     from cctbx.maptbx.mask import create_mask_around_density as cm
     self._created_mask = cm(map_manager = self,
@@ -817,7 +815,7 @@ class map_manager(map_reader, write_ccp4_map):
         sequence = sequence,
         solvent_content = solvent_content, )
 
-  def create_mask_around_edges(self, soft_mask_radius):
+  def create_mask_around_edges(self, soft_mask_radius = None):
     '''
       Use cctbx.maptbx.mask.create_mask_around_edges to create a mask around
       edges of map.  Does not make a soft mask.  For a soft mask,
@@ -827,22 +825,26 @@ class map_manager(map_reader, write_ccp4_map):
       Does not apply the mask (use apply_mask_to_map etc for that)
     '''
 
-    assert soft_mask_radius is not None
+    if soft_mask_radius is None:
+      soft_mask_radius = self.resolution()
 
     from cctbx.maptbx.mask import create_mask_around_edges as cm
     self._created_mask = cm(map_manager = self,
       soft_mask_radius = soft_mask_radius)
 
-  def create_mask_around_atoms(self, model, mask_atoms_atom_radius):
+  def create_mask_around_atoms(self, model, mask_atoms_atom_radius = None):
     '''
       Use cctbx.maptbx.mask.create_mask_around_atoms to create a mask around
       atoms in model
 
       Does not apply the mask (use apply_mask_to_map etc for that)
+
+      mask_atoms_atom_radius default is max(3, resolution)
     '''
 
     assert model is not None
-    assert mask_atoms_atom_radius is not None
+    if mask_atoms_atom_radius is None:
+      mask_atoms_atom_radius = max(3, self.resolution())
 
     from cctbx.maptbx.mask import create_mask_around_atoms as cm
     self._created_mask = cm(map_manager = self,
@@ -851,9 +853,12 @@ class map_manager(map_reader, write_ccp4_map):
 
   def soft_mask(self, soft_mask_radius = None):
     '''
-      Make mask a soft mask. Just uses method in create_mask_around_atoms
+      Make mask a soft mask. Just uses method in cctbx.maptbx.mask
+      Use resolution for soft_mask radius if not specified
     '''
     assert self._created_mask is not None
+    if soft_mask_radius is None:
+      soft_mask_radius = self.resolution()
     self._created_mask.soft_mask(soft_mask_radius = soft_mask_radius)
 
   def apply_mask(self, set_outside_to_mean_inside = False):
@@ -1197,7 +1202,13 @@ class map_manager(map_reader, write_ccp4_map):
     return self._experiment_type
 
   def resolution(self):
-    return self._resolution
+    if self._resolution is not None:
+      return self._resolution
+    else:
+      from cctbx.maptbx import d_min_from_map
+      return d_min_from_map(
+         map_data=self.map_data(),
+         unit_cell=self.crystal_symmetry().unit_cell())
 
   def scattering_table(self):
     return self._scattering_table
@@ -1811,14 +1822,18 @@ class map_manager(map_reader, write_ccp4_map):
        dist_min,
        n_atoms):
      '''
-       Utility to find positions where about n_atoms atoms separated by
+       Utility to find positions where n_atoms atoms separated by
        dist_min can be placed in density in this map
      '''
      assert self.origin_is_zero()
      assert dist_min > 0.01
      assert n_atoms > 0
      n_real = self.get_n_real_for_grid_spacing(grid_spacing = dist_min)
+     # temporarily remove origin shift information so we can resample
+     origin_shift_grid_units_sav = tuple(self.origin_shift_grid_units)
+     self.origin_shift_grid_units = (0,0,0)
      working_map_manager = self.resample_on_different_grid(n_real = n_real)
+     self.origin_shift_grid_units = origin_shift_grid_units_sav
      return working_map_manager.find_n_highest_grid_points_as_sites_cart(
           n = n_atoms)
 
