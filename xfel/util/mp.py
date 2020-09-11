@@ -578,6 +578,9 @@ class get_shifter_submit_command(get_submit_command):
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<err_log>",
       os.path.join(self.destination , "err.log"))
 
+    self.sbatch_contents = self.substitute(self.sbatch_contents, "<output_dir>",
+      self.destination)
+
     # <srun_script>
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<srun_script>",
       self.srun_path)
