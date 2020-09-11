@@ -272,15 +272,15 @@ def test_01():
 
   # Get resolution
   assert approx_equal(new_mm.resolution(force=True, method='d99') ,
-    3.73333333333)
+    3.4663129793)
   assert approx_equal(new_mm.resolution(force=True, method='d_min') ,
     0.888888888889)
   assert approx_equal(new_mm.resolution(force=True, method='d9') ,
     0.888888888889)
   assert approx_equal(new_mm.resolution(force=True, method='d99') ,
-     3.73333333333)
+     3.4663129793)
   assert approx_equal(new_mm.resolution() ,
-    3.73333333333)
+    3.4663129793)
 
   # Adjust model and ncs symmetry to match this map
   assert model.shift_cart()  is None
