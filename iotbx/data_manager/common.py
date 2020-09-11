@@ -116,7 +116,7 @@ class map_model_mixins(object):
     # are shifted when map_model_manager is called)
     if isinstance(map_files, list):
       for file_name in map_files[:3]:
-        if file_name:
+        if file_name and file_name in self.get_real_map_names():
           self.remove_real_map(file_name)
     elif map_files:
           self.remove_real_map(map_files)
