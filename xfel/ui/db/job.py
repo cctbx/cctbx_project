@@ -229,8 +229,10 @@ class IndexingJob(Job):
         if trial_params.input.known_orientations_folder is not None:
           trial_params.input.known_orientations_folder = trial_params.input.known_orientations_folder.format(run=self.run.run)
       else:
-        trial_params.spotfinder.lookup.mask = self.rungroup.untrusted_pixel_mask_path
-        trial_params.integration.lookup.mask = self.rungroup.untrusted_pixel_mask_path
+        if trial_params.spotfinder.lookup.mask is None:
+          trial_params.spotfinder.lookup.mask = self.rungroup.untrusted_pixel_mask_path
+        if trial_params.integration.lookup.mask is None:
+          trial_params.integration.lookup.mask = self.rungroup.untrusted_pixel_mask_path
 
         if self.app.params.facility.name == 'lcls':
           locator_path = os.path.join(configs_dir, identifier_string + ".loc")
