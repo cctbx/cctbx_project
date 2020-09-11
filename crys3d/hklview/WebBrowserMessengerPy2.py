@@ -124,7 +124,7 @@ class WBmessenger(object):
       nwait = 0.0
       while not ("Ready" in self.parent.lastmsg or "tooltip_id" in self.parent.lastmsg \
         or "CurrentViewOrientation" in self.parent.lastmsg or "AutoViewSet" in self.parent.lastmsg \
-        or "ReOrient" in self.parent.lastmsg or self.websockclient is None):
+        or "ReOrient" in self.parent.lastmsg or "JavaScriptCleanUp" in self.parent.lastmsg or self.websockclient is None):
         time.sleep(self.sleeptime)
         nwait += self.sleeptime
         if nwait > 2.0 and self.browserisopen:

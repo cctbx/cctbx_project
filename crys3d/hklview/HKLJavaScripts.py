@@ -652,7 +652,7 @@ function onOpen(e)
 function onClose(e)
 {
   msg = '%s now disconnecting from websocket ' + pagename + '\\n';
-  WebsockSendMsg(msg);
+  console.log(msg);
   dbgmsg =msg;
 };
 
@@ -667,6 +667,28 @@ function onMessage(e)
     var datval = e.data.split(":\\n");
     var msgtype = datval[0];
     var val = datval[1].split(",");
+
+    if (msgtype === "Reload")
+    {
+    // refresh browser with the javascript file
+      if (stage != null)
+      {
+        msg = getOrientMsg();
+        WebsockSendMsg('OrientationBeforeReload:\\n' + msg );
+      }
+      WebsockSendMsg( 'Refreshing ' + pagename );
+
+      sleep(200).then(()=> {
+          socket_intentionally_closed = true;
+          mysocket.close(4242, 'Refreshing ' + pagename);
+          window.location.reload(true);
+          // In 200ms we are gone. A new javascript file will be loaded in the browser
+        }
+      );
+    }
+
+    if (stage == null) // everything below assumes stage!=null
+      return;
 
     if (msgtype === "alpha")
     {
@@ -754,24 +776,6 @@ function onMessage(e)
       RenderRequest();
       msg = getOrientMsg();
       WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
-    }
-
-    if (msgtype === "Reload")
-    {
-    // refresh browser with the javascript file
-      if (stage != null)
-      {
-        msg = getOrientMsg();
-        WebsockSendMsg('OrientationBeforeReload:\\n' + msg );
-      }
-      WebsockSendMsg( 'Refreshing ' + pagename );
-      socket_intentionally_closed = true;
-      sleep(200).then(()=> {
-          mysocket.close(4242, 'Refreshing ' + pagename);
-          window.location.reload(true);
-        }
-      );
-      // Now we are gone. A new javascript file will be loaded in the browser
     }
 
     if (msgtype.includes("Expand") )

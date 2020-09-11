@@ -177,6 +177,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.browserfontspinBox.valueChanged.connect(self.onBrowserFontsizeChanged)
     self.BrowserFontsize_labeltxt = QLabel()
     self.BrowserFontsize_labeltxt.setText("Browser font size:")
+    self.browserfontsize = None
 
     self.cameraPerspectCheckBox = QCheckBox()
     self.cameraPerspectCheckBox.setText("Perspective camera")
@@ -429,6 +430,12 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
         if "cctbx.python.version:" in msgstr:
           self.cctbxpythonversion = msgstr
+          self.PhilToJsRender("""NGL_HKLviewer.viewer.NGL {
+  fontsize = %d
+  show_tooltips = %s
+}
+""" %(self.browserfontsize, self.ttip_click_invoke) )
+
           if self.cctbxpythonversion == 'cctbx.python.version: 2':
             # use NGL's download feature for images since websocket_server fails to handle large streams
             self.webpage.profile().downloadRequested.connect(self.Browser_download_requested)
@@ -749,13 +756,11 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.fontsize = val
     self.app.setFont(font);
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
-    #if self.cctbxpythonversion: # then connection to cctbx has been established
-    #  self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.fontsize = %d" %val)
 
 
   def onBrowserFontsizeChanged(self, val):
-    if self.cctbxpythonversion: # then connection to cctbx has been established
-      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.fontsize = %d" %val)
+    self.browserfontsize = val
+    self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.fontsize = %d" %val)
 
 
   def onClearTextBuffer(self):
@@ -1592,6 +1597,7 @@ def run():
     settings.beginGroup("PySide2_" + Qtversion)
     QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
     fontsize = settings.value("FontSize", None)
+    browserfontsize = settings.value("BrowserFontSize", None)
     ttip_click_invoke = settings.value("ttip_click_invoke", None)
     windowsize = settings.value("windowsize", None)
     splitter1sizes = settings.value("splitter1Sizes", None)
@@ -1617,11 +1623,14 @@ def run():
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer(app)
+    import time
+    time.sleep(1) # make time for zmq_listen loop to start in cctbx subprocess
 
     def MyAppClosing():
       settings.beginGroup("PySide2_" + Qtversion )
       settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
       settings.setValue("FontSize", guiobj.fontsize )
+      settings.setValue("BrowserFontSize", guiobj.browserfontsize )
       settings.setValue("ttip_click_invoke", guiobj.ttip_click_invoke)
       settings.setValue("windowsize", guiobj.window.size())
       settings.setValue("splitter1Sizes", guiobj.splitter.saveState())
@@ -1630,13 +1639,21 @@ def run():
 
     app.lastWindowClosed.connect(MyAppClosing)
 
+    timer = QTimer()
+    timer.setInterval(20)
+    timer.timeout.connect(guiobj.ProcessMessages)
+    timer.start()
+
+    if fontsize is not None:
+      guiobj.onFontsizeChanged(int(fontsize))
+      guiobj.fontspinBox.setValue(int(fontsize))
+    if browserfontsize is not None:
+      guiobj.onBrowserFontsizeChanged(int(browserfontsize))
+      guiobj.browserfontspinBox.setValue(int(browserfontsize))
     if ttip_click_invoke is not None:
       guiobj.onShowTooltips(ttip_click_invoke)
       guiobj.ttipClickradio.setChecked(ttip_click_invoke == "click")
       guiobj.ttipHoverradio.setChecked(ttip_click_invoke == "hover")
-    if fontsize is not None:
-      guiobj.onFontsizeChanged(int(fontsize))
-      guiobj.fontspinBox.setValue(int(fontsize))
     if splitter1sizes is not None and splitter2sizes is not None and windowsize is not None:
       guiobj.window.resize(windowsize)
       if guiobj.webpagedebugform and guiobj.devmode:
@@ -1644,10 +1661,6 @@ def run():
       guiobj.splitter.restoreState(splitter1sizes)
       guiobj.splitter_2.restoreState(splitter2sizes)
 
-    timer = QTimer()
-    timer.setInterval(20)
-    timer.timeout.connect(guiobj.ProcessMessages)
-    timer.start()
     ret = app.exec_()
 
   except Exception as e:
