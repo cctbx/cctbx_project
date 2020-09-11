@@ -23,6 +23,9 @@ facility {
       .type = str
       .help = Experiment name, eg cxid9114
     web {
+      location = "SLAC"
+        .type = str
+        .help = Where to look for XTC streams. Can be SLAC or NERSC.
       user = ""
         .type = str
         .help = Username for LCLS run database web service
