@@ -1461,7 +1461,7 @@ class RunBlockDialog(BaseDialog):
       if self.use_ids:
         run_numbers = [r.id for r in runs]
       else:
-        run_numbers = [int(r.run) for r in runs]
+        run_numbers = list(sorted([int(r.run) for r in runs]))
       assert len(set(run_numbers)) == len(run_numbers)
 
       if trial is not None:
@@ -1991,6 +1991,7 @@ class SelectRunBlocksDialog(BaseDialog):
     self.all_rungroups = self.db.get_all_rungroups()
     choices = []
     selected = []
+    use_ids = db.params.facility.name not in ['lcls']
     for rungroup in self.all_rungroups:
       selected.append(rungroup.id in self.trial_rungroups)
       first_run, last_run = rungroup.get_first_and_last_runs()
@@ -1998,9 +1999,10 @@ class SelectRunBlocksDialog(BaseDialog):
         if first_run is None:
           desc = "[%d]"%(rungroup.id)
         else:
-          desc = "[%d] %d+"%(rungroup.id, int(first_run.id))
+          desc = "[%d] %d+"%(rungroup.id, int(first_run.id) if use_ids else int(first_run.run))
       else:
-        desc = "[%d] %d-%d"%(rungroup.id, int(first_run.id), int(last_run.id))
+        desc = "[%d] %d-%d"%(rungroup.id, int(first_run.id) if use_ids else int(first_run.run), \
+                                          int(last_run.id) if use_ids else int(last_run.run))
       if rungroup.comment is not None:
         desc += " " + rungroup.comment
 

@@ -123,8 +123,6 @@ class RunSentinel(Thread):
         # Sync new runs to rungroups
         for rungroup in db.get_all_rungroups(only_active=True):
           first_run, last_run = rungroup.get_first_and_last_runs()
-          if first_run is not None: first_run = first_run.id
-          if last_run is not None: last_run = last_run.id
           rungroup.sync_runs(first_run, last_run)
 
         print("%d new runs" % len(unknown_run_runs))
@@ -2022,7 +2020,7 @@ class SpotfinderTab(BaseTab):
     if self.all_runs == []:
       self.find_runs()
     if self.trial is not None:
-      avail_runs = [str(r.run) for r in self.trial.runs]
+      avail_runs = sorted([str(r.run) for r in self.trial.runs])
       for r in avail_runs:
         if r not in self.all_runs:
           self.run_numbers.ctr.Append(r)
