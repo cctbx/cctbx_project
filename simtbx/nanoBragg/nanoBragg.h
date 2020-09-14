@@ -24,6 +24,7 @@
 
 #ifdef NANOBRAGG_HAVE_CUDA
 #include <simtbx/nanoBragg/cuda_struct.h>
+#include <simtbx/gpu/structure_factors.h>
 #endif
 
 using boost::math::erf;
@@ -577,6 +578,7 @@ class nanoBragg {
     void add_nanoBragg_spots_nks(boost_adaptbx::python::streambuf &);
 #ifdef NANOBRAGG_HAVE_CUDA
     void allocate_cuda();
+    void add_energy_channel_from_gpu_amplitudes_cuda(int const&, simtbx::gpu::gpu_energy_channels &);
     void add_energy_channel_cuda();
     void scale_in_place_cuda(double const&);
     void add_background_cuda();

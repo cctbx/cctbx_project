@@ -1938,6 +1938,8 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       /* new CUDA path */
       .def("allocate_cuda", &nanoBragg::allocate_cuda,
        "Allocate and transfer input data on the GPU")
+      .def("add_energy_channel_from_gpu_amplitudes_cuda", &nanoBragg::add_energy_channel_from_gpu_amplitudes_cuda,
+       "Point to Fhkl at a new energy channel on the GPU")
       .def("add_energy_channel_cuda", &nanoBragg::add_energy_channel_cuda,
        "Accumulate Fhkl contributions on the GPU")
       .def("scale_in_place_cuda", &nanoBragg::scale_in_place_cuda,
