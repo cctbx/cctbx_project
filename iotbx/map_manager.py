@@ -1228,11 +1228,13 @@ class map_manager(map_reader, write_ccp4_map):
 
       self._resolution = getattr(d99_object.result,method,-1)
 
-    if self._resolution <= 0:  # we didn't get it or want to use d_min
-      from cctbx.maptbx import d_min_from_map
-      self._resolution = d_min_from_map(
+    from cctbx.maptbx import d_min_from_map  # get this to check
+    d_min_estimated_from_map = d_min_from_map(
            map_data=self.map_data(),
            unit_cell=self.crystal_symmetry().unit_cell())
+
+    if self._resolution < d_min_estimated_from_map:  # we didn't get it or want to use d_min
+      self._resolution = d_min_estimated_from_map
     return self._resolution
 
   def scattering_table(self):

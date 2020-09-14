@@ -288,7 +288,7 @@ def exercise(file_name, out = sys.stdout):
   dc.resolution_filter(d_min=3.5, d_max=6, map_id='filtered')
   dc.create_mask_around_density(mask_id='filtered')
   cc=dc.map_map_cc('map_manager','filtered',mask_id='mask')
-  assert approx_equal(cc , 0.629060115596)
+  assert approx_equal(cc , 0.394211938617)
 
   # box around model
   mam=mam_dc.deep_copy()
