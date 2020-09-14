@@ -66,6 +66,12 @@ void allocate_cuda_cu(int deviceId, int spixels, int fpixels, int roi_xmin, int 
                       new_api_cudaPointers &newapi_cp);
 
 extern "C"
+void add_energy_channel_from_gpu_amplitudes_cuda_cu(int deviceId, double * source_I, double * source_lambda,
+                                                    double const& fluence, int const& ichannel,
+                                                    simtbx::gpu::gpu_energy_channels &gec,
+                                                    cudaPointers &cp, new_api_cudaPointers &newapi_cp);
+
+extern "C"
 void add_energy_channel_cuda_cu(int deviceId, double * source_I, double * source_lambda, double const& fluence,
                                 double *** Fhkl, int h_min, int k_min, int l_min, int h_range, int k_range, int l_range,
                                 cudaPointers &cp, new_api_cudaPointers &newapi_cp);
@@ -204,6 +210,15 @@ nanoBragg::allocate_cuda() {
                    cpo, new_api_cpo);
 #else
   throw SCITBX_ERROR("no CUDA implementation of allocate_cuda");
+#endif
+}
+
+void nanoBragg::add_energy_channel_from_gpu_amplitudes_cuda(int const& ichannel, simtbx::gpu::gpu_energy_channels & gec) {
+  SCITBX_ASSERT (device_Id==gec.get_deviceID());
+#ifdef HAVE_NANOBRAGG_SPOTS_CUDA
+  add_energy_channel_from_gpu_amplitudes_cuda_cu(device_Id, source_I, source_lambda, fluence, ichannel, gec, cpo, new_api_cpo);
+#else
+  throw SCITBX_ERROR("no CUDA implementation of add_energy_channel_cuda");
 #endif
 }
 

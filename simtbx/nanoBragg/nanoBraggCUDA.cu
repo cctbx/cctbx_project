@@ -15,6 +15,7 @@
 #include "nanotypes.h"
 #include "cuda_compatibility.h"
 #include "cuda_struct.h"
+#include "simtbx/gpu/structure_factors.h"
 
 static void CheckCudaErrorAux(const char *, unsigned, const char *, cudaError_t);
 #define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
@@ -1449,6 +1450,64 @@ extern "C" void allocate_cuda_cu(int deviceId, int spixels, int fpixels, int roi
         free(omega_reduction);
         free(max_I_x_reduction);
         free(max_I_y_reduction);
+}
+
+extern "C"
+void add_energy_channel_from_gpu_amplitudes_cuda_cu(int deviceId, double * source_I, double * source_lambda,
+                                                    double const& fluence, int const& ichannel,
+                                                    simtbx::gpu::gpu_energy_channels &gec,
+                                                    cudaPointers &cp, new_api_cudaPointers &newapi_cp, int verbose){
+        cp.cu_fluence = fluence; // new for this energy channel
+        cudaSetDevice(deviceId);
+        // transfer source_I, source_lambda, and Fhkl
+        // the int arguments are for sizes of the arrays
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cp.cu_source_I, source_I, cp.cu_sources));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cp.cu_source_lambda, source_lambda, cp.cu_sources));
+        int hklsize = gec.h_range * gec.k_range * gec.l_range;
+
+        hklParams FhklParams = { hklsize, gec.h_min, gec.h_max, gec.h_range,
+                gec.k_min, gec.k_max, gec.k_range, gec.l_min, gec.l_max, gec.l_range };
+        hklParams * cu_FhklParams;
+        CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_FhklParams, sizeof(*cu_FhklParams)));
+        CUDA_CHECK_RETURN(cudaMemcpy(cu_FhklParams, &FhklParams, sizeof(*cu_FhklParams), cudaMemcpyHostToDevice));
+        cp.cu_FhklParams = cu_FhklParams;
+
+        // first time through make sure to deallocate cu_Fhkl already used
+        if (cp.cu_Fhkl != NULL) {CUDA_CHECK_RETURN(cudaFree(cp.cu_Fhkl));}
+        // magic happens here: take pointer from singleton, temporarily use it for add Bragg iteration:
+        cp.cu_Fhkl = gec.d_channel_Fhkl[ichannel];
+
+        cudaDeviceProp deviceProps = { 0 };
+        CUDA_CHECK_RETURN(cudaGetDeviceProperties(&deviceProps, deviceId));
+        int smCount = deviceProps.multiProcessorCount;
+        dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+        dim3 numBlocks(smCount * 8, 1);
+
+        nanoBraggSpotsCUDAKernel<<<numBlocks, threadsPerBlock>>>(cp.cu_spixels, cp.cu_fpixels, cp.cu_roi_xmin,
+          cp.cu_roi_xmax, cp.cu_roi_ymin, cp.cu_roi_ymax, cp.cu_oversample, cp.cu_point_pixel,
+          cp.cu_pixel_size, cp.cu_subpixel_size, cp.cu_steps, cp.cu_detector_thickstep, cp.cu_detector_thicksteps,
+          cp.cu_detector_thick, cp.cu_detector_mu, cp.cu_sdet_vector, cp.cu_fdet_vector, cp.cu_odet_vector,
+          cp.cu_pix0_vector, cp.cu_curved_detector, cp.cu_distance, cp.cu_close_distance, cp.cu_beam_vector,
+          cp.cu_Xbeam, cp.cu_Ybeam, cp.cu_dmin, cp.cu_phi0, cp.cu_phistep, cp.cu_phisteps, cp.cu_spindle_vector,
+          cp.cu_sources, cp.cu_source_X, cp.cu_source_Y, cp.cu_source_Z,
+          cp.cu_source_I, cp.cu_source_lambda, cp.cu_a0, cp.cu_b0,
+          cp.cu_c0, cp.cu_xtal_shape, cp.cu_mosaic_spread, cp.cu_mosaic_domains, cp.cu_mosaic_umats,
+          cp.cu_Na, cp.cu_Nb, cp.cu_Nc, cp.cu_V_cell,
+          cp.cu_water_size, cp.cu_water_F, cp.cu_water_MW, cp.cu_r_e_sqr, cp.cu_fluence,
+          cp.cu_Avogadro, cp.cu_spot_scale, cp.cu_integral_form, cp.cu_default_F,
+          cp.cu_interpolate, cp.cu_Fhkl, cp.cu_FhklParams, cp.cu_nopolar,
+          cp.cu_polar_vector, cp.cu_polarization, cp.cu_fudge,
+          cp.cu_maskimage, cp.cu_floatimage /*out*/, cp.cu_omega_reduction/*out*/,
+          cp.cu_max_I_x_reduction/*out*/, cp.cu_max_I_y_reduction /*out*/, cp.cu_rangemap /*out*/);
+
+        //dont want to free the gec data when the nanoBragg goes out of scope, so switch the pointer
+        cp.cu_Fhkl = NULL;
+
+        CUDA_CHECK_RETURN(cudaPeekAtLastError());
+        CUDA_CHECK_RETURN(cudaDeviceSynchronize());
+
+        add_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(newapi_cp.cu_accumulate_floatimage, cp.cu_floatimage,
+          cp.cu_spixels * cp.cu_fpixels);
 }
 
 extern "C" void add_energy_channel_cuda_cu(int deviceId, double * source_I, double * source_lambda, double const& fluence,

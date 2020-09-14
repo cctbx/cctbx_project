@@ -39,6 +39,8 @@ if (env_etc.enable_cuda):
     cuda_src = ["nanoBraggCUDA.cu"]
   else:  cuda_src = []
 
+  cuda_src.append("../gpu/structure_factors.cu")
+
   env_etc.include_registry.append(
     env=env_bpl,
     paths=[env_etc.simtbx_include, env_etc.dxtbx_include]
@@ -49,6 +51,17 @@ if (env_etc.enable_cuda):
     target = "#lib/libsimtbx_nanoBraggCUDA",
     source = cuda_src + ["nanoBragg_cuda.cpp"])
   env.Prepend(LIBS=["simtbx_nanoBraggCUDA"])
+
+  sfgpu_obj = nanoBragg_env.SharedObject(
+    target="#simtbx/gpu/gpu_ext.o",
+    source=["../gpu/gpu_ext.cpp"])
+
+  env.SharedLibrary(
+    target="#lib/simtbx_gpu_ext",
+    source=[
+      sfgpu_obj
+    ]
+  )
 
 env.Prepend(LIBS=["omptbx"])
 env.SharedLibrary(

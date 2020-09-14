@@ -2,8 +2,10 @@ from __future__ import absolute_import, division, print_function
 import boost_adaptbx.boost.python as bp
 import cctbx.uctbx # possibly implicit
 ext = bp.import_ext("simtbx_nanoBragg_ext")
+ext2 = bp.import_ext("simtbx_gpu_ext")
 from scitbx.array_family import flex
 from simtbx_nanoBragg_ext import *
+from simtbx_gpu_ext import *
 from scitbx.matrix import col, sqr
 
 from dxtbx.imageset import MemReader
