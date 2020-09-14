@@ -57,7 +57,6 @@ scitbx::af::flex_int uncompress(const boost::python::object& packed,const int& s
     //C++ weirdness
     scitbx::af::flex_int z((scitbx::af::flex_grid<>(slow,fast)),scitbx::af::init_functor_null<int>());
     int* begin = z.begin();
-    std::size_t sz = z.size();
 
     iotbx::detectors::buffer_uncompress(strpacked.c_str(), sz_buffer, begin);
 
@@ -81,7 +80,6 @@ uncompress_sum_positive(const boost::python::object & packed,
     scitbx::af::flex_int z(scitbx::af::flex_grid<>(slow,fast),
                            scitbx::af::init_functor_null<int>());
     int* begin = z.begin();
-    std::size_t sz = z.size();
 
     iotbx::detectors::buffer_uncompress(strpacked.c_str(), sz_buffer, begin);
 

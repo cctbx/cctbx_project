@@ -350,7 +350,6 @@ namespace scitbx { namespace af {
         SCITBX_ASSERT(this->n_rows() >= d.size());
         SCITBX_ASSERT(this->n_columns() >= d.size());
         this->fill(0);
-        index_value_type m = this->n_rows(), n = this->n_columns();
         for(index_value_type i=0; i < d.size(); i++) (*this)(i,i) = d[i];
       }
 

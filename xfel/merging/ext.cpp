@@ -194,8 +194,6 @@ namespace boost_python { namespace {
   void
   sx_merging_init_module() {
     using namespace boost::python;
-    typedef return_value_policy<return_by_value> rbv;
-    typedef default_call_policies dcp;
 
     def("get_hkl_chunks_cpp",&sx_merging::get_hkl_chunks_cpp);
     def("isigi_dict_to_reflection_table",&sx_merging::isigi_dict_to_reflection_table);

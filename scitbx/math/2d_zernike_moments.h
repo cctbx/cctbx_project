@@ -8,7 +8,7 @@
 #include <iomanip>
 
 #include <scitbx/array_family/shared.h>
-#include<scitbx/array_family/versa.h>
+#include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/sort.h>
 
@@ -249,7 +249,7 @@ namespace zernike {
       FloatType space_sum(int r, int s)
       {
         int x,y;
-        FloatType tot(0.0), temp,z;
+        FloatType tot(0.0), z;
 
         for(int i=0;i<total_point_;i++) {
           x=voxel_indx_[i][0];
@@ -533,8 +533,8 @@ namespace zernike {
 
       FloatType zernike_poly(int n, int m, FloatType r)
       {
-        int in,im,ik,k, max_nu, nu, alpha, beta, d;
-        FloatType value(0),temp(0), temp1(0);
+        int in,im,ik,k;
+        FloatType value(0);
         af::shared< FloatType > gm_r(n+1,1.0);
         for(int i=1;i<=n;i++) {
           gm_r[i]=gm_r[i-1]*r;

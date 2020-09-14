@@ -39,7 +39,6 @@ namespace cctbx { namespace xray { namespace structure_factors {
       typedef float_type f_t;
       typedef std::complex<f_t> c_t;
       scitbx::sym_mat3<f_t> dw_coeff;
-      c_t f0_fp_fdp_w = f0_fp_fdp * scatterer.weight();
       f_t dw_iso = 0;
       if (scatterer.flags.use_u_iso()) {
         dw_iso = adptbx::debye_waller_factor_u_iso(

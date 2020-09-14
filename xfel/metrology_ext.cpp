@@ -373,7 +373,6 @@ namespace boost_python { namespace {
     using namespace boost::python;
 
     typedef return_value_policy<return_by_value> rbv;
-    typedef default_call_policies dcp;
 
     class_<mark2_iteration>("mark2_iteration",no_init)
       .def(init< >())
