@@ -89,7 +89,7 @@ def exercise_d99():
   map = fft_map.real_map_unpadded()
   #
   o = maptbx.d99(map=map, crystal_symmetry=xrs.crystal_symmetry())
-  assert approx_equal(o.result.d999, 2.0, 0.03)
+  assert approx_equal(o.result.d99, 2.13, 0.03)
 
 def exercise_five_cc():
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)

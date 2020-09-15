@@ -105,23 +105,14 @@ class d99(object):
     else:
       assert [map, crystal_symmetry].count(None) == 2
     self.d_spacings = self.f_map.d_spacings().data()
-    s = flex.sort_permutation(self.d_spacings)
-    self.d_spacings = self.d_spacings.select(s)
-    self.f_map = self.f_map.select(s)
     self.d_max, self.d_min = flex.max(self.d_spacings), flex.min(self.d_spacings)
     o = ext.d99(
       f          = self.f_map.data(),
       d_spacings = self.d_spacings,
       hkl        = self.f_map.indices(),
-      d_min      = self.d_min,
-      d_max      = self.d_max)
+      cutoff     = 0.99)
     self.result = group_args(
-      d9      = o.d_min_cc9(),
-      d99     = o.d_min_cc99(),
-      d999    = o.d_min_cc999(),
-      d9999   = o.d_min_cc9999(),
-      d99999  = o.d_min_cc99999(),
-      d999999 = o.d_min_cc999999())
+      d99 = o.d_min())
 
   def show(self, log):
     fmt = "%12.6f %8.6f"
