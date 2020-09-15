@@ -55,7 +55,7 @@ master_phil = libtbx.phil.parse("""
     .short_caption = Selection radius
   box_cushion = 3.0
     .type = float
-    .help = If mask_atoms is False, a box of density will be cut out around\
+    .help = If model is supplied, a box of density will be cut out around\
             the input model (after selections are applied to the model). \
             The size of the box of density will be box_cushion bigger than \
             the model.  Box cushion also applied if density_select is set.\
