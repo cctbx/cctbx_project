@@ -1464,11 +1464,11 @@ class manager(object):
     #  2. Schrodinger force field
     ############################################################################
     params = self._pdb_interpretation_params
+    print(params.amber.use_amber)
     if hasattr(params, 'amber') and params.amber.use_amber:
       print('AMBER '*10)
       from amber_adaptbx.manager import digester
       geometry = digester(geometry, params, log=self.log)
-      assert 0
     elif hasattr(params, "schrodinger") and params.schrodinger.use_schrodinger:
       from phenix_schrodinger import schrodinger_manager
       geometry = schrodinger_manager(self._pdb_hierarchy,
