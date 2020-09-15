@@ -504,6 +504,7 @@ libtbx.scons: Warning: compiling with /MDd:
     env_etc.c_link = env_base['CC']
     env_etc.ccflags_base = [
       "-fPIC",
+      "-fno-gpu-rdc",
       "-fno-strict-aliasing",
       "-DMS_WIN64"]
     env_etc.cxxflags_base = ["-DMS_WIN64"]
@@ -1306,30 +1307,38 @@ int main() {
 
 def enable_cuda_if_possible():
   env_etc.enable_cuda = False
+  compiler = "nvcc"
+  if os.environ.get("CCTBX_WITH_HIP") is not None:
+    compiler = "hipcc"
   if (libtbx.env.build_options.enable_cuda):
 
-    cuda_version = easy_run.fully_buffered(command='nvcc --version',
+    cuda_version = easy_run.fully_buffered(command='%s --version' % compiler,
                                            join_stdout_stderr=True).stdout_lines
     if ('command not found' in cuda_version[0]):
-      raise RuntimeError('nvcc was not found')
-    for line in cuda_version:
-      if ('release' in line):
-        break
+      raise RuntimeError('%s was not found' % compiler)
+    
+    cuda_version = -1
+    if compiler == "nvcc":
+      for line in cuda_version:
+        if ('release' in line):
+          break
+    
 
-    major = None
-    cuda_version = re.findall('release [0-9]+\.*[0-9]+', line)
-    if cuda_version:
-      try:
-        assert( len(cuda_version)==1)
-        cuda_version = cuda_version[0].split("release")[1].strip()
-        cuda_version = float(cuda_version)
-        major = int(cuda_version)
-      except (AssertionError, ValueError, IndexError):
-        pass
-    if ( (major is None) or (major < 4) ):
-      raise RuntimeError(
-        'CUDA Toolkit 4.0 and higher is required.'
-        ' Current CUDA version: %s' % line)
+      major = None
+      cuda_version = re.findall('release [0-9]+\.*[0-9]+', line)
+      if cuda_version:
+        try:
+          assert( len(cuda_version)==1)
+          cuda_version = cuda_version[0].split("release")[1].strip()
+          cuda_version = float(cuda_version)
+          major = int(cuda_version)
+        except (AssertionError, ValueError, IndexError):
+          pass
+      if ( (major is None) or (major < 4) ):
+        raise RuntimeError(
+          'CUDA Toolkit 4.0 and higher is required.'
+          ' Current CUDA version: %s' % line)
+    
     env_etc.enable_cuda = True
 
     # generate compute flags based on version
@@ -1378,6 +1387,8 @@ def enable_cuda_if_possible():
                         '--generate-code=arch=compute_72,code=sm_72',
                         '--generate-code=arch=compute_75,code=sm_75']
 
+    elif compiler=="hipcc":
+        arch_flags = [""]
     else:
         raise Sorry("cctbx only supports cuda versions 6-10.2")
 
@@ -1405,9 +1416,13 @@ def enable_cuda_if_possible():
           'Not implemented: wrapping of compiler flags with'
           ' embedded spaces: %s' % flag)
     cc_flags = ' '.join(cc_flags)
-    env_base['NVCCFLAGS'] = arch_flags + \
-                             ['-use_fast_math','--shared',
-                             '--compiler-options',cc_flags]
+    _FLAGS = arch_flags + \
+	     ['-use_fast_math','--shared']
+    if compiler=="nvcc":
+      _FLAGS += ['--compiler-options', cc_flags]
+    else:
+      _FLAGS += ["-fPIC", "--amdgpu-target=gfx908", "--amdgpu-target=gfx906"]
+    env_base['NVCCFLAGS'] = _FLAGS 
 
     shared_object_builder =\
       Builder\
