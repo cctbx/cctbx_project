@@ -77,7 +77,7 @@ def run(parent_dir):
       script_filename = os.path.join(dest_dir, base+'.py')
       with open(script_filename, 'w', encoding='utf-8') as file:
         file.write(to_unicode('from __future__ import absolute_import, division, print_function\n'))
-        file.write(code_str.strip())
+        file.write(to_unicode(code_str.strip()))
         file.write(to_unicode('\n'))
     else:
       continue
