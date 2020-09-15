@@ -2321,6 +2321,14 @@ files for {module} will be downloaded.""".format(module=module))
         self.add_step(self.shell(command=['git', 'lfs', 'install', '--local'], workdir=workdir))
         self.add_step(self.shell(command=['git', 'lfs', 'pull'], workdir=workdir))
 
+    # Use DIALS 2.2
+    if module == 'dials' or module == 'xia2':
+      workdir = ['modules', module]
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-2.2'], workdir=workdir))
+      self.add_step(self.shell(
+        command=['git', 'branch', '--set-upstream-to=origin/dials-2.2', 'dials-2.2'],
+        workdir=workdir))
+
   def add_base(self, extra_opts=[]):
     super(PhenixBuilder, self).add_base(
       extra_opts=['--phenix',
