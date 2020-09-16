@@ -157,6 +157,9 @@ class IndexingJob(Job):
     else:
       config_path = None
 
+    if hasattr(trial_params.dispatch, 'process_percent'):
+      trial_params.dispatch.process_percent = self.trial.process_percent
+
     # Dictionary for formating the submit phil and, if used, the labelit cfg file
     d = dict(
       # Generally for the LABELIT backend or image pickles
@@ -224,7 +227,6 @@ class IndexingJob(Job):
             trial_params.format.cbf.rayonix.bin_size = self.rungroup.binning
             trial_params.format.cbf.rayonix.override_beam_x = self.rungroup.beamx
             trial_params.format.cbf.rayonix.override_beam_y = self.rungroup.beamy
-        trial_params.dispatch.process_percent = self.trial.process_percent
 
         if trial_params.input.known_orientations_folder is not None:
           trial_params.input.known_orientations_folder = trial_params.input.known_orientations_folder.format(run=self.run.run)
@@ -240,6 +242,8 @@ class IndexingJob(Job):
           locator.write("experiment=%s\n"%self.app.params.facility.lcls.experiment) # LCLS specific parameter
           locator.write("run=%s\n"%self.run.run)
           locator.write("detector_address=%s\n"%self.rungroup.detector_address)
+          if self.app.params.facility.lcls.use_ffb:
+            locator.write("use_ffb=True\n")
 
           if image_format == "cbf":
             if mode == 'rayonix':

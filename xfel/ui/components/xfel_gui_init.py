@@ -129,9 +129,9 @@ class RunSentinel(Thread):
             first_run = first_run.id
             last_run = last_run.id if last_run is not None else None
           else:
-            first_run = first_run.run
-            last_run = last_run.run if last_run is not None else None
-          rungroup.sync_runs(first_run, last_run)
+            first_run = int(first_run.run)
+            last_run = int(last_run.run) if last_run is not None else None
+          rungroup.sync_runs(first_run, last_run, use_ids=use_ids)
 
         print("%d new runs" % len(unknown_run_runs))
         self.post_refresh()

@@ -25,7 +25,8 @@ facility {
     web {
       location = "SLAC"
         .type = str
-        .help = Where to look for XTC streams. Can be SLAC or NERSC.
+        .help = Where to look for XTC streams. Can be SLAC, SLACFFB (active experiment \
+                only) or NERSC (contact authors to arrange file mover for NERSC).
       user = ""
         .type = str
         .help = Username for LCLS run database web service
