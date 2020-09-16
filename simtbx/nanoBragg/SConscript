@@ -42,7 +42,10 @@ if (env_etc.enable_cuda):
       cuda_src = ["nanoBraggCUDA.cpp"]
   else:  cuda_src = []
 
-  cuda_src.append("../gpu/structure_factors.cu")
+  if os.environ.get("CCTBX_WITH_HIP") is not None:
+    cuda_src.append("../gpu/structure_factors.cpp")
+  else:
+    cuda_src.append("../gpu/structure_factors.cu")
 
   env_etc.include_registry.append(
     env=env_bpl,

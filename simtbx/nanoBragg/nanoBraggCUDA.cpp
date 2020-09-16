@@ -15,31 +15,16 @@
 #include <stdio.h>
 #include "nanotypes.h"
 #include "cuda_compatibility.h"
+#include "cuda_struct.h"
+#include "simtbx/gpu/structure_factors.h"
 
 static void CheckCudaErrorAux(const char *, unsigned, const char *, hipError_t);
 #define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
-
-#ifndef CUDAREAL
-#define CUDAREAL float
-#endif
 
 #define THREADS_PER_BLOCK_X 128
 #define THREADS_PER_BLOCK_Y 1
 #define THREADS_PER_BLOCK_TOTAL (THREADS_PER_BLOCK_X * THREADS_PER_BLOCK_Y)
 #define VECTOR_SIZE 4
-
-struct hklParams {
-	int hkls;
-	int h_min;
-	int h_max;
-	int h_range;
-	int k_min;
-	int k_max;
-	int k_range;
-	int l_min;
-	int l_max;
-	int l_range;
-};
 
 /**
  * Check the return value of the CUDA runtime API call and exit
@@ -381,7 +366,7 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
 }
 
 /* cubic spline interpolation functions */
-__device__ static void polint(CUDAREAL *xa, CUDAREAL *ya, CUDAREAL x, CUDAREAL *y);
+__device__ static void polint(const CUDAREAL *xa, const CUDAREAL *ya, CUDAREAL x, CUDAREAL *y);
 __device__ static void polin2(CUDAREAL *x1a, CUDAREAL *x2a, CUDAREAL ya[4][4], CUDAREAL x1, CUDAREAL x2, CUDAREAL *y);
 __device__ static void polin3(CUDAREAL *x1a, CUDAREAL *x2a, CUDAREAL *x3a, CUDAREAL ya[4][4][4], CUDAREAL x1, CUDAREAL x2, CUDAREAL x3, CUDAREAL *y);
 /* rotate a 3-vector about a unit vector axis */
@@ -411,6 +396,32 @@ __device__ static CUDAREAL polarization_factor(CUDAREAL kahn_factor, CUDAREAL *i
 __device__ __inline__ static int flatten3dindex(int x, int y, int z, int x_range, int y_range, int z_range);
 
 __device__ __inline__ CUDAREAL quickFcell_ldg(int hkls, int h_max, int h_min, int k_max, int k_min, int l_min, int l_max, int h0, int k0, int l0, int h_range, int k_range, int l_range, CUDAREAL defaultF, const CUDAREAL * __restrict__ Fhkl);
+
+__global__ void add_array_CUDAKernel(double * lhs, float * rhs, int array_size){
+  const int total_pixels = array_size;
+  const int fstride = gridDim.x * blockDim.x;
+  const int sstride = gridDim.y * blockDim.y;
+  const int stride = fstride * sstride;
+  for (int pixIdx = (blockDim.y * blockIdx.y + threadIdx.y) * fstride + blockDim.x * blockIdx.x + threadIdx.x;
+       pixIdx < total_pixels; pixIdx += stride) {
+    /* position in pixel array */
+    const int j = pixIdx;
+    lhs[j] = lhs[j] + (double)rhs[j]; // specifically add low precision array to high precision array
+    }
+  }
+
+__global__ void scale_array_CUDAKernel(double scale_factor, double * lhs, int array_size){
+  const int total_pixels = array_size;
+  const int fstride = gridDim.x * blockDim.x;
+  const int sstride = gridDim.y * blockDim.y;
+  const int stride = fstride * sstride;
+  for (int pixIdx = (blockDim.y * blockIdx.y + threadIdx.y) * fstride + blockDim.x * blockIdx.x + threadIdx.x;
+       pixIdx < total_pixels; pixIdx += stride) {
+    /* position in pixel array */
+    const int j = pixIdx;
+    lhs[j] = lhs[j] * scale_factor;
+    }
+}
 
 __global__ void nanoBraggSpotsInitCUDAKernel(int spixels, int fpixels, float * floatimage, float * omega_reduction, float * max_I_x_reduction,
 		float * max_I_y_reduction, bool * rangemap) {
@@ -522,7 +533,6 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
 //	hklParams[6] = l_min;
 //	hklParams[7] = l_max;
 //	hklParams[8] = l_range;
-    printf("\n\n\t<><><><><><><><><><><><>\n\tWHAT IS HIP?!\n\t<><><><><><><><><><><><><><><>\n\n");
 
 	for (int pixIdx = (blockDim.y * blockIdx.y + threadIdx.y) * fstride + blockDim.x * blockIdx.x + threadIdx.x; pixIdx < total_pixels; pixIdx += stride) {
 		const int fpixel = pixIdx % fpixels;
@@ -858,7 +868,7 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
 										/* integer versions of nearest HKL indicies */
 										int h_interp[] = { 0, 0, 0, 0 };
 										int k_interp[] = { 0, 0, 0, 0 };
-										int l_interp[] = { 0, 0, 0, 0};
+										int l_interp[] = { 0, 0, 0, 0 };
 										h_interp[0] = h0_flr - 1;
 										h_interp[1] = h0_flr;
 										h_interp[2] = h0_flr + 1;
@@ -1114,7 +1124,7 @@ __device__ CUDAREAL sinc3(CUDAREAL x) {
 
 }
 
-__device__ void polint(CUDAREAL *xa, CUDAREAL *ya, CUDAREAL x, CUDAREAL *y) {
+__device__ void polint(const CUDAREAL *xa, const CUDAREAL *ya, CUDAREAL x, CUDAREAL *y) {
 	CUDAREAL x0, x1, x2, x3;
 	x0 = (x - xa[1]) * (x - xa[2]) * (x - xa[3]) * ya[0] / ((xa[0] - xa[1]) * (xa[0] - xa[2]) * (xa[0] - xa[3]));
 	x1 = (x - xa[0]) * (x - xa[2]) * (x - xa[3]) * ya[1] / ((xa[1] - xa[0]) * (xa[1] - xa[2]) * (xa[1] - xa[3]));
@@ -1187,3 +1197,608 @@ __device__ CUDAREAL polarization_factor(CUDAREAL kahn_factor, CUDAREAL *incident
 	return 0.5 * (1.0 + cos2theta_sqr - kahn_factor * cos(2 * psi) * sin2theta_sqr);
 }
 
+// new exafel_api
+
+// allocation function based on nanoBraggSpotsCUDA
+// device pointers are stored in struct to avoid including nanoBragg.h in nanoBragg_cuda.cpp
+// Boost incompatibility with newer version of nvcc
+// These functions are just copies of sections from nanoBraggSpotsCuda
+//   allocate_cuda_cu does the transfers to the GPU
+//   add_energy_channel_cuda_cu accumulates contributions on the GPU
+//   get_raw_pixels_cuda_cu transfers floatimage back to the CPU
+//   deallocate_cuda_cu deallocates the device arrays
+// These map to the same function names in the simtbx::nanoBragg::nanoBragg class, but without the "_cu"
+// at the end.
+extern "C" void allocate_cuda_cu(int deviceId, int spixels, int fpixels, int roi_xmin, int roi_xmax, int roi_ymin, int roi_ymax, int oversample, int point_pixel,
+                double pixel_size, double subpixel_size, int steps, double detector_thickstep, int detector_thicksteps, double detector_thick, double detector_mu,
+                double sdet_vector[4], double fdet_vector[4], double odet_vector[4], double pix0_vector[4], int curved_detector, double distance, double close_distance,
+                double beam_vector[4], double Xbeam, double Ybeam, double dmin, double phi0, double phistep, int phisteps, double spindle_vector[4], int sources,
+                double *source_X, double *source_Y, double * source_Z, double * source_I, double * source_lambda, double a0[4], double b0[4], double c0[4],
+                shapetype xtal_shape, double mosaic_spread, int mosaic_domains, double * mosaic_umats, double Na, double Nb, double Nc, double V_cell,
+                double water_size, double water_F, double water_MW, double r_e_sqr, double fluence, double Avogadro, double spot_scale, int integral_form, double default_F,
+                int interpolate, double *** Fhkl, int h_min, int h_max, int h_range, int k_min, int k_max, int k_range, int l_min, int l_max, int l_range, int hkls,
+                int nopolar, double polar_vector[4], double polarization, double fudge, int unsigned short * maskimage, float * floatimage /*out*/,
+                double * omega_sum/*out*/, int * sumn /*out*/, double * sum /*out*/, double * sumsqr /*out*/, double * max_I/*out*/, double * max_I_x/*out*/,
+                                 double * max_I_y /*out*/, cudaPointers &cp /* output for pointers */,
+                new_api_cudaPointers &newapi_cp) {
+
+        int total_pixels = spixels * fpixels;
+        hipSetDevice(deviceId);
+
+        /*allocate and zero reductions */
+        bool * rangemap = (bool*) calloc(total_pixels, sizeof(bool));
+        float * omega_reduction = (float*) calloc(total_pixels, sizeof(float));
+        float * max_I_x_reduction = (float*) calloc(total_pixels, sizeof(float));
+        float * max_I_y_reduction = (float*) calloc(total_pixels, sizeof(float));
+
+        /* clear memory */
+        memset(floatimage, 0, sizeof(__typeof__(*floatimage)) * total_pixels);
+        int n_panels=1; /* one panel for now, extend later */
+
+        /*create transfer arguments to device space*/
+        cp.cu_spixels = spixels;
+        cp.cu_fpixels = fpixels;
+        newapi_cp.cu_slow_pixels = spixels;
+        newapi_cp.cu_fast_pixels = fpixels;
+        cp.cu_roi_xmin = roi_xmin;
+        cp.cu_roi_xmax = roi_xmax;
+        cp.cu_roi_ymin = roi_ymin;
+        cp.cu_roi_ymax = roi_ymax;
+        cp.cu_oversample = oversample;
+        cp.cu_point_pixel = point_pixel;
+        cp.cu_pixel_size = pixel_size;
+        cp.cu_subpixel_size = subpixel_size;
+        cp.cu_steps = steps;
+        cp.cu_detector_thickstep = detector_thickstep;
+        cp.cu_detector_thick = detector_thick;
+        cp.cu_detector_mu = detector_mu;
+        cp.cu_detector_thicksteps = detector_thicksteps;
+        cp.cu_curved_detector = curved_detector;
+
+        cp.cu_distance = distance;
+        cp.cu_close_distance = close_distance;
+
+        cp.cu_Xbeam = Xbeam;
+        cp.cu_Ybeam = Ybeam;
+        cp.cu_dmin = dmin;
+        cp.cu_phi0 = phi0;
+        cp.cu_phistep = phistep;
+        cp.cu_phisteps = phisteps;
+
+        cp.cu_xtal_shape = xtal_shape;
+
+        cp.cu_sources = sources;
+
+        cp.cu_mosaic_spread = mosaic_spread;
+        cp.cu_mosaic_domains = mosaic_domains;
+
+        cp.cu_Na = Na;
+        cp.cu_Nb = Nb;
+        cp.cu_Nc = Nc;
+        cp.cu_V_cell = V_cell;
+        cp.cu_water_size = water_size;
+        cp.cu_water_F = water_F;
+        cp.cu_water_MW = water_MW;
+        cp.cu_r_e_sqr = r_e_sqr;
+        cp.cu_fluence = fluence;
+        cp.cu_Avogadro = Avogadro;
+        cp.cu_spot_scale = spot_scale;
+
+        cp.cu_integral_form = integral_form;
+        cp.cu_default_F = default_F;
+        cp.cu_interpolate = interpolate;
+
+//      int cu_h_min = h_min, cu_h_max = h_max, cu_h_range = h_range;
+//      int cu_k_min = k_min, cu_k_max = k_max, cu_k_range = k_range;
+//      int cu_l_min = l_min, cu_l_max = l_max, cu_l_range = l_range;
+//      int cu_hkls = hkls;
+
+        cp.cu_nopolar = nopolar;
+        cp.cu_polarization = polarization;
+        cp.cu_fudge = fudge;
+
+        hklParams FhklParams = { hkls, h_min, h_max, h_range, k_min, k_max, k_range, l_min, l_max, l_range };
+        hklParams * cu_FhklParams;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_FhklParams, sizeof(*cu_FhklParams)));
+        CUDA_CHECK_RETURN(hipMemcpy(cu_FhklParams, &FhklParams, sizeof(*cu_FhklParams), hipMemcpyHostToDevice));
+        cp.cu_FhklParams = cu_FhklParams;
+
+        const int vector_length = 4;
+        CUDAREAL * cu_sdet_vector;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_sdet_vector, sizeof(*cu_sdet_vector) * vector_length));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_sdet_vector, sdet_vector, vector_length));
+        cp.cu_sdet_vector = cu_sdet_vector;
+
+        CUDAREAL * cu_fdet_vector;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_fdet_vector, sizeof(*cu_fdet_vector) * vector_length));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_fdet_vector, fdet_vector, vector_length));
+        cp.cu_fdet_vector = cu_fdet_vector;
+
+        CUDAREAL * cu_odet_vector;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_odet_vector, sizeof(*cu_odet_vector) * vector_length));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_odet_vector, odet_vector, vector_length));
+        cp.cu_odet_vector = cu_odet_vector;
+
+        CUDAREAL * cu_pix0_vector;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_pix0_vector, sizeof(*cu_pix0_vector) * vector_length));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_pix0_vector, pix0_vector, vector_length));
+        cp.cu_pix0_vector = cu_pix0_vector;
+
+        CUDAREAL * cu_beam_vector;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_beam_vector, sizeof(*cu_beam_vector) * vector_length));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_beam_vector, beam_vector, vector_length));
+        cp.cu_beam_vector = cu_beam_vector;
+
+        CUDAREAL * cu_spindle_vector;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_spindle_vector, sizeof(*cu_spindle_vector) * vector_length));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_spindle_vector, spindle_vector, vector_length));
+        cp.cu_spindle_vector = cu_spindle_vector;
+
+        CUDAREAL * cu_a0;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_a0, sizeof(*cu_a0) * vector_length));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_a0, a0, vector_length));
+        cp.cu_a0 = cu_a0;
+
+        CUDAREAL * cu_b0;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_b0, sizeof(*cu_b0) * vector_length));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_b0, b0, vector_length));
+        cp.cu_b0 = cu_b0;
+
+        CUDAREAL * cu_c0;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_c0, sizeof(*cu_c0) * vector_length));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_c0, c0, vector_length));
+        cp.cu_c0 = cu_c0;
+
+        //      Unitize polar vector before sending it to the GPU. Optimization do it only once here rather than multiple time per pixel in the GPU.
+        CUDAREAL * cu_polar_vector;
+        double polar_vector_unitized[4];
+        cpu_unitize(polar_vector, polar_vector_unitized);
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_polar_vector, sizeof(*cu_polar_vector) * vector_length));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_polar_vector, polar_vector_unitized, vector_length));
+        cp.cu_polar_vector = cu_polar_vector;
+
+        CUDAREAL * cu_source_X = NULL;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_source_X, sizeof(*cu_source_X) * sources));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_source_X, source_X, sources));
+        cp.cu_source_X = cu_source_X;
+
+        CUDAREAL * cu_source_Y = NULL;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_source_Y, sizeof(*cu_source_Y) * sources));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_source_Y, source_Y, sources));
+        cp.cu_source_Y = cu_source_Y;
+
+        CUDAREAL * cu_source_Z = NULL;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_source_Z, sizeof(*cu_source_Z) * sources));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_source_Z, source_Z, sources));
+        cp.cu_source_Z = cu_source_Z;
+
+        CUDAREAL * cu_source_I = NULL;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_source_I, sizeof(*cu_source_I) * sources));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_source_I, source_I, sources));
+        cp.cu_source_I = cu_source_I;
+
+        CUDAREAL * cu_source_lambda = NULL;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_source_lambda, sizeof(*cu_source_lambda) * sources));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_source_lambda, source_lambda, sources));
+        cp.cu_source_lambda = cu_source_lambda;
+
+        CUDAREAL * cu_mosaic_umats = NULL;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_mosaic_umats, sizeof(*cu_mosaic_umats) * mosaic_domains * 9));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_mosaic_umats, mosaic_umats, mosaic_domains * 9));
+        cp.cu_mosaic_umats = cu_mosaic_umats;
+
+        float * cu_floatimage = NULL;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_floatimage, sizeof(*cu_floatimage) * total_pixels));
+        // In contrast to old API, new API initializes its own accumulator, does not take values from CPU
+        // CUDA_CHECK_RETURN(hipMemcpy(cu_floatimage, floatimage, sizeof(*cu_floatimage) * total_pixels, hipMemcpyHostToDevice));
+        cp.cu_floatimage = cu_floatimage;
+
+        /* separate accumulator image outside the usual nanoBragg data structure.
+           1. accumulate contributions from a sequence of source energy channels computed separately
+           2. represent multiple panels, all same rectangular shape; slowest dimension = n_panels */
+        double * cu_accumulate_floatimage = NULL;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_accumulate_floatimage, sizeof(*cu_accumulate_floatimage) * total_pixels * n_panels));
+        CUDA_CHECK_RETURN(hipMemset((void *)cu_accumulate_floatimage, 0, sizeof(*cu_accumulate_floatimage) * total_pixels * n_panels));
+        newapi_cp.cu_accumulate_floatimage = cu_accumulate_floatimage;
+
+        float * cu_omega_reduction = NULL;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_omega_reduction, sizeof(*cu_omega_reduction) * total_pixels));
+        CUDA_CHECK_RETURN(hipMemcpy(cu_omega_reduction, omega_reduction, sizeof(*cu_omega_reduction) * total_pixels, hipMemcpyHostToDevice));
+        cp.cu_omega_reduction = cu_omega_reduction;
+
+        float * cu_max_I_x_reduction = NULL;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_max_I_x_reduction, sizeof(*cu_max_I_x_reduction) * total_pixels));
+        CUDA_CHECK_RETURN(hipMemcpy(cu_max_I_x_reduction, max_I_x_reduction, sizeof(*cu_max_I_x_reduction) * total_pixels, hipMemcpyHostToDevice));
+        cp.cu_max_I_x_reduction = cu_max_I_x_reduction;
+
+        float * cu_max_I_y_reduction = NULL;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_max_I_y_reduction, sizeof(*cu_max_I_y_reduction) * total_pixels));
+        CUDA_CHECK_RETURN(hipMemcpy(cu_max_I_y_reduction, max_I_y_reduction, sizeof(*cu_max_I_y_reduction) * total_pixels, hipMemcpyHostToDevice));
+        cp.cu_max_I_y_reduction = cu_max_I_y_reduction;
+
+        bool * cu_rangemap = NULL;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_rangemap, sizeof(*cu_rangemap) * total_pixels));
+        CUDA_CHECK_RETURN(hipMemcpy(cu_rangemap, rangemap, sizeof(*cu_rangemap) * total_pixels, hipMemcpyHostToDevice));
+        cp.cu_rangemap = cu_rangemap;
+
+        int unsigned short * cu_maskimage = NULL;
+        if (maskimage != NULL) {
+                CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_maskimage, sizeof(*cu_maskimage) * total_pixels));
+                CUDA_CHECK_RETURN(hipMemcpy(cu_maskimage, maskimage, sizeof(*cu_maskimage) * total_pixels, hipMemcpyHostToDevice));
+        }
+        cp.cu_maskimage = cu_maskimage;
+
+        int hklsize = h_range * k_range * l_range;
+        CUDAREAL * FhklLinear = (CUDAREAL*) calloc(hklsize, sizeof(*FhklLinear));
+        for (int h = 0; h < h_range; h++) {
+          for (int k = 0; k < k_range; k++) {
+            for (int l = 0; l < l_range; l++) {
+              //      convert Fhkl double to CUDAREAL
+              FhklLinear[h * k_range * l_range + k * l_range + l] = Fhkl[h][k][l];
+            }
+          }
+        }
+
+        CUDAREAL * cu_Fhkl = NULL;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_Fhkl, sizeof(*cu_Fhkl) * hklsize));
+        CUDA_CHECK_RETURN(hipMemcpy(cu_Fhkl, FhklLinear, sizeof(*cu_Fhkl) * hklsize, hipMemcpyHostToDevice));
+        cp.cu_Fhkl = cu_Fhkl;
+        free(FhklLinear);
+
+        // deallocate host arrays
+        // potential memory leaks
+        free(rangemap);
+        free(omega_reduction);
+        free(max_I_x_reduction);
+        free(max_I_y_reduction);
+}
+
+extern "C"
+void add_energy_channel_from_gpu_amplitudes_cuda_cu(int deviceId, double * source_I, double * source_lambda,
+                                                    double const& fluence, int const& ichannel,
+                                                    simtbx::gpu::gpu_energy_channels &gec,
+                                                    cudaPointers &cp, new_api_cudaPointers &newapi_cp, int verbose){
+        cp.cu_fluence = fluence; // new for this energy channel
+        hipSetDevice(deviceId);
+        // transfer source_I, source_lambda, and Fhkl
+        // the int arguments are for sizes of the arrays
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cp.cu_source_I, source_I, cp.cu_sources));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cp.cu_source_lambda, source_lambda, cp.cu_sources));
+        int hklsize = gec.h_range * gec.k_range * gec.l_range;
+
+        hklParams FhklParams = { hklsize, gec.h_min, gec.h_max, gec.h_range,
+                gec.k_min, gec.k_max, gec.k_range, gec.l_min, gec.l_max, gec.l_range };
+        hklParams * cu_FhklParams;
+        CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_FhklParams, sizeof(*cu_FhklParams)));
+        CUDA_CHECK_RETURN(hipMemcpy(cu_FhklParams, &FhklParams, sizeof(*cu_FhklParams), hipMemcpyHostToDevice));
+        cp.cu_FhklParams = cu_FhklParams;
+
+        // first time through make sure to deallocate cu_Fhkl already used
+        if (cp.cu_Fhkl != NULL) {CUDA_CHECK_RETURN(hipFree(cp.cu_Fhkl));}
+        // magic happens here: take pointer from singleton, temporarily use it for add Bragg iteration:
+        cp.cu_Fhkl = gec.d_channel_Fhkl[ichannel];
+
+        hipDeviceProp_t deviceProps = { 0 };
+        CUDA_CHECK_RETURN(hipGetDeviceProperties(&deviceProps, deviceId));
+        int smCount = deviceProps.multiProcessorCount;
+        dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+        dim3 numBlocks(smCount * 8, 1);
+
+        hipLaunchKernelGGL(nanoBraggSpotsCUDAKernel, dim3(numBlocks), dim3(threadsPerBlock), 0, 0, cp.cu_spixels, cp.cu_fpixels, cp.cu_roi_xmin,
+          cp.cu_roi_xmax, cp.cu_roi_ymin, cp.cu_roi_ymax, cp.cu_oversample, cp.cu_point_pixel,
+          cp.cu_pixel_size, cp.cu_subpixel_size, cp.cu_steps, cp.cu_detector_thickstep, cp.cu_detector_thicksteps,
+          cp.cu_detector_thick, cp.cu_detector_mu, cp.cu_sdet_vector, cp.cu_fdet_vector, cp.cu_odet_vector,
+          cp.cu_pix0_vector, cp.cu_curved_detector, cp.cu_distance, cp.cu_close_distance, cp.cu_beam_vector,
+          cp.cu_Xbeam, cp.cu_Ybeam, cp.cu_dmin, cp.cu_phi0, cp.cu_phistep, cp.cu_phisteps, cp.cu_spindle_vector,
+          cp.cu_sources, cp.cu_source_X, cp.cu_source_Y, cp.cu_source_Z,
+          cp.cu_source_I, cp.cu_source_lambda, cp.cu_a0, cp.cu_b0,
+          cp.cu_c0, cp.cu_xtal_shape, cp.cu_mosaic_spread, cp.cu_mosaic_domains, cp.cu_mosaic_umats,
+          cp.cu_Na, cp.cu_Nb, cp.cu_Nc, cp.cu_V_cell,
+          cp.cu_water_size, cp.cu_water_F, cp.cu_water_MW, cp.cu_r_e_sqr, cp.cu_fluence,
+          cp.cu_Avogadro, cp.cu_spot_scale, cp.cu_integral_form, cp.cu_default_F,
+          cp.cu_interpolate, cp.cu_Fhkl, cp.cu_FhklParams, cp.cu_nopolar,
+          cp.cu_polar_vector, cp.cu_polarization, cp.cu_fudge,
+          cp.cu_maskimage, cp.cu_floatimage /*out*/, cp.cu_omega_reduction/*out*/,
+          cp.cu_max_I_x_reduction/*out*/, cp.cu_max_I_y_reduction /*out*/, cp.cu_rangemap /*out*/);
+
+        //dont want to free the gec data when the nanoBragg goes out of scope, so switch the pointer
+        cp.cu_Fhkl = NULL;
+
+        CUDA_CHECK_RETURN(hipPeekAtLastError());
+        CUDA_CHECK_RETURN(hipDeviceSynchronize());
+
+        hipLaunchKernelGGL(add_array_CUDAKernel, dim3(numBlocks), dim3(threadsPerBlock), 0, 0, newapi_cp.cu_accumulate_floatimage, cp.cu_floatimage,
+          cp.cu_spixels * cp.cu_fpixels);
+}
+
+extern "C" void add_energy_channel_cuda_cu(int deviceId, double * source_I, double * source_lambda, double const& fluence,
+                                           double *** Fhkl, int h_min, int k_min, int l_min, int h_range, int k_range, int l_range,
+                                           cudaPointers &cp, new_api_cudaPointers &newapi_cp) {
+
+        cp.cu_fluence = fluence; // new for this energy channel
+        hipSetDevice(deviceId);
+        // transfer source_I, source_lambda, and Fhkl
+        // the int arguments are for sizes of the arrays
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cp.cu_source_I, source_I, cp.cu_sources));
+        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cp.cu_source_lambda, source_lambda, cp.cu_sources));
+
+        int hklsize = h_range * k_range * l_range;
+        CUDAREAL * FhklLinear = (CUDAREAL*) calloc(hklsize, sizeof(*FhklLinear));
+        for (int h = 0; h < h_range; h++) {
+          for (int k = 0; k < k_range; k++) {
+            for (int l = 0; l < l_range; l++) {
+              //        convert Fhkl double to CUDAREAL
+              FhklLinear[h * k_range * l_range + k * l_range + l] = Fhkl[h][k][l];
+            }
+          }
+        }
+        CUDA_CHECK_RETURN(hipMemcpy(cp.cu_Fhkl, FhklLinear, sizeof(*cp.cu_Fhkl) * hklsize, hipMemcpyHostToDevice));
+        free(FhklLinear);
+
+        CUDA_CHECK_RETURN(hipGetDevice(&deviceId));
+        hipDeviceProp_t deviceProps = { 0 };
+        CUDA_CHECK_RETURN(hipGetDeviceProperties(&deviceProps, deviceId));
+        int smCount = deviceProps.multiProcessorCount;
+
+//      CUDA_CHECK_RETURN(hipFuncSetCacheConfig(reinterpret_cast<const void*>(nanoBraggSpotsCUDAKernel), hipFuncCachePreferShared));
+//      CUDA_CHECK_RETURN(hipFuncSetCacheConfig(reinterpret_cast<const void*>(nanoBraggSpotsCUDAKernel), hipFuncCachePreferL1));
+
+        dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+        //  dim3 numBlocks((spixels - 1) / threadsPerBlock.x + 1, (fpixels - 1) / threadsPerBlock.y + 1);
+        dim3 numBlocks(smCount * 8, 1);
+
+        //  initialize the device memory within a kernel.
+        //      hipLaunchKernelGGL(nanoBraggSpotsInitCUDAKernel, dim3(numBlocks), dim3(threadsPerBlock), 0, 0, cu_spixels, cu_fpixels, cu_floatimage, cu_omega_reduction, cu_max_I_x_reduction, cu_max_I_y_reduction, cu_rangemap);
+        //  CUDA_CHECK_RETURN(hipPeekAtLastError());
+        //  CUDA_CHECK_RETURN(hipDeviceSynchronize());
+
+        hipLaunchKernelGGL(nanoBraggSpotsCUDAKernel, dim3(numBlocks), dim3(threadsPerBlock), 0, 0, cp.cu_spixels, cp.cu_fpixels, cp.cu_roi_xmin, cp.cu_roi_xmax, cp.cu_roi_ymin, cp.cu_roi_ymax, cp.cu_oversample,
+                        cp.cu_point_pixel,
+                        cp.cu_pixel_size, cp.cu_subpixel_size, cp.cu_steps, cp.cu_detector_thickstep, cp.cu_detector_thicksteps, cp.cu_detector_thick, cp.cu_detector_mu,
+                        cp.cu_sdet_vector, cp.cu_fdet_vector, cp.cu_odet_vector,
+                        cp.cu_pix0_vector, cp.cu_curved_detector, cp.cu_distance, cp.cu_close_distance, cp.cu_beam_vector,
+                        cp.cu_Xbeam, cp.cu_Ybeam, cp.cu_dmin, cp.cu_phi0, cp.cu_phistep, cp.cu_phisteps, cp.cu_spindle_vector, cp.cu_sources,
+                        cp.cu_source_X, cp.cu_source_Y, cp.cu_source_Z,
+                        cp.cu_source_I, cp.cu_source_lambda, cp.cu_a0, cp.cu_b0,
+                        cp.cu_c0, cp.cu_xtal_shape, cp.cu_mosaic_spread, cp.cu_mosaic_domains, cp.cu_mosaic_umats,
+                        cp.cu_Na, cp.cu_Nb, cp.cu_Nc, cp.cu_V_cell,
+                        cp.cu_water_size, cp.cu_water_F, cp.cu_water_MW, cp.cu_r_e_sqr, cp.cu_fluence, cp.cu_Avogadro, cp.cu_spot_scale, cp.cu_integral_form, cp.cu_default_F,
+                        cp.cu_interpolate, cp.cu_Fhkl, cp.cu_FhklParams, cp.cu_nopolar, cp.cu_polar_vector, cp.cu_polarization, cp.cu_fudge,
+                        cp.cu_maskimage, cp.cu_floatimage /*out*/, cp.cu_omega_reduction/*out*/, cp.cu_max_I_x_reduction/*out*/, cp.cu_max_I_y_reduction /*out*/,
+                        cp.cu_rangemap /*out*/);
+
+        CUDA_CHECK_RETURN(hipPeekAtLastError());
+        CUDA_CHECK_RETURN(hipDeviceSynchronize());
+
+        hipLaunchKernelGGL(add_array_CUDAKernel, dim3(numBlocks), dim3(threadsPerBlock), 0, 0, newapi_cp.cu_accumulate_floatimage, cp.cu_floatimage,
+          cp.cu_spixels * cp.cu_fpixels);
+}
+
+extern "C"
+void scale_in_place_cuda_cu(int deviceId, double const& scale_factor, new_api_cudaPointers &newapi_cp){
+  hipSetDevice(deviceId);
+  hipDeviceProp_t deviceProps = { 0 };
+  CUDA_CHECK_RETURN(hipGetDeviceProperties(&deviceProps, deviceId));
+  int smCount = deviceProps.multiProcessorCount;
+  dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+  dim3 numBlocks(smCount * 8, 1);
+  int total_pixels = newapi_cp.cu_slow_pixels * newapi_cp.cu_fast_pixels;
+  hipLaunchKernelGGL(scale_array_CUDAKernel, dim3(numBlocks), dim3(threadsPerBlock), 0, 0, 
+          scale_factor, newapi_cp.cu_accumulate_floatimage, total_pixels);
+}
+
+__global__ void add_background_CUDAKernel(int sources, int nanoBragg_oversample,
+    CUDAREAL pixel_size, int spixels, int fpixels, int detector_thicksteps, CUDAREAL detector_thickstep, CUDAREAL detector_attnlen,
+    const CUDAREAL * __restrict__ sdet_vector, const CUDAREAL * __restrict__ fdet_vector,
+    const CUDAREAL * __restrict__ odet_vector, const CUDAREAL * __restrict__ pix0_vector,
+    CUDAREAL close_distance, int point_pixel, CUDAREAL detector_thick,
+    const CUDAREAL * __restrict__ source_X, const CUDAREAL * __restrict__ source_Y, const CUDAREAL * __restrict__ source_Z,
+    const CUDAREAL * __restrict__ source_lambda, const CUDAREAL * __restrict__ source_I,
+    int stols, const CUDAREAL * stol_of, const CUDAREAL * Fbg_of,
+    int nopolar, CUDAREAL polarization, const CUDAREAL * __restrict__ polar_vector,
+    CUDAREAL r_e_sqr, CUDAREAL fluence, CUDAREAL amorphous_molecules,
+    float * floatimage){
+    int oversample=-1, override_source=-1; //override features that usually slow things down,
+                                           //like oversampling pixels & multiple sources
+    int source_start = 0;
+    /* allow user to override automated oversampling decision at call time with arguments */
+    if(oversample<=0) oversample = nanoBragg_oversample;
+    if(oversample<=0) oversample = 1;
+    if(override_source>=0) {
+        /* user-specified source in the argument */
+        source_start = override_source;
+        sources = source_start +1;
+    }
+    /* make sure we are normalizing with the right number of sub-steps */
+    int steps = oversample*oversample;
+    CUDAREAL subpixel_size = pixel_size/oversample;
+
+    /* sweep over detector */
+    const int total_pixels = spixels * fpixels;
+    const int fstride = gridDim.x * blockDim.x;
+    const int sstride = gridDim.y * blockDim.y;
+    const int stride = fstride * sstride;
+    for (int pixIdx = (blockDim.y * blockIdx.y + threadIdx.y) * fstride + blockDim.x * blockIdx.x + threadIdx.x;
+         pixIdx < total_pixels; pixIdx += stride) {
+      const int fpixel = pixIdx % fpixels;
+      const int spixel = pixIdx / fpixels;
+      /* position in pixel array */
+      const int j = pixIdx;
+      /* reset background photon count for this pixel */
+      CUDAREAL Ibg = 0;
+      int nearest = 0; // sort-stable alogorithm, instead of holding value over from previous pixel
+            /* loop over sub-pixels */
+            for(int subS=0;subS<oversample;++subS){
+                for(int subF=0;subF<oversample;++subF){
+                    /* absolute mm position on detector (relative to its origin) */
+                    CUDAREAL Fdet = subpixel_size*(fpixel*oversample + subF ) + subpixel_size/2.0;
+                    CUDAREAL Sdet = subpixel_size*(spixel*oversample + subS ) + subpixel_size/2.0;
+
+                    for(int thick_tic=0;thick_tic<detector_thicksteps;++thick_tic){
+                        /* assume "distance" is to the front of the detector sensor layer */
+                        CUDAREAL Odet = thick_tic*detector_thickstep;
+                        CUDAREAL pixel_pos[4];
+
+                        pixel_pos[1] = Fdet * __ldg(&fdet_vector[1]) + Sdet * __ldg(&sdet_vector[1]) + Odet * __ldg(&odet_vector[1]) + __ldg(&pix0_vector[1]); // X
+                        pixel_pos[2] = Fdet * __ldg(&fdet_vector[2]) + Sdet * __ldg(&sdet_vector[2]) + Odet * __ldg(&odet_vector[2]) + __ldg(&pix0_vector[2]); // X
+                        pixel_pos[3] = Fdet * __ldg(&fdet_vector[3]) + Sdet * __ldg(&sdet_vector[3]) + Odet * __ldg(&odet_vector[3]) + __ldg(&pix0_vector[3]); // X
+                        pixel_pos[0] = 0.0;
+                        /* no curved detector option (future implementation) */
+                        /* construct the diffracted-beam unit vector to this pixel */
+                        CUDAREAL diffracted[4];
+                        CUDAREAL airpath = unitize(pixel_pos,diffracted);
+
+                        /* solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta) */
+                        CUDAREAL omega_pixel = pixel_size*pixel_size/airpath/airpath*close_distance/airpath;
+                        /* option to turn off obliquity effect, inverse-square-law only */
+                        if(point_pixel) omega_pixel = 1.0/airpath/airpath;
+
+                        /* now calculate detector thickness effects */
+                        CUDAREAL capture_fraction = 1.0;
+                        if(detector_thick > 0.0){
+                            /* inverse of effective thickness increase */
+                            CUDAREAL parallax = dot_product(diffracted,odet_vector);
+                            capture_fraction = exp(-thick_tic*detector_thickstep/detector_attnlen/parallax)
+                                              -exp(-(thick_tic+1)*detector_thickstep/detector_attnlen/parallax);
+                        }
+
+                        /* loop over sources now */
+                        for(int source=source_start;source<sources;++source){
+
+                            /* retrieve stuff from cache */
+                            CUDAREAL incident[4];
+                            incident[1] = -__ldg(&source_X[source]);
+                            incident[2] = -__ldg(&source_Y[source]);
+                            incident[3] = -__ldg(&source_Z[source]);
+                            CUDAREAL lambda = __ldg(&source_lambda[source]);
+                            CUDAREAL source_fraction = __ldg(&source_I[source]);
+                            /* construct the incident beam unit vector while recovering source distance */
+                            unitize(incident,incident);
+
+                            /* construct the scattering vector for this pixel */
+                            CUDAREAL scattering[4];
+                            scattering[1] = (diffracted[1]-incident[1])/lambda;
+                            scattering[2] = (diffracted[2]-incident[2])/lambda;
+                            scattering[3] = (diffracted[3]-incident[3])/lambda;
+                            magnitude(scattering);
+                            /* sin(theta)/lambda is half the scattering vector length */
+                            CUDAREAL stol = 0.5*scattering[0];
+
+                            /* now we need to find the nearest four "stol file" points */
+                            while(stol > stol_of[nearest] && nearest <= stols){++nearest; };
+                            while(stol < stol_of[nearest] && nearest >= 2){--nearest; };
+
+                            /* cubic spline interpolation */
+                            CUDAREAL Fbg;
+                            polint(stol_of+nearest-1, Fbg_of+nearest-1, stol, &Fbg);
+
+                            /* allow negative F values to yield negative intensities */
+                            CUDAREAL sign=1.0;
+                            if(Fbg<0.0) sign=-1.0;
+
+                            /* now we have the structure factor for this pixel */
+
+                            /* polarization factor */
+                            CUDAREAL polar = 1.0;
+                            if(! nopolar){
+                                /* need to compute polarization factor */
+                                polar = polarization_factor(polarization,incident,diffracted,polar_vector);
+                            }
+
+                            /* accumulate unscaled pixel intensity from this */
+                            Ibg += sign*Fbg*Fbg*polar*omega_pixel*source_fraction*capture_fraction;
+                        } /* end of source loop */
+                    } /* end of detector thickness loop */
+                } /* end of sub-pixel y loop */
+            } /* end of sub-pixel x loop */
+            /* save photons/pixel (if fluence specified), or F^2/omega if no fluence given */
+            floatimage[j] += Ibg*r_e_sqr*fluence*amorphous_molecules/steps;    } // end of pixIdx loop
+}
+
+extern "C"
+void add_background_cuda_cu(int deviceId, int stols, double* stol_of, double* Fbg_of, double fluence,
+  double * source_I, double * source_lambda,
+  double amorphous_molecules, cudaPointers &cp, new_api_cudaPointers &newapi_cp){
+
+  // transfer source_I, source_lambda
+  CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cp.cu_source_I, source_I, cp.cu_sources));
+  CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cp.cu_source_lambda, source_lambda, cp.cu_sources));
+
+  CUDAREAL * cu_stol_of;
+  CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_stol_of, sizeof(*cu_stol_of) * stols));
+  CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_stol_of, stol_of, stols));
+
+  CUDAREAL * cu_Fbg_of;
+  CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_Fbg_of, sizeof(*cu_Fbg_of) * stols));
+  CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_Fbg_of, Fbg_of, stols));
+
+  hipDeviceProp_t deviceProps = { 0 };
+  CUDA_CHECK_RETURN(hipGetDeviceProperties(&deviceProps, deviceId));
+  int smCount = deviceProps.multiProcessorCount;
+  dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+  dim3 numBlocks(smCount * 8, 1);
+
+  //  initialize the device memory within a kernel. //have not analyzed to see if initializaiton is needed
+  hipLaunchKernelGGL(nanoBraggSpotsInitCUDAKernel, dim3(numBlocks), dim3(threadsPerBlock), 0, 0, cp.cu_spixels, cp.cu_fpixels,
+          cp.cu_floatimage, cp.cu_omega_reduction, cp.cu_max_I_x_reduction, cp.cu_max_I_y_reduction,
+          cp.cu_rangemap);
+  CUDA_CHECK_RETURN(hipPeekAtLastError());
+  CUDA_CHECK_RETURN(hipDeviceSynchronize());
+
+  hipLaunchKernelGGL(add_background_CUDAKernel, dim3(numBlocks), dim3(threadsPerBlock), 0, 0, cp.cu_sources, cp.cu_oversample,
+    cp.cu_pixel_size, cp.cu_spixels, cp.cu_fpixels, cp.cu_detector_thicksteps,
+    cp.cu_detector_thickstep, cp.cu_detector_mu,
+    cp.cu_sdet_vector, cp.cu_fdet_vector, cp.cu_odet_vector, cp.cu_pix0_vector,
+    cp.cu_close_distance, cp.cu_point_pixel, cp.cu_detector_thick,
+    cp.cu_source_X, cp.cu_source_Y, cp.cu_source_Z,
+    cp.cu_source_lambda, cp.cu_source_I,
+    stols, cu_stol_of, cu_Fbg_of,
+    cp.cu_nopolar, cp.cu_polarization, cp.cu_polar_vector,
+    cp.cu_r_e_sqr, fluence, amorphous_molecules,
+    cp.cu_floatimage /*out*/);
+
+  CUDA_CHECK_RETURN(hipPeekAtLastError());
+  CUDA_CHECK_RETURN(hipDeviceSynchronize());
+  hipLaunchKernelGGL(add_array_CUDAKernel, dim3(numBlocks), dim3(threadsPerBlock), 0, 0, newapi_cp.cu_accumulate_floatimage, cp.cu_floatimage,
+          cp.cu_spixels * cp.cu_fpixels);
+
+  CUDA_CHECK_RETURN(hipFree(cu_stol_of));
+  CUDA_CHECK_RETURN(hipFree(cu_Fbg_of));
+}
+
+extern "C" void get_raw_pixels_cuda_cu(int deviceId, double * floatimage, new_api_cudaPointers &newapi_cp) {
+  int total_pixels = newapi_cp.cu_slow_pixels * newapi_cp.cu_fast_pixels;
+  hipSetDevice(deviceId);
+  CUDA_CHECK_RETURN(
+  hipMemcpy(floatimage, newapi_cp.cu_accumulate_floatimage, sizeof(*newapi_cp.cu_accumulate_floatimage) * total_pixels, hipMemcpyDeviceToHost));
+}
+
+extern "C" void deallocate_cuda_cu(int deviceId, cudaPointers &cp, new_api_cudaPointers &newapi_cp) {
+        hipSetDevice(deviceId);
+        CUDA_CHECK_RETURN(hipFree(cp.cu_sdet_vector));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_fdet_vector));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_odet_vector));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_pix0_vector));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_beam_vector));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_spindle_vector));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_source_X));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_source_Y));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_source_Z));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_source_I));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_source_lambda));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_a0));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_b0));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_c0));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_mosaic_umats));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_Fhkl));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_FhklParams));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_polar_vector));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_maskimage));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_floatimage));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_omega_reduction));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_max_I_x_reduction));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_max_I_y_reduction));
+        CUDA_CHECK_RETURN(hipFree(cp.cu_rangemap));
+        // future use: CUDA_CHECK_RETURN(hipFree(newapi_cp.cu_energy_Fhkl));
+        CUDA_CHECK_RETURN(hipFree(newapi_cp.cu_accumulate_floatimage));
+}

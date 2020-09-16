@@ -1,4 +1,5 @@
 //#include <cudatbx/cuda_base.cuh>
+#include "hip/hip_runtime.h"
 #include <simtbx/gpu/structure_factors.h>
 
 namespace simtbx {
@@ -6,25 +7,25 @@ namespace gpu {
 
   gpu_energy_channels::gpu_energy_channels(int const& deviceId){
     h_deviceID = deviceId;
-    cudaSetDevice(deviceId);
+    hipSetDevice(deviceId);
   }
 
   void 
   gpu_energy_channels::structure_factors_to_GPU_detail(af::shared<double> linear_amplitudes){
     double * raw_ptr = linear_amplitudes.begin();
     CUDAREAL * cu_Fhkl = NULL;
-    cudaMalloc((void ** )&cu_Fhkl, 
+    hipMalloc((void ** )&cu_Fhkl, 
                      sizeof(*cu_Fhkl) * linear_amplitudes.size());
-    cudaMemcpy(cu_Fhkl, raw_ptr, 
-                     sizeof(*cu_Fhkl) * linear_amplitudes.size(), cudaMemcpyHostToDevice);
+    hipMemcpy(cu_Fhkl, raw_ptr, 
+                     sizeof(*cu_Fhkl) * linear_amplitudes.size(), hipMemcpyHostToDevice);
 
     d_channel_Fhkl.push_back(cu_Fhkl);
   }
 
   void gpu_energy_channels::free_detail(){
-        cudaSetDevice(h_deviceID);
+        hipSetDevice(h_deviceID);
         for (int i_cu_ptr=0; i_cu_ptr < d_channel_Fhkl.size(); ++i_cu_ptr){
-          cudaFree(d_channel_Fhkl[i_cu_ptr]);
+          hipFree(d_channel_Fhkl[i_cu_ptr]);
         }
   }
 } // gpu
