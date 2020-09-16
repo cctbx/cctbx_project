@@ -1878,19 +1878,18 @@ class CCIBuilder(Builder):
     'cctbx_project',
     'dxtbx',
     'gui_resources',
+    'ccp4io',
     'ccp4io_adaptbx',
+    'annlib',
     'annlib_adaptbx',
     'tntbx',
-    'clipper'
+    'clipper',
+    'eigen',
   ]
   CODEBASES_EXTRA = []
   # Copy these sources from cci.lbl.gov
   HOT = [
-    'annlib',
     'scons',
-    'ccp4io',
-    'eigen',
-    #"libsvm",
   ]
   HOT_EXTRA = []
   # Configure for these cctbx packages
@@ -1919,7 +1918,9 @@ class MOLPROBITYBuilder(Builder):
     'boost',
     'cbflib',
     'cctbx_project',
+    'ccp4io',
     'ccp4io_adaptbx',
+    'annlib',
     'annlib_adaptbx',
     'tntbx',
   ]
@@ -1932,9 +1933,7 @@ class MOLPROBITYBuilder(Builder):
   ]
   # Copy these sources from cci.lbl.gov
   HOT = [
-    'annlib',
     'scons',
-    'ccp4io',
     #"libsvm",
   ]
   HOT_EXTRA = []
@@ -1965,8 +1964,11 @@ class PhaserBuilder(CCIBuilder):
   CODEBASES = [
     'boost',
     'cctbx_project',
+    'ccp4io',
     'ccp4io_adaptbx',
+    'annlib',
     'annlib_adaptbx',
+    'eigen',
     'tntbx',
     'phaser_regression',
     'phaser',
@@ -2048,10 +2050,13 @@ class CCTBXLiteBuilder(CCIBuilder):
     'boost',
     'cctbx_project',
     'gui_resources',
+    'ccp4io',
     'ccp4io_adaptbx',
+    'annlib',
     'annlib_adaptbx',
     'tntbx',
-    'clipper'
+    'clipper',
+    'eigen'
   ]
   # Configure for these cctbx packages
   LIBTBX = [
