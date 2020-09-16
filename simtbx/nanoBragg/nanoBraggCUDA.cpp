@@ -131,7 +131,7 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
 	float * max_I_y_reduction = (float*) calloc(total_pixels, sizeof(float));
 
 	/* clear memory (TODO: consider this being optional) */
-	memset(floatimage, 0, sizeof(typeof(*floatimage)) * total_pixels);
+	memset(floatimage, 0, sizeof(__typeof__(*floatimage)) * total_pixels);
 
 	/*create transfer arguments to device space*/
 	int cu_spixels = spixels, cu_fpixels = fpixels;
@@ -856,9 +856,9 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
 										F_cell = quickFcell_ldg(s_hkls, s_h_max, s_h_min, s_k_max, s_k_min, s_l_max, s_l_min, h0, k0, l0, s_h_range, s_k_range, s_l_range, default_F, Fhkl);
 									} else {
 										/* integer versions of nearest HKL indicies */
-										int h_interp[] = { 0.0, 0.0, 0.0, 0.0 };
-										int k_interp[] = { 0.0, 0.0, 0.0, 0.0 };
-										int l_interp[] = { 0.0, 0.0, 0.0, 0.0 };
+										int h_interp[] = { 0, 0, 0, 0 };
+										int k_interp[] = { 0, 0, 0, 0 };
+										int l_interp[] = { 0, 0, 0, 0};
 										h_interp[0] = h0_flr - 1;
 										h_interp[1] = h0_flr;
 										h_interp[2] = h0_flr + 1;
