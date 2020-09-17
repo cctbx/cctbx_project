@@ -5,7 +5,7 @@ import sys, os
 import datetime
 from time import time
 from libtbx.utils import Sorry, multi_out, null_out
-from libtbx import Auto, easy_pickle, group_args
+from libtbx import easy_pickle, group_args
 import libtbx.load_env
 from scitbx.array_family import flex
 from six.moves import cStringIO as StringIO
