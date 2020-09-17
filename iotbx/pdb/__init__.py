@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import zip
-ext = boost.python.import_ext("iotbx_pdb_ext")
+ext = bp.import_ext("iotbx_pdb_ext")
 from iotbx_pdb_ext import *
 
 import iotbx.pdb.records
@@ -1071,8 +1071,8 @@ class pdb_input_mixin(object):
       raise Sorry(str(e))
     return result
 
-boost.python.inject(ext.input, pdb_input_mixin)
-@boost.python.inject_into(ext.input)
+bp.inject(ext.input, pdb_input_mixin)
+@bp.inject_into(ext.input)
 class _():
 
   """

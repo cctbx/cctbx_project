@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
-ext = boost.python.import_ext("scitbx_graphics_utils_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("scitbx_graphics_utils_ext")
 from scitbx_graphics_utils_ext import *
 from cctbx.array_family import flex
 

@@ -53,19 +53,19 @@ from iotbx.bioinformatics import sequence
 from mmtbx.validation.sequence import master_phil as sequence_master_phil
 from mmtbx.validation.sequence import validation as sequence_validation
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 import six
 from six.moves import zip
 from six.moves import range
 
-ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+ext = bp.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx.rotamer.rotamer_eval import RotamerID
 
 from mmtbx.geometry_restraints import ramachandran
 
-ext2 = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
+ext2 = bp.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
 
 from six.moves import cStringIO as StringIO
@@ -381,6 +381,13 @@ class manager(object):
     """
     return self._pdb_interpretation_params
 
+  def processed(self):
+    fl = self._processed_pdb_file is not None or \
+         self.all_chain_proxies   is not None or \
+         self._xray_structure     is not None or \
+         self.restraints_manager  is not None
+    return fl
+
   def set_log(self, log):
     self.log = log
 
@@ -406,7 +413,6 @@ class manager(object):
       str(nchains),
       str(nres),
       str(sc))
-
 
   def set_stop_for_unknowns(self, value):
     self._stop_for_unknowns=value
@@ -441,6 +447,11 @@ class manager(object):
           setattr(full_params, attr, getattr(params, attr))
       self._pdb_interpretation_params = full_params
     self.unset_restraints_manager()
+
+  def set_nonbonded_weight(self, value):
+    params = self.get_current_pdb_interpretation_params()
+    params.pdb_interpretation.nonbonded_weight = value
+    self.set_pdb_interpretation_params(params = params)
 
   def check_consistency(self):
     """
@@ -639,8 +650,10 @@ class manager(object):
       Uses set_crystal_symmetry_and_sites_cart because sites_cart have to
       be replaced in either case.
     '''
-
-    self.set_crystal_symmetry_and_sites_cart(crystal_symmetry,None)
+    if(not self.processed()):
+      self._crystal_symmetry = crystal_symmetry
+    else:
+      self.set_crystal_symmetry_and_sites_cart(crystal_symmetry,None)
 
   def set_crystal_symmetry_and_sites_cart(self, crystal_symmetry, sites_cart):
 
@@ -910,6 +923,12 @@ class manager(object):
       return None
     else:
       return self.ias_manager.get_ias_selection()
+
+  def apply_selection_string(self, selection_string):
+    if not selection_string:
+      return
+    sel = self.selection(selection_string)
+    return self.select(sel)
 
   def selection(self, string, optional=True):
     if self.all_chain_proxies is None:
@@ -1638,6 +1657,12 @@ class manager(object):
     This returns ncs_restraints_group_list object
     """
     return self._ncs_groups
+
+  def update_ncs_operators(self):
+    ncs_groups = self.get_ncs_groups()
+    if(ncs_groups is not None):
+      ncs_groups.recalculate_ncs_transforms(
+        asu_site_cart = self.get_sites_cart())
 
   def unset_ncs_constraints_groups(self):
     self._ncs_groups=None
@@ -3435,14 +3460,14 @@ class manager(object):
     Return True if models are the same, False otherwise.
     XXX Can be endlessly fortified.
     """
-    a1 = self.get_hierarchy().atoms()
-    a2 = other.get_hierarchy().atoms()
-    f0 = a1.size() == a2.size()
-    if(not f0): return False
-    f1 = flex.max(flex.sqrt((a1.extract_xyz()-a2.extract_xyz()).dot()))<1.e-3
-    f2 = flex.max(flex.abs((a1.extract_occ()-a2.extract_occ())))<1.e-2
-    f3 = flex.max(flex.abs((a1.extract_b()-a2.extract_b())))<1.e-2
-    f = list(set([f0,f1,f2,f3]))
+    f1 = self.get_hierarchy().is_similar_hierarchy(other.get_hierarchy())
+    f2 = self.get_xray_structure().is_similar(other.get_xray_structure())
+    x1 = self.get_hierarchy().extract_xray_structure(
+      crystal_symmetry = self.crystal_symmetry())
+    x2 = other.get_hierarchy().extract_xray_structure(
+      crystal_symmetry = other.crystal_symmetry())
+    f3 = x1.is_similar(x2)
+    f = list(set([f1,f2,f3]))
     return len(f)==1 and f[0]
 
   def set_refine_individual_sites(self, selection = None):

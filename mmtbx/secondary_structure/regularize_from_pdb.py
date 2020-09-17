@@ -963,12 +963,12 @@ class connected_group:
         original_ca=apply_atom_selection(atom_selection,
           hierarchy=model_to_match.hierarchy)
         original_xyz=original_ca.atoms().extract_xyz()
-        original_sequence=get_sequence(original_ca)
+        original_sequence=get_sequence(original_ca,one_letter_code=False)
 
         atom_selection="name ca "
         replacement_ca=apply_atom_selection(atom_selection,hierarchy=h)
         replacement_xyz=replacement_ca.atoms().extract_xyz()
-        replacement_sequence=get_sequence(replacement_ca)
+        replacement_sequence=get_sequence(replacement_ca,one_letter_code=False)
 
         if original_xyz.size()==replacement_xyz.size():
           diffs.extend(original_xyz-replacement_xyz)

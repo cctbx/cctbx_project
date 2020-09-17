@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.sgtbx.direct_space_asu.cut_plane import cut
-from boost import rational
+from boost_adaptbx.boost import rational
 
 r1 = rational.int(1)
 

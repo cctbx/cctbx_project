@@ -969,3 +969,27 @@ def copy_and_zero_map_outside_bounds(map_data, bounds_info):
   new_map = new_map.as_1d()
   new_map.reshape(acc)
   return new_map
+
+def shift_and_box_model(model = None,
+    box_cushion = 5, shift_model = True):
+  '''
+    Shift a model near the origin and box around it
+  '''
+  from mmtbx.model import manager as model_manager
+  from scitbx.matrix import col
+  from cctbx import crystal
+  ph=model.get_hierarchy()
+  sites_cart=ph.atoms().extract_xyz()
+  if shift_model:
+    sites_cart=sites_cart-col(sites_cart.min())+col(
+      (box_cushion,box_cushion,box_cushion))
+
+  box_end=col(sites_cart.max())+col((box_cushion,box_cushion,box_cushion))
+  a,b,c=box_end
+  crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
+  ph.atoms().set_xyz(sites_cart)
+
+  return model_manager(
+     ph.as_pdb_input(),
+     crystal_symmetry = crystal_symmetry,
+     log = null_out())

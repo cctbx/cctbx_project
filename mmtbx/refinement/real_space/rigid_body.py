@@ -8,9 +8,9 @@ from scitbx import matrix
 from libtbx.test_utils import approx_equal
 from libtbx import adopt_init_args
 import sys
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
+cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
 from cctbx import miller
 import mmtbx.utils
 

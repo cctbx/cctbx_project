@@ -11,7 +11,7 @@ from cctbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
-from boost import rational
+from boost_adaptbx.boost import rational
 import random
 import copy
 import sys

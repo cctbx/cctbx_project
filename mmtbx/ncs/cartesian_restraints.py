@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import zip
-ext = boost.python.import_ext("mmtbx_ncs_cartesian_restraints_ext")
+ext = bp.import_ext("mmtbx_ncs_cartesian_restraints_ext")
 from mmtbx_ncs_cartesian_restraints_ext import *
 
 from cctbx import adptbx

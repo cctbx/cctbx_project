@@ -4,10 +4,10 @@ import mmtbx.f_model
 from cctbx import maptbx
 import mmtbx.masks
 import mmtbx.bulk_solvent
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import zip
 from six.moves import range
-asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 from mmtbx import map_tools
 import cctbx.miller
 from libtbx.test_utils import approx_equal

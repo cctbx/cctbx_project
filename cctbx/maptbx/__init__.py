@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
 import cctbx.sgtbx
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
 from six.moves import zip
-ext = boost.python.import_ext("cctbx_maptbx_ext")
+ext = bp.import_ext("cctbx_maptbx_ext")
 from cctbx_maptbx_ext import *
 
 from cctbx import crystal
@@ -28,7 +28,7 @@ import scitbx.math
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
 
-@boost.python.inject_into(connectivity)
+@bp.inject_into(connectivity)
 class _():
 
   def get_blobs_boundaries_tuples(self):
@@ -105,23 +105,14 @@ class d99(object):
     else:
       assert [map, crystal_symmetry].count(None) == 2
     self.d_spacings = self.f_map.d_spacings().data()
-    s = flex.sort_permutation(self.d_spacings)
-    self.d_spacings = self.d_spacings.select(s)
-    self.f_map = self.f_map.select(s)
     self.d_max, self.d_min = flex.max(self.d_spacings), flex.min(self.d_spacings)
     o = ext.d99(
       f          = self.f_map.data(),
       d_spacings = self.d_spacings,
       hkl        = self.f_map.indices(),
-      d_min      = self.d_min,
-      d_max      = self.d_max)
+      cutoff     = 0.99)
     self.result = group_args(
-      d9      = o.d_min_cc9(),
-      d99     = o.d_min_cc99(),
-      d999    = o.d_min_cc999(),
-      d9999   = o.d_min_cc9999(),
-      d99999  = o.d_min_cc99999(),
-      d999999 = o.d_min_cc999999())
+      d99 = o.d_min())
 
   def show(self, log):
     fmt = "%12.6f %8.6f"
@@ -310,7 +301,7 @@ class statistics(ext.statistics):
   def __init__(self, map):
     ext.statistics.__init__(self, map)
 
-@boost.python.inject_into(ext.statistics)
+@bp.inject_into(ext.statistics)
 class _():
 
   def show_summary(self, f = None, prefix = ""):
@@ -323,7 +314,7 @@ class _():
 use_space_group_symmetry = sgtbx.search_symmetry_flags(
   use_space_group_symmetry = True)
 
-@boost.python.inject_into(ext.histogram)
+@bp.inject_into(ext.histogram)
 class _():
 
   """

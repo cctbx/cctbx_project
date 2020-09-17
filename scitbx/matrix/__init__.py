@@ -172,7 +172,7 @@ class rec(object):
     return rec([float(e) for e in self.elems], self.n)
 
   def as_boost_rational(self):
-    from boost import rational
+    from boost_adaptbx.boost import rational
     return rec([rational.int(e) for e in self.elems], self.n)
 
   def as_int(self, rounding=True):
@@ -1493,7 +1493,7 @@ def exercise_1():
     assert isinstance(gv, flex.vec3_double)
     assert approx_equal(gv, [(441, 1063, 1685), (333, 802, 1271)])
   #
-  try: from boost import rational
+  try: from boost_adaptbx.boost import rational
   except ImportError: pass
   else:
     assert approx_equal(col((rational.int(3,4),2,1.5)).as_float(),(0.75,2,1.5))

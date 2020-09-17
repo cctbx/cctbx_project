@@ -316,19 +316,12 @@ namespace {
           af::const_ref<std::complex<double> > const&,
           af::const_ref<double> const&,
           af::const_ref<miller::index<> > const&,
-          double const&,
           double const& >(
                     (arg("f"),
                      arg("d_spacings"),
                      arg("hkl"),
-                     arg("d_min"),
-                     arg("d_max"))))
-        .def("d_min_cc9",      &w_t::d_min_cc9)
-        .def("d_min_cc99",     &w_t::d_min_cc99)
-        .def("d_min_cc999",    &w_t::d_min_cc999)
-        .def("d_min_cc9999",   &w_t::d_min_cc9999)
-        .def("d_min_cc99999",  &w_t::d_min_cc99999)
-        .def("d_min_cc999999", &w_t::d_min_cc999999)
+                     arg("cutoff"))))
+        .def("d_min", &w_t::d_min)
       ;
     }
 

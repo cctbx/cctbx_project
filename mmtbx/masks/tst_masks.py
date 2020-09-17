@@ -11,8 +11,8 @@ from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import math
 import sys
-#import boost.python
-#ext = boost.python.import_ext("mmtbx_masks_ext")
+#import boost_adaptbx.boost.python as bp
+#ext = bp.import_ext("mmtbx_masks_ext")
 #from mmtbx_masks_ext import *
 from cctbx.masks import around_atoms
 import mmtbx.masks

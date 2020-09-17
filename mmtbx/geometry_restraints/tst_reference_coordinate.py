@@ -131,8 +131,8 @@ def exercise_1():
 
   proxies = reference.add_coordinate_restraints(sites_cart=sites_cart)
   assert proxies.size() == 29, "expected 29, got %d" % proxies.size()
-  import boost.python
-  ext = boost.python.import_ext("mmtbx_reference_coordinate_ext")
+  import boost_adaptbx.boost.python as bp
+  ext = bp.import_ext("mmtbx_reference_coordinate_ext")
   grads = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
   residual = ext.reference_coordinate_residual_sum(
       sites_cart=sites_cart,

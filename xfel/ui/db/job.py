@@ -229,8 +229,10 @@ class IndexingJob(Job):
         if trial_params.input.known_orientations_folder is not None:
           trial_params.input.known_orientations_folder = trial_params.input.known_orientations_folder.format(run=self.run.run)
       else:
-        trial_params.spotfinder.lookup.mask = self.rungroup.untrusted_pixel_mask_path
-        trial_params.integration.lookup.mask = self.rungroup.untrusted_pixel_mask_path
+        if trial_params.spotfinder.lookup.mask is None:
+          trial_params.spotfinder.lookup.mask = self.rungroup.untrusted_pixel_mask_path
+        if trial_params.integration.lookup.mask is None:
+          trial_params.integration.lookup.mask = self.rungroup.untrusted_pixel_mask_path
 
         if self.app.params.facility.name == 'lcls':
           locator_path = os.path.join(configs_dir, identifier_string + ".loc")
@@ -851,22 +853,17 @@ def submit_all_jobs(app):
       task = dataset.tasks[global_task[1]]
       latest_version = dataset.latest_version
       if latest_version is None:
-        jobs = global_tasks[global_task] # first version
         next_version = 0
-        global_task_submitted = False
       else:
         latest_version_jobs = latest_version.jobs
-        global_task_submitted = any([j.task_id == task.id for j in latest_version_jobs])
-
         latest_verion_job_ids = [j.id for j in latest_version_jobs if j.task_id != task.id]
-        jobs = [j for j in global_tasks[global_task] if j.id not in latest_verion_job_ids]
+        new_jobs = [j for j in global_tasks[global_task] if j.id not in latest_verion_job_ids]
+        if not new_jobs: continue
         next_version = latest_version.version + 1
-      if not jobs and global_task_submitted: continue
 
-      if not global_task_submitted:
-        latest_version = app.create_dataset_version(dataset_id = dataset.id, version=next_version)
-        for job in global_tasks[global_task]:
-          latest_version.add_job(job)
+      latest_version = app.create_dataset_version(dataset_id = dataset.id, version=next_version)
+      for job in global_tasks[global_task]:
+        latest_version.add_job(job)
 
       j = JobFactory.from_args(app,
                                task_id = task.id,

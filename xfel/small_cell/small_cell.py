@@ -891,7 +891,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
       crystal = ori_to_crystal(ori, horiz_phil.small_cell.spacegroup)
       experiments = ExperimentListFactory.from_imageset_and_crystal(imageset, crystal)
       reflections['id'] = flex.int(len(reflections), -1)
-      AssignIndicesGlobal()(reflections, experiments)
+      AssignIndicesGlobal(tolerance=0.1)(reflections, experiments)
       reflections['miller_index_asymmetric'] = copy.deepcopy(reflections['miller_index'])
       miller.map_to_asu(crystal.get_space_group().type(), True, reflections['miller_index_asymmetric'])
       ref_predictor = ExperimentsPredictorFactory.from_experiments(experiments, force_stills=experiments.all_stills())
@@ -1087,8 +1087,8 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
         refls = flex.reflection_table()
         refls['id'] = flex.int(len(indexed_hkls), 0)
         refls['panel'] = mapped_panels
-        refls['integration.sum.value'] = indexed_intensities
-        refls['integration.sum.variance'] = indexed_sigmas**2
+        refls['intensity.sum.value'] = indexed_intensities
+        refls['intensity.sum.variance'] = indexed_sigmas**2
         refls['xyzobs.px.value'] = xyzobs
         refls['xyzobs.px.variance'] = xyzvar
         refls['miller_index'] = indexed_hkls

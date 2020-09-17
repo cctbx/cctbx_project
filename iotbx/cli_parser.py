@@ -180,7 +180,10 @@ class CCTBXParser(ParserBase):
     # 1) ProgramTemplate.program_name
     # 2) LIBTBX_DISPATCHER_NAME
     # 3) Calling command
-    self.prog = os.getenv('LIBTBX_DISPATCHER_NAME', sys.argv[0])
+    if sys.argv:
+      self.prog = os.getenv('LIBTBX_DISPATCHER_NAME', sys.argv[0])
+    else:
+      self.prog = 'unknown.unknown'
     if program_class.program_name is not None:
       self.prog = program_class.program_name
     self.prefix = self.prog.split('.')[-1]

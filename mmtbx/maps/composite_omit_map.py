@@ -11,10 +11,10 @@ from cctbx import miller
 from cctbx import maptbx
 import cctbx.miller
 from scitbx.array_family import flex
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import zip
 from six.moves import range
-asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 from libtbx import slots_getstate_setstate, \
   slots_getstate_setstate_default_initializer
 from libtbx.utils import null_out

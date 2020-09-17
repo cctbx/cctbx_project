@@ -275,8 +275,7 @@ class geometry(object):
     res = self.result()
     a,b,c,d,p,n = res.angle, res.bond, res.chirality, res.dihedral, \
       res.planarity, res.nonbonded
-    result = "%s" % prefix
-    result += """
+    result = """
 %sGeometry Restraints Library: %s
 %sDeviations from Ideal Values.
 %s  Bond      : %s

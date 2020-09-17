@@ -10,10 +10,10 @@ from libtbx.utils import user_plus_sys_time
 from libtbx import adopt_init_args
 import sys, math
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
 from six.moves import zip
-ext = boost.python.import_ext("cctbx_emma_ext")
+ext = bp.import_ext("cctbx_emma_ext")
 
 def sgtbx_rt_mx_as_matrix_rt(s):
   return matrix.rt((s.r().as_double(), s.t().as_double()))

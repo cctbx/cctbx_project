@@ -33,8 +33,6 @@ namespace {
   namespace float_bits {
     static const unsigned sign = 0x80000000U;
     static const unsigned expo = 0x7F800000U;
-    static const unsigned mant = 0x007FFFFFU;
-    static const unsigned expo_size = 8U;
     static const unsigned mant_size = 23U;
     static const int expo_min = -127;
     static const int expo_max = 127;

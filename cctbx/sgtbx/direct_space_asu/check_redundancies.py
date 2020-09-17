@@ -6,7 +6,7 @@ from scitbx import matrix
 from scitbx.python_utils import dicts
 from scitbx.python_utils import command_line
 from libtbx import easy_run
-from boost import rational
+from boost_adaptbx.boost import rational
 import sys, os
 from libtbx.math_utils import cmp
 from six.moves import range

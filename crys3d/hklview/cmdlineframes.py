@@ -79,14 +79,17 @@ from cctbx import crystal
 
 xs = crystal.symmetry(unit_cell=(50,50,40, 90,90,120), space_group_symbol="P3 1")
 mi = flex.miller_index([
-  (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2), (1, 0, 2), (-1, 1, -2), (2, -2, -2), (-2, 1, 0) , (1, 0, -2), (0, 0, 2)
+  (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2), (1, 0, 2), (-1, 1, -2), (2, -2, -2), (-2, 1, 0) , (1, 0, -2), (0, 0, 2),
+  (-1,-2,3), (0,0,4), (1, 2, -3), (0, -1, 2), (-1, 0, 2), (-1, 1, 2)
 ])
-ma = miller.array( miller.set(xs, mi) )
+
 ma1 = miller.array( miller.set(xs, mi), flex.double( [
- 11.205, 6.353, 26.167, 14.94, 2.42, 24.921, 16.185, 11.798, 21.183, 4.98
+ 11.205, 6.353, 26.167, 14.94, 2.42, 24.921, 16.185, 11.798, 21.183, 4.98,
+ 456.5, 654.36, -78.234, 369.78, 672.899, 90.316
 ] ),
   sigmas=flex.double( [
-  13.695, 6.353, 24.921, 6.225, 11.193, 26.167, 8.715, 4.538, 27.413, 21.165
+  13.695, 6.353, 24.921, 6.225, 11.193, 26.167, 8.715, 4.538, 27.413, 21.165,
+  36.3, 9.123, 76.37, 11.29, 56.14, 78.9
 ] )
 ).set_observation_type( observation_types.intensity() )
 ma1.set_info(miller.array_info(source="artificial file", labels=["MyI", "SigMyI"]))
@@ -121,7 +124,6 @@ ma5 = miller.array(miller.set(xs, mi5), data=flex.double( [12.429, 38.635, -3.32
 ma5.set_info(miller.array_info(source="artificial file", labels=["BarFoo"]))
 
 
-
 mtz1 = ma1.as_mtz_dataset(column_root_label="I")
 mtz1.add_miller_array(ma2, column_root_label="MyMap")
 mtz1.add_miller_array(ma3, column_root_label="Oink")
@@ -131,6 +133,7 @@ mtz1.add_miller_array(mafom, column_root_label="FOM")
 mtz1.set_wavelength(1.2)
 mtz1.set_name("MyTestData")
 mtz1.mtz_object().write("mymtz.mtz")
+
 
 
 from crys3d.hklview import cmdlineframes
@@ -844,6 +847,7 @@ class HKLViewFrame() :
     self.idx_data = hkllst + dreslst + datalst
     self.mprint("Sending table data...", verbose=0)
     mydict = { "tabulate_miller_array": self.idx_data }
+    self.params.NGL_HKLviewer.tabulate_miller_array_ids = "[]" # to allow reopening a closed window again
     self.SendInfoToGUI(mydict)
 
 

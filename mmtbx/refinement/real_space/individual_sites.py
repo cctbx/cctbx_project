@@ -410,6 +410,7 @@ class minimize_wrapper_with_map():
       number_of_cycles=1,
       cycles_to_converge=2,
       min_mode='simple_cycles',
+      resolution=3.,
       log=None):
 
     # completely new way of doing this. using RSR macro-cycle
@@ -421,24 +422,22 @@ class minimize_wrapper_with_map():
       print("  Minimizing...", file=log)
     from phenix.refinement.macro_cycle_real_space import run as rsr_mc_run
     import scitbx.math
-    from phenix.command_line.real_space_refine import extract_rigid_body_selections
-    from phenix.command_line.real_space_refine import master_params as rsr_master_params
+    from phenix.refinement import rsr
+    rsr_master_params = rsr.master_params_str
+    import iotbx.phil
+    rsr_master_params = iotbx.phil.parse(rsr_master_params, process_includes=True)
     from mmtbx.refinement.real_space.utils import target_map as rsr_target_map
     import mmtbx.idealized_aa_residues.rotamer_manager
     sin_cos_table = scitbx.math.sin_cos_table(n=10000)
-    params = rsr_master_params().extract()
+    params = rsr_master_params.extract()
     params.pdb_interpretation = model._pdb_interpretation_params.pdb_interpretation
     params.refinement.run = "minimization_global+local_grid_search"
     params.refine_ncs_operators=False
-    params.output.write_all_states = True
     params.refinement.macro_cycles = number_of_cycles
+    params.resolution = resolution
     rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load(
         rotamers = "favored")
-
-    rigid_body_selections = extract_rigid_body_selections(
-        params        = params,
-        ncs_groups    = model.get_ncs_groups(),
-        pdb_hierarchy = model.get_hierarchy())
+    rigid_body_selections = [] # no RBR here
     rsr_tm = rsr_target_map(
         map_data = target_map,
         xray_structure = model.get_xray_structure(),

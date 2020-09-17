@@ -270,6 +270,18 @@ def test_01():
   assert ncs_obj.is_similar_ncs_object(another_mm.ncs_object())
   assert new_mm.is_similar(another_mm)
 
+  # Get resolution
+  assert approx_equal(new_mm.resolution(force=True, method='d99') ,
+    3.73886)
+  assert approx_equal(new_mm.resolution(force=True, method='d_min') ,
+    0.888888888889)
+  assert approx_equal(new_mm.resolution(force=True, method='d9') ,
+    0.888888888889)
+  assert approx_equal(new_mm.resolution(force=True, method='d99') ,
+    3.73886)
+  assert approx_equal(new_mm.resolution() ,
+    3.73886)
+
   # Adjust model and ncs symmetry to match this map
   assert model.shift_cart()  is None
   new_mm.set_model_symmetries_and_shift_cart_to_match_map(model)
@@ -329,7 +341,19 @@ def test_01():
    assert approx_equal(cc,
       mam.map_map_cc(map_id='map_manager',other_map_id=other_id) )
 
+# this test requires the solve_resolve module
+def test_02():
+
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  data_d7 = os.path.join(data_dir, 'data', 'D7.ccp4')
+
+  # find_separated atoms in a map
+  dm = DataManager()
+  mm = dm.get_real_map(data_d7)
+  sites_cart = mm.trace_atoms_in_map(dist_min=1,n_atoms=10)
+  assert sites_cart.size() == 10 # Note: zero if not available
 
 if (__name__  ==  '__main__'):
   test_01()
+  test_02()
   print ("OK")

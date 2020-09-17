@@ -232,7 +232,7 @@ struct reflection
                                       af::const_ref<scalar_t> const &beta,
                                       int const off_diag=0)
   {
-    int m = a.n_rows(), n = a.n_columns();
+    int m = a.n_rows();
     SCITBX_ASSERT(q.n_rows() == m)(q.n_rows())(m); // A = Q x ...
     q.set_identity(false); // Q may be rectangular
     for (int j=beta.size()-1; j >= 0; --j) {
@@ -309,7 +309,7 @@ struct reflection
                                    int reflection_order,
                                    int const off_diag=0)
   {
-    int m = a.n_rows(), n = a.n_columns();
+    int n = a.n_columns();
     SCITBX_ASSERT(   reflection_order == product_in_row_order
                   || reflection_order == product_in_reverse_row_order);
     switch (reflection_order) {

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
-ext = boost.python.import_ext("prime_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("prime_ext")
 from prime_ext import *
 
 prime_description = ''' The Post-RefInement and MErging (PRIME) program for

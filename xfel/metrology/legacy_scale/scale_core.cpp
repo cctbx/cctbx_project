@@ -175,14 +175,12 @@ xfel_legacy::algorithm::mark5_iteration::compute_target(
     double* rotation_gradients    = &(_P["tile_rot"].gradients.ref()[0]);
     double* frame_trans_gradients = &(_P["frame_trans"].gradients.ref()[0]);
     double* frame_dist_gradients  = &(_P["frame_distance"].gradients.ref()[0]);
-    double* tile_dist_gradients   = &(_P["tile_distance"].gradients.ref()[0]);
     double* frame_rotz_gradients  = &(_P["frame_rotz"].gradients.ref()[0]);
     double* half_mos_gradients    = &(_P["half_mosaicity_rad"].gradients.ref()[0]);
     double* translation_curvatures= &(_P["tile_trans"].curvatures.ref()[0]);
     double* rotation_curvatures   = &(_P["tile_rot"].curvatures.ref()[0]);
     double* frame_trans_curvatures= &(_P["frame_trans"].curvatures.ref()[0]);
     double* frame_dist_curvatures = &(_P["frame_distance"].curvatures.ref()[0]);
-    double* tile_dist_curvatures  = &(_P["tile_distance"].curvatures.ref()[0]);
     double* frame_rotz_curvatures = &(_P["frame_rotz"].curvatures.ref()[0]);
     double* half_mos_curvatures   = &(_P["half_mosaicity_rad"].curvatures.ref()[0]);
 
@@ -239,7 +237,6 @@ xfel_legacy::algorithm::mark5_iteration::compute_target(
           delx * rotated_part_r_c_y + dely * rotated_part_r_c_x
         );//  SOMETHING IS ROTTEN IN DENMARK
       }
-      //tile_dist_gradients[itile/2] += 2.*(delx * rotated_part_r_c_y + dely * rotated_part_r_c_x);
 
       rotation_gradients[itile] += scitbx::constants::pi_180 * 2.* (
         delx * partial_partial_theta_x +
@@ -256,8 +253,6 @@ xfel_legacy::algorithm::mark5_iteration::compute_target(
         + rotated_part_r_c_y * rotated_part_r_c_y
         );
       }
-      //tile_dist_curvatures[itile/2] += 2 * (
-      //rotated_part_r_c_x * rotated_part_r_c_x + rotated_part_r_c_y * rotated_part_r_c_y);
 
       rotation_curvatures[itile] += scitbx::constants::pi_180 *
                                     scitbx::constants::pi_180 * 2. * (

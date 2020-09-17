@@ -198,6 +198,7 @@ general_tests = [
   "$D/regression/tst_real_space_correlation.py",
   "$D/regression/tst_examples.py",
   "$D/regression/tst_sort_hetatms.py",
+  "$D/regression/tst_schrodinger_interface.py",
   # real-space tools
   "$D/refinement/real_space/tst_aa_residue_axes_and_clusters.py",
   "$D/refinement/real_space/tst_fit_residue_0.py",

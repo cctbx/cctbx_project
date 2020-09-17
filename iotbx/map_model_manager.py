@@ -11,6 +11,25 @@ from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
 from copy import deepcopy
 
+# Reserved phil scope for MapModelManager
+map_model_phil_str = '''
+map_model {
+  full_map = None
+    .type = path
+    .help = Input full map file
+    .short_caption = Full map filename
+  half_map = None
+    .type = path
+    .multiple = True
+    .help = Input half map files
+    .short_caption = Half map filenames
+  model = None
+    .type = path
+    .help = Input model file
+    .short_caption = Model filename
+}
+'''
+
 class map_model_manager(object):
 
   '''
@@ -47,15 +66,15 @@ class map_model_manager(object):
     Note:  mam.map_manager() contains mam.ncs_object(), so it is not necessary
     to keep both.
 
-    Note: model objects may contain internal ncs objects.  These are separate from
-    those in the map_managers and separate from ncs_object in the call to
+    Note: model objects may contain internal ncs objects.  These are separate
+    from those in the map_managers and separate from ncs_object in the call to
     map_model_manager.
 
     The ncs_object describes the NCS of the map and is a property of the map. It
     must be shared by all maps
 
-    The model ncs objects describe the NCS of the individual model. They can differ
-    between models and between models and maps.
+    The model ncs objects describe the NCS of the individual model. They can
+    differ between models and between models and maps.
 
     Note: set wrapping of all maps to match map_manager if they differ. Set
     all to be wrapping if it is set
@@ -98,12 +117,15 @@ class map_model_manager(object):
     self._warning_message = None
 
 
+
+
     # If no map_manager now, do not do anything and make sure there
-    #    was nothing else supplied
+    #    was nothing else supplied except possibly a model
 
     if (not map_manager) and (not map_manager_1) and (not map_manager_2):
       assert not extra_map_manager_list
-      assert not ncs_object and not model
+      assert not ncs_object
+      self._model_dict = {'model': model}
       return  # do not do anything
 
     # Now make sure we have map manager or half maps at least
@@ -445,9 +467,7 @@ class map_model_manager(object):
   def remove_model_by_id(self, model_id = 'extra'):
     '''
      Remove this model
-     Note: you cannot remove 'model' ... you can only replace it
    '''
-    assert map_id != 'model'
     del self._model_dict[map_id]
 
   def map_managers(self):
@@ -509,6 +529,42 @@ class map_model_manager(object):
       return self.map_manager().ncs_object()
     else:
       return None
+
+  def experiment_type(self):
+    if self.map_manager():
+      return self.map_manager().experiment_type()
+    else:
+      return None
+
+  def scattering_table(self):
+    if self.map_manager():
+      return self.map_manager().scattering_table()
+    else:
+      return None
+
+  def resolution(self):
+    if self.map_manager():
+      return self.map_manager().resolution()
+    else:
+      return None
+
+  def set_resolution(self, resolution):
+    ''' Set nominal resolution '''
+    # Must already have a map_manager
+    assert self.map_manager() is not None
+    self.map_manager().set_resolution(resolution)
+
+  def set_scattering_table(self, scattering_table):
+    ''' Set nominal scattering_table '''
+    # Must already have a map_manager
+    assert self.map_manager() is not None
+    self.map_manager().set_scattering_table(scattering_table)
+
+  def set_experiment_type(self, experiment_type):
+    ''' Set nominal experiment_type '''
+    # Must already have a map_manager
+    assert self.map_manager() is not None
+    self.map_manager().set_experiment_type(experiment_type)
 
   def _get_map_coeffs_list_from_id_list(self, id_list,
     mask_id = None):
@@ -586,8 +642,8 @@ class map_model_manager(object):
     assert isinstance(model, mmtbx.model.manager)
     if not overwrite:
       assert not model_id in self.model_id_list() # must not duplicate
-    assert self.map_manager().is_compatible_model(model)
-
+    if not self.map_manager().is_compatible_model(model): # needs shifting
+      self.shift_any_model_to_match(model)
     self._model_dict[model_id] = model
 
   def add_map_manager_by_id(self, map_manager, map_id,
@@ -687,6 +743,8 @@ class map_model_manager(object):
     for id in all_model_id_list:
       if id != model_id:
         other_model_id_list.append(id)
+    if not model_id in all_model_id_list:
+      model_id = None
 
     return group_args(model_id=model_id,
          other_model_id_list=other_model_id_list)
@@ -703,8 +761,9 @@ class map_model_manager(object):
       mm.initialize_map_data(map_value = map_value)
 
   # Methods for boxing maps (changing the dimensions of the maps)
-  # These methods change the contents of the current object (they do not
+  # box_all...methods change the contents of the current object (they do not
   #  create a new object)
+  # extract_all... methods make a new object
 
   def extract_all_maps_with_bounds(self,
      lower_bounds,
@@ -990,7 +1049,7 @@ class map_model_manager(object):
       extract_box = extract_box)
 
   def extract_all_maps_around_unique(self,
-     resolution,
+     resolution = None,
      solvent_content = None,
      sequence = None,
      molecular_mass = None,
@@ -1007,7 +1066,7 @@ class map_model_manager(object):
       Runs box_all_maps_around_mask_and_shift_origin with extract_box=True
     '''
     return self.box_all_maps_around_unique_and_shift_origin(
-     resolution,
+     resolution = resolution,
      solvent_content = solvent_content,
      sequence = sequence,
      molecular_mass = molecular_mass,
@@ -1022,7 +1081,7 @@ class map_model_manager(object):
      extract_box = True)
 
   def box_all_maps_around_unique_and_shift_origin(self,
-     resolution,
+     resolution = None,
      solvent_content = None,
      sequence = None,
      molecular_mass = None,
@@ -1047,7 +1106,8 @@ class map_model_manager(object):
        NOTE: This changes the gridding and shift_cart of the maps and model
        and masks the map
 
-       Normally supply just resolution and sequence; other options match
+       Normally supply just sequence; resolution will be taken from
+       map_manager resolution if present.  other options match
        all possible ways that segment_and_split_map can estimate solvent_content
 
        Must supply one of (sequence, solvent_content, molecular_mass)
@@ -1078,6 +1138,8 @@ class map_model_manager(object):
     map_info=self._get_map_info()
     map_manager = self._map_dict[map_info.map_id]
     assert isinstance(map_manager, iotbx.map_manager.map_manager)
+    if not resolution:
+      resolution = self.resolution()
     assert resolution is not None
     assert (sequence, solvent_content, molecular_mass).count(None) == 2
 
@@ -1184,17 +1246,15 @@ class map_model_manager(object):
       Optional: radius around atoms for masking
       Optional: soft mask  (default = True)
         Radius will be soft_mask_radius
-        (default radius is resolution calculated from gridding)
+        (default radius is self.resolution() or resolution calculated
+          from gridding)
         If soft mask is set, mask_atoms_atom_radius increased by
 
       Optionally use any mask specified by mask_id
     '''
     if soft_mask:
       if not soft_mask_radius:
-        from cctbx.maptbx import d_min_from_map
-        soft_mask_radius = d_min_from_map(
-          map_data=self.map_manager().map_data(),
-          unit_cell=self.map_manager().crystal_symmetry().unit_cell())
+        soft_mask_radius = self.resolution()
     self.create_mask_around_atoms(
          soft_mask = soft_mask,
          soft_mask_radius = soft_mask_radius,
@@ -1325,17 +1385,15 @@ class map_model_manager(object):
       Normally follow with apply_mask_to_map or apply_mask_to_maps
 
       Optional: radius around edge for masking
-        (default radius is resolution calculated from gridding)
+        (default radius is self.resolution() or resolution calculated
+         from gridding)
 
       Generates new entry in map_manager dictionary with id of
       mask_id (default='mask') replacing any existing entry with that id
     '''
 
     if not soft_mask_radius:
-      from cctbx.maptbx import d_min_from_map
-      soft_mask_radius = d_min_from_map(
-         map_data=self.map_manager().map_data(),
-         unit_cell=self.map_manager().crystal_symmetry().unit_cell())
+      soft_mask_radius = self.resolution()
 
     from cctbx.maptbx.mask import create_mask_around_edges
     cm = create_mask_around_edges(map_manager = self.map_manager(),
@@ -1359,7 +1417,8 @@ class map_model_manager(object):
       Optional: radius around atoms for masking
       Optional: soft mask  (default = True)
         Radius will be soft_mask_radius
-        (default radius is resolution calculated from gridding)
+        (default radius is self.resolution() or resolution calculated
+           from gridding)
         If soft mask is set, mask_atoms_atom_radius increased by
           soft_mask_radius
 
@@ -1369,10 +1428,7 @@ class map_model_manager(object):
 
     if soft_mask:
       if not soft_mask_radius:
-        from cctbx.maptbx import d_min_from_map
-        soft_mask_radius = d_min_from_map(
-           map_data=self.map_manager().map_data(),
-           unit_cell=self.map_manager().crystal_symmetry().unit_cell())
+        soft_mask_radius = self.resolution()
       mask_atoms_atom_radius += soft_mask_radius
 
     from cctbx.maptbx.mask import create_mask_around_atoms
@@ -1416,6 +1472,9 @@ class map_model_manager(object):
        isinstance(soft_mask_radius, (int, float))
     assert isinstance(soft_mask, bool)
 
+    if not resolution:
+      resolution = self.resolution()
+
     map_manager = self.get_map_manager_by_id(map_id)
     assert map_manager is not None # Need a map to create mask around density
     from cctbx.maptbx.mask import create_mask_around_density
@@ -1425,10 +1484,10 @@ class map_model_manager(object):
 
     if soft_mask: # Make the create_mask object contain a soft mask
       if not soft_mask_radius:
-        from cctbx.maptbx import d_min_from_map
-        soft_mask_radius = d_min_from_map(
-           map_data=map_manager.map_data(),
-           unit_cell=map_manager.crystal_symmetry().unit_cell())
+        if resolution:
+          soft_mask_radius = resolution
+        else:
+          soft_mask_radius = self.resolution()
       cm.soft_mask(soft_mask_radius = soft_mask_radius)
 
     # Put the mask in map_dict id'ed with mask_id
@@ -1450,6 +1509,9 @@ class map_model_manager(object):
 
     '''
 
+    if not self.model():
+      return  # nothing to do
+
     # Get the imported hierarchy, shifted to match location of working one
     ph_imported_unique = self.get_model_from_other(other,
        other_model_id = other_model_id).get_hierarchy()
@@ -1470,6 +1532,23 @@ class map_model_manager(object):
 
     # And propagate these sites to rest of molecule with internal ncs
     model.set_sites_cart_from_hierarchy(multiply_ncs=True)
+
+  def shift_any_model_to_match(self, model):
+    '''
+    Take any model and shift it to match the working shift_cart
+    Also sets crystal_symmetry.
+    Changes model in place
+
+     Parameters:  model
+    '''
+    assert isinstance(model, mmtbx.model.manager)
+    if not model.shift_cart():
+      model.set_shift_cart((0, 0, 0))
+    coordinate_shift = tuple(
+      [s - o for s,o in zip(self.shift_cart(),model.shift_cart())])
+    model.shift_model_and_set_crystal_symmetry(
+        shift_cart = coordinate_shift,
+        crystal_symmetry=self.crystal_symmetry())
 
   def get_model_from_other(self, other,
      other_model_id = 'model'):
@@ -1562,6 +1641,37 @@ class map_model_manager(object):
       map_id = map_id)
 
 
+  # Methods for modifying model or map
+
+  def remove_model_outside_map(self, boundary, return_as_new_model=False):
+    '''
+     Remove all the atoms in the model that are well outside the map (more
+     than boundary)
+    '''
+    assert boundary is not None
+
+    if not self.model():
+      return
+
+    sites_frac = self.model().get_sites_frac()
+    bf_a, bf_b, bf_c = self.model().crystal_symmetry().unit_cell(
+        ).fractionalize((boundary, boundary, boundary))
+    ub_a, ub_b, ub_c  = (1+bf_a, 1+bf_b, 1+bf_c)
+    x,y,z = sites_frac.parts()
+    s = (
+         (x < -bf_a ) |
+         (y < -bf_b) |
+         (z < -bf_c) |
+         (x > ub_a ) |
+         (y > ub_b) |
+         (z > ub_c)
+         )
+    if return_as_new_model:
+      return self.model().select(~s)
+    else:  # usual
+      self.add_model_by_id( self.model().select(~s), 'model')
+
+
   # Methods for comparing maps, models and calculating FSC values
 
   def map_map_fsc(self,
@@ -1581,6 +1691,8 @@ class map_model_manager(object):
 
     '''
 
+    if not resolution:
+      resolution = self.resolution()
     assert isinstance(resolution, (int, float))
 
     f_map_1, f_map_2 = self._get_map_coeffs_list_from_id_list(
@@ -1594,7 +1706,6 @@ class map_model_manager(object):
         other = f_map_2, bin_width = bin_width, fsc_cutoff = fsc_cutoff)
 
     return fsc_curve
-
 
   def map_map_cc(self,
       map_id = 'map_manager_1',
@@ -1641,34 +1752,39 @@ class map_model_manager(object):
 
 
   def map_model_cc(self,
-      resolution,
+      resolution = None,
       map_id = 'map_manager',
       model_id = 'model',
       selection_string = None,
-      atom_radius = None):
+      model = None,
+      ):
 
-    model = self.get_model_by_id(model_id)
+    if not model:
+      model = self.get_model_by_id(model_id)
+    if not model:
+      return None
     map_manager= self.get_map_manager_by_id(map_id)
     assert model and map_manager
+    if not resolution:
+      resolution = self.resolution()
     assert resolution is not None
 
     if selection_string:
       sel = model.selection(selection_string)
       model = model.select(sel)
 
-    from mmtbx.maps.mtriage import get_atom_radius
-    atom_radius = get_atom_radius(
-      xray_structure = model.get_xray_structure(),
-      resolution     = resolution,
-      radius         = atom_radius)
+    import mmtbx.maps.correlation
+    five_cc = mmtbx.maps.correlation.five_cc(
+      map               = map_manager.map_data(),
+      xray_structure    = model.get_xray_structure(),
+      d_min             = resolution,
+      compute_cc_mask   = True,
+      compute_cc_box    = False,
+      compute_cc_image  = False,
+      compute_cc_volume = False,
+      compute_cc_peaks  = False,)
 
-    from mmtbx.maps.correlation import from_map_and_xray_structure_or_fmodel
-    cc_calculator = from_map_and_xray_structure_or_fmodel(
-      xray_structure = model.get_xray_structure(),
-      map_data       = map_manager.map_data(),
-      d_min          = resolution)
-    cc = cc_calculator.cc(atom_radius = atom_radius)
-    return cc
+    return five_cc.result.cc_mask
 
   # General methods
 
@@ -1776,7 +1892,7 @@ class map_model_manager(object):
   #  Convenience methods
 
   def generate_map(self,
-      d_min = 3,
+      d_min = None,
       origin_shift_grid_units = None,
       file_name = None,
       model = None,
@@ -1827,6 +1943,17 @@ class map_model_manager(object):
            zero at low resolution to fractional_error at d_min. Can
            be more than 1.
     '''
+
+
+    # Set the resolution now if not already set
+    if d_min and self.map_manager() and (not self.resolution()):
+      self.set_resolution(d_min)
+
+    # Get some value for resolution
+    if not d_min:
+      d_min = self.resolution()
+    if not d_min:
+      d_min = 3  # default
 
 
     self._print("\nGenerating new map data\n")
@@ -1919,12 +2046,39 @@ class map_model_manager(object):
     return new_mmm
 
 
+  def model_building(self,
+     nproc = 1,
+     soft_zero_boundary_mask = True,
+     soft_zero_boundary_mask_radius = None,
+     ):
+    '''
+     Return this object as a local_model_building object
+     The model-building object has pointers to model and map_manager, not
+       copies
+      resolution is resolution for Fourier coefficients
+      is_xray_map is True for x-ray map
+      nproc is number of processors to use
+    '''
+
+    resolution = self.resolution()
+    assert resolution is not None
+
+    from phenix.model_building import local_model_building
+    return local_model_building(
+     map_model_manager = self, # map_model manager
+     soft_zero_boundary_mask = soft_zero_boundary_mask,
+     soft_zero_boundary_mask_radius = soft_zero_boundary_mask_radius,
+     nproc= nproc,
+    )
+
   def as_map_model_manager(self):
     '''
       Return this object (allows using .as_map_model_manager() on both
       map_model_manager objects and others including box.around_model() etc.
+
     '''
     return self
+
 
   def as_match_map_model_ncs(self):
     '''
@@ -2097,6 +2251,7 @@ class match_map_model_ncs(object):
     else:
       return None
 
+
   def add_map_manager(self, map_manager):
     # Add a map and make sure its symmetry is similar to others
     assert self._map_manager is None
@@ -2137,7 +2292,7 @@ class match_map_model_ncs(object):
 
   def add_ncs_object(self, ncs_object):
     # Add an NCS object to map_manager, overwriting any ncs object that is there
-    # Must already have a map_manager
+    # Must already have a map_manager. Ncs object must match shift_cart already
 
     assert self.map_manager() is not None
     self.map_manager().set_ncs_object(ncs_object)

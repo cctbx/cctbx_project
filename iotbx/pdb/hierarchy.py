@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
-ext = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
 from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s, null_out
@@ -354,8 +354,8 @@ class __hash_eq_mixin(object):
   def __ne__(self, other):
     return not ( self == other )
 
-boost.python.inject(ext.root, __hash_eq_mixin)
-@boost.python.inject_into(ext.root)
+bp.inject(ext.root, __hash_eq_mixin)
+@bp.inject_into(ext.root)
 class _():
 
   __doc__ = """
@@ -915,7 +915,11 @@ class _():
     auth_asym_id = chain.id
     if chain.atoms()[0].segid.strip() != '':
       auth_asym_id = chain.atoms()[0].segid.strip()
-    if auth_asym_id.strip() == '': auth_asym_id = '.'
+    if auth_asym_id.strip() == '':
+      # chain id is empty, segid is empty, just duplicate label_asym_id
+      # since we cannot read mmCIF with empty auth_asym_id. Outputting a file
+      # that we cannot read - bad.
+      auth_asym_id = self.get_label_asym_id(chain.residue_groups()[0])
     return auth_asym_id
 
   def get_label_asym_id_iseq(self, iseq):
@@ -1700,8 +1704,8 @@ class _():
       result = result and model.is_ca_only()
     return result
 
-boost.python.inject(ext.model, __hash_eq_mixin)
-@boost.python.inject_into(ext.model)
+bp.inject(ext.model, __hash_eq_mixin)
+@bp.inject_into(ext.model)
 class _():
 
   """
@@ -1761,8 +1765,8 @@ class _():
       result = result and chain.is_ca_only()
     return result
 
-boost.python.inject(ext.chain, __hash_eq_mixin)
-@boost.python.inject_into(ext.chain)
+bp.inject(ext.chain, __hash_eq_mixin)
+@bp.inject_into(ext.chain)
 class _():
 
   """
@@ -2027,8 +2031,8 @@ class _():
     atom_names = self.atoms().extract_name()
     return atom_names.all_eq(" CA ")
 
-boost.python.inject(ext.residue_group, __hash_eq_mixin)
-@boost.python.inject_into(ext.residue_group)
+bp.inject(ext.residue_group, __hash_eq_mixin)
+@bp.inject_into(ext.residue_group)
 class _():
 
   def only_atom_group(self):
@@ -2045,8 +2049,8 @@ class _():
       chain_id = chain.id
     return "%2s%4s%1s" % (chain_id, self.resseq, self.icode)
 
-boost.python.inject(ext.atom_group, __hash_eq_mixin)
-@boost.python.inject_into(ext.atom_group)
+bp.inject(ext.atom_group, __hash_eq_mixin)
+@bp.inject_into(ext.atom_group)
 class _():
 
   def only_atom(self):
@@ -2080,8 +2084,8 @@ class _():
           min_max_mean.max))
     return min_max_mean.mean
 
-boost.python.inject(ext.atom, __hash_eq_mixin)
-@boost.python.inject_into(ext.atom)
+bp.inject(ext.atom, __hash_eq_mixin)
+@bp.inject_into(ext.atom)
 class _():
   __doc__ = """
   The basic unit of the PDB hierarchy (or the PDB input object in general),
@@ -2163,7 +2167,7 @@ class _():
     else:
       return 0
 
-@boost.python.inject_into(ext.conformer)
+@bp.inject_into(ext.conformer)
 class _():
 
   __doc__ = """
@@ -2355,7 +2359,7 @@ class _():
     return resnames
 
 
-@boost.python.inject_into(ext.residue)
+@bp.inject_into(ext.residue)
 class _():
 
   def __getinitargs__(self):
@@ -2400,7 +2404,7 @@ class _():
       return_mon_lib_dna_name=return_mon_lib_dna_name)
 
 
-@boost.python.inject_into(ext.atom_with_labels)
+@bp.inject_into(ext.atom_with_labels)
 class _():
 
   __doc__ = """

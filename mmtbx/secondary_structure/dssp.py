@@ -458,8 +458,8 @@ class dssp(object):
     return n_atoms
 
   def process_o_n_interaction(self, o_atom, n_atom):
-    import boost.python
-    ext = boost.python.import_ext("mmtbx_dssp_ext")
+    import boost_adaptbx.boost.python as bp
+    ext = bp.import_ext("mmtbx_dssp_ext")
     energy = ext.get_o_n_hbond_energy(O=o_atom, N=n_atom)
     # TODO incorporate angle filtering - need to ask Jane and/or look at
     # Reduce source code for ideas

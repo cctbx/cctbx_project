@@ -225,4 +225,3 @@ def load_tests(loader, tests, pattern):
 
 if __name__ == "__main__":
   unittest.TextTestRunner( verbosity = 2 ).run( alltests )
-

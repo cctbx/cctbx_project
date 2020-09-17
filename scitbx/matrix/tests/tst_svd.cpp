@@ -292,7 +292,6 @@ void exercise_golub_kahan_iterations(grading_func_t grading_func,
     }
     if (zero_on_diag) diagonal[n/2] = 0;
     matrix_t a = upper_bidiagonal(diagonal.ref(), superdiagonal.ref());
-    matrix_ref_t a_ = a.ref();
 
     matrix_t identity_n = identity<double>(n);
 

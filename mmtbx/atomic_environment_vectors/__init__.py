@@ -166,6 +166,7 @@ class AEV(object):
     protain_fragments = generate_protein_fragments(
       hierarchy = self.chain_hierarchy,
       geometry = self.geometry_restraints_manager,
+      include_non_linked=True,
       include_non_standard_peptides=True,
       length=length)
     for five in protain_fragments:

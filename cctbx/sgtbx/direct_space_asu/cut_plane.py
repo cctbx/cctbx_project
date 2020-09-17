@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import slots_getstate_setstate
 from scitbx import matrix
-from boost import rational
+from boost_adaptbx.boost import rational
 import string
 from six.moves import range
 from six.moves import zip

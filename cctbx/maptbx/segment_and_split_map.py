@@ -8641,7 +8641,7 @@ def get_overall_mask(
     print(e, file = out)
     print ("The sampling of the map appears to be too low for a "+
       "\nresolution of %s. Using a larger value for resolution" %(
-       resolution))
+       resolution), file = out)
     from cctbx.maptbx import d_min_from_map
     resolution = d_min_from_map(
       map_data, crystal_symmetry.unit_cell(), resolution_factor = 1./4.)
