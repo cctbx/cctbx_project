@@ -1140,17 +1140,9 @@ class map_manager(map_reader, write_ccp4_map):
     # Keep track of change in shift_cart
     original_shift_cart=self.shift_cart()
 
-    # Copy attributes of this object and then set map_data
-    #    and origin_shift_grid_units
-    data_hold = self.data
-    created_mask_hold = self._created_mask
-    self.data = None
-    self._created_mask = None
+    # Deepcopy this object and then set map_data and origin_shift_grid_units
 
-    mm = deepcopy(self)  # deepcopy everything else
-
-    self.data = data_hold
-    self._created_mask = created_mask_hold
+    mm = deepcopy(self)
 
     # Set things that are not necessarily the same as in self:
     mm.log=self.log
@@ -1791,6 +1783,32 @@ class map_manager(map_reader, write_ccp4_map):
       resolution = self.resolution(),
      )
 
+  def get_boxes_to_tile_map(self,
+     target_for_boxes = 24,
+     box_cushion = 3,
+       ):
+    '''
+     Return a group_args object with a list of lower_bounds and upper_bounds
+     corresponding to a set of boxes that tiles the part of the map that is
+     present.  The boxes may not be the same size but will tile to exactly
+     cover the existing part of the map.
+     Approximately target_for_boxes will be returned (may be fewer or greater)
+     Also return boxes with cushion of box_cushion
+    '''
+    assert self.origin_is_zero()
+    cushion_nx_ny_nz = tuple([int(0.5 + x * n) for x,n in
+       zip(self.crystal_symmetry().unit_cell().fractionalize(
+        (box_cushion,box_cushion,box_cushion)),
+        self.map_data().all())])
+    from cctbx.maptbx.box import get_boxes_to_tile_map
+    boxes = get_boxes_to_tile_map(
+       target_for_boxes = target_for_boxes,
+       n_real = self.map_data().all(),
+       crystal_symmetry = self.crystal_symmetry(),
+       cushion_nx_ny_nz = cushion_nx_ny_nz,
+     )
+    return boxes
+
   def get_n_real_for_grid_spacing(self, grid_spacing = None):
     n_real = []
     for n,a in zip(self.map_data().all(),
@@ -2058,3 +2076,4 @@ def select_n_in_biggest_cluster(sites_cart,
           dist_min_ratio = dist_min_ratio * 0.9)
 
   return new_sites_cart
+

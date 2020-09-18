@@ -831,19 +831,23 @@ class map_model_manager(object):
 
   def extract_all_maps_around_model(self,
      selection_string = None,
+     selection = None,
      select_unique_by_ncs = False,
      box_cushion = 5.):
     '''
       Runs box_all_maps_around_model_and_shift_origin with extract_box=True
+      Use either selection_string or selection if present
     '''
     return self.box_all_maps_around_model_and_shift_origin(
       selection_string = selection_string,
+      selection = selection,
       box_cushion = box_cushion,
       select_unique_by_ncs = select_unique_by_ncs,
       extract_box = True)
 
   def box_all_maps_around_model_and_shift_origin(self,
      selection_string = None,
+     selection = None,
      box_cushion = 5.,
      select_unique_by_ncs = False,
      extract_box = False):
@@ -864,8 +868,11 @@ class map_model_manager(object):
 
        The selection_string defines what part of the model to keep ('ALL' is
         default)
+       If selection is specified, use instead of selection_string
+
        If select_unique_by_ncs is set, select the unique part of the model
-       automatically.  Any selection in selection_string will not be applied.
+       automatically.  Any selection in selection_string or selection
+        will not be applied.
     '''
     assert isinstance(self.model(), model_manager)
     assert box_cushion is not None
@@ -885,6 +892,8 @@ class map_model_manager(object):
     elif selection_string:
       sel = model.selection(selection_string)
       model = model.select(sel)
+    elif selection:
+      model = model.select(selection)
     elif extract_box: # make sure everything is deep_copy
       model = model.deep_copy()
 
@@ -1219,6 +1228,216 @@ class map_model_manager(object):
 
     if extract_box:
       return other
+
+  def merge_split_maps_and_models(self,
+      box_info = None):
+    '''
+      Replaces coordinates in working model with those from the
+        map_model_managers in box_info.  The box_info object should
+        come from running split_up_map_and_model in this instance
+        of the map_model_manager.
+    '''
+
+    print("\nMerging coordinates from %s boxed models into working model" %(
+      len(box_info.selection_list)), file = self.log)
+
+    i = 0
+    for selection, mmm in zip (box_info.selection_list, box_info.mmm_list):
+      i += 1
+      model_to_merge = self.get_model_from_other(mmm)
+      sites_cart = self.model().get_sites_cart()
+      new_coords=model_to_merge.get_sites_cart()
+      original_coords=sites_cart.select(selection)
+      rmsd=new_coords.rms_difference(original_coords)
+      print("RMSD for %s coordinates in model %s: %.3f A" %(
+         original_coords.size(), i, rmsd), file = self.log)
+      sites_cart.set_selected(selection, new_coords)
+      self.model().set_crystal_symmetry_and_sites_cart(sites_cart = sites_cart,
+        crystal_symmetry = self.model().crystal_symmetry())
+
+  def split_up_map_and_model_by_chain(self,
+    skip_waters = False,
+    skip_hetero = False,
+    write_files = False,
+     ):
+    '''
+     Split up the map, boxing around each chain in the model.
+
+       Returns a group_args object containing list of the map_model_manager
+         objects and a list of the selection objects that define which atoms
+         from the working model are in each object.
+
+       Normally do work on each map_model_manager to create a new model with
+         the same atoms, then use merge_split_maps_and_models() to replace
+         coordinates in the original model with those from all the component
+         models.
+
+    '''
+
+    return self._split_up_map_and_model(
+      selection_method = 'by_chain',
+      skip_waters = skip_waters,
+      skip_hetero = skip_hetero,
+      write_files = write_files)
+
+  def split_up_map_and_model_by_segment(self,
+    skip_waters = False,
+    skip_hetero = False,
+    write_files = False,
+     ):
+    '''
+     Split up the map, boxing around each segment (each unbroken part of
+      each chain) in the model
+
+       Returns a group_args object containing list of the map_model_manager
+         objects and a list of the selection objects that define which atoms
+         from the working model are in each object.
+
+       Normally do work on each map_model_manager to create a new model with
+         the same atoms, then use merge_split_maps_and_models() to replace
+         coordinates in the original model with those from all the component
+         models.
+    '''
+
+    return self._split_up_map_and_model(
+      selection_method = 'by_segment',
+      skip_waters = skip_waters,
+      skip_hetero = skip_hetero,
+      write_files = write_files)
+
+  def split_up_map_and_model_by_supplied_selections(self,
+    selection_list,
+    skip_waters = False,
+    skip_hetero = False,
+    write_files = False,
+     ):
+    '''
+     Split up the map, boxing around atoms selected with each selection in
+      selection_list
+      Note: a selection can be obtained with:
+        self.model().selection(selection_string)
+
+       Returns a group_args object containing list of the map_model_manager
+         objects and a list of the selection objects that define which atoms
+         from the working model are in each object.
+
+       Normally do work on each map_model_manager to create a new model with
+         the same atoms, then use merge_split_maps_and_models() to replace
+         coordinates in the original model with those from all the component
+         models.
+    '''
+
+    return self._split_up_map_and_model(
+      selection_method = 'supplied_selections',
+      selection_list = selection_list,
+      skip_hetero = skip_hetero,
+      skip_waters = skip_waters,
+      write_files = write_files)
+
+  def split_up_map_and_model_by_boxes(self,
+    skip_waters = False,
+    skip_hetero = False,
+    write_files = False,
+    target_for_boxes = 24,
+    select_final_boxes_based_on_model = True,
+    skip_empty_boxes = True,
+     ):
+    '''
+     Split up the map, creating boxes that time the entire map.
+
+     Try to get about target_for_boxes boxes.
+
+     If select_final_boxes_based_on_model then make the final boxes just go
+       around the selected parts of the model and not tile the map.
+
+     If skip_empty_boxes then skip boxes with no model.
+
+     Note that this procedure just selects by atom so you can get a single atom
+      in a box
+
+       Returns a group_args object containing list of the map_model_manager
+         objects and a list of the selection objects that define which atoms
+         from the working model are in each object.
+
+       Normally do work on each map_model_manager to create a new model with
+         the same atoms, then use merge_split_maps_and_models() to replace
+         coordinates in the original model with those from all the component
+         models.
+    '''
+
+    return self._split_up_map_and_model(
+      selection_method = 'boxes',
+      target_for_boxes = target_for_boxes,
+      select_final_boxes_based_on_model = select_final_boxes_based_on_model,
+      skip_empty_boxes = skip_empty_boxes,
+      skip_waters = skip_waters,
+      write_files = write_files)
+
+  def _split_up_map_and_model(self,
+    selection_method = 'by_chain',
+    selection_list = None,
+    skip_waters = False,
+    skip_hetero = False,
+    target_for_boxes = 24,
+    select_final_boxes_based_on_model = True,
+    skip_empty_boxes = True,
+    write_files = False,
+     ):
+    '''
+       Create a set of overlapping boxes and non-overlapping parts of
+       the working model that cover the entire map
+
+       Returns a group_args object containing list of the map_model_manager
+         objects and a list of the selection objects that define which atoms
+         from the working model are in each object.
+
+       Normally do work on each map_model_manager to create a new model with
+         the same atoms, then use merge_split_maps_and_models() to replace
+         coordinates in the original model with those from all the component
+         models.
+
+       If selection_list (a list of selection objects matching the atoms in
+         model) is supplied, use it.  Otherwise generate it using
+         selection_method. Skip waters or heteroatoms or both if requested.
+         If method is "boxes" then try to get about target_for_boxes boxes.
+
+    If select_final_boxes_based_on_model and selection_method == 'boxes' then
+      make the final boxes just go around the selected parts of the model and
+      not tile the map.
+    If skip_empty_boxes then skip anything with no model.
+
+    '''
+    print ("Splitting up map and model into overlapping boxes (%s method)" %(
+       selection_method), file = self.log)
+
+    # Get selections and boxes
+    box_info = get_selections_and_boxes_to_split_model(
+        map_model_manager = self,
+        selection_method = selection_method,
+	selection_list = selection_list,
+        skip_waters = skip_waters,
+        skip_hetero = skip_hetero,
+        target_for_boxes = target_for_boxes,
+        select_final_boxes_based_on_model = select_final_boxes_based_on_model,
+        skip_empty_boxes = skip_empty_boxes)
+
+    # Get new map_model_manager for each box
+    box_info = get_split_maps_and_models(
+      map_model_manager = self,
+      box_info = box_info)
+    if write_files and box_info.mmm_list:
+      from iotbx.data_manager import DataManager
+      dm = DataManager()
+      dm.set_overwrite(True)
+      i = 0
+      for mmm in box_info.mmm_list:
+        i += 1
+        print("Writing files for model and map: %s " %(i), file=self.log)
+        model_file = "model_%s.pdb" %(i)
+        map_file = "map_%s.ccp4" %(i)
+        dm.write_model_file(mmm.model(), model_file)
+        dm.write_real_map_file(mmm.map_manager(), map_file)
+    return box_info
 
   # Methods for masking maps ( creating masks and applying masks to maps)
   # These methods change the contents of the current object (they do not
@@ -2498,8 +2717,279 @@ class match_map_model_ncs(object):
         )
     return mam
 
-#   Misc methods XXX to be removed
+#   Misc methods
+def get_split_maps_and_models(
+      map_model_manager = None,
+      box_info = None):
+  '''
+  Apply selections and boxing in box_info to generate a set of
+  small map_model_managers
+  '''
 
+  from iotbx.map_model_manager import map_model_manager as MapModelManager
+
+  mmm_list = []
+  if box_info.lower_bounds_with_cushion_list:
+    lower_bounds_list = box_info.lower_bounds_with_cushion_list
+    upper_bounds_list = box_info.upper_bounds_with_cushion_list
+  else:
+    lower_bounds_list = box_info.lower_bounds_list
+    upper_bounds_list = box_info.upper_bounds_list
+  for lower_bounds, upper_bounds, selection in zip(
+       lower_bounds_list,
+       upper_bounds_list,
+       box_info.selection_list):
+    mmm = MapModelManager(model = map_model_manager.model().select(selection),
+      map_manager = map_model_manager.map_manager())
+    mmm.box_all_maps_with_bounds_and_shift_origin(lower_bounds, upper_bounds)
+    mmm_list.append(mmm)
+  box_info.mmm_list = mmm_list
+  return box_info
+
+def get_selections_and_boxes_to_split_model(
+        map_model_manager = None,
+        selection_method = 'by_chain',
+        selection_list = None,
+        skip_waters = False,
+        skip_hetero = False,
+        target_for_boxes = 24,
+        box_cushion = 3,
+        select_final_boxes_based_on_model = None,
+        skip_empty_boxes = None,
+         ):
+
+  '''
+    Split up model into pieces using selection_method
+    Choices are ['by_chain', 'by_segment','all', 'boxes']
+    by_chain:  each chain is a selection
+    by_segment:  each unbroken part of a chain is a selection
+    boxes:  map is split into target_for_boxes boxes, all atoms in
+      each box selected requires map_model_manager to be present
+    Skip waters or hetero atoms in selections if specified
+    If select_final_boxes_based_on_model and selection_method == 'boxes' then
+      make the final boxes just go around the selected parts of the model and
+      not tile the map.
+    If skip_empty_boxes then skip anything with no model.
+  '''
+
+  # Checks
+  assert map_model_manager is not None
+  selection_method = selection_method.lower()
+  assert selection_method in ['supplied_selections',
+      'by_chain', 'by_segment','all', 'boxes']
+  assert (selection_method != 'boxes') or (
+     map_model_manager.map_manager() is not None)
+
+  assert (selection_method != 'supplied_selections') or (
+      selection_list is not None)
+
+  # Get selection info for waters and hetero atoms
+  info = get_skip_waters_and_hetero_lines(skip_waters, skip_hetero)
+
+  model = map_model_manager.model()
+  map_manager = map_model_manager.map_manager()
+
+  # Get the selections
+  box_info = group_args(
+    selection_list = [],
+    lower_bounds_list = [],
+    upper_bounds_list = [],
+    lower_bounds_with_cushion_list = [],
+    upper_bounds_with_cushion_list = [],
+    n_real = map_manager.map_data().all(),
+   )
+
+  if selection_list:
+    for selection in selection_list:
+      if (not skip_empty_boxes) or (selection.count(True) > 0):
+        box_info.selection_list.append(selection)
+
+  elif selection_method == 'all':
+    selection = model.selection('%s' %(info.no_water_or_het))
+    if (not skip_empty_boxes) or (selection.count(True) > 0):
+      box_info.selection_list = [selection]
+  elif selection_method == 'by_chain':
+    from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
+    for chain_id in get_chain_ids(model.get_hierarchy(), unique_only=True):
+      selection = model.selection(" %s (chain %s) " %(
+       info.no_water_or_het_with_and,chain_id))
+      if (not skip_empty_boxes) or (selection.count(True) > 0):
+        box_info.selection_list.append(selection)
+  elif selection_method == 'by_segment':
+    selection_strings= get_selections_for_segments(model,
+    no_water_or_het_with_and = info.no_water_or_het_with_and)
+    for selection_string in selection_strings:
+      selection = model.selection(selection_string)
+      if (not skip_empty_boxes) or (selection.count(True) > 0):
+        box_info.selection_list.append(selection)
+  elif selection_method == 'boxes':
+    if info.no_water_or_het and info.no_water_or_het != 'all':
+      overall_selection = model.selection("not (%s) " %(info.no_water_or_het))
+    else:
+      overall_selection = None
+
+    # Get boxes without and with cushion (cushion may be None)
+    box_info = map_manager.get_boxes_to_tile_map(
+      target_for_boxes = target_for_boxes,
+      box_cushion = box_cushion)
+
+    # Select inside boxes without cushion and create cushion too
+    box_info = get_selections_from_boxes(
+       box_info = box_info,
+       model = model,
+       overall_selection = overall_selection,
+       skip_empty_boxes = skip_empty_boxes)
+  if select_final_boxes_based_on_model or (
+     not box_info.lower_bounds_list): # get bounds now:
+    from cctbx.maptbx.box import get_bounds_around_model
+    box_info.lower_bounds_list = []
+    box_info.upper_bounds_list = []
+    for selection in box_info.selection_list:
+      info = get_bounds_around_model(
+        map_manager = map_manager,
+        model = model.select(selection),
+        box_cushion = box_cushion)
+      box_info.lower_bounds_list.append(info.lower_bounds)
+      box_info.upper_bounds_list.append(info.upper_bounds)
+    box_info.lower_bounds_with_cushion_list = [] # not using these
+    box_info.upper_bounds_with_cushion_list = []
+
+  return box_info
+
+def get_selections_from_boxes(box_info = None,
+    model = None,
+    overall_selection = None,
+    skip_empty_boxes = None,
+   ):
+  '''
+    Generate a list of selections that covers all the atoms in model,
+     grouped by the boxes defined in box_info
+  '''
+  selection_list = []
+  new_lower_bounds_list = []
+  new_upper_bounds_list = []
+  new_lower_bounds_with_cushion_list = []
+  new_upper_bounds_with_cushion_list = []
+  count = 0
+  for lower_bounds, upper_bounds,lower_bounds_with_cushion, \
+    upper_bounds_with_cushion in zip (
+      box_info.lower_bounds_list,
+      box_info.upper_bounds_list,
+      box_info.lower_bounds_with_cushion_list,
+      box_info.upper_bounds_with_cushion_list,
+       ):
+    sel = get_selection_inside_box(
+     lower_bounds = lower_bounds,
+     upper_bounds = upper_bounds,
+     n_real = box_info.n_real,
+     model = model,
+     crystal_symmetry = box_info.crystal_symmetry)
+    if overall_selection:
+      sel = (sel & overall_selection)
+    if (not skip_empty_boxes) or (sel.count(True) > 0):
+      selection_list.append(sel)
+      count += sel.count(True)
+      new_lower_bounds_list.append(lower_bounds)
+      new_upper_bounds_list.append(upper_bounds)
+      new_lower_bounds_with_cushion_list.append(lower_bounds_with_cushion)
+      new_upper_bounds_with_cushion_list.append(upper_bounds_with_cushion)
+  return group_args(
+     n_real = box_info.n_real,
+     selection_list = selection_list,
+     lower_bounds_list = new_lower_bounds_list,
+     upper_bounds_list = new_upper_bounds_list,
+     lower_bounds_with_cushion_list = new_lower_bounds_with_cushion_list,
+     upper_bounds_with_cushion_list = new_upper_bounds_with_cushion_list,
+     )
+
+def get_selection_inside_box(
+     lower_bounds = None,
+     upper_bounds = None,
+     n_real = None,
+     model = None,
+     crystal_symmetry = None):
+  '''
+   get selection for all the atoms inside this box
+  '''
+
+  lower_bounds_frac = tuple([lb / x for lb,x in zip(lower_bounds, n_real)])
+  upper_bounds_frac = tuple([ub / x for ub,x in zip(upper_bounds, n_real)])
+  sites_frac = model.get_sites_frac()
+  lb_a, lb_b, lb_c = lower_bounds_frac
+  ub_a, ub_b, ub_c = upper_bounds_frac
+  x,y,z = sites_frac.parts()
+  s = (
+         (x < lb_a) |
+         (y < lb_b) |
+         (z < lb_c) |
+         (x > ub_a) |
+         (y > ub_b) |
+         (z > ub_c)
+         )
+  return ~s
+
+def get_skip_waters_and_hetero_lines(skip_waters, skip_hetero):
+  if skip_waters and skip_hetero:
+    no_water_or_het = "( (not hetero ) and (not water)) "
+  elif skip_waters:
+    no_water_or_het = "( (not water)) "
+  elif skip_hetero:
+    no_water_or_het = "( (not hetero ) ) "
+  else:
+    no_water_or_het = ""
+  if no_water_or_het:
+    no_water_or_het_with_and = " %s and " %(no_water_or_het)
+  else:
+    no_water_or_het_with_and = ""
+    no_water_or_het = "all"
+  return group_args(
+     no_water_or_het = no_water_or_het,
+     no_water_or_het_with_and = no_water_or_het_with_and,
+     )
+
+def get_selections_for_segments(model, no_water_or_het_with_and = ''):
+  '''
+    Generate selections corresponding to each segment (chain or part of a chain
+    that is separate from remainder of chain)
+  '''
+  assert isinstance(model, mmtbx.model.manager)
+
+  from iotbx.pdb import resseq_encode
+  selection_list = []
+  ph = model.get_hierarchy()
+  for m in ph.models()[:1]:
+    for chain in m.chains():
+      first_resno = None
+      last_resno = None
+      chain_id = chain.id
+      previous_rg = None
+      for rg in chain.residue_groups():
+        if previous_rg and ( (not rg.link_to_previous) or (not
+           residue_group_is_linked_to_previous(rg, previous_rg))):
+          # break here
+          selection_list.append("%s ( chain %s and resseq %s:%s ) " %(
+           no_water_or_het_with_and,
+            chain_id, resseq_encode(first_resno), resseq_encode(last_resno)))
+          first_resno = None
+          last_resno = None
+        if not first_resno:
+          first_resno = rg.resseq_as_int()
+        last_resno = rg.resseq_as_int()
+        previous_rg = rg
+      if first_resno is not None and last_resno is not None:
+        selection_list.append(" %s ( chain %s and resseq %s:%s ) " %(
+            no_water_or_het_with_and, chain_id,
+           resseq_encode(first_resno), resseq_encode(last_resno)))
+  return selection_list
+
+def residue_group_is_linked_to_previous(rg, previous_rg):
+  from mmtbx.secondary_structure.find_ss_from_ca import is_close_to
+  if is_close_to(rg,previous_rg):
+    return True
+  elif  rg.resseq_as_int()!=+previous_rg.resseq_as_int()+1:
+    return True
+  else:
+    return False
 def get_map_histograms(data, n_slots = 20, data_1 = None, data_2 = None):
   h0, h1, h2 = None, None, None
   data_min = None

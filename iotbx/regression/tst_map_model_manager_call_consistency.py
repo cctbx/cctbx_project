@@ -94,7 +94,7 @@ def test_01():
   #   specific methods
   manager_method_args_dict = {
     'with_bounds': [],
-    'around_model':['selection_string', 'select_unique_by_ncs'],
+    'around_model':['selection', 'selection_string', 'select_unique_by_ncs'],
     'around_density':['map_id'],
     'around_mask':['mask_id'],
     'around_unique':[],
