@@ -1501,6 +1501,17 @@ class Builder(object):
             use_ssh=use_git_ssh, verbose=True, reference=reference_repository_path)
     self.add_step(_indirection())
 
+    # Use dials-2.2 branches for Python 2
+    if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and not self.python3:
+      workdir = ['modules', module]
+      if module == 'dxtbx':
+        self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
+        self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-2.2'], workdir=workdir))
+      self.add_step(self.shell(
+        command=['git', 'branch', '--set-upstream-to=origin/dials-2.2', 'dials-2.2'],
+        workdir=workdir))
+
   def _check_for_Windows_prerequisites(self):
     if self.isPlatformWindows():
       # platform specific checks cannot run on buildbot master so add to build steps to run on slaves
@@ -2325,14 +2336,6 @@ files for {module} will be downloaded.""".format(module=module))
         workdir = ['modules', module]
         self.add_step(self.shell(command=['git', 'lfs', 'install', '--local'], workdir=workdir))
         self.add_step(self.shell(command=['git', 'lfs', 'pull'], workdir=workdir))
-
-    # Use DIALS 2.2
-    if module == 'dials' or module == 'xia2':
-      workdir = ['modules', module]
-      self.add_step(self.shell(command=['git', 'checkout', 'dials-2.2'], workdir=workdir))
-      self.add_step(self.shell(
-        command=['git', 'branch', '--set-upstream-to=origin/dials-2.2', 'dials-2.2'],
-        workdir=workdir))
 
   def add_base(self, extra_opts=[]):
     super(PhenixBuilder, self).add_base(
