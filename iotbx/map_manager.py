@@ -1140,9 +1140,17 @@ class map_manager(map_reader, write_ccp4_map):
     # Keep track of change in shift_cart
     original_shift_cart=self.shift_cart()
 
-    # Deepcopy this object and then set map_data and origin_shift_grid_units
+    # Copy attributes of this object and then set map_data 
+    #    and origin_shift_grid_units
+    data_hold = self.data
+    created_mask_hold = self._created_mask
+    self.data = None
+    self._created_mask = None
 
-    mm = deepcopy(self)
+    mm = deepcopy(self)  # deepcopy everything else
+
+    self.data = data_hold
+    self._created_mask = created_mask_hold
 
     # Set things that are not necessarily the same as in self:
     mm.log=self.log
