@@ -15,6 +15,7 @@ nanoBragg_obj = nanoBragg_env.SharedObject(
     "nanoBragg_ext.cpp",
     "nanoBragg.cpp",
     "nanoBragg_nks.cpp",
+    "time_logger.cpp",
   ])
 
 # compile nanoBraggCUDA.cu if possible

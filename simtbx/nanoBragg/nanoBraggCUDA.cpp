@@ -8,7 +8,7 @@
  Description : CUDA compute reciprocals
  ============================================================================
  */
-
+#include <sys/time.h>
 #include <iostream>
 #include <numeric>
 #include <stdlib.h>
@@ -17,6 +17,7 @@
 #include "cuda_compatibility.h"
 #include "cuda_struct.h"
 #include "simtbx/gpu/structure_factors.h"
+#include "time_logger.h"
 
 static void CheckCudaErrorAux(const char *, unsigned, const char *, hipError_t);
 #define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
@@ -303,7 +304,7 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
 			cu_floatimage /*out*/, cu_omega_reduction/*out*/, cu_max_I_x_reduction/*out*/, cu_max_I_y_reduction /*out*/, cu_rangemap /*out*/);
 
 	CUDA_CHECK_RETURN(hipPeekAtLastError());
-	CUDA_CHECK_RETURN(hipDeviceSynchronize());
+	//CUDA_CHECK_RETURN(hipDeviceSynchronize());
 
 	CUDA_CHECK_RETURN(hipMemcpy(floatimage, cu_floatimage, sizeof(*cu_floatimage) * total_pixels, hipMemcpyDeviceToHost));
 	CUDA_CHECK_RETURN(hipMemcpy(omega_reduction, cu_omega_reduction, sizeof(*cu_omega_reduction) * total_pixels, hipMemcpyDeviceToHost));
@@ -1458,32 +1459,78 @@ void add_energy_channel_from_gpu_amplitudes_cuda_cu(int deviceId, double * sourc
                                                     double const& fluence, int const& ichannel,
                                                     simtbx::gpu::gpu_energy_channels &gec,
                                                     cudaPointers &cp, new_api_cudaPointers &newapi_cp, int verbose){
+        
+
+struct timeval t1, t2;	
+gettimeofday(&t1, 0);
         cp.cu_fluence = fluence; // new for this energy channel
         hipSetDevice(deviceId);
+gettimeofday(&t2, 0);
+double time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+printf("Time set device:  %3.10f ms \n", time);
+	
         // transfer source_I, source_lambda, and Fhkl
         // the int arguments are for sizes of the arrays
+gettimeofday(&t1, 0);
         CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cp.cu_source_I, source_I, cp.cu_sources));
-        CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cp.cu_source_lambda, source_lambda, cp.cu_sources));
+gettimeofday(&t2, 0);
+time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+printf("Time memCopyVec source I :  %3.10f ms \n", time);
+        
+gettimeofday(&t1, 0);
+	CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cp.cu_source_lambda, source_lambda, cp.cu_sources));
+	//CUDAREAL * temp = new CUDAREAL[vector_items];
+	//for (size_t i = 0; i < vector_items; i++) {
+	//	temp[i] = src[i];
+	//}
+	//hipError_t ret = hipMemcpy(dst, temp, sizeof(*dst) * vector_items, hipMemcpyHostToDevice);
+	//delete temp;
+gettimeofday(&t2, 0);
+time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+printf("Time memCopyVec source lambda :  %3.10f ms \n", time);
         int hklsize = gec.h_range * gec.k_range * gec.l_range;
 
         hklParams FhklParams = { hklsize, gec.h_min, gec.h_max, gec.h_range,
                 gec.k_min, gec.k_max, gec.k_range, gec.l_min, gec.l_max, gec.l_range };
         hklParams * cu_FhklParams;
+gettimeofday(&t1, 0);
         CUDA_CHECK_RETURN(hipMalloc((void ** )&cu_FhklParams, sizeof(*cu_FhklParams)));
+gettimeofday(&t2, 0);
+time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+printf("Allocate FhklParams :  %3.10f ms \n", time);
+
+gettimeofday(&t1, 0);
         CUDA_CHECK_RETURN(hipMemcpy(cu_FhklParams, &FhklParams, sizeof(*cu_FhklParams), hipMemcpyHostToDevice));
+gettimeofday(&t2, 0);
+time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+printf("Copy FhklParams :  %3.10f ms \n", time);
         cp.cu_FhklParams = cu_FhklParams;
 
         // first time through make sure to deallocate cu_Fhkl already used
         if (cp.cu_Fhkl != NULL) {CUDA_CHECK_RETURN(hipFree(cp.cu_Fhkl));}
         // magic happens here: take pointer from singleton, temporarily use it for add Bragg iteration:
+gettimeofday(&t1, 0);
         cp.cu_Fhkl = gec.d_channel_Fhkl[ichannel];
+gettimeofday(&t2, 0);
+time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+printf("channel_Fhkl :  %3.10f ms \n", time);
 
         hipDeviceProp_t deviceProps = { 0 };
+gettimeofday(&t1, 0);
         CUDA_CHECK_RETURN(hipGetDeviceProperties(&deviceProps, deviceId));
+gettimeofday(&t2, 0);
+time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+printf("det device properties :  %3.10f ms \n", time);
+
+gettimeofday(&t1, 0);
         int smCount = deviceProps.multiProcessorCount;
         dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
         dim3 numBlocks(smCount * 8, 1);
-
+gettimeofday(&t2, 0);
+time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+printf("dimz:  %3.10f ms \n", time);
+	
+gettimeofday(&t1, 0);
         hipLaunchKernelGGL(nanoBraggSpotsCUDAKernel, dim3(numBlocks), dim3(threadsPerBlock), 0, 0, cp.cu_spixels, cp.cu_fpixels, cp.cu_roi_xmin,
           cp.cu_roi_xmax, cp.cu_roi_ymin, cp.cu_roi_ymax, cp.cu_oversample, cp.cu_point_pixel,
           cp.cu_pixel_size, cp.cu_subpixel_size, cp.cu_steps, cp.cu_detector_thickstep, cp.cu_detector_thicksteps,
@@ -1501,14 +1548,34 @@ void add_energy_channel_from_gpu_amplitudes_cuda_cu(int deviceId, double * sourc
           cp.cu_maskimage, cp.cu_floatimage /*out*/, cp.cu_omega_reduction/*out*/,
           cp.cu_max_I_x_reduction/*out*/, cp.cu_max_I_y_reduction /*out*/, cp.cu_rangemap /*out*/);
 
+gettimeofday(&t2, 0);
+time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+printf("Time run kernel:  %3.10f ms \n", time);
+
+gettimeofday(&t1, 0);
         //dont want to free the gec data when the nanoBragg goes out of scope, so switch the pointer
         cp.cu_Fhkl = NULL;
 
         CUDA_CHECK_RETURN(hipPeekAtLastError());
-        CUDA_CHECK_RETURN(hipDeviceSynchronize());
+gettimeofday(&t2, 0);
+time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+printf("Time to peak:  %3.10f ms \n", time);
 
+//gettimeofday(&t1, 0);
+//        CUDA_CHECK_RETURN(hipDeviceSynchronize());
+//
+//gettimeofday(&t2, 0);
+//time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+//printf("Time to synchronize:  %3.10f ms \n", time);
+
+gettimeofday(&t1, 0);
+        //dont want to free the gec data when the nanoBragg goes out of scope, so switch the pointer
         hipLaunchKernelGGL(add_array_CUDAKernel, dim3(numBlocks), dim3(threadsPerBlock), 0, 0, newapi_cp.cu_accumulate_floatimage, cp.cu_floatimage,
           cp.cu_spixels * cp.cu_fpixels);
+
+gettimeofday(&t2, 0);
+time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+printf("Time run add kernel:  %3.10f ms \n", time);
 }
 
 extern "C" void add_energy_channel_cuda_cu(int deviceId, double * source_I, double * source_lambda, double const& fluence,
@@ -1568,7 +1635,7 @@ extern "C" void add_energy_channel_cuda_cu(int deviceId, double * source_I, doub
                         cp.cu_rangemap /*out*/);
 
         CUDA_CHECK_RETURN(hipPeekAtLastError());
-        CUDA_CHECK_RETURN(hipDeviceSynchronize());
+        //CUDA_CHECK_RETURN(hipDeviceSynchronize());
 
         hipLaunchKernelGGL(add_array_CUDAKernel, dim3(numBlocks), dim3(threadsPerBlock), 0, 0, newapi_cp.cu_accumulate_floatimage, cp.cu_floatimage,
           cp.cu_spixels * cp.cu_fpixels);
@@ -1743,7 +1810,7 @@ void add_background_cuda_cu(int deviceId, int stols, double* stol_of, double* Fb
           cp.cu_floatimage, cp.cu_omega_reduction, cp.cu_max_I_x_reduction, cp.cu_max_I_y_reduction,
           cp.cu_rangemap);
   CUDA_CHECK_RETURN(hipPeekAtLastError());
-  CUDA_CHECK_RETURN(hipDeviceSynchronize());
+  //CUDA_CHECK_RETURN(hipDeviceSynchronize());
 
   hipLaunchKernelGGL(add_background_CUDAKernel, dim3(numBlocks), dim3(threadsPerBlock), 0, 0, cp.cu_sources, cp.cu_oversample,
     cp.cu_pixel_size, cp.cu_spixels, cp.cu_fpixels, cp.cu_detector_thicksteps,
@@ -1758,7 +1825,7 @@ void add_background_cuda_cu(int deviceId, int stols, double* stol_of, double* Fb
     cp.cu_floatimage /*out*/);
 
   CUDA_CHECK_RETURN(hipPeekAtLastError());
-  CUDA_CHECK_RETURN(hipDeviceSynchronize());
+  //CUDA_CHECK_RETURN(hipDeviceSynchronize());
   hipLaunchKernelGGL(add_array_CUDAKernel, dim3(numBlocks), dim3(threadsPerBlock), 0, 0, newapi_cp.cu_accumulate_floatimage, cp.cu_floatimage,
           cp.cu_spixels * cp.cu_fpixels);
 
