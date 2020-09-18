@@ -2076,4 +2076,3 @@ def select_n_in_biggest_cluster(sites_cart,
           dist_min_ratio = dist_min_ratio * 0.9)
 
   return new_sites_cart
-

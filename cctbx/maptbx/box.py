@@ -1100,4 +1100,3 @@ def get_bounds_around_model(
       lower_bounds = lower_bounds,
       upper_bounds = upper_bounds,
     )
-

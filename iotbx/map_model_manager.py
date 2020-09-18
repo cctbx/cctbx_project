@@ -1414,7 +1414,7 @@ class map_model_manager(object):
     box_info = get_selections_and_boxes_to_split_model(
         map_model_manager = self,
         selection_method = selection_method,
-	selection_list = selection_list,
+        selection_list = selection_list,
         skip_waters = skip_waters,
         skip_hetero = skip_hetero,
         target_for_boxes = target_for_boxes,
