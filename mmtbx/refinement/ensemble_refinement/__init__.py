@@ -9,7 +9,9 @@ import mmtbx.command_line
 import mmtbx.utils
 import mmtbx.model
 import mmtbx.maps
-from mmtbx.den import den_restraints
+from mmtbx import conformation_dependent_library as cdl
+from mmtbx.conformation_dependent_library import cdl_utils, cdl_setup
+from mmtbx.command_line import validation_summary
 from iotbx.option_parser import iotbx_option_parser
 from iotbx import pdb
 import iotbx.phil
@@ -26,6 +28,9 @@ from libtbx.str_utils import format_value, make_header
 from libtbx import runtime_utils
 from libtbx import easy_mp
 import libtbx.load_env
+from mmtbx.validation import rotalyze
+from mmtbx.rotamer import sidechain_angles
+from phenix import phenix_info
 from six.moves import cStringIO as StringIO
 from six.moves import cPickle as pickle
 import random
@@ -475,14 +480,14 @@ class run_ensemble_refinement(object):
       self.setup_tls_selections(
         tls_group_selection_strings=self.params.tls_group_selections)
       self.fit_tls(input_model=self.model)
-      self.assign_solvent_tls_groups()
     # Import TLS from reference model
     else:
       fit_tlsos, fit_tls_strings = self.import_tls_selections()
       self.setup_tls_selections(tls_group_selection_strings=fit_tls_strings)
       self.model.tls_groups.tlsos = fit_tlsos
       self.tls_manager.tls_operators = fit_tlsos
-      self.assign_solvent_tls_groups()
+    # Assign solvent to TLS groups
+    self.assign_solvent_tls_groups()
 
     # Set occupancies to 1.0
     if self.params.set_occupancies:
@@ -545,9 +550,8 @@ class run_ensemble_refinement(object):
         if self.macro_cycle == 1:
           make_header("Create DEN restraints", out = self.log)
           # Update den manager due to solvent chain changes from start model
-          from mmtbx.den import den_restraints
           pdb_hierarchy = self.model.get_hierarchy()
-          den_manager = den_restraints(
+          den_manager = mmtbx.den.den_restraints(
             pdb_hierarchy     = pdb_hierarchy,
             pdb_hierarchy_ref = None,
             params            = self.params.den,
@@ -582,9 +586,8 @@ class run_ensemble_refinement(object):
             make_header("Create DEN restraints", out = self.log)
             den_seed += 1
             flex.set_random_seed(value=den_seed)
-            from mmtbx.den import den_restraints
             pdb_hierarchy = self.model.get_hierarchy()
-            den_manager = den_restraints(
+            den_manager = mmtbx.den.den_restraints(
               pdb_hierarchy     = pdb_hierarchy,
               pdb_hierarchy_ref = None,
               params            = self.params.den,
@@ -632,8 +635,6 @@ class run_ensemble_refinement(object):
       self.cmremove = False
 
       # Update CDL restraints
-      from mmtbx import conformation_dependent_library as cdl
-      from mmtbx.conformation_dependent_library import cdl_utils, cdl_setup
       cdl_proxies = cdl_setup.setup_restraints(
         self.model.restraints_manager.geometry,
         verbose=True)
@@ -1545,7 +1546,6 @@ class run_ensemble_refinement(object):
     pr = "REMARK   3"
     print(pr, file=out)
     print("REMARK   3 TIME-AVERAGED ENSEMBLE REFINEMENT.", file=out)
-    from phenix import phenix_info # FIXME ???
     ver, tag = phenix_info.version_and_release_tag(f = out)
     if(ver is None):
       prog = "   PROGRAM     : PHENIX (phenix.ensemble_refinement)"
@@ -2056,7 +2056,6 @@ class result(slots_getstate_setstate):
     self.directory = os.getcwd()
     self.validation = None
     if (validate):
-      from mmtbx.command_line import validation_summary
       self.validation = validation_summary.run(
         args=[self.pdb_file],
         out=log)
@@ -2114,9 +2113,6 @@ def validate_params(params):
   return params
 
 # =============================================================================
-from mmtbx.validation import rotalyze
-from mmtbx.rotamer import sidechain_angles
-
 def calculate_chi_angles(model=None):
   '''
 
