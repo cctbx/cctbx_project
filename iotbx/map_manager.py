@@ -1140,7 +1140,7 @@ class map_manager(map_reader, write_ccp4_map):
     # Keep track of change in shift_cart
     original_shift_cart=self.shift_cart()
 
-    # Copy attributes of this object and then set map_data 
+    # Copy attributes of this object and then set map_data
     #    and origin_shift_grid_units
     data_hold = self.data
     created_mask_hold = self._created_mask
@@ -2058,4 +2058,3 @@ def select_n_in_biggest_cluster(sites_cart,
           dist_min_ratio = dist_min_ratio * 0.9)
 
   return new_sites_cart
-
