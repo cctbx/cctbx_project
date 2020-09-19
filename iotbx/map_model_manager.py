@@ -1258,6 +1258,7 @@ class map_model_manager(object):
   def split_up_map_and_model_by_chain(self,
     skip_waters = False,
     skip_hetero = False,
+    box_cushion = 3,
     write_files = False,
      ):
     '''
@@ -1272,17 +1273,23 @@ class map_model_manager(object):
          coordinates in the original model with those from all the component
          models.
 
+       skip_waters and skip_hetero define whether waters and hetero atoms are
+        ignored
+       box_cushion is the padding around the model atoms when creating boxes
+
     '''
 
     return self._split_up_map_and_model(
       selection_method = 'by_chain',
       skip_waters = skip_waters,
       skip_hetero = skip_hetero,
+      box_cushion = box_cushion,
       write_files = write_files)
 
   def split_up_map_and_model_by_segment(self,
     skip_waters = False,
     skip_hetero = False,
+    box_cushion = 3,
     write_files = False,
      ):
     '''
@@ -1297,18 +1304,22 @@ class map_model_manager(object):
          the same atoms, then use merge_split_maps_and_models() to replace
          coordinates in the original model with those from all the component
          models.
+
+       skip_waters and skip_hetero define whether waters and hetero atoms are
+        ignored
+       box_cushion is the padding around the model atoms when creating boxes
     '''
 
     return self._split_up_map_and_model(
       selection_method = 'by_segment',
       skip_waters = skip_waters,
       skip_hetero = skip_hetero,
+      box_cushion = box_cushion,
       write_files = write_files)
 
   def split_up_map_and_model_by_supplied_selections(self,
     selection_list,
-    skip_waters = False,
-    skip_hetero = False,
+    box_cushion = 3,
     write_files = False,
      ):
     '''
@@ -1325,13 +1336,14 @@ class map_model_manager(object):
          the same atoms, then use merge_split_maps_and_models() to replace
          coordinates in the original model with those from all the component
          models.
+
+       box_cushion is the padding around the model atoms when creating boxes
     '''
 
     return self._split_up_map_and_model(
       selection_method = 'supplied_selections',
       selection_list = selection_list,
-      skip_hetero = skip_hetero,
-      skip_waters = skip_waters,
+      box_cushion = box_cushion,
       write_files = write_files)
 
   def split_up_map_and_model_by_boxes(self,
@@ -1340,6 +1352,7 @@ class map_model_manager(object):
     write_files = False,
     target_for_boxes = 24,
     select_final_boxes_based_on_model = True,
+    box_cushion = 3,
     skip_empty_boxes = True,
      ):
     '''
@@ -1348,7 +1361,10 @@ class map_model_manager(object):
      Try to get about target_for_boxes boxes.
 
      If select_final_boxes_based_on_model then make the final boxes just go
-       around the selected parts of the model and not tile the map.
+       around the selected parts of the model with cushion defined by
+       box_cushion and not tile the map.
+     Otherwise select atoms inside the boxes and afterwards expand the boxes
+       with box_cushion
 
      If skip_empty_boxes then skip boxes with no model.
 
@@ -1363,6 +1379,9 @@ class map_model_manager(object):
          the same atoms, then use merge_split_maps_and_models() to replace
          coordinates in the original model with those from all the component
          models.
+
+       skip_waters and skip_hetero define whether waters and hetero atoms are
+        ignored
     '''
 
     return self._split_up_map_and_model(
@@ -1371,6 +1390,7 @@ class map_model_manager(object):
       select_final_boxes_based_on_model = select_final_boxes_based_on_model,
       skip_empty_boxes = skip_empty_boxes,
       skip_waters = skip_waters,
+      box_cushion = box_cushion,
       write_files = write_files)
 
   def _split_up_map_and_model(self,
@@ -1382,6 +1402,7 @@ class map_model_manager(object):
     select_final_boxes_based_on_model = True,
     skip_empty_boxes = True,
     write_files = False,
+    box_cushion = 3,
      ):
     '''
        Create a set of overlapping boxes and non-overlapping parts of
@@ -1419,7 +1440,8 @@ class map_model_manager(object):
         skip_hetero = skip_hetero,
         target_for_boxes = target_for_boxes,
         select_final_boxes_based_on_model = select_final_boxes_based_on_model,
-        skip_empty_boxes = skip_empty_boxes)
+        skip_empty_boxes = skip_empty_boxes,
+        box_cushion = box_cushion)
 
     # Get new map_model_manager for each box
     box_info = get_split_maps_and_models(
