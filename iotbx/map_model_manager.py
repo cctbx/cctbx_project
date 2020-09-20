@@ -2583,13 +2583,9 @@ class match_map_model_ncs(object):
          gridding = gridding)
 
     # Get the current origin shift based on this new original origin
-    shift_cart = self._map_manager.shift_cart()
     if self._model:
-      if self._model.shift_cart() is None:
-        self._model.set_unit_cell_crystal_symmetry_and_shift_cart(
-          unit_cell_crystal_symmetry = \
-           self._map_manager.unit_cell_crystal_symmetry())
-      self._model.set_shift_cart(shift_cart)
+      self._map_manager.set_model_symmetries_and_shift_cart_to_match_map(
+        self._model)
 
   def shift_origin(self, desired_origin = (0, 0, 0)):
     # NOTE: desired_origin means the origin we want to achieve, not the
