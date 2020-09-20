@@ -23,6 +23,7 @@ try:
 except ImportError:
     HAS_PANDAS = False
 from numpy import mean, median, unique, std
+from simtbx.diffBragg.utils import makeMoffat_integPSF, convolve_with_psf
 from scipy.stats import pearsonr
 from numpy import log as np_log
 from numpy import sin as SIN
@@ -354,6 +355,8 @@ class LocalRefiner(PixelRefinement):
         """model_Lambda means expected intensity in the pixel"""
         self.model_Lambda = \
             self.gain_fac * self.gain_fac * (self.tilt_plane + self.model_bragg_spots)
+        if self.refine_with_psf:
+            self.model_Lambda = convolve_with_psf(self.model_Lambda, psf=self._psf, **self.psf_args)
 
     def _MPI_make_output_dir(self):
         if self.I_AM_ROOT and self.output_dir is not None and not EXISTS(self.output_dir):
@@ -369,6 +372,12 @@ class LocalRefiner(PixelRefinement):
             raise ValueError("Need to supply a non empty idx from asu map")
 
         self.dummie_detector = deepcopy(self.S.detector)  # need to preserve original detector
+        if self.refine_with_psf:
+            fwhm_pix = self.psf_args["fwhm"] / self.psf_args["pixel_size"] 
+            kern_size = self.psf_args["psf_radius"]*2 + 1
+            if self.I_AM_ROOT:
+                print("USING PSF: %f fwhm_pixel and %dx%d kernel size" % (fwhm_pix, kern_size, kern_size))
+            self._psf = makeMoffat_integPSF(fwhm_pix, kern_size, kern_size)
 
         self._MPI_make_output_dir()
 
@@ -2307,6 +2316,8 @@ class LocalRefiner(PixelRefinement):
         return fterm
 
     def _poisson_d(self, d):
+        if self.refine_with_psf:
+            d = convolve_with_psf(d, psf=self._psf, **self.psf_args)
         gterm = (d * self.one_minus_k_over_Lambda).sum()
         return gterm
 
@@ -2323,6 +2334,8 @@ class LocalRefiner(PixelRefinement):
 
     def _gaussian_d(self, d):
         #gterm = (d*self.one_over_v_times_one_minus_2u_minus_u_squared_over_v).sum()
+        if self.refine_with_psf:
+            d = convolve_with_psf(d, psf=self._psf, **self.psf_args)
         gterm = .5 * (d * self.one_over_v * self.one_minus_2u_minus_u_squared_over_v).sum()
         #a = self.one_over_v_times_one_minus_2u_minus_u_squared_over_v
         #gterm = numexpr.evaluate('sum(d*a)')
