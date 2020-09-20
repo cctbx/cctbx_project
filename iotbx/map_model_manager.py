@@ -1259,6 +1259,9 @@ class map_model_manager(object):
     skip_waters = False,
     skip_hetero = False,
     box_cushion = 3,
+    mask_around_unselected_atoms = None,
+    mask_radius = 3,
+    masked_value = -10,
     write_files = False,
      ):
     '''
@@ -1284,12 +1287,18 @@ class map_model_manager(object):
       skip_waters = skip_waters,
       skip_hetero = skip_hetero,
       box_cushion = box_cushion,
+      mask_around_unselected_atoms = mask_around_unselected_atoms,
+      mask_radius = mask_radius,
+      masked_value = masked_value,
       write_files = write_files)
 
   def split_up_map_and_model_by_segment(self,
     skip_waters = False,
     skip_hetero = False,
     box_cushion = 3,
+    mask_around_unselected_atoms = None,
+    mask_radius = 3,
+    masked_value = -10,
     write_files = False,
      ):
     '''
@@ -1315,11 +1324,17 @@ class map_model_manager(object):
       skip_waters = skip_waters,
       skip_hetero = skip_hetero,
       box_cushion = box_cushion,
+      mask_around_unselected_atoms = mask_around_unselected_atoms,
+      mask_radius = mask_radius,
+      masked_value = masked_value,
       write_files = write_files)
 
   def split_up_map_and_model_by_supplied_selections(self,
     selection_list,
     box_cushion = 3,
+    mask_around_unselected_atoms = None,
+    mask_radius = 3,
+    masked_value = -10,
     write_files = False,
      ):
     '''
@@ -1344,6 +1359,9 @@ class map_model_manager(object):
       selection_method = 'supplied_selections',
       selection_list = selection_list,
       box_cushion = box_cushion,
+      mask_around_unselected_atoms = mask_around_unselected_atoms,
+      mask_radius = mask_radius,
+      masked_value = masked_value,
       write_files = write_files)
 
   def split_up_map_and_model_by_boxes(self,
@@ -1353,6 +1371,9 @@ class map_model_manager(object):
     target_for_boxes = 24,
     select_final_boxes_based_on_model = True,
     box_cushion = 3,
+    mask_around_unselected_atoms = None,
+    mask_radius = 3,
+    masked_value = -10,
     skip_empty_boxes = True,
      ):
     '''
@@ -1391,6 +1412,9 @@ class map_model_manager(object):
       skip_empty_boxes = skip_empty_boxes,
       skip_waters = skip_waters,
       box_cushion = box_cushion,
+      mask_around_unselected_atoms = mask_around_unselected_atoms,
+      mask_radius = mask_radius,
+      masked_value = masked_value,
       write_files = write_files)
 
   def _split_up_map_and_model(self,
@@ -1401,6 +1425,9 @@ class map_model_manager(object):
     target_for_boxes = 24,
     select_final_boxes_based_on_model = True,
     skip_empty_boxes = True,
+    mask_around_unselected_atoms = None,
+    mask_radius = 3,
+    masked_value = -10,
     write_files = False,
     box_cushion = 3,
      ):
@@ -1427,6 +1454,11 @@ class map_model_manager(object):
       not tile the map.
     If skip_empty_boxes then skip anything with no model.
 
+    if mask_around_unselected_atoms is set, then mask within each box
+     around all the atoms that are not selected (including waters/hetero)
+     with a mask_radius of mask_radius and set the value inside the mask to
+      masked_value
+
     '''
     print ("Splitting up map and model into overlapping boxes (%s method)" %(
        selection_method), file = self.log)
@@ -1441,7 +1473,11 @@ class map_model_manager(object):
         target_for_boxes = target_for_boxes,
         select_final_boxes_based_on_model = select_final_boxes_based_on_model,
         skip_empty_boxes = skip_empty_boxes,
-        box_cushion = box_cushion)
+        box_cushion = box_cushion,
+        mask_around_unselected_atoms = mask_around_unselected_atoms,
+        mask_radius = mask_radius,
+        masked_value = masked_value,
+      )
 
     # Get new map_model_manager for each box
     box_info = get_split_maps_and_models(
@@ -2742,6 +2778,15 @@ def get_split_maps_and_models(
   '''
   Apply selections and boxing in box_info to generate a set of
   small map_model_managers
+
+  if mask_around_unselected_atoms is set, then mask within each box
+     around all the atoms that are not selected (including waters/hetero)
+     with a mask_radius of mask_radius and set the value inside the mask to
+      masked_value
+
+        mask_around_unselected_atoms = mask_around_unselected_atoms,
+        mask_radius = mask_radius,
+        masked_value = masked_value,
   '''
 
   from iotbx.map_model_manager import map_model_manager as MapModelManager
@@ -2760,6 +2805,19 @@ def get_split_maps_and_models(
     mmm = MapModelManager(model = map_model_manager.model().select(selection),
       map_manager = map_model_manager.map_manager())
     mmm.box_all_maps_with_bounds_and_shift_origin(lower_bounds, upper_bounds)
+    if box_info.mask_around_unselected_atoms:  # mask everything we didn't keep
+      remaining_model=map_model_manager.model().select(~selection)
+      nnn=MapModelManager(model = map_model_manager.model().select(~selection),
+        map_manager = map_model_manager.map_manager())
+      nnn.box_all_maps_with_bounds_and_shift_origin(lower_bounds, upper_bounds)
+      nnn.remove_model_outside_map(boundary=box_info.mask_radius)
+      if nnn.model().get_sites_cart().size() > 0: # do something
+        nnn.create_mask_around_atoms(
+         mask_atoms_atom_radius=box_info.mask_radius,
+         mask_id = 'mask')
+        mask_mm = nnn.get_map_manager_by_id(map_id = 'mask')
+        s = (mask_mm.map_data() > 0.5)
+        mmm.map_manager().map_data().set_selected(s,box_info.masked_value)
     mmm_list.append(mmm)
   box_info.mmm_list = mmm_list
   return box_info
@@ -2774,6 +2832,9 @@ def get_selections_and_boxes_to_split_model(
         box_cushion = 3,
         select_final_boxes_based_on_model = None,
         skip_empty_boxes = None,
+        mask_around_unselected_atoms = None,
+        mask_radius = 3,
+        masked_value = -10,
          ):
 
   '''
@@ -2871,6 +2932,10 @@ def get_selections_and_boxes_to_split_model(
       box_info.upper_bounds_list.append(info.upper_bounds)
     box_info.lower_bounds_with_cushion_list = [] # not using these
     box_info.upper_bounds_with_cushion_list = []
+
+  box_info.mask_around_unselected_atoms = mask_around_unselected_atoms
+  box_info.mask_radius = mask_radius
+  box_info.masked_value = masked_value
 
   return box_info
 
