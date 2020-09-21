@@ -85,7 +85,7 @@ class map_model_mixins(object):
       half_maps = getattr(map_model, 'half_map', None)
       if half_maps:
         if len(half_maps) != 2:
-          raise('Please provide 2 half-maps.')
+          raise Sorry('Please provide 2 half-maps.')
         map_files += half_maps
 
       # If we didn't get anything, try looking directly at the
