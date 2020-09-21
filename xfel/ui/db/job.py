@@ -147,7 +147,7 @@ class IndexingJob(Job):
         elif "jungfrau" in self.rungroup.detector_address.lower():
           mode = "jungfrau"
         else:
-          assert False, "Couldn't figure out what kind of detector is specified by address %s"%self.rungroup.detector_address
+          mode = "other"
       if hasattr(trial_params, 'format'):
         trial_params.format.file_format = image_format
         trial_params.format.cbf.mode = mode
@@ -193,7 +193,7 @@ class IndexingJob(Job):
       nproc                     = self.app.params.mp.nproc,
       nproc_per_node            = self.app.params.mp.nproc_per_node,
       queue                     = self.app.params.mp.queue or None,
-      env_script                = self.app.params.mp.env_script[0] if len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
+      env_script                = self.app.params.mp.env_script[0] if self.app.params.mp.env_script is not None and len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
       method                    = self.app.params.mp.method,
       htcondor_executable_path  = self.app.params.mp.htcondor.executable_path,
       target                    = target_phil_path,

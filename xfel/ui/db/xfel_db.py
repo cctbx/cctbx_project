@@ -611,7 +611,14 @@ class xfel_db_application(db_application):
     run_ids = ["%d"%i[0] for i in cursor.fetchall()]
     if len(run_ids) == 0:
       return []
-    return self.get_all_x(Run, "run", where = "WHERE run.id IN (%s)"%",".join(run_ids))
+
+    use_ids = self.params.facility.name not in ['lcls']
+    if use_ids:
+      key = lambda x: x.id
+    else:
+      key = lambda x: int(x.run)
+
+    return sorted(self.get_all_x(Run, "run", where = "WHERE run.id IN (%s)"%",".join(run_ids)), key=key)
 
   def get_trial_tags(self, trial_id):
     tag = self.params.experiment_tag

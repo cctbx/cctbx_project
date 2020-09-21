@@ -483,16 +483,7 @@ class RunStatsSentinel(Thread):
               self.run_statuses.append(job.status)
               found_it = True; break
         if not found_it: self.run_statuses.append('UNKWN')
-    self.reorder()
     t2 = time.time()
-
-  def reorder(self):
-    run_numbers_ordered = sorted(self.run_numbers)
-    order = [self.run_numbers.index(rn) for rn in run_numbers_ordered]
-    self.run_numbers = run_numbers_ordered
-    self.stats = [self.stats[i] for i in order]
-    self.run_tags = [self.run_tags[i] for i in order]
-    self.run_statuses = [self.run_statuses[i] for i in order]
 
   def get_xtc_process_params_for_run(self, trial, rg, run):
     params = {}
@@ -690,16 +681,6 @@ class SpotfinderSentinel(Thread):
         for job in jobs:
           if job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id:
             self.run_statuses.append(job.status)
-    self.reorder()
-
-
-  def reorder(self):
-    run_numbers_ordered = sorted(self.run_numbers)
-    order = [self.run_numbers.index(rn) for rn in run_numbers_ordered]
-    self.run_numbers = run_numbers_ordered
-    self.stats = [self.stats[i] for i in order]
-    self.run_tags = [self.run_tags[i] for i in order]
-    self.run_statuses = [self.run_statuses[i] for i in order]
 
   def plot_stats_static(self):
     from xfel.ui.components.spotfinder_plotter import plot_multirun_spotfinder_stats
@@ -2028,7 +2009,7 @@ class SpotfinderTab(BaseTab):
     if self.all_runs == []:
       self.find_runs()
     if self.trial is not None:
-      avail_runs = sorted([str(r.run) for r in self.trial.runs])
+      avail_runs = [str(r.run) for r in self.trial.runs]
       for r in avail_runs:
         if r not in self.all_runs:
           self.run_numbers.ctr.Append(r)
@@ -2267,13 +2248,12 @@ class RunStatsTab(SpotfinderTab):
 
   def onTrialChoice(self, e):
     trial_idx = self.trial_number.ctr.GetSelection()
-    if trial_idx == 0:
-      self.trial_no = None
-      self.trial = None
-      self.run_numbers.ctr.Clear()
-      self.all_runs = []
-      self.selected_runs = []
-    else:
+    self.trial_no = None
+    self.trial = None
+    self.run_numbers.ctr.Clear()
+    self.all_runs = []
+    self.selected_runs = []
+    if trial_idx > 0:
       trial_no = self.trial_number.ctr.GetClientData(trial_idx)
       if trial_no is not None:
         self.trial_no = int(trial_no)
