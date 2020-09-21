@@ -63,22 +63,42 @@ class map_model_mixins(object):
     # get filenames from PHIL
     if from_phil:
       if model_file is not None or map_files is not None:
-        raise Sorry('If from_phil is set to True, model_file and map_files must be None.')
+        raise Sorry(
+          'If from_phil is set to True, model_file and map_files must be None.')
 
       params = self._program.params
-      if not hasattr(params, 'map_model'):
+      map_model = None
+      if hasattr(params, 'map_model'):
+        map_model = params.map_model
+      elif hasattr(params, 'input_files') and hasattr(
+          params.input_files, 'map_model'):
+        map_model = params.input_files.map_model
+      else:
         raise Sorry('Program does not have the "map_model" PHIL scope.')
 
-      model_file = params.map_model.model
+      model_file = map_model.model
+
       map_files = []
-      full_map = getattr(params.map_model, 'full_map', None)
+      full_map = getattr(map_model, 'full_map', None)
       if full_map is not None:
         map_files.append(full_map)
-      half_maps = getattr(params.map_model, 'half_map', None)
-      if half_maps is not None:
+      half_maps = getattr(map_model, 'half_map', None)
+      if half_maps:
         if len(half_maps) != 2:
           raise('Please provide 2 half-maps.')
         map_files += half_maps
+
+      # If we didn't get anything, try looking directly at the
+      #  available maps and models. If there are 1, 2 or 3 maps and 1 model,
+      #  take them
+      if (not model_file) and self.get_model_names() and \
+           len(self.get_model_names()) == 1:
+        model_file = self.get_default_model_name()
+      if not map_files and self.get_real_map_names():
+        if len(self.get_real_map_names()) == 1:
+          map_files = self.get_default_real_map_name()
+        elif len(self.get_real_map_names()) in [2,3]:
+          map_files = self.get_real_map_names()
 
     # check map_files argument
     mm = None
@@ -86,7 +106,8 @@ class map_model_mixins(object):
     mm_2 = None
     if isinstance(map_files, list):
       if len(map_files) != 1 and len(map_files) != 2 and len(map_files) != 3:
-        msg = 'Please provide only 1 full map or 2 half maps or 1 full map and 2 half maps.\n Found:\n'
+        msg = 'Please provide only 1 full map or 2 half maps or 1 ' +\
+         'full map and 2 half maps.\n Found:\n'
         for map_file in map_files:
           msg += ('  {map_file}\n'.format(map_file=map_file))
         raise Sorry(msg)
