@@ -166,6 +166,14 @@ class manager(object):
                      velocities = None,
                      log = None):
     adopt_init_args(self, locals())
+    print(self.model)
+    print(dir(self.model))
+    grm = self.model.get_restraints_manager()
+    print(grm)
+    print(dir(grm))
+    print(grm.geometry)
+    print(self.model.geometry)
+    assert 0
     if self.verbose > 0:
       mmtbx.utils.print_header("Ensemble refinement ordered solvent update", out = self.log)
     if(self.params is None): self.params = master_params().extract()

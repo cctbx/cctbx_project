@@ -309,6 +309,12 @@ class manager(object):
     if self._xray_structure is not None:
       assert self._xray_structure.scatterers().size() == self._pdb_hierarchy.atoms_size()
 
+  def __setattr__(self, attr, value):
+    print('}}}}}',attr, value)
+    if attr=='geometry':
+      assert 0
+    object.__setattr__(self, attr, value)
+
   @classmethod
   def from_sites_cart(cls,
       sites_cart,
@@ -906,8 +912,7 @@ class manager(object):
       return self.restraints_manager
     else:
       self.setup_restraints_manager()
-      print(self.restraints_manager)
-      assert 0
+      print(self.restraints_manager.geometry)
       return self.restraints_manager
 
   def set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(self,value):
@@ -1483,14 +1488,12 @@ class manager(object):
     if(self._xray_structure is not None):
       restraints_manager.crystal_symmetry = self._xray_structure.crystal_symmetry()
     self.restraints_manager = restraints_manager
-    print(dir(self.restraints_manager))
-    print(dir(self.restraints_manager.geometry))
     print(self.restraints_manager.geometry)
-    assert 0
 
     # Here we do all what is necessary when GRM and all related become available
     #
     self.extract_tls_selections_from_input()
+    print(self.restraints_manager.geometry)
 
   def set_reference_coordinate_restraints(self,
       ref_model,

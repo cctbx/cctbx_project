@@ -1190,12 +1190,11 @@ class run_ensemble_refinement(object):
         = (self.a_prime * self.er_data.ke_protein_running) + ( (1-self.a_prime) * ke)
 
   def ordered_solvent_update(self):
-    print(self.model)
-    print(dir(self.model))
-    grm = self.model.get_restraints_manager()
-    print(grm)
-    print(dir(grm))
-    grm.energies_sites()
+    # print(dir(self.model))
+    # grm = self.model.get_restraints_manager()
+    # print(grm)
+    # print(dir(grm))
+    # grm.energies_sites()
     ensemble_ordered_solvent_manager = ensemble_ordered_solvent.manager(
         model             = self.model,
         fmodel            = self.fmodel_running,
@@ -1203,6 +1202,10 @@ class run_ensemble_refinement(object):
         params            = self.params.ensemble_ordered_solvent,
         velocities        = self.er_data.velocities,
         log               = self.log)
+    print(self.model)
+    print(ensemble_ordered_solvent_manager)
+    print(ensemble_ordered_solvent_manager.model)
+    print('_'*80)
     self.model = ensemble_ordered_solvent_manager.model
     self.er_data.velocities = ensemble_ordered_solvent_manager.velocities
     self.fmodel_running.update_xray_structure(
@@ -1773,9 +1776,8 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   refinement_flags = rf(size = model.get_number_of_atoms())
 
   model.set_refinement_flags(refinement_flags)
-  model.get_restraints_manager()
-  print(dir(model))
-  print(model.geometry_restraints_manager)
+  grm = model.get_restraints_manager()
+  print(grm.geometry)
 
   # Geometry file
   xray_structure = model.get_xray_structure()
