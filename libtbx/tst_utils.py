@@ -377,10 +377,12 @@ def exercise_group_args():
   #
   r = group_args(x=1)
   r.stop_dynamic_attributes()
+  err = TypeError("Dynmaic attributes enabled")
   try:
     r.w = 0
   except TypeError as e:
-    assert str(e) == "Dynamic attributes disabled."
+    err = e
+  assert str(err) == "Dynamic attributes disabled."
 
 def exercise_round2():
   assert(2 == int(utils.round2(1.5, 0)))
