@@ -377,7 +377,7 @@ def exercise_group_args():
   #
   r = group_args(x=1)
   r.stop_dynamic_attributes()
-  err = TypeError("Dynmaic attributes enabled")
+  err = None
   try:
     r.w = 0
   except TypeError as e:
