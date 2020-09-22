@@ -60,9 +60,13 @@ master_params_str = """
     .type = bool
     .help = Mask out region outside molecule
     .style = tribool
-  auto_mask_if_no_model = False
+  auto_mask_if_no_model = True
     .type = bool
     .help = If mask_maps is set and no model is present, mask based on density
+    .style = tribool
+  auto_mask_if_model = False
+    .type = bool
+    .help = If mask_maps is set and model is present, mask based on density
     .style = tribool
   radius_smooth = None
     .type = float
@@ -298,6 +302,7 @@ class _mtriage(object):
     self.fsc_curve_model  = None
     self.mask_smooth      = None
     self.radius_smooth    = self.params.radius_smooth
+    self.auto_masked      = None
     self.n_bins           = self.params.n_bins
     self.d_corner         = None
     # Info (results)
@@ -400,15 +405,23 @@ class _mtriage(object):
 
   def _compute_and_apply_mask(self):
     if(not self.params.mask_maps): return
-    if(self.xray_structure is None):
+    # Decide about auto_masking
+    auto_mask = False
+    if (self.xray_structure is None) and (self.params.auto_mask_if_no_model):
+      auto_mask = True
+    elif (self.xray_structure is not None) and (self.params.auto_mask_if_model):
+      auto_mask = True
+
+    if auto_mask:
       self.mask_smooth=None
-      if self.params.auto_mask_if_no_model:
-        if not self.params.resolution:
+      if not self.params.resolution:
           raise Sorry("Need approximate resolution for auto_mask_if_no_model")
-        # generate mask from the density
-        self.mask_smooth=self._compute_soft_mask_from_density()
-      if not self.mask_smooth:  # failed or did not attempt
-        return
+      # generate mask from the density
+      self.mask_smooth=self._compute_soft_mask_from_density()
+      if self.mask_smooth: # it worked
+        self.auto_masked = True  # we used auto_mask
+      else:
+        raise Sorry("Failed to auto-mask...try using a model ")
     else:
       self.mask_smooth = masks.smooth_mask(
         xray_structure = self.xray_structure,
@@ -548,7 +561,8 @@ class _mtriage(object):
       fsc_curve         = fsc_curve,
       fsc_curve_model   = fsc_curve_model,
       mask              = mask,
-      radius_smooth     = self.radius_smooth)
+      radius_smooth     = self.radius_smooth,
+      auto_masked       = self.auto_masked)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
