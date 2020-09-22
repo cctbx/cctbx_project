@@ -10,17 +10,14 @@ import mmtbx.utils
 import mmtbx.model
 import mmtbx.maps
 from mmtbx import conformation_dependent_library as cdl
-from mmtbx.conformation_dependent_library import cdl_utils, cdl_setup
+from mmtbx.conformation_dependent_library import cdl_setup
 from mmtbx.command_line import validation_summary
 from iotbx.option_parser import iotbx_option_parser
 from iotbx import pdb
 import iotbx.phil
 import iotbx
-from cctbx import geometry_restraints
 from cctbx.array_family import flex
-from cctbx import miller
 from cctbx import adptbx
-from cctbx import xray
 import scitbx.math
 from libtbx.utils import Sorry, user_plus_sys_time, multi_out, show_total_time
 from libtbx import adopt_init_args, slots_getstate_setstate
@@ -36,7 +33,6 @@ from six.moves import cPickle as pickle
 import random
 import gzip
 import math
-import time
 import os
 import sys
 from six.moves import range
