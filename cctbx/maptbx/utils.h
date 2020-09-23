@@ -665,13 +665,14 @@ void set_box_with_symmetry(
   Parameters start, end, unit_cell are related to map_data_to.
   */
   af::c_grid<3> a = map_data_to.accessor();
+  af::c_grid<3> b = map_data_from.accessor();
   for (int i = start[0]; i <= end[0]; i++) {
     for (int j = start[1]; j <= end[1]; j++) {
       for (int k = start[2]; k <= end[2]; k++) {
         // position in map_data_from
-        int p = i-start[0];
-        int q = j-start[1];
-        int r = k-start[2];
+        int p = scitbx::math::mod_positive(i-start[0], static_cast<int>(b[0]));
+        int q = scitbx::math::mod_positive(j-start[1], static_cast<int>(b[1]));
+        int r = scitbx::math::mod_positive(k-start[2], static_cast<int>(b[2]));
         // fractional coordinates of i,j,k
         cctbx::fractional<> grid_node_frac = cctbx::fractional<>(
           i/static_cast<double>(a[0]),
@@ -689,17 +690,13 @@ void set_box_with_symmetry(
           int kk = scitbx::math::mod_positive(
             static_cast<int>(grid_node_frac_rt[2]*a[2]), static_cast<int>(a[2]));
           // Using max avoids overwriting set non-zero values with zeros from the box
-
-          //if(std::abs(map_data_to(ii,jj,kk)) < 0.1 && std::abs(map_data_to(ii,jj,kk))>0.1 ) {
-          //  map_data_to(ii,jj,kk) = map_data_from(p,q,r);
-          //}
           map_data_to(ii,jj,kk) = std::max(
             map_data_from(p,q,r), map_data_to(ii,jj,kk));
         }
       }
     }
   }
-  map_box_average(map_data_to, 1, 0.1); // This doesn't seem to do much
+  map_box_average(map_data_to, 1, 1.e-6);
 }
 
 template <typename DataType1, typename DataType2>
