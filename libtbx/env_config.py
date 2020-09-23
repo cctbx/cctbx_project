@@ -3052,6 +3052,10 @@ def unpickle(build_path=None, env_name="libtbx_env"):
     sys_prefix = absolute_path(sys_prefix)
     for i in range(len(env.repository_paths)):
       env.repository_paths[i]._anchor = sys_prefix
+    env.bin_path._anchor = sys_prefix
+    env.exe_path._anchor = sys_prefix
+    env.include_path._anchor = sys_prefix
+    env.lib_path._anchor = sys_prefix
   return env
 
 def warm_start(args):
