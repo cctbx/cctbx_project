@@ -115,7 +115,7 @@ af::versa<double, af::c_grid<3> > superpose_maps(
               if (point_frac_in_2[i]>lb && point_frac_in_2[i]< 0 ){
                 point_frac_in_2[i] = 0;}
               if (point_frac_in_2[i]>1 && point_frac_in_2[i]< ub ){
-                point_frac_in_2[i] = ub;}
+                point_frac_in_2[i] = 1;}
             }
             result_map_ref(i,j,k) = tricubic_interpolation(map_data_1,
               point_frac_in_2);
