@@ -39,7 +39,15 @@ def format_HELIX_records_from_AEV(aev_values_dict, cc_cutoff):
       M = 0
   return result
 
-def generate_perfect_helix(n_residues=10, residue_code="G"):
+def generate_perfect_helix(rs_values,
+                           ts_values,
+                           angular_rs_values,
+                           radial_eta,
+                           angular_eta,
+                           angular_zeta,
+                           n_residues=10,
+                           residue_code="G",
+                           ):
   """
   Compute AEV values for the perfect helix.
   """
@@ -50,7 +58,14 @@ def generate_perfect_helix(n_residues=10, residue_code="G"):
     pdb_hierarchy = perfect_helix_ph,
     build_grm     = True,
     log           = null_out())
-  return AEV(model = model).get_values()
+  return AEV(model = model,
+             rs_values=rs_values,
+             ts_values=ts_values,
+             angular_rs_values=angular_rs_values,
+             radial_eta=radial_eta,
+             angular_eta=angular_eta,
+             angular_zeta=angular_zeta,
+             ).get_values()
 
 def compare(aev_values_dict):
   """
@@ -59,7 +74,14 @@ def compare(aev_values_dict):
   have BAEVs or EAEVs the CC values are None.
   """
   result = diff_class()
-  perfect_helix = generate_perfect_helix()
+  perfect_helix = generate_perfect_helix(
+                    rs_values=aev_values_dict.rs_values,
+                    ts_values=aev_values_dict.ts_values,
+                    angular_rs_values=aev_values_dict.angular_rs_values,
+                    radial_eta=aev_values_dict.radial_eta,
+                    angular_eta=aev_values_dict.angular_eta,
+                    angular_zeta=aev_values_dict.angular_zeta,
+                    )
   def pretty_aev(v):
     outl = 'AEV'
     for i in v:
@@ -125,24 +147,27 @@ class AEV(object):
                 model,
                 rs_values = [2.0, 3.8, 5.2, 5.5, 6.2, 7.0, 8.6, 10.0],
                 # probe distances (A) for radial
-                # Rj = [2.1, 2.2, 2.5], NOT USED!!!
+                radial_eta = 4,
                 cutoff = 8.1,
                 # radial cutoff distance
                 ts_values = [0.392699, 1.178097, 1.963495, 2.748894],
                 # probe angles (rad) for angular
                 angular_rs_values = [3.8, 5.2, 5.5, 6.2],
                 # probe distances (A) for angular
-                angular_zeta = 8
+                angular_eta = 4,
+                angular_zeta = 8,
                 # ???
                 ):
     self.hierarchy = model.get_hierarchy()
     self.geometry_restraints_manager = model.get_restraints_manager().geometry
     self.rs_values = rs_values
+    self.radial_eta = radial_eta
     # NOT USED!!!
     # self.Rj = Rj
     self.cutoff = cutoff
     self.ts_values = ts_values
     self.angular_rs_values = angular_rs_values
+    self.angular_eta = angular_eta
     self.angular_zeta = angular_zeta
     self.EAEVs = format_class(length_of_radial=len(self.rs_values))
     self.MAEVs = format_class(length_of_radial=len(self.rs_values))
@@ -237,8 +262,9 @@ class AEV(object):
     """
     Formula (3) and (4), page 3194
     """
-    n = 4.0
-    l = 8.0
+    n = self.radial_eta
+    assert  self.radial_eta==self.angular_eta
+    l = self.angular_zeta
     AEVs = format_class()
     res_name = self.center_atom.format_atom_record()[17:20]+'  '+\
                self.center_atom.format_atom_record()[21:26]
