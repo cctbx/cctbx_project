@@ -146,7 +146,7 @@ class Script(object):
 
     if self.params.output.save_experiments_and_reflections:
       import os
-      if 'id' not in reflections:
+      if len(reflections) and 'id' not in reflections:
         from dials.array_family import flex
         id_ = flex.int(len(reflections), -1)
         if experiments:
@@ -166,7 +166,8 @@ class Script(object):
       else:
         filename_suffix = "_%06d"%self.mpi_helper.rank
 
-      reflections.as_pickle(os.path.join(self.params.output.output_dir, "%s%s.refl"%(self.params.output.prefix, filename_suffix)))
+      if len(reflections):
+        reflections.as_pickle(os.path.join(self.params.output.output_dir, "%s%s.refl"%(self.params.output.prefix, filename_suffix)))
       if experiments:
         experiments.as_file(os.path.join(self.params.output.output_dir, "%s%s.expt"%(self.params.output.prefix, filename_suffix)))
 
