@@ -438,20 +438,24 @@ class minimize_wrapper_with_map():
     rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load(
         rotamers = "favored")
     rigid_body_selections = [] # no RBR here
-    rsr_tm = rsr_target_map(
-        map_data = target_map,
-        xray_structure = model.get_xray_structure(),
-        d_min = 3.8,
-        atom_radius=params.refinement.atom_radius)
+    from iotbx import map_model_manager
+    from iotbx import map_manager
+    mm = map_manager.map_manager(
+      map_data                   = target_map,
+      unit_cell_grid             = target_map.all(),
+      wrapping                   = False,
+      unit_cell_crystal_symmetry = model.crystal_symmetry())
+    mmm = map_model_manager.map_model_manager(
+      model       = model,
+      map_manager = mm)
     res = rsr_mc_run(
-        params=params,
-        model=model,
-        target_map=rsr_tm,
-        log=log,
-        ncs_groups=model.get_ncs_groups(),
-        rotamer_manager=rotamer_manager,
-        sin_cos_table=sin_cos_table,
-        rigid_body_selections=rigid_body_selections)
+      params                = params,
+      map_model_manager     = mmm,
+      log                   = log,
+      rotamer_manager       = rotamer_manager,
+      sin_cos_table         = sin_cos_table,
+      rigid_body_selections = rigid_body_selections)
+
     model.set_sites_cart_from_hierarchy(res.model.get_hierarchy())
     res.structure_monitor.states_collector.write(file_name="rsr_all_states.pdb")
     return

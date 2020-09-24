@@ -97,7 +97,8 @@ def check_sites_match(ph_answer, ph_refined, tol, exclude_atom_names=[]):
 class rsr_model(object):
   def __init__(self,
                model,
-               target_map_object=None):
+               map_data=None,
+               d_min=None):
     adopt_init_args(self, locals())
     self.unit_cell = self.model.crystal_symmetry().unit_cell()
     self.sites_cart_start = self.model.get_sites_cart()
@@ -121,9 +122,9 @@ class rsr_model(object):
 
   def initialize(self):
     five_cc_o = five_cc(
-      map               = self.target_map_object.map_data,
+      map               = self.map_data,
       xray_structure    = self.model.get_xray_structure(),
-      d_min             = self.target_map_object.d_min,
+      d_min             = self.d_min,
       compute_cc_box    = True,
       compute_cc_image  = False,
       compute_cc_mask   = True,
