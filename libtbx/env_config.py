@@ -2228,17 +2228,6 @@ selfx:
         # Reload the libtbx_config in case dependencies have changed
         module.process_libtbx_config()
 
-      # Resolve python dependencies in advance of potential use in refresh scripts
-      # Lazy-load the import here as we might not have an environment before this
-      try:
-        from . import pkg_utils
-      except ImportError:
-        from libtbx import pkg_utils
-      if self.build_options.use_conda:
-        pkg_utils.resolve_module_conda_dependencies(self.module_list)
-      else:
-        pkg_utils.resolve_module_python_dependencies(self.module_list)
-
       for path in self.pythonpath:
         sys.path.insert(0, abs(path))
       for module in self.module_list:
