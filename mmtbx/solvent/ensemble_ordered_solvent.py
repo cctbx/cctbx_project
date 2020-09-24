@@ -172,7 +172,8 @@ class manager(object):
     print(grm)
     print(dir(grm))
     print(grm.geometry)
-    print(self.model.geometry)
+    print(self.model.restraints_manager)
+    print(self.model.restraints_manager.geometry)
     assert 0
     if self.verbose > 0:
       mmtbx.utils.print_header("Ensemble refinement ordered solvent update", out = self.log)
