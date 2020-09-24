@@ -426,7 +426,6 @@ class minimize_wrapper_with_map():
     rsr_master_params = rsr.master_params_str
     import iotbx.phil
     rsr_master_params = iotbx.phil.parse(rsr_master_params, process_includes=True)
-    from mmtbx.refinement.real_space.utils import target_map as rsr_target_map
     import mmtbx.idealized_aa_residues.rotamer_manager
     sin_cos_table = scitbx.math.sin_cos_table(n=10000)
     params = rsr_master_params.extract()
