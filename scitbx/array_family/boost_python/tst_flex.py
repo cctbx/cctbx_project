@@ -3608,6 +3608,56 @@ def exercise_vec3_double_as_numpy_array():
   np_vec3 = vec3.as_numpy_array()
   assert np.all(np.isclose(np_vec3, np.array(test_data)))
 
+def exercise_fixed_width_int_types():
+  import numpy as np
+
+  # uint8
+  u8 = flex.uint8([1, 2, 3, 4, 5])
+  assert u8.as_numpy_array().dtype == np.uint8
+
+  # verify rollover behaviour
+  u8 += 0xff
+  assert flex.max(u8) == 4
+  assert flex.min(u8) == 0
+
+  # int8
+  i8 = flex.int8([1, 2, 3, 4, 5])
+  assert i8.as_numpy_array().dtype == np.int8
+
+  # verify rollover behaviour
+  i8 += 0x7f
+  assert(flex.min(i8) == -128)
+
+  # overflows
+  try:
+    a = flex.int8([0xff])
+  except OverflowError as e:
+    pass
+  else:
+    raise RuntimeError("should have OverflowError")
+
+  # overflows
+  try:
+    a = flex.uint8([0xfff])
+  except OverflowError as e:
+    pass
+  else:
+    raise RuntimeError("should have OverflowError")
+
+  # other overflow types
+  for itype, maxvalue in zip(
+    [flex.int8, flex.uint8, flex.int16, flex.uint16,
+       flex.int32, flex.uint32, flex.int64, flex.uint64],
+    [0x7f, 0xff, 0x7fff, 0xffff, 0x7fffffff, 0xffffffff,
+       0x7fffffffffffffff, 0xffffffffffffffff]):
+    a = itype([maxvalue])
+    try:
+      a = itype([maxvalue + 1])
+    except OverflowError as e:
+      pass
+    else:
+      raise RuntimeError("should have OverflowError")
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
@@ -3670,6 +3720,7 @@ def run(iterations):
     exercise_condense_as_ranges()
     exercise_python_functions()
     exercise_vec3_double_as_numpy_array()
+    exercise_fixed_width_int_types()
     i += 1
 
 if (__name__ == "__main__"):

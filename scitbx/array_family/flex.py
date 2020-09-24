@@ -13,6 +13,11 @@ bp.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import *
 import scitbx_array_family_flex_ext as ext
 
+# alias existing integer types to precise names to go with
+# int64 etc.
+int32 = int
+int32_from_byte_str = int_from_byte_str
+
 import scitbx.stl.map # import dependency
 import scitbx.random
 from scitbx.random import get_random_seed, set_random_seed
