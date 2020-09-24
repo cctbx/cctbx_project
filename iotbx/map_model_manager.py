@@ -468,7 +468,7 @@ class map_model_manager(object):
     '''
      Remove this model
    '''
-    del self._model_dict[map_id]
+    del self._model_dict[model_id]
 
   def map_managers(self):
     ''' Get all the map_managers as a list'''
