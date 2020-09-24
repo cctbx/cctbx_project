@@ -1,8 +1,15 @@
 
-from abc import ABCMeta, abstractproperty
+from abc import ABCMeta #, abstractproperty
 import numpy as np
 from scitbx.matrix import sqr
 
+import abc
+try:
+    ABC = abc.ABC
+    abstractproperty = lambda f: property(abc.abstractmethod(f))
+except AttributeError:  # Python 2.7, abc exists, but not ABC
+    ABC = abc.ABCMeta("ABC", (object,), {"__slots__": ()})
+    from abc import abstractproperty
 
 class CrystalSystemManager(object):
 
@@ -53,7 +60,7 @@ class CrystalSystemManager(object):
     @abstractproperty
     def variables(self):
         """the unit cell variables"""
-        pass
+        return []
 
     @property
     def cal(self):
@@ -116,7 +123,14 @@ class CrystalSystemManager(object):
 
     @abstractproperty
     def variable_names(self):
-        pass
+        return []
+
+    @property
+    def named_variables(self):
+        named_vars = {}
+        for name, val in zip(self.variable_names, self.variables):
+            named_vars[name] = val
+        return named_vars
 
     @property
     def unit_cell_parameters(self):
@@ -125,4 +139,3 @@ class CrystalSystemManager(object):
         returns: a,b,c, alpha, beta, gamma
         """
         return self.a, self.b, self.c, self.al*180./np.pi, self.be*180./np.pi, self.ga*180./np.pi
-

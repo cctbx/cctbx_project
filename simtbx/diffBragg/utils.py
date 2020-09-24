@@ -1,13 +1,23 @@
-from scipy import ndimage
 from itertools import zip_longest
 import math
+import pickle
+from simtbx.diffBragg.refiners.crystal_systems import OrthorhombicManager, TetragonalManager, MonoclinicManager, HexagonalManager
 from scipy.optimize import minimize
 from dials.algorithms.image.filter import convolve
-import numpy as np
-import pylab as plt
 from scipy.interpolate import SmoothBivariateSpline
-from cctbx import miller
 from cctbx.array_family import flex
+from cxid9114.prediction import prediction_utils
+from cctbx import miller, sgtbx
+from cctbx.crystal import symmetry
+import numpy as np
+from scipy.ndimage.morphology import binary_dilation
+from cxid9114.parameters import ENERGY_CONV
+from scipy import ndimage
+import pylab as plt
+from scitbx.array_family import flex
+from simtbx.diffBragg.sim_data import SimData
+from simtbx.diffBragg.nanoBragg_beam import nanoBragg_beam
+from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 
 
 def get_spot_data(img, thresh=0, filter=None, **kwargs):
@@ -64,6 +74,30 @@ def x_y_to_q(x,y, detector, beam):
         q_vecs.append(s1-beam.get_s0())  # momentum transfer
 
     return np.vstack(q_vecs)
+
+
+def label_background_pixels(roi_img, thresh=3.5, iterations=1):
+    """
+    iteratively determine background pixels in a subimg
+    """
+    img_shape = roi_img.shape
+    img1 = roi_img.copy().ravel()   # 1-D version
+    background_pixels = None
+    while iterations > 0:
+        if background_pixels is None:
+            outliers = is_outlier(img1, thresh)
+            m = np.median(img1[~outliers])
+            out_and_high = np.logical_and(outliers, img1 > m)
+            background_pixels = ~out_and_high
+        else:
+            where_bg = np.where(background_pixels)[0]
+            outliers = is_outlier(img1[background_pixels], thresh)
+            m = np.median(img1[background_pixels][~outliers])
+            out_and_high = np.logical_and(outliers, img1[background_pixels] > m)
+            background_pixels[where_bg[out_and_high]] = False
+        iterations = iterations - 1
+
+    return background_pixels.reshape(img_shape)
 
 
 def is_outlier(points, thresh=3.5):
@@ -392,10 +426,11 @@ def perturb_miller_array(F, factor, perturb_log_vals=True):
 
 def map_hkl_list(Hi_lst, anomalous_flag=True, symbol="P43212"):
     from cctbx import sgtbx
+    from dials.array_family import flex as dials_flex
     sg_type = sgtbx.space_group_info(symbol=symbol).type()
     # necessary for py3 to type cast the ints
     type_casted_Hi_lst = tuple([(int(x), int(y), int(z)) for x, y, z in Hi_lst])
-    Hi_flex = flex.miller_index(type_casted_Hi_lst)
+    Hi_flex = dials_flex.miller_index(type_casted_Hi_lst)
     miller.map_to_asu(sg_type, anomalous_flag, Hi_flex)
     return list(Hi_flex)
 
@@ -548,7 +583,7 @@ def update_miller_array_at_indices(miller_array, indices, new_values):
 
 
 def fiber2D_integ(x,y,g):
-    return math.atan((x*y)/(g*math.sqrt(g*g + x*x + y*y)))/(2.0*math.pi);
+    return math.atan((x*y)/(g*math.sqrt(g*g + x*x + y*y)))/(2.0*math.pi)
 
 
 def makeMoffat_integPSF(fwhm_pixel, sizeX, sizeY):
@@ -616,3 +651,425 @@ def convolve_with_psf(image_data, fwhm=27.0, pixel_size=177.8, psf_radius=7, sz=
         convolved_image = convolved_image.as_numpy_array()
     return convolved_image
 
+
+def get_roi_from_spot(refls, fdim, sdim, shoebox_sz=10):
+    fs_spot, ss_spot, _ = zip(*refls['xyzobs.px.value'])
+    rois = []
+    is_on_edge = []
+    for i_spot, (x_com, y_com) in enumerate(zip(fs_spot, ss_spot)):
+        x_com = x_com - 0.5
+        y_com = y_com - 0.5
+        i1 = int(max(x_com - shoebox_sz / 2., 0))
+        i2 = int(min(x_com + shoebox_sz / 2., fdim-1))
+        j1 = int(max(y_com - shoebox_sz / 2., 0))
+        j2 = int(min(y_com + shoebox_sz / 2., sdim-1))
+
+        if i2-i1 < shoebox_sz-1 or j2-j1 < shoebox_sz-1:
+            is_on_edge.append(True)
+        else:
+            is_on_edge.append(False)
+        roi = i1, i2, j1, j2
+        rois.append(roi)
+    return rois, is_on_edge
+
+
+def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_edge_reflections=False,
+                                   reject_roi_with_hotpix=True, background_mask=None, hotpix_mask=None):
+
+    npan, sdim, fdim = imgs.shape
+
+    if hotpix_mask is not None:
+        assert hotpix_mask.shape == imgs.shape
+
+    if background_mask is not None:
+        assert background_mask.shape == imgs.shape
+
+    rois, is_on_edge = get_roi_from_spot(refls, fdim, sdim, shoebox_sz=shoebox_sz)
+    tilt_abc = []
+    kept_rois = []
+    panel_ids = []
+    selection_flags = []
+    for i_roi, roi in enumerate(rois):
+        i1, i2, j1, j2 = roi
+        is_selected = True
+        if is_on_edge[i_roi] and reject_edge_reflections:
+            is_selected = False
+        pid = refls[i_roi]['panel']
+
+        shoebox = imgs[pid, j1:j2, i1:i2]
+
+        if hotpix_mask is not None:
+            is_hotpix = hotpix_mask[pid, j1:j2, i1:i2]
+            num_hotpix = is_hotpix.sum()
+            if num_hotpix > 0 and reject_roi_with_hotpix:
+                is_selected = False
+
+        if background_mask is not None:
+            is_background = background_mask[pid, j1:j2, i1:i2]
+        else:
+            is_background = label_background_pixels(shoebox, iterations=2)
+
+        bg_pixels = shoebox[is_background]
+        bg_signal = np.median(bg_pixels)
+
+        if bg_signal < 0:
+            is_selected = False
+        tilt_abc.append((0, 0, bg_signal))
+        kept_rois.append(roi)
+        panel_ids.append(pid)
+        selection_flags.append(is_selected)
+
+    return kept_rois, panel_ids, tilt_abc, selection_flags
+
+
+
+def image_data_from_expt(expt):
+    iset = expt.imageset
+    if len(iset) == 0:
+        raise ValueError("imageset should have 1 shot")
+    if len(iset) > 1:
+        raise ValueError("imageset should have only 1 shot. This expt has imageset with %d shots" % len(iset))
+
+    try:
+        flex_data = iset.get_raw_data(0)
+    except Exception as err:
+        assert str(type(err)) == "<class 'Boost.Python.ArgumentError'>", "something weird going on with imageset data"
+        flex_data = iset.get_raw_data()
+
+    if not isinstance(flex_data, tuple):
+        flex_data = (flex_data, )
+    img_data = np.array([data.as_numpy_array() for data in flex_data])
+    return img_data
+
+
+def simulator_from_expt_and_params(expt, params=None, oversample=0, device_id=0, init_scale=1, total_flux=1e12,
+                                   ncells_abc=(10,10,10), has_isotropic_ncells=True, mosaicity=0, num_mosaicity_samples=1, mtz_name=None,
+                                   mtz_column=None, default_F=0, dmin=1.5, dmax=30, spectra_file=None, spectra_stride=1):
+
+    if params is not None:
+        oversample = params.simulator.oversample
+        device_id = params.simulator.device_id
+        init_scale = params.simulator.init_scale
+        total_flux = params.simulator.total_flux
+
+        ncells_abc = params.simulator.crystal.ncells_abc
+        has_isotropic_ncells = params.simulator.crystal.has_isotropic_ncells
+        mosaicity = params.simulator.crystal.mosaicity
+        num_mosaicity_samples = params.simulator.crystal.num_mosaicity_samples
+
+        mtz_name = params.simulator.structure_factors.mtz_name
+        mtz_column = params.simulator.structure_factors.mtz_column
+        default_F = params.simulator.structure_factors.default_F
+        dmin = params.simulator.structure_factors.dmin
+        dmax = params.simulator.structure_factors.dmax
+
+        spectra_file = params.simulator.spectrum.filename
+        spectra_stride = params.simulator.spectrum.stride
+
+    if has_isotropic_ncells:
+        if len(set(ncells_abc)) != 1 :
+            raise ValueError("`isotropic_ncells=True`, so `ncells_abc` should all be the same, not %d %d %d" % tuple(ncells_abc))
+
+    # make a simulator instance
+    SIM = SimData()
+    SIM.detector = expt.detector
+
+    # create nanoBragg crystal
+    crystal = nanoBragg_crystal()
+    crystal.isotropic_ncells = has_isotropic_ncells
+    crystal.dxtbx_crystal = expt.crystal
+    crystal.thick_mm = 0.1  # hard code a thickness, will be over-written by the scale
+    crystal.Ncells_abc = ncells_abc  #params.simulator.init_ncells_abc
+    crystal.n_mos_domains = num_mosaicity_samples
+    crystal.mos_spread_deg = mosaicity
+    if mtz_name is None:
+        miller_data = make_miller_array(
+            symbol=expt.crystal.get_space_group().info().type().lookup_symbol(),
+            unit_cell=expt.crystal.get_unit_cell(), d_min=dmin, d_max=dmax)
+    else:
+        miller_data = open_mtz(mtz_name, mtz_column)
+    crystal.miller_array = miller_data
+    SIM.crystal = crystal
+
+    # create a nanoBragg beam
+    beam = nanoBragg_beam()
+    beam.size_mm = params.simulator.beam.size_mm
+    beam.unit_s0 = expt.beam.get_unit_s0()
+    if spectra_file is not None:
+        init_spectrum = load_spectra_file(spectra_file, total_flux, spectra_stride)
+    else:
+        init_spectrum = [(expt.beam.get_wavelength(), total_flux)]
+    beam.spectrum = init_spectrum
+    SIM.beam = beam
+
+    SIM.panel_id = 0
+    SIM.instantiate_diffBragg(oversample=oversample, device_Id=device_id, default_F=default_F)
+    if init_scale is not None:
+        SIM.update_nanoBragg_instance("spot_scale", init_scale)
+    return SIM
+
+
+def get_flux_and_energy(beam=None, spec_file=None, total_flux=1e12, pinkstride=None):
+    if spec_file is not None:
+        FLUX, energies = load_spectra_file(spec_file, total_flux=total_flux, pinkstride=pinkstride)
+    else:
+        assert beam is not None
+        FLUX = [total_flux]
+        energies = [ENERGY_CONV / beam.get_wavelength()]
+
+    return FLUX, energies
+
+
+def open_mtz(mtzfname, mtzlabel=None, verbose=False):
+    if mtzlabel is None:
+        mtzlabel = "fobs(+)fobs(-)"
+    if verbose:
+        print("Opening mtz file %s , label %s" % (mtzfname, mtzlabel))
+    from iotbx.reflection_file_reader import any_reflection_file
+    miller_arrays = any_reflection_file(mtzfname).as_miller_arrays()
+
+    possible_labels = []
+    foundlabel = False
+    for ma in miller_arrays:
+        label = ma.info().label_string()
+        possible_labels.append(label)
+        if label == mtzlabel:
+            foundlabel = True
+            break
+
+    assert foundlabel, "MTZ Label not found... \npossible choices: %s" % (" ".join(possible_labels))
+    ma = ma.as_amplitude_array()
+    return ma
+
+
+def make_miller_array(symbol, unit_cell, defaultF=1000, d_min=1.5, d_max=999):
+    sgi = sgtbx.space_group_info(symbol)
+    # TODO: allow override of ucell
+    symm = symmetry(unit_cell=unit_cell, space_group_info=sgi)
+    miller_set = symm.build_miller_set(anomalous_flag=True, d_min=d_min, d_max=d_max)
+    # NOTE does build_miller_set automatically expand to p1 ? Does it obey systematic absences ?
+    # Note how to handle sys absences here ?
+    Famp = flex.double(np.ones(len(miller_set.indices())) * defaultF)
+    mil_ar = miller.array(miller_set=miller_set, data=Famp).set_observation_type_xray_amplitude()
+    return mil_ar
+
+
+def load_spectra_file(spec_file, total_flux=1., pinkstride=1):
+    wavelengths, weights = np.loadtxt(spec_file, float, delimiter=',', skiprows=1).T
+    wavelengths = wavelengths[::pinkstride]
+    weights = weights[::pinkstride]
+    energies = ENERGY_CONV/wavelengths
+    FLUXES = weights / weights.sum() * total_flux
+    return FLUXES, energies
+
+
+def make_background_pixel_mask(DET, refls_strong=None, dilate=1):
+    # make mask of all strong spot pixels..
+    n_panels = len(DET)
+    nfast, nslow = DET[0].get_image_size()
+    # make a mask that tells me True if I am a background pixel
+    is_bg_pixel = np.ones((n_panels, nslow, nfast), bool)
+    # group the refls by panel ID
+    if refls_strong is None:
+        return is_bg_pixel
+
+    refls_strong_perpan = prediction_utils.refls_by_panelname(refls_strong)
+    for panel_id in refls_strong_perpan:
+        panel_id = int(panel_id)
+        fast, slow = DET[panel_id].get_image_size()
+        mask = prediction_utils.strong_spot_mask_dials(
+            refls_strong_perpan[panel_id], (slow, fast),
+            as_composite=True)
+        # dilate the mask
+        mask = binary_dilation(mask, iterations=dilate)
+        is_bg_pixel[panel_id] = ~mask  # strong spots should not be background pixels
+
+    return is_bg_pixel
+
+
+def load_mask(maskfile):
+    if maskfile is None:
+        return None
+    with open(maskfile, 'rb') as o:
+        mask = pickle.load(o)
+    return mask
+
+
+def unitcell_sigmas(unitcell_manager, unitcell_sigmas):
+    name_mapping = {'a_Ang': 0, 'b_Ang': 1, 'c_Ang': 2, 'alpha_rad': 3, 'beta_rad': 4, 'gamma_rad': 5}
+    variable_sigmas = []
+    for name in unitcell_manager.variable_names:
+        sig = unitcell_sigmas[name_mapping[name]]
+        variable_sigmas.append(sig)
+    return variable_sigmas
+
+
+def manager_from_crystal(crystal):
+    """
+
+    :param crystal:  dxtbx crystal model
+    :return:
+    """
+
+    a, b, c, al, be, ga = crystal.get_unit_cell().parameters()
+    if a == b and a != c and np.allclose([al, be, ga], [90]*3):
+        manager = TetragonalManager(a=a, c=c)
+
+    elif a != b and b != c and a != c and np.allclose([al, be, ga], [90]*3):
+        manager = OrthorhombicManager(a=a, b=b, c=c)
+
+    elif a == b and a != c and np.allclose([al, ga], [90]*2) and np.allclose([be], [120]):
+        manager = HexagonalManager(a=a, c=c)
+
+    elif a != b and b != c and a != c and np.allclose([al, ga], [90]*2) and not np.allclose([be], [120]):
+        manager = MonoclinicManager(a=a, b=b, c=c, beta=be*np.pi/180.)
+
+    else:
+        raise NotImplementedError("Not yet implemented for crystal model")
+
+    return manager
+
+
+def refls_from_sims(panel_imgs, detector, beam, thresh=0, filter=None, panel_ids=None, **kwargs):
+    """
+    This class is for converting the centroids in the noiseless simtbx images
+    to a multi panel reflection table
+
+    :param panel_imgs: list or 3D array of detector panel simulations
+    :param detector: dxtbx  detector model of a caspad
+    :param beam:  dxtxb beam model
+    :param thresh: threshol intensity for labeling centroids
+    :param filter: optional filter to apply to images before
+        labeling threshold, typically one of scipy.ndimage's filters
+    :param pids: panel IDS , else assumes panel_imgs is same length as detector
+    :param kwargs: kwargs to pass along to the optional filter
+    :return: a reflection table of spot centroids
+    """
+    from dials.algorithms.spot_finding.factory import FilterRunner
+    from dials.model.data import PixelListLabeller, PixelList
+    from dials.algorithms.spot_finding.finder import PixelListToReflectionTable
+    from cxid9114 import utils
+
+    if panel_ids is None:
+        panel_ids = np.arange(len(detector))
+    pxlst_labs = []
+    for i, pid in enumerate(panel_ids):
+        plab = PixelListLabeller()
+        img = panel_imgs[i]
+        if filter is not None:
+            mask = filter(img, **kwargs) > thresh
+        else:
+            mask = img > thresh
+        img_sz = detector[int(pid)].get_image_size()  # for some reason the int cast is necessary in Py3
+        flex_img = flex.double(img)
+        flex_img.reshape(flex.grid(img_sz))
+
+        flex_mask = flex.bool(mask)
+        flex_mask.resize(flex.grid(img_sz))
+        pl = PixelList(0, flex.double(img), flex.bool(mask))
+        plab.add(pl)
+
+        pxlst_labs.append(plab)
+
+    pixlst_to_reftbl = PixelListToReflectionTable(
+        min_spot_size=1,
+        max_spot_size=194 * 184,  # TODO: change this ?
+        filter_spots=FilterRunner(),  # must use a dummie filter runner!
+        write_hot_pixel_mask=False)
+
+    #dblock = utils.datablock_from_numpyarrays(panel_imgs, detector, beam)
+    #iset = dblock.extract_imagesets()[0]
+    El = utils.explist_from_numpyarrays(panel_imgs, detector, beam)
+    iset = El.imagesets()[0]
+    refls = pixlst_to_reftbl(iset, pxlst_labs)[0]
+
+    return refls
+
+#def tally_local_statistics(spot_rois):
+#    # tally up all miller indices in this refinement
+#    total_pix = 0
+#    for x1, x2, y1, y2 in spot_rois:
+#        total_pix += (x2 - x1) * (y2 - y1)
+#
+#    nspots = len(spot_rois)
+#
+#    # total_pix = self.all_pix
+#    # Per image we have 3 rotation angles to refine
+#    n_rot_param = 3
+#
+#    # by default we assume each shot refines its own ncells param (mosaic domain size Ncells_abc in nanoBragg)
+#    n_per_image_ncells_param = 1 if params.simulator.crystal.has_isotroic_ncells else 3
+#
+#    # by default each shot refines its own unit cell parameters (e.g. a,b,c,alpha, beta, gamma)
+#    n_per_image_ucell_param = n_ucell_param
+#
+#    # 1 crystal scale factor refined per shot (overall scale)
+#    n_per_image_scale_param = 1
+#
+#    self.n_param_per_image = [n_rot_param + n_per_image_ncells_param + n_per_image_ucell_param +
+#                          n_per_image_scale_param + 3 * n_spot_per_image[i]
+#                              for i in range(n_images)]
+#
+#    total_per_image_unknowns = sum(self.n_param_per_image)
+#
+#    # NOTE: local refers to per-image
+#    self.n_local_unknowns = total_per_image_unknowns
+#
+#    mem = self._usage()  # get memory usage
+#    # note: roi para
+#
+#    # totals across ranks
+#    if has_mpi:
+#        n_images = comm.reduce(n_images, MPI.SUM, root=0)
+#        n_spot_tot = comm.reduce(n_spot_tot, MPI.SUM, root=0)
+#        total_pix = comm.reduce(total_pix, MPI.SUM, root=0)
+#        mem = comm.reduce(mem, MPI.SUM, root=0)
+#
+#    # Gather so that each rank knows exactly how many local unknowns are on the other ranks
+#    if has_mpi:
+#        local_unknowns_per_rank = comm.gather(self.n_local_unknowns)
+#    else:
+#        local_unknowns_per_rank = [self.n_local_unknowns]
+#
+#    if rank == 0:
+#        total_local_unknowns = sum(local_unknowns_per_rank)  # across all ranks
+#    else:
+#        total_local_unknowns = None
+#
+#    self.local_unknowns_across_all_ranks = total_local_unknowns
+#    if has_mpi:
+#        self.local_unknowns_across_all_ranks = comm.bcast(self.local_unknowns_across_all_ranks, root=0)
+#
+#    # TODO: what is the 2 for (its gain and detector distance which are not currently refined...
+#    self.n_global_params = 2 + n_global_ucell_param + n_global_ncells_param + self.num_hkl_global  # detdist and gain + ucell params
+#
+#    self.n_total_unknowns = self.local_unknowns_across_all_ranks + self.n_global_params  # gain and detdist (originZ)
+#
+#    # also report total memory usage
+#    # mem_tot = mem
+#    # if has_mpi:
+#    #    mem_tot = comm.reduce(mem_tot, MPI.SUM, root=0)
+#
+#    if has_mpi:
+#        comm.Barrier()
+#    if rank == 0:
+#        print("\n<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")
+#        print("MPIWORLD TOTALZ: images=%d, spots=%d, pixels=%2.2g, Nlocal/Nglboal=%d/%d, usage=%2.2g GigaBytes"
+#              % (n_images, n_spot_tot, total_pix, total_local_unknowns, self.n_global_params, mem))
+#        print("Total time elapsed= %.4f seconds" % (time.time() - self.time_load_start))
+#        print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n")
+#
+#        # determine where in the global parameter array does this rank
+#        # parameters begin
+#        self.starts_per_rank = {}
+#        xpos = 0
+#        for _rank, n_unknown in enumerate(local_unknowns_per_rank):
+#            self.starts_per_rank[_rank] = xpos
+#            xpos += n_unknown
+#    else:
+#        self.starts_per_rank = None
+#
+#    if has_mpi:
+#        self.starts_per_rank = comm.bcast(self.starts_per_rank, root=0)
+#
+#

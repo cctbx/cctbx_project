@@ -1,6 +1,6 @@
 #include <simtbx/diffBragg/src/diffBragg.h>
 #include <assert.h>
-#include <omp.h>
+//#include <omp.h>
 //#include <algorithm>
 namespace simtbx {
 namespace nanoBragg {

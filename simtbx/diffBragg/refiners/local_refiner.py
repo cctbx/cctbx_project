@@ -72,9 +72,9 @@ class LocalRefiner(PixelRefinement):
     def __init__(self, n_total_params, n_local_params, n_global_params, local_idx_start,
                  shot_ucell_managers, shot_rois, shot_nanoBragg_rois,
                  shot_roi_imgs, shot_spectra, shot_crystal_GTs,
-                 shot_crystal_models, shot_xrel, shot_yrel, shot_abc_inits, shot_asu,
-                 global_param_idx_start,
-                 shot_panel_ids,
+                 shot_crystal_models, shot_xrel, shot_yrel, shot_abc_inits, shot_asu=None,
+                 global_param_idx_start=None,
+                 shot_panel_ids=None,
                  log_of_init_crystal_scales=None,
                  all_crystal_scales=None, init_gain=1, perturb_fcell=False,
                  global_ncells=False, global_ucell=True, global_originZ=True,
@@ -117,6 +117,9 @@ class LocalRefiner(PixelRefinement):
         :param omega_kahn: omega and kahn correction term for each panel
         """
         PixelRefinement.__init__(self)
+        assert global_param_idx_start is not None
+        assert shot_panel_ids is not None
+
         self.rank = 0
         self.num_kludge = 0
         self.global_ncells_param = global_ncells
@@ -162,7 +165,9 @@ class LocalRefiner(PixelRefinement):
         self.ROIS = self._check_keys(shot_rois)
         if verbose:
             print("check ASU")
-        self.ASU = self._check_keys(shot_asu)
+        self.ASU = None
+        if shot_asu is not None:
+            self.ASU = self._check_keys(shot_asu)
         if verbose:
             print("check nanoBRAGG ROIS")
         self.NANOBRAGG_ROIS = self._check_keys(shot_nanoBragg_rois)
@@ -256,7 +261,9 @@ class LocalRefiner(PixelRefinement):
         self.num_positive_curvatures = 0
         self._panel_id = None
         self.symbol = sgsymbol
-        self.space_group = sgtbx.space_group(sgtbx.space_group_info(symbol=self.symbol).type().hall_symbol())
+        self.space_group = None
+        if self.symbol is not None:
+            self.space_group = sgtbx.space_group(sgtbx.space_group_info(symbol=self.symbol).type().hall_symbol())
 
         self.pid_from_idx = {}
         self.idx_from_pid = {}
@@ -366,9 +373,9 @@ class LocalRefiner(PixelRefinement):
         # Here we go!  https://youtu.be/7VvkXA6xpqI
         if self.I_AM_ROOT:
             print("Setup begins!")
-        if not self.asu_from_idx:
+        if self.refine_Fcell and not self.asu_from_idx:
             raise ValueError("Need to supply a non empty asu from idx map")
-        if not self.idx_from_asu:  # # TODO just derive from its inverse
+        if self.refine_Fcell and not self.idx_from_asu:  # # TODO just derive from its inverse
             raise ValueError("Need to supply a non empty idx from asu map")
 
         self.dummie_detector = deepcopy(self.S.detector)  # need to preserve original detector
@@ -389,9 +396,10 @@ class LocalRefiner(PixelRefinement):
         # get the Fhkl information from P1 array internal to nanoBragg
         if self.I_AM_ROOT:
             print("--0 create an Fcell mapping")
-        idx, data = self.S.D.Fhkl_tuple
-        self.idx_from_p1 = {h: i for i, h in enumerate(idx)}
-        # self.p1_from_idx = {i: h for i, h in zip(idx, data)}
+        if self.refine_Fcell:
+            idx, data = self.S.D.Fhkl_tuple
+            self.idx_from_p1 = {h: i for i, h in enumerate(idx)}
+            # self.p1_from_idx = {i: h for i, h in zip(idx, data)}
 
         # Make a mapping of panel id to parameter index and backwards
         self.pid_from_idx = {}
@@ -512,7 +520,6 @@ class LocalRefiner(PixelRefinement):
                 for i_cell in range(self.n_ucell_param):
                     self.is_being_refined[self.ucell_xstart[i_shot] + i_cell] = True
 
-
             if self.global_ncells_param:
                 self.ncells_xstart[i_shot] = _global_pos
                 _global_pos += self.n_ncells_param
@@ -562,7 +569,8 @@ class LocalRefiner(PixelRefinement):
 
         self.panelXY_xstart = self.panelRot_xstart + 3*self.n_panel_groups
 
-        self.gain_xpos = self.n_total_params - 1
+        if self.refine_gain_fac:
+            self.gain_xpos = self.n_total_params - 1
 
         # tally up HKL multiplicity
         if self.I_AM_ROOT:
@@ -571,14 +579,15 @@ class LocalRefiner(PixelRefinement):
         fname_totals = []
         panel_id_totals = []
         # img_totals = []
-        for i_shot in self.ASU:
-            for i_h, h in enumerate(self.ASU[i_shot]):
-                if self.FNAMES is not None:
-                    fname_totals.append(self.FNAMES[i_shot])
-                panel_id_totals.append(self.PANEL_IDS[i_shot][i_h])
-                self.hkl_totals.append(self.idx_from_asu[h])
-                # img_totals.append(self.ROI_IMGS[i_shot][i_h])
-        self.hkl_totals = self._MPI_reduce_broadcast(self.hkl_totals)
+        if self.refine_Fcell:
+            for i_shot in self.ASU:
+                for i_h, h in enumerate(self.ASU[i_shot]):
+                    if self.FNAMES is not None:
+                        fname_totals.append(self.FNAMES[i_shot])
+                    panel_id_totals.append(self.PANEL_IDS[i_shot][i_h])
+                    self.hkl_totals.append(self.idx_from_asu[h])
+                    # img_totals.append(self.ROI_IMGS[i_shot][i_h])
+            self.hkl_totals = self._MPI_reduce_broadcast(self.hkl_totals)
 
         self._MPI_setup_global_params()
 
@@ -626,7 +635,7 @@ class LocalRefiner(PixelRefinement):
                            "rotz": rotz,
                            "origZ": origZ}
             master_data = pandas.DataFrame(master_data)
-            master_data["gain"] = self.Xall[self.gain_xpos]
+            master_data["gain"] = 1 #self.Xall[self.gain_xpos]
             print(master_data.to_string())
 
         # make the parameter masks for isolating parameters of different types
@@ -697,11 +706,9 @@ class LocalRefiner(PixelRefinement):
             if self.global_originZ_param:
                 # TODO have parameter for global init of originZ param , right now its handled in the global_bboxes scripts
                 if self.rescale_params:
-                    self.Xall[self.originZ_xpos[
-                        0]] = 1  # self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
+                    self.Xall[self.originZ_xpos[0]] = 1  # self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
                 else:
-                    self.Xall[self.originZ_xpos[0]] = self.S.detector[0].get_origin()[
-                        2]  # NOTE maybe just origin instead?elf.S.detector
+                    self.Xall[self.originZ_xpos[0]] = self.S.detector[0].get_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
                     # self.Xall[self.originZ_xpos[0]] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
 
             # if self.refine_lambda0 or self.refine_lambda1:
@@ -730,6 +737,16 @@ class LocalRefiner(PixelRefinement):
                         self.is_being_refined[xpos] = True
                         # self.is_being_refined[xpos_Y] = True
 
+            if self.output_dir is not None:
+                # np.save(os.path.join(self.output_dir, "f_truth"), self.f_truth)  #FIXME by adding in the correct truth from Fref
+                SAVE(os.path.join(self.output_dir, "f_asu_map"), self.asu_from_idx)
+
+            # set gain TODO: implement gain dependent statistical model ? Per panel or per gain mode dependent ?
+            #self.Xall[self.gain_xpos] = self._init_gain  # gain factor
+            self._setup_fcell_params()
+
+    def _setup_fcell_params(self):
+        if self.refine_Fcell:
             print("----loading fcell data")
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index)
             print("---- -- counting hkl totes")
@@ -811,12 +828,7 @@ class LocalRefiner(PixelRefinement):
                     i_fcell = self.idx_from_asu[asu_index]
                     self.res_group_id_from_fcell_index[i_fcell] = miller_bin_idx[ii]
 
-            if self.output_dir is not None:
-                # np.save(os.path.join(self.output_dir, "f_truth"), self.f_truth)  #FIXME by adding in the correct truth from Fref
-                SAVE(os.path.join(self.output_dir, "f_asu_map"), self.asu_from_idx)
 
-            # set gain TODO: implement gain dependent statistical model ? Per panel or per gain mode dependent ?
-            self.Xall[self.gain_xpos] = self._init_gain  # gain factor
 
     def determine_parameter_freeze_order(self):
         param_sels = []
@@ -1070,7 +1082,15 @@ class LocalRefiner(PixelRefinement):
             val = self.Xall[self.ncells_xstart[i_shot]]
             if self.rescale_params:
                 sig = self.m_sigma
+                try:
+                    sig = sig[0]
+                except TypeError:
+                    pass
                 init = self.m_init[i_shot]
+                try:
+                    init = init[0]
+                except TypeError:
+                    pass
                 val = np_exp(sig*(val-1))*(init-3) + 3
             else:
                 val = np_exp(val)+3
@@ -1269,6 +1289,8 @@ class LocalRefiner(PixelRefinement):
         return val
 
     def _update_Fcell(self):
+        if not self.refine_Fcell:
+            return
         idx, data = self.S.D.Fhkl_tuple
         for i_fcell in range(self.n_global_fcell):
             # get the asu miller index
@@ -1518,7 +1540,7 @@ class LocalRefiner(PixelRefinement):
                 self.curv = flex_double(self.n_total_params)
 
             # current work has gain_fac at 1 (#TODO gain factor should effect the probability of observing the photons)
-            self.gain_fac = self.Xall[self.gain_xpos]
+            self.gain_fac = 1 #self.Xall[self.gain_xpos]
             self.G2 = self.gain_fac ** 2
 
             self._update_Fcell()  # update the structure factor with the new x
@@ -1685,7 +1707,7 @@ class LocalRefiner(PixelRefinement):
         proc_name = self.PROC_FNAMES[self._i_shot]
         proc_idx = self.PROC_IDX[self._i_shot]
         (x1, x2), (y1, y2) = self.NANOBRAGG_ROIS[self._i_shot][self._i_spot]
-        bbox = x1,x2+1, y1, y2+1
+        bbox = x1, x2+1, y1, y2+1
         miller_idx_asu = self.ASU[self._i_shot][self._i_spot]
         miller_idx = self.Hi[self._i_shot][self._i_spot]
         i_fcell = self.idx_from_asu[self.ASU[self._i_shot][self._i_spot]]
@@ -1872,6 +1894,10 @@ class LocalRefiner(PixelRefinement):
                 sig = self.m_sigma
                 if self.rescale_params:
                     # case 3 rescaling
+                    try:
+                        sig = sig[0]
+                    except TypeError:
+                        pass
                     sig_theta_minus_three = sig*theta_minus_three
                     d = self.m_dI_dtheta[i_ncell]*sig_theta_minus_three
                     d2 = self.m_d2I_dtheta2[i_ncell]*(sig_theta_minus_three*sig_theta_minus_three) + \
@@ -1943,6 +1969,8 @@ class LocalRefiner(PixelRefinement):
                 self.curv[xpos] += self._curv_accumulate(d, d2)
 
     def _Fcell_derivatives(self, i_spot):
+        if not self.refine_Fcell:
+            return
         # asu index
         miller_idx = self.ASU[self._i_shot][i_spot]
         # get multiplicity of this index
@@ -2027,6 +2055,7 @@ class LocalRefiner(PixelRefinement):
                 self.curv[self.gain_xpos] += self._curv_accumulate(d, d2)
 
     def _max_h_sanity_test(self, i_spot):
+        return
         max_h = tuple(map(int, self.D.max_I_hkl))
         refinement_h = self.ASU[self._i_shot][i_spot]
         equivs = [i.h() for i in miller.sym_equiv_indices(self.space_group, refinement_h).indices()]
@@ -2415,7 +2444,7 @@ class LocalRefiner(PixelRefinement):
 
 
                 master_data = pandas.DataFrame(master_data)
-                master_data["gain"] = self.Xall[self.gain_xpos]
+                master_data["gain"] = 1 #self.Xall[self.gain_xpos]
                 print(master_data.to_string(float_format="%2.7g"))
 
     def print_step_grads(self):
@@ -2435,7 +2464,7 @@ class LocalRefiner(PixelRefinement):
             for i_uc in range(self.n_ucell_param):
                 master_data["Guc%d" %i_uc]= self.Guc_vals[i_uc]
             master_data = pandas.DataFrame(master_data)
-            master_data["Ggain"] = self.grad[self.gain_xpos]
+            master_data["Ggain"] = 0 #self.grad[self.gain_xpos]
             print(master_data.to_string(float_format="%2.7g"))
 
         if self.calc_curvatures:
@@ -2451,7 +2480,7 @@ class LocalRefiner(PixelRefinement):
                         master_data["CUuc%d" % i_uc] = self.CUuc_vals[i_uc]
 
                     master_data = pandas.DataFrame(master_data)
-                    master_data["CUgain"] = self.curv[self.gain_xpos]
+                    master_data["CUgain"] = 0 #self.curv[self.gain_xpos]
                     print(master_data.to_string(float_format="%2.7g"))
 
         # Compute the mean, min, max, variance  and median crystal scale
@@ -2562,6 +2591,7 @@ class LocalRefiner(PixelRefinement):
         return Fobs.r1_factor(Fref, scale_factor=k[0])
 
     def get_optimized_mtz(self, save_to_file=None, wavelength=1):
+        assert self.symbol is not None
         from cctbx import crystal
         # TODO update for non global unit cell case (average over unit cells)
 
@@ -2576,7 +2606,17 @@ class LocalRefiner(PixelRefinement):
             fobs.as_mtz_dataset(column_root_label='fobs', wavelength=wavelength).mtz_object().write(save_to_file)
         return fobs
 
+    def get_corrected_crystal(self, i_shot=0):
+        ang, ax = self.get_correction_misset(as_axis_angle_deg=True, i_shot=i_shot)
+        B = self.get_refined_Bmatrix(i_shot)
+        C = deepcopy(self.CRYSTAL_MODELS[i_shot])
+        C.set_B(B)
+        if ang > 0:
+            C.rotate_around_origin(ax, ang)
+        return C
+
     def conv_test(self):
+        assert self.symbol is not None
         err = []
         s = ""
         A = []
@@ -2669,3 +2709,107 @@ class LocalRefiner(PixelRefinement):
 
     def _MPI_reduce_broadcast(self, var):
         return var
+
+    def _MPI_combine_data_to_send(self):
+        return self.data_to_send
+
+    def _combine_data_to_save(self):
+        # Here we can save the refined parameters
+        my_shots = self.NANOBRAGG_ROIS.keys()
+        x = self.Xall
+        self.data_to_send = []
+        image_corr = self.image_corr
+        if image_corr is None:
+            image_corr = [-1] * len(my_shots)
+
+        for i_shot in my_shots:
+            rotX = self._get_rotX(i_shot)
+            rotY = self._get_rotY(i_shot)
+            rotZ = self._get_rotZ(i_shot)
+
+            ang, ax = self.get_correction_misset(as_axis_angle_deg=True, anglesXYZ=(rotX, rotY, rotZ))
+            pars = self._get_ucell_vars(i_shot)
+            self.UCELL_MAN[i_shot].variables = pars
+            Bmat = self.UCELL_MAN[i_shot].B_recipspace
+
+            bg_coef = -1
+            C = self.CRYSTAL_MODELS[i_shot]
+            a_init, b_init, c_init, al_init, be_init, ga_init = C.get_unit_cell().parameters()
+            C.set_B(Bmat)
+            try:
+                C.rotate_around_origin(ax, ang)
+            except RuntimeError:
+                pass
+
+            Amat_refined = C.get_A()
+            a,b,c,al,be,ga = C.get_unit_cell().parameters()
+
+            fcell_xstart = self.fcell_xstart
+            ucell_xstart = self.ucell_xstart[i_shot]
+            scale_xpos = self.spot_scale_xpos[i_shot]
+            ncells_xstart = self.ncells_xstart[i_shot]
+            nspots = len(self.NANOBRAGG_ROIS[i_shot])
+
+            bgplane_a_xpos = [self.bg_a_xstart[i_shot][i_spot] for i_spot in range(nspots)]
+            bgplane_b_xpos = [self.bg_b_xstart[i_shot][i_spot] for i_spot in range(nspots)]
+            bgplane_c_xpos = [self.bg_c_xstart[i_shot][i_spot] for i_spot in range(nspots)]
+            bgplane_xpos = list(zip(bgplane_a_xpos, bgplane_b_xpos, bgplane_c_xpos))
+            bgplane = [self._get_bg_vals(i_shot, i_spot) for i_spot in range(nspots)]
+
+            crystal_scale = self._get_spot_scale(i_shot)
+            proc_h5_fname = "" #self.all_proc_fnames[i_shot]
+            proc_h5_idx = "" #self.all_shot_idx[i_shot]
+            proc_bbox_idx = "" #self.all_proc_idx[i_shot]
+
+            ncells_val = tuple(self._get_m_val(i_shot))
+            init_misori = -1
+            img_corr = -1 #image_corr[i_shot]
+            init_img_corr = -1
+            final_misori = -1
+
+            self.data_to_send.append(
+                (proc_h5_fname, proc_h5_idx, proc_bbox_idx, crystal_scale, Amat_refined, ncells_val, bgplane,
+                 img_corr, init_img_corr, fcell_xstart, ucell_xstart, rotX, rotY, rotZ, scale_xpos,
+                 ncells_xstart, bgplane_xpos, init_misori, final_misori, a,b,c,al,be,ga,
+                 a_init, b_init, c_init, al_init, be_init, ga_init, bg_coef))
+
+
+    def save_lbfgs_x_array_as_dataframe(self, outname):
+        self._combine_data_to_save()
+
+        data = self._MPI_combine_data_to_send()
+
+        if self.I_AM_ROOT:
+            import pandas
+
+            fnames, shot_idx, bbox_idx, xtal_scales, Amats, ncells_vals, bgplanes, image_corr, init_img_corr, \
+                fcell_xstart, ucell_xstart, rotX, rotY, rotZ, scale_xpos, ncells_xstart, bgplane_xpos, \
+                init_misori, final_misori, a, b, c, al, be, ga, \
+                a_init, b_init, c_init, al_init, be_init, ga_init, bg_coef = zip(*data)
+
+            df = pandas.DataFrame({"proc_fnames": fnames, "proc_shot_idx": shot_idx, "bbox_idx": bbox_idx,
+                                   "spot_scales": xtal_scales, "Amats": Amats, "ncells": ncells_vals,
+                                   "bgplanes": bgplanes, "image_corr": image_corr,
+                                   "init_image_corr": init_img_corr,
+                                   "fcell_xstart": fcell_xstart,
+                                   "ucell_xstart": ucell_xstart,
+                                   "init_misorient": init_misori, "final_misorient": final_misori,
+                                   "bg_coef": bg_coef,
+                                   "rotX": rotX,
+                                   "rotY": rotY,
+                                   "rotZ": rotZ,
+                                   "a": a, "b": b, "c": c, "al": al, "be": be, "ga": ga,
+                                   "a_init": a_init, "b_init": b_init, "c_init": c_init, "al_init": al_init,
+                                   "be_init": be_init, "ga_init": ga_init,
+                                   "scale_xpos": scale_xpos,
+                                   "ncells_xpos": ncells_xstart,
+                                   "bgplanes_xpos": bgplane_xpos})
+            #u_fnames = df.proc_fnames.unique()
+
+            #u_h5s = {f: h5py.File(f, 'r')["h5_path"][()] for f in u_fnames}
+            #img_fnames = []
+            #for f, idx in df[['proc_fnames', 'proc_shot_idx']].values:
+            #    img_fnames.append(u_h5s[f][idx])
+            #df["imgpaths"] = img_fnames
+
+            df.to_pickle(outname)
