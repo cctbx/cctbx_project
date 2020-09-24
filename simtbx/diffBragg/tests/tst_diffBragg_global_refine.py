@@ -600,17 +600,16 @@ RUC.spot_scale_init = [1]*N_SHOTS
 RUC.m_init = {i:Ncells_abc2[0] for i in range(N_SHOTS)}  # np.log(Ncells_abc2[0]-3)
 RUC.ucell_inits = {i:shot_ucell_managers[i].variables for i in range(N_SHOTS)}
 
-
 #RUC.S.D.update_oversample_during_refinement = False  # todo: decide
 Fobs = RUC.S.crystal.miller_array_high_symmetry
-RUC.Fref = miller_array_GT
+RUC.Fref = miller_array_GT if RUC.refine_Fcell else None
 #dmax, dmin = Fobs.d_max_min()
 dmax, dmin = max(all_reso), min(all_reso)
 RUC.binner_dmax = dmax + 1e-6
 RUC.binner_dmin = dmin - 1e-6
 RUC.binner_nbin = 10
-RUC.scale_r1 = True
-RUC.merge_stat_frequency = 1 #2
+RUC.scale_r1 = RUC.refine_Fcell #True
+RUC.merge_stat_frequency = int(RUC.refine_Fcell)
 RUC.print_resolution_bins = False
 if args.fcellsigmascale is not None:
     RUC.fcell_sigma_scale = args.fcellsigmascale

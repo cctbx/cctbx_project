@@ -62,3 +62,7 @@ class GlobalRefiner(LocalRefiner):
         var = comm.reduce(var, MPI.SUM, root=0)
         var = comm.bcast(var, root=0)
         return var
+
+    def _MPI_combine_data_to_send(self):
+        data_to_send = comm.reduce(self.data_to_send, MPI.SUM, root=0)
+        return data_to_send

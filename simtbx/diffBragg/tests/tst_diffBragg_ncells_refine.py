@@ -1,29 +1,14 @@
-from argparse import ArgumentParser
-parser = ArgumentParser()
-parser.add_argument("--plot", action='store_true')
-args = parser.parse_args()
-
 from dxtbx.model.crystal import Crystal
 from cctbx import uctbx
-from scitbx.matrix import sqr, rec, col
+from scitbx.matrix import sqr, rec
 from scipy.spatial.transform import Rotation
-import numpy as np
-
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg import utils
-from simtbx.diffBragg.refiners import RefineNcells, RefineAll
-from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager
 
 
 ucell = (85.2, 96, 124, 90, 105, 90)
 symbol = "P121"
-
-UcellMan = MonoclinicManager(
-    a=ucell[0],
-    b=ucell[1],
-    c=ucell[2],
-    beta=ucell[4]*np.pi/180.)
 
 # generate a random raotation
 rotation = Rotation.random(num=1, random_state=1107)[0]
@@ -64,55 +49,43 @@ SIM._add_noise()
 img = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.raw_pixels *= 0
 
-# perturb and then
-# simulate the perturbed image for comparison
+# perturb
 Ncells_abc_2 = 26, 26, 26
-SIM.crystal.Ncells_abc = Ncells_abc_2
-SIM.D.set_value(9, Ncells_abc_2[0])
-SIM.D.add_diffBragg_spots()
-SIM._add_background()
-SIM._add_noise()
-# Perturbed image:
-img_pet = SIM.D.raw_pixels.as_numpy_array()
-SIM.D.raw_pixels *= 0
 
-# spot_rois, abc_init , these are inputs to the refiner
-# <><><><><><><><><><><><><><><><><><><><><><><><><>
-spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot)
-n_spots = len(spot_roi)
-n_kept = 20
-np.random.seed(1)
-idx = np.random.permutation(n_spots)[:n_kept]
-spot_roi = spot_roi[idx]
-tilt_abc = tilt_abc[idx]
+from dxtbx.model import Experiment
+from simtbx.nanoBragg import make_imageset
+from cctbx_project.simtbx.diffBragg.phil import phil_scope
+from simtbx.diffBragg import refine_launcher
+E = Experiment()
+E.detector = SIM.detector
+E.beam = SIM.D.beam
+E.crystal = C
+E.imageset = make_imageset([img], E.beam, E.detector)
 
-#RUC = RefineNcells(
-#    spot_rois=spot_roi,
-#    abc_init=tilt_abc,
-#    img=img,
-#    SimData_instance=SIM,
-#    plot_images=args.plot,
-#    plot_residuals=True)
+refls = utils.refls_from_sims([spots], E.detector, E.beam, thresh=20)
 
-RUC = RefineAll(
-    spot_rois=spot_roi,
-    abc_init=tilt_abc,
-    img=img,
-    SimData_instance=SIM,
-    plot_images=args.plot,
-    plot_residuals=True,
-    ucell_manager=UcellMan)
+P = phil_scope.extract()
+P.roi.shoebox_size = 20
+P.roi.reject_edge_reflections = False
+P.refiner.refine_ncells = [1]
+P.refiner.max_calls = [1000]
+P.refiner.tradeps = 1e-10
+# NOTE RUC.gtol = .9
+# NOTE RUC.trad_conv = True  #False
+# NOTE RUC.drop_conv_max_eps = 1e-9
+P.refiner.curvatures = False
+P.refiner.use_curvatures_threshold = 0
+P.refiner.poissononly = False
+P.refiner.verbose = True
+P.refiner.big_dump = False
+P.refiner.sigma_r = SIM.D.readout_noise_adu
+P.refiner.adu_per_photon = SIM.D.quantum_gain
+P.simulator.crystal.has_isotropic_ncells = True
+P.simulator.crystal.ncells_abc = Ncells_abc_2
+P.simulator.init_scale = SIM.D.spot_scale
+P.simulator.beam.size_mm = SIM.beam.size_mm
 
-RUC.refine_Amatrix = False
-RUC.refine_Umatrix = False
-RUC.refine_Bmatrix = False
-RUC.refine_ncells = True
-RUC.refine_gain_fac = False
-RUC.refine_crystal_scale = False
-RUC.trad_conv = True
-RUC.trad_conv_eps = 1e-8
-RUC.max_calls = 1050
-RUC.run()
-
+# assert RUC.all_ang_off[0] < 0.005
+RUC = refine_launcher.local_refiner_from_parameters(refls, E, P, miller_data=SIM.crystal.miller_array)
 assert round(RUC.D.get_value(9)) == 19
-print("OK.")
+print("OK")
