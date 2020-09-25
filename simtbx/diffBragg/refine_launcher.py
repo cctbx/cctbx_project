@@ -20,7 +20,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
   img_data = utils.image_data_from_expt(expt)
 
   background_mask = utils.load_mask(params.roi.background_mask)
-  hotpix_mask = utils.load_mask(params.roi.hotpixel_mask)
+  hotpix_mask = ~utils.load_mask(params.roi.hotpixel_mask)
 
   # prepare ROI information
   rois, pids, tilt_abc, selection_flags = utils.get_roi_background_and_selection_flags(
@@ -28,6 +28,9 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
     reject_edge_reflections=params.roi.reject_edge_reflections,
     reject_roi_with_hotpix=params.roi.reject_roi_with_hotpix,
     background_mask=background_mask, hotpix_mask=hotpix_mask)
+  if not np.any(selection_flags):
+      print("No spots for refinement")
+      return None 
 
   nanoBragg_rois, xrel, yrel, roi_imgs = [], [], [], []
   for i_roi, (x1, x2, y1, y2) in enumerate(rois):

@@ -693,6 +693,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
         i1, i2, j1, j2 = roi
         is_selected = True
         if is_on_edge[i_roi] and reject_edge_reflections:
+            print(2)
             is_selected = False
         pid = refls[i_roi]['panel']
 
@@ -702,6 +703,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
             is_hotpix = hotpix_mask[pid, j1:j2, i1:i2]
             num_hotpix = is_hotpix.sum()
             if num_hotpix > 0 and reject_roi_with_hotpix:
+                print(1)
                 is_selected = False
 
         if background_mask is not None:
@@ -713,6 +715,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
         bg_signal = np.median(bg_pixels)
 
         if bg_signal < 0:
+            print(3)
             is_selected = False
         tilt_abc.append((0, 0, bg_signal))
         kept_rois.append(roi)
@@ -729,13 +732,11 @@ def image_data_from_expt(expt):
         raise ValueError("imageset should have 1 shot")
     if len(iset) > 1:
         raise ValueError("imageset should have only 1 shot. This expt has imageset with %d shots" % len(iset))
-
     try:
         flex_data = iset.get_raw_data(0)
     except Exception as err:
         assert str(type(err)) == "<class 'Boost.Python.ArgumentError'>", "something weird going on with imageset data"
         flex_data = iset.get_raw_data()
-
     if not isinstance(flex_data, tuple):
         flex_data = (flex_data, )
     img_data = np.array([data.as_numpy_array() for data in flex_data])
@@ -796,7 +797,7 @@ def simulator_from_expt_and_params(expt, params=None, oversample=0, device_id=0,
     beam.size_mm = params.simulator.beam.size_mm
     beam.unit_s0 = expt.beam.get_unit_s0()
     if spectra_file is not None:
-        init_spectrum = load_spectra_file(spectra_file, total_flux, spectra_stride)
+        init_spectrum = load_spectra_file(spectra_file, total_flux, spectra_stride, as_spectrum=True)
     else:
         init_spectrum = [(expt.beam.get_wavelength(), total_flux)]
     beam.spectrum = init_spectrum
@@ -854,13 +855,16 @@ def make_miller_array(symbol, unit_cell, defaultF=1000, d_min=1.5, d_max=999):
     return mil_ar
 
 
-def load_spectra_file(spec_file, total_flux=1., pinkstride=1):
+def load_spectra_file(spec_file, total_flux=1., pinkstride=1, as_spectrum=False):
     wavelengths, weights = np.loadtxt(spec_file, float, delimiter=',', skiprows=1).T
     wavelengths = wavelengths[::pinkstride]
     weights = weights[::pinkstride]
     energies = ENERGY_CONV/wavelengths
     FLUXES = weights / weights.sum() * total_flux
-    return FLUXES, energies
+    if as_spectrum:
+        return list(zip(list(wavelengths), list(FLUXES)))
+    else:
+        return FLUXES, energies
 
 
 def make_background_pixel_mask(DET, refls_strong=None, dilate=1):
@@ -892,6 +896,10 @@ def load_mask(maskfile):
         return None
     with open(maskfile, 'rb') as o:
         mask = pickle.load(o)
+    if isinstance(mask, tuple):
+        mask = np.array([m.as_numpy_array() for m in mask])
+    else:
+        mask = mask.as_numpy_array()
     return mask
 
 
