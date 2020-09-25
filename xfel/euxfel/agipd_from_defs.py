@@ -4,6 +4,7 @@ from libtbx.phil import parse
 from libtbx.utils import Sorry
 
 import h5py
+from h5py import string_dtype as h5py_str
 import os
 import subprocess
 import sys
@@ -69,12 +70,15 @@ class NexusElement:
     def push(self, h5file):
         """ Write an element to the file """
         if self.full_path:
-            h5file[self.full_path] = self.value
+            h5file.create_dataset(self.full_path, data=self.value, dtype=self.dtype)
             if self.attrs:
                 for k, v in self.attrs.items():
                     h5file[self.full_path].attrs[k] = v
         else:
             logger.error(f"Cannot push {self.name}")
+
+    def __str__(self):
+        return f"{self.value} [type:{type(self.value)}, dtype:{self.dtype}]"
 
 
 def get_git_revision_hash() -> str:
@@ -207,7 +211,7 @@ class Agipd2nexus:
 
         for full_path in full_paths:
             if full_path in self.field_rules:
-                logger.debug(f"Add {full_path} from a rule")
+                logger.debug(f"Add {full_path} from a rule: {self.field_rules[full_path]}")
                 if isinstance(self.field_rules[full_path], dict):
                     vector = self.field_rules[full_path]
                     h5file[full_path] = np.array(vector.pop('value'), dtype='f')
@@ -427,11 +431,11 @@ class Ruleset(Agipd2nexus):
             '/entry/data/data': LazyFunc(cxi.copy, "entry_1/data_1/data",  "entry/data"),
             '/entry/instrument/name':
                 NexusElement(full_path='/entry/instrument/name', value=self.params.nexus_details.instrument_name,
-                             nxtype=NxType.field, dtype='s',
-                             attrs={'short_name':self.params.nexus_details.instrument_short_name}),
+                             nxtype=NxType.field, dtype=h5py_str(),
+                             attrs={'short_name': self.params.nexus_details.instrument_short_name}),
             '/entry/instrument/AGIPD/group_index': np.array(list(range(1, 3)), dtype='i'), # XXX: why 16, not 2?
             '/entry/instrument/AGIPD/group_names': np.array([np.string_('AGIPD'), np.string_('ELE_D0')],
-                                                                    dtype='S12'),
+                                                            dtype='S12'),
             '/entry/instrument/AGIPD/group_parent': np.array([-1, 1], dtype='i'),
             '/entry/instrument/beam/incident_wavelength':
                 NexusElement(full_path='/entry/instrument/beam/incident_wavelength', value=self.params.wavelength,
@@ -441,18 +445,18 @@ class Ruleset(Agipd2nexus):
                              value=self.params.nexus_details.total_flux,
                              nxtype=NxType.field, dtype='f', attrs={'units': 'Hz'}),
             '/entry/instrument/ELE_D0/data': h5py.SoftLink('/entry/data/data'),
-            '/entry/instrument/ELE_D0/sensor_material': "Si",          # FIXME
+            '/entry/instrument/ELE_D0/sensor_material': "Si",          # FIXME: move to the `phil`-file
             '/entry/instrument/ELE_D0/sensor_thickness':
                 NexusElement(full_path='/entry/instrument/ELE_D0/sensor_thickness',
-                             value=300.0,     # FIXME
+                             value=300.0,     # FIXME: move to the `phil`-file
                              nxtype=NxType.field, dtype='f', attrs={'units': 'microns'}),
             '/entry/sample/depends_on': np.str('.'),     # XXX: Why not `np.string_`??
             '/entry/sample/name': NexusElement(full_path='/entry/sample/name',
                                               value=self.params.sample_name,
-                                              nxtype=NxType.field, dtype='s'),
+                                              nxtype=NxType.field, dtype=h5py_str()),
             '/entry/source/name': NexusElement(full_path='/entry/source/name',
                                               value=self.params.nexus_details.source_name,
-                                              nxtype=NxType.field, dtype='s',
+                                              nxtype=NxType.field, dtype=h5py_str(),
                                               attrs={'short_name': self.params.nexus_details.source_short_name}),
         }
 

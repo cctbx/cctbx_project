@@ -127,8 +127,12 @@ class agipd_cxigeom2nexus(object):
     transformations = agipd.create_group('transformations')
     transformations.attrs['NX_class'] = 'NXtransformations'
     # Create AXIS leaves for RAIL, D0 and different hierarchical levels of detector
-    self.create_vector(transformations, 'AXIS_RAIL', self.params.detector_distance, depends_on='.', equipment='detector', equipment_component='detector_arm',transformation_type='translation', units='mm', vector=(0., 0., 1.))
-    self.create_vector(transformations, 'AXIS_D0', 0.0, depends_on='AXIS_RAIL', equipment='detector', equipment_component='detector_arm',transformation_type='rotation', units='degrees', vector=(0., 0., -1.), offset=self.hierarchy.local_origin, offset_units = 'mm')
+    self.create_vector(transformations, 'AXIS_RAIL', self.params.detector_distance, depends_on='.',
+                       equipment='detector', equipment_component='detector_arm', transformation_type='translation',
+                       units='mm', vector=(0., 0., 1.))
+    self.create_vector(transformations, 'AXIS_D0', 0.0, depends_on='AXIS_RAIL', equipment='detector',
+                       equipment_component='detector_arm', transformation_type='rotation', units='degrees',
+                       vector=(0., 0., -1.), offset=self.hierarchy.local_origin, offset_units='mm')
     # Add 4 quadrants
     # Nexus coordiate system, into the board         AGIPD detector
     #      o --------> (+x)                             Q3=(12,13,14,15) Q0=(0,1,2,3)
@@ -176,23 +180,30 @@ class agipd_cxigeom2nexus(object):
       q_key = "q%d"%quad
       q_name = 'AXIS_D0Q%d'%quad
       quad_vector = self.hierarchy[q_key].local_origin.elems
-      self.create_vector(transformations, q_name, 0.0, depends_on='AXIS_D0', equipment='detector', equipment_component='detector_quad',transformation_type='rotation', units='degrees', vector=(0., 0., -1.), offset = quad_vector, offset_units = 'mm')
+      self.create_vector(transformations, q_name, 0.0, depends_on='AXIS_D0', equipment='detector',
+                         equipment_component='detector_quad', transformation_type='rotation', units='degrees',
+                         vector=(0., 0., -1.), offset=quad_vector, offset_units='mm')
       for module_num in range(self.n_modules):
         m_key = "p%d"%((quad*self.n_modules)+module_num)
         m_name = 'AXIS_D0Q%dM%d'%(quad, module_num)
         module_vector = self.hierarchy[q_key][m_key].local_origin.elems
-        self.create_vector(transformations, m_name, 0.0, depends_on=q_name, equipment='detector', equipment_component='detector_module',transformation_type='rotation', units='degrees', vector=(0., 0., -1.), offset = module_vector, offset_units = 'mm')
+        self.create_vector(transformations, m_name, 0.0, depends_on=q_name, equipment='detector',
+                           equipment_component='detector_module', transformation_type='rotation', units='degrees',
+                           vector=(0., 0., -1.), offset=module_vector, offset_units='mm')
 
         for asic_num in range(self.n_asics):
           a_key = "p%da%d"%((quad*self.n_modules)+module_num, asic_num)
           a_name = 'AXIS_D0Q%dM%dA%d'%(quad, module_num, asic_num)
           asic_vector = self.hierarchy[q_key][m_key][a_key]['local_origin'].elems
-          self.create_vector(transformations, a_name, 0.0, depends_on=m_name, equipment='detector', equipment_component='detector_asic',transformation_type='rotation', units='degrees', vector=(0., 0., -1.), offset = asic_vector, offset_units = 'mm')
+          self.create_vector(transformations, a_name, 0.0, depends_on=m_name, equipment='detector',
+                             equipment_component='detector_asic', transformation_type='rotation', units='degrees',
+                             vector=(0., 0., -1.), offset=asic_vector, offset_units='mm')
 
           asicmodule = detector.create_group(array_name+'Q%dM%dA%d'%(quad,module_num,asic_num))
           asicmodule.attrs['NX_class'] = 'NXdetector_module'
           if self.params.mode == 'vds':
-            asicmodule.create_dataset('data_origin', (3,), data=[(quad*self.n_modules)+module_num, asic_slow*asic_num, 0], dtype='i')
+            asicmodule.create_dataset('data_origin', (3,),
+                                      data=[(quad * self.n_modules) + module_num, asic_slow * asic_num, 0], dtype='i')
             asicmodule.create_dataset('data_size', (3,), data=[1, asic_slow, asic_fast], dtype='i')
           elif self.params.mode == 'cxi':
             asicmodule.create_dataset('data_origin', (2,), data=[asic_slow*((quad*self.n_modules*self.n_asics) + (module_num*self.n_asics) + asic_num), 0],
@@ -201,8 +212,12 @@ class agipd_cxigeom2nexus(object):
 
           fast = self.hierarchy[q_key][m_key][a_key]['local_fast'].elems
           slow = self.hierarchy[q_key][m_key][a_key]['local_slow'].elems
-          self.create_vector(asicmodule, 'fast_pixel_direction',pixel_size, depends_on=transformations.name+'/AXIS_D0Q%dM%dA%d'%(quad,module_num,asic_num),transformation_type='translation', units='mm', vector=fast, offset=(0. ,0., 0.))
-          self.create_vector(asicmodule, 'slow_pixel_direction',pixel_size, depends_on=transformations.name+'/AXIS_D0Q%dM%dA%d'%(quad,module_num,asic_num),transformation_type='translation', units='mm', vector=slow, offset=(0., 0., 0.))
+          self.create_vector(asicmodule, 'fast_pixel_direction', pixel_size,
+                             depends_on=transformations.name + '/AXIS_D0Q%dM%dA%d' % (quad, module_num, asic_num),
+                             transformation_type='translation', units='mm', vector=fast, offset=(0., 0., 0.))
+          self.create_vector(asicmodule, 'slow_pixel_direction', pixel_size,
+                             depends_on=transformations.name + '/AXIS_D0Q%dM%dA%d' % (quad, module_num, asic_num),
+                             transformation_type='translation', units='mm', vector=slow, offset=(0., 0., 0.))
 
     f.close()
 

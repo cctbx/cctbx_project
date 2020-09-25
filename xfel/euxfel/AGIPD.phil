@@ -15,9 +15,9 @@
     .optional = False
     .help = Input data file format. VDS: virtual data set. CXI: \
             Cheetah file format.
-    sample_name = None
-      .type = str
-      .help = Descriptive name of the sample
+  sample_name = None
+    .type = str
+    .help = Descriptive name of the sample
 
   nexus_details {
     instrument_name = SwissFEL ARAMIS BEAMLINE ESB
