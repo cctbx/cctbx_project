@@ -3460,6 +3460,7 @@ class manager(object):
     Return True if models are the same, False otherwise.
     XXX Can be endlessly fortified.
     """
+    f0 = self.size() == other.size()
     f1 = self.get_hierarchy().is_similar_hierarchy(other.get_hierarchy())
     f2 = self.get_xray_structure().is_similar(other.get_xray_structure())
     x1 = self.get_hierarchy().extract_xray_structure(
@@ -3467,7 +3468,7 @@ class manager(object):
     x2 = other.get_hierarchy().extract_xray_structure(
       crystal_symmetry = other.crystal_symmetry())
     f3 = x1.is_similar(x2)
-    f = list(set([f1,f2,f3]))
+    f = list(set([f0,f1,f2,f3]))
     return len(f)==1 and f[0]
 
   def set_refine_individual_sites(self, selection = None):
