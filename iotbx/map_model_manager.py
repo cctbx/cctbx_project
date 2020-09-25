@@ -2890,8 +2890,12 @@ def get_selections_and_boxes_to_split_model(
   elif selection_method == 'by_chain':
     from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
     for chain_id in get_chain_ids(model.get_hierarchy(), unique_only=True):
-      selection = model.selection(" %s (chain %s) " %(
-       info.no_water_or_het_with_and,chain_id))
+      if chain_id.replace(" ",""):
+        selection = model.selection(" %s (chain %s) " %(
+         info.no_water_or_het_with_and,chain_id))
+      else:
+        selection = model.selection(" %s " %(
+         info.no_water_or_het))
       if (not skip_empty_boxes) or (selection.count(True) > 0):
         box_info.selection_list.append(selection)
   elif selection_method == 'by_segment':

@@ -1888,7 +1888,6 @@ def get_chain_type(model=None, hierarchy=None):
     sel1 = asc1.selection(string = "name p")
     hierarchy_rna_dna_p = hierarchy_rna_dna.select(sel1)
     count_rna_dna_p  = hierarchy_rna_dna_p.atoms().extract_xyz().size()
-    print ("ZZAA",count_protein,count_rna_dna,count_rna,count_rna_dna_p)
     if count_rna_dna_p and not count_rna:
       return "DNA"
     elif count_rna_dna_p and count_rna:
