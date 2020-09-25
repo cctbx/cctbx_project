@@ -105,11 +105,15 @@ class Script:
       for i_exp, exper in enumerate(self.explist):
         if self.params.usempi and i_exp % COMM.size != COMM.rank:
           continue
-        elif self.params.exper_id != i_exp:
+        elif self.params.exper_id is not None and self.params.exper_id != i_exp:
           continue
-
         refls_for_exper = self.refls.select(self.refls['id'] == i_exp)
-        yield "exper_name", exper, refls_for_exper
+        
+        # little hack to check the format now 
+        El = ExperimentList()
+        El.append(exper)
+        El = ExperimentListFactory.from_dict(El.to_dict())
+        yield "exper_name", El[0], refls_for_exper
 
     elif self.params.exper_refls_file is not None:
       self._load_exp_refls_fnames()
@@ -176,13 +180,13 @@ class Script:
       print("Can't an input-experiments-glob AND exper_refls_file, please to one or the other.")
       sys.exit()
 
-    has_loaded_expers = False
+    self.has_loaded_expers = False
     if reflist:
       self.refls = reflist[0]
       for r in reflist[1:]:
         self.refls.extent(r)
-      has_loaded_expers = True
-    if not has_loaded_expers and self.params.exper_refls_file is None:
+      self.has_loaded_expers = True
+    if not self.has_loaded_expers and self.params.exper_refls_file is None:
       print("No experiments to process")
       sys.exit()
 
