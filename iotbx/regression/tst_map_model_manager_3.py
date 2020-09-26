@@ -124,9 +124,7 @@ def exercise(file_name, out = sys.stdout):
   print ("NCS now: ",nn.ncs_object())
   nn.get_ncs_from_map(ncs_object=ncs_object)
   print ("ncs cc:",nn.ncs_cc())
-
-
-
+  assert approx_equal(nn.ncs_cc(),0.961915979834,eps=0.01)
 
   # Make a deep_copy
   dc=mam.deep_copy()
