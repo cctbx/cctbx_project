@@ -1920,7 +1920,7 @@ class map_model_manager(object):
 
   # Methods for modifying model or map
 
-  def remove_model_outside_map(self, boundary, return_as_new_model=False):
+  def remove_model_outside_map(self, boundary = 3, return_as_new_model=False):
     '''
      Remove all the atoms in the model that are well outside the map (more
      than boundary)
@@ -2831,7 +2831,7 @@ def get_selections_and_boxes_to_split_model(
         target_for_boxes = 24,
         box_cushion = 3,
         select_final_boxes_based_on_model = None,
-        skip_empty_boxes = None,
+        skip_empty_boxes = True,
         mask_around_unselected_atoms = None,
         mask_radius = 3,
         masked_value = -10,
