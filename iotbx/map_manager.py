@@ -1660,7 +1660,8 @@ class map_manager(map_reader, write_ccp4_map):
       include_helical_symmetry = False,
       symmetry_center = None,
       min_ncs_cc = None,
-      symmetry = None):
+      symmetry = None,
+      ncs_object = None):
     '''
        Use run_get_symmetry_from_map tool in segment_and_split_map to find
        map symmetry and save it as an mmtbx.ncs.ncs.ncs object
@@ -1686,6 +1687,8 @@ class map_manager(map_reader, write_ccp4_map):
 
        symmetry (symbol such as c1, O, D7) can be supplied and search will be
        limited to that symmetry
+
+       ncs_object can be supplied in which case it is just checked
     '''
 
     assert self.origin_is_zero()
@@ -1721,6 +1724,7 @@ class map_manager(map_reader, write_ccp4_map):
       map_data = self.map_data(),
       crystal_symmetry = self.crystal_symmetry(),
       out = self.log,
+      ncs_obj = ncs_object
       )
     if new_ncs_obj:
       self._ncs_object = new_ncs_obj
