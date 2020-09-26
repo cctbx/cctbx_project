@@ -524,6 +524,58 @@ class map_model_manager(object):
         mil.append(id)
     return mil
 
+  def get_ncs_from_model(self):
+    '''
+    Return model NCS as ncs_spec object if available
+    Does not set anything. If you want to save it use:
+      self.set_ncs_object(self.get_ncs_from_model())
+      This will set the ncs object in the map_manager (if present)
+    '''
+    if not self.model():
+      return None
+    if not self.model().get_ncs_obj():
+      self.model().search_for_ncs()
+    if self.model().get_ncs_obj():
+      return self.model().get_ncs_obj().get_ncs_info_as_spec()
+    else:
+      return None
+
+  def get_ncs_from_map(self, use_existing = True,
+      include_helical_symmetry = False,
+      symmetry_center = None,
+      min_ncs_cc = None,
+      symmetry = None,
+      ncs_object = None):
+
+    '''
+    Use existing ncs object in map if present or find ncs from map
+    Sets ncs_object in self.map_manager()
+    Sets self._ncs_cc which can be retrieved with self.ncs_cc()
+    '''
+    if (not ncs_object) and use_existing:
+      ncs_object = self.ncs_object()
+    ncs=self.map_manager().find_map_symmetry(
+        include_helical_symmetry = include_helical_symmetry,
+        symmetry_center = symmetry_center,
+        min_ncs_cc = min_ncs_cc,
+        symmetry = symmetry,
+        ncs_object = ncs_object)
+    self._ncs_cc = self.map_manager().ncs_cc()
+    return self.ncs_object()
+
+  def ncs_cc(self):
+    if hasattr(self,'_ncs_cc'):
+       return self._ncs_cc
+
+  def set_ncs_object(self, ncs_object):
+    '''
+    Set the ncs object of map_manager
+    '''
+    if not self.map_manager():
+      return
+    else:
+      self.map_manager().set_ncs_object(ncs_object)
+
   def ncs_object(self):
     if self.map_manager():
       return self.map_manager().ncs_object()
@@ -632,6 +684,13 @@ class map_model_manager(object):
     else:
       return None
 
+  def set_model(self,model):
+    '''
+     Overwrites existing model with id 'model'
+    '''
+    self.add_model_by_id(model,'model')
+
+
   def add_model_by_id(self, model, model_id,
      overwrite = True):
     '''
@@ -645,6 +704,12 @@ class map_model_manager(object):
     if not self.map_manager().is_compatible_model(model): # needs shifting
       self.shift_any_model_to_match(model)
     self._model_dict[model_id] = model
+
+  def set_map_manager(self, map_manager):
+    '''
+     Overwrites existing map_manager with id 'map_manager'
+    '''
+    self.add_map_manager_by_id(map_manager, 'map_manager')
 
   def add_map_manager_by_id(self, map_manager, map_id,
      overwrite = True):
@@ -1920,7 +1985,7 @@ class map_model_manager(object):
 
   # Methods for modifying model or map
 
-  def remove_model_outside_map(self, boundary, return_as_new_model=False):
+  def remove_model_outside_map(self, boundary = 3, return_as_new_model=False):
     '''
      Remove all the atoms in the model that are well outside the map (more
      than boundary)
@@ -2831,7 +2896,7 @@ def get_selections_and_boxes_to_split_model(
         target_for_boxes = 24,
         box_cushion = 3,
         select_final_boxes_based_on_model = None,
-        skip_empty_boxes = None,
+        skip_empty_boxes = True,
         mask_around_unselected_atoms = None,
         mask_radius = 3,
         masked_value = -10,
@@ -2890,8 +2955,12 @@ def get_selections_and_boxes_to_split_model(
   elif selection_method == 'by_chain':
     from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
     for chain_id in get_chain_ids(model.get_hierarchy(), unique_only=True):
-      selection = model.selection(" %s (chain %s) " %(
-       info.no_water_or_het_with_and,chain_id))
+      if chain_id.replace(" ",""):
+        selection = model.selection(" %s (chain %s) " %(
+         info.no_water_or_het_with_and,chain_id))
+      else:
+        selection = model.selection(" %s " %(
+         info.no_water_or_het))
       if (not skip_empty_boxes) or (selection.count(True) > 0):
         box_info.selection_list.append(selection)
   elif selection_method == 'by_segment':

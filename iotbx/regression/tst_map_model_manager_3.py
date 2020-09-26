@@ -55,7 +55,7 @@ def exercise(file_name, out = sys.stdout):
   for id in all_map_names:
     print("Map_manager %s: %s " %(id,mam.get_map_manager_by_id(id)))
 
-  dm = DataManager(['model','miller_array', 'real_map', 'phil'])
+  dm = DataManager(['model','miller_array', 'real_map', 'phil','ncs_spec'])
   dm.set_overwrite(True)
 
   # Create a model with ncs
@@ -68,7 +68,8 @@ def exercise(file_name, out = sys.stdout):
   # Generate map data from this model (it has ncs)
   mmm=map_model_manager()
   mmm.generate_map(box_cushion=0, file_name=file_name,n_residues=500)
-  ncs_mam=mmm
+  ncs_mam=mmm.deep_copy()
+  ncs_mam_copy=mmm.deep_copy()
 
   # Make sure this model has 126 sites (42 sites times 3-fold ncs)
   assert ncs_mam.model().get_sites_cart().size() == 126
@@ -111,6 +112,21 @@ def exercise(file_name, out = sys.stdout):
      (5.820083333333333, -4.020400000000001, -4.445440000000001))
   assert approx_equal (ncs_mam.model().get_sites_cart()[42],
      (38.41904613024224, 17.233251085893276, 2.5547442135142524))
+
+  # Find ncs from map or model
+  nn=ncs_mam_copy
+  nn.write_map('ncs.ccp4')
+  nn.write_model('ncs.pdb')
+  ncs_object=nn.get_ncs_from_model()
+  dm.write_ncs_spec_file(ncs_object,'ncs.ncs_spec')
+  print ("NCS from map",ncs_object)
+  nn.set_ncs_object(ncs_object)
+  print ("NCS now: ",nn.ncs_object())
+  nn.get_ncs_from_map(ncs_object=ncs_object)
+  print ("ncs cc:",nn.ncs_cc())
+
+  return # ZZ
+
 
 
   # Make a deep_copy
