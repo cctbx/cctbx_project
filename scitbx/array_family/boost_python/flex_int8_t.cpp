@@ -216,7 +216,7 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("__init__", make_constructor(
         __8from_std_string, default_call_policies()))
       .def("__init__", make_constructor(
-        flex_int_from_numpy_array, default_call_policies()))
+        flex_int8_from_numpy_array, default_call_policies()))
       .def("copy_to_byte_str", copy_to_byte_str<versa<int8_t, flex_grid<> > >)
       .def("slice_to_byte_str",
         slice_to_byte_str<versa<int8_t, flex_grid<> > >)
