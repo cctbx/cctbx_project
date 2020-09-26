@@ -125,7 +125,6 @@ def exercise(file_name, out = sys.stdout):
   nn.get_ncs_from_map(ncs_object=ncs_object)
   print ("ncs cc:",nn.ncs_cc())
 
-  return # ZZ
 
 
 
