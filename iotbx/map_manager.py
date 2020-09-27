@@ -12,6 +12,7 @@ from cctbx import maptbx
 from cctbx import miller
 import mmtbx.ncs.ncs
 from copy import deepcopy
+from scitbx.matrix import col
 
 class map_manager(map_reader, write_ccp4_map):
 
@@ -1949,6 +1950,143 @@ class map_manager(map_reader, write_ccp4_map):
         n_real           = self.map_data().all())
       )
 
+  def shift_aware_rt(self,
+     from_obj = None,
+     to_obj = None,
+     working_rt_info = None,
+     absolute_rt_info = None):
+   '''
+     Returns shift_aware_rt
+   '''
+   return shift_aware_rt(
+     from_obj = from_obj,
+     to_obj = to_obj,
+     working_rt_info = working_rt_info,
+     absolute_rt_info = absolute_rt_info)
+
+
+#   Methods for map_manager
+
+class shift_aware_rt:
+  '''
+  Class to simplify keeping track of rotation/translation between two
+  objects that each may have an offset from_obj absolute coordinates.
+
+  Basic idea:  absolute rt is rotation/translation when everything is in
+  original, absolute cartesian coordinates.
+
+  working_rt is rotation/translation of anything in "from_obj" object to anything
+   in "to_obj" object using working coordinates in each.
+
+  The from_obj and to objects must have a shift_cart method
+  '''
+
+  def __init__(self,
+     from_obj = None,
+     to_obj = None,
+     working_rt_info = None,
+     absolute_rt_info = None):
+
+     assert (
+      (absolute_rt_info and (not from_obj) and (not to_obj) and (not working_rt_info))
+      or
+      (from_obj and to_obj and working_rt_info))
+
+     if from_obj:
+       assert hasattr(from_obj, 'shift_cart')
+     if to_obj:
+       assert hasattr(to_obj, 'shift_cart')
+
+     if not absolute_rt_info:
+       absolute_rt_info = self.get_absolute_rt_info(
+         working_rt_info = working_rt_info,
+         from_obj = from_obj, to_obj = to_obj)
+
+     self._absolute_rt_info = group_args(
+        r =  absolute_rt_info.r,
+        t =  absolute_rt_info.t,)
+
+
+  def apply_rt(self, site_cart = None, sites_cart = None,
+    from_obj = None, to_obj = None):
+    '''
+    Apply absolute rt if from and to not specified.
+    Apply relative if specified
+    '''
+    # get absolute if from and to not specified, otherwise working
+    rt_info = self.working_rt_info(from_obj=from_obj, to_obj=to_obj)
+    if site_cart:
+      return rt_info.r * col(site_cart) + rt_info.t
+
+    else:
+      return rt_info.r.elems * sites_cart + rt_info.t.elems
+
+  def get_absolute_rt_info(self, working_rt_info = None,
+      from_obj = None, to_obj = None):
+
+    '''
+    working_rt_info describes how to map from_xyz -> to_xyz in local coordinates
+    from_xyz is shifted from absolute by from.shift_cart()
+    to_xyz is shifted from absolute by to.shift_cart()
+
+    We have:
+      r from_xyz + t = to_xyz    in working frame of reference
+
+    We want to describe how to map:
+       (from_xyz - from.shift_cart()) -> (to_xyz - to.shift_cart())
+    where r is going to be the same and T will be different than t
+       r ((from_xyz - from.shift_cart()) + T = (to_xyz - to.shift_cart())
+       T = (to_xyz - to.shift_cart() - r from_xyz + r from.shift_cart()
+         but: to_xyz -  r from_xyz = t
+       T =  t - to.shift_cart() + r from.shift_cart()
+
+    Note reverse:
+       t = T + to.shift_cart() - r from.shift_cart()
+    '''
+
+    r = working_rt_info.r
+    t = working_rt_info.t
+    new_t =  t -  col(to_obj.shift_cart())  + r * col(from_obj.shift_cart())
+
+    return group_args(
+      r = r,
+      t = new_t
+    )
+
+  def working_rt_info(self, from_obj=None, to_obj=None):
+    ''' Get rt in working frame of reference
+    '''
+    if (not from_obj) and (not to_obj):  # as is
+      return self._absolute_rt_info
+
+    assert hasattr(from_obj, 'shift_cart')
+    assert hasattr(to_obj, 'shift_cart')
+    r = self._absolute_rt_info.r
+    t = self._absolute_rt_info.t
+    working_t =  t + col(to_obj.shift_cart()) - r * col(from_obj.shift_cart())
+    return group_args(
+      r = r,
+      t = working_t)
+
+
+  def absolute_rt_info(self):
+    return self._absolute_rt_info
+
+
+  def inverse(self):
+    r = self._absolute_rt_info.r
+    t = self._absolute_rt_info.t
+
+    r_inv = r.inverse()
+    t_inv = - r_inv * t
+    inverse_absolute_rt_info = group_args(
+      r = r_inv,
+      t = t_inv,)
+
+    return shift_aware_rt(absolute_rt_info = inverse_absolute_rt_info)
+
+
+
 def get_indices_from_index(index = None, all = None):
         #index = k+j*all[2]+i*(all[1]*all[2])
         i = index//(all[1]*all[2])
@@ -2035,7 +2173,6 @@ def select_n_in_biggest_cluster(sites_cart,
   # Guess size of cluster (n atoms, separated by about dist_min)
   target_radius = dist_min * float(n)**0.5
   dist_list = []
-  from scitbx.matrix import col
   for i in range (sites_cart.size()):
     diffs = sites_cart.deep_copy() - col(sites_cart[i])
     norms = diffs.norms()

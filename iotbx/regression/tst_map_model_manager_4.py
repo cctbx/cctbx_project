@@ -41,6 +41,30 @@ def get_map_model_managers():
 
 def exercise( out = sys.stdout):
 
+  # test shift_aware_rt
+
+  mmm1, mmm2 = get_map_model_managers()
+  rt_info= mmm1.rt_to_superpose_other(mmm2)
+
+  shift_aware_rt = mmm1.map_manager().shift_aware_rt(working_rt_info=rt_info,
+     from_obj = mmm2, to_obj = mmm1)
+  print (mmm1, mmm2)
+  sites_cart_2 = mmm2.model().get_sites_cart()
+  mapped_sites_cart = shift_aware_rt.apply_rt(sites_cart=sites_cart_2,
+    from_obj=mmm2, to_obj=mmm1)
+  assert approx_equal(mapped_sites_cart,mmm1.model().get_sites_cart(), eps=0.01)
+  working_rt_info = shift_aware_rt.working_rt_info(from_obj=mmm2, to_obj=mmm1)
+  mapped_sites_cart =working_rt_info.r.elems * mmm2.model().get_sites_cart() + working_rt_info.t.elems
+  assert approx_equal(mapped_sites_cart,mmm1.model().get_sites_cart(), eps=0.01)
+
+  inverse_shift_aware_rt = shift_aware_rt.inverse()
+  mapped_sites_cart = inverse_shift_aware_rt.apply_rt(sites_cart=mmm1.model().get_sites_cart(),from_obj=mmm1,to_obj=mmm2)
+  assert approx_equal(mapped_sites_cart,mmm2.model().get_sites_cart(), eps=0.01)
+
+
+  return # ZZ
+
+
   mmm1, mmm2 = get_map_model_managers()
 
   # get r,t to map mmm2 model on mmm1 model
