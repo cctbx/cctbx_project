@@ -2128,6 +2128,126 @@ class map_model_manager(object):
 
     return five_cc.result.cc_mask
 
+  #  Methods for superposing maps
+
+  def rt_to_superpose_other(self, other,
+      selection_string = None):
+    '''
+    Identify rotation/translation to map model from other on to model in this
+     object.
+    Optionally apply selection_string to both models before doing the
+     mapping # XZZZZ
+
+    '''
+    assert isinstance(other, iotbx.map_model_manager.map_model_manager)
+    if not self.model().get_sites_cart().size() == \
+         other.model().get_sites_cart().size():
+      print ("Models need to be similar to superpose", file = self.log)
+      return
+
+    # Get lsq superposition object (with r,t)
+    import scitbx.math.superpose
+    lsq = scitbx.math.superpose.least_squares_fit(
+      reference_sites=self.model().get_sites_cart(),
+      other_sites=other.model().get_sites_cart())
+    other_sites_mapped = lsq.r.elems * other.model().get_sites_cart() + lsq.t.elems
+    starting_rmsd = self.model().get_sites_cart().rms_difference(other.model().get_sites_cart())
+    rmsd = self.model().get_sites_cart().rms_difference(other_sites_mapped)
+    print ("RMSD starting: %.3f A.  After superposition: %.3f A " %(
+      starting_rmsd,rmsd), file=self.log)
+    return group_args(
+      r=lsq.r,
+      t=lsq.t)
+
+  def superposed_map_manager_from_other(self,other, rt_info = None,
+    selection_string = None):
+    '''
+    Identify rotation/translation to map model from other on to model in this
+     object.
+    Optionally apply selection_string to both models before doing the
+     mapping # XZZZZ
+    Then extract map from other to cover map in this object,
+    Fill in with zero where undefined if wrapping is False.
+    '''
+    # get the transformation
+    rt_info = self.rt_to_superpose_other(other,
+      selection_string = selection_string)
+
+    # Extract the other map in defined region (or all if wrapping = True)
+    # Wrapping = True:  just pull from other map
+
+    # Wrapping = False  Zero outside defined region
+    #  Make a big map_model_manager for other that includes the entire
+    #  region corresponding
+    #  to this map.  When constructing that map, set undefined values to zero
+    #  Then just pull from this big map_model_manager
+    if other.map_manager().wrapping():
+      other_to_use = other
+    else:
+      print ("Making a large version of other map where values are zero if"+
+       " not defined", file = self.log)
+      # other_to_use = larger_map...
+      lower_bounds, upper_bounds= self._get_bounds_of_rotated_corners(
+        other, rt_info)
+      other_to_use=other.extract_all_maps_with_bounds(
+        lower_bounds,
+        upper_bounds)
+      print ("Done making version of other map where values are zero if"+
+       " not defined", file = self.log)
+      rt_info = self.rt_to_superpose_other(other_to_use, # update
+        selection_string = selection_string)
+
+    # Ready to extract from this box with interpolation
+    r_inv = rt_info.r.inverse()
+    t_inv = -r_inv*rt_info.t
+
+    from cctbx.maptbx import superpose_maps
+    superposed_map_data = superpose_maps(
+      unit_cell_1        = other_to_use.crystal_symmetry().unit_cell(),
+      unit_cell_2        = self.crystal_symmetry().unit_cell(),
+      map_data_1         = other_to_use.map_manager().map_data(),
+      n_real_2           = self.map_manager().map_data().focus(),
+      rotation_matrix    = r_inv.elems,
+      translation_vector = t_inv.elems,
+      wrapping           = False)
+
+    return self.map_manager().customized_copy(
+      map_data = superposed_map_data)
+
+  def _get_bounds_of_rotated_corners(self, other, rt_info):
+    '''
+    Return info object with lower_bounds and upper_bounds in this map
+    corresponding to the lowest and highest values of coordinates obtained
+     by applying the inverse of rt_info to the corners of the map in other.
+    '''
+
+    r_inv = rt_info.r.inverse()
+    t_inv = -r_inv*rt_info.t
+
+    from scitbx.matrix import sqr, col
+    self_all = self.map_data().all()
+    other_all = other.map_data().all()
+    uc = self.crystal_symmetry().unit_cell().parameters()[:3]
+    other_uc = other.crystal_symmetry().unit_cell().parameters()[:3]
+    other_xyz_list = flex.vec3_double()
+    for i in [0,self_all[0]]:
+      x = uc[0]*i/self_all[0]
+      for j in [0,self_all[1]]:
+        y = uc[1]*j/self_all[1]
+        for k in [0,self_all[2]]:
+          z = uc[2]*k/self_all[2]
+          xyz = col((x,y,z))
+          other_xyz_list.append(r_inv * xyz + t_inv)
+    min_xyz=other_xyz_list.min()
+    max_xyz=other_xyz_list.max()
+    # Bounds at least one beyond any point that could be asked for
+    new_low_ijk =tuple([int(-2+xx * ii/aa) for xx, ii,aa in zip(
+        min_xyz,other_all, other_uc)])
+    new_high_ijk =tuple([int(2+xx * ii/aa) for xx, ii, aa in zip(
+        max_xyz,other_all,other_uc)])
+    return new_low_ijk,new_high_ijk
+
+
   # General methods
 
   def set_original_origin_grid_units(self, original_origin_grid_units = None):
