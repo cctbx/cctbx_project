@@ -1956,7 +1956,31 @@ class map_manager(map_reader, write_ccp4_map):
      working_rt_info = None,
      absolute_rt_info = None):
    '''
-     Returns shift_aware_rt
+   Returns shift_aware_rt object
+
+   Uses rt_info objects (group_args with members of r, t).
+
+   Simplifies keeping track of rotation/translation between two
+    objects that each may have an offset from absolute coordinates.
+
+   absolute rt is rotation/translation when everything is in original,
+      absolute cartesian coordinates.
+
+   working_rt is rotation/translation of anything in "from_obj" object
+      to anything in "to_obj" object using working coordinates in each.
+
+   Usage:
+   shift_aware_rt = self.shift_aware_rt(absolute_rt_info = rt_info)
+   shift_aware_rt = self.shift_aware_rt(working_rt_info = rt_info,
+      from_obj=from_obj, to_obj = to_obj)
+
+   apply RT using working coordinates in objects
+   sites_cart_to_obj = shift_aware_rt.apply_rt(sites_cart_from_obj,
+      from_obj=from_obj, to_obj=to_obj)
+
+   apply RT absolute coordinates
+   sites_cart_to = shift_aware_rt.apply_rt(sites_cart_from)
+
    '''
    return shift_aware_rt(
      from_obj = from_obj,
@@ -1970,7 +1994,7 @@ class map_manager(map_reader, write_ccp4_map):
 class shift_aware_rt:
   '''
   Class to simplify keeping track of rotation/translation between two
-  objects that each may have an offset from_obj absolute coordinates.
+  objects that each may have an offset from absolute coordinates.
 
   Basic idea:  absolute rt is rotation/translation when everything is in
   original, absolute cartesian coordinates.

@@ -46,6 +46,9 @@ def exercise( out = sys.stdout):
   mmm1, mmm2 = get_map_model_managers()
   rt_info= mmm1.rt_to_superpose_other(mmm2)
 
+  shift_aware_rt = mmm1.shift_aware_rt(working_rt_info=rt_info,
+     from_obj = mmm2, to_obj = mmm1)
+
   shift_aware_rt = mmm1.map_manager().shift_aware_rt(working_rt_info=rt_info,
      from_obj = mmm2, to_obj = mmm1)
   print (mmm1, mmm2)

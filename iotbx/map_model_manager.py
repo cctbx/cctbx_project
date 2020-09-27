@@ -2353,6 +2353,46 @@ class map_model_manager(object):
 
   #  Convenience methods
 
+  def shift_aware_rt(self,
+     from_obj = None,
+     to_obj = None,
+     working_rt_info = None,
+     absolute_rt_info = None):
+   '''
+   Returns shift_aware_rt object
+
+   Uses rt_info objects (group_args with members of r, t).
+
+   Simplifies keeping track of rotation/translation between two
+    objects that each may have an offset from absolute coordinates.
+
+   absolute rt is rotation/translation when everything is in original,
+      absolute cartesian coordinates.
+
+   working_rt is rotation/translation of anything in "from_obj" object
+      to anything in "to_obj" object using working coordinates in each.
+
+   Usage:
+   shift_aware_rt = self.shift_aware_rt(absolute_rt_info = rt_info)
+   shift_aware_rt = self.shift_aware_rt(working_rt_info = rt_info,
+      from_obj=from_obj, to_obj = to_obj)
+
+   apply RT using working coordinates in objects
+   sites_cart_to_obj = shift_aware_rt.apply_rt(sites_cart_from_obj,
+      from_obj=from_obj, to_obj=to_obj)
+
+   apply RT absolute coordinates
+   sites_cart_to = shift_aware_rt.apply_rt(sites_cart_from)
+
+   '''
+   from iotbx.map_manager import shift_aware_rt
+
+   return shift_aware_rt(
+     from_obj = from_obj,
+     to_obj = to_obj,
+     working_rt_info = working_rt_info,
+     absolute_rt_info = absolute_rt_info)
+
   def generate_map(self,
       d_min = None,
       origin_shift_grid_units = None,
