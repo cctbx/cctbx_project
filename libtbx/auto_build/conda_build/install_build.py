@@ -98,7 +98,7 @@ def fix_rpath(src):
     print(libraries)
 
 # =============================================================================
-def copy_build(env, prefix=None, ext_dir=None, copy_egg=False, link=False):
+def copy_build(env, prefix=None, ext_dir=None, sp_dir=None, copy_egg=False, link=False):
   """
   Copies the following items,
     1) Binaries from build/exe_dev to $PREFIX/bin
@@ -114,6 +114,11 @@ def copy_build(env, prefix=None, ext_dir=None, copy_egg=False, link=False):
       The destination $PREFIX directory
     ext_dir: str
       The destination directory for Python extensions
+    sp_dir: str
+      The destination site-packages directory. This is only used if copy_egg is True
+    copy_egg: bool
+      If True, egg-info directories are copied to the site-packages directory.
+      The sp_dir parameter needs to be set.
     link: bool
       If True, symbolic links are used instead of copying.
 
@@ -170,7 +175,7 @@ def copy_build(env, prefix=None, ext_dir=None, copy_egg=False, link=False):
   all_names = glob.iglob('lib*')
   lib_names = list()
   for name in all_names:
-    if name.endswith('egg-info') and not copy_egg:
+    if name.endswith('egg-info'):
       continue
     lib_names.append(name)
   loop_copy(src_path, dst_path, 'libraries', lib_names)
@@ -182,10 +187,21 @@ def copy_build(env, prefix=None, ext_dir=None, copy_egg=False, link=False):
   all_names = glob.iglob('*ext.*')
   ext_names = list()
   for name in all_names:
-    if name.endswith('egg-info') and not copy_egg:
+    if name.endswith('egg-info'):
       continue
     ext_names.append(name)
   loop_copy(src_path, dst_path, 'Python extensions', ext_names)
+
+  # .egg-info directories
+  # ---------------------------------------------------------------------------
+  if copy_egg:
+    if sp_dir is None:
+      raise RuntimeError('''\
+The site-packages directory ("sp_dir") parameter must be set for copying egg directories.''')
+    src_path = os.path.join(abs(env.build_path), 'lib')
+    dst_path = sp_dir
+    egg_names = glob.iglob('libtbx*egg-info')
+    loop_copy(src_path, dst_path, 'egg-info directories', egg_names)
 
   # extra build stuff
   # ---------------------------------------------------------------------------
@@ -249,7 +265,7 @@ def copy_modules(env, sp_dir=None, link=False):
     print()
 
 # =============================================================================
-def remove_build(env, prefix=None, ext_dir=None):
+def remove_build(env, prefix=None, ext_dir=None, sp_dir=None):
   """
   Remove configured modules from site-packages directory
 
@@ -259,6 +275,10 @@ def remove_build(env, prefix=None, ext_dir=None):
       The libtbx environment
     prefix: str
       The destination $PREFIX directory
+    ext_dir: str
+      The destination directory for Python extensions
+    sp_dir: str
+      The destination site-pacakges directory
 
   Returns
   -------
@@ -308,13 +328,18 @@ def remove_build(env, prefix=None, ext_dir=None):
 
   # extensions
   # ---------------------------------------------------------------------------
-  src_path = os.path.join(abs(env.build_path), 'lib')
   dst_path = ext_dir
   all_names = glob.iglob('*ext.*')
   ext_names = list()
   for name in all_names:
     ext_names.append(name)
   loop_remove(dst_path, 'Python extensions', ext_names)
+
+  # .egg-info directories
+  # ---------------------------------------------------------------------------
+  dst_path = sp_dir
+  egg_names = glob.iglob('libtbx*egg-info')
+  loop_remove(dst_path, 'egg-info directories', egg_names)
 
   # extra build stuff
   # ---------------------------------------------------------------------------
@@ -428,11 +453,13 @@ by the LIBTBX_BUILD environment variable''')
 
   # copy or clean
   if namespace.clean:
-    remove_build(env, prefix=namespace.prefix, ext_dir=namespace.ext_dir)
+    remove_build(env, prefix=namespace.prefix, ext_dir=namespace.ext_dir,
+                 sp_dir=namespace.sp_dir)
     remove_modules(env, sp_dir=namespace.sp_dir)
   else:
     copy_build(env, prefix=namespace.prefix, ext_dir=namespace.ext_dir,
-               copy_egg=namespace.preserve_egg_dir, link=namespace.link)
+               sp_dir=namespace.sp_dir, copy_egg=namespace.preserve_egg_dir,
+               link=namespace.link)
     copy_modules(env, sp_dir=namespace.sp_dir, link=namespace.link)
 
   if namespace.fix_rpath:
