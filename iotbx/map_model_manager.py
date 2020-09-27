@@ -2136,23 +2136,31 @@ class map_model_manager(object):
     Identify rotation/translation to map model from other on to model in this
      object.
     Optionally apply selection_string to both models before doing the
-     mapping # XZZZZ
+     mapping
 
     '''
     assert isinstance(other, iotbx.map_model_manager.map_model_manager)
-    if not self.model().get_sites_cart().size() == \
-         other.model().get_sites_cart().size():
+
+    if selection_string:
+      other_model = other.model().apply_selection_string(selection_string)
+      self_model = self.model().apply_selection_string(selection_string)
+    else:
+      other_model = other.model()
+      self_model = self.model()
+
+    if not self_model.get_sites_cart().size() == \
+         other_model.get_sites_cart().size():
       print ("Models need to be similar to superpose", file = self.log)
       return
 
     # Get lsq superposition object (with r,t)
     import scitbx.math.superpose
     lsq = scitbx.math.superpose.least_squares_fit(
-      reference_sites=self.model().get_sites_cart(),
-      other_sites=other.model().get_sites_cart())
-    other_sites_mapped = lsq.r.elems * other.model().get_sites_cart() + lsq.t.elems
-    starting_rmsd = self.model().get_sites_cart().rms_difference(other.model().get_sites_cart())
-    rmsd = self.model().get_sites_cart().rms_difference(other_sites_mapped)
+      reference_sites=self_model.get_sites_cart(),
+      other_sites=other_model.get_sites_cart())
+    other_sites_mapped = lsq.r.elems * other_model.get_sites_cart() + lsq.t.elems
+    starting_rmsd = self_model.get_sites_cart().rms_difference(other_model.get_sites_cart())
+    rmsd = self_model.get_sites_cart().rms_difference(other_sites_mapped)
     print ("RMSD starting: %.3f A.  After superposition: %.3f A " %(
       starting_rmsd,rmsd), file=self.log)
     return group_args(
@@ -2165,7 +2173,7 @@ class map_model_manager(object):
     Identify rotation/translation to map model from other on to model in this
      object.
     Optionally apply selection_string to both models before doing the
-     mapping # XZZZZ
+     mapping
     Then extract map from other to cover map in this object,
     Fill in with zero where undefined if wrapping is False.
     '''

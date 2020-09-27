@@ -64,8 +64,6 @@ def exercise( out = sys.stdout):
   mapped_sites_cart = inverse_shift_aware_rt.apply_rt(sites_cart=mmm1.model().get_sites_cart(),from_obj=mmm1,to_obj=mmm2)
   assert approx_equal(mapped_sites_cart,mmm2.model().get_sites_cart(), eps=0.01)
 
-
-
   mmm1, mmm2 = get_map_model_managers()
 
   # get r,t to map mmm2 model on mmm1 model
@@ -79,6 +77,10 @@ def exercise( out = sys.stdout):
   new_mm.write_map('super.ccp4')
   mmm1.write_map('orig.ccp4')
   mmm1.write_model('orig.pdb')
+
+  new_mm = mmm1.superposed_map_manager_from_other(other=mmm2,
+    selection_string="resseq 221:225")
+  new_mm.write_map('super_221-225.ccp4')
 
 if __name__ == "__main__":
   exercise()
