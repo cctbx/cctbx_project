@@ -1662,6 +1662,12 @@ class map_manager(map_reader, write_ccp4_map):
     if hasattr(self,'_ncs_cc'):
        return self._ncs_cc
 
+  def absolute_center_cart(self):
+    '''  Return center of map (absolute position) in Cartesian coordinates'''
+    return tuple([0.5*a - o for a,o in zip(
+      self.crystal_symmetry().unit_cell().parameters()[:3],
+      self.shift_cart())])
+
   def map_map_cc(self, other_map_manager):
    ''' Return simple map correlation to other map_manager'''
    import iotbx.map_manager
@@ -1825,6 +1831,7 @@ class map_manager(map_reader, write_ccp4_map):
        n_real = self.map_data().all(),
        crystal_symmetry = self.crystal_symmetry(),
        cushion_nx_ny_nz = cushion_nx_ny_nz,
+       wrapping = self.wrapping(),
      )
     return boxes
 

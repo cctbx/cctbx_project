@@ -988,7 +988,8 @@ def shift_and_box_model(model = None,
 def get_boxes_to_tile_map(target_for_boxes = 24,
       n_real = None,
       crystal_symmetry = None,
-      cushion_nx_ny_nz = None):
+      cushion_nx_ny_nz = None,
+      wrapping = False):
 
     '''
       Get a set of boxes that tile the map
@@ -1001,27 +1002,37 @@ def get_boxes_to_tile_map(target_for_boxes = 24,
     target_volume_per_box = (nx*ny*nz)/target_for_boxes
     target_length = target_volume_per_box**0.33
 
-    lower_bounds_list = []
-    upper_bounds_list = []
-    for x_info in get_bounds_list(nx, target_length):
-      for y_info in get_bounds_list(ny, target_length):
-        for z_info in get_bounds_list(nz, target_length):
-          lower_bounds_list.append(
-             [x_info.lower_bound,
-              y_info.lower_bound,
-              z_info.lower_bound])
-          upper_bounds_list.append(
-             [x_info.upper_bound,
-              y_info.upper_bound,
-              z_info.upper_bound])
+    if target_for_boxes == 1:
+      lower_bounds_list = [(0,0,0)]
+      upper_bounds_list = [tuple([i - 1 for i in n_real])]
+    else:
+      lower_bounds_list = []
+      upper_bounds_list = []
+      for x_info in get_bounds_list(nx, target_length):
+        for y_info in get_bounds_list(ny, target_length):
+          for z_info in get_bounds_list(nz, target_length):
+            lower_bounds_list.append(
+               [x_info.lower_bound,
+                y_info.lower_bound,
+                z_info.lower_bound])
+            upper_bounds_list.append(
+               [x_info.upper_bound,
+                y_info.upper_bound,
+                z_info.upper_bound])
 
     # Now make a set of boxes with a cushion if requested
     lower_bounds_with_cushion_list = []
     upper_bounds_with_cushion_list = []
     if cushion_nx_ny_nz:
+
       for lb,ub in zip (lower_bounds_list,upper_bounds_list):
-        new_lb = tuple([b - c for b,c in zip(lb, cushion_nx_ny_nz)])
-        new_ub = tuple([u + c for u,c in zip(ub, cushion_nx_ny_nz)])
+        if (wrapping):
+          new_lb = tuple([b - c for b,c in zip(lb, cushion_nx_ny_nz)])
+          new_ub = tuple([u + c for u,c in zip(ub, cushion_nx_ny_nz)])
+        else:
+          new_lb = tuple([max(0,b - c) for b,c in zip(lb, cushion_nx_ny_nz)])
+          new_ub = tuple([min(n-1,u + c) for u,c,n in zip(ub, cushion_nx_ny_nz,
+            n_real)])
         lower_bounds_with_cushion_list.append(new_lb)
         upper_bounds_with_cushion_list.append(new_ub)
     else:

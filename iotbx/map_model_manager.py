@@ -648,7 +648,9 @@ class map_model_manager(object):
     map_data_list = []
     if mask_id is None: # just get the map_data
       for id in id_list:
-        map_data_list.append(self.get_map_manager_by_id(id).map_data())
+        mm = self.get_map_manager_by_id(id)
+        assert mm is not None  # map_manager_by_id must not be None
+        map_data_list.append(mm.map_data())
     else:
       assert mask_id in self.map_id_list() and \
         self.get_map_manager_by_id(mask_id).is_mask()
@@ -2016,9 +2018,42 @@ class map_model_manager(object):
 
   # Methods for comparing maps, models and calculating FSC values
 
+  def local_fsc(self,
+      map_id_1 = 'map_manager_1',
+      map_id_2 = 'map_manager_2',
+      resolution = None,
+      min_bin_width = 20,
+      n_bins = 200,
+      fsc_cutoff = 0.143,
+      n_boxes = 100,
+      box_cushion = 5):
+
+    if not resolution:
+      resolution = self.resolution() # nominal
+    assert isinstance(resolution, (int, float))
+
+    box_info = self.split_up_map_and_model_by_boxes(
+      target_for_boxes = n_boxes,
+      box_cushion = box_cushion,
+      skip_empty_boxes = False,
+      select_final_boxes_based_on_model = False, # required
+      )
+    # Now get local resolution in each box
+    cc1= self.map_map_cc()
+    d_min_1= self.map_map_fsc().d_min
+    for mmm in box_info.mmm_list:
+      mmm.mask_all_maps_around_edges(soft_mask_radius=resolution)
+      d_min = mmm.map_map_fsc(fsc_cutoff = fsc_cutoff,n_bins=n_bins).d_min
+      if not d_min: continue
+      xyz = mmm.map_manager().absolute_center_cart()
+      print ("(%7.3f, %7.3f, %7.3f ) (%s, %s, %s) D-min: %5.3f" %(
+        tuple(list(xyz)+list(mmm.map_manager().map_data().all())+[d_min])),
+          file = self.log)
+
+
   def map_map_fsc(self,
-      map_id_1 = 'map_manager',
-      map_id_2 = 'map_manager',
+      map_id_1 = 'map_manager_1',
+      map_id_2 = 'map_manager_2',
       resolution = None,
       mask_id = None,
       mask_cutoff = 0.5,
@@ -3083,14 +3118,17 @@ def get_split_maps_and_models(
        lower_bounds_list,
        upper_bounds_list,
        box_info.selection_list):
-    mmm = MapModelManager(model = map_model_manager.model().select(selection),
-      map_manager = map_model_manager.map_manager())
-    mmm.box_all_maps_with_bounds_and_shift_origin(lower_bounds, upper_bounds)
+    mmm=map_model_manager.extract_all_maps_with_bounds(
+     lower_bounds, upper_bounds)
+
+    if mmm.model():
+      model_to_keep = mmm.model().select(selection)
+    else:
+      model_to_keep = None
     if box_info.mask_around_unselected_atoms:  # mask everything we didn't keep
-      remaining_model=map_model_manager.model().select(~selection)
-      nnn=MapModelManager(model = map_model_manager.model().select(~selection),
-        map_manager = map_model_manager.map_manager())
-      nnn.box_all_maps_with_bounds_and_shift_origin(lower_bounds, upper_bounds)
+      remaining_model=mmm.model().select(~selection)
+      nnn=mmm.deep_copy()
+      nnn.set_model(remaining_model)
       nnn.remove_model_outside_map(boundary=box_info.mask_radius)
       if nnn.model().get_sites_cart().size() > 0: # do something
         nnn.create_mask_around_atoms(
@@ -3099,6 +3137,8 @@ def get_split_maps_and_models(
         mask_mm = nnn.get_map_manager_by_id(map_id = 'mask')
         s = (mask_mm.map_data() > 0.5)
         mmm.map_manager().map_data().set_selected(s,box_info.masked_value)
+    if model_to_keep:
+      mmm.set_model(model_to_keep)
     mmm_list.append(mmm)
   box_info.mmm_list = mmm_list
   return box_info
@@ -3209,9 +3249,13 @@ def get_selections_and_boxes_to_split_model(
     box_info.lower_bounds_list = []
     box_info.upper_bounds_list = []
     for selection in box_info.selection_list:
+      if model:
+        model_use=model.select(selection)
+      else:
+        model_use = None
       info = get_bounds_around_model(
         map_manager = map_manager,
-        model = model.select(selection),
+        model = model_use,
         box_cushion = box_cushion)
       box_info.lower_bounds_list.append(info.lower_bounds)
       box_info.upper_bounds_list.append(info.upper_bounds)
@@ -3221,7 +3265,6 @@ def get_selections_and_boxes_to_split_model(
   box_info.mask_around_unselected_atoms = mask_around_unselected_atoms
   box_info.mask_radius = mask_radius
   box_info.masked_value = masked_value
-
   return box_info
 
 def get_selections_from_boxes(box_info = None,
@@ -3238,7 +3281,6 @@ def get_selections_from_boxes(box_info = None,
   new_upper_bounds_list = []
   new_lower_bounds_with_cushion_list = []
   new_upper_bounds_with_cushion_list = []
-  count = 0
   for lower_bounds, upper_bounds,lower_bounds_with_cushion, \
     upper_bounds_with_cushion in zip (
       box_info.lower_bounds_list,
@@ -3252,11 +3294,10 @@ def get_selections_from_boxes(box_info = None,
      n_real = box_info.n_real,
      model = model,
      crystal_symmetry = box_info.crystal_symmetry)
-    if overall_selection:
+    if sel and overall_selection:
       sel = (sel & overall_selection)
-    if (not skip_empty_boxes) or (sel.count(True) > 0):
+    if (not sel) or (not skip_empty_boxes) or (sel.count(True) > 0):
       selection_list.append(sel)
-      count += sel.count(True)
       new_lower_bounds_list.append(lower_bounds)
       new_upper_bounds_list.append(upper_bounds)
       new_lower_bounds_with_cushion_list.append(lower_bounds_with_cushion)
@@ -3280,6 +3321,8 @@ def get_selection_inside_box(
    get selection for all the atoms inside this box
   '''
 
+  if not model:
+    return None
   lower_bounds_frac = tuple([lb / x for lb,x in zip(lower_bounds, n_real)])
   upper_bounds_frac = tuple([ub / x for ub,x in zip(upper_bounds, n_real)])
   sites_frac = model.get_sites_frac()

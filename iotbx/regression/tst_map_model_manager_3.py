@@ -276,6 +276,29 @@ def exercise(file_name, out = sys.stdout):
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
      ((18, 25, 20),(18, 25, 20)))
 
+  # Get local fsc or randomized map
+  dc=mam_dc.deep_copy()
+  dc.map_manager().set_wrapping(False)
+  map_coeffs = dc.map_manager().map_as_fourier_coefficients(d_min=3)
+  from cctbx.development.create_models_or_maps import generate_map
+  new_mm_1 = generate_map(map_coeffs=map_coeffs,
+    d_min=3,
+    low_resolution_real_space_noise_fraction=1,
+    high_resolution_real_space_noise_fraction=50,
+    map_manager=dc.map_manager(),
+    random_seed=124321)
+  new_mm_2 = generate_map(map_coeffs=map_coeffs,
+    d_min=3,
+    low_resolution_real_space_noise_fraction=1,
+    high_resolution_real_space_noise_fraction=50,
+    map_manager=dc.map_manager(),
+    random_seed=734119)
+  dc.add_map_manager_by_id(new_mm_1,'map_manager_1')
+  dc.add_map_manager_by_id(new_mm_2,'map_manager_2')
+  cc=dc.map_map_cc()
+  fsc_curve=dc.map_map_fsc()
+  dc.set_log(sys.stdout)
+  dc.local_fsc(n_boxes = 1)
 
   # Get map-map FSC
   dc=mam_dc.deep_copy()
