@@ -902,6 +902,11 @@ class map_manager(map_reader, write_ccp4_map):
     sel = flex.bool(map_data.size(), True)
     self.data.as_1d().set_selected(sel, map_data.as_1d())
 
+  def as_map_model_manager(self):
+    '''  Return a map_model_manager'''
+    from iotbx.map_model_manager import map_model_manager
+    return map_model_manager(map_manager = self)
+
   def as_full_size_map(self):
     '''
       Create a full-size map that with the current map inside it, padded by zero
