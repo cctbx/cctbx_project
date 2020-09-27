@@ -1,10 +1,6 @@
 from __future__ import absolute_import, division, print_function
-from cctbx.array_family import flex
-import os, sys
-from libtbx.utils import Sorry
+import sys
 from libtbx.test_utils import approx_equal
-from mmtbx.model import manager as model_manager
-from iotbx.data_manager import DataManager
 
 
 def get_map_model_managers():
