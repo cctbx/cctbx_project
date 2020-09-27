@@ -2130,7 +2130,7 @@ class map_model_manager(object):
 
   #  Methods for superposing maps
 
-  def working_rt_to_superpose_other(self, other,
+  def shift_aware_rt_to_superpose_other(self, other,
       selection_string = None):
     '''
     Identify rotation/translation to map model from other on to model in this
@@ -2163,9 +2163,16 @@ class map_model_manager(object):
     rmsd = self_model.get_sites_cart().rms_difference(other_sites_mapped)
     print ("RMSD starting: %.3f A.  After superposition: %.3f A " %(
       starting_rmsd,rmsd), file=self.log)
-    return group_args(
+
+    working_rt_info = group_args(
       r=lsq.r,
       t=lsq.t)
+
+    shift_aware_rt_info = self.shift_aware_rt(
+          working_rt_info=working_rt_info,
+          from_obj = other,
+          to_obj = self)
+    return shift_aware_rt_info
 
   def superposed_map_manager_from_other(self,other,
      working_rt_info = None,
@@ -2191,14 +2198,14 @@ class map_model_manager(object):
       if absolute_rt_info:
         shift_aware_rt_info = self.shift_aware_rt(
           absolute_rt_info=absolute_rt_info)
-      else:
-        if not working_rt_info:
-          working_rt_info = self.working_rt_to_superpose_other(other,
-            selection_string = selection_string)
+      elif working_rt_info:
         shift_aware_rt_info = self.shift_aware_rt(
           working_rt_info=working_rt_info,
           from_obj = other,
           to_obj = self)
+      else:
+        shift_aware_rt_info = self.shift_aware_rt_to_superpose_other(other,
+            selection_string = selection_string)
 
     rt_info = shift_aware_rt_info.working_rt_info(from_obj=other, to_obj=self)
 

@@ -40,7 +40,8 @@ def exercise( out = sys.stdout):
   # test shift_aware_rt
 
   mmm1, mmm2 = get_map_model_managers()
-  rt_info= mmm1.working_rt_to_superpose_other(mmm2)
+  shift_aware_rt_info= mmm1.shift_aware_rt_to_superpose_other(mmm2)
+  rt_info=shift_aware_rt_info.working_rt_info(from_obj=mmm2,to_obj=mmm1)
 
   shift_aware_rt = mmm1.shift_aware_rt(working_rt_info=rt_info,
      from_obj = mmm2, to_obj = mmm1)
@@ -63,7 +64,8 @@ def exercise( out = sys.stdout):
   mmm1, mmm2 = get_map_model_managers()
 
   # get r,t to map mmm2 model on mmm1 model
-  rt_info= mmm1.working_rt_to_superpose_other(mmm2)
+  shift_aware_rt_info= mmm1.shift_aware_rt_to_superpose_other(mmm2)
+  rt_info=shift_aware_rt_info.working_rt_info(from_obj=mmm2,to_obj=mmm1)
   print (rt_info)
 
   # get mmm2 map superimposed on mmm1 map (in region where it is defined, zero
