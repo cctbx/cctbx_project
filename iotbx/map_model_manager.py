@@ -2148,21 +2148,39 @@ class map_model_manager(object):
       other_model = other.model()
       self_model = self.model()
 
-    if not self_model.get_sites_cart().size() == \
+    if self_model.get_sites_cart().size() == \
          other_model.get_sites_cart().size():
-      print ("Models need to be similar to superpose", file = self.log)
-      return
+      # Get lsq superposition object (with r,t)
+      import scitbx.math.superpose
+      lsq = scitbx.math.superpose.least_squares_fit(
+        reference_sites=self_model.get_sites_cart(),
+        other_sites=other_model.get_sites_cart())
+      other_sites_mapped = lsq.r.elems * other_model.get_sites_cart() + \
+              lsq.t.elems
+      starting_rmsd = self_model.get_sites_cart().rms_difference(
+            other_model.get_sites_cart())
+      rmsd = self_model.get_sites_cart().rms_difference(other_sites_mapped)
+      print ("RMSD starting: %.3f A.  After superposition: %.3f A " %(
+          starting_rmsd,rmsd), file=self.log)
+    else: # use superpose_pdbs tool to try and get superposition
+      try:
+        from phenix.command_line import superpose_pdbs
+        params = superpose_pdbs.master_params.extract()
+        x = superpose_pdbs.manager(
+          params,
+          log = null_out(),
+          write_output = False,
+          save_lsq_fit_obj = True,
+          pdb_hierarchy_fixed = self_model.get_hierarchy(),
+          pdb_hierarchy_moving = other_model.get_hierarchy().deep_copy(),)
+        lsq = x.lsq_fit_obj
+        del x
 
-    # Get lsq superposition object (with r,t)
-    import scitbx.math.superpose
-    lsq = scitbx.math.superpose.least_squares_fit(
-      reference_sites=self_model.get_sites_cart(),
-      other_sites=other_model.get_sites_cart())
-    other_sites_mapped = lsq.r.elems * other_model.get_sites_cart() + lsq.t.elems
-    starting_rmsd = self_model.get_sites_cart().rms_difference(other_model.get_sites_cart())
-    rmsd = self_model.get_sites_cart().rms_difference(other_sites_mapped)
-    print ("RMSD starting: %.3f A.  After superposition: %.3f A " %(
-      starting_rmsd,rmsd), file=self.log)
+      except Exception as e:
+        print ("Unable to superpose other on self..", file = self.log)
+        return None
+
+
 
     working_rt_info = group_args(
       r=lsq.r,

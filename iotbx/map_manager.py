@@ -2040,6 +2040,21 @@ class shift_aware_rt:
         t =  absolute_rt_info.t,)
 
 
+  def is_similar(self, other_shift_aware_rt_info, tol = 0.001):
+    r = self._absolute_rt_info.r
+    t = self._absolute_rt_info.t
+    other_r = other_shift_aware_rt_info._absolute_rt_info.r
+    other_t = other_shift_aware_rt_info._absolute_rt_info.t
+    for x,y in zip(r,other_r):
+      if (abs(x-y)) > tol:
+        print(x,y,abs(x-y))
+        return False
+    for x,y in zip(t,other_t):
+      if (abs(x-y)) > tol:
+        print(x,y,abs(x-y))
+        return False
+    return True
+
   def apply_rt(self, site_cart = None, sites_cart = None,
     from_obj = None, to_obj = None):
     '''
