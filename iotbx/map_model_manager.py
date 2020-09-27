@@ -2265,8 +2265,10 @@ class map_model_manager(object):
       translation_vector = t_inv.elems,
       wrapping           = False)
 
-    return self.map_manager().customized_copy(
+    new_mm = self.map_manager().customized_copy(
       map_data = superposed_map_data)
+    new_mm.set_wrapping(False) # always
+    return new_mm
 
   def _get_bounds_of_rotated_corners(self, other, rt_info):
     '''
