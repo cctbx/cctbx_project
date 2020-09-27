@@ -65,8 +65,6 @@ def exercise( out = sys.stdout):
   assert approx_equal(mapped_sites_cart,mmm2.model().get_sites_cart(), eps=0.01)
 
 
-  return # ZZ
-
 
   mmm1, mmm2 = get_map_model_managers()
 
