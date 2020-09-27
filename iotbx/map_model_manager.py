@@ -2130,7 +2130,7 @@ class map_model_manager(object):
 
   #  Methods for superposing maps
 
-  def rt_to_superpose_other(self, other,
+  def working_rt_to_superpose_other(self, other,
       selection_string = None):
     '''
     Identify rotation/translation to map model from other on to model in this
@@ -2167,8 +2167,11 @@ class map_model_manager(object):
       r=lsq.r,
       t=lsq.t)
 
-  def superposed_map_manager_from_other(self,other, rt_info = None,
-    selection_string = None):
+  def superposed_map_manager_from_other(self,other,
+     working_rt_info = None,
+     absolute_rt_info = None,
+     shift_aware_rt_info = None,
+     selection_string = None):
     '''
     Identify rotation/translation to map model from other on to model in this
      object.
@@ -2176,10 +2179,28 @@ class map_model_manager(object):
      mapping
     Then extract map from other to cover map in this object,
     Fill in with zero where undefined if wrapping is False.
+
+    Allow specification of working_rt (applies to working coordinates in
+      other and self), or absolute_rt_info (applies to absolute, original
+      coordinates)
+
     '''
-    # get the transformation
-    rt_info = self.rt_to_superpose_other(other,
-      selection_string = selection_string)
+
+    # get the shift_aware_rt_info if not supplied
+    if not shift_aware_rt_info:
+      if absolute_rt_info:
+        shift_aware_rt_info = self.shift_aware_rt(
+          absolute_rt_info=absolute_rt_info)
+      else:
+        if not working_rt_info:
+          working_rt_info = self.working_rt_to_superpose_other(other,
+            selection_string = selection_string)
+        shift_aware_rt_info = self.shift_aware_rt(
+          working_rt_info=working_rt_info,
+          from_obj = other,
+          to_obj = self)
+
+    rt_info = shift_aware_rt_info.working_rt_info(from_obj=other, to_obj=self)
 
     # Extract the other map in defined region (or all if wrapping = True)
     # Wrapping = True:  just pull from other map
@@ -2202,10 +2223,10 @@ class map_model_manager(object):
         upper_bounds)
       print ("Done making version of other map where values are zero if"+
        " not defined", file = self.log)
-      rt_info = self.rt_to_superpose_other(other_to_use, # update
-        selection_string = selection_string)
 
     # Ready to extract from this box with interpolation
+    rt_info = shift_aware_rt_info.working_rt_info(
+       from_obj=other_to_use, to_obj=self)
     r_inv = rt_info.r.inverse()
     t_inv = -r_inv*rt_info.t
 

@@ -1657,6 +1657,15 @@ class map_manager(map_reader, write_ccp4_map):
     if hasattr(self,'_ncs_cc'):
        return self._ncs_cc
 
+  def map_map_cc(self, other_map_manager):
+   ''' Return simple map correlation to other map_manager'''
+   import iotbx.map_manager
+   assert isinstance(other_map_manager, iotbx.map_manager.map_manager)
+   return flex.linear_correlation(
+      self.map_data().as_1d(), other_map_manager.map_data().as_1d()
+       ).coefficient()
+
+
   def find_map_symmetry(self,
       include_helical_symmetry = False,
       symmetry_center = None,
