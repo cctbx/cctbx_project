@@ -4,7 +4,7 @@ from libtbx.utils import Sorry
 from cctbx import maptbx
 from libtbx import group_args
 from scitbx.array_family import flex
-import iotbx.map_manager
+from iotbx.map_manager import map_manager as MapManager
 from mmtbx.model import manager as model_manager
 import mmtbx.ncs.ncs
 from libtbx.utils import null_out
@@ -103,7 +103,7 @@ class map_model_manager(object):
     for m in [model] + extra_model_list:
       assert (m is None) or isinstance(m, model_manager)
     for mm in [map_manager, map_manager_1, map_manager_2] + extra_map_manager_list:
-      assert (mm is None) or isinstance(mm, iotbx.map_manager.map_manager)
+      assert (mm is None) or isinstance(mm, MapManager)
     assert (ncs_object is None) or isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
 
 
@@ -721,7 +721,7 @@ class map_model_manager(object):
      Overwrites any existing with the same id unless overwrite = False
      Is a mask if is_mask is set
     '''
-    assert isinstance(map_manager, iotbx.map_manager.map_manager)
+    assert isinstance(map_manager, MapManager)
     assert isinstance(overwrite, bool)
     if not overwrite:
       assert not map_id in self.map_id_list() # must not duplicate
@@ -745,7 +745,7 @@ class map_model_manager(object):
      Overwrites any existing with the new id
     '''
     map_manager = self.get_map_manager_by_id(map_id)
-    assert isinstance(map_manager, iotbx.map_manager.map_manager)
+    assert isinstance(map_manager, MapManager)
 
     self._map_dict[new_map_id] = map_manager.deep_copy()
 
@@ -1213,7 +1213,7 @@ class map_model_manager(object):
 
     map_info=self._get_map_info()
     map_manager = self._map_dict[map_info.map_id]
-    assert isinstance(map_manager, iotbx.map_manager.map_manager)
+    assert isinstance(map_manager, MapManager)
     if not resolution:
       resolution = self.resolution()
     assert resolution is not None
@@ -2050,7 +2050,9 @@ class map_model_manager(object):
       fsc_cutoff = 0.143,
       n_boxes = None,
       core_box_size = None,
-      box_cushion = None):
+      box_cushion = None,
+      smoothing_radius = None,
+      nproc = 1):
 
     if not resolution:
       resolution = self.map_map_fsc(
@@ -2058,6 +2060,9 @@ class map_model_manager(object):
         map_id_2 = map_id_2,).d_min
       self.set_resolution(resolution)
       print ("Overall resolution of map: %.2f A" %(resolution),file = self.log)
+
+    if not smoothing_radius:
+      smoothing_radius = 2 * resolution
 
     if not box_cushion:
       box_cushion = 1.5 * resolution
@@ -2079,20 +2084,81 @@ class map_model_manager(object):
     # Now get local resolution in each box
     cc1= self.map_map_cc()
     d_min_1= self.map_map_fsc().d_min
-    for i in range(1,len(box_info.selection_list)+1):
-      new_box_info = get_split_maps_and_models(
+    minimum_resolution = self.map_manager_1().resolution(
+     set_resolution = False,
+     force = True)
+
+    run_list=[]
+    index_list=[]
+    n_total = len(box_info.selection_list)
+    n_in_group = int(0.5+n_total/nproc)
+    for i in range(nproc):
+      first_to_use = i * n_in_group + 1
+      last_to_use = min(n_total,
+         i * n_in_group + n_in_group )
+      if i == nproc -1:
+        last_to_use = n_total
+
+      index_list.append({'i':i})
+      run_list.append({'first_to_use': first_to_use,
+        'last_to_use': last_to_use})
+
+    # Hold some things in box_info
+    box_info.resolution = resolution
+    box_info.minimum_resolution = minimum_resolution
+    box_info.fsc_cutoff = fsc_cutoff
+    box_info.n_bins = n_bins
+    from libtbx.easy_mp import run_parallel
+    results = run_parallel(
+     method = 'multiprocessing',
+     nproc = nproc,
+     target_function = run_fsc_as_class(
         map_model_manager = self,
-        box_info = box_info,
-        first_to_use = i,
-        last_to_use = i)
-      mmm = new_box_info.mmm_list[0]
-      mmm.mask_all_maps_around_edges(soft_mask_radius=resolution)
-      d_min = mmm.map_map_fsc(fsc_cutoff = fsc_cutoff,n_bins=n_bins).d_min
-      if not d_min: continue
-      xyz = mmm.map_manager().absolute_center_cart()
-      print ("(%7.3f, %7.3f, %7.3f ) (%s, %s, %s) D-min: %5.3f" %(
-        tuple(list(xyz)+list(mmm.map_manager().map_data().all())+[d_min])),
-          file = self.log)
+        run_list=run_list,
+        box_info = box_info),
+     preserve_order=False,
+     kw_list = index_list)
+
+    #  Now results is a list of results. Find the good ones
+    xyz_list = flex.vec3_double()
+    d_min_list = flex.double()
+    for result in results:
+      if result and result.xyz_list:
+        xyz_list.extend(result.xyz_list)
+        d_min_list.extend(result.d_min_list)
+    if xyz_list.size() == 0:
+      print ("Unable to calculate local fsc map", file = self.log)
+      return
+
+    print ("D-min for overall FSC map: %.2f A " %(d_min_1), file = self.log)
+    print ("Unique values in local FSC map: %s " %(xyz_list.size()),
+       file = self.log)
+    x=d_min_list.min_max_mean()
+    print ("Range of d_min: %.2f A to %.2f A   Mean: %.2f A " %(
+      x.min, x.max, x.mean), file = self.log)
+
+    # Now create a small map and fill in values
+    volume_per_grid_point=self.crystal_symmetry().unit_cell(
+        ).volume()/xyz_list.size()
+    target_spacing = volume_per_grid_point**0.33
+    local_n_real=tuple([ max(1,int(0.5+1.5*a/target_spacing)) for
+        a in self.crystal_symmetry().unit_cell().parameters()[:3]])
+
+    fsc_map_manager = create_map_manager_with_value_list(
+       n_real = local_n_real,
+       crystal_symmetry = self.crystal_symmetry(),
+       value_list = d_min_list,
+       sites_cart_list = xyz_list,
+       target_spacing = target_spacing)
+    # Get Fourier coeffs:
+    map_coeffs = fsc_map_manager.map_as_fourier_coefficients()
+
+    # Make map in full grid
+    d_min_map_manager = self.map_manager_1(
+       ).fourier_coefficients_as_map_manager(map_coeffs)
+
+    d_min_map_manager.gaussian_filter(smoothing_radius = smoothing_radius)
+    return d_min_map_manager
 
 
   def map_map_fsc(self,
@@ -3132,6 +3198,74 @@ class match_map_model_ncs(object):
     return mam
 
 #   Misc methods
+def create_map_manager_with_value_list(
+       n_real = None,
+       crystal_symmetry = None,
+       value_list = None,
+       sites_cart_list = None,
+       target_spacing = None,
+       max_iterations = 10):
+    '''
+      Create a map_manager with values set with a set of sites_cart and values
+      Use nearest available value for each grid point, done iteratively
+       with radii in shells of target_spacing/2 and up to max_iterations shells
+    '''
+    fsc_map = flex.double(flex.grid(n_real),0.)
+    fsc_map_manager = MapManager(
+       map_data = fsc_map,
+       unit_cell_grid = fsc_map.all(),
+       unit_cell_crystal_symmetry = crystal_symmetry,
+       wrapping = False)
+    fsc_set_map_manager = fsc_map_manager.customized_copy(
+      map_data = flex.double(flex.grid(n_real),0.))
+
+    sites_frac_list=crystal_symmetry.unit_cell().fractionalize(
+       sites_cart_list)
+    from cctbx.maptbx import closest_grid_point
+    for site_frac,value in zip(sites_frac_list,value_list):
+      index = closest_grid_point(
+        fsc_map_manager.map_data().accessor(), site_frac)
+      fsc_map_manager.map_data()[index] = value
+      fsc_set_map_manager.map_data()[index] = 1
+
+    # find anything not set
+    not_set = (fsc_map == 0)
+    for k in range(max_iterations):
+      radius = 0.5 * k * target_spacing
+      for i in range(sites_cart_list.size()):
+        set_nearby_empty_values(
+          fsc_map_manager,
+          fsc_set_map_manager,
+          sites_cart_list[i:i+1],
+          radius,
+          value_list[i])
+      not_set = (fsc_map == 0)
+      if (not_set.count(True) == 0):
+        break
+    return fsc_map_manager
+
+def set_nearby_empty_values(
+    map_manager,
+    set_values_map_manager,
+    xyz_list,
+    radius,
+    value):
+  '''
+  Set values within radii of xyz_list points to value if not already
+      set
+  '''
+  from cctbx.maptbx import grid_indices_around_sites
+  gias = maptbx.grid_indices_around_sites(
+        unit_cell=map_manager.crystal_symmetry().unit_cell(),
+        fft_n_real=map_manager.map_data().all(),
+        fft_m_real=map_manager.map_data().all(),
+        sites_cart=xyz_list,
+        site_radii=flex.double(xyz_list.size(),radius))
+  for index in gias:
+        if set_values_map_manager.map_data()[index] == 0:
+          map_manager.map_data()[index] = value
+          set_values_map_manager.map_data()[index] = 1
+
 def get_split_maps_and_models(
       map_model_manager = None,
       box_info = None,
@@ -3487,3 +3621,48 @@ def get_map_counts(map_data, crystal_symmetry = None):
     d_min_corner = maptbx.d_min_corner(map_data = map_data,
       unit_cell = crystal_symmetry.unit_cell()))
   return map_counts
+
+class run_fsc_as_class:
+  def __init__(self, map_model_manager=None, run_list=None,
+      box_info = None):
+    self.map_model_manager = map_model_manager
+    self.run_list = run_list
+    self.box_info = box_info
+
+  def __call__(self,i):
+    '''
+     Run a group of fsc calculations model-building method with kw
+     specifying which to run
+
+    '''
+    # We are going to run with the i'th set of keywords
+    kw=self.run_list[i]
+
+    # Get the method name and expected_result_names and remove them from kw
+    first_to_use = kw['first_to_use']
+    last_to_use = kw['last_to_use']
+
+    xyz_list = flex.vec3_double()
+    d_min_list = flex.double()
+    from scitbx.matrix import col
+    for i in range(first_to_use, last_to_use + 1):
+      new_box_info = get_split_maps_and_models(
+        map_model_manager = self.map_model_manager,
+        box_info = self.box_info,
+        first_to_use = i,
+        last_to_use = i)
+      mmm = new_box_info.mmm_list[0]
+      mmm.mask_all_maps_around_edges(soft_mask_radius=self.box_info.resolution)
+      d_min = mmm.map_map_fsc(fsc_cutoff = self.box_info.fsc_cutoff,
+        n_bins=self.box_info.n_bins).d_min
+      if not d_min: continue
+      d_min = max(d_min, self.box_info.minimum_resolution)
+      xyz = mmm.map_manager().absolute_center_cart()
+      xyz_list.append(xyz)
+      xyz_list = xyz_list - col(mmm.shift_cart()) # relative to this box
+      d_min_list.append(d_min)
+
+    result = group_args(
+      xyz_list=xyz_list,
+      d_min_list=d_min_list)
+    return result

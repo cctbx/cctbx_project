@@ -1207,7 +1207,7 @@ class map_manager(map_reader, write_ccp4_map):
   def experiment_type(self):
     return self._experiment_type
 
-  def resolution(self, force = False, method = 'd99'):
+  def resolution(self, force = False, method = 'd99', set_resolution = True):
     ''' Get nominal resolution
         Return existing if present unless force is True
         choices:
@@ -1221,7 +1221,8 @@ class map_manager(map_reader, write_ccp4_map):
 
     assert method in ['d99','d9','d999','d_min']
 
-    self._resolution = -1 # now get it
+
+    working_resolution = -1 # now get it
 
     if method in ['d99','d9','d999']:
       from cctbx.maptbx import d99
@@ -1232,16 +1233,19 @@ class map_manager(map_reader, write_ccp4_map):
       d99_object = d99(
          map = map_data, crystal_symmetry = self.crystal_symmetry())
 
-      self._resolution = getattr(d99_object.result,method,-1)
+      working_resolution = getattr(d99_object.result,method,-1)
 
     from cctbx.maptbx import d_min_from_map  # get this to check
     d_min_estimated_from_map = d_min_from_map(
            map_data=self.map_data(),
            unit_cell=self.crystal_symmetry().unit_cell())
 
-    if self._resolution < d_min_estimated_from_map:  # we didn't get it or want to use d_min
-      self._resolution = d_min_estimated_from_map
-    return self._resolution
+    if working_resolution < d_min_estimated_from_map:  # we didn't get it or want to use d_min
+      working_resolution = d_min_estimated_from_map
+
+    if set_resolution:
+      self._resolution = working_resolution
+    return working_resolution
 
   def scattering_table(self):
     return self._scattering_table
