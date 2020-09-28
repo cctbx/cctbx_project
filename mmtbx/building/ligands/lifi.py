@@ -17,14 +17,14 @@ class run(object):
   """
   Build and real-space-refine ligand into map. Ligand must be a linear molecule
   such as ATP or PEG.
-  
+
   map_model_manager:
     - contains masked ligand map in the box;
     - origin is zero;
     - unit cell and symmetry correspond to box cell and symmetry;
     - map values outside ligand region are set to zero;
     - map values inside ligand region are actual map values;
-    - contains model with the ideal liagnd from the library positioned 
+    - contains model with the ideal liagnd from the library positioned
       arbitrarily in space;
   """
 
@@ -59,7 +59,7 @@ class run(object):
     # Write final model and all states
     self.caller(func = self._write_final_model)
     self._show_timing()
-    
+
   def caller(self, func):
     timer = user_plus_sys_time()
     doc = inspect.getdoc(func)
@@ -71,25 +71,25 @@ class run(object):
     self.time_strings.append(fmt)
     #self.log.flush()
     return result
-    
+
   def _print(self, m):
     if(self.log is None): return
     print(m, file=self.log)
-    
+
   def _show_cc(self, sites_cart):
     xrs = self.mmm.model().get_xray_structure()
     xrs.set_sites_cart(sites_cart)
     fc = self.mc_ref.structure_factors_from_scatterers(
       xray_structure = xrs).f_calc()
-    return fc.map_correlation(other=self.mc_ref) 
-    
+    return fc.map_correlation(other=self.mc_ref)
+
   def _write_final_model(self):
     """
     Write final model and all states
     """
     self.states.write(file_name = "all.pdb")
     self.mmm.write_model(file_name = "final.pdb")
-    
+
   def _ear(self):
     """
     Explode-and-refine
@@ -105,7 +105,7 @@ class run(object):
       map_data           = self.map_data,
       restraints_manager = model.get_restraints_manager(),
       states             = states,
-      resolution         = self.d_min, 
+      resolution         = self.d_min,
       map_data_ref       = self.map_data_ref,
       mode               = "thorough",
       score_method       = ["cc","geometry"],
@@ -113,17 +113,17 @@ class run(object):
       number_of_trials   = 25,
       nproc              = 1,
       log=null_out())
-    # 
+    #
     cc = self._show_cc(sites_cart = ear.pdb_hierarchy.atoms().extract_xyz())
     self._print("Final, CC: %6.4f"%cc)
     self.states.add(hierarchy = ear.pdb_hierarchy)
-    
+
   def _fragments(self):
     """
     Split into fragments
     """
     return get_fragments(model = self.mmm.model())
-    
+
   def _t_search(self, model):
     """
     Translational grid search
@@ -138,22 +138,22 @@ class run(object):
           model.set_sites_cart(sites_cart = sites_cart + shift)
           model = refine(model=model, map_data=self.map_data)
           CC = get_cc(
-            xrs      = model.get_xray_structure(), 
-            d_min    = self.d_min, 
+            xrs      = model.get_xray_structure(),
+            d_min    = self.d_min,
             map_data = self.map_data_ref)
           if(CC>CCBEST):
             CCBEST=CC
             SCBEST = model.get_sites_cart().deep_copy()
     model.set_sites_cart(sites_cart=SCBEST)
     self.states.add(hierarchy = model.get_hierarchy())
-    
+
   def _choose_one_placement(self):
     """
     Choose one placement: forward vs backward
     """
     cc_best = -1
     sites_cart_best = None
-    for ih, ph in enumerate(self.hierarchies_placed): 
+    for ih, ph in enumerate(self.hierarchies_placed):
       self._print("orientation %d:"%ih)
       model = get_model_adhoc(crystal_symmetry = self.cs, ph = ph)
       # Pre-refine original placement
@@ -177,7 +177,7 @@ class run(object):
     self.states.add(hierarchy = model.get_hierarchy())
     # Atom order is different, so relly need to do this
     self.mmm.set_model(model)
-        
+
   def _show_timing(self):
     print("Detailed timing:")
     max_len = int(flex.max(flex.double(
@@ -191,13 +191,13 @@ class run(object):
       cntr += float(p2)
     print("Total: %8.3f"%self.total_time)
     assert approx_equal(cntr, self.total_time) # total time and the sum match!
-    
+
   def _init_states_accumulator(self):
     """
     Initialize states accumulator
     """
     return mmtbx.utils.states(pdb_hierarchy = self.mmm.model().get_hierarchy())
-    
+
   def _get_modified_maps(self):
     """
     Make masked and negated maps
@@ -210,34 +210,34 @@ class run(object):
       d_min=self.d_min).f_calc()
     mc_ref = fc.structure_factors_from_map(map=map_data_ref, use_sg=False)
     return map_data_ref, mc_ref, map_data
-    
+
   def _place_forward(self):
     """
     Replace dummy atoms with ligand atoms (forward)
     """
     hierarchy = trace_to_hierarchy(
-      ph         = self.mmm.model().get_hierarchy(), 
-      trace_cart = self.dummy_atoms_in_map, 
+      ph         = self.mmm.model().get_hierarchy(),
+      trace_cart = self.dummy_atoms_in_map,
       uc         = self.uc)
     self.states.add(hierarchy = hierarchy)
     cc = self._show_cc(sites_cart = hierarchy.atoms().extract_xyz())
     self._print("Trace forward, CC: %6.4f"%cc)
     return hierarchy
-      
+
   def _place_backward(self):
     """
     Replace dummy atoms with ligand atoms (backward)
     """
     hierarchy = trace_to_hierarchy(
-      ph         = self.mmm.model().get_hierarchy(), 
-      trace_cart = self.dummy_atoms_in_map, 
+      ph         = self.mmm.model().get_hierarchy(),
+      trace_cart = self.dummy_atoms_in_map,
       uc         = self.uc,
       reverse    = True)
     self.states.add(hierarchy = hierarchy)
     cc = self._show_cc(sites_cart = hierarchy.atoms().extract_xyz())
     self._print("Trace backward, CC: %6.4f"%cc)
     return hierarchy
-    
+
   def _initial_trace(self):
     """
     Place dummy atoms into map
@@ -250,7 +250,7 @@ class run(object):
       [fmt%(i,i,sc[0],sc[1],sc[2]) for i, sc in enumerate(sites_cart)])
     pdb_inp = iotbx.pdb.input(source_info=None, lines = lines)
     model = get_model_adhoc(crystal_symmetry = self.cs, pdb_inp = pdb_inp)
-      
+
     self.states.add(hierarchy = model.get_hierarchy())
     model = sa_simple(model=model, map_data=self.map_data, log=null_out())
     #
@@ -263,11 +263,11 @@ class run(object):
     sites_cart = sites_cart.select(sel)
     #
     return list(sites_cart)
-  
-    
+
+
 def dist(p1,p2, uc):
   return uc.distance(uc.fractionalize(p1), uc.fractionalize(p2))
-    
+
 def sa_simple(
         model,
         map_data,
@@ -313,7 +313,7 @@ def refine(model, map_data, start=None, end=None):
   #      sites_cart = sites_cart_reference,
   #      selection = selection,
   #      sigma = 0.02))
-  
+
   ro = mmtbx.refinement.real_space.individual_sites.easy(
     map_data                    = map_data,
     xray_structure              = model.get_xray_structure(),
@@ -322,31 +322,31 @@ def refine(model, map_data, start=None, end=None):
     rms_bonds_limit             = 0.01,
     rms_angles_limit            = 1,
     selection                   = None, #TODO
-    selection_real_space        = flex.bool(model.size(),True), 
+    selection_real_space        = flex.bool(model.size(),True),
     w                           = 10,#None,
     log                         = None)
   model.set_sites_cart(sites_cart = ro.xray_structure.sites_cart())
   return model
-  
-def merge_common(lists): 
-    from collections import defaultdict 
-    neigh = defaultdict(set) 
-    visited = set() 
-    for each in lists: 
-        for item in each: 
-            neigh[item].update(each) 
-    def comp(node, neigh = neigh, visited = visited, vis = visited.add): 
-        nodes = set([node]) 
-        next_node = nodes.pop 
-        while nodes: 
-            node = next_node() 
-            vis(node) 
-            nodes |= neigh[node] - visited 
-            yield node 
-    for node in neigh: 
-        if node not in visited: 
+
+def merge_common(lists):
+    from collections import defaultdict
+    neigh = defaultdict(set)
+    visited = set()
+    for each in lists:
+        for item in each:
+            neigh[item].update(each)
+    def comp(node, neigh = neigh, visited = visited, vis = visited.add):
+        nodes = set([node])
+        next_node = nodes.pop
+        while nodes:
+            node = next_node()
+            vis(node)
+            nodes |= neigh[node] - visited
+            yield node
+    for node in neigh:
+        if node not in visited:
             yield sorted(comp(node))
-            
+
 def get_se(coords, uc):
   d = -1
   start, end = None,None
@@ -358,7 +358,7 @@ def get_se(coords, uc):
         end   = c2
         d     = d_
   return start, end
-  
+
 def get_fragments(model):
   rm = model.get_restraints_manager()
   atoms = model.get_hierarchy().atoms()
@@ -387,7 +387,7 @@ def get_fragments(model):
   chirals_unique = list(merge_common(chirals_unique))[0]
   chirals_all    = list(merge_common(chirals))[0]
 #  print "chirals_unique:", chirals_unique
-#  print "chirals_all   :", chirals_all 
+#  print "chirals_all   :", chirals_all
   chirals_mapping = [chirals_all.index(u) for u in chirals_unique]
 #  print "mapping:", chirals_mapping
   # Dihedral
@@ -404,7 +404,7 @@ def get_fragments(model):
   dihedrals_unique = list(merge_common(dihedrals_unique))[0]
   dihedrals_all    = list(merge_common(dihedrals))[0]
 #  print "dihedrals_unique:", dihedrals_unique
-#  print "dihedrals_all   :", dihedrals_all 
+#  print "dihedrals_all   :", dihedrals_all
   # Finalize
   pcd = dihedrals_all + chirals_all + planes_all
   #
@@ -427,7 +427,7 @@ def get_fragments(model):
 #    print list(p.i_seqs)
     angles.append(list(p.i_seqs))
   angles = list(merge_common(angles))
-  #    
+  #
   dihedrals_unique = [dihedrals_unique] + angles
   dihedrals_all    = [dihedrals_all   ] + angles
   dihedrals_unique = list(merge_common(dihedrals_unique))[0]
@@ -436,7 +436,7 @@ def get_fragments(model):
 #  print "dihedrals_all   :", dihedrals_all
   dihedrals_mapping = [dihedrals_all.index(u) for u in dihedrals_unique]
 #  print "mapping:", dihedrals_mapping
-  
+
   # check
   pcd = dihedrals_unique + chirals_unique + planes_all
   pcd.sort()
@@ -444,20 +444,20 @@ def get_fragments(model):
   #
   return group_args(
     planes_all       = planes_all,
-    
+
     chirals_unique    = chirals_unique,
     chirals_all       = chirals_all,
     chirals_mapping   = flex.size_t(chirals_mapping),
-    
+
     dihedrals_unique  = dihedrals_unique,
     dihedrals_all     = dihedrals_all,
     dihedrals_mapping = flex.size_t(dihedrals_mapping))
-    
+
 def get_cc(xrs, d_min, map_data):
   fc = xrs.structure_factors(d_min=d_min).f_calc()
   fo = fc.structure_factors_from_map(map=map_data, use_sg=False)
-  return fc.map_correlation(other=fo) 
-  
+  return fc.map_correlation(other=fo)
+
 def trace_to_hierarchy(ph, trace_cart, uc, reverse=False):
   if(reverse): trace_cart.reverse()
   ph_dc = ph.deep_copy()
@@ -472,7 +472,7 @@ def trace_to_hierarchy(ph, trace_cart, uc, reverse=False):
   ph_dc = pi.construct_hierarchy(sort_atoms=False)
   ph_dc.atoms().set_xyz(xyz)
   return ph_dc
-  
+
 def get_model_adhoc(crystal_symmetry, ph=None, pdb_inp=None):
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
@@ -492,4 +492,3 @@ def get_model_adhoc(crystal_symmetry, ph=None, pdb_inp=None):
        process_input             = True,
        log                       = null_out(),
        pdb_hierarchy             = ph)
-  
