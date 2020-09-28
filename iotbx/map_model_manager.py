@@ -1330,6 +1330,7 @@ class map_model_manager(object):
     mask_radius = 3,
     masked_value = -10,
     write_files = False,
+    apply_box_info = True,
      ):
     '''
      Split up the map, boxing around each chain in the model.
@@ -1342,6 +1343,9 @@ class map_model_manager(object):
          the same atoms, then use merge_split_maps_and_models() to replace
          coordinates in the original model with those from all the component
          models.
+       Optionally carry out the step box_info = get_split_maps_and_models(...)
+         separately with the keyword apply_box_info=False
+
 
        skip_waters and skip_hetero define whether waters and hetero atoms are
         ignored
@@ -1357,6 +1361,7 @@ class map_model_manager(object):
       mask_around_unselected_atoms = mask_around_unselected_atoms,
       mask_radius = mask_radius,
       masked_value = masked_value,
+      apply_box_info = apply_box_info,
       write_files = write_files)
 
   def split_up_map_and_model_by_segment(self,
@@ -1367,6 +1372,7 @@ class map_model_manager(object):
     mask_radius = 3,
     masked_value = -10,
     write_files = False,
+    apply_box_info = True,
      ):
     '''
      Split up the map, boxing around each segment (each unbroken part of
@@ -1380,6 +1386,8 @@ class map_model_manager(object):
          the same atoms, then use merge_split_maps_and_models() to replace
          coordinates in the original model with those from all the component
          models.
+       Optionally carry out the step box_info = get_split_maps_and_models(...)
+         separately with the keyword apply_box_info=False
 
        skip_waters and skip_hetero define whether waters and hetero atoms are
         ignored
@@ -1394,6 +1402,7 @@ class map_model_manager(object):
       mask_around_unselected_atoms = mask_around_unselected_atoms,
       mask_radius = mask_radius,
       masked_value = masked_value,
+      apply_box_info = apply_box_info,
       write_files = write_files)
 
   def split_up_map_and_model_by_supplied_selections(self,
@@ -1403,6 +1412,7 @@ class map_model_manager(object):
     mask_radius = 3,
     masked_value = -10,
     write_files = False,
+    apply_box_info = True,
      ):
     '''
      Split up the map, boxing around atoms selected with each selection in
@@ -1418,6 +1428,8 @@ class map_model_manager(object):
          the same atoms, then use merge_split_maps_and_models() to replace
          coordinates in the original model with those from all the component
          models.
+       Optionally carry out the step box_info = get_split_maps_and_models(...)
+         separately with the keyword apply_box_info=False
 
        box_cushion is the padding around the model atoms when creating boxes
     '''
@@ -1429,6 +1441,7 @@ class map_model_manager(object):
       mask_around_unselected_atoms = mask_around_unselected_atoms,
       mask_radius = mask_radius,
       masked_value = masked_value,
+      apply_box_info = apply_box_info,
       write_files = write_files)
 
   def split_up_map_and_model_by_boxes(self,
@@ -1442,6 +1455,7 @@ class map_model_manager(object):
     mask_radius = 3,
     masked_value = -10,
     skip_empty_boxes = True,
+    apply_box_info = True,
      ):
     '''
      Split up the map, creating boxes that time the entire map.
@@ -1467,6 +1481,8 @@ class map_model_manager(object):
          the same atoms, then use merge_split_maps_and_models() to replace
          coordinates in the original model with those from all the component
          models.
+       Optionally carry out the step box_info = get_split_maps_and_models(...)
+         separately with the keyword apply_box_info=False
 
        skip_waters and skip_hetero define whether waters and hetero atoms are
         ignored
@@ -1482,6 +1498,7 @@ class map_model_manager(object):
       mask_around_unselected_atoms = mask_around_unselected_atoms,
       mask_radius = mask_radius,
       masked_value = masked_value,
+      apply_box_info = apply_box_info,
       write_files = write_files)
 
   def _split_up_map_and_model(self,
@@ -1497,6 +1514,7 @@ class map_model_manager(object):
     masked_value = -10,
     write_files = False,
     box_cushion = 3,
+    apply_box_info = True,
      ):
     '''
        Create a set of overlapping boxes and non-overlapping parts of
@@ -1510,6 +1528,8 @@ class map_model_manager(object):
          the same atoms, then use merge_split_maps_and_models() to replace
          coordinates in the original model with those from all the component
          models.
+       Optionally carry out the step box_info = get_split_maps_and_models(...)
+         separately with the keyword apply_box_info=False
 
        If selection_list (a list of selection objects matching the atoms in
          model) is supplied, use it.  Otherwise generate it using
@@ -1545,6 +1565,9 @@ class map_model_manager(object):
         mask_radius = mask_radius,
         masked_value = masked_value,
       )
+
+    if (not apply_box_info):
+      return box_info  #  run get_split_maps_and_models later
 
     # Get new map_model_manager for each box
     box_info = get_split_maps_and_models(
@@ -2025,23 +2048,44 @@ class map_model_manager(object):
       min_bin_width = 20,
       n_bins = 200,
       fsc_cutoff = 0.143,
-      n_boxes = 100,
-      box_cushion = 5):
+      n_boxes = None,
+      core_box_size = None,
+      box_cushion = None):
 
     if not resolution:
-      resolution = self.resolution() # nominal
-    assert isinstance(resolution, (int, float))
+      resolution = self.map_map_fsc(
+        map_id_1 = map_id_1,
+        map_id_2 = map_id_2,).d_min
+      self.set_resolution(resolution)
+      print ("Overall resolution of map: %.2f A" %(resolution),file = self.log)
+
+    if not box_cushion:
+      box_cushion = 1.5 * resolution
+
+    if (not n_boxes) and (not core_box_size):
+      core_box_size = 3 * resolution
+      volume = self.crystal_symmetry().unit_cell().volume()
+      n_boxes = int(0.5+volume/(core_box_size)**3)
+      print ("Target core_box_size: %.2s A  Target boxes: %s" %(
+        core_box_size, n_boxes),file = self.log)
 
     box_info = self.split_up_map_and_model_by_boxes(
       target_for_boxes = n_boxes,
       box_cushion = box_cushion,
       skip_empty_boxes = False,
       select_final_boxes_based_on_model = False, # required
+      apply_box_info = False,
       )
     # Now get local resolution in each box
     cc1= self.map_map_cc()
     d_min_1= self.map_map_fsc().d_min
-    for mmm in box_info.mmm_list:
+    for i in range(1,len(box_info.selection_list)+1):
+      new_box_info = get_split_maps_and_models(
+        map_model_manager = self,
+        box_info = box_info,
+        first_to_use = i,
+        last_to_use = i)
+      mmm = new_box_info.mmm_list[0]
       mmm.mask_all_maps_around_edges(soft_mask_radius=resolution)
       d_min = mmm.map_map_fsc(fsc_cutoff = fsc_cutoff,n_bins=n_bins).d_min
       if not d_min: continue
@@ -3090,7 +3134,9 @@ class match_map_model_ncs(object):
 #   Misc methods
 def get_split_maps_and_models(
       map_model_manager = None,
-      box_info = None):
+      box_info = None,
+      first_to_use = None,
+      last_to_use = None):
   '''
   Apply selections and boxing in box_info to generate a set of
   small map_model_managers
@@ -3106,6 +3152,11 @@ def get_split_maps_and_models(
   '''
 
   from iotbx.map_model_manager import map_model_manager as MapModelManager
+  box_info = deepcopy(box_info)
+  for x in ['lower_bounds_with_cushion_list','upper_bounds_with_cushion_list',
+   'selection_list']:
+    if getattr(box_info,x):  # select those in range
+      setattr(box_info,x,getattr(box_info,x)[first_to_use-1:last_to_use])
 
   mmm_list = []
   if box_info.lower_bounds_with_cushion_list:
@@ -3114,10 +3165,14 @@ def get_split_maps_and_models(
   else:
     lower_bounds_list = box_info.lower_bounds_list
     upper_bounds_list = box_info.upper_bounds_list
+  if not first_to_use:
+    first_to_use = 1
+  if not last_to_use:
+    last_to_use = len(lower_bounds_list)
   for lower_bounds, upper_bounds, selection in zip(
        lower_bounds_list,
        upper_bounds_list,
-       box_info.selection_list):
+       box_info.selection_list,):
     mmm=map_model_manager.extract_all_maps_with_bounds(
      lower_bounds, upper_bounds)
 
