@@ -105,7 +105,7 @@ class rsr_model(object):
     self.s1 = self.sites_cart_start.deep_copy()
     self.states_collector = mmtbx.utils.states(
       pdb_hierarchy  = self.model.get_hierarchy().deep_copy(),
-      xray_structure = self.model.get_xray_structure().deep_copy_scatterers(),
+      #xray_structure = self.model.get_xray_structure().deep_copy_scatterers(),
       counter        = 1)
     self.states_collector.add(sites_cart = self.model.get_sites_cart())
     #
@@ -534,7 +534,6 @@ class structure_monitor(object):
     self.xray_structure_start = xray_structure.deep_copy_scatterers()
     self.states_collector = mmtbx.utils.states(
       pdb_hierarchy  = self.pdb_hierarchy,
-      xray_structure = self.xray_structure,
       counter        = 1)
     self.states_collector.add(sites_cart = self.xray_structure.sites_cart())
     self.rotamer_manager = RotamerEval()

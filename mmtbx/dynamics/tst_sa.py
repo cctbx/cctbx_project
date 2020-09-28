@@ -238,8 +238,7 @@ def exercise_3():
   xrs = pi.xrs.deep_copy_scatterers()
   sites_cart_start = xrs.sites_cart()
   states_collector = mmtbx.utils.states(
-    pdb_hierarchy  = pi.ph,
-    xray_structure = xrs)
+    pdb_hierarchy  = pi.ph)
   #
   params = sa.master_params().extract()
   params.start_temperature=5000

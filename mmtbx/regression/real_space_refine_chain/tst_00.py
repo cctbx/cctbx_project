@@ -226,7 +226,7 @@ def run(prefix="tst_00"):
   ph_poor.atoms().reset_i_seq()
   xrs_poor = pdb_inp.xray_structure_simple()
   # Initialize states accumulator
-  states = mmtbx.utils.states(pdb_hierarchy=ph_answer, xray_structure=xrs_poor)
+  states = mmtbx.utils.states(pdb_hierarchy=ph_answer)
   states.add(sites_cart = xrs_poor.sites_cart())
   # Compute target map
   fc = xrs_answer.structure_factors(d_min=3.5).f_calc()

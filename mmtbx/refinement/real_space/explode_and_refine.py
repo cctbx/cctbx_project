@@ -381,8 +381,6 @@ class run(object):
       self.pdb_hierarchy.write_pdb_file(file_name="merged.pdb")
     #
     if("merge_models" in self.score_method):
-      assert pdb_hierarchy.models_size() == self.number_of_trials, \
-        pdb_hierarchy.models_size()
       from mmtbx.building.merge_models import run as merge_models
       pdb_hierarchy_merged = merge_models(
         map_data         = self.map_data,
