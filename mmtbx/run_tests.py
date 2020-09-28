@@ -380,6 +380,8 @@ general_tests = [
   #
   "$D/regression/tst_scattering_type_registry.py",
   "$D/atomic_environment_vectors/tst.py",
+  #
+  "$D/building/ligands/tst_00.py",
   ]
 
 probe_tests = [
