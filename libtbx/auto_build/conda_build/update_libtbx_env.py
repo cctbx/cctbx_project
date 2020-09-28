@@ -13,6 +13,30 @@ import sys
 from libtbx.path import absolute_path
 
 # =============================================================================
+def get_prefix_dir():
+  '''
+  Function that returns $PREFIX or sys.prefix
+
+  Parameters
+  ----------
+    None
+
+  Returns
+  -------
+    path to prefix
+  '''
+  prefix_dir = os.getenv('PREFIX')
+  if prefix_dir is None:
+    prefix_dir = sys.prefix
+  if sys.platform == 'darwin':
+    if 'python.app' in prefix_dir:
+      prefix_dir = prefix_dir.split('python.app')[0]
+  elif sys.platform == 'win32':
+    prefix_dir = os.path.join(prefix_dir, 'Library')
+
+  return prefix_dir
+
+# =============================================================================
 def get_default_dir():
   '''
   Function that returns the default location of libtbx_env in an installation.
@@ -26,20 +50,15 @@ def get_default_dir():
   -------
     path of the default location
   '''
-  base_dir = sys.prefix
-  if sys.platform == 'darwin':
-    if 'python.app' in base_dir:
-      base_dir = base_dir.split('python.app')[0]
-  elif sys.platform == 'win32':
-    base_dir = os.path.join(sys.prefix, 'Library')
-  default_dir = os.path.join(base_dir, 'share', 'cctbx')
+  prefix_dir = get_prefix_dir()
+  default_dir = os.path.join(prefix_dir, 'share', 'cctbx')
 
   return default_dir
 
 # =============================================================================
 def copy_libtbx_env(default_dir=None):
   '''
-  Function that copies libtbx_env from $LIBTBX_BUILD to sys.prefix
+  Function that copies libtbx_env from $LIBTBX_BUILD to $PREFIX
   If $LIBTBX_BUILD is not set, no copy is done. If libtbx_env does not
   exist, an IOError is raised.
 
@@ -83,7 +102,7 @@ def update_libtbx_env(default_dir=None):
     None
   '''
 
-  # unset LIBTBX_BUILD and load libtbx_env from sys.prefix
+  # unset LIBTBX_BUILD and load libtbx_env from $PREFIX
   if os.getenv('LIBTBX_BUILD') is not None:
     del os.environ['LIBTBX_BUILD']
   import libtbx.load_env
@@ -91,15 +110,10 @@ def update_libtbx_env(default_dir=None):
   if default_dir is None:
     default_dir = get_default_dir()
 
-  sys_prefix = sys.prefix
-  if sys.platform == 'darwin' and 'python.app' in sys_prefix:
-    sys_prefix = sys_prefix.split('python.app')[0]
-  if sys.platform == 'win32':
-    sys_prefix = os.path.join(sys_prefix, 'Library')
+  sys_prefix = get_prefix_dir()
 
   # basic path changes
   env = libtbx.env
-  #env.installed = True
   env.build_path = absolute_path(sys_prefix)
   env.set_derived_paths()
   env.exe_path = env.bin_path
@@ -123,9 +137,9 @@ def update_libtbx_env(default_dir=None):
 
   # update module locations
   if sys.platform == 'win32':
-    sys_prefix = sys.prefix
+    sys_prefix = get_prefix_dir() # has an extra "Library"
     relocatable_sys_prefix = env.as_relocatable_path(
-      os.path.join(sys.prefix, 'Lib', 'site-packages'))
+      os.path.join(sys_prefix, '..', 'Lib', 'site-packages'))
   for name in env.module_dict:
     module = env.module_dict[name]
     new_paths = [relocatable_sys_prefix, relocatable_sys_prefix]
@@ -153,11 +167,6 @@ def update_libtbx_env(default_dir=None):
     if name == 'libtbx':
       env.path_utility = env.as_relocatable_path(
         os.path.join(abs(new_paths[0]), 'command_line', 'path_utility.py'))
-      # remove configure and refresh for now
-      # for target in ['configure.sh', 'configure.bat', 'refresh.sh', 'refresh.bat']:
-      #   target_file = os.path.join(abs(new_paths[0]), 'command_line', target)
-      #   if os.path.isfile(target_file):
-      #     os.remove(target_file)
 
   # update dispatchers
   env.reset_dispatcher_bookkeeping()
