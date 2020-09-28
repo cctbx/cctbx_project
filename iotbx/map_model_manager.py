@@ -2359,7 +2359,7 @@ class map_model_manager(object):
     r_inv = rt_info.r.inverse()
     t_inv = -r_inv*rt_info.t
 
-    from scitbx.matrix import sqr, col
+    from scitbx.matrix import col
     self_all = self.map_data().all()
     other_all = other.map_data().all()
     uc = self.crystal_symmetry().unit_cell().parameters()[:3]
