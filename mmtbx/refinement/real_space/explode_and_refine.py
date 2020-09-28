@@ -78,8 +78,7 @@ class run_sa(object):
     adopt_init_args(self, locals())
     # Initialize states collector
     self.states = mmtbx.utils.states(
-      xray_structure = self.xray_structure.deep_copy_scatterers(),
-      pdb_hierarchy  = self.pdb_hierarchy.deep_copy())
+      pdb_hierarchy = self.pdb_hierarchy.deep_copy())
     # SA params
     self.params = sa.master_params().extract()
     self.params.start_temperature=50000
@@ -221,7 +220,7 @@ class run(object):
         nproc=1,
         states=None,
         map_data_ref=None,
-        chemistry=None,
+        fragments=None,
         show=True,
         log=None):
     adopt_init_args(self, locals())
@@ -299,7 +298,7 @@ class run(object):
     uc = self.xray_structure.unit_cell()
     sites_cart = flex.vec3_double(self.xray_structure.scatterers().size())
     # Planes
-    sel = flex.size_t(self.chemistry.planes_all)
+    sel = flex.size_t(self.fragments.planes_all)
     SC = scorer(
       pdb_hierarchy = self.pdb_hierarchy.select(sel),
       unit_cell     = uc,
@@ -308,26 +307,26 @@ class run(object):
       SC.update(sites_cart = model.atoms().extract_xyz().select(sel))
     sites_cart = sites_cart.set_selected(sel, SC.sites_cart)
     # Chirals
-    sel = flex.size_t(self.chemistry.chirals_all)
+    sel = flex.size_t(self.fragments.chirals_all)
     SC = scorer(
       pdb_hierarchy = self.pdb_hierarchy.select(sel),
       unit_cell     = uc,
       map_data      = self.map_data)
     for model in pdb_hierarchy.models():
       SC.update(sites_cart = model.atoms().extract_xyz().select(sel))
-    sel = flex.size_t(self.chemistry.chirals_unique)
-    tmp = SC.sites_cart.select(self.chemistry.chirals_mapping)
+    sel = flex.size_t(self.fragments.chirals_unique)
+    tmp = SC.sites_cart.select(self.fragments.chirals_mapping)
     sites_cart = sites_cart.set_selected(sel, tmp)
     # Dihedrals
-    sel = flex.size_t(self.chemistry.dihedrals_all)
+    sel = flex.size_t(self.fragments.dihedrals_all)
     SC = scorer(
       pdb_hierarchy = self.pdb_hierarchy.select(sel),
       unit_cell     = uc,
       map_data      = self.map_data)
     for model in pdb_hierarchy.models():
       SC.update(sites_cart = model.atoms().extract_xyz().select(sel))
-    sel = flex.size_t(self.chemistry.dihedrals_unique)
-    tmp = SC.sites_cart.select(self.chemistry.dihedrals_mapping)
+    sel = flex.size_t(self.fragments.dihedrals_unique)
+    tmp = SC.sites_cart.select(self.fragments.dihedrals_mapping)
     sites_cart = sites_cart.set_selected(sel, tmp)
     #
     self.xray_structure.set_sites_cart(sites_cart = sites_cart)
@@ -374,7 +373,6 @@ class run(object):
       cc_best = -1
       for sc in sites_cart:
         cc = self.get_cc(sites_cart=sc)
-        print ("CC:", cc)
         if(cc>cc_best):
           cc_best = cc
           sites_cart_best = sc.deep_copy()
