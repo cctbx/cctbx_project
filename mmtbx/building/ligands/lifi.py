@@ -38,10 +38,11 @@ class run(object):
     self.mmm = map_model_manager
     self.cs = self.mmm.crystal_symmetry()
     self.uc = self.cs.unit_cell()
-    # Initiare states collector
+    # Initiate states collector
     self.states = self.caller(func = self._init_states_accumulator)
     # Modify maps
-    self.map_data_ref, self.mc_ref, self.map_data = self.caller(func=self._get_modified_maps)
+    self.map_data_ref, self.mc_ref, self.map_data = self.caller(
+      func=self._get_modified_maps)
     # Spread atoms evenly inside the blob
     self.dummy_atoms_in_map = self.caller(func = self._initial_trace)
     # pdb hierarchies corresponding to two initial placements
@@ -154,7 +155,7 @@ class run(object):
     cc_best = -1
     sites_cart_best = None
     for ih, ph in enumerate(self.hierarchies_placed):
-      self._print("orientation %d:"%ih)
+      self._print("Orientation %d:"%ih)
       model = get_model_adhoc(crystal_symmetry = self.cs, ph = ph)
       # Pre-refine original placement
       for it in [1,2]:
@@ -169,7 +170,7 @@ class run(object):
       self._t_search(model = model)
       # Evaluate
       cc = self._show_cc(sites_cart = model.get_sites_cart())
-      self._print(" translaton search, CC: %6.4f"%cc)
+      self._print(" Translaton search, CC: %6.4f"%cc)
       if(cc>cc_best):
         cc_best = cc
         sites_cart_best = model.get_sites_cart()
@@ -265,6 +266,50 @@ class run(object):
     return list(sites_cart)
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def dist(p1,p2, uc):
   return uc.distance(uc.fractionalize(p1), uc.fractionalize(p2))
 
@@ -273,16 +318,17 @@ def sa_simple(
         map_data,
         log):
   tmp_xrs = model.get_xray_structure().deep_copy_scatterers()
-  ro = mmtbx.refinement.real_space.individual_sites.easy(
-    map_data                    = map_data,
-    xray_structure              = tmp_xrs,
-    pdb_hierarchy               = model.get_hierarchy().deep_copy(),
-    geometry_restraints_manager = model.get_restraints_manager(),
-    rms_bonds_limit             = 0.01,
-    rms_angles_limit            = 1.0,
-    selection                   = None, #TODO
-    log                         = log)
-  weight = ro.w
+#  ro = mmtbx.refinement.real_space.individual_sites.easy(
+#    map_data                    = map_data,
+#    xray_structure              = tmp_xrs,
+#    pdb_hierarchy               = model.get_hierarchy().deep_copy(),
+#    geometry_restraints_manager = model.get_restraints_manager(),
+#    rms_bonds_limit             = 0.01,
+#    rms_angles_limit            = 1.0,
+#    selection                   = None, #TODO
+#    log                         = log)
+#  weight = ro.w
+  weight=50
   #
   from mmtbx.dynamics import simulated_annealing as sa
   tmp = model.get_xray_structure().deep_copy_scatterers()
