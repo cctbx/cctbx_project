@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import sys
+from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 
 
@@ -94,6 +95,7 @@ def exercise( out = sys.stdout):
 
   # get a local resolution map (this one should look pretty constant!)
   mmma = mmm1.deep_copy()
+  model = mmm1.model()
   mmma.remove_model_by_id('model')
   mmmb = mmma.deep_copy()
   mmma.map_manager().randomize()
@@ -105,7 +107,15 @@ def exercise( out = sys.stdout):
     map_manager_2=mmmb.map_manager())
   local_mm = local_mmm.local_fsc()
   cc = local_mm.map_map_cc(local_mmm.map_manager())
-  assert approx_equal(cc, -0.25,0.1)
+
+  dc = local_mmm.deep_copy()
+  dc.set_log(sys.stdout)
+  model.set_b_iso(flex.double(model.get_sites_cart().size(),0))
+  dc.set_model(model)
+  cc_before = dc.map_model_cc()
+  dc.half_map_sharpen(n_bins=15)
+  cc_after = dc.map_model_cc()
+  assert approx_equal((cc_before,cc_after), (0.92, 0.92), eps=0.04)
 
 
 if __name__ == "__main__":

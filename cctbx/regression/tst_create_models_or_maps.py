@@ -35,8 +35,7 @@ def tst_01():
       low_resolution_real_space_noise_fraction=1,
       high_resolution_real_space_noise_fraction=1,
       )
-  assert approx_equal (mm_2.map_data()[323], -0.00339192976463)
-
+  assert approx_equal (mm_2.map_data()[323], -0.0784650534896)
   mm_2.shift_origin()
   model.set_shift_cart(mm_2.shift_cart())
   mam=map_model_manager(map_manager=mm_2,model=model)

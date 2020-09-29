@@ -76,10 +76,8 @@ def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
   dm = DataManager()
   aa = dm.get_map_model_manager(model_file=pdb_file_name,
     map_files=map_file_name)
-  aa.set_log(sys.stdout)
   bb = dm.get_map_model_manager(model_file=split_pdb_file_name,
     map_files=map_file_name)
-  bb.set_log(sys.stdout)
 
   for selection_method in ['by_chain', 'by_segment','supplied_selections',
       'boxes']:

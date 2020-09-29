@@ -2041,6 +2041,165 @@ class map_model_manager(object):
 
   # Methods for comparing maps, models and calculating FSC values
 
+  def half_map_sharpen(self,
+      n_bins = 20,
+      map_id = 'map_manager',
+      map_id_1 = 'map_manager_1',
+      map_id_2 = 'map_manager_2',
+      return_scale_factors = False,
+      resolution = None,
+      d_min_ratio = 0.83,
+    ):
+    '''
+     Scale map_id with scale factors identified from map_id_1
+    '''
+
+    # Checks
+    assert self.get_map_manager_by_id(map_id)
+    assert self.get_map_manager_by_id(map_id_1)
+    assert self.get_map_manager_by_id(map_id_2)
+
+    if not resolution:
+      # get overall resolution (nominal)
+      resolution = self.map_map_fsc(n_bins=n_bins).d_min
+      if not resolution:
+        resolution = self.map_manager().resolution(force=True,
+          set_resolution=False)
+        d_min_ratio = 1 # don't go beyond resolution
+    self.set_resolution(resolution)
+    print ("Nominal resolution of map: %.2f A " %(resolution),
+      file = self.log)
+
+    d_min = resolution * d_min_ratio
+
+    map_coeffs = self.map_manager().map_as_fourier_coefficients(
+      d_min = d_min)
+    first_half_map_coeffs = self.map_manager_1(
+          ).map_as_fourier_coefficients(d_min = d_min)
+    second_half_map_coeffs = self.map_manager_2(
+          ).map_as_fourier_coefficients(d_min = d_min)
+
+    target_scale_factors = self._get_weights_in_shells(n_bins,
+      map_coeffs = map_coeffs,
+      first_half_map_coeffs = first_half_map_coeffs,
+      second_half_map_coeffs = second_half_map_coeffs,
+     )
+
+    # Apply the scale factors in shells
+    new_map_manager = self._apply_scale_factors_in_shells(
+      map_coeffs,
+      n_bins,
+      target_scale_factors)
+
+    # And set map_manager
+    self.set_map_manager(new_map_manager)
+
+  def _apply_scale_factors_in_shells(self,
+      map_coeffs,
+      n_bins,
+      target_scale_factors):
+    assert target_scale_factors.size() == n_bins
+
+    f_array_info = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins)
+    assert len(list(f_array_info.f_array.binner().range_used())) == \
+        target_scale_factors.size() # must be compatible binners
+    scale_array=f_array_info.f_array.binner().interpolate(
+      target_scale_factors, 1) # d_star_power=1
+    scaled_f_array=f_array_info.f_array.customized_copy(
+        data=f_array_info.f_array.data()*scale_array)
+
+    return self.map_manager(
+       ).fourier_coefficients_as_map_manager(
+         scaled_f_array.phase_transfer(phase_source=f_array_info.phases,
+         deg=True))
+
+  def _get_weights_in_shells(self,
+     n_bins,
+     scale_using_last = 3,
+     cc_cut = 0.2,
+     max_cc_for_rescale = 0.2,
+     pseudo_likelihood = None,
+     map_coeffs = None,
+     first_half_map_coeffs = None,
+     second_half_map_coeffs = None,
+     ):
+    '''
+    Calculate weights in shells to yield optimal final map assuming that
+     perfect map has uniform power in all shells
+    '''
+
+    si = group_args(
+      target_scale_factors = None,
+      b_sharpen = 0,
+      b_iso = 0,
+      verbose = None,
+      rmsd = None,
+      n_bins = n_bins,
+      resolution = self.resolution(),
+      cc_cut = cc_cut,
+      scale_using_last = scale_using_last,
+      max_cc_for_rescale = max_cc_for_rescale,
+      pseudo_likelihood = pseudo_likelihood,
+      n_real = self.map_data().all(),
+     )
+
+    if not map_coeffs:
+      map_coeffs = self.map_manager().map_as_fourier_coefficients()
+    if not first_half_map_coeffs:
+      first_half_map_coeffs = self.map_manager_1(
+          ).map_as_fourier_coefficients()
+    if not second_half_map_coeffs:
+      second_half_map_coeffs = self.map_manager_2(
+          ).map_as_fourier_coefficients()
+
+
+    from cctbx.maptbx.refine_sharpening import calculate_fsc
+    si = calculate_fsc(
+      f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins).f_array,
+      map_coeffs = map_coeffs,
+      first_half_map_coeffs = first_half_map_coeffs,
+      second_half_map_coeffs = second_half_map_coeffs,
+      si = si,
+      cc_cut = si.cc_cut,
+      scale_using_last=si.scale_using_last,
+      max_cc_for_rescale=si.max_cc_for_rescale,
+      pseudo_likelihood=si.pseudo_likelihood,
+      scale_relative_to_low_res = True,
+      out = self.log)
+    # si contains target_scale_factors now
+    # Normalize the scale factors so low-res value is 1
+    return si.target_scale_factors
+
+  def local_sharpen(self,
+      map_id_1 = 'map_manager_1',
+      map_id_2 = 'map_manager_2',
+      resolution = None,
+      n_bins = 200,
+      n_boxes = None,
+      core_box_size = None,
+      box_cushion = None,
+      smoothing_radius = None,
+      nproc = 1):
+
+    # Checks
+    assert self.get_map_manager_by_id(map_id_1)
+    assert self.get_map_manager_by_id(map_id_2)
+
+    # Get scale factors vs resolution and location
+    results = self.local_fsc(
+      map_id_1 = map_id_1,
+      map_id_2 = map_id_2,
+      resolution = resolution,
+      n_bins = n_bins,
+      n_boxes = n_boxes,
+      core_box_size = core_box_size,
+      box_cushion = box_cushion,
+      smoothing_radius = smoothing_radius,
+      nproc = nproc,
+      return_scale_factors = True)
+
+
+
   def local_fsc(self,
       map_id_1 = 'map_manager_1',
       map_id_2 = 'map_manager_2',
@@ -2052,96 +2211,57 @@ class map_model_manager(object):
       core_box_size = None,
       box_cushion = None,
       smoothing_radius = None,
-      nproc = 1):
-
+      nproc = 1,
+      return_scale_factors = False):
 
     # Checks
     assert self.get_map_manager_by_id(map_id_1)
     assert self.get_map_manager_by_id(map_id_2)
-    if not resolution:
-      resolution = self.map_map_fsc(
-        map_id_1 = map_id_1,
-        map_id_2 = map_id_2,).d_min
-      if not resolution:
-        resolution = self.resolution()
-      self.set_resolution(resolution)
-      print ("Overall resolution of map: %.2f A" %(resolution),file = self.log)
 
-
-    if not box_cushion:
-      box_cushion = 1.5 * resolution
-
-    if (not n_boxes) and (not core_box_size):
-      core_box_size = 3 * resolution
-      volume = self.crystal_symmetry().unit_cell().volume()
-      n_boxes = int(0.5+volume/(core_box_size)**3)
-      print ("Target core_box_size: %.2s A  Target boxes: %s" %(
-        core_box_size, n_boxes),file = self.log)
-
-    if not smoothing_radius:
-      smoothing_radius = 0.5 * core_box_size
+    # Get basic info
+    setup_info = self._get_box_setup_info(map_id_1, map_id_2,
+      resolution, box_cushion,
+      n_boxes, core_box_size, smoothing_radius)
 
     box_info = self.split_up_map_and_model_by_boxes(
-      target_for_boxes = n_boxes,
-      box_cushion = box_cushion,
+      target_for_boxes = setup_info.n_boxes,
+      box_cushion = setup_info.box_cushion,
       skip_empty_boxes = False,
       select_final_boxes_based_on_model = False, # required
       apply_box_info = False,
       )
-    # Now get local resolution in each box
-    cc1= self.map_map_cc()
-    d_min_1= self.map_map_fsc().d_min
-    minimum_resolution = self.map_manager_1().resolution(
-     set_resolution = False,
-     force = True)
-    if not d_min_1:
-      d_min_1 = minimum_resolution
-
-    run_list=[]
-    index_list=[]
-    n_total = len(box_info.selection_list)
-    n_in_group = int(0.5+n_total/nproc)
-    for i in range(nproc):
-      first_to_use = i * n_in_group + 1
-      last_to_use = min(n_total,
-         i * n_in_group + n_in_group )
-      if i == nproc -1:
-        last_to_use = n_total
-
-      index_list.append({'i':i})
-      run_list.append({'first_to_use': first_to_use,
-        'last_to_use': last_to_use})
 
     # Hold some things in box_info
-    box_info.resolution = resolution
-    box_info.minimum_resolution = minimum_resolution
+    box_info.resolution = setup_info.resolution
+    box_info.minimum_resolution = setup_info.minimum_resolution
     box_info.fsc_cutoff = fsc_cutoff
     box_info.n_bins = n_bins
-    from libtbx.easy_mp import run_parallel
-    results = run_parallel(
-     method = 'multiprocessing',
+    box_info.return_scale_factors = return_scale_factors
+
+    results = self._run_fsc_in_boxes(
      nproc = nproc,
-     target_function = run_fsc_as_class(
-        map_model_manager = self,
-        run_list=run_list,
-        box_info = box_info),
-     preserve_order=False,
-     kw_list = index_list)
+     box_info = box_info)
+
+    if return_scale_factors:
+      return results
 
     #  Now results is a list of results. Find the good ones
     xyz_list = flex.vec3_double()
-    d_min_list = flex.double()
+    value_list = []
     for result in results:
       if result and result.xyz_list:
         xyz_list.extend(result.xyz_list)
-        d_min_list.extend(result.d_min_list)
+        value_list += result.value_list
     if xyz_list.size() == 0:
       print ("Unable to calculate local fsc map", file = self.log)
       return
 
-    print ("D-min for overall FSC map: %.2f A " %(d_min_1), file = self.log)
+    print ("D-min for overall FSC map: %.2f A " %(
+      setup_info.d_min_overall), file = self.log)
     print ("Unique values in local FSC map: %s " %(xyz_list.size()),
        file = self.log)
+
+    d_min_list = flex.double(tuple(value_list))
     x=d_min_list.min_max_mean()
     print ("Range of d_min: %.2f A to %.2f A   Mean: %.2f A " %(
       x.min, x.max, x.mean), file = self.log)
@@ -2167,9 +2287,89 @@ class map_model_manager(object):
     d_min_map_manager = self.map_manager_1(
        ).fourier_coefficients_as_map_manager(map_coeffs)
 
-    d_min_map_manager.gaussian_filter(smoothing_radius = smoothing_radius)
+    d_min_map_manager.gaussian_filter(
+       smoothing_radius = setup_info.smoothing_radius)
     return d_min_map_manager
 
+
+  def _get_box_setup_info(self,
+      map_id_1, map_id_2,
+      resolution, box_cushion,
+      n_boxes, core_box_size,
+      smoothing_radius):
+    if not resolution:
+      resolution = self.map_map_fsc(
+        map_id_1 = map_id_1,
+        map_id_2 = map_id_2,).d_min
+      if not resolution:
+        resolution = self.resolution()
+      self.set_resolution(resolution)
+      print ("Overall resolution of map: %.2f A" %(resolution),file = self.log)
+
+
+    if not box_cushion:
+      box_cushion = 1.5 * resolution
+
+    if (not core_box_size):
+      core_box_size = 3 * resolution
+
+    if (not n_boxes):
+      volume = self.crystal_symmetry().unit_cell().volume()
+      n_boxes = int(0.5+volume/(core_box_size)**3)
+      print ("Target core_box_size: %.2s A  Target boxes: %s" %(
+        core_box_size, n_boxes),file = self.log)
+
+    if not smoothing_radius:
+      smoothing_radius = 0.5 * core_box_size
+
+    d_min_overall = self.map_map_fsc().d_min
+    minimum_resolution = self.map_manager_1().resolution(
+     set_resolution = False,
+     force = True)
+    if not d_min_overall:
+      d_min_overall = minimum_resolution
+
+    return group_args(
+     resolution = resolution,
+     box_cushion = box_cushion,
+     n_boxes = n_boxes,
+     core_box_size = core_box_size,
+     smoothing_radius = smoothing_radius,
+     d_min_overall = d_min_overall,
+     minimum_resolution = minimum_resolution)
+
+  def _run_fsc_in_boxes(self,
+     nproc = None,
+     box_info = None):
+
+    # Set up to run in each box
+    run_list=[]
+    index_list=[]
+    n_total = len(box_info.selection_list)
+    n_in_group = int(0.5+n_total/nproc)
+    for i in range(nproc):
+      first_to_use = i * n_in_group + 1
+      last_to_use = min(n_total,
+         i * n_in_group + n_in_group )
+      if i == nproc -1:
+        last_to_use = n_total
+
+      index_list.append({'i':i})
+      run_list.append({'first_to_use': first_to_use,
+        'last_to_use': last_to_use})
+
+    from libtbx.easy_mp import run_parallel
+    results = run_parallel(
+     method = 'multiprocessing',
+     nproc = nproc,
+     target_function = run_fsc_as_class(
+        map_model_manager = self,
+        run_list=run_list,
+        box_info = box_info),
+     preserve_order=False,
+     kw_list = index_list)
+
+    return results
 
   def map_map_fsc(self,
       map_id_1 = 'map_manager_1',
@@ -3208,6 +3408,22 @@ class match_map_model_ncs(object):
     return mam
 
 #   Misc methods
+def get_map_coeffs_as_fp_phi(map_coeffs, n_bins):
+    from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
+    f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
+    (d_max,d_min)=f_array.d_max_min()
+    if d_max < 0:
+      d_max = 1.e+10
+    if not f_array.binner():
+      f_array.setup_binner(n_bins=n_bins,d_max=d_max,d_min=d_min)
+      f_array.binner().require_all_bins_have_data(min_counts=1,
+        error_string="Please use a lower value of n_bins")
+    return group_args(
+      f_array = f_array,
+      phases = phases,
+      d_min = d_min,
+      d_max = d_max)
+
 def create_map_manager_with_value_list(
        n_real = None,
        crystal_symmetry = None,
@@ -3297,10 +3513,11 @@ def get_split_maps_and_models(
 
   from iotbx.map_model_manager import map_model_manager as MapModelManager
   box_info = deepcopy(box_info)
-  for x in ['lower_bounds_with_cushion_list','upper_bounds_with_cushion_list',
-   'selection_list']:
-    if getattr(box_info,x):  # select those in range
-      setattr(box_info,x,getattr(box_info,x)[first_to_use-1:last_to_use])
+  if first_to_use is not None and last_to_use is not None:
+    for x in ['lower_bounds_with_cushion_list','upper_bounds_with_cushion_list',
+     'selection_list']:
+      if getattr(box_info,x):  # select those in range
+        setattr(box_info,x,getattr(box_info,x)[first_to_use-1:last_to_use])
 
   mmm_list = []
   if box_info.lower_bounds_with_cushion_list:
@@ -3653,7 +3870,7 @@ class run_fsc_as_class:
     last_to_use = kw['last_to_use']
 
     xyz_list = flex.vec3_double()
-    d_min_list = flex.double()
+    value_list = []
     from scitbx.matrix import col
     # offset to map absolute on to self.map_model_manager
     offset = self.map_model_manager.map_manager().shift_cart()
@@ -3668,15 +3885,22 @@ class run_fsc_as_class:
       xyz = mmm.map_manager().absolute_center_cart()
 
       mmm.mask_all_maps_around_edges(soft_mask_radius=self.box_info.resolution)
-      d_min = mmm.map_map_fsc(fsc_cutoff = self.box_info.fsc_cutoff,
-        n_bins=self.box_info.n_bins).d_min
+
+      if self.box_info.return_scale_factors:
+        weights_in_shells = mmm._get_weights_in_shells(
+           n_bins=self.box_info.n_bins)
+        d_min = weights_in_shells # hold it there
+      else: # usual
+        d_min = mmm.map_map_fsc(fsc_cutoff = self.box_info.fsc_cutoff,
+          n_bins=self.box_info.n_bins).d_min
+        if d_min:
+          d_min = max(d_min, self.box_info.minimum_resolution)
       if not d_min: continue
-      d_min = max(d_min, self.box_info.minimum_resolution)
 
       xyz_list.append(tuple(col(xyz)+col(offset) ))
-      d_min_list.append(d_min)
+      value_list.append(d_min)
 
     result = group_args(
       xyz_list=xyz_list,
-      d_min_list=d_min_list)
+      value_list = value_list)
     return result
