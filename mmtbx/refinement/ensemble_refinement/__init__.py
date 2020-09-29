@@ -1183,6 +1183,9 @@ class run_ensemble_refinement(object):
         = (self.a_prime * self.er_data.ke_protein_running) + ( (1-self.a_prime) * ke)
 
   def ordered_solvent_update(self):
+    if is_amber_refinement(self.params):
+      print('Ensemble refinement with Amber does not support solvent!!!', file=self.log)
+      return
     ensemble_ordered_solvent_manager = ensemble_ordered_solvent.manager(
         model             = self.model,
         fmodel            = self.fmodel_running,
@@ -1190,9 +1193,7 @@ class run_ensemble_refinement(object):
         params            = self.params.ensemble_ordered_solvent,
         velocities        = self.er_data.velocities,
         log               = self.log)
-    print('_'*80)
-    # model is not correct after ensemble ordered solvent
-    # self.model = ensemble_ordered_solvent_manager.model
+    self.model = ensemble_ordered_solvent_manager.model
     self.er_data.velocities = ensemble_ordered_solvent_manager.velocities
     self.fmodel_running.update_xray_structure(
       xray_structure = self.model.get_xray_structure(),
@@ -1625,6 +1626,7 @@ def write_mtz_file(fmodel_total, raw_data, raw_flags, prefix, params):
   return prefix + ".mtz"
 
 def is_amber_refinement(params):
+  if getattr(params, 'amber'): return params.amber.use_amber
   return params.ensemble_refinement.amber.use_amber
 
 #-----------------------------------------------------------------------
