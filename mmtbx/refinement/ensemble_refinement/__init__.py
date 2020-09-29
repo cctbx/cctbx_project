@@ -759,13 +759,6 @@ class run_ensemble_refinement(object):
 
 ############################## END ER ##########################################
 
-  def __setattr__(self, attr, value):
-    print ('...%s...' % attr)
-    print (value)
-    if attr=='model':
-      assert 0
-    object.__setattr__(self, attr, value)
-
   def write_output_files(self, run_number=None):
     #PDB output
     prefix = self.params.output_file_prefix
