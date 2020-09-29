@@ -22,7 +22,7 @@
 static void CheckCudaErrorAux(const char *, unsigned, const char *, hipError_t);
 #define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
 
-#define THREADS_PER_BLOCK_X 128
+#define THREADS_PER_BLOCK_X 512
 #define THREADS_PER_BLOCK_Y 1
 #define THREADS_PER_BLOCK_TOTAL (THREADS_PER_BLOCK_X * THREADS_PER_BLOCK_Y)
 #define VECTOR_SIZE 4
@@ -1547,6 +1547,7 @@ gettimeofday(&t1, 0);
           cp.cu_polar_vector, cp.cu_polarization, cp.cu_fudge,
           cp.cu_maskimage, cp.cu_floatimage /*out*/, cp.cu_omega_reduction/*out*/,
           cp.cu_max_I_x_reduction/*out*/, cp.cu_max_I_y_reduction /*out*/, cp.cu_rangemap /*out*/);
+CUDA_CHECK_RETURN(hipDeviceSynchronize());
 
 gettimeofday(&t2, 0);
 time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
@@ -1557,6 +1558,7 @@ gettimeofday(&t1, 0);
         cp.cu_Fhkl = NULL;
 
         CUDA_CHECK_RETURN(hipPeekAtLastError());
+        CUDA_CHECK_RETURN(hipDeviceSynchronize());
 gettimeofday(&t2, 0);
 time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
 printf("Time to peak:  %3.10f ms \n", time);
@@ -1572,6 +1574,7 @@ gettimeofday(&t1, 0);
         //dont want to free the gec data when the nanoBragg goes out of scope, so switch the pointer
         hipLaunchKernelGGL(add_array_CUDAKernel, dim3(numBlocks), dim3(threadsPerBlock), 0, 0, newapi_cp.cu_accumulate_floatimage, cp.cu_floatimage,
           cp.cu_spixels * cp.cu_fpixels);
+CUDA_CHECK_RETURN(hipDeviceSynchronize());
 
 gettimeofday(&t2, 0);
 time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
