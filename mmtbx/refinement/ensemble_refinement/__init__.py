@@ -1764,6 +1764,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
 
   model.set_refinement_flags(refinement_flags)
   model.get_restraints_manager()
+
   # Geometry file
   xray_structure = model.get_xray_structure()
   sites_cart = xray_structure.sites_cart()
