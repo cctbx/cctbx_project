@@ -906,7 +906,6 @@ class manager(object):
       return self.restraints_manager
     else:
       self.setup_restraints_manager()
-      print(self.restraints_manager.geometry)
       return self.restraints_manager
 
   def set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(self,value):
@@ -1411,7 +1410,6 @@ class manager(object):
       custom_nb_excl=None,
       run_clash_guard = True,
       ):
-    print('setup_restraints_manager'*10)
     if(self.restraints_manager is not None): return
     if self._processed_pdb_file is None:
       self._process_input_model()
@@ -1463,7 +1461,6 @@ class manager(object):
     #  2. Schrodinger force field
     ############################################################################
     params = self._pdb_interpretation_params
-    print(params.amber.use_amber)
     if hasattr(params, 'amber') and params.amber.use_amber:
       from amber_adaptbx.manager import digester
       geometry = digester(geometry, params, log=self.log)
