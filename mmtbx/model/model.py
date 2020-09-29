@@ -309,12 +309,6 @@ class manager(object):
     if self._xray_structure is not None:
       assert self._xray_structure.scatterers().size() == self._pdb_hierarchy.atoms_size()
 
-  def __setattr__(self, attr, value):
-    print('}}}}}',attr, value)
-    if attr=='geometry':
-      assert 0
-    object.__setattr__(self, attr, value)
-
   @classmethod
   def from_sites_cart(cls,
       sites_cart,
@@ -1471,7 +1465,6 @@ class manager(object):
     params = self._pdb_interpretation_params
     print(params.amber.use_amber)
     if hasattr(params, 'amber') and params.amber.use_amber:
-      print('AMBER '*10)
       from amber_adaptbx.manager import digester
       geometry = digester(geometry, params, log=self.log)
     elif hasattr(params, "schrodinger") and params.schrodinger.use_schrodinger:
@@ -1488,12 +1481,10 @@ class manager(object):
     if(self._xray_structure is not None):
       restraints_manager.crystal_symmetry = self._xray_structure.crystal_symmetry()
     self.restraints_manager = restraints_manager
-    print(self.restraints_manager.geometry)
-
+    #
     # Here we do all what is necessary when GRM and all related become available
     #
     self.extract_tls_selections_from_input()
-    print(self.restraints_manager.geometry)
 
   def set_reference_coordinate_restraints(self,
       ref_model,
