@@ -100,7 +100,6 @@ class manager(Base_geometry):
       assert (nonbonded_charges.size() == nonbonded_types.size())
     adopt_init_args(self, locals(), exclude=["log"])
     self.reset_internals()
-    from libtbx.introspection import show_stack; show_stack()
 
 # implement explicit pickling for the log object since StringIO doesn't support pickling
   # def __getstate__(self):
@@ -1477,7 +1476,6 @@ class manager(Base_geometry):
         external_energy_function=None,
         extension_objects=[],
         site_labels=None):
-    print('standard gradients')
     # if compute_gradients or 1: assert 0
     if(external_energy_function is not None):
       assert self.external_energy_function is None

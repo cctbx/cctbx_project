@@ -1631,6 +1631,9 @@ def write_mtz_file(fmodel_total, raw_data, raw_flags, prefix, params):
     file_name=prefix+".mtz")
   return prefix + ".mtz"
 
+def is_amber_refinement(params):
+  return params.ensemble_refinement.amber.use_amber
+
 #-----------------------------------------------------------------------
 def run(args, command_name = "phenix.ensemble_refinement", out=None,
     validate=False, replace_stderr=True):
@@ -1731,6 +1734,9 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     n_removed_atoms = model.remove_alternative_conformations(
         always_keep_one_conformer=True)
 
+  if n_removed_atoms>0 and is_amber_refinement(params):
+    raise Sorry('Amber does not support alt. locs. in Ensemble Refinement')
+
   if n_removed_atoms > 0:
     pdb_file_removed_alt_confs = pdb_file[0:-4]+'_removed_alt_confs.pdb'
     print("\nRemoving alternative conformations", file=log)
@@ -1746,7 +1752,6 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
       restraint_objects = cif_objects,
       pdb_interpretation_params = params.ensemble_refinement,
       log = log)
-    assert 0
 
   # Refinement flags
   # Worst hack I've ever seen! No wonder ensemble refinement is semi-broken!
@@ -1765,7 +1770,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   refinement_flags = rf(size = model.get_number_of_atoms())
 
   model.set_refinement_flags(refinement_flags)
-  grm = model.get_restraints_manager()
+  model.get_restraints_manager()
   # Geometry file
   xray_structure = model.get_xray_structure()
   sites_cart = xray_structure.sites_cart()
@@ -1885,7 +1890,6 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
 class run_wrapper(object):
   def __init__(self, model, fmodel, raw_data, raw_flags, er_params, log):
     adopt_init_args(self, locals())
-    from libtbx.introspection import show_stack; show_stack()
 
   def __call__(self, ptls, buffer_output=True, write_log=True,
       append_ptls=True):
