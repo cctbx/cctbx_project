@@ -320,7 +320,7 @@ class run_ensemble_refinement(object):
                      ptls,
                      run_number=None):
     adopt_init_args(self, locals())
-#    self.params = params.extract().ensemble_refinement
+    # self.params = params.extract().ensemble_refinement
 
     if self.params.target_name in ['ml', 'mlhl'] :
       self.fix_scale = False
@@ -1190,11 +1190,6 @@ class run_ensemble_refinement(object):
         = (self.a_prime * self.er_data.ke_protein_running) + ( (1-self.a_prime) * ke)
 
   def ordered_solvent_update(self):
-    # print(dir(self.model))
-    # grm = self.model.get_restraints_manager()
-    # print(grm)
-    # print(dir(grm))
-    # grm.energies_sites()
     ensemble_ordered_solvent_manager = ensemble_ordered_solvent.manager(
         model             = self.model,
         fmodel            = self.fmodel_running,
@@ -1202,11 +1197,9 @@ class run_ensemble_refinement(object):
         params            = self.params.ensemble_ordered_solvent,
         velocities        = self.er_data.velocities,
         log               = self.log)
-    print(self.model)
-    print(ensemble_ordered_solvent_manager)
-    print(ensemble_ordered_solvent_manager.model)
     print('_'*80)
-    self.model = ensemble_ordered_solvent_manager.model
+    # model is not correct after ensemble ordered solvent
+    # self.model = ensemble_ordered_solvent_manager.model
     self.er_data.velocities = ensemble_ordered_solvent_manager.velocities
     self.fmodel_running.update_xray_structure(
       xray_structure = self.model.get_xray_structure(),
@@ -1724,10 +1717,6 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   pdb_file = inputs.pdb_file_names[0]
   # Model
   pdb_inp = iotbx.pdb.input(file_name=pdb_file)
-  print(params)
-  print(dir(params))
-  print(dir(params.ensemble_refinement))
-  print(params.ensemble_refinement.amber.use_amber)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     restraint_objects = cif_objects,
@@ -1777,8 +1766,6 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
 
   model.set_refinement_flags(refinement_flags)
   grm = model.get_restraints_manager()
-  print(grm.geometry)
-
   # Geometry file
   xray_structure = model.get_xray_structure()
   sites_cart = xray_structure.sites_cart()
