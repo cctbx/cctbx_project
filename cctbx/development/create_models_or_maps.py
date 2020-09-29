@@ -344,7 +344,7 @@ def generate_map(
     gridding=map_manager.map_data().all()
     wrapping=map_manager.wrapping()
   if gridding:
-    if type(gridding)==type([1,2,3]) and type(gridding[0])==type(1):
+    if type(gridding) in [type((1,2,3)), type([1,2,3])] and type(gridding[0])==type(1):
       pass # already fine
     else:
       gridding=[]
@@ -592,6 +592,7 @@ def scale_map_coeffs(
     map_coeffs.setup_binner(auto_binning=True)
 
   d_max,d_min=map_coeffs.d_max_min()
+  if d_max < 0: d_max = 1.e+10
 
   if random_selection_within_bins:
     new_map_coeffs=map_coeffs.customized_copy(

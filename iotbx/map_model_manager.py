@@ -2054,10 +2054,16 @@ class map_model_manager(object):
       smoothing_radius = None,
       nproc = 1):
 
+
+    # Checks
+    assert self.get_map_manager_by_id(map_id_1)
+    assert self.get_map_manager_by_id(map_id_2)
     if not resolution:
       resolution = self.map_map_fsc(
         map_id_1 = map_id_1,
         map_id_2 = map_id_2,).d_min
+      if not resolution:
+        resolution = self.resolution()
       self.set_resolution(resolution)
       print ("Overall resolution of map: %.2f A" %(resolution),file = self.log)
 
@@ -2088,6 +2094,8 @@ class map_model_manager(object):
     minimum_resolution = self.map_manager_1().resolution(
      set_resolution = False,
      force = True)
+    if not d_min_1:
+      d_min_1 = minimum_resolution
 
     run_list=[]
     index_list=[]
@@ -2286,7 +2294,7 @@ class map_model_manager(object):
      mapping
 
     '''
-    assert isinstance(other, iotbx.map_model_manager.map_model_manager)
+    assert isinstance(other, map_model_manager)
 
     if selection_string:
       other_model = other.model().apply_selection_string(selection_string)

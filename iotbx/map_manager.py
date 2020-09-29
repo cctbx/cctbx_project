@@ -1072,6 +1072,69 @@ class map_manager(map_reader, write_ccp4_map):
     bf=binary_filter(map_data,threshold).result()
     self.set_map_data(map_data = bf)  # replace map data
 
+  def randomize(self,
+      d_min = None,
+      low_resolution_fourier_noise_fraction=0.01,
+      high_resolution_fourier_noise_fraction=2,
+      low_resolution_real_space_noise_fraction=0,
+      high_resolution_real_space_noise_fraction=0,
+      low_resolution_noise_cutoff=None,
+      random_seed = None,
+         ):
+    '''
+      Randomize a map.
+
+      Unique aspect of this noise generation is that it can be specified
+      whether the noise is local in real space (every point in a map
+      gets a random value before Fourier filtering), or local in Fourier
+      space (every Fourier coefficient gets a complex random offset).
+      Also the relative contribution of each type of noise vs resolution
+      can be controlled.
+
+      Parameters:
+      -----------
+
+      d_min:  high-resolution limit in Fourier transformations
+
+      low_resolution_fourier_noise_fraction (float, 0): Low-res Fourier noise
+      high_resolution_fourier_noise_fraction (float, 0): High-res Fourier noise
+      low_resolution_real_space_noise_fraction(float, 0): Low-res
+          real-space noise
+      high_resolution_real_space_noise_fraction (float, 0): High-res
+          real-space noise
+      low_resolution_noise_cutoff (float, None):  Low resolution where noise
+          starts to be added
+
+    '''
+
+    assert self.origin_is_zero()
+
+    if d_min is None:
+      d_min = self.resolution()
+
+    map_data=self.map_data()
+    if random_seed is None:
+      import random
+      random_seed = random.randint(1,100000)
+    from cctbx.development.create_models_or_maps import generate_map
+    new_map_manager =generate_map(
+      map_manager = self,   # gridding etc
+      map_coeffs = self.map_as_fourier_coefficients(),
+      d_min = d_min,
+      low_resolution_fourier_noise_fraction=
+         low_resolution_fourier_noise_fraction,
+      high_resolution_fourier_noise_fraction=
+         high_resolution_fourier_noise_fraction,
+      low_resolution_real_space_noise_fraction=
+         low_resolution_real_space_noise_fraction,
+      high_resolution_real_space_noise_fraction=
+         high_resolution_real_space_noise_fraction,
+      low_resolution_noise_cutoff=
+         low_resolution_noise_cutoff,
+      random_seed = None,)
+
+    self.set_map_data(map_data = new_map_manager.map_data())  # replace map data
+
   def deep_copy(self):
     '''
       Return a deep copy of this map_manager object

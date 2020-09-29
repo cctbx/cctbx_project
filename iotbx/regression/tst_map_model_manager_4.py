@@ -92,6 +92,21 @@ def exercise( out = sys.stdout):
   assert approx_equal(new_mm.map_map_cc(mmm1.map_manager()),0.994645868918)
   new_mm.write_map('super_221-225.ccp4')
 
+  # get a local resolution map (this one should look pretty constant!)
+  mmma = mmm1.deep_copy()
+  mmma.remove_model_by_id('model')
+  mmmb = mmma.deep_copy()
+  mmma.map_manager().randomize()
+  mmmb.map_manager().randomize()
+  assert approx_equal(mmma.map_manager().map_map_cc(mmmb.map_manager()),
+    0.40,0.10)
+  from iotbx.map_model_manager import map_model_manager
+  local_mmm=map_model_manager(map_manager_1=mmma.map_manager(),
+    map_manager_2=mmmb.map_manager())
+  local_mm = local_mmm.local_fsc()
+  cc = local_mm.map_map_cc(local_mmm.map_manager())
+  assert approx_equal(cc, -0.25,0.1)
+
 
 if __name__ == "__main__":
   exercise()

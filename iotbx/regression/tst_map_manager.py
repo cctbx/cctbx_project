@@ -316,6 +316,10 @@ def test_01():
   gaussian=mm.deep_copy()
   gaussian.gaussian_filter(smoothing_radius=1)
 
+  randomize=mm.deep_copy()
+  randomize.randomize(random_seed=1)
+  assert approx_equal(randomize.map_map_cc(mm),0.7,.10)
+
   binary=mm.deep_copy()
   binary.binary_filter(threshold=0.5)
 
