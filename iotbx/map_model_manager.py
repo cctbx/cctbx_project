@@ -2061,8 +2061,6 @@ class map_model_manager(object):
       self.set_resolution(resolution)
       print ("Overall resolution of map: %.2f A" %(resolution),file = self.log)
 
-    if not smoothing_radius:
-      smoothing_radius = 2 * resolution
 
     if not box_cushion:
       box_cushion = 1.5 * resolution
@@ -2073,6 +2071,9 @@ class map_model_manager(object):
       n_boxes = int(0.5+volume/(core_box_size)**3)
       print ("Target core_box_size: %.2s A  Target boxes: %s" %(
         core_box_size, n_boxes),file = self.log)
+
+    if not smoothing_radius:
+      smoothing_radius = 0.5 * core_box_size
 
     box_info = self.split_up_map_and_model_by_boxes(
       target_for_boxes = n_boxes,
@@ -2150,6 +2151,7 @@ class map_model_manager(object):
        value_list = d_min_list,
        sites_cart_list = xyz_list,
        target_spacing = target_spacing)
+
     # Get Fourier coeffs:
     map_coeffs = fsc_map_manager.map_as_fourier_coefficients()
 
@@ -3645,6 +3647,8 @@ class run_fsc_as_class:
     xyz_list = flex.vec3_double()
     d_min_list = flex.double()
     from scitbx.matrix import col
+    # offset to map absolute on to self.map_model_manager
+    offset = self.map_model_manager.map_manager().shift_cart()
     for i in range(first_to_use, last_to_use + 1):
       new_box_info = get_split_maps_and_models(
         map_model_manager = self.map_model_manager,
@@ -3652,14 +3656,16 @@ class run_fsc_as_class:
         first_to_use = i,
         last_to_use = i)
       mmm = new_box_info.mmm_list[0]
+
+      xyz = mmm.map_manager().absolute_center_cart()
+
       mmm.mask_all_maps_around_edges(soft_mask_radius=self.box_info.resolution)
       d_min = mmm.map_map_fsc(fsc_cutoff = self.box_info.fsc_cutoff,
         n_bins=self.box_info.n_bins).d_min
       if not d_min: continue
       d_min = max(d_min, self.box_info.minimum_resolution)
-      xyz = mmm.map_manager().absolute_center_cart()
-      xyz_list.append(xyz)
-      xyz_list = xyz_list - col(mmm.shift_cart()) # relative to this box
+
+      xyz_list.append(tuple(col(xyz)+col(offset) ))
       d_min_list.append(d_min)
 
     result = group_args(
