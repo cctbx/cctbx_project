@@ -1131,7 +1131,7 @@ class map_manager(map_reader, write_ccp4_map):
          high_resolution_real_space_noise_fraction,
       low_resolution_noise_cutoff=
          low_resolution_noise_cutoff,
-      random_seed = None,)
+      random_seed = random_seed)
 
     self.set_map_data(map_data = new_map_manager.map_data())  # replace map data
 
