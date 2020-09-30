@@ -876,7 +876,7 @@ class map_model_manager(object):
     assert map_manager is not None
 
     model_info=self._get_model_info()
-    model = self._model_dict[model_info.model_id]
+    model = self._model_dict.get(model_info.model_id,None)
 
     if extract_box and model: # make sure everything is deep_copy
       model = model.deep_copy()

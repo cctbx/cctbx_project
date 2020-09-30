@@ -115,8 +115,22 @@ def exercise( out = sys.stdout):
   cc_before = dc.map_model_cc()
   dc.half_map_sharpen(n_bins=15)
   cc_after = dc.map_model_cc()
-  assert approx_equal((cc_before,cc_after), (0.92, 0.92), eps=0.04)
+  assert approx_equal((cc_before,cc_after), (0.9, 0.9), eps=0.10)
 
+  dc.local_sharpen(n_bins=15, n_boxes=1)
+  cc = dc.map_model_cc()
+  assert approx_equal (cc, 0.90, eps=0.05)
+  dc.local_sharpen(n_bins=15, n_boxes=1, mask_map=True)
+  cc = dc.map_model_cc()
+  assert approx_equal (cc, 0.90, eps=0.05)
+
+  # create a mask around density
+  dc.create_mask_around_density()
+  count = dc.get_map_manager_by_id('mask').map_data().count(1)
+  assert 9000 < count < 10000
+  dc.expand_mask()
+  count = dc.get_map_manager_by_id('mask').map_data().count(1)
+  assert 35000 < count < 50000
 
 if __name__ == "__main__":
   exercise()
