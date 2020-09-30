@@ -515,6 +515,9 @@ class run_ensemble_refinement(object):
       else:
         cdp_verbose = -1
 
+      if is_amber_refinement(self.params):
+        assert str(self.model.restraints_manager.geometry)=='Amber manager'
+
       cd_manager = ensemble_cd.cartesian_dynamics(
         structure                   = self.model.get_xray_structure(),
         restraints_manager          = self.model.restraints_manager,
