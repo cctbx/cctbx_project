@@ -230,14 +230,14 @@ class map_model_manager(object):
     # Make sure all map_managers have same gridding and symmetry
     for m in [map_manager, map_manager_1, map_manager_2]+ \
          extra_map_manager_list:
-      if m and (not ignore_symmetry_conflicts):
+      if any_map_manager and m and (not ignore_symmetry_conflicts):
         if not any_map_manager.is_similar(m,
            absolute_angle_tolerance = absolute_angle_tolerance,
            absolute_length_tolerance = absolute_length_tolerance,
           ):
           raise Sorry("Map manager '%s' is not similar to '%s': %s" %(
            m.file_name,any_map_manager.file_name,
-            map_manager.warning_message())+
+            m.warning_message())+
             "\nTry 'ignore_symmetry_conflicts=True'")
 
     # Now make sure all models match symmetry using match_map_model_ncs
