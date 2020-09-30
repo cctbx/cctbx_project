@@ -803,7 +803,9 @@ class map_model_manager(object):
       a list of any other models present
     '''
     all_model_id_list=list(self._model_dict.keys())
-    assert all_model_id_list
+    if not all_model_id_list:
+       return group_args(model_id=None,
+         other_model_id_list=[])
     all_model_id_list.sort()
     model_id='model'
     other_model_id_list=[]
