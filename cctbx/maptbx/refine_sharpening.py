@@ -382,7 +382,6 @@ def calculate_fsc(si=None,
      max_cc_for_rescale=None,
      pseudo_likelihood=False,
      skip_scale_factor=False,
-     scale_relative_to_low_res=False,
      verbose=None,
      out=sys.stdout):
 
@@ -419,8 +418,6 @@ def calculate_fsc(si=None,
     fo_map=map_coeffs # scale map_coeffs to cc*
     fc_map=model_map_coeffs
     b_eff=None
-    print ("ZZCC",mc1.size(),mc2.size(),fo_map.size())
-
 
   ratio_list=flex.double()
   target_sthol2=flex.double()
@@ -549,10 +546,7 @@ def calculate_fsc(si=None,
     target_scale_factors.append(scale_on_fo)
 
   if not pseudo_likelihood and not skip_scale_factor: # normalize
-    if scale_relative_to_low_res:
-      scale_factor=1./max(1.e-10,target_scale_factors[0])
-    else:  # usual
-      scale_factor=1./target_scale_factors.min_max_mean().max
+    scale_factor=1./target_scale_factors.min_max_mean().max
     target_scale_factors=\
       target_scale_factors*scale_factor
     print("Scale factor A: %.5f" %(scale_factor), file=out)

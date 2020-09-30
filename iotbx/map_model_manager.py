@@ -1565,7 +1565,6 @@ class map_model_manager(object):
         mask_radius = mask_radius,
         masked_value = masked_value,
       )
-
     if (not apply_box_info):
       return box_info  #  run get_split_maps_and_models later
 
@@ -1861,6 +1860,43 @@ class map_model_manager(object):
     self.add_map_manager_by_id(map_manager = cm.map_manager(),
       map_id = mask_id)
 
+  def expand_mask(self,
+     buffer_radius = 5,
+     resolution = None,
+     soft_mask = True,
+     soft_mask_radius = None,
+     mask_id = 'mask',
+      ):
+    assert self.get_map_manager_by_id(mask_id)
+
+
+    map_manager = self.get_map_manager_by_id(mask_id)
+    assert map_manager is not None # Need a map to create mask around density
+    s =  (map_manager.map_data() > 0.5)
+    fraction_old = s.count(True)/s.size()
+
+    from cctbx.maptbx.mask import expand_mask
+    em = expand_mask(map_manager = map_manager,
+        buffer_radius = buffer_radius,
+        resolution = resolution)
+
+    if soft_mask: # Make the create_mask object contain a soft mask
+      if not soft_mask_radius:
+        if resolution:
+          soft_mask_radius = resolution
+        else:
+          soft_mask_radius = self.resolution()
+      em.soft_mask(soft_mask_radius = soft_mask_radius)
+
+    # Put the mask in map_dict id'ed with mask_id
+    self.add_map_manager_by_id(map_manager = em.map_manager(),
+      map_id = mask_id)
+    s =  (self.get_map_manager_by_id(mask_id).map_data() > 0.5)
+    fraction_new= s.count(True)/s.size()
+    print (
+    "\nExpanded mask by %.1f A ... fraction inside changed from %.4f to %.4f" %(
+     buffer_radius, fraction_old,fraction_new), file = self.log)
+
   # Methods for recombining models
 
   def propagate_model_from_other(self, other,
@@ -2048,10 +2084,10 @@ class map_model_manager(object):
       map_id_2 = 'map_manager_2',
       return_scale_factors = False,
       resolution = None,
-      d_min_ratio = 0.83,
     ):
     '''
-     Scale map_id with scale factors identified from map_id_1
+     Scale map_id with scale factors identified from map_id_1 and map_id_2
+     Changes the working map_manager
     '''
 
     # Checks
@@ -2059,27 +2095,27 @@ class map_model_manager(object):
     assert self.get_map_manager_by_id(map_id_1)
     assert self.get_map_manager_by_id(map_id_2)
 
-    if not resolution:
-      # get overall resolution (nominal)
-      resolution = self.map_map_fsc(n_bins=n_bins).d_min
-      if not resolution:
-        resolution = self.map_manager().resolution(force=True,
-          set_resolution=False)
-        d_min_ratio = 1 # don't go beyond resolution
+    # Get basic info including minimum_resolution (cutoff for map_coeffs)
+    setup_info = self._get_box_setup_info(map_id_1, map_id_2,
+      resolution,
+      skip_boxes = True)
+
+    resolution = setup_info.resolution
     self.set_resolution(resolution)
     print ("Nominal resolution of map: %.2f A " %(resolution),
       file = self.log)
 
-    d_min = resolution * d_min_ratio
+    d_min = setup_info.minimum_resolution
 
     map_coeffs = self.map_manager().map_as_fourier_coefficients(
       d_min = d_min)
-    first_half_map_coeffs = self.map_manager_1(
+    first_half_map_coeffs = self.get_map_manager_by_id(map_id_1
           ).map_as_fourier_coefficients(d_min = d_min)
-    second_half_map_coeffs = self.map_manager_2(
+    second_half_map_coeffs = self.get_map_manager_by_id(map_id_2
           ).map_as_fourier_coefficients(d_min = d_min)
 
     target_scale_factors = self._get_weights_in_shells(n_bins,
+      d_min,
       map_coeffs = map_coeffs,
       first_half_map_coeffs = first_half_map_coeffs,
       second_half_map_coeffs = second_half_map_coeffs,
@@ -2089,6 +2125,7 @@ class map_model_manager(object):
     new_map_manager = self._apply_scale_factors_in_shells(
       map_coeffs,
       n_bins,
+      d_min,
       target_scale_factors)
 
     # And set map_manager
@@ -2097,10 +2134,11 @@ class map_model_manager(object):
   def _apply_scale_factors_in_shells(self,
       map_coeffs,
       n_bins,
+      d_min,
       target_scale_factors):
     assert target_scale_factors.size() == n_bins
-
-    f_array_info = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins)
+    f_array_info = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
+      d_min = d_min)
     assert len(list(f_array_info.f_array.binner().range_used())) == \
         target_scale_factors.size() # must be compatible binners
     scale_array=f_array_info.f_array.binner().interpolate(
@@ -2115,6 +2153,9 @@ class map_model_manager(object):
 
   def _get_weights_in_shells(self,
      n_bins,
+     d_min,
+     map_id_1 = 'map_manager_1',
+     map_id_2 = 'map_manager_2',
      scale_using_last = 3,
      cc_cut = 0.2,
      max_cc_for_rescale = 0.2,
@@ -2126,6 +2167,7 @@ class map_model_manager(object):
     '''
     Calculate weights in shells to yield optimal final map assuming that
      perfect map has uniform power in all shells
+    n_bins and d_min are required
     '''
 
     si = group_args(
@@ -2135,7 +2177,7 @@ class map_model_manager(object):
       verbose = None,
       rmsd = None,
       n_bins = n_bins,
-      resolution = self.resolution(),
+      resolution = d_min,
       cc_cut = cc_cut,
       scale_using_last = scale_using_last,
       max_cc_for_rescale = max_cc_for_rescale,
@@ -2144,18 +2186,19 @@ class map_model_manager(object):
      )
 
     if not map_coeffs:
-      map_coeffs = self.map_manager().map_as_fourier_coefficients()
+      map_coeffs = self.map_manager().map_as_fourier_coefficients(d_min=d_min)
     if not first_half_map_coeffs:
-      first_half_map_coeffs = self.map_manager_1(
-          ).map_as_fourier_coefficients()
+      first_half_map_coeffs = self.get_map_manager_by_id(map_id_1
+          ).map_as_fourier_coefficients(d_min=d_min)
     if not second_half_map_coeffs:
-      second_half_map_coeffs = self.map_manager_2(
-          ).map_as_fourier_coefficients()
+      second_half_map_coeffs = self.get_map_manager_by_id(map_id_2
+          ).map_as_fourier_coefficients(d_min=d_min)
 
 
     from cctbx.maptbx.refine_sharpening import calculate_fsc
     si = calculate_fsc(
-      f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins).f_array,
+      f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
+        d_min = d_min).f_array,
       map_coeffs = map_coeffs,
       first_half_map_coeffs = first_half_map_coeffs,
       second_half_map_coeffs = second_half_map_coeffs,
@@ -2164,7 +2207,6 @@ class map_model_manager(object):
       scale_using_last=si.scale_using_last,
       max_cc_for_rescale=si.max_cc_for_rescale,
       pseudo_likelihood=si.pseudo_likelihood,
-      scale_relative_to_low_res = True,
       out = self.log)
     # si contains target_scale_factors now
     # Normalize the scale factors so low-res value is 1
@@ -2179,16 +2221,69 @@ class map_model_manager(object):
       core_box_size = None,
       box_cushion = None,
       smoothing_radius = None,
+      mask_map = False,
+      mask_expand_radius = 2,
       nproc = 1):
+
+    '''
+     Scale map_id with local scale factors identified from map_id_1 and map_id_2
+     Changes the working map_manager
+
+     If mask_map, use masked map to obtain scale factors
+    '''
 
     # Checks
     assert self.get_map_manager_by_id(map_id_1)
     assert self.get_map_manager_by_id(map_id_2)
 
+    if mask_map:
+      print ("Using masked map to obtain scale factors", file = self.log)
+      map_id_1_masked = 'map_manager_1_masked'
+      map_id_2_masked = 'map_manager_2_masked'
+      map_id_1_masked_outside = 'map_manager_1_masked_outside'
+      map_id_2_masked_outside = 'map_manager_2_masked_outside'
+
+      self.create_mask_around_density()
+      self.expand_mask(mask_expand_radius)
+
+      self.add_map_manager_by_id(
+        self.get_map_manager_by_id(map_id_1).deep_copy(),map_id_1_masked)
+      self.apply_mask_to_map(map_id_1_masked)
+
+      self.add_map_manager_by_id(
+        self.get_map_manager_by_id(map_id_2).deep_copy(),map_id_2_masked)
+      self.apply_mask_to_map(map_id_2_masked)
+
+      self.add_map_manager_by_id(self.get_map_manager_by_id('mask').deep_copy(),
+        'masked_outside')
+      masked_outside = self.get_map_manager_by_id('masked_outside').map_data()
+      masked_outside = 1 - masked_outside
+      self.get_map_manager_by_id('masked_outside').set_map_data(masked_outside)
+
+      self.add_map_manager_by_id(
+        self.get_map_manager_by_id(map_id_1).deep_copy(),
+        map_id_1_masked_outside)
+      self.apply_mask_to_map(
+        map_id_1_masked_outside, mask_id = 'masked_outside')
+
+      self.add_map_manager_by_id(
+        self.get_map_manager_by_id(map_id_2).deep_copy(),
+        map_id_2_masked_outside)
+      self.apply_mask_to_map(
+        map_id_2_masked_outside, mask_id = 'masked_outside')
+
+    else:
+      map_id_1_masked = map_id_1
+      map_id_2_masked = map_id_2
+      map_id_1_masked_outside = None
+      map_id_2_masked_outside = None
+
     # Get scale factors vs resolution and location
-    results = self.local_fsc(
-      map_id_1 = map_id_1,
-      map_id_2 = map_id_2,
+    scale_factor_info = self.local_fsc(
+      map_id_1 = map_id_1_masked,  # only masked if masked_outside is present
+      map_id_2 = map_id_2_masked,
+      map_id_1_masked_outside = map_id_1_masked_outside,
+      map_id_2_masked_outside = map_id_2_masked_outside,
       resolution = resolution,
       n_bins = n_bins,
       n_boxes = n_boxes,
@@ -2198,11 +2293,70 @@ class map_model_manager(object):
       nproc = nproc,
       return_scale_factors = True)
 
+    if 0 and mask_map: # remove all entries where xyz is outside mask
+      scale_factor_info = self._remove_scale_factor_info_outside_mask(
+         scale_factor_info, self.get_map_manager_by_id('mask'))
 
+    xyz_list = scale_factor_info.xyz_list
+    d_min = scale_factor_info.d_min
+    smoothing_radius = scale_factor_info.setup_info.smoothing_radius
+    assert n_bins == scale_factor_info.n_bins # must match
+
+    # Get Fourier coefficient for map
+    map_coeffs = self.map_manager().map_as_fourier_coefficients(d_min = d_min)
+
+    f_array_info = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
+       d_min = d_min)
+    new_map_data = flex.double(flex.grid(self.map_manager().map_data().all()),
+       0.)
+    # Get map for each shell of resolution
+    for i_bin in f_array_info.f_array.binner().range_used():
+      scale_value_list = self._get_scale_values_for_bin(
+        i_bin = i_bin,
+        scale_factor_info = scale_factor_info)
+      xx = scale_value_list.min_max_mean()
+      weight_mm = self._create_full_size_map_manager_with_value_list(
+        xyz_list = xyz_list,
+        value_list = scale_value_list,
+        smoothing_radius = smoothing_radius)
+      sel = f_array_info.f_array.binner().selection(i_bin)
+      shell_map_coeffs = map_coeffs.select(sel)
+      shell_map_manager = self.map_manager(
+         ).fourier_coefficients_as_map_manager(shell_map_coeffs)
+      new_map_data += weight_mm.map_data() * shell_map_manager.map_data()
+    self.map_manager().set_map_data(new_map_data)
+
+  def _remove_scale_factor_info_outside_mask(self,
+     scale_factor_info, map_manager):
+
+    new_xyz_list = flex.vec3_double()
+    new_value_list = []
+    for xyz, value in zip (scale_factor_info.xyz_list,
+       scale_factor_info.value_list):
+      site_frac=map_manager.crystal_symmetry().unit_cell().fractionalize(xyz)
+      if map_manager.map_data().tricubic_interpolation(site_frac) >= 0.5:
+        new_xyz_list.append(xyz)
+        new_value_list.append(value)
+    scale_factor_info.xyz_list = new_xyz_list
+    scale_factor_info.value_list = new_value_list
+    return scale_factor_info
+
+  def _get_scale_values_for_bin(self,
+        i_bin = None,
+        scale_factor_info = None):
+    '''
+    Get the i_bin'th scale value for each point
+    '''
+    scale_values = flex.double()
+    for u in scale_factor_info.value_list:
+      scale_values.append(u[i_bin-1])
+    return scale_values
 
   def local_fsc(self,
       map_id_1 = 'map_manager_1',
       map_id_2 = 'map_manager_2',
+      map_id_1_masked_outside = None,
+      map_id_2_masked_outside = None,
       resolution = None,
       min_bin_width = 20,
       n_bins = 200,
@@ -2214,11 +2368,24 @@ class map_model_manager(object):
       nproc = 1,
       return_scale_factors = False):
 
+    '''
+      Calculates local Fourier Shell Correlations to estimate local resolution
+      Creates map with smoothed local resolution
+
+      Optionally estimates scale factors vs resolution at each point in map
+      to apply to yield a locally-scaled map (return_scale_factors = True).
+
+      If map_id_1_masked and map_id_1_masked are supplied, for points inside
+      the default mask, use map_id_1 and map_id_2, and for points
+      outside the default mask, use map_id_1_masked_outside and
+      map_id_2_masked_outside
+    '''
+
     # Checks
     assert self.get_map_manager_by_id(map_id_1)
     assert self.get_map_manager_by_id(map_id_2)
 
-    # Get basic info
+    # Get basic info including minimum_resolution (cutoff for map_coeffs)
     setup_info = self._get_box_setup_info(map_id_1, map_id_2,
       resolution, box_cushion,
       n_boxes, core_box_size, smoothing_radius)
@@ -2237,34 +2404,43 @@ class map_model_manager(object):
     box_info.fsc_cutoff = fsc_cutoff
     box_info.n_bins = n_bins
     box_info.return_scale_factors = return_scale_factors
+    box_info.map_id_1 = map_id_1
+    box_info.map_id_2 = map_id_2
+    box_info.map_id_1_masked_outside = map_id_1_masked_outside
+    box_info.map_id_2_masked_outside = map_id_2_masked_outside
 
     results = self._run_fsc_in_boxes(
      nproc = nproc,
      box_info = box_info)
 
+    results.setup_info = setup_info
     if return_scale_factors:
       return results
 
     #  Now results is a list of results. Find the good ones
-    xyz_list = flex.vec3_double()
-    value_list = []
-    for result in results:
-      if result and result.xyz_list:
-        xyz_list.extend(result.xyz_list)
-        value_list += result.value_list
+    xyz_list = results.xyz_list
+    d_min_list = flex.double(tuple(results.value_list))
+
     if xyz_list.size() == 0:
       print ("Unable to calculate local fsc map", file = self.log)
       return
 
     print ("D-min for overall FSC map: %.2f A " %(
-      setup_info.d_min_overall), file = self.log)
+      setup_info.resolution_overall), file = self.log)
     print ("Unique values in local FSC map: %s " %(xyz_list.size()),
        file = self.log)
 
-    d_min_list = flex.double(tuple(value_list))
     x=d_min_list.min_max_mean()
     print ("Range of d_min: %.2f A to %.2f A   Mean: %.2f A " %(
       x.min, x.max, x.mean), file = self.log)
+
+    return self._create_full_size_map_manager_with_value_list(
+      xyz_list = xyz_list,
+      value_list = d_min_list,
+      smoothing_radius = setup_info.smoothing_radius)
+
+  def _create_full_size_map_manager_with_value_list(self,
+      xyz_list, value_list, smoothing_radius):
 
     # Now create a small map and fill in values
     volume_per_grid_point=self.crystal_symmetry().unit_cell(
@@ -2276,7 +2452,7 @@ class map_model_manager(object):
     fsc_map_manager = create_map_manager_with_value_list(
        n_real = local_n_real,
        crystal_symmetry = self.crystal_symmetry(),
-       value_list = d_min_list,
+       value_list = value_list,
        sites_cart_list = xyz_list,
        target_spacing = target_spacing)
 
@@ -2288,15 +2464,20 @@ class map_model_manager(object):
        ).fourier_coefficients_as_map_manager(map_coeffs)
 
     d_min_map_manager.gaussian_filter(
-       smoothing_radius = setup_info.smoothing_radius)
+       smoothing_radius = smoothing_radius)
     return d_min_map_manager
 
 
   def _get_box_setup_info(self,
       map_id_1, map_id_2,
-      resolution, box_cushion,
-      n_boxes, core_box_size,
-      smoothing_radius):
+      resolution,
+      box_cushion=None,
+      n_boxes=None,
+      core_box_size=None,
+      smoothing_radius=None,
+      d_min_ratio = 0.833,
+      skip_boxes = None,
+      ):
     if not resolution:
       resolution = self.map_map_fsc(
         map_id_1 = map_id_1,
@@ -2313,7 +2494,7 @@ class map_model_manager(object):
     if (not core_box_size):
       core_box_size = 3 * resolution
 
-    if (not n_boxes):
+    if (not skip_boxes) and (not n_boxes):
       volume = self.crystal_symmetry().unit_cell().volume()
       n_boxes = int(0.5+volume/(core_box_size)**3)
       print ("Target core_box_size: %.2s A  Target boxes: %s" %(
@@ -2322,12 +2503,16 @@ class map_model_manager(object):
     if not smoothing_radius:
       smoothing_radius = 0.5 * core_box_size
 
-    d_min_overall = self.map_map_fsc().d_min
+    resolution_overall = self.map_map_fsc().d_min
     minimum_resolution = self.map_manager_1().resolution(
      set_resolution = False,
      force = True)
-    if not d_min_overall:
-      d_min_overall = minimum_resolution
+    if not resolution_overall:
+      resolution_overall = minimum_resolution
+
+    # Working resolution is resolution_overall * d_min_ratio
+    minimum_resolution = max(minimum_resolution,
+      resolution_overall * d_min_ratio)
 
     return group_args(
      resolution = resolution,
@@ -2335,8 +2520,9 @@ class map_model_manager(object):
      n_boxes = n_boxes,
      core_box_size = core_box_size,
      smoothing_radius = smoothing_radius,
-     d_min_overall = d_min_overall,
-     minimum_resolution = minimum_resolution)
+     resolution_overall = resolution_overall,
+     minimum_resolution = minimum_resolution,
+      )
 
   def _run_fsc_in_boxes(self,
      nproc = None,
@@ -2369,7 +2555,16 @@ class map_model_manager(object):
      preserve_order=False,
      kw_list = index_list)
 
-    return results
+    # Put together results
+    all_results = None
+    for result in results:
+      if not result: continue
+      if not all_results:
+        all_results = result
+      else:
+        all_results.xyz_list.extend(result.xyz_list)  # vec3_double
+        all_results.value_list += result.value_list   # a list
+    return all_results
 
   def map_map_fsc(self,
       map_id_1 = 'map_manager_1',
@@ -3408,21 +3603,17 @@ class match_map_model_ncs(object):
     return mam
 
 #   Misc methods
-def get_map_coeffs_as_fp_phi(map_coeffs, n_bins):
+def get_map_coeffs_as_fp_phi(map_coeffs, n_bins, d_min):
     from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
-    (d_max,d_min)=f_array.d_max_min()
-    if d_max < 0:
-      d_max = 1.e+10
     if not f_array.binner():
-      f_array.setup_binner(n_bins=n_bins,d_max=d_max,d_min=d_min)
+      f_array.setup_binner(n_bins=n_bins,d_min=d_min)
       f_array.binner().require_all_bins_have_data(min_counts=1,
         error_string="Please use a lower value of n_bins")
     return group_args(
       f_array = f_array,
       phases = phases,
-      d_min = d_min,
-      d_max = d_max)
+      d_min = d_min)
 
 def create_map_manager_with_value_list(
        n_real = None,
@@ -3874,6 +4065,13 @@ class run_fsc_as_class:
     from scitbx.matrix import col
     # offset to map absolute on to self.map_model_manager
     offset = self.map_model_manager.map_manager().shift_cart()
+    if self.box_info.map_id_1_masked_outside:
+      mask_data=self.map_model_manager.get_map_manager_by_id('mask').map_data()
+      using_masked_data = True
+    else:
+      mask_data = None
+      using_masked_data = False
+
     for i in range(first_to_use, last_to_use + 1):
       new_box_info = get_split_maps_and_models(
         map_model_manager = self.map_model_manager,
@@ -3883,24 +4081,42 @@ class run_fsc_as_class:
       mmm = new_box_info.mmm_list[0]
 
       xyz = mmm.map_manager().absolute_center_cart()
+      if using_masked_data:
+        site_frac=self.map_model_manager.crystal_symmetry(
+           ).unit_cell().fractionalize(xyz)
+        if mask_data.tricubic_interpolation(site_frac) >= 0.5:
+          # inside mask.  Use map_id_1 and 2 (masked inside)
+          map_id_1_use = self.box_info.map_id_1
+          map_id_2_use = self.box_info.map_id_2
+        else: # outside : use masked_outside
+          map_id_1_use = self.box_info.map_id_1_masked_outside
+          map_id_2_use = self.box_info.map_id_2_masked_outside
+      else:  # not masked
+        map_id_1_use = self.box_info.map_id_1
+        map_id_2_use = self.box_info.map_id_2
 
       mmm.mask_all_maps_around_edges(soft_mask_radius=self.box_info.resolution)
 
       if self.box_info.return_scale_factors:
         weights_in_shells = mmm._get_weights_in_shells(
-           n_bins=self.box_info.n_bins)
-        d_min = weights_in_shells # hold it there
+           map_id_1 = map_id_1_use,
+           map_id_2 = map_id_2_use,
+           n_bins=self.box_info.n_bins,
+           d_min = self.box_info.minimum_resolution)
+        xyz_list.append(tuple(col(xyz)+col(offset) ))
+        value_list.append(weights_in_shells)
       else: # usual
         d_min = mmm.map_map_fsc(fsc_cutoff = self.box_info.fsc_cutoff,
+          map_id_1 = map_id_1_use,
+          map_id_2 = map_id_2_use,
           n_bins=self.box_info.n_bins).d_min
         if d_min:
           d_min = max(d_min, self.box_info.minimum_resolution)
-      if not d_min: continue
-
-      xyz_list.append(tuple(col(xyz)+col(offset) ))
-      value_list.append(d_min)
-
+          xyz_list.append(tuple(col(xyz)+col(offset) ))
+          value_list.append(d_min)
     result = group_args(
+      n_bins = self.box_info.n_bins,
+      d_min = self.box_info.minimum_resolution,
       xyz_list=xyz_list,
       value_list = value_list)
     return result
