@@ -876,7 +876,7 @@ Wait for the command to finish, then try again.""" % vars())
   def process_module(self, dependent_module, module_name, optional):
     dist_path = self.find_dist_path(module_name, optional=optional)
     if (dist_path is None): return False
-    if abs(dist_path).startswith(sys.prefix):
+    if self.module_is_installed(module_name):
       print("{module_name} is already installed".format(module_name=module_name))
       installed_env = get_installed_env()
       if module_name in installed_env.module_dict:
