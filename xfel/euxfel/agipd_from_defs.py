@@ -1,4 +1,5 @@
 from read_geom import read_geom
+from extra_data import RunDirectory
 
 from libtbx.phil import parse
 from libtbx.utils import Sorry
@@ -438,7 +439,8 @@ class Ruleset(Agipd2nexus):
                              nxtype=NxType.field, dtype='f', attrs={'units': 'angstrom'}),
             '/entry/instrument/beam/total_flux':
                 NexusElement(full_path='/entry/instrument/beam/total_flux',
-                             value=self.params.nexus_details.total_flux,
+                             # value=self.params.nexus_details.total_flux,
+                             value=self.get_xgm_data(cxi),
                              nxtype=NxType.field, dtype='f', attrs={'units': 'Hz'}),
             '/entry/instrument/ELE_D0/data': h5py.SoftLink('/entry/data/data'),
             '/entry/instrument/ELE_D0/sensor_material': "Si",          # FIXME
@@ -480,6 +482,14 @@ class Ruleset(Agipd2nexus):
             'HDF5_Version': h5py.version.hdf5_version
         }
 
+    def get_xgm_data(self, cxi):
+        run_raw = RunDirectory(self.params.xgm_dir)
+        tids = cxi['entry_1/trainId']
+        intensity = run_raw.get_array(self.params.xgm_addr, 'data.intensityTD',
+                                      extra_dims=['pulseID'])
+        xgm_data = intensity[(intensity['trainId'] >= tids[0]) &
+                             (intensity['trainId'] <= tids[-1])][:, :120]
+        return xgm_data
 
 if __name__ == '__main__':
   nexus_helper = Ruleset(sys.argv[1:])
