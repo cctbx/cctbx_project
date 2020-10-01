@@ -20,7 +20,9 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
   img_data = utils.image_data_from_expt(expt)
 
   background_mask = utils.load_mask(params.roi.background_mask)
-  hotpix_mask = ~utils.load_mask(params.roi.hotpixel_mask)
+  hotpix_mask = utils.load_mask(params.roi.hotpixel_mask)
+  if hotpix_mask is not None:
+      hotpix_mask = ~hotpix_mask
 
   # prepare ROI information
   rois, pids, tilt_abc, selection_flags = utils.get_roi_background_and_selection_flags(
@@ -126,6 +128,24 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
     RUC.spot_scale_init = {0: params.refiner.init.spot_scale}  # self.spot_scale_init
     RUC.m_init = {0: params.simulator.crystal.ncells_abc}
     RUC.ucell_inits = {0: shot_ucell_managers[0].variables}
+    if params.refiner.ranges.ucell_edge_percentage is not None:
+      names = shot_ucell_managers[0].variable_names
+      maxs, mins = [], []
+      for i_n, n in enumerate(names):
+        val = shot_ucell_managers[0].variables[i_n]
+        if "Ang" in n:
+          perc = params.refiner.ranges.ucell_edge_percentage*0.01
+          valmin = val - val * perc
+          valmax = val + val * perc
+        else:
+          deviation = params.refiner.ranges.ucell_angle_deviation
+          valmin = val - deviation/2.
+          valmax = val + deviation/2.
+        mins.append(valmin)
+        maxs.append(valmax)
+      RUC.ucell_mins = {0: mins}
+      RUC.ucell_maxs = {0: maxs}
+      RUC.use_ucell_ranges = True
 
     # SIGMA VALUES
     RUC.rotX_sigma, RUC.rotY_sigma, RUC.rotZ_sigma = params.refiner.sensitivity.rotXYZ

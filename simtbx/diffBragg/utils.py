@@ -6,18 +6,19 @@ from scipy.optimize import minimize
 from dials.algorithms.image.filter import convolve
 from scipy.interpolate import SmoothBivariateSpline
 from cctbx.array_family import flex
-from cxid9114.prediction import prediction_utils
 from cctbx import miller, sgtbx
 from cctbx.crystal import symmetry
 import numpy as np
 from scipy.ndimage.morphology import binary_dilation
-from cxid9114.parameters import ENERGY_CONV
+from simtbx.nanoBragg.utils import ENERGY_CONV
 from scipy import ndimage
 import pylab as plt
-from scitbx.array_family import flex
 from simtbx.diffBragg.sim_data import SimData
 from simtbx.diffBragg.nanoBragg_beam import nanoBragg_beam
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
+from dxtbx.imageset import MemReader #, MemMasker
+from dxtbx.imageset import ImageSet, ImageSetData
+from dxtbx.model.experiment_list import ExperimentListFactory
 
 
 def get_spot_data(img, thresh=0, filter=None, **kwargs):
@@ -867,30 +868,6 @@ def load_spectra_file(spec_file, total_flux=1., pinkstride=1, as_spectrum=False)
         return FLUXES, energies
 
 
-def make_background_pixel_mask(DET, refls_strong=None, dilate=1):
-    # make mask of all strong spot pixels..
-    n_panels = len(DET)
-    nfast, nslow = DET[0].get_image_size()
-    # make a mask that tells me True if I am a background pixel
-    is_bg_pixel = np.ones((n_panels, nslow, nfast), bool)
-    # group the refls by panel ID
-    if refls_strong is None:
-        return is_bg_pixel
-
-    refls_strong_perpan = prediction_utils.refls_by_panelname(refls_strong)
-    for panel_id in refls_strong_perpan:
-        panel_id = int(panel_id)
-        fast, slow = DET[panel_id].get_image_size()
-        mask = prediction_utils.strong_spot_mask_dials(
-            refls_strong_perpan[panel_id], (slow, fast),
-            as_composite=True)
-        # dilate the mask
-        mask = binary_dilation(mask, iterations=dilate)
-        is_bg_pixel[panel_id] = ~mask  # strong spots should not be background pixels
-
-    return is_bg_pixel
-
-
 def load_mask(maskfile):
     if maskfile is None:
         return None
@@ -956,7 +933,6 @@ def refls_from_sims(panel_imgs, detector, beam, thresh=0, filter=None, panel_ids
     from dials.algorithms.spot_finding.factory import FilterRunner
     from dials.model.data import PixelListLabeller, PixelList
     from dials.algorithms.spot_finding.finder import PixelListToReflectionTable
-    from cxid9114 import utils
 
     if panel_ids is None:
         panel_ids = np.arange(len(detector))
@@ -985,13 +961,73 @@ def refls_from_sims(panel_imgs, detector, beam, thresh=0, filter=None, panel_ids
         filter_spots=FilterRunner(),  # must use a dummie filter runner!
         write_hot_pixel_mask=False)
 
-    #dblock = utils.datablock_from_numpyarrays(panel_imgs, detector, beam)
-    #iset = dblock.extract_imagesets()[0]
-    El = utils.explist_from_numpyarrays(panel_imgs, detector, beam)
+    El = explist_from_numpyarrays(panel_imgs, detector, beam)
     iset = El.imagesets()[0]
     refls = pixlst_to_reftbl(iset, pxlst_labs)[0]
 
     return refls
+
+
+class FormatInMemory:
+    """
+    this class is a special image type
+    necessary to create dxtbx imagesets and
+    datablocks from numpy array images
+    and masks.
+    """
+    def __init__(self, image, mask=None):
+        self.image = image
+        if image.dtype != np.float64:
+            self.image = self.image.astype(np.float64)
+        if mask is None:
+            self.mask = np.ones_like(self.image).astype(np.bool)
+        else:
+            assert (mask.shape == image.shape)
+            assert(mask.dtype == bool)
+            self.mask = mask
+
+    def get_raw_data(self):
+        if len(self.image.shape)==2:
+            return flex.double(self.image)
+        else:
+            return tuple([flex.double(panel) for panel in self.image])
+
+    def get_mask(self, goniometer=None):
+        if len(self.image.shape)==2:
+            return flex.bool(self.mask)
+        else:
+            return tuple([flex.bool(panelmask) for panelmask in self.mask])
+
+
+def explist_from_numpyarrays(image, detector, beam, mask=None):
+    """
+    So that one can do e.g.
+    >> dblock = datablock_from_numpyarrays( image, detector, beam)
+    >> refl = flex.reflection_table.from_observations(dblock, spot_finder_params)
+    without having to utilize the harddisk
+
+    :param image:  numpy array image, or list of numpy arrays
+    :param mask:  numpy mask, should be same shape format as numpy array
+    :param detector: dxtbx detector model
+    :param beam: dxtbx beam model
+    :return: datablock for the image
+    """
+    if isinstance( image, list):
+        image = np.array( image)
+    if mask is not None:
+        if isinstance( mask, list):
+            mask = np.array(mask).astype(bool)
+    I = FormatInMemory(image=image, mask=mask)
+    reader = MemReader([I])
+    #masker = MemMasker([I])
+    iset_Data = ImageSetData(reader, None) # , masker)
+    iset = ImageSet(iset_Data)
+    iset.set_beam(beam)
+    iset.set_detector(detector)
+    explist = ExperimentListFactory.from_imageset_and_crystal(iset, None)
+    return explist
+
+
 
 #def tally_local_statistics(spot_rois):
 #    # tally up all miller indices in this refinement
