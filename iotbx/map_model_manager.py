@@ -2153,7 +2153,6 @@ class map_model_manager(object):
       if failed:
         n_bins -= 1
       else: # ok
-        print ("ZZB",n_bins,original_n_bins)
         return n_bins
     raise Sorry("Unable to set n_bins... possibly map too small?")
 
