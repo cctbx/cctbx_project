@@ -1512,7 +1512,7 @@ class manager(object):
     if(self._xray_structure is not None):
       restraints_manager.crystal_symmetry = self._xray_structure.crystal_symmetry()
     self.restraints_manager = restraints_manager
-
+    #
     # Here we do all what is necessary when GRM and all related become available
     #
     self.extract_tls_selections_from_input()
@@ -3353,7 +3353,9 @@ class manager(object):
     return self.get_xray_structure().scattering_type_registry().last_table() \
       == "neutron"
 
-  def geometry_statistics(self, use_hydrogens=None, fast_clash=True,
+  def geometry_statistics(self,
+                          use_hydrogens=None,
+                          fast_clash=True,
                           condensed_probe=True):
     scattering_table = \
         self.get_xray_structure().scattering_type_registry().last_table()
