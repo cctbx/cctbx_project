@@ -6,6 +6,9 @@ bp.import_ext("scitbx_array_family_shared_ext")
 from scitbx_array_family_shared_ext import *
 import scitbx_array_family_shared_ext as ext
 
+from scitbx_array_family_flex_ext import uint32
+unsigned = uint32
+
 class pickle_import_trigger(object): pass
 
 @bp.inject_into(ext.stl_set_unsigned)
