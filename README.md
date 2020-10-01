@@ -1,3 +1,5 @@
+found a small typo in the README
+
 # Computational Crystallography Toolbox
 
 ## Introduction
