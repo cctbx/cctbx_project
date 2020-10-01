@@ -16,8 +16,9 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
     print("No trials available")
     return
 
-
   img_data = utils.image_data_from_expt(expt)
+  if params.refiner.adu_per_photon is not None:
+    img_data /= params.refiner.adu_per_photon
 
   background_mask = utils.load_mask(params.roi.background_mask)
   hotpix_mask = utils.load_mask(params.roi.hotpixel_mask)
@@ -198,8 +199,6 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
     RUC.BBOX_IDX = []
     RUC.output_dir = params.refiner.io.output_dir
     RUC.run(setup_only=True)
-    #from IPython import embed
-    #embed()
 
     RUC.num_positive_curvatures = 0
     RUC.use_curvatures = params.refiner.start_with_curvatures
