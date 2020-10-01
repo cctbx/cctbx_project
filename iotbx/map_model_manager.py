@@ -2116,6 +2116,9 @@ class map_model_manager(object):
     second_half_map_coeffs = self.get_map_manager_by_id(map_id_2
           ).map_as_fourier_coefficients(d_min = d_min)
 
+    n_bins =self._set_n_bins(n_bins = n_bins,
+      d_min = d_min, map_coeffs = map_coeffs)
+
     target_scale_factors = self._get_weights_in_shells(n_bins,
       d_min,
       map_coeffs = map_coeffs,
@@ -2132,6 +2135,27 @@ class map_model_manager(object):
 
     # And set map_manager
     self.set_map_manager(new_map_manager)
+
+  def _set_n_bins(self, n_bins = None,
+      d_min = None, map_coeffs = None):
+
+    min_n_bins = n_bins//3
+    original_n_bins = n_bins
+    while n_bins > min_n_bins:
+      f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
+        d_min = d_min).f_array
+      failed = False
+
+      for i_bin in f_array.binner().range_used():
+        if f_array.binner().count(i_bin)<1:
+          failed = True
+          break
+      if failed:
+        n_bins -= 1
+      else: # ok
+        print ("ZZB",n_bins,original_n_bins)
+        return n_bins
+    raise Sorry("Unable to set n_bins... possibly map too small?")
 
   def _apply_scale_factors_in_shells(self,
       map_coeffs,
@@ -2200,9 +2224,13 @@ class map_model_manager(object):
 
 
     from cctbx.maptbx.refine_sharpening import calculate_fsc
+    f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
+        d_min = d_min).f_array
+    for i_bin in f_array.binner().range_used():
+      if f_array.binner().count(i_bin)<1: # won't work...skip
+        return None
     si = calculate_fsc(
-      f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
-        d_min = d_min).f_array,
+      f_array = f_array,
       map_coeffs = map_coeffs,
       first_half_map_coeffs = first_half_map_coeffs,
       second_half_map_coeffs = second_half_map_coeffs,
@@ -2564,9 +2592,12 @@ class map_model_manager(object):
 
     # Put together results
     all_results = None
+    expected_number_of_samples = len(box_info.lower_bounds_list)
+    found_number_of_samples = 0
+    found_number_of_samples_with_ncs = 0
     for result in results:
       if not result: continue
-
+      found_number_of_samples += result.xyz_list.size()
       # Apply ncs if appropriate
       if box_info.ncs_object and box_info.ncs_object.max_operators()> 1:
         xyz_list = result.xyz_list
@@ -2584,6 +2615,10 @@ class map_model_manager(object):
       else:
         all_results.xyz_list.extend(result.xyz_list)  # vec3_double
         all_results.value_list += result.value_list   # a list
+    found_number_of_samples_with_ncs = all_results.xyz_list.size()
+    print ("Sampling points attempted: %s  Successful: %s  With NCS: %s" %(
+      expected_number_of_samples, found_number_of_samples,
+      found_number_of_samples_with_ncs), file = self.log)
     return all_results
 
   def map_map_fsc(self,
@@ -3623,13 +3658,14 @@ class match_map_model_ncs(object):
     return mam
 
 #   Misc methods
-def get_map_coeffs_as_fp_phi(map_coeffs, n_bins, d_min):
+def get_map_coeffs_as_fp_phi(map_coeffs, d_min= None, n_bins = None):
+    '''
+    Get map_coeffs as fp and phi. also set up binner if n_bins is not None
+    '''
     from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
-    if not f_array.binner():
+    if n_bins and not f_array.binner():
       f_array.setup_binner(n_bins=n_bins,d_min=d_min)
-      f_array.binner().require_all_bins_have_data(min_counts=1,
-        error_string="Please use a lower value of n_bins")
     return group_args(
       f_array = f_array,
       phases = phases,
