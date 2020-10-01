@@ -2221,7 +2221,7 @@ class map_model_manager(object):
       map_id_1 = 'map_manager_1',
       map_id_2 = 'map_manager_2',
       resolution = None,
-      n_bins = 200,
+      n_bins = 20,
       n_boxes = None,
       core_box_size = None,
       box_cushion = None,
@@ -2240,6 +2240,9 @@ class map_model_manager(object):
     # Checks
     assert self.get_map_manager_by_id(map_id_1)
     assert self.get_map_manager_by_id(map_id_2)
+
+    # overall half-map sharpen before and after
+    self.half_map_sharpen()
 
     if mask_map:
       print ("Using masked map to obtain scale factors", file = self.log)
@@ -2298,10 +2301,6 @@ class map_model_manager(object):
       nproc = nproc,
       return_scale_factors = True)
 
-    if 0 and mask_map: # remove all entries where xyz is outside mask
-      scale_factor_info = self._remove_scale_factor_info_outside_mask(
-         scale_factor_info, self.get_map_manager_by_id('mask'))
-
     xyz_list = scale_factor_info.xyz_list
     d_min = scale_factor_info.d_min
     smoothing_radius = scale_factor_info.setup_info.smoothing_radius
@@ -2330,6 +2329,9 @@ class map_model_manager(object):
          ).fourier_coefficients_as_map_manager(shell_map_coeffs)
       new_map_data += weight_mm.map_data() * shell_map_manager.map_data()
     self.map_manager().set_map_data(new_map_data)
+
+    # overall half-map sharpen before and after
+    self.half_map_sharpen()
 
   def _remove_scale_factor_info_outside_mask(self,
      scale_factor_info, map_manager):
@@ -4124,13 +4126,17 @@ class run_fsc_as_class:
       mmm.mask_all_maps_around_edges(soft_mask_radius=self.box_info.resolution)
 
       if self.box_info.return_scale_factors:
-        weights_in_shells = mmm._get_weights_in_shells(
+        try:
+          weights_in_shells = mmm._get_weights_in_shells(
            map_id_1 = map_id_1_use,
            map_id_2 = map_id_2_use,
            n_bins=self.box_info.n_bins,
            d_min = self.box_info.minimum_resolution)
-        xyz_list.append(tuple(col(xyz)+col(offset) ))
-        value_list.append(weights_in_shells)
+        except Exception, e:
+           weights_in_shells = None # ignore it. Happens if not enough data
+        if weights_in_shells:
+          xyz_list.append(tuple(col(xyz)+col(offset) ))
+          value_list.append(weights_in_shells)
       else: # usual
         d_min = mmm.map_map_fsc(fsc_cutoff = self.box_info.fsc_cutoff,
           map_id_1 = map_id_1_use,
