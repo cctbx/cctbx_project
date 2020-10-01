@@ -2162,6 +2162,7 @@ class map_model_manager(object):
      cc_cut = 0.2,
      max_cc_for_rescale = 0.2,
      pseudo_likelihood = None,
+     equalize_power = True,
      map_coeffs = None,
      first_half_map_coeffs = None,
      second_half_map_coeffs = None,
@@ -2184,6 +2185,7 @@ class map_model_manager(object):
       scale_using_last = scale_using_last,
       max_cc_for_rescale = max_cc_for_rescale,
       pseudo_likelihood = pseudo_likelihood,
+      equalize_power = equalize_power,
       n_real = self.map_data().all(),
      )
 
@@ -2209,6 +2211,7 @@ class map_model_manager(object):
       scale_using_last=si.scale_using_last,
       max_cc_for_rescale=si.max_cc_for_rescale,
       pseudo_likelihood=si.pseudo_likelihood,
+      equalize_power = si.equalize_power,
       out = self.log)
     # si contains target_scale_factors now
     # Normalize the scale factors so low-res value is 1
@@ -2561,6 +2564,19 @@ class map_model_manager(object):
     all_results = None
     for result in results:
       if not result: continue
+
+      # Apply ncs if appropriate
+      if box_info.ncs_object and box_info.ncs_object.max_operators()> 1:
+        xyz_list = result.xyz_list
+        value_list = result.value_list
+        result.xyz_list = flex.vec3_double()
+        result.value_list = []
+        for i in range(xyz_list.size()):
+          new_sites = box_info.ncs_object.apply_ncs_to_sites(
+            xyz_list[i:i+1])
+          values = value_list[i:i+1] * box_info.ncs_object.max_operators()
+          result.xyz_list.extend(new_sites)
+          result.value_list+= values
       if not all_results:
         all_results = result
       else:
@@ -3765,6 +3781,7 @@ def get_selections_and_boxes_to_split_model(
         mask_around_unselected_atoms = None,
         mask_radius = 3,
         masked_value = -10,
+        get_unique_set_for_boxes = True,
          ):
 
   '''
@@ -3779,6 +3796,7 @@ def get_selections_and_boxes_to_split_model(
       make the final boxes just go around the selected parts of the model and
       not tile the map.
     If skip_empty_boxes then skip anything with no model.
+    if get_unique_set_for_boxes then get a unique set for 'boxes' method
   '''
 
   # Checks
@@ -3844,7 +3862,9 @@ def get_selections_and_boxes_to_split_model(
     # Get boxes without and with cushion (cushion may be None)
     box_info = map_manager.get_boxes_to_tile_map(
       target_for_boxes = target_for_boxes,
-      box_cushion = box_cushion)
+      box_cushion = box_cushion,
+      get_unique_set_for_boxes = get_unique_set_for_boxes)
+    # Note: box_info.ncs_object is set if we need to propagate
 
     # Select inside boxes without cushion and create cushion too
     box_info = get_selections_from_boxes(
@@ -3852,6 +3872,7 @@ def get_selections_and_boxes_to_split_model(
        model = model,
        overall_selection = overall_selection,
        skip_empty_boxes = skip_empty_boxes)
+
   if select_final_boxes_based_on_model or (
      not box_info.lower_bounds_list): # get bounds now:
     from cctbx.maptbx.box import get_bounds_around_model
@@ -3875,6 +3896,8 @@ def get_selections_and_boxes_to_split_model(
   box_info.mask_radius = mask_radius
   box_info.masked_value = masked_value
   return box_info
+
+
 
 def get_selections_from_boxes(box_info = None,
     model = None,
@@ -3912,6 +3935,7 @@ def get_selections_from_boxes(box_info = None,
       new_lower_bounds_with_cushion_list.append(lower_bounds_with_cushion)
       new_upper_bounds_with_cushion_list.append(upper_bounds_with_cushion)
   return group_args(
+     ncs_object = box_info.ncs_object,
      n_real = box_info.n_real,
      selection_list = selection_list,
      lower_bounds_list = new_lower_bounds_list,

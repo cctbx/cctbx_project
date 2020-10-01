@@ -287,6 +287,7 @@ def value(str):
 
 
 def generate_ncs_ops(symmetry=None,
+   must_be_consistent_with_space_group_number = None,
    helical_rot_deg=None,
    helical_trans_z_angstrom=None,
    op_max=None,
@@ -392,6 +393,12 @@ def generate_ncs_ops(symmetry=None,
       if two_fold_along_x is None or two_fold_along_x==False:
         ncs_list.append(get_d_symmetry(n=i,two_fold_along_x=False,
         ncs_name='D%d (b)' %(i)))
+
+  #  Pare down ncs_list if must_be_consistent_with_space_group_number is set
+  if must_be_consistent_with_space_group_number:
+    ncs_list=remove_ncs_not_consistent_with_space_group_number(
+       must_be_consistent_with_space_group_number,ncs_list)
+
   if sym_type=='helical' or (
       all and include_helical_symmetry):
      if helical_rot_deg is not None and helical_trans_z_angstrom is not None:
@@ -400,6 +407,27 @@ def generate_ncs_ops(symmetry=None,
        helical_trans_z_angstrom=helical_trans_z_angstrom,
        max_ops=max_helical_ops_to_check))
 
+  return ncs_list
+
+def remove_ncs_not_consistent_with_space_group_number(sg_number,ncs_list):
+  ''' remove ncs ojbect that are not consistent with space_group number
+     sg_number
+   NOTE: allows ncs that has higher symmetry than sg_number
+  '''
+
+  from cctbx import crystal
+  from cctbx import sgtbx
+  from cctbx import uctbx
+  sg = sgtbx.space_group_info(sg_number)
+  uc = uctbx.unit_cell((10.,10.,10.,90.,90.,90.))
+  cs = crystal.symmetry(unit_cell=uc ,space_group_info = sg)
+  ncs_from_cs = crystal_symmetry_to_ncs(cs)
+  # Make sure all ops of ncs_from_cs are in each ncs used
+  new_ncs_list =[]
+  for ncs_obj in ncs_list:
+    if ncs_from_cs.is_similar_ncs_object(ncs_obj,abs_tol_t=10000):
+      new_ncs_list.append(ncs_obj)
+  ncs_list = new_ncs_list
   return ncs_list
 
 # Symmetry for icosahedron in 3 settings
@@ -2913,10 +2941,15 @@ class ncs_group:  # one group of NCS operators and center and where it applies
   def is_similar_ncs_group(self, other,
    tol_r=default_tol_r,
    abs_tol_t=default_abs_tol_t,
-   rel_tol_t=default_rel_tol_t):
+   rel_tol_t=default_rel_tol_t,
+   allow_self_contained_in_other = True):
     '''
      return True if all operations of self match one of other
     '''
+
+    if (not allow_self_contained_in_other) and \
+       len(self.rota_matrices_inv()) != len(other.rota_matrices_inv()):
+      return False
 
     if len(self.rota_matrices_inv()) < 1:
       return False
@@ -4307,7 +4340,8 @@ class ncs:
   def is_similar_ncs_object(self, other,
    tol_r=default_tol_r,
    abs_tol_t=default_abs_tol_t,
-   rel_tol_t=default_rel_tol_t):
+   rel_tol_t=default_rel_tol_t,
+   allow_self_contained_in_other = True):
     '''
       Determine if self and other are similar ncs objects
       ncs groups do not have to be in same order
@@ -4327,7 +4361,8 @@ class ncs:
       found=False
       for other_ncs_group in other._ncs_groups:
         if ncs_group.is_similar_ncs_group(other_ncs_group,tol_r=tol_r,
-            abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t):
+            abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t,
+            allow_self_contained_in_other = allow_self_contained_in_other):
           found=True
           break
       if not found:
@@ -4402,6 +4437,44 @@ class ncs:
     for ncs_group in self._ncs_groups:
       if ncs_group.identity_op_id() is None:
         ncs_group.add_identity_op()
+
+
+  def apply_ncs_to_sites(self, sites_cart=None,ncs_obj=None,
+      exclude_identity=False,ncs_id=None):
+
+    if not ncs_obj:
+      ncs_obj = self
+    from scitbx.array_family import flex
+    new_sites_cart=flex.vec3_double()
+    if (not ncs_obj or ncs_obj.max_operators()<=1):
+      if exclude_identity:
+        return new_sites_cart  # nothing as we exclude identity
+      else:
+        return sites_cart
+
+    ncs_group=ncs_obj.ncs_groups()[0]
+    from scitbx.matrix import col
+
+    if ncs_id is not None:
+      t=ncs_group.translations_orth_inv()[ncs_id]
+      r=ncs_group.rota_matrices_inv()[ncs_id]
+      for site in sites_cart:
+        new_sites_cart.append(r * col(site)  + t)
+      return new_sites_cart
+
+    if exclude_identity:
+      identity_op=ncs_group.identity_op_id()
+    else:
+      identity_op=None
+    ii=-1
+    for t,r in zip(
+       ncs_group.translations_orth_inv(),ncs_group.rota_matrices_inv()):
+      ii+=1
+      if exclude_identity and ii==identity_op: continue
+      for site in sites_cart:
+        new_sites_cart.append(r * col(site)  + t)
+    return new_sites_cart
+
 
 test_ncs_info="""
 

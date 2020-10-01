@@ -382,6 +382,7 @@ def calculate_fsc(si=None,
      max_cc_for_rescale=None,
      pseudo_likelihood=False,
      skip_scale_factor=False,
+     equalize_power=False,
      verbose=None,
      out=sys.stdout):
 
@@ -427,6 +428,7 @@ def calculate_fsc(si=None,
   rms_fo_list=flex.double()
   rms_fc_list=flex.double()
   max_possible_cc=None
+  n_list = flex.double()
   for i_bin in f_array.binner().range_used():
     sel       = f_array.binner().selection(i_bin)
     d         = dsd.select(sel)
@@ -467,6 +469,7 @@ def calculate_fsc(si=None,
     d_min_list.append(d_min)
     rms_fo_list.append(rms_fo)
     rms_fc_list.append(rms_fc)
+    n_list.append(m1.size())
 
     if b_eff is not None:
       max_cc_estimate=cc* math.exp(min(20.,sthol2*b_eff))
@@ -522,6 +525,8 @@ def calculate_fsc(si=None,
       max_possible_cc=fraction_complete**0.5
 
   target_scale_factors=flex.double()
+  sum_w=0.
+  sum_w_scale=0.
   for i_bin in f_array.binner().range_used():
     index=i_bin-1
     ratio=ratio_list[index]
@@ -542,11 +547,17 @@ def calculate_fsc(si=None,
     else:
       scale_on_fo=ratio * min(1.,max(0.00001,corrected_cc))
 
-
+    w = n_list[index]*(rms_fo_list[index])**2
+    sum_w += w
+    sum_w_scale += w * scale_on_fo**2
     target_scale_factors.append(scale_on_fo)
 
   if not pseudo_likelihood and not skip_scale_factor: # normalize
-    scale_factor=1./target_scale_factors.min_max_mean().max
+    avg_scale_on_fo = (sum_w_scale/sum_w)**0.5
+    if equalize_power:
+      scale_factor = 1/avg_scale_on_fo
+    else: # usual
+      scale_factor=1./target_scale_factors.min_max_mean().max
     target_scale_factors=\
       target_scale_factors*scale_factor
     print("Scale factor A: %.5f" %(scale_factor), file=out)

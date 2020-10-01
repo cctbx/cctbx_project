@@ -309,6 +309,12 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Include helical symmetry
        .help = You can include or exclude searches for helical symmetry
 
+     must_be_consistent_with_space_group_number = None
+       .type = int
+       .short_caption = Space group to match
+       .help = Searches for symmetry must be compatible with this space group\
+               number.
+
      symmetry_center = None
        .type = floats
        .short_caption = symmetry center
@@ -3449,6 +3455,8 @@ def get_ncs_list(params = None, symmetry = None,
 
   from mmtbx.ncs.ncs import generate_ncs_ops
   ncs_list = generate_ncs_ops(
+   must_be_consistent_with_space_group_number = \
+      params.reconstruction_symmetry.must_be_consistent_with_space_group_number,
    symmetry = symmetry,
    helical_rot_deg = helical_rot_deg,
    helical_trans_z_angstrom = helical_trans_z_angstrom,

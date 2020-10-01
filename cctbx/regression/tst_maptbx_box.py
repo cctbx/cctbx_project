@@ -50,6 +50,26 @@ def get_random_structure_and_map(
   return group_args(model = model, mm = mm)
 
 def exercise_around_model():
+
+  from cctbx.maptbx.box import make_list_symmetric
+  a=[3,4,5,3,9,1,6,3,2,5,6,6]
+  new_a=make_list_symmetric(a)
+  from scitbx.array_family import flex
+  aa=flex.double(a)
+  new_aa=flex.double(new_a)
+  assert (aa.size(),new_aa.size())== (12, 12)
+  assert aa.min_max_mean().mean == new_aa.min_max_mean().mean
+  print (a,new_a)
+
+  a=[3,4,5,3,8,1,6,7,3,2,5,6,6]
+  new_a=make_list_symmetric(a)
+  from scitbx.array_family import flex
+  aa=flex.double(a)
+  new_aa=flex.double(new_a)
+  print (a,new_a)
+  assert (aa.size(),new_aa.size())== (13, 13)
+  assert aa.min_max_mean().mean == new_aa.min_max_mean().mean
+
   mam = get_random_structure_and_map(use_static_structure = True)
 
   map_data_orig   = mam.mm.map_data().deep_copy()
