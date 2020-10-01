@@ -4132,7 +4132,7 @@ class run_fsc_as_class:
            map_id_2 = map_id_2_use,
            n_bins=self.box_info.n_bins,
            d_min = self.box_info.minimum_resolution)
-        except Exception, e:
+        except Exception as e:
            weights_in_shells = None # ignore it. Happens if not enough data
         if weights_in_shells:
           xyz_list.append(tuple(col(xyz)+col(offset) ))
