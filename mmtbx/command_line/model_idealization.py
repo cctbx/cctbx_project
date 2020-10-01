@@ -501,8 +501,7 @@ class model_idealization():
 
   def _update_model_from_model_h(self):
     self.model.set_sites_cart(
-        sites_cart = self.model_h.get_hierarchy().select(~self.model_h.get_hd_selection()).atoms().extract_xyz(),
-        update_grm = True)
+      sites_cart = self.model_h.get_hierarchy().select(~self.model_h.get_hd_selection()).atoms().extract_xyz())
     self.model.set_sites_cart_from_hierarchy(multiply_ncs=True)
 
   def idealize_rotamers(self):
