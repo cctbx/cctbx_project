@@ -151,6 +151,12 @@ refiner {
     spectra1 = [-0.95, 1.05]
       .type = floats(size=2)
       .help = range of values for multiplicative Lambda correction
+    ucell_edge_percentage = None
+      .type = float
+      .help = jitter percentage for unit cell edge
+    ucell_angle_deviation = None
+      .type = float
+      .help = absolute deviation for unit cell angle
   }
   compute_image_model_correlation = False
     .type = bool

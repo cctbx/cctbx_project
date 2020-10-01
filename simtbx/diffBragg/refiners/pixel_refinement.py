@@ -30,6 +30,10 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     run_on_init = False
 
     def __init__(self):
+        self.ucell_maxs = None
+        self.ucell_mins = None
+        #self.ucell_inits = None #{0: [79.1, 38.2]} # deprecated, just uses UCELL MANAGERS now
+        self.use_ucell_ranges = False
         self.init_R1 = -1
         self.save_model = False
         self.refine_with_psf = False
@@ -81,7 +85,6 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.fcell_sigma_scale = 0.005
         self.fcell_resolution_bin_Id = None
         self.big_dump = False
-        #self.ucell_inits = {0: [79.1, 38.2]} # deprecated, just uses UCELL MANAGERS now 
         self.m_init = {0: 10}  # TODO make setting these properties a requirement
         self.spot_scale_init = {0: 1} # TODO make setting these properties a requirement
         self.print_all_corr = True

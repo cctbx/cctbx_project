@@ -41,6 +41,7 @@ from numpy import sqrt as SQRT
 from numpy import array as ARRAY
 from numpy import pi as PI
 from numpy import allclose as ALL_CLOSE
+from simtbx.diffBragg.refiners.parameters import RangedParameter
 from json import dump as JSON_DUMP
 from os import makedirs as MAKEDIRS
 from os.path import exists as EXISTS
@@ -422,6 +423,7 @@ class LocalRefiner(PixelRefinement):
         self.bg_b_xstart = {}
         self.bg_c_xstart = {}
         self.bg_coef_xpos = {}
+        self.ucell_params = {}
         if self.I_AM_ROOT:
             print("--1 Setting up per shot parameters")
 
@@ -510,11 +512,20 @@ class LocalRefiner(PixelRefinement):
             else:
                 self.ucell_xstart[i_shot] = _local_pos
                 _local_pos += self.n_ucell_param
+                self.ucell_params[i_shot] = []
                 for i_cell in range(self.n_ucell_param):
                     if self.rescale_params:
                         self.Xall[self.ucell_xstart[i_shot] + i_cell] = 1  #self.UCELL_MAN[i_shot].variables[i_cell]
+                        uc_param = RangedParameter()
+                        if self.use_ucell_ranges:
+                            uc_param.init = self.ucell_inits[i_shot][i_cell]
+                            uc_param.sigma = self.ucell_sigmas[i_cell]
+                            uc_param.maxval = self.ucell_maxs[i_shot][i_cell]
+                            uc_param.minval = self.ucell_mins[i_shot][i_cell]
+                            self.ucell_params[i_shot].append(uc_param)
                     else:
                         self.Xall[self.ucell_xstart[i_shot] + i_cell] = self.UCELL_MAN[i_shot].variables[i_cell]
+
             # set refinement flags
             if self.refine_Bmatrix:
                 for i_cell in range(self.n_ucell_param):
@@ -1017,9 +1028,13 @@ class LocalRefiner(PixelRefinement):
         all_p = []
         for i in range(self.n_ucell_param):
             if self.rescale_params:
-                sig = self.ucell_sigmas[i]
-                init = self.ucell_inits[i_shot][i]
-                p = sig*(self.Xall[self.ucell_xstart[i_shot]+i] - 1) + init
+                x = self.Xall[self.ucell_xstart[i_shot]+i]
+                if self.use_ucell_ranges:
+                    p = self.ucell_params[i_shot][i].get_val(x)
+                else:
+                    sig = self.ucell_sigmas[i]
+                    init = self.ucell_inits[i_shot][i]
+                    p = sig*(self.Xall[self.ucell_xstart[i_shot]+i] - 1) + init
             else:
                 p = self.Xall[self.ucell_xstart[i_shot]+i]
             all_p.append(p)
@@ -1858,8 +1873,13 @@ class LocalRefiner(PixelRefinement):
         for i_ucell in range(self.n_ucell_param):
             d = self.ucell_dI_dtheta[i_ucell]
             if self.rescale_params:
-                sigma = self.ucell_sigmas[i_ucell]
-                d = d*sigma
+                if self.use_ucell_ranges:
+                    xpos = self.ucell_xstart[self._i_shot] + i_ucell
+                    xval = self.Xall[xpos]
+                    d = self.ucell_params[self._i_shot][i_ucell].get_deriv(xval, d)
+                else:
+                    sigma = self.ucell_sigmas[i_ucell]
+                    d = d*sigma
             derivs.append(d)
         return derivs
 
