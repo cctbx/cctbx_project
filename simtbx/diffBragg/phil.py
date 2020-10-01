@@ -64,6 +64,11 @@ simulator {
       .type = float
       .help = diameter of the beam in mm
   }
+  detector {
+    force_zero_thickness = False
+      .type = bool
+      .help = if True, then set sensor thickness to 0
+  }
 }
 """
 

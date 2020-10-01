@@ -1114,7 +1114,7 @@ class LocalRefiner(PixelRefinement):
             for i_ncell in range(self.n_ncells_param):
                 val = self.Xall[self.ncells_xstart[i_shot] + i_ncell]
                 if self.rescale_params:
-                    sig = self.m_sigma
+                    sig = self.m_sigma[i_ncell]
                     init = self.m_init[i_shot][i_ncell]
                     val = np_exp(sig * (val - 1)) * (init - 3) + 3
                 else:
@@ -1911,7 +1911,10 @@ class LocalRefiner(PixelRefinement):
             thetas = self._get_m_val(self._i_shot)  # mosaic parameters "m"
             for i_ncell in range(self.n_ncells_param):
                 theta_minus_three = thetas[i_ncell] - 3
-                sig = self.m_sigma
+                try:
+                    sig = self.m_sigma[i_ncell]
+                except TypeError:
+                    sig = self.m_sigma
                 if self.rescale_params:
                     # case 3 rescaling
                     try:

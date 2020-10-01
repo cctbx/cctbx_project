@@ -11,6 +11,7 @@ from cctbx.crystal import symmetry
 import numpy as np
 from scipy.ndimage.morphology import binary_dilation
 from simtbx.nanoBragg.utils import ENERGY_CONV
+from dxtbx.model import Detector, Panel
 from scipy import ndimage
 import pylab as plt
 from simtbx.diffBragg.sim_data import SimData
@@ -726,6 +727,23 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
     return kept_rois, panel_ids, tilt_abc, selection_flags
 
 
+def strip_thickenss_from_detector(detector):
+    """warning: this overrides detector hierarchy"""
+    thin_detector = Detector()
+    for i_pan in range(len(detector)):
+        panel = detector[i_pan]
+        panel_dict = panel.to_dict()
+        # NOTE: necessary to set origin and fast/slow because panel.to_dict doesnt care about hierarchy
+        panel_dict["origin"] = panel.get_origin()
+        panel_dict["fast_axis"] = panel.get_fast_axis()
+        panel_dict["slow_axis"] = panel.get_slow_axis()
+        panel_dict["mu"] = 0
+        panel_dict["thickness"] = 0
+        panel_dict["px_mm_strategy"] = {'type': 'SimplePxMmStrategy'}
+        thin_panel = Panel.from_dict(panel_dict)
+        thin_detector.add_panel(thin_panel)
+    return thin_detector
+
 
 def image_data_from_expt(expt):
     iset = expt.imageset
@@ -774,14 +792,17 @@ def simulator_from_expt_and_params(expt, params=None, oversample=0, device_id=0,
 
     # make a simulator instance
     SIM = SimData()
-    SIM.detector = expt.detector
+    if params.simulator.detector.force_zero_thickness:
+        SIM.detector = strip_thickness_from_detector(expt.detector) 
+    else:
+        SIM.detector = expt.detector
 
     # create nanoBragg crystal
     crystal = nanoBragg_crystal()
     crystal.isotropic_ncells = has_isotropic_ncells
     crystal.dxtbx_crystal = expt.crystal
     crystal.thick_mm = 0.1  # hard code a thickness, will be over-written by the scale
-    crystal.Ncells_abc = ncells_abc  #params.simulator.init_ncells_abc
+    crystal.Ncells_abc = tuple(ncells_abc)  #params.simulator.init_ncells_abc
     crystal.n_mos_domains = num_mosaicity_samples
     crystal.mos_spread_deg = mosaicity
     if mtz_name is None:
@@ -897,16 +918,16 @@ def manager_from_crystal(crystal):
     """
 
     a, b, c, al, be, ga = crystal.get_unit_cell().parameters()
-    if a == b and a != c and np.allclose([al, be, ga], [90]*3):
+    if np.isclose(a,b) and not np.isclose(a,c) and np.allclose([al, be, ga], [90]*3):
         manager = TetragonalManager(a=a, c=c)
 
-    elif a != b and b != c and a != c and np.allclose([al, be, ga], [90]*3):
+    elif not np.isclose(a,b) and not np.isclose(b,c) and not np.isclose(a,c) and np.allclose([al, be, ga], [90]*3):
         manager = OrthorhombicManager(a=a, b=b, c=c)
 
-    elif a == b and a != c and np.allclose([al, ga], [90]*2) and np.allclose([be], [120]):
+    elif np.isclose(a,b) and not np.isclose(a,c) and np.allclose([al, be], [90]*2) and np.allclose([ga], [120]):
         manager = HexagonalManager(a=a, c=c)
 
-    elif a != b and b != c and a != c and np.allclose([al, ga], [90]*2) and not np.allclose([be], [120]):
+    elif not np.isclose(a,b) and not np.isclose(b,c) and not np.isclose(a,c) and np.allclose([al, ga], [90]*2) and not np.allclose([be], [120]):
         manager = MonoclinicManager(a=a, b=b, c=c, beta=be*np.pi/180.)
 
     else:
