@@ -85,12 +85,12 @@ def exercise( out = sys.stdout):
 
   new_mm = mmm1.superposed_map_manager_from_other(other=mmm2,
     selection_string="resseq 221:225")
-  assert approx_equal(new_mm.map_map_cc(mmm1.map_manager()),0.994645868918)
+  assert approx_equal(new_mm.map_map_cc(mmm1.map_manager()),0.994645868918,eps=0.01)
   new_mm.write_map('super_221-225.ccp4')
 
   new_mm = mmm1.superposed_map_manager_from_other(other=mmm2,
      working_rt_info = rt_info)
-  assert approx_equal(new_mm.map_map_cc(mmm1.map_manager()),0.994645868918)
+  assert approx_equal(new_mm.map_map_cc(mmm1.map_manager()),0.994645868918,eps=0.01)
   new_mm.write_map('super_221-225.ccp4')
 
   # get a local resolution map (this one should look pretty constant!)
@@ -98,8 +98,9 @@ def exercise( out = sys.stdout):
   model = mmm1.model()
   mmma.remove_model_by_id('model')
   mmmb = mmma.deep_copy()
-  mmma.map_manager().randomize()
-  mmmb.map_manager().randomize()
+
+  mmma.map_manager().randomize(random_seed=23412)
+  mmmb.map_manager().randomize(random_seed=887241)
   assert approx_equal(mmma.map_manager().map_map_cc(mmmb.map_manager()),
     0.40,0.10)
   from iotbx.map_model_manager import map_model_manager
@@ -117,12 +118,20 @@ def exercise( out = sys.stdout):
   cc_after = dc.map_model_cc()
   assert approx_equal((cc_before,cc_after), (0.9, 0.9), eps=0.10)
 
+
+  dc = local_mmm.deep_copy()
+  dc.set_log(sys.stdout)
+  dc.set_model(model)
   dc.local_sharpen(n_bins=15, n_boxes=1)
   cc = dc.map_model_cc()
-  assert approx_equal (cc, 0.90, eps=0.05)
+  assert approx_equal (cc, 0.90, eps=0.1)
+
+  dc = local_mmm.deep_copy()
+  dc.set_model(model)
+  dc.set_log(sys.stdout)
   dc.local_sharpen(n_bins=15, n_boxes=1, mask_map=True)
   cc = dc.map_model_cc()
-  assert approx_equal (cc, 0.90, eps=0.05)
+  assert approx_equal (cc, 0.90, eps=0.1)
 
   # create a mask around density
   dc.create_mask_around_density()

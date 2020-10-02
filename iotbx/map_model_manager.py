@@ -2275,6 +2275,7 @@ class map_model_manager(object):
       mask_map = False,
       mask_expand_radius = 2,
       spectral_scaling = True,
+      half_map_sharpen_before_and_after = True,
       nproc = 1):
 
     '''
@@ -2289,7 +2290,8 @@ class map_model_manager(object):
     assert self.get_map_manager_by_id(map_id_2)
 
     # overall half-map sharpen before and after
-    self.half_map_sharpen(spectral_scaling = spectral_scaling)  # using defaults
+    if half_map_sharpen_before_and_after:
+      self.half_map_sharpen(spectral_scaling = spectral_scaling)
 
     if mask_map:
       print ("Using masked map to obtain scale factors", file = self.log)
@@ -2377,8 +2379,8 @@ class map_model_manager(object):
       new_map_data += weight_mm.map_data() * shell_map_manager.map_data()
     self.map_manager().set_map_data(new_map_data)
 
-    # overall half-map sharpen before and after
-    self.half_map_sharpen(spectral_scaling = spectral_scaling)  # using defaults
+    if half_map_sharpen_before_and_after:
+      self.half_map_sharpen(spectral_scaling = spectral_scaling)
 
   def _remove_scale_factor_info_outside_mask(self,
      scale_factor_info, map_manager):
@@ -3921,7 +3923,6 @@ def get_selections_and_boxes_to_split_model(
       target_for_boxes = target_for_boxes,
       box_cushion = box_cushion,
       get_unique_set_for_boxes = get_unique_set_for_boxes)
-    # Note: box_info.ncs_object is set if we need to propagate
 
     # Select inside boxes without cushion and create cushion too
     box_info = get_selections_from_boxes(
