@@ -2080,16 +2080,20 @@ class map_model_manager(object):
   # Methods for comparing maps, models and calculating FSC values
 
   def half_map_sharpen(self,
-      n_bins = 20,
+      n_bins = 200,
       map_id = 'map_manager',
       map_id_1 = 'map_manager_1',
       map_id_2 = 'map_manager_2',
       return_scale_factors = False,
+      spectral_scaling = True,
       resolution = None,
     ):
     '''
      Scale map_id with scale factors identified from map_id_1 and map_id_2
      Changes the working map_manager
+
+     If spectral_scaling: multiply scale factors by expected amplitude
+       vs resolution
     '''
 
     # Checks
@@ -2125,6 +2129,21 @@ class map_model_manager(object):
       first_half_map_coeffs = first_half_map_coeffs,
       second_half_map_coeffs = second_half_map_coeffs,
      )
+
+    if spectral_scaling:  # multiply data in shell by scale
+      from phenix.autosol.read_amplitude_vs_resolution import \
+         amplitude_vs_resolution
+      avr = amplitude_vs_resolution()
+      f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
+        d_min = d_min).f_array
+      new_target_scale_factors = flex.double()
+      for i_bin, sc in zip(f_array.binner().range_used(),target_scale_factors):
+        d_1, d_2 = f_array.binner().bin_d_range(i_bin)
+        if d_1 < 0: d_1 = d_2
+        local_d_mean =  0.5*(d_1 + d_2)
+        shell_scale = avr.get_scale(d_value = local_d_mean)
+        new_target_scale_factors.append(sc * shell_scale)
+      target_scale_factors = new_target_scale_factors
 
     # Apply the scale factors in shells
     new_map_manager = self._apply_scale_factors_in_shells(
@@ -2255,6 +2274,7 @@ class map_model_manager(object):
       smoothing_radius = None,
       mask_map = False,
       mask_expand_radius = 2,
+      spectral_scaling = True,
       nproc = 1):
 
     '''
@@ -2269,7 +2289,7 @@ class map_model_manager(object):
     assert self.get_map_manager_by_id(map_id_2)
 
     # overall half-map sharpen before and after
-    self.half_map_sharpen()
+    self.half_map_sharpen(spectral_scaling = spectral_scaling)  # using defaults
 
     if mask_map:
       print ("Using masked map to obtain scale factors", file = self.log)
@@ -2358,7 +2378,7 @@ class map_model_manager(object):
     self.map_manager().set_map_data(new_map_data)
 
     # overall half-map sharpen before and after
-    self.half_map_sharpen()
+    self.half_map_sharpen(spectral_scaling = spectral_scaling)  # using defaults
 
   def _remove_scale_factor_info_outside_mask(self,
      scale_factor_info, map_manager):
