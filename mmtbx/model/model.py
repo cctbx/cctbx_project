@@ -219,11 +219,14 @@ class manager(object):
     self.exchangable_hd_groups = []
     self.original_xh_lengths = None
     self.riding_h_manager = None
-    self.header_tls_groups = None
     # for reprocessing. Probably select() will also use...
     self.scattering_dict_info = None
 
     self._ss_annotation = None
+    if(self._model_input is not None):
+      self._ss_annotation = self._model_input.extract_secondary_structure()
+
+
     self.link_records_in_pdb_format = None # Nigel's stuff up to refactoring
     self.all_chain_proxies = None # probably will keep it. Need to investigate
           # 'smart' selections provided by it. If they useless, remove.
@@ -244,6 +247,10 @@ class manager(object):
     self._original_model_format = None
     self._ss_manager = None
     self._site_symmetry_table = None
+
+    self._ter_indices = None
+    if(self._model_input is not None):
+      self._ter_indices = self._model_input.ter_indices()
 
     # sequence data objects
     self._sequence_validation = None
@@ -532,9 +539,6 @@ class manager(object):
     grm = self.get_restraints_manager().geometry
     grm.remove_ramachandran_in_place()
 
-  def get_model_input(self):
-    return self._model_input
-
   def crystal_symmetry(self):
     cs = self._crystal_symmetry
     if(cs is None or cs.is_empty() or cs.is_nonsense()):
@@ -553,13 +557,7 @@ class manager(object):
   def get_monomer_parameters(self):
     return self._monomer_parameters
 
-  def setup_ss_annotation(self, log=null_out()):
-    if self._model_input is not None:
-      self._ss_annotation = self._model_input.extract_secondary_structure()
-
   def get_ss_annotation(self, log=null_out()):
-    if self._ss_annotation is None:
-      self.setup_ss_annotation(log=log)
     return self._ss_annotation
 
   def set_ss_annotation(self, ann):
@@ -1179,8 +1177,7 @@ class manager(object):
       output_cs = True,
       additional_blocks = None,
       align_columns = False,
-      do_not_shift_back = False,
-      keep_original_loops = False):
+      do_not_shift_back = False):
 
     out = StringIO()
     cif = iotbx.cif.model.cif()
@@ -1259,24 +1256,6 @@ class manager(object):
     if self.restraints_manager_available():
       links = grm_geometry.get_cif_link_entries(self.get_mon_lib_srv())
       cif.update(links)
-
-    # preserve original loops if available
-    if keep_original_loops:
-      if hasattr(self._model_input, 'cif_model'):
-        # FIXME: ordering of dict values changes depending on py2/3 this could break
-        original_cif_model = list(self._model_input.cif_model.values())[0]
-        for key in original_cif_model.loop_keys():
-          if key not in cif_block.loop_keys():
-            loop = original_cif_model.get_loop(key)
-            if loop is not None:
-              cif_block.add_loop(loop)
-        for key in original_cif_model.item_keys():
-          if key not in cif_block.item_keys():
-            item = original_cif_model.get_single_item(key)
-            if item is not None:
-              cif_block.add_data_item(key, item)
-      cif_block.sort(key=category_sort_function)
-
     cif.show(out=out, align_columns=align_columns)
     return out.getvalue()
 
@@ -1483,7 +1462,6 @@ class manager(object):
     #
     # Here we do all what is necessary when GRM and all related become available
     #
-    self.extract_tls_selections_from_input()
 
   def set_reference_coordinate_restraints(self,
       ref_model,
@@ -1521,11 +1499,6 @@ class manager(object):
         limit=limit,
         top_out=top_out,
         n_atoms_in_target_model=self.get_number_of_atoms())
-    # for debugging
-    # n_rcr = self.get_restraints_manager().geometry.\
-    #     get_n_reference_coordinate_proxies()
-    # print >> self.log, "  Number of reference coordinate restraints generated:",\
-    #    n_rcr
 
   def set_reference_torsion_restraints(self, ref_model, params=None):
     geometry = self.get_restraints_manager().geometry
@@ -1534,7 +1507,7 @@ class manager(object):
     if params is None:
       params = iotbx.phil.parse(reference_model_str).extract()
       params.reference_model.enabled=True
-    ter_indices = self._model_input.ter_indices()
+    ter_indices = self._ter_indices
     if ter_indices is not None:
       check_for_internal_chain_ter_records(
         pdb_hierarchy=self.get_hierarchy(),
@@ -1562,7 +1535,7 @@ class manager(object):
       log):
     check_for_internal_chain_ter_records(
         pdb_hierarchy = self.get_hierarchy(),
-        ter_indices   = self._model_input.ter_indices())
+        ter_indices   = self._ter_indices)
     ncs_obj = self.get_ncs_obj()
     if ncs_obj is None: return
     geometry = self.get_restraints_manager().geometry
@@ -1824,18 +1797,13 @@ class manager(object):
           table=set_inelastic_form_factors)
     return self.xray_scattering_dict, self.neutron_scattering_dict
 
-  def get_header_tls_selections(self):
-    if "input_tls_selections" not in self.__dict__.keys():
-      self.extract_tls_selections_from_input()
-    return self.input_tls_selections
-
   def get_searched_tls_selections(self, nproc, log):
     if "searched_tls_selections" not in self.__dict__.keys():
       tls_params = find_tls_groups.master_phil.fetch().extract()
       tls_params.nproc = nproc
       self.searched_tls_selections = find_tls_groups.find_tls(
         params=tls_params,
-        pdb_inp=self._model_input,
+        #pdb_inp=self._model_input,
         pdb_hierarchy=self._pdb_hierarchy,
         xray_structure=deepcopy(self._xray_structure),
         return_as_list=True,
@@ -1871,45 +1839,8 @@ class manager(object):
         scattering_type=self.model_statistics_info.get_pdbx_refine_id())
     return cif_block
 
-  def extract_tls_selections_from_input(self):
-    self.input_tls_selections = []
-    acp = self.all_chain_proxies
-    pdb_inp_tls = None
-
-    if self._model_input is not None:
-      pdb_inp_tls = self._model_input.extract_tls_params(self._pdb_hierarchy)
-    elif acp is not None and acp.pdb_inp is not None:
-      pdb_inp_tls = acp.pdb_inp.extract_tls_params(acp.pdb_hierarchy)
-
-    if(pdb_inp_tls and pdb_inp_tls.tls_present):
-      print_statistics.make_header(
-        "TLS group selections from PDB file header", out=self.log)
-      print("TLS group selections:", file=self.log)
-      atom_counts = []
-      for t in pdb_inp_tls.tls_params:
-        try :
-          n_atoms = self.iselection(t.selection_string).size()
-        except AtomSelectionError as e :
-          print("AtomSelectionError:", file=self.log)
-          print(str(e), file=self.log)
-          print("Ignoring PDB header TLS groups", file=self.log)
-          self.input_tls_selections = []
-          return
-        print("  selection string:", file=self.log)
-        print("    %s"%t.selection_string, file=self.log)
-        print("    selects %d atoms"%n_atoms, file=self.log)
-        self.input_tls_selections.append(t.selection_string)
-        atom_counts.append(n_atoms)
-      if(pdb_inp_tls.tls_present):
-        if(pdb_inp_tls.error_string is not None):
-          print("  %s"%pdb_inp_tls.error_string, file=self.log)
-          self.input_tls_selections = []
-      if(0 in atom_counts):
-        msg="""
-  One of TLS selections is an empty selection: skipping TLS infromation found in
-  PDB file header.
-"""
-        print(msg, file=self.log)
+  def get_model_input(self):
+    return self._model_input
 
   def get_riding_h_manager(self, idealize=True, force=False):
     """
@@ -2814,7 +2745,7 @@ class manager(object):
     if self.tls_groups is not None:
       sel_tls = self.tls_groups.select(selection, self.get_number_of_atoms())
     new = manager(
-      model_input                = self._model_input, # any selection here?
+      model_input                = None,
       crystal_symmetry           = self._crystal_symmetry,
       restraint_objects          = self._restraint_objects,
       monomer_parameters         = self._monomer_parameters,

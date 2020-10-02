@@ -705,7 +705,6 @@ def merge_groups_by_connectivity(pdb_hierarchy, xray_structure,
   print()
 
 def find_tls(params,
-              pdb_inp,
               pdb_hierarchy,
               xray_structure,
               return_as_list=False,
@@ -768,14 +767,6 @@ def find_tls(params,
     groups, perms = get_model_partitioning(residues = crs[1],
       secondary_structure_selection = secondary_structure_selection,
       out = out)
-    #
-    #print
-    #selection_arrays = sels_as_selection_arrays(sels = groups)
-    #merge_groups_by_connectivity(
-    #  pdb_hierarchy     = pdb_hierarchy,
-    #  xray_structure    = xray_structure,
-    #  selection_arrays  = selection_arrays)
-    #assert 0
     #
     if(len(perms)==1):
       print("  Whole chain is considered as one TLS group.", file=out)
@@ -851,13 +842,6 @@ def find_tls(params,
       chains_and_atom_selection_strings.append([crs[0],
         permutations_as_atom_selection_string(groups, perm_choice)])
       #
-  if (pdb_inp is not None) and (not ignore_pdb_header_groups):
-    external_tls_selections = external_tls(
-      pdb_inp       = pdb_inp,
-      pdb_hierarchy = pdb_hierarchy,
-      sites_cart    = sites_cart,
-      u_iso         = u_iso,
-      out           = out)
   print_statistics.make_header("SUMMARY", out=out)
   #print "Optimal TLS groups:"
   #for chain_and_permutation in chains_and_permutations:
