@@ -490,7 +490,6 @@ def count_rotatable(selections):
     result += len(s[1])
   return result
 
-
 def fit_rotatable(
       pdb_hierarchy,
       xray_structure,
@@ -534,7 +533,7 @@ def run_fit_rotatable(
       log = None,
       use_h_omit_map = False,
       map_type="2mFo-DFc"):
-  pdb_hierarchy = ref_model.get_hierarchy(sync_with_xray_structure=True)
+  pdb_hierarchy = ref_model.get_hierarchy()
   xrs = fmodel.xray_structure
   rotatable_h_selection = rotatable(
     pdb_hierarchy      = pdb_hierarchy,

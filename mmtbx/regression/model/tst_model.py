@@ -1082,7 +1082,7 @@ def exercise_convert_atom():
   mol.set_sites_cart_from_hierarchy()
   # if the nonbonded type is set correctly, the nonbonded restraints should
   # not push the
-  for atom in mol.get_hierarchy(sync_with_xray_structure=True).atoms():
+  for atom in mol.get_hierarchy().atoms():
     xyz_max = max([ abs(n) for n in atom.xyz])
     assert (xyz_max < 2.5)
   mol = mol.select(flex.size_t([1,2,3,4,5,6]))

@@ -1978,17 +1978,11 @@ class manager(object):
         selection_bool = flags)
       self.set_sites_cart(sites_cart)
 
-  def get_hierarchy(self, sync_with_xray_structure=False):
+  def get_hierarchy(self):
     """
     Accessor for the underlying PDB hierarchy, incorporating optional update of
     properties from the xray_structure attribute.
-
-    :param sync_with_xray_structure: update all properties of the atoms in the
-      hierarchy to agree with the xray_structure scatterers.  Will fail if the
-      scatterer labels do not match the atom labels.
     """
-    if(sync_with_xray_structure and self._xray_structure is not None):
-      self.set_sites_cart_from_xrs() # XXX ABOUT TO REMOVE !!!!!!!!!!!!!!!!!!!!!!!!!!
     return self._pdb_hierarchy
 
   def set_sites_cart_from_hierarchy(self, multiply_ncs=False):
@@ -2009,12 +2003,6 @@ class manager(object):
   def _update_pdb_atoms(self):
     self.pdb_atoms = self._pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
-
-  # XXX ABOUT TO REMOVE !!!!!!!!!!!!!!!!!!!!!!!!!!
-  def set_sites_cart_from_xrs(self):
-    self._pdb_hierarchy.adopt_xray_structure(self._xray_structure)
-    self._update_pdb_atoms()
-    self.model_statistics_info = None
 
   def sync_pdb_hierarchy_with_xray_structure(self):
     # to be deleted.
