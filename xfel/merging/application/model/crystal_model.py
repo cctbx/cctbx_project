@@ -83,13 +83,13 @@ class crystal_model(worker):
     return experiments, reflections
 
   def create_model_from_pdb(self, model_file_path):
-      return self.create_model_from_structure_file(self, model_file_path)
+      return self.create_model_from_structure_file(model_file_path)
 
   def create_model_from_structure_file(self, model_file_path):
 
     if self.mpi_helper.rank == 0:
-      assert model_file_path.endswith(".mtz") or model_file_path.endswith(".cif")
-      if model_file_path.endswith(".mtz"):
+      assert model_file_path[-4:] in [".pdb", ".cif"]
+      if model_file_path.endswith(".pdb"):
         from iotbx import file_reader
         pdb_in = file_reader.any_file(model_file_path, force_type="pdb")
         pdb_in.assert_file_type("pdb")
