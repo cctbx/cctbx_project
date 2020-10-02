@@ -54,6 +54,8 @@ class crystal_model(worker):
         i_model = self.create_model_from_mtz(model_file_path)
       elif model_file_path.endswith(".pdb"):
         i_model = self.create_model_from_pdb(model_file_path)
+      elif model_file_path.endswith(".cif"):
+        i_model = self.create_model_from_structure_file(model_file_path)
 
     # Generate a full miller set. If the purpose is scaling and i_model is available, then the miller set has to be consistent with the model
     miller_set, i_model = self.consistent_set_and_model(i_model=i_model)
@@ -81,12 +83,22 @@ class crystal_model(worker):
     return experiments, reflections
 
   def create_model_from_pdb(self, model_file_path):
+      return self.create_model_from_structure_file(self, model_file_path)
+
+  def create_model_from_structure_file(self, model_file_path):
 
     if self.mpi_helper.rank == 0:
-      from iotbx import file_reader
-      pdb_in = file_reader.any_file(model_file_path, force_type="pdb")
-      pdb_in.assert_file_type("pdb")
-      xray_structure = pdb_in.file_object.xray_structure_simple()
+      assert model_file_path.endswith(".mtz") or model_file_path.endswith(".cif")
+      if model_file_path.endswith(".mtz"):
+        from iotbx import file_reader
+        pdb_in = file_reader.any_file(model_file_path, force_type="pdb")
+        pdb_in.assert_file_type("pdb")
+        xray_structure = pdb_in.file_object.xray_structure_simple()
+      elif model_file_path.endswith(".cif"):
+        from cctbx.xray import structure
+        xs_dict = structure.from_cif(file_path=model_file_path)
+        assert len(xs_dict) == 1, "CIF should contain only one xray structure"
+        xray_structure = list(xs_dict.values())[0]
       out = StringIO()
       xray_structure.show_summary(f=out)
       self.logger.main_log(out.getvalue())
