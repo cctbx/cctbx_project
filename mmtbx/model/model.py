@@ -186,14 +186,11 @@ class manager(object):
       build_grm = False,  # build GRM straight away, without waiting for get_restraints_manager() call
       stop_for_unknowns = True,
       log = None,
-      expand_with_mtrix = True,
-      # for GRM, selections etc. Do not use when creating an object.
-                     xray_structure = None, # remove later
-                     restraints_manager = None, # remove later
-                     tls_groups = None,         # remove later? ! used in def select()
-                     ):
+      expand_with_mtrix = True):
 
-    self._xray_structure = xray_structure
+    self._xray_structure    = None
+    self.tls_groups         = None
+    self.restraints_manager = None
     self._pdb_hierarchy = pdb_hierarchy
     self._model_input = model_input
     self._restraint_objects = restraint_objects
@@ -211,14 +208,11 @@ class manager(object):
     self._processed_pdb_file = None
     self._processed_pdb_files_srv = None
     self._crystal_symmetry = crystal_symmetry
-
-    self.restraints_manager = restraints_manager
     self.refinement_flags = None
     # IAS related, need some cleaning!
     self.ias_manager = None
     self.use_ias = False    # remove later, use presence of ias_manager
                           # somewhat challenging because of ias.build_only parameter in phenix.refine
-    self.tls_groups = tls_groups         # remove later? No action performed on them here
     self._ncs_groups = None
     self._anomalous_scatterer_groups = []
     self.log = log
@@ -2824,13 +2818,14 @@ class manager(object):
       crystal_symmetry           = self._crystal_symmetry,
       restraint_objects          = self._restraint_objects,
       monomer_parameters         = self._monomer_parameters,
-      restraints_manager         = new_restraints_manager,
       expand_with_mtrix          = False,
-      xray_structure             = xrs_new,
       pdb_hierarchy              = new_pdb_hierarchy,
       pdb_interpretation_params  = self._pdb_interpretation_params,
-      tls_groups                 = sel_tls,
       log                        = self.log)
+    new.restraints_manager = new_restraints_manager
+    new._xray_structure    = xrs_new
+    new.tls_groups = sel_tls
+
     if new_riding_h_manager is not None:
       new.riding_h_manager = new_riding_h_manager
     new.get_xray_structure().scattering_type_registry()
