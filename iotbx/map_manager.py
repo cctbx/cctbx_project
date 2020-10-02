@@ -1814,7 +1814,10 @@ class map_manager(map_reader, write_ccp4_map):
       return_params_only = True,
       )
 
-    if symmetry == 'ALL' and ((not ncs_object) or ncs_object.max_operators < 2):
+    space_group_number = None
+    if check_crystal_symmetry and \
+         symmetry == 'ALL' and \
+         ((not ncs_object) or ncs_object.max_operators < 2):
       # See if we can narrow it down looking at intensities at low-res
       d_min = 0.05*self.crystal_symmetry().unit_cell().volume()**0.333
       map_coeffs = self.map_as_fourier_coefficients(d_min=d_min)
@@ -1828,16 +1831,26 @@ class map_manager(map_reader, write_ccp4_map):
       si = symmetry_issues(data)
       cs_possibility = si.xs_with_pg_choice_in_standard_setting
       space_group_number = cs_possibility.space_group_number()
-      if space_group_number and space_group_number > 1:
-        params.reconstruction_symmetry.\
-         must_be_consistent_with_space_group_number=space_group_number
+      if space_group_number < 2:
+        space_group_number = None
 
+    params.reconstruction_symmetry.\
+          must_be_consistent_with_space_group_number = space_group_number
     new_ncs_obj, ncs_cc, ncs_score = run_get_ncs_from_map(params = params,
-      map_data = self.map_data(),
-      crystal_symmetry = self.crystal_symmetry(),
-      out = self.log,
-      ncs_obj = ncs_object
-      )
+        map_data = self.map_data(),
+        crystal_symmetry = self.crystal_symmetry(),
+        out = self.log,
+        ncs_obj = ncs_object)
+    if (space_group_number) and (not new_ncs_obj):
+      # try again without limits
+      params.reconstruction_symmetry.\
+          must_be_consistent_with_space_group_number = None
+      new_ncs_obj, ncs_cc, ncs_score = run_get_ncs_from_map(params = params,
+        map_data = self.map_data(),
+        crystal_symmetry = self.crystal_symmetry(),
+        out = self.log,
+        ncs_obj = ncs_object)
+  
     if new_ncs_obj:
       self._ncs_object = new_ncs_obj
       self._ncs_cc = ncs_cc
