@@ -1850,7 +1850,7 @@ class map_manager(map_reader, write_ccp4_map):
         crystal_symmetry = self.crystal_symmetry(),
         out = self.log,
         ncs_obj = ncs_object)
-  
+
     if new_ncs_obj:
       self._ncs_object = new_ncs_obj
       self._ncs_cc = ncs_cc
