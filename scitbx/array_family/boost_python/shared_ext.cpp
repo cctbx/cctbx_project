@@ -35,7 +35,7 @@ namespace {
     using boost::python::arg;
     typedef return_internal_reference<> rir;
 #if !defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
-    // shared_wrapper<unsigned>::wrap("unsigned"); // replacing with uint32_t
+    shared_wrapper<unsigned>::wrap("unsigned");
 #endif
     shared_wrapper<std::vector<unsigned>, rir>::wrap("stl_vector_unsigned");
     shared_wrapper<std::vector<double>, rir>::wrap("stl_vector_double");

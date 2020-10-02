@@ -3646,10 +3646,8 @@ def exercise_fixed_width_int_types():
 
   # other overflow types
   for itype, maxvalue in zip(
-    [flex.int8, flex.uint8, flex.int16, flex.uint16,
-       flex.int32, flex.uint32, flex.int64, flex.uint64],
-    [0x7f, 0xff, 0x7fff, 0xffff, 0x7fffffff, 0xffffffff,
-       0x7fffffffffffffff, 0xffffffffffffffff]):
+    [flex.int8, flex.uint8, flex.int16, flex.uint16],
+    [0x7f, 0xff, 0x7fff, 0xffff]):
     a = itype([maxvalue])
     try:
       a = itype([maxvalue + 1])
