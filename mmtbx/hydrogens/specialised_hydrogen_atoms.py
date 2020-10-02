@@ -1,9 +1,9 @@
 from __future__ import division
 from scitbx.math import dihedral_angle
 from mmtbx.ligands.ready_set_utils import construct_xyz
-from mmtbx.ligands.ready_set_utils import generate_atom_group_atom_names
-from mmtbx.ligands.ready_set_utils import new_atom_with_inheritance
-from mmtbx.ligands.ready_set_utils import _add_hydrogens_to_atom_group_using_bad
+from mmtbx.ligands.hierarchy_utils import generate_atom_group_atom_names
+from mmtbx.ligands.hierarchy_utils import new_atom_with_inheritance
+from mmtbx.ligands.hierarchy_utils import add_hydrogens_to_atom_group_using_bad
 
 from cctbx.geometry_restraints.linking_class import linking_class
 origin_ids = linking_class()
