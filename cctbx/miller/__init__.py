@@ -673,13 +673,30 @@ class set(crystal.symmetry):
   def min_max_d_star_sq(self):
     return self.unit_cell().min_max_d_star_sq(self.indices())
 
-  def d_max_min(self):
+  def d_max_min(self, d_max_is_highest_defined_if_infinite = False):
     """
     Low- and high-resolution limits.
     :returns: Python tuple of floats
+    Modified 2020-10-02 to allow return of maximum defined instead of -1
+        if F000 present
     """
-    return tuple([uctbx.d_star_sq_as_d(d_star_sq)
-      for d_star_sq in self.min_max_d_star_sq()])
+    if d_max_is_highest_defined_if_infinite:
+      (d_max,d_min) = tuple([uctbx.d_star_sq_as_d(d_star_sq)
+        for d_star_sq in self.min_max_d_star_sq()])
+      if d_max < 0:  # (0,0,0) is present
+        indices_copy = list(self.indices())
+        index = indices_copy.index((0,0,0))
+        new_indices = flex.miller_index(
+          indices_copy[:index] + indices_copy[index+1:])
+        d_max_d_star_sq,d_min_d_star_sq= self.unit_cell(
+             ).min_max_d_star_sq(new_indices)
+        (d_max, d_min )= (
+          uctbx.d_star_sq_as_d(d_max_d_star_sq),
+          uctbx.d_star_sq_as_d(d_min_d_star_sq))
+      return (d_max, d_min)
+    else: # usual
+      return tuple([uctbx.d_star_sq_as_d(d_star_sq)
+        for d_star_sq in self.min_max_d_star_sq()])
 
   def index_span(self):
     return index_span(self.indices())

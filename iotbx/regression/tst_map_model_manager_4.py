@@ -111,6 +111,23 @@ def exercise( out = sys.stdout):
 
   dc = local_mmm.deep_copy()
   dc.set_log(sys.stdout)
+  dc.set_model(model)
+  cc_before = dc.map_model_cc()
+  dc.model_sharpen(n_bins=15)
+  cc = dc.map_model_cc()
+  assert approx_equal ((cc_before,cc), (0.93,0.92), eps =0.01)
+  model_sharpened_mm = dc.map_manager()
+
+  dc = local_mmm.deep_copy()
+  dc.set_log(sys.stdout)
+  dc.add_map_manager_by_id(model_sharpened_mm,'external_map')
+  cc_before = dc.map_map_cc(map_id='map_manager',other_map_id='external_map')
+  dc.external_sharpen(n_bins=15,map_id_external_map='external_map')
+  cc = dc.map_map_cc(map_id='map_manager',other_map_id='external_map')
+  assert approx_equal ((cc_before,cc), (0.95,0.99),eps=0.01)
+
+  dc = local_mmm.deep_copy()
+  dc.set_log(sys.stdout)
   model.set_b_iso(flex.double(model.get_sites_cart().size(),0))
   dc.set_model(model)
   cc_before = dc.map_model_cc()

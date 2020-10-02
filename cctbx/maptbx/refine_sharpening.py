@@ -188,14 +188,15 @@ def get_model_map_coeffs_normalized(pdb_inp=None,
    resolution=None,
    n_bins=None,
    target_b_iso_model_scale=0,
+   target_b_iso_ratio = 5.9,  # empirical, see params for segment_and_split_map
    out=sys.stdout):
   if not pdb_inp: return None
   if not si:
     from cctbx.maptbx.segment_and_split_map import sharpening_info
     si=sharpening_info(resolution=resolution,
      target_b_iso_model_scale=0,
+     target_b_iso_ratio = target_b_iso_ratio,
      n_bins=n_bins)
-
   # define Wilson B for the model
   if overall_b is None:
     if si.resolution:
@@ -221,7 +222,7 @@ def get_model_map_coeffs_normalized(pdb_inp=None,
 
   from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi,get_b_iso
   model_f_array,model_phases=map_coeffs_as_fp_phi(model_map_coeffs)
-  (d_max,d_min)=f_array.d_max_min()
+  (d_max,d_min)=f_array.d_max_min(d_max_is_highest_defined_if_infinite=True)
   model_f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
 
   # Set overall_b....
@@ -651,9 +652,7 @@ def scale_amplitudes(model_map_coeffs=None,
 
   f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
 
-  (d_max,d_min)=f_array.d_max_min()
-  if d_max < 0:
-    d_max = 1.e+10
+  (d_max,d_min)=f_array.d_max_min(d_max_is_highest_defined_if_infinite=True)
   if not f_array.binner():
     f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
     f_array.binner().require_all_bins_have_data(min_counts=1,
@@ -722,6 +721,7 @@ def apply_target_scale_factors(f_array=None,phases=None,
       "map: %5.1f A**2     After applying scaling: %5.1f A**2" %(
       f_array_b_iso,scaled_f_array_b_iso), file=out)
     new_map_coeffs=scaled_f_array.phase_transfer(phase_source=phases,deg=True)
+    assert new_map_coeffs.size() == f_array.size()
     if return_map_coeffs:
       return new_map_coeffs
 
@@ -841,7 +841,7 @@ class analyze_aniso_object:
 
     assert f_array is not None
     if not d_min:
-      (d_max,d_min)=f_array.d_max_min()
+      (d_max,d_min)=f_array.d_max_min(d_max_is_highest_defined_if_infinite=True)
 
     from cctbx.maptbx.segment_and_split_map import get_b_iso
     b_mean,aniso_scale_and_b=get_b_iso(f_array,d_min=d_min,
@@ -1121,7 +1121,7 @@ def run(map_coeffs=None,
   print("Starting value: %7.2f" %(starting_result), file=out)
 
   if ma:
-    (d_max,d_min)=ma.d_max_min()
+    (d_max,d_min)=ma.d_max_min(d_max_is_highest_defined_if_infinite=True)
     ma.setup_binner(n_bins=n_bins,d_max=d_max,d_min=d_min)
     if normalize_amplitudes_in_resdep:
       print("Normalizing structure factors...", file=out)
