@@ -124,7 +124,7 @@ def exercise( out = sys.stdout):
   cc_before = dc.map_map_cc(map_id='map_manager',other_map_id='external_map')
   dc.external_sharpen(n_bins=15,map_id_external_map='external_map')
   cc = dc.map_map_cc(map_id='map_manager',other_map_id='external_map')
-  assert approx_equal ((cc_before,cc), (0.98,0.88),eps=0.01)
+  assert approx_equal ((cc_before,cc), (0.98,0.99),eps=0.01)
 
   dc = local_mmm.deep_copy()
   dc.set_log(sys.stdout)

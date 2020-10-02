@@ -2090,10 +2090,16 @@ class map_model_manager(object):
   # Methods for sharpening and comparing maps, models and calculating FSC values
 
   def external_sharpen(self,
-      n_bins = 200,
       map_id = 'map_manager',
       map_id_external_map = 'external_map',
       resolution = None,
+      n_bins = None,
+      n_boxes = None,
+      core_box_size = None,
+      box_cushion = None,
+      smoothing_radius = None,
+      local_sharpen = None,
+      nproc = None,
     ):
     '''
      Scale map_id with scale factors identified from map_id vs
@@ -2109,27 +2115,37 @@ class map_model_manager(object):
     print ("Running external map sharpening ", file = self.log)
 
     self.half_map_sharpen(
-      n_bins = n_bins,
       map_id = map_id,
       map_id_1 = map_id,
       map_id_2 = map_id_external_map,
       resolution = resolution,
+      n_bins = n_bins,
+      n_boxes = n_boxes,
+      core_box_size = core_box_size,
+      box_cushion = box_cushion,
+      smoothing_radius = smoothing_radius,
+      nproc = nproc,
+      local_sharpen = local_sharpen,
       spectral_scaling = False,  # required
+      is_external_based = True,  # required
       )
 
   def model_sharpen(self,
-      n_bins = 200,
       map_id = 'map_manager',
       model_id = 'model',
-      spectral_scaling = True,
       resolution = None,
+      n_bins = None,
+      n_boxes = None,
+      core_box_size = None,
+      box_cushion = None,
+      smoothing_radius = None,
+      local_sharpen = None,
+      nproc = None,
     ):
     '''
      Scale map_id with scale factors identified from map_id vs model
      Changes the working map_manager
 
-     If spectral_scaling: multiply scale factors by expected amplitude
-       vs resolution
     '''
 
     # Checks
@@ -2160,25 +2176,37 @@ class map_model_manager(object):
     self.add_map_manager_by_id(model_map_manager,map_id_model_map)
 
     self.half_map_sharpen(
-      n_bins = n_bins,
       map_id = map_id,
       map_id_1 = map_id,
       map_id_2 = map_id_model_map,
       resolution = resolution,
+      n_bins = n_bins,
+      n_boxes = n_boxes,
+      core_box_size = core_box_size,
+      box_cushion = box_cushion,
+      smoothing_radius = smoothing_radius,
+      nproc = nproc,
+      local_sharpen = local_sharpen,
       spectral_scaling = False, # required
       is_model_based = True,  # required
      )
 
   def half_map_sharpen(self,
-      n_bins = 200,
       map_id = 'map_manager',
       map_id_1 = 'map_manager_1',
       map_id_2 = 'map_manager_2',
       spectral_scaling = True,
       resolution = None,
+      n_bins = None,
+      n_boxes = None,
+      core_box_size = None,
+      box_cushion = None,
+      smoothing_radius = None,
+      local_sharpen = None,
+      nproc = None,
       is_model_based = False,
       is_external_based = False,
-      local_sharpen = False,
+      n_bins_default = 200,
     ):
     '''
      Scale map_id with scale factors identified from map_id_1 and map_id_2
@@ -2196,6 +2224,31 @@ class map_model_manager(object):
     assert self.get_map_manager_by_id(map_id)
     assert (self.get_map_manager_by_id(map_id_1) and
        self.get_map_manager_by_id(map_id_2))
+
+    if local_sharpen: #  run local_sharpen on these maps
+      if is_model_based or is_external_based:
+        half_map_sharpen_before_and_after = False
+      else:
+        half_map_sharpen_before_and_after = None
+
+      return self.local_sharpen(
+        map_id_1 = map_id_1,
+        map_id_2 = map_id_2,
+        resolution = resolution,
+        n_bins = n_bins,
+        n_boxes = n_boxes,
+        core_box_size = core_box_size,
+        box_cushion = box_cushion,
+        smoothing_radius = smoothing_radius,
+        spectral_scaling = spectral_scaling,
+        nproc = nproc,
+        half_map_sharpen_before_and_after = half_map_sharpen_before_and_after,
+        is_model_based = is_model_based,
+        is_external_based = is_external_based,
+        )
+
+    if n_bins is None:
+      n_bins = n_bins_default
 
     # Get basic info including minimum_resolution (cutoff for map_coeffs)
     setup_info = self._get_box_setup_info(map_id_1, map_id_2,
@@ -2218,6 +2271,7 @@ class map_model_manager(object):
 
     target_scale_factors = self._get_weights_in_shells(n_bins,
       d_min,
+      map_id = map_id,
       map_id_1 = map_id_1,
       map_id_2 = map_id_2,
       is_model_based = is_model_based,
@@ -2292,6 +2346,7 @@ class map_model_manager(object):
   def _get_weights_in_shells(self,
      n_bins,
      d_min,
+     map_id = 'map_manager',
      map_id_1 = 'map_manager_1',
      map_id_2 = 'map_manager_2',
      scale_using_last = 3,
@@ -2325,7 +2380,8 @@ class map_model_manager(object):
       n_real = self.map_data().all(),
      )
 
-    map_coeffs = self.map_manager().map_as_fourier_coefficients(d_min=d_min)
+    map_coeffs = self.get_map_manager_by_id(map_id
+        ).map_as_fourier_coefficients(d_min=d_min)
     first_half_map_coeffs = self.get_map_manager_by_id(map_id_1
           ).map_as_fourier_coefficients(d_min=d_min)
     second_half_map_coeffs = self.get_map_manager_by_id(map_id_2
@@ -2343,7 +2399,7 @@ class map_model_manager(object):
       first_half_map_coeffs = None
       second_half_map_coeffs = None
       model_map_coeffs = None
-    if is_model_based:
+    elif is_model_based:
       model_map_coeffs = second_half_map_coeffs
       first_half_map_coeffs = None
       second_half_map_coeffs = None
@@ -2351,7 +2407,6 @@ class map_model_manager(object):
     else: # half-map
       external_map_coeffs = None
       model_map_coeffs = None
-
     si = calculate_fsc(
       f_array = f_array,
       map_coeffs = map_coeffs,
@@ -2373,17 +2428,21 @@ class map_model_manager(object):
     return si.target_scale_factors
 
   def local_sharpen(self,
+      map_id  = 'map_manager',
       map_id_1 = 'map_manager_1',
       map_id_2 = 'map_manager_2',
       resolution = None,
-      n_bins = 20,
+      n_bins = None,
       n_boxes = None,
       core_box_size = None,
       box_cushion = None,
       smoothing_radius = None,
       spectral_scaling = True,
-      half_map_sharpen_before_and_after = True,
-      nproc = 1):
+      nproc = None,
+      half_map_sharpen_before_and_after = None,
+      is_model_based = False,
+      is_external_based = False,
+     ):
 
     '''
      Scale map_id with local scale factors identified from map_id_1 and map_id_2
@@ -2392,8 +2451,18 @@ class map_model_manager(object):
     '''
 
     # Checks
+    assert self.get_map_manager_by_id(map_id)
     assert self.get_map_manager_by_id(map_id_1)
     assert self.get_map_manager_by_id(map_id_2)
+
+    if half_map_sharpen_before_and_after is None:
+      half_map_sharpen_before_and_after = True
+
+    if n_bins is None:
+      n_bins = 20
+
+    if nproc is None:
+      nproc = 1
 
     # overall half-map sharpen before and after
     if half_map_sharpen_before_and_after:
@@ -2401,6 +2470,7 @@ class map_model_manager(object):
 
     # Get scale factors vs resolution and location
     scale_factor_info = self.local_fsc(
+      map_id = map_id,
       map_id_1 = map_id_1,
       map_id_2 = map_id_2,
       resolution = resolution,
@@ -2418,12 +2488,13 @@ class map_model_manager(object):
     assert n_bins == scale_factor_info.n_bins # must match
 
     # Get Fourier coefficient for map
-    map_coeffs = self.map_manager().map_as_fourier_coefficients(d_min = d_min)
+    map_coeffs = self.get_map_manager_by_id(map_id
+         ).map_as_fourier_coefficients(d_min = d_min)
 
     f_array_info = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
        d_min = d_min)
-    new_map_data = flex.double(flex.grid(self.map_manager().map_data().all()),
-       0.)
+    new_map_data = flex.double(flex.grid(self.get_map_manager_by_id(map_id
+        ).map_data().all()), 0.)
     # Get map for each shell of resolution
     for i_bin in f_array_info.f_array.binner().range_used():
       scale_value_list = self._get_scale_values_for_bin(
@@ -2439,7 +2510,7 @@ class map_model_manager(object):
       shell_map_manager = self.map_manager(
          ).fourier_coefficients_as_map_manager(shell_map_coeffs)
       new_map_data += weight_mm.map_data() * shell_map_manager.map_data()
-    self.map_manager().set_map_data(new_map_data)
+    self.get_map_manager_by_id(map_id).set_map_data(new_map_data)
 
     if half_map_sharpen_before_and_after:
       self.half_map_sharpen(spectral_scaling = spectral_scaling)
@@ -2471,6 +2542,7 @@ class map_model_manager(object):
     return scale_values
 
   def local_fsc(self,
+      map_id = 'map_manager',
       map_id_1 = 'map_manager_1',
       map_id_2 = 'map_manager_2',
       resolution = None,
@@ -2494,6 +2566,7 @@ class map_model_manager(object):
     '''
 
     # Checks
+    assert self.get_map_manager_by_id(map_id)
     assert self.get_map_manager_by_id(map_id_1)
     assert self.get_map_manager_by_id(map_id_2)
 
@@ -2516,6 +2589,7 @@ class map_model_manager(object):
     box_info.fsc_cutoff = fsc_cutoff
     box_info.n_bins = n_bins
     box_info.return_scale_factors = return_scale_factors
+    box_info.map_id = map_id
     box_info.map_id_1 = map_id_1
     box_info.map_id_2 = map_id_2
 
@@ -3869,6 +3943,7 @@ def get_split_maps_and_models(
     else:
       model_to_keep = None
     if box_info.mask_around_unselected_atoms:  # mask everything we didn't keep
+      # NOTE: only applies mask to map_manager, not any other map_managers
       remaining_model=mmm.model().select(~selection)
       nnn=mmm.deep_copy()
       nnn.set_model(remaining_model)
@@ -3932,7 +4007,7 @@ def get_selections_and_boxes_to_split_model(
   info = get_skip_waters_and_hetero_lines(skip_waters, skip_hetero)
 
   model = map_model_manager.model()
-  map_manager = map_model_manager.map_manager()
+  map_manager = map_model_manager.get_any_map_manager()
 
   # Get the selections
   box_info = group_args(
@@ -4207,7 +4282,8 @@ class run_fsc_as_class:
     value_list = []
     from scitbx.matrix import col
     # offset to map absolute on to self.map_model_manager
-    offset = self.map_model_manager.map_manager().shift_cart()
+    offset = self.map_model_manager.get_map_manager_by_id(self.box_info.map_id
+      ).shift_cart()
 
     for i in range(first_to_use, last_to_use + 1):
       new_box_info = get_split_maps_and_models(
@@ -4217,7 +4293,8 @@ class run_fsc_as_class:
         last_to_use = i)
       mmm = new_box_info.mmm_list[0]
 
-      xyz = mmm.map_manager().absolute_center_cart()
+      xyz = mmm.get_map_manager_by_id(self.box_info.map_id
+         ).absolute_center_cart()
 
       mmm.mask_all_maps_around_edges(soft_mask_radius=self.box_info.resolution)
 
@@ -4229,6 +4306,7 @@ class run_fsc_as_class:
         # Get scaling weights
         try:
           weights_in_shells = mmm._get_weights_in_shells(
+           map_id = self.box_info.map_id,
            map_id_1 = self.box_info.map_id_1,
            map_id_2 = self.box_info.map_id_2,
            n_bins=self.box_info.n_bins,
