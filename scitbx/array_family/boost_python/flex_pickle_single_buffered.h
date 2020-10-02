@@ -1,7 +1,7 @@
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_PICKLE_SINGLE_BUFFERED_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_PICKLE_SINGLE_BUFFERED_H
 
-#include <cinttypes>
+#include <stdint.h>
 #include <boost/python/tuple.hpp>
 #include <boost/python/extract.hpp>
 #include <boost/python/detail/api_placeholder.hpp>

@@ -1,4 +1,4 @@
-#include <cinttypes>
+#include <stdint.h>
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <scitbx/array_family/boost_python/byte_str.h>

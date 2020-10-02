@@ -1,7 +1,7 @@
 #ifndef SCITBX_SERIALIZATION_SINGLE_BUFFERED_H
 #define SCITBX_SERIALIZATION_SINGLE_BUFFERED_H
 
-#include <cinttypes>
+#include <stdint.h>
 #include <scitbx/serialization/base_256.h>
 #include <complex>
 
