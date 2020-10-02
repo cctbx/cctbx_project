@@ -2272,8 +2272,6 @@ class map_model_manager(object):
       core_box_size = None,
       box_cushion = None,
       smoothing_radius = None,
-      mask_map = False,
-      mask_expand_radius = 2,
       spectral_scaling = True,
       half_map_sharpen_before_and_after = True,
       nproc = 1):
@@ -2282,7 +2280,6 @@ class map_model_manager(object):
      Scale map_id with local scale factors identified from map_id_1 and map_id_2
      Changes the working map_manager
 
-     If mask_map, use masked map to obtain scale factors
     '''
 
     # Checks
@@ -2293,54 +2290,10 @@ class map_model_manager(object):
     if half_map_sharpen_before_and_after:
       self.half_map_sharpen(spectral_scaling = spectral_scaling)
 
-    if mask_map:
-      print ("Using masked map to obtain scale factors", file = self.log)
-      map_id_1_masked = 'map_manager_1_masked'
-      map_id_2_masked = 'map_manager_2_masked'
-      map_id_1_masked_outside = 'map_manager_1_masked_outside'
-      map_id_2_masked_outside = 'map_manager_2_masked_outside'
-
-      self.create_mask_around_density()
-      self.expand_mask(mask_expand_radius)
-
-      self.add_map_manager_by_id(
-        self.get_map_manager_by_id(map_id_1).deep_copy(),map_id_1_masked)
-      self.apply_mask_to_map(map_id_1_masked)
-
-      self.add_map_manager_by_id(
-        self.get_map_manager_by_id(map_id_2).deep_copy(),map_id_2_masked)
-      self.apply_mask_to_map(map_id_2_masked)
-
-      self.add_map_manager_by_id(self.get_map_manager_by_id('mask').deep_copy(),
-        'masked_outside')
-      masked_outside = self.get_map_manager_by_id('masked_outside').map_data()
-      masked_outside = 1 - masked_outside
-      self.get_map_manager_by_id('masked_outside').set_map_data(masked_outside)
-
-      self.add_map_manager_by_id(
-        self.get_map_manager_by_id(map_id_1).deep_copy(),
-        map_id_1_masked_outside)
-      self.apply_mask_to_map(
-        map_id_1_masked_outside, mask_id = 'masked_outside')
-
-      self.add_map_manager_by_id(
-        self.get_map_manager_by_id(map_id_2).deep_copy(),
-        map_id_2_masked_outside)
-      self.apply_mask_to_map(
-        map_id_2_masked_outside, mask_id = 'masked_outside')
-
-    else:
-      map_id_1_masked = map_id_1
-      map_id_2_masked = map_id_2
-      map_id_1_masked_outside = None
-      map_id_2_masked_outside = None
-
     # Get scale factors vs resolution and location
     scale_factor_info = self.local_fsc(
-      map_id_1 = map_id_1_masked,  # only masked if masked_outside is present
-      map_id_2 = map_id_2_masked,
-      map_id_1_masked_outside = map_id_1_masked_outside,
-      map_id_2_masked_outside = map_id_2_masked_outside,
+      map_id_1 = map_id_1,
+      map_id_2 = map_id_2,
       resolution = resolution,
       n_bins = n_bins,
       n_boxes = n_boxes,
@@ -2411,8 +2364,6 @@ class map_model_manager(object):
   def local_fsc(self,
       map_id_1 = 'map_manager_1',
       map_id_2 = 'map_manager_2',
-      map_id_1_masked_outside = None,
-      map_id_2_masked_outside = None,
       resolution = None,
       min_bin_width = 20,
       n_bins = 200,
@@ -2431,10 +2382,6 @@ class map_model_manager(object):
       Optionally estimates scale factors vs resolution at each point in map
       to apply to yield a locally-scaled map (return_scale_factors = True).
 
-      If map_id_1_masked and map_id_1_masked are supplied, for points inside
-      the default mask, use map_id_1 and map_id_2, and for points
-      outside the default mask, use map_id_1_masked_outside and
-      map_id_2_masked_outside
     '''
 
     # Checks
@@ -2462,8 +2409,6 @@ class map_model_manager(object):
     box_info.return_scale_factors = return_scale_factors
     box_info.map_id_1 = map_id_1
     box_info.map_id_2 = map_id_2
-    box_info.map_id_1_masked_outside = map_id_1_masked_outside
-    box_info.map_id_2_masked_outside = map_id_2_masked_outside
 
     results = self._run_fsc_in_boxes(
      nproc = nproc,
@@ -4149,12 +4094,6 @@ class run_fsc_as_class:
     from scitbx.matrix import col
     # offset to map absolute on to self.map_model_manager
     offset = self.map_model_manager.map_manager().shift_cart()
-    if self.box_info.map_id_1_masked_outside:
-      mask_data=self.map_model_manager.get_map_manager_by_id('mask').map_data()
-      using_masked_data = True
-    else:
-      mask_data = None
-      using_masked_data = False
 
     for i in range(first_to_use, last_to_use + 1):
       new_box_info = get_split_maps_and_models(
@@ -4165,27 +4104,14 @@ class run_fsc_as_class:
       mmm = new_box_info.mmm_list[0]
 
       xyz = mmm.map_manager().absolute_center_cart()
-      if using_masked_data:
-        site_frac=self.map_model_manager.crystal_symmetry(
-           ).unit_cell().fractionalize(xyz)
-        if mask_data.tricubic_interpolation(site_frac) >= 0.5:
-          # inside mask.  Use map_id_1 and 2 (masked inside)
-          map_id_1_use = self.box_info.map_id_1
-          map_id_2_use = self.box_info.map_id_2
-        else: # outside : use masked_outside
-          map_id_1_use = self.box_info.map_id_1_masked_outside
-          map_id_2_use = self.box_info.map_id_2_masked_outside
-      else:  # not masked
-        map_id_1_use = self.box_info.map_id_1
-        map_id_2_use = self.box_info.map_id_2
 
       mmm.mask_all_maps_around_edges(soft_mask_radius=self.box_info.resolution)
 
       if self.box_info.return_scale_factors:
         try:
           weights_in_shells = mmm._get_weights_in_shells(
-           map_id_1 = map_id_1_use,
-           map_id_2 = map_id_2_use,
+           map_id_1 = self.box_info.map_id_1,
+           map_id_2 = self.box_info.map_id_2,
            n_bins=self.box_info.n_bins,
            d_min = self.box_info.minimum_resolution)
         except Exception as e:
@@ -4195,8 +4121,8 @@ class run_fsc_as_class:
           value_list.append(weights_in_shells)
       else: # usual
         d_min = mmm.map_map_fsc(fsc_cutoff = self.box_info.fsc_cutoff,
-          map_id_1 = map_id_1_use,
-          map_id_2 = map_id_2_use,
+          map_id_1 = self.box_info.map_id_1,
+          map_id_2 = self.box_info.map_id_2,
           n_bins=self.box_info.n_bins).d_min
         if d_min:
           d_min = max(d_min, self.box_info.minimum_resolution)

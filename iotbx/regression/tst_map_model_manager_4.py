@@ -126,13 +126,6 @@ def exercise( out = sys.stdout):
   cc = dc.map_model_cc()
   assert approx_equal (cc, 0.90, eps=0.1)
 
-  dc = local_mmm.deep_copy()
-  dc.set_model(model)
-  dc.set_log(sys.stdout)
-  dc.local_sharpen(n_bins=15, n_boxes=1, mask_map=True)
-  cc = dc.map_model_cc()
-  assert approx_equal (cc, 0.90, eps=0.1)
-
   # create a mask around density
   dc.create_mask_around_density()
   count = dc.get_map_manager_by_id('mask').map_data().count(1)
