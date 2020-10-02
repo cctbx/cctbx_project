@@ -1629,7 +1629,7 @@ def write_mtz_file(fmodel_total, raw_data, raw_flags, prefix, params):
   return prefix + ".mtz"
 
 def is_amber_refinement(params):
-  if getattr(params, 'amber'): return params.amber.use_amber
+  if getattr(params, 'amber', False): return params.amber.use_amber
   return params.ensemble_refinement.amber.use_amber
 
 #-----------------------------------------------------------------------
