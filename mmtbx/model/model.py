@@ -289,7 +289,7 @@ class manager(object):
           self._pdb_hierarchy.flip_symmetric_amino_acids()
     # Move this away from constructor
     self._update_atom_selection_cache()
-    self._update_pdb_atoms()
+    self.get_hierarchy().atoms().reset_i_seq()
 
     if not self.all_chain_proxies and self._processed_pdb_file:
       self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
@@ -299,9 +299,6 @@ class manager(object):
       self.setup_restraints_manager()
 
     # do xray_structure
-
-    # if self._xray_structure is None:
-    #   self._create_xray_structure()
     if self._xray_structure is not None:
       if self.crystal_symmetry() is None:
         self._crystal_symmetry = self._xray_structure.crystal_symmetry()
@@ -439,8 +436,11 @@ class manager(object):
   def get_sites_cart(self):
     return self.get_hierarchy().atoms().extract_xyz()
 
+  def get_sites_frac(self):
+    return self.get_xray_structure().sites_frac()
 
-
+  def get_atoms(self):
+    return self.get_hierarchy().atoms()
 
   def processed(self):
     fl = self._processed_pdb_file is not None or \
@@ -518,24 +518,9 @@ class manager(object):
     """
     Primarilly for debugging
     """
-    # print "NUMBER OF ATOMS", self.get_number_of_atoms()
-    assert self.pdb_atoms.size() == self.get_xray_structure().scatterers().size()
-    assert self.pdb_atoms.size() == self.get_hierarchy().atoms().size()
-    # finally, check all_chain_proxies
-    if self.all_chain_proxies is not None:
-      self.all_chain_proxies.extract_xray_structure().scatterers().size() == self.pdb_atoms.size()
-    # checking label consistency
-    # for ha, sc in zip(self.get_hierarchy().atoms_with_labels(),
-    #     self.get_xray_structure().scatterers()):
-    #   if ha.id_str() != sc.label and sc.scattering_type[:2] != "IS":
-    #     print "XXXXXXX: '%s' != '%s'" % (ha.id_str(), sc.label)
-    #     assert 0
     s1 = self.get_hierarchy().atoms().extract_xyz()
     s2 = self.get_xray_structure().sites_cart()
     d = flex.sqrt((s1 - s2).dot())
-    assert d<1.e-4
-    s3 = self.pdb_atoms.extract_xyz()
-    d = flex.sqrt((s1 - s3).dot())
     assert d<1.e-4
 
   def set_ramachandran_plot_restraints(self, rama_params):
@@ -774,15 +759,10 @@ class manager(object):
       self._xray_structure = xray.structure(sp, scatterers)
       self._crystal_symmetry = \
         self._xray_structure.crystal_symmetry() # make it identical
-
-      # Put sites_cart in
-      self._xray_structure.set_sites_cart(sites_cart)
+      self.set_sites_cart(sites_cart = sites_cart)
 
       if scattering_table: # if not there, were not any scattering tables before
         self.setup_scattering_dictionaries(scattering_table = scattering_table)
-
-      # This syncs internals and pdb_hierarchy with xray_structure
-      self.sync_pdb_hierarchy_with_xray_structure()
       # GRM is not valid if the symmetry is changed
       self.unset_restraints_manager()
 
@@ -834,16 +814,10 @@ class manager(object):
     self.refinement_flags = flags
 
   def get_number_of_atoms(self):
-    return self.pdb_atoms.size()
+    return self.get_hierarchy().atoms().size()
 
   def size(self):
     return self.get_number_of_atoms()
-
-  def get_atoms(self):
-    return self.pdb_atoms
-
-  def get_sites_frac(self):
-    return self.get_xray_structure().sites_frac()
 
   def get_atom_selection_cache(self):
     if self._atom_selection_cache is None:
@@ -868,7 +842,7 @@ class manager(object):
     result = []
     if find_automatically:
       result = anomalous_scatterer_groups.find_anomalous_scatterer_groups(
-        pdb_atoms=self.get_atoms(),
+        pdb_atoms=self.get_hierarchy().atoms(),
         xray_structure=self.get_xray_structure(),
         group_same_element=False,
         out=self.log)
@@ -1839,7 +1813,7 @@ class manager(object):
       scattering_type_registry = self.all_chain_proxies.scattering_type_registry
       if(scattering_type_registry.n_unknown_type_symbols() > 0):
         scattering_type_registry.report(
-          pdb_atoms = self.pdb_atoms,
+          pdb_atoms = self.get_hierarchy().atoms(),
           log = log,
           prefix = "",
           max_lines = None)
@@ -1997,17 +1971,7 @@ class manager(object):
           center_of_coordinates = None)
       self.get_hierarchy().atoms().set_xyz(new_coords)
     self.get_xray_structure().set_sites_cart(self._pdb_hierarchy.atoms().extract_xyz())
-    self._update_pdb_atoms()
-    self.model_statistics_info = None
-
-  def _update_pdb_atoms(self):
-    self.pdb_atoms = self._pdb_hierarchy.atoms()
-    self.pdb_atoms.reset_i_seq()
-
-  def sync_pdb_hierarchy_with_xray_structure(self):
-    # to be deleted.
-    self._pdb_hierarchy.adopt_xray_structure(xray_structure=self._xray_structure)
-    self._update_pdb_atoms()
+    self.get_hierarchy().atoms().reset_i_seq()
     self.model_statistics_info = None
 
   def normalize_adjacent_adp(self, threshold = 20):
@@ -2361,29 +2325,20 @@ class manager(object):
               restraints_manager = self.get_restraints_manager(),
               pdb_hierarchy = self.get_hierarchy(),
               correct_special_position_tolerance = correct_special_position_tolerance,
-              riding_h_manager               = None, # didn't go in original implementation
-              ncs_restraints_group_list      = [], # didn't go in original implementation
-              max_number_of_iterations       = 500,
-              number_of_macro_cycles         = 5,
-              selection                      = sel,
-              bond                           = True,
-              nonbonded                      = sel_pair[1],
-              angle                          = True,
-              dihedral                       = True,
-              chirality                      = True,
-              planarity                      = True,
-              parallelity                    = True,
-              # rmsd_bonds_termination_cutoff  = rmsd_bonds_termination_cutoff,
-              # rmsd_angles_termination_cutoff = rmsd_angles_termination_cutoff,
-              # alternate_nonbonded_off_on     = False, # default
-              # cdl                            = False,
-              # rdl                            = False,
-              # correct_hydrogens              = False,
-              # fix_rotamer_outliers           = True,
-              # allow_allowed_rotamers         = True,
-              # states_collector               = None,
-              log                            = StringIO(),
-              mon_lib_srv                    = self.get_mon_lib_srv())
+              riding_h_manager          = None, # didn't go in original implementation
+              ncs_restraints_group_list = [], # didn't go in original implementation
+              max_number_of_iterations  = 500,
+              number_of_macro_cycles    = 5,
+              selection                 = sel,
+              bond                      = True,
+              nonbonded                 = sel_pair[1],
+              angle                     = True,
+              dihedral                  = True,
+              chirality                 = True,
+              planarity                 = True,
+              parallelity               = True,
+              log                       = StringIO(),
+              mon_lib_srv               = self.get_mon_lib_srv())
           self.set_sites_cart_from_hierarchy()
       sites_cart_mac_after = \
         self._xray_structure.sites_cart().select(not_hd_selection)
@@ -2443,9 +2398,8 @@ class manager(object):
     for i,rg in enumerate(self.extract_water_residue_groups()):
       rg.resseq = iotbx.pdb.resseq_encode(value=i+1)
       rg.icode = " "
-    self._update_pdb_atoms()
+    self.get_hierarchy().atoms().reset_i_seq()
     self._sync_xrs_labels()
-
 
   def add_hydrogens(self, correct_special_position_tolerance,
         element = "H", neutron = False, occupancy=0.01):
@@ -2655,13 +2609,13 @@ class manager(object):
     self.old_refinement_flags = None
     if not build_only: self.use_ias = True
     self.ias_manager = ias.manager(
-                    geometry             = self.restraints_manager.geometry,
-                    pdb_atoms            = self.pdb_atoms,
-                    xray_structure       = self._xray_structure,
-                    fmodel               = fmodel,
-                    params               = ias_params,
-                    file_name            = file_name,
-                    log                  = self.log)
+      geometry             = self.restraints_manager.geometry,
+      pdb_atoms            = self.get_hierarchy().atoms(),
+      xray_structure       = self._xray_structure,
+      fmodel               = fmodel,
+      params               = ias_params,
+      file_name            = file_name,
+      log                  = self.log)
     size_all = self._xray_structure.scatterers().size()
     if(not build_only):
       ias_xray_structure = self.ias_manager.ias_xray_structure
@@ -2718,12 +2672,9 @@ class manager(object):
       residue_names=residue_names,
       chain_id=" ",
       i_seq_start=0,
-      reset_labels=True, # maybe this will allow to drop IS handling in
-      # adopt_xray_structure()
-      )
+      reset_labels=True)
 
   def remove_ias(self):
-    print(">>> Removing IAS...............", file=self.log)
     self.use_ias = False
     ias_selection = self.get_ias_selection()
     if(self.ias_manager is not None):
@@ -2737,7 +2688,7 @@ class manager(object):
       self._xray_structure.scattering_type_registry().show(out=self.log)
       self._pdb_hierarchy = self._pdb_hierarchy.select(
         atom_selection = ~ias_selection)
-      self._update_pdb_atoms()
+      self.get_hierarchy().atoms().reset_i_seq()
 
   def show_rigid_bond_test(self, out=None, use_id_str=False, prefix=""):
     if (out is None): out = sys.stdout
@@ -2750,11 +2701,12 @@ class manager(object):
       sites_cart = sites_cart.select(~ias_selection)
     bond_proxies_simple, asu = self.restraints_manager.geometry.\
         get_all_bond_proxies(sites_cart=sites_cart)
+    atoms = self.get_hierarchy().atoms()
     for proxy in bond_proxies_simple:
       i_seqs = proxy.i_seqs
       i,j = proxy.i_seqs
-      atom_i = self.pdb_atoms[i]
-      atom_j = self.pdb_atoms[j]
+      atom_i = atoms[i]
+      atom_j = atoms[j]
       if (    atom_i.element.strip() not in ["H","D"]
           and atom_j.element.strip() not in ["H","D"]):
         sc_i = scatterers[i]
@@ -2932,6 +2884,7 @@ class manager(object):
     next = "| %5d: %8.3f %6.2f %5s %3s %5s <> %8.3f %6.2f %5s %3s %5s   |"
     sites = self._xray_structure.sites_cart()
     b_isos = self._xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
+    atoms = self.get_hierarchy().atoms()
     for i_seq, selection in enumerate(selections):
       if (isinstance(selection, flex.bool)):
         i_selection = selection.iselection()
@@ -2939,8 +2892,8 @@ class manager(object):
         i_selection = selection
       start = i_selection[0]
       final = i_selection[i_selection.size()-1]
-      first = self.pdb_atoms[start]
-      last  = self.pdb_atoms[final]
+      first = atoms[start]
+      last  = atoms[final]
       first_ag = first.parent()
       first_rg = first_ag.parent()
       last_ag = last.parent()
@@ -2967,7 +2920,6 @@ class manager(object):
     self.update_xrs()
     self._atom_selection_cache = None
     n_old_atoms = self.get_number_of_atoms()
-    self.pdb_atoms = self._pdb_hierarchy.atoms()
     n_new_atoms = self.get_number_of_atoms()
     return n_old_atoms - n_new_atoms
 
@@ -3149,7 +3101,7 @@ class manager(object):
           number=number_of_new_atoms)
       self.restraints_manager.geometry.update_plain_pair_sym_table(
         sites_frac = self._xray_structure.sites_frac())
-    assert self.pdb_atoms.size() == self._xray_structure.scatterers().size()
+    assert self.size() == self._xray_structure.scatterers().size()
     if self.riding_h_manager is not None:
       new_riding_h_manager = self.riding_h_manager.update(
         pdb_hierarchy       = self._pdb_hierarchy,
@@ -3172,7 +3124,7 @@ class manager(object):
     pdb_model = self._pdb_hierarchy.only_model()
     new_chain = iotbx.pdb.hierarchy.chain(id=chain_id)
     orth = new_xray_structure.unit_cell().orthogonalize
-    n_seq = self.pdb_atoms.size()
+    n_seq = self.size()
     i_seq = i_seq_start
     for j_seq, sc in enumerate(new_xray_structure.scatterers()):
       i_seq += 1
@@ -3203,7 +3155,7 @@ class manager(object):
     # part of the model atoms loose their parent(). Not clear why.
     # deep_copy seems to help with it.
     self._pdb_hierarchy = self._pdb_hierarchy.deep_copy()
-    self._update_pdb_atoms()
+    self.get_hierarchy().atoms().reset_i_seq()
     if (reset_labels):
       self._sync_xrs_labels()
     self.all_chain_proxies = None
@@ -3230,7 +3182,7 @@ class manager(object):
     Convert a single atom (usually water) to a different type, including
     adjustment of the xray structure and geometry restraints.
     """
-    atom = self.pdb_atoms[i_seq]
+    atom = self.get_hierarchy().atoms()[i_seq]
     atom.name = atom_name
     atom.element = "%2s" % element.strip()
     assert (atom.element.strip() == element)
@@ -3304,10 +3256,10 @@ class manager(object):
       nonbonded_type=element,
       charge=charge)
     self._xray_structure.discard_scattering_type_registry()
-    assert self.pdb_atoms.size() == self._xray_structure.scatterers().size()
+    assert self.size() == self._xray_structure.scatterers().size()
     self._sync_xrs_labels()
     self.set_xray_structure(self._xray_structure)
-    self._update_pdb_atoms()
+    self.get_hierarchy().atoms().reset_i_seq()
     return atom
 
   def scale_adp(self, scale_max, scale_min):
@@ -3572,7 +3524,7 @@ class manager(object):
     if ssa is not None:
       ssa.multiply_to_asu_2(chain_ids_match_dict)
       self.set_ss_annotation(ssa)
-    self._update_pdb_atoms()
+    self.get_hierarchy().atoms().reset_i_seq()
     self._xray_structure = None
     self._all_chain_proxies = None
     self._update_atom_selection_cache()
