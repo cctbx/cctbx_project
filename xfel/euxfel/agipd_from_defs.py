@@ -443,7 +443,6 @@ class Ruleset(Agipd2nexus):
                              nxtype=NxType.field, dtype='f', attrs={'units': 'angstrom'}),
             '/entry/instrument/beam/total_flux':
                 NexusElement(full_path='/entry/instrument/beam/total_flux',
-                             # value=self.params.nexus_details.total_flux,
                              value=self.get_xgm_data(cxi),
                              nxtype=NxType.field, dtype='f', attrs={'units': 'Hz'}),
             '/entry/instrument/ELE_D0/data': h5py.SoftLink('/entry/data/data'),
@@ -488,12 +487,18 @@ class Ruleset(Agipd2nexus):
 
     def get_xgm_data(self, cxi):
         run_raw = RunDirectory(self.params.xgm_dir)
+        # Photon energy: E = hc/λ
+        hc = 1.9864458571489E-25    # [joule * meter]
+        # wavelength is in ångström, it gives the 1E10 factor
+        pe = hc * 1E10 / self.params.wavelength  # photon energy in joules
         tids = cxi['entry_1/trainId']
         intensity = run_raw.get_array(self.params.xgm_addr, 'data.intensityTD',
                                       extra_dims=['pulseID'])
         xgm_data = intensity[(intensity['trainId'] >= tids[0]) &
-                             (intensity['trainId'] <= tids[-1])][:, :120]
-        return xgm_data
+                             (intensity['trainId'] <= tids[-1])][:, :self.params.xgm_pulse_num]
+        # XGM data is in μJ, it gives the 1E-6 factor
+        # Finally, we normalize this per 220 nanoseconds (2.2E-7)
+        return xgm_data * 1E-6 / pe / 2.2E-7
 
 if __name__ == '__main__':
   nexus_helper = Ruleset(sys.argv[1:])

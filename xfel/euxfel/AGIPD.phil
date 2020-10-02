@@ -11,6 +11,9 @@
     .type = str
     .help = The address of the XGM device within raw data, for example \
             'SPB_XTD9_XGM/XGM/DOOCS:output'
+  xgm_pulse_num = 120
+    .type = int
+    .help = The number of pulses written by XGM, up to 1000
   detector_distance = None
     .type = float
     .help = AGIPD Detector distance
