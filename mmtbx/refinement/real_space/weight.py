@@ -90,12 +90,16 @@ of individual sites.
       if(ro.weight_optimal is not None):
         optimal_weights.append(ro.weight_optimal)
     # select overall best weight
-    mean = flex.mean(optimal_weights)
-    sel  = optimal_weights < mean*3
-    sel &= optimal_weights > mean/3
-    if(sel.count(True)>0):
-      optimal_weights = optimal_weights.select(sel)
-    self.weight = flex.mean_default(optimal_weights, default_weight)
+    sel = flex.sort_permutation(optimal_weights)
+    optimal_weights = optimal_weights.select(sel)
+    self.weight = flex.mean_default(
+      optimal_weights[:optimal_weights.size()//2], default_weight)
+    #mean = flex.mean(optimal_weights)
+    #sel  = optimal_weights < mean*3
+    #sel &= optimal_weights > mean/3
+    #if(sel.count(True)>0):
+    #  optimal_weights = optimal_weights.select(sel)
+    #self.weight = flex.mean_default(optimal_weights, default_weight)
     self.msg_strings.append("overall best weight: %9.4f"%self.weight)
 
   def show(self, log, prefix=""):

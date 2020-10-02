@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-ext = boost.python.import_ext("cctbx_symmetry_search_ext")
+ext = bp.import_ext("cctbx_symmetry_search_ext")
 from cctbx_symmetry_search_ext import ls_with_scale_and_bias
 
 from cctbx import miller

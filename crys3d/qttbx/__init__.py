@@ -14,7 +14,7 @@ from six.moves import zip
 class widget_with_fp_exception_trapping_off_mixin(object):
 
   def show(self):
-    from boost.python import ext
+    from boost_adaptbx.boost.python import ext
     try:
       division_by_zero = ext.is_division_by_zero_trapped()
       invalid = ext.is_invalid_trapped()

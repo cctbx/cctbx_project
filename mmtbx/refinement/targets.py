@@ -6,14 +6,14 @@ else:
   import phaser.phenix_adaptors.sad_target
 from cctbx.array_family import flex
 from cctbx import xray
-import boost.python
+import boost_adaptbx.boost.python as bp
 from libtbx.utils import Sorry, user_plus_sys_time
 from cctbx.eltbx.xray_scattering import wk1995
 from cctbx import adptbx
 from libtbx import adopt_init_args
 
 
-ext = boost.python.import_ext("mmtbx_f_model_ext")
+ext = bp.import_ext("mmtbx_f_model_ext")
 
 time_bulk_solvent_and_scale         = 0.0
 time_mask                           = 0.0

@@ -5,7 +5,7 @@ from cctbx import uctbx
 import cctbx.sgtbx.direct_space_asu
 from cctbx.array_family import flex
 from scitbx.math import minimum_covering_sphere
-import boost.python
+import boost_adaptbx.boost.python as bp
 
 float_cut_plane = crystal.direct_space_asu_float_cut_plane
 float_asu = crystal.direct_space_asu_float_asu
@@ -41,7 +41,7 @@ class direct_space_asu(sgtbx.direct_space_asu.direct_space_asu):
       thickness=thickness,
       relative_thickness=relative_thickness)
 
-@boost.python.inject_into(float_asu)
+@bp.inject_into(float_asu)
 class _():
 
   def add_buffer(self, thickness=None, relative_thickness=None):
@@ -52,7 +52,7 @@ class _():
       thickness = self.unit_cell().volume()**(1/3.)*relative_thickness
     return self._add_buffer(thickness)
 
-@boost.python.inject_into(asu_mappings)
+@bp.inject_into(asu_mappings)
 class _():
 
   def get_rt_mx_ji(self, pair):

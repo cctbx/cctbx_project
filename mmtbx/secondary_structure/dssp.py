@@ -14,10 +14,9 @@ import libtbx.phil
 from libtbx.utils import null_out
 from libtbx import group_args, adopt_init_args
 from six.moves import cStringIO as StringIO
+import operator
 import time
 import sys
-from functools import cmp_to_key
-from past.builtins import cmp
 
 master_phil = libtbx.phil.parse("""
 file_name = None
@@ -459,8 +458,8 @@ class dssp(object):
     return n_atoms
 
   def process_o_n_interaction(self, o_atom, n_atom):
-    import boost.python
-    ext = boost.python.import_ext("mmtbx_dssp_ext")
+    import boost_adaptbx.boost.python as bp
+    ext = bp.import_ext("mmtbx_dssp_ext")
     energy = ext.get_o_n_hbond_energy(O=o_atom, N=n_atom)
     # TODO incorporate angle filtering - need to ask Jane and/or look at
     # Reduce source code for ideas
@@ -582,8 +581,7 @@ class dssp(object):
     t2 = time.time()
     if (self.params.verbosity >= 1):
       print("Time to find bridges: %.3fs" % (t2-t1), file=self.log)
-    cmp_fn = lambda a,b: cmp(a.i_res, b.i_res)
-    bridges.sort(key=cmp_to_key(cmp_fn))
+    bridges.sort(key=operator.attrgetter("i_res"))
     if (self.params.verbosity >= 2):
       for B in bridges :
         B.show(out=self.log)

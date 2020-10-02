@@ -153,6 +153,10 @@ def run(
       type="float",
       help="Multiplies data with the given factor",
       metavar="FLOAT")
+    .option(None, "--write_unmerged",
+      action="store_true",
+      default=False,
+      help="Do not perform any merging of input data")
     .option(None, "--sca",
       action="store",
       type="string",
@@ -288,7 +292,8 @@ def run(
       eliminate_invalid_indices=co.eliminate_invalid_indices)
     if (r_free_flags is not None):
       r_free_flags = r_free_flags.change_basis(cb_op=cb_op)
-  if (not processed_array.is_unique_set_under_symmetry()):
+  if (not processed_array.is_unique_set_under_symmetry()
+      and not co.write_unmerged):
     print("Merging symmetry-equivalent values:")
     merged = processed_array.merge_equivalents()
     merged.show_summary(prefix="  ")
@@ -298,7 +303,8 @@ def run(
     processed_array.show_comprehensive_summary(prefix="  ")
     print()
   if (r_free_flags is not None
-      and not r_free_flags.is_unique_set_under_symmetry()):
+      and not r_free_flags.is_unique_set_under_symmetry()
+      and not co.write_unmerged):
     print("Merging symmetry-equivalent R-free flags:")
     merged = r_free_flags.merge_equivalents()
     merged.show_summary(prefix="  ")
@@ -340,7 +346,8 @@ def run(
     processed_array = processed_array.customized_copy(
       crystal_symmetry=new_crystal_symmetry)
     print()
-    if (not processed_array.is_unique_set_under_symmetry()):
+    if (not processed_array.is_unique_set_under_symmetry()
+        and not co.write_unmerged):
       print("  Merging values symmetry-equivalent under new symmetry:")
       merged = processed_array.merge_equivalents()
       merged.show_summary(prefix="    ")

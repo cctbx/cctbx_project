@@ -1,16 +1,16 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
-import boost.optional # import dependency
+import boost_adaptbx.boost.python as bp
+import boost_adaptbx.boost.optional # import dependency
 from six.moves import range
 # Indeed Boost.Python binding needs boost::optional
 # through scitbx/random/boost_python/random.h
-ext = boost.python.import_ext("scitbx_sparse_ext")
+ext = bp.import_ext("scitbx_sparse_ext")
 from scitbx_sparse_ext import *
 from scitbx.array_family import flex
 import scitbx.random
 scitbx.random.variate.register_module(ext)
 
-@boost.python.inject_into(matrix)
+@bp.inject_into(matrix)
 class _():
 
   def cols(self):

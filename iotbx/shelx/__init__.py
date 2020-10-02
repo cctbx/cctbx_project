@@ -4,8 +4,8 @@ from iotbx.shelx.lexer import *
 from iotbx.shelx.parsers import *
 import iotbx.shelx.writer # implicit import
 
-import boost.python
-ext = boost.python.import_ext("iotbx_shelx_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("iotbx_shelx_ext")
 
 def _cctbx_xray_structure_from(file=None, filename=None,
                                set_grad_flags=True,

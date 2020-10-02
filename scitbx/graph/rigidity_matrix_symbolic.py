@@ -1,24 +1,8 @@
 from __future__ import absolute_import, division, print_function
-import sys
-from six.moves import range
 
-if (getattr(sys, "api_version", 0) >= 1013):
-
-  class dict_with_default_0(dict):
-
-    def __missing__(self, key):
-      return 0
-
-else:
-
-  class dict_with_default_0(dict):
-
-    def __getitem__(self, key):
-      try: return dict.__getitem__(self, key)
-      except KeyError: pass
-      val = 0
-      dict.__setitem__(self, key, val)
-      return val
+class dict_with_default_0(dict):
+  def __missing__(self, key):
+    return 0
 
 def iiexps_mul(a, b):
   result = dict_with_default_0(a)
@@ -27,15 +11,7 @@ def iiexps_mul(a, b):
   return result
 
 def iiexps_as_tuples(iiexps):
-  from past.builtins import cmp
-  from functools import cmp_to_key
-  def cmp_iiexp(a, b):
-    result = cmp(a[0], b[0])
-    if (result != 0): return result
-    return cmp(a[1], b[1])
-  result = list(iiexps.items())
-  result.sort(key=cmp_to_key(cmp_iiexp))
-  return tuple(result)
+  return tuple(sorted(iiexps.items()))
 
 class term(object):
 

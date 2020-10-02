@@ -314,7 +314,7 @@ class model_object:
     if self.score is not None:
        return self.score
 
-    # return None if any stretch of residues from 1 model is shorter than
+    # return -999 if any stretch of residues from 1 model is shorter than
     #  self.minimum_length
     last_id=None
     n=0
@@ -323,12 +323,12 @@ class model_object:
       if self.source_list[i]==last_id:
         n+=1
       elif n < self.minimum_length:
-        return None
+        return -999.
       else:
         n=1
         last_id=self.source_list[i]
     if n>0 and n<self.minimum_length:
-      return None
+      return -999.
 
 
 

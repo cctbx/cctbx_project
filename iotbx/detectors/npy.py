@@ -7,11 +7,21 @@ from scitbx.array_family          import flex
 import six
 from six.moves import cPickle as pickle
 
+def image_dict_to_unicode(data):
+  if not data or six.PY2: return data
+  for key in list(data.keys()): # modifying dict so need list of keys up front or iterator breaks
+    if isinstance(data[key], bytes):
+      data[key] = data[key].decode()
+    if isinstance(key, bytes):
+      data[key.decode()] = data[key]
+      del data[key]
+  return data
+
 class NpyImage(DetectorImageBase):
   def __init__(self, filename, source_data = None):
     DetectorImageBase.__init__(self, filename)
     self.vendortype = "npy_raw"
-    self.source_data = source_data
+    self.source_data = image_dict_to_unicode(source_data)
 
   def readHeader(self, horizons_phil):
     version_control = horizons_phil.distl.detector_format_version
@@ -19,8 +29,7 @@ class NpyImage(DetectorImageBase):
     if self.source_data == None:
       with open(self.filename, "rb") as fh:
         if six.PY3:
-          cspad_data = pickle.load(fh, encoding="bytes")
-          cspad_data = {key.decode("ascii"): value for key, value in cspad_data.items()}
+          cspad_data = image_dict_to_unicode(pickle.load(fh, encoding="bytes"))
         else:
           cspad_data = pickle.load(fh)
     else:

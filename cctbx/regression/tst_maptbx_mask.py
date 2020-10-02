@@ -52,7 +52,8 @@ def exercise_mask():
   from cctbx.maptbx.mask import create_mask_around_atoms
   cm = create_mask_around_atoms(model = mam.model,
      mask_atoms_atom_radius = 3,
-     n_real = mam.mm.map_data().all())
+     n_real = mam.mm.map_data().all(),
+     wrapping = mam.mm.wrapping())
 
   new_mask = cm.mask()
   assert (new_mask.count(0), new_mask.count(1), new_mask.size()) == (31852, 6548, 38400)
@@ -80,7 +81,8 @@ def exercise_mask():
   # Create mask using n_real and check applying mask
   cm = create_mask_around_atoms(model = mam.model,
      mask_atoms_atom_radius = 3,
-     n_real = mam.mm.map_data().all())
+     n_real = mam.mm.map_data().all(),
+     wrapping = mam.mm.wrapping())
   assert mm_orig.map_data().origin() == (0, 0, 0)
 
   new_mm = cm.apply_mask_to_other_map_manager(mm_orig,
@@ -141,6 +143,24 @@ def exercise_mask():
      (orig_map[4322], orig_map[9680], new_map[4322], new_map[9680]),
     (-0.0214128152846, -0.0249896972752, 0.0, -0.0249896972752))
 
+
+  # create zero_boundary_mask
+
+  map_data=mm.map_data()
+  mean=map_data.as_1d().min_max_mean().mean
+  sd=map_data.as_1d().standard_deviation_of_the_sample()
+
+  from cctbx.maptbx import binary_filter
+  bf=binary_filter(map_data,mean+sd).result()
+  direct_mask_mm=mm.customized_copy(map_data=bf)
+
+  map_data=mm.map_data()
+  mean=map_data.as_1d().min_max_mean().mean
+  sd=map_data.as_1d().standard_deviation_of_the_sample()
+
+  manager_mask_mm=mm.binary_filter(mean+sd)
+  mam=map_model_manager(map_manager_1=direct_mask_mm,map_manager_2=manager_mask_mm)
+  assert approx_equal(mam.map_map_cc(map_id='map_manager_1',other_map_id='map_manager_2'),1)
 
 
 if (__name__  ==  "__main__"):

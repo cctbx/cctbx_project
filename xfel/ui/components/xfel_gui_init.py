@@ -97,6 +97,7 @@ class RunSentinel(Thread):
     # one time post for an initial update
     self.post_refresh()
     db = xfel_db_application(self.parent.params)
+    use_ids = self.parent.params.facility.name not in ['lcls']
 
     while self.active:
       # Find the delta
@@ -123,9 +124,14 @@ class RunSentinel(Thread):
         # Sync new runs to rungroups
         for rungroup in db.get_all_rungroups(only_active=True):
           first_run, last_run = rungroup.get_first_and_last_runs()
-          if first_run is not None: first_run = first_run.id
-          if last_run is not None: last_run = last_run.id
-          rungroup.sync_runs(first_run, last_run)
+          # HACK: to get working -- TODO: make nice
+          if use_ids:
+            first_run = first_run.id
+            last_run = last_run.id if last_run is not None else None
+          else:
+            first_run = int(first_run.run)
+            last_run = int(last_run.run) if last_run is not None else None
+          rungroup.sync_runs(first_run, last_run, use_ids=use_ids)
 
         print("%d new runs" % len(unknown_run_runs))
         self.post_refresh()
@@ -477,16 +483,7 @@ class RunStatsSentinel(Thread):
               self.run_statuses.append(job.status)
               found_it = True; break
         if not found_it: self.run_statuses.append('UNKWN')
-    self.reorder()
     t2 = time.time()
-
-  def reorder(self):
-    run_numbers_ordered = sorted(self.run_numbers)
-    order = [self.run_numbers.index(rn) for rn in run_numbers_ordered]
-    self.run_numbers = run_numbers_ordered
-    self.stats = [self.stats[i] for i in order]
-    self.run_tags = [self.run_tags[i] for i in order]
-    self.run_statuses = [self.run_statuses[i] for i in order]
 
   def get_xtc_process_params_for_run(self, trial, rg, run):
     params = {}
@@ -684,16 +681,6 @@ class SpotfinderSentinel(Thread):
         for job in jobs:
           if job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id:
             self.run_statuses.append(job.status)
-    self.reorder()
-
-
-  def reorder(self):
-    run_numbers_ordered = sorted(self.run_numbers)
-    order = [self.run_numbers.index(rn) for rn in run_numbers_ordered]
-    self.run_numbers = run_numbers_ordered
-    self.stats = [self.stats[i] for i in order]
-    self.run_tags = [self.run_tags[i] for i in order]
-    self.run_statuses = [self.run_statuses[i] for i in order]
 
   def plot_stats_static(self):
     from xfel.ui.components.spotfinder_plotter import plot_multirun_spotfinder_stats
@@ -1031,37 +1018,43 @@ class MainWindow(wx.Frame):
 
     # Toolbar
     self.toolbar = self.CreateToolBar(wx.TB_TEXT)
-    self.tb_btn_quit = self.toolbar.AddLabelTool(wx.ID_EXIT,
+    self.tb_btn_quit = self.toolbar.AddTool(wx.ID_EXIT,
                        label='Quit',
                        bitmap=wx.Bitmap('{}/32x32/exit.png'.format(icons)),
+                       bmpDisabled=wx.NullBitmap,
                        shortHelp='Quit',
                        longHelp='Exit CCTBX.XFEL')
     self.toolbar.AddSeparator()
-    self.tb_btn_watch_new_runs = self.toolbar.AddLabelTool(wx.ID_ANY,
+    self.tb_btn_watch_new_runs = self.toolbar.AddTool(wx.ID_ANY,
                                  label='Watch for new runs',
                                  bitmap=wx.Bitmap('{}/32x32/quick_restart.png'.format(icons)),
+                                 bmpDisabled=wx.NullBitmap,
                                  shortHelp='Watch for new runs',
                                  longHelp='Watch for new runs')
-    self.tb_btn_auto_submit = self.toolbar.AddLabelTool(wx.ID_ANY,
+    self.tb_btn_auto_submit = self.toolbar.AddTool(wx.ID_ANY,
                               label='Auto-submit jobs',
                               bitmap=wx.Bitmap('{}/32x32/play.png'.format(icons)),
+                              bmpDisabled=wx.NullBitmap,
                               shortHelp='Auto-submit jobs',
                               longHelp='Auto-submit all pending jobs')
     self.toolbar.AddSeparator()
-    #self.tb_btn_calibrate = self.toolbar.AddLabelTool(wx.ID_ANY,
+    #self.tb_btn_calibrate = self.toolbar.AddTool(wx.ID_ANY,
     #                    label='Calibration',
     #                    bitmap=wx.Bitmap('{}/32x32/calib.png'.format(icons)),
+    #                    bmpDisabled=wx.NullBitmap,
     #                    shortHelp='Calibration',
     #                    longHelp='Detector geometry calibration')
     #self.toolbar.AddSeparator()
-    self.tb_btn_settings = self.toolbar.AddLabelTool(wx.ID_ANY,
+    self.tb_btn_settings = self.toolbar.AddTool(wx.ID_ANY,
                         label='Settings',
                         bitmap=wx.Bitmap('{}/32x32/settings.png'.format(icons)),
+                        bmpDisabled=wx.NullBitmap,
                         shortHelp='Settings',
                         longHelp='Database, user and experiment settings')
-    self.tb_btn_zoom = self.toolbar.AddLabelTool(wx.ID_ANY,
+    self.tb_btn_zoom = self.toolbar.AddTool(wx.ID_ANY,
                                                  label='Large text',
                                                  bitmap=wx.Bitmap('{}/32x32/search.png'.format(icons)),
+                                                 bmpDisabled=wx.NullBitmap,
                                                  shortHelp='Change text size',
                                                  longHelp='Change text size for plots')
 
@@ -1569,7 +1562,7 @@ class TrialsTab(BaseTab):
     self.refresh_trials()
 
   def refresh_trials(self):
-    self.trial_sizer.Clear(deleteWindows=True)
+    self.trial_sizer.Clear(delete_windows=True)
     self.all_trials = self.main.db.get_all_trials()
     for trial in self.all_trials:
       if self.show_active_only:
@@ -1798,7 +1791,7 @@ class JobsTab(BaseTab):
         for i in range(self.job_list.GetItemCount()):
           if self.job_list.GetItemData(i) == job.id:
             for k, item in enumerate(self.data[job.id]):
-              self.job_list.SetStringItem(i, k, item)
+              self.job_list.SetItem(i, k, item)
             found_it = True
             break
         if found_it: continue
@@ -2028,7 +2021,7 @@ class SpotfinderTab(BaseTab):
         self.static_bitmap.Destroy()
       img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
       self.static_bitmap = wx.StaticBitmap(
-        self.spotfinder_panel, wx.ID_ANY, wx.BitmapFromImage(img))
+        self.spotfinder_panel, wx.ID_ANY, wx.Bitmap(img))
       self.spotfinder_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
       self.spotfinder_panel.SetSizer(self.spotfinder_sizer)
       self.spotfinder_panel.Layout()
@@ -2225,7 +2218,7 @@ class RunStatsTab(SpotfinderTab):
                         flag=wx.EXPAND | wx.ALL, border=10)
 
     self.static_bitmap = wx.StaticBitmap(
-      self.runstats_panel, wx.ID_ANY)#, wx.BitmapFromImage(img))
+      self.runstats_panel, wx.ID_ANY)#, wx.Bitmap(img))
     self.runstats_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
     self.runstats_panel.SetSizer(self.runstats_sizer)
 
@@ -2255,13 +2248,12 @@ class RunStatsTab(SpotfinderTab):
 
   def onTrialChoice(self, e):
     trial_idx = self.trial_number.ctr.GetSelection()
-    if trial_idx == 0:
-      self.trial_no = None
-      self.trial = None
-      self.run_numbers.ctr.Clear()
-      self.all_runs = []
-      self.selected_runs = []
-    else:
+    self.trial_no = None
+    self.trial = None
+    self.run_numbers.ctr.Clear()
+    self.all_runs = []
+    self.selected_runs = []
+    if trial_idx > 0:
       trial_no = self.trial_number.ctr.GetClientData(trial_idx)
       if trial_no is not None:
         self.trial_no = int(trial_no)
@@ -2300,7 +2292,7 @@ class RunStatsTab(SpotfinderTab):
     #t1 = time.time()
     if self.png is not None:
       img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
-      self.static_bitmap.SetBitmap(wx.BitmapFromImage(img))
+      self.static_bitmap.SetBitmap(wx.Bitmap(img))
       self.runstats_panel.Layout()
       self.Layout()
     #t2 = time.time()
@@ -2596,7 +2588,8 @@ class UnitCellTab(BaseTab):
     if self.trial is not None:
       self.tags = self.trial.tags
       tag_names = [t.name for t in self.tags]
-      self.tag_checklist.ctr.InsertItems(items=tag_names, pos=0)
+      if tag_names:
+        self.tag_checklist.ctr.InsertItems(items=tag_names, pos=0)
     self.refresh_tag_sets()
 
   def onAddTagSet(self, e):
@@ -2615,7 +2608,8 @@ class UnitCellTab(BaseTab):
   def refresh_tag_sets(self):
     self.tag_set_checklist.ctr.Clear()
     tag_set_strings = [str(ts) for ts in self.tag_sets]
-    self.tag_set_checklist.ctr.InsertItems(items = tag_set_strings, pos=0)
+    if tag_set_strings:
+      self.tag_set_checklist.ctr.InsertItems(items = tag_set_strings, pos=0)
 
   def onRemoveTagSet(self, e):
     all_items = self.tag_set_checklist.ctr.GetStrings()
@@ -2644,7 +2638,7 @@ class UnitCellTab(BaseTab):
         self.static_bitmap.Destroy()
       img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
       self.static_bitmap = wx.StaticBitmap(
-        self.unit_cell_panel, wx.ID_ANY, wx.BitmapFromImage(img))
+        self.unit_cell_panel, wx.ID_ANY, wx.Bitmap(img))
       self.unit_cell_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
       self.unit_cell_panel.SetSizer(self.unit_cell_sizer)
       self.unit_cell_panel.Layout()
@@ -2681,7 +2675,7 @@ class DatasetTab(BaseTab):
     #self.refresh_datasets()
 
   def refresh_datasets(self):
-    self.dataset_sizer.Clear(deleteWindows=True)
+    self.dataset_sizer.Clear(delete_windows=True)
     self.all_datasets = self.main.db.get_all_datasets()
     for dataset in self.all_datasets:
       if self.show_active_only:
@@ -2824,7 +2818,7 @@ class MergingStatsTab(BaseTab):
         self.static_bitmap.Destroy()
       img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
       self.static_bitmap = wx.StaticBitmap(
-        self.plots_panel, wx.ID_ANY, wx.BitmapFromImage(img))
+        self.plots_panel, wx.ID_ANY, wx.Bitmap(img))
       self.plots_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
       self.plots_panel.SetSizer(self.plots_sizer)
       self.plots_panel.Layout()
@@ -2848,26 +2842,31 @@ class MergeTab(BaseTab):
 
     self.prime_panel = PRIMEInputWindow(self)
     self.toolbar = wx.ToolBar(self, style=wx.TB_HORZ_TEXT | wx.TB_FLAT)
-    self.tb_btn_def = self.toolbar.AddLabelTool(wx.ID_ANY, label=' Defaults',
+    self.tb_btn_def = self.toolbar.AddTool(wx.ID_ANY, label=' Defaults',
                           bitmap=wx.Bitmap('{}/24x24/def.png'.format(icons)),
+                          bmpDisabled=wx.NullBitmap,
                           shortHelp='Default Settings',
                           longHelp='Generate default PRIME settings')
-    self.tb_btn_load = self.toolbar.AddLabelTool(wx.ID_OPEN, label=' Load PHIL',
+    self.tb_btn_load = self.toolbar.AddTool(wx.ID_OPEN, label=' Load PHIL',
                           bitmap=wx.Bitmap('{}/24x24/open.png'.format(icons)),
+                          bmpDisabled=wx.NullBitmap,
                           shortHelp='Load PHIL file',
                           longHelp='Load PHIL file with PRIME settings')
-    self.tb_btn_save = self.toolbar.AddLabelTool(wx.ID_SAVE, label=' Save PHIL',
+    self.tb_btn_save = self.toolbar.AddTool(wx.ID_SAVE, label=' Save PHIL',
                           bitmap=wx.Bitmap('{}/24x24/save.png'.format(icons)),
+                          bmpDisabled=wx.NullBitmap,
                           shortHelp='Save PHIL file',
                           longHelp='Save PHIL file with PRIME settings')
-    self.tb_btn_cmd = self.toolbar.AddLabelTool(wx.ID_ANY, label=' Command',
+    self.tb_btn_cmd = self.toolbar.AddTool(wx.ID_ANY, label=' Command',
                           bitmap=wx.Bitmap('{}/24x24/term.png'.format(icons)),
+                          bmpDisabled=wx.NullBitmap,
                           shortHelp='PRIME Command',
                           longHelp='Output PRIME command to stdout')
     self.toolbar.EnableTool(self.tb_btn_cmd.GetId(), False)
     self.toolbar.AddSeparator()
-    self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label=' Run PRIME',
+    self.tb_btn_run = self.toolbar.AddTool(wx.ID_ANY, label=' Run PRIME',
                           bitmap=wx.Bitmap('{}/24x24/run.png'.format(icons)),
+                          bmpDisabled=wx.NullBitmap,
                           shortHelp='Run PRIME',
                           longHelp='Scale, merge and post-refine with PRIME')
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
@@ -2973,7 +2972,8 @@ class MergeTab(BaseTab):
           tag_ids.append(tag.id)
           self.tag_names.append(tag.name)
     self.tag_title.SetLabel('Tags for trial {}:'.format(self.trial.trial))
-    self.tag_list.ctr.InsertItems(items=self.tag_names, pos=0)
+    if self.tag_names:
+      self.tag_list.ctr.InsertItems(items=self.tag_names, pos=0)
 
   def find_trials(self):
     all_db_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
@@ -3299,7 +3299,7 @@ class TrialPanel(wx.Panel):
     rblocksel_dlg.Destroy()
 
   def refresh_trial(self):
-    self.block_sizer.DeleteWindows()
+    self.block_sizer.Clear(delete_windows=True)
     self.active_blocks = self.trial.rungroups
     for block in self.active_blocks:
       self.draw_block_button(block)
@@ -3410,7 +3410,7 @@ class DatasetPanel(wx.Panel):
     self.dataset_box.SetLabel('Dataset {} {}'.format(self.dataset.dataset_id,
                                self.dataset.name[:min(len(self.dataset.name), 10)]
                                if self.dataset.name is not None else ""))
-    self.task_sizer.DeleteWindows()
+    self.task_sizer.Clear(delete_windows=True)
     tags = self.dataset.tags
     if tags:
       tags_text = "Tags: " + ",".join([t.name for t in tags])

@@ -9,10 +9,10 @@ from mmtbx.validation.ramalyze import res_types
 from scitbx.math import dihedral_angle
 # from scitbx.matrix import _dihedral_angle # python implementation, but on flex arrays
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import zip
 from six.moves import range
-ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+ext = bp.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 
 def get_phi_psi_atoms(hierarchy, omega=False):

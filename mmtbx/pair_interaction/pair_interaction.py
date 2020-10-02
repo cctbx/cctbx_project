@@ -2,20 +2,20 @@ from __future__ import division
 import os
 import time
 import math
-import iotbx
-import iotbx.pdb
 import libtbx.load_env
 from scitbx.array_family import flex
 import numpy as np
-from qrefine.super_cell import expand
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
 
-import boost.python
-ext = boost.python.import_ext("mmtbx_pair_interaction_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("mmtbx_pair_interaction_ext")
 
 dat_path = libtbx.env.find_in_repositories("qrefine")
-qr_unit_tests_data = os.path.join(dat_path,"tests","unit","data_files")
+qr_unit_tests_data = None
+if(dat_path is not None):
+  qr_unit_tests_data = os.path.join(dat_path,"tests","unit","data_files")
+
 A2B=1.8897259885789
 global results
 results=[]
@@ -26,6 +26,7 @@ global wave_functions
 wave_functions = []
 
 def load_wfc(element):
+  element = element.lower()
   folder = libtbx.env.find_in_repositories("mmtbx/pair_interaction")
   for fn in os.listdir(folder):
     if(fn.startswith(element) and fn.endswith(".pkl")):
@@ -130,36 +131,18 @@ def run(ph, core=None):
     #print("interactions(dori) (cpp):", interactions)
     #print("2. interactions got: ",len(interactions))
     interaction_mols=new_core
-
     ###
-    if 0: # From Min's code (Python version of Java code)
-      mol_id_dict=dict(zip(mols,range(1,len(mols)+1)))
-      id_mol_dict=dict(zip(range(1,len(mols)+1),mols))
-      for item in interactions:
-        pair=[mol_id_dict[item[0]],mol_id_dict[item[1]]]
-        if(len(set(pair)&set(new_core))>0):
-          interaction_mols+=pair
-      interaction_mols=list(set(interaction_mols))
-      interaction_atoms=[]
-      for i in range(len(core_atoms)):
-        core_atoms[i]=core_atoms[i].serial_as_int()
-      for mol_id in interaction_mols:
-          mol=id_mol_dict[mol_id]
-          ams=[a.serial_as_int() for a in atoms_group_dict[mol]]
-          interaction_atoms+=ams
-          return(core_atoms,interaction_atoms,interaction_mols)
-    else: # Rationalized version of the above
-      for item in interactions:
-        if(len(set(item).intersection(set(core)))>0):
-          interaction_mols=interaction_mols+list(item)
-      interaction_atoms=[]
-      for i in range(len(core_atoms)):
-        core_atoms[i]=core_atoms[i].serial_as_int()
-      #print("3. interaction mols:",set(interaction_mols))
-      for mol_id in interaction_mols:
-        ams=[a.serial_as_int() for a in atoms_group_dict[mol_id]]
-        interaction_atoms+=ams
-      return(list(set(core_atoms)), list(set(interaction_atoms)), list(set(interaction_mols)))
+    for item in interactions:
+      if(len(set(item).intersection(set(core)))>0):
+        interaction_mols=interaction_mols+list(item)
+    interaction_atoms=[]
+    for i in range(len(core_atoms)):
+      core_atoms[i]=core_atoms[i].i_seq+1
+    #print("3. interaction mols:",set(interaction_mols))
+    for mol_id in interaction_mols:
+      ams=[a.i_seq+1 for a in atoms_group_dict[mol_id]]
+      interaction_atoms+=ams
+    return(list(set(core_atoms)), list(set(interaction_atoms)), list(set(interaction_mols)))
     ###
   else:
     return get_interactions(ph, atom_in_residue)
@@ -210,34 +193,3 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
   #print(interacting_pairs)
   #print("Time ",(time.time()-t0))
   return interacting_pairs
-
-if __name__=="__main__":
-  f=qr_unit_tests_data+"/1yjp.pdb"
-  #print("1. clustering")
-  pdb_inp = iotbx.pdb.input(f)
-  ph = pdb_inp.construct_hierarchy()
-  #print(dir(ph))
-  #print(len(list(ph.residue_groups())))
-  run(ph)
-  #print("2. fragment for residues 1 and 2")
-  pdb_inp = iotbx.pdb.input(f)
-  ph = pdb_inp.construct_hierarchy()
-  #print(run(ph,core=[1,2]))
-  #print("3. clustering within expanded ph")
-  pdb_inp = iotbx.pdb.input(f)
-  cs=pdb_inp.crystal_symmetry()
-  ph = pdb_inp.construct_hierarchy()
-  expansion = expand(
-      pdb_hierarchy        = ph,
-      crystal_symmetry     = cs,
-      select_within_radius = 10.0).ph_super_sphere
-  run(expansion)
-  #print("4. fragment for residues 1 and 2 within expanded ph")
-  pdb_inp = iotbx.pdb.input(f)
-  ph = pdb_inp.construct_hierarchy()
-  cs=pdb_inp.crystal_symmetry()
-  expansion = expand(
-      pdb_hierarchy        = ph,
-      crystal_symmetry     = cs,
-      select_within_radius = 10.0).ph_super_sphere
-  run(expansion,core=[1,2])

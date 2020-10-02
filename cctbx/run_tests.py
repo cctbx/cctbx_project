@@ -4,6 +4,7 @@ import libtbx.load_env
 
 tst_list = [
   "$D/regression/tst_miller_double_step_filtration.py",
+  "$D/regression/tst_map_is_periodic.py",
   "$D/miller/tst_reindexing.py",
   "$D/miller/tst_map_to_asu_isym.py",
   "$D/regression/tst_miller_data_manipulation.py",
@@ -138,6 +139,7 @@ tst_list = [
    "$D/maptbx/tst_atom_radius_as_central_peak_width.py",
    "$D/maptbx/tst_get_percentile_cutoffs.py",
    "$D/regression/tst_maptbx_box.py",
+   "$D/regression/tst_create_models_or_maps.py",
    "$D/regression/tst_sphericity.py",
    "$D/regression/tst_miller_statistics.py",
    "$D/merging/brehm_diederichs.py",

@@ -9,7 +9,7 @@ import math, sys
 import scitbx.math
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
-from boost import rational
+from boost_adaptbx.boost import rational
 from libtbx.math_utils import ifloor
 from six.moves import cStringIO as StringIO
 from six.moves import range

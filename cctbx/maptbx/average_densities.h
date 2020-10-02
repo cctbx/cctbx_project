@@ -81,6 +81,8 @@ af::versa<double, af::c_grid<3> > superpose_maps(
     double gpfx = i/static_cast<double>(nx);
     for (int j = 0; j < ny; j++) {
       double gpfy = j/static_cast<double>(ny);
+      double lb = -1.e-6;
+      double ub = 1+1.e-6;
       for (int k = 0; k < nz; k++) {
         cctbx::fractional<> grid_frac_in_1 = cctbx::fractional<>(gpfx, gpfy,
           k/static_cast<double>(nz));
@@ -90,20 +92,35 @@ af::versa<double, af::c_grid<3> > superpose_maps(
           translation_vector;
         cctbx::fractional<> point_frac_in_2 =
           unit_cell_1.fractionalize(point_cart_in_2);
-        if (! wrapping){
+        if (wrapping){
+          result_map_ref(i,j,k) = tricubic_interpolation(map_data_1,
+            point_frac_in_2);
+        } else { // Separate cases for inside (0,1), very very close, further
           if (
-           point_frac_in_2[0]<0 || point_frac_in_2[0] > 1 ||
-           point_frac_in_2[1]<0 || point_frac_in_2[1] > 1 ||
-           point_frac_in_2[2]<0 || point_frac_in_2[2] > 1 )
-          {
-           result_map_ref(i,j,k) = 0.;
+             point_frac_in_2[0] >= 0 && point_frac_in_2[0] <= 1 &&
+             point_frac_in_2[1] >= 0 && point_frac_in_2[1] <= 1 &&
+             point_frac_in_2[2] >= 0 && point_frac_in_2[2] <= 1 ) {
+            // cleanly inside
+            result_map_ref(i,j,k) = tricubic_interpolation(map_data_1,
+              point_frac_in_2);
+          } else if (
+             point_frac_in_2[0]<lb || point_frac_in_2[0] > ub ||
+             point_frac_in_2[1]<lb || point_frac_in_2[1] > ub ||
+             point_frac_in_2[2]<lb || point_frac_in_2[2] > ub ) {
+            // cleanly outside (further than 1.e-6 outside boundaries of (0,1)
+            result_map_ref(i,j,k) = 0.;
           } else {
+            // just outside. Move to exact boundary
+            for (int i = 0; i < 3; i++) {
+              if (point_frac_in_2[i]>lb && point_frac_in_2[i]< 0 ){
+                point_frac_in_2[i] = 0;}
+              if (point_frac_in_2[i]>1 && point_frac_in_2[i]< ub ){
+                point_frac_in_2[i] = 1;}
+            }
             result_map_ref(i,j,k) = tricubic_interpolation(map_data_1,
               point_frac_in_2);
           }
         }
-        result_map_ref(i,j,k) = tricubic_interpolation(map_data_1,
-          point_frac_in_2);
   }}}
   return result_map;
 }

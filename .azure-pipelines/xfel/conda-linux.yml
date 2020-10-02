@@ -13,15 +13,10 @@ jobs:
 - job: ${{ format('{0}_{1}', parameters.distribution, join('_', parameters.version) ) }}
   pool:
     vmImage: ubuntu-latest
-  timeoutInMinutes: 90
+  timeoutInMinutes: 120
   strategy:
     maxParallel: 2
     matrix:
-      python2.7:
-        CONDA: Linux
-        OS: linux-64
-        PYTHON_VERSION: py27
-        MODULES: ${{ parameters.modules }}
       python3.6:
         CONDA: Linux
         OS: linux-64
@@ -122,6 +117,7 @@ jobs:
          eq(variables['Build.DefinitionName'], 'CI'),
          eq(variables['Build.DefinitionName'], 'CI branch'),
          eq(variables['Build.DefinitionName'], 'XFEL CI'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI branch'),
          eq(variables['Build.DefinitionName'], 'Full'))
     continueOnError: true
 
@@ -135,6 +131,7 @@ jobs:
          eq(variables['Build.DefinitionName'], 'CI'),
          eq(variables['Build.DefinitionName'], 'CI branch'),
          eq(variables['Build.DefinitionName'], 'XFEL CI'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI branch'),
          eq(variables['Build.DefinitionName'], 'Full'))
     continueOnError: true
     failOnStderr: false

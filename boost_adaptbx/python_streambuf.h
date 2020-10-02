@@ -85,7 +85,7 @@ namespace bp = boost::python;
       - the Python side
 
         \code
-          from boost.python import streambuf
+          from boost_adaptbx.boost.python import streambuf
           read_inputs(streambuf(python_file_obj=obj, buffer_size=1024))
         \endcode
 

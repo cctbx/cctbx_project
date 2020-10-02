@@ -34,13 +34,10 @@ Number of blocks: 1
 """ % cbf)
   print("OK")
 
-# unstable test
-tst_list_expected_unstable = [
-  "$D/excercise_compression.py"
-  ]
-
+# unstable test though should now be stable
 tst_list = [
   tst_run,
+  "$D/exercise_compression.py"
   ]
 
 def run():

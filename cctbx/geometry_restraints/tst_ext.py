@@ -2422,12 +2422,6 @@ def exercise_planarity_top_out():
     # assert approx_equal(g, e)
 
 def exercise_proxy_show():
-  if sys.platform.startswith("win") and sys.version_info[:2] < (2,6):
-    # This appears to be a windows-specific bug with string formatting
-    # for python versions prior to 2.6, where the exponent is printed
-    # with 3 digits rather than 2.
-    print("Skipping exercise_proxy_show()")
-    return
   # zeolite AHT
   crystal_symmetry = crystal.symmetry(
     unit_cell=(15.794, 9.206, 8.589, 90, 90, 90),

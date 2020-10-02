@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import scitbx.math
-import boost.rational
+import boost_adaptbx.boost.rational
 import time
 import sys, os
 from six.moves import range
@@ -15,7 +15,7 @@ def compare_with_boost_rational_gcd(label):
           + list(range( 100000-10, 100000+11))
   for a in samples:
     for b in samples:
-      r = boost.rational.gcd(a, b)
+      r = boost_adaptbx.boost.rational.gcd(a, b)
       o = other_gcd(a=a, b=b)
       if (o != r):
         raise RuntimeError(str((a, b, r, o)))

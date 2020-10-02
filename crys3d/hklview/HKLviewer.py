@@ -69,16 +69,18 @@ class SettingsForm(QDialog):
     layout.addWidget(parent.mousesensitxtbox,        0, 4, 1, 1)
     layout.addWidget(parent.Fontsize_labeltxt,       1, 0, 1, 1)
     layout.addWidget(parent.fontspinBox,             1, 4, 1, 1)
-    layout.addWidget(parent.cameraPerspectCheckBox,  2, 0, 1, 1)
-    layout.addWidget(parent.bufsize_labeltxt,        3, 0, 1, 1)
-    layout.addWidget(parent.clearbufbtn,             3, 2, 1, 2)
-    layout.addWidget(parent.bufsizespinBox,          3, 4, 1, 1)
+    layout.addWidget(parent.BrowserFontsize_labeltxt, 2, 0, 1, 1)
+    layout.addWidget(parent.browserfontspinBox,      2, 4, 1, 1)
+    layout.addWidget(parent.cameraPerspectCheckBox,  3, 0, 1, 1)
+    layout.addWidget(parent.bufsize_labeltxt,        4, 0, 1, 1)
+    layout.addWidget(parent.clearbufbtn,             4, 2, 1, 2)
+    layout.addWidget(parent.bufsizespinBox,          4, 4, 1, 1)
 
-    layout.addWidget(parent.ttiplabeltxt,            4, 0, 1, 1)
-    layout.addWidget(parent.ttipClickradio,          4, 1, 1, 1)
-    layout.addWidget(parent.ttipHoverradio,          4, 2, 1, 1)
-    layout.addWidget(parent.ttipalphalabeltxt,       4, 3, 1, 1)
-    layout.addWidget(parent.ttipalpha_spinBox,       4, 4, 1, 1)
+    layout.addWidget(parent.ttiplabeltxt,            5, 0, 1, 1)
+    layout.addWidget(parent.ttipClickradio,          5, 1, 1, 1)
+    layout.addWidget(parent.ttipHoverradio,          5, 2, 1, 1)
+    layout.addWidget(parent.ttipalphalabeltxt,       5, 3, 1, 1)
+    layout.addWidget(parent.ttipalpha_spinBox,       5, 4, 1, 1)
 
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
@@ -144,6 +146,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     self.zmq_context = None
     self.unfeedback = False
+    self.cctbxpythonversion = None
 
     self.mousespeed_labeltxt = QLabel()
     self.mousespeed_labeltxt.setText("Mouse speed:")
@@ -167,6 +170,14 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.Fontsize_labeltxt.setText("Font size:")
     self.fontsize = self.font.pointSize()
 
+    self.browserfontspinBox = QDoubleSpinBox()
+    self.browserfontspinBox.setSingleStep(1)
+    self.browserfontspinBox.setRange(4, 50)
+    self.browserfontspinBox.setValue(self.font.pointSize())
+    self.browserfontspinBox.valueChanged.connect(self.onBrowserFontsizeChanged)
+    self.BrowserFontsize_labeltxt = QLabel()
+    self.BrowserFontsize_labeltxt.setText("Browser font size:")
+    self.browserfontsize = None
 
     self.cameraPerspectCheckBox = QCheckBox()
     self.cameraPerspectCheckBox.setText("Perspective camera")
@@ -201,6 +212,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.ttipalpha_spinBox.valueChanged.connect(self.onTooltipAlphaChanged)
     self.ttipalpha_labeltxt = QLabel()
     self.ttipalpha_labeltxt.setText("Tooltip Opacity:")
+    self.ttip_click_invoke = "hover"
 
     self.settingsform = SettingsForm(self)
     self.webpagedebugform = None
@@ -255,7 +267,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.currentphilstringdict = {}
     self.hklscenes_arrays = []
     self.millerarraylabels = []
-    self.scenearraylabels = []
+    self.scenearraylabeltypes = []
     self.array_infotpls = []
     self.matching_arrays = []
     self.bin_infotpls = None
@@ -320,11 +332,11 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     # omitting name for QWebEngineProfile() means it is private/off-the-record with no cache files
     self.webprofile = QWebEngineProfile(parent=self.BrowserBox)
     self.webpage = QWebEnginePage( self.webprofile, self.BrowserBox)
-    self.webpage.profile().downloadRequested.connect(self.Browser_download_requested)
     if self.devmode:
       if hasattr(self.webpage, "setInspectedPage"): # older versions of Qt5 hasn't got chromium debug kit
         self.webpage.setUrl("chrome://gpu")
         self.webpagedebugform = WebEngineDebugForm(self)
+        self.webpagedebugform.resize( self.window.size())
       else:
         self.webpage.setUrl("https://webglreport.com/")
     else:
@@ -355,7 +367,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getOpenFileName(self.window,
             "Open a reflection file", "",
-            "All Files (*);;MTZ Files (*.mtz);;CIF (*.cif)", "", options)
+            "MTZ Files (*.mtz);;HKL Files (*.hkl);;CIF (*.cif);;SCA Files (*.sca);;All Files (*)", "", options)
     if fileName:
       #self.HKLnameedit.setText(fileName)
       self.window.setWindowTitle("HKL-viewer: " + fileName)
@@ -384,9 +396,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.PhilToJsRender('NGL_HKLviewer.savefilename = "%s"' %fileName )
 
 
-
   def SettingsDialog(self):
     self.settingsform.show()
+    # don't know why valueChanged.connect() method only takes effect from here on
+    self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
 
 
   def ProcessMessages(self):
@@ -414,6 +427,20 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         msg = zlib.decompress(binmsg)
         nan = float("nan") # workaround for "evaluating" any NaN values in the messages received
         msgstr = msg.decode()
+
+        if "cctbx.python.version:" in msgstr:
+          self.cctbxpythonversion = msgstr
+          self.PhilToJsRender("""NGL_HKLviewer.viewer.NGL {
+  fontsize = %d
+  show_tooltips = %s
+}
+""" %(self.browserfontsize, self.ttip_click_invoke) )
+
+          if self.cctbxpythonversion == 'cctbx.python.version: 2':
+            # use NGL's download feature for images since websocket_server fails to handle large streams
+            self.webpage.profile().downloadRequested.connect(self.Browser_download_requested)
+          return
+
         self.infodict = eval(msgstr)
         if self.infodict:
           if self.infodict.get("WebGL_error"):
@@ -430,12 +457,12 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
                 self.currentphilstringdict[k] = v
             self.UpdateGUI()
 
-          if self.infodict.get("hklscenes_arrays"):
-            self.hklscenes_arrays = self.infodict.get("hklscenes_arrays", [])
-            self.scenearraylabels = [ e[3] for e in self.hklscenes_arrays ]
+          if self.infodict.get("scene_array_label_types"):
+            self.scenearraylabeltypes = self.infodict.get("scene_array_label_types", [])
 
           if self.infodict.get("array_infotpls"):
             self.array_infotpls = self.infodict.get("array_infotpls",[])
+            #self.millerarraylabels = [ ",".join(e[0]) for e in self.array_infotpls ]
             self.millerarraylabels = [ e[0] for e in self.array_infotpls ]
 
           if self.infodict.get("bin_data_label"):
@@ -577,13 +604,30 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
             self.millertable.setRowCount(len(self.array_infotpls))
             for n,millarr in enumerate(self.array_infotpls):
               for m,elm in enumerate(millarr):
-                self.millertable.setItem(n, m, QTableWidgetItem(str(elm)))
+                if m == 0:
+                  #label = ",".join(elm)
+                  label = elm
+                  self.millertable.setItem(n, m, QTableWidgetItem(label))
+                else:
+                  self.millertable.setItem(n, m, QTableWidgetItem(str(elm)))
             #self.functionTabWidget.setDisabled(True)
             self.NewFileLoaded = False
 
           if self.NewHKLscenes:
             self.BinDataComboBox.clear()
-            self.BinDataComboBox.addItems(["Resolution"] + self.scenearraylabels )
+            self.BinDataComboBox.addItem("Resolution",  ["''", -1, -1] )
+            self.BinDataComboBox.addItem("Singletons", ["''", -2, -1] )
+            for labels,labeltype,idx,sceneid in self.scenearraylabeltypes:
+              label = ",".join(labels)
+              if labeltype not in  ["iscomplex", "iscomplex_fom"]:
+                self.BinDataComboBox.addItem(label, ["'" + labeltype + "'", idx, sceneid])
+              if labeltype == "hassigmas":
+                self.BinDataComboBox.addItem("Sigmas of " + label, ["'" + labeltype + "'", idx, sceneid])
+              if labeltype == "iscomplex":
+                self.BinDataComboBox.addItem("Phases of " + label, ["'" + labeltype + "'", idx, sceneid])
+                self.BinDataComboBox.addItem("Amplitudes of " + label, ["'" + labeltype + "'", idx, sceneid])
+              #for label in labels:
+              #  self.BinDataComboBox.addItem(label, ["'" + labeltype + "'", idx])
             self.BinDataComboBox.view().setMinimumWidth(self.comboviewwidth)
             #self.BinDataComboBox.setCurrentIndex(-1) # unselect the first item in the list
             self.NewHKLscenes = False
@@ -697,11 +741,13 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.PhilToJsRender('NGL_HKLviewer.viewer.NGL.tooltip_alpha = %f' %val)
 
 
-  def onShowTooltips(self,val):
-    if self.ttipClickradio.isChecked():
+  def onShowTooltips(self, val):
+    if self.ttipClickradio.isChecked() or val=="click":
       self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.show_tooltips = click")
-    if self.ttipHoverradio.isChecked():
+      self.ttip_click_invoke = "click"
+    if self.ttipHoverradio.isChecked() or val=="hover":
       self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.show_tooltips = hover")
+      self.ttip_click_invoke = "hover"
 
 
   def onFontsizeChanged(self, val):
@@ -710,6 +756,11 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.fontsize = val
     self.app.setFont(font);
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
+
+
+  def onBrowserFontsizeChanged(self, val):
+    self.browserfontsize = val
+    self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.fontsize = %d" %val)
 
 
   def onClearTextBuffer(self):
@@ -869,20 +920,17 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.PhilToJsRender("NGL_HKLviewer.viewer.slice_index = %d" %self.sliceindex)
 
 
-  def onBindataComboSelchange(self,i):
+  def onBindataComboSelchange(self, i):
     if self.BinDataComboBox.currentText():
-      if self.BinDataComboBox.currentIndex() > 0:
-        bin_scene_label = str(self.BinDataComboBox.currentIndex()-1)
-      else:
-        bin_scene_label = "Resolution"
-      self.PhilToJsRender("NGL_HKLviewer.bin_scene_label = %s" % bin_scene_label )
+      currentlabel = self.BinDataComboBox.currentText()
+      currentdata = self.BinDataComboBox.currentData()
+      bin_labels_type_idx = str( [currentlabel] + currentdata )
+      self.PhilToJsRender("NGL_HKLviewer.bin_labels_type_idx = %s" % bin_labels_type_idx )
       bin_opacitieslst = []
-      for i in range(self.nbins):
-        bin_opacitieslst.append((1.0, i)) #   ("1.0, %d" %i)
+      for j in range(self.nbins):
+        bin_opacitieslst.append((1.0, j))
       self.bin_opacities = str(bin_opacitieslst)
       self.OpaqueAllCheckbox.setCheckState(Qt.Checked)
-      #self.OpaqueAllCheckbox.setTristate(false)
-      #self.PhilToJsRender('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities)
 
 
   def update_table_opacities(self, allalpha=None):
@@ -1254,9 +1302,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.MillerTableContextMenuHandler(QCursor.pos(), row)
     if self.millertable.mousebutton == QEvent.MouseButtonDblClick:
       # quickly display data with a double click
-      for i,scenelabel in enumerate(self.scenearraylabels):
-        if self.millerarraylabels[row] == scenelabel:
-          self.DisplayData(i, row)
+      for sceneid,(scenelabel,labeltype,arrayid,sceneid) in enumerate(self.scenearraylabeltypes):
+        if row == arrayid:
+          self.DisplayData(sceneid, row)
+          break
 
 
   def onMillerTableitemSelectionChanged(self):
@@ -1268,12 +1317,20 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     # Tag menu items with data being int or a (string, int) tuple.
     # These are being checked for in onMillerTableMenuAction() and appropriate
     # action taken
-    for i,scenelabel in enumerate(self.scenearraylabels):
-      if self.millerarraylabels[row] == scenelabel or self.millerarraylabels[row] + " + " in scenelabel:
-        #print(i, scenelabel)
-        myqa = QAction("Display %s data" %scenelabel, self.window, triggered=self.testaction)
-        myqa.setData((i, row))
-        self.millertablemenu.addAction(myqa)
+    for i,(scenelabel,labeltype,arrayid,sceneid) in enumerate(self.scenearraylabeltypes):
+      scenelabelstr = ",".join(scenelabel)
+      if self.millerarraylabels[row] == scenelabelstr or self.millerarraylabels[row] + " + " in scenelabelstr:
+        if labeltype == "hassigmas":
+          myqa = QAction("Display data of %s" %scenelabelstr, self.window, triggered=self.testaction)
+          myqa.setData((i, row))
+          self.millertablemenu.addAction(myqa)
+          myqa = QAction("Display sigmas of %s" %scenelabelstr, self.window, triggered=self.testaction)
+          myqa.setData((i + 1000, row)) # want to show the sigmas rather than the data if we add 1000
+          self.millertablemenu.addAction(myqa)
+        else:
+          myqa = QAction("Display %s" %scenelabelstr, self.window, triggered=self.testaction)
+          myqa.setData((i, row))
+          self.millertablemenu.addAction(myqa)
     myqa = QAction("Make new data as a function of this data...", self.window, triggered=self.testaction)
     myqa.setData( ("newdata_1", row ))
     self.millertablemenu.addAction(myqa)
@@ -1325,7 +1382,27 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def DisplayData(self, idx, row):
-    self.PhilToJsRender("NGL_HKLviewer.viewer.scene_id = %d" %idx)
+    # want to show the sigmas rather than the data if idx we add 1000
+    if (idx - 1000) >= 0:
+      idx = idx - 1000
+      philstr = """
+      NGL_HKLviewer.viewer
+      {
+        sigma_radius = True
+        sigma_color = True
+        scene_id = %d
+      }
+      """ %idx
+    else:
+      philstr = """
+      NGL_HKLviewer.viewer
+      {
+        sigma_radius = False
+        sigma_color = False
+        scene_id = %d
+      }
+      """ %idx
+    self.PhilToJsRender(philstr)
     if self.fileisvalid:
       self.functionTabWidget.setEnabled(True)
       self.expandAnomalouscheckbox.setEnabled(True)
@@ -1406,7 +1483,16 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
   def onSaveImageBtn(self):
-    self.PhilToJsRender('NGL_HKLviewer.save_image_name = "testimage.png" ')
+    if self.cctbxpythonversion == 'cctbx.python.version: 3': # streaming image over websockets
+      options = QFileDialog.Options()
+      fileName, filtr = QFileDialog.getSaveFileName(self.window,
+              "Save screenshot to file", "",
+              "PNG Files (*.png);;All Files (*)", "", options)
+      if fileName:
+        self.PhilToJsRender('NGL_HKLviewer.save_image_name = "%s" '%fileName)
+    else:
+      self.PhilToJsRender('NGL_HKLviewer.save_image_name = "dummy.png" ')
+      # eventual file name prompted to us by Browser_download_requested(
 
 
   def onDrawReciprocUnitCellBoxClick(self):
@@ -1489,6 +1575,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
 
 def run():
+  #time.sleep(10)
   try:
     import PySide2.QtCore
     Qtversion = str(PySide2.QtCore.qVersion())
@@ -1499,7 +1586,10 @@ def run():
         debugtrue = True
         print("Qt version " + Qtversion)
         # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
-        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
+        if "debug" in e:
+          os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
+        if "devmode" in e:  # --single-process will freeze the WebEngineDebugForm at breakpoints
+          os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
 
     settings = QSettings("CCTBX", "HKLviewer" )
     # In case of more than one PySide2 installation tag the settings by version number of PySide2
@@ -1507,6 +1597,8 @@ def run():
     settings.beginGroup("PySide2_" + Qtversion)
     QWebEngineViewFlags = settings.value("QWebEngineViewFlags", None)
     fontsize = settings.value("FontSize", None)
+    browserfontsize = settings.value("BrowserFontSize", None)
+    ttip_click_invoke = settings.value("ttip_click_invoke", None)
     windowsize = settings.value("windowsize", None)
     splitter1sizes = settings.value("splitter1Sizes", None)
     splitter2sizes = settings.value("splitter2Sizes", None)
@@ -1514,14 +1606,14 @@ def run():
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
     if QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
-      QWebEngineViewFlags = ""
+      QWebEngineViewFlags = " --disable-web-security" # for chromium
       print("testing if WebGL works in QWebEngineView....")
       cmdargs = [ sys.executable, QtChromiumCheck.__file__ ]
       webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       procout, procerr = webglproc.communicate()
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       if not "WebGL works" in procout.decode():
-        QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist"
+        QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist "
     if "verbose" in sys.argv[1:]:
       print("using flags for QWebEngineView: " + QWebEngineViewFlags)
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += QWebEngineViewFlags
@@ -1531,11 +1623,15 @@ def run():
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     app = QApplication(sys.argv)
     guiobj = NGL_HKLViewer(app)
+    import time
+    time.sleep(1) # make time for zmq_listen loop to start in cctbx subprocess
 
     def MyAppClosing():
       settings.beginGroup("PySide2_" + Qtversion )
       settings.setValue("QWebEngineViewFlags", QWebEngineViewFlags)
       settings.setValue("FontSize", guiobj.fontsize )
+      settings.setValue("BrowserFontSize", guiobj.browserfontsize )
+      settings.setValue("ttip_click_invoke", guiobj.ttip_click_invoke)
       settings.setValue("windowsize", guiobj.window.size())
       settings.setValue("splitter1Sizes", guiobj.splitter.saveState())
       settings.setValue("splitter2Sizes", guiobj.splitter_2.saveState())
@@ -1543,9 +1639,21 @@ def run():
 
     app.lastWindowClosed.connect(MyAppClosing)
 
+    timer = QTimer()
+    timer.setInterval(20)
+    timer.timeout.connect(guiobj.ProcessMessages)
+    timer.start()
+
     if fontsize is not None:
       guiobj.onFontsizeChanged(int(fontsize))
       guiobj.fontspinBox.setValue(int(fontsize))
+    if browserfontsize is not None:
+      guiobj.onBrowserFontsizeChanged(int(browserfontsize))
+      guiobj.browserfontspinBox.setValue(int(browserfontsize))
+    if ttip_click_invoke is not None:
+      guiobj.onShowTooltips(ttip_click_invoke)
+      guiobj.ttipClickradio.setChecked(ttip_click_invoke == "click")
+      guiobj.ttipHoverradio.setChecked(ttip_click_invoke == "hover")
     if splitter1sizes is not None and splitter2sizes is not None and windowsize is not None:
       guiobj.window.resize(windowsize)
       if guiobj.webpagedebugform and guiobj.devmode:
@@ -1553,10 +1661,6 @@ def run():
       guiobj.splitter.restoreState(splitter1sizes)
       guiobj.splitter_2.restoreState(splitter2sizes)
 
-    timer = QTimer()
-    timer.setInterval(20)
-    timer.timeout.connect(guiobj.ProcessMessages)
-    timer.start()
     ret = app.exec_()
 
   except Exception as e:

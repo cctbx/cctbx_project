@@ -10,6 +10,7 @@ import os
 
 from libtbx.str_utils import show_string
 from libtbx import smart_open
+import six
 from six.moves import cPickle as pickle
 
 def _open(file_name, mode):
@@ -79,7 +80,9 @@ def load(file_name, faster_but_using_more_memory=True):
   object
   """
   if (faster_but_using_more_memory):
-    return pickle.loads(_open(file_name, "rb").read())
+    if six.PY2:
+      return pickle.loads(_open(file_name, "rb").read())
+    return pickle.loads(_open(file_name, "rb").read(), encoding='bytes')
   return pickle.load(_open(file_name, "rb"))
 
 def loads(string):

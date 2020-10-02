@@ -5,7 +5,7 @@ import sys, os
 import datetime
 from time import time
 from libtbx.utils import Sorry, multi_out, null_out
-from libtbx import Auto, easy_pickle, group_args
+from libtbx import easy_pickle, group_args
 import libtbx.load_env
 from scitbx.array_family import flex
 from six.moves import cStringIO as StringIO
@@ -112,7 +112,7 @@ use_hydrogens_in_minimization = False
 reference_map_resolution = 5
   .type = float
   .expert_level = 2
-number_of_refinement_cycles = Auto
+number_of_refinement_cycles = 5
   .type = int
   .expert_level = 1
 cycles_to_converge = 2
@@ -985,8 +985,8 @@ def get_map_from_map(map_file_object, params, xrs, log):
 
   if params.mask_and_he_map:
     print("Masking and histogram equalizing...", file=log)
-    import boost.python
-    cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
+    import boost_adaptbx.boost.python as bp
+    cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
     xrs_p1 = xray_structure.expand_to_p1(sites_mod_positive=True)
     radii = flex.double(xrs_p1.scatterers().size(), 5.0)
     mask = cctbx_maptbx_ext.mask(

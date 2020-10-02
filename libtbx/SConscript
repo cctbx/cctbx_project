@@ -1059,14 +1059,21 @@ if (libtbx.env.build_options.use_conda):
       os.path.join(abs(libtbx.env.build_path), 'lib')
     ]
     env_base.Append(SHLINKFLAGS=env_etc.conda_shlinkflags)
-  if ("CPPPATH" not in env_base):
-    env_base["CPPPATH"] = env_etc.conda_cpppath
-  else:
-    env_base.Prepend(CPPPATH, env_etc.conda_cpppath)
-  if ("LIBPATH" not in env_base):
-    env_base["LIBPATH"] = env_etc.conda_libpath
-  else:
-    env_base.Append(LIBPATH, env_etc.conda_libpath)
+  env_base.Prepend(CPPPATH=env_etc.conda_cpppath)
+  env_base.Append(LIBPATH=env_etc.conda_libpath)
+
+# local build header and library paths
+local_env = libtbx.env_config.get_local_env()
+if local_env is not None:
+  cpppath = [abs(p) for p in local_env.repository_paths]
+  for module in local_env.module_list:
+    for name in module.names_active():
+      new_path = local_env.under_build(os.path.join(name, 'include'))
+      if os.path.isdir(new_path):
+        cpppath.append(new_path)
+  if len(cpppath) > 0:
+    env_base.Append(CPPPATH=cpppath)
+  env_base.Append(LIBPATH=[os.path.join(abs(local_env.build_path), 'lib')])
 
 # C++11 flags for any compiler
 # XXX feautre duplication, see determine_cpp0x_flag

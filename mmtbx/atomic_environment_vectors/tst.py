@@ -56,8 +56,28 @@ def run():
     build_grm     = True,
     log           = null_out())
   a = aev.AEV(model = model)
+  print('forward AEVs')
+  print(a.BAEVs)
+  print('backward AEVs')
+  print(a.EAEVs)
+  gv = a.get_values()
+  for key in gv:
+    outl = key
+    for cc in gv[key]:
+      outl += ' %0.3f' % cc
+    print(outl)
+  # print('backward AEVs')
+  # print(a.EAEVs)
+  # print('middle AEVs')
+  # print(a.MAEVs)
   b = aev.compare(a)
   print(b)
+  assert b['GLY  A   1']['E'] is None
+  print(b['GLY  A   5'])
+  assert b['GLY  A   5']['E'] > 0.99
+  assert b['GLY  A   5']['M'] > 0.99
+  assert b['GLY  A   5']['B'] > 0.99
+  assert b['GLY  A  10']['B'] is None
   recs = aev.format_HELIX_records_from_AEV(b, 0.9)
   assert len(recs) == 1
   r="HELIX    1   1 GLY  A   2  GLY  A   9                                      8"

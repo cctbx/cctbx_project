@@ -76,6 +76,7 @@ def run(args,
   all_tests = []
   expected_failure_list = []
   expected_unstable_list = []
+  parallel_list = []
   if not return_list_of_tests: # (this fails with return_list_of_tests)
     all_tests.extend(libtbx.test_utils.parallel.make_commands(params.script,
       python_keyword_text=python_keyword_text))
@@ -95,11 +96,14 @@ def run(args,
       get_module_expected_test_failures(module_name)
     unstable_tests = libtbx.test_utils.\
       parallel.get_module_expected_unstable_tests(module_name)
+    parallel_tests = libtbx.test_utils.parallel.\
+      get_module_parallel_tests(module_name)
     all_tests.extend(module_tests)
     all_tests.extend(fail_tests)
     all_tests.extend(unstable_tests)
     expected_failure_list.extend(fail_tests)
     expected_unstable_list.extend(unstable_tests)
+    parallel_list.extend(parallel_tests)
 
     # remove any specified tests:
     if tests_to_skip:
@@ -144,6 +148,7 @@ def run(args,
       cmd_list=all_tests,
       expected_failure_list=expected_failure_list,
       expected_unstable_list=expected_unstable_list,
+      parallel_list=parallel_list,
       nprocs=params.nproc,
       log=log,
       verbosity=params.verbosity,

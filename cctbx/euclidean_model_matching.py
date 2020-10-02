@@ -1,4 +1,6 @@
 from __future__ import absolute_import, division, print_function
+
+import operator
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
@@ -8,10 +10,10 @@ from libtbx.utils import user_plus_sys_time
 from libtbx import adopt_init_args
 import sys, math
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
 from six.moves import zip
-ext = boost.python.import_ext("cctbx_emma_ext")
+ext = bp.import_ext("cctbx_emma_ext")
 
 def sgtbx_rt_mx_as_matrix_rt(s):
   return matrix.rt((s.r().as_double(), s.t().as_double()))
@@ -249,7 +251,8 @@ def generate_singles(n, i):
   return singles
 
 def pair_sort_function(pair_a, pair_b):
-  from past.builtins import cmp
+  # Deprecated. Do not use
+  from libtbx.math_utils import cmp
   return cmp(pair_a[0], pair_b[0])
 
 def inside_zero_one(c):
@@ -287,8 +290,7 @@ class match_refine(object):
     self.eliminate_weak_pairs()
     self.ref_eucl_rt = sgtbx_rt_mx_as_matrix_rt(self.eucl_symop) \
                      + self.adjusted_shift
-    from functools import cmp_to_key
-    self.pairs.sort(key=cmp_to_key(pair_sort_function)) # FIXME deprecate pair_sort_function()
+    self.pairs.sort(key=operator.itemgetter(0))
     self.singles1.sort()
     self.singles2.sort()
     self.calculate_rms()
@@ -459,7 +461,8 @@ class match_refine(object):
         return model2.as_emma_model()
 
 def match_sort_function(match_a, match_b):
-  from past.builtins import cmp
+  # Deprecated. Do not use
+  from libtbx.math_utils import cmp
   i = -cmp(len(match_a.pairs), len(match_b.pairs))
   if (i): return i
   return cmp(match_a.rms, match_b.rms)
@@ -595,8 +598,7 @@ class delegating_model_matches(object):
       tolerance,
       models_are_diffraction_index_equivalent,
       shall_break)
-    from functools import cmp_to_key
-    self.refined_matches.sort(key=cmp_to_key(match_sort_function))
+    self.refined_matches.sort(key=lambda element: (-len(element.pairs), element.rms))
     weed_refined_matches(model1.space_group_info().type().number(),
                          self.refined_matches, rms_penalty_per_site)
 

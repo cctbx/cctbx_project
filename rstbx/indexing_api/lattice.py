@@ -7,9 +7,9 @@ from rstbx.dps_core import Directional_FFT
 import math,cmath
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
-import boost.python
+import boost_adaptbx.boost.python as bp
 
-@boost.python.inject_into(dps_extended)
+@bp.inject_into(dps_extended)
 class _():
 
   def index(self, raw_spot_input=None, reciprocal_space_vectors=None,

@@ -186,9 +186,11 @@ class with_bounds(object):
       self.gridding_last)
 
     # Allow override of wrapping
-    if self._force_wrapping is not None:
+    if isinstance(self._force_wrapping, bool):
       wrapping = self._force_wrapping
     else:
+      # Get wrapping from map_manager. If it is not defined and
+      #  bounds are outside allowed, try to get the wrapping
       wrapping = map_manager.wrapping()
 
     if wrapping or bounds_info.inside_allowed_bounds:
@@ -200,12 +202,13 @@ class with_bounds(object):
       map_box = maptbx.copy(map_data, self.gridding_first, self.gridding_last)
       map_box = map_box * 0.
       self._warning_message += "\nWARNING: boxed map is entirely outside map"+\
-         " and wrapping=False\n...setting all values to zero"
+         " and wrapping=%s\n...setting all values to zero" %(wrapping)
 
     else: # Need to copy and then zero outside of defined region
       map_box = copy_and_zero_map_outside_bounds(map_data, bounds_info)
-      self._warning_message += "\nWARNING: boxed map goes outside original map"+\
-         " and wrapping=False\n...setting unknown values to zero"
+      self._warning_message += \
+            "\nWARNING: boxed map goes outside original map"+\
+         " and wrapping=%s\n...setting unknown values to zero" %(wrapping)
     #  Now reshape map_box to put origin at (0, 0, 0)
     map_box.reshape(flex.grid(self.box_all))
 
@@ -302,7 +305,8 @@ class around_model(with_bounds):
   On initialization new bounds and crystal_symmetry are identified.
   Then map_manager is replaced with boxed version and shifted model is created
 
-  Output versions of map_manager and model are in P1 and have origin at (0, 0, 0).
+  Output versions of map_manager and model are in P1 and have origin
+    at (0, 0, 0).
   Bounds refer to grid position in this box with origin at (0, 0, 0)
 
   Wrapping:
@@ -348,23 +352,13 @@ class around_model(with_bounds):
     # NOTE: We are going to use crystal_symmetry and sites_frac based on
     #   the map_manager (the model could still have different crystal_symmetry)
 
-    # get items needed to do the shift
-    cs = map_manager.crystal_symmetry()
-    uc = cs.unit_cell()
-    sites_cart = model.get_sites_cart()
-    sites_frac = uc.fractionalize(sites_cart)
-    map_data = map_manager.map_data()
-    # convert box_cushion into fractional vector
-    cushion_frac = flex.double(uc.fractionalize((box_cushion, )*3))
-    # find fractional corners
-    frac_min = sites_frac.min()
-    frac_max = sites_frac.max()
-    frac_max = list(flex.double(frac_max)+cushion_frac)
-    frac_min = list(flex.double(frac_min)-cushion_frac)
-    # find corner grid nodes
-    all_orig = map_data.all()
-    self.gridding_first = [ifloor(f*n) for f, n in zip(frac_min, all_orig)]
-    self.gridding_last  = [ iceil(f*n) for f, n in zip(frac_max, all_orig)]
+    info = get_bounds_around_model(
+      map_manager = map_manager,
+      model = model,
+      box_cushion = box_cushion)
+    self.gridding_first = info.lower_bounds
+    self.gridding_last = info.upper_bounds
+
 
     # Ready with gridding...set up shifts and box crystal_symmetry
     self.set_shifts_and_crystal_symmetry()
@@ -617,13 +611,22 @@ class around_mask(with_bounds):
     self.basis_for_boxing_string = 'around_mask bounds, wrapping = %s' %(
       wrapping)
 
+    # Make sure the map goes from 0 to 1
+    map_data = mask_as_map_manager.map_data()
+    mmm = map_data.as_1d().min_max_mean()
+    minimum = mmm.min
+    range_of_values = mmm.max - mmm.min
+    map_data = (map_data - minimum ) / max(1.e-10,range_of_values)
+
+
     # Get a connectivity object that marks all the connected regions in map
 
     from cctbx.maptbx.segment_and_split_map import get_co
     co, sorted_by_volume, min_b, max_b = get_co(
-       map_data = mask_as_map_manager.map_data(),
+       map_data = map_data,
        threshold = 0.5,
        wrapping = False)
+
 
     if len(sorted_by_volume)<2:  # didn't work
       raise Sorry("No mask obtained...")
@@ -646,9 +649,9 @@ class around_mask(with_bounds):
     cs = map_manager.crystal_symmetry()
     cushion = flex.double(cs.unit_cell().fractionalize((box_cushion, )*3))
     all_orig = map_manager.map_data().all()
-    self.gridding_first = [max(0, ifloor((gf/n-c)*n)) for c, gf, n in zip(
+    self.gridding_first = [max(0, ifloor(gf-c*n)) for c, gf, n in zip(
        cushion, self.gridding_first, all_orig)]
-    self.gridding_last  = [ min(n-1, iceil((gf+c)*n)) for c, gf, n in zip(
+    self.gridding_last  = [min(n-1, iceil(gl+c*n)) for c, gl, n in zip(
        cushion, self.gridding_last, all_orig)]
 
 
@@ -867,7 +870,7 @@ def get_bounds_of_valid_region(map_data,
   some_valid_points = True
   for o, a, f, l in zip(map_data.origin(), map_data.all(),
      gridding_first, gridding_last):
-    # Available map goes from o to o+a
+    # Available map goes from o to o+a-1
     # Requested map goes from f to l
 
     # If f is less than o, first valid grid point is o.
@@ -957,3 +960,154 @@ def copy_and_zero_map_outside_bounds(map_data, bounds_info):
   new_map = new_map.as_1d()
   new_map.reshape(acc)
   return new_map
+
+def shift_and_box_model(model = None,
+    box_cushion = 5, shift_model = True):
+  '''
+    Shift a model near the origin and box around it
+  '''
+  from mmtbx.model import manager as model_manager
+  from scitbx.matrix import col
+  from cctbx import crystal
+  ph=model.get_hierarchy()
+  sites_cart=ph.atoms().extract_xyz()
+  if shift_model:
+    sites_cart=sites_cart-col(sites_cart.min())+col(
+      (box_cushion,box_cushion,box_cushion))
+
+  box_end=col(sites_cart.max())+col((box_cushion,box_cushion,box_cushion))
+  a,b,c=box_end
+  crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
+  ph.atoms().set_xyz(sites_cart)
+
+  return model_manager(
+     ph.as_pdb_input(),
+     crystal_symmetry = crystal_symmetry,
+     log = null_out())
+
+def get_boxes_to_tile_map(target_for_boxes = 24,
+      n_real = None,
+      crystal_symmetry = None,
+      cushion_nx_ny_nz = None,
+      wrapping = False):
+
+    '''
+      Get a set of boxes that tile the map
+      If cushion_nx_ny_nz is set ... create a second set of boxes that are
+        expanded by cushion_nx_ny_nz in each direction
+    '''
+    nx,ny,nz = n_real
+    smallest = min(nx,ny,nz)
+    largest = max(nx,ny,nz)
+    target_volume_per_box = (nx*ny*nz)/target_for_boxes
+    target_length = target_volume_per_box**0.33
+
+    if target_for_boxes == 1:
+      lower_bounds_list = [(0,0,0)]
+      upper_bounds_list = [tuple([i - 1 for i in n_real])]
+    else:
+      lower_bounds_list = []
+      upper_bounds_list = []
+      for x_info in get_bounds_list(nx, target_length):
+        for y_info in get_bounds_list(ny, target_length):
+          for z_info in get_bounds_list(nz, target_length):
+            lower_bounds_list.append(
+               [x_info.lower_bound,
+                y_info.lower_bound,
+                z_info.lower_bound])
+            upper_bounds_list.append(
+               [x_info.upper_bound,
+                y_info.upper_bound,
+                z_info.upper_bound])
+
+    # Now make a set of boxes with a cushion if requested
+    lower_bounds_with_cushion_list = []
+    upper_bounds_with_cushion_list = []
+    if cushion_nx_ny_nz:
+
+      for lb,ub in zip (lower_bounds_list,upper_bounds_list):
+        if (wrapping):
+          new_lb = tuple([b - c for b,c in zip(lb, cushion_nx_ny_nz)])
+          new_ub = tuple([u + c for u,c in zip(ub, cushion_nx_ny_nz)])
+        else:
+          new_lb = tuple([max(0,b - c) for b,c in zip(lb, cushion_nx_ny_nz)])
+          new_ub = tuple([min(n-1,u + c) for u,c,n in zip(ub, cushion_nx_ny_nz,
+            n_real)])
+        lower_bounds_with_cushion_list.append(new_lb)
+        upper_bounds_with_cushion_list.append(new_ub)
+    else:
+      lower_bounds_with_cushion_list = lower_bounds_list
+      upper_bounds_with_cushion_list = upper_bounds_list
+    return group_args(
+      lower_bounds_list = lower_bounds_list,
+      upper_bounds_list = upper_bounds_list,
+      lower_bounds_with_cushion_list = lower_bounds_with_cushion_list,
+      upper_bounds_with_cushion_list = upper_bounds_with_cushion_list,
+      n_real = n_real,
+      crystal_symmetry = crystal_symmetry,
+     )
+
+def get_bounds_list(nx, target_length):
+  '''
+    Return start, end that are about the length target_length and that
+    collectively cover exactly nx grid units.
+    Try to make bounds on the ends match target_length
+  '''
+
+  bounds_list = []
+  if nx < (3 * target_length)/2:  # take one only
+    bounds_list.append(
+      group_args(
+       lower_bound = 0,
+       upper_bound = nx - 1,)
+      )
+  else:  # take as many as fit
+    n_target = nx/target_length  # how many we want (float)
+    n = max(1,int(0.5 + n_target)) # int ... how many can fit
+    exact_target_length =  nx/n  # float length of each group
+
+    last_end_point = -1
+    for i in range(n):
+      target_end_point = exact_target_length * (i+1)
+      actual_end_point = min (nx -1, max(0, int(0.5 + target_end_point)))
+      bounds_list.append(
+          group_args(
+       lower_bound = last_end_point + 1,
+       upper_bound = actual_end_point,)
+      )
+      last_end_point = actual_end_point
+  return bounds_list
+
+def get_bounds_around_model(
+      map_manager = None,
+      model = None,
+      box_cushion = None,
+     ):
+    '''
+      Calculate the lower and upper bounds to box around a model
+      Allow bounds to go outside the available box (this has to be
+        dealt with at the boxing stage)
+    '''
+
+    # get items needed to do the shift
+    cs = map_manager.crystal_symmetry()
+    uc = cs.unit_cell()
+    sites_cart = model.get_sites_cart()
+    sites_frac = uc.fractionalize(sites_cart)
+    map_data = map_manager.map_data()
+    # convert box_cushion into fractional vector
+    cushion_frac = flex.double(uc.fractionalize((box_cushion, )*3))
+    # find fractional corners
+    frac_min = sites_frac.min()
+    frac_max = sites_frac.max()
+    frac_max = list(flex.double(frac_max)+cushion_frac)
+    frac_min = list(flex.double(frac_min)-cushion_frac)
+    # find corner grid nodes
+    all_orig = map_data.all()
+
+    lower_bounds = [ifloor(f*n) for f, n in zip(frac_min, all_orig)]
+    upper_bounds = [ iceil(f*n) for f, n in zip(frac_max, all_orig)]
+    return group_args(
+      lower_bounds = lower_bounds,
+      upper_bounds = upper_bounds,
+    )

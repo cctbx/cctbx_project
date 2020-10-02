@@ -21,6 +21,9 @@ __pycache__/
 git-notifier.log
 .gitversion
 
+# Ignores examples from cctbx website
+cctbx_website/examples
+
 # Ignores copied over from subversion:
 cctbx/dev
 cctbx/doc

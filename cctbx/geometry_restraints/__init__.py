@@ -6,10 +6,10 @@ import cctbx.geometry # import dependency
 from libtbx.test_utils import approx_equal
 from libtbx.str_utils import show_string
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
 from six.moves import zip
-ext = boost.python.import_ext("cctbx_geometry_restraints_ext")
+ext = bp.import_ext("cctbx_geometry_restraints_ext")
 from cctbx_geometry_restraints_ext import *
 
 import scitbx.stl.map
@@ -37,7 +37,7 @@ def angle_delta_deg(angle_1, angle_2, periodicity=1):
   elif (d >  half_period): d -= 2*half_period
   return d
 
-@boost.python.inject_into(bond_params_table)
+@bp.inject_into(bond_params_table)
 class _():
 
   def lookup(self, i_seq, j_seq):
@@ -425,7 +425,7 @@ class parallelity_proxy_registry(proxy_registry_base):
         self.counts[i_list] += 1 # mark somewhere that this is duplicated
     return result
 
-@boost.python.inject_into(prolsq_repulsion_function)
+@bp.inject_into(prolsq_repulsion_function)
 class _():
 
   def customized_copy(O, c_rep=None, k_rep=None, irexp=None, rexp=None):
@@ -492,7 +492,7 @@ def _bond_show_sorted_impl(self,
   if (n_not_shown != 0):
     print(prefix + "... (remaining %d not shown)" % n_not_shown, file=f)
 
-@boost.python.inject_into(shared_bond_asu_proxy)
+@bp.inject_into(shared_bond_asu_proxy)
 class _():
 
   def get_proxies_without_origin_id(self, origin_id):
@@ -508,7 +508,7 @@ def resid_to_pymol(resid):
     resid = '\\' + resid
   return resid
 
-@boost.python.inject_into(shared_bond_simple_proxy)
+@bp.inject_into(shared_bond_simple_proxy)
 class _():
 
   def _generate_proxy_and_atom_labels(self, pdb_hierarchy):
@@ -680,7 +680,7 @@ class _():
         result.append(p)
     return result
 
-@boost.python.inject_into(bond_sorted_asu_proxies)
+@bp.inject_into(bond_sorted_asu_proxies)
 class _():
 
   def show_histogram_of_model_distances(self,
@@ -923,7 +923,7 @@ class _():
                           max_items=max_items,
                           origin_id=origin_id)
 
-@boost.python.inject_into(nonbonded_sorted_asu_proxies)
+@bp.inject_into(nonbonded_sorted_asu_proxies)
 class _():
 
   def deltas(self, sites_cart):
@@ -1127,7 +1127,7 @@ class _():
     if (n_not_shown != 0):
       print(prefix + "... (remaining %d not shown)" % n_not_shown, file=f)
 
-@boost.python.inject_into(angle)
+@bp.inject_into(angle)
 class _():
 
   def _show_sorted_item(O, f, prefix):
@@ -1142,7 +1142,7 @@ class _():
     return [O.angle_ideal, O.angle_model, O.delta,
             weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
-@boost.python.inject_into(shared_angle_proxy)
+@bp.inject_into(shared_angle_proxy)
 class _():
 
   def as_pymol_dashes(self, pdb_hierarchy):
@@ -1259,7 +1259,7 @@ class _():
         result.append([i,j,k])
     return result
 
-@boost.python.inject_into(dihedral)
+@bp.inject_into(dihedral)
 class _():
 
   def _show_sorted_item(O, f, prefix):
@@ -1277,7 +1277,7 @@ class _():
     return [O.angle_ideal, O.angle_model, O.delta, O.periodicity,
             weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
-@boost.python.inject_into(shared_dihedral_proxy)
+@bp.inject_into(shared_dihedral_proxy)
 class _():
 
   def deltas(self, sites_cart, unit_cell=None):
@@ -1350,7 +1350,7 @@ class _():
         result.append(ind)
     return result
 
-@boost.python.inject_into(chirality)
+@bp.inject_into(chirality)
 class _():
 
   def _show_sorted_item(O, f, prefix):
@@ -1365,7 +1365,7 @@ class _():
     return [str(O.both_signs), O.volume_ideal, O.volume_model, O.delta,
       weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
-@boost.python.inject_into(shared_chirality_proxy)
+@bp.inject_into(shared_chirality_proxy)
 class _():
 
   def deltas(self, sites_cart, unit_cell=None):
@@ -1434,7 +1434,7 @@ class _():
         result.append(ind)
     return result
 
-@boost.python.inject_into(shared_planarity_proxy)
+@bp.inject_into(shared_planarity_proxy)
 class _():
 
   def deltas_rms(O, sites_cart, unit_cell=None):
@@ -1588,7 +1588,7 @@ class _():
       print("%sSorted by %s:" % (prefix, by_value), file=f)
       print(outl[:-1], file=f)
 
-@boost.python.inject_into(parallelity)
+@bp.inject_into(parallelity)
 class _():
 
   def _show_sorted_item(O, f, prefix):
@@ -1599,7 +1599,7 @@ class _():
   def _get_sorted_item(self):
     return [self.residual(), self.weight, self.delta]
 
-@boost.python.inject_into(shared_parallelity_proxy)
+@bp.inject_into(shared_parallelity_proxy)
 class _():
 
   def deltas(O, sites_cart, unit_cell=None):
@@ -1675,7 +1675,7 @@ class _():
         get_restraints_only=False,
         origin_id=origin_id)
 
-@boost.python.inject_into(shared_bond_similarity_proxy)
+@bp.inject_into(shared_bond_similarity_proxy)
 class _():
 
   def deltas_rms(self, sites_cart, unit_cell=None):
@@ -1987,7 +1987,7 @@ class pair_proxies(object):
         min_cubicle_edge=min_cubicle_edge,
         shell_asu_tables=shell_asu_tables)
 
-@boost.python.inject_into(ext.motif)
+@bp.inject_into(ext.motif)
 class _():
 
   def show(self, out=None, prefix=""):
@@ -2099,7 +2099,7 @@ class _():
           print(prefix+"  atom = %s %.6g" % (show_string(an), w), file=out)
         print(prefix+"}", file=out)
 
-@boost.python.inject_into(ext.motif_alteration)
+@bp.inject_into(ext.motif_alteration)
 class _():
 
   def show(self, out=None, prefix="", previous_help=None):
@@ -2312,7 +2312,7 @@ class _():
       raise RuntimeError("Internal Error: unknown operand: %s" % operand)
     return help
 
-@boost.python.inject_into(ext.motif_manipulation)
+@bp.inject_into(ext.motif_manipulation)
 class _():
 
   def show(self, out=None, prefix=""):

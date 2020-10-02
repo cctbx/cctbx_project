@@ -1,0 +1,202 @@
+{% extends "cctbx/header_new.html" %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="container">
+
+<div class="row">
+
+<div class="col-sm-9">
+<!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
+<!----------------------- EDIT START ---------------------------->
+<!--
+Code within <pre> tags will be extracted for tests
+Do start code immediatly after '<pre class="codeDL"><code>', like in the example below.
+Otherwise, the code will have indentation, and breaks.
+-->
+
+<h2><center>The cctbx Map-Model Manager</center></h2>
+
+<p class="lead mt-4">The map_model_manager is useful to keep track of both maps and models. This tutorial shows how to set up the manager, how to cut out a piece of a map around a part of a model and how to create masks.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">A manager for working with models and maps together</h3>
+
+<p>The map_model_manager is an object that knows about both maps and models. This manager is convenient for keeping track of a group of maps and models and their locations. You normally set up a map_model_manager with a set of maps and models that you already have.
+For this tutorial, let’s get a map and a model first.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Getting example files</h3>
+
+<p>If you don't have the example files from the previous tutorials yet, here is how you set them up. Let’s work with a library model and map (revisit <a href="{% url 'doc_high_level_objects' %}">this page</a> if you need a refresher on high level objects):</p>
+
+<pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager      #   load in the map_model_manager
+mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
+mmm.generate_map()              #   get a model from a small library model and calculate a map for it
+mmm.write_map("map.mrc")        #   write out a map in ccp4/mrc format
+mmm.write_model("model.pdb")    #   write out a model in PDB format
+</code></pre>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Setting up the Map-Model manager</h3>
+
+<p>Let's set up the DataManager that can read in our files: (described <a href="{% url 'doc_data_manager' %}">here</a>):</p>
+
+<pre class="codeDL"><code>from iotbx.data_manager import DataManager    #   Load in the DataManager
+dm = DataManager()                            #   Initialize the DataManager and call it dm
+dm.set_overwrite(True)         #   tell the DataManager to overwrite files with the same name
+</code></pre>
+
+<p>Let’s read in a map with DataManager:</p>
+
+<pre class="codeDL"><code>map_file="map.mrc"                             #   Name of map file
+mm = dm.get_real_map(map_file)                 #   Deliver map_manager object with map info
+</code></pre>
+
+<p>Let’s read in a model to go along with your map:</p>
+
+<pre class="codeDL"><code>model_file="model.pdb"                         #   Name of model file
+model = dm.get_model(model_file)               #   Deliver model object with model info
+</code></pre>
+
+<p>Now let’s set up our map_model_manager that will know about both the model and the map:</p>
+
+<pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager  # load map_model_manager
+mmm = map_model_manager(        # a new map_model_manager
+  model = model,                # initializing with a model
+  map_manager = mm )            # and a map_manager
+</code></pre>
+
+<p>Now the map_model_manager <code>mmm</code> knows about both the model and the map. The object <code>mmm</code> immediately does two things. First, it checks the model and map and makes sure that they are compatible. The symmetry for the model was preserved when it was written to the file "model.pdb", and when it was read in to create the model object that symmetry was again preserved. The symmetry for a model should correspond to the symmetry of the full map (even if only part of the map is present). The symmetry of the full map is available in the map_manager object and this initialization step checks to make sure that it matches that of the model.</p>
+
+<p>The second thing that the map_model_manager does is shift the origin of the map and model so that the map origin is at (0,0,0).  You don’t have to tell it to do this; it is always done.</p>
+
+<p>This all means that as soon as you make a map_model_manager object with any number of maps and models, they are all checked and shifted so that all the maps have an origin at (0,0,0) and all models have matching positions.  The maps and models are all ready to work with.</p>
+
+<p>You can get your model and map_manager with the commands:</p>
+
+<pre class="codeDL"><code>mm = mmm.map_manager()       #  get the map_manager, origin at (0,0,0)
+model = mmm.model()          #  get the model, origin matching the map_manager
+</code></pre>
+
+<p>If you write out either one then they will be written out in their original locations.</p>
+
+<pre class="codeDL"><code>dm.write_real_map_file(mm,filename="my_map_original_location.mrc")    # write map
+dm.write_model_file(model,filename="my_model_original_location", extension="pdb") # model
+</code></pre>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Cutting out parts of maps and models</h3>
+
+<p>The map_model_manager has many tools to help you manipulate maps and models together. One useful operation is cutting out a piece of a map around a part of a model. Let’s work with the map_model manager mmm which contains one map and one model that we created in the previous section. This model contains residues 219-228. Let’s select just residues 219-223 and make a new model, cut out a box of density containing these residues, and make a new map_manager object that contains the cut-out model and density:</p>
+
+<pre class="codeDL"><code>box_mmm = mmm.extract_all_maps_around_model(          # extract a box around model
+    selection_string="resseq 219:223")                # select residues 219-223 of model
+</code></pre>
+
+<p>Let’s write out the new map and model with our DataManager dm:</p>
+
+<pre class="codeDL"><code>dm.write_real_map_file(box_mmm.map_manager(),         # get the boxed map_manager
+     filename="box_around_219-223.mrc")               # write the map out
+#
+dm.write_model_file(box_mmm.model(),                  # get the boxed model
+      filename="box_around_219-223", extension="pdb") # write out boxed model
+</code></pre>
+
+<p>If you have a look at the map and model in box_around_219-223.mrc and box_around_219-223.pdb you will see that the map and model are only parts of the map and model that were in the original model.pdb and map.mrc that we started with.</p>
+
+<p>There are other ways to cut out parts of a map and model as well. We won’t do much with them now but here are three more (remember you can see them all with the <code>help()</code> method):</p>
+
+<pre class="codeDL"><code>box_mmm = mmm.extract_all_maps_with_bounds(      #  Use specified bounds to cut out box
+   lower_bounds=(1,1,1), upper_bounds=(9,6,3))   #  Lower and upper bounds of box
+#
+box_mmm = mmm.extract_all_maps_around_density(   #  Find the density in the map and box
+    box_cushion = 1)                             # make box just 1 A bigger than density
+#
+box_mmm = mmm.extract_all_maps_around_unique(    # Find unique part of density and box
+    resolution = 3, molecular_mass=2300   )      # resolution of map and molecular_mass,
+                                                 # sequence, or solvent_content is required
+</code></pre>
+
+<p>The extract_all_maps_around_unique method is designed to find the unique part of the density. Normally it is used in cases where your map_manager contains an ncs_object that specifies the symmetry in the map. Each of these methods produces a new map_and_model manager (box_mmm). There is a corresponding method for each of these that modifies the map_and_model manager itself, instead of making a new one. For example, let’s make a deep_copy of our map_model manager and then modify it to be smaller:</p>
+
+<pre class="codeDL"><code>mmm_copy=mmm.deep_copy()                             # work with a copy of mmm
+mmm_copy.box_all_maps_with_bounds_and_shift_origin(  #  Use specified bounds to cut out box
+   lower_bounds=(1,1,1), upper_bounds=(9,6,3))       #  Lower and upper bounds of box
+</code></pre>
+
+<p>Now the map_model manager mmm_copy is just like box_mmm , the extracted box we got above.  You might use this box_all_maps_with_bounds_and_shift_origin method instead of the extract_all_maps_with_bounds method if you don’t want to keep the original map and model and just want the boxed version.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Masking maps and models</h3>
+
+<p>The map_model_manager has tools for creating masks and masking existing maps. A mask is just a map that has values from zero to one, representing how the map value at a particular grid point is to be weighted. You can mask around the atoms in a model, or around density, around the edges of a mask. You can make a mask into a “soft” mask that smoothly changes from zero to one.</p>
+
+<p>Let’s mask around the atoms in a map.  We let’s start with the mmm map_model_manager that we have already set up. Then let’s cut out part of the model and extract a box around it:</p>
+
+<pre class="codeDL"><code>box_mmm = mmm.extract_all_maps_around_model(          # extract a box around model
+    selection_string="resseq 219:223")                # select residues 219-223 of model
+</code></pre>
+
+<p>Now we have a little map_model_manager that contains residues 219-223 from the model, but it contains density from all parts of the map that are inside the box. Let’s save a copy of our current map_model_manager so we can compare it later</p>
+
+<pre class="codeDL"><code>box_mmm_dc = box_mmm.deep_copy()     # save a copy of map_manager
+</code></pre>
+
+<p>Let’s mask the density in box_mmm to include only density near atoms in residues 219-223:</p>
+
+<pre class="codeDL"><code>box_mmm.create_mask_around_atoms()   #  create binary mask around atoms in box_mmm model
+</code></pre>
+
+<p>Note that this just creates a mask, it doesn’t do anything with it.  We can apply this mask to all the maps (just one) in  box_mmm:</p>
+
+<pre class="codeDL"><code>box_mmm.apply_mask_to_maps()   #  apply existing mask to all maps in box_mmm
+</code></pre>
+
+<p>Now the map in  box_mmm has been masked. Let’s write it out and compare with the starting map:</p>
+
+<pre class="codeDL"><code>dm.write_real_map_file(box_mmm_dc.map_manager(),filename="starting_map.mrc") # original
+dm.write_real_map_file(box_mmm.map_manager()   ,filename="masked_map.mrc") # masked
+</code></pre>
+
+<p>We can also make a mask that is a soft mask.  Let’s mask the density in box_mmm to include only density near atoms in residues 219-223, smoothly going from values of 1 to 0 in the mask. Let’s first make a copy of box_mmm and work with it:</p>
+
+<pre class="codeDL"><code>box_mmm_soft_mask=box_mmm_dc.deep_copy()                       # make a copy to work with
+box_mmm_soft_mask.create_mask_around_atoms(soft_mask = True)   #  create soft mask
+</code></pre>
+
+<p>Now we apply this mask:</p>
+
+<pre class="codeDL"><code>box_mmm_soft_mask.apply_mask_to_maps()   #  apply existing mask to all maps
+</code></pre>
+
+<p>Now the map in  box_mmm_soft_mask has been masked with a soft mask. Let’s write it out and compare with the standard mask:</p>
+
+<pre class="codeDL"><code>dm.write_real_map_file(box_mmm_soft_mask.map_manager(),     # write out masked map
+       filename="soft_masked.mrc")                         # soft masked
+</code></pre>
+
+<p>The two masked maps are similar, but the standard version has a sharp transition from the region inside the mask where the density is present and outside where it is zero, and the soft-mask version has a gradual transition.</p>
+
+<!----------------------- EDIT END ---------------------------->
+<!-- DO NOT EDIT ANYTHING BELOW!!!! -->
+</div> <!-- end col-sm-9 -->
+
+<!-- automatic table of contents
+     located in the sidebar; will move to the top on a small screen -->
+<div class="col-sm-3">
+  <nav id="toc" data-toggle="toc"></nav>
+</div> <!-- end col-sm-3 -->
+
+</div> <!-- end row -->
+
+</div> <!-- end container -->
+
+{% endblock %}

@@ -32,6 +32,9 @@ def test_01():
   assert mm.origin_shift_grid_units == (100,100,100)
   mm.show_summary()
 
+  # test cc_to_other_map
+  assert mm.cc_to_other_map_manager(mm) == 1
+
   # test writing and reading file
   dm.write_real_map_file(mm, filename = 'test_map_manager.ccp4',
      overwrite = True)
@@ -112,7 +115,8 @@ def test_01():
      unit_cell_grid =  mm.unit_cell_grid,
      unit_cell_crystal_symmetry =  mm.unit_cell_crystal_symmetry(),
      origin_shift_grid_units =  mm.origin_shift_grid_units,
-     map_data = mm.map_data())
+     map_data = mm.map_data(),
+     wrapping = False)
   assert mm_para.is_similar(mm)
 
   # Adjust origin and gridding:
@@ -217,7 +221,7 @@ def test_01():
 
   # Convert to map coeffs, write out, read back, convert back to map
 
-  map_coeffs = mm.map_as_fourier_coefficients(high_resolution = 3)
+  map_coeffs = mm.map_as_fourier_coefficients(d_min = 3)
   mtz_dataset = map_coeffs.as_mtz_dataset(column_root_label = 'F')
   mtz_object = mtz_dataset.mtz_object()
   dm.write_miller_array_file(mtz_object, filename = "map_coeffs.mtz")
@@ -229,10 +233,9 @@ def test_01():
        labels = [labels])
   miller_arrays = dm.get_miller_arrays()
   new_map_coeffs = miller_arrays[0]
-  map_data_from_map_coeffs = mm.fourier_coefficients_as_map(
+  mm_from_map_coeffs = mm.fourier_coefficients_as_map_manager(
       map_coeffs = new_map_coeffs)
 
-  mm_from_map_coeffs = mm.customized_copy(map_data = map_data_from_map_coeffs)
   assert mm_from_map_coeffs.is_similar(mm)
 
   # Find map symmetry in a map
@@ -261,10 +264,23 @@ def test_01():
      unit_cell_crystal_symmetry =  new_mm.unit_cell_crystal_symmetry(),
      origin_shift_grid_units =  new_mm.origin_shift_grid_units,
      map_data = new_mm.map_data(),
-     ncs_object = ncs_obj)
+     ncs_object = ncs_obj,
+     wrapping = False)
   assert another_mm.is_similar(new_mm)
   assert ncs_obj.is_similar_ncs_object(another_mm.ncs_object())
   assert new_mm.is_similar(another_mm)
+
+  # Get resolution
+  assert approx_equal(new_mm.resolution(force=True, method='d99') ,
+    3.73886)
+  assert approx_equal(new_mm.resolution(force=True, method='d_min') ,
+    0.888888888889)
+  assert approx_equal(new_mm.resolution(force=True, method='d9') ,
+    0.888888888889)
+  assert approx_equal(new_mm.resolution(force=True, method='d99') ,
+    3.73886)
+  assert approx_equal(new_mm.resolution() ,
+    3.73886)
 
   # Adjust model and ncs symmetry to match this map
   assert model.shift_cart()  is None
@@ -272,7 +288,10 @@ def test_01():
   assert approx_equal (model.shift_cart() ,
        (-0.888888888888889, -0.8888888888888891, -0.888888888888889))
 
+  assert new_mm.is_compatible_ncs_object(ncs_obj)
+  ncs_obj.set_shift_cart((0,0,0))
   assert not new_mm.is_compatible_ncs_object(ncs_obj)
+
   new_mm.set_ncs_object_shift_cart_to_match_map(ncs_obj)
   new_mm.set_ncs_object(ncs_obj)
   assert new_mm.is_compatible_ncs_object(new_mm.ncs_object())
@@ -284,7 +303,61 @@ def test_01():
   new_mm.shift_origin()
   assert new_mm.is_compatible_ncs_object(new_mm.ncs_object())
 
+  # filter a map
+  dm = DataManager()
+  mm = dm.get_real_map(data_d7)
+
+  low_pass_filtered=mm.deep_copy()
+  low_pass_filtered.resolution_filter(d_min=2.5)
+
+  high_pass_filtered=mm.deep_copy()
+  high_pass_filtered.resolution_filter(d_max=2.5)
+
+  gaussian=mm.deep_copy()
+  gaussian.gaussian_filter(smoothing_radius=1)
+
+  randomize=mm.deep_copy()
+  randomize.randomize(random_seed=1)
+  assert approx_equal(randomize.map_map_cc(mm),0.7,.10)
+
+  binary=mm.deep_copy()
+  binary.binary_filter(threshold=0.5)
+
+  assert approx_equal(
+     (mm.map_data().as_1d()[1073],low_pass_filtered.map_data().as_1d()[1073],
+       high_pass_filtered.map_data().as_1d()[1073],
+       gaussian.map_data().as_1d()[1073],binary.map_data().as_1d()[1073]),
+      (0.0171344596893,0.0227163900537,-0.0072717454565,0.0149086679298,0.0))
+
+  info=mm.get_density_along_line((5,5,5),(10,10,10))
+  assert approx_equal([info.along_density_values[4]]+list(info.along_sites[4]),
+    [-0.562231123447 , 8.0, 8.0, 8.0])
+  from iotbx.map_model_manager import map_model_manager
+  extra_map_manager_id_list = ["low_pass_filtered","high_pass_filtered","gaussian","binary"]
+
+
+  expected_cc= [ 0.999920243317,0.0129365545729,0.971491994253,0.733986499746]
+  mam=map_model_manager(
+    map_manager=mm,
+    extra_map_manager_list =  [low_pass_filtered, high_pass_filtered, gaussian, binary],
+    extra_map_manager_id_list = extra_map_manager_id_list,)
+  for other_id,cc in zip(extra_map_manager_id_list,expected_cc):
+   assert approx_equal(cc,
+      mam.map_map_cc(map_id='map_manager',other_map_id=other_id) )
+
+# this test requires the solve_resolve module
+def test_02():
+
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  data_d7 = os.path.join(data_dir, 'data', 'D7.ccp4')
+
+  # find_separated atoms in a map
+  dm = DataManager()
+  mm = dm.get_real_map(data_d7)
+  sites_cart = mm.trace_atoms_in_map(dist_min=1,n_atoms=10)
+  assert sites_cart.size() == 10 # Note: zero if not available
 
 if (__name__  ==  '__main__'):
   test_01()
+  test_02()
   print ("OK")

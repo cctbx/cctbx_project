@@ -2,11 +2,11 @@
 from __future__ import absolute_import, division, print_function
 import cctbx.sgtbx
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
 from six.moves import zip
-ext = boost.python.import_ext("cctbx_miller_ext")
-asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+ext = bp.import_ext("cctbx_miller_ext")
+asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_miller_ext import *
 
 from cctbx import crystal
@@ -996,6 +996,7 @@ class set(crystal.symmetry):
   def resolution_filter(self, d_max=0, d_min=0, negate=0):
     """
     Select a subset within the indicated resolution range.
+    Returns a new miller array (does not change existing array)
 
     :param d_max: Low-resolution cutoff
     :param d_min: High-resolution cutoff
@@ -5088,12 +5089,13 @@ class array(set):
         sigmas=flex.double(self.size(), 1))
       merging_internal = intensities_copy.merge_equivalents(
         use_internal_variance=True)
-      merged = merging_internal.array()
-      if merged.size() == 1:
+      merged = merging_internal.array().select(
+        merging_internal.redundancies().data() > 1
+      )
+      if merged.size() <= 1:
         cc_one_half = 0
       else:
-        internal_sigmas = merging_internal.array().sigmas()
-        internal_variances = flex.pow2(internal_sigmas)
+        internal_variances = flex.pow2(merged.sigmas())
         mav = flex.mean_and_variance(merged.data())
         var_y = mav.unweighted_sample_variance()
         var_e = 2 * flex.mean(internal_variances)
@@ -5883,7 +5885,8 @@ class fft_map(maptbx.crystal_gridding):
     from iotbx.map_manager import map_manager
     return map_manager(map_data=map_data,
       unit_cell_crystal_symmetry=self.crystal_symmetry(),
-      unit_cell_grid=map_data.all())
+      unit_cell_grid=map_data.all(),
+      wrapping=True)
 
   def real_map_unpadded(self, in_place=True):
     """
@@ -5947,7 +5950,8 @@ class fft_map(maptbx.crystal_gridding):
                    file_name,
                    gridding_first=None,
                    gridding_last=None,
-                   labels=["cctbx.miller.fft_map"]):
+                   labels=["Values outside boundaries are wrapped inside",
+                           "fft_map from Phenix"]):
     """
     Write the real component of the map to a CCP4-format file.
     """

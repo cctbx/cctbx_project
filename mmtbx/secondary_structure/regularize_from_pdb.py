@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function
 # geometry from the PDB
 
 import math
+from operator import itemgetter
 from iotbx.pdb import resseq_encode
 import iotbx.phil
 import os,sys
@@ -556,18 +557,18 @@ class segment_library:
     recover_sort_list=[]
     for target,recover in zip(target_order,recover_target_order):
       recover_sort_list.append([target,recover])
-    recover_sort_list.sort() # sorted on target_order, tag is place these go
+    recover_sort_list.sort(key=itemgetter(0)) # sorted on target_order, tag is place these go
 
     sort_list=[]
     for x,orig in zip(xyz,original_order):
       sort_list.append([orig,x])
-    sort_list.sort()  # sorted on original order, tag is xyz
+    sort_list.sort(key=itemgetter(0))  # sorted on original order, tag is xyz
 
 
     second_sort_list=[]
     for [orig,x],[target,recover] in zip(sort_list,recover_sort_list):
       second_sort_list.append([recover,x,orig,target])
-    second_sort_list.sort()
+    second_sort_list.sort(key=itemgetter(0))
 
     new_xyz=flex.vec3_double()
     new_order=[]
@@ -962,12 +963,12 @@ class connected_group:
         original_ca=apply_atom_selection(atom_selection,
           hierarchy=model_to_match.hierarchy)
         original_xyz=original_ca.atoms().extract_xyz()
-        original_sequence=get_sequence(original_ca)
+        original_sequence=get_sequence(original_ca,one_letter_code=False)
 
         atom_selection="name ca "
         replacement_ca=apply_atom_selection(atom_selection,hierarchy=h)
         replacement_xyz=replacement_ca.atoms().extract_xyz()
-        replacement_sequence=get_sequence(replacement_ca)
+        replacement_sequence=get_sequence(replacement_ca,one_letter_code=False)
 
         if original_xyz.size()==replacement_xyz.size():
           diffs.extend(original_xyz-replacement_xyz)
@@ -1300,7 +1301,7 @@ class connected_group:
     sort_list=[]
     for cgs in self.connected_group_segments:
       sort_list.append([cgs.start_resno,cgs])
-    sort_list.sort()
+    sort_list.sort(key=itemgetter(0))
     self.connected_group_segments=[]
     for id,cgs in sort_list:
       self.connected_group_segments.append(cgs)
@@ -1757,7 +1758,7 @@ class replace_with_segments_from_pdb:
           [cg.get_left_connection()+cg.get_score()*small_number,cg])
       else:
         sort_list.append([cg.get_score(),cg])
-    sort_list.sort(key = lambda x: x[0])
+    sort_list.sort(key=itemgetter(0))
     if not sort_by_start: # high to low in score, low to high in sort_by_start
       sort_list.reverse()
     connected_groups=[]

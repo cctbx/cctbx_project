@@ -50,7 +50,7 @@ class reindex_to_reference(worker):
 
       # Least squares
       scaling_result = scaler.fit_experiment_to_reference(model_intensities, exp_intensities, matching_indices)
-      return scaling_result.correlation
+      return scaling_result.correlation if scaling_result.correlation is not None else -1
 
     # Test each experiment to see if an operator gives a better CC to the reference, and if it does, apply it
     for expt_id, experiment in enumerate(experiments):
@@ -58,12 +58,11 @@ class reindex_to_reference(worker):
       all_correlations = []
       best_correlation = get_correlation()
       all_correlations.append(best_correlation)
-      if best_correlation is None: best_correlation = -1
       best_op = None
       for cb_op in operators:
         test_correlation = get_correlation(cb_op)
         all_correlations.append(test_correlation)
-        if test_correlation is not None and test_correlation > best_correlation:
+        if test_correlation > best_correlation:
           best_correlation = test_correlation
           best_op = cb_op
       if best_op:
@@ -71,9 +70,9 @@ class reindex_to_reference(worker):
         exp_reflections['miller_index_asymmetric'] = exp_miller_indices.map_to_asu().indices()
         exp_reflections['miller_index'] = exp_miller_indices.indices()
         experiment.crystal = MosaicCrystalSauter2014(experiment.crystal.change_basis(best_op)) # need to use wrapper because of cctbx/dxtbx#5
-
-      self.logger.log("Expt %d, reindexing op correlations: %s"%(expt_id, all_correlations))
       result.extend(exp_reflections)
+
+      self.logger.log("Expt %d, reindexing op correlations: %s"%(expt_id, ", ".join(["%6.3f"%c for c in all_correlations])))
 
     self.logger.log_step_time("REINDEX", True)
     self.logger.log("Memory usage: %d MB"%get_memory_usage())

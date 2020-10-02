@@ -245,8 +245,7 @@ class SettingsDialog(BaseDialog):
       self.params.db.user     = creds.db_user.ctr.GetValue()
       self.params.db.password = creds.db_password.ctr.GetValue()
       if self.params.facility.name == 'lcls':
-        self.params.facility.lcls.web.user     = creds.web_user.ctr.GetValue()
-        self.params.facility.lcls.web.password = creds.web_password.ctr.GetValue()
+        self.params.facility.lcls.web.location = creds.web_location.ctr.GetValue()
 
       self.drop_tables = creds.chk_drop_tables.GetValue()
 
@@ -328,23 +327,13 @@ class DBCredentialsDialog(BaseDialog):
     if params.facility.name == 'lcls':
       self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
       # LCLS user name
-      self.web_user = gctr.TextButtonCtrl(self,
-                                         label='LCLS user name',
-                                         label_style='bold',
-                                         label_size=(150, -1),
-                                         big_button_size=(130, -1),
-                                         value=params.facility.lcls.web.user)
-      self.main_sizer.Add(self.web_user, flag=wx.EXPAND | wx.ALL, border=10)
-
-      # LCLS password
-      self.web_password = gctr.TextButtonCtrl(self,
-                                             label='LCLS Password',
-                                             label_style='bold',
-                                             label_size=(150, -1),
-                                             text_style=wx.TE_PASSWORD,
-                                             big_button_size=(130, -1),
-                                             value=params.facility.lcls.web.password)
-      self.main_sizer.Add(self.web_password, flag=wx.EXPAND | wx.ALL, border=10)
+      self.web_location = gctr.TextButtonCtrl(self,
+                                              label='XTC stream location\n(SLAC or NERSC)',
+                                              label_style='bold',
+                                              label_size=(150, -1),
+                                              big_button_size=(130, -1),
+                                              value=params.facility.lcls.web.location)
+      self.main_sizer.Add(self.web_location, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
@@ -993,7 +982,8 @@ class CalibrationDialog(BaseDialog):
     self.trial_runs.ctr.Clear()
     trial = self.db.get_all_trials()[self.trial_number.ctr.GetSelection()]
     runs = [str(i.run) for i in trial.runs]
-    self.trial_runs.ctr.InsertItems(items=runs, pos=0)
+    if runs:
+      self.trial_runs.ctr.InsertItems(items=runs, pos=0)
 
   def onBrowse(self, e):
     ''' Open dialog for selecting PHIL file '''
@@ -1120,7 +1110,8 @@ class TrialTagSelectionDialog(BaseDialog):
           tag_ids.append(tag.id)
           self.tag_names.append(tag.name)
 
-    self.trial_tags.ctr.InsertItems(items=self.tag_names, pos=0)
+    if self.tag_names:
+      self.trial_tags.ctr.InsertItems(items=self.tag_names, pos=0)
 
   def onOK(self, e):
     from xfel.ui.db import get_run_path
@@ -1345,8 +1336,8 @@ class TagDialog(BaseDialog):
     # Populate tags with current values from db
     if len(self.db_tags) > 0:
       for tag in self.db_tags:
-        self.tag_list.InsertStringItem(self.index, str(tag.name))
-        self.tag_list.SetStringItem(self.index, 1, str(tag.comment))
+        self.tag_list.InsertItem(self.index, str(tag.name))
+        self.tag_list.SetItem(self.index, 1, str(tag.comment))
         self.tag_list.SetItemData(self.index, tag.tag_id)
         self.index += 1
 
@@ -1378,8 +1369,8 @@ class TagDialog(BaseDialog):
     ''' Add a string item to list; focus on item & provide default tag name'''
     new_tag = ('default tag {}'.format(self.index), '', self.index)
     self.new_tags.append(new_tag)
-    self.tag_list.InsertStringItem(self.index, new_tag[0])
-    self.tag_list.SetStringItem(self.index, 1, new_tag[1])
+    self.tag_list.InsertItem(self.index, new_tag[0])
+    self.tag_list.SetItem(self.index, 1, new_tag[1])
     self.tag_list.SetItemData(self.index, -1)
     #self.tag_list.Select(self.index)
     #self.tag_list.Focus(self.index)
@@ -1414,13 +1405,13 @@ class TagDialog(BaseDialog):
 
       # Update names for edited tags
       all_items = [(self.tag_list.GetItemData(i),
-                    self.tag_list.GetItem(itemId=i, col=0),
-                    self.tag_list.GetItem(itemId=i, col=1))
+                    self.tag_list.GetItem(itemIdx=i, col=0),
+                    self.tag_list.GetItem(itemIdx=i, col=1))
                     for i in range(self.tag_list.GetItemCount())]
 
       self.db_tags = self.db.get_all_tags()
       tag_ids = [i.tag_id for i in self.db_tags]
-      new_tag_names = [i[1].m_text for i in all_items]
+      new_tag_names = [i[1].GetText() for i in all_items]
 
       if len([i for i in new_tag_names if new_tag_names.count(i) > 1]) != 0:
         wx.MessageBox('Need a unique tag name!', 'Warning',
@@ -1429,10 +1420,10 @@ class TagDialog(BaseDialog):
         for item in all_items:
           if item[0] in tag_ids:
             tag = self.db.get_tag(tag_id=item[0])
-            tag.name = item[1].m_text
-            tag.comment = item[2].m_text
+            tag.name = item[1].GetText()
+            tag.comment = item[2].GetText()
           elif item[0] == -1:
-            self.db.create_tag(name=item[1].m_text, comment=item[2].m_text)
+            self.db.create_tag(name=item[1].GetText(), comment=item[2].GetText())
 
     except Exception as exception:
       print(str(exception))
@@ -1470,7 +1461,7 @@ class RunBlockDialog(BaseDialog):
       if self.use_ids:
         run_numbers = [r.id for r in runs]
       else:
-        run_numbers = [int(r.run) for r in runs]
+        run_numbers = list(sorted([int(r.run) for r in runs]))
       assert len(set(run_numbers)) == len(run_numbers)
 
       if trial is not None:
@@ -2000,6 +1991,7 @@ class SelectRunBlocksDialog(BaseDialog):
     self.all_rungroups = self.db.get_all_rungroups()
     choices = []
     selected = []
+    use_ids = db.params.facility.name not in ['lcls']
     for rungroup in self.all_rungroups:
       selected.append(rungroup.id in self.trial_rungroups)
       first_run, last_run = rungroup.get_first_and_last_runs()
@@ -2007,9 +1999,10 @@ class SelectRunBlocksDialog(BaseDialog):
         if first_run is None:
           desc = "[%d]"%(rungroup.id)
         else:
-          desc = "[%d] %d+"%(rungroup.id, int(first_run.id))
+          desc = "[%d] %d+"%(rungroup.id, int(first_run.id) if use_ids else int(first_run.run))
       else:
-        desc = "[%d] %d-%d"%(rungroup.id, int(first_run.id), int(last_run.id))
+        desc = "[%d] %d-%d"%(rungroup.id, int(first_run.id) if use_ids else int(first_run.run), \
+                                          int(last_run.id) if use_ids else int(last_run.run))
       if rungroup.comment is not None:
         desc += " " + rungroup.comment
 
@@ -2412,7 +2405,7 @@ class DatasetDialog(BaseDialog):
     if tag_names:
       self.tag_checklist.ctr.InsertItems(items=tag_names, pos=0)
       checked = [tag_idx for tag_idx, tag_name in enumerate(tag_names) if tag_name in self.dataset_tagnames]
-      self.tag_checklist.ctr.SetChecked(checked)
+      self.tag_checklist.ctr.SetCheckedItems(checked)
 
   def onOK(self, e):
     name = self.name.ctr.GetValue()
@@ -2431,7 +2424,7 @@ class DatasetDialog(BaseDialog):
       self.dataset.name = name
       self.dataset.comment = comment
 
-    checked = self.tag_checklist.ctr.GetChecked()
+    checked = self.tag_checklist.ctr.GetCheckedItems()
     for tag_idx, tag in enumerate(self.all_tags):
       if tag_idx in checked:
         if tag.name not in self.dataset_tagnames:
@@ -2557,5 +2550,83 @@ class TaskDialog(BaseDialog):
       self.task.type = task_type
       self.task.trial_id = trial.id
       self.task.parameters = parameters
+
+    e.Skip()
+
+class SelectTasksDialog(BaseDialog):
+  def __init__(self, parent, dataset,
+               label_style='bold',
+               content_style='normal',
+               db=None,
+               *args, **kwargs):
+    BaseDialog.__init__(self, parent, label_style=label_style,
+                        content_style=content_style, *args, **kwargs)
+
+    self.db = db
+    self.dataset = dataset
+
+    self.top_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+    self.button_panel = wx.Panel(self)
+    self.button_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.button_panel.SetSizer(self.button_sizer)
+
+    self.tasks_panel = ScrolledPanel(self, size=(500, 400))
+
+    # Populate tasks with current values from db
+    self.dataset_tasks = [t for t in dataset.tasks]
+    self.dataset_task_ids = [t.id for t in self.dataset_tasks]
+    self.all_tasks = self.db.get_all_tasks()
+    choices = []
+    selected = []
+    for task in self.all_tasks:
+      selected.append(task.id in self.dataset_task_ids)
+      desc = "[%d] %s"%(task.id, task.type)
+      if task.trial is not None:
+        desc += " (trial %d)"%task.trial.trial
+
+      choices.append(desc)
+
+    self.tasks_list = gctr.CheckListCtrl(self.tasks_panel,
+                                         label='Select tasks',
+                                         label_size=(40, -1),
+                                         label_style='normal',
+                                         ctrl_size=(450, 350),
+                                         direction='vertical',
+                                         choices=choices)
+    for i in range(len(selected)):
+      self.tasks_list.ctr.Check(i, selected[i])
+
+    self.tasks_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.tasks_panel.SetSizer(self.tasks_sizer)
+
+    self.tasks_sizer.Add(self.tasks_list, 1, flag=wx.EXPAND)
+
+    # Add panels to main sizer
+    self.top_sizer.Add(self.button_panel,
+                       flag=wx.LEFT, border=10)
+    self.top_sizer.Add(self.tasks_panel,
+                       flag=wx.EXPAND | wx.RIGHT | wx.LEFT, border=10)
+    self.main_sizer.Add(self.top_sizer,
+                        flag=wx.EXPAND| wx.TOP | wx.BOTTOM, border=10)
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                   flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                   border=10)
+
+    self.Layout()
+    self.SetTitle('Select tasks')
+
+    # Button bindings
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def onOK(self, e):
+    for task in self.dataset_tasks:
+      self.dataset.remove_task(task)
+
+    for i, task in enumerate(self.all_tasks):
+      if self.tasks_list.ctr.IsChecked(i):
+        self.dataset.add_task(task)
 
     e.Skip()

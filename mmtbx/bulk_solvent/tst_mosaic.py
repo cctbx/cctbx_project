@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import time
 from scitbx.array_family import flex
-import boost.python
-asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+import boost_adaptbx.boost.python as bp
+asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 from libtbx.test_utils import approx_equal
 from libtbx import group_args
 from mmtbx.bulk_solvent import mosaic
@@ -1040,7 +1040,8 @@ def common_inputs(k_sols, for_test):
   fc  = xrs.structure_factors(d_min=4).f_calc()
   #
   mm = mosaic.mosaic_f_mask(
-    miller_array   = fc,
+    f_obs          = abs(fc),
+    #f_calc         = fc,
     xray_structure = xrs,
     step           = 0.5,
     volume_cutoff  = 6)
@@ -1082,7 +1083,7 @@ def run():
   inp = common_inputs(k_sols=k_sols, for_test=True)
   mm, f_obs, i_obs, fc = inp.mm, inp.f_obs, inp.i_obs, inp.fc
   # Initial k_sols for finite differences test and minimization (algorithm_2)
-  x = [1,  .01,.01,.01, .01,.01,.01]
+  x = flex.double([1,  .01,.01,.01, .01,.01,.01])
   # Finite differences test
   g_anal = mosaic.tg(i_obs = i_obs, F=[fc]+mm.FV.keys(), x=x, use_curvatures=False).gradients()
   e=1.e-6
@@ -1097,11 +1098,14 @@ def run():
     g_fd.append( (t1-t2)/(2*e) )
   assert flex.sum(flex.abs(g_anal-g_fd))*2/flex.sum(flex.abs(g_anal+g_fd))<1.e-9
   #
-  r = mosaic.algorithm_4(
-    f_obs = f_obs,
-    F = [fc]+inp.mm.FV.keys(),
-    auto_converge_eps=1.e-9)
-  assert approx_equal(r, [1,]+k_sols)
+  for use_cpp in [True, False]:
+    r = mosaic.algorithm_4(
+      f_obs             = f_obs,
+      phase_source      = fc,
+      F                 = [fc]+inp.mm.FV.keys(),
+      auto_converge_eps = 1.e-9,
+      use_cpp           = use_cpp)
+    assert approx_equal(r, [1,]+k_sols)
   #
   r = mosaic.algorithm_3(
     i_obs = i_obs,
@@ -1128,6 +1132,5 @@ def run():
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
-  run2()
   print ("Total time: %-8.4f"%(time.time()-t0))
   print ("OK")

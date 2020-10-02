@@ -25,7 +25,6 @@ namespace boost_python { namespace {
     using namespace boost::python;
 
     typedef return_value_policy<return_by_value> rbv;
-    typedef default_call_policies dcp;
     class_<xfel::parameter::parameter_array>(
       "parameter_array",no_init)
       .add_property("x",

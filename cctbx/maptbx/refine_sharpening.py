@@ -419,7 +419,6 @@ def calculate_fsc(si=None,
     fc_map=model_map_coeffs
     b_eff=None
 
-
   ratio_list=flex.double()
   target_sthol2=flex.double()
   cc_list=flex.double()
@@ -642,6 +641,8 @@ def scale_amplitudes(model_map_coeffs=None,
   f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
 
   (d_max,d_min)=f_array.d_max_min()
+  if d_max < 0:
+    d_max = 1.e+10
   if not f_array.binner():
     f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
     f_array.binner().require_all_bins_have_data(min_counts=1,
@@ -719,7 +720,7 @@ def apply_target_scale_factors(f_array=None,phases=None,
 def calculate_map(map_coeffs=None,crystal_symmetry=None,n_real=None):
 
   if crystal_symmetry is None: crystal_symmetry=map_coeffs.crystal_symmetry()
-  from iotbx.create_models_or_maps import get_map_from_map_coeffs
+  from cctbx.development.create_models_or_maps import get_map_from_map_coeffs
   map_data=get_map_from_map_coeffs(
      map_coeffs=map_coeffs,crystal_symmetry=crystal_symmetry, n_real=n_real)
   return map_data

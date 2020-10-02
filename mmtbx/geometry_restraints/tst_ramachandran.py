@@ -9,7 +9,7 @@ import iotbx.pdb
 import cctbx.geometry_restraints
 import scitbx.lbfgs
 from scitbx.array_family import flex
-import boost.python
+import boost_adaptbx.boost.python as bp
 from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 from libtbx import group_args
@@ -33,7 +33,7 @@ def exercise_basic():
   assert approx_equal(e1, e2, eps=0.000001)
   assert approx_equal(t.get_energy(-85.0, 86.0), 21.3345, eps=0.001)
   assert approx_equal(t.get_energy(-86.0, 85.0), 21.389, eps=0.001)
-  ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
+  ext = bp.import_ext("mmtbx_ramachandran_restraints_ext")
   proxies = ext.shared_phi_psi_proxy()
   proxies.append(
     ext.phi_psi_proxy(

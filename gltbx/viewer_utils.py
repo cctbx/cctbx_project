@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 import scitbx.array_family.flex # import dependency
 import time
 
-import boost.python
-ext = boost.python.import_ext("gltbx_viewer_utils_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("gltbx_viewer_utils_ext")
 from gltbx_viewer_utils_ext import *
 
 def read_pixels_to_str(x, y, width, height):

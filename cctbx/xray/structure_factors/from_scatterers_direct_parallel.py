@@ -31,7 +31,7 @@ class pprocess:
           make install
 
     3. gcc 4.4.2 or higher is required for Linux build of pycuda 2011.1
-    4. boost.python is required for pycuda; cctbx-installed version is probably OK, not tested.
+    4. boost_adaptbx.boost.python is required for pycuda; cctbx-installed version is probably OK, not tested.
        tests were performed with separately-installed boost::
 
           cd boost_1_45_0

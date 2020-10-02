@@ -39,7 +39,15 @@ def format_HELIX_records_from_AEV(aev_values_dict, cc_cutoff):
       M = 0
   return result
 
-def generate_perfect_helix(n_residues=10, residue_code="G"):
+def generate_perfect_helix(rs_values,
+                           ts_values,
+                           angular_rs_values,
+                           radial_eta,
+                           angular_eta,
+                           angular_zeta,
+                           n_residues=10,
+                           residue_code="G",
+                           ):
   """
   Compute AEV values for the perfect helix.
   """
@@ -50,26 +58,47 @@ def generate_perfect_helix(n_residues=10, residue_code="G"):
     pdb_hierarchy = perfect_helix_ph,
     build_grm     = True,
     log           = null_out())
-  return AEV(model = model).get_values()
+  return AEV(model = model,
+             rs_values=rs_values,
+             ts_values=ts_values,
+             angular_rs_values=angular_rs_values,
+             radial_eta=radial_eta,
+             angular_eta=angular_eta,
+             angular_zeta=angular_zeta,
+             ).get_values()
 
 def compare(aev_values_dict):
   """
   Compare perfect helix with a target structure and get correlation coefficient
   values. The result include 3 direction AEVs CC values. If the c-alpha doesn't
-  have BAEVs or EAEVs the CC values are 0.
+  have BAEVs or EAEVs the CC values are None.
   """
   result = diff_class()
-  perfect_helix = generate_perfect_helix()
-  def set_vals(result, d):
+  perfect_helix = generate_perfect_helix(
+                    rs_values=aev_values_dict.rs_values,
+                    ts_values=aev_values_dict.ts_values,
+                    angular_rs_values=aev_values_dict.angular_rs_values,
+                    radial_eta=aev_values_dict.radial_eta,
+                    angular_eta=aev_values_dict.angular_eta,
+                    angular_zeta=aev_values_dict.angular_zeta,
+                    )
+  def pretty_aev(v):
+    outl = 'AEV'
+    for i in v:
+      outl += ' %0.3f' % i
+    return outl
+  def set_vals(result, d, verbose=False):
     for key1, value1 in d.items():
-      if value1 != []:
+      if value1 != [] and value != []:
         cc = flex.linear_correlation(
           x=flex.double(value), y=flex.double(value1)).coefficient()
-        result.setdefault(key1, OrderedDict())
-        result[key1].setdefault(key, cc)
       else:
-        result.setdefault(key1, OrderedDict())
-        result[key1].setdefault(key, 1)
+        cc = None
+      result.setdefault(key1, OrderedDict())
+      result[key1].setdefault(key, cc)
+      if verbose:
+        print('comparing\n%s\n%s' % (pretty_aev(value), pretty_aev(value1)))
+        print('  CC = %0.3f' % cc)
   for key,value in perfect_helix.items():
     if   key == 'B': set_vals(result=result, d=aev_values_dict.BAEVs)
     elif key == 'M': set_vals(result=result, d=aev_values_dict.MAEVs)
@@ -84,39 +113,65 @@ class diff_class(OrderedDict):
       outl += '  %s :' % (key)
       for key1,value in item.items():
         outl += ' %s: '%key1
-        outl += '%0.2f, ' % value
+        if value is None:
+          outl += 'None, '
+        else:
+          outl += '%0.2f, ' % value
       outl += '\n'
     return outl
 
 # This is format class of AEV. It makes print of AEV more clearly.
 class format_class(OrderedDict):
+  def __init__(self, length_of_radial=None):
+    OrderedDict.__init__(self)
+    self.length_of_radial=length_of_radial
+
+
   def __repr__(self):
     outl = '...\n'
-    for key, item in self.items():
+    for key, item in sorted(self.items()):
       outl += '  %s :' % (key)
-      for v in item:
-        print (v)
+      for i, v in enumerate(item):
+        # print (v)
+        if i==self.length_of_radial: outl+='|'
         outl += '%0.4f, ' % v
       outl += '\n'
     return outl
 
 class AEV(object):
   """
-  Cite paper...
+  Smith J S, Isayev O, Roitberg A E. ANI-1: an extensible neural network potential with DFT
+  accuracy at force field computational cost[J]. Chemical science, 2017, 8(4): 3192-3203.
   """
-
-  def __init__(self, model):
+  def __init__( self,
+                model,
+                rs_values = [2.0, 3.8, 5.2, 5.5, 6.2, 7.0, 8.6, 10.0],
+                # probe distances (A) for radial
+                radial_eta = 4,
+                cutoff = 8.1,
+                # radial cutoff distance
+                ts_values = [0.392699, 1.178097, 1.963495, 2.748894],
+                # probe angles (rad) for angular
+                angular_rs_values = [3.8, 5.2, 5.5, 6.2],
+                # probe distances (A) for angular
+                angular_eta = 4,
+                angular_zeta = 8,
+                # ???
+                ):
     self.hierarchy = model.get_hierarchy()
     self.geometry_restraints_manager = model.get_restraints_manager().geometry
-    self.rs_values = [2.0, 3.8, 5.2, 5.5, 6.2, 7.0, 8.6, 10.0]
-    self.Rj = [2.1, 2.2, 2.5]
-    self.cutoff = 8.1
-    self.ts_values = [0.392699, 1.178097, 1.963495, 2.748894]
-    self.angular_rs_values = [3.8, 5.2, 5.5, 6.2]
-    self.angular_zeta = 8
-    self.EAEVs = format_class()
-    self.MAEVs = format_class()
-    self.BAEVs = format_class()
+    self.rs_values = rs_values
+    self.radial_eta = radial_eta
+    # NOT USED!!!
+    # self.Rj = Rj
+    self.cutoff = cutoff
+    self.ts_values = ts_values
+    self.angular_rs_values = angular_rs_values
+    self.angular_eta = angular_eta
+    self.angular_zeta = angular_zeta
+    self.EAEVs = format_class(length_of_radial=len(self.rs_values))
+    self.MAEVs = format_class(length_of_radial=len(self.rs_values))
+    self.BAEVs = format_class(length_of_radial=len(self.rs_values))
     self.center_atom     = None
     self.chain_hierarchy = None
     self.generate_AEV()
@@ -128,22 +183,24 @@ class AEV(object):
     result['E'] = self.EAEVs.values()[-1]
     return result
 
-  def generate_ca(self):
+  def generate_ca(self, length=5):
     """
-    ???
+    Geting all C-alpha atoms from an whole pdb file.
     """
+    # faster with atom selection to CA re CJW update
     protain_fragments = generate_protein_fragments(
       hierarchy = self.chain_hierarchy,
       geometry = self.geometry_restraints_manager,
+      include_non_linked=True,
       include_non_standard_peptides=True,
-      length=5)
+      length=length)
     for five in protain_fragments:
       rc = []
       for residue in five:
         for atom in residue.atoms():
           if atom.name == ' CA ':
             rc.append(atom)
-      if len(rc) == 5:
+      if len(rc) == length:
         yield rc
 
   def generate_AEV(self):
@@ -193,7 +250,7 @@ class AEV(object):
 
   def cutf(self, distance):
     """
-    Formula number ???, page number ???
+    Formula (2), page 3194
     """
     if distance <= self.cutoff:
       Fc = 0.5 * math.cos(math.pi * distance / self.cutoff) + 0.5
@@ -203,10 +260,11 @@ class AEV(object):
 
   def calculate(self, atom_list):
     """
-    Formula number ???, page number ???
+    Formula (3) and (4), page 3194
     """
-    n = 4.0
-    l = 8.0
+    n = self.radial_eta
+    assert  self.radial_eta==self.angular_eta
+    l = self.angular_zeta
     AEVs = format_class()
     res_name = self.center_atom.format_atom_record()[17:20]+'  '+\
                self.center_atom.format_atom_record()[21:26]

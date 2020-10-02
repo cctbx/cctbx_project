@@ -6,7 +6,7 @@ jobs:
 - job: win_64
   pool:
     vmImage: vs2017-win2016
-  timeoutInMinutes: 90
+  timeoutInMinutes: 120
   strategy:
     maxParallel: 1
     matrix:
@@ -57,6 +57,14 @@ jobs:
       cd $(Pipeline.Workspace)
       tar -xf modules.tar
     displayName: Extract modules tarball
+
+  - script: |
+      cd $(Pipeline.Workspace)\modules\dxtbx
+      git remote set-url origin https://github.com/dials/dxtbx.git
+      git fetch origin
+      git reset --hard origin/dials-2.2
+    displayName: Use dials-2.2 branch for Python 2
+    condition: eq(variables['PYTHON_VERSION'], 'py27')
 
   - script: |
       cd $(Pipeline.Workspace)

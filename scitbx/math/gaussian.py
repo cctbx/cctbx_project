@@ -6,11 +6,11 @@ from scitbx.math.ext import gaussian_sum as sum
 from scitbx.math.ext import gaussian_fit as fit
 from scitbx.array_family import flex
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 import sys
 from six.moves import zip
 
-@boost.python.inject_into(sum)
+@bp.inject_into(sum)
 class _():
 
   def show(self, f=None, format=None):
@@ -32,7 +32,7 @@ class _():
       self.c(),
       self.use_c())
 
-@boost.python.inject_into(fit)
+@bp.inject_into(fit)
 class _():
 
   def show_table(self, f=None):

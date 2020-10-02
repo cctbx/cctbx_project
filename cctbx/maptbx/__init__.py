@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
 import cctbx.sgtbx
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
 from six.moves import zip
-ext = boost.python.import_ext("cctbx_maptbx_ext")
+ext = bp.import_ext("cctbx_maptbx_ext")
 from cctbx_maptbx_ext import *
 
 from cctbx import crystal
@@ -28,7 +28,7 @@ import scitbx.math
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
 
-@boost.python.inject_into(connectivity)
+@bp.inject_into(connectivity)
 class _():
 
   def get_blobs_boundaries_tuples(self):
@@ -105,23 +105,14 @@ class d99(object):
     else:
       assert [map, crystal_symmetry].count(None) == 2
     self.d_spacings = self.f_map.d_spacings().data()
-    s = flex.sort_permutation(self.d_spacings)
-    self.d_spacings = self.d_spacings.select(s)
-    self.f_map = self.f_map.select(s)
     self.d_max, self.d_min = flex.max(self.d_spacings), flex.min(self.d_spacings)
     o = ext.d99(
       f          = self.f_map.data(),
       d_spacings = self.d_spacings,
       hkl        = self.f_map.indices(),
-      d_min      = self.d_min,
-      d_max      = self.d_max)
+      cutoff     = 0.99)
     self.result = group_args(
-      d9      = o.d_min_cc9(),
-      d99     = o.d_min_cc99(),
-      d999    = o.d_min_cc999(),
-      d9999   = o.d_min_cc9999(),
-      d99999  = o.d_min_cc99999(),
-      d999999 = o.d_min_cc999999())
+      d99 = o.d_min())
 
   def show(self, log):
     fmt = "%12.6f %8.6f"
@@ -310,7 +301,7 @@ class statistics(ext.statistics):
   def __init__(self, map):
     ext.statistics.__init__(self, map)
 
-@boost.python.inject_into(ext.statistics)
+@bp.inject_into(ext.statistics)
 class _():
 
   def show_summary(self, f = None, prefix = ""):
@@ -323,7 +314,7 @@ class _():
 use_space_group_symmetry = sgtbx.search_symmetry_flags(
   use_space_group_symmetry = True)
 
-@boost.python.inject_into(ext.histogram)
+@bp.inject_into(ext.histogram)
 class _():
 
   """
@@ -1675,6 +1666,7 @@ def loc_res(map,
             b_range_low = -200,
             b_range_high = 500,
             fsc_cutoff = 0.143,
+            wrapping = False,
             verbose = False,
             log = sys.stdout):
   assert method in ["fsc", "rscc", "rscc_d_min_b"]
@@ -1713,7 +1705,8 @@ def loc_res(map,
   from iotbx.map_manager import map_manager
   mm = map_manager(map_data = map,
     unit_cell_crystal_symmetry = crystal_symmetry,
-    unit_cell_grid = map.all())
+    unit_cell_grid = map.all(),
+    wrapping = wrapping)
 
   for chunk_sel in chunk_selections:
     ph_sel  = pdb_hierarchy.select(chunk_sel).deep_copy()
@@ -1800,3 +1793,385 @@ def loc_res(map,
   if (method == "rscc_d_min_b"):
      pdb_hierarchy.atoms().set_occ(occs)
   return pdb_hierarchy
+
+def is_bounded_by_constant(map_data,
+     relative_sd_tol = 0.1):
+    ''' Determine if this map is bounded on all sides by values that are
+       zero or a constant, within relative tolerance of relative_sd_tol to
+       the SD of the map as a whole
+
+       Returns True if map boundary values are nearly constant,
+         and False if they vary
+
+       Requires that map is at origin (0,0,0)
+    '''
+
+    assert tuple(map_data.origin()) == (0,0,0)
+
+    relative_sd = relative_sd_on_edges(map_data)
+
+    # Determine whether values at boundaries are all about the same:
+    if relative_sd  > relative_sd_tol:
+      return False  # Not uniform on edges
+    else:
+      return True  # uniform on edges
+
+
+def relative_sd_on_edges(map_data,
+    skip_if_greater_than = None,
+    use_maximum = None):
+
+    '''
+     Determine relative SD of values on edges to the map as a whole
+
+     Requires that map is at origin (0,0,0)
+
+    '''
+    assert tuple(map_data.origin()) == (0,0,0)
+
+    sd_overall = map_data.as_1d().standard_deviation_of_the_sample()
+
+    all = list(map_data.all())
+    boundary_data = flex.double()
+    relative_sd_on_edges = 0
+
+    from cctbx.maptbx import copy
+    for i in (0, all[0]-1):
+      new_map_data = copy(map_data,
+         tuple((i, 0, 0)),
+         tuple((i, all[1], all[2])))
+      boundary_data.extend(new_map_data.as_1d())
+      relative_sd_on_edges = max(relative_sd_on_edges,
+        new_map_data.as_1d().standard_deviation_of_the_sample() / max(
+          1.e-10,sd_overall))
+      if (skip_if_greater_than is not None) and (
+        relative_sd_on_edges > skip_if_greater_than):
+          return relative_sd_on_edges
+
+    for j in (0, all[1]-1):
+      new_map_data = copy(map_data,
+         tuple((0, j, 0)),
+         tuple((all[0], j, all[2])))
+      boundary_data.extend(new_map_data.as_1d())
+      relative_sd_on_edges = max(relative_sd_on_edges,
+        new_map_data.as_1d().standard_deviation_of_the_sample() / max(
+          1.e-10,sd_overall))
+      if (skip_if_greater_than is not None) and (
+        relative_sd_on_edges > skip_if_greater_than):
+          return relative_sd_on_edges
+
+    for k in (0, all[2]-1):
+      new_map_data = copy(map_data,
+         tuple((0, 0, k)),
+         tuple((all[0], all[1], k)))
+      boundary_data.extend(new_map_data.as_1d())
+      relative_sd_on_edges = max(relative_sd_on_edges,
+        new_map_data.as_1d().standard_deviation_of_the_sample() / max(
+          1.e-10,sd_overall))
+      if (skip_if_greater_than is not None) and (
+        relative_sd_on_edges > skip_if_greater_than):
+          return relative_sd_on_edges
+
+    if use_maximum: # Take maximum for any edge
+      return relative_sd_on_edges
+    else:  # use overall
+      return boundary_data.standard_deviation_of_the_sample(
+        ) / max(1.e-10,sd_overall)
+
+def get_resolution_where_significant_data_present(ma,
+   minimum_fraction_data_points=0.1):
+    # Now filter ma at resolution where there are significant data
+    sel = ( ma.amplitudes().data() > 1.e-10)
+    ma_with_data = ma.select(sel)
+    n_bins = int(0.5+10 * 1/minimum_fraction_data_points)
+    ma_with_data.setup_binner(n_bins = n_bins, d_max = 10000.,
+      d_min = ma_with_data.d_min())
+    dsd = ma_with_data.d_spacings().data()
+    ibin_list=list(ma_with_data.binner().range_used())
+    ibin_list.reverse()
+    total_data = ma_with_data.size()
+    minimum_data_points = int(minimum_fraction_data_points * total_data)
+    total_found = 0
+    for i_bin in ibin_list:
+      sel2      = ma_with_data.binner().selection(i_bin)
+      dd        = dsd.select(sel2)
+      d_max     = dd.min_max_mean().max
+      n         = dd.size()
+      total_found += n
+      if total_found >= minimum_data_points and total_found < total_data//2:
+        return d_max
+    return None
+
+def get_diff_score_towards_periodic(map_data,
+      minimum_fraction_data_points = None):
+
+    '''
+      Evaluate consistency of high-pass filtered difference map analysis
+      with that expected for a map that is periodic.
+
+      The difference map is difference between the map and the map lacking high-
+      resolution terms.  This difference map shows only high-frequency
+      information
+
+      A map that is periodic should give a difference map that is more or less
+      uniform everywhere.  A non-periodic map should have a discontinuity at the
+      borders and have high variation in the difference map at the edges.
+    '''
+
+    from cctbx import crystal
+    dummy_uc_parameters=tuple(list(map_data.all())+[90.,90.,90.])
+    cs= crystal.symmetry( dummy_uc_parameters, 1)
+
+    # Normalize the map data
+    sd=max(1.e-20,map_data.as_1d().standard_deviation_of_the_sample())
+    mean=map_data.as_1d().min_max_mean().mean
+    map_data=(map_data - mean)/sd
+
+    # Test for difference map variation at edges of map
+
+    # Get all structure factors, back transform to get map that can
+    #  be represented by FT of all map coefficients in box (may not
+    #  be the same as original because gridding may not allow it)
+
+    from cctbx import miller
+    ma = miller.structure_factor_box_from_map(
+      crystal_symmetry = cs,
+      map              = map_data,
+      d_min            = None)
+
+    map_data = map_coefficients_to_map(
+      map_coeffs       = ma,
+      crystal_symmetry = cs,
+      n_real           = map_data.all())
+
+    # Now we have map that can be represented by Fourier coefficients.
+    # First get the map as Fourier coefficients
+
+    ma = miller.structure_factor_box_from_map(
+      crystal_symmetry = cs,
+      map              = map_data,
+      d_min            = None)
+
+    # Ready with map as Fourier coefficients (FT of ma will give map_data again)
+
+    # Find highest resolution where there are some non-zero data
+
+    d_min_value = get_resolution_where_significant_data_present(ma,
+      minimum_fraction_data_points = minimum_fraction_data_points)
+
+    # High-frequency filter at this resolution
+    filtered_ma = ma.resolution_filter(d_min = d_min_value)
+
+    filtered_map       = map_coefficients_to_map(
+      map_coeffs       = filtered_ma,
+      crystal_symmetry = cs,
+      n_real           = map_data.all())
+
+    # Make a difference map to look at only high_frequency terms
+
+    diff_map=map_data - filtered_map
+
+    # Get the overall SD of the map and SD on edges:
+
+    diff_sd = diff_map.as_1d().standard_deviation_of_the_sample()
+    diff_relative_sd_on_edges = relative_sd_on_edges(diff_map,
+       use_maximum = True)
+
+    # Score based on expectation that a periodic map has a value of about 1
+    #  and a non-periodic map has a value about 2
+
+    diff_score_towards_aperiodic = max(0,min(1,(
+         diff_relative_sd_on_edges - 1)/(2 - 1)))
+    diff_score_towards_periodic = 1 - diff_score_towards_aperiodic
+
+    return diff_score_towards_periodic
+
+def get_edge_score_towards_periodic(map_data,
+  use_minimum = True):
+    '''
+      Measure of whether facing edges have correlated data with correlation
+     similar to that found for adjacent planes and different than randomly
+     chosen points
+
+     If use_minimum is set, take minimum of values on all pairs of faces
+
+    '''
+
+    all = list(map_data.all())
+    one_data = flex.double()
+    middle_plus_one_data = flex.double()
+    middle_data = flex.double()
+    boundary_zero_data = flex.double()
+    boundary_zero_one_data = flex.double()
+    boundary_one_data = flex.double()
+
+    lowest_relative_cc = 1.0
+
+    from cctbx.maptbx import copy
+    unique_list=[]
+    for i in (0,1, all[0]-1):
+      if not i in unique_list: unique_list.append(i)
+      new_map_data = copy(map_data,
+         tuple((i, 0, 0)),
+         tuple((i, all[1], all[2])))
+      if i == 0:
+        boundary_zero_data_local=new_map_data.as_1d()
+        boundary_zero_data.extend(new_map_data.as_1d())
+      elif i == 1:
+        one_data_local=new_map_data.as_1d()
+        one_data.extend(new_map_data.as_1d())
+      else:
+        boundary_one_data_local=new_map_data.as_1d()
+        boundary_one_data.extend(new_map_data.as_1d())
+    lowest_relative_cc = min(lowest_relative_cc,get_relative_cc(
+      boundary_zero_data=boundary_zero_data_local,
+      boundary_one_data=boundary_one_data_local,
+      one_data=one_data_local,))
+
+    assert len(unique_list) == 3
+
+    unique_list=[]
+    for j in (0,1, all[1]-1):
+      if not j in unique_list: unique_list.append(j)
+      new_map_data = copy(map_data,
+         tuple((0, j, 0)),
+         tuple((all[0], j, all[2])))
+      if j == 0:
+        boundary_zero_data_local=new_map_data.as_1d()
+        boundary_zero_data.extend(new_map_data.as_1d())
+      elif j == 1:
+        one_data_local=new_map_data.as_1d()
+        one_data.extend(new_map_data.as_1d())
+      else:
+        boundary_one_data_local=new_map_data.as_1d()
+        boundary_one_data.extend(new_map_data.as_1d())
+    assert len(unique_list) == 3
+    lowest_relative_cc = min(lowest_relative_cc,get_relative_cc(
+      boundary_zero_data=boundary_zero_data_local,
+      boundary_one_data=boundary_one_data_local,
+      one_data=one_data_local,))
+
+    unique_list=[]
+    for k in (0, 1, all[2]-1):
+      if not k in unique_list: unique_list.append(k)
+      new_map_data = copy(map_data,
+         tuple((0, 0, k)),
+         tuple((all[0], all[1], k)))
+      if k == 0:
+        boundary_zero_data_local=new_map_data.as_1d()
+        boundary_zero_data.extend(new_map_data.as_1d())
+      elif k == 1:
+        one_data_local=new_map_data.as_1d()
+        one_data.extend(new_map_data.as_1d())
+      else:
+        boundary_one_data_local=new_map_data.as_1d()
+        boundary_one_data.extend(new_map_data.as_1d())
+    assert len(unique_list) == 3
+    lowest_relative_cc = min(lowest_relative_cc,get_relative_cc(
+      boundary_zero_data=boundary_zero_data_local,
+      boundary_one_data=boundary_one_data_local,
+      one_data=one_data_local,))
+
+    # use lowest value of relative_cc for any pair of faces so
+    #  we can detect any faces that are trimmed
+
+    if use_minimum:
+      relative_cc=lowest_relative_cc
+    else:
+      relative_cc = get_relative_cc(
+        boundary_zero_data=boundary_zero_data,
+        boundary_one_data=boundary_one_data,
+        one_data=one_data,)
+
+    edge_score_towards_periodic = max(0,min(1,relative_cc ))
+
+    return edge_score_towards_periodic
+
+def get_relative_cc(
+      boundary_zero_data = None,
+      boundary_one_data = None,
+      one_data = None):
+
+    cc_boundary_zero_one= flex.linear_correlation(boundary_zero_data,
+       boundary_one_data).coefficient()
+    cc_positive_control= flex.linear_correlation(boundary_zero_data,
+      one_data).coefficient()
+
+    # Make negative control with randomized order of data
+    one_data_random_perm= one_data.select(
+         flex.random_permutation(len(one_data)))
+    cc_negative_control = flex.linear_correlation(boundary_zero_data,
+       one_data_random_perm).coefficient()
+
+
+    # Expect that negative controls about zero, positive control high near 1,
+    #  then cc_boundary_zero_one like negative_control means planes at
+    #  boundaries differ, and cc_boundary_zero_one like positive means
+    #  boundaries similar (as in wrapped)
+
+    relative_cc = (cc_boundary_zero_one - cc_negative_control)/max(1.e-10,
+         cc_positive_control - cc_negative_control)
+    return relative_cc
+
+def is_periodic(map_data,
+     minimum_fraction_data_points = 0.1,
+     high_confidence_delta = 0.2,
+     medium_confidence_delta = 0.25):
+
+    '''
+       Determine if this map is periodic.  If values on opposite faces are
+       about as similar as values on adjacent planes, it is probably periodic.
+
+       Two tests are used: (1) correlation of facing edges of map and
+        (2) test whether difference map between original and map without
+        high resolution data shows most variation at edges (due to mismatch
+        of edge data at facing edges of map).
+
+       Map edge correlation score:
+       Normally values on adjacent planes are very highly correlated (> 0.9)
+       and random points in a map have very low correlation (< 0.1). This
+       allows a test based on correlation of facing edges of a map and comparison
+       to random pairs of points in map.
+
+       Difference map score:
+       If a map is boxed then if it is treated as a periodic map, there will
+       be a discontinuity at the edges of the map.  This can be detected by
+       calculating the Fourier transform of the high-resolution map coefficients
+       for the map and detecting if this high-pass filtered map is dominated by
+       features at the edge of the map.
+
+       Returns True if periodic, False if not, and None if map gridding is
+       too small (too few planes) or sampling is insufficiently fine to tell.
+
+       Requires that map is at origin (0,0,0)
+    '''
+
+    assert tuple(map_data.origin()) == (0,0,0)
+
+
+    # The difference map score is solid if > 0.8 or < 0.2. Otherwise best to
+    #   combine it with edge score (correlation of edges) to get sum score
+
+    diff_score_towards_periodic = get_diff_score_towards_periodic(map_data,
+      minimum_fraction_data_points = minimum_fraction_data_points)
+
+    if diff_score_towards_periodic >  (1 - high_confidence_delta):
+      return True
+    elif diff_score_towards_periodic < high_confidence_delta:
+      return False
+
+    # Get edge score and sum score now
+
+    edge_score_towards_periodic = get_edge_score_towards_periodic(map_data)
+
+    sum_score_towards_periodic = 0.5* (
+         diff_score_towards_periodic + edge_score_towards_periodic)
+
+    # We can be confident if sum_score is < .25 or > 0.75
+
+    if sum_score_towards_periodic > (1 - medium_confidence_delta):
+        return True
+    elif sum_score_towards_periodic < medium_confidence_delta:
+        return False
+    else:
+        return None # Really do not know

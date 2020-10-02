@@ -14,15 +14,10 @@ jobs:
 - job: ${{ format('{0}_{1}', format('macOS_{0}', join('_', parameters.vmImage)), format('xcode_{0}', join('_', parameters.xcode_version)) ) }}
   pool:
     vmImage: ${{ format('macOS-{0}', join('.', parameters.vmImage)) }}
-  timeoutInMinutes: 90
+  timeoutInMinutes: 120
   strategy:
     maxParallel: 2
     matrix:
-      python2.7:
-        CONDA: MacOSX
-        OS: osx-64
-        PYTHON_VERSION: py27
-        MODULES: ${{ parameters.modules }}
       python3.6:
         CONDA: MacOSX
         OS: osx-64
@@ -84,6 +79,7 @@ jobs:
          eq(variables['Build.DefinitionName'], 'CI'),
          eq(variables['Build.DefinitionName'], 'CI branch'),
          eq(variables['Build.DefinitionName'], 'XFEL CI'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI branch'),
          eq(variables['Build.DefinitionName'], 'Full'))
     continueOnError: true
 
@@ -97,6 +93,7 @@ jobs:
          eq(variables['Build.DefinitionName'], 'CI'),
          eq(variables['Build.DefinitionName'], 'CI branch'),
          eq(variables['Build.DefinitionName'], 'XFEL CI'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI branch'),
          eq(variables['Build.DefinitionName'], 'Full'))
     continueOnError: true
     failOnStderr: false

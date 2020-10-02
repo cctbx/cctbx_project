@@ -117,7 +117,7 @@ PickingProxyfunc = function(pickingProxy)
       tooltip.innerText = current_ttip;
       tooltip.style.bottom = cp.y + 7 + "px";
       tooltip.style.left = cp.x + 8 + "px";
-      tooltip.style.fontSize = "smaller";
+      tooltip.style.fontSize = fontsize.toString() + "pt";
       tooltip.style.display = "block";
     }
   }
@@ -129,23 +129,42 @@ PickingProxyfunc = function(pickingProxy)
 };
 
 
+function getTextWidth(text, fsize=8)
+{
+  // re-use canvas object for better performance
+  var canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
+  var context = canvas.getContext("2d");
+  context.font = fsize.toString() + "pt sans-serif";
+  var metrics = context.measureText(text);
+  return metrics.width;
+}
+
+
 function ColourChart(millerlabel, fomlabel)
 {
   var ih = 3,
   topr = 35,
   topr2 = 10,
-  lp = 10,
-  wp = 60,
+  lp = 10;
+
+  var maxnumberwidth = 0;
+  for (j = 0; j < colourgradvalarray[0].length; j++)
+  {
+    val = colourgradvalarray[0][j][0];
+    maxnumberwidth = Math.max( getTextWidth(val, fontsize), maxnumberwidth );
+  }
+  wp = maxnumberwidth + 5,
+  //wp = 60,
   lp2 = lp + wp,
   gl = 3,
   wp2 = gl,
   fomlabelheight = 25;
+
   if (colourgradvalarray.length === 1)
   {
     wp2 = 15;
     fomlabelheight = 0;
   }
-
   var wp3 = wp + colourgradvalarray.length * wp2 + 2;
 
   totalheight = ih*colourgradvalarray[0].length + 35 + fomlabelheight;
@@ -155,7 +174,8 @@ function ColourChart(millerlabel, fomlabel)
   addDivBox("", topr2, lp, wp3, totalheight, 'rgba(255, 255, 255, 1.0)');
 
   // print label of the miller array used for colouring
-  addDivBox(millerlabel, topr2, lp, wp, 20);
+  lblwidth = getTextWidth(millerlabel, fontsize);
+  addDivBox(millerlabel, topr2, lp, lblwidth + 5, 20, 'rgba(255, 255, 255, 1.0)', fsize=fontsize);
 
   if (colourgradvalarray.length > 1)
   {
@@ -165,15 +185,15 @@ function ColourChart(millerlabel, fomlabel)
     fomwp = wp3;
     fomtop2 = fomtop - 13;
     // print the 1 number
-    addDivBox("1", fomtop2, fomlp, fomwp, 20);
+    addDivBox("1", fomtop2, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
     // print the 0.5 number
     leftp = fomlp + 0.48 * gl * colourgradvalarray.length;
-    addDivBox("0.5", fomtop2, leftp, fomwp, 20);
+    addDivBox("0.5", fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
     // print the FOM label
-    addDivBox(fomlabel, fomtop, fomlp, fomwp, 20);
+    addDivBox(fomlabel, fomtop, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
     // print the 0 number
     leftp = fomlp + 0.96 * gl * colourgradvalarray.length;
-    addDivBox("0", fomtop2, leftp, fomwp, 20);
+    addDivBox("0", fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
   }
 
   for (j = 0; j < colourgradvalarray[0].length; j++)
@@ -183,7 +203,7 @@ function ColourChart(millerlabel, fomlabel)
     topv = j*ih + topr;
     toptxt = topv - 5;
     // print value of miller array if present in colourgradvalarray[0][j][0]
-    addDivBox(val, toptxt, lp, wp, ih);
+    addDivBox(val, toptxt, lp, wp, ih, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
   }
 
   // draw the colour gradient
@@ -384,7 +404,7 @@ function sleep(ms) {
 }
 
 
-function createElement(name, properties, style)
+function createElement(name, properties, style, fsize=10)
 {
 // utility function used in for loop over colourgradvalarray
   var el = document.createElement(name);
@@ -392,11 +412,10 @@ function createElement(name, properties, style)
   Object.assign(el.style, style);
   Object.assign(el.style,
   {
-      display: "block",
-      position: "absolute",
-      fontFamily: "sans-serif",
-      //fontSize: "smaller",
-      fontSize: "12px",
+    display: "block",
+    position: "absolute",
+    fontFamily: "sans-serif",
+    fontSize: fsize.toString() + "pt",
   }
   );
   return el;
@@ -416,7 +435,7 @@ function addElement(el)
 }
 
 
-function addDivBox(txt, t, l, w, h, bgcolour="rgba(255, 255, 255, 0.0)")
+function addDivBox(txt, t, l, w, h, bgcolour="rgba(255, 255, 255, 0.0)", fsize=10)
 {
   divbox = createElement("div",
   {
@@ -429,7 +448,8 @@ function addDivBox(txt, t, l, w, h, bgcolour="rgba(255, 255, 255, 0.0)")
     left: l.toString() + "px",
     width: w.toString() + "px",
     height: h.toString() + "px",
-  }
+  },
+  fsize
   );
   addElement(divbox);
 }
@@ -632,7 +652,7 @@ function onOpen(e)
 function onClose(e)
 {
   msg = '%s now disconnecting from websocket ' + pagename + '\\n';
-  WebsockSendMsg(msg);
+  console.log(msg);
   dbgmsg =msg;
 };
 
@@ -648,35 +668,63 @@ function onMessage(e)
     var msgtype = datval[0];
     var val = datval[1].split(",");
 
+    if (msgtype === "Reload")
+    {
+    // refresh browser with the javascript file
+      if (stage != null)
+      {
+        msg = getOrientMsg();
+        WebsockSendMsg('OrientationBeforeReload:\\n' + msg );
+      }
+      WebsockSendMsg( 'Refreshing ' + pagename );
+
+      sleep(200).then(()=> {
+          socket_intentionally_closed = true;
+          mysocket.close(4242, 'Refreshing ' + pagename);
+          window.location.reload(true);
+          // In 200ms we are gone. A new javascript file will be loaded in the browser
+        }
+      );
+    }
+
+    if (stage == null) // everything below assumes stage!=null
+      return;
+
     if (msgtype === "alpha")
     {
       bin = parseInt(val[0]);
-      alphas[bin] = parseFloat(val[1]);
-      shapebufs[bin].setParameters({opacity: alphas[bin]});
-      for (var g=0; g < nrots; g++ )
-        br_shapebufs[bin][g].setParameters({opacity: alphas[bin]});
-      //stage.viewer.requestRender();
-      RenderRequest();
+      if (bin < shapebufs.length)
+      {
+        alphas[bin] = parseFloat(val[1]);
+        shapebufs[bin].setParameters({opacity: alphas[bin]});
+        for (var g=0; g < nrots; g++ )
+          br_shapebufs[bin][g].setParameters({opacity: alphas[bin]});
+        //stage.viewer.requestRender();
+        RenderRequest();
+      }
     }
 
     if (msgtype === "colour")
     {
       bin = parseInt(val[0]);
-      si =  parseInt(val[1]);
-      colours[bin][3*si] = parseFloat(val[2]);
-      colours[bin][3*si+1] = parseFloat(val[3]);
-      colours[bin][3*si+2] = parseFloat(val[4]);
-      shapebufs[bin].setAttributes({ color: colours[bin] });
-
-      for (var g=0; g < nrots; g++ )
+      if (bin < shapebufs.length)
       {
-        br_colours[bin][3*si] = parseFloat(val[2]);
-        br_colours[bin][3*si+1] = parseFloat(val[3]);
-        br_colours[bin][3*si+2] = parseFloat(val[4]);
-        br_shapebufs[bin][g].setAttributes({ color: br_colours[bin] });
+        si =  parseInt(val[1]);
+        colours[bin][3*si] = parseFloat(val[2]);
+        colours[bin][3*si+1] = parseFloat(val[3]);
+        colours[bin][3*si+2] = parseFloat(val[4]);
+        shapebufs[bin].setAttributes({ color: colours[bin] });
+
+        for (var g=0; g < nrots; g++ )
+        {
+          br_colours[bin][3*si] = parseFloat(val[2]);
+          br_colours[bin][3*si+1] = parseFloat(val[3]);
+          br_colours[bin][3*si+2] = parseFloat(val[4]);
+          br_shapebufs[bin][g].setAttributes({ color: br_colours[bin] });
+        }
+        //stage.viewer.requestRender();
+        RenderRequest();
       }
-      //stage.viewer.requestRender();
-      RenderRequest();
     }
 
     if (msgtype === "DisplayTooltips")
@@ -728,24 +776,6 @@ function onMessage(e)
       RenderRequest();
       msg = getOrientMsg();
       WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
-    }
-
-    if (msgtype === "Reload")
-    {
-    // refresh browser with the javascript file
-      if (stage != null)
-      {
-        msg = getOrientMsg();
-        WebsockSendMsg('OrientationBeforeReload:\\n' + msg );
-      }
-      WebsockSendMsg( 'Refreshing ' + pagename );
-      socket_intentionally_closed = true;
-      sleep(200).then(()=> {
-          mysocket.close(4242, 'Refreshing ' + pagename);
-          window.location.reload(true);
-        }
-      );
-      // Now we are gone. A new javascript file will be loaded in the browser
     }
 
     if (msgtype.includes("Expand") )

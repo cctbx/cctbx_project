@@ -20,9 +20,12 @@ def exercise_00():
     for aac_ in [aac, aac+"_h"]:
       residue_as_string = iaa.__dict__[aac_]
       rs = flex.std_string(residue_as_string.splitlines())
+      params = monomer_library.pdb_interpretation.master_params.extract()
+      params.flip_symmetric_amino_acids=False
       processed_pdb_file = monomer_library.pdb_interpretation.process(
          mon_lib_srv = mon_lib_srv,
          ener_lib    = ener_lib,
+         params      = params,
          raw_records = rs)
       sites_cart = processed_pdb_file.xray_structure().sites_cart()
       grm = processed_pdb_file.geometry_restraints_manager(
@@ -36,7 +39,7 @@ def exercise_00():
       print("%5s"%aac_, "bonds     : %5.3f %5.3f %5.3f"%b, \
         "angles     : %5.3f %5.3f %5.3f"%a)
       assert a[2] < 1.2, a[2]
-      assert b[2] < 0.005, b[2]
+      assert b[2] < 0.006, b[2]
       print("%5s"%aac_, "bonds rmsZ: %5.3f %5.3f %5.3f"%b_z, \
         "angles rmsZ: %5.3f %5.3f %5.3f"%a_z)
       assert a_z[2] < 0.7, a_z[2]

@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
+import boost_adaptbx.boost.python as bp
 from cctbx.array_family import flex
 from six.moves import zip
 from six.moves import range
-ext = boost.python.import_ext("mmtbx_masks_ext")
+ext = bp.import_ext("mmtbx_masks_ext")
 from mmtbx_masks_ext import *
 
 from cctbx.masks import around_atoms, vdw_radii_from_xray_structure
@@ -16,7 +16,7 @@ from libtbx import introspection
 from libtbx import adopt_init_args
 from copy import deepcopy
 import mmtbx.masks
-asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 
 number_of_mask_calculations = 0
 

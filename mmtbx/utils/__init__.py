@@ -55,15 +55,15 @@ from iotbx.cns.miller_array import crystal_symmetry_as_cns_comments
 from iotbx.file_reader import any_file
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import zip
 from six.moves import range
-utils_ext = boost.python.import_ext("mmtbx_utils_ext")
+utils_ext = bp.import_ext("mmtbx_utils_ext")
 from mmtbx_utils_ext import *
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from mmtbx import bulk_solvent
-ext = boost.python.import_ext("mmtbx_f_model_ext")
+ext = bp.import_ext("mmtbx_f_model_ext")
 
 import mmtbx.rotamer
 
@@ -2436,7 +2436,8 @@ class extract_box_around_model_and_map(object):
     map_box_as_map_manager=map_manager(
       map_data=self.map_box,
       unit_cell_grid=self.map_box.all(),
-      unit_cell_crystal_symmetry=self.xray_structure_box.crystal_symmetry())
+      unit_cell_crystal_symmetry=self.xray_structure_box.crystal_symmetry(),
+      wrapping = False) # boxed map is never ok to wrap
 
   def get_solvent_content(self):
     return self.solvent_content
@@ -2667,16 +2668,21 @@ class states(object):
     self.counter = counter
     self.root = iotbx.pdb.hierarchy.root()
     self.sites_carts = []
+    self.add(hierarchy = pdb_hierarchy)
 
-  def add(self, sites_cart):
-    self.sites_carts.append(sites_cart)
+  def add(self, sites_cart=None, hierarchy=None):
+    if(sites_cart is not None):
+      self.sites_carts.append(sites_cart)
     ph = self.pdb_hierarchy.deep_copy()
     if(self.xray_structure is not None):
       xrs = self.xray_structure.replace_sites_cart(new_sites = sites_cart)
       ph.adopt_xray_structure(xrs)
-    else:
+    elif(sites_cart is not None):
       ph.atoms().set_xyz(sites_cart)
-    models = ph.models()
+    if(hierarchy is None):
+      models = ph.models()
+    else:
+      models = hierarchy.deep_copy().models()
     md = models[0].detached_copy()
     md.id = str(self.counter)
     self.root.append_model(md)

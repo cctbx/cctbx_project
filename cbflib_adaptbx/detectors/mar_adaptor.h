@@ -25,7 +25,6 @@ class AnyImgAdaptor {
  private:
   std::string filename;
   img_handle img;
-  int img_status;
   bool read_header_ok;
   long data_read_position;
   bool read_data_ok;

@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex # import dependency
-import boost.python
-ext = boost.python.import_ext("mmtbx_ncs_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("mmtbx_ncs_ext")
 import iotbx.pdb
 from scitbx.array_family import flex
 from mmtbx.ncs import tncs
