@@ -1,3 +1,6 @@
+from __future__ import division, print_function
+from mmtbx.ligands import ready_set_utils
+
 def main_hydrogen(model,
                   terminate_all_N_terminals=False,
                   terminate_all_C_terminals=False,
@@ -28,7 +31,6 @@ def main_hydrogen(model,
   geometry_restraints_manager = model.get_restraints_manager().geometry
   atoms = hierarchy.atoms()
 
-  from mmtbx.ligands import ready_set_utils
   #ready_set_utils.add_main_chain_atoms(hierarchy, geometry_restraints_manager)
   if (terminate_all_N_terminals or
       terminate_all_C_terminals or
