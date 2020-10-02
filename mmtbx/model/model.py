@@ -1178,7 +1178,6 @@ class manager(object):
       additional_blocks = None,
       align_columns = False,
       do_not_shift_back = False):
-
     out = StringIO()
     cif = iotbx.cif.model.cif()
     cif_block = None
