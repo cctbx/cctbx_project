@@ -2480,6 +2480,8 @@ class map_model_manager(object):
       box_cushion = box_cushion,
       smoothing_radius = smoothing_radius,
       nproc = nproc,
+      is_model_based = is_model_based,
+      is_external_based = is_external_based,
       return_scale_factors = True)
 
     xyz_list = scale_factor_info.xyz_list
@@ -2554,6 +2556,8 @@ class map_model_manager(object):
       box_cushion = None,
       smoothing_radius = None,
       nproc = 1,
+      is_model_based = None,
+      is_external_based = None,
       return_scale_factors = False):
 
     '''
@@ -2592,6 +2596,8 @@ class map_model_manager(object):
     box_info.map_id = map_id
     box_info.map_id_1 = map_id_1
     box_info.map_id_2 = map_id_2
+    box_info.is_model_based = is_model_based
+    box_info.is_external_based = is_external_based
 
     results = self._run_fsc_in_boxes(
      nproc = nproc,
@@ -4310,6 +4316,8 @@ class run_fsc_as_class:
            map_id_1 = self.box_info.map_id_1,
            map_id_2 = self.box_info.map_id_2,
            n_bins=self.box_info.n_bins,
+           is_model_based=self.box_info.is_model_based,
+           is_external_based=self.box_info.is_external_based,
            d_min = self.box_info.minimum_resolution)
         except Exception as e:
            weights_in_shells = None # ignore it. Happens if not enough data
