@@ -2107,19 +2107,12 @@ class map_model_manager(object):
     assert self.get_map_manager_by_id(map_id_external_map)
 
     print ("Running external map sharpening ", file = self.log)
-    if not resolution:
-      resolution = self.resolution()
-    self.set_resolution(resolution)
-    print ("Overall resolution of map: %.2f A" %(resolution),file = self.log)
-
-    minimum_resolution = self.map_manager_1().resolution(
-     set_resolution = False,
-     force = True)
 
     self.half_map_sharpen(
       n_bins = n_bins,
       map_id = map_id,
-      map_id_external_map = map_id_external_map,
+      map_id_1 = map_id,
+      map_id_2 = map_id_external_map,
       resolution = resolution,
       spectral_scaling = False,  # required
       )
@@ -2144,14 +2137,6 @@ class map_model_manager(object):
     assert self.get_model_by_id(model_id)
 
     print ("Running model-based sharpening ", file = self.log)
-    if not resolution:
-      resolution = self.resolution()
-    self.set_resolution(resolution)
-    print ("Overall resolution of map: %.2f A" %(resolution),file = self.log)
-
-    minimum_resolution = self.map_manager_1().resolution(
-     set_resolution = False,
-     force = True)
 
     # Working resolution is resolution_overall * d_min_ratio
     d_min = self._get_d_min_from_resolution(resolution)
@@ -2177,9 +2162,12 @@ class map_model_manager(object):
     self.half_map_sharpen(
       n_bins = n_bins,
       map_id = map_id,
-      map_id_model_map = map_id_model_map,
+      map_id_1 = map_id,
+      map_id_2 = map_id_model_map,
       resolution = resolution,
-      spectral_scaling = spectral_scaling,)
+      spectral_scaling = False, # required
+      is_model_based = True,  # required
+     )
 
   def half_map_sharpen(self,
       n_bins = 200,
@@ -2188,8 +2176,9 @@ class map_model_manager(object):
       map_id_2 = 'map_manager_2',
       spectral_scaling = True,
       resolution = None,
-      map_id_model_map = None,
-      map_id_external_map = None,
+      is_model_based = False,
+      is_external_based = False,
+      local_sharpen = False,
     ):
     '''
      Scale map_id with scale factors identified from map_id_1 and map_id_2
@@ -2197,16 +2186,16 @@ class map_model_manager(object):
 
      If spectral_scaling: multiply scale factors by expected amplitude
        vs resolution
+     if local_sharpen, use local sharpening
+
+     If is_model_based, assume that the map_id_2 is based on a model
+     If is_external_based, assume map_id_2 is external
     '''
 
     # Checks
     assert self.get_map_manager_by_id(map_id)
-    assert (
-      (self.get_map_manager_by_id(map_id_1) and   # two half maps
-       self.get_map_manager_by_id(map_id_2))  or
-      self.get_map_manager_by_id(map_id_model_map)  or  # model map
-      self.get_map_manager_by_id(map_id_external_map)  # external map
-     )
+    assert (self.get_map_manager_by_id(map_id_1) and
+       self.get_map_manager_by_id(map_id_2))
 
     # Get basic info including minimum_resolution (cutoff for map_coeffs)
     setup_info = self._get_box_setup_info(map_id_1, map_id_2,
@@ -2231,6 +2220,8 @@ class map_model_manager(object):
       d_min,
       map_id_1 = map_id_1,
       map_id_2 = map_id_2,
+      is_model_based = is_model_based,
+      is_external_based = is_external_based,
      )
 
     if spectral_scaling:  # multiply data in shell by scale
@@ -2303,13 +2294,14 @@ class map_model_manager(object):
      d_min,
      map_id_1 = 'map_manager_1',
      map_id_2 = 'map_manager_2',
-     map_id_model_map = None,
-     map_id_external_map = None,
      scale_using_last = 3,
      cc_cut = 0.2,
      max_cc_for_rescale = 0.2,
      pseudo_likelihood = None,
      equalize_power = True,
+     is_model_based = None,
+     is_external_based = None,
+     maximum_scale_factor = 10.,
      ):
     '''
     Calculate weights in shells to yield optimal final map assuming that
@@ -2339,26 +2331,27 @@ class map_model_manager(object):
     second_half_map_coeffs = self.get_map_manager_by_id(map_id_2
           ).map_as_fourier_coefficients(d_min=d_min)
 
-    if map_id_model_map:
-      model_map_coeffs = self.get_map_manager_by_id(map_id_model_map
-          ).map_as_fourier_coefficients(d_min=d_min)
-      is_model_based = True
-    else:
-      model_map_coeffs = None
-      is_model_based = False
-
-    if map_id_external_map:
-      external_map_coeffs = self.get_map_manager_by_id(
-        map_id_external_map).map_as_fourier_coefficients(d_min=d_min)
-    else:
-      external_map_coeffs = None
-
     from cctbx.maptbx.refine_sharpening import calculate_fsc
     f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
         d_min = d_min).f_array
     for i_bin in f_array.binner().range_used():
       if f_array.binner().count(i_bin)<1: # won't work...skip
         return None
+
+    if is_external_based:
+      external_map_coeffs = second_half_map_coeffs
+      first_half_map_coeffs = None
+      second_half_map_coeffs = None
+      model_map_coeffs = None
+    if is_model_based:
+      model_map_coeffs = second_half_map_coeffs
+      first_half_map_coeffs = None
+      second_half_map_coeffs = None
+      external_map_coeffs = None
+    else: # half-map
+      external_map_coeffs = None
+      model_map_coeffs = None
+
     si = calculate_fsc(
       f_array = f_array,
       map_coeffs = map_coeffs,
@@ -2373,6 +2366,7 @@ class map_model_manager(object):
       max_cc_for_rescale=si.max_cc_for_rescale,
       pseudo_likelihood=si.pseudo_likelihood,
       equalize_power = si.equalize_power,
+      maximum_scale_factor = maximum_scale_factor,
       out = self.log)
     # si contains target_scale_factors now
     # Normalize the scale factors so low-res value is 1
@@ -2584,6 +2578,8 @@ class map_model_manager(object):
     return d_min_map_manager
 
   def _get_d_min_from_resolution(self,resolution, d_min_ratio = 0.833):
+    if not resolution:
+      resolution = self.resolution()
     minimum_resolution = self.get_any_map_manager().resolution(
        set_resolution = False,
        force = True)

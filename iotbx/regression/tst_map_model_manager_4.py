@@ -115,7 +115,7 @@ def exercise( out = sys.stdout):
   cc_before = dc.map_model_cc()
   dc.model_sharpen(n_bins=15)
   cc = dc.map_model_cc()
-  assert approx_equal ((cc_before,cc), (0.93,0.92), eps =0.01)
+  assert approx_equal ((cc_before,cc), (0.93,0.86), eps =0.01)
   model_sharpened_mm = dc.map_manager()
 
   dc = local_mmm.deep_copy()
@@ -124,7 +124,7 @@ def exercise( out = sys.stdout):
   cc_before = dc.map_map_cc(map_id='map_manager',other_map_id='external_map')
   dc.external_sharpen(n_bins=15,map_id_external_map='external_map')
   cc = dc.map_map_cc(map_id='map_manager',other_map_id='external_map')
-  assert approx_equal ((cc_before,cc), (0.95,0.99),eps=0.01)
+  assert approx_equal ((cc_before,cc), (0.98,0.88),eps=0.01)
 
   dc = local_mmm.deep_copy()
   dc.set_log(sys.stdout)
@@ -147,9 +147,9 @@ def exercise( out = sys.stdout):
   dc.create_mask_around_density()
   count = dc.get_map_manager_by_id('mask').map_data().count(1)
   assert 9000 < count < 10000
-  dc.expand_mask()
+  dc.expand_mask(buffer_radius = 2)
   count = dc.get_map_manager_by_id('mask').map_data().count(1)
-  assert 35000 < count < 50000
+  assert 20000 < count < 25000
 
 if __name__ == "__main__":
   exercise()

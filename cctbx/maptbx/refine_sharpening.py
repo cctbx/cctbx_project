@@ -385,11 +385,17 @@ def calculate_fsc(si=None,
      skip_scale_factor=False,
      equalize_power=False,
      verbose=None,
+     rmsd_resolution_factor = 0.25,  # empirical, see params for segment_and_split_map
+     maximum_scale_factor = None, # limit on size
      out=sys.stdout):
 
   # calculate anticipated fall-off of model data with resolution
   if si.rmsd is None and is_model_based:
-    si.rmsd=resolution*si.rmsd_resolution_factor
+    if not rmsd_resolution_factor:
+      rmsd_resolution_factor = si.rmsd_resolution_factor
+    if not resolution:
+      resolution = si.resolution
+    si.rmsd=resolution*rmsd_resolution_factor
     print("Setting rmsd to %5.1f A based on resolution of %5.1f A" %(
        si.rmsd,resolution), file=out)
 
@@ -519,10 +525,12 @@ def calculate_fsc(si=None,
     if fraction_complete is None:
       fraction_complete=max_possible_cc**2
 
-      print("Estimated fraction complete is %5.2f based on low_res CC of %5.2f" %(
+      print(
+     "Estimated fraction complete is %5.2f based on low_res CC of %5.2f" %(
           fraction_complete,max_possible_cc), file=out)
     else:
-      print("Using fraction complete value of %5.2f "  %(fraction_complete), file=out)
+      print(
+      "Using fraction complete value of %5.2f "  %(fraction_complete), file=out)
       max_possible_cc=fraction_complete**0.5
 
   target_scale_factors=flex.double()
@@ -562,6 +570,14 @@ def calculate_fsc(si=None,
     target_scale_factors=\
       target_scale_factors*scale_factor
     print("Scale factor A: %.5f" %(scale_factor), file=out)
+  if maximum_scale_factor and \
+     target_scale_factors.min_max_mean().max > maximum_scale_factor:
+    truncated_scale_factors = flex.double()
+    for x in target_scale_factors:
+      truncated_scale_factors.append(min(maximum_scale_factor,x ))
+    target_scale_factors = truncated_scale_factors
+
+
   if fraction_complete < min_fraction_complete:
     print("\nFraction complete (%5.2f) is less than minimum (%5.2f)..." %(
       fraction_complete,min_fraction_complete) + "\nSkipping scaling", file=out)
