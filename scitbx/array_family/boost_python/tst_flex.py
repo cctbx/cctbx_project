@@ -3609,7 +3609,11 @@ def exercise_vec3_double_as_numpy_array():
   assert np.all(np.isclose(np_vec3, np.array(test_data)))
 
 def exercise_fixed_width_int_types():
-  import numpy as np
+  try:
+    import numpy as np
+  except ImportError:
+    print("No numpy, so skip exercise_fixed_width_int_types")
+    return
 
   # uint8
   u8 = flex.uint8([1, 2, 3, 4, 5])
@@ -3655,6 +3659,8 @@ def exercise_fixed_width_int_types():
       pass
     else:
       raise RuntimeError("should have OverflowError")
+
+  print("Ok")
 
 def run(iterations):
   i = 0
