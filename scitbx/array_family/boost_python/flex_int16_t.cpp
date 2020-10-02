@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include <inttypes.h>
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <scitbx/array_family/boost_python/byte_str.h>
@@ -87,7 +87,7 @@ namespace scitbx { namespace af { namespace boost_python {
   af::shared<std::string>
   as_string(
     af::const_ref<int16_t, af::flex_grid<> > const& O,
-    std::string format_string="%+" PRId16)
+    std::string format_string="%d")
   {
     std::size_t n = O.accessor().size_1d();
     af::shared<std::string> result((af::reserve(n)));
