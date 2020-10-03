@@ -157,7 +157,7 @@ def exercise( out = sys.stdout):
   dc = local_mmm.deep_copy()
   dc.set_log(sys.stdout)
   dc.set_model(model)
-  dc.local_sharpen(n_bins=15, n_boxes=1)
+  dc._local_sharpen(n_bins=15, n_boxes=1)
   cc = dc.map_model_cc()
   assert approx_equal (cc, 0.90, eps=0.1)
 
