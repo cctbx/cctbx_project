@@ -30,6 +30,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     run_on_init = False
 
     def __init__(self):
+        self.record_model_predictions = False  # whether to record xyzcal.pix during refinement
+        self.xy_calc = {}  # container for recording model predictions
         self.ucell_maxs = None
         self.ucell_mins = None
         #self.ucell_inits = None #{0: [79.1, 38.2]} # deprecated, just uses UCELL MANAGERS now

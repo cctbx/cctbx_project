@@ -27,6 +27,7 @@ from simtbx.diffBragg.utils import makeMoffat_integPSF, convolve_with_psf
 from scipy.stats import pearsonr
 from numpy import log as np_log
 from numpy import sin as SIN
+from numpy import indices as np_indices
 from numpy import cos as COS
 from numpy import arcsin as ASIN
 from numpy import exp as np_exp
@@ -1607,6 +1608,7 @@ class LocalRefiner(PixelRefinement):
                     self._run_diffBragg_current(i_spot)
                     self._set_background_plane(i_spot)
                     self._extract_pixel_data()
+                    self._record_xy_calc()
                     self._evaluate_averageI()
                     if self.save_model:
                         self._save_model_to_disk()
@@ -2522,7 +2524,11 @@ class LocalRefiner(PixelRefinement):
             scale_stats_string += ", truth_resid=%.4f" % median(scale_resid)
 
         # TODO : use a median for a vals if refining Ncells per shot or unit cell per shot
-        scale_stats_string += ", Ncells=%.3f" % self.ncells_vals[0]
+        ncells_shot0 = self._get_m_val(0)
+        if len(ncells_shot0) == 1:
+            ncells_shot0 = [ncells_shot0[0]]*3
+        scale_stats_string += ", Ncells=%.3f, %f, %f" % tuple(ncells_shot0)
+
         uc_string = ", "
         ucparam_names = self.UCELL_MAN[0].variable_names
         for i_ucparam, ucparam_lst in enumerate(self.uc_vals):
@@ -2796,7 +2802,6 @@ class LocalRefiner(PixelRefinement):
                  ncells_xstart, bgplane_xpos, init_misori, final_misori, a,b,c,al,be,ga,
                  a_init, b_init, c_init, al_init, be_init, ga_init, bg_coef))
 
-
     def save_lbfgs_x_array_as_dataframe(self, outname):
         self._combine_data_to_save()
 
@@ -2836,3 +2841,41 @@ class LocalRefiner(PixelRefinement):
             #df["imgpaths"] = img_fnames
 
             df.to_pickle(outname)
+
+    def _record_xy_calc(self):
+        if self.record_model_predictions:
+            I = self.model_bragg_spots.ravel()
+            Isum = I.sum()
+            Y, X = np_indices(self.model_bragg_spots.shape)
+            x1, _, y1, _ = self.ROIS[self._i_shot][self._i_spot] 
+            Y = Y.ravel() + y1
+            X = X.ravel() + x1
+            # this is the calculated (predicted) centroid for this spot
+            x_calc_pix = (X*I).sum() / Isum + 0.5
+            y_calc_pix = (Y*I).sum() / Isum + 0.5
+            if self._i_shot not in self.xy_calc:
+                self.xy_calc[self._i_shot] = [(0,0)]*len(self.ROIS[self._i_shot]) 
+            self.xy_calc[self._i_shot][self._i_spot] = x_calc_pix, y_calc_pix
+
+    def get_refined_reflections(self, shot_refls, i_shot=0):
+        """
+        shot_refls, reflection table corresponding to the input reflections
+        i_shot, int specifying the index of the shot corresponding to shot_refls
+            usually this is zero in per-shot refinement mode, but in multi shot 
+            refinement it might be non-zero
+        """
+        num_spots_in_shot = len(self.ROIS[i_shot])
+        if i_shot not in self.xy_calc:
+            raise KeyError("No xycalc data for requested shot")
+        if len(self.xy_calc[i_shot]) != num_spots_in_shot:
+            raise ValueError("shot_refls should be same length as number of spots in refiner")
+        
+        selection_flags = flex.bool(self.selection_flags[i_shot])
+        refined_refls = deepcopy(shot_refls)
+        x,y = zip(*self.xy_calc[i_shot])
+        z = [0]*num_spots_in_shot
+        xyz_calc = flex.vec3_double(list(zip(x,y,z)))
+        refined_refls["xyzcal.px"] = xyz_calc
+        refined_refls = refined_refls.select(selection_flags)
+        return refined_refls
+
