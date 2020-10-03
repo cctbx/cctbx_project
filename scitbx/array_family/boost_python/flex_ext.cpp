@@ -1,7 +1,5 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
-
 #include <scitbx/array_family/selections.h>
-
 #include <scitbx/math/linear_regression.h>
 #include <scitbx/math/linear_correlation.h>
 #include <scitbx/sym_mat3.h>
