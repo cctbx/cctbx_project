@@ -9504,9 +9504,9 @@ def select_box_map_data(si = None,
     else:
       n_buffer = 0
     lower_bounds, upper_bounds = put_bounds_in_range(
-     lower_bounds = lower_bounds, upper_bounds = upper_bounds,
-     box_size = box_size, n_buffer = n_buffer,
-     n_real = map_data.all(), out = out)
+       lower_bounds = lower_bounds, upper_bounds = upper_bounds,
+       box_size = box_size, n_buffer = n_buffer,
+       n_real = map_data.all(), out = out)
 
     # select map data inside this box
     print("\nSelecting map data inside box", file = out)
@@ -9965,7 +9965,7 @@ def get_target_boxes(si = None, ncs_obj = None, map = None,
 def get_box_size(lower_bound = None, upper_bound = None):
   box_size = []
   for lb, ub in zip(lower_bound, upper_bound):
-    box_size.append(ub-lb)
+    box_size.append(ub-lb+1)
   return box_size
 
 def mean_dist_to_nearest_neighbor(all_cart):
@@ -10100,7 +10100,6 @@ def run_local_sharpening(si = None,
 
     weight_data = bsi.get_gaussian_weighting(out = out)
     weighted_data = bsi.map_data*weight_data
-
     sum_weight_value_map = sum_box_data(starting_map = sum_weight_value_map,
        box_map = weighted_data,
        lower_bounds = bsi.lower_bounds,
@@ -10514,7 +10513,7 @@ def optimize_b_blur_or_d_cut_or_b_iso(
     local_best_working_si = deepcopy(working_best_si)
     improving = False
     for jj in range(-n_range, n_range+1):
-        if optimization_target == 'b_blur_hires': # ZZ try optimizing b_blur_hires
+        if optimization_target == 'b_blur_hires': # try optimizing b_blur_hires
           test_b_blur_hires = max(0., working_best_si.b_blur_hires+jj*delta_b_blur_hires)
           test_d_cut = working_best_si.get_d_cut()
           test_b_iso = working_best_si.b_iso
@@ -10923,7 +10922,8 @@ def run_auto_sharpen(
         print("Setting discard_if_worse = False as region_weight failed ", file = out)
         si.discard_if_worse = False
 
-    if out_of_range and 'resolution_dependent' in auto_sharpen_methods:
+    if out_of_range and auto_sharpen_methods and \
+        'resolution_dependent' in auto_sharpen_methods:
       new_list = []
       have_something_left = False
       for x in auto_sharpen_methods:
@@ -11262,8 +11262,18 @@ def run_auto_sharpen(
     map_data = best_map_and_b.map_data
     map_data = set_mean_sd_of_map(map_data = map_data,
       target_mean = starting_mean, target_sd = starting_sd)
-
     box_sharpening_info_obj.map_data = map_data
+    box_size= map_data.all()
+    calculated_box_size=tuple([i-j+1 for i,j in zip(
+       box_sharpening_info_obj.upper_bounds,
+       box_sharpening_info_obj.lower_bounds)])
+    calculated_box_size_minus_one=tuple([i-j for i,j in zip(
+       box_sharpening_info_obj.upper_bounds,
+       box_sharpening_info_obj.lower_bounds)])
+    if calculated_box_size_minus_one == box_size: # one too big
+      box_sharpening_info_obj.upper_bounds =tuple(
+       [i-1 for i in box_sharpening_info_obj.upper_bounds]
+      ) #  work-around for upper bounds off by one in model sharpening
     box_sharpening_info_obj.smoothed_box_mask_data = smoothed_box_mask_data
     box_sharpening_info_obj.original_box_map_data = original_box_map_data
     box_sharpening_info_obj.n_buffer = n_buffer

@@ -2138,8 +2138,11 @@ class map_model_manager(object):
       core_box_size = None,
       box_cushion = None,
       smoothing_radius = None,
+      rmsd = None,
       local_sharpen = None,
       nproc = None,
+      optimize_b_eff = None,
+      equalize_power = None,
     ):
     '''
      Scale map_id with scale factors identified from map_id vs model
@@ -2188,25 +2191,33 @@ class map_model_manager(object):
       core_box_size = core_box_size,
       box_cushion = box_cushion,
       smoothing_radius = smoothing_radius,
+      rmsd = rmsd,
       nproc = nproc,
       local_sharpen = local_sharpen,
+      optimize_b_eff = optimize_b_eff,
+      equalize_power = equalize_power,
       spectral_scaling = False, # required
       is_model_based = True,  # required
      )
+    # And set this map_manager
+    self.add_map_manager_by_id(self.get_map_manager_by_id(map_id),map_id)
 
   def half_map_sharpen(self,
       map_id = 'map_manager',
       map_id_1 = 'map_manager_1',
       map_id_2 = 'map_manager_2',
       spectral_scaling = True,
+      equalize_power = None,
       resolution = None,
       n_bins = None,
       n_boxes = None,
       core_box_size = None,
       box_cushion = None,
       smoothing_radius = None,
+      rmsd = None,
       local_sharpen = None,
       nproc = None,
+      optimize_b_eff = None,
       is_model_based = False,
       is_external_based = False,
       n_bins_default = 200,
@@ -2234,6 +2245,7 @@ class map_model_manager(object):
 
     working_mmm = map_model_manager(
       map_manager = self.get_map_manager_by_id(map_id))
+    working_mmm.set_log(self.log)
     working_mmm.add_map_manager_by_id(
        self.get_map_manager_by_id(map_id),map_id)
     working_mmm.add_map_manager_by_id(
@@ -2242,31 +2254,9 @@ class map_model_manager(object):
       working_mmm.add_map_manager_by_id(
        self.get_map_manager_by_id(map_id_1),map_id_1)
 
-    if local_sharpen: #  run local_sharpen on these maps
-      if is_model_based or is_external_based:
-        half_map_sharpen_before_and_after = False
-      else:
-        half_map_sharpen_before_and_after = None
+    # First run with everything to get overall values
 
-      working_mmm.local_sharpen(
-        map_id_1 = map_id_1,
-        map_id_2 = map_id_2,
-        resolution = resolution,
-        n_bins = n_bins,
-        n_boxes = n_boxes,
-        core_box_size = core_box_size,
-        box_cushion = box_cushion,
-        smoothing_radius = smoothing_radius,
-        spectral_scaling = spectral_scaling,
-        nproc = nproc,
-        half_map_sharpen_before_and_after = half_map_sharpen_before_and_after,
-        is_model_based = is_model_based,
-        is_external_based = is_external_based,
-        )
-      # Set map_manager now
-      self.add_map_manager_by_id(
-        working_mmm.get_map_manager_by_id(map_id),map_id)
-
+    n_bins_orig = n_bins
     if n_bins is None:
       n_bins = n_bins_default
 
@@ -2295,6 +2285,9 @@ class map_model_manager(object):
       map_id = map_id,
       map_id_1 = map_id_1,
       map_id_2 = map_id_2,
+      rmsd = rmsd,
+      optimize_b_eff = optimize_b_eff,
+      equalize_power = equalize_power,
       is_model_based = is_model_based,
       is_external_based = is_external_based,
      )
@@ -2322,7 +2315,39 @@ class map_model_manager(object):
       target_scale_factors)
 
     # And set map_manager in this manager
-    self.add_map_manager_by_id(new_map_manager,map_id)
+    working_mmm.add_map_manager_by_id(new_map_manager,map_id)
+
+
+    if local_sharpen: #  run local_sharpen on overall-sharpened map
+      n_bins = n_bins_orig
+
+      if is_model_based or is_external_based:
+        half_map_sharpen_before_and_after = False
+      else:
+        half_map_sharpen_before_and_after = None
+
+      working_mmm._local_sharpen(
+        map_id_1 = map_id_1,
+        map_id_2 = map_id_2,
+        resolution = resolution,
+        n_bins = n_bins,
+        n_boxes = n_boxes,
+        core_box_size = core_box_size,
+        box_cushion = box_cushion,
+        smoothing_radius = smoothing_radius,
+        rmsd = rmsd,
+        spectral_scaling = spectral_scaling,
+        nproc = nproc,
+        half_map_sharpen_before_and_after = half_map_sharpen_before_and_after,
+        optimize_b_eff = optimize_b_eff,
+        equalize_power = equalize_power,
+        is_model_based = is_model_based,
+        is_external_based = is_external_based,
+        )
+
+    # All done... Set map_manager now
+    self.add_map_manager_by_id(
+        working_mmm.get_map_manager_by_id(map_id),map_id)
 
   def _set_n_bins(self, n_bins = None,
       d_min = None, map_coeffs = None,
@@ -2378,26 +2403,38 @@ class map_model_manager(object):
      map_id_1 = 'map_manager_1',
      map_id_2 = 'map_manager_2',
      scale_using_last = 3,
+     rmsd = None,
      cc_cut = 0.2,
      max_cc_for_rescale = 0.2,
      pseudo_likelihood = None,
-     equalize_power = True,
+     equalize_power = None,
+     optimize_b_eff = None,
      is_model_based = None,
      is_external_based = None,
      maximum_scale_factor = 10.,
+     minimum_low_res_cc = 0.35,
      ):
     '''
-    Calculate weights in shells to yield optimal final map assuming that
-     perfect map has uniform power in all shells
+    Calculate weights in shells to yield optimal final map .
+    If equalize_power, assume that perfect map has uniform power in all shells
     n_bins and d_min are required
     '''
 
+    # Defaults:
+    if equalize_power is None:
+      equalize_power = True
+
+    if optimize_b_eff is None:
+      if is_model_based:
+        optimize_b_eff = True
+      else:
+        optimize_b_eff = False
     si = group_args(
       target_scale_factors = None,
       b_sharpen = 0,
       b_iso = 0,
       verbose = None,
-      rmsd = None,
+      rmsd = rmsd,
       n_bins = n_bins,
       resolution = d_min,
       cc_cut = cc_cut,
@@ -2444,6 +2481,7 @@ class map_model_manager(object):
       external_map_coeffs=external_map_coeffs,
       si = si,
       cc_cut = si.cc_cut,
+      optimize_b_eff = optimize_b_eff,
       is_model_based = is_model_based,
       scale_using_last=si.scale_using_last,
       max_cc_for_rescale=si.max_cc_for_rescale,
@@ -2452,10 +2490,13 @@ class map_model_manager(object):
       maximum_scale_factor = maximum_scale_factor,
       out = self.log)
     # si contains target_scale_factors now
-    # Normalize the scale factors so low-res value is 1
-    return si.target_scale_factors
+    # If low_res_cc is too low for model (outside model)...skip it
+    if is_model_based and si.low_res_cc < minimum_low_res_cc:
+      return  None
+    else:
+      return si.target_scale_factors
 
-  def local_sharpen(self,
+  def _local_sharpen(self,
       map_id  = 'map_manager',
       map_id_1 = 'map_manager_1',
       map_id_2 = 'map_manager_2',
@@ -2465,9 +2506,12 @@ class map_model_manager(object):
       core_box_size = None,
       box_cushion = None,
       smoothing_radius = None,
+      rmsd = None,
       spectral_scaling = True,
       nproc = None,
       half_map_sharpen_before_and_after = None,
+      optimize_b_eff = None,
+      equalize_power = None,
       is_model_based = False,
       is_external_based = False,
      ):
@@ -2494,7 +2538,11 @@ class map_model_manager(object):
 
     # overall half-map sharpen before and after
     if half_map_sharpen_before_and_after:
+      print("Applying initial half-map sharpening",file=self.log)
       self.half_map_sharpen(spectral_scaling = spectral_scaling)
+
+    # NOTE: map starts out overall-sharpened.  Therefore approximate scale
+    # factors in all resolution ranges are about 1.  use that as default
 
     # Get scale factors vs resolution and location
     scale_factor_info = self.local_fsc(
@@ -2506,8 +2554,11 @@ class map_model_manager(object):
       n_boxes = n_boxes,
       core_box_size = core_box_size,
       box_cushion = box_cushion,
+      rmsd = rmsd,
       smoothing_radius = smoothing_radius,
       nproc = nproc,
+      equalize_power = equalize_power,
+      optimize_b_eff = optimize_b_eff,
       is_model_based = is_model_based,
       is_external_based = is_external_based,
       return_scale_factors = True)
@@ -2534,15 +2585,16 @@ class map_model_manager(object):
       weight_mm = self._create_full_size_map_manager_with_value_list(
         xyz_list = xyz_list,
         value_list = scale_value_list,
-        smoothing_radius = smoothing_radius)
+        smoothing_radius = smoothing_radius,
+        default_value = 1.0)
       sel = f_array_info.f_array.binner().selection(i_bin)
       shell_map_coeffs = map_coeffs.select(sel)
       shell_map_manager = self.map_manager(
          ).fourier_coefficients_as_map_manager(shell_map_coeffs)
       new_map_data += weight_mm.map_data() * shell_map_manager.map_data()
     self.get_map_manager_by_id(map_id).set_map_data(new_map_data)
-
     if half_map_sharpen_before_and_after:
+      print("Applying final half-map sharpening",file=self.log)
       self.half_map_sharpen(spectral_scaling = spectral_scaling)
 
   def _remove_scale_factor_info_outside_mask(self,
@@ -2582,9 +2634,12 @@ class map_model_manager(object):
       n_boxes = None,
       core_box_size = None,
       box_cushion = None,
+      rmsd = None,
       smoothing_radius = None,
       nproc = 1,
       is_model_based = None,
+      optimize_b_eff = None,
+      equalize_power = None,
       is_external_based = None,
       return_scale_factors = False):
 
@@ -2620,11 +2675,14 @@ class map_model_manager(object):
     box_info.minimum_resolution = setup_info.minimum_resolution
     box_info.fsc_cutoff = fsc_cutoff
     box_info.n_bins = n_bins
+    box_info.rmsd = rmsd
     box_info.return_scale_factors = return_scale_factors
     box_info.map_id = map_id
     box_info.map_id_1 = map_id_1
     box_info.map_id_2 = map_id_2
     box_info.is_model_based = is_model_based
+    box_info.optimize_b_eff = optimize_b_eff
+    box_info.equalize_power = equalize_power
     box_info.is_external_based = is_external_based
 
     results = self._run_fsc_in_boxes(
@@ -2658,7 +2716,8 @@ class map_model_manager(object):
       smoothing_radius = setup_info.smoothing_radius)
 
   def _create_full_size_map_manager_with_value_list(self,
-      xyz_list, value_list, smoothing_radius):
+      xyz_list, value_list, smoothing_radius,
+      default_value = None):
 
     # Now create a small map and fill in values
     volume_per_grid_point=self.crystal_symmetry().unit_cell(
@@ -2672,7 +2731,8 @@ class map_model_manager(object):
        crystal_symmetry = self.crystal_symmetry(),
        value_list = value_list,
        sites_cart_list = xyz_list,
-       target_spacing = target_spacing)
+       target_spacing = target_spacing,
+       default_value = default_value)
 
     # Get Fourier coeffs:
     map_coeffs = fsc_map_manager.map_as_fourier_coefficients()
@@ -3871,12 +3931,24 @@ def create_map_manager_with_value_list(
        value_list = None,
        sites_cart_list = None,
        target_spacing = None,
-       max_iterations = 10):
+       max_iterations = None,
+       default_value = None):
     '''
       Create a map_manager with values set with a set of sites_cart and values
       Use nearest available value for each grid point, done iteratively
        with radii in shells of target_spacing/2 and up to max_iterations shells
+      If default_value is set, use that for all empty locations after
+      max_iterations
     '''
+    if max_iterations is None:
+      if default_value is None:
+        max_iterations = 10
+      else:
+        max_iterations = 1
+
+    if default_value is None:
+      default_value = 1
+
     fsc_map = flex.double(flex.grid(n_real),0.)
     fsc_map_manager = MapManager(
        map_data = fsc_map,
@@ -3906,9 +3978,12 @@ def create_map_manager_with_value_list(
           sites_cart_list[i:i+1],
           radius,
           value_list[i])
-      not_set = (fsc_map == 0)
+      not_set = (fsc_set_map_manager.map_data() == 0)
       if (not_set.count(True) == 0):
         break
+    not_set = (fsc_set_map_manager.map_data() == 0)
+    if not_set.count(True) > 0:
+      fsc_map_manager.map_data().set_selected(not_set,default_value)
     return fsc_map_manager
 
 def set_nearby_empty_values(
@@ -4351,6 +4426,9 @@ class run_fsc_as_class:
            map_id_2 = self.box_info.map_id_2,
            n_bins=self.box_info.n_bins,
            is_model_based=self.box_info.is_model_based,
+           optimize_b_eff=self.box_info.optimize_b_eff,
+           equalize_power=self.box_info.equalize_power,
+           rmsd=self.box_info.rmsd,
            is_external_based=self.box_info.is_external_based,
            d_min = self.box_info.minimum_resolution)
         except Exception as e:

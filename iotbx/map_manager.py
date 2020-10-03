@@ -2133,7 +2133,7 @@ class map_manager(map_reader, write_ccp4_map):
 
     if self.ncs_object() is None:
       # try to get map symmetry but do not try too hard..
-      self.find_map_symmetry(only_proceed_if_crystal_symmetry=True)
+      self.find_map_symmetry()
     if not self.ncs_object() or self.ncs_object().max_operators()<2:
       return box_info # nothing to do
 

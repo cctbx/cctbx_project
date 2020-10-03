@@ -4,6 +4,7 @@ import sys,os
 from libtbx.utils import Sorry
 from cctbx.array_family import flex
 from copy import deepcopy
+from libtbx import group_args
 
 from cctbx.array_family import flex
 import scitbx.lbfgs
@@ -387,6 +388,8 @@ def calculate_fsc(si=None,
      verbose=None,
      rmsd_resolution_factor = 0.25,  # empirical, see params for segment_and_split_map
      maximum_scale_factor = None, # limit on size
+     optimize_b_eff = None,
+     low_res_bins = 3,
      out=sys.stdout):
 
   # calculate anticipated fall-off of model data with resolution
@@ -397,6 +400,11 @@ def calculate_fsc(si=None,
       resolution = si.resolution
     si.rmsd=resolution*rmsd_resolution_factor
     print("Setting rmsd to %5.1f A based on resolution of %5.1f A" %(
+       si.rmsd,resolution), file=out)
+  elif is_model_based:
+    if not resolution:
+      resolution = si.resolution
+    print("RMSD is %5.1f A and resolution is %5.1f A" %(
        si.rmsd,resolution), file=out)
 
   # get f and model_f vs resolution and FSC vs resolution and apply
@@ -533,49 +541,37 @@ def calculate_fsc(si=None,
       "Using fraction complete value of %5.2f "  %(fraction_complete), file=out)
       max_possible_cc=fraction_complete**0.5
 
-  target_scale_factors=flex.double()
-  sum_w=0.
-  sum_w_scale=0.
-  for i_bin in f_array.binner().range_used():
-    index=i_bin-1
-    ratio=ratio_list[index]
-    cc=cc_list[index]
-    sthol2=target_sthol2[index]
-    d_min=d_min_list[index]
+  input_info = group_args(
+     f_array = f_array,
+     ratio_list = ratio_list,
+     rms_fo_list = rms_fo_list,
+     cc_list = cc_list,
+     n_list = n_list,
+     target_sthol2 = target_sthol2,
+     d_min_list = d_min_list,
+     max_possible_cc = max_possible_cc,
+     pseudo_likelihood = pseudo_likelihood,
+     equalize_power = equalize_power,
+     is_model_based = is_model_based,
+     skip_scale_factor = skip_scale_factor,
+     maximum_scale_factor = maximum_scale_factor,
+     b_eff = b_eff,
+     out = out)
 
-    corrected_cc=max(0.00001,min(1.,cc/max_possible_cc))
+  if optimize_b_eff and is_model_based:
+    ''' Find b_eff that maximizes expected map-model-cc to model with B=0'''
+    best_b_eff = b_eff
+    best_weighted_cc = get_target_scale_factors(**input_info()).weighted_cc
+    for i in range(20):
+      input_info.b_eff = 0.1 * i * b_eff
+      weighted_cc=get_target_scale_factors(**input_info()).weighted_cc
+      if weighted_cc > best_weighted_cc:
+        best_b_eff = input_info.b_eff
+        best_weighted_cc = weighted_cc
+    b_eff = best_b_eff
 
-    if (not is_model_based): # cc is already cc*
-      scale_on_fo=ratio * corrected_cc
-    elif b_eff is not None:
-      if pseudo_likelihood:
-        scale_on_fo=(cc/max(0.001,1-cc**2))
-      else: # usual
-        scale_on_fo=ratio * min(1.,
-          max(0.00001,corrected_cc) * math.exp(min(20.,sthol2*b_eff)) )
-    else:
-      scale_on_fo=ratio * min(1.,max(0.00001,corrected_cc))
-
-    w = n_list[index]*(rms_fo_list[index])**2
-    sum_w += w
-    sum_w_scale += w * scale_on_fo**2
-    target_scale_factors.append(scale_on_fo)
-
-  if not pseudo_likelihood and not skip_scale_factor: # normalize
-    avg_scale_on_fo = (sum_w_scale/sum_w)**0.5
-    if equalize_power:
-      scale_factor = 1/avg_scale_on_fo
-    else: # usual
-      scale_factor=1./target_scale_factors.min_max_mean().max
-    target_scale_factors=\
-      target_scale_factors*scale_factor
-    print("Scale factor A: %.5f" %(scale_factor), file=out)
-  if maximum_scale_factor and \
-     target_scale_factors.min_max_mean().max > maximum_scale_factor:
-    truncated_scale_factors = flex.double()
-    for x in target_scale_factors:
-      truncated_scale_factors.append(min(maximum_scale_factor,x ))
-    target_scale_factors = truncated_scale_factors
+  info = get_target_scale_factors(**input_info())
+  target_scale_factors = info.target_scale_factors
 
 
   if fraction_complete < min_fraction_complete:
@@ -599,8 +595,85 @@ def calculate_fsc(si=None,
   si.target_sthol2=target_sthol2
   si.d_min_list=d_min_list
   si.cc_list=cc_list
+  si.low_res_cc = cc_list[:low_res_bins].min_max_mean().mean # low-res average
 
   return si
+
+def get_target_scale_factors(
+     f_array = None,
+     ratio_list = None,
+     rms_fo_list = None,
+     cc_list = None,
+     n_list = None,
+     target_sthol2 = None,
+     d_min_list = None,
+     max_possible_cc = None,
+     pseudo_likelihood = None,
+     equalize_power = None,
+     is_model_based = None,
+     skip_scale_factor = None,
+     maximum_scale_factor = None,
+     b_eff = None,
+     out = sys.stdout):
+
+
+  weighted_cc = 0
+  weighted = 0
+
+  target_scale_factors=flex.double()
+  sum_w=0.
+  sum_w_scale=0.
+  for i_bin in f_array.binner().range_used():
+    index=i_bin-1
+    ratio=ratio_list[index]
+    cc=cc_list[index]
+    sthol2=target_sthol2[index]
+    d_min=d_min_list[index]
+
+
+    corrected_cc=max(0.00001,min(1.,cc/max_possible_cc))
+
+    if (not is_model_based): # cc is already cc*
+      scale_on_fo=ratio * corrected_cc
+    elif b_eff is not None:
+      if pseudo_likelihood:
+        scale_on_fo=(cc/max(0.001,1-cc**2))
+      else: # usual
+        scale_on_fo=ratio * min(1.,
+          max(0.00001,corrected_cc) * math.exp(min(20.,sthol2*b_eff)) )
+    else:
+      scale_on_fo=ratio * min(1.,max(0.00001,corrected_cc))
+
+    w = n_list[index]*(rms_fo_list[index])**2
+    sum_w += w
+    sum_w_scale += w * scale_on_fo**2
+    target_scale_factors.append(scale_on_fo)
+    weighted_cc += n_list[index]*rms_fo_list[index] * scale_on_fo * corrected_cc
+    weighted += n_list[index]*rms_fo_list[index] * scale_on_fo
+
+  weighted_cc = weighted_cc/max(1.-10,weighted)
+
+  if not pseudo_likelihood and not skip_scale_factor: # normalize
+    avg_scale_on_fo = (sum_w_scale/sum_w)**0.5
+    if equalize_power:
+      scale_factor = 1/avg_scale_on_fo
+    else: # usual
+      scale_factor=1./target_scale_factors.min_max_mean().max
+    target_scale_factors=\
+      target_scale_factors*scale_factor
+    print("Scale factor A: %.5f" %(scale_factor), file=out)
+  if maximum_scale_factor and \
+     target_scale_factors.min_max_mean().max > maximum_scale_factor:
+    truncated_scale_factors = flex.double()
+    for x in target_scale_factors:
+      truncated_scale_factors.append(min(maximum_scale_factor,x ))
+    target_scale_factors = truncated_scale_factors
+
+  return group_args(
+    target_scale_factors = target_scale_factors,
+    weighted_cc = weighted_cc,
+  )
+
 
 def analyze_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
      get_remove_aniso_object=True,
