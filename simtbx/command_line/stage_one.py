@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx.mpi4py import MPI
 from dxtbx.model import ExperimentList
 import os
+import time
 
 COMM = MPI.COMM_WORLD
 
@@ -37,25 +38,35 @@ exper_refls_file = None
 usempi = False
   .type = bool
   .help = process using mpi
-output{
-  output_dir = .
+show_timing = True
+  .type = bool
+  .help = print a refinement duration for each iteration experiment
+output {
+  directory = .
     .type = str
-    .help = path where output files will be written
-  pandas {
-    tag = info
-      .type = str
-      .help = output file for pandas
-    save = False
+    .help = path where output files and folders will be written
+  save {
+    reflections = False
+      .type = bool
+      .help = if True, output a refined reflections table with xyz.calc 
+      .help = computed by the diffBragg model
+    pandas = False       
       .type = bool
       .help = whether to save a pandas output file
-  }
-  experiments {
-    tag = after_stage_one
-      .type = str
-      .help = output file for pandas
-    save = False
+    experiments = False
       .type = bool
-      .help = whether to save a pandas output file
+      .help = whether to save a refined experients output file
+  } 
+  tag {
+    reflections = after_stage_one
+      .type = str
+      .help = output file tag for reflections 
+    pandas = info
+      .type = str
+      .help = output file tag for pandas
+    experiments = after_stage_one
+      .type = str
+      .help = output file tag for experiments
   }
 }
 """
@@ -192,38 +203,52 @@ class Script:
 
     i_processed = 0
     for exper_filename, exper, refls_for_exper in self._generate_exp_refl_pairs():
+      
       assert len(set(refls_for_exper['id'])) == 1
+      
       exp_id = refls_for_exper['id'][0]
-      print(COMM.rank, set(refls_for_exper['id']))
+      
+      print(exper_filename, COMM.rank, set(refls_for_exper['id']))
+      
+      if self.params.output.save.reflections:
+        self.params.refiner.record_xy_calc = True
+      
+      refine_starttime = time.time()
       refiner = refine_launcher.local_refiner_from_parameters(refls_for_exper, exper, self.params)
+      if self.params.show_timing:
+        print("Time to refine experiment: %f" % (time.time()- refine_starttime))
 
-      if self.params.output.pandas.save:
-        pandas_outdir = os.path.join(self.params.output.output_dir, "pandas_pickles", "rank%d" % COMM.rank)
+      # Save reflections 
+      if self.params.output.save.reflections:
+        refined_refls = refiner.get_refined_reflections(refls_for_exper)
+        refls_outdir = os.path.join(self.params.output.directory, "reflections_after_stage1", "rank%d" % COMM.rank)
+        if not os.path.exists(refls_outdir):
+          os.makedirs(refls_outdir)
+        refls_path = os.path.join(refls_outdir, "%s_%d.refl" % (self.params.output.tag.reflections, i_processed))
+        refined_refls.as_file(refls_path)
+
+      # save pandas
+      if self.params.output.save.pandas:
+        pandas_outdir = os.path.join(self.params.output.directory, "pandas_pickles", "rank%d" % COMM.rank)
         if not os.path.exists(pandas_outdir):
           os.makedirs(pandas_outdir)
-        outpath = os.path.join(pandas_outdir, "%s_%d.pkl" % (self.params.output.pandas.tag, i_processed))
+        outpath = os.path.join(pandas_outdir, "%s_%d.pkl" % (self.params.output.tag.pandas, i_processed))
         refiner.save_lbfgs_x_array_as_dataframe(outname=outpath)
 
-      if self.params.output.experiments.save:
-        exp_outdir = os.path.join(self.params.output.output_dir, "experiments_after_stage1", "rank%d" % COMM.rank)
+      # save experiment
+      if self.params.output.save.experiments:
+        exp_outdir = os.path.join(self.params.output.directory, "experiments_after_stage1", "rank%d" % COMM.rank)
         if not os.path.exists(exp_outdir):
           os.makedirs(exp_outdir)
 
         basename,_ = os.path.splitext(os.path.basename(exper_filename))
-        exp_path = os.path.join(exp_outdir, "%s_%s_%d.pkl" % (self.params.output.experiments.tag, basename, exp_id))
+        exp_path = os.path.join(exp_outdir, "%s_%s_%d.pkl" % (self.params.output.tag.experiments, basename, exp_id))
         exper.crystal = refiner.get_corrected_crystal(i_shot=0)
         new_exp_list = ExperimentList()
         new_exp_list.append(exper)
         new_exp_list.as_file(exp_path)
 
       i_processed += 1
-
-      #if self.params.refiner.pandas.save:
-      #  outdir = os.path.join(self.params.pandas.output_dir, "pandas_pickles", "rank%d" % COMM.rank)
-      #  if not os.path.exists(outdir):
-      #    os.makedirs(outdir)
-      #  outpath = os.path.join(outdir, "%s.pkl" % self.params.pandas.tag)
-
 
 if __name__ == '__main__':
   with show_mail_on_error():

@@ -212,6 +212,15 @@ refiner {
   verbose = False
     .type = bool
     .help = verbosity flag
+  record_xy_calc = False
+    .type = bool
+    .help = whether to record xy calcs for Bragg spots modeled with diffBragg
+  only_predict_model = False
+    .type = bool
+    .help = if True, just run diffBragg once to get the model predictions
+  num_macro_cycles = 1
+    .type = int
+    .help = keep repeating the same refinement scheme over and over, this many times
 }
 """
 
@@ -232,6 +241,9 @@ roi {
   hotpixel_mask = None
     .type = str
     .help = path to a hotpixel mask (hot pixels set to True)
+  panels = None
+    .type = str
+    .help = panel list for refinement as a string, e.g. 0-8,10,32-40
 }
 """
 

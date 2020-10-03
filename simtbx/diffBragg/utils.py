@@ -705,7 +705,6 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
             is_hotpix = hotpix_mask[pid, j1:j2, i1:i2]
             num_hotpix = is_hotpix.sum()
             if num_hotpix > 0 and reject_roi_with_hotpix:
-                print(1)
                 is_selected = False
 
         if background_mask is not None:
@@ -727,7 +726,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
     return kept_rois, panel_ids, tilt_abc, selection_flags
 
 
-def strip_thickenss_from_detector(detector):
+def strip_thickness_from_detector(detector):
     """warning: this overrides detector hierarchy"""
     thin_detector = Detector()
     for i_pan in range(len(detector)):
@@ -1049,6 +1048,25 @@ def explist_from_numpyarrays(image, detector, beam, mask=None):
     return explist
 
 
+def parse_panel_input_string(panel_str):
+    panel_range_str = panel_str.split(",")
+    all_pids =[]
+    for s in panel_range_str:
+        if s == "":
+            continue
+        if "-" in s:
+            if s.count("-") > 1:
+                raise ValueError("panel str %s is not formatted correctly, too many '-' between commas" % panel_str )
+            pid1, pid2 = map(int, s.split("-"))
+            if not pid1 < pid2:
+                raise ValueError("panel str %s is not formatted correctly, in 'x-y' x should be less than y" % panel_str )
+            pids = [pid for pid in range(pid1, pid2+1)]
+        else:
+            pids = [int(s)]
+        all_pids += pids
+    if len(all_pids) != len(set(all_pids)):
+        print("WARNING: duplicate pids found in panel input string %s, please double check!" % panel_str)
+    return list(set(all_pids))
 
 #def tally_local_statistics(spot_rois):
 #    # tally up all miller indices in this refinement
