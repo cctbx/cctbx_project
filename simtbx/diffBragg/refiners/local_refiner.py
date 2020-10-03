@@ -1115,7 +1115,10 @@ class LocalRefiner(PixelRefinement):
             for i_ncell in range(self.n_ncells_param):
                 val = self.Xall[self.ncells_xstart[i_shot] + i_ncell]
                 if self.rescale_params:
-                    sig = self.m_sigma[i_ncell]
+                    try:
+                        sig = self.m_sigma[i_ncell]
+                    except TypeError:
+                        sig = self.m_sigma
                     init = self.m_init[i_shot][i_ncell]
                     val = np_exp(sig * (val - 1)) * (init - 3) + 3
                 else:

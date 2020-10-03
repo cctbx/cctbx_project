@@ -174,7 +174,7 @@ for i_shot in range(N_SHOTS):
     if args.spectra:
 
         if waves is None:
-            from cxid9114.parameters import ENERGY_CONV
+            from simtbx.nanoBragg.utils import ENERGY_CONV
             from scipy.signal import windows
             spec = SIM.beam.spectrum
             total_flux = spec[0][1]
