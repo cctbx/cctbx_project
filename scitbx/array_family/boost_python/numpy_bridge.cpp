@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <boost/python/numpy.hpp>
 #include <boost/python.hpp>
 #include <scitbx/array_family/versa.h>

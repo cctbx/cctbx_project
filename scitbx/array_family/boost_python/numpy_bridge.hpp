@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <boost/python/numpy.hpp>
 
 namespace scitbx { namespace af { namespace boost_python {
