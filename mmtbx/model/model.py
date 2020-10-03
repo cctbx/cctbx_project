@@ -16,7 +16,7 @@ import iotbx.pdb
 import iotbx.cif.model
 import iotbx.ncs
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
-from iotbx.pdb.atom_selection import AtomSelectionError
+# from iotbx.pdb.atom_selection import AtomSelectionError
 from iotbx.pdb.misc_records_output import link_record_output
 from iotbx.cif import category_sort_function
 
