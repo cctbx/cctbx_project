@@ -115,7 +115,7 @@ def exercise( out = sys.stdout):
   cc_before = dc.map_model_cc()
   dc.model_sharpen(n_bins=15)
   cc = dc.map_model_cc()
-  assert approx_equal ((cc_before,cc), (0.93,0.86), eps =0.01)
+  assert approx_equal ((cc_before,cc), (0.93,0.85), eps =0.01)
   model_sharpened_mm = dc.map_manager()
 
   dc = local_mmm.deep_copy()
