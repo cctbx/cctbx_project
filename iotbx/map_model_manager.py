@@ -2116,7 +2116,6 @@ class map_model_manager(object):
 
     self.half_map_sharpen(
       map_id = map_id,
-      map_id_1 = map_id,
       map_id_2 = map_id_external_map,
       resolution = resolution,
       n_bins = n_bins,
@@ -2159,6 +2158,11 @@ class map_model_manager(object):
 
     map_coeffs = self.get_map_manager_by_id(map_id).map_as_fourier_coefficients(
         d_min = d_min)
+
+    n_bins =self._set_n_bins(n_bins = n_bins,
+      d_min = d_min, map_coeffs = map_coeffs,
+      local_sharpen = local_sharpen)
+
     f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
         d_min = d_min).f_array
 
@@ -2177,7 +2181,6 @@ class map_model_manager(object):
 
     self.half_map_sharpen(
       map_id = map_id,
-      map_id_1 = map_id,
       map_id_2 = map_id_model_map,
       resolution = resolution,
       n_bins = n_bins,
@@ -2222,8 +2225,22 @@ class map_model_manager(object):
 
     # Checks
     assert self.get_map_manager_by_id(map_id)
-    assert (self.get_map_manager_by_id(map_id_1) and
+    assert (
+    (self.get_map_manager_by_id(map_id_1) or
+        is_model_based or is_external_based) and
        self.get_map_manager_by_id(map_id_2))
+
+    # Create a new map_model_manager with just what we need
+
+    working_mmm = map_model_manager(
+      map_manager = self.get_map_manager_by_id(map_id))
+    working_mmm.add_map_manager_by_id(
+       self.get_map_manager_by_id(map_id),map_id)
+    working_mmm.add_map_manager_by_id(
+       self.get_map_manager_by_id(map_id_2),map_id_2)
+    if map_id_1:
+      working_mmm.add_map_manager_by_id(
+       self.get_map_manager_by_id(map_id_1),map_id_1)
 
     if local_sharpen: #  run local_sharpen on these maps
       if is_model_based or is_external_based:
@@ -2231,7 +2248,7 @@ class map_model_manager(object):
       else:
         half_map_sharpen_before_and_after = None
 
-      return self.local_sharpen(
+      working_mmm.local_sharpen(
         map_id_1 = map_id_1,
         map_id_2 = map_id_2,
         resolution = resolution,
@@ -2246,30 +2263,34 @@ class map_model_manager(object):
         is_model_based = is_model_based,
         is_external_based = is_external_based,
         )
+      # Set map_manager now
+      self.add_map_manager_by_id(
+        working_mmm.get_map_manager_by_id(map_id),map_id)
 
     if n_bins is None:
       n_bins = n_bins_default
 
     # Get basic info including minimum_resolution (cutoff for map_coeffs)
-    setup_info = self._get_box_setup_info(map_id_1, map_id_2,
+    setup_info = working_mmm._get_box_setup_info(map_id_1, map_id_2,
       resolution,
       skip_boxes = True)
 
     resolution = setup_info.resolution
-    self.set_resolution(resolution)
+    working_mmm.set_resolution(resolution)
     print ("Nominal resolution of map: %.2f A " %(resolution),
       file = self.log)
 
     d_min = setup_info.minimum_resolution
-    map_coeffs = self.get_map_manager_by_id(map_id).map_as_fourier_coefficients(
-        d_min = d_min)
+    map_coeffs = working_mmm.get_map_manager_by_id(
+       map_id).map_as_fourier_coefficients( d_min = d_min)
 
 
     n_bins_orig = n_bins
-    n_bins =self._set_n_bins(n_bins = n_bins,
-      d_min = d_min, map_coeffs = map_coeffs)
+    n_bins =working_mmm._set_n_bins(n_bins = n_bins,
+      d_min = d_min, map_coeffs = map_coeffs,
+      local_sharpen = False)
 
-    target_scale_factors = self._get_weights_in_shells(n_bins,
+    target_scale_factors = working_mmm._get_weights_in_shells(n_bins,
       d_min,
       map_id = map_id,
       map_id_1 = map_id_1,
@@ -2294,17 +2315,24 @@ class map_model_manager(object):
       target_scale_factors = new_target_scale_factors
 
     # Apply the scale factors in shells
-    new_map_manager = self._apply_scale_factors_in_shells(
+    new_map_manager = working_mmm._apply_scale_factors_in_shells(
       map_coeffs,
       n_bins,
       d_min,
       target_scale_factors)
 
-    # And set map_manager
+    # And set map_manager in this manager
     self.add_map_manager_by_id(new_map_manager,map_id)
 
   def _set_n_bins(self, n_bins = None,
-      d_min = None, map_coeffs = None):
+      d_min = None, map_coeffs = None,
+      local_sharpen = None):
+
+    if n_bins is None:
+      if local_sharpen:
+        n_bins = 20
+      else:
+        n_bins = 200
 
     min_n_bins = n_bins//3
     original_n_bins = n_bins
@@ -2650,7 +2678,7 @@ class map_model_manager(object):
     map_coeffs = fsc_map_manager.map_as_fourier_coefficients()
 
     # Make map in full grid
-    d_min_map_manager = self.map_manager_1(
+    d_min_map_manager = self.get_any_map_manager(
        ).fourier_coefficients_as_map_manager(map_coeffs)
 
     d_min_map_manager.gaussian_filter(
@@ -2675,9 +2703,10 @@ class map_model_manager(object):
       skip_boxes = None,
       ):
     if not resolution:
-      resolution = self.map_map_fsc(
-        map_id_1 = map_id_1,
-        map_id_2 = map_id_2,).d_min
+      if map_id_1 and map_id_2:
+        resolution = self.map_map_fsc(
+          map_id_1 = map_id_1,
+          map_id_2 = map_id_2,).d_min
       if not resolution:
         resolution = self.resolution()
       self.set_resolution(resolution)
@@ -2700,7 +2729,7 @@ class map_model_manager(object):
       smoothing_radius = 0.5 * core_box_size
 
     resolution_overall = self.map_map_fsc().d_min
-    minimum_resolution = self.map_manager_1().resolution(
+    minimum_resolution = self.get_any_map_manager().resolution(
      set_resolution = False,
      force = True)
     if not resolution_overall:
@@ -2798,6 +2827,11 @@ class map_model_manager(object):
 
     '''
 
+    if not self.get_map_manager_by_id(map_id_1) or \
+       not self.get_map_manager_by_id(map_id_2):
+      return group_args(
+       d_min = None,
+       )
     if not resolution:
       resolution = self.resolution()
     assert isinstance(resolution, (int, float))

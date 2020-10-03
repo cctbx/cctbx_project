@@ -2784,7 +2784,7 @@ def apply_sharpening(map_coeffs = None,
       f_array_b_iso = get_b_iso(f_array, d_min = d_min)
       if not f_array.binner():
         (local_d_max, local_d_min) = f_array.d_max_min(
-          d_max_is_highests_defined_if_infinite=True)
+          d_max_is_highest_defined_if_infinite=True)
         f_array.setup_binner(n_bins = n_bins, d_max = local_d_max,
         d_min = local_d_min)
 
