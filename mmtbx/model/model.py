@@ -1833,6 +1833,9 @@ class manager(object):
     if hasattr(params, 'amber') and params.amber.use_amber:
       from amber_adaptbx.manager import digester
       geometry = digester(geometry, params, log=self.log)
+    elif hasattr(params, 'qi') and params.qi.use_quantum_interface:
+      from mmtbx.geometry_restraints.qm_manager import digester
+      geometry = digester(geometry, params, log=self.log)
     elif hasattr(params, "schrodinger") and params.schrodinger.use_schrodinger:
       from phenix_schrodinger import schrodinger_manager
       geometry = schrodinger_manager(self._pdb_hierarchy,
