@@ -2162,11 +2162,11 @@ class map_model_manager(object):
     map_coeffs = self.get_map_manager_by_id(map_id).map_as_fourier_coefficients(
         d_min = d_min)
 
-    n_bins =self._set_n_bins(n_bins = n_bins,
+    working_n_bins =self._set_n_bins(n_bins = n_bins,
       d_min = d_min, map_coeffs = map_coeffs,
       local_sharpen = local_sharpen)
 
-    f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
+    f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = working_n_bins,
         d_min = d_min).f_array
 
     pdb_inp = self.get_model_by_id(model_id).get_hierarchy().as_pdb_input()
@@ -2174,8 +2174,9 @@ class map_model_manager(object):
     from cctbx.maptbx.refine_sharpening import get_model_map_coeffs_normalized
     model_map_coeffs = get_model_map_coeffs_normalized(pdb_inp = pdb_inp,
        f_array = f_array,
-       n_bins = n_bins,
+       n_bins = working_n_bins,
        resolution = d_min,
+       overall_b = 0.,
        out = null_out())
     model_map_manager = self.get_any_map_manager(
        ).fourier_coefficients_as_map_manager(model_map_coeffs)
@@ -2186,7 +2187,7 @@ class map_model_manager(object):
       map_id = map_id,
       map_id_2 = map_id_model_map,
       resolution = resolution,
-      n_bins = n_bins,
+      n_bins = n_bins,  # use original so it is None if not set
       n_boxes = n_boxes,
       core_box_size = core_box_size,
       box_cushion = box_cushion,
@@ -2220,6 +2221,7 @@ class map_model_manager(object):
       optimize_b_eff = None,
       is_model_based = False,
       is_external_based = False,
+      optimize_with_model = None,
       n_bins_default = 200,
     ):
     '''
@@ -2234,6 +2236,13 @@ class map_model_manager(object):
      If is_external_based, assume map_id_2 is external
     '''
 
+    from libtbx import adopt_init_args
+    kw_obj = group_args()
+    adopt_init_args(kw_obj, locals())
+    kw = kw_obj() # save calling parameters in kw as dict
+    del kw['adopt_init_args'] # REQUIRED
+    del kw['kw_obj']  # REQUIRED
+
     # Checks
     assert self.get_map_manager_by_id(map_id)
     assert (
@@ -2241,22 +2250,90 @@ class map_model_manager(object):
         is_model_based or is_external_based) and
        self.get_map_manager_by_id(map_id_2))
 
-    # Create a new map_model_manager with just what we need
+    working_mmm = self._get_map_model_manager_with_selected(
+      map_id_list=[map_id,map_id_1,map_id_2])
 
-    working_mmm = map_model_manager(
-      map_manager = self.get_map_manager_by_id(map_id))
-    working_mmm.set_log(self.log)
-    working_mmm.add_map_manager_by_id(
-       self.get_map_manager_by_id(map_id),map_id)
-    working_mmm.add_map_manager_by_id(
-       self.get_map_manager_by_id(map_id_2),map_id_2)
-    if map_id_1:
-      working_mmm.add_map_manager_by_id(
-       self.get_map_manager_by_id(map_id_1),map_id_1)
+    if local_sharpen:  # run first as is, then with local sharpening, then
+                       # again as is
 
-    # First run with everything to get overall values
+      print("\nRunning overall sharpening ...\n",file = self.log)
+      # Run standard sharpening
+      kw['local_sharpen'] = False
+      if n_bins is None: # set it here
+        kw['n_bins'] = n_bins_default
+      working_mmm.half_map_sharpen(**kw)
 
-    n_bins_orig = n_bins
+      # Save standard map
+      sharpened_std_mm = working_mmm.get_map_manager_by_id(map_id).deep_copy()
+
+      # Now local sharpening
+      print("\nRunning local sharpening ...\n",file = self.log)
+
+      working_mmm._local_sharpen(
+        map_id_1 = map_id_1,
+        map_id_2 = map_id_2,
+        resolution = resolution,
+        n_bins = n_bins,
+        n_boxes = n_boxes,
+        core_box_size = core_box_size,
+        box_cushion = box_cushion,
+        smoothing_radius = smoothing_radius,
+        rmsd = rmsd,
+        spectral_scaling = spectral_scaling,
+        nproc = nproc,
+        optimize_b_eff = optimize_b_eff,
+        equalize_power = equalize_power,
+        is_model_based = is_model_based,
+        is_external_based = is_external_based,
+        )
+
+      # And again standard
+      print("\nRunning overall sharpening on locally-sharpend map...\n",
+        file = self.log)
+      working_mmm.half_map_sharpen(**kw)
+
+      # Save local-sharpened map
+      sharpened_local_mm = working_mmm.get_map_manager_by_id(map_id).deep_copy()
+
+      # Optimize if desired
+      if is_model_based and optimize_with_model in [True, None]:
+        print("Optimizing weighting between overall and local sharpening...",
+          file = self.log)
+        # Create masked versions of our 2 maps and target map
+        test_mmm = self._get_map_model_manager_with_selected(
+          map_id_list=[map_id_2], deep_copy = True)
+        test_mmm.add_map_manager_by_id(sharpened_std_mm,'std')
+        test_mmm.add_map_manager_by_id(sharpened_local_mm,'local')
+        test_mmm.mask_all_maps_around_density()
+        test_local = test_mmm.get_map_manager_by_id('local')
+        test_std = test_mmm.get_map_manager_by_id('std')
+        test_model = test_mmm.get_map_manager_by_id('map_manager')
+
+        n = 10
+        best_w1 = None
+        best_cc = None
+        for i in range(n+1):
+          w1 = i/n
+          test_mm = test_model.customized_copy(map_data =
+             w1 * test_local.map_data() +
+             (1-w1) * test_std.map_data())
+          cc = test_model.map_map_cc(test_mm)
+          if best_cc is None or cc > best_cc:
+            best_cc = cc
+            best_w1 = w1
+        if best_cc is not None:
+          print("Optimized weight: overall map: %.2f  local map: %.2f " %(
+            1-best_w1, best_w1), file = self.log)
+          sharpened_local_mm = sharpened_local_mm.customized_copy(
+            map_data = best_w1 * sharpened_local_mm.map_data() +
+                (1 - best_w1) * sharpened_std_mm.map_data())
+
+      # We're done. set our map manager and return
+      self.add_map_manager_by_id(sharpened_local_mm, map_id)
+      self.add_map_manager_by_id(sharpened_std_mm,'std')
+      return
+
+    # Here to run overall
     if n_bins is None:
       n_bins = n_bins_default
 
@@ -2274,8 +2351,6 @@ class map_model_manager(object):
     map_coeffs = working_mmm.get_map_manager_by_id(
        map_id).map_as_fourier_coefficients( d_min = d_min)
 
-
-    n_bins_orig = n_bins
     n_bins =working_mmm._set_n_bins(n_bins = n_bins,
       d_min = d_min, map_coeffs = map_coeffs,
       local_sharpen = False)
@@ -2314,40 +2389,26 @@ class map_model_manager(object):
       d_min,
       target_scale_factors)
 
-    # And set map_manager in this manager
-    working_mmm.add_map_manager_by_id(new_map_manager,map_id)
-
-
-    if local_sharpen: #  run local_sharpen on overall-sharpened map
-      n_bins = n_bins_orig
-
-      if is_model_based or is_external_based:
-        half_map_sharpen_before_and_after = False
-      else:
-        half_map_sharpen_before_and_after = None
-
-      working_mmm._local_sharpen(
-        map_id_1 = map_id_1,
-        map_id_2 = map_id_2,
-        resolution = resolution,
-        n_bins = n_bins,
-        n_boxes = n_boxes,
-        core_box_size = core_box_size,
-        box_cushion = box_cushion,
-        smoothing_radius = smoothing_radius,
-        rmsd = rmsd,
-        spectral_scaling = spectral_scaling,
-        nproc = nproc,
-        half_map_sharpen_before_and_after = half_map_sharpen_before_and_after,
-        optimize_b_eff = optimize_b_eff,
-        equalize_power = equalize_power,
-        is_model_based = is_model_based,
-        is_external_based = is_external_based,
-        )
-
     # All done... Set map_manager now
-    self.add_map_manager_by_id(
-        working_mmm.get_map_manager_by_id(map_id),map_id)
+    self.add_map_manager_by_id(new_map_manager, map_id)
+
+  def _get_map_model_manager_with_selected(self,
+      map_id_list=None, model_id_list = None,
+      deep_copy = False):
+    # Create a new map_model_manager with just what we need
+    assert map_id_list # Need maps to create map_model_manager with selected
+    working_mmm = map_model_manager(
+      map_manager = self.get_map_manager_by_id(map_id_list[0]))
+    working_mmm.set_log(self.log)
+    if map_id_list:
+      for id in map_id_list:
+        working_mmm.add_map_manager_by_id(self.get_map_manager_by_id(id),id)
+    if model_id_list:
+      for id in model_id_list:
+        working_mmm.add_model_by_id(self.get_model_by_id(id),id)
+    if deep_copy:
+      working_mmm = working_mmm.deep_copy()
+    return working_mmm
 
   def _set_n_bins(self, n_bins = None,
       d_min = None, map_coeffs = None,
@@ -2509,7 +2570,6 @@ class map_model_manager(object):
       rmsd = None,
       spectral_scaling = True,
       nproc = None,
-      half_map_sharpen_before_and_after = None,
       optimize_b_eff = None,
       equalize_power = None,
       is_model_based = False,
@@ -2527,19 +2587,11 @@ class map_model_manager(object):
     assert self.get_map_manager_by_id(map_id_1)
     assert self.get_map_manager_by_id(map_id_2)
 
-    if half_map_sharpen_before_and_after is None:
-      half_map_sharpen_before_and_after = True
-
     if n_bins is None:
       n_bins = 20
 
     if nproc is None:
       nproc = 1
-
-    # overall half-map sharpen before and after
-    if half_map_sharpen_before_and_after:
-      print("Applying initial half-map sharpening",file=self.log)
-      self.half_map_sharpen(spectral_scaling = spectral_scaling)
 
     # NOTE: map starts out overall-sharpened.  Therefore approximate scale
     # factors in all resolution ranges are about 1.  use that as default
@@ -2593,9 +2645,6 @@ class map_model_manager(object):
          ).fourier_coefficients_as_map_manager(shell_map_coeffs)
       new_map_data += weight_mm.map_data() * shell_map_manager.map_data()
     self.get_map_manager_by_id(map_id).set_map_data(new_map_data)
-    if half_map_sharpen_before_and_after:
-      print("Applying final half-map sharpening",file=self.log)
-      self.half_map_sharpen(spectral_scaling = spectral_scaling)
 
   def _remove_scale_factor_info_outside_mask(self,
      scale_factor_info, map_manager):

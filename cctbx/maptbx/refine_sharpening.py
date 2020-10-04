@@ -568,6 +568,7 @@ def calculate_fsc(si=None,
       if weighted_cc > best_weighted_cc:
         best_b_eff = input_info.b_eff
         best_weighted_cc = weighted_cc
+    print("Optimized effective B value: %.3f A**2 " %(best_b_eff),file=out)
     b_eff = best_b_eff
 
   info = get_target_scale_factors(**input_info())
@@ -661,7 +662,6 @@ def get_target_scale_factors(
       scale_factor=1./target_scale_factors.min_max_mean().max
     target_scale_factors=\
       target_scale_factors*scale_factor
-    print("Scale factor A: %.5f" %(scale_factor), file=out)
   if maximum_scale_factor and \
      target_scale_factors.min_max_mean().max > maximum_scale_factor:
     truncated_scale_factors = flex.double()
@@ -673,7 +673,6 @@ def get_target_scale_factors(
     target_scale_factors = target_scale_factors,
     weighted_cc = weighted_cc,
   )
-
 
 def analyze_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
      get_remove_aniso_object=True,
