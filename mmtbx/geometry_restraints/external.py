@@ -1,8 +1,7 @@
 
 """
 Accessory module for interfacing phenix.refine (or similar programs) with
-various external third-party software such as Amber, AFITT, DivCon,
-Schrodinger, or Rosetta (obsoleted and removed).
+various external third-party software such as AFITT, DivCon, Schrodinger.
 """
 
 from __future__ import absolute_import, division, print_function
@@ -11,24 +10,24 @@ import os
 
 external_energy_params_str = ""
 
-amber_installed = False
-if libtbx.env.has_module("amber_adaptbx"):
-  build_dir = libtbx.env.under_build("amber_adaptbx")
-  try: import sander
-  except ImportError as e: sander = False
-  if sander:
-  #if (build_dir is not None) and (os.path.isdir(build_dir)):
-    amber_installed = True
+# amber_installed = False
+# if libtbx.env.has_module("amber_adaptbx"):
+#   build_dir = libtbx.env.under_build("amber_adaptbx")
+#   try: import sander
+#   except ImportError as e: sander = False
+#   if sander:
+#   #if (build_dir is not None) and (os.path.isdir(build_dir)):
+#     amber_installed = True
 
-if (amber_installed):
-  external_energy_params_str += """
-    amber
-      .help = Parameters for using Amber in refinement.
-      .expert_level = 3
-    {
-      include scope amber_adaptbx.master_phil_str
-    }
-"""
+# if (amber_installed):
+#   external_energy_params_str += """
+#     amber
+#       .help = Parameters for using Amber in refinement.
+#       .expert_level = 3
+#     {
+#       include scope amber_adaptbx.master_phil_str
+#     }
+# """
 
 qb_installed = os.environ.get("QBHOME", False)
 if qb_installed: qb_installed = os.path.isdir(qb_installed)
@@ -100,3 +99,51 @@ if schrodinger_installed:
 """
   except ImportError:
     schrodinger_installed = False
+
+def is_orca_installed(env):
+  return (env.get('PHENIX_ORCA', False) and os.path.exists(env['PHENIX_ORCA']))
+
+def orca_action():
+  outl = '''
+    orca
+    {
+      include scope mmtbx.geometry_restraints.qm_manager.orca_master_phil_str
+    }
+  '''
+  return outl
+
+def is_any_quantum_package_installed(env):
+  installed = []
+  actions = []
+  for key, (question, action) in {'orca' : (is_orca_installed, orca_action),
+                                  }.items():
+    if question(os.environ):
+      rc = action()
+      actions.append(rc)
+      installed.append(key)
+  if installed:
+    outl = '''
+  qi
+    .help = QM
+    .expert_level = 3
+  {
+    use_quantum_interface = False
+      .type = bool
+    selection = None
+      .type = atom_selection
+    charge = Auto
+      .type = int
+    multiplicity = Auto
+      .type = int
+    buffer = 3.
+      .type = float
+    refine_buffer_hydrogen_atoms = True
+      .type = bool
+'''
+    for action in actions:
+      outl += action
+    outl += '}'
+    return outl
+
+any_quantum_package_installed = is_any_quantum_package_installed(os.environ)
+external_energy_params_str += any_quantum_package_installed
