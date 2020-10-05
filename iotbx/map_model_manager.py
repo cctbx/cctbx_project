@@ -2256,8 +2256,9 @@ class map_model_manager(object):
 
     if local_sharpen:  # run first as is, then with local sharpening, then
                        # again as is
+      print ("\nRunning procedure for local sharpening \n", file = self.log)
 
-      print("\nRunning overall sharpening ...\n",file = self.log)
+      print("\nRunning overall sharpening first ...\n",file = self.log)
       # Run standard sharpening
       kw['local_sharpen'] = False
       kw['anisotropic_sharpen'] = False
@@ -2272,6 +2273,7 @@ class map_model_manager(object):
       print("\nRunning local sharpening ...\n",file = self.log)
 
       working_mmm._local_sharpen(
+        map_id = map_id,
         map_id_1 = map_id_1,
         map_id_2 = map_id_2,
         resolution = resolution,
@@ -2336,6 +2338,7 @@ class map_model_manager(object):
       return
 
     # Here to run overall
+    print ("\nRunning overall sharpening ", file = self.log)
     if n_bins is None:
       n_bins = n_bins_default
 
@@ -2358,12 +2361,19 @@ class map_model_manager(object):
       local_sharpen = False)
 
     if anisotropic_sharpen:
-       # get scale factors in 3 directions
+       print ("Using anisotropic sharpening ",file = self.log)
+       # get scale factors in 12 directions
        direction_vectors = working_mmm._get_aniso_direction_vectors(map_id)
     else:
        direction_vectors = [None]
     target_scale_factors_list = []
+
     for direction_vector in direction_vectors:
+      if direction_vector:
+        print("\nEstimating scale factors for direction_vector "+
+        " (%5.2f, %5.2f, %5.2f) " %(direction_vector),file = self.log)
+      else:
+        print("Estimating scale factors ", file = self.log)
       target_scale_factors = working_mmm._get_weights_in_shells(n_bins,
         d_min,
         map_id = map_id,
@@ -2377,6 +2387,7 @@ class map_model_manager(object):
         direction_vector = direction_vector,)
 
       if spectral_scaling:  # multiply data in shell by scale
+        print("Applying spectral scaling", file = self.log)
         from phenix.autosol.read_amplitude_vs_resolution import \
            amplitude_vs_resolution
         avr = amplitude_vs_resolution()
@@ -2394,6 +2405,9 @@ class map_model_manager(object):
       target_scale_factors_list.append(target_scale_factors)
 
     # Apply the scale factors in shells
+    print("\nApplying final scale factors in shells of "+
+       "resolution along %s direction vectors" %len(direction_vectors),
+         file = self.log)
     new_map_manager = working_mmm._apply_scale_factors_in_shells(
       map_coeffs,
       n_bins,
@@ -2403,6 +2417,7 @@ class map_model_manager(object):
       direction_vectors = direction_vectors)
 
     # All done... Set map_manager now
+    print ("Setting map_manager '%s' to scaled map" %(map_id), file = self.log)
     self.add_map_manager_by_id(new_map_manager, map_id)
 
   def _get_aniso_direction_vectors(self, map_id, n_max = 12 ):
@@ -2716,7 +2731,8 @@ class map_model_manager(object):
     for direction_vector in direction_vectors:
       print("\nGetting scale factors vs location for direction vector:"+
         " (%5.2f, %5.2f, %5.2f) " %(direction_vector),file =self.log)
-      print("Number of processors to use: %s\n" %(nproc), file = self.log)
+      print("Number of resolution bins: %s  Number of processors: %s" %(
+          n_bins,nproc), file = self.log)
 
       # Get scale factors vs resolution and location
       scale_factor_info = self.local_fsc(
@@ -3127,7 +3143,7 @@ class map_model_manager(object):
         all_results.xyz_list.extend(result.xyz_list)  # vec3_double
         all_results.value_list += result.value_list   # a list
     found_number_of_samples_with_ncs = all_results.xyz_list.size()
-    print ("Sampling points attempted: %s  Successful: %s  With NCS: %s\n" %(
+    print ("Sampling points attempted: %s  Successful: %s  With NCS: %s" %(
       expected_number_of_samples, found_number_of_samples,
       found_number_of_samples_with_ncs), file = self.log)
     return all_results
