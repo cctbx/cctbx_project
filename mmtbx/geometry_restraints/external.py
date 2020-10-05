@@ -132,11 +132,11 @@ def is_any_quantum_package_installed(env):
       .type = bool
     selection = None
       .type = atom_selection
-    charge = Auto
+    charge = 0
       .type = int
-    multiplicity = Auto
+    multiplicity = 1
       .type = int
-    buffer = 3.
+    buffer = 0.
       .type = float
     refine_buffer_hydrogen_atoms = True
       .type = bool
