@@ -106,6 +106,7 @@ def is_orca_installed(env):
 def orca_action():
   outl = '''
     orca
+      .help = Orca
     {
       include scope mmtbx.geometry_restraints.qm_manager.orca_master_phil_str
     }
