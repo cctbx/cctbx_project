@@ -390,6 +390,7 @@ def calculate_fsc(si=None,
      maximum_scale_factor = None, # limit on size
      optimize_b_eff = None,
      low_res_bins = 3,
+     direction_vector = None,
      out=sys.stdout):
 
   # calculate anticipated fall-off of model data with resolution
@@ -444,6 +445,14 @@ def calculate_fsc(si=None,
   rms_fc_list=flex.double()
   max_possible_cc=None
   n_list = flex.double()
+
+  if direction_vector:
+    weights_para = get_weights_para(f_array, direction_vector)
+
+
+  else:
+    weights_para = None
+
   for i_bin in f_array.binner().range_used():
     sel       = f_array.binner().selection(i_bin)
     d         = dsd.select(sel)
@@ -456,6 +465,10 @@ def calculate_fsc(si=None,
     n         = d.size()
     m1        = mc1.select(sel)
     m2        = mc2.select(sel)
+    if weights_para:
+      w1 = weights_para.select(sel)
+      m1=m1.customized_copy(data = m1.data() *w1)
+      m2=m2.customized_copy(data = m2.data() *w1)
     cc        = m1.map_correlation(other = m2)
 
     if external_map_coeffs:
@@ -599,6 +612,16 @@ def calculate_fsc(si=None,
   si.low_res_cc = cc_list[:low_res_bins].min_max_mean().mean # low-res average
 
   return si
+
+def get_weights_para(f_array, direction_vector):
+    # get weights based on |dot(normalized_indices, direction_vector)|
+    weights_para = flex.double
+    indices_vec3_double=f_array.indices().as_vec3_double()
+    norms=indices_vec3_double.norms()
+    norms.set_selected((norms == 0),1)
+    index_directions = indices_vec3_double/norms
+    weights_para = flex.abs(index_directions.dot(direction_vector))
+    return weights_para
 
 def get_target_scale_factors(
      f_array = None,

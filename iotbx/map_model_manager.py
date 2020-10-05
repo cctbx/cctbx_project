@@ -1,9 +1,10 @@
 from __future__ import absolute_import, division, print_function
-import sys
+import sys, os
 from libtbx.utils import Sorry
 from cctbx import maptbx
 from libtbx import group_args
 from scitbx.array_family import flex
+from scitbx.matrix import col
 from iotbx.map_manager import map_manager as MapManager
 from mmtbx.model import manager as model_manager
 import mmtbx.ncs.ncs
@@ -2169,19 +2170,13 @@ class map_model_manager(object):
     f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = working_n_bins,
         d_min = d_min).f_array
 
-    pdb_inp = self.get_model_by_id(model_id).get_hierarchy().as_pdb_input()
-
-    from cctbx.maptbx.refine_sharpening import get_model_map_coeffs_normalized
-    model_map_coeffs = get_model_map_coeffs_normalized(pdb_inp = pdb_inp,
-       f_array = f_array,
-       n_bins = working_n_bins,
-       resolution = d_min,
-       overall_b = 0.,
-       out = null_out())
-    model_map_manager = self.get_any_map_manager(
-       ).fourier_coefficients_as_map_manager(model_map_coeffs)
+    model=self.get_model_by_id(model_id)
+    model.set_b_iso(flex.double(model.get_sites_cart().size(),0.))
     map_id_model_map = 'model_map'
-    self.add_map_manager_by_id(model_map_manager,map_id_model_map)
+    self.generate_map(model=model,
+       gridding=self.get_any_map_manager().map_data().all(),
+       d_min=d_min,
+       map_id = map_id_model_map)
 
     self.half_map_sharpen(
       map_id = map_id,
@@ -2223,6 +2218,7 @@ class map_model_manager(object):
       is_external_based = False,
       optimize_with_model = None,
       n_bins_default = 200,
+      anisotropic_sharpen = True,
     ):
     '''
      Scale map_id with scale factors identified from map_id_1 and map_id_2
@@ -2234,6 +2230,10 @@ class map_model_manager(object):
 
      If is_model_based, assume that the map_id_2 is based on a model
      If is_external_based, assume map_id_2 is external
+
+     If anisotropic sharpening, identify resolution dependence along
+      principal axes of anisotropy and apply based on position in reciprocal
+      space
     '''
 
     from libtbx import adopt_init_args
@@ -2242,6 +2242,7 @@ class map_model_manager(object):
     kw = kw_obj() # save calling parameters in kw as dict
     del kw['adopt_init_args'] # REQUIRED
     del kw['kw_obj']  # REQUIRED
+    del kw['spectral_scaling']  # REQUIRED
 
     # Checks
     assert self.get_map_manager_by_id(map_id)
@@ -2259,6 +2260,7 @@ class map_model_manager(object):
       print("\nRunning overall sharpening ...\n",file = self.log)
       # Run standard sharpening
       kw['local_sharpen'] = False
+      kw['anisotropic_sharpen'] = False
       if n_bins is None: # set it here
         kw['n_bins'] = n_bins_default
       working_mmm.half_map_sharpen(**kw)
@@ -2279,12 +2281,12 @@ class map_model_manager(object):
         box_cushion = box_cushion,
         smoothing_radius = smoothing_radius,
         rmsd = rmsd,
-        spectral_scaling = spectral_scaling,
         nproc = nproc,
         optimize_b_eff = optimize_b_eff,
         equalize_power = equalize_power,
         is_model_based = is_model_based,
         is_external_based = is_external_based,
+        anisotropic_sharpen = anisotropic_sharpen,
         )
 
       # And again standard
@@ -2355,42 +2357,89 @@ class map_model_manager(object):
       d_min = d_min, map_coeffs = map_coeffs,
       local_sharpen = False)
 
-    target_scale_factors = working_mmm._get_weights_in_shells(n_bins,
-      d_min,
-      map_id = map_id,
-      map_id_1 = map_id_1,
-      map_id_2 = map_id_2,
-      rmsd = rmsd,
-      optimize_b_eff = optimize_b_eff,
-      equalize_power = equalize_power,
-      is_model_based = is_model_based,
-      is_external_based = is_external_based,
-     )
+    if anisotropic_sharpen:
+       # get scale factors in 3 directions
+       direction_vectors = working_mmm._get_aniso_direction_vectors(map_id)
+    else:
+       direction_vectors = [None]
+    target_scale_factors_list = []
+    for direction_vector in direction_vectors:
+      target_scale_factors = working_mmm._get_weights_in_shells(n_bins,
+        d_min,
+        map_id = map_id,
+        map_id_1 = map_id_1,
+        map_id_2 = map_id_2,
+        rmsd = rmsd,
+        optimize_b_eff = optimize_b_eff,
+        equalize_power = equalize_power,
+        is_model_based = is_model_based,
+        is_external_based = is_external_based,
+        direction_vector = direction_vector,)
 
-    if spectral_scaling:  # multiply data in shell by scale
-      from phenix.autosol.read_amplitude_vs_resolution import \
-         amplitude_vs_resolution
-      avr = amplitude_vs_resolution()
-      f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
-        d_min = d_min).f_array
-      new_target_scale_factors = flex.double()
-      for i_bin, sc in zip(f_array.binner().range_used(),target_scale_factors):
-        d_1, d_2 = f_array.binner().bin_d_range(i_bin)
-        if d_1 < 0: d_1 = d_2
-        local_d_mean =  0.5*(d_1 + d_2)
-        shell_scale = avr.get_scale(d_value = local_d_mean)
-        new_target_scale_factors.append(sc * shell_scale)
-      target_scale_factors = new_target_scale_factors
+      if spectral_scaling:  # multiply data in shell by scale
+        from phenix.autosol.read_amplitude_vs_resolution import \
+           amplitude_vs_resolution
+        avr = amplitude_vs_resolution()
+        f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
+          d_min = d_min).f_array
+        new_target_scale_factors = flex.double()
+        for i_bin, sc in zip(
+            f_array.binner().range_used(),target_scale_factors):
+          d_1, d_2 = f_array.binner().bin_d_range(i_bin)
+          if d_1 < 0: d_1 = d_2
+          local_d_mean =  0.5*(d_1 + d_2)
+          shell_scale = avr.get_scale(d_value = local_d_mean)
+          new_target_scale_factors.append(sc * shell_scale)
+        target_scale_factors = new_target_scale_factors
+      target_scale_factors_list.append(target_scale_factors)
 
     # Apply the scale factors in shells
     new_map_manager = working_mmm._apply_scale_factors_in_shells(
       map_coeffs,
       n_bins,
       d_min,
-      target_scale_factors)
+      target_scale_factors = None,
+      target_scale_factors_list = target_scale_factors_list,
+      direction_vectors = direction_vectors)
 
     # All done... Set map_manager now
     self.add_map_manager_by_id(new_map_manager, map_id)
+
+  def _get_aniso_direction_vectors(self, map_id, n_max = 12 ):
+    '''
+     Find principal components of anisotropy in map
+    '''
+    assert self.get_map_manager_by_id(map_id)
+    map_coeffs = self.get_map_manager_by_id(map_id
+      ).map_as_fourier_coefficients()
+    f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = 1,
+        d_min = self.resolution()).f_array
+    from cctbx.maptbx.segment_and_split_map import get_b_iso
+    b_mean,aniso_scale_and_b=get_b_iso(f_array,d_min=self.resolution(),
+      return_aniso_scale_and_b=True)
+    ev = flex.vec3_double()
+    for i in range(3):
+        ev.append(tuple((
+            aniso_scale_and_b.eigen_vectors[3*i],
+            aniso_scale_and_b.eigen_vectors[3*i+1],
+            aniso_scale_and_b.eigen_vectors[3*i+2])))
+    if n_max >= 6:
+      # Now add vectors between these in case that is where the variation is
+      ev.append(-col(ev[0]) + col(ev[1]) + col(ev[2]))
+      ev.append( col(ev[0]) - col(ev[1]) + col(ev[2]))
+      ev.append( col(ev[0]) + col(ev[1]) - col(ev[2]))
+    if n_max >= 9:
+      ev.append( col(ev[0]) + col(ev[1]) )
+      ev.append( col(ev[0]) + col(ev[2]) )
+      ev.append( col(ev[1]) + col(ev[2]) )
+    if n_max >= 12:
+      ev.append( col(ev[0]) - col(ev[1]) )
+      ev.append( col(ev[0]) - col(ev[2]) )
+      ev.append( col(ev[1]) - col(ev[2]) )
+    norms = ev.norms()
+    norms.set_selected((norms == 0),1)
+    ev = ev/norms
+    return ev
 
   def _get_map_model_manager_with_selected(self,
       map_id_list=None, model_id_list = None,
@@ -2441,16 +2490,47 @@ class map_model_manager(object):
       map_coeffs,
       n_bins,
       d_min,
-      target_scale_factors):
-    assert target_scale_factors.size() == n_bins
+      target_scale_factors,
+      target_scale_factors_list = None,
+      direction_vectors= None,
+      ):
+
     f_array_info = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
-      d_min = d_min)
-    assert len(list(f_array_info.f_array.binner().range_used())) == \
-        target_scale_factors.size() # must be compatible binners
-    scale_array=f_array_info.f_array.binner().interpolate(
-      target_scale_factors, 1) # d_star_power=1
-    scaled_f_array=f_array_info.f_array.customized_copy(
-        data=f_array_info.f_array.data()*scale_array)
+        d_min = d_min)
+
+    if not direction_vectors or direction_vectors[0] is None:
+      target_scale_factors = target_scale_factors_list[0]
+
+    if target_scale_factors: # usual
+      assert target_scale_factors.size() == n_bins
+      assert len(list(f_array_info.f_array.binner().range_used())) == \
+          target_scale_factors.size() # must be compatible binners
+      scale_array=f_array_info.f_array.binner().interpolate(
+        target_scale_factors, 1) # d_star_power=1
+      scaled_f_array=f_array_info.f_array.customized_copy(
+          data=f_array_info.f_array.data()*scale_array)
+    else:  # apply anisotropic values
+      assert target_scale_factors_list and direction_vectors
+      assert len(target_scale_factors_list) == direction_vectors.size()
+      scale_array=flex.double(f_array_info.f_array.size(),0.)
+      scale_array_weights=flex.double(f_array_info.f_array.size(),0.)
+      from cctbx.maptbx.refine_sharpening import get_weights_para
+      for target_scale_factors,direction_vector in zip(
+           target_scale_factors_list,direction_vectors):
+        assert target_scale_factors.size() == n_bins
+        assert len(list(f_array_info.f_array.binner().range_used())) == \
+          target_scale_factors.size() # must be compatible binners
+        working_scale_array=f_array_info.f_array.binner().interpolate(
+          target_scale_factors, 1) # d_star_power=1
+        weights = get_weights_para(f_array_info.f_array, direction_vector)
+        scale_array += working_scale_array * weights
+        scale_array_weights += weights
+      scale_array_weights.set_selected((scale_array_weights < 1.e-10),1.e-10)
+      scale_array /= scale_array_weights
+
+      scaled_f_array=f_array_info.f_array.customized_copy(
+          data=f_array_info.f_array.data()*scale_array)
+
 
     return self.map_manager(
        ).fourier_coefficients_as_map_manager(
@@ -2474,6 +2554,7 @@ class map_model_manager(object):
      is_external_based = None,
      maximum_scale_factor = 10.,
      minimum_low_res_cc = 0.35,
+     direction_vector = None,
      ):
     '''
     Calculate weights in shells to yield optimal final map .
@@ -2549,6 +2630,7 @@ class map_model_manager(object):
       pseudo_likelihood=si.pseudo_likelihood,
       equalize_power = si.equalize_power,
       maximum_scale_factor = maximum_scale_factor,
+      direction_vector = direction_vector,
       out = self.log)
     # si contains target_scale_factors now
     # If low_res_cc is too low for model (outside model)...skip it
@@ -2556,6 +2638,133 @@ class map_model_manager(object):
       return  None
     else:
       return si.target_scale_factors
+
+  def _create_temp_dir(self, temp_dir):
+    if not os.path.isdir(temp_dir):
+      os.mkdir(temp_dir)
+      return temp_dir
+    else:
+      for i in range(1000):
+        work_dir = "%s_%s" %(temp_dir,i)
+        if not os.path.isdir(work_dir):
+          os.mkdir(work_dir)
+          return work_dir
+    raise Sorry("Unable to create temporary directory", file = self.log)
+
+  def _run_group_of_anisotropic_sharpen(self,
+      map_id  = 'map_manager',
+      map_id_1 = 'map_manager_1',
+      map_id_2 = 'map_manager_2',
+      resolution = None,
+      n_bins = None,
+      n_boxes = None,
+      core_box_size = None,
+      box_cushion = None,
+      smoothing_radius = None,
+      rmsd = None,
+      nproc = None,
+      optimize_b_eff = None,
+      equalize_power = None,
+      is_model_based = False,
+      is_external_based = False,
+      temp_dir = 'TEMP_ANISO_LOCAL',
+     ):
+    '''
+    Run local sharpening in groups with focus on reflections along one
+    direction vector. Then combine results
+
+    Summary of method:
+
+    A map of one scale factor is the scale factor to apply in real space
+       at each xyz for any contribution from an xyz in that bin.
+    (1) we calculate position-dependent target_scale_factors (n_bins)
+      for each direction vector (typically n=12).  Total of about
+      240 bins/directions.
+    (2) each resolution bin has a set of weights for all reflections w_hkl.
+      These are just binner.apply_scale of (0 all other bins and 1 this bin)
+    (3) each direction has a set of weights w_dv_hkl. These are just the
+      dot product of the direction and the normalized (hkl). On the fly.
+    (4) To sum up:
+       one bin (sel), one direction vector dv, weights w_dv,
+         weights_resolution_bin
+       a.calculate value_map map with map_coeffs * w_dv * w_resolution_bin
+       b. calculate weight map from position-dependent target_scale_factors
+          for dv
+       c multiply weight_map * value_map and sum over all bins, dv
+
+    (5) To parallelize: run a group of sums, write out maps, read in and sum up.
+        '''
+
+    # Get the kw we have
+    from libtbx import adopt_init_args
+    kw_obj = group_args()
+    adopt_init_args(kw_obj, locals())
+    kw = kw_obj() # save calling parameters in kw as dict
+    del kw['adopt_init_args'] # REQUIRED
+    del kw['kw_obj'] # REQUIRED
+    del kw['temp_dir'] # REQUIRED
+
+    print ("\nRunning anisotropic local sharpening with nproc = %s " %(
+       nproc), file = self.log)
+
+
+    # Get list of direction vectors (based on anisotropy of map)
+    direction_vectors = self._get_aniso_direction_vectors(map_id)
+
+    # Run local_fsc for each direction vector
+    scale_factor_info_list = []
+    for direction_vector in direction_vectors:
+      print("\nGetting scale factors vs location for direction vector:"+
+        " (%5.2f, %5.2f, %5.2f) " %(direction_vector),file =self.log)
+      print("Number of processors to use: %s\n" %(nproc), file = self.log)
+
+      # Get scale factors vs resolution and location
+      scale_factor_info = self.local_fsc(
+        return_scale_factors = True, direction_vector=direction_vector,
+         **kw)
+      scale_factor_info_list.append(scale_factor_info)
+
+    setup_info = self._get_box_setup_info(map_id_1, map_id_2,
+      resolution, box_cushion,
+      n_boxes, core_box_size, smoothing_radius)
+
+    temp_dir = self._create_temp_dir(temp_dir)  # for big files
+    setup_info.kw = kw
+    setup_info.temp_dir = temp_dir
+
+    # Apply interpolated scale_factors (vs resolution and direction). Split
+    # into groups by direction
+
+    # Set up to run for each direction
+    index_list=[]
+    for i in range(len(direction_vectors)):
+      index_list.append({'i':i})
+
+    from libtbx.easy_mp import run_parallel
+    results = run_parallel(
+      method = 'multiprocessing',
+      nproc = nproc,
+      target_function = run_anisotropic_scaling_as_class(
+         map_model_manager = self,
+         direction_vectors = direction_vectors,
+         scale_factor_info_list = scale_factor_info_list,
+         setup_info = setup_info),
+      preserve_order=False,
+      kw_list = index_list)
+
+    # Results is list of map names.  Read them in, sum up, and we're done
+    from iotbx.data_manager import DataManager
+    dm = DataManager()
+    map_data = None
+    for result in results:
+      if result and result.file_name:
+        mm = dm.get_real_map(result.file_name)
+        mm.shift_origin()
+        if map_data is None:
+          map_data = mm.map_data()
+        else:
+          map_data += mm.map_data()
+    self.get_map_manager_by_id(map_id).set_map_data(map_data)
 
   def _local_sharpen(self,
       map_id  = 'map_manager',
@@ -2568,12 +2777,13 @@ class map_model_manager(object):
       box_cushion = None,
       smoothing_radius = None,
       rmsd = None,
-      spectral_scaling = True,
       nproc = None,
       optimize_b_eff = None,
       equalize_power = None,
       is_model_based = False,
       is_external_based = False,
+      anisotropic_sharpen = None,
+      direction_vector = None,
      ):
 
     '''
@@ -2582,38 +2792,38 @@ class map_model_manager(object):
 
     '''
 
+    # Get the kw we have
+    from libtbx import adopt_init_args
+    kw_obj = group_args()
+    adopt_init_args(kw_obj, locals())
+    kw = kw_obj() # save calling parameters in kw as dict
+    del kw['adopt_init_args'] # REQUIRED
+    del kw['kw_obj']  # REQUIRED
+    del kw['anisotropic_sharpen']  # REQUIRED
+    del kw['direction_vector']  # REQUIRED
+
     # Checks
     assert self.get_map_manager_by_id(map_id)
     assert self.get_map_manager_by_id(map_id_1)
     assert self.get_map_manager_by_id(map_id_2)
 
+
     if n_bins is None:
-      n_bins = 20
+      kw['n_bins'] = 20
 
     if nproc is None:
-      nproc = 1
+      kw['nproc'] = 1
 
     # NOTE: map starts out overall-sharpened.  Therefore approximate scale
     # factors in all resolution ranges are about 1.  use that as default
 
+    if anisotropic_sharpen:  # run N times with different direction vectors
+      self._run_group_of_anisotropic_sharpen(**kw)
+      return
+
     # Get scale factors vs resolution and location
     scale_factor_info = self.local_fsc(
-      map_id = map_id,
-      map_id_1 = map_id_1,
-      map_id_2 = map_id_2,
-      resolution = resolution,
-      n_bins = n_bins,
-      n_boxes = n_boxes,
-      core_box_size = core_box_size,
-      box_cushion = box_cushion,
-      rmsd = rmsd,
-      smoothing_radius = smoothing_radius,
-      nproc = nproc,
-      equalize_power = equalize_power,
-      optimize_b_eff = optimize_b_eff,
-      is_model_based = is_model_based,
-      is_external_based = is_external_based,
-      return_scale_factors = True)
+      return_scale_factors = True, **kw)
 
     xyz_list = scale_factor_info.xyz_list
     d_min = scale_factor_info.d_min
@@ -2633,7 +2843,6 @@ class map_model_manager(object):
       scale_value_list = self._get_scale_values_for_bin(
         i_bin = i_bin,
         scale_factor_info = scale_factor_info)
-      xx = scale_value_list.min_max_mean()
       weight_mm = self._create_full_size_map_manager_with_value_list(
         xyz_list = xyz_list,
         value_list = scale_value_list,
@@ -2690,7 +2899,8 @@ class map_model_manager(object):
       optimize_b_eff = None,
       equalize_power = None,
       is_external_based = None,
-      return_scale_factors = False):
+      return_scale_factors = False,
+      direction_vector = None):
 
     '''
       Calculates local Fourier Shell Correlations to estimate local resolution
@@ -2699,6 +2909,8 @@ class map_model_manager(object):
       Optionally estimates scale factors vs resolution at each point in map
       to apply to yield a locally-scaled map (return_scale_factors = True).
 
+      If direction_vector is specified, weight scale factor calculation by
+      dot product of reflection directions with direction_vector
     '''
 
     # Checks
@@ -2733,6 +2945,7 @@ class map_model_manager(object):
     box_info.optimize_b_eff = optimize_b_eff
     box_info.equalize_power = equalize_power
     box_info.is_external_based = is_external_based
+    box_info.direction_vector = direction_vector
 
     results = self._run_fsc_in_boxes(
      nproc = nproc,
@@ -2914,7 +3127,7 @@ class map_model_manager(object):
         all_results.xyz_list.extend(result.xyz_list)  # vec3_double
         all_results.value_list += result.value_list   # a list
     found_number_of_samples_with_ncs = all_results.xyz_list.size()
-    print ("Sampling points attempted: %s  Successful: %s  With NCS: %s" %(
+    print ("Sampling points attempted: %s  Successful: %s  With NCS: %s\n" %(
       expected_number_of_samples, found_number_of_samples,
       found_number_of_samples_with_ncs), file = self.log)
     return all_results
@@ -3188,7 +3401,6 @@ class map_model_manager(object):
     r_inv = rt_info.r.inverse()
     t_inv = -r_inv*rt_info.t
 
-    from scitbx.matrix import col
     self_all = self.map_data().all()
     other_all = other.map_data().all()
     uc = self.crystal_symmetry().unit_cell().parameters()[:3]
@@ -3369,6 +3581,7 @@ class map_model_manager(object):
       fractional_error = 0.0,
       gridding = None,
       wrapping = False,
+      map_id = None,
      ):
 
     '''
@@ -3388,6 +3601,8 @@ class map_model_manager(object):
       box with box_cushion around it and choose n_residues to
       include default=10).
 
+      If map_id is set, create an entry with this id.  Otherwise create a new
+        map_model_manager
       Parameters:
       -----------
 
@@ -3457,8 +3672,13 @@ class map_model_manager(object):
       log = self.log)
 
     mm.show_summary()
-    self.set_up_map_dict(map_manager=mm)
-    self.set_up_model_dict(model=model)
+    if map_id:
+      new_mm = self.get_any_map_manager().customized_copy(
+        map_data=mm.map_data())
+      self.add_map_manager_by_id(new_mm,map_id)
+    else: # create map-model manager info
+      self.set_up_map_dict(map_manager=mm)
+      self.set_up_model_dict(model=model)
 
   def _empty_copy(self):
     '''
@@ -4422,6 +4642,90 @@ def get_map_counts(map_data, crystal_symmetry = None):
       unit_cell = crystal_symmetry.unit_cell()))
   return map_counts
 
+class run_anisotropic_scaling_as_class:
+  def __init__(self, map_model_manager=None,
+      direction_vectors = None,
+      scale_factor_info_list= None,
+      setup_info = None,
+       ):
+    self.map_model_manager = map_model_manager
+    self.direction_vectors = direction_vectors
+    self.scale_factor_info_list = scale_factor_info_list
+    self.setup_info = setup_info
+
+  def __call__(self,i):
+    '''
+     Run anisotropic scaling with direction vector i
+      To sum up one partial map:
+       one bin (sel), one direction vector dv, weights w_dv,
+         weights_resolution_bin
+       a.calculate value_map map with map_coeffs * w_dv * w_resolution_bin
+       b. calculate weight map from position-dependent target_scale_factors
+          for dv
+       c multiply weight_map * value_map and sum over all bins, dv
+
+
+    '''
+    direction_vector = self.direction_vectors[i]
+
+    # Get the partial map
+    scale_factor_info = self.scale_factor_info_list[i]
+
+    xyz_list = scale_factor_info.xyz_list
+    d_min = scale_factor_info.d_min
+    smoothing_radius = scale_factor_info.setup_info.smoothing_radius
+    n_bins = scale_factor_info.n_bins
+    map_id = self.setup_info.kw['map_id']
+    map_model_manager = self.map_model_manager
+
+    # Get Fourier coefficient for map
+    map_coeffs = map_model_manager.get_map_manager_by_id(map_id
+         ).map_as_fourier_coefficients(d_min = d_min)
+
+    new_map_data = flex.double(flex.grid(
+        map_model_manager.get_map_manager_by_id(map_id
+        ).map_data().all()), 0.)
+
+    # Get map for each shell of resolution, weighting by direction vector
+
+    # direction_vector weights:
+    f_array_info = get_map_coeffs_as_fp_phi(map_coeffs,
+       n_bins = n_bins, d_min = d_min)
+    from cctbx.maptbx.refine_sharpening import get_weights_para
+    weights = get_weights_para(f_array_info.f_array, direction_vector)
+    weighted_map_coeffs = map_coeffs.customized_copy(
+      data = map_coeffs.data() * weights)
+
+    for i_bin in f_array_info.f_array.binner().range_used():
+      scale_value_list = map_model_manager._get_scale_values_for_bin(
+        i_bin = i_bin,
+        scale_factor_info = scale_factor_info)
+      weight_mm = \
+         map_model_manager._create_full_size_map_manager_with_value_list(
+        xyz_list = xyz_list,
+        value_list = scale_value_list,
+        smoothing_radius = smoothing_radius,
+        default_value = 1.0)
+      sel = f_array_info.f_array.binner().selection(i_bin)
+
+      shell_map_coeffs = weighted_map_coeffs.select(sel)
+      shell_map_manager = map_model_manager.map_manager(
+         ).fourier_coefficients_as_map_manager(shell_map_coeffs)
+      new_map_data += weight_mm.map_data() * shell_map_manager.map_data()
+    mm = map_model_manager.get_map_manager_by_id(map_id).customized_copy(
+      map_data = new_map_data)
+
+    file_name = os.path.join(
+        self.setup_info.temp_dir,'partial_map_%s.ccp4' %(i))
+    from iotbx.data_manager import DataManager
+    dm = DataManager()
+    dm.set_overwrite(True)
+    dm.write_real_map_file(mm, file_name)
+    result = group_args(
+      file_name = file_name,
+    )
+
+    return result
 class run_fsc_as_class:
   def __init__(self, map_model_manager=None, run_list=None,
       box_info = None):
@@ -4444,7 +4748,6 @@ class run_fsc_as_class:
 
     xyz_list = flex.vec3_double()
     value_list = []
-    from scitbx.matrix import col
     # offset to map absolute on to self.map_model_manager
     offset = self.map_model_manager.get_map_manager_by_id(self.box_info.map_id
       ).shift_cart()
@@ -4479,7 +4782,86 @@ class run_fsc_as_class:
            equalize_power=self.box_info.equalize_power,
            rmsd=self.box_info.rmsd,
            is_external_based=self.box_info.is_external_based,
-           d_min = self.box_info.minimum_resolution)
+           d_min = self.box_info.minimum_resolution,
+           direction_vector = self.box_info.direction_vector)
+        except Exception as e:
+           weights_in_shells = None # ignore it. Happens if not enough data
+        if weights_in_shells:
+          xyz_list.append(tuple(col(xyz)+col(offset) ))
+          value_list.append(weights_in_shells)
+      else: # Get local resolution
+        d_min = mmm.map_map_fsc(fsc_cutoff = self.box_info.fsc_cutoff,
+          map_id_1 = self.box_info.map_id_1,
+          map_id_2 = self.box_info.map_id_2,
+          n_bins=self.box_info.n_bins).d_min
+        if d_min:
+          d_min = max(d_min, self.box_info.minimum_resolution)
+          xyz_list.append(tuple(col(xyz)+col(offset) ))
+          value_list.append(d_min)
+    result = group_args(
+      n_bins = self.box_info.n_bins,
+      d_min = self.box_info.minimum_resolution,
+      xyz_list=xyz_list,
+      value_list = value_list)
+    return result
+class run_fsc_as_class:
+  def __init__(self, map_model_manager=None, run_list=None,
+      box_info = None):
+    self.map_model_manager = map_model_manager
+    self.run_list = run_list
+    self.box_info = box_info
+
+  def __call__(self,i):
+    '''
+     Run a group of fsc calculations with kw
+     specifying which to run
+
+    '''
+    # We are going to run with the i'th set of keywords
+    kw=self.run_list[i]
+
+    # Get the method name and expected_result_names and remove them from kw
+    first_to_use = kw['first_to_use']
+    last_to_use = kw['last_to_use']
+
+    xyz_list = flex.vec3_double()
+    value_list = []
+    # offset to map absolute on to self.map_model_manager
+    offset = self.map_model_manager.get_map_manager_by_id(self.box_info.map_id
+      ).shift_cart()
+
+    for i in range(first_to_use, last_to_use + 1):
+      new_box_info = get_split_maps_and_models(
+        map_model_manager = self.map_model_manager,
+        box_info = self.box_info,
+        first_to_use = i,
+        last_to_use = i)
+      mmm = new_box_info.mmm_list[0]
+
+      xyz = mmm.get_map_manager_by_id(self.box_info.map_id
+         ).absolute_center_cart()
+
+      mmm.mask_all_maps_around_edges(soft_mask_radius=self.box_info.resolution)
+
+      # Two choices for methods to get fsc:  _get_weights_in_shells or
+      #   _map_map_fsc.   The weights_in_shells method is designed for scaling
+      #  and map_map_fsc is designed to get local resolution.
+
+      if self.box_info.return_scale_factors:
+        # Get scaling weights
+        try:
+          weights_in_shells = mmm._get_weights_in_shells(
+           map_id = self.box_info.map_id,
+           map_id_1 = self.box_info.map_id_1,
+           map_id_2 = self.box_info.map_id_2,
+           n_bins=self.box_info.n_bins,
+           is_model_based=self.box_info.is_model_based,
+           optimize_b_eff=self.box_info.optimize_b_eff,
+           equalize_power=self.box_info.equalize_power,
+           rmsd=self.box_info.rmsd,
+           is_external_based=self.box_info.is_external_based,
+           d_min = self.box_info.minimum_resolution,
+           direction_vector = self.box_info.direction_vector)
         except Exception as e:
            weights_in_shells = None # ignore it. Happens if not enough data
         if weights_in_shells:
