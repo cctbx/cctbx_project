@@ -1294,11 +1294,13 @@ def evt_wavelength(evt, delta_k=0):
       # psana
       gamma = ebeam.ebeamL3Energy() / 0.510998910
     else:
-      return None
+      # return None
+      print("WARN: manual patch of wavelength")
+      return 12398.4/9500
     K = 3.5 + delta_k
     L = 3.0e8
     return L / (2 * gamma**2) * (1 + K**2 / 2)
-  return None
+  # return None
 
 def old_address_to_new_address(address):
   """ Change between old and new style detector addresses.
