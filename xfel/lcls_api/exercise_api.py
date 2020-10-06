@@ -38,7 +38,7 @@ def full_api_example(experiment, run_number, detector_address, params_file, even
   print("Getting datasource")
   ds = psana.DataSource('exp=%s:run=%d'%(experiment, run_number))
 
-  processor = CctbxPsanaEventProcessor(params_file, output_tag, logfile = output_tag + ".log")
+  processor = CctbxPsanaEventProcessor(params_file, output_tag) # note, logfile already initialized in this demo, so don't do it twice
 
   for run in ds.runs():
     print("Getting detector")
@@ -50,6 +50,7 @@ def full_api_example(experiment, run_number, detector_address, params_file, even
 
       tag = '%s_%s'%(output_tag, str(event_id))
       experiments = processor.experiments_from_event(event)
+      processor.tag = tag
       processor.setup_filenames(tag)
       try:
         processor.pre_process(experiments)

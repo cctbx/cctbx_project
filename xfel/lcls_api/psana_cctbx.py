@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 #from dxtbx.format.FormatXTC import
 from dxtbx.format.FormatXTCCspad import FormatXTCCspad, cspad_locator_scope
 from dxtbx.format.FormatXTCEpix import FormatXTCEpix, epix_locator_scope
+from dxtbx.format.FormatXTCJungfrau import FormatXTCJungfrau, jungfrau_locator_scope
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatMultiImageLazy import FormatMultiImageLazy
 from dxtbx.format.FormatStill import FormatStill
@@ -38,7 +39,7 @@ class FormatXTCCspadSingleEvent(FormatXTCCspad):
     return self.event
 
 class FormatXTCEpixSingleEvent(FormatXTCEpix):
-  """ Class to stub out and override FormatXTCCspad methods to allow in-memory processing """
+  """ Class to stub out and override FormatXTCEpix methods to allow in-memory processing """
   def __init__(self, params, run, detector, **kwargs):
     FormatMultiImageLazy.__init__(self, **kwargs)
     FormatStill.__init__(self, None, **kwargs)
@@ -55,6 +56,32 @@ class FormatXTCEpixSingleEvent(FormatXTCEpix):
   def get_raw_data(self, index=None):
     if index is None: index = 0
     return super(FormatXTCEpixSingleEvent, self).get_raw_data(index)
+
+  def _get_event(self, index):
+    return self.event
+
+  def get_run_from_index(self, index):
+    return self._run
+
+class FormatXTCJungfrauSingleEvent(FormatXTCJungfrau):
+  """ Class to stub out and override FormatXTCJungfrau methods to allow in-memory processing """
+  def __init__(self, params, run, detector, **kwargs):
+    FormatMultiImageLazy.__init__(self, **kwargs)
+    FormatStill.__init__(self, None, **kwargs)
+    Format.__init__(self, None, **kwargs)
+
+    self.event = None
+    self.params = params
+    self.params.detector_address = [str(detector.name)]
+    self._cached_detector = {}
+    self._cached_psana_detectors = {run.run():detector}
+    self._beam_index = None
+    self._beam_cache = None
+    self._run = run
+
+  def get_raw_data(self, index=None):
+    if index is None: index = 0
+    return super(FormatXTCJungfrauSingleEvent, self).get_raw_data(index)
 
   def _get_event(self, index):
     return self.event
@@ -84,9 +111,8 @@ class CctbxPsanaEventProcessor(Processor):
     self.output_tag = output_tag
     self.detector_params = None
 
-    if logfile is None:
-      logfile = output_tag + ".log"
-    log.config(logfile=logfile)
+    if logfile is not None:
+      log.config(logfile=logfile)
 
   def setup_run(self, run, psana_detector):
     """ Initialize processing for a given run
@@ -100,7 +126,8 @@ class CctbxPsanaEventProcessor(Processor):
       format_class = FormatXTCEpixSingleEvent
       detector_scope = epix_locator_scope
     elif psana_detector.is_jungfrau():
-      pass
+      format_class = FormatXTCJungfrauSingleEvent
+      detector_scope = jungfrau_locator_scope
     else:
       raise RuntimeError('Unrecognized detector %s'%psana_detector.name)
 
