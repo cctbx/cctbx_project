@@ -138,6 +138,8 @@ def is_any_quantum_package_installed(env):
       .type = int
     buffer = 0.
       .type = float
+    scale = 10.
+      .type = float
     refine_buffer_hydrogen_atoms = True
       .type = bool
 '''
@@ -147,4 +149,5 @@ def is_any_quantum_package_installed(env):
     return outl
 
 any_quantum_package_installed = is_any_quantum_package_installed(os.environ)
-external_energy_params_str += any_quantum_package_installed
+if any_quantum_package_installed:
+  external_energy_params_str += any_quantum_package_installed

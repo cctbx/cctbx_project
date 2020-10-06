@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import os
 from StringIO import StringIO
 import time
+import tempfile
 
 # from libtbx.utils import Sorry
 from scitbx.array_family import flex
@@ -17,11 +18,12 @@ orca_master_phil_str = '''
     .type = str
   basis_set = None
     .type = str
-  solvent_model = CPCM
+  solvent_model = None
     .type = str
 '''
 
 harkcal = 627.50946900
+bohrang = 0.52918
 
 class orca_manager:
   def __init__(self,
@@ -31,10 +33,13 @@ class orca_manager:
                solvent_model,
                charge,
                multiplicity,
+               log=None,
                ):
     adopt_init_args(self, locals())
     self.times = flex.double()
     self.energies = {}
+    self.preamble = os.path.basename(tempfile.NamedTemporaryFile().name)
+    print(self.preamble)
 
   def set_sites_cart(self, sites_cart):
     assert len(self.atoms)==len(sites_cart)
@@ -76,7 +81,7 @@ class orca_manager:
    8    58.8800869   71.4618835   28.1663680
    8    62.2022254   74.3474953   29.5553167
   16    59.4829095   73.6048329   29.8973572'''
-    f=file('orca.engrad', 'rb')
+    f=file('orca_%s.engrad' % self.preamble, 'rb')
     lines = f.read()
     del f
     lines = lines.split('#')
@@ -90,7 +95,7 @@ class orca_manager:
     tmp=[]
     for line in lines[9].splitlines():
       if len(line.strip()):
-        tmp.append(float(line)*harkcal)
+        tmp.append(float(line)*harkcal*bohrang)
         if len(tmp)==3:
           gradients.append(tmp)
           tmp=[]
@@ -101,7 +106,11 @@ class orca_manager:
 
   def run_cmd(self):
     t0=time.time()
-    cmd = '%s orca.in >& orca.output' % os.environ['PHENIX_ORCA']
+    cmd = '%s orca_%s.in >& orca_%s.output' % (
+      os.environ['PHENIX_ORCA'],
+      self.preamble,
+      self.preamble,
+      )
     # print(cmd)
     os.system(cmd)
     self.times.append(time.time()-t0)
@@ -116,7 +125,9 @@ class orca_manager:
  O  -1.232053205381  -0.091202455365   0.756057740169
  O   1.248727675817   0.072016173184   0.923222741921
 *'''
-    outl = '! %s %s EnGrad\n\n' % (self.method, self.basis_set)
+    outl = '! %s %s %s EnGrad\n\n' % (self.method,
+                                      self.basis_set,
+                                      self.solvent_model)
     outl += '* xyz %s %s\n' % (self.charge, self.multiplicity)
     for atom in self.atoms:
       outl += ' %s %0.5f %0.5f %0.5f\n' % (
@@ -130,7 +141,7 @@ class orca_manager:
       self.times.append(0)
       return self.energies[outl]
     assert outl not in self.energies, '%s %s' % (outl, self.energies)
-    f=file('orca.in', 'wb')
+    f=file('orca_%s.in' % self.preamble, 'wb')
     f.write(outl)
     del f
     self.run_cmd()
@@ -176,6 +187,8 @@ class manager(standard_manager):
     adopt_init_args(self, locals())
     if self.basis_set is None:
       self.basis_set = ''
+    if self.solvent_model is None:
+      self.solvent_model = ''
     self.execution_manager = orca_manager( self.qm_atoms,
                                            self.method,
                                            self.basis_set,
