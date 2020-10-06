@@ -1078,6 +1078,25 @@ def parse_panel_input_string(panel_str):
         print("WARNING: duplicate pids found in panel input string %s, please double check!" % panel_str)
     return list(set(all_pids))
 
+
+def get_ncells_mask_from_string(mask_string):
+    assert mask_string in ["000", "101", "110", "011", "111"]
+    s0, s1, s2 = mask_string
+    mask = int(s0), int(s1), int(s2)
+    return mask
+
+
+def load_panel_group_file(panel_group_file):
+    lines = open(panel_group_file, 'r').readlines()
+    groups = {}
+    for l in lines:
+        try:
+            panel, group = map(int, l.strip().split())
+        except ValueError:
+            continue
+        groups[panel] = group
+    return groups
+
 #def tally_local_statistics(spot_rois):
 #    # tally up all miller indices in this refinement
 #    total_pix = 0

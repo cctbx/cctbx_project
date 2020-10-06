@@ -92,15 +92,27 @@ refiner {
   refine_spectra = None
     .type = ints(size_min=1)
     .help = whether to refine the two spectra coefficients:  Lambda -> a*Lambda + b
+  refine_panelRotO = None
+    .type = ints(size_min=1)
+    .help = whether to refine rotation of detector panels about their normal vectors
+  refine_panelRotF = None
+    .type = ints(size_min=1)
+    .help = whether to refine rotation of detector panels about their fast-scan vectors
+  refine_panelRotS = None
+    .type = ints(size_min=1)
+    .help = whether to refine rotation of detector panels about their slow-scan vectors
+  refine_panelXY = None
+    .type = ints(size_min=1)
+    .help = whether to refine the XY component of the detector panel's origin vector
   refine_detdist = None 
     .type = ints(size_min=1)
     .help = whether to refine the detector distance (Z) components
-  fix_rotZ = False
-    .type = bool
-    .help = whether to fix the rotation of the crystal about the Z direction (usually the beam direction)
   max_calls = [100]
     .type = ints(size_min=1)
     .help = maximum number of calls for the refinement trial
+  fix_rotZ = False
+    .type = bool
+    .help = whether to fix the rotation of the crystal about the Z direction (usually the beam direction)
   save_models = False
     .type = bool
     .help = whether to save a models file during refinement
@@ -108,6 +120,10 @@ refiner {
     .type = bool
     .help = whether to rescale the structure factors according to their resolution
     .help = in an attempt to refine structure factors equally
+  panel_group_file = None
+    .type = str
+    .help = a text file with 2 columns, the first column is the panel_id and the second 
+    .help = column is the panel_group_id. Panels geometries in the same group are refined together
   init {
     spot_scale = 1
       .type = float
@@ -120,6 +136,12 @@ refiner {
       .help = initial value for spectrum coefficients  Lambda -> c0 + Lambda*c1
   }
   sensitivity {
+    panelRotOFS = [0.01, 0.01, 0.01]
+      .type = floats(size=3)
+      .help = refinement sensitivity factor for panel rotations (orthogonal, fast, slow)
+    panelXY = [1, 1]
+      .type = floats(size=2)
+      .help = refinement sensitivity factor for panel XY translations in the lab frame (X, Y)
     rotXYZ = [0.1, 0.1, 0.1]
       .type = floats(size=3)
       .help = refinement sensitivity factor for rotation parameters
@@ -221,6 +243,10 @@ refiner {
   num_macro_cycles = 1
     .type = int
     .help = keep repeating the same refinement scheme over and over, this many times
+  ncells_mask = *000 110 101 011 111
+    .type = choice
+    .help = a mask specifying which ncells parameters should be the same
+    .help = e.g. 110 specifies Na and Nb are refined as one parameter
 }
 """
 

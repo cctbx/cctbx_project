@@ -707,7 +707,6 @@ class LocalRefiner(PixelRefinement):
                         self.Xall[self.ucell_xstart[0] + i_cell] = self.UCELL_MAN[0].variables[i_cell]
 
             if self.global_ncells_param:
-                # TODO have parameter for global init of Ncells , right now its handled in the global_bboxes scripts
                 for i_ncells in range(self.n_ncells_param):
                     if self.rescale_params:
                         ncells_xval = 1
@@ -932,6 +931,8 @@ class LocalRefiner(PixelRefinement):
             # save the ncells identifier
             if self.n_ncells_param == 1:
                 ncells_names = ("m",)
+            elif self.n_ncells_param == 2:
+                ncells_names = "N1", "N2"
             else:  # only other choice is n_ncells_param=3
                 ncells_names = "Na", "Nb", "Nc"
             for i_nc in range(self.n_ncells_param):
@@ -1117,13 +1118,16 @@ class LocalRefiner(PixelRefinement):
                 if self.rescale_params:
                     try:
                         sig = self.m_sigma[i_ncell]
-                    except TypeError:
+                    except (TypeError, IndexError):
                         sig = self.m_sigma
                     init = self.m_init[i_shot][i_ncell]
                     val = np_exp(sig * (val - 1)) * (init - 3) + 3
                 else:
                     val = np_exp(val) + 3
+
                 vals.append(val)
+            if self.ncells_mask is not None and self.n_ncells_param == 2:
+                vals = [vals[mask_val] for mask_val in self.ncells_mask]
         return vals
 
     def _get_spot_scale(self, i_shot):
@@ -1461,6 +1465,22 @@ class LocalRefiner(PixelRefinement):
                 derivs = self.D.get_ncells_derivative_pixels()
                 if self.calc_curvatures:
                     second_derivs = self.D.get_ncells_second_derivative_pixels()
+
+                # ncells_mask allows specification of two Ncells parameters to be fixed to each other
+                # but the diffBragg instance doesnt know about this, rather we control this entirely in the LocalRefiner
+                # class here. Hence derivs and second derivs will always be a list of length 3.
+                # The attribute `ncells_mask` specifies which Ncells params are fixed, hence  we use it to reduce derivs
+                # to length 2, if necessary
+                if self.ncells_mask is not None:
+                    temp_derivs = [0, 0]
+                    temp_second_derivs = [0, 0]
+                    for i_mask, mask_val in enumerate(self.ncells_mask):
+                        temp_derivs[mask_val] = derivs[i_mask]
+                        if self.calc_curvatures:
+                            temp_second_derivs[mask_val] = second_derivs[i_mask]
+                    derivs = temp_derivs
+                    second_derivs = temp_second_derivs
+
                 for i_ncell in range(self.n_ncells_param):
                     d = derivs[i_ncell].as_numpy_array()
                     self.m_dI_dtheta[i_ncell] = SG*d
@@ -1914,6 +1934,11 @@ class LocalRefiner(PixelRefinement):
     def _mosaic_parameter_m_derivatives(self):
         if self.refine_ncells:
             thetas = self._get_m_val(self._i_shot)  # mosaic parameters "m"
+            if self.ncells_mask is not None:
+                temp_thetas = [0, 0]
+                for i_mask, mask_val in enumerate(self.ncells_mask):
+                    temp_thetas[mask_val] = thetas[i_mask]
+                thetas = temp_thetas
             for i_ncell in range(self.n_ncells_param):
                 theta_minus_three = thetas[i_ncell] - 3
                 try:
@@ -2238,6 +2263,7 @@ class LocalRefiner(PixelRefinement):
 
     def _MPI_print_GT_crystal_misorientation_analysis(self):
         all_ang_off = self._get_ang_off()
+        print(all_ang_off)
         n_broken_misset = sum([1 for aa in all_ang_off if aa == -1])
         n_bad_misset = sum([1 for aa in all_ang_off if aa > 0.1])
         n_misset = len(all_ang_off)
@@ -2526,7 +2552,6 @@ class LocalRefiner(PixelRefinement):
             scale_resid = [ABS(s-stru) for s, stru in zip(_sv, self.scale_vals_truths)]
             scale_stats_string += ", truth_resid=%.4f" % median(scale_resid)
 
-        # TODO : use a median for a vals if refining Ncells per shot or unit cell per shot
         ncells_shot0 = self._get_m_val(0)
         if len(ncells_shot0) == 1:
             ncells_shot0 = [ncells_shot0[0]]*3

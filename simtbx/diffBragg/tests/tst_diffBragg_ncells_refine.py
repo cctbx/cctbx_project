@@ -80,10 +80,10 @@ P.refiner.verbose = True
 P.refiner.big_dump = False
 P.refiner.sigma_r = SIM.D.readout_noise_adu
 P.refiner.adu_per_photon = SIM.D.quantum_gain
-P.simulator.crystal.has_isotropic_ncells = True
 P.simulator.crystal.ncells_abc = Ncells_abc_2
 P.simulator.init_scale = SIM.D.spot_scale
 P.simulator.beam.size_mm = SIM.beam.size_mm
+P.refiner.ncells_mask = "111"
 
 # assert RUC.all_ang_off[0] < 0.005
 RUC = refine_launcher.local_refiner_from_parameters(refls, E, P, miller_data=SIM.crystal.miller_array)

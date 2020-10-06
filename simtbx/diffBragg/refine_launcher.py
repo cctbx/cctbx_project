@@ -2,7 +2,6 @@
 from simtbx.diffBragg.refiners.local_refiner import LocalRefiner
 import numpy as np
 from simtbx.diffBragg import utils
-from scitbx.array_family import flex
 from copy import deepcopy
 
 
@@ -60,6 +59,17 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
 
   # preprare arguments for refinement class instance
   UcellMan = utils.manager_from_crystal(expt.crystal)
+
+  NCELLS_MASK = utils.get_ncells_mask_from_string(params.refiner.ncells_mask)
+  if all(NCELLS_MASK):
+    if not params.simulator.crystal.has_isotropic_ncells:
+      print("WARNING: NCELLS mask specifies isotropic ncells, but simulator.crystal.has_isotropic_ncells is set to False")
+    params.simulator.crystal.has_isotropic_ncells = True
+  else:
+    if params.simulator.crystal.has_isotropic_ncells:
+      print("WARNING: NCELLS mask specifies anisotropic ncells, but simulator.crystal.has_isotropic_ncells is set to True")
+    params.simulator.crystal.has_isotropic_ncells = False
+
   SIM = utils.simulator_from_expt_and_params(expt, params)
   if miller_data is not None:
     SIM.crystal.miller_array = miller_data.as_amplitude_array()
@@ -78,7 +88,13 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
   shot_originZ_init = {0: SIM.detector[0].get_origin()[2]}
 
   # determine number of parameters:
-  n_ncells_param = 1 if params.simulator.crystal.has_isotropic_ncells else 3
+  if not any(NCELLS_MASK):
+    n_ncells_param = 3
+  elif all(NCELLS_MASK):
+    n_ncells_param = 1
+  else:
+    n_ncells_param = 2
+
   nrot_params = 3
   n_unitcell_params = len(UcellMan.variables)
   n_spotscale_params = 1
@@ -127,6 +143,26 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
           RUC.refine_spectra = params.refiner.refine_spectra[i_trial]
         if params.refiner.refine_detdist is not None:
           RUC.refine_detdist = params.refiner.refine_detdist[i_trial]
+        if params.refiner.refine_panelRotO is not None:
+          RUC.refine_panelRotO = params.refiner.refine_panelRotO[i_trial]
+        if params.refiner.refine_panelRotF is not None:
+          RUC.refine_panelRotF = params.refiner.refine_panelRotF[i_trial]
+        if params.refiner.refine_panelRotS is not None:
+          RUC.refine_panelRotS = params.refiner.refine_panelRotS[i_trial]
+        if params.refiner.refine_panelXY is not None:
+          RUC.refine_panelXY = params.refiner.refine_panelXY[i_trial]
+
+      if params.refiner.panel_group_file is not None:
+        RUC.panel_group_from_id = utils.load_panel_group_file(params.refiner.panel_group_file)
+      # note , else defauls to {0:0}, hence we should put a consitency-check here, in the event someone is trying to refine panel rots and/or XY
+      panel_groups = set(RUC.panel_group_from_id.values())
+      RUC.panelRot_init = {group_id: [0, 0, 0] for group_id in panel_groups}
+      RUC.panelX_init = {group_id: 0 for group_id in panel_groups}
+      RUC.panelY_init = {group_id: 0 for group_id in panel_groups}
+
+      RUC.panelRot_sigma = params.refiner.sensitivity.panelRotOFS
+      RUC.panelX_sigma, RUC.panelY_sigma = params.refiner.sensitivity.panelXY
+
       RUC.refine_Fcell = False
       RUC.max_calls = params.refiner.max_calls[i_trial]
 
@@ -135,16 +171,24 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
       RUC.bg_extracted = False
       RUC.save_model = params.refiner.save_models
 
+      if n_ncells_param == 2:
+        INVERTED_NCELLS_MASK = [int(not (mask_val)) for mask_val in NCELLS_MASK]
+        RUC.ncells_mask = INVERTED_NCELLS_MASK
+      RUC.n_ncells_param = n_ncells_param
       RUC.recenter = True
       RUC.rescale_params = True
       RUC.rescale_fcell_by_resolution = params.refiner.rescale_fcell_by_resolution
 
-      RUC.n_ncells_param = n_ncells_param
       RUC.ignore_line_search_failed_step_at_lower_bound = True
 
       # INIT VALUES
       RUC.spot_scale_init = {0: params.refiner.init.spot_scale}  # self.spot_scale_init
-      RUC.m_init = {0: params.simulator.crystal.ncells_abc}
+
+      m_init = params.simulator.crystal.ncells_abc
+      if n_ncells_param == 2:
+        m_init = [m_init[i_ncell] for i_ncell in sorted(set(INVERTED_NCELLS_MASK))]
+      RUC.m_init = {0: m_init}
+
       RUC.ucell_inits = {0: shot_ucell_managers[0].variables}
       if params.refiner.ranges.ucell_edge_percentage is not None:
         names = shot_ucell_managers[0].variable_names

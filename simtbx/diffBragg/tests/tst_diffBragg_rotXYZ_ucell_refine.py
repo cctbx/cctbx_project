@@ -101,7 +101,6 @@ P.refiner.sensitivity.unitcell = [1, 1, 1, 0.1, 0.1, 0.1]
 P.refiner.sensitivity.rotXYZ = [.1, .1, .05]
 P.refiner.sensitivity.spot_scale = 0.05
 P.refiner.max_calls = [10000]
-P.refiner.sensitivity.ncells_abc = [1]
 P.refiner.tradeps = 1e-10
 # NOTE RUC.gtol = .9
 # NOTE RUC.trad_conv = True  #False
@@ -114,6 +113,7 @@ P.refiner.big_dump = False
 P.refiner.sigma_r = SIM.D.readout_noise_adu
 P.refiner.adu_per_photon = SIM.D.quantum_gain
 P.refiner.init.ncells_abc = 12, 12, 12
+P.refiner.sensitivity.ncells_abc = [1,1,1]
 P.simulator.crystal.has_isotropic_ncells = True
 P.simulator.crystal.ncells_abc = 12, 12, 12
 P.simulator.init_scale = SIM.D.spot_scale
@@ -124,4 +124,5 @@ RUC = refine_launcher.local_refiner_from_parameters(refls, E, P, miller_data=SIM
 Ccorrect = RUC.get_corrected_crystal(i_shot=0)
 misset = utils.compare_with_ground_truth(*C.get_real_space_vectors(), dxcryst_models=[Ccorrect], symbol=symbol)
 assert misset[0] < 0.005
+print(misset, "misset")
 print("OK")
