@@ -30,6 +30,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     run_on_init = False
 
     def __init__(self):
+        self.ncells_mask = None  # use to specify to Ncells parameters that are the same, e.g. ncells_mask = 0,0,1 enforces Na==Nb
         self.record_model_predictions = False  # whether to record xyzcal.pix during refinement
         self.xy_calc = {}  # container for recording model predictions
         self.ucell_maxs = None
