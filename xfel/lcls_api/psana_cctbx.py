@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from dxtbx.format.FormatXTCCspad import FormatXTCCspad, cspad_locator_scope
 from dxtbx.format.FormatXTCEpix import FormatXTCEpix, epix_locator_scope
 from dxtbx.format.FormatXTCJungfrau import FormatXTCJungfrau, jungfrau_locator_scope
+from dxtbx.format.FormatXTCRayonix import FormatXTCRayonix, rayonix_locator_scope
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatMultiImageLazy import FormatMultiImageLazy
 from dxtbx.format.FormatStill import FormatStill
@@ -89,6 +90,39 @@ class FormatXTCJungfrauSingleEvent(FormatXTCJungfrau):
   def get_run_from_index(self, index):
     return self._run
 
+class FormatXTCRayonixSingleEvent(FormatXTCRayonix):
+  """ Class to stub out and override FormatXTCJungfrau methods to allow in-memory processing """
+  def __init__(self, params, run, detector, **kwargs):
+    from xfel.cxi.cspad_ana import rayonix_tbx
+    import psana
+
+    FormatMultiImageLazy.__init__(self, **kwargs)
+    FormatStill.__init__(self, None, **kwargs)
+    Format.__init__(self, None, **kwargs)
+
+    self.event = None
+    self.params = params
+    self.params.detector_address = [str(detector.name)]
+    self._cached_detector = {}
+    self._cached_psana_detectors = {run.run():detector}
+
+    cfgs = run.env().configStore()
+    rayonix_cfg = cfgs.get(psana.Rayonix.ConfigV2, psana.Source("Rayonix"))
+    if params.rayonix.bin_size is None:
+        assert rayonix_cfg.binning_f() == rayonix_cfg.binning_s()
+        bin_size = rayonix_cfg.binning_f()
+    else:
+        bin_size = params.rayonix.bin_size
+    self._pixel_size = rayonix_tbx.get_rayonix_pixel_size(bin_size)
+    self._image_size = rayonix_tbx.get_rayonix_detector_dimensions(run.env())
+
+  def get_raw_data(self, index=None):
+    if index is None: index = 0
+    return super(FormatXTCRayonixSingleEvent, self).get_raw_data(index)
+
+  def _get_event(self, index):
+    return self.event
+
 class SimpleScript(DSPScript):
   """ Override dials.stills_process Script class to use its load_reference_geometry function """
   def __init__(self, params):
@@ -107,7 +141,7 @@ class CctbxPsanaEventProcessor(Processor):
     super(CctbxPsanaEventProcessor, self).__init__(dials_params, output_tag)
     simple_script = SimpleScript(dials_params)
     simple_script.load_reference_geometry()
-    self.reference_detector = simple_script.reference_detector
+    self.reference_detector = getattr(simple_script, 'reference_detector', None)
     self.output_tag = output_tag
     self.detector_params = None
 
@@ -128,6 +162,9 @@ class CctbxPsanaEventProcessor(Processor):
     elif psana_detector.is_jungfrau():
       format_class = FormatXTCJungfrauSingleEvent
       detector_scope = jungfrau_locator_scope
+    elif 'rayonix' in psana_detector.name.dev.lower():
+      format_class = FormatXTCRayonixSingleEvent
+      detector_scope = rayonix_locator_scope
     else:
       raise RuntimeError('Unrecognized detector %s'%psana_detector.name)
 
