@@ -175,7 +175,7 @@ class molprobity(slots_getstate_setstate):
 
     # use objects from model
     self.model = model
-    self.model._process_input_model(make_restraints=True)
+    self.model.process_input_model(make_restraints=True)
     if(self.model is None and pdb_hierarchy is not None):
       import mmtbx.model
       self.model = mmtbx.model.manager(
