@@ -40,7 +40,7 @@ def tst_1():
   model.set_hydrogen_bond_length(use_neutron_distances=True,
                                  show=False,
                                  log=sys.stdout)
-  model._process_input_model(make_restraints=True)
+  model.process_input_model(make_restraints=True)
   compare_XH_bond_length_to_ideal(model = model)
   #STOP()
   # request X-ray bond lengths
