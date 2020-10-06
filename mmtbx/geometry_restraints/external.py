@@ -10,25 +10,6 @@ import os
 
 external_energy_params_str = ""
 
-# amber_installed = False
-# if libtbx.env.has_module("amber_adaptbx"):
-#   build_dir = libtbx.env.under_build("amber_adaptbx")
-#   try: import sander
-#   except ImportError as e: sander = False
-#   if sander:
-#   #if (build_dir is not None) and (os.path.isdir(build_dir)):
-#     amber_installed = True
-
-# if (amber_installed):
-#   external_energy_params_str += """
-#     amber
-#       .help = Parameters for using Amber in refinement.
-#       .expert_level = 3
-#     {
-#       include scope amber_adaptbx.master_phil_str
-#     }
-# """
-
 qb_installed = os.environ.get("QBHOME", False)
 if qb_installed: qb_installed = os.path.isdir(qb_installed)
 if (qb_installed):
@@ -138,10 +119,13 @@ def is_any_quantum_package_installed(env):
       .type = int
     buffer = 0.
       .type = float
-    scale = 10.
-      .type = float
-    refine_buffer_hydrogen_atoms = True
+      .style = hidden
+    update_metal_coordination = False
       .type = bool
+      .style = hidden
+    refine_buffer_hydrogen_atoms = False
+      .type = bool
+      .style = hidden
 '''
     for action in actions:
       outl += action
