@@ -278,11 +278,7 @@ class manager(object):
     # Handle BIOMT
     self.biomt_operators = None
     if(self._model_input is not None):
-      # XXX FIX LATER
-      try:
-        self.biomt_operators = self._model_input.process_BIOMT_records()
-      except: pass
-      # XXX FIX LATER
+      self.biomt_operators = self._model_input.process_BIOMT_records()
 
     self._biomt_expanded = False
 
