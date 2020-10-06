@@ -268,13 +268,30 @@ class manager(object):
         inp_cs = self._model_input.crystal_symmetry()
         if inp_cs and not inp_cs.is_empty() and not inp_cs.is_nonsense():
           self._crystal_symmetry = inp_cs
-      if expand_with_mtrix:
-        self.expand_with_MTRIX_records()
+    # Handle MTRIX
+    self.mtrix_operators = None
+    if(self._model_input is not None):
+      self.mtrix_operators = self._model_input.process_MTRIX_records()
+    self._mtrix_expanded = False
+    if(expand_with_mtrix):
+      self.expand_with_MTRIX_records()
+    # Handle BIOMT
+    self.biomt_operators = None
+    if(self._model_input is not None):
+      # XXX FIX LATER
+      try:
+        self.biomt_operators = self._model_input.process_BIOMT_records()
+      except: pass
+      # XXX FIX LATER
+
+    self._biomt_expanded = False
+
+    self._clash_guard_msg = None
 
     if process_input or build_grm:
       assert self._processed_pdb_file is None
       assert self.all_chain_proxies is None
-      self._process_input_model()
+      self._process_input_model(make_restraints = build_grm)
 
     # do pdb_hierarchy
     if self._pdb_hierarchy is None: # got nothing in parameters
@@ -294,10 +311,6 @@ class manager(object):
 
     if not self.all_chain_proxies and self._processed_pdb_file:
       self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
-
-    # do GRM
-    if self.restraints_manager is None and build_grm:
-      self.setup_restraints_manager()
 
     # do xray_structure
     if self._xray_structure is not None:
@@ -600,7 +613,6 @@ class manager(object):
       Takes into account any previous shifts by looking at existing
       shift_cart and unit_cell_crystal_symmetry
     '''
-
     # checks
     assert shift_cart is not None
     assert len(list(shift_cart)) == 3
@@ -622,7 +634,6 @@ class manager(object):
     # Get the new crystal symmetry to apply
     if not crystal_symmetry:
       crystal_symmetry = self.crystal_symmetry()
-
 
     # Get the total shift since original
     total_shift=[sm_sc+sc for sm_sc,sc in zip(original_shift_cart,shift_cart)]
@@ -717,7 +728,6 @@ class manager(object):
 
     assert crystal_symmetry is not None  # must supply crystal_symmetry
 
-
     if(self.crystal_symmetry() is None):
       # Set self._crystal_symmetry.
       assert self._xray_structure is None # can't have xrs without crystal sym
@@ -725,7 +735,6 @@ class manager(object):
 
     if self.crystal_symmetry().is_similar_symmetry(crystal_symmetry):
       # Keep the xray_structure but change sites_cart if present and update
-
       xrs=self.get_xray_structure() # Make sure xrs is set up
 
       # make self._crystal_symmetry identical to xrs crystal_symmetry
@@ -920,11 +929,7 @@ class manager(object):
     return self.restraints_manager is not None
 
   def get_restraints_manager(self):
-    if self.restraints_manager is not None:
-      return self.restraints_manager
-    else:
-      self.setup_restraints_manager()
-      return self.restraints_manager
+    return self.restraints_manager
 
   def set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(self,value):
     if self._xray_structure is not None:
@@ -1298,7 +1303,13 @@ class manager(object):
       return self.model_as_pdb(output_cs=output_cs)
     else: raise RuntimeError("Model source is unknown.")
 
-  def _process_input_model(self):
+  def _process_input_model(
+        self,
+        make_restraints    = False,
+        grm_normalization  = True,
+        plain_pairs_radius = 5,
+        custom_nb_excl     = None,
+        run_clash_guard    = False):
     # Not clear if we can handle this correctly for self._xray_structure
     # assert self.get_number_of_models() < 2
     # assert 0
@@ -1345,6 +1356,20 @@ class manager(object):
     self._ener_lib = self._processed_pdb_files_srv.ener_lib
     self._ncs_obj = self._processed_pdb_file.ncs_obj
     self._update_has_hd()
+    #
+    if(make_restraints):
+      self._setup_restraints_manager(
+       grm_normalization  = grm_normalization,
+       plain_pairs_radius = plain_pairs_radius,
+       custom_nb_excl     = custom_nb_excl,
+       run_clash_guard    = run_clash_guard)
+    #
+    self._clash_guard_msg = self._processed_pdb_file.clash_guard(
+      new_sites_cart = self.get_sites_cart())
+    # This must happen after _process_input_model call.
+    # Reason: contents of model and _model_input can get out of sync any time.
+    self._model_input = None
+    self._processed_pdb_file = None
 
   def has_hd(self):
     if self._has_hd is None:
@@ -1377,12 +1402,10 @@ class manager(object):
     self._processed_pdb_files_srv = None
 
   def raise_clash_guard(self):
-    # This is done for phenix.refine when run with shaking coordinates
-    err_msg = self._processed_pdb_file.clash_guard(new_sites_cart=self.get_sites_cart())
-    if err_msg is not None:
-      raise Sorry(err_msg)
+    if self._clash_guard_msg is not None:
+      raise Sorry(self._clash_guard_msg)
 
-  def setup_restraints_manager(
+  def _setup_restraints_manager(
       self,
       grm_normalization = True,
       external_energy_function = None,
@@ -1391,12 +1414,7 @@ class manager(object):
       run_clash_guard = True,
       ):
     if(self.restraints_manager is not None): return
-    if self._processed_pdb_file is None:
-      self._process_input_model()
-
-    # assert self.get_number_of_models() < 2 # one molprobity test triggered this.
-    # not clear how they work with multi-model stuff...
-
+    assert self._processed_pdb_file is not None
     geometry = self._processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
       plain_pairs_radius = plain_pairs_radius,
@@ -1802,7 +1820,6 @@ class manager(object):
       tls_params.nproc = nproc
       self.searched_tls_selections = find_tls_groups.find_tls(
         params=tls_params,
-        #pdb_inp=self._model_input,
         pdb_hierarchy=self._pdb_hierarchy,
         xray_structure=deepcopy(self._xray_structure),
         return_as_list=True,
@@ -2160,6 +2177,7 @@ class manager(object):
       pi_scope.pdb_interpretation.use_neutron_distances = use_neutron_distances
       # this will take care of resetting everything (grm, processed pdb)
       self.set_pdb_interpretation_params(params = pi_scope)
+      self._process_input_model(make_restraints=True)
     geometry = self.get_restraints_manager().geometry
     hierarchy = self.get_hierarchy()
     atoms = hierarchy.atoms()
@@ -2464,8 +2482,7 @@ class manager(object):
         build_grm = False,
         log = StringIO()
         )
-    self.setup_restraints_manager(
-        plain_pairs_radius = ppr,
+    self._process_input_model(make_restraints=True, plain_pairs_radius = ppr,
         grm_normalization = norm)
     self.set_refinement_flags(flags)
     if scattering_dict_info is not None:
@@ -3237,7 +3254,7 @@ class manager(object):
         pdb_interpretation_params = self.get_current_pdb_interpretation_params(),
         log                = null_out())
       m.setup_scattering_dictionaries(scattering_table=scattering_table)
-      m.get_restraints_manager()
+      m._process_input_model(make_restraints=True)
     else:
       m = self.deep_copy()
     m.get_hierarchy().atoms().reset_i_seq()
@@ -3443,20 +3460,21 @@ class manager(object):
       # Drop model.id if there is only one model.
       # Otherwise there are problems with set_xray_structure...
       self._pdb_hierarchy.only_model().id = ""
-
     # Now deal with SS annotations
     ssa = self.get_ss_annotation()
     if ssa is not None:
       ssa.multiply_to_asu_2(chain_ids_match_dict)
       self.set_ss_annotation(ssa)
+    # reset
     self.get_hierarchy().atoms().reset_i_seq()
     self._xray_structure = None
     self._all_chain_proxies = None
     self._update_atom_selection_cache()
+    self.restraints_manager = None
 
   def _biomt_mtrix_container_is_good(self, records_container):
-    if records_container is None:
-      return False
+    if(records_container is None): return False
+    if(len(records_container.r)==0): return False
     if len(records_container.r)==1:
       r, t = records_container.r[0], records_container.t[0]
       if r.is_r3_identity_matrix() and t.is_col_zero():
@@ -3467,14 +3485,21 @@ class manager(object):
       return False
     return True
 
+  def mtrix_expanded(self):
+    return self._mtrix_expanded
+
+  def biomt_expanded(self):
+    return self._biomt_expanded
+
   def expand_with_MTRIX_records(self):
-    mtrix_records_container = self._model_input.process_MTRIX_records()
-    if not self._biomt_mtrix_container_is_good(mtrix_records_container):
+    if(self.mtrix_expanded()): return
+    if(not self._biomt_mtrix_container_is_good(self.mtrix_operators)):
       return
-    if self.get_hierarchy() is None:
+    if(self.get_hierarchy() is None and self.get_model_input() is not None):
       self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy(
           self._pdb_interpretation_params.pdb_interpretation.sort_atoms)
-    self._expand_symm_helper(mtrix_records_container)
+    self._expand_symm_helper(self.mtrix_operators)
+    self._mtrix_expanded = True
 
   def expand_with_BIOMT_records(self):
     """
@@ -3482,13 +3507,14 @@ class manager(object):
     Known limitations: will expand everything, regardless of what selections
     were setted in BIOMT header.
     """
-    biomt_records_container = self._model_input.process_BIOMT_records()
+    if(self.biomt_expanded()): return
+    if not self._biomt_mtrix_container_is_good(self.biomt_operators):
+      return
     # Check if BIOMT and MTRIX are identical and then do not apply BIOMT
-    mtrix_records_container = self._model_input.process_MTRIX_records()
-    br = biomt_records_container.r
-    bt = biomt_records_container.t
-    mr = mtrix_records_container.r
-    mt = mtrix_records_container.t
+    br = self.biomt_operators.r
+    bt = self.biomt_operators.t
+    mr = self.mtrix_operators.r
+    mt = self.mtrix_operators.t
     if(len(br)==len(mr) and len(bt)==len(mt)):
       cntr1=0
       for bri in br:
@@ -3504,9 +3530,8 @@ class manager(object):
             break
       if(cntr1==len(br) and cntr2==len(bt)): return
     #
-    if not self._biomt_mtrix_container_is_good(biomt_records_container):
-      return
-    self._expand_symm_helper(biomt_records_container)
+    self._expand_symm_helper(self.biomt_operators)
+    self._biomt_expanded = True
 
   def set_sequences(self, sequences, custom_residues=None,
                     similarity_matrix=None, min_allowable_identity=None,
