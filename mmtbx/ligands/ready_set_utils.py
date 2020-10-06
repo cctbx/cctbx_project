@@ -5,7 +5,7 @@ from iotbx.pdb import amino_acid_codes as aac
 from scitbx.math import dihedral_angle
 from mmtbx.ligands.ready_set_basics import construct_xyz
 from mmtbx.ligands.hierarchy_utils import generate_atom_group_atom_names
-from mmtbx.hydrogens.specialised_hydrogen_atoms import conditional_add_cys_hg_to_atom_group
+# from mmtbx.hydrogens.specialised_hydrogen_atoms import conditional_add_cys_hg_to_atom_group
 from six.moves import range
 
 get_class = iotbx.pdb.common_residue_names_get_class
