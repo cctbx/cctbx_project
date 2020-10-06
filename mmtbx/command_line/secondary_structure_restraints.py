@@ -187,7 +187,7 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
     raise Sorry("Not yet implemented.")
   elif work_params.format in ["pymol", "refmac", "kinemage", 'csv'] :
     m.show_summary(log=out)
-    model._process_input_model(make_restraints=True)
+    model.process_input_model(make_restraints=True)
     (hb_proxies, hb_angle_proxies, planarity_proxies,
         parallelity_proxies) = m.create_all_new_restraints(
         pdb_hierarchy=pdb_hierarchy,
