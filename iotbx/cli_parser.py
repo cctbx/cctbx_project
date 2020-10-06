@@ -12,6 +12,8 @@ PHIL scope and citations for a program.
 
 import argparse, getpass, logging, os, sys, time
 
+from six.moves import cStringIO as StringIO
+
 import iotbx.phil
 import libtbx.phil
 
@@ -45,6 +47,7 @@ def run_program(program_class=None, custom_process_arguments=None,
   if (logger is None):
     logger = multi_out()
     logger.register('stdout', sys.stdout)
+    logger.register('parser_log', StringIO())
 
   # start timer
   t = show_times(out=logger)
