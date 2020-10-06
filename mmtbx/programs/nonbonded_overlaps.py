@@ -100,7 +100,7 @@ Example:
 
     readyset_model.set_pdb_interpretation_params(pi_params)
     readyset_model.set_restraint_objects(restraint_objects)
-    readyset_model.get_restraints_manager()
+    readyset_model._process_input_model(make_restraints=True)
 
     # TODO: do we need macro_mol_sel, do we care?
     # If we use model.select(), we don't need it.
