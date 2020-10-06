@@ -876,7 +876,8 @@ END
 def exercise_00():
   def get_ab(params):
     pdb_inp = iotbx.pdb.input(lines=pdb_str_00.split('\n'), source_info=None)
-    m = mmtbx.model.manager(model_input=pdb_inp, pdb_interpretation_params=params)
+    m = mmtbx.model.manager(model_input=pdb_inp, pdb_interpretation_params=params,
+      build_grm=True)
     xray_structure = m.get_xray_structure()
     assert xray_structure is not None
     s = flex.bool(xray_structure.scatterers().size(),flex.size_t(range(40,504)))
@@ -1186,8 +1187,7 @@ ANISOU 2732  O  BHOH A 380     3169   2234   2532   1183    675   -168       O
 
 def exercise_6():
   pdb_inp = iotbx.pdb.input(lines=pdb_str_00.split('\n'), source_info=None)
-  m = mmtbx.model.manager(model_input=pdb_inp)
-  m.get_restraints_manager()
+  m = mmtbx.model.manager(model_input=pdb_inp, build_grm=True)
   ms = m.geometry_statistics()
   ms.show()
   #
@@ -1226,9 +1226,10 @@ def exercise_from_hierarchy():
 
   pdb_inp1 = iotbx.pdb.input(lines=pdb_str_00.split('\n'), source_info=None)
   pdb_inp2 = iotbx.pdb.input(lines=pdb_str_00.split('\n'), source_info=None)
-  m1 = mmtbx.model.manager(model_input = pdb_inp1)
+  m1 = mmtbx.model.manager(model_input = pdb_inp1, build_grm=True)
   m2 = mmtbx.model.manager(
       model_input = None,
+      build_grm=True,
       crystal_symmetry = pdb_inp2.crystal_symmetry(),
       pdb_hierarchy=pdb_inp2.construct_hierarchy())
   check_consistency(m1, m2)
