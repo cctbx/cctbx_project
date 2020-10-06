@@ -100,7 +100,7 @@ END """
   work_params.reference_model.use_starting_model_as_reference=True
   work_params.reference_model.main_chain=False
   model.set_pdb_interpretation_params(work_params)
-  model._process_input_model(make_restraints=True)
+  model.process_input_model(make_restraints=True)
   n_ref_dih_prox = model.get_restraints_manager().geometry.get_n_reference_dihedral_proxies()
   assert n_ref_dih_prox == 16, "expected 16, got %d" % n_ref_dih_prox
 
@@ -114,7 +114,7 @@ END """
   work_params.reference_model.use_starting_model_as_reference=True
   work_params.reference_model.side_chain=False
   model.set_pdb_interpretation_params(work_params)
-  model._process_input_model(make_restraints=True)
+  model.process_input_model(make_restraints=True)
   n_ref_dih_prox = model.get_restraints_manager().geometry.get_n_reference_dihedral_proxies()
   assert n_ref_dih_prox == 18, "expected 18, got %d" % n_ref_dih_prox
 
