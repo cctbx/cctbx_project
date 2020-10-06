@@ -197,10 +197,7 @@ class manager(object):
     self._monomer_parameters = monomer_parameters
     self._pdb_interpretation_params = None
     self.set_pdb_interpretation_params(pdb_interpretation_params)
-    # Important! if shift_cart is not None, model_input - in original coords,
-    # self.get_hierarchy(), self.get_xray_structure, self.get_sites_cart - in shifted coords.
-    # self.crystal_symmetry() - shifted (boxed) one
-    # If shift_cart is None - everything is consistent.
+
     self._shift_cart = None # shift of this model since original location
     self._unit_cell_crystal_symmetry = None # original crystal symmetry
 
@@ -278,10 +275,11 @@ class manager(object):
     # Handle BIOMT
     self.biomt_operators = None
     if(self._model_input is not None):
-      self.biomt_operators = self._model_input.process_BIOMT_records()
-
+      try:
+        self.biomt_operators = self._model_input.process_BIOMT_records()
+      except RuntimeError: pass # work-around for limited support of BIOMT
     self._biomt_expanded = False
-
+    #
     self._clash_guard_msg = None
 
     if process_input or build_grm:
@@ -290,7 +288,7 @@ class manager(object):
       self.process_input_model(make_restraints = build_grm)
 
     # do pdb_hierarchy
-    if self._pdb_hierarchy is None: # got nothing in parameters
+    if self._pdb_hierarchy is None:
       if self._processed_pdb_file is not None:
         self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
         self._pdb_hierarchy = self.all_chain_proxies.pdb_hierarchy
