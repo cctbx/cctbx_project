@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import iotbx
 from mmtbx.ligands.ready_set_basics import construct_xyz
 
+from __future__ import division
 # class smart_add_atoms(list):
 #   def __init__(self): pass
 
