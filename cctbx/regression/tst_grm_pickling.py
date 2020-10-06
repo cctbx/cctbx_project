@@ -427,6 +427,7 @@ def test_reference_model(mon_lib_srv, ener_lib, prefix="tst_reference_model"):
   model = mmtbx.model.manager(
       model_input = pdb_inp,
       process_input=True,
+      build_grm=True,
       pdb_interpretation_params = work_params)
   reference_hierarchy_list = []
   tmp_hierarchy = iotbx.pdb.input(
