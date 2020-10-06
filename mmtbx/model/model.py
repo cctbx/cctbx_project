@@ -291,7 +291,7 @@ class manager(object):
     if process_input or build_grm:
       assert self._processed_pdb_file is None
       assert self.all_chain_proxies is None
-      self._process_input_model(make_restraints = build_grm)
+      self.process_input_model(make_restraints = build_grm)
 
     # do pdb_hierarchy
     if self._pdb_hierarchy is None: # got nothing in parameters
@@ -1303,7 +1303,7 @@ class manager(object):
       return self.model_as_pdb(output_cs=output_cs)
     else: raise RuntimeError("Model source is unknown.")
 
-  def _process_input_model(
+  def process_input_model(
         self,
         make_restraints    = False,
         grm_normalization  = True,
@@ -1366,7 +1366,7 @@ class manager(object):
     #
     self._clash_guard_msg = self._processed_pdb_file.clash_guard(
       new_sites_cart = self.get_sites_cart())
-    # This must happen after _process_input_model call.
+    # This must happen after process_input_model call.
     # Reason: contents of model and _model_input can get out of sync any time.
     self._model_input = None
     self._processed_pdb_file = None
@@ -2177,7 +2177,7 @@ class manager(object):
       pi_scope.pdb_interpretation.use_neutron_distances = use_neutron_distances
       # this will take care of resetting everything (grm, processed pdb)
       self.set_pdb_interpretation_params(params = pi_scope)
-      self._process_input_model(make_restraints=True)
+      self.process_input_model(make_restraints=True)
     geometry = self.get_restraints_manager().geometry
     hierarchy = self.get_hierarchy()
     atoms = hierarchy.atoms()
@@ -2482,7 +2482,7 @@ class manager(object):
         build_grm = False,
         log = StringIO()
         )
-    self._process_input_model(make_restraints=True, plain_pairs_radius = ppr,
+    self.process_input_model(make_restraints=True, plain_pairs_radius = ppr,
         grm_normalization = norm)
     self.set_refinement_flags(flags)
     if scattering_dict_info is not None:
@@ -3254,7 +3254,7 @@ class manager(object):
         pdb_interpretation_params = self.get_current_pdb_interpretation_params(),
         log                = null_out())
       m.setup_scattering_dictionaries(scattering_table=scattering_table)
-      m._process_input_model(make_restraints=True)
+      m.process_input_model(make_restraints=True)
     else:
       m = self.deep_copy()
     m.get_hierarchy().atoms().reset_i_seq()
