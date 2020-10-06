@@ -7,6 +7,7 @@ import tempfile
 # from libtbx.utils import Sorry
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
+from libtbx import easy_run
 # from libtbx.str_utils import make_header
 
 from cctbx.geometry_restraints.manager import manager as standard_manager
@@ -33,13 +34,27 @@ class orca_manager:
                solvent_model,
                charge,
                multiplicity,
+               preamble=None,
                log=None,
                ):
     adopt_init_args(self, locals())
     self.times = flex.double()
     self.energies = {}
-    self.preamble = os.path.basename(tempfile.NamedTemporaryFile().name)
-    print(self.preamble)
+    if self.preamble is None:
+      self.preamble = os.path.basename(tempfile.NamedTemporaryFile().name)
+
+  def __repr__(self):
+    outl = 'QI Manager\n'
+    outl += ' charge: %s multiplicity: %s\n method: %s basis: "%s" solvent: "%s"\n' % (
+      self.charge,
+      self.multiplicity,
+      self.method,
+      self.basis_set,
+      self.solvent_model,
+      )
+    for atom in self.atoms:
+      outl += '  %s\n' % atom.quote()
+    return outl
 
   def set_sites_cart(self, sites_cart):
     assert len(self.atoms)==len(sites_cart)
@@ -104,31 +119,42 @@ class orca_manager:
     self.gradients = gradients
     return self.energy, self.gradients
 
+  def read_xyz_output(self):
+    f=file('orca_%s.xyz' % self.preamble, 'rb')
+    lines = f.read()
+    del f
+    rc = flex.vec3_double()
+    for i, line in enumerate(lines.splitlines()):
+      if i>=2:
+        tmp = line.split()
+        rc.append((float(tmp[1]), float(tmp[2]), float(tmp[3])))
+    return rc
+
+  def write_input(self, outl):
+    f=file('orca_%s.in' % self.preamble, 'wb')
+    f.write(outl)
+    del f
+
   def run_cmd(self):
     t0=time.time()
-    cmd = '%s orca_%s.in >& orca_%s.output' % (
+    cmd = '%s orca_%s.in' % (
       os.environ['PHENIX_ORCA'],
-      self.preamble,
       self.preamble,
       )
     # print(cmd)
-    os.system(cmd)
+    rc = easy_run.go(cmd)
+    if rc.stderr_lines:
+      print('stderr')
+      for line in rc.stderr_lines:
+        print(line)
+      print('stdout')
+      for line in rc.stdout_lines:
+        print(line)
+      assert 0
     self.times.append(time.time()-t0)
 
-  def get_engrad(self):
-    '''! AM1  Opt
-
-* xyz -2 1
- S   0.078948200715  -0.018071220892  -0.065758830247
- O  -0.048033095280  -1.281491829325  -0.800971452997
- O  -0.055865868673   1.180745382853  -0.922413234773
- O  -1.232053205381  -0.091202455365   0.756057740169
- O   1.248727675817   0.072016173184   0.923222741921
-*'''
-    outl = '! %s %s %s EnGrad\n\n' % (self.method,
-                                      self.basis_set,
-                                      self.solvent_model)
-    outl += '* xyz %s %s\n' % (self.charge, self.multiplicity)
+  def get_coordinate_lines(self):
+    outl = '* xyz %s %s\n' % (self.charge, self.multiplicity)
     for atom in self.atoms:
       outl += ' %s %0.5f %0.5f %0.5f\n' % (
         atom.element,
@@ -137,21 +163,38 @@ class orca_manager:
         atom.xyz[2],
         )
     outl += '*\n'
-    if outl in self.energies:
-      self.times.append(0)
-      return self.energies[outl]
-    assert outl not in self.energies, '%s %s' % (outl, self.energies)
-    f=file('orca_%s.in' % self.preamble, 'wb')
-    f.write(outl)
-    del f
-    self.run_cmd()
-    energy, gradients = self.read_engrad_output()
+    return outl
+
+  def print_timings(self, energy=None):
     print('  Timings : %0.2fs (%ss) Energy : %0.6f' % (
       self.times[-1],
       self.times.format_mean(format='%.2f'),
       energy))
+
+  def get_engrad(self):
+    outl = '! %s %s %s EnGrad\n\n' % (self.method,
+                                      self.basis_set,
+                                      self.solvent_model)
+    outl += self.get_coordinate_lines()
+    if outl in self.energies:
+      self.times.append(0)
+      return self.energies[outl]
+    self.write_input(outl)
+    self.run_cmd()
+    energy, gradients = self.read_engrad_output()
+    self.print_timings(energy)
     self.energies[outl] = (energy, gradients)
     return energy, gradients
+
+  def get_opt(self):
+    outl = '! %s %s %s Opt\n\n' % (self.method,
+                                   self.basis_set,
+                                   self.solvent_model)
+    outl += self.get_coordinate_lines()
+    self.write_input(outl)
+    self.run_cmd()
+    coordinates = self.read_xyz_output()
+    return coordinates
 
 class manager(standard_manager):
   def __init__(self,
@@ -176,6 +219,10 @@ class manager(standard_manager):
   def get_engrad(self, sites_cart):
     self.execution_manager.set_sites_cart(sites_cart)
     return self.execution_manager.get_engrad()
+
+  def get_opt(self, sites_cart):
+    self.execution_manager.set_sites_cart(sites_cart)
+    return self.execution_manager.get_opt()
 
   def set_qm_info(self,
                   method,
@@ -232,6 +279,9 @@ class manager(standard_manager):
       qm_sites_cart = []
       for i_seq in self.qm_iseqs:
         qm_sites_cart.append(sites_cart[i_seq])
+      # coordinates = self.get_opt(qm_sites_cart)
+      # print(list(coordinates))
+      # assert 0
       energy, gradients = self.get_engrad(qm_sites_cart)
       for i_seq, gradient in zip(self.qm_iseqs, gradients):
         result.gradients[i_seq]=gradient
@@ -242,10 +292,27 @@ def digester(model,
              params,
              log=StringIO(),
              ):
+  """Digest a standard GRM and create a QI GRM
+
+  Args:
+      model (TYPE): Model class
+      standard_geometry_restraints_manager (TYPE): Standard GRM?
+      params (TYPE): User parameteres
+      log (TYPE, optional): Output log
+
+  Returns:
+      TYPE: Quantum Interface Restraints Manager
+
+  """
+  #
+  # Digest
+  #
   sgrm = standard_geometry_restraints_manager
   qi_grm = manager(params, log=log)
   for attr, value in vars(sgrm).items(): setattr(qi_grm, attr, value)
   qi_grm.standard_geometry_restraints_manager = sgrm
+  #
+  # Create selection lists
   #
   qm_atoms = []
   ligand_selection = model.selection(params.qi.selection)
@@ -270,6 +337,9 @@ def digester(model,
     for atom in ag.atoms():
       qm_atoms.append(atom)
       done.append(atom.i_seq)
+  #
+  # Add to QI GRM
+  #
   qi_grm.set_qm_atoms(qm_atoms)
   qi_grm.set_qm_info(params.qi.orca.method,
                      params.qi.orca.basis_set,
@@ -278,3 +348,30 @@ def digester(model,
                      params.qi.multiplicity,
                      )
   return qi_grm
+
+def main():
+  from iotbx import pdb
+  pdb_lines = '''
+HETATM   97  S   SO4 A  13      31.477  38.950  15.821  0.50 25.00           S
+HETATM   98  O1  SO4 A  13      31.243  38.502  17.238  0.50 25.00           O
+HETATM   99  O2  SO4 A  13      30.616  40.133  15.527  0.50 25.00           O
+HETATM  100  O3  SO4 A  13      31.158  37.816  14.905  0.50 25.00           O
+HETATM  101  O4  SO4 A  13      32.916  39.343  15.640  0.50 25.00           O
+'''
+  pdb_inp = pdb.input(lines=pdb_lines, source_info='lines')
+  qi_grm = orca_manager(pdb_inp.atoms(),
+                        'PM3',
+                        '',
+                        '',
+                        -2,
+                        1,
+                        preamble='test',
+                        )
+  print(qi_grm)
+  energy, gradients = qi_grm.get_engrad()
+  print(energy, list(gradients))
+  coordinates = qi_grm.get_opt()
+  print(list(coordinates))
+
+if __name__ == '__main__':
+  main()
