@@ -2467,9 +2467,7 @@ class manager(object):
     pip.pdb_interpretation.proceed_with_excessive_length_bonds=True
     pip.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     flags = self.refinement_flags
-    ppr = self.restraints_manager.geometry.plain_pairs_radius
     cs = self.crystal_symmetry()
-    norm = self.restraints_manager.normalization
     log = self.log
     scattering_dict_info = self.scattering_dict_info
     self.all_chain_proxies = None
@@ -2482,8 +2480,7 @@ class manager(object):
         build_grm = False,
         log = StringIO()
         )
-    self.process_input_model(make_restraints=True, plain_pairs_radius = ppr,
-        grm_normalization = norm)
+    self.process_input_model(make_restraints=True)
     self.set_refinement_flags(flags)
     if scattering_dict_info is not None:
       self.setup_scattering_dictionaries(
