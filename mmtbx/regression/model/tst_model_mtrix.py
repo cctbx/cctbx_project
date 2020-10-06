@@ -57,7 +57,8 @@ def exercise_1():
   inp = iotbx.pdb.input(source_info=None, lines=pdb_str_1)
   model = mmtbx.model.manager(
       model_input = inp,
-      log = null_out())
+      log = null_out(),
+      build_grm=True)
   assert model.get_number_of_atoms() == 21
   assert model.get_hierarchy().atoms_size() == 21
   assert model.get_xray_structure().scatterers().size() == 21
