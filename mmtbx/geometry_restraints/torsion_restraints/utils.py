@@ -130,8 +130,10 @@ def get_dihedrals_and_phi_psi(model):
       strict_conflict_handling=True)
   dihedral_registry.initialize_table()
   from mmtbx.conformation_dependent_library import generate_protein_threes
-  try: grm = model._processed_pdb_file.geometry_restraints_manager()
-  except: grm = model.get_restraints_manager().geometry
+  try:
+    grm = model._processed_pdb_file.geometry_restraints_manager()
+  except: # intentional
+    grm = model.get_restraints_manager().geometry
   dihedral_proxies = grm.get_dihedral_proxies().deep_copy()
   for p in dihedral_proxies:
     dihedral_registry.add_if_not_duplicated(p)
