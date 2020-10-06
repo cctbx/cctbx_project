@@ -226,6 +226,13 @@ refiner {
 
 roi_phil = """
 roi {
+  force_negative_background_to_zero = False
+    .type = bool
+    .help = if True and the background model evaluates to a negative number
+    .help = within an ROI, then force the background to be 0 for all pixels in that ROI
+  background_threshold = 3.5
+    .type = float
+    .help = for determining background pixels
   shoebox_size = 10
     .type = int
     .help = roi box dimension

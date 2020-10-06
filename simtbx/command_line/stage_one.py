@@ -124,7 +124,8 @@ class Script:
         El = ExperimentList()
         El.append(exper)
         El = ExperimentListFactory.from_dict(El.to_dict())
-        yield "exper_name", El[0], refls_for_exper
+        exp_filename = self.params.input.experiments[i_exp].filename
+        yield exp_filename, El[0], refls_for_exper
 
     elif self.params.exper_refls_file is not None:
       self._load_exp_refls_fnames()
@@ -173,7 +174,6 @@ class Script:
     return explist[0]
 
   def run(self):
-
     from dials.util.options import flatten_experiments, flatten_reflections
     self.params = None
     if COMM.rank == 0:
@@ -195,7 +195,7 @@ class Script:
     if reflist:
       self.refls = reflist[0]
       for r in reflist[1:]:
-        self.refls.extent(r)
+        self.refls.extend(r)
       self.has_loaded_expers = True
     if not self.has_loaded_expers and self.params.exper_refls_file is None:
       print("No experiments to process")
@@ -217,14 +217,18 @@ class Script:
       refiner = refine_launcher.local_refiner_from_parameters(refls_for_exper, exper, self.params)
       if self.params.show_timing:
         print("Time to refine experiment: %f" % (time.time()- refine_starttime))
+      
+      basename,_ = os.path.splitext(os.path.basename(exper_filename))
 
       # Save reflections 
       if self.params.output.save.reflections:
         refined_refls = refiner.get_refined_reflections(refls_for_exper)
+        #NOTE do we really need to reset the id ? 
+        refined_refls['id'] = flex.int(len(refined_refls), 0)
         refls_outdir = os.path.join(self.params.output.directory, "reflections_after_stage1", "rank%d" % COMM.rank)
         if not os.path.exists(refls_outdir):
           os.makedirs(refls_outdir)
-        refls_path = os.path.join(refls_outdir, "%s_%d.refl" % (self.params.output.tag.reflections, i_processed))
+        refls_path = os.path.join(refls_outdir, "%s_%s_%d.refl" % (self.params.output.tag.reflections, basename, i_processed))
         refined_refls.as_file(refls_path)
 
       # save pandas
@@ -232,7 +236,7 @@ class Script:
         pandas_outdir = os.path.join(self.params.output.directory, "pandas_pickles", "rank%d" % COMM.rank)
         if not os.path.exists(pandas_outdir):
           os.makedirs(pandas_outdir)
-        outpath = os.path.join(pandas_outdir, "%s_%d.pkl" % (self.params.output.tag.pandas, i_processed))
+        outpath = os.path.join(pandas_outdir, "%s_%s_%d.pkl" % (self.params.output.tag.pandas,basename, i_processed))
         refiner.save_lbfgs_x_array_as_dataframe(outname=outpath)
 
       # save experiment
@@ -241,7 +245,6 @@ class Script:
         if not os.path.exists(exp_outdir):
           os.makedirs(exp_outdir)
 
-        basename,_ = os.path.splitext(os.path.basename(exper_filename))
         exp_path = os.path.join(exp_outdir, "%s_%s_%d.pkl" % (self.params.output.tag.experiments, basename, exp_id))
         exper.crystal = refiner.get_corrected_crystal(i_shot=0)
         new_exp_list = ExperimentList()

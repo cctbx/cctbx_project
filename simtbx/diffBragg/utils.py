@@ -676,7 +676,7 @@ def get_roi_from_spot(refls, fdim, sdim, shoebox_sz=10):
 
 
 def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_edge_reflections=False,
-                                   reject_roi_with_hotpix=True, background_mask=None, hotpix_mask=None):
+                                   reject_roi_with_hotpix=True, background_mask=None, hotpix_mask=None, bg_thresh=3.5, set_negative_bg_to_zero=False):
 
     npan, sdim, fdim = imgs.shape
 
@@ -691,11 +691,12 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
     kept_rois = []
     panel_ids = []
     selection_flags = []
+    num_roi_negative_bg = 0
     for i_roi, roi in enumerate(rois):
         i1, i2, j1, j2 = roi
         is_selected = True
         if is_on_edge[i_roi] and reject_edge_reflections:
-            print(2)
+            print("is on edge")
             is_selected = False
         pid = refls[i_roi]['panel']
 
@@ -705,23 +706,32 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
             is_hotpix = hotpix_mask[pid, j1:j2, i1:i2]
             num_hotpix = is_hotpix.sum()
             if num_hotpix > 0 and reject_roi_with_hotpix:
+                print("has hot pixel")
                 is_selected = False
 
         if background_mask is not None:
             is_background = background_mask[pid, j1:j2, i1:i2]
         else:
-            is_background = label_background_pixels(shoebox, iterations=2)
+            is_background = label_background_pixels(shoebox,thresh=bg_thresh, iterations=2)
+        
 
         bg_pixels = shoebox[is_background]
         bg_signal = np.median(bg_pixels)
 
         if bg_signal < 0:
-            print(3)
-            is_selected = False
+            print("neg")
+            num_roi_negative_bg += 1
+            if set_negative_bg_to_zero:
+                bg_signal = 0
+            else:
+                print("background is negative")
+                is_selected = False
         tilt_abc.append((0, 0, bg_signal))
         kept_rois.append(roi)
         panel_ids.append(pid)
         selection_flags.append(is_selected)
+
+    print("Number of ROI with negative BGs: %d / %d" % (num_roi_negative_bg, len(rois)))
 
     return kept_rois, panel_ids, tilt_abc, selection_flags
 

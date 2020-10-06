@@ -74,6 +74,8 @@ class nanoBragg_crystal(object):
 
     @miller_array.setter
     def miller_array(self, val):
+        high_symm_symbol =val.space_group_info().type().lookup_symbol()
+        cb_op = val.space_group_info().change_of_basis_op_to_primitive_setting()
         if isinstance(val.data()[0], complex):
             self.miller_is_complex = True
         else:
@@ -82,6 +84,10 @@ class nanoBragg_crystal(object):
                 val = val.as_amplitude_array()
         val = val.expand_to_p1()
         val = val.generate_bijvoet_mates()
+        if not high_symm_symbol.startswith("P"): 
+            print("CHANGE")
+            val = val.change_basis(cb_op)
+            print(val.value_at_index((-1,0,4)))
         self._miller_array = val
 
     @property

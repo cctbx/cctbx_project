@@ -2231,7 +2231,7 @@ class LocalRefiner(PixelRefinement):
         return ang
 
     def get_current_misorientation(self, i_shot):
-        ang = NAN
+        ang = -1 #NAN
         if self.CRYSTAL_GT is not None:
             ang = self.current_ang_off[i_shot]
         return ang
@@ -2794,10 +2794,10 @@ class LocalRefiner(PixelRefinement):
             proc_bbox_idx = "" #self.all_proc_idx[i_shot]
 
             ncells_val = tuple(self._get_m_val(i_shot))
-            init_misori = -1
+            init_misori = self.init_ang_off[i_shot] if self.init_ang_off is not None else -1
             img_corr = -1 #image_corr[i_shot]
             init_img_corr = -1
-            final_misori = -1
+            final_misori = self.get_current_misorientation(i_shot)
 
             self.data_to_send.append(
                 (proc_h5_fname, proc_h5_idx, proc_bbox_idx, crystal_scale, Amat_refined, ncells_val, bgplane,
