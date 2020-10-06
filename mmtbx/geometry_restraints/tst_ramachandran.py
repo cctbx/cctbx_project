@@ -606,7 +606,7 @@ def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
   params.pdb_interpretation.ramachandran_plot_restraints.inject_emsley8k_into_oldfield_favored=False
   params.pdb_interpretation.ramachandran_plot_restraints.selection = "chain A and resid 1:7"
   model.set_pdb_interpretation_params(params)
-  model._process_input_model(make_restraints=True)
+  model.process_input_model(make_restraints=True)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
   assert nprox == 5, ""+\
@@ -620,7 +620,7 @@ def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
   params.pdb_interpretation.ramachandran_plot_restraints.inject_emsley8k_into_oldfield_favored=False
   params.pdb_interpretation.ramachandran_plot_restraints.selection ="chain A and resid 27:28"
   model.set_pdb_interpretation_params(params)
-  model._process_input_model(make_restraints=True)
+  model.process_input_model(make_restraints=True)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
   assert nprox == 5, ""+\
@@ -654,7 +654,7 @@ def exercise_allowed_outliers():
       pdb_interpretation_params=params,
       log=null_out())
   model.set_pdb_interpretation_params(params)
-  model._process_input_model(make_restraints=True)
+  model.process_input_model(make_restraints=True)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
   # print "without outliers", nprox
@@ -680,7 +680,7 @@ def exercise_allowed_outliers():
   params.pdb_interpretation.ramachandran_plot_restraints.allowed=None
   params.pdb_interpretation.ramachandran_plot_restraints.outlier="oldfield"
   model.set_pdb_interpretation_params(params)
-  model._process_input_model(make_restraints=True)
+  model.process_input_model(make_restraints=True)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
   # print "without allowed", nprox
@@ -705,7 +705,7 @@ def exercise_allowed_outliers():
       pdb_interpretation_params=params,
       log=null_out())
   model.set_pdb_interpretation_params(params)
-  model._process_input_model(make_restraints=True)
+  model.process_input_model(make_restraints=True)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
   # print "without both", nprox
@@ -753,7 +753,7 @@ def exercise_allowed_outliers_emsley_filling():
   params.pdb_interpretation.ramachandran_plot_restraints.allowed=None
   params.pdb_interpretation.ramachandran_plot_restraints.outlier=None
   model.set_pdb_interpretation_params(params)
-  model._process_input_model(make_restraints=True)
+  model.process_input_model(make_restraints=True)
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
   assert nprox == 164
