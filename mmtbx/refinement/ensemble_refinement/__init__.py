@@ -1768,7 +1768,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   refinement_flags = rf(size = model.get_number_of_atoms())
 
   model.set_refinement_flags(refinement_flags)
-  model.get_restraints_manager()
+  model._process_input_model(make_restraints=True)
 
   # Geometry file
   xray_structure = model.get_xray_structure()
