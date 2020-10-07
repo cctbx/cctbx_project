@@ -6,6 +6,7 @@ from libtbx.mpi4py import MPI
 from dxtbx.model import ExperimentList
 import os
 import time
+from simtbx.nanoBragg.utils import H5AttributeGeomWriter
 
 COMM = MPI.COMM_WORLD
 
@@ -46,6 +47,10 @@ output {
     .type = str
     .help = path where output files and folders will be written
   save {
+    images = False
+      .type = bool 
+      .help = if True, output an image of the model pixels at the ROIs that
+      .help = were used during refinement 
     reflections = False
       .type = bool
       .help = if True, output a refined reflections table with xyz.calc 
@@ -58,6 +63,9 @@ output {
       .help = whether to save a refined experients output file
   } 
   tag {
+    images = after_stage_ine
+      .type = str
+      .help = output file tag for model images
     reflections = after_stage_one
       .type = str
       .help = output file tag for reflections 
@@ -220,6 +228,21 @@ class Script:
       
       basename,_ = os.path.splitext(os.path.basename(exper_filename))
 
+      # Save model image
+      if self.params.output.save.images:
+        images_outdir = os.path.join(self.params.output.directory, "model_images", "rank%d" % COMM.rank)
+        if not os.path.exists(images_outdir):
+          os.makedirs(images_outdir)
+        img_path = os.path.join(images_outdir, "%s_%s_%d.h5" % (self.params.output.tag.images, basename, i_processed))
+        panel_Xdim, panel_Ydim = exper.detector[0].get_image_size()
+        img_shape = len(exper.detector), panel_Xdim, panel_Ydim
+        writer_args = {"filename": img_path , 
+            "image_shape": img_shape, "num_images":1, "detector": exper.detector , "beam": exper.beam}
+        model_img = refiner.get_model_image()
+        with H5AttributeGeomWriter(**writer_args) as writer:
+          writer.add_image(model_img)
+
+      
       # Save reflections 
       if self.params.output.save.reflections:
         refined_refls = refiner.get_refined_reflections(refls_for_exper)

@@ -42,6 +42,7 @@ from numpy import sqrt as SQRT
 from numpy import array as ARRAY
 from numpy import pi as PI
 from numpy import allclose as ALL_CLOSE
+from numpy import zeros as NP_ZEROS
 from simtbx.diffBragg.refiners.parameters import RangedParameter
 from json import dump as JSON_DUMP
 from os import makedirs as MAKEDIRS
@@ -322,6 +323,12 @@ class LocalRefiner(PixelRefinement):
         return len(self.idx_from_asu)
 
     @property
+    def image_shape(self):
+        panelXdim, panelYdim = self.S.detector[0].get_image_size()
+        Npanels = len(self.S.detector)
+        return Npanels, panelYdim, panelXdim
+
+    @property
     def x_for_lbfgs(self):
         """LBFGS parameter array"""
         if self.only_pass_refined_x_to_lbfgs:
@@ -576,6 +583,8 @@ class LocalRefiner(PixelRefinement):
         self.fcell_xstart = _global_pos
 
         self.spectra_coef_xstart = self.fcell_xstart + self.n_global_fcell
+        #if self.refine_lambda0 or self.refine_lambda1 and self.n_total_params == 2 
+        #    self.spectra_coef_xstart = _local_pos
 
         self.panelRot_xstart = self.spectra_coef_xstart + self.n_spectra_param
 
@@ -1590,6 +1599,9 @@ class LocalRefiner(PixelRefinement):
 
             for self._i_shot in self.shot_ids:
 
+                if self.save_model_for_shot is not None and self.save_model_for_shot == self._i_shot:
+                    self.full_image_of_model = NP_ZEROS(self.image_shape)
+                
                 if self.save_model:
                     self._open_model_output_file()
 
@@ -1635,6 +1647,8 @@ class LocalRefiner(PixelRefinement):
                     self._evaluate_averageI()
                     if self.save_model:
                         self._save_model_to_disk()
+                    if self.save_model_for_shot is not None and self.save_model_for_shot == self._i_shot:
+                        self._update_full_image_of_model()
 
                     # here we can correlate modelLambda with Imeas
                     self._increment_model_data_correlation()
@@ -2906,4 +2920,19 @@ class LocalRefiner(PixelRefinement):
         refined_refls["xyzcal.px"] = xyz_calc
         refined_refls = refined_refls.select(selection_flags)
         return refined_refls
+
+    def _update_full_image_of_model(self):
+        if self.full_image_of_model is None:
+            return
+        x1,x2,y1,y2 = self.ROIS[self._i_shot][self._i_spot]
+        self.full_image_of_model[self._panel_id, y1:y2+1, x1:x2+1] = self.model_Lambda
+    
+    def get_model_image(self, i_shot=0):
+        """
+        go through each ROI and execute diffBragg, storing the model pixels along the way 
+        """
+        self.save_model_for_shot = i_shot
+        self.compute_functional_and_gradients()   # goes thorugh all ROIs
+        self.save_model_for_shot = None
+        return self.full_image_of_model
 
