@@ -804,10 +804,6 @@ class manager(object):
     return len(self.get_hierarchy().models())
 
   def get_site_symmetry_table(self):
-    if self._site_symmetry_table is not None:
-      return self._site_symmetry_table
-    elif self.all_chain_proxies is not None:
-      self._site_symmetry_table = self.all_chain_proxies.site_symmetry_table()
     return self._site_symmetry_table
 
   def initialize_anomalous_scatterer_groups(
@@ -954,12 +950,10 @@ class manager(object):
     return result.iselection()
 
   def sel_backbone(self):
-    assert self.all_chain_proxies is not None
-    return self.all_chain_proxies.sel_backbone_or_sidechain(True, False)
+    return self._get_selection_manager().sel_backbone_or_sidechain(True, False)
 
   def sel_sidechain(self):
-    assert self.all_chain_proxies is not None
-    return self.all_chain_proxies.sel_backbone_or_sidechain(False, True)
+    return self._get_selection_manager().sel_backbone_or_sidechain(False, True)
 
   def set_xray_structure(self, xray_structure):
     # XXX Delete as a method or make sure all TLS, NCS, refinement flags etc
@@ -1333,6 +1327,7 @@ class manager(object):
     if self.all_chain_proxies is not None:
       self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
       self._all_monomer_mappings = self.all_chain_proxies.all_monomer_mappings
+      self._site_symmetry_table = self.all_chain_proxies.site_symmetry_table()
     self._xray_structure = xray_structure_all
 
     self._crystal_symmetry = self._xray_structure.crystal_symmetry()
@@ -1341,6 +1336,20 @@ class manager(object):
     self._ener_lib = processed_pdb_files_srv.ener_lib
     self._ncs_obj = self._processed_pdb_file.ncs_obj
     self._update_has_hd()
+    #
+    if(self.all_chain_proxies is not None):
+      scattering_type_registry = self.all_chain_proxies.scattering_type_registry
+      if(scattering_type_registry.n_unknown_type_symbols() > 0):
+        scattering_type_registry.report(
+          pdb_atoms = self.get_hierarchy().atoms(),
+          log = log,
+          prefix = "",
+          max_lines = None)
+        raise Sorry("Unknown scattering type symbols.\n"
+          "  Possible ways of resolving this error:\n"
+          "    - Edit columns 77-78 in the PDB file to define"
+            " the scattering type.\n"
+          "    - Provide custom monomer definitions for the affected residues.")
     #
     if(make_restraints):
       self._setup_restraints_manager(
@@ -1371,9 +1380,7 @@ class manager(object):
         hierarchy = self._pdb_hierarchy)
 
   def _update_atom_selection_cache(self):
-    if self.all_chain_proxies is not None:
-      self._atom_selection_cache = self.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
-    elif self.crystal_symmetry() is not None:
+    if self.crystal_symmetry() is not None:
       self._atom_selection_cache = self.get_hierarchy().atom_selection_cache(
           special_position_settings=crystal.special_position_settings(
               crystal_symmetry = self.crystal_symmetry() ))
@@ -1777,21 +1784,6 @@ class manager(object):
           "Neutron scattering dictionary", out = log)
         self._xray_structure.scattering_type_registry().show(out = log)
       self._xray_structure.scattering_type_registry_params.table = "neutron"
-    if self.all_chain_proxies is not None:
-      scattering_type_registry = self.all_chain_proxies.scattering_type_registry
-      if(scattering_type_registry.n_unknown_type_symbols() > 0):
-        scattering_type_registry.report(
-          pdb_atoms = self.get_hierarchy().atoms(),
-          log = log,
-          prefix = "",
-          max_lines = None)
-        raise Sorry("Unknown scattering type symbols.\n"
-          "  Possible ways of resolving this error:\n"
-          "    - Edit columns 77-78 in the PDB file to define"
-            " the scattering type.\n"
-          "    - Provide custom monomer definitions for the affected residues.")
-      if(log is not None):
-        print(file=log)
     if set_inelastic_form_factors is not None and iff_wavelength is not None:
       self._xray_structure.set_inelastic_form_factors(
           photon=iff_wavelength,
