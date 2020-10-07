@@ -3871,9 +3871,9 @@ class array(set):
     assert den != 0
     return self.array(data = coeff/den)
 
-  def __repr__(self): 
+  def __repr__(self):
     """
-    Emit a string for debugging of the labels, type of data 
+    Emit a string for debugging of the labels, type of data
     and sigmas array present within this miller_array.
     """
     mstr = self.crystal_symmetry().__repr__()
