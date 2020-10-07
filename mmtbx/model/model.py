@@ -1008,11 +1008,6 @@ class manager(object):
       self._rama_eval = rama_eval()
     return self._rama_eval
 
-  def get_apply_cif_links(self):
-    if self.all_chain_proxies is not None:
-      return self.all_chain_proxies.apply_cif_links
-    return []
-
   def update_xrs(self, hierarchy=None):
     """
     Updates xray structure using self._pdb_hierarchy for cases when it
