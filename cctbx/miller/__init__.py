@@ -3877,7 +3877,8 @@ class array(set):
     and sigmas array present within this miller_array.
     """
     mstr = self.crystal_symmetry().__repr__()
-    mstr = mstr + "\n" + self.info().label_string()
+    if self._info:
+      mstr = mstr + "\n" + self._info.label_string()
     mstr = mstr + "\n" + self._data.__repr__()
     if self._sigmas:
       mstr = mstr + "\n" + self._sigmas.__repr__()
