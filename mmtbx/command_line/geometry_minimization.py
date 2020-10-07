@@ -348,15 +348,14 @@ class run(object):
           cif_object = iotbx.cif.reader(file_path=full_path,
             strict=False).model()
           cif_objects.append((full_path, cif_object))
-
     self.model = mmtbx.model.manager(
         model_input = pdb_inp,
+        crystal_symmetry = cs,
         restraint_objects = cif_objects,
         pdb_interpretation_params = self.params,
         stop_for_unknowns = self.params.stop_for_unknowns,
         build_grm = True,
         log = self.log)
-
     self.ncs_obj = self.model.get_ncs_obj()
     self.output_crystal_symmetry = not is_non_crystallographic_unit_cell
     self.sites_cart_start = self.model.get_xray_structure().sites_cart().deep_copy()

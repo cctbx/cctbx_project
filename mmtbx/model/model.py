@@ -73,6 +73,8 @@ from copy import deepcopy
 import sys
 import math
 
+from mmtbx.monomer_library import pdb_interpretation
+
 time_model_show = 0.0
 
 def find_common_water_resseq_max(pdb_hierarchy):
@@ -216,19 +218,20 @@ class manager(object):
     self.log = log
     self.exchangable_hd_groups = []
     self.original_xh_lengths = None
+    self.all_chain_proxies = None # Used for smart selections.
     self.riding_h_manager = None
     # Used for reprocessing (that needs to go). Only used in this file.
     # XXX REMOVE WHEN POSSIBLE! XXX
     self.scattering_dict_info = None
-
+    # Extract SS info
     self._ss_annotation = None
     if(self._model_input is not None):
       self._ss_annotation = self._model_input.extract_secondary_structure()
 
 
     self.link_records_in_pdb_format = None # Nigel's stuff up to refactoring
-    self.all_chain_proxies = None # probably will keep it. Need to investigate
-          # 'smart' selections provided by it. If they useless, remove.
+    self.all_chain_proxies = None # Used for smart selections.
+    self._all_monomer_mappings = None
 
     # These are new
     self.xray_scattering_dict = None    # 2020: leave only one: self._scattering_dict
@@ -930,13 +933,19 @@ class manager(object):
     return self.select(sel)
 
   def selection(self, string, optional=True):
-    if self.all_chain_proxies is None:
+    if(self._all_monomer_mappings is None):
       return self.get_atom_selection_cache().selection(string, optional=optional)
     else:
-      return self.all_chain_proxies.selection(
-          string,
-          cache=self._atom_selection_cache,
-          optional=optional)
+      sp = crystal.special_position_settings(self.crystal_symmetry())
+      sm = pdb_interpretation.selection_manager(
+        all_monomer_mappings      = self._all_monomer_mappings,
+        pdb_hierarchy             = self.get_hierarchy(),
+        special_position_settings = sp,
+        atom_selection_cache      = self._atom_selection_cache)
+      return sm.selection(
+          string   = string,
+          cache    = self._atom_selection_cache,
+          optional = optional)
 
   def iselection(self, string):
     result = self.selection(string)
@@ -1323,6 +1332,7 @@ class manager(object):
       raise Sorry("Empty xray_structure.")
     if self.all_chain_proxies is not None:
       self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
+      self._all_monomer_mappings = self.all_chain_proxies.all_monomer_mappings
     self._xray_structure = xray_structure_all
 
     self._crystal_symmetry = self._xray_structure.crystal_symmetry()
