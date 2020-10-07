@@ -618,9 +618,18 @@ class ScalingJob(Job):
       env_script                = self.app.params.mp.env_script[0] if len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
       method                    = self.app.params.mp.method,
       htcondor_executable_path  = self.app.params.mp.htcondor.executable_path,
+      sbatch_script_template    = self.app.params.mp.shifter.sbatch_script_template,
+      srun_script_template      = self.app.params.mp.shifter.srun_script_template,
+      nersc_partition           = self.app.params.mp.shifter.partition,
+      nersc_jobname             = self.app.params.mp.shifter.jobname,
+      nersc_project             = self.app.params.mp.shifter.project,
+      nersc_constraint          = self.app.params.mp.shifter.constraint,
+      nersc_reservation         = self.app.params.mp.shifter.reservation,
       target                    = target_phil_path,
       # always use mpi for 'lcls'
-      use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls')
+      use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls'),
+      nnodes                    = self.app.params.mp.nnodes,
+      wall_time                 = self.app.params.mp.wall_time,
     )
 
     with open(submit_phil_path, "w") as phil:

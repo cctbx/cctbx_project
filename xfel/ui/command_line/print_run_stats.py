@@ -54,7 +54,8 @@ def run(args):
     assert params.rungroup is not None
     rungroups = [params.rungroup] * len(runs)
 
-  for run_no, rungroup_id in zip(runs, rungroups):
+  for run_no, rungroup_id in sorted(zip(runs, rungroups), key=lambda x: int(x[0])):
+    if params.rungroup != rungroup_id: continue
     try:
       timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi, n_lattices = HitrateStats(app, run_no, params.trial, rungroup_id, params.d_min)()
     except Exception as e:
