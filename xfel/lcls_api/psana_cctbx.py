@@ -7,6 +7,7 @@ from dxtbx.format.FormatXTCRayonix import FormatXTCRayonix, rayonix_locator_scop
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatMultiImageLazy import FormatMultiImageLazy
 from dxtbx.format.FormatStill import FormatStill
+from dials.command_line.dials_import import ManualGeometryUpdater
 from libtbx.phil import parse
 from dials.command_line.stills_process import Processor, phil_scope, sync_geometry, Script as DSPScript
 from dxtbx.imageset import ImageSet, ImageSetData, MemReader
@@ -136,9 +137,10 @@ class CctbxPsanaEventProcessor(Processor):
     @output_tag String that will prefix output files
     @logfile File name for logging
     """
-    self.parsed_params = parse(file_name='params.phil')
+    self.parsed_params = parse(file_name=params_filename)
     dials_params = phil_scope.fetch(self.parsed_params).extract()
     super(CctbxPsanaEventProcessor, self).__init__(dials_params, output_tag)
+    self.update_geometry = ManualGeometryUpdater(dials_params)
     simple_script = SimpleScript(dials_params)
     simple_script.load_reference_geometry()
     self.reference_detector = getattr(simple_script, 'reference_detector', None)
@@ -188,6 +190,7 @@ class CctbxPsanaEventProcessor(Processor):
     self.dxtbx_img.event = event
     self.imageset.set_beam(self.dxtbx_img.get_beam())
     self.imageset.set_detector(self.dxtbx_img.get_detector())
+    self.update_geometry(self.imageset)
     experiments = ExperimentListFactory.from_imageset_and_crystal(self.imageset, None)
 
     if self.reference_detector is not None:
