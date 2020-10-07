@@ -177,17 +177,22 @@ class manager(object):
 
   def __init__(self,
       model_input,
-      pdb_hierarchy = None,  # To create model from hierarchy. Makes sence only in model-building when hierarchy created from nothing
-      crystal_symmetry = None,
-      restraint_objects = None, # ligand restraints in cif format
-      monomer_parameters = None, # mmtbx.utils.cif_params scope # temporarily for phenix.refine
+      pdb_hierarchy             = None,
+      crystal_symmetry          = None,
+      restraint_objects         = None,
+      monomer_parameters        = None, # mmtbx.utils.cif_params scope # temporarily for phenix.refine
       pdb_interpretation_params = None,
-      process_input = False, # obtain processed_pdb_file straight away
-      build_grm = False,  # build GRM straight away, without waiting for get_restraints_manager() call
-      stop_for_unknowns = True,
-      log = None,
-      expand_with_mtrix = True):
-
+      process_input             = False,
+      build_grm                 = False,
+      stop_for_unknowns         = True,
+      log                       = None,
+      expand_with_mtrix         = True):
+    # Assert basic assumptions
+    if(model_input is not None): assert pdb_hierarchy is None
+    if(pdb_hierarchy is not None):
+      assert model_input is None
+      assert crystal_symmetry is not None
+    # Internals
     self._xray_structure    = None
     self.tls_groups         = None
     self.restraints_manager = None
@@ -244,75 +249,59 @@ class manager(object):
     self._original_model_format = None
     self._ss_manager = None
     self._site_symmetry_table = None
-
+    self._clash_guard_msg = None
+    self._sequence_validation = None
+    # This is used to setup torsion restraints only. XXX CAN THIS BE DELETED? XXX
     self._ter_indices = None
     if(self._model_input is not None):
       self._ter_indices = self._model_input.ter_indices()
-
-    # sequence data objects
-    self._sequence_validation = None
-
-    # here we start to extract and fill appropriate field one by one
-    # depending on what's available.
+    # First attempt to set crystal symmetry
+    if(self._model_input is not None):
+      if(self._crystal_symmetry is None):
+        inp_cs = self._model_input.crystal_symmetry()
+        if(inp_cs and not inp_cs.is_empty() and not inp_cs.is_nonsense()):
+          self._crystal_symmetry = inp_cs
+    # Keep track of the source of model
     if self._model_input is not None:
       s = str(type(model_input))
       if s.find("cif") > 0:
         self._original_model_format = "mmcif"
       elif s.find("pdb") > 0:
         self._original_model_format = "pdb"
-      # input xray_structure most likely don't have proper crystal symmetry
-      if self.crystal_symmetry() is None:
-        inp_cs = self._model_input.crystal_symmetry()
-        if inp_cs and not inp_cs.is_empty() and not inp_cs.is_nonsense():
-          self._crystal_symmetry = inp_cs
-    # Handle MTRIX
+    # Handle MTRIX. This will create MTRIX expanded pdb_hierarchy, if possible.
     self.mtrix_operators = None
     if(self._model_input is not None):
       self.mtrix_operators = self._model_input.process_MTRIX_records()
     self._mtrix_expanded = False
     if(expand_with_mtrix):
       self.expand_with_MTRIX_records()
-    # Handle BIOMT
+    # Handle BIOMT. Keep track of BIOMT matrices (to allow to expand later)
     self.biomt_operators = None
     if(self._model_input is not None):
-      try:
+      try: # ugly work-around for limited support of BIOMT
         self.biomt_operators = self._model_input.process_BIOMT_records()
-      except RuntimeError: pass # work-around for limited support of BIOMT
+      except RuntimeError: pass
     self._biomt_expanded = False
-    #
-    self._clash_guard_msg = None
-
+    # Process model_input and optionally make restraints. This will set
+    # self._pdb_hierarchy, self._xray_structure, self._crystal_symmetry and more
     if process_input or build_grm:
-      assert self._processed_pdb_file is None
-      assert self.all_chain_proxies is None
       self.process_input_model(make_restraints = build_grm)
-
-    # do pdb_hierarchy
-    if self._pdb_hierarchy is None:
-      if self._processed_pdb_file is not None:
-        self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
-        self._pdb_hierarchy = self.all_chain_proxies.pdb_hierarchy
-      elif self._model_input is not None:
-        # self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy()
+    # If self._pdb_hierarchy is still not set by now, try to do it
+    if(self._pdb_hierarchy is None):
+      if self._model_input is not None:
         self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy(
             self._pdb_interpretation_params.pdb_interpretation.sort_atoms)
         # Perform the flipping of symmertric amino acids - swaps the coordinates
         if(self._pdb_interpretation_params.pdb_interpretation.flip_symmetric_amino_acids):
           self._pdb_hierarchy.flip_symmetric_amino_acids()
+
+
     # Move this away from constructor
     self._update_atom_selection_cache()
     self.get_hierarchy().atoms().reset_i_seq()
 
     if not self.all_chain_proxies and self._processed_pdb_file:
       self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
-
-    # do xray_structure
-    if self._xray_structure is not None:
-      if self.crystal_symmetry() is None:
-        self._crystal_symmetry = self._xray_structure.crystal_symmetry()
-
-    if self._xray_structure is not None:
-      assert self._xray_structure.scatterers().size() == self._pdb_hierarchy.atoms_size()
 
   @classmethod
   def from_sites_cart(cls,
@@ -1345,6 +1334,8 @@ class manager(object):
     if self.all_chain_proxies is not None:
       self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
     self._xray_structure = xray_structure_all
+
+    self._crystal_symmetry = self._xray_structure.crystal_symmetry()
 
     self._mon_lib_srv = self._processed_pdb_files_srv.mon_lib_srv
     self._ener_lib = self._processed_pdb_files_srv.ener_lib
