@@ -3871,6 +3871,19 @@ class array(set):
     assert den != 0
     return self.array(data = coeff/den)
 
+  def __repr__(self): 
+    """
+    Emit a string for debugging of the labels, type of data 
+    and sigmas array present within this miller_array.
+    """
+    mstr = self.crystal_symmetry().__repr__()
+    mstr = mstr + "\n" + self.info().label_string()
+    mstr = mstr + "\n" + self._data.__repr__()
+    if self._sigmas:
+      mstr = mstr + "\n" + self._sigmas.__repr__()
+    mstr = mstr + "\nsize: %d"  %self._data.size()
+    return mstr + "\n"
+
   def __abs__(self):
     """
     Return a copy of the array with data replaced by absolute values, i.e.
