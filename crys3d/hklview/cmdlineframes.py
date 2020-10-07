@@ -457,7 +457,7 @@ class HKLViewFrame() :
 
       if view_3d.has_phil_path(diff_phil, "tabulate_miller_array_ids"):
         self.tabulate_miller_array(phl.tabulate_miller_array_ids)
-        return True
+        #return True
 
       if view_3d.has_phil_path(diff_phil, "miller_array_operations"):
         self.make_new_miller_array()
@@ -529,8 +529,6 @@ class HKLViewFrame() :
 
   def process_miller_array(self, array) :
     if (array is None) : return
-    if (array.is_hendrickson_lattman_array()) :
-      raise Sorry("Hendrickson-Lattman coefficients are currently not supported.")
     info = array.info()
     if isinstance(info, str) :
       labels = "TEST DATA"
@@ -731,6 +729,28 @@ class HKLViewFrame() :
         arrays = hkl_file.as_miller_arrays(merge_equivalents=False,
           )#observation_type_callback=misc_dialogs.get_shelx_file_data_type)
         #arrays = f.file_server.miller_arrays
+        if hkl_file._file_type == 'cif':
+          # sanitise labels by removing redundant strings.
+          # remove the data name of this cif file from all labels
+          unwantedstrings = list( hkl_file._file_content.builder._model.keys_lower.keys())
+          # remove "_refln." from all labels
+          unwantedstrings.append("_refln.")
+          unwantedstrings.append("wavelength_id")
+          for arr in arrays:
+            if len(arr.info().labels) > 1:
+              newlabels = []
+              for label in arr.info().labels:
+                found = False
+                for s in unwantedstrings:
+                  if s in label:
+                    label = label.replace(s, "")
+                    if len(label) > 0 and "=" not in label :
+                      newlabels.append(label)
+                    found = True
+                    continue
+              if found:
+                arr.info().labels = newlabels
+
         if hkl_file._file_type == 'ccp4_mtz':
           self.hklfile_history = list(hkl_file._file_content.history())
           self.loaded_file_name = file_name
@@ -751,11 +771,13 @@ class HKLViewFrame() :
       self.viewer.array_infostrs = []
       self.viewer.array_infotpls = []
       for array in arrays :
+        """
         if (not array.is_real_array()) and (not array.is_complex_array()) \
          and (not array.is_integer_array()) and (not array.is_bool_array()) :
           self.mprint('Ignoring miller array \"%s\" of %s' \
             %(array.info().label_string(), type(array.data()[0]) ) )
           continue
+        """
         self.viewer.array_infostrs.append( ArrayInfo(array, self.mprint).infostr )
         self.viewer.array_infotpls.append( ArrayInfo(array, self.mprint).infotpl )
         valid_arrays.append(array)
@@ -797,16 +819,54 @@ class HKLViewFrame() :
     if self.loaded_file_name == savefilename:
       self.mprint("Not overwriting currently loaded file. Choose a different name!")
       return
-    mtz1 = self.procarrays[0].as_mtz_dataset(column_root_label= self.procarrays[0].info().labels[0])
-    for i,arr in enumerate(self.procarrays):
-      if i==0:
-        continue
-      mtz1.add_miller_array(arr, column_root_label=arr.info().labels[0] )
-    try: # python2 or 3
-      mtz1.mtz_object().write(savefilename)
-    except Exception as e:
-      mtz1.mtz_object().write(savefilename.encode("ascii"))
+    if os.path.splitext(savefilename)[1] == ".mtz":
+      mtz1 = self.procarrays[0].as_mtz_dataset(column_root_label= self.procarrays[0].info().labels[0])
+      for i,arr in enumerate(self.procarrays):
+        if i==0:
+          continue
+        mtz1.add_miller_array(arr, column_root_label=arr.info().labels[0] )
+      try: # python2 or 3
+        mtz1.mtz_object().write(savefilename)
+      except Exception as e:
+        mtz1.mtz_object().write(savefilename.encode("ascii"))
+
+    elif os.path.splitext(savefilename)[1] == ".cif":
+      import iotbx.cif
+      mycif = None
+      for i,arr in enumerate(self.procarrays):
+        arrtype = None
+        colname= "_refln.%s" %arr.info().label_string()
+        colnames = None
+        if arr.is_xray_intensity_array():
+          arrtype="meas"
+          colname= None
+        else:
+          if arr.sigmas() is not None:
+            arrtype="calc"
+            colname= None
+        if arr.is_complex_array():
+          colnames = ["_refln.%s_calc_au" %arr.info().labels[0], "_refln.%s_phase_calc" %arr.info().labels[0]]
+          #colnames = ["_refln.F_calc_au", "_refln.phase_calc"]
+          colname= None
+          arrtype = None
+        if arr.is_hendrickson_lattman_array():
+          colnames = ["_refln.%s" %e for e in arr.info().labels ]
+          colname= None
+          arrtype = None
+        if i==0:
+          mycif = iotbx.cif.miller_arrays_as_cif_block(arr, array_type = arrtype, 
+                                                       column_name=colname, column_names = colnames )
+        else:
+          mycif.add_miller_array(arr, column_name= colname, array_type= arrtype, 
+                                 column_names = colnames)
+      with open(savefilename.encode("ascii"), "w") as f:
+        f.write("data_%s\n#\n" %os.path.splitext(os.path.basename(savefilename))[0])
+        print(mycif.cif_block, file= f)
+
     self.mprint("Miller array(s) saved to " + savefilename)
+
+
+
 
 
   def tabulate_miller_array(self, ids):
@@ -829,6 +889,14 @@ class HKLViewFrame() :
         datalst.append( (self.viewer.match_valarrays[id].info().label_string(), cmplxlst) )
         datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list(ampls) ) )
         datalst.append( (self.viewer.match_valarrays[id].info().labels[-1] + u" \u00b0", list(phases)) )
+      elif self.viewer.match_valarrays[id].is_hendrickson_lattman_array():
+        A,B,C,D = self.viewer.match_valarrays[id].data().as_abcd()
+        HLlst = [ "%.4f, %.4f, %.4f, %.4f"%(e[0], e[1], e[2], e[3]) for e in self.viewer.match_valarrays[id].data() ]
+        datalst.append( (self.viewer.match_valarrays[id].info().label_string(), HLlst) )
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list(A) ) )
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[1], list(B) ) )
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[2], list(C) ) )
+        datalst.append( (self.viewer.match_valarrays[id].info().labels[3], list(D) ) )
       elif self.viewer.match_valarrays[id].sigmas() is not None:
         labels = self.viewer.match_valarrays[id].info().labels
         # Labels could be something like ['I(+)', 'SIGI(+)', 'I(-)', 'SIGI(-)'].

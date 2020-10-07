@@ -2,6 +2,7 @@
 #define SCITBX_GRAPHICS_UTILS_COLOR_H
 
 //#include <scitbx/array_family/boost_python/flex_fwd.h>
+#include <cctbx/hendrickson_lattman.h>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/vec3.h>
@@ -119,8 +120,8 @@ namespace scitbx { namespace graphics_utils {
 
 
   af::shared< scitbx::vec3<double> >
-  NoNansvec3(af::const_ref< scitbx::vec3<double> > const& vecs,
-          double defx = 0.0, double defy = 0.0, double defz = 0.0)
+    NoNansvec3(af::const_ref< scitbx::vec3<double> > const& vecs,
+      double defx = 0.0, double defy = 0.0, double defz = 0.0)
   {
     af::shared <scitbx::vec3<double> > nonanvecs(vecs.size());
     for (unsigned i_seq = 0; i_seq < vecs.size(); i_seq++)
@@ -131,6 +132,22 @@ namespace scitbx { namespace graphics_utils {
         nonanvecs[i_seq] = scitbx::vec3<double>(defx, defy, defz);
     }
     return nonanvecs;
+  }
+
+
+  af::shared< cctbx::hendrickson_lattman<> >
+    NoNansHL(af::const_ref< cctbx::hendrickson_lattman<> > const& HL,
+      double A = 0.0, double B = 0.0, double C = 0.0, double D = 0.0)
+  {
+    af::shared <cctbx::hendrickson_lattman<> > nonanshl(HL.size());
+    for (unsigned i = 0; i < HL.size(); i++)
+    {
+      if (boost::math::isfinite(HL[i].a() + HL[i].b() + HL[i].c() + HL[i].d()))
+        nonanshl[i] = cctbx::hendrickson_lattman<>(HL[i].a(), HL[i].b(), HL[i].c(), HL[i].d());
+      else
+        nonanshl[i] = cctbx::hendrickson_lattman<>(A, B, C, D);
+    }
+    return nonanshl;
   }
 
 

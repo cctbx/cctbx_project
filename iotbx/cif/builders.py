@@ -11,6 +11,9 @@ from six.moves import range
 import six
 from six.moves import zip
 
+# Refer to https://www.iucr.org/__data/iucr/cifdic_html/2/cif_mm.dic/index.html for definitons
+# of elements and columns in a CIF file
+
 class CifBuilderError(Sorry):
   __module__ = Exception.__module__
 
@@ -364,10 +367,60 @@ class miller_array_builder(crystal_symmetry_builder):
           elif key.endswith('scale_group_code'):
             self.scale_group_array = array
             scale_groups = list(counts.keys())
-      for label, value in sorted(refln_loop.items()):
-        for w_id in wavelength_ids:
-          for crys_id in crystal_ids:
-            for scale_group in scale_groups:
+
+      def get_assoc_data_arrays(keys, searchstrs, replace):
+        secondkeys = []
+        for key in keys:
+          for searchstr in searchstrs:
+            if searchstr in key.lower():
+              secondkeys.append(key)
+              break
+        datasigkeys = []
+        def find_assoc_keypair(skey, searchstrs, rplace):
+          for sigstr in searchstrs:
+            if skey.lower().find(sigstr) > -1:
+              chr1 = skey.lower().find(sigstr)
+              chr2 = len(sigstr) + chr1
+              if rplace==False:
+                datakey = skey[0 : chr1] + skey[chr2 : ]
+              else:
+                datakey = skey[0 : chr1] + "F" + skey[chr2 : ]
+              sigkey = skey
+              return datakey, sigkey
+          return None, None
+        for skey in secondkeys:
+          datakey, sigkey = find_assoc_keypair(skey, searchstrs, replace )
+          if datakey:
+            newdatakey = datakey
+            if datakey not in keys: # cope with ["_refln.F_calc_au", "_refln.phase_calc"]
+              newdatakey = datakey + "_au"
+            if newdatakey not in keys: # cope with ["_refln.foobar_meas", "_refln.foobar_sigma"]
+              newdatakey = datakey + "_meas"
+            if newdatakey not in keys: # cope with ["_refln.foobar_calc", "_refln.foobar_sigma"]
+              newdatakey = datakey + "_meas"
+            datakey = newdatakey
+            datasigkeys.append((datakey, sigkey))
+        return datasigkeys
+
+      for w_id in wavelength_ids:
+        for crys_id in crystal_ids:
+          for scale_group in scale_groups:
+            """
+            datsigarrs = get_assoc_data_arrays(refln_loop.keys(), ["_sigma", "sig"], False )
+            for label, array in datsigarrs:
+              self._arrays.setdefault(label, array)
+
+            mapcoeffarrs = get_assoc_data_arrays(refln_loop.keys(), ["_phase", "ph"], True )
+            for label, array in mapcoeffarrs:
+              self._arrays.setdefault(label, array)
+
+            HendricksonLattmanarrs = get_HL_arrays(refln_loop.items())
+            for label, array in HendricksonLattmanarrs:
+              self._arrays.setdefault(label, array)
+            """
+
+
+            for label, value in sorted(refln_loop.items()):
               if 'index_' in label: continue
               key = label
               labels = [label]

@@ -37,16 +37,24 @@ class ArrayInfo:
       raise Sorry("No space group info is present in data")
     data = millarr.data()
     self.datatype = ""
-    if (isinstance(data, flex.int)):
-      data = flex.double([e for e in data if e!= display.inanval])
-      self.datatype = "isint"
-    if millarr.is_complex_array():
-      data = flex.abs(millarr.data())
-      self.datatype = "iscomplex"
-    #data = [e for e in data if not math.isnan(e)]
-    data = graphics_utils.NoNansArray( data, data[0] ) # assuming data[0] isn't NaN
-    self.maxdata = flex.max( data )
-    self.mindata = flex.min( data )
+    if (isinstance(data, flex.hendrickson_lattman)):
+      data = graphics_utils.NoNansHL( data ) 
+      # for now display HL coefficients as a simple sum
+      self.maxdata = max([e[0]+e[1]+e[2]+e[3] for e in data ])
+      self.mindata = min([e[0]+e[1]+e[2]+e[3] for e in data ])
+      self.datatype = "ishendricksonlattman"
+    else:
+      if (isinstance(data, flex.int)):
+        data = flex.double([e for e in data if e!= display.inanval])
+        self.datatype = "isint"
+      if millarr.is_complex_array():
+        data = flex.abs(millarr.data())
+        self.datatype = "iscomplex"
+      #data = [e for e in data if not math.isnan(e)]
+      data = graphics_utils.NoNansArray( data, data[0] ) # assuming data[0] isn't NaN
+      self.maxdata = flex.max( data )
+      self.mindata = flex.min( data )
+
     self.maxsigmas = self.minsigmas = None
     if millarr.sigmas() is not None:
       data = millarr.sigmas()
@@ -564,25 +572,28 @@ class hklview_3d:
           continue
         datvals = [ hklscene.data[id] ]
       for i,datval in enumerate(datvals):
-        if not (math.isnan( abs(datval) ) or datval == display.inanval):
-          if hklscene.work_array.is_complex_array():
-            ampl = abs(datval)
-            phase = cmath.phase(datval) * 180.0/math.pi
-            # purge nan values from array to avoid crash in fmod_positive()
-            # and replace the nan values with an arbitrary float value
-            if math.isnan(phase):
-              phase = 42.4242
-            # Cast negative degrees to equivalent positive degrees
-            phase = phase % 360.0
-          spbufttip +="\\n" + hklscene.work_array.info().label_string() + ': '
-          if hklscene.work_array.is_complex_array():
-            spbufttip += str(roundoff(ampl, 2)) + ", " + str(roundoff(phase, 1)) + \
-              "\'+ String.fromCharCode(176) +\'" # degree character
-          elif sigvals:
-            sigma = sigvals[i]
-            spbufttip += str(roundoff(datval, 2)) + ", " + str(roundoff(sigma, 2))
-          else:
-            spbufttip += str(roundoff(datval, 2))
+        if isinstance(datval, tuple) and math.isnan(datval[0] + datval[1] + datval[2] + datval[3]):
+          continue
+        if not isinstance(datval, tuple) and (math.isnan( abs(datval) ) or datval == display.inanval):
+          continue
+        if hklscene.work_array.is_complex_array():
+          ampl = abs(datval)
+          phase = cmath.phase(datval) * 180.0/math.pi
+          # purge nan values from array to avoid crash in fmod_positive()
+          # and replace the nan values with an arbitrary float value
+          if math.isnan(phase):
+            phase = 42.4242
+          # Cast negative degrees to equivalent positive degrees
+          phase = phase % 360.0
+        spbufttip +="\\n" + hklscene.work_array.info().label_string() + ': '
+        if hklscene.work_array.is_complex_array():
+          spbufttip += str(roundoff(ampl, 2)) + ", " + str(roundoff(phase, 1)) + \
+            "\'+ String.fromCharCode(176) +\'" # degree character
+        elif sigvals:
+          sigma = sigvals[i]
+          spbufttip += str(roundoff(datval, 2)) + ", " + str(roundoff(sigma, 2))
+        else:
+          spbufttip += str(roundoff(datval, 2))
     spbufttip += '\\n\\n%d,%d,%d' %(id, sym_id, anomalous) # compared by the javascript
     spbufttip += '\''
     return spbufttip

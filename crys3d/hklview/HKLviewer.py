@@ -367,7 +367,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getOpenFileName(self.window,
             "Open a reflection file", "",
-            "MTZ Files (*.mtz);;HKL Files (*.hkl);;CIF (*.cif);;SCA Files (*.sca);;All Files (*)", "", options)
+            "MTZ Files (*.mtz);;HKL Files (*.hkl);;CIF Files (*.cif);;SCA Files (*.sca);;All Files (*)", "", options)
     if fileName:
       #self.HKLnameedit.setText(fileName)
       self.window.setWindowTitle("HKL-viewer: " + fileName)
@@ -391,7 +391,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getSaveFileName(self.window,
             "Save to a new reflection file", "",
-            "All Files (*);;MTZ Files (*.mtz)", "", options)
+            "All Files (*);;CIF Files (*.cif);;MTZ Files (*.mtz)", "", options)
     if fileName:
       self.PhilToJsRender('NGL_HKLviewer.savefilename = "%s"' %fileName )
 

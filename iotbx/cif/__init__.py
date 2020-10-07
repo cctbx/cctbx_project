@@ -362,7 +362,8 @@ class cctbx_data_structures_from_cif(object):
         builders.miller_array_builder, builders.crystal_structure_builder)
     else:
       assert data_structure_builder in (
-        builders.miller_array_builder, builders.crystal_structure_builder)
+        builders.miller_array_builder, \
+         builders.crystal_structure_builder)
       data_structure_builders = (data_structure_builder,)
 
     self.xray_structures = OrderedDict()

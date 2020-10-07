@@ -287,6 +287,9 @@ class scene(object):
       else :
         if isinstance(data, flex.double):
           self.data = data #.deep_copy()
+        elif isinstance(data, flex.hendrickson_lattman):
+          # for now display HL coefficients as a simple sum
+          self.data = flex.double( [a+b+c+d for a,b,c,d in data] )
         elif isinstance(data, flex.complex_double):
           self.data = data #.deep_copy()
           self.ampl = flex.abs(data)
