@@ -218,7 +218,6 @@ class manager(object):
     self.log = log
     self.exchangable_hd_groups = []
     self.original_xh_lengths = None
-    self.all_chain_proxies = None # Used for smart selections.
     self.riding_h_manager = None
     # Used for reprocessing (that needs to go). Only used in this file.
     # XXX REMOVE WHEN POSSIBLE! XXX
@@ -300,8 +299,6 @@ class manager(object):
     self._update_atom_selection_cache()
     self.get_hierarchy().atoms().reset_i_seq()
 
-    if not self.all_chain_proxies and self._processed_pdb_file:
-      self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
 
   @classmethod
   def from_sites_cart(cls,
@@ -813,7 +810,6 @@ class manager(object):
       self._site_symmetry_table = self.all_chain_proxies.site_symmetry_table()
     return self._site_symmetry_table
 
-  # XXX MOVE OUTSIDE TO CONTEXT-SPECIFIC LOCATION! XXX
   def initialize_anomalous_scatterer_groups(
       self,
       find_automatically=True,
@@ -830,22 +826,22 @@ class manager(object):
         self.n_anomalous_total += group.iselection.size()
     else:
       if len(groups_from_params) != 0:
-        chain_proxies = self.all_chain_proxies
+        sm = self._get_selection_manager()
         sel_cache = self.get_atom_selection_cache()
         for group in groups_from_params:
           if (group.f_prime is None): group.f_prime = 0
           if (group.f_double_prime is None): group.f_double_prime = 0
+          iselection = sm.phil_atom_selection(
+            cache         = sel_cache,
+            scope_extract = group,
+            attr          = "selection",
+            raise_if_empty_selection = True).iselection()
           aag = xray.anomalous_scatterer_group(
-            iselection=chain_proxies.phil_atom_selection(
-              cache=sel_cache,
-              scope_extract=group,
-              attr="selection",
-              raise_if_empty_selection=True).iselection(),
-            f_prime=group.f_prime,
-            f_double_prime=group.f_double_prime,
-            refine=group.refine,
-            selection_string=group.selection)
-          # aag.show_summary(out=log)
+            iselection       = iselection,
+            f_prime          = group.f_prime,
+            f_double_prime   = group.f_double_prime,
+            refine           = group.refine,
+            selection_string = group.selection)
           result.append(aag)
           self.n_anomalous_total += aag.iselection.size()
     self._anomalous_scatterer_groups = result
@@ -932,20 +928,24 @@ class manager(object):
     sel = self.selection(selection_string)
     return self.select(sel)
 
+  def _get_selection_manager(self):
+    assert self._all_monomer_mappings is not None
+    sp = crystal.special_position_settings(self.crystal_symmetry())
+    return pdb_interpretation.selection_manager(
+      all_monomer_mappings      = self._all_monomer_mappings,
+      pdb_hierarchy             = self.get_hierarchy(),
+      special_position_settings = sp,
+      atom_selection_cache      = self._atom_selection_cache)
+
   def selection(self, string, optional=True):
     if(self._all_monomer_mappings is None):
       return self.get_atom_selection_cache().selection(string, optional=optional)
     else:
-      sp = crystal.special_position_settings(self.crystal_symmetry())
-      sm = pdb_interpretation.selection_manager(
-        all_monomer_mappings      = self._all_monomer_mappings,
-        pdb_hierarchy             = self.get_hierarchy(),
-        special_position_settings = sp,
-        atom_selection_cache      = self._atom_selection_cache)
+      sm = self._get_selection_manager()
       return sm.selection(
-          string   = string,
-          cache    = self._atom_selection_cache,
-          optional = optional)
+        string   = string,
+        cache    = self._atom_selection_cache,
+        optional = optional)
 
   def iselection(self, string):
     result = self.selection(string)

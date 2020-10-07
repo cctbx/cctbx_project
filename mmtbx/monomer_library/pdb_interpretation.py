@@ -3102,6 +3102,56 @@ class selection_manager(object):
       return None
     return result.iselection()
 
+  def phil_atom_selection(self,
+        cache,
+        scope_extract,
+        attr,
+        string=None,
+        allow_none=False,
+        allow_auto=False,
+        raise_if_empty_selection=True):
+    return _phil_atom_selection(
+      cache          = cache,
+      scope_extract  = scope_extract,
+      attr           = attr,
+      selection_func = self.selection,
+      string         = string,
+      allow_none     = allow_none,
+      allow_auto     = allow_auto,
+      raise_if_empty_selection = raise_if_empty_selection)
+
+def _phil_atom_selection(
+      cache,
+      scope_extract,
+      attr,
+      selection_func,
+      string=None,
+      allow_none=False,
+      allow_auto=False,
+      raise_if_empty_selection=True):
+  def parameter_name():
+    return scope_extract.__phil_path__(object_name=attr)
+  if (string is None):
+    string = getattr(scope_extract, attr)
+  if (string is None):
+    if (allow_none): return None
+    raise Sorry('Atom selection cannot be None:\n  %s=None' % (
+      parameter_name()))
+  elif (string is Auto):
+    if (allow_auto): return Auto
+    raise Sorry('Atom selection cannot be Auto:\n  %s=Auto' % (
+      parameter_name()))
+  try: result = selection_func(string=string, cache=cache)
+  except KeyboardInterrupt: raise
+  except Exception as e: # keep e alive to avoid traceback
+    fe = format_exception()
+    raise Sorry('Invalid atom selection:\n  %s=%s\n  (%s)' % (
+      parameter_name(), show_string(string), fe))
+  if (raise_if_empty_selection and result.count(True) == 0):
+    raise Sorry('Empty atom selection:\n  %s=%s' % (
+      parameter_name(), show_string(string)))
+  return result
+
 class build_all_chain_proxies(linking_mixins):
 
   def __init__(self,
@@ -4199,28 +4249,15 @@ class build_all_chain_proxies(linking_mixins):
         allow_none=False,
         allow_auto=False,
         raise_if_empty_selection=True):
-    def parameter_name():
-      return scope_extract.__phil_path__(object_name=attr)
-    if (string is None):
-      string = getattr(scope_extract, attr)
-    if (string is None):
-      if (allow_none): return None
-      raise Sorry('Atom selection cannot be None:\n  %s=None' % (
-        parameter_name()))
-    elif (string is Auto):
-      if (allow_auto): return Auto
-      raise Sorry('Atom selection cannot be Auto:\n  %s=Auto' % (
-        parameter_name()))
-    try: result = self.selection(string=string, cache=cache)
-    except KeyboardInterrupt: raise
-    except Exception as e: # keep e alive to avoid traceback
-      fe = format_exception()
-      raise Sorry('Invalid atom selection:\n  %s=%s\n  (%s)' % (
-        parameter_name(), show_string(string), fe))
-    if (raise_if_empty_selection and result.count(True) == 0):
-      raise Sorry('Empty atom selection:\n  %s=%s' % (
-        parameter_name(), show_string(string)))
-    return result
+    return _phil_atom_selection(
+      cache          = cache,
+      scope_extract  = scope_extract,
+      attr           = attr,
+      selection_func = self.selection,
+      string         = string,
+      allow_none     = allow_none,
+      allow_auto     = allow_auto,
+      raise_if_empty_selection = raise_if_empty_selection)
 
   def phil_atom_selection_multiple(self,
         cache,
