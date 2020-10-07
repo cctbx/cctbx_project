@@ -42,6 +42,13 @@ namespace {
       arg("defy") = 0.0,
       arg("defz") = 0.0
       ));
+    def("NoNansHL", NoNansHL, (
+      arg("HL"),
+      arg("a") = 0.0,
+      arg("b") = 0.0,
+      arg("c") = 0.0,
+      arg("d") = 0.0
+      ));
     def("IsNansvec3", IsNansvec3, (
       arg("vecs")));
     def("NoNans", NoNans, (
