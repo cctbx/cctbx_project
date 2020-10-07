@@ -193,6 +193,7 @@ class manager(object):
       assert model_input is None
       assert crystal_symmetry is not None
     # Internals
+    self._processed         = False
     self._xray_structure    = None
     self.tls_groups         = None
     self.restraints_manager = None
@@ -202,26 +203,22 @@ class manager(object):
     self._monomer_parameters = monomer_parameters
     self._pdb_interpretation_params = None
     self.set_pdb_interpretation_params(pdb_interpretation_params)
-
     self._shift_cart = None # shift of this model since original location
     self._unit_cell_crystal_symmetry = None # original crystal symmetry
-
     self._stop_for_unknowns = stop_for_unknowns
     self._processed_pdb_file = None
-    self._processed_pdb_files_srv = None
     self._crystal_symmetry = crystal_symmetry
     self.refinement_flags = None
-    # IAS related, need some cleaning!
-    self.ias_manager = None
-    self.use_ias = False    # remove later, use presence of ias_manager
-                          # somewhat challenging because of ias.build_only parameter in phenix.refine
+    self.ias_manager = None # XXX MOVE IAS STUFF OUTSIDE COMPLETELY! XXX
+    self.use_ias = False    # XXX MOVE IAS STUFF OUTSIDE COMPLETELY! XXX
     self._ncs_groups = None
     self._anomalous_scatterer_groups = []
     self.log = log
     self.exchangable_hd_groups = []
     self.original_xh_lengths = None
     self.riding_h_manager = None
-    # for reprocessing. Probably select() will also use...
+    # Used for reprocessing (that needs to go). Only used in this file.
+    # XXX REMOVE WHEN POSSIBLE! XXX
     self.scattering_dict_info = None
 
     self._ss_annotation = None
@@ -440,11 +437,7 @@ class manager(object):
     return self.get_hierarchy().atoms()
 
   def processed(self):
-    fl = self._processed_pdb_file is not None or \
-         self.all_chain_proxies   is not None or \
-         self._xray_structure     is not None or \
-         self.restraints_manager  is not None
-    return fl
+    return self._processed
 
   def set_log(self, log):
     self.log = log
@@ -547,7 +540,6 @@ class manager(object):
   def set_restraint_objects(self, restraint_objects):
     self._restraint_objects = restraint_objects
     self.unset_restraints_manager()
-    self._processed_pdb_files_srv = None
     self.all_chain_proxies = None
 
   def get_monomer_parameters(self):
@@ -818,6 +810,7 @@ class manager(object):
       self._site_symmetry_table = self.all_chain_proxies.site_symmetry_table()
     return self._site_symmetry_table
 
+  # XXX MOVE OUTSIDE TO CONTEXT-SPECIFIC LOCATION! XXX
   def initialize_anomalous_scatterer_groups(
       self,
       find_automatically=True,
@@ -1293,22 +1286,19 @@ class manager(object):
         plain_pairs_radius = 5,
         custom_nb_excl     = None,
         run_clash_guard    = False):
-    # Not clear if we can handle this correctly for self._xray_structure
-    # assert self.get_number_of_models() < 2
-    # assert 0
-    if self._processed_pdb_files_srv is None:
-      self._processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
-          crystal_symmetry          = self.crystal_symmetry(),
-          pdb_interpretation_params = self._pdb_interpretation_params.pdb_interpretation,
-          stop_for_unknowns         = self._stop_for_unknowns,
-          log                       = self.log,
-          cif_objects               = self._restraint_objects,
-          cif_parameters            = self._monomer_parameters, # mmtbx.utils.cif_params scope - should be refactored to remove
-          mon_lib_srv               = None,
-          ener_lib                  = None,
-          use_neutron_distances     = self._pdb_interpretation_params.pdb_interpretation.use_neutron_distances)
+    self._processed = True
+    processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
+        crystal_symmetry          = self.crystal_symmetry(),
+        pdb_interpretation_params = self._pdb_interpretation_params.pdb_interpretation,
+        stop_for_unknowns         = self._stop_for_unknowns,
+        log                       = self.log,
+        cif_objects               = self._restraint_objects,
+        cif_parameters            = self._monomer_parameters, # mmtbx.utils.cif_params scope - should be refactored to remove
+        mon_lib_srv               = None,
+        ener_lib                  = None,
+        use_neutron_distances     = self._pdb_interpretation_params.pdb_interpretation.use_neutron_distances)
     if self._processed_pdb_file is None:
-      self._processed_pdb_file, junk = self._processed_pdb_files_srv.process_pdb_files(
+      self._processed_pdb_file, junk = processed_pdb_files_srv.process_pdb_files(
           pdb_inp = self._model_input,
           hierarchy = self._pdb_hierarchy,
           # because hierarchy already extracted
@@ -1337,8 +1327,8 @@ class manager(object):
 
     self._crystal_symmetry = self._xray_structure.crystal_symmetry()
 
-    self._mon_lib_srv = self._processed_pdb_files_srv.mon_lib_srv
-    self._ener_lib = self._processed_pdb_files_srv.ener_lib
+    self._mon_lib_srv = processed_pdb_files_srv.mon_lib_srv
+    self._ener_lib = processed_pdb_files_srv.ener_lib
     self._ncs_obj = self._processed_pdb_file.ncs_obj
     self._update_has_hd()
     #
@@ -1384,7 +1374,6 @@ class manager(object):
     self.restraints_manager = None
     self.model_statistics_info = None
     self._processed_pdb_file = None
-    self._processed_pdb_files_srv = None
 
   def raise_clash_guard(self):
     if self._clash_guard_msg is not None:
@@ -2770,7 +2759,6 @@ class manager(object):
     new.set_anomalous_scatterer_groups(new_anom_groups)
     new._shift_cart = new_shift_cart
     new._unit_cell_crystal_symmetry = new_unit_cell_crystal_symmetry
-    new._processed_pdb_files_srv = self._processed_pdb_files_srv
     if self.ncs_constraints_present():
       new_ncs_groups = self._ncs_groups.select(selection)
       new._ncs_groups = new_ncs_groups
