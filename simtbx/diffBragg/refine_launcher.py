@@ -99,11 +99,10 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
   n_unitcell_params = len(UcellMan.variables)
   n_spotscale_params = 1
   n_originZ_params = 1
-  n_spectrum_params = 0
+  n_spectra_params = 2 if params.refiner.refine_spectra is not None else 0
   n_tilt_params = 3 * len(nanoBragg_rois)
   n_local_unknowns = nrot_params + n_unitcell_params + n_ncells_param + n_spotscale_params + n_originZ_params \
-                     + n_spectrum_params + n_tilt_params
-
+                     + n_spectra_params + n_tilt_params
 
   x_init = None
   for i_macro_cyc in range(params.refiner.num_macro_cycles):
@@ -220,9 +219,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
 
       RUC.print_all_missets = True 
 
-      RUC.n_spectra_param = 0
-      if params.refiner.refine_spectra is not None:
-        RUC.n_spectra_param = 2 if params.refiner.refine_spectra[i_trial] else 0
+      RUC.n_spectra_param = n_spectra_params
       RUC.spectra_coefficients_sigma = params.refiner.sensitivity.spectra_coefficients  # .01, .01
       RUC.spectra_coefficients_init = params.refiner.init.spectra_coefficients  # 0, 1
       RUC.lambda_coef_ranges = [params.refiner.ranges.spectra0, params.refiner.ranges.spectra1]

@@ -175,7 +175,7 @@ refiner {
     spectra0 = [-0.01, 0.01]
       .type = floats(size=2)
       .help = range of values for offset to Lambda correction (Angstrom)
-    spectra1 = [-0.95, 1.05]
+    spectra1 = [0.95, 1.05]
       .type = floats(size=2)
       .help = range of values for multiplicative Lambda correction
     ucell_edge_percentage = None

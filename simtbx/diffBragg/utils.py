@@ -754,7 +754,7 @@ def strip_thickness_from_detector(detector):
     return thin_detector
 
 
-def image_data_from_expt(expt):
+def image_data_from_expt(expt, as_double=True):
     iset = expt.imageset
     if len(iset) == 0:
         raise ValueError("imageset should have 1 shot")
@@ -768,6 +768,8 @@ def image_data_from_expt(expt):
     if not isinstance(flex_data, tuple):
         flex_data = (flex_data, )
     img_data = np.array([data.as_numpy_array() for data in flex_data])
+    if as_double:
+        img_data = img_data.astype(np.float64)
     return img_data
 
 
