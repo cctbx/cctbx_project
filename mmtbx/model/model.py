@@ -898,6 +898,8 @@ class manager(object):
     return self.restraints_manager is not None
 
   def get_restraints_manager(self):
+    if not self.restraints_manager_available():
+      self.process_input_model(make_restraints=True)
     return self.restraints_manager
 
   def set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(self,value):
