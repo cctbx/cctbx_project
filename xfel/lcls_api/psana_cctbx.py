@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-#from dxtbx.format.FormatXTC import
+from dxtbx.format.FormatXTC import FormatXTC
 from dxtbx.format.FormatXTCCspad import FormatXTCCspad, cspad_locator_scope
 from dxtbx.format.FormatXTCEpix import FormatXTCEpix, epix_locator_scope
 from dxtbx.format.FormatXTCJungfrau import FormatXTCJungfrau, jungfrau_locator_scope
@@ -18,94 +18,57 @@ from dials.util import log
 API for using cctbx.xfel/DIALS processing of events without using cctbx/DIALS commands directly
 """
 
-class FormatXTCCspadSingleEvent(FormatXTCCspad):
-  """ Class to stub out and override FormatXTCCspad methods to allow in-memory processing """
+class FormatXTCSingleEvent(FormatXTC):
+  """ Class to stub out and override FormatXTC methods to allow in-memory processing """
   def __init__(self, params, run, detector, **kwargs):
     FormatMultiImageLazy.__init__(self, **kwargs)
     FormatStill.__init__(self, None, **kwargs)
     Format.__init__(self, None, **kwargs)
-
-    self.event = None
-    self._psana_runs = {run.run():run}
-    self._psana_det = {run.run():detector}
-    self.params = params
-    self.params.detector_address = [str(detector.name)]
-    self._cache_psana_pedestals()
-    self._cache_psana_gain()
-
-  def get_raw_data(self, index=None):
-    if index is None: index = 0
-    return super(FormatXTCCspadSingleEvent, self).get_raw_data(index)
-
-  def _get_event(self, index):
-    return self.event
-
-class FormatXTCEpixSingleEvent(FormatXTCEpix):
-  """ Class to stub out and override FormatXTCEpix methods to allow in-memory processing """
-  def __init__(self, params, run, detector, **kwargs):
-    FormatMultiImageLazy.__init__(self, **kwargs)
-    FormatStill.__init__(self, None, **kwargs)
-    Format.__init__(self, None, **kwargs)
-
-    self.event = None
-    self._psana_det = {run.run():detector}
-    self.params = params
-    self.params.detector_address = [str(detector.name)]
-    self._cached_detector = {}
-    self._cached_psana_detectors = {run.run():detector}
-    self._run = run
-
-  def get_raw_data(self, index=None):
-    if index is None: index = 0
-    return super(FormatXTCEpixSingleEvent, self).get_raw_data(index)
-
-  def _get_event(self, index):
-    return self.event
-
-  def get_run_from_index(self, index):
-    return self._run
-
-class FormatXTCJungfrauSingleEvent(FormatXTCJungfrau):
-  """ Class to stub out and override FormatXTCJungfrau methods to allow in-memory processing """
-  def __init__(self, params, run, detector, **kwargs):
-    FormatMultiImageLazy.__init__(self, **kwargs)
-    FormatStill.__init__(self, None, **kwargs)
-    Format.__init__(self, None, **kwargs)
-
     self.event = None
     self.params = params
     self.params.detector_address = [str(detector.name)]
-    self._cached_detector = {}
     self._cached_psana_detectors = {run.run():detector}
     self._beam_index = None
     self._beam_cache = None
     self._run = run
 
-  def get_raw_data(self, index=None):
-    if index is None: index = 0
-    return super(FormatXTCJungfrauSingleEvent, self).get_raw_data(index)
-
   def _get_event(self, index):
     return self.event
 
   def get_run_from_index(self, index):
     return self._run
 
-class FormatXTCRayonixSingleEvent(FormatXTCRayonix):
+class FormatXTCCspadSingleEvent(FormatXTCSingleEvent, FormatXTCCspad):
+  """ Class to stub out and override FormatXTCCspad methods to allow in-memory processing """
+  def __init__(self, params, run, detector, **kwargs):
+    FormatXTCSingleEvent.__init__(self, params, run, detector, **kwargs)
+
+    self._psana_runs = {run.run():run}
+    self._cache_psana_pedestals()
+    self._psana_gain_map_cache = {}
+
+class FormatXTCEpixSingleEvent(FormatXTCSingleEvent, FormatXTCEpix):
+  """ Class to stub out and override FormatXTCEpix methods to allow in-memory processing """
+  def __init__(self, params, run, detector, **kwargs):
+    FormatXTCSingleEvent.__init__(self, params, run, detector, **kwargs)
+
+    self._cached_detector = {}
+
+class FormatXTCJungfrauSingleEvent(FormatXTCSingleEvent, FormatXTCJungfrau):
+  """ Class to stub out and override FormatXTCJungfrau methods to allow in-memory processing """
+  def __init__(self, params, run, detector, **kwargs):
+    FormatXTCSingleEvent.__init__(self, params, run, detector, **kwargs)
+
+    self._cached_detector = {}
+
+class FormatXTCRayonixSingleEvent(FormatXTCSingleEvent, FormatXTCRayonix):
   """ Class to stub out and override FormatXTCJungfrau methods to allow in-memory processing """
   def __init__(self, params, run, detector, **kwargs):
     from xfel.cxi.cspad_ana import rayonix_tbx
     import psana
+    FormatXTCSingleEvent.__init__(self, params, run, detector, **kwargs)
 
-    FormatMultiImageLazy.__init__(self, **kwargs)
-    FormatStill.__init__(self, None, **kwargs)
-    Format.__init__(self, None, **kwargs)
-
-    self.event = None
-    self.params = params
-    self.params.detector_address = [str(detector.name)]
     self._cached_detector = {}
-    self._cached_psana_detectors = {run.run():detector}
 
     cfgs = run.env().configStore()
     rayonix_cfg = cfgs.get(psana.Rayonix.ConfigV2, psana.Source("Rayonix"))
@@ -116,13 +79,6 @@ class FormatXTCRayonixSingleEvent(FormatXTCRayonix):
         bin_size = params.rayonix.bin_size
     self._pixel_size = rayonix_tbx.get_rayonix_pixel_size(bin_size)
     self._image_size = rayonix_tbx.get_rayonix_detector_dimensions(run.env())
-
-  def get_raw_data(self, index=None):
-    if index is None: index = 0
-    return super(FormatXTCRayonixSingleEvent, self).get_raw_data(index)
-
-  def _get_event(self, index):
-    return self.event
 
 class SimpleScript(DSPScript):
   """ Override dials.stills_process Script class to use its load_reference_geometry function """
