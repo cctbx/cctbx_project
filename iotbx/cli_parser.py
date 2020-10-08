@@ -65,9 +65,6 @@ def run_program(program_class=None, custom_process_arguments=None,
                        master_phil=parser.master_phil,
                        logger=logger)
 
-  # custom constructor (optional)
-  task.custom_init()
-
   # validate inputs
   task.validate()
 
