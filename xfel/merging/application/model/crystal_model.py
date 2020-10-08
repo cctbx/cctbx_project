@@ -7,6 +7,7 @@ import libtbx.phil.command_line
 from cctbx import miller
 from cctbx.crystal import symmetry
 from six.moves import cStringIO as StringIO
+import os
 
 class crystal_model(worker):
 
@@ -88,13 +89,14 @@ class crystal_model(worker):
   def create_model_from_structure_file(self, model_file_path):
 
     if self.mpi_helper.rank == 0:
-      assert model_file_path[-4:] in [".pdb", ".cif"]
-      if model_file_path.endswith(".pdb"):
+      model_ext = os.path.splitext(model_file_path)[-1].lower()
+      assert model_ext in [".pdb", ".cif"]
+      if model_ext == ".pdb":
         from iotbx import file_reader
         pdb_in = file_reader.any_file(model_file_path, force_type="pdb")
         pdb_in.assert_file_type("pdb")
         xray_structure = pdb_in.file_object.xray_structure_simple()
-      elif model_file_path.endswith(".cif"):
+      elif model_ext == ".cif":
         from cctbx.xray import structure
         xs_dict = structure.from_cif(file_path=model_file_path)
         assert len(xs_dict) == 1, "CIF should contain only one xray structure"
