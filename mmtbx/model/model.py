@@ -1303,7 +1303,7 @@ class manager(object):
         allow_missing_symmetry = True)
     acp = self._processed_pdb_file.all_chain_proxies
     self._atom_selection_cache = acp.pdb_hierarchy.atom_selection_cache()
-    self._pdb_hierarchy = acp.pdb_hierarchy
+    self._pdb_hierarchy        = acp.pdb_hierarchy
     self.link_records_in_pdb_format = link_record_output(acp)
     xray_structure_all = \
           self._processed_pdb_file.xray_structure(show_summary = False)
@@ -1322,10 +1322,9 @@ class manager(object):
     self._xray_structure = xray_structure_all
 
     self._crystal_symmetry = self._xray_structure.crystal_symmetry()
-
     self._mon_lib_srv = processed_pdb_files_srv.mon_lib_srv
-    self._ener_lib = processed_pdb_files_srv.ener_lib
-    self._ncs_obj = self._processed_pdb_file.ncs_obj
+    self._ener_lib    = processed_pdb_files_srv.ener_lib
+    self._ncs_obj     = self._processed_pdb_file.ncs_obj
     self._update_has_hd()
     #
     scattering_type_registry = acp.scattering_type_registry
