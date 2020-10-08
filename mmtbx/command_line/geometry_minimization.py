@@ -14,6 +14,7 @@ from six.moves import cStringIO as StringIO
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.hydrogens import riding
 import mmtbx.model
+from cctbx import uctbx
 
 base_params_str = """\
 silent = False
@@ -331,9 +332,9 @@ class run(object):
       cs=pdb_inp.crystal_symmetry()
     if(cs is None):
       is_non_crystallographic_unit_cell = True
-      cs = pdb_inp.xray_structure_simple().\
-          cubic_unit_cell_around_centered_scatterers(
-          buffer_size = 10).crystal_symmetry()
+      box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+        sites_cart   = pdb_inp.atoms().extract_xyz(),
+        buffer_layer = 10)
     cif_objects = list(self.inputs.cif_objects)
     if (len(self.params.restraints) > 0):
       import iotbx.cif
