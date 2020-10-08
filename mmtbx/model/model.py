@@ -898,8 +898,6 @@ class manager(object):
     return self.restraints_manager is not None
 
   def get_restraints_manager(self):
-    if not self.restraints_manager_available():
-      self.process_input_model(make_restraints=True)
     return self.restraints_manager
 
   def set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(self,value):
@@ -1304,7 +1302,6 @@ class manager(object):
     acp = self._processed_pdb_file.all_chain_proxies
     self._atom_selection_cache = acp.pdb_hierarchy.atom_selection_cache()
     self._pdb_hierarchy        = acp.pdb_hierarchy
-    self.link_records_in_pdb_format = link_record_output(acp)
     xray_structure_all = \
           self._processed_pdb_file.xray_structure(show_summary = False)
     # XXX ad hoc manipulation
@@ -1353,6 +1350,8 @@ class manager(object):
     # Reason: contents of model and _model_input can get out of sync any time.
     self._model_input = None
     self._processed_pdb_file = None
+    # Order of calling this matetrs!
+    self.link_records_in_pdb_format = link_record_output(acp)
 
   def has_hd(self):
     if self._has_hd is None:
