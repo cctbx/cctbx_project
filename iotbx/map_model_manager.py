@@ -707,7 +707,7 @@ class map_model_manager(object):
     '''
     Return any map manager
     '''
-    keys = self.map_dict().keys()
+    keys = list(self.map_dict().keys())
     if not keys:
       return
     else:

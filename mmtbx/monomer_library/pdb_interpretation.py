@@ -1717,7 +1717,7 @@ class link_match(object):
     return 0
 
   def __eq__(self, other):
-    if __lt__(other) == 0 and __gt__(other) == 0:
+    if self.__lt__(other) == 0 and self.__gt__(other) == 0:
       return 1
     return 0
 
