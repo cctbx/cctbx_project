@@ -189,7 +189,7 @@ class molprobity(slots_getstate_setstate):
       xray_structure = self.model.get_xray_structure()
       geometry_restraints_manager = self.model.get_restraints_manager().geometry
       crystal_symmetry = self.model.crystal_symmetry()
-      all_chain_proxies = self.model.all_chain_proxies
+      all_chain_proxies = None
     else:
       assert (pdb_hierarchy is not None)
       xray_structure = None

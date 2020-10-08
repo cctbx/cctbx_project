@@ -229,7 +229,6 @@ class manager(object):
 
 
     self.link_records_in_pdb_format = None # Nigel's stuff up to refactoring
-    self.all_chain_proxies = None # Used for smart selections.
     self._all_monomer_mappings = None
 
     # These are new
@@ -540,7 +539,6 @@ class manager(object):
   def set_restraint_objects(self, restraint_objects):
     self._restraint_objects = restraint_objects
     self.unset_restraints_manager()
-    self.all_chain_proxies = None
 
   def get_monomer_parameters(self):
     return self._monomer_parameters
@@ -1285,28 +1283,26 @@ class manager(object):
         custom_nb_excl     = None,
         run_clash_guard    = False):
     self._processed = True
+    pip = self._pdb_interpretation_params
     processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
-        crystal_symmetry          = self.crystal_symmetry(),
-        pdb_interpretation_params = self._pdb_interpretation_params.pdb_interpretation,
-        stop_for_unknowns         = self._stop_for_unknowns,
-        log                       = self.log,
-        cif_objects               = self._restraint_objects,
-        cif_parameters            = self._monomer_parameters, # mmtbx.utils.cif_params scope - should be refactored to remove
-        mon_lib_srv               = None,
-        ener_lib                  = None,
-        use_neutron_distances     = self._pdb_interpretation_params.pdb_interpretation.use_neutron_distances)
-    if self._processed_pdb_file is None:
-      self._processed_pdb_file, junk = processed_pdb_files_srv.process_pdb_files(
-          pdb_inp = self._model_input,
-          hierarchy = self._pdb_hierarchy,
-          # because hierarchy already extracted
-          # raw_records = flex.split_lines(self._pdb_hierarchy.as_pdb_string()),
-          # stop_if_duplicate_labels = True,
-          allow_missing_symmetry=True)
-    if self.all_chain_proxies is None:
-      self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
-    self._atom_selection_cache = self._processed_pdb_file.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
-    self._pdb_hierarchy = self._processed_pdb_file.all_chain_proxies.pdb_hierarchy
+      crystal_symmetry          = self.crystal_symmetry(),
+      pdb_interpretation_params = pip.pdb_interpretation,
+      stop_for_unknowns         = self._stop_for_unknowns,
+      log                       = self.log,
+      cif_objects               = self._restraint_objects,
+      cif_parameters            = self._monomer_parameters, # mmtbx.utils.cif_params scope - should be refactored to remove
+      mon_lib_srv               = None,
+      ener_lib                  = None,
+      use_neutron_distances     = pip.pdb_interpretation.use_neutron_distances)
+    if(self._processed_pdb_file is None):
+      self._processed_pdb_file, _ = processed_pdb_files_srv.process_pdb_files(
+        pdb_inp                = self._model_input,
+        hierarchy              = self._pdb_hierarchy,
+        allow_missing_symmetry = True)
+    acp = self._processed_pdb_file.all_chain_proxies
+    self._atom_selection_cache = acp.pdb_hierarchy.atom_selection_cache()
+    self._pdb_hierarchy = acp.pdb_hierarchy
+    self.link_records_in_pdb_format = link_record_output(acp)
     xray_structure_all = \
           self._processed_pdb_file.xray_structure(show_summary = False)
     # XXX ad hoc manipulation
@@ -1319,10 +1315,8 @@ class manager(object):
       raise Sorry("Cannot extract xray_structure.")
     if(xray_structure_all.scatterers().size()==0):
       raise Sorry("Empty xray_structure.")
-    if self.all_chain_proxies is not None:
-      self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
-      self._all_monomer_mappings = self.all_chain_proxies.all_monomer_mappings
-      self._site_symmetry_table = self.all_chain_proxies.site_symmetry_table()
+    self._all_monomer_mappings = acp.all_monomer_mappings
+    self._site_symmetry_table = acp.site_symmetry_table()
     self._xray_structure = xray_structure_all
 
     self._crystal_symmetry = self._xray_structure.crystal_symmetry()
@@ -1332,19 +1326,18 @@ class manager(object):
     self._ncs_obj = self._processed_pdb_file.ncs_obj
     self._update_has_hd()
     #
-    if(self.all_chain_proxies is not None):
-      scattering_type_registry = self.all_chain_proxies.scattering_type_registry
-      if(scattering_type_registry.n_unknown_type_symbols() > 0):
-        scattering_type_registry.report(
-          pdb_atoms = self.get_hierarchy().atoms(),
-          log = log,
-          prefix = "",
-          max_lines = None)
-        raise Sorry("Unknown scattering type symbols.\n"
-          "  Possible ways of resolving this error:\n"
-          "    - Edit columns 77-78 in the PDB file to define"
-            " the scattering type.\n"
-          "    - Provide custom monomer definitions for the affected residues.")
+    scattering_type_registry = acp.scattering_type_registry
+    if(scattering_type_registry.n_unknown_type_symbols() > 0):
+      scattering_type_registry.report(
+        pdb_atoms = self.get_hierarchy().atoms(),
+        log = log,
+        prefix = "",
+        max_lines = None)
+      raise Sorry("Unknown scattering type symbols.\n"
+        "  Possible ways of resolving this error:\n"
+        "    - Edit columns 77-78 in the PDB file to define"
+          " the scattering type.\n"
+        "    - Provide custom monomer definitions for the affected residues.")
     #
     if(make_restraints):
       self._setup_restraints_manager(
@@ -1359,7 +1352,6 @@ class manager(object):
     # Reason: contents of model and _model_input can get out of sync any time.
     self._model_input = None
     self._processed_pdb_file = None
-    self.all_chain_proxies = None
 
   def has_hd(self):
     if self._has_hd is None:
@@ -1412,10 +1404,6 @@ class manager(object):
       assume_hydrogens_all_missing = not self.has_hd())
     if run_clash_guard:
       self.raise_clash_guard()
-
-    # Link treating should be rewritten. They should not be saved in
-    # all_chain_proxies and they should support mmcif.
-    self.link_records_in_pdb_format = link_record_output(self._processed_pdb_file.all_chain_proxies)
 
     self._ss_manager = self._processed_pdb_file.ss_manager
 
@@ -2442,7 +2430,6 @@ class manager(object):
     cs = self.crystal_symmetry()
     log = self.log
     scattering_dict_info = self.scattering_dict_info
-    self.all_chain_proxies = None
     self.__init__(
         model_input = pdb_inp,
         crystal_symmetry = cs,
@@ -3068,7 +3055,6 @@ class manager(object):
     self.get_hierarchy().atoms().reset_i_seq()
     if (reset_labels):
       self._sync_xrs_labels()
-    self.all_chain_proxies = None
     self._processed_pdb_file = None
 
   def _sync_xrs_labels(self):
@@ -3436,7 +3422,6 @@ class manager(object):
     # reset
     self.get_hierarchy().atoms().reset_i_seq()
     self._xray_structure = None
-    self._all_chain_proxies = None
     self._update_atom_selection_cache()
     self.restraints_manager = None
 
