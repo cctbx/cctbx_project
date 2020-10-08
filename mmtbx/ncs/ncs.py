@@ -4442,6 +4442,10 @@ class ncs:
   def apply_ncs_to_sites(self, sites_cart=None,ncs_obj=None,
       exclude_identity=False,ncs_id=None):
 
+    if type(sites_cart) == type((1,2,3)): # it was a single site
+      from scitbx.array_family import flex
+      sites_cart = flex.vec3_double((sites_cart,))
+
     if not ncs_obj:
       ncs_obj = self
     from scitbx.array_family import flex

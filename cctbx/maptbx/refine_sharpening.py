@@ -285,24 +285,37 @@ def fit_cc(cc_list=None,sthol_list=None,
       scale_using_last=scale_using_last)
 
 def get_fitted_cc(cc_list=None,sthol_list=None, cc_cut=None,
-   scale_using_last=None,keep_cutoff_point=False,force_scale_using_last=False):
+   scale_using_last=None,keep_cutoff_point=False,force_scale_using_last=False,
+   cutoff_after_last_high_point = False):
   # only do this if there is some value of s where cc is at least 2*cc_cut or
   #  (1-c_cut/2), whichever is smaller
   min_cc=min(2*cc_cut,1-0.5*cc_cut)
   if cc_list.min_max_mean().max < min_cc and (not force_scale_using_last):
     return cc_list
+  # 2020-10-08 instead last point where cc >=cc_cut cutoff_after_last_high_point
   # find first point after point where cc>=min_cc that cc<=cc_cut
   #   then back off by 1 point  # 2019-10-12 don't back off if keep_cutoff_point
   found_high=False
   s_cut=None
   i_cut=0
-  for s,cc in zip(sthol_list,cc_list):
-    if cc > min_cc:
-      found_high=True
-    if found_high and cc < cc_cut:
-      s_cut=s
-      break
-    i_cut+=1
+  if (not cutoff_after_last_high_point):
+    for s,cc in zip(sthol_list,cc_list):
+      if cc > min_cc:
+        found_high=True
+      if found_high and cc < cc_cut:
+        s_cut=s
+        break
+      i_cut+=1
+  else:
+    ii=0
+    for s,cc in zip(sthol_list,cc_list):
+      if cc > min_cc:
+        found_high=True
+      if found_high and cc >= cc_cut:
+        s_cut = s
+        i_cut = ii
+      ii += 1
+
   if force_scale_using_last:
     scale_using_last=True
     s_cut=sthol_list[0]
@@ -391,8 +404,17 @@ def calculate_fsc(si=None,
      optimize_b_eff = None,
      low_res_bins = 3,
      direction_vector = None,
+     direction_vectors = None,
+     smooth_fsc = None,
+     cutoff_after_last_high_point = None,
      out=sys.stdout):
 
+  '''
+    Calculate FSC of 2 maps and estimate scale factors
+    If direction_vector or direction_vectors supplied, calculate
+     CC values weighted by abs() component along direction vector
+    If list of direction vectors, return group_args with si objects
+  '''
   # calculate anticipated fall-off of model data with resolution
   if si.rmsd is None and is_model_based:
     if not rmsd_resolution_factor:
@@ -438,7 +460,6 @@ def calculate_fsc(si=None,
 
   ratio_list=flex.double()
   target_sthol2=flex.double()
-  cc_list=flex.double()
   sthol_list=flex.double()
   d_min_list=flex.double()
   rms_fo_list=flex.double()
@@ -446,12 +467,24 @@ def calculate_fsc(si=None,
   max_possible_cc=None
   n_list = flex.double()
 
-  if direction_vector:
-    weights_para = get_weights_para(f_array, direction_vector)
-
-
+  if direction_vectors:
+    pass # already ok
+  elif direction_vector:
+    direction_vectors = [direction_vector]
   else:
-    weights_para = None
+    direction_vectors = [None]
+
+  cc_dict_by_dv = {}
+  rms_fo_dict_by_dv = {}
+  rms_fc_dict_by_dv = {}
+  ratio_dict_by_dv = {}
+  i = 0
+  for dv in direction_vectors:
+    cc_dict_by_dv [i] = flex.double()
+    rms_fo_dict_by_dv [i] = flex.double()
+    rms_fc_dict_by_dv [i] = flex.double()
+    ratio_dict_by_dv [i] = flex.double()
+    i += 1
 
   for i_bin in f_array.binner().range_used():
     sel       = f_array.binner().selection(i_bin)
@@ -465,39 +498,73 @@ def calculate_fsc(si=None,
     n         = d.size()
     m1        = mc1.select(sel)
     m2        = mc2.select(sel)
-    if weights_para:
-      w1 = weights_para.select(sel)
-      m1=m1.customized_copy(data = m1.data() *w1)
-      m2=m2.customized_copy(data = m2.data() *w1)
-    cc        = m1.map_correlation(other = m2)
 
-    if external_map_coeffs:
-      cc=1.
-
-    if fo_map:
-      fo        = fo_map.select(sel)
-      f_array_fo=map_coeffs_to_fp(fo)
-      rms_fo=f_array_fo.data().norm()
-    else:
-      rms_fo=1.
-
+    cc = None
+    i = 0
     if fc_map:
       fc        = fc_map.select(sel)
-      f_array_fc=map_coeffs_to_fp(fc)
-      rms_fc=f_array_fc.data().norm()
     else:
-      rms_fc=1.
+      fc = None
+    if fo_map:
+          fo        = fo_map.select(sel)
+    else:
+      fo = None
+    for dv in direction_vectors:
+      if dv:
+        sel_para = get_sel_para(m1, dv)  # selection
+        m1a=m1.select(sel_para)
+        m2a=m2.select(sel_para)
+        cca        = m1a.map_correlation(other = m2a)
+        if cca is None:
+          cca=0.
+        cc_dict_by_dv[i].append(cca)
+        if fo_map:
+          fo_a = fo.select(sel_para)
+          f_array_fo=map_coeffs_to_fp(fo_a)
+          rms_fo=f_array_fo.data().norm()
+        else:
+          rms_fo=1.
+
+        if fc_map:
+          fc_a  = fc.select(sel_para)
+          f_array_fc=map_coeffs_to_fp(fc_a)
+          rms_fc=f_array_fc.data().norm()
+        else:
+          rms_fc=1.
+
+        rms_fo_dict_by_dv[i].append(rms_fo)
+        rms_fc_dict_by_dv[i].append(rms_fc)
+        ratio_dict_by_dv[i].append(max(1.e-10,rms_fc)/max(1.e-10,rms_fo))
+
+        i += 1
+        if (cca is not None) and (cc is None):
+          cc = cca # save first one
+      else:
+        cc        = m1.map_correlation(other = m2)
+        if external_map_coeffs: # only for no direction vectors
+          cc=1.
+        cc_dict_by_dv[i].append(cc)
+        if fo_map:
+          f_array_fo=map_coeffs_to_fp(fo)
+          rms_fo=f_array_fo.data().norm()
+        else:
+          rms_fo=1.
+
+        if fc_map:
+          f_array_fc=map_coeffs_to_fp(fc)
+          rms_fc=f_array_fc.data().norm()
+        else:
+          rms_fc=1.
+        rms_fo_dict_by_dv[i].append(rms_fo)
+        rms_fc_dict_by_dv[i].append(rms_fc)
+        ratio_dict_by_dv[i].append(max(1.e-10,rms_fc)/max(1.e-10,rms_fo))
 
     sthol2=0.25/d_avg**2
-    ratio_list.append(max(1.e-10,rms_fc)/max(1.e-10,rms_fo))
     target_sthol2.append(sthol2)
-    if cc is None: cc=0.
-    cc_list.append(cc)
     sthol_list.append(1/d_avg)
     d_min_list.append(d_min)
-    rms_fo_list.append(rms_fo)
-    rms_fc_list.append(rms_fc)
     n_list.append(m1.size())
+
 
     if b_eff is not None:
       max_cc_estimate=cc* math.exp(min(20.,sthol2*b_eff))
@@ -511,6 +578,127 @@ def calculate_fsc(si=None,
       print("d_min: %5.1f  FC: %7.1f  FOBS: %7.1f   CC: %5.2f" %(
       d_avg,rms_fc,rms_fo,cc), file=out)
 
+  input_info = group_args(
+     f_array = f_array,
+     n_list = n_list,
+     target_sthol2 = target_sthol2,
+     d_min_list = d_min_list,
+     pseudo_likelihood = pseudo_likelihood,
+     equalize_power = equalize_power,
+     is_model_based = is_model_based,
+     skip_scale_factor = skip_scale_factor,
+     maximum_scale_factor = maximum_scale_factor,
+     out = out)
+
+  # Now apply analyses on each cc_list (if more than one)
+  si_list = []
+  for i in range(len(direction_vectors)):
+    if smooth_fsc:
+      ratio_list = ratio_dict_by_dv[i]
+      rms_fo_list = rms_fo_dict_by_dv[i]
+      rms_fc_list = rms_fc_dict_by_dv[i]
+      cc_list = smooth_values(cc_dict_by_dv[i])
+    else:
+      ratio_list = ratio_dict_by_dv[i]
+      rms_fo_list = rms_fo_dict_by_dv[i]
+      rms_fc_list = rms_fc_dict_by_dv[i]
+      cc_list = cc_dict_by_dv[i]
+    if len(direction_vectors) > 1:
+      working_si = deepcopy(si)
+    else:
+      working_si = si  # so we can modify it in place
+    working_si = complete_cc_analysis(
+       direction_vector,
+       cc_list,
+       rms_fc_list,
+       rms_fo_list,
+       ratio_list,
+       scale_using_last,
+       max_cc_for_rescale,
+       optimize_b_eff,
+       is_model_based,
+       sthol_list,
+       cc_cut,
+       max_possible_cc,
+       fraction_complete,
+       min_fraction_complete,
+       low_res_bins,
+       working_si,
+       b_eff,
+       input_info,
+       cutoff_after_last_high_point,
+       out)
+    si_list.append(working_si)
+  if direction_vectors == [None]:
+    return si_list[0]
+  else:
+    return group_args(
+     group_args_type = 'scaling_info objects, one set per direction_vector',
+     direction_vectors = direction_vectors,
+     scaling_info_list = si_list)
+
+def smooth_values(cc_values, max_relative_rms=10, n_smooth = None,
+    skip_first_frac = 0.1): # normally do not smooth the very first ones
+  skip_first = max (1, int(0.5+skip_first_frac*cc_values.size()))
+
+  if n_smooth:
+    # smooth with window of n_smooth
+    new_cc_values = flex.double()
+    for i in range(cc_values.size()):
+      if i < skip_first:
+        new_cc_values.append(cc_values[i])
+      else:
+        sum=0.
+        sum_n=0.
+        for j in range(-n_smooth, n_smooth+1):
+          weight = 1/(1+(abs(j)/n_smooth)) # just less as we go out
+          k = i+j
+          if k < 0 or k >= cc_values.size(): continue
+          sum += cc_values[k] * weight
+          sum_n += weight
+        new_cc_values.append(sum/max(1.e-10,sum_n))
+    return new_cc_values
+
+  # Smooth values in cc_values  max_relative_rms is avg rms / avg delta
+  if relative_rms(cc_values) <= max_relative_rms:
+    return cc_values
+  for i in range(1,cc_values.size()//2):
+    smoothed_cc_values=smooth_values(cc_values,n_smooth=i)
+    if relative_rms(smoothed_cc_values) <= max_relative_rms:
+      return smoothed_cc_values
+  smoothed_cc_values=smooth_values(cc_values,n_smooth=cc_values.size()//2)
+  return smoothed_cc_values
+
+
+def relative_rms(cc_values):
+  diffs = cc_values[:-1] - cc_values[1:]
+  avg_delta = abs(diffs.min_max_mean().mean)
+  rms = diffs.standard_deviation_of_the_sample()
+  return rms/max(1.e-10,avg_delta)
+
+def complete_cc_analysis(
+       direction_vector,
+       cc_list,
+       rms_fc_list,
+       rms_fo_list,
+       ratio_list,
+       scale_using_last,
+       max_cc_for_rescale,
+       optimize_b_eff,
+       is_model_based,
+       sthol_list,
+       cc_cut,
+       max_possible_cc,
+       fraction_complete,
+       min_fraction_complete,
+       low_res_bins,
+       si,
+       b_eff,
+       input_info,
+       cutoff_after_last_high_point,
+       out):
+
+
   if scale_using_last: # rescale to give final value average==0
     cc_list,baseline=rescale_cc_list(
        cc_list=cc_list,scale_using_last=scale_using_last,
@@ -523,7 +711,8 @@ def calculate_fsc(si=None,
   if is_model_based: # jut smooth cc if nec
     fitted_cc=get_fitted_cc(
       cc_list=cc_list,sthol_list=sthol_list,cc_cut=cc_cut,
-      scale_using_last=scale_using_last)
+      scale_using_last=scale_using_last,
+      cutoff_after_last_high_point = cutoff_after_last_high_point,)
     cc_list=fitted_cc
     text=" FIT "
   else:
@@ -533,7 +722,6 @@ def calculate_fsc(si=None,
 
   if not max_possible_cc:
     max_possible_cc=0.01
-
   if si.target_scale_factors: # not using these
     max_possible_cc=1.
     fraction_complete=1.
@@ -554,39 +742,41 @@ def calculate_fsc(si=None,
       "Using fraction complete value of %5.2f "  %(fraction_complete), file=out)
       max_possible_cc=fraction_complete**0.5
 
-  input_info = group_args(
-     f_array = f_array,
-     ratio_list = ratio_list,
-     rms_fo_list = rms_fo_list,
-     cc_list = cc_list,
-     n_list = n_list,
-     target_sthol2 = target_sthol2,
-     d_min_list = d_min_list,
-     max_possible_cc = max_possible_cc,
-     pseudo_likelihood = pseudo_likelihood,
-     equalize_power = equalize_power,
-     is_model_based = is_model_based,
-     skip_scale_factor = skip_scale_factor,
-     maximum_scale_factor = maximum_scale_factor,
-     b_eff = b_eff,
-     out = out)
-
   if optimize_b_eff and is_model_based:
     ''' Find b_eff that maximizes expected map-model-cc to model with B=0'''
     best_b_eff = b_eff
-    best_weighted_cc = get_target_scale_factors(**input_info()).weighted_cc
+    best_weighted_cc = get_target_scale_factors(
+      cc_list=cc_list,
+      rms_fo_list=rms_fo_list,
+      ratio_list=ratio_list,
+      b_eff=b_eff,
+      **input_info()).weighted_cc
     for i in range(20):
-      input_info.b_eff = 0.1 * i * b_eff
-      weighted_cc=get_target_scale_factors(**input_info()).weighted_cc
+      b_eff_working = 0.1 * i * b_eff
+      weighted_cc=get_target_scale_factors(
+         cc_list=cc_list,
+         rms_fo_list=rms_fo_list,
+         ratio_list=ratio_list,
+         b_eff = b_eff_working,
+         **input_info()).weighted_cc
       if weighted_cc > best_weighted_cc:
-        best_b_eff = input_info.b_eff
+        best_b_eff = b_eff_working
         best_weighted_cc = weighted_cc
     print("Optimized effective B value: %.3f A**2 " %(best_b_eff),file=out)
     b_eff = best_b_eff
 
-  info = get_target_scale_factors(**input_info())
+  info = get_target_scale_factors(
+      cc_list=cc_list,
+      rms_fo_list=rms_fo_list,
+      ratio_list=ratio_list,
+      b_eff=b_eff,
+      max_possible_cc=max_possible_cc,**input_info())
   target_scale_factors = info.target_scale_factors
 
+
+  if direction_vector:
+    print ("\n Analysis for direction vector (%5.2f, %5.2f, %5.2f): "% (
+      direction_vector), file = out)
 
   if fraction_complete < min_fraction_complete:
     print("\nFraction complete (%5.2f) is less than minimum (%5.2f)..." %(
@@ -600,27 +790,36 @@ def calculate_fsc(si=None,
   print("  d_min     rmsFo       rmsFc    CC      %s  Scale" %(text), file=out)
 
   for sthol2,scale,rms_fo,cc,rms_fc,orig_cc in zip(
-     target_sthol2,target_scale_factors,rms_fo_list,cc_list,rms_fc_list,
+     input_info.target_sthol2,target_scale_factors,rms_fo_list,
+      cc_list,rms_fc_list,
       original_cc_list):
      print("%7.2f  %9.1f  %9.1f %7.3f  %7.3f  %5.2f" %(
        0.5/sthol2**0.5,rms_fo,rms_fc,orig_cc,cc,scale), file=out)
 
   si.target_scale_factors=target_scale_factors
-  si.target_sthol2=target_sthol2
-  si.d_min_list=d_min_list
+  si.target_sthol2=input_info.target_sthol2
+  si.d_min_list=input_info.d_min_list
   si.cc_list=cc_list
   si.low_res_cc = cc_list[:low_res_bins].min_max_mean().mean # low-res average
 
   return si
 
-def get_weights_para(f_array, direction_vector):
-    # get weights based on |dot(normalized_indices, direction_vector)|
-    weights_para = flex.double
+def get_sel_para(f_array, direction_vector, minimum_dot = 0.70):
+    # get selections based on |dot(normalized_indices, direction_vector)|
     indices_vec3_double=f_array.indices().as_vec3_double()
     norms=indices_vec3_double.norms()
     norms.set_selected((norms == 0),1)
     index_directions = indices_vec3_double/norms
-    weights_para = flex.abs(index_directions.dot(direction_vector))
+    sel = (flex.abs(index_directions.dot(direction_vector)) > minimum_dot)
+    return sel
+
+def get_weights_para(f_array, direction_vector, minimum_dot = 0.70,
+     weight_by_dot = None):
+    sel = get_sel_para(f_array, direction_vector, minimum_dot = minimum_dot)
+    # get weights based on |dot(normalized_indices, direction_vector)|
+    # TODO: ZZZ put in cosine weighting
+    weights_para=flex.double(sel.size(),1)
+    weights_para.set_selected(~sel,0)
     return weights_para
 
 def get_target_scale_factors(
@@ -655,7 +854,7 @@ def get_target_scale_factors(
     d_min=d_min_list[index]
 
 
-    corrected_cc=max(0.00001,min(1.,cc/max_possible_cc))
+    corrected_cc=max(0.00001,min(1.,cc/max(1.e-10,max_possible_cc)))
 
     if (not is_model_based): # cc is already cc*
       scale_on_fo=ratio * corrected_cc
@@ -679,7 +878,7 @@ def get_target_scale_factors(
 
   if not pseudo_likelihood and not skip_scale_factor: # normalize
     avg_scale_on_fo = (sum_w_scale/sum_w)**0.5
-    if equalize_power:
+    if equalize_power: # XXX do not do this if only 1 bin has values > 0
       scale_factor = 1/avg_scale_on_fo
     else: # usual
       scale_factor=1./target_scale_factors.min_max_mean().max
@@ -741,18 +940,24 @@ def scale_amplitudes(model_map_coeffs=None,
     out=sys.stdout):
   # Figure out resolution_dependent sharpening to optimally
   #  match map and model. Then apply it as usual.
-  #  if second_half_map_coeffs instead of model, use second_half_map_coeffs same as
+  #  if second_half_map_coeffs instead of model,
+  #     use second_half_map_coeffs same as
   #    normalized model map_coeffs, except that the target fall-off should be
   #    skipped (could use fall-off based on a dummy model...)
 
   if model_map_coeffs and (
       not first_half_map_coeffs or not second_half_map_coeffs):
     is_model_based=True
-  else:
-    assert si.target_scale_factors or (
+  elif si.target_scale_factors or (
        first_half_map_coeffs and second_half_map_coeffs) or (
-        external_map_coeffs)
+        external_map_coeffs):
     is_model_based=False
+  else:
+    assert map_coeffs
+    if si.is_model_sharpening():
+      is_model_based=True
+    else:
+      is_model_based=False
 
   if si.verbose and not verbose:
     verbose=True

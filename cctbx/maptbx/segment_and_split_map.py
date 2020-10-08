@@ -11251,7 +11251,6 @@ def run_auto_sharpen(
     print("\nOverall best sharpening method: %s Score: %7.3f\n" %(
        best_si.sharpening_method, best_si.score), file = out)
     best_si.show_summary(out = out)
-
   if (not best_si.is_model_sharpening()) and \
        (not best_si.is_half_map_sharpening()) and null_si:
     if best_si.score>null_si.score:  # we improved them..

@@ -41,11 +41,13 @@ class with_bounds(object):
      upper_bounds,
      model = None,
      wrapping = None,
+     model_can_be_outside_bounds = False,
      log = sys.stdout):
     self.lower_bounds = lower_bounds
     self.upper_bounds = upper_bounds
     self._map_manager = map_manager
     self._model = model
+    self.model_can_be_outside_bounds = model_can_be_outside_bounds
 
 
     # safeguards
@@ -278,7 +280,8 @@ class with_bounds(object):
        )
 
     # if wrapping is False, check to see if model is outside the box
-    if not self.map_manager().wrapping():
+    if (not self.map_manager().wrapping()) and (
+        not self.model_can_be_outside_bounds):
       if not model.is_inside_working_cell():
         self._warning_message += "\nWARNING: Model is not entirely "+\
           "inside working cell and wrapping is False"
@@ -324,10 +327,12 @@ class around_model(with_bounds):
   """
   def __init__(self, map_manager, model, box_cushion,
       wrapping = None,
+      model_can_be_outside_bounds = False,
       log = sys.stdout):
 
     self._map_manager = map_manager
     self._model = model
+    self.model_can_be_outside_bounds = model_can_be_outside_bounds
 
     self._force_wrapping = wrapping
     if wrapping is None:
@@ -591,10 +596,12 @@ class around_mask(with_bounds):
      model = None,
      box_cushion = 3,
      wrapping = None,
+     model_can_be_outside_bounds = False,
      log = sys.stdout):
 
     self._map_manager = map_manager
     self._model = model
+    self.model_can_be_outside_bounds = model_can_be_outside_bounds
     assert map_manager.shift_cart()==mask_as_map_manager.shift_cart()
 
     # safeguards
@@ -691,10 +698,12 @@ class around_density(with_bounds):
      get_half_height_width = True,
      model = None,
      wrapping = None,
+     model_can_be_outside_bounds = False,
      log = sys.stdout):
 
     self._map_manager = map_manager
     self._model = model
+    self.model_can_be_outside_bounds = model_can_be_outside_bounds
 
     # safeguards
     assert threshold is not None
