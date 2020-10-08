@@ -1359,6 +1359,7 @@ class manager(object):
     # Reason: contents of model and _model_input can get out of sync any time.
     self._model_input = None
     self._processed_pdb_file = None
+    self.all_chain_proxies = None
 
   def has_hd(self):
     if self._has_hd is None:

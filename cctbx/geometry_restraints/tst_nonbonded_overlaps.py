@@ -1091,13 +1091,7 @@ def process_raw_records(
   return result
 
 def get_macro_mol_sel(model):
-  proxies = model.all_chain_proxies
-  cache = proxies.pdb_hierarchy.atom_selection_cache()
-  macro_mol_sel = proxies.selection(
-    cache  = cache,
-    string = 'protein or dna or rna')
-  return macro_mol_sel
-
+  return model.selection(string = 'protein or dna or rna')
 
 def run_selected_tests():
   """  Run selected tests

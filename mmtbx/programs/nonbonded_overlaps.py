@@ -104,10 +104,7 @@ Example:
 
     # TODO: do we need macro_mol_sel, do we care?
     # If we use model.select(), we don't need it.
-    proxies = readyset_model.all_chain_proxies
-    cache = proxies.pdb_hierarchy.atom_selection_cache()
-    macro_mol_sel = proxies.selection(
-      cache  = cache,
+    macro_mol_sel = readyset_model.selection(
       string = 'protein or dna or rna')
 
     #t0 = time.time()
