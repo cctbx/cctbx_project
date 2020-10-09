@@ -27,6 +27,11 @@ from __future__ import absolute_import, division, print_function
 import sys
 import os
 import re
+try:
+  from phenix.program_template import ProgramTemplate
+except ImportError:
+  from libtbx.program_template import ProgramTemplate
+
 import libtbx.load_env
 import iotbx.pdb
 import mmtbx.model
@@ -34,10 +39,12 @@ from libtbx.utils import null_out
 
 import mmtbx.chemical_components as chemical_components
 
-#{{{ get_summary
-def get_summary():
-  summary = """
-  iotbx.pdb_remediator model.pdb [params.eff] [options ...]
+class Program(ProgramTemplate):
+
+  description = """
+Program for converting a PDB format file to version 3.2 or 2.3.
+
+iotbx.pdb_remediator model.pdb [params.eff] [options ...]
 
 Options:
 
@@ -57,8 +64,17 @@ Convert version 3.2 file to version 2.3 naming:
 
   iotbx.pdb_remediator model.pdb version=2.3 > model_2.3.pdb_file
 """
-  return summary
-#}}}
+  datatypes = ['model']
+  results = ""
+
+  def run(self):
+    model = self.data_manager.get_model()
+    if self.params.version == 2.3:
+      print("version 2.3")
+
+  def get_results(self):
+    return self.results
+
 
 #{{{ pre_screen_file
 def pre_screen_file(filename, atom_exch, alt_atom_exch):
@@ -149,19 +165,30 @@ def justify_atom_names(atom_name):
   else:
     return atom_name.center(4)
 
-
 def build_hash_from_chem_components(residue_name, convert_to_new=True, build_all_atoms=False):
   atom_exch = {}
   amino_acids = [ "ALA","ARG","ASN","ASP","ASX","CSE","CYS","GLN","GLU","GLX","GLY","HIS","ILE",
     "LEU","LYS","MET","MSE","PHE","PRO","SER","THR","TRP","TYR","VAL" ]
-  if build_all_atoms and (residue_name in amino_acids): # covers the case where the N terminal Hs aren't in chem comps
-    atom_exch[" H1  "+residue_name] = " 1H  "+residue_name
-    atom_exch[" H2  "+residue_name] = " 2H  "+residue_name
-    atom_exch[" H3  "+residue_name] = " 3H  "+residue_name
+  old_atom_name_exceptions = ["1H  ", "2H  ", "3H  "]
+  new_atom_name_exceptions = [" H1 ", " H2 ", " H3 "]
+  if residue_name in amino_acids: # covers the case where the N terminal Hs aren't in chem comps
+    for new_atom, old_atom in zip(new_atom_name_exceptions, old_atom_name_exceptions):
+      if convert_to_new:
+        atom_exch[old_atom+" "+residue_name] = new_atom+" "+residue_name
+      else:
+        atom_exch[new_atom+" "+residue_name] = old_atom+" "+residue_name
   na_bases = ["  A", "  C", "  T", "  G", "  I", "  U"]
+  na_old_atom_name_exceptions = ["H5T "] # it's difficult in 2020 to figure out the proper spacing for this old style atom name
+  na_new_atom_name_exceptions = ["HO5'"]
   residues_to_test = [ residue_name ]
   if (residue_name in na_bases):
     residues_to_test.append(" D"+residue_name[2])
+    for nucleic_acid in residues_to_test:
+      for new_atom, old_atom in zip(na_new_atom_name_exceptions, na_old_atom_name_exceptions):
+        if convert_to_new:
+          atom_exch[old_atom+" "+nucleic_acid] = new_atom+" "+nucleic_acid
+        else:
+          atom_exch[new_atom+" "+nucleic_acid] = old_atom+" "+nucleic_acid
   for residue in residues_to_test:
     if (chemical_components.is_code(residue)):
       #sys.stderr.write(residue_name+" is in chem_components\n")
@@ -202,15 +229,37 @@ def is_model_v3(model):
     res_name = atom.id_str()[10:13]
     if not res_name in residues_dict:
       residues_dict[res_name] = build_hash_from_chem_components(res_name, convert_to_new=False, build_all_atoms=True)
-      print(res_name+"\n"+str(residues_dict[res_name]))
+      #print(res_name+"\n"+str(residues_dict[res_name]))
     atom_exch_dict = residues_dict[res_name]
     if not atom.name+" "+res_name in atom_exch_dict:
-      print("|"+atom.name +"| is missing from "+res_name)
+      print("|"+atom.name +"| does not seem to be v3 in "+res_name)
       non_v3_atoms_count=non_v3_atoms_count+1
     #print(atom.name)
   return non_v3_atoms_count == 0
 
+def remediate_model_object(model, convert_to_new):
+  residues_dict = {}
+  non_v3_atoms_count = 0
 
+  pdb_hierarchy = model.get_hierarchy()
+  residue_groups = pdb_hierarchy.residue_groups()
+  for residue_group in residue_groups:
+    atom_groups = residue_group.atom_groups()
+    for atom_group in atom_groups:
+      res_name = atom_group.resname
+
+      for atom in atom_group.atoms():
+        if not res_name in residues_dict:
+          residues_dict[res_name] = build_hash_from_chem_components(res_name, convert_to_new=convert_to_new, build_all_atoms=False)
+          #print(resid+"\n"+str(residues_dict[resid]))
+        atom_exch_dict = residues_dict[res_name]
+        if atom.name+" "+res_name in atom_exch_dict:
+          new_entry = atom_exch_dict.get(atom.name+" "+res_name)
+          #print(new_entry[0:4])
+          atom.set_name(new_entry[0:4])
+          non_v3_atoms_count=non_v3_atoms_count+1
+        #print(atom.name)
+  return model
 
 def remediate_atomic_line(line, atom_exch):
   #--make any left-justified residue names right-justified------------------
@@ -292,7 +341,7 @@ def remediate(filename, remediated_out, f=None):
       remark_flag = True
     if previous == current:
       print_line += line + "\n"
-    elif previous != current: # appears to check an entire residue for dna residue names
+    elif previous != current: # appears to check an entire residue for dna residue/atom names
       if re.search(r'^.{12}.\S..  .[ACTGIU]',print_line):
         if re.search(r'O2[\'|\*]   .',print_line) == None:
           DNA_base = previous[1]
