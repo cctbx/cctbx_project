@@ -4378,7 +4378,7 @@ class match_map_model_ncs(object):
         coordinate_shift = shift_to_apply_cart,
         new_shift_cart = new_full_shift_cart,
         final_crystal_symmetry = self._map_manager.crystal_symmetry(),
-        final_unit_cell_crystal_symmetry = 
+        final_unit_cell_crystal_symmetry =
            self._map_manager.unit_cell_crystal_symmetry(),
         model = self._model)
 
@@ -4434,7 +4434,7 @@ class match_map_model_ncs(object):
     '''
     Shift a model based on the coordinate shift for the working map.
 
-    Also match the crystal_symmetry and unit_cell_crystal_symmery 
+    Also match the crystal_symmetry and unit_cell_crystal_symmetry
       of the model to the map, unless specified as final_crystal_symmetry
       and final_unit_cell_crystal_symmetry.
 
