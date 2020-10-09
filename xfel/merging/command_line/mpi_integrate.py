@@ -65,9 +65,14 @@ integrate_phil_str = '''
   }
 '''
 
-from dials.command_line.stills_process import program_defaults_phil_str
+program_defaults_phil_str = """
+input.keep_imagesets=True
+input.parallel_file_load.reset_experiment_id_column = True
+"""
+
+from dials.command_line.stills_process import program_defaults_phil_str as dials_program_defaults_phil_str
 from xfel.merging.application.phil.phil import dispatch_phil, input_phil, output_phil
-phil_scope = parse(integrate_phil_str + dispatch_phil + input_phil + output_phil, process_includes=True).fetch(parse(program_defaults_phil_str))
+phil_scope = parse(integrate_phil_str + dispatch_phil + input_phil + output_phil, process_includes=True).fetch(parse(dials_program_defaults_phil_str)).fetch(parse(program_defaults_phil_str))
 import xfel.merging.application.phil.phil
 xfel.merging.application.phil.phil.phil_scope = phil_scope
 
