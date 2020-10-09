@@ -486,7 +486,8 @@ void diffBragg::update_dxtbx_geoms(
     int panel_id,
     double panel_rot_angO,
     double panel_rot_angF,
-    double panel_rot_angS, double panel_offsetX, double panel_offsetY, double panel_offsetZ){
+    double panel_rot_angS, double panel_offsetX, double panel_offsetY, double panel_offsetZ,
+    bool force){
 
     /* BEAM properties first */
 
@@ -563,7 +564,7 @@ void diffBragg::update_dxtbx_geoms(
         n_rot_refine ++;
     if (panels[5]->refine_me)
         n_rot_refine ++;
-    if (n_rot_refine  > 0){
+    if (n_rot_refine  > 0 || force){
         rotate_fs_ss_vecs_3D(panel_rot_angO, panel_rot_angF, panel_rot_angS);
 
         /* reset orthogonal vector to the detector pixel array after rotation */

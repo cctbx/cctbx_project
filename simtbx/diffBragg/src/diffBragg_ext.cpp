@@ -229,7 +229,7 @@ namespace boost_python { namespace {
               arg_("panel_rot_angS")=0,
               arg_("panel_offsetX")=0,
               arg_("panel_offsetY")=0,
-              arg_("panel_offsetZ")=0),
+              arg_("panel_offsetZ")=0, arg_("force")=true),
            "update the geometries with new dxtbx models, number of pixels should remain constant")
 
       .def("free_Fhkl2",&simtbx::nanoBragg::diffBragg::free_Fhkl2)

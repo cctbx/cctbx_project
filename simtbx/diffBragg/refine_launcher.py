@@ -86,7 +86,8 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
   shot_yrel = {0: yrel}
   shot_abc_inits = {0: tilt_abc}
   shot_panel_ids = {0: pids}
-  shot_originZ_init = {0: SIM.detector[0].get_origin()[2]}
+  shot_originZ_init = {0: 0}
+
 
   # determine number of parameters:
   if not any(NCELLS_MASK):
@@ -100,19 +101,32 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
   n_unitcell_params = len(UcellMan.variables)
   n_spotscale_params = 1
   n_originZ_params = 1
-  n_spectra_params = 2 if params.refiner.refine_spectra is not None else 0
   n_tilt_params = 3 * len(nanoBragg_rois)
   n_local_unknowns = nrot_params + n_unitcell_params + n_ncells_param + n_spotscale_params + n_originZ_params \
-                     + n_spectra_params + n_tilt_params
+                     + n_tilt_params
+
+  panel_group_from_id = {pid: 0 for pid in range(len(expt.detector))}
+  if params.refiner.panel_group_file is not None:
+    panel_group_from_id = utils.load_panel_group_file(params.refiner.panel_group_file)
+  panel_groups = set(panel_group_from_id.values())
+  n_panel_groups = len(panel_groups)
+  panels_per_group = {group_id: [] for group_id in panel_groups}
+  for pid in panel_group_from_id:
+    group_id = panel_group_from_id[pid]
+    panels_per_group[group_id].append(pid)
+
+  n_spectra_params = 2 if params.refiner.refine_spectra is not None else 0
+  n_panelRot_params = 3*n_panel_groups
+  n_panelXYZ_params = 3*n_panel_groups
+  n_global_params = n_spectra_params + n_panelRot_params + n_panelXYZ_params
 
   x_init = None
   for i_macro_cyc in range(params.refiner.num_macro_cycles):
     for i_trial in range(n_trials):
 
       RUC = LocalRefiner(
-        n_total_params=n_local_unknowns,
+        n_total_params=n_local_unknowns + n_global_params,
         n_local_params=n_local_unknowns,
-        n_global_params=n_local_unknowns,  # not used
         local_idx_start=0,
         shot_ucell_managers=shot_ucell_managers,
         shot_rois=shot_rois,
@@ -125,8 +139,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
         shot_panel_ids=shot_panel_ids,
         all_crystal_scales=None,
         global_ncells=False, global_ucell=False,
-        global_originZ=False,
-        shot_originZ_init=shot_originZ_init)
+        shot_detector_distance_init=shot_originZ_init)
 
       if not params.refiner.only_predict_model:
         if params.refiner.refine_Bmatrix is not None:
@@ -143,6 +156,8 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
           RUC.refine_spectra = params.refiner.refine_spectra[i_trial]
         if params.refiner.refine_detdist is not None:
           RUC.refine_detdist = params.refiner.refine_detdist[i_trial]
+        if params.refiner.refine_panelZ is not None:
+          RUC.refine_panelZ = params.refiner.refine_panelZ[i_trial]
         if params.refiner.refine_panelRotO is not None:
           RUC.refine_panelRotO = params.refiner.refine_panelRotO[i_trial]
         if params.refiner.refine_panelRotF is not None:
@@ -152,16 +167,26 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
         if params.refiner.refine_panelXY is not None:
           RUC.refine_panelXY = params.refiner.refine_panelXY[i_trial]
 
-      if params.refiner.panel_group_file is not None:
-        RUC.panel_group_from_id = utils.load_panel_group_file(params.refiner.panel_group_file)
-      # note , else defauls to {0:0}, hence we should put a consitency-check here, in the event someone is trying to refine panel rots and/or XY
-      panel_groups = set(RUC.panel_group_from_id.values())
-      RUC.panelRot_init = {group_id: [0, 0, 0] for group_id in panel_groups}
-      RUC.panelX_init = {group_id: 0 for group_id in panel_groups}
-      RUC.panelY_init = {group_id: 0 for group_id in panel_groups}
+      if RUC.refine_detdist and RUC.refine_panelZ:
+        raise ValueError("Cannot refine panelZ and detdist simultaneously")
+
+      RUC.panel_group_from_id = panel_group_from_id
+
+      RUC.panel_reference_from_id = {}
+      for pid in panel_group_from_id:
+        group_id = panel_group_from_id[pid]
+        reference = expt.detector[panels_per_group[group_id][0]]
+        RUC.panel_reference_from_id[pid] = reference.get_origin()
 
       RUC.panelRot_sigma = params.refiner.sensitivity.panelRotOFS
       RUC.panelX_sigma, RUC.panelY_sigma = params.refiner.sensitivity.panelXY
+      RUC.panelZ_sigma = params.refiner.sensitivity.panelZ
+      RUC.panelX_range = params.refiner.ranges.panel_X
+      RUC.panelY_range = params.refiner.ranges.panel_Y
+      RUC.panelZ_range = params.refiner.ranges.panel_Z
+      RUC.panelRot_range = [[ang*np.pi/180 for ang in params.refiner.ranges.panel_rotO],
+                            [ang*np.pi/180 for ang in params.refiner.ranges.panel_rotF],
+                            [ang*np.pi/180 for ang in params.refiner.ranges.panel_rotS]]
 
       RUC.refine_Fcell = False
       RUC.max_calls = params.refiner.max_calls[i_trial]
@@ -172,7 +197,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
       RUC.save_model = params.refiner.save_models
 
       if n_ncells_param == 2:
-        INVERTED_NCELLS_MASK = [int(not (mask_val)) for mask_val in NCELLS_MASK]
+        INVERTED_NCELLS_MASK = [int(not mask_val) for mask_val in NCELLS_MASK]
         RUC.ncells_mask = INVERTED_NCELLS_MASK
       RUC.n_ncells_param = n_ncells_param
       RUC.recenter = True
@@ -211,7 +236,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
 
       # SIGMA VALUES
       RUC.rotX_sigma, RUC.rotY_sigma, RUC.rotZ_sigma = params.refiner.sensitivity.rotXYZ
-      RUC.originZ_sigma = params.refiner.sensitivity.originZ
+      RUC.detector_distance_sigma = params.refiner.sensitivity.originZ
       RUC.ucell_sigmas = utils.unitcell_sigmas(UcellMan, params.refiner.sensitivity.unitcell)
       RUC.m_sigma = params.refiner.sensitivity.ncells_abc
       RUC.spot_scale_sigma = params.refiner.sensitivity.spot_scale
@@ -224,7 +249,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
       RUC.spectra_coefficients_sigma = params.refiner.sensitivity.spectra_coefficients  # .01, .01
       RUC.spectra_coefficients_init = params.refiner.init.spectra_coefficients  # 0, 1
       RUC.lambda_coef_ranges = [params.refiner.ranges.spectra0, params.refiner.ranges.spectra1]
-      RUC.originZ_range = params.refiner.ranges.originZ
+      RUC.detector_distance_range = params.refiner.ranges.originZ
 
       RUC.fcell_resolution_bin_Id = None
       RUC.compute_image_model_correlation = params.refiner.compute_image_model_correlation

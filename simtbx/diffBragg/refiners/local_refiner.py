@@ -72,7 +72,7 @@ warnings.filterwarnings("ignore")
 
 class LocalRefiner(PixelRefinement):
 
-    def __init__(self, n_total_params, n_local_params, n_global_params, local_idx_start,
+    def __init__(self, n_total_params, n_local_params, local_idx_start,
                  shot_ucell_managers, shot_rois, shot_nanoBragg_rois,
                  shot_roi_imgs, shot_spectra, shot_crystal_GTs,
                  shot_crystal_models, shot_xrel, shot_yrel, shot_abc_inits, shot_asu=None,
@@ -80,8 +80,8 @@ class LocalRefiner(PixelRefinement):
                  shot_panel_ids=None,
                  log_of_init_crystal_scales=None,
                  all_crystal_scales=None, init_gain=1, perturb_fcell=False,
-                 global_ncells=False, global_ucell=True, global_originZ=True,
-                 shot_originZ_init=None,
+                 global_ncells=False, global_ucell=True, global_detector_distance=False,
+                 shot_detector_distance_init=None,
                  sgsymbol="P43212",
                  omega_kahn=None, selection_flags=None, shot_bg_coef=None, background_estimate=None,
                  verbose=False):
@@ -92,7 +92,6 @@ class LocalRefiner(PixelRefinement):
 
         :param n_total_params:  total number of parameters all shots
         :param n_local_params:  total number of parameters for each shot  (e.g. xtal rotation matrices)
-        :param n_global_params: total number of parameters used by all shots (e.g. Fhkl)
         :param local_idx_start: for each shot, this specifies the starting point of its local parameters
 
         THE FOLLOWING ARE DICTIONARIES WHOSE KEYS ARE SHOT INDICES LOCAL TO THE RANK
@@ -115,8 +114,8 @@ class LocalRefiner(PixelRefinement):
         :param perturb_fcell: deprecated, leave as False
         :param global_ncells: do we refine ncells_abc per shot or global for all shots  (global_ncells=True)
         :param global_ucell: do we refine a unitcell per shot or global for all shots (global_ucell=True)
-        :param shot_originZ_init: per shot origin Z
-        :param global_originZ: do we refine a single detector Z position for all shots (default is True)
+        :param shot_detector_distance_init: per shot origin Z
+        :param global_detector_distance: do we refine a single detector Z position for all shots (default is True)
         :param omega_kahn: omega and kahn correction term for each panel
         """
         PixelRefinement.__init__(self)
@@ -127,7 +126,8 @@ class LocalRefiner(PixelRefinement):
         self.num_kludge = 0
         self.global_ncells_param = global_ncells
         self.global_ucell_param = global_ucell
-        self.global_originZ_param = global_originZ
+        assert not global_detector_distance, "deprecated"
+        self.global_detector_distance_param = False
         self.debug = False
         self.num_Fcell_kludge = 0
         self.perturb_fcell = perturb_fcell
@@ -142,11 +142,11 @@ class LocalRefiner(PixelRefinement):
         self.init_image_corr = None
         self.image_corr = {i_shot:None for i_shot in range(self.n_shots)}
         self.image_corr_norm = {i_shot:None for i_shot in range(self.n_shots)}
-        self.shot_originZ_init = None
-        if shot_originZ_init is not None:
+        self.shot_detector_distance_init = None
+        if shot_detector_distance_init is not None:
             if self.verbose:
-                print("check originZ")
-            self.shot_originZ_init = self._check_keys(shot_originZ_init)
+                print("check detector_distance")
+            self.shot_detector_distance_init = self._check_keys(shot_detector_distance_init)
         # load the background coefficient  and extracted backgorund estimate
         self.shot_bg_coef = None
         if shot_bg_coef is not None:
@@ -206,8 +206,6 @@ class LocalRefiner(PixelRefinement):
         # total number of local parameters
         self.n_local_params = n_local_params
 
-        # total number of params varying globally across all shots
-        self.n_global_params = n_global_params
 
         # here are the indices of the local parameters in the global paramter arrays
         self.local_idx_start = local_idx_start
@@ -225,11 +223,7 @@ class LocalRefiner(PixelRefinement):
         self.n_ucell_param = len(self.UCELL_MAN[self._i_shot].variables)
         self.n_ncells_param = 1
 
-        self.n_per_shot_originZ_param = 1
-        if global_originZ:
-            self.n_per_shot_originZ_param = 0
-        else:
-            assert shot_originZ_init is not None
+        self.n_per_shot_detector_distance_param = 1
 
         self.n_per_shot_ucell_param = self.n_ucell_param
         if global_ucell:
@@ -241,10 +235,10 @@ class LocalRefiner(PixelRefinement):
 
         self.n_per_shot_params = self.n_rot_param + self.n_spot_scale_param \
                                  + self.n_per_shot_ncells_param + self.n_per_shot_ucell_param \
-                                 + self.n_per_shot_originZ_param
+                                 + self.n_per_shot_detector_distance_param
 
         self._ncells_id = 9  # diffBragg internal index for Ncells derivative manager
-        self._originZ_id = 10  # diffBragg internal index for originZ derivative manager
+        self._detector_distance_id = 10  # diffBragg internal index for detector_distance derivative manager
         self._panelRotO_id = 14  # diffBragg internal index for derivative manager
         self._panelRotF_id = 17  # diffBragg internal index for derivative manager
         self._panelRotS_id = 18  # diffBragg internal index for derivative manager
@@ -316,7 +310,6 @@ class LocalRefiner(PixelRefinement):
     def n(self):
         """LBFGS property"""
         return len(self.x)  # NOTEX
-        #return self.n_total_params
 
     @property
     def n_global_fcell(self):
@@ -398,9 +391,9 @@ class LocalRefiner(PixelRefinement):
         self._MPI_make_output_dir()
 
         if self.refine_panelXY or self.refine_panelRotS or self.refine_panelRotF or self.refine_panelRotO:
-            self.n_panel_groups = len(self.panel_group_from_id)
+            self.n_panel_groups = len(set(self.panel_group_from_id.values()))
         else:
-            self.n_panel_groups = 0
+            self.n_panel_groups = 1
 
         # get the Fhkl information from P1 array internal to nanoBragg
         if self.I_AM_ROOT:
@@ -414,6 +407,12 @@ class LocalRefiner(PixelRefinement):
         self.pid_from_idx = {}
         self.idx_from_pid = {}
 
+        # determine total number of parameters
+        # XYZ per panel group
+        #n_global_params = 3*self.n_panel_groups
+        # Rotation OFS per panel group
+        #n_global_params += 3*self.n_panel_groups
+
         # Make the global sized parameter array, though here we only update the local portion
         self.Xall = flex_double(self.n_total_params)
         self.is_being_refined = FLEX_BOOL(self.n_total_params, False)
@@ -424,7 +423,7 @@ class LocalRefiner(PixelRefinement):
         self.rotZ_xpos = {}
         self.ucell_xstart = {}
         self.ncells_xstart = {}
-        self.originZ_xpos = {}
+        self.detector_distance_xpos = {}
         self.spot_scale_xpos = {}
         self.n_panels = {}
         self.bg_a_xstart = {}
@@ -432,6 +431,12 @@ class LocalRefiner(PixelRefinement):
         self.bg_c_xstart = {}
         self.bg_coef_xpos = {}
         self.ucell_params = {}
+
+        self.panelX_params = [RangedParameter()] * self.n_panel_groups
+        self.panelY_params = [RangedParameter()] * self.n_panel_groups
+        self.panelZ_params = [RangedParameter()] * self.n_panel_groups  # per shot offset-Z to each panel
+        self.panelRot_params = [[RangedParameter(), RangedParameter(), RangedParameter()]] * self.n_panel_groups
+        self.detector_distance_params = {}  # per shot offset to all panels
         if self.I_AM_ROOT:
             print("--1 Setting up per shot parameters")
 
@@ -511,7 +516,7 @@ class LocalRefiner(PixelRefinement):
             # continue adding local per shot parameters after rotZ_xpos
             _local_pos = self.rotZ_xpos[i_shot] + 1
 
-            # global always starts here, we have to decide whether to put ncells / unit cell/ originZ parameters in global array
+            # global always starts here, we have to decide whether to put ncells / unit cell/ detector_distance parameters in global array
             _global_pos = self.global_param_idx_start
 
             if self.global_ucell_param:
@@ -557,19 +562,19 @@ class LocalRefiner(PixelRefinement):
                 for i_ncells in range(self.n_ncells_param):  # note n_ncells_param is always 1 currently
                     self.is_being_refined[self.ncells_xstart[i_shot] + i_ncells] = True
 
-            if self.global_originZ_param:
-                self.originZ_xpos[i_shot] = _global_pos
-                _global_pos += 1
-            else:
-                self.originZ_xpos[i_shot] = _local_pos
-                _local_pos += 1
-                if self.rescale_params:
-                    self.Xall[self.originZ_xpos[i_shot]] = 1
-                else:
-                    self.Xall[self.originZ_xpos[i_shot]] = self.shot_originZ_init[i_shot]
+            self.detector_distance_xpos[i_shot] = _local_pos
+            detdist_param = RangedParameter()
+            detdist_param.init = self.shot_detector_distance_init[i_shot]  # initial offset
+            detdist_param.sigma = self.detector_distance_sigma
+            detdist_param.minval = self.detector_distance_range[0]
+            detdist_param.maxval = self.detector_distance_range[1]
+            self.detector_distance_params[i_shot] = detdist_param
+            _local_pos += 1
+            self.Xall[self.detector_distance_xpos[i_shot]] = 1
             # set refinement flag
             if self.refine_detdist:
-                self.is_being_refined[self.originZ_xpos[i_shot]] = True
+                assert self.rescale_params
+                self.is_being_refined[self.detector_distance_xpos[i_shot]] = True
 
             self.spot_scale_xpos[i_shot] = _local_pos
             _local_pos += 1
@@ -589,6 +594,7 @@ class LocalRefiner(PixelRefinement):
         self.panelRot_xstart = self.spectra_coef_xstart + self.n_spectra_param
 
         self.panelXY_xstart = self.panelRot_xstart + 3*self.n_panel_groups
+        self.panelZ_xstart = self.panelXY_xstart + 2*self.n_panel_groups
 
         if self.refine_gain_fac:
             self.gain_xpos = self.n_total_params - 1
@@ -681,8 +687,8 @@ class LocalRefiner(PixelRefinement):
                 self.D.refine(i + 3)  # unit cell params
         if self.refine_ncells:
             self.D.refine(self._ncells_id)
-        if self.refine_detdist:
-            self.D.refine(self._originZ_id)
+        if self.refine_detdist or self.refine_panelZ:
+            self.D.refine(self._detector_distance_id)
         if self.refine_panelRotO:
             self.D.refine(self._panelRotO_id)
         if self.refine_panelRotF:
@@ -723,14 +729,6 @@ class LocalRefiner(PixelRefinement):
                         ncells_xval = np_log(self.S.crystal.Ncells_abc[i_ncells] - 3)
                     self.Xall[self.ncells_xstart[0] + i_ncells] = ncells_xval
 
-            if self.global_originZ_param:
-                # TODO have parameter for global init of originZ param , right now its handled in the global_bboxes scripts
-                if self.rescale_params:
-                    self.Xall[self.originZ_xpos[0]] = 1  # self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
-                else:
-                    self.Xall[self.originZ_xpos[0]] = self.S.detector[0].get_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
-                    # self.Xall[self.originZ_xpos[0]] = self.S.detector[0].get_local_origin()[2]  # NOTE maybe just origin instead?elf.S.detector
-
             # if self.refine_lambda0 or self.refine_lambda1:
             lambda_is_refined = self.refine_lambda0, self.refine_lambda1
             for i_spec_coef in range(self.n_spectra_param):
@@ -744,18 +742,44 @@ class LocalRefiner(PixelRefinement):
             for i_pan_group in range(self.n_panel_groups):
                 for i_pan_rot in range(3):
                     xpos = self.panelRot_xstart + 3*i_pan_group + i_pan_rot
+
+                    self.panelRot_params[i_pan_group][i_pan_rot].init = 0  # self.panelX_init[i_pan_group]
+                    self.panelRot_params[i_pan_group][i_pan_rot].sigma = self.panelRot_sigma[i_pan_rot]
+                    self.panelRot_params[i_pan_group][i_pan_rot].minval = self.panelRot_range[i_pan_rot][0]
+                    self.panelRot_params[i_pan_group][i_pan_rot].maxval = self.panelRot_range[i_pan_rot][1]
+
                     if refine_panelRot[i_pan_rot]:
                         assert self.rescale_params
                         self.is_being_refined[xpos] = True
                     self.Xall[xpos] = 1
 
-                for i_pan_XY in range(2):
-                    xpos = self.panelXY_xstart + 2*i_pan_group + i_pan_XY
-                    self.Xall[xpos] = 1
-                    if self.refine_panelXY:
-                        assert self.rescale_params
-                        self.is_being_refined[xpos] = True
-                        # self.is_being_refined[xpos_Y] = True
+                if self.refine_panelXY:
+                    assert self.rescale_params
+
+                    xpos_X = self.panelXY_xstart + 2*i_pan_group
+                    self.Xall[xpos_X] = 1
+                    self.is_being_refined[xpos_X] = True
+                    self.panelX_params[i_pan_group].init = 0  # self.panelX_init[i_pan_group]
+                    self.panelX_params[i_pan_group].sigma = self.panelX_sigma
+                    self.panelX_params[i_pan_group].minval = self.panelX_range[0]
+                    self.panelX_params[i_pan_group].maxval = self.panelX_range[1]
+
+                    xpos_Y = xpos_X + 1
+                    self.Xall[xpos_Y] = 1
+                    self.is_being_refined[xpos_Y] = True
+                    self.panelY_params[i_pan_group].init = 0   # self.panelY_init[i_pan_group]
+                    self.panelY_params[i_pan_group].sigma = self.panelY_sigma
+                    self.panelY_params[i_pan_group].minval = self.panelY_range[0]
+                    self.panelY_params[i_pan_group].maxval = self.panelY_range[1]
+
+                if self.refine_panelZ:
+                    xpos_Z = self.panelZ_xstart + i_pan_group
+                    self.Xall[xpos_Z] = 1
+                    self.is_being_refined[xpos_Z] = True
+                    self.panelZ_params[i_pan_group].init = 0  # self.panelX_init[i_pan_group]
+                    self.panelZ_params[i_pan_group].sigma = self.panelZ_sigma
+                    self.panelZ_params[i_pan_group].minval = self.panelZ_range[0]
+                    self.panelZ_params[i_pan_group].maxval = self.panelZ_range[1]
 
             if self.output_dir is not None:
                 # np.save(os.path.join(self.output_dir, "f_truth"), self.f_truth)  #FIXME by adding in the correct truth from Fref
@@ -987,7 +1011,7 @@ class LocalRefiner(PixelRefinement):
                 self.ncells_sel[self.ncells_xstart[i_shot] + i_ncells] = False
             self.spot_scale_sel[self.spot_scale_xpos[i_shot]] = False
 
-            self.origin_sel[self.originZ_xpos[i_shot]] = False
+            self.origin_sel[self.detector_distance_xpos[i_shot]] = False
 
             if not self.bg_extracted:
                 nspots_on_shot = len(self.NANOBRAGG_ROIS[i_shot])
@@ -1058,49 +1082,52 @@ class LocalRefiner(PixelRefinement):
             if not refining_rot[i_rot]:
                 continue
             panel_group_id = self.panel_group_from_id[panel_id]
-            val = self.Xall[self.panelRot_xstart + 3*panel_group_id + i_rot]
-            sig = self.panelRot_sigma[i_rot]
-            init = self.panelRot_init[panel_group_id][i_rot]
-            val = sig*(val-1) + init
-            vals[i_rot] = val
+            lbfgs_xval = self.Xall[self.panelRot_xstart + 3*panel_group_id + i_rot]
+            vals[i_rot] = self.panelRot_params[panel_group_id][i_rot].get_val(lbfgs_xval)
+
         return vals
 
-    def _get_panelXY_val(self, panel_id):
-        if not self.refine_panelXY:
-            return 0, 0
+    def _get_panelXYZ_val(self, panel_id, i_shot=0):
 
-        panel_group_id = self.panel_group_from_id[panel_id]
-        xpos_X = self.panelXY_xstart + 2*panel_group_id
-        valX = self.Xall[xpos_X]
-        sigX = self.panelX_sigma
-        initX = self.panelX_init[panel_group_id]
-        valX = sigX*(valX-1) + initX
+        offsetX = offsetY = offsetZ = 0
 
-        valY = self.Xall[xpos_X+1]
-        sigY = self.panelY_sigma
-        initY = self.panelY_init[panel_group_id]
-        valY = sigY*(valY-1) + initY
+        if self.refine_panelXY:
+            panel_group_id = self.panel_group_from_id[panel_id]
+            xpos_X = self.panelXY_xstart + 2*panel_group_id
+            valX = self.Xall[xpos_X]
+            offsetX = self.panelX_params[panel_group_id].get_val(valX)
 
-        return valX, valY
+            xpos_Y = xpos_X + 1
+            valY = self.Xall[xpos_Y]
+            offsetY = self.panelY_params[panel_group_id].get_val(valY)
 
-    def _get_originZ_val(self, i_shot):
-        if not self.refine_detdist:
-            return 0 #None
+        if self.refine_panelZ:
+            xpos_Z = self.panelZ_xstart + self.panel_group_from_id[panel_id]
+            valZ = self.Xall[xpos_Z]
+            offsetZ = self.panelZ_params[i_shot].get_val(valZ)
 
-        val = self.Xall[self.originZ_xpos[i_shot]]
-        if self.rescale_params:
-            sig = self.originZ_sigma
-            init = self.shot_originZ_init[i_shot]
-            if self.originZ_range is not None:
-                low, high = self.originZ_range
-                rng = high - low
-                sin_arg = sig * (val - 1) + ASIN(2 * (init - low) / rng - 1)
-                val = (SIN(sin_arg) + 1) * rng / 2 + low
-            else:
-                #NOTE old way:
-                val = sig*(val-1) + init
-            #print("<><><><>\nZ=%.4f  %.4f\n><><><><>" % (init, val))
+        return offsetX, offsetY, offsetZ
+
+    def _get_detector_distance_val(self, i_shot):
+        val = 0
+        if self.refine_detdist:
+            xval = self.Xall[self.detector_distance_xpos[i_shot]]
+            val = self.detector_distance_params[i_shot].get_val(xval)
         return val
+
+        #if self.rescale_params:
+        #    sig = self.detector_distance_sigma
+        #    init = self.shot_detector_distance_init[i_shot]
+        #    if self.detector_distance_range is not None:
+        #        low, high = self.detector_distance_range
+        #        rng = high - low
+        #        sin_arg = sig * (val - 1) + ASIN(2 * (init - low) / rng - 1)
+        #        val = (SIN(sin_arg) + 1) * rng / 2 + low
+        #    else:
+        #        #NOTE old way:
+        #        val = sig*(val-1) + init
+        #    #print("<><><><>\nZ=%.4f  %.4f\n><><><><>" % (init, val))
+        #return val
 
     def _get_m_val(self, i_shot):
         vals = []
@@ -1217,16 +1244,10 @@ class LocalRefiner(PixelRefinement):
             else:
                 ncells_vals = [lst[self.ncells_xstart[i_shot]] for i_shot in range(self.n_shots)]
 
-        if self.global_originZ_param:
-            if lst_is_x:
-                originZ_vals = [self._get_originZ_val(0)] * len(rotx)
-            else:
-                originZ_vals = [lst[self.originZ_xpos[0]]] * len(rotx)
+        if lst_is_x:
+            detector_distance_vals = [self._get_detector_distance_val(i_shot) for i_shot in range(self.n_shots)]
         else:
-            if lst_is_x:
-                originZ_vals = [self._get_originZ_val(i_shot) for i_shot in range(self.n_shots)]
-            else:
-                originZ_vals = [lst[self.originZ_xpos[i_shot]] for i_shot in range(self.n_shots)]
+            detector_distance_vals = [lst[self.detector_distance_xpos[i_shot]] for i_shot in range(self.n_shots)]
 
         if lst_is_x:
             #ncells_vals = list(np_exp(ncells_vals)+3)
@@ -1263,7 +1284,7 @@ class LocalRefiner(PixelRefinement):
         rotz = self._MPI_reduce_broadcast(rotz)
         ncells_vals = self._MPI_reduce_broadcast(ncells_vals)
         scale_vals = self._MPI_reduce_broadcast(scale_vals)
-        originZ_vals = self._MPI_reduce_broadcast(originZ_vals)
+        detector_distance_vals = self._MPI_reduce_broadcast(detector_distance_vals)
 
         ucparams_all = []
         for ucp in ucparams_lsts:
@@ -1272,7 +1293,7 @@ class LocalRefiner(PixelRefinement):
         if scale_vals_truths is not None:
             scale_vals_truths = self._MPI_reduce_broadcast(scale_vals_truths)
 
-        return rotx, roty, rotz, ucparams_all, ncells_vals, scale_vals, scale_vals_truths, originZ_vals
+        return rotx, roty, rotz, ucparams_all, ncells_vals, scale_vals, scale_vals_truths, detector_distance_vals
 
     def _send_ucell_gradients_to_derivative_managers(self):
         """Needs to be called once each time the orientation is updated"""
@@ -1385,16 +1406,22 @@ class LocalRefiner(PixelRefinement):
 
     def _update_dxtbx_detector(self):
         self.S.panel_id = self._panel_id
-        new_offsetX, new_offsetY = self._get_panelXY_val(self._panel_id)
-        new_offsetZ = self._get_originZ_val(self._i_shot)
+
+        new_offsetX, new_offsetY, new_offsetZ = self._get_panelXYZ_val(self._panel_id)
+
+        if self.refine_detdist:  # TODO: figure out if this should override the above, or add to it?
+            new_offsetZ = self._get_detector_distance_val(self._i_shot)
+
         panel_rot_angO, panel_rot_angF, panel_rot_angS = self._get_panelRot_val(self._panel_id)
 
         if self.panel_reference_from_id is not None:
             self.D.reference_origin = self.panel_reference_from_id[self._panel_id]  #self.S.detector[self.panel_reference_from_id[self._panel_id]].get_origin()
         else:
             self.D.reference_origin = self.S.detector[self._panel_id].get_origin()
+
         self.D.update_dxtbx_geoms(self.S.detector, self.S.beam.nanoBragg_constructor_beam, self._panel_id,
-                                  panel_rot_angO, panel_rot_angF, panel_rot_angS, new_offsetX, new_offsetY, new_offsetZ)
+                                  panel_rot_angO, panel_rot_angF, panel_rot_angS, new_offsetX, new_offsetY, new_offsetZ,
+                                  force=False)
         #if self.recenter:
         #    s0 = self.S.beam.nanoBragg_constructor_beam.get_s0()
         #    assert ALL_CLOSE(node.get_beam_centre(s0), self.D.beam_center_mm)
@@ -1480,13 +1507,13 @@ class LocalRefiner(PixelRefinement):
                         d2 = second_derivs[i_ncell].as_numpy_array()
                         self.m_d2I_dtheta2[i_ncell] = SG*d2
 
-    def _extract_originZ_derivative_pixels(self):
+    def _extract_detector_distance_derivative_pixels(self):
         self.detdist_dI_dtheta = self.detdist_d2I_dtheta2 = 0
         SG = self.scale_fac*self.G2
         if self.refine_detdist:
-            self.detdist_dI_dtheta = SG*self.D.get_derivative_pixels(self._originZ_id).as_numpy_array()
+            self.detdist_dI_dtheta = SG*self.D.get_derivative_pixels(self._detector_distance_id).as_numpy_array()
             if self.calc_curvatures:
-                self.detdist_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(self._originZ_id).as_numpy_array()
+                self.detdist_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(self._detector_distance_id).as_numpy_array()
 
     def _extract_panelRot_derivative_pixels(self):
         self.panelRot_dI_dtheta = [0, 0, 0]
@@ -1501,14 +1528,18 @@ class LocalRefiner(PixelRefinement):
                 if self.calc_curvatures:
                     self.panelRot_d2I_dtheta2[i_rot] = SG*self.D.get_second_derivative_pixels(manager_id).as_numpy_array()
 
-    def _extract_panelXY_derivative_pixels(self):
+    def _extract_panelXYZ_derivative_pixels(self):
         self.panelX_dI_dtheta = self.panelX_d2I_dtheta2 = 0
         self.panelY_dI_dtheta = self.panelY_d2I_dtheta2 = 0
+        self.panelZ_dI_dtheta = self.panelZ_d2I_dtheta2 = 0
         SG = self.scale_fac*self.G2
+        # TODO: curvatures
         if self.refine_panelXY:
             self.panelX_dI_dtheta = SG*self.D.get_derivative_pixels(self._panelX_id).as_numpy_array()
             self.panelY_dI_dtheta = SG*self.D.get_derivative_pixels(self._panelY_id).as_numpy_array()
-        # TODO: curvatures
+        if self.refine_panelZ:
+            assert not self.refine_detdist
+            self.panelZ_dI_dtheta = SG*self.D.get_derivative_pixels(self._detector_distance_id).as_numpy_array()
 
     def _extract_Fcell_derivative_pixels(self):
         self.fcell_deriv = self.fcell_second_deriv = 0
@@ -1523,11 +1554,11 @@ class LocalRefiner(PixelRefinement):
         self._extract_Umatrix_derivative_pixels()
         self._extract_Bmatrix_derivative_pixels()
         self._extract_mosaic_parameter_m_derivative_pixels()
-        self._extract_originZ_derivative_pixels()
+        self._extract_detector_distance_derivative_pixels()
         self._extract_Fcell_derivative_pixels()
         self._extract_spectra_coefficient_derivatives()
         self._extract_panelRot_derivative_pixels()
-        self._extract_panelXY_derivative_pixels()
+        self._extract_panelXYZ_derivative_pixels()
 
     def _update_ucell(self):
         if self.rescale_params:
@@ -1621,8 +1652,8 @@ class LocalRefiner(PixelRefinement):
                             print("ROT ANGLE : %.8f %.8f %.8f (degrees)"
                                   % tuple(map(lambda x: x*180/PI, self._get_panelRot_val(self._panel_id))))
 
-                        if self.refine_panelXY:
-                            print("XY: %.8f %8f" % self._get_panelXY_val(self._panel_id))
+                        if self.refine_panelXY or self.refine_panelZ:
+                            print("XYZ: %.8f %8f %.8f mm" % tuple([val*1000 for val in self._get_panelXYZ_val(self._panel_id)]))
                     self._run_diffBragg_current(i_spot)
                     self._set_background_plane(i_spot)
                     self._extract_pixel_data()
@@ -1657,9 +1688,9 @@ class LocalRefiner(PixelRefinement):
                     self._Umatrix_derivatives()
                     self._Bmatrix_derivatives()
                     self._mosaic_parameter_m_derivatives()
-                    self._originZ_derivatives()
+                    self._detector_distance_derivatives()
                     self._panelRot_derivatives()
-                    self._panelXY_derivatives()
+                    self._panelXYZ_derivatives()
                     self._spot_scale_derivatives()
                     self._gain_factor_derivatives()
                     self._Fcell_derivatives(i_spot)
@@ -1966,36 +1997,49 @@ class LocalRefiner(PixelRefinement):
         refining = self.refine_panelRotO, self.refine_panelRotF, self.refine_panelRotS
         for i_rot in range(3):
             if refining[i_rot]:
-                sigma = self.panelRot_sigma[i_rot]
-                d = self.panelRot_dI_dtheta[i_rot]*sigma
-                d2 = self.panelRot_d2I_dtheta2[i_rot]*sigma*sigma
+                d = self.panelRot_dI_dtheta[i_rot]
+                d2 = self.panelRot_d2I_dtheta2[i_rot]
 
-                xpos = self.panelRot_xstart + 3*self.panel_group_from_id[self._panel_id] + i_rot
+                panel_group_id = self.panel_group_from_id[self._panel_id]
+                xpos = self.panelRot_xstart + 3*panel_group_id + i_rot
+                xval = self.Xall[xpos]
+                d = self.panelRot_params[panel_group_id][i_rot].get_deriv(xval, d) ## apply chain rule for reparameterization
 
                 self.grad[xpos] += self._grad_accumulate(d)
                 if self.calc_curvatures:
+                    raise NotImplementedError("curvatures and panel rotations not supported")
                     self.curv[xpos] += self._curv_accumulate(d, d2)
 
-    def _panelXY_derivatives(self):
-        if self.refine_panelXY:
-            d_X = self.panelX_dI_dtheta*self.panelX_sigma
-            d_Y = self.panelY_dI_dtheta*self.panelY_sigma
-            #d2_X = d2_Y = 0 #TODO: curvatires
+    def _panelXYZ_derivatives(self):
+        if self.refine_panelXY or self.refine_panelZ:
+            panel_group_id = self.panel_group_from_id[self._panel_id]
 
-            xpos_X = self.panelXY_xstart + 2*self.panel_group_from_id[self._panel_id]
+            d_X = self.panelX_dI_dtheta
+            d_Y = self.panelY_dI_dtheta
+            d_Z = self.panelZ_dI_dtheta
+            #d2_X = d2_Y = d2_Z = 0 #TODO: curvatires
+
+            xpos_X = self.panelXY_xstart + 2*panel_group_id
             xpos_Y = xpos_X + 1
+            xpos_Z = self.panelZ_xstart + panel_group_id
 
-            self.grad[xpos_X] += self._grad_accumulate(d_X)
-            self.grad[xpos_Y] += self._grad_accumulate(d_Y)
+            if self.refine_panelXY:
+                d_X = self.panelX_params[panel_group_id].get_deriv(self.Xall[xpos_X], d_X)
+                d_Y = self.panelY_params[panel_group_id].get_deriv(self.Xall[xpos_Y], d_Y)
+                self.grad[xpos_X] += self._grad_accumulate(d_X)
+                self.grad[xpos_Y] += self._grad_accumulate(d_Y)
+            if self.refine_panelZ:
+                d_Z = self.panelZ_params[panel_group_id].get_deriv(self.Xall[xpos_Z], d_Z)
+                self.grad[xpos_Z] += self._grad_accumulate(d_Z)
 
-    def _originZ_derivatives(self):
+    def _detector_distance_derivatives(self):
         if self.refine_detdist:
             if self.rescale_params:
-                if self.originZ_range is not None:
-                    init = self.shot_originZ_init[self._i_shot]
-                    sigma = self.originZ_sigma
-                    x = self.Xall[self.originZ_xpos[self._i_shot]]
-                    low, high = self.originZ_range
+                if self.detector_distance_range is not None:
+                    init = self.shot_detector_distance_init[self._i_shot]
+                    sigma = self.detector_distance_sigma
+                    x = self.Xall[self.detector_distance_xpos[self._i_shot]]
+                    low, high = self.detector_distance_range
                     rng = high - low
                     cos_arg = sigma * (x - 1) + ASIN(2 * (init - low) / rng - 1)
                     dtheta_dx = rng / 2 * COS(cos_arg) * sigma
@@ -2005,16 +2049,16 @@ class LocalRefiner(PixelRefinement):
                 else:
                     #NOTE old way:
                     # case 1 type of rescaling
-                    d = self.detdist_dI_dtheta*self.originZ_sigma
-                    d2 = self.detdist_d2I_dtheta2*(self.originZ_sigma*self.originZ_sigma)
+                    d = self.detdist_dI_dtheta*self.detector_distance_sigma
+                    d2 = self.detdist_d2I_dtheta2*(self.detector_distance_sigma*self.detector_distance_sigma)
             else:
                 d = 1*self.detdist_dI_dtheta
                 d2 = 1*self.detdist_d2I_dtheta2
 
-            xpos = self.originZ_xpos[self._i_shot]
+            xpos = self.detector_distance_xpos[self._i_shot]
             self.grad[xpos] += self._grad_accumulate(d)
             if self.calc_curvatures:
-                if self.originZ_range is not None and self.rescale_params:
+                if self.detector_distance_range is not None and self.rescale_params:
                     raise NotImplementedError("You Cannot.")
                 self.curv[xpos] += self._curv_accumulate(d, d2)
 
@@ -2319,7 +2363,7 @@ class LocalRefiner(PixelRefinement):
         if self.refine_background_planes:
             refine_str += "bkgrnd, "
         if self.refine_detdist:
-            refine_str += "originZ, "
+            refine_str += "detector_distance, "
         if self.refine_panelRotO:
             refine_str += "panelRotO, "
         if self.refine_panelRotF:
@@ -2328,6 +2372,8 @@ class LocalRefiner(PixelRefinement):
             refine_str += "panelRotS, "
         if self.refine_panelXY:
             refine_str += "panelXY, "
+        if self.refine_panelZ:
+            refine_str += "panelZ, "
         if self.refine_lambda0:
             refine_str += "Lambda0 (offset), "
         if self.refine_lambda1:
@@ -2560,7 +2606,7 @@ class LocalRefiner(PixelRefinement):
             param_val = median(ucparam_lst)
             uc_string += "%s=%.3f, " % (ucparam_names[i_ucparam], param_val)
         scale_stats_string += uc_string
-        scale_stats_string += "originZ=%f, " % median(self.origZ_vals)
+        scale_stats_string += "detdist offset=%f meters, " % median(self.origZ_vals)
 
         Xnorm = norm(self.x)  # NOTEX
         R1 = -1
@@ -2718,7 +2764,7 @@ class LocalRefiner(PixelRefinement):
                 shot_refined.append(False)
 
             if self.refine_detdist:
-                det_resid = abs(self.originZ_gt[i_shot] - self._get_originZ_val(i_shot))
+                det_resid = abs(self.detector_distance_gt[i_shot] - self._get_detector_distance_val(i_shot))
                 all_det_resid.append(det_resid)
                 out_str += ", OrigZ resid = %.4f" % det_resid
 
