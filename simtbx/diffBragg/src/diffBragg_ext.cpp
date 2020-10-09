@@ -1,6 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 #include <boost/python.hpp>
 #include <simtbx/diffBragg/src/diffBragg.h>
+#include <simtbx/nanoBragg/nanoBragg.h>
 
 using namespace boost::python;
 namespace simtbx{
@@ -86,6 +87,16 @@ namespace boost_python { namespace {
       return boost::python::make_tuple(frange,srange);
   }
 
+  static boost::python::tuple get_reference_origin(simtbx::nanoBragg::diffBragg & diffBragg){
+    return boost::python::make_tuple(diffBragg.O_reference[0]*1000, diffBragg.O_reference[1]*1000, diffBragg.O_reference[2]*1000);
+  }
+
+  void set_reference_origin(simtbx::nanoBragg::diffBragg & diffBragg, boost::python::tuple const& values){
+    diffBragg.O_reference[0] = extract<double>(values[0])/1000.;
+    diffBragg.O_reference[1] = extract<double>(values[1])/1000.;
+    diffBragg.O_reference[2] = extract<double>(values[2])/1000.;
+  }
+
   void set_lambda_coef(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& values){
       double coef0 = extract<double>(values[0]);
       double coef1 = extract<double>(values[1]);
@@ -100,6 +111,10 @@ namespace boost_python { namespace {
       return boost::python::make_tuple(coef0, coef1);
   }
 
+  static boost::python::tuple get_origin(simtbx::nanoBragg::diffBragg& diffBragg){
+    return boost::python::make_tuple(diffBragg.pix0_vector[1]*1000,
+                                    diffBragg.pix0_vector[2]*1000, diffBragg.pix0_vector[3]*1000);
+  }
 
   static void  set_Fhkl_tuple_complex(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& value) {
       diffBragg.pythony_indices = extract<nanoBragg::indices >(value[0]);
@@ -202,6 +217,8 @@ namespace boost_python { namespace {
       .def("zero_raw_pixel_rois", &simtbx::nanoBragg::diffBragg::zero_raw_pixel_rois,
            "reallocate the raw image ROIs (they are usually tiny)")
 
+      .def("get_origin", get_origin, "get panel origin")
+
       .def("update_dxtbx_geoms",
             &simtbx::nanoBragg::diffBragg::update_dxtbx_geoms,
              (arg_("detector"),
@@ -209,7 +226,10 @@ namespace boost_python { namespace {
               arg_("panel_id")=0,
               arg_("panel_rot_angO")=0,
               arg_("panel_rot_angF")=0,
-              arg_("panel_rot_angS")=0),
+              arg_("panel_rot_angS")=0,
+              arg_("panel_offsetX")=0,
+              arg_("panel_offsetY")=0,
+              arg_("panel_offsetZ")=0),
            "update the geometries with new dxtbx models, number of pixels should remain constant")
 
       .def("free_Fhkl2",&simtbx::nanoBragg::diffBragg::free_Fhkl2)
@@ -243,6 +263,11 @@ namespace boost_python { namespace {
                      make_getter(&simtbx::nanoBragg::diffBragg::max_I_hkl,rbv()),
                      make_setter(&simtbx::nanoBragg::diffBragg::max_I_hkl,dcp()),
                     "HKL corresponding to the maximum simulated intensity in the ROI")
+
+      .add_property("reference_origin",
+            make_function(&get_reference_origin, rbv()),
+            make_function(&set_reference_origin, dcp()),
+            "reference origin for doing panel rotations for a group of panels")
 
       .add_property("Umatrix",
              make_function(&get_U,rbv()),

@@ -124,5 +124,5 @@ RUC = refine_launcher.local_refiner_from_parameters(refls, E, P, miller_data=SIM
 Ccorrect = RUC.get_corrected_crystal(i_shot=0)
 misset = utils.compare_with_ground_truth(*C.get_real_space_vectors(), dxcryst_models=[Ccorrect], symbol=symbol)
 assert misset[0] < 0.005
-print(misset, "misset")
+print(misset, "misset with ground truth")
 print("OK")

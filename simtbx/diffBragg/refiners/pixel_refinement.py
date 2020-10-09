@@ -74,6 +74,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.spot_scale_sigma = 0.0001
 
         self.panel_group_from_id = {0: 0}  # dict of panel_id: initial_rotation, should be same length of detector
+        self.panel_reference_from_id = None # dict of panel_id: 3-tuple where 3-tuple is the origin for for panel rotation
 
         self.panelRot_sigma = [1e-3]*3
         self.panelRot_init = {0: [0, 0, 0]}  # dict of panel_group_id: initial_rotation

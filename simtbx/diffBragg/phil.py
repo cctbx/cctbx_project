@@ -246,7 +246,7 @@ refiner {
   ncells_mask = *000 110 101 011 111
     .type = choice
     .help = a mask specifying which ncells parameters should be the same
-    .help = e.g. 110 specifies Na and Nb are refined as one parameter
+    .help = e.g. 110 specifies Na and Nb are refined together as one parameter
 }
 """
 

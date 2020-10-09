@@ -150,7 +150,8 @@ class diffBragg: public nanoBragg{
   void refine(int refine_id);
   void update_dxtbx_geoms(const dxtbx::model::Detector& detector, const dxtbx::model::Beam& beam,
         int panel_id, double panel_rot_angO=0,
-        double panel_rot_angF=0,  double panel_rot_angS=0);
+        double panel_rot_angF=0,  double panel_rot_angS=0, double panel_offsetX=0,
+        double panel_offsetY=0, double panel_offsetZ=0);
   void set_value( int refine_id, double value);
   void set_ncells_values( boost::python::tuple const& values);
   boost::python::tuple get_ncells_values();
@@ -170,6 +171,7 @@ class diffBragg: public nanoBragg{
   double u;
   double kEi;
   double kBi;
+  vec3 O_reference;
 
   //bool use_omega_pixel_ave;
   double om;

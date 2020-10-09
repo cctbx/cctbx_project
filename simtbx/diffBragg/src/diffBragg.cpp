@@ -333,6 +333,8 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     NABC[4] = 1;
     NABC[8] = 1;
 
+    O_reference = vec3(0,0,0);
+
     update_oversample_during_refinement = true;
     oversample_omega = true;
     only_save_omega_kahn = false;
@@ -400,6 +402,8 @@ void diffBragg::rotate_fs_ss_vecs_3D(double panel_rot_angO, double panel_rot_ang
 
     vec3 fs_vec = vec3(fdet_vector[1], fdet_vector[2], fdet_vector[3]);
     vec3 ss_vec = vec3(sdet_vector[1], sdet_vector[2], sdet_vector[3]);
+    vec3 origin_vec = vec3(pix0_vector[1], pix0_vector[2], pix0_vector[3]);
+    vec3 origin_diff_vec = origin_vec - O_reference; // difference between origin and a reference vector, this is the vector we will rotate
 
     mat3 RO = mat3(0,0,0,0,0,0,0,0,0);
     RO[1] = -odet_vector[3];
@@ -456,9 +460,11 @@ void diffBragg::rotate_fs_ss_vecs_3D(double panel_rot_angO, double panel_rot_ang
     ROT = rotO*rotF*rotS;
     fs_vec = ROT*fs_vec;
     ss_vec = ROT*ss_vec;
+    origin_vec = O_reference + ROT*origin_diff_vec; // add the rotated difference to the reference to recover the origin of the rotated panel
     for (int i=0; i < 3; i++){
         fdet_vector[i+1] = fs_vec[i];
         sdet_vector[i+1] = ss_vec[i];
+        pix0_vector[i+1] = origin_vec[i];
     }
 
     //int pan_mans[3] = {0,4,5};
@@ -480,7 +486,7 @@ void diffBragg::update_dxtbx_geoms(
     int panel_id,
     double panel_rot_angO,
     double panel_rot_angF,
-    double panel_rot_angS){
+    double panel_rot_angS, double panel_offsetX, double panel_offsetY, double panel_offsetZ){
 
     /* BEAM properties first */
 
@@ -523,7 +529,7 @@ void diffBragg::update_dxtbx_geoms(
 
     /* pixel count in short and fast-axis directions, should not change after instantiation */
     SCITBX_ASSERT(spixels == detector[panel_id].get_image_size()[1]);
-    SCITBX_ASSERT( fpixels == detector[panel_id].get_image_size()[0]);
+    SCITBX_ASSERT(fpixels == detector[panel_id].get_image_size()[0]);
 
     /* direction in 3-space of detector axes */
     SCITBX_ASSERT (beam_convention == CUSTOM);
@@ -531,7 +537,7 @@ void diffBragg::update_dxtbx_geoms(
     fdet_vector[1] = detector[panel_id].get_fast_axis()[0];
     fdet_vector[2] = detector[panel_id].get_fast_axis()[1];
     fdet_vector[3] = detector[panel_id].get_fast_axis()[2];
-    unitize(fdet_vector,fdet_vector);
+    unitize(fdet_vector, fdet_vector);
 
     sdet_vector[1] = detector[panel_id].get_slow_axis()[0];
     sdet_vector[2] = detector[panel_id].get_slow_axis()[1];
@@ -584,6 +590,10 @@ void diffBragg::update_dxtbx_geoms(
         }
     }
 
+    pix0_vector[1] += panel_offsetX;///1000;
+    pix0_vector[2] += panel_offsetY;///1000;
+    pix0_vector[3] += panel_offsetZ;///1000;
+
     Fclose = Xclose = -dot_product(pix0_vector, fdet_vector);
     Sclose = Yclose = -dot_product(pix0_vector, sdet_vector);
     close_distance = distance = dot_product(pix0_vector, odet_vector);
@@ -613,7 +623,6 @@ void diffBragg::update_dxtbx_geoms(
 
     /* quantum_gain = amp_gain * electrooptical_gain, does not include capture_fraction */
     quantum_gain = detector[panel_id].get_gain();
-
     //adc_offset = detector[panel_id].ADC_OFFSET;
 
     /* SPINDLE properties */

@@ -306,8 +306,8 @@ def downsample_spectrum(energies, fluences, total_flux=1e12, nbins=100, method=0
     energies = energies[is_finite]
   else:  # method==1:
     w = fluences
-    med = np.median(np.hstack((w[:100] ,w[-100:])))
-    sigma = np.std(np.hstack((w[:100] ,w[-100:])))
+    med = np.median(np.hstack((w[:100], w[-100:])))
+    sigma = np.std(np.hstack((w[:100], w[-100:])))
     baseline = med + baseline_sigma*sigma
     width = ev_width/((energies[-1] - energies[0]) / len(energies))
     idx_min = argrelmin(savgol_filter(w,21, 11),order=int(width/3.))[0]
