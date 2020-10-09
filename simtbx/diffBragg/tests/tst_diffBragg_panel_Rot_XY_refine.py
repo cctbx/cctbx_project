@@ -89,6 +89,13 @@ SIM._add_noise()
 img = SIM.D.raw_pixels.as_numpy_array()
 SIM.D.raw_pixels *= 0
 
+# get the fast,slow, origin axis of the panel
+from scitbx.matrix import col
+panel = SIM.detector[0]
+Ftru = col(panel.get_fast_axis())
+Stru = col(panel.get_slow_axis())
+Otru = col(panel.get_origin())
+
 # Simulate the perturbed image for comparison
 panel_rot_angO = 0.05
 panel_rot_angF = 1
@@ -98,6 +105,70 @@ panel_rot_ang_radF = panel_rot_angF * np.pi / 180
 panel_rot_ang_radS = panel_rot_angS * np.pi / 180
 Xshift_mm = 0.05
 Yshift_mm = 0.05
+#
+## OFS rotations
+#Frot = Ftru.rotate_around_origin(Stru, panel_rot_ang_radS).rotate_around_origin(Ftru, panel_rot_ang_radF).rotate_around_origin(Otru, panel_rot_ang_radO)
+#Srot = Stru.rotate_around_origin(Stru, panel_rot_ang_radS).rotate_around_origin(Ftru, panel_rot_ang_radF).rotate_around_origin(Otru, panel_rot_ang_radO)
+#
+#
+#from IPython import embed
+#embed()
+###################################################
+###################################################
+###################################################
+###################################################
+###################################################
+#################################################
+#################################################
+#################################################
+#################################################
+#################################################
+#
+#from dxtbx.model import Experiment
+#from simtbx.nanoBragg import make_imageset
+#from cctbx_project.simtbx.diffBragg.phil import phil_scope
+#from simtbx.diffBragg import refine_launcher
+#E = Experiment()
+#E.detector = SIM.detector
+#E.beam = SIM.D.beam
+#E.crystal = C
+#E.imageset = make_imageset([img], E.beam, E.detector)
+#
+#refls = utils.refls_from_sims([spots], E.detector, E.beam, thresh=20)
+#
+#P = phil_scope.extract()
+#P.roi.shoebox_size = 20
+#P.roi.reject_edge_reflections = False
+#P.refiner.refine_panelRotO = [1]
+#P.refiner.refine_panelRotF = [1]
+#P.refiner.refine_panelRotS = [1]
+#P.refiner.max_calls = [1000]
+#P.refiner.tradeps = 1e-10
+## NOTE RUC.gtol = .9
+## NOTE RUC.trad_conv = True  #False
+## NOTE RUC.drop_conv_max_eps = 1e-9
+#P.refiner.curvatures = False
+#P.refiner.use_curvatures_threshold = 0
+#P.refiner.poissononly = False
+#P.refiner.verbose = True
+#P.refiner.big_dump = False
+#P.refiner.sigma_r = SIM.D.readout_noise_adu
+#P.refiner.adu_per_photon = SIM.D.quantum_gain
+#P.simulator.crystal.has_isotropic_ncells = True
+#P.simulator.init_scale = SIM.D.spot_scale
+#P.simulator.beam.size_mm = SIM.beam.size_mm
+#
+## assert RUC.all_ang_off[0] < 0.005
+#RUC = refine_launcher.local_refiner_from_parameters(refls, E, P, miller_data=SIM.crystal.miller_array)
+##assert round(RUC.D.get_value(9)) == 19
+#print("OK")
+#from IPython import embed
+#embed()
+#
+###################################################
+#################################################
+#
+#
 
 #det2 = deepcopy(SIM.detector)
 #panel = det2[0]
@@ -251,6 +322,9 @@ RUC.refine_panelXY = REFINE_XY
 RUC.ignore_line_search_failed_step_at_lower_bound = True
 
 RUC.panel_group_from_id = {0: 0}  # panel group ID from panel id
+dimX, dimY = SIM.detector[0].get_image_size()
+ref = SIM.detector[0].get_pixel_lab_coord((dimX/2, dimY/2))
+RUC.panel_reference_from_id = {0: SIM.detector[0].get_origin()}  # panel group ID from panel id
 
 init_rotO = init_rotF = init_rotS = 0
 if REFINE_ROTO:
@@ -261,14 +335,14 @@ if REFINE_ROTS:
     init_rotS = panel_rot_ang_radS
 RUC.panelRot_init = {0: [init_rotO, init_rotF, init_rotS]}
 #RUC.panelRot_init = {0: panel_rot_ang_rad}  # panel group ID versus starting value
-RUC.panelRot_sigma = [0.01, 0.01, 0.01]
+RUC.panelRot_sigma = [1, 1, 1]
 
 init_X_offset = init_Y_offset = 0
 if REFINE_XY:
     init_X_offset = Xshift_mm
     init_Y_offset = Yshift_mm
-RUC.panelX_init = {0: init_X_offset}
-RUC.panelY_init = {0: init_Y_offset}
+RUC.panelX_init = {0: init_X_offset/1000.}
+RUC.panelY_init = {0: init_Y_offset/1000.}
 RUC.panelX_sigma = 1
 RUC.panelY_sigma = 1
 #RUC.n_panel_XY_param = 2 * int(REFINE_XY)
@@ -283,7 +357,7 @@ RUC.trial_id = 0
 
 RUC.plot_images = args.plot
 RUC.plot_stride = 1
-RUC.plot_spot_stride = 1
+RUC.plot_spot_stride = 10
 RUC.setup_plots()
 
 RUC.rescale_params = True
@@ -345,8 +419,8 @@ if args.toggle:
 assert rotO < 0.01
 assert rotF < 0.01
 assert rotS < 0.01
-assert abs(x) < 0.0025
-assert abs(y) < 0.0025
+assert abs(x) < 0.0025/1000
+assert abs(y) < 0.0025/1000
 
 print("I AM ZIM")
 print("OK!")

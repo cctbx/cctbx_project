@@ -1385,36 +1385,19 @@ class LocalRefiner(PixelRefinement):
 
     def _update_dxtbx_detector(self):
         self.S.panel_id = self._panel_id
-        
-        dummie_det = deepcopy(self.S.detector)
-        panel_node = dummie_det[self._panel_id]
-        
-        newX, newY, newZ = panel_node.get_origin()
-
-        newX_offset, newY_offset = self._get_panelXY_val(self._panel_id)
-        newX += newX_offset
-        newY += newY_offset
-        new_originZ = self._get_originZ_val(self._i_shot)
-        if new_originZ is not None:
-            newZ += new_originZ
-
-        new_origin = newX, newY, newZ
-        fast_ax = panel_node.get_fast_axis()
-        slow_ax = panel_node.get_slow_axis()
-
-        node_dict = panel_node.to_dict()  # when casting to dict, origin, fast, slow are local_frame, so we have to reset
-        node_dict["origin"] = new_origin
-        node_dict["fast_axis"] = fast_ax
-        node_dict["slow_axis"] = slow_ax 
-        node = Panel.from_dict(node_dict)
-        dummie_det[self._panel_id] = node 
+        new_offsetX, new_offsetY = self._get_panelXY_val(self._panel_id)
+        new_offsetZ = self._get_originZ_val(self._i_shot)
         panel_rot_angO, panel_rot_angF, panel_rot_angS = self._get_panelRot_val(self._panel_id)
-        self.D.update_dxtbx_geoms(dummie_det, self.S.beam.nanoBragg_constructor_beam, self._panel_id,
-                                  panel_rot_angO, panel_rot_angF, panel_rot_angS)
-        
-        if self.recenter:
-            s0 = self.S.beam.nanoBragg_constructor_beam.get_s0()
-            assert ALL_CLOSE(node.get_beam_centre(s0), self.D.beam_center_mm)
+
+        if self.panel_reference_from_id is not None:
+            self.D.reference_origin = self.panel_reference_from_id[self._panel_id]  #self.S.detector[self.panel_reference_from_id[self._panel_id]].get_origin()
+        else:
+            self.D.reference_origin = self.S.detector[self._panel_id].get_origin()
+        self.D.update_dxtbx_geoms(self.S.detector, self.S.beam.nanoBragg_constructor_beam, self._panel_id,
+                                  panel_rot_angO, panel_rot_angF, panel_rot_angS, new_offsetX, new_offsetY, new_offsetZ)
+        #if self.recenter:
+        #    s0 = self.S.beam.nanoBragg_constructor_beam.get_s0()
+        #    assert ALL_CLOSE(node.get_beam_centre(s0), self.D.beam_center_mm)
 
     def _extract_spectra_coefficient_derivatives(self):
         self.spectra_derivs = [0]*self.n_spectra_param
