@@ -22,6 +22,7 @@ citations_str = """\
   Diederichs K & Karplus PA (1997) Nature Structural Biology 4:269-275
     (with erratum in: Nat Struct Biol 1997 Jul;4(7):592)
   Weiss MS (2001) J Appl Cryst 34:130-135.
+  Dauter, Z. (2006). Acta Cryst. D62, 867-876.
   Karplus PA & Diederichs K (2012) Science 336:1030-3."""
 
 sigma_filtering_phil_str = """
