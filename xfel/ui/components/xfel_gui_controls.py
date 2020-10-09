@@ -360,9 +360,8 @@ class OptionCtrl(CtrlBase):
       else:
         sub_label = key
 
-      if len(items) > 1:
-        opt_label = wx.StaticText(self, id=wx.ID_ANY, label=sub_label)
-        opt_box.Add(opt_label, flag=wx.ALIGN_CENTER_VERTICAL)
+      opt_label = wx.StaticText(self, id=wx.ID_ANY, label=sub_label)
+      opt_box.Add(opt_label, flag=wx.ALIGN_CENTER_VERTICAL)
 
       item = wx.TextCtrl(self, id=wx.ID_ANY, size=ctrl_size,
                          style=wx.TE_PROCESS_ENTER)
