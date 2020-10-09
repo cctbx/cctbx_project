@@ -281,6 +281,7 @@ class ramachandran_manager(object):
         "isoleucine or valine":"ala"}
     bool_atom_selection = self._determine_bool_atom_selection(pdb_hierarchy)
     fao = [self.params.favored, self.params.allowed, self.params.outlier]
+    print(fao)
     if initialize:
       if 'oldfield' in fao:
         self._oldfield_tables = ramachandran_plot_data(
@@ -322,6 +323,7 @@ class ramachandran_manager(object):
                  ),
       tables = (self._oldfield_tables, self._emsley_tables, self._emsley8k_tables, self._phi_psi_2_tables),
       initialize=False)
+    assert 0
     return new_manager
 
   def extract_proxies(self, hierarchy):
