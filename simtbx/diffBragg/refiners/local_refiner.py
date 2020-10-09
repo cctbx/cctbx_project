@@ -2917,7 +2917,9 @@ class LocalRefiner(PixelRefinement):
         x,y = zip(*self.xy_calc[i_shot])
         z = [0]*num_spots_in_shot
         xyz_calc = flex.vec3_double(list(zip(x,y,z)))
+        refined_refls['dials.xyzcal.px'] = deepcopy(refined_refls['xyzcal.px'])  # make a backup
         refined_refls["xyzcal.px"] = xyz_calc
+
         refined_refls = refined_refls.select(selection_flags)
         return refined_refls
 

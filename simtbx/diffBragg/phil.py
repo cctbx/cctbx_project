@@ -259,6 +259,11 @@ roi {
   background_threshold = 3.5
     .type = float
     .help = for determining background pixels
+  pad_shoebox_for_background_estimation = None
+    .type = int
+    .help = shoebox_size specifies the dimenstion of the shoebox used during refinement
+    .help = and this parameter is used to increase that shoebox_size only during the background
+    .help = estimation stage
   shoebox_size = 10
     .type = int
     .help = roi box dimension
