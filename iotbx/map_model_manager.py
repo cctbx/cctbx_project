@@ -3381,7 +3381,7 @@ class map_model_manager(object):
           if value_list[i] is None: continue
           new_sites,new_values = apply_ncs_to_dv_results(
             direction_vectors = box_info.direction_vectors,
-	    xyz = xyz_list[i],
+            xyz = xyz_list[i],
             values = value_list[i],
             ncs_object = box_info.ncs_object)
           result.xyz_list.extend(new_sites)
