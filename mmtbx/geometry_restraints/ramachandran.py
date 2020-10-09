@@ -321,6 +321,12 @@ class ramachandran_manager(object):
     return new_manager
 
   def extract_proxies(self, hierarchy):
+    from phenix.programs.phi_psi_2 import results_manager as pp2
+    phi_psi_2_tables = pp2.get_overall_motif_count_and_output(None,
+                                                    hierarchy,
+                                                    return_rama_restraints=True,
+                                                    )
+    print(phi_psi_2_tables)
     favored = ramalyze.RAMALYZE_FAVORED
     allowed = ramalyze.RAMALYZE_ALLOWED
     outlier = ramalyze.RAMALYZE_OUTLIER
@@ -391,7 +397,22 @@ class ramachandran_manager(object):
           weight       = weight)
         self.append_emsley8k_proxies(proxy, n_seq)
       elif r_type == 'phi_psi_2':
-        assert 0
+        print(three)
+        print(dir(three))
+        print(text_rama_key)
+        print(i_seqs)
+        weight=1
+        print(phi_psi_2_tables.get(three[0].resseq_as_int(), ''))
+        print(phi_psi_2_tables.get(three[1].resseq_as_int(), ''))
+        print(phi_psi_2_tables.get(three[2].resseq_as_int(), ''))
+        pp2_key = phi_psi_2_tables.get(three[1].resseq_as_int(), '')
+        if pp2_key.find('!')<=0:
+          continue
+        proxy = ext.phi_psi_proxy(
+          residue_type = pp2_key,
+          i_seqs       = i_seqs,
+          weight       = weight)
+        self.append_phi_psi_2_proxies(proxy, n_seq)
       elif(r_type is None): pass
       else:
         raise RuntimeError("Not an option: %s"%str(r_type))
@@ -499,10 +520,31 @@ class ramachandran_manager(object):
           epsilon        = 1.0) # XXX
       overall_residual_sum += flex.sum(self.residuals_array_emsley8k)
     # phi/psi/2
+    from phenix.pdb_tools.phi_psi_2_data import relative_probabilities
+    rc = relative_probabilities(ignore_alpha_beta=False)
     self.residuals_array_phi_psi_2 = None
     n_phi_psi_2_proxies = self.get_n_phi_psi_2_proxies()
     if n_phi_psi_2_proxies:
-      assert 0
+      if self.residuals_array_phi_psi_2 is None:
+        self.residuals_array_phi_psi_2 = flex.double(n_phi_psi_2_proxies, 0.)
+      for i, proxy in enumerate(self._phi_psi_2_proxies):
+        print(proxy.residue_type)
+        for pp1, item in rc.items():
+          if proxy.residue_type.find(pp1)==-1: continue
+          mv = max(item.values())
+          for i, p in item.items():
+            if p==mv: break
+        i=i[1]
+        print(i)
+        print(self._phi_psi_2_tables)
+        rama_table = self._phi_psi_2_tables[i]
+        print(rama_table)
+        self.residuals_array_phi_psi_2[i] = rama_table.compute_gradients(
+          gradient_array = gradient_array,
+          sites_cart     = sites_cart,
+          proxy          = proxy,
+          epsilon        = 1.0) # XXX
+      overall_residual_sum += flex.sum(self.residuals_array_phi_psi_2)
     return overall_residual_sum
 
   def get_n_oldfield_proxies(self):
@@ -691,8 +733,31 @@ def load_emsley8k_tables():
   return tables
 
 def load_phi_psi_2_tables():
+  from phenix.pdb_tools.phi_psi_2_data import relative_probabilities
+  from phenix.pdb_tools.phi_psi_2_data import phi_psi_2_peaks
   tables = {}
-  assert 0
+  tmp = OrderedDict()
+  rr = [i for i in range(-179,180,2)]
+  for i in rr:
+    for j in rr:
+      tmp[(i,j)]=0
+  rc = relative_probabilities(ignore_alpha_beta=False)
+  for pp1, item in rc.items():
+    mv = max(item.values())
+    for i, p in item.items():
+      if p==mv: break
+    for pp2, data in phi_psi_2_peaks.items():
+      if data[0].find(i)>-1:
+        break
+    a=pp2[2]
+    b=pp2[3]
+    data = flex.double()
+    for k, v in zip(tmp.keys(), tmp.values()):
+      val = (k[0]-a)**2 + (k[1]-b)**2
+      data.append(val/1000)
+    t = lookup_table(data, 180)
+    tables[pp1] = t
+  return tables
 
 class ramachandran_plot_data(object):
   def __init__(self, plot_cutoff=0.027):
