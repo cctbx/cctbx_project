@@ -335,6 +335,7 @@ class run(object):
       box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
         sites_cart   = pdb_inp.atoms().extract_xyz(),
         buffer_layer = 10)
+      cs = box.crystal_symmetry()
     cif_objects = list(self.inputs.cif_objects)
     if (len(self.params.restraints) > 0):
       import iotbx.cif
