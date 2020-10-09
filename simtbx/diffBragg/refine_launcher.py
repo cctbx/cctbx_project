@@ -39,7 +39,8 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
     reject_roi_with_hotpix=params.roi.reject_roi_with_hotpix,
     background_mask=background_mask, hotpix_mask=hotpix_mask,
     bg_thresh=params.roi.background_threshold,
-    set_negative_bg_to_zero=params.roi.force_negative_background_to_zero)
+    set_negative_bg_to_zero=params.roi.force_negative_background_to_zero,
+    pad_for_background_estimation=params.roi.pad_shoebox_for_background_estimation)
   
   selection_flags = [sel1 and sel2 for sel1, sel2 in zip(selection_flags, panel_selection)]
   if not np.any(selection_flags):

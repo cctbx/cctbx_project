@@ -676,7 +676,9 @@ def get_roi_from_spot(refls, fdim, sdim, shoebox_sz=10):
 
 
 def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_edge_reflections=False,
-                                   reject_roi_with_hotpix=True, background_mask=None, hotpix_mask=None, bg_thresh=3.5, set_negative_bg_to_zero=False):
+                                   reject_roi_with_hotpix=True, background_mask=None, hotpix_mask=None, 
+                                   bg_thresh=3.5, set_negative_bg_to_zero=False, 
+                                   pad_for_background_estimation=None):
 
     npan, sdim, fdim = imgs.shape
 
@@ -700,21 +702,27 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
             is_selected = False
         pid = refls[i_roi]['panel']
 
-        shoebox = imgs[pid, j1:j2, i1:i2]
-
         if hotpix_mask is not None:
             is_hotpix = hotpix_mask[pid, j1:j2, i1:i2]
             num_hotpix = is_hotpix.sum()
             if num_hotpix > 0 and reject_roi_with_hotpix:
                 print("has hot pixel")
                 is_selected = False
+        
+        dimY, dimX = imgs[pid].shape
+        if pad_for_background_estimation is not None:
+            j1 = max(0, j1-pad_for_background_estimation)
+            i1 = max(0, i1-pad_for_background_estimation) 
+            j2 = min(dimY, j2+pad_for_background_estimation)
+            i2 = min(dimX, i2+pad_for_background_estimation)
+
+        shoebox = imgs[pid, j1:j2, i1:i2]
 
         if background_mask is not None:
             is_background = background_mask[pid, j1:j2, i1:i2]
         else:
             is_background = label_background_pixels(shoebox,thresh=bg_thresh, iterations=2)
         
-
         bg_pixels = shoebox[is_background]
         bg_signal = np.median(bg_pixels)
 
@@ -1098,6 +1106,140 @@ def load_panel_group_file(panel_group_file):
             continue
         groups[panel] = group
     return groups
+
+
+def smooth(x, beta=10.0, window_size=11):
+    """
+    https://glowingpython.blogspot.com/2012/02/convolution-with-numpy.html
+
+    Apply a Kaiser window smoothing convolution.
+
+    Parameters
+    ----------
+    x : ndarray, float
+        The array to smooth.
+
+    Optional Parameters
+    -------------------
+    beta : float
+        Parameter controlling the strength of the smoothing -- bigger beta
+        results in a smoother function.
+    window_size : int
+        The size of the Kaiser window to apply, i.e. the number of neighboring
+        points used in the smoothing.
+
+    Returns
+    -------
+    smoothed : ndarray, float
+        A smoothed version of `x`.
+    """
+
+    # make sure the window size is odd
+    if window_size % 2 == 0:
+        window_size += 1
+
+    # apply the smoothing function
+    s = np.r_[x[window_size - 1:0:-1], x, x[-1:-window_size:-1]]
+    w = np.kaiser(window_size, beta)
+    y = np.convolve(w / w.sum(), s, mode='valid')
+
+    # remove the extra array length convolve adds
+    b = int((window_size - 1) / 2)
+    smoothed = y[b:len(y) - b]
+
+    return smoothed
+
+
+def sum_of_gauss_spec(Xinput, Yinput, npts=200, edge=150, baseline_sigmas=10):
+    from scipy.signal import savgol_filter
+    from scipy.signal import argrelextrema
+    from scipy.interpolate import interp1d
+    try:
+        from lmfit import minimize, Parameters, Parameter, report_fit
+    except ImportError:
+        print("Install lmfit: libtbx.python -m pip install lmfit")
+        return
+
+    xvals = np.hstack((Xinput[:edge], Xinput[-edge:]))
+    yvals = np.hstack((Yinput[:edge], Yinput[-edge:]))
+    pfit = np.polyfit(xvals, yvals, deg=2)
+    V = np.polyval(pfit, Xinput)
+    cnn = Yinput-V
+
+    fit_data = savgol_filter(cnn, 21, 11)
+    fit_data = smooth(fit_data, 200, 100)
+    baseline_pts = np.hstack((fit_data[:edge], fit_data[-edge:]))
+    cutoff = np.std(baseline_pts) * baseline_sigmas + np.median(baseline_pts)
+
+    local_max = argrelextrema(fit_data, np.greater, order=1)[0]
+
+    local_mins = argrelextrema(fit_data, np.less, order=1)[0]
+    local_mins = np.append([0], local_mins)
+    local_mins = np.append(local_mins, [Yinput.shape[0] - 1])
+    while local_max[0] < local_mins[0]:
+        local_max = local_max[1:]
+    while local_max[-1] > local_mins[-1]:
+        local_max = local_max[:-1]
+
+    ###########################
+    # GAUSSIAN PARTIAL FITTING #
+    ###########################
+    def sum_gauss(params, xdata, ydata, Ngauss, ctrs):
+        model = np.zeros_like(xdata)
+        for i in range(Ngauss):
+            amp = params['amp%d' % i].value
+            wid = params['wid%d' % i].value
+            off = params['off%d' % i].value
+            model = model + amp * np.exp( \
+                -((xdata - ctrs[i]) / wid) ** 2) + off
+        return model - ydata
+
+    local_max_split = np.array_split(local_max, 10)
+    args_fit = []
+
+    for local_max_ in local_max_split:
+        lowest_max = local_max_[0]
+        highest_max = local_max_[-1]
+        lower_bound = local_mins[local_mins < lowest_max][-1]
+        upper_bound = local_mins[local_mins > highest_max][0]
+
+        ctrs = Xinput[local_max_]
+        xdata = Xinput[np.arange(lower_bound, upper_bound + 1)]
+        ydata = cnn[np.arange(lower_bound, upper_bound + 1)]
+
+        W = (xdata.max() - xdata.min()) / 10.
+        N_gauss = len(local_max_)
+        params = Parameters()
+        for i_ in range(N_gauss):
+            params.add('off%d' % i_, value=0, min=0, max=100000, vary=False)
+            params.add('wid%d' % i_, value=W,
+                       min=0, max=W + W * 10)
+            params.add('amp%d' % i_, value=ydata.mean(), min=0, max=ydata.max() + ydata.max() * 0.5)
+
+        result_gauss = minimize(sum_gauss, params,
+                                args=(xdata, ydata, N_gauss, ctrs))
+
+        for i_ in range(N_gauss):
+            if result_gauss.params['amp%d' % i_].value < cutoff:
+                result_gauss.params["amp%d" % i_].value = 0
+
+        fit_partial = sum_gauss(result_gauss.params,
+                                xdata, np.zeros_like(xdata),
+                                N_gauss, ctrs)
+
+        args = [xdata, fit_partial]  # -sum(offs)]
+        args_fit.append(args)
+
+    all_X = []
+    all_Y = []
+    for xdata, ydata in args_fit:
+        all_X += list(xdata)
+        all_Y += list(ydata)
+    I = interp1d(all_X, all_Y, bounds_error=True)
+    X = np.linspace(min(all_X), max(all_X), npts)
+    Y = I(X)
+    return X, Y
+
 
 #def tally_local_statistics(spot_rois):
 #    # tally up all miller indices in this refinement
