@@ -281,7 +281,7 @@ def exercise_around_model():
   assert r.args  ==  ['self', 'map_manager', 'model', 'box_cushion', 'wrapping',
       'model_can_be_outside_bounds', 'log'], r.args
   r = inspect.getargspec(cctbx.maptbx.box.with_bounds.__init__)
-  assert r.args  ==  ['self', 'map_manager', 'lower_bounds', 'upper_bounds', 'model', 
+  assert r.args  ==  ['self', 'map_manager', 'lower_bounds', 'upper_bounds', 'model',
     'wrapping', 'model_can_be_outside_bounds', 'log'], r.args
 
   print ("OK")

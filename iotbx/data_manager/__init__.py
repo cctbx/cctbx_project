@@ -318,6 +318,8 @@ class DataManagerBase(object):
     self._default_output_filename = filename
 
   def get_default_output_filename(self):
+    if self._program is not None:
+      return self._program.get_default_output_filename()
     return self._default_output_filename
 
   # ---------------------------------------------------------------------------
