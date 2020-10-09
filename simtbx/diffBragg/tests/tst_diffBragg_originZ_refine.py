@@ -188,7 +188,7 @@ RUC = LocalRefiner(
     shot_panel_ids={0: [0]*nspot},
     log_of_init_crystal_scales=None,
     all_crystal_scales=None,
-    shot_originZ_init={0: starting_originZ_shift},
+    shot_originZ_init={0: starting_originZ_shift/1000.},
     perturb_fcell=False,
     global_ncells=True,
     global_ucell=True,
@@ -221,7 +221,7 @@ RUC.trial_id = 0
 RUC.plot_images = False
 RUC.setup_plots()
 
-RUC.originZ_range = -20, 20
+RUC.originZ_range = -20/1000., 20/1000.
 if args.curvatures:
     RUC.originZ_range = None
 
@@ -244,7 +244,7 @@ if RUC.hit_break_to_use_curvatures:
     RUC.use_curvatures = True
     RUC.run(setup=False)
 
-refined_distance_offset = RUC._get_originZ_val(0)
+refined_distance_offset = RUC._get_originZ_val(0)*1000
 assert abs(refined_distance_offset) < 1e-2
 print("I AM ZIM")
 print("OK!")
