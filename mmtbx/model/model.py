@@ -571,6 +571,7 @@ class manager(object):
   def shift_model_and_set_crystal_symmetry(self,
        shift_cart,     # shift to apply
        crystal_symmetry = None, # optional new crystal symmetry
+       unit_cell_crystal_symmetry = None, # optional new unit_cell_crystal_symmetry
        ):
 
     '''
@@ -581,7 +582,7 @@ class manager(object):
       shift the coordinates of the model
 
       Sets the new crystal_symmetry
-      Maintains any existing unit_cell_crystal_symmetry
+      Optionally sets unit_cell_crystal_symmetry
 
       Takes into account any previous shifts by looking at existing
       shift_cart and unit_cell_crystal_symmetry
@@ -592,21 +593,27 @@ class manager(object):
     assert (crystal_symmetry is None) or isinstance(
       crystal_symmetry,  crystal.symmetry)
 
+    assert unit_cell_crystal_symmetry is None or isinstance(
+      unit_cell_crystal_symmetry,  crystal.symmetry)
+
+
     # Get shift info  that knows about unit_cell_crystal_symmetry
     #   and any prevous shift_cart
 
-    unit_cell_crystal_symmetry = self.unit_cell_crystal_symmetry()
-    if not unit_cell_crystal_symmetry:
-      unit_cell_crystal_symmetry = self.crystal_symmetry()
+    if unit_cell_crystal_symmetry is None:
+      unit_cell_crystal_symmetry = self.unit_cell_crystal_symmetry()
+      if not unit_cell_crystal_symmetry:
+        unit_cell_crystal_symmetry = self.crystal_symmetry()
+
+    # Get the new crystal symmetry to apply
+    if not crystal_symmetry:
+      crystal_symmetry = self.crystal_symmetry()
 
     if self._shift_cart is not None:
        original_shift_cart = self._shift_cart
     else:
        original_shift_cart = (0, 0, 0)
 
-    # Get the new crystal symmetry to apply
-    if not crystal_symmetry:
-      crystal_symmetry = self.crystal_symmetry()
 
     # Get the total shift since original
     total_shift=[sm_sc+sc for sm_sc,sc in zip(original_shift_cart,shift_cart)]
@@ -615,6 +622,7 @@ class manager(object):
     sites_cart_new = self.get_sites_cart() + shift_cart
 
     #Set symmetry and sites_cart
+
     self.set_crystal_symmetry_and_sites_cart(crystal_symmetry, sites_cart_new)
 
     # Set up new shift info with updated shift_cart,
@@ -673,9 +681,8 @@ class manager(object):
       be replaced in either case.
     '''
     if(not self.processed()):
-      self._crystal_symmetry = crystal_symmetry
-    else:
-      self.set_crystal_symmetry_and_sites_cart(crystal_symmetry,None)
+      self.process_input_model() # Need xrs set up for this to work
+    self.set_crystal_symmetry_and_sites_cart(crystal_symmetry,None)
 
   def set_crystal_symmetry_and_sites_cart(self, crystal_symmetry, sites_cart):
 
@@ -701,6 +708,7 @@ class manager(object):
 
     assert crystal_symmetry is not None  # must supply crystal_symmetry
 
+
     if(self.crystal_symmetry() is None):
       # Set self._crystal_symmetry.
       assert self._xray_structure is None # can't have xrs without crystal sym
@@ -709,6 +717,8 @@ class manager(object):
     if self.crystal_symmetry().is_similar_symmetry(crystal_symmetry):
       # Keep the xray_structure but change sites_cart if present and update
       xrs=self.get_xray_structure() # Make sure xrs is set up
+      # Make sure xrs has same symmetry as self
+      assert xrs.crystal_symmetry().is_similar_symmetry(self.crystal_symmetry())
 
       # make self._crystal_symmetry identical to xrs crystal_symmetry
       self._crystal_symmetry = xrs.crystal_symmetry()

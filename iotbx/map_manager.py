@@ -1553,7 +1553,6 @@ class map_manager(map_reader, write_ccp4_map):
       For shifting a model, use:
          model.shift_model_and_set_crystal_symmetry(shift_cart=shift_cart)
     '''
-
     # Check if we really need to do anything
     if self.is_compatible_model(model):
       return # already fine
