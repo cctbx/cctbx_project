@@ -690,7 +690,7 @@ def write_and_run(pdb_name):
 
 def test_geo(result, opposite=False):
   input_model_filename = 'paral_geo_output.pdb'
-  with open('%s_real_space_refined_initial.geo' % input_model_filename.replace('.pdb', '')) as f:
+  with open('%s_real_space_refined_000_initial.geo' % input_model_filename.replace('.pdb', '')) as f:
     lines = f.read()
   if 0:
     print(lines)
