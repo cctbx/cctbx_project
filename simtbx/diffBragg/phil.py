@@ -104,9 +104,13 @@ refiner {
   refine_panelXY = None
     .type = ints(size_min=1)
     .help = whether to refine the XY component of the detector panel's origin vector
+  refine_panelZ = None
+    .type = ints(size_min=1)
+    .help = whether to refine the Z component of the detector panel's origin vector, 
+    .help = (1 unique value per panel group, see panel_group_file)
   refine_detdist = None 
     .type = ints(size_min=1)
-    .help = whether to refine the detector distance (Z) components
+    .help = whether to refine the detector distance (Z), one value refined for all panels
   max_calls = [100]
     .type = ints(size_min=1)
     .help = maximum number of calls for the refinement trial
@@ -141,7 +145,10 @@ refiner {
       .help = refinement sensitivity factor for panel rotations (orthogonal, fast, slow)
     panelXY = [1, 1]
       .type = floats(size=2)
-      .help = refinement sensitivity factor for panel XY translations in the lab frame (X, Y)
+      .help = refinement sensitivity factor for panel XY translations in the lab frame
+    panelZ = 1
+      .type = float
+      .help = refinement sensitivity factor for panel Z translations in the lab frame 
     rotXYZ = [0.1, 0.1, 0.1]
       .type = floats(size=3)
       .help = refinement sensitivity factor for rotation parameters
@@ -184,6 +191,24 @@ refiner {
     ucell_angle_deviation = None
       .type = float
       .help = absolute deviation for unit cell angle
+    panel_X = [-1e-6, 1e-6]
+      .type = floats(size=2)
+      .help = range of values in meters for XY shift
+    panel_Y = [-1e-6, 1e-6]
+      .type = floats(size=2)
+      .help = range of values in meters for XY shift
+    panel_Z = [-1e-6, 1e-6]
+      .type = floats(size=2)
+      .help = range of values in meters for detector panel Z shift
+    panel_rotO = [-1e-6, 1e-6]
+      .type = floats(size=2)
+      .help = range of values in degrees for rotation of panel about its normal vector
+    panel_rotF = [-1e-6, 1e-6]
+      .type = floats(size=2)
+      .help = range of values in degrees for rotation of panel about its fast-axis 
+    panel_rotS = [-1e-6, 1e-6]
+      .type = floats(size=2)
+      .help = range of values in degrees for rotation of panel about its slow-axis 
   }
   compute_image_model_correlation = False
     .type = bool
