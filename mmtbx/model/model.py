@@ -714,7 +714,7 @@ class manager(object):
       existing_sites_cart = None
 
     # Check for missing _crystal_symmetry
-    if(self._crystal_symmetry is None):  
+    if(self._crystal_symmetry is None):
       # Set self._crystal_symmetry.
       assert self._xray_structure is None # can't have xrs without crystal sym
       self._crystal_symmetry = crystal_symmetry
