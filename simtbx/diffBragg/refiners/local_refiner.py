@@ -390,7 +390,8 @@ class LocalRefiner(PixelRefinement):
 
         self._MPI_make_output_dir()
 
-        if self.refine_panelXY or self.refine_panelRotS or self.refine_panelRotF or self.refine_panelRotO:
+        #if self.refine_panelXY or self.refine_panelRotS or self.refine_panelRotF or self.refine_panelRotO:
+        if self.panel_group_from_id is not None:
             self.n_panel_groups = len(set(self.panel_group_from_id.values()))
         else:
             self.n_panel_groups = 1
@@ -750,36 +751,37 @@ class LocalRefiner(PixelRefinement):
 
                     if refine_panelRot[i_pan_rot]:
                         assert self.rescale_params
-                        self.is_being_refined[xpos] = True
+                        self.is_being_refined[xpos] = i_pan_group in self.panel_groups_being_refined
                     self.Xall[xpos] = 1
 
+                assert self.rescale_params
+
+                xpos_X = self.panelXY_xstart + 2*i_pan_group
+                self.Xall[xpos_X] = 1
                 if self.refine_panelXY:
-                    assert self.rescale_params
+                    self.is_being_refined[xpos_X] = i_pan_group in self.panel_groups_being_refined #True
+                self.panelX_params[i_pan_group].init = 0  # self.panelX_init[i_pan_group]
+                self.panelX_params[i_pan_group].sigma = self.panelX_sigma
+                self.panelX_params[i_pan_group].minval = self.panelX_range[0]
+                self.panelX_params[i_pan_group].maxval = self.panelX_range[1]
 
-                    xpos_X = self.panelXY_xstart + 2*i_pan_group
-                    self.Xall[xpos_X] = 1
-                    self.is_being_refined[xpos_X] = True
-                    self.panelX_params[i_pan_group].init = 0  # self.panelX_init[i_pan_group]
-                    self.panelX_params[i_pan_group].sigma = self.panelX_sigma
-                    self.panelX_params[i_pan_group].minval = self.panelX_range[0]
-                    self.panelX_params[i_pan_group].maxval = self.panelX_range[1]
+                xpos_Y = xpos_X + 1
+                self.Xall[xpos_Y] = 1
+                if self.refine_panelXY:
+                    self.is_being_refined[xpos_Y] = i_pan_group in self.panel_groups_being_refined #True
+                self.panelY_params[i_pan_group].init = 0   # self.panelY_init[i_pan_group]
+                self.panelY_params[i_pan_group].sigma = self.panelY_sigma
+                self.panelY_params[i_pan_group].minval = self.panelY_range[0]
+                self.panelY_params[i_pan_group].maxval = self.panelY_range[1]
 
-                    xpos_Y = xpos_X + 1
-                    self.Xall[xpos_Y] = 1
-                    self.is_being_refined[xpos_Y] = True
-                    self.panelY_params[i_pan_group].init = 0   # self.panelY_init[i_pan_group]
-                    self.panelY_params[i_pan_group].sigma = self.panelY_sigma
-                    self.panelY_params[i_pan_group].minval = self.panelY_range[0]
-                    self.panelY_params[i_pan_group].maxval = self.panelY_range[1]
-
+                xpos_Z = self.panelZ_xstart + i_pan_group
+                self.Xall[xpos_Z] = 1
                 if self.refine_panelZ:
-                    xpos_Z = self.panelZ_xstart + i_pan_group
-                    self.Xall[xpos_Z] = 1
-                    self.is_being_refined[xpos_Z] = True
-                    self.panelZ_params[i_pan_group].init = 0  # self.panelX_init[i_pan_group]
-                    self.panelZ_params[i_pan_group].sigma = self.panelZ_sigma
-                    self.panelZ_params[i_pan_group].minval = self.panelZ_range[0]
-                    self.panelZ_params[i_pan_group].maxval = self.panelZ_range[1]
+                    self.is_being_refined[xpos_Z] = i_pan_group in self.panel_groups_being_refined #True
+                self.panelZ_params[i_pan_group].init = 0  # self.panelX_init[i_pan_group]
+                self.panelZ_params[i_pan_group].sigma = self.panelZ_sigma
+                self.panelZ_params[i_pan_group].minval = self.panelZ_range[0]
+                self.panelZ_params[i_pan_group].maxval = self.panelZ_range[1]
 
             if self.output_dir is not None:
                 # np.save(os.path.join(self.output_dir, "f_truth"), self.f_truth)  #FIXME by adding in the correct truth from Fref
@@ -1630,6 +1632,7 @@ class LocalRefiner(PixelRefinement):
                 self._update_ncells()
                 self._update_rotXYZ()
                 n_spots = len(self.NANOBRAGG_ROIS[self._i_shot])
+                printed_geom_updates = False
                 for i_spot in range(n_spots):
                     self._i_spot = i_spot
 
@@ -1647,7 +1650,7 @@ class LocalRefiner(PixelRefinement):
 
                     self.Imeas = self.ROI_IMGS[self._i_shot][i_spot]
                     self._update_dxtbx_detector()
-                    if i_spot == 0:
+                    if not printed_geom_updates:
                         if self.refine_panelRotO or self.refine_panelRotF or self.refine_panelRotS:
                             print("ROT ANGLES OFS : %.8f %.8f %.8f (degrees)"
                                   % tuple(map(lambda x: x*180/PI, self._get_panelRot_val(self._panel_id))))
@@ -1656,6 +1659,7 @@ class LocalRefiner(PixelRefinement):
                             print("XYZ: %.8f %8f %.8f mm" % tuple([val*1000 for val in self._get_panelXYZ_val(self._panel_id)]))
                         if self.refine_spectra:
                             print("Spectra Lam0 Lam1: ", self._get_spectra_coefficients())
+                        printed_geom_updates = True
                     self._run_diffBragg_current(i_spot)
                     self._set_background_plane(i_spot)
                     self._extract_pixel_data()
@@ -2966,4 +2970,37 @@ class LocalRefiner(PixelRefinement):
         self.compute_functional_and_gradients()   # goes thorugh all ROIs
         self.save_model_for_shot = None
         return self.full_image_of_model
+
+    def get_optimized_detector(self, i_shot=0):
+        n_panels = len(self.S.detector)
+        new_det = Detector()
+        for pid in range(n_panels):
+            new_offsetX, new_offsetY, new_offsetZ = self._get_panelXYZ_val(pid)
+
+            if self.refine_detdist: 
+                new_offsetZ = self._get_detector_distance_val(i_shot)
+
+            panel_rot_angO, panel_rot_angF, panel_rot_angS = self._get_panelRot_val(pid)
+
+            if self.panel_reference_from_id is not None:
+                self.D.reference_origin = self.panel_reference_from_id[pid] 
+            else:
+                self.D.reference_origin = self.S.detector[pid].get_origin()
+
+            self.D.update_dxtbx_geoms(self.S.detector, self.S.beam.nanoBragg_constructor_beam, pid,
+                                panel_rot_angO, panel_rot_angF, panel_rot_angS, 
+                                new_offsetX, new_offsetY, new_offsetZ, force=False)
+
+            fdet = self.D.fdet_vector
+            sdet = self.D.sdet_vector
+            origin = self.D.get_origin()
+            panel_dict = self.S.detector[pid].to_dict()
+            panel_dict["fast_axis"] = fdet
+            panel_dict["slow_axis"] = sdet
+            panel_dict["origin"] = origin
+            new_det.add_panel(Panel.from_dict(panel_dict))
+
+        #from IPython import embed
+        #embed()
+        return new_det
 

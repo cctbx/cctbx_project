@@ -46,6 +46,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
   if not np.any(selection_flags):
       print("No spots for refinement")
       return None 
+
   
   # TODO consider panel selection combine here instead of select above
 
@@ -86,7 +87,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
   shot_yrel = {0: yrel}
   shot_abc_inits = {0: tilt_abc}
   shot_panel_ids = {0: pids}
-  shot_originZ_init = {0: 0}
+  shot_originZ_init = {0:0}
 
 
   # determine number of parameters:
@@ -114,7 +115,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
   for pid in panel_group_from_id:
     group_id = panel_group_from_id[pid]
     panels_per_group[group_id].append(pid)
-
+  
   n_spectra_params = 2 if params.refiner.refine_spectra is not None else 0
   n_panelRot_params = 3*n_panel_groups
   n_panelXYZ_params = 3*n_panel_groups
@@ -188,6 +189,11 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
         group_id = panel_group_from_id[pid]
         reference = expt.detector[panels_per_group[group_id][0]]
         RUC.panel_reference_from_id[pid] = reference.get_origin()
+      refined_groups = []
+      for i,pid in enumerate(pids):
+        if selection_flags[i] and panel_group_from_id[pid] not in refined_groups:
+          refined_groups.append(panel_group_from_id[pid])
+      RUC.panel_groups_being_refined = refined_groups 
 
       RUC.panelRot_sigma = params.refiner.sensitivity.panelRotOFS
       RUC.panelX_sigma, RUC.panelY_sigma = params.refiner.sensitivity.panelXY
