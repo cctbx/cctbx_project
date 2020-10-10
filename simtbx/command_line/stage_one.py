@@ -230,6 +230,7 @@ class Script:
       
       basename,_ = os.path.splitext(os.path.basename(exper_filename))
 
+
       # Save model image
       if self.params.output.save.images is not None:
         images_outdir = os.path.join(self.params.output.directory, "model_images", "rank%d" % COMM.rank)
@@ -281,8 +282,9 @@ class Script:
         if not os.path.exists(exp_outdir):
           os.makedirs(exp_outdir)
 
-        exp_path = os.path.join(exp_outdir, "%s_%s_%d.pkl" % (self.params.output.tag.experiments, basename, exp_id))
+        exp_path = os.path.join(exp_outdir, "%s_%s_%d.expt" % (self.params.output.tag.experiments, basename, exp_id))
         exper.crystal = refiner.get_corrected_crystal(i_shot=0)
+        exper.detector = refiner.get_optimized_detector()
         new_exp_list = ExperimentList()
         new_exp_list.append(exper)
         new_exp_list.as_file(exp_path)
