@@ -502,13 +502,14 @@ ngain_param = 1
 n_spectra_param = 0
 if args.refineSpectra:
     n_spectra_param = 2
-n_global_unknowns = nfcell_param + ngain_param + n_global_m_param + n_global_ucell_param + n_spectra_param
+n_panelXYZ_params = 3
+n_panelRot_params = 3
+n_global_unknowns = nfcell_param + ngain_param + n_global_m_param + n_global_ucell_param + n_spectra_param + n_panelXYZ_params + n_panelRot_params
 n_total_unknowns = n_local_unknowns + n_global_unknowns
 
 RUC = LocalRefiner(
     n_total_params=n_total_unknowns,
     n_local_params=n_local_unknowns,
-    n_global_params=n_global_unknowns,
     local_idx_start=0,
     shot_ucell_managers=shot_ucell_managers,
     shot_rois=shot_roi_imgs,
@@ -525,10 +526,9 @@ RUC = LocalRefiner(
     shot_panel_ids=shot_panel_ids,
     log_of_init_crystal_scales=None,
     all_crystal_scales=None,
+    shot_detector_distance_init={i_shot:0 for i_shot in range(N_SHOTS)},
     global_ncells=not args.pershotncells,
     global_ucell=not args.pershotucell,
-    global_originZ=False,
-    shot_originZ_init=shot_originZ_init,
     sgsymbol=symbol,
     omega_kahn=[omega_kahn])
 

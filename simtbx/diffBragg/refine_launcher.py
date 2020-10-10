@@ -120,6 +120,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
   n_panelXYZ_params = 3*n_panel_groups
   n_global_params = n_spectra_params + n_panelRot_params + n_panelXYZ_params
 
+  RUC = None
   x_init = None
   for i_macro_cyc in range(params.refiner.num_macro_cycles):
     for i_trial in range(n_trials):
@@ -144,26 +145,36 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
       if not params.refiner.only_predict_model:
         if params.refiner.refine_Bmatrix is not None:
           RUC.refine_Bmatrix = params.refiner.refine_Bmatrix[i_trial]
+
         if params.refiner.refine_Umatrix is not None:
           RUC.refine_Umatrix = params.refiner.refine_Umatrix[i_trial]
+
         if params.refiner.refine_ncells is not None:
           RUC.refine_ncells = params.refiner.refine_ncells[i_trial]
+
         if params.refiner.refine_bg is not None:
           RUC.refine_background_planes = params.refiner.refine_bg[i_trial]
+
         if params.refiner.refine_spot_scale is not None:
           RUC.refine_crystal_scale = params.refiner.refine_spot_scale[i_trial]
+
         if params.refiner.refine_spectra is not None:
           RUC.refine_spectra = params.refiner.refine_spectra[i_trial]
+
         if params.refiner.refine_detdist is not None:
           RUC.refine_detdist = params.refiner.refine_detdist[i_trial]
+
         if params.refiner.refine_panelZ is not None:
           RUC.refine_panelZ = params.refiner.refine_panelZ[i_trial]
+
         if params.refiner.refine_panelRotO is not None:
           RUC.refine_panelRotO = params.refiner.refine_panelRotO[i_trial]
         if params.refiner.refine_panelRotF is not None:
           RUC.refine_panelRotF = params.refiner.refine_panelRotF[i_trial]
+
         if params.refiner.refine_panelRotS is not None:
           RUC.refine_panelRotS = params.refiner.refine_panelRotS[i_trial]
+
         if params.refiner.refine_panelXY is not None:
           RUC.refine_panelXY = params.refiner.refine_panelXY[i_trial]
 

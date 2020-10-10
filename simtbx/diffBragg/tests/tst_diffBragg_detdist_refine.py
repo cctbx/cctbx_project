@@ -8,15 +8,11 @@ parser.add_argument("--nopolar", action="store_true")
 args = parser.parse_args()
 
 from dxtbx.model.crystal import Crystal
-from IPython import embed
 from cctbx import uctbx
-from scitbx.matrix import sqr, rec, col
+from scitbx.matrix import sqr, rec
 from dxtbx.model import Panel
 from copy import deepcopy
-import numpy as np
 from scipy.spatial.transform import Rotation
-from simtbx.diffBragg.refiners.local_refiner import LocalRefiner
-from simtbx.diffBragg.refiners.crystal_systems import MonoclinicManager
 
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.sim_data import SimData
@@ -127,3 +123,5 @@ RUC = refine_launcher.local_refiner_from_parameters(refls, E, P, miller_data=SIM
 refined_distance_offset = E.detector[0].get_origin()[2] + RUC._get_detector_distance_val(0)*1000 - gt_distance
 assert abs(refined_distance_offset) < 1e-2
 print("OK")
+
+

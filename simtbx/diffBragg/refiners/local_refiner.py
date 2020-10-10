@@ -1649,11 +1649,13 @@ class LocalRefiner(PixelRefinement):
                     self._update_dxtbx_detector()
                     if i_spot == 0:
                         if self.refine_panelRotO or self.refine_panelRotF or self.refine_panelRotS:
-                            print("ROT ANGLE : %.8f %.8f %.8f (degrees)"
+                            print("ROT ANGLES OFS : %.8f %.8f %.8f (degrees)"
                                   % tuple(map(lambda x: x*180/PI, self._get_panelRot_val(self._panel_id))))
 
                         if self.refine_panelXY or self.refine_panelZ:
                             print("XYZ: %.8f %8f %.8f mm" % tuple([val*1000 for val in self._get_panelXYZ_val(self._panel_id)]))
+                        if self.refine_spectra:
+                            print("Spectra Lam0 Lam1: ", self._get_spectra_coefficients())
                     self._run_diffBragg_current(i_spot)
                     self._set_background_plane(i_spot)
                     self._extract_pixel_data()
@@ -2287,8 +2289,6 @@ class LocalRefiner(PixelRefinement):
 
         self.all_ang_off = self._init_gather_ang_off()
         self.n_bad_shots = self._init_n_bad_shots()
-
-
 
     def get_init_misorientation(self, i_shot):
         ang = NAN
