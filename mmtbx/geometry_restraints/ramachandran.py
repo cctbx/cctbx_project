@@ -281,7 +281,6 @@ class ramachandran_manager(object):
         "isoleucine or valine":"ala"}
     bool_atom_selection = self._determine_bool_atom_selection(pdb_hierarchy)
     fao = [self.params.favored, self.params.allowed, self.params.outlier]
-    print(fao)
     if initialize:
       if 'oldfield' in fao:
         self._oldfield_tables = ramachandran_plot_data(
@@ -323,7 +322,6 @@ class ramachandran_manager(object):
                  ),
       tables = (self._oldfield_tables, self._emsley_tables, self._emsley8k_tables, self._phi_psi_2_tables),
       initialize=False)
-    assert 0
     return new_manager
 
   def extract_proxies(self, hierarchy):
@@ -540,6 +538,7 @@ class ramachandran_manager(object):
       overall_residual_sum += flex.sum(self.residuals_array_emsley8k)
     # phi/psi/2
     from phenix.pdb_tools.phi_psi_2_data import get_rama_table
+    from phenix.pdb_tools.phi_psi_2_data import get_phi_psi_2_key
     self.residuals_array_phi_psi_2 = None
     n_phi_psi_2_proxies = self.get_n_phi_psi_2_proxies()
     if n_phi_psi_2_proxies:
