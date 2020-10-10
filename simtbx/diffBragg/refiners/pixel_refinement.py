@@ -30,6 +30,15 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     run_on_init = False
 
     def __init__(self):
+        self.detector_distance_sigma = 1
+        self.detector_distance_init = 0   # offset
+        self.detector_distance_range = -1e-6, 1e-6
+
+        self.panelX_range = -1e-6, 1e-6
+        self.panelY_range = -1e-6, 1e-6
+        self.panelZ_range = -1e-6, 1e-6
+        self.panelRot_range = [[-1e-6, 1e-6], [-1e-6, 1e-6], [-1e-6, 1e-6]]
+        self.panelRot_sigma = [1, 1, 1]
         self.full_image_of_model = None
         self.save_model_for_shot = None
         self.pershot_spectra_refine = False
@@ -68,8 +77,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.rotY_sigma = 0.003
         self.rotZ_sigma = 0.003
         self.ucell_sigmas = [0.1, .1]
-        self.originZ_sigma = 0.01
-        self.originZ_range = None #-3, 3
+        self.detector_distance_sigma = 0.01
+        self.detector_distance_range = -1e-6, 1e-6
         self.m_sigma = 0.05
         self.spot_scale_sigma = 0.0001
 
@@ -82,6 +91,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
 
         self.panelX_sigma = 0.000001
         self.panelY_sigma = 0.000001
+        self.panelZ_sigma = 0.000001
+        self.panelZ_init = {0: 0}
         self.panelX_init = {0: 0}  # dict of panel_group_id: initial originX
         self.panelY_init = {0: 0}  # dict of panel_group_id: initial originY
         self.n_panel_XY_param = 0  # 2 for each group
@@ -93,7 +104,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.fcell_resolution_bin_Id = None
         self.big_dump = False
         self.m_init = {0: 10}  # TODO make setting these properties a requirement
-        self.spot_scale_init = {0: 1} # TODO make setting these properties a requirement
+        self.spot_scale_init = {0: 1}  # TODO make setting these properties a requirement
         self.print_all_corr = True
 
         self.pause_after_iteration = 0.001
@@ -150,6 +161,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.refine_ncells = False  # whether to refine Ncells abc
         self.refine_detdist = False  # whether to refine the detdist
         self.refine_panelXY = False  # whether to refine panel origin X and Y components
+        self.refine_panelZ = False  # whether to refine panel origin X and Y components
         self.refine_panelRotO = False  # whether to refine the panel rotation
         self.refine_panelRotF = False  # whether to refine the panel rotation
         self.refine_panelRotS = False  # whether to refine the panel rotation

@@ -161,14 +161,6 @@ SIM.D.raw_pixels *= 0
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
 spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot, shoebox_sz=30)
 
-#print("I got %s spots to process!" % spot_roi.shape[0])
-#n_kept = 30
-#np.random.seed(2)
-#idx = np.random.permutation(spot_roi.shape[0])[:n_kept]
-#spot_roi = spot_roi[idx]
-#tilt_abc = tilt_abc[idx]
-#print ("I kept %d spots!" % tilt_abc.shape[0])
-
 UcellMan = MonoclinicManager(
     a=ucell2[0],
     b=ucell2[1],
@@ -180,16 +172,6 @@ init_Bmat_norm = np.abs(np.array(C2.get_B()) - np.array(C.get_B())).sum()
 
 if args.gain:
     img = img*1.1
-
-#RUC = RefineAll(
-#    spot_rois=spot_roi,
-#    abc_init=tilt_abc,
-#    img=img,
-#    SimData_instance=SIM,
-#    plot_images=args.plot,
-#    plot_residuals=True,
-#    ucell_manager=UcellMan)
-
 
 
 # TODO: the following need to be embedded in the refiner init function..
@@ -233,7 +215,6 @@ n_total_unknowns = n_local_unknowns + n_global_unknowns
 RUC = LocalRefiner(
     n_total_params=n_total_unknowns,
     n_local_params=n_local_unknowns,
-    n_global_params=n_global_unknowns,
     local_idx_start=0,
     shot_ucell_managers={0: UcellMan},
     shot_rois={0: spot_roi},
@@ -251,9 +232,9 @@ RUC = LocalRefiner(
     log_of_init_crystal_scales=None,
     all_crystal_scales=None,
     perturb_fcell=False,
-    shot_originZ_init={0: distance},
     global_ncells=True,
     global_ucell=True,
+    shot_detector_distance_init={0: 0},
     sgsymbol=symbol)
 
 #TODO make this part of class init:

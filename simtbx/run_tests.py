@@ -26,6 +26,7 @@ tst_list = (
     "$D/diffBragg/tests/tst_diffBragg_detdist_refine.py",
     "$D/diffBragg/tests/tst_diffBragg_regions_of_interest.py",
     "$D/diffBragg/tests/tst_diffBragg_rotXYZ.py",
+    "$D/diffBragg/tests/tst_diffBragg_refine_spectrum.py",
     ["$D/diffBragg/tests/tst_diffBragg_rotXYZ_deriv.py", "--curvatures --rotidx 0"],
     ["$D/diffBragg/tests/tst_diffBragg_rotXYZ_deriv.py", "--curvatures --rotidx 1"],
     ["$D/diffBragg/tests/tst_diffBragg_rotXYZ_deriv.py", "--curvatures --rotidx 2"],
