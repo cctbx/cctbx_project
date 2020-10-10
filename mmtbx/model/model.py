@@ -680,8 +680,6 @@ class manager(object):
       Uses set_crystal_symmetry_and_sites_cart because sites_cart have to
       be replaced in either case.
     '''
-    if(not self.processed()):
-      self.process_input_model() # Need xrs set up for this to work
     self.set_crystal_symmetry_and_sites_cart(crystal_symmetry,None)
 
   def set_crystal_symmetry_and_sites_cart(self, crystal_symmetry, sites_cart):
@@ -709,12 +707,21 @@ class manager(object):
     assert crystal_symmetry is not None  # must supply crystal_symmetry
 
 
-    if(self.crystal_symmetry() is None):
+    # Save existing sites_cart
+    if self._xray_structure:
+      existing_sites_cart = self._xray_structure.sites_cart()
+    else:
+      existing_sites_cart = None
+
+    # Check for missing _crystal_symmetry
+    if(self._crystal_symmetry is None):  
       # Set self._crystal_symmetry.
       assert self._xray_structure is None # can't have xrs without crystal sym
       self._crystal_symmetry = crystal_symmetry
 
-    if self.crystal_symmetry().is_similar_symmetry(crystal_symmetry):
+    # Useable crystal symmetry and same as input
+    if self.crystal_symmetry() and self.crystal_symmetry().is_similar_symmetry(
+        crystal_symmetry):
       # Keep the xray_structure but change sites_cart if present and update
       xrs=self.get_xray_structure() # Make sure xrs is set up
       # Make sure xrs has same symmetry as self
@@ -732,7 +739,7 @@ class manager(object):
       xrs=self.get_xray_structure() # Make sure xrs is set up
 
       if sites_cart is None:
-        sites_cart=xrs.sites_cart()
+        sites_cart = existing_sites_cart
 
       # Changing crystal_symmetry changes sites_frac but keeps sites_cart same
 

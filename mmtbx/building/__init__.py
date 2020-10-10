@@ -33,12 +33,12 @@ def show_chain_resseq_ranges(residues, out=sys.stdout, prefix=""):
     return ("%s%s" % (resseq, icode)).strip()
   for chain_id in sorted(ranges.keys()):
     clauses = []
-    for range in ranges[chain_id] :
-      if (len(range) >= 2):
-        clauses.append("%s-%s" % (format_resid(*(range[0])),
-          format_resid(*(range[-1]))))
+    for range_value in ranges[chain_id] :
+      if (len(range_value) >= 2):
+        clauses.append("%s-%s" % (format_resid(*(range_value[0])),
+          format_resid(*(range_value[-1]))))
       else :
-        clauses.append(format_resid(*(range[0])))
+        clauses.append(format_resid(*(range_value[0])))
     print(prefix+"chain '%s': %s" % (chain_id, ",".join(clauses)), file=out)
 
 def reprocess_pdb(pdb_hierarchy, crystal_symmetry, cif_objects, out):

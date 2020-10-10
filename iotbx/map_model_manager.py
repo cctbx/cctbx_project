@@ -4043,6 +4043,7 @@ class map_model_manager(object):
      soft_zero_boundary_mask = soft_zero_boundary_mask,
      soft_zero_boundary_mask_radius = soft_zero_boundary_mask_radius,
      nproc= nproc,
+     log = self.log,
     )
 
   def as_map_model_manager(self):
