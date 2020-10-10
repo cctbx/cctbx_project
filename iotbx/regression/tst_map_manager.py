@@ -358,6 +358,10 @@ def test_02():
   assert sites_cart.size() == 10 # Note: zero if not available
 
 if (__name__  ==  '__main__'):
-  test_01()
+  import libtbx.load_env
+  if libtbx.env.dist_path('chem_data') is not None:
+    test_01()
+  else:
+    print("Skipping test_01 in tst_map_manager.py because chem_data is not available.")
   test_02()
   print ("OK")

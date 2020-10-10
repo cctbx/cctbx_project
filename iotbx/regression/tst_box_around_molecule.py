@@ -28,4 +28,8 @@ TER""")
   print("OK")
 
 if __name__=="__main__":
-  exercise()
+  import libtbx.load_env
+  if libtbx.env.dist_path('chem_data') is not None:
+    exercise()
+  else:
+    print('Skipping tst_box_around_molecule.py because chem_data is not available.')
