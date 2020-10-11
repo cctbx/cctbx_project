@@ -37,34 +37,38 @@ class ArrayInfo:
       raise Sorry("No space group info is present in data")
     data = millarr.data()
     self.datatype = ""
-    if (isinstance(data, flex.hendrickson_lattman)):
-      data = graphics_utils.NoNansHL( data ) 
-      # for now display HL coefficients as a simple sum
-      self.maxdata = max([e[0]+e[1]+e[2]+e[3] for e in data ])
-      self.mindata = min([e[0]+e[1]+e[2]+e[3] for e in data ])
-      self.datatype = "ishendricksonlattman"
-    else:
-      if (isinstance(data, flex.int)):
-        data = flex.double([e for e in data if e!= display.inanval])
-        self.datatype = "isint"
-      if millarr.is_complex_array():
-        data = flex.abs(millarr.data())
-        self.datatype = "iscomplex"
-      #data = [e for e in data if not math.isnan(e)]
-      data = graphics_utils.NoNansArray( data, data[0] ) # assuming data[0] isn't NaN
-      self.maxdata = flex.max( data )
-      self.mindata = flex.min( data )
+    self.maxdata = self.mindata = self.maxsigmas = self.minsigmas = None
+    self.minmaxdata = (None, None)
+    self.minmaxsigs = (None, None)
+    if not isinstance(data, flex.std_string):
+      if (isinstance(data, flex.hendrickson_lattman)):
+        data = graphics_utils.NoNansHL( data ) 
+        # for now display HL coefficients as a simple sum
+        self.maxdata = max([e[0]+e[1]+e[2]+e[3] for e in data ])
+        self.mindata = min([e[0]+e[1]+e[2]+e[3] for e in data ])
+        self.datatype = "ishendricksonlattman"
+      else:
+        if (isinstance(data, flex.int)):
+          data = flex.double([e for e in data if e!= display.inanval])
+          self.datatype = "isint"
+        if millarr.is_complex_array():
+          data = flex.abs(millarr.data())
+          self.datatype = "iscomplex"
+        #data = [e for e in data if not math.isnan(e)]
+        data = graphics_utils.NoNansArray( data, data[0] ) # assuming data[0] isn't NaN
+        self.maxdata = flex.max( data )
+        self.mindata = flex.min( data )
 
-    self.maxsigmas = self.minsigmas = None
-    if millarr.sigmas() is not None:
-      data = millarr.sigmas()
-      self.datatype = "hassigmas"
-      #data = [e for e in data if not math.isnan(e)]
-      data = graphics_utils.NoNansArray( data, data[0] ) # assuming data[0] isn't NaN
-      self.maxsigmas = flex.max( data )
-      self.minsigmas = flex.min( data )
-    self.minmaxdata = (roundoff(self.mindata), roundoff(self.maxdata))
-    self.minmaxsigs = (roundoff(self.minsigmas), roundoff(self.maxsigmas))
+      if millarr.sigmas() is not None:
+        data = millarr.sigmas()
+        self.datatype = "hassigmas"
+        #data = [e for e in data if not math.isnan(e)]
+        data = graphics_utils.NoNansArray( data, data[0] ) # assuming data[0] isn't NaN
+        self.maxsigmas = flex.max( data )
+        self.minsigmas = flex.min( data )
+      self.minmaxdata = (roundoff(self.mindata), roundoff(self.maxdata))
+      self.minmaxsigs = (roundoff(self.minsigmas), roundoff(self.maxsigmas))
+
     self.labels = self.desc = ""
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if millarr.info():

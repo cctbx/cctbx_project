@@ -737,7 +737,7 @@ class HKLViewFrame() :
           unwantedstrings.append("_refln.")
           unwantedstrings.append("wavelength_id")
           for arr in arrays:
-            if len(arr.info().labels) > 1:
+            if len(arr.info().labels):
               newlabels = []
               for label in arr.info().labels:
                 found = False
@@ -765,7 +765,7 @@ class HKLViewFrame() :
                 self.mprint("tNCS vector found in header of mtz file: %s" %str(svec) )
       except Exception as e :
         self.NewFileLoaded=False
-        self.mprint(to_str(e))
+        self.mprint(to_str(e) + "".join(traceback.format_stack(limit=20)) )
         arrays = []
       valid_arrays = []
       self.viewer.array_infostrs = []
@@ -845,7 +845,8 @@ class HKLViewFrame() :
             arrtype="calc"
             colname= None
         if arr.is_complex_array():
-          colnames = ["_refln.%s_calc_au" %arr.info().labels[0], "_refln.%s_phase_calc" %arr.info().labels[0]]
+          colnames = ["_refln.%s" %e for e in arr.info().labels ]
+          #colnames = ["_refln.%s_calc_au" %arr.info().labels[0], "_refln.%s_phase_calc" %arr.info().labels[0]]
           #colnames = ["_refln.F_calc_au", "_refln.phase_calc"]
           colname= None
           arrtype = None

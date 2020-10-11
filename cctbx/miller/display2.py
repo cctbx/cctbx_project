@@ -5,6 +5,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, to_str
 from cctbx import miller
+from cctbx import crystal
 from cctbx.array_family import flex
 import libtbx.phil
 from scitbx import graphics_utils
@@ -127,12 +128,12 @@ class scene(object):
     self.renderscale = 100.0
     self.foms_workarray = foms_array
     self.SceneCreated = False
+    if isinstance(miller_array.data(), flex.std_string):
+      return
     self.settings = settings
     self.merge_equivalents = False
     if not self.miller_array.is_unique_set_under_symmetry():
       self.merge_equivalents = merge
-    from cctbx import crystal
-    from cctbx.array_family import flex
     self.multiplicities = None
     self.fomlabel = ""
     self.foms = flex.double(self.miller_array.size(), float('nan'))
