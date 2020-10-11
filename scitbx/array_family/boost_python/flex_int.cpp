@@ -218,83 +218,88 @@ template <typename intType>
   }
 
   // wrap each intType
-  void wrap_flex_int()
-  {
-    using namespace boost::python;
-    using boost::python::arg;
-    flex_wrapper<int>::signed_integer("int", scope())
-      .def_pickle(flex_pickle_single_buffered<int>())
-      .def("__init__", make_constructor(
-        from_std_string<int>, default_call_policies()))
-      .def("__init__", make_constructor(
-        flex_int_from_numpy_array, default_call_policies()))
-      .def("copy_to_byte_str", copy_to_byte_str<versa<int, flex_grid<> > >)
-      .def("slice_to_byte_str",
-        slice_to_byte_str<versa<int, flex_grid<> > >)
-      .def("as_bool", as_bool<int>, (arg("strict")=true))
-      .def("as_long", as_long<int>)
-      .def("as_string", as_string<int>, (arg("format_string")="%d"))
-      .def("as_rgb_scale_string", as_rgb_scale_string<int>, (
-        arg("rgb_scales_low"),
-        arg("rgb_scales_high"),
-        arg("saturation")))
-      .def("counts", counts<int, std::map<long, long> >::unlimited)
-      .def("counts", counts<int, std::map<long, long> >::limited, (
-        arg("max_keys")))
-      .def("matrix_is_symmetric",
-        (bool(*)(
-          const_ref<int, c_grid<2> > const&))
-            matrix::is_symmetric)
-      .def("matrix_copy_block",
-        (versa<int, c_grid<2> >(*)(
-          const_ref<int, c_grid<2> > const&,
-          unsigned, unsigned, unsigned, unsigned))
-            matrix::copy_block, (
-              arg("i_row"),
-              arg("i_column"),
-              arg("n_rows"),
-              arg("n_columns")))
-      .def("matrix_transpose_in_place",
-        (void(*)(versa<int, flex_grid<> >&)) matrix_transpose_in_place)
-      .def("matrix_rot90",
-        (versa<int, c_grid<2> >(*)(
-           const_ref<int, c_grid<2> > const&, int)) matrix_rot90)
-      .def("matrix_swap_rows_in_place",
-        (void(*)(
-          ref<int, c_grid<2> > const&, unsigned, unsigned))
-            matrix::swap_rows_in_place, (
-              arg("i"),
-              arg("j")))
-      .def("matrix_swap_columns_in_place",
-        (void(*)(
-          ref<int, c_grid<2> > const&, unsigned, unsigned))
-            matrix::swap_columns_in_place, (
-              arg("i"),
-              arg("j")))
-      .def("matrix_paste_block_in_place",
-        (void(*)(
-          ref<int, c_grid<2> > const&,
-          const_ref<int, c_grid<2> > const&,
-          unsigned, unsigned))
-            matrix::paste_block_in_place, (
-              arg("block"),
-              arg("i_row"),
-              arg("i_column")))
-      .def("as_numpy_array", flex_int_as_numpy_array, (
-        arg("optional")=false))
-      .def("__invert__", &bitwise_not<int>)
-      .def("__or__", &bitwise_or_single<int>)
-      .def("__or__", &bitwise_or_array<int>)
-      .def("__and__", &bitwise_and_single<int>)
-      .def("__and__", &bitwise_and_array<int>)
-      .def("__xor__", &bitwise_xor_single<int>)
-      .def("__xor__", &bitwise_xor_array<int>)
-    ;
-    def(
-      "int_from_byte_str",
-      shared_from_byte_str<int>,
-      (arg("byte_str")));
-    range_wrappers<int, int>::wrap("int_range");
+  // ==========================================================================
+  #define WRAP_FLEX(intType, intType_from_byte_str, intType_range) \
+  void wrap_flex_##intType() \
+  { \
+    using namespace boost::python; \
+    using boost::python::arg; \
+    flex_wrapper<intType>::signed_integer(#intType, scope()) \
+      .def_pickle(flex_pickle_single_buffered<intType>()) \
+      .def("__init__", make_constructor( \
+        from_std_string<intType>, default_call_policies())) \
+      .def("__init__", make_constructor( \
+        flex_##intType##_from_numpy_array, default_call_policies())) \
+      .def("copy_to_byte_str", copy_to_byte_str<versa<intType, flex_grid<> > >) \
+      .def("slice_to_byte_str", \
+        slice_to_byte_str<versa<intType, flex_grid<> > >) \
+      .def("as_bool", as_bool<intType>, (arg("strict")=true)) \
+      .def("as_long", as_long<intType>) \
+      .def("as_string", as_string<intType>, (arg("format_string")="%d")) \
+      .def("as_rgb_scale_string", as_rgb_scale_string<intType>, ( \
+        arg("rgb_scales_low"), \
+        arg("rgb_scales_high"), \
+        arg("saturation"))) \
+      .def("counts", counts<intType, std::map<long, long> >::unlimited) \
+      .def("counts", counts<intType, std::map<long, long> >::limited, ( \
+        arg("max_keys"))) \
+      .def("matrix_is_symmetric", \
+        (bool(*)( \
+          const_ref<intType, c_grid<2> > const&)) \
+            matrix::is_symmetric) \
+      .def("matrix_copy_block", \
+        (versa<intType, c_grid<2> >(*)( \
+          const_ref<intType, c_grid<2> > const&, \
+          unsigned, unsigned, unsigned, unsigned)) \
+            matrix::copy_block, ( \
+              arg("i_row"), \
+              arg("i_column"), \
+              arg("n_rows"), \
+              arg("n_columns"))) \
+      .def("matrix_transpose_in_place", \
+        (void(*)(versa<intType, flex_grid<> >&)) matrix_transpose_in_place) \
+      .def("matrix_rot90", \
+        (versa<intType, c_grid<2> >(*)( \
+           const_ref<intType, c_grid<2> > const&, int)) matrix_rot90) \
+      .def("matrix_swap_rows_in_place", \
+        (void(*)( \
+          ref<intType, c_grid<2> > const&, unsigned, unsigned)) \
+            matrix::swap_rows_in_place, ( \
+              arg("i"), \
+              arg("j"))) \
+      .def("matrix_swap_columns_in_place", \
+        (void(*)( \
+          ref<intType, c_grid<2> > const&, unsigned, unsigned)) \
+            matrix::swap_columns_in_place, ( \
+              arg("i"), \
+              arg("j"))) \
+      .def("matrix_paste_block_in_place", \
+        (void(*)( \
+          ref<intType, c_grid<2> > const&, \
+          const_ref<intType, c_grid<2> > const&, \
+          unsigned, unsigned)) \
+            matrix::paste_block_in_place, ( \
+              arg("block"), \
+              arg("i_row"), \
+              arg("i_column"))) \
+      .def("as_numpy_array", flex_##intType##_as_numpy_array, ( \
+        arg("optional")=false)) \
+      .def("__invert__", &bitwise_not<intType>) \
+      .def("__or__", &bitwise_or_single<intType>) \
+      .def("__or__", &bitwise_or_array<intType>) \
+      .def("__and__", &bitwise_and_single<intType>) \
+      .def("__and__", &bitwise_and_array<intType>) \
+      .def("__xor__", &bitwise_xor_single<intType>) \
+      .def("__xor__", &bitwise_xor_array<intType>) \
+    ; \
+    def( \
+      #intType_from_byte_str, \
+      shared_from_byte_str<intType>, \
+      (arg("byte_str"))); \
+    range_wrappers<intType, intType>::wrap(#intType_range); \
   }
+
+  // --------------------------------------------------------------------------
+  WRAP_FLEX(int, int_from_byte_str, int_range);
 
 }}} // namespace scitbx::af::boost_python
