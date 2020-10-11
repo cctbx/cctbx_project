@@ -219,17 +219,17 @@ template <typename intType>
 
   // wrap each intType
   // ==========================================================================
-  #define WRAP_FLEX(intType, intType_from_byte_str, intType_range) \
+  #define WRAP_FLEX(pyname, intType, signedInteger) \
   void wrap_flex_##intType() \
   { \
     using namespace boost::python; \
     using boost::python::arg; \
-    flex_wrapper<intType>::signed_integer(#intType, scope()) \
+    flex_wrapper<intType>::signedInteger(#pyname, scope()) \
       .def_pickle(flex_pickle_single_buffered<intType>()) \
       .def("__init__", make_constructor( \
         from_std_string<intType>, default_call_policies())) \
       .def("__init__", make_constructor( \
-        flex_##intType##_from_numpy_array, default_call_policies())) \
+        flex_##pyname##_from_numpy_array, default_call_policies())) \
       .def("copy_to_byte_str", copy_to_byte_str<versa<intType, flex_grid<> > >) \
       .def("slice_to_byte_str", \
         slice_to_byte_str<versa<intType, flex_grid<> > >) \
@@ -282,7 +282,7 @@ template <typename intType>
               arg("block"), \
               arg("i_row"), \
               arg("i_column"))) \
-      .def("as_numpy_array", flex_##intType##_as_numpy_array, ( \
+      .def("as_numpy_array", flex_##pyname##_as_numpy_array, ( \
         arg("optional")=false)) \
       .def("__invert__", &bitwise_not<intType>) \
       .def("__or__", &bitwise_or_single<intType>) \
@@ -293,13 +293,17 @@ template <typename intType>
       .def("__xor__", &bitwise_xor_array<intType>) \
     ; \
     def( \
-      #intType_from_byte_str, \
+      #pyname"_from_byte_str", \
       shared_from_byte_str<intType>, \
       (arg("byte_str"))); \
-    range_wrappers<intType, intType>::wrap(#intType_range); \
+    range_wrappers<intType, intType>::wrap(#pyname"_range"); \
   }
 
   // --------------------------------------------------------------------------
-  WRAP_FLEX(int, int_from_byte_str, int_range);
+  WRAP_FLEX(int, int, signed_integer);
+  WRAP_FLEX(int8, int8_t, signed_integer);
+  WRAP_FLEX(uint8, uint8_t, integer);
+  WRAP_FLEX(int16, int16_t, signed_integer);
+  WRAP_FLEX(uint16, uint16_t, integer);
 
 }}} // namespace scitbx::af::boost_python
