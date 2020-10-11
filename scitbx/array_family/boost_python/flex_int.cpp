@@ -20,18 +20,19 @@
 
 namespace scitbx { namespace af { namespace boost_python {
 
-  flex<int>::type*
+  template <typename intType>
+  typename flex<intType>::type*
   from_std_string(const_ref<std::string> const& s)
   {
-    shared<int> result(reserve(s.size()));
+    shared<intType> result(reserve(s.size()));
     for(std::size_t i=0;i<s.size();i++) {
       if (s[i].size() == 0) {
         throw std::invalid_argument(
           "Empty string (integer value expected).");
       }
-      int value = 0;
+      intType value = 0;
       try {
-        value = boost::lexical_cast<int>(s[i]);
+        value = boost::lexical_cast<intType>(s[i]);
       }
       catch (boost::bad_lexical_cast const&) {
         throw std::invalid_argument(
@@ -39,15 +40,16 @@ namespace scitbx { namespace af { namespace boost_python {
       }
       result.push_back(value);
     }
-    return new flex<int>::type(result, result.size());
+    return new typename flex<intType>::type(result, result.size());
   }
 
+  template <typename intType>
   shared<bool>
-  as_bool(const_ref<int> const& self, bool strict=true)
+  as_bool(const_ref<intType> const& self, bool strict=true)
   {
     shared<bool> result((reserve(self.size())));
     for(std::size_t i=0;i<self.size();i++) {
-      int v = self[i];
+      intType v = self[i];
       if (v == 0) {
         result.push_back(false);
       }
@@ -65,9 +67,10 @@ namespace scitbx { namespace af { namespace boost_python {
     return result;
   }
 
+  template <typename intType>
   af::versa<long, af::flex_grid<> >
   as_long(
-    af::const_ref<int, af::flex_grid<> > const& O)
+    af::const_ref<intType, af::flex_grid<> > const& O)
   {
     af::versa<long, af::flex_grid<> > result(
       O.accessor(), af::init_functor_null<long>());
@@ -82,9 +85,10 @@ namespace scitbx { namespace af { namespace boost_python {
   /* For allowed syntax for the optional format_string argument see:
        http://www.boost.org/libs/format/doc/format.html#syntax
    */
+  template <typename intType>
   af::shared<std::string>
   as_string(
-    af::const_ref<int, af::flex_grid<> > const& O,
+    af::const_ref<intType, af::flex_grid<> > const& O,
     std::string format_string="%d")
   {
     std::size_t n = O.accessor().size_1d();
@@ -95,16 +99,17 @@ namespace scitbx { namespace af { namespace boost_python {
     return result;
   }
 
+template <typename intType>
 #ifdef IS_PY3K
   PyObject*
 #else
   std::string
 #endif
   as_rgb_scale_string(
-    af::const_ref<int, af::flex_grid<> > const& O,
+    af::const_ref<intType, af::flex_grid<> > const& O,
     af::tiny<double, 3> const& rgb_scales_low,
     af::tiny<double, 3> const& rgb_scales_high,
-    int saturation)
+    intType saturation)
   {
     SCITBX_ASSERT(rgb_scales_low.const_ref().all_ge(0));
     SCITBX_ASSERT(rgb_scales_low.const_ref().all_le(1));
@@ -121,7 +126,7 @@ namespace scitbx { namespace af { namespace boost_python {
       else if (f > 1) f = 1;
       for(unsigned k=0;k<3;k++) {
         double fs = f * rgb_scales_high[k] + (1-f) * rgb_scales_low[k];
-        int c = static_cast<int>(fs * 255 + 0.5);
+        intType c = static_cast<intType>(fs * 255 + 0.5);
         if (c > 255) c = 255;
         result[j++] = static_cast<char>(c);
       }
@@ -133,78 +138,86 @@ namespace scitbx { namespace af { namespace boost_python {
 #endif
   }
 
-  af::shared<int> bitwise_not(
-      af::const_ref<int> const &self) {
-    af::shared<int> result(self.size());
+  template <typename intType>
+  af::shared<intType> bitwise_not(
+      af::const_ref<intType> const &self) {
+    af::shared<intType> result(self.size());
     for (std::size_t i = 0; i < self.size(); ++i) {
       result[i] = ~self[i];
     }
     return result;
   }
 
-  af::shared<int> bitwise_or_single(
-      af::const_ref<int> const &self,
-      int other) {
-    af::shared<int> result(self.size());
+  template <typename intType>
+  af::shared<intType> bitwise_or_single(
+      af::const_ref<intType> const &self,
+      intType other) {
+    af::shared<intType> result(self.size());
     for (std::size_t i = 0; i < self.size(); ++i) {
       result[i] = self[i] | other;
     }
     return result;
   }
 
-  af::shared<int> bitwise_or_array(
-      af::const_ref<int> const &self,
-      af::const_ref<int> const &other) {
+  template <typename intType>
+  af::shared<intType> bitwise_or_array(
+      af::const_ref<intType> const &self,
+      af::const_ref<intType> const &other) {
     SCITBX_ASSERT(self.size() == other.size());
-    af::shared<int> result(self.size());
+    af::shared<intType> result(self.size());
     for (std::size_t i = 0; i < self.size(); ++i) {
       result[i] = self[i] | other[i];
     }
     return result;
   }
 
-  af::shared<int> bitwise_and_single(
-      af::const_ref<int> const &self,
-      int other) {
-    af::shared<int> result(self.size());
+  template <typename intType>
+  af::shared<intType> bitwise_and_single(
+      af::const_ref<intType> const &self,
+      intType other) {
+    af::shared<intType> result(self.size());
     for (std::size_t i = 0; i < self.size(); ++i) {
       result[i] = self[i] & other;
     }
     return result;
   }
 
-  af::shared<int> bitwise_and_array(
-      af::const_ref<int> const &self,
-      af::const_ref<int> const &other) {
+  template <typename intType>
+  af::shared<intType> bitwise_and_array(
+      af::const_ref<intType> const &self,
+      af::const_ref<intType> const &other) {
     SCITBX_ASSERT(self.size() == other.size());
-    af::shared<int> result(self.size());
+    af::shared<intType> result(self.size());
     for (std::size_t i = 0; i < self.size(); ++i) {
       result[i] = self[i] & other[i];
     }
     return result;
   }
 
-  af::shared<int> bitwise_xor_single(
-      af::const_ref<int> const &self,
-      int other) {
-    af::shared<int> result(self.size());
+  template <typename intType>
+  af::shared<intType> bitwise_xor_single(
+      af::const_ref<intType> const &self,
+      intType other) {
+    af::shared<intType> result(self.size());
     for (std::size_t i = 0; i < self.size(); ++i) {
       result[i] = self[i] ^ other;
     }
     return result;
   }
 
-  af::shared<int> bitwise_xor_array(
-      af::const_ref<int> const &self,
-      af::const_ref<int> const &other) {
+  template <typename intType>
+  af::shared<intType> bitwise_xor_array(
+      af::const_ref<intType> const &self,
+      af::const_ref<intType> const &other) {
     SCITBX_ASSERT(self.size() == other.size());
-    af::shared<int> result(self.size());
+    af::shared<intType> result(self.size());
     for (std::size_t i = 0; i < self.size(); ++i) {
       result[i] = self[i] ^ other[i];
     }
     return result;
   }
 
+  // wrap each intType
   void wrap_flex_int()
   {
     using namespace boost::python;
@@ -212,16 +225,16 @@ namespace scitbx { namespace af { namespace boost_python {
     flex_wrapper<int>::signed_integer("int", scope())
       .def_pickle(flex_pickle_single_buffered<int>())
       .def("__init__", make_constructor(
-        from_std_string, default_call_policies()))
+        from_std_string<int>, default_call_policies()))
       .def("__init__", make_constructor(
         flex_int_from_numpy_array, default_call_policies()))
       .def("copy_to_byte_str", copy_to_byte_str<versa<int, flex_grid<> > >)
       .def("slice_to_byte_str",
         slice_to_byte_str<versa<int, flex_grid<> > >)
-      .def("as_bool", as_bool, (arg("strict")=true))
-      .def("as_long", as_long)
-      .def("as_string", as_string, (arg("format_string")="%d"))
-      .def("as_rgb_scale_string", as_rgb_scale_string, (
+      .def("as_bool", as_bool<int>, (arg("strict")=true))
+      .def("as_long", as_long<int>)
+      .def("as_string", as_string<int>, (arg("format_string")="%d"))
+      .def("as_rgb_scale_string", as_rgb_scale_string<int>, (
         arg("rgb_scales_low"),
         arg("rgb_scales_high"),
         arg("saturation")))
@@ -269,13 +282,13 @@ namespace scitbx { namespace af { namespace boost_python {
               arg("i_column")))
       .def("as_numpy_array", flex_int_as_numpy_array, (
         arg("optional")=false))
-      .def("__invert__", &bitwise_not)
-      .def("__or__", &bitwise_or_single)
-      .def("__or__", &bitwise_or_array)
-      .def("__and__", &bitwise_and_single)
-      .def("__and__", &bitwise_and_array)
-      .def("__xor__", &bitwise_xor_single)
-      .def("__xor__", &bitwise_xor_array)
+      .def("__invert__", &bitwise_not<int>)
+      .def("__or__", &bitwise_or_single<int>)
+      .def("__or__", &bitwise_or_array<int>)
+      .def("__and__", &bitwise_and_single<int>)
+      .def("__and__", &bitwise_and_array<int>)
+      .def("__xor__", &bitwise_xor_single<int>)
+      .def("__xor__", &bitwise_xor_array<int>)
     ;
     def(
       "int_from_byte_str",

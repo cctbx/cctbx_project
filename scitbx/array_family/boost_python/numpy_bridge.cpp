@@ -181,10 +181,10 @@ namespace scitbx { namespace af { namespace boost_python {
   SCITBX_LOC(float, float, NPY_FLOAT);
   SCITBX_LOC(double, double, NPY_DOUBLE);
   SCITBX_LOC(complex_double, std::complex<double>, NPY_CDOUBLE);
-  SCITBX_LOC(int8, int8_t, NPY_INT8);
-  SCITBX_LOC(uint8, uint8_t, NPY_UINT8);
-  SCITBX_LOC(int16, int16_t, NPY_INT16);
-  SCITBX_LOC(uint16, uint16_t, NPY_UINT16);
+  // SCITBX_LOC(int8, int8_t, NPY_INT8);
+  // SCITBX_LOC(uint8, uint8_t, NPY_UINT8);
+  // SCITBX_LOC(int16, int16_t, NPY_INT16);
+  // SCITBX_LOC(uint16, uint16_t, NPY_UINT16);
 
 #if defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED_SHORT)
   SCITBX_LOC(size_t, std::size_t, NPY_USHORT);

@@ -40,10 +40,10 @@ namespace scitbx { namespace af {
   SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(std::complex<double>, complex_double)
 
   // fixed width integer types
-  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(int8_t, int8_t)
-  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(int16_t, int16_t)
-  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(uint8_t, uint8_t)
-  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(uint16_t, uint16_t)
+  // SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(int8_t, int8_t)
+  // SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(int16_t, int16_t)
+  // SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(uint8_t, uint8_t)
+  // SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(uint16_t, uint16_t)
 
 #undef SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS
 

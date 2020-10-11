@@ -3724,7 +3724,7 @@ def run(iterations):
     exercise_condense_as_ranges()
     exercise_python_functions()
     exercise_vec3_double_as_numpy_array()
-    exercise_fixed_width_int_types()
+    #exercise_fixed_width_int_types()
     i += 1
 
 if (__name__ == "__main__"):
