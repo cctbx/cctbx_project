@@ -3,9 +3,9 @@ from cctbx import adptbx, crystal, miller, sgtbx, uctbx, xray
 from cctbx.array_family import flex
 import iotbx.cif
 from iotbx.cif import model
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, to_str
 from libtbx.containers import OrderedDict, OrderedSet
-import warnings
+import warnings, traceback
 from six import string_types
 from six.moves import range
 import six
@@ -337,60 +337,60 @@ class miller_array_builder(crystal_symmetry_builder):
     if base_array_info is None:
       base_array_info = miller.array_info(source_type="cif")
     refln_containing_loops = self.get_miller_indices_containing_loops()
-    for self.indices, refln_loop in refln_containing_loops:
-      self.wavelength_id_array = None
-      self.crystal_id_array = None
-      self.scale_group_array = None
-      wavelength_ids = [None]
-      crystal_ids = [None]
-      scale_groups = [None]
-      for key, value in six.iteritems(refln_loop):
-        # need to get these arrays first
-        if (key.endswith('wavelength_id') or
-            key.endswith('crystal_id') or
-            key.endswith('scale_group_code')):
-          data = as_int_or_none_if_all_question_marks(value, column_name=key)
-          if data is None:
-            continue
-          counts = data.counts()
-          if key.endswith('wavelength_id'):
-            wavelength_ids = list(counts.keys())
-          if len(counts) == 1: continue
-          array = miller.array(
-            miller.set(self.crystal_symmetry, self.indices).auto_anomalous(), data)
-          if key.endswith('wavelength_id'):
-            self.wavelength_id_array = array
-            wavelength_ids = list(counts.keys())
-          elif key.endswith('crystal_id'):
-            self.crystal_id_array = array
-            crystal_ids = list(counts.keys())
-          elif key.endswith('scale_group_code'):
-            self.scale_group_array = array
-            scale_groups = list(counts.keys())
+    try:
+      for self.indices, refln_loop in refln_containing_loops:
+        self.wavelength_id_array = None
+        self.crystal_id_array = None
+        self.scale_group_array = None
+        wavelength_ids = [None]
+        crystal_ids = [None]
+        scale_groups = [None]
+        for key, value in six.iteritems(refln_loop):
+          # need to get these arrays first
+          if (key.endswith('wavelength_id') or
+              key.endswith('crystal_id') or
+              key.endswith('scale_group_code')):
+            data = as_int_or_none_if_all_question_marks(value, column_name=key)
+            if data is None:
+              continue
+            counts = data.counts()
+            if key.endswith('wavelength_id'):
+              wavelength_ids = list(counts.keys())
+            if len(counts) == 1: continue
+            array = miller.array(
+              miller.set(self.crystal_symmetry, self.indices).auto_anomalous(), data)
+            if key.endswith('wavelength_id'):
+              self.wavelength_id_array = array
+              wavelength_ids = list(counts.keys())
+            elif key.endswith('crystal_id'):
+              self.crystal_id_array = array
+              crystal_ids = list(counts.keys())
+            elif key.endswith('scale_group_code'):
+              self.scale_group_array = array
+              scale_groups = list(counts.keys())
 
-      def get_assoc_data_arrays(keys, searchstrs, replace):
-        secondkeys = []
-        for key in keys:
-          for searchstr in searchstrs:
-            if searchstr in key.lower():
-              secondkeys.append(key)
-              break
-        datasigkeys = []
-        def find_assoc_keypair(skey, searchstrs, rplace):
-          for sigstr in searchstrs:
-            if skey.lower().find(sigstr) > -1:
-              chr1 = skey.lower().find(sigstr)
-              chr2 = len(sigstr) + chr1
-              if rplace==False:
-                datakey = skey[0 : chr1] + skey[chr2 : ]
-              else:
-                datakey = skey[0 : chr1] + "F" + skey[chr2 : ]
-              sigkey = skey
-              return datakey, sigkey
-          return None, None
-        for skey in secondkeys:
-          datakey, sigkey = find_assoc_keypair(skey, searchstrs, replace )
-          if datakey:
+        def get_assoc_data_arrays(keys, searchstrs, replace):
+          secondkeys = []
+          for key in keys:
+            for searchstr in searchstrs:
+              if searchstr in key.lower():
+                secondkeys.append(key)
+                break
+          datasigkeys = []
+          def find_assoc_keypair(skey, searchstrs, rplace):
+            for sigstr in searchstrs:
+              if skey.lower().find(sigstr) > -1:
+                chr1 = skey.lower().find(sigstr)
+                chr2 = len(sigstr) + chr1
+                if rplace==False:
+                  datakey = skey[0 : chr1] + skey[chr2 : ]
+                else:
+                  datakey = skey[0 : chr1] + "F" + skey[chr2 : ]
+                sigkey = skey
+                return datakey, sigkey
+            return None, None
+          for skey in secondkeys:
+            datakey, sigkey = find_assoc_keypair(skey, searchstrs, True )
             newdatakey = datakey
             if datakey not in keys: # cope with ["_refln.F_calc_au", "_refln.phase_calc"]
               newdatakey = datakey + "_au"
@@ -399,214 +399,275 @@ class miller_array_builder(crystal_symmetry_builder):
             if newdatakey not in keys: # cope with ["_refln.foobar_calc", "_refln.foobar_sigma"]
               newdatakey = datakey + "_meas"
             datakey = newdatakey
+
+            if datakey not in keys:
+              datakey, sigkey = find_assoc_keypair(skey, searchstrs, False )
+              newdatakey = datakey
+              if datakey not in keys: # cope with ["_refln.F_calc_au", "_refln.phase_calc"]
+                newdatakey = datakey + "_au"
+              if newdatakey not in keys: # cope with ["_refln.foobar_meas", "_refln.foobar_sigma"]
+                newdatakey = datakey + "_meas"
+              if newdatakey not in keys: # cope with ["_refln.foobar_calc", "_refln.foobar_sigma"]
+                newdatakey = datakey + "_meas"
+              datakey = newdatakey
+            #assert (datakey in keys and sigkey in keys)
             datasigkeys.append((datakey, sigkey))
-        return datasigkeys
+          return datasigkeys
 
-      for w_id in wavelength_ids:
-        for crys_id in crystal_ids:
-          for scale_group in scale_groups:
-            """
-            datsigarrs = get_assoc_data_arrays(refln_loop.keys(), ["_sigma", "sig"], False )
-            for label, array in datsigarrs:
-              self._arrays.setdefault(label, array)
+        for w_id in wavelength_ids:
+          for crys_id in crystal_ids:
+            for scale_group in scale_groups:
+              #"""
+              datsiglabls = get_assoc_data_arrays(refln_loop.keys(), ["_sigma", "sig"], False )
+              for datsiglabl in datsiglabls:
+                datastrarray = refln_loop[datsiglabl[0]]
+                sigmasstrarray = refln_loop[datsiglabl[1]]
+                millarr = self.flex_std_string_as_miller_array(
+                  datastrarray, wavelength_id=w_id, crystal_id=crys_id,
+                  scale_group_code=scale_group)
+                sigmas = self.flex_std_string_as_miller_array(
+                  sigmasstrarray, wavelength_id=w_id, crystal_id=crys_id,
+                  scale_group_code=scale_group)
+                millarr.set_sigmas(sigmas.data())
+                millarr.set_info(base_array_info.customized_copy(labels=datsiglabl,
+                                                                wavelength=wavelengths.get(w_id, None)))
+                self._arrays[millarr.info().label_string() ] = millarr
 
-            mapcoeffarrs = get_assoc_data_arrays(refln_loop.keys(), ["_phase", "ph"], True )
-            for label, array in mapcoeffarrs:
-              self._arrays.setdefault(label, array)
+              mapcoefflabls = get_assoc_data_arrays(refln_loop.keys(), ["_phase", "phase", "phi", "ph"], True )
+              for mapcoefflabl in mapcoefflabls:
+                amplitudestrarray = refln_loop[ mapcoefflabl[0] ]
+                phasestrarray = refln_loop[ mapcoefflabl[1] ]
+                millarr = self.flex_std_string_as_miller_array(
+                  amplitudestrarray, wavelength_id=w_id, crystal_id=crys_id,
+                  scale_group_code=scale_group)
+                phasesmillarr = self.flex_std_string_as_miller_array(
+                  phasestrarray, wavelength_id=w_id, crystal_id=crys_id,
+                  scale_group_code=scale_group)
+                phases = as_flex_double(phasesmillarr, mapcoefflabl[1])
+                millarr = millarr.phase_transfer(phases, deg=True)
+                millarr.set_info(base_array_info.customized_copy(labels=mapcoefflabl,
+                                                                wavelength=wavelengths.get(w_id, None)))
+                self._arrays[millarr.info().label_string() ] = millarr
 
-            HendricksonLattmanarrs = get_HL_arrays(refln_loop.items())
-            for label, array in HendricksonLattmanarrs:
-              self._arrays.setdefault(label, array)
-            """
 
-
-            for label, value in sorted(refln_loop.items()):
-              if 'index_' in label: continue
-              key = label
-              labels = [label]
-              wavelength = None
-              if (key.endswith('wavelength_id') or
+              usedlabels = datsiglabls + mapcoefflabls
+              usedlabels = [ e[0] for e in usedlabels] + [ e[1] for e in usedlabels] # flatten list of tuples
+              remaininglabels = []
+              for key in refln_loop.keys():
+                if (key.endswith('wavelength_id') or
                     key.endswith('crystal_id') or
-                    key.endswith('scale_group_code')):
-                w_id = None
-                crys_id = None
-                scale_group = None
-              key_suffix = ''
-              if w_id is not None:
-                key_suffix += '_%i' %w_id
-                labels.insert(0, "wavelength_id=%i" %w_id)
-                wavelength = wavelengths.get(w_id, None)
-              if crys_id is not None:
-                key_suffix += '_%i' %crys_id
-                labels.insert(0, "crystal_id=%i" %crys_id)
-              if scale_group is not None:
-                key_suffix += '_%i' %scale_group
-                labels.insert(0, "scale_group_code=%i" %scale_group)
-              key += key_suffix
-              sigmas = None
-              if key in self._arrays: continue
-              array = self.flex_std_string_as_miller_array(
-                value, wavelength_id=w_id, crystal_id=crys_id,
-                scale_group_code=scale_group)
-              if array is None: continue
-              if '_sigma' in key:
-                sigmas_label = label
-                key = None
-                for suffix in ('', '_meas', '_calc'):
-                  if sigmas_label.replace('_sigma', suffix) in refln_loop:
-                    key = sigmas_label.replace('_sigma', suffix) + key_suffix
-                    break
-                if key is None:
-                  key = sigmas_label + key_suffix
-                elif key in self._arrays and self._arrays[key].sigmas() is None:
-                  sigmas = array
-                  array = self._arrays[key]
-                  if(not check_array_sizes(array, sigmas, key, sigmas_label)):
-                    continue
-                  sigmas = as_flex_double(sigmas, sigmas_label)
-                  array.set_sigmas(sigmas.data())
-                  info = array.info()
-                  array.set_info(
-                    info.customized_copy(labels=info.labels+[sigmas_label],
-                      wavelength=wavelength))
+                    key.endswith('scale_group_code') or
+                    'index_' in key):
                   continue
-              elif 'PHWT' in key:
-                phwt_label = label
-                fwt_label = label.replace('PHWT', 'FWT')
-                if fwt_label not in refln_loop: continue
-                phwt_array = array
-                if fwt_label in self._arrays:
-                  array = self._arrays[fwt_label]
-                  if(not check_array_sizes(array, phwt_array, fwt_label, phwt_label)):
-                    continue
-                  phases = as_flex_double(phwt_array, phwt_label)
-                  info = array.info()
-                  array = array.phase_transfer(phases, deg=True)
-                  array.set_info(
-                    info.customized_copy(labels=info.labels+[phwt_label]))
-                  self._arrays[fwt_label] = array
+                if key in usedlabels:
                   continue
-              elif 'HL_' in key:
-                hl_letter = key[key.find('HL_')+3]
-                hl_key = 'HL_' + hl_letter
-                key = key.replace(hl_key, 'HL_A')
-                if key in self._arrays:
-                  continue # this array is already dealt with
-                hl_labels = [label.replace(hl_key, 'HL_'+letter) for letter in 'ABCD']
-                hl_keys = [key.replace(hl_key, 'HL_'+letter) for letter in 'ABCD']
-                hl_values = [cif_block.get(hl_key) for hl_key in hl_labels]
-                if hl_values.count(None) == 0:
-                  selection = self.get_selection(
-                    hl_values[0], wavelength_id=w_id,
-                    crystal_id=crys_id, scale_group_code=scale_group)
-                  hl_values = [as_double_or_none_if_all_question_marks(
-                    hl.select(selection), column_name=lab)
-                               for hl, lab in zip(hl_values, hl_labels)]
-                  array = miller.array(miller.set(
-                    self.crystal_symmetry, self.indices.select(selection)
-                    ).auto_anomalous(), flex.hendrickson_lattman(*hl_values))
-                  labels = labels[:-1]+hl_labels
-              elif '.B_' in key or '_B_' in key:
-                if '.B_' in key:
-                  key, key_b = key.replace('.B_', '.A_'), key
-                  label, label_b = label.replace('.B_', '.A_'), label
-                elif '_B_' in key:
-                  key, key_b = key.replace('_B', '_A'), key
-                  label, label_b = label.replace('_B', '_A'), label
-                if key in refln_loop and key_b in refln_loop:
-                  b_part = array.data()
-                  if key in self._arrays:
-                    info = self._arrays[key].info()
-                    a_part = self._arrays[key].data()
-                    self._arrays[key] = self._arrays[key].array(
-                      data=flex.complex_double(a_part, b_part))
-                    self._arrays[key].set_info(
-                      info.customized_copy(labels=info.labels+[key_b]))
-                    continue
-              elif ('phase_' in key and not "_meas" in key and
-                    self.crystal_symmetry.space_group() is not None):
-                alt_key1 = label.replace('phase_', 'F_')
-                alt_key2 = alt_key1 + '_au'
-                if alt_key1 in refln_loop:
-                  phase_key = label
-                  key = alt_key1+key_suffix
-                elif alt_key2 in refln_loop:
-                  phase_key = label
-                  key = alt_key2+key_suffix
-                else: phase_key = None
-                if phase_key is not None:
-                  phases = array.data()
-                  if key in self._arrays:
+                remaininglabels.append( key)
+
+              for label in remaininglabels:
+                datastrarray = refln_loop[label]
+                millarr = self.flex_std_string_as_miller_array(
+                  datastrarray, wavelength_id=w_id, crystal_id=crys_id,
+                  scale_group_code=scale_group)
+                millarr.set_info(base_array_info.customized_copy(labels=[label],
+                                                                wavelength=wavelengths.get(w_id, None)))
+                self._arrays[millarr.info().label_string() ] = millarr
+
+              """
+
+              for label, value in sorted(refln_loop.items()):
+                if 'index_' in label: continue
+                key = label
+                labels = [label]
+                wavelength = None
+                if (key.endswith('wavelength_id') or
+                      key.endswith('crystal_id') or
+                      key.endswith('scale_group_code')):
+                  w_id = None
+                  crys_id = None
+                  scale_group = None
+                key_suffix = ''
+                if w_id is not None:
+                  key_suffix += '_%i' %w_id
+                  labels.insert(0, "wavelength_id=%i" %w_id)
+                  wavelength = wavelengths.get(w_id, None)
+                if crys_id is not None:
+                  key_suffix += '_%i' %crys_id
+                  labels.insert(0, "crystal_id=%i" %crys_id)
+                if scale_group is not None:
+                  key_suffix += '_%i' %scale_group
+                  labels.insert(0, "scale_group_code=%i" %scale_group)
+                key += key_suffix
+                sigmas = None
+                if key in self._arrays: continue
+                array = self.flex_std_string_as_miller_array(
+                  value, wavelength_id=w_id, crystal_id=crys_id,
+                  scale_group_code=scale_group)
+                if array is None: continue
+                if '_sigma' in key:
+                  sigmas_label = label
+                  key = None
+                  for suffix in ('', '_meas', '_calc'):
+                    if sigmas_label.replace('_sigma', suffix) in refln_loop:
+                      key = sigmas_label.replace('_sigma', suffix) + key_suffix
+                      break
+                  if key is None:
+                    key = sigmas_label + key_suffix
+                  elif key in self._arrays and self._arrays[key].sigmas() is None:
+                    sigmas = array
                     array = self._arrays[key]
-                    array = as_flex_double(array, key)
-                    if(not check_array_sizes(array, phases, key, phase_key)):
+                    if(not check_array_sizes(array, sigmas, key, sigmas_label)):
                       continue
-                    info = self._arrays[key].info()
-                    self._arrays[key] = array.phase_transfer(phases, deg=True)
-                    self._arrays[key].set_info(
-                      info.customized_copy(labels=info.labels+[phase_key]))
-                  else:
-                    array = self.flex_std_string_as_miller_array(
-                      refln_loop[label], wavelength_id=w_id, crystal_id=crys_id,
-                      scale_group_code=scale_group)
-                    if(not check_array_sizes(array, phases, key, phase_key)):
+                    sigmas = as_flex_double(sigmas, sigmas_label)
+                    array.set_sigmas(sigmas.data())
+                    info = array.info()
+                    array.set_info(
+                      info.customized_copy(labels=info.labels+[sigmas_label],
+                        wavelength=wavelength))
+                    continue
+                elif 'PHWT' in key:
+                  phwt_label = label
+                  fwt_label = label.replace('PHWT', 'FWT')
+                  if fwt_label not in refln_loop: continue
+                  phwt_array = array
+                  if fwt_label in self._arrays:
+                    array = self._arrays[fwt_label]
+                    if(not check_array_sizes(array, phwt_array, fwt_label, phwt_label)):
                       continue
-                    array.phase_transfer(phases, deg=True)
-                    labels = labels+[label, phase_key]
-              if base_array_info.labels is not None:
-                labels = base_array_info.labels + labels
-              def rstrip_substrings(string, substrings):
-                for substr in substrings:
-                  if substr == '': continue
-                  if string.endswith(substr):
-                    string = string[:-len(substr)]
-                return string
-              # determine observation type
-              stripped_key = rstrip_substrings(
-                key, [key_suffix, '_au', '_meas', '_calc', '_plus', '_minus'])
-              if (stripped_key.endswith('F_squared') or
-                  stripped_key.endswith('intensity') or
-                  stripped_key.endswith('.I') or
-                  stripped_key.endswith('_I')) and (
-                    array.is_real_array() or array.is_integer_array()):
-                array.set_observation_type_xray_intensity()
-              elif (stripped_key.endswith('F') and (
-                array.is_real_array() or array.is_integer_array())):
-                array.set_observation_type_xray_amplitude()
-              if (array.is_xray_amplitude_array() or
-                  array.is_xray_amplitude_array()):
-                # e.g. merge_equivalents treats integer arrays differently, so must
-                # convert integer observation arrays here to be safe
-                if isinstance(array.data(), flex.int):
-                  array = array.customized_copy(data=array.data().as_double())
-              array.set_info(base_array_info.customized_copy(labels=labels))
-              if (array.is_xray_amplitude_array() or
-                  array.is_xray_amplitude_array()):
-                info = array.info()
-                array.set_info(info.customized_copy(wavelength=wavelength))
-              self._arrays.setdefault(key, array)
-    for key, array in six.iteritems(self._arrays.copy()):
-      if (   key.endswith('_minus') or '_minus_' in key
-          or key.endswith('_plus') or '_plus_' in key):
-        if '_minus' in key:
-          minus_key = key
-          plus_key = key.replace('_minus', '_plus')
-        elif '_plus' in key:
-          plus_key = key
-          minus_key = key.replace('_plus', '_minus')
-        if plus_key in self._arrays and minus_key in self._arrays:
-          plus_array = self._arrays.pop(plus_key)
-          minus_array = self._arrays.pop(minus_key)
-          minus_array = minus_array.customized_copy(
-            indices=-minus_array.indices()).set_info(minus_array.info())
-          array = plus_array.concatenate(
-            minus_array, assert_is_similar_symmetry=False)
-          array = array.customized_copy(anomalous_flag=True)
-          array.set_info(minus_array.info().customized_copy(
-            labels=list(
-              OrderedSet(plus_array.info().labels+minus_array.info().labels))))
-          array.set_observation_type(plus_array.observation_type())
-          self._arrays.setdefault(key, array)
+                    phases = as_flex_double(phwt_array, phwt_label)
+                    info = array.info()
+                    array = array.phase_transfer(phases, deg=True)
+                    array.set_info(
+                      info.customized_copy(labels=info.labels+[phwt_label]))
+                    self._arrays[fwt_label] = array
+                    continue
+                elif 'HL_' in key:
+                  hl_letter = key[key.find('HL_')+3]
+                  hl_key = 'HL_' + hl_letter
+                  key = key.replace(hl_key, 'HL_A')
+                  if key in self._arrays:
+                    continue # this array is already dealt with
+                  hl_labels = [label.replace(hl_key, 'HL_'+letter) for letter in 'ABCD']
+                  hl_keys = [key.replace(hl_key, 'HL_'+letter) for letter in 'ABCD']
+                  hl_values = [cif_block.get(hl_key) for hl_key in hl_labels]
+                  if hl_values.count(None) == 0:
+                    selection = self.get_selection(
+                      hl_values[0], wavelength_id=w_id,
+                      crystal_id=crys_id, scale_group_code=scale_group)
+                    hl_values = [as_double_or_none_if_all_question_marks(
+                      hl.select(selection), column_name=lab)
+                                 for hl, lab in zip(hl_values, hl_labels)]
+                    array = miller.array(miller.set(
+                      self.crystal_symmetry, self.indices.select(selection)
+                      ).auto_anomalous(), flex.hendrickson_lattman(*hl_values))
+                    labels = labels[:-1]+hl_labels
+                elif '.B_' in key or '_B_' in key:
+                  if '.B_' in key:
+                    key, key_b = key.replace('.B_', '.A_'), key
+                    label, label_b = label.replace('.B_', '.A_'), label
+                  elif '_B_' in key:
+                    key, key_b = key.replace('_B', '_A'), key
+                    label, label_b = label.replace('_B', '_A'), label
+                  if key in refln_loop and key_b in refln_loop:
+                    b_part = array.data()
+                    if key in self._arrays:
+                      info = self._arrays[key].info()
+                      a_part = self._arrays[key].data()
+                      self._arrays[key] = self._arrays[key].array(
+                        data=flex.complex_double(a_part, b_part))
+                      self._arrays[key].set_info(
+                        info.customized_copy(labels=info.labels+[key_b]))
+                      continue
+                elif ('phase_' in key and not "_meas" in key and
+                      self.crystal_symmetry.space_group() is not None):
+                  alt_key1 = label.replace('phase_', 'F_')
+                  alt_key2 = alt_key1 + '_au'
+                  if alt_key1 in refln_loop:
+                    phase_key = label
+                    key = alt_key1+key_suffix
+                  elif alt_key2 in refln_loop:
+                    phase_key = label
+                    key = alt_key2+key_suffix
+                  else: phase_key = None
+                  if phase_key is not None:
+                    phases = array.data()
+                    if key in self._arrays:
+                      array = self._arrays[key]
+                      array = as_flex_double(array, key)
+                      if(not check_array_sizes(array, phases, key, phase_key)):
+                        continue
+                      info = self._arrays[key].info()
+                      self._arrays[key] = array.phase_transfer(phases, deg=True)
+                      self._arrays[key].set_info(
+                        info.customized_copy(labels=info.labels+[phase_key]))
+                    else:
+                      array = self.flex_std_string_as_miller_array(
+                        refln_loop[label], wavelength_id=w_id, crystal_id=crys_id,
+                        scale_group_code=scale_group)
+                      if(not check_array_sizes(array, phases, key, phase_key)):
+                        continue
+                      array.phase_transfer(phases, deg=True)
+                      labels = labels+[label, phase_key]
+                if base_array_info.labels is not None:
+                  labels = base_array_info.labels + labels
+                def rstrip_substrings(string, substrings):
+                  for substr in substrings:
+                    if substr == '': continue
+                    if string.endswith(substr):
+                      string = string[:-len(substr)]
+                  return string
+                # determine observation type
+                stripped_key = rstrip_substrings(
+                  key, [key_suffix, '_au', '_meas', '_calc', '_plus', '_minus'])
+                if (stripped_key.endswith('F_squared') or
+                    stripped_key.endswith('intensity') or
+                    stripped_key.endswith('.I') or
+                    stripped_key.endswith('_I')) and (
+                      array.is_real_array() or array.is_integer_array()):
+                  array.set_observation_type_xray_intensity()
+                elif (stripped_key.endswith('F') and (
+                  array.is_real_array() or array.is_integer_array())):
+                  array.set_observation_type_xray_amplitude()
+                if (array.is_xray_amplitude_array() or
+                    array.is_xray_amplitude_array()):
+                  # e.g. merge_equivalents treats integer arrays differently, so must
+                  # convert integer observation arrays here to be safe
+                  if isinstance(array.data(), flex.int):
+                    array = array.customized_copy(data=array.data().as_double())
+                array.set_info(base_array_info.customized_copy(labels=labels))
+                if (array.is_xray_amplitude_array() or
+                    array.is_xray_amplitude_array()):
+                  info = array.info()
+                  array.set_info(info.customized_copy(wavelength=wavelength))
+                self._arrays.setdefault(key, array)
+
+              """
+
+      for key, array in six.iteritems(self._arrays.copy()):
+        if (   key.endswith('_minus') or '_minus_' in key
+            or key.endswith('_plus') or '_plus_' in key):
+          if '_minus' in key:
+            minus_key = key
+            plus_key = key.replace('_minus', '_plus')
+          elif '_plus' in key:
+            plus_key = key
+            minus_key = key.replace('_plus', '_minus')
+          if plus_key in self._arrays and minus_key in self._arrays:
+            plus_array = self._arrays.pop(plus_key)
+            minus_array = self._arrays.pop(minus_key)
+            minus_array = minus_array.customized_copy(
+              indices=-minus_array.indices()).set_info(minus_array.info())
+            array = plus_array.concatenate(
+              minus_array, assert_is_similar_symmetry=False)
+            array = array.customized_copy(anomalous_flag=True)
+            array.set_info(minus_array.info().customized_copy(
+              labels=list(
+                OrderedSet(plus_array.info().labels+minus_array.info().labels))))
+            array.set_observation_type(plus_array.observation_type())
+            self._arrays.setdefault(key, array)
+
+    except Exception as e:
+      raise CifBuilderError(e.__repr__() ) #+ "".join(traceback.format_stack(limit=10)))
+      #raise e
 
     if len(self._arrays) == 0:
       raise CifBuilderError("No reflection data present in cif block")
