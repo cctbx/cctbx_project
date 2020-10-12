@@ -43,6 +43,12 @@ usempi = False
 show_timing = True
   .type = bool
   .help = print a refinement duration for each iteration experiment
+reference_from_experiment
+  {
+  detector = None
+    .type = str
+    .help = path to experiment containing a reference detector model to use during refinement
+}
 output {
   directory = .
     .type = str
@@ -104,22 +110,27 @@ class Script:
     self.refls = None
     self.explist = None
     self.has_loaded_expers = False
+    self.input_expnames, self.input_reflnames, self.input_spectrumnames = [], [], {}
 
   def _load_exp_refls_fnames(self):
-    self.input_expnames, self.input_reflnames = [], []
     if COMM.rank == 0:
       with open(self.params.exper_refls_file, "r") as exper_refls_file:
         for line in exper_refls_file:
           line = line.strip()
           line_split = line.split()
-          if len(line_split) != 2:
+          if len(line_split) not in [2, 3]:
             print("Weird input line %s, continuing" % line)
             continue
-          exp, ref = line_split
+          if len(line_split) == 2:
+            exp, ref = line_split
+          else:
+            exp, ref, spec_file = line_split
+            self.input_spectrumnames[exp] = spec_file
           self.input_expnames.append(exp)
           self.input_reflnames.append(ref)
     self.input_expnames = COMM.bcast(self.input_expnames)
     self.input_reflnames = COMM.bcast(self.input_reflnames)
+    self.input_spectrumnames = COMM.bcast(self.input_spectrumnames)
 
   def _generate_exp_refl_pairs(self):
     if self.has_loaded_expers:
@@ -143,6 +154,8 @@ class Script:
       for exp_f, refls_f in zip(self.input_expnames, self.input_reflnames):
         refls = flex.reflection_table.from_file(refls_f)
         nexper_in_refls = len(set(refls['id']))
+        if nexper_in_refls > 1 and self.input_spectrumnames:
+          raise NotImplementedError("Cannot input multi-experiment lists and single spectrum files; use dxtbx.beam.spectrum instead")
         for i_exp in range(nexper_in_refls):
           if self.params.usempi and count % COMM.size != COMM.rank:
             count += 1
@@ -213,13 +226,23 @@ class Script:
 
     i_processed = 0
     for exper_filename, exper, refls_for_exper in self._generate_exp_refl_pairs():
+      if self.input_spectrumnames:
+        print("WOOOOOOOOOOOOOOOLLLLLOOOOLLLOOOO self.input.spectr", self.input_spectrumnames[exper_filename])
+        self.params.simulator.spectrum.filename = self.input_spectrumnames[exper_filename]
       
       assert len(set(refls_for_exper['id'])) == 1
       
       exp_id = refls_for_exper['id'][0]
       
       print(exper_filename, COMM.rank, set(refls_for_exper['id']))
-      
+     
+      det_ref_exp = self.params.reference_from_experiment.detector
+      if det_ref_exp is not None: 
+        new_detector = ExperimentListFactory.from_json_file(det_ref_exp, check_format=False)[0].detector
+        assert new_detector is not None
+        assert len(new_detector) == len(exper.detector)
+        exper.detector = new_detector
+
       if self.params.output.save.reflections:
         self.params.refiner.record_xy_calc = True
       
@@ -229,7 +252,6 @@ class Script:
         print("Time to refine experiment: %f" % (time.time()- refine_starttime))
       
       basename,_ = os.path.splitext(os.path.basename(exper_filename))
-
 
       # Save model image
       if self.params.output.save.images is not None:
@@ -256,7 +278,6 @@ class Script:
           else:
               writer.add_image(model_img)
 
-      
       # Save reflections 
       if self.params.output.save.reflections:
         refined_refls = refiner.get_refined_reflections(refls_for_exper)

@@ -2848,6 +2848,12 @@ class LocalRefiner(PixelRefinement):
             Amat_refined = C.get_A()
             a,b,c,al,be,ga = C.get_unit_cell().parameters()
 
+            coeffs = self._get_spectra_coefficients()
+            if not coeffs:
+                lam0, lam1 = -1,-1
+            else:
+                lam0,lam1 = coeffs
+            
             fcell_xstart = self.fcell_xstart
             ucell_xstart = self.ucell_xstart[i_shot]
             scale_xpos = self.spot_scale_xpos[i_shot]
@@ -2875,7 +2881,7 @@ class LocalRefiner(PixelRefinement):
                 (proc_h5_fname, proc_h5_idx, proc_bbox_idx, crystal_scale, Amat_refined, ncells_val, bgplane,
                  img_corr, init_img_corr, fcell_xstart, ucell_xstart, rotX, rotY, rotZ, scale_xpos,
                  ncells_xstart, bgplane_xpos, init_misori, final_misori, a,b,c,al,be,ga,
-                 a_init, b_init, c_init, al_init, be_init, ga_init, bg_coef))
+                 a_init, b_init, c_init, al_init, be_init, ga_init, bg_coef, lam0, lam1))
 
     def save_lbfgs_x_array_as_dataframe(self, outname):
         self._combine_data_to_save()
@@ -2888,7 +2894,7 @@ class LocalRefiner(PixelRefinement):
             fnames, shot_idx, bbox_idx, xtal_scales, Amats, ncells_vals, bgplanes, image_corr, init_img_corr, \
                 fcell_xstart, ucell_xstart, rotX, rotY, rotZ, scale_xpos, ncells_xstart, bgplane_xpos, \
                 init_misori, final_misori, a, b, c, al, be, ga, \
-                a_init, b_init, c_init, al_init, be_init, ga_init, bg_coef = zip(*data)
+                a_init, b_init, c_init, al_init, be_init, ga_init, bg_coef, lam0, lam1 = zip(*data)
 
             df = pandas.DataFrame({"proc_fnames": fnames, "proc_shot_idx": shot_idx, "bbox_idx": bbox_idx,
                                    "spot_scales": xtal_scales, "Amats": Amats, "ncells": ncells_vals,
@@ -2903,6 +2909,7 @@ class LocalRefiner(PixelRefinement):
                                    "rotZ": rotZ,
                                    "a": a, "b": b, "c": c, "al": al, "be": be, "ga": ga,
                                    "a_init": a_init, "b_init": b_init, "c_init": c_init, "al_init": al_init,
+                                   "lam0": lam0, "lam1": lam1,
                                    "be_init": be_init, "ga_init": ga_init,
                                    "scale_xpos": scale_xpos,
                                    "ncells_xpos": ncells_xstart,

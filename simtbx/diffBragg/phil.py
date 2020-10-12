@@ -22,7 +22,7 @@ simulator {
     .help = total photon flux for all energies
   crystal {
     ncells_abc = (10,10,10)
-      .type = ints(size=3)
+      .type = floats(size=3)
       .help = number of unit cells along each crystal axis making up a mosaic domain
     has_isotropic_ncells = False
       .type = bool
