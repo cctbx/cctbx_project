@@ -590,3 +590,12 @@ vec3_double.as_numpy_array = _vec3_double_as_numpy_array
 int32 = ext.int
 int32_from_byte_str = ext.int_from_byte_str
 int32_range = ext.int_range
+
+# int64_t is the same as long
+int64 = ext.long
+int64_range = ext.long_range
+
+# uint64_t is the same as size_t
+uint64 = ext.size_t
+uint64_from_byte_str = ext.size_t_from_byte_str
+uint64_range = ext.size_t_range
