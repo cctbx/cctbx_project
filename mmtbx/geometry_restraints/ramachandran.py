@@ -169,7 +169,11 @@ ramachandran_plot_restraints {
   phi_psi_2
     .style = box
   {
-    strategy_outlier = *highest_probability closet random weighted_random
+    favored_strategy = *closest highest_probability random weighted_random
+      .type = choice(multi=False)
+    allowed_strategy = *closest highest_probability random weighted_random
+      .type = choice(multi=False)
+    outlier_strategy = closest *highest_probability random weighted_random
       .type = choice(multi=False)
   }
 }
@@ -322,10 +326,11 @@ class ramachandran_manager(object):
 
   def extract_proxies(self, hierarchy):
     from phenix.programs.phi_psi_2 import results_manager as pp2
-    phi_psi_2_tables = pp2.get_overall_motif_count_and_output(None,
-                                                    hierarchy,
-                                                    return_rama_restraints=True,
-                                                    )
+    phi_psi_2_motifs = pp2.get_overall_motif_count_and_output(
+      None,
+      self.hierarchy,
+      return_rama_restraints=True,
+      )
     favored = ramalyze.RAMALYZE_FAVORED
     allowed = ramalyze.RAMALYZE_ALLOWED
     outlier = ramalyze.RAMALYZE_OUTLIER
@@ -397,8 +402,16 @@ class ramachandran_manager(object):
           weight       = weight)
         self.append_emsley8k_proxies(proxy, n_seq)
       elif r_type == 'phi_psi_2':
-        pp2_key = phi_psi_2_tables.get(three[1].resseq_as_int(), '')
-        if pp2_key.find('!!')==0: continue
+        from phenix.pdb_tools.phi_psi_2_data import get_phi_psi_key_for_rama_proxy
+        if(  r_eval is favored): strategy=self.params.phi_psi_2.favored_strategy
+        elif(r_eval is allowed): strategy=self.params.phi_psi_2.allowed_strategy
+        elif(r_eval is outlier): strategy=self.params.phi_psi_2.outlier_strategy
+        else:                    raise RuntimeError("Rama eveluation failed.")
+        pp2_key = get_phi_psi_key_for_rama_proxy(phi_psi_2_motifs,
+                                                 three,
+                                                 strategy=strategy,
+                                                 )
+        if pp2_key is None: continue
         weight=1
         proxy = ext.phi_psi_proxy(
           residue_type = pp2_key,
@@ -518,29 +531,19 @@ class ramachandran_manager(object):
           epsilon        = 1.0) # XXX
       overall_residual_sum += flex.sum(self.residuals_array_emsley8k)
     # phi/psi/2
-    from phenix.pdb_tools.phi_psi_2_data import get_phi_psi_2_key
+    from phenix.pdb_tools.phi_psi_2_data import get_rama_table
     self.residuals_array_phi_psi_2 = None
     n_phi_psi_2_proxies = self.get_n_phi_psi_2_proxies()
     if n_phi_psi_2_proxies:
       if self.residuals_array_phi_psi_2 is None:
         self.residuals_array_phi_psi_2 = flex.double(n_phi_psi_2_proxies, 0.)
       for i, proxy in enumerate(self._phi_psi_2_proxies):
-        reverse_relationships=False
-        if proxy.residue_type[0]=='!':
-          reverse_relationships=True
-        reverse_relationships=False
-        if self.params.phi_psi_2.strategy_outlier=='highest_probability':
-          highest_probability=True
-        assert self.params.phi_psi_2.strategy_outlier=='highest_probability'
-        pp2_key = get_phi_psi_2_key(
-          proxy.residue_type,
-          highest_probability=self.params.phi_psi_2.strategy_outlier,
-          reverse_relationships=reverse_relationships,
+        # assert self.params.phi_psi_2.outlier_strategy=='highest_probability'
+        rama_table = get_rama_table(
+          proxy,
+          self._phi_psi_2_tables,
           )
-        if pp2_key is None: continue
-        if pp2_key.find('.')==-1:
-          pp2_key += '.1'
-        rama_table = self._phi_psi_2_tables[pp2_key]
+        if rama_table is None: continue
         self.residuals_array_phi_psi_2[i] = rama_table.compute_gradients(
           gradient_array = gradient_array,
           sites_cart     = sites_cart,
@@ -735,23 +738,8 @@ def load_emsley8k_tables():
   return tables
 
 def load_phi_psi_2_tables():
-  from phenix.pdb_tools.phi_psi_2_data import phi_psi_2_peaks
-  tables = {}
-  tmp = OrderedDict()
-  rr = [i for i in range(-179,180,2)]
-  for i in rr:
-    for j in rr:
-      tmp[(i,j)]=0
-  for pp2, info in phi_psi_2_peaks.items():
-    a=pp2[2]
-    b=pp2[3]
-    data = flex.double()
-    for k, v in zip(tmp.keys(), tmp.values()):
-      val = (k[0]-a)**2 + (k[1]-b)**2
-      data.append(val/1000)
-    t = lookup_table(data, 180)
-    tables[info[0]] = t
-  return tables
+  from phenix.pdb_tools.phi_psi_2_data import load_phi_psi_2_rama_restraints_tables
+  return load_phi_psi_2_rama_restraints_tables()
 
 class ramachandran_plot_data(object):
   def __init__(self, plot_cutoff=0.027):
