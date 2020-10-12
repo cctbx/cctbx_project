@@ -585,3 +585,8 @@ def _vec3_double_as_numpy_array(flex_array):
     return flex_array.as_double().as_numpy_array().reshape(-1, 3)
 
 vec3_double.as_numpy_array = _vec3_double_as_numpy_array
+
+# for modern 64-bit platforms, int and int32_t are the same
+int32 = ext.int
+int32_from_byte_str = ext.int_from_byte_str
+int32_range = ext.int_range

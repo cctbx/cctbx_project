@@ -46,6 +46,9 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_uint8_t();
   void wrap_flex_int16_t();
   void wrap_flex_uint16_t();
+  void wrap_flex_uint32_t();
+  void wrap_flex_int64_t();
+  void wrap_flex_uint64_t();
   void wrap_flex_long();
   void wrap_flex_float();
   void wrap_flex_double();
@@ -470,6 +473,9 @@ namespace {
     wrap_flex_uint8_t();
     wrap_flex_int16_t();
     wrap_flex_uint16_t();
+    wrap_flex_uint32_t();
+    wrap_flex_int64_t();
+    wrap_flex_uint64_t();
     wrap_flex_long();
     wrap_flex_float();
     wrap_flex_double();
