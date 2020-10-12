@@ -534,7 +534,6 @@ class ramachandran_manager(object):
       overall_residual_sum += flex.sum(self.residuals_array_emsley8k)
     # phi/psi/2
     from phenix.pdb_tools.phi_psi_2_data import get_rama_table
-    from phenix.pdb_tools.phi_psi_2_data import get_phi_psi_2_key
     self.residuals_array_phi_psi_2 = None
     n_phi_psi_2_proxies = self.get_n_phi_psi_2_proxies()
     if n_phi_psi_2_proxies:
