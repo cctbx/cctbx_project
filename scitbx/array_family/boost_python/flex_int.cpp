@@ -305,6 +305,5 @@ template <typename intType>
   WRAP_FLEX(uint8, uint8_t, integer);
   WRAP_FLEX(int16, int16_t, signed_integer);
   WRAP_FLEX(uint16, uint16_t, integer);
-  WRAP_FLEX(uint32, uint32_t, integer);
 
 }}} // namespace scitbx::af::boost_python

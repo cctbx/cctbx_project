@@ -26,7 +26,6 @@
 #define NPY_UINT8 0
 #define NPY_INT16 0
 #define NPY_UINT16 0
-#define NPY_UINT32 0
 #endif
 
 #if PY_MAJOR_VERSION >= 3
@@ -190,7 +189,6 @@ namespace scitbx { namespace af { namespace boost_python {
   SCITBX_LOC(uint8, uint8_t, NPY_UINT8);
   SCITBX_LOC(int16, int16_t, NPY_INT16);
   SCITBX_LOC(uint16, uint16_t, NPY_UINT16);
-  SCITBX_LOC(uint32, uint32_t, NPY_UINT32);
 
 #if defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED_SHORT)
   SCITBX_LOC(size_t, std::size_t, NPY_USHORT);
