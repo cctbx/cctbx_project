@@ -100,6 +100,7 @@ class map_model_manager(object):
                make_cell_slightly_different_in_abc  = False):
 
     # Checks
+
     if extra_model_list is None: extra_model_list = []
     if extra_map_manager_list is None: extra_map_manager_list = []
     for m in [model] + extra_model_list:
@@ -127,7 +128,8 @@ class map_model_manager(object):
     if (not map_manager) and (not map_manager_1) and (not map_manager_2):
       assert not extra_map_manager_list
       assert not ncs_object
-      self._model_dict = {'model': model}
+      if model:
+        self._model_dict = {'model': model}
       return  # do not do anything
 
     # Now make sure we have map manager or half maps at least
@@ -758,6 +760,8 @@ class map_model_manager(object):
     assert isinstance(overwrite, bool)
     if not overwrite:
       assert not map_id in self.map_id_list() # must not duplicate
+    if not self.map_manager():
+      a=bbb
     assert map_manager.is_similar(self.map_manager())
     self._map_dict[map_id] = map_manager
 
@@ -3381,7 +3385,7 @@ class map_model_manager(object):
           if value_list[i] is None: continue
           new_sites,new_values = apply_ncs_to_dv_results(
             direction_vectors = box_info.direction_vectors,
-	    xyz = xyz_list[i],
+            xyz = xyz_list[i],
             values = value_list[i],
             ncs_object = box_info.ncs_object)
           result.xyz_list.extend(new_sites)
@@ -4039,6 +4043,7 @@ class map_model_manager(object):
      soft_zero_boundary_mask = soft_zero_boundary_mask,
      soft_zero_boundary_mask_radius = soft_zero_boundary_mask_radius,
      nproc= nproc,
+     log = self.log,
     )
 
   def as_map_model_manager(self):
@@ -4239,8 +4244,10 @@ class match_map_model_ncs(object):
         absolute_length_tolerance = self._absolute_length_tolerance,
         require_match_unit_cell_crystal_symmetry=False)
       if ok or self._ignore_symmetry_conflicts:
+        model=self.model()
         self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(
           self.model())  # modifies self.model() in place
+        model=self.model()
       else:
           raise Sorry("Model is not similar to '%s': \n%s" %(
            self.map_manager().file_name,
@@ -4328,7 +4335,6 @@ class match_map_model_ncs(object):
     if self._map_manager.map_data().origin() == desired_origin:
       self._print("Origin is already at %s, no shifts will be applied" %(
        str(desired_origin)))
-
     # Figure out shift of model if incoming map and model already had a shift
 
     if self._model:
@@ -4336,7 +4342,6 @@ class match_map_model_ncs(object):
       # Figure out shift for model and make sure model and map agree
       shift_info = self._map_manager._get_shift_info(
          desired_origin = desired_origin)
-
       current_shift_cart = self._map_manager.grid_units_to_cart(
        tuple([-x for x in shift_info.current_origin_shift_grid_units]))
       expected_model_shift_cart = current_shift_cart
@@ -4359,7 +4364,6 @@ class match_map_model_ncs(object):
         existing_shift_cart = self._model.shift_cart()
         if existing_shift_cart is not None:
           assert approx_equal(existing_shift_cart, expected_model_shift_cart)
-
       if self._map_manager.origin_is_zero() and \
          expected_model_shift_cart == (0, 0, 0):
         pass # Need to set model shift_cart below
@@ -4374,6 +4378,9 @@ class match_map_model_ncs(object):
       self._model = self.shift_model_to_match_working_map(
         coordinate_shift = shift_to_apply_cart,
         new_shift_cart = new_full_shift_cart,
+        final_crystal_symmetry = self._map_manager.crystal_symmetry(),
+        final_unit_cell_crystal_symmetry =
+           self._map_manager.unit_cell_crystal_symmetry(),
         model = self._model)
 
   def shift_ncs_to_match_working_map(self, ncs_object = None, reverse = False,
@@ -4421,14 +4428,25 @@ class match_map_model_ncs(object):
 
   def shift_model_to_match_working_map(self, model = None, reverse = False,
      coordinate_shift = None,
-     new_shift_cart = None):
+     new_shift_cart = None,
+    final_crystal_symmetry = None,
+    final_unit_cell_crystal_symmetry = None):
 
     '''
     Shift a model based on the coordinate shift for the working map.
 
+    Also match the crystal_symmetry and unit_cell_crystal_symmetry
+      of the model to the map, unless specified as final_crystal_symmetry
+      and final_unit_cell_crystal_symmetry.
+
     Optionally specify the shift to apply (coordinate shift) and the
     new value of the shift recorded in the model (new_shift_cart)
     '''
+
+    if final_crystal_symmetry is None:
+      final_crystal_symmetry = self.crystal_symmetry()
+    if final_unit_cell_crystal_symmetry is None:
+      final_unit_cell_crystal_symmetry = self.unit_cell_crystal_symmetry()
 
     if coordinate_shift is None:
       coordinate_shift = self.get_coordinate_shift(
@@ -4436,8 +4454,9 @@ class match_map_model_ncs(object):
     if new_shift_cart is None:
       new_shift_cart = coordinate_shift
 
+
     model.shift_model_and_set_crystal_symmetry(shift_cart = coordinate_shift,
-      crystal_symmetry = model.crystal_symmetry())  # keep crystal_symmetry
+      crystal_symmetry = final_crystal_symmetry)
 
     # Allow specifying the final shift_cart:
     if tuple(new_shift_cart) !=  tuple(coordinate_shift):
@@ -4448,7 +4467,9 @@ class match_map_model_ncs(object):
   def shift_model_to_match_original_map(self, model = None):
     # Shift a model object to match the original map (based
     #    on -self._map_manager.origin_shift_grid_units)
-    return self.shift_model_to_match_working_map(model = model, reverse = True)
+    return self.shift_model_to_match_working_map(model = model, reverse = True,
+      final_crystal_symmetry = self.unit_cell_crystal_symmetry(),
+      final_unit_cell_crystal_symmetry = self.unit_cell_crystal_symmetry())
 
   def as_map_model_manager(self):
 

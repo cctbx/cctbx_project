@@ -576,6 +576,7 @@ Usage:
       cmdline_phil.append(arg_phil)
   working_phil = master_phil.fetch(sources=cmdline_phil)
   params = working_phil.extract()
+  # XXX params.pdb_file is not used anymore. Maybe should be removed.
   pdb_file_name = params.pdb_file
   if ((pdb_file_name is None) or
       (not iotbx.pdb.is_pdb_file(pdb_file_name) and
@@ -592,7 +593,7 @@ Usage:
   xray_structure = pdb_inp.xray_structure_simple()
   return find_tls(
     params         = params,
-    pdb_inp        = pdb_inp,
+    # pdb_inp        = pdb_inp,
     pdb_hierarchy  = pdb_hierarchy,
     xray_structure = xray_structure,
     out            = out)
@@ -897,7 +898,7 @@ class _run_find_tls(object):
   def __call__(self, *args, **kwds):
     return find_tls(
       params=self.params,
-      pdb_inp=None,
+      # pdb_inp=None,
       pdb_hierarchy=self.pdb_hierarchy,
       xray_structure=self.xray_structure)
 

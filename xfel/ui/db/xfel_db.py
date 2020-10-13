@@ -239,6 +239,17 @@ class initialize(initialize_base):
         query = "ALTER TABLE `%s_job` ADD INDEX `fk_job_dataset1_idx` (`dataset_id` ASC)"%self.params.experiment_tag
         cursor.execute(query)
 
+      # Maintain backwards compatibility with SQL tables v5: 10/09/20
+      query = "SHOW columns FROM `%s_rungroup`"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = list(zip(*columns))[0]
+      if 'wavelength_offset' not in column_names:
+        print("Upgrading to version 5.1 of mysql database schema")
+        query = "ALTER TABLE `%s_rungroup` ADD COLUMN wavelength_offset DOUBLE NULL"%self.params.experiment_tag
+        cursor.execute(query)
+
     return tables_ok
 
   def set_up_columns_dict(self, app):

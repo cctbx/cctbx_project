@@ -28,6 +28,8 @@ def main_hydrogen(model,
   # make sure all pdb_interpretation parameters have been done
   #
   hierarchy = model.get_hierarchy()
+  # should be automatic
+  model.process_input_model(make_restraints=True)
   geometry_restraints_manager = model.get_restraints_manager().geometry
   atoms = hierarchy.atoms()
 

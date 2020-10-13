@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
-import mmtbx.hydrogens
+from mmtbx.hydrogens import reduce
 from libtbx.utils import null_out
 
 
@@ -26,7 +26,7 @@ def compare_models(pdb_str,
   assert (hd_sel_without_h is not None)
   assert (hd_sel_without_h.count(True) == 0)
 
-  model_h_added = mmtbx.hydrogens.add(model = model_without_h)
+  model_h_added = reduce.add(model = model_without_h)
   hd_sel_h_added = model_h_added.get_hd_selection()
   number_h_added = hd_sel_h_added.count(True)
   ph_initial = model_initial.get_hierarchy()

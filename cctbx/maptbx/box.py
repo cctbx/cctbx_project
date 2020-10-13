@@ -446,6 +446,8 @@ class around_unique(with_bounds):
     wrapping = None,
     log = None):
 
+    self.model_can_be_outside_bounds = None  # not used but required to be set
+
     self._map_manager = map_manager
     self._model = model
 
