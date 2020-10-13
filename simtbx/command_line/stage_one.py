@@ -98,7 +98,7 @@ class Script:
     self.parser = None
     if COMM.rank==0:
       self.parser = OptionParser(
-        usage="", #stage 1 (per-shot) diffBragg refinement",
+        usage="",  # stage 1 (per-shot) diffBragg refinement",
         sort_options=True,
         phil=phil_scope,
         read_experiments=True,
@@ -295,6 +295,7 @@ class Script:
         if not os.path.exists(pandas_outdir):
           os.makedirs(pandas_outdir)
         outpath = os.path.join(pandas_outdir, "%s_%s_%d.pkl" % (self.params.output.tag.pandas,basename, i_processed))
+        #TODO add beamsize_mm, mtz_file, mtz_col, pinkstride, oversample, spectrum_file to the pandas dataframe
         refiner.save_lbfgs_x_array_as_dataframe(outname=outpath)
 
       # save experiment

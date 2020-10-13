@@ -1108,6 +1108,92 @@ def load_panel_group_file(panel_group_file):
     return groups
 
 
+def spots_from_pandas_and_experiment(experiment_file, pandas_pickle, mtz_file=None, mtz_col=None,
+                                     spectrum_file=None, total_flux=1e12, pink_stride=1,
+                                     beamsize_mm=0.001, oversample=0, d_max=999, d_min=1.5, defaultF=1e3,
+                                    device_Id=0, cuda=False, ngpu=1, time_panels=True,
+                                     output_img=None, usempi=False, save_expt_data=False):
+    import pandas
+    from simtbx.nanoBragg.utils import flexBeam_sim_colors
+
+    print("Loading experiment")
+    El = ExperimentListFactory.from_json_file(experiment_file, check_format=save_expt_data)
+    print("Done loading!")
+    assert len(El) == 1
+    expt = El[0]
+    df = pandas.read_pickle(pandas_pickle)
+    assert len(df) == 1
+    Ncells_abc = tuple(map(round, df.ncells.values[0]))
+    spot_scale = df.spot_scales.values[0]
+    if mtz_file is not None:
+        assert mtz_col is not None
+        Famp = open_mtz(mtz_file, mtz_col)
+    else:
+        Famp = make_miller_array_from_crystal(expt.crystal, dmin=d_min, dmax=d_max, defaultF=defaultF)
+
+    # get the optimized spectra
+    if spectrum_file is not None:
+        fluxes, energies = load_spectra_file(spectrum_file, total_flux=total_flux, pinkstride=pink_stride)
+    else:
+        fluxes = [total_flux]
+        energies = [ENERGY_CONV/expt.beam.get_wavelength()]
+    lam0 = df.lam0.values[0]
+    lam1 = df.lam1.values[0]
+    wavelens = ENERGY_CONV / energies
+    wavelens = lam0 + lam1*wavelens
+    energies = ENERGY_CONV / wavelens
+    pids = None
+    #if not usempi:
+    #    pids = None
+    #else:
+    #    from libtbx.mpi4py import COMM_WORLD as comm
+    #    panel_list = list(range(len(expt.detector)))
+    #    pids = np.array_split(panel_list, comm.size)[comm.rank]
+    #    device_Id = int(np.random.choice(ngpu))
+    results = flexBeam_sim_colors(CRYSTAL=expt.crystal, DETECTOR=expt.detector, BEAM=expt.beam, Famp=Famp,
+                                  fluxes=fluxes, energies=energies, beamsize_mm=beamsize_mm,
+                                  Ncells_abc=Ncells_abc, spot_scale_override=spot_scale,
+                                  cuda=cuda, device_Id=device_Id, oversample=oversample, time_panels=time_panels,
+                                  pids=pids)
+    #if usempi:
+    #    results = comm.reduce(results)
+    #    if comm.rank==0:
+    #        results = sorted(results, key=lambda x:[0])
+
+    if output_img is not None:
+        save_model_to_image(expt, results, output_img, save_experiment_data=save_expt_data)
+
+    return results
+
+
+def make_miller_array_from_crystal(Crystal, dmin, dmax, defaultF=1000):
+    Famp = make_miller_array(
+        symbol=Crystal.get_space_group().info().type().lookup_symbol(),
+        unit_cell=Crystal.get_unit_cell(), d_min=dmin, d_max=dmax, defaultF=defaultF)
+    return Famp
+
+
+
+def save_model_to_image(expt, model_results, output_img_file, save_experiment_data=False):
+    ordered_img = {}
+    npanels = len(expt.detector)
+    n_img = 1
+    if save_experiment_data:
+        n_img = 2
+    for pid, img in model_results:
+        ordered_img[pid] = img
+    ordered_img = np.array([ordered_img[pid] for pid in range(npanels)])
+    panelX, panelY = expt.detector[0].get_image_size()
+    from simtbx.nanoBragg.utils import H5AttributeGeomWriter
+
+    with H5AttributeGeomWriter(filename=output_img_file, image_shape=(npanels, panelX, panelY), num_images=n_img,
+                               beam=expt.beam, detector=expt.detector) as writer:
+        writer.add_image(ordered_img)
+        if save_experiment_data:
+            exp_data = image_data_from_expt(expt)
+            writer.add_image(exp_data)
+    print("Wrote model to image %s" % output_img_file)
+
 #def tally_local_statistics(spot_rois):
 #    # tally up all miller indices in this refinement
 #    total_pix = 0
