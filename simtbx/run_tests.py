@@ -10,6 +10,14 @@ tst_list = (
     "$D/nanoBragg/tst_nanoBragg_cbf_write.py",
     )
 
+OPT = libtbx.env.build_options
+if OPT.enable_cuda:
+  tst_list_parallel = [
+   "$D/nanoBragg/tst_gauss_argchk.py", # tests GPU, argchk optimization,
+                                       # exafel api optimization, and
+                                       # both the mono- and polychromatic cases
+  ]
+
 def run():
   build_dir = libtbx.env.under_build("simtbx")
   dist_dir = libtbx.env.dist_path("simtbx")
