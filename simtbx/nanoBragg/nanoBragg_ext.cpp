@@ -1330,6 +1330,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       .value("Square",SQUARE)
       .value("Round",ROUND)
       .value("Gauss",GAUSS)
+      .value("Gauss_argchk",GAUSS_ARGCHK)
       .value("Tophat",TOPHAT)
       .value("Fiber",FIBER)
       .value("Unknown",UNKNOWN)

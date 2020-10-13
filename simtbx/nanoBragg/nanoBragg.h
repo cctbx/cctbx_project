@@ -134,7 +134,7 @@ double sinc_conv_sinc3(double x);
 
 /* typedefs to help remember options */
 typedef enum { SAMPLE, BEAM } pivot;
-typedef enum { UNKNOWN, SQUARE, ROUND, GAUSS, TOPHAT, FIBER } shapetype;
+typedef enum { UNKNOWN, SQUARE, ROUND, GAUSS, GAUSS_ARGCHK, TOPHAT, FIBER } shapetype;
 typedef enum { CUSTOM, ADXV, MOSFLM, XDS, DIALS, DENZO } convention;
 
 /* math functions for point spread */

@@ -775,6 +775,12 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
 									/* fudge the radius so that volume and FWHM are similar to square_xtal spots */
 									F_latt = Na * Nb * Nc * exp(-(hrad_sqr / 0.63 * fudge));
 								}
+                                                                if (s_xtal_shape == GAUSS_ARGCHK) {
+                                                                        /* fudge the radius so that volume and FWHM are similar to square_xtal spots */
+                                                                        double my_arg = hrad_sqr / 0.63 * fudge;
+                                                                        if (my_arg<35.){ F_latt = Na * Nb * Nc * exp(-(my_arg));
+                                                                        } else { F_latt = 0.; } // warps coalesce when blocks of 32 pixels have no Bragg signal
+                                                                }
 								if (s_xtal_shape == TOPHAT) {
 									/* make a flat-top spot of same height and volume as square_xtal spots */
 									F_latt = Na * Nb * Nc * (hrad_sqr * fudge < 0.3969);
