@@ -3,8 +3,8 @@ from mmtbx.utils import rotatable_bonds
 from scitbx.matrix import rotate_point_around_axis
 from cctbx.array_family import flex
 from cctbx import maptbx
+import mmtbx.model
 import iotbx.pdb
-#import mmtbx.model
 #from libtbx.utils import null_out
 
 import boost_adaptbx.boost.python as bp
@@ -282,7 +282,7 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log,
   #NAMES = pdb_hierarchy.atoms().extract_name()
   #
   get_class = iotbx.pdb.common_residue_names_get_class
-  #import scitbx.graph.tardy_tree
+  import scitbx.graph.tardy_tree
   for model in pdb_hierarchy.models():
     for chain in model.chains():
       residue_groups = chain.residue_groups()
