@@ -32,10 +32,13 @@ aa_codes = [ # XXX PVA: Temporary, ad hoc, remove later!
 
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
 
+# ==============================================================================
+
 def mon_lib_query(residue, mon_lib_srv):
     get_func = getattr(mon_lib_srv, "get_comp_comp_id", None)
     if (get_func is not None): return get_func(comp_id=residue)
     return mon_lib_srv.get_comp_comp_id_direct(comp_id=residue)
+# ==============================================================================
 
 def exclude_h_on_SS(model):
   rm = model.get_restraints_manager()
@@ -61,6 +64,7 @@ def exclude_h_on_SS(model):
     if(els[j] in ["H","D"] and i in ss_i_seqs): sel_remove.append(j)
   return model.select(~flex.bool(model.size(), sel_remove))
 
+# ==============================================================================
 
 def exclude_h_on_coordinated_S(model): # XXX if edits used it should be like in exclude_h_on_SS
   rm = model.get_restraints_manager().geometry
@@ -82,14 +86,33 @@ def exclude_h_on_coordinated_S(model): # XXX if edits used it should be like in 
     if(els[j] in ["H","D"] and i in sel_s): sel_remove.append(j)
   return model.select(~flex.bool(model.size(), sel_remove))
 
+# ==============================================================================
+
 def add(model,
         use_neutron_distances=False,
         adp_scale=1,
         exclude_water=True,
         protein_only=False,
         stop_for_unknowns=True,
-        remove_first=True):
-  if(remove_first):
+        keep_existing_H=False):
+  """
+  Add H atoms to a model
+
+  Parameters
+  ----------
+  use_neutron_distances : bool
+    use neutron distances instead of X-ray
+
+  keep_existing_H : bool
+    keep existing H atoms in model, only place missing H
+
+
+  Returns
+  -------
+  model
+      mmtbx model object with H atoms
+  """
+  if( not keep_existing_H):
     model = model.select(~model.get_hd_selection())
   pdb_hierarchy = model.get_hierarchy()
   mon_lib_srv = model.get_mon_lib_srv()
@@ -145,6 +168,9 @@ def add(model,
     restraint_objects         = ro,
     pdb_interpretation_params = p,
     log                       = null_out())
+
+  f = open("intermediate1.pdb","w")
+  f.write(model.model_as_pdb())
 #  # Remove lone H
 #  sel_h = model.get_hd_selection()
 #  sel_isolated = model.isolated_atoms_selection()
@@ -160,8 +186,51 @@ def add(model,
 
   model = exclude_h_on_SS(model = model)
   model = exclude_h_on_coordinated_S(model = model)
+
+  f = open("intermediate2.pdb","w")
+  f.write(model.model_as_pdb())
+
   # Reset occupancies, ADPs and idealize
   model.reset_adp_for_hydrogens(scale = adp_scale)
   model.reset_occupancy_for_hydrogens_simple()
   model.idealize_h_riding()
   return model
+
+
+# ==============================================================================
+# stub for reduce parameters
+# TODO can be parameters or phil, depending on how many options are really needed
+reduce_master_params_str = """
+flip_NQH = True
+  .type = bool
+  .help = add H and rotate and flip NQH groups
+search_time_limit = 600
+  .type = int
+  .help = max seconds to spend in exhaustive search (default=600)
+"""
+
+def optimize(model):
+  """
+  Carry out reduce optimization
+
+  Parameters
+  ----------
+  model
+      mmtbx model object that contains H atoms
+      H atoms should be at approprite distances
+
+
+  Returns
+  -------
+  model
+      mmtbx model object with optimized H atoms
+  """
+  print("Reduce optimization happens here")
+
+  return model
+
+
+
+
+
+
