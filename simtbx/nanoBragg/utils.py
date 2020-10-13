@@ -12,6 +12,15 @@ from simtbx.nanoBragg.sim_data import SimData
 ENERGY_CONV = 10000000000.0 * constants.c * constants.h / constants.electron_volt
 
 
+def ensure_p1(Crystal, Famp):
+  high_symm_symbol = Famp.space_group_info().type().lookup_symbol()
+  cb_op = Famp.space_group_info().change_of_basis_op_to_primitive_setting()
+  if not high_symm_symbol.startswith("P"):
+    Crystal = Crystal.change_basis(cb_op)
+    Famp = Famp.change_basis(cb_op)
+  return Crystal, Famp
+
+
 def flexBeam_sim_colors(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                         pids=None, cuda=False, oversample=0, Ncells_abc=(50, 50, 50),
                         mos_dom=1, mos_spread=0, beamsize_mm=0.001, device_Id=0, omp=False,
@@ -60,6 +69,8 @@ def flexBeam_sim_colors(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
   :param mosaicity_random_seeds: random seeds to simulating mosaic texture
   :return: list of [(panel_id0,simulated pattern0), (panel_id1, simulated_pattern1), ...]
   """
+
+  CRYSTAL, Famp = ensure_p1(CRYSTAL, Famp)
 
   if pids is None:
     pids = range(len(DETECTOR))

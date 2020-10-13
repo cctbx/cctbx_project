@@ -21,7 +21,7 @@ class SimData:
         self.using_cuda = False
         self.panel_id = 0
         self.include_noise = True
-        self.using_diffBragg_spots = False
+        self.using_diffBragg_spots = True
         self.functionals = []
 
     @property
@@ -146,7 +146,7 @@ class SimData:
 
     def update_Fhkl_tuple(self):
         if self.crystal.miller_array is not None:
-            if self.crystal.miller_is_complex:
+            if self.using_diffBragg_spots and self.crystal.miller_is_complex:
                 print("USING COMPLEX ARRAY!")
                 Freal, Fimag = zip(*[(val.real, val.imag) for val in self.crystal.miller_array.data()])
                 Freal = flex.double(Freal)
@@ -163,14 +163,19 @@ class SimData:
         ## TODO: am I unnecessary?
         #self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
 
-        self.D.Omatrix = self.crystal.Omatrix
-        self.D.Bmatrix = self.crystal.dxtbx_crystal.get_B() #
-        self.D.Umatrix = self.crystal.dxtbx_crystal.get_U()
-
-        if self.crystal.isotropic_ncells:
-            self.D.Ncells_abc = self.crystal.Ncells_abc[0]
+        if self.using_diffBragg_spots:
+            self.D.Omatrix = self.crystal.Omatrix
+            self.D.Bmatrix = self.crystal.dxtbx_crystal.get_B() #
+            self.D.Umatrix = self.crystal.dxtbx_crystal.get_U()
+            if self.crystal.isotropic_ncells:
+                self.D.Ncells_abc = self.crystal.Ncells_abc[0]
+            else:
+                self.D.Ncells_abc_aniso = self.crystal.Ncells_abc
         else:
-            self.D.Ncells_abc_aniso = self.crystal.Ncells_abc
+            from simtbx.nanoBragg.sim_data import Amatrix_dials2nanoBragg
+            # TODO change symmetry
+            self.D.Amatrix = Amatrix_dials2nanoBragg(self.crystal.dxtbx_crystal)
+            self.D.Ncells_abc = tuple([int(n) for n in self.crystal.Ncells_abc])
 
         self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
         self.D.mosaic_domains = self.crystal.n_mos_domains
@@ -201,7 +206,10 @@ class SimData:
     def instantiate_diffBragg(self, verbose=0, oversample=0, device_Id=0,
                               adc_offset=0, default_F=1e3, interpolate=0):
 
-        self.D = diffBragg(self.detector, self.beam.nanoBragg_constructor_beam,
+        Bragg = diffBragg
+        if not self.using_diffBragg_spots:
+            Bragg = nanoBragg
+        self.D = Bragg(self.detector, self.beam.nanoBragg_constructor_beam,
                            verbose=verbose, panel_id=int(self.panel_id))
         self._seedlings()
         self.D.interpolate = interpolate
@@ -217,7 +225,8 @@ class SimData:
         if self.using_cuda:
             self.D.device_Id = device_Id
 
-        self.D.vectorize_umats()  # NOTE: dont forget me!
+        if self.using_diffBragg_spots:
+            self.D.vectorize_umats()  # NOTE: dont forget me!
 
     def generate_simulated_image(self, instantiate=False):
         if instantiate:

@@ -2866,7 +2866,7 @@ class LocalRefiner(PixelRefinement):
             bgplane_xpos = list(zip(bgplane_a_xpos, bgplane_b_xpos, bgplane_c_xpos))
             bgplane = [self._get_bg_vals(i_shot, i_spot) for i_spot in range(nspots)]
 
-            crystal_scale = self._get_spot_scale(i_shot)
+            crystal_scale = self._get_spot_scale(i_shot) * self.D.spot_scale
             proc_h5_fname = "" #self.all_proc_fnames[i_shot]
             proc_h5_idx = "" #self.all_shot_idx[i_shot]
             proc_bbox_idx = "" #self.all_proc_idx[i_shot]
@@ -2956,9 +2956,11 @@ class LocalRefiner(PixelRefinement):
         refined_refls = deepcopy(shot_refls)
         x,y = zip(*self.xy_calc[i_shot])
         z = [0]*num_spots_in_shot
-        xyz_calc = flex.vec3_double(list(zip(x,y,z)))
+        xyz_calc = flex.vec3_double(list(zip(x, y, z)))
         refined_refls['dials.xyzcal.px'] = deepcopy(refined_refls['xyzcal.px'])  # make a backup
         refined_refls["xyzcal.px"] = xyz_calc
+        #det = self.get_optimized_detector(i_shot=i_shot)
+        #refined_refls['xyzcal.mm']
 
         refined_refls = refined_refls.select(selection_flags)
         return refined_refls
