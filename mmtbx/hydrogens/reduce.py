@@ -6,29 +6,29 @@ import boost_adaptbx.boost.python as bp
 from libtbx.utils import null_out
 from cctbx.array_family import flex
 
-aa_codes = [ # XXX PVA: Temporary, ad hoc, remove later!
-"ALA",
-"ARG",
-"ASN",
-"ASP",
-"CYS",
-"GLN",
-"GLU",
-"GLY",
-"HIS",
-"ILE",
-"LEU",
-"LYS",
-"MET",
-"MSE",
-"PHE",
-"PRO",
-"SER",
-"THR",
-"TRP",
-"TYR",
-"VAL"
-]
+#aa_codes = [ # XXX PVA: Temporary, ad hoc, remove later!
+#"ALA",
+#"ARG",
+#"ASN",
+#"ASP",
+#"CYS",
+#"GLN",
+#"GLU",
+#"GLY",
+#"HIS",
+#"ILE",
+#"LEU",
+#"LYS",
+#"MET",
+#"MSE",
+#"PHE",
+#"PRO",
+#"SER",
+#"THR",
+#"TRP",
+#"TYR",
+#"VAL"
+#]
 
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
 
@@ -69,7 +69,7 @@ def exclude_h_on_SS(model):
 def exclude_h_on_coordinated_S(model): # XXX if edits used it should be like in exclude_h_on_SS
   rm = model.get_restraints_manager().geometry
   els = model.get_hierarchy().atoms().extract_element()
-  # Find possibly coorinated S
+  # Find possibly coordinated S
   exclusion_list = ["H","D","T","S","O","P","N","C","SE"]
   sel_s = []
   for proxy in rm.pair_proxies().nonbonded_proxies.simple:
@@ -88,51 +88,29 @@ def exclude_h_on_coordinated_S(model): # XXX if edits used it should be like in 
 
 # ==============================================================================
 
-def add(model,
-        use_neutron_distances=False,
-        adp_scale=1,
-        exclude_water=True,
-        protein_only=False,
-        stop_for_unknowns=True,
-        keep_existing_H=False):
+def add_missing_H_atoms_at_bogus_position(pdb_hierarchy, mon_lib_srv, protein_only):
   """
-  Add H atoms to a model
+  Add missing H atoms to a pdb_hierarchy object
+  all H atoms will be at center of coordinates (all of them superposed)
+  ! this changes hierarchy in place !
 
   Parameters
   ----------
-  use_neutron_distances : bool
-    use neutron distances instead of X-ray
-
-  keep_existing_H : bool
-    keep existing H atoms in model, only place missing H
-
-
-  Returns
-  -------
-  model
-      mmtbx model object with H atoms
-  """
-  if( not keep_existing_H):
-    model = model.select(~model.get_hd_selection())
-  pdb_hierarchy = model.get_hierarchy()
-  mon_lib_srv = model.get_mon_lib_srv()
-  get_class = iotbx.pdb.common_residue_names_get_class
-  """
-  for pmodel in pdb_hierarchy.models():
-    for chain in pmodel.chains():
-      for residue_group in chain.residue_groups():
-        for conformer in residue_group.conformers():
-          for residue in conformer.residues():
-            print list(residue.atoms().extract_name())
+  pdb_hierarchy : cctbx hierarchy object
+    pdb_hierarchy to which missing H atoms will be added
   """
   #XXX This breaks for 1jxt, residue 2, TYR
+
+  get_class = iotbx.pdb.common_residue_names_get_class
   for chain in pdb_hierarchy.only_model().chains():
     for rg in chain.residue_groups():
       for ag in rg.atom_groups():
         #print list(ag.atoms().extract_name())
         if(get_class(name=ag.resname) == "common_water"): continue
-        if(protein_only and
-           not ag.resname.strip().upper() in aa_codes): continue
+        #if(protein_only and
+        #   not ag.resname.strip().upper() in aa_codes): continue
+        if (protein_only and get_class(name=ag.resname) not in
+          ["common_amino_acid", "modified_amino_acid"]): continue
         actual = [a.name.strip().upper() for a in ag.atoms()]
         mlq = mon_lib_query(residue=ag.resname, mon_lib_srv=mon_lib_srv)
         expected_h   = []
@@ -151,6 +129,53 @@ def add(model,
             .set_xyz(new_xyz=new_xyz)
             .set_hetero(new_hetero=hetero))
           ag.append_atom(a)
+
+# ==============================================================================
+
+def add(model,
+        use_neutron_distances = False,
+        adp_scale             = 1,
+        exclude_water         = True,
+        protein_only          = False,
+        stop_for_unknowns     = True,
+        keep_existing_H       = False):
+  """
+  Add H atoms to a model
+
+  Parameters
+  ----------
+  use_neutron_distances : bool
+    use neutron distances instead of X-ray
+
+  adp_scale : float
+    scale factor for isotropic B of H atoms.
+    B(H-atom) = adp_scale * B(parent non-H atom)
+
+  keep_existing_H : bool
+    keep existing H atoms in model, only place missing H
+
+  Returns
+  -------
+  model
+      mmtbx model object with H atoms
+  """
+
+  # Remove existing H if requested
+  if( not keep_existing_H):
+    model = model.select(~model.get_hd_selection())
+  pdb_hierarchy = model.get_hierarchy()
+  mon_lib_srv = model.get_mon_lib_srv()
+  """
+  for pmodel in pdb_hierarchy.models():
+    for chain in pmodel.chains():
+      for residue_group in chain.residue_groups():
+        for conformer in residue_group.conformers():
+          for residue in conformer.residues():
+            print list(residue.atoms().extract_name())
+  """
+  add_missing_H_atoms_at_bogus_position(pdb_hierarchy = pdb_hierarchy,
+                                        mon_lib_srv   = mon_lib_srv,
+                                        protein_only = protein_only)
   pdb_hierarchy.atoms().reset_serial()
   #pdb_hierarchy.sort_atoms_in_place()
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -169,35 +194,38 @@ def add(model,
     pdb_interpretation_params = p,
     log                       = null_out())
 
-  f = open("intermediate1.pdb","w")
-  f.write(model.model_as_pdb())
+#  f = open("intermediate1.pdb","w")
+#  f.write(model.model_as_pdb())
+
 #  # Remove lone H
 #  sel_h = model.get_hd_selection()
 #  sel_isolated = model.isolated_atoms_selection()
 #  sel_lone = sel_h & sel_isolated
 #  model = model.select(~sel_lone)
-  # Only keep H which have been parameterized in riding H procedure
+#
+  # Only keep H that have been parameterized in riding H procedure
   sel_h = model.get_hd_selection()
   model.setup_riding_h_manager()
   sel_h_in_para = flex.bool(
-                [bool(x) for x in model.riding_h_manager.h_parameterization])
+    [bool(x) for x in model.riding_h_manager.h_parameterization])
   sel_h_not_in_para = sel_h_in_para.exclusive_or(sel_h)
   model = model.select(~sel_h_not_in_para)
 
   model = exclude_h_on_SS(model = model)
   model = exclude_h_on_coordinated_S(model = model)
 
-  f = open("intermediate2.pdb","w")
-  f.write(model.model_as_pdb())
+#  f = open("intermediate2.pdb","w")
+#  f.write(model.model_as_pdb())
 
   # Reset occupancies, ADPs and idealize
   model.reset_adp_for_hydrogens(scale = adp_scale)
   model.reset_occupancy_for_hydrogens_simple()
   model.idealize_h_riding()
+  #
   return model
 
-
 # ==============================================================================
+
 # stub for reduce parameters
 # TODO can be parameters or phil, depending on how many options are really needed
 reduce_master_params_str = """
@@ -225,6 +253,11 @@ def optimize(model):
   model
       mmtbx model object with optimized H atoms
   """
+  # hierarchy object --> has hierarchy of structure
+  pdb_hierarchy = model.get_hierarchy()
+  # geometry restraints manager --> info about ideal bonds, angles; what atoms are bonded, etc.
+  grm = model.get_restraints_manager()
+
   print("Reduce optimization happens here")
 
   return model
