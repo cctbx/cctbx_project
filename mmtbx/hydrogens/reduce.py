@@ -228,9 +228,3 @@ def optimize(model):
   print("Reduce optimization happens here")
 
   return model
-
-
-
-
-
-
