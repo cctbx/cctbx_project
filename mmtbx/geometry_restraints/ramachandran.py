@@ -173,7 +173,7 @@ ramachandran_plot_restraints {
       .type = choice(multi=False)
     allowed_strategy = *closest highest_probability random weighted_random
       .type = choice(multi=False)
-    outlier_strategy = closest *highest_probability random weighted_random
+    outlier_strategy = *closest highest_probability random weighted_random
       .type = choice(multi=False)
   }
 }
@@ -407,6 +407,8 @@ class ramachandran_manager(object):
         elif(r_eval is allowed): strategy=self.params.phi_psi_2.allowed_strategy
         elif(r_eval is outlier): strategy=self.params.phi_psi_2.outlier_strategy
         else:                    raise RuntimeError("Rama eveluation failed.")
+        if strategy=='closest':
+          strategy+='_%0.1f_%0.1f' % tuple(three.get_phi_psi_angles())
         pp2_key = get_phi_psi_key_for_rama_proxy(phi_psi_2_motifs,
                                                  three,
                                                  strategy=strategy,
