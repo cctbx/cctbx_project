@@ -8,6 +8,7 @@ from scipy.interpolate import SmoothBivariateSpline
 from cctbx.array_family import flex
 from cctbx import miller, sgtbx
 from cctbx.crystal import symmetry
+
 import numpy as np
 from scipy.ndimage.morphology import binary_dilation
 from simtbx.nanoBragg.utils import ENERGY_CONV
@@ -20,6 +21,7 @@ from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from dxtbx.imageset import MemReader #, MemMasker
 from dxtbx.imageset import ImageSet, ImageSetData
 from dxtbx.model.experiment_list import ExperimentListFactory
+from dxtbx.model import ExperimentList, Experiment
 
 
 def get_spot_data(img, thresh=0, filter=None, **kwargs):
@@ -955,9 +957,10 @@ def manager_from_crystal(crystal):
     return manager
 
 
-def refls_from_sims(panel_imgs, detector, beam, thresh=0, filter=None, panel_ids=None, **kwargs):
+def refls_from_sims(panel_imgs, detector, beam, thresh=0, filter=None, panel_ids=None,
+                    max_spot_size=1000, **kwargs):
     """
-    This class is for converting the centroids in the noiseless simtbx images
+    This is for converting the centroids in the noiseless simtbx images
     to a multi panel reflection table
 
     :param panel_imgs: list or 3D array of detector panel simulations
@@ -997,7 +1000,7 @@ def refls_from_sims(panel_imgs, detector, beam, thresh=0, filter=None, panel_ids
 
     pixlst_to_reftbl = PixelListToReflectionTable(
         min_spot_size=1,
-        max_spot_size=194 * 184,  # TODO: change this ?
+        max_spot_size=max_spot_size,  # TODO: change this ?
         filter_spots=FilterRunner(),  # must use a dummie filter runner!
         write_hot_pixel_mask=False)
 
@@ -1111,9 +1114,11 @@ def load_panel_group_file(panel_group_file):
 def spots_from_pandas_and_experiment(experiment_file, pandas_pickle, mtz_file=None, mtz_col=None,
                                      spectrum_file=None, total_flux=1e12, pink_stride=1,
                                      beamsize_mm=0.001, oversample=0, d_max=999, d_min=1.5, defaultF=1e3,
-                                    device_Id=0, cuda=False, ngpu=1, time_panels=True,
-                                     output_img=None, usempi=False, save_expt_data=False):
+                                     cuda=False, ngpu=1, time_panels=True,
+                                     output_img=None, njobs=1, save_expt_data=False,
+                                     as_numpy_array=False):
     import pandas
+    from joblib import Parallel, delayed
     from simtbx.nanoBragg.utils import flexBeam_sim_colors
 
     print("Loading experiment")
@@ -1142,26 +1147,29 @@ def spots_from_pandas_and_experiment(experiment_file, pandas_pickle, mtz_file=No
     wavelens = ENERGY_CONV / energies
     wavelens = lam0 + lam1*wavelens
     energies = ENERGY_CONV / wavelens
-    pids = None
-    #if not usempi:
-    #    pids = None
-    #else:
-    #    from libtbx.mpi4py import COMM_WORLD as comm
-    #    panel_list = list(range(len(expt.detector)))
-    #    pids = np.array_split(panel_list, comm.size)[comm.rank]
-    #    device_Id = int(np.random.choice(ngpu))
-    results = flexBeam_sim_colors(CRYSTAL=expt.crystal, DETECTOR=expt.detector, BEAM=expt.beam, Famp=Famp,
-                                  fluxes=fluxes, energies=energies, beamsize_mm=beamsize_mm,
-                                  Ncells_abc=Ncells_abc, spot_scale_override=spot_scale,
-                                  cuda=cuda, device_Id=device_Id, oversample=oversample, time_panels=time_panels,
-                                  pids=pids)
-    #if usempi:
-    #    results = comm.reduce(results)
-    #    if comm.rank==0:
-    #        results = sorted(results, key=lambda x:[0])
+
+    panel_list = list(range(len(expt.detector)))
+    pids_per_job = np.array_split(panel_list, njobs)
+
+    def main(pids):
+        device_Id = int(np.random.choice(ngpu))
+        results = flexBeam_sim_colors(CRYSTAL=expt.crystal, DETECTOR=expt.detector, BEAM=expt.beam, Famp=Famp,
+                                      fluxes=fluxes, energies=energies, beamsize_mm=beamsize_mm,
+                                      Ncells_abc=Ncells_abc, spot_scale_override=spot_scale,
+                                      cuda=cuda, device_Id=device_Id, oversample=oversample, time_panels=time_panels,
+                                      pids=pids)
+        return results
+
+    results = Parallel(n_jobs=njobs)(delayed(main)(pids_per_job[jid]) for jid in range(njobs))
+    results = [result for job_results in results for result in job_results]
 
     if output_img is not None:
         save_model_to_image(expt, results, output_img, save_experiment_data=save_expt_data)
+    if as_numpy_array:
+        pids, imgs = zip(*results)
+        order = np.argsort(pids)
+        assert np.all(order == np.arange(len(pids)))
+        results = np.array([imgs[i] for i in order])
 
     return results
 
@@ -1171,7 +1179,6 @@ def make_miller_array_from_crystal(Crystal, dmin, dmax, defaultF=1000):
         symbol=Crystal.get_space_group().info().type().lookup_symbol(),
         unit_cell=Crystal.get_unit_cell(), d_min=dmin, d_max=dmax, defaultF=defaultF)
     return Famp
-
 
 
 def save_model_to_image(expt, model_results, output_img_file, save_experiment_data=False):
@@ -1193,6 +1200,67 @@ def save_model_to_image(expt, model_results, output_img_file, save_experiment_da
             exp_data = image_data_from_expt(expt)
             writer.add_image(exp_data)
     print("Wrote model to image %s" % output_img_file)
+
+
+def index_refls(refls, exper, tolerance=0.333):
+    from dials.algorithms.indexing import assign_indices
+    refls['id'] = flex.int(len(refls), -1)
+    refls['imageset_id'] = flex.int(len(refls), 0)
+    El = ExperimentList()
+    El.append(exper)
+    refls.centroid_px_to_mm(El)
+    refls.map_centroids_to_reciprocal_space(El)
+    idx_assign = assign_indices.AssignIndicesGlobal(tolerance=tolerance)
+    idx_assign(refls, El)
+    return refls
+
+
+def indexed_from_model(strong_refls, model_images, expt, thresh=1, tolerance=0.333, Qdist_cutoff=0.003):
+    from scipy.spatial import cKDTree
+    model_refls = refls_from_sims(model_images, expt.detector, expt.beam, thresh=thresh)
+    model_refls['id'] = flex.int(len(model_refls), 0)
+    model_refls['imageset_id'] = flex.int(len(model_refls), 0)
+    pids = set(strong_refls['panel'])
+
+    El = ExperimentList()
+    El.append(expt)
+
+    model_refls = index_refls(model_refls, expt, tolerance=tolerance)
+    print("Indexed %d / %d spots from the model using the nominal wavelength"
+          % (sum(model_refls['id'] == 0), len(model_refls)))
+
+    strong_refls.centroid_px_to_mm(El)
+    strong_refls.map_centroids_to_reciprocal_space(El)
+
+    Rindexed = None
+    for pid in pids:
+        Rmodel = model_refls.select(model_refls['panel'] == pid)
+        Rstrong = strong_refls.select(strong_refls['panel'] == pid)
+        if len(Rmodel) == 0:
+            continue
+        #xyz_model = np.array(Rmodel['xyzobs.px.value'])[:, :2]
+        #xyz_data = np.array(Rstrong['xyzobs.px.value'])[:, :2]
+        Qxyz_model = np.array(Rmodel['rlp'])
+        Qxyz_data = np.array(Rstrong['rlp'])
+        tree = cKDTree(Qxyz_model)
+        dists, nearest = tree.query(Qxyz_data, k=1)   # find the nearest model spot to each data spot
+
+        miller_index = [Rmodel['miller_index'][n] for n in nearest]
+        xyzcal_px = [Rmodel['xyzobs.px.value'][n] for n in nearest]
+        xyzcal_mm = [Rmodel['xyzobs.mm.value'][n] for n in nearest]
+
+        Rstrong['miller_index'] = flex.miller_index(miller_index)
+        Rstrong['xyzcal.px'] = flex.vec3_double(xyzcal_px)
+        Rstrong['xyzcal.mm'] = flex.vec3_double(xyzcal_mm)
+        within_cutoff = flex.bool(dists <= Qdist_cutoff)
+        Rstrong = Rstrong.select(within_cutoff)
+
+        if Rindexed is None:
+            Rindexed = Rstrong
+        else:
+            Rindexed.extend(Rstrong)
+
+    return Rindexed
 
 #def tally_local_statistics(spot_rois):
 #    # tally up all miller indices in this refinement
