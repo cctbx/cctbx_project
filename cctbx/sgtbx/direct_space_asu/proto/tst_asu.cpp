@@ -21,8 +21,8 @@ inline double get_double(rational_t r)
 
 std::size_t loop_over_grid_points(const direct_space_asu &a, unsigned n_)
 {
-  register std::size_t result = 0;
-  register const int n = n_;
+  std::size_t result = 0;
+  const int n = n_;
 
   a.show_comprehensive_summary(std::cout);
   std::cout <<"\n";

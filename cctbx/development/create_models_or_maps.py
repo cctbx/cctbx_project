@@ -277,6 +277,7 @@ def generate_map(
       output_map_file_name=None,
       map_coeffs=None,  # Required
       d_min=3,
+      map_manager = None, # source of info, not map
       gridding=None,
       wrapping=False,
       origin_shift_grid_units=None,
@@ -285,6 +286,7 @@ def generate_map(
       low_resolution_real_space_noise_fraction=0,
       high_resolution_real_space_noise_fraction=0,
       low_resolution_noise_cutoff=None,
+      random_seed = None,
       log=sys.stdout):
 
 
@@ -330,8 +332,19 @@ def generate_map(
 
   '''
 
+  if random_seed:
+    random_seed=int(random_seed)
+    import random
+    random.seed(random_seed)
+    random_seed=random.randint(1,714717)
+    flex.set_random_seed(random_seed)
+
+  if map_manager:
+    origin_shift_grid_units=map_manager.origin_shift_grid_units
+    gridding=map_manager.map_data().all()
+    wrapping=map_manager.wrapping()
   if gridding:
-    if type(gridding)==type([1,2,3]) and type(gridding[0])==type(1):
+    if type(gridding) in [type((1,2,3)), type([1,2,3])] and type(gridding[0])==type(1):
       pass # already fine
     else:
       gridding=[]
@@ -405,13 +418,16 @@ def generate_map(
   if real_space_noise_map:
     map_data+=real_space_noise_map
 
-  # Create a map_manager object directly (unusual use of map_manager)
-  from iotbx.map_manager import map_manager
-  mm=map_manager(map_data=map_data,
-    unit_cell_grid=map_data.all(),
-    unit_cell_crystal_symmetry=map_coeffs.crystal_symmetry(),
-    origin_shift_grid_units=origin_shift_grid_units,
-    wrapping=wrapping)
+  if map_manager:
+    mm=map_manager.customized_copy(map_data=map_data)
+  else:
+    # Create a map_manager object directly (unusual use of map_manager)
+    from iotbx.map_manager import map_manager
+    mm=map_manager(map_data=map_data,
+      unit_cell_grid=map_data.all(),
+      unit_cell_crystal_symmetry=map_coeffs.crystal_symmetry(),
+      origin_shift_grid_units=origin_shift_grid_units,
+      wrapping=wrapping)
 
   if output_map_file_name:
     mm.write_map(output_map_file_name)
@@ -576,6 +592,7 @@ def scale_map_coeffs(
     map_coeffs.setup_binner(auto_binning=True)
 
   d_max,d_min=map_coeffs.d_max_min()
+  if d_max < 0: d_max = 1.e+10
 
   if random_selection_within_bins:
     new_map_coeffs=map_coeffs.customized_copy(

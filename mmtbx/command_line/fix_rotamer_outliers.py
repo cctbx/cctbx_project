@@ -85,8 +85,7 @@ def run(args, params=None, out=sys.stdout, model=None):
       mon_lib_srv       = model.get_mon_lib_srv(),
       log               = out)
   model.set_sites_cart(
-      sites_cart = result.pdb_hierarchy.atoms().extract_xyz(),
-      update_grm = False)
+      sites_cart = result.pdb_hierarchy.atoms().extract_xyz())
   res_pdb_str = model.model_as_pdb()
   with open("%s.pdb" % work_params.output_prefix, "w") as f:
     f.write(res_pdb_str)

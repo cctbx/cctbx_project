@@ -302,7 +302,7 @@ general_tests = [
   "$D/regression/model_idealization/tst_withmap_06.py",
   "$D/regression/model_idealization/tst_ligands.py",
   "$D/regression/model_idealization/tst_with_mtz.py",
-  "$D/regression/model_idealization/tst_ext_map_01.py",
+  # "$D/regression/model_idealization/tst_ext_map_01.py",
   "$D/utils/tst_switch_rotamers.py",
   "$D/refinement/tst_occupancy_selections.py",
   "$D/regression/ncs/tst_minimization_ncs_constraints.py",
@@ -380,6 +380,8 @@ general_tests = [
   #
   "$D/regression/tst_scattering_type_registry.py",
   "$D/atomic_environment_vectors/tst.py",
+  #
+  "$D/building/ligands/tst_00.py",
   ]
 
 probe_tests = [

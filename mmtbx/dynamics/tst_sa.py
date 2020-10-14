@@ -106,7 +106,7 @@ def shake_sites(xrs, random, shift, grm=None):
 
 def get_pdb_inputs(pdb_str):
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
-  model = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  model = mmtbx.model.manager(model_input = pdb_inp, log = null_out(), build_grm=True)
   return group_args(
     ph  = model.get_hierarchy(),
     grm = model.get_restraints_manager(),
@@ -238,8 +238,7 @@ def exercise_3():
   xrs = pi.xrs.deep_copy_scatterers()
   sites_cart_start = xrs.sites_cart()
   states_collector = mmtbx.utils.states(
-    pdb_hierarchy  = pi.ph,
-    xray_structure = xrs)
+    pdb_hierarchy  = pi.ph)
   #
   params = sa.master_params().extract()
   params.start_temperature=5000

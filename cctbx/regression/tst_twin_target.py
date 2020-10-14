@@ -365,7 +365,7 @@ def tst_snd_der(tot, f1, f2 , h=0.01):
   assert approx_equal( tmp/div, snd_der[2]/div, eps=5e-2 )
 
 
-def tst_integration(twin_lik, range=7 ):
+def tst_integration(twin_lik, range_value=7 ):
   #first find the maximum
   tmp_1_lbfgs = minim( twin_lik, 1, 1 )
   fm1=tmp_1_lbfgs.x[0]
@@ -380,13 +380,13 @@ def tst_integration(twin_lik, range=7 ):
   s12= -is12/det
   s1= math.sqrt( abs(s11)*2.0 )
   s2= math.sqrt( abs(s22)*2.0 )
-  quad_value = twin_lik.num_integrate(fm1, s1, fm2, s2, range)
+  quad_value = twin_lik.num_integrate(fm1, s1, fm2, s2, range_value)
   laplace_value= twin_lik.laplace_integrate(fm1,fm2)
   assert approx_equal(quad_value, laplace_value,eps=5e-2)
   #print "--->", quad_value, laplace_value, 100*(quad_value-laplace_value)/laplace_value
 
 
-def plot_function(twin_lik, range=7):
+def plot_function(twin_lik, range_value=7):
   tmp_1_lbfgs = minim( twin_lik, 1, 1 )
   fm1=tmp_1_lbfgs.x[0]
   fm2=tmp_1_lbfgs.x[1]
@@ -402,8 +402,8 @@ def plot_function(twin_lik, range=7):
   s2= math.sqrt( abs(s22)*2.0 )
   for ii in range(-25,26):
     for jj in range(-25,26):
-      x=range*ii/25.0 + fm1
-      y=range*jj/25.0 + fm2
+      x=range_value*ii/25.0 + fm1
+      y=range_value*jj/25.0 + fm2
       print(x,y, twin_lik.log_p(x,y)-twin_lik.log_p(fm1,fm2))
 
 def tst_single_likelihood(centric=False,

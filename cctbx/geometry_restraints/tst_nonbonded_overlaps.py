@@ -473,10 +473,12 @@ class test_nonbonded_overlaps(unittest.TestCase):
     self.file_to_delete = []
     # import files used in tests
     self.file_name = 'test_pdb_file.pdb'
-    open(self.file_name,'w').write(raw_records1)
+    with open(self.file_name,'w') as f:
+      f.write(raw_records1)
     self.file_to_delete.append(self.file_name)
     self.file_name2 = 'test_pdb_file2.pdb'
-    open(self.file_name2,'w').write(raw_records7)
+    with open(self.file_name2,'w') as f:
+      f.write(raw_records7)
     self.file_to_delete.append(self.file_name2)
     self.reduce_present = libtbx.env.has_module(name="reduce")
 
@@ -916,7 +918,8 @@ class test_nonbonded_overlaps(unittest.TestCase):
     """ verify that ready_set can fix issues with unknown_pair_type """
     fn = 'test_unknown_pairs_in_pdb.pdb'
     self.file_to_delete.append(fn)
-    open(fn,'w').write(unknown_pairs_pdb_str)
+    with open(fn,'w') as f:
+      f.write(unknown_pairs_pdb_str)
     print('current _dir',os.getcwd())
     pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
         file_name=fn,
@@ -927,7 +930,8 @@ class test_nonbonded_overlaps(unittest.TestCase):
     self.file_to_delete.append(fn_with_h)
     fn_eff = fn_with_h.replace('_with_h.pdb','_with_h.eff')
     self.file_to_delete.append(fn_eff)
-    open(fn_with_h,'w').write(pdb_with_h)
+    with open(fn_with_h,'w') as f:
+      f.write(pdb_with_h)
 
     params = mmtbx.model.manager.get_default_pdb_interpretation_params()
     pdb_inp = iotbx.pdb.input(file_name=fn_with_h, source_info=None)
@@ -1091,13 +1095,7 @@ def process_raw_records(
   return result
 
 def get_macro_mol_sel(model):
-  proxies = model.all_chain_proxies
-  cache = proxies.pdb_hierarchy.atom_selection_cache()
-  macro_mol_sel = proxies.selection(
-    cache  = cache,
-    string = 'protein or dna or rna')
-  return macro_mol_sel
-
+  return model.selection(string = 'protein or dna or rna')
 
 def run_selected_tests():
   """  Run selected tests

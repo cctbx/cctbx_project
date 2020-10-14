@@ -130,7 +130,7 @@ def add_reference_dihedral_restraints_if_requested(
       reference_file_list.append(file_name)
   print("*** Adding Reference Model Restraints (torsion) ***", file=log)
   #test for inserted TER cards in working model
-  ter_indices = model._model_input.ter_indices()
+  ter_indices = model._ter_indices
   if ter_indices is not None:
     utils.check_for_internal_chain_ter_records(
       pdb_hierarchy=model.get_hierarchy(),

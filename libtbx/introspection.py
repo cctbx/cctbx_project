@@ -113,7 +113,8 @@ class virtual_memory_info(proc_file_reader):
 
   def __init__(self):
     try:
-      self.proc_status = open(_proc_status).read()
+      with open(_proc_status) as f:
+        self.proc_status = f.read()
     except IOError:
       self.proc_status = None
 

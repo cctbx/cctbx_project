@@ -163,8 +163,6 @@ output {
       self.master_phil = libtbx.phil.parse(
         self.master_phil_str, process_includes=True)
 
-    self.custom_init()
-
     # set DataManager defaults
     if self.data_manager is not None:
       self.data_manager.set_default_output_filename(
@@ -174,6 +172,9 @@ output {
       except AttributeError:
         pass
       self.data_manager.set_program(self)
+
+    # optional initialization
+    self.custom_init()
 
   def header(self, text):
     print("-"*79, file=self.logger)

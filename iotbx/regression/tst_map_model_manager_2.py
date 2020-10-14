@@ -76,10 +76,8 @@ def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
   dm = DataManager()
   aa = dm.get_map_model_manager(model_file=pdb_file_name,
     map_files=map_file_name)
-  aa.set_log(sys.stdout)
   bb = dm.get_map_model_manager(model_file=split_pdb_file_name,
     map_files=map_file_name)
-  bb.set_log(sys.stdout)
 
   for selection_method in ['by_chain', 'by_segment','supplied_selections',
       'boxes']:
@@ -128,14 +126,15 @@ def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
                 ("by_chain",True,1,86,),
                 ("by_segment",True,1,86,),
                 ("supplied_selections",True,1,86,),
-                ("boxes",True,13,1,),
+                ("boxes",True,11,7,),
                 ("boxes",False,36,0,),
                 ("boxes",True,13,1,),
                 ("boxes",False,36,0,),
-                ]
-
-
-
+                ], 'failed to find %s %s %s %s' % (
+                    selection_method,
+                    skip_empty_boxes,
+                    len(box_info.selection_list),
+                    box_info.selection_list[0].count(True))
 
           # Change the coordinates in one box
           small_model = box_info.mmm_list[0].model()

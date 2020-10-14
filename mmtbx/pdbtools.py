@@ -324,7 +324,7 @@ class modify(object):
           crystal_symmetry=self.model.crystal_symmetry())
       self.model._update_atom_selection_cache()
       self.model._update_has_hd()
-      self.model._update_pdb_atoms()
+      self.model.get_hierarchy().atoms().reset_i_seq()
 
 
 

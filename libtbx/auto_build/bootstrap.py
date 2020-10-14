@@ -903,20 +903,20 @@ class buildbot_module(SourceModule):
 class phaser_module(SourceModule):
   module = 'phaser'
   anonymous = ['git',
-               'git://git.uis.cam.ac.uk/cimr-phaser/phaser.git',
-               'https://git.uis.cam.ac.uk/cimr-phaser/phaser.git']
+               'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/phaser.git',
+               'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/phaser.git']
 
 class phasertng_module(SourceModule):
   module = 'phasertng'
   anonymous = ['git',
-               'git://git.uis.cam.ac.uk/cimr-phaser/phasertng.git',
-               'https://git.uis.cam.ac.uk/cimr-phaser/phasertng.git']
+               'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/phasertng.git',
+               'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/phasertng.git']
 
 class phaser_regression_module(SourceModule):
   module = 'phaser_regression'
   anonymous = ['git',
-               'git://git.csx.cam.ac.uk/cimr-phaser/phaser_regression.git',
-               'https://git.csx.cam.ac.uk/cimr-phaser/phaser_regression.git']
+               'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/phaser_regression.git',
+               'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/phaser_regression.git']
 
 # DIALS repositories
 class labelit_module(SourceModule):

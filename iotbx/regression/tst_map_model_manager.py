@@ -98,6 +98,11 @@ def test_01():
   assert approx_equal(model.get_sites_cart(),
                       model_in_original_position.get_sites_cart())
 
+  # test data_manager map_model_manager
+  generated_mmm = dm.get_map_model_manager()
+  print(generated_mmm)
+  assert(isinstance(generated_mmm,map_model_manager))
+
 
   # Generate a map and model
 
@@ -230,3 +235,4 @@ if (__name__ == '__main__'):
   else:
     print('Skip test_01, chem_data not available')
   print ("OK")
+

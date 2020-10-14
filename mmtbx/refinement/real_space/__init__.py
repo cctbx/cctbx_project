@@ -41,7 +41,7 @@ def setup_test(pdb_answer, pdb_poor, i_pdb, d_min, resolution_factor,
   # answer
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer)
   model_answer = mmtbx.model.manager(model_input=pdb_inp, process_input=True,
-    log=null_out(), pdb_interpretation_params=pip)
+    log=null_out(), pdb_interpretation_params=pip, build_grm=True)
   with open("answer_%s.pdb"%str(i_pdb), "w") as the_file:
     the_file.write(model_answer.model_as_pdb())
   #
@@ -61,7 +61,7 @@ def setup_test(pdb_answer, pdb_poor, i_pdb, d_min, resolution_factor,
   # poor
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_poor)
   model_poor = mmtbx.model.manager(model_input=pdb_inp, log=null_out(),
-    pdb_interpretation_params=pip)
+    pdb_interpretation_params=pip, build_grm=True)
   with open("poor_%s.pdb"%str(i_pdb), "w") as the_file:
     the_file.write(model_poor.model_as_pdb())
   #
@@ -105,7 +105,7 @@ class rsr_model(object):
     self.s1 = self.sites_cart_start.deep_copy()
     self.states_collector = mmtbx.utils.states(
       pdb_hierarchy  = self.model.get_hierarchy().deep_copy(),
-      xray_structure = self.model.get_xray_structure().deep_copy_scatterers(),
+      #xray_structure = self.model.get_xray_structure().deep_copy_scatterers(),
       counter        = 1)
     self.states_collector.add(sites_cart = self.model.get_sites_cart())
     #
@@ -534,7 +534,6 @@ class structure_monitor(object):
     self.xray_structure_start = xray_structure.deep_copy_scatterers()
     self.states_collector = mmtbx.utils.states(
       pdb_hierarchy  = self.pdb_hierarchy,
-      xray_structure = self.xray_structure,
       counter        = 1)
     self.states_collector.add(sites_cart = self.xray_structure.sites_cart())
     self.rotamer_manager = RotamerEval()

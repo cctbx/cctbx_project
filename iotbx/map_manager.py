@@ -12,6 +12,7 @@ from cctbx import maptbx
 from cctbx import miller
 import mmtbx.ncs.ncs
 from copy import deepcopy
+from scitbx.matrix import col
 
 class map_manager(map_reader, write_ccp4_map):
 
@@ -901,6 +902,11 @@ class map_manager(map_reader, write_ccp4_map):
     sel = flex.bool(map_data.size(), True)
     self.data.as_1d().set_selected(sel, map_data.as_1d())
 
+  def as_map_model_manager(self):
+    '''  Return a map_model_manager'''
+    from iotbx.map_model_manager import map_model_manager
+    return map_model_manager(map_manager = self)
+
   def as_full_size_map(self):
     '''
       Create a full-size map that with the current map inside it, padded by zero
@@ -1066,6 +1072,69 @@ class map_manager(map_reader, write_ccp4_map):
     bf=binary_filter(map_data,threshold).result()
     self.set_map_data(map_data = bf)  # replace map data
 
+  def randomize(self,
+      d_min = None,
+      low_resolution_fourier_noise_fraction=0.01,
+      high_resolution_fourier_noise_fraction=2,
+      low_resolution_real_space_noise_fraction=0,
+      high_resolution_real_space_noise_fraction=0,
+      low_resolution_noise_cutoff=None,
+      random_seed = None,
+         ):
+    '''
+      Randomize a map.
+
+      Unique aspect of this noise generation is that it can be specified
+      whether the noise is local in real space (every point in a map
+      gets a random value before Fourier filtering), or local in Fourier
+      space (every Fourier coefficient gets a complex random offset).
+      Also the relative contribution of each type of noise vs resolution
+      can be controlled.
+
+      Parameters:
+      -----------
+
+      d_min:  high-resolution limit in Fourier transformations
+
+      low_resolution_fourier_noise_fraction (float, 0): Low-res Fourier noise
+      high_resolution_fourier_noise_fraction (float, 0): High-res Fourier noise
+      low_resolution_real_space_noise_fraction(float, 0): Low-res
+          real-space noise
+      high_resolution_real_space_noise_fraction (float, 0): High-res
+          real-space noise
+      low_resolution_noise_cutoff (float, None):  Low resolution where noise
+          starts to be added
+
+    '''
+
+    assert self.origin_is_zero()
+
+    if d_min is None:
+      d_min = self.resolution()
+
+    map_data=self.map_data()
+    if random_seed is None:
+      import random
+      random_seed = random.randint(1,100000)
+    from cctbx.development.create_models_or_maps import generate_map
+    new_map_manager =generate_map(
+      map_manager = self,   # gridding etc
+      map_coeffs = self.map_as_fourier_coefficients(),
+      d_min = d_min,
+      low_resolution_fourier_noise_fraction=
+         low_resolution_fourier_noise_fraction,
+      high_resolution_fourier_noise_fraction=
+         high_resolution_fourier_noise_fraction,
+      low_resolution_real_space_noise_fraction=
+         low_resolution_real_space_noise_fraction,
+      high_resolution_real_space_noise_fraction=
+         high_resolution_real_space_noise_fraction,
+      low_resolution_noise_cutoff=
+         low_resolution_noise_cutoff,
+      random_seed = random_seed)
+
+    self.set_map_data(map_data = new_map_manager.map_data())  # replace map data
+
   def deep_copy(self):
     '''
       Return a deep copy of this map_manager object
@@ -1201,7 +1270,7 @@ class map_manager(map_reader, write_ccp4_map):
   def experiment_type(self):
     return self._experiment_type
 
-  def resolution(self, force = False, method = 'd99'):
+  def resolution(self, force = False, method = 'd99', set_resolution = True):
     ''' Get nominal resolution
         Return existing if present unless force is True
         choices:
@@ -1215,7 +1284,8 @@ class map_manager(map_reader, write_ccp4_map):
 
     assert method in ['d99','d9','d999','d_min']
 
-    self._resolution = -1 # now get it
+
+    working_resolution = -1 # now get it
 
     if method in ['d99','d9','d999']:
       from cctbx.maptbx import d99
@@ -1226,16 +1296,19 @@ class map_manager(map_reader, write_ccp4_map):
       d99_object = d99(
          map = map_data, crystal_symmetry = self.crystal_symmetry())
 
-      self._resolution = getattr(d99_object.result,method,-1)
+      working_resolution = getattr(d99_object.result,method,-1)
 
     from cctbx.maptbx import d_min_from_map  # get this to check
     d_min_estimated_from_map = d_min_from_map(
            map_data=self.map_data(),
            unit_cell=self.crystal_symmetry().unit_cell())
 
-    if self._resolution < d_min_estimated_from_map:  # we didn't get it or want to use d_min
-      self._resolution = d_min_estimated_from_map
-    return self._resolution
+    if working_resolution < d_min_estimated_from_map:  # we didn't get it or want to use d_min
+      working_resolution = d_min_estimated_from_map
+
+    if set_resolution:
+      self._resolution = working_resolution
+    return working_resolution
 
   def scattering_table(self):
     return self._scattering_table
@@ -1480,7 +1553,6 @@ class map_manager(map_reader, write_ccp4_map):
       For shifting a model, use:
          model.shift_model_and_set_crystal_symmetry(shift_cart=shift_cart)
     '''
-
     # Check if we really need to do anything
     if self.is_compatible_model(model):
       return # already fine
@@ -1656,12 +1728,30 @@ class map_manager(map_reader, write_ccp4_map):
     if hasattr(self,'_ncs_cc'):
        return self._ncs_cc
 
+  def absolute_center_cart(self):
+    '''  Return center of map (absolute position) in Cartesian coordinates'''
+    return tuple([0.5*a - o for a,o in zip(
+      self.crystal_symmetry().unit_cell().parameters()[:3],
+      self.shift_cart())])
+
+  def map_map_cc(self, other_map_manager):
+   ''' Return simple map correlation to other map_manager'''
+   import iotbx.map_manager
+   assert isinstance(other_map_manager, iotbx.map_manager.map_manager)
+   return flex.linear_correlation(
+      self.map_data().as_1d(), other_map_manager.map_data().as_1d()
+       ).coefficient()
+
+
   def find_map_symmetry(self,
       include_helical_symmetry = False,
       symmetry_center = None,
       min_ncs_cc = None,
       symmetry = None,
-      ncs_object = None):
+      ncs_object = None,
+      check_crystal_symmetry = True,
+      only_proceed_if_crystal_symmetry = False,):
+
     '''
        Use run_get_symmetry_from_map tool in segment_and_split_map to find
        map symmetry and save it as an mmtbx.ncs.ncs.ncs object
@@ -1689,6 +1779,14 @@ class map_manager(map_reader, write_ccp4_map):
        limited to that symmetry
 
        ncs_object can be supplied in which case it is just checked
+
+       If check_crystal_symmetry, try to narrow down possibilities by looking
+       for space-group symmetry first
+
+       If only_proceed_if_crystal_symmetry, skip looking if nothing comes up
+        with check_crystal_symmetry
+
+
     '''
 
     assert self.origin_is_zero()
@@ -1701,6 +1799,7 @@ class map_manager(map_reader, write_ccp4_map):
 
     if symmetry is None:
       symmetry = 'ALL'
+
 
     if symmetry_center is None:
       # Most likely map center is (1/2,1/2,1/2) in full grid
@@ -1719,13 +1818,43 @@ class map_manager(map_reader, write_ccp4_map):
       return_params_only = True,
       )
 
+    space_group_number = None
+    if check_crystal_symmetry and symmetry == 'ALL' and (not ncs_object):
+      # See if we can narrow it down looking at intensities at low-res
+      d_min = 0.05*self.crystal_symmetry().unit_cell().volume()**0.333
+      map_coeffs = self.map_as_fourier_coefficients(d_min=d_min)
+      from iotbx.map_model_manager import get_map_coeffs_as_fp_phi
+      f_array_info = get_map_coeffs_as_fp_phi(map_coeffs, d_min = d_min,
+        n_bins = 15)
+      ampl = f_array_info.f_array
+      data = ampl.customized_copy(
+        data = ampl.data(),sigmas = flex.double(ampl.size(),1.))
+      from mmtbx.scaling.twin_analyses import symmetry_issues
+      si = symmetry_issues(data)
+      cs_possibility = si.xs_with_pg_choice_in_standard_setting
+      space_group_number = cs_possibility.space_group_number()
+      if space_group_number < 2:
+        space_group_number = None
+      if space_group_number is None and only_proceed_if_crystal_symmetry:
+        return # skip looking further
 
+    params.reconstruction_symmetry.\
+          must_be_consistent_with_space_group_number = space_group_number
     new_ncs_obj, ncs_cc, ncs_score = run_get_ncs_from_map(params = params,
-      map_data = self.map_data(),
-      crystal_symmetry = self.crystal_symmetry(),
-      out = self.log,
-      ncs_obj = ncs_object
-      )
+        map_data = self.map_data(),
+        crystal_symmetry = self.crystal_symmetry(),
+        out = self.log,
+        ncs_obj = ncs_object)
+    if (space_group_number) and (not new_ncs_obj):
+      # try again without limits
+      params.reconstruction_symmetry.\
+          must_be_consistent_with_space_group_number = None
+      new_ncs_obj, ncs_cc, ncs_score = run_get_ncs_from_map(params = params,
+        map_data = self.map_data(),
+        crystal_symmetry = self.crystal_symmetry(),
+        out = self.log,
+        ncs_obj = ncs_object)
+
     if new_ncs_obj:
       self._ncs_object = new_ncs_obj
       self._ncs_cc = ncs_cc
@@ -1790,6 +1919,7 @@ class map_manager(map_reader, write_ccp4_map):
   def get_boxes_to_tile_map(self,
      target_for_boxes = 24,
      box_cushion = 3,
+     get_unique_set_for_boxes = None,
        ):
     '''
      Return a group_args object with a list of lower_bounds and upper_bounds
@@ -1798,6 +1928,8 @@ class map_manager(map_reader, write_ccp4_map):
      cover the existing part of the map.
      Approximately target_for_boxes will be returned (may be fewer or greater)
      Also return boxes with cushion of box_cushion
+     If get_unique_set_for_boxes is set, try to use map symmetry to identify
+       duplicates and set ncs_object
     '''
     assert self.origin_is_zero()
     cushion_nx_ny_nz = tuple([int(0.5 + x * n) for x,n in
@@ -1805,13 +1937,22 @@ class map_manager(map_reader, write_ccp4_map):
         (box_cushion,box_cushion,box_cushion)),
         self.map_data().all())])
     from cctbx.maptbx.box import get_boxes_to_tile_map
-    boxes = get_boxes_to_tile_map(
+    box_info = get_boxes_to_tile_map(
        target_for_boxes = target_for_boxes,
        n_real = self.map_data().all(),
        crystal_symmetry = self.crystal_symmetry(),
        cushion_nx_ny_nz = cushion_nx_ny_nz,
+       wrapping = self.wrapping(),
      )
-    return boxes
+    box_info.ncs_object = None
+
+    if get_unique_set_for_boxes:
+      n_before = len(box_info.lower_bounds_list)
+      box_info = self._get_unique_box_info(
+         box_info = box_info,
+         max_distance = 0.25*self.resolution())
+
+    return box_info
 
   def get_n_real_for_grid_spacing(self, grid_spacing = None):
     n_real = []
@@ -1949,6 +2090,241 @@ class map_manager(map_reader, write_ccp4_map):
         n_real           = self.map_data().all())
       )
 
+  def shift_aware_rt(self,
+     from_obj = None,
+     to_obj = None,
+     working_rt_info = None,
+     absolute_rt_info = None):
+   '''
+   Returns shift_aware_rt object
+
+   Uses rt_info objects (group_args with members of r, t).
+
+   Simplifies keeping track of rotation/translation between two
+    objects that each may have an offset from absolute coordinates.
+
+   absolute rt is rotation/translation when everything is in original,
+      absolute cartesian coordinates.
+
+   working_rt is rotation/translation of anything in "from_obj" object
+      to anything in "to_obj" object using working coordinates in each.
+
+   Usage:
+   shift_aware_rt = self.shift_aware_rt(absolute_rt_info = rt_info)
+   shift_aware_rt = self.shift_aware_rt(working_rt_info = rt_info,
+      from_obj=from_obj, to_obj = to_obj)
+
+   apply RT using working coordinates in objects
+   sites_cart_to_obj = shift_aware_rt.apply_rt(sites_cart_from_obj,
+      from_obj=from_obj, to_obj=to_obj)
+
+   apply RT absolute coordinates
+   sites_cart_to = shift_aware_rt.apply_rt(sites_cart_from)
+
+   '''
+   return shift_aware_rt(
+     from_obj = from_obj,
+     to_obj = to_obj,
+     working_rt_info = working_rt_info,
+     absolute_rt_info = absolute_rt_info)
+
+  def _get_unique_box_info(self, box_info, max_distance = 1):
+
+    if self.ncs_object() is None:
+      # try to get map symmetry but do not try too hard..
+      self.find_map_symmetry()
+    if not self.ncs_object() or self.ncs_object().max_operators()<2:
+      return box_info # nothing to do
+
+    box_info.ncs_object = self.ncs_object() # save it
+
+    # Get just the unique parts of this box (apply symmetry later)
+    new_lower_bounds_list = []
+    new_upper_bounds_list = []
+    new_lower_bounds_with_cushion_list = []
+    new_upper_bounds_with_cushion_list = []
+    existing_xyz_list = flex.vec3_double()
+    existing_unique_xyz_list = flex.vec3_double()
+    from scitbx.matrix import col
+    for lower_bounds, upper_bounds,lower_bounds_with_cushion, \
+      upper_bounds_with_cushion in zip (
+        box_info.lower_bounds_list,
+        box_info.upper_bounds_list,
+        box_info.lower_bounds_with_cushion_list,
+        box_info.upper_bounds_with_cushion_list,
+      ):
+      # NOTE: lower_bounds, upper_bounds are relative to the working
+      #    map_data with origin at (0,0,0).  Our ncs_object is also
+      #    relative to this same origin
+
+      xyz = tuple([ a * 0.5*(lb+ub) / n for a, lb, ub, n in zip(
+         self.crystal_symmetry().unit_cell().parameters()[:3],
+         lower_bounds,
+         upper_bounds,
+         self.map_data().all())])
+      target_site = flex.vec3_double((xyz,))
+      ncs_object = self.ncs_object()
+      if existing_xyz_list.size() > 0 :
+       dist_n, id1_n, id2_n = target_site.min_distance_between_any_pair_with_id(
+              existing_xyz_list)
+      else:
+        dist_n = 1.e+30
+      if dist_n <= max_distance:  # duplicate
+        pass
+      else:
+        ncs_sites = ncs_object.apply_ncs_to_sites( sites_cart=target_site)
+        existing_xyz_list.extend(ncs_sites)
+        existing_unique_xyz_list.extend(
+          flex.vec3_double((xyz,)*ncs_sites.size()))
+        new_lower_bounds_list.append(lower_bounds)
+        new_upper_bounds_list.append(upper_bounds)
+        new_lower_bounds_with_cushion_list.append(lower_bounds_with_cushion)
+        new_upper_bounds_with_cushion_list.append(upper_bounds_with_cushion)
+
+    box_info.lower_bounds_list = new_lower_bounds_list
+    box_info.upper_bounds_list = new_upper_bounds_list
+    box_info.lower_bounds_with_cushion_list = new_lower_bounds_with_cushion_list
+    box_info.upper_bounds_with_cushion_list = new_upper_bounds_with_cushion_list
+
+    return box_info
+
+#   Methods for map_manager
+
+class shift_aware_rt:
+  '''
+  Class to simplify keeping track of rotation/translation between two
+  objects that each may have an offset from absolute coordinates.
+
+  Basic idea:  absolute rt is rotation/translation when everything is in
+  original, absolute cartesian coordinates.
+
+  working_rt is rotation/translation of anything in "from_obj" object to anything
+   in "to_obj" object using working coordinates in each.
+
+  The from_obj and to objects must have a shift_cart method
+  '''
+
+  def __init__(self,
+     from_obj = None,
+     to_obj = None,
+     working_rt_info = None,
+     absolute_rt_info = None):
+
+     assert (
+      (absolute_rt_info and (not from_obj) and (not to_obj) and (not working_rt_info))
+      or
+      (from_obj and to_obj and working_rt_info))
+
+     if from_obj:
+       assert hasattr(from_obj, 'shift_cart')
+     if to_obj:
+       assert hasattr(to_obj, 'shift_cart')
+
+     if not absolute_rt_info:
+       absolute_rt_info = self.get_absolute_rt_info(
+         working_rt_info = working_rt_info,
+         from_obj = from_obj, to_obj = to_obj)
+
+     self._absolute_rt_info = group_args(
+        r =  absolute_rt_info.r,
+        t =  absolute_rt_info.t,)
+
+
+  def is_similar(self, other_shift_aware_rt_info, tol = 0.001):
+    r = self._absolute_rt_info.r
+    t = self._absolute_rt_info.t
+    other_r = other_shift_aware_rt_info._absolute_rt_info.r
+    other_t = other_shift_aware_rt_info._absolute_rt_info.t
+    for x,y in zip(r,other_r):
+      if (abs(x-y)) > tol:
+        print(x,y,abs(x-y))
+        return False
+    for x,y in zip(t,other_t):
+      if (abs(x-y)) > tol:
+        print(x,y,abs(x-y))
+        return False
+    return True
+
+  def apply_rt(self, site_cart = None, sites_cart = None,
+    from_obj = None, to_obj = None):
+    '''
+    Apply absolute rt if from and to not specified.
+    Apply relative if specified
+    '''
+    # get absolute if from and to not specified, otherwise working
+    rt_info = self.working_rt_info(from_obj=from_obj, to_obj=to_obj)
+    if site_cart:
+      return rt_info.r * col(site_cart) + rt_info.t
+
+    else:
+      return rt_info.r.elems * sites_cart + rt_info.t.elems
+
+  def get_absolute_rt_info(self, working_rt_info = None,
+      from_obj = None, to_obj = None):
+
+    '''
+    working_rt_info describes how to map from_xyz -> to_xyz in local coordinates
+    from_xyz is shifted from absolute by from.shift_cart()
+    to_xyz is shifted from absolute by to.shift_cart()
+
+    We have:
+      r from_xyz + t = to_xyz    in working frame of reference
+
+    We want to describe how to map:
+       (from_xyz - from.shift_cart()) -> (to_xyz - to.shift_cart())
+    where r is going to be the same and T will be different than t
+       r ((from_xyz - from.shift_cart()) + T = (to_xyz - to.shift_cart())
+       T = (to_xyz - to.shift_cart() - r from_xyz + r from.shift_cart()
+         but: to_xyz -  r from_xyz = t
+       T =  t - to.shift_cart() + r from.shift_cart()
+
+    Note reverse:
+       t = T + to.shift_cart() - r from.shift_cart()
+    '''
+
+    r = working_rt_info.r
+    t = working_rt_info.t
+    new_t =  t -  col(to_obj.shift_cart())  + r * col(from_obj.shift_cart())
+
+    return group_args(
+      r = r,
+      t = new_t
+    )
+
+  def working_rt_info(self, from_obj=None, to_obj=None):
+    ''' Get rt in working frame of reference
+    '''
+    if (not from_obj) and (not to_obj):  # as is
+      return self._absolute_rt_info
+
+    assert hasattr(from_obj, 'shift_cart')
+    assert hasattr(to_obj, 'shift_cart')
+    r = self._absolute_rt_info.r
+    t = self._absolute_rt_info.t
+    working_t =  t + col(to_obj.shift_cart()) - r * col(from_obj.shift_cart())
+    return group_args(
+      r = r,
+      t = working_t)
+
+
+  def absolute_rt_info(self):
+    return self._absolute_rt_info
+
+
+  def inverse(self):
+    r = self._absolute_rt_info.r
+    t = self._absolute_rt_info.t
+
+    r_inv = r.inverse()
+    t_inv = - r_inv * t
+    inverse_absolute_rt_info = group_args(
+      r = r_inv,
+      t = t_inv,)
+
+    return shift_aware_rt(absolute_rt_info = inverse_absolute_rt_info)
+
+
+
 def get_indices_from_index(index = None, all = None):
         #index = k+j*all[2]+i*(all[1]*all[2])
         i = index//(all[1]*all[2])
@@ -2035,7 +2411,6 @@ def select_n_in_biggest_cluster(sites_cart,
   # Guess size of cluster (n atoms, separated by about dist_min)
   target_radius = dist_min * float(n)**0.5
   dist_list = []
-  from scitbx.matrix import col
   for i in range (sites_cart.size()):
     diffs = sites_cart.deep_copy() - col(sites_cart[i])
     norms = diffs.norms()
