@@ -19,40 +19,6 @@ import six
 #           remove_atom_from_chain(chain1, atom)
 #     list.append(self, item)
 
-def generate_atom_group_atom_names(rg, names, return_Nones=False):
-  '''
-  Generate all alt. loc. groups of names
-  '''
-  atom_groups = rg.atom_groups()
-  atom_altlocs = {}
-  for ag in atom_groups:
-    for atom in ag.atoms():
-      atom_altlocs.setdefault(atom.parent().altloc, [])
-      atom_altlocs[atom.parent().altloc].append(atom)
-  if len(atom_altlocs)>1 and '' in atom_altlocs:
-    for key in atom_altlocs:
-      if key=='': continue
-      for atom in atom_altlocs['']:
-        atom_altlocs[key].append(atom)
-    del atom_altlocs['']
-  for key, value in six.iteritems(atom_altlocs):
-    atoms=[]
-    for name in names:
-      for atom in value:
-        if atom.name.strip()==name.strip():
-          atoms.append(atom)
-          break
-      else:
-        if return_Nones:
-          atoms.append(None)
-        else:
-          print('not all atoms found. missing %s from %s' % (name, names))
-          break
-    if len(atoms)!=len(names):
-      yield None, None
-    else:
-      yield atoms[0].parent(), atoms
-
 def _new_atom(name, element, xyz, occ, b, hetero, segid=' '*4):
   # altloc???
   atom = iotbx.pdb.hierarchy.atom()
