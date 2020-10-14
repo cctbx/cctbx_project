@@ -2953,8 +2953,8 @@ class array(set):
 
   def anomalous_differences(self, enforce_positive_sigmas=False):
     """
-    Returns an array object with DANO (i.e. F(+) - F(-)) as data, and
-    optionally SIGDANO as sigmas.
+    If self is an amplitude array, return an array object with DANO
+    (i.e. F(+) - F(-)) as data, and optionally SIGDANO as sigmas.
     """
     assert self.data() is not None
     tmp_array = self
