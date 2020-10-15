@@ -38,6 +38,7 @@ def mon_lib_query(residue, mon_lib_srv):
     get_func = getattr(mon_lib_srv, "get_comp_comp_id", None)
     if (get_func is not None): return get_func(comp_id=residue)
     return mon_lib_srv.get_comp_comp_id_direct(comp_id=residue)
+
 # ==============================================================================
 
 def exclude_h_on_SS(model):
@@ -113,7 +114,13 @@ def add_missing_H_atoms_at_bogus_position(pdb_hierarchy, mon_lib_srv, protein_on
           ["common_amino_acid", "modified_amino_acid"]): continue
         actual = [a.name.strip().upper() for a in ag.atoms()]
         mlq = mon_lib_query(residue=ag.resname, mon_lib_srv=mon_lib_srv)
-        expected_h   = []
+
+        if (get_class(name=ag.resname) == 'modified_rna_dna'):
+          continue
+        if (get_class(name=ag.resname) == 'other'):
+          continue
+
+        expected_h = list()
         for k, v in six.iteritems(mlq.atom_dict()):
           if(v.type_symbol=="H"): expected_h.append(k)
         missing_h = list(set(expected_h).difference(set(actual)))
@@ -137,7 +144,7 @@ def add(model,
         adp_scale             = 1,
         exclude_water         = True,
         protein_only          = False,
-        stop_for_unknowns     = True,
+        stop_for_unknowns     = False,
         keep_existing_H       = False):
   """
   Add H atoms to a model
@@ -163,6 +170,7 @@ def add(model,
   # Remove existing H if requested
   if( not keep_existing_H):
     model = model.select(~model.get_hd_selection())
+
   pdb_hierarchy = model.get_hierarchy()
   mon_lib_srv = model.get_mon_lib_srv()
   """
@@ -205,7 +213,7 @@ def add(model,
 #
   # Only keep H that have been parameterized in riding H procedure
   sel_h = model.get_hd_selection()
-  model.setup_riding_h_manager()
+  model.setup_riding_h_manager(use_ideal_dihedral = True)
   sel_h_in_para = flex.bool(
     [bool(x) for x in model.riding_h_manager.h_parameterization])
   sel_h_not_in_para = sel_h_in_para.exclusive_or(sel_h)
