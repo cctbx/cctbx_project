@@ -110,8 +110,9 @@ class Script:
     self.refls = None
     self.explist = None
     self.has_loaded_expers = False
-    self.input_expnames, self.input_reflnames, self.input_spectrumnames = [], [], {}
-    self.panel_strings = {}
+    self.input_expnames, self.input_reflnames, self.input_spectrumnames = [], [], []
+    self.panel_strings = []
+    self.i_exp = 0
 
   def _load_exp_refls_fnames(self):
     if COMM.rank == 0:
@@ -126,48 +127,49 @@ class Script:
             exp, ref = line_split
           elif len(line_split) == 3:
             exp, ref, spec_file = line_split
-            self.input_spectrumnames[exp] = spec_file
+            self.input_spectrumnames.append(spec_file)
           else:
             exp, ref, spec_file, panel_string = line_split
-            self.input_spectrumnames[exp] = spec_file
-            self.panel_strings[exp] = panel_string
+            self.input_spectrumnames.append(spec_file)
+            self.panel_strings.append(panel_string)
 
           self.input_expnames.append(exp)
           self.input_reflnames.append(ref)
     self.input_expnames = COMM.bcast(self.input_expnames)
     self.input_reflnames = COMM.bcast(self.input_reflnames)
     self.input_spectrumnames = COMM.bcast(self.input_spectrumnames)
+    self.panel_strings = COMM.bcast(self.panel_strings)
 
   def _generate_exp_refl_pairs(self):
     if self.has_loaded_expers:
-      for i_exp, exper in enumerate(self.explist):
-        if self.params.usempi and i_exp % COMM.size != COMM.rank:
+      for self.i_exp, exper in enumerate(self.explist):
+        if self.params.usempi and self.i_exp % COMM.size != COMM.rank:
           continue
-        elif self.params.exper_id is not None and self.params.exper_id != i_exp:
+        elif self.params.exper_id is not None and self.params.exper_id != self.i_exp:
           continue
-        refls_for_exper = self.refls.select(self.refls['id'] == i_exp)
+        refls_for_exper = self.refls.select(self.refls['id'] == self.i_exp)
         
         # little hack to check the format now 
         El = ExperimentList()
         El.append(exper)
         El = ExperimentListFactory.from_dict(El.to_dict())
-        exp_filename = self.params.input.experiments[i_exp].filename
+        exp_filename = self.params.input.experiments[self.i_exp].filename
         yield exp_filename, El[0], refls_for_exper
 
     elif self.params.exper_refls_file is not None:
       self._load_exp_refls_fnames()
       count = 0
-      for exp_f, refls_f in zip(self.input_expnames, self.input_reflnames):
+      for self.i_exp, (exp_f, refls_f) in enumerate(zip(self.input_expnames, self.input_reflnames)):
         refls = flex.reflection_table.from_file(refls_f)
         nexper_in_refls = len(set(refls['id']))
         if nexper_in_refls > 1 and self.input_spectrumnames:
           raise NotImplementedError("Cannot input multi-experiment lists and single spectrum files; use dxtbx.beam.spectrum instead")
-        for i_exp in range(nexper_in_refls):
+        for list_i_exp in range(nexper_in_refls):
           if self.params.usempi and count % COMM.size != COMM.rank:
             count += 1
             continue
-          exper = self._exper_json_single_file(exp_f, i_exp)
-          refls_for_exper = refls.select(refls['id'] == i_exp)
+          exper = self._exper_json_single_file(exp_f, list_i_exp)
+          refls_for_exper = refls.select(refls['id'] == list_i_exp)
           count += 1
           yield exp_f, exper, refls_for_exper
 
@@ -233,8 +235,12 @@ class Script:
     i_processed = 0
     for exper_filename, exper, refls_for_exper in self._generate_exp_refl_pairs():
       if self.input_spectrumnames:
-        print("WOOOOOOOOOOOOOOOLLLLLOOOOLLLOOOO self.input.spectr", self.input_spectrumnames[exper_filename])
-        self.params.simulator.spectrum.filename = self.input_spectrumnames[exper_filename]
+        print("WOOOOOOOOOOOOOOOLLLLLOOOOLLLOOOO self.input.spectr", self.input_spectrumnames[self.i_exp])
+        self.params.simulator.spectrum.filename = self.input_spectrumnames[self.i_exp]
+      if self.panel_strings:
+        print("LEEEROYJENKINS!")
+        self.params.roi.panels = self.panel_strings[self.i_exp]
+        print(self.params.roi.panels)
       
       assert len(set(refls_for_exper['id'])) == 1
       
@@ -302,16 +308,16 @@ class Script:
           os.makedirs(pandas_outdir)
         outpath = os.path.join(pandas_outdir, "%s_%s_%d.pkl" % (self.params.output.tag.pandas,basename, i_processed))
         #TODO add beamsize_mm, mtz_file, mtz_col, pinkstride, oversample, spectrum_file to the pandas dataframe
-        data_frame = refiner.save_lbfgs_x_array_as_dataframe()
+        data_frame = refiner.get_lbfgs_x_array_as_dataframe()
         if self.params.simulator.spectrum.filename is not None:
           data_frame["spectrum_filename"] = os.path.abspath(self.params.simulator.spectrum.filename)
           data_frame["spectrum_stride"] = self.params.simulator.spectrum.stride
         data_frame["total_flux"] = self.params.simulator.total_flux
-        data_frame["beamsize_mm"] = self.refiner.S.beam.size_mm
+        data_frame["beamsize_mm"] = refiner.S.beam.size_mm
         data_frame["exp_name"] = os.path.abspath(exper_filename)
         if self.params.roi.panels is not None:
           data_frame["roi_panels"] = self.params.roi.panels
-        data_frame.as_pickle(outpath)
+        data_frame.to_pickle(outpath)
 
       # save experiment
       if self.params.output.save.experiments:
