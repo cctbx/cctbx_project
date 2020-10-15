@@ -5,6 +5,8 @@ import iotbx.pdb
 import boost_adaptbx.boost.python as bp
 from libtbx.utils import null_out
 from cctbx.array_family import flex
+#
+from cctbx.maptbx.box import shift_and_box_model
 
 #aa_codes = [ # XXX PVA: Temporary, ad hoc, remove later!
 #"ALA",
@@ -115,9 +117,8 @@ def add_missing_H_atoms_at_bogus_position(pdb_hierarchy, mon_lib_srv, protein_on
         actual = [a.name.strip().upper() for a in ag.atoms()]
         mlq = mon_lib_query(residue=ag.resname, mon_lib_srv=mon_lib_srv)
 
-        if (get_class(name=ag.resname) == 'modified_rna_dna'):
-          continue
-        if (get_class(name=ag.resname) == 'other'):
+        if (get_class(name=ag.resname) in ['modified_rna_dna', 'other']):
+          #if mlq is None:
           continue
 
         expected_h = list()
@@ -166,6 +167,13 @@ def add(model,
   model
       mmtbx model object with H atoms
   """
+  model_has_bogus_cs = False
+  # temporary fix until the code is moved to model class
+  # check if box cussion of 5 A is enough to prevent symm contacts
+  cs = model.crystal_symmetry()
+  if cs is None:
+    model = shift_and_box_model(model = model)
+    model_has_bogus_cs = True
 
   # Remove existing H if requested
   if( not keep_existing_H):
