@@ -1111,7 +1111,7 @@ def load_panel_group_file(panel_group_file):
     return groups
 
 
-def spots_from_pandas_and_experiment(experiment_file, pandas_pickle, mtz_file=None, mtz_col=None,
+def spots_from_pandas_and_experiment(experiment_list, pandas_pickle, mtz_file=None, mtz_col=None,
                                      spectrum_file=None, total_flux=1e12, pink_stride=1,
                                      beamsize_mm=0.001, oversample=0, d_max=999, d_min=1.5, defaultF=1e3,
                                      cuda=False, ngpu=1, time_panels=True,
@@ -1122,7 +1122,11 @@ def spots_from_pandas_and_experiment(experiment_file, pandas_pickle, mtz_file=No
     from simtbx.nanoBragg.utils import flexBeam_sim_colors
 
     print("Loading experiment")
-    El = ExperimentListFactory.from_json_file(experiment_file, check_format=save_expt_data)
+    if isinstance(experiment_list, str):
+        El = ExperimentListFactory.from_json_file(experiment_list, check_format=save_expt_data)
+    else:
+        assert "ExperimentList" in str(type(experiment_list))
+        El = experiment_list
     print("Done loading!")
     assert len(El) == 1
     expt = El[0]
