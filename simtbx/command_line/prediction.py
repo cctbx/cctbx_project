@@ -4,26 +4,23 @@ from __future__ import absolute_import, division, print_function
 
 from dials.array_family import flex
 from simtbx.diffBragg import utils
-from dxtbx.model.experiment_list import ExperimentListFactory
+import time
 from libtbx.phil import parse
 
 
 help_message = "predictions using diffBragg refinement results"
 
 script_phil = """
-El_name
-  .type = str
-  .help = refined experiment
-panda_name
+panda_name = None
   .type = str
   .help = pandas file output by diffBRagg
-spectrum_file = None 
+spectrum_file = None
   .type = str
   .help = path to input spectrum file in precognition format (.lam)
   .help = e.g. two columns: wavelength weight
 cuda = False
   .type = bool
-  .help = whether to use cuda 
+  .help = whether to use cuda
 d_max = 999
   .type = float
   .help = maximum resolution
@@ -33,18 +30,12 @@ d_min = 1.4
 output_img = None
   .type = str
   .help = a name specifying an output image to write the model
-save_data_too = False
-  .type = bool
-  .help = whether to store experimental data in `output_img`
-strong_refl
-  .type = str
-  .help = input experiment file
-outfile
+outfile = None
   .type = str
   .help = output reflection file for indexed refls
 tolerance = 1
   .type = float
-  .help = indexing toleraance for assigning indices to the `modeled` spots
+  .help = indexing toleraance for assigning indices to the modeled spots
 thresh = 1
   .type = float
   .help = threshold in photons for a modeled pixel to be flagged as part of a Bragg spot
@@ -57,7 +48,7 @@ ngpu = 1
   .help = number of GPUs to use
 njobs = 1
   .type = int
-  .help = number of jbs to use, each job will use a randomly assigned gpu, up to `ngpu`
+  .help = number of jbs to use, each job will use a randomly assigned gpu, up to ngpu
 """
 
 phil_scope = parse(script_phil)
@@ -78,22 +69,25 @@ class Script:
 
   def run(self):
     self.params, _ = self.parser.parse_args(show_diff_phil=True)
+    from dials.util.options import flatten_experiments, flatten_reflections
+    explist = flatten_experiments(self.params.input.experiments)
+    reflist = flatten_reflections(self.params.input.reflections)
 
-    El = ExperimentListFactory.from_json_file(self.params.El_name, check_format=False)
-    model_imgs = utils.spots_from_pandas_and_experiment(self.params.El_name, self.params.panda_name,
-      spectrum_file=self.params.spectrum_file,
-      cuda=self.params.cuda, d_max=self.params.d_max, d_min=self.params.d_min,
-      output_img=self.params.output_img,
-      njobs=self.params.njobs, ngpu=self.params.ngpu,
-      save_expt_data=self.params.save_data_too, as_numpy_array=True)
+    for El, strong in zip(explist, reflist):
+      tstart = time.time()
+      model_imgs = utils.spots_from_pandas_and_experiment(El, self.params.panda_name,
+        spectrum_file=self.params.spectrum_file,
+        cuda=self.params.cuda, d_max=self.params.d_max, d_min=self.params.d_min,
+        output_img=self.params.output_img,
+        njobs=self.params.njobs, ngpu=self.params.ngpu, as_numpy_array=True)
 
-    strong = flex.reflection_table.from_file(self.params.strong_refl)
-    R = utils.indexed_from_model(strong, model_imgs, El[0], tolerance=self.params.tolerance,
-                                 thresh=self.params.thresh, Qdist_cutoff=self.paras.Qdist_cutoff)
-    R['id'] = flex.int(len(R), 0)
-    print("%d / %d are indexed!" % (len(R), len(strong)))
-    R.as_file(self.params.outfile)
-    print("Done, saved indexed refls to file %s" % self.params.outfile)
+      Rindexed = utils.indexed_from_model(strong, model_imgs, El[0], tolerance=self.params.tolerance,
+                                   thresh=self.params.thresh, Qdist_cutoff=self.paras.Qdist_cutoff)
+      Rindexed['id'] = flex.int(len(Rindexed), 0)
+      print("%d / %d are indexed!" % (len(Rindexed), len(strong)))
+      Rindexed.as_file(self.params.outfile)
+      tdone = time.time() - tstart
+      print("Done, saved indexed refls to file %s (took %.4f sec)" % (self.params.outfile, tdone))
 
 
 if __name__ == '__main__':
@@ -101,5 +95,3 @@ if __name__ == '__main__':
   with show_mail_on_error():
     script = Script()
     script.run()
-
-
