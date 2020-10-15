@@ -8,30 +8,6 @@ from cctbx.array_family import flex
 #
 from cctbx.maptbx.box import shift_and_box_model
 
-#aa_codes = [ # XXX PVA: Temporary, ad hoc, remove later!
-#"ALA",
-#"ARG",
-#"ASN",
-#"ASP",
-#"CYS",
-#"GLN",
-#"GLU",
-#"GLY",
-#"HIS",
-#"ILE",
-#"LEU",
-#"LYS",
-#"MET",
-#"MSE",
-#"PHE",
-#"PRO",
-#"SER",
-#"THR",
-#"TRP",
-#"TYR",
-#"VAL"
-#]
-
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
 
 # ==============================================================================
@@ -105,38 +81,39 @@ def add_missing_H_atoms_at_bogus_position(pdb_hierarchy, mon_lib_srv, protein_on
   #XXX This breaks for 1jxt, residue 2, TYR
 
   get_class = iotbx.pdb.common_residue_names_get_class
-  for chain in pdb_hierarchy.only_model().chains():
-    for rg in chain.residue_groups():
-      for ag in rg.atom_groups():
-        #print list(ag.atoms().extract_name())
-        if(get_class(name=ag.resname) == "common_water"): continue
-        #if(protein_only and
-        #   not ag.resname.strip().upper() in aa_codes): continue
-        if (protein_only and get_class(name=ag.resname) not in
-          ["common_amino_acid", "modified_amino_acid"]): continue
-        actual = [a.name.strip().upper() for a in ag.atoms()]
-        mlq = mon_lib_query(residue=ag.resname, mon_lib_srv=mon_lib_srv)
+  for m in pdb_hierarchy.models():
+    for chain in m.chains():
+      for rg in chain.residue_groups():
+        for ag in rg.atom_groups():
+          #print list(ag.atoms().extract_name())
+          if(get_class(name=ag.resname) == "common_water"): continue
+          #if(protein_only and
+          #   not ag.resname.strip().upper() in aa_codes): continue
+          if (protein_only and get_class(name=ag.resname) not in
+            ["common_amino_acid", "modified_amino_acid"]): continue
+          actual = [a.name.strip().upper() for a in ag.atoms()]
+          mlq = mon_lib_query(residue=ag.resname, mon_lib_srv=mon_lib_srv)
 
-        if (get_class(name=ag.resname) in ['modified_rna_dna', 'other']):
-          #if mlq is None:
-          continue
+          if (get_class(name=ag.resname) in ['modified_rna_dna', 'other']):
+            #if mlq is None:
+            continue
 
-        expected_h = list()
-        for k, v in six.iteritems(mlq.atom_dict()):
-          if(v.type_symbol=="H"): expected_h.append(k)
-        missing_h = list(set(expected_h).difference(set(actual)))
-        if 0: print(ag.resname, missing_h)
-        new_xyz = ag.atoms().extract_xyz().mean()
-        hetero = ag.atoms()[0].hetero
-        for mh in missing_h:
-          # TODO: this should be probably in a central place
-          if len(mh) < 4: mh = (' ' + mh).ljust(4)
-          a = (iotbx.pdb.hierarchy.atom()
-            .set_name(new_name=mh)
-            .set_element(new_element="H")
-            .set_xyz(new_xyz=new_xyz)
-            .set_hetero(new_hetero=hetero))
-          ag.append_atom(a)
+          expected_h = list()
+          for k, v in six.iteritems(mlq.atom_dict()):
+            if(v.type_symbol=="H"): expected_h.append(k)
+          missing_h = list(set(expected_h).difference(set(actual)))
+          if 0: print(ag.resname, missing_h)
+          new_xyz = ag.atoms().extract_xyz().mean()
+          hetero = ag.atoms()[0].hetero
+          for mh in missing_h:
+            # TODO: this should be probably in a central place
+            if len(mh) < 4: mh = (' ' + mh).ljust(4)
+            a = (iotbx.pdb.hierarchy.atom()
+              .set_name(new_name=mh)
+              .set_element(new_element="H")
+              .set_xyz(new_xyz=new_xyz)
+              .set_hetero(new_hetero=hetero))
+            ag.append_atom(a)
 
 # ==============================================================================
 
@@ -168,7 +145,8 @@ def add(model,
       mmtbx model object with H atoms
   """
   model_has_bogus_cs = False
-  # temporary fix until the code is moved to model class
+
+  # TODO temporary fix until the code is moved to model class
   # check if box cussion of 5 A is enough to prevent symm contacts
   cs = model.crystal_symmetry()
   if cs is None:
