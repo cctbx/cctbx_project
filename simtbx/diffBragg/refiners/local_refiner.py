@@ -2883,7 +2883,7 @@ class LocalRefiner(PixelRefinement):
                  ncells_xstart, bgplane_xpos, init_misori, final_misori, a,b,c,al,be,ga,
                  a_init, b_init, c_init, al_init, be_init, ga_init, bg_coef, lam0, lam1))
 
-    def save_lbfgs_x_array_as_dataframe(self, outname):
+    def get_lbfgs_x_array_as_dataframe(self):
         self._combine_data_to_save()
 
         data = self._MPI_combine_data_to_send()
@@ -2922,7 +2922,8 @@ class LocalRefiner(PixelRefinement):
             #    img_fnames.append(u_h5s[f][idx])
             #df["imgpaths"] = img_fnames
 
-            df.to_pickle(outname)
+            #df.to_pickle(outname)
+            return df
 
     def _record_xy_calc(self):
         if self.record_model_predictions:
