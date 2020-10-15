@@ -111,6 +111,7 @@ class Script:
     self.explist = None
     self.has_loaded_expers = False
     self.input_expnames, self.input_reflnames, self.input_spectrumnames = [], [], {}
+    self.panel_strings = {}
 
   def _load_exp_refls_fnames(self):
     if COMM.rank == 0:
@@ -118,14 +119,19 @@ class Script:
         for line in exper_refls_file:
           line = line.strip()
           line_split = line.split()
-          if len(line_split) not in [2, 3]:
+          if len(line_split) not in [2, 3, 4]:
             print("Weird input line %s, continuing" % line)
             continue
           if len(line_split) == 2:
             exp, ref = line_split
-          else:
+          elif len(line_split) == 3:
             exp, ref, spec_file = line_split
             self.input_spectrumnames[exp] = spec_file
+          else:
+            exp, ref, spec_file, panel_string = line_split
+            self.input_spectrumnames[exp] = spec_file
+            self.panel_strings[exp] = panel_string
+
           self.input_expnames.append(exp)
           self.input_reflnames.append(ref)
     self.input_expnames = COMM.bcast(self.input_expnames)
@@ -296,7 +302,16 @@ class Script:
           os.makedirs(pandas_outdir)
         outpath = os.path.join(pandas_outdir, "%s_%s_%d.pkl" % (self.params.output.tag.pandas,basename, i_processed))
         #TODO add beamsize_mm, mtz_file, mtz_col, pinkstride, oversample, spectrum_file to the pandas dataframe
-        refiner.save_lbfgs_x_array_as_dataframe(outname=outpath)
+        data_frame = refiner.save_lbfgs_x_array_as_dataframe()
+        if self.params.simulator.spectrum.filename is not None:
+          data_frame["spectrum_filename"] = os.path.abspath(self.params.simulator.spectrum.filename)
+          data_frame["spectrum_stride"] = self.params.simulator.spectrum.stride
+        data_frame["total_flux"] = self.params.simulator.total_flux
+        data_frame["beamsize_mm"] = self.refiner.S.beam.size_mm
+        data_frame["exp_name"] = os.path.abspath(exper_filename)
+        if self.params.roi.panels is not None:
+          data_frame["roi_panels"] = self.params.roi.panels
+        data_frame.as_pickle(outpath)
 
       # save experiment
       if self.params.output.save.experiments:
