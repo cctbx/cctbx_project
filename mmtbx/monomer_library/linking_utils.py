@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from operator import attrgetter
 import iotbx
 from scitbx.array_family import flex
 from mmtbx.chemical_components import get_type
@@ -164,9 +165,6 @@ def is_o_glyco_bond(atom1, atom2):
   return False
 
 def get_chiral_volume(c_atom, o_atom, angles, verbose=False):
-  def _sort_by_name(a1, a2):
-    if a1.name<a2.name: return -1
-    else: return 1
   others = []
   for angle in angles:
     for atom in angle:
@@ -175,7 +173,7 @@ def get_chiral_volume(c_atom, o_atom, angles, verbose=False):
       if atom.name==c_atom.name: continue
       if atom.name==o_atom.name: continue
       others.append(atom)
-  others.sort(_sort_by_name)
+  others.sort(key=attrgetter('name'))
   others.insert(0, o_atom)
   others.insert(0, c_atom)
   if len(others)!=4:

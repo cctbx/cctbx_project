@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from operator import itemgetter
 from cctbx.sgtbx.direct_space_asu import cut_plane
 from cctbx.array_family import flex
 from scitbx import matrix
@@ -231,11 +232,6 @@ def edge_position(edge_end_points, other_point):
       if (y_i != x[i]): return None
   return f
 
-def packed_cut_point_sort_function(a, b):
-  if (a[1] < b[1]): return -1
-  if (a[1] > b[1]): return  1
-  return 0
-
 class edge_with_cut_points(object):
 
   __slots__ = ["end_points", "cut_points"]
@@ -253,7 +249,7 @@ class edge_with_cut_points(object):
 
   def sorted_cut_points(self):
     packed = list(zip(self.cut_points, self.cut_point_positions()))
-    packed.sort(packed_cut_point_sort_function)
+    packed.sort(key=itemgetter(1))
     return [p[0] for p in packed]
 
   def sort_cut_points(self):
