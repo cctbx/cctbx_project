@@ -18,16 +18,19 @@ map_model {
   full_map = None
     .type = path
     .help = Input full map file
-    .short_caption = Full map filename
+    .short_caption = Full map
+    .style = hidden file_type:ccp4_map input_file
   half_map = None
     .type = path
     .multiple = True
     .help = Input half map files
-    .short_caption = Half map filenames
+    .short_caption = Half map
+    .style = hidden file_type:ccp4_map input_file
   model = None
     .type = path
     .help = Input model file
-    .short_caption = Model filename
+    .short_caption = Model
+    .style = hidden file_type:pdb input_file
 }
 '''
 
