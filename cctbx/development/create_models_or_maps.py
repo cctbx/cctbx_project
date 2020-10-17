@@ -177,16 +177,11 @@ def generate_model(
   model=model.select(selection)
 
   # shift the model and return it with new crystal_symmetry
-  #from cctbx.maptbx.box import shift_and_box_model
-  #model = shift_and_box_model(model = model,
-  #  box_cushion = box_cushion)
-  from mmtbx.model import manager as model_manager
-  from libtbx.utils import null_out
-  model.shift_and_create_box_cs(box_cushion = box_cushion)
-#  model = model_manager(
-#     model.get_hierarchy().as_pdb_input(),
-#     crystal_symmetry = model.crystal_symmetry(),
-#     log = null_out())
+  from cctbx.maptbx.box import shift_and_box_model
+  model2 = shift_and_box_model(model = model,
+    box_cushion = box_cushion)
+
+  #model.shift_and_create_box_cs(box_cushion = box_cushion)
 
   if b_iso is not None:
     b_values=flex.double(model.get_sites_cart().size(), b_iso)

@@ -778,6 +778,10 @@ class manager(object):
       crystal_symmetry = crystal_symmetry,
       sites_cart = sites_cart)
 
+    #self.setup_scattering_dictionaries(scattering_table = 'electron')
+    #self.xray_scattering_dict = None
+
+
   def unit_cell_crystal_symmetry(self):
     if self._unit_cell_crystal_symmetry is not None:
       return self._unit_cell_crystal_symmetry
