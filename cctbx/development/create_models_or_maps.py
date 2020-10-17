@@ -178,7 +178,7 @@ def generate_model(
 
   # shift the model and return it with new crystal_symmetry
   from cctbx.maptbx.box import shift_and_box_model
-  model2 = shift_and_box_model(model = model,
+  model = shift_and_box_model(model = model,
     box_cushion = box_cushion)
 
   #model.shift_and_create_box_cs(box_cushion = box_cushion)
