@@ -6,7 +6,7 @@ import boost_adaptbx.boost.python as bp
 from libtbx.utils import null_out
 from cctbx.array_family import flex
 #
-from cctbx.maptbx.box import shift_and_box_model
+#from cctbx.maptbx.box import shift_and_box_model
 
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
 
@@ -148,9 +148,11 @@ def add(model,
 
   # TODO temporary fix until the code is moved to model class
   # check if box cussion of 5 A is enough to prevent symm contacts
+
   cs = model.crystal_symmetry()
   if cs is None:
-    model = shift_and_box_model(model = model)
+    #model = shift_and_box_model(model = model)
+    model.shift_and_create_box_cs()
     model_has_bogus_cs = True
 
   # Remove existing H if requested

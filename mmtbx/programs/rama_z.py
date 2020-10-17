@@ -6,7 +6,6 @@ from libtbx.program_template import ProgramTemplate
 from mmtbx.validation import rama_z
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.ramalyze import res_type_labels
-from cctbx.maptbx.box import shift_and_box_model
 
 from libtbx.utils import Sorry, null_out
 from libtbx import Auto
@@ -91,7 +90,7 @@ Usage examples:
       model = models[0]
       cs = model.crystal_symmetry()
       if cs is None:
-        model = shift_and_box_model(model)
+        model.shift_and_create_box_cs()
       self._write_plots_if_needed(model, label='whole', type_of_plot='whole')
       helix_sel, sheet_sel, loop_sel = self.rama_z.get_ss_selections()
       if model.get_hierarchy().models_size() != 1:

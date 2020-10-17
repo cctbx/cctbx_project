@@ -757,6 +757,27 @@ class manager(object):
       # GRM is not valid if the symmetry is changed
       self.unset_restraints_manager()
 
+  def shift_and_create_box_cs(self,
+                              box_cushion = 5,
+                              shift_model = True):
+    '''
+      Shift a model near the origin and box around it
+    '''
+    from scitbx.matrix import col
+
+    sites_cart = self._pdb_hierarchy.atoms().extract_xyz()
+    if shift_model:
+      sites_cart=sites_cart-col(sites_cart.min())+col(
+        (box_cushion,box_cushion,box_cushion))
+
+    box_end=col(sites_cart.max())+col((box_cushion,box_cushion,box_cushion))
+    a,b,c=box_end
+    crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
+
+    self.set_crystal_symmetry_and_sites_cart(
+      crystal_symmetry = crystal_symmetry,
+      sites_cart = sites_cart)
+
   def unit_cell_crystal_symmetry(self):
     if self._unit_cell_crystal_symmetry is not None:
       return self._unit_cell_crystal_symmetry

@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import sys
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
+import mmtbx.model
 
 
 def get_map_model_managers():
@@ -23,8 +24,55 @@ def get_map_model_managers():
   t = matrix.col((100,0,0))
   new_sites_cart = r.elems*mmm.model().get_sites_cart() + t.elems
   second_model.set_sites_cart(new_sites_cart)
+
+
   from cctbx.maptbx.box import shift_and_box_model
-  second_model = shift_and_box_model(second_model)
+  m1 = shift_and_box_model(second_model)
+
+
+  second_model.shift_and_create_box_cs()
+
+  from mmtbx.model import manager as model_manager
+  from libtbx.utils import null_out
+  m2 = model_manager(
+     second_model.get_hierarchy().as_pdb_input(),
+     crystal_symmetry = second_model.crystal_symmetry(),
+     log = null_out())
+
+  d1 = vars(m1)
+  d2 = vars(m2)
+  d3 = vars(second_model)
+
+  m1.n_anomalous_total = 0
+  m2.n_anomalous_total = 0
+
+  print('------')
+  for (k1,v1), (k2,v2) in zip(d1.items(), d3.items()):
+    #print (k1)
+    if k1 == '_master_sel': continue # [] vs [True]*n_at
+    if v1 != v2:
+      if k1 == 'mtrix_operators': continue # empty vs None
+      if k1 == '_crystal_symmetry': continue # looks the same, not sure why different
+      if k1 == '_has_hd': continue # None vs False
+      if k1 == 'xray_scattering_dict': continue # None vs xray_scattering_dict with values
+      if k1 == '_pdb_hierarchy': continue # is similar hierarchy (same coords)
+      if k1 == 'log': continue
+      if k1 == '_atom_selection_cache': continue # not sure
+      if k1 == 'biomt_operators': continue # is_empty vs None
+      if k1 == '_xray_structure': continue # None vs xray_structure
+      if k1 == '_ss_annotation': continue # nothing or empty string vs None
+      if k1 == '_ter_indices': continue # [86] vs None
+      if k1 == '_model_input': continue # input_obj vs None
+      if k1 == '_pdb_interpretation_params': continue # ?
+      if k1 == 'scattering_dict_info': continue # None vs something
+      print('v1', v1,'\n', 'v2', v2)
+      print(dir(v1))
+      #for (kk1,vv1), (kk2,vv2) in zip(vars(v1).items(), vars(v2).items()):
+      #  print(vv1)
+      #  print(vv2)
+    second_model.scattering_dict_info = m1.scattering_dict_info
+
+
 
   second_mmm = map_model_manager(model=second_model)
   second_mmm.generate_map(model=second_model,wrapping=True)
@@ -73,7 +121,6 @@ def exercise( out = sys.stdout):
   # get r,t to map mmm2 model on mmm1 model
   shift_aware_rt_info= mmm1.shift_aware_rt_to_superpose_other(mmm2)
   rt_info=shift_aware_rt_info.working_rt_info(from_obj=mmm2,to_obj=mmm1)
-  print (rt_info)
 
   # get mmm2 map superimposed on mmm1 map (in region where it is defined, zero
   #   outside that region)
@@ -99,9 +146,12 @@ def exercise( out = sys.stdout):
   model = mmm1.model()
   mmma.remove_model_by_id('model')
   mmmb = mmma.deep_copy()
+  print (mmma, mmmb)
 
   mmma.map_manager().randomize(random_seed=23412,d_min=3,high_resolution_fourier_noise_fraction=10,low_resolution_noise_cutoff=5)
   mmmb.map_manager().randomize(random_seed=887241,d_min=3,high_resolution_fourier_noise_fraction=10,low_resolution_noise_cutoff=5)
+  print(mmma.map_manager().map_map_cc(mmmb.map_manager()))
+
   assert approx_equal(mmma.map_manager().map_map_cc(mmmb.map_manager()),
     0.16,0.10)
   from iotbx.map_model_manager import map_model_manager
