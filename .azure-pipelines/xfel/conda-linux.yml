@@ -145,6 +145,7 @@ jobs:
   # preserve permissions
   - script: |
       cd $(Pipeline.Workspace)
+      rm -fr tests
       tar -chf build.tar build
     displayName: Build tarball
     condition: >
