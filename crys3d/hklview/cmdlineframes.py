@@ -835,8 +835,11 @@ class HKLViewFrame() :
       mycif = None
       for i,arr in enumerate(self.procarrays):
         arrtype = None
-        colname= "_refln.%s" %arr.info().label_string()
-        colnames = None
+        #colname= "_refln.%s" %arr.info().label_string()
+        #colnames = None
+        colnames = ["_refln.%s" %e for e in arr.info().labels ]
+        colname= None
+        """
         if arr.is_xray_intensity_array():
           arrtype="meas"
           colname= None
@@ -854,6 +857,7 @@ class HKLViewFrame() :
           colnames = ["_refln.%s" %e for e in arr.info().labels ]
           colname= None
           arrtype = None
+        """
         if i==0:
           mycif = iotbx.cif.miller_arrays_as_cif_block(arr, array_type = arrtype, 
                                                        column_name=colname, column_names = colnames )
