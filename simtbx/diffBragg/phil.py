@@ -74,6 +74,9 @@ simulator {
 
 refiner_phil = """
 refiner {
+  refine_per_spot_scale = None
+    .type = ints(size_min=1)
+    .help whether to refine scale factors per spot, per shot
   refine_Bmatrix = None
     .type = ints(size_min=1)
     .help = whether to refine the Bmatrix (unit cell parameters)

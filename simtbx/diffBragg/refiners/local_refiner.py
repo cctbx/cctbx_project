@@ -432,6 +432,7 @@ class LocalRefiner(PixelRefinement):
         self.bg_c_xstart = {}
         self.bg_coef_xpos = {}
         self.ucell_params = {}
+        self.per_spot_scale_xpos = {}
 
         self.panelX_params = [RangedParameter()] * self.n_panel_groups
         self.panelY_params = [RangedParameter()] * self.n_panel_groups
@@ -585,6 +586,13 @@ class LocalRefiner(PixelRefinement):
                 self.Xall[self.spot_scale_xpos[i_shot]] = self.log_of_init_crystal_scales[i_shot]
             if self.refine_crystal_scale:
                 self.is_being_refined[self.spot_scale_xpos[i_shot]] = True
+
+            if self.refine_per_spot_scale:
+                n_spots = len(self.NANOBRAGG_ROIS[i_shot])
+                self.per_spot_scale_xpos[i_shot] = list(range(_local_pos, _local_pos + n_spots))
+                for x in range(_local_pos, _local_pos + n_spots):
+                    self.Xall[x] = 1
+                _local_pos += n_spots
 
         self.fcell_xstart = _global_pos
 
@@ -754,11 +762,11 @@ class LocalRefiner(PixelRefinement):
                         self.is_being_refined[xpos] = i_pan_group in self.panel_groups_being_refined
                     self.Xall[xpos] = 1
 
-                assert self.rescale_params
 
                 xpos_X = self.panelXY_xstart + 2*i_pan_group
                 self.Xall[xpos_X] = 1
                 if self.refine_panelXY:
+                    assert self.rescale_params
                     self.is_being_refined[xpos_X] = i_pan_group in self.panel_groups_being_refined #True
                 self.panelX_params[i_pan_group].init = 0  # self.panelX_init[i_pan_group]
                 self.panelX_params[i_pan_group].sigma = self.panelX_sigma
@@ -1547,12 +1555,31 @@ class LocalRefiner(PixelRefinement):
         self.fcell_deriv = self.fcell_second_deriv = 0
         if self.refine_Fcell:
             SG = self.scale_fac*self.G2
-            self.fcell_deriv = SG*self.D.get_derivative_pixels(self._fcell_id).as_numpy_array()
+            self.fcell_deriv = self.D.get_derivative_pixels(self._fcell_id)
+            self.fcell_deriv = self.fcell_deriv.set_selected(self.fcell_deriv != self.fcell_deriv, 0).as_numpy_array()
+            self.fcell_deriv *= SG
+            #import numpy as np
+
+            #if np.any(np.isnan(self.fcell_deriv)):
+            #    from IPython import embed
+            #    embed()
             if self.calc_curvatures:
-                self.fcell_second_deriv = SG*self.D.get_second_derivative_pixels(self._fcell_id).as_numpy_array()
+                #self.fcell_second_deriv = SG*self.D.get_second_derivative_pixels(self._fcell_id).as_numpy_array()
+                f2 = self.D.get_second_derivative_pixels(self._fcell_id)
+                self.fcell_second_deriv = (f2.set_selected(f2 != f2, 0).as_numpy_array() ) * SG
+
+    def _get_per_spot_scale(self, i_shot, i_spot):
+        assert self.rescale_params
+        xpos = self.per_spot_scale_xpos[i_shot][i_spot]
+        val = self.Xall[xpos]
+        sig = self.per_spot_scale_sigma
+        init = 1
+        val = np_exp(sig * (val - 1)) * init
+        return val
 
     def _extract_pixel_data(self):
         self.model_bragg_spots = self.scale_fac*self.D.raw_pixels_roi.as_numpy_array()
+        self.model_bragg_spots *= self._get_per_spot_scale(self._i_shot, self._i_spot)
         self._extract_Umatrix_derivative_pixels()
         self._extract_Bmatrix_derivative_pixels()
         self._extract_mosaic_parameter_m_derivative_pixels()
@@ -1635,6 +1662,10 @@ class LocalRefiner(PixelRefinement):
                 printed_geom_updates = False
                 for i_spot in range(n_spots):
                     self._i_spot = i_spot
+                    #import numpy as np
+                    #if np.any(np.isnan(self.grad)):
+                    #    from IPython import embed
+                    #    embed()
 
                     if self.selection_flags is not None:
                         if self._i_shot not in self.selection_flags:
@@ -1698,6 +1729,7 @@ class LocalRefiner(PixelRefinement):
                     self._panelRot_derivatives()
                     self._panelXYZ_derivatives()
                     self._spot_scale_derivatives()
+                    self._per_spot_scale_derivatives()
                     self._gain_factor_derivatives()
                     self._Fcell_derivatives(i_spot)
                     self._spectra_derivatives()
@@ -2145,6 +2177,24 @@ class LocalRefiner(PixelRefinement):
         if return_derivatives:
             return d, d2
 
+    def _per_spot_scale_derivatives(self) :# , return_derivatives=False):
+        assert self.rescale_params
+        if self.refine_crystal_scale:
+            per_spot_scale = self._get_per_spot_scale(self._i_shot, self._i_spot)
+            dI_dtheta = self.G2 * self.model_bragg_spots / per_spot_scale
+            # second derivative is 0 with respect to scale factor
+            sig = self.per_spot_scale_sigma
+            # case 2 type rescaling
+            d = dI_dtheta*self.scale_fac * sig
+            d2 = dI_dtheta*(self.scale_fac*sig*sig)
+
+            xpos = self.per_spot_scale_xpos[self._i_shot][self._i_spot]
+            self.grad[xpos] += self._grad_accumulate(d)
+            if self.calc_curvatures:
+                self.curv[xpos] += self._curv_accumulate(d, d2)
+        #if return_derivatives:
+        #    return d, d2
+
     def _gain_factor_derivatives(self):
         if self.refine_gain_fac:
             raise NotImplementedError("gain factor derivatives need more testing")
@@ -2382,6 +2432,8 @@ class LocalRefiner(PixelRefinement):
             refine_str += "Lambda0 (offset), "
         if self.refine_lambda1:
             refine_str += "Lambda1 (scale), "
+        if self.refine_per_spot_scale:
+            refine_str += "Per-spot scales, "
         return refine_str
 
     def _print_iteration_header(self):
@@ -2620,6 +2672,18 @@ class LocalRefiner(PixelRefinement):
         if self.calc_curvatures:
             ncurv = len(self.curv > 0)
 
+        if self.refine_per_spot_scale:
+            for i_shot in self.per_spot_scale_xpos:
+                nspots = len(self.NANOBRAGG_ROIS[i_shot])
+                if self.selection_flags is not None:
+                    vals = [self._get_per_spot_scale(i_shot, i_spot) for i_spot in range(nspots) if self.selection_flags[i_shot, i_spot]]
+                else:
+                    vals = [self._get_per_spot_scale(i_shot, i_spot) for i_spot in range(nspots)]
+                m = median(vals)
+                mx = max(vals)
+                mn = min(vals)
+                s = std(vals)
+                print("Per spot scales shot %d: \n\tmin=%10.7f, \n\tmax=%10.7f, \n\tmedian=%10.7f, \n\tstdev=%10.7f" % (i_shot, mn, mx, m, s))
 
         if self.Fref is not None and self.iterations % self.merge_stat_frequency == 0:
             self.R_overall = self.Fobs_Fref_Rfactor(use_binning=False, auto_scale=self.scale_r1)
@@ -2950,12 +3014,13 @@ class LocalRefiner(PixelRefinement):
         num_spots_in_shot = len(self.ROIS[i_shot])
         if i_shot not in self.xy_calc:
             raise KeyError("No xycalc data for requested shot")
+
         if len(self.xy_calc[i_shot]) != num_spots_in_shot:
             raise ValueError("shot_refls should be same length as number of spots in refiner")
         
         selection_flags = flex.bool(self.selection_flags[i_shot])
         refined_refls = deepcopy(shot_refls)
-        x,y = zip(*self.xy_calc[i_shot])
+        x, y = zip(*self.xy_calc[i_shot])
         z = [0]*num_spots_in_shot
         xyz_calc = flex.vec3_double(list(zip(x, y, z)))
         refined_refls['dials.xyzcal.px'] = deepcopy(refined_refls['xyzcal.px'])  # make a backup
@@ -2969,7 +3034,7 @@ class LocalRefiner(PixelRefinement):
     def _update_full_image_of_model(self):
         if self.full_image_of_model is None:
             return
-        x1,x2,y1,y2 = self.ROIS[self._i_shot][self._i_spot]
+        x1, x2, y1, y2 = self.ROIS[self._i_shot][self._i_spot]
         self.full_image_of_model[self._panel_id, y1:y2+1, x1:x2+1] = self.model_Lambda
     
     def get_model_image(self, i_shot=0):
