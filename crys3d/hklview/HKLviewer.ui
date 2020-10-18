@@ -83,12 +83,21 @@
                    <verstretch>0</verstretch>
                   </sizepolicy>
                  </property>
+                 <property name="verticalScrollMode">
+                  <enum>QAbstractItemView::ScrollPerPixel</enum>
+                 </property>
+                 <property name="horizontalScrollMode">
+                  <enum>QAbstractItemView::ScrollPerPixel</enum>
+                 </property>
                  <property name="rowCount">
                   <number>5</number>
                  </property>
                  <property name="columnCount">
                   <number>10</number>
                  </property>
+                 <attribute name="horizontalHeaderMinimumSectionSize">
+                  <number>5</number>
+                 </attribute>
                  <row/>
                  <row/>
                  <row/>
@@ -1252,7 +1261,7 @@
      <x>0</x>
      <y>0</y>
      <width>1066</width>
-     <height>18</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
