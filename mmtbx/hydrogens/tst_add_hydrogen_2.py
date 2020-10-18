@@ -4,6 +4,7 @@ import mmtbx.model
 import iotbx.pdb
 from mmtbx.hydrogens import reduce
 from libtbx.utils import null_out
+from libtbx.test_utils import approx_equal
 
 
 def run():
@@ -19,12 +20,11 @@ def compare_models(pdb_str,
                    number_h     = None):
   #
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
-  model_initial = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
-
-
-  xrs = model_initial.get_xray_structure()
+  model_initial = mmtbx.model.manager(model_input = pdb_inp,
+                                      log         = null_out())
   hd_sel_initial = model_initial.get_hd_selection()
   number_h_expected = hd_sel_initial.count(True)
+
 
   model_without_h = model_initial.select(~hd_sel_initial)
   hd_sel_without_h = model_without_h.get_hd_selection()
@@ -33,23 +33,35 @@ def compare_models(pdb_str,
 
   model_h_added = reduce.add(model = model_without_h)
   hd_sel_h_added = model_h_added.get_hd_selection()
-  number_h_added = hd_sel_h_added.count(True)
+
   ph_initial = model_initial.get_hierarchy()
+  h_atoms_initial = ph_initial.select(hd_sel_initial).atoms()
+  h_names_initial = list(h_atoms_initial.extract_name())
   ph_h_added = model_h_added.get_hierarchy()
   assert ph_initial.is_similar_hierarchy(other=ph_h_added)
 
+  number_h_added = hd_sel_h_added.count(True)
   if number_h:
     assert(number_h == number_h_added)
 
+  h_atoms_added = ph_h_added.select(hd_sel_h_added).atoms()
+  h_names_added = list(h_atoms_added.extract_name())
+
   if not_contains:
-    h_atoms_added = model_h_added.get_hierarchy().select(hd_sel_h_added).atoms()
-    h_names_added = list(h_atoms_added.extract_name())
     assert (not_contains not in h_names_added)
 
   if contains:
-    h_atoms_added = model_h_added.get_hierarchy().select(hd_sel_h_added).atoms()
-    h_names_added = list(h_atoms_added.extract_name())
     assert (contains in h_names_added)
+
+  sc_h_initial = model_initial.select(hd_sel_initial).get_sites_cart()
+  sc_h_added = model_h_added.select(hd_sel_h_added).get_sites_cart()
+
+  d1 = {h_names_initial[i]: sc_h_initial[i] for i in range(len(h_names_initial))}
+  d2 = {h_names_added[i]: sc_h_added[i] for i in range(len(h_names_added))}
+
+  for name, sc in d2.items():
+    assert(name in d1)
+    assert approx_equal(sc, d1[name], 0.01)
 
 
 def correct_H_position_with_cdl():
@@ -83,9 +95,6 @@ def normal_and_modified_nucleic_acid():
 
 pdb_str_1 = """
 CRYST1   72.240   72.010   86.990  90.00  90.00  90.00 P 21 21 21
-SCALE1      0.013843  0.000000  0.000000        0.00000
-SCALE2      0.000000  0.013887  0.000000        0.00000
-SCALE3      0.000000  0.000000  0.011496        0.00000
 ATOM      1  N   PRO H  14      52.628 -74.147  33.427  1.00 20.43           N
 ATOM      2  CA  PRO H  14      53.440 -73.630  34.533  1.00 20.01           C
 ATOM      3  C   PRO H  14      54.482 -72.584  34.124  1.00 20.76           C
@@ -109,7 +118,7 @@ ATOM     20  OG  SER H  15      56.914 -70.938  32.802  1.00 28.91           O
 ATOM     21  H   SER H  15      54.335 -71.634  35.803  1.00 21.70           H
 ATOM     22  HA  SER H  15      55.899 -70.163  35.739  1.00 25.33           H
 ATOM     23  HB1 SER H  15      57.705 -70.434  34.524  1.00 25.20           H
-ATOM     24  HG  SER H  15      56.225 -70.518  32.567  1.00 28.91           H
+ATOM     24  HG  SER H  15      56.769 -70.147  32.558  1.00 28.91           H
 ATOM     25  HB2 SER H  15      57.151 -71.924  34.481  1.00 25.20           H
 ATOM     26  N   GLN H  16      53.918 -69.678  33.412  1.00 24.55           N
 ATOM     27  CA  GLN H  16      53.224 -68.673  32.611  1.00 29.39           C
@@ -128,7 +137,6 @@ ATOM     39 HE21 GLN H  16      56.287 -69.343  30.085  1.00 55.07           H
 ATOM     40  HA  GLN H  16      53.888 -68.112  32.179  1.00 29.39           H
 ATOM     41  HB1 GLN H  16      51.871 -68.665  31.056  1.00 31.67           H
 ATOM     42  HB2 GLN H  16      51.761 -69.970  31.957  1.00 31.67           H
-TER
 """
 
 pdb_str_2 = """
