@@ -9,6 +9,8 @@ from libtbx.utils import null_out
 def run():
   correct_H_position_with_cdl()
   snippet_with_clashing_H()
+  multi_model()
+  normal_and_modified_nucleic_acid()
 
 
 def compare_models(pdb_str,
@@ -53,6 +55,7 @@ def compare_models(pdb_str,
 def correct_H_position_with_cdl():
   compare_models(pdb_str = pdb_str_1)
 
+
 def snippet_with_clashing_H():
   '''
   This is an example for a file that fails with REDUCE.
@@ -65,6 +68,17 @@ def snippet_with_clashing_H():
   However, Lys 246 HZ1 and HZ3 will not be added back by Reduce.
   '''
   compare_models(pdb_str = pdb_str_2)
+
+
+def multi_model():
+  '''
+    Test if multi-model file is supported
+  '''
+  compare_models(pdb_str = pdb_str_3)
+
+
+def normal_and_modified_nucleic_acid():
+  compare_models(pdb_str = pdb_str_4)
 
 
 pdb_str_1 = """
@@ -205,6 +219,133 @@ HETATM   59  O4  TAM H   2       5.710  14.391   6.585  1.00 20.00           O
 HETATM   60  O5  TAM H   2       7.872   9.487   9.299  1.00 20.00           O
 HETATM   61  O6  TAM H   2       5.714  12.262   9.200  1.00 20.00           O
 END
+"""
+
+pdb_str_3 = """
+CRYST1   16.760   20.171   17.648  90.00  90.00  90.00 P 1
+MODEL        1
+ATOM      1  N   GLY A  -3      14.573   7.304   5.082  1.00 23.20           N
+ATOM      2  CA  GLY A  -3      15.503   6.752   6.050  1.00 43.12           C
+ATOM      3  C   GLY A  -3      16.822   7.516   6.092  1.00 10.33           C
+ATOM      4  O   GLY A  -3      17.833   7.000   5.608  1.00 34.23           O
+ATOM      6  HA2 GLY A  -3      15.692   5.828   5.822  1.00 43.12           H
+ATOM      7  HA1 GLY A  -3      15.103   6.784   6.933  1.00 43.12           H
+ATOM      8  N   PRO A  -2      16.855   8.759   6.667  1.00 43.42           N
+ATOM      9  CA  PRO A  -2      18.084   9.573   6.756  1.00 72.12           C
+ATOM     10  C   PRO A  -2      19.050   9.085   7.843  1.00 24.33           C
+ATOM     11  O   PRO A  -2      20.269   9.138   7.662  1.00  1.42           O
+ATOM     12  CB  PRO A  -2      17.569  10.986   7.098  1.00 65.32           C
+ATOM     13  CG  PRO A  -2      16.078  10.915   7.005  1.00 23.11           C
+ATOM     14  CD  PRO A  -2      15.713   9.483   7.257  1.00  3.14           C
+ATOM     15  HD2 PRO A  -2      15.639   9.304   8.207  1.00  3.14           H
+ATOM     16  HD1 PRO A  -2      14.884   9.250   6.810  1.00  3.14           H
+ATOM     17  HG2 PRO A  -2      15.793  11.190   6.120  1.00 23.11           H
+ATOM     18  HG1 PRO A  -2      15.682  11.493   7.676  1.00 23.11           H
+ATOM     19  HA  PRO A  -2      18.527   9.578   5.893  1.00 72.12           H
+ATOM     20  HB1 PRO A  -2      17.846  11.226   7.996  1.00 65.32           H
+ATOM     21  HB2 PRO A  -2      17.923  11.625   6.460  1.00 65.32           H
+ATOM     22  N   SER A  -1      18.485   8.603   8.974  1.00 54.30           N
+ATOM     23  CA  SER A  -1      19.258   8.090  10.133  1.00 74.21           C
+ATOM     24  C   SER A  -1      20.126   9.182  10.770  1.00 44.31           C
+ATOM     25  O   SER A  -1      20.919   9.834  10.087  1.00 24.24           O
+ATOM     26  CB  SER A  -1      20.129   6.881   9.741  1.00 35.31           C
+ATOM     27  OG  SER A  -1      20.678   6.247  10.885  1.00 34.24           O
+ATOM     28  H   SER A  -1      17.635   8.561   9.099  1.00 54.30           H
+ATOM     29  HA  SER A  -1      18.619   7.793  10.799  1.00 74.21           H
+ATOM     30  HB1 SER A  -1      20.854   7.187   9.174  1.00 35.31           H
+ATOM     31  HG  SER A  -1      21.157   6.789  11.312  1.00 34.24           H
+ATOM     32  HB2 SER A  -1      19.580   6.241   9.261  1.00 35.31           H
+TER
+ENDMDL
+MODEL        2
+ATOM   1753  N   GLY A  -3      15.598  12.155  12.730  1.00 23.20           N
+ATOM   1754  CA  GLY A  -3      15.801  13.217  11.761  1.00 43.12           C
+ATOM   1755  C   GLY A  -3      15.603  12.746  10.322  1.00 10.33           C
+ATOM   1756  O   GLY A  -3      14.940  11.727  10.105  1.00 34.23           O
+ATOM   1758  HA2 GLY A  -3      15.172  13.934  11.936  1.00 43.12           H
+ATOM   1759  HA1 GLY A  -3      16.704  13.561  11.848  1.00 43.12           H
+ATOM   1760  N   PRO A  -2      16.164  13.467   9.301  1.00 43.42           N
+ATOM   1761  CA  PRO A  -2      16.028  13.090   7.880  1.00 72.12           C
+ATOM   1762  C   PRO A  -2      16.904  11.891   7.491  1.00 24.33           C
+ATOM   1763  O   PRO A  -2      16.479  11.039   6.705  1.00  1.42           O
+ATOM   1764  CB  PRO A  -2      16.479  14.351   7.114  1.00 65.32           C
+ATOM   1765  CG  PRO A  -2      16.651  15.418   8.147  1.00 23.11           C
+ATOM   1766  CD  PRO A  -2      16.953  14.708   9.432  1.00  3.14           C
+ATOM   1767  HD2 PRO A  -2      17.900  14.513   9.508  1.00  3.14           H
+ATOM   1768  HD1 PRO A  -2      16.659  15.229  10.196  1.00  3.14           H
+ATOM   1769  HG2 PRO A  -2      15.832  15.932   8.224  1.00 23.11           H
+ATOM   1770  HG1 PRO A  -2      17.386  15.999   7.896  1.00 23.11           H
+ATOM   1771  HA  PRO A  -2      15.094  12.906   7.692  1.00 72.12           H
+ATOM   1772  HB1 PRO A  -2      17.317  14.174   6.659  1.00 65.32           H
+ATOM   1773  HB2 PRO A  -2      15.799  14.602   6.470  1.00 65.32           H
+ATOM   1774  N   SER A  -1      18.123  11.839   8.047  1.00 54.30           N
+ATOM   1775  CA  SER A  -1      19.064  10.752   7.768  1.00 74.21           C
+ATOM   1776  C   SER A  -1      19.650  10.188   9.066  1.00 44.31           C
+ATOM   1777  O   SER A  -1      19.683   8.969   9.256  1.00 24.24           O
+ATOM   1778  CB  SER A  -1      20.187  11.243   6.843  1.00 35.31           C
+ATOM   1779  OG  SER A  -1      20.983  10.164   6.382  1.00 34.24           O
+ATOM   1780  H   SER A  -1      18.429  12.428   8.594  1.00 54.30           H
+ATOM   1781  HA  SER A  -1      18.592  10.034   7.318  1.00 74.21           H
+ATOM   1782  HB1 SER A  -1      20.750  11.861   7.334  1.00 35.31           H
+ATOM   1783  HG  SER A  -1      21.333   9.767   7.034  1.00 34.24           H
+ATOM   1784  HB2 SER A  -1      19.791  11.690   6.079  1.00 35.31           H
+TER
+ENDMDL
+"""
+
+pdb_str_4 = """
+CRYST1   17.826   22.060   19.146  90.00  90.00  90.00 P 1
+ATOM      1  P     U A   2       7.236  16.525   9.726  1.00 37.21           P
+ATOM      2  OP1   U A   2       6.663  17.060  10.993  1.00 38.75           O
+ATOM      3  OP2   U A   2       8.650  16.805   9.385  1.00 34.84           O
+ATOM      4  O5'   U A   2       7.029  14.947   9.685  1.00 34.31           O
+ATOM      5  C5'   U A   2       5.756  14.354   9.974  1.00 37.02           C
+ATOM      6  C4'   U A   2       5.821  12.860   9.763  1.00 36.81           C
+ATOM      7  O4'   U A   2       5.957  12.552   8.350  1.00 36.96           O
+ATOM      8  C3'   U A   2       7.025  12.178  10.388  1.00 36.55           C
+ATOM      9  O3'   U A   2       6.846  11.969  11.775  1.00 36.22           O
+ATOM     10  C2'   U A   2       7.106  10.884   9.592  1.00 36.94           C
+ATOM     11  O2'   U A   2       6.138   9.930   9.980  1.00 38.55           O
+ATOM     12  C1'   U A   2       6.755  11.383   8.191  1.00 36.22           C
+ATOM     13  N1    U A   2       7.938  11.735   7.391  1.00 34.47           N
+ATOM     14  C2    U A   2       8.652  10.705   6.795  1.00 33.67           C
+ATOM     15  O2    U A   2       8.375   9.526   6.954  1.00 33.54           O
+ATOM     16  N3    U A   2       9.706  11.110   6.014  1.00 33.13           N
+ATOM     17  C4    U A   2      10.119  12.408   5.784  1.00 32.43           C
+ATOM     18  O4    U A   2      11.043  12.620   5.000  1.00 31.05           O
+ATOM     19  C5    U A   2       9.352  13.409   6.464  1.00 33.80           C
+ATOM     20  C6    U A   2       8.316  13.048   7.223  1.00 33.46           C
+ATOM     21  H4*   U A   2       5.000  12.459  10.088  1.00 36.81           H
+ATOM     22  H3*   U A   2       7.826  12.702  10.232  1.00 36.55           H
+ATOM     23  H2*   U A   2       7.997  10.505   9.648  1.00 36.94           H
+ATOM     24 HO2*   U A   2       5.578   9.841   9.360  1.00 38.55           H
+ATOM     25  H1*   U A   2       6.256  10.694   7.724  1.00 36.22           H
+ATOM     26  H5    U A   2       9.576  14.307   6.377  1.00 33.80           H
+ATOM     27 H5*1   U A   2       5.515  14.540  10.895  1.00 37.02           H
+ATOM     28 H5*2   U A   2       5.082  14.734   9.388  1.00 37.02           H
+ATOM     29  H3    U A   2      10.157  10.489   5.626  1.00 33.13           H
+ATOM     30  H6    U A   2       7.829  13.711   7.657  1.00 33.46           H
+HETATM   31  P   UMS A   3       8.115  12.049  12.757  1.00 35.65           P
+HETATM   32  OP1 UMS A   3       7.608  12.006  14.146  1.00 37.56           O
+HETATM   33  OP2 UMS A   3       8.986  13.173  12.329  1.00 35.79           O
+HETATM   34  O5' UMS A   3       8.946  10.722  12.449  1.00 37.12           O
+HETATM   35  C5' UMS A   3       8.323   9.447  12.591  1.00 36.88           C
+HETATM   36  C4' UMS A   3       9.203   8.363  12.041  1.00 39.11           C
+HETATM   37  O4' UMS A   3       9.187   8.277  10.585  1.00 38.36           O
+HETATM   38  C3' UMS A   3      10.640   8.278  12.458  1.00 40.33           C
+HETATM   39  O3' UMS A   3      10.895   8.001  13.828  1.00 40.80           O
+HETATM   40  C2' UMS A   3      11.291   7.467  11.374  1.00 40.93           C
+HETATM   41  C1' UMS A   3      10.496   7.904  10.133  1.00 38.75           C
+HETATM   42  N1  UMS A   3      11.106   9.042   9.429  1.00 36.80           N
+HETATM   43  C2  UMS A   3      12.013   8.736   8.436  1.00 35.25           C
+HETATM   44  O2  UMS A   3      12.328   7.589   8.163  1.00 36.36           O
+HETATM   45  N3  UMS A   3      12.557   9.822   7.786  1.00 33.98           N
+HETATM   46  C4  UMS A   3      12.275  11.159   7.996  1.00 32.51           C
+HETATM   47  O4  UMS A   3      12.826  12.001   7.302  1.00 33.01           O
+HETATM   48  C5  UMS A   3      11.323  11.402   9.046  1.00 33.90           C
+HETATM   49  C6  UMS A   3      10.817  10.354   9.743  1.00 34.62           C
+HETATM   50  CA' UMS A   3      11.776   5.000  13.480  1.00 46.26           C
+HETATM   51 SE2' UMS A   3      10.815   5.400  11.905  1.00 48.17          Se
 """
 
 if (__name__ == "__main__"):
