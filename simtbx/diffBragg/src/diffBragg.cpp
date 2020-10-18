@@ -1240,6 +1240,7 @@ void diffBragg::add_diffBragg_spots()
     //    default(none)
     //for (int i2=0; i2 < Npix ; i2++ ){
     # pragma omp parallel for \
+      shared(printout_fpixel, printout_spixel, printout, default_F) \
       collapse(2)
     for(int _spixel=roi_ymin;_spixel <= spixel_max;++_spixel)
     {
@@ -1704,10 +1705,27 @@ void diffBragg::add_diffBragg_spots()
                 /* end of sub-pixel y loop */
             //}
             /* end of sub-pixel x loop */
+            if( printout && _i_step==0 )
+            {
+                if((_fpixel==printout_fpixel && _spixel==printout_spixel) || printout_fpixel < 0)
+                {
+                    //twotheta = atan2(sqrt(_pixel_pos[2]*_pixel_pos[2]+_pixel_pos[3]*_pixel_pos[3]),_pixel_pos[1]);
+                    //test = -1; sin(twotheta/2.0)/(lambda0*1e10);
+                    printf("%4d %4d : stol = %g\n", _fpixel,_spixel,_stol);
+                    printf("at %g %g %g\n", _pixel_pos[1],_pixel_pos[2],_pixel_pos[3]);
+                    printf("hkl= %f %f %f  hkl0= %d %d %d\n", _h,_k,_l,_h0,_k0,_l0);
+                    printf(" F_cell=%g  F_latt=%g   I = %g\n", _F_cell,_F_latt,_I);
+                    printf("I/steps %15.10g\n", _I/steps);
+                    printf("omega   %15.10g\n", _omega_pixel);
+                   printf("default_F= %f\n", default_F);
+                }
+            }
+
 			} /* end of i_steps loop */
             /* absolute mm position on detector (relative to its origin) */
             if (verbose)
                 printf("Pixel %d, %d: Ncont1=%d, Ncont2=%d, Npasses=%d\n" ,_fpixel, _spixel, Ncontinue1, Ncontinue2, Npasses);
+
             double _Fdet_ave = pixel_size*_fpixel + pixel_size/2.0;
             double _Sdet_ave = pixel_size*_spixel + pixel_size/2.0;
             double _Odet_ave = 0; //Odet; // TODO maybe make this more general for thick detectors?

@@ -30,6 +30,8 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     run_on_init = False
 
     def __init__(self):
+        self.refine_per_spot_scale = False
+        self.per_spot_scale_sigma = 1
         self.detector_distance_sigma = 1
         self.detector_distance_init = 0   # offset
         self.detector_distance_range = -1e-6, 1e-6
@@ -212,6 +214,14 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     #def m_init(self):
     #    if self.S is not None:
     #        return self.S.crystal.Ncells_abc[0]
+    @property
+    def refine_lambda0(self):
+        return self._refine_lambda0
+
+    @refine_lambda0.setter
+    def refine_lambda0(self, val):
+        self._refine_lambda0 = val
+
     @property
     def refine_lambda0(self):
         return self._refine_lambda0
