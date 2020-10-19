@@ -12,31 +12,32 @@ def format_HELIX_records_from_AEV(aev_values_dict, cc_cutoff):
   """
   Geting HELIX records for target model using AEV values and specified cutoff.
   """
+  cc_cutoff = float(cc_cutoff)
   start = []
   end = []
   M = 0
   i = 0
   result = []
+  length = 0
   for key,value in aev_values_dict.items():
     if start==[] and value['B'] > cc_cutoff and value['M'] > cc_cutoff - 0.1:
       start = key
-      length = 1
     elif start and value['M'] > cc_cutoff:
       M = 1
-      length += 1
       if value['E'] > cc_cutoff:
         end = key
-    elif start and M == 1 and value['E'] + value['M'] > 2 * cc_cutoff:
+    elif start and M == 1 and value['E'] > cc_cutoff:
       end = key
-      length += 1
-    else:
-      if start and end and M ==1 and length > 3:
-        i += 1
-        fmt = "HELIX   {0:>2}  {0:>2} {1:>}  {2:>}   {3:>36}"
-        result.append(fmt.format(i, start, end, length))
+      length = int(end.split()[-1]) - int(start.split()[-1]) + 1
+    if value['B'] < 0.6 and end and M == 1 and length > 3:
+      i += 1
+      fmt = "HELIX   {0:>2}  {0:>2} {1:>}  {2:>}   {3:>36}"
+      length = int(end.split()[-1]) - int(start.split()[-1]) + 1
+      result.append(fmt.format(i, start, end, length))
       start = []
       end = []
       M = 0
+      length = 0
   return result
 
 def generate_perfect_helix(rs_values,
@@ -82,20 +83,21 @@ def compare(aev_values_dict):
                     angular_eta=aev_values_dict.angular_eta,
                     angular_zeta=aev_values_dict.angular_zeta,
                     )
+
   def pretty_aev(v):
     outl = 'AEV'
     for i in v:
       outl += ' %0.3f' % i
     return outl
+
   def set_vals(result, d, verbose=False):
     for key1, value1 in d.items():
+      result.setdefault(key1, OrderedDict())
+      result[key1].setdefault(key, None)
       if value1 != [] and value != []:
         cc = flex.linear_correlation(
-          x=flex.double(value), y=flex.double(value1)).coefficient()
-      else:
-        cc = None
-      result.setdefault(key1, OrderedDict())
-      result[key1].setdefault(key, cc)
+        x=flex.double(value), y=flex.double(value1)).coefficient()
+        result[key1][key] = cc
       if verbose:
         print('comparing\n%s\n%s' % (pretty_aev(value), pretty_aev(value1)))
         print('  CC = %0.3f' % cc)
@@ -156,14 +158,12 @@ class AEV(object):
                 # probe distances (A) for angular
                 angular_eta = 4,
                 angular_zeta = 8,
-                # ???
+                # parameters for probe angles
                 ):
     self.hierarchy = model.get_hierarchy()
     self.geometry_restraints_manager = model.get_restraints_manager().geometry
     self.rs_values = rs_values
     self.radial_eta = radial_eta
-    # NOT USED!!!
-    # self.Rj = Rj
     self.cutoff = cutoff
     self.ts_values = ts_values
     self.angular_rs_values = angular_rs_values
@@ -182,6 +182,17 @@ class AEV(object):
     result['M'] = self.MAEVs.values()[5]
     result['E'] = self.EAEVs.values()[-1]
     return result
+
+  def empty_dict(self):
+    results = OrderedDict()
+    for atom in self.hierarchy.atoms():
+      if atom.name == ' CA ':
+        res_name = atom.format_atom_record()[17:20] + '  ' + atom.format_atom_record()[21:26]
+        results.setdefault(res_name, [])
+      self.BAEVs.update(results)
+      self.MAEVs.update(results)
+      self.EAEVs.update(results)
+    return 0
 
   def generate_ca(self, length=5):
     """
@@ -210,6 +221,7 @@ class AEV(object):
     backward(EAEVs) and all direction(MAEVS).
     """
     chain_list = []
+    self.empty_dict()
     for chain in self.hierarchy.chains():
       chain_list.append(chain.id)
     chain_list = list(set(chain_list))
@@ -218,35 +230,13 @@ class AEV(object):
       asc = chain_hierarchy.atom_selection_cache()
       sel = asc.selection("chain " + chain)
       self.chain_hierarchy = chain_hierarchy.select(sel)
-      begin = next(self.generate_ca())
-      self.center_atom = begin[0]
-      self.EAEVs.update(self.calculate([]))
-      self.MAEVs.update(self.calculate(begin))
-      self.center_atom = begin[1]
-      self.EAEVs.update(self.calculate(begin[0:1]))
-      self.MAEVs.update(self.calculate(begin))
-      self.center_atom = begin[2]
-      self.EAEVs.update(self.calculate(begin[0:2]))
-      self.center_atom = begin[3]
-      self.EAEVs.update(self.calculate(begin[0:3]))
       for atomlist in self.generate_ca():
-        end = atomlist
         self.center_atom = atomlist[0]
         self.BAEVs.update(self.calculate(atomlist))
         self.center_atom = atomlist[-1]
         self.EAEVs.update(self.calculate(atomlist))
         self.center_atom = atomlist[2]
         self.MAEVs.update(self.calculate(atomlist))
-      self.center_atom = end[1]
-      self.BAEVs.update(self.calculate(end[1:]))
-      self.center_atom = end[2]
-      self.BAEVs.update(self.calculate(end[2:]))
-      self.center_atom = end[3]
-      self.BAEVs.update(self.calculate(end[3:]))
-      self.MAEVs.update(self.calculate(end))
-      self.center_atom = end[4]
-      self.BAEVs.update(self.calculate([]))
-      self.MAEVs.update(self.calculate(end))
 
   def cutf(self, distance):
     """
@@ -307,6 +297,6 @@ class AEV(object):
                   mA = (((1 + math.cos(ZETAijk - zetas))) ** l) * \
                        math.exp(- n * ((((Rij + Rik) / 2) - Rs) ** 2)) * fj * fk
                   GmA += mA
-          GmA = GmA * (2**(1-l))
+          GmA = 10 * GmA * (2**(1-l))
           AEVs[res_name].append(GmA)
     return AEVs
