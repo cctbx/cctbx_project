@@ -1569,12 +1569,16 @@ class LocalRefiner(PixelRefinement):
                 self.fcell_second_deriv = (f2.set_selected(f2 != f2, 0).as_numpy_array() ) * SG
 
     def _get_per_spot_scale(self, i_shot, i_spot):
-        assert self.rescale_params
-        xpos = self.per_spot_scale_xpos[i_shot][i_spot]
-        val = self.Xall[xpos]
-        sig = self.per_spot_scale_sigma
-        init = 1
-        val = np_exp(sig * (val - 1)) * init
+        val = 1
+        if self.refine_per_spot_scale:
+            assert self.rescale_params
+
+            xpos = self.per_spot_scale_xpos[i_shot][i_spot]
+            val = self.Xall[xpos]
+            sig = self.per_spot_scale_sigma
+            init = 1
+            val = np_exp(sig * (val - 1)) * init
+
         return val
 
     def _extract_pixel_data(self):
@@ -2177,9 +2181,9 @@ class LocalRefiner(PixelRefinement):
         if return_derivatives:
             return d, d2
 
-    def _per_spot_scale_derivatives(self) :# , return_derivatives=False):
-        assert self.rescale_params
-        if self.refine_crystal_scale:
+    def _per_spot_scale_derivatives(self):
+        if self.refine_per_spot_scale:
+            assert self.rescale_params
             per_spot_scale = self._get_per_spot_scale(self._i_shot, self._i_spot)
             dI_dtheta = self.G2 * self.model_bragg_spots / per_spot_scale
             # second derivative is 0 with respect to scale factor
@@ -2192,8 +2196,6 @@ class LocalRefiner(PixelRefinement):
             self.grad[xpos] += self._grad_accumulate(d)
             if self.calc_curvatures:
                 self.curv[xpos] += self._curv_accumulate(d, d2)
-        #if return_derivatives:
-        #    return d, d2
 
     def _gain_factor_derivatives(self):
         if self.refine_gain_fac:

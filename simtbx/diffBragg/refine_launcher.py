@@ -106,7 +106,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
   n_local_unknowns = nrot_params + n_unitcell_params + n_ncells_param + n_spotscale_params + n_originZ_params \
                      + n_tilt_params
 
-  if params.refiner.refine_per_spot_scales is not None and any(params.refiner.refine_per_spot_scales):
+  if params.refiner.refine_per_spot_scale is not None and any(params.refiner.refine_per_spot_scale):
     n_local_unknowns += len(nanoBragg_rois)
 
   panel_group_from_id = {pid: 0 for pid in range(len(expt.detector))}
@@ -182,8 +182,8 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
         if params.refiner.refine_panelXY is not None:
           RUC.refine_panelXY = params.refiner.refine_panelXY[i_trial]
 
-        if params.refiner.refine_per_spot_scales is not None:
-          RUC.refine_per_spot_scale = params.refiner.refine_per_spot_scales[i_trial]
+        if params.refiner.refine_per_spot_scale is not None:
+          RUC.refine_per_spot_scale = params.refiner.refine_per_spot_scale[i_trial]
 
 
       if RUC.refine_detdist and RUC.refine_panelZ:
