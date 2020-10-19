@@ -576,7 +576,8 @@ class _():
                             crystal_symmetry=None,
                             force_symmetry=False,
                             merge_equivalents=True,
-                            base_array_info=None):
+                            base_array_info=None,
+                            anomalous=None):
     """
     Returns a python dictionary with keys of tuples containing
     (crystal name, dataset name, column label) and values of
@@ -591,10 +592,13 @@ class _():
     >>> miller_dict[('NATIVE', 'NATIVE', 'SIGFTOXD3')]
     <cctbx.miller.array at 0x108a87b90>
     """
-    miller_arrays = self.as_miller_arrays(crystal_symmetry,
-                                          force_symmetry,
-                                          merge_equivalents,
-                                          base_array_info)
+    miller_arrays = self.as_miller_arrays(
+      crystal_symmetry,
+      force_symmetry,
+      merge_equivalents,
+      base_array_info,
+      anomalous=anomalous
+    )
     keys = []
     for crystal in self.crystals():
       for dataset in crystal.datasets():
