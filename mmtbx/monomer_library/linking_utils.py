@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import iotbx
 from scitbx.array_family import flex
 from mmtbx.chemical_components import get_type
+from libtbx.utils import Sorry
 
 from mmtbx.monomer_library import linking_setup
 from mmtbx.monomer_library.linking_setup import ad_hoc_single_metal_residue_element_types
@@ -403,10 +404,16 @@ def is_atom_pair_linked(atom1,
        ):
       return True
     else:
-      print('lookup',lookup)
-      print(atom1.quote())
-      print(atom2.quote())
-      assert 0
+      outl = '''
+
+Linking of a common element has failed.
+
+  %-20s - %s
+  %-20s - %s
+
+Send details to help@phenix-online.org
+      ''' % (lookup[0], atom1.quote(), lookup[1], atom2.quote())
+      raise Sorry(outl)
   if "metal" in lookup:
     if not linking_setup.skip_if_non_linking(lookup, atom1, atom2):
       return False
