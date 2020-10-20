@@ -593,6 +593,7 @@ int32_range = ext.int_range
 
 # int64_t is the same as long
 int64 = ext.long
+int64_from_byte_str = ext.long_from_byte_str
 int64_range = ext.long_range
 
 # uint64_t is the same as size_t

@@ -101,42 +101,38 @@ namespace {
   { \
     using namespace boost::python; \
     using boost::python::arg; \
-    type_info info = type_id<uIntType>(); \
-    const converter::registration* reg = converter::registry::query(info); \
-    if (reg == NULL || reg->m_to_python == NULL) {\
-      flex_wrapper<uIntType>::integer(#pyname, scope()) \
-        .def_pickle(flex_pickle_single_buffered<uIntType>()) \
-        .def("__init__", make_constructor( \
-          from_stl_vector_unsigned_to_##uIntType, default_call_policies())) \
-        .def("__init__", make_constructor( \
-          flex_##pyname##_from_numpy_array, default_call_policies())) \
-        .def("copy_to_byte_str", \
-          copy_to_byte_str<versa<uIntType, flex_grid<> > >) \
-        .def("as_int", as_int<uIntType>) \
-        .def("intersection", \
-          (shared<uIntType>(*)(  \
-            const_ref<uIntType> const&, \
-            const_ref<uIntType> const&)) \
-          intersection<uIntType>, (arg("self"), arg("other"))) \
-        .def("intersection_i_seqs", intersection_i_seqs<uIntType>, ( \
-          arg("self"), arg("other"))) \
-        .def("counts", counts<uIntType, std::map<long, long> >::unlimited) \
-        .def("counts", counts<uIntType, std::map<long, long> >::limited, ( \
-          arg("max_keys"))) \
-        .def("next_permutation", next_permutation<uIntType>) \
-        .def("inverse_permutation", inverse_permutation<uIntType>) \
-        .def("increment_and_track_up_from_zero", \
-          increment_and_track_up_from_zero<uIntType>, (arg("iselection"))) \
-        .def("as_numpy_array", flex_##pyname##_as_numpy_array, ( \
-          arg("optional")=false)) \
-      ; \
-      def( \
-        #pyname"_from_byte_str", \
-        shared_from_byte_str<uIntType>, \
-        (arg("byte_str"))); \
-      range_wrappers<uIntType, long, range_args::unsigned_check>::wrap( \
-        #pyname"_range"); \
-    } \
+    flex_wrapper<uIntType>::integer(#pyname, scope()) \
+      .def_pickle(flex_pickle_single_buffered<uIntType>()) \
+      .def("__init__", make_constructor( \
+        from_stl_vector_unsigned_to_##uIntType, default_call_policies())) \
+      .def("__init__", make_constructor( \
+        flex_##pyname##_from_numpy_array, default_call_policies())) \
+      .def("copy_to_byte_str", \
+        copy_to_byte_str<versa<uIntType, flex_grid<> > >) \
+      .def("as_int", as_int<uIntType>) \
+      .def("intersection", \
+        (shared<uIntType>(*)(  \
+          const_ref<uIntType> const&, \
+          const_ref<uIntType> const&)) \
+        intersection<uIntType>, (arg("self"), arg("other"))) \
+      .def("intersection_i_seqs", intersection_i_seqs<uIntType>, ( \
+        arg("self"), arg("other"))) \
+      .def("counts", counts<uIntType, std::map<long, long> >::unlimited) \
+      .def("counts", counts<uIntType, std::map<long, long> >::limited, ( \
+        arg("max_keys"))) \
+      .def("next_permutation", next_permutation<uIntType>) \
+      .def("inverse_permutation", inverse_permutation<uIntType>) \
+      .def("increment_and_track_up_from_zero", \
+        increment_and_track_up_from_zero<uIntType>, (arg("iselection"))) \
+      .def("as_numpy_array", flex_##pyname##_as_numpy_array, ( \
+        arg("optional")=false)) \
+    ; \
+    def( \
+      #pyname"_from_byte_str", \
+      shared_from_byte_str<uIntType>, \
+      (arg("byte_str"))); \
+    range_wrappers<uIntType, long, range_args::unsigned_check>::wrap( \
+      #pyname"_range"); \
   }
 
   // --------------------------------------------------------------------------
