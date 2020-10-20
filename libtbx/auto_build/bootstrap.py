@@ -912,6 +912,12 @@ class phasertng_module(SourceModule):
                'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/phasertng.git',
                'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/phasertng.git']
 
+class phaser_voyager_module(SourceModule):
+  module = 'phaser_voyager'
+  anonymous = ['git',
+               'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/phaser_voyager.git',
+               'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/phaser_voyager.git']
+
 class phaser_regression_module(SourceModule):
   module = 'phaser_regression'
   anonymous = ['git',
@@ -2042,8 +2048,8 @@ class PhaserBuilder(CCIBuilder):
     return configlst
 
 class PhaserTNGBuilder(PhaserBuilder):
-  CODEBASES = PhaserBuilder.CODEBASES + ['phasertng']
-  LIBTBX = PhaserBuilder.LIBTBX + ['phasertng']
+  CODEBASES = PhaserBuilder.CODEBASES + ['phasertng', 'phaser_voyager']
+  LIBTBX = PhaserBuilder.LIBTBX + ['phasertng', 'phaser_voyager']
 
   def add_tests(self):
     self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
@@ -2673,8 +2679,8 @@ class PhenixTNGBuilder(PhenixBuilder):
   '''
   Phenix with phasertng and c++11
   '''
-  CODEBASES = PhenixBuilder.CODEBASES + ['phasertng']
-  LIBTBX = PhenixBuilder.LIBTBX + ['phasertng']
+  CODEBASES = PhenixBuilder.CODEBASES + ['phasertng', 'phaser_voyager']
+  LIBTBX = PhenixBuilder.LIBTBX + ['phasertng', 'phaser_voyager']
 
   def get_libtbx_configure(self):
     configlst = super(PhenixTNGBuilder, self).get_libtbx_configure()
@@ -2695,7 +2701,7 @@ def run(root=None):
     'molprobity':MOLPROBITYBuilder,
     'qrefine': QRBuilder,
     'phaser': PhaserBuilder,
-    'phasertng': PhaserTNGBuilder
+    'voyager': PhaserTNGBuilder
   }
 
   wrapper = textwrap.TextWrapper(width=80, initial_indent='  ',
