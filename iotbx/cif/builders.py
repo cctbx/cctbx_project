@@ -815,7 +815,7 @@ class miller_array_builder(crystal_symmetry_builder):
         if FIlabel == label:
           labelpairs.append([ label, m[0]])
           remainingkeys.remove(label)
-          remainingkeys.remove(m[10])
+          remainingkeys.remove(m[0])
     alllabels = " ".join(remainingkeys)
     sigma_matches = re.findall("((\S*)_sigma(_*\S*))", alllabels ) # [('_refln.F_meas_sigma_au', '_refln.F_meas', '_au'), ('_refln.intensity_sigma', '_refln.intensity', ''), ('_refln.pdbx_I_plus_sigma', '_refln.pdbx_I_plus', '')]
     for label in lstkeys:
