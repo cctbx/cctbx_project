@@ -3,9 +3,9 @@ from cctbx import adptbx, crystal, miller, sgtbx, uctbx, xray
 from cctbx.array_family import flex
 import iotbx.cif
 from iotbx.cif import model
-from libtbx.utils import Sorry, to_str
+from libtbx.utils import Sorry
 from libtbx.containers import OrderedDict, OrderedSet
-import warnings, traceback
+import warnings
 from six import string_types
 from six.moves import range
 import six, re
@@ -325,7 +325,13 @@ class miller_array_builder(crystal_symmetry_builder):
     '_refln_A': None,
   }
 
-  def __init__(self, cif_block, base_array_info=None, wavelengths=None):
+  def __init__(self, cif_block, base_array_info=None, wavelengths=None, style="classic"):
+    if style == "classic": # parsing of data labels using original constructor
+      self.init(cif_block, base_array_info, wavelengths)
+    if style == "new": # regular expressions for parsing data labels and associating columns appropriately
+      self.init_new(cif_block, base_array_info, wavelengths)
+
+  def init(self, cif_block, base_array_info=None, wavelengths=None):
     crystal_symmetry_builder.__init__(self, cif_block)
     if base_array_info is not None:
       self.crystal_symmetry = self.crystal_symmetry.join_symmetry(
@@ -337,7 +343,6 @@ class miller_array_builder(crystal_symmetry_builder):
     if base_array_info is None:
       base_array_info = miller.array_info(source_type="cif")
     refln_containing_loops = self.get_miller_indices_containing_loops()
-    #try:
     for self.indices, refln_loop in refln_containing_loops:
       self.wavelength_id_array = None
       self.crystal_id_array = None
@@ -368,80 +373,10 @@ class miller_array_builder(crystal_symmetry_builder):
           elif key.endswith('scale_group_code'):
             self.scale_group_array = array
             scale_groups = list(counts.keys())
-
-      for w_id in wavelength_ids:
-        for crys_id in crystal_ids:
-          for scale_group in scale_groups:
-            #"""
-            #datsiglabls, remaininglabls = self.get_assoc_labelpairs(refln_loop.keys(), ["_sigma", "sig"] )
-            datsiglabls, remaininglabls = self.get_FSigF_ISigI_labels(refln_loop.keys())
-            for datsiglabl in datsiglabls:
-              datastrarray = refln_loop[datsiglabl[0]]
-              sigmasstrarray = refln_loop[datsiglabl[1]]
-              millarr = self.flex_std_string_as_miller_array(
-                datastrarray, wavelength_id=w_id, crystal_id=crys_id,
-                scale_group_code=scale_group)
-              sigmas = self.flex_std_string_as_miller_array(
-                sigmasstrarray, wavelength_id=w_id, crystal_id=crys_id,
-                scale_group_code=scale_group)
-              millarr.set_sigmas(sigmas.data())
-              millarr.set_info(base_array_info.customized_copy(labels=datsiglabl,
-                                                              wavelength=wavelengths.get(w_id, None)))
-              self._arrays[millarr.info().label_string() ] = millarr
-
-            #mapcoefflabls, remaininglabls = self.get_assoc_labelpairs(remaininglabls, ["_phase", "phase", "phdel", "phi", "ph"] )
-            mapcoefflabls, remaininglabls = self.get_mapcoefficient_labels(remaininglabls)
-            for mapcoefflabl in mapcoefflabls:
-              amplitudestrarray = refln_loop[ mapcoefflabl[0] ]
-              phasestrarray = refln_loop[ mapcoefflabl[1] ]
-              millarr = self.flex_std_string_as_miller_array(
-                amplitudestrarray, wavelength_id=w_id, crystal_id=crys_id,
-                scale_group_code=scale_group)
-              phasesmillarr = self.flex_std_string_as_miller_array(
-                phasestrarray, wavelength_id=w_id, crystal_id=crys_id,
-                scale_group_code=scale_group)
-              phases = as_flex_double(phasesmillarr, mapcoefflabl[1])
-              millarr = millarr.phase_transfer(phases, deg=True)
-              millarr.set_info(base_array_info.customized_copy(labels=mapcoefflabl,
-                                                              wavelength=wavelengths.get(w_id, None)))
-              self._arrays[millarr.info().label_string() ] = millarr
-
-            HLcoefflabls, remaininglabls = self.get_HL_labels(remaininglabls)
-            for hl_labels in HLcoefflabls:
-              hl_values = [cif_block.get(hl_key) for hl_key in hl_labels]
-              if hl_values.count(None) == 0:
-                selection = self.get_selection(
-                  hl_values[0], wavelength_id=w_id,
-                  crystal_id=crys_id, scale_group_code=scale_group)
-                hl_values = [as_double_or_none_if_all_question_marks(
-                  hl.select(selection), column_name=lab)
-                              for hl, lab in zip(hl_values, hl_labels)]
-
-                millarr = miller.array(miller.set(
-                  self.crystal_symmetry, self.indices.select(selection)
-                  ).auto_anomalous(), flex.hendrickson_lattman(*hl_values))
-
-                millarr.set_info(base_array_info.customized_copy(labels=hl_labels,
-                                                                wavelength=wavelengths.get(w_id, None)))
-                self._arrays[millarr.info().label_string() ] = millarr
-
-            for label in remaininglabls:
-              if (label.endswith('wavelength_id') or
-                  label.endswith('crystal_id') or
-                  label.endswith('scale_group_code') or
-                  'index_' in label):
-                continue
-              datastrarray = refln_loop[label]
-              millarr = self.flex_std_string_as_miller_array(
-                datastrarray, wavelength_id=w_id, crystal_id=crys_id,
-                scale_group_code=scale_group)
-              millarr.set_info(base_array_info.customized_copy(labels=[label],
-                                                              wavelength=wavelengths.get(w_id, None)))
-              self._arrays[millarr.info().label_string() ] = millarr
-
-            """
-
-            for label, value in sorted(refln_loop.items()):
+      for label, value in sorted(refln_loop.items()):
+        for w_id in wavelength_ids:
+          for crys_id in crystal_ids:
+            for scale_group in scale_groups:
               if 'index_' in label: continue
               key = label
               labels = [label]
@@ -522,7 +457,7 @@ class miller_array_builder(crystal_symmetry_builder):
                     crystal_id=crys_id, scale_group_code=scale_group)
                   hl_values = [as_double_or_none_if_all_question_marks(
                     hl.select(selection), column_name=lab)
-                                for hl, lab in zip(hl_values, hl_labels)]
+                               for hl, lab in zip(hl_values, hl_labels)]
                   array = miller.array(miller.set(
                     self.crystal_symmetry, self.indices.select(selection)
                     ).auto_anomalous(), flex.hendrickson_lattman(*hl_values))
@@ -606,8 +541,163 @@ class miller_array_builder(crystal_symmetry_builder):
                 info = array.info()
                 array.set_info(info.customized_copy(wavelength=wavelength))
               self._arrays.setdefault(key, array)
+    for key, array in six.iteritems(self._arrays.copy()):
+      if (   key.endswith('_minus') or '_minus_' in key
+          or key.endswith('_plus') or '_plus_' in key):
+        if '_minus' in key:
+          minus_key = key
+          plus_key = key.replace('_minus', '_plus')
+        elif '_plus' in key:
+          plus_key = key
+          minus_key = key.replace('_plus', '_minus')
+        if plus_key in self._arrays and minus_key in self._arrays:
+          plus_array = self._arrays.pop(plus_key)
+          minus_array = self._arrays.pop(minus_key)
+          minus_array = minus_array.customized_copy(
+            indices=-minus_array.indices()).set_info(minus_array.info())
+          array = plus_array.concatenate(
+            minus_array, assert_is_similar_symmetry=False)
+          array = array.customized_copy(anomalous_flag=True)
+          array.set_info(minus_array.info().customized_copy(
+            labels=list(
+              OrderedSet(plus_array.info().labels+minus_array.info().labels))))
+          array.set_observation_type(plus_array.observation_type())
+          self._arrays.setdefault(key, array)
 
-            """
+    if len(self._arrays) == 0:
+      raise CifBuilderError("No reflection data present in cif block")
+
+
+  def init_new(self, cif_block, base_array_info=None, wavelengths=None):
+    """
+    Using regular expression for parsing data labels adn associating data columns 
+    appropriately
+    """
+    crystal_symmetry_builder.__init__(self, cif_block)
+    if base_array_info is not None:
+      self.crystal_symmetry = self.crystal_symmetry.join_symmetry(
+        other_symmetry=base_array_info.crystal_symmetry_from_file,
+      force=True)
+    self._arrays = OrderedDict()
+    if (wavelengths is None):
+      wavelengths = {}
+    if base_array_info is None:
+      base_array_info = miller.array_info(source_type="cif")
+    refln_containing_loops = self.get_miller_indices_containing_loops()
+    for self.indices, refln_loop in refln_containing_loops:
+      self.wavelength_id_array = None
+      self.crystal_id_array = None
+      self.scale_group_array = None
+      wavelength_ids = [None]
+      crystal_ids = [None]
+      scale_groups = [None]
+      for key, value in six.iteritems(refln_loop):
+        # need to get these arrays first
+        if (key.endswith('wavelength_id') or
+            key.endswith('crystal_id') or
+            key.endswith('scale_group_code')):
+          data = as_int_or_none_if_all_question_marks(value, column_name=key)
+          if data is None:
+            continue
+          counts = data.counts()
+          if key.endswith('wavelength_id'):
+            wavelength_ids = list(counts.keys())
+          if len(counts) == 1: continue
+          array = miller.array(
+            miller.set(self.crystal_symmetry, self.indices).auto_anomalous(), data)
+          if key.endswith('wavelength_id'):
+            self.wavelength_id_array = array
+            wavelength_ids = list(counts.keys())
+          elif key.endswith('crystal_id'):
+            self.crystal_id_array = array
+            crystal_ids = list(counts.keys())
+          elif key.endswith('scale_group_code'):
+            self.scale_group_array = array
+            scale_groups = list(counts.keys())
+      labelsuffix = ""
+      wavestr = ""
+      crysstr = ""
+      scalegrpstr = ""
+      for w_id in wavelength_ids:
+        for crys_id in crystal_ids:
+          for scale_group in scale_groups:
+            # If reflection data files contain more than one crystal, wavelength or scalegroup
+            # then add the value(s) as a suffix to data labels computed below.
+            if len(wavelength_ids) > 1:
+              wavestr = ",wavelength_id=%i" %w_id
+            if len(crystal_ids) > 1:
+              crysstr = ",crys_id=%i" %crys_id
+            if len(scale_groups) > 1:
+              scalegrpstr += ",scale_group=%i" %scale_group
+            labelsuffix = wavestr + crysstr + scalegrpstr
+            datsiglabls, remaininglabls = self.get_FSigF_ISigI_labels(refln_loop.keys())
+            for datsiglabl in datsiglabls:
+              datastrarray = refln_loop[datsiglabl[0]]
+              sigmasstrarray = refln_loop[datsiglabl[1]]
+              millarr = self.flex_std_string_as_miller_array(
+                datastrarray, wavelength_id=w_id, crystal_id=crys_id,
+                scale_group_code=scale_group)
+              sigmas = self.flex_std_string_as_miller_array(
+                sigmasstrarray, wavelength_id=w_id, crystal_id=crys_id,
+                scale_group_code=scale_group)
+              millarr.set_sigmas(sigmas.data())
+              if labelsuffix:
+                datsiglabl = datsiglabl + [labelsuffix]
+              millarr.set_info(base_array_info.customized_copy(labels= datsiglabl,
+                                                              wavelength=wavelengths.get(w_id, None)))
+              self._arrays[millarr.info().label_string() ] = millarr
+            mapcoefflabls, remaininglabls = self.get_mapcoefficient_labels(remaininglabls)
+            for mapcoefflabl in mapcoefflabls:
+              amplitudestrarray = refln_loop[ mapcoefflabl[0] ]
+              phasestrarray = refln_loop[ mapcoefflabl[1] ]
+              millarr = self.flex_std_string_as_miller_array(
+                amplitudestrarray, wavelength_id=w_id, crystal_id=crys_id,
+                scale_group_code=scale_group)
+              phasesmillarr = self.flex_std_string_as_miller_array(
+                phasestrarray, wavelength_id=w_id, crystal_id=crys_id,
+                scale_group_code=scale_group)
+              phases = as_flex_double(phasesmillarr, mapcoefflabl[1])
+              millarr = millarr.phase_transfer(phases, deg=True)
+              if labelsuffix:
+                mapcoefflabl = mapcoefflabl + [labelsuffix]
+              millarr.set_info(base_array_info.customized_copy(labels= mapcoefflabl ,
+                                                              wavelength=wavelengths.get(w_id, None)))
+              self._arrays[millarr.info().label_string() ] = millarr
+            HLcoefflabls, remaininglabls = self.get_HL_labels(remaininglabls)
+            for hl_labels in HLcoefflabls:
+              hl_values = [cif_block.get(hl_key) for hl_key in hl_labels]
+              if hl_values.count(None) == 0:
+                selection = self.get_selection(
+                  hl_values[0], wavelength_id=w_id,
+                  crystal_id=crys_id, scale_group_code=scale_group)
+                hl_values = [as_double_or_none_if_all_question_marks(
+                  hl.select(selection), column_name=lab)
+                              for hl, lab in zip(hl_values, hl_labels)]
+
+                millarr = miller.array(miller.set(
+                  self.crystal_symmetry, self.indices.select(selection)
+                  ).auto_anomalous(), flex.hendrickson_lattman(*hl_values))
+                if labelsuffix:
+                  hl_labels = hl_labels + [labelsuffix]
+                millarr.set_info(base_array_info.customized_copy(labels= hl_labels,
+                                                                wavelength=wavelengths.get(w_id, None)))
+                self._arrays[millarr.info().label_string() ] = millarr
+            for label in remaininglabls:
+              if (label.endswith('wavelength_id') or
+                  label.endswith('crystal_id') or
+                  label.endswith('scale_group_code') or
+                  'index_' in label):
+                continue
+              datastrarray = refln_loop[label]
+              millarr = self.flex_std_string_as_miller_array(
+                datastrarray, wavelength_id=w_id, crystal_id=crys_id,
+                scale_group_code=scale_group)
+              labels = [label]
+              if labelsuffix:
+                labels = [label] + [labelsuffix]
+              millarr.set_info(base_array_info.customized_copy(labels= labels,
+                                                              wavelength=wavelengths.get(w_id, None)))
+              self._arrays[millarr.info().label_string() ] = millarr
 
     for key, array in six.iteritems(self._arrays.copy()):
       if (   key.endswith('_minus') or '_minus_' in key or '-' in key
@@ -637,10 +727,6 @@ class miller_array_builder(crystal_symmetry_builder):
               OrderedSet(plus_array.info().labels+minus_array.info().labels))))
           array.set_observation_type(plus_array.observation_type())
           self._arrays.setdefault(key, array)
-
-    #except Exception as e:
-    #  print(e.__repr__() + "".join(traceback.format_stack(limit=10)))
-    #  #raise e
 
     if len(self._arrays) == 0:
       raise CifBuilderError("No reflection data present in cif block")
@@ -683,32 +769,35 @@ class miller_array_builder(crystal_symmetry_builder):
       for m in PHmatches:
         Flabel = m[1].replace("PH","F") + m[2]
         if Flabel == label:
-          mapcoefflabels.append(( label, m[0]))
+          mapcoefflabels.append([ label, m[0]])
           remainingkeys.remove(label)
           remainingkeys.remove(m[0])
+    alllabels = " ".join(remainingkeys)
     PHImatches = re.findall("((\S*PHI)(\S*))", alllabels ) # [('_refln.PHIC', '_refln.PHI', 'C'), ('_refln.PHIC_ALL', '_refln.PHI', 'C_ALL')]
     for label in lstkeys:
       for m in PHImatches:
         Flabel = m[1].replace("PHI","F") + m[2]
         if Flabel == label:
-          mapcoefflabels.append(( label, m[0]))
+          mapcoefflabels.append([ label, m[0]])
           remainingkeys.remove(label)
           remainingkeys.remove(m[0])
+    alllabels = " ".join(remainingkeys)
     PHDELmatches = re.findall("(((\S*)PH)([^I]\S*(WT)))", alllabels ) # [('_refln.PHDELWT', '_refln.PH', '_refln.', 'DELWT', 'WT')]
     for label in lstkeys:
       for m in PHDELmatches:
         Flabel = m[2] + m[3].replace("WT","FWT")
         if Flabel == label:
-          mapcoefflabels.append(( label, m[0]))
+          mapcoefflabels.append([ label, m[0]])
           remainingkeys.remove(label)
           remainingkeys.remove(m[0])
+    alllabels = " ".join(remainingkeys)
     phase_matches = re.findall("((\S*\.)phase(_\S*))", alllabels ) # [('_refln.phase_calc', '_refln.', '')]
     for label in lstkeys:
       for m in phase_matches:
         phaselabel = m[0]
         Flabel = m[1] + "F" + m[2]
         if Flabel in label: # in case of _refln.F_calc_au and _refln.phase_calc 
-          mapcoefflabels.append(( label, m[0]))
+          mapcoefflabels.append([ label, m[0]])
           remainingkeys.remove(label)
           remainingkeys.remove(m[0])
     return mapcoefflabels, remainingkeys
@@ -719,72 +808,38 @@ class miller_array_builder(crystal_symmetry_builder):
     remainingkeys = lstkeys[:] # deep copy the list
     alllabels = " ".join(lstkeys) #  _refln.FC _refln.PHIC _refln.FC_ALL _refln.PHIC_ALL _refln.FWT _refln.PHWT _refln.DELFWT _refln.PHDELWT
     labelpairs = []
-
+    sigma_matches = re.findall("((\S*\.)SIG(\S*))", alllabels ) # catch label pairs like F(+),SIGF(+)
+    for label in lstkeys:
+      for m in sigma_matches:
+        FIlabel = m[1] + m[2]
+        if FIlabel == label:
+          labelpairs.append([ label, m[0]])
+          remainingkeys.remove(label)
+          remainingkeys.remove(m[10])
+    alllabels = " ".join(remainingkeys)
     sigma_matches = re.findall("((\S*)_sigma(_*\S*))", alllabels ) # [('_refln.F_meas_sigma_au', '_refln.F_meas', '_au'), ('_refln.intensity_sigma', '_refln.intensity', ''), ('_refln.pdbx_I_plus_sigma', '_refln.pdbx_I_plus', '')]
     for label in lstkeys:
       for m in sigma_matches:
         FIlabel = m[1] + m[2]
         if FIlabel == label:
-          labelpairs.append(( label, m[0]))
+          labelpairs.append([ label, m[0]])
           remainingkeys.remove(label)
           remainingkeys.remove(m[0])
-
-    # catch other generic labels in https://www.iucr.org/__data/iucr/cifdic_html/2/cif_mm.dic/index.html
-    Imeas_matches = re.findall("(\S*)(intensity_meas(\S*))", alllabels )
-    Isigma_matches = re.findall("(\S*)(intensity_sigma(\S*))", alllabels )
-    if len(Isigma_matches):
-      for i, m in enumerate(Isigma_matches):
-        siglabl = m[0] + m[1] + m[2]
-        Ilabl = Imeas_matches[i][0] + Imeas_matches[i][1] + Imeas_matches[i][2]
-        labelpairs.append(( Ilabl, siglabl))
-        remainingkeys.remove(Ilabl)
-        remainingkeys.remove(siglabl)
-
+    alllabels = " ".join(remainingkeys)
+    # catch generic meas and sigma labels, https://www.iucr.org/__data/iucr/cifdic_html/2/cif_mm.dic/index.html
+    sigma_matches = []
+    meas_matches = []
+    anymeas_matches = re.findall("((\S*)_meas(\S*))", alllabels )
+    anysigma_matches = re.findall("((\S*)_sigma(\S*))", alllabels )
+    for mmatch in anymeas_matches:
+      for smatch in anysigma_matches:
+        if mmatch[1]==smatch[1] and mmatch[2]==smatch[2]:
+          meas_matches.append(mmatch[0])
+          sigma_matches.append(smatch[0])
+          labelpairs.append([ mmatch[0], smatch[0]])
+          remainingkeys.remove(mmatch[0])
+          remainingkeys.remove(smatch[0])
     return labelpairs, remainingkeys
-
-
-
-  def get_assoc_labelpairs(self, keys, searchstrs):
-    secondkeys = []
-    lstkeys = list(keys) # cast into list if not a list
-    for key in lstkeys:
-      for searchstr in searchstrs:
-        if searchstr in key.lower():
-          secondkeys.append(key)
-          break
-    def find_assoc_keypair(skey, replace):
-      for secondstr in searchstrs:
-        if skey.lower().find(secondstr) > -1:
-          chr1 = skey.lower().find(secondstr)
-          chr2 = len(secondstr) + chr1
-          if replace==False:
-            firstkey = skey[0 : chr1] + skey[chr2 : ]
-          else:
-            firstkey = skey[0 : chr1] + "F" + skey[chr2 : ]
-          secondkey = skey
-          # Some special rules for generic labels follows here
-          newkey = firstkey
-          if firstkey not in lstkeys: # cope with ["_refln.F_calc_au", "_refln.phase_calc"]
-            newkey = firstkey + "_au"
-          if newkey not in lstkeys: # cope with ["_refln.foobar_meas", "_refln.foobar_sigma"]
-            newkey = firstkey + "_meas"
-          if newkey not in lstkeys: # cope with ["_refln.foobar_calc", "_refln.foobar_sigma"]
-            newkey = firstkey + "_calc"
-          if newkey not in lstkeys: # cope with ["_refln.DELFWT", "_refln.PHDELWT"]
-            newkey = firstkey.split(".")[0] + ".DELF" + firstkey.split(".")[1]
-          firstkey = newkey
-          return firstkey, secondkey
-      return None, None
-    keypairs = []
-    for skey in secondkeys:
-      firstkey, secondkey = find_assoc_keypair(skey, True )
-      if firstkey not in lstkeys:
-        firstkey, secondkey = find_assoc_keypair(skey, False )
-      if firstkey in lstkeys and secondkey in lstkeys:
-        keypairs.append((firstkey, secondkey))
-        lstkeys.remove(firstkey) # delete lables from list to avoid associating them more than once
-        lstkeys.remove(secondkey)
-    return keypairs, lstkeys
 
 
   def get_miller_indices_containing_loops(self):
