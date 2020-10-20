@@ -124,6 +124,7 @@ jobs:
   - script: |
       cd $(Pipeline.Workspace)
       tar -xf build.tar
+      rm build.tar
     displayName: Extract build tarball
     condition: >
       or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
