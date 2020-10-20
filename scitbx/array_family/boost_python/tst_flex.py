@@ -3615,11 +3615,17 @@ def exercise_fixed_width_int_types():
     print("No numpy, so skip exercise_fixed_width_int_types")
     return
 
-  # uint8
-  u8 = flex.uint8([1, 2, 3, 4, 5])
-  assert u8.as_numpy_array().dtype == np.uint8
+  # test numpy conversion
+  for itype, dtype in zip(
+    [flex.int8, flex.int16, flex.int32, flex.int64,
+     flex.uint8, flex.uint16, flex.uint32, flex.uint64],
+    ['int8', 'int16', 'int32', 'int64', 'uint8', 'uint16', 'uint32', 'uint64']):
+    f = itype([1, 2, 3, 4, 5])
+    n = f.as_numpy_array()
+    assert n.dtype == getattr(np, dtype)
 
   # verify rollover behaviour
+  u8 = flex.uint8([1, 2, 3, 4, 5])
   u8 += 0xff
   assert flex.max(u8) == 4
   assert flex.min(u8) == 0
@@ -3632,26 +3638,10 @@ def exercise_fixed_width_int_types():
   i8 += 0x7f
   assert(flex.min(i8) == -128)
 
-  # overflows
-  try:
-    a = flex.int8([0xff])
-  except OverflowError as e:
-    pass
-  else:
-    raise RuntimeError("should have OverflowError")
-
-  # overflows
-  try:
-    a = flex.uint8([0xfff])
-  except OverflowError as e:
-    pass
-  else:
-    raise RuntimeError("should have OverflowError")
-
-  # other overflow types
+  # test overflow for signed types
   for itype, maxvalue in zip(
-    [flex.int8, flex.uint8, flex.int16, flex.uint16],
-    [0x7f, 0xff, 0x7fff, 0xffff]):
+    [flex.int8, flex.int16, flex.int32, flex.int64],
+    [0x7f, 0x7fff, 0x7fffffff, 0x7fffffffffffffff]):
     a = itype([maxvalue])
     try:
       a = itype([maxvalue + 1])
