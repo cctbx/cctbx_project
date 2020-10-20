@@ -8,6 +8,7 @@ from simtbx.nanoBragg import nanoBragg
 from simtbx.nanoBragg.nanoBragg_beam import NBbeam
 from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
 from simtbx.nanoBragg.sim_data import SimData
+from scitbx.matrix import sqr
 
 ENERGY_CONV = 10000000000.0 * constants.c * constants.h / constants.electron_volt
 
@@ -15,7 +16,8 @@ ENERGY_CONV = 10000000000.0 * constants.c * constants.h / constants.electron_vol
 def ensure_p1(Crystal, Famp):
   high_symm_symbol = Famp.space_group_info().type().lookup_symbol()
   cb_op = Famp.space_group_info().change_of_basis_op_to_primitive_setting()
-  if not high_symm_symbol.startswith("P"):
+  dtrm = sqr(cb_op.c().r().as_double()).determinant()
+  if not dtrm == 1:
     Crystal = Crystal.change_basis(cb_op)
     Famp = Famp.change_basis(cb_op)
   return Crystal, Famp

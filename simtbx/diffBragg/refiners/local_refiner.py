@@ -2678,7 +2678,7 @@ class LocalRefiner(PixelRefinement):
             for i_shot in self.per_spot_scale_xpos:
                 nspots = len(self.NANOBRAGG_ROIS[i_shot])
                 if self.selection_flags is not None:
-                    vals = [self._get_per_spot_scale(i_shot, i_spot) for i_spot in range(nspots) if self.selection_flags[i_shot, i_spot]]
+                    vals = [self._get_per_spot_scale(i_shot, i_spot) for i_spot in range(nspots) if self.selection_flags[i_shot][i_spot]]
                 else:
                     vals = [self._get_per_spot_scale(i_shot, i_spot) for i_spot in range(nspots)]
                 m = median(vals)

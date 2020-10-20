@@ -73,17 +73,18 @@ class Script:
     explist = flatten_experiments(self.params.input.experiments)
     reflist = flatten_reflections(self.params.input.reflections)
 
-    for El, strong in zip(explist, reflist):
+    for exper, strong in zip(explist, reflist):
       tstart = time.time()
-      model_imgs = utils.spots_from_pandas_and_experiment(El, self.params.panda_name,
+      model_imgs = utils.spots_from_pandas_and_experiment(exper, self.params.panda_name,
         spectrum_file=self.params.spectrum_file,
         cuda=self.params.cuda, d_max=self.params.d_max, d_min=self.params.d_min,
         output_img=self.params.output_img,
         njobs=self.params.njobs, ngpu=self.params.ngpu, as_numpy_array=True)
 
-      Rindexed = utils.indexed_from_model(strong, model_imgs, El[0], tolerance=self.params.tolerance,
-                                   thresh=self.params.thresh, Qdist_cutoff=self.paras.Qdist_cutoff)
+      Rindexed = utils.indexed_from_model(strong, model_imgs, exper, tolerance=self.params.tolerance,
+                                   thresh=self.params.thresh, Qdist_cutoff=self.params.Qdist_cutoff)
       Rindexed['id'] = flex.int(len(Rindexed), 0)
+      Rindexed = utils.remove_multiple_indexed(Rindexed)
       print("%d / %d are indexed!" % (len(Rindexed), len(strong)))
       Rindexed.as_file(self.params.outfile)
       tdone = time.time() - tstart
