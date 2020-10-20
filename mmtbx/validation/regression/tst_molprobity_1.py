@@ -126,11 +126,11 @@ REMARK   3    GEOSTD + MON.LIB. + CDL v1.2
     if cdl_expected :
       out = StringIO()
       result.show(out=out)
-      assert ("conformation-dependent library" in out.getvalue())
+      assert ("Geometry Restraints Library: GeoStd + Monomer Library + CDL v1.2" in out.getvalue())
     else:
       out = StringIO()
       result.show(out=out)
-      assert ("conformation-dependent library" not in out.getvalue())
+      assert ("CDL" not in out.getvalue())
 
 if (__name__ == "__main__"):
   exercise_cdl()

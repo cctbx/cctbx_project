@@ -157,7 +157,6 @@ def run():
     show_energies = False)
   #geometry_restraints.write_geo_file(file_name='start.geo')
   states = mmtbx.utils.states(
-    xray_structure = xray_structure,
     pdb_hierarchy  = pdb_hierarchy)
   states.add(sites_cart = xray_structure.sites_cart())
 

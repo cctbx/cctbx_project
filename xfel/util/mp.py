@@ -48,6 +48,13 @@ mp_phil_str = '''
       .type = str
       .multiple = True
       .help = Path to script sourcing a particular environment (optional)
+    local {
+      include_mp_in_command = True
+        .type = bool
+        .help = Whether to decorate command with appropiate multiprocessing \
+                arguments. If False, it's assumed the multiprocessing  \
+                arguments are provided by the calling program.
+    }
     shifter {
       submit_command = "sbatch "
         .type = str
@@ -165,13 +172,13 @@ class get_submit_command(object):
   def write_script(self):
     command_str = " ".join([self.command] + self.args)
     f = open(self.submit_path, 'wb')
-    f.write("#! %s\n" % self.shell_path)
+    f.write(b"#! %s\n" % self.shell_path.encode())
     for line in self.options_inside_submit_script:
-      f.write("%s\n" % line)
+      f.write(b"%s\n" % line.encode())
     for line in self.source_env_scripts:
-      f.write("%s\n" % line)
-    f.write("\n")
-    f.write("%s\n" % command_str)
+      f.write(b"%s\n" % line.encode())
+    f.write(b"\n")
+    f.write(b"%s\n" % command_str.encode())
     f.close()
     self.make_executable(self.submit_path)
 
@@ -182,9 +189,9 @@ class get_submit_command(object):
     path, ext = os.path.splitext(self.submit_path)
     encapsulate_path = path + "_submit" + ext
     f = open(encapsulate_path, 'wb')
-    f.write("#! /bin/%s\n\n" % ext[1:])
-    f.write(self.generate_submit_command())
-    f.write("\n")
+    f.write(b"#! /bin/%s\n\n" % ext[1:].encode())
+    f.write(self.generate_submit_command().encode())
+    f.write(b"\n")
 
   def __call__(self):
     self.customize_for_method()
@@ -197,10 +204,11 @@ class get_submit_command(object):
 class get_local_submit_command(get_submit_command):
 
   def customize_for_method(self):
-    if self.params.use_mpi:
-      self.command = "mpirun -n %d %s mp.method=mpi" % (self.params.nproc, self.command)
-    elif self.params.nproc > 1:
-      self.command += " mp.nproc=%d" % self.params.nproc
+    if self.params.local.include_mp_in_command:
+      if self.params.use_mpi:
+        self.command = "mpirun -n %d %s mp.method=mpi" % (self.params.nproc, self.command)
+      elif self.params.nproc > 1:
+        self.command += " mp.nproc=%d" % self.params.nproc
 
   def generate_submit_command(self):
     return self.submit_path
@@ -441,12 +449,12 @@ class get_slurm_submit_command(get_submit_command):
       self.options_inside_submit_script.append(nproc_str)
 
     # -o <outfile>
-    out_str = "#SBATCH --output=%s.%%j" % os.path.join(self.stdoutdir, self.log_name)
+    out_str = "#SBATCH --output=%s" % os.path.join(self.stdoutdir, self.log_name)
     self.options_inside_submit_script.append(out_str)
 
     # [-j oe/-e <errfile>] (optional)
     if self.err_name is not None:
-      err_str = "#SBATCH --error=%s.%%j" % os.path.join(self.stdoutdir, self.err_name)
+      err_str = "#SBATCH --error=%s" % os.path.join(self.stdoutdir, self.err_name)
       self.options_inside_submit_script.append(err_str)
 
     # -q <queue>

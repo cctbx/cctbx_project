@@ -21,7 +21,7 @@ class error_modifier_ev11(worker):
     assert self.params.merging.error.model == "ev11"
 
     self.logger.log_step_time("ERROR_MODIFIER_EV11")
-    self.logger.log("Modifying intensity errors -- ev11 method (starting with %d experiments, %d reflections)"%(len(experiments), len(reflections)))
+    self.logger.log("Modifying intensity errors -- ev11 method (starting with %d reflections)"%(len(reflections)))
     reflections = self.modify_errors(reflections)
     self.logger.log_step_time("ERROR_MODIFIER_EV11", True)
 

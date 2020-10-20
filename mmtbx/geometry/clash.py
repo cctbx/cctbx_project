@@ -3,10 +3,10 @@ from __future__ import absolute_import, division, print_function
 from cctbx import sgtbx # import dependency
 import mmtbx.geometry.shared_types # import dependency
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from functools import reduce
 from six.moves import zip
-ext = boost.python.import_ext( "mmtbx_geometry_clash_ext" )
+ext = bp.import_ext( "mmtbx_geometry_clash_ext" )
 from mmtbx_geometry_clash_ext import *
 
 def to_xray_structure(atoms, symmetry):
@@ -586,4 +586,3 @@ def calculate(
       calculation( asu = asu, descriptor = d, accumulator = accumulator )
 
   return accumulator.result
-

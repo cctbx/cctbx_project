@@ -3,8 +3,8 @@ from __future__ import absolute_import, division, print_function
 import atexit
 
 def real_to_complex_3d_in_place(data):
-  import boost.python
-  ext = boost.python.import_ext("cudatbx_cufft_ext")
+  import boost_adaptbx.boost.python as bp
+  ext = bp.import_ext("cudatbx_cufft_ext")
   real_type = type(data).__name__
   if (real_type == "double"):
     return ext.real_to_complex_3d_in_place_dp(data)
@@ -13,8 +13,8 @@ def real_to_complex_3d_in_place(data):
     return ext.real_to_complex_3d_in_place_sp(data)
 
 def complex_to_complex_3d_in_place(data, direction):
-  import boost.python
-  ext = boost.python.import_ext("cudatbx_cufft_ext")
+  import boost_adaptbx.boost.python as bp
+  ext = bp.import_ext("cudatbx_cufft_ext")
   complex_type = type(data).__name__
   if (complex_type == "complex_double"):
     return ext.complex_to_complex_3d_in_place_dp(data, direction)
@@ -23,8 +23,8 @@ def complex_to_complex_3d_in_place(data, direction):
     return ext.complex_to_complex_3d_in_place_sp(data, direction)
 
 def complex_to_real_3d_in_place(data, n):
-  import boost.python
-  ext = boost.python.import_ext("cudatbx_cufft_ext")
+  import boost_adaptbx.boost.python as bp
+  ext = bp.import_ext("cudatbx_cufft_ext")
   complex_type = type(data).__name__
   if (complex_type == "complex_double"):
     return ext.complex_to_real_3d_in_place_dp(data, n)
@@ -33,8 +33,8 @@ def complex_to_real_3d_in_place(data, n):
     return ext.complex_to_real_3d_in_place_sp(data, n)
 
 def clean_up():
-  import boost.python
-  ext = boost.python.import_ext("cudatbx_cufft_ext")
+  import boost_adaptbx.boost.python as bp
+  ext = bp.import_ext("cudatbx_cufft_ext")
   ext.clean_up()
 
 # scitbx.fftpack compatibility API

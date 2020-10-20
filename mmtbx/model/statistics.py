@@ -275,8 +275,7 @@ class geometry(object):
     res = self.result()
     a,b,c,d,p,n = res.angle, res.bond, res.chirality, res.dihedral, \
       res.planarity, res.nonbonded
-    result = "%s" % prefix
-    result += """
+    result = """
 %sGeometry Restraints Library: %s
 %sDeviations from Ideal Values.
 %s  Bond      : %s
@@ -562,12 +561,12 @@ class info(object):
       print(prefix+"X-RAY DATA.", file=out)
       print(prefix, file=out)
       self.data_x.show_remark_3(out = out)
-      print(prefix, file=out)
+      print(prefix, file=out, end='')
     if(self.data_n is not None):
       print(prefix+"NEUTRON DATA.", file=out)
       print(prefix, file=out)
       self.data_n.show_remark_3(out = out)
-      print(prefix, file=out)
+      print(prefix, file=out, end='')
     if(self.geometry is not None):
       self.geometry.show(log=out, prefix=prefix)
       print(prefix, file=out)
@@ -590,13 +589,13 @@ class info(object):
       cif_block = iotbx.cif.model.block()
     if self.data_x is not None:
       cif_block = self.data_x.as_cif_block(cif_block=cif_block, scattering_type=self._pdbx_refine_id)
+    if self.wilson_b is not None:
+      cif_block["_reflns.B_iso_Wilson_estimate"] = round_2_for_cif(self.wilson_b)
     # XXX Neutron data?
     if self.geometry is not None:
       cif_block = self.geometry.as_cif_block(cif_block=cif_block, pdbx_refine_id=self._pdbx_refine_id)
     if self.adp is not None:
       cif_block = self.adp.as_cif_block(cif_block=cif_block)
-      cif_block["_reflns.B_iso_Wilson_estimate"] = round_2_for_cif(self.wilson_b)
     cif_block = self.model.tls_groups_as_cif_block(cif_block=cif_block)
-
     # What about anomalous_scatterer_groups here?
     return cif_block

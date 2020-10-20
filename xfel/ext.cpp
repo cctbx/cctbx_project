@@ -768,12 +768,6 @@ scitbx::vec2<int> const& lower_right) {
 
 namespace boost_python { namespace {
 
-  boost::python::tuple
-  foo2()
-  {
-    return boost::python::make_tuple(1,2,3,4);
-  }
-
   void
   init_module() {
     using namespace boost::python;

@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from cctbx import crystal
 from cctbx import sgtbx
-from boost import rational
+from boost_adaptbx.boost import rational
 import math
 import sys
 from six.moves import range

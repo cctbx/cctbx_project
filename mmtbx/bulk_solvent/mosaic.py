@@ -7,8 +7,8 @@ import scitbx.lbfgs
 from mmtbx.bulk_solvent import kbu_refinery
 from cctbx import maptbx
 import mmtbx.masks
-import boost.python
-asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+import boost_adaptbx.boost.python as bp
+asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 from libtbx import group_args
 from mmtbx import bulk_solvent
 from mmtbx.ncs import tncs
@@ -19,8 +19,8 @@ from libtbx.test_utils import approx_equal
 
 from mmtbx import masks
 from cctbx.masks import vdw_radii_from_xray_structure
-ext = boost.python.import_ext("mmtbx_masks_ext")
-mosaic_ext = boost.python.import_ext("mmtbx_mosaic_ext")
+ext = bp.import_ext("mmtbx_masks_ext")
+mosaic_ext = bp.import_ext("mmtbx_mosaic_ext")
 
 APPLY_SCALE_K1_TO_FOBS = False
 
@@ -384,7 +384,7 @@ class refinery(object):
     #x.extend( flex.double(len(self.F)-2, 0.1))
     #return x
 
-def get_f_mask(xrs, ma, step, option = 2):
+def get_f_mask(xrs, ma, step, option = 2, r_shrink = None, r_sol = None):
   crystal_gridding = maptbx.crystal_gridding(
     unit_cell        = xrs.unit_cell(),
     space_group_info = xrs.space_group_info(),
@@ -451,6 +451,37 @@ def get_f_mask(xrs, ma, step, option = 2):
   else: assert 0
   #
   return f_mask
+
+def filter_mask(mask_p1, volume_cutoff, crystal_symmetry,
+                for_structure_factors = False):
+  co = maptbx.connectivity(
+    map_data                   = mask_p1,
+    threshold                  = 0.01,
+    preprocess_against_shallow = True,
+    wrapping                   = True)
+  mi, ma = flex.min(mask_p1), flex.max(mask_p1)
+  print (mask_p1.size(), (mask_p1<0).count(True))
+  assert mi == 0, mi
+  assert ma == 1, ma
+  a,b,c    = crystal_symmetry.unit_cell().parameters()[:3]
+  na,nb,nc = mask_p1.accessor().all()
+  step = flex.mean(flex.double([a/na, b/nb, c/nc]))
+  if(crystal_symmetry.space_group_number() != 1):
+    co.merge_symmetry_related_regions(space_group=crystal_symmetry.space_group())
+  conn = co.result().as_double()
+  z = zip(co.regions(),range(0,co.regions().size()))
+  sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+  for i_seq, p in enumerate(sorted_by_volume):
+    v, i = p
+    if(i==0): continue # skip macromolecule
+    # skip small volume
+    volume = v*step**3
+    if volume < volume_cutoff:
+      conn = conn.set_selected(conn==i, 0)
+  conn = conn.set_selected(conn>0, 1)
+  if for_structure_factors:
+    conn = conn / crystal_symmetry.space_group().order_z()
+  return conn
 
 class mosaic_f_mask(object):
   def __init__(self,

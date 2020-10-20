@@ -5,10 +5,6 @@ op = os.path
 
 import re
 
-from functools import cmp_to_key
-from past.builtins import cmp
-
-
 # Finds flake8-style ignore directives
 # Taken from flake8 source code
 RE_FLAKE8 = re.compile(
@@ -116,9 +112,7 @@ def inspect(py_lines):
     flds = "".join(filtered).split()
     used_names.update(imported_names.intersection(flds))
   unused_names = list(imported_names - used_names)
-  def cmp_input_order(a, b):
-    return cmp(*(imported_names_dict[a], imported_names_dict[b]))
-  unused_names.sort(key=cmp_to_key(cmp_input_order))  # keeps import order
+  unused_names.sort(key=lambda element: imported_names_dict[element])  # keeps import order
   return unused_names
 
 def show_unused_imports(file_name):

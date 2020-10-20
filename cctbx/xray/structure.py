@@ -1693,6 +1693,27 @@ class structure(crystal.special_position_settings):
       out=out,
       prefix=prefix)
 
+  def is_similar(self, other, eps = 1.e-6):
+    """
+    Check if similar. Can be endlessly fortified as needed.
+    """
+    if(self.scatterers().size() != other.scatterers().size()): return False
+    f1 = self.crystal_symmetry().is_similar_symmetry(other.crystal_symmetry())
+    f2 = approx_equal(self.sites_frac(), other.sites_frac(), eps)
+    f3 = approx_equal(self.extract_u_iso_or_u_equiv(),
+                      other.extract_u_iso_or_u_equiv(), eps)
+    f4 = approx_equal(self.scatterers().extract_occupancies(),
+                      other.scatterers().extract_occupancies(), eps)
+    f5 = approx_equal(self.scatterers().extract_scattering_types(),
+                      other.scatterers().extract_scattering_types())
+    sr1 = self.scattering_type_registry().unique_gaussians_as_list()
+    sr2 = other.scattering_type_registry().unique_gaussians_as_list()
+    f6 = True
+    for s1, s2 in zip(sr1, sr2):
+      f6 &= approx_equal(s1.parameters(), s2.parameters(), eps)
+    f = list(set([f1,f2,f3,f4,f5,f6]))
+    return len(f)==1 and f[0]
+
   def is_positive_definite_u(self, u_cart_tolerance=None):
     if (u_cart_tolerance is None):
       return ext.is_positive_definite_u(

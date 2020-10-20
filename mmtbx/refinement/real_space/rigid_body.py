@@ -8,9 +8,9 @@ from scitbx import matrix
 from libtbx.test_utils import approx_equal
 from libtbx import adopt_init_args
 import sys
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
+cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
 from cctbx import miller
 import mmtbx.utils
 
@@ -164,10 +164,8 @@ class refine_mz(object):
     self.sites_cart_best = None
     if(self.log is None): self.log = sys.stdout
     self.sites_cart_start = self.xray_structure.sites_cart()
-    # Needs to be removed because flip_symmetric_amino_acids=True
-    # or needs to be fancier
-    # assert approx_equal(self.pdb_hierarchy.atoms().extract_xyz(),
-    #   self.sites_cart_start, 1.e-3)
+    assert approx_equal(self.pdb_hierarchy.atoms().extract_xyz(),
+      self.sites_cart_start, 1.e-3)
     self.crystal_gridding = maptbx.crystal_gridding(
       unit_cell             = self.xray_structure.unit_cell(),
       space_group_info      = self.xray_structure.space_group_info(),

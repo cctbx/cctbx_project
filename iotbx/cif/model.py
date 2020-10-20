@@ -5,7 +5,11 @@ import sys
 import string
 import copy
 from six.moves import cStringIO as StringIO
-from collections import MutableMapping, Counter
+from collections import Counter
+try:
+  from collections.abc import MutableMapping
+except ImportError:
+  from collections import MutableMapping
 from cctbx.array_family import flex
 from six.moves import range
 from six.moves import zip

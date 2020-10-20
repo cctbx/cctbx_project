@@ -32,6 +32,10 @@ jobs:
         OS: win-64
         PYTHON_VERSION: py38
         MODULES: ${{ parameters.modules }}
+      python3.9:
+        OS: win-64
+        PYTHON_VERSION: py39
+        MODULES: ${{ parameters.modules }}
 
   variables:
     artifact_name: ${{ parameters.vs }}_$(PYTHON_VERSION)
@@ -98,6 +102,14 @@ jobs:
       cd $(Pipeline.Workspace)
       tar -xf modules.tar
     displayName: Extract modules tarball
+
+  - script: |
+      cd $(Pipeline.Workspace)\modules\dxtbx
+      git remote set-url origin https://github.com/dials/dxtbx.git
+      git fetch origin
+      git reset --hard origin/dials-2.2
+    displayName: Use dials-2.2 branch for Python 2
+    condition: eq(variables['PYTHON_VERSION'], 'py27')
 
   - script: |
       cd $(Pipeline.Workspace)

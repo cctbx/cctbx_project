@@ -2545,21 +2545,7 @@ def generate_common_report(
     for common_name,sizes in common_fdecl_list_sizes.items():
       size_sums[common_name] = sum(sizes)
 
-    # vv_cmp incompatible with Py3. Create vv_key workaround, revisit later with comprehensive example.
-    #def vv_cmp(a, b):
-    #  result = cmp(size_sums[b], size_sums[a])
-    #  if (result == 0): result = cmp(a, b)
-    #  return result
-    #vv.sort(vv_cmp)
-
-    from past.builtins import cmp
-    from functools import cmp_to_key
-    def vv_cmp(a, b):
-      result = cmp(size_sums[b], size_sums[a])
-      if (result == 0): result = cmp(a, b)
-      return result
-
-    vv.sort(key=cmp_to_key(vv_cmp))
+    vv.sort(key=lambda element: (-size_sums[element], element))
     print("  %-20s   procedures    sum of members" % "common name", file=report)
     for common_name in vv:
       print("  %-20s   %8d         %8d" % (

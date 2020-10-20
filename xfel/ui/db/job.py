@@ -147,7 +147,7 @@ class IndexingJob(Job):
         elif "jungfrau" in self.rungroup.detector_address.lower():
           mode = "jungfrau"
         else:
-          assert False, "Couldn't figure out what kind of detector is specified by address %s"%self.rungroup.detector_address
+          mode = "other"
       if hasattr(trial_params, 'format'):
         trial_params.format.file_format = image_format
         trial_params.format.cbf.mode = mode
@@ -156,6 +156,9 @@ class IndexingJob(Job):
       config_path = os.path.join(configs_dir, identifier_string + ".cfg")
     else:
       config_path = None
+
+    if hasattr(trial_params.dispatch, 'process_percent'):
+      trial_params.dispatch.process_percent = self.trial.process_percent
 
     # Dictionary for formating the submit phil and, if used, the labelit cfg file
     d = dict(
@@ -190,7 +193,7 @@ class IndexingJob(Job):
       nproc                     = self.app.params.mp.nproc,
       nproc_per_node            = self.app.params.mp.nproc_per_node,
       queue                     = self.app.params.mp.queue or None,
-      env_script                = self.app.params.mp.env_script[0] if len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
+      env_script                = self.app.params.mp.env_script[0] if self.app.params.mp.env_script is not None and len(self.app.params.mp.env_script) > 0 and len(self.app.params.mp.env_script[0]) > 0 else None,
       method                    = self.app.params.mp.method,
       htcondor_executable_path  = self.app.params.mp.htcondor.executable_path,
       target                    = target_phil_path,
@@ -224,13 +227,14 @@ class IndexingJob(Job):
             trial_params.format.cbf.rayonix.bin_size = self.rungroup.binning
             trial_params.format.cbf.rayonix.override_beam_x = self.rungroup.beamx
             trial_params.format.cbf.rayonix.override_beam_y = self.rungroup.beamy
-        trial_params.dispatch.process_percent = self.trial.process_percent
 
         if trial_params.input.known_orientations_folder is not None:
           trial_params.input.known_orientations_folder = trial_params.input.known_orientations_folder.format(run=self.run.run)
       else:
-        trial_params.spotfinder.lookup.mask = self.rungroup.untrusted_pixel_mask_path
-        trial_params.integration.lookup.mask = self.rungroup.untrusted_pixel_mask_path
+        if trial_params.spotfinder.lookup.mask is None:
+          trial_params.spotfinder.lookup.mask = self.rungroup.untrusted_pixel_mask_path
+        if trial_params.integration.lookup.mask is None:
+          trial_params.integration.lookup.mask = self.rungroup.untrusted_pixel_mask_path
 
         if self.app.params.facility.name == 'lcls':
           locator_path = os.path.join(configs_dir, identifier_string + ".loc")
@@ -238,6 +242,10 @@ class IndexingJob(Job):
           locator.write("experiment=%s\n"%self.app.params.facility.lcls.experiment) # LCLS specific parameter
           locator.write("run=%s\n"%self.run.run)
           locator.write("detector_address=%s\n"%self.rungroup.detector_address)
+          if self.rungroup.wavelength_offset:
+            locator.write("wavelength_offset=%s\n"%self.rungroup.wavelength_offset)
+          if self.app.params.facility.lcls.use_ffb:
+            locator.write("use_ffb=True\n")
 
           if image_format == "cbf":
             if mode == 'rayonix':
@@ -535,21 +543,26 @@ class EnsembleRefinementJob(Job):
     striping.stripe=False
     striping.dry_run=True
     striping.output_folder={}
+    reintegration.integration.lookup.mask={}
+    mp.local.include_mp_in_command=False
     """.format(self.app.params.mp.queue if len(self.app.params.mp.queue) > 0 else None,
                self.app.params.mp.nproc,
                self.app.params.mp.nproc_per_node,
                self.app.params.mp.method,
-               '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script]),
+               '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script if p]),
                self.app.params.output_folder,
                self.trial.trial,
                self.rungroup.id,
                self.run.run,
                target_phil_path,
                path,
+               self.rungroup.untrusted_pixel_mask_path,
                ).split()
 
     commands = Script(arguments).run()
     submission_ids = []
+    if self.app.params.mp.method == 'local':
+      self.status = "RUNNING"
     for command in commands:
       try:
         result = easy_run.fully_buffered(command=command)
@@ -558,7 +571,10 @@ class EnsembleRefinementJob(Job):
         if not "Warning: job being submitted without an AFS token." in str(e):
           raise e
       submission_ids.append(get_submission_id(result, self.app.params.mp.method))
-    return ",".join(submission_ids)
+    if self.app.params.mp.method == 'local':
+      self.status = "DONE"
+    else:
+      return ",".join(submission_ids)
 
 class ScalingJob(Job):
   def delete(self, output_only=False):
@@ -843,22 +859,17 @@ def submit_all_jobs(app):
       task = dataset.tasks[global_task[1]]
       latest_version = dataset.latest_version
       if latest_version is None:
-        jobs = global_tasks[global_task] # first version
         next_version = 0
-        global_task_submitted = False
       else:
         latest_version_jobs = latest_version.jobs
-        global_task_submitted = any([j.task_id == task.id for j in latest_version_jobs])
-
         latest_verion_job_ids = [j.id for j in latest_version_jobs if j.task_id != task.id]
-        jobs = [j for j in global_tasks[global_task] if j.id not in latest_verion_job_ids]
+        new_jobs = [j for j in global_tasks[global_task] if j.id not in latest_verion_job_ids]
+        if not new_jobs: continue
         next_version = latest_version.version + 1
-      if not jobs and global_task_submitted: continue
 
-      if not global_task_submitted:
-        latest_version = app.create_dataset_version(dataset_id = dataset.id, version=next_version)
-        for job in global_tasks[global_task]:
-          latest_version.add_job(job)
+      latest_version = app.create_dataset_version(dataset_id = dataset.id, version=next_version)
+      for job in global_tasks[global_task]:
+        latest_version.add_job(job)
 
       j = JobFactory.from_args(app,
                                task_id = task.id,

@@ -7,9 +7,9 @@ from libtbx.str_utils import show_string
 import warnings
 import sys, os
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-scalepack_ext = boost.python.import_ext("iotbx_scalepack_ext")
+scalepack_ext = bp.import_ext("iotbx_scalepack_ext")
 
 # scalepack manual, edition 5, page 132
 # no merge

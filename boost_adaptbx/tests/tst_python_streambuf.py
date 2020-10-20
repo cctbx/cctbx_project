@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
-import boost.python
-from boost.python import streambuf, ostream
+import boost_adaptbx.boost.python as bp
+from boost_adaptbx.boost.python import streambuf, ostream
 from six.moves import range
-ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
+ext = bp.import_ext("boost_adaptbx_python_streambuf_test_ext")
 import StringIO
 import cStringIO
 from libtbx.test_utils import Exception_expected

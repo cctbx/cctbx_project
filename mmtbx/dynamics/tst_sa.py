@@ -9,10 +9,9 @@ import random
 from mmtbx.dynamics import cartesian_dynamics
 from mmtbx.refinement import real_space
 import mmtbx.utils
-from mmtbx import monomer_library
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.refinement.real_space.individual_sites
+from libtbx.utils import null_out
+import mmtbx.model
 
 pdb_str_1 = """\
 CRYST1   26.960   29.455   29.841  90.00  90.00  90.00 P 21 21 21
@@ -105,54 +104,13 @@ def shake_sites(xrs, random, shift, grm=None):
       stop_at_diff         = shift)
   return xrs
 
-def get_processed_pdb_object(rama_potential, log,
-      raw_records=None, pdb_file_name=None):
-  assert [raw_records, pdb_file_name].count(None) == 1
-  master_params = iotbx.phil.parse(
-    input_string=mmtbx.monomer_library.pdb_interpretation.master_params_str,
-    process_includes=True).extract()
-  if(rama_potential is not None):
-    master_params.peptide_link.ramachandran_restraints=True
-    master_params.peptide_link.rama_potential=rama_potential
-  mon_lib_srv = mmtbx.monomer_library.server.server()
-  return monomer_library.pdb_interpretation.process(
-    mon_lib_srv              = monomer_library.server.server(),
-    ener_lib                 = monomer_library.server.ener_lib(),
-    params                   = master_params,
-    file_name                = pdb_file_name,
-    raw_records              = raw_records,
-    strict_conflict_handling = True,
-    force_symmetry           = True,
-    log                      = log)
-
-def get_geometry_restraints_manager(processed_pdb_file, xray_structure):
-  sctr_keys=xray_structure.scattering_type_registry().type_count_dict()
-  has_hd = "H" in sctr_keys or "D" in sctr_keys
-  geometry = processed_pdb_file.geometry_restraints_manager(
-    show_energies                = False,
-    plain_pairs_radius           = 5,
-    assume_hydrogens_all_missing = not has_hd)
-  geometry.remove_c_beta_torsion_restraints_in_place()
-  restraints_manager = mmtbx.restraints.manager(
-    geometry      = geometry,
-    normalization = True)
-  restraints_manager.crystal_symmetry = xray_structure.crystal_symmetry()
-  return restraints_manager
-
-
 def get_pdb_inputs(pdb_str):
-  raw_records = flex.std_string(pdb_str.splitlines())
-  processed_pdb_file = get_processed_pdb_object(raw_records=raw_records,
-    rama_potential=None, log = None)
-  xrs = processed_pdb_file.xray_structure(show_summary = False)
-  geometry_restraints_manager = get_geometry_restraints_manager(
-    processed_pdb_file = processed_pdb_file,
-    xray_structure     = xrs)
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  model = mmtbx.model.manager(model_input = pdb_inp, log = null_out(), build_grm=True)
   return group_args(
-    ph  = pdb_hierarchy,
-    grm = geometry_restraints_manager,
-    xrs = xrs)
+    ph  = model.get_hierarchy(),
+    grm = model.get_restraints_manager(),
+    xrs = model.get_xray_structure())
 
 def exercise_1():
   random.seed(0)
@@ -280,8 +238,7 @@ def exercise_3():
   xrs = pi.xrs.deep_copy_scatterers()
   sites_cart_start = xrs.sites_cart()
   states_collector = mmtbx.utils.states(
-    pdb_hierarchy  = pi.ph,
-    xray_structure = xrs)
+    pdb_hierarchy  = pi.ph)
   #
   params = sa.master_params().extract()
   params.start_temperature=5000

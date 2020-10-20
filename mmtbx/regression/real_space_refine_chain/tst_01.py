@@ -33,7 +33,7 @@ def run(prefix="tst_00"):
   ph_poor.atoms().reset_i_seq()
   xrs_poor = pdb_inp.xray_structure_simple()
   # Initialize states accumulator
-  states = mmtbx.utils.states(pdb_hierarchy=ph_poor, xray_structure=xrs_poor)
+  states = mmtbx.utils.states(pdb_hierarchy=ph_poor)
   states.add(sites_cart = xrs_poor.sites_cart())
   # Compute target map
   mas = reflection_file_reader.any_reflection_file(file_name =

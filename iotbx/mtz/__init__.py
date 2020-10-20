@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
 from six.moves import zip
-ext = boost.python.import_ext("iotbx_mtz_ext")
+ext = bp.import_ext("iotbx_mtz_ext")
 from iotbx_mtz_ext import *
 import iotbx_mtz_ext as ext
 
@@ -42,7 +42,7 @@ if (tuple(ext.cmtz_struct_sizes()) not in expected_cmtz_struct_sizes):
 
 os.name: %s
 sys.platform: %s
-boost.python.platform_info: %s
+bp.platform_info: %s
 
 The iotbx.mtz module makes certain assumptions about the C structs in
 the CMtz library. This warning appears if the sizes of the C structs
@@ -56,7 +56,7 @@ Thank you!
   str(tuple(ext.cmtz_struct_sizes())),
   os.name,
   sys.platform,
-  boost.python.platform_info))
+  bp.platform_info))
 
 column_type_legend_source = "ccp4/doc/mtzformat.doc"
 column_type_legend = {
@@ -257,7 +257,7 @@ def tidy_show_column_data_format_keyword(input):
       "Column data format keyword not recognized: %s\n" % show_string(input)
     + "  Valid keywords are: %s" % ", ".join(show_column_data_format_keywords))
 
-@boost.python.inject_into(ext.object)
+@bp.inject_into(ext.object)
 class _():
 
   def space_group_info(self):
@@ -576,7 +576,8 @@ class _():
                             crystal_symmetry=None,
                             force_symmetry=False,
                             merge_equivalents=True,
-                            base_array_info=None):
+                            base_array_info=None,
+                            anomalous=None):
     """
     Returns a python dictionary with keys of tuples containing
     (crystal name, dataset name, column label) and values of
@@ -591,10 +592,13 @@ class _():
     >>> miller_dict[('NATIVE', 'NATIVE', 'SIGFTOXD3')]
     <cctbx.miller.array at 0x108a87b90>
     """
-    miller_arrays = self.as_miller_arrays(crystal_symmetry,
-                                          force_symmetry,
-                                          merge_equivalents,
-                                          base_array_info)
+    miller_arrays = self.as_miller_arrays(
+      crystal_symmetry,
+      force_symmetry,
+      merge_equivalents,
+      base_array_info,
+      anomalous=anomalous
+    )
     keys = []
     for crystal in self.crystals():
       for dataset in crystal.datasets():
@@ -866,7 +870,7 @@ def mend_non_conforming_anomalous_column_types(all_types, all_labels):
     all_types_x = overwrite_at(all_types_x, i_group_start, replacement)
   return all_types
 
-@boost.python.inject_into(ext.crystal)
+@bp.inject_into(ext.crystal)
 class _():
 
   def crystal_symmetry(self):
@@ -884,7 +888,7 @@ class _():
       indices=self.mtz_object().extract_miller_indices(),
       anomalous_flag=anomalous_flag)
 
-@boost.python.inject_into(ext.dataset)
+@bp.inject_into(ext.dataset)
 class _():
 
   def column_labels(self):
@@ -1101,7 +1105,7 @@ class column_values_and_selection_valid(slots_getstate_setstate):
   def as_tuple(O):
     return (O.values, O.selection_valid)
 
-@boost.python.inject_into(ext.column)
+@bp.inject_into(ext.column)
 class _():
 
   def extract_values_and_selection_valid(self, not_a_number_substitute=0):
@@ -1157,7 +1161,7 @@ def miller_array_as_mtz_dataset(self,
         column_types=column_types,
         label_decorator=label_decorator)
 
-@boost.python.inject_into(ext.batch)
+@bp.inject_into(ext.batch)
 class _():
 
   def show(self, out=None):

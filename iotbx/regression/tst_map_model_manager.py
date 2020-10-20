@@ -3,7 +3,10 @@ import os
 import libtbx.load_env
 from iotbx.data_manager import DataManager
 from iotbx.map_model_manager import match_map_model_ncs, map_model_manager
+from iotbx.phil import parse
+from libtbx.program_template import ProgramTemplate
 from libtbx.test_utils import approx_equal
+from libtbx.utils import Sorry
 
 def test_01():
 
@@ -95,6 +98,11 @@ def test_01():
   assert approx_equal(model.get_sites_cart(),
                       model_in_original_position.get_sites_cart())
 
+  # test data_manager map_model_manager
+  generated_mmm = dm.get_map_model_manager()
+  print(generated_mmm)
+  assert(isinstance(generated_mmm,map_model_manager))
+
 
   # Generate a map and model
 
@@ -161,6 +169,64 @@ def test_01():
   mmm.generate_map(model=mmm.model())
   mm=mmm.map_manager()
   mmm.show_summary()
+
+  # check get_map_model_manager function
+  dm = DataManager(['model'])
+  assert not hasattr(dm, 'get_map_model_manager')
+  dm = DataManager(['real_map'])
+  assert not hasattr(dm, 'get_map_model_manager')
+  dm = DataManager(['sequence'])
+  assert not hasattr(dm, 'get_map_model_manager')
+  dm = DataManager(['model', 'real_map'])
+  assert hasattr(dm, 'get_map_model_manager')
+
+  # usage
+  dm.get_map_model_manager(model_file=data_pdb, map_files=data_ccp4)
+  dm.get_map_model_manager(model_file=data_pdb, map_files=[data_ccp4])
+  dm.get_map_model_manager(model_file=data_pdb, map_files=[data_ccp4, data_ccp4, data_ccp4])
+  dm.get_map_model_manager(model_file=data_pdb, map_files=data_ccp4, ignore_symmetry_conflicts=True)
+
+  # errors
+  try:
+    dm.get_map_model_manager(model_file=data_pdb, map_files=data_ccp4, from_phil=True)
+  except Sorry as e:
+    assert 'from_phil is set to True' in str(e)
+  try:
+    dm.get_map_model_manager(model_file=data_pdb, map_files=data_ccp4, abc=123)
+  except TypeError as e:
+    assert 'unexpected keyword argument' in str(e)
+  try:
+    dm.get_map_model_manager(model_file=data_pdb, map_files=[data_ccp4, data_ccp4])
+  except Sorry as e:
+    assert '1 full map and 2 half maps' in str(e)
+
+  # PHIL
+  class test_program(ProgramTemplate):
+    master_phil_str = '''
+include scope iotbx.map_model_manager.map_model_phil_str
+'''
+  working_phil_str = '''
+  map_model {
+    full_map = %s
+    half_map = %s
+    half_map = s.mrc
+    model = %s
+  }
+''' % (data_ccp4, data_ccp4, data_pdb)
+
+  master_phil = parse(test_program.master_phil_str, process_includes=True)
+  working_phil = master_phil.fetch(parse(working_phil_str))
+  tp = test_program(dm, working_phil.extract())
+
+  try:
+    dm.get_map_model_manager(from_phil=True)
+  except Exception as e:
+    assert 'ignore_symmetry_conflicts' in str(e)
+  try:
+    dm.get_map_model_manager(from_phil=True, ignore_symmetry_conflicts=True)
+  except AssertionError:
+    pass
+
 # ----------------------------------------------------------------------------
 
 if (__name__ == '__main__'):
@@ -169,3 +235,4 @@ if (__name__ == '__main__'):
   else:
     print('Skip test_01, chem_data not available')
   print ("OK")
+

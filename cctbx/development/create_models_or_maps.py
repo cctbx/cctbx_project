@@ -34,11 +34,25 @@ def get_map_manager(map_data,wrapping,
     wrapping = wrapping)
   return mm
 
-def read_map_and_model(file_name_1,file_name_2):
+def read_map_and_model(file_name_1,file_name_2, regression_directory = None,
+    prefix = None):
   '''
     Identify which file is map and which is model, read in and
     create map_model_manager
+    If regression_directory is specified, look there for these files, assuming
+    prefix of $PHENIX/modules/phenix_regression/
   '''
+
+  if regression_directory and not prefix:
+    import libtbx.load_env
+    prefix = libtbx.env.under_dist(
+      module_name="phenix_regression",
+      path=regression_directory,
+      test=os.path.isdir)
+
+  if prefix:
+    file_name_1 = os.path.join(prefix,file_name_1)
+    file_name_2 = os.path.join(prefix,file_name_2)
 
   map_file_name = None
   model_file_name = None
@@ -50,11 +64,11 @@ def read_map_and_model(file_name_1,file_name_2):
       if f.endswith(ending):
         model_file_name = f
   if not map_file_name or not model_file_name:
-    raise Sorry("Unable to identify map and model from %s and %s" %(
+    raise Sorry("Unable to guess map and model from %s and %s" %(
      file_name_1, file_name_2))
 
   from iotbx.data_manager import DataManager
-  from iotbx.map_model_manager import  map_model_manager
+  from iotbx.map_model_manager import map_model_manager
   dm = DataManager()
   dm.process_real_map_file(map_file_name)
   mm = dm.get_real_map(map_file_name)
@@ -154,7 +168,6 @@ def generate_model(
   # Read in coordinates and cut out the part of the model we want
 
   from iotbx.data_manager import DataManager
-  from mmtbx.model import manager as model_manager
 
   dm = DataManager(['model'])
   dm.process_model_file(file_name)
@@ -164,25 +177,14 @@ def generate_model(
   model=model.select(selection)
 
   # shift the model and return it with new crystal_symmetry
-
-  from scitbx.matrix import col
-  from cctbx import crystal
-  ph=model.get_hierarchy()
-  sites_cart=ph.atoms().extract_xyz()
-  sites_cart=sites_cart-col(sites_cart.min())+col(
-      (box_cushion,box_cushion,box_cushion))
-  box_end=col(sites_cart.max())+col((box_cushion,box_cushion,box_cushion))
-  a,b,c=box_end
-  crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
-  ph.atoms().set_xyz(sites_cart)
+  from cctbx.maptbx.box import shift_and_box_model
+  model = shift_and_box_model(model = model,
+    box_cushion = box_cushion)
 
   if b_iso is not None:
-    b_values=flex.double(sites_cart.size(), b_iso)
+    b_values=flex.double(model.get_sites_cart().size(), b_iso)
+    ph = model.get_hierarchy()
     ph.atoms().set_b(b_values)
-  model=model_manager(
-     ph.as_pdb_input(),
-     crystal_symmetry = crystal_symmetry,
-     log = log)
 
   # Optionally shake model
   if shake:
@@ -275,6 +277,7 @@ def generate_map(
       output_map_file_name=None,
       map_coeffs=None,  # Required
       d_min=3,
+      map_manager = None, # source of info, not map
       gridding=None,
       wrapping=False,
       origin_shift_grid_units=None,
@@ -283,6 +286,7 @@ def generate_map(
       low_resolution_real_space_noise_fraction=0,
       high_resolution_real_space_noise_fraction=0,
       low_resolution_noise_cutoff=None,
+      random_seed = None,
       log=sys.stdout):
 
 
@@ -328,8 +332,19 @@ def generate_map(
 
   '''
 
+  if random_seed:
+    random_seed=int(random_seed)
+    import random
+    random.seed(random_seed)
+    random_seed=random.randint(1,714717)
+    flex.set_random_seed(random_seed)
+
+  if map_manager:
+    origin_shift_grid_units=map_manager.origin_shift_grid_units
+    gridding=map_manager.map_data().all()
+    wrapping=map_manager.wrapping()
   if gridding:
-    if type(gridding)==type([1,2,3]) and type(gridding[0])==type(1):
+    if type(gridding) in [type((1,2,3)), type([1,2,3])] and type(gridding[0])==type(1):
       pass # already fine
     else:
       gridding=[]
@@ -403,13 +418,16 @@ def generate_map(
   if real_space_noise_map:
     map_data+=real_space_noise_map
 
-  # Create a map_manager object directly (unusual use of map_manager)
-  from iotbx.map_manager import map_manager
-  mm=map_manager(map_data=map_data,
-    unit_cell_grid=map_data.all(),
-    unit_cell_crystal_symmetry=map_coeffs.crystal_symmetry(),
-    origin_shift_grid_units=origin_shift_grid_units,
-    wrapping=wrapping)
+  if map_manager:
+    mm=map_manager.customized_copy(map_data=map_data)
+  else:
+    # Create a map_manager object directly (unusual use of map_manager)
+    from iotbx.map_manager import map_manager
+    mm=map_manager(map_data=map_data,
+      unit_cell_grid=map_data.all(),
+      unit_cell_crystal_symmetry=map_coeffs.crystal_symmetry(),
+      origin_shift_grid_units=origin_shift_grid_units,
+      wrapping=wrapping)
 
   if output_map_file_name:
     mm.write_map(output_map_file_name)
@@ -574,6 +592,7 @@ def scale_map_coeffs(
     map_coeffs.setup_binner(auto_binning=True)
 
   d_max,d_min=map_coeffs.d_max_min()
+  if d_max < 0: d_max = 1.e+10
 
   if random_selection_within_bins:
     new_map_coeffs=map_coeffs.customized_copy(

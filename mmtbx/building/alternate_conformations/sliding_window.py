@@ -6,10 +6,9 @@ from mmtbx.building import alternate_conformations as alt_confs
 import mmtbx.building
 from libtbx import adopt_init_args, Auto, slots_getstate_setstate
 from libtbx.utils import null_out
+import operator
 import string
 import sys
-from functools import cmp_to_key
-from past.builtins import cmp
 from six.moves import zip
 
 master_params_str = """
@@ -501,8 +500,7 @@ class ensemble_group(object):
           raise RuntimeError("No matching atoms found for %s" %
             atom_group.id_str())
         # XXX sort by maximum deviation, or rmsd?
-        cmp_fn = lambda a,b: cmp(b.max_dev, a.max_dev)
-        all_trials.sort(key=cmp_to_key(cmp_fn))
+        all_trials.sort(key=operator.attrgetter("max_dev"), reverse=True)
         k = 0
         while (n_confs < n_max) and (k < len(all_trials)):
           trial = all_trials[k]

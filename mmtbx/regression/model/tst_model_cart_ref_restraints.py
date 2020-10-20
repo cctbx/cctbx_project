@@ -67,10 +67,10 @@ ATOM     49  C   TYR A   7      10.603   2.331   6.885  1.00 15.91           C
 ATOM     50  O   TYR A   7      11.041   1.811   5.855  1.00 15.76           O
 ATOM     51  CB  TYR A   7       9.061   1.065   8.369  1.00 15.35           C
 ATOM     52  CG  TYR A   7       7.665   0.929   8.902  1.00 14.45           C
-ATOM     54  CD1 TYR A   7       7.210   1.756   9.920  1.00 14.80           C
-ATOM     53  CD2 TYR A   7       6.771   0.021   8.327  1.00 15.68           C
-ATOM     56  CE1 TYR A   7       5.904   1.649  10.416  1.00 14.33           C
-ATOM     55  CE2 TYR A   7       5.480  -0.094   8.796  1.00 13.46           C
+ATOM     53  CD1 TYR A   7       6.771   0.021   8.327  1.00 15.68           C
+ATOM     54  CD2 TYR A   7       7.210   1.756   9.920  1.00 14.80           C
+ATOM     55  CE1 TYR A   7       5.480  -0.094   8.796  1.00 13.46           C
+ATOM     56  CE2 TYR A   7       5.904   1.649  10.416  1.00 14.33           C
 ATOM     57  CZ  TYR A   7       5.047   0.729   9.831  1.00 15.09           C
 ATOM     58  OH  TYR A   7       3.766   0.589  10.291  1.00 14.39           O
 ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
@@ -175,10 +175,10 @@ ATOM     49  C   TYR A   7      10.603   2.331   6.885  1.00 15.91           C
 ATOM     50  O   TYR A   7      11.041   1.811   5.855  1.00 15.76           O
 ATOM     51  CB  TYR A   7       9.061   1.065   8.369  1.00 15.35           C
 ATOM     52  CG  TYR A   7       7.665   0.929   8.902  1.00 14.45           C
-ATOM     53  CD2 TYR A   7       6.771   0.021   8.327  1.00 15.68           C
-ATOM     54  CD1 TYR A   7       7.210   1.756   9.920  1.00 14.80           C
-ATOM     55  CE2 TYR A   7       5.480  -0.094   8.796  1.00 13.46           C
-ATOM     56  CE1 TYR A   7       5.904   1.649  10.416  1.00 14.33           C
+ATOM     53  CD1 TYR A   7       6.771   0.021   8.327  1.00 15.68           C
+ATOM     54  CD2 TYR A   7       7.210   1.756   9.920  1.00 14.80           C
+ATOM     55  CE1 TYR A   7       5.480  -0.094   8.796  1.00 13.46           C
+ATOM     56  CE2 TYR A   7       5.904   1.649  10.416  1.00 14.33           C
 ATOM     57  CZ  TYR A   7       5.047   0.729   9.831  1.00 15.09           C
 ATOM     58  OH  TYR A   7       3.766   0.589  10.291  1.00 14.39           O
 ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
@@ -186,10 +186,10 @@ ATOM      0  H   TYR A   7       8.106   0.981   6.066  1.00 14.70           H  
 ATOM      0  HA  TYR A   7       8.843   2.985   7.664  1.00 15.18           H   new
 ATOM      0  HB2 TYR A   7       9.349   0.216   7.999  1.00 15.35           H   new
 ATOM      0  HB3 TYR A   7       9.666   1.277   9.097  1.00 15.35           H   new
-ATOM      0  HD2 TYR A   7       7.051  -0.513   7.619  1.00 15.68           H   new
-ATOM      0  HD1 TYR A   7       7.783   2.394  10.280  1.00 14.80           H   new
-ATOM      0  HE2 TYR A   7       4.901  -0.719   8.422  1.00 13.46           H   new
-ATOM      0  HE1 TYR A   7       5.618   2.183  11.122  1.00 14.33           H   new
+ATOM      0  HD1 TYR A   7       7.051  -0.513   7.619  1.00 15.68           H   new
+ATOM      0  HD2 TYR A   7       7.783   2.394  10.280  1.00 14.80           H   new
+ATOM      0  HE1 TYR A   7       4.901  -0.719   8.422  1.00 13.46           H   new
+ATOM      0  HE2 TYR A   7       5.618   2.183  11.122  1.00 14.33           H   new
 ATOM      0  HH  TYR A   7       3.629   1.138  10.911  1.00 14.39           H   new
 """
 
@@ -233,10 +233,10 @@ HETATM   65  O   HOH A  12      13.605   1.327   9.198  1.00 26.17           O
 
 def exercise_adopting_coord_restraints():
   inp_1 = iotbx.pdb.input(lines=pdb_str_h, source_info=None)
-  h_model = mmtbx.model.manager(model_input = inp_1)
+  h_model = mmtbx.model.manager(model_input = inp_1, build_grm=True)
 
   inp_2 = iotbx.pdb.input(lines=pdb_str, source_info=None)
-  model = mmtbx.model.manager(model_input = inp_2)
+  model = mmtbx.model.manager(model_input = inp_2, build_grm=True)
 
   # case 1: big model adopting small model.
   h_model.set_reference_coordinate_restraints(
@@ -277,7 +277,7 @@ def exercise_adopting_coord_restraints():
 
 def exercise_adopting_coord_restraints_water():
   inp_1 = iotbx.pdb.input(lines=pdb_str_base, source_info=None)
-  nowat_model = mmtbx.model.manager(model_input = inp_1)
+  nowat_model = mmtbx.model.manager(model_input = inp_1, build_grm=True)
   # Changing coordinates a little to make sure right ones are used for
   # reference restraints
   for a in nowat_model.get_hierarchy().atoms():
@@ -285,7 +285,7 @@ def exercise_adopting_coord_restraints_water():
   nowat_model.set_sites_cart_from_hierarchy()
 
   inp_2 = iotbx.pdb.input(lines=pdb_str_base+pdb_str_water, source_info=None)
-  wat_model = mmtbx.model.manager(model_input = inp_2)
+  wat_model = mmtbx.model.manager(model_input = inp_2, build_grm=True)
 
   nowat_model.set_reference_coordinate_restraints(
       ref_model = wat_model)

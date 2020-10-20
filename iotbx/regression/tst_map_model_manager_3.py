@@ -55,7 +55,7 @@ def exercise(file_name, out = sys.stdout):
   for id in all_map_names:
     print("Map_manager %s: %s " %(id,mam.get_map_manager_by_id(id)))
 
-  dm = DataManager(['model','miller_array', 'real_map', 'phil'])
+  dm = DataManager(['model','miller_array', 'real_map', 'phil','ncs_spec'])
   dm.set_overwrite(True)
 
   # Create a model with ncs
@@ -68,7 +68,8 @@ def exercise(file_name, out = sys.stdout):
   # Generate map data from this model (it has ncs)
   mmm=map_model_manager()
   mmm.generate_map(box_cushion=0, file_name=file_name,n_residues=500)
-  ncs_mam=mmm
+  ncs_mam=mmm.deep_copy()
+  ncs_mam_copy=mmm.deep_copy()
 
   # Make sure this model has 126 sites (42 sites times 3-fold ncs)
   assert ncs_mam.model().get_sites_cart().size() == 126
@@ -112,6 +113,18 @@ def exercise(file_name, out = sys.stdout):
   assert approx_equal (ncs_mam.model().get_sites_cart()[42],
      (38.41904613024224, 17.233251085893276, 2.5547442135142524))
 
+  # Find ncs from map or model
+  nn=ncs_mam_copy
+  nn.write_map('ncs.ccp4')
+  nn.write_model('ncs.pdb')
+  ncs_object=nn.get_ncs_from_model()
+  dm.write_ncs_spec_file(ncs_object,'ncs.ncs_spec')
+  print ("NCS from map",ncs_object)
+  nn.set_ncs_object(ncs_object)
+  print ("NCS now: ",nn.ncs_object())
+  nn.get_ncs_from_map(ncs_object=ncs_object)
+  print ("ncs cc:",nn.ncs_cc())
+  assert approx_equal(nn.ncs_cc(),0.961915979834,eps=0.01)
 
   # Make a deep_copy
   dc=mam.deep_copy()
@@ -181,13 +194,13 @@ def exercise(file_name, out = sys.stdout):
   new_mam.mask_all_maps_around_atoms(mask_atoms_atom_radius=8,
       soft_mask=True)
   s = (new_mam.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (294,2048))
+  assert approx_equal( (s.count(True),s.size()), (1944,2048))
 
   # Create a soft mask around model and do not do anything with it
   new_mam.create_mask_around_atoms(mask_atoms_atom_radius=8,
       soft_mask=True)
   s = (new_mam.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (294,2048))
+  assert approx_equal( (s.count(True),s.size()), (1944,2048))
 
   # Create a soft mask around model and do not do anything with it, wrapping =true
   dummy_mam=new_mam.deep_copy()
@@ -195,13 +208,13 @@ def exercise(file_name, out = sys.stdout):
   dummy_mam.create_mask_around_atoms(mask_atoms_atom_radius=8,
       soft_mask=True)
   s = (dummy_mam.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (339,2048))
+  assert approx_equal( (s.count(True),s.size()), (1944,2048))
 
   # Create a sharp mask around model and do not do anything with it
   new_mam.create_mask_around_atoms(soft_mask=False,
      mask_atoms_atom_radius=8)
   s = (new_mam.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (35,2048))
+  assert approx_equal( (s.count(True),s.size()), (138,2048))
 
   # Mask around edges and do not do anything with it
   mam=dc.deep_copy()
@@ -213,36 +226,36 @@ def exercise(file_name, out = sys.stdout):
   mam=dc.deep_copy()
   mam.create_mask_around_density(soft_mask=False)
   s = (mam.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (856,2048))
+  assert approx_equal( (s.count(True),s.size()), (1000,2048))
 
   # Apply the current mask to one map
   mam.apply_mask_to_map('map_manager')
   s = (mam.map_manager().map_data() > 0.)
-  assert approx_equal( (s.count(True),s.size()), (424,2048))
+  assert approx_equal( (s.count(True),s.size()), (640,2048))
   s = (mam.map_manager().map_data() != 0.)
-  assert approx_equal( (s.count(True),s.size()), (856,2048))
+  assert approx_equal( (s.count(True),s.size()), (1000,2048))
   assert approx_equal ((mam.map_manager().map_data()[225]),-0.0418027862906)
 
   # Apply any mask to one map
   mam.apply_mask_to_map('map_manager',mask_id='mask')
   s = (mam.map_manager().map_data() > 0.)
-  assert approx_equal( (s.count(True),s.size()), (424,2048))
+  assert approx_equal( (s.count(True),s.size()), (640,2048))
   s = (mam.map_manager().map_data() != 0.)
-  assert approx_equal( (s.count(True),s.size()), (856,2048))
+  assert approx_equal( (s.count(True),s.size()), (1000,2048))
   assert approx_equal ((mam.map_manager().map_data()[225]),-0.0418027862906)
 
   # Apply the mask to all maps
   mam.apply_mask_to_maps()
   s = (mam.map_manager().map_data() > 0.)
-  assert approx_equal( (s.count(True),s.size()), (424,2048))
+  assert approx_equal( (s.count(True),s.size()), (640,2048))
   s = (mam.map_manager().map_data() != 0.)
-  assert approx_equal( (s.count(True),s.size()), (856,2048))
+  assert approx_equal( (s.count(True),s.size()), (1000,2048))
   assert approx_equal ((mam.map_manager().map_data()[225]),-0.0418027862906)
 
   # Apply the mask to all maps, setting outside value to mean inside
   mam.apply_mask_to_maps(set_outside_to_mean_inside=True)
   s = (mam.map_manager().map_data() > 0.)
-  assert approx_equal( (s.count(True),s.size()), (424,2048))
+  assert approx_equal( (s.count(True),s.size()), (1688,2048))
   s = (mam.map_manager().map_data() != 0.)
   assert approx_equal( (s.count(True),s.size()), (2048,2048))
   assert approx_equal ((mam.map_manager().map_data()[2047]),-0.0759598612785)
@@ -250,7 +263,7 @@ def exercise(file_name, out = sys.stdout):
   inside = mam.map_manager().map_data().as_1d().select(s)
   outside = mam.map_manager().map_data().as_1d().select(~s)
   assert approx_equal ((inside.min_max_mean().max,outside.min_max_mean().max),
-   (0.317014873028,-0.0159585822888))
+   (0.335603952408,0.0239064293122))
 
 
   # Make a new map and model, get mam and box with selection
@@ -263,6 +276,29 @@ def exercise(file_name, out = sys.stdout):
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
      ((18, 25, 20),(18, 25, 20)))
 
+  # Get local fsc or randomized map
+  dc=mam_dc.deep_copy()
+  dc.map_manager().set_wrapping(False)
+  map_coeffs = dc.map_manager().map_as_fourier_coefficients(d_min=3)
+  from cctbx.development.create_models_or_maps import generate_map
+  new_mm_1 = generate_map(map_coeffs=map_coeffs,
+    d_min=3,
+    low_resolution_real_space_noise_fraction=1,
+    high_resolution_real_space_noise_fraction=50,
+    map_manager=dc.map_manager(),
+    random_seed=124321)
+  new_mm_2 = generate_map(map_coeffs=map_coeffs,
+    d_min=3,
+    low_resolution_real_space_noise_fraction=1,
+    high_resolution_real_space_noise_fraction=50,
+    map_manager=dc.map_manager(),
+    random_seed=734119)
+  dc.add_map_manager_by_id(new_mm_1,'map_manager_1')
+  dc.add_map_manager_by_id(new_mm_2,'map_manager_2')
+  cc=dc.map_map_cc()
+  fsc_curve=dc.map_map_fsc()
+  dc.set_log(sys.stdout)
+  dc.local_fsc(n_boxes = 1)
 
   # Get map-map FSC
   dc=mam_dc.deep_copy()
@@ -272,7 +308,7 @@ def exercise(file_name, out = sys.stdout):
   fsc_curve=dc.map_map_fsc(
       map_id_1='map_manager',map_id_2='filtered',mask_id='mask',
       resolution=3.5,fsc_cutoff = 0.97)
-  assert approx_equal(fsc_curve.d_min, 3.91175024213)
+  assert approx_equal(fsc_curve.d_min, 3.91175024213,eps=0.01)
   assert approx_equal (fsc_curve.fsc.fsc[-1],0.695137718033)
 
   # Get map-map CC
@@ -288,7 +324,7 @@ def exercise(file_name, out = sys.stdout):
   dc.resolution_filter(d_min=3.5, d_max=6, map_id='filtered')
   dc.create_mask_around_density(mask_id='filtered')
   cc=dc.map_map_cc('map_manager','filtered',mask_id='mask')
-  assert approx_equal(cc , 0.629060115596)
+  assert approx_equal(cc , 0.385909074053)
 
   # box around model
   mam=mam_dc.deep_copy()
@@ -410,6 +446,23 @@ def exercise(file_name, out = sys.stdout):
         "and resseq 221:221", box_cushion=0)
   cc=dc.map_model_cc(resolution=3)
   assert approx_equal (cc, 0.413802839326)
+
+  # Remove model outside map
+  dc.remove_model_outside_map(boundary=0)
+  assert (mam_dc.model().get_sites_cart().size(),
+     dc.model().get_sites_cart().size()) == (86, 4)
+
+  # shift a model to match the map
+  dc=mam_dc.extract_all_maps_around_model(
+      selection_string="(name ca or name cb or name c or name o) "+
+        "and resseq 221:221", box_cushion=0)
+  actual_model=dc.model().deep_copy()
+  working_model=dc.model().deep_copy()
+  working_model.set_shift_cart((0,0,0))
+  working_model.set_sites_cart(working_model.get_sites_cart()-actual_model.shift_cart())
+  dc.shift_any_model_to_match(working_model)
+  assert approx_equal (actual_model.get_sites_cart()[0],working_model.get_sites_cart()[0])
+
 
 if __name__ == "__main__":
   args = sys.argv[1:]

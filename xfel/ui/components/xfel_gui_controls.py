@@ -360,9 +360,8 @@ class OptionCtrl(CtrlBase):
       else:
         sub_label = key
 
-      if len(items) > 1:
-        opt_label = wx.StaticText(self, id=wx.ID_ANY, label=sub_label)
-        opt_box.Add(opt_label, flag=wx.ALIGN_CENTER_VERTICAL)
+      opt_label = wx.StaticText(self, id=wx.ID_ANY, label=sub_label)
+      opt_box.Add(opt_label, flag=wx.ALIGN_CENTER_VERTICAL)
 
       item = wx.TextCtrl(self, id=wx.ID_ANY, size=ctrl_size,
                          style=wx.TE_PROCESS_ENTER)
@@ -432,7 +431,7 @@ class SpinCtrl(CtrlBase):
     CtrlBase.__init__(self, parent=parent, label_style=label_style)
 
     ctr_box = wx.FlexGridSizer(1, 3, 0, 10)
-    self.txt = wx.StaticText(self, label=label.decode('utf-8'),
+    self.txt = wx.StaticText(self, label=label,
                              size=label_size)
     self.txt.SetFont(self.font)
 

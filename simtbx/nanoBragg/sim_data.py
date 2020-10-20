@@ -297,7 +297,7 @@ class SimData:
           _rawpix += self.D.raw_pixels
 
       elif self.using_omp:
-        from boost.python import streambuf  # will deposit printout into dummy StringIO as side effect
+        from boost_adaptbx.boost.python import streambuf  # will deposit printout into dummy StringIO as side effect
         from six.moves import StringIO
         self.D.add_nanoBragg_spots_nks(streambuf(StringIO()))
       else:

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
-iotbx_shelx_ext = boost.python.import_ext("iotbx_shelx_ext")
+import boost_adaptbx.boost.python as bp
+iotbx_shelx_ext = bp.import_ext("iotbx_shelx_ext")
 import sys
 from cctbx.array_family import flex
 

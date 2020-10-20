@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
-from functools import cmp_to_key
-ext = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
 from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s, null_out
@@ -17,8 +16,8 @@ from cctbx.array_family import flex
 import six
 from six.moves import cStringIO as StringIO
 from six.moves import range, zip
-from past.builtins import cmp
 import collections
+import operator
 import warnings
 import math
 import sys
@@ -355,8 +354,8 @@ class __hash_eq_mixin(object):
   def __ne__(self, other):
     return not ( self == other )
 
-boost.python.inject(ext.root, __hash_eq_mixin)
-@boost.python.inject_into(ext.root)
+bp.inject(ext.root, __hash_eq_mixin)
+@bp.inject_into(ext.root)
 class _():
 
   __doc__ = """
@@ -916,7 +915,11 @@ class _():
     auth_asym_id = chain.id
     if chain.atoms()[0].segid.strip() != '':
       auth_asym_id = chain.atoms()[0].segid.strip()
-    if auth_asym_id.strip() == '': auth_asym_id = '.'
+    if auth_asym_id.strip() == '':
+      # chain id is empty, segid is empty, just duplicate label_asym_id
+      # since we cannot read mmCIF with empty auth_asym_id. Outputting a file
+      # that we cannot read - bad.
+      auth_asym_id = self.get_label_asym_id(chain.residue_groups()[0])
     return auth_asym_id
 
   def get_label_asym_id_iseq(self, iseq):
@@ -929,15 +932,17 @@ class _():
       # fill self._lai_lookup for the whole hierarchy
       number_label_asym_id = 0
       label_asym_ids = all_label_asym_ids()
-      previous = None
       for model in self.models():
         for chain in model.chains():
+          previous = None
           for rg in chain.residue_groups():
             resname = rg.atom_groups()[0].resname.strip()
             residue_class = common_residue_names_get_class(resname)
             rg_mid = rg.memory_id()
             if residue_class in ['common_amino_acid', 'modified_amino_acid',
                 'common_rna_dna', 'modified_rna_dna']:
+              if previous != 'poly' and previous is not None:
+                number_label_asym_id += 1
               self._lai_lookup[rg_mid] = label_asym_ids[number_label_asym_id]
               previous = 'poly'
             elif residue_class in ['common_water']:
@@ -1296,8 +1301,7 @@ class _():
                 continue
               mean_occ = flex.mean(atom_group.atoms().extract_occ())
               atom_groups_and_occupancies.append((atom_group, mean_occ))
-            cmp_fn = lambda a,b: cmp(b[1], a[1])
-            atom_groups_and_occupancies.sort(key=cmp_to_key(cmp_fn))
+            atom_groups_and_occupancies.sort(key=operator.itemgetter(1), reverse=True)
             for atom_group, occ in atom_groups_and_occupancies[1:] :
               residue_group.remove_atom_group(atom_group=atom_group)
             single_conf, occ = atom_groups_and_occupancies[0]
@@ -1465,10 +1469,20 @@ class _():
           result.append(residue_range_sel)
     return result
 
-  def flip_symmetric_amino_acids(self, flip_symmetric_amino_acids=True):
+  def flip_symmetric_amino_acids(self):
     import time
-    from cctbx import geometry_restraints
-    if flip_symmetric_amino_acids is [] or flip_symmetric_amino_acids is None: return
+    from scitbx.math import dihedral_angle
+    def chirality_delta(sites, volume_ideal, both_signs):
+      d_01 = sites[1] - sites[0]
+      d_02 = sites[2] - sites[0]
+      d_03 = sites[3] - sites[0]
+      d_02_cross_d_03 = d_02.cross(d_03)
+      volume_model = d_01.dot(d_02_cross_d_03)
+      delta_sign = -1;
+      if both_signs and volume_model < 0:
+        delta_sign = 1
+      delta = volume_ideal + delta_sign * volume_model
+      return delta[0]
     data = {
       "ARG" : {"dihedral" : ["CD", "NE", "CZ", "NH1"],
                "value"    : [0, 1],
@@ -1523,42 +1537,27 @@ class _():
         assert not ('dihedral' in flip_data and 'chiral' in flip_data)
         flip_it=False
         if 'dihedral' in flip_data:
-          dihedral_i_seqs = []
+          sites = []
           for d in flip_data["dihedral"]:
             atom = ag.get_atom(d)
             if atom is None: break
-            dihedral_i_seqs.append(atom.i_seq)
-          if len(dihedral_i_seqs)!=4: continue
-          proxy = geometry_restraints.dihedral_proxy(
-            i_seqs=dihedral_i_seqs,
-            angle_ideal=flip_data["value"][0],
-            weight=flip_data["value"][1],
-            periodicity=1
-          )
-          dihedral = geometry_restraints.dihedral(
-            sites_cart=sites_cart,
-            proxy=proxy,
-          )
-          if abs(dihedral.delta)>360./flip_data["value"][1]/4: # does this work
+            sites.append(atom.xyz)
+          if len(sites)!=4: continue
+          dihedral = dihedral_angle(sites=sites, deg=True)
+          if abs(dihedral)>360./flip_data["value"][1]/4:
             flip_it=True
         elif 'chiral' in flip_data:
-          chiral_i_seqs = []
+          sites = []
           for d in flip_data["chiral"]:
             atom = ag.get_atom(d)
             if atom is None: break
-            chiral_i_seqs.append(atom.i_seq)
-          if len(chiral_i_seqs)!=4: continue
-          proxy = geometry_restraints.chirality_proxy(
-            i_seqs=chiral_i_seqs,
-            volume_ideal=flip_data["value"][0],
-            both_signs=flip_data['value'][1],
-            weight=flip_data["value"][2],
-          )
-          chiral = geometry_restraints.chirality(
-            sites_cart=sites_cart,
-            proxy=proxy,
-          )
-          if abs(chiral.delta)>2.: # does this work
+            sites.append(atom.xyz)
+          if len(sites)!=4: continue
+          delta = chirality_delta(sites=[flex.vec3_double([xyz]) for xyz in sites],
+                                  volume_ideal=flip_data["value"][0],
+                                  both_signs=flip_data['value'][1],
+                                  )
+          if abs(delta)>2.:
             flip_it=True
         if flip_it:
           info += '    Residue "%s %s %s":' % (
@@ -1584,9 +1583,6 @@ class _():
               setattr(atom2, attr, tmp)
             info += ' "%s" <-> "%s"' % (atom1.name.strip(),
                                         atom2.name.strip())
-            # print(atom1.format_atom_record())
-            # print(atom2.format_atom_record())
-            # assert 0
           info += '\n'
     if not info: info = '    None\n'
     info += '  Time to flip residues: %0.2fs\n' % (time.time()-t0)
@@ -1710,8 +1706,8 @@ class _():
       result = result and model.is_ca_only()
     return result
 
-boost.python.inject(ext.model, __hash_eq_mixin)
-@boost.python.inject_into(ext.model)
+bp.inject(ext.model, __hash_eq_mixin)
+@bp.inject_into(ext.model)
 class _():
 
   """
@@ -1771,8 +1767,8 @@ class _():
       result = result and chain.is_ca_only()
     return result
 
-boost.python.inject(ext.chain, __hash_eq_mixin)
-@boost.python.inject_into(ext.chain)
+bp.inject(ext.chain, __hash_eq_mixin)
+@bp.inject_into(ext.chain)
 class _():
 
   """
@@ -1839,8 +1835,7 @@ class _():
       groups = list(groups.values())
       if (len(groups) != 0):
         for group in groups: group.sort()
-        def group_cmp(a, b): return cmp(a[0], b[0])
-        groups.sort(key=cmp_to_key(group_cmp))
+        groups.sort(key=operator.itemgetter(0))
         result.append(groups)
       for i in isolated_var_occ:
         result.append([[i]])
@@ -1865,9 +1860,7 @@ class _():
     for i_rg in range(n_rg):
       if (done[i_rg]): continue
       process_range(i_rg, i_rg+1)
-    def groups_cmp(a, b):
-      return cmp(a[0][0], b[0][0])
-    result.sort(key=cmp_to_key(groups_cmp))
+    result.sort(key=lambda element: element[0][0])
     return result
 
   def get_residue_names_and_classes(self):
@@ -2040,8 +2033,8 @@ class _():
     atom_names = self.atoms().extract_name()
     return atom_names.all_eq(" CA ")
 
-boost.python.inject(ext.residue_group, __hash_eq_mixin)
-@boost.python.inject_into(ext.residue_group)
+bp.inject(ext.residue_group, __hash_eq_mixin)
+@bp.inject_into(ext.residue_group)
 class _():
 
   def only_atom_group(self):
@@ -2058,8 +2051,8 @@ class _():
       chain_id = chain.id
     return "%2s%4s%1s" % (chain_id, self.resseq, self.icode)
 
-boost.python.inject(ext.atom_group, __hash_eq_mixin)
-@boost.python.inject_into(ext.atom_group)
+bp.inject(ext.atom_group, __hash_eq_mixin)
+@bp.inject_into(ext.atom_group)
 class _():
 
   def only_atom(self):
@@ -2093,8 +2086,8 @@ class _():
           min_max_mean.max))
     return min_max_mean.mean
 
-boost.python.inject(ext.atom, __hash_eq_mixin)
-@boost.python.inject_into(ext.atom)
+bp.inject(ext.atom, __hash_eq_mixin)
+@bp.inject_into(ext.atom)
 class _():
   __doc__ = """
   The basic unit of the PDB hierarchy (or the PDB input object in general),
@@ -2176,7 +2169,7 @@ class _():
     else:
       return 0
 
-@boost.python.inject_into(ext.conformer)
+@bp.inject_into(ext.conformer)
 class _():
 
   __doc__ = """
@@ -2368,7 +2361,7 @@ class _():
     return resnames
 
 
-@boost.python.inject_into(ext.residue)
+@bp.inject_into(ext.residue)
 class _():
 
   def __getinitargs__(self):
@@ -2413,7 +2406,7 @@ class _():
       return_mon_lib_dna_name=return_mon_lib_dna_name)
 
 
-@boost.python.inject_into(ext.atom_with_labels)
+@bp.inject_into(ext.atom_with_labels)
 class _():
 
   __doc__ = """

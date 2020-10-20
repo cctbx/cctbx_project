@@ -55,7 +55,7 @@ master_phil = libtbx.phil.parse("""
     .short_caption = Selection radius
   box_cushion = 3.0
     .type = float
-    .help = If mask_atoms is False, a box of density will be cut out around\
+    .help = If model is supplied, a box of density will be cut out around\
             the input model (after selections are applied to the model). \
             The size of the box of density will be box_cushion bigger than \
             the model.  Box cushion also applied if density_select is set.\
@@ -1038,7 +1038,7 @@ def run(args,
       if not mask_as_map_manager:
         raise Sorry("Unable to auto-generate mask")
 
-    mam = around_mask(mam.map_manager(), # actually a box
+    mam = around_mask(mam.map_manager(), # actually a box, shifted
          mask_as_map_manager = mask_as_map_manager,
          box_cushion = params.box_cushion,
          model = mam.model(),
@@ -1084,6 +1084,12 @@ def run(args,
        gridding = params.output_unit_cell_grid)
 
     if mam.model():
+      mam.model().shift_model_and_set_crystal_symmetry(
+       shift_cart = (0,0,0),
+       crystal_symmetry = mam.map_manager().crystal_symmetry())
+      mam.model().set_shift_cart((0,0,0)) # next line requires shift-cart=0,0,0
+      mam.model().set_unit_cell_crystal_symmetry(
+        mam.map_manager().crystal_symmetry())
       mam.model().set_shift_cart(mam.map_manager().shift_cart())
 
   if params.wrapping in [True, False] and mam.map_manager().is_full_size():

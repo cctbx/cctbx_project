@@ -660,7 +660,7 @@ stat_names = {
   'b_sol' : 'Bulk solvent B-factor (b_sol)',
 }
 
-def get_mean_statistic_for_resolution(d_min, stat_type, range=0.2, out=None):
+def get_mean_statistic_for_resolution(d_min, stat_type, range_value=0.2, out=None):
   if (out is None):
     out = sys.stdout
   from scitbx.array_family import flex
@@ -677,11 +677,11 @@ def get_mean_statistic_for_resolution(d_min, stat_type, range=0.2, out=None):
       v = float(v_)
     except ValueError : continue
     else :
-      if (d > (d_min - range)) and (d < (d_min + range)):
+      if (d > (d_min - range_value)) and (d < (d_min + range_value)):
         values_for_range.append(v)
   h = flex.histogram(values_for_range, n_slots=10)
-  print("  %s for d_min = %.3f - %.3f A" % (stat_names[stat_type], d_min-range,
-    d_min+range), file=out)
+  print("  %s for d_min = %.3f - %.3f A" % (stat_names[stat_type], d_min-range_value,
+    d_min+range_value), file=out)
   min = flex.min(values_for_range)
   max = flex.max(values_for_range)
   mean = flex.mean(values_for_range)

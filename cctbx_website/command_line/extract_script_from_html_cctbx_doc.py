@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from io import open
 from html.parser import HTMLParser
 import os
+from libtbx.utils import to_unicode
 
 # ------------------------------------------------------------------------------
 
@@ -22,7 +23,7 @@ class MyHTMLParser(HTMLParser):
 
   def handle_starttag(self, tag, attrs):
     #print("Encountered a start tag:", tag)
-    if tag == 'pre':
+    if tag == 'pre' and attrs == [(u'class', u'codeDL')]:
       self.is_code = True
 
   def handle_endtag(self, tag):
@@ -41,7 +42,7 @@ class MyHTMLParser(HTMLParser):
 
 # ------------------------------------------------------------------------------
 
-def run():
+def run(parent_dir):
   '''
   Walk through directory cctbx_project/cctbx_website/
 
@@ -54,7 +55,8 @@ def run():
   The file template.py will be tested as part of cctbx tests.
   '''
   # this is one directory up: /cctbx_project/cctbx_website/
-  directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+  #parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+  directory = os.path.join(parent_dir, 'html_files')
 
   for filename in os.listdir(directory):
     # look at all .html files
@@ -69,15 +71,21 @@ def run():
       # get filename
       base = os.path.splitext(filename)[0]
       # save code in script and put it in folder cctbx_website/examples/
-      dest_dir = os.path.join(directory, 'examples')
+      dest_dir = os.path.join(parent_dir, 'examples')
       if (not os.path.isdir(dest_dir)):
         os.makedirs(dest_dir)
       script_filename = os.path.join(dest_dir, base+'.py')
       with open(script_filename, 'w', encoding='utf-8') as file:
-        file.write(code_str.strip())
+        file.write(to_unicode('from __future__ import absolute_import, division, print_function\n'))
+        file.write(to_unicode(code_str.strip()))
+        file.write(to_unicode('\n'))
     else:
       continue
 
 
 if __name__ == '__main__':
-  run()
+  import libtbx.load_env
+  for parent_dir in [libtbx.env.dist_path("cctbx_website", default=None),
+    libtbx.env.dist_path("phenix_dev_doc", default=None)]:
+    if parent_dir is not None:
+      run(parent_dir)

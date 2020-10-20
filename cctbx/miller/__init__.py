@@ -2,11 +2,11 @@
 from __future__ import absolute_import, division, print_function
 import cctbx.sgtbx
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
 from six.moves import zip
-ext = boost.python.import_ext("cctbx_miller_ext")
-asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+ext = bp.import_ext("cctbx_miller_ext")
+asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_miller_ext import *
 
 from cctbx import crystal
@@ -673,13 +673,30 @@ class set(crystal.symmetry):
   def min_max_d_star_sq(self):
     return self.unit_cell().min_max_d_star_sq(self.indices())
 
-  def d_max_min(self):
+  def d_max_min(self, d_max_is_highest_defined_if_infinite = False):
     """
     Low- and high-resolution limits.
     :returns: Python tuple of floats
+    Modified 2020-10-02 to allow return of maximum defined instead of -1
+        if F000 present
     """
-    return tuple([uctbx.d_star_sq_as_d(d_star_sq)
-      for d_star_sq in self.min_max_d_star_sq()])
+    if d_max_is_highest_defined_if_infinite:
+      (d_max,d_min) = tuple([uctbx.d_star_sq_as_d(d_star_sq)
+        for d_star_sq in self.min_max_d_star_sq()])
+      if d_max < 0:  # (0,0,0) is present
+        indices_copy = list(self.indices())
+        index = indices_copy.index((0,0,0))
+        new_indices = flex.miller_index(
+          indices_copy[:index] + indices_copy[index+1:])
+        d_max_d_star_sq,d_min_d_star_sq= self.unit_cell(
+             ).min_max_d_star_sq(new_indices)
+        (d_max, d_min )= (
+          uctbx.d_star_sq_as_d(d_max_d_star_sq),
+          uctbx.d_star_sq_as_d(d_min_d_star_sq))
+      return (d_max, d_min)
+    else: # usual
+      return tuple([uctbx.d_star_sq_as_d(d_star_sq)
+        for d_star_sq in self.min_max_d_star_sq()])
 
   def index_span(self):
     return index_span(self.indices())
@@ -3854,9 +3871,9 @@ class array(set):
     assert den != 0
     return self.array(data = coeff/den)
 
-  def __repr__(self): 
+  def __repr__(self):
     """
-    Emit a string for debugging of the labels, type of data 
+    Emit a string for debugging of the labels, type of data
     and sigmas array present within this miller_array.
     """
     mstr = self.crystal_symmetry().__repr__()
@@ -5103,12 +5120,13 @@ class array(set):
         sigmas=flex.double(self.size(), 1))
       merging_internal = intensities_copy.merge_equivalents(
         use_internal_variance=True)
-      merged = merging_internal.array()
-      if merged.size() == 1:
+      merged = merging_internal.array().select(
+        merging_internal.redundancies().data() > 1
+      )
+      if merged.size() <= 1:
         cc_one_half = 0
       else:
-        internal_sigmas = merging_internal.array().sigmas()
-        internal_variances = flex.pow2(internal_sigmas)
+        internal_variances = flex.pow2(merged.sigmas())
         mav = flex.mean_and_variance(merged.data())
         var_y = mav.unweighted_sample_variance()
         var_e = 2 * flex.mean(internal_variances)

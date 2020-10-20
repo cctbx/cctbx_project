@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import zip
-ext = boost.python.import_ext("iotbx_pdb_ext")
+ext = bp.import_ext("iotbx_pdb_ext")
 from iotbx_pdb_ext import *
 
 import iotbx.pdb.records
@@ -43,8 +43,8 @@ def construct_special_position_settings(
     u_star_tolerance=u_star_tolerance)
 
 def is_pdb_file(file_name):
-  pdb_raw_records = smart_open.for_reading(
-    file_name = file_name).read().splitlines()
+  with smart_open.for_reading(file_name=file_name) as f:
+    pdb_raw_records = f.read().splitlines()
   for pdb_str in pdb_raw_records:
     if (pdb_str.startswith("CRYST1")):
       try: cryst1 = iotbx.pdb.records.cryst1(pdb_str=pdb_str)
@@ -569,9 +569,8 @@ class combine_unique_pdb_files(object):
         self.file_name_registry[file_name] += 1
       else:
         self.file_name_registry[file_name] = 1
-        r = [s.expandtabs().rstrip()
-          for s in smart_open.for_reading(
-            file_name=file_name).read().splitlines()]
+        with smart_open.for_reading(file_name=file_name) as f:
+          r = [s.expandtabs().rstrip() for s in f.read().splitlines()]
         m = hashlib_md5()
         m.update(to_bytes("\n".join(r), codec='utf8'))
         m = m.hexdigest()
@@ -731,9 +730,11 @@ def pdb_input(
     file_name = ent_path_local_mirror(pdb_id=pdb_id)
   if (file_name is not None):
     try :
+      with smart_open.for_reading(file_name) as f:
+        lines = f.read()
       return ext.input(
         source_info="file " + str(file_name), # XXX unicode hack - dangerous
-        lines=flex.split_lines(smart_open.for_reading(file_name).read()))
+        lines=flex.split_lines(lines))
     except ValueError as e :
       if (raise_sorry_if_format_error):
         raise Sorry("Format error in %s:\n%s" % (str(file_name), str(e)))
@@ -1071,8 +1072,8 @@ class pdb_input_mixin(object):
       raise Sorry(str(e))
     return result
 
-boost.python.inject(ext.input, pdb_input_mixin)
-@boost.python.inject_into(ext.input)
+bp.inject(ext.input, pdb_input_mixin)
+@bp.inject_into(ext.input)
 class _():
 
   """

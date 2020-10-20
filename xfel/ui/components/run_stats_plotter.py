@@ -337,6 +337,8 @@ def plot_multirun_stats(runs,
   boundaries = []
   lengths = []
   runs_with_data = []
+  run_tags_with_data = []
+  run_statuses_with_data =[]
   offset = 0
   for idx in range(len(runs)):
     r = runs[idx]
@@ -357,8 +359,10 @@ def plot_multirun_stats(runs,
       boundaries.append(tslice[-1])
       lengths.append(len(tslice))
       runs_with_data.append(run_numbers[idx])
-    else:
-      boundaries.extend([None]*2)
+      if run_tags:
+        run_tags_with_data.append(run_tags[idx])
+      if run_statuses:
+        run_statuses_with_data.append(run_statuses[idx])
   stats_tuple = get_run_stats(tset,
                               two_theta_low_set,
                               two_theta_high_set,
@@ -375,7 +379,7 @@ def plot_multirun_stats(runs,
                               d_min=d_min)
   if easy_run:
     from libtbx import easy_run, easy_pickle
-    easy_pickle.dump("plot_run_stats_tmp.pickle", (stats_tuple, d_min, n_multiples, run_tags, run_statuses, minimalist, interactive, xsize, ysize, high_vis, title))
+    easy_pickle.dump("plot_run_stats_tmp.pickle", (stats_tuple, d_min, n_multiples, run_tags_with_data, run_statuses_with_data, minimalist, interactive, xsize, ysize, high_vis, title))
     result = easy_run.fully_buffered(command="cctbx.xfel.plot_run_stats_from_stats_pickle plot_run_stats_tmp.pickle")
     try:
       png = result.stdout_lines[-1]

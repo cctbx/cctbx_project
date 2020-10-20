@@ -33,7 +33,7 @@ def exercise(debug=False):
     print(out.getvalue())
   assert ("R-merge: 0.073" in out.getvalue())
   assert ("R-meas:  0.079" in out.getvalue())
-  assert ("""  1.81   1.74  12528   2073    6.04  97.05    1449.2     5.2    0.252    0.275    0.110   0.967   0.281""" in out.getvalue()), out.getvalue()
+  assert ("""  1.81   1.74  12528   2073    6.04  97.05    1449.2     5.2    0.252    0.275    0.110    0.294   0.967   0.281""" in out.getvalue()), out.getvalue()
   cif_block = result.as_cif_block()
   assert "_reflns_shell" in cif_block
   assert approx_equal(float(cif_block["_reflns.pdbx_Rpim_I_obs"]), result.overall.r_pim)
@@ -60,7 +60,7 @@ def exercise(debug=False):
   if debug:
     print(out.getvalue())
   assert ("Resolution: 100.00 - 1.50" in out.getvalue())
-  assert ("  1.55   1.50      0      0    0.00   0.00       0.0     0.0     None     None     None   0.000   0.000""" in out.getvalue())
+  assert ("  1.55   1.50      0      0    0.00   0.00       0.0     0.0     None     None     None     0.000   0.000""" in out.getvalue())
   args2 = args + ["json.file_name=merging_stats.json", "json.indent=2",
                   "mmcif.file_name=merging_stats.mmcif", "mmcif.data_name=test"]
   out = StringIO()
@@ -133,7 +133,7 @@ def exercise(debug=False):
   merging_statistics.run(args, out=out)
   if debug:
     print(out.getvalue())
-  assert (" 28.49   3.76  15737   1224   12.86  99.84   47967.0    11.6    0.482    0.500    0.135   0.973  -0.513" in out.getvalue()), out.getvalue()
+  assert (" 28.49   3.76  15737   1224   12.86  99.84   47967.0    11.6    0.482    0.500    0.135    0.136   0.973  -0.513" in out.getvalue()), out.getvalue()
   # exercise 2: estimate resolution cutoffs (and symmetry_file argument)
   hkl_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/harvesting/unmerged.sca",
@@ -214,16 +214,17 @@ def exercise(debug=False):
   assert approx_equal(result.overall.d_max, 52.445602416992195)
   assert result.overall.n_obs == 119045, result.overall.n_obs
   assert approx_equal(result.bins[0].cc_anom, 0.879550520045)
+  assert approx_equal(result.bins[0].r_anom, 0.12112581576975405)
   assert result.bins[0].cc_anom_significance is True
   assert approx_equal(result.bins[0].cc_anom_critical_value, 0.0873548986308)
   assert approx_equal(result.cc_one_half_overall, 0.931122967496)
-  assert approx_equal(result.cc_one_half_sigma_tau_overall, 0.9343213900704643)
+  assert approx_equal(result.cc_one_half_sigma_tau_overall, 0.9280192675969664)
   assert approx_equal(result.bins[0].cc_one_half, 0.9969293192434535)
-  assert approx_equal(result.bins[0].cc_one_half_sigma_tau, 0.9970705896978537)
+  assert approx_equal(result.bins[0].cc_one_half_sigma_tau, 0.9968045160775104)
   assert result.bins[0].cc_one_half_significance is True
   assert result.bins[0].cc_one_half_sigma_tau_significance is True
   assert approx_equal(result.bins[-1].cc_one_half, 0.675340867481686)
-  assert approx_equal(result.bins[-1].cc_one_half_sigma_tau, 0.7360191500836607)
+  assert approx_equal(result.bins[-1].cc_one_half_sigma_tau, 0.6711734115834956)
   assert result.bins[-1].cc_one_half_significance is True
   assert result.bins[-1].cc_one_half_sigma_tau_significance is True
   #

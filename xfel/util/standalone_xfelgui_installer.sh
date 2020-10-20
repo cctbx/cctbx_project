@@ -28,28 +28,33 @@ WORKING=$1
 cd $WORKING
 
 # Download and install the latest build of DIALS
-wget -r http://cci.lbl.gov/dials/installers/current/ -A *linux* -l1
-tar -xvf cci.lbl.gov/dials/installers/current/*linux*
-DEV=`ls cci.lbl.gov/dials/installers/current | xargs python -c "import sys; print (sys.argv[1].split('-')[3])"`
-cd dials-installer-*
+wget $(curl -s https://api.github.com/repos/dials/dials/releases/latest | grep browser_download_url |grep "linux.*\.xz" |tail -1 |cut -d'"' -f 4)
+tar -xvf dials*.tar.xz
+cd dials-installer
+# Replace the conda-forge iota with the full version from github
+git clone git@github.com:ssrl-px/iota modules/iota
+rm -r conda_base/lib/python3*/site-packages/iota*
 ./install --prefix=$WORKING
 cd -
+rm -rf dials-installer dials*.tar.xz
+
+DIALS_DIR=$(ls -d dials*)
 
 # Download and install conda and mysql
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 bash Miniconda3-latest-Linux-x86_64.sh -b -p $WORKING/miniconda3
 source miniconda3/etc/profile.d/conda.sh
-conda activate $WORKING/dials-dev-$DEV/conda_base
-conda install -y mysql mysql-python -c conda-forge --no-deps
+conda activate $WORKING/$DIALS_DIR/conda_base
+conda install -y mysql mysql-connector-python mysqlclient -c conda-forge
 
 # Clean up
-rm -rf cci.lbl.gov dials-installer-*
+rm Miniconda3-latest-Linux-x86_64.sh
 
 # Create setup file
 echo "\
 #!/bin/bash
 source $WORKING/miniconda3/etc/profile.d/conda.sh
-conda activate $WORKING/dials-dev-$DEV/conda_base
-source $WORKING/dials-dev-$DEV/build/setpaths.sh" > $WORKING/setup.sh
+conda activate $WORKING/$DIALS_DIR/conda_base
+source $WORKING/$DIALS_DIR/build/setpaths.sh" > $WORKING/setup.sh
 
 echo "Download complete. Add the sources to your path with 'source $WORKING/setup.sh'"

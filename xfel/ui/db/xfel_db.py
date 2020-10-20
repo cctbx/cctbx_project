@@ -239,6 +239,17 @@ class initialize(initialize_base):
         query = "ALTER TABLE `%s_job` ADD INDEX `fk_job_dataset1_idx` (`dataset_id` ASC)"%self.params.experiment_tag
         cursor.execute(query)
 
+      # Maintain backwards compatibility with SQL tables v5: 10/09/20
+      query = "SHOW columns FROM `%s_rungroup`"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = list(zip(*columns))[0]
+      if 'wavelength_offset' not in column_names:
+        print("Upgrading to version 5.1 of mysql database schema")
+        query = "ALTER TABLE `%s_rungroup` ADD COLUMN wavelength_offset DOUBLE NULL"%self.params.experiment_tag
+        cursor.execute(query)
+
     return tables_ok
 
   def set_up_columns_dict(self, app):
@@ -318,19 +329,28 @@ class xfel_db_application(db_application):
     self.columns_dict = self.init_tables.set_up_columns_dict(self)
 
   def list_lcls_runs(self):
-    if self.params.facility.lcls.web.user is None or len(self.params.facility.lcls.web.user) == 0:
+    if self.params.facility.lcls.web.location is None or len(self.params.facility.lcls.web.location) == 0:
       from xfel.command_line.auto_submit import match_runs
       import os
       exp_prefix = self.params.facility.lcls.experiment[0:3].upper()
       xtc_dir = os.path.join(os.environ.get('SIT_PSDM_DATA', '/reg/d/psdm'), exp_prefix, self.params.facility.lcls.experiment, 'xtc')
-      return [{'run':str(r.id)} for r in match_runs(xtc_dir, False)]
+      return [{'run':str(r.id)} for r in sorted(match_runs(xtc_dir, False), key=lambda x:x.id)]
     else:
-      from xfel.xpp.simulate import file_table
-      query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s" % (self.params.facility.lcls.experiment)
-      FT = file_table(self.params.facility.lcls, query, enforce80=self.params.facility.lcls.web.enforce80, enforce81=self.params.facility.lcls.web.enforce81)
-      runs = FT.get_runs()
-      for r in runs: r['run'] = str(r['run'])
-      return runs
+      import json
+      from six.moves import urllib
+      basequery = "https://pswww.slac.stanford.edu/ws/lgbk/lgbk/%s/ws/files_for_live_mode_at_location?location=%s"
+      query = basequery%(self.params.facility.lcls.experiment, self.params.facility.lcls.web.location)
+      R = urllib.request.urlopen(query)
+      if R.getcode() != 200:
+        print ("Couldn't connect to LCLS webservice to list runs, code", R.getcode())
+        return []
+
+      j = json.loads(R.read())
+      if not j.get('success'):
+        print("Web service query to list runs failed")
+        return []
+
+      return [{'run':str(int(r['run_num']))} for r in sorted(j['value'], key=lambda x:x['run_num']) if r['all_present']]
 
   def verify_tables(self):
     return self.init_tables.verify_tables()
@@ -602,7 +622,14 @@ class xfel_db_application(db_application):
     run_ids = ["%d"%i[0] for i in cursor.fetchall()]
     if len(run_ids) == 0:
       return []
-    return self.get_all_x(Run, "run", where = "WHERE run.id IN (%s)"%",".join(run_ids))
+
+    use_ids = self.params.facility.name not in ['lcls']
+    if use_ids:
+      key = lambda x: x.id
+    else:
+      key = lambda x: int(x.run)
+
+    return sorted(self.get_all_x(Run, "run", where = "WHERE run.id IN (%s)"%",".join(run_ids)), key=key)
 
   def get_trial_tags(self, trial_id):
     tag = self.params.experiment_tag

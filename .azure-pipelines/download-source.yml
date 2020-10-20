@@ -24,7 +24,7 @@ jobs:
 
   - script: |
       cd $(Pipeline.Workspace)
-      python bootstrap.py hot update --builder=cctbx ${{ parameters.flags }}
+      python bootstrap.py hot update --builder=cctbx --python=38 ${{ parameters.flags }}
     displayName: Download sources
 
   # change optimization level (linux, macOS)

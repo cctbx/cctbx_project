@@ -142,8 +142,8 @@ def exercise():
   if not ero : raise RuntimeError('Specified residue not found')
   d = xrs_good.distances(other=xrs_refined)
   print(d.min_max_mean().as_tuple())
-  assert flex.max(d)<0.07
-  assert flex.mean(d)<0.03
+  assert flex.max(d)<0.072, flex.max(d)
+  assert flex.mean(d)<0.04, flex.mean(d)
   ero.pdb_hierarchy.write_pdb_file(file_name="refined.pdb",
     crystal_symmetry=xrs_good.crystal_symmetry())
 

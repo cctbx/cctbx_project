@@ -117,12 +117,14 @@ jobs:
          eq(variables['Build.DefinitionName'], 'CI'),
          eq(variables['Build.DefinitionName'], 'CI branch'),
          eq(variables['Build.DefinitionName'], 'XFEL CI'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI branch'),
          eq(variables['Build.DefinitionName'], 'Full'))
     continueOnError: true
 
   - script: |
       cd $(Pipeline.Workspace)
       tar -xf build.tar
+      rm build.tar
     displayName: Extract build tarball
     condition: >
       or(and(eq(variables['Build.DefinitionName'], 'Update build cache'),
@@ -130,6 +132,7 @@ jobs:
          eq(variables['Build.DefinitionName'], 'CI'),
          eq(variables['Build.DefinitionName'], 'CI branch'),
          eq(variables['Build.DefinitionName'], 'XFEL CI'),
+         eq(variables['Build.DefinitionName'], 'XFEL CI branch'),
          eq(variables['Build.DefinitionName'], 'Full'))
     continueOnError: true
     failOnStderr: false
@@ -143,6 +146,7 @@ jobs:
   # preserve permissions
   - script: |
       cd $(Pipeline.Workspace)
+      rm -fr tests
       tar -chf build.tar build
     displayName: Build tarball
     condition: >

@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
 import scitbx.sparse # import dependency
 
-import boost.python
-boost.python.import_ext("smtbx_refinement_restraints_ext")
+import boost_adaptbx.boost.python as bp
+bp.import_ext("smtbx_refinement_restraints_ext")
 
 from smtbx_refinement_restraints_ext import *
 

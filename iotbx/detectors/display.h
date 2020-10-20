@@ -264,7 +264,6 @@ public:
         int idx_i = i * raw.accessor()[1];
         for (std::size_t j=0; j< raw.accessor()[1]; j++) {
           int fast = binning * j;
-          int idx = idx_slow + fast;
           int idx_ij = idx_i + j;
           if (detector_location->is_active_area(slow, fast)) {
             //fractional input value:

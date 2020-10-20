@@ -1,4 +1,11 @@
 from __future__ import absolute_import, division, print_function
-import boost.python
-ext = boost.python.import_ext("boost_tuple_ext")
-from boost_tuple_ext import *
+from boost_adaptbx.boost.tuple import *
+import warnings
+
+warnings.warn(
+  "importing from boost.tuple is deprecated; this module will be removed shortly. "
+  "import from boost_adaptbx.boost.tuple instead. "
+  "Please see https://github.com/cctbx/cctbx_project/issues/458 for more information.",
+  FutureWarning,
+  stacklevel=2
+)

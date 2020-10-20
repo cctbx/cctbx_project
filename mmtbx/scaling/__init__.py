@@ -12,9 +12,9 @@ from libtbx import slots_getstate_setstate
 from six.moves import cStringIO as StringIO
 import sys
 
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-ext = boost.python.import_ext("mmtbx_scaling_ext")
+ext = bp.import_ext("mmtbx_scaling_ext")
 from mmtbx_scaling_ext import *
 
 

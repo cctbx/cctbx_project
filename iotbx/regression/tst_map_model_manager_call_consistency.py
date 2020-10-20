@@ -78,10 +78,11 @@ def test_01():
 
   # Args that should be in common for all calls to specific methods
   method_args_dict = {
-    'with_bounds': ['lower_bounds', 'upper_bounds'],
-    'around_model':[ 'box_cushion',],
-    'around_density':[ 'box_cushion','threshold', 'get_half_height_width'],
-    'around_mask':[ 'box_cushion',],
+    'with_bounds': ['lower_bounds', 'upper_bounds','model_can_be_outside_bounds'],
+    'around_model':[ 'box_cushion','model_can_be_outside_bounds'],
+    'around_density':[ 'box_cushion','threshold', 'get_half_height_width',
+       'model_can_be_outside_bounds'],
+    'around_mask':[ 'box_cushion','model_can_be_outside_bounds'],
     'around_unique':['box_cushion', 'target_ncs_au_model', 'regions_to_keep',
         'solvent_content', 'resolution', 'sequence', 'molecular_mass',
          'symmetry', 'chain_type', 'keep_low_density', 'soft_mask',
@@ -94,7 +95,7 @@ def test_01():
   #   specific methods
   manager_method_args_dict = {
     'with_bounds': [],
-    'around_model':['selection_string', 'select_unique_by_ncs'],
+    'around_model':['selection', 'selection_string', 'select_unique_by_ncs'],
     'around_density':['map_id'],
     'around_mask':['mask_id'],
     'around_unique':[],

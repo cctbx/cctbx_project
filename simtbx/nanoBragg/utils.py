@@ -20,6 +20,46 @@ def flexBeam_sim_colors(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                         spot_scale_override=None, background_raw_pixels=None, include_noise=False,
                         add_water = False, add_air=False, water_path_mm=0.005, air_path_mm=0, rois_perpanel=None,
                         adc_offset=0, readout_noise=3, psf_fwhm=0, gain=1, mosaicity_random_seeds=None):
+  """
+  :param CRYSTAL: dxtbx Crystal model
+  :param DETECTOR: dxtbx detector model
+  :param BEAM: dxtbx beam model
+  :param Famp: cctbx miller array (amplitudes)
+  :param energies: list of energies to simulate the scattering
+  :param fluxes:  list of pulse fluences per energy (same length as energies)
+  :param pids: panel ids to simulate on (None means all panels)
+  :param cuda: whether to use GPU (only works for nvidia builds)
+  :param oversample: pixel oversample factor (0 means nanoBragg will decide)
+  :param Ncells_abc: number of unit cells along each crystal direction in the mosaic block
+  :param mos_dom: number of mosaic domains in used to sample mosaic spread (texture)
+  :param mos_spread: mosaicity in degrees (spherical cap width)
+  :param beamsize_mm: focal size of the beam
+  :param device_Id: cuda device id (ignore if cuda=False)
+  :param omp: whether to use open mp (required open MP build configuration)
+  :param show_params: show the nanoBragg parameters
+  :param crystal_size_mm: size of the crystal (increases the intensity of the spots)
+  :param printout_pix: debug pixel position : tuple of (pixel_fast_coord, pixel_slow_coord)
+  :param time_panels: show timing info
+  :param verbose: verbosity level for nanoBragg (0-10), 0 is quiet
+  :param default_F: default amplitude value for nanoBragg
+  :param interpolate: whether to interpolate for small mosaic domains
+  :param recenter: recenter for tilted cameras, deprecated
+  :param profile: profile shape, can be : gauss, round, square, or tophat
+  :param spot_scale_override: scale the simulated scattering bythis amounth (overrides value based on crystal thickness)
+  :param background_raw_pixels: dictionary of {panel_id: raw_pixels}, add these background pixels to the simulated Bragg
+  :param include_noise: add noise to simulated pattern
+  :param add_water: add water to similated pattern
+  :param add_air: add ait to simulated pattern
+  :param water_path_mm: length of water the beam travels through
+  :param air_path_mm: length of air the beam travels through
+  :param rois_perpanel: regions of intererest on each panel
+  :param adc_offset: add this value to each pixel in simulated pattern
+  :param readout_noise: readout noise level (usually 3-5 ADU)
+  :param psf_fwhm: point spread kernel FWHM
+  :param gain: photon gain
+  :param mosaicity_random_seeds: random seeds to simulating mosaic texture
+  :return: list of [(panel_id0,simulated pattern0), (panel_id1, simulated_pattern1), ...]
+  """
 
   if pids is None:
     pids = range(len(DETECTOR))

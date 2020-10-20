@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
-import boost.python
-ext = boost.python.import_ext( "mmtbx_geometry_indexing_ext" )
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext( "mmtbx_geometry_indexing_ext" )
 from mmtbx_geometry_indexing_ext import *
 
 def filter(range, predicate):
@@ -242,4 +242,3 @@ class structure_indexer(object):
       datagen = datagen,
       maxdist = maxdist,
       )
-

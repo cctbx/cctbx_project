@@ -15,9 +15,53 @@
 typedef cctbx::miller::index<> miller_index_t;
 
 namespace sx_merging {
-  void foo2(){
-    std::cout <<"HELLO merging foo2"<< std::endl;
-  }
+
+  /**
+   * This visitor solves 2 problems:
+   * 1. Reflection tables have typed columns and the templated operator()
+   * function allows us to modify the columns without knowing the type.
+   * 2. Because of 1, we have to iterate over keys which means we
+   * cannot use the reflection table operator [] because it checks
+   * if the columns are all the same length. So here we extract the
+   * columns first, then modify them.
+   */
+  struct hkl_splitter_visitor : public boost::static_visitor<void> {
+    dials::af::reflection_table &src;
+    dials::af::reflection_table::key_type key;
+    const std::map<miller_index_t, size_t> chunk_lookup;
+    const std::vector<dials::af::reflection_table> tables;
+    dials::af::shared<miller_index_t> src_hkls;
+
+    hkl_splitter_visitor(dials::af::reflection_table &src_,
+                                   dials::af::reflection_table::key_type key_,
+                                   const std::map<miller_index_t, size_t> &chunk_lookup_,
+                                   const std::vector<dials::af::reflection_table> &tables_)
+
+        : src(src_), key(key_), chunk_lookup(chunk_lookup_), tables(tables_) {
+          src_hkls = src.get<miller_index_t>("miller_index_asymmetric");
+        }
+
+    template <typename U>
+    void operator()(const dials::af::shared<U> &other_column) const {
+      std::vector<dials::af::shared<U> > all_columns;
+      for (size_t i = 0; i < tables.size(); i++) {
+        dials::af::reflection_table::const_iterator it = tables[i].find(key);
+        DIALS_ASSERT(it != tables[i].end());
+        dials::af::shared<U> col = boost::get<dials::af::shared<U> >(it->second);
+        all_columns.push_back(col);
+      }
+
+      for (size_t i = 0; i < src.size(); ++i) {
+        miller_index_t hkl = src_hkls[i];
+        std::map<miller_index_t, size_t>::const_iterator it = chunk_lookup.find(hkl);
+        if (it == chunk_lookup.end())
+          continue;
+        size_t table_idx = it->second;
+        all_columns[table_idx].push_back(other_column[i]);
+      }
+    }
+  };
+
 
   void get_hkl_chunks_cpp(dials::af::reflection_table reflections,
                           const scitbx::af::shared<miller_index_t>& hkl_list,
@@ -29,73 +73,65 @@ namespace sx_merging {
       chunk_lookup[hkl_list[i]] = (size_t)chunk_id_list[i];
     }
 
-    SCITBX_ASSERT(reflections.contains("miller_index_asymmetric"));
-    SCITBX_ASSERT(reflections.contains("intensity.sum.value"));
-    SCITBX_ASSERT(reflections.contains("intensity.sum.variance"));
-    SCITBX_ASSERT(reflections.contains("intensity.sum.value.unmodified"));
-    SCITBX_ASSERT(reflections.contains("intensity.sum.variance.unmodified"));
-    SCITBX_ASSERT(reflections.contains("exp_id"));
-
-    scitbx::af::ref<miller_index_t> miller_index    = reflections["miller_index_asymmetric"];
-    scitbx::af::ref<double> intensity               = reflections["intensity.sum.value"];
-    scitbx::af::ref<double> variance                = reflections["intensity.sum.variance"];
-    scitbx::af::ref<double> intensity_unmodified    = reflections["intensity.sum.value.unmodified"];
-    scitbx::af::ref<double> variance_unmodified     = reflections["intensity.sum.variance.unmodified"];
-    scitbx::af::ref<std::string> experiment_id      = reflections["exp_id"];
-
-    miller_index_t* mi_ptr          = miller_index.begin();
-    double* intensity_ptr           = intensity.begin();
-    double* variance_ptr            = variance.begin();
-    double* intensity_unmodified_ptr           = intensity_unmodified.begin();
-    double* variance_unmodified_ptr            = variance_unmodified.begin();
-    std::string* experiment_id_ptr  = experiment_id.begin();
-
     int n_chunks = boost::python::len(hkl_chunks_cpp);
     std::vector<dials::af::reflection_table> tables;
     for(size_t i=0UL; i < n_chunks; ++i){
       tables.push_back(boost::python::extract<dials::af::reflection_table>(hkl_chunks_cpp[i]));
-      SCITBX_ASSERT(tables.back().contains("miller_index_asymmetric"));
-    }
-
-    // cache all columns for all hkl chunks
-    std::vector<scitbx::af::shared<miller_index_t> >  mi_cols;
-    std::vector<scitbx::af::shared<double> >          intensity_cols;
-    std::vector<scitbx::af::shared<double> >          variance_cols;
-    std::vector<scitbx::af::shared<double> >          intensity_unmodified_cols;
-    std::vector<scitbx::af::shared<double> >          variance_unmodified_cols;
-    std::vector<scitbx::af::shared<std::string> >     experiment_id_cols;
-
-    for(size_t i=0UL; i < n_chunks; ++i){
-      mi_cols.push_back(tables[i]["miller_index_asymmetric"]);
-      intensity_cols.push_back(tables[i]["intensity.sum.value"]);
-      variance_cols.push_back(tables[i]["intensity.sum.variance"]);
-      intensity_unmodified_cols.push_back(tables[i]["intensity.sum.value.unmodified"]);
-      variance_unmodified_cols.push_back(tables[i]["intensity.sum.variance.unmodified"]);
-      experiment_id_cols.push_back(tables[i]["exp_id"]);
     }
 
     // distribute reflections over chunks
-    for(size_t i=0UL; i < reflections.size(); ++i){
-      miller_index_t  hkl       = *mi_ptr++;
-      double          intensity = *intensity_ptr++;
-      double          variance  = *variance_ptr++;
-      double          intensity_unmodified = *intensity_unmodified_ptr++;
-      double          variance_unmodified  = *variance_unmodified_ptr++;
-      std::string     experiment_id = *experiment_id_ptr++;
-
-      if( 0 != chunk_lookup.count(hkl) )
-      {
-          size_t chunk_id  = chunk_lookup[hkl];
-          mi_cols[chunk_id].push_back(hkl);
-          intensity_cols[chunk_id].push_back(intensity);
-          variance_cols[chunk_id].push_back(variance);
-          intensity_unmodified_cols[chunk_id].push_back(intensity_unmodified);
-          variance_unmodified_cols[chunk_id].push_back(variance_unmodified);
-          experiment_id_cols[chunk_id].push_back(experiment_id);
-       }
+    for (dials::af::reflection_table::const_iterator it = reflections.begin(); it != reflections.end(); ++it) {
+      hkl_splitter_visitor visitor(reflections, it->first, chunk_lookup, tables);
+      it->second.apply_visitor(visitor);
     }
   }
 
+  /**
+   * This visitor solves 2 problems:
+   * 1. Reflection tables have typed columns and the templated operator()
+   * function allows us to modify the columns without knowing the type.
+   * 2. Because of 1, we have to iterate over keys which means we
+   * cannot use the reflection table operator [] because it checks
+   * if the columns are all the same length. So here we extract the
+   * columns first, then modify them.
+   */
+  struct experiment_id_splitter_visitor : public boost::static_visitor<void> {
+    dials::af::reflection_table &src;
+    dials::af::reflection_table::key_type key;
+    const std::map<std::string, size_t> chunk_lookup;
+    const std::vector<dials::af::reflection_table> tables;
+    dials::af::shared<std::string> expt_ids;
+
+    experiment_id_splitter_visitor(dials::af::reflection_table &src_,
+                                   dials::af::reflection_table::key_type key_,
+                                   const std::map<std::string, size_t> &chunk_lookup_,
+                                   const std::vector<dials::af::reflection_table> &tables_)
+
+        : src(src_), key(key_), chunk_lookup(chunk_lookup_), tables(tables_) {
+          expt_ids = src.get<std::string>("exp_id");
+        }
+
+    template <typename U>
+    void operator()(const dials::af::shared<U> &other_column) const {
+      std::vector<dials::af::shared<U> > all_columns;
+      for (size_t i = 0; i < tables.size(); i++) {
+        dials::af::reflection_table::const_iterator it = tables[i].find(key);
+        DIALS_ASSERT(it != tables[i].end());
+        dials::af::shared<U> col = boost::get<dials::af::shared<U> >(it->second);
+        all_columns.push_back(col);
+      }
+
+      for (size_t i = 0; i < src.size(); ++i) {
+        std::string experiment_id = expt_ids[i];
+        std::map<std::string, size_t>::const_iterator it = chunk_lookup.find(experiment_id);
+        DIALS_ASSERT(it != chunk_lookup.end());
+        size_t table_idx = it->second;
+        all_columns[table_idx].push_back(other_column[i]);
+      }
+    }
+  };
+
+  //template <typename T>
   void split_reflections_by_experiment_chunks_cpp(dials::af::reflection_table reflections,
                                                   const scitbx::af::shared<std::string>& exp_id_list,
                                                   const scitbx::af::shared<int>& chunk_id_list,
@@ -106,77 +142,16 @@ namespace sx_merging {
       chunk_lookup[exp_id_list[i]] = (size_t)chunk_id_list[i];
     }
 
-    SCITBX_ASSERT(reflections.contains("miller_index"));
-    SCITBX_ASSERT(reflections.contains("intensity.sum.value"));
-    SCITBX_ASSERT(reflections.contains("intensity.sum.variance"));
-    SCITBX_ASSERT(reflections.contains("intensity.sum.value.unmodified"));
-    SCITBX_ASSERT(reflections.contains("intensity.sum.variance.unmodified"));
-    SCITBX_ASSERT(reflections.contains("exp_id"));
-    SCITBX_ASSERT(reflections.contains("s1"));
-
-    scitbx::af::ref<miller_index_t> miller_index    = reflections["miller_index"];
-    scitbx::af::ref<double> intensity               = reflections["intensity.sum.value"];
-    scitbx::af::ref<double> variance                = reflections["intensity.sum.variance"];
-    scitbx::af::ref<double> intensity_unmodified    = reflections["intensity.sum.value.unmodified"];
-    scitbx::af::ref<double> variance_unmodified     = reflections["intensity.sum.variance.unmodified"];
-    scitbx::af::ref<std::string> experiment_id      = reflections["exp_id"];
-    scitbx::af::ref<scitbx::vec3<double> > s1       = reflections["s1"];
-
-    miller_index_t* mi_ptr          = miller_index.begin();
-    double* intensity_ptr           = intensity.begin();
-    double* variance_ptr            = variance.begin();
-    double* intensity_unmodified_ptr = intensity_unmodified.begin();
-    double* variance_unmodified_ptr  = variance_unmodified.begin();
-    std::string* experiment_id_ptr  = experiment_id.begin();
-    scitbx::vec3<double>* s1_ptr    = s1.begin();
-
     int n_chunks = boost::python::len(reflection_chunks);
     std::vector<dials::af::reflection_table> tables;
     for(size_t i=0UL; i < n_chunks; ++i){
       tables.push_back(boost::python::extract<dials::af::reflection_table>(reflection_chunks[i]));
-      SCITBX_ASSERT(tables.back().contains("miller_index"));
-    }
-
-    // cache all columns for all hkl chunks
-    std::vector<scitbx::af::shared<miller_index_t> >  mi_cols;
-    std::vector<scitbx::af::shared<double> >          intensity_cols;
-    std::vector<scitbx::af::shared<double> >          variance_cols;
-    std::vector<scitbx::af::shared<double> >          intensity_unmodified_cols;
-    std::vector<scitbx::af::shared<double> >          variance_unmodified_cols;
-    std::vector<scitbx::af::shared<std::string> >     experiment_id_cols;
-    std::vector<scitbx::af::shared<scitbx::vec3<double> > >     s1_cols;
-
-    for(size_t i=0UL; i < n_chunks; ++i){
-      mi_cols.push_back(tables[i]["miller_index"]);
-      intensity_cols.push_back(tables[i]["intensity.sum.value"]);
-      variance_cols.push_back(tables[i]["intensity.sum.variance"]);
-      intensity_unmodified_cols.push_back(tables[i]["intensity.sum.value.unmodified"]);
-      variance_unmodified_cols.push_back(tables[i]["intensity.sum.variance.unmodified"]);
-      experiment_id_cols.push_back(tables[i]["exp_id"]);
-      s1_cols.push_back(tables[i]["s1"]);
     }
 
     // distribute reflections over chunks
-    for(size_t i=0UL; i < reflections.size(); ++i){
-      miller_index_t  hkl             = *mi_ptr++;
-      double          intensity       = *intensity_ptr++;
-      double          variance        = *variance_ptr++;
-      double          intensity_unmodified = *intensity_unmodified_ptr++;
-      double          variance_unmodified  = *variance_unmodified_ptr++;
-      std::string     experiment_id   = *experiment_id_ptr++;
-      scitbx::vec3<double> s1         = *s1_ptr++;
-
-      if( 0 != chunk_lookup.count(experiment_id) )
-      {
-          size_t chunk_id = chunk_lookup[experiment_id];
-          mi_cols[chunk_id].push_back(hkl);
-          intensity_cols[chunk_id].push_back(intensity);
-          variance_cols[chunk_id].push_back(variance);
-          intensity_unmodified_cols[chunk_id].push_back(intensity_unmodified);
-          variance_unmodified_cols[chunk_id].push_back(variance_unmodified);
-          experiment_id_cols[chunk_id].push_back(experiment_id);
-          s1_cols[chunk_id].push_back(s1);
-       }
+    for (dials::af::reflection_table::const_iterator it = reflections.begin(); it != reflections.end(); ++it) {
+      experiment_id_splitter_visitor visitor(reflections, it->first, chunk_lookup, tables);
+      it->second.apply_visitor(visitor);
     }
   }
 
@@ -219,10 +194,7 @@ namespace boost_python { namespace {
   void
   sx_merging_init_module() {
     using namespace boost::python;
-    typedef return_value_policy<return_by_value> rbv;
-    typedef default_call_policies dcp;
 
-    def("foo2",&sx_merging::foo2);
     def("get_hkl_chunks_cpp",&sx_merging::get_hkl_chunks_cpp);
     def("isigi_dict_to_reflection_table",&sx_merging::isigi_dict_to_reflection_table);
     def("split_reflections_by_experiment_chunks_cpp",&sx_merging::split_reflections_by_experiment_chunks_cpp);

@@ -3,7 +3,7 @@ from six.moves import range
 def number_from_string(s):
   flds = s.split("/")
   if (len(flds) == 2):
-    from boost.rational import int as rint
+    from boost_adaptbx.boost.rational import int as rint
     return rint(int(flds[0]), int(flds[1]))
   return (eval(s)+0)*1
 

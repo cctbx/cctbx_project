@@ -18,7 +18,6 @@ namespace scitbx { namespace math {
     for(std::size_t i_p=0;i_p<points.size();i_p++) {
       accumulate(points[i_p]);
     }
-    sym_mat3<FloatType> it = accumulate.inertia_tensor();
     result = accumulate.inertia_tensor(pivot);
   }
 

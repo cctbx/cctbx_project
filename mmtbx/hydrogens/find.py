@@ -270,13 +270,13 @@ def run(fmodel, model, log, params = None):
   print_statistics.make_sub_header("find peak-candidates", out = log)
   peaks = find_hydrogen_peaks(
     fmodel = fmodel,
-    pdb_atoms = model.pdb_atoms,
+    pdb_atoms = model.get_atoms(),
     params = params,
     log = log)
   waters_and_peaks = extract_hoh_peaks(
     peaks = peaks,
     pdb_hierarchy = model.get_hierarchy(),
-    pdb_atoms = model.pdb_atoms,
+    pdb_atoms = model.get_atoms(),
     xray_structure = model.get_xray_structure())
   print_statistics.make_sub_header("6D rigid body fit of HOH", out = log)
   print("Fit quality:", file=log)
@@ -934,7 +934,7 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
   assert_water_is_consistent(model)
   if False:
     model.idealize_h_minimization()
-    model.get_hierarchy(sync_with_xray_structure=True)
+    model.get_hierarchy()
     mmtbx.utils.assert_model_is_consistent(model)
     assert_water_is_consistent(model)
   return model

@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
-import boost.python
+import boost_adaptbx.boost.python as bp
 from six.moves import range
-ext = boost.python.import_ext("mmtbx_f_model_ext")
+ext = bp.import_ext("mmtbx_f_model_ext")
 from cctbx import miller
 
 class init(object): # XXX PVA: Why Fobs, HL and r_free_flags are not here?

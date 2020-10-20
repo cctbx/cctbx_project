@@ -23,6 +23,10 @@ facility {
       .type = str
       .help = Experiment name, eg cxid9114
     web {
+      location = "SLAC"
+        .type = str
+        .help = Where to look for XTC streams. Can be SLAC, SLACFFB (active experiment \
+                only) or NERSC (contact authors to arrange file mover for NERSC).
       user = ""
         .type = str
         .help = Username for LCLS run database web service
@@ -159,7 +163,7 @@ def save_cached_settings(params):
 
   try:
     f = open(settings_file.encode('utf8'), 'wb')
-    f.write(diff_phil.as_str())
+    f.write(diff_phil.as_str().encode('utf8'))
     f.close()
   except IOError:
     raise Sorry('Unable to write %s.' % settings_file)

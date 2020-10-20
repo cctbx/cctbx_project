@@ -5,7 +5,7 @@ import sys, os
 import datetime
 from time import time
 from libtbx.utils import Sorry, multi_out, null_out
-from libtbx import Auto, easy_pickle, group_args
+from libtbx import easy_pickle, group_args
 import libtbx.load_env
 from scitbx.array_family import flex
 from six.moves import cStringIO as StringIO
@@ -112,7 +112,7 @@ use_hydrogens_in_minimization = False
 reference_map_resolution = 5
   .type = float
   .expert_level = 2
-number_of_refinement_cycles = Auto
+number_of_refinement_cycles = 5
   .type = int
   .expert_level = 1
 cycles_to_converge = 2
@@ -215,6 +215,7 @@ class model_idealization():
     params.pdb_interpretation.secondary_structure = self.params.secondary_structure
     self.params_for_model = params
     self.model.set_pdb_interpretation_params(params)
+    self.model.process_input_model(make_restraints=True)
 
 
     self.original_hierarchy = self.model.get_hierarchy().deep_copy() # original pdb_h, without any processing
@@ -501,8 +502,7 @@ class model_idealization():
 
   def _update_model_from_model_h(self):
     self.model.set_sites_cart(
-        sites_cart = self.model_h.get_hierarchy().select(~self.model_h.get_hd_selection()).atoms().extract_xyz(),
-        update_grm = True)
+      sites_cart = self.model_h.get_hierarchy().select(~self.model_h.get_hd_selection()).atoms().extract_xyz())
     self.model.set_sites_cart_from_hierarchy(multiply_ncs=True)
 
   def idealize_rotamers(self):
@@ -516,6 +516,7 @@ class model_idealization():
     self._update_model_h()
     rotman = mmtbx.idealized_aa_residues.rotamer_manager.load(
           rotamers="favored")
+    self.model_h.process_input_model(make_restraints=True)
     o = mmtbx.refinement.real_space.side_chain_fit_evaluator(
       pdb_hierarchy      = self.model_h.get_hierarchy(),
       crystal_symmetry   = self.model.crystal_symmetry(),
@@ -546,7 +547,7 @@ class model_idealization():
     self._setup_model_h()
     self.model.set_restraint_objects(self.model_h.get_restraint_objects())
 
-    self.model.get_restraints_manager()
+    self.model.process_input_model(make_restraints=True)
     # set SS restratins
     self.set_ss_restraints(self.ann)
 
@@ -985,8 +986,8 @@ def get_map_from_map(map_file_object, params, xrs, log):
 
   if params.mask_and_he_map:
     print("Masking and histogram equalizing...", file=log)
-    import boost.python
-    cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
+    import boost_adaptbx.boost.python as bp
+    cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
     xrs_p1 = xray_structure.expand_to_p1(sites_mod_positive=True)
     radii = flex.double(xrs_p1.scatterers().size(), 5.0)
     mask = cctbx_maptbx_ext.mask(

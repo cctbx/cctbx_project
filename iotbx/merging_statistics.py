@@ -22,6 +22,7 @@ citations_str = """\
   Diederichs K & Karplus PA (1997) Nature Structural Biology 4:269-275
     (with erratum in: Nat Struct Biol 1997 Jul;4(7):592)
   Weiss MS (2001) J Appl Cryst 34:130-135.
+  Dauter, Z. (2006). Acta Cryst. D62, 867-876.
   Karplus PA & Diederichs K (2012) Science 336:1030-3."""
 
 sigma_filtering_phil_str = """
@@ -221,6 +222,10 @@ class merging_stats(object):
       return_n_pairs=True)
     self.cc_anom_significance = None
     self.cc_anom_critical_value = None
+    try:
+      self.r_anom = array.r_anom()
+    except AssertionError:
+      self.r_anom = None
     array = array.customized_copy(anomalous_flag=anomalous).map_to_asu()
     array = array.sort("packed_indices")
     filter = filter_intensities_by_sigma(
@@ -361,7 +366,7 @@ class merging_stats(object):
     else:
       cc_one_half = self.cc_one_half
       cc_one_half_significance = self.cc_one_half_significance
-    return "%6.2f %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %s  %s  %s  % 5.3f%s  % 5.3f%s" % (
+    return "%6.2f %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %s  %s  %s  %s  % 5.3f%s  % 5.3f%s" % (
       self.d_max,
       self.d_min,
       self.n_obs,
@@ -373,6 +378,7 @@ class merging_stats(object):
       format_value("% 7.3f", self.r_merge),
       format_value("% 7.3f", self.r_meas),
       format_value("% 7.3f", self.r_pim),
+      format_value("% 7.3f", self.r_anom) if self.r_anom is not None else "",
       cc_one_half,
       "*" if cc_one_half_significance else "",
       self.cc_anom,
@@ -423,6 +429,7 @@ class merging_stats(object):
       'r_merge': self.r_merge,
       'r_meas': self.r_meas,
       'r_pim': self.r_pim,
+      'r_anom': self.r_anom,
       'cc_one_half': self.cc_one_half,
       'cc_one_half_significance': self.cc_one_half_significance,
       'cc_one_half_critical_value': self.cc_one_half_critical_value,
@@ -450,7 +457,7 @@ class merging_stats(object):
   def table_data(self):
     table = [(1/self.d_min**2), self.n_obs, self.n_uniq, self.mean_redundancy,
             self.completeness*100, self.i_mean, self.i_over_sigma_mean,
-            self.r_merge, self.r_meas, self.r_pim, self.cc_one_half,
+            self.r_merge, self.r_meas, self.r_pim, self.r_anom, self.cc_one_half,
             self.cc_one_half_significance, self.cc_one_half_critical_value,
             self.cc_anom]
     if (self.cc_work is not None):
@@ -603,7 +610,7 @@ class dataset_statistics(object):
     self.bins = []
     title = "Intensity merging statistics"
     column_labels = ["1/d**2","N(obs)","N(unique)","Redundancy","Completeness",
-        "Mean(I)", "Mean(I/sigma)", "R-merge", "R-meas", "R-pim", "CC1/2",
+        "Mean(I)", "Mean(I/sigma)", "R-merge", "R-meas", "R-pim", "R-anom", "CC1/2",
         "CC(anom)"]
     graph_names = ["Reflection counts", "Redundancy", "Completeness",
         "Mean(I)", "Mean(I/sigma)", "R-factors", "CC1/2", "CC(anom)"]
@@ -726,7 +733,7 @@ class dataset_statistics(object):
     print("", file=out)
     print("""\
   Statistics by resolution bin:
- d_max  d_min   #obs  #uniq   mult.  %%comp       <I>  <I/sI>    r_mrg   r_meas    r_pim   %scc1/2   cc_ano""" %(
+ d_max  d_min   #obs  #uniq   mult.  %%comp       <I>  <I/sI>    r_mrg   r_meas    r_pim   r_anom   %scc1/2   cc_ano""" %(
       ' ' if self.overall.cc_one_half_significance is not None else ''), file=out)
     for bin_stats in self.bins :
       print(bin_stats.format(), file=out)

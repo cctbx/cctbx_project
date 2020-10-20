@@ -621,20 +621,16 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         serial_number.append((sn,i))
         coordinates_present.append(
           self.cif_block.get('_struct_ncs_oper.code')[i] == 'given')
-        if len(ncs_oper) > 1:
-          r = [(self.cif_block.get('_struct_ncs_oper.matrix[%s][%s]' %(x,y))[i])
-            for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
-        else:
-          r = [(self.cif_block.get('_struct_ncs_oper.matrix[%s][%s]' %(x,y)))
-            for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
+        r = [(self.cif_block.get('_struct_ncs_oper.matrix[%s][%s]' %(x,y)))
+          for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
+        if not isinstance(r[0], string_types):
+          r = [elem[i] for elem in r]
         try:
           rots.append(matrix.sqr([float(r_elem) for r_elem in r]) )
-          if len(ncs_oper) > 1:
-            t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x)[i])
-              for x in '123']
-          else:
-            t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x))
-              for x in '123']
+          t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x))
+            for x in '123']
+          if not isinstance(t[0], string_types):
+            t = [elem[i] for elem in t]
           trans.append(matrix.col([float(t_elem) for t_elem in t]))
         except ValueError:
           raise Sorry("Error in _struct_ncs information. Likely '?' instead of a number.")

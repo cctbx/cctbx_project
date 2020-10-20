@@ -198,6 +198,7 @@ general_tests = [
   "$D/regression/tst_real_space_correlation.py",
   "$D/regression/tst_examples.py",
   "$D/regression/tst_sort_hetatms.py",
+  "$D/regression/tst_schrodinger_interface.py",
   # real-space tools
   "$D/refinement/real_space/tst_aa_residue_axes_and_clusters.py",
   "$D/refinement/real_space/tst_fit_residue_0.py",
@@ -301,7 +302,7 @@ general_tests = [
   "$D/regression/model_idealization/tst_withmap_06.py",
   "$D/regression/model_idealization/tst_ligands.py",
   "$D/regression/model_idealization/tst_with_mtz.py",
-  "$D/regression/model_idealization/tst_ext_map_01.py",
+  # "$D/regression/model_idealization/tst_ext_map_01.py",
   "$D/utils/tst_switch_rotamers.py",
   "$D/refinement/tst_occupancy_selections.py",
   "$D/regression/ncs/tst_minimization_ncs_constraints.py",
@@ -337,7 +338,6 @@ general_tests = [
   "$D/regression/tst_cis_trans_peptide_link.py",
   "$D/regression/tst_apply_cif_restraints.py",
   "$D/regression/tst_multi_residue_class.py",
-  "$D/regression/tst_flip_symmetric.py",
   "$D/regression/tst_superpose.py",
   "$D/monomer_library/tst_server.py",
   #
@@ -380,6 +380,8 @@ general_tests = [
   #
   "$D/regression/tst_scattering_type_registry.py",
   "$D/atomic_environment_vectors/tst.py",
+  #
+  "$D/building/ligands/tst_00.py",
   ]
 
 probe_tests = [

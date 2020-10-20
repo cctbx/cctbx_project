@@ -5,9 +5,12 @@ import os, sys
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry
 from mmtbx.model import manager as model_manager
+from iotbx.data_manager import DataManager
 from iotbx import mrcfile
 
-def exercise(file_name, out = sys.stdout):
+def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
+    split_pdb_file_name = None,
+    out = sys.stdout):
 
   # Set up source data
 
@@ -68,9 +71,84 @@ def exercise(file_name, out = sys.stdout):
           map_manager =  m,
           model     = model.deep_copy(),
     )
-  print ("ORIGINALZZ",mam)
+
+  # Read in map and model and split up
+  dm = DataManager()
+  aa = dm.get_map_model_manager(model_file=pdb_file_name,
+    map_files=map_file_name)
+  bb = dm.get_map_model_manager(model_file=split_pdb_file_name,
+    map_files=map_file_name)
+
+  for selection_method in ['by_chain', 'by_segment','supplied_selections',
+      'boxes']:
+    if selection_method == 'boxes':
+      choices = [True, False]
+    else:
+      choices = [True]
+    if selection_method == 'by_chain':
+      mask_choices = [True,False]
+    else:
+      mask_choices = [False]
+    for select_final_boxes_based_on_model in choices:
+      for skip_empty_boxes in choices:
+        for mask_choice in mask_choices:
+          if mask_choice: # use split model
+            a=bb.deep_copy()
+          else: # usual
+            a=aa.deep_copy()
+          print ("\nRunning split_up_map_and_model with \n"+
+            "select_final_boxes_based_on_model="+
+           "%s   skip_empty_boxes=%s selection_method=%s" %(
+            select_final_boxes_based_on_model,skip_empty_boxes,selection_method))
+
+          if selection_method == 'by_chain':
+            print ("Mask around unused atoms: %s" %(mask_choice))
+            box_info = a.split_up_map_and_model_by_chain(
+              mask_around_unselected_atoms=mask_choice)
+          elif selection_method == 'by_segment':
+            box_info = a.split_up_map_and_model_by_segment()
+          elif selection_method == 'supplied_selections':
+            selection = a.model().selection('all')
+            box_info = a.split_up_map_and_model_by_supplied_selections(
+              selection_list = [selection])
+          elif selection_method == 'boxes':
+            box_info = a.split_up_map_and_model_by_boxes(
+              skip_empty_boxes = skip_empty_boxes,
+              select_final_boxes_based_on_model =
+                select_final_boxes_based_on_model)
+          print (selection_method,skip_empty_boxes,
+              len(box_info.selection_list),
+              box_info.selection_list[0].count(True))
+          assert (selection_method,skip_empty_boxes,
+              len(box_info.selection_list),
+              box_info.selection_list[0].count(True)) in [
+                ('by_chain',True,3,19),
+                ("by_chain",True,1,86,),
+                ("by_segment",True,1,86,),
+                ("supplied_selections",True,1,86,),
+                ("boxes",True,11,7,),
+                ("boxes",False,36,0,),
+                ("boxes",True,13,1,),
+                ("boxes",False,36,0,),
+                ], 'failed to find %s %s %s %s' % (
+                    selection_method,
+                    skip_empty_boxes,
+                    len(box_info.selection_list),
+                    box_info.selection_list[0].count(True))
+
+          # Change the coordinates in one box
+          small_model = box_info.mmm_list[0].model()
+          small_sites_cart = small_model.get_sites_cart()
+          from scitbx.matrix import col
+          small_sites_cart += col((1,0,0))
+          small_model.set_crystal_symmetry_and_sites_cart(
+            sites_cart = small_sites_cart,
+            crystal_symmetry = small_model.crystal_symmetry())
+          # Put everything back together
+          a.merge_split_maps_and_models(box_info = box_info)
+
+
   mam.box_all_maps_around_model_and_shift_origin()
-  print ("boxedORIGINALZZ",mam)
 
   shifted_crystal_symmetry = mam.model().crystal_symmetry()
   shifted_model = mam.model()
@@ -251,13 +329,23 @@ def exercise(file_name, out = sys.stdout):
 
 if __name__ == "__main__":
   args = sys.argv[1:]
-  if not args:
+  if not args or len(args)<3:
     import libtbx.load_env
     file_name = libtbx.env.under_dist(
       module_name = "iotbx",
       path = "ccp4_map/tst_input.map")
-    args = [file_name]
+    split_pdb_file_name = libtbx.env.under_dist(
+      module_name = "iotbx",
+      path = "regression/data/non_zero_origin_model_split.pdb")
+    pdb_file_name = libtbx.env.under_dist(
+      module_name = "iotbx",
+      path = "regression/data/non_zero_origin_model.pdb")
+    map_file_name = libtbx.env.under_dist(
+      module_name = "iotbx",
+      path = "regression/data/non_zero_origin_map.ccp4")
+    args = [file_name,pdb_file_name, map_file_name,split_pdb_file_name]
   if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
-    exercise(file_name = args[0])
+    exercise(file_name = args[0], pdb_file_name=args[1], map_file_name=args[2],
+     split_pdb_file_name=args[3])
   else:
     print('chem_data is not available, skipping')

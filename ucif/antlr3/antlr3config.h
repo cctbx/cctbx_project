@@ -2,7 +2,9 @@
 /* so as to avoid the need to run configure.  */
 
 /* Define if ANTLR debugger not required */
+#ifndef ANTLR3_NODEBUGGER
 #define ANTLR3_NODEBUGGER
+#endif
 
 #if (defined(__x86_64__) || defined(_WIN64))
 /* Define if 64 bit mode required */

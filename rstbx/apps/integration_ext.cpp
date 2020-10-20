@@ -12,9 +12,6 @@ namespace rstbx { namespace integration { namespace ext {
     {
       using namespace boost::python;
 
-      typedef return_value_policy<return_by_value> rbv;
-      typedef default_call_policies dcp;
-
       class_<simple_integration>(
         "simple_integration", init<>())
          .enable_pickling()
