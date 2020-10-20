@@ -134,8 +134,7 @@ class Manager(object):
     multiqueue = MultiQueue()
     QManager.register( "get", lambda: multiqueue )
 
-    import socket
-    import string
+    import socket, string
     import random
 
     manager = QManager(

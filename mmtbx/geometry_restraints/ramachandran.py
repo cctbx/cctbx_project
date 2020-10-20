@@ -325,12 +325,15 @@ class ramachandran_manager(object):
     return new_manager
 
   def extract_proxies(self, hierarchy):
-    from phenix.programs.phi_psi_2 import results_manager as pp2
-    phi_psi_2_motifs = pp2.get_overall_motif_count_and_output(
-      None,
-      self.hierarchy,
-      return_rama_restraints=True,
-      )
+    def _get_motifs():
+      from phenix.programs.phi_psi_2 import results_manager as pp2
+      phi_psi_2_motifs = pp2.get_overall_motif_count_and_output(
+        None,
+        self.hierarchy,
+        return_rama_restraints=True,
+        )
+      return phi_psi_2_motifs
+    phi_psi_2_motifs = None
     favored = ramalyze.RAMALYZE_FAVORED
     allowed = ramalyze.RAMALYZE_ALLOWED
     outlier = ramalyze.RAMALYZE_OUTLIER
@@ -403,6 +406,7 @@ class ramachandran_manager(object):
         self.append_emsley8k_proxies(proxy, n_seq)
       elif r_type == 'phi_psi_2':
         from phenix.pdb_tools.phi_psi_2_data import get_phi_psi_key_for_rama_proxy
+        if phi_psi_2_motifs is None: phi_psi_2_motifs = _get_motifs()
         if(  r_eval is favored): strategy=self.params.phi_psi_2.favored_strategy
         elif(r_eval is allowed): strategy=self.params.phi_psi_2.allowed_strategy
         elif(r_eval is outlier): strategy=self.params.phi_psi_2.outlier_strategy
