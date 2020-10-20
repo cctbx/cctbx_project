@@ -224,6 +224,7 @@ myHKLview.SetSceneNbins(5)
 """
 
 
+from iotbx.reflection_file_reader import any_reflection_file
 from cctbx.miller import display2 as display
 from crys3d.hklview import jsview_3d as view_3d
 from crys3d.hklview.jsview_3d import ArrayInfo
@@ -707,7 +708,6 @@ class HKLViewFrame() :
     ret = False
     if (file_name != ""):
       self.mprint("Reading file...")
-      from iotbx.reflection_file_reader import any_reflection_file
       self.viewer.isnewfile = True
       #self.params.NGL_HKLviewer.mergedata = None
       self.params.NGL_HKLviewer.viewer.scene_id = None
@@ -726,16 +726,14 @@ class HKLViewFrame() :
       self.loaded_file_name = ""
       try :
         hkl_file = any_reflection_file(file_name)
-        arrays = hkl_file.as_miller_arrays(merge_equivalents=False,
-          )#observation_type_callback=misc_dialogs.get_shelx_file_data_type)
-        #arrays = f.file_server.miller_arrays
         if hkl_file._file_type == 'cif':
+          # use new cif label parser for reflections
+          arrays = hkl_file.file_content().as_miller_arrays(merge_equivalents=False, style="new") 
           # sanitise labels by removing redundant strings.
           # remove the data name of this cif file from all labels
           unwantedstrings = list( hkl_file._file_content.builder._model.keys_lower.keys())
           # remove "_refln." from all labels
           unwantedstrings.append("_refln.")
-          unwantedstrings.append("wavelength_id")
           for arr in arrays:
             if len(arr.info().labels):
               newlabels = []
@@ -743,14 +741,16 @@ class HKLViewFrame() :
                 found = False
                 for s in unwantedstrings:
                   if s in label:
-                    label = label.replace(s, "")
-                    if len(label) > 0 and "=" not in label :
-                      newlabels.append(label)
+                    newlabel = label.replace(s, "")
                     found = True
-                    continue
-              if found:
+                    if len(newlabel) > 0:
+                      newlabels.append(newlabel)
+                    break
+                if not found:
+                  newlabels.append(label)
                 arr.info().labels = newlabels
-
+        else: # some other type of reflection file than cif
+          arrays = hkl_file.as_miller_arrays(merge_equivalents=False)
         if hkl_file._file_type == 'ccp4_mtz':
           self.hklfile_history = list(hkl_file._file_content.history())
           self.loaded_file_name = file_name
@@ -765,7 +765,7 @@ class HKLViewFrame() :
                 self.mprint("tNCS vector found in header of mtz file: %s" %str(svec) )
       except Exception as e :
         self.NewFileLoaded=False
-        self.mprint(to_str(e) + "".join(traceback.format_stack(limit=20)) )
+        self.mprint("".join(traceback.format_tb(e.__traceback__ )) + e.__repr__())
         arrays = []
       valid_arrays = []
       self.viewer.array_infostrs = []
