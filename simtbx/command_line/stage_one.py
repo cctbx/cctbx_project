@@ -272,7 +272,7 @@ class Script:
           os.makedirs(images_outdir)
         img_path = os.path.join(images_outdir, "%s_%s_%d.h5" % (self.params.output.tag.images, basename, i_processed))
         panel_Xdim, panel_Ydim = exper.detector[0].get_image_size()
-        img_shape = len(exper.detector), panel_Xdim, panel_Ydim
+        img_shape = len(exper.detector), panel_Ydim, panel_Xdim
         writer_args = {"filename": img_path , 
             "image_shape": img_shape, 
             "num_images":1 if self.params.output.save.images=="model" else 3, 

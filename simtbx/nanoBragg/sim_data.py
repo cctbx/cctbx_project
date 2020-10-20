@@ -5,6 +5,7 @@ from simtbx.nanoBragg import shapetype, nanoBragg
 from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
 from simtbx.nanoBragg.nanoBragg_beam import NBbeam
 from copy import deepcopy
+from scitbx.matrix import sqr
 
 
 def Amatrix_dials2nanoBragg(crystal):
@@ -15,7 +16,9 @@ def Amatrix_dials2nanoBragg(crystal):
   :return: Amatrix as a tuple
   """
   sgi = crystal.get_space_group().info()
-  if sgi.type().lookup_symbol().startswith('C'):
+  cb_op = sgi.change_of_basis_op_to_primitive_setting()
+  dtrm = sqr(cb_op.c().r().as_double()).determinant()
+  if not dtrm == 1:
     raise ValueError('You need to convert your crystal model to its primitive setting first')
   Amatrix = sqr(crystal.get_A()).transpose()
   return Amatrix

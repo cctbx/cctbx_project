@@ -1239,8 +1239,12 @@ void diffBragg::add_diffBragg_spots()
     //        only_save_omega_kahn, complex_miller, Fhkl, Fhkl2, oversample_omega) \
     //    default(none)
     //for (int i2=0; i2 < Npix ; i2++ ){
+    int _printout_fpixel = printout_fpixel;
+    int _printout_spixel = printout_spixel;
+    bool _printout = printout;
+    double _default_F = default_F;
     # pragma omp parallel for \
-      shared(printout_fpixel, printout_spixel, printout, default_F) \
+      shared(_printout_fpixel, _printout_spixel, _printout, _default_F) \
       collapse(2)
     for(int _spixel=roi_ymin;_spixel <= spixel_max;++_spixel)
     {
@@ -1489,7 +1493,7 @@ void diffBragg::add_diffBragg_spots()
 
                                 //Npasses += 1;
                                 /* structure factor of the unit cell */
-                                double _F_cell = default_F;
+                                double _F_cell = _default_F;
                                 double _F_cell2 = 0;
 
                                 if ( (_h0<=h_max) && (_h0>=h_min) && (_k0<=k_max) && (_k0>=k_min) && (_l0<=l_max) && (_l0>=l_min)  ) {
@@ -1705,9 +1709,9 @@ void diffBragg::add_diffBragg_spots()
                 /* end of sub-pixel y loop */
             //}
             /* end of sub-pixel x loop */
-            if( printout && _i_step==0 )
+            if( _printout && _i_step==0 )
             {
-                if((_fpixel==printout_fpixel && _spixel==printout_spixel) || printout_fpixel < 0)
+                if((_fpixel==_printout_fpixel && _spixel==_printout_spixel) || _printout_fpixel < 0)
                 {
                     //twotheta = atan2(sqrt(_pixel_pos[2]*_pixel_pos[2]+_pixel_pos[3]*_pixel_pos[3]),_pixel_pos[1]);
                     //test = -1; sin(twotheta/2.0)/(lambda0*1e10);
@@ -1717,7 +1721,7 @@ void diffBragg::add_diffBragg_spots()
                     printf(" F_cell=%g  F_latt=%g   I = %g\n", _F_cell,_F_latt,_I);
                     printf("I/steps %15.10g\n", _I/steps);
                     printf("omega   %15.10g\n", _omega_pixel);
-                   printf("default_F= %f\n", default_F);
+                   printf("default_F= %f\n", _default_F);
                 }
             }
 

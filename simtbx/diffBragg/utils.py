@@ -1111,7 +1111,7 @@ def load_panel_group_file(panel_group_file):
     return groups
 
 
-def spots_from_pandas_and_experiment(experiment_list, pandas_pickle, mtz_file=None, mtz_col=None,
+def spots_from_pandas_and_experiment(expt, pandas_pickle, mtz_file=None, mtz_col=None,
                                      spectrum_file=None, total_flux=1e12, pink_stride=1,
                                      beamsize_mm=0.001, oversample=0, d_max=999, d_min=1.5, defaultF=1e3,
                                      cuda=False, ngpu=1, time_panels=True,
@@ -1122,17 +1122,15 @@ def spots_from_pandas_and_experiment(experiment_list, pandas_pickle, mtz_file=No
     from simtbx.nanoBragg.utils import flexBeam_sim_colors
 
     print("Loading experiment")
-    if isinstance(experiment_list, str):
-        El = ExperimentListFactory.from_json_file(experiment_list, check_format=save_expt_data)
+    if isinstance(expt, str):
+        El = ExperimentListFactory.from_json_file(expt, check_format=save_expt_data)
+        expt = El[0]
     else:
-        assert "ExperimentList" in str(type(experiment_list))
-        El = experiment_list
+        assert "Experiment" in str(type(expt))
     print("Done loading!")
-    assert len(El) == 1
-    expt = El[0]
     df = pandas.read_pickle(pandas_pickle)
     assert len(df) == 1
-    Ncells_abc = tuple(map(round, df.ncells.values[0]))
+    Ncells_abc = tuple(map(lambda x : int(round(x)), df.ncells.values[0]))
     spot_scale = df.spot_scales.values[0]
     if mtz_file is not None:
         assert mtz_col is not None
@@ -1144,10 +1142,14 @@ def spots_from_pandas_and_experiment(experiment_list, pandas_pickle, mtz_file=No
     if spectrum_file is not None:
         fluxes, energies = load_spectra_file(spectrum_file, total_flux=total_flux, pinkstride=pink_stride)
     else:
-        fluxes = [total_flux]
-        energies = [ENERGY_CONV/expt.beam.get_wavelength()]
+        fluxes = np.array([total_flux])
+        energies = np.array([ENERGY_CONV/expt.beam.get_wavelength()])
     lam0 = df.lam0.values[0]
     lam1 = df.lam1.values[0]
+    if lam0 == -1:
+        lam0 = 0
+    if lam1 == -1:
+        lam1 = 1
     wavelens = ENERGY_CONV / energies
     wavelens = lam0 + lam1*wavelens
     energies = ENERGY_CONV / wavelens
@@ -1197,7 +1199,7 @@ def save_model_to_image(expt, model_results, output_img_file, save_experiment_da
     panelX, panelY = expt.detector[0].get_image_size()
     from simtbx.nanoBragg.utils import H5AttributeGeomWriter
 
-    with H5AttributeGeomWriter(filename=output_img_file, image_shape=(npanels, panelX, panelY), num_images=n_img,
+    with H5AttributeGeomWriter(filename=output_img_file, image_shape=(npanels, panelY, panelX), num_images=n_img,
                                beam=expt.beam, detector=expt.detector) as writer:
         writer.add_image(ordered_img)
         if save_experiment_data:
@@ -1265,6 +1267,32 @@ def indexed_from_model(strong_refls, model_images, expt, thresh=1, tolerance=0.3
             Rindexed.extend(Rstrong)
 
     return Rindexed
+
+
+def remove_multiple_indexed(R):
+    """R: dials reflection table instance"""
+    import pandas
+    from dials.array_family import flex
+    obs = R['xyzobs.px.value']
+    cal = R['xyzcal.px']
+    dists = (obs-cal).norms()
+    h,k,l = zip(*R['miller_index'])
+    df = pandas.DataFrame({"dist": dists, "h":h, "k":k, "l":l})
+    gb = df.groupby(["h","k","l"])
+    hkls = set(R["miller_index"])
+    selected_rows = []
+    for hkl in hkls:
+        g = gb.get_group(hkl)
+        print( hkl, len(g))
+        if len(g) > 1:
+            row = g.iloc[g.dist.argmin()].name
+        else:
+            row = g.iloc[0].name
+        selected_rows.append(row)
+
+    sel = flex.bool([i in selected_rows for i in range(len(R))])
+    R = R.select(sel)
+    return R
 
 #def tally_local_statistics(spot_rois):
 #    # tally up all miller indices in this refinement
