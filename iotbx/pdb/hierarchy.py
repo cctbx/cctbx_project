@@ -913,7 +913,7 @@ class _():
 
   def get_auth_asym_id(self, chain):
     auth_asym_id = chain.id
-    if chain.atoms()[0].segid.strip() != '':
+    if len(chain.atoms()[0].segid.strip()) > len(auth_asym_id):
       auth_asym_id = chain.atoms()[0].segid.strip()
     if auth_asym_id.strip() == '':
       # chain id is empty, segid is empty, just duplicate label_asym_id
