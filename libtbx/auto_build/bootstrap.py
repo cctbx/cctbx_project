@@ -2692,7 +2692,7 @@ def run(root=None):
     'cctbxlite': CCTBXLiteBuilder,
     'cctbx': CCTBXBuilder,
     'phenix': PhenixBuilder,
-    'phenix_tng': PhenixTNGBuilder,
+    'phenix_voyager': PhenixTNGBuilder,
     'xfellegacy': XFELLegacyBuilder,
     'xfel': XFELBuilder,
     'labelit': LABELITBuilder,

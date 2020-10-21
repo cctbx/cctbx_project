@@ -156,7 +156,7 @@ class conda_manager(object):
     'phenix': os.path.join('phenix', 'conda_envs',
       default_format.format(builder='phenix', version=version,
                             platform=conda_platform[platform.system()])),
-    'phenix_tng': os.path.join('phenix', 'conda_envs',
+    'phenix_voyager': os.path.join('phenix', 'conda_envs',
       default_format.format(builder='phenix', version=version,
                             platform=conda_platform[platform.system()])),
     'xfel': os.path.join('dials', '.conda-envs',
@@ -177,7 +177,7 @@ class conda_manager(object):
     'molprobity': default_file,
     'qrefine': default_file,
     'phaser': default_file,
-    'phasertng': os.path.join('phaser', 'conda_envs',
+    'voyager': os.path.join('phaser', 'conda_envs',
       default_format.format(builder='phaser_tng', version=version,
                             platform=conda_platform[platform.system()]))
   }
