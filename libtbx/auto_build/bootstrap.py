@@ -475,7 +475,7 @@ class Toolbox(object):
     destpath, destdir = os.path.split(destination)
 
     # default to using ssh for private phenix repositories
-    if module in ['phenix', 'solve_resolve']:
+    if module in ['phenix', 'solve_resolve', 'phaser_voyager']:
       use_ssh = True
 
     if os.path.exists(destination):
