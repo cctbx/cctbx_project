@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-
+import os
 from libtbx.program_template import ProgramTemplate
 #from libtbx.utils import null_out
 from libtbx import group_args
@@ -43,10 +43,11 @@ Inputs:
                             use_neutron_distances = self.params.use_neutron_distances)
     self.model = reduce.optimize(model=self.model)
     if(self.params.output.file_name_prefix is not None):
-      fp = self.params.output.file_name_prefix
+      base = self.params.output.file_name_prefix
     else:
       fp = self.data_manager.get_default_model_name()
-    of = open("%s_h.pdb"%fp,"w")
+      base = os.path.splitext(os.path.basename(fp))[0]
+    of = open("%s_hydrogenate.pdb"%base,"w")
     of.write(self.model.model_as_pdb())
     of.close()
 
