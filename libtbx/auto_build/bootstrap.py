@@ -1928,7 +1928,9 @@ class CCIBuilder(Builder):
 
   def get_libtbx_configure(self):
     configlst = super(CCIBuilder, self).get_libtbx_configure()
-    configlst.append('--enable_cxx11')
+    if self.python != "27":
+      # Do not enable C++11 for Python 2.7 builds, cf. https://github.com/cctbx/cctbx_project/pull/497
+      configlst.append('--enable_cxx11')
     return configlst
 
 ##### CCTBX-derived packages #####
