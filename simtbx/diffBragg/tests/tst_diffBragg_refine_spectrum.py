@@ -65,7 +65,7 @@ ens_gt = np.arange(en - 5, en + 6, delta_en)
 waves_gt = ENERGY_CONV / ens_gt
 num_energies = len(ens_gt)
 fluxes_gt = np.ones(num_energies) * total_flux / num_energies
-fluxes_gt = fluxes_gt*windows.hanning(num_energies)
+fluxes_gt = fluxes_gt*windows.hann(num_energies)
 fluxes_gt /= fluxes_gt.sum()
 fluxes_gt *= total_flux
 

@@ -93,6 +93,16 @@ void Fcell_manager::increment( double value, double value2)
 };
 // END Fcell manager
 
+// Begin eta manager
+eta_manager::eta_manager(){}
+
+void eta_manager::increment( double value, double value2)
+{
+    dI += value;
+    dI2 += value2;
+};
+// END eta manager
+
 // begin lambda_manager
 lambda_manager::lambda_manager(){}
 
@@ -263,6 +273,10 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     //boost::shared_ptr<Fcell_manager> fcell_man = boost::shared_ptr<Fcell_manager>(new Fcell_manager());
     fcell_man = boost::shared_ptr<Fcell_manager>(new Fcell_manager());
     fcell_man->refine_me = false;
+
+    eta_man = boost::shared_ptr<eta_manager>(new eta_manager());
+    eta_man->refine_me = false;
+    mosaic_umats_prime = NULL;
 
     panel_rot_man = boost::shared_ptr<panel_manager>(new panel_manager());
     panel_rot_man->refine_me = false;
@@ -660,8 +674,7 @@ void diffBragg::init_raw_pixels_roi(){
     raw_pixels_roi = af::flex_double(af::flex_grid<>(sdim,fdim));
 }
 
-void diffBragg::initialize_managers()
-{
+void diffBragg::initialize_managers(){
     int fdim = roi_xmax-roi_xmin+1;
     int sdim = roi_ymax-roi_ymin+1;
     for (int i_rot=0; i_rot < 3; i_rot++){
@@ -687,6 +700,9 @@ void diffBragg::initialize_managers()
     if (fcell_man->refine_me)
         fcell_man->initialize(sdim, fdim, compute_curvatures);
 
+    if (eta_man->refine_me)
+        eta_man->initialize(sdim, fdim, compute_curvatures);
+
     for (int i_lam=0; i_lam < 2; i_lam++){
         if (lambda_managers[i_lam]->refine_me)
             lambda_managers[i_lam]->initialize(sdim, fdim, compute_curvatures);
@@ -702,11 +718,9 @@ void diffBragg::initialize_managers()
     }
 }
 
-void diffBragg::vectorize_umats()
-{
+void diffBragg::vectorize_umats(){
     /* vector store two copies of Umats, one unperturbed for reference */
-    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic)
-    {
+    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
         double uxx,uxy,uxz,uyx,uyy,uyz,uzx,uzy,uzz;
         uxx = mosaic_umats[mos_tic*9+0];
         uxy = mosaic_umats[mos_tic*9+1];
@@ -720,8 +734,37 @@ void diffBragg::vectorize_umats()
         mat3 U = mat3(uxx, uxy, uxz,
                       uyx, uyy, uyz,
                       uzx, uzy, uzz);
-        UMATS.push_back(U);
-        UMATS_RXYZ.push_back(U);
+        if (UMATS.size() == mosaic_domains){
+            UMATS[mos_tic] = U;
+            UMATS_RXYZ[mos_tic] = U;
+        }
+        else{
+            UMATS.push_back(U);
+            UMATS_RXYZ.push_back(U);
+        }
+        if (eta_man->refine_me){
+            SCITBX_ASSERT(mosaic_umats_prime != NULL);
+            uxx = mosaic_umats_prime[mos_tic*9+0];
+            uxy = mosaic_umats_prime[mos_tic*9+1];
+            uxz = mosaic_umats_prime[mos_tic*9+2];
+            uyx = mosaic_umats_prime[mos_tic*9+3];
+            uyy = mosaic_umats_prime[mos_tic*9+4];
+            uyz = mosaic_umats_prime[mos_tic*9+5];
+            uzx = mosaic_umats_prime[mos_tic*9+6];
+            uzy = mosaic_umats_prime[mos_tic*9+7];
+            uzz = mosaic_umats_prime[mos_tic*9+8];
+            U = mat3(uxx, uxy, uxz,
+                      uyx, uyy, uyz,
+                      uzx, uzy, uzz);
+            if (UMATS_RXYZ_prime.size() == mosaic_domains){
+                UMATS_RXYZ_prime[mos_tic] = U;
+                UMATS_prime[mos_tic] = U;
+            }
+            else {
+                UMATS_RXYZ_prime.push_back(U);
+                UMATS_prime.push_back(U);
+            }
+        }
     }
 }
 
@@ -790,6 +833,11 @@ void diffBragg::refine(int refine_id){
         pan_rot->refine_me=true;
         rotate_fs_ss_vecs_3D(0,0,0);
         pan_rot->initialize(sdim, fdim, compute_curvatures);
+    }
+    else if (refine_id==19){
+        eta_man->refine_me=true;
+        SCITBX_ASSERT(mosaic_umats_prime != NULL);
+        eta_man->initialize(sdim, fdim, compute_curvatures);
     }
 }
 
@@ -929,7 +977,7 @@ double diffBragg::get_value(int refine_id){
 
 af::flex_double diffBragg::get_derivative_pixels(int refine_id){
 
-    SCITBX_ASSERT(refine_id >=0 && refine_id <= 18);
+    SCITBX_ASSERT(refine_id >=0 && refine_id <= 19);
 
     if (refine_id>=0 and refine_id < 3){
         SCITBX_ASSERT(rot_managers[refine_id]->refine_me);
@@ -970,10 +1018,12 @@ af::flex_double diffBragg::get_derivative_pixels(int refine_id){
         boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[4]);
         return pan_rot->raw_pixels;
     }
-    else{
+    else if (refine_id==18){
         boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[5]);
         return pan_rot->raw_pixels;
     }
+    else // refine_id == 19
+        return eta_man->raw_pixels;
 }
 
 
@@ -1099,9 +1149,27 @@ double diffBragg::polarization_factor(double kahn_factor, double *__incident, do
     return 0.5*(1.0 + cos2theta_sqr - kahn_factor*cos(2*_psi)*sin2theta_sqr);
 }
 
+void diffBragg::set_mosaic_blocks_prime(af::shared<mat3> umat_in){
+    /* free any previous allocations */
+    if(mosaic_umats_prime != NULL) free(mosaic_umats_prime);
+
+    /* allocate enough space */
+    SCITBX_ASSERT(mosaic_domains == umat_in.size());
+    mosaic_umats_prime = (double *) calloc(mosaic_domains+10,9*sizeof(double));
+
+    /* now actually import the orientation of each domain */
+    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
+      int offset = 9 * mos_tic;
+      mat3& domain = umat_in[mos_tic];
+      mosaic_umats_prime[0+offset]=domain[0];mosaic_umats_prime[1+offset]=domain[1];mosaic_umats_prime[2+offset]=domain[2];
+      mosaic_umats_prime[3+offset]=domain[3];mosaic_umats_prime[4+offset]=domain[4];mosaic_umats_prime[5+offset]=domain[5];
+      mosaic_umats_prime[6+offset]=domain[6];mosaic_umats_prime[7+offset]=domain[7];mosaic_umats_prime[8+offset]=domain[8];
+    }
+    if(verbose) printf("  imported a total of %d mosaic domains\n",mosaic_domains);
+}
+
 // BEGIN diffBragg_add_spots
-void diffBragg::add_diffBragg_spots()
-{
+void diffBragg::add_diffBragg_spots(){
     max_I = 0.0;
     i = 0;
     floatimage = raw_pixels.begin();
@@ -1126,8 +1194,11 @@ void diffBragg::add_diffBragg_spots()
     //printf("Third row: %f | %f | %f \n", RXYZ(2,0), RXYZ(2,1), RXYZ(2,2));
 
     /*  update Umats to be U*RXYZ   */
-    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic)
+    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
         UMATS_RXYZ[mos_tic] = UMATS[mos_tic] * RXYZ;
+        if (eta_man->refine_me)
+            UMATS_RXYZ_prime[mos_tic] = UMATS_prime[mos_tic]*RXYZ;
+    }
 
     if(verbose) printf("TESTING sincg(1,1)= %f\n",sincg(1,1));
 
@@ -1293,6 +1364,8 @@ void diffBragg::add_diffBragg_spots()
             af::flex_double pan_rot_manager_dI2 = af::flex_double(3,0);
             double fcell_manager_dI = 0;
             double fcell_manager_dI2 = 0;
+            double eta_manager_dI = 0;
+            double eta_manager_dI2 = 0;
             af::flex_double lambda_manager_dI = af::flex_double(2,0);
             af::flex_double lambda_manager_dI2 = af::flex_double(2,0);
 
@@ -1677,6 +1750,12 @@ void diffBragg::add_diffBragg_spots()
                                     fcell_manager_dI2 += value2;
                                 } /* end of fcell man deriv */
 
+                                /* checkpoint for eta manager */
+                                if (eta_man->refine_me){
+                                    double value =0; //TODO
+                                    eta_manager_dI += value;
+                                } /* end of eta man deriv */
+
                                 /*checkpoint for lambda manager*/
                                 for(int i_lam=0; i_lam < 2; i_lam++){
                                     if (lambda_managers[i_lam]->refine_me){
@@ -1709,8 +1788,7 @@ void diffBragg::add_diffBragg_spots()
                 /* end of sub-pixel y loop */
             //}
             /* end of sub-pixel x loop */
-            if( _printout && _i_step==0 )
-            {
+            if( _printout && _i_step==0 ){
                 if((_fpixel==_printout_fpixel && _spixel==_printout_spixel) || _printout_fpixel < 0)
                 {
                     //twotheta = atan2(sqrt(_pixel_pos[2]*_pixel_pos[2]+_pixel_pos[3]*_pixel_pos[3]),_pixel_pos[1]);
@@ -1898,6 +1976,13 @@ void diffBragg::add_diffBragg_spots()
                 double value2 = _scale_term*fcell_manager_dI2;
                 fcell_man->increment_image(roi_i, value, value2, compute_curvatures);
             }/* end Fcell deriv image increment */
+
+            /* update eta derivative image */
+            if(eta_man->refine_me){
+                double value = _scale_term*eta_manager_dI;
+                double value2 = 0;
+                eta_man->increment_image(roi_i, value, value2, compute_curvatures);
+            }/* end eta deriv image increment */
 
             /*update the lambda derivative images*/
             for (int i_lam=0 ; i_lam < 2 ; i_lam++){
