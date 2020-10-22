@@ -11,6 +11,7 @@ class SimData:
         self.detector = SimData.simple_detector(180, 0.1, (512, 512))
         self.seed = 1
         self.crystal = nanoBragg_crystal()
+        self.Umats_method = 1
         self.add_air = False
         self.add_water = True
         self.water_path_mm = 0.005
@@ -23,6 +24,7 @@ class SimData:
         self.include_noise = True
         self.using_diffBragg_spots = True
         self.functionals = []
+        self.UMAT_prime = None
 
     @property
     def air_path(self):
@@ -66,25 +68,40 @@ class SimData:
 
     @staticmethod
     def Umats(mos_spread_deg, n_mos_doms, isotropic=True,
-              seed=777, norm_dist_seed=777):
-        import scitbx
-        from scitbx.matrix import col
-        import math
-        UMAT_nm = flex.mat3_double()
-        mersenne_twister = flex.mersenne_twister(seed=seed)
-        scitbx.random.set_random_seed(norm_dist_seed)
-        rand_norm = scitbx.random.normal_distribution(mean=0, sigma=mos_spread_deg * math.pi / 180.)
-        g = scitbx.random.variate(rand_norm)
-        mosaic_rotation = g(n_mos_doms)
-        for m in mosaic_rotation:
-            site = col(mersenne_twister.random_double_point_on_sphere())
-            if mos_spread_deg > 0:
-                UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(m, deg=False))
-            else:
-                UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(0, deg=False))
-            if isotropic and mos_spread_deg > 0:
-                UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(-m, deg=False))
-        return UMAT_nm
+              seed=777, norm_dist_seed=777, method=0):
+        if method == 0:
+            import scitbx
+            from scitbx.matrix import col
+            import math
+            UMAT_nm = flex.mat3_double()
+            mersenne_twister = flex.mersenne_twister(seed=seed)
+            scitbx.random.set_random_seed(norm_dist_seed)
+            rand_norm = scitbx.random.normal_distribution(mean=0, sigma=mos_spread_deg * math.pi / 180.)
+            g = scitbx.random.variate(rand_norm)
+            mosaic_rotation = g(n_mos_doms)
+            for m in mosaic_rotation:
+                site = col(mersenne_twister.random_double_point_on_sphere())
+                if mos_spread_deg > 0:
+                    UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(m, deg=False))
+                else:
+                    UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(0, deg=False))
+                if isotropic and mos_spread_deg > 0:
+                    UMAT_nm.append(site.axis_and_angle_as_r3_rotation_matrix(-m, deg=False))
+            UMAT_prime = None
+        else:
+            from simtbx.nanoBragg.tst_gaussian_mosaicity2 import run_uniform
+            UMAT_nm, UMAT_prime = run_uniform(mos_spread_deg, 2*n_mos_doms)
+        return UMAT_nm, UMAT_prime
+
+    @property
+    def Umats_method(self):
+        return self._Umats_method
+
+    @Umats_method.setter
+    def Umats_method(self, val):
+        if val not in [0, 1]:
+            raise ValueError("Umats method needs to be 0 or 1")
+        self._Umats_method = val
 
     @property
     def add_air(self):
@@ -179,8 +196,10 @@ class SimData:
 
         self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
         self.D.mosaic_domains = self.crystal.n_mos_domains
-        self.D.set_mosaic_blocks(SimData.Umats(
-                self.crystal.mos_spread_deg, self.crystal.n_mos_domains))
+        Umats, Umats_prime = SimData.Umats(self.crystal.mos_spread_deg, self.crystal.n_mos_domains, method=self.Umats_method)
+        self.D.set_mosaic_blocks(Umats)
+        if Umats_prime is not None:
+            self.D.set_mosaic_blocks_prime(Umats_prime)
 
     def _beam_properties(self):
         self.D.xray_beams = self.beam.xray_beams

@@ -69,6 +69,13 @@ class Fcell_manager: public derivative_manager{
     void increment(double value, double value2);
 };
 
+class eta_manager: public derivative_manager{
+  public:
+    eta_manager();
+    virtual ~eta_manager(){}
+    void increment(double value, double value2);
+};
+
 class lambda_manager: public derivative_manager{
   public:
     lambda_manager();
@@ -212,6 +219,10 @@ class diffBragg: public nanoBragg{
 
   std::vector<mat3> UMATS;
   std::vector<mat3> UMATS_RXYZ;
+  std::vector<mat3> UMATS_prime;
+  std::vector<mat3> UMATS_RXYZ_prime;
+  double * mosaic_umats_prime;
+  void set_mosaic_blocks_prime(af::shared<mat3>);  // set the individual mosaic block orientation derivatives from array
   //bool vectorized_umats;
 
   /* derivative managers */
@@ -222,6 +233,7 @@ class diffBragg: public nanoBragg{
   std::vector<boost::shared_ptr<lambda_manager> > lambda_managers;
   std::vector<boost::shared_ptr<panel_manager> > panels;
   boost::shared_ptr<Fcell_manager> fcell_man;
+  boost::shared_ptr<eta_manager> eta_man;
   boost::shared_ptr<panel_manager> panel_rot_man;
   boost::shared_ptr<panel_manager> panel_rot_manF;
   boost::shared_ptr<panel_manager> panel_rot_manS;

@@ -234,6 +234,10 @@ namespace boost_python { namespace {
 
       .def("free_Fhkl2",&simtbx::nanoBragg::diffBragg::free_Fhkl2)
 
+      .def("set_mosaic_blocks_prime",
+             &simtbx::nanoBragg::diffBragg::set_mosaic_blocks_prime,
+             "enter a list of unitary matrix derivatives Uprime (will raise error if not same length as mosaic Umats already set)")
+
       .add_property("region_of_interest",
              make_function(&get_roi,rbv()),
              make_function(&set_roi,dcp()),
