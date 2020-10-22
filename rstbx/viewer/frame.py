@@ -394,7 +394,7 @@ class SettingsPanel(wx.Panel):
     self._sizer = wx.BoxSizer(wx.VERTICAL)
     s = self._sizer
     self.SetSizer(self._sizer)
-    grid = wx.FlexGridSizer(cols=2, rows=2, vgap=2, hgap=2)
+    grid = wx.FlexGridSizer(cols=2, rows=2, vgap=0, hgap=0)
     s.Add(grid)
     txt1 = wx.StaticText(self, -1, "Zoom level:")
     grid.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
