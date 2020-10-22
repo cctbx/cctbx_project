@@ -106,9 +106,23 @@ def exercise_cif_label_asym_id_two_chains():
   # cb = h.as_cif_block()
   # cb.show()
 
+def exercise_cif_label_asym_id_ligand_before_protein():
+  pdb_fname = libtbx.env.find_in_repositories(
+    relative_path="mmtbx/regression/pdbs/ligand_before_prot.pdb",
+    test=os.path.isfile)
+  h = iotbx.pdb.input(pdb_fname).construct_hierarchy()
+  # for i in range(h.atoms_size()):
+  #   print (i, h.get_label_asym_id_iseq(i))
+  h.get_label_asym_id_iseq(0) == 'A'
+  h.get_label_asym_id_iseq(1) == 'B'
+  h.get_label_asym_id_iseq(2) == 'C'
+  for i in range(3, 23):
+    assert h.get_label_asym_id_iseq(i) == 'D'
+
 if __name__ == '__main__':
   exercise_cif_label_asym_id_simple()
   exercise_cif_label_asym_id_one_chain_ligand_water()
   exercise_cif_label_asym_id_two_chains_ligands_waters()
   exercise_cif_label_asym_id_two_chains()
+  exercise_cif_label_asym_id_ligand_before_protein()
   print ('OK')

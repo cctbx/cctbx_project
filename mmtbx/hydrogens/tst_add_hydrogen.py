@@ -2,9 +2,9 @@ from __future__ import absolute_import, division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
-import mmtbx.hydrogens
+from mmtbx.hydrogens import reduce
 from libtbx.utils import null_out
-#from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 
 
 def run():
@@ -13,15 +13,15 @@ def run():
   no_H_on_disulfides()
   add_H_to_lone_CYS()
   peptide_unit_N_missing()
-  no_H_on_coordinating_CYS()
   sym_related_disulfide()
+  no_H_on_coordinating_CYS()
 
 
 def get_model(pdb_str):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp,
                               log         = null_out())
-  model_with_h = mmtbx.hydrogens.add(model = model)
+  model_with_h = reduce.add(model = model)
   return model_with_h
 
 
@@ -31,35 +31,49 @@ def compare_models(pdb_str,
                    number_h     = None):
   #
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
-  model_initial = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
-  xrs = model_initial.get_xray_structure()
+  model_initial = mmtbx.model.manager(model_input = pdb_inp,
+                                      log         = null_out())
   hd_sel_initial = model_initial.get_hd_selection()
   number_h_expected = hd_sel_initial.count(True)
+
 
   model_without_h = model_initial.select(~hd_sel_initial)
   hd_sel_without_h = model_without_h.get_hd_selection()
   assert (hd_sel_without_h is not None)
   assert (hd_sel_without_h.count(True) == 0)
 
-  model_h_added = mmtbx.hydrogens.add(model = model_without_h)
+  model_h_added = reduce.add(model = model_without_h)
   hd_sel_h_added = model_h_added.get_hd_selection()
-  number_h_added = hd_sel_h_added.count(True)
+
   ph_initial = model_initial.get_hierarchy()
+  h_atoms_initial = ph_initial.select(hd_sel_initial).atoms()
+  h_names_initial = list(h_atoms_initial.extract_name())
   ph_h_added = model_h_added.get_hierarchy()
   assert ph_initial.is_similar_hierarchy(other=ph_h_added)
 
+  number_h_added = hd_sel_h_added.count(True)
   if number_h:
     assert(number_h == number_h_added)
 
+  h_atoms_added = ph_h_added.select(hd_sel_h_added).atoms()
+  h_names_added = list(h_atoms_added.extract_name())
+
   if not_contains:
-    h_atoms_added = model_h_added.get_hierarchy().select(hd_sel_h_added).atoms()
-    h_names_added = list(h_atoms_added.extract_name())
     assert (not_contains not in h_names_added)
 
   if contains:
-    h_atoms_added = model_h_added.get_hierarchy().select(hd_sel_h_added).atoms()
-    h_names_added = list(h_atoms_added.extract_name())
     assert (contains in h_names_added)
+
+  sc_h_initial = model_initial.select(hd_sel_initial).get_sites_cart()
+  sc_h_added = model_h_added.select(hd_sel_h_added).get_sites_cart()
+
+  d1 = {h_names_initial[i]: sc_h_initial[i] for i in range(len(h_names_initial))}
+  d2 = {h_names_added[i]: sc_h_added[i] for i in range(len(h_names_added))}
+
+  for name, sc in d2.items():
+    assert(name in d1)
+    assert approx_equal(sc, d1[name], 0.01)
+
 
 
 def incomplete_peptide_unit():
@@ -160,7 +174,7 @@ ATOM     10  CZ  TYR A 139       6.345   5.266   6.993  1.00 10.00           C
 ATOM     11  OH  TYR A 139       5.000   5.000   7.113  1.00 10.00           O
 ATOM     12  HE2 TYR A 139       6.643   5.772   8.919  1.00 10.00           H
 ATOM     13  HD2 TYR A 139       8.896   6.220   8.714  1.00 10.00           H
-ATOM     17  HH  TYR A 139       4.565   5.718   7.120  1.00 10.00           H
+ATOM     17  HH  TYR A 139       4.752   5.127   7.905  1.00 10.00           H
 ATOM     18  HA  TYR A 139      10.487   8.115   6.973  1.00 10.00           H
 ATOM     19  HB1 TYR A 139      10.961   5.881   7.464  1.00 10.00           H
 ATOM     20  HB2 TYR A 139      10.893   5.529   5.916  1.00 10.00           H
@@ -206,7 +220,7 @@ ATOM      5  CB  CYS A 128      14.059 -28.357 -20.691  1.00 12.94           C
 ATOM      6  SG  CYS A 128      15.213 -27.350 -19.760  1.00 12.36           S
 ATOM      8  HA  CYS A 128      13.044 -29.102 -19.148  1.00 11.51           H
 ATOM      9  HB1 CYS A 128      14.526 -28.706 -21.466  1.00 12.94           H
-ATOM     10  HG  CYS A 128      15.585 -27.968 -18.801  1.00 12.36           H
+ATOM     10  HG  CYS A 128      16.134 -28.034 -19.410  1.00 12.36           H
 ATOM     11  HB2 CYS A 128      13.327 -27.787 -20.974  1.00 12.94           H
 TER
 """

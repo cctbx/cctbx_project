@@ -14,7 +14,10 @@ phenix_dev.ion_identification.nader_ml
 
 from __future__ import absolute_import, division, print_function
 
-from collections import Iterable
+try:
+  from collections.abc import Iterable
+except ImportError:
+  from collections import Iterable
 from six import string_types
 from six.moves import cStringIO as StringIO
 from ctypes import c_double

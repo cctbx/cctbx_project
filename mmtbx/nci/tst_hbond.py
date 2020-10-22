@@ -1246,6 +1246,7 @@ def core(pdb_str, pair_proxies = None):
   model = mmtbx.model.manager(
     model_input   = pdb_inp,
     process_input = True,
+    build_grm     = True,
     log           = null_out())
   return mmtbx.nci.hbond.find(model=model, pair_proxies=pair_proxies)
 

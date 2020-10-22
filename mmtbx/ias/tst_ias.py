@@ -34,7 +34,6 @@ def exercise():
     if(opt == ["L"]):
       params.build_ias_types = opt
       mol.add_ias(fmodel = None, ias_params = params)
-      mol.set_sites_cart_from_xrs()
       f = open("zz.pdb","w")
       pdb_str = mol.model_as_pdb()
       f.write(pdb_str)

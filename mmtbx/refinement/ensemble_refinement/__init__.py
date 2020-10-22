@@ -320,7 +320,7 @@ class run_ensemble_refinement(object):
                      ptls,
                      run_number=None):
     adopt_init_args(self, locals())
-#    self.params = params.extract().ensemble_refinement
+    # self.params = params.extract().ensemble_refinement
 
     if self.params.target_name in ['ml', 'mlhl'] :
       self.fix_scale = False
@@ -514,6 +514,9 @@ class run_ensemble_refinement(object):
           cdp_verbose = -1
       else:
         cdp_verbose = -1
+
+      if is_amber_refinement(self.params):
+        assert str(self.model.restraints_manager.geometry)=='Amber manager'
 
       cd_manager = ensemble_cd.cartesian_dynamics(
         structure                   = self.model.get_xray_structure(),
@@ -1183,6 +1186,9 @@ class run_ensemble_refinement(object):
         = (self.a_prime * self.er_data.ke_protein_running) + ( (1-self.a_prime) * ke)
 
   def ordered_solvent_update(self):
+    if is_amber_refinement(self.params):
+      print('Ensemble refinement with Amber does not support solvent!!!', file=self.log)
+      return
     ensemble_ordered_solvent_manager = ensemble_ordered_solvent.manager(
         model             = self.model,
         fmodel            = self.fmodel_running,
@@ -1622,6 +1628,10 @@ def write_mtz_file(fmodel_total, raw_data, raw_flags, prefix, params):
     file_name=prefix+".mtz")
   return prefix + ".mtz"
 
+def is_amber_refinement(params):
+  if getattr(params, 'amber', False): return params.amber.use_amber
+  return params.ensemble_refinement.amber.use_amber
+
 #-----------------------------------------------------------------------
 def run(args, command_name = "phenix.ensemble_refinement", out=None,
     validate=False, replace_stderr=True):
@@ -1722,6 +1732,9 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     n_removed_atoms = model.remove_alternative_conformations(
         always_keep_one_conformer=True)
 
+  if n_removed_atoms>0 and is_amber_refinement(params):
+    raise Sorry('Amber does not support alt. locs. in Ensemble Refinement')
+
   if n_removed_atoms > 0:
     pdb_file_removed_alt_confs = pdb_file[0:-4]+'_removed_alt_confs.pdb'
     print("\nRemoving alternative conformations", file=log)
@@ -1755,7 +1768,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   refinement_flags = rf(size = model.get_number_of_atoms())
 
   model.set_refinement_flags(refinement_flags)
-  model.get_restraints_manager()
+  model.process_input_model(make_restraints=True)
 
   # Geometry file
   xray_structure = model.get_xray_structure()

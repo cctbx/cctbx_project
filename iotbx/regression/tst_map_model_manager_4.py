@@ -85,53 +85,106 @@ def exercise( out = sys.stdout):
 
   new_mm = mmm1.superposed_map_manager_from_other(other=mmm2,
     selection_string="resseq 221:225")
-  assert approx_equal(new_mm.map_map_cc(mmm1.map_manager()),0.994645868918)
+  assert approx_equal(new_mm.map_map_cc(mmm1.map_manager()),0.994645868918,eps=0.01)
   new_mm.write_map('super_221-225.ccp4')
 
   new_mm = mmm1.superposed_map_manager_from_other(other=mmm2,
      working_rt_info = rt_info)
-  assert approx_equal(new_mm.map_map_cc(mmm1.map_manager()),0.994645868918)
+  assert approx_equal(new_mm.map_map_cc(mmm1.map_manager()),0.994645868918,eps=0.01)
   new_mm.write_map('super_221-225.ccp4')
 
   # get a local resolution map (this one should look pretty constant!)
+  mmm1.set_resolution(3)
   mmma = mmm1.deep_copy()
   model = mmm1.model()
   mmma.remove_model_by_id('model')
   mmmb = mmma.deep_copy()
-  mmma.map_manager().randomize()
-  mmmb.map_manager().randomize()
-  assert approx_equal(mmma.map_manager().map_map_cc(mmmb.map_manager()),
-    0.40,0.10)
-  from iotbx.map_model_manager import map_model_manager
-  local_mmm=map_model_manager(map_manager_1=mmma.map_manager(),
-    map_manager_2=mmmb.map_manager())
-  local_mm = local_mmm.local_fsc()
-  cc = local_mm.map_map_cc(local_mmm.map_manager())
 
+  mmma.map_manager().randomize(random_seed=23412,d_min=3,high_resolution_fourier_noise_fraction=10,low_resolution_noise_cutoff=5)
+  mmmb.map_manager().randomize(random_seed=887241,d_min=3,high_resolution_fourier_noise_fraction=10,low_resolution_noise_cutoff=5)
+  assert approx_equal(mmma.map_manager().map_map_cc(mmmb.map_manager()),
+    0.16,0.10)
+  from iotbx.map_model_manager import map_model_manager
+  model.set_b_iso(flex.double(model.get_sites_cart().size(),0))
+  local_mmm=map_model_manager(map_manager_1=mmma.map_manager(),
+    map_manager_2=mmmb.map_manager(), model = model)
+  local_mmm.set_resolution(3)
+  local_mmm.local_fsc()
+
+  from iotbx.data_manager import DataManager
+  dm = DataManager()
+  dm.set_overwrite(True)
+
+  cc_before = local_mmm.map_model_cc()
+  print ("Working with randomized maps cc = ",cc_before)
   dc = local_mmm.deep_copy()
   dc.set_log(sys.stdout)
-  model.set_b_iso(flex.double(model.get_sites_cart().size(),0))
-  dc.set_model(model)
   cc_before = dc.map_model_cc()
   dc.half_map_sharpen(n_bins=15)
   cc_after = dc.map_model_cc()
-  assert approx_equal((cc_before,cc_after), (0.9, 0.9), eps=0.10)
+  print("CC before, after half map sharpen: ",cc_before,cc_after)
+  assert approx_equal((cc_before,cc_after), (0.80, 0.9), eps=0.10)
 
-  dc.local_sharpen(n_bins=15, n_boxes=1)
+  dc = local_mmm.deep_copy()
+  dc.set_log(sys.stdout)
+  cc_before = dc.map_model_cc()
+  dc.model_sharpen(n_bins=15, local_sharpen=False, anisotropic_sharpen=False,
+    optimize_b_eff=False)
+  cc_after = dc.map_model_cc()
+  print("CC before, after std model sharpen: ",cc_before,cc_after)
+  assert approx_equal ((cc_before,cc_after), (0.80,0.85), eps =0.10)
+  model_sharpened_mm = dc.map_manager()
+
+  dc = local_mmm.deep_copy()
+  dc.set_log(sys.stdout)
+  cc_before = dc.map_model_cc()
+  dc.model_sharpen(local_sharpen=True,n_boxes=1,n_bins=15)
+  cc_after = dc.map_model_cc()
+  print("CC before, after local model sharpen n_boxes=1: ",cc_before,cc_after)
+  assert approx_equal ((cc_before,cc_after), (0.80,0.87), eps =0.10)
+  model_sharpened_mm = dc.map_manager()
+
+  dc = local_mmm.deep_copy()
+  dc.set_log(sys.stdout)
+  dc.add_map_manager_by_id(model_sharpened_mm,'external_map')
+  cc_before = dc.map_map_cc(map_id='map_manager',other_map_id='external_map')
+  dc.external_sharpen(n_bins=15,map_id_external_map='external_map')
+  cc_after = dc.map_map_cc(map_id='map_manager',other_map_id='external_map')
+  print("CC before, after external sharpen n_boxes=1: ",cc_before,cc_after)
+  assert approx_equal ((cc_before,cc_after), (0.52,0.90),eps=0.10)
+
+  dc = local_mmm.deep_copy()
+  dc.set_log(sys.stdout)
+  dc.add_map_manager_by_id(model_sharpened_mm,'external_map')
+  cc_before = dc.map_map_cc(map_id='map_manager',other_map_id='external_map')
+  dc.external_sharpen(local_sharpen=True,n_boxes=1,
+     n_bins=15,map_id_external_map='external_map')
+  cc_after = dc.map_map_cc(map_id='map_manager',other_map_id='external_map')
+  print("CC before, after external sharpen local n_boxes=1: ",cc_before,cc_after)
+  assert approx_equal ((cc_before,cc_after), (0.60,0.90),eps=0.10)
+
+
+
+  dc = local_mmm.deep_copy()
+  dc.set_log(sys.stdout)
+  dc._local_sharpen(n_bins=15, n_boxes=1)
   cc = dc.map_model_cc()
-  assert approx_equal (cc, 0.90, eps=0.05)
-  dc.local_sharpen(n_bins=15, n_boxes=1, mask_map=True)
-  cc = dc.map_model_cc()
-  assert approx_equal (cc, 0.90, eps=0.05)
+  assert approx_equal (cc, 0.90, eps=0.1)
 
   # create a mask around density
-  dc.create_mask_around_density()
+  dc.create_mask_around_density(soft_mask=False)
   count = dc.get_map_manager_by_id('mask').map_data().count(1)
-  assert 9000 < count < 10000
-  dc.expand_mask()
+  print(count)
+  assert 10000 < count < 14000
+  dc.expand_mask(buffer_radius = 2)
   count = dc.get_map_manager_by_id('mask').map_data().count(1)
-  assert 35000 < count < 50000
+  print(count)
+  assert 20000 < count < 30000
 
 if __name__ == "__main__":
-  exercise()
+  try:
+    from phenix.command_line import superpose_pdbs  # special import
+    exercise()
+  except ImportError:
+    print('Skipping tst_map_model_manager_4 tests becuase Phenix is not available.')
   print ("OK")

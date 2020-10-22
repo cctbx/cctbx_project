@@ -913,7 +913,7 @@ class _():
 
   def get_auth_asym_id(self, chain):
     auth_asym_id = chain.id
-    if chain.atoms()[0].segid.strip() != '':
+    if len(chain.atoms()[0].segid.strip()) > len(auth_asym_id):
       auth_asym_id = chain.atoms()[0].segid.strip()
     if auth_asym_id.strip() == '':
       # chain id is empty, segid is empty, just duplicate label_asym_id
@@ -932,15 +932,17 @@ class _():
       # fill self._lai_lookup for the whole hierarchy
       number_label_asym_id = 0
       label_asym_ids = all_label_asym_ids()
-      previous = None
       for model in self.models():
         for chain in model.chains():
+          previous = None
           for rg in chain.residue_groups():
             resname = rg.atom_groups()[0].resname.strip()
             residue_class = common_residue_names_get_class(resname)
             rg_mid = rg.memory_id()
             if residue_class in ['common_amino_acid', 'modified_amino_acid',
                 'common_rna_dna', 'modified_rna_dna']:
+              if previous != 'poly' and previous is not None:
+                number_label_asym_id += 1
               self._lai_lookup[rg_mid] = label_asym_ids[number_label_asym_id]
               previous = 'poly'
             elif residue_class in ['common_water']:

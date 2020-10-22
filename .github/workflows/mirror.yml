@@ -6,9 +6,9 @@
 
 name: mirror when stable
 on:
-  push:
-    branches:
-      - master
+  check_suite:
+    types:
+      - completed
 
 jobs:
   sync:
@@ -26,8 +26,8 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         checkName: Checks
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
-        intervalSeconds: 300
-        timeoutSeconds: 21300
+        intervalSeconds: 30
+        timeoutSeconds: 120
 
     - name: Wait for Azure XFEL CI build to complete
       if: steps.wait-for-checks.outputs.conclusion == 'success'
@@ -40,8 +40,8 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         checkName: XFEL CI
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
-        intervalSeconds: 300
-        timeoutSeconds: 21300
+        intervalSeconds: 30
+        timeoutSeconds: 120
 
     - name: Wait for main Azure CI build to complete
       if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-xfel-build.outputs.conclusion == 'success'
@@ -54,8 +54,8 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         checkName: CI
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
-        intervalSeconds: 300
-        timeoutSeconds: 21300
+        intervalSeconds: 30
+        timeoutSeconds: 120
 
     - name: Check out repository
       if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-xfel-build.outputs.conclusion == 'success' && steps.wait-for-build.outputs.conclusion == 'success'

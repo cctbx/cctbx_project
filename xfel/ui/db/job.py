@@ -242,6 +242,8 @@ class IndexingJob(Job):
           locator.write("experiment=%s\n"%self.app.params.facility.lcls.experiment) # LCLS specific parameter
           locator.write("run=%s\n"%self.run.run)
           locator.write("detector_address=%s\n"%self.rungroup.detector_address)
+          if self.rungroup.wavelength_offset:
+            locator.write("wavelength_offset=%s\n"%self.rungroup.wavelength_offset)
           if self.app.params.facility.lcls.use_ffb:
             locator.write("use_ffb=True\n")
 

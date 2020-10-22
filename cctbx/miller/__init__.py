@@ -673,13 +673,30 @@ class set(crystal.symmetry):
   def min_max_d_star_sq(self):
     return self.unit_cell().min_max_d_star_sq(self.indices())
 
-  def d_max_min(self):
+  def d_max_min(self, d_max_is_highest_defined_if_infinite = False):
     """
     Low- and high-resolution limits.
     :returns: Python tuple of floats
+    Modified 2020-10-02 to allow return of maximum defined instead of -1
+        if F000 present
     """
-    return tuple([uctbx.d_star_sq_as_d(d_star_sq)
-      for d_star_sq in self.min_max_d_star_sq()])
+    if d_max_is_highest_defined_if_infinite:
+      (d_max,d_min) = tuple([uctbx.d_star_sq_as_d(d_star_sq)
+        for d_star_sq in self.min_max_d_star_sq()])
+      if d_max < 0:  # (0,0,0) is present
+        indices_copy = list(self.indices())
+        index = indices_copy.index((0,0,0))
+        new_indices = flex.miller_index(
+          indices_copy[:index] + indices_copy[index+1:])
+        d_max_d_star_sq,d_min_d_star_sq= self.unit_cell(
+             ).min_max_d_star_sq(new_indices)
+        (d_max, d_min )= (
+          uctbx.d_star_sq_as_d(d_max_d_star_sq),
+          uctbx.d_star_sq_as_d(d_min_d_star_sq))
+      return (d_max, d_min)
+    else: # usual
+      return tuple([uctbx.d_star_sq_as_d(d_star_sq)
+        for d_star_sq in self.min_max_d_star_sq()])
 
   def index_span(self):
     return index_span(self.indices())
@@ -3854,6 +3871,20 @@ class array(set):
     assert den != 0
     return self.array(data = coeff/den)
 
+  def __repr__(self):
+    """
+    Emit a string for debugging of the labels, type of data
+    and sigmas array present within this miller_array.
+    """
+    mstr = self.crystal_symmetry().__repr__()
+    if self._info:
+      mstr = mstr + "\n" + self._info.label_string()
+    mstr = mstr + "\n" + self._data.__repr__()
+    if self._sigmas:
+      mstr = mstr + "\n" + self._sigmas.__repr__()
+    mstr = mstr + "\nsize: %d"  %self._data.size()
+    return mstr + "\n"
+
   def __abs__(self):
     """
     Return a copy of the array with data replaced by absolute values, i.e.
@@ -4247,6 +4278,28 @@ class array(set):
     if (factor > 0):
       return flex.sum( d1 * d2 * flex.cos(p2 - p1) ) / factor
     return None
+
+  def as_map_manager(self,
+                     resolution_factor=1/4.,
+                     crystal_gridding=None,
+                     grid_step=None,
+                     d_min=None,
+                     d_max=None,
+                     apply_sigma_scaling=True,
+                     apply_volume_scaling=False,
+                     wrapping=True):
+    assert isinstance(self.data(), flex.complex_double)
+    assert [apply_sigma_scaling, apply_volume_scaling].count(True) in [0,1]
+    mc = self
+    if([d_max, d_min].count(None)>0):
+      mc = self.resolution_filter(d_min=d_min, d_max=d_max)
+    fft_map_ = mc.fft_map(
+      resolution_factor = resolution_factor,
+      crystal_gridding  = crystal_gridding,
+      grid_step         = grid_step)
+    if(apply_sigma_scaling):  fft_map_.apply_sigma_scaling()
+    if(apply_volume_scaling): fft_map_.apply_volume_scaling()
+    return fft_map_.as_map_manager(wrapping=wrapping)
 
   def fft_map(self, resolution_factor=1/3,
                     d_min=None,
@@ -5877,7 +5930,7 @@ class fft_map(maptbx.crystal_gridding):
     else:
       return flex.real(self._complex_map)
 
-  def as_map_manager(self,in_place=True):
+  def as_map_manager(self, in_place=True, wrapping=True):
     '''
      Create a map_manager object from real_map_unpadded version of this map
     '''
@@ -5886,7 +5939,7 @@ class fft_map(maptbx.crystal_gridding):
     return map_manager(map_data=map_data,
       unit_cell_crystal_symmetry=self.crystal_symmetry(),
       unit_cell_grid=map_data.all(),
-      wrapping=True)
+      wrapping=wrapping)
 
   def real_map_unpadded(self, in_place=True):
     """

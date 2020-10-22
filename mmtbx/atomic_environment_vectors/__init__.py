@@ -7,6 +7,7 @@ from collections import OrderedDict
 from scitbx.array_family import flex
 from mmtbx.conformation_dependent_library import generate_protein_fragments
 from mmtbx.secondary_structure.build import ss_idealization as ssb
+from cctbx import uctbx
 
 def format_HELIX_records_from_AEV(aev_values_dict, cc_cutoff):
   """
@@ -53,11 +54,15 @@ def generate_perfect_helix(rs_values,
   """
   perfect_helix_ph = ssb.secondary_structure_from_sequence(ssb.alpha_helix_str,
     residue_code*n_residues)
+  box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+    sites_cart   = perfect_helix_ph.atoms().extract_xyz(),
+    buffer_layer = 5)
   model = mmtbx.model.manager(
-    model_input   = None,
-    pdb_hierarchy = perfect_helix_ph,
-    build_grm     = True,
-    log           = null_out())
+    model_input      = None,
+    crystal_symmetry = box.crystal_symmetry(),
+    pdb_hierarchy    = perfect_helix_ph,
+    build_grm        = True,
+    log              = null_out())
   return AEV(model = model,
              rs_values=rs_values,
              ts_values=ts_values,

@@ -117,10 +117,10 @@ def find_breakpoint(value_dict=None,decreasing=True,min_ratio=1,
   value_dict=deepcopy(value_dict)
 
   # remove all entries outside of x_high to x_low and make sure all >=1
-  for x in value_dict.keys():
-      if value_dict[x]<min_value: value_dict[x]=min_value
-      if x < min_x: del value_dict[x]
-      if x > max_x: del value_dict[x]
+  for x in list(value_dict.keys()):
+    if value_dict[x]<min_value: value_dict[x]=min_value
+    if x < min_x: del value_dict[x]
+    if x > max_x: del value_dict[x]
 
   # find highest x with value > sufficient_ratio*value_dict[max_x]
   lowest_x_keep=None
@@ -132,7 +132,7 @@ def find_breakpoint(value_dict=None,decreasing=True,min_ratio=1,
       lowest_x_keep=x
   if lowest_x_keep is not None:
     print("Removing all values of x < %7.2f" %(lowest_x_keep), file=out)
-    for x in value_dict.keys():
+    for x in list(value_dict.keys()):
       if x < lowest_x_keep:
         del value_dict[x]
     min_x=lowest_x_keep

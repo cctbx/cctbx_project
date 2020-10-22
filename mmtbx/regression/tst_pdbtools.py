@@ -28,7 +28,6 @@ class xray_structure_plus(object):
         process_input = True,
         log = log)
     self.xray_structure = self.model.get_xray_structure()
-    self.all_chain_proxies = self.model.all_chain_proxies
     uc = self.model.get_xray_structure().unit_cell()
     self.occ           = self.xray_structure.scatterers().extract_occupancies()
     self.u_iso            = self.xray_structure.scatterers().extract_u_iso()

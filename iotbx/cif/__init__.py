@@ -58,6 +58,7 @@ class reader(object):
       file_path = "memory"
     if file_object is not None:
       input_string = file_object.read()
+      file_object.close()
     # check input_string for binary, and abort if necessary
     binary_detector = detect_binary_file()
     binary_detector.monitor_initial = min(

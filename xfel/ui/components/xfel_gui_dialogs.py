@@ -1488,7 +1488,7 @@ class RunBlockDialog(BaseDialog):
             return 22.8 # Defaults are from kapton tape experiments (this is water ring)
           elif item in ["extra_phil_str", "calib_dir", "dark_avg_path", "dark_stddev_path",
             "gain_map_path", "beamx", "beamy", "gain_mask_level", "untrusted_pixel_mask_path",
-            "binning", "energy", "comment", "config_str"]:
+            "binning", "energy", "wavelength_offset", "comment", "config_str"]:
             return None
           else:
             raise AttributeError(item)
@@ -1632,6 +1632,10 @@ class RunBlockDialog(BaseDialog):
                                                  ('energy', block.energy),
                                                  ('gain_mask_level', block.gain_mask_level)])
       self.runblock_sizer.Add(self.bin_nrg_gain, flag=wx.EXPAND | wx.ALL, border=10)
+      self.wavelength_offset = gctr.OptionCtrl(self.runblock_panel,
+                                               ctrl_size=(80, -1),
+                                               items=[('wavelength_offset', block.wavelength_offset)])
+      self.runblock_sizer.Add(self.wavelength_offset, flag=wx.EXPAND | wx.ALL, border=10)
     else:
       self.energy = gctr.TextButtonCtrl(self.runblock_panel,
                                         label='Energy override',
@@ -1822,6 +1826,7 @@ class RunBlockDialog(BaseDialog):
       rg_dict['beamy']=self.beam_xyz.Y.GetValue()
       rg_dict['format']=self.img_format.ctr.GetStringSelection()
       rg_dict['energy']=self.bin_nrg_gain.energy.GetValue()
+      rg_dict['wavelength_offset']=self.wavelength_offset.wavelength_offset.GetValue()
       rg_dict['dark_avg_path']=self.dark_avg_path.ctr.GetValue()
       rg_dict['dark_stddev_path']=self.dark_stddev_path.ctr.GetValue()
       rg_dict['gain_map_path']=self.gain_map_path.ctr.GetValue()
@@ -1888,6 +1893,7 @@ class RunBlockDialog(BaseDialog):
         self.bin_nrg_gain.binning.SetValue(str(last.binning))
         self.bin_nrg_gain.energy.SetValue(str(last.energy))
         self.bin_nrg_gain.gain_mask_level.SetValue(str(last.gain_mask_level))
+        self.wavelength_offset.wavelength_offset.SetValue(str(last.wavelength_offset))
         self.dark_avg_path.ctr.SetValue(str(last.dark_avg_path))
         self.dark_stddev_path.ctr.SetValue(str(last.dark_stddev_path))
         self.gain_map_path.ctr.SetValue(str(last.gain_map_path))

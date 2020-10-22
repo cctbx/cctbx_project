@@ -144,7 +144,13 @@ Command-line options:
     #mirror = "rcsb"
     files = []
     for id in ids :
-      files.append(get_pdb(id, data_type, mirror, log, format=format))
+      try:
+        files.append(get_pdb(id, data_type, mirror, log, format=format))
+      except Sorry as e:
+        if data_type == "pdb" and format == "pdb":
+          # try with mmCIF
+          print("  PDB format is not available, trying to get mmCIF", file=log)
+          files.append(get_pdb(id, data_type, mirror, log, format="cif"))
     if (len(files) == 1):
       return files[0]
     return files
@@ -153,7 +159,10 @@ Command-line options:
     for id in ids :
       for data_type_, data_format in [("pdb", "pdb"), ("fasta", "pdb"),
                                       ("xray", "pdb"), ("pdb", "cif")] :
-        files.append(get_pdb(id, data_type_, mirror, log, format=data_format))
+        try:
+          files.append(get_pdb(id, data_type_, mirror, log, format=data_format))
+        except Sorry as e:
+          print (str(e))
       if (convert_to_mtz):
         misc_args = ["--merge", "--map_to_asu", "--extend_flags",
                      "--ignore_bad_sigmas"]

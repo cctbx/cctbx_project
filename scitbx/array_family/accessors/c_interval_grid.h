@@ -106,7 +106,7 @@ namespace scitbx { namespace af {
       index_type last(bool open_range=true) const // origin + size
       {
         index_type result;
-        for(register unsigned short i=0; i<Nd; ++i)
+        for(unsigned short i=0; i<Nd; ++i)
           result[i] = this->origin()[i] + this->all()[i];
         if( !open_range )
           result -= static_cast<index_value_type> (1);

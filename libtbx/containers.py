@@ -1,10 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
 import collections
-MutableSet = collections.MutableSet
-OrderedDict = collections.OrderedDict
+try:
+  from collections.abc import MutableSet, OrderedDict  # special import
+except ImportError:
+  from collections import MutableSet, OrderedDict  # special import
 
-class OrderedSet(collections.MutableSet):
+class OrderedSet(MutableSet):
   """
   http://code.activestate.com/recipes/576694/ rev9
   recommended replacement: https://pypi.python.org/pypi/orderedset

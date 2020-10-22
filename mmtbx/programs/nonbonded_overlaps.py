@@ -100,14 +100,11 @@ Example:
 
     readyset_model.set_pdb_interpretation_params(pi_params)
     readyset_model.set_restraint_objects(restraint_objects)
-    readyset_model.get_restraints_manager()
+    readyset_model.process_input_model(make_restraints=True)
 
     # TODO: do we need macro_mol_sel, do we care?
     # If we use model.select(), we don't need it.
-    proxies = readyset_model.all_chain_proxies
-    cache = proxies.pdb_hierarchy.atom_selection_cache()
-    macro_mol_sel = proxies.selection(
-      cache  = cache,
+    macro_mol_sel = readyset_model.selection(
       string = 'protein or dna or rna')
 
     #t0 = time.time()

@@ -830,8 +830,7 @@ class substitute_ss(object):
           mon_lib_srv       = self.model.get_mon_lib_srv(),
           log               = self.log)
       self.model.set_sites_cart(
-          sites_cart = result.pdb_hierarchy.atoms().extract_xyz(),
-          update_grm = True)
+          sites_cart = result.pdb_hierarchy.atoms().extract_xyz())
 
     if self.processed_params.verbose:
       print("Adding chi torsion restraints...", file=self.log)

@@ -971,6 +971,11 @@ Wait for the command to finish, then try again.""" % vars())
         enable_cxx11=command_line.options.enable_cxx11,
         skip_phenix_dispatchers=command_line.options.skip_phenix_dispatchers)
       self.build_options.get_flags_from_environment()
+      # if an installed environment exists, override with build_options
+      # from installed environment
+      installed_env = get_installed_env()
+      if installed_env is not None:
+        self.build_options = installed_env.build_options
       if (self.build_options.use_conda):
         get_conda_prefix()
       if (command_line.options.command_version_suffix is not None):
@@ -997,7 +1002,8 @@ Wait for the command to finish, then try again.""" % vars())
             if module_name not in installed_module_names \
               and module_name != 'boost':
               from libtbx.env_config import module
-              dist_path = installed_env.as_relocatable_path(dist_path)
+              if dist_path is not None:
+                dist_path = installed_env.as_relocatable_path(dist_path)
               installed_module = module(env=self, name=module_name, dist_path=dist_path)
               self.installed_modules.append(installed_module)
               installed_module_names.add(module_name)
@@ -2221,17 +2227,6 @@ selfx:
         module.process_command_line_directories()
         # Reload the libtbx_config in case dependencies have changed
         module.process_libtbx_config()
-
-      # Resolve python dependencies in advance of potential use in refresh scripts
-      # Lazy-load the import here as we might not have an environment before this
-      try:
-        from . import pkg_utils
-      except ImportError:
-        from libtbx import pkg_utils
-      if self.build_options.use_conda:
-        pkg_utils.resolve_module_conda_dependencies(self.module_list)
-      else:
-        pkg_utils.resolve_module_python_dependencies(self.module_list)
 
       for path in self.pythonpath:
         sys.path.insert(0, abs(path))
