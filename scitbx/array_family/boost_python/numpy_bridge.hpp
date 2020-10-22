@@ -25,7 +25,9 @@ namespace scitbx { namespace af { namespace boost_python {
   SCITBX_LOC(int8, int8_t)
   SCITBX_LOC(int16, int16_t)
   // SCITBX_LOC(int32, int32_t)
-  // SCITBX_LOC(int64, int64_t)
+  #if defined(_MSC_VER)
+  SCITBX_LOC(int64, int64_t)
+  #endif
   SCITBX_LOC(uint8, uint8_t)
   SCITBX_LOC(uint16, uint16_t)
   SCITBX_LOC(uint32, uint32_t)

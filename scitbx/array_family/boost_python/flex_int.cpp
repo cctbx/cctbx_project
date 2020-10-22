@@ -304,7 +304,10 @@ template <typename intType>
   WRAP_FLEX(long, long);
   WRAP_FLEX(int8, int8_t);
   WRAP_FLEX(int16, int16_t);
-  // WRAP_FLEX(int32, int32_t);
-  // WRAP_FLEX(int64, int64_t);
+  // WRAP_FLEX(int32, int32_t);  // normally int on modern 64-bit systems
+  // int is the same as long on Windows, so wrap int64
+  #if defined(_MSC_VER)
+  WRAP_FLEX(int64, int64_t);
+  #endif
 
 }}} // namespace scitbx::af::boost_python

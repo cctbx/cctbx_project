@@ -591,10 +591,11 @@ int32 = ext.int
 int32_from_byte_str = ext.int_from_byte_str
 int32_range = ext.int_range
 
-# int64_t is the same as long
-int64 = ext.long
-int64_from_byte_str = ext.long_from_byte_str
-int64_range = ext.long_range
+# int64_t is the same as long, but not on Windows
+if sys.platform != 'win32':
+  int64 = ext.long
+  int64_from_byte_str = ext.long_from_byte_str
+  int64_range = ext.long_range
 
 # uint64_t is the same as size_t
 uint64 = ext.size_t
