@@ -95,8 +95,8 @@ def add_missing_H_atoms_at_bogus_position(pdb_hierarchy, mon_lib_srv, protein_on
           mlq = mon_lib_query(residue=ag.resname, mon_lib_srv=mon_lib_srv)
 
           if (get_class(name=ag.resname) in ['modified_rna_dna', 'other']):
-            #if mlq is None:
-            continue
+            if mlq is None:
+              continue
 
           expected_h = list()
           for k, v in six.iteritems(mlq.atom_dict()):
