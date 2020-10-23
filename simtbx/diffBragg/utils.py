@@ -834,6 +834,7 @@ def simulator_from_expt_and_params(expt, params=None, oversample=0, device_id=0,
         miller_data = open_mtz(mtz_name, mtz_column)
     crystal.miller_array = miller_data
     SIM.crystal = crystal
+    SIM.Umats_method = 1
 
     # create a nanoBragg beam
     beam = nanoBragg_beam()

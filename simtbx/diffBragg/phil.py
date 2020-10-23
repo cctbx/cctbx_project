@@ -74,6 +74,9 @@ simulator {
 
 refiner_phil = """
 refiner {
+  refine_eta = None
+    .type = ints(size_min=1)
+    .help = whether to refine the mosaic spread parameter, eta
   refine_per_spot_scale = None
     .type = ints(size_min=1)
     .help = whether to refine scale factors per spot, per shot
@@ -132,6 +135,9 @@ refiner {
     .help = a text file with 2 columns, the first column is the panel_id and the second 
     .help = column is the panel_group_id. Panels geometries in the same group are refined together
   init {
+    eta = 0
+      .type = float
+      .help = mosaic spread sigma in degrees
     spot_scale = 1
       .type = float
       .help = initial value for spot scale
@@ -143,6 +149,9 @@ refiner {
       .help = initial value for spectrum coefficients  Lambda -> c0 + Lambda*c1
   }
   sensitivity {
+    eta = 1
+      .type = float
+      .help = refinement sensitivity for eta, the mosaic spread parameter
     panelRotOFS = [0.01, 0.01, 0.01]
       .type = floats(size=3)
       .help = refinement sensitivity factor for panel rotations (orthogonal, fast, slow)

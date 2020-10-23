@@ -102,9 +102,10 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
   n_unitcell_params = len(UcellMan.variables)
   n_spotscale_params = 1
   n_originZ_params = 1
+  n_eta_params = 1
   n_tilt_params = 3 * len(nanoBragg_rois)
   n_local_unknowns = nrot_params + n_unitcell_params + n_ncells_param + n_spotscale_params + n_originZ_params \
-                     + n_tilt_params
+                     + n_tilt_params + n_eta_params
 
   if params.refiner.refine_per_spot_scale is not None and any(params.refiner.refine_per_spot_scale):
     n_local_unknowns += len(nanoBragg_rois)
@@ -185,6 +186,8 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
         if params.refiner.refine_per_spot_scale is not None:
           RUC.refine_per_spot_scale = params.refiner.refine_per_spot_scale[i_trial]
 
+        if params.refiner.refine_eta is not None:
+          RUC.refine_eta = params.refiner.refine_eta[i_trial]
 
       if RUC.refine_detdist and RUC.refine_panelZ:
         raise ValueError("Cannot refine panelZ and detdist simultaneously")
@@ -233,6 +236,8 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
       # INIT VALUES
       RUC.spot_scale_init = {0: params.refiner.init.spot_scale}  # self.spot_scale_init
 
+      RUC.eta_init = {0: params.simulator.crystal.mosaicity}
+
       m_init = params.simulator.crystal.ncells_abc
       if n_ncells_param == 2:
         m_init = [m_init[i_ncell] for i_ncell in sorted(set(INVERTED_NCELLS_MASK))]
@@ -266,6 +271,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
       RUC.spot_scale_sigma = params.refiner.sensitivity.spot_scale
       RUC.a_sigma, RUC.b_sigma, RUC.c_sigma = params.refiner.sensitivity.tilt_abc
       RUC.fcell_sigma_scale = params.refiner.sensitivity.fcell
+      RUC.eta_sigma = params.refiner.sensitivity.eta
 
       RUC.print_all_missets = True 
 
