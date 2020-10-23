@@ -5,6 +5,7 @@ from libtbx.utils import Sorry
 from cctbx.array_family import flex
 from copy import deepcopy
 from libtbx import group_args
+from libtbx.utils import null_out
 
 from cctbx.array_family import flex
 import scitbx.lbfgs
@@ -12,6 +13,7 @@ import math
 from cctbx.maptbx.segment_and_split_map import map_and_b_object
 from six.moves import range
 from six.moves import zip
+from scitbx import matrix
 
 def write_mtz(ma=None,phases=None,file_name=None):
   mtz_dataset=ma.as_mtz_dataset(column_root_label="FWT")
@@ -380,6 +382,34 @@ def rescale_cc_list(cc_list=None,scale_using_last=None,
     scaled_cc_list.append((cc-baseline)/(1-baseline))
   return scaled_cc_list,baseline
 
+def get_calculated_scale_factors(
+      sthol_list=None,
+      effective_b=None,
+      b_zero = None,
+      cc_list = None,
+      dv = None,
+      uc = None):
+    recip_space_vectors = flex.vec3_double()
+    scale_values = flex.double()
+    original_scale_values = flex.double()
+    indices = flex.miller_index()
+    for s,cc in zip(sthol_list,cc_list):
+      d = 1/s
+      sthol2 = 0.25/d**2
+      recip_space_vectors.append(matrix.col(dv) * s)
+      if effective_b is not None:
+        scale_values.append(b_zero*math.exp (max(-20.,min(20.,
+         -effective_b * sthol2))))
+      else:
+        scale_values.append(cc)
+
+      original_scale_values.append(cc)
+    indices = flex.miller_index(tuple(get_nearest_lattice_points(
+        uc,recip_space_vectors)))
+    return group_args(
+      indices = indices,
+      scale_values = scale_values,
+      original_scale_values = original_scale_values)
 
 def calculate_fsc(si=None,
      f_array=None,  # just used for binner
@@ -407,6 +437,8 @@ def calculate_fsc(si=None,
      direction_vectors = None,
      smooth_fsc = None,
      cutoff_after_last_high_point = None,
+     get_scale_as_aniso_u = None,
+     expected_rms_fc_list = None,
      out=sys.stdout):
 
   '''
@@ -415,6 +447,7 @@ def calculate_fsc(si=None,
      CC values weighted by abs() component along direction vector
     If list of direction vectors, return group_args with si objects
   '''
+
   # calculate anticipated fall-off of model data with resolution
   if si.rmsd is None and is_model_based:
     if not rmsd_resolution_factor:
@@ -458,6 +491,7 @@ def calculate_fsc(si=None,
     fc_map=model_map_coeffs
     b_eff=None
 
+
   ratio_list=flex.double()
   target_sthol2=flex.double()
   sthol_list=flex.double()
@@ -486,6 +520,16 @@ def calculate_fsc(si=None,
     ratio_dict_by_dv [i] = flex.double()
     i += 1
 
+  first_bin =True
+  weights_para_list = [] # NOTE: this makes N * f_array.size() arrays!!
+  for dv in direction_vectors:
+    if dv:
+      weights_para_list.append(
+        get_normalized_weights_para(f_array,direction_vectors, dv,
+          include_all_in_lowest_bin = True))
+    else:
+      weights_para_list.append(None)
+
   for i_bin in f_array.binner().range_used():
     sel       = f_array.binner().selection(i_bin)
     d         = dsd.select(sel)
@@ -509,26 +553,31 @@ def calculate_fsc(si=None,
           fo        = fo_map.select(sel)
     else:
       fo = None
-    for dv in direction_vectors:
+
+    for dv, weights_para in zip(direction_vectors, weights_para_list):
       if dv:
-        sel_para = get_sel_para(m1, dv)  # selection
-        m1a=m1.select(sel_para)
-        m2a=m2.select(sel_para)
+        weights_para_sel = weights_para.select(sel)
+        weights_para_sel_sqrt = flex.sqrt(weights_para_sel)
+        m1a=m1.customized_copy(data = m1.data() * weights_para_sel_sqrt)
+        m2a=m2.customized_copy(data = m2.data() * weights_para_sel_sqrt)
         cca        = m1a.map_correlation(other = m2a)
         if cca is None:
           cca=0.
         cc_dict_by_dv[i].append(cca)
+        normalization = 1./max(1.e-10,weights_para_sel.norm())
         if fo_map:
-          fo_a = fo.select(sel_para)
+          fo_a = fo.customized_copy(data=fo.data()*weights_para_sel)
           f_array_fo=map_coeffs_to_fp(fo_a)
-          rms_fo=f_array_fo.data().norm()
+          rms_fo=normalization * f_array_fo.data().norm()
         else:
           rms_fo=1.
 
-        if fc_map:
-          fc_a  = fc.select(sel_para)
+        if expected_rms_fc_list:
+          rms_fc = expected_rms_fc_list[i_bin-1]
+        elif fc_map:
+          fc_a  = fc.customized_copy(data=fc.data()*weights_para_sel)
           f_array_fc=map_coeffs_to_fp(fc_a)
-          rms_fc=f_array_fc.data().norm()
+          rms_fc=normalization *f_array_fc.data().norm()
         else:
           rms_fc=1.
 
@@ -543,6 +592,8 @@ def calculate_fsc(si=None,
         cc        = m1.map_correlation(other = m2)
         if external_map_coeffs: # only for no direction vectors
           cc=1.
+        if cc is None:
+          cc= 0
         cc_dict_by_dv[i].append(cc)
         if fo_map:
           f_array_fo=map_coeffs_to_fp(fo)
@@ -550,7 +601,9 @@ def calculate_fsc(si=None,
         else:
           rms_fo=1.
 
-        if fc_map:
+        if expected_rms_fc_list:
+          rms_fc = expected_rms_fc_list[i_bin-1]
+        elif fc_map:
           f_array_fc=map_coeffs_to_fp(fc)
           rms_fc=f_array_fc.data().norm()
         else:
@@ -559,7 +612,7 @@ def calculate_fsc(si=None,
         rms_fc_dict_by_dv[i].append(rms_fc)
         ratio_dict_by_dv[i].append(max(1.e-10,rms_fc)/max(1.e-10,rms_fo))
 
-    sthol2=0.25/d_avg**2
+    sthol2=0.25/d_avg**2 # note this is 0.25 * sthol**2 .... not consistent
     target_sthol2.append(sthol2)
     sthol_list.append(1/d_avg)
     d_min_list.append(d_min)
@@ -577,6 +630,7 @@ def calculate_fsc(si=None,
     if verbose:
       print("d_min: %5.1f  FC: %7.1f  FOBS: %7.1f   CC: %5.2f" %(
       d_avg,rms_fc,rms_fo,cc), file=out)
+    first_bin = False
 
   input_info = group_args(
      f_array = f_array,
@@ -594,14 +648,14 @@ def calculate_fsc(si=None,
   si_list = []
   for i in range(len(direction_vectors)):
     if smooth_fsc:
-      ratio_list = ratio_dict_by_dv[i]
-      rms_fo_list = rms_fo_dict_by_dv[i]
-      rms_fc_list = rms_fc_dict_by_dv[i]
+      ratio_list = remove_values_if_necessary(ratio_dict_by_dv[i])
+      rms_fo_list = remove_values_if_necessary(rms_fo_dict_by_dv[i])
+      rms_fc_list = remove_values_if_necessary(rms_fc_dict_by_dv[i])
       cc_list = smooth_values(cc_dict_by_dv[i])
     else:
-      ratio_list = ratio_dict_by_dv[i]
-      rms_fo_list = rms_fo_dict_by_dv[i]
-      rms_fc_list = rms_fc_dict_by_dv[i]
+      ratio_list = remove_values_if_necessary(ratio_dict_by_dv[i])
+      rms_fo_list = remove_values_if_necessary(rms_fo_dict_by_dv[i])
+      rms_fc_list = remove_values_if_necessary(rms_fc_dict_by_dv[i])
       cc_list = cc_dict_by_dv[i]
     if len(direction_vectors) > 1:
       working_si = deepcopy(si)
@@ -627,15 +681,166 @@ def calculate_fsc(si=None,
        b_eff,
        input_info,
        cutoff_after_last_high_point,
+       get_scale_as_aniso_u,
+       expected_rms_fc_list,
        out)
     si_list.append(working_si)
   if direction_vectors == [None]:
     return si_list[0]
   else:
+
+
+    if get_scale_as_aniso_u:  # get the final scale factors as aniso_u
+
+      if fo_map:
+        # Calculate anisotropic scale factor to make Fo uniform
+        # Decide on resolution based on rms_fo_list values
+        resolution_for_aniso = get_resolution_for_aniso(sthol_list=sthol_list,
+          si_list=si_list, minimum_ratio = 0.05)
+        if not resolution_for_aniso:
+          resolution_for_aniso = resolution
+
+        f_array_fo=map_coeffs_to_fp(fo_map)
+        f_array_fo_scaled,aniso_obj=analyze_aniso(
+          b_iso=0,
+          f_array=f_array_fo,resolution=resolution_for_aniso,
+          remove_aniso=True,out=null_out())
+
+        # Now normalize to fc_map if present and not setting targets externally
+        if fc_map and (not expected_rms_fc_list):
+          f_array_fc=map_coeffs_to_fp(fc_map)
+          f_array_fc_scaled,fc_aniso_obj=analyze_aniso(
+            b_iso=0,
+            f_array=f_array_fc,resolution=resolution_for_aniso,
+            remove_aniso=True,out=null_out())
+        else:
+          fc_aniso_obj = get_aniso_obj_from_direction_vectors(
+            f_array = f_array,
+            resolution = resolution,
+            direction_vectors = direction_vectors,
+            expected_rms_fc_list = expected_rms_fc_list,
+            sthol_list = sthol_list)
+
+        from cctbx import adptbx
+        if fc_aniso_obj and fc_aniso_obj.b_cart:
+          starting_fc_u_cart = adptbx.b_as_u(fc_aniso_obj.b_cart)
+        else:
+          starting_fc_u_cart = None
+        if aniso_obj.b_cart:
+          starting_u_cart = adptbx.b_as_u(aniso_obj.b_cart)
+          if starting_fc_u_cart:
+            starting_u_cart = tuple(matrix.col(starting_u_cart) -
+             matrix.col(starting_fc_u_cart))
+        else:
+          starting_u_cart = None
+      else:
+        starting_u_cart = None
+
+      aniso_obj = get_aniso_obj_from_direction_vectors(
+        f_array = f_array,
+        resolution = resolution,
+        direction_vectors = direction_vectors,
+        si_list = si_list,
+        sthol_list = sthol_list)
+
+      if aniso_obj.b_cart and tuple(starting_u_cart) != (0,0,0,0,0,0):
+        from cctbx import adptbx
+        scaling_u_cart = adptbx.b_as_u(aniso_obj.b_cart)
+        # U_cart to remove is starting_u_cart - scaling_u_cart
+        overall_u_cart_to_remove = tuple(
+          matrix.col(starting_u_cart) - matrix.col(scaling_u_cart))
+      else: # failed...keep original
+        overall_u_cart_to_remove = tuple((0,0,0,0,0,0))
+        scaling_u_cart = starting_u_cart
+
+    else:
+      overall_u_cart_to_remove = None
+      starting_u_cart = None
+      scaling_u_cart = None
+
     return group_args(
      group_args_type = 'scaling_info objects, one set per direction_vector',
      direction_vectors = direction_vectors,
-     scaling_info_list = si_list)
+     scaling_info_list = si_list,
+     overall_u_cart_to_remove = overall_u_cart_to_remove,
+     starting_u_cart = starting_u_cart,
+     scaling_u_cart = scaling_u_cart)
+
+
+def get_aniso_obj_from_direction_vectors(
+        f_array = None,
+        resolution = None,
+        direction_vectors = None,
+        si_list = None,
+        sthol_list = None,
+        expected_rms_fc_list = None,
+        ):
+
+      scale_values = flex.double()
+      indices = flex.miller_index()
+      extra_b = -15.  # Just so ml scaling gives about the right answer for
+                # constant number that are not really reflection data
+      if not si_list:
+        si_list = []
+        for dv in direction_vectors:
+          si_list.append(group_args(
+            effective_b = None,
+            b_zero = 0,
+            cc_list =expected_rms_fc_list,
+           ))
+
+      for dv,si in zip(direction_vectors,si_list):
+        info = get_calculated_scale_factors(
+          sthol_list=sthol_list,
+          effective_b=(None if (si.effective_b is None) else (si.effective_b + extra_b)),  # so xtriage gives about right
+          b_zero = si.b_zero,
+          cc_list = si.cc_list,
+          dv = dv,
+          uc = f_array.unit_cell(),
+           )
+        indices.extend(info.indices)
+        scale_values.extend(info.scale_values)
+
+      scale_values_array = f_array.customized_copy(
+        data = scale_values,
+        indices = indices)
+
+      scaled_array,aniso_obj=analyze_aniso(
+        b_iso=0,
+        f_array=scale_values_array,resolution=resolution,
+        remove_aniso=True,out=null_out())
+      return aniso_obj
+
+def get_resolution_for_aniso(sthol_list=None, si_list=None,
+    minimum_ratio = 0.05):
+  highest_d_min = None
+  for si in si_list:
+    first_rms_fo = None
+    for rms_fo,sthol in  zip(si.rms_fo_list,sthol_list):
+      d = 1/sthol
+      if first_rms_fo is None:
+        first_rms_fo = rms_fo
+      else:
+        ratio = rms_fo/max(1.e-10, first_rms_fo)
+        if ratio < minimum_ratio and (
+            highest_d_min is None or d > highest_d_min):
+          highest_d_min = d
+  return highest_d_min
+
+def remove_values_if_necessary(f_values,max_ratio=100, min_ratio=0.01):
+  # Make sure values are within a factor of 100 of low_res ones...if they are
+  #  not it was probably something like zero values or near-zero values
+  f_values=flex.double(f_values)
+  low_res = f_values[:3].min_max_mean().mean
+  new_values=flex.double()
+  last_value = low_res
+  for x in f_values:
+    if x > max_ratio * low_res or x < min_ratio * low_res:
+      new_values.append(last_value)
+    else:
+      new_values.append(x)
+      last_value = x
+  return new_values
 
 def smooth_values(cc_values, max_relative_rms=10, n_smooth = None,
     skip_first_frac = 0.1): # normally do not smooth the very first ones
@@ -696,6 +901,8 @@ def complete_cc_analysis(
        b_eff,
        input_info,
        cutoff_after_last_high_point,
+       get_scale_as_aniso_u,
+       expected_rms_fc_list,
        out):
 
 
@@ -750,6 +957,7 @@ def complete_cc_analysis(
       rms_fo_list=rms_fo_list,
       ratio_list=ratio_list,
       b_eff=b_eff,
+      max_possible_cc=max_possible_cc,
       **input_info()).weighted_cc
     for i in range(20):
       b_eff_working = 0.1 * i * b_eff
@@ -758,6 +966,7 @@ def complete_cc_analysis(
          rms_fo_list=rms_fo_list,
          ratio_list=ratio_list,
          b_eff = b_eff_working,
+         max_possible_cc=max_possible_cc,
          **input_info()).weighted_cc
       if weighted_cc > best_weighted_cc:
         best_b_eff = b_eff_working
@@ -770,13 +979,18 @@ def complete_cc_analysis(
       rms_fo_list=rms_fo_list,
       ratio_list=ratio_list,
       b_eff=b_eff,
-      max_possible_cc=max_possible_cc,**input_info())
+      get_scale_as_aniso_u=get_scale_as_aniso_u,
+      max_possible_cc=max_possible_cc,
+      **input_info())
   target_scale_factors = info.target_scale_factors
-
 
   if direction_vector:
     print ("\n Analysis for direction vector (%5.2f, %5.2f, %5.2f): "% (
       direction_vector), file = out)
+
+  if info.effective_b:
+    print("\nEffective B value for CC*: %.3f A**2 " %(
+        info.effective_b),file=out)
 
   if fraction_complete < min_fraction_complete:
     print("\nFraction complete (%5.2f) is less than minimum (%5.2f)..." %(
@@ -787,40 +1001,88 @@ def complete_cc_analysis(
   print("Note 1: CC* estimated from sqrt(2*CC/(1+CC))", file=out)
   print("Note 2: CC estimated by fitting (smoothing) for values < %s" %(cc_cut), file=out)
   print("Note 3: Scale = A  CC*  rmsFc/rmsFo (A is normalization)", file=out)
-  print("  d_min     rmsFo       rmsFc    CC      %s  Scale" %(text), file=out)
+  print("  d_min     rmsFo       rmsFc    CC      %s  Scale " %(
+      text), file=out)
 
   for sthol2,scale,rms_fo,cc,rms_fc,orig_cc in zip(
      input_info.target_sthol2,target_scale_factors,rms_fo_list,
       cc_list,rms_fc_list,
       original_cc_list):
-     print("%7.2f  %9.1f  %9.1f %7.3f  %7.3f  %5.2f" %(
-       0.5/sthol2**0.5,rms_fo,rms_fc,orig_cc,cc,scale), file=out)
+     print("%7.2f  %9.1f  %9.1f %7.3f  %7.3f  %5.2f " %(
+       0.5/sthol2**0.5,rms_fo,rms_fc,orig_cc,cc,scale),
+        file=out)
 
   si.target_scale_factors=target_scale_factors
   si.target_sthol2=input_info.target_sthol2
   si.d_min_list=input_info.d_min_list
   si.cc_list=cc_list
+  si.rms_fo_list = rms_fo_list
   si.low_res_cc = cc_list[:low_res_bins].min_max_mean().mean # low-res average
+  si.effective_b = info.effective_b
+  si.b_zero = info.b_zero
+  si.rms = info.rms
+  si.expected_rms_fc_list = expected_rms_fc_list
 
   return si
 
 def get_sel_para(f_array, direction_vector, minimum_dot = 0.70):
     # get selections based on |dot(normalized_indices, direction_vector)|
-    indices_vec3_double=f_array.indices().as_vec3_double()
-    norms=indices_vec3_double.norms()
+    u = f_array.unit_cell()
+    rcvs = u.reciprocal_space_vector(f_array.indices())
+    norms = rcvs.norms()
     norms.set_selected((norms == 0),1)
-    index_directions = indices_vec3_double/norms
+    index_directions = rcvs/norms
     sel = (flex.abs(index_directions.dot(direction_vector)) > minimum_dot)
     return sel
 
-def get_weights_para(f_array, direction_vector, minimum_dot = 0.70,
-     weight_by_dot = None):
-    sel = get_sel_para(f_array, direction_vector, minimum_dot = minimum_dot)
-    # get weights based on |dot(normalized_indices, direction_vector)|
-    # TODO: ZZZ put in cosine weighting
-    weights_para=flex.double(sel.size(),1)
-    weights_para.set_selected(~sel,0)
-    return weights_para
+def get_normalized_weights_para(f_array,direction_vectors, dv,
+    include_all_in_lowest_bin = None):
+
+    sum_weights = flex.double(f_array.size(),0)
+    current_weights = None
+    for direction_vector in direction_vectors:
+      weights = get_weights_para(f_array, direction_vector,
+        include_all_in_lowest_bin = include_all_in_lowest_bin)
+      if direction_vector == dv:
+        current_weights = weights
+      sum_weights += weights
+    sum_weights.set_selected((sum_weights <= 1.e-10), 1.e-10)
+    return current_weights * (1/sum_weights)
+
+def get_weights_para(f_array, direction_vector,
+       weight_by_cos = True,
+       min_dot = 0.7,
+       include_all_in_lowest_bin = None):
+    u = f_array.unit_cell()
+    rcvs = u.reciprocal_space_vector(f_array.indices())
+    norms = rcvs.norms()
+    norms.set_selected((norms == 0),1)
+    index_directions = rcvs/norms
+    if weight_by_cos:
+
+      weights = flex.abs(index_directions.dot(direction_vector))
+      sel = (weights < min_dot)
+      weights.set_selected(sel,0)
+      weights = -20.*(1- weights)
+      weights = flex.exp( weights)
+
+    else:
+      weights = flex.double(index_directions.size(),0)
+      sel = (flex.abs(index_directions.dot(direction_vector)) > min_dot)
+      weights.set_selected(sel,1)
+    if include_all_in_lowest_bin:
+      i_bin = 1
+      sel       = f_array.binner().selection(i_bin)
+      weights.set_selected(sel, 1.0)  # full weights on low-res in all directions
+    return weights
+
+def get_nearest_lattice_points(unit_cell, reciprocal_space_vectors):
+  lattice_points=flex.vec3_double()
+  v = matrix.sqr(unit_cell.fractionalization_matrix()).inverse()
+  for x in reciprocal_space_vectors:
+    lattice_points.append(v*x)
+  lattice_points=lattice_points.iround()
+  return lattice_points
 
 def get_target_scale_factors(
      f_array = None,
@@ -837,6 +1099,7 @@ def get_target_scale_factors(
      skip_scale_factor = None,
      maximum_scale_factor = None,
      b_eff = None,
+     get_scale_as_aniso_u=None,
      out = sys.stdout):
 
 
@@ -874,11 +1137,12 @@ def get_target_scale_factors(
     weighted_cc += n_list[index]*rms_fo_list[index] * scale_on_fo * corrected_cc
     weighted += n_list[index]*rms_fo_list[index] * scale_on_fo
 
-  weighted_cc = weighted_cc/max(1.-10,weighted)
+  weighted_cc = weighted_cc/max(1.e-10,weighted)
 
   if not pseudo_likelihood and not skip_scale_factor: # normalize
-    avg_scale_on_fo = (sum_w_scale/sum_w)**0.5
-    if equalize_power: # XXX do not do this if only 1 bin has values > 0
+    avg_scale_on_fo = (sum_w_scale/max(1.e-10,sum_w))**0.5
+    if equalize_power and avg_scale_on_fo>1.e-10:
+      # XXX do not do this if only 1 bin has values > 0
       scale_factor = 1/avg_scale_on_fo
     else: # usual
       scale_factor=1./target_scale_factors.min_max_mean().max
@@ -891,10 +1155,92 @@ def get_target_scale_factors(
       truncated_scale_factors.append(min(maximum_scale_factor,x ))
     target_scale_factors = truncated_scale_factors
 
+  if get_scale_as_aniso_u:
+    # Get effective B for cc_list and target_sthol2
+    info = get_effective_b(values = cc_list,
+      sthol2_values = target_sthol2)
+    effective_b = info.effective_b
+    b_zero= info.b_zero
+    rms= info.rms
+
+  else:
+    effective_b = None
+    b_zero= None
+    rms = None
   return group_args(
     target_scale_factors = target_scale_factors,
     weighted_cc = weighted_cc,
+    effective_b = effective_b,
+    b_zero = b_zero,
+    rms = rms
   )
+
+def get_effective_b(values = None,
+      sthol2_values = None,
+       max_tries_per_iter = 5,
+       max_iter = 10,
+       tol = 1.e-6,
+       effective_b = None,
+       b_zero = None,
+       delta_b = 50):
+  if effective_b is not None and b_zero is not None:
+      # calculate update
+      best_info = None
+      for i in range(-max_tries_per_iter//2,max_tries_per_iter//2):
+        b_value = effective_b + i* delta_b
+        info=get_b_calc(b_value, sthol2_values, values)
+        if not best_info or info.rms  < best_info.rms:
+          best_info = info
+          best_info.effective_b = b_value
+      effective_b = best_info.effective_b
+      rms = best_info.rms
+      b_zero = best_info.b_zero
+
+  else:
+     effective_b = 0
+     b_zero = 1
+     finished = False
+     for iter in range(max_iter):
+       info = get_effective_b(values = values,
+         sthol2_values = sthol2_values,
+         max_tries_per_iter = max_tries_per_iter,
+         effective_b = effective_b,
+         b_zero =  b_zero,
+         delta_b = delta_b)
+       effective_b = info.effective_b
+       b_zero = info.b_zero
+       rms = info.rms
+       if finished:
+         break
+       else:
+         delta_b = delta_b * 0.75
+
+  return group_args(
+    effective_b = effective_b,
+    b_zero = b_zero,
+    rms = rms)
+
+def get_b_calc( b_value, sthol2_values, values):
+  import math
+  sum= 0.
+  sumx= 0.
+  sumy= 0.
+  sum2= 0.
+  sumn=0.
+  calc_values = flex.double()
+  for sthol2, value in zip (sthol2_values, values):
+    calc_values.append(math.exp(max(-20.,min(20.,
+      - b_value* sthol2))))
+  #b_zero = values.min_max_mean().mean/calc_values.min_max_mean().mean
+  b_zero = values[0]/calc_values[0]
+  calc_values *= b_zero
+  from libtbx.test_utils import approx_equal
+  assert approx_equal(values[0],calc_values[0])
+  rms = ((flex.pow2(values-calc_values)).min_max_mean().mean)**0.5
+  return group_args(
+    b_zero=b_zero,
+    rms=rms)
+
 
 def analyze_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
      get_remove_aniso_object=True,
@@ -919,7 +1265,8 @@ def analyze_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
   else:  # have f_array and resolution
     if not aniso_obj:
       aniso_obj=analyze_aniso_object()
-      aniso_obj.set_up_aniso_correction(f_array=f_array,d_min=resolution)
+      aniso_obj.set_up_aniso_correction(f_array=f_array,d_min=resolution,
+        b_iso=b_iso)
 
     if remove_aniso and aniso_obj and aniso_obj.b_cart:
       f_array=aniso_obj.apply_aniso_correction(f_array=f_array)
@@ -1128,7 +1475,6 @@ def calculate_adjusted_sa(ma,phases,b,
     d_min_ratio=d_min_ratio)
   from cctbx.maptbx.segment_and_split_map import score_map
 
-  from libtbx.utils import null_out
   si=score_map(
     map_data=map_data,
     solvent_fraction=solvent_fraction,
@@ -1149,31 +1495,34 @@ def get_kurtosis(data=None):
 class analyze_aniso_object:
   def __init__(self):
 
-    self.b_iso=None # target b_iso, default is mean of existing
     self.b_cart=None
     self.b_cart_aniso_removed=None
 
-  def set_up_aniso_correction(self,f_array=None,b_iso=None,d_min=None):
+  def set_up_aniso_correction(self,f_array=None,b_iso=None,d_min=None,
+     b_cart_to_remove = None):
 
     assert f_array is not None
     if not d_min:
       (d_max,d_min)=f_array.d_max_min(d_max_is_highest_defined_if_infinite=True)
 
-    from cctbx.maptbx.segment_and_split_map import get_b_iso
-    b_mean,aniso_scale_and_b=get_b_iso(f_array,d_min=d_min,
-      return_aniso_scale_and_b=True)
+    if b_cart_to_remove and b_iso:
+      self.b_cart=b_cart_to_remove
+      self.b_cart_aniso_removed = [ -b_iso, -b_iso, -b_iso, 0, 0, 0] # change
+    else:
+      from cctbx.maptbx.segment_and_split_map import get_b_iso
+      b_mean,aniso_scale_and_b=get_b_iso(f_array,d_min=d_min,
+        return_aniso_scale_and_b=True)
+      if not aniso_scale_and_b or not aniso_scale_and_b.b_cart:
+        return # failed
 
-    if not aniso_scale_and_b or not aniso_scale_and_b.b_cart:
-      return # failed
+      if b_iso is None:
+        b_iso=b_mean  # use mean
+      self.b_iso=b_iso
 
-    if b_iso is None:
-      b_iso=b_mean  # use mean
-    self.b_iso=b_iso
+      self.b_cart=aniso_scale_and_b.b_cart  # current
+      self.b_cart_aniso_removed = [ -b_iso, -b_iso, -b_iso, 0, 0, 0] # change
 
-    self.b_cart=aniso_scale_and_b.b_cart  # current
-    self.b_cart_aniso_removed = [ -b_iso, -b_iso, -b_iso, 0, 0, 0] # change
-
-    # ready to apply
+      # ready to apply
 
   def apply_aniso_correction(self,f_array=None):
 

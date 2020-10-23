@@ -1025,6 +1025,34 @@ class map_manager(map_reader, write_ccp4_map):
      along_density_values = along_density_values,
        along_sites = along_sites)
 
+  def apply_spectral_scaling(self, d_min = None, d_max = None,
+    n_bins = 100):
+
+    print("Applying spectral scaling", file = self.log)
+    map_coeffs = self.map_as_fourier_coefficients(d_min = d_min,
+      d_max = d_max)
+    from iotbx.map_model_manager import get_map_coeffs_as_fp_phi
+    f_array_info = get_map_coeffs_as_fp_phi(
+        map_coeffs, d_min= map_coeffs.d_min(), n_bins = n_bins)
+
+    from cctbx.development.approx_amplitude_vs_resolution import \
+       approx_amplitude_vs_resolution
+    aavr = approx_amplitude_vs_resolution(generate_mock_rms_fc_list=False)
+    target_scale_factors = aavr.get_target_scale_factors(f_array_info.f_array)
+
+    # Now interpolate these scale factors:
+
+    scale_array=f_array_info.f_array.binner().interpolate(
+        target_scale_factors, 1) # d_star_power=1
+    scaled_f_array=f_array_info.f_array.customized_copy(
+          data=f_array_info.f_array.data()*scale_array)
+
+    new_map_coeffs = scaled_f_array.phase_transfer(
+       phase_source=f_array_info.phases, deg=True)
+    new_mm = self.fourier_coefficients_as_map_manager(new_map_coeffs)
+
+    self.set_map_data(map_data = new_mm.map_data())  # replace map data
+
 
   def resolution_filter(self, d_min = None, d_max = None):
     '''
@@ -2132,7 +2160,10 @@ class map_manager(map_reader, write_ccp4_map):
 
     if self.ncs_object() is None:
       # try to get map symmetry but do not try too hard..
-      self.find_map_symmetry()
+      try:
+        self.find_map_symmetry()
+      except Exception as e:
+        pass
     if not self.ncs_object() or self.ncs_object().max_operators()<2:
       return box_info # nothing to do
 

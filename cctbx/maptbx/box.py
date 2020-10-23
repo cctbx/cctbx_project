@@ -973,13 +973,16 @@ def copy_and_zero_map_outside_bounds(map_data, bounds_info):
   return new_map
 
 def shift_and_box_model(model = None,
-    box_cushion = 5, shift_model = True):
+    box_cushion = 5, shift_model = True,
+    crystal_symmetry = None):
   '''
     Shift a model near the origin and box around it
+    Use crystal_symmetry if supplied
   '''
   from mmtbx.model import manager as model_manager
   from scitbx.matrix import col
   from cctbx import crystal
+
   ph=model.get_hierarchy()
   sites_cart=ph.atoms().extract_xyz()
   if shift_model:
@@ -987,8 +990,9 @@ def shift_and_box_model(model = None,
       (box_cushion,box_cushion,box_cushion))
 
   box_end=col(sites_cart.max())+col((box_cushion,box_cushion,box_cushion))
-  a,b,c=box_end
-  crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
+  if not crystal_symmetry:
+    a,b,c=box_end
+    crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
   ph.atoms().set_xyz(sites_cart)
 
   return model_manager(

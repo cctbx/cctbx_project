@@ -29,6 +29,8 @@ master_phil = libtbx.phil.parse("""
     .type = int
   random_seed = 4865136
     .type = int
+  max_sels = 13
+    .type = int
 """)
 
 ##### PERMTOOLS
@@ -402,7 +404,12 @@ def tls_refinery(sites_cart, selection, u_cart=None, u_iso=None,
       origin = cm,
       sites_cart = sites_cart_,
       u_isos = u_iso.select(selection))
-    #print "target:",target
+    if 0:
+      print ("T: %s " %(str(result[0])))
+      print ("L: %s " %(str(tuple(result[1:7]))))
+      print ("S: %s " %(str(tuple(result[7:]))))
+      print ("Center: %s " %(str(cm)))
+      print ("target:",target)
     class foo: pass
     foo.f = target
     return foo
@@ -576,7 +583,6 @@ Usage:
       cmdline_phil.append(arg_phil)
   working_phil = master_phil.fetch(sources=cmdline_phil)
   params = working_phil.extract()
-  # XXX params.pdb_file is not used anymore. Maybe should be removed.
   pdb_file_name = params.pdb_file
   if ((pdb_file_name is None) or
       (not iotbx.pdb.is_pdb_file(pdb_file_name) and
@@ -593,7 +599,7 @@ Usage:
   xray_structure = pdb_inp.xray_structure_simple()
   return find_tls(
     params         = params,
-    # pdb_inp        = pdb_inp,
+    #pdb_inp        = pdb_inp,
     pdb_hierarchy  = pdb_hierarchy,
     xray_structure = xray_structure,
     out            = out)
@@ -767,6 +773,7 @@ def find_tls(params,
     chain_selection = chain_selection_from_residues(crs[1])
     groups, perms = get_model_partitioning(residues = crs[1],
       secondary_structure_selection = secondary_structure_selection,
+      max_sels = params.max_sels,
       out = out)
     #
     if(len(perms)==1):
@@ -898,7 +905,7 @@ class _run_find_tls(object):
   def __call__(self, *args, **kwds):
     return find_tls(
       params=self.params,
-      # pdb_inp=None,
+      pdb_inp=None,
       pdb_hierarchy=self.pdb_hierarchy,
       xray_structure=self.xray_structure)
 

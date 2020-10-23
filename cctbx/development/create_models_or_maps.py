@@ -173,6 +173,11 @@ def generate_model(
   dm.process_model_file(file_name)
   model = dm.get_model(file_name)
 
+  if not model.crystal_symmetry():
+    from cctbx.maptbx.box import shift_and_box_model
+    model = shift_and_box_model(model = model,
+      box_cushion = box_cushion)
+
   selection=model.selection('resseq %s:%s' %(start_res,start_res+n_residues-1))
   model=model.select(selection)
 
@@ -257,7 +262,6 @@ def generate_map_coefficients(
 
   fmodel_params.high_resolution=float(d_min)
   fmodel_params.scattering_table=scattering_table
-
   fmodel=fmodel_from_xray_structure(
     xray_structure = xrs,
     params         = fmodel_params,
