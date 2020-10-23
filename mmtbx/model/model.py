@@ -652,7 +652,6 @@ class manager(object):
      shift_cart = shift_cart_to_apply,
      crystal_symmetry = self._unit_cell_crystal_symmetry)
 
-
   def set_unit_cell_crystal_symmetry(self, crystal_symmetry):
     '''
       Set the unit_cell_crystal_symmetry (original crystal symmetry)
@@ -754,13 +753,19 @@ class manager(object):
 
       if scattering_table: # if not there, were not any scattering tables before
         self.setup_scattering_dictionaries(scattering_table = scattering_table)
-      # GRM is not valid if the symmetry is changed
-      self.unset_restraints_manager()
+      #
+      if(self.get_restraints_manager() is not None):
+        self.get_restraints_manager().geometry.replace_site_symmetry(
+          new_site_symmetry_table = self._xray_structure.site_symmetry_table())
+        # Not sure if this is needed.
+        self.get_restraints_manager().geometry.crystal_symmetry=crystal_symmetry
+        # This updates some of internals
+        self.get_restraints_manager().geometry.pair_proxies(
+          sites_cart = self.get_sites_cart())
 
   def unit_cell_crystal_symmetry(self):
     if self._unit_cell_crystal_symmetry is not None:
       return self._unit_cell_crystal_symmetry
-
     else:
       return None
 
