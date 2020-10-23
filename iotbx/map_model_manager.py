@@ -810,7 +810,8 @@ class map_model_manager(object):
 
   # Methods for writing maps and models
 
-  def write_map(self, file_name = None, map_id='map_manager'):
+  def write_map(self, file_name,
+       map_id='map_manager'):
     if not self._map_dict.get(map_id):
       self._print ("No map to write out with id='%s'" %(map_id))
     elif not file_name:
@@ -818,8 +819,10 @@ class map_model_manager(object):
     else:
       self._map_dict.get(map_id).write_map(file_name = file_name)
 
-  def write_model(self, model_id = None,
-     file_name = None):
+  def write_model(self, 
+     file_name, 
+     model_id = None,
+     ):
     if not model_id:
        model_id = 'model'
     if not self.get_model_by_id(model_id = model_id):
