@@ -336,7 +336,7 @@ def test_01():
   extra_map_manager_id_list = ["low_pass_filtered","high_pass_filtered","gaussian","binary"]
 
 
-  expected_cc= [ 0.999920243317,0.0129365545729,0.971491994253,0.733986499746]
+  expected_cc= [ 1,-0.038380049155,0.975273714961,0.866785173385]
   mam=map_model_manager(
     map_manager=mm,
     extra_map_manager_list =  [low_pass_filtered, high_pass_filtered, gaussian, binary],

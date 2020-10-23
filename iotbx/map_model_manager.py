@@ -2164,6 +2164,9 @@ class map_model_manager(object):
 
       assert kw.get('map_id_to_be_scaled_list') is None or (
         kw['map_id']  in kw['map_id_to_be_scaled_list']) # map_id_to_be_scaled not ok
+ 
+      # Set up list of maps to be scaled 
+      kw = self.set_map_id_lists(kw)
 
       # run sharpening without local sharpening first
       #  Then set maps to scale as the scaled maps from this run
@@ -2180,14 +2183,14 @@ class map_model_manager(object):
       method( **local_kw)
 
       # Now our new maps to be sharpened are in map_id_scaled_list
-      if kw['map_id'] in kw['map_id_to_be_scaled_list']:
+      if kw.get('map_id','None') in kw['map_id_to_be_scaled_list']:
         kw['map_id'] = kw['map_id_scaled_list'][
           kw['map_id_to_be_scaled_list'].index(kw['map_id'])]
         print("New main map to use in determining scaling: '%s' " %(
           kw['map_id']),file = self.log)
 
-      if kw.get('map_id_1') in kw['map_id_to_be_scaled_list'] and \
-         kw.get('map_id_2') in kw['map_id_to_be_scaled_list']:  # use scaled
+      if kw.get('map_id_1','None') in kw['map_id_to_be_scaled_list'] and \
+         kw.get('map_id_2','None') in kw['map_id_to_be_scaled_list']:  # use scaled
         kw['map_id_1'] = kw['map_id_scaled_list'][
           kw['map_id_to_be_scaled_list'].index(kw['map_id_1'])]
         kw['map_id_2'] = kw['map_id_scaled_list'][
