@@ -91,6 +91,10 @@ class SimData:
         else:
             from simtbx.nanoBragg.tst_gaussian_mosaicity2 import run_uniform
             UMAT_nm, UMAT_prime = run_uniform(mos_spread_deg, 2*n_mos_doms)
+            if mos_spread_deg == 0 or n_mos_doms == 1:
+                UMAT_nm.pop_back()
+                UMAT_prime.pop_back()
+                assert tuple(UMAT_nm[0]) == (1, 0, 0, 0, 1, 0, 0, 0, 1)  # if mos_spread_deg is 0, this should be the identity
         return UMAT_nm, UMAT_prime
 
     @property
@@ -194,12 +198,21 @@ class SimData:
             self.D.Amatrix = Amatrix_dials2nanoBragg(self.crystal.dxtbx_crystal)
             self.D.Ncells_abc = tuple([int(n) for n in self.crystal.Ncells_abc])
 
-        self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
-        self.D.mosaic_domains = self.crystal.n_mos_domains
-        Umats, Umats_prime = SimData.Umats(self.crystal.mos_spread_deg, self.crystal.n_mos_domains, method=self.Umats_method)
+        self.update_umats(self.crystal.mos_spread_deg, self.crystal.n_mos_domains)
+
+    def update_umats(self, mos_spread, mos_domains):
+        if not hasattr(self, "D"):
+            print("Cannot set umats if diffBragg is not yet instantiated")
+            return
+        self.D.mosaic_spread_deg = mos_spread
+        self.D.mosaic_domains = mos_domains
+        self.crystal.mos_spread_deg = mos_spread
+        self.crystal.n_mos_domains = mos_domains
+        Umats, Umats_prime = SimData.Umats(mos_spread, mos_domains, method=self.Umats_method)
         self.D.set_mosaic_blocks(Umats)
         if Umats_prime is not None:
             self.D.set_mosaic_blocks_prime(Umats_prime)
+        self.D.vectorize_umats()
 
     def _beam_properties(self):
         self.D.xray_beams = self.beam.xray_beams

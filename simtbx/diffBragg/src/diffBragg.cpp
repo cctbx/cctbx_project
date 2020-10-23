@@ -700,8 +700,10 @@ void diffBragg::initialize_managers(){
     if (fcell_man->refine_me)
         fcell_man->initialize(sdim, fdim, compute_curvatures);
 
-    if (eta_man->refine_me)
+    if (eta_man->refine_me){
         eta_man->initialize(sdim, fdim, compute_curvatures);
+        vectorize_umats();
+        }
 
     for (int i_lam=0; i_lam < 2; i_lam++){
         if (lambda_managers[i_lam]->refine_me)
@@ -720,6 +722,14 @@ void diffBragg::initialize_managers(){
 
 void diffBragg::vectorize_umats(){
     /* vector store two copies of Umats, one unperturbed for reference */
+    if (UMATS.size() > 0){
+        UMATS.clear();
+        UMATS_RXYZ.clear();
+    }
+    if (UMATS_prime.size()> 0){
+        UMATS_prime.clear();
+        UMATS_RXYZ_prime.clear();
+    }
     for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
         double uxx,uxy,uxz,uyx,uyy,uyz,uzx,uzy,uzz;
         uxx = mosaic_umats[mos_tic*9+0];
@@ -734,14 +744,8 @@ void diffBragg::vectorize_umats(){
         mat3 U = mat3(uxx, uxy, uxz,
                       uyx, uyy, uyz,
                       uzx, uzy, uzz);
-        if (UMATS.size() == mosaic_domains){
-            UMATS[mos_tic] = U;
-            UMATS_RXYZ[mos_tic] = U;
-        }
-        else{
-            UMATS.push_back(U);
-            UMATS_RXYZ.push_back(U);
-        }
+        UMATS.push_back(U);
+        UMATS_RXYZ.push_back(U);
         if (eta_man->refine_me){
             SCITBX_ASSERT(mosaic_umats_prime != NULL);
             uxx = mosaic_umats_prime[mos_tic*9+0];
@@ -756,14 +760,8 @@ void diffBragg::vectorize_umats(){
             U = mat3(uxx, uxy, uxz,
                       uyx, uyy, uyz,
                       uzx, uzy, uzz);
-            if (UMATS_RXYZ_prime.size() == mosaic_domains){
-                UMATS_RXYZ_prime[mos_tic] = U;
-                UMATS_prime[mos_tic] = U;
-            }
-            else {
-                UMATS_RXYZ_prime.push_back(U);
-                UMATS_prime.push_back(U);
-            }
+            UMATS_RXYZ_prime.push_back(U);
+            UMATS_prime.push_back(U);
         }
     }
 }
@@ -1165,7 +1163,7 @@ void diffBragg::set_mosaic_blocks_prime(af::shared<mat3> umat_in){
       mosaic_umats_prime[3+offset]=domain[3];mosaic_umats_prime[4+offset]=domain[4];mosaic_umats_prime[5+offset]=domain[5];
       mosaic_umats_prime[6+offset]=domain[6];mosaic_umats_prime[7+offset]=domain[7];mosaic_umats_prime[8+offset]=domain[8];
     }
-    if(verbose) printf("  imported a total of %d mosaic domains\n",mosaic_domains);
+    if(verbose) printf("  imported a total of %d mosaic domain derivative Umats\n",mosaic_domains);
 }
 
 // BEGIN diffBragg_add_spots
@@ -1196,8 +1194,11 @@ void diffBragg::add_diffBragg_spots(){
     /*  update Umats to be U*RXYZ   */
     for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
         UMATS_RXYZ[mos_tic] = UMATS[mos_tic] * RXYZ;
-        if (eta_man->refine_me)
+        if (eta_man->refine_me){
+            if (verbose)
+               printf("setting umat %d in vector of length %d\n" , mos_tic, UMATS_RXYZ_prime.size());
             UMATS_RXYZ_prime[mos_tic] = UMATS_prime[mos_tic]*RXYZ;
+            }
     }
 
     if(verbose) printf("TESTING sincg(1,1)= %f\n",sincg(1,1));
@@ -1752,7 +1753,9 @@ void diffBragg::add_diffBragg_spots(){
 
                                 /* checkpoint for eta manager */
                                 if (eta_man->refine_me){
-                                    double value =0; //TODO
+                                    vec3 DeltaH_deriv = (UMATS_RXYZ_prime[_mos_tic]*UBOt).transpose()*q_vec;
+                                    // vector V is _Nabc*Delta_H
+                                    double value = -two_C*(V*(_NABC*DeltaH_deriv))*Iincrement;
                                     eta_manager_dI += value;
                                 } /* end of eta man deriv */
 

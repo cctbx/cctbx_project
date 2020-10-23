@@ -245,6 +245,7 @@ class LocalRefiner(PixelRefinement):
         self._panelX_id = 15  # diffBragg internal index for  derivative manager
         self._panelY_id = 16  # diffBragg internal index for  derivative manager
         self._fcell_id = 11  # diffBragg internal index for Fcell derivative manager
+        self._eta_id = 19  # diffBragg internal index for eta derivative manager
         self._lambda0_id = 12  # diffBragg interneal index for lambda derivatives
         self._lambda1_id = 13  # diffBragg interneal index for lambda derivatives
 
@@ -426,6 +427,7 @@ class LocalRefiner(PixelRefinement):
         self.ncells_xstart = {}
         self.detector_distance_xpos = {}
         self.spot_scale_xpos = {}
+        self.eta_xpos = {}
         self.n_panels = {}
         self.bg_a_xstart = {}
         self.bg_b_xstart = {}
@@ -587,6 +589,13 @@ class LocalRefiner(PixelRefinement):
             if self.refine_crystal_scale:
                 self.is_being_refined[self.spot_scale_xpos[i_shot]] = True
 
+            self.eta_xpos[i_shot] = _local_pos
+            _local_pos += 1
+            self.Xall[self.eta_xpos[i_shot]] = 1
+            if self.refine_eta:
+                assert self.rescale_params
+                self.is_being_refined[self.eta_xpos[i_shot]] = True
+
             if self.refine_per_spot_scale:
                 n_spots = len(self.NANOBRAGG_ROIS[i_shot])
                 self.per_spot_scale_xpos[i_shot] = list(range(_local_pos, _local_pos + n_spots))
@@ -713,6 +722,8 @@ class LocalRefiner(PixelRefinement):
             self.D.refine(self._lambda0_id)
         if self.refine_lambda1:
             self.D.refine(self._lambda1_id)
+        if self.refine_eta:
+            self.D.refine(self._eta_id)
         self.D.initialize_managers()
 
     def _MPI_setup_global_params(self):
@@ -1176,6 +1187,13 @@ class LocalRefiner(PixelRefinement):
                 vals = [vals[mask_val] for mask_val in self.ncells_mask]
         return vals
 
+    def _get_eta(self, i_shot):
+        val = self.Xall[self.eta_xpos[i_shot]]
+        sig = self.eta_sigma
+        init = self.eta_init[i_shot]
+        val = np_exp(sig*(val-1))*init
+        return val
+
     def _get_spot_scale(self, i_shot):
         val = self.Xall[self.spot_scale_xpos[i_shot]]
         if self.rescale_params:
@@ -1380,6 +1398,16 @@ class LocalRefiner(PixelRefinement):
             coeffs = self._get_spectra_coefficients()
             self.D.lambda_coefficients = tuple(coeffs)
 
+    def _update_eta(self):
+        if self.refine_eta:
+            eta_val = self._get_eta(self._i_shot)
+            print("updating ETA as %f deg sampled from %d blocks" % (eta_val, self.D.mosaic_domains))
+            from simtbx.nanoBragg.tst_gaussian_mosaicity2 import run_uniform
+            Umats, Umats_prime = run_uniform(eta_val, self.D.mosaic_domains)
+            self.D.set_mosaic_blocks(Umats)
+            self.D.set_mosaic_blocks_prime(Umats_prime)
+            self.D.vectorize_umats()
+
     def _set_background_plane(self, i_spot):
         if self.bg_extracted:
             self.bg_coef = self._get_bg_coef(self._i_shot)
@@ -1556,15 +1584,10 @@ class LocalRefiner(PixelRefinement):
         if self.refine_Fcell:
             SG = self.scale_fac*self.G2
             self.fcell_deriv = self.D.get_derivative_pixels(self._fcell_id)
+            # handles Nan's when Fcell is 0 for whatever reason
             self.fcell_deriv = self.fcell_deriv.set_selected(self.fcell_deriv != self.fcell_deriv, 0).as_numpy_array()
             self.fcell_deriv *= SG
-            #import numpy as np
-
-            #if np.any(np.isnan(self.fcell_deriv)):
-            #    from IPython import embed
-            #    embed()
             if self.calc_curvatures:
-                #self.fcell_second_deriv = SG*self.D.get_second_derivative_pixels(self._fcell_id).as_numpy_array()
                 f2 = self.D.get_second_derivative_pixels(self._fcell_id)
                 self.fcell_second_deriv = (f2.set_selected(f2 != f2, 0).as_numpy_array() ) * SG
 
@@ -1662,14 +1685,11 @@ class LocalRefiner(PixelRefinement):
                 self._update_ucell()
                 self._update_ncells()
                 self._update_rotXYZ()
+                self._update_eta()  # mosaic spread
                 n_spots = len(self.NANOBRAGG_ROIS[self._i_shot])
                 printed_geom_updates = False
                 for i_spot in range(n_spots):
                     self._i_spot = i_spot
-                    #import numpy as np
-                    #if np.any(np.isnan(self.grad)):
-                    #    from IPython import embed
-                    #    embed()
 
                     if self.selection_flags is not None:
                         if self._i_shot not in self.selection_flags:
@@ -1700,6 +1720,7 @@ class LocalRefiner(PixelRefinement):
                     self._extract_pixel_data()
                     self._record_xy_calc()
                     self._evaluate_averageI()
+
                     if self.save_model:
                         self._save_model_to_disk()
                     if self.save_model_for_shot is not None and self.save_model_for_shot == self._i_shot:
@@ -1733,6 +1754,7 @@ class LocalRefiner(PixelRefinement):
                     self._panelRot_derivatives()
                     self._panelXYZ_derivatives()
                     self._spot_scale_derivatives()
+                    self._eta_derivatives()
                     self._per_spot_scale_derivatives()
                     self._gain_factor_derivatives()
                     self._Fcell_derivatives(i_spot)
@@ -2181,6 +2203,22 @@ class LocalRefiner(PixelRefinement):
         if return_derivatives:
             return d, d2
 
+    def _eta_derivatives(self):
+        if self.refine_eta:
+            dI_dtheta = self.G2*self.scale_fac*(self.D.get_derivative_pixels(self._eta_id).as_numpy_array())
+            # second derivative is 0 with respect to scale factor
+            sig = self.eta_sigma
+            eta_val = self._get_eta(self._i_shot)
+            # case 2 type rescaling
+            d = dI_dtheta * eta_val * sig
+            #d2 = dI_dtheta * (self.scale_fac * sig * sig)
+            d2 = 0
+
+            xpos = self.eta_xpos[self._i_shot]
+            self.grad[xpos] += self._grad_accumulate(d)
+            if self.calc_curvatures:
+                self.curv[xpos] += self._curv_accumulate(d, d2)
+
     def _per_spot_scale_derivatives(self):
         if self.refine_per_spot_scale:
             assert self.rescale_params
@@ -2436,6 +2474,8 @@ class LocalRefiner(PixelRefinement):
             refine_str += "Lambda1 (scale), "
         if self.refine_per_spot_scale:
             refine_str += "Per-spot scales, "
+        if self.refine_eta:
+            refine_str += "Eta, "
         return refine_str
 
     def _print_iteration_header(self):
@@ -2657,6 +2697,10 @@ class LocalRefiner(PixelRefinement):
         if len(ncells_shot0) == 1:
             ncells_shot0 = [ncells_shot0[0]]*3
         scale_stats_string += ", Ncells=%.3f, %f, %f" % tuple(ncells_shot0)
+
+        if self.refine_eta:
+            eta_val = self._get_eta(i_shot=self._i_shot)
+            scale_stats_string += ", \nEta=%10.7f " % eta_val
 
         uc_string = ", "
         ucparam_names = self.UCELL_MAN[0].variable_names
@@ -2933,6 +2977,7 @@ class LocalRefiner(PixelRefinement):
             bgplane = [self._get_bg_vals(i_shot, i_spot) for i_spot in range(nspots)]
 
             crystal_scale = self._get_spot_scale(i_shot) * self.D.spot_scale
+            eta = self._get_eta(i_shot)
             proc_h5_fname = "" #self.all_proc_fnames[i_shot]
             proc_h5_idx = "" #self.all_shot_idx[i_shot]
             proc_bbox_idx = "" #self.all_proc_idx[i_shot]
@@ -2944,7 +2989,7 @@ class LocalRefiner(PixelRefinement):
             final_misori = self.get_current_misorientation(i_shot)
 
             self.data_to_send.append(
-                (proc_h5_fname, proc_h5_idx, proc_bbox_idx, crystal_scale, Amat_refined, ncells_val, bgplane,
+                (proc_h5_fname, proc_h5_idx, proc_bbox_idx, crystal_scale, eta, Amat_refined, ncells_val, bgplane,
                  img_corr, init_img_corr, fcell_xstart, ucell_xstart, rotX, rotY, rotZ, scale_xpos,
                  ncells_xstart, bgplane_xpos, init_misori, final_misori, a,b,c,al,be,ga,
                  a_init, b_init, c_init, al_init, be_init, ga_init, bg_coef, lam0, lam1))
@@ -2957,7 +3002,7 @@ class LocalRefiner(PixelRefinement):
         if self.I_AM_ROOT:
             import pandas
 
-            fnames, shot_idx, bbox_idx, xtal_scales, Amats, ncells_vals, bgplanes, image_corr, init_img_corr, \
+            fnames, shot_idx, bbox_idx, xtal_scales, eta, Amats, ncells_vals, bgplanes, image_corr, init_img_corr, \
                 fcell_xstart, ucell_xstart, rotX, rotY, rotZ, scale_xpos, ncells_xstart, bgplane_xpos, \
                 init_misori, final_misori, a, b, c, al, be, ga, \
                 a_init, b_init, c_init, al_init, be_init, ga_init, bg_coef, lam0, lam1 = zip(*data)
@@ -2970,6 +3015,7 @@ class LocalRefiner(PixelRefinement):
                                    "ucell_xstart": ucell_xstart,
                                    "init_misorient": init_misori, "final_misorient": final_misori,
                                    "bg_coef": bg_coef,
+                                   "eta": eta,
                                    "rotX": rotX,
                                    "rotY": rotY,
                                    "rotZ": rotZ,
@@ -3077,7 +3123,4 @@ class LocalRefiner(PixelRefinement):
             panel_dict["origin"] = origin
             new_det.add_panel(Panel.from_dict(panel_dict))
 
-        #from IPython import embed
-        #embed()
         return new_det
-

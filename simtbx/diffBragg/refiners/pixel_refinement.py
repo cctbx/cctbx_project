@@ -30,6 +30,9 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     run_on_init = False
 
     def __init__(self):
+        self.refine_eta = False
+        self.eta_init = {0: 0}
+        self.eta_sigma = 1
         self.refine_per_spot_scale = False
         self.per_spot_scale_sigma = 1
         self.detector_distance_sigma = 1
