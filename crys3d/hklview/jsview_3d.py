@@ -907,11 +907,15 @@ class hklview_3d:
       dres = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).dres
       uc = warray.unit_cell()
       indices = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).indices
-      binning = miller.binning( uc, nbins, indices, flex.max(dres), flex.min(dres) )
-      binvals = [ binning.bin_d_range(n)[0] for n in binning.range_all() ]
-      binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
-      binvals = list( 1.0/flex.double(binvals) )
-      nuniquevalues = len(set(list(dres)))
+      if flex.max(dres) == flex.min(dres): # say if only one reflection
+        binvals = [dres[0]-0.1, flex.min(dres)+0.1] 
+        nuniquevalues = 2
+      else:
+        binning = miller.binning( uc, nbins, indices, flex.max(dres), flex.min(dres) )
+        binvals = [ binning.bin_d_range(n)[0] for n in binning.range_all() ]
+        binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
+        binvals = list( 1.0/flex.double(binvals) )
+        nuniquevalues = len(set(list(dres)))
     elif binscenelabel=="Singletons":
         binvals = [ -1.5, -0.5, 0.5, 1.5 ]
         nuniquevalues = len(binvals)
