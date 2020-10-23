@@ -771,13 +771,6 @@ class HKLViewFrame() :
       self.viewer.array_infostrs = []
       self.viewer.array_infotpls = []
       for array in arrays :
-        """
-        if (not array.is_real_array()) and (not array.is_complex_array()) \
-         and (not array.is_integer_array()) and (not array.is_bool_array()) :
-          self.mprint('Ignoring miller array \"%s\" of %s' \
-            %(array.info().label_string(), type(array.data()[0]) ) )
-          continue
-        """
         self.viewer.array_infostrs.append( ArrayInfo(array, self.mprint).infostr )
         self.viewer.array_infotpls.append( ArrayInfo(array, self.mprint).infotpl )
         valid_arrays.append(array)
@@ -833,45 +826,50 @@ class HKLViewFrame() :
     elif os.path.splitext(savefilename)[1] == ".cif":
       import iotbx.cif
       mycif = None
+      fname = savefilename
+      fnames = []
+
+      def save2cif(filename, mycif):
+        with open(filename.encode("ascii"), "w") as f:
+          f.write("data_%s\n#\n" %os.path.splitext(os.path.basename(filename))[0])
+          print(mycif.cif_block, file= f)
+
       for i,arr in enumerate(self.procarrays):
         arrtype = None
-        #colname= "_refln.%s" %arr.info().label_string()
-        #colnames = None
         colnames = ["_refln.%s" %e for e in arr.info().labels ]
         colname= None
-        """
-        if arr.is_xray_intensity_array():
-          arrtype="meas"
-          colname= None
-        else:
-          if arr.sigmas() is not None:
-            arrtype="calc"
-            colname= None
-        if arr.is_complex_array():
-          colnames = ["_refln.%s" %e for e in arr.info().labels ]
-          #colnames = ["_refln.%s_calc_au" %arr.info().labels[0], "_refln.%s_phase_calc" %arr.info().labels[0]]
-          #colnames = ["_refln.F_calc_au", "_refln.phase_calc"]
-          colname= None
-          arrtype = None
-        if arr.is_hendrickson_lattman_array():
-          colnames = ["_refln.%s" %e for e in arr.info().labels ]
-          colname= None
-          arrtype = None
-        """
-        if i==0:
+        if self.has_indices_with_multiple_data(arr):
+          # if array contains data with more than one data point for the same hkl index iotbx.cif
+          # cannot add additional arrays to the cif block so save this array in a separate file
+          singlecif = iotbx.cif.miller_arrays_as_cif_block(arr, array_type = arrtype, 
+                                                       column_name=colname, column_names = colnames )
+          fname = os.path.splitext(savefilename)[0] + "_%d"%i + os.path.splitext(savefilename)[1]
+          save2cif(fname, singlecif)
+          fnames.append(fname)
+          continue
+        if not mycif:
           mycif = iotbx.cif.miller_arrays_as_cif_block(arr, array_type = arrtype, 
                                                        column_name=colname, column_names = colnames )
         else:
           mycif.add_miller_array(arr, column_name= colname, array_type= arrtype, 
                                  column_names = colnames)
-      with open(savefilename.encode("ascii"), "w") as f:
-        f.write("data_%s\n#\n" %os.path.splitext(os.path.basename(savefilename))[0])
-        print(mycif.cif_block, file= f)
+      if mycif:
+        save2cif(savefilename, mycif)
+        fnames.append(savefilename)
 
-    self.mprint("Miller array(s) saved to " + savefilename)
+    self.mprint("Miller array(s) saved to: " + ",\n".join(fnames))
+    if len(fnames) > 1:
+      self.mprint("Unmerged data put into separate files")
 
 
-
+  def has_indices_with_multiple_data(self, arr):
+    for idx in arr.indices():
+      s = 0
+      for e in list(arr.indices() == idx):
+        s += int(e)
+        if s>1:
+          return True
+    return False
 
 
   def tabulate_miller_array(self, ids):
