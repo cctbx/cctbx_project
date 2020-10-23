@@ -819,8 +819,8 @@ class map_model_manager(object):
     else:
       self._map_dict.get(map_id).write_map(file_name = file_name)
 
-  def write_model(self, 
-     file_name, 
+  def write_model(self,
+     file_name,
      model_id = None,
      ):
     if not model_id:
@@ -2167,8 +2167,8 @@ class map_model_manager(object):
 
       assert kw.get('map_id_to_be_scaled_list') is None or (
         kw['map_id']  in kw['map_id_to_be_scaled_list']) # map_id_to_be_scaled not ok
- 
-      # Set up list of maps to be scaled 
+
+      # Set up list of maps to be scaled
       kw = self.set_map_id_lists(kw)
 
       # run sharpening without local sharpening first
