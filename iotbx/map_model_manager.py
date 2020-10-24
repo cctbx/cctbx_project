@@ -32,7 +32,7 @@ map_model {
     .type = path
     .help = Input model file
     .style = hidden file_type:pdb input_file
-    .short_caption = Model filename
+    .short_caption = Model
 }
 '''
 
