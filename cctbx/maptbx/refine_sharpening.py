@@ -743,7 +743,8 @@ def calculate_fsc(si=None,
         si_list = si_list,
         sthol_list = sthol_list)
 
-      if aniso_obj.b_cart and tuple(starting_u_cart) != (0,0,0,0,0,0):
+      if aniso_obj.b_cart and starting_u_cart and \
+         tuple(starting_u_cart) != (0,0,0,0,0,0):
         from cctbx import adptbx
         scaling_u_cart = adptbx.b_as_u(aniso_obj.b_cart)
         # U_cart to remove is starting_u_cart - scaling_u_cart
