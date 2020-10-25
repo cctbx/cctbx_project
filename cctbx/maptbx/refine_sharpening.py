@@ -1090,7 +1090,7 @@ def get_weights_para(f_array, direction_vector,
       sel = (weights > -20)  &  (weights < 20)
       weights.set_selected(sel, flex.exp(weights.select(sel)))
       weights.set_selected(~sel,0)
- 
+
 
     else:
       weights = flex.double(index_directions.size(),0)
