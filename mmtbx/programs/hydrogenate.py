@@ -12,6 +12,10 @@ use_neutron_distances = False
 
 keep_existing_H = False
 
+protein_only = False
+  .type = bool
+  .help = place H on protein residues only
+
 output
   .style = menu_item auto_align
 {

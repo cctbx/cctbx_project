@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import six
+import sys
 import mmtbx.model
 import iotbx.pdb
 import boost_adaptbx.boost.python as bp
@@ -67,7 +68,9 @@ def exclude_h_on_coordinated_S(model): # XXX if edits used it should be like in 
 
 # ==============================================================================
 
-def add_missing_H_atoms_at_bogus_position(pdb_hierarchy, mon_lib_srv, protein_only):
+def add_missing_H_atoms_at_bogus_position(pdb_hierarchy,
+                                          mon_lib_srv,
+                                          protein_only):
   """
   Add missing H atoms to a pdb_hierarchy object
   all H atoms will be at center of coordinates (all of them superposed)
@@ -77,10 +80,14 @@ def add_missing_H_atoms_at_bogus_position(pdb_hierarchy, mon_lib_srv, protein_on
   ----------
   pdb_hierarchy : cctbx hierarchy object
     pdb_hierarchy to which missing H atoms will be added
+
+  protein_only : bool
+    place H atoms on protein residues only
   """
   #XXX This breaks for 1jxt, residue 2, TYR
 
   get_class = iotbx.pdb.common_residue_names_get_class
+  no_H_placed_resnames = list()
   for m in pdb_hierarchy.models():
     for chain in m.chains():
       for rg in chain.residue_groups():
@@ -90,12 +97,15 @@ def add_missing_H_atoms_at_bogus_position(pdb_hierarchy, mon_lib_srv, protein_on
           #if(protein_only and
           #   not ag.resname.strip().upper() in aa_codes): continue
           if (protein_only and get_class(name=ag.resname) not in
-            ["common_amino_acid", "modified_amino_acid"]): continue
+            ["common_amino_acid", "modified_amino_acid"]):
+            no_H_placed_resnames.append(ag.resname)
+            continue
           actual = [a.name.strip().upper() for a in ag.atoms()]
           mlq = mon_lib_query(residue=ag.resname, mon_lib_srv=mon_lib_srv)
 
           if (get_class(name=ag.resname) in ['modified_rna_dna', 'other']):
             if mlq is None:
+              no_H_placed_resnames.append(ag.resname)
               continue
 
           expected_h = list()
@@ -114,6 +124,24 @@ def add_missing_H_atoms_at_bogus_position(pdb_hierarchy, mon_lib_srv, protein_on
               .set_xyz(new_xyz=new_xyz)
               .set_hetero(new_hetero=hetero))
             ag.append_atom(a)
+  return no_H_placed_resnames
+
+# ==============================================================================
+
+def show(site_labels_h_no_para, no_H_placed_resnames):
+  log = sys.stdout
+  if no_H_placed_resnames:
+    print('No H atoms were placed on the following residues:', file=log)
+    for resname in no_H_placed_resnames:
+      print(resname)
+
+#  if site_labels_h_no_para:
+#    print('The following H atoms could not be placed because their geometry could not be determined:', file=log)
+#    for label in site_labels_h_no_para:
+#      print(label)
+#
+#    for atom in model.get_hierarchy().atoms().select(sel_h_not_in_para):
+#      print(atom.id_str().replace('pdb=','').replace('"',''))
 
 # ==============================================================================
 
@@ -167,9 +195,10 @@ def add(model,
           for residue in conformer.residues():
             print list(residue.atoms().extract_name())
   """
-  add_missing_H_atoms_at_bogus_position(pdb_hierarchy = pdb_hierarchy,
-                                        mon_lib_srv   = mon_lib_srv,
-                                        protein_only = protein_only)
+  no_H_placed_resnames = add_missing_H_atoms_at_bogus_position(
+                           pdb_hierarchy = pdb_hierarchy,
+                           mon_lib_srv   = mon_lib_srv,
+                           protein_only = protein_only)
   pdb_hierarchy.atoms().reset_serial()
   #pdb_hierarchy.sort_atoms_in_place()
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -203,6 +232,10 @@ def add(model,
   sel_h_in_para = flex.bool(
     [bool(x) for x in model.riding_h_manager.h_parameterization])
   sel_h_not_in_para = sel_h_in_para.exclusive_or(sel_h)
+
+  site_labels_h_no_para = [atom.id_str().replace('pdb=','').replace('"','')
+    for atom in model.get_hierarchy().atoms().select(sel_h_not_in_para)]
+
   model = model.select(~sel_h_not_in_para)
 
   model = exclude_h_on_SS(model = model)
@@ -216,6 +249,13 @@ def add(model,
   model.reset_occupancy_for_hydrogens_simple()
   model.idealize_h_riding()
   #
+
+  site_labels = [atom.id_str().replace('pdb=','').replace('"','')
+                                  for atom in model.get_hierarchy().atoms()]
+  show(site_labels_h_no_para = site_labels_h_no_para,
+       no_H_placed_resnames = no_H_placed_resnames)
+
+
   return model
 
 # ==============================================================================
