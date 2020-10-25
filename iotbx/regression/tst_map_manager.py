@@ -333,8 +333,10 @@ def test_01():
   assert approx_equal([info.along_density_values[4]]+list(info.along_sites[4]),
     [-0.562231123447 , 8.0, 8.0, 8.0])
   from iotbx.map_model_manager import map_model_manager
-  extra_map_manager_id_list = ["low_pass_filtered","high_pass_filtered","gaussian","binary"]
-
+  extra_map_manager_id_list = ["low_pass_filtered",
+    # "high_pass_filtered",
+    "gaussian",
+    "binary"]
 
   expected_cc= [ 1,
      # -0.038380049155,
