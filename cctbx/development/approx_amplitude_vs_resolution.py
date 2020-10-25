@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-from libtbx import group_args
 from cctbx.array_family import flex
 from six.moves import range
 from six.moves import zip
@@ -1192,8 +1191,7 @@ if __name__ == "__main__":
   aavr = approx_amplitude_vs_resolution()
   aavr.exercise()
 
-  from iotbx.map_model_manager import map_model_manager, \
-      get_map_coeffs_as_fp_phi
+  from iotbx.map_model_manager import map_model_manager
   mmm = map_model_manager()
   mmm.generate_map()
   new_aavr = approx_amplitude_vs_resolution(d_min = 3, n_bins = 20,
