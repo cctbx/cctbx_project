@@ -2698,6 +2698,7 @@ class map_model_manager(object):
     print ("Nominal resolution of map: %.2f A  Minimum resolution: %.2f A" %(
         resolution,d_min),
       file = self.log)
+    working_mmm.mask_all_maps_around_edges(soft_mask_radius=resolution)
 
     map_coeffs = working_mmm.get_map_manager_by_id(
        map_id).map_as_fourier_coefficients( d_min = d_min)
@@ -2766,7 +2767,8 @@ class map_model_manager(object):
           file = self.log)
         assert len(scaling_group_info.scaling_info_list) == len(
          direction_vectors)
-      if hasattr(scaling_group_info,'overall_u_cart_to_remove') and \
+      if get_scale_as_aniso_u and \
+           hasattr(scaling_group_info,'overall_u_cart_to_remove') and \
           scaling_group_info.overall_u_cart_to_remove:
         print ("\nApplying scale factors by removing anisotropy ",
          file = self.log)
@@ -3134,7 +3136,7 @@ class map_model_manager(object):
       direction_vectors = direction_vectors,
       smooth_fsc = False, # XXX may change
       cutoff_after_last_high_point = True,
-      get_scale_as_aniso_u = get_scale_as_aniso_u,
+      get_scale_as_aniso_u = True, # always get it; use if get_scale_as_aniso_u
       expected_rms_fc_list = expected_rms_fc_list,
       resolution = resolution, # nominal resolution
       out = self.log)
@@ -3230,6 +3232,7 @@ class map_model_manager(object):
         from mmtbx.scaling import absolute_scaling
         b_iso = abs(flex.double(adptbx.u_as_b(
             overall_u_cart_to_remove))[:3].min_max_mean().mean)
+
         if max_abs_b and abs(b_iso) > max_abs_b:
           ratio = max_abs_b/abs(b_iso)
           overall_u_cart_to_remove = tuple(ratio * col(
@@ -3239,7 +3242,7 @@ class map_model_manager(object):
         scaled_f_array = absolute_scaling.anisotropic_correction(
           scale_values_array,0.0, u_star ,must_be_greater_than=-0.0001)
         if 0:
-          print("TARGET: ",
+          print("TARGET: BISO %.2f" %(b_iso),"BCART",str(overall_u_cart_to_remove),
             "".join(["%.2f " %(ts) for ts in si.target_scale_factors]))
           print("FITTED: ",
             "".join(["%.2f " %(sf) for sf in scaled_f_array.data()]))
@@ -3266,6 +3269,7 @@ class map_model_manager(object):
       [True,False,None],
       [0.9,None,0.1],
       [None,0.1,0.9],):
+
       print("\nLocal B-cart by XYZ with inside_mask = %s:" %(
         inside), file = self.log)
       print("(Mask values with lower limit of %s and high limit of %s)" %(
@@ -3281,19 +3285,30 @@ class map_model_manager(object):
       value_list = working_scale_factor_info.value_list
       uanisos = flex.sym_mat3_double()
       for i in range(xyz_list.size()):
+
         values = working_scale_factor_info.value_list[i]
         aniso_u_cart = values.overall_u_cart_to_remove
         uanisos.append(aniso_u_cart)
         b_cart = adptbx.u_as_b(aniso_u_cart)
-        #b_cart_to_remove = adptbx.u_as_b(values.starting_u_cart)
-        #b_cart_to_add = adptbx.u_as_b(values.scaling_u_cart)
         xyz=xyz_list[i]
+
+        direction_vectors = values.direction_vectors
+        scaling_info_list = values.scaling_info_list
+        if 0:
+          print ("XYZ (%7.1f,%7.1f,%7.1f) " %(tuple(xyz)),file=self.log)
+          for dv,si in zip(direction_vectors,scaling_info_list):
+           print("DV: (%7.1f,%7.1f,%7.1f)" %(dv) +
+            " B (CC*): %.3f" %(si.effective_b),
+            " B (FOBS): %.3f" %(si.effective_b_f_obs),file = self.log)
+
+
         mean_u_cart_dict[inside]+=col(aniso_u_cart)
         mean_u_cart_dict_n[inside]+=1
-        print ("XYZ: "+
-        "(%7.1f,%7.1f,%7.1f) B-cart:(%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f) " %(
-         tuple(list(xyz)+list( b_cart))),
-         file = self.log)
+        if 0:
+          print ("XYZ: "+
+         "(%7.1f,%7.1f,%7.1f) B-cart:(%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f) " %(
+          tuple(list(xyz)+list( b_cart))),
+          file = self.log)
       from mmtbx.tls import tools
       cm = xyz_list.mean()
       result = tools.tls_from_uaniso_minimizer(
@@ -3319,6 +3334,8 @@ class map_model_manager(object):
          zeroize_trace=False)
       if inside and replace_inside:
         replace_u_cart_to_remove = True
+        print("\nReplacing values inside mask with TLS-derived scale factors",
+          file = self.log)
       else:
         replace_u_cart_to_remove = False
       for i in range(xyz_list.size()):
@@ -3327,13 +3344,14 @@ class map_model_manager(object):
         new_u_cart = new_anisos[i]
         if replace_u_cart_to_remove:
           values.overall_u_cart_to_remove = new_u_cart
-        b_cart = adptbx.u_as_b(aniso_u_cart)
-        new_b_cart = adptbx.u_as_b(new_u_cart)
-        xyz=xyz_list[i]
-        print ("NEW: "+
-        "(%7.1f,%7.1f,%7.1f) B-cart:(%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f) " %(
-         tuple(list(xyz)+list( new_b_cart))),
-         file = self.log)
+        if 0:
+          b_cart = adptbx.u_as_b(aniso_u_cart)
+          new_b_cart = adptbx.u_as_b(new_u_cart)
+          xyz=xyz_list[i]
+          print ("NEW: "+
+          "(%7.1f,%7.1f,%7.1f) B-cart:(%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f) " %(
+           tuple(list(xyz)+list( new_b_cart))),
+           file = self.log)
       print("\nMean anisotropy as TLS:",file = self.log)
       print("T: %s" %(str(T)),file = self.log)
       print("L: %s" %(str(L)), file = self.log)
@@ -3462,6 +3480,8 @@ class map_model_manager(object):
     #    si.d_min_list
     #    si.cc_list
     #    si.low_res_cc # low-res average
+    #    si.effective_b # B for fall-off of cc*
+    #    si.effective_b_fobs  # B for fall-off of amplitudes of Fobs
 
     #  Have a look at scale values vs resolution along direction_vectors
     xyz_list = scale_factor_info.xyz_list
@@ -3488,10 +3508,9 @@ class map_model_manager(object):
         for value in values:
           print("%5.2f "  %(value), end="")
         print()
-
+    self._analyze_aniso(scale_factor_info,map_id=map_id,
+      replace_inside = (replace_aniso_with_tls_equiv and get_scale_as_aniso_u))
     if get_scale_as_aniso_u: # Summarize U vs xyz and vs inside/outside
-      self._analyze_aniso(scale_factor_info,map_id=map_id,
-        replace_inside = replace_aniso_with_tls_equiv)
       self._update_scale_factor_info_from_aniso(scale_factor_info,
         max_abs_b = max_abs_b)
 

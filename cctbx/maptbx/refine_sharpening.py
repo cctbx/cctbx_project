@@ -393,6 +393,13 @@ def get_calculated_scale_factors(
     scale_values = flex.double()
     original_scale_values = flex.double()
     indices = flex.miller_index()
+    if effective_b is None and not cc_list:
+      #no info
+      return group_args(
+        indices = indices,
+        scale_values = scale_values,
+        original_scale_values = original_scale_values)
+
     for s,cc in zip(sthol_list,cc_list):
       d = 1/s
       sthol2 = 0.25/d**2
@@ -775,6 +782,7 @@ def get_aniso_obj_from_direction_vectors(
         si_list = None,
         sthol_list = None,
         expected_rms_fc_list = None,
+        invert_in_scaling = False,
         ):
 
       scale_values = flex.double()
@@ -786,6 +794,7 @@ def get_aniso_obj_from_direction_vectors(
         for dv in direction_vectors:
           si_list.append(group_args(
             effective_b = None,
+            effective_b_f_obs = None,
             b_zero = 0,
             cc_list =expected_rms_fc_list,
            ))
@@ -802,12 +811,15 @@ def get_aniso_obj_from_direction_vectors(
         indices.extend(info.indices)
         scale_values.extend(info.scale_values)
 
+      if invert_in_scaling:
+        scale_values = 1/scale_values
       scale_values_array = f_array.customized_copy(
         data = scale_values,
         indices = indices)
 
       scaled_array,aniso_obj=analyze_aniso(
         b_iso=0,
+        invert = invert_in_scaling,
         f_array=scale_values_array,resolution=resolution,
         remove_aniso=True,out=null_out())
       return aniso_obj
@@ -1020,6 +1032,7 @@ def complete_cc_analysis(
   si.rms_fo_list = rms_fo_list
   si.low_res_cc = cc_list[:low_res_bins].min_max_mean().mean # low-res average
   si.effective_b = info.effective_b
+  si.effective_b_f_obs = info.effective_b_f_obs
   si.b_zero = info.b_zero
   si.rms = info.rms
   si.expected_rms_fc_list = expected_rms_fc_list
@@ -1164,21 +1177,29 @@ def get_target_scale_factors(
     b_zero= info.b_zero
     rms= info.rms
 
+    # Also get effective_b for amplitudes
+    amplitude_info = get_effective_b(values = rms_fo_list/max(
+       1.e-10,rms_fo_list[0]),
+      sthol2_values = target_sthol2)
+    effective_b_f_obs = amplitude_info.effective_b
+
   else:
     effective_b = None
+    effective_b_f_obs = None
     b_zero= None
     rms = None
   return group_args(
     target_scale_factors = target_scale_factors,
     weighted_cc = weighted_cc,
     effective_b = effective_b,
+    effective_b_f_obs = effective_b_f_obs,
     b_zero = b_zero,
     rms = rms
   )
 
 def get_effective_b(values = None,
       sthol2_values = None,
-       max_tries_per_iter = 5,
+       max_tries_per_iter = 10,
        max_iter = 10,
        tol = 1.e-6,
        effective_b = None,
@@ -1201,6 +1222,7 @@ def get_effective_b(values = None,
      effective_b = 0
      b_zero = 1
      finished = False
+     best_info = None
      for iter in range(max_iter):
        info = get_effective_b(values = values,
          sthol2_values = sthol2_values,
@@ -1211,6 +1233,7 @@ def get_effective_b(values = None,
        effective_b = info.effective_b
        b_zero = info.b_zero
        rms = info.rms
+       best_info = info
        if finished:
          break
        else:
@@ -1219,7 +1242,9 @@ def get_effective_b(values = None,
   return group_args(
     effective_b = effective_b,
     b_zero = b_zero,
-    rms = rms)
+    rms = rms,
+    values = best_info.values,
+    calc_values=best_info.calc_values)
 
 def get_b_calc( b_value, sthol2_values, values):
   import math
@@ -1240,11 +1265,14 @@ def get_b_calc( b_value, sthol2_values, values):
   rms = ((flex.pow2(values-calc_values)).min_max_mean().mean)**0.5
   return group_args(
     b_zero=b_zero,
+    values=values,
+    calc_values=calc_values,
     rms=rms)
 
 
 def analyze_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
      get_remove_aniso_object=True,
+     invert = False,
      remove_aniso=None, aniso_obj=None, out=sys.stdout):
   # optionally remove anisotropy and set all directions to mean value
   #  return array and analyze_aniso_object
@@ -1267,7 +1295,7 @@ def analyze_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
     if not aniso_obj:
       aniso_obj=analyze_aniso_object()
       aniso_obj.set_up_aniso_correction(f_array=f_array,d_min=resolution,
-        b_iso=b_iso)
+        b_iso=b_iso, invert = invert)
 
     if remove_aniso and aniso_obj and aniso_obj.b_cart:
       f_array=aniso_obj.apply_aniso_correction(f_array=f_array)
@@ -1500,7 +1528,7 @@ class analyze_aniso_object:
     self.b_cart_aniso_removed=None
 
   def set_up_aniso_correction(self,f_array=None,b_iso=None,d_min=None,
-     b_cart_to_remove = None):
+     b_cart_to_remove = None, invert = False):
 
     assert f_array is not None
     if not d_min:
@@ -1522,6 +1550,8 @@ class analyze_aniso_object:
 
       self.b_cart=aniso_scale_and_b.b_cart  # current
       self.b_cart_aniso_removed = [ -b_iso, -b_iso, -b_iso, 0, 0, 0] # change
+      if invert:
+        self.b_cart = tuple([-x for x in self.b_cart])
 
       # ready to apply
 
