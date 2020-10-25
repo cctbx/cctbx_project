@@ -343,7 +343,7 @@ def test_01():
     extra_map_manager_id_list = extra_map_manager_id_list,)
   for other_id,cc in zip(extra_map_manager_id_list,expected_cc):
    assert approx_equal(cc,
-      mam.map_map_cc(map_id='map_manager',other_map_id=other_id) )
+      mam.map_map_cc(map_id='map_manager',other_map_id=other_id), eps = 0.05 )
 
 # this test requires the solve_resolve module
 def test_02():
