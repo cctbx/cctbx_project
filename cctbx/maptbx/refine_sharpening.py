@@ -666,10 +666,12 @@ def calculate_fsc(si=None,
       cc_list = cc_dict_by_dv[i]
     if len(direction_vectors) > 1:
       working_si = deepcopy(si)
+      dv = direction_vectors[i]
     else:
+      dv = None
       working_si = si  # so we can modify it in place
     working_si = complete_cc_analysis(
-       direction_vector,
+       dv,
        cc_list,
        rms_fc_list,
        rms_fo_list,
@@ -1066,6 +1068,8 @@ def get_normalized_weights_para(f_array,direction_vectors, dv,
 def get_weights_para(f_array, direction_vector,
        weight_by_cos = True,
        min_dot = 0.7,
+       very_high_dot = 0.9,
+       pre_factor_scale= 10,
        include_all_in_lowest_bin = None):
     u = f_array.unit_cell()
     rcvs = u.reciprocal_space_vector(f_array.indices())
@@ -1077,8 +1081,16 @@ def get_weights_para(f_array, direction_vector,
       weights = flex.abs(index_directions.dot(direction_vector))
       sel = (weights < min_dot)
       weights.set_selected(sel,0)
-      weights = -20.*(1- weights)
-      weights = flex.exp( weights)
+
+      weights += (1-very_high_dot)  # move very_high to 1.0
+      sel = (weights > 1)
+      weights.set_selected(sel,1) # now from (min_dot+(1-very_high_dot) to 1)
+
+      weights = (weights - 1 ) * pre_factor_scale
+      sel = (weights > -20)  &  (weights < 20)
+      weights.set_selected(sel, flex.exp(weights.select(sel)))
+      weights.set_selected(~sel,0)
+ 
 
     else:
       weights = flex.double(index_directions.size(),0)
