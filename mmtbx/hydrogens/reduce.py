@@ -106,6 +106,9 @@ class place_hydrogens():
 
     # Only keep H that have been parameterized in riding H procedure
     sel_h = self.model.get_hd_selection()
+    if sel_h.count(True) == 0:
+      return
+
     self.model.setup_riding_h_manager(use_ideal_dihedral = True)
     sel_h_in_para = flex.bool(
       [bool(x) for x in self.model.riding_h_manager.h_parameterization])
