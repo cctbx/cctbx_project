@@ -32,6 +32,15 @@ def exercise_cif_model():
     {'_loop2_a': '1', '_loop2_b': '2'},
     {'_loop2_a': '3', '_loop2_b': '4'},
     {'_loop2_a': '5', '_loop2_b': '6'}]
+  loop3 = model.loop(
+    data={
+      "_loop3_a": flex.int((-1, 2, 3)),
+      "_loop3_b": flex.double((1.1, 2.2, 3.3)),
+      "_loop3_c": flex.size_t((1, 2, 3)),
+    }
+  )
+  for k in "abc":
+    assert isinstance(loop3["_loop3_%s" % k], flex.std_string)
   #
   block = model.block()
   block["_tag"] = 3
