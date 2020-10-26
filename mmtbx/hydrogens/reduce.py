@@ -80,11 +80,8 @@ class place_hydrogens():
     self.n_H_initial = self.model.get_hd_selection().count(True)
     if not self.keep_existing_H:
       self.model = self.model.select(~self.model.get_hd_selection())
-
-
-    pdb_hierarchy = self.model.get_hierarchy()
-
-    self.add_missing_H_atoms_at_bogus_position()
+    # Add H atoms and place them at center of coordinates
+    pdb_hierarchy = self.add_missing_H_atoms_at_bogus_position()
 
     pdb_hierarchy.atoms().reset_serial()
     #pdb_hierarchy.sort_atoms_in_place()
@@ -104,8 +101,8 @@ class place_hydrogens():
       pdb_interpretation_params = p,
       log                       = null_out())
 
-  #  f = open("intermediate1.pdb","w")
-  #  f.write(model.model_as_pdb())
+    #f = open("intermediate1.pdb","w")
+    #f.write(self.model.model_as_pdb())
 
     # Only keep H that have been parameterized in riding H procedure
     sel_h = self.model.get_hd_selection()
@@ -131,8 +128,6 @@ class place_hydrogens():
     self.model.idealize_h_riding()
     #
     self.n_H_final = self.model.get_hd_selection().count(True)
-#    site_labels = [atom.id_str().replace('pdb=','').replace('"','')
-#        for atom in self.model.get_hierarchy().atoms()]
 
 # ------------------------------------------------------------------------------
 
@@ -148,14 +143,18 @@ class place_hydrogens():
       pdb_hierarchy to which missing H atoms will be added
 
     '''
+    pdb_hierarchy = self.model.get_hierarchy()
     mon_lib_srv = self.model.get_mon_lib_srv()
     #XXX This breaks for 1jxt, residue 2, TYR
     get_class = iotbx.pdb.common_residue_names_get_class
     no_H_placed_resnames = list()
-    for m in self.model.get_hierarchy().models():
+    for m in pdb_hierarchy.models():
       for chain in m.chains():
         for rg in chain.residue_groups():
+          n_atom_groups = len(rg.atom_groups())
           for ag in rg.atom_groups():
+            if n_atom_groups == 3 and ag.altloc == '':
+              continue
             #print list(ag.atoms().extract_name())
             if(get_class(name=ag.resname) == "common_water"): continue
             actual = [a.name.strip().upper() for a in ag.atoms()]
@@ -181,7 +180,10 @@ class place_hydrogens():
                 .set_element(new_element="H")
                 .set_xyz(new_xyz=new_xyz)
                 .set_hetero(new_hetero=hetero))
+
               ag.append_atom(a)
+
+    return pdb_hierarchy
 
 # ------------------------------------------------------------------------------
 
