@@ -3116,13 +3116,27 @@ def get_installed_env():
   """
   return _get_env(get_installed_path())
 
-def get_local_env():
+def get_local_env(build_dir=None):
   """
-  Returns the local environment in the current working directory or None
-  if it does not exist.
+  Returns the local environment from build_dir or None
+  if it does not exist. By default, build_dir is set to the current
+  working directory.
+
+  Parameters
+  ----------
+    build_dir: str
+      The directory with the local environment. Defaults to the current
+      working directory
+
+  Returns
+  -------
+    env: libtbx.env_config.environment or None
+      The environment loaded from build_dir or None if it does not
   """
+  if build_dir is None:
+    build_dir = os.getcwd()
   env = None
-  for p in [os.getcwd()] + sys.path:
+  for p in [build_dir] + sys.path:
     e = _get_env(p)
     if e is not None:
       env = e
