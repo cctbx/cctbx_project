@@ -3,6 +3,7 @@ import os
 from libtbx.program_template import ProgramTemplate
 #from libtbx.utils import null_out
 from libtbx import group_args
+from libtbx.str_utils import make_sub_header
 from mmtbx.hydrogens import reduce
 
 master_phil_str = '''
@@ -11,10 +12,6 @@ use_neutron_distances = False
   .help = Use neutron distances
 
 keep_existing_H = False
-
-protein_only = False
-  .type = bool
-  .help = place H on protein residues only
 
 output
   .style = menu_item auto_align
@@ -27,6 +24,8 @@ output
 }
 '''
 
+# ------------------------------------------------------------------------------
+
 class Program(ProgramTemplate):
   description = '''
 Add hydrogens.
@@ -38,14 +37,27 @@ Inputs:
   datatypes = ['model', 'restraint', 'phil']
   master_phil_str = master_phil_str
 
+# ------------------------------------------------------------------------------
+
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
 
+# ------------------------------------------------------------------------------
+
   def run(self):
     self.model = self.data_manager.get_model()
-    self.model = reduce.add(model = self.model,
-                            use_neutron_distances = self.params.use_neutron_distances)
+    #
+    make_sub_header('Add H atoms', out=self.logger)
+    reduce_add_h_obj = reduce.place_hydrogens(
+      model = self.model,
+      use_neutron_distances = self.params.use_neutron_distances)
+    reduce_add_h_obj.run()
+    self.model = reduce_add_h_obj.get_model()
+    reduce_add_h_obj.show(log = self.logger)
+    #
+    make_sub_header('Optimize H atoms', out=self.logger)
     self.model = reduce.optimize(model=self.model)
+    #
     if(self.params.output.file_name_prefix is not None):
       base = self.params.output.file_name_prefix
     else:
@@ -54,6 +66,8 @@ Inputs:
     of = open("%s_hydrogenate.pdb"%base,"w")
     of.write(self.model.model_as_pdb())
     of.close()
+
+# ------------------------------------------------------------------------------
 
   def get_results(self):
     return group_args(model = self.model)

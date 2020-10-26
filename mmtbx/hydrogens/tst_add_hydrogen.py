@@ -17,14 +17,6 @@ def run():
   no_H_on_coordinating_CYS()
 
 
-def get_model(pdb_str):
-  pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
-  model = mmtbx.model.manager(model_input = pdb_inp,
-                              log         = null_out())
-  model_with_h = reduce.add(model = model)
-  return model_with_h
-
-
 def compare_models(pdb_str,
                    contains     = None,
                    not_contains = None,
@@ -42,7 +34,11 @@ def compare_models(pdb_str,
   assert (hd_sel_without_h is not None)
   assert (hd_sel_without_h.count(True) == 0)
 
-  model_h_added = reduce.add(model = model_without_h)
+  #model_h_added = reduce.add(model = model_without_h)
+  reduce_add_h_obj = reduce.place_hydrogens(model = model_without_h)
+  reduce_add_h_obj.run()
+  model_h_added = reduce_add_h_obj.get_model()
+
   hd_sel_h_added = model_h_added.get_hd_selection()
 
   ph_initial = model_initial.get_hierarchy()
