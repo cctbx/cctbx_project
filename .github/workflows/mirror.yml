@@ -25,7 +25,7 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         checkName: Checks
-        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        ref: ${{ github.event.check_suite.head_sha }}
         intervalSeconds: 30
         timeoutSeconds: 120
 
@@ -39,7 +39,7 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         checkName: XFEL CI
-        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        ref: ${{ github.event.check_suite.head_sha }}
         intervalSeconds: 30
         timeoutSeconds: 120
 
@@ -53,7 +53,7 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         checkName: CI
-        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        ref: ${{ github.event.check_suite.head_sha }}
         intervalSeconds: 30
         timeoutSeconds: 120
 
@@ -78,6 +78,7 @@ jobs:
       if: steps.wait-for-checks.outputs.conclusion == 'success' && steps.wait-for-xfel-build.outputs.conclusion == 'success' && steps.wait-for-build.outputs.conclusion == 'success'
       run: |
         git remote add mirror git@github.com:dials/cctbx.git
+        git reset --hard ${{ github.event.check_suite.head_sha }}
         git rev-parse HEAD
         git status
-        git push -f mirror HEAD:master
+        git push mirror HEAD:master
