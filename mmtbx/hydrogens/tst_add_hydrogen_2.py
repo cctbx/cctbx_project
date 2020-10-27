@@ -8,10 +8,10 @@ from libtbx.test_utils import approx_equal
 
 
 def run():
-  correct_H_position_with_cdl()
-  snippet_with_clashing_H()
-  multi_model()
-  normal_and_modified_nucleic_acid()
+  test_000()
+  test_001()
+  test_002()
+  test_003()
 
 
 def compare_models(pdb_str,
@@ -67,36 +67,40 @@ def compare_models(pdb_str,
     assert approx_equal(sc, d1[name], 0.01)
 
 
-def correct_H_position_with_cdl():
-  compare_models(pdb_str = pdb_str_1)
-
-
-def snippet_with_clashing_H():
+def test_000():
   '''
-  This is an example for a file that fails with REDUCE.
+    CDL is true by default. Will crash for this example if is False.
+  '''
+  compare_models(pdb_str = pdb_str_000)
 
-  The NZ atom of Lys 246 and the C5 atom of Tam 2 are extremely close together,
-  which seems to give Reduce a problem.
+
+def test_001():
+  '''
+  clash between LYS 246 NZ & Tam 2 C5 --> fails in REDUCE
 
   Removing either Lys 246 NZ, or TAM 2 C5, or both of Lys 246 HZ1 and HZ3 will
   allow Reduce to run to completion and produce a usable result.
   However, Lys 246 HZ1 and HZ3 will not be added back by Reduce.
   '''
-  compare_models(pdb_str = pdb_str_2)
+  compare_models(pdb_str = pdb_str_001)
 
 
-def multi_model():
+def test_002():
   '''
     Test if multi-model file is supported
   '''
-  compare_models(pdb_str = pdb_str_3)
+  compare_models(pdb_str = pdb_str_002)
 
 
-def normal_and_modified_nucleic_acid():
-  compare_models(pdb_str = pdb_str_4)
+def test_003():
+  '''
+    Check if normal and modified nucleic acid work.
+  '''
+  compare_models(pdb_str = pdb_str_003)
 
 
-pdb_str_1 = """
+pdb_str_000 = """
+REMARK This will crash if CDL is set to FALSE
 CRYST1   72.240   72.010   86.990  90.00  90.00  90.00 P 21 21 21
 ATOM      1  N   PRO H  14      52.628 -74.147  33.427  1.00 20.43           N
 ATOM      2  CA  PRO H  14      53.440 -73.630  34.533  1.00 20.01           C
@@ -142,7 +146,8 @@ ATOM     41  HB1 GLN H  16      51.871 -68.665  31.056  1.00 31.67           H
 ATOM     42  HB2 GLN H  16      51.761 -69.970  31.957  1.00 31.67           H
 """
 
-pdb_str_2 = """
+pdb_str_001 = """
+REMARK this fails in REDUCE because of clash between LYS 246 NZ & Tam 2 C5
 CRYST1   24.984   25.729   23.590  90.00  90.00  90.00 P 1
 ATOM      1  N   PRO A 245      13.194  10.192  16.658  1.00 41.32           N
 ATOM      2  CA  PRO A 245      12.939  11.276  15.705  1.00 43.09           C
@@ -208,7 +213,8 @@ HETATM   60  O5  TAM H   2       7.872   9.487   9.299  1.00 20.00           O
 HETATM   61  O6  TAM H   2       5.714  12.262   9.200  1.00 20.00           O
 """
 
-pdb_str_3 = """
+pdb_str_002 = """
+REMARK This is a multi model file --> check if this works
 CRYST1   16.760   20.171   17.648  90.00  90.00  90.00 P 1
 MODEL        1
 ATOM      1  N   GLY A  -3      14.573   7.304   5.082  1.00 23.20           N
@@ -280,7 +286,7 @@ TER
 ENDMDL
 """
 
-pdb_str_4 = """
+pdb_str_003 = """
 CRYST1   17.826   22.060   19.146  90.00  90.00  90.00 P 1
 ATOM      1  P     U A   2       7.236  16.525   9.726  1.00 37.21           P
 ATOM      2  OP1   U A   2       6.663  17.060  10.993  1.00 38.75           O
