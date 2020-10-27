@@ -123,6 +123,7 @@ class map_model_manager(object):
     self.set_verbose(verbose)
 
     # Initialize
+    self._resolution = None
     self._map_dict={}
     self._model_dict = {}
     self._force_wrapping = wrapping
@@ -642,17 +643,40 @@ class map_model_manager(object):
     else:
       return None
 
-  def resolution(self):
-    if self.map_manager():
-      return self.map_manager().resolution()
-    else:
-      return None
+  def resolution(self,
+    use_fsc_if_no_resolution_available_and_maps_available = True,
+    map_id_1 = 'map_manager_1',
+    map_id_2 = 'map_manager_2',
+     ):
+    if self._resolution: # have it already
+      return self._resolution
+
+    else:  # figure out resolution
+      resolution = None
+      if use_fsc_if_no_resolution_available_and_maps_available and \
+          self.get_map_manager_by_id(map_id_1) and \
+          self.get_map_manager_by_id(map_id_2):
+        resolution = self.map_map_fsc(  # get resolution from FSC
+          map_id_1 = map_id_1,
+          map_id_2 = map_id_2).d_min
+        if resolution:
+          print("\nResolution estimated from FSC of '%s' and '%s: %.3f A " %(
+           map_id_1, map_id_2, resolution), file = self.log)
+ 
+      if (not resolution) and self.map_manager():  
+        # get resolution from map_manager
+        resolution = self.map_manager().resolution()
+        print("\nResolution obtained from map_manager: %.3f A " %(
+          resolution), file = self.log)
+      if resolution:
+        self.set_resolution(resolution)
+        return resolution
+      else:
+        return None
 
   def set_resolution(self, resolution):
     ''' Set nominal resolution '''
-    # Must already have a map_manager
-    assert self.map_manager() is not None
-    self.map_manager().set_resolution(resolution)
+    self._resolution = resolution
 
   def set_scattering_table(self, scattering_table):
     ''' Set nominal scattering_table '''
@@ -2163,6 +2187,53 @@ class map_model_manager(object):
 
   # Methods for sharpening and comparing maps, models and calculating FSC values
 
+  def _update_kw_with_map_info(self, local_kw, previous_kw = None,
+      text = 'overall', have_previous_scaled_data = None,
+      map_id_scaled_list = None):
+
+
+    if have_previous_scaled_data:
+      if previous_kw.get('map_id_1'):
+        local_kw['map_id_1'] = previous_kw['map_id_scaled_list'][
+         previous_kw['map_id_to_be_scaled_list'].index(previous_kw['map_id_1'])]
+        print("Map 1 to use in determining scaling: '%s' " %(
+          local_kw['map_id_1']), file = self.log)
+      if previous_kw.get('map_id_2'):
+        local_kw['map_id_2'] = previous_kw['map_id_scaled_list'][
+         previous_kw['map_id_to_be_scaled_list'].index(previous_kw['map_id_2'])]
+        print("Map 2 to use in determining scaling: '%s' " %(
+          local_kw['map_id_2']), file = self.log)
+
+      local_kw['map_id_to_be_scaled_list'] = previous_kw['map_id_scaled_list']
+
+      # New main map
+      local_kw['map_id'] = previous_kw['map_id_scaled_list'][
+          previous_kw['map_id_to_be_scaled_list'].index(previous_kw['map_id'])]
+      print("New main map to use in determining scaling: '%s' " %(
+          local_kw['map_id']),file = self.log)
+
+    if map_id_scaled_list:
+      local_kw['map_id_scaled_list'] = map_id_scaled_list
+    else: 
+      local_kw['map_id_scaled_list'] = []
+      for id in local_kw['map_id_to_be_scaled_list']:
+        local_kw['map_id_scaled_list'].append(
+            '%s_%s' %(id, text))
+
+
+    print("Starting maps will come from: %s " %(
+      str(local_kw['map_id_to_be_scaled_list'])),file = self.log)
+    print("Sharpened maps will be in: %s " %(
+       local_kw['map_id_scaled_list']), file = self.log)
+
+    if self.model():
+      cc = self.map_model_cc(map_id=local_kw['map_id'])
+      print ("Current map-model CC for '%s': %.3f " %(local_kw['map_id'],cc), 
+         file = self.log)
+
+    return local_kw
+
+
   def _sharpen_overall_local_overall(self, kw, method):
 
       assert kw.get('map_id_to_be_scaled_list') is None or (
@@ -2170,77 +2241,77 @@ class map_model_manager(object):
 
       # Set up list of maps to be scaled
       kw = self.set_map_id_lists(kw)
+      kw['overall_sharpen_before_and_after_local'] = False
 
       # run sharpening without local sharpening first
       #  Then set maps to scale as the scaled maps from this run
 
+      final_map_id_scaled_list = deepcopy(kw['map_id_scaled_list'])
       print("\nRunning overall sharpening, local , then overall...\n",
          file = self.log)
-      # Run standard sharpening  #
-      local_kw = deepcopy(kw)
+      if kw.get('map_id_1') and kw.get('map_id_2'):
+        print("\nSharpening will be determined by comparison of %s and %s " %(
+         kw['map_id_1'],kw['map_id_2']), file = self.log)
+      print("Starting maps will come from: %s " %(
+        str(kw['map_id_to_be_scaled_list'])),file = self.log)
+      print("Final sharpened maps will be in: %s " %(final_map_id_scaled_list),
+        file = self.log)
+ 
+      # Run overall sharpening 
+      local_kw = deepcopy(kw)  # save a copy
       local_kw['local_sharpen'] = False
       local_kw['overall_sharpen_before_and_after_local'] = False
+      local_kw_dc = deepcopy(local_kw)
 
-      print ("\n",79*"=","\nRunning overall sharpening\n",79*"=","\n",
+      local_kw = deepcopy(local_kw_dc)
+
+      print ("\n",79*"=","\nRunning overall sharpening now\n",79*"=","\n",
          file = self.log)
-      method( **local_kw)
 
-      # Now our new maps to be sharpened are in map_id_scaled_list
-      if kw.get('map_id','None') in kw['map_id_to_be_scaled_list']:
-        kw['map_id'] = kw['map_id_scaled_list'][
-          kw['map_id_to_be_scaled_list'].index(kw['map_id'])]
-        print("New main map to use in determining scaling: '%s' " %(
-          kw['map_id']),file = self.log)
+      local_kw = self._update_kw_with_map_info(local_kw, previous_kw = kw,
+        text = 'overall')
 
-      if kw.get('map_id_1','None') in kw['map_id_to_be_scaled_list'] and \
-         kw.get('map_id_2','None') in kw['map_id_to_be_scaled_list']:  # use scaled
-        kw['map_id_1'] = kw['map_id_scaled_list'][
-          kw['map_id_to_be_scaled_list'].index(kw['map_id_1'])]
-        kw['map_id_2'] = kw['map_id_scaled_list'][
-          kw['map_id_to_be_scaled_list'].index(kw['map_id_2'])]
-        print("New half-maps to use in determining scaling: '%s' and '%s' " %(
-          kw['map_id_1'],kw['map_id_2']), file = self.log)
+      method( **local_kw)  # run overall sharpening
 
-      kw['map_id_scaled_list']=local_kw['map_id_scaled_list']
-      kw['map_id_to_be_scaled_list'] = local_kw['map_id_scaled_list']
-      print("Scaled maps are "+
-           "'%s' and will be used as input for local sharpening"%(
-        str(local_kw['map_id_scaled_list'])), file = self.log)
-      if self.model():
-        cc = self.map_model_cc(map_id=local_kw['map_id_scaled_list'][0])
-        print ("Map-model CC for '%s': %.3f " %(
-          local_kw['map_id_scaled_list'][0],cc), file = self.log)
-      print ("\nDone with overall sharpening)\n", file = self.log)
+      # Now our new maps to be sharpened are in local_kw['map_id_scaled_list']
+
+      print ("\nDone with overall sharpening\n", file = self.log)
 
 
-      kw['overall_sharpen_before_and_after_local'] = False
+      # Local sharpening 
       print ("\n",79*"=","\nRunning local sharpening\n",79*"=","\n",
          file = self.log)
-      method( **kw)
 
-      kw['map_id_scaled_list']=local_kw['map_id_scaled_list']
-      kw['map_id_to_be_scaled_list'] = local_kw['map_id_scaled_list']
-      print("Locally scaled maps are "+
-           "'%s' and will be used as input for final overall sharpening"%(
-        str(local_kw['map_id_scaled_list'])), file = self.log)
-      if self.model():
-        cc = self.map_model_cc(map_id=kw['map_id_scaled_list'][0])
-        print ("Map-model CC for '%s': %.3f " %(
-          kw['map_id_scaled_list'][0],cc), file = self.log)
-      print ("\nDone with local sharpening\n", file = self.log)
+      kw = self._update_kw_with_map_info(kw, previous_kw = local_kw,
+        text = 'local', have_previous_scaled_data = True)
+
+
+      method( **kw)  # Run local sharpening
 
       print ("\n",79*"=","\nRunning final overall sharpening\n",79*"=","\n",
          file = self.log)
-      local_kw['map_id_scaled_list']=kw['map_id_scaled_list']
-      local_kw['map_id_to_be_scaled_list']=kw['map_id_to_be_scaled_list']
 
-      method( **local_kw)
+      local_kw = deepcopy(local_kw_dc)
+
+      local_kw = self._update_kw_with_map_info(local_kw, previous_kw = kw,
+        text = 'final_overall', have_previous_scaled_data = True,
+        map_id_scaled_list = final_map_id_scaled_list)
+
+      method( **local_kw) # Run overall sharpening
+ 
       print("Scaled maps are '%s' "%(
         str(local_kw['map_id_scaled_list'])), file = self.log)
+
+      scaled_map_id = local_kw['map_id_scaled_list'][
+         local_kw['map_id_to_be_scaled_list'].index(local_kw['map_id'])]
+      print("\nFinal sharpened map is in '%s' in '%s' " %(
+         scaled_map_id, self.name), file = self.log)
+
       if self.model():
-        cc = self.map_model_cc(map_id=local_kw['map_id_scaled_list'][0])
-        print ("Map-model CC for '%s': %.3f " %(
-        local_kw['map_id_scaled_list'][0],cc), file = self.log)
+        cc = self.map_model_cc(map_id = scaled_map_id)
+        print ("Current map-model CC for '%s': %.3f " %(scaled_map_id,cc), 
+           file = self.log)
+
       print ("\n",79*"=","\nDone with local and overall sharpening\n",79*"=",
            file = self.log)
 
@@ -2325,7 +2396,7 @@ class map_model_manager(object):
       anisotropic_sharpen = None,
       minimum_low_res_cc = None,
       get_scale_as_aniso_u = None,
-      spectral_scaling = None,
+      spectral_scaling = True,
       expected_rms_fc_list = None,
       model_for_rms_fc = None,
       replace_aniso_with_tls_equiv = None,
@@ -2364,14 +2435,14 @@ class map_model_manager(object):
        file = self.log)
       return self._sharpen_overall_local_overall(kw = kw,
         method = self.half_map_sharpen)
-
-    print ("Running half-map sharpening ", file = self.log)
+    print ("\nRunning half-map sharpening\n", file = self.log)
     print("Scale factors will be identified using the "+
        "maps '%s' and '%s' in map_model_manager '%s'" %(
         kw['map_id_1'],kw['map_id_2'],  self.name), file = self.log)
     print("Maps to be scaled are '%s' in map_model_manager '%s'" %(
       str(kw['map_id_to_be_scaled_list']),self.name),file = self.log)
-    print("Scaled maps will be in '%s' in map_model_manager '%s'" %(
+    print("Sharpened maps after half-map sharpening will be in "+
+       "'%s' in map_model_manager '%s'" %(
       str(kw['map_id_scaled_list']),self.name),file = self.log)
 
     # Now get scaling from comparison of the two half-maps
@@ -2395,7 +2466,7 @@ class map_model_manager(object):
       anisotropic_sharpen = None,
       minimum_low_res_cc = None,
       get_scale_as_aniso_u = None,
-      spectral_scaling = None,
+      spectral_scaling = True,
       expected_rms_fc_list = None,
       model_for_rms_fc = None,
       replace_aniso_with_tls_equiv = None,
@@ -2495,7 +2566,7 @@ class map_model_manager(object):
     f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = working_n_bins,
         d_min = d_min).f_array
 
-    # Generate map from model using existing hopefully anisotropic B
+    # Generate map from model using existing possibly anisotropic B
     model=working_mmm.get_model_by_id(model_id)
 
     working_mmm.generate_map(model=model,
@@ -2616,6 +2687,7 @@ class map_model_manager(object):
     del kw['overall_sharpen_before_and_after_local']  # REQUIRED
     del kw['n_bins_default']  # REQUIRED
     del kw['n_bins_default_local']  # REQUIRED
+
 
     # Checks
     assert self.get_map_manager_by_id(map_id)
@@ -2761,7 +2833,7 @@ class map_model_manager(object):
 
       # Apply the scale factors in shells
       print("\nApplying final scale factors in shells of "+
-        "resolution to map '%s'" %(id), file = self.log)
+        "resolution to map '%s' to yield '%s'" %(id, new_id), file = self.log)
       if len(direction_vectors) > 1:
         print("Using %s direction vectors" %len(direction_vectors),
           file = self.log)
@@ -2789,9 +2861,7 @@ class map_model_manager(object):
         print("Not applying scaling to '%s'" %(id) ,file = self.log)
       else: # usual
         # All done... Set map_manager now
-        print ("Setting map_manager " +
-          "'%s' in map_model_manager '%s' to scaled map '%s'" %(
-            id,self.name,new_id), file = self.log)
+        print ("Scaled map is '%s' in %s" %(new_id,self.name), file = self.log)
         self.add_map_manager_by_id(map_manager = new_map_manager,
           map_id = new_id)
 
@@ -2907,6 +2977,7 @@ class map_model_manager(object):
     working_mmm = map_model_manager(
       map_manager = self.get_any_map_manager(), log = self.log,
       verbose = self.verbose)
+    working_mmm._resolution = self._resolution
     working_mmm.set_log(self.log)
     if map_id_list:
       for id in map_id_list:
@@ -3613,7 +3684,6 @@ class map_model_manager(object):
     assert self.get_map_manager_by_id(map_id)
     for id in map_id_to_be_scaled_list:
       assert self.get_map_manager_by_id(id)
-
     assert (
     (self.get_map_manager_by_id(map_id_1) or
         is_model_based or is_external_based) and
@@ -3965,14 +4035,7 @@ class map_model_manager(object):
       skip_boxes = None,
       ):
     if not resolution:
-      if map_id_1=='map_manager_1' and map_id_2=='map_manager_2': # use fsc
-        resolution = self.map_map_fsc(
-          map_id_1 = map_id_1,
-          map_id_2 = map_id_2,).d_min
-      if not resolution:
-        resolution = self.resolution()
-      self.set_resolution(resolution)
-
+      resolution = self.resolution()
 
     if not box_cushion:
       box_cushion = 1.5 * resolution
@@ -4124,7 +4187,8 @@ class map_model_manager(object):
        d_min = None,
        )
     if not resolution:
-      resolution = self.resolution()
+      resolution = self.resolution(
+        use_fsc_if_no_resolution_available_and_maps_available=False)
     assert isinstance(resolution, (int, float))
 
     f_map_1, f_map_2 = self._get_map_coeffs_list_from_id_list(
@@ -4219,18 +4283,22 @@ class map_model_manager(object):
     if not model:
       return None
     if use_b_zero: # make a deep copy and set b values to zero
+      print("Map-model CC using model with B values of zero", file = self.log)
       model = model.deep_copy()
       b_iso_values = model.get_b_iso()
       model.set_b_iso(flex.double(b_iso_values.size(),0.)) # XXX should be ok
       u_cart=model.get_xray_structure().scatterers().extract_u_cart(model.get_xray_structure().crystal_symmetry().unit_cell())
       model.get_xray_structure().set_u_cart(u_cart)
       model.set_xray_structure(model.get_xray_structure())
+    else:
+      print("Map-model CC using model with B values as is", file = self.log)
 
     map_manager= self.get_map_manager_by_id(map_id)
     assert model and map_manager
     if not resolution:
       resolution = self.resolution()
     assert resolution is not None
+    print("Resolution for map-model CC: %.3f A" %(resolution), file = self.log)
 
     if selection_string:
       sel = model.selection(selection_string)
@@ -4247,7 +4315,9 @@ class map_model_manager(object):
       compute_cc_volume = False,
       compute_cc_peaks  = False,)
 
-    return five_cc.result.cc_mask
+    cc_mask = five_cc.result.cc_mask
+    print("Map-model CC: %.3f A" %(cc_mask), file = self.log)
+    return cc_mask
 
   #  Methods for superposing maps
 
@@ -4752,6 +4822,9 @@ class map_model_manager(object):
     new_mmm.set_log(self.log)
     new_mmm.set_name(name)
     new_mmm.set_verbose(self.verbose)
+    if self._resolution:
+      new_mmm.set_resolution(self._resolution)
+
     return new_mmm
 
 

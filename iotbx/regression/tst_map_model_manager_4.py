@@ -177,7 +177,7 @@ def exercise( out = sys.stdout):
   dc.create_mask_around_density(soft_mask=False)
   count = dc.get_map_manager_by_id('mask').map_data().count(1)
   print(count)
-  assert 10000 < count < 14000
+  assert 8000 < count < 14000
   dc.expand_mask(buffer_radius = 2)
   count = dc.get_map_manager_by_id('mask').map_data().count(1)
   print(count)
