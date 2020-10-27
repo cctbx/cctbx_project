@@ -6,58 +6,59 @@ from mmtbx.hydrogens import reduce
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
 
+# ------------------------------------------------------------------------------
 
 def run():
   test_000()
   test_001()
   test_002()
   test_003()
+  test_004()
+  test_005()
+  test_006()
 
+# ------------------------------------------------------------------------------
 
 def compare_models(pdb_str,
                    contains     = None,
-                   not_contains = None,
-                   number_h     = None):
+                   not_contains = None):
   #
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+  # initial model
   model_initial = mmtbx.model.manager(model_input = pdb_inp,
                                       log         = null_out())
   hd_sel_initial = model_initial.get_hd_selection()
   number_h_expected = hd_sel_initial.count(True)
-
-
+  ph_initial = model_initial.get_hierarchy()
+  h_atoms_initial = ph_initial.select(hd_sel_initial).atoms()
+  h_names_initial = list(h_atoms_initial.extract_name())
+  # remove H atoms
   model_without_h = model_initial.select(~hd_sel_initial)
   hd_sel_without_h = model_without_h.get_hd_selection()
   assert (hd_sel_without_h is not None)
   assert (hd_sel_without_h.count(True) == 0)
-
+  # place H atoms again
   reduce_add_h_obj = reduce.place_hydrogens(model = model_without_h)
   reduce_add_h_obj.run()
+  #
   model_h_added = reduce_add_h_obj.get_model()
-
   hd_sel_h_added = model_h_added.get_hd_selection()
-
-  ph_initial = model_initial.get_hierarchy()
-  h_atoms_initial = ph_initial.select(hd_sel_initial).atoms()
-  h_names_initial = list(h_atoms_initial.extract_name())
   ph_h_added = model_h_added.get_hierarchy()
-  assert ph_initial.is_similar_hierarchy(other=ph_h_added)
-
-  number_h_added = hd_sel_h_added.count(True)
-  if number_h:
-    assert(number_h == number_h_added)
-
   h_atoms_added = ph_h_added.select(hd_sel_h_added).atoms()
   h_names_added = list(h_atoms_added.extract_name())
+  number_h_added = hd_sel_h_added.count(True)
+  #
+  assert ph_initial.is_similar_hierarchy(other=ph_h_added)
+
+  assert(number_h_expected == number_h_added)
 
   if not_contains:
     assert (not_contains not in h_names_added)
-
   if contains:
     assert (contains in h_names_added)
 
   sc_h_initial = model_initial.select(hd_sel_initial).get_sites_cart()
-  sc_h_added = model_h_added.select(hd_sel_h_added).get_sites_cart()
+  sc_h_added   = model_h_added.select(hd_sel_h_added).get_sites_cart()
 
   d1 = {h_names_initial[i]: sc_h_initial[i] for i in range(len(h_names_initial))}
   d2 = {h_names_added[i]: sc_h_added[i] for i in range(len(h_names_added))}
@@ -66,6 +67,7 @@ def compare_models(pdb_str,
     assert(name in d1)
     assert approx_equal(sc, d1[name], 0.01)
 
+# ------------------------------------------------------------------------------
 
 def test_000():
   '''
@@ -73,6 +75,7 @@ def test_000():
   '''
   compare_models(pdb_str = pdb_str_000)
 
+# ------------------------------------------------------------------------------
 
 def test_001():
   '''
@@ -84,6 +87,7 @@ def test_001():
   '''
   compare_models(pdb_str = pdb_str_001)
 
+# ------------------------------------------------------------------------------
 
 def test_002():
   '''
@@ -91,6 +95,7 @@ def test_002():
   '''
   compare_models(pdb_str = pdb_str_002)
 
+# ------------------------------------------------------------------------------
 
 def test_003():
   '''
@@ -98,6 +103,31 @@ def test_003():
   '''
   compare_models(pdb_str = pdb_str_003)
 
+# ------------------------------------------------------------------------------
+
+def test_004():
+  '''
+    Check if dc is processed correctly: TYR dc with every atom in either A or B
+  '''
+  compare_models(pdb_str = pdb_str_004)
+
+# ------------------------------------------------------------------------------
+
+def test_005():
+  '''
+    Check if dc is processed correctly: Glu dc with atoms in A or B or '' (blank)
+  '''
+  compare_models(pdb_str = pdb_str_005)
+
+# ------------------------------------------------------------------------------
+
+def test_006():
+  '''
+    Check if model without H to be placed is correctly processed
+  '''
+  compare_models(pdb_str = pdb_str_006)
+
+# ------------------------------------------------------------------------------
 
 pdb_str_000 = """
 REMARK This will crash if CDL is set to FALSE
@@ -287,6 +317,7 @@ ENDMDL
 """
 
 pdb_str_003 = """
+REMARK PDB snippet with a normal and a modified nucleic acid
 CRYST1   17.826   22.060   19.146  90.00  90.00  90.00 P 1
 ATOM      1  P     U A   2       7.236  16.525   9.726  1.00 37.21           P
 ATOM      2  OP1   U A   2       6.663  17.060  10.993  1.00 38.75           O
@@ -349,6 +380,91 @@ HETATM   59  H5  UMS A   3      11.056  12.270   9.246  1.00 33.90           H
 HETATM   60 H5*2 UMS A   3       8.158   9.276  13.531  1.00 36.88           H
 HETATM   64  H2* UMS A   3      12.022   6.833  11.440  1.00 40.93           H
 """
+
+pdb_str_004 = '''
+REMARK TYR double conformation where *every* atom is in either A or B
+CRYST1   15.639   15.148   16.657  90.00  90.00  90.00 P 1
+ATOM      1  N  ATYR A  59       5.624   5.492   5.997  0.63  5.05           N
+ATOM      2  CA ATYR A  59       6.283   5.821   7.250  0.63  5.48           C
+ATOM      3  C  ATYR A  59       5.451   6.841   8.030  0.63  6.01           C
+ATOM      4  O  ATYR A  59       5.000   7.863   7.506  0.63  6.38           O
+ATOM      5  CB ATYR A  59       7.724   6.421   6.963  0.63  5.57           C
+ATOM      6  CG ATYR A  59       8.212   7.215   8.170  0.63  6.71           C
+ATOM      7  CD1ATYR A  59       8.690   6.541   9.297  0.63  7.05           C
+ATOM      8  CD2ATYR A  59       8.071   8.583   8.242  0.63  8.31           C
+ATOM      9  CE1ATYR A  59       9.100   7.172  10.481  0.63  7.99           C
+ATOM     10  CE2ATYR A  59       8.408   9.230   9.447  0.63  9.07           C
+ATOM     11  CZ ATYR A  59       8.919   8.547  10.507  0.63  9.01           C
+ATOM     12  OH ATYR A  59       9.211   9.255  11.657  0.63 12.31           O
+ATOM     13  HE2ATYR A  59       8.278  10.148   9.520  0.63  9.07           H
+ATOM     14  HD2ATYR A  59       7.760   9.068   7.512  0.63  8.31           H
+ATOM     15  HD1ATYR A  59       8.740   5.613   9.260  0.63  7.05           H
+ATOM     17  HE1ATYR A  59       9.466   6.703  11.196  0.63  7.99           H
+ATOM     18  HH ATYR A  59       9.058  10.072  11.538  0.63 12.31           H
+ATOM     19  HA ATYR A  59       6.384   5.020   7.788  0.63  5.48           H
+ATOM     20  HB1ATYR A  59       7.683   7.014   6.196  0.63  5.57           H
+ATOM     21  HB2ATYR A  59       8.349   5.699   6.792  0.63  5.57           H
+ATOM     22  N  BTYR A  59       5.613   5.513   5.963  0.37  5.75           N
+ATOM     23  CA BTYR A  59       6.322   5.809   7.211  0.37  5.49           C
+ATOM     24  C  BTYR A  59       5.795   6.953   8.094  0.37  5.14           C
+ATOM     25  O  BTYR A  59       5.668   8.090   7.641  0.37  6.42           O
+ATOM     26  CB BTYR A  59       7.798   6.076   6.900  0.37  7.77           C
+ATOM     27  CG BTYR A  59       8.556   6.722   8.038  0.37  5.20           C
+ATOM     28  CD1BTYR A  59       9.162   5.951   9.021  0.37  8.94           C
+ATOM     29  CD2BTYR A  59       8.665   8.103   8.129  0.37  6.25           C
+ATOM     30  CE1BTYR A  59       9.856   6.537  10.063  0.37 11.97           C
+ATOM     31  CE2BTYR A  59       9.357   8.699   9.167  0.37  9.52           C
+ATOM     32  CZ BTYR A  59       9.950   7.911  10.131  0.37 12.68           C
+ATOM     33  OH BTYR A  59      10.639   8.500  11.166  0.37 26.50           O
+ATOM     34  HE2BTYR A  59       9.422   9.625   9.215  0.37  9.52           H
+ATOM     35  HD2BTYR A  59       8.266   8.637   7.480  0.37  6.25           H
+ATOM     36  HD1BTYR A  59       9.100   5.024   8.978  0.37  8.94           H
+ATOM     38  HE1BTYR A  59      10.257   6.008  10.714  0.37 11.97           H
+ATOM     39  HH BTYR A  59      10.618   9.336  11.086  0.37 26.50           H
+ATOM     40  HA BTYR A  59       6.185   5.019   7.758  0.37  5.49           H
+ATOM     41  HB1BTYR A  59       7.853   6.669   6.134  0.37  7.77           H
+ATOM     42  HB2BTYR A  59       8.231   5.232   6.698  0.37  7.77           H
+'''
+
+pdb_str_005 = '''
+REMARK Glu double conformation where atoms are either A, B or '' (blank)
+CRYST1   13.702   13.985   14.985  90.00  90.00  90.00 P 1
+ATOM      1  N   GLU A  78       8.702   8.360   5.570  1.00 35.65           N
+ATOM      2  C   GLU A  78       6.379   7.842   5.202  1.00 35.59           C
+ATOM      3  O   GLU A  78       5.975   8.985   5.000  1.00 35.38           O
+ATOM      4  CA AGLU A  78       7.598   7.571   6.076  0.70 35.57           C
+ATOM      5  CB AGLU A  78       7.301   7.887   7.536  0.70 35.75           C
+ATOM      6  CG AGLU A  78       6.481   6.798   8.188  0.70 36.10           C
+ATOM      7  CD AGLU A  78       5.833   7.232   9.476  0.70 37.70           C
+ATOM      8  OE1AGLU A  78       6.155   8.333   9.982  0.70 38.74           O
+ATOM      9  OE2AGLU A  78       5.000   6.456   9.985  0.70 37.65           O
+ATOM     11  HG2AGLU A  78       5.778   6.526   7.578  0.70 36.10           H
+ATOM     12  HG1AGLU A  78       7.059   6.044   8.385  0.70 36.10           H
+ATOM     13  HA AGLU A  78       7.819   6.627   6.051  0.70 35.57           H
+ATOM     14  HB1AGLU A  78       6.802   8.717   7.588  0.70 35.75           H
+ATOM     15  HB2AGLU A  78       8.137   7.971   8.021  0.70 35.75           H
+ATOM     16  CA BGLU A  78       7.581   7.608   6.115  0.30 35.61           C
+ATOM     17  CB BGLU A  78       7.269   8.093   7.534  0.30 35.70           C
+ATOM     18  CG BGLU A  78       6.166   7.322   8.245  0.30 36.05           C
+ATOM     19  CD BGLU A  78       6.683   6.115   9.003  0.30 36.79           C
+ATOM     20  OE1BGLU A  78       7.585   6.285   9.856  0.30 37.19           O
+ATOM     21  OE2BGLU A  78       6.173   5.000   8.760  0.30 37.31           O
+ATOM     23  HG2BGLU A  78       5.525   7.010   7.587  0.30 36.05           H
+ATOM     24  HG1BGLU A  78       5.730   7.910   8.881  0.30 36.05           H
+ATOM     25  HA BGLU A  78       7.779   6.660   6.170  0.30 35.61           H
+ATOM     26  HB1BGLU A  78       8.073   8.013   8.070  0.30 35.70           H
+ATOM     27  HB2BGLU A  78       6.992   9.022   7.488  0.30 35.70           H
+'''
+
+pdb_str_006 = '''
+REMARK Hg, Sr and HOH: no H atoms are expected to be placed
+CRYST1   10.286   24.260   13.089  90.00  90.00  90.00 P 1
+HETATM    1 HG    HG A 101       5.000   7.056   5.951  0.60 17.71          HG
+HETATM    2 SR    SR A 102       5.182  10.793   8.089  0.85 18.78          SR
+HETATM    3  O   HOH A 201       5.093   5.000   5.000  1.00 25.34           O
+HETATM    4  O   HOH A 202       5.286  19.260   7.818  1.00 28.43           O
+'''
+
 
 if (__name__ == "__main__"):
   t0 = time.time()
