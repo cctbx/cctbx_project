@@ -4316,7 +4316,7 @@ class map_model_manager(object):
       compute_cc_peaks  = False,)
 
     cc_mask = five_cc.result.cc_mask
-    print("Map-model CC: %.3f A" %(cc_mask), file = self.log)
+    print("Map-model CC: %.3f" %(cc_mask), file = self.log)
     return cc_mask
 
   #  Methods for superposing maps
