@@ -662,8 +662,8 @@ class map_model_manager(object):
         if resolution:
           print("\nResolution estimated from FSC of '%s' and '%s: %.3f A " %(
            map_id_1, map_id_2, resolution), file = self.log)
- 
-      if (not resolution) and self.map_manager():  
+
+      if (not resolution) and self.map_manager():
         # get resolution from map_manager
         resolution = self.map_manager().resolution()
         print("\nResolution obtained from map_manager: %.3f A " %(
@@ -2214,7 +2214,7 @@ class map_model_manager(object):
 
     if map_id_scaled_list:
       local_kw['map_id_scaled_list'] = map_id_scaled_list
-    else: 
+    else:
       local_kw['map_id_scaled_list'] = []
       for id in local_kw['map_id_to_be_scaled_list']:
         local_kw['map_id_scaled_list'].append(
@@ -2228,7 +2228,7 @@ class map_model_manager(object):
 
     if self.model():
       cc = self.map_model_cc(map_id=local_kw['map_id'])
-      print ("Current map-model CC for '%s': %.3f " %(local_kw['map_id'],cc), 
+      print ("Current map-model CC for '%s': %.3f " %(local_kw['map_id'],cc),
          file = self.log)
 
     return local_kw
@@ -2256,8 +2256,8 @@ class map_model_manager(object):
         str(kw['map_id_to_be_scaled_list'])),file = self.log)
       print("Final sharpened maps will be in: %s " %(final_map_id_scaled_list),
         file = self.log)
- 
-      # Run overall sharpening 
+
+      # Run overall sharpening
       local_kw = deepcopy(kw)  # save a copy
       local_kw['local_sharpen'] = False
       local_kw['overall_sharpen_before_and_after_local'] = False
@@ -2278,7 +2278,7 @@ class map_model_manager(object):
       print ("\nDone with overall sharpening\n", file = self.log)
 
 
-      # Local sharpening 
+      # Local sharpening
       print ("\n",79*"=","\nRunning local sharpening\n",79*"=","\n",
          file = self.log)
 
@@ -2298,7 +2298,7 @@ class map_model_manager(object):
         map_id_scaled_list = final_map_id_scaled_list)
 
       method( **local_kw) # Run overall sharpening
- 
+
       print("Scaled maps are '%s' "%(
         str(local_kw['map_id_scaled_list'])), file = self.log)
 
@@ -2309,7 +2309,7 @@ class map_model_manager(object):
 
       if self.model():
         cc = self.map_model_cc(map_id = scaled_map_id)
-        print ("Current map-model CC for '%s': %.3f " %(scaled_map_id,cc), 
+        print ("Current map-model CC for '%s': %.3f " %(scaled_map_id,cc),
            file = self.log)
 
       print ("\n",79*"=","\nDone with local and overall sharpening\n",79*"=",
