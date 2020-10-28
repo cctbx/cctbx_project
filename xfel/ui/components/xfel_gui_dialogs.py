@@ -610,15 +610,6 @@ class AdvancedSettingsDialog(BaseDialog):
       except ValueError:
         pass
 
-      # self.nproc = gctr.SpinCtrl(self,
-      #                            label='Total number of processors:',
-      #                            label_size=(200, -1),
-      #                            label_style='normal',
-      #                            ctrl_size=(100, -1),
-      #                            ctrl_value='%d'%params.mp.nproc,
-      #                            ctrl_min=1,
-      #                            ctrl_max=1000)
-      # self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
     else:
       # Queue
       self.queue = gctr.TextButtonCtrl(self,
@@ -919,8 +910,6 @@ class AdvancedSettingsDialog(BaseDialog):
     # Copy shfiter settings into the shifter phil
     self.params.mp.shifter.sbatch_script_template = self.shifter_sbatch_template.ctr.GetValue() \
       if len(self.shifter_sbatch_template.ctr.GetValue()) > 0 else None
-
-    print ("asdasdfsd: " + self.params.mp.shifter.sbatch_script_template)
 
     self.params.mp.shifter.srun_script_template = self.shifter_srun_template.ctr.GetValue() \
       if len(self.shifter_srun_template.ctr.GetValue()) > 0 else None
