@@ -715,7 +715,7 @@ builder.""".format(filename=filename, builder=builder))
       command_list.append('--copy')
     if offline and not yaml_format:
       command_list.append('--offline')
-    if builder in ("dials", "dials-old", "xfel") and command != "create":
+    if builder in ("dials", "dials-old", "xfel") and not yaml_format:
       command_list.append("-y")
     if builder in self.env_without_python:
       python_version = tuple(int(i) for i in (python or "36"))
