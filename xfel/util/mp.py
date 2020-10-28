@@ -73,7 +73,7 @@ mp_phil_str = '''
                 to the trial directory as srun.sh and modified. Must contain \
                 exactly one instance of the string <command> (including the <> \
                 brackets) after setting up the necessary environment.
-    partition = regular
+      partition = regular
         .type = str
         .help = Partition to run jobs on, e.g. regular or debug.
       jobname = LCLS_EXP
@@ -82,10 +82,10 @@ mp_phil_str = '''
       project = None
         .type = str
         .help = Name of NERSC project -- formerly "repo"
-  reservation = None
+      reservation = None
         .type = str
         .help = Name of NERSC reservation
-   constraint = haswell
+      constraint = haswell
         .type = str
         .help = Haswell or KNL
     }
@@ -596,32 +596,24 @@ class get_shifter_submit_command(get_submit_command):
   def generate_submit_command(self):
     return self.params.shifter.submit_command + self.sbatch_path
 
-
   def encapsulate_submit(self):
     pass
 
-
   def generate_sbatch_script(self):
-    print(self.sbatch_path)
     with open(self.sbatch_path, "w") as sb:
       sb.write(self.sbatch_contents)
       sb.write("\n")
     self.make_executable(self.sbatch_path)
 
-
   def generate_srun_script(self):
-    print(self.srun_path)
     with open(self.srun_path, "w") as sr:
       sr.write(self.srun_contents)
       sr.write("\n")
     self.make_executable(self.srun_path)
 
-
   def write_script(self):
     self.generate_sbatch_script()
     self.generate_srun_script()
-
-
 
 class get_htcondor_submit_command(get_submit_command):
   def __init__(self, *args, **kwargs):

@@ -267,7 +267,7 @@ def get_submission_id(result, method):
     print(submission_id)
     return submission_id
   elif method == 'slurm' or method == "shifter":
-    # Assumign that all shifter instances are running on NERSC (slurm) systems
+    # Assuming that all shifter instances are running on NERSC (slurm) systems
     return result.stdout_lines[0].split()[-1].strip()
   elif method == 'htcondor':
     return result.stdout_lines[-1].split()[-1].rstrip('.')
@@ -356,16 +356,19 @@ class Script(object):
 
     # log file will live here
     stdoutdir = os.path.join(trialdir, "stdout")
-    bbdirstr = "${DW_JOB_STRIPED}/stdout"
     os.mkdir(stdoutdir)
     logging_str = ""
     if params.output.split_logs:# test parameter for split_log then open and close log file and loop over nprocs
-      #for i in range(params.mp.nproc):
-      #  error_files = os.path.join(stdoutdir,"error_rank%04d.out"%i)
-      #  log_files = os.path.join(stdoutdir,"log_rank%04d.out"%i)
-      #  open(log_files,'a').close()
-      #  open(error_files,'a').close()
-      logging_str = "output.logging_dir=%s"%bbdirstr
+      if params.mp.method == 'shifter':
+        bbdirstr = "${DW_JOB_STRIPED}/stdout"
+        logging_str = "output.logging_dir=%s"%bbdirstr
+      else:
+        for i in range(params.mp.nproc):
+          error_files = os.path.join(stdoutdir,"error_rank%04d.out"%i)
+          log_files = os.path.join(stdoutdir,"log_rank%04d.out"%i)
+          open(log_files,'a').close()
+          open(error_files,'a').close()
+        logging_str = "output.logging_dir=%s"%stdoutdir
     else:
       logging_str = ""
 
