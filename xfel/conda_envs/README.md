@@ -39,8 +39,6 @@ $ cd $INSTALL; mkdir cctbx; cd cctbx
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_lcls_environment.yml
 $ python bootstrap.py --builder=dials --use-conda=psana_lcls_environment.yml \
-  --config-flags="--compiler=conda" --config-flags="--use_environment_flags" \
-  --config-flags="enable_cxx11" --config-flags="--no_bin_python"             \
   --no-boost-src --python=37 hot update base
 $ exit  # logout of psexport
 $ ssh psana
