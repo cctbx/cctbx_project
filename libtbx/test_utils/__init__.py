@@ -222,7 +222,7 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
     cmd += tst_path
     cmd += cmd_args
 
-    if hasattr(co,'python_keyword_text') and co.python_keyword_text:
+    if getattr(co, 'python_keyword_text'):
       cmd=cmd.replace("libtbx.python","libtbx.python %s" %(
          co.python_keyword_text))
 

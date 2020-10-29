@@ -50,6 +50,18 @@ def get_test_list(module_name, test_type='tst_list', valgrind=False,
   build_path = libtbx.env.under_build(module_name)
   assert (build_path is not None) and (dist_path is not None)
   commands = []
+  try:
+    python_flags = import_python_object(
+      import_path="%s.run_tests.python_flags" % (module_name),
+      error_prefix="",
+      target_must_be="",
+      where_str="").object
+    if python_keyword_text:
+      python_keyword_text += " " + python_flags
+    else:
+      python_keyword_text = python_flags
+  except AttributeError:
+    pass
   co = group_args(
     verbose=False,
     quick=True,
