@@ -269,6 +269,7 @@ class HKLViewFrame() :
     self.valid_arrays = []
     self.spacegroup_choices = []
     self.procarrays = []
+    self.origarrays = {}
     self.merge_answer = [None]
     self.dmin = -1
     self.settings = display.settings()
@@ -457,7 +458,7 @@ class HKLViewFrame() :
         self.set_spacegroup_choice(phl.spacegroup_choice)
 
       if view_3d.has_phil_path(diff_phil, "tabulate_miller_array_ids"):
-        self.tabulate_miller_array(phl.tabulate_miller_array_ids)
+        self.tabulate_arrays(phl.tabulate_miller_array_ids)
         #return True
 
       if view_3d.has_phil_path(diff_phil, "miller_array_operations"):
@@ -714,8 +715,9 @@ class HKLViewFrame() :
       self.viewer.colour_scene_id = None
       self.viewer.radii_scene_id = None
       self.viewer.match_valarrays = []
-      self.viewer.proc_arrays = []
+      self.viewer.proc_arrays = {}
       self.spacegroup_choices = []
+      self.origarrays = {}
       display.reset_settings()
       self.settings = display.settings()
       self.viewer.settings = self.params.NGL_HKLviewer.viewer
@@ -728,10 +730,12 @@ class HKLViewFrame() :
         hkl_file = any_reflection_file(file_name)
         if hkl_file._file_type == 'cif':
           # use new cif label parser for reflections
-          arrays = hkl_file.file_content().as_miller_arrays(merge_equivalents=False, style="new") 
+          cifreader = hkl_file.file_content()
+          arrays = cifreader.as_miller_arrays(merge_equivalents=False, style="new")
           # sanitise labels by removing redundant strings.
           # remove the data name of this cif file from all labels
-          unwantedstrings = list( hkl_file._file_content.builder._model.keys_lower.keys())
+          dataname = list(hkl_file._file_content.builder._model.keys_lower.keys())
+          unwantedstrings = dataname[:]
           # remove "_refln." from all labels
           unwantedstrings.append("_refln.")
           for arr in arrays:
@@ -749,6 +753,8 @@ class HKLViewFrame() :
                 if not found:
                   newlabels.append(label)
                 arr.info().labels = newlabels
+
+          self.origarrays = cifreader.as_original_arrays()[dataname[0]]
         else: # some other type of reflection file than cif
           arrays = hkl_file.as_miller_arrays(merge_equivalents=False)
         if hkl_file._file_type == 'ccp4_mtz':
@@ -763,6 +769,19 @@ class HKLViewFrame() :
               if (t1*t1 + t2*t2 + t3*t3) > 0.0:
                 self.tncsvec = [ t1, t2, t3 ]
                 self.mprint("tNCS vector found in header of mtz file: %s" %str(svec) )
+
+          from iotbx import mtz
+          mtzobj = mtz.object(file_name)
+          nanval = float("nan")
+          self.origarrays["HKLs"] = mtzobj.extract_miller_indices()
+          for mtzlbl in mtzobj.column_labels():
+            col = mtzobj.get_column( mtzlbl )
+            newarr = col.extract_values_and_selection_valid().values.deep_copy()
+            for i,b in enumerate(col.extract_values_and_selection_valid().selection_valid):
+              if not b:
+                newarr[i] = nanval
+            self.origarrays[mtzlbl] = list(newarr)
+
       except Exception as e :
         self.NewFileLoaded=False
         self.mprint("".join(traceback.format_tb(e.__traceback__ )) + e.__repr__())
@@ -841,17 +860,17 @@ class HKLViewFrame() :
         if self.has_indices_with_multiple_data(arr):
           # if array contains data with more than one data point for the same hkl index iotbx.cif
           # cannot add additional arrays to the cif block so save this array in a separate file
-          singlecif = iotbx.cif.miller_arrays_as_cif_block(arr, array_type = arrtype, 
+          singlecif = iotbx.cif.miller_arrays_as_cif_block(arr, array_type = arrtype,
                                                        column_name=colname, column_names = colnames )
           fname = os.path.splitext(savefilename)[0] + "_%d"%i + os.path.splitext(savefilename)[1]
           save2cif(fname, singlecif)
           fnames.append(fname)
           continue
         if not mycif:
-          mycif = iotbx.cif.miller_arrays_as_cif_block(arr, array_type = arrtype, 
+          mycif = iotbx.cif.miller_arrays_as_cif_block(arr, array_type = arrtype,
                                                        column_name=colname, column_names = colnames )
         else:
-          mycif.add_miller_array(arr, column_name= colname, array_type= arrtype, 
+          mycif.add_miller_array(arr, column_name= colname, array_type= arrtype,
                                  column_names = colnames)
       if mycif:
         save2cif(savefilename, mycif)
@@ -872,49 +891,52 @@ class HKLViewFrame() :
     return False
 
 
-  def tabulate_miller_array(self, ids):
-    idlst = eval(ids)
-    if not self.viewer.match_valarrays:
+  def tabulate_arrays(self, datalabels):
+    if len(self.origarrays) == 0: # if not an mtz file then split columns
+       # SupersetMillerArrays may not be necessary if file formats except for cif and mtz can't store multiple data columns
       self.viewer.SupersetMillerArrays()
+      self.origarrays["HKLs"] = self.viewer.proc_arrays[0].indices()
+      for arr in self.viewer.proc_arrays:
+        if arr.is_complex_array():
+          ampls, phases = self.viewer.Complex2AmplitudesPhases(arr.data())
+          cmplxlst = [ "%.4f + %.4f * i"%(e.real, e.imag)
+                        if not cmath.isnan(e) else display.nanval for e in arr.data() ]
+          self.origarrays[arr.info().label_string()] = cmplxlst
+          self.origarrays[arr.info().labels[0]] = list(ampls)
+          self.origarrays[arr.info().labels[-1]] = list(phases)
+        elif arr.is_hendrickson_lattman_array():
+          A,B,C,D = arr.data().as_abcd()
+          HLlst = [ "%.4f, %.4f, %.4f, %.4f"%(e[0], e[1], e[2], e[3]) for e in arr.data() ]
+          self.origarrays[arr.info().label_string()] = HLlst
+          self.origarrays[arr.info().labels[0]] = list(A)
+          self.origarrays[arr.info().labels[1]] = list(B)
+          self.origarrays[arr.info().labels[2]] = list(C)
+          self.origarrays[arr.info().labels[3]] = list(D)
+        elif arr.sigmas() is not None:
+          labels = arr.info().labels
+          # Labels could be something like ['I(+)', 'SIGI(+)', 'I(-)', 'SIGI(-)'].
+          # So group datalabels and sigmalabels separately assuming that sigma column contain the three letters "sig"
+          datalabel = ",".join([ e for e in labels if "sig" not in e.lower()])
+          sigmalabel = ",".join([ e for e in labels if "sig" in e.lower()])
+          self.origarrays[datalabel] = list(arr.data())
+          self.origarrays[sigmalabel] = list(arr.sigmas())
+        elif arr.is_integer_array():
+          list_with_nans = [ e if not e==display.inanval else display.nanval for e in arr.data() ]
+          if self.viewer.array_infotpls[id][0] == 'FreeR_flag': # want True or False back
+            list_with_nans = [ 1==e if not cmath.isnan(e) else display.nanval for e in list_with_nans ]
+          self.origarrays[arr.info().label_string()] = list_with_nans
+        else:
+          self.origarrays[arr.info().label_string()] = list(arr.data())
 
-    indices = self.viewer.match_valarrays[idlst[0]].indices()
-    dres = self.viewer.match_valarrays[idlst[0]].unit_cell().d( indices )
+    labels = eval(datalabels)
+    indices = self.origarrays["HKLs"]
+    dres = self.procarrays[0].unit_cell().d( indices)
     dreslst = [("d_res", list(dres))]
     hkls = list(indices)
     hkllst = [ ("H", [e[0] for e in hkls] ), ("K", [e[1] for e in hkls] ), ("L", [e[2] for e in hkls] )]
     datalst = []
-    # any NaN value is converted to a None value in NGL_HKLviewerGui.MillerArrayTableModel()
-    for id in idlst:
-      if self.viewer.match_valarrays[id].is_complex_array():
-        ampls, phases = self.viewer.Complex2AmplitudesPhases(self.viewer.match_valarrays[id].data())
-        cmplxlst = [ "%.4f + %.4f * i"%(e.real, e.imag)
-                     if not cmath.isnan(e) else display.nanval for e in self.viewer.match_valarrays[id].data() ]
-        datalst.append( (self.viewer.match_valarrays[id].info().label_string(), cmplxlst) )
-        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list(ampls) ) )
-        datalst.append( (self.viewer.match_valarrays[id].info().labels[-1] + u" \u00b0", list(phases)) )
-      elif self.viewer.match_valarrays[id].is_hendrickson_lattman_array():
-        A,B,C,D = self.viewer.match_valarrays[id].data().as_abcd()
-        HLlst = [ "%.4f, %.4f, %.4f, %.4f"%(e[0], e[1], e[2], e[3]) for e in self.viewer.match_valarrays[id].data() ]
-        datalst.append( (self.viewer.match_valarrays[id].info().label_string(), HLlst) )
-        datalst.append( (self.viewer.match_valarrays[id].info().labels[0], list(A) ) )
-        datalst.append( (self.viewer.match_valarrays[id].info().labels[1], list(B) ) )
-        datalst.append( (self.viewer.match_valarrays[id].info().labels[2], list(C) ) )
-        datalst.append( (self.viewer.match_valarrays[id].info().labels[3], list(D) ) )
-      elif self.viewer.match_valarrays[id].sigmas() is not None:
-        labels = self.viewer.match_valarrays[id].info().labels
-        # Labels could be something like ['I(+)', 'SIGI(+)', 'I(-)', 'SIGI(-)'].
-        # So group datalabels and sigmalabels separately assuming that sigma column contain the three letters "sig"
-        datalabel = ",".join([ e for e in labels if "sig" not in e.lower()])
-        sigmalabel = ",".join([ e for e in labels if "sig" in e.lower()])
-        datalst.append( (datalabel, list(self.viewer.match_valarrays[id].data()))  )
-        datalst.append( (sigmalabel, list(self.viewer.match_valarrays[id].sigmas()))  )
-      elif self.viewer.match_valarrays[id].is_integer_array():
-        list_with_nans = [ e if not e==display.inanval else display.nanval for e in self.viewer.match_valarrays[id].data() ]
-        if self.viewer.array_infotpls[id][0] == 'FreeR_flag': # want True or False back
-          list_with_nans = [ 1==e if not cmath.isnan(e) else display.nanval for e in list_with_nans ]
-        datalst.append( (self.viewer.match_valarrays[id].info().label_string(), list_with_nans)  )
-      else:
-        datalst.append( (self.viewer.match_valarrays[id].info().label_string(), list(self.viewer.match_valarrays[id].data()))  )
+    for label in labels:
+      datalst.append( (label, list(self.origarrays[label])))
     self.idx_data = hkllst + dreslst + datalst
     self.mprint("Sending table data...", verbose=0)
     mydict = { "tabulate_miller_array": self.idx_data }

@@ -326,6 +326,8 @@ class miller_array_builder(crystal_symmetry_builder):
   }
 
   def __init__(self, cif_block, base_array_info=None, wavelengths=None, style="classic"):
+    self._arrays = OrderedDict()
+    self._origarrays = OrderedDict()
     if style == "classic": # parsing of data labels using original constructor
       self.init(cif_block, base_array_info, wavelengths)
     if style == "new": # regular expressions for parsing data labels and associating columns appropriately
@@ -337,12 +339,12 @@ class miller_array_builder(crystal_symmetry_builder):
       self.crystal_symmetry = self.crystal_symmetry.join_symmetry(
         other_symmetry=base_array_info.crystal_symmetry_from_file,
       force=True)
-    self._arrays = OrderedDict()
     if (wavelengths is None):
       wavelengths = {}
     if base_array_info is None:
       base_array_info = miller.array_info(source_type="cif")
     refln_containing_loops = self.get_miller_indices_containing_loops()
+
     for self.indices, refln_loop in refln_containing_loops:
       self.wavelength_id_array = None
       self.crystal_id_array = None
@@ -570,7 +572,7 @@ class miller_array_builder(crystal_symmetry_builder):
 
   def init_new(self, cif_block, base_array_info=None, wavelengths=None):
     """
-    Using regular expression for parsing data labels adn associating data columns 
+    Using regular expression for parsing data labels adn associating data columns
     appropriately
     """
     crystal_symmetry_builder.__init__(self, cif_block)
@@ -578,7 +580,6 @@ class miller_array_builder(crystal_symmetry_builder):
       self.crystal_symmetry = self.crystal_symmetry.join_symmetry(
         other_symmetry=base_array_info.crystal_symmetry_from_file,
       force=True)
-    self._arrays = OrderedDict()
     if (wavelengths is None):
       wavelengths = {}
     if base_array_info is None:
@@ -614,10 +615,18 @@ class miller_array_builder(crystal_symmetry_builder):
           elif key.endswith('scale_group_code'):
             self.scale_group_array = array
             scale_groups = list(counts.keys())
+        # replace ? with nan to retain same number of reflections in all miller arrays
+        for i,e in enumerate(value):
+          if e=="?":
+            value[i]="nan"
+
       labelsuffix = ""
       wavestr = ""
       crysstr = ""
       scalegrpstr = ""
+      self._origarrays["HKLs"] = self.indices
+      alllabels = list(refln_loop.keys())
+      remaininglabls = alllabels[:]
       for w_id in wavelength_ids:
         for crys_id in crystal_ids:
           for scale_group in scale_groups:
@@ -630,7 +639,7 @@ class miller_array_builder(crystal_symmetry_builder):
             if len(scale_groups) > 1:
               scalegrpstr += ",scale_group=%i" %scale_group
             labelsuffix = wavestr + crysstr + scalegrpstr
-            datsiglabls, remaininglabls = self.get_FSigF_ISigI_labels(refln_loop.keys())
+            datsiglabls, remaininglabls = self.get_FSigF_ISigI_labels(remaininglabls)
             for datsiglabl in datsiglabls:
               datastrarray = refln_loop[datsiglabl[0]]
               sigmasstrarray = refln_loop[datsiglabl[1]]
@@ -682,22 +691,29 @@ class miller_array_builder(crystal_symmetry_builder):
                 millarr.set_info(base_array_info.customized_copy(labels= hl_labels,
                                                                 wavelength=wavelengths.get(w_id, None)))
                 self._arrays[millarr.info().label_string() ] = millarr
-            for label in remaininglabls:
+            for label in alllabels:
               if (label.endswith('wavelength_id') or
                   label.endswith('crystal_id') or
                   label.endswith('scale_group_code') or
                   'index_' in label):
                 continue
               datastrarray = refln_loop[label]
-              millarr = self.flex_std_string_as_miller_array(
-                datastrarray, wavelength_id=w_id, crystal_id=crys_id,
-                scale_group_code=scale_group)
-              labels = [label]
-              if labelsuffix:
-                labels = [label] + [labelsuffix]
-              millarr.set_info(base_array_info.customized_copy(labels= labels,
-                                                              wavelength=wavelengths.get(w_id, None)))
-              self._arrays[millarr.info().label_string() ] = millarr
+              if label in remaininglabls:
+                millarr = self.flex_std_string_as_miller_array(
+                  datastrarray, wavelength_id=w_id, crystal_id=crys_id,
+                  scale_group_code=scale_group)
+                labels = [label]
+                if labelsuffix:
+                  labels = [label] + [labelsuffix]
+                millarr.set_info(base_array_info.customized_copy(labels= labels,
+                                                                wavelength=wavelengths.get(w_id, None)))
+                self._arrays[millarr.info().label_string() ] = millarr
+              try:
+                origarr = flex.double(datastrarray)
+              except ValueError as  e:
+                origarr = datastrarray
+              newlabel = label.replace("_refln.", "")
+              self._origarrays[newlabel + labelsuffix] = origarr
 
     for key, array in six.iteritems(self._arrays.copy()):
       if (   key.endswith('_minus') or '_minus_' in key or '-' in key
@@ -796,7 +812,7 @@ class miller_array_builder(crystal_symmetry_builder):
       for m in phase_matches:
         phaselabel = m[0]
         Flabel = m[1] + "F" + m[2]
-        if Flabel in label: # in case of _refln.F_calc_au and _refln.phase_calc 
+        if Flabel in label: # in case of _refln.F_calc_au and _refln.phase_calc
           mapcoefflabels.append([ label, m[0]])
           remainingkeys.remove(label)
           remainingkeys.remove(m[0])
@@ -903,6 +919,9 @@ class miller_array_builder(crystal_symmetry_builder):
 
   def arrays(self):
     return self._arrays
+
+  def origarrays(self):
+    return self._origarrays
 
 
 def as_flex_double(array, key):

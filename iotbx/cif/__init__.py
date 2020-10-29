@@ -51,6 +51,7 @@ class reader(object):
       builder = builders.cif_model_builder(cif_object)
     else: assert cif_object is None
     self.builder = builder
+    self.original_arrays = None
     if file_path is not None:
       file_object = smart_open.for_reading(file_path)
     else:
@@ -99,19 +100,21 @@ class reader(object):
                           data_block_name=None,
                           base_array_info=None,
                           style="classic"):
-    arrays = cctbx_data_structures_from_cif(
+    cctbxdat = cctbx_data_structures_from_cif(
       cif_model=self.model(),
       file_path=self.file_path,
       data_block_name=data_block_name,
       data_structure_builder=builders.miller_array_builder,
       base_array_info=base_array_info,
-      style=style).miller_arrays
-    if data_block_name is not None:
-      return arrays[data_block_name]
-    else:
-      return arrays
+      style=style)
 
-# style classic uses original parsing labels of reflection data 
+    self.original_arrays = cctbxdat.original_arrays
+    if data_block_name is not None:
+      return cctbxdat.miller_arrays[data_block_name]
+    else:
+      return cctbxdat.miller_arrays
+
+# style classic uses original parsing labels of reflection data
 # style new uses regular expressions for parsing and associating reflection data columns appropriately
 
   def as_miller_arrays(self, data_block_name=None,
@@ -147,6 +150,9 @@ class reader(object):
         arrays[i] = arrays[i].customized_copy(
           anomalous_flag=anomalous, info=arrays[i].info())
     return arrays
+
+  def as_original_arrays(self):
+    return self.original_arrays
 
 fast_reader = reader # XXX backward compatibility 2010-08-25
 
@@ -375,6 +381,7 @@ class cctbx_data_structures_from_cif(object):
 
     self.xray_structures = OrderedDict()
     self.miller_arrays = OrderedDict()
+    self.original_arrays = OrderedDict()
     if cif_model is None:
       cif_model = reader(file_path=file_path, file_object=file_object).model()
     if not len(cif_model):
@@ -403,9 +410,10 @@ class cctbx_data_structures_from_cif(object):
           if ( '_refln_index_h' in block or '_refln.index_h' in block or
                '_diffrn_refln' in block
                ):
-            self.miller_arrays.setdefault(
-              key, builder(block, base_array_info=base_array_info,
-                wavelengths=wavelengths, style=style).arrays())
+            b = builder(block, base_array_info=base_array_info,
+                wavelengths=wavelengths, style=style)
+            self.miller_arrays.setdefault( key, b.arrays())
+            self.original_arrays.setdefault( key, b.origarrays())
 
 
 # This defines the order that categories will appear in the CIF file
