@@ -54,6 +54,7 @@ $ python bootstrap.py --builder=dials --use-conda=psana_lcls_environment.yml \
   --config-flags="enable_cxx11" --config-flags="--no_bin_python"             \
   --no-boost-src --python=37 --nproc=10 build
 $ source build/conda_setpaths.sh
+$ source modules/cctbx_project/xfel/conda_envs/test_psana_lcls.sh
 ```
 
 
