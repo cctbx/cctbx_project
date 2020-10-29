@@ -20,18 +20,18 @@ map_model {
     .type = path
     .help = Input full map file
     .short_caption = Full map
-    .style = hidden file_type:ccp4_map input_file
+    .style = file_type:ccp4_map input_file
 
   half_map = None
     .type = path
     .multiple = True
     .help = Input half map files
-    .short_caption = Half map
-    .style = hidden file_type:ccp4_map input_file
+    .short_caption = Half maps
+    .style = file_type:ccp4_map input_file
   model = None
     .type = path
     .help = Input model file
-    .style = hidden file_type:pdb input_file
+    .style = file_type:pdb input_file
     .short_caption = Model
 }
 '''
@@ -123,6 +123,9 @@ class map_model_manager(object):
     self.set_verbose(verbose)
 
     # Initialize
+    self._nproc = None
+    self._multiprocessing = None
+    self._queue_run_command = None
     self._resolution = None
     self._map_dict={}
     self._model_dict = {}
@@ -549,6 +552,20 @@ class map_model_manager(object):
 
         map_manager = map_manager_1.customized_copy(map_data =
           0.5 * (map_manager_1.map_data() + map_manager_2.map_data()))
+        # Try to make a file name
+        file_name = None
+        if map_manager_1.file_name and map_manager_2.file_name:
+          try:
+            file_name = "_and_".join([
+              os.path.splitext(os.path.split(
+                 map_manager_1.file_name)[-1])[0],
+              os.path.splitext(os.path.split(
+                 map_manager_2.file_name)[-1])[0]]) + \
+              os.path.splitext(map_manager_1.file_name)[1]
+          except Exception as e:
+            file_name = None
+        map_manager.file_name = file_name
+
         self._map_dict['map_manager'] = map_manager
 
     return map_manager
@@ -673,6 +690,22 @@ class map_model_manager(object):
         return resolution
       else:
         return None
+
+  def set_multiprocessing(self,
+      nproc = None,
+      multiprocessing = None,
+      queue_run_command = None):
+    '''  Set multiprocessing parameters'''
+    if nproc:
+      self._nproc = nproc
+
+    if multiprocessing:
+      assert multiprocessing in ['multiprocessing','sge','lsf','pbs',
+         'condor','pbspro','slurm']
+      self._multiprocessing = multiprocessing
+
+    if queue_run_command:
+      self._queue_run_command = queue_run_command
 
   def set_resolution(self, resolution):
     ''' Set nominal resolution '''
@@ -2728,13 +2761,18 @@ class map_model_manager(object):
 
       working_mmm._local_sharpen(**kw)
 
-      for id in kw['map_id_scaled_list']:
+      for id, previous_id in zip(
+          kw['map_id_scaled_list'],
+          kw['map_id_to_be_scaled_list']):
         sharpened_local_mm = working_mmm.get_map_manager_by_id(id)
         if sharpened_local_mm:
           # We're done. put map in map manager and return
           print("Saving local-sharpened map '%s' from map_model_manager '%s'" %(
            id,working_mmm.name) + " as '%s' in '%s' " %(
            id,self.name), file = self.log)
+          sharpened_local_mm.name = working_mmm.get_map_manager_by_id(
+             previous_id).file_name
+
           self.add_map_manager_by_id(map_manager = sharpened_local_mm,
             map_id = id)
         else:
@@ -2862,6 +2900,7 @@ class map_model_manager(object):
       else: # usual
         # All done... Set map_manager now
         print ("Scaled map is '%s' in %s" %(new_id,self.name), file = self.log)
+	new_map_manager.file_name = self.get_map_manager_by_id(id).file_name
         self.add_map_manager_by_id(map_manager = new_map_manager,
           map_id = new_id)
 
@@ -2969,6 +3008,28 @@ class map_model_manager(object):
     ev = ev/norms
     return ev
 
+  def _set_default_parameters(self, other, name = None):
+
+    other._resolution = self._resolution
+    other.set_log(self.log)
+    other._nproc = self._nproc
+    other._multiprocessing = self._multiprocessing
+    other._queue_run_command = self._queue_run_command
+    other._force_wrapping = deepcopy(self._force_wrapping)
+    other._warning_message = self._warning_message
+
+    other.set_log(self.log)
+
+    # Set up name
+    if name is None:
+      name = '%s_copy' %(self.name)
+    other.set_name(name)
+
+    other.set_verbose(self.verbose)
+    if self._resolution:
+      other.set_resolution(self._resolution)
+
+
   def _get_map_model_manager_with_selected(self,
       map_id_list=None, model_id_list = None,
       deep_copy = False):
@@ -2977,8 +3038,9 @@ class map_model_manager(object):
     working_mmm = map_model_manager(
       map_manager = self.get_any_map_manager(), log = self.log,
       verbose = self.verbose)
-    working_mmm._resolution = self._resolution
-    working_mmm.set_log(self.log)
+    self._set_default_parameters(working_mmm)
+
+
     if map_id_list:
       for id in map_id_list:
         if self.get_map_manager_by_id(id):
@@ -3595,6 +3657,7 @@ class map_model_manager(object):
          kw['map_id_to_be_scaled_list'],kw['map_id_scaled_list']):
       setup_info.kw['map_id_to_be_scaled'] = id
 
+
       temp_dir = self._create_temp_dir(temp_dir)  # for returning big files
       setup_info.temp_dir = temp_dir
 
@@ -3605,7 +3668,8 @@ class map_model_manager(object):
 
       from libtbx.easy_mp import run_parallel
       results = run_parallel(
-        method = 'multiprocessing',
+        method = self._multiprocessing,
+        qsub_command = self._queue_run_command,
         nproc = nproc,
         target_function = run_anisotropic_scaling_as_class(
            map_model_manager = self,
@@ -3629,7 +3693,9 @@ class map_model_manager(object):
             map_data += mm.map_data()
       self._remove_temp_dir(temp_dir)
       new_map_manager = self.get_any_map_manager().customized_copy(
-        map_data = map_data)
+        map_data = map_data,
+        )
+      new_map_manager.file_name = self.get_map_manager_by_id(id).file_name
       print("Setting map "+
        "'%s' in map_manager '%s' to local aniso-scaled map '%s'" %(
           id,self.name,new_id), file = self.log)
@@ -3691,8 +3757,11 @@ class map_model_manager(object):
 
     assert n_bins is not None
 
-    if nproc is None:
-      kw['nproc'] = 1
+    if nproc is None and self._nproc:
+      nproc = self._nproc
+    elif nproc is None:
+      nproc = 1
+    kw['nproc'] = nproc
 
     # NOTE: map starts out overall-sharpened.  Therefore approximate scale
     # factors in all resolution ranges are about 1.  use that as default
@@ -3768,6 +3837,7 @@ class map_model_manager(object):
         new_map_data += weight_mm.map_data() * shell_mm.map_data()
       new_map_manager = self.get_any_map_manager().customized_copy(
         map_data = new_map_data)
+      new_map_manager.file_name = self.get_map_manager_by_id(id).file_name
       print( "Adding locally scaled map data "+
         "as '%s' to map_model_manager '%s' as '%s' "%(
          id,self.name,new_id),file = self.log)
@@ -3983,10 +4053,12 @@ class map_model_manager(object):
     print ("Range of d_min: %.2f A to %.2f A   Mean: %.2f A " %(
       x.min, x.max, x.mean), file = self.log)
 
-    return self._create_full_size_map_manager_with_value_list(
+    new_mm = self._create_full_size_map_manager_with_value_list(
       xyz_list = xyz_list,
       value_list = d_min_list,
       smoothing_radius = setup_info.smoothing_radius)
+
+    return new_mm
 
   def _create_full_size_map_manager_with_value_list(self,
       xyz_list, value_list, smoothing_radius,
@@ -4011,7 +4083,7 @@ class map_model_manager(object):
     map_coeffs = fsc_map_manager.map_as_fourier_coefficients()
 
     # Make map in full grid
-    d_min_map_manager = self.get_any_map_manager(
+    d_min_map_manager = self.map_manager(
        ).fourier_coefficients_as_map_manager(map_coeffs)
     d_min_map_manager.gaussian_filter( smoothing_radius = smoothing_radius)
     return d_min_map_manager
@@ -4094,7 +4166,8 @@ class map_model_manager(object):
 
     from libtbx.easy_mp import run_parallel
     results = run_parallel(
-     method = 'multiprocessing',
+     method = self._multiprocessing,
+     qsub_command = self._queue_run_command,
      nproc = nproc,
      target_function = run_fsc_as_class(
         map_model_manager = self,
@@ -4790,9 +4863,6 @@ class map_model_manager(object):
       maps or models, or both
     '''
 
-    # Set up name
-    if name is None:
-      name = '%s_copy' %(self.name)
     # Decide what is new
 
     if model_dict: # take new model_dict without deep_copy
@@ -4816,14 +4886,7 @@ class map_model_manager(object):
     new_mmm._model_dict = new_model_dict
     new_mmm._map_dict = new_map_dict
 
-    new_mmm._force_wrapping = deepcopy(self._force_wrapping)
-    new_mmm._warning_message = self._warning_message
-
-    new_mmm.set_log(self.log)
-    new_mmm.set_name(name)
-    new_mmm.set_verbose(self.verbose)
-    if self._resolution:
-      new_mmm.set_resolution(self._resolution)
+    self._set_default_parameters(new_mmm, name = name)
 
     return new_mmm
 
