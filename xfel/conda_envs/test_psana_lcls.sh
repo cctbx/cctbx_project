@@ -42,7 +42,3 @@ else
 fi
 
 unset TEST_SCRIPT TEST_OUT
-
-
-
-
