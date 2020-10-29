@@ -40,14 +40,17 @@ class ArrayInfo:
     self.maxdata = self.mindata = self.maxsigmas = self.minsigmas = None
     self.minmaxdata = (None, None)
     self.minmaxsigs = (None, None)
+    arrsize = data.size()
     if not isinstance(data, flex.std_string):
       if (isinstance(data, flex.hendrickson_lattman)):
-        data = graphics_utils.NoNansHL( data ) 
+        data = graphics_utils.NoNansHL( data )
         # for now display HL coefficients as a simple sum
         self.maxdata = max([e[0]+e[1]+e[2]+e[3] for e in data ])
         self.mindata = min([e[0]+e[1]+e[2]+e[3] for e in data ])
+        arrsize = len([42 for e in millarr.data() if not math.isnan(e[0]+e[1]+e[2]+e[3])])
         self.datatype = "ishendricksonlattman"
       else:
+        arrsize = len([42 for e in millarr.data() if not math.isnan(abs(e))])
         if (isinstance(data, flex.int)):
           data = flex.double([e for e in data if e!= display.inanval])
           self.datatype = "isint"
@@ -90,7 +93,8 @@ class ArrayInfo:
       mprint(to_str(e))
     issymunique = millarr.is_unique_set_under_symmetry()
     isanomalous = millarr.anomalous_flag()
-    self.infotpl = ( ",".join(self.labels), self.desc, self.spginf, millarr.indices().size(), self.span,
+
+    self.infotpl = ( ",".join(self.labels), self.desc, self.spginf, arrsize, self.span,
      self.minmaxdata, self.minmaxsigs, (roundoff(dmin), roundoff(dmax)), issymunique, isanomalous )
     self.infostr = "%s (%s), space group: %s, %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
 
@@ -877,6 +881,8 @@ class hklview_3d:
     self.mapcoef_fom_dict = {}
     self.sceneid_from_arrayid = []
     for k,proc_array in enumerate(self.proc_arrays):
+      #if not proc_array.is_complex_array() or not proc_array.is_real_array():
+      #  continue
       fom_arrays_idx = []
       array_scene_ids = [(k,k)]
       for i,foms_array in enumerate(self.proc_arrays):
@@ -908,7 +914,7 @@ class hklview_3d:
       uc = warray.unit_cell()
       indices = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).indices
       if flex.max(dres) == flex.min(dres): # say if only one reflection
-        binvals = [dres[0]-0.1, flex.min(dres)+0.1] 
+        binvals = [dres[0]-0.1, flex.min(dres)+0.1]
         nuniquevalues = 2
       else:
         binning = miller.binning( uc, nbins, indices, flex.max(dres), flex.min(dres) )

@@ -1341,12 +1341,11 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     #myqa.setData( ("tabulate_data", row ))
     if len(self.millertable.selectedrows) > 0:
       arraystr = ""
+      labels = []
       for i,r in enumerate(self.millertable.selectedrows):
-        arraystr += self.millerarraylabels[r]
-        if i < len(self.millertable.selectedrows)-1:
-          arraystr += " and "
-      myqa = QAction("Show a table of %s data ..." %arraystr, self.window, triggered=self.testaction)
-      myqa.setData( ("tabulate_data", self.millertable.selectedrows ))
+        labels.extend( self.millerarraylabels[r].split(",") ) # to cope with I,SigI or other multiple labels
+      myqa = QAction("Show a table of %s data ..." %  " and ".join(labels), self.window, triggered=self.testaction)
+      myqa.setData( ("tabulate_data", labels ))
       self.millertablemenu.addAction(myqa)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.millertablemenu.exec_(QCursor.pos())
