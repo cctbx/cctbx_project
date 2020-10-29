@@ -44,9 +44,10 @@ def ccp4_symbol(space_group_info, lib_name, require_at_least_one_lib=True):
       if (op.isfile(lib_path)):
         found_at_least_one_lib = True
         if (lib_name == "symop.lib"):
-          ccp4_symbol = search_symop_lib_for_ccp4_symbol(
-            space_group_info=space_group_info,
-            file_iter=open(lib_path))
+          with open(lib_path) as fh:
+            ccp4_symbol = search_symop_lib_for_ccp4_symbol(
+              space_group_info=space_group_info,
+              file_iter=fh)
           if (ccp4_symbol is not None):
             cache[lookup_symbol] = ccp4_symbol
             return ccp4_symbol
@@ -92,53 +93,53 @@ def build_syminfo_lib_cache(lib_path):
   _syminfo_lib_cache.append(None)
   for number in range(230):
     _syminfo_lib_cache.append([])
-  file_iter = open(lib_path)
-  for line in file_iter:
-    l = line.strip()
-    if (l == "begin_spacegroup"):
-      number = None
-      symbols = {}
-      for line in file_iter:
-        l = line.strip()
-        if (l == "end_spacegroup"):
-          assert number is not None
-          assert len(symbols) == 3
-          def get_shortest(s_list):
-            result = None
-            for s in s_list:
-              if (len(s) == 0): continue
-              if (result is None or len(result) > len(s)):
-                result = s
-            return result
-          ccp4_symbol = get_shortest(symbols["old"])
-          if (   ccp4_symbol is None
-              or ccp4_symbol in syminfo_lib_bad_old):
-            if (len(symbols["xhm"]) != 0):
-              ccp4_symbol = symbols["xhm"]
-            else:
-              raise RuntimeError("Missing both xHM and old symbols")
-          _syminfo_lib_cache[number].append((symbols["hall"], ccp4_symbol))
-          break
-        if (l.startswith("number ")):
-          flds = l.split()
-          assert len(flds) == 2
-          number = int(flds[1])
-          assert number >= 1
-          assert number <= 230
-        elif (l.startswith("symbol ")):
-          flds = l.split(None, 2)
-          assert len(flds) == 3
-          stype = flds[1].lower()
-          if (stype in ["hall", "xhm", "old"]):
-            assert stype not in symbols
-            symbol = flds[2].strip()
-            assert len(symbol) >= 2
-            assert symbol.startswith("'")
-            assert symbol.endswith("'")
-            if (stype == "old"):
-              symbols[stype] = " ".join(symbol[1:-1].split()).split("' '")
-            else:
-              symbols[stype] = symbol[1:-1]
-      else:
-        raise RuntimeError("Missing end_spacegroup")
+  with open(lib_path) as file_iter:
+    for line in file_iter:
+      l = line.strip()
+      if (l == "begin_spacegroup"):
+        number = None
+        symbols = {}
+        for line in file_iter:
+          l = line.strip()
+          if (l == "end_spacegroup"):
+            assert number is not None
+            assert len(symbols) == 3
+            def get_shortest(s_list):
+              result = None
+              for s in s_list:
+                if (len(s) == 0): continue
+                if (result is None or len(result) > len(s)):
+                  result = s
+              return result
+            ccp4_symbol = get_shortest(symbols["old"])
+            if (   ccp4_symbol is None
+                or ccp4_symbol in syminfo_lib_bad_old):
+              if (len(symbols["xhm"]) != 0):
+                ccp4_symbol = symbols["xhm"]
+              else:
+                raise RuntimeError("Missing both xHM and old symbols")
+            _syminfo_lib_cache[number].append((symbols["hall"], ccp4_symbol))
+            break
+          if (l.startswith("number ")):
+            flds = l.split()
+            assert len(flds) == 2
+            number = int(flds[1])
+            assert number >= 1
+            assert number <= 230
+          elif (l.startswith("symbol ")):
+            flds = l.split(None, 2)
+            assert len(flds) == 3
+            stype = flds[1].lower()
+            if (stype in ["hall", "xhm", "old"]):
+              assert stype not in symbols
+              symbol = flds[2].strip()
+              assert len(symbol) >= 2
+              assert symbol.startswith("'")
+              assert symbol.endswith("'")
+              if (stype == "old"):
+                symbols[stype] = " ".join(symbol[1:-1].split()).split("' '")
+              else:
+                symbols[stype] = symbol[1:-1]
+        else:
+          raise RuntimeError("Missing end_spacegroup")
   return None

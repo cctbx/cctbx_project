@@ -249,11 +249,12 @@ def import_xds_integrate_hkl(integrate_hkl_file):
 
     header = []
 
-    for record in open(integrate_hkl_file):
-        if not record.startswith('!'):
-            break
+    with open(integrate_hkl_file) as fh:
+        for record in fh:
+            if not record.startswith('!'):
+                break
 
-        header.append(record)
+            header.append(record)
 
     # now need to dig out the values I want, convert and return
 
