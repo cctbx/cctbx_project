@@ -169,7 +169,7 @@ def get_model_from_file(file_path):
   pdb_inp = iotbx.pdb.input(file_name = file_path)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    build_grm   = True,
+    build_grm   = False,
     stop_for_unknowns = False,
     log = null_out())
   return model
@@ -210,13 +210,17 @@ class Remediator():
         #sys.stderr.write(residue_name+" is in chem_components\n")
         new_atom_names = chemical_components.get_atom_names(residue, alternate=False)
         old_atom_names = chemical_components.get_atom_names(residue, alternate=True)
+        atom_type_symbols = chemical_components.get_atom_type_symbol(residue)
         if (len(new_atom_names) == len(old_atom_names)):
-          for new_atom, old_atom in zip(new_atom_names, old_atom_names):
+          for new_atom, old_atom, atom_type in zip(new_atom_names, old_atom_names, atom_type_symbols):
             if build_all_atoms or not (new_atom == old_atom):
               for res_name in residues_to_test:
-                justified_old_atom = justify_atom_names(old_atom)
-                new_entry = justify_atom_names(new_atom)+" "+res_name
+                justified_old_atom = iotbx.pdb.mmcif.format_pdb_atom_name(old_atom, atom_type)
+                justified_new_atom = iotbx.pdb.mmcif.format_pdb_atom_name(new_atom, atom_type)
+                new_entry = justified_new_atom+" "+res_name
                 old_entry = justified_old_atom+" "+res_name
+                #new_entry = new_atom+" "+res_name
+                #old_entry = old_atom+" "+res_name
                 if convert_to_new:
                   atom_exch[old_entry] = new_entry
                   #check for 1HA, 2HA, etc, which don't seem to always be in chem components as possible old names
@@ -234,6 +238,7 @@ class Remediator():
     atoms = pdb_hierarchy.atoms()
     non_v3_atoms_count = 0
     for atom in atoms:
+      #print(atom.name)
       res_name = atom.id_str()[10:13]
       if not res_name in self.residues_dict:
         self.residues_dict[res_name] = self.build_hash_from_chem_components(res_name, convert_to_new=False, build_all_atoms=True)
@@ -270,6 +275,7 @@ class Remediator():
             non_v3_atoms_count=non_v3_atoms_count+1
           #print(atom.name)
     #print("residues_dict"+str(self.residues_dict))
+    pdb_hierarchy.reset_atom_i_seqs()
     return model
 
   def remediate_na_atom_group(self, atom_group, convert_to_new):
