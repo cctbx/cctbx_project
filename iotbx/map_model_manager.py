@@ -2900,7 +2900,7 @@ class map_model_manager(object):
       else: # usual
         # All done... Set map_manager now
         print ("Scaled map is '%s' in %s" %(new_id,self.name), file = self.log)
-	new_map_manager.file_name = self.get_map_manager_by_id(id).file_name
+        new_map_manager.file_name = self.get_map_manager_by_id(id).file_name
         self.add_map_manager_by_id(map_manager = new_map_manager,
           map_id = new_id)
 
@@ -3930,7 +3930,7 @@ class map_model_manager(object):
       box_cushion = None,
       rmsd = None,
       smoothing_radius = None,
-      nproc = 1,
+      nproc = None,
       is_model_based = None,
       optimize_b_eff = None,
       equalize_power = None,
@@ -3966,6 +3966,10 @@ class map_model_manager(object):
 
     if n_bins is None:
       n_bins = n_bins_default
+    if nproc is None and self._nproc:
+      nproc = self._nproc
+    elif nproc is None:
+      nproc = 1
 
     # Get basic info including minimum_resolution (cutoff for map_coeffs)
     setup_info = self._get_box_setup_info(map_id_1, map_id_2,
@@ -4180,7 +4184,8 @@ class map_model_manager(object):
     found_number_of_samples_with_ncs = 0
 
     # Here each result is one scale_factor_info
-    # scale_factor_info.value_list is a set of scaling_group_info objects.
+    # scale_factor_info.value_list is a set of scaling_group_info objects or
+    #    resolutions
     # scale_factor_info.xyz_list are the coordinates where these apply
     # scale_factor_info.n_bins is number of bins
     # value_list is a set of scaling_group_info objects, one per xyz.
@@ -4211,7 +4216,7 @@ class map_model_manager(object):
           new_sites,new_values = apply_ncs_to_dv_results(
             direction_vectors = box_info.direction_vectors,
             xyz = xyz_list[i],
-            scaling_group_info = value_list[i],
+            scaling_group_info = value_list[i],  # can be an object or a number
             ncs_object = box_info.ncs_object)
           new_xyz_list.extend(new_sites)
           new_value_list+= new_values  # n_ncs scale_factor_info objects
@@ -5398,8 +5403,7 @@ def apply_ncs_to_dv_results(
     scaling_group_info = None,
     ncs_object = None):
 
-  assert ((direction_vectors is None) and
-     (scaling_group_info.direction_vectors is None) or
+  assert ((direction_vectors is None) or
      (list(direction_vectors) == list(scaling_group_info.direction_vectors))
      )
 
@@ -5418,7 +5422,7 @@ def apply_ncs_to_dv_results(
 
   # If direction vectors are None then NCS operation just multiplies all the
   #   entries without changing them
-  if scaling_group_info.direction_vectors[0] == None:
+  if not direction_vectors:
     new_sites = ncs_object.apply_ncs_to_sites(xyz)
     new_scaling_group_info_list = []
     for i in range(ncs_object.max_operators()):
