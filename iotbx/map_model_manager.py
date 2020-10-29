@@ -3922,6 +3922,7 @@ class map_model_manager(object):
       map_id_to_be_scaled_list = None, # NOTE: not used, just allows it in call
       map_id_scaled_list = None, # NOTE: not used, just allows it in call
       resolution = None,
+      max_resolution_ratio = None,
       min_bin_width = 20,
       n_bins = None,
       fsc_cutoff = 0.143,
@@ -4057,6 +4058,11 @@ class map_model_manager(object):
     print ("Range of d_min: %.2f A to %.2f A   Mean: %.2f A " %(
       x.min, x.max, x.mean), file = self.log)
 
+    if max_resolution_ratio is not None:
+      max_value = x.min * max_resolution_ratio
+      if x.max > max_value:
+        s = (d_min_list > max_value)
+        d_min_list.set_selected(s, max_value)
     return self._create_full_size_map_manager_with_value_list(
       xyz_list = xyz_list,
       value_list = d_min_list,
