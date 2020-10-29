@@ -4053,12 +4053,10 @@ class map_model_manager(object):
     print ("Range of d_min: %.2f A to %.2f A   Mean: %.2f A " %(
       x.min, x.max, x.mean), file = self.log)
 
-    new_mm = self._create_full_size_map_manager_with_value_list(
+    return self._create_full_size_map_manager_with_value_list(
       xyz_list = xyz_list,
       value_list = d_min_list,
       smoothing_radius = setup_info.smoothing_radius)
-
-    return new_mm
 
   def _create_full_size_map_manager_with_value_list(self,
       xyz_list, value_list, smoothing_radius,
@@ -5400,7 +5398,10 @@ def apply_ncs_to_dv_results(
     scaling_group_info = None,
     ncs_object = None):
 
-  assert list(direction_vectors) == list(scaling_group_info.direction_vectors)
+  assert ((direction_vectors is None) and
+     (scaling_group_info.direction_vectors is None) or
+     (list(direction_vectors) == list(scaling_group_info.direction_vectors))
+     )
 
   # work on one location (xyz) with one value ( one scaling_group_info object)
 
