@@ -909,8 +909,7 @@ class phaser_module(SourceModule):
 class phasertng_module(SourceModule):
   module = 'phasertng'
   anonymous = ['git',
-               'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/phasertng.git',
-               'https://gitlab.developers.cam.ac.uk/scm/haematology/readgroup/phasertng.git']
+               'git@gitlab.developers.cam.ac.uk:scm/haematology/readgroup/phasertng.git']
 
 class phaser_voyager_module(SourceModule):
   module = 'phaser_voyager'
