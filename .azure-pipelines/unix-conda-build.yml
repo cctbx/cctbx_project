@@ -132,6 +132,7 @@ steps:
     source ./build/setpaths.sh
     mkdir tests
     cd tests
+    export PYTHONDEVMODE=1
     libtbx.run_tests_parallel \
       module=annlib_adaptbx \
       module=boost_adaptbx \
