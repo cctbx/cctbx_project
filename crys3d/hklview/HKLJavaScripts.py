@@ -223,30 +223,43 @@ function ColourChart(millerlabel, fomlabel)
 }
 
 
+
+function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids) 
+{
+  ttiplst = [-1].concat(ttipids);
+  ttips.push( { ids: ttiplst,
+       getPosition: function() { return { x:0, y:0 }; } // dummy function to avoid crash
+  }  );
+  positions.push( new Float32Array( coordarray ) );
+  colours.push( new Float32Array( colourarray ) );
+  radii.push( new Float32Array( radiiarray ) );
+  curridx = positions.length -1;
+  shapebufs.push( new NGL.SphereBuffer({
+    position: positions[curridx],
+    color: colours[curridx], 
+    radius: radii[curridx],
+    picking: ttips[curridx],
+    })
+  );
+  shape.addBuffer(shapebufs[curridx]);
+  alphas.push(1.0);
+}
+
+
 function HKLscene()
 {
   shape = new NGL.Shape('shape');
-  //vectorshape = new NGL.Shape('vectorshape');
   stage = new NGL.Stage('viewport', {  backgroundColor: "rgb(128, 128, 128)",
                                       tooltip:false, // create our own tooltip from a div element
                                       fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: camtype } );
 
-  /*
-  canvas = stage.viewer.renderer.domElement;
-  const ctx = canvas.getContext('webgl', {
-    desynchronized: true,
-    preserveDrawingBuffer: true
-  });
-  */
-
   MakeHKL_Axis(shape);
 
-  %s
+//  placeholder for spherebufferstr
 
 // create tooltip element and add to the viewer canvas
   stage.viewer.container.appendChild(tooltip);
-
 
   stage.signals.clicked.add(
     PickingProxyfunc
@@ -526,6 +539,31 @@ var tdelay = 100;
 var displaytooltips = true;
 
 var sockwaitcount = 0;
+
+
+function RemoveStageObjects()
+{
+  // delete the shapebufs[] that holds the positions[] arrays
+  shapeComp.removeRepresentation(repr);
+  // remove shapecomp from stage first
+  stage.removeAllComponents();
+  ttips = [];
+  vectorreprs = [];
+  vectorshapeComps = [];
+  positions = [];
+  br_positions = [];
+  br_colours = [];
+  br_radii = [];
+  br_ttips = [];
+  colours = [];
+  alphas = [];
+  radii = [];
+  shapebufs = [];
+  br_shapebufs = [];
+  shapeComp = null;
+  vectorshape = null;
+  repr = null;
+}
 
 
 function WebsockSendMsg(msg, message_is_complete = true)
@@ -1174,31 +1212,38 @@ function onMessage(e)
 
     if (msgtype ==="JavaScriptCleanUp")
     {
-      stage.removeAllComponents();
+      RemoveStageObjects();
       stage.mouseObserver.dispose();
-      ttips = [];
-      vectorreprs = [];
-      vectorshapeComps = [];
-      positions = [];
-      br_positions = [];
-      br_colours = [];
-      br_radii = [];
-      br_ttips = [];
-      colours = [];
-      alphas = [];
-      radii = [];
-      shapebufs = [];
-      br_shapebufs = [];
-      shape = null;
-      shapeComp = null;
-      vectorshape = null;
-      repr = null;
       stage.dispose();
       stage = null;
       WebsockSendMsg('JavaScriptCleanUpDone:\\nDestroying JavaScript objects');
       socket_intentionally_closed = true;
       mysocket.close(4241, 'Cleanup done');
       document = null;
+    }
+
+    if (msgtype ==="RemoveStageObjects")
+    {
+      RemoveStageObjects();
+    }
+
+    if (msgtype === "AddSpheresBin2ShapeBuffer")
+    {
+      strarrs = datval[1].split("\\n\\n");
+      coordarray = eval(strarrs[0]);
+      colourarray = eval(strarrs[1]);
+      radiiarray = eval(strarrs[2]);
+      ttipids = eval(strarrs[3]);
+      AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids);
+    }
+
+    if (msgtype ==="RenderStageObjects")
+    {
+      MakeHKL_Axis(shape);
+      shapeComp = stage.addComponentFromObject(shape);
+      repr = shapeComp.addRepresentation('buffer');
+      RenderRequest();
+      WebsockSendMsg('Drawing new reflections');
     }
 
     if (msgtype === "InjectNewReflections")
@@ -1260,7 +1305,6 @@ function onMessage(e)
       MakeHKL_Axis(shape);
       shapeComp = stage.addComponentFromObject(shape);
       repr = shapeComp.addRepresentation('buffer');
-      //stage.viewer.requestRender();
       RenderRequest();
       WebsockSendMsg('Injected new reflections');
     }
