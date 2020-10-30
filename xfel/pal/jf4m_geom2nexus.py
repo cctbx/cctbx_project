@@ -165,8 +165,14 @@ class jf4m_geom2nexus(object):
       self._create_scalar(beam, 'total_flux', 'f', self.params.nexus_details.total_flux)
       beam['total_flux'].attrs['units'] = 'Hz'
     if self.params.wavelength is None:
-      wavelengths = uf['%s/scan_dat/photon_wavelength'%run]
-      beam.create_dataset('incident_wavelength', wavelengths.shape, data=wavelengths, dtype=wavelengths.dtype)
+      # Need to use a virtual dataset here because we need to set the units attribute
+      # on it and we can't do that on an ExternalLink
+      wavelengths_path = '%s/scan_dat/photon_wavelength'%run
+      wavelengths_shape = uf[wavelengths_path].shape
+      layout = h5py.VirtualLayout(shape = wavelengths_shape)
+      vsource = h5py.VirtualSource(self.params.unassembled_file, wavelengths_path, wavelengths_shape)
+      layout[:] = vsource
+      beam.create_virtual_dataset('incident_wavelength', layout)
     else:
       beam.create_dataset('incident_wavelength', (1,), data=self.params.wavelength, dtype='f8')
     beam['incident_wavelength'].attrs['units'] = 'angstrom'
