@@ -16,9 +16,15 @@ ext = bp.import_ext("cctbx_geometry_restraints_ext")
 # ==============================================================================
 
 def mon_lib_query(residue, mon_lib_srv):
-    get_func = getattr(mon_lib_srv, "get_comp_comp_id", None)
-    if (get_func is not None): return get_func(comp_id=residue)
-    return mon_lib_srv.get_comp_comp_id_direct(comp_id=residue)
+    md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
+      residue_name=residue.resname,
+      atom_names=residue.atoms().extract_name())
+    return md
+    # print(md)
+    # print(ani)
+    # get_func = getattr(mon_lib_srv, "get_comp_comp_id", None)
+    # if (get_func is not None): return get_func(comp_id=residue)
+    # return mon_lib_srv.get_comp_comp_id_direct(comp_id=residue)
 
 # ==============================================================================
 
@@ -172,7 +178,7 @@ class place_hydrogens():
             if(get_class(name=ag.resname) == "common_water"): continue
             actual = [a.name.strip().upper() for a in ag.atoms()]
             #
-            mlq = mon_lib_query(residue=ag.resname, mon_lib_srv=mon_lib_srv)
+            mlq = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv)
             #if (get_class(name=ag.resname) in ['modified_rna_dna', 'other']):
             if mlq is None:
               self.no_H_placed_mlq.append(ag.resname)
