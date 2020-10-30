@@ -2,7 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import collections
 try:
-  from collections.abc import MutableSet, OrderedDict  # special import
+  from collections.abc import MutableSet  # special import
+  OrderedDict = dict
 except ImportError:
   from collections import MutableSet, OrderedDict  # special import
 
