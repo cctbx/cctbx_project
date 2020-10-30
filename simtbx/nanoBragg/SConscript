@@ -45,20 +45,31 @@ if (env_etc.enable_cuda):
     env=env_bpl,
     paths=[env_etc.simtbx_include, env_etc.dxtbx_include]
   )
+
+  env_bpl.Prepend(CPPPATH=[env_etc.boost_adaptbx_include,
+    env_etc.boost_include])
+
+  cuda_lib = env_bpl.cudaSharedLibrary(
+    target = "#lib/libsimtbx_nanoBraggCUDA",
+    source = cuda_src + ["nanoBragg_cuda.cpp"])
+
 else:
   # alternate implementation with no CUDA behavior
   env_bpl.Prepend(CPPFLAGS=["-DCUDAREAL=double"])
   cuda_src = ["../gpu/structure_factors_nocu.cpp"]
 
-env_etc.include_registry.append(
-  env=env_bpl,
-  paths=[env_etc.simtbx_include, env_etc.dxtbx_include]
-)
-env_bpl.Prepend(CPPPATH=[env_etc.boost_adaptbx_include,
-  env_etc.boost_include])
-cuda_lib = env_bpl.SharedLibrary(
-  target = "#lib/libsimtbx_nanoBraggCUDA",
-  source = cuda_src)
+  env_etc.include_registry.append(
+    env=env_bpl,
+    paths=[env_etc.simtbx_include, env_etc.dxtbx_include]
+  )
+
+  env_bpl.Prepend(CPPPATH=[env_etc.boost_adaptbx_include,
+    env_etc.boost_include])
+
+  cuda_lib = env_bpl.SharedLibrary(
+    target = "#lib/libsimtbx_nanoBraggCUDA",
+    source = cuda_src)
+
 env.Prepend(LIBS=["simtbx_nanoBraggCUDA"])
 
 sfgpu_obj = nanoBragg_env.SharedObject(
