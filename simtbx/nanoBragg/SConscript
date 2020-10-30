@@ -16,17 +16,17 @@ nanoBragg_obj = nanoBragg_env.SharedObject(
     "nanoBragg_nks.cpp",
   ])
 
+import os
+import libtbx.load_env
+
+# simtbx location
+env_etc.simtbx_dist = libtbx.env.dist_path("simtbx")
+env_etc.simtbx_include = os.path.dirname(env_etc.simtbx_dist)
+Import("env_boost_python_ext")
+env_bpl = env_boost_python_ext.Clone()
+
 # compile nanoBraggCUDA.cu if possible
 if (env_etc.enable_cuda):
-  import os
-  import libtbx.load_env
-
-  # simtbx location
-  env_etc.simtbx_dist = libtbx.env.dist_path("simtbx")
-  env_etc.simtbx_include = os.path.dirname(env_etc.simtbx_dist)
-  Import("env_boost_python_ext")
-  env_bpl = env_boost_python_ext.Clone()
-
   # For now do all calculations in double precision to agree with CPU tests
   env_bpl.Prepend(NVCCFLAGS=["-DCUDAREAL=double"])
 
@@ -45,23 +45,32 @@ if (env_etc.enable_cuda):
     env=env_bpl,
     paths=[env_etc.simtbx_include, env_etc.dxtbx_include]
   )
-  env_bpl.Prepend(CPPPATH=[env_etc.boost_adaptbx_include,
-    env_etc.boost_include])
-  cuda_lib = env_bpl.cudaSharedLibrary(
-    target = "#lib/libsimtbx_nanoBraggCUDA",
-    source = cuda_src + ["nanoBragg_cuda.cpp"])
-  env.Prepend(LIBS=["simtbx_nanoBraggCUDA"])
+else:
+  # alternate implementation with no CUDA behavior
+  env_bpl.Prepend(CPPFLAGS=["-DCUDAREAL=double"])
+  cuda_src = ["../gpu/structure_factors_nocu.cpp"]
 
-  sfgpu_obj = nanoBragg_env.SharedObject(
-    target="#simtbx/gpu/gpu_ext.o",
-    source=["../gpu/gpu_ext.cpp"])
+env_etc.include_registry.append(
+  env=env_bpl,
+  paths=[env_etc.simtbx_include, env_etc.dxtbx_include]
+)
+env_bpl.Prepend(CPPPATH=[env_etc.boost_adaptbx_include,
+  env_etc.boost_include])
+cuda_lib = env_bpl.SharedLibrary(
+  target = "#lib/libsimtbx_nanoBraggCUDA",
+  source = cuda_src)
+env.Prepend(LIBS=["simtbx_nanoBraggCUDA"])
 
-  env.SharedLibrary(
-    target="#lib/simtbx_gpu_ext",
-    source=[
-      sfgpu_obj
-    ]
-  )
+sfgpu_obj = nanoBragg_env.SharedObject(
+  target="#simtbx/gpu/gpu_ext.o",
+  source=["../gpu/gpu_ext.cpp"])
+
+env.SharedLibrary(
+  target="#lib/simtbx_gpu_ext",
+  source=[
+    sfgpu_obj
+  ]
+)
 
 env.Prepend(LIBS=["omptbx"])
 env.SharedLibrary(
