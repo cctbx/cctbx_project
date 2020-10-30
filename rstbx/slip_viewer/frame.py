@@ -99,7 +99,7 @@ class XrayFrame(AppFrame,XFBaseClass):
     self._img = None
 
     self._distl = None
-    self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+    self.toolbar = self.CreateToolBar(style=wx.TB_TEXT)
     self.setup_toolbar()
     self.toolbar.Realize()
     self.mb = wx.MenuBar()
