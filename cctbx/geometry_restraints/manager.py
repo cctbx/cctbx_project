@@ -1837,6 +1837,7 @@ class manager(Base_geometry):
       assert origin_id_info
       if origin_id_info[0]=='SS BOND': row.append('disulf')
       elif origin_id_info[0]=='metal coordination': row.append('metalc')
+      elif origin_id_info[0]=='hydrogen bonds': row.append('hydrog')
       else: row.append('covale')
       row += _atom_info_grouped(bond)
       if len(origin_id_info)>2 and origin_id_info[2]:
