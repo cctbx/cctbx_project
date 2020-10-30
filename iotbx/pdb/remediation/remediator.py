@@ -69,8 +69,11 @@ Convert version 3.2 file to version 2.3 naming:
 
   def run(self):
     model = self.data_manager.get_model()
+    convert_to_new = True
     if self.params.version == 2.3:
-      print("version 2.3")
+      convert_to_new = False
+    remed = Remediator()
+    self.results = remed.remediate_model_object(model, convert_to_new)
 
   def get_results(self):
     return self.results
@@ -250,11 +253,12 @@ class Remediator():
         non_v3_atoms_count=non_v3_atoms_count+1
       #print(atom.name)
     return non_v3_atoms_count == 0
-  
+
   def remediate_model_object(self, model, convert_to_new):
     self.residues_dict = {}
     non_v3_atoms_count = 0
     pdb_hierarchy = model.get_hierarchy()
+    pdb_hierarchy.atoms().reset_i_seq()
     residue_groups = pdb_hierarchy.residue_groups()
     for residue_group in residue_groups:
       atom_groups = residue_group.atom_groups()
@@ -266,16 +270,12 @@ class Remediator():
         for atom in atom_group.atoms():
           if not res_name in self.residues_dict:
             self.residues_dict[res_name] = self.build_hash_from_chem_components(res_name, convert_to_new=convert_to_new, build_all_atoms=False)
-            #print(resid+"\n"+str(residues_dict[resid]))
           atom_exch_dict = self.residues_dict[res_name]
           if atom.name+" "+res_name in atom_exch_dict:
             new_entry = atom_exch_dict.get(atom.name+" "+res_name)
-            #print(new_entry[0:4])
             atom.set_name(new_entry[0:4])
             non_v3_atoms_count=non_v3_atoms_count+1
-          #print(atom.name)
-    #print("residues_dict"+str(self.residues_dict))
-    pdb_hierarchy.reset_atom_i_seqs()
+    pdb_hierarchy.atoms().reset_i_seq()
     return model
 
   def remediate_na_atom_group(self, atom_group, convert_to_new):
