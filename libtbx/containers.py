@@ -1,11 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
 import collections
+OrderedDict = collections.OrderedDict  # exported symbol
 try:
-  from collections.abc import MutableSet  # special import
-  OrderedDict = dict
+  from collections.abc import MutableSet  # exported symbol
 except ImportError:
-  from collections import MutableSet, OrderedDict  # special import
+  from collections import MutableSet  # exported symbol
 
 class OrderedSet(MutableSet):
   """
