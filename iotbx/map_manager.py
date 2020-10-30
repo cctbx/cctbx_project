@@ -1585,7 +1585,6 @@ class map_manager(map_reader, write_ccp4_map):
     if self.is_compatible_model(model):
       return # already fine
 
-
     # Set crystal_symmetry to match map. This changes the xray_structure.
     model.set_crystal_symmetry(self.crystal_symmetry())
 
@@ -1628,7 +1627,8 @@ class map_manager(map_reader, write_ccp4_map):
       different.
 
       They are different if:
-        1. original and current symmetries are present and do not match
+        1. original and current symmetries are present and different from each
+          other and do not match
         2. model current symmetry does not match map original or current
         3. model has a shift_cart (shift applied) different than map shift_cart
 
@@ -1648,7 +1648,12 @@ class map_manager(map_reader, write_ccp4_map):
     map_uc=self.unit_cell_crystal_symmetry()
     map_sym=self.crystal_symmetry()
 
-    text_model_uc="not defined"
+    if not require_match_unit_cell_crystal_symmetry and \
+        model_uc and model_sym and model_uc.is_similar_symmetry(model_sym):
+      # Ignore the model_uc because it may or may not have come from
+      # model_sym
+      model_uc = None
+
     text_model_uc=str(model_uc).replace("\n"," ")
     text_model=str(model_sym).replace("\n"," ")
     text_map_uc=str(map_uc).replace("\n"," ")
