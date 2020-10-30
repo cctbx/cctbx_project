@@ -683,7 +683,7 @@ class map_model_manager(object):
       if (not resolution) and self.map_manager():
         # get resolution from map_manager
         resolution = self.map_manager().resolution()
-        print("\nResolution obtained from map_manager: %.3f A " %(
+        print("\nMinimum resolution obtained from map_manager: %.3f A " %(
           resolution), file = self.log)
       if resolution:
         self.set_resolution(resolution)
