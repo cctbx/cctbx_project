@@ -893,7 +893,7 @@ class HKLViewFrame() :
 
   def tabulate_arrays(self, datalabels):
     if len(self.origarrays) == 0: # if not an mtz file then split columns
-       # SupersetMillerArrays may not be necessary if file formats except for cif and mtz can't store multiple data columns
+      # SupersetMillerArrays may not be necessary if file formats except for cif and mtz can't store multiple data columns
       self.viewer.SupersetMillerArrays()
       self.origarrays["HKLs"] = self.viewer.proc_arrays[0].indices()
       for arr in self.viewer.proc_arrays:

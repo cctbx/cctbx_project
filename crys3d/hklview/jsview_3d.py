@@ -216,8 +216,10 @@ class hklview_3d:
     self.bin_labels_type_idx = ("Resolution",  "", -1, -1)
     self.colour_scene_id = None
     self.radii_scene_id = None
-    #self.scene_id = None
-    #self.rotation_mx = matrix.identity(3)
+    self.colours = []
+    self.positions = []
+    self.radii2 = []
+    self.spbufttips = []
     self.rot_recip_zvec = None
     self.rot_zvec = None
     self.meanradius = -1
@@ -1199,10 +1201,10 @@ function MakeHKL_Axis(mshape)
       fomlabel = self.HKLscene_from_dict(self.colour_scene_id).fomlabel
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     assert (colors.size() == radii.size() == nrefls)
-    colours = []
-    positions = []
-    radii2 = []
-    spbufttips = []
+    self.colours = []
+    self.positions = []
+    self.radii2 = []
+    self.spbufttips = []
 
     self.binvalsboundaries = []
     if not blankscene:
@@ -1229,10 +1231,10 @@ function MakeHKL_Axis(mshape)
     # Un-binnable data are scene data values where there are no matching reflections in the bin data
     # Put these in a separate bin and be diligent with the book keeping!
     for ibin in range(self.nbinvalsboundaries+1): # adding the extra bin for un-binnable data
-      colours.append([]) # colours and positions are 3 x size of data()
-      positions.append([])
-      radii2.append([])
-      spbufttips.append([])
+      self.colours.append([]) # colours and positions are 3 x size of data()
+      self.positions.append([])
+      self.radii2.append([])
+      self.spbufttips.append([])
 
     def data2bin(d, binvalsboundaries, nbinvalsboundaries):
       for ibin, binval in enumerate(binvalsboundaries):
@@ -1258,10 +1260,10 @@ function MakeHKL_Axis(mshape)
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
       ibin = data2bin( self.bindata[i], self.binvalsboundaries, self.nbinvalsboundaries )
-      positions[ibin].extend( graphics_utils.flt_roundoffvec3(hklstars, 2) )
-      colours[ibin].extend( graphics_utils.flt_roundoffvec3(colors[i], 2) )
-      radii2[ibin].append( graphics_utils.flt_roundoff(radii[i], 2) )
-      spbufttips[ibin].append( i )
+      self.positions[ibin].extend( graphics_utils.flt_roundoffvec3(hklstars, 2) )
+      self.colours[ibin].extend( graphics_utils.flt_roundoffvec3(colors[i], 2) )
+      self.radii2[ibin].append( graphics_utils.flt_roundoff(radii[i], 2) )
+      self.spbufttips[ibin].append( i )
 
     elapsed_time = time.time() - start_time
     self.mprint("elapsed time: %s" %elapsed_time, verbose=2)
@@ -1275,7 +1277,7 @@ function MakeHKL_Axis(mshape)
       self.mprint("%d bins was requested but %s data has only %d unique value(s)!" %(self.params.nbins, colstr, self.nuniqueval), 0)
     for ibin in range(self.nbinvalsboundaries+1):
       mstr =""
-      nreflsinbin = len(radii2[ibin])
+      nreflsinbin = len(self.radii2[ibin])
       if nreflsinbin == 0:
         continue
       bin2 = float("nan"); bin1= float("nan") # indicates un-binned data
@@ -1307,43 +1309,42 @@ function MakeHKL_Axis(mshape)
       self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 ), precision) )
       self.binstrs.append(mstr)
       self.mprint(mstr, verbose=0)
-
-      spherebufferstr += "\n// %s\n" %mstr
-      #spherebufferstr += "  ttips.push( [ ] );"
-      ttlst = [-1]
-      ttlst.extend(spbufttips[ibin])
-      ttipsobj = "{ ids: " + str( ttlst ) + """,
-       getPosition: function() { return { x:0, y:0 }; } // dummy function to avoid crash
-  } """
-      # + ",\n      getPosition: function() { return stage.mouseObserver.canvasPosition; } }"
-      spherebufferstr += "  ttips.push( %s );" %str( ttipsobj )
-      spherebufferstr += """
-  positions.push( new Float32Array( %s ) );
-  colours.push( new Float32Array( %s ) );
-  radii.push( new Float32Array( %s ) );
-  shapebufs.push( new NGL.%s({
-    position: positions[%d],
-    color: colours[%d], """ %(str(positions[ibin]), str(colours[ibin]), \
-        str(radii2[ibin]), self.primitivetype, cntbin, \
-        cntbin)
-      if self.primitivetype == "SphereBuffer":
-        spherebufferstr += "\n    radius: radii[%d]," %cntbin
-      spherebufferstr += "\n    picking: ttips[%d]," %cntbin
-      if self.primitivetype == "PointBuffer":
-        spherebufferstr += "\n  }, {pointSize: %1.2f})\n" %self.viewerparams.scale
-      else:
-        if self.high_quality:
-          spherebufferstr += """
-    })
-  );
-  """
-        else:
-          spherebufferstr += """
-    }, { disableImpostor: true
-   ,    sphereDetail: 0 }) // rather than default value of 2 icosahedral subdivisions
-  );
-  """
-      spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n  alphas.push(1.0);\n" %cntbin
+#
+#      ttlst = [-1]
+#      ttlst.extend(self.spbufttips[ibin])
+#      ttipsobj = "{ ids: " + str( ttlst ) + """,
+#       getPosition: function() { return { x:0, y:0 }; } // dummy function to avoid crash
+#  } """
+#      spherebufferstr += "\n// %s\n" %mstr
+#      spherebufferstr += "  ttips.push( %s );" %str( ttipsobj )
+#      spherebufferstr += """
+#  positions.push( new Float32Array( %s ) );
+#  colours.push( new Float32Array( %s ) );
+#  radii.push( new Float32Array( %s ) );
+#  shapebufs.push( new NGL.%s({
+#    position: positions[%d],
+#    color: colours[%d], """ %(str(self.positions[ibin]), str(self.colours[ibin]), \
+#        str(self.radii2[ibin]), self.primitivetype, cntbin, \
+#        cntbin)
+#      if self.primitivetype == "SphereBuffer":
+#        spherebufferstr += "\n    radius: radii[%d]," %cntbin
+#      spherebufferstr += "\n    picking: ttips[%d]," %cntbin
+#      if self.primitivetype == "PointBuffer":
+#        spherebufferstr += "\n  }, {pointSize: %1.2f})\n" %self.viewerparams.scale
+#      else:
+#        if self.high_quality:
+#          spherebufferstr += """
+#    })
+#  );
+#  """
+#        else:
+#          spherebufferstr += """
+#    }, { disableImpostor: true
+#   ,    sphereDetail: 0 }) // rather than default value of 2 icosahedral subdivisions
+#  );
+#  """
+#      spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n  alphas.push(1.0);\n" %cntbin
+#
 
       cntbin += 1
 
@@ -1394,7 +1395,8 @@ function MakeHKL_Axis(mshape)
     self.NGLscriptstr = ""
     if not blankscene:
       self.NGLscriptstr = HKLJavaScripts.NGLscriptstr % ( self.ngl_settings.tooltip_alpha,
-        '\"' + self.camera_type + '\"', axisfuncstr, spherebufferstr,
+        '\"' + self.camera_type + '\"', axisfuncstr,
+#        '\"' + self.camera_type + '\"', axisfuncstr, spherebufferstr,
         negativeradiistr, colourscriptstr)
 
     WebsockMsgHandlestr = HKLJavaScripts.WebsockMsgHandlestr %(self.websockport, cntbin,
@@ -1418,6 +1420,13 @@ function MakeHKL_Axis(mshape)
       self.OrigClipNear = self.clipNear
       self.SetMouseSpeed( self.ngl_settings.mouse_sensitivity )
       self.isnewfile = False
+      self.RemoveStageObjects()
+
+      for ibin in range(cntbin):
+        self.SendCoordinates2Browser(self.positions[ibin], self.colours[ibin], 
+                                     self.radii2[ibin], self.spbufttips[ibin] )
+      self.RenderStageObjects()
+
     self.sceneisdirty = False
     self.lastscene_id = self.viewerparams.scene_id
 
@@ -2042,6 +2051,23 @@ Distance: %s
     str_vec = str_vec.replace(")", "")
     msg = str_vec + "\n"
     self.AddToBrowserMsgQueue("TranslateHKLpoints", msg)
+
+
+  def RemoveStageObjects(self):
+    self.AddToBrowserMsgQueue("RemoveStageObjects")
+
+
+  def SendCoordinates2Browser(self, positions, colours, radii, ttipids ):
+    strdata = ""
+    strdata += "%s\n\n" %roundoff(positions, 2)
+    strdata += "%s\n\n" %roundoff(colours, 2)
+    strdata += "%s\n\n" %roundoff(radii, 2)
+    strdata += "%s" %ttipids
+    self.AddToBrowserMsgQueue("AddSpheresBin2ShapeBuffer", strdata)
+
+
+  def RenderStageObjects(self):
+    self.AddToBrowserMsgQueue("RenderStageObjects")
 
 
   def InjectNewReflections(self, proc_array):
