@@ -146,7 +146,7 @@ def reconstruct_test_name(command):
     else:
       test_name = "%s.%s" % (file, filtered_parameter)
 
-    pattern2  = '^/?(.*?/((modules|build)/(cctbx\_project/|xia2/Test/)?))?(.*)/([^/&]*?)(\.py)?$'
+    pattern2 = r'^/?(.*?/((modules|build)/(cctbx\_project/|xia2/Test/)?))?(.*)/([^/&]*?)(\.py)?$'
     m2 = re.search(pattern2, file)
     if m2:
 #     print "M (%s) (%s) (%s) (%s) (%s) (%s) (%s)" % (m2.group(1,2,3,4,5,6,7))

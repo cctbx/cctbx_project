@@ -151,7 +151,8 @@ def exercise_rigid_bond_test():
   if (ins_file is None):
     print("Skipping exercise_rigid_bond_test(): input file not available")
     return
-  ins_xray_structure = cctbx.xray.structure.from_shelx(file=open(ins_file))
+  with open(ins_file) as f:
+    ins_xray_structure = cctbx.xray.structure.from_shelx(file=f)
   sites_frac = ins_xray_structure.sites_frac()
   sites_cart = ins_xray_structure.sites_cart()
   ustars = ins_xray_structure.scatterers().extract_u_star()

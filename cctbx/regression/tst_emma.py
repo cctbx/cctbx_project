@@ -450,8 +450,9 @@ def tst_pdb_output():
   output_pdb="output.pdb"
   offset_e2=match.get_transformed_model2(output_pdb=output_pdb,
     template_pdb_inp=pdb_inp_e2)
-  offset_e2_text_lines=open(output_pdb).readlines()
-  for o,e in zip(open(output_pdb).readlines(),pdb5_out.splitlines()):
+  with open(output_pdb) as f:
+    offset_e2_text_lines=f.readlines()
+  for o,e in zip(offset_e2_text_lines, pdb5_out.splitlines()):
      o=o.strip()
      e=e.strip()
      if o != e:

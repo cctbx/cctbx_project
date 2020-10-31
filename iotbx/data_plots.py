@@ -607,7 +607,8 @@ class _formatting_buffer(object):
 def import_ccp4i_logfile(file_name=None, log_lines=None):
   assert file_name is not None or log_lines is not None
   if not log_lines :
-    log_lines = open(file_name).readlines()
+    with open(file_name) as f:
+      log_lines = f.readlines()
   current_lines = None
   tables_raw = []
   sections_read = 0

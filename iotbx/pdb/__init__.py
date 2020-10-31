@@ -936,10 +936,11 @@ class pdb_input_mixin(object):
     if (crystal_symmetry is not None or cryst1_z is not None):
       if (open_append): mode = "a"
       else:             mode = "w"
-      print(format_cryst1_and_scale_records(
-        crystal_symmetry=crystal_symmetry,
-        cryst1_z=cryst1_z,
-        write_scale_records=write_scale_records), file=open(file_name, mode))
+      with open(file_name, mode) as f:
+        print(format_cryst1_and_scale_records(
+          crystal_symmetry=crystal_symmetry,
+          cryst1_z=cryst1_z,
+          write_scale_records=write_scale_records), file=f)
       open_append = True
     self._write_pdb_file(
       file_name=file_name,
@@ -1450,7 +1451,8 @@ class rewrite_normalized(object):
         keep_original_atom_serial=False):
     self.input = input(file_name=input_file_name)
     if (keep_original_crystallographic_section):
-      print("\n".join(self.input.crystallographic_section()), file=open(output_file_name, "w"))
+      with open(output_file_name, "w") as f:
+        print("\n".join(self.input.crystallographic_section()), file=f)
       crystal_symmetry = None
     else:
       crystal_symmetry = self.input.crystal_symmetry()

@@ -517,10 +517,10 @@ class set(crystal.symmetry):
     rp = self.unit_cell().reciprocal_parameters()
     c1fmt = "CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f P1        "
     fmt = "HETATM%5d  O   HOH %5d    %8.3f%8.3f%8.3f  1.00  1.00           O  "
-    of = open(file_name, "w")
-    for i_mi, mi in enumerate(indices):
-      rsv = uc.reciprocal_space_vector(mi)
-      print(fmt%(i_mi, i_mi, rsv[0]*scale, rsv[1]*scale, rsv[2]*scale), file=of)
+    with open(file_name, "w") as of:
+      for i_mi, mi in enumerate(indices):
+        rsv = uc.reciprocal_space_vector(mi)
+        print(fmt%(i_mi, i_mi, rsv[0]*scale, rsv[1]*scale, rsv[2]*scale), file=of)
 
   def show_comprehensive_summary(self, f=None, prefix=""):
     """Display comprehensive Miller set or array summary"""

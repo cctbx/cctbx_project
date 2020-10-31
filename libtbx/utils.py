@@ -446,8 +446,9 @@ def copy_file(source, target, compress=None):
   else:
     assert compress == ".gz"
     t = gzip_open(file_name=target+compress, mode="wb")
-  t.write(open(source, "rb").read())
-  del t
+  with open(source, "rb") as f:
+    t.write(f.read())
+  t.close()
 
 def remove_files(pattern=None, paths=None, ensure_success=True):
   """

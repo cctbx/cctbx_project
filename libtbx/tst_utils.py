@@ -161,11 +161,13 @@ def foo():
   d = tempfile.mkdtemp()
   name = os.path.join(d, "tst_libtbx_utils_python_script.py")
   name2 = os.path.join(d, "tst_libtbx_utils_python_script2.py")
-  open(name, "w").write(script)
+  with open(name, "w") as f:
+    f.write(script)
   f = open(name2, "w")
   utils.concatenate_python_script(out=f, file_name=name)
   f.close()
-  lines = open(name2).readlines()
+  with open(name2) as f:
+    lines = f.readlines()
   have_def = False
   for line in lines :
     assert (not "__future__" in line)
@@ -243,7 +245,8 @@ def exercise_file_utils():
   sorted_files = []
   for prefix in ["XYZ", "abc", "qwerty", "123"] :
     file_name = os.path.join(dir_name, "%s.txt" % prefix)
-    open(file_name, "w").write(prefix)
+    with open(file_name, "w") as f:
+      f.write(prefix)
     sorted_files.append(file_name)
     time.sleep(1) # XXX the mtime resolution is in seconds :(
   f = open(os.path.join(dir_name, "hkl.log"), "w")

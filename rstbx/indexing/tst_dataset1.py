@@ -19,9 +19,9 @@ keV_to_inv_Angstrom = 1E3             * \
                       1E10
 
 def parse_input(filename):
-  G = open(filename,"r")
+  with open(filename,"r") as G:
+    lines = G.readlines()
   reciprocal_vectors = flex.vec3_double()
-  lines = G.readlines()
   for line in lines[0:len(lines)-0]:
     tokens = line.strip().split('\t')
     assert len(tokens)==7
@@ -38,12 +38,13 @@ def parse_input(filename):
   return reciprocal_vectors
 
 def parse_synthetic(filename):
-  G = open(filename,"r")
+  with open(filename,"r") as G:
+    lines = G.readlines()
   reciprocal_vectors = flex.vec3_double()
   #Example of Silicon F d 3-bar m unit cell oriented along lab axes
   A_mat = matrix.sqr((5.43,0.,0.,0.,5.43,0.,0.,0.,5.43))
   A_star = A_mat.inverse()
-  for line in G.readlines()[1:]:
+  for line in lines[1:]:
     tokens = line.strip().split('\t')
     assert len(tokens)==5
     miller = matrix.col([float(i) for i in tokens[0:3]])

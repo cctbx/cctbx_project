@@ -60,7 +60,8 @@ def exercise_sigma_filtering():
      9   -11     0  1.802E+03  7.375E+01  2196.5  1713.5      2.0 0.11339 100  66  -55.56
      2     9     0  1.661E+03  6.853E+01  2277.7  2365.4      5.5 0.09825 100  66   29.11
 """
-  open("tst_iotbx_hkl_reader.hkl", "w").write(xds_raw)
+  with open("tst_iotbx_hkl_reader.hkl", "w") as f:
+    f.write(xds_raw)
   hkl_in = reflection_file_reader.any_reflection_file(
     "tst_iotbx_hkl_reader.hkl")
   ma = hkl_in.as_miller_arrays(merge_equivalents=False)

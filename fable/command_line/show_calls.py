@@ -65,12 +65,11 @@ def run(args):
       print("  %s" % s)
   print()
   if (option.write_graphviz_dot is not None):
-    f = open(option.write_graphviz_dot, "w")
-    print("digraph G {", file=f)
-    for lhs_rhs in digraph_lhs_rhs:
-      print("  %s -> %s;" % lhs_rhs, file=f)
-    print("}", file=f)
-    del f
+    with open(option.write_graphviz_dot, "w") as f:
+      print("digraph G {", file=f)
+      for lhs_rhs in digraph_lhs_rhs:
+        print("  %s -> %s;" % lhs_rhs, file=f)
+      print("}", file=f)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

@@ -9,11 +9,15 @@ html_file = "itvb_2001_table_a1427_hall_symbols.html"
 html_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), html_file)
 
 def get_and_check_file():
-  if ( not os.path.isfile(html_file)
-       or open(html_file).read().lower().find("not found") >= 0):
+  not_found = False
+  if os.path.isfile(html_file):
+    with open(html_file) as f:
+      not_found = f.read().lower().find("not found") >= 0
+  if not os.path.isfile(html_file) or not_found:
     print("Skipping exercise(): input file not available")
     return
-  table_lines = open(html_file).read().splitlines()[11:-4]
+  with open(html_file) as f:
+    table_lines = f.read().splitlines()[11:-4]
   assert len(table_lines) == 530, "%d != 530" % len(table_lines)
   space_group_symbol_iterator = sgtbx.space_group_symbol_iterator()
   for line in table_lines:

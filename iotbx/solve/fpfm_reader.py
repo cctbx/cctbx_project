@@ -48,6 +48,7 @@ class reader(object):
         self._indices.append([-e for e in h])
         self._data.append(d[2])
         self._sigmas.append(d[3])
+    file_object.close()
 
   def indices(self):
     return self._indices
