@@ -794,6 +794,8 @@ def analyze_anisotropy(f_array,
   direction_vectors,
   resolution,
   n_display = 6,
+  weight_by_variance = True,
+  minimum_sd = 0.1,
   out = sys.stdout):
 
   print ("\n",79*"=","\nAnalyzing anisotropy","\n",79*"=", file = out)
@@ -865,11 +867,32 @@ def analyze_anisotropy(f_array,
     aa_scale_values.extend(aa_values)
     bb_scale_values.extend(bb_values)
 
+  # Try to get variances of aa, bb values within each resolution bin
+  sd_aa = flex.double()
+  sd_bb = flex.double()
+  for i in range(best_si.target_sthol2.size()):
+    aa_in_bin = flex.double()
+    bb_in_bin = flex.double()
+    for k in range(direction_vectors.size()):
+      aa_in_bin.append(aa_values_by_dv[k][i])
+      bb_in_bin.append(bb_values_by_dv[k][i])
+    sd_aa.append(max(minimum_sd,aa_in_bin.standard_deviation_of_the_sample()))
+    sd_bb.append(max(minimum_sd,bb_in_bin.standard_deviation_of_the_sample()))
+
+  aa_sd_values = flex.double()
+  bb_sd_values = flex.double()
+  for k in range(direction_vectors.size()):
+    aa_sd_values.extend(sd_aa)
+    bb_sd_values.extend(sd_bb)
+
+
   # Now get A and B matrices from aa and bb:
-  aa_b_cart = get_aniso_from_scale_values(f_array,aa_scale_values,indices,
-     resolution)
-  bb_b_cart = get_aniso_from_scale_values(f_array,bb_scale_values,indices,
-     resolution)
+  aa_b_cart = get_aniso_from_scale_values(f_array,aa_scale_values,
+     aa_sd_values,indices,
+     resolution, weight_by_variance)
+  bb_b_cart = get_aniso_from_scale_values(f_array,bb_scale_values,
+    bb_sd_values,indices,
+     resolution, weight_by_variance)
   print("A matrix (%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(tuple(aa_b_cart)),
     file = out)
   print("B matrix (%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(tuple(bb_b_cart)),
@@ -977,7 +1000,7 @@ def display_scale_values(
       print (" %5.2f " %(values_by_dv[k][i]), file = out, end= "")
     print("", file=out)
 
-def get_aniso_from_scale_values(f_array,scale_values,indices, resolution):
+def get_aniso_from_scale_values(f_array,scale_values,sd_values,indices, resolution,weight_by_variance):
   scale_values_array = f_array.customized_copy(
         data = scale_values,
         indices = indices)
@@ -987,13 +1010,15 @@ def get_aniso_from_scale_values(f_array,scale_values,indices, resolution):
         remove_aniso=True,out=null_out())
   if not aniso_obj:
     return None
-  # Optimize this
+  # Optimize this (with weighting if weight_by_variance)
 
   ar = aniso_refinery(
     f_array,
     indices,
     aniso_obj.b_cart,
-    scale_values,)
+    scale_values,
+    sd_values,
+    weight_by_variance)
   ar.run()
   resid = ar.show_result()
   b_cart = ar.get_b()
@@ -1006,6 +1031,8 @@ class aniso_refinery:
     indices,
     b_cart,
     scale_values,
+    sd_values,
+    weight_by_variance,
     eps=0.01,
     tol=0.01,
     max_iterations=20,
@@ -1015,6 +1042,9 @@ class aniso_refinery:
     self.indices=indices
     self.b_cart=b_cart
     self.scale_values=scale_values
+    self.sd_values=sd_values
+    self.weight_by_variance=weight_by_variance
+
     self.tol=tol
     self.eps=eps
     self.max_iterations=max_iterations
@@ -1045,6 +1075,8 @@ class aniso_refinery:
     calc_values =get_scale_from_aniso_b_cart(f_array = self.f_array,
       indices = self.indices, b_cart = b)
     diffs = calc_values - self.scale_values
+    if self.weight_by_variance:
+      diffs=diffs/self.sd_values
     resid = diffs.norm()/diffs.size()
     return resid
 
