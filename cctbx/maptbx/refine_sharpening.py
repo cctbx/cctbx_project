@@ -14,6 +14,7 @@ from cctbx.maptbx.segment_and_split_map import map_and_b_object
 from six.moves import range
 from six.moves import zip
 from scitbx import matrix
+from cctbx import adptbx
 
 def write_mtz(ma=None,phases=None,file_name=None):
   mtz_dataset=ma.as_mtz_dataset(column_root_label="FWT")
@@ -418,42 +419,51 @@ def get_calculated_scale_factors(
       scale_values = scale_values,
       original_scale_values = original_scale_values)
 
-def calculate_fsc(si=None,
-     f_array=None,  # just used for binner
-     map_coeffs=None,
-     model_map_coeffs=None,
-     external_map_coeffs=None,
-     first_half_map_coeffs=None,
-     second_half_map_coeffs=None,
-     resolution=None,
-     fraction_complete=None,
-     min_fraction_complete=None,
-     is_model_based=None,
-     cc_cut=None,
-     scale_using_last=None,
-     max_cc_for_rescale=None,
-     pseudo_likelihood=False,
-     skip_scale_factor=False,
-     equalize_power=False,
-     verbose=None,
-     rmsd_resolution_factor = 0.25,  # empirical, see params for segment_and_split_map
-     maximum_scale_factor = None, # limit on size
-     optimize_b_eff = None,
-     low_res_bins = 3,
-     direction_vector = None,
-     direction_vectors = None,
-     smooth_fsc = None,
-     cutoff_after_last_high_point = None,
-     get_scale_as_aniso_u = None,
-     expected_rms_fc_list = None,
-     out=sys.stdout):
-
+def calculate_fsc(**kw):
   '''
     Calculate FSC of 2 maps and estimate scale factors
     If direction_vector or direction_vectors supplied, calculate
      CC values weighted by abs() component along direction vector
-    If list of direction vectors, return group_args with si objects
+    If list of direction vectors, return group_args with si objects and
+     also include an overall si object
   '''
+  si = kw.get('si',None)
+  f_array = kw.get('f_array',None)
+  map_coeffs = kw.get('map_coeffs',None)
+  model_map_coeffs = kw.get('model_map_coeffs',None)
+  external_map_coeffs = kw.get('external_map_coeffs',None)
+  first_half_map_coeffs = kw.get('first_half_map_coeffs',None)
+  second_half_map_coeffs = kw.get('second_half_map_coeffs',None)
+  resolution = kw.get('resolution',None)
+  fraction_complete = kw.get('fraction_complete',None)
+  min_fraction_complete = kw.get('min_fraction_complete',None)
+  is_model_based = kw.get('is_model_based',None)
+  cc_cut = kw.get('cc_cut',None)
+  scale_using_last = kw.get('scale_using_last',None)
+  max_cc_for_rescale = kw.get('max_cc_for_rescale',None)
+  equalize_power = kw.get('equalize_power',False)
+  verbose = kw.get('verbose',None)
+  maximum_scale_factor = kw.get('maximum_scale_factor',None)
+  pseudo_likelihood = kw.get('pseudo_likelihood',False)
+  skip_scale_factor = kw.get('skip_scale_factor',False)
+  optimize_b_eff = kw.get('optimize_b_eff',None)
+  direction_vector = kw.get('direction_vector',None)
+  direction_vectors = kw.get('direction_vectors',None)
+  smooth_fsc = kw.get('smooth_fsc',None)
+  cutoff_after_last_high_point = kw.get('cutoff_after_last_high_point',None)
+  get_scale_as_aniso_u = kw.get('get_scale_as_aniso_u',None)
+  expected_rms_fc_list = kw.get('expected_rms_fc_list',None)
+  rmsd_resolution_factor = kw.get('rmsd_resolution_factor',0.25)
+  low_res_bins = kw.get('low_res_bins',3)
+  out = kw.get('out',sys.stdout)
+
+
+  if direction_vectors and direction_vectors != [None]:
+     kw['direction_vectors'] = None
+     print("Getting overall analysis first",file = out)
+     overall_si = calculate_fsc(**kw)
+     print (overall_si)
+     print("Done with getting overall analysis ",file = out)
 
   # calculate anticipated fall-off of model data with resolution
   if si.rmsd is None and is_model_based:
@@ -670,6 +680,7 @@ def calculate_fsc(si=None,
     else:
       dv = None
       working_si = si  # so we can modify it in place
+
     working_si = complete_cc_analysis(
        dv,
        cc_list,
@@ -697,7 +708,6 @@ def calculate_fsc(si=None,
   if direction_vectors == [None]:
     return si_list[0]
   else:
-
 
     if get_scale_as_aniso_u:  # get the final scale factors as aniso_u
 
@@ -730,7 +740,6 @@ def calculate_fsc(si=None,
             expected_rms_fc_list = expected_rms_fc_list,
             sthol_list = sthol_list)
 
-        from cctbx import adptbx
         if fc_aniso_obj and fc_aniso_obj.b_cart:
           starting_fc_u_cart = adptbx.b_as_u(fc_aniso_obj.b_cart)
         else:
@@ -754,7 +763,6 @@ def calculate_fsc(si=None,
 
       if aniso_obj.b_cart and starting_u_cart and \
          tuple(starting_u_cart) != (0,0,0,0,0,0):
-        from cctbx import adptbx
         scaling_u_cart = adptbx.b_as_u(aniso_obj.b_cart)
         # U_cart to remove is starting_u_cart - scaling_u_cart
         overall_u_cart_to_remove = tuple(
@@ -768,6 +776,9 @@ def calculate_fsc(si=None,
       starting_u_cart = None
       scaling_u_cart = None
 
+    # Analyze anisotropy
+    analyze_anisotropy(f_array, overall_si, si_list, sthol_list, direction_vectors, resolution, out = out)
+
     return group_args(
      group_args_type = 'scaling_info objects, one set per direction_vector',
      direction_vectors = direction_vectors,
@@ -775,6 +786,293 @@ def calculate_fsc(si=None,
      overall_u_cart_to_remove = overall_u_cart_to_remove,
      starting_u_cart = starting_u_cart,
      scaling_u_cart = scaling_u_cart)
+
+def analyze_anisotropy(f_array,
+  overall_si,
+  si_list,
+  sthol_list,
+  direction_vectors,
+  resolution,
+  n_display = 6,
+  out = sys.stdout):
+
+  print ("\n",79*"=","\nAnalyzing anisotropy","\n",79*"=", file = out)
+  """
+  si.target_sthol2=input_info.target_sthol2
+  si.d_min_list=input_info.d_min_list
+  si.original_cc_list=original_cc_list # this is CC(half-map1, half_map2)
+  si.rms_fo_list = rms_fo_list
+  si.rms_fc_list = rms_fc_list
+
+  ssqr(s) = (1/CC_half(s) - 1)  ...along any direction s
+  Ao(|s|)**2 = rmsFobs(s*)**2 * (1 + 0.5*ssqr(s*))    ...along s*
+  A(s)**2 = (1 + 0.5*ssqr(s*)) / (1 + 0.5* ssqr(s))
+  B(s)**2 =  A(s)**2 * ssqr(s)/ssqr(s*)
+
+  """
+
+  # Choose direction with least fall-off.  Use maximum rms_fo_list average
+  best_dir = None
+  best_mean_fo = None
+  for k in range(direction_vectors.size()):
+    mean_fo = si_list[k].rms_fo_list.min_max_mean().mean
+    if best_mean_fo is None or mean_fo > best_mean_fo:
+      best_mean_fo = mean_fo
+      best_dir = k
+  best_si = si_list[best_dir]
+  print("Direction "+
+     "%s (%.2f, %.2f, %.2f) has minimum fall-off with resolution" %(
+      tuple([best_dir]+list(direction_vectors[best_dir]))), file = out)
+
+  ssqr_values = flex.double()
+  a_zero_values = flex.double()
+  for i in range(best_si.target_sthol2.size()):
+    ssqr = min(100.,max(1.e-10,
+       -1 + 1/max(1.e-10,best_si.original_cc_list[i])))
+    a_zero = best_si.rms_fo_list[i]/(1+0.5*ssqr)**0.5
+    a_zero_values.append(a_zero)
+    ssqr_values.append(ssqr)
+
+  aa_scale_values = flex.double()
+  bb_scale_values = flex.double()
+  indices = flex.miller_index()
+  aa_values_by_dv = []
+  bb_values_by_dv = []
+  indices_by_dv = []
+  for dv,si in zip(direction_vectors, si_list):
+    aa_values=flex.double()
+    bb_values=flex.double()
+    aa_values_by_dv.append(aa_values)
+    bb_values_by_dv.append(bb_values)
+
+    for i in range(best_si.target_sthol2.size()):
+      ssqr_local = min(100.,max(1.e-10,
+        -1 + 1/max(1.e-10,si.original_cc_list[i])))
+      aasqr = (1 + 0.5 * ssqr_values[i])/(1 + 0.5 * ssqr_local)
+      aasqr = aasqr * (si.rms_fo_list[i]/best_si.rms_fo_list[i])**2
+      bbsqr = aasqr * ssqr_local / max(1.e-10,ssqr_values[i])
+      aa_values.append(aasqr**0.5)
+      bb_values.append(bbsqr**0.5)
+
+    info = get_calculated_scale_factors(
+          sthol_list=sthol_list,
+          cc_list = flex.double(sthol_list.size(),1),
+          dv = dv,
+          uc = f_array.unit_cell(),
+           )
+    indices_by_dv.append(info.indices)
+    indices.extend(info.indices)
+    aa_scale_values.extend(aa_values)
+    bb_scale_values.extend(bb_values)
+
+  # Now get A and B matrices from aa and bb:
+  aa_b_cart = get_aniso_from_scale_values(f_array,aa_scale_values,indices,
+     resolution)
+  bb_b_cart = get_aniso_from_scale_values(f_array,bb_scale_values,indices,
+     resolution)
+  print("A matrix (%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(tuple(aa_b_cart)),
+    file = out)
+  print("B matrix (%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(tuple(bb_b_cart)),
+    file = out)
+
+  # Calculate values from matrices
+  aa_calc_values_by_dv=[]
+  bb_calc_values_by_dv=[]
+  for k in range(min(direction_vectors.size(),n_display)):
+    aa_calc_values_by_dv.append(get_scale_from_aniso_b_cart(f_array = f_array,
+      indices = indices_by_dv[k],
+      b_cart = aa_b_cart))
+    bb_calc_values_by_dv.append(get_scale_from_aniso_b_cart(f_array = f_array,
+      indices = indices_by_dv[k],
+      b_cart = bb_b_cart))
+
+  print("\nA scale values by direction vector", file = out)
+  print("  D-min  A-zero   E**2   ", file = out, end = "")
+
+  display_scale_values(f_array=f_array,
+    n_display=n_display,
+    direction_vectors=direction_vectors,
+    best_si = best_si,
+    a_zero_values = a_zero_values,
+    ssqr_values = ssqr_values,
+    values_by_dv = aa_values_by_dv,
+    indices_by_dv = indices_by_dv,
+    out = out)
+
+  print("\nA scale values (calculated) by direction vector", file = out)
+  print("  D-min  A-zero   E**2   ", file = out, end = "")
+
+  display_scale_values(f_array=f_array,
+    n_display=n_display,
+    direction_vectors=direction_vectors,
+    best_si = best_si,
+    a_zero_values = a_zero_values,
+    ssqr_values = ssqr_values,
+    values_by_dv = aa_calc_values_by_dv,
+    indices_by_dv = indices_by_dv,
+    out = out)
+
+
+  print("\nB scale values by direction vector", file = out)
+  print("  D-min  A-zero   E**2   ", file = out, end = "")
+  display_scale_values(f_array=f_array,
+    n_display=n_display,
+    direction_vectors=direction_vectors,
+    best_si = best_si,
+    a_zero_values = a_zero_values,
+    ssqr_values = ssqr_values,
+    values_by_dv = bb_values_by_dv,
+    indices_by_dv = indices_by_dv,
+    out = out)
+
+  print("\nB scale values (calculated) by direction vector", file = out)
+  print("  D-min  A-zero   E**2   ", file = out, end = "")
+
+  display_scale_values(f_array=f_array,
+    n_display=n_display,
+    direction_vectors=direction_vectors,
+    best_si = best_si,
+    a_zero_values = a_zero_values,
+    ssqr_values = ssqr_values,
+    values_by_dv = bb_calc_values_by_dv,
+    indices_by_dv = indices_by_dv,
+    out = out)
+
+
+def get_scale_from_aniso_b_cart(f_array = None,
+    indices = None,
+    b_cart = None):
+  scale_values_array = f_array.customized_copy(
+    data = flex.double(indices.size(),1),
+    indices = indices)
+  from mmtbx.scaling import absolute_scaling
+  overall_u_cart_to_remove = adptbx.b_as_u(b_cart)
+  u_star= adptbx.u_cart_as_u_star(
+    scale_values_array.unit_cell(),tuple(-1.*matrix.col(overall_u_cart_to_remove)))
+  scaled_f_array = absolute_scaling.anisotropic_correction(
+          scale_values_array,0.0, u_star ,must_be_greater_than=-0.0001)
+  return scaled_f_array.data()
+
+def display_scale_values(
+    f_array=None,
+    n_display=None,
+    direction_vectors=None,
+    best_si = None,
+    a_zero_values = None,
+    ssqr_values = None,
+    values_by_dv = None,
+    indices_by_dv = None,
+    out = sys.stdout):
+
+
+
+  for k in range(min(direction_vectors.size(),n_display)):
+    print("  %4s " %(k+1), file = out, end = "")
+  print("", file = out)
+  for i in range(best_si.target_sthol2.size()):
+    dd = 0.5/best_si.target_sthol2[i]**0.5
+    print ("%6.2f  %6.3f %8.3f   " %(dd,a_zero_values[i],ssqr_values[i]),
+        file = out, end = "")
+    for k in range(min(direction_vectors.size(),n_display)):
+      print (" %5.2f " %(values_by_dv[k][i]), file = out, end= "")
+    print("", file=out)
+
+def get_aniso_from_scale_values(f_array,scale_values,indices, resolution):
+  scale_values_array = f_array.customized_copy(
+        data = scale_values,
+        indices = indices)
+  scaled_array,aniso_obj=analyze_aniso(
+        b_iso=0,
+        f_array=scale_values_array,resolution=resolution,
+        remove_aniso=True,out=null_out())
+  if not aniso_obj:
+    return None
+  # Optimize this
+
+  ar = aniso_refinery(
+    f_array,
+    indices,
+    aniso_obj.b_cart,
+    scale_values,)
+  ar.run()
+  resid = ar.show_result()
+  b_cart = ar.get_b()
+
+  return b_cart
+
+class aniso_refinery:
+  def __init__(self,
+    f_array,
+    indices,
+    b_cart,
+    scale_values,
+    eps=0.01,
+    tol=0.01,
+    max_iterations=20,
+    ):
+
+    self.f_array=f_array
+    self.indices=indices
+    self.b_cart=b_cart
+    self.scale_values=scale_values
+    self.tol=tol
+    self.eps=eps
+    self.max_iterations=max_iterations
+
+    self.x = flex.double(b_cart)
+
+  def run(self):
+
+    scitbx.lbfgs.run(target_evaluator=self,
+      termination_params=scitbx.lbfgs.termination_parameters(
+        traditional_convergence_test_eps=self.tol,
+                     max_iterations=self.max_iterations,
+       ))
+
+  def show_result(self,out=sys.stdout):
+
+    b=self.get_b()
+    value = -1.*self.residual(b)
+    return value
+
+  def compute_functional_and_gradients(self):
+    b = self.get_b()
+    f = self.residual(b)
+    g = self.gradients(b)
+    return f, g
+
+  def residual(self,b):
+    calc_values =get_scale_from_aniso_b_cart(f_array = self.f_array,
+      indices = self.indices, b_cart = b)
+    diffs = calc_values - self.scale_values
+    resid = diffs.norm()/diffs.size()
+    return resid
+
+  def gradients(self,b):
+
+    result = flex.double()
+    for i in range(len(list(b))):
+      rs = []
+      for signed_eps in [self.eps, -self.eps]:
+        params_eps = deepcopy(b)
+        params_eps[i] += signed_eps
+        rs.append(self.residual(params_eps))
+      result.append((rs[0]-rs[1])/(2*self.eps))
+    return result
+
+  def get_b(self):
+    return list(self.x)
+
+  def callback_after_step(self, minimizer):
+    pass # can do anything here
+
+
+def calculate_kurtosis(ma,phases,b,resolution,n_real=None,
+    d_min_ratio=None):
+  map_data=get_sharpened_map(ma,phases,b,resolution,n_real=n_real,
+  d_min_ratio=d_min_ratio)
+  return get_kurtosis(map_data.as_1d())
+
 
 
 def get_aniso_obj_from_direction_vectors(
@@ -1030,8 +1328,10 @@ def complete_cc_analysis(
   si.target_scale_factors=target_scale_factors
   si.target_sthol2=input_info.target_sthol2
   si.d_min_list=input_info.d_min_list
+  si.original_cc_list=original_cc_list # this is CC(half-map1, half_map2)
   si.cc_list=cc_list
   si.rms_fo_list = rms_fo_list
+  si.rms_fc_list = rms_fc_list
   si.low_res_cc = cc_list[:low_res_bins].min_max_mean().mean # low-res average
   si.effective_b = info.effective_b
   si.effective_b_f_obs = info.effective_b_f_obs
@@ -1573,7 +1873,6 @@ class analyze_aniso_object:
       return f_array  # nothing to do
 
     from mmtbx.scaling import absolute_scaling
-    from cctbx import adptbx
 
     u_star= adptbx.u_cart_as_u_star(
       f_array.unit_cell(), adptbx.b_as_u( self.b_cart) )
