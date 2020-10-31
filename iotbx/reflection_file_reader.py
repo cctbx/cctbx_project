@@ -187,7 +187,8 @@ class any_reflection_file(object):
     self._file_type = None
     file_name = self._file_name
     try:
-      open(file_name) # test read access
+      with open(file_name): # test read access
+        pass
     except IOError as e:
       if (ensure_read_access):
         raise Sorry(str(e))
