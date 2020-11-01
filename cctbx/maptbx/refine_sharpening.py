@@ -775,7 +775,14 @@ def calculate_fsc(**kw):
       scaling_u_cart = None
 
     # Analyze anisotropy
-    analyze_anisotropy(f_array, overall_si, si_list, sthol_list, direction_vectors, resolution, out = out)
+    analyze_anisotropy(f_array,
+      overall_si,
+      si_list,
+      sthol_list,
+      direction_vectors,
+      weights_para_list,
+      resolution,
+      out = out)
 
     return group_args(
      group_args_type = 'scaling_info objects, one set per direction_vector',
@@ -791,6 +798,7 @@ def analyze_anisotropy(
   si_list,
   sthol_list,
   direction_vectors,
+  weights_para_list,
   resolution,
   n_display = 6,
   weight_by_variance = True,
@@ -806,6 +814,7 @@ def analyze_anisotropy(
     si_list = si_list,
     sthol_list = sthol_list,
     direction_vectors = direction_vectors,
+    weights_para_list = weights_para_list,
     resolution = resolution,
     weight_by_variance = weight_by_variance,
     minimum_sd = minimum_sd,
@@ -862,6 +871,7 @@ def get_aniso_info(
     si_list = None,
     sthol_list = None,
     direction_vectors = None,
+    weights_para_list = None,
     resolution = None,
     weight_by_variance = None,
     minimum_sd = None,
@@ -942,6 +952,8 @@ def get_aniso_info(
 
   return group_args(
     f_array = f_array,
+    direction_vectors = direction_vectors,
+    weights_para_list = weights_para_list,
     resolution = resolution,
     a_zero_values = a_zero_values,
     ssqr_values = ssqr_values,
@@ -1010,11 +1022,54 @@ def get_a_b_matrices(
 
   return aniso_info
 
+def get_calc_values_with_dv_weighting(
+   aniso_info,
+   aa_b_cart,
+   bb_b_cart,):
+
+  # Calculate values from matrices but weight as in dv weighting
+  aa_calc_values= get_scale_from_aniso_b_cart(
+      f_array = aniso_info.f_array,
+      indices = aniso_info.f_array.indices(),
+      b_cart = aa_b_cart)
+  bb_calc_values= get_scale_from_aniso_b_cart(
+      f_array = aniso_info.f_array,
+      indices = aniso_info.f_array.indices(),
+      b_cart = bb_b_cart)
+  aa_calc_values_by_dv=[]
+  bb_calc_values_by_dv=[]
+  for dv in aniso_info.direction_vectors:
+    aa_calc_values_by_dv.append(flex.double())
+    bb_calc_values_by_dv.append(flex.double())
+  for i_bin in aniso_info.f_array.binner().range_used():
+    sel       = aniso_info.f_array.binner().selection(i_bin)
+    k = 0
+    for dv, weights_para in zip(aniso_info.direction_vectors,
+        aniso_info.weights_para_list):
+      weights_para_sel = weights_para.select(sel)
+      mean_weight = max(1.e-10,weights_para_sel.min_max_mean().mean)
+
+      aa_calc_values_by_dv[k].append( (aa_calc_values.select(sel) *
+         weights_para_sel).min_max_mean().mean/mean_weight)
+      bb_calc_values_by_dv[k].append( (bb_calc_values.select(sel) *
+         weights_para_sel).min_max_mean().mean/mean_weight)
+      k += 1
+  aniso_info.aa_calc_values_by_dv = aa_calc_values_by_dv
+  aniso_info.bb_calc_values_by_dv = bb_calc_values_by_dv
+  return aniso_info
 
 def get_calc_values(
    aniso_info,
    aa_b_cart,
-   bb_b_cart,):
+   bb_b_cart,
+   use_dv_weighting = True):
+  if use_dv_weighting:
+   return get_calc_values_with_dv_weighting(
+     aniso_info,
+     aa_b_cart,
+     bb_b_cart,
+    )
+
   # Calculate values from matrices
   aa_calc_values_by_dv=[]
   bb_calc_values_by_dv=[]
@@ -1045,8 +1100,9 @@ def update_sd_values(aniso_info):
     delta_bb += flex.pow2(
        aniso_info.bb_values_by_dv[k] - aniso_info.bb_calc_values_by_dv[k])
   scale = max(1,aniso_info.n_dv - 1)
-  aa_sd_vs_resolution= (delta_aa/scale)**0.5 # sd vs resolution
-  bb_sd_vs_resolution= (delta_bb/scale)**0.5 # sd vs resolution
+  aa_sd_vs_resolution= flex.sqrt(delta_aa/scale) # sd vs resolution
+  bb_sd_vs_resolution= flex.sqrt(delta_bb/scale) # sd vs resolution
+
   # And create sd vector
   aa_sd_values = flex.double()
   bb_sd_values = flex.double()
