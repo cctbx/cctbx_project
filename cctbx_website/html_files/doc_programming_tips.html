@@ -1,0 +1,343 @@
+{% extends "cctbx/header.html" %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="col-sm-9 main">
+<!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
+<!----------------------- EDIT START ---------------------------->
+
+<h2><center>Non-obvious features of Python and cctbx functions</center></h2>
+
+<p class="lead mt-4">This tutorial describes some non-obvious features of python and of the cctbx.</p>
+
+
+<h3 class="mt-4">Is it a new object or a pointer to the old one?</h3>
+
+<p>Whenever you say something like:</p>
+
+<pre class="codeDL"><code>b = [1,2,3]  # a list of values
+a = b   #  does a get the value of b or is it a pointer
+</code></pre>
+
+<p>you want to ask yourself whether a is a pointer to b (that is, they are the same object with different names), or whether a is a new (separate) object.  The reason this is important is that it affects what happens to b when you change something about a.</p>
+
+<p>Let’s look at this example. We are going to change the second element of a and see what happens to b:</p>
+
+<pre class="codeDL"><code>print (a)  # prints out [1,2,3]
+print (b)  # prints out [1,2,3]
+</code></pre>
+
+<pre class="codeDL"><code>a[1] = 10  # set value of second element of a
+print (a)  # prints out [1,10,3]
+print (b)  # prints out [1,10,3]
+</code></pre>
+
+<p>So in this case, a is just a pointer to b. We change a or b and the other changes too.  We could use the list() function to instead make a new object:</p>
+
+<pre class="codeDL"><code>d = list(b)   #   make a new list from b
+</code></pre>
+
+<p>Now if we change b, we don’t change d:</p>
+
+<pre class="codeDL"><code>print (d)  # d looks like b: [1, 10, 3]
+b[0] = 20  # set value of first element of b
+print (d)  #  d is not a pointer to b: still prints [1, 10, 3]
+</code></pre>
+
+<p>What about a slightly more complicated case where we have an object (a list in this case) that contains other objects (another list):</p>
+
+<pre class="codeDL"><code>f = [6,7,8]  #  f is an object (a list)
+x = [1,2,f]  # x is a list with some numeric values and an object (f)
+print(x)  #  looks like [1, 2, [6, 7, 8]]
+</code></pre>
+
+<p>Let’s make a new object with the list() function:</p>
+
+<pre class="codeDL"><code>y = list(x)   #  make a new list and call it y
+</code></pre>
+
+<p>The result is not exactly what you might expect.  The object y is a new list, so as before if you change an element of x you do not change y:</p>
+
+<pre class="codeDL"><code>print(y)  #  looks like [1, 2, [6, 7, 8]]
+x[0]=7  # replace element 0 of x
+x[2]=[3,4,5]  # replace element 2 of x
+print(y)  #  y is still [1, 2, [6, 7, 8]]
+</code></pre>
+
+<p>However if you change something about the object f (change a value in this object), you do change f within both x and y. Let’s run this from the beginning:</p>
+
+<pre class="codeDL"><code>f = [6,7,8]  #  f is an object (a list)
+x = [1,2,f]  # a list with some numeric values and an object (f)
+y = list(x)   #  make a new list and call it y
+</code></pre>
+
+
+<pre class="codeDL"><code>print (y)    # looks like [1, 2, [6, 7, 8]]
+x[0] = 100   # change element 0 of x
+print (x)    # changed:[100, 2, [6, 7, 8]]
+print (y)    # still looks like [1, 2, [6, 7, 8]]
+</code></pre>
+
+<pre class="codeDL"><code>f[0] = 32    # change the object f
+print (x)    # changed in x:[100, 2, [32, 7, 8]]
+print (y)    # the object f within y changes [1, 2, [32, 7, 8]]
+</code></pre>
+
+<p>Note (see below) that if we had instead made a deep copy of x, the object f would have been deep copied as well so that changing f would not have changed y at all.</p>
+
+<p>Here is documentation on how all this works for Python: <a href="https://docs.python.org/3/reference/datamodel.html">https://docs.python.org/3/reference/datamodel.html</a></p>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-5">Does the member function change the object, return a part, or return something new?</h3>
+
+<p>In general when you are working with an object in Python or CCTBX and applying a member function of that object, you have to ask yourself whether you are changing the original object and whether the return value (if any) is a pointer to the original object or a copy that is separate.  Some things to keep in mind:</p>
+
+<ul>
+<li>A member function of an object might change the object itself and return nothing, or</li>
+<li>it might change the object and return a pointer to the changed object, or</li>
+<li>it might return a pointer to some part of the object, or</li>
+<li>it might return a completely new object or value.</li>
+</ul>
+
+<p>The general rules in CCTBX for what to expect about something returned by a member function of some object are:</p>
+
+<ul>
+  <li>If a calculation is carried out in order to get the object that is returned, the object that is returned is a new one and not a pointer to anything in the original object</li>
+  <li>If a part of an array is selected with a select() function, a new array is returned, not a pointer.</li>
+  <li>If the function is just identifying some existing attribute of the object and returning it, a pointer to that existing attribute is returned, and any changes made to the new object also change the original one</li>
+</ul>
+
+<p>Note: If your goal is to change a specific part of a CCTBX object, usually the best approach is to use selections. You select part of the object (some elements), then you then set the values of those selected elements to values that you supply. See the sections on model and flex array selections for how to do this.</p>
+
+<p>In general, you have to look at the documentation or the definition of the object or carry out some tests to find out for sure what is going to happen when you access a member function of a CCTBX object.  Here are some examples.</p>
+
+<p>Let’s set up a map_data object to work with:</p>
+
+<pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager # load map_model_manager
+mmm=map_model_manager() # get an initialized instance of the map_model_manager
+mmm.generate_map()# get a model from a small library model and calculate a map
+map_data = mmm.map_manager().map_data()  # the map as flex.double() 3D array)
+</code></pre>
+
+<p>If we just make an assignment of map_data to a new array, these are the same object and changing one in any way changes the other:</p>
+
+<pre class="codeDL"><code>map_data_copy = map_data   #  just a pointer to map_data
+</code></pre>
+
+<p>If we deep_copy() map_data, the new copy is totally separate, changing one has no effect on the other. The same holds  for using the Python deepcopy() function:</p>
+
+<pre class="codeDL"><code>map_data_deep_copy = map_data.deep_copy()   #  totally new array
+from copy import deepcopy  # import deepcopy
+map_data_deepcopy = deepcopy(map_data)   #  totally new array
+</code></pre>
+
+<p>A similar situation occurs frequently in Python. If we have a list and use the sort() member function, this does not return anything; it just changes the list itself:</p>
+
+<pre class="codeDL"><code>a = [5,3,8]  # a list of numbers
+a.sort()  #  sort the list.  Nothing is returned
+</code></pre>
+
+<p>If we instead use the count() member function, a value is returned and the object is not changed:</p>
+
+<pre class="codeDL"><code>n = a.count(3)  # count values of 3 and return the number
+print (n)  # prints 1
+</code></pre>
+
+<p>For a CCTBX flex array, selecting a part of the array generally returns a new object. Let’s set up a little 1D array:</p>
+
+<pre class="codeDL"><code>from scitbx.array_family import flex  # import flex
+array = flex.double()  # set up a flex.double() array
+array.append(100)  # put in a value of 100
+array.append(200)  # and a value of 200
+print list(array) # prints [100.0, 200.0]
+</code></pre>
+
+<p>Let’s select part of the array:</p>
+
+<pre class="codeDL"><code>sel = (array == 100)  # identify array elements equal to 100
+selected_data = array.select(sel)  # returns new object
+print (list(selected_data[0]))  # prints [100.0]
+</code></pre>
+
+<p>Now if we change the original array, the part that was selected and returned is not changed:
+array[0] = 23 #  change original array</p>
+
+<pre class="codeDL"><code>print(list(selected_data))  # prints [100.0]
+</code></pre>
+
+<p>Many CCTBX objects have member functions that return the result of some calculation.  In these cases the object that is returned is a new object, and changes made to this new object do not affect the original one.  For example, complex_double() objects have a function parts() that returns the real and imaginary parts of the object:</p>
+
+<pre class="codeDL"><code>complex_array = flex.complex_double() # a complex double array
+complex_array.append((1+2j))   # append the complex number (1+2i)
+complex_array.append((23-6j))   # append the complex number (23-6i)
+a,b = complex_array.parts()  # pointers a and b to the real and imaginary parts
+print (list(complex_array))  # print out the array: [(1+2j), (23-6j)]
+print (list(a), list(b))  # prints ([1.0, 23.0], [2.0, -6.0])
+</code></pre>
+
+<p>The parts of the complex array are calculated with the parts() function. They are not existing attributes of the complex array.  Now if we change a or b, the original is not changed:</p>
+
+<pre class="codeDL"><code>a[1] = 99 #  change pointer to a
+print (list(complex_array))  # still prints out [(1+2j), (23-6j)]
+</code></pre>
+
+<p>Note that this result is not obvious.  If the flex complex_double() type happened to store complex numbers as two lists, one of the real parts and one of the complex parts, then the parts() function would have returned pointers to each of these two lists and changing a or b would have changed the original.</p>
+
+<p>Other CCTBX functions have member functions that return a pointer to an existing attribute.  A map coefficients array has attributes of indices and data, and you can get a pointer to the data with the function data().  Let’s get a map coefficients object:</p>
+
+<pre class="codeDL"><code>map_coeffs = mmm.map_manager().map_as_fourier_coefficients()  # map coeffs
+print (print (map_coeffs.data()[0]))  # (22.1332152449-33.1246974818j)
+</code></pre>
+
+<p>And use the data() function to get a pointer to the data:</p>
+
+<pre class="codeDL"><code>data = map_coeffs.data() # the map coefficients themselves
+print (data[0]) # the first map coefficient ((22.1332152449-33.1246974818j))
+</code></pre>
+
+<p>If we change the value of data[0], it will change the map coefficients too:</p>
+
+<pre class="codeDL"><code>data[0] = (10+6j)  # set value of data[0]
+print (map_coeffs.data()[0])  # prints (10+6j)
+</code></pre>
+
+<p>Note that the map coefficients object has another function called phases() that seems somewhat related but that performs a calculation instead of returning an existing attribute. Let’s get the return result from the phases() function:</p>
+
+<pre class="codeDL"><code>phases = map_coeffs.phases() # new object with indices and phases only
+</code></pre>
+
+<p>The contents of <code>phases.data()</code> have been calculated from map_coeffs.data() and changing the information in phases.data() has no effect on the values in map_coeffs.data().</p>
+
+<p>A final example is a comparison of the member functions <code>as_1d()</code> and <code>as_float()</code> for a 3D flex array. The <code>as_1d()</code> function returns a new object in which the data is just a pointer to the original. The <code>as_float()</code> function that seems similar has a different behavior: it performs a calculation and returns a new object in which the data are completely separate from the original data:</p>
+
+<pre class="codeDL"><code>map_data = mmm.map_manager().map_data()  # 3D flex.double array
+map_data_as_1d = map_data.as_1d()  # new object, data are shared
+map_data_as_float = map_data.as_float() # new object, new data
+</code></pre>
+
+<p>Let’s print out starting values:</p>
+
+<pre class="codeDL"><code>print (map_data[0], map_data_as_1d[0], map_data_as_float[0]) #
+</code></pre>
+
+<p>Now set the value of map_data and see if the others change:</p>
+
+<pre class="codeDL"><code>map_data[0] = 999.  # set map_data
+print (map_data[0], map_data_as_1d[0], map_data_as_float[0]) #
+</code></pre>
+
+<p>The map_data and map_data_as_1d both change, but the map_data_as_float is not changed.</p>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-5">Using Python deepcopy or a deep_copy() member function</h3>
+
+<p>One way to be sure that the object you are working with is a completely new one is to use the Python deepcopy() function or a member function of a cctbx class called deep_copy(). Each of these makes a new copy. Each of these also increases memory usage by the size of that new copy.</p>
+
+<p>You use the Python deepcopy() function only when you really need it.  It makes a completely new copy of whatever you specify:</p>
+
+<pre class="codeDL"><code>from copy import deepcopy  # import deepcopy
+x = [1,2,[6,7,8]]  # a list with some values and a list
+y = deepcopy(x)   #  completely new copy of x. Change x; nothing happens to y
+</code></pre>
+
+
+<p>To see the use of deep_copy() in a CCTBX object, let’s set up a map_data object:</p>
+
+<pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager # load map_model_manager
+mmm=map_model_manager() # get an initialized instance of the map_model_manager
+mmm.generate_map()# get a model from a small library model and calculate a map
+map_data = mmm.map_manager().map_data()  # the map as flex.double() 3D array)
+print (map_data[27])  # prints original value of -0.0131240713008
+</code></pre>
+
+<p>We can create a pointer to map_data:</p>
+
+<pre class="codeDL"><code>map_data_pointer = map_data  #  just points to map_data
+</code></pre>
+
+<p>or make a deep copy of map_data:</p>
+
+<pre class="codeDL"><code>map_data_deep_copy = map_data.deep_copy()  #  completely new data
+</code></pre>
+
+<p>If we change map_data it changes map_data_pointer but not map_data_deep_copy:</p>
+
+<pre class="codeDL"><code>map_data[27] = 100  #  set value of map_data
+print (map_data_pointer[27])   # prints 100
+print (map_data_deep_copy[27])  # prints original value of -0.0131240713008
+</code></pre>
+
+<p>Note that making a deep_copy uses as much new memory as the original array, while using a pointer uses almost no memory. Therefore you want to make a deep_copy only when it is necessary.</p>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-5">Default in a function call set to an empty list (don’t do this)</h3>
+
+<p>You might be tempted to make a function call with a default argument that is an empty list, like this:</p>
+
+<pre class="codeDL"><code>def my_bad_function(value, current_list = []):   # don’t do this
+  current_list.append(value)      # current_list from previous call
+  return current_list   # returns current_list
+</code></pre>
+
+<p>This is supposed to use an empty list as the value of current_list if current_list is not supplied.  This works the first time you do it:</p>
+
+<pre class="codeDL"><code>print (my_bad_function(1))   #  prints [1]...current_list was []
+</code></pre>
+
+<p>However the second time you call it without specifying the value of the default current_list, the value of current_list from the first call gets used:</p>
+
+<pre class="codeDL"><code>print (my_bad_function(2))   #  prints [1, 2] ...current_list was [1]
+</code></pre>
+
+<p>You can get the behavior that (presumably) you want by using None in the function call and setting the value of current_list to [] if its value is None:</p>
+
+<pre class="codeDL"><code>def better_function(value, current_list = None):   # ok way
+  if current_list is None:   # catch uninitialized current_list
+     current_list = []       # set its value to []
+  current_list.append(value)      # works
+  return current_list   # returns current_list
+</code></pre>
+
+<pre class="codeDL"><code>print (better_function(1))   #  prints [1]...current_list was []
+print (better_function(2))   #  prints [2]...current_list was []
+</code></pre>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-5">Use map_data.tricubic_interpolation with caution if your map is not periodic</h3>
+
+<p>Some CCTBX map functions assume that the map repeats indefinitely with a periodicity equal to the size of the map in each direction. This can sometimes result in these functions returning values that are not what you expect. An example is the tricubic_interpolation function.</p>
+
+<p>You can access the value of a map at a grid point simply by referring to it: value = map_data[1,2,3] gives the value of the map at the grid point (1,2,3).</p>
+
+<p>You can get interpolated values of a map with the tricubic_interpolation function, which works on fractional coordinates.  If your map has a size of (10,10,10), then interpolated_value = map_data.tricubic_interpolation((0.1,0.2,0.3)) will give you the value at the same grid point (and these values will match).</p>
+
+<p>Now what happens if we use grid points or fractional coordinates that are outside the bounds of the map?  A CCTBX map with a size of (10,10,10) often would have gridding running from (0,0,0) to (9,9,9). The grid point (10,10,10) typically is assumed to have a value the same as the grid point at (0,0,0).  This is referred to as "wrapping", as the map wraps around with a period equal to the size of the map.</p>
+
+<p>If you try to access the value of the (10,10,10) grid point with value = map_data[10,10,10] you will get an error saying that an index is out of range (all three are out of range because the map only goes from 0 to 9 in each direction.)</p>
+
+<p>On the other hand, if you try to access the value at the same place using interpolated_value = map_data.tricubic_interpolation((1.0,1.0,1.0)) you will get the value of the map at (0,0,0).</p>
+
+<p>Why the difference?  The tricubic_interpolation assumes that the map is wrapped.  The interpolation process uses map values at grid points around the (x,y,z) coordinate to estimate the value at (x,y,z). If one of these grid points falls inside the bounds of the map, the value is taken directly from the map.  Any grid points that do not fall inside the bounds of the map (0 to 9 in each direction in our example) are mapped inside the bounds by adding or subtracting multiples of 10 (or whatever the number of grid points along each direction).</p>
+
+<p>Consequently the tricubic_interpolation function will give the same answers for (x,y,z) and (x+l, y+n, z+m) where l, n and m are any integers.</p>
+
+<p>If your map is actually not wrapped, that is, your map does not repeat indefinitely, you need to make sure you do not use tricubic_interpolation to refer to any points outside the bounds of your map.  Additionally, be aware that tricubic_interpolation can give incorrect values for points that are near the edges of your map because it may use values from the opposite face of the map when it is interpolating.</p>
+
+<!----------------------- EDIT END ---------------------------->
+<!-- DO NOT EDIT ANYTHING BELOW!!!! -->
+</div> <!-- end col-sm-9 -->
+
+<!-- automatic table of contents
+     located in the sidebar; will move to the top on a small screen -->
+<div class="col-sm-3 mt-5">
+  <nav id="toc" data-toggle="toc"></nav>
+</div> <!-- end col-sm-3 -->
+
+
+{% endblock %}

@@ -1,14 +1,10 @@
-{% extends "cctbx/header_new.html" %}
+{% extends "cctbx/header.html" %}
 
 {% load static %}
 
 {% block content %}
 
-<div class="container">
-
-<div class="row">
-
-<div class="col-sm-9">
+<div class="col-sm-9 main">
 <!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
 <!----------------------- EDIT START ---------------------------->
 <!--
@@ -32,7 +28,7 @@ For this tutorial, let’s get a map and a model first.</p>
 
 <h3 class="mt-3">Getting example files</h3>
 
-<p>If you don't have the example files from the previous tutorials yet, here is how you set them up. Let’s work with a library model and map (revisit <a href="{% url 'doc_high_level_objects' %}">this page</a> if you need a refresher on high level objects):</p>
+<p>If you don't have the example files from the previous tutorials yet, here is how you set them up. Let’s work with a library model and map (revisit <a href="{% url 'doc_hlo_intro' %}">this page</a> if you need a refresher on high level objects):</p>
 
 <pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager      #   load in the map_model_manager
 mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
@@ -45,7 +41,7 @@ mmm.write_model("model.pdb")    #   write out a model in PDB format
 
 <h3 class="mt-3">Setting up the Map-Model manager</h3>
 
-<p>Let's set up the DataManager that can read in our files: (described <a href="{% url 'doc_data_manager' %}">here</a>):</p>
+<p>Let's set up the DataManager that can read in our files: (described <a href="{% url 'doc_hlo_data_manager' %}">here</a>):</p>
 
 <pre class="codeDL"><code>from iotbx.data_manager import DataManager    #   Load in the DataManager
 dm = DataManager()                            #   Initialize the DataManager and call it dm
@@ -191,12 +187,9 @@ box_mmm_soft_mask.create_mask_around_atoms(soft_mask = True)   #  create soft ma
 
 <!-- automatic table of contents
      located in the sidebar; will move to the top on a small screen -->
-<div class="col-sm-3">
+<div class="col-sm-3 mt-5">
   <nav id="toc" data-toggle="toc"></nav>
 </div> <!-- end col-sm-3 -->
 
-</div> <!-- end row -->
-
-</div> <!-- end container -->
 
 {% endblock %}

@@ -8,11 +8,11 @@ import libtbx.load_env
 
 tst_list = [
   "$D/regression/tst_1_template.py",
-  "$D/regression/tst_2_doc_high_level_objects.py",
-  "$D/regression/tst_3_doc_model_manager.py",
-  "$D/regression/tst_4_doc_data_manager.py",
-  "$D/regression/tst_5_doc_map_manager.py",
-  "$D/regression/tst_6_doc_model_map_manager.py",
+  "$D/regression/tst_2_doc_hlo_intro.py",
+  "$D/regression/tst_3_doc_hlo_model_manager.py",
+  "$D/regression/tst_4_doc_hlo_data_manager.py",
+  "$D/regression/tst_5_doc_hlo_map_manager.py",
+  "$D/regression/tst_6_doc_hlo_model_map_manager.py",
   ]
 
 def run():

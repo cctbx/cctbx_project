@@ -1,15 +1,10 @@
-{% extends "cctbx/header_new.html" %}
+{% extends "cctbx/header.html" %}
 
 {% load static %}
 
 {% block content %}
 
-<div class="container">
-
-<div class="row">
-
-
-<div class="col-sm-9">
+<div class="col-sm-9 main">
 <!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
 <!----------------------- EDIT START ---------------------------->
 
@@ -47,7 +42,7 @@ dm = DataManager()                             # Get an initialized version as d
 
 <h3 class="mt-3">Setting up the example files</h3>
 
-<p>Let’s work with a library model and calculate a map for it. We can obtain the example model with the map_model_manager (revisit <a href="{% url 'doc_high_level_objects' %}">this page</a> if you need a refresher on high level objects):</p>
+<p>Let’s work with a library model and calculate a map for it. We can obtain the example model with the map_model_manager (revisit <a href="{% url 'doc_hlo_intro' %}">this page</a> if you need a refresher on high level objects):</p>
 
 <pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager      #   load in the map_model_manager
 mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
@@ -330,7 +325,7 @@ indices[1], data[1]                # indices and data for first term
 <pre class="codeDL"><code>map_coeffs_low_res.size()   # number of data in the low_res Fourier representation
 </code></pre>
 
-<p>We can save these map coefficients as an MTZ file just as we did in the <a href="{% url 'doc_data_manager' %}">tutorial on reading and writing files</a>:</p>
+<p>We can save these map coefficients as an MTZ file just as we did in the <a href="{% url 'doc_hlo_data_manager' %}">tutorial on reading and writing files</a>:</p>
 
 <pre class="codeDL"><code>mtz_dataset = map_coeffs_low_res.as_mtz_dataset(column_root_label='F')    # mtz dataset
 mtz_object=mtz_dataset.mtz_object()            #  extract an object that knows mtz format
@@ -504,12 +499,9 @@ print ( ncs_map_manager.ncs_object())
 
 <!-- automatic table of contents
      located in the sidebar; will move to the top on a small screen -->
-<div class="col-sm-3">
+<div class="col-sm-3 mt-5">
   <nav id="toc" data-toggle="toc"></nav>
 </div> <!-- end col-sm-3 -->
 
-</div> <!-- end row -->
-
-</div> <!-- end container -->
 
 {% endblock %}
