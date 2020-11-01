@@ -785,7 +785,8 @@ def calculate_fsc(**kw):
      starting_u_cart = starting_u_cart,
      scaling_u_cart = scaling_u_cart)
 
-def analyze_anisotropy(f_array,
+def analyze_anisotropy(
+  f_array,
   overall_si,
   si_list,
   sthol_list,
@@ -798,6 +799,75 @@ def analyze_anisotropy(f_array,
   out = sys.stdout):
 
   print ("\n",79*"=","\nAnalyzing anisotropy","\n",79*"=", file = out)
+
+  aniso_info = get_aniso_info(
+    f_array = f_array,
+    overall_si = overall_si,
+    si_list = si_list,
+    sthol_list = sthol_list,
+    direction_vectors = direction_vectors,
+    resolution = resolution,
+    weight_by_variance = weight_by_variance,
+    minimum_sd = minimum_sd,
+    use_average_fall_off = use_average_fall_off,
+    out = out)
+
+  aniso_info = get_starting_sd_info(
+    aniso_info = aniso_info,)
+
+  for i in range(3):
+   a_b_info = get_a_b_matrices(
+     aniso_info = aniso_info,
+     out = out)
+
+  print("\nA scale values by direction vector", file = out)
+  print("  D-min  A-zero   E**2   ", file = out, end = "")
+
+  display_scale_values(
+    aniso_info = aniso_info,
+    n_display=n_display,
+    values_by_dv = aniso_info.aa_values_by_dv,
+    out = out)
+
+  print("\nA scale values (calculated) by direction vector", file = out)
+  print("  D-min  A-zero   E**2   ", file = out, end = "")
+
+  display_scale_values(
+    aniso_info = aniso_info,
+    n_display=n_display,
+    values_by_dv = aniso_info.aa_calc_values_by_dv,
+    out = out)
+
+  print("\nB scale values by direction vector", file = out)
+  print("  D-min  A-zero   E**2   ", file = out, end = "")
+
+  display_scale_values(
+    aniso_info = aniso_info,
+    n_display=n_display,
+    values_by_dv = aniso_info.bb_values_by_dv,
+    out = out)
+
+  print("\nB scale values (calculated) by direction vector", file = out)
+  print("  D-min  A-zero   E**2   ", file = out, end = "")
+
+  display_scale_values(
+    aniso_info = aniso_info,
+    n_display=n_display,
+    values_by_dv = aniso_info.bb_calc_values_by_dv,
+    out = out)
+
+def get_aniso_info(
+    f_array = None,
+    overall_si = None,
+    si_list = None,
+    sthol_list = None,
+    direction_vectors = None,
+    resolution = None,
+    weight_by_variance = None,
+    minimum_sd = None,
+    use_average_fall_off = None,
+    out = sys.stdout):
+
   """
   si.target_sthol2=input_info.target_sthol2
   si.d_min_list=input_info.d_min_list
@@ -870,100 +940,123 @@ def analyze_anisotropy(f_array,
     aa_scale_values.extend(aa_values)
     bb_scale_values.extend(bb_values)
 
+  return group_args(
+    f_array = f_array,
+    resolution = resolution,
+    a_zero_values = a_zero_values,
+    ssqr_values = ssqr_values,
+    sthol_list = sthol_list,
+    minimum_sd = minimum_sd,
+    weight_by_variance = weight_by_variance,
+    n_bins = best_si.target_sthol2.size(),
+    n_dv = direction_vectors.size(),
+    best_si = best_si,
+    indices = indices,
+    indices_by_dv = indices_by_dv,
+    aa_scale_values = aa_scale_values,
+    bb_scale_values = bb_scale_values,
+    aa_values_by_dv = aa_values_by_dv,
+    bb_values_by_dv = bb_values_by_dv,
+  )
+
+def get_starting_sd_info(aniso_info = None):
+
   # Try to get variances of aa, bb values within each resolution bin
   sd_aa = flex.double()
   sd_bb = flex.double()
-  for i in range(best_si.target_sthol2.size()):
+  for i in range(aniso_info.n_bins):
     aa_in_bin = flex.double()
     bb_in_bin = flex.double()
-    for k in range(direction_vectors.size()):
-      aa_in_bin.append(aa_values_by_dv[k][i])
-      bb_in_bin.append(bb_values_by_dv[k][i])
-    sd_aa.append(max(minimum_sd,aa_in_bin.sample_standard_deviation()))
-    sd_bb.append(max(minimum_sd,bb_in_bin.sample_standard_deviation()))
+    for k in range(aniso_info.n_dv):
+      aa_in_bin.append(aniso_info.aa_values_by_dv[k][i])
+      bb_in_bin.append(aniso_info.bb_values_by_dv[k][i])
+    sd_aa.append(max(aniso_info.minimum_sd,
+       aa_in_bin.sample_standard_deviation()))
+    sd_bb.append(max(aniso_info.minimum_sd,
+       bb_in_bin.sample_standard_deviation()))
 
   aa_sd_values = flex.double()
   bb_sd_values = flex.double()
-  for k in range(direction_vectors.size()):
+  for k in range(aniso_info.n_dv):
     aa_sd_values.extend(sd_aa)
     bb_sd_values.extend(sd_bb)
+  aniso_info.aa_sd_values = aa_sd_values
+  aniso_info.bb_sd_values = bb_sd_values
+  return aniso_info
 
-
+def get_a_b_matrices(
+    aniso_info = None,
+    out = sys.stdout):
   # Now get A and B matrices from aa and bb:
-  aa_b_cart = get_aniso_from_scale_values(f_array,aa_scale_values,
-     aa_sd_values,indices,
-     resolution, weight_by_variance)
-  bb_b_cart = get_aniso_from_scale_values(f_array,bb_scale_values,
-    bb_sd_values,indices,
-     resolution, weight_by_variance)
+  aa_b_cart = get_aniso_from_scale_values(aniso_info,
+    aniso_info.aa_scale_values,
+    aniso_info.aa_sd_values,
+  )
+  bb_b_cart = get_aniso_from_scale_values(aniso_info,
+     aniso_info.bb_scale_values,
+     aniso_info.bb_sd_values,
+  )
   print("A matrix (%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(tuple(aa_b_cart)),
     file = out)
   print("B matrix (%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(tuple(bb_b_cart)),
     file = out)
 
+  aniso_info = get_calc_values(
+    aniso_info = aniso_info,
+    aa_b_cart = aa_b_cart,
+    bb_b_cart = bb_b_cart,)
+
+  aniso_info = update_sd_values(aniso_info)
+
+  return aniso_info
+
+
+def get_calc_values(
+   aniso_info,
+   aa_b_cart,
+   bb_b_cart,):
   # Calculate values from matrices
   aa_calc_values_by_dv=[]
   bb_calc_values_by_dv=[]
-  for k in range(min(direction_vectors.size(),n_display)):
-    aa_calc_values_by_dv.append(get_scale_from_aniso_b_cart(f_array = f_array,
-      indices = indices_by_dv[k],
+  for k in range(aniso_info.n_dv):
+    aa_calc_values_by_dv.append(get_scale_from_aniso_b_cart(
+      f_array = aniso_info.f_array,
+      indices = aniso_info.indices_by_dv[k],
       b_cart = aa_b_cart))
-    bb_calc_values_by_dv.append(get_scale_from_aniso_b_cart(f_array = f_array,
-      indices = indices_by_dv[k],
+    bb_calc_values_by_dv.append(get_scale_from_aniso_b_cart(
+      f_array = aniso_info.f_array,
+      indices = aniso_info.indices_by_dv[k],
       b_cart = bb_b_cart))
-
-  print("\nA scale values by direction vector", file = out)
-  print("  D-min  A-zero   E**2   ", file = out, end = "")
-
-  display_scale_values(f_array=f_array,
-    n_display=n_display,
-    direction_vectors=direction_vectors,
-    best_si = best_si,
-    a_zero_values = a_zero_values,
-    ssqr_values = ssqr_values,
-    values_by_dv = aa_values_by_dv,
-    indices_by_dv = indices_by_dv,
-    out = out)
-
-  print("\nA scale values (calculated) by direction vector", file = out)
-  print("  D-min  A-zero   E**2   ", file = out, end = "")
-
-  display_scale_values(f_array=f_array,
-    n_display=n_display,
-    direction_vectors=direction_vectors,
-    best_si = best_si,
-    a_zero_values = a_zero_values,
-    ssqr_values = ssqr_values,
-    values_by_dv = aa_calc_values_by_dv,
-    indices_by_dv = indices_by_dv,
-    out = out)
+  aniso_info.aa_calc_values_by_dv = aa_calc_values_by_dv
+  aniso_info.bb_calc_values_by_dv = bb_calc_values_by_dv
+  return aniso_info
 
 
-  print("\nB scale values by direction vector", file = out)
-  print("  D-min  A-zero   E**2   ", file = out, end = "")
-  display_scale_values(f_array=f_array,
-    n_display=n_display,
-    direction_vectors=direction_vectors,
-    best_si = best_si,
-    a_zero_values = a_zero_values,
-    ssqr_values = ssqr_values,
-    values_by_dv = bb_values_by_dv,
-    indices_by_dv = indices_by_dv,
-    out = out)
+def update_sd_values(aniso_info):
 
-  print("\nB scale values (calculated) by direction vector", file = out)
-  print("  D-min  A-zero   E**2   ", file = out, end = "")
+  # Now update error estimates using calculated values as reference
+  # Try to get variances of aa, bb values within each resolution bin
+  #
+  delta_aa = flex.double(aniso_info.n_bins,0)
+  delta_bb = flex.double(aniso_info.n_bins,0)
+  for k in range(aniso_info.n_dv):
+    delta_aa += flex.pow2(
+       aniso_info.aa_values_by_dv[k] - aniso_info.aa_calc_values_by_dv[k])
+    delta_bb += flex.pow2(
+       aniso_info.bb_values_by_dv[k] - aniso_info.bb_calc_values_by_dv[k])
+  scale = max(1,aniso_info.n_dv - 1)
+  aa_sd_vs_resolution= (delta_aa/scale)**0.5 # sd vs resolution
+  bb_sd_vs_resolution= (delta_bb/scale)**0.5 # sd vs resolution
+  # And create sd vector
+  aa_sd_values = flex.double()
+  bb_sd_values = flex.double()
+  for k in range(aniso_info.n_dv):
+    aa_sd_values.extend(aa_sd_vs_resolution)
+    bb_sd_values.extend(bb_sd_vs_resolution)
 
-  display_scale_values(f_array=f_array,
-    n_display=n_display,
-    direction_vectors=direction_vectors,
-    best_si = best_si,
-    a_zero_values = a_zero_values,
-    ssqr_values = ssqr_values,
-    values_by_dv = bb_calc_values_by_dv,
-    indices_by_dv = indices_by_dv,
-    out = out)
-
+  aniso_info.aa_sd_values = aa_sd_values
+  aniso_info.bb_sd_values = bb_sd_values
+  return aniso_info
 
 def get_scale_from_aniso_b_cart(f_array = None,
     indices = None,
@@ -980,48 +1073,47 @@ def get_scale_from_aniso_b_cart(f_array = None,
   return scaled_f_array.data()
 
 def display_scale_values(
-    f_array=None,
+    aniso_info = None,
     n_display=None,
-    direction_vectors=None,
-    best_si = None,
-    a_zero_values = None,
-    ssqr_values = None,
     values_by_dv = None,
-    indices_by_dv = None,
     out = sys.stdout):
 
 
-
-  for k in range(min(direction_vectors.size(),n_display)):
+  for k in range(min(aniso_info.n_dv,n_display)):
     print("  %4s " %(k+1), file = out, end = "")
   print("", file = out)
-  for i in range(best_si.target_sthol2.size()):
-    dd = 0.5/best_si.target_sthol2[i]**0.5
-    print ("%6.2f  %6.3f %8.3f   " %(dd,a_zero_values[i],ssqr_values[i]),
+  for i in range(aniso_info.n_bins):
+    dd = 0.5/aniso_info.best_si.target_sthol2[i]**0.5
+    print ("%6.2f  %6.3f %8.3f   " %(dd,
+      aniso_info.a_zero_values[i],aniso_info.ssqr_values[i]),
         file = out, end = "")
-    for k in range(min(direction_vectors.size(),n_display)):
+    for k in range(min(aniso_info.n_dv,n_display)):
       print (" %5.2f " %(values_by_dv[k][i]), file = out, end= "")
     print("", file=out)
 
-def get_aniso_from_scale_values(f_array,scale_values,sd_values,indices, resolution,weight_by_variance):
-  scale_values_array = f_array.customized_copy(
+def get_aniso_from_scale_values(
+   aniso_info = None,
+   scale_values = None,
+   sd_values = None):
+  scale_values_array = aniso_info.f_array.customized_copy(
         data = scale_values,
-        indices = indices)
+        indices = aniso_info.indices)
   scaled_array,aniso_obj=analyze_aniso(
         b_iso=0,
-        f_array=scale_values_array,resolution=resolution,
+        f_array=scale_values_array,resolution=aniso_info.resolution,
         remove_aniso=True,out=null_out())
   if not aniso_obj:
     return None
+
   # Optimize this (with weighting if weight_by_variance)
 
   ar = aniso_refinery(
-    f_array,
-    indices,
+    aniso_info.f_array,
+    aniso_info.indices,
     aniso_obj.b_cart,
     scale_values,
     sd_values,
-    weight_by_variance)
+    aniso_info.weight_by_variance)
   ar.run()
   resid = ar.show_result()
   b_cart = ar.get_b()
