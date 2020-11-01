@@ -12,6 +12,115 @@ from simtbx.nanoBragg.sim_data import SimData
 ENERGY_CONV = 10000000000.0 * constants.c * constants.h / constants.electron_volt
 
 
+def multipanel_sim(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
+                        cuda=False, oversample=0, Ncells_abc=(50, 50, 50),
+                        mos_dom=1, mos_spread=0, beamsize_mm=0.001, device_Id=0, omp=False,
+                        show_params=False, crystal_size_mm=0.01, printout_pix=None, time_panels=True,
+                        verbose=0, default_F=0, interpolate=0, recenter=True, profile="gauss",
+                        spot_scale_override=None,
+                        add_water = False, add_air=False, water_path_mm=0.005, air_path_mm=0,
+                        adc_offset=0, readout_noise=3, psf_fwhm=0, gain=1, mosaicity_random_seeds=None):
+  """
+  :param CRYSTAL: dxtbx Crystal model
+  :param DETECTOR: dxtbx detector model
+  :param BEAM: dxtbx beam model
+  :param Famp: cctbx miller array (amplitudes)
+  :param energies: list of energies to simulate the scattering
+  :param fluxes:  list of pulse fluences per energy (same length as energies)
+  :param cuda: whether to use GPU (only works for nvidia builds)
+  :param oversample: pixel oversample factor (0 means nanoBragg will decide)
+  :param Ncells_abc: number of unit cells along each crystal direction in the mosaic block
+  :param mos_dom: number of mosaic domains in used to sample mosaic spread (texture)
+  :param mos_spread: mosaicity in degrees (spherical cap width)
+  :param beamsize_mm: focal size of the beam
+  :param device_Id: cuda device id (ignore if cuda=False)
+  :param omp: whether to use open mp (required open MP build configuration)
+  :param show_params: show the nanoBragg parameters
+  :param crystal_size_mm: size of the crystal (increases the intensity of the spots)
+  :param printout_pix: debug pixel position : tuple of (pixel_fast_coord, pixel_slow_coord)
+  :param time_panels: show timing info
+  :param verbose: verbosity level for nanoBragg (0-10), 0 is quiet
+  :param default_F: default amplitude value for nanoBragg
+  :param interpolate: whether to interpolate for small mosaic domains
+  :param recenter: recenter for tilted cameras, deprecated
+  :param profile: profile shape, can be : gauss, round, square, or tophat
+  :param spot_scale_override: scale the simulated scattering bythis amounth (overrides value based on crystal thickness)
+  :param add_water: add water to similated pattern
+  :param add_air: add ait to simulated pattern
+  :param water_path_mm: length of water the beam travels through
+  :param air_path_mm: length of air the beam travels through
+  :param adc_offset: add this value to each pixel in simulated pattern
+  :param readout_noise: readout noise level (usually 3-5 ADU)
+  :param psf_fwhm: point spread kernel FWHM
+  :param gain: photon gain
+  :param mosaicity_random_seeds: random seeds to simulating mosaic texture
+  :return: list of [(panel_id0,simulated pattern0), (panel_id1, simulated_pattern1), ...]
+  """
+
+  nbBeam = NBbeam()
+  nbBeam.size_mm = beamsize_mm
+  nbBeam.unit_s0 = BEAM.get_unit_s0()
+  wavelengths = ENERGY_CONV / np.array(energies)
+  nbBeam.spectrum = list(zip(wavelengths, fluxes))
+
+  nbCrystal = NBcrystal()
+  nbCrystal.dxtbx_crystal = CRYSTAL
+  nbCrystal.miller_array = Famp
+  nbCrystal.Ncells_abc = Ncells_abc
+  nbCrystal.symbol = CRYSTAL.get_space_group().info().type().lookup_symbol()
+  nbCrystal.thick_mm = crystal_size_mm
+  nbCrystal.xtal_shape = profile
+  nbCrystal.n_mos_domains = mos_dom
+  nbCrystal.mos_spread_deg = mos_spread
+
+  panel_images = []
+
+  for pid in range(len(DETECTOR)):
+    tinit = time.time()
+    S = SimData()
+    S.detector = DETECTOR
+    S.beam = nbBeam
+    S.crystal = nbCrystal
+    S.panel_id = pid
+    S.using_cuda = cuda
+    S.using_omp = omp
+    S.add_air = add_air
+    S.air_path_mm = air_path_mm
+    S.add_water = add_water
+    S.water_path_mm = water_path_mm
+    S.rois = rois_perpanel[pid]
+    S.readout_noise = readout_noise
+    S.gain = gain
+    S.psf_fwhm = psf_fwhm
+    S.include_noise = False
+
+    if mosaicity_random_seeds is not None:
+      S.mosaic_seeds = mosaicity_random_seeds
+
+    S.instantiate_nanoBragg(verbose=verbose, oversample=oversample, interpolate=interpolate, device_Id=device_Id,
+                            default_F=default_F, adc_offset=adc_offset)
+    if recenter:
+      S.update_nanoBragg_instance("beam_center_mm", DETECTOR[int(pid)].get_beam_centre(BEAM.get_s0()))
+    if printout_pix is not None:
+      S.update_nanoBragg_instance("printout_pixel_fastslow", printout_pix)
+    if spot_scale_override is not None:
+      S.update_nanoBragg_instance("spot_scale", spot_scale_override)
+
+    S.generate_simulated_image()
+
+    if show_params:
+      S.D.show_params()
+      print('spot scale: %2.7g' % S.D.spot_scale)
+    panel_image = S.D.raw_pixels.as_numpy_array()
+    panel_images.append([pid, panel_image])
+    S.D.free_all()
+    if time_panels:
+      tdone = time.time() - tinit
+      print('Panel %d took %.4f seconds' % (pid, tdone))
+    del S.D
+
+  return panel_images
+
 def flexBeam_sim_colors(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                         pids=None, cuda=False, oversample=0, Ncells_abc=(50, 50, 50),
                         mos_dom=1, mos_spread=0, beamsize_mm=0.001, device_Id=0, omp=False,
