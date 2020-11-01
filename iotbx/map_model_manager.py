@@ -2375,6 +2375,9 @@ class map_model_manager(object):
       local_sharpen = None,
       anisotropic_sharpen = None,
       overall_sharpen_before_and_after_local = True,
+      get_scale_as_aniso_u = None,
+      use_dv_weighting = None,
+      run_analyze_anisotropy = None,
       nproc = None,
     ):
     '''
@@ -2429,6 +2432,8 @@ class map_model_manager(object):
       anisotropic_sharpen = None,
       minimum_low_res_cc = None,
       get_scale_as_aniso_u = None,
+      use_dv_weighting = None,
+      run_analyze_anisotropy = None,
       spectral_scaling = True,
       expected_rms_fc_list = None,
       model_for_rms_fc = None,
@@ -2499,6 +2504,8 @@ class map_model_manager(object):
       anisotropic_sharpen = None,
       minimum_low_res_cc = None,
       get_scale_as_aniso_u = None,
+      use_dv_weighting = None,
+      run_analyze_anisotropy = None,
       spectral_scaling = True,
       expected_rms_fc_list = None,
       model_for_rms_fc = None,
@@ -2677,6 +2684,8 @@ class map_model_manager(object):
       anisotropic_sharpen = None,
       minimum_low_res_cc = None,
       get_scale_as_aniso_u = None,
+      use_dv_weighting = None,
+      run_analyze_anisotropy = None,
       spectral_scaling = None,
       expected_rms_fc_list = None,
       model_for_rms_fc = None,
@@ -2849,9 +2858,12 @@ class map_model_manager(object):
         direction_vectors = direction_vectors,
         minimum_low_res_cc = minimum_low_res_cc,
         get_scale_as_aniso_u = get_scale_as_aniso_u,
+        use_dv_weighting = use_dv_weighting,
+        run_analyze_anisotropy = run_analyze_anisotropy,
         expected_rms_fc_list = expected_rms_fc_list,
         model_for_rms_fc = model_for_rms_fc,
-        replace_aniso_with_tls_equiv = replace_aniso_with_tls_equiv)
+        replace_aniso_with_tls_equiv = replace_aniso_with_tls_equiv,
+        )
     # scaling_group_info group_args object has direction vectors, list of si:
     #  scaling_group_info.direction_vectors
     #  scaling_group_info.overall_u_cart_to_remove  aniso scale factor (u_cart)
@@ -3175,6 +3187,8 @@ class map_model_manager(object):
      minimum_low_res_cc = 0.20,
      direction_vectors = None,
      get_scale_as_aniso_u = None,
+     use_dv_weighting = None,
+     run_analyze_anisotropy = None,
      expected_rms_fc_list = None,
      model_for_rms_fc = None,
      replace_aniso_with_tls_equiv = None,
@@ -3270,6 +3284,8 @@ class map_model_manager(object):
       smooth_fsc = False, # XXX may change
       cutoff_after_last_high_point = True,
       get_scale_as_aniso_u = True, # always get it; use if get_scale_as_aniso_u
+      use_dv_weighting = use_dv_weighting,
+      run_analyze_anisotropy = run_analyze_anisotropy,
       expected_rms_fc_list = expected_rms_fc_list,
       resolution = resolution, # nominal resolution
       out = self.log)
@@ -3518,6 +3534,8 @@ class map_model_manager(object):
       is_model_based = False,
       is_external_based = False,
       get_scale_as_aniso_u = None,
+      use_dv_weighting = None,
+      run_analyze_anisotropy = None,
       spectral_scaling = None,
       expected_rms_fc_list = None,
       model_for_rms_fc = None,
@@ -3722,6 +3740,8 @@ class map_model_manager(object):
       is_model_based = False,
       is_external_based = False,
       get_scale_as_aniso_u = None,
+      use_dv_weighting = None,
+      run_analyze_anisotropy = None,
       spectral_scaling = None,
       expected_rms_fc_list = None,
       model_for_rms_fc = None,
@@ -3940,6 +3960,8 @@ class map_model_manager(object):
       direction_vectors = None,
       minimum_low_res_cc = None,
       get_scale_as_aniso_u = None,
+      use_dv_weighting = None,
+      run_analyze_anisotropy = None,
       spectral_scaling = None,
       expected_rms_fc_list = None,
       model_for_rms_fc = None,
@@ -4014,6 +4036,8 @@ class map_model_manager(object):
     box_info.direction_vectors = direction_vectors
     box_info.minimum_low_res_cc = minimum_low_res_cc
     box_info.get_scale_as_aniso_u = get_scale_as_aniso_u
+    box_info.use_dv_weighting = use_dv_weighting
+    box_info.run_analyze_anisotropy = run_analyze_anisotropy
     box_info.expected_rms_fc_list = expected_rms_fc_list
     box_info.model_for_rms_fc = model_for_rms_fc
     box_info.replace_aniso_with_tls_equiv = replace_aniso_with_tls_equiv
@@ -6193,6 +6217,8 @@ class run_fsc_as_class:
            direction_vectors = self.box_info.direction_vectors,
            minimum_low_res_cc = self.box_info.minimum_low_res_cc,
            get_scale_as_aniso_u = self.box_info.get_scale_as_aniso_u,
+           use_dv_weighting = self.box_info.use_dv_weighting,
+           run_analyze_anisotropy = self.box_info.run_analyze_anisotropy,
            expected_rms_fc_list = self.box_info.expected_rms_fc_list,
            model_for_rms_fc = self.box_info.model_for_rms_fc,
            replace_aniso_with_tls_equiv =

@@ -443,6 +443,8 @@ def calculate_fsc(**kw):
   equalize_power = kw.get('equalize_power',False)
   verbose = kw.get('verbose',None)
   maximum_scale_factor = kw.get('maximum_scale_factor',None)
+  use_dv_weighting = kw.get('use_dv_weighting',None)
+  run_analyze_anisotropy = kw.get('run_analyze_anisotropy',None)
   pseudo_likelihood = kw.get('pseudo_likelihood',False)
   skip_scale_factor = kw.get('skip_scale_factor',False)
   optimize_b_eff = kw.get('optimize_b_eff',None)
@@ -775,14 +777,16 @@ def calculate_fsc(**kw):
       scaling_u_cart = None
 
     # Analyze anisotropy
-    analyze_anisotropy(f_array,
-      overall_si,
-      si_list,
-      sthol_list,
-      direction_vectors,
-      weights_para_list,
-      resolution,
-      out = out)
+    if run_analyze_anisotropy:
+      analyze_anisotropy(f_array,
+        overall_si,
+        si_list,
+        sthol_list,
+        direction_vectors,
+        weights_para_list,
+        resolution,
+        use_dv_weighting,
+        out = out)
 
     return group_args(
      group_args_type = 'scaling_info objects, one set per direction_vector',
@@ -800,9 +804,11 @@ def analyze_anisotropy(
   direction_vectors,
   weights_para_list,
   resolution,
+  use_dv_weighting,
   n_display = 6,
+  n_iter= 1,
   weight_by_variance = True,
-  minimum_sd = 0.1,
+  minimum_sd = 0.01,
   use_average_fall_off = True,
   out = sys.stdout):
 
@@ -818,16 +824,25 @@ def analyze_anisotropy(
     resolution = resolution,
     weight_by_variance = weight_by_variance,
     minimum_sd = minimum_sd,
+    use_dv_weighting = use_dv_weighting,
     use_average_fall_off = use_average_fall_off,
     out = out)
 
   aniso_info = get_starting_sd_info(
     aniso_info = aniso_info,)
 
-  for i in range(3):
-   a_b_info = get_a_b_matrices(
+  aniso_info.aa_b_cart = None
+  aniso_info.bb_b_cart = None
+
+  for i in range(n_iter):
+   aniso_info = get_a_b_matrices(
      aniso_info = aniso_info,
      out = out)
+
+  print("A matrix (%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(
+     tuple(aniso_info.aa_b_cart)), file = out)
+  print("B matrix (%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(
+     tuple(aniso_info.bb_b_cart)), file = out)
 
   print("\nA scale values by direction vector", file = out)
   print("  D-min  A-zero   E**2   ", file = out, end = "")
@@ -875,6 +890,7 @@ def get_aniso_info(
     resolution = None,
     weight_by_variance = None,
     minimum_sd = None,
+    use_dv_weighting= None,
     use_average_fall_off = None,
     out = sys.stdout):
 
@@ -960,6 +976,7 @@ def get_aniso_info(
     sthol_list = sthol_list,
     minimum_sd = minimum_sd,
     weight_by_variance = weight_by_variance,
+    use_dv_weighting = use_dv_weighting,
     n_bins = best_si.target_sthol2.size(),
     n_dv = direction_vectors.size(),
     best_si = best_si,
@@ -999,24 +1016,28 @@ def get_starting_sd_info(aniso_info = None):
 def get_a_b_matrices(
     aniso_info = None,
     out = sys.stdout):
-  # Now get A and B matrices from aa and bb:
-  aa_b_cart = get_aniso_from_scale_values(aniso_info,
+
+  # Get A and B matrices from scale factors aa_scale_values and bb_scale_values
+
+  aniso_info.aa_b_cart = get_aniso_from_scale_values(
+    aniso_info,
     aniso_info.aa_scale_values,
     aniso_info.aa_sd_values,
+    b_cart = aniso_info.aa_b_cart,
   )
-  bb_b_cart = get_aniso_from_scale_values(aniso_info,
+  aniso_info.bb_b_cart = get_aniso_from_scale_values(
+     aniso_info,
      aniso_info.bb_scale_values,
      aniso_info.bb_sd_values,
+     b_cart = aniso_info.bb_b_cart,
   )
-  print("A matrix (%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(tuple(aa_b_cart)),
-    file = out)
-  print("B matrix (%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(tuple(bb_b_cart)),
-    file = out)
 
-  aniso_info = get_calc_values(
+  aniso_info.aa_calc_values_by_dv = get_calc_values(
     aniso_info = aniso_info,
-    aa_b_cart = aa_b_cart,
-    bb_b_cart = bb_b_cart,)
+    b_cart = aniso_info.aa_b_cart)
+  aniso_info.bb_calc_values_by_dv = get_calc_values(
+    aniso_info = aniso_info,
+    b_cart = aniso_info.bb_b_cart)
 
   aniso_info = update_sd_values(aniso_info)
 
@@ -1024,23 +1045,16 @@ def get_a_b_matrices(
 
 def get_calc_values_with_dv_weighting(
    aniso_info,
-   aa_b_cart,
-   bb_b_cart,):
+   b_cart,):
 
   # Calculate values from matrices but weight as in dv weighting
-  aa_calc_values= get_scale_from_aniso_b_cart(
+  calc_values= get_scale_from_aniso_b_cart(
       f_array = aniso_info.f_array,
       indices = aniso_info.f_array.indices(),
-      b_cart = aa_b_cart)
-  bb_calc_values= get_scale_from_aniso_b_cart(
-      f_array = aniso_info.f_array,
-      indices = aniso_info.f_array.indices(),
-      b_cart = bb_b_cart)
-  aa_calc_values_by_dv=[]
-  bb_calc_values_by_dv=[]
+      b_cart = b_cart)
+  calc_values_by_dv=[]
   for dv in aniso_info.direction_vectors:
-    aa_calc_values_by_dv.append(flex.double())
-    bb_calc_values_by_dv.append(flex.double())
+    calc_values_by_dv.append(flex.double())
   for i_bin in aniso_info.f_array.binner().range_used():
     sel       = aniso_info.f_array.binner().selection(i_bin)
     k = 0
@@ -1049,43 +1063,29 @@ def get_calc_values_with_dv_weighting(
       weights_para_sel = weights_para.select(sel)
       mean_weight = max(1.e-10,weights_para_sel.min_max_mean().mean)
 
-      aa_calc_values_by_dv[k].append( (aa_calc_values.select(sel) *
-         weights_para_sel).min_max_mean().mean/mean_weight)
-      bb_calc_values_by_dv[k].append( (bb_calc_values.select(sel) *
+      calc_values_by_dv[k].append( (calc_values.select(sel) *
          weights_para_sel).min_max_mean().mean/mean_weight)
       k += 1
-  aniso_info.aa_calc_values_by_dv = aa_calc_values_by_dv
-  aniso_info.bb_calc_values_by_dv = bb_calc_values_by_dv
-  return aniso_info
+  return calc_values_by_dv
 
 def get_calc_values(
    aniso_info,
-   aa_b_cart,
-   bb_b_cart,
-   use_dv_weighting = True):
-  if use_dv_weighting:
+   b_cart,):
+
+  if aniso_info.use_dv_weighting:
    return get_calc_values_with_dv_weighting(
      aniso_info,
-     aa_b_cart,
-     bb_b_cart,
+     b_cart,
     )
 
   # Calculate values from matrices
-  aa_calc_values_by_dv=[]
-  bb_calc_values_by_dv=[]
+  calc_values_by_dv=[]
   for k in range(aniso_info.n_dv):
-    aa_calc_values_by_dv.append(get_scale_from_aniso_b_cart(
+    calc_values_by_dv.append(get_scale_from_aniso_b_cart(
       f_array = aniso_info.f_array,
       indices = aniso_info.indices_by_dv[k],
-      b_cart = aa_b_cart))
-    bb_calc_values_by_dv.append(get_scale_from_aniso_b_cart(
-      f_array = aniso_info.f_array,
-      indices = aniso_info.indices_by_dv[k],
-      b_cart = bb_b_cart))
-  aniso_info.aa_calc_values_by_dv = aa_calc_values_by_dv
-  aniso_info.bb_calc_values_by_dv = bb_calc_values_by_dv
-  return aniso_info
-
+      b_cart = b_cart))
+  return calc_values_by_dv
 
 def update_sd_values(aniso_info):
 
@@ -1150,26 +1150,32 @@ def display_scale_values(
 def get_aniso_from_scale_values(
    aniso_info = None,
    scale_values = None,
-   sd_values = None):
-  scale_values_array = aniso_info.f_array.customized_copy(
+   sd_values = None,
+   b_cart = None,
+   ):
+
+  # If nothing present yet,
+  #   Get a first cut for aniso_obj.b_cart with analyze_aniso
+  if not b_cart:
+    scale_values_array = aniso_info.f_array.customized_copy(
         data = scale_values,
         indices = aniso_info.indices)
-  scaled_array,aniso_obj=analyze_aniso(
+    scaled_array,aniso_obj=analyze_aniso(
         b_iso=0,
         f_array=scale_values_array,resolution=aniso_info.resolution,
         remove_aniso=True,out=null_out())
-  if not aniso_obj:
-    return None
+    if not aniso_obj:
+      return None
+    else:
+      b_cart = aniso_obj.b_cart
 
   # Optimize this (with weighting if weight_by_variance)
 
   ar = aniso_refinery(
-    aniso_info.f_array,
-    aniso_info.indices,
-    aniso_obj.b_cart,
+    aniso_info,
+    b_cart,
     scale_values,
-    sd_values,
-    aniso_info.weight_by_variance)
+    sd_values,)
   ar.run()
   resid = ar.show_result()
   b_cart = ar.get_b()
@@ -1178,23 +1184,19 @@ def get_aniso_from_scale_values(
 
 class aniso_refinery:
   def __init__(self,
-    f_array,
-    indices,
+    aniso_info,
     b_cart,
     scale_values,
     sd_values,
-    weight_by_variance,
     eps=0.01,
     tol=0.01,
     max_iterations=20,
     ):
 
-    self.f_array=f_array
-    self.indices=indices
+    self.aniso_info = aniso_info
     self.b_cart=b_cart
     self.scale_values=scale_values
     self.sd_values=sd_values
-    self.weight_by_variance=weight_by_variance
 
     self.tol=tol
     self.eps=eps
@@ -1223,10 +1225,15 @@ class aniso_refinery:
     return f, g
 
   def residual(self,b):
-    calc_values =get_scale_from_aniso_b_cart(f_array = self.f_array,
-      indices = self.indices, b_cart = b)
+    calc_values_by_dv = get_calc_values(
+      aniso_info = self.aniso_info,
+      b_cart = b,)
+    calc_values = flex.double()
+    for c in calc_values_by_dv:
+      calc_values.extend(c)
+
     diffs = calc_values - self.scale_values
-    if self.weight_by_variance:
+    if self.aniso_info.weight_by_variance:
       diffs=diffs/self.sd_values
     resid = diffs.rms()
     return resid
