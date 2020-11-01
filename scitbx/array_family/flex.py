@@ -193,12 +193,18 @@ def _standard_deviation_of_the_sample(self):
 def _sample_standard_deviation(self):
   return _standard_deviation_helper(self, 1)
 
+def _rms(data):
+  den = data.size()
+  if den <= 0: return None
+  return (sum(pow2(data)) / den)**0.5
+
 double.format_min = _format_min
 double.format_max = _format_max
 double.format_mean = _format_mean
 double.min_max_mean = _min_max_mean_double_init
 double.standard_deviation_of_the_sample = _standard_deviation_of_the_sample
 double.sample_standard_deviation = _sample_standard_deviation
+double.rms = _rms
 
 def select(sequence, permutation=None, flags=None):
   result = []

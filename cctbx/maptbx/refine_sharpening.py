@@ -7,7 +7,6 @@ from copy import deepcopy
 from libtbx import group_args
 from libtbx.utils import null_out
 
-from cctbx.array_family import flex
 import scitbx.lbfgs
 import math
 from cctbx.maptbx.segment_and_split_map import map_and_b_object
@@ -280,7 +279,7 @@ def fit_cc(cc_list=None,sthol_list=None,
     fit=cc_fit(sthol_list=sthol_list,scale=scale,value_zero=cc_list[0],
        scale_using_last=scale_using_last)
     fit=fit-cc_list
-    rms=fit.norm()
+    rms=fit.rms()
     if best_rms is None or rms<best_rms:
       best_rms=rms
       best_scale=scale
@@ -462,7 +461,6 @@ def calculate_fsc(**kw):
      kw['direction_vectors'] = None
      print("Getting overall analysis first",file = out)
      overall_si = calculate_fsc(**kw)
-     print (overall_si)
      print("Done with getting overall analysis ",file = out)
 
   # calculate anticipated fall-off of model data with resolution
@@ -581,11 +579,11 @@ def calculate_fsc(**kw):
         if cca is None:
           cca=0.
         cc_dict_by_dv[i].append(cca)
-        normalization = 1./max(1.e-10,weights_para_sel.norm())
+        normalization = 1./max(1.e-10,weights_para_sel.rms())
         if fo_map:
           fo_a = fo.customized_copy(data=fo.data()*weights_para_sel)
           f_array_fo=map_coeffs_to_fp(fo_a)
-          rms_fo=normalization * f_array_fo.data().norm()
+          rms_fo=normalization * f_array_fo.data().rms()
         else:
           rms_fo=1.
 
@@ -594,7 +592,7 @@ def calculate_fsc(**kw):
         elif fc_map:
           fc_a  = fc.customized_copy(data=fc.data()*weights_para_sel)
           f_array_fc=map_coeffs_to_fp(fc_a)
-          rms_fc=normalization *f_array_fc.data().norm()
+          rms_fc=normalization *f_array_fc.data().rms()
         else:
           rms_fc=1.
 
@@ -614,7 +612,7 @@ def calculate_fsc(**kw):
         cc_dict_by_dv[i].append(cc)
         if fo_map:
           f_array_fo=map_coeffs_to_fp(fo)
-          rms_fo=f_array_fo.data().norm()
+          rms_fo=f_array_fo.data().rms()
         else:
           rms_fo=1.
 
@@ -622,7 +620,7 @@ def calculate_fsc(**kw):
           rms_fc = expected_rms_fc_list[i_bin-1]
         elif fc_map:
           f_array_fc=map_coeffs_to_fp(fc)
-          rms_fc=f_array_fc.data().norm()
+          rms_fc=f_array_fc.data().rms()
         else:
           rms_fc=1.
         rms_fo_dict_by_dv[i].append(rms_fo)
@@ -796,6 +794,7 @@ def analyze_anisotropy(f_array,
   n_display = 6,
   weight_by_variance = True,
   minimum_sd = 0.1,
+  use_average_fall_off = True,
   out = sys.stdout):
 
   print ("\n",79*"=","\nAnalyzing anisotropy","\n",79*"=", file = out)
@@ -813,18 +812,22 @@ def analyze_anisotropy(f_array,
 
   """
 
-  # Choose direction with least fall-off.  Use maximum rms_fo_list average
-  best_dir = None
-  best_mean_fo = None
-  for k in range(direction_vectors.size()):
-    mean_fo = si_list[k].rms_fo_list.min_max_mean().mean
-    if best_mean_fo is None or mean_fo > best_mean_fo:
-      best_mean_fo = mean_fo
-      best_dir = k
-  best_si = si_list[best_dir]
-  print("Direction "+
-     "%s (%.2f, %.2f, %.2f) has minimum fall-off with resolution" %(
-      tuple([best_dir]+list(direction_vectors[best_dir]))), file = out)
+  if use_average_fall_off:
+    best_si = overall_si
+    print("Using overall average fall-off as baseline", file = out)
+  else:
+    # Choose direction with least fall-off.  Use maximum rms_fo_list average
+    best_dir = None
+    best_mean_fo = None
+    for k in range(direction_vectors.size()):
+      mean_fo = si_list[k].rms_fo_list.min_max_mean().mean
+      if best_mean_fo is None or mean_fo > best_mean_fo:
+        best_mean_fo = mean_fo
+        best_dir = k
+    best_si = si_list[best_dir]
+    print("Direction "+
+       "%s (%.2f, %.2f, %.2f) has minimum fall-off with resolution" %(
+        tuple([best_dir]+list(direction_vectors[best_dir]))), file = out)
 
   ssqr_values = flex.double()
   a_zero_values = flex.double()
@@ -876,8 +879,8 @@ def analyze_anisotropy(f_array,
     for k in range(direction_vectors.size()):
       aa_in_bin.append(aa_values_by_dv[k][i])
       bb_in_bin.append(bb_values_by_dv[k][i])
-    sd_aa.append(max(minimum_sd,aa_in_bin.standard_deviation_of_the_sample()))
-    sd_bb.append(max(minimum_sd,bb_in_bin.standard_deviation_of_the_sample()))
+    sd_aa.append(max(minimum_sd,aa_in_bin.sample_standard_deviation()))
+    sd_bb.append(max(minimum_sd,bb_in_bin.sample_standard_deviation()))
 
   aa_sd_values = flex.double()
   bb_sd_values = flex.double()
@@ -1077,7 +1080,7 @@ class aniso_refinery:
     diffs = calc_values - self.scale_values
     if self.weight_by_variance:
       diffs=diffs/self.sd_values
-    resid = diffs.norm()/diffs.size()
+    resid = diffs.rms()
     return resid
 
   def gradients(self,b):
@@ -1223,7 +1226,7 @@ def smooth_values(cc_values, max_relative_rms=10, n_smooth = None,
 def relative_rms(cc_values):
   diffs = cc_values[:-1] - cc_values[1:]
   avg_delta = abs(diffs.min_max_mean().mean)
-  rms = diffs.standard_deviation_of_the_sample()
+  rms = diffs.sample_standard_deviation()
   return rms/max(1.e-10,avg_delta)
 
 def complete_cc_analysis(
@@ -1861,7 +1864,7 @@ def calculate_adjusted_sa(ma,phases,b,
 
 def get_kurtosis(data=None):
   mean=data.min_max_mean().mean
-  sd=data.standard_deviation_of_the_sample()
+  sd=data.sample_standard_deviation()
   x=data-mean
   return (x**4).min_max_mean().mean/sd**4
 
