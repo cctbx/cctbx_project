@@ -159,7 +159,7 @@ print(list(array)) # prints [100.0, 200.0]
 
 <pre class="codeDL"><code>sel = (array == 100)  # identify array elements equal to 100
 selected_data = array.select(sel)  # returns new object
-print(list(selected_data[0]))  # prints [100.0]
+print(list(selected_data))  # prints [100.0]
 </code></pre>
 
 <p>Now if we change the original array, the part that was selected and returned is not changed:
@@ -189,7 +189,7 @@ print(list(complex_array))  # still prints out [(1+2j), (23-6j)]
 <p>Other CCTBX functions have member functions that return a pointer to an existing attribute.  A map coefficients array has attributes of indices and data, and you can get a pointer to the data with the function data().  Let’s get a map coefficients object:</p>
 
 <pre class="codeDL"><code>map_coeffs = mmm.map_manager().map_as_fourier_coefficients()  # map coeffs
-print(print (map_coeffs.data()[0]))  # (22.1332152449-33.1246974818j)
+print(map_coeffs.data()[0])  # (22.1332152449-33.1246974818j)
 </code></pre>
 
 <p>And use the data() function to get a pointer to the data:</p>
@@ -275,11 +275,11 @@ print(map_data_deep_copy[27])  # prints original value of -0.0131240713008
 
 <!-- ----------------------------------------------------------------------- -->
 
-<h3 class="mt-5">Default in a function call set to an empty list (don’t do this)</h3>
+<h3 class="mt-5">Default in a function call set to an empty list (dont do this)</h3>
 
 <p>You might be tempted to make a function call with a default argument that is an empty list, like this:</p>
 
-<pre class="codeDL"><code>def my_bad_function(value, current_list = []):   # don’t do this
+<pre class="codeDL"><code>def my_bad_function(value, current_list = []):   # dont do this
   current_list.append(value)      # current_list from previous call
   return current_list   # returns current_list
 </code></pre>

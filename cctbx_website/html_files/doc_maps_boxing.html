@@ -19,6 +19,14 @@
 
 <p>Cutting out part of a map is referred to here as “boxing”.   The key step in cutting out a part of a map is specifying the part of the map to cut out. The grid point with the smallest indices in each direction in the cut-out map is called the “lower bounds” and the grid point with the highest indices is the “upper bounds”.  If the lower_bounds is (la,lb,lc) and the upper_bounds is (ua,ub,uc) then the resulting box will have (1+ua-la, 1+ub-lb, 1+uc-lc) grid points along a, b and c.  This is the value of “all” for the boxed map.  The box will start at lower_bounds, which will be the value of “origin” for the boxed map.</p>
 
+<p>First, lets set up a map:</p>
+
+<pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager # load map_model_manager
+mmm=map_model_manager()  # get initialized instance of the map_model_manager
+mmm.generate_map() # get a model and calculate a map for it
+map_data = mmm.map_data()  #  our 3D map object
+</code></pre>
+
 <p>Let’s set some lower and upper bounds:</p>
 
 <pre class="codeDL"><code>lower_bounds = (10,10,10)  # lower bounds for boxed map
