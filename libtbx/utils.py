@@ -1856,8 +1856,8 @@ def get_svn_revision(path=None):
   else:
     # Versions >= 7 of the entries file are flat text.  The first line is
     # the version number. The next set of digits after 'dir' is the revision.
-    if re.match('(\d+)', entries):
-      rev_match = re.search('\d+\s+dir\s+(\d+)', entries)
+    if re.match(r'(\d+)', entries):
+      rev_match = re.search(r'\d+\s+dir\s+(\d+)', entries)
       if rev_match:
         rev = int(rev_match.groups()[0])
   return rev
@@ -2040,7 +2040,8 @@ def concatenate_python_script(out, file_name):
   import to prevent syntax errors.  (This could be dangerous in most contexts
   but is required for some of our Coot-related scripts to work.)
   """
-  data = open(file_name, "r").read()
+  with open(file_name, "r") as f:
+    data = f.read()
   print("", file=out)
   print("#--- script copied from %s" % os.path.basename(file_name), file=out)
   for line in data.splitlines():

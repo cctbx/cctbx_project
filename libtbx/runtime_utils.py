@@ -272,6 +272,10 @@ class detached_process_client(detached_base):
     self._process_pid = None
     self.update_progress = True
 
+  def __del__(self):
+    if self._logfile is not None:
+      self._logfile.close()
+
   def isAlive(self):
     return (not self.finished)
 
