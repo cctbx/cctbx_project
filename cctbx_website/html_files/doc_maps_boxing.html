@@ -1,0 +1,98 @@
+{% extends "cctbx/header.html" %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="col-sm-9 main">
+<!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
+<!----------------------- EDIT START ---------------------------->
+
+<h2><center>Boxing maps and models</center></h2>
+
+<p class="lead mt-4">This is a lead paragraph. Give a short summary of what is explained in the page here.</p>
+
+
+<h3 class="mt-4">Cut out a box from a map</h3>
+
+<p>It is often convenient to work with just a part of a map. For example, if your structure contains identical 24 copies of a molecule, you might want to work with just one copy and then duplicate it to create the other 23 later.  In this section we are going to create a new map that represents part of  the map_data map we have been working with.  For this example, we are going to just look at the raw boxed map that results so that we can see how it works. In a real situation you would not only cut out the box but shift its origin using the map_model_manager (as in a later section).</p>
+
+<p>Cutting out part of a map is referred to here as “boxing”.   The key step in cutting out a part of a map is specifying the part of the map to cut out. The grid point with the smallest indices in each direction in the cut-out map is called the “lower bounds” and the grid point with the highest indices is the “upper bounds”.  If the lower_bounds is (la,lb,lc) and the upper_bounds is (ua,ub,uc) then the resulting box will have (1+ua-la, 1+ub-lb, 1+uc-lc) grid points along a, b and c.  This is the value of “all” for the boxed map.  The box will start at lower_bounds, which will be the value of “origin” for the boxed map.</p>
+
+<p>Let’s set some lower and upper bounds:</p>
+
+<pre class="codeDL"><code>lower_bounds = (10,10,10)  # lower bounds for boxed map
+upper_bounds = (21,31,21)  # upper bounds for boxed map
+</code></pre>
+
+<p>Now let’s cut out a part of our map.  In this example we are going to use maptbx.copy() to do this. Normally you will instead use the map_model_manager but using maptbx.copy() shows exactly what is happening:</p>
+
+<pre class="codeDL"><code>from cctbx import maptbx            # import maptbx
+box_map_data = maptbx.copy(map_data, lower_bounds, upper_bounds) # box the map
+</code></pre>
+
+<p>Let’s look at the origin and dimensions of this boxed map. We expect the origin to be at our lower_bounds (10,10,10) and the dimensions to be  (12, 22, 12), and the last available point is (21,31,21):</p>
+
+<pre class="codeDL"><code>print( box_map_data.origin())  # prints (10, 10, 10)
+print( box_map_data.all())     # prints (12, 22, 12)
+print( box_map_data.last(False)) # prints (21, 31, 21)
+</code></pre>
+
+<p>This boxed map is defined for any grid points from lower_bounds to upper_bounds, inclusive.  We can get the value at grid point (11,12,13) just like we did before and we will get the same answer:</p>
+
+<pre class="codeDL"><code>print( box_map_data[11,12,13])  # prints 0.0416163499881
+</code></pre>
+
+<p>The boxed map is not defined at grid point (0,0,0) or any other points outside of the bounds.  The boxed map is also a different size than the original (which had a size of 38400):</p>
+
+<pre class="codeDL"><code>print( box_map_data.size() )  # prints 3168
+</code></pre>
+
+<p>One final point:  the boxed map is a copy, not a pointer to part of the original map. So if you change a value in your boxed map, the original map is unchanged.</p>
+
+
+
+
+<h3 class="mt-4">Subtitle_1</h3>
+<p>Some text</p>
+<p>Some text with <code>code</code> quoted within text.</p>
+
+<h4>sub-subtitle</h4>
+<p>Some more text</p>
+
+<h3 class="mt-3">Subtitle_2</h3>
+<!--
+Code within <pre> tags will be extracted for tests
+Do start code immediatly after '<pre class="codeDL"><code>', like in the example below.
+Otherwise, the code will have indentation, and breaks.
+-->
+<pre class="codeDL"><code>
+</code></pre>
+
+<div class="codeGreen">
+</div>
+
+<!----------------------- EDIT END ---------------------------->
+<!-- DO NOT EDIT ANYTHING BELOW!!!! -->
+</div> <!-- end col-sm-9 -->
+
+<!-- automatic table of contents
+     located in the sidebar; will move to the top on a small screen -->
+<div class="col-sm-3 mt-5">
+  <nav id="toc" data-toggle="toc"></nav>
+</div> <!-- end col-sm-3 -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{% endblock %}
