@@ -6,6 +6,8 @@ from iotbx import file_reader
 import libtbx.phil.command_line
 from cctbx import miller
 from cctbx.crystal import symmetry
+import iotbx.pdb
+import mmtbx.model
 from six.moves import cStringIO as StringIO
 import os
 
@@ -97,10 +99,16 @@ class crystal_model(worker):
         pdb_in.assert_file_type("pdb")
         xray_structure = pdb_in.file_object.xray_structure_simple()
       elif model_ext == ".cif":
-        from cctbx.xray import structure
-        xs_dict = structure.from_cif(file_path=model_file_path)
-        assert len(xs_dict) == 1, "CIF should contain only one xray structure"
-        xray_structure = list(xs_dict.values())[0]
+        from libtbx.utils import Sorry
+        try:
+          from cctbx.xray import structure
+          xs_dict = structure.from_cif(file_path=model_file_path)
+          assert len(xs_dict) == 1, "CIF should contain only one xray structure"
+          xray_structure = list(xs_dict.values())[0]
+        except Sorry:
+          inp = iotbx.pdb.input(model_file_path)
+          model = mmtbx.model.manager(model_input=inp)
+          xray_structure = model.get_xray_structure()
       out = StringIO()
       xray_structure.show_summary(f=out)
       self.logger.main_log(out.getvalue())
