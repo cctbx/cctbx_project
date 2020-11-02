@@ -27,7 +27,7 @@ class reader(object):
     assert [file_name, file_object].count(None) == 1
     if (file_object is None):
       file_object = open(file_name)
-    lines = file_object.read()
+    lines = file_object.readlines()
     file_object.close()
     self._names = None
     self._indices = flex.miller_index()
