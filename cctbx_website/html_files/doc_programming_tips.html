@@ -25,13 +25,13 @@ a = b   #  does a get the value of b or is it a pointer
 
 <p>Let’s look at this example. We are going to change the second element of a and see what happens to b:</p>
 
-<pre class="codeDL"><code>print (a)  # prints out [1,2,3]
-print (b)  # prints out [1,2,3]
+<pre class="codeDL"><code>print(a)  # prints out [1,2,3]
+print(b)  # prints out [1,2,3]
 </code></pre>
 
 <pre class="codeDL"><code>a[1] = 10  # set value of second element of a
-print (a)  # prints out [1,10,3]
-print (b)  # prints out [1,10,3]
+print(a)  # prints out [1,10,3]
+print(b)  # prints out [1,10,3]
 </code></pre>
 
 <p>So in this case, a is just a pointer to b. We change a or b and the other changes too.  We could use the list() function to instead make a new object:</p>
@@ -43,7 +43,7 @@ print (b)  # prints out [1,10,3]
 
 <pre class="codeDL"><code>print (d)  # d looks like b: [1, 10, 3]
 b[0] = 20  # set value of first element of b
-print (d)  #  d is not a pointer to b: still prints [1, 10, 3]
+print(d)  #  d is not a pointer to b: still prints [1, 10, 3]
 </code></pre>
 
 <p>What about a slightly more complicated case where we have an object (a list in this case) that contains other objects (another list):</p>
@@ -74,15 +74,15 @@ y = list(x)   #  make a new list and call it y
 </code></pre>
 
 
-<pre class="codeDL"><code>print (y)    # looks like [1, 2, [6, 7, 8]]
+<pre class="codeDL"><code>print(y)    # looks like [1, 2, [6, 7, 8]]
 x[0] = 100   # change element 0 of x
-print (x)    # changed:[100, 2, [6, 7, 8]]
-print (y)    # still looks like [1, 2, [6, 7, 8]]
+print(x)    # changed:[100, 2, [6, 7, 8]]
+print(y)    # still looks like [1, 2, [6, 7, 8]]
 </code></pre>
 
 <pre class="codeDL"><code>f[0] = 32    # change the object f
-print (x)    # changed in x:[100, 2, [32, 7, 8]]
-print (y)    # the object f within y changes [1, 2, [32, 7, 8]]
+print(x)    # changed in x:[100, 2, [32, 7, 8]]
+print(y)    # the object f within y changes [1, 2, [32, 7, 8]]
 </code></pre>
 
 <p>Note (see below) that if we had instead made a deep copy of x, the object f would have been deep copied as well so that changing f would not have changed y at all.</p>
@@ -143,7 +143,7 @@ a.sort()  #  sort the list.  Nothing is returned
 <p>If we instead use the count() member function, a value is returned and the object is not changed:</p>
 
 <pre class="codeDL"><code>n = a.count(3)  # count values of 3 and return the number
-print (n)  # prints 1
+print(n)  # prints 1
 </code></pre>
 
 <p>For a CCTBX flex array, selecting a part of the array generally returns a new object. Let’s set up a little 1D array:</p>
@@ -152,14 +152,14 @@ print (n)  # prints 1
 array = flex.double()  # set up a flex.double() array
 array.append(100)  # put in a value of 100
 array.append(200)  # and a value of 200
-print list(array) # prints [100.0, 200.0]
+print(list(array)) # prints [100.0, 200.0]
 </code></pre>
 
 <p>Let’s select part of the array:</p>
 
 <pre class="codeDL"><code>sel = (array == 100)  # identify array elements equal to 100
 selected_data = array.select(sel)  # returns new object
-print (list(selected_data[0]))  # prints [100.0]
+print(list(selected_data[0]))  # prints [100.0]
 </code></pre>
 
 <p>Now if we change the original array, the part that was selected and returned is not changed:
@@ -174,14 +174,14 @@ array[0] = 23 #  change original array</p>
 complex_array.append((1+2j))   # append the complex number (1+2i)
 complex_array.append((23-6j))   # append the complex number (23-6i)
 a,b = complex_array.parts()  # pointers a and b to the real and imaginary parts
-print (list(complex_array))  # print out the array: [(1+2j), (23-6j)]
-print (list(a), list(b))  # prints ([1.0, 23.0], [2.0, -6.0])
+print(list(complex_array))  # print out the array: [(1+2j), (23-6j)]
+print(list(a), list(b))  # prints ([1.0, 23.0], [2.0, -6.0])
 </code></pre>
 
 <p>The parts of the complex array are calculated with the parts() function. They are not existing attributes of the complex array.  Now if we change a or b, the original is not changed:</p>
 
 <pre class="codeDL"><code>a[1] = 99 #  change pointer to a
-print (list(complex_array))  # still prints out [(1+2j), (23-6j)]
+print(list(complex_array))  # still prints out [(1+2j), (23-6j)]
 </code></pre>
 
 <p>Note that this result is not obvious.  If the flex complex_double() type happened to store complex numbers as two lists, one of the real parts and one of the complex parts, then the parts() function would have returned pointers to each of these two lists and changing a or b would have changed the original.</p>
@@ -189,19 +189,19 @@ print (list(complex_array))  # still prints out [(1+2j), (23-6j)]
 <p>Other CCTBX functions have member functions that return a pointer to an existing attribute.  A map coefficients array has attributes of indices and data, and you can get a pointer to the data with the function data().  Let’s get a map coefficients object:</p>
 
 <pre class="codeDL"><code>map_coeffs = mmm.map_manager().map_as_fourier_coefficients()  # map coeffs
-print (print (map_coeffs.data()[0]))  # (22.1332152449-33.1246974818j)
+print(print (map_coeffs.data()[0]))  # (22.1332152449-33.1246974818j)
 </code></pre>
 
 <p>And use the data() function to get a pointer to the data:</p>
 
 <pre class="codeDL"><code>data = map_coeffs.data() # the map coefficients themselves
-print (data[0]) # the first map coefficient ((22.1332152449-33.1246974818j))
+print(data[0]) # the first map coefficient ((22.1332152449-33.1246974818j))
 </code></pre>
 
 <p>If we change the value of data[0], it will change the map coefficients too:</p>
 
 <pre class="codeDL"><code>data[0] = (10+6j)  # set value of data[0]
-print (map_coeffs.data()[0])  # prints (10+6j)
+print(map_coeffs.data()[0])  # prints (10+6j)
 </code></pre>
 
 <p>Note that the map coefficients object has another function called phases() that seems somewhat related but that performs a calculation instead of returning an existing attribute. Let’s get the return result from the phases() function:</p>
@@ -220,13 +220,13 @@ map_data_as_float = map_data.as_float() # new object, new data
 
 <p>Let’s print out starting values:</p>
 
-<pre class="codeDL"><code>print (map_data[0], map_data_as_1d[0], map_data_as_float[0]) #
+<pre class="codeDL"><code>print(map_data[0], map_data_as_1d[0], map_data_as_float[0]) #
 </code></pre>
 
 <p>Now set the value of map_data and see if the others change:</p>
 
 <pre class="codeDL"><code>map_data[0] = 999.  # set map_data
-print (map_data[0], map_data_as_1d[0], map_data_as_float[0]) #
+print(map_data[0], map_data_as_1d[0], map_data_as_float[0]) #
 </code></pre>
 
 <p>The map_data and map_data_as_1d both change, but the map_data_as_float is not changed.</p>
@@ -251,7 +251,7 @@ y = deepcopy(x)   #  completely new copy of x. Change x; nothing happens to y
 mmm=map_model_manager() # get an initialized instance of the map_model_manager
 mmm.generate_map()# get a model from a small library model and calculate a map
 map_data = mmm.map_manager().map_data()  # the map as flex.double() 3D array)
-print (map_data[27])  # prints original value of -0.0131240713008
+print(map_data[27])  # prints original value of -0.0131240713008
 </code></pre>
 
 <p>We can create a pointer to map_data:</p>
@@ -267,8 +267,8 @@ print (map_data[27])  # prints original value of -0.0131240713008
 <p>If we change map_data it changes map_data_pointer but not map_data_deep_copy:</p>
 
 <pre class="codeDL"><code>map_data[27] = 100  #  set value of map_data
-print (map_data_pointer[27])   # prints 100
-print (map_data_deep_copy[27])  # prints original value of -0.0131240713008
+print(map_data_pointer[27])   # prints 100
+print(map_data_deep_copy[27])  # prints original value of -0.0131240713008
 </code></pre>
 
 <p>Note that making a deep_copy uses as much new memory as the original array, while using a pointer uses almost no memory. Therefore you want to make a deep_copy only when it is necessary.</p>
@@ -286,12 +286,12 @@ print (map_data_deep_copy[27])  # prints original value of -0.0131240713008
 
 <p>This is supposed to use an empty list as the value of current_list if current_list is not supplied.  This works the first time you do it:</p>
 
-<pre class="codeDL"><code>print (my_bad_function(1))   #  prints [1]...current_list was []
+<pre class="codeDL"><code>print(my_bad_function(1))   #  prints [1]...current_list was []
 </code></pre>
 
 <p>However the second time you call it without specifying the value of the default current_list, the value of current_list from the first call gets used:</p>
 
-<pre class="codeDL"><code>print (my_bad_function(2))   #  prints [1, 2] ...current_list was [1]
+<pre class="codeDL"><code>print(my_bad_function(2))   #  prints [1, 2] ...current_list was [1]
 </code></pre>
 
 <p>You can get the behavior that (presumably) you want by using None in the function call and setting the value of current_list to [] if its value is None:</p>
@@ -303,8 +303,8 @@ print (map_data_deep_copy[27])  # prints original value of -0.0131240713008
   return current_list   # returns current_list
 </code></pre>
 
-<pre class="codeDL"><code>print (better_function(1))   #  prints [1]...current_list was []
-print (better_function(2))   #  prints [2]...current_list was []
+<pre class="codeDL"><code>print(better_function(1))   #  prints [1]...current_list was []
+print(better_function(2))   #  prints [2]...current_list was []
 </code></pre>
 
 <!-- ----------------------------------------------------------------------- -->
