@@ -1776,9 +1776,7 @@ class manager(Base_geometry):
       yield bond
 
   def get_struct_conn_mmcif(self, hierarchy):
-    from iotbx.pdb.utils import all_label_asym_ids
     atoms = hierarchy.atoms()
-    label_asym_ids = all_label_asym_ids()
     def _atom_info(atom):
       return [  # auth
                 atom.parent().resname,
@@ -1787,7 +1785,7 @@ class manager(Base_geometry):
                 atom.name.strip(),
                 # label
                 atom.parent().resname,
-                label_asym_ids[atom.tmp],
+                hierarchy.get_label_asym_id(atom.parent().parent()),
                 hierarchy.get_label_seq_id(atom.parent()),
                 atom.name.strip(),
                 '.', # role
