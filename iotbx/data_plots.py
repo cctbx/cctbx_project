@@ -283,7 +283,9 @@ class table_data(object):
       else :
         if (self.x_is_inverse_d_min):
           row = [ math.sqrt(1/row[0]) ] + row[1:]
-        return [ (f % x) for f, x in zip(self.column_formats, row) ]
+        return [
+          (f % x) if x is not None else "*" for f, x in zip(self.column_formats, row)
+        ]
     else :
       f1 = "%-g"
       if (precision is not None):
