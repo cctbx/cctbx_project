@@ -789,7 +789,10 @@ def calculate_fsc(**kw):
 
     # Analyze anisotropy
     if run_analyze_anisotropy:
-      analyze_anisotropy(f_array,
+      analyze_anisotropy(
+        mc1,
+        mc2,
+        f_array,
         overall_si,
         si_list,
         sthol_list,
@@ -809,6 +812,8 @@ def calculate_fsc(**kw):
      scaling_u_cart = scaling_u_cart)
 
 def analyze_anisotropy(
+  half_map_coeffs_1,
+  half_map_coeffs_2,
   f_array,
   overall_si,
   si_list,
