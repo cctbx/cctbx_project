@@ -862,6 +862,13 @@ def analyze_anisotropy(
   print("B matrix (%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(
      tuple(aniso_info.bb_b_cart)), file = out)
 
+  display_z_error_values(
+    aniso_info = aniso_info,
+    n_display=n_display,
+    values_by_dv = aniso_info.aa_values_by_dv,
+    out = out)
+
+  print("\nA scale values (calculated) by direction vector", file = out)
   print("\nA scale values by direction vector", file = out)
   print("  D-min  A-zero   E**2   ", file = out, end = "")
 
@@ -897,6 +904,36 @@ def analyze_anisotropy(
     n_display=n_display,
     values_by_dv = aniso_info.bb_calc_values_by_dv,
     out = out)
+
+def display_z_error_values(
+    aniso_info = None,
+    n_display=None,
+    values_by_dv = None,
+    out = sys.stdout):
+  print("\nZ error values ", file = out)
+  print("  D-min  A-zero   E**2   Z   Z(fitted)", file = out)
+
+  z_values = flex.double()
+  for i in range(aniso_info.n_bins):
+    dd = 0.5/aniso_info.best_si.target_sthol2[i]**0.5
+    z_values.append(1./(1 + 0.5 * aniso_info.ssqr_values[i]))
+  # Fit to B
+  info = get_effective_b(values = z_values,
+      sthol2_values = aniso_info.best_si.target_sthol2,
+      n_bins_use = aniso_info.n_bins_use)
+  print("Approximate B-value for errors:"+
+      " %.2f A**2 (Scale = %.4f  rms = %.4f)" %(
+    info.effective_b,
+    info.b_zero,
+    info.rms,), file = out)
+  #info.calc_values
+  for i in range(aniso_info.n_bins):
+    dd = 0.5/aniso_info.best_si.target_sthol2[i]**0.5
+    print ("%6.2f  %6.3f %8.3f %8.3f  %8.3f " %(dd,
+      aniso_info.a_zero_values[i],aniso_info.ssqr_values[i],
+      z_values[i],info.calc_values[i]),
+        file = out,)
+
 
 def get_overall_anisotropy(aniso_info,
   out = sys.stdout):

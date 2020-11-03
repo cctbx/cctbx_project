@@ -5,8 +5,7 @@ from cctbx.array_family import flex
 from six.moves import range
 from six.moves import zip
 from libtbx.utils import null_out
-from iotbx.map_model_manager import map_model_manager, get_map_coeffs_as_fp_phi
-from cctbx.maptbx.segment_and_split_map import map_coeffs_to_fp
+from iotbx.map_model_manager import map_model_manager
 
 # Binned rms amplitude for beta-galactosidase calculated from 1 A - inf
 # with k_sol=0  (no solvent)
