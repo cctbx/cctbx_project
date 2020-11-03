@@ -14,7 +14,7 @@ from scitbx.array_family import flex
 from six.moves import cStringIO as StringIO
 from mmtbx.conformation_dependent_library import generate_protein_threes
 import math
-from libtbx import easy_pickle, Auto
+from libtbx import easy_pickle
 import scitbx.math
 import mmtbx.idealized_aa_residues.rotamer_manager
 import mmtbx.refinement.real_space.fit_residues
