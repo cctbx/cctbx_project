@@ -222,6 +222,8 @@ def generate_map_coefficients(
       model=None,  # Required model
       output_map_coeffs_file_name=None,
       d_min=3,
+      k_sol = None,
+      b_sol = None,
       scattering_table='electron',
       log=sys.stdout):
   '''
@@ -262,6 +264,9 @@ def generate_map_coefficients(
 
   fmodel_params.high_resolution=float(d_min)
   fmodel_params.scattering_table=scattering_table
+  if k_sol is not None and b_sol is not None:
+    fmodel_params.fmodel.k_sol = k_sol
+    fmodel_params.fmodel.b_sol = b_sol
   fmodel=fmodel_from_xray_structure(
     xray_structure = xrs,
     params         = fmodel_params,

@@ -434,6 +434,7 @@ def calculate_fsc(**kw):
   first_half_map_coeffs = kw.get('first_half_map_coeffs',None)
   second_half_map_coeffs = kw.get('second_half_map_coeffs',None)
   resolution = kw.get('resolution',None)
+  n_bins_use = kw.get('n_bins_use',None)
   fraction_complete = kw.get('fraction_complete',None)
   min_fraction_complete = kw.get('min_fraction_complete',None)
   is_model_based = kw.get('is_model_based',None)
@@ -546,7 +547,12 @@ def calculate_fsc(**kw):
           include_all_in_lowest_bin = True))
     else:
       weights_para_list.append(None)
-
+  if n_bins_use is None:
+    n_bins = len(list(f_array.binner().range_used()))
+    n_bins_use = min(n_bins,max(3,n_bins//3))
+    set_n_bins_use = True
+  else:
+    set_n_bins_use = False
   for i_bin in f_array.binner().range_used():
     sel       = f_array.binner().selection(i_bin)
     d         = dsd.select(sel)
@@ -556,6 +562,11 @@ def calculate_fsc(**kw):
     d_min     = flex.min(d)
     d_max     = flex.max(d)
     d_avg     = flex.mean(d)
+
+    if set_n_bins_use and i_bin-1 > n_bins_use and (
+          (not resolution) or (d_avg >= resolution)):
+      n_bins_use = i_bin - 1
+
     n         = d.size()
     m1        = mc1.select(sel)
     m2        = mc2.select(sel)
@@ -785,6 +796,7 @@ def calculate_fsc(**kw):
         direction_vectors,
         weights_para_list,
         resolution,
+        n_bins_use,
         use_dv_weighting,
         out = out)
 
@@ -803,7 +815,8 @@ def analyze_anisotropy(
   sthol_list,
   direction_vectors,
   weights_para_list,
-  resolution,
+  resolution,  # nominal resolution
+  n_bins_use,
   use_dv_weighting,
   n_display = 6,
   n_iter= 1,
@@ -819,6 +832,7 @@ def analyze_anisotropy(
     overall_si = overall_si,
     si_list = si_list,
     sthol_list = sthol_list,
+    n_bins_use = n_bins_use,
     direction_vectors = direction_vectors,
     weights_para_list = weights_para_list,
     resolution = resolution,
@@ -836,6 +850,10 @@ def analyze_anisotropy(
 
   for i in range(n_iter):
    aniso_info = get_a_b_matrices(
+     aniso_info = aniso_info,
+     out = out)
+
+  aniso_info = get_overall_anisotropy(
      aniso_info = aniso_info,
      out = out)
 
@@ -880,14 +898,42 @@ def analyze_anisotropy(
     values_by_dv = aniso_info.bb_calc_values_by_dv,
     out = out)
 
+def get_overall_anisotropy(aniso_info,
+  out = sys.stdout):
+  print("\nEstimating overall anisotropy in data"+
+    " and correction including errors", file = out)
+  # aniso_info.a_zero_values
+  # aniso_info.best_si.rms_fo_list
+  aniso_info.best_si.rms_fo_list.set_selected(
+     aniso_info.best_si.rms_fo_list <= 0, 1.e-10)
+  a_values = aniso_info.a_zero_values / aniso_info.best_si.rms_fc_list
+  info = get_effective_b(values = a_values,
+      sthol2_values = aniso_info.best_si.target_sthol2,
+      n_bins_use = aniso_info.n_bins_use)
+  print("Overall approximate B-value: %.2f A**2 (Scale = %.4f  rms = %.4f)" %(
+    info.effective_b,
+    info.b_zero,
+    info.rms,), file = out)
+
+  print (" D-min Ao(|s|)/rmsFc(|s|)  Calc", file = out)
+  for i in range(aniso_info.n_bins):
+    dd = 0.5/aniso_info.best_si.target_sthol2[i]**0.5
+    print ("%6.2f  %7.4f %6.4f   " %(dd, a_values[i], info.calc_values[i]),
+        file = out)
+
+
+  return aniso_info
+
+
 def get_aniso_info(
     f_array = None,
     overall_si = None,
     si_list = None,
     sthol_list = None,
+    n_bins_use = None,
     direction_vectors = None,
     weights_para_list = None,
-    resolution = None,
+    resolution = None,  # nominal resolution
     weight_by_variance = None,
     minimum_sd = None,
     use_dv_weighting= None,
@@ -980,6 +1026,7 @@ def get_aniso_info(
     n_bins = best_si.target_sthol2.size(),
     n_dv = direction_vectors.size(),
     best_si = best_si,
+    n_bins_use = n_bins_use,
     indices = indices,
     indices_by_dv = indices_by_dv,
     aa_scale_values = aa_scale_values,
@@ -1123,7 +1170,8 @@ def get_scale_from_aniso_b_cart(f_array = None,
   from mmtbx.scaling import absolute_scaling
   overall_u_cart_to_remove = adptbx.b_as_u(b_cart)
   u_star= adptbx.u_cart_as_u_star(
-    scale_values_array.unit_cell(),tuple(-1.*matrix.col(overall_u_cart_to_remove)))
+    scale_values_array.unit_cell(),
+     tuple(-1.*matrix.col(overall_u_cart_to_remove)))
   scaled_f_array = absolute_scaling.anisotropic_correction(
           scale_values_array,0.0, u_star ,must_be_greater_than=-0.0001)
   return scaled_f_array.data()
@@ -1133,7 +1181,6 @@ def display_scale_values(
     n_display=None,
     values_by_dv = None,
     out = sys.stdout):
-
 
   for k in range(min(aniso_info.n_dv,n_display)):
     print("  %4s " %(k+1), file = out, end = "")
@@ -1175,10 +1222,12 @@ def get_aniso_from_scale_values(
     aniso_info,
     b_cart,
     scale_values,
-    sd_values,)
+    sd_values,
+    eps = .01)
   ar.run()
   resid = ar.show_result()
   b_cart = ar.get_b()
+
 
   return b_cart
 
@@ -1191,6 +1240,9 @@ class aniso_refinery:
     eps=0.01,
     tol=0.01,
     max_iterations=20,
+    start_with_grid_search = True,
+    grid_delta = 10,
+    grid_n = 2,
     ):
 
     self.aniso_info = aniso_info
@@ -1203,8 +1255,16 @@ class aniso_refinery:
     self.max_iterations=max_iterations
 
     self.x = flex.double(b_cart)
+    self.start_with_grid_search = start_with_grid_search
+    self.grid_delta = grid_delta
+    self.grid_n = grid_n
+
+
 
   def run(self):
+
+    if self.start_with_grid_search:
+      self.grid_search()
 
     scitbx.lbfgs.run(target_evaluator=self,
       termination_params=scitbx.lbfgs.termination_parameters(
@@ -1212,10 +1272,29 @@ class aniso_refinery:
                      max_iterations=self.max_iterations,
        ))
 
+  def grid_search(self):
+    best_b = self.get_b()
+    working_b = self.get_b()
+    best_resid = self.residual(best_b)
+    for i in range(-self.grid_n,self.grid_n+1):
+      for j in range(-self.grid_n,self.grid_n+1):
+        for k in range(-self.grid_n,self.grid_n+1):
+          b = list(
+          matrix.col(working_b) +
+          matrix.col((i*self.grid_delta,
+           j*self.grid_delta,k*self.grid_delta,0,0,0)
+           ))
+          resid = self.residual(b)
+          if resid < best_resid:
+            best_resid = resid
+            best_b = b
+    self.x = flex.double(best_b)
+    resid = self.residual(best_b)
+
   def show_result(self,out=sys.stdout):
 
     b=self.get_b()
-    value = -1.*self.residual(b)
+    value = self.residual(b)
     return value
 
   def compute_functional_and_gradients(self):
@@ -1228,14 +1307,25 @@ class aniso_refinery:
     calc_values_by_dv = get_calc_values(
       aniso_info = self.aniso_info,
       b_cart = b,)
+
     calc_values = flex.double()
     for c in calc_values_by_dv:
       calc_values.extend(c)
 
     diffs = calc_values - self.scale_values
     if self.aniso_info.weight_by_variance:
-      diffs=diffs/self.sd_values
+      diffs/self.sd_values
+
+    if self.aniso_info.n_bins_use:  # just take first n_bins_use of each group
+      i_pos = 0
+      n_bins = calc_values_by_dv[0].size()
+      diffs_use = flex.double()
+      for k in range(len(calc_values_by_dv)):
+        diffs_use.extend(diffs[i_pos:i_pos+self.aniso_info.n_bins_use])
+        i_pos += n_bins
+      diffs = diffs_use
     resid = diffs.rms()
+
     return resid
 
   def gradients(self,b):
@@ -1706,13 +1796,14 @@ def get_effective_b(values = None,
        tol = 1.e-6,
        effective_b = None,
        b_zero = None,
+       n_bins_use = None,
        delta_b = 50):
   if effective_b is not None and b_zero is not None:
       # calculate update
       best_info = None
       for i in range(-max_tries_per_iter//2,max_tries_per_iter//2):
         b_value = effective_b + i* delta_b
-        info=get_b_calc(b_value, sthol2_values, values)
+        info=get_b_calc(b_value, sthol2_values, values, n_bins_use = n_bins_use)
         if not best_info or info.rms  < best_info.rms:
           best_info = info
           best_info.effective_b = b_value
@@ -1731,6 +1822,7 @@ def get_effective_b(values = None,
          max_tries_per_iter = max_tries_per_iter,
          effective_b = effective_b,
          b_zero =  b_zero,
+         n_bins_use = n_bins_use,
          delta_b = delta_b)
        effective_b = info.effective_b
        b_zero = info.b_zero
@@ -1748,7 +1840,8 @@ def get_effective_b(values = None,
     values = best_info.values,
     calc_values=best_info.calc_values)
 
-def get_b_calc( b_value, sthol2_values, values):
+def get_b_calc( b_value, sthol2_values, values, n_bins_use = None):
+  ''' if n_bins_use is set, just use that many for rms value'''
   import math
   sum= 0.
   sumx= 0.
@@ -1764,7 +1857,10 @@ def get_b_calc( b_value, sthol2_values, values):
   calc_values *= b_zero
   from libtbx.test_utils import approx_equal
   assert approx_equal(values[0],calc_values[0])
-  rms = ((flex.pow2(values-calc_values)).min_max_mean().mean)**0.5
+  if n_bins_use is None:
+    n_bins_use = values.size()
+  rms = ((flex.pow2(
+     values[:n_bins_use]-calc_values[:n_bins_use])).min_max_mean().mean)**0.5
   return group_args(
     b_zero=b_zero,
     values=values,

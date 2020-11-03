@@ -2220,6 +2220,43 @@ class map_model_manager(object):
 
   # Methods for sharpening and comparing maps, models and calculating FSC values
 
+  def get_rms_f_list(self,map_id = 'map_manager',
+      d_min = None,  # minimum resolution for calculations
+      n_bins = None,
+      resolution = None,  # nominal resolution
+      ):
+    ''' Return list of rms amplitude by bins '''
+    assert d_min and n_bins
+    from cctbx.maptbx.segment_and_split_map import map_coeffs_to_fp
+    map_coeffs=self.get_map_manager_by_id(
+      map_id).map_as_fourier_coefficients( d_min = d_min)
+    f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
+          d_min = d_min).f_array
+    rms_f_list=flex.double()
+    sthol2_list=flex.double()
+    dsd = f_array.d_spacings().data()
+
+    n_bins_use = min(n_bins,max(3,n_bins//3))
+    for i_bin in f_array.binner().range_used():
+      sel       = f_array.binner().selection(i_bin)
+      f        = map_coeffs.select(sel)
+      f_array_f=map_coeffs_to_fp(f)
+      rms_f=f_array_f.data().norm()
+      rms_f_list.append(rms_f)
+      d         = dsd.select(sel)
+      d_avg     = flex.mean(d)
+      sthol2=0.25/d_avg**2
+      sthol2_list.append(sthol2)
+      if i_bin-1 > n_bins_use and (
+          (not resolution) or (d_avg >= resolution)):
+         n_bins_use = i_bin - 1
+
+    return group_args(
+       rms_f_list = rms_f_list,
+       sthol2_list = sthol2_list,
+       n_bins_use = n_bins_use)
+
+
   def _update_kw_with_map_info(self, local_kw, previous_kw = None,
       text = 'overall', have_previous_scaled_data = None,
       map_id_scaled_list = None):
@@ -2377,6 +2414,7 @@ class map_model_manager(object):
       overall_sharpen_before_and_after_local = True,
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
+      n_direction_vectors = None,
       run_analyze_anisotropy = None,
       nproc = None,
     ):
@@ -2433,6 +2471,7 @@ class map_model_manager(object):
       minimum_low_res_cc = None,
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
+      n_direction_vectors = None,
       run_analyze_anisotropy = None,
       spectral_scaling = True,
       expected_rms_fc_list = None,
@@ -2505,6 +2544,7 @@ class map_model_manager(object):
       minimum_low_res_cc = None,
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
+      n_direction_vectors = None,
       run_analyze_anisotropy = None,
       spectral_scaling = True,
       expected_rms_fc_list = None,
@@ -2685,6 +2725,7 @@ class map_model_manager(object):
       minimum_low_res_cc = None,
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
+      n_direction_vectors = None,
       run_analyze_anisotropy = None,
       spectral_scaling = None,
       expected_rms_fc_list = None,
@@ -2806,10 +2847,13 @@ class map_model_manager(object):
           approx_amplitude_vs_resolution
         aavr = approx_amplitude_vs_resolution(
            d_min = setup_info.minimum_resolution,
+           resolution = setup_info.resolution,
            n_bins = n_bins,
            map_model_manager = working_mmm,
-           model = model_for_rms_fc)
+           model = model_for_rms_fc,
+           out = self.log)
         expected_rms_fc_list = aavr.get_target_scale_factors()
+        n_bins_use = aavr.n_bins_use # number of bins to resolution
 
     resolution = setup_info.resolution
     working_mmm.set_resolution(resolution)
@@ -2828,8 +2872,9 @@ class map_model_manager(object):
 
     if anisotropic_sharpen:
        print ("Using anisotropic sharpening ",file = self.log)
-       # get scale factors in 12 directions
-       direction_vectors = working_mmm._get_aniso_direction_vectors(map_id)
+       # get scale factors in 12 directions (or 6)
+       direction_vectors = working_mmm._get_aniso_direction_vectors(map_id,
+         n_direction_vectors = n_direction_vectors)
     else:
        direction_vectors = [None]
     target_scale_factors_list = []
@@ -2859,6 +2904,7 @@ class map_model_manager(object):
         minimum_low_res_cc = minimum_low_res_cc,
         get_scale_as_aniso_u = get_scale_as_aniso_u,
         use_dv_weighting = use_dv_weighting,
+        n_direction_vectors = n_direction_vectors,
         run_analyze_anisotropy = run_analyze_anisotropy,
         expected_rms_fc_list = expected_rms_fc_list,
         model_for_rms_fc = model_for_rms_fc,
@@ -2976,13 +3022,26 @@ class map_model_manager(object):
          scaled_f_array.phase_transfer(phase_source=f_array_info.phases,
          deg=True))
 
-  def _get_aniso_direction_vectors(self, map_id, n_max = 12 ,
+  def _get_aniso_direction_vectors(self, map_id, n_direction_vectors = None,
      orient_to_axes = True):
     '''
-     Find principal components of anisotropy in map
+     Find principal components of anisotropy in map and generate direction
+     vectors
+          Y      XY    
+          YZ 
+          Z  XZ  X 
+
+     Unique set is X Y Z XY XZ YZ 
+     Additional is (X,-Y,0), (X, -Z, 0), (Y, -Z, 0)
+     Diagonals are (X,Y,Z), (X,Y,-Z), (X,-Y,Z), (X,-Y, -Z)
     '''
+    if n_direction_vectors is not None:
+      n_max = n_direction_vectors  # up to 13 minimum of 3
+    else:
+      n_max = 9
+
     ev = flex.vec3_double()
-    if orient_to_axes:
+    if orient_to_axes:  # X Y Z
       ev.append((1,0,0))
       ev.append((0,1,0))
       ev.append((0,0,1))
@@ -3002,19 +3061,20 @@ class map_model_manager(object):
               aniso_scale_and_b.eigen_vectors[3*i+1],
               aniso_scale_and_b.eigen_vectors[3*i+2])))
 
-    if n_max >= 6:
-      # Now add vectors between these in case that is where the variation is
-      ev.append(-col(ev[0]) + col(ev[1]) + col(ev[2]))
-      ev.append( col(ev[0]) - col(ev[1]) + col(ev[2]))
-      ev.append( col(ev[0]) + col(ev[1]) - col(ev[2]))
-    if n_max >= 9:
+    if n_max >= 6:  # XY XZ YZ
       ev.append( col(ev[0]) + col(ev[1]) )
       ev.append( col(ev[0]) + col(ev[2]) )
       ev.append( col(ev[1]) + col(ev[2]) )
-    if n_max >= 12:
+    if n_max >= 9:
       ev.append( col(ev[0]) - col(ev[1]) )
       ev.append( col(ev[0]) - col(ev[2]) )
       ev.append( col(ev[1]) - col(ev[2]) )
+    if n_max >= 13:
+      # Now add vectors between these in case that is where the variation is
+      ev.append( col(ev[0]) + col(ev[1]) + col(ev[2]))
+      ev.append(-col(ev[0]) + col(ev[1]) + col(ev[2]))
+      ev.append( col(ev[0]) - col(ev[1]) + col(ev[2]))
+      ev.append( col(ev[0]) + col(ev[1]) - col(ev[2]))
     norms = ev.norms()
     norms.set_selected((norms == 0),1)
     ev = ev/norms
@@ -3188,6 +3248,7 @@ class map_model_manager(object):
      direction_vectors = None,
      get_scale_as_aniso_u = None,
      use_dv_weighting = None,
+     n_direction_vectors = None,
      run_analyze_anisotropy = None,
      expected_rms_fc_list = None,
      model_for_rms_fc = None,
@@ -3535,6 +3596,7 @@ class map_model_manager(object):
       is_external_based = False,
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
+      n_direction_vectors = None,
       run_analyze_anisotropy = None,
       spectral_scaling = None,
       expected_rms_fc_list = None,
@@ -3553,7 +3615,7 @@ class map_model_manager(object):
     A map of one scale factor is the scale factor to apply in real space
        at each xyz for any contribution from an xyz in that bin.
     (1) we calculate position-dependent target_scale_factors (n_bins)
-      for each direction vector (typically n=12).  Total of about
+      for each direction vector (typically n=6 or 12).  Total of about
       240 bins/directions.
     (2) each resolution bin has a set of weights for all reflections w_hkl.
       These are just binner.apply_scale of (0 all other bins and 1 this bin)
@@ -3605,7 +3667,8 @@ class map_model_manager(object):
         kw['expected_rms_fc_list'] = aavr.get_target_scale_factors()
 
     # Get list of direction vectors (based on anisotropy of map)
-    direction_vectors = self._get_aniso_direction_vectors(map_id)
+    direction_vectors = self._get_aniso_direction_vectors(map_id,
+      n_direction_vectors = n_direction_vectors)
 
     # Run local_fsc for each direction vector
     print("\nEstimating scale factors for %s direction_vectors" %(
@@ -3741,6 +3804,7 @@ class map_model_manager(object):
       is_external_based = False,
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
+      n_direction_vectors = None,
       run_analyze_anisotropy = None,
       spectral_scaling = None,
       expected_rms_fc_list = None,
@@ -3961,6 +4025,7 @@ class map_model_manager(object):
       minimum_low_res_cc = None,
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
+      n_direction_vectors = None,
       run_analyze_anisotropy = None,
       spectral_scaling = None,
       expected_rms_fc_list = None,
@@ -4037,6 +4102,7 @@ class map_model_manager(object):
     box_info.minimum_low_res_cc = minimum_low_res_cc
     box_info.get_scale_as_aniso_u = get_scale_as_aniso_u
     box_info.use_dv_weighting = use_dv_weighting
+    box_info.n_direction_vectors = n_direction_vectors
     box_info.run_analyze_anisotropy = run_analyze_anisotropy
     box_info.expected_rms_fc_list = expected_rms_fc_list
     box_info.model_for_rms_fc = model_for_rms_fc
@@ -4751,6 +4817,8 @@ class map_model_manager(object):
       model = None,
       n_residues = None,
       b_iso = 30,
+      k_sol = None,
+      b_sol = None,
       box_cushion = 5,
       scattering_table = 'electron',
       fractional_error = 0.0,
@@ -4850,6 +4918,8 @@ class map_model_manager(object):
         log = null_out())
     map_coeffs = generate_map_coefficients(model = model,
         d_min = d_min,
+        k_sol = k_sol,
+        b_sol = b_sol,
         scattering_table = scattering_table,
         log = null_out())
 
@@ -6218,6 +6288,7 @@ class run_fsc_as_class:
            minimum_low_res_cc = self.box_info.minimum_low_res_cc,
            get_scale_as_aniso_u = self.box_info.get_scale_as_aniso_u,
            use_dv_weighting = self.box_info.use_dv_weighting,
+           n_direction_vectors = self.box_info.n_direction_vectors,
            run_analyze_anisotropy = self.box_info.run_analyze_anisotropy,
            expected_rms_fc_list = self.box_info.expected_rms_fc_list,
            model_for_rms_fc = self.box_info.model_for_rms_fc,
