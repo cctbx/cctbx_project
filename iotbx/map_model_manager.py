@@ -3027,11 +3027,11 @@ class map_model_manager(object):
     '''
      Find principal components of anisotropy in map and generate direction
      vectors
-          Y      XY    
-          YZ 
-          Z  XZ  X 
+          Y      XY
+          YZ
+          Z  XZ  X
 
-     Unique set is X Y Z XY XZ YZ 
+     Unique set is X Y Z XY XZ YZ
      Additional is (X,-Y,0), (X, -Z, 0), (Y, -Z, 0)
      Diagonals are (X,Y,Z), (X,Y,-Z), (X,-Y,Z), (X,-Y, -Z)
     '''
