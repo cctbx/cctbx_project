@@ -275,7 +275,8 @@ class Remediator():
             new_entry = atom_exch_dict.get(atom.name+" "+res_name)
             atom.set_name(new_entry[0:4])
             non_v3_atoms_count=non_v3_atoms_count+1
-    pdb_hierarchy.atoms().reset_i_seq()
+    pdb_hierarchy.sort_atoms_in_place()
+    pdb_hierarchy.atoms_reset_serial()
     return model
 
   def remediate_na_atom_group(self, atom_group, convert_to_new):

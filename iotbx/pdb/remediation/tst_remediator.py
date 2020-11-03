@@ -1,15 +1,16 @@
+from __future__ import division
 import time
 
 import remediator
 import iotbx.pdb
-import mmtbx
 
 def test_pdb_to_v3(old_pdb_file, v3_pdb_file):
   remed = remediator.Remediator()
   old_pdb_model = remediator.get_model_from_file(old_pdb_file)
+  write_model_to_file(old_pdb_model.model_as_pdb(), "old_file.pdb")
   old_pdb_model_v3 = remed.remediate_model_object(old_pdb_model, True)
   v3_pdb_model = remediator.get_model_from_file(v3_pdb_file)
-  write_model_to_file(old_pdb_model_v3.model_as_pdb(), "old_file.pdb")
+  write_model_to_file(old_pdb_model_v3.model_as_pdb(), "old_file_remed.pdb")
   write_model_to_file(v3_pdb_model.model_as_pdb(), "v3_file.pdb")
   print(old_pdb_model_v3.get_hierarchy().as_pdb_string() == v3_pdb_model.get_hierarchy().as_pdb_string())
   print(old_pdb_model_v3.get_hierarchy().is_similar_hierarchy(v3_pdb_model.get_hierarchy()))
