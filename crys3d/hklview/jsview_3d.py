@@ -1344,7 +1344,7 @@ function MakeHKL_Axis(mshape)
 #  );
 #  """
 #      spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n  alphas.push(1.0);\n" %cntbin
-#
+
 
       cntbin += 1
 
@@ -1356,9 +1356,8 @@ function MakeHKL_Axis(mshape)
                           "bin_data_label": self.bin_labels_type_idx[0],
                           "tooltip_opacity": self.ngl_settings.tooltip_alpha
                          } )
-
+    colourgradstr = []
     if not blankscene:
-      colourgradstrs = "colourgradvalarray = new Array(%s);\n" %fomln
       # if displaying phases from map coefficients together with fom values then
       for g,colourgradarray in enumerate(colourgradarrays):
         self.colourgradientvalues = []
@@ -1368,24 +1367,13 @@ function MakeHKL_Axis(mshape)
         fom = fomarrays[g]
         colourgradstr = []
         for j,val in enumerate(self.colourgradientvalues):
-          vstr = ""
+          vstr = "null"
           alpha = 1.0
           rgb = (int(val[1][0]), int(val[1][1]), int(val[1][2]) )
-          gradval = "rgba(%s, %s, %s, %s)" %(rgb[0], rgb[1], rgb[2], alpha)
           if j%10 == 0 or j==len(self.colourgradientvalues)-1 :
-            vstr = str( roundoff(val[0], 2, as_string=True) )
-          colourgradstr.append([vstr , gradval])
-        colourgradstrs += "  colourgradvalarray[%s] = %s;\n" %(g, str(colourgradstr) )
-
-      colourscriptstr = """
-
-  //colourgradvalarrays
-  %s
-
-  ColourChart("%s", "%s");
-
-    """ % (colourgradstrs, colourlabel, fomlabel)
-
+            vstr = roundoff(val[0], 2)
+          colourgradstr.append([vstr, rgb[0], rgb[1], rgb[2] ])
+          
     qualitystr = """ , { disableImpostor: true
                   , sphereDetail: 0 } // rather than default value of 2 icosahedral subdivisions
             """
@@ -1395,18 +1383,17 @@ function MakeHKL_Axis(mshape)
     self.NGLscriptstr = ""
     if not blankscene:
       self.NGLscriptstr = HKLJavaScripts.NGLscriptstr % ( self.ngl_settings.tooltip_alpha,
-        '\"' + self.camera_type + '\"', axisfuncstr,
-#        '\"' + self.camera_type + '\"', axisfuncstr, spherebufferstr,
-        negativeradiistr, colourscriptstr)
+        '\"' + self.camera_type + '\"', axisfuncstr, negativeradiistr)
 
     WebsockMsgHandlestr = HKLJavaScripts.WebsockMsgHandlestr %(self.websockport, cntbin,
              str(self.verbose>=2).lower(), self.__module__, self.__module__, qualitystr )
 
     self.NGLscriptstr = WebsockMsgHandlestr + self.NGLscriptstr
-    if self.jscriptfname:
+    if self.jscriptfname and self.isnewfile:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
-    self.ReloadNGL()
+    if not self.WBmessenger.browserisopen:
+      self.ReloadNGL()
     if not blankscene:
       if self.WaitforHandshake():
         nwait = 0
@@ -1420,13 +1407,20 @@ function MakeHKL_Axis(mshape)
       self.OrigClipNear = self.clipNear
       self.SetMouseSpeed( self.ngl_settings.mouse_sensitivity )
       self.isnewfile = False
+      #"""
       self.RemoveStageObjects()
+      for ibin in range(self.nbinvalsboundaries+1):
+        mstr =""
+        nreflsinbin = len(self.radii2[ibin])
+        if nreflsinbin == 0:
+          continue
 
-      for ibin in range(cntbin):
         self.SendCoordinates2Browser(self.positions[ibin], self.colours[ibin], 
                                      self.radii2[ibin], self.spbufttips[ibin] )
       self.RenderStageObjects()
-
+      colourgradstrs = [colourgradstr]
+      self.MakeColourChart(10, 10, colourlabel, fomlabel, colourgradstrs)
+      #"""
     self.sceneisdirty = False
     self.lastscene_id = self.viewerparams.scene_id
 
@@ -1580,7 +1574,7 @@ Distance: %s
 
   def WaitforHandshake(self, sec=5):
     nwait = 0
-    while not self.WBmessenger.browserisopen :
+    while not self.WBmessenger.browserisopen:
       #time.sleep(self.sleeptime)
       self.WBmessenger.Sleep(self.sleeptime)
       nwait += self.sleeptime
@@ -2068,6 +2062,11 @@ Distance: %s
 
   def RenderStageObjects(self):
     self.AddToBrowserMsgQueue("RenderStageObjects")
+
+
+  def MakeColourChart(self, ctop, cleft, label, fomlabel, colourgradarray):
+    msg = "%s\n\n%s\n\n%s\n\n%s\n\n%s" %(ctop, cleft, label, fomlabel, str(colourgradarray) )
+    self.AddToBrowserMsgQueue("MakeColourChart", msg )
 
 
   def InjectNewReflections(self, proc_array):
