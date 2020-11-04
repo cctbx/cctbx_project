@@ -402,7 +402,6 @@ class ramachandran_manager(object):
 
   def update_phi_psi_targets_on_init(self, hierarchy):
     if 'oldfield' in [self.params.favored, self.params.allowed, self.params.outlier]:
-      import mmtbx.rotamer
       sites_cart = hierarchy.atoms().extract_xyz()
       self.target_phi_psi = phi_psi_targets(
         sites_cart     = hierarchy.atoms().extract_xyz(),
