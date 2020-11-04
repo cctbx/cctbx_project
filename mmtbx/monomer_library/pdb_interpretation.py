@@ -5704,7 +5704,8 @@ class process(object):
 
       # improved metal coordination
       automatic_linking = self.all_chain_proxies.params.automatic_linking
-      if self.all_chain_proxies.params.restraints_library.mcl:
+      if(self.all_chain_proxies.params.restraints_library.mcl and
+         automatic_linking.link_metals):
         from mmtbx.conformation_dependent_library import mcl
         mcl.update(self._geometry_restraints_manager,
                    self.all_chain_proxies.pdb_hierarchy,
