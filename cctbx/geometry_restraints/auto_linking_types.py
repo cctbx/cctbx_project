@@ -101,6 +101,12 @@ for link_info in [
      ['Misc.']*5,
      [0,1,2,3,4]
     ],
+    ['User supplied cif_link',
+     'Internal coordinates supplied by the user in cif_link format',
+     '',
+     ['User cif_link']*5,
+     [0,1,2,3,4]
+    ],
     ]:
   for oi in origin_ids:
     assert starting_id not in oi
