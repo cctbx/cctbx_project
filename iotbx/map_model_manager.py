@@ -2309,6 +2309,13 @@ class map_model_manager(object):
     return local_kw
 
   def tls_from_map(self,
+    map_id_1 = None,
+    map_id_2 = None,
+    map_id = None,
+    model_id = None,
+    tls_by_chain = True,
+    skip_waters = True,
+    skip_hetero = True,
       **kw):
 
     # Set up list of maps to be scaled
@@ -2326,6 +2333,17 @@ class map_model_manager(object):
       method = self.model_sharpen
     else:
       raise Sorry("Need two half-maps or map and model for get_tls_from_map")
+
+    # Run by chain if requested
+    if kw['tls_by_chain']:
+      kw['tls_by_chain'] = False
+      model_group_info = self._split_up_map_and_model(
+        selection_method = 'by_chain',
+        skip_waters = skip_waters,
+        skip_hetero = skip_hetero,
+        mask_around_unselected_atoms = False,
+        apply_box_info = apply_box_info,
+        write_files = False)
 
     # Run overall sharpening
     kw['local_sharpen'] = True
@@ -2970,11 +2988,7 @@ class map_model_manager(object):
       direction_vectors: direction vectors dv for anisotropy calculations
       scaling_info_list: si (scaling_info) objects, one for each dv
         each si:  si.target_scale_factors   # scale factors vs sthol2
-<<<<<<< HEAD
 	si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
-=======
-        si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
->>>>>>> Add tls_from_map
                   si.d_min_list
                   si.cc_list
                   si.low_res_cc # low-res average
@@ -3838,14 +3852,10 @@ class map_model_manager(object):
     """
 
     xyz_list = scale_factor_info.xyz_list
-<<<<<<< HEAD
-    self._analyze_aniso(scale_factor_info,map_id=map_id,
-=======
     # Summarize U vs xyz and vs inside/outside
     tls_info = self._analyze_aniso(scale_factor_info,
       map_id=map_id,
       mask_id=None,  # can supply mask_id
->>>>>>> Add tls_from_map
       replace_inside = (replace_aniso_with_tls_equiv and get_scale_as_aniso_u))
     print("ZZA",get_tls_info_only)
     if get_tls_info_only:
