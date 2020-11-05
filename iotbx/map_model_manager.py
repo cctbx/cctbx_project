@@ -2308,6 +2308,37 @@ class map_model_manager(object):
 
     return local_kw
 
+  def tls_from_map(self,
+      **kw):
+
+    # Set up list of maps to be scaled
+    kw = self.set_map_id_lists(kw)
+
+    print("\nRunning tls_from_map...\n",
+       file = self.log)
+    if kw.get('map_id_1') and kw.get('map_id_2'):
+      print("\nTLS will be determined by comparison of %s and %s " %(
+       kw['map_id_1'],kw['map_id_2']), file = self.log)
+      method = self.half_map_sharpen
+    elif kw.get('map_id') and kw.get('model_id'):
+      print("\nTLS will be determined by comparison of %s and %s " %(
+       kw['map_id'],kw['model_id']), file = self.log)
+      method = self.model_sharpen
+    else:
+      raise Sorry("Need two half-maps or map and model for get_tls_from_map")
+
+    # Run overall sharpening
+    kw['local_sharpen'] = True
+    kw['anisotropic_sharpen'] = True
+    kw['get_scale_as_aniso_u'] = True
+    kw['get_tls_info_only'] = True
+    kw['replace_aniso_with_tls_equiv'] = False
+    kw['overall_sharpen_before_and_after_local'] = False
+    print("ZZB method:",method)
+    print("ZZB method:",kw)
+    assert kw['get_tls_info_only']
+    tlso = method( **kw)  # run overall sharpening
+    return tlso
 
   def _sharpen_overall_local_overall(self, kw, method):
 
@@ -2392,12 +2423,14 @@ class map_model_manager(object):
 
   def set_map_id_lists(self,kw):
 
-    if kw['map_id_to_be_scaled_list'] is None:
+    if kw.get('map_id') is None:
+      kw['map_id'] = 'map_manager'
+    if kw.get('map_id_to_be_scaled_list') is None:
       kw['map_id_to_be_scaled_list'] = [kw['map_id']]
       if kw.get('map_id_1') and kw.get('map_id_2'): # half-map sharpening
          kw['map_id_to_be_scaled_list'].append(kw['map_id_1'])
          kw['map_id_to_be_scaled_list'].append(kw['map_id_2'])
-    if kw['map_id_scaled_list'] is None:
+    if kw.get('map_id_scaled_list') is None:
       kw['map_id_scaled_list'] = []
       for id in kw['map_id_to_be_scaled_list']:
          kw['map_id_scaled_list'].append("%s_scaled" %(id))
@@ -2457,7 +2490,7 @@ class map_model_manager(object):
     kw['is_external_based'] = True
     del kw['map_id_external_map']
 
-    self._sharpen_map( **kw)
+    self._sharpen_map(**kw)
 
   def half_map_sharpen(self,
       map_id = 'map_manager',
@@ -2489,6 +2522,7 @@ class map_model_manager(object):
       optimize_b_eff = None,
       equalize_power = None,
       overall_sharpen_before_and_after_local = True,
+      get_tls_info_only = None,
     ):
     '''
      Scale map_id with scale factors identified from map_id_1 vs map_id_2
@@ -2532,7 +2566,10 @@ class map_model_manager(object):
     # Now get scaling from comparison of the two half-maps
     #  apply the scaling to map_id_to_be_scaled
 
-    self._sharpen_map(**kw)
+    if get_tls_info_only:
+      return self._sharpen_map(**kw)
+    else:
+      self._sharpen_map(**kw)
 
   def model_sharpen(self,
       map_id = 'map_manager',
@@ -2566,6 +2603,7 @@ class map_model_manager(object):
       optimize_with_model = None,
       overall_sharpen_before_and_after_local = True,
       mask_around_model = True,
+      get_tls_info_only = None,
     ):
     '''
      Scale map_id with scale factors identified from map_id vs model
@@ -2689,7 +2727,10 @@ class map_model_manager(object):
     # Now get scaling from comparison of working_map_id_to_be_scaled and
     #   map_id_model_map, and
     #  apply the scaling to  unmasked_map_id_list
-    working_mmm._sharpen_map(**kw)
+    if get_tls_info_only:
+      return working_mmm._sharpen_map(**kw)
+    else:
+      working_mmm._sharpen_map(**kw)
 
     # And set this map_manager
     for id in kw['map_id_scaled_list']:
@@ -2741,6 +2782,7 @@ class map_model_manager(object):
       model_for_rms_fc = None,
       replace_aniso_with_tls_equiv = None,
       max_abs_b = None,
+      get_tls_info_only = None,
       overall_sharpen_before_and_after_local = None, # ignored
     ):
     '''
@@ -2818,7 +2860,10 @@ class map_model_manager(object):
       if n_bins is None: # set it here
         kw['n_bins'] = n_bins_default_local
 
-      working_mmm._local_sharpen(**kw)
+      if get_tls_info_only:
+        return working_mmm._local_sharpen(**kw)
+      else:
+        working_mmm._local_sharpen(**kw)
 
       for id, previous_id in zip(
           kw['map_id_scaled_list'],
@@ -2925,7 +2970,11 @@ class map_model_manager(object):
       direction_vectors: direction vectors dv for anisotropy calculations
       scaling_info_list: si (scaling_info) objects, one for each dv
         each si:  si.target_scale_factors   # scale factors vs sthol2
+<<<<<<< HEAD
 	si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
+=======
+        si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
+>>>>>>> Add tls_from_map
                   si.d_min_list
                   si.cc_list
                   si.low_res_cc # low-res average
@@ -3535,17 +3584,24 @@ class map_model_manager(object):
         si.target_scale_factors = scaled_f_array.data()
 
   def _analyze_aniso(self, scale_factor_info, map_id = None,
+     mask_id = None,
      replace_inside = None,
      replace_boundary = None,
      replace_outside = None):
 
     # Get a mask around the map
-    mask_id = self._generate_new_map_id()
-    self.create_mask_around_density(
-      soft_mask  = True,
-      mask_id = mask_id,
-      map_id = map_id)
+    if not mask_id:
+      mask_id = self._generate_new_map_id()
+      self.create_mask_around_density(
+        soft_mask  = True,
+        mask_id = mask_id,
+        map_id = map_id)
     mask_map_manager = self.get_map_manager_by_id(mask_id)
+
+    tls_info = group_args(
+       tlso = None,
+     )
+
 
     # Analyze u_cart values in relation to mask
     mean_u_cart_dict={}
@@ -3614,6 +3670,9 @@ class map_model_manager(object):
 
       from mmtbx_tls_ext import tlso, uaniso_from_tls_one_group
       tlso_value = tlso(t = T, l = L, s = S, origin = cm)
+      if inside:
+        tls_info.tlso = tlso_value
+
       new_anisos= uaniso_from_tls_one_group(tlso = tlso_value,
          sites_cart = xyz_list,
          zeroize_trace=False)
@@ -3646,6 +3705,7 @@ class map_model_manager(object):
       print("%6s   (n = %4s)   (%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f) " %(
         tuple([where]+[mean_u_cart_dict_n[inside]]+list(b_cart))),
         file = self.log)
+    return tls_info
 
   def _run_group_of_anisotropic_sharpen(self,
       map_id  = 'map_manager',
@@ -3676,12 +3736,12 @@ class map_model_manager(object):
       replace_aniso_with_tls_equiv = None,
       minimum_low_res_cc = None,
       max_abs_b = None,
+      get_tls_info_only = None,
       temp_dir = 'TEMP_ANISO_LOCAL',
      ):
     '''
     Run local sharpening in groups with focus on reflections along
     direction vectors. Then combine results
-
     Summary of method:
 
     A map of one scale factor is the scale factor to apply in real space
@@ -3714,6 +3774,7 @@ class map_model_manager(object):
     del kw['temp_dir'] # REQUIRED
 
     assert n_bins is not None
+    assert get_tls_info_only # ZZ
 
     print ("\nRunning anisotropic local sharpening with nproc = %s " %(
        nproc), file = self.log)
@@ -3777,9 +3838,20 @@ class map_model_manager(object):
     """
 
     xyz_list = scale_factor_info.xyz_list
+<<<<<<< HEAD
     self._analyze_aniso(scale_factor_info,map_id=map_id,
+=======
+    # Summarize U vs xyz and vs inside/outside
+    tls_info = self._analyze_aniso(scale_factor_info,
+      map_id=map_id,
+      mask_id=None,  # can supply mask_id
+>>>>>>> Add tls_from_map
       replace_inside = (replace_aniso_with_tls_equiv and get_scale_as_aniso_u))
-    if get_scale_as_aniso_u: # Summarize U vs xyz and vs inside/outside
+    print("ZZA",get_tls_info_only)
+    if get_tls_info_only:
+      return tls_info
+
+    if get_scale_as_aniso_u:
       self._update_scale_factor_info_from_aniso(scale_factor_info,
         max_abs_b = max_abs_b)
 
@@ -3839,6 +3911,8 @@ class map_model_manager(object):
       self.add_map_manager_by_id(map_id = new_id,
           map_manager = new_map_manager)
 
+    return tls_info
+
   def _local_sharpen(self,
       map_id  = 'map_manager',
       map_id_1 = 'map_manager_1',
@@ -3869,6 +3943,7 @@ class map_model_manager(object):
       anisotropic_sharpen = None,
       minimum_low_res_cc = None,
       max_abs_b = None,
+      get_tls_info_only = None,
      ):
 
     '''
@@ -3907,8 +3982,8 @@ class map_model_manager(object):
     # factors in all resolution ranges are about 1.  use that as default
 
     if anisotropic_sharpen:  # run N times with different direction vectors
-      self._run_group_of_anisotropic_sharpen(**kw)
-      return
+      tls_info = self._run_group_of_anisotropic_sharpen(**kw)
+      return tls_info  # tlso for region inside mask
 
     # Get scale factors vs resolution and location
     scale_factor_info = self.local_fsc(
@@ -4097,6 +4172,7 @@ class map_model_manager(object):
       model_for_rms_fc = None,
       replace_aniso_with_tls_equiv = None,
       max_abs_b = None,
+      get_tls_info_only = None,
       n_bins_default = 2000):
 
     '''
