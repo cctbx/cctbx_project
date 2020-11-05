@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <scitbx/error.h>
 #include <cmath>
 
@@ -170,6 +171,36 @@ namespace scitbx { namespace serialization { namespace base_256 {
   {
     from_string(const char* buf)
     : integer::signed_::from_string<short>(buf)
+    {}
+  };
+
+  inline
+  char*
+  to_string(char* buf, int8_t const& value)
+  {
+    return integer::signed_::to_string(buf, value);
+  }
+
+  template<>
+  struct from_string<int8_t> : integer::signed_::from_string<int8_t>
+  {
+    from_string(const char* buf)
+    : integer::signed_::from_string<int8_t>(buf)
+    {}
+  };
+
+  inline
+  char*
+  to_string(char* buf, uint8_t const& value)
+  {
+    return integer::signed_::to_string(buf, value);
+  }
+
+  template<>
+  struct from_string<uint8_t> : integer::signed_::from_string<uint8_t>
+  {
+    from_string(const char* buf)
+    : integer::signed_::from_string<uint8_t>(buf)
     {}
   };
 
