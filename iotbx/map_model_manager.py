@@ -123,8 +123,8 @@ class map_model_manager(object):
     self.set_verbose(verbose)
 
     # Initialize
-    self._nproc = None
-    self._multiprocessing = None
+    self._nproc = 1
+    self._multiprocessing = 'multiprocessing'
     self._queue_run_command = None
     self._resolution = None
     self._map_dict={}
@@ -698,6 +698,9 @@ class map_model_manager(object):
     '''  Set multiprocessing parameters'''
     if nproc:
       self._nproc = nproc
+
+      if nproc > 1 and (multiprocessing is None):
+        multiprocessing = 'multiprocessing'
 
     if multiprocessing:
       assert multiprocessing in ['multiprocessing','sge','lsf','pbs',
@@ -1703,6 +1706,8 @@ class map_model_manager(object):
         mask_radius = mask_radius,
         masked_value = masked_value,
       )
+    print("Total of %s boxes considered..." %(len(box_info.selection_list)),
+       file = self.log)
     if (not apply_box_info):
       return box_info  #  run get_split_maps_and_models later
 
@@ -2404,6 +2409,7 @@ class map_model_manager(object):
       map_id_to_be_scaled_list = None,
       map_id_scaled_list = None,
       resolution = None,
+      d_min = None,
       n_bins = None,
       n_boxes = None,
       core_box_size = None,
@@ -2415,7 +2421,7 @@ class map_model_manager(object):
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
       n_direction_vectors = None,
-      run_analyze_anisotropy = None,
+      run_analyze_anisotropy = True,
       nproc = None,
     ):
     '''
@@ -2460,6 +2466,7 @@ class map_model_manager(object):
       map_id_scaled_list = None,
       map_id_to_be_scaled_list = None,
       resolution = None,
+      d_min = None,
       n_bins = None,
       n_boxes = None,
       core_box_size = None,
@@ -2472,7 +2479,7 @@ class map_model_manager(object):
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
       n_direction_vectors = None,
-      run_analyze_anisotropy = None,
+      run_analyze_anisotropy = True,
       spectral_scaling = True,
       expected_rms_fc_list = None,
       model_for_rms_fc = None,
@@ -2533,6 +2540,7 @@ class map_model_manager(object):
       map_id_scaled_list = None,
       map_id_to_be_scaled_list = None,
       resolution = None,
+      d_min = None,
       n_bins = None,
       n_boxes = None,
       core_box_size = None,
@@ -2545,7 +2553,7 @@ class map_model_manager(object):
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
       n_direction_vectors = None,
-      run_analyze_anisotropy = None,
+      run_analyze_anisotropy = True,
       spectral_scaling = True,
       expected_rms_fc_list = None,
       model_for_rms_fc = None,
@@ -2708,6 +2716,7 @@ class map_model_manager(object):
       map_id_scaled_list = None,
       equalize_power = None,
       resolution = None,
+      d_min = None,
       n_bins = None,
       n_boxes = None,
       core_box_size = None,
@@ -2840,6 +2849,7 @@ class map_model_manager(object):
     # Get basic info including minimum_resolution (cutoff for map_coeffs)
     setup_info = working_mmm._get_box_setup_info(map_id_1, map_id_2,
       resolution,
+      d_min,
       smoothing_radius = smoothing_radius,
       skip_boxes = True)
     if spectral_scaling and (not expected_rms_fc_list):
@@ -2910,15 +2920,22 @@ class map_model_manager(object):
         model_for_rms_fc = model_for_rms_fc,
         replace_aniso_with_tls_equiv = replace_aniso_with_tls_equiv,
         )
-    # scaling_group_info group_args object has direction vectors, list of si:
-    #  scaling_group_info.direction_vectors
-    #  scaling_group_info.overall_u_cart_to_remove  aniso scale factor (u_cart)
-    #  scaling_group_info.scaling_info_list: one si entry per direction vector
-    #    si.target_scale_factors
-    #    si.target_sthol2
-    #    si.d_min_list
-    #    si.cc_list
-    #    si.low_res_cc # low-res average
+    """
+    scaling_group_info group_args object:
+      direction_vectors: direction vectors dv for anisotropy calculations
+      scaling_info_list: si (scaling_info) objects, one for each dv
+        each si:  si.target_scale_factors   # scale factors vs sthol2
+	si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
+                  si.d_min_list
+                  si.cc_list
+                  si.low_res_cc # low-res average
+      ss_b_cart_as_u_cart: anisotropic part of overall correction factor
+      overall_scale: radial part of overall correction factor
+      overall_scale_as_u_cart: overall_scale represented as u_cart
+      overall_u_cart_to_apply:  total aniso scale to apply as u_cart
+                                 ss_b_cart_as_u_cart + overall_scale_as_u_cart
+      NOTE: total scale = total aniso scale * overall_scale[0]
+    """
 
 
     #  Now apply scaling to map_id_to_be_scaled
@@ -2935,18 +2952,23 @@ class map_model_manager(object):
           file = self.log)
         assert len(scaling_group_info.scaling_info_list) == len(
          direction_vectors)
+
       if get_scale_as_aniso_u and \
-           hasattr(scaling_group_info,'overall_u_cart_to_remove') and \
-          scaling_group_info.overall_u_cart_to_remove:
+           hasattr(scaling_group_info,'overall_u_cart_to_apply') and \
+          scaling_group_info.overall_u_cart_to_apply:
         print ("\nApplying scale factors by removing anisotropy ",
          file = self.log)
 
         new_map_manager = working_mmm.remove_anisotropy(
           map_coeffs = map_coeffs_to_be_scaled,
           d_min = None,
-         overall_u_cart_to_remove = scaling_group_info.overall_u_cart_to_remove)
+          overall_u_cart_to_apply = scaling_group_info.ss_b_cart_as_u_cart,
+          overall_scale=scaling_group_info.overall_scale)
 
       else: # usual
+        print ("\nApplying scale factors directly",
+         file = self.log)
+
         new_map_manager = working_mmm._apply_scale_factors_in_shells(
           map_coeffs_to_be_scaled,
           n_bins,
@@ -2967,7 +2989,9 @@ class map_model_manager(object):
         map_coeffs = None,
         u_cart_to_remove = None,
         u_cart_to_add = None,
+        overall_u_cart_to_apply = None,
         overall_u_cart_to_remove = None,
+        overall_scale= None,
         map_id = 'map_manager'):
    '''
    Remove anisotropy from map, optionally remove anisotropy specified by
@@ -2982,27 +3006,43 @@ class map_model_manager(object):
    if not d_min:
      d_min = map_coeffs.d_min()
 
+   if (overall_u_cart_to_apply is not None):
+     overall_u_cart_to_remove = tuple(-1*flex.double(
+        overall_u_cart_to_apply))
+
+   if (overall_u_cart_to_apply is not None) and overall_scale:
+     n_bin = overall_scale.size()
+   else:
+     n_bin = 1 # don't need it
    from cctbx.maptbx.refine_sharpening import analyze_aniso_object
-   f_array_info = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = 1,
-          d_min = self.resolution())
+   f_array_info = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bin,
+          d_min = d_min)
    f_array = f_array_info.f_array
-   if (not overall_u_cart_to_remove) and (not u_cart_to_remove):
+   if (not overall_u_cart_to_apply) and (not u_cart_to_remove):
      # Get anisotropy if not supplied and apply it
      analyze_aniso = analyze_aniso_object()
      analyze_aniso.set_up_aniso_correction(f_array=f_array)
      print(" Finding and removing anisotropy (positive is sharpening) "+
         "b_cart = %s " %( str(analyze_aniso.b_cart)), file = self.log)
      scaled_f_array = analyze_aniso.apply_aniso_correction(f_array=f_array)
-   else:  # apply overall_u_cart_to_remove
+   else:  # remove overall_u_cart_to_remove
      from mmtbx.scaling import absolute_scaling
      if overall_u_cart_to_remove:
        print(" Removing anisotropy (positive is sharpening).b_cart = %s " %(
-         str(adptbx.u_as_b(tuple(col(overall_u_cart_to_remove))))),
+         str(adptbx.u_as_b(tuple(col(overall_u_cart_to_apply))))),
          file = self.log)
        u_star= adptbx.u_cart_as_u_star(
          f_array.unit_cell(), overall_u_cart_to_remove)
        scaled_f_array = absolute_scaling.anisotropic_correction(
         f_array,0.0, u_star ,must_be_greater_than=-0.0001)
+       if overall_scale:  # Apply overall resolution-dependent scale factors
+         print("Applying resolution-dependent scale factor overall_scale",
+             file = self.log)
+         scale_array=f_array.binner().interpolate(
+            overall_scale, 1) # d_star_power=1
+         scaled_f_array=scaled_f_array.customized_copy(
+            data=scaled_f_array.data()*scale_array)
+
      else: # remove and add
        u_star= adptbx.u_cart_as_u_star(
          f_array.unit_cell(), u_cart_to_remove)
@@ -3163,15 +3203,22 @@ class map_model_manager(object):
       scaling_group_info = None,
       direction_vectors= None,
       ):
-
-    # scaling_group_info group_args object has direction vectors, list of si:
-    #  scaling_group_info.direction_vectors
-    #  scaling_group_info.scaling_info_list: one si entry per direction vector
-    #    si.target_scale_factors
-    #    si.target_sthol2
-    #    si.d_min_list
-    #    si.cc_list
-    #    si.low_res_cc # low-res average
+    """
+    scaling_group_info group_args object:
+      direction_vectors: direction vectors dv for anisotropy calculations
+      scaling_info_list: si (scaling_info) objects, one for each dv
+        each si:  si.target_scale_factors   # scale factors vs sthol2
+        si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
+                  si.d_min_list
+                  si.cc_list
+                  si.low_res_cc # low-res average
+      ss_b_cart_as_u_cart: anisotropic part of overall correction factor
+      overall_scale: radial part of overall correction factor
+      overall_scale_as_u_cart: overall_scale represented as u_cart
+      overall_u_cart_to_apply:  total aniso scale to apply as u_cart
+                                 ss_b_cart_as_u_cart + overall_scale_as_u_cart
+      NOTE: total scale = total aniso scale * overall_scale[0]
+    """
 
     f_array_info = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
         d_min = d_min)
@@ -3344,7 +3391,6 @@ class map_model_manager(object):
       direction_vectors = direction_vectors,
       smooth_fsc = False, # XXX may change
       cutoff_after_last_high_point = True,
-      get_scale_as_aniso_u = True, # always get it; use if get_scale_as_aniso_u
       use_dv_weighting = use_dv_weighting,
       run_analyze_anisotropy = run_analyze_anisotropy,
       expected_rms_fc_list = expected_rms_fc_list,
@@ -3363,16 +3409,22 @@ class map_model_manager(object):
           file = self.log)
         si.target_scale_factors = None
 
-    # result to be returned is a group_args object with
-    #   direction vectors and list of si as scaling_info_list:
-    #  result.direction_vectors
-    #  result.scaling_info_list:
-    #    si.target_scale_factors
-    #    si.target_sthol2
-    #    si.d_min_list
-    #    si.cc_list
-    #    si.low_res_cc # low-res average
-    #    si.expected_rms_fc_list  # as supplied
+    """
+    scaling_group_info group_args object:
+      direction_vectors: direction vectors dv for anisotropy calculations
+      scaling_info_list: si (scaling_info) objects, one for each dv
+        each si:  si.target_scale_factors   # scale factors vs sthol2
+        si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
+                  si.d_min_list
+                  si.cc_list
+                  si.low_res_cc # low-res average
+      ss_b_cart_as_u_cart: anisotropic part of overall correction factor
+      overall_scale: radial part of overall correction factor
+      overall_scale_as_u_cart: overall_scale represented as u_cart
+      overall_u_cart_to_apply:  total aniso scale to apply as u_cart
+                                 ss_b_cart_as_u_cart + overall_scale_as_u_cart
+      NOTE: total scale = total aniso scale * overall_scale[0]
+    """
     return result
 
   def _remove_temp_dir(self,temp_dir):
@@ -3404,24 +3456,48 @@ class map_model_manager(object):
     from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
     from cctbx.maptbx.refine_sharpening import get_nearest_lattice_points
     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
+    if scale_factor_info.value_list and \
+       scale_factor_info.value_list[0].overall_scale and (not f_array.binner()):
+      f_array.setup_binner(
+       n_bins = scale_factor_info.value_list[0].overall_scale.size(),
+       d_min = scale_factor_info.d_min)
 
     # scale_factor_info.value_list is a set of scaling_group_info objects.
     # scale_factor_info.xyz_list are the coordinates where these apply
     # scale_factor_info.n_bins is number of bins
     # value_list is a set of scaling_group_info objects, one per xyz.
-    #  scaling_group_info group_args object has direction vectors, list of si:
-    #   scaling_group_info.direction_vectors
-    #   scaling_group_info.scaling_info_list: one si entry per direction
-    #    si.target_scale_factors
-    #    si.target_sthol2
-    #    si.d_min_list
-    #    si.cc_list
+
+    """
+    scaling_group_info group_args object:
+      direction_vectors: direction vectors dv for anisotropy calculations
+      scaling_info_list: si (scaling_info) objects, one for each dv
+        each si:  si.target_scale_factors   # scale factors vs sthol2
+        si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
+                  si.d_min_list
+                  si.cc_list
+                  si.low_res_cc # low-res average
+      ss_b_cart_as_u_cart: anisotropic part of overall correction factor
+      overall_scale: radial part of overall correction factor
+      overall_scale_as_u_cart: overall_scale represented as u_cart
+      overall_u_cart_to_apply:  total aniso scale to apply as u_cart
+                                 ss_b_cart_as_u_cart + overall_scale_as_u_cart
+      NOTE: total scale = total aniso scale * overall_scale[0]
+    """
+
     xyz_list = scale_factor_info.xyz_list
     value_list = scale_factor_info.value_list
     for xyz, scaling_group_info in zip(xyz_list,value_list):
       direction_vectors = scaling_group_info.direction_vectors
       scaling_info_list = scaling_group_info.scaling_info_list
-      overall_u_cart_to_remove = scaling_group_info.overall_u_cart_to_remove
+      if scaling_group_info.overall_scale:
+        # if overall_scale are supplied, multiply by interpolated scale factor
+        u_cart_to_apply = tuple(scaling_group_info.ss_b_cart_as_u_cart)
+        overall_scale = scaling_group_info.overall_scale
+      elif scaling_group_info.overall_u_cart_to_apply:
+        u_cart_to_apply = tuple(scaling_group_info.overall_u_cart_to_apply)
+        overall_scale = None
+      else: # nothing to do
+        continue
       for si,dv in zip(scaling_info_list,direction_vectors):
         if not si.target_scale_factors:
           continue
@@ -3436,26 +3512,25 @@ class map_model_manager(object):
           scale_values.append(1.)
         indices = flex.miller_index(tuple(get_nearest_lattice_points(
             f_array.unit_cell(),recip_space_vectors)))
-        scale_values_array = f_array.customized_copy(
+        scale_values_array = f_array.customized_copy(  # just n_bins numbers
           data = scale_values,
           indices = indices)
         from mmtbx.scaling import absolute_scaling
         b_iso = abs(flex.double(adptbx.u_as_b(
-            overall_u_cart_to_remove))[:3].min_max_mean().mean)
+            u_cart_to_apply))[:3].min_max_mean().mean)
 
         if max_abs_b and abs(b_iso) > max_abs_b:
           ratio = max_abs_b/abs(b_iso)
-          overall_u_cart_to_remove = tuple(ratio * col(
-              overall_u_cart_to_remove))
+          u_cart_to_apply = tuple(ratio * col(
+              u_cart_to_apply))
         u_star= adptbx.u_cart_as_u_star(
-          scale_values_array.unit_cell(),tuple(col(overall_u_cart_to_remove)))
+          scale_values_array.unit_cell(),tuple(-col(u_cart_to_apply)))
         scaled_f_array = absolute_scaling.anisotropic_correction(
           scale_values_array,0.0, u_star ,must_be_greater_than=-0.0001)
-        if 0:
-          print("TARGET: BISO %.2f" %(b_iso),"BCART",str(overall_u_cart_to_remove),
-            "".join(["%.2f " %(ts) for ts in si.target_scale_factors]))
-          print("FITTED: ",
-            "".join(["%.2f " %(sf) for sf in scaled_f_array.data()]))
+        if overall_scale:  # Apply overall
+            #resolution-dependent scale factors
+          scaled_f_array=scaled_f_array.customized_copy(
+            data=scaled_f_array.data()*scaling_group_info.overall_scale)
         # Now extract our values as target_scale_factors
         si.target_scale_factors = scaled_f_array.data()
 
@@ -3475,6 +3550,7 @@ class map_model_manager(object):
     # Analyze u_cart values in relation to mask
     mean_u_cart_dict={}
     mean_u_cart_dict_n={}
+    inside_dict={True:'Inside mask',False:'Outside mask',None:'Edge of mask'}
     for inside,cutoff_low,cutoff_high in zip(
       [True,False,None],
       [0.9,None,0.1],
@@ -3494,31 +3570,30 @@ class map_model_manager(object):
       if xyz_list.size() < 1: continue
       value_list = working_scale_factor_info.value_list
       uanisos = flex.sym_mat3_double()
+      xyz_list_use = flex.vec3_double()
       for i in range(xyz_list.size()):
 
         values = working_scale_factor_info.value_list[i]
-        aniso_u_cart = values.overall_u_cart_to_remove
-        uanisos.append(aniso_u_cart)
-        b_cart = adptbx.u_as_b(aniso_u_cart)
+        #  overall_u_cart_to_apply:  total aniso scale to apply as u_cart
+        #                        ss_b_cart_as_u_cart + overall_scale_as_u_cart
+        #  NOTE: total scale = total aniso scale * overall_scale[0]
+        #  NOTE: overall_scale_as_u_cart may vary by location
+        #  So for each location: get overall_u_cart_to_apply
+        #    Then use these to generate TLS
+        #    Then use TLS to generate new_u_cart
+        #    new ss_b_cart_as_u_cart =  new_u_cart - overall_scale_as_u_cart
+        #  and get new target_scale_factors from ss_b_cart_as_u_cart
+        #    and overall_scale_as_u_cart
+
+        aniso_u_cart = values.overall_u_cart_to_apply
+        if not aniso_u_cart:  # missing
+          continue
         xyz=xyz_list[i]
-
-        direction_vectors = values.direction_vectors
-        scaling_info_list = values.scaling_info_list
-        if 0:
-          print ("XYZ (%7.1f,%7.1f,%7.1f) " %(tuple(xyz)),file=self.log)
-          for dv,si in zip(direction_vectors,scaling_info_list):
-           print("DV: (%7.1f,%7.1f,%7.1f)" %(dv) +
-            " B (CC*): %.3f" %(si.effective_b),
-            " B (FOBS): %.3f" %(si.effective_b_f_obs),file = self.log)
-
-
+        uanisos.append(aniso_u_cart)
+        xyz_list_use.append(xyz)
         mean_u_cart_dict[inside]+=col(aniso_u_cart)
         mean_u_cart_dict_n[inside]+=1
-        if 0:
-          print ("XYZ: "+
-         "(%7.1f,%7.1f,%7.1f) B-cart:(%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f) " %(
-          tuple(list(xyz)+list( b_cart))),
-          file = self.log)
+      if xyz_list_use.size() < 1: continue
       from mmtbx.tls import tools
       cm = xyz_list.mean()
       result = tools.tls_from_uaniso_minimizer(
@@ -3550,30 +3625,26 @@ class map_model_manager(object):
         replace_u_cart_to_remove = False
       for i in range(xyz_list.size()):
         values = working_scale_factor_info.value_list[i]
-        aniso_u_cart = values.overall_u_cart_to_remove
+        aniso_u_cart = values.overall_u_cart_to_apply
         new_u_cart = new_anisos[i]
         if replace_u_cart_to_remove:
-          values.overall_u_cart_to_remove = new_u_cart
-        if 0:
-          b_cart = adptbx.u_as_b(aniso_u_cart)
-          new_b_cart = adptbx.u_as_b(new_u_cart)
-          xyz=xyz_list[i]
-          print ("NEW: "+
-          "(%7.1f,%7.1f,%7.1f) B-cart:(%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f) " %(
-           tuple(list(xyz)+list( new_b_cart))),
-           file = self.log)
+        #    new ss_b_cart_as_u_cart =  new_u_cart - overall_scale_as_u_cart
+          values.overall_u_cart_to_apply = new_u_cart
+          values.ss_b_cart_as_u_cart = tuple(
+              flex.double(new_u_cart) -
+              flex.double(values.overall_scale_as_u_cart))
       print("\nMean anisotropy as TLS:",file = self.log)
       print("T: %s" %(str(T)),file = self.log)
       print("L: %s" %(str(L)), file = self.log)
       print("S: %s" %(str(S)), file = self.log)
 
-
     print("\nOverall average b_cart by region:",file = self.log)
     for inside in [True,False,None]:
+      where = inside_dict[inside]
       mean_u_cart_dict[inside] /= max(1,mean_u_cart_dict_n[inside])
       b_cart = adptbx.u_as_b(mean_u_cart_dict[inside])
       print("%6s   (n = %4s)   (%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f) " %(
-        tuple([inside]+[mean_u_cart_dict_n[inside]]+list(b_cart))),
+        tuple([where]+[mean_u_cart_dict_n[inside]]+list(b_cart))),
         file = self.log)
 
   def _run_group_of_anisotropic_sharpen(self,
@@ -3583,6 +3654,7 @@ class map_model_manager(object):
       map_id_to_be_scaled_list = None,
       map_id_scaled_list = None,
       resolution = None,
+      d_min = None,
       n_bins = None,
       n_boxes = None,
       core_box_size = None,
@@ -3648,6 +3720,7 @@ class map_model_manager(object):
 
     setup_info = self._get_box_setup_info(map_id_1, map_id_2,
       resolution,
+      d_min,
       smoothing_radius = smoothing_radius,
       skip_boxes = True)
 
@@ -3686,42 +3759,24 @@ class map_model_manager(object):
     # scale_factor_info.xyz_list are the coordinates where these apply
     # scale_factor_info.n_bins is number of bins
     # value_list is a set of scaling_group_info objects, one per xyz.
-    #  scaling_group_info group_args object has direction vectors, list of si:
-    #   scaling_group_info.direction_vectors
-    #   scaling_group_info.scaling_info_list: one si entry per direction
-    #    si.target_scale_factors
-    #    si.target_sthol2
-    #    si.d_min_list
-    #    si.cc_list
-    #    si.low_res_cc # low-res average
-    #    si.effective_b # B for fall-off of cc*
-    #    si.effective_b_fobs  # B for fall-off of amplitudes of Fobs
+    """
+    scaling_group_info group_args object:
+      direction_vectors: direction vectors dv for anisotropy calculations
+      scaling_info_list: si (scaling_info) objects, one for each dv
+        each si:  si.target_scale_factors   # scale factors vs sthol2
+        si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
+                  si.d_min_list
+                  si.cc_list
+                  si.low_res_cc # low-res average
+      ss_b_cart_as_u_cart: anisotropic part of overall correction factor
+      overall_scale: radial part of overall correction factor
+      overall_scale_as_u_cart: overall_scale represented as u_cart
+      overall_u_cart_to_apply:  total aniso scale to apply as u_cart
+                                 ss_b_cart_as_u_cart + overall_scale_as_u_cart
+      NOTE: total scale = total aniso scale * overall_scale[0]
+    """
 
-    #  Have a look at scale values vs resolution along direction_vectors
     xyz_list = scale_factor_info.xyz_list
-    if 0:
-     for dv_id in range(direction_vectors.size()):
-      print("\nScale for direction vector (%5.2f, %5.2f, %5.2f)" %(
-        direction_vectors[dv_id]))
-      for i in range(xyz_list.size()):
-        xyz=xyz_list[i]
-        print ("XYZ = (%7.1f, %7.1f, %7.1f)" %(xyz))
-        values=flex.double()
-        for i_bin in range(1,scale_factor_info.n_bins+1,3):
-          scale_value_list,xyz_used_list = self._get_scale_values_for_bin(
-            xyz_list=xyz_list,
-            i_bin = i_bin,
-            scale_factor_info = scale_factor_info,
-            dv_id = dv_id)
-          if scale_value_list.size() > 0:
-            values.append(
-              scale_value_list[max(0,min(
-              i,scale_value_list.size()-1))]) # position i in xyz_list
-          else:
-            values.append(0)
-        for value in values:
-          print("%5.2f "  %(value), end="")
-        print()
     self._analyze_aniso(scale_factor_info,map_id=map_id,
       replace_inside = (replace_aniso_with_tls_equiv and get_scale_as_aniso_u))
     if get_scale_as_aniso_u: # Summarize U vs xyz and vs inside/outside
@@ -3791,6 +3846,7 @@ class map_model_manager(object):
       map_id_to_be_scaled_list = None,
       map_id_scaled_list = None,
       resolution = None,
+      d_min = None,
       n_bins = None,
       n_boxes = None,
       core_box_size = None,
@@ -3862,14 +3918,22 @@ class map_model_manager(object):
     # scale_factor_info.value_list is a set of scaling_group_info objects.
     # scale_factor_info.xyz_list are the coordinates where these apply
     # value_list is a set of scaling_group_info objects, one per xyz.
-    #  scaling_group_info group_args object has direction vectors, list of si:
-    #   scaling_group_info.direction_vectors
-    #   scaling_group_info.scaling_info_list: one si entry per direction
-    #    si.target_scale_factors
-    #    si.target_sthol2
-    #    si.d_min_list
-    #    si.cc_list
-    #    si.low_res_cc # low-res average
+    """
+    scaling_group_info group_args object:
+      direction_vectors: direction vectors dv for anisotropy calculations
+      scaling_info_list: si (scaling_info) objects, one for each dv
+        each si:  si.target_scale_factors   # scale factors vs sthol2
+        si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
+                  si.d_min_list
+                  si.cc_list
+                  si.low_res_cc # low-res average
+      ss_b_cart_as_u_cart: anisotropic part of overall correction factor
+      overall_scale: radial part of overall correction factor
+      overall_scale_as_u_cart: overall_scale represented as u_cart
+      overall_u_cart_to_apply:  total aniso scale to apply as u_cart
+                                 ss_b_cart_as_u_cart + overall_scale_as_u_cart
+      NOTE: total scale = total aniso scale * overall_scale[0]
+    """
 
     xyz_list = scale_factor_info.xyz_list
     d_min = scale_factor_info.d_min
@@ -3935,8 +3999,9 @@ class map_model_manager(object):
     new_value_list = []
     for xyz, value in zip (scale_factor_info.xyz_list,
        scale_factor_info.value_list):
-      if skip_u_cart_of_zero and flex.pow2(flex.double(
-       tuple(value.overall_u_cart_to_remove))).min_max_mean().max ==0:
+      if skip_u_cart_of_zero and value.overall_u_cart_to_apply and \
+          flex.pow2(flex.double(
+          tuple(value.overall_u_cart_to_apply))).min_max_mean().max ==0:
          pass
       else: #check if inside
         site_frac=mask_map_manager.crystal_symmetry(
@@ -3983,7 +4048,6 @@ class map_model_manager(object):
     #    si.cc_list
     #    si.low_res_cc # low-res average
 
-
     # scale_factor_info.value_list has one scaling_group_info object per xyz
     # value_list:  [ [scale_factor_info_1, scale_factor_info_2....12],[...]]
 
@@ -4006,6 +4070,7 @@ class map_model_manager(object):
       map_id_to_be_scaled_list = None, # NOTE: not used, just allows it in call
       map_id_scaled_list = None, # NOTE: not used, just allows it in call
       resolution = None,
+      d_min = None,
       max_resolution_ratio = None,
       min_bin_width = 20,
       n_bins = None,
@@ -4061,7 +4126,9 @@ class map_model_manager(object):
 
     # Get basic info including minimum_resolution (cutoff for map_coeffs)
     setup_info = self._get_box_setup_info(map_id_1, map_id_2,
-      resolution, box_cushion,
+      resolution,
+      d_min,
+      box_cushion,
       n_boxes,
       core_box_size,
       smoothing_radius = smoothing_radius)
@@ -4117,14 +4184,22 @@ class map_model_manager(object):
     self.set_log(log_hold)
     # results.value_list is a set of scaling_group_info objects.
     # results.xyz_list are the coordinates where these apply
-    #  scaling_group_info group_args object has direction vectors, list of si:
-    #   scaling_group_info.direction_vectors
-    #   scaling_group_info.scaling_info_list: one si entry per direction
-    #    si.target_scale_factors
-    #    si.target_sthol2
-    #    si.d_min_list
-    #    si.cc_list
-    #    si.low_res_cc # low-res average
+    """
+    scaling_group_info group_args object:
+      direction_vectors: direction vectors dv for anisotropy calculations
+      scaling_info_list: si (scaling_info) objects, one for each dv
+        each si:  si.target_scale_factors   # scale factors vs sthol2
+        si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
+                  si.d_min_list
+                  si.cc_list
+                  si.low_res_cc # low-res average
+      ss_b_cart_as_u_cart: anisotropic part of overall correction factor
+      overall_scale: radial part of overall correction factor
+      overall_scale_as_u_cart: overall_scale represented as u_cart
+      overall_u_cart_to_apply:  total aniso scale to apply as u_cart
+                                 ss_b_cart_as_u_cart + overall_scale_as_u_cart
+      NOTE: total scale = total aniso scale * overall_scale[0]
+    """
 
 
     results.setup_info = setup_info
@@ -4198,6 +4273,7 @@ class map_model_manager(object):
   def _get_box_setup_info(self,
       map_id_1, map_id_2,
       resolution,
+      d_min,
       box_cushion=None,
       n_boxes=None,
       core_box_size=None,
@@ -4231,6 +4307,8 @@ class map_model_manager(object):
 
     # Working resolution is resolution * d_min_ratio
     minimum_resolution = self._get_d_min_from_resolution(resolution)
+    if d_min and (minimum_resolution < d_min):
+      minimum_resolution = d_min
 
     return group_args(
      resolution = resolution,
@@ -4285,14 +4363,22 @@ class map_model_manager(object):
     # scale_factor_info.xyz_list are the coordinates where these apply
     # scale_factor_info.n_bins is number of bins
     # value_list is a set of scaling_group_info objects, one per xyz.
-    #  scaling_group_info group_args object has direction vectors, list of si:
-    #   scaling_group_info.direction_vectors
-    #   scaling_group_info.scaling_info_list: one si entry per direction
-    #    si.target_scale_factors
-    #    si.target_sthol2
-    #    si.d_min_list
-    #    si.cc_list
-    #    si.low_res_cc # low-res average
+    """
+    scaling_group_info group_args object:
+      direction_vectors: direction vectors dv for anisotropy calculations
+      scaling_info_list: si (scaling_info) objects, one for each dv
+        each si:  si.target_scale_factors   # scale factors vs sthol2
+        si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
+                  si.d_min_list
+                  si.cc_list
+                  si.low_res_cc # low-res average
+      ss_b_cart_as_u_cart: anisotropic part of overall correction factor
+      overall_scale: radial part of overall correction factor
+      overall_scale_as_u_cart: overall_scale represented as u_cart
+      overall_u_cart_to_apply:  total aniso scale to apply as u_cart
+                                 ss_b_cart_as_u_cart + overall_scale_as_u_cart
+      NOTE: total scale = total aniso scale * overall_scale[0]
+    """
 
     all_results = None
     for scale_factor_info in results:
@@ -5511,14 +5597,22 @@ def apply_ncs_to_dv_results(
 
   # Produce a set of xyz and a set of scaling_group_info objects
 
-  #   scaling_group_info is group_args object.
-  #   scaling_group_info.direction_vectors
-  #   scaling_group_info.scaling_info_list: one si entry per direction
-  #    si.target_scale_factors
-  #    si.target_sthol2
-  #    si.d_min_list
-  #    si.cc_list
-  #    si.low_res_cc # low-res average
+  """
+    scaling_group_info group_args object:
+      direction_vectors: direction vectors dv for anisotropy calculations
+      scaling_info_list: si (scaling_info) objects, one for each dv
+        each si:  si.target_scale_factors   # scale factors vs sthol2
+        si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
+                  si.d_min_list
+                  si.cc_list
+                  si.low_res_cc # low-res average
+      ss_b_cart_as_u_cart: anisotropic part of overall correction factor
+      overall_scale: radial part of overall correction factor
+      overall_scale_as_u_cart: overall_scale represented as u_cart
+      overall_u_cart_to_apply:  total aniso scale to apply as u_cart
+                                 ss_b_cart_as_u_cart + overall_scale_as_u_cart
+      NOTE: total scale = total aniso scale * overall_scale[0]
+  """
 
   # If direction vectors are None then NCS operation just multiplies all the
   #   entries without changing them
@@ -6125,16 +6219,23 @@ class run_anisotropic_scaling_as_class:
 
     # scale_factor_info.value_list is a set of scaling_group_info objects.
     # scale_factor_info.xyz_list are the coordinates where these apply
-    # scale_factor_info.n_bins is number of bins
-    # value_list is a set of scaling_group_info objects, one per xyz.
-    #  scaling_group_info group_args object has direction vectors, list of si:
-    #   scaling_group_info.direction_vectors
-    #   scaling_group_info.scaling_info_list: one si entry per direction
-    #    si.target_scale_factors
-    #    si.target_sthol2
-    #    si.d_min_list
-    #    si.cc_list
-    #    si.low_res_cc # low-res average
+    """
+    scaling_group_info group_args object:
+      direction_vectors: direction vectors dv for anisotropy calculations
+      scaling_info_list: si (scaling_info) objects, one for each dv
+        each si:  si.target_scale_factors   # scale factors vs sthol2
+        si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
+                  si.d_min_list
+                  si.cc_list
+                  si.low_res_cc # low-res average
+      ss_b_cart_as_u_cart: anisotropic part of overall correction factor
+      overall_scale: radial part of overall correction factor
+      overall_scale_as_u_cart: overall_scale represented as u_cart
+      overall_u_cart_to_apply:  total aniso scale to apply as u_cart
+                                 ss_b_cart_as_u_cart + overall_scale_as_u_cart
+      NOTE: total scale = total aniso scale * overall_scale[0]
+    """
+
 
     xyz_list = scale_factor_info.xyz_list
     d_min = scale_factor_info.d_min
@@ -6295,14 +6396,23 @@ class run_fsc_as_class:
            replace_aniso_with_tls_equiv =
                 self.box_info.replace_aniso_with_tls_equiv)
         if scaling_group_info:
-          # scaling_group_info group_args object has direction vectors, list of si:
-          #  scaling_group_info.direction_vectors
-          #  scaling_group_info.scaling_info_list: one si entry per direction
-          #    si.target_scale_factors
-          #    si.target_sthol2
-          #    si.d_min_list
-          #    si.cc_list
-          #    si.low_res_cc # low-res average
+          """
+    scaling_group_info group_args object:
+      direction_vectors: direction vectors dv for anisotropy calculations
+      scaling_info_list: si (scaling_info) objects, one for each dv
+        each si:  si.target_scale_factors   # scale factors vs sthol2
+        si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
+                  si.d_min_list
+                  si.cc_list
+                  si.low_res_cc # low-res average
+      ss_b_cart_as_u_cart: anisotropic part of overall correction factor
+      overall_scale: radial part of overall correction factor
+      overall_scale_as_u_cart: overall_scale represented as u_cart
+      overall_u_cart_to_apply:  total aniso scale to apply as u_cart
+                                 ss_b_cart_as_u_cart + overall_scale_as_u_cart
+      NOTE: total scale = total aniso scale * overall_scale[0]
+          """
+
           xyz_list.append(tuple(col(xyz)+col(offset) ))
           value_list.append(scaling_group_info)
 
