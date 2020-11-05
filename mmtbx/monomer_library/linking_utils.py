@@ -418,7 +418,7 @@ Send details to help@phenix-online.org
     if not linking_setup.skip_if_non_linking(lookup, atom1, atom2):
       return False
     else:
-      if link_metals:
+      if link_metals is True:
         return is_atom_metal_coordinated(lookup, atom1, atom2)
       return link_metals
   #

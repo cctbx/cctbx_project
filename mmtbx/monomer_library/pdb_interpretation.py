@@ -239,7 +239,7 @@ master_params_str = """\
       .type = bool
       .short_caption = Overrides all automatic linking
       .style = noauto
-    link_metals = False
+    link_metals = Auto
       .type = bool
     link_residues = False
       .type = bool
@@ -5705,7 +5705,7 @@ class process(object):
       # improved metal coordination
       automatic_linking = self.all_chain_proxies.params.automatic_linking
       if(self.all_chain_proxies.params.restraints_library.mcl and
-         automatic_linking.link_metals):
+         automatic_linking.link_metals in [Auto, True]):
         from mmtbx.conformation_dependent_library import mcl
         mcl.update(self._geometry_restraints_manager,
                    self.all_chain_proxies.pdb_hierarchy,
