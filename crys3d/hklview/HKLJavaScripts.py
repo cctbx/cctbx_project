@@ -202,8 +202,8 @@ function ColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarray)
   topr2 = 0,
   lp = 10;
   stage.viewer.container.children = "";
-  if (fomlabel != "" )
-    colourgradvalarray = fomcolourgradvalarray;
+  //if (fomlabel != "" )
+  //  colourgradvalarray = fomcolourgradvalarray;
 
   var maxnumberwidth = 0;
   for (j = 0; j < colourgradvalarray[0].length; j++)
