@@ -68,6 +68,12 @@ namespace {
       arg("color_all") = true,
       arg("gradient_type") = 0,
       arg("min_value") = 0.1));
+    def("map_to_rgb_colourmap_", map_to_rgb_colourmap, (
+      arg("data_for_colors"),
+      arg("colourmap"),
+      arg("selection"),
+      arg("attenuation"),
+      arg("color_all") = true));
     def("color_by_phi_fom_", color_by_phi_fom, (
       arg("phases"),
       arg("foms")));

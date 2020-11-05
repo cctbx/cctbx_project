@@ -1095,6 +1095,11 @@ class HKLViewFrame() :
     self.update_settings()
 
 
+  def SetColourScheme(self, val):
+    self.params.NGL_HKLviewer.viewer.color_scheme = val
+    self.update_settings()
+
+
   def SetSqrtScaleColours(self, val):
     self.params.NGL_HKLviewer.viewer.sqrt_scale_colors = val
     self.update_settings()

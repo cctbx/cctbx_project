@@ -397,6 +397,7 @@ class hklview_3d:
                        "show_only_missing",
                        "show_systematic_absences",
                        "slice_axis",
+                       "color_scheme",
                        "slice_mode",
                        "slice_index",
                        "sigma_color",
@@ -702,6 +703,8 @@ class hklview_3d:
                          self.viewerparams.show_systematic_absences,
                          self.viewerparams.sigma_radius,
                          self.viewerparams.sigma_color,
+                         self.viewerparams.color_scheme,
+                         self.viewerparams.NGL.fontsize,
                          self.viewerparams.scene_id,
                          self.viewerparams.scale,
                          self.viewerparams.nth_power_scale_radii
@@ -741,6 +744,8 @@ class hklview_3d:
                                 self.viewerparams.show_systematic_absences,
                                 self.viewerparams.sigma_radius,
                                 self.viewerparams.sigma_color,
+                                self.viewerparams.color_scheme,
+                                self.viewerparams.NGL.fontsize,
                                 sceneid,
                                 self.viewerparams.scale,
                                 self.viewerparams.nth_power_scale_radii
@@ -766,6 +771,8 @@ class hklview_3d:
                               self.viewerparams.show_systematic_absences,
                               self.viewerparams.sigma_radius,
                               self.viewerparams.sigma_color,
+                              self.viewerparams.color_scheme,
+                              self.viewerparams.NGL.fontsize,
                               self.viewerparams.scene_id,
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
@@ -794,6 +801,8 @@ class hklview_3d:
                               self.viewerparams.show_systematic_absences,
                               self.viewerparams.sigma_radius,
                               self.viewerparams.sigma_color,
+                              self.viewerparams.color_scheme,
+                              self.viewerparams.NGL.fontsize,
                               scene_id,
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
@@ -828,6 +837,8 @@ class hklview_3d:
                       self.viewerparams.show_systematic_absences,
                       self.viewerparams.sigma_radius,
                       self.viewerparams.sigma_color,
+                      self.viewerparams.color_scheme,
+                      self.viewerparams.NGL.fontsize,
                       sceneid,
                       self.viewerparams.scale,
                       self.viewerparams.nth_power_scale_radii
@@ -1150,6 +1161,10 @@ function MakeHKL_Axis(mshape)
           colourscalararray.append( val )
 
         fomarrays = []
+        COL = display.MplColorHelper(self.viewerparams.color_scheme, mincolourscalar, maxcolourscalar)
+        arr1 = [ COL.get_rgb(d)[0:3] for d in colourscalararray ]
+        rgbcolarray = [ [e[0]*255, e[1]*255, e[2]*255] for e in arr1 ]
+
         if self.HKLscene_from_dict(self.colour_scene_id).isUsingFOMs():
           fomln = 50
           fom = 1.0
@@ -1159,20 +1174,40 @@ function MakeHKL_Axis(mshape)
             fomarrays.append( flex.double(len(colourscalararray), fom) )
             fom -= fomdecr
           for j in range(fomln):
-            colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0), fomarrays[j] ) * 255.0)
+            #colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0), fomarrays[j] ) * 255.0)
+
+            colourgradarrays.append(  graphics_utils.map_to_rgb_colourmap(
+              data_for_colors= colourscalararray,
+              colormap= rgbcolarray,
+              selection=flex.bool(colourscalararray.size(), True),
+              attenuation = fomarrays[j]
+              ) )
+
         else:
           fomln =1
           fomarrays = [1.0]
-          colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0) ) * 255.0)
+          #colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0) ) * 255.0)
+          colourgradarrays.append(  graphics_utils.map_to_rgb_colourmap(
+            data_for_colors= colourscalararray,
+            colormap= rgbcolarray,
+            selection=flex.bool(colourscalararray.size(), True)
+            ) )
       else:
         fomln = 1
         fomarrays = [1.0]
-        colourgradarrays.append(graphics_utils.color_by_property(
-          properties= flex.double(colourscalararray),
-          selection=flex.bool( len(colourscalararray), True),
-          color_all=False,
-          gradient_type= self.viewerparams.color_scheme) * 255.0)
-
+        COL = display.MplColorHelper(self.viewerparams.color_scheme, mincolourscalar, maxcolourscalar)
+        arr1 = [ COL.get_rgb(d)[0:3] for d in colourscalararray ]
+        rgbcolarray = [ [e[0]*255, e[1]*255, e[2]*255] for e in arr1 ]
+        colourgradarrays.append(rgbcolarray)
+        """
+        colourgradarrays.append(
+          graphics_utils.color_by_property(
+            properties= flex.double(colourscalararray),
+            selection=flex.bool( len(colourscalararray), True),
+            color_all=False,
+          gradient_type= self.viewerparams.color_scheme) * 255.0
+          )
+        """
       colors = self.HKLscene_from_dict(self.colour_scene_id).colors
       radii = self.HKLscene_from_dict(self.radii_scene_id).radii
       self.meanradius = flex.mean(radii)
@@ -1358,6 +1393,7 @@ function MakeHKL_Axis(mshape)
                          } )
     colourgradstr = []
     if not blankscene:
+      colourgradstrs = []
       # if displaying phases from map coefficients together with fom values then
       for g,colourgradarray in enumerate(colourgradarrays):
         self.colourgradientvalues = []
@@ -1373,7 +1409,7 @@ function MakeHKL_Axis(mshape)
           if j%10 == 0 or j==len(self.colourgradientvalues)-1 :
             vstr = roundoff(val[0], 2)
           colourgradstr.append([vstr, rgb[0], rgb[1], rgb[2] ])
-          
+        colourgradstrs.append(colourgradstr)  
     qualitystr = """ , { disableImpostor: true
                   , sphereDetail: 0 } // rather than default value of 2 icosahedral subdivisions
             """
@@ -1418,7 +1454,7 @@ function MakeHKL_Axis(mshape)
         self.SendCoordinates2Browser(self.positions[ibin], self.colours[ibin], 
                                      self.radii2[ibin], self.spbufttips[ibin] )
       self.RenderStageObjects()
-      colourgradstrs = [colourgradstr]
+      #colourgradstrs = [colourgradstr]
       self.MakeColourChart(10, 10, colourlabel, fomlabel, colourgradstrs)
       #"""
     self.sceneisdirty = False

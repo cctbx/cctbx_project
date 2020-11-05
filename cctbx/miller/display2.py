@@ -15,6 +15,19 @@ import math, traceback
 import math
 from six.moves import zip
 
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from matplotlib import cm
+
+class MplColorHelper:
+  def __init__(self, cmap_name, start_val, stop_val):
+    self.cmap_name = cmap_name
+    self.cmap = plt.get_cmap(cmap_name)
+    self.norm = mpl.colors.Normalize(vmin=start_val, vmax=stop_val)
+    self.scalarMap = cm.ScalarMappable(norm=self.norm, cmap=self.cmap)
+  def get_rgb(self, val):
+    rgba = self.scalarMap.to_rgba(val)
+    return rgba[0], rgba[1], rgba[2], rgba[3]
 
 
 nanval = float('nan')
@@ -386,29 +399,40 @@ class scene(object):
         data_for_radii = data_for_radii.select(self.slice_selection)
         data_for_colors = data_for_colors.select(self.slice_selection)
         foms_for_colours = foms_for_colours.select(self.slice_selection)
+    # Use a colour gradient from matplotlib
+    COL = MplColorHelper(settings.color_scheme, 0, 199)
+    # Computing rgb colours of each reflection is slow so make a small array 
+    # of precomputed colours to use as a lookup table for each reflection
+    colorgradientarray = flex.vec3_double([COL.get_rgb(d)[0:3] for d in range(200) ])
     if isinstance(data, flex.complex_double):
       if self.isUsingFOMs():
-        colors = graphics_utils.colour_by_phi_FOM(data_for_colors, foms_for_colours)
+        #colors = graphics_utils.colour_by_phi_FOM(data_for_colors, foms_for_colours)
+        colors = graphics_utils.map_to_rgb_colourmap(
+          data_for_colors=data_for_colors,
+          colormap=colorgradientarray,
+          selection=flex.bool(data_for_colors.size(), True),
+          attenuation = foms_for_colours,
+          color_all=False
+          )
       else:
-        colors = graphics_utils.colour_by_phi_FOM(data_for_colors, None)
-    elif (settings.color_scheme in ["rainbow", "heatmap", "redblue"]):
-      colors = graphics_utils.color_by_property(
-        properties=data_for_colors,
+        #colors = graphics_utils.colour_by_phi_FOM(data_for_colors, None)
+        colors = graphics_utils.map_to_rgb_colourmap(
+          data_for_colors=data_for_colors,
+          colormap=colorgradientarray,
+          selection=flex.bool(data_for_colors.size(), True),
+          attenuation = None,
+          color_all=False
+          )
+    else:
+      # Do the table lookup in C++ for speed improvement     
+      colors = graphics_utils.map_to_rgb_colourmap(
+        data_for_colors=data_for_colors,
+        colormap=colorgradientarray,
         selection=flex.bool(data_for_colors.size(), True),
-        color_all=False,
-        gradient_type=settings.color_scheme)
-    elif (settings.color_scheme == "grayscale"):
-      colors = graphics_utils.grayscale_by_property(
-        properties=data_for_colors,
-        selection=flex.bool(data_for_colors.size(), True),
-        shade_all=False,
-        invert=settings.black_background)
-    else :
-      if (settings.black_background):
-        base_color = (1.0,1.0,1.0)
-      else :
-        base_color = (0.0,0.0,0.0)
-      colors = flex.vec3_double(data_for_colors.size(), base_color)
+        attenuation = None,
+        color_all=False
+        )
+
     if (settings.slice_mode) and (settings.keep_constant_scale):
       colors = colors.select(self.slice_selection)
       data_for_radii = data_for_radii.select(self.slice_selection)
@@ -562,122 +586,8 @@ class scene(object):
     return (hkl, d_min, value)
 
 
-class render_2d(object):
-  def __init__(self, scene, settings):
-    self.scene = scene
-    self.settings = settings
-    self.setup_colors()
-
-
-  def GetSize(self):
-    raise NotImplementedError()
-
-
-  def get_center_and_radius(self):
-    w, h = self.GetSize()
-    r = (min(w,h) // 2) - 20
-    center_x = max(w // 2, r + 20)
-    center_y = max(h // 2, r + 20)
-    return center_x, center_y, r
-
-
-  def setup_colors(self):
-    if (self.settings.black_background):
-      self._background = (0.,0.,0.)
-      self._foreground = (1.,1.,1.)
-      if (self.settings.color_scheme == "heatmap"):
-        self._missing = (0.,1.,0.)
-      elif (not self.settings.color_scheme in ["rainbow", "redblue"]):
-        self._missing = (1.,0.,0.)
-      else :
-        self._missing = (1.,1.,1.)
-    else :
-      self._background = (1.,1.,1.)
-      self._foreground = (0.,0.,0.)
-      if (self.settings.color_scheme == "heatmap"):
-        self._missing = (0.,1.,0.)
-      elif (not self.settings.color_scheme in ["rainbow", "redblue"]):
-        self._missing = (1.,0.,0.)
-      else :
-        self._missing = (0.,0.,0.)
-
-
-  def get_scale_factor(self):
-    return 100.
-
-
-  def render(self, canvas):
-    self._points_2d = []
-    self._radii_2d = []
-    assert (self.settings.slice_mode)
-    if (self.settings.slice_axis == "h"):
-      i_x, i_y = 1, 2
-      axes = ("k", "l")
-    elif (self.settings.slice_axis == "k"):
-      i_x, i_y = 0, 2
-      axes = ("h", "l")
-    else :
-      i_x, i_y = 0, 1
-      axes = ("h", "k")
-    center_x, center_y, r = self.get_center_and_radius()
-    x_max = self.scene.axes[i_x][i_x] * 100.
-    y_max = self.scene.axes[i_y][i_y] * 100.
-    if (self.settings.show_axes):
-      # FIXME dimensions not right?
-      x_end = self.scene.axes[i_x][i_x], self.scene.axes[i_x][i_y]
-      y_end = self.scene.axes[i_y][i_x], self.scene.axes[i_y][i_y]
-      x_len = sqrt(x_end[0]**2 + x_end[1]**2)
-      y_len = sqrt(y_end[0]**2 + y_end[1]**2)
-      x_scale = (r+10) / x_len
-      y_scale = (r+10) / y_len
-      x_end = (x_end[0] * x_scale, x_end[1] * x_scale)
-      y_end = (y_end[0] * y_scale, y_end[1] * y_scale)
-      self.draw_line(canvas, center_x, center_y, center_x+x_end[0],
-        center_y-x_end[1])
-      self.draw_line(canvas, center_x, center_y, center_x+y_end[0],
-        center_y-y_end[1])
-      self.draw_text(canvas, axes[0], center_x + x_end[0] - 6,
-        center_y - x_end[1] - 20)
-      self.draw_text(canvas, axes[1], center_x + y_end[0] + 6,
-        center_y - y_end[1])
-    max_radius = self.scene.max_radius * r / max(x_max, y_max)
-    max_radius *= self.settings.scale
-    r_scale = ( 1/ self.scene.d_min) * self.get_scale_factor() # FIXME
-    for k, hkl in enumerate(self.scene.points):
-      x_, y_ = hkl[i_x], hkl[i_y]
-      x = center_x + r * x_ / r_scale
-      y = center_y - r * y_ / r_scale
-      r_point = self.scene.radii[k] * r / max(x_max, y_max)
-      if (self.settings.uniform_size):
-        r_point = max_radius
-      else :
-        r_point = max(0.5, r_point)
-      r_point *= self.settings.scale
-      self._points_2d.append((x,y))
-      self._radii_2d.append(r_point)
-      if (self.scene.missing_flags[k]):
-        self.draw_open_circle(canvas, x, y, r_point)
-      elif (self.scene.sys_absent_flags[k]):
-        self.draw_open_circle(canvas, x, y, r_point, self.scene.colors[k])
-      else :
-        self.draw_filled_circle(canvas, x, y, r_point, self.scene.colors[k])
-
-
-  def draw_line(self, canvas, x1, y1, x2, y2):
-    raise NotImplementedError()
-
-
-  def draw_text(self, canvas, text, x, y):
-    raise NotImplementedError()
-
-
-  def draw_open_circle(self, canvas, x, y, radius, color=None):
-    raise NotImplementedError()
-
-
-  def draw_filled_circle(self, canvas, x, y, radius, color):
-    raise NotImplementedError()
-
+colormaps = " ".join(plt.colormaps())
+colormaps = colormaps.replace("brg ", "*brg ")
 
 philstr = """
   data = None
@@ -725,7 +635,7 @@ philstr = """
     .type = choice
   slice_index = 0
     .type = int
-  color_scheme = *rainbow heatmap redblue grayscale mono
+  color_scheme = %s
     .type = choice
   show_labels = True
     .type = bool
@@ -741,7 +651,7 @@ philstr = """
     .type = bool
   show_anomalous_pairs = False
     .type = bool
-"""
+""" %colormaps
 
 master_phil = libtbx.phil.parse( philstr )
 params = master_phil.fetch().extract()
