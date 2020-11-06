@@ -1,5 +1,6 @@
 Import("env", "env_etc")
 import os
+import libtbx
 
 # remove -ffast-math compile option
 nanoBragg_env = env.Clone()
@@ -19,6 +20,18 @@ nanoBragg_obj = nanoBragg_env.SharedObject(
     "../diffBragg/src/diffBragg.cpp"
   ])
 
+env_etc.eigen_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../eigen"))
+if not os.path.isdir(env_etc.eigen_dist) and hasattr(env_etc, "conda_cpppath"):
+  for candidate in env_etc.conda_cpppath:
+    if os.path.isdir(os.path.join(candidate, "eigen3")):
+      env_etc.eigen_dist = os.path.abspath(os.path.join(os.path.join(candidate, "eigen3")))
+if os.path.isdir(env_etc.eigen_dist):
+  env_etc.eigen_include = env_etc.eigen_dist
+
+env_etc.include_registry.append(
+  env=nanoBragg_env,
+  paths=[env_etc.eigen_include]
+)
 # compile nanoBraggCUDA.cu if possible
 if (env_etc.enable_cuda):
   import os
@@ -43,7 +56,6 @@ if (env_etc.enable_cuda):
     if os.environ.get("CCTBX_WITH_HIP") is not None:
       cuda_src = ["nanoBraggCUDA.cpp"]
   else:  cuda_src = []
-
   env_etc.include_registry.append(
     env=env_bpl,
     paths=[env_etc.simtbx_include, env_etc.dxtbx_include]

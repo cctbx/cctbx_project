@@ -2,7 +2,9 @@
 #include <simtbx/nanoBragg/nanoBragg.h>
 #include <vector>
 #include <boost/ptr_container/ptr_vector.hpp>
+#include <Eigen/Dense>
 #include <boost/python.hpp>
+#include<Eigen/StdVector>
 //#include <boost/python/numpy.hpp>
 
 namespace simtbx {
@@ -30,15 +32,15 @@ class panel_manager: public derivative_manager{
    virtual void foo(){}
     virtual ~panel_manager(){}
     //virtual void set_R();
-    void increment(double Iincrement, double omega_pixel, mat3 M, double pix2, vec3 o, vec3 k_diffracted,
-                double per_k, double per_k3, double per_k5, vec3 V);
+    //void increment(double Iincrement, double omega_pixel, Eigen::Matrix3d M, double pix2, Eigen::Vector3d o, Eigen::Vector3d k_diffracted,
+    //            double per_k, double per_k3, double per_k5, Eigen::Vector3d V);
 
-    mat3 dR;
-    vec3 dF;
-    vec3 dS;
-    vec3 dk;
-    vec3 F_cross_dS;
-    vec3 dF_cross_S;
+    Eigen::Matrix3d dR;
+    Eigen::Vector3d dF;
+    Eigen::Vector3d dS;
+    Eigen::Vector3d dk;
+    Eigen::Vector3d F_cross_dS;
+    Eigen::Vector3d dF_cross_S;
 
 }; // end of rot_manager
 
@@ -49,8 +51,9 @@ class rot_manager: public derivative_manager{
     virtual ~rot_manager(){}
     virtual void set_R();
     void increment(double value, double value2);
-    mat3 XYZ, XYZ2;
-    mat3 R, dR, dR2;
+    Eigen::Matrix3d XYZ, XYZ2;
+    Eigen::Matrix3d R, dR, dR2;
+
 }; // end of rot_manager
 
 class Ncells_manager: public derivative_manager{
@@ -91,18 +94,20 @@ class ucell_manager: public derivative_manager{
     virtual ~ucell_manager(){}
     void increment(double value, double value2);
 
-    mat3 dB, dB2;
+    Eigen::Matrix3d dB, dB2;
 };
 
 class origin_manager: public derivative_manager{
   public:
     origin_manager();
     virtual ~origin_manager(){}
-    void increment(
-        vec3 V, mat3 N, mat3 UBO, vec3 k_diffracted, vec3 o_vec,
-        double air_path, double wavelen, double Hrad, double Fcell, double Flatt, double fudge,
-        double source_I, double capture_fraction, double omega_pixel, double pixel_size);
-    vec3 dk; /* derivative of the diffracted vector along this origin component */
+    //void increment(
+    //    const Eigen::Ref<const Eigen::Vector3d>vec3 V,
+    //    const Eigen::Ref<const Eigen::Matrix3d>mat3 N, const Eigen::Ref<const Eigen::Matrix3d>mat3 UBO,
+    //    const Eigen::Ref<const Eigen::Vector3d>vec3 k_diffracted, const Eigen::Ref<const Eigen::Vector3d>vec3 o_vec,
+    //    double air_path, double wavelen, double Hrad, double Fcell, double Flatt, double fudge,
+    //    double source_I, double capture_fraction, double omega_pixel, double pixel_size);
+    Eigen::Vector3d dk; /* derivative of the diffracted vector along this origin component */
     double FF, FdF, FdF2, dFdF;
 };
 
@@ -138,8 +143,9 @@ class diffBragg: public nanoBragg{
   void set_ucell_derivative_matrix(int refine_id, af::shared<double> const& value);
   void set_ucell_second_derivative_matrix(int refine_id, af::shared<double> const& value);
   void init_Fhkl2();
-  af::flex_double get_panel_increment(double Iincrement, double omega_pixel, mat3 M, double pix2, vec3 o, vec3 k_diffracted,
-            double per_k, double per_k3, double per_k5, vec3 V, vec3 _dk);
+  af::flex_double get_panel_increment(double Iincrement, double omega_pixel, const Eigen::Ref<const Eigen::Matrix3d>& M, double pix2,
+            const Eigen::Ref<const Eigen::Vector3d>& o, const Eigen::Ref<const Eigen::Vector3d>& k_diffracted,
+            double per_k, double per_k3, double per_k5, const Eigen::Ref<const Eigen::Vector3d>& V, const Eigen::Ref<const Eigen::Vector3d>& _dk);
   inline void free_Fhkl2(){
       if(Fhkl2 != NULL) {
         for (h0=0; h0<=h_range;h0++) {
@@ -178,7 +184,7 @@ class diffBragg: public nanoBragg{
   double u;
   double kEi;
   double kBi;
-  vec3 O_reference;
+  Eigen::Vector3d O_reference;
 
   //bool use_omega_pixel_ave;
   double om;
@@ -188,41 +194,47 @@ class diffBragg: public nanoBragg{
   double diffracted_ave[4];
   double pixel_pos_ave[4];
   double Fdet_ave, Sdet_ave, Odet_ave;
-  vec3 k_diffracted_ave;
-  vec3 k_incident_ave;
+  void simple_mul(double matA[9], double matB[9], double matC[9]);
+  void simple_mul_right_transpose(double matA[9], double matB[9], double matC[9]);
+  void simple_mul_left_transpose(double matA[9], double matB[9], double matC[9]);
+  //void simple_mul( double a[3][3], double b[3][3], double c[3][3]);
+  Eigen::Vector3d k_diffracted_ave;
+  Eigen::Vector3d k_incident_ave;
 
-  mat3 EYE;
+  Eigen::Matrix3d EYE;
   mat3 Umatrix;
   mat3 Bmatrix;
   mat3 Omatrix;
   //mat3 UBO;
   //mat3 Bmat_realspace, NABC; //, dN;
-  mat3 NABC;
-  mat3 RXYZ;
-  std::vector<mat3> RotMats;
-  std::vector<mat3> dRotMats, d2RotMats;
-  std::vector<mat3> R3, R3_2;
+  Eigen::Matrix3d NABC;
+  Eigen::Matrix3d RXYZ;
+  std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > RotMats, dRotMats, d2RotMats, R3, R3_2,
+    UMATS, UMATS_RXYZ, UMATS_prime, UMATS_RXYZ_prime;
+  //std::vector<Eigen::Matrix3d> RotMats;
+  //std::vector<Eigen::Matrix3d> dRotMats, d2RotMats;
+  //std::vector<Eigen::Matrix3d> R3, R3_2;
 
   // Panel rotation
-  mat3 panR;
-  mat3 panR2;
+  Eigen::Matrix3d panR;
+  Eigen::Matrix3d panR2;
   double panel_rot_ang;
 
   //vec3 k_diffracted;
   //vec3 o_vec;
-  vec3 Ei_vec, Bi_vec;
+  Eigen::Vector3d Ei_vec, Bi_vec;
   //vec3 H_vec, H0_vec;
   //vec3 a_vec, ap_vec;
   //vec3 b_vec, bp_vec;
   //vec3 c_vec, cp_vec;
   //vec3 q_vec; // scattering vector
 
-  std::vector<mat3> UMATS;
-  std::vector<mat3> UMATS_RXYZ;
-  std::vector<mat3> UMATS_prime;
-  std::vector<mat3> UMATS_RXYZ_prime;
+  //std::vector<Eigen::Matrix3d> UMATS;
+  //std::vector<Eigen::Matrix3d> UMATS_RXYZ;
+  //std::vector<Eigen::Matrix3d> UMATS_prime;
+  //std::vector<Eigen::Matrix3d> UMATS_RXYZ_prime;
   double * mosaic_umats_prime;
-  void set_mosaic_blocks_prime(af::shared<mat3>);  // set the individual mosaic block orientation derivatives from array
+  void set_mosaic_blocks_prime(af::shared<mat3> umat_in);  // set the individual mosaic block orientation derivatives from array
   //bool vectorized_umats;
 
   /* derivative managers */
@@ -249,7 +261,7 @@ class diffBragg: public nanoBragg{
   bool oversample_omega;
   bool only_save_omega_kahn;
   double uncorrected_I;
-  vec3 max_I_hkl;// the hkl corresponding to the maximum intensity in the array (debug)
+  Eigen::Vector3d max_I_hkl;// the hkl corresponding to the maximum intensity in the array (debug)
   //int max_I_h, max_I_k, max_I_l;
 
   // helpful definitions..
@@ -309,6 +321,9 @@ class diffBragg: public nanoBragg{
 
   double source_lambda0, source_lambda1;
   bool use_lambda_coefficients;
+
+ // Eigen types
+ Eigen::Matrix3d eig_U, eig_B, eig_O;
 }; // end of diffBragg
 
 } // end of namespace nanoBragg
