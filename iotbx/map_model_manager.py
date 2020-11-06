@@ -1438,7 +1438,9 @@ class map_model_manager(object):
       return other
 
   def merge_split_maps_and_models(self,
-      box_info = None):
+      box_info = None,
+      replace_coordinates = True,
+      replace_u_aniso = False):
     '''
       Replaces coordinates in working model with those from the
         map_model_managers in box_info.  The box_info object should
@@ -1450,18 +1452,39 @@ class map_model_manager(object):
       len(box_info.selection_list)), file = self.log)
 
     i = 0
-    for selection, mmm in zip (box_info.selection_list, box_info.mmm_list):
+    if not hasattr(box_info,'tlso_list'):
+       box_info.tlso_list = len(box_info.mmm_list) * [None]
+    for selection, mmm, tlso_value in zip (
+      box_info.selection_list, box_info.mmm_list, box_info.tlso_list):
       i += 1
       model_to_merge = self.get_model_from_other(mmm)
-      sites_cart = self.model().get_sites_cart()
-      new_coords=model_to_merge.get_sites_cart()
-      original_coords=sites_cart.select(selection)
-      rmsd=new_coords.rms_difference(original_coords)
-      print("RMSD for %s coordinates in model %s: %.3f A" %(
-         original_coords.size(), i, rmsd), file = self.log)
-      sites_cart.set_selected(selection, new_coords)
-      self.model().set_crystal_symmetry_and_sites_cart(sites_cart = sites_cart,
-        crystal_symmetry = self.model().crystal_symmetry())
+
+      if replace_coordinates:
+        sites_cart = self.model().get_sites_cart()  # all sites
+        #  Sites to merge from this model
+        new_coords=model_to_merge.get_sites_cart()
+        original_coords=sites_cart.select(selection)
+        rmsd=new_coords.rms_difference(original_coords)
+        print("RMSD for %s coordinates in model %s: %.3f A" %(
+           original_coords.size(), i, rmsd), file = self.log)
+        sites_cart.set_selected(selection, new_coords)
+        self.model().set_crystal_symmetry_and_sites_cart(
+          sites_cart = sites_cart,
+          crystal_symmetry = self.model().crystal_symmetry())
+
+      if replace_u_aniso: # calculate aniso U from
+        xrs=self.model().get_xray_structure()
+        xrs.convert_to_anisotropic()
+        uc = xrs.unit_cell()
+        sites_cart = xrs.sites_cart()
+        u_cart=xrs.scatterers().extract_u_cart(uc)
+        from mmtbx_tls_ext import tlso, uaniso_from_tls_one_group
+        new_anisos= uaniso_from_tls_one_group(tlso = tlso_value,
+         sites_cart = sites_cart.select(selection),
+         zeroize_trace=False)
+        u_cart.set_selected(selection, new_anisos)
+        xrs.set_u_cart(u_cart)
+        self.model().set_xray_structure(xrs)
 
   def split_up_map_and_model_by_chain(self,
     skip_waters = False,
@@ -2314,12 +2337,25 @@ class map_model_manager(object):
     map_id = None,
     model_id = None,
     tls_by_chain = True,
+    apply_tls_to_model = True,
     skip_waters = True,
     skip_hetero = True,
       **kw):
 
-    # Set up list of maps to be scaled
+    kw['map_id_1'] = map_id_1
+    kw['map_id_2'] = map_id_2
+    kw['map_id'] = map_id
+    kw['model_id'] = model_id
+
+    # Set up list of maps to be scaled and kw
     kw = self.set_map_id_lists(kw)
+
+    kw['local_sharpen'] = True
+    kw['anisotropic_sharpen'] = True
+    kw['get_scale_as_aniso_u'] = True
+    kw['get_tls_info_only'] = True
+    kw['replace_aniso_with_tls_equiv'] = False
+    kw['overall_sharpen_before_and_after_local'] = False
 
     print("\nRunning tls_from_map...\n",
        file = self.log)
@@ -2327,36 +2363,54 @@ class map_model_manager(object):
       print("\nTLS will be determined by comparison of %s and %s " %(
        kw['map_id_1'],kw['map_id_2']), file = self.log)
       method = self.half_map_sharpen
+      del kw['model_id']
+      del kw['map_id']
     elif kw.get('map_id') and kw.get('model_id'):
       print("\nTLS will be determined by comparison of %s and %s " %(
        kw['map_id'],kw['model_id']), file = self.log)
       method = self.model_sharpen
+      del kw['map_id_1']
+      del kw['map_id_2']
     else:
       raise Sorry("Need two half-maps or map and model for get_tls_from_map")
 
     # Run by chain if requested
-    if kw['tls_by_chain']:
-      kw['tls_by_chain'] = False
-      model_group_info = self._split_up_map_and_model(
+    if tls_by_chain:
+      kw['tls_by_chain'] = False # REQUIRED
+      print("TLS will be determined for each chain", file = self.log)
+      box_info = self._split_up_map_and_model(
         selection_method = 'by_chain',
         skip_waters = skip_waters,
-        skip_hetero = skip_hetero,
-        mask_around_unselected_atoms = False,
-        apply_box_info = apply_box_info,
-        write_files = False)
+        skip_hetero = skip_hetero,)
+      tlso_list = []
+      for mmm in box_info.mmm_list:
+        box_info =  mmm.tls_from_map(apply_tls_to_model = False, **kw)
+        for tlso in box_info.tlso_list:
+          tlso_list.append(tlso)
+      box_info.tlso_list = tlso_list
 
-    # Run overall sharpening
-    kw['local_sharpen'] = True
-    kw['anisotropic_sharpen'] = True
-    kw['get_scale_as_aniso_u'] = True
-    kw['get_tls_info_only'] = True
-    kw['replace_aniso_with_tls_equiv'] = False
-    kw['overall_sharpen_before_and_after_local'] = False
-    print("ZZB method:",method)
-    print("ZZB method:",kw)
-    assert kw['get_tls_info_only']
-    tlso = method( **kw)  # run overall sharpening
-    return tlso
+    else:
+      print("TLS will be determined for entire model as one group",
+         file = self.log)
+      tls_info = method(**kw)
+          # run overall sharpening
+      tlso_list = [tls_info.tlso]
+      mmm_list = [self]
+      box_info = group_args(
+       selection_list = None,
+       tlso_list = tlso_list,
+       mmm_list = [self])
+
+    if apply_tls_to_model and self.model():  # set the values in the model using
+      if not box_info.selection_list:
+        box_info.selection_list = [self.model().selection('all')]
+
+      self.merge_split_maps_and_models(
+        box_info = box_info,
+        replace_coordinates = False,
+        replace_u_aniso = True)
+
+    return box_info
 
   def _sharpen_overall_local_overall(self, kw, method):
 
@@ -3788,7 +3842,6 @@ class map_model_manager(object):
     del kw['temp_dir'] # REQUIRED
 
     assert n_bins is not None
-    assert get_tls_info_only # ZZ
 
     print ("\nRunning anisotropic local sharpening with nproc = %s " %(
        nproc), file = self.log)
@@ -3857,7 +3910,6 @@ class map_model_manager(object):
       map_id=map_id,
       mask_id=None,  # can supply mask_id
       replace_inside = (replace_aniso_with_tls_equiv and get_scale_as_aniso_u))
-    print("ZZA",get_tls_info_only)
     if get_tls_info_only:
       return tls_info
 
