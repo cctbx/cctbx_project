@@ -790,7 +790,7 @@ class map_model_manager(object):
     '''
     Return any map manager
     '''
-    keys = self.map_dict().keys()
+    keys = list(self.map_dict().keys())
     if not keys:
       return
     else:
@@ -3042,7 +3042,7 @@ class map_model_manager(object):
       direction_vectors: direction vectors dv for anisotropy calculations
       scaling_info_list: si (scaling_info) objects, one for each dv
         each si:  si.target_scale_factors   # scale factors vs sthol2
-	si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
+                  si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
                   si.d_min_list
                   si.cc_list
                   si.low_res_cc # low-res average
