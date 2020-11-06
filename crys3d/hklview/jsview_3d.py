@@ -1161,53 +1161,39 @@ function MakeHKL_Axis(mshape)
           colourscalararray.append( val )
 
         fomarrays = []
-        COL = display.MplColorHelper(self.viewerparams.color_scheme, mincolourscalar, maxcolourscalar)
-        arr1 = [ COL.get_rgb(d)[0:3] for d in colourscalararray ]
-        rgbcolarray = [ [e[0]*255, e[1]*255, e[2]*255] for e in arr1 ]
+        COL = display.MplColorHelper(self.viewerparams.color_scheme, 0, 360)
+        rgbcolarray = flex.vec3_double( [ COL.get_rgb(d)[0:3] for d in colourscalararray ] )
 
         if self.HKLscene_from_dict(self.colour_scene_id).isUsingFOMs():
           fomln = 50
           fom = 1.0
           fomdecr = 1.0/(fomln-1.0)
-        # make fomln fom arrays of size len(colourscalararray) when calling colour_by_phi_FOM
           for j in range(fomln):
             fomarrays.append( flex.double(len(colourscalararray), fom) )
             fom -= fomdecr
           for j in range(fomln):
-            #colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0), fomarrays[j] ) * 255.0)
-
-            colourgradarrays.append(  graphics_utils.map_to_rgb_colourmap(
+            arr = graphics_utils.map_to_rgb_colourmap(
               data_for_colors= colourscalararray,
               colormap= rgbcolarray,
               selection=flex.bool(colourscalararray.size(), True),
               attenuation = fomarrays[j]
-              ) )
-
+              )
+            colourgradarrays.append( arr*256 )
         else:
           fomln =1
           fomarrays = [1.0]
-          #colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0) ) * 255.0)
-          colourgradarrays.append(  graphics_utils.map_to_rgb_colourmap(
+          arr = graphics_utils.map_to_rgb_colourmap(
             data_for_colors= colourscalararray,
             colormap= rgbcolarray,
             selection=flex.bool(colourscalararray.size(), True)
-            ) )
+            )
+          colourgradarrays.append(  arr*256 )
       else:
         fomln = 1
         fomarrays = [1.0]
         COL = display.MplColorHelper(self.viewerparams.color_scheme, mincolourscalar, maxcolourscalar)
-        arr1 = [ COL.get_rgb(d)[0:3] for d in colourscalararray ]
-        rgbcolarray = [ [e[0]*255, e[1]*255, e[2]*255] for e in arr1 ]
-        colourgradarrays.append(rgbcolarray)
-        """
-        colourgradarrays.append(
-          graphics_utils.color_by_property(
-            properties= flex.double(colourscalararray),
-            selection=flex.bool( len(colourscalararray), True),
-            color_all=False,
-          gradient_type= self.viewerparams.color_scheme) * 255.0
-          )
-        """
+        rgbcolarray = flex.vec3_double( [ COL.get_rgb(d)[0:3] for d in colourscalararray ])
+        colourgradarrays.append(rgbcolarray*256)
       colors = self.HKLscene_from_dict(self.colour_scene_id).colors
       radii = self.HKLscene_from_dict(self.radii_scene_id).radii
       self.meanradius = flex.mean(radii)

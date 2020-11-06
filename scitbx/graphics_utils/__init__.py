@@ -25,14 +25,16 @@ def map_to_rgb_colourmap(
     colormap,
     selection,
     attenuation=None,
+    map_directly=False,
     color_all=False):
-  if not attenuation:
+  if attenuation is None:
     attenuation = flex.double(data_for_colors.size(), 1.0)
   return map_to_rgb_colourmap_(
     data_for_colors=data_for_colors.as_double(),
     colourmap=colormap,
     selection=selection,
     attenuation=attenuation,
+    map_directly = map_directly,
     color_all=color_all)
 
 

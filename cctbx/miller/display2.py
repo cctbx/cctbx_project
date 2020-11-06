@@ -368,7 +368,7 @@ class scene(object):
     elif (settings.sqrt_scale_colors) and (isinstance(data, flex.double)):
       data_for_colors = flex.sqrt(flex.abs(data))
     elif isinstance(data, flex.complex_double):
-      data_for_colors = self.radians
+      data_for_colors = self.phases
       foms_for_colours = self.foms
        # assuming last part of the labels indicates the phase label as in ["FCALC","PHICALC"]
       self.colourlabel = "Phase of " + self.miller_array.info().label_string()
@@ -399,31 +399,33 @@ class scene(object):
         data_for_radii = data_for_radii.select(self.slice_selection)
         data_for_colors = data_for_colors.select(self.slice_selection)
         foms_for_colours = foms_for_colours.select(self.slice_selection)
-    # Use a colour gradient from matplotlib
-    COL = MplColorHelper(settings.color_scheme, 0, 199)
     # Computing rgb colours of each reflection is slow so make a small array 
     # of precomputed colours to use as a lookup table for each reflection
-    colorgradientarray = flex.vec3_double([COL.get_rgb(d)[0:3] for d in range(200) ])
     if isinstance(data, flex.complex_double):
+      COL = MplColorHelper(settings.color_scheme, 0, 360)
+      rgbcolarray = [ COL.get_rgb(d)[0:3] for d in range(360) ]
       if self.isUsingFOMs():
-        #colors = graphics_utils.colour_by_phi_FOM(data_for_colors, foms_for_colours)
         colors = graphics_utils.map_to_rgb_colourmap(
           data_for_colors=data_for_colors,
-          colormap=colorgradientarray,
+          colormap=rgbcolarray,
           selection=flex.bool(data_for_colors.size(), True),
           attenuation = foms_for_colours,
+          map_directly=True,
           color_all=False
           )
       else:
-        #colors = graphics_utils.colour_by_phi_FOM(data_for_colors, None)
         colors = graphics_utils.map_to_rgb_colourmap(
           data_for_colors=data_for_colors,
-          colormap=colorgradientarray,
+          colormap=rgbcolarray,
           selection=flex.bool(data_for_colors.size(), True),
           attenuation = None,
+          map_directly=True,
           color_all=False
           )
     else:
+      # Use a colour gradient from matplotlib
+      COL = MplColorHelper(settings.color_scheme, 0, 199)
+      colorgradientarray = flex.vec3_double([COL.get_rgb(d)[0:3] for d in range(200) ])
       # Do the table lookup in C++ for speed improvement     
       colors = graphics_utils.map_to_rgb_colourmap(
         data_for_colors=data_for_colors,

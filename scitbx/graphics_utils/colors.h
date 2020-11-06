@@ -362,6 +362,7 @@ namespace scitbx { namespace graphics_utils {
       af::shared< scitbx::vec3<double> > const& colourmap,
       af::const_ref< bool > const& selection,
       af::const_ref< double > const& attenuation,
+      bool map_directly = false,
       bool color_all = false
       )
   {
@@ -376,7 +377,8 @@ namespace scitbx { namespace graphics_utils {
     double vmax = -9e99;
     double vmin = 9e99;
     int nrgbcolours = colourmap.size();
-    for (unsigned i_seq = 0; i_seq < data_for_colors.size(); i_seq++) {
+    for (unsigned i_seq = 0; i_seq < data_for_colors.size(); i_seq++) 
+    {
       if ((!color_all) && (!selection[i_seq])) continue;
       if (!boost::math::isfinite(data_for_colors[i_seq])) continue;
       if (data_for_colors[i_seq] > vmax) vmax = data_for_colors[i_seq];
@@ -388,16 +390,40 @@ namespace scitbx { namespace graphics_utils {
     }
     // do the table lookup of rgb colours by mapping data values to indices of colourmap array
     // and attenutate colours according to attenuation values
-    for (unsigned i_seq = 0; i_seq < data_for_colors.size(); i_seq++)
+    if (map_directly)
     {
-      double colindex = (nrgbcolours -1) * ((data_for_colors[i_seq] - vmin)/(vmax - vmin));
-      int indx = int(colindex);
-      SCITBX_ASSERT(indx >= 0 && indx < nrgbcolours);
-      colors[i_seq][0] = colourmap[indx][0] * attenuation[indx] + 0.5 * (1.0 - attenuation[indx]);
-      colors[i_seq][1] = colourmap[indx][1] * attenuation[indx] + 0.5 * (1.0 - attenuation[indx]);
-      colors[i_seq][2] = colourmap[indx][2] * attenuation[indx] + 0.5 * (1.0 - attenuation[indx]);
+      for (unsigned i_seq = 0; i_seq < data_for_colors.size(); i_seq++)
+      {
+        int indx = int(data_for_colors[i_seq]);
+        SCITBX_ASSERT(indx >= 0 && indx < nrgbcolours);
+        
+        colors[i_seq][0] = colourmap[indx][0] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
+        colors[i_seq][1] = colourmap[indx][1] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
+        colors[i_seq][2] = colourmap[indx][2] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
+        /*
+        colors[i_seq][0] = colourmap[indx][0];
+        colors[i_seq][1] = colourmap[indx][1];
+        colors[i_seq][2] = colourmap[indx][2];
+        */
+      }
     }
-
+    else
+    {
+      for (unsigned i_seq = 0; i_seq < data_for_colors.size(); i_seq++)
+      {
+        double colindex = (nrgbcolours - 1) * ((data_for_colors[i_seq] - vmin) / (vmax - vmin));
+        int indx = int(colindex);
+        SCITBX_ASSERT(indx >= 0 && indx < nrgbcolours);
+        colors[i_seq][0] = colourmap[indx][0] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
+        colors[i_seq][1] = colourmap[indx][1] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
+        colors[i_seq][2] = colourmap[indx][2] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
+        /*
+        colors[i_seq][0] = colourmap[indx][0];
+        colors[i_seq][1] = colourmap[indx][1];
+        colors[i_seq][2] = colourmap[indx][2];
+        */
+      }
+    }
     return colors;
   }
 
