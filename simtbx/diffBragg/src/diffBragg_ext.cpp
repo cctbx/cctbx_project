@@ -2,6 +2,7 @@
 #include <boost/python.hpp>
 #include <simtbx/diffBragg/src/diffBragg.h>
 #include <simtbx/nanoBragg/nanoBragg.h>
+#include <iostream>
 
 using namespace boost::python;
 namespace simtbx{
@@ -32,6 +33,10 @@ namespace boost_python { namespace {
 
   void set_O(simtbx::nanoBragg::diffBragg& diffBragg, nanoBragg::mat3 const& value){
     diffBragg.Omatrix = value;
+    diffBragg.eig_O << value[0], value[1], value[2],
+            value[3], value[4], value[5],
+            value[6], value[7], value[8];
+    //std::cout << "eigO: " << diffBragg.eig_O << std::endl;
   }
 
   static nanoBragg::mat3 get_U(simtbx::nanoBragg::diffBragg& diffBragg){
@@ -40,6 +45,9 @@ namespace boost_python { namespace {
 
   void set_U(simtbx::nanoBragg::diffBragg& diffBragg, nanoBragg::mat3 const& value){
     diffBragg.Umatrix = value;
+    diffBragg.eig_U << value[0], value[1], value[2],
+            value[3], value[4], value[5],
+            value[6], value[7], value[8];
   }
 
   static nanoBragg::mat3 get_B(simtbx::nanoBragg::diffBragg& diffBragg){
@@ -61,6 +69,10 @@ namespace boost_python { namespace {
       diffBragg.user_cell = 0;
       diffBragg.user_matrix = 1;
       diffBragg.init_cell();
+
+       diffBragg.eig_B << value[0], value[1], value[2],
+            value[3], value[4], value[5],
+            value[6], value[7], value[8];
   }
 
   void set_roi(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& tupleoftuples){
