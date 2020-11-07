@@ -379,7 +379,8 @@ class HKLViewFrame() :
     self.viewer.isnewfile = True
     if self.viewer.miller_array:
       self.viewer.params.viewer.scene_id = None
-      self.viewer.JavaScriptCleanUp()
+      #self.viewer.JavaScriptCleanUp()
+      self.viewer.RemoveStageObjects()
     self.viewer.miller_array = None
     self.viewer.lastviewmtrx = None
     return self.viewer.params
@@ -1138,7 +1139,8 @@ class HKLViewFrame() :
 
   def SetFontSize(self, val):
     self.params.NGL_HKLviewer.viewer.NGL.fontsize = val
-    self.update_settings()
+    self.viewer.SetFontSize(val)
+    #self.update_settings()
 
 
   def ShowUnitCell(self, val):

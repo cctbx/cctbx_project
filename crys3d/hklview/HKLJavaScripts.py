@@ -48,7 +48,36 @@ Object.assign(tooltip.style, {
 });
 
 
-%s
+function DefineHKL_Axes(hstart, hend, kstart, kend, 
+                 lstart, lend, hlabelpos, klabelpos, llabelpos)
+{
+  Hstarstart = hstart;
+  Hstarend = hend;
+  Kstarstart = kstart;
+  Kstarend = kend;
+  Lstarstart = lstart;
+  Lstarend = lend;
+  Hlabelpos = hlabelpos;
+  Klabelpos = klabelpos;
+  Llabelpos = llabelpos;
+};
+
+
+function MakeHKL_Axis()
+{
+  // xyz arrows
+  // shape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origin');
+  //blue-x
+  shape.addArrow( Hstarstart, Hstarend , [ 0, 0, 1 ], 0.1);
+  //green-y
+  shape.addArrow( Kstarstart, Kstarend, [ 0, 1, 0 ], 0.1);
+  //red-z
+  shape.addArrow( Lstarstart, Lstarend, [ 1, 0, 0 ], 0.1);
+
+  shape.addText( Hlabelpos, [ 0, 0, 1 ], fontsize, 'h');
+  shape.addText( Klabelpos, [ 0, 1, 0 ], fontsize, 'k');
+  shape.addText( Llabelpos, [ 1, 0, 0 ], fontsize, 'l');
+};
 
 
 function getOrientMsg()
@@ -523,10 +552,10 @@ function CreateWebSocket()
 CreateWebSocket();
 
 var stage = null;
-var shape;
-var shapeComp;
+var shape = null;
+var shapeComp = null;
 var vectorshape = null;
-var repr;
+var repr = null;
 var AA = String.fromCharCode(197); // short for angstrom
 var DGR = String.fromCharCode(176); // short for degree symbol
 var current_ttip = "";
@@ -544,6 +573,7 @@ var radii = [];
 var shapebufs = [];
 var br_shapebufs = [];
 var nrots = 0;
+var fontsize = 9;
 var postrotmxflag = false;
 var cvorient = new NGL.Matrix4();
 var oldmsg = "";
@@ -559,16 +589,31 @@ var isdebug = %s;
 var tdelay = 100;
 var displaytooltips = true;
 var container = null;
-
 var sockwaitcount = 0;
+
+var Hstarstart = null;
+var Hstarend = null;
+var Kstarstart = null;
+var Kstarend = null;
+var Lstarstart = null;
+var Lstarend = null;
+var Hlabelpos = null;
+var Klabelpos = null;
+var Llabelpos = null;
+
+
+
 
 
 function RemoveStageObjects()
 {
   // delete the shapebufs[] that holds the positions[] arrays
-  shapeComp.removeRepresentation(repr);
-  // remove shapecomp from stage first
-  stage.removeAllComponents();
+  if (shapeComp != null)
+  {
+    shapeComp.removeRepresentation(repr);
+    // remove shapecomp from stage first
+    stage.removeAllComponents();
+  }
   ttips = [];
   vectorreprs = [];
   vectorshapeComps = [];
@@ -1178,6 +1223,29 @@ function onMessage(e)
       if (reprnamegone || clipvecgone || unitcellgone || reciprocunitcellgone)
         //stage.viewer.requestRender();
         RenderRequest();
+    }
+
+    if (msgtype === "DefineHKL_Axes")
+    {
+      strarrs = datval[1].split("\\n\\n");
+      hstart = eval(strarrs[0]);
+      hend = eval(strarrs[1]);
+      kstart = eval(strarrs[2]);
+      kend = eval(strarrs[3]);
+      lstart = eval(strarrs[4]);
+      lend = eval(strarrs[5]);
+      hlabelpos = eval(strarrs[6]);
+      klabelpos = eval(strarrs[7]);
+      llabelpos = eval(strarrs[8]);
+
+      DefineHKL_Axes(hstart, hend, kstart, kend, 
+                 lstart, lend, hlabelpos, klabelpos, llabelpos)
+    }
+
+    if (msgtype === "SetFontSize")
+    {
+      fontsize = parseFloat(val[0]);
+      RenderRequest();
     }
 
     if (msgtype === "SetMouseSpeed")

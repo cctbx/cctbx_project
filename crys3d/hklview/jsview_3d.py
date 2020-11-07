@@ -1099,6 +1099,7 @@ class hklview_3d:
     Lstararrowstart = roundoff( [-self.unit_l_axis[0][0]*l1, -self.unit_l_axis[0][1]*l1, -self.unit_l_axis[0][2]*l1] )
     Lstararrowend = roundoff( [self.unit_l_axis[0][0]*l1, self.unit_l_axis[0][1]*l1, self.unit_l_axis[0][2]*l1] )
     Lstararrowtxt  = roundoff( [self.unit_l_axis[0][0]*l2, self.unit_l_axis[0][1]*l2, self.unit_l_axis[0][2]*l2] )
+    """
     # make arrow font size roughly proportional to radius of highest resolution shell
     #fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/3.0)))
     if not self.miller_array:
@@ -1106,32 +1107,8 @@ class hklview_3d:
     else:
       fontsize = 1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/2.0))
     #fontsize *= self.viewerparams.NGL.fontsize/7.0
-    fontsize = str(self.viewerparams.NGL.fontsize)
+    """
 
-    if blankscene:
-      axisfuncstr = "\nvar MakeHKL_Axis = function() { };\n"
-    else:
-      axisfuncstr = """
-var fontsize = %s;
-function MakeHKL_Axis(mshape)
-{
-  // xyz arrows
-  // mshape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origin');
-  //blue-x
-  mshape.addArrow( %s, %s , [ 0, 0, 1 ], 0.1);
-  //green-y
-  mshape.addArrow( %s, %s , [ 0, 1, 0 ], 0.1);
-  //red-z
-  mshape.addArrow( %s, %s , [ 1, 0, 0 ], 0.1);
-
-  mshape.addText( %s, [ 0, 0, 1 ], fontsize, 'h');
-  mshape.addText( %s, [ 0, 1, 0 ], fontsize, 'k');
-  mshape.addText( %s, [ 1, 0, 0 ], fontsize, 'l');
-};
-    """ %(fontsize, str(Hstararrowstart), str(Hstararrowend),
-          str(Kstararrowstart),
-          str(Kstararrowend), str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt,
-          Kstararrowtxt, Lstararrowtxt)
     if not blankscene:
       # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
       mincolourscalar = self.HKLMinData_from_dict(self.colour_scene_id)
@@ -1405,18 +1382,35 @@ function MakeHKL_Axis(mshape)
     self.NGLscriptstr = ""
     if not blankscene:
       self.NGLscriptstr = HKLJavaScripts.NGLscriptstr % ( self.ngl_settings.tooltip_alpha,
-        '\"' + self.camera_type + '\"', axisfuncstr, negativeradiistr)
+        '\"' + self.camera_type + '\"', negativeradiistr)
 
     WebsockMsgHandlestr = HKLJavaScripts.WebsockMsgHandlestr %(self.websockport, cntbin,
              str(self.verbose>=2).lower(), self.__module__, self.__module__, qualitystr )
 
     self.NGLscriptstr = WebsockMsgHandlestr + self.NGLscriptstr
-    if self.jscriptfname and self.isnewfile:
+    if self.jscriptfname and self.isnewfile and not self.WBmessenger.browserisopen:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
     if not self.WBmessenger.browserisopen:
       self.ReloadNGL()
     if not blankscene:
+      self.RemoveStageObjects()
+      for ibin in range(self.nbinvalsboundaries+1):
+        mstr =""
+        nreflsinbin = len(self.radii2[ibin])
+        if nreflsinbin == 0:
+          continue
+
+        self.SetFontSize(self.viewerparams.NGL.fontsize)
+        self.DefineHKL_Axes(str(Hstararrowstart), str(Hstararrowend),
+          str(Kstararrowstart), str(Kstararrowend), 
+          str(Lstararrowstart), str(Lstararrowend), 
+          Hstararrowtxt, Kstararrowtxt, Lstararrowtxt )
+        self.SendCoordinates2Browser(self.positions[ibin], self.colours[ibin], 
+                                     self.radii2[ibin], self.spbufttips[ibin] )
+      self.RenderStageObjects()
+      self.MakeColourChart(10, 10, colourlabel, fomlabel, colourgradstrs)
+
       if self.WaitforHandshake():
         nwait = 0
         while self.viewmtrx is None and nwait < self.handshakewait:
@@ -1429,20 +1423,7 @@ function MakeHKL_Axis(mshape)
       self.OrigClipNear = self.clipNear
       self.SetMouseSpeed( self.ngl_settings.mouse_sensitivity )
       self.isnewfile = False
-      #"""
-      self.RemoveStageObjects()
-      for ibin in range(self.nbinvalsboundaries+1):
-        mstr =""
-        nreflsinbin = len(self.radii2[ibin])
-        if nreflsinbin == 0:
-          continue
 
-        self.SendCoordinates2Browser(self.positions[ibin], self.colours[ibin], 
-                                     self.radii2[ibin], self.spbufttips[ibin] )
-      self.RenderStageObjects()
-      #colourgradstrs = [colourgradstr]
-      self.MakeColourChart(10, 10, colourlabel, fomlabel, colourgradstrs)
-      #"""
     self.sceneisdirty = False
     self.lastscene_id = self.viewerparams.scene_id
 
@@ -1936,6 +1917,11 @@ Distance: %s
     self.TranslateHKLpoints(0, 0, 0, 0.0)
 
 
+  def SetFontSize(self, fontsize):
+    msg = str(fontsize)
+    self.AddToBrowserMsgQueue("SetFontSize", msg)
+
+
   def SetMouseSpeed(self, trackspeed):
     msg = str(trackspeed)
     self.AddToBrowserMsgQueue("SetMouseSpeed", msg)
@@ -2071,6 +2057,24 @@ Distance: %s
 
   def RemoveStageObjects(self):
     self.AddToBrowserMsgQueue("RemoveStageObjects")
+
+
+  def DefineHKL_Axes(self, Hstararrowstart, Hstararrowend, Kstararrowstart, 
+                     Kstararrowend, Lstararrowstart, Lstararrowend, 
+                     Hlabelpos, Klabelpos, Llabelpos):
+    strdata = ""
+    strdata += "%s\n\n" %str(Hstararrowstart)
+    strdata += "%s\n\n" %str(Hstararrowend)
+    strdata += "%s\n\n" %str(Kstararrowstart)
+    strdata += "%s\n\n" %str(Kstararrowend)
+    strdata += "%s\n\n" %str(Lstararrowstart)
+    strdata += "%s\n\n" %str(Lstararrowend)
+    strdata += "%s\n\n" %str(Hlabelpos)
+    strdata += "%s\n\n" %str(Klabelpos)
+    strdata += "%s\n\n" %str(Llabelpos)
+    self.AddToBrowserMsgQueue("DefineHKL_Axes", strdata)
+
+
 
 
   def SendCoordinates2Browser(self, positions, colours, radii, ttipids ):
