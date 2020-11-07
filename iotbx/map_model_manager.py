@@ -4646,7 +4646,7 @@ class map_model_manager(object):
 
     if (not skip_boxes): # changed 2020-11-06 to recalculate n_boxes
       volume = self.crystal_symmetry().unit_cell().volume()
-      n_boxes = int(0.5+volume/(core_box_size)**3)
+      n_boxes = max(1,int(0.5+volume/(core_box_size)**3))
       print ("Target core_box_size: %.2s A  Target boxes: %s" %(
         core_box_size, n_boxes),file = self.log)
 
