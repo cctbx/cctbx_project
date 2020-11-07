@@ -6364,7 +6364,7 @@ def get_selections_and_boxes_to_split_model(
       selection = model.selection(selection_string)
       if (not skip_empty_boxes) or (selection.count(True) > 0):
         box_info.selection_list.append(selection)
-        box_info.selection_as_list.append(selection_string)
+        box_info.selection_as_text_list.append(selection_string)
   elif selection_method == 'boxes':
     if info.no_water_or_het and info.no_water_or_het != 'all':
       overall_selection = model.selection("not (%s) " %(info.no_water_or_het))
