@@ -44,7 +44,7 @@ def run(filenames,
       merge_block(comp_list, cif_object['comp_list'])
     del cif_object['comp_list']
 
-  outl = ''
+  outl = 'data_comp_list\n'
   outl += str(comp_list)
   for i, cif_object in enumerate(cifs):
     outl += str(cif_object)
