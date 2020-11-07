@@ -2520,18 +2520,19 @@ class map_model_manager(object):
       mmm_list = [self]
       box_info = group_args(
        selection_list = None,
+       selection_as_text_list = None,
        tlso_list = tlso_list,
        mmm_list = [self])
 
     if apply_tls_to_model and self.model():  # set the values in the model using
       if not box_info.selection_list:
         box_info.selection_list = [self.model().selection('all')]
+        box_info.selection_as_text_list = ['all']
 
       self.merge_split_maps_and_models(
         box_info = box_info,
         replace_coordinates = False,
         replace_u_aniso = True)
-
     return box_info
 
   def _sharpen_overall_local_overall(self, kw, method):
@@ -6325,6 +6326,7 @@ def get_selections_and_boxes_to_split_model(
 
   # Get the selections
   box_info = group_args(
+    selection_as_text_list = [],
     selection_list = [],
     lower_bounds_list = [],
     upper_bounds_list = [],
@@ -6342,17 +6344,19 @@ def get_selections_and_boxes_to_split_model(
     selection = model.selection('%s' %(info.no_water_or_het))
     if (not skip_empty_boxes) or (selection.count(True) > 0):
       box_info.selection_list = [selection]
+      box_info.selection_as_text_list=[info.no_water_or_het]
   elif selection_method == 'by_chain':
     from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
     for chain_id in get_chain_ids(model.get_hierarchy(), unique_only=True):
       if chain_id.replace(" ",""):
-        selection = model.selection(" %s (chain %s) " %(
-         info.no_water_or_het_with_and,chain_id))
+        selection_as_text = " %s (chain %s) " %(
+         info.no_water_or_het_with_and,chain_id)
       else:
-        selection = model.selection(" %s " %(
-         info.no_water_or_het))
+        selection_as_text = " %s " %(info.no_water_or_het)
+      selection = model.selection(selection_as_text)
       if (not skip_empty_boxes) or (selection.count(True) > 0):
         box_info.selection_list.append(selection)
+        box_info.selection_as_text_list.append(selection_as_text)
   elif selection_method == 'by_segment':
     selection_strings= get_selections_for_segments(model,
     no_water_or_het_with_and = info.no_water_or_het_with_and)
@@ -6360,6 +6364,7 @@ def get_selections_and_boxes_to_split_model(
       selection = model.selection(selection_string)
       if (not skip_empty_boxes) or (selection.count(True) > 0):
         box_info.selection_list.append(selection)
+        box_info.selection_as_list.append(selection_string)
   elif selection_method == 'boxes':
     if info.no_water_or_het and info.no_water_or_het != 'all':
       overall_selection = model.selection("not (%s) " %(info.no_water_or_het))
@@ -6403,7 +6408,9 @@ def get_selections_and_boxes_to_split_model(
       box_info.upper_bounds_list.append(info.upper_bounds)
     box_info.lower_bounds_with_cushion_list = [] # not using these
     box_info.upper_bounds_with_cushion_list = []
-
+  if not box_info.get('selection_as_text_list') or (
+       not box_info.selection_as_text_list):
+    box_info.selection_as_text_list = [None] * len(box_info.selection_list)
   box_info.mask_around_unselected_atoms = mask_around_unselected_atoms
   box_info.mask_all_maps_around_edges = mask_all_maps_around_edges
   box_info.mask_radius = mask_radius
