@@ -349,6 +349,7 @@ class map_manager(map_reader, write_ccp4_map):
     self._experiment_type = experiment_type
     self._scattering_table = scattering_table
     self._resolution = resolution
+    self._minimum_resolution = None
     self._set_up_experiment_type_and_scattering_table_and_resolution()
 
 
@@ -1298,6 +1299,23 @@ class map_manager(map_reader, write_ccp4_map):
   def experiment_type(self):
     return self._experiment_type
 
+  def minimum_resolution(self, set_minimum_resolution = True):
+    '''
+      Get minimum resolution.  If set previously, use that value
+    '''
+    if self._minimum_resolution:
+      return self._minimum_resolution
+
+    from cctbx.maptbx import d_min_from_map
+    minimum_resolution = d_min_from_map(
+           map_data=self.map_data(),
+           unit_cell=self.crystal_symmetry().unit_cell())
+
+    if set_minimum_resolution:
+      self._minimum_resolution = minimum_resolution
+
+    return minimum_resolution
+
   def resolution(self, force = False, method = 'd99', set_resolution = True):
     ''' Get nominal resolution
         Return existing if present unless force is True
@@ -1327,9 +1345,7 @@ class map_manager(map_reader, write_ccp4_map):
       working_resolution = getattr(d99_object.result,method,-1)
 
     from cctbx.maptbx import d_min_from_map  # get this to check
-    d_min_estimated_from_map = d_min_from_map(
-           map_data=self.map_data(),
-           unit_cell=self.crystal_symmetry().unit_cell())
+    d_min_estimated_from_map = self.minimum_resolution()
 
     if working_resolution < d_min_estimated_from_map:  # we didn't get it or want to use d_min
       working_resolution = d_min_estimated_from_map
@@ -1762,9 +1778,13 @@ class map_manager(map_reader, write_ccp4_map):
        return self._ncs_cc
 
   def absolute_center_cart(self):
-    '''  Return center of map (absolute position) in Cartesian coordinates'''
-    return tuple([0.5*a - o for a,o in zip(
+    '''
+     Return center of map (absolute position) in Cartesian coordinates
+     A little tricky because for example the map goes from 0 to nx-1, not nx
+    '''
+    return tuple([a*0.5*(n-1)/n - o for a,n,o in zip(
       self.crystal_symmetry().unit_cell().parameters()[:3],
+      self.map_data().all(),
       self.shift_cart())])
 
   def map_map_cc(self, other_map_manager):
@@ -1953,6 +1973,7 @@ class map_manager(map_reader, write_ccp4_map):
      target_for_boxes = 24,
      box_cushion = 3,
      get_unique_set_for_boxes = None,
+     do_not_go_over_target = None,
        ):
     '''
      Return a group_args object with a list of lower_bounds and upper_bounds
@@ -1976,6 +1997,7 @@ class map_manager(map_reader, write_ccp4_map):
        crystal_symmetry = self.crystal_symmetry(),
        cushion_nx_ny_nz = cushion_nx_ny_nz,
        wrapping = self.wrapping(),
+       do_not_go_over_target = do_not_go_over_target,
      )
     box_info.ncs_object = None
 

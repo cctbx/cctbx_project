@@ -803,9 +803,23 @@ def analyze_anisotropy(
      out = out)
 
   aniso_info = estimate_s_matrix(aniso_info)
+  # Total correction
+  aniso_info.qq_b_cart = tuple(
+     flex.double(aniso_info.cc_b_cart)+flex.double(aniso_info.ss_b_cart))
 
-  print("S matrix (%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(
+  print("\nS matrix (error-weighted anisotropy correction)\n"+
+       "(Negative means amplitudes fall off more in this direction)\n " +
+      "(%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(
      tuple(aniso_info.ss_b_cart)), file = out)
+  print("\nC matrix (overall resolution-dependent correction)\n"+
+     "(More negative means amplitudes fall off faster)\n" +
+     "(%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(
+     tuple(aniso_info.cc_b_cart)), file = out)
+
+  print("\nQ matrix (total error-weighted correction)\n"+
+     "(%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(
+     tuple(aniso_info.qq_b_cart)), file = out)
+
 
   print("\nS scale values by direction vector", file = out)
   print("  D-min  A-zero   E**2   ", file = out, end = "")
@@ -848,17 +862,15 @@ scale_factor_info:
               si.target_sthol2 # sthol2 values  d = 0.25/sthol2**0.5
   ss_b_cart_as_u_cart: anisotropic part of overall correction factor
   overall_scale: radial part of overall correction factor
-  overall_scale_as_u_cart: overall_scale represented as u_cart
-  overall_u_cart_to_apply:  total scale to apply as u_cart
+  overall_scale_as_u_cart: overall_scale represented as u_cart from cc_b_cart
+  overall_u_cart_to_apply:  total scale to apply as u_cart from qq_b_cart
                              ss_b_cart_as_u_cart + overall_scale_as_u_cart
     """,
     overall_scale = aniso_info.overall_si.target_scale_factors, # Ao(|s|)
     ss_b_cart_as_u_cart = adptbx.b_as_u(aniso_info.ss_b_cart),
        # ss_b_cart as aniso_u
     overall_scale_as_u_cart = adptbx.b_as_u(aniso_info.cc_b_cart),
-    overall_u_cart_to_apply = adptbx.b_as_u(
-      tuple(
-       flex.double(aniso_info.ss_b_cart)+flex.double(aniso_info.cc_b_cart))),
+    overall_u_cart_to_apply = adptbx.b_as_u(aniso_info.qq_b_cart),
     scaling_info_list = aniso_info.si_list, # si objects,
         #each with updated target_scale_factors
    )
@@ -935,7 +947,7 @@ def get_overall_anisotropy(aniso_info,
     info.b_zero,
     info.rms,), file = out)
   aniso_info.cc_b_cart = (
-    info.effective_b,info.effective_b,info.effective_b,0,0,0)
+    -info.effective_b,-info.effective_b,-info.effective_b,0,0,0)
 
   print (" D-min   Ao(|s|)   Calc", file = out)
   for i in range(aniso_info.n_bins):

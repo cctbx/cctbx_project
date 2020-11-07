@@ -225,6 +225,7 @@ def generate_map_coefficients(
       k_sol = None,
       b_sol = None,
       scattering_table='electron',
+      f_obs_array = None,
       log=sys.stdout):
   '''
     Convenience function to create map coefficients from a model.
@@ -247,6 +248,7 @@ def generate_map_coefficients(
       d_min (float, 3):   High-resolution limit for map coeffs (A)
       scattering_table (choice, 'electron'): choice of scattering table
            All choices: wk1995 it1992 n_gaussian neutron electron
+      f_obs_array:  array used to match indices of fcalc
 
   '''
 
@@ -270,6 +272,7 @@ def generate_map_coefficients(
   fmodel=fmodel_from_xray_structure(
     xray_structure = xrs,
     params         = fmodel_params,
+    f_obs          = f_obs_array,
     out            = log)
   f_model=fmodel.f_model
   if output_map_coeffs_file_name:

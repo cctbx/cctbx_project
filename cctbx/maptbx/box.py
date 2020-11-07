@@ -1004,7 +1004,9 @@ def get_boxes_to_tile_map(target_for_boxes = 24,
       n_real = None,
       crystal_symmetry = None,
       cushion_nx_ny_nz = None,
-      wrapping = False):
+      wrapping = False,
+      do_not_go_over_target = None,
+     ):
 
     '''
       Get a set of boxes that tile the map
@@ -1017,16 +1019,18 @@ def get_boxes_to_tile_map(target_for_boxes = 24,
     largest = max(nx,ny,nz)
     target_volume_per_box = (nx*ny*nz)/target_for_boxes
     target_length = target_volume_per_box**0.33
-
     if target_for_boxes == 1:
       lower_bounds_list = [(0,0,0)]
       upper_bounds_list = [tuple([i - 1 for i in n_real])]
     else:
       lower_bounds_list = []
       upper_bounds_list = []
-      for x_info in get_bounds_list(nx, target_length):
-        for y_info in get_bounds_list(ny, target_length):
-          for z_info in get_bounds_list(nz, target_length):
+      for x_info in get_bounds_list(nx, target_length,
+        do_not_go_over_target = do_not_go_over_target):
+        for y_info in get_bounds_list(ny, target_length,
+           do_not_go_over_target = do_not_go_over_target):
+          for z_info in get_bounds_list(nz, target_length,
+             do_not_go_over_target = do_not_go_over_target):
             lower_bounds_list.append(
                [x_info.lower_bound,
                 y_info.lower_bound,
@@ -1063,7 +1067,8 @@ def get_boxes_to_tile_map(target_for_boxes = 24,
       crystal_symmetry = crystal_symmetry,
      )
 
-def get_bounds_list(nx, target_length):
+def get_bounds_list(nx, target_length,
+     do_not_go_over_target = None,):
   '''
     Return start, end that are about the length target_length and that
     collectively cover exactly nx grid units.
@@ -1080,7 +1085,10 @@ def get_bounds_list(nx, target_length):
       )
   else:  # take as many as fit
     n_target = nx/target_length  # how many we want (float)
-    n = max(1,int(0.5 + n_target)) # int ... how many can fit
+    if do_not_go_over_target:
+      n = max(1,int(n_target)) # int ... how many can fit
+    else: # usual
+      n = max(1,int(0.5 + n_target)) # int ... how many can fit
     exact_target_length =  nx/n  # float length of each group
 
     last_end_point = -1
