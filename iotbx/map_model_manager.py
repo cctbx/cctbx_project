@@ -2909,13 +2909,15 @@ class map_model_manager(object):
 
     if find_k_sol_b_sol and (k_sol is None) and (b_sol is None):
       # Find k_sol and b_sol
+      d_min_for_k_sol_b_sol = max(d_min, d_min_for_k_sol_b_sol)
       kb_info = working_mmm.find_k_sol_b_sol(model = model,
-        d_min = max(d_min, d_min_for_k_sol_b_sol),
+        d_min = d_min_for_k_sol_b_sol,
         model_map_id = map_id_model_map,
         comparison_map_id = map_id)
       if kb_info is not None:
-        print("\nOptimized k_sol=%.2f  b_sol=%.1f CC=%.3f" %(
-         kb_info.k_sol, kb_info.b_sol, kb_info.cc), file = self.log)
+        print("\nOptimized k_sol=%.2f  b_sol=%.1f CC=%.3f (d_min= %.2f A)" %(
+         kb_info.k_sol, kb_info.b_sol, kb_info.cc, d_min_for_k_sol_b_sol),
+            file = self.log)
         k_sol = kb_info.k_sol
         b_sol = kb_info.b_sol
         kw['k_sol'] = k_sol
@@ -4636,7 +4638,7 @@ class map_model_manager(object):
     if not box_cushion:
       box_cushion = 1.5 * resolution
 
-    if (not core_box_size):
+    if (n_boxes is not None) or (not core_box_size):  # n_boxes overrides
       if n_boxes:
         volume = self.crystal_symmetry().unit_cell().volume()
         core_box_size=int(0.5+ volume/n_boxes)**0.33
