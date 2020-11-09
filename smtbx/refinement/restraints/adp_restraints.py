@@ -54,8 +54,7 @@ class rigid_bond_restraints(object):
       asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
       pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
       scattering_types = xray_structure.scatterers().extract_scattering_types()
-      pair_asu_table.add_covalent_pairs(
-        scattering_types, exclude_scattering_types=flex.std_string(("H","D")))
+      pair_asu_table.add_covalent_pairs(scattering_types)
       pair_sym_table = pair_asu_table.extract_pair_sym_table()
     connectivity = pair_sym_table.full_simple_connectivity()
     ij_seqs = set()
@@ -115,8 +114,7 @@ class rigu_restraints(object):
       asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
       pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
       scattering_types = xray_structure.scatterers().extract_scattering_types()
-      pair_asu_table.add_covalent_pairs(
-        scattering_types, exclude_scattering_types=flex.std_string(("H","D")))
+      pair_asu_table.add_covalent_pairs(scattering_types)
       pair_sym_table = pair_asu_table.extract_pair_sym_table()
     connectivity = pair_sym_table.full_simple_connectivity()
     ij_seqs = set()
@@ -172,14 +170,12 @@ class isotropic_adp_restraints(object):
     if pair_sym_table is None:
       asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
       pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-      pair_asu_table.add_covalent_pairs(
-        scattering_types, exclude_scattering_types=flex.std_string(("H","D")))
+      pair_asu_table.add_covalent_pairs(scattering_types)
       pair_sym_table = pair_asu_table.extract_pair_sym_table()
     connectivity = pair_sym_table.full_simple_connectivity()
 
     for i_seq, neighbours in enumerate(connectivity):
       if i_seqs is not None and i_seq not in i_seqs: continue
-      elif scattering_types[i_seq] in ('H','D'): continue
       elif not use_u_aniso[i_seq]: continue
       if neighbours.size() <= 1:
         weight = 1/(sigma_terminal*sigma_terminal)
@@ -196,8 +192,7 @@ class fixed_u_eq_adp_restraints(object):
       proxies = adp_restraints.shared_fixed_u_eq_adp_proxy()
     weight = 1/(sigma*sigma)
     if i_seqs is None:
-      i_seqs = [i for i, s in enumerate(xray_structure.scatterers())
-                if s.scattering_type not in ('H', 'D')]
+      i_seqs = [i for i, s in enumerate(xray_structure.scatterers())]
     for i_seq in i_seqs:
       proxies.append(adp_restraints.fixed_u_eq_adp_proxy(
         i_seqs=(i_seq,),weight=weight, u_eq_ideal=u_eq_ideal))
@@ -210,8 +205,7 @@ class adp_u_eq_similarity_restraints(object):
       proxies = adp_restraints.shared_adp_u_eq_similarity_proxy()
     weight = 1/(sigma*sigma)
     if i_seqs is None:
-      i_seqs = [i for i, s in enumerate(xray_structure.scatterers())
-                if s.scattering_type not in ('H', 'D')]
+      i_seqs = [i for i, s in enumerate(xray_structure.scatterers())]
     assert len(i_seqs) > 1
     proxies.append(adp_restraints.adp_u_eq_similarity_proxy(
       i_seqs=i_seqs, weight=weight))
@@ -224,8 +218,7 @@ class adp_volume_similarity_restraints(object):
       proxies = adp_restraints.shared_adp_volume_similarity_proxy()
     weight = 1/(sigma*sigma)
     if i_seqs is None:
-      i_seqs = [i for i, s in enumerate(xray_structure.scatterers())
-                if s.scattering_type not in ('H', 'D')]
+      i_seqs = [i for i, s in enumerate(xray_structure.scatterers())]
     assert len(i_seqs) > 1
     proxies.append(adp_restraints.adp_volume_similarity_proxy(
       i_seqs=i_seqs, weight=weight))
