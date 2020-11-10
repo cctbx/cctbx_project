@@ -83,7 +83,7 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
 		CUDAREAL Xbeam, CUDAREAL Ybeam, CUDAREAL dmin, CUDAREAL phi0, CUDAREAL phistep, int phisteps, const CUDAREAL * __restrict__ spindle_vector, int sources,
 		const CUDAREAL * __restrict__ source_X, const CUDAREAL * __restrict__ source_Y, const CUDAREAL * __restrict__ source_Z,
 		const CUDAREAL * __restrict__ source_I, const CUDAREAL * __restrict__ source_lambda, const CUDAREAL * __restrict__ a0, const CUDAREAL * __restrict__ b0,
-		const CUDAREAL * __restrict c0, shapetype xtal_shape, CUDAREAL mosaic_spread, int mosaic_domains, const CUDAREAL * __restrict__ mosaic_umats,
+		const CUDAREAL * __restrict c0, simtbx::nanoBragg::shapetype xtal_shape, CUDAREAL mosaic_spread, int mosaic_domains, const CUDAREAL * __restrict__ mosaic_umats,
 		CUDAREAL Na, CUDAREAL Nb,
 		CUDAREAL Nc, CUDAREAL V_cell,
 		CUDAREAL water_size, CUDAREAL water_F, CUDAREAL water_MW, CUDAREAL r_e_sqr, CUDAREAL fluence, CUDAREAL Avogadro, CUDAREAL spot_scale, int integral_form, CUDAREAL default_F,
@@ -97,7 +97,7 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
                 double sdet_vector[4], double fdet_vector[4], double odet_vector[4], double pix0_vector[4], int curved_detector, double distance, double close_distance,
                 double beam_vector[4], double Xbeam, double Ybeam, double dmin, double phi0, double phistep, int phisteps, double spindle_vector[4], int sources,
                 double *source_X, double *source_Y, double * source_Z, double * source_I, double * source_lambda, double a0[4], double b0[4], double c0[4],
-                shapetype xtal_shape, double mosaic_spread, int mosaic_domains, double * mosaic_umats, double Na, double Nb, double Nc, double V_cell,
+                simtbx::nanoBragg::shapetype xtal_shape, double mosaic_spread, int mosaic_domains, double * mosaic_umats, double Na, double Nb, double Nc, double V_cell,
                 double water_size, double water_F, double water_MW, double r_e_sqr, double fluence, double Avogadro, int integral_form, double default_F,
                 int interpolate, double *** Fhkl, int h_min, int h_max, int h_range, int k_min, int k_max, int k_range, int l_min, int l_max, int l_range, int hkls,
                 int nopolar, double polar_vector[4], double polarization, double fudge, int unsigned short * maskimage, float * floatimage /*out*/,
@@ -134,7 +134,7 @@ extern "C" void nanoBraggSpotsCUDA(int deviceId, int spixels, int fpixels, int r
 	CUDAREAL cu_dmin = dmin, cu_phi0 = phi0, cu_phistep = phistep;
 	int cu_phisteps = phisteps;
 
-	shapetype cu_xtal_shape = xtal_shape;
+	simtbx::nanoBragg::shapetype cu_xtal_shape = xtal_shape;
 
 	int cu_sources = sources;
 
@@ -454,7 +454,7 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
 		CUDAREAL Xbeam, CUDAREAL Ybeam, CUDAREAL dmin, CUDAREAL phi0, CUDAREAL phistep, int phisteps, const CUDAREAL * __restrict__ spindle_vector, int sources,
 		const CUDAREAL * __restrict__ source_X, const CUDAREAL * __restrict__ source_Y, const CUDAREAL * __restrict__ source_Z,
 		const CUDAREAL * __restrict__ source_I, const CUDAREAL * __restrict__ source_lambda, const CUDAREAL * __restrict__ a0, const CUDAREAL * __restrict__ b0,
-		const CUDAREAL * __restrict c0, shapetype xtal_shape, CUDAREAL mosaic_spread, int mosaic_domains, const CUDAREAL * __restrict__ mosaic_umats,
+		const CUDAREAL * __restrict c0, simtbx::nanoBragg::shapetype xtal_shape, CUDAREAL mosaic_spread, int mosaic_domains, const CUDAREAL * __restrict__ mosaic_umats,
 		CUDAREAL Na, CUDAREAL Nb, CUDAREAL Nc, CUDAREAL V_cell, CUDAREAL water_size, CUDAREAL water_F, CUDAREAL water_MW, CUDAREAL r_e_sqr, CUDAREAL fluence,
 		CUDAREAL Avogadro, CUDAREAL spot_scale, int integral_form, CUDAREAL default_F, int interpolate, const CUDAREAL * __restrict__ Fhkl, const hklParams * __restrict__ FhklParams, int nopolar, const CUDAREAL * __restrict__ polar_vector,
 		CUDAREAL polarization, CUDAREAL fudge, const int unsigned short * __restrict__ maskimage, float * floatimage /*out*/, float * omega_reduction/*out*/,
@@ -468,7 +468,7 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
 	__shared__ CUDAREAL s_phi0, s_phistep;
 	__shared__ int s_mosaic_domains;
 	__shared__ CUDAREAL s_mosaic_spread;
-	__shared__ shapetype s_xtal_shape;
+	__shared__ simtbx::nanoBragg::shapetype s_xtal_shape;
 
 	__shared__ CUDAREAL s_Na, s_Nb, s_Nc;
 	__shared__ bool s_interpolate;
@@ -748,7 +748,7 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
 								 */
 								CUDAREAL F_latt = 1.0; // Shape transform for the crystal.
 								CUDAREAL hrad_sqr = 0.0;
-								if (s_xtal_shape == SQUARE) {
+								if (s_xtal_shape == simtbx::nanoBragg::SQUARE) {
 									/* xtal is a paralelpiped */
 									if (Na > 1) {
 //										F_latt *= sincgrad(h, s_Na);
@@ -766,22 +766,22 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
 									/* handy radius in reciprocal space, squared */
 									hrad_sqr = (h - h0) * (h - h0) * Na * Na + (k - k0) * (k - k0) * Nb * Nb + (l - l0) * (l - l0) * Nc * Nc;
 								}
-								if (s_xtal_shape == ROUND) {
+								if (s_xtal_shape == simtbx::nanoBragg::ROUND) {
 									/* use sinc3 for elliptical xtal shape,
 									 correcting for sqrt of volume ratio between cube and sphere */
 									F_latt = Na * Nb * Nc * 0.723601254558268 * sinc3(M_PI * sqrt(hrad_sqr * fudge));
 								}
-								if (s_xtal_shape == GAUSS) {
+								if (s_xtal_shape == simtbx::nanoBragg::GAUSS) {
 									/* fudge the radius so that volume and FWHM are similar to square_xtal spots */
 									F_latt = Na * Nb * Nc * exp(-(hrad_sqr / 0.63 * fudge));
 								}
-                                                                if (s_xtal_shape == GAUSS_ARGCHK) {
+                                                                if (s_xtal_shape == simtbx::nanoBragg::GAUSS_ARGCHK) {
                                                                         /* fudge the radius so that volume and FWHM are similar to square_xtal spots */
                                                                         double my_arg = hrad_sqr / 0.63 * fudge;
                                                                         if (my_arg<35.){ F_latt = Na * Nb * Nc * exp(-(my_arg));
                                                                         } else { F_latt = 0.; } // warps coalesce when blocks of 32 pixels have no Bragg signal
                                                                 }
-								if (s_xtal_shape == TOPHAT) {
+								if (s_xtal_shape == simtbx::nanoBragg::TOPHAT) {
 									/* make a flat-top spot of same height and volume as square_xtal spots */
 									F_latt = Na * Nb * Nc * (hrad_sqr * fudge < 0.3969);
 								}
@@ -1219,7 +1219,7 @@ extern "C" void allocate_cuda_cu(int deviceId, int spixels, int fpixels, int roi
                 double sdet_vector[4], double fdet_vector[4], double odet_vector[4], double pix0_vector[4], int curved_detector, double distance, double close_distance,
                 double beam_vector[4], double Xbeam, double Ybeam, double dmin, double phi0, double phistep, int phisteps, double spindle_vector[4], int sources,
                 double *source_X, double *source_Y, double * source_Z, double * source_I, double * source_lambda, double a0[4], double b0[4], double c0[4],
-                shapetype xtal_shape, double mosaic_spread, int mosaic_domains, double * mosaic_umats, double Na, double Nb, double Nc, double V_cell,
+                simtbx::nanoBragg::shapetype xtal_shape, double mosaic_spread, int mosaic_domains, double * mosaic_umats, double Na, double Nb, double Nc, double V_cell,
                 double water_size, double water_F, double water_MW, double r_e_sqr, double fluence, double Avogadro, double spot_scale, int integral_form, double default_F,
                 int interpolate, double *** Fhkl, int h_min, int h_max, int h_range, int k_min, int k_max, int k_range, int l_min, int l_max, int l_range, int hkls,
                 int nopolar, double polar_vector[4], double polarization, double fudge, int unsigned short * maskimage, float * floatimage /*out*/,

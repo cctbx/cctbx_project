@@ -4,6 +4,7 @@
 
 #include <scitbx/array_family/shared.h>
 #include <cctbx/miller.h>
+#include <simtbx/nanoBragg/cuda_struct.h>
 
 namespace simtbx {
 namespace gpu {
@@ -74,8 +75,9 @@ struct gpu_energy_channels {
     int verbose = 0;
     int h_range,k_range,l_range,h_min,h_max,k_min,k_max,l_min,l_max;
     int h_deviceID;
-    af::shared<double *> d_channel_Fhkl;
-    /* also include a pointer to a CUDA stream */
+  /* pointers to data on device */
+  af::shared<double *> d_channel_Fhkl;
+  hklParams * cu_FhklParams;
 };
 } // gpu
 } // simtbx

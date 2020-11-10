@@ -25,6 +25,7 @@
 #ifdef NANOBRAGG_HAVE_CUDA
 #include <simtbx/nanoBragg/cuda_struct.h>
 #include <simtbx/gpu/structure_factors.h>
+#include <simtbx/nanoBragg/nanotypes.h>
 #endif
 
 using boost::math::erf;
@@ -131,11 +132,6 @@ double sincg(double x, double N);
 double sinc3(double x);
 /* Fourier transform of a spherically-truncated lattice */
 double sinc_conv_sinc3(double x);
-
-/* typedefs to help remember options */
-typedef enum { SAMPLE, BEAM } pivot;
-typedef enum { UNKNOWN, SQUARE, ROUND, GAUSS, GAUSS_ARGCHK, TOPHAT, FIBER } shapetype;
-typedef enum { CUSTOM, ADXV, MOSFLM, XDS, DIALS, DENZO } convention;
 
 /* math functions for point spread */
 /* 2D Gaussian integral=1 */

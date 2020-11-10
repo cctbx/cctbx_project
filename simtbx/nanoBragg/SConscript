@@ -40,6 +40,8 @@ if (env_etc.enable_cuda):
   else:  cuda_src = []
 
   cuda_src.append("../gpu/structure_factors.cu")
+  cuda_src.append("../gpu/detector.cu")
+  cuda_src.append("../gpu/simulation.cu")
 
   env_etc.include_registry.append(
     env=env_bpl,

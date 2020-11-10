@@ -19,13 +19,22 @@ namespace gpu {
                      sizeof(*cu_Fhkl) * linear_amplitudes.size(), cudaMemcpyHostToDevice));
 
     d_channel_Fhkl.push_back(cu_Fhkl);
+
+    if (d_channel_Fhkl.size()==1) { //first time through send ranges to device
+      hklParams FhklParams = { h_range * k_range * l_range,
+                             h_min, h_max, h_range, k_min, k_max, k_range, l_min, l_max, l_range };
+
+      cudaSafeCall(cudaMalloc((void ** )&cu_FhklParams, sizeof(*cu_FhklParams)));
+      cudaSafeCall(cudaMemcpy(cu_FhklParams, &FhklParams, sizeof(*cu_FhklParams), cudaMemcpyHostToDevice));
+    }
   }
 
   void gpu_energy_channels::free_detail(){
-        cudaSafeCall(cudaSetDevice(h_deviceID));
-        for (int i_cu_ptr=0; i_cu_ptr < d_channel_Fhkl.size(); ++i_cu_ptr){
-          cudaSafeCall(cudaFree(d_channel_Fhkl[i_cu_ptr]));
-        }
+    cudaSafeCall(cudaSetDevice(h_deviceID));
+    for (int i_cu_ptr=0; i_cu_ptr < d_channel_Fhkl.size(); ++i_cu_ptr){
+      cudaSafeCall(cudaFree(d_channel_Fhkl[i_cu_ptr]));
+    }
+    cudaSafeCall(cudaFree(cu_FhklParams));
   }
 } // gpu
 } // simtbx

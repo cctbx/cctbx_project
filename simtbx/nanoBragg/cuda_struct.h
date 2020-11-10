@@ -46,7 +46,7 @@ struct cudaPointers {
   int cu_sources;
   CUDAREAL * cu_source_X, * cu_source_Y, * cu_source_Z, * cu_source_I, * cu_source_lambda,
     * cu_a0, * cu_b0, * cu_c0;
-  shapetype cu_xtal_shape;
+  simtbx::nanoBragg::shapetype cu_xtal_shape;
   CUDAREAL cu_mosaic_spread;
   int cu_mosaic_domains;
   CUDAREAL * cu_mosaic_umats;

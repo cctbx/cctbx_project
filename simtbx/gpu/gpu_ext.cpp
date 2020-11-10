@@ -4,6 +4,8 @@
 #include <boost/python/args.hpp>
 
 #include <simtbx/gpu/structure_factors.h>
+#include <simtbx/gpu/detector.h>
+#include <simtbx/gpu/simulation.h>
 
 namespace simtbx { namespace gpu {
 
@@ -29,10 +31,47 @@ namespace simtbx { namespace gpu {
     }
   };
 
+  struct detector_wrapper
+  {
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<simtbx::gpu::gpu_detector>("gpu_detector",init<>() )
+        .def(init<int const&, dxtbx::model::Detector const &>(
+            ( arg("deviceId"),arg("detector"))))
+        .def("get_deviceID", &simtbx::gpu::gpu_detector::get_deviceID
+            )
+        //.def("show_summary",&simtbx::gpu::gpu_detector::show_summary)
+        .def("each_image_allocate_cuda", &simtbx::gpu::gpu_detector::each_image_allocate_cuda)
+        .def("each_image_free_cuda", &simtbx::gpu::gpu_detector::each_image_free_cuda)
+        ;
+    }
+  };
+
+  struct simulation_wrapper
+  {
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<simtbx::gpu::exascale_api>("exascale_api",no_init )
+        .def(init<const simtbx::nanoBragg::nanoBragg&>(
+            ( arg("nanoBragg"))))
+        .def("allocate_cuda",&simtbx::gpu::exascale_api::allocate_cuda)
+        .def("add_energy_channel_from_gpu_amplitudes_cuda",
+             &simtbx::gpu::exascale_api::add_energy_channel_from_gpu_amplitudes_cuda)
+        .def("show",&simtbx::gpu::exascale_api::show)
+        ;
+    }
+  };
+
   } // namespace gpu
 
   BOOST_PYTHON_MODULE(simtbx_gpu_ext)
   {
     simtbx::gpu::structure_factor_wrapper::wrap();
+    simtbx::gpu::detector_wrapper::wrap();
+    simtbx::gpu::simulation_wrapper::wrap();
   }
 } // namespace simtbx

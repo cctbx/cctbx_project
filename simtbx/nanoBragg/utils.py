@@ -12,19 +12,20 @@ from simtbx.nanoBragg.sim_data import SimData
 ENERGY_CONV = 10000000000.0 * constants.c * constants.h / constants.electron_volt
 
 
-def multipanel_sim(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
-                        cuda=False, oversample=0, Ncells_abc=(50, 50, 50),
-                        mos_dom=1, mos_spread=0, beamsize_mm=0.001, device_Id=0, omp=False,
-                        show_params=False, crystal_size_mm=0.01, printout_pix=None, time_panels=True,
-                        verbose=0, default_F=0, interpolate=0, recenter=True, profile="gauss",
-                        spot_scale_override=None,
-                        add_water = False, add_air=False, water_path_mm=0.005, air_path_mm=0,
-                        adc_offset=0, readout_noise=3, psf_fwhm=0, gain=1, mosaicity_random_seeds=None):
+def multipanel_sim(
+  CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
+  cuda=False, oversample=0, Ncells_abc=(50, 50, 50),
+  mos_dom=1, mos_spread=0, beamsize_mm=0.001, device_Id=0, omp=False,
+  show_params=False, crystal_size_mm=0.01, printout_pix=None, time_panels=True,
+  verbose=0, default_F=0, interpolate=0, recenter=True, profile="gauss",
+  spot_scale_override=None,
+  add_water = False, add_air=False, water_path_mm=0.005, air_path_mm=0,
+  adc_offset=0, readout_noise=3, psf_fwhm=0, gain=1, mosaicity_random_seeds=None):
   """
   :param CRYSTAL: dxtbx Crystal model
   :param DETECTOR: dxtbx detector model
   :param BEAM: dxtbx beam model
-  :param Famp: cctbx miller array (amplitudes)
+  :param Famp: gpu_channels_singleton(cctbx miller array (amplitudes))
   :param energies: list of energies to simulate the scattering
   :param fluxes:  list of pulse fluences per energy (same length as energies)
   :param cuda: whether to use GPU (only works for nvidia builds)
@@ -65,7 +66,7 @@ def multipanel_sim(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
 
   nbCrystal = NBcrystal()
   nbCrystal.dxtbx_crystal = CRYSTAL
-  nbCrystal.miller_array = Famp
+  #nbCrystal.miller_array = None # use the gpu_channels_singleton mechanism instead
   nbCrystal.Ncells_abc = Ncells_abc
   nbCrystal.symbol = CRYSTAL.get_space_group().info().type().lookup_symbol()
   nbCrystal.thick_mm = crystal_size_mm
@@ -73,9 +74,9 @@ def multipanel_sim(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
   nbCrystal.n_mos_domains = mos_dom
   nbCrystal.mos_spread_deg = mos_spread
 
-  panel_images = []
-
-  for pid in range(len(DETECTOR)):
+  pid = 0 # remove the loop, use C++ iteration over detector panels
+  use_exascale_api = True
+  if use_exascale_api:
     tinit = time.time()
     S = SimData()
     S.detector = DETECTOR
@@ -88,7 +89,6 @@ def multipanel_sim(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
     S.air_path_mm = air_path_mm
     S.add_water = add_water
     S.water_path_mm = water_path_mm
-    S.rois = rois_perpanel[pid]
     S.readout_noise = readout_noise
     S.gain = gain
     S.psf_fwhm = psf_fwhm
@@ -97,10 +97,63 @@ def multipanel_sim(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
     if mosaicity_random_seeds is not None:
       S.mosaic_seeds = mosaicity_random_seeds
 
-    S.instantiate_nanoBragg(verbose=verbose, oversample=oversample, interpolate=interpolate, device_Id=device_Id,
-                            default_F=default_F, adc_offset=adc_offset)
+    S.instantiate_nanoBragg(verbose=verbose, oversample=oversample, interpolate=interpolate,
+      device_Id=device_Id,default_F=default_F, adc_offset=adc_offset)
+
+    SIM = S.D # the nanoBragg instance
+
+    from simtbx.nanoBragg import exascale_api
+    gpu_simulation = exascale_api(nanoBragg = SIM)
+    gpu_simulation.allocate_cuda() # presumably done once for each image
+
+    from simtbx.nanoBragg import gpu_detector as gpud
+    gpu_detector = gpud(deviceId=device_Id, detector=DETECTOR)
+    gpu_detector.each_image_allocate_cuda()
+    # revisit the allocate cuda for overlap with detector, sync up please
+    x = 0 # only one energy channel
+    gpu_simulation.add_energy_channel_from_gpu_amplitudes_cuda(
+      x, Famp, gpu_detector)
+#start here
+#at this point can not figure out why there is an improper memory operation in the detector destructor
+#once done figure out how to
+#  1) scale in place
+#  2) get_raw pixels
+#  3) deallocate cuda, per original exascale api
+#now in position to implement the detector panel loop
+
+    SIM.scale_in_place_cuda(1.0) # apply scale directly on GPU
+
+    gpu_detector.each_image_free_cuda()
+    return
+
+    if False and add_background_algorithm == "cuda":
+      QQ = Profiler("nanoBragg background rank %d"%(rank))
+      SIM.Fbg_vs_stol = water_bg
+      SIM.amorphous_sample_thick_mm = 0.1
+      SIM.amorphous_density_gcm3 = 1
+      SIM.amorphous_molecular_weight_Da = 18
+      SIM.flux=1e12
+      SIM.beamsize_mm=0.003 # square (not user specified)
+      SIM.exposure_s=1.0 # multiplies flux x exposure
+      SIM.add_background_cuda()
+      SIM.Fbg_vs_stol = air_bg
+      SIM.amorphous_sample_thick_mm = 10 # between beamstop and collimator
+      SIM.amorphous_density_gcm3 = 1.2e-3
+      SIM.amorphous_sample_molecular_weight_Da = 28 # nitrogen = N2
+      SIM.add_background_cuda()
+
+    # deallocate GPU arrays
+    SIM.get_raw_pixels_cuda()  # updates SIM.raw_pixels from GPU
+    SIM.deallocate_cuda()
+    SIM.Amatrix_RUB = Amatrix_rot # return to canonical orientation
+    del QQ
+
+  SIM.free_all()
+
+  for pid in range(len(DETECTOR)): ###XXX will remove this later
     if recenter:
-      S.update_nanoBragg_instance("beam_center_mm", DETECTOR[int(pid)].get_beam_centre(BEAM.get_s0()))
+      S.update_nanoBragg_instance(
+        "beam_center_mm",DETECTOR[int(pid)].get_beam_centre(BEAM.get_s0()))
     if printout_pix is not None:
       S.update_nanoBragg_instance("printout_pixel_fastslow", printout_pix)
     if spot_scale_override is not None:

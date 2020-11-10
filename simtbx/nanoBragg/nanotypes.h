@@ -8,10 +8,16 @@
 #ifndef NANOTYPES_H_
 #define NANOTYPES_H_
 
+namespace simtbx {
+namespace nanoBragg {
+
+
 typedef enum { SAMPLE, BEAM } pivot;
 typedef enum { UNKNOWN, SQUARE, ROUND, GAUSS, GAUSS_ARGCHK, TOPHAT, FIBER } shapetype;
 // GAUSS_ARGCHK provides a lightweight backdoor for efficient implementation of
 // the GAUSS shapetype in CUDA. Developers cautioned accordingly.
 typedef enum { CUSTOM, ADXV, MOSFLM, XDS, DIALS, DENZO } convention;
+
+}}
 
 #endif /* NANOTYPES_H_ */
