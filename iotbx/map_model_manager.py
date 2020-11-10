@@ -3965,18 +3965,20 @@ class map_model_manager(object):
         values.ss_b_cart_as_u_cart = tuple(
           flex.double(u_cart_from_tls) -
           flex.double(values.overall_scale_as_u_cart))
-        print("\n   XYZ",xyz_list[i])
-        print("   U from TLS:%s"  %str(u_cart_from_tls))
-        print("   local scale as U: %s" %str(values.overall_scale_as_u_cart))
-        print("   DD correction: %s" %str(values.dd_b_cart_as_u_cart))
-        print("   U to apply:  %s" %str(values.overall_u_cart_to_apply))
-        print("   U aniso (ss):  %s" %str(values.ss_b_cart_as_u_cart))
-      print("\nOverall scale as U: %s" %str(average_overall_scale_as_u_cart))
+        if self.verbose:
+          print("\n   XYZ",xyz_list[i])
+          print("   U from TLS:%s"  %str(u_cart_from_tls))
+          print("   local scale as U: %s" %str(values.overall_scale_as_u_cart))
+          print("   DD correction: %s" %str(values.dd_b_cart_as_u_cart))
+          print("   U to apply:  %s" %str(values.overall_u_cart_to_apply))
+          print("   U aniso (ss):  %s" %str(values.ss_b_cart_as_u_cart))
+        print("\nOverall scale as U: %s" %str(average_overall_scale_as_u_cart))
 
-      print("\nMean anisotropy as TLS:",file = self.log)
-      print("T: %s" %(str(T)),file = self.log)
-      print("L: %s" %(str(L)), file = self.log)
-      print("S: %s" %(str(S)), file = self.log)
+      if self.verbose:
+        print("\nMean anisotropy as TLS:",file = self.log)
+        print("T: %s" %(str(T)),file = self.log)
+        print("L: %s" %(str(L)), file = self.log)
+        print("S: %s" %(str(S)), file = self.log)
 
     tls_info = group_args(
        tlso = None,
