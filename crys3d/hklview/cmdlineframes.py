@@ -1032,6 +1032,11 @@ class HKLViewFrame() :
     self.update_settings()
 
 
+  def SetShowToolTips(self, val):
+    self.params.NGL_HKLviewer.viewer.NGL.show_tooltips = val
+    self.update_settings()
+
+
   def SetOpacities(self, bin_opacities):
     self.params.NGL_HKLviewer.viewer.NGL.bin_opacities = bin_opacities
     self.update_settings()
@@ -1039,7 +1044,6 @@ class HKLViewFrame() :
 
   def set_scene(self, scene_id):
     self.viewer.binvals = []
-    self.viewer.isinjected = False
     if scene_id is None:
       return False
     self.viewer.colour_scene_id = scene_id

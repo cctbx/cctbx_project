@@ -151,8 +151,7 @@ class WBmessenger(object):
                                     ]:
         await self.mywebsock.wait_closed()
         return # shutdown
-      if self.parent.viewerparams.scene_id is None or self.parent.miller_array is None \
-          or self.websockclient is None or self.mywebsock.client_connected is None:
+      if self.websockclient is None or self.mywebsock.client_connected is None:
         await asyncio.sleep(self.sleeptime)
         continue
       message = ""

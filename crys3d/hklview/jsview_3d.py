@@ -210,7 +210,6 @@ class hklview_3d:
     self.lastscene_id = None
     self.merge = False
     self.NGLscriptstr = ""
-    self.camera_type = "orthographic"
     self.primitivetype = "SphereBuffer"
     self.url = ""
     self.bin_labels_type_idx = ("Resolution",  "", -1, -1)
@@ -336,7 +335,6 @@ class hklview_3d:
 
     """
     self.colourgradientvalues = []
-    self.isinjected = False
     self.UseOSBrowser = ""
     ldic=locals()
     if 'UseOSBrowser' in kwds:
@@ -392,18 +390,17 @@ class hklview_3d:
                      ) \
      or has_phil_path(diff_phil, "viewer") \
      and has_phil_path(diff_phil,
-                       "show_data_over_sigma",
                        "show_missing",
                        "show_only_missing",
                        "show_systematic_absences",
                        "slice_axis",
-                       "color_scheme",
                        "slice_mode",
                        "slice_index",
                        "sigma_color",
                        "sigma_radius",
                        "fontsize",
                        "scene_id",
+                       "color_scheme",
                        "scale",
                        "nth_power_scale_radii"
                        ) \
@@ -443,13 +440,13 @@ class hklview_3d:
       self.set_scene(self.viewerparams.scene_id)
       self.params.miller_array_operations = ""
 
-    if self.viewerparams.scene_id is not None:
-      if not self.isinjected:
-        self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
+    if has_phil_path(diff_phil, "viewer"): # any change to parameters in the master phil in display2.py
+      self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
       self.DrawNGLJavaScript()
       self.mprint( "Rendered %d reflections" % self.scene.points.size(), verbose=1)
       self.set_volatile_params()
-    else:
+
+    if self.viewerparams.scene_id is None:
       self.DrawNGLJavaScript(blankscene=True)
     return curphilparam
 
@@ -499,7 +496,6 @@ class hklview_3d:
 
   def set_scene(self, scene_id):
     self.binvals = []
-    self.isinjected = False
     if scene_id is None:
       return False
     self.colour_scene_id = scene_id
@@ -517,7 +513,6 @@ class hklview_3d:
   def set_miller_array(self, scene_id=None, merge=None, details=""):
     if scene_id is not None:
       self.viewerparams.scene_id = scene_id
-      self.isinjected = False
     if self.viewerparams and self.viewerparams.scene_id is not None and self.viewerparams.scene_id >= 0 and self.HKLscene:
       self.miller_array = self.HKLscene_from_dict(self.viewerparams.scene_id).miller_array
       self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
@@ -1382,7 +1377,7 @@ class hklview_3d:
     self.NGLscriptstr = ""
     if not blankscene:
       self.NGLscriptstr = HKLJavaScripts.NGLscriptstr % ( self.ngl_settings.tooltip_alpha,
-        '\"' + self.camera_type + '\"', negativeradiistr)
+        negativeradiistr)
 
     WebsockMsgHandlestr = HKLJavaScripts.WebsockMsgHandlestr %(self.websockport, cntbin,
              str(self.verbose>=2).lower(), self.__module__, self.__module__, qualitystr )
@@ -1461,6 +1456,8 @@ class hklview_3d:
         elif "Expand" in message:
           self.mprint( message, verbose=2)
         elif "Connection lost" in message:
+          self.mprint( message, verbose=1)
+        elif "Warning!: Web browser closed unexpectedly" in message:
           self.mprint( message, verbose=1)
         elif "Imageblob" in message:
           self.mprint( "Image to be received", verbose=1)
@@ -1541,6 +1538,8 @@ Distance: %s
 
 
   def ProcessOrientationMessage(self, message):
+    if self.viewerparams.scene_id is None or self.miller_array is None:
+      return
     if message.find("NaN")>=0 or message.find("undefined")>=0:
       return
     if "OrientationBeforeReload:" in message:
@@ -1613,10 +1612,6 @@ Distance: %s
     return False
 
 
-  def set_camera_type(self):
-    self.camera_type = self.ngl_settings.camera_type
-
-
   def set_show_tooltips(self):
     msg = "%s" %self.ngl_settings.show_tooltips
     self.AddToBrowserMsgQueue("DisplayTooltips", msg)
@@ -1629,7 +1624,7 @@ Distance: %s
 
   def SetOpacities(self, bin_opacities_str):
     retstr = ""
-    if self.miller_array and bin_opacities_str and not self.isinjected:
+    if self.miller_array and bin_opacities_str:
       self.ngl_settings.bin_opacities = bin_opacities_str
       bin_opacitieslst = eval(self.ngl_settings.bin_opacities)
       for binopacity in bin_opacitieslst:
@@ -1917,6 +1912,10 @@ Distance: %s
     self.TranslateHKLpoints(0, 0, 0, 0.0)
 
 
+  def set_camera_type(self):
+    self.AddToBrowserMsgQueue("SetCameraType", self.ngl_settings.camera_type)
+
+
   def SetFontSize(self, fontsize):
     msg = str(fontsize)
     self.AddToBrowserMsgQueue("SetFontSize", msg)
@@ -2093,24 +2092,6 @@ Distance: %s
   def MakeColourChart(self, ctop, cleft, label, fomlabel, colourgradarray):
     msg = "%s\n\n%s\n\n%s\n\n%s\n\n%s" %(ctop, cleft, label, fomlabel, str(colourgradarray) )
     self.AddToBrowserMsgQueue("MakeColourChart", msg )
-
-
-  def InjectNewReflections(self, proc_array):
-    (hklscenes, scenemaxdata,
-      scenemindata, scenemaxsigmas,
-        sceneminsigmas, scenearrayinfos
-     ) = MakeHKLscene(proc_array, 0, copy.deepcopy(self.viewerparams), { } , None)
-
-    strdata = ""
-    hklscene = hklscenes[0]
-    self.scene = hklscene
-    for i,radius in enumerate(hklscene.radii):
-      ftuple = (hklscene.points[i][0], hklscene.points[i][1], hklscene.points[i][2],
-               hklscene.colors[i][0], hklscene.colors[i][1], hklscene.colors[i][2], radius )
-      strdata += "%s,%s,%s,%s,%s,%s,%s," % roundoff(ftuple, 2)
-    strdata = strdata[:-1] # avoid the last comma
-    self.isinjected = True
-    self.AddToBrowserMsgQueue("InjectNewReflections", strdata)
 
 
 

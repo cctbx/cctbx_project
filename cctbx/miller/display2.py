@@ -322,16 +322,6 @@ class scene(object):
           self.data = data
         else:
           raise RuntimeError("Unexpected data type: %r" % data)
-        if (settings.show_data_over_sigma):
-          if (array.sigmas() is None):
-            raise Sorry("sigmas not defined.")
-          sigmas = array.sigmas()
-          non_zero_sel = sigmas != 0
-          array = array.select(non_zero_sel)
-          array = array.customized_copy(data=array.data()/array.sigmas())
-          self.data = array.data()
-          if (multiplicities is not None):
-            multiplicities = multiplicities.select(non_zero_sel)
         if array.sigmas() is not None:
           self.sigmas = array.sigmas()
         else:
@@ -434,6 +424,13 @@ class scene(object):
         attenuation = None,
         color_all=False
         )
+      """
+      colors = graphics_utils.color_by_property(
+        properties=data_for_colors,
+        selection=flex.bool(data_for_colors.size(), True),
+        color_all=False,
+        gradient_type=settings.color_scheme)
+      """
 
     if (settings.slice_mode) and (settings.keep_constant_scale):
       colors = colors.select(self.slice_selection)
@@ -602,8 +599,6 @@ philstr = """
   black_background = True
     .type = bool
   show_axes = True
-    .type = bool
-  show_data_over_sigma = False
     .type = bool
   nth_power_scale_radii = 0.0
     .type = float
