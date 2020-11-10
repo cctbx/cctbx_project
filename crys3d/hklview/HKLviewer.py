@@ -272,7 +272,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.matching_arrays = []
     self.bin_infotpls = None
     self.bin_opacities= None
-    self.html_url = ""
+    self.html_url = None
     self.spacegroups = {}
     self.info = []
     self.infostr = ""
@@ -497,7 +497,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
             if self.binstable.rowCount() > 0:
               self.update_table_opacities()
 
-          if self.infodict.get("html_url"):
+          if self.infodict.get("html_url") and self.html_url is None:
             self.html_url = self.infodict["html_url"]
             if self.UseOSBrowser==False:
               self.BrowserBox.setUrl(self.html_url)
@@ -813,7 +813,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       if self.expandP1checkbox.isChecked():
         self.PhilToJsRender('''
         NGL_HKLviewer.viewer.expand_to_p1 = True
-        NGL_HKLviewer.viewer.NGL.inbrowser = False
+        NGL_HKLviewer.viewer.inbrowser = False
                         ''' )
       else:
         self.PhilToJsRender('''
@@ -824,7 +824,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       if self.expandP1checkbox.isChecked():
         self.PhilToJsRender('''
         NGL_HKLviewer.viewer.expand_to_p1 = True
-        NGL_HKLviewer.viewer.NGL.inbrowser = True
+        NGL_HKLviewer.viewer.inbrowser = True
                         ''' )
       else:
         self.PhilToJsRender('''

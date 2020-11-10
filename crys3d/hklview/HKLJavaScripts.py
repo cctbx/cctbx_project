@@ -5,7 +5,7 @@ import sys
 NGLscriptstr = """
 
 var ttipalpha = %s;
-var camtype = %s;
+var camtype = "orthographic";
 var negativeradiistr
 
 function timefunc() {
@@ -19,11 +19,19 @@ var rightnow = timefunc();
 
 
 window.addEventListener( 'resize',
-  function( event ){
-      stage.handleResize();
+  function( event )
+  {
+    stage.handleResize();
   },
   false
 );
+
+
+window.onbeforeunload = function(event) 
+{
+  if (!ready_for_closing)
+    WebsockSendMsg('Warning!: Web browser closed unexpectedly perhaps by an external process. Call JavaScriptCleanUp() or Reload() instead.')
+};
 
 
 if (isdebug)
@@ -258,7 +266,6 @@ function ColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays)
     }
   }
 }
-
 
 
 function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids) 
@@ -590,6 +597,7 @@ var tdelay = 100;
 var displaytooltips = true;
 var container = null;
 var sockwaitcount = 0;
+var ready_for_closing = false;
 
 var Hstarstart = null;
 var Hstarend = null;
@@ -786,6 +794,7 @@ function onMessage(e)
       sleep(200).then(()=> {
           socket_intentionally_closed = true;
           mysocket.close(4242, 'Refreshing ' + pagename);
+          ready_for_closing = true;
           window.location.reload(true);
           // In 200ms we are gone. A new javascript file will be loaded in the browser
         }
@@ -1253,6 +1262,13 @@ function onMessage(e)
       stage.trackballControls.rotateSpeed = parseFloat(val[0]);
     }
 
+    if (msgtype === "SetCameraType")
+    {
+      camtype = val[0];
+      stage.setParameters( { cameraType: camtype } );
+      RenderRequest();
+    }
+
     if (msgtype === "GetMouseSpeed")
     {
       msg = String( [stage.trackballControls.rotateSpeed] )
@@ -1306,6 +1322,7 @@ function onMessage(e)
       stage.mouseObserver.dispose();
       stage.dispose();
       stage = null;
+      ready_for_closing = true;
       WebsockSendMsg('JavaScriptCleanUpDone:\\nDestroying JavaScript objects');
       socket_intentionally_closed = true;
       mysocket.close(4241, 'Cleanup done');
@@ -1346,69 +1363,6 @@ function onMessage(e)
       repr = shapeComp.addRepresentation('buffer');
       RenderRequest();
       WebsockSendMsg('Drawing new reflections');
-    }
-
-    if (msgtype === "InjectNewReflections")
-    {
-      WebsockSendMsg( 'Rendering new reflections ' + pagename );
-      var nrefl = parseInt(val.length/7);
-      if (nrefl !== val.length/7)
-      {
-        alert("Mismatch in array of reflections, colours and radii!")
-        return;
-      }
-
-      // delete the shapebufs[] that holds the positions[] arrays
-      shapeComp.removeRepresentation(repr);
-      // remove shapecomp from stage first
-      stage.removeComponent(shapeComp);
-
-      positions = [];
-      colours = [];
-      radii = [];
-      alphas = [];
-      shapebufs = [];
-      ttips = [];
-      shapebufs = [];
-      nbins = 1; // currently no binning when injecting reflections
-
-      positions_ = []; // dummy variables for conforming to binning scheme above
-      colours_ = [];   // as used when expanding reflections
-      radii_ = [];
-      ttips_ = [-1]
-
-      for (j=0; j<nrefl; j++)
-      {
-        positions_.push( parseFloat(val[7*j]) );
-        positions_.push( parseFloat(val[7*j+1]) );
-        positions_.push( parseFloat(val[7*j+2]) );
-        colours_.push( parseFloat(val[7*j+3]) );
-        colours_.push( parseFloat(val[7*j+4]) );
-        colours_.push( parseFloat(val[7*j+5]) );
-        radii_.push( parseFloat(val[7*j+6]) );
-        ttips_.push(j)
-      }
-
-      positions.push( new Float32Array( positions_ ));
-      colours.push( new Float32Array( colours_ ));
-      radii.push( new Float32Array( radii_ ));
-      ttips.push(ttips_);
-
-      shapebufs.push( new NGL.SphereBuffer({
-        position: positions[0],
-        color: colours[0],
-        radius: radii[0],
-        picking: ttips[0],
-        })
-      );
-      shape.addBuffer(shapebufs[0]);
-      alphas.push(1.0);
-
-      MakeHKL_Axis(shape);
-      shapeComp = stage.addComponentFromObject(shape);
-      repr = shapeComp.addRepresentation('buffer');
-      RenderRequest();
-      WebsockSendMsg('Injected new reflections');
     }
 
     if (msgtype === "SetAutoView")
