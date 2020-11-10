@@ -4,457 +4,78 @@ import sys
 
 NGLscriptstr = """
 
-var ttipalpha = %s;
-var camtype = "orthographic";
-var negativeradiistr
+// 'use strict';
+
+
+
+// Microsoft Edge users follow instructions on
+// https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
+// to enable websocket connection
+
+var pagename = location.pathname.substring(1);
+// get portnumber for websocket from the number embedded in the filename
+// such as C:/Users/Oeffner/AppData/Local/Temp/hkl_57033.htm
+var portnumber = pagename.match("hkl_([0-9]+).htm")[1];
+var mysocket;
+var socket_intentionally_closed = false;
+
+//var stage = null;
+//var shape = null;
+
+var shape = new NGL.Shape('shape');
+var stage = new NGL.Stage('viewport', {  backgroundColor: "rgb(128, 128, 128)",
+                                    tooltip:false, // create our own tooltip from a div element
+                                    fogNear: 100, fogFar: 100 });
+
+var shapeComp = null;
+var vectorshape = null;
+var repr = null;
+var AA = String.fromCharCode(197); // short for angstrom
+var DGR = String.fromCharCode(176); // short for degree symbol
+var current_ttip = "";
+var ttips = [];
+var vectorreprs = [];
+var vectorshapeComps = [];
+var positions = [];
+var br_positions = [];
+var br_colours = [];
+var br_radii = [];
+var br_ttips = [];
+var colours = [];
+var alphas = [];
+var radii = [];
+var shapebufs = [];
+var br_shapebufs = [];
+var nrots = 0;
+var fontsize = 9;
+var postrotmxflag = false;
+var cvorient = new NGL.Matrix4();
+var oldmsg = "";
+var clipFixToCamPosZ = false;
+var origclipnear;
+var origclipfar;
+var origcameraZpos;
+var nbins = 0;
+var rerendered = false;
+var expstate = "";
+var current_ttip_ids;
+var isdebug = false;
+var tdelay = 100;
+var displaytooltips = true;
+var container = null;
+var sockwaitcount = 0;
+var ready_for_closing = false;
+
+var Hstarstart = null;
+var Hstarend = null;
+var Kstarstart = null;
+var Kstarend = null;
+var Lstarstart = null;
+var Lstarend = null;
+var Hlabelpos = null;
+var Klabelpos = null;
+var Llabelpos = null;
 
-function timefunc() {
-  var d = new Date();
-  var now = d.getTime();
-  return now
-}
-
-var timenow = timefunc();
-var rightnow = timefunc();
-
-
-window.addEventListener( 'resize',
-  function( event )
-  {
-    stage.handleResize();
-  },
-  false
-);
-
-
-window.onbeforeunload = function(event) 
-{
-  if (!ready_for_closing)
-    WebsockSendMsg('Warning!: Web browser closed unexpectedly perhaps by an external process. Call JavaScriptCleanUp() or Reload() instead.')
-};
-
-
-if (isdebug)
-{
-  var script=document.createElement('script');
-  script.src='https://rawgit.com/paulirish/memory-stats.js/master/bookmarklet.js';
-  document.head.appendChild(script);
-}
-
-
-// define tooltip element
-var tooltip = document.createElement("div");
-Object.assign(tooltip.style, {
-  display: "none",
-  position: "absolute",
-  zIndex: 10,
-  pointerEvents: "none",
-  backgroundColor: "rgba(255, 255, 255, ttipalpha )",
-  color: "black",
-  padding: "0.1em",
-  fontFamily: "sans-serif"
-});
-
-
-function DefineHKL_Axes(hstart, hend, kstart, kend, 
-                 lstart, lend, hlabelpos, klabelpos, llabelpos)
-{
-  Hstarstart = hstart;
-  Hstarend = hend;
-  Kstarstart = kstart;
-  Kstarend = kend;
-  Lstarstart = lstart;
-  Lstarend = lend;
-  Hlabelpos = hlabelpos;
-  Klabelpos = klabelpos;
-  Llabelpos = llabelpos;
-};
-
-
-function MakeHKL_Axis()
-{
-  // xyz arrows
-  // shape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origin');
-  //blue-x
-  shape.addArrow( Hstarstart, Hstarend , [ 0, 0, 1 ], 0.1);
-  //green-y
-  shape.addArrow( Kstarstart, Kstarend, [ 0, 1, 0 ], 0.1);
-  //red-z
-  shape.addArrow( Lstarstart, Lstarend, [ 1, 0, 0 ], 0.1);
-
-  shape.addText( Hlabelpos, [ 0, 0, 1 ], fontsize, 'h');
-  shape.addText( Klabelpos, [ 0, 1, 0 ], fontsize, 'k');
-  shape.addText( Llabelpos, [ 1, 0, 0 ], fontsize, 'l');
-};
-
-
-function getOrientMsg()
-{
-  cvorientmx = stage.viewerControls.getOrientation();
-  if (cvorientmx.determinant() == 0)
-      return oldmsg; // don't return invalid matrix
-
-  cvorient = cvorientmx.elements;
-  for (j=0; j<16; j++)
-  {
-    if (Number.isNaN( cvorient[j]) )
-      return oldmsg; // don't return invalid matrix
-  }
-
-  if (stage.viewer.cDist != 0
-        && stage.viewer.parameters.clipFar > stage.viewer.cDist
-        && stage.viewer.cDist > stage.viewer.parameters.clipNear)
-    cameradist = stage.viewer.cDist;
-  else if (stage.viewer.camera.position.z != 0
-        && stage.viewer.parameters.clipFar > -stage.viewer.camera.position.z
-        && -stage.viewer.camera.position.z > stage.viewer.parameters.clipNear)
-    cameradist = -stage.viewer.camera.position.z;
-  else
-    cameradist = cvorient[14]; // fall back if stage.viewer.camera.position.z is corrupted
-  cvorient.push( cameradist );
-  msg = String(cvorient);
-  oldmsg = msg;
-  return msg;
-}
-
-
-  // listen to `hovered` signal to move tooltip around and change its text
-PickingProxyfunc = function(pickingProxy)
-{
-  if (pickingProxy
-        && (Object.prototype.toString.call(pickingProxy.picker["ids"]) === '[object Array]' )
-        && displaytooltips )
-  {
-    var cp = pickingProxy.canvasPosition;
-    var sym_id = -1;
-    var hkl_id = -1;
-    var ttipid = "";
-    if (pickingProxy.picker["ids"].length > 0)
-    { // get stored id number of symmetry operator applied to this hkl
-      sym_id = pickingProxy.picker["ids"][0];
-      var ids = pickingProxy.picker["ids"].slice(1);
-      var is_friedel_mate = 0;
-      hkl_id = ids[ pickingProxy.pid %% ids.length ];
-      if (pickingProxy.pid >= ids.length)
-        is_friedel_mate = 1;
-    }
-    // tell python the id of the hkl and id number of the symmetry operator
-    rightnow = timefunc();
-    if (rightnow - timenow > tdelay)
-    { // only post every 50 milli second as not to overwhelm python
-      ttipid = String([hkl_id, sym_id, is_friedel_mate]);
-      WebsockSendMsg( 'tooltip_id: [' + ttipid + ']' );
-      timenow = timefunc();
-    }
-
-    if (isdebug)
-      console.log( "current_ttip_ids: " + String(current_ttip_ids) + ", ttipid: " + String(ttipid) );
-    if (current_ttip !== "" && current_ttip_ids == ttipid )
-    {
-      tooltip.innerText = current_ttip;
-      tooltip.style.bottom = cp.y + 7 + "px";
-      tooltip.style.left = cp.x + 8 + "px";
-      tooltip.style.fontSize = fontsize.toString() + "pt";
-      tooltip.style.display = "block";
-    }
-  }
-  else
-  {
-    tooltip.style.display = "none";
-    current_ttip = "";
-  }
-};
-
-
-function getTextWidth(text, fsize=8)
-{
-  // re-use canvas object for better performance
-  var canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
-  var context = canvas.getContext("2d");
-  context.font = fsize.toString() + "pt sans-serif";
-  var metrics = context.measureText(text);
-  return metrics.width;
-}
-
-
-function ColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays)
-{
-  /* colourgradvalarrays is a list of colour charts. If only one list then it's one colour chart.
-  Otherwise it's usually a list of colour charts that constitute a gradient across colours,
-  typically used for illustrating figure of merits attenuating phase values in map coefficients
-  */
-  var ih = 3,
-  topr = 25,
-  topr2 = 0,
-  lp = 10;
-
-  var maxnumberwidth = 0;
-  for (j = 0; j < colourgradvalarrays[0].length; j++)
-  {
-    val = colourgradvalarrays[0][j][0];
-    maxnumberwidth = Math.max( getTextWidth(val, fontsize), maxnumberwidth );
-  }
-  wp = maxnumberwidth + 5,
-  //wp = 60,
-  lp2 = lp + wp,
-  gl = 3,
-  wp2 = gl,
-  fomlabelheight = 25;
-
-  if (colourgradvalarrays.length === 1)
-  {
-    wp2 = 15;
-    fomlabelheight = 0;
-  }
-  var wp3 = wp + colourgradvalarrays.length * wp2 + 2;
-
-  totalheight = ih*colourgradvalarrays[0].length + 35 + fomlabelheight;
-
-  if (container != null)
-    container.remove(); // delete previous colour chart if any
-  container = addDivBox(null, ctop, cleft, wp3, totalheight, bgcolour="rgba(255, 255, 255, 1.0)");
-
-  // make a white box on top of which boxes with transparent background are placed
-  // containing the colour values at regular intervals as well as label legend of
-  // the displayed miller array
-  addDiv2Container(container, null, topr2, lp, wp3, totalheight, 'rgba(255, 255, 255, 1.0)');
-
-  // print label of the miller array used for colouring
-  lblwidth = getTextWidth(millerlabel, fontsize);
-  addDiv2Container(container, millerlabel, topr2, lp, lblwidth + 5, 20, 'rgba(255, 255, 255, 1.0)', fsize=fontsize);
-
-  if (fomlabel != "" )
-  {
-    // print FOM label, 1, 0.5 and 0.0 values below colour chart
-    fomtop = topr2 + totalheight - 18;
-    fomlp = lp + wp;
-    fomwp = wp3;
-    fomtop2 = fomtop - 13;
-    // print the 1 number
-    addDiv2Container(container, 1, fomtop2, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
-    // print the 0.5 number
-    leftp = fomlp + 0.48 * gl * colourgradvalarrays.length;
-    addDiv2Container(container, 0.5, fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
-    // print the FOM label
-    addDiv2Container(container, fomlabel, fomtop, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
-    // print the 0 number
-    leftp = fomlp + 0.96 * gl * colourgradvalarrays.length;
-    addDiv2Container(container, 0, fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
-  }
-
-  for (j = 0; j < colourgradvalarrays[0].length; j++)
-  {
-    val = colourgradvalarrays[0][j][0];
-    topv = j*ih + topr;
-    toptxt = topv - 5;
-    // print value of miller array if present in colourgradvalarrays[0][j][0]
-    addDiv2Container(container,val, toptxt, lp, wp, ih, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
-  }
-
-  // if colourgradvalarrays is an array of arrays then draw each array next to the previous one
-  for (g = 0; g < colourgradvalarrays.length; g++)
-  {
-    leftp = g*gl + lp + wp;
-    for (j = 0; j < colourgradvalarrays[g].length; j++)
-    {
-      R = colourgradvalarrays[g][j][1];
-      G = colourgradvalarrays[g][j][2];
-      B = colourgradvalarrays[g][j][3];
-      rgbcol = 'rgba(' + R.toString() + ',' + G.toString() + ',' + B.toString() + ', 1.0)'
-      topv = j*ih + topr;
-      addDiv2Container(container, null, topv, leftp, wp2, ih, rgbcol);
-    }
-  }
-}
-
-
-function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids) 
-{
-  ttiplst = [-1].concat(ttipids);
-  ttips.push( { ids: ttiplst,
-       getPosition: function() { return { x:0, y:0 }; } // dummy function to avoid crash
-  }  );
-  positions.push( new Float32Array( coordarray ) );
-  colours.push( new Float32Array( colourarray ) );
-  radii.push( new Float32Array( radiiarray ) );
-  curridx = positions.length -1;
-  shapebufs.push( new NGL.SphereBuffer({
-    position: positions[curridx],
-    color: colours[curridx], 
-    radius: radii[curridx],
-    picking: ttips[curridx],
-    })
-  );
-  shape.addBuffer(shapebufs[curridx]);
-  alphas.push(1.0);
-}
-
-
-function HKLscene()
-{
-  shape = new NGL.Shape('shape');
-  stage = new NGL.Stage('viewport', {  backgroundColor: "rgb(128, 128, 128)",
-                                      tooltip:false, // create our own tooltip from a div element
-                                      fogNear: 100, fogFar: 100 });
-  stage.setParameters( { cameraType: camtype } );
-
-  MakeHKL_Axis(shape);
-
-//  placeholder for spherebufferstr
-  
-
-// create tooltip element and add to the viewer canvas
-  stage.viewer.container.appendChild(tooltip);
-
-  stage.signals.clicked.add(
-    PickingProxyfunc
-  );
-
-
-  stage.mouseObserver.signals.dragged.add(
-    function ( deltaX, deltaY)
-    {
-      if (clipFixToCamPosZ === true)
-      {
-        stage.viewer.parameters.clipNear = origclipnear + (origcameraZpos -stage.viewer.camera.position.z);
-        stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos -stage.viewer.camera.position.z);
-        stage.viewer.requestRender();
-      }
-      msg = getOrientMsg();
-      rightnow = timefunc();
-      if (rightnow - timenow > 250)
-      { // only post every 250 milli second as not to overwhelm python
-        postrotmxflag = true;
-        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
-        timenow = timefunc();
-      }
-    }
-  );
-
-
-  stage.mouseObserver.signals.clicked.add(
-    function (x, y)
-    {
-      msg = getOrientMsg();
-      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
-    }
-  );
-
-
-  stage.mouseObserver.signals.scrolled.add(
-    function (delta)
-    {
-      if (clipFixToCamPosZ === true)
-      {
-        stage.viewer.parameters.clipNear = origclipnear + (origcameraZpos -stage.viewer.camera.position.z);
-        stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos -stage.viewer.camera.position.z);
-        stage.viewer.requestRender();
-      }
-      msg = getOrientMsg();
-      rightnow = timefunc();
-      if (rightnow - timenow > 250)
-      { // only post every 250 milli second as not to overwhelm python
-        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
-        timenow = timefunc();
-      }
-    }
-  );
-
-
-  stage.viewer.signals.rendered.add(
-    function()
-    {
-      if (postrotmxflag === true)
-      {
-        msg = getOrientMsg();
-        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
-        postrotmxflag = false;
-      }
-    }
-  );
-
-
-  stage.viewerControls.signals.changed.add(
-    function()
-    {
-      msg = getOrientMsg();
-      rightnow = timefunc();
-      if (rightnow - timenow > 250)
-      { // only post every 250 milli second as not to overwhelm python
-        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
-        //ReturnClipPlaneDistances();
-        sleep(250).then(()=> {
-            ReturnClipPlaneDistances();
-          }
-        );
-        timenow = timefunc();
-      }
-    }
-  );
-
-  shapeComp = stage.addComponentFromObject(shape);
-  repr = shapeComp.addRepresentation('buffer');
-  shapeComp.autoView();
-  repr.update();
-
-  // if some radii are negative draw them with wireframe
-  %s
-
-  if (isdebug)
-    stage.viewer.container.appendChild(debugmessage);
-
-  // avoid NGL zoomFocus messing up clipplanes positions. So reassign those signals to zoomDrag
-  stage.mouseControls.remove("drag-shift-right");
-  stage.mouseControls.add("drag-shift-right", NGL.MouseActions.zoomDrag);
-  stage.mouseControls.remove("drag-middle");
-  stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomDrag);
-  stage.mouseControls.remove('clickPick-left'); // avoid undefined move-pick when clicking on a sphere
-
-  stage.viewer.requestRender();
-  if (isdebug)
-    debugmessage.innerText = dbgmsg;
-}
-
-
-function OnUpdateOrientation()
-{
-  msg = getOrientMsg();
-  WebsockSendMsg('MouseMovedOrientation:\\n' + msg );
-}
-
-
-try
-{
-  document.addEventListener('DOMContentLoaded', function() { HKLscene() }, false );
-  document.addEventListener('mouseup', function() { OnUpdateOrientation() }, false );
-  document.addEventListener('wheel', function(e) { OnUpdateOrientation() }, false );
-  document.addEventListener('scroll', function(e) { OnUpdateOrientation() }, false );
-  // mitigate flickering on some PCs when resizing
-  document.addEventListener('resize', function() { RenderRequest() }, false );
-}
-catch(err)
-{
-  WebsockSendMsg('JavaScriptError: ' + err.stack );
-}
-
-    """
-
-
-def imgPy2orPy3savestr():
-  # Using websocket_server in python2 which doesn't allow streaming large compressed data
-  # So use NGL's download image function
-  mstr = """
-              NGL.download( blob, filename );
-    """
-  if sys.version_info[0] > 2: # Using websockets in python3 which supports streaming large blobs
-    mstr = """
-              WebsockSendMsg('Imageblob', false);
-              WebsockSendMsg( blob );
-    """
-  return mstr
-
-
-WebsockMsgHandlestr = """
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -525,19 +146,11 @@ function addDiv2Container(container, name, t, l, w, h, bgcolour="rgba(255, 255, 
 }
 
 
-// Microsoft Edge users follow instructions on
-// https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
-// to enable websocket connection
-
-var pagename = location.pathname.substring(1);
-var mysocket;
-var socket_intentionally_closed = false;
-
 function CreateWebSocket()
 {
   try
   {
-    mysocket = new WebSocket('ws://127.0.0.1:%s/');
+    mysocket = new WebSocket('ws://127.0.0.1:' + portnumber);
     mysocket.bufferType = "arraybuffer"; // "blob";
     //if (mysocket.readyState !== mysocket.OPEN)
     //  alert('Cannot connect to websocket server! \\nAre the firewall permissions or browser security too strict?');
@@ -551,66 +164,11 @@ function CreateWebSocket()
   catch(err)
   {
     alert('JavaScriptError: ' + err.stack );
-    addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100, 100, 100, 0.0));
+    //addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, "rgba(100, 100, 100, 0.0)");
   }
 }
 
-
 CreateWebSocket();
-
-var stage = null;
-var shape = null;
-var shapeComp = null;
-var vectorshape = null;
-var repr = null;
-var AA = String.fromCharCode(197); // short for angstrom
-var DGR = String.fromCharCode(176); // short for degree symbol
-var current_ttip = "";
-var ttips = [];
-var vectorreprs = [];
-var vectorshapeComps = [];
-var positions = [];
-var br_positions = [];
-var br_colours = [];
-var br_radii = [];
-var br_ttips = [];
-var colours = [];
-var alphas = [];
-var radii = [];
-var shapebufs = [];
-var br_shapebufs = [];
-var nrots = 0;
-var fontsize = 9;
-var postrotmxflag = false;
-var cvorient = new NGL.Matrix4();
-var oldmsg = "";
-var clipFixToCamPosZ = false;
-var origclipnear;
-var origclipfar;
-var origcameraZpos;
-var nbins = %s;
-var rerendered = false;
-var expstate = "";
-var current_ttip_ids;
-var isdebug = %s;
-var tdelay = 100;
-var displaytooltips = true;
-var container = null;
-var sockwaitcount = 0;
-var ready_for_closing = false;
-
-var Hstarstart = null;
-var Hstarend = null;
-var Kstarstart = null;
-var Kstarend = null;
-var Lstarstart = null;
-var Lstarend = null;
-var Hlabelpos = null;
-var Klabelpos = null;
-var Llabelpos = null;
-
-
-
 
 
 function RemoveStageObjects()
@@ -638,6 +196,7 @@ function RemoveStageObjects()
   shapeComp = null;
   vectorshape = null;
   repr = null;
+  nbins = 0;
 }
 
 
@@ -688,7 +247,7 @@ function WebsockSendMsg(msg, message_is_complete = true)
   catch(err)
   {
     alert('JavaScriptError: ' + err.stack );
-    addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, rgba(100, 100, 100, 0.0));
+    addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, "rgba(100, 100, 100, 0.0)");
   }
 }
 
@@ -755,7 +314,7 @@ function onError(e)
 
 function onOpen(e)
 {
-  msg = '%s now connected via websocket to ' + pagename + '\\n';
+  msg = 'Now connected via websocket to ' + pagename + '\\n';
   WebsockSendMsg(msg);
   dbgmsg =msg;
   rerendered = false;
@@ -764,7 +323,7 @@ function onOpen(e)
 
 function onClose(e)
 {
-  msg = '%s now disconnecting from websocket ' + pagename + '\\n';
+  msg = 'Now disconnecting from websocket ' + pagename + '\\n';
   console.log(msg);
   dbgmsg =msg;
 };
@@ -1026,7 +585,7 @@ function onMessage(e)
               radius: br_radii[bin],
               // rotmxidx works as the id of the rotation of applied symmetry operator when creating tooltip for an hkl
               picking: br_ttips[bin][rotmxidx],
-              } %s  );
+              } );
           shape.addBuffer(br_shapebufs[bin][rotmxidx]);
           //WebsockSendMsg( 'Memory usage: ' + String(window.performance.memory.totalJSHeapSize) +
           //        ', ' + String(window.performance.memory.totalJSHeapSize) );
@@ -1329,6 +888,11 @@ function onMessage(e)
       document = null;
     }
 
+    if (msgtype ==="SetBrowserDebug")
+    {
+      isdebug = (val[0] === "true" );
+    }
+
     if (msgtype ==="RemoveStageObjects")
     {
       RemoveStageObjects();
@@ -1358,6 +922,7 @@ function onMessage(e)
 
     if (msgtype ==="RenderStageObjects")
     {
+      //HKLscene();
       MakeHKL_Axis(shape);
       shapeComp = stage.addComponentFromObject(shape);
       repr = shapeComp.addRepresentation('buffer');
@@ -1381,7 +946,18 @@ function onMessage(e)
                 trim: false,
                 transparent: false
             } ).then( function( blob ){
-    """ + imgPy2orPy3savestr() + """
+              if (parseInt(val[1]) < 3)
+              {
+// Using websocket_server in python2 which doesn't allow streaming large compressed data
+// So use NGL's download image function
+                NGL.download( blob, filename );
+              }
+              else
+              { // websockets in python3 which supports streaming large blobs
+                WebsockSendMsg('Imageblob', false);
+                WebsockSendMsg( blob );
+              }
+
               WebsockSendMsg('ImageWritten ' + pagename);
         } );
     }
@@ -1412,5 +988,442 @@ function onMessage(e)
   }
 
 };
+
+
+var ttipalpha = 0.7;
+var camtype = "orthographic";
+var negativeradiistr
+
+function timefunc() {
+  var d = new Date();
+  var now = d.getTime();
+  return now
+}
+
+var timenow = timefunc();
+var rightnow = timefunc();
+
+
+window.addEventListener( 'resize',
+  function( event )
+  {
+    stage.handleResize();
+  },
+  false
+);
+
+
+window.onbeforeunload = function(event) 
+{
+  if (!ready_for_closing)
+    WebsockSendMsg('Warning!: Web browser closed unexpectedly perhaps by an external process. Call JavaScriptCleanUp() or Reload() instead.')
+};
+
+
+if (isdebug)
+{
+  var script=document.createElement('script');
+  script.src='https://rawgit.com/paulirish/memory-stats.js/master/bookmarklet.js';
+  document.head.appendChild(script);
+}
+
+
+// define tooltip element
+var tooltip = document.createElement("div");
+Object.assign(tooltip.style, {
+  display: "none",
+  position: "absolute",
+  zIndex: 10,
+  pointerEvents: "none",
+  backgroundColor: "rgba(255, 255, 255, ttipalpha )",
+  color: "black",
+  padding: "0.1em",
+  fontFamily: "sans-serif"
+});
+
+
+function DefineHKL_Axes(hstart, hend, kstart, kend, 
+                 lstart, lend, hlabelpos, klabelpos, llabelpos)
+{
+  Hstarstart = hstart;
+  Hstarend = hend;
+  Kstarstart = kstart;
+  Kstarend = kend;
+  Lstarstart = lstart;
+  Lstarend = lend;
+  Hlabelpos = hlabelpos;
+  Klabelpos = klabelpos;
+  Llabelpos = llabelpos;
+};
+
+
+function MakeHKL_Axis()
+{
+  // xyz arrows
+  // shape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origin');
+  //blue-x
+  shape.addArrow( Hstarstart, Hstarend , [ 0, 0, 1 ], 0.1);
+  //green-y
+  shape.addArrow( Kstarstart, Kstarend, [ 0, 1, 0 ], 0.1);
+  //red-z
+  shape.addArrow( Lstarstart, Lstarend, [ 1, 0, 0 ], 0.1);
+
+  shape.addText( Hlabelpos, [ 0, 0, 1 ], fontsize, 'h');
+  shape.addText( Klabelpos, [ 0, 1, 0 ], fontsize, 'k');
+  shape.addText( Llabelpos, [ 1, 0, 0 ], fontsize, 'l');
+};
+
+
+function getOrientMsg()
+{
+  cvorientmx = stage.viewerControls.getOrientation();
+  if (cvorientmx.determinant() == 0)
+      return oldmsg; // don't return invalid matrix
+
+  cvorient = cvorientmx.elements;
+  for (j=0; j<16; j++)
+  {
+    if (Number.isNaN( cvorient[j]) )
+      return oldmsg; // don't return invalid matrix
+  }
+
+  if (stage.viewer.cDist != 0
+        && stage.viewer.parameters.clipFar > stage.viewer.cDist
+        && stage.viewer.cDist > stage.viewer.parameters.clipNear)
+    cameradist = stage.viewer.cDist;
+  else if (stage.viewer.camera.position.z != 0
+        && stage.viewer.parameters.clipFar > -stage.viewer.camera.position.z
+        && -stage.viewer.camera.position.z > stage.viewer.parameters.clipNear)
+    cameradist = -stage.viewer.camera.position.z;
+  else
+    cameradist = cvorient[14]; // fall back if stage.viewer.camera.position.z is corrupted
+  cvorient.push( cameradist );
+  msg = String(cvorient);
+  oldmsg = msg;
+  return msg;
+}
+
+
+// listen to hover or click signal to move tooltip around and change its text
+function PickingProxyfunc(pickingProxy)
+{
+// adapted from http://nglviewer.org/ngl/api/manual/interaction-controls.html#clicked
+  if (pickingProxy
+        && (Object.prototype.toString.call(pickingProxy.picker["ids"]) === '[object Array]' )
+        && displaytooltips )
+  {
+    var cp = pickingProxy.canvasPosition;
+    var sym_id = -1;
+    var hkl_id = -1;
+    var ttipid = "";
+    if (pickingProxy.picker["ids"].length > 0)
+    { // get stored id number of symmetry operator applied to this hkl
+      sym_id = pickingProxy.picker["ids"][0];
+      var ids = pickingProxy.picker["ids"].slice(1);
+      var is_friedel_mate = 0;
+      hkl_id = ids[ pickingProxy.pid % ids.length ];
+      if (pickingProxy.pid >= ids.length)
+        is_friedel_mate = 1;
+    }
+    // tell python the id of the hkl and id number of the symmetry operator
+    rightnow = timefunc();
+    if (rightnow - timenow > tdelay)
+    { // only post every 50 milli second as not to overwhelm python
+      ttipid = String([hkl_id, sym_id, is_friedel_mate]);
+      WebsockSendMsg( 'tooltip_id: [' + ttipid + ']' );
+      timenow = timefunc();
+    }
+
+    if (isdebug)
+      console.log( "current_ttip_ids: " + String(current_ttip_ids) + ", ttipid: " + String(ttipid) );
+    if (current_ttip !== "" && current_ttip_ids == ttipid )
+    {
+      tooltip.innerText = current_ttip;
+      tooltip.style.bottom = cp.y + 7 + "px";
+      tooltip.style.left = cp.x + 8 + "px";
+      tooltip.style.fontSize = fontsize.toString() + "pt";
+      tooltip.style.display = "block";
+    }
+  }
+  else
+  {
+    tooltip.style.display = "none";
+    current_ttip = "";
+  }
+};
+
+
+function getTextWidth(text, fsize=8)
+{
+  // re-use canvas object for better performance
+  var canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
+  var context = canvas.getContext("2d");
+  context.font = fsize.toString() + "pt sans-serif";
+  var metrics = context.measureText(text);
+  return metrics.width;
+}
+
+
+function ColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays)
+{
+  /* colourgradvalarrays is a list of colour charts. If only one list then it's one colour chart.
+  Otherwise it's usually a list of colour charts that constitute a gradient across colours,
+  typically used for illustrating figure of merits attenuating phase values in map coefficients
+  */
+  var ih = 3,
+  topr = 25,
+  topr2 = 0,
+  lp = 10;
+
+  var maxnumberwidth = 0;
+  for (j = 0; j < colourgradvalarrays[0].length; j++)
+  {
+    val = colourgradvalarrays[0][j][0];
+    maxnumberwidth = Math.max( getTextWidth(val, fontsize), maxnumberwidth );
+  }
+  wp = maxnumberwidth + 5,
+  //wp = 60,
+  lp2 = lp + wp,
+  gl = 3,
+  wp2 = gl,
+  fomlabelheight = 25;
+
+  if (colourgradvalarrays.length === 1)
+  {
+    wp2 = 15;
+    fomlabelheight = 0;
+  }
+  var wp3 = wp + colourgradvalarrays.length * wp2 + 2;
+
+  totalheight = ih*colourgradvalarrays[0].length + 35 + fomlabelheight;
+
+  if (container != null)
+    container.remove(); // delete previous colour chart if any
+  container = addDivBox(null, ctop, cleft, wp3, totalheight, bgcolour="rgba(255, 255, 255, 1.0)");
+
+  // make a white box on top of which boxes with transparent background are placed
+  // containing the colour values at regular intervals as well as label legend of
+  // the displayed miller array
+  addDiv2Container(container, null, topr2, lp, wp3, totalheight, 'rgba(255, 255, 255, 1.0)');
+
+  // print label of the miller array used for colouring
+  lblwidth = getTextWidth(millerlabel, fontsize);
+  addDiv2Container(container, millerlabel, topr2, lp, lblwidth + 5, 20, 'rgba(255, 255, 255, 1.0)', fsize=fontsize);
+
+  if (fomlabel != "" )
+  {
+    // print FOM label, 1, 0.5 and 0.0 values below colour chart
+    fomtop = topr2 + totalheight - 18;
+    fomlp = lp + wp;
+    fomwp = wp3;
+    fomtop2 = fomtop - 13;
+    // print the 1 number
+    addDiv2Container(container, 1, fomtop2, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
+    // print the 0.5 number
+    leftp = fomlp + 0.48 * gl * colourgradvalarrays.length;
+    addDiv2Container(container, 0.5, fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
+    // print the FOM label
+    addDiv2Container(container, fomlabel, fomtop, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
+    // print the 0 number
+    leftp = fomlp + 0.96 * gl * colourgradvalarrays.length;
+    addDiv2Container(container, 0, fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
+  }
+
+  for (j = 0; j < colourgradvalarrays[0].length; j++)
+  {
+    val = colourgradvalarrays[0][j][0];
+    topv = j*ih + topr;
+    toptxt = topv - 5;
+    // print value of miller array if present in colourgradvalarrays[0][j][0]
+    addDiv2Container(container,val, toptxt, lp, wp, ih, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
+  }
+
+  // if colourgradvalarrays is an array of arrays then draw each array next to the previous one
+  for (g = 0; g < colourgradvalarrays.length; g++)
+  {
+    leftp = g*gl + lp + wp;
+    for (j = 0; j < colourgradvalarrays[g].length; j++)
+    {
+      R = colourgradvalarrays[g][j][1];
+      G = colourgradvalarrays[g][j][2];
+      B = colourgradvalarrays[g][j][3];
+      rgbcol = 'rgba(' + R.toString() + ',' + G.toString() + ',' + B.toString() + ', 1.0)'
+      topv = j*ih + topr;
+      addDiv2Container(container, null, topv, leftp, wp2, ih, rgbcol);
+    }
+  }
+}
+
+
+function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids) 
+{
+  ttiplst = [-1].concat(ttipids);
+  ttips.push( { ids: ttiplst,
+       getPosition: function() { return { x:0, y:0 }; } // dummy function to avoid crash
+  }  );
+  positions.push( new Float32Array( coordarray ) );
+  colours.push( new Float32Array( colourarray ) );
+  radii.push( new Float32Array( radiiarray ) );
+  curridx = positions.length -1;
+  shapebufs.push( new NGL.SphereBuffer({
+    position: positions[curridx],
+    color: colours[curridx], 
+    radius: radii[curridx],
+    picking: ttips[curridx],
+    })
+  );
+  shape.addBuffer(shapebufs[curridx]);
+  alphas.push(1.0);
+  nbins = nbins + 1;
+}
+
+
+function HKLscene()
+{
+  shape = new NGL.Shape('shape');
+  stage = new NGL.Stage('viewport', {  backgroundColor: "rgb(128, 128, 128)",
+                                    tooltip:false, // create our own tooltip from a div element
+                                    fogNear: 100, fogFar: 100 });
+
+  stage.setParameters( { cameraType: camtype } );
+
+  //MakeHKL_Axis(shape);
+
+//  placeholder for spherebufferstr
+  
+
+// create tooltip element and add to the viewer canvas
+  stage.viewer.container.appendChild(tooltip);
+  stage.signals.clicked.add( PickingProxyfunc );
+
+
+  stage.mouseObserver.signals.dragged.add(
+    function ( deltaX, deltaY)
+    {
+      if (clipFixToCamPosZ === true)
+      {
+        stage.viewer.parameters.clipNear = origclipnear + (origcameraZpos -stage.viewer.camera.position.z);
+        stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos -stage.viewer.camera.position.z);
+        stage.viewer.requestRender();
+      }
+      msg = getOrientMsg();
+      rightnow = timefunc();
+      if (rightnow - timenow > 250)
+      { // only post every 250 milli second as not to overwhelm python
+        postrotmxflag = true;
+        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        timenow = timefunc();
+      }
+    }
+  );
+
+
+  stage.mouseObserver.signals.clicked.add(
+    function (x, y)
+    {
+      msg = getOrientMsg();
+      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+    }
+  );
+
+
+  stage.mouseObserver.signals.scrolled.add(
+    function (delta)
+    {
+      if (clipFixToCamPosZ === true)
+      {
+        stage.viewer.parameters.clipNear = origclipnear + (origcameraZpos -stage.viewer.camera.position.z);
+        stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos -stage.viewer.camera.position.z);
+        stage.viewer.requestRender();
+      }
+      msg = getOrientMsg();
+      rightnow = timefunc();
+      if (rightnow - timenow > 250)
+      { // only post every 250 milli second as not to overwhelm python
+        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        timenow = timefunc();
+      }
+    }
+  );
+
+
+  stage.viewer.signals.rendered.add(
+    function()
+    {
+      if (postrotmxflag === true)
+      {
+        msg = getOrientMsg();
+        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        postrotmxflag = false;
+      }
+    }
+  );
+
+
+  stage.viewerControls.signals.changed.add(
+    function()
+    {
+      msg = getOrientMsg();
+      rightnow = timefunc();
+      if (rightnow - timenow > 250)
+      { // only post every 250 milli second as not to overwhelm python
+        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        //ReturnClipPlaneDistances();
+        sleep(250).then(()=> {
+            ReturnClipPlaneDistances();
+          }
+        );
+        timenow = timefunc();
+      }
+    }
+  );
+
+  shapeComp = stage.addComponentFromObject(shape);
+  repr = shapeComp.addRepresentation('buffer');
+  shapeComp.autoView();
+  repr.update();
+
+  if (isdebug)
+    stage.viewer.container.appendChild(debugmessage);
+
+  // avoid NGL zoomFocus messing up clipplanes positions. So reassign those signals to zoomDrag
+  stage.mouseControls.remove("drag-shift-right");
+  stage.mouseControls.add("drag-shift-right", NGL.MouseActions.zoomDrag);
+  stage.mouseControls.remove("drag-middle");
+  stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomDrag);
+  stage.mouseControls.remove('clickPick-left'); // avoid undefined move-pick when clicking on a sphere
+
+  stage.viewer.requestRender();
+  if (isdebug)
+    debugmessage.innerText = dbgmsg;
+}
+
+
+function OnUpdateOrientation()
+{
+  msg = getOrientMsg();
+  WebsockSendMsg('MouseMovedOrientation:\\n' + msg );
+}
+
+
+function PageLoad()
+{
+  try
+  {
+    document.addEventListener('DOMContentLoaded', function() { HKLscene() }, false );
+    document.addEventListener('mouseup', function() { OnUpdateOrientation() }, false );
+    document.addEventListener('wheel', function(e) { OnUpdateOrientation() }, false );
+    document.addEventListener('scroll', function(e) { OnUpdateOrientation() }, false );
+    // mitigate flickering on some PCs when resizing
+    document.addEventListener('resize', function() { RenderRequest() }, false );
+  }
+  catch(err)
+  {
+    WebsockSendMsg('JavaScriptError: ' + err.stack );
+  }
+}
+
+
+PageLoad();
 
     """
