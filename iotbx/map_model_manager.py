@@ -2,6 +2,9 @@ from __future__ import absolute_import, division, print_function
 import sys, os
 from libtbx.utils import Sorry
 from cctbx import maptbx
+from cctbx import crystal
+from cctbx import uctbx
+from cctbx import miller
 from libtbx import group_args
 from cctbx.array_family import flex
 from scitbx.matrix import col
@@ -12,6 +15,7 @@ from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
 from copy import deepcopy
 from cctbx import adptbx
+from mmtbx_tls_ext import tlso, uaniso_from_tls_one_group
 
 # Reserved phil scope for MapModelManager
 map_model_phil_str = '''
@@ -1500,7 +1504,6 @@ class map_model_manager(object):
         uc = xrs.unit_cell()
         sites_cart = xrs.sites_cart()
         u_cart=xrs.scatterers().extract_u_cart(uc)
-        from mmtbx_tls_ext import tlso, uaniso_from_tls_one_group
         new_anisos= uaniso_from_tls_one_group(tlso = tlso_value,
          sites_cart = sites_cart.select(selection),
          zeroize_trace=False)
@@ -1971,6 +1974,7 @@ class map_model_manager(object):
       map_id = mask_id)
 
   def create_mask_around_atoms(self,
+     model = None,
      mask_atoms_atom_radius = 3,
      soft_mask = False,
      soft_mask_radius = None,
@@ -1997,9 +2001,12 @@ class map_model_manager(object):
         soft_mask_radius = self.resolution()
       mask_atoms_atom_radius += soft_mask_radius
 
+    if not model:
+      model = self.model()
+
     from cctbx.maptbx.mask import create_mask_around_atoms
     cm = create_mask_around_atoms(map_manager = self.map_manager(),
-      model = self.model(),
+      model = model,
       mask_atoms_atom_radius = mask_atoms_atom_radius)
 
     if soft_mask: # Make the create_mask object contain a soft mask
@@ -2648,6 +2655,9 @@ class map_model_manager(object):
       smoothing_radius = None,
       local_sharpen = None,
       anisotropic_sharpen = None,
+      expected_ssqr_list = None,
+      expected_ssqr_list_rms = None,
+      tlso_group_info = None,
       overall_sharpen_before_and_after_local = True,
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
@@ -2716,7 +2726,10 @@ class map_model_manager(object):
       run_analyze_anisotropy = True,
       spectral_scaling = True,
       expected_rms_fc_list = None,
-      model_for_rms_fc = None,
+      expected_ssqr_list = None,
+      expected_ssqr_list_rms = None,
+      tlso_group_info = None,
+      model_id_for_rms_fc = None,
       replace_aniso_with_tls_equiv = None,
       max_abs_b = None,
       nproc = None,
@@ -2800,7 +2813,10 @@ class map_model_manager(object):
       run_analyze_anisotropy = True,
       spectral_scaling = True,
       expected_rms_fc_list = None,
-      model_for_rms_fc = None,
+      expected_ssqr_list = None,
+      expected_ssqr_list_rms = None,
+      tlso_group_info = None,
+      model_id_for_rms_fc = None,
       replace_aniso_with_tls_equiv = None,
       max_abs_b = None,
       nproc = None,
@@ -2860,8 +2876,8 @@ class map_model_manager(object):
     print("Scaled map will be in '%s' in map_model_manager '%s'" %(
       str(kw['map_id_scaled_list']),self.name),file = self.log)
 
-    if model_for_rms_fc is None:
-      kw['model_for_rms_fc'] = self.get_model_by_id(kw['model_id'])
+    if model_id_for_rms_fc is None:
+      kw['model_id_for_rms_fc'] = kw['model_id']
 
 
     # Allow sharpening globally before and after local sharpening
@@ -3011,7 +3027,10 @@ class map_model_manager(object):
       run_analyze_anisotropy = None,
       spectral_scaling = None,
       expected_rms_fc_list = None,
-      model_for_rms_fc = None,
+      expected_ssqr_list = None,
+      expected_ssqr_list_rms = None,
+      tlso_group_info = None,
+      model_id_for_rms_fc = None,
       replace_aniso_with_tls_equiv = None,
       max_abs_b = None,
       get_tls_info_only = None,
@@ -3151,10 +3170,20 @@ class map_model_manager(object):
            k_sol = k_sol,
            b_sol = k_sol,
            map_model_manager = working_mmm,
-           model = model_for_rms_fc,
+           model = working_mmm.get_model_by_id(model_id=model_id_for_rms_fc),
            out = self.log)
         expected_rms_fc_list = aavr.get_target_scale_factors()
         n_bins_use = aavr.n_bins_use # number of bins to resolution
+
+    if expected_ssqr_list_rms and not expected_ssqr_list:
+        from cctbx.development.approx_amplitude_vs_resolution import \
+          get_expected_ssqr_list
+        expected_ssqr_list = get_expected_ssqr_list(
+           d_min = setup_info.minimum_resolution,
+           n_bins = n_bins,
+           expected_ssqr_list_rms = expected_ssqr_list_rms,
+           map_model_manager = working_mmm,
+           out = self.log)
 
     resolution = setup_info.resolution
     working_mmm.set_resolution(resolution)
@@ -3210,7 +3239,10 @@ class map_model_manager(object):
         n_direction_vectors = n_direction_vectors,
         run_analyze_anisotropy = run_analyze_anisotropy,
         expected_rms_fc_list = expected_rms_fc_list,
-        model_for_rms_fc = model_for_rms_fc,
+        expected_ssqr_list = expected_ssqr_list,
+        expected_ssqr_list_rms = expected_ssqr_list_rms,
+        tlso_group_info = tlso_group_info,
+        model_id_for_rms_fc = model_id_for_rms_fc,
         replace_aniso_with_tls_equiv = replace_aniso_with_tls_equiv,
         )
     """
@@ -3593,7 +3625,10 @@ class map_model_manager(object):
      n_direction_vectors = None,
      run_analyze_anisotropy = None,
      expected_rms_fc_list = None,
-     model_for_rms_fc = None,
+     expected_ssqr_list = None,
+     expected_ssqr_list_rms = None,
+     tlso_group_info = None,
+     model_id_for_rms_fc = None,
      replace_aniso_with_tls_equiv = None,
      ):
     '''
@@ -3689,6 +3724,9 @@ class map_model_manager(object):
       use_dv_weighting = use_dv_weighting,
       run_analyze_anisotropy = run_analyze_anisotropy,
       expected_rms_fc_list = expected_rms_fc_list,
+      expected_ssqr_list = expected_ssqr_list,
+      expected_ssqr_list_rms = expected_ssqr_list_rms,
+      tlso_group_info = tlso_group_info,
       resolution = resolution, # nominal resolution
       out = self.log)
     if not hasattr(result,'scaling_info_list'):  # result is one si
@@ -3791,6 +3829,9 @@ class map_model_manager(object):
       elif scaling_group_info.overall_u_cart_to_apply:
         u_cart_to_apply = tuple(scaling_group_info.overall_u_cart_to_apply)
         overall_scale = None
+      elif scale_factor_info.default_uaniso:
+        u_cart_to_apply = tuple(scale_factor_info.default_uaniso)
+        overall_scale = None
       else: # nothing to do
         continue
       for si,dv in zip(scaling_info_list,direction_vectors):
@@ -3805,9 +3846,16 @@ class map_model_manager(object):
           s = (sthol2/0.25)**0.5
           recip_space_vectors.append(col(dv) * s)
           scale_values.append(1.)
+
+        # Create dummy array with fine spacing (will never contain much)
+        #  so that there will be a lattice point very near any point in s-space
+        local_f_array = create_fine_spacing_array(
+          f_array.crystal_symmetry().unit_cell())
+
         indices = flex.miller_index(tuple(get_nearest_lattice_points(
-            f_array.unit_cell(),recip_space_vectors)))
-        scale_values_array = f_array.customized_copy(  # just n_bins numbers
+            local_f_array.unit_cell(),recip_space_vectors)))
+        scale_values_array = local_f_array.customized_copy(
+              # just n_bins numbers
           data = scale_values,
           indices = indices)
         from mmtbx.scaling import absolute_scaling
@@ -3822,6 +3870,7 @@ class map_model_manager(object):
           scale_values_array.unit_cell(),tuple(-col(u_cart_to_apply)))
         scaled_f_array = absolute_scaling.anisotropic_correction(
           scale_values_array,0.0, u_star ,must_be_greater_than=-0.0001)
+
         if overall_scale:  # Apply overall
             #resolution-dependent scale factors
           scaled_f_array=scaled_f_array.customized_copy(
@@ -3829,13 +3878,166 @@ class map_model_manager(object):
         # Now extract our values as target_scale_factors
         si.target_scale_factors = scaled_f_array.data()
 
-  def _analyze_aniso(self, scale_factor_info, map_id = None,
+  def _analyze_aniso_replace_with_supplied(self,
+     scale_factor_info,
+     tlso_group_info = None,
+     map_id = None,
+    ):
+    # Replace aniso information with values from tlso_group_info
+    # Get uaniso in middle of molecule
+    tlso_value = tlso(
+           t = tlso_group_info.T_list[0],
+           l = tlso_group_info.L_list[0],
+           s = tlso_group_info.S_list[0],
+           origin = tlso_group_info.O_list[0],
+             )
+    sites_cart = flex.vec3_double()
+    sites_cart.append(scale_factor_info.xyz_list.mean())
+
+    center_uanisos= uaniso_from_tls_one_group(
+         tlso = tlso_value,
+         sites_cart = sites_cart,
+         zeroize_trace=False)
+
+    average_overall_scale_as_u_cart = flex.double((0,0,0,0,0,0))
+    value_list = scale_factor_info.value_list
+    for values in value_list:
+      average_overall_scale_as_u_cart += flex.double(
+         values.overall_scale_as_u_cart)
+    average_overall_scale_as_u_cart = tuple(average_overall_scale_as_u_cart/
+        len(value_list))
+
+    center_overall_u_cart = tuple(-flex.double(center_uanisos[0]) ) # ZZ add corr
+
+    for values in value_list:
+      values.overall_u_cart_to_apply = center_overall_u_cart
+      # NOTE: keep values.overall_scale
+
+    for T,L,S,origin,selection,other_shift_cart in zip(
+       tlso_group_info.T_list,
+       tlso_group_info.L_list,
+       tlso_group_info.S_list,
+       tlso_group_info.O_list,
+       tlso_group_info.tlso_selection_list,
+       tlso_group_info.tlso_shift_cart_list,):
+      # Get mask representing this TLS
+      mask_map_manager = self._create_mask_from_selection_as_string(
+        map_id = map_id,
+        selection_string=selection)
+
+      working_scale_factor_info = self._get_scale_factor_info_inside_mask(
+         scale_factor_info,
+         mask_map_manager,
+         inside = True,
+         skip_u_cart_of_zero = True)
+
+      xyz_list = working_scale_factor_info.xyz_list
+      if xyz_list.size() < 1: continue
+      value_list = working_scale_factor_info.value_list
+      if other_shift_cart:
+        xyz_list_use = xyz_list + tuple([sc - other_sc for sc,other_sc in zip(
+          self.shift_cart(), other_shift_cart)]) # ZZZ CHECK
+      else:
+        xyz_list_use = xyz_list
+
+      print("Using TLS information from tlso_group_info", file = self.log)
+      tlso_value = tlso(
+           t = tlso_group_info.T_list[0],
+           l = tlso_group_info.L_list[0],
+           s = tlso_group_info.S_list[0],
+           origin = tlso_group_info.O_list[0],
+             )
+
+      anisos_from_tls = uaniso_from_tls_one_group(
+         tlso = tlso_value,
+         sites_cart = xyz_list_use,
+         zeroize_trace=False)
+
+      for i in range(xyz_list.size()):
+        u_cart_from_tls = tuple(-flex.double(anisos_from_tls[i]))
+        values = working_scale_factor_info.value_list[i]
+        #  values.dd_b_cart_as_u_cart are anisotropic corrections for
+        #      scaling errors
+        #   new ss_b_cart_as_u_cart =  u_cart_from_tls - overall_scale_as_u_cart
+        values.overall_u_cart_to_apply = tuple(
+          flex.double(u_cart_from_tls) +
+          flex.double(values.dd_b_cart_as_u_cart) )
+        values.ss_b_cart_as_u_cart = tuple(
+          flex.double(u_cart_from_tls) -
+          flex.double(values.overall_scale_as_u_cart))
+        print("\n   XYZ",xyz_list[i])
+        print("   U from TLS:%s"  %str(u_cart_from_tls))
+        print("   local scale as U: %s" %str(values.overall_scale_as_u_cart))
+        print("   DD correction: %s" %str(values.dd_b_cart_as_u_cart))
+        print("   U to apply:  %s" %str(values.overall_u_cart_to_apply))
+        print("   U aniso (ss):  %s" %str(values.ss_b_cart_as_u_cart))
+      print("\nOverall scale as U: %s" %str(average_overall_scale_as_u_cart))
+
+      print("\nMean anisotropy as TLS:",file = self.log)
+      print("T: %s" %(str(T)),file = self.log)
+      print("L: %s" %(str(L)), file = self.log)
+      print("S: %s" %(str(S)), file = self.log)
+
+    tls_info = group_args(
+       tlso = None,
+       default_aniso = center_overall_u_cart
+     )
+
+    return tls_info
+
+  def _create_mask_from_selection_as_string(self,
+      map_id = None,
+      selection_string= None):
+      '''
+        Create a mask around density corresponding to atoms selected by
+       selection_string.  If no model, just create a mask around all density
+      '''
+
+      mask_id = self._generate_new_map_id(prefix = 'mask_around_density')
+      if self.model():
+        # Make a mask around the selected atoms
+        self.create_mask_around_atoms(
+          model = self.model().apply_selection_string(selection),
+          mask_atoms_atom_radius = 5,
+         mask_id = mask_id)
+        # multiply by density
+        self.get_map_manager_by_id(map_id=mask_id).set_map_data(
+          self.get_map_manager_by_id(map_id=mask_id).map_data() *
+          self.get_map_manager_by_id(map_id=map_id).map_data() )
+        old_mask_id = mask_id
+        mask_id=old_mask_id+"_masked"
+        self.create_mask_around_density(
+          soft_mask  = True,
+          mask_id = mask_id,
+          map_id = old_mask_id)
+        self.get_map_manager_by_id(map_id=mask_id).write_map('new_mask.ccp4')
+      else:  # just make mask around density
+        self.create_mask_around_density(
+          soft_mask  = True,
+          mask_id = mask_id,
+          map_id = map_id)
+        self.get_map_manager_by_id(map_id=mask_id).write_map('new_mask.ccp4')
+
+      mask_map_manager = self.get_map_manager_by_id(map_id = mask_id)
+      return mask_map_manager
+
+  def _analyze_aniso(self,
+     scale_factor_info,
+     tlso_group_info = None,
+     map_id = None,
      mask_id = None,
      replace_inside = None,
      replace_boundary = None,
      replace_outside = None,
      coordinate_shift_to_apply_before_tlso = None,
     ):
+
+    # Apply external values if supplied
+    if tlso_group_info:
+       return self._analyze_aniso_replace_with_supplied(
+         scale_factor_info,
+         map_id = map_id,
+         tlso_group_info = tlso_group_info)
 
     # Get a mask around the map if not already supplied as mask_id
     if (not mask_id) or (not self.get_map_manager_by_id(mask_id)):
@@ -3848,6 +4050,7 @@ class map_model_manager(object):
 
     tls_info = group_args(
        tlso = None,
+       default_uaniso = None,
      )
 
     # Analyze u_cart values in relation to mask
@@ -3902,7 +4105,7 @@ class map_model_manager(object):
         xyz_list_use += coordinate_shift_to_apply_before_tlso
 
       from mmtbx.tls import tools
-      cm = xyz_list.mean()
+      cm = xyz_list_use.mean()
       result = tools.tls_from_uaniso_minimizer(
         uaniso         = uanisos,
         T_initial      = [0,0,0,0,0,0],
@@ -3912,21 +4115,39 @@ class map_model_manager(object):
         refine_L       = True,
         refine_S       = True,
         origin         = cm,
-        sites          = xyz_list,
+        sites          = xyz_list_use,
         max_iterations = 100)
 
       T=result.T_min
       L=result.L_min
       S=result.S_min
 
-      from mmtbx_tls_ext import tlso, uaniso_from_tls_one_group
-      tlso_value = tlso(t = T, l = L, s = S, origin = cm)
+      # Decide what aniso to apply. Usually the one we just calculated
+
+      if tlso_group_info:
+        print("TLS information from tlso_group_info", file = self.log)
+        tlso_value = tlso(
+           t = tlso_group_info.T_list[0],
+           l = tlso_group_info.L_list[0],
+           s = tlso_group_info.S_list[0],
+           origin = tlso_group_info.O_list[0],
+             )
+      else:  # usual
+        print("TLS information from TLS analysis", file = self.log)
+        tlso_value = tlso(t = T, l = L, s = S, origin = cm)
+
       if inside:
         tls_info.tlso = tlso_value
 
+      if coordinate_shift_to_apply_before_tlso:
+        shift = col(coordinate_shift_to_apply_before_tlso)
+      else:
+        shift = col((0,0,0))
+
       new_anisos_as_anisotropy= uaniso_from_tls_one_group(tlso = tlso_value,
-         sites_cart = xyz_list,
-         zeroize_trace=False)
+          sites_cart = xyz_list + shift, # xyz_list, not xyz_list_use
+          zeroize_trace=False)
+
       # we want correction not aniso:
       new_anisos = []
       for u in new_anisos_as_anisotropy:
@@ -3993,7 +4214,10 @@ class map_model_manager(object):
       run_analyze_anisotropy = None,
       spectral_scaling = None,
       expected_rms_fc_list = None,
-      model_for_rms_fc = None,
+      expected_ssqr_list = None,
+      expected_ssqr_list_rms = None,
+      tlso_group_info = None,
+      model_id_for_rms_fc = None,
       replace_aniso_with_tls_equiv = None,
       minimum_low_res_cc = None,
       max_abs_b = None,
@@ -4060,9 +4284,17 @@ class map_model_manager(object):
            k_sol = k_sol,
            b_sol = b_sol,
            map_model_manager = self,
-           model = model_for_rms_fc)
+           model = self.get_model_by_id(model_id=model_id_for_rms_fc))
         kw['expected_rms_fc_list'] = aavr.get_target_scale_factors()
-
+    if expected_ssqr_list_rms and not expected_ssqr_list:
+        from cctbx.development.approx_amplitude_vs_resolution import \
+          get_expected_ssqr_list
+        kw['expected_ssqr_list'] = get_expected_ssqr_list(
+           d_min = setup_info.minimum_resolution,
+           n_bins = n_bins,
+           expected_ssqr_list_rms = expected_ssqr_list_rms,
+           map_model_manager = self,
+           out = self.log)
     # Get list of direction vectors (based on anisotropy of map)
     direction_vectors = self._get_aniso_direction_vectors(map_id,
       n_direction_vectors = n_direction_vectors)
@@ -4103,6 +4335,7 @@ class map_model_manager(object):
     xyz_list = scale_factor_info.xyz_list
     # Summarize U vs xyz and vs inside/outside
     tls_info = self._analyze_aniso(scale_factor_info,
+      tlso_group_info = tlso_group_info,
       map_id=map_id,
       mask_id=mask_id,  # can supply mask_id
       replace_inside = (replace_aniso_with_tls_equiv and get_scale_as_aniso_u),
@@ -4203,7 +4436,10 @@ class map_model_manager(object):
       run_analyze_anisotropy = None,
       spectral_scaling = None,
       expected_rms_fc_list = None,
-      model_for_rms_fc = None,
+      expected_ssqr_list = None,
+      expected_ssqr_list_rms = None,
+      tlso_group_info = None,
+      model_id_for_rms_fc = None,
       replace_aniso_with_tls_equiv = None,
       anisotropic_sharpen = None,
       minimum_low_res_cc = None,
@@ -4440,7 +4676,10 @@ class map_model_manager(object):
       run_analyze_anisotropy = None,
       spectral_scaling = None,
       expected_rms_fc_list = None,
-      model_for_rms_fc = None,
+      expected_ssqr_list = None,
+      expected_ssqr_list_rms = None,
+      tlso_group_info = None,
+      model_id_for_rms_fc = None,
       replace_aniso_with_tls_equiv = None,
       max_abs_b = None,
       get_tls_info_only = None,
@@ -4490,9 +4729,17 @@ class map_model_manager(object):
            k_sol = k_sol,
            b_sol = b_sol,
            map_model_manager = self,
-           model = model_for_rms_fc)
+           model = self.get_model_by_id(model_id=model_id_for_rms_fc))
         expected_rms_fc_list = aavr.get_target_scale_factors()
-
+    if expected_ssqr_list_rms and not expected_ssqr_list:
+        from cctbx.development.approx_amplitude_vs_resolution import \
+          get_expected_ssqr_list
+        expected_ssqr_list = get_expected_ssqr_list(
+           d_min = setup_info.minimum_resolution,
+           n_bins = n_bins,
+           expected_ssqr_list_rms = expected_ssqr_list_rms,
+           map_model_manager = self,
+           out = self.log)
     box_info = self.split_up_map_and_model_by_boxes(
       target_for_boxes = setup_info.n_boxes,
       box_cushion = setup_info.box_cushion,
@@ -4524,7 +4771,10 @@ class map_model_manager(object):
     box_info.n_direction_vectors = n_direction_vectors
     box_info.run_analyze_anisotropy = run_analyze_anisotropy
     box_info.expected_rms_fc_list = expected_rms_fc_list
-    box_info.model_for_rms_fc = model_for_rms_fc
+    box_info.expected_ssqr_list = expected_ssqr_list
+    box_info.expected_ssqr_list_rms = expected_ssqr_list_rms
+    box_info.tlso_group_info = tlso_group_info
+    box_info.model_id_for_rms_fc = model_id_for_rms_fc
     box_info.replace_aniso_with_tls_equiv = replace_aniso_with_tls_equiv
 
     log_hold = self.log
@@ -4631,12 +4881,12 @@ class map_model_manager(object):
       core_box_size=None,
       smoothing_radius=None,
       skip_boxes = None,
-      min_core_box_size_ratio = 3, # never smaller than this ratio to resolution
+      box_size_ratio = 6, # never smaller than this ratio to resolution
       ):
     if not resolution:
       resolution = self.resolution()
     if not box_cushion:
-      box_cushion = 1.5 * resolution
+      box_cushion = 2.5 * resolution
 
     if (n_boxes is not None) or (not core_box_size):  # n_boxes overrides
       if n_boxes:
@@ -4644,7 +4894,7 @@ class map_model_manager(object):
         core_box_size=int(0.5+ volume/n_boxes)**0.33
       else:
         core_box_size = int(0.5+ 3 * resolution)
-    core_box_size = max(min_core_box_size_ratio * resolution, core_box_size)
+    core_box_size = max(box_size_ratio * resolution-2*box_cushion, core_box_size)
 
     if (not skip_boxes): # changed 2020-11-06 to recalculate n_boxes
       volume = self.crystal_symmetry().unit_cell().volume()
@@ -5912,6 +6162,17 @@ class match_map_model_ncs(object):
 
 #   Misc methods
 
+def create_fine_spacing_array(unit_cell, cell_ratio = 10):
+  new_params= 10*flex.double(unit_cell.parameters()[:3])
+  new_params.extend(flex.double(unit_cell.parameters()[3:]))
+  new_params=tuple(new_params)
+  from cctbx import sgtbx
+  xs = crystal.symmetry(
+    unit_cell = uctbx.unit_cell(new_params),
+    space_group_info=sgtbx.space_group_info(symbol='p1'))
+  mi = flex.miller_index()
+  return miller.array(miller.set(xs,mi))
+
 def cutoff_values(inside = True):
   inside_dict = {
       True: group_args(
@@ -5928,6 +6189,8 @@ def cutoff_values(inside = True):
 
 def is_inside_mask(mask_map_manager, site_frac = None,
     inside = True):
+  if inside not in [True, False, None]:
+    return True
   cutoff_low = cutoff_values(inside).cutoff_low
   cutoff_high = cutoff_values(inside).cutoff_high
   xx = mask_map_manager.map_data().tricubic_interpolation(site_frac)
@@ -6821,7 +7084,10 @@ class run_fsc_as_class:
            n_direction_vectors = self.box_info.n_direction_vectors,
            run_analyze_anisotropy = self.box_info.run_analyze_anisotropy,
            expected_rms_fc_list = self.box_info.expected_rms_fc_list,
-           model_for_rms_fc = self.box_info.model_for_rms_fc,
+           expected_ssqr_list = self.box_info.expected_ssqr_list,
+           expected_ssqr_list_rms = self.box_info.expected_ssqr_list_rms,
+           tlso_group_info = self.box_info.tlso_group_info,
+           model_id_for_rms_fc = self.box_info.model_id_for_rms_fc,
            replace_aniso_with_tls_equiv =
                 self.box_info.replace_aniso_with_tls_equiv)
         if scaling_group_info:

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import sys
+import sys, math
 from cctbx.array_family import flex
 from six.moves import range
 from six.moves import zip
@@ -1013,6 +1013,48 @@ d_min   rmsFc
 1.0001  1213.5
 0.9998  1206.6
 """
+
+def get_expected_ssqr_list(
+      n_bins = None,
+      d_min = None, # minimum resolution of data to use
+      expected_ssqr_list_rms = None,
+      map_model_manager = None,
+      out = sys.stdout):
+
+  assert n_bins is not None
+  assert d_min is not None
+  assert expected_ssqr_list_rms is not None
+
+  if str(expected_ssqr_list_rms) == 'Auto':
+    expected_ssqr_list_rms = 0.25 * d_min
+
+  # Estimate E**2 vs resolution based on rms error expected_ssqr_list_rms
+  # Assume constant total error, amplitudes fall off exp(-b_eff sthol2)
+  #  b_eff = (8 * 3.14159**2/3.) * expected_ssqr_list_rms**2
+  #  sigmaa = exp(-b_eff sthol2)
+  #  E**2 = 1/(1-sigmaa**2)
+
+  map_coeffs = map_model_manager.get_any_map_manager(
+     ).map_as_fourier_coefficients(d_min = d_min)
+  from iotbx.map_model_manager import get_map_coeffs_as_fp_phi
+  f_array_info = get_map_coeffs_as_fp_phi(
+    map_coeffs, d_min= d_min, n_bins = n_bins)
+  f_array = f_array_info.f_array
+  # Approx fall-off with resolution based on rms in A ...as in sigmaa
+  b_eff = (8 * 3.14159**2/3.) * expected_ssqr_list_rms**2
+
+  dsd = f_array.d_spacings().data()
+  ssqr_list = flex.double()
+  for i_bin in f_array.binner().range_used():
+    sel       = f_array.binner().selection(i_bin)
+    d         = dsd.select(sel)
+    d_avg     = flex.mean(d)
+
+    sthol2 = 0.25/d_avg**2
+    sigmaa = math.exp(max(-20.,min(20., -b_eff * sthol2)))
+    ssqr = (1-sigmaa**2)/max(1.e-10,sigmaa**2)
+    ssqr_list.append(ssqr)
+  return ssqr_list
 
 class approx_amplitude_vs_resolution:
   def __init__(self,
