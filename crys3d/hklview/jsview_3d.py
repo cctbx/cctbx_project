@@ -224,9 +224,6 @@ class hklview_3d:
     self.meanradius = -1
     self.past = time.time()
     self.orientmessage = None
-    self.high_quality = True
-    if 'high_quality' in kwds:
-      self.high_quality = kwds['high_quality']
     self.clipNear = None
     self.clipFar = None
     self.cameraPosZ = None
@@ -1262,7 +1259,6 @@ class hklview_3d:
     self.mprint("elapsed time: %s" %elapsed_time, verbose=2)
 
     spherebufferstr = self.colstraliases
-    negativeradiistr = ""
     cntbin = 0
     self.binstrs = []
     self.bin_infotpls = []
@@ -1368,24 +1364,10 @@ class hklview_3d:
             vstr = roundoff(val[0], 2)
           colourgradstr.append([vstr, rgb[0], rgb[1], rgb[2] ])
         colourgradstrs.append(colourgradstr)  
-    qualitystr = """ , { disableImpostor: true
-                  , sphereDetail: 0 } // rather than default value of 2 icosahedral subdivisions
-            """
-    if self.high_quality:
-      qualitystr = ""
 
-    self.NGLscriptstr = ""
-    if not blankscene:
-      self.NGLscriptstr = HKLJavaScripts.NGLscriptstr % ( self.ngl_settings.tooltip_alpha,
-        negativeradiistr)
-
-    WebsockMsgHandlestr = HKLJavaScripts.WebsockMsgHandlestr %(self.websockport, cntbin,
-             str(self.verbose>=2).lower(), self.__module__, self.__module__, qualitystr )
-
-    self.NGLscriptstr = WebsockMsgHandlestr + self.NGLscriptstr
     if self.jscriptfname and self.isnewfile and not self.WBmessenger.browserisopen:
       with open( self.jscriptfname, "w") as f:
-        f.write( self.NGLscriptstr )
+        f.write( HKLJavaScripts.NGLscriptstr )
     if not self.WBmessenger.browserisopen:
       self.ReloadNGL()
     if not blankscene:
@@ -1396,6 +1378,7 @@ class hklview_3d:
         if nreflsinbin == 0:
           continue
 
+        self.SetBrowserDebug(str(self.verbose>=2).lower())
         self.SetFontSize(self.viewerparams.NGL.fontsize)
         self.DefineHKL_Axes(str(Hstararrowstart), str(Hstararrowend),
           str(Kstararrowstart), str(Kstararrowend), 
@@ -1921,6 +1904,11 @@ Distance: %s
     self.AddToBrowserMsgQueue("SetFontSize", msg)
 
 
+  def SetBrowserDebug(self, isdebug):
+    msg = str(isdebug)
+    self.AddToBrowserMsgQueue("SetBrowserDebug", msg)
+
+
   def SetMouseSpeed(self, trackspeed):
     msg = str(trackspeed)
     self.AddToBrowserMsgQueue("SetMouseSpeed", msg)
@@ -1994,7 +1982,7 @@ Distance: %s
 
   def MakeImage(self, filename):
     self.imagename = filename
-    self.AddToBrowserMsgQueue("MakeImage")
+    self.AddToBrowserMsgQueue("MakeImage", "HKLviewer.png,"+ str(sys.version_info[0]) )
 
 
   def DisableMouseRotation(self): # disable rotating with the mouse
