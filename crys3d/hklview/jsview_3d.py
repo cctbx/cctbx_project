@@ -5,7 +5,6 @@ import traceback
 from cctbx.miller import display2 as display
 from cctbx.array_family import flex
 from cctbx import miller
-from crys3d.hklview import HKLJavaScripts
 from scitbx import graphics_utils
 from scitbx import matrix
 import scitbx.math
@@ -358,7 +357,7 @@ class hklview_3d:
 
 
   def update_settings(self, diff_phil, curphilparam) :
-    self.ngl_settings = curphilparam.viewer.NGL
+    self.ngl_settings = curphilparam.NGL
     self.viewerparams = curphilparam.viewer
     self.params = curphilparam
     self.diff_phil = diff_phil
@@ -423,7 +422,13 @@ class hklview_3d:
       self.set_scene(self.viewerparams.scene_id)
       self.params.miller_array_operations = ""
 
-    if has_phil_path(diff_phil, "viewer"): # any change to parameters in the master phil in display2.py
+    if has_phil_path(diff_phil, 
+                      "scene_bin_thresholds", # TODO: group bin phil parameters together in subscope
+                      "bin_opacities",
+                      "bin_labels_type_idx",
+                      "nbins",
+                     "viewer"): # and self.viewerparams.scene_id is not None:
+       # any change to parameters in the master phil in display2.py
       self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
       self.DrawNGLJavaScript()
       self.mprint( "Rendered %d reflections" % self.scene.points.size(), verbose=1)
@@ -438,8 +443,8 @@ class hklview_3d:
     if self.viewerparams.scene_id is not None:
       if has_phil_path(self.diff_phil, "angle_around_vector"): # no need to redraw any clip plane
         return
-      self.fix_orientation(self.viewerparams.NGL.fixorientation)
-      self.SetMouseSpeed(self.viewerparams.NGL.mouse_sensitivity)
+      self.fix_orientation(self.ngl_settings.fixorientation)
+      self.SetMouseSpeed(self.ngl_settings.mouse_sensitivity)
       R = flex.vec3_double( [(0,0,0)])
       hkldist = -1
       clipwidth = None
@@ -457,12 +462,12 @@ class hklview_3d:
         if self.params.clip_plane.fractional_vector == "realspace" or self.params.clip_plane.fractional_vector == "tncs":
           isreciprocal = False
       self.clip_plane_vector(R[0][0], R[0][1], R[0][2], hkldist,
-          clipwidth, self.viewerparams.NGL.fixorientation, self.params.clip_plane.is_parallel,
+          clipwidth, self.ngl_settings.fixorientation, self.params.clip_plane.is_parallel,
           isreciprocal)
       if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
         self.ExpandInBrowser(P1= self.viewerparams.expand_to_p1,
                               friedel_mate= self.viewerparams.expand_anomalous)
-      self.SetOpacities(self.viewerparams.NGL.bin_opacities )
+      self.SetOpacities(self.ngl_settings.bin_opacities )
       if self.params.real_space_unit_cell_scale_fraction is None:
         scale = None
       else:
@@ -682,7 +687,7 @@ class hklview_3d:
                          self.viewerparams.sigma_radius,
                          self.viewerparams.sigma_color,
                          self.viewerparams.color_scheme,
-                         self.viewerparams.NGL.fontsize,
+                         self.ngl_settings.fontsize,
                          self.viewerparams.scene_id,
                          self.viewerparams.scale,
                          self.viewerparams.nth_power_scale_radii
@@ -723,7 +728,7 @@ class hklview_3d:
                                 self.viewerparams.sigma_radius,
                                 self.viewerparams.sigma_color,
                                 self.viewerparams.color_scheme,
-                                self.viewerparams.NGL.fontsize,
+                                self.ngl_settings.fontsize,
                                 sceneid,
                                 self.viewerparams.scale,
                                 self.viewerparams.nth_power_scale_radii
@@ -750,7 +755,7 @@ class hklview_3d:
                               self.viewerparams.sigma_radius,
                               self.viewerparams.sigma_color,
                               self.viewerparams.color_scheme,
-                              self.viewerparams.NGL.fontsize,
+                              self.ngl_settings.fontsize,
                               self.viewerparams.scene_id,
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
@@ -780,7 +785,7 @@ class hklview_3d:
                               self.viewerparams.sigma_radius,
                               self.viewerparams.sigma_color,
                               self.viewerparams.color_scheme,
-                              self.viewerparams.NGL.fontsize,
+                              self.ngl_settings.fontsize,
                               scene_id,
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
@@ -816,7 +821,7 @@ class hklview_3d:
                       self.viewerparams.sigma_radius,
                       self.viewerparams.sigma_color,
                       self.viewerparams.color_scheme,
-                      self.viewerparams.NGL.fontsize,
+                      self.ngl_settings.fontsize,
                       sceneid,
                       self.viewerparams.scale,
                       self.viewerparams.nth_power_scale_radii
@@ -1326,7 +1331,7 @@ class hklview_3d:
           continue
 
         self.SetBrowserDebug(str(self.verbose>=2).lower())
-        self.SetFontSize(self.viewerparams.NGL.fontsize)
+        self.SetFontSize(self.ngl_settings.fontsize)
         self.DefineHKL_Axes(str(Hstararrowstart), str(Hstararrowend),
           str(Kstararrowstart), str(Kstararrowend), 
           str(Lstararrowstart), str(Lstararrowend), 

@@ -951,7 +951,7 @@ class HKLViewFrame() :
 
 
   def SetCameraType(self, camtype):
-    self.params.NGL_HKLviewer.viewer.NGL.camera_type = camtype
+    self.params.NGL_HKLviewer.NGL.camera_type = camtype
     self.update_settings()
 
 
@@ -1002,6 +1002,7 @@ class HKLViewFrame() :
     #  bin_labels_type_idx = eval(bin_labels_type_idx)
     if binvals:
       binvals = list( 1.0/flex.double(binvals) )
+      nuniquevalues = len(binvals)
     else:
       binvals, nuniquevalues = self.viewer.calc_bin_thresholds(bin_labels_type_idx, nbins)
     self.viewer.UpdateBinValues( binvals, nuniquevalues )
@@ -1018,7 +1019,7 @@ class HKLViewFrame() :
 
   def SetSceneNbins(self, nbins):
     self.params.NGL_HKLviewer.nbins = nbins
-    self.params.NGL_HKLviewer.viewer.NGL.bin_opacities = str([ (1.0, e) for e in range(nbins) ])
+    self.params.NGL_HKLviewer.NGL.bin_opacities = str([ (1.0, e) for e in range(nbins) ])
     self.update_settings()
 
 
@@ -1028,17 +1029,17 @@ class HKLViewFrame() :
 
 
   def SetToolTipOpacity(self, val):
-    self.params.NGL_HKLviewer.viewer.NGL.tooltip_alpha = val
+    self.params.NGL_HKLviewer.NGL.tooltip_alpha = val
     self.update_settings()
 
 
   def SetShowToolTips(self, val):
-    self.params.NGL_HKLviewer.viewer.NGL.show_tooltips = val
+    self.params.NGL_HKLviewer.NGL.show_tooltips = val
     self.update_settings()
 
 
   def SetOpacities(self, bin_opacities):
-    self.params.NGL_HKLviewer.viewer.NGL.bin_opacities = bin_opacities
+    self.params.NGL_HKLviewer.NGL.bin_opacities = bin_opacities
     self.update_settings()
 
 
@@ -1142,7 +1143,7 @@ class HKLViewFrame() :
 
 
   def SetFontSize(self, val):
-    self.params.NGL_HKLviewer.viewer.NGL.fontsize = val
+    self.params.NGL_HKLviewer.NGL.fontsize = val
     self.viewer.SetFontSize(val)
     #self.update_settings()
 
@@ -1184,7 +1185,7 @@ class HKLViewFrame() :
     self.params.NGL_HKLviewer.clip_plane.hkldist = hkldist
     self.params.NGL_HKLviewer.clip_plane.clipwidth = clipwidth
     self.params.NGL_HKLviewer.clip_plane.is_parallel = is_parallel
-    self.params.NGL_HKLviewer.viewer.NGL.fixorientation = fixorientation
+    self.params.NGL_HKLviewer.NGL.fixorientation = fixorientation
     self.params.NGL_HKLviewer.clip_plane.fractional_vector = fractional_vector
     self.update_settings()
 
@@ -1220,15 +1221,15 @@ class HKLViewFrame() :
 
 
   def SetMouseSpeed(self, trackspeed):
-    self.params.NGL_HKLviewer.viewer.NGL.mouse_sensitivity = trackspeed
+    self.params.NGL_HKLviewer.NGL.mouse_sensitivity = trackspeed
     self.update_settings()
 
 
   def GetMouseSpeed(self):
     self.viewer.GetMouseSpeed()
-    while self.params.viewer.NGL.mouse_sensitivity is None:
+    while self.params.NGL.mouse_sensitivity is None:
       time.sleep(0.1)
-    return self.params.viewer.NGL.mouse_sensitivity
+    return self.params.NGL.mouse_sensitivity
 
 
   def GetSpaceGroupChoices(self):
@@ -1355,9 +1356,9 @@ NGL_HKLviewer {
     scene_id = None
       .type = int
     %s
-    NGL {
-      %s
-    }
+  }
+  NGL {
+    %s
   }
   action = *is_running is_terminating reset_view
     .type = choice

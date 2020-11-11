@@ -397,8 +397,6 @@ namespace scitbx { namespace graphics_utils {
         if (boost::math::isfinite(data_for_colors[i_seq]))
         {
           int indx = int(data_for_colors[i_seq]) % nrgbcolours;
-          SCITBX_ASSERT(indx >= 0 && indx < nrgbcolours);
-
           colors[i_seq][0] = colourmap[indx][0] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
           colors[i_seq][1] = colourmap[indx][1] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
           colors[i_seq][2] = colourmap[indx][2] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
