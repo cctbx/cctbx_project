@@ -430,7 +430,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
         if "cctbx.python.version:" in msgstr:
           self.cctbxpythonversion = msgstr
-          self.PhilToJsRender("""NGL_HKLviewer.viewer.NGL {
+          self.PhilToJsRender("""NGL_HKLviewer.NGL {
   fontsize = %d
   show_tooltips = %s
 }
@@ -651,10 +651,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.expandP1checkbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.expand_to_p1'])
     self.expandAnomalouscheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.expand_anomalous'])
     self.sysabsentcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_systematic_absences'])
-    self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.tooltip_alpha'])
+    self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.NGL.tooltip_alpha'])
     #self.HKLnameedit.setText( self.currentphilstringdict['NGL_HKLviewer.filename'])
     #self.setWindowTitle("HKL-viewer: " + self.currentphilstringdict['NGL_HKLviewer.filename'])
-    self.mousemoveslider.setValue( 2000*self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.mouse_sensitivity'])
+    self.mousemoveslider.setValue( 2000*self.currentphilstringdict['NGL_HKLviewer.NGL.mouse_sensitivity'])
     #self.rotavecangle_slider.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
     self.rotavecangle_labeltxt.setText("Angle rotated: %2.fº" %self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
 
@@ -672,7 +672,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         break
 
     #self.SliceLabelComboBox.setCurrentIndex( axidx )
-    self.cameraPerspectCheckBox.setChecked( "perspective" in self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.camera_type'])
+    self.cameraPerspectCheckBox.setChecked( "perspective" in self.currentphilstringdict['NGL_HKLviewer.NGL.camera_type'])
     self.ClipPlaneChkGroupBox.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'] != None and not self.showsliceGroupCheckbox.isChecked() )
     if self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth']:
       self.clipwidth_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'])
@@ -680,7 +680,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.realspacevecBtn.setChecked( "realspace" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
     self.recipvecBtn.setChecked( "reciprocal" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
     self.clipTNCSBtn.setChecked( "tncs" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
-    self.fixedorientcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.NGL.fixorientation'])
+    self.fixedorientcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.NGL.fixorientation'])
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_only_missing'])
     if self.currentphilstringdict['NGL_HKLviewer.real_space_unit_cell_scale_fraction'] is not None:
       self.DrawRealUnitCellBox.setChecked(True)
@@ -726,7 +726,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
   def onFinalMouseSensitivity(self):
     val = self.mousemoveslider.value()/2000.0
-    self.PhilToJsRender('NGL_HKLviewer.viewer.NGL.mouse_sensitivity = %f' %val)
+    self.PhilToJsRender('NGL_HKLviewer.NGL.mouse_sensitivity = %f' %val)
 
 
   def onMouseSensitivity(self):
@@ -738,15 +738,15 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     if self.unfeedback:
       return
     self.ttipalpha = val
-    self.PhilToJsRender('NGL_HKLviewer.viewer.NGL.tooltip_alpha = %f' %val)
+    self.PhilToJsRender('NGL_HKLviewer.NGL.tooltip_alpha = %f' %val)
 
 
   def onShowTooltips(self, val):
     if self.ttipClickradio.isChecked() or val=="click":
-      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.show_tooltips = click")
+      self.PhilToJsRender("NGL_HKLviewer.NGL.show_tooltips = click")
       self.ttip_click_invoke = "click"
     if self.ttipHoverradio.isChecked() or val=="hover":
-      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.show_tooltips = hover")
+      self.PhilToJsRender("NGL_HKLviewer.NGL.show_tooltips = hover")
       self.ttip_click_invoke = "hover"
 
 
@@ -760,7 +760,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
   def onBrowserFontsizeChanged(self, val):
     self.browserfontsize = val
-    self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.fontsize = %d" %val)
+    self.PhilToJsRender("NGL_HKLviewer.NGL.fontsize = %d" %val)
 
 
   def onClearTextBuffer(self):
@@ -770,9 +770,9 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
   def onCameraPerspect(self,val):
     if self.cameraPerspectCheckBox.isChecked():
-      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.camera_type = perspective")
+      self.PhilToJsRender("NGL_HKLviewer.NGL.camera_type = perspective")
     else:
-      self.PhilToJsRender("NGL_HKLviewer.viewer.NGL.camera_type = orthographic")
+      self.PhilToJsRender("NGL_HKLviewer.NGL.camera_type = orthographic")
 
 
   def ExpandRefls(self):
@@ -1007,7 +1007,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         bin_opacitieslst[bin] = (alpha, bin)
         self.bin_opacities = str(bin_opacitieslst)
         self.SetAllOpaqueCheckboxes()
-        self.PhilToJsRender('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities )
+        self.PhilToJsRender('NGL_HKLviewer.NGL.bin_opacities = "%s"' %self.bin_opacities )
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
 
@@ -1034,7 +1034,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       for i in range(nbins):
         bin_opacitieslst.append((0.0, i))  #   ("0.0, %d" %i)
     self.bin_opacities = str(bin_opacitieslst)
-    self.PhilToJsRender('NGL_HKLviewer.viewer.NGL.bin_opacities = "%s"' %self.bin_opacities)
+    self.PhilToJsRender('NGL_HKLviewer.NGL.bin_opacities = "%s"' %self.bin_opacities)
     self.binstableitemchanges = False
     self.binstable_isready = True
 
@@ -1184,7 +1184,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.PhilToJsRender("""NGL_HKLviewer {
                                               clip_plane.clipwidth = None
                                               viewer.slice_mode = False
-                                              viewer.NGL.fixorientation = False
+                                              NGL.fixorientation = False
                                            }
                           """)
 
@@ -1229,7 +1229,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
   is_parallel = %s
   fractional_vector = %s
 }
-  NGL_HKLviewer.viewer.NGL.fixorientation = %s
+  NGL_HKLviewer.NGL.fixorientation = %s
         """ %(self.hvec_spinBox.value(), self.kvec_spinBox.value(), self.lvec_spinBox.value(),\
               self.hkldistval, self.clipwidth_spinBox.value(), \
               str(self.clipParallelBtn.isChecked()), fracvectype, \
@@ -1292,7 +1292,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
   def onFixedorient(self):
     if not self.unfeedback:
-      self.PhilToJsRender('NGL_HKLviewer.viewer.NGL.fixorientation = %s' \
+      self.PhilToJsRender('NGL_HKLviewer.NGL.fixorientation = %s' \
                                     %str(self.fixedorientcheckbox.isChecked()))
 
 
