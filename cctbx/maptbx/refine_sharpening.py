@@ -716,6 +716,7 @@ def calculate_fsc(**kw):
        cutoff_after_last_high_point,
        expected_rms_fc_list,
        expected_ssqr_list,
+       overall_si,
        out)
     si_list.append(working_si)
   if direction_vectors == [None]:
@@ -1661,8 +1662,8 @@ def complete_cc_analysis(
        cutoff_after_last_high_point,
        expected_rms_fc_list,
        expected_ssqr_list,
+       overall_si,
        out):
-
 
   if scale_using_last: # rescale to give final value average==0
     cc_list,baseline=rescale_cc_list(
@@ -1671,8 +1672,12 @@ def complete_cc_analysis(
     if baseline is None: # don't use it
       scale_using_last=None
 
-  if expected_ssqr_list:  # Replace with expected
-    cc_list = 1/(max(1.e-10,0.5*expected_ssqr_list + 1))
+  if expected_ssqr_list and overall_si:
+    # Replace with expected scaled by avg fo/fo; if
+    #  this direction has small fo then errors are bigger
+    directional_ssqr_list = expected_ssqr_list * flex.pow2(
+       overall_si.rms_fo_list/rms_fo_list)
+    cc_list = 1/(max(1.e-10,0.5*directional_ssqr_list + 1))
 
   original_cc_list=deepcopy(cc_list)
   if is_model_based: # jut smooth cc if nec

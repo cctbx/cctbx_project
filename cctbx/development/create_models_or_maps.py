@@ -269,6 +269,8 @@ def generate_map_coefficients(
   if k_sol is not None and b_sol is not None:
     fmodel_params.fmodel.k_sol = k_sol
     fmodel_params.fmodel.b_sol = b_sol
+  if f_obs_array:
+     fmodel_params.high_resolution=f_obs_array.d_min()-0.0001 # different cut
   fmodel=fmodel_from_xray_structure(
     xray_structure = xrs,
     params         = fmodel_params,
