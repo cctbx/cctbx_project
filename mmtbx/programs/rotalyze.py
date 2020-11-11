@@ -32,6 +32,8 @@ Example:
   wxplot = False
     .type = bool
     .help = Display interactive plots (requires wxPython and Matplotlib)
+  use_parent = False
+    .type = bool
   """
   datatypes = ['model','phil']
   known_article_ids = ['molprobity']
@@ -47,6 +49,7 @@ Example:
       data_version="8000",#was 'params.data_version', no options currently
       show_errors=self.params.show_errors,
       outliers_only=self.params.outliers_only,
+      use_parent=self.params.use_parent,
       out=self.logger,
       quiet=False)
     if self.params.verbose:
