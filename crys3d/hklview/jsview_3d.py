@@ -302,32 +302,18 @@ class hklview_3d:
     if 'htmlfname' in kwds and kwds['htmlfname']:
       self.hklfname = kwds['htmlfname']
     self.hklfname = os.path.abspath( self.hklfname )
-    self.jscriptfname = os.path.join(tempdir, "hkljstr_%d.js" %self.websockport)
-    if os.path.isfile(self.jscriptfname):
-      os.remove(self.jscriptfname)
-    if 'jscriptfname' in kwds and kwds['jscriptfname'] != "":
-      self.jscriptfname = kwds['jscriptfname']
     self.send_info_to_gui = None
     if 'send_info_to_gui' in kwds:
       self.send_info_to_gui = kwds['send_info_to_gui']
-    self.mprint('Output will be written to \"%s\"\n' \
-      'rendering WebGL with JavaScript in \"%s\"' %(self.hklfname, self.jscriptfname))
+    self.mprint('Output will be written to \"%s\"'  %self.hklfname)
     self.hklhtml = r"""
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-
-<html>
-<head>
-<meta charset="utf-8" />
-</head>
-
+<html><head><meta charset="utf-8" /></head>
 <body>
+<script>var websocket_portnumber = %s; </script>
 <script src="%s" type="text/javascript"></script>
-
 <script src="%s" type="text/javascript"></script>
-    """
-    self.htmldiv = """
-<div id="viewport" style="width:100%; height:100%;"></div>
-
+<div id="viewport" style="width:100%%; height:100%%;"></div>
 </body></html>
 
     """
@@ -361,8 +347,8 @@ class hklview_3d:
       nwait += self.sleeptime
     if os.path.isfile(self.hklfname):
       os.remove(self.hklfname)
-    if os.path.isfile(self.jscriptfname):
-      os.remove(self.jscriptfname)
+    #if os.path.isfile(self.jscriptfname):
+    #  os.remove(self.jscriptfname)
     self.mprint("Destroying hklview_3d", 1)
 
 
@@ -1298,42 +1284,6 @@ class hklview_3d:
       self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 ), precision) )
       self.binstrs.append(mstr)
       self.mprint(mstr, verbose=0)
-#
-#      ttlst = [-1]
-#      ttlst.extend(self.spbufttips[ibin])
-#      ttipsobj = "{ ids: " + str( ttlst ) + """,
-#       getPosition: function() { return { x:0, y:0 }; } // dummy function to avoid crash
-#  } """
-#      spherebufferstr += "\n// %s\n" %mstr
-#      spherebufferstr += "  ttips.push( %s );" %str( ttipsobj )
-#      spherebufferstr += """
-#  positions.push( new Float32Array( %s ) );
-#  colours.push( new Float32Array( %s ) );
-#  radii.push( new Float32Array( %s ) );
-#  shapebufs.push( new NGL.%s({
-#    position: positions[%d],
-#    color: colours[%d], """ %(str(self.positions[ibin]), str(self.colours[ibin]), \
-#        str(self.radii2[ibin]), self.primitivetype, cntbin, \
-#        cntbin)
-#      if self.primitivetype == "SphereBuffer":
-#        spherebufferstr += "\n    radius: radii[%d]," %cntbin
-#      spherebufferstr += "\n    picking: ttips[%d]," %cntbin
-#      if self.primitivetype == "PointBuffer":
-#        spherebufferstr += "\n  }, {pointSize: %1.2f})\n" %self.viewerparams.scale
-#      else:
-#        if self.high_quality:
-#          spherebufferstr += """
-#    })
-#  );
-#  """
-#        else:
-#          spherebufferstr += """
-#    }, { disableImpostor: true
-#   ,    sphereDetail: 0 }) // rather than default value of 2 icosahedral subdivisions
-#  );
-#  """
-#      spherebufferstr += "shape.addBuffer(shapebufs[%d]);\n  alphas.push(1.0);\n" %cntbin
-
 
       cntbin += 1
 
@@ -1365,9 +1315,6 @@ class hklview_3d:
           colourgradstr.append([vstr, rgb[0], rgb[1], rgb[2] ])
         colourgradstrs.append(colourgradstr)  
 
-    if self.jscriptfname and self.isnewfile and not self.WBmessenger.browserisopen:
-      with open( self.jscriptfname, "w") as f:
-        f.write( HKLJavaScripts.NGLscriptstr )
     if not self.WBmessenger.browserisopen:
       self.ReloadNGL()
     if not blankscene:
@@ -1560,7 +1507,6 @@ Distance: %s
   def WaitforHandshake(self, sec=5):
     nwait = 0
     while not self.WBmessenger.browserisopen:
-      #time.sleep(self.sleeptime)
       self.WBmessenger.Sleep(self.sleeptime)
       nwait += self.sleeptime
       if nwait > sec:
@@ -1572,8 +1518,8 @@ Distance: %s
     if self.viewerparams.scene_id is not None and not self.WBmessenger.websockclient \
        and not self.WBmessenger.browserisopen or self.isnewfile:
       NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
-      htmlstr = self.hklhtml %(NGLlibpath, os.path.abspath( self.jscriptfname))
-      htmlstr += self.htmldiv
+      NGLjscriptpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","HKLJavaScripts.js") )
+      htmlstr = self.hklhtml %(self.websockport, NGLlibpath, os.path.abspath( NGLjscriptpath))
       with open(self.hklfname, "w") as f:
         f.write( htmlstr )
       self.url = "file:///" + os.path.abspath( self.hklfname )

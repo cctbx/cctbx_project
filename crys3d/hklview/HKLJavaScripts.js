@@ -1,21 +1,26 @@
-from __future__ import absolute_import, division, print_function
-
-import sys
-
-NGLscriptstr = """
 
 // 'use strict';
-
-
 
 // Microsoft Edge users follow instructions on
 // https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
 // to enable websocket connection
 
 var pagename = location.pathname.substring(1);
+
+if ((typeof websocket_portnumber) != "number")
+{
 // get portnumber for websocket from the number embedded in the filename
-// such as C:/Users/Oeffner/AppData/Local/Temp/hkl_57033.htm
-var portnumber = pagename.match("hkl_([0-9]+).htm")[1];
+// with a regular expression
+  var websocket_portnumber = parseInt( pagename.match("hkl_([0-9]+).htm")[1] );
+}
+
+if ((typeof websocket_portnumber) != "number")
+    alert("Specify port number for the websocket in your html file either like: \n \
+<script> var websocket_portnumber = 42673; </script> \n \
+or embedded in the filename such as:\n \
+C:/Users/Oeffner/AppData/Local/Temp/hkl_42673.htm"
+   );
+
 var mysocket;
 var socket_intentionally_closed = false;
 
@@ -150,10 +155,10 @@ function CreateWebSocket()
 {
   try
   {
-    mysocket = new WebSocket('ws://127.0.0.1:' + portnumber);
+    mysocket = new WebSocket('ws://127.0.0.1:' + websocket_portnumber);
     mysocket.bufferType = "arraybuffer"; // "blob";
     //if (mysocket.readyState !== mysocket.OPEN)
-    //  alert('Cannot connect to websocket server! \\nAre the firewall permissions or browser security too strict?');
+    //  alert('Cannot connect to websocket server! \nAre the firewall permissions or browser security too strict?');
     //  socket_intentionally_closed = false;
     mysocket.onerror = function(e) { onError(e)  };
     mysocket.onopen = function(e) { onOpen(e)  };
@@ -222,7 +227,7 @@ function WebsockSendMsg(msg, message_is_complete = true)
     {
       mysocket.send(msg);
       if (message_is_complete == true)
-        mysocket.send( 'Ready ' + pagename + '\\n' );
+        mysocket.send( 'Ready ' + pagename + '\n' );
     }
     else
       if (mysocket.readyState !== mysocket.CONNECTING)
@@ -241,7 +246,7 @@ function WebsockSendMsg(msg, message_is_complete = true)
             return;
           }
         );
-        //alert('Cannot send data! \\nAre the firewall permissions or browser security too strict?');
+        //alert('Cannot send data! \nAre the firewall permissions or browser security too strict?');
       }
   }
   catch(err)
@@ -292,7 +297,7 @@ function ReturnClipPlaneDistances()
   msg = String( [stage.viewer.parameters.clipNear,
                   stage.viewer.parameters.clipFar,
                   cameradist ] )
-  WebsockSendMsg('ReturnClipPlaneDistances:\\n' + msg );
+  WebsockSendMsg('ReturnClipPlaneDistances:\n' + msg );
 }
 
 
@@ -314,7 +319,7 @@ function onError(e)
 
 function onOpen(e)
 {
-  msg = 'Now connected via websocket to ' + pagename + '\\n';
+  msg = 'Now connected via websocket to ' + pagename + '\n';
   WebsockSendMsg(msg);
   dbgmsg =msg;
   rerendered = false;
@@ -323,7 +328,7 @@ function onOpen(e)
 
 function onClose(e)
 {
-  msg = 'Now disconnecting from websocket ' + pagename + '\\n';
+  msg = 'Now disconnecting from websocket ' + pagename + '\n';
   console.log(msg);
   dbgmsg =msg;
 };
@@ -333,10 +338,10 @@ function onMessage(e)
 {
   var c,
   si;
-  WebsockSendMsg('\\n    Browser: Got ' + e.data ); // tell server what it sent us
+  WebsockSendMsg('\n    Browser: Got ' + e.data ); // tell server what it sent us
   try
   {
-    var datval = e.data.split(":\\n");
+    var datval = e.data.split(":\n");
     var msgtype = datval[0];
     var val = datval[1].split(",");
 
@@ -346,7 +351,7 @@ function onMessage(e)
       if (stage != null)
       {
         msg = getOrientMsg();
-        WebsockSendMsg('OrientationBeforeReload:\\n' + msg );
+        WebsockSendMsg('OrientationBeforeReload:\n' + msg );
       }
       WebsockSendMsg( 'Refreshing ' + pagename );
 
@@ -413,8 +418,8 @@ function onMessage(e)
 
     if (msgtype === "ShowThisTooltip")
     {
-      current_ttip = eval(datval[1]).split("\\n\\n")[0];
-      current_ttip_ids = eval(datval[1]).split("\\n\\n")[1];
+      current_ttip = eval(datval[1]).split("\n\n")[0];
+      current_ttip_ids = eval(datval[1]).split("\n\n")[1];
     }
 
     if (msgtype === "TooltipOpacity")
@@ -448,7 +453,7 @@ function onMessage(e)
       //stage.viewer.requestRender();
       RenderRequest();
       msg = getOrientMsg();
-      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+      WebsockSendMsg('CurrentViewOrientation:\n' + msg );
     }
 
     if (msgtype.includes("Expand") )
@@ -479,10 +484,10 @@ function onMessage(e)
       br_shapebufs = [];
       var nexpandrefls = 0;
 
-      //alert('rotations:\\n' + val);
+      //alert('rotations:\n' + val);
       // Rotation matrices are concatenated to a string of floats
       // separated by line breaks between each roation matrix
-      rotationstrs = datval[1].split("\\n");
+      rotationstrs = datval[1].split("\n");
       var Rotmats = [];
       var r = new NGL.Vector3();
 
@@ -656,7 +661,7 @@ function onMessage(e)
       RenderRequest();
       sleep(100).then(()=> {
           msg = getOrientMsg();
-          WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+          WebsockSendMsg('CurrentViewOrientation:\n' + msg );
         }
       );
     }
@@ -664,7 +669,7 @@ function onMessage(e)
     if (msgtype === "SpinAnimate")
     {
       WebsockSendMsg( 'SpinAnimating ' + pagename );
-      //strs = datval[1].split("\\n");
+      //strs = datval[1].split("\n");
       var r = new Float32Array(3);
       //var elmstrs = strs[0].split(",");
       for (j=0; j<3; j++)
@@ -703,7 +708,7 @@ function onMessage(e)
     if (msgtype === "TranslateHKLpoints")
     {
       WebsockSendMsg( 'Translating HKLs ' + pagename );
-      strs = datval[1].split("\\n");
+      strs = datval[1].split("\n");
       var sm = new Float32Array(3);
       var elmstrs = strs[0].split(",");
       for (j=0; j<3; j++)
@@ -713,7 +718,7 @@ function onMessage(e)
       RenderRequest();
       sleep(100).then(()=> {
           msg = getOrientMsg();
-          WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+          WebsockSendMsg('CurrentViewOrientation:\n' + msg );
         }
       );
     }
@@ -795,7 +800,7 @@ function onMessage(e)
 
     if (msgtype === "DefineHKL_Axes")
     {
-      strarrs = datval[1].split("\\n\\n");
+      strarrs = datval[1].split("\n\n");
       hstart = eval(strarrs[0]);
       hend = eval(strarrs[1]);
       kstart = eval(strarrs[2]);
@@ -831,7 +836,7 @@ function onMessage(e)
     if (msgtype === "GetMouseSpeed")
     {
       msg = String( [stage.trackballControls.rotateSpeed] )
-      WebsockSendMsg('ReturnMouseSpeed:\\n' + msg );
+      WebsockSendMsg('ReturnMouseSpeed:\n' + msg );
     }
 
     if (msgtype === "SetClipPlaneDistances")
@@ -872,7 +877,7 @@ function onMessage(e)
                      stage.viewer.boundingBoxSize.y,
                      stage.viewer.boundingBoxSize.z]
                   )
-      WebsockSendMsg('ReturnBoundingBox:\\n' + msg );
+      WebsockSendMsg('ReturnBoundingBox:\n' + msg );
     }
 
     if (msgtype ==="JavaScriptCleanUp")
@@ -882,7 +887,7 @@ function onMessage(e)
       stage.dispose();
       stage = null;
       ready_for_closing = true;
-      WebsockSendMsg('JavaScriptCleanUpDone:\\nDestroying JavaScript objects');
+      WebsockSendMsg('JavaScriptCleanUpDone:\nDestroying JavaScript objects');
       socket_intentionally_closed = true;
       mysocket.close(4241, 'Cleanup done');
       document = null;
@@ -900,7 +905,7 @@ function onMessage(e)
 
     if (msgtype === "AddSpheresBin2ShapeBuffer")
     {
-      strarrs = datval[1].split("\\n\\n");
+      strarrs = datval[1].split("\n\n");
       coordarray = eval(strarrs[0]);
       colourarray = eval(strarrs[1]);
       radiiarray = eval(strarrs[2]);
@@ -910,7 +915,7 @@ function onMessage(e)
 
     if (msgtype === "MakeColourChart")
     {
-      msg = datval[1].split("\\n\\n");
+      msg = datval[1].split("\n\n");
       ctop = eval(msg[0]);
       cleft = eval(msg[1]);
       label = msg[2];
@@ -1311,7 +1316,7 @@ function HKLscene()
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
         postrotmxflag = true;
-        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        WebsockSendMsg('CurrentViewOrientation:\n' + msg );
         timenow = timefunc();
       }
     }
@@ -1322,7 +1327,7 @@ function HKLscene()
     function (x, y)
     {
       msg = getOrientMsg();
-      WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+      WebsockSendMsg('CurrentViewOrientation:\n' + msg );
     }
   );
 
@@ -1340,7 +1345,7 @@ function HKLscene()
       rightnow = timefunc();
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
-        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        WebsockSendMsg('CurrentViewOrientation:\n' + msg );
         timenow = timefunc();
       }
     }
@@ -1353,7 +1358,7 @@ function HKLscene()
       if (postrotmxflag === true)
       {
         msg = getOrientMsg();
-        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        WebsockSendMsg('CurrentViewOrientation:\n' + msg );
         postrotmxflag = false;
       }
     }
@@ -1367,7 +1372,7 @@ function HKLscene()
       rightnow = timefunc();
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
-        WebsockSendMsg('CurrentViewOrientation:\\n' + msg );
+        WebsockSendMsg('CurrentViewOrientation:\n' + msg );
         //ReturnClipPlaneDistances();
         sleep(250).then(()=> {
             ReturnClipPlaneDistances();
@@ -1402,7 +1407,7 @@ function HKLscene()
 function OnUpdateOrientation()
 {
   msg = getOrientMsg();
-  WebsockSendMsg('MouseMovedOrientation:\\n' + msg );
+  WebsockSendMsg('MouseMovedOrientation:\n' + msg );
 }
 
 
@@ -1425,5 +1430,3 @@ function PageLoad()
 
 
 PageLoad();
-
-    """
