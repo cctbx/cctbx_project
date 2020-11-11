@@ -175,7 +175,7 @@ def test_02():
   }
   method_arg_dict = {
      'around_atoms':['self', 'soft_mask_radius', 'mask_atoms_atom_radius',
-          'soft_mask', 'mask_id',],
+          'soft_mask', 'mask_id', 'model'],
      'around_edges':['self', 'soft_mask_radius', 'mask_id',],
      'around_density':['self', 'resolution', 'solvent_content', 'soft_mask',
            'soft_mask_radius', 'mask_id','map_id'],
