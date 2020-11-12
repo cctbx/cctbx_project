@@ -188,7 +188,6 @@ class SimData:
     def update_Fhkl_tuple(self):
         if self.crystal.miller_array is not None:
             if self.using_diffBragg_spots and self.crystal.miller_is_complex:
-                print("USING COMPLEX ARRAY!")
                 Freal, Fimag = zip(*[(val.real, val.imag) for val in self.crystal.miller_array.data()])
                 Freal = flex.double(Freal)
                 Fimag = flex.double(Fimag)
@@ -218,9 +217,7 @@ class SimData:
             self.D.Amatrix = Amatrix_dials2nanoBragg(self.crystal.dxtbx_crystal)
             self.D.Ncells_abc = tuple([int(n) for n in self.crystal.Ncells_abc])
 
-        print(2)
         self.update_umats(self.crystal.mos_spread_deg, self.crystal.n_mos_domains)
-        print(2)
 
     def update_umats(self, mos_spread, mos_domains):
         if not hasattr(self, "D"):
@@ -270,13 +267,10 @@ class SimData:
         self._seedlings()
         self.D.interpolate = interpolate
         self._crystal_properties()
-        print(2)
         self._beam_properties()
-        print(2)
         self.D.spot_scale = self.determine_spot_scale()
         self.D.adc_offset_adu = adc_offset
         self.D.default_F = default_F
-        print(2)
 
         if oversample > 0:
             self.D.oversample = oversample
@@ -286,7 +280,6 @@ class SimData:
 
         if self.using_diffBragg_spots:
             self.D.vectorize_umats()  # NOTE: dont forget me!
-        print(5)
 
     def generate_simulated_image(self, instantiate=False):
         if instantiate:

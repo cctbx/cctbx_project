@@ -300,6 +300,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
       RUC.has_pre_cached_roi_data = True
       RUC.trad_conv = True
       RUC.S.update_nanoBragg_instance('update_oversample_during_refinement', False)
+      RUC.S.update_nanoBragg_instance('use_cuda', params.refiner.use_cuda)
       RUC.refine_gain_fac = False
       RUC.use_curvatures_threshold = params.refiner.use_curvatures_threshold
       if not params.refiner.curvatures:

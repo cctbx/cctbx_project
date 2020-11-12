@@ -128,7 +128,8 @@ void diffBragg_loopy(
     
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
-    printf("TIME SPENT ALLOCATING (TOTAL):  %3.10f ms \n", time);
+    if(verbose>1)
+        printf("TIME SPENT ALLOCATING (TOTAL):  %3.10f ms \n", time);
 
 
 //  BEGIN COPYING DATA
@@ -153,8 +154,6 @@ void diffBragg_loopy(
     if (update_sources || ALLOC){
         for (int i=0; i< number_of_sources; i++){
             cp.cu_source_X[i] = source_X[i];
-            if(i==0)
-                printf("COPYING source_X[0] = %f", source_X[0]);
             cp.cu_source_Y[i] = source_Y[i];
             cp.cu_source_Z[i] = source_Z[i];
             cp.cu_source_I[i] = source_I[i];
@@ -284,7 +283,8 @@ void diffBragg_loopy(
 
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
-    printf("TIME SPENT COPYING DATA HOST->DEV:  %3.10f ms \n", time);
+    if(verbose>1)
+        printf("TIME SPENT COPYING DATA HOST->DEV:  %3.10f ms \n", time);
 
 
     cp.device_is_allocated = true;
@@ -336,10 +336,12 @@ void diffBragg_loopy(
         _nopolar, _point_pixel, _fluence, _r_e_sqr, _spot_scale);
 
     cudaDeviceSynchronize();
-    printf("KERNEL_COMPLETE gpu_sum_over_steps\n");
+    if(verbose>1)
+        printf("KERNEL_COMPLETE gpu_sum_over_steps\n");
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
-    printf("TIME SPENT(KERNEL):  %3.10f ms \n", time);
+    if(verbose>1)
+        printf("TIME SPENT(KERNEL):  %3.10f ms \n", time);
 
     gettimeofday(&t1, 0);
 //  COPY BACK FROM DEVICE
@@ -366,7 +368,8 @@ void diffBragg_loopy(
     
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
-    printf("TIME SPENT COPYING BACK :  %3.10f ms \n", time);
+    if(verbose>1)
+        printf("TIME SPENT COPYING BACK :  %3.10f ms \n", time);
 
 }
 
@@ -389,7 +392,6 @@ void freedom(diffBragg_cudaPointers& cp){
     cudaFree( cp.cu_mos_pos);
     cudaFree( cp.cu_phi_pos);
     cudaFree( cp.cu_source_pos);
-    printf("FREE step positions\n");
 
     cudaFree(cp.cu_Fhkl);
     cudaFree(cp.cu_Fhkl2);

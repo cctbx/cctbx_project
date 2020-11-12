@@ -1348,6 +1348,7 @@ class LocalRefiner(PixelRefinement):
         if self.panels_fasts_slows[self._i_shot] is None:
             self.panels_fasts_slows[self._i_shot], self.roi_ids[self._i_shot] = self._get_panels_fasts_slows()
             self.roi_ids_reverse[self._i_shot] = self.roi_ids[self._i_shot][::-1]
+        #self.D.use_cuda = self.use_cuda
         self.D.add_diffBragg_spots(self.panels_fasts_slows[self._i_shot])
 
     def _get_fcell_val(self, i_fcell):

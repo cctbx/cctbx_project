@@ -74,6 +74,9 @@ simulator {
 
 refiner_phil = """
 refiner {
+  use_cuda = False
+    .type = bool
+    .help = Use GPU acceleration during refinement (requires a CCTBX cuda build)
   refine_eta = None
     .type = ints(size_min=1)
     .help = whether to refine the mosaic spread parameter, eta

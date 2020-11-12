@@ -135,17 +135,12 @@ namespace boost_python { namespace {
       diffBragg.complex_miller = false;
       if (boost::python::len(value)==2){
           if (value[2]!=boost::python::object()){ // check if it is not None
-                printf("WHOOPS HERE\n");
               diffBragg.pythony_amplitudes2 = extract<nanoBragg::af::shared<double> >(value[2]);
-                printf("UYASUdhWHOOPS HERE\n");
               diffBragg.init_Fhkl2();
-                printf("2WHOOPS HERE\n");
               diffBragg.complex_miller = true;
           }
       }
-      printf("LOSER\n");
       diffBragg.linearize_Fhkl();
-      printf("WONNDER\n");
   }
 
   static boost::python::tuple get_Fhkl_tuple(simtbx::nanoBragg::diffBragg diffBragg) {

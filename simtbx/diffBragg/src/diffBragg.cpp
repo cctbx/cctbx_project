@@ -1329,7 +1329,6 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             nopolar, point_pixel, fluence, r_e_sqr, spot_scale);
         }
     else { // we are using cuda
-       printf("WOOPS!\n");
        diffBragg_loopy(
            Npix_to_model, panels_fasts_slows_vec,
            image,
