@@ -2308,7 +2308,8 @@ class map_model_manager(object):
 
   # Methods for sharpening and comparing maps, models and calculating FSC values
 
-  def get_rms_f_list(self,map_id = 'map_manager',
+  def get_rms_f_list(self,
+      map_id = 'map_manager',
       d_min = None,  # minimum resolution for calculations
       n_bins = None,
       resolution = None,  # nominal resolution
@@ -2317,35 +2318,30 @@ class map_model_manager(object):
     assert d_min and n_bins
     from cctbx.maptbx.segment_and_split_map import map_coeffs_to_fp
     map_coeffs=self.get_map_manager_by_id(
-      map_id).map_as_fourier_coefficients( d_min = d_min)
+      map_id).map_as_fourier_coefficients(d_min = d_min)
     f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
-          d_min = d_min).f_array
-    rms_f_list=flex.double()
-    sthol2_list=flex.double()
+      d_min = d_min).f_array
+    rms_f_list = flex.double()
+    sthol2_list = flex.double()
     dsd = f_array.d_spacings().data()
-
     n_bins_use = min(n_bins,max(3,n_bins//3))
     for i_bin in f_array.binner().range_used():
-      sel       = f_array.binner().selection(i_bin)
-      f        = map_coeffs.select(sel)
-      f_array_f=map_coeffs_to_fp(f)
-      rms_f=f_array_f.data().norm()
+      sel = f_array.binner().selection(i_bin)
+      f = map_coeffs.select(sel)
+      f_array_f = map_coeffs_to_fp(f)
+      rms_f = f_array_f.data().norm()
       rms_f_list.append(rms_f)
-      d         = dsd.select(sel)
+      d = dsd.select(sel)
       if d.size() < 0:
-        d_avg     = flex.mean(d)
-        sthol2=0.25/d_avg**2
+        d_avg = flex.mean(d)
+        sthol2 = 0.25/d_avg**2
         sthol2_list.append(sthol2)
-        if i_bin-1 > n_bins_use and (
-            (not resolution) or (d_avg >= resolution)):
+        if i_bin-1 > n_bins_use and ((not resolution) or (d_avg >= resolution)):
           n_bins_use = i_bin - 1
       elif i_bin > 1:
         sthol2_list.append(sthol2_list[-1])
       else:
         sthol2_list.append(0)
-
-
-
     return group_args(
        rms_f_list = rms_f_list,
        sthol2_list = sthol2_list,
