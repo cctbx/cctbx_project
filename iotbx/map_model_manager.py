@@ -186,10 +186,13 @@ class map_model_manager(object):
     #  match by adjusting the model shift
 
     if model and map_manager and model.shift_cart() != map_manager.shift_cart():
+      if extra_model_list:  # make sure extras have same shift as model
+        for m in extra_model_list:
+          assert m.shift_cart() == model.shift_cart() # all models same shift
+      # Shift everything to match map
       map_manager.shift_model_to_match_map(model)
       if extra_model_list:
         for m in extra_model_list:
-          assert m.shift_cart() == model.shift_cart() # all models same shift
           map_manager.shift_model_to_match_map(m)
 
     # if ignore_symmetry_conflicts, take all symmetry information from
@@ -6306,13 +6309,15 @@ class match_map_model_ncs(object):
 def get_tlso_group_info_from_model(model, nproc = 1, log = sys.stdout):
   ''' Extract tlso_group_info from aniso records in model'''
   print("\nExtracting tlso_group_info from model", file = log)
-  model=model.deep_copy()  # this routine overwrites...
+  model_use=model.deep_copy()  # this routine overwrites...
 
-  xrs=model.get_xray_structure()
+  xrs=model_use.get_xray_structure()
   xrs.convert_to_anisotropic()
   uc = xrs.unit_cell()
   sites_cart = xrs.sites_cart()
   u_cart=xrs.scatterers().extract_u_cart(uc)
+  pdb_hierarchy = model_use.get_hierarchy()
+
   ok = False
   for u in u_cart:
     if tuple(u_cart) != (0,0,0,0,0,0) and tuple(u_cart) != (-1,-1,-1,-1,-1,-1):
@@ -6320,7 +6325,6 @@ def get_tlso_group_info_from_model(model, nproc = 1, log = sys.stdout):
   if not ok:
     raise Sorry("Aniso U values from model are all zero or missing...cannot get TLS")
 
-  pdb_hierarchy = model.get_hierarchy()  # ZZZ something not working if everything is shifted.
 
   # Get the groups in this file
   from mmtbx.command_line.find_tls_groups import find_tls, master_phil
@@ -6347,10 +6351,13 @@ def get_tlso_group_info_from_model(model, nproc = 1, log = sys.stdout):
   print("\nTLS GROUPS FOUND ", file = log)
 
   for selection in selections:
-    sel = model.selection(selection)
+    sel = model_use.selection(selection)
     cm = sites_cart.select(sel).mean()
+
     result = tools.tls_from_uaniso_minimizer(
       uaniso         = u_cart.select(sel),
+
+
       T_initial      = [0,0,0,0,0,0],
       L_initial      = [0,0,0,0,0,0],
       S_initial      = [0,0,0,0,0,0,0,0,0],
@@ -6367,13 +6374,17 @@ def get_tlso_group_info_from_model(model, nproc = 1, log = sys.stdout):
     print("S: %s" %(str(result.S_min)), file = log)
     print("Origin: %s" %(str(cm)), file = log)
 
+    rms = get_tlso_resid(
+       result.T_min,result.L_min,result.S_min,cm,u_cart,sites_cart.select(sel))
+
+    print("Final RMS fit of u_cart with TLS: %.2f " %(rms))
     T_list.append(result.T_min)
     L_list.append(result.L_min)
     S_list.append(result.S_min)
     O_list.append(cm)
     tlso_selection_list.append(selection)
     tlso_shift_cart_list.append(
-       model.shift_cart() if model.shift_cart() else (0,0,0) )
+       model_use.shift_cart() if model_use.shift_cart() else (0,0,0) )
 
   return group_args(
      T_list = T_list,
@@ -6383,6 +6394,25 @@ def get_tlso_group_info_from_model(model, nproc = 1, log = sys.stdout):
      tlso_selection_list = tlso_selection_list,
      tlso_shift_cart_list = tlso_shift_cart_list)
 
+def get_tlso_resid(T,L,S,cm,u_cart,xyz):
+
+    tlso_value = tlso( t = tuple(T), l = tuple(L),
+         s = tuple(S), origin = tuple(cm),)
+
+    uanisos= uaniso_from_tls_one_group(
+         tlso = tlso_value,
+         sites_cart = xyz,
+         zeroize_trace=False)
+    u_list = flex.double()
+    v_list = flex.double()
+    i=0
+    for u,v in zip(u_cart,uanisos):
+      i+=1
+      u_list.extend(flex.double(u))
+      v_list.extend(flex.double(v))
+    diffs = u_list - v_list
+    rms = diffs.rms()
+    return rms
 
 def create_fine_spacing_array(unit_cell, cell_ratio = 10):
   new_params= 10*flex.double(unit_cell.parameters()[:3])

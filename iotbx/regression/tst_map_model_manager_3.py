@@ -308,22 +308,22 @@ def exercise(file_name, out = sys.stdout):
   fsc_curve=dc.map_map_fsc(
       map_id_1='map_manager',map_id_2='filtered',mask_id='mask',
       resolution=3.5,fsc_cutoff = 0.97)
-  assert approx_equal(fsc_curve.d_min, 3.91175024213,eps=0.01)
-  assert approx_equal (fsc_curve.fsc.fsc[-1],0.695137718033)
+  assert approx_equal(fsc_curve.d_min, 3.93793648601,eps=0.01)
+  assert approx_equal (fsc_curve.fsc.fsc[-1],0.707536576779)
 
   # Get map-map CC
   dc=mam_dc.deep_copy()
   dc.duplicate_map_manager(map_id='map_manager',new_map_id='filtered')
   dc.resolution_filter(d_min=3.5, d_max=6, map_id='filtered')
   cc=dc.map_map_cc('map_manager','filtered')
-  assert approx_equal(cc , 0.706499206126)
+  assert approx_equal(cc , 0.676687646486)
 
   # Get map-map CC with mask
   dc=mam_dc.deep_copy()
   dc.duplicate_map_manager(map_id='map_manager',new_map_id='filtered')
   dc.create_mask_around_density(mask_id='filtered')
   cc=dc.map_map_cc('map_manager','filtered',mask_id='mask')
-  assert approx_equal(cc , 0.411247493741)
+  assert approx_equal(cc , 0.422523947639)
 
   # box around model
   mam=mam_dc.deep_copy()
@@ -444,7 +444,7 @@ def exercise(file_name, out = sys.stdout):
       selection_string="(name ca or name cb or name c or name o) "+
         "and resseq 221:221", box_cushion=0)
   cc=dc.map_model_cc(resolution=3)
-  assert approx_equal (cc, 0.450025539936)
+  assert approx_equal (cc, 0.502531660036)
 
   # Remove model outside map
   dc.remove_model_outside_map(boundary=0)

@@ -705,13 +705,6 @@ class manager(object):
 
     assert crystal_symmetry is not None  # must supply crystal_symmetry
 
-
-    # Save existing sites_cart
-    if self._xray_structure:
-      existing_sites_cart = self._xray_structure.sites_cart()
-    else:
-      existing_sites_cart = None
-
     # Check for missing _crystal_symmetry
     if(self._crystal_symmetry is None):
       # Set self._crystal_symmetry.
@@ -730,28 +723,46 @@ class manager(object):
       self._crystal_symmetry = xrs.crystal_symmetry()
 
       # set the sites_cart if supplied
-      self.set_sites_cart(sites_cart = sites_cart)
+      if sites_cart:
+        self.set_sites_cart(sites_cart = sites_cart)
       self._update_has_hd()
 
     else:  # Make a new xray_structure with new symmetry and put in sites
 
       xrs=self.get_xray_structure() # Make sure xrs is set up
 
+      # Save existing sites_cart and iso or aniso u_cart
+      # Note that u_iso and u_cart are separate entities
+      uc = self._xray_structure.crystal_symmetry().unit_cell()
+      existing_u_cart = self._xray_structure.scatterers().extract_u_cart(uc)
+      existing_u_iso= self._xray_structure.scatterers().extract_u_iso()
+
       if sites_cart is None:
-        sites_cart = existing_sites_cart
+        sites_cart = self._xray_structure.sites_cart()
 
       # Changing crystal_symmetry changes sites_frac but keeps sites_cart same
+      # Also u_iso and u_cart are the same numbers
 
       # Reset _crystal_symmetry
       scattering_table = xrs.scattering_type_registry().last_table()
       scatterers = xrs.scatterers()
       sp = crystal.special_position_settings(crystal_symmetry)
-      self._xray_structure = xray.structure(sp, scatterers)
+      self._xray_structure = xray.structure(sp, scatterers) # new symmetry
       self._crystal_symmetry = \
         self._xray_structure.crystal_symmetry() # make it identical
-      self.set_sites_cart(sites_cart = sites_cart)
 
-      if scattering_table: # if not there, were not any scattering tables before
+      # Set sites_cart u_cart, u_iso in xray_structure
+      new_uc = self._xray_structure.crystal_symmetry().unit_cell()
+      self._xray_structure.set_sites_cart(sites_cart = sites_cart)
+      self._xray_structure.set_u_iso(values = existing_u_iso)
+      self._xray_structure.set_u_cart(existing_u_cart)
+
+      # Transfer xray_structure info to hierarchy if present
+      if self.get_hierarchy():
+        self.get_hierarchy().adopt_xray_structure(self._xray_structure)
+
+      # Set up scattering table if there was one before
+      if scattering_table:
         self.setup_scattering_dictionaries(scattering_table = scattering_table)
       #
       if(self.get_restraints_manager() is not None):

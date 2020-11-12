@@ -123,7 +123,7 @@ def exercise( out = sys.stdout):
   dc.half_map_sharpen(n_bins=15)
   cc_after = dc.map_model_cc(map_id='map_manager_scaled')
   print("CC before, after half map sharpen: ",cc_before,cc_after)
-  assert approx_equal((cc_before,cc_after), (0.80, 0.9), eps=0.10)
+  assert approx_equal((cc_before,cc_after), (0.80, 0.80), eps=0.10)
 
   dc = local_mmm.deep_copy()
   dc.set_log(sys.stdout)
