@@ -70,9 +70,9 @@ namespace boost_python { namespace {
       diffBragg.user_matrix = 1;
       diffBragg.init_cell();
 
-       diffBragg.eig_B << value[0], value[1], value[2],
-            value[3], value[4], value[5],
-            value[6], value[7], value[8];
+       diffBragg.eig_B << diffBragg.a0[1], diffBragg.b0[1], diffBragg.c0[1],
+            diffBragg.a0[2], diffBragg.b0[2], diffBragg.c0[2],
+            diffBragg.a0[3], diffBragg.b0[3], diffBragg.c0[3];
   }
 
   void set_roi(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& tupleoftuples){
@@ -128,17 +128,27 @@ namespace boost_python { namespace {
                                     diffBragg.pix0_vector[2]*1000, diffBragg.pix0_vector[3]*1000);
   }
 
-  static void  set_Fhkl_tuple_complex(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& value) {
+  static void  set_Fhkl_tuple(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& value) {
       diffBragg.pythony_indices = extract<nanoBragg::indices >(value[0]);
       diffBragg.pythony_amplitudes = extract<nanoBragg::af::shared<double> >(value[1]);
-      diffBragg.pythony_amplitudes2 = extract<nanoBragg::af::shared<double> >(value[2]);
-      /* re-initialize ***Fhkl array */
       diffBragg.init_Fhkl();
-      diffBragg.init_Fhkl2();
-      diffBragg.complex_miller = true;
+      diffBragg.complex_miller = false;
+      if (boost::python::len(value)==2){
+          if (value[2]!=boost::python::object()){ // check if it is not None
+                printf("WHOOPS HERE\n");
+              diffBragg.pythony_amplitudes2 = extract<nanoBragg::af::shared<double> >(value[2]);
+                printf("UYASUdhWHOOPS HERE\n");
+              diffBragg.init_Fhkl2();
+                printf("2WHOOPS HERE\n");
+              diffBragg.complex_miller = true;
+          }
+      }
+      printf("LOSER\n");
+      diffBragg.linearize_Fhkl();
+      printf("WONNDER\n");
   }
 
-  static boost::python::tuple get_Fhkl_tuple_complex(simtbx::nanoBragg::diffBragg diffBragg) {
+  static boost::python::tuple get_Fhkl_tuple(simtbx::nanoBragg::diffBragg diffBragg) {
       int h,k,l;
       double temp;
       int hkls = diffBragg.h_range*diffBragg.k_range*diffBragg.l_range;
@@ -156,16 +166,19 @@ namespace boost_python { namespace {
                       diffBragg.pythony_indices[i] = hkl;
                       temp = diffBragg.Fhkl[h-diffBragg.h_min][k-diffBragg.k_min][l-diffBragg.l_min];
                       diffBragg.pythony_amplitudes[i] = temp;
-                      temp = diffBragg.Fhkl2[h-diffBragg.h_min][k-diffBragg.k_min][l-diffBragg.l_min];
-                      diffBragg.pythony_amplitudes2[i] = temp;
+                      if (diffBragg.complex_miller){
+                          temp = diffBragg.Fhkl2[h-diffBragg.h_min][k-diffBragg.k_min][l-diffBragg.l_min];
+                          diffBragg.pythony_amplitudes2[i] = temp;
+                      }
                       ++i;
                   }
               }
           }
       }
-      /* return a tuple so there is no confusion about order of initialization */
-      return boost::python::make_tuple(diffBragg.pythony_indices,diffBragg.pythony_amplitudes, diffBragg.pythony_amplitudes2);
-      //return boost::python::make_tuple(diffBragg.pythony_indices,diffBragg.pythony_amplitudes, diffBragg.pythony_amplitudes2);
+      if (diffBragg.complex_miller)
+        return boost::python::make_tuple(diffBragg.pythony_indices,diffBragg.pythony_amplitudes, diffBragg.pythony_amplitudes2);
+      else
+        return boost::python::make_tuple(diffBragg.pythony_indices,diffBragg.pythony_amplitudes);
   }
 
   void diffBragg_init_module() {
@@ -178,11 +191,10 @@ namespace boost_python { namespace {
       /* constructor that takes a dxtbx detector and beam model */
       .def(init<const dxtbx::model::Detector&,
                 const dxtbx::model::Beam&,
-                int, int>(
+                int >(
         (arg_("detector"),
          arg_("beam"),
-         arg_("verbose")=0,
-         arg_("panel_id")=0),
+         arg_("verbose")=0),
         "nanoBragg simulation initialized from dxtbx detector and beam objects"))
 
       /* function for doing some differentiation */
@@ -222,6 +234,10 @@ namespace boost_python { namespace {
 
       .def("get_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_derivative_pixels,
             "gets the manager raw image containing first derivatives")
+      
+      
+      .def("get_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_derivative_pixels,
+            "gets the manager raw image containing first derivatives")
 
       .def("get_second_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_second_derivative_pixels,
             "gets the manager raw image containing second derivatives")
@@ -245,6 +261,8 @@ namespace boost_python { namespace {
            "update the geometries with new dxtbx models, number of pixels should remain constant")
 
       .def("free_Fhkl2",&simtbx::nanoBragg::diffBragg::free_Fhkl2)
+      
+      .def("gpu_free",&simtbx::nanoBragg::diffBragg::gpu_free)
 
       .def("set_mosaic_blocks_prime",
              &simtbx::nanoBragg::diffBragg::set_mosaic_blocks_prime,
@@ -325,15 +343,21 @@ namespace boost_python { namespace {
                      make_setter(&simtbx::nanoBragg::diffBragg::use_lambda_coefficients,dcp()),
                      "represent wavelength using coefficients a + b*source where a,b are coefficients and source is the source index")
 
-      .add_property("Fhkl_tuple_complex",
-            make_function(&get_Fhkl_tuple_complex,rbv()),
-            make_function(&set_Fhkl_tuple_complex,dcp()),
-            "hkl and Freal and Fcomplex as a 3-tuple of (indices ,flex-double, flex-double). experimental")
+      .add_property("Fhkl_tuple",
+            make_function(&get_Fhkl_tuple,rbv()),
+            make_function(&set_Fhkl_tuple,dcp()),
+            "hkl and Freal and Fcomplex as a 3-tuple of (indices ,flex-double, flex-double). experimental, also accepts (indices, flex-double, None) for mod only")
 
       .add_property("lambda_coefficients",
              make_function(&get_lambda_coef,rbv()),
              make_function(&set_lambda_coef,dcp()),
              "coefficients for source_lambda refinement: `lambda = coef0 + coef1*source`  where `source` is the source index")
+
+     // CUDA PROPERTIES
+      .add_property("use_cuda",
+             make_getter(&simtbx::nanoBragg::diffBragg::use_cuda,rbv()),
+             make_setter(&simtbx::nanoBragg::diffBragg::use_cuda,dcp()),
+             "use GPU acceleration")
 
     ; // end of diffBragg extention
 

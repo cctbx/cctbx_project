@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from numpy import meshgrid
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -446,6 +447,12 @@ class LocalRefiner(PixelRefinement):
 
         # this is a sliding parameter that points to the latest local (per-shot) parameter in the x-array
         _local_pos = self.local_idx_start
+
+        self.panels_fasts_slows = {i_shot: None for i_shot in self.shot_ids}
+        self.roi_ids = {i_shot: None for i_shot in self.shot_ids}
+        self.roi_ids_reverse = {i_shot: None for i_shot in self.shot_ids}
+        self.first = {i_shot: {} for i_shot in self.shot_ids}
+        self.last = {i_shot: {} for i_shot in self.shot_ids}
         for i_shot in self.shot_ids:
             self.pid_from_idx[i_shot] = {i: pid for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
             self.idx_from_pid[i_shot] = {pid: i for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
@@ -1333,12 +1340,15 @@ class LocalRefiner(PixelRefinement):
                 self.D.set_ucell_second_derivative_matrix(
                     i + 3, self.UCELL_MAN[self._i_shot].second_derivative_matrices[i])
 
-    def _run_diffBragg_current(self, i_spot):
+    def _run_diffBragg_current(self):# , i_spot):
         """needs to be called each time the ROI is changed"""
-        (i1, i2), (j1, j2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
-        self.D.region_of_interest = (int(i1), int(i2)), (int(j1), int(j2))
+        #(i1, i2), (j1, j2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
+        #self.D.region_of_interest = (int(i1), int(i2)), (int(j1), int(j2))
         #self.D.printout_pixel_fastslow = int(i1)+2, int(j1)+2
-        self.D.add_diffBragg_spots()
+        if self.panels_fasts_slows[self._i_shot] is None:
+            self.panels_fasts_slows[self._i_shot], self.roi_ids[self._i_shot] = self._get_panels_fasts_slows()
+            self.roi_ids_reverse[self._i_shot] = self.roi_ids[self._i_shot][::-1]
+        self.D.add_diffBragg_spots(self.panels_fasts_slows[self._i_shot])
 
     def _get_fcell_val(self, i_fcell):
         # TODO vectorize me
@@ -1426,6 +1436,7 @@ class LocalRefiner(PixelRefinement):
                 (i1, i2), (j1, j2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
                 omega_kahn_correction = self.OMEGA_KAHN[self._panel_id][j1:j2+1, i1:i2+1]
                 self.tilt_plane *= omega_kahn_correction
+        self.tilt_plane = self.tilt_plane.ravel()
 
     def _update_rotXYZ(self):
         if self.refine_rotX:
@@ -1469,9 +1480,9 @@ class LocalRefiner(PixelRefinement):
         if self.refine_lambda0 or self.refine_lambda1:
             SG = self.scale_fac * self.G2
             if self.refine_lambda0:
-                self.spectra_derivs[0] = SG*self.D.get_derivative_pixels(12).as_numpy_array()
+                self.spectra_derivs[0] = SG*self.D.get_derivative_pixels(12)[self.roi_slice].as_numpy_array()
             if self.refine_lambda1:
-                self.spectra_derivs[1] = SG*self.D.get_derivative_pixels(13).as_numpy_array()
+                self.spectra_derivs[1] = SG*self.D.get_derivative_pixels(13)[self.roi_slice].as_numpy_array()
 
     def _extract_Umatrix_derivative_pixels(self):
         self.rotX_dI_dtheta = self.rotY_dI_dtheta = self.rotZ_dI_dtheta = 0
@@ -1480,19 +1491,19 @@ class LocalRefiner(PixelRefinement):
         SG = self.scale_fac*self.G2
         if self.refine_Umatrix:
             if self.refine_rotX:
-                self.rotX_dI_dtheta = SG*self.D.get_derivative_pixels(0).as_numpy_array()
+                self.rotX_dI_dtheta = SG*self.D.get_derivative_pixels(0)[self.roi_slice].as_numpy_array()
                 if self.calc_curvatures:
-                    self.rotX_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(0).as_numpy_array()
+                    self.rotX_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(0)[self.roi_slice].as_numpy_array()
 
             if self.refine_rotY:
-                self.rotY_dI_dtheta = SG*self.D.get_derivative_pixels(1).as_numpy_array()
+                self.rotY_dI_dtheta = SG*self.D.get_derivative_pixels(1)[self.roi_slice].as_numpy_array()
                 if self.calc_curvatures:
-                    self.rotY_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(1).as_numpy_array()
+                    self.rotY_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(1)[self.roi_slice].as_numpy_array()
 
             if self.refine_rotZ:
-                self.rotZ_dI_dtheta = SG*self.D.get_derivative_pixels(2).as_numpy_array()
+                self.rotZ_dI_dtheta = SG*self.D.get_derivative_pixels(2)[self.roi_slice].as_numpy_array()
                 if self.calc_curvatures:
-                    self.rotZ_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(2).as_numpy_array()
+                    self.rotZ_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(2)[self.roi_slice].as_numpy_array()
 
     def _extract_Bmatrix_derivative_pixels(self):
         # the Bmatrix derivatives are stored for each unit cell parameter (UcellManager.variables)
@@ -1501,18 +1512,18 @@ class LocalRefiner(PixelRefinement):
         SG = self.scale_fac*self.G2
         if self.refine_Bmatrix:
             for i in range(self.n_ucell_param):
-                self.ucell_dI_dtheta[i] = SG*self.D.get_derivative_pixels(3 + i).as_numpy_array()
+                self.ucell_dI_dtheta[i] = SG*self.D.get_derivative_pixels(3 + i)[self.roi_slice].as_numpy_array()
                 if self.calc_curvatures:
-                    self.ucell_d2I_dtheta2[i] = SG*self.D.get_second_derivative_pixels(3 + i).as_numpy_array()
+                    self.ucell_d2I_dtheta2[i] = SG*self.D.get_second_derivative_pixels(3 + i)[self.roi_slice].as_numpy_array()
 
     def _extract_mosaic_parameter_m_derivative_pixels(self):
         SG = self.scale_fac * self.G2
         if self.D.isotropic_ncells:  # TODO remove need for if/else
             self.m_dI_dtheta = self.m_d2I_dtheta2 = 0
             if self.refine_ncells:
-                self.m_dI_dtheta = SG*self.D.get_derivative_pixels(self._ncells_id).as_numpy_array()
+                self.m_dI_dtheta = SG*self.D.get_derivative_pixels(self._ncells_id)[self.roi_slice].as_numpy_array()
                 if self.calc_curvatures:
-                    self.m_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(self._ncells_id).as_numpy_array()
+                    self.m_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(self._ncells_id)[self.roi_slice].as_numpy_array()
             self.m_dI_dtheta = [self.m_dI_dtheta]
             self.m_d2I_dtheta2 = [self.m_d2I_dtheta2]
         else:
@@ -1539,19 +1550,19 @@ class LocalRefiner(PixelRefinement):
                     second_derivs = temp_second_derivs
 
                 for i_ncell in range(self.n_ncells_param):
-                    d = derivs[i_ncell].as_numpy_array()
+                    d = derivs[i_ncell][self.roi_slice].as_numpy_array()
                     self.m_dI_dtheta[i_ncell] = SG*d
                     if self.calc_curvatures:
-                        d2 = second_derivs[i_ncell].as_numpy_array()
+                        d2 = second_derivs[i_ncell][self.roi_slice].as_numpy_array()
                         self.m_d2I_dtheta2[i_ncell] = SG*d2
 
     def _extract_detector_distance_derivative_pixels(self):
         self.detdist_dI_dtheta = self.detdist_d2I_dtheta2 = 0
         SG = self.scale_fac*self.G2
         if self.refine_detdist:
-            self.detdist_dI_dtheta = SG*self.D.get_derivative_pixels(self._detector_distance_id).as_numpy_array()
+            self.detdist_dI_dtheta = SG*self.D.get_derivative_pixels(self._detector_distance_id)[self.roi_slice].as_numpy_array()
             if self.calc_curvatures:
-                self.detdist_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(self._detector_distance_id).as_numpy_array()
+                self.detdist_d2I_dtheta2 = SG*self.D.get_second_derivative_pixels(self._detector_distance_id)[self.roi_slice].as_numpy_array()
 
     def _extract_panelRot_derivative_pixels(self):
         self.panelRot_dI_dtheta = [0, 0, 0]
@@ -1562,9 +1573,9 @@ class LocalRefiner(PixelRefinement):
         for i_rot in range(3):
             if refining[i_rot]:
                 manager_id = manager_ids[i_rot]
-                self.panelRot_dI_dtheta[i_rot] = SG*self.D.get_derivative_pixels(manager_id).as_numpy_array()
+                self.panelRot_dI_dtheta[i_rot] = SG*self.D.get_derivative_pixels(manager_id)[self.roi_slice].as_numpy_array()
                 if self.calc_curvatures:
-                    self.panelRot_d2I_dtheta2[i_rot] = SG*self.D.get_second_derivative_pixels(manager_id).as_numpy_array()
+                    self.panelRot_d2I_dtheta2[i_rot] = SG*self.D.get_second_derivative_pixels(manager_id)[self.roi_slice].as_numpy_array()
 
     def _extract_panelXYZ_derivative_pixels(self):
         self.panelX_dI_dtheta = self.panelX_d2I_dtheta2 = 0
@@ -1573,22 +1584,22 @@ class LocalRefiner(PixelRefinement):
         SG = self.scale_fac*self.G2
         # TODO: curvatures
         if self.refine_panelXY:
-            self.panelX_dI_dtheta = SG*self.D.get_derivative_pixels(self._panelX_id).as_numpy_array()
-            self.panelY_dI_dtheta = SG*self.D.get_derivative_pixels(self._panelY_id).as_numpy_array()
+            self.panelX_dI_dtheta = SG*self.D.get_derivative_pixels(self._panelX_id)[self.roi_slice].as_numpy_array()
+            self.panelY_dI_dtheta = SG*self.D.get_derivative_pixels(self._panelY_id)[self.roi_slice].as_numpy_array()
         if self.refine_panelZ:
             assert not self.refine_detdist
-            self.panelZ_dI_dtheta = SG*self.D.get_derivative_pixels(self._detector_distance_id).as_numpy_array()
+            self.panelZ_dI_dtheta = SG*self.D.get_derivative_pixels(self._detector_distance_id)[self.roi_slice].as_numpy_array()
 
     def _extract_Fcell_derivative_pixels(self):
         self.fcell_deriv = self.fcell_second_deriv = 0
         if self.refine_Fcell:
             SG = self.scale_fac*self.G2
-            self.fcell_deriv = self.D.get_derivative_pixels(self._fcell_id)
+            self.fcell_deriv = self.D.get_derivative_pixels(self._fcell_id)[self.roi_slice]
             # handles Nan's when Fcell is 0 for whatever reason
             self.fcell_deriv = self.fcell_deriv.set_selected(self.fcell_deriv != self.fcell_deriv, 0).as_numpy_array()
             self.fcell_deriv *= SG
             if self.calc_curvatures:
-                f2 = self.D.get_second_derivative_pixels(self._fcell_id)
+                f2 = self.D.get_second_derivative_pixels(self._fcell_id)[self.roi_slice]
                 self.fcell_second_deriv = (f2.set_selected(f2 != f2, 0).as_numpy_array() ) * SG
 
     def _get_per_spot_scale(self, i_shot, i_spot):
@@ -1605,7 +1616,14 @@ class LocalRefiner(PixelRefinement):
         return val
 
     def _extract_pixel_data(self):
-        self.model_bragg_spots = self.scale_fac*self.D.raw_pixels_roi.as_numpy_array()
+        if self.iterations==0:
+            self.first[self._i_shot][self._i_spot] = self.roi_ids[self._i_shot].index(self._i_spot)
+            self.last[self._i_shot][self._i_spot] = len(self.roi_ids[self._i_shot]) - 1 - self.roi_ids_reverse[self._i_shot].index(self._i_spot)
+        first = self.first[self._i_shot][self._i_spot]
+        last = self.last[self._i_shot][self._i_spot]
+
+        self.roi_slice = slice(first, last + 1, 1)
+        self.model_bragg_spots = self.scale_fac*self.D.raw_pixels_roi[self.roi_slice].as_numpy_array()
         self.model_bragg_spots *= self._get_per_spot_scale(self._i_shot, self._i_spot)
         self._extract_Umatrix_derivative_pixels()
         self._extract_Bmatrix_derivative_pixels()
@@ -1633,6 +1651,29 @@ class LocalRefiner(PixelRefinement):
         # sim_data instance has a nanoBragg beam object, which takes spectra and converts to nanoBragg xray_beams
         self.S.beam.spectra = self.SPECTRA[self._i_shot]
         self.D.xray_beams = self.S.beam.xray_beams
+
+    def _get_panels_fasts_slows(self):
+        roi_ids = []
+        panels_fasts_slows = []
+        n_spots = len(self.NANOBRAGG_ROIS[self._i_shot])
+        for i_spot in range(n_spots):
+            if self.selection_flags is not None:
+                if self._i_shot not in self.selection_flags:
+                    continue
+                elif not self.selection_flags[self._i_shot][i_spot]:
+                    continue
+            (x1, x2), (y1, y2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
+            roi_shape = self.ROI_IMGS[self._i_shot][i_spot].shape
+            slows, fasts = np_indices(roi_shape)
+            slows += y1
+            fasts += x1
+            fasts = list(map(int, fasts.ravel()))
+            slows = list(map(int, slows.ravel()))
+            npix = len(fasts)
+            roi_ids += [i_spot] * npix
+            pids = [self.PANEL_IDS[self._i_shot][i_spot]] * npix
+            panels_fasts_slows += [val for sublst in zip(pids, fasts, slows) for val in sublst]
+        return flex.size_t(panels_fasts_slows), roi_ids
 
     def compute_functional_gradients_diag(self):
         self.compute_functional_and_gradients()
@@ -1688,6 +1729,10 @@ class LocalRefiner(PixelRefinement):
                 self._update_eta()  # mosaic spread
                 n_spots = len(self.NANOBRAGG_ROIS[self._i_shot])
                 printed_geom_updates = False
+
+                # CREATE THE PANEL FAST SLOW ARRAY AND RUN DIFFBRAGG
+                self._run_diffBragg_current()
+
                 for i_spot in range(n_spots):
                     self._i_spot = i_spot
 
@@ -1703,8 +1748,8 @@ class LocalRefiner(PixelRefinement):
                         print("diffBragg: img %d/%d; spot %d/%d; panel %d" \
                               % (self._i_shot + 1, self.n_shots, i_spot + 1, n_spots, self._panel_id)) #, flush=True)
 
-                    self.Imeas = self.ROI_IMGS[self._i_shot][i_spot]
-                    self._update_dxtbx_detector()
+                    self.Imeas = self.ROI_IMGS[self._i_shot][i_spot].ravel()
+                    # self._update_dxtbx_detector()
                     if not printed_geom_updates:
                         if self.refine_panelRotO or self.refine_panelRotF or self.refine_panelRotS:
                             print("ROT ANGLES OFS : %.8f %.8f %.8f (degrees)"
@@ -1715,7 +1760,7 @@ class LocalRefiner(PixelRefinement):
                         if self.refine_spectra:
                             print("Spectra Lam0 Lam1: ", self._get_spectra_coefficients())
                         printed_geom_updates = True
-                    self._run_diffBragg_current(i_spot)
+                    #self._run_diffBragg_current(i_spot)
                     self._set_background_plane(i_spot)
                     self._extract_pixel_data()
                     self._record_xy_calc()
@@ -1776,7 +1821,7 @@ class LocalRefiner(PixelRefinement):
             self._curvature_analysis()
 
             # reset ROI pixels TODO: is this necessary
-            self.D.raw_pixels *= 0
+            self.D.raw_pixels_roi *= 0
             self.gnorm = norm(self.grad)
 
             if self.verbose:
@@ -2205,7 +2250,7 @@ class LocalRefiner(PixelRefinement):
 
     def _eta_derivatives(self):
         if self.refine_eta:
-            dI_dtheta = self.G2*self.scale_fac*(self.D.get_derivative_pixels(self._eta_id).as_numpy_array())
+            dI_dtheta = self.G2*self.scale_fac*(self.D.get_derivative_pixels(self._eta_id)[self.roi_slice].as_numpy_array())
             # second derivative is 0 with respect to scale factor
             sig = self.eta_sigma
             eta_val = self._get_eta(self._i_shot)
