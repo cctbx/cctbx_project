@@ -182,6 +182,16 @@ class map_model_manager(object):
       if m:
         m.set_wrapping(wrapping)
 
+    # if the incoming model is simply shifted relative to the maps...make them
+    #  match by adjusting the model shift
+
+    if model and map_manager and model.shift_cart() != map_manager.shift_cart():
+      map_manager.shift_model_to_match_map(model)
+      if extra_model_list:
+        for m in extra_model_list:
+          assert m.shift_cart() == model.shift_cart() # all models same shift
+          map_manager.shift_model_to_match_map(m)
+
     # if ignore_symmetry_conflicts, take all symmetry information from
     #  any_map_manager and apply it to everything
     if ignore_symmetry_conflicts:
@@ -6310,7 +6320,7 @@ def get_tlso_group_info_from_model(model, nproc = 1, log = sys.stdout):
   if not ok:
     raise Sorry("Aniso U values from model are all zero or missing...cannot get TLS")
 
-  pdb_hierarchy = model.get_hierarchy()
+  pdb_hierarchy = model.get_hierarchy()  # ZZZ something not working if everything is shifted.
 
   # Get the groups in this file
   from mmtbx.command_line.find_tls_groups import find_tls, master_phil
