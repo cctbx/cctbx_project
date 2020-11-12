@@ -4,7 +4,10 @@ import libtbx.load_env
 import iotbx.pdb
 import time
 from libtbx.utils import null_out
+from cctbx import crystal, adptbx
 from six.moves import range
+from libtbx.test_utils import approx_equal
+from scitbx.array_family import flex
 
 pdb_str_1 = """
 CRYST1   79.110   79.110   37.465  90.00  90.00  90.00 P 43 21 2
@@ -167,6 +170,80 @@ TER
 END
 """
 
+def exercise_convert_to_isotropic():
+  pdb_str = """
+ATOM    104  N   SER A   8      14.526  19.060  18.223  1.00  5.10           N
+ANISOU  104  N   SER A   8      500    632    808   -107     58    104       N
+ATOM    105  CA  SER A   8      14.099  17.792  18.758  1.00  5.95           C
+"""
+  cs = crystal.symmetry((5.01, 5.01, 5.47, 90, 90, 120), "P 62 2 2")
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  model = mmtbx.model.manager(
+    model_input      = pdb_inp,
+    crystal_symmetry = cs)
+  #
+  m = model.deep_copy()
+  m.convert_to_isotropic()
+  assert approx_equal(
+    m.get_hierarchy().atoms().extract_b(), [5.105875, 5.95])
+  assert approx_equal(
+    m.get_hierarchy().atoms().extract_uij(),
+    [(-1.0, -1.0, -1.0, -1.0, -1.0, -1.0), (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0)])
+  #
+  m = model.deep_copy()
+  m.convert_to_isotropic(selection=flex.bool([False, True]))
+  assert approx_equal(
+    m.get_hierarchy().atoms().extract_b(),
+    model.get_hierarchy().atoms().extract_b())
+  assert approx_equal(
+    m.get_hierarchy().atoms().extract_uij(),
+    model.get_hierarchy().atoms().extract_uij())
+  #
+  m1 = model.deep_copy()
+  m2 = model.deep_copy()
+  m1.convert_to_isotropic(selection=flex.bool([True, False]))
+  m2.convert_to_isotropic()
+  assert approx_equal(
+    m1.get_hierarchy().atoms().extract_b(),
+    m2.get_hierarchy().atoms().extract_b())
+  assert approx_equal(
+    m1.get_hierarchy().atoms().extract_uij(),
+    m2.get_hierarchy().atoms().extract_uij())
+
+def exercise_set_b_iso():
+  pdb_str = """
+ATOM    104  N   SER A   8      14.526  19.060  18.223  1.00  5.10           N
+ANISOU  104  N   SER A   8      500    632    808   -107     58    104       N
+ATOM    105  CA  SER A   8      14.099  17.792  18.758  1.00  5.95           C
+"""
+  cs = crystal.symmetry((5.01, 5.01, 5.47, 90, 90, 120), "P 62 2 2")
+  uc = cs.unit_cell()
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  model = mmtbx.model.manager(
+    model_input      = pdb_inp,
+    crystal_symmetry = cs)
+  #
+  m = model.deep_copy()
+  bs = flex.double([10,20])
+  m.set_b_iso(values = bs)
+  assert approx_equal(m.get_hierarchy().atoms().extract_b(), [-1.0, 20.0])
+  us = m.get_hierarchy().atoms().extract_uij()
+  assert approx_equal(us[0], model.get_hierarchy().atoms().extract_uij()[0])
+  assert approx_equal(us[1], (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0))
+  u_iso_1 = m.get_xray_structure().scatterers().extract_u_iso()
+  b_iso_2 = m.get_hierarchy().atoms().extract_b()
+  assert approx_equal(u_iso_1[0], -1)
+  assert approx_equal(b_iso_2[0], -1)
+  assert approx_equal(adptbx.u_as_b(u_iso_1[1]), 20)
+  assert approx_equal(b_iso_2[1], 20)
+  #
+  m = model.deep_copy()
+  m.convert_to_isotropic()
+  bs = flex.double([10,20])
+  sel = flex.bool([True, False])
+  m.set_b_iso(values=bs, selection=sel)
+  assert approx_equal(m.get_b_iso(), [10, 5.95])
+
 def exercise_from_sites_cart():
   from cctbx import crystal
   from scitbx.matrix import col
@@ -198,6 +275,8 @@ def exercise_has_hd():
 
 if (__name__ == "__main__"):
   t0 = time.time()
+  exercise_set_b_iso()
+  exercise_convert_to_isotropic()
   run()
   exercise_2()
   exercise_3()

@@ -371,7 +371,6 @@ class manager(object):
     """
     return self._pdb_interpretation_params
 
-
   def get_xray_structure(self):
     if(self._xray_structure is None):
       cs = self.crystal_symmetry()
@@ -381,8 +380,6 @@ class manager(object):
       self._xray_structure = self.get_hierarchy().extract_xray_structure(
         crystal_symmetry = cs)
     return self._xray_structure
-
-  # Setters
 
   def set_sites_cart(self, sites_cart, selection=None):
     if(sites_cart is None): return
@@ -405,7 +402,25 @@ class manager(object):
       b_iso = values
     if(self._xray_structure is not None):
       self.get_xray_structure().set_b_iso(values = b_iso, selection=selection)
+      u_iso = self.get_xray_structure().scatterers().extract_u_iso()
+      b_iso = u_iso * adptbx.u_as_b(1)
+      b_iso = b_iso.set_selected(~self.get_xray_structure().use_u_iso(), -1)
     self.get_hierarchy().atoms().set_b(b_iso)
+
+  def convert_to_isotropic(self, selection=None):
+    if(selection is not None and isinstance(selection, flex.bool)):
+      selection = selection.iselection()
+    if(self._xray_structure is not None):
+      self._xray_structure.convert_to_isotropic(selection = selection)
+    atoms = self.get_hierarchy().atoms()
+    if(selection is None):
+      selection = flex.bool(atoms.size(), True).iselection()
+    for i in selection:
+      a = atoms[i]
+      u_cart = a.uij
+      if(u_cart != (-1,-1,-1,-1,-1,-1)):
+        a.set_uij((-1,-1,-1,-1,-1,-1))
+        a.set_b( adptbx.u_as_b(adptbx.u_cart_as_u_iso(u_cart)) )
 
   def set_occupancies(self, values, selection=None):
     if(values is None): return
@@ -417,8 +432,6 @@ class manager(object):
     if(self._xray_structure is not None):
       self.get_xray_structure().set_occupancies(value = occ)
     self.get_hierarchy().atoms().set_occ(occ)
-
-  # Getters
 
   def get_b_iso(self):
     return self.get_hierarchy().atoms().extract_b()
