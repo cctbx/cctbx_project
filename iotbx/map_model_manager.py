@@ -2332,12 +2332,19 @@ class map_model_manager(object):
       rms_f=f_array_f.data().norm()
       rms_f_list.append(rms_f)
       d         = dsd.select(sel)
-      d_avg     = flex.mean(d)
-      sthol2=0.25/d_avg**2
-      sthol2_list.append(sthol2)
-      if i_bin-1 > n_bins_use and (
-          (not resolution) or (d_avg >= resolution)):
-         n_bins_use = i_bin - 1
+      if d.size() < 0:
+        d_avg     = flex.mean(d)
+        sthol2=0.25/d_avg**2
+        sthol2_list.append(sthol2)
+        if i_bin-1 > n_bins_use and (
+            (not resolution) or (d_avg >= resolution)):
+          n_bins_use = i_bin - 1
+      elif i_bin > 1:
+        sthol2_list.append(sthol2_list[-1])
+      else:
+        sthol2_list.append(0)
+
+
 
     return group_args(
        rms_f_list = rms_f_list,
