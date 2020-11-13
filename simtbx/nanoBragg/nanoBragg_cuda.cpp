@@ -77,13 +77,6 @@ void add_energy_channel_cuda_cu(int deviceId, double * source_I, double * source
                                 cudaPointers &cp, new_api_cudaPointers &newapi_cp);
 
 extern "C"
-void scale_in_place_cuda_cu(int deviceId, double const& scale_factor, new_api_cudaPointers &newapi_cp);
-
-extern "C"
-void add_background_cuda_cu(int deviceId, int, double*, double*, double fluence, double*, double*,
-    double amorphous_molecules, cudaPointers &cp, new_api_cudaPointers &newapi_cp);
-
-extern "C"
 void get_raw_pixels_cuda_cu(int deviceId, double * floatimage, new_api_cudaPointers &);
 
 extern "C"
@@ -228,24 +221,6 @@ void nanoBragg::add_energy_channel_cuda() {
   add_energy_channel_cuda_cu(device_Id, source_I, source_lambda, fluence, Fhkl, h_min, k_min, l_min, h_range, k_range, l_range, cpo, new_api_cpo);
 #else
   throw SCITBX_ERROR("no CUDA implementation of add_energy_channel_cuda");
-#endif
-}
-
-void nanoBragg::scale_in_place_cuda(double const& scale_factor) {
-#ifdef HAVE_NANOBRAGG_SPOTS_CUDA
-  scale_in_place_cuda_cu(device_Id, scale_factor, new_api_cpo);
-#else
-  throw SCITBX_ERROR("no CUDA implementation of scale_in_place_cuda");
-#endif
-}
-
-void nanoBragg::add_background_cuda() {
-#ifdef HAVE_NANOBRAGG_SPOTS_CUDA
-  add_background_cuda_cu(device_Id, stols, stol_of, Fbg_of, fluence,
-                         source_I, source_lambda,
-                         amorphous_molecules, cpo, new_api_cpo);
-#else
-  throw SCITBX_ERROR("no CUDA implementation of add_background_cuda");
 #endif
 }
 

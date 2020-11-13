@@ -12,6 +12,7 @@
 
 #include <scitbx/array_family/shared.h>
 #include <dxtbx/model/detector.h>
+#include <simtbx/nanoBragg/nanoBragg.h>
 #include <iostream>
 
 namespace simtbx {
@@ -30,6 +31,8 @@ struct gpu_detector{
     std::cout << "Detector panel 100\n" << detector[100] << std::endl;
   }*/
   void each_image_allocate_cuda();
+  void scale_in_place_cuda(const double&);
+  void write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg&);
   void each_image_free_cuda();
 
   void free_detail();

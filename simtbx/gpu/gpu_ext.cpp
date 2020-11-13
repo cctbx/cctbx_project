@@ -44,6 +44,9 @@ namespace simtbx { namespace gpu {
             )
         //.def("show_summary",&simtbx::gpu::gpu_detector::show_summary)
         .def("each_image_allocate_cuda", &simtbx::gpu::gpu_detector::each_image_allocate_cuda)
+        .def("scale_in_place_cuda", &simtbx::gpu::gpu_detector::scale_in_place_cuda,
+             "Apply a scale factor directly on the GPU")
+        .def("write_raw_pixels_cuda",&simtbx::gpu::gpu_detector::write_raw_pixels_cuda)
         .def("each_image_free_cuda", &simtbx::gpu::gpu_detector::each_image_free_cuda)
         ;
     }
@@ -61,6 +64,8 @@ namespace simtbx { namespace gpu {
         .def("allocate_cuda",&simtbx::gpu::exascale_api::allocate_cuda)
         .def("add_energy_channel_from_gpu_amplitudes_cuda",
              &simtbx::gpu::exascale_api::add_energy_channel_from_gpu_amplitudes_cuda)
+        .def("add_background_cuda", &simtbx::gpu::exascale_api::add_background_cuda,
+             "Add a background field directly on the GPU")
         .def("show",&simtbx::gpu::exascale_api::show)
         ;
     }

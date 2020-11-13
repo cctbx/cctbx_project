@@ -264,7 +264,7 @@ class several_wavelength_case:
   SIM.add_background()
   return SIM
 
- def several_wavelength_case_exafel_api_for_GPU(self, argchk=False):
+ def modularized_exafel_api_for_GPU(self, argchk=False):
   from simtbx.nanoBragg import gpu_energy_channels
   gpu_channels_singleton = gpu_energy_channels (deviceId = 0)
 
@@ -288,7 +288,13 @@ class several_wavelength_case:
     SIM.xtal_shape = shapetype.Gauss
   SIM.interpolate = 0
   # allocate GPU arrays
-  SIM.allocate_cuda()
+  from simtbx.nanoBragg import exascale_api
+  gpu_simulation = exascale_api(nanoBragg = SIM)
+  gpu_simulation.allocate_cuda()
+
+  from simtbx.nanoBragg import gpu_detector as gpud
+  gpu_detector = gpud(deviceId=SIM.device_Id, detector=self.DETECTOR)
+  gpu_detector.each_image_allocate_cuda()
 
   # loop over energies
   for x in range(len(self.flux)):
@@ -296,9 +302,11 @@ class several_wavelength_case:
       SIM.wavelength_A = self.wavlen[x]
       print("USE_EXASCALE_API+++++++++++++ Wavelength %d=%.6f, Flux %.6e, Fluence %.6e"%(
             x, SIM.wavelength_A, SIM.flux, SIM.fluence))
-      SIM.add_energy_channel_from_gpu_amplitudes_cuda(x,gpu_channels_singleton)
+      gpu_simulation.add_energy_channel_from_gpu_amplitudes_cuda(
+        x, gpu_channels_singleton, gpu_detector)
+
   per_image_scale_factor = 1.0
-  SIM.scale_in_place_cuda(per_image_scale_factor) # apply scale directly on GPU
+  gpu_detector.scale_in_place_cuda(per_image_scale_factor) # apply scale directly on GPU
   SIM.wavelength_A = self.BEAM.get_wavelength() # return to canonical energy for subsequent background
 
   cuda_background = True
@@ -310,15 +318,15 @@ class several_wavelength_case:
       SIM.flux=1e12
       SIM.beamsize_mm=0.003 # square (not user specified)
       SIM.exposure_s=1.0 # multiplies flux x exposure
-      SIM.add_background_cuda()
+      gpu_simulation.add_background_cuda(gpu_detector)
 
-      # deallocate GPU arrays
-      SIM.get_raw_pixels_cuda()  # updates SIM.raw_pixels from GPU
-      SIM.deallocate_cuda()
+      # deallocate GPU arrays afterward
+      gpu_detector.write_raw_pixels_cuda(SIM)  # updates SIM.raw_pixels from GPU
+      gpu_detector.each_image_free_cuda()
   else:
-      # deallocate GPU arrays
-      SIM.get_raw_pixels_cuda()  # updates SIM.raw_pixels from GPU
-      SIM.deallocate_cuda()
+      # deallocate GPU arrays up front
+      gpu_detector.write_raw_pixels_cuda(SIM)  # updates SIM.raw_pixels from GPU
+      gpu_detector.each_image_free_cuda()
 
       SIM.Fbg_vs_stol = water
       SIM.amorphous_sample_thick_mm = 0.02
@@ -349,7 +357,7 @@ if __name__=="__main__":
   SF_model.random_structure(CRYSTAL)
   SF_model.ersatz_correct_to_P1()
 
-  # Use case 1.  Simple monochromatic X-rays
+  print("\n# Use case 1.  Simple monochromatic X-rays")
   SIM = simple_monochromatic_case(BEAM, DETECTOR, CRYSTAL, SF_model)
   SIM.to_smv_format(fileout="test_full_001.img")
   SIM.to_cbf("test_full_001.cbf")
@@ -359,17 +367,18 @@ if __name__=="__main__":
   assert approx_equal(SIM.raw_pixels, SIM2.raw_pixels)
   assert approx_equal(SIM.raw_pixels, SIM3.raw_pixels)
 
-  # Use case 2.  Three-wavelength polychromatic source
+  print("\n# Use case 2.  Three-wavelength polychromatic source")
   SWC = several_wavelength_case(BEAM, DETECTOR, CRYSTAL, SF_model)
   SIM = SWC.several_wavelength_case_for_CPU()
   SIM.to_smv_format(fileout="test_full_002.img")
   SIM.to_cbf("test_full_002.cbf")
 
-  SIM2 = SWC.several_wavelength_case_exafel_api_for_GPU(argchk=False)
-  SIM2.to_cbf("test_full_0022.cbf")
-  diffs("CPU",SIM.raw_pixels, "GPU",SIM2.raw_pixels)
-  SIM3 = SWC.several_wavelength_case_exafel_api_for_GPU(argchk=True)
-  diffs("CPU",SIM.raw_pixels, "GPU argchk",SIM3.raw_pixels)
+  print("\n# Use case modularized api")
+  SIM4 = SWC.modularized_exafel_api_for_GPU(argchk=False)
+  SIM4.to_cbf("test_full_004.cbf")
+  diffs("CPU",SIM.raw_pixels, "GPU",SIM4.raw_pixels)
+  SIM5 = SWC.modularized_exafel_api_for_GPU(argchk=True)
+  diffs("CPU",SIM.raw_pixels, "GPU argchk",SIM5.raw_pixels)
   #assert approx_equal(SIM.raw_pixels, SIM2.raw_pixels)
   #assert approx_equal(SIM.raw_pixels, SIM3.raw_pixels)
 

@@ -23,6 +23,22 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
 		float * max_I_y_reduction /*out*/, bool * rangemap);
 
 __global__ void add_array_CUDAKernel(double * lhs, float * rhs, int array_size);
+__global__ void scale_array_CUDAKernel(double scale_factor, double * lhs, int array_size);
 
+__global__ void nanoBraggSpotsInitCUDAKernel(int spixels, int fpixesl, float * floatimage, float * omega_reduction,
+                float * max_I_x_reduction,
+		float * max_I_y_reduction, bool * rangemap);
+
+__global__ void add_background_CUDAKernel(int sources, int nanoBragg_oversample,
+    CUDAREAL pixel_size, int spixels, int fpixels, int detector_thicksteps, CUDAREAL detector_thickstep, CUDAREAL detector_attnlen,
+    const CUDAREAL * __restrict__ sdet_vector, const CUDAREAL * __restrict__ fdet_vector,
+    const CUDAREAL * __restrict__ odet_vector, const CUDAREAL * __restrict__ pix0_vector,
+    CUDAREAL close_distance, int point_pixel, CUDAREAL detector_thick,
+    const CUDAREAL * __restrict__ source_X, const CUDAREAL * __restrict__ source_Y, const CUDAREAL * __restrict__ source_Z,
+    const CUDAREAL * __restrict__ source_lambda, const CUDAREAL * __restrict__ source_I,
+    int stols, const CUDAREAL * stol_of, const CUDAREAL * Fbg_of,
+    int nopolar, CUDAREAL polarization, const CUDAREAL * __restrict__ polar_vector,
+    CUDAREAL r_e_sqr, CUDAREAL fluence, CUDAREAL amorphous_molecules,
+    float * floatimage);
 #endif // SIMTBX_GPU_SIMULATION_CUH
 

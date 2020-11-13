@@ -1579,19 +1579,6 @@ extern "C" void add_energy_channel_cuda_cu(int deviceId, double * source_I, doub
           cp.cu_spixels * cp.cu_fpixels);
 }
 
-extern "C"
-void scale_in_place_cuda_cu(int deviceId, double const& scale_factor, new_api_cudaPointers &newapi_cp){
-  cudaSetDevice(deviceId);
-  cudaDeviceProp deviceProps = { 0 };
-  CUDA_CHECK_RETURN(cudaGetDeviceProperties(&deviceProps, deviceId));
-  int smCount = deviceProps.multiProcessorCount;
-  dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
-  dim3 numBlocks(smCount * 8, 1);
-  int total_pixels = newapi_cp.cu_slow_pixels * newapi_cp.cu_fast_pixels;
-  scale_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
-          scale_factor, newapi_cp.cu_accumulate_floatimage, total_pixels);
-}
-
 __global__ void add_background_CUDAKernel(int sources, int nanoBragg_oversample,
     CUDAREAL pixel_size, int spixels, int fpixels, int detector_thicksteps, CUDAREAL detector_thickstep, CUDAREAL detector_attnlen,
     const CUDAREAL * __restrict__ sdet_vector, const CUDAREAL * __restrict__ fdet_vector,
@@ -1718,57 +1705,6 @@ __global__ void add_background_CUDAKernel(int sources, int nanoBragg_oversample,
             } /* end of sub-pixel x loop */
             /* save photons/pixel (if fluence specified), or F^2/omega if no fluence given */
             floatimage[j] += Ibg*r_e_sqr*fluence*amorphous_molecules/steps;    } // end of pixIdx loop
-}
-
-extern "C"
-void add_background_cuda_cu(int deviceId, int stols, double* stol_of, double* Fbg_of, double fluence,
-  double * source_I, double * source_lambda,
-  double amorphous_molecules, cudaPointers &cp, new_api_cudaPointers &newapi_cp){
-
-  // transfer source_I, source_lambda
-  CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cp.cu_source_I, source_I, cp.cu_sources));
-  CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cp.cu_source_lambda, source_lambda, cp.cu_sources));
-
-  CUDAREAL * cu_stol_of;
-  CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_stol_of, sizeof(*cu_stol_of) * stols));
-  CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_stol_of, stol_of, stols));
-
-  CUDAREAL * cu_Fbg_of;
-  CUDA_CHECK_RETURN(cudaMalloc((void ** )&cu_Fbg_of, sizeof(*cu_Fbg_of) * stols));
-  CUDA_CHECK_RETURN(cudaMemcpyVectorDoubleToDevice(cu_Fbg_of, Fbg_of, stols));
-
-  cudaDeviceProp deviceProps = { 0 };
-  CUDA_CHECK_RETURN(cudaGetDeviceProperties(&deviceProps, deviceId));
-  int smCount = deviceProps.multiProcessorCount;
-  dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
-  dim3 numBlocks(smCount * 8, 1);
-
-  //  initialize the device memory within a kernel. //have not analyzed to see if initializaiton is needed
-  nanoBraggSpotsInitCUDAKernel<<<numBlocks, threadsPerBlock>>>(cp.cu_spixels, cp.cu_fpixels,
-          cp.cu_floatimage, cp.cu_omega_reduction, cp.cu_max_I_x_reduction, cp.cu_max_I_y_reduction,
-          cp.cu_rangemap);
-  CUDA_CHECK_RETURN(cudaPeekAtLastError());
-  CUDA_CHECK_RETURN(cudaDeviceSynchronize());
-
-  add_background_CUDAKernel<<<numBlocks, threadsPerBlock>>>(cp.cu_sources, cp.cu_oversample,
-    cp.cu_pixel_size, cp.cu_spixels, cp.cu_fpixels, cp.cu_detector_thicksteps,
-    cp.cu_detector_thickstep, cp.cu_detector_mu,
-    cp.cu_sdet_vector, cp.cu_fdet_vector, cp.cu_odet_vector, cp.cu_pix0_vector,
-    cp.cu_close_distance, cp.cu_point_pixel, cp.cu_detector_thick,
-    cp.cu_source_X, cp.cu_source_Y, cp.cu_source_Z,
-    cp.cu_source_lambda, cp.cu_source_I,
-    stols, cu_stol_of, cu_Fbg_of,
-    cp.cu_nopolar, cp.cu_polarization, cp.cu_polar_vector,
-    cp.cu_r_e_sqr, fluence, amorphous_molecules,
-    cp.cu_floatimage /*out*/);
-
-  CUDA_CHECK_RETURN(cudaPeekAtLastError());
-  CUDA_CHECK_RETURN(cudaDeviceSynchronize());
-  add_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(newapi_cp.cu_accumulate_floatimage, cp.cu_floatimage,
-          cp.cu_spixels * cp.cu_fpixels);
-
-  CUDA_CHECK_RETURN(cudaFree(cu_stol_of));
-  CUDA_CHECK_RETURN(cudaFree(cu_Fbg_of));
 }
 
 extern "C" void get_raw_pixels_cuda_cu(int deviceId, double * floatimage, new_api_cudaPointers &newapi_cp) {

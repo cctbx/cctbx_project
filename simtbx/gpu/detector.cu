@@ -1,5 +1,9 @@
 #include <cudatbx/cuda_base.cuh>
 #include <simtbx/gpu/detector.h>
+#include <simtbx/gpu/simulation.cuh>
+#define THREADS_PER_BLOCK_X 128
+#define THREADS_PER_BLOCK_Y 1
+#define THREADS_PER_BLOCK_TOTAL (THREADS_PER_BLOCK_X * THREADS_PER_BLOCK_Y)
 
 namespace simtbx {
 namespace gpu {
@@ -42,6 +46,34 @@ namespace gpu {
       cudaSafeCall(cudaFree(cu_accumulate_floatimage));
     }
   };
+
+  void
+  gpu_detector::scale_in_place_cuda(const double& factor){
+    cudaSafeCall(cudaSetDevice(h_deviceID));
+    cudaDeviceProp deviceProps = { 0 };
+    cudaSafeCall(cudaGetDeviceProperties(&deviceProps, h_deviceID));
+  int smCount = deviceProps.multiProcessorCount;
+  dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+  dim3 numBlocks(smCount * 8, 1);
+  int total_pixels = _image_size;
+  scale_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
+    factor, cu_accumulate_floatimage, total_pixels);
+  }
+
+  void
+  gpu_detector::write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg& nB){
+    //only implement the monolithic detector case, one panel
+    SCITBX_ASSERT(nB.spixels == cu_slow_pixels);
+    SCITBX_ASSERT(nB.fpixels == cu_fast_pixels);
+    SCITBX_ASSERT(cu_n_panels == 1);
+    double * double_floatimage = nB.raw_pixels.begin();
+    cudaSafeCall(cudaSetDevice(nB.device_Id));
+    cudaSafeCall(cudaMemcpy(
+     double_floatimage,
+     cu_accumulate_floatimage,
+     sizeof(*cu_accumulate_floatimage) * _image_size,
+     cudaMemcpyDeviceToHost));
+  }
 
   void
   gpu_detector::each_image_allocate_cuda(){
@@ -102,16 +134,7 @@ namespace gpu {
   void
   gpu_detector::each_image_free_cuda(){
     cudaSetDevice(h_deviceID);
-    SCITBX_EXAMINE(h_deviceID);
-    SCITBX_EXAMINE(cu_omega_reduction);
-    SCITBX_EXAMINE(cu_max_I_x_reduction);
-    SCITBX_EXAMINE(cu_max_I_y_reduction);
-    SCITBX_EXAMINE(cu_rangemap);
-    SCITBX_EXAMINE(cu_maskimage);
-    SCITBX_EXAMINE(cu_floatimage);
     cudaSafeCall(cudaDeviceSynchronize());
-Line:  112
-Error: misaligned address
     cudaSafeCall(cudaFree(cu_omega_reduction));
     cudaSafeCall(cudaFree(cu_max_I_x_reduction));
     cudaSafeCall(cudaFree(cu_max_I_y_reduction));

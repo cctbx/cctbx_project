@@ -1,6 +1,8 @@
+#include <scitbx/array_family/boost_python/flex_fwd.h>
 #include <cudatbx/cuda_base.cuh>
 #include <simtbx/gpu/simulation.h>
 #include <simtbx/gpu/simulation.cuh>
+#include <scitbx/array_family/flex_types.h>
 #define THREADS_PER_BLOCK_X 128
 #define THREADS_PER_BLOCK_Y 1
 #define THREADS_PER_BLOCK_TOTAL (THREADS_PER_BLOCK_X * THREADS_PER_BLOCK_Y)
@@ -8,6 +10,7 @@
 namespace simtbx {
 namespace gpu {
 
+namespace af = scitbx::af;
 //refactor later into helper file
   static cudaError_t cudaMemcpyVectorDoubleToDevice(CUDAREAL *dst, const double *src, size_t vector_items) {
 	CUDAREAL * temp = new CUDAREAL[vector_items];
@@ -56,7 +59,12 @@ namespace gpu {
     simtbx::gpu::gpu_detector & gdt
   ){
         cudaSafeCall(cudaSetDevice(SIM.device_Id));
-    
+
+        // transfer source_I, source_lambda
+        // the int arguments are for sizes of the arrays
+        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_I, SIM.source_I, SIM.sources));
+        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_lambda, SIM.source_lambda, SIM.sources));
+
         // magic happens here: take pointer from singleton, temporarily use it for add Bragg iteration:
         cu_current_channel_Fhkl = gec.d_channel_Fhkl[ichannel];
 
@@ -85,8 +93,7 @@ namespace gpu {
           gdt.cu_maskimage, gdt.cu_floatimage /*out*/, gdt.cu_omega_reduction/*out*/,
           gdt.cu_max_I_x_reduction/*out*/, gdt.cu_max_I_y_reduction /*out*/, gdt.cu_rangemap /*out*/);
 
-        printf("We have CALLED the kernel\n");
-        //dont want to free the gec data when the nanoBragg goes out of scope, so switch the pointer
+        //don't want to free the gec data when the nanoBragg goes out of scope, so switch the pointer
         cu_current_channel_Fhkl = NULL;
 
         cudaSafeCall(cudaPeekAtLastError());
@@ -97,18 +104,72 @@ namespace gpu {
   }
 
   void
+  exascale_api::add_background_cuda(simtbx::gpu::gpu_detector & gdt){
+        cudaSafeCall(cudaSetDevice(SIM.device_Id));
+
+        // transfer source_I, source_lambda
+        // the int arguments are for sizes of the arrays
+        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_I, SIM.source_I, SIM.sources));
+        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_lambda, SIM.source_lambda, SIM.sources));
+
+        CUDAREAL * cu_stol_of;
+        cudaSafeCall(cudaMalloc((void ** )&cu_stol_of, sizeof(*cu_stol_of) * SIM.stols));
+        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_stol_of, SIM.stol_of, SIM.stols));
+
+        CUDAREAL * cu_Fbg_of;
+        cudaSafeCall(cudaMalloc((void ** )&cu_Fbg_of, sizeof(*cu_Fbg_of) * SIM.stols));
+        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_Fbg_of, SIM.Fbg_of, SIM.stols));
+
+        cudaDeviceProp deviceProps = { 0 };
+        cudaSafeCall(cudaGetDeviceProperties(&deviceProps, SIM.device_Id));
+        int smCount = deviceProps.multiProcessorCount;
+        dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+        dim3 numBlocks(smCount * 8, 1);
+
+        // the for loop around panels will go here.  Offsets will be given.
+
+        //  initialize the device memory within a kernel. //havn't analyzed to see if initialization is needed
+        nanoBraggSpotsInitCUDAKernel<<<numBlocks, threadsPerBlock>>>(
+          gdt.cu_slow_pixels, gdt.cu_fast_pixels,
+          gdt.cu_floatimage, gdt.cu_omega_reduction, gdt.cu_max_I_x_reduction, gdt.cu_max_I_y_reduction,
+          gdt.cu_rangemap);
+        cudaSafeCall(cudaPeekAtLastError());
+        cudaSafeCall(cudaDeviceSynchronize());
+
+        add_background_CUDAKernel<<<numBlocks, threadsPerBlock>>>(SIM.sources, SIM.oversample,
+          SIM.pixel_size, gdt.cu_slow_pixels, gdt.cu_fast_pixels, SIM.detector_thicksteps,
+          SIM.detector_thickstep, SIM.detector_attnlen,
+          cu_sdet_vector, cu_fdet_vector, cu_odet_vector, cu_pix0_vector,
+          SIM.close_distance, SIM.point_pixel, SIM.detector_thick,
+          cu_source_X, cu_source_Y, cu_source_Z,
+          cu_source_lambda, cu_source_I,
+          SIM.stols, cu_stol_of, cu_Fbg_of,
+          SIM.nopolar, SIM.polarization, cu_polar_vector,
+          simtbx::nanoBragg::r_e_sqr, SIM.fluence, SIM.amorphous_molecules,
+          gdt.cu_floatimage /*out*/);
+
+        cudaSafeCall(cudaPeekAtLastError());
+        cudaSafeCall(cudaDeviceSynchronize());
+        add_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(gdt.cu_accumulate_floatimage, gdt.cu_floatimage,
+          gdt.cu_n_panels * gdt.cu_slow_pixels * gdt.cu_fast_pixels);
+
+        cudaSafeCall(cudaFree(cu_stol_of));
+        cudaSafeCall(cudaFree(cu_Fbg_of));
+}
+
+  void
   exascale_api::allocate_cuda(){
     cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
-  /* water_size not defined in class, CLI argument, defaults to 0 */
-  double water_size = 0.0;
-  /* missing constants */
-  double water_F = 2.57;
-  double water_MW = 18.0;
+    /* water_size not defined in class, CLI argument, defaults to 0 */
+    double water_size = 0.0;
+    /* missing constants */
+    double water_F = 2.57;
+    double water_MW = 18.0;
 
-  /* make sure we are normalizing with the right number of sub-steps */
-  int nb_steps = SIM.phisteps*SIM.mosaic_domains*SIM.oversample*SIM.oversample;
-  double nb_subpixel_size = SIM.pixel_size/SIM.oversample;
+    /* make sure we are normalizing with the right number of sub-steps */
+    int nb_steps = SIM.phisteps*SIM.mosaic_domains*SIM.oversample*SIM.oversample;
+    double nb_subpixel_size = SIM.pixel_size/SIM.oversample;
 
         /*create transfer arguments to device space*/
         cu_subpixel_size = nb_subpixel_size; //check for conflict?
@@ -183,6 +244,7 @@ namespace gpu {
         cudaSafeCall(cudaMalloc((void ** )&cu_mosaic_umats, sizeof(*cu_mosaic_umats) * cu_mosaic_domains * 9));
         cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_mosaic_umats, SIM.mosaic_umats, cu_mosaic_domains * 9));
   };
+
   exascale_api::~exascale_api(){
     cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
@@ -202,7 +264,6 @@ namespace gpu {
         cudaSafeCall(cudaFree(cu_c0));
         cudaSafeCall(cudaFree(cu_mosaic_umats));
         cudaSafeCall(cudaFree(cu_polar_vector));
-
   }
 
 } // gpu
