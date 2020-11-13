@@ -6413,15 +6413,24 @@ class match_map_model_ncs(object):
 def get_average_scale_factors(scale_factor_info):
   average_scale_factors = None
   n = 0
+  n_bins = None
   for sgi in scale_factor_info.value_list:
-    if sgi.overall_scale:
+    if sgi and hasattr(sgi,'overall_scale') and sgi.overall_scale:
        if not average_scale_factors:
          average_scale_factors = flex.double(sgi.overall_scale.size(),0)
        average_scale_factors += sgi.overall_scale
        n+=1
-  assert n > 0
-  average_scale_factors = average_scale_factors/n
-  return average_scale_factors
+    elif sgi and hasattr(sgi,'scaling_info_list') and sgi.scaling_info_list \
+      and hasattr(sgi.scaling_info_list[0],'target_sthol2'):
+     n_bins = sgi.scaling_info_list[0].target_sthol2.size()
+  if n == 0: 
+    if n_bins:
+      return flex.double(n_bins, 1.0)
+    else:
+      return None
+  else:
+    average_scale_factors = average_scale_factors/n
+    return average_scale_factors
 
 def get_tlso_group_info_from_model(model, nproc = 1, log = sys.stdout):
   ''' Extract tlso_group_info from aniso records in model'''
