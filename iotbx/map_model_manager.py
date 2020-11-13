@@ -427,6 +427,7 @@ class map_model_manager(object):
   # prevent pickling error in Python 3 with self.log = sys.stdout
   # unpickling is limited to restoring sys.stdout
   def __getstate__(self):
+    import io
     pickle_dict = self.__dict__.copy()
     if isinstance(self.log, io.TextIOWrapper):
       pickle_dict['log'] = None
@@ -1518,6 +1519,7 @@ class map_model_manager(object):
           crystal_symmetry = self.model().crystal_symmetry())
 
       if replace_u_aniso and tlso_value: # calculate aniso U from
+        print("Replacing u_cart values based on TLS info",file = self.log)
         xrs=self.model().get_xray_structure()
         xrs.convert_to_anisotropic()
         uc = xrs.unit_cell()
@@ -2408,9 +2410,14 @@ class map_model_manager(object):
     if comparison_map_id is None:
       comparison_map_id = 'map_manager'
 
-    kb_list= [ [0,0], [0.1,20], [0.1,50],
+    kb_list= [ [0,0],
+                      [0.1,20], [0.1,50],
                       [0.2,20], [0.2,50],
                       [0.3,20], [0.3,50],
+                      [0.15,20], [0.15,50],
+                      [0.15,30], [0.15,40],
+                      [0.15,10], [0.15,60],
+                      [0.15,0], [0.15,5],
              ]
 
     from cctbx.development.create_models_or_maps import generate_model, \
@@ -2679,7 +2686,7 @@ class map_model_manager(object):
       expected_ssqr_list = None,
       expected_ssqr_list_rms = None,
       tlso_group_info = None,
-      overall_sharpen_before_and_after_local = True,
+      overall_sharpen_before_and_after_local = False,
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
       n_direction_vectors = None,
@@ -2756,7 +2763,7 @@ class map_model_manager(object):
       nproc = None,
       optimize_b_eff = None,
       equalize_power = None,
-      overall_sharpen_before_and_after_local = True,
+      overall_sharpen_before_and_after_local = False,
       get_tls_info_only = None,
       coordinate_shift_to_apply_before_tlso = None,
     ):
@@ -2846,7 +2853,7 @@ class map_model_manager(object):
       equalize_power = None,
       map_id_model_map = 'model_map_for_scaling',
       optimize_with_model = None,
-      overall_sharpen_before_and_after_local = True,
+      overall_sharpen_before_and_after_local = False,
       mask_around_model = True,
       get_tls_info_only = None,
       coordinate_shift_to_apply_before_tlso = None,
@@ -2902,8 +2909,25 @@ class map_model_manager(object):
       kw['model_id_for_rms_fc'] = kw['model_id']
 
 
-    # If we are going to use TLS groups from the model, check them here
-    if find_tls_from_model:
+    if tlso_group_info:  # convert to lists
+      #tlso_group_info.tlso_selection_list,
+      # tlso_group_info.tlso_shift_cart_list,):
+      tlso_group_info.T_list = []
+      tlso_group_info.L_list = []
+      tlso_group_info.S_list = []
+      tlso_group_info.O_list = []
+      for tlso in tlso_group_info.tlso_list:
+        tlso_group_info.T_list.append(tlso.t)
+        tlso_group_info.L_list.append(tlso.l)
+        tlso_group_info.S_list.append(tlso.s)
+        tlso_group_info.O_list.append(tlso.origin)
+      tlso_group_info.tlso_list = None
+      tlso_group_info.tlso_selection_list = \
+         tlso_group_info.selection_as_text_list
+      tlso_group_info.tlso_shift_cart_list = len(
+         tlso_group_info.tlso_selection_list) *[None] # ZZZ May need shift cart
+    elif find_tls_from_model:
+      # If we are going to use TLS groups from the model, check them here
       if not self.model():
         raise Sorry("Need model for find_tls_from_model")
       tlso_group_info = get_tlso_group_info_from_model(
@@ -4169,6 +4193,7 @@ class map_model_manager(object):
      replace_boundary = None,
      replace_outside = None,
      coordinate_shift_to_apply_before_tlso = None,
+     require_positive_definite = False,
     ):
 
     # Apply external values if supplied
@@ -4256,9 +4281,13 @@ class map_model_manager(object):
         origin         = cm,
         sites          = xyz_list_use,
         max_iterations = 100)
-
-      T=result.T_min
-      L=result.L_min
+      if require_positive_definite:
+        # Make sure they are positive definite
+        T = adptbx.eigenvalue_filtering(result.T_min)
+        L = adptbx.eigenvalue_filtering(result.L_min)
+      else:
+        T = result.T_min
+        L = result.L_min
       S=result.S_min
 
       # Decide what aniso to apply. Usually the one we just calculated
@@ -6314,11 +6343,18 @@ def get_tlso_group_info_from_model(model, nproc = 1, log = sys.stdout):
   print("\nExtracting tlso_group_info from model", file = log)
   model_use=model.deep_copy()  # this routine overwrites...
 
+
   xrs=model_use.get_xray_structure()
-  xrs.convert_to_anisotropic()
+  u_iso  = xrs.extract_u_iso_or_u_equiv() # to check for positivity
+
+  sel1 = (u_iso >= 0)
+  model_use = model_use.select(sel1)
+
+  xrs=model_use.get_xray_structure()
   uc = xrs.unit_cell()
   sites_cart = xrs.sites_cart()
-  u_cart=xrs.scatterers().extract_u_cart(uc)
+  u_cart = xrs.scatterers().extract_u_cart(uc)
+  u_iso  = xrs.extract_u_iso_or_u_equiv() # to check for positivity
   pdb_hierarchy = model_use.get_hierarchy()
 
   ok = False
@@ -6359,8 +6395,6 @@ def get_tlso_group_info_from_model(model, nproc = 1, log = sys.stdout):
 
     result = tools.tls_from_uaniso_minimizer(
       uaniso         = u_cart.select(sel),
-
-
       T_initial      = [0,0,0,0,0,0],
       L_initial      = [0,0,0,0,0,0],
       S_initial      = [0,0,0,0,0,0,0,0,0],
@@ -6738,6 +6772,9 @@ def get_split_maps_and_models(
   '''
 
   from iotbx.map_model_manager import map_model_manager as MapModelManager
+  if hasattr(box_info,'tlso_group_info') and box_info.tlso_group_info:
+    # cannot pickle tlso values
+    box_info.tlso_group_info.tlso_list = None
   box_info = deepcopy(box_info)
   if first_to_use is not None and last_to_use is not None:
     for x in ['lower_bounds_with_cushion_list','upper_bounds_with_cushion_list',
