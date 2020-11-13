@@ -6423,7 +6423,7 @@ def get_average_scale_factors(scale_factor_info):
     elif sgi and hasattr(sgi,'scaling_info_list') and sgi.scaling_info_list \
       and hasattr(sgi.scaling_info_list[0],'target_sthol2'):
      n_bins = sgi.scaling_info_list[0].target_sthol2.size()
-  if n == 0: 
+  if n == 0:
     if n_bins:
       return flex.double(n_bins, 1.0)
     else:
