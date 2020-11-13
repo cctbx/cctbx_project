@@ -185,7 +185,8 @@ class map_model_manager(object):
     # if the incoming model is simply shifted relative to the maps...make them
     #  match by adjusting the model shift
 
-    if model and map_manager and model.shift_cart() != map_manager.shift_cart():
+    if model and map_manager and model.crystal_symmetry() and \
+        model.shift_cart() and model.shift_cart() != map_manager.shift_cart():
       if extra_model_list:  # make sure extras have same shift as model
         for m in extra_model_list:
           assert m.shift_cart() == model.shift_cart() # all models same shift
