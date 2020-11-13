@@ -1974,6 +1974,7 @@ class map_manager(map_reader, write_ccp4_map):
      box_cushion = 3,
      get_unique_set_for_boxes = None,
      do_not_go_over_target = None,
+     target_xyz_center_list = None,
        ):
     '''
      Return a group_args object with a list of lower_bounds and upper_bounds
@@ -1984,6 +1985,8 @@ class map_manager(map_reader, write_ccp4_map):
      Also return boxes with cushion of box_cushion
      If get_unique_set_for_boxes is set, try to use map symmetry to identify
        duplicates and set ncs_object
+     If target_xyz_center_list is set, use these points as centers but try
+      to use standard box size.
     '''
     assert self.origin_is_zero()
     cushion_nx_ny_nz = tuple([int(0.5 + x * n) for x,n in
@@ -1998,6 +2001,7 @@ class map_manager(map_reader, write_ccp4_map):
        cushion_nx_ny_nz = cushion_nx_ny_nz,
        wrapping = self.wrapping(),
        do_not_go_over_target = do_not_go_over_target,
+       target_xyz_center_list = target_xyz_center_list,
      )
     box_info.ncs_object = None
 

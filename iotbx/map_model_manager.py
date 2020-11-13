@@ -1699,6 +1699,7 @@ class map_model_manager(object):
 
        skip_waters and skip_hetero define whether waters and hetero atoms are
         ignored
+
     '''
 
     return self._split_up_map_and_model(
@@ -1759,10 +1760,15 @@ class map_model_manager(object):
       not tile the map.
     If skip_empty_boxes then skip anything with no model.
 
-    if mask_around_unselected_atoms is set, then mask within each box
+    If mask_around_unselected_atoms is set, then mask within each box
      around all the atoms that are not selected (including waters/hetero)
      with a mask_radius of mask_radius and set the value inside the mask to
       masked_value
+
+     If exclude_points_outside_density and boxes method is selected,
+       try to add boxes inside density (basically add the proportional
+       number of boxes but put them definitely inside the density instead
+       of evenly spaced.
 
     '''
     print ("Splitting up map and model into overlapping boxes (%s method)" %(
@@ -2466,14 +2472,34 @@ class map_model_manager(object):
     mask_id = None,
     tls_by_chain = True,
     apply_tls_to_model = True,
+    iterations = 2,
     skip_waters = True,
     skip_hetero = True,
     coordinate_shift_to_apply_before_tlso = None,
-    core_box_size_ratio = 6.,
-    box_cushion_ratio = 1.5,
+    core_box_size_ratio = None,
+    box_cushion_ratio = None,
     exclude_points_outside_density = True,
     d_min = None,
       **kw):
+    if iterations:
+      from libtbx import adopt_init_args
+      kw_obj = group_args()
+      adopt_init_args(kw_obj, locals())
+      all_kw = kw_obj() # save calling parameters in kw as dict
+      del all_kw['adopt_init_args'] # REQUIRED
+      del all_kw['kw_obj']  # REQUIRED
+
+      all_kw.update(kw)
+      del all_kw['kw']
+      all_kw['iterations'] = None
+      all_kw_use = deepcopy(all_kw)
+      print("\nRunning total of %s iterations of TLS from map " %(iterations),
+        file = self.log)
+      for iter in range(iterations-1):
+        print("\nRunning iteration %s of %s of TLS from map" %(
+         iter+1,iterations), file = self.log)
+        result = self.tls_from_map(**all_kw_use)
+      print("\nDone running extra iterations of TLS from map ",file = self.log)
 
     # Save all keywords we want to pass on in kw
     kw['map_id_1'] = map_id_1
@@ -2537,6 +2563,7 @@ class map_model_manager(object):
          box_cushion_ratio = box_cushion_ratio,
          tls_by_chain = False,
          apply_tls_to_model = False,
+         iterations = None,
           **kw)
         for tlso in box_info.tlso_list:
           tlso_list.append(tlso)
@@ -3907,7 +3934,6 @@ class map_model_manager(object):
           continue
         target_sthol2 = si.target_sthol2
         # Now recalculate target_scale_factors from aniso_u_cart and dv
-
         recip_space_vectors = flex.vec3_double()
         scale_values = flex.double()
         for sthol2 in target_sthol2:
@@ -3945,6 +3971,7 @@ class map_model_manager(object):
             data=scaled_f_array.data()*scaling_group_info.overall_scale)
         # Now extract our values as target_scale_factors
         si.target_scale_factors = scaled_f_array.data()
+
 
   def _analyze_aniso_replace_with_supplied(self,
      scale_factor_info,
@@ -4143,6 +4170,8 @@ class map_model_manager(object):
          default_aniso = center_overall_u_cart
      )
 
+    print("Done updating scale factor info from aniso U values.",
+      file = self.log)
     return tls_info
 
   def _create_mask_from_selection_as_string(self,
@@ -4195,6 +4224,7 @@ class map_model_manager(object):
      replace_outside = None,
      coordinate_shift_to_apply_before_tlso = None,
      require_positive_definite = False,
+     everything_is_inside = False,
     ):
 
     # Apply external values if supplied
@@ -4205,13 +4235,16 @@ class map_model_manager(object):
          tlso_group_info = tlso_group_info)
 
     # Get a mask around the map if not already supplied as mask_id
-    if (not mask_id) or (not self.get_map_manager_by_id(mask_id)):
-      mask_id = self._generate_new_map_id(prefix = 'mask_around_density')
-      self.create_mask_around_density(
-        soft_mask  = True,
-        mask_id = mask_id,
-        map_id = map_id)
-    mask_map_manager = self.get_map_manager_by_id(mask_id)
+    if (not everything_is_inside):
+      if (not mask_id) or (not self.get_map_manager_by_id(mask_id)):
+        mask_id = self._generate_new_map_id(prefix = 'mask_around_density')
+        self.create_mask_around_density(
+          soft_mask  = True,
+          mask_id = mask_id,
+          map_id = map_id)
+      mask_map_manager = self.get_map_manager_by_id(mask_id)
+    else:
+      mask_map_manager = None
 
     tls_info = group_args(
        tlso = None,
@@ -4222,7 +4255,11 @@ class map_model_manager(object):
     mean_u_cart_dict={}
     mean_u_cart_dict_n={}
     inside_dict={True:'Inside mask',False:'Outside mask',None:'Edge of mask'}
-    for inside in [True,False,None]:
+    if everything_is_inside:
+      inside_list = [True]
+    else:
+      inside_list = [True,False,None]
+    for inside in inside_list:
       cutoff_low = cutoff_values(inside).cutoff_low
       cutoff_high = cutoff_values(inside).cutoff_high
 
@@ -4236,6 +4273,7 @@ class map_model_manager(object):
          scale_factor_info,
          mask_map_manager,
          inside = inside,
+         everything_is_inside = everything_is_inside,
          skip_u_cart_of_zero = True)
       xyz_list = working_scale_factor_info.xyz_list
       if xyz_list.size() < 1: continue
@@ -4344,7 +4382,7 @@ class map_model_manager(object):
       print("S: %s" %(str(S)), file = self.log)
 
     print("\nOverall average b_cart by region:",file = self.log)
-    for inside in [True,False,None]:
+    for inside in inside_list:
       where = inside_dict[inside]
       mean_u_cart_dict[inside] /= max(1,mean_u_cart_dict_n[inside])
       b_cart = adptbx.u_as_b(mean_u_cart_dict[inside])
@@ -4502,6 +4540,14 @@ class map_model_manager(object):
     """
 
     xyz_list = scale_factor_info.xyz_list
+    if exclude_points_outside_density and (
+       not scale_factor_info.exclude_points_outside_density):
+      print("Points inside density are filled in so all points are now inside",
+          file = self.log)
+      everything_is_inside = True
+    else:
+      everything_is_inside = None
+
     # Summarize U vs xyz and vs inside/outside
     tls_info = self._analyze_aniso(scale_factor_info,
       tlso_group_info = tlso_group_info,
@@ -4510,15 +4556,21 @@ class map_model_manager(object):
       replace_inside = (replace_aniso_with_tls_equiv and get_scale_as_aniso_u),
       coordinate_shift_to_apply_before_tlso =
            coordinate_shift_to_apply_before_tlso,
+      everything_is_inside = everything_is_inside,
      )
     if get_tls_info_only:
       return tls_info
 
     if get_scale_as_aniso_u:
+      print("Updating scale factors from aniso u values", file = self.log)
       self._update_scale_factor_info_from_aniso(scale_factor_info,
         max_abs_b = max_abs_b)
+      print("Done updating scale factors from aniso u values", file = self.log)
 
     setup_info.kw = kw
+
+    print("Applying interpolated scale factors (resolution and direction)",
+     file = self.log)
 
     # Apply interpolated scale_factors (vs resolution and direction). Split
     # into groups by direction
@@ -4573,6 +4625,8 @@ class map_model_manager(object):
 
       self.add_map_manager_by_id(map_id = new_id,
           map_manager = new_map_manager)
+    print("Done applying interpolated scale factors",
+     file = self.log)
 
     return tls_info
 
@@ -4741,12 +4795,16 @@ class map_model_manager(object):
      scale_factor_info,
      mask_map_manager,
      inside = True,
+     everything_is_inside = None,
      skip_u_cart_of_zero = None):
     new_xyz_list = flex.vec3_double()
     new_value_list = []
     for xyz, value in zip (scale_factor_info.xyz_list,
        scale_factor_info.value_list):
-      if skip_u_cart_of_zero and value.overall_u_cart_to_apply and \
+      if everything_is_inside:
+          new_xyz_list.append(xyz)
+          new_value_list.append(value)
+      elif skip_u_cart_of_zero and value.overall_u_cart_to_apply and \
           flex.pow2(flex.double(
           tuple(value.overall_u_cart_to_apply))).min_max_mean().max ==0:
          pass
@@ -4974,6 +5032,8 @@ class map_model_manager(object):
 
 
     results.setup_info = setup_info
+    results.exclude_points_outside_density = \
+        box_info.exclude_points_outside_density  # are we going to exclude them
     if return_scale_factors:
       return results
 
@@ -5050,25 +5110,28 @@ class map_model_manager(object):
       core_box_size=None,
       smoothing_radius=None,
       skip_boxes = None,
-      box_size_ratio = 6, # never smaller than this ratio to resolution
+      box_size_ratio = 6, # full box never smaller than this ratio to resolution
       ):
+    volume = self.crystal_symmetry().unit_cell().volume()
     if not resolution:
       resolution = self.resolution()
 
     if (n_boxes is not None) or (not core_box_size):  # n_boxes overrides
       if n_boxes:
-        volume = self.crystal_symmetry().unit_cell().volume()
         core_box_size=int(0.5+ volume/n_boxes)**0.33
       else:
         core_box_size = int(0.5+ 3 * resolution)
 
     if not box_cushion:
-      box_cushion = max(2.5 * resolution,0.5*max(0,box_size_ratio * resolution))
+      box_cushion = max(2.5 * resolution,
+        0.5*max(0,box_size_ratio * resolution))
 
-    core_box_size = max(box_size_ratio * resolution-2*box_cushion, core_box_size)
+    core_box_size = max(
+       resolution,
+       box_size_ratio * resolution - 2 * box_cushion,
+       core_box_size)
 
     if (not skip_boxes): # changed 2020-11-06 to recalculate n_boxes
-      volume = self.crystal_symmetry().unit_cell().volume()
       n_boxes = max(1,int(0.5+volume/(core_box_size)**3))
       print ("Target core_box_size: %.2s A  Target boxes: %s Box cushion: %s" %(
         core_box_size, n_boxes, box_cushion),file = self.log)
@@ -6846,6 +6909,7 @@ def get_selections_and_boxes_to_split_model(
         get_unique_set_for_boxes = True,
         mask_id = None,
         exclude_points_outside_density = None,
+        minimum_boxes_inside_density = 10,
          ):
 
   '''
@@ -6862,7 +6926,12 @@ def get_selections_and_boxes_to_split_model(
     If skip_empty_boxes then skip anything with no model.
     if get_unique_set_for_boxes then get a unique set for 'boxes' method
     If mask_id is set and exclude_points_outside_density , skip boxes
-    outside of mask for boxes method
+      outside of mask for boxes method
+     If exclude_points_outside_density,
+       try to add boxes inside density (basically add the proportional
+       number of boxes but put them definitely inside the density instead
+       of evenly spaced.
+
   '''
 
   # Checks
@@ -6923,29 +6992,52 @@ def get_selections_and_boxes_to_split_model(
       if (not skip_empty_boxes) or (selection.count(True) > 0):
         box_info.selection_list.append(selection)
         box_info.selection_as_text_list.append(selection_string)
+
   elif selection_method == 'boxes':
     if info.no_water_or_het and info.no_water_or_het != 'all':
       overall_selection = model.selection("not (%s) " %(info.no_water_or_het))
     else:
       overall_selection = None
 
-    # Get boxes without and with cushion (cushion may be None)
-    box_info = map_manager.get_boxes_to_tile_map(
-      target_for_boxes = target_for_boxes,
-      do_not_go_over_target = True,
-      box_cushion = box_cushion,
-      get_unique_set_for_boxes = get_unique_set_for_boxes)
-
     # Select inside boxes without cushion and create cushion too
     if mask_id and exclude_points_outside_density:
       mask_map_manager = map_model_manager.get_map_manager_by_id(mask_id)
     else:
       mask_map_manager = None
+
+    if exclude_points_outside_density and mask_map_manager:
+      inside = (mask_map_manager.map_data() > 0.5)
+      fraction_inside = inside.count(True)/inside.size()
+      target_n = max(minimum_boxes_inside_density,
+        int(0.5+ fraction_inside * target_for_boxes))
+      volume_inside = fraction_inside * mask_map_manager.crystal_symmetry(
+         ).unit_cell().volume()
+      dist_min = (volume_inside/target_n)**0.33  # approximate spacing
+      target_xyz_center_list = mask_map_manager.trace_atoms_in_map(
+         dist_min, target_n)
+      if len(target_xyz_center_list) < target_n/2:  # try with smaller grid
+        target_xyz_center_list = mask_map_manager.trace_atoms_in_map(
+           dist_min/2., target_n)
+      exclude_points_outside_density = False  # no longer need it
+
+    else:
+      target_xyz_center_list = None
+
+    # Get boxes without and with cushion (cushion may be None)
+    box_info = map_manager.get_boxes_to_tile_map(
+      target_for_boxes = target_for_boxes,
+      do_not_go_over_target = True,
+      box_cushion = box_cushion,
+      get_unique_set_for_boxes = get_unique_set_for_boxes,
+      target_xyz_center_list = target_xyz_center_list,
+      )
+
     box_info = get_selections_from_boxes(
        box_info = box_info,
        model = model,
        overall_selection = overall_selection,
        skip_empty_boxes = skip_empty_boxes,
+       exclude_points_outside_density = exclude_points_outside_density,
        mask_map_manager = mask_map_manager)
 
   if select_final_boxes_based_on_model or (
@@ -6969,6 +7061,7 @@ def get_selections_and_boxes_to_split_model(
   if not box_info.get('selection_as_text_list') or (
        not box_info.selection_as_text_list):
     box_info.selection_as_text_list = [None] * len(box_info.selection_list)
+  box_info.exclude_points_outside_density = exclude_points_outside_density
   box_info.mask_around_unselected_atoms = mask_around_unselected_atoms
   box_info.mask_all_maps_around_edges = mask_all_maps_around_edges
   box_info.mask_radius = mask_radius
@@ -6982,6 +7075,7 @@ def get_selections_from_boxes(box_info = None,
     overall_selection = None,
     skip_empty_boxes = None,
     mask_map_manager = None,
+    exclude_points_outside_density = None,
    ):
   '''
     Generate a list of selections that covers all the atoms in model,
@@ -7010,7 +7104,7 @@ def get_selections_from_boxes(box_info = None,
 
     # Decide if center of this box is inside mask if supplied
     inside_mask = True
-    if mask_map_manager:
+    if mask_map_manager and exclude_points_outside_density:
       center_frac = get_center_of_box_frac(
         lower_bounds = lower_bounds_with_cushion,
         upper_bounds = upper_bounds_with_cushion,

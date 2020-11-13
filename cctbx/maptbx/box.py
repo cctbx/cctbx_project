@@ -1006,6 +1006,7 @@ def get_boxes_to_tile_map(target_for_boxes = 24,
       cushion_nx_ny_nz = None,
       wrapping = False,
       do_not_go_over_target = None,
+      target_xyz_center_list = None,
      ):
 
     '''
@@ -1013,13 +1014,33 @@ def get_boxes_to_tile_map(target_for_boxes = 24,
       If cushion_nx_ny_nz is set ... create a second set of boxes that are
         expanded by cushion_nx_ny_nz in each direction
       Try to make boxes symmetrical in full map
+      If target_xyz_center_list is set, try to use them as centers but keep
+       size the same as would otherwise be used
     '''
     nx,ny,nz = n_real
     smallest = min(nx,ny,nz)
     largest = max(nx,ny,nz)
     target_volume_per_box = (nx*ny*nz)/target_for_boxes
     target_length = target_volume_per_box**0.33
-    if target_for_boxes == 1:
+    if target_xyz_center_list:
+      lower_bounds_list = []
+      upper_bounds_list = []
+      uc = crystal_symmetry.unit_cell()
+      for site_frac in uc.fractionalize(target_xyz_center_list):
+        center_ijk = tuple([ int(0.5+x * n) for x,n in zip(site_frac, n_real)])
+        lower_bounds_list.append(
+          tuple( [
+             int(max(1,min(n-2,(i - (1+target_length)//2)))) for i,n in
+            zip(center_ijk,n_real)
+             ]
+          ))
+        upper_bounds_list.append(
+          tuple( [
+             int(max(1,min(n-2,(i + (1+target_length)//2)))) for i,n in
+            zip(center_ijk,n_real)
+             ]
+          ))
+    elif target_for_boxes == 1:
       lower_bounds_list = [(0,0,0)]
       upper_bounds_list = [tuple([i - 1 for i in n_real])]
     else:
@@ -1058,6 +1079,20 @@ def get_boxes_to_tile_map(target_for_boxes = 24,
     else:
       lower_bounds_with_cushion_list = lower_bounds_list
       upper_bounds_with_cushion_list = upper_bounds_list
+
+    # Now remove any duplicates
+    lb_ub_list = []
+    new_lb_list = []
+    new_ub_list = []
+    for lb,ub in zip (
+         lower_bounds_with_cushion_list,upper_bounds_with_cushion_list):
+       if [lb,ub] in lb_ub_list: continue
+       lb_ub_list.append([lb,ub])
+       new_lb_list.append(lb)
+       new_ub_list.append(ub)
+    lower_bounds_with_cushion_list = new_lb_list
+    upper_bounds_with_cushion_list = new_ub_list
+
     return group_args(
       lower_bounds_list = lower_bounds_list,
       upper_bounds_list = upper_bounds_list,
