@@ -1231,7 +1231,7 @@ def update_scale_values(
    Update the values of target_scale_factors using the information in
    aniso_info and s_matrix and target_scale_factors from overall_si (overall)
   '''
-  # ZZZ UPDDATE HERE
+  # XXX UPDDATE HERE
   for k in range(aniso_info.direction_vectors.size()):
     si = aniso_info.si_list[k]
     original_target_scale_factors = si.target_scale_factors

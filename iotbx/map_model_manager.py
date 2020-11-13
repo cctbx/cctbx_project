@@ -1790,6 +1790,7 @@ class map_model_manager(object):
         masked_value = masked_value,
         mask_id = mask_id,
         exclude_points_outside_density = exclude_points_outside_density,
+        log = self.log,
       )
     if mask_id and exclude_points_outside_density:
       print("Total of %s boxes considered inside density..." %(
@@ -2847,7 +2848,7 @@ class map_model_manager(object):
       model_id = 'model',
       map_id_scaled_list = None,
       map_id_to_be_scaled_list = None,
-      exclude_points_outside_density = None,
+      exclude_points_outside_density = True,
       resolution = None,
       d_min = None,
       k_sol = None,
@@ -2953,7 +2954,7 @@ class map_model_manager(object):
       tlso_group_info.tlso_selection_list = \
          tlso_group_info.selection_as_text_list
       tlso_group_info.tlso_shift_cart_list = len(
-         tlso_group_info.tlso_selection_list) *[None] # ZZZ May need shift cart
+         tlso_group_info.tlso_selection_list) *[None]
     elif find_tls_from_model:
       # If we are going to use TLS groups from the model, check them here
       if not self.model():
@@ -3010,8 +3011,12 @@ class map_model_manager(object):
 
     if find_k_sol_b_sol and (k_sol is None) and (b_sol is None):
       # Find k_sol and b_sol
+      local_mmm = working_mmm.extract_all_maps_around_model()
+      local_mmm.mask_all_maps_around_atoms(
+         mask_atoms_atom_radius = 2.* d_min,
+         soft_mask =True)
       d_min_for_k_sol_b_sol = max(d_min, d_min_for_k_sol_b_sol)
-      kb_info = working_mmm.find_k_sol_b_sol(model = model,
+      kb_info = local_mmm.find_k_sol_b_sol(local_mmm.model(),
         d_min = d_min_for_k_sol_b_sol,
         model_map_id = map_id_model_map,
         comparison_map_id = map_id)
@@ -3972,6 +3977,8 @@ class map_model_manager(object):
         # Now extract our values as target_scale_factors
         si.target_scale_factors = scaled_f_array.data()
 
+    print("Done updating scale factors from aniso u values", file = self.log)
+
 
   def _analyze_aniso_replace_with_supplied(self,
      scale_factor_info,
@@ -4012,7 +4019,7 @@ class map_model_manager(object):
     average_dd_b_cart_as_u_cart = tuple(average_dd_b_cart_as_u_cart/
         len(value_list))
     average_overall_scale = average_overall_scale/len(value_list)
-    center_overall_u_cart = tuple(-flex.double(center_uanisos[0]) ) # ZZ add corr
+    center_overall_u_cart = tuple(-flex.double(center_uanisos[0]) )
     for values in value_list:
       values.overall_u_cart_to_apply = center_overall_u_cart
       # NOTE: keep values.overall_scale
@@ -4076,7 +4083,7 @@ class map_model_manager(object):
         value_list = working_scale_factor_info.value_list
         if other_shift_cart:
           xyz_list_use = xyz_list + tuple([sc - other_sc for sc,other_sc in zip(
-            self.shift_cart(), other_shift_cart)]) # ZZZ CHECK
+            self.shift_cart(), other_shift_cart)]) # XXX CHECK
         else:
           xyz_list_use = xyz_list
 
@@ -4562,10 +4569,8 @@ class map_model_manager(object):
       return tls_info
 
     if get_scale_as_aniso_u:
-      print("Updating scale factors from aniso u values", file = self.log)
       self._update_scale_factor_info_from_aniso(scale_factor_info,
         max_abs_b = max_abs_b)
-      print("Done updating scale factors from aniso u values", file = self.log)
 
     setup_info.kw = kw
 
@@ -4739,6 +4744,8 @@ class map_model_manager(object):
     smoothing_radius = scale_factor_info.setup_info.smoothing_radius
     assert n_bins == scale_factor_info.n_bins # must match
 
+    average_scale_factors = get_average_scale_factors(scale_factor_info)
+
     # Get Fourier coefficients for maps based on map_id_to_be_scaled
     for id, new_id in zip(map_id_to_be_scaled_list, map_id_scaled_list):
 
@@ -4766,11 +4773,12 @@ class map_model_manager(object):
           scale_factor_info = scale_factor_info,)
 
         # Get a map that has scale factor for this resolution vs xyz
+        default_value = average_scale_factors[i_bin-1]
         weight_mm = self._create_full_size_map_manager_with_value_list(
           xyz_list = xyz_used_list,
           value_list = scale_value_list,
           smoothing_radius = smoothing_radius,
-          default_value = scale_value_list.min_max_mean().mean)
+          default_value = default_value)
 
         # Multiply shell map data by weights
         weights_top_hat_shell = get_weights_for_unit_binning(
@@ -6402,6 +6410,19 @@ class match_map_model_ncs(object):
 
 #   Misc methods
 
+def get_average_scale_factors(scale_factor_info):
+  average_scale_factors = None
+  n = 0
+  for sgi in scale_factor_info.value_list:
+    if sgi.overall_scale:
+       if not average_scale_factors:
+         average_scale_factors = flex.double(sgi.overall_scale.size(),0)
+       average_scale_factors += sgi.overall_scale
+       n+=1
+  assert n > 0
+  average_scale_factors = average_scale_factors/n
+  return average_scale_factors
+
 def get_tlso_group_info_from_model(model, nproc = 1, log = sys.stdout):
   ''' Extract tlso_group_info from aniso records in model'''
   print("\nExtracting tlso_group_info from model", file = log)
@@ -6909,7 +6930,8 @@ def get_selections_and_boxes_to_split_model(
         get_unique_set_for_boxes = True,
         mask_id = None,
         exclude_points_outside_density = None,
-        minimum_boxes_inside_density = 10,
+        minimum_boxes_inside_density = 25,
+        log = sys.stdout,
          ):
 
   '''
@@ -7019,6 +7041,8 @@ def get_selections_and_boxes_to_split_model(
         target_xyz_center_list = mask_map_manager.trace_atoms_in_map(
            dist_min/2., target_n)
       exclude_points_outside_density = False  # no longer need it
+      print("Using %s points inside density as target_centers " %(
+         target_xyz_center_list.size()),file = log)
 
     else:
       target_xyz_center_list = None
@@ -7356,6 +7380,8 @@ class run_anisotropic_scaling_as_class:
     normalization_data = get_normalization_data_for_unit_binning(
       f_array_info.f_array)
 
+    average_scale_factors = get_average_scale_factors(scale_factor_info)
+
     for i_bin in f_array_info.f_array.binner().range_used():
       # Get scale values for i_bin at all points xyz for dv i
 
@@ -7367,12 +7393,14 @@ class run_anisotropic_scaling_as_class:
         i_bin = i_bin,
         scale_factor_info = scale_factor_info,
         dv_id = i)
+      default_value = average_scale_factors[i_bin-1]
       weight_mm = \
          map_model_manager._create_full_size_map_manager_with_value_list(
         xyz_list = xyz_used_list,
         value_list = scale_value_list,
         smoothing_radius = smoothing_radius,
-        default_value = scale_value_list.min_max_mean().mean)
+        default_value = default_value,
+      )
 
       # Get weights on each Fourier coeff, emphasizing this bin
       weights_top_hat_shell = get_weights_for_unit_binning(
