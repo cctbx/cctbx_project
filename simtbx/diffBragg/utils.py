@@ -976,7 +976,7 @@ def refls_from_sims(panel_imgs, detector, beam, thresh=0, filter=None, panel_ids
     """
     from dials.algorithms.spot_finding.factory import FilterRunner
     from dials.model.data import PixelListLabeller, PixelList
-    from dials.algorithms.spot_finding.finder import PixelListToReflectionTable
+    from dials.algorithms.spot_finding.finder import pixel_list_to_reflection_table
 
     if panel_ids is None:
         panel_ids = np.arange(len(detector))
@@ -999,15 +999,14 @@ def refls_from_sims(panel_imgs, detector, beam, thresh=0, filter=None, panel_ids
 
         pxlst_labs.append(plab)
 
-    pixlst_to_reftbl = PixelListToReflectionTable(
+    El = explist_from_numpyarrays(panel_imgs, detector, beam)
+    iset = El.imagesets()[0]
+    refls = pixel_list_to_reflection_table(
+        iset, pxlst_labs,
         min_spot_size=1,
         max_spot_size=max_spot_size,  # TODO: change this ?
         filter_spots=FilterRunner(),  # must use a dummie filter runner!
-        write_hot_pixel_mask=False)
-
-    El = explist_from_numpyarrays(panel_imgs, detector, beam)
-    iset = El.imagesets()[0]
-    refls = pixlst_to_reftbl(iset, pxlst_labs)[0]
+        write_hot_pixel_mask=False)[0]
 
     return refls
 
