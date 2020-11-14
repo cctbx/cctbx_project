@@ -364,6 +364,7 @@ class hklview_3d:
 
     if has_phil_path(diff_phil,
                      "openfilename",
+                     "use_provided_miller_arrays",
                      "spacegroup_choice",
                      "using_space_subgroup",
                      "merge_data",
@@ -427,6 +428,7 @@ class hklview_3d:
                       "bin_opacities",
                       "bin_labels_type_idx",
                       "nbins",
+                      "clip_plane",
                      "viewer"): # and self.viewerparams.scene_id is not None:
        # any change to parameters in the master phil in display2.py
       self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
@@ -672,6 +674,7 @@ class hklview_3d:
     sceneid = scene_id
     if scene_id is not None and scene_id != self.viewerparams.scene_id:
       sceneid = self.viewerparams.scene_id
+
     self.HKLsceneKey = (curphilparam.spacegroup_choice,
                          curphilparam.using_space_subgroup,
                          curphilparam.merge_data,
@@ -786,12 +789,13 @@ class hklview_3d:
                               self.viewerparams.sigma_color,
                               self.viewerparams.color_scheme,
                               self.ngl_settings.fontsize,
-                              scene_id,
+                              sceneid,
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
                               )
         self.HKLscenedict[self.HKLsceneKey] =  ( hklscenes[i], scenemaxdata[i],
           scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
+        sceneid += 1
     (
       self.HKLscene,
       self.HKLscenesMaxdata,

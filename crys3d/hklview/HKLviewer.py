@@ -1302,7 +1302,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.MillerTableContextMenuHandler(QCursor.pos(), row)
     if self.millertable.mousebutton == QEvent.MouseButtonDblClick:
       # quickly display data with a double click
-      for sceneid,(scenelabel,labeltype,arrayid,sceneid) in enumerate(self.scenearraylabeltypes):
+      #for sceneid,(scenelabel,labeltype,arrayid,sceneid) in enumerate(self.scenearraylabeltypes):
+      for scenelabel,labeltype,arrayid,sceneid in self.scenearraylabeltypes:
         if row == arrayid:
           self.DisplayData(sceneid, row)
           break
