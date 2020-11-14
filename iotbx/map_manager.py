@@ -2233,7 +2233,6 @@ class map_manager(map_reader, write_ccp4_map):
          lower_bounds,
          upper_bounds,
          self.map_data().all())])
-      print("XYZ (%.2f,%.2f,%.2f) " %(xyz), " N:%s" %(existing_xyz_list.size()))
       target_site = flex.vec3_double((xyz,))
       ncs_object = self.ncs_object()
       if existing_xyz_list.size() > 0 :
