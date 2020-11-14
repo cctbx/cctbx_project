@@ -41,7 +41,8 @@ SIM.air_path_mm = 0.1
 SIM.add_air = True
 SIM.add_Water = True
 SIM.include_noise = True
-SIM.D.add_diffBragg_spots()
+#SIM.D.add_diffBragg_spots()
+SIM.D.add_nanoBragg_spots()
 spots = SIM.D.raw_pixels.as_numpy_array()
 SIM._add_background()
 SIM._add_noise()

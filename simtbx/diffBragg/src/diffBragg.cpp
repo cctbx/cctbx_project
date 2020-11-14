@@ -1,3 +1,4 @@
+#include <sys/time.h>
 #include <simtbx/diffBragg/src/diffBragg.h>
 #include <assert.h>
 #include <stdbool.h>
@@ -5,12 +6,6 @@
 #pragma omp declare reduction(vec_double_plus : std::vector<double> : \
                               std::transform(omp_out.begin(), omp_out.end(), omp_in.begin(), omp_out.begin(), std::plus<double>())) \
                     initializer(omp_priv = decltype(omp_orig)(omp_orig.size()))
-
-#ifdef HAVE_NANOBRAGG_SPOTS_CUDA
-extern "C"
-void phat_main();
-void phat_add();
-#endif
 
 namespace simtbx {
 namespace nanoBragg {
@@ -213,6 +208,9 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
                0,1,0,
                0,0,1;
     psi = 0;
+#ifdef NANOBRAGG_HAVE_CUDA
+    device_Id = 0;
+#endif
 
     RotMats.push_back(EYE);
     RotMats.push_back(EYE);
@@ -1265,9 +1263,6 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     }
 
     std::vector<unsigned int> panels_fasts_slows_vec(panels_fasts_slows.begin(), panels_fasts_slows.begin() + panels_fasts_slows.size()) ;//(panels_fasts_slows.size());
-    //std::vector<unsigned int> panels_fasts_slows_vec.assign(panels_fasts_slows.begin(), panels_fasts_slows.begin() + panels_fasts_slows.size()) ;//(panels_fasts_slows.size());
-    //for (int i=0; i< panels_fasts_slows.size(); i++)
-    //    panels_fasts_slows_vec[i] = panels_fasts_slows[i];
 
     image_type image(Npix_to_model,0.0);
     image_type d_Umat_images(Npix_to_model*3,0.0);
@@ -1286,6 +1281,8 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     image_type d_panel_orig_images(Npix_to_model*3,0.0);
     image_type d2_panel_orig_images(Npix_to_model*3,0.0);
 
+    struct timeval t1,t2;
+    gettimeofday(&t1,0 );
     if (! use_cuda){
         diffBragg::diffBragg_sum_over_steps(
             Npix_to_model, panels_fasts_slows_vec,
@@ -1377,7 +1374,15 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
            update_Fhkl_on_device, update_detector_on_device, update_refine_flags_on_device,
            update_panel_deriv_vecs_on_device);
     }
-
+    gettimeofday(&t2, 0);
+    double time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+    if(verbose){
+        int n_total_iter = Nsteps*Npix_to_model;
+        if(use_cuda)
+            printf("TIME TO RUN DIFFBRAGG -GPU- KERNEL (%d iterations):  %3.10f ms \n",n_total_iter, time);
+        else
+            printf("TIME TO RUN DIFFBRAGG -CPU-  KERNEL (%d iterations):  %3.10f ms \n",n_total_iter, time);
+    }
     // TODO behold inefficient
     for (int i_pix=0; i_pix< Npix_to_model; i_pix++){
         floatimage_roi[i_pix] = image[i_pix];
@@ -1441,50 +1446,6 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     if(verbose) printf("done with pixel loop\n");
 } // END  of add_diffBragg_spots
 
-//void diffBragg::simple_mul( double a[3][3],
-//         double b[3][3],
-//        double c[3][3]) {
-//  int i,j,m,n;
-//  for(i=0;i<3;i++) {
-//    for(j=0;j<3;j++) {
-//      c[i][j] = 0;
-//      for(m=0;m<3;m++)
-//    c[i][j] += a[i][m]*b[m][j];
-//    }
-//  }
-//}
-void diffBragg::simple_mul(double* matA, double* matB, double* matC) {
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            double sum = 0.0;
-            for (int k = 0; k < 3; k++)
-                sum = sum + matA[i * 3 + k] * matB[k * 3 + j];
-            matC[i*3 + j] = sum;
-        }
-    }
-}
-
-void diffBragg::simple_mul_right_transpose(double* matA, double* matB, double* matC) {
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            double sum = 0.0;
-            for (int k = 0; k < 3; k++)
-                sum = sum + matA[i * 3 + k] * matB[j * 3 + k];
-            matC[i*3 + j] = sum;
-        }
-    }
-}
-
-void diffBragg::simple_mul_left_transpose(double* matA, double* matB, double* matC) {
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            double sum = 0.0;
-            for (int k = 0; k < 3; k++)
-                sum = sum + matA[k * 3 + i] * matB[k * 3 + j];
-            matC[i*3 + j] = sum;
-        }
-    }
-}
 
 void diffBragg::diffBragg_rot_mats(){
     for (int i_rot=0; i_rot < 3; i_rot++){
@@ -1550,16 +1511,6 @@ void diffBragg::linearize_Fhkl(){
 	}
 }
 
-void diffBragg::diffBragg_sum_over_steps_cuda(){
-#ifdef HAVE_NANOBRAGG_SPOTS_CUDA
-phat_main();
-#else
-  throw SCITBX_ERROR("no CUDA implementation of diffBragg_add_spots");
-#endif
-
-}
-
-// END diffBragg
 
 } // end of namespace nanoBragg
 } // end of namespace simtbx

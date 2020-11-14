@@ -2,8 +2,8 @@
 #include "diffBraggCUDA.h"
 #include "diffBragg_gpu_kernel.h"
 
-#define BLOCKSIZE 256
-#define NUMBLOCKS 256
+#define BLOCKSIZE 128
+#define NUMBLOCKS 128
 
 void diffBragg_loopy(
         int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,
@@ -62,7 +62,6 @@ void diffBragg_loopy(
     gettimeofday(&t1, 0);
 
 
-//  BEGIN step position
     if (ALLOC){
         cudaMallocManaged(&cp.cu_subS_pos, Nsteps*sizeof(int));
         cudaMallocManaged(&cp.cu_subF_pos, Nsteps*sizeof(int));
@@ -122,7 +121,6 @@ void diffBragg_loopy(
         //gettimeofday(&t4, 0);
         //time = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
         //printf("TIME SPENT ALLOCATING (IMAGES ONLY):  %3.10f ms \n", time);
-        
         cudaMallocManaged(&cp.cu_panels_fasts_slows, panels_fasts_slows.size()*sizeof(panels_fasts_slows[0]));
     } // END ALLOC
     
@@ -131,7 +129,7 @@ void diffBragg_loopy(
     if(verbose>1)
         printf("TIME SPENT ALLOCATING (TOTAL):  %3.10f ms \n", time);
 
-
+    //ALLOC = false;
 //  BEGIN COPYING DATA
     gettimeofday(&t1, 0);
 
@@ -144,7 +142,6 @@ void diffBragg_loopy(
             cp.cu_phi_pos[i] = phi_pos[i];
             cp.cu_source_pos[i] = source_pos[i];
         }
-        cudaDeviceSynchronize();
     }
 //  END step position
     int kaladin_stormblessed = 777;
@@ -171,7 +168,6 @@ void diffBragg_loopy(
             cp.cu_UMATS_RXYZ[i] = UMATS_RXYZ[i];
         for (int i=0; i < UMATS_RXYZ_prime.size(); i++)
             cp.cu_UMATS_RXYZ_prime[i] = UMATS_RXYZ_prime[i];
-        cudaDeviceSynchronize();
     }
 //  END UMATS
 
@@ -184,7 +180,6 @@ void diffBragg_loopy(
             cp.cu_dB_Mats[i] = dB_Mats[i];
         for (int i=0; i< dB2_Mats.size(); i++)
             cp.cu_dB2_Mats[i] = dB2_Mats[i];
-        cudaDeviceSynchronize();
     }
 //  END BMATS
 
@@ -198,7 +193,6 @@ void diffBragg_loopy(
             cp.cu_dRotMats[i] = dRotMats[i];
         for (int i=0; i<d2RotMats.size(); i++)
             cp.cu_d2RotMats[i] = d2RotMats[i];
-        cudaDeviceSynchronize();
     }
 //  END ROT MATS
 
@@ -346,8 +340,6 @@ void diffBragg_loopy(
     gettimeofday(&t1, 0);
 //  COPY BACK FROM DEVICE
     for (int i=0; i< Npix_to_model; i++){
-        if (i==0)
-            printf("A value: %f, floatimage: %f\n", cp.cu_floatimage[i], floatimage[i]);
         floatimage[i] = cp.cu_floatimage[i];
         d_eta_images[i] = cp.cu_d_eta_images[i];
         d_fcell_images[i] = cp.cu_d_fcell_images[i];
@@ -364,8 +356,6 @@ void diffBragg_loopy(
     for(int i=0; i<2*Npix_to_model; i++)
         d_lambda_images[i] = cp.cu_d_lambda_images[i];
 
-    //printf("COPY images device->host\n");
-    
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
     if(verbose>1)

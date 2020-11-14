@@ -192,7 +192,6 @@ class diffBragg: public nanoBragg{
   void diffBragg_sum_over_steps_cuda();
 
 #ifdef NANOBRAGG_HAVE_CUDA
-    int device_Id;
     diffBragg_cudaPointers device_pointers;
     inline void gpu_free(){
         freedom(device_pointers);
@@ -262,10 +261,6 @@ class diffBragg: public nanoBragg{
   double diffracted_ave[4];
   double pixel_pos_ave[4];
   double Fdet_ave, Sdet_ave, Odet_ave;
-  void simple_mul(double matA[9], double matB[9], double matC[9]);
-  void simple_mul_right_transpose(double matA[9], double matB[9], double matC[9]);
-  void simple_mul_left_transpose(double matA[9], double matB[9], double matC[9]);
-  //void simple_mul( double a[3][3], double b[3][3], double c[3][3]);
   Eigen::Vector3d k_diffracted_ave;
   Eigen::Vector3d k_incident_ave;
 

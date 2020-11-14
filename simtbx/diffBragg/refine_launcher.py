@@ -338,5 +338,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
       # RUC>S>D>free_all()
       #if x_init is not None:
 
+  if params.refiner.use_cuda:
+      RUC.S.D.gpu_free()
   return RUC
 

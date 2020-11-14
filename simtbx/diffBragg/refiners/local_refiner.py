@@ -3087,8 +3087,11 @@ class LocalRefiner(PixelRefinement):
         if self.record_model_predictions:
             I = self.model_bragg_spots.ravel()
             Isum = I.sum()
-            Y, X = np_indices(self.model_bragg_spots.shape)
-            x1, _, y1, _ = self.ROIS[self._i_shot][self._i_spot] 
+            x1, x2, y1, y2 = self.ROIS[self._i_shot][self._i_spot]
+            roi_shape = y2-y1+1, x2-x1+1
+            Y, X = np_indices(roi_shape)
+            #from IPython import embed
+            #embed()
             Y = Y.ravel() + y1
             X = X.ravel() + x1
             # this is the calculated (predicted) centroid for this spot
@@ -3129,7 +3132,8 @@ class LocalRefiner(PixelRefinement):
         if self.full_image_of_model is None:
             return
         x1, x2, y1, y2 = self.ROIS[self._i_shot][self._i_spot]
-        self.full_image_of_model[self._panel_id, y1:y2+1, x1:x2+1] = self.model_Lambda
+        roi_shape = y2-y1+1, x2-x1+1
+        self.full_image_of_model[self._panel_id, y1:y2+1, x1:x2+1] = self.model_Lambda.reshape(roi_shape)
     
     def get_model_image(self, i_shot=0):
         """
