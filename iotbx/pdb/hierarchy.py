@@ -517,7 +517,12 @@ class _():
       n_water      = rc("water"),
       n_hd         = rc(sel_str="element H or element D",as_atoms=True),
       n_other      = rc(sel_str_other),
-      other_cnts   = other_cnts)
+      other_cnts   = other_cnts,
+      # atom counts for Table 1
+      n_protein_atoms    = rc("protein and not (element H or element D)", as_atoms=True),
+      n_nucleotide_atoms = rc("nucleotide and not (element H or element D)", as_atoms=True),
+      n_water_atoms      = rc("water", as_atoms=True),
+      n_other_atoms      = rc(sel_str_other, as_atoms=True))
 
   def show(self,
         out=None,
