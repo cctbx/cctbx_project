@@ -7047,14 +7047,18 @@ def get_selections_and_boxes_to_split_model(
       target_xyz_center_list = mask_map_manager.trace_atoms_in_map(
          dist_min, target_n)
       if len(target_xyz_center_list) < target_n/2:  # try with smaller grid
+        dist_min = dist_min/2.
         target_xyz_center_list = mask_map_manager.trace_atoms_in_map(
-           dist_min/2., target_n)
+           dist_min, target_n)
       exclude_points_outside_density = False  # no longer need it
       print("Using %s points inside density as target_centers " %(
          target_xyz_center_list.size()),file = log)
+      dist_min = max(map_model_manager.resolution(),
+         dist_min*0.5) # keep those > this dist
 
     else:
       target_xyz_center_list = None
+      dist_min = None
 
     # Get boxes without and with cushion (cushion may be None)
     box_info = map_manager.get_boxes_to_tile_map(
@@ -7062,6 +7066,7 @@ def get_selections_and_boxes_to_split_model(
       do_not_go_over_target = True,
       box_cushion = box_cushion,
       get_unique_set_for_boxes = get_unique_set_for_boxes,
+      dist_min = dist_min,
       target_xyz_center_list = target_xyz_center_list,
       )
 

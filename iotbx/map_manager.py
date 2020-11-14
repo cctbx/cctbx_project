@@ -1777,14 +1777,21 @@ class map_manager(map_reader, write_ccp4_map):
     if hasattr(self,'_ncs_cc'):
        return self._ncs_cc
 
-  def absolute_center_cart(self):
+  def absolute_center_cart(self, use_assumed_end = False):
     '''
      Return center of map (absolute position) in Cartesian coordinates
      A little tricky because for example the map goes from 0 to nx-1, not nx
+       If use_assumed_end, go to nx
+     Also map could start at non-zero origin
     '''
-    return tuple([a*0.5*(n-1)/n - o for a,n,o in zip(
+    if use_assumed_end:
+      n_end = 0
+    else:
+      n_end = 1
+    return tuple([a*(0.5*(n-n_end)/n + o/n)  - sc for a,n,o,sc in zip(
       self.crystal_symmetry().unit_cell().parameters()[:3],
       self.map_data().all(),
+      self.map_data().origin(),
       self.shift_cart())])
 
   def map_map_cc(self, other_map_manager):
@@ -1856,12 +1863,10 @@ class map_manager(map_reader, write_ccp4_map):
 
     if symmetry_center is None:
       # Most likely map center is (1/2,1/2,1/2) in full grid
-      full_unit_cell=self.unit_cell_crystal_symmetry(
-            ).unit_cell().parameters()[:3]
-      symmetry_center=[]
-      for x, sc in zip(full_unit_cell, self.shift_cart()):
-        symmetry_center.append(0.5*x + sc)
-      symmetry_center = tuple(symmetry_center)
+      symmetry_center = self.absolute_center_cart(use_assumed_end=True)
+      # Our map is already shifted, so subtract off shift_cart
+      symmetry_center = tuple(
+        flex.double(symmetry_center) + flex.double(self.shift_cart()))
 
     params = get_params(args=[],
       symmetry = symmetry,
@@ -1973,6 +1978,7 @@ class map_manager(map_reader, write_ccp4_map):
      target_for_boxes = 24,
      box_cushion = 3,
      get_unique_set_for_boxes = None,
+     dist_min = None,
      do_not_go_over_target = None,
      target_xyz_center_list = None,
        ):
@@ -2004,12 +2010,15 @@ class map_manager(map_reader, write_ccp4_map):
        target_xyz_center_list = target_xyz_center_list,
      )
     box_info.ncs_object = None
-
     if get_unique_set_for_boxes:
+      if dist_min:
+         max_distance = dist_min
+      else:
+         max_distance = self.resolution()
       n_before = len(box_info.lower_bounds_list)
       box_info = self._get_unique_box_info(
          box_info = box_info,
-         max_distance = 0.25*self.resolution())
+         max_distance = max_distance)
 
     return box_info
 
@@ -2188,13 +2197,13 @@ class map_manager(map_reader, write_ccp4_map):
      absolute_rt_info = absolute_rt_info)
 
   def _get_unique_box_info(self, box_info, max_distance = 1):
-
     if self.ncs_object() is None:
       # try to get map symmetry but do not try too hard..
       try:
         self.find_map_symmetry()
       except Exception as e:
         pass
+    self.ncs_object().display_all()
     if not self.ncs_object() or self.ncs_object().max_operators()<2:
       return box_info # nothing to do
 
@@ -2219,11 +2228,12 @@ class map_manager(map_reader, write_ccp4_map):
       #    map_data with origin at (0,0,0).  Our ncs_object is also
       #    relative to this same origin
 
-      xyz = tuple([ a * 0.5*(lb+ub) / n for a, lb, ub, n in zip(
+      xyz = tuple([ a * 0.5*(lb+ub-1) / n for a, lb, ub, n in zip(
          self.crystal_symmetry().unit_cell().parameters()[:3],
          lower_bounds,
          upper_bounds,
          self.map_data().all())])
+      print("XYZ (%.2f,%.2f,%.2f) " %(xyz), " N:%s" %(existing_xyz_list.size()))
       target_site = flex.vec3_double((xyz,))
       ncs_object = self.ncs_object()
       if existing_xyz_list.size() > 0 :
