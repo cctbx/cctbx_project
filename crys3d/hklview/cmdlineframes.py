@@ -296,7 +296,7 @@ class HKLViewFrame() :
       # name this thread to ensure any asyncio functions are called only from main thread
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen, name="zmq_thread" )
       self.msgqueuethrd.daemon = True
-      self.msgqueuethrd.start()
+      #self.msgqueuethrd.start()
       kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by hklview_3d
       pyversion = "cctbx.python.version: " + str(sys.version_info[0])
       # tell gui what python version we are
@@ -305,6 +305,9 @@ class HKLViewFrame() :
     kwds['parent'] = self
     self.viewer = view_3d.hklview_3d( **kwds )
     self.ResetPhilandViewer()
+    if 'useGuiSocket' in kwds:
+      self.msgqueuethrd.start()
+
     self.idx_data = None
     self.NewFileLoaded = False
     self.loaded_file_name = ""
@@ -440,6 +443,12 @@ class HKLViewFrame() :
       #self.params = self.currentphil.extract()
       #phl = self.params.NGL_HKLviewer
 
+      if view_3d.has_phil_path(diff_phil, "use_provided_miller_arrays"):
+        phl = self.ResetPhilandViewer(self.currentphil)
+        if not self.load_miller_arrays():
+          return False
+        self.viewer.lastscene_id = phl.viewer.scene_id
+
       if view_3d.has_phil_path(diff_phil, "openfilename"):
         phl = self.ResetPhilandViewer(self.currentphil)
         if not self.load_reflections_file(phl.openfilename):
@@ -454,6 +463,9 @@ class HKLViewFrame() :
           self.set_scene_bin_thresholds(binvals=phl.scene_bin_thresholds,
                                          bin_labels_type_idx=phl.bin_labels_type_idx,
                                          nbins=phl.nbins )
+      if phl.spacegroup_choice == None:
+        self.mprint("! spacegroup_choice == None")
+        #time.sleep(15)
 
       if view_3d.has_phil_path(diff_phil, "spacegroup_choice"):
         self.set_spacegroup_choice(phl.spacegroup_choice)
@@ -705,29 +717,68 @@ class HKLViewFrame() :
       self.SendInfoToGUI(mydict)
 
 
+  def prepare_dataloading(self):
+    self.viewer.isnewfile = True
+    #self.params.NGL_HKLviewer.mergedata = None
+    self.params.NGL_HKLviewer.viewer.scene_id = None
+    self.viewer.colour_scene_id = None
+    self.viewer.radii_scene_id = None
+    self.viewer.match_valarrays = []
+    self.viewer.proc_arrays = {}
+    self.spacegroup_choices = []
+    self.origarrays = {}
+    display.reset_settings()
+    self.settings = display.settings()
+    self.viewer.settings = self.params.NGL_HKLviewer.viewer
+    self.viewer.mapcoef_fom_dict = {}
+    self.viewer.sceneid_from_arrayid = []
+    self.hklfile_history = []
+    self.tncsvec = None
+    self.loaded_file_name = ""
+
+
+  def finish_dataloading(self, arrays):
+    valid_arrays = []
+    self.viewer.array_infostrs = []
+    self.viewer.array_infotpls = []
+    for array in arrays :
+      self.viewer.array_infostrs.append( ArrayInfo(array, self.mprint).infostr )
+      self.viewer.array_infotpls.append( ArrayInfo(array, self.mprint).infotpl )
+      valid_arrays.append(array)
+    self.valid_arrays = valid_arrays
+    self.mprint("%d Miller arrays in this data set:" %len(arrays))
+    for e in self.viewer.array_infostrs:
+      self.mprint("%s" %e)
+    self.mprint("\n")
+    self.NewFileLoaded = True
+    if (len(valid_arrays) == 0):
+      msg = "No arrays of the supported types present."
+      self.mprint(msg)
+      self.NewFileLoaded=False
+    elif (len(valid_arrays) >= 1):
+      self.set_miller_array()
+      self.update_space_group_choices(0) # get the default spacegroup choice
+      mydict = { "info": self.infostr,
+                  "array_infotpls": self.viewer.array_infotpls,
+                  "bin_infotpls": self.viewer.bin_infotpls,
+                  "html_url": self.viewer.url,
+                  "tncsvec": self.tncsvec,
+                  "merge_data": self.params.NGL_HKLviewer.merge_data,
+                  "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
+                  "NewFileLoaded": self.NewFileLoaded,
+                  "file_name": self.params.NGL_HKLviewer.openfilename
+                }
+      self.SendInfoToGUI(mydict)
+    self.params.NGL_HKLviewer.openfilename = None
+
+
   def load_reflections_file(self, file_name):
     file_name = to_str(file_name)
     ret = False
     if (file_name != ""):
-      self.mprint("Reading file...")
-      self.viewer.isnewfile = True
-      #self.params.NGL_HKLviewer.mergedata = None
-      self.params.NGL_HKLviewer.viewer.scene_id = None
-      self.viewer.colour_scene_id = None
-      self.viewer.radii_scene_id = None
-      self.viewer.match_valarrays = []
-      self.viewer.proc_arrays = {}
-      self.spacegroup_choices = []
-      self.origarrays = {}
-      display.reset_settings()
-      self.settings = display.settings()
-      self.viewer.settings = self.params.NGL_HKLviewer.viewer
-      self.viewer.mapcoef_fom_dict = {}
-      self.viewer.sceneid_from_arrayid = []
-      self.hklfile_history = []
-      self.tncsvec = None
-      self.loaded_file_name = ""
       try :
+        self.mprint("Reading file...")
+        self.prepare_dataloading()
         hkl_file = any_reflection_file(file_name)
         if hkl_file._file_type == 'cif':
           # use new cif label parser for reflections
@@ -754,7 +805,6 @@ class HKLViewFrame() :
                 if not found:
                   newlabels.append(label)
                 arr.info().labels = newlabels
-
           self.origarrays = cifreader.as_original_arrays()[dataname[0]]
         else: # some other type of reflection file than cif
           arrays = hkl_file.as_miller_arrays(merge_equivalents=False)
@@ -770,7 +820,6 @@ class HKLViewFrame() :
               if (t1*t1 + t2*t2 + t3*t3) > 0.0:
                 self.tncsvec = [ t1, t2, t3 ]
                 self.mprint("tNCS vector found in header of mtz file: %s" %str(svec) )
-
           from iotbx import mtz
           mtzobj = mtz.object(file_name)
           nanval = float("nan")
@@ -782,49 +831,37 @@ class HKLViewFrame() :
               if not b:
                 newarr[i] = nanval
             self.origarrays[mtzlbl] = list(newarr)
-
+        self.finish_dataloading(arrays)
       except Exception as e :
         self.NewFileLoaded=False
         self.mprint("".join(traceback.format_tb(e.__traceback__ )) + e.__repr__())
         arrays = []
-      valid_arrays = []
-      self.viewer.array_infostrs = []
-      self.viewer.array_infotpls = []
-      for array in arrays :
-        self.viewer.array_infostrs.append( ArrayInfo(array, self.mprint).infostr )
-        self.viewer.array_infotpls.append( ArrayInfo(array, self.mprint).infotpl )
-        valid_arrays.append(array)
-      self.valid_arrays = valid_arrays
-      self.mprint("%d Miller arrays in this file:" %len(arrays))
-      for e in self.viewer.array_infostrs:
-        self.mprint("%s" %e)
-      self.mprint("\n")
-      self.NewFileLoaded = True
-      if (len(valid_arrays) == 0):
-        msg = "No arrays of the supported types in this file."
-        self.mprint(msg)
-        self.NewFileLoaded=False
-      elif (len(valid_arrays) >= 1):
-        self.set_miller_array()
-        self.update_space_group_choices(0) # get the default spacegroup choice
-        mydict = { "info": self.infostr,
-                   "array_infotpls": self.viewer.array_infotpls,
-                   "bin_infotpls": self.viewer.bin_infotpls,
-                   "html_url": self.viewer.url,
-                   "tncsvec": self.tncsvec,
-                   "merge_data": self.params.NGL_HKLviewer.merge_data,
-                   "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
-                   "NewFileLoaded": self.NewFileLoaded,
-                   "file_name": self.params.NGL_HKLviewer.openfilename
-                  }
-        self.SendInfoToGUI(mydict)
-        ret =  True
-      self.params.NGL_HKLviewer.openfilename = None
-      return ret
+      ret = True
+    return ret
 
 
   def LoadReflectionsFile(self, openfilename):
     self.params.NGL_HKLviewer.openfilename = openfilename
+    self.update_settings()
+
+
+  def load_miller_arrays(self):
+    ret = False
+    try:
+      self.ResetPhilandViewer(self.currentphil)
+      self.prepare_dataloading()
+      self.finish_dataloading(self.provided_miller_arrays)
+      ret = True
+    except Exception as e :
+      self.NewFileLoaded=False
+      self.mprint("".join(traceback.format_tb(e.__traceback__ )) + e.__repr__())
+      arrays = []
+    return ret
+
+
+  def LoadMillerArrays(self, marrays):
+    self.provided_miller_arrays = marrays
+    self.params.NGL_HKLviewer.use_provided_miller_arrays = True
     self.update_settings()
 
 
@@ -1028,6 +1065,11 @@ class HKLViewFrame() :
     self.update_settings()
 
 
+  def SetOpacities(self, bin_opacities):
+    self.params.NGL_HKLviewer.NGL.bin_opacities = bin_opacities
+    self.update_settings()
+
+
   def SetToolTipOpacity(self, val):
     self.params.NGL_HKLviewer.NGL.tooltip_alpha = val
     self.update_settings()
@@ -1035,11 +1077,6 @@ class HKLViewFrame() :
 
   def SetShowToolTips(self, val):
     self.params.NGL_HKLviewer.NGL.show_tooltips = val
-    self.update_settings()
-
-
-  def SetOpacities(self, bin_opacities):
-    self.params.NGL_HKLviewer.NGL.bin_opacities = bin_opacities
     self.update_settings()
 
 
@@ -1305,6 +1342,8 @@ masterphilstr = """
 NGL_HKLviewer {
   openfilename = None
     .type = path
+  use_provided_miller_arrays = False
+    .type = bool
   savefilename = None
     .type = path
   save_image_name = None
@@ -1313,7 +1352,7 @@ NGL_HKLviewer {
     .type = bool
   miller_array_operations = ''
     .type = str
-  spacegroup_choice = None
+  spacegroup_choice = 0
     .type = int
   using_space_subgroup = False
     .type = bool

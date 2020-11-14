@@ -193,6 +193,7 @@ function RemoveStageObjects()
   br_colours = [];
   br_radii = [];
   br_ttips = [];
+  expstate = "";
   colours = [];
   alphas = [];
   radii = [];
