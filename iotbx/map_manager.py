@@ -2203,7 +2203,6 @@ class map_manager(map_reader, write_ccp4_map):
         self.find_map_symmetry()
       except Exception as e:
         pass
-    self.ncs_object().display_all()
     if not self.ncs_object() or self.ncs_object().max_operators()<2:
       return box_info # nothing to do
 
