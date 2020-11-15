@@ -6641,7 +6641,7 @@ def apply_ncs_to_dv_results(
 
   # If direction vectors are None then NCS operation just multiplies all the
   #   entries without changing them
-  if not direction_vectors:
+  if not direction_vectors or direction_vectors==[None]:
     new_sites = ncs_object.apply_ncs_to_sites(xyz)
     new_scaling_group_info_list = []
     for i in range(ncs_object.max_operators()):
