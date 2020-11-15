@@ -306,7 +306,7 @@ def get_diffBragg_instance():
 
     Fhkl = fcalc_from_pdb(resolution=4, algorithm="fft", wavelength=wavelen)
 
-    D = diffBragg(DET, BEAM, verbose=0, panel_id=0)
+    D = diffBragg(DET, BEAM, verbose=0)
     D.xtal_shape = SHAPE
     D.Ncells_abc = NCELLS_ABC
     D.wavelength_A = wavelen

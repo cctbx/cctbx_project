@@ -45,7 +45,7 @@ k *= unit  # convert to meters like the code
 k = np.array([.01685, .02055, -.15])
 #h_vals = [1e-5*2**i for i in range(20)]
 
-h_vals = [(2*i*(1e-2))*1e-3 for i in range(1,30,2)]
+h_vals = [(2*i*(1e-2))*1e-3 for i in range(1, 30, 2)]
 
 all_q_err = []
 all_q_err2 = []
@@ -59,8 +59,8 @@ for h in h_vals:
     # FIXME mod1
     k2 = np.array([.01685, .02055, -.15+h])
     k0 = np.array([.01685, .02055, -.15-h])
-    fdiff = (k2-k) / h  #/ unit
-    dk =np.array( (0, 0, 1))
+    fdiff = (k2-k) / h  # / unit
+    dk = np.array((0, 0, 1))
 
 
     #print ("\ndiffracted vector:")
