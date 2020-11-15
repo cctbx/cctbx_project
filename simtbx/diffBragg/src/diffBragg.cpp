@@ -1189,9 +1189,9 @@ void diffBragg::add_diffBragg_spots(){
     for (int s=0; s <spixels; s++){
         for (int f=0; f <fpixels; f++){
             int i = s*fpixels + f;
-            pfs[i] = detector_panel_id;
-            pfs[i+1] = f;
-            pfs[i+2] = s;
+            pfs[i*3] = detector_panel_id;
+            pfs[i*3+1] = f;
+            pfs[i*3+2] = s;
         }
     }
     add_diffBragg_spots(pfs);
