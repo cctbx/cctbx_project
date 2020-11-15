@@ -208,9 +208,6 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
                0,1,0,
                0,0,1;
     psi = 0;
-#ifdef NANOBRAGG_HAVE_CUDA
-    device_Id = 0;
-#endif
 
     RotMats.push_back(EYE);
     RotMats.push_back(EYE);
@@ -502,6 +499,7 @@ void diffBragg::update_dxtbx_geoms(
     bool force){
 
     /* BEAM properties first */
+    detector_panel_id = panel_id;
 
     double temp;
     vec3 xyz;
@@ -1184,6 +1182,25 @@ void diffBragg::set_mosaic_blocks_prime(af::shared<mat3> umat_in){
     }
     if(verbose) printf("  imported a total of %d mosaic domain derivative Umats\n",mosaic_domains);
 }
+
+void diffBragg::add_diffBragg_spots(){
+    int npix = fpixels*spixels;
+    af::shared<size_t> pfs(npix*3);
+    for (int s=0; s <spixels; s++){
+        for (int f=0; f <fpixels; f++){
+            int i = s*fpixels + f;
+            pfs[i] = detector_panel_id;
+            pfs[i+1] = f;
+            pfs[i+2] = s;
+        }
+    }
+    add_diffBragg_spots(pfs);
+    double* floatimage = raw_pixels.begin();
+    double* floatimage_roi = raw_pixels_roi.begin();
+    for (int i=0; i< npix;i++)
+        floatimage[i] = floatimage_roi[i];
+}
+
 
 // BEGIN diffBragg_add_spots
 void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows){

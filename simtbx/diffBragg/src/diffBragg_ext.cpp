@@ -9,6 +9,9 @@ namespace simtbx{
 namespace diffBragg{
 namespace boost_python { namespace {
 
+  void (simtbx::nanoBragg::diffBragg::*add_diffBragg_spots_A)() = &simtbx::nanoBragg::diffBragg::add_diffBragg_spots;
+  void (simtbx::nanoBragg::diffBragg::*add_diffBragg_spots_B)(const nanoBragg::af::shared<size_t>&) = &simtbx::nanoBragg::diffBragg::add_diffBragg_spots;
+
   static void  set_Nabc_aniso(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& values) {
       diffBragg.isotropic_ncells=false;
       diffBragg.set_ncells_values(values);
@@ -193,8 +196,14 @@ namespace boost_python { namespace {
         "nanoBragg simulation initialized from dxtbx detector and beam objects"))
 
       /* function for doing some differentiation */
-      .def("add_diffBragg_spots",&simtbx::nanoBragg::diffBragg::add_diffBragg_spots,
-        "gives derivitive of average photon count w.r.t. parameter of choice")
+      //.def("add_diffBragg_spots",&simtbx::nanoBragg::diffBragg::add_diffBragg_spots,
+      //  "gives derivative of average photon count w.r.t. parameter of choice")
+
+      .def("add_diffBragg_spots", add_diffBragg_spots_A,
+        "gives derivative of average photon count w.r.t. parameter of choice")
+
+      .def("add_diffBragg_spots", add_diffBragg_spots_B,
+        "gives derivative of average photon count w.r.t. parameter of choice")
 
       /* Run this before running add_diffBragg_spots */
       .def("vectorize_umats",&simtbx::nanoBragg::diffBragg::vectorize_umats,

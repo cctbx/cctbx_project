@@ -205,6 +205,7 @@ class diffBragg: public nanoBragg{
   void rotate_fs_ss_vecs(double panel_rot_ang);
   void rotate_fs_ss_vecs_3D(double panel_rot_angO, double panel_rot_angF, double panel_rot_angS);
   void add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows);
+  void add_diffBragg_spots();
   void init_raw_pixels_roi();
   void zero_raw_pixel_rois();
   void set_ucell_derivative_matrix(int refine_id, af::shared<double> const& value);
@@ -228,6 +229,7 @@ class diffBragg: public nanoBragg{
 
   /* methods for interacting with the derivative managers */
   void refine(int refine_id);
+  int detector_panel_id;
   void update_dxtbx_geoms(const dxtbx::model::Detector& detector, const dxtbx::model::Beam& beam,
         int panel_id, double panel_rot_angO=0,
         double panel_rot_angF=0,  double panel_rot_angS=0, double panel_offsetX=0,
