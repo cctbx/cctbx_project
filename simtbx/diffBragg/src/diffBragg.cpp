@@ -1425,9 +1425,8 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
             }
         }
-        if (fcell_man->refine_me){
+        if (fcell_man->refine_me)
             fcell_man->increment_image(i_pix, d_fcell_images[i_pix], d2_fcell_images[i_pix], compute_curvatures);
-        }
 
         if (eta_man->refine_me)
             eta_man->increment_image(i_pix, d_eta_images[i_pix], 0, compute_curvatures);

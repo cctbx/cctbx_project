@@ -132,6 +132,7 @@ namespace boost_python { namespace {
   }
 
   static void  set_Fhkl_tuple(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& value) {
+      //TODO nanoBragg set as well ?
       diffBragg.pythony_indices = extract<nanoBragg::indices >(value[0]);
       diffBragg.pythony_amplitudes = extract<nanoBragg::af::shared<double> >(value[1]);
       diffBragg.init_Fhkl();

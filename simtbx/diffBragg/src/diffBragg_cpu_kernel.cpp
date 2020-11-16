@@ -203,6 +203,9 @@ void diffBragg::diffBragg_sum_over_steps(
                _F_cell = _FhklLinear[Fhkl_linear_index];
                if (complex_miller) _F_cell2 = _Fhkl2Linear[Fhkl_linear_index];
            }
+           //else{
+           // _F_cell = _default_F;
+           //}
 
            if (complex_miller)
              _F_cell = sqrt(_F_cell*_F_cell + _F_cell2*_F_cell2);

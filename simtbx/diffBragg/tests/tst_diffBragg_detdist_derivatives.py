@@ -83,7 +83,7 @@ for h in h_vals:
     per_k = 1./air_path
     per_k3 = np.power(per_k, 3)
     per_k5 = np.power(per_k, 5)
-    deriv =dk*per_k - k*(per_k3*G)
+    deriv = dk*per_k - k*(per_k3*G)
     d_unitk = deriv
 
     #print ("\nunit diffracted vector:")
@@ -191,7 +191,6 @@ V0 = N*(UBO*col(q0)-h0)
 fdiff = (V2-V)/h #/unit
 fdiff2 = (V2+V0-2*V)/h/h #/unit
 
-
 deriv = N*(UBO*col(dq))
 dV = deriv
 
@@ -199,12 +198,12 @@ d_unitk2 = (3 * per_k5 * G * G) * k - per_k3 * (np.dot(dk, dk)) * k - (2 * per_k
 dq2 = 1 / wavelen * d_unitk2
 dV2 = N*(UBO*col(dq2))
 
-print ("\nV-vector")
+print("\nV-vector")
 print("Values", V.elems)
-print ("finite deriv", fdiff.elems)
-print ("deriv", dV.elems)
-print ("finite deriv2", fdiff2.elems)
-print ("deriv2", dV2.elems)
+print("finite deriv", fdiff.elems)
+print("deriv", dV.elems)
+print("finite deriv2", fdiff2.elems)
+print("deriv2", dV2.elems)
 
 hrad_sqr = np.dot(V.elems, V.elems)
 hrad_sqr2 = np.dot(V2.elems, V2.elems)
@@ -214,7 +213,6 @@ Fl = nn**3*np.exp(-(hrad_sqr / 0.63 * 1))
 Fl2 = nn**3*np.exp(-(hrad_sqr2 / 0.63 * 1))
 fdiff_Fl = (Fl2-Fl)/h
 dH = 2 * np.dot(V.elems, dV.elems)
-
 
 print ("\nHrad_sqr")
 print(" finite diff=%f" % fd_hrad)
@@ -262,6 +260,7 @@ D.add_diffBragg_spots()
 # get the simulated image and derivative
 img = D.raw_pixels_roi.as_numpy_array()
 deriv = D.get_derivative_pixels(orig_idx).as_numpy_array()
+np.save("ddd", deriv)
 deriv2 = D.get_second_derivative_pixels(orig_idx).as_numpy_array()
 D.raw_pixels_roi *= 0
 D.raw_pixels *= 0
