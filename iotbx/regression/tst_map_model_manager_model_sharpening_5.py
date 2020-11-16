@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 import os, sys
 import libtbx.load_env
 from iotbx.data_manager import DataManager
-from libtbx.program_template import ProgramTemplate
 from iotbx.map_model_manager import map_model_manager
 
 def test_01(method = 'model_sharpen'):
