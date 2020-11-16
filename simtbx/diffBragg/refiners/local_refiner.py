@@ -2549,6 +2549,8 @@ class LocalRefiner(PixelRefinement):
 
     def _show_plots(self, i_spot, n_spots):
         if self.I_AM_ROOT and self.plot_images and self.iterations % self.plot_stride == 0 and self._i_shot == self.index_of_displayed_image:
+            (x1, x2), (y1, y2) = self.NANOBRAGG_ROIS[self._i_shot][self._i_spot]
+            img_sh = y2-y1, x2-x1
             if i_spot % self.plot_spot_stride == 0:
                 xr = self.XREL[self._i_shot][i_spot]  # fast scan pixels
                 yr = self.YREL[self._i_shot][i_spot]  # slow scan pixels
@@ -2558,7 +2560,7 @@ class LocalRefiner(PixelRefinement):
                     x = residual.max()
                     #else:
                     #    x = mean([x, residual.max()])
-                    self.ax.plot_surface(xr, yr, residual, rstride=2, cstride=2, alpha=0.3, cmap='coolwarm')
+                    self.ax.plot_surface(xr, yr, residual.reshape(img_sh), rstride=2, cstride=2, alpha=0.3, cmap='coolwarm')
                     self.ax.contour(xr, yr, residual, zdir='z', offset=-x, cmap='coolwarm')
                     self.ax.set_yticks(range(yr.min(), yr.max()))
                     self.ax.set_xticks(range(xr.min(), xr.max()))
@@ -2573,9 +2575,9 @@ class LocalRefiner(PixelRefinement):
                     vmin = m - s
                     m2 = self.model_Lambda.mean()
                     s2 = self.model_Lambda.std()
-                    self.ax1.images[0].set_data(self.model_Lambda)
+                    self.ax1.images[0].set_data(self.model_Lambda.reshape(img_sh))
                     self.ax1.images[0].set_clim(vmin, vmax)
-                    self.ax2.images[0].set_data(self.Imeas)
+                    self.ax2.images[0].set_data(self.Imeas.reshape(img_sh))
                     self.ax2.images[0].set_clim(vmin, vmax)
                 plt.suptitle("Iterations = %d, image %d / %d"
                              % (self.iterations, i_spot + 1, n_spots))
