@@ -51,11 +51,9 @@ S.D.initialize_managers()
 ncells_GT = (20, 15, 17)
 
 S.D.Ncells_abc_aniso = ncells_GT
-S.D.region_of_interest = ((0, 1023), (0, 1023))
-#S.D.printout_pixel_fastslow = 10, 10
 S.D.add_diffBragg_spots()
 
-img = S.D.raw_pixels.as_numpy_array()
+img = S.D.raw_pixels_roi.as_numpy_array()
 derivs_abc = S.D.get_ncells_derivative_pixels()
 derivs_abc = [d.as_numpy_array() for d in derivs_abc]
 if args.curvatures:
@@ -86,11 +84,10 @@ for i_nc in range(3):
         S.D.Ncells_abc_aniso = tuple(Ncells_vals)
         shifts.append(delta_N)
 
-        S.D.raw_pixels *= 0
-        S.D.region_of_interest = ((0, 1023), (0, 1023))
+        S.D.raw_pixels_roi *= 0
         #S.D.printout_pixel_fastslow = 10, 10
         S.D.add_diffBragg_spots()
-        img2 = S.D.raw_pixels.as_numpy_array()
+        img2 = S.D.raw_pixels_roi.as_numpy_array()
 
         fdiff = (img2 - img) / delta_N
         deriv = derivs_abc[i_nc]
@@ -103,10 +100,9 @@ for i_nc in range(3):
             S.D.Ncells_abc_aniso = tuple(Ncells_vals)
             shifts2.append(delta_N**2)
 
-            S.D.raw_pixels *= 0
-            S.D.region_of_interest = ((0, 1023), (0, 1023))
+            S.D.raw_pixels_roi *= 0
             S.D.add_diffBragg_spots()
-            img_backward = S.D.raw_pixels.as_numpy_array()
+            img_backward = S.D.raw_pixels_roi.as_numpy_array()
 
             fdiff2 = (img2 - 2*img + img_backward) / delta_N / delta_N
 

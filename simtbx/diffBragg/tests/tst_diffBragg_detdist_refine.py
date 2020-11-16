@@ -121,7 +121,7 @@ P.simulator.beam.size_mm = SIM.beam.size_mm
 
 RUC = refine_launcher.local_refiner_from_parameters(refls, E, P, miller_data=SIM.crystal.miller_array)
 refined_distance_offset = E.detector[0].get_origin()[2] + RUC._get_detector_distance_val(0)*1000 - gt_distance
-assert abs(refined_distance_offset) < 1e-2
+assert abs(refined_distance_offset) < 1e-2, refined_distance_offset
 print("OK")
 
 

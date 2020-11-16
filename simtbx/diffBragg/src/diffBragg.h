@@ -389,7 +389,7 @@ class diffBragg: public nanoBragg{
   // Eigen types
   Eigen::Matrix3d eig_U, eig_B, eig_O;
   std::vector<double> fdet_vectors, sdet_vectors, pix0_vectors, odet_vectors;
-  int Npix_total;
+  int Npix_total, Npix_to_model;
 
   // cuda properties
   bool update_dB_matrices_on_device=false;

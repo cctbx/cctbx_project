@@ -325,8 +325,13 @@ void diffBragg::diffBragg_sum_over_steps(
                    double lambda_ang = _lambda*1e10;
 
                    Eigen::Matrix3d M = -two_C*(_NABC*UBO)/lambda_ang;
-                   Eigen::Vector3d dk(0,0,0);
-                   dk[i_pan_orig] = 1;
+                   Eigen::Vector3d dk;
+                   if (i_pan_orig == 0)
+                       dk << 0,0,1;
+                   else if (i_pan_orig == 1)
+                       dk << 1,0,0;
+                   else
+                       dk << 0,1,0;
                    af::flex_double dI_and_dI2 = get_panel_increment(Iincrement, _omega_pixel, M, subpixel_size*subpixel_size,
                        _o_vec, _pixel_pos, per_k,  per_k3, per_k5, V, dk);
                    pan_orig_manager_dI[i_pan_orig] += dI_and_dI2[0];

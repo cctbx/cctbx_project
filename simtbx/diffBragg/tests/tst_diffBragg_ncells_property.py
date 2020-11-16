@@ -55,10 +55,9 @@ print("OK")
 S.D.refine(Ncells_id)
 S.D.initialize_managers()
 S.D.Ncells_abc = 20
-S.D.region_of_interest = ((0, 1023), (0, 1023))
 #S.D.printout_pixel_fastslow = 10, 10
 S.D.add_diffBragg_spots()
-img = S.D.raw_pixels.as_numpy_array()
+img = S.D.raw_pixels_roi.as_numpy_array()
 deriv = S.D.get_derivative_pixels(Ncells_id).as_numpy_array()
 if args.curvatures:
     deriv2 = S.D.get_second_derivative_pixels(Ncells_id).as_numpy_array()
@@ -77,10 +76,9 @@ for i_shift, p in enumerate(perc):
     S.D.set_value(Ncells_id, N+delta_N)
     shifts.append(delta_N)
 
-    S.D.raw_pixels *= 0
-    S.D.region_of_interest = ((0, 1023), (0, 1023))
+    S.D.raw_pixels_roi *= 0
     S.D.add_diffBragg_spots()
-    img2 = S.D.raw_pixels.as_numpy_array()
+    img2 = S.D.raw_pixels_roi.as_numpy_array()
 
     fdiff = (img2 - img) / delta_N
     error = np.abs(fdiff[bragg] - deriv[bragg]).mean()
@@ -90,8 +88,7 @@ for i_shift, p in enumerate(perc):
         S.D.set_value(Ncells_id, N - delta_N)
         shifts2.append(delta_N**2)
 
-        S.D.raw_pixels *= 0
-        S.D.region_of_interest = ((0, 1023), (0, 1023))
+        S.D.raw_pixels_roi *= 0
         S.D.add_diffBragg_spots()
         img_backward = S.D.raw_pixels.as_numpy_array()
 

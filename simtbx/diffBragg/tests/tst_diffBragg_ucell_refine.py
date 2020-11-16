@@ -90,10 +90,6 @@ for i in range(n_ucell_params):
         D.set_ucell_second_derivative_matrix(3 + i, UcellMan.second_derivative_matrices[i])
 D.initialize_managers()
 
-roi = ((0, 699), (0, 699))
-rX = slice(roi[0][0], roi[0][1], 1)
-rY = slice(roi[1][0], roi[1][1], 1)
-D.region_of_interest = roi
 
 # STEP7:
 # compute the scattering and its derivative

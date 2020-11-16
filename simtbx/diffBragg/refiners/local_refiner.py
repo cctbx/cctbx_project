@@ -1423,8 +1423,7 @@ class LocalRefiner(PixelRefinement):
         if self.bg_extracted:
             self.bg_coef = self._get_bg_coef(self._i_shot)
             (i1, i2), (j1, j2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
-            self.tilt_plane = self.bg_coef*self.background_estimate[self._panel_id, j1:j2+1, i1:i2+1]
-
+            self.tilt_plane = self.bg_coef*self.background_estimate[self._panel_id, j1:j2, i1:i2]
         else:
             xr = self.XREL[self._i_shot][i_spot]
             yr = self.YREL[self._i_shot][i_spot]
@@ -1435,7 +1434,7 @@ class LocalRefiner(PixelRefinement):
                 self.tilt_plane = xr * self.a + yr * self.b + self.c
             if self.OMEGA_KAHN is not None:
                 (i1, i2), (j1, j2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
-                omega_kahn_correction = self.OMEGA_KAHN[self._panel_id][j1:j2+1, i1:i2+1]
+                omega_kahn_correction = self.OMEGA_KAHN[self._panel_id][j1:j2, i1:i2]
                 self.tilt_plane *= omega_kahn_correction
         self.tilt_plane = self.tilt_plane.ravel()
 
@@ -1457,21 +1456,23 @@ class LocalRefiner(PixelRefinement):
     def _update_dxtbx_detector(self):
         self.S.panel_id = self._panel_id
 
-        new_offsetX, new_offsetY, new_offsetZ = self._get_panelXYZ_val(self._panel_id)
+        npanels = len(self.S.detector)
+        for pid in range(npanels):
+            new_offsetX, new_offsetY, new_offsetZ = self._get_panelXYZ_val(pid)
 
-        if self.refine_detdist:  # TODO: figure out if this should override the above, or add to it?
-            new_offsetZ = self._get_detector_distance_val(self._i_shot)
+            if self.refine_detdist:  # TODO: figure out if this should override the above, or add to it?
+                new_offsetZ = self._get_detector_distance_val(self._i_shot)
 
-        panel_rot_angO, panel_rot_angF, panel_rot_angS = self._get_panelRot_val(self._panel_id)
+            panel_rot_angO, panel_rot_angF, panel_rot_angS = self._get_panelRot_val(pid)
 
-        if self.panel_reference_from_id is not None:
-            self.D.reference_origin = self.panel_reference_from_id[self._panel_id]  #self.S.detector[self.panel_reference_from_id[self._panel_id]].get_origin()
-        else:
-            self.D.reference_origin = self.S.detector[self._panel_id].get_origin()
+            if self.panel_reference_from_id is not None:
+                self.D.reference_origin = self.panel_reference_from_id[pid]  #self.S.detector[self.panel_reference_from_id[pid]].get_origin()
+            else:
+                self.D.reference_origin = self.S.detector[pid].get_origin()
 
-        self.D.update_dxtbx_geoms(self.S.detector, self.S.beam.nanoBragg_constructor_beam, self._panel_id,
-                                  panel_rot_angO, panel_rot_angF, panel_rot_angS, new_offsetX, new_offsetY, new_offsetZ,
-                                  force=False)
+            self.D.update_dxtbx_geoms(self.S.detector, self.S.beam.nanoBragg_constructor_beam, pid,
+                                      panel_rot_angO, panel_rot_angF, panel_rot_angS, new_offsetX, new_offsetY, new_offsetZ,
+                                      force=False)
         #if self.recenter:
         #    s0 = self.S.beam.nanoBragg_constructor_beam.get_s0()
         #    assert ALL_CLOSE(node.get_beam_centre(s0), self.D.beam_center_mm)
@@ -1728,6 +1729,7 @@ class LocalRefiner(PixelRefinement):
                 self._update_ncells()
                 self._update_rotXYZ()
                 self._update_eta()  # mosaic spread
+                self._update_dxtbx_detector()
                 n_spots = len(self.NANOBRAGG_ROIS[self._i_shot])
                 printed_geom_updates = False
 
@@ -1750,7 +1752,6 @@ class LocalRefiner(PixelRefinement):
                               % (self._i_shot + 1, self.n_shots, i_spot + 1, n_spots, self._panel_id)) #, flush=True)
 
                     self.Imeas = self.ROI_IMGS[self._i_shot][i_spot].ravel()
-                    # self._update_dxtbx_detector()
                     if not printed_geom_updates:
                         if self.refine_panelRotO or self.refine_panelRotF or self.refine_panelRotS:
                             print("ROT ANGLES OFS : %.8f %.8f %.8f (degrees)"
@@ -1928,8 +1929,8 @@ class LocalRefiner(PixelRefinement):
                 abc_dI_dtheta = [0, 0, self.G2*self.c]
                 abc_d2I_dtheta2 = [0, 0, 0]
             else:
-                xr = self.XREL[self._i_shot][i_spot]  # fast scan pixels
-                yr = self.YREL[self._i_shot][i_spot]  # slow scan pixels
+                xr = self.XREL[self._i_shot][i_spot].ravel()  # fast scan pixels
+                yr = self.YREL[self._i_shot][i_spot].ravel()  # slow scan pixels
                 if self.G2 != 1:
                     abc_dI_dtheta = [xr*self.G2, yr*self.G2, self.G2]
                 else:

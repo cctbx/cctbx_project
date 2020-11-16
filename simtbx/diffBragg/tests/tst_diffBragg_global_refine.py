@@ -262,11 +262,11 @@ for i_shot in range(N_SHOTS):
     # This is the ground truth image:
     img = SIM.D.raw_pixels.as_numpy_array()
     SIM.D.raw_pixels *= 0
-    SIM.D.only_save_omega_kahn = True
-    SIM.D.add_diffBragg_spots()
-    omega_kahn = SIM.D.raw_pixels.as_numpy_array()
-    SIM.D.raw_pixels *= 0
-    SIM.D.only_save_omega_kahn = False
+    #SIM.D.only_save_omega_kahn = True
+    #SIM.D.add_diffBragg_spots()
+    #omega_kahn = SIM.D.raw_pixels.as_numpy_array()
+    #SIM.D.raw_pixels *= 0
+    #SIM.D.only_save_omega_kahn = False
 
     if args.psf:
         y = slice(450, 480,1)
@@ -318,7 +318,7 @@ for i_shot in range(N_SHOTS):
         else:
             refls_predict = prediction_utils.refls_from_sims([SPOTS2], exper.detector, exper.beam, thresh=20)
         results = tilt_fit(
-            imgs=[img/omega_kahn], is_bg_pix=[SPOTS < 20],
+            imgs=[img], is_bg_pix=[SPOTS < 20],
             delta_q=0.095, photon_gain=1, sigma_rdout=1, zinger_zscore=5,
             exper=exper, predicted_refls=refls_predict, sb_pad=2)
 
@@ -338,9 +338,9 @@ for i_shot in range(N_SHOTS):
 
     else:
         if args.predictwithtruth:
-            spot_roi, tilt_abc = utils.process_simdata(SPOTS, img/omega_kahn, thresh=20, plot=args.plot, shoebox_sz=20)
+            spot_roi, tilt_abc = utils.process_simdata(SPOTS, img, thresh=20, plot=args.plot, shoebox_sz=20)
         else:
-            spot_roi, tilt_abc = utils.process_simdata(SPOTS2, img/omega_kahn, thresh=20, plot=args.plot, shoebox_sz=20)
+            spot_roi, tilt_abc = utils.process_simdata(SPOTS2, img, thresh=20, plot=args.plot, shoebox_sz=20)
         #spot_roi, tilt_abc = utils.process_simdata(SPOTS, img, thresh=20, plot=args.plot, shoebox_sz=20)
 
     if args.shufflebg:
@@ -368,10 +368,10 @@ for i_shot in range(N_SHOTS):
     xcom, ycom = [],[]
     for i_roi, (x1, x2, y1, y2) in enumerate(spot_roi):
         nanoBragg_rois.append(((int(x1), int(x2)), (int(y1), int(y2))))
-        yr, xr = np.indices((y2 - y1 + 1, x2 - x1 + 1))
+        yr, xr = np.indices((y2 - y1, x2 - x1))
         xrel.append(xr)
         yrel.append(yr)
-        roi_imgs.append(img[y1:y2 + 1, x1:x2 + 1])
+        roi_imgs.append(img[y1:y2, x1:x2])
         xcom.append(.5*(x1 + x2))
         ycom.append(.5*(y1 + y2))
 
@@ -530,7 +530,7 @@ RUC = LocalRefiner(
     global_ncells=not args.pershotncells,
     global_ucell=not args.pershotucell,
     sgsymbol=symbol,
-    omega_kahn=[omega_kahn])
+    omega_kahn=None)
 
 
 if args.refineSpectra:
@@ -683,15 +683,15 @@ for i_spot in range(n_spots):
     tilt_i = ai*xr + bi*yr + ci
     tilt_refined = a*xr + b*yr + c
 
-    correction_term = omega_kahn[j1:j2+1, i1:i2+1]
-    tilt_i *= correction_term
-    tilt_refined *= correction_term
+    #correction_term = omega_kahn[j1:j2+1, i1:i2+1]
+    #tilt_i *= correction_term
+    #tilt_refined *= correction_term
 
     all_tilt.append(tilt_refined)
     all_tilt_i.append(tilt_i)
 
-    real_bg = BACKGROUND_IMAGE[j1:j2+1, i1:i2+1]
-    data = img[j1:j2+1, i1:i2+1]
+    real_bg = BACKGROUND_IMAGE[j1:j2, i1:i2]
+    data = img[j1:j2, i1:i2]
     all_img.append(real_bg)
     all_data.append(data)
     dev_i = np.abs(tilt_i - real_bg).sum()

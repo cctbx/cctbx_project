@@ -687,8 +687,6 @@ void diffBragg::init_raw_pixels_roi(){
 }
 
 void diffBragg::initialize_managers(){
-    int fdim = roi_xmax-roi_xmin+1;
-    int sdim = roi_ymax-roi_ymin+1;
     for (int i_rot=0; i_rot < 3; i_rot++){
         if (rot_managers[i_rot]->refine_me){
             rot_managers[i_rot]->initialize(Npix_total, compute_curvatures);
@@ -1184,11 +1182,16 @@ void diffBragg::set_mosaic_blocks_prime(af::shared<mat3> umat_in){
 }
 
 void diffBragg::add_diffBragg_spots(){
-    int npix = fpixels*spixels;
+    int fdim = roi_xmax-roi_xmin;
+    int sdim = roi_ymax-roi_ymin;
+    int npix = fdim*sdim;
     af::shared<size_t> pfs(npix*3);
     for (int s=0; s <spixels; s++){
         for (int f=0; f <fpixels; f++){
-            int i = s*fpixels + f;
+            if(f < roi_xmin || f >= roi_xmax || s < roi_ymin || s >= roi_ymax)
+                continue;
+            int i=(s-roi_ymin)*fdim + (f-roi_xmin);
+            //int i = s*fpixels + f;
             pfs[i*3] = detector_panel_id;
             pfs[i*3+1] = f;
             pfs[i*3+2] = s;
@@ -1204,7 +1207,7 @@ void diffBragg::add_diffBragg_spots(){
 
 // BEGIN diffBragg_add_spots
 void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows){
-    int Npix_to_model = panels_fasts_slows.size()/3;
+    Npix_to_model = panels_fasts_slows.size()/3;
     SCITBX_ASSERT(Npix_to_model <= Npix_total);
     double * floatimage_roi = raw_pixels_roi.begin();
 
@@ -1409,7 +1412,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
                 rot_managers[i_rot]->increment_image(i_pix, d_Umat_images[idx], d2_Umat_images[idx], compute_curvatures);
             }
         }
-        for (int i_uc=0; i_uc<3; i_uc++){
+        for (int i_uc=0; i_uc<6; i_uc++){
             if (ucell_managers[i_uc]->refine_me){
                 int idx = i_uc*Npix_to_model + i_pix;
                 ucell_managers[i_uc]->increment_image(i_pix, d_Bmat_images[idx], d2_Bmat_images[idx], compute_curvatures);

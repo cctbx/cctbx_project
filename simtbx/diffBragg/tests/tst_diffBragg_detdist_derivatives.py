@@ -260,7 +260,6 @@ D.add_diffBragg_spots()
 # get the simulated image and derivative
 img = D.raw_pixels_roi.as_numpy_array()
 deriv = D.get_derivative_pixels(orig_idx).as_numpy_array()
-np.save("ddd", deriv)
 deriv2 = D.get_second_derivative_pixels(orig_idx).as_numpy_array()
 D.raw_pixels_roi *= 0
 D.raw_pixels *= 0

@@ -313,7 +313,12 @@ def get_diffBragg_instance():
     D.flux = flux
     D.mosaic_spread_deg = 0.01
     D.mosaic_domains = 10
-    D.Fhkl = Fhkl
+    from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
+    braggC = nanoBragg_crystal()
+    braggC.miller_array = Fhkl
+    idx = braggC.miller_array.indices()
+    amps = braggC.miller_array.data()
+    D.Fhkl_tuple = idx, amps, None
     D.Bmatrix = crystal.get_B()
     D.Umatrix = crystal.get_U()
     return D

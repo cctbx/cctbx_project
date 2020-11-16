@@ -78,33 +78,40 @@ namespace boost_python { namespace {
             diffBragg.a0[3], diffBragg.b0[3], diffBragg.c0[3];
   }
 
-  void set_roi(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& tupleoftuples){
-      boost::python::tuple frange;
-      boost::python::tuple srange;
-      frange = extract<boost::python::tuple>(tupleoftuples[0]);
-      srange = extract<boost::python::tuple>(tupleoftuples[1]);
-      diffBragg.roi_xmin=extract<int>(frange[0]);
-      diffBragg.roi_xmax=extract<int>(frange[1]);
-      diffBragg.roi_ymin=extract<int>(srange[0]);
-      diffBragg.roi_ymax=extract<int>(srange[1]);
-       /* fix this up so its not out-of-range */
-      diffBragg.init_beamcenter();
-      diffBragg.init_raw_pixels_roi();
-      diffBragg.initialize_managers();
-  }
+  //void set_roi(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& tupleoftuples){
+  //    boost::python::tuple frange;
+  //    boost::python::tuple srange;
+  //    frange = extract<boost::python::tuple>(tupleoftuples[0]);
+  //    srange = extract<boost::python::tuple>(tupleoftuples[1]);
+  //    diffBragg.roi_xmin=extract<int>(frange[0]);
+  //    diffBragg.roi_xmax=extract<int>(frange[1]);
+  //    diffBragg.roi_ymin=extract<int>(srange[0]);
+  //    diffBragg.roi_ymax=extract<int>(srange[1]);
+  //     /* fix this up so its not out-of-range */
+  //    diffBragg.init_beamcenter();
+  //    diffBragg.init_raw_pixels_roi();
+  //    diffBragg.initialize_managers();
+  //}
 
   /* region of interest in pixels */
-  static boost::python::tuple get_roi(simtbx::nanoBragg::diffBragg const& diffBragg) {
-      boost::python::tuple frange;
-      boost::python::tuple srange;
-      frange = boost::python::make_tuple(diffBragg.roi_xmin,diffBragg.roi_xmax);
-      srange = boost::python::make_tuple(diffBragg.roi_ymin,diffBragg.roi_ymax);
-      return boost::python::make_tuple(frange,srange);
-  }
+  //static boost::python::tuple get_roi(simtbx::nanoBragg::diffBragg const& diffBragg) {
+  //    boost::python::tuple frange;
+  //    boost::python::tuple srange;
+  //    frange = boost::python::make_tuple(diffBragg.roi_xmin,diffBragg.roi_xmax);
+  //    srange = boost::python::make_tuple(diffBragg.roi_ymin,diffBragg.roi_ymax);
+  //    return boost::python::make_tuple(frange,srange);
+  //}
 
   static boost::python::tuple get_reference_origin(simtbx::nanoBragg::diffBragg & diffBragg){
     return boost::python::make_tuple(diffBragg.O_reference[0]*1000, diffBragg.O_reference[1]*1000, diffBragg.O_reference[2]*1000);
   }
+
+  //simtbx::nanoBragg::af::shared<double> get_deriv_pix(simtbx::nanoBragg::diffBragg& diffBragg, int refine_id){
+  //  simtbx::nanoBragg::af::shared<double> pixels = diffBragg.get_derivative_pixels(refine_id);
+  //  // slice them
+  //  //return pixels[simtbx::nanoBragg::af::slice(0,diffBragg.Npix_to_model)];
+  //  return pixels[0:diffBragg.Npix_to_model];
+  //}
 
   void set_reference_origin(simtbx::nanoBragg::diffBragg & diffBragg, boost::python::tuple const& values){
     diffBragg.O_reference[0] = extract<double>(values[0])/1000.;
@@ -137,7 +144,7 @@ namespace boost_python { namespace {
       diffBragg.pythony_amplitudes = extract<nanoBragg::af::shared<double> >(value[1]);
       diffBragg.init_Fhkl();
       diffBragg.complex_miller = false;
-      if (boost::python::len(value)==2){
+      if (boost::python::len(value)==3){
           if (value[2]!=boost::python::object()){ // check if it is not None
               diffBragg.pythony_amplitudes2 = extract<nanoBragg::af::shared<double> >(value[2]);
               diffBragg.init_Fhkl2();
@@ -237,11 +244,10 @@ namespace boost_python { namespace {
 
       //.def("get_ucell_derivative_matrix",  &simtbx::nanoBragg::diffBragg::get_ucell_derivative_matrix, "scooby snacks")
 
-      .def("get_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_derivative_pixels,
-            "gets the manager raw image containing first derivatives")
-      
-      
-      .def("get_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_derivative_pixels,
+      //.def("get_derivative_pixels", get_deriv_pix,
+      //      "gets the manager raw image containing first derivatives")
+
+      .def("__get_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_derivative_pixels,
             "gets the manager raw image containing first derivatives")
 
       .def("get_second_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_second_derivative_pixels,
@@ -273,10 +279,10 @@ namespace boost_python { namespace {
              &simtbx::nanoBragg::diffBragg::set_mosaic_blocks_prime,
              "enter a list of unitary matrix derivatives Uprime (will raise error if not same length as mosaic Umats already set)")
 
-      .add_property("region_of_interest",
-             make_function(&get_roi,rbv()),
-             make_function(&set_roi,dcp()),
-             "region of interest on detector: fast_min fast_max slow_min slow_max")
+      //.add_property("region_of_interest",
+      //       make_function(&get_roi,rbv()),
+      //       make_function(&set_roi,dcp()),
+      //       "region of interest on detector: fast_min fast_max slow_min slow_max")
 
       .add_property("raw_pixels_roi",
                      make_getter(&simtbx::nanoBragg::diffBragg::raw_pixels_roi,rbv()),
@@ -287,6 +293,11 @@ namespace boost_python { namespace {
                      make_getter(&simtbx::nanoBragg::diffBragg::oversample_omega,rbv()),
                      make_setter(&simtbx::nanoBragg::diffBragg::oversample_omega,dcp()),
                     "whether to use an average solid angle correction per pixel, or one at the sub pixel level")
+
+      .add_property("__number_of_pixels_modeled_using_diffBragg", // protect this by making it a long name
+                     make_getter(&simtbx::nanoBragg::diffBragg::Npix_to_model,rbv()),
+                     make_setter(&simtbx::nanoBragg::diffBragg::Npix_to_model,dcp()),
+                    "num pix modeled most recently")
 
       .add_property("compute_curvatures",
                      make_getter(&simtbx::nanoBragg::diffBragg::compute_curvatures,rbv()),
