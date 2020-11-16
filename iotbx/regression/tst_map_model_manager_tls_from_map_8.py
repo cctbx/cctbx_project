@@ -3,9 +3,9 @@ import os, sys
 import libtbx.load_env
 from iotbx.data_manager import DataManager
 from iotbx.map_model_manager import map_model_manager
+from libtbx.test_utils import approx_equal
 
-def test_01(method = 'model_sharpen',
-   expected_results=None):
+def test_01():
 
   # Source data
 
@@ -47,29 +47,36 @@ def test_01(method = 'model_sharpen',
 
   dc = mmm.deep_copy()
 
-  sharpen_method = getattr(mmm,method)
 
-  # sharpen by method (can be model_sharpen, half_map_sharpen or
-  #     external_sharpen)
-
+  # Model sharpening
   mmm = dc.deep_copy()
-  sharpen_method(anisotropic_sharpen = False, n_bins=10)
-  assert mmm.map_model_cc() > 0.9
-  sharpen_method(anisotropic_sharpen = False, n_bins=10,
-     local_sharpen = True)
-  assert mmm.map_model_cc() > 0.9
-  sharpen_method(anisotropic_sharpen = True, n_bins=10)
-  assert mmm.map_model_cc() > 0.9
-  sharpen_method(anisotropic_sharpen = True, n_bins=10,
-     local_sharpen = True, n_boxes = 1)
-  assert mmm.map_model_cc() > 0.9
+  tls_info=mmm.tls_from_map(n_bins=10,
+    model_id = 'model',
+    map_id = 'map_manager',
+    iterations = 1,
+   )
+  tlso = tls_info.tlso_list[0]
+  print ("t:", tlso.t)
+  print ("l:", tlso.l)
+  print ("s:", tlso.s)
+  print ("origin:", tlso.origin)
+  assert approx_equal(tlso.t,
+ (0.6518723599417712, 0.6807846368236251, 0.6161941485135081, -0.04791178588048965, -0.0014794039180157132, 0.032774655367019095) )
+  assert approx_equal(tlso.l,
+  (-0.00020092054127279798, -9.557441568256003e-05, -1.711699526358822e-05, -4.8893794663274e-05, -2.026091444762368e-05, -2.194054393244713e-05))
+  assert approx_equal(tlso.s,
+   (1.3393493443427932e-09, 3.660975429526433e-10, -6.07051859483934e-10, 4.1665859321329886e-10, -1.35856164931005e-09, 5.409502867516901e-10, -5.4005830782848e-10, -1.2017586805521653e-09, 1.9212302485258283e-11))
+  assert approx_equal(tlso.origin,
+   (-64.70331931297407, -62.305747062422725, -63.74368724016457))
+
+  print("TLS: ",tlso.t,tlso.l,tlso.s,tlso.origin)
 
 
 # ----------------------------------------------------------------------------
 
 if (__name__ == '__main__'):
   if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
-    test_01(method = 'model_sharpen')
+    test_01()
   else:
     print('Skip test_01, chem_data not available')
   print ("OK")
