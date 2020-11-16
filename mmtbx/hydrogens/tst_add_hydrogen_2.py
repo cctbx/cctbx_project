@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
-from mmtbx.hydrogens import reduce
+from mmtbx.hydrogens import reduce_hydrogen
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
 
@@ -38,7 +38,7 @@ def compare_models(pdb_str,
   assert (hd_sel_without_h is not None)
   assert (hd_sel_without_h.count(True) == 0)
   # place H atoms again
-  reduce_add_h_obj = reduce.place_hydrogens(model = model_without_h)
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model_without_h)
   reduce_add_h_obj.run()
   #
   model_h_added = reduce_add_h_obj.get_model()
