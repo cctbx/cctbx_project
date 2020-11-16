@@ -23,6 +23,7 @@ from __future__ import absolute_import, division, print_function
 #                              them to version 3.0
 # revision 1.60 - JJH 081120 - reorganized code into functions and cleaned up flag usage
 # revision 1.61 - JJH 110622 - moved to iotbx
+# revision 1.70 - VBC 201116 - switch over to using model object and chemical components library
 
 import sys
 import os
