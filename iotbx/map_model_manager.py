@@ -6714,10 +6714,9 @@ def get_pointer_to_old_dv_id_dict(working_dv_list = None, dv_list = None,
     pointer_to_old_dv_id_dict[i] = None
     for j in range(n):
       dot_dict[i][j]=0.
-
   for i in range(n):
     x,y,z = working_dv_list[i]
-    for j in range(n):
+    for j in range(dv_list.size()):
       x1,y1,z1 = dv_list[j]
       dot = abs(x*x1+y*y1+z*z1)/((x**2+y**2+z**2)*(x1**2+y1**2+z1**2))**0.5
       dot_dict[i][j] = dot  # dot of working_dv_list[i] to dv_list[j]
