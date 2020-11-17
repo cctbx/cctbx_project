@@ -2,6 +2,7 @@
 from argparse import ArgumentParser
 parser = ArgumentParser("diffBragg tests")
 parser.add_argument("--plot", action='store_true')
+parser.add_argument("--cuda", action='store_true')
 parser.add_argument("--curvatures", action='store_true')
 parser.add_argument("--plotimages", action="store_true")
 parser.add_argument("--rotidx", type=int, choices=[0,1,2], required=True)
@@ -48,6 +49,7 @@ if args.curvatures:
 D.refine(rot_idx)
 D.initialize_managers()
 D.set_value(rot_idx, 0)
+D.use_cuda = args.cuda
 D.add_diffBragg_spots()
 img0 = D.raw_pixels_roi.as_numpy_array()
 bragg = img0 > 1  #np.ones_like(img0).astype(bool)
@@ -149,5 +151,6 @@ if args.curvatures:
     assert l.rvalue > .9999, "2nd deriv rvalue %2.7g" % l.rvalue
     assert l.slope > 0, "2nd deriv slope %2.7g" % l.slope
     assert l.pvalue < 1e-6, "2nd deriv pvalue %2.7g" % l.pvalue
-
+if args.cuda:
+    D.gpu_free()
 print("OK!")

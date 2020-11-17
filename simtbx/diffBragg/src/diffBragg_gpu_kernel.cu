@@ -314,8 +314,13 @@ void gpu_sum_over_steps(
                   CUDAREAL lambda_ang = _lambda*1e10;
 
                   MAT3 M = -two_C*(_NABC*UBO)/lambda_ang;
-                  VEC3 dk(0,0,0);
-                  dk[i_pan_orig] = 1;
+                  VEC3 dk;
+                  if (i_pan_orig == 0)
+                      dk << 0,0,1;
+                  else if (i_pan_orig == 1)
+                      dk << 1,0,0;
+                  else
+                      dk << 0,1,0;
 
                   CUDAREAL G = dk.dot(_pixel_pos);
                   CUDAREAL pix2 = subpixel_size*subpixel_size;

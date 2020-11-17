@@ -790,17 +790,17 @@ void diffBragg::vectorize_umats(){
 }
 
 void diffBragg::refine(int refine_id){
-    int fdim = roi_xmax-roi_xmin+1;
-    int sdim = roi_ymax-roi_ymin+1;
     if (refine_id >= 0 && refine_id < 3  ){
         // 3 possitle rotation managers (rotX, rotY, rotZ)
         rot_managers[refine_id]->refine_me=true;
         rot_managers[refine_id]->initialize(Npix_total, compute_curvatures);
+        update_rotmats_on_device=true;
     }
     else if (refine_id >=3 and refine_id < 9 ){
         // 6 possible unit cell managers (a,b,c,al,be,ga)
         ucell_managers[refine_id-3]->refine_me=true;
         ucell_managers[refine_id-3]->initialize(Npix_total, compute_curvatures);
+        update_dB_matrices_on_device = true;
     }
     else if (refine_id==9){
         for (int i_nc=0; i_nc < 3; i_nc ++){
@@ -812,10 +812,12 @@ void diffBragg::refine(int refine_id){
         boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[1]);
         pan_orig->refine_me=true;
         pan_orig->initialize(Npix_total, compute_curvatures);
+        update_detector_on_device=true;
     }
     else if(refine_id==11){
         fcell_man->refine_me=true;
         fcell_man->initialize(Npix_total, compute_curvatures);
+        update_Fhkl_on_device = true;
     }
 
     else if (refine_id==12 || refine_id==13){
@@ -830,35 +832,44 @@ void diffBragg::refine(int refine_id){
         pan_rot->refine_me=true;
         rotate_fs_ss_vecs_3D(0,0,0);
         pan_rot->initialize(Npix_total, compute_curvatures);
+        update_detector_on_device = true;
+        update_panel_deriv_vecs_on_device = true;
     }
 
     else if (refine_id==15){
         boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[2]);
         pan_orig->refine_me=true;
         pan_orig->initialize(Npix_total, compute_curvatures);
+        update_detector_on_device = true;
     }
 
     else if (refine_id==16){
         boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[3]);
         pan_orig->refine_me=true;
         pan_orig->initialize(Npix_total, compute_curvatures);
+        update_detector_on_device = true;
     }
     else if (refine_id==17){
         boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[4]);
         pan_rot->refine_me=true;
         rotate_fs_ss_vecs_3D(0,0,0);
         pan_rot->initialize(Npix_total, compute_curvatures);
+        update_detector_on_device = true;
+        update_panel_deriv_vecs_on_device = true;
     }
     else if (refine_id==18){
         boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[5]);
         pan_rot->refine_me=true;
         rotate_fs_ss_vecs_3D(0,0,0);
         pan_rot->initialize(Npix_total, compute_curvatures);
+        update_detector_on_device = true;
+        update_panel_deriv_vecs_on_device = true;
     }
     else if (refine_id==19){
         eta_man->refine_me=true;
         SCITBX_ASSERT(mosaic_umats_prime != NULL);
         eta_man->initialize(Npix_total, compute_curvatures);
+        update_umats_on_device = true;
     }
 }
 
@@ -1303,7 +1314,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
     struct timeval t1,t2;
     gettimeofday(&t1,0 );
-    if (! use_cuda){
+    if (! use_cuda && getenv("DIFFBRAGG_USE_CUDA")==NULL){
         diffBragg::diffBragg_sum_over_steps(
             Npix_to_model, panels_fasts_slows_vec,
             image,

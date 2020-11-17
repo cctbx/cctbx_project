@@ -903,6 +903,10 @@ def make_miller_array(symbol, unit_cell, defaultF=1000, d_min=1.5, d_max=999):
     mil_ar = miller.array(miller_set=miller_set, data=Famp).set_observation_type_xray_amplitude()
     return mil_ar
 
+def save_spectra_file(spec_file, wavelengths, weights):
+    data = np.array([wavelengths, weights])
+    np.savetxt(spec_file, data.T, delimiter=',', header="wavelengths, weights")
+
 
 def load_spectra_file(spec_file, total_flux=1., pinkstride=1, as_spectrum=False):
     wavelengths, weights = np.loadtxt(spec_file, float, delimiter=',', skiprows=1).T

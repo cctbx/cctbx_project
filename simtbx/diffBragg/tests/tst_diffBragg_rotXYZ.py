@@ -2,6 +2,7 @@
 from argparse import ArgumentParser
 parser = ArgumentParser("diffBragg tests")
 parser.add_argument("--plot", action='store_true')
+parser.add_argument("--cuda", action="store_true")
 args = parser.parse_args()
 
 
@@ -16,6 +17,7 @@ def main():
     print (angles_XYZ*180 / np.pi)
 
     D = get_diffBragg_instance()
+    D.use_cuda = args.cuda
 
     rotX, rotY, rotZ = 0, 1, 2
     D.refine(rotX)  # rotX
@@ -48,8 +50,12 @@ def main():
         D.set_value(rotY,0)
         D.set_value(rotZ,0)
         D.Umatrix = U.elems
+        D.verbose = 1
         D.add_diffBragg_spots()
+        if args.cuda:
+            D.gpu_free()
         imgA = D.raw_pixels.as_numpy_array()
+
 
         D.raw_pixels *= 0
         D.set_value(rotX, thetaX)
@@ -57,6 +63,8 @@ def main():
         D.set_value(rotZ, thetaZ)
         D.Umatrix = Uorig
         D.add_diffBragg_spots()
+        if args.cuda:
+            D.gpu_free()
         imgB = D.raw_pixels.as_numpy_array()
         if args.plot:
             m = imgA[ imgA > 0].mean()

@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--plot", action='store_true')
+parser.add_argument("--cuda", action='store_true')
 parser.add_argument("--detdist", action='store_true', help='perturb then refine the detdist')
 parser.add_argument("--ncells", action='store_true', help='perturb then refine the ncells')
 parser.add_argument("--bg", action='store_true', help='refine bg planes... ')
@@ -579,10 +580,13 @@ RUC.setup_plots()
 RUC.refine_rotZ = True
 RUC.request_diag_once = False
 RUC.S = SIM
+if args.cuda:
+    RUC.S.D.use_cuda=True
 if not args.curvatures:
-    RUC.S.D.compute_curvatures=False
+    RUC.S.D.compute_curvatures = False
 RUC.has_pre_cached_roi_data = True
 RUC.S.D.update_oversample_during_refinement = False
+RUC.S.D.verbose = 0
 RUC.use_curvatures = False
 RUC.use_curvatures_threshold = 10
 RUC.bg_offset_positive = args.bgoffsetpositive
@@ -590,6 +594,7 @@ RUC.bg_offset_only = args.bgoffsetonly
 RUC.calc_curvatures = args.curvatures
 RUC.poisson_only = False
 RUC.verbose = True
+
 RUC.big_dump = False
 RUC.gt_ncells = Ncells_gt[0]
 RUC.originZ_gt = originZ_gt
@@ -724,4 +729,6 @@ if args.testSpectra:
     print("Ground truth COM energy = %f" % en_com)
     assert abs(en_ref_com - en_com) < 1
 
+if args.cuda:
+    RUC.S.D.gpu_free()
 print("OK!")

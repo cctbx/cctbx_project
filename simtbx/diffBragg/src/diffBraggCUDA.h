@@ -47,7 +47,7 @@ struct diffBragg_cudaPointers {
   int* cu_phi_pos;
 
   CUDAREAL * cu_Fhkl;
-  CUDAREAL * cu_Fhkl2;
+  CUDAREAL * cu_Fhkl2=NULL;
 
   CUDAREAL * cu_fdet_vectors;
   CUDAREAL * cu_sdet_vectors;
@@ -63,7 +63,7 @@ struct diffBragg_cudaPointers {
   Eigen::Matrix3d* cu_dB_Mats;
   Eigen::Matrix3d* cu_dB2_Mats;
   Eigen::Matrix3d* cu_UMATS_RXYZ;
-  Eigen::Matrix3d* cu_UMATS_RXYZ_prime;
+  Eigen::Matrix3d* cu_UMATS_RXYZ_prime=NULL;
   Eigen::Matrix3d* cu_RotMats;
   Eigen::Matrix3d* cu_dRotMats;
   Eigen::Matrix3d* cu_d2RotMats;

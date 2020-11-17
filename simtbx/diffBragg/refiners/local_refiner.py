@@ -367,6 +367,7 @@ class LocalRefiner(PixelRefinement):
         self.model_Lambda = \
             self.gain_fac * self.gain_fac * (self.tilt_plane + self.model_bragg_spots)
         if self.refine_with_psf:
+            print("REFININ GWIRHP SF!")
             self.model_Lambda = convolve_with_psf(self.model_Lambda, psf=self._psf, **self.psf_args)
 
     def _MPI_make_output_dir(self):
@@ -384,6 +385,7 @@ class LocalRefiner(PixelRefinement):
 
         self.dummie_detector = deepcopy(self.S.detector)  # need to preserve original detector
         if self.refine_with_psf:
+            print("REFININ GWIRHP SF!")
             fwhm_pix = self.psf_args["fwhm"] / self.psf_args["pixel_size"] 
             kern_size = self.psf_args["psf_radius"]*2 + 1
             if self.I_AM_ROOT:
@@ -1348,7 +1350,6 @@ class LocalRefiner(PixelRefinement):
         if self.panels_fasts_slows[self._i_shot] is None:
             self.panels_fasts_slows[self._i_shot], self.roi_ids[self._i_shot] = self._get_panels_fasts_slows()
             self.roi_ids_reverse[self._i_shot] = self.roi_ids[self._i_shot][::-1]
-        #self.D.use_cuda = self.use_cuda
         self.D.add_diffBragg_spots(self.panels_fasts_slows[self._i_shot])
 
     def _get_fcell_val(self, i_fcell):
@@ -1436,6 +1437,12 @@ class LocalRefiner(PixelRefinement):
                 (i1, i2), (j1, j2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
                 omega_kahn_correction = self.OMEGA_KAHN[self._panel_id][j1:j2, i1:i2]
                 self.tilt_plane *= omega_kahn_correction
+        #NOTE  temp hackage
+        #import h5py
+        #bg = h5py.File( \
+        #    "/global/cfs/cdirs/lcls/dermen/d9114_sims/test_ensemble/job2/test_rank2_data18_fluence40018.h5", 'r')
+        #(x1,x2), (y1,y2) = self.NANOBRAGG_ROIS[self._i_shot][self._i_spot]
+        #self.tilt_plane = bg['background'][self._panel_id, y1:y2, x1:x2]
         self.tilt_plane = self.tilt_plane.ravel()
 
     def _update_rotXYZ(self):
@@ -1886,7 +1893,7 @@ class LocalRefiner(PixelRefinement):
         proc_name = self.PROC_FNAMES[self._i_shot]
         proc_idx = self.PROC_IDX[self._i_shot]
         (x1, x2), (y1, y2) = self.NANOBRAGG_ROIS[self._i_shot][self._i_spot]
-        bbox = x1, x2+1, y1, y2+1
+        bbox = x1, x2, y1, y2
         miller_idx_asu = self.ASU[self._i_shot][self._i_spot]
         miller_idx = self.Hi[self._i_shot][self._i_spot]
         i_fcell = self.idx_from_asu[self.ASU[self._i_shot][self._i_spot]]
@@ -2590,6 +2597,7 @@ class LocalRefiner(PixelRefinement):
 
     def _poisson_d(self, d):
         if self.refine_with_psf:
+            print("REFININ GWIRHP SF!")
             d = convolve_with_psf(d, psf=self._psf, **self.psf_args)
         gterm = (d * self.one_minus_k_over_Lambda).sum()
         return gterm
@@ -2608,6 +2616,7 @@ class LocalRefiner(PixelRefinement):
     def _gaussian_d(self, d):
         #gterm = (d*self.one_over_v_times_one_minus_2u_minus_u_squared_over_v).sum()
         if self.refine_with_psf:
+            print("REFININ GWIRHP SF!")
             d = convolve_with_psf(d, psf=self._psf, **self.psf_args)
         gterm = .5 * (d * self.one_over_v * self.one_minus_2u_minus_u_squared_over_v).sum()
         #a = self.one_over_v_times_one_minus_2u_minus_u_squared_over_v
@@ -3091,7 +3100,7 @@ class LocalRefiner(PixelRefinement):
             I = self.model_bragg_spots.ravel()
             Isum = I.sum()
             x1, x2, y1, y2 = self.ROIS[self._i_shot][self._i_spot]
-            roi_shape = y2-y1+1, x2-x1+1
+            roi_shape = y2-y1, x2-x1
             Y, X = np_indices(roi_shape)
             #from IPython import embed
             #embed()
@@ -3135,8 +3144,8 @@ class LocalRefiner(PixelRefinement):
         if self.full_image_of_model is None:
             return
         x1, x2, y1, y2 = self.ROIS[self._i_shot][self._i_spot]
-        roi_shape = y2-y1+1, x2-x1+1
-        self.full_image_of_model[self._panel_id, y1:y2+1, x1:x2+1] = self.model_Lambda.reshape(roi_shape)
+        roi_shape = y2-y1, x2-x1
+        self.full_image_of_model[self._panel_id, y1:y2, x1:x2] = self.model_Lambda.reshape(roi_shape)
     
     def get_model_image(self, i_shot=0):
         """

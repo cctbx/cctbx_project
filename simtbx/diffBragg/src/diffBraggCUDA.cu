@@ -5,6 +5,24 @@
 #define BLOCKSIZE 128
 #define NUMBLOCKS 128
 
+//https://stackoverflow.com/a/14038590/2077270
+#define gpuErr(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
+{
+   if (code != cudaSuccess)
+   {
+      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+      if (abort) exit(code);
+   }
+}
+
+void error_msg(cudaError_t err, char* msg){
+    if (err != cudaSuccess){
+        printf("%s: CUDA error message: %s\n", msg, cudaGetErrorString(err));
+        exit(err);
+    }
+}
+
 void diffBragg_loopy(
         int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,
         image_type& floatimage,
@@ -56,6 +74,12 @@ void diffBragg_loopy(
 
     bool ALLOC = !cp.device_is_allocated;
 
+    int cuda_devices;
+    cudaGetDeviceCount(&cuda_devices);
+
+    error_msg(cudaGetLastError(), "after device count");
+    printf("Found %d CUDA-capable devices\n", cuda_devices);
+
 
     double time;
     struct timeval t1, t2, t3 ,t4;
@@ -63,67 +87,67 @@ void diffBragg_loopy(
 
 
     if (ALLOC){
-        cudaMallocManaged(&cp.cu_subS_pos, Nsteps*sizeof(int));
-        cudaMallocManaged(&cp.cu_subF_pos, Nsteps*sizeof(int));
-        cudaMallocManaged(&cp.cu_thick_pos, Nsteps*sizeof(int));
-        cudaMallocManaged(&cp.cu_source_pos, Nsteps*sizeof(int));
-        cudaMallocManaged(&cp.cu_mos_pos, Nsteps*sizeof(int));
-        cudaMallocManaged(&cp.cu_phi_pos, Nsteps*sizeof(int));
-        
-        cudaMallocManaged(&cp.cu_source_X, number_of_sources*sizeof(CUDAREAL));
-        cudaMallocManaged(&cp.cu_source_Y, number_of_sources*sizeof(CUDAREAL));
-        cudaMallocManaged(&cp.cu_source_Z, number_of_sources*sizeof(CUDAREAL));
-        cudaMallocManaged(&cp.cu_source_I, number_of_sources*sizeof(CUDAREAL));
-        cudaMallocManaged(&cp.cu_source_lambda, number_of_sources*sizeof(CUDAREAL));
-        
-        
-        cudaMallocManaged((void **)&cp.cu_UMATS, UMATS.size()*sizeof(MAT3));
-        cudaMallocManaged((void **)&cp.cu_UMATS_RXYZ, UMATS_RXYZ.size()*sizeof(MAT3));
-        cudaMallocManaged((void **)&cp.cu_UMATS_RXYZ_prime, UMATS_RXYZ_prime.size()*sizeof(MAT3));
-        
-        cudaMallocManaged((void **)&cp.cu_dB_Mats, dB_Mats.size()*sizeof(MAT3));
-        cudaMallocManaged((void **)&cp.cu_dB2_Mats, dB2_Mats.size()*sizeof(MAT3));
-        
-        cudaMallocManaged((void **)&cp.cu_RotMats, RotMats.size()*sizeof(MAT3));
-        cudaMallocManaged((void **)&cp.cu_dRotMats, dRotMats.size()*sizeof(MAT3));
-        cudaMallocManaged((void **)&cp.cu_d2RotMats, d2RotMats.size()*sizeof(MAT3));
-        
-        cudaMallocManaged(&cp.cu_fdet_vectors, fdet_vectors.size()*sizeof(CUDAREAL));
-        cudaMallocManaged(&cp.cu_sdet_vectors, fdet_vectors.size()*sizeof(CUDAREAL));
-        cudaMallocManaged(&cp.cu_odet_vectors, fdet_vectors.size()*sizeof(CUDAREAL));
-        cudaMallocManaged(&cp.cu_pix0_vectors, fdet_vectors.size()*sizeof(CUDAREAL));
-        
-        cudaMallocManaged(&cp.cu_refine_Bmat, 6*sizeof(bool));
-        cudaMallocManaged(&cp.cu_refine_Umat, 3*sizeof(bool));
-        cudaMallocManaged(&cp.cu_refine_Ncells, 3*sizeof(bool));
-        cudaMallocManaged(&cp.cu_refine_panel_origin, 3*sizeof(bool));
-        cudaMallocManaged(&cp.cu_refine_panel_rot, 3*sizeof(bool));
-        cudaMallocManaged(&cp.cu_refine_lambda, 2*sizeof(bool));
-        
-        cudaMallocManaged(&cp.cu_Fhkl, _FhklLinear.size()*sizeof(CUDAREAL));
+        gpuErr(cudaMallocManaged(&cp.cu_subS_pos, Nsteps*sizeof(int)));
+        gpuErr(cudaMallocManaged(&cp.cu_subF_pos, Nsteps*sizeof(int)));
+        gpuErr(cudaMallocManaged(&cp.cu_thick_pos, Nsteps*sizeof(int)));
+        gpuErr(cudaMallocManaged(&cp.cu_source_pos, Nsteps*sizeof(int)));
+        gpuErr(cudaMallocManaged(&cp.cu_mos_pos, Nsteps*sizeof(int)));
+        gpuErr(cudaMallocManaged(&cp.cu_phi_pos, Nsteps*sizeof(int)));
+
+        gpuErr(cudaMallocManaged(&cp.cu_source_X, number_of_sources*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_source_Y, number_of_sources*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_source_Z, number_of_sources*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_source_I, number_of_sources*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_source_lambda, number_of_sources*sizeof(CUDAREAL)));
+
+        gpuErr(cudaMallocManaged((void **)&cp.cu_UMATS, UMATS.size()*sizeof(MAT3)));
+        gpuErr(cudaMallocManaged((void **)&cp.cu_UMATS_RXYZ, UMATS_RXYZ.size()*sizeof(MAT3)));
+        if (UMATS_RXYZ_prime.size()>0)
+            gpuErr(cudaMallocManaged((void **)&cp.cu_UMATS_RXYZ_prime, UMATS_RXYZ_prime.size()*sizeof(MAT3)));
+
+        gpuErr(cudaMallocManaged((void **)&cp.cu_dB_Mats, dB_Mats.size()*sizeof(MAT3)));
+        gpuErr(cudaMallocManaged((void **)&cp.cu_dB2_Mats, dB2_Mats.size()*sizeof(MAT3)));
+
+        gpuErr(cudaMallocManaged((void **)&cp.cu_RotMats, RotMats.size()*sizeof(MAT3)));
+        gpuErr(cudaMallocManaged((void **)&cp.cu_dRotMats, dRotMats.size()*sizeof(MAT3)));
+        gpuErr(cudaMallocManaged((void **)&cp.cu_d2RotMats, d2RotMats.size()*sizeof(MAT3)));
+
+        gpuErr(cudaMallocManaged(&cp.cu_fdet_vectors, fdet_vectors.size()*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_sdet_vectors, fdet_vectors.size()*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_odet_vectors, fdet_vectors.size()*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_pix0_vectors, fdet_vectors.size()*sizeof(CUDAREAL)));
+
+        gpuErr(cudaMallocManaged(&cp.cu_refine_Bmat, 6*sizeof(bool)));
+        gpuErr(cudaMallocManaged(&cp.cu_refine_Umat, 3*sizeof(bool)));
+        gpuErr(cudaMallocManaged(&cp.cu_refine_Ncells, 3*sizeof(bool)));
+        gpuErr(cudaMallocManaged(&cp.cu_refine_panel_origin, 3*sizeof(bool)));
+        gpuErr(cudaMallocManaged(&cp.cu_refine_panel_rot, 3*sizeof(bool)));
+        gpuErr(cudaMallocManaged(&cp.cu_refine_lambda, 2*sizeof(bool)));
+
+        gpuErr(cudaMallocManaged(&cp.cu_Fhkl, _FhklLinear.size()*sizeof(CUDAREAL)));
         if (complex_miller)
-            cudaMallocManaged(&cp.cu_Fhkl2, _FhklLinear.size()*sizeof(CUDAREAL));
-        
-        cudaMallocManaged((void **)&cp.cu_dF_vecs, dF_vecs.size()*sizeof(VEC3));
-        cudaMallocManaged((void **)&cp.cu_dS_vecs, dF_vecs.size()*sizeof(VEC3));
-        
+            gpuErr(cudaMallocManaged(&cp.cu_Fhkl2, _FhklLinear.size()*sizeof(CUDAREAL)));
+
+        gpuErr(cudaMallocManaged((void **)&cp.cu_dF_vecs, dF_vecs.size()*sizeof(VEC3)));
+        gpuErr(cudaMallocManaged((void **)&cp.cu_dS_vecs, dF_vecs.size()*sizeof(VEC3)));
+
     
-        //gettimeofday(&t3, 0);
-        cudaMallocManaged(&cp.cu_floatimage, Npix_to_model*sizeof(CUDAREAL) );
-        cudaMallocManaged(&cp.cu_d_fcell_images, Npix_to_model*sizeof(CUDAREAL));
-        cudaMallocManaged(&cp.cu_d_eta_images, Npix_to_model*sizeof(CUDAREAL));
-        cudaMallocManaged(&cp.cu_d_Umat_images, Npix_to_model*3*sizeof(CUDAREAL) );
-        cudaMallocManaged(&cp.cu_d_Ncells_images, Npix_to_model*3*sizeof(CUDAREAL));
-        cudaMallocManaged(&cp.cu_d_panel_rot_images, Npix_to_model*3*sizeof(CUDAREAL));
-        cudaMallocManaged(&cp.cu_d_panel_orig_images, Npix_to_model*3*sizeof(CUDAREAL));
-        cudaMallocManaged(&cp.cu_d_lambda_images, Npix_to_model*2*sizeof(CUDAREAL));
-        cudaMallocManaged(&cp.cu_d_Bmat_images, Npix_to_model*6*sizeof(CUDAREAL));
+        //gettimeofday(&t3, 0));
+        gpuErr(cudaMallocManaged(&cp.cu_floatimage, Npix_to_model*sizeof(CUDAREAL) ));
+        gpuErr(cudaMallocManaged(&cp.cu_d_fcell_images, Npix_to_model*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_eta_images, Npix_to_model*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_Umat_images, Npix_to_model*3*sizeof(CUDAREAL) ));
+        gpuErr(cudaMallocManaged(&cp.cu_d_Ncells_images, Npix_to_model*3*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_panel_rot_images, Npix_to_model*3*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_panel_orig_images, Npix_to_model*3*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_lambda_images, Npix_to_model*2*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_Bmat_images, Npix_to_model*6*sizeof(CUDAREAL)));
         //gettimeofday(&t4, 0);
         //time = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
         //printf("TIME SPENT ALLOCATING (IMAGES ONLY):  %3.10f ms \n", time);
-        cudaMallocManaged(&cp.cu_panels_fasts_slows, panels_fasts_slows.size()*sizeof(panels_fasts_slows[0]));
+        gpuErr(cudaMallocManaged(&cp.cu_panels_fasts_slows, panels_fasts_slows.size()*sizeof(panels_fasts_slows[0])));
     } // END ALLOC
-    
+
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
     if(verbose>1)
@@ -132,8 +156,9 @@ void diffBragg_loopy(
     //ALLOC = false;
 //  BEGIN COPYING DATA
     gettimeofday(&t1, 0);
+    bool FORCE_COPY=true;
 
-    if (update_step_positions || ALLOC){
+    if (update_step_positions || ALLOC || FORCE_COPY){
         for(int i=0; i< Nsteps;i++){
             cp.cu_subS_pos[i] = subS_pos[i];
             cp.cu_subF_pos[i] = subF_pos[i];
@@ -143,12 +168,14 @@ void diffBragg_loopy(
             cp.cu_source_pos[i] = source_pos[i];
         }
     }
+    if (verbose >3)
+        printf("Done copying step positions\n");
 //  END step position
     int kaladin_stormblessed = 777;
 
 
 //  BEGIN sources
-    if (update_sources || ALLOC){
+    if (update_sources || ALLOC || FORCE_COPY){
         for (int i=0; i< number_of_sources; i++){
             cp.cu_source_X[i] = source_X[i];
             cp.cu_source_Y[i] = source_Y[i];
@@ -161,7 +188,7 @@ void diffBragg_loopy(
 
 
 //  UMATS
-    if (update_umats || ALLOC){
+    if (update_umats || ALLOC||FORCE_COPY){
         for (int i=0; i< UMATS.size(); i++)
             cp.cu_UMATS[i] = UMATS[i];
         for (int i=0; i < UMATS_RXYZ.size(); i++)
@@ -170,23 +197,24 @@ void diffBragg_loopy(
             cp.cu_UMATS_RXYZ_prime[i] = UMATS_RXYZ_prime[i];
     }
 //  END UMATS
-
-
+    if(verbose >3)
+        printf("Done copying Umats\n") ;
 
 
 //  BMATS
-    if(update_dB_mats || ALLOC){
+    if(update_dB_mats || ALLOC || FORCE_COPY){
         for (int i=0; i< dB_Mats.size(); i++)
             cp.cu_dB_Mats[i] = dB_Mats[i];
         for (int i=0; i< dB2_Mats.size(); i++)
             cp.cu_dB2_Mats[i] = dB2_Mats[i];
     }
 //  END BMATS
-
+    if(verbose >3)
+        printf("Done copying dB_Mats\n") ;
 
 
 //  ROT MATS
-    if(update_rotmats || ALLOC){
+    if(update_rotmats || ALLOC || FORCE_COPY){
         for (int i=0; i<RotMats.size(); i++)
             cp.cu_RotMats[i] = RotMats[i];
         for (int i=0; i<dRotMats.size(); i++)
@@ -195,11 +223,13 @@ void diffBragg_loopy(
             cp.cu_d2RotMats[i] = d2RotMats[i];
     }
 //  END ROT MATS
+    if (verbose > 3)
+      printf("Done copying rotmats\n");
 
 
 
 //  DETECTOR VECTORS
-    if (update_detector || ALLOC){
+    if (update_detector || ALLOC || FORCE_COPY){
         for (int i=0; i<fdet_vectors.size(); i++){
             cp.cu_fdet_vectors[i] = fdet_vectors[i];
             cp.cu_sdet_vectors[i] = sdet_vectors[i];
@@ -208,11 +238,13 @@ void diffBragg_loopy(
         }
     }
 //  END  DETECTOR VECTORS
+    if (verbose > 3)
+      printf("Done copying detector vectors\n");
 
 
 
 //  BEGIN REFINEMENT FLAGS
-    if (update_refine_flags || ALLOC){
+    if (update_refine_flags || ALLOC || FORCE_COPY){
         for (int i=0; i<3; i++){
             cp.cu_refine_Umat[i] = refine_Umat[i];
             cp.cu_refine_Ncells[i] = refine_Ncells[i];
@@ -225,25 +257,32 @@ void diffBragg_loopy(
             cp.cu_refine_Bmat[i] = refine_Bmat[i];
     }
 //  END REFINEMENT FLAGS
+    if (verbose > 3)
+      printf("Done copying refinement flags\n");
+
 
 //  BEGIN Fhkl
-    if (update_Fhkl || ALLOC){
+    if (update_Fhkl || ALLOC || FORCE_COPY){
         for(int i=0; i < _FhklLinear.size(); i++){
           cp.cu_Fhkl[i] = _FhklLinear[i];
           if (complex_miller)
               cp.cu_Fhkl2[i] = _Fhkl2Linear[i];
         }
     }
-// END Fhkl
+//  END Fhkl
+    if (verbose >3)
+        printf("Done copying step Fhkl\n");
 
 //  BEGIN panel derivative vecs
-    if(update_panel_deriv_vecs || ALLOC){
+    if(update_panel_deriv_vecs || ALLOC || FORCE_COPY){
         for (int i=0; i<dF_vecs.size(); i++){
             cp.cu_dF_vecs[i] = dF_vecs[i];
             cp.cu_dS_vecs[i] = dS_vecs[i];
         }
     }
 //  END panel derivative vecs
+    if (verbose >3)
+        printf("Done copying step panel derivative vectors\n");
 
 
 //  BEGIN IMAGES
@@ -264,14 +303,13 @@ void diffBragg_loopy(
     //    cp.cu_d_Bmat_images[i] = d_Bmat_images[i];
 //  END IMAGES
 
-
-
-
 //  BEGIN panels fasts slows
-    if (update_panels_fasts_slows || ALLOC){
+    if (update_panels_fasts_slows || ALLOC || FORCE_COPY){
         for (int i=0; i< panels_fasts_slows.size(); i++)
             cp.cu_panels_fasts_slows[i] = panels_fasts_slows[i];
     }
+    if (verbose>3)
+        printf("Done copying panels_fasts_slows\n");
 //  END panels fasts slows
 
 
@@ -280,9 +318,8 @@ void diffBragg_loopy(
     if(verbose>1)
         printf("TIME SPENT COPYING DATA HOST->DEV:  %3.10f ms \n", time);
 
-
     cp.device_is_allocated = true;
-
+    error_msg(cudaGetLastError(), "after copy to device");
 
     gettimeofday(&t1, 0);
     gpu_sum_over_steps<<<NUMBLOCKS, BLOCKSIZE>>>(
@@ -329,7 +366,11 @@ void diffBragg_loopy(
         cp.cu_odet_vectors, cp.cu_pix0_vectors,
         _nopolar, _point_pixel, _fluence, _r_e_sqr, _spot_scale);
 
+    error_msg(cudaGetLastError(), "after kernel call");
+
     cudaDeviceSynchronize();
+    error_msg(cudaGetLastError(), "after kernel completion");
+
     if(verbose>1)
         printf("KERNEL_COMPLETE gpu_sum_over_steps\n");
     gettimeofday(&t2, 0);
@@ -360,63 +401,65 @@ void diffBragg_loopy(
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
     if(verbose>1)
         printf("TIME SPENT COPYING BACK :  %3.10f ms \n", time);
-
+    error_msg(cudaGetLastError(), "After copy to host");
 }
 
 
 void freedom(diffBragg_cudaPointers& cp){
 
-    cudaFree( cp.cu_floatimage);
-    cudaFree( cp.cu_d_Umat_images);
-    cudaFree( cp.cu_d_Bmat_images);
-    cudaFree( cp.cu_d_Ncells_images);
-    cudaFree( cp.cu_d_eta_images);
-    cudaFree( cp.cu_d_fcell_images);
-    cudaFree( cp.cu_d_lambda_images);
-    cudaFree( cp.cu_d_panel_rot_images);
-    cudaFree( cp.cu_d_panel_orig_images);
+    gpuErr(cudaFree( cp.cu_floatimage));
+    gpuErr(cudaFree( cp.cu_d_Umat_images));
+    gpuErr(cudaFree( cp.cu_d_Bmat_images));
+    gpuErr(cudaFree( cp.cu_d_Ncells_images));
+    gpuErr(cudaFree( cp.cu_d_eta_images));
+    gpuErr(cudaFree( cp.cu_d_fcell_images));
+    gpuErr(cudaFree( cp.cu_d_lambda_images));
+    gpuErr(cudaFree( cp.cu_d_panel_rot_images));
+    gpuErr(cudaFree( cp.cu_d_panel_orig_images));
 
-    cudaFree( cp.cu_subS_pos);
-    cudaFree( cp.cu_subF_pos);
-    cudaFree( cp.cu_thick_pos);
-    cudaFree( cp.cu_mos_pos);
-    cudaFree( cp.cu_phi_pos);
-    cudaFree( cp.cu_source_pos);
+    gpuErr(cudaFree( cp.cu_subS_pos));
+    gpuErr(cudaFree( cp.cu_subF_pos));
+    gpuErr(cudaFree( cp.cu_thick_pos));
+    gpuErr(cudaFree( cp.cu_mos_pos));
+    gpuErr(cudaFree( cp.cu_phi_pos));
+    gpuErr(cudaFree( cp.cu_source_pos));
 
-    cudaFree(cp.cu_Fhkl);
-    cudaFree(cp.cu_Fhkl2);
+    gpuErr(cudaFree(cp.cu_Fhkl));
+    if (cp.cu_Fhkl2 != NULL)
+        gpuErr(cudaFree(cp.cu_Fhkl2));
 
-    cudaFree(cp.cu_fdet_vectors);
-    cudaFree(cp.cu_sdet_vectors);
-    cudaFree(cp.cu_odet_vectors);
-    cudaFree(cp.cu_pix0_vectors);
+    gpuErr(cudaFree(cp.cu_fdet_vectors));
+    gpuErr(cudaFree(cp.cu_sdet_vectors));
+    gpuErr(cudaFree(cp.cu_odet_vectors));
+    gpuErr(cudaFree(cp.cu_pix0_vectors));
 
-    cudaFree(cp.cu_source_X);
-    cudaFree(cp.cu_source_Y);
-    cudaFree(cp.cu_source_Z);
-    cudaFree(cp.cu_source_I);
-    cudaFree(cp.cu_source_lambda);
+    gpuErr(cudaFree(cp.cu_source_X));
+    gpuErr(cudaFree(cp.cu_source_Y));
+    gpuErr(cudaFree(cp.cu_source_Z));
+    gpuErr(cudaFree(cp.cu_source_I));
+    gpuErr(cudaFree(cp.cu_source_lambda));
 
-    cudaFree(cp.cu_UMATS);
-    cudaFree(cp.cu_UMATS_RXYZ);
-    cudaFree(cp.cu_UMATS_RXYZ_prime);
-    cudaFree(cp.cu_RotMats);
-    cudaFree(cp.cu_dRotMats);
-    cudaFree(cp.cu_d2RotMats);
-    cudaFree(cp.cu_dB_Mats);
-    cudaFree(cp.cu_dB2_Mats);
+    gpuErr(cudaFree(cp.cu_UMATS));
+    gpuErr(cudaFree(cp.cu_UMATS_RXYZ));
+    if(cp.cu_UMATS_RXYZ_prime != NULL)
+        gpuErr(cudaFree(cp.cu_UMATS_RXYZ_prime));
+    gpuErr(cudaFree(cp.cu_RotMats));
+    gpuErr(cudaFree(cp.cu_dRotMats));
+    gpuErr(cudaFree(cp.cu_d2RotMats));
+    gpuErr(cudaFree(cp.cu_dB_Mats));
+    gpuErr(cudaFree(cp.cu_dB2_Mats));
 
-    cudaFree(cp.cu_dF_vecs);
-    cudaFree(cp.cu_dS_vecs);
+    gpuErr(cudaFree(cp.cu_dF_vecs));
+    gpuErr(cudaFree(cp.cu_dS_vecs));
 
-    cudaFree(cp.cu_refine_Bmat);
-    cudaFree(cp.cu_refine_Umat);
-    cudaFree(cp.cu_refine_Ncells);
-    cudaFree(cp.cu_refine_lambda);
-    cudaFree(cp.cu_refine_panel_origin);
-    cudaFree(cp.cu_refine_panel_rot);
+    gpuErr(cudaFree(cp.cu_refine_Bmat));
+    gpuErr(cudaFree(cp.cu_refine_Umat));
+    gpuErr(cudaFree(cp.cu_refine_Ncells));
+    gpuErr(cudaFree(cp.cu_refine_lambda));
+    gpuErr(cudaFree(cp.cu_refine_panel_origin));
+    gpuErr(cudaFree(cp.cu_refine_panel_rot));
 
-    cudaFree(cp.cu_panels_fasts_slows);
+    gpuErr(cudaFree(cp.cu_panels_fasts_slows));
 
     cp.device_is_allocated = false;
 }
