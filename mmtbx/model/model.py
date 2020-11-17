@@ -719,7 +719,8 @@ class manager(object):
     assert crystal_symmetry is not None  # must supply crystal_symmetry
 
     # Check for missing _crystal_symmetry
-    if(self._crystal_symmetry is None):
+    if(self._crystal_symmetry is None \
+         or self._crystal_symmetry.unit_cell() is None):
       # Set self._crystal_symmetry.
       assert self._xray_structure is None # can't have xrs without crystal sym
       self._crystal_symmetry = crystal_symmetry
