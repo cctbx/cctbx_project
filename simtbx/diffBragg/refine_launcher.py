@@ -309,10 +309,11 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
       RUC.use_curvatures_threshold = params.refiner.use_curvatures_threshold
       if not params.refiner.curvatures:
         RUC.S.update_nanoBragg_instance('compute_curvatures', False)
+        RUC.S.update_nanoBragg_instance('verbose', params.refiner.verbose)
       RUC.calc_curvatures = params.refiner.curvatures
       RUC.poisson_only = params.refiner.poissononly
       RUC.trad_conv_eps = params.refiner.tradeps
-      RUC.verbose = params.refiner.verbose
+      RUC.verbose = params.refiner.verbose is not None
       # TODO optional properties.. make this obvious
       RUC.FNAMES = []
       RUC.PROC_FNAMES = []

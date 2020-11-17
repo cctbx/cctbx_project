@@ -271,9 +271,9 @@ refiner {
       .type = str
       .help = optional output directory
   }
-  verbose = False
-    .type = bool
-    .help = verbosity flag
+  verbose = 0
+    .type = int
+    .help = verbosity level (0-10)
   record_xy_calc = False
     .type = bool
     .help = whether to record xy calcs for Bragg spots modeled with diffBragg

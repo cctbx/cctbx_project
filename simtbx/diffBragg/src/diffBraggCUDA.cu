@@ -78,8 +78,8 @@ void diffBragg_loopy(
     cudaGetDeviceCount(&cuda_devices);
 
     error_msg(cudaGetLastError(), "after device count");
-    printf("Found %d CUDA-capable devices\n", cuda_devices);
-
+    if (verbose > 1)
+        printf("Found %d CUDA-capable devices\n", cuda_devices);
 
     double time;
     struct timeval t1, t2, t3 ,t4;
