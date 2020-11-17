@@ -351,7 +351,7 @@ dm.write_miller_array_file(mtz_object, filename="map_coeffs_low_res.mtz") #write
 
 <!-- ----------------------------------------------------------------------- -->
 
-<h3 class="mt-3">Shifting the origin of a map</h3>
+<h3 class="mt-3">Shifting the origin of a map: Be sure to use shift_origin() before using a map_manager for anything except as input to the map_model_manager</h3>
 
 <p>MRC maps often are supplied as just a portion of the full map. Instead of the supplied map starting at (0,0,0) and going to (511,511,511) as in the full map, perhaps the supplied map goes only from (100,100,100) to (400,400,400). This is referred to as having an origin of (0,0,0) in the full map and (100,100,100) in the supplied map.</p>
 
