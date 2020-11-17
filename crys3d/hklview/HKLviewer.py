@@ -568,6 +568,14 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
           if self.infodict.get("NewMillerArray"):
             self.NewMillerArray = self.infodict.get("NewMillerArray",False)
 
+          if self.infodict.get("bin_labels_type_idxs"):
+            bin_labels_type_idxs = self.infodict.get("bin_labels_type_idxs",False)
+            self.BinDataComboBox.clear() 
+            # fill combobox with labels of data that can be used for binning
+            for lbl, typeidx in bin_labels_type_idxs:
+              self.BinDataComboBox.addItem(lbl, typeidx )
+            self.BinDataComboBox.view().setMinimumWidth(self.comboviewwidth)
+
           if self.infodict.get("used_nth_power_scale_radii", None) is not None:
             self.unfeedback = True
             self.power_scale_spinBox.setValue( self.infodict.get("used_nth_power_scale_radii", 0.0))
@@ -614,22 +622,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
             self.NewFileLoaded = False
 
           if self.NewHKLscenes:
-            self.BinDataComboBox.clear()
-            self.BinDataComboBox.addItem("Resolution",  ["''", -1, -1] )
-            self.BinDataComboBox.addItem("Singletons", ["''", -2, -1] )
-            for labels,labeltype,idx,sceneid in self.scenearraylabeltypes:
-              label = ",".join(labels)
-              if labeltype not in  ["iscomplex", "iscomplex_fom"]:
-                self.BinDataComboBox.addItem(label, ["'" + labeltype + "'", idx, sceneid])
-              if labeltype == "hassigmas":
-                self.BinDataComboBox.addItem("Sigmas of " + label, ["'" + labeltype + "'", idx, sceneid])
-              if labeltype == "iscomplex":
-                self.BinDataComboBox.addItem("Phases of " + label, ["'" + labeltype + "'", idx, sceneid])
-                self.BinDataComboBox.addItem("Amplitudes of " + label, ["'" + labeltype + "'", idx, sceneid])
-              #for label in labels:
-              #  self.BinDataComboBox.addItem(label, ["'" + labeltype + "'", idx])
-            self.BinDataComboBox.view().setMinimumWidth(self.comboviewwidth)
-            #self.BinDataComboBox.setCurrentIndex(-1) # unselect the first item in the list
             self.NewHKLscenes = False
 
       except Exception as e:
