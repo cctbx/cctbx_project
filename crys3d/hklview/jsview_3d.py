@@ -407,12 +407,12 @@ class hklview_3d:
                       "show_missing",
                       "show_only_missing",
                       "show_systematic_absences",
-                      "scene_bin_thresholds",
                       "bin_labels_type_idx",
                       "nbins"
                       )
        ):
-      self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.bin_labels_type_idx, curphilparam.nbins)
+      self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.bin_labels_type_idx, 
+                                                               curphilparam.nbins)
       self.sceneisdirty = True
 
     if has_phil_path(diff_phil, "camera_type"):
@@ -428,8 +428,11 @@ class hklview_3d:
                       "bin_opacities",
                       "bin_labels_type_idx",
                       "nbins",
+                      "mouse_sensitivity",
+                      "real_space_unit_cell_scale_fraction",
+                      "reciprocal_unit_cell_scale_fraction",
                       "clip_plane",
-                     "viewer"): # and self.viewerparams.scene_id is not None:
+                      "viewer"): # and self.viewerparams.scene_id is not None:
        # any change to parameters in the master phil in display2.py
       self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
       self.DrawNGLJavaScript()
@@ -515,7 +518,8 @@ class hklview_3d:
     array_info = self.miller_array.info()
     self.sg = self.miller_array.space_group()
     self.symops = self.sg.all_ops()
-    self.binvals = [ 1.0/self.miller_array.d_max_min()[0], 1.0/self.miller_array.d_max_min()[1]  ]
+    if len(self.binvals) == 0:
+      self.binvals = [ 1.0/self.miller_array.d_max_min()[0], 1.0/self.miller_array.d_max_min()[1]  ]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % self.miller_array.unit_cell().parameters()
     self.mprint( "Data: %s %s, %d reflections in space group: %s, unit Cell: %s" \
@@ -691,7 +695,7 @@ class hklview_3d:
                          self.viewerparams.sigma_color,
                          self.viewerparams.color_scheme,
                          self.ngl_settings.fontsize,
-                         self.viewerparams.scene_id,
+                         sceneid,
                          self.viewerparams.scale,
                          self.viewerparams.nth_power_scale_radii
                          )
@@ -765,6 +769,21 @@ class hklview_3d:
                               )
       scenearraylabeltypes = [ (e[3], e[4], e[1], sceneid) for sceneid,e in enumerate(hkl_scenes_info) ]
       self.SendInfoToGUI({ "scene_array_label_types": scenearraylabeltypes, "NewHKLscenes" : True })
+
+      self.bin_labels_type_idxs = []
+      self.bin_labels_type_idxs.append(("Resolution",  ["''", -1] ))
+      self.bin_labels_type_idxs.append(("Singletons", ["''", -1] ))
+      for labels,labeltype,idx,sceneid in scenearraylabeltypes:
+        label = ",".join(labels)
+        if labeltype not in  ["iscomplex", "iscomplex_fom", "ishendricksonlattman"]:
+          self.bin_labels_type_idxs.append((label, ["'" + labeltype + "'", sceneid]))
+        if labeltype == "hassigmas":
+          self.bin_labels_type_idxs.append(("Sigmas of " + label, ["'" + labeltype + "'", sceneid]))
+        if labeltype == "iscomplex":
+          self.bin_labels_type_idxs.append(("Phases of " + label, ["'" + labeltype + "'", sceneid]))
+          self.bin_labels_type_idxs.append(("Amplitudes of " + label, ["'" + labeltype + "'", sceneid]))
+      self.SendInfoToGUI({ "bin_labels_type_idxs": self.bin_labels_type_idxs})
+
     else:
       idx = self.scene_id_to_array_id(scene_id)
       (hklscenes, scenemaxdata,
@@ -906,6 +925,7 @@ class hklview_3d:
 
 
   def calc_bin_thresholds(self, bin_labels_type_idx, nbins):
+    # make default bin thresholds if scene_bin_thresholds is not set
     self.bin_labels_type_idx = eval(bin_labels_type_idx)
     binscenelabel = self.bin_labels_type_idx[0]
     if binscenelabel=="Resolution":
@@ -916,7 +936,7 @@ class hklview_3d:
       if flex.max(dres) == flex.min(dres): # say if only one reflection
         binvals = [dres[0]-0.1, flex.min(dres)+0.1]
         nuniquevalues = 2
-      else:
+      else: # use generic binning function from cctbx
         binning = miller.binning( uc, nbins, indices, flex.max(dres), flex.min(dres) )
         binvals = [ binning.bin_d_range(n)[0] for n in binning.range_all() ]
         binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
@@ -950,7 +970,7 @@ class hklview_3d:
 
 
   def get_matched_binarray(self):
-    sceneid = self.bin_labels_type_idx[3]
+    sceneid = self.bin_labels_type_idx[2]
     datatype = self.bin_labels_type_idx[1]
     binscenelabel = self.bin_labels_type_idx[0]
     label = self.HKLscene_from_dict(sceneid).work_array.info().label_string()
@@ -976,7 +996,7 @@ class hklview_3d:
       return 1.0/self.scene.dres
     binarraydata, dummy = self.get_matched_binarray()
     scenearraydata = self.HKLscene_from_dict(self.viewerparams.scene_id).data
-    ibinarray = self.bin_labels_type_idx[3]
+    ibinarray = self.bin_labels_type_idx[2]
     matchindices = miller.match_indices(self.HKLscene_from_dict(self.viewerparams.scene_id).indices,
                                         self.HKLscene_from_dict(ibinarray).indices )
     matched_binarray = binarraydata.select( matchindices.pairs().column(1) )
@@ -1059,7 +1079,7 @@ class hklview_3d:
       blankscene = True
       #return
     else:
-      self.mprint("Composing JavaScript...")
+      self.mprint("Rendering reflections...")
 
     h_axis = flex.vec3_double([self.scene.axes[0]])
     k_axis = flex.vec3_double([self.scene.axes[1]])
@@ -1086,15 +1106,6 @@ class hklview_3d:
     Lstararrowstart = roundoff( [-self.unit_l_axis[0][0]*l1, -self.unit_l_axis[0][1]*l1, -self.unit_l_axis[0][2]*l1] )
     Lstararrowend = roundoff( [self.unit_l_axis[0][0]*l1, self.unit_l_axis[0][1]*l1, self.unit_l_axis[0][2]*l1] )
     Lstararrowtxt  = roundoff( [self.unit_l_axis[0][0]*l2, self.unit_l_axis[0][1]*l2, self.unit_l_axis[0][2]*l2] )
-    """
-    # make arrow font size roughly proportional to radius of highest resolution shell
-    #fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/3.0)))
-    if not self.miller_array:
-      fontsize = 1.0
-    else:
-      fontsize = 1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/2.0))
-    #fontsize *= self.viewerparams.NGL.fontsize/7.0
-    """
 
     if not blankscene:
       # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
@@ -1166,7 +1177,7 @@ class hklview_3d:
       points = flex.vec3_double( [ ] )
       colors = flex.vec3_double( [ ] )
       radii = flex.double( [ ] )
-      self.bin_labels_type_idx = ("Resolution",  "", -1, -1)
+      self.bin_labels_type_idx = ("Resolution",  "", -1)
     else:
       points = self.scene.points
 
@@ -1179,7 +1190,7 @@ class hklview_3d:
       colstr = "Singleton"
     else:
       if not blankscene:
-        colstr = self.HKLscene_from_dict(self.bin_labels_type_idx[3]).work_array.info().label_string()
+        colstr = self.HKLscene_from_dict(self.bin_labels_type_idx[2]).work_array.info().label_string()
     data = self.scene.data
     if not blankscene:
       colourlabel = self.HKLscene_from_dict(self.colour_scene_id).colourlabel
