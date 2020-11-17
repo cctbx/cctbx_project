@@ -58,13 +58,13 @@ S.D.region_of_interest = ((0, 1023), (0, 1023))
 S.D.add_diffBragg_spots()
 img = S.D.raw_pixels.as_numpy_array()
 derivs = S.D.get_lambda_derivative_pixels()
-deriv = derivs[0].as_numpy_array()
+deriv = derivs[0].as_numpy_array().reshape(img.shape)
 
 S.D.raw_pixels *= 0
 S.D.use_lambda_coefficients = False
 S.D.add_diffBragg_spots()
 test_img = S.D.raw_pixels.as_numpy_array()
-assert np.allclose(img,test_img)
+assert np.allclose(img, test_img)
 S.D.use_lambda_coefficients = True
 S.D.raw_pixels *= 0
 print("OK")

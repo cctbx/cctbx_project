@@ -17,7 +17,7 @@ nanoBragg_obj = nanoBragg_env.SharedObject(
     "nanoBragg.cpp",
     "nanoBragg_nks.cpp",
     "../diffBragg/src/diffBragg_ext.cpp",
-    "../diffBragg/src/diffBragg.cpp"
+    "../diffBragg/src/diffBragg.cpp", "../diffBragg/src/diffBragg_cpu_kernel.cpp"
   ])
 
 env_etc.eigen_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../eigen"))
@@ -63,9 +63,14 @@ if (env_etc.enable_cuda):
   env_bpl.Prepend(CPPPATH=[env_etc.boost_adaptbx_include,
     env_etc.boost_include])
   cuda_lib = env_bpl.cudaSharedLibrary(
-    target = "#lib/libsimtbx_nanoBraggCUDA",
-    source = cuda_src + ["nanoBragg_cuda.cpp"])
+    target="#lib/libsimtbx_nanoBraggCUDA",
+    source=cuda_src + ["nanoBragg_cuda.cpp"])
   env.Prepend(LIBS=["simtbx_nanoBraggCUDA"])
+
+  nanoBragg_env.cudaSharedLibrary(
+    target="#lib/libsimtbx_diffBraggCUDA",
+    source=["../diffBragg/src/diffBraggCUDA.cu", "../diffBragg/src/diffBragg_gpu_kernel.cu"])
+  env.Prepend(LIBS=["simtbx_diffBraggCUDA"])
 
 env.Prepend(LIBS=["omptbx"])
 env.SharedLibrary(

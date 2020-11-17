@@ -53,11 +53,11 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
   nanoBragg_rois, xrel, yrel, roi_imgs = [], [], [], []
   for i_roi, (x1, x2, y1, y2) in enumerate(rois):
     nanoBragg_rois.append(((int(x1), int(x2)), (int(y1), int(y2))))
-    yr, xr = np.indices((y2 - y1 + 1, x2 - x1 + 1))
+    yr, xr = np.indices((y2 - y1, x2 - x1))
     xrel.append(xr)
     yrel.append(yr)
     panel_id = pids[i_roi]
-    roi_imgs.append(img_data[panel_id, y1:y2 + 1, x1:x2 + 1])
+    roi_imgs.append(img_data[panel_id, y1:y2, x1:x2])
 
   # preprare arguments for refinement class instance
   UcellMan = utils.manager_from_crystal(expt.crystal)
@@ -107,6 +107,9 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
   n_local_unknowns = nrot_params + n_unitcell_params + n_ncells_param + n_spotscale_params + n_originZ_params \
                      + n_tilt_params + n_eta_params
 
+  import os
+  if os.environ.get("DIFFBRAGG_CUDA") is not None:
+    params.refiner.use_cuda = True
   if params.refiner.refine_per_spot_scale is not None and any(params.refiner.refine_per_spot_scale):
     n_local_unknowns += len(nanoBragg_rois)
 
@@ -141,6 +144,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
         shot_crystal_GTs=shot_crystal_model_refs, shot_crystal_models=shot_crystal_models,
         shot_xrel=shot_xrel, shot_yrel=shot_yrel, shot_abc_inits=shot_abc_inits,
         shot_asu=None,
+        #sgsymbol=#TODO
         global_param_idx_start=n_local_unknowns,
         shot_panel_ids=shot_panel_ids,
         all_crystal_scales=None,
@@ -300,14 +304,16 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
       RUC.has_pre_cached_roi_data = True
       RUC.trad_conv = True
       RUC.S.update_nanoBragg_instance('update_oversample_during_refinement', False)
+      RUC.S.update_nanoBragg_instance('use_cuda', params.refiner.use_cuda)
       RUC.refine_gain_fac = False
       RUC.use_curvatures_threshold = params.refiner.use_curvatures_threshold
       if not params.refiner.curvatures:
         RUC.S.update_nanoBragg_instance('compute_curvatures', False)
+        RUC.S.update_nanoBragg_instance('verbose', params.refiner.verbose)
       RUC.calc_curvatures = params.refiner.curvatures
       RUC.poisson_only = params.refiner.poissononly
       RUC.trad_conv_eps = params.refiner.tradeps
-      RUC.verbose = params.refiner.verbose
+      RUC.verbose = params.refiner.verbose is not None
       # TODO optional properties.. make this obvious
       RUC.FNAMES = []
       RUC.PROC_FNAMES = []
@@ -336,6 +342,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
       # TODO: CRITICAL ecause nanobragg requires a free_all we have to do it manually here to avoid MEM leak
       # RUC>S>D>free_all()
       #if x_init is not None:
-
+      if params.refiner.use_cuda:
+        RUC.S.D.gpu_free()
   return RUC
 

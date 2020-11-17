@@ -306,14 +306,19 @@ def get_diffBragg_instance():
 
     Fhkl = fcalc_from_pdb(resolution=4, algorithm="fft", wavelength=wavelen)
 
-    D = diffBragg(DET, BEAM, verbose=0, panel_id=0)
+    D = diffBragg(DET, BEAM, verbose=0)
     D.xtal_shape = SHAPE
     D.Ncells_abc = NCELLS_ABC
     D.wavelength_A = wavelen
     D.flux = flux
     D.mosaic_spread_deg = 0.01
     D.mosaic_domains = 10
-    D.Fhkl = Fhkl
+    from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
+    braggC = nanoBragg_crystal()
+    braggC.miller_array = Fhkl
+    idx = braggC.miller_array.indices()
+    amps = braggC.miller_array.data()
+    D.Fhkl_tuple = idx, amps, None
     D.Bmatrix = crystal.get_B()
     D.Umatrix = crystal.get_U()
     return D
@@ -680,7 +685,7 @@ def get_roi_from_spot(refls, fdim, sdim, shoebox_sz=10):
 def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_edge_reflections=False,
                                    reject_roi_with_hotpix=True, background_mask=None, hotpix_mask=None,
                                    bg_thresh=3.5, set_negative_bg_to_zero=False,
-                                   pad_for_background_estimation=None):
+                                   pad_for_background_estimation=None, use_robust_estimation=True, sigma_rdout=3):
 
     npan, sdim, fdim = imgs.shape
 
@@ -725,18 +730,27 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
         else:
             is_background = label_background_pixels(shoebox,thresh=bg_thresh, iterations=2)
 
-        bg_pixels = shoebox[is_background]
-        bg_signal = np.median(bg_pixels)
-
-        if bg_signal < 0:
-            print("neg")
-            num_roi_negative_bg += 1
-            if set_negative_bg_to_zero:
-                bg_signal = 0
-            else:
+        if use_robust_estimation:
+            bg_pixels = shoebox[is_background]
+            bg_signal = np.median(bg_pixels)
+            if bg_signal < 0:
+                print("neg")
+                num_roi_negative_bg += 1
+                if set_negative_bg_to_zero:
+                    bg_signal = 0
+                else:
+                    print("background is negative")
+                    is_selected = False
+            tilt_a, tilt_b, tilt_c = 0, 0, bg_signal
+        else:
+            (tilt_a, tilt_b, tilt_c), covariance = fit_plane_equation_to_background_pixels(
+                shoebox_img=shoebox, fit_sel=is_background, sigma_rdout=sigma_rdout)
+            dips_below = check_if_tilt_dips_below_zero((tilt_a, tilt_b, tilt_c), shoebox.shape)
+            if dips_below:
                 print("background is negative")
                 is_selected = False
-        tilt_abc.append((0, 0, bg_signal))
+
+        tilt_abc.append((tilt_a, tilt_b, tilt_c))
         kept_rois.append(roi)
         panel_ids.append(pid)
         selection_flags.append(is_selected)
@@ -744,6 +758,50 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
     print("Number of ROI with negative BGs: %d / %d" % (num_roi_negative_bg, len(rois)))
 
     return kept_rois, panel_ids, tilt_abc, selection_flags
+
+
+def check_if_tilt_dips_below_zero(tilt_coefs, dim_fastslow):
+    fast_dim, slow_dim = dim_fastslow
+    tX, tY, tZ = tilt_coefs
+    tilt_plane = fast_dim*tX + slow_dim*tY + tZ
+    dips_below_zero = False
+    if np.min(tilt_plane) < 0:
+        dips_below_zero = True
+    return dips_below_zero
+
+
+def fit_plane_equation_to_background_pixels(shoebox_img, fit_sel, sigma_rdout=3):
+    """
+    :param shoebox_img: 2D pixel image (usually less than 100x100 pixels)
+    :param fit_sel: pixels to be fit to plane (usually background pixels)
+    :param sigma_rdout: readout noise term ( in shoebox_img pixel units)
+    :return: coefficients of tilt plane (fast-scan, slow-scan, offset), as well as a covariance estimate matrix
+    """
+    # fast scan pixels, slow scan pixels, pixel values (corrected for gain)
+    Y, X = np.indices(shoebox_img.shape)
+    fast, slow, rho_bg = X[fit_sel], Y[fit_sel], shoebox_img[fit_sel]
+
+    # do the fit of the background plane
+    A = np.array([fast, slow, np.ones_like(fast)]).T
+    # weights matrix:
+    W = np.diag(1 / (sigma_rdout ** 2 + rho_bg))
+    AWA = np.dot(A.T, np.dot(W, A))
+    try:
+        AWA_inv = np.linalg.inv(AWA)
+    except np.linalg.LinAlgError:
+        print("WARNING: Fit did not work.. investigate reflection")
+        return None
+    AtW = np.dot(A.T, W)
+    t1, t2, t3 = np.dot(np.dot(AWA_inv, AtW), rho_bg)
+
+    # get the covariance of the tilt coefficients:
+    # vector of residuals
+    r = rho_bg - np.dot(A, (t1, t2, t3))
+    Nbg = len(rho_bg)
+    r_fact = np.dot(r.T, np.dot(W, r)) / (Nbg - 3)  # 3 parameters fit
+    var_covar = AWA_inv * r_fact  # TODO: check for correlations in the off diagonal elems
+
+    return (t1, t2, t3), var_covar
 
 
 def strip_thickness_from_detector(detector):
@@ -897,6 +955,10 @@ def make_miller_array(symbol, unit_cell, defaultF=1000, d_min=1.5, d_max=999):
     Famp = flex.double(np.ones(len(miller_set.indices())) * defaultF)
     mil_ar = miller.array(miller_set=miller_set, data=Famp).set_observation_type_xray_amplitude()
     return mil_ar
+
+def save_spectra_file(spec_file, wavelengths, weights):
+    data = np.array([wavelengths, weights])
+    np.savetxt(spec_file, data.T, delimiter=',', header="wavelengths, weights")
 
 
 def load_spectra_file(spec_file, total_flux=1., pinkstride=1, as_spectrum=False):
@@ -1294,91 +1356,88 @@ def remove_multiple_indexed(R):
     R = R.select(sel)
     return R
 
-#def tally_local_statistics(spot_rois):
-#    # tally up all miller indices in this refinement
-#    total_pix = 0
-#    for x1, x2, y1, y2 in spot_rois:
-#        total_pix += (x2 - x1) * (y2 - y1)
-#
-#    nspots = len(spot_rois)
-#
-#    # total_pix = self.all_pix
-#    # Per image we have 3 rotation angles to refine
-#    n_rot_param = 3
-#
-#    # by default we assume each shot refines its own ncells param (mosaic domain size Ncells_abc in nanoBragg)
-#    n_per_image_ncells_param = 1 if params.simulator.crystal.has_isotroic_ncells else 3
-#
-#    # by default each shot refines its own unit cell parameters (e.g. a,b,c,alpha, beta, gamma)
-#    n_per_image_ucell_param = n_ucell_param
-#
-#    # 1 crystal scale factor refined per shot (overall scale)
-#    n_per_image_scale_param = 1
-#
-#    self.n_param_per_image = [n_rot_param + n_per_image_ncells_param + n_per_image_ucell_param +
-#                          n_per_image_scale_param + 3 * n_spot_per_image[i]
-#                              for i in range(n_images)]
-#
-#    total_per_image_unknowns = sum(self.n_param_per_image)
-#
-#    # NOTE: local refers to per-image
-#    self.n_local_unknowns = total_per_image_unknowns
-#
-#    mem = self._usage()  # get memory usage
-#    # note: roi para
-#
-#    # totals across ranks
-#    if has_mpi:
-#        n_images = comm.reduce(n_images, MPI.SUM, root=0)
-#        n_spot_tot = comm.reduce(n_spot_tot, MPI.SUM, root=0)
-#        total_pix = comm.reduce(total_pix, MPI.SUM, root=0)
-#        mem = comm.reduce(mem, MPI.SUM, root=0)
-#
-#    # Gather so that each rank knows exactly how many local unknowns are on the other ranks
-#    if has_mpi:
-#        local_unknowns_per_rank = comm.gather(self.n_local_unknowns)
-#    else:
-#        local_unknowns_per_rank = [self.n_local_unknowns]
-#
-#    if rank == 0:
-#        total_local_unknowns = sum(local_unknowns_per_rank)  # across all ranks
-#    else:
-#        total_local_unknowns = None
-#
-#    self.local_unknowns_across_all_ranks = total_local_unknowns
-#    if has_mpi:
-#        self.local_unknowns_across_all_ranks = comm.bcast(self.local_unknowns_across_all_ranks, root=0)
-#
-#    # TODO: what is the 2 for (its gain and detector distance which are not currently refined...
-#    self.n_global_params = 2 + n_global_ucell_param + n_global_ncells_param + self.num_hkl_global  # detdist and gain + ucell params
-#
-#    self.n_total_unknowns = self.local_unknowns_across_all_ranks + self.n_global_params  # gain and detdist (originZ)
-#
-#    # also report total memory usage
-#    # mem_tot = mem
-#    # if has_mpi:
-#    #    mem_tot = comm.reduce(mem_tot, MPI.SUM, root=0)
-#
-#    if has_mpi:
-#        comm.Barrier()
-#    if rank == 0:
-#        print("\n<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")
-#        print("MPIWORLD TOTALZ: images=%d, spots=%d, pixels=%2.2g, Nlocal/Nglboal=%d/%d, usage=%2.2g GigaBytes"
-#              % (n_images, n_spot_tot, total_pix, total_local_unknowns, self.n_global_params, mem))
-#        print("Total time elapsed= %.4f seconds" % (time.time() - self.time_load_start))
-#        print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n")
-#
-#        # determine where in the global parameter array does this rank
-#        # parameters begin
-#        self.starts_per_rank = {}
-#        xpos = 0
-#        for _rank, n_unknown in enumerate(local_unknowns_per_rank):
-#            self.starts_per_rank[_rank] = xpos
-#            xpos += n_unknown
-#    else:
-#        self.starts_per_rank = None
-#
-#    if has_mpi:
-#        self.starts_per_rank = comm.bcast(self.starts_per_rank, root=0)
-#
-#
+def fit_tiltplanes_to_bboxes(refls, exper, params, is_bg_pixel=None):
+    from tilt_fit.tilt_fit import TiltPlanes
+    refls = TiltPlanes.prep_relfs_for_tiltalization(refls, exper=exper)
+    img_data = image_data_from_expt(exper)
+    tiltnation = TiltPlanes(panel_imgs=img_data, panel_bg_masks=is_bg_pixel, panel_badpix_masks=None)
+    tiltnation.check_if_refls_are_formatted_for_this_class(refls)
+    tiltnation.make_quick_bad_pixel_proximity_checker(refls)
+    tiltnation.sigma_rdout = params.sigma_readout
+    tiltnation.adu_per_photon = params.GAIN
+    tiltnation.delta_Q = params.deltaq  # 0.085
+    tiltnation.zinger_zscore = params.Z
+    detector_node = exper.detector[0]  # all nodes should have same pixel size, detector distance, and dimension
+    tiltnation.pixsize_mm = detector_node.get_pixel_size()[0]
+    tiltnation.detdist_mm = detector_node.get_distance()
+    tiltnation.ave_wavelength_A = exper.beam.get_wavelength()
+    tiltnation.min_background_pix_for_fit = 10
+    tiltnation.min_dist_to_bad_pix = 7
+    fs_dim, ss_dim = detector_node.get_image_size()
+    all_residual = []
+    mins = []
+    bboxes = []
+    tilt_abc = []
+    error_in_tilt = []
+    I_Leslie99 = []
+    varI_Leslie99 = []
+    did_i_index = []
+    boundary_spot = []
+    bbox_panel_ids = []
+    Hi = []
+    indexed_Hi = []
+    selected_ref_idx = []
+    all_reso = []
+    all_fit_sel = []
+    all_below_zero = []
+    for i_r in range(len(refls)):
+        ref = refls[i_r]
+        mil_idx = [int(hi) for hi in ref["miller_index"]]
+
+        if mil_idx == [0, 0, 0]:
+            continue
+
+        if mil_idx in indexed_Hi:
+            print("already indexed, this split across two panels!")
+            continue
+
+        result = tiltnation.integrate_shoebox(ref)
+        if result is None:
+            continue
+        shoebox_roi, coefs, variance_matrix, Isum, varIsum, below_zero_flag, fit_sel = result
+        if below_zero_flag and not params.keepbelowzero:
+            continue
+        else:
+            all_below_zero.append(below_zero_flag)
+        bboxes.append(shoebox_roi)
+        tilt_abc.append(coefs)
+        error_in_tilt.append(np.diag(variance_matrix).sum())
+        I_Leslie99.append(Isum)
+        varI_Leslie99.append(varIsum)
+        bbox_panel_ids.append(int(ref["panel"]))
+        Hi.append(mil_idx)
+        did_i_index.append(True)
+        if params.savefitsel:
+            all_fit_sel.append(fit_sel)
+        x1, x2, y1, y2 = shoebox_roi
+        if x1 == 0 or y1 == 0 or x2 == fs_dim or y2 == ss_dim:
+            boundary_spot.append(True)
+        else:
+            boundary_spot.append(False)
+        indexed_Hi.append(mil_idx)
+        selected_ref_idx.append(i_r)
+        reso = 1. / np.linalg.norm(ref['rlp'])
+        all_reso.append(reso)
+
+    chosen_selection = flex.bool([i in selected_ref_idx for i in range(len(refls))])
+    refls = refls.select(chosen_selection)
+    spot_snr = np.array(I_Leslie99) / np.sqrt(varI_Leslie99)
+    spot_snr[np.isnan(spot_snr)] = -999  # sometimes variance is 0 or < 0, leading to nan snr values..
+
+    # make a padded numpy array for storing those pixels which were used to fit the background
+    if params.savefitsel:
+        maxY, maxX = np.max([sel.shape for sel in all_fit_sel], axis=0)
+        master_fit_sel = np.zeros((len(all_fit_sel), maxY, maxX), bool)
+        for i_sel, sel in enumerate(all_fit_sel):
+            ydim, xdim = sel.shape
+            master_fit_sel[i_sel, :ydim, :xdim] = sel

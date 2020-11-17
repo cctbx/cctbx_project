@@ -60,18 +60,18 @@ fcell = 11  # internal index of fcell manager within diffBragg
 D.refine(fcell)
 D.initialize_managers()
 
-roi = ((0, 699), (0, 699))
-rX = slice(roi[0][0], roi[0][1], 1)
-rY = slice(roi[1][0], roi[1][1], 1)
-D.region_of_interest = roi
+#roi = ((0, 699), (0, 699))
+#rX = slice(roi[0][0], roi[0][1], 1)
+#rY = slice(roi[1][0], roi[1][1], 1)
+#D.region_of_interest = roi
 
 # compute the scattering and its derivative
 print("Adding diffBragg spots")
 # Set all miller indices to have the same Fcell value
 indices, data = D.Fhkl_tuple
 data = flex.double(np.ones(len(indices))*Fcell)
-D.Fhkl_tuple = indices, data.deep_copy()
 D.F000 = Fcell
+D.Fhkl_tuple = indices, data.deep_copy(), None
 D.compute_curvatures = True
 
 # NOTE optionally focus on a single Bragg peak
@@ -100,9 +100,9 @@ for i_shift, percent_shift in enumerate(shifts):
 
     delta_F = Fcell * percent_shift*1e-2
 
-    D.Fhkl_tuple = indices, data.deep_copy()+delta_F
-    D.default_F = Fcell+delta_F
     D.F000 = Fcell + delta_F
+    D.Fhkl_tuple = indices, data.deep_copy()+delta_F, None
+    D.default_F = Fcell+delta_F
     D.add_diffBragg_spots()
 
     img_forward = D.raw_pixels_roi.as_numpy_array()
@@ -118,8 +118,8 @@ for i_shift, percent_shift in enumerate(shifts):
 
     if args.curvatures:
         # estimate the second derivative
-        D.Fhkl_tuple = indices, data.deep_copy() - delta_F
         D.F000 = Fcell - delta_F
+        D.Fhkl_tuple = indices, data.deep_copy() - delta_F, None
         D.default_F = Fcell - delta_F
         D.add_diffBragg_spots()
         img_backward = D.raw_pixels_roi.as_numpy_array()

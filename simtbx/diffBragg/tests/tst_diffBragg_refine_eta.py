@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--plot", action="store_true")
 parser.add_argument("--finitediff", action="store_true")
+parser.add_argument("--cuda", action="store_true")
 args = parser.parse_args()
 
 from dxtbx.model.crystal import Crystal
@@ -67,7 +68,7 @@ SIM = SimData()
 SIM.Umats_method = 1
 SIM.detector = DET_gt
 SIM.crystal = nbcryst
-SIM.instantiate_diffBragg(oversample=1, verbose=0)
+SIM.instantiate_diffBragg(oversample=1, verbose=1)
 if args.finitediff:
   SIM.D.refine(eta_diffBragg_id)
   SIM.D.initialize_managers()
@@ -79,6 +80,7 @@ SIM.air_path_mm = 0.1
 SIM.add_air = True
 SIM.add_water = True
 SIM.include_noise = True
+SIM.D.use_cuda= args.cuda
 SIM.D.add_diffBragg_spots()
 
 if args.finitediff:

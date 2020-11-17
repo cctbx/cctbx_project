@@ -4,7 +4,7 @@ from simtbx.nanoBragg import shapetype, nanoBragg
 from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from simtbx.diffBragg.nanoBragg_beam import nanoBragg_beam
 from simtbx.diffBragg import diffBragg
-
+import numpy  as np
 
 class SimData:
     def __init__(self):
@@ -25,6 +25,26 @@ class SimData:
         self.using_diffBragg_spots = True
         self.functionals = []
         self.UMAT_prime = None
+
+    @staticmethod
+    def default_panels_fast_slow(detector):
+        Npanel = len(detector)
+        nfast, nslow = detector[0].get_image_size()
+        slows, fasts = np.indices((nslow, nfast))
+        fasts = list(map(int, np.ravel(fasts)))
+        slows = list(map(int, np.ravel(slows)))
+        fasts = fasts*Npanel
+        slows = slows*Npanel
+        pids = []
+        for pid in range(Npanel):
+            pids += [pid]*(nfast*nslow)
+
+        npix = nslow*nfast*Npanel
+        panels_fasts_slows = np.zeros(npix*3, int)
+        panels_fasts_slows[0::3] = pids
+        panels_fasts_slows[1::3] = fasts
+        panels_fasts_slows[2::3] = slows
+        return flex.size_t(panels_fasts_slows)
 
     @property
     def air_path(self):
@@ -168,13 +188,12 @@ class SimData:
     def update_Fhkl_tuple(self):
         if self.crystal.miller_array is not None:
             if self.using_diffBragg_spots and self.crystal.miller_is_complex:
-                print("USING COMPLEX ARRAY!")
                 Freal, Fimag = zip(*[(val.real, val.imag) for val in self.crystal.miller_array.data()])
                 Freal = flex.double(Freal)
                 Fimag = flex.double(Fimag)
-                self.D.Fhkl_tuple_complex = self.crystal.miller_array.indices(), Freal, Fimag
+                self.D.Fhkl_tuple = self.crystal.miller_array.indices(), Freal, Fimag
             else:
-                self.D.Fhkl_tuple = self.crystal.miller_array.indices(), self.crystal.miller_array.data()
+                self.D.Fhkl_tuple = self.crystal.miller_array.indices(), self.crystal.miller_array.data(), None
 
     def _crystal_properties(self):
         self.D.xtal_shape = self.crystal.xtal_shape
@@ -238,11 +257,13 @@ class SimData:
     def instantiate_diffBragg(self, verbose=0, oversample=0, device_Id=0,
                               adc_offset=0, default_F=1e3, interpolate=0):
 
-        Bragg = diffBragg
         if not self.using_diffBragg_spots:
-            Bragg = nanoBragg
-        self.D = Bragg(self.detector, self.beam.nanoBragg_constructor_beam,
+            self.D = nanoBragg(self.detector, self.beam.nanoBragg_constructor_beam,
                            verbose=verbose, panel_id=int(self.panel_id))
+        else:
+            self.D = diffBragg(self.detector,
+                               self.beam.nanoBragg_constructor_beam,
+                               verbose)
         self._seedlings()
         self.D.interpolate = interpolate
         self._crystal_properties()
