@@ -572,8 +572,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
             bin_labels_type_idxs = self.infodict.get("bin_labels_type_idxs",False)
             self.BinDataComboBox.clear() 
             # fill combobox with labels of data that can be used for binning
-            for lbl, typeidx in bin_labels_type_idxs:
-              self.BinDataComboBox.addItem(lbl, typeidx )
+            for label,labeltype,idx in bin_labels_type_idxs:
+              self.BinDataComboBox.addItem(label, (labeltype, idx) )
             self.BinDataComboBox.view().setMinimumWidth(self.comboviewwidth)
 
           if self.infodict.get("used_nth_power_scale_radii", None) is not None:
@@ -914,10 +914,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
   def onBindataComboSelchange(self, i):
     if self.BinDataComboBox.currentText():
-      currentlabel = self.BinDataComboBox.currentText()
-      currentdata = self.BinDataComboBox.currentData()
-      bin_labels_type_idx = str( [currentlabel] + currentdata )
-      self.PhilToJsRender("NGL_HKLviewer.bin_labels_type_idx = %s" % bin_labels_type_idx )
+      binner_idx = self.BinDataComboBox.currentIndex()
+      self.PhilToJsRender('NGL_HKLviewer.binner_idx = %d' % binner_idx )
       bin_opacitieslst = []
       for j in range(self.nbins):
         bin_opacitieslst.append((1.0, j))
