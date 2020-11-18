@@ -1414,7 +1414,8 @@ class map_manager(map_reader, write_ccp4_map):
     assert isinstance(wrapping_value, bool)
     self._wrapping = wrapping_value
     if self._wrapping:
-      assert self.is_full_size()
+      if not self.is_full_size():
+        raise Sorry("You cannot set wrapping=True for a map that is not full size")
 
   def wrapping(self):
     '''
