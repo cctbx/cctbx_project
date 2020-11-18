@@ -211,7 +211,7 @@ class hklview_3d:
     self.NGLscriptstr = ""
     self.primitivetype = "SphereBuffer"
     self.url = ""
-    self.bin_labels_type_idx = ("Resolution",  "", -1, -1)
+    self.bin_labels_type_idxs = []
     self.colour_scene_id = None
     self.radii_scene_id = None
     self.colours = []
@@ -381,7 +381,6 @@ class hklview_3d:
                        "slice_index",
                        "sigma_color",
                        "sigma_radius",
-                       "fontsize",
                        "scene_id",
                        "color_scheme",
                        "scale",
@@ -407,11 +406,12 @@ class hklview_3d:
                       "show_missing",
                       "show_only_missing",
                       "show_systematic_absences",
-                      "bin_labels_type_idx",
-                      "nbins"
+                      "binner_idx",
+                      "nbins",
+                      "fontsize",
                       )
        ):
-      self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.bin_labels_type_idx, 
+      self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.binner_idx, 
                                                                curphilparam.nbins)
       self.sceneisdirty = True
 
@@ -426,8 +426,9 @@ class hklview_3d:
     if has_phil_path(diff_phil, 
                       "scene_bin_thresholds", # TODO: group bin phil parameters together in subscope
                       "bin_opacities",
-                      "bin_labels_type_idx",
+                      "binner_idx",
                       "nbins",
+                      "fontsize",
                       "mouse_sensitivity",
                       "real_space_unit_cell_scale_fraction",
                       "reciprocal_unit_cell_scale_fraction",
@@ -676,7 +677,7 @@ class hklview_3d:
 
   def ConstructReciprocalSpace(self, curphilparam, scene_id=None):
     sceneid = scene_id
-    if scene_id is not None and scene_id != self.viewerparams.scene_id:
+    if sceneid is None:
       sceneid = self.viewerparams.scene_id
 
     self.HKLsceneKey = (curphilparam.spacegroup_choice,
@@ -771,19 +772,19 @@ class hklview_3d:
       self.SendInfoToGUI({ "scene_array_label_types": scenearraylabeltypes, "NewHKLscenes" : True })
 
       self.bin_labels_type_idxs = []
-      self.bin_labels_type_idxs.append(("Resolution",  ["''", -1] ))
-      self.bin_labels_type_idxs.append(("Singletons", ["''", -1] ))
+      self.bin_labels_type_idxs.append(("Resolution",  "", -1 ))
+      self.bin_labels_type_idxs.append(("Singletons", "", -1 ))
       for labels,labeltype,idx,sceneid in scenearraylabeltypes:
         label = ",".join(labels)
         if labeltype not in  ["iscomplex", "iscomplex_fom", "ishendricksonlattman"]:
-          self.bin_labels_type_idxs.append((label, ["'" + labeltype + "'", sceneid]))
+          self.bin_labels_type_idxs.append((label, labeltype, sceneid))
         if labeltype == "hassigmas":
-          self.bin_labels_type_idxs.append(("Sigmas of " + label, ["'" + labeltype + "'", sceneid]))
+          self.bin_labels_type_idxs.append(("Sigmas of " + label, labeltype, sceneid))
         if labeltype == "iscomplex":
-          self.bin_labels_type_idxs.append(("Phases of " + label, ["'" + labeltype + "'", sceneid]))
-          self.bin_labels_type_idxs.append(("Amplitudes of " + label, ["'" + labeltype + "'", sceneid]))
+          self.bin_labels_type_idxs.append(("Phases of " + label, labeltype, sceneid))
+          self.bin_labels_type_idxs.append(("Amplitudes of " + label, labeltype, sceneid))
       self.SendInfoToGUI({ "bin_labels_type_idxs": self.bin_labels_type_idxs})
-
+      self.get_labels_of_data_for_binning()
     else:
       idx = self.scene_id_to_array_id(scene_id)
       (hklscenes, scenemaxdata,
@@ -924,10 +925,11 @@ class hklview_3d:
     return None
 
 
-  def calc_bin_thresholds(self, bin_labels_type_idx, nbins):
+  def calc_bin_thresholds(self, binner_idx, nbins):
     # make default bin thresholds if scene_bin_thresholds is not set
-    self.bin_labels_type_idx = eval(bin_labels_type_idx)
+    self.bin_labels_type_idx = self.bin_labels_type_idxs[binner_idx]
     binscenelabel = self.bin_labels_type_idx[0]
+    self.mprint("Using %s for binning" %binscenelabel)
     if binscenelabel=="Resolution":
       warray = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).work_array
       dres = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).dres
@@ -970,9 +972,7 @@ class hklview_3d:
 
 
   def get_matched_binarray(self):
-    sceneid = self.bin_labels_type_idx[2]
-    datatype = self.bin_labels_type_idx[1]
-    binscenelabel = self.bin_labels_type_idx[0]
+    binscenelabel, datatype, sceneid = self.bin_labels_type_idx
     label = self.HKLscene_from_dict(sceneid).work_array.info().label_string()
     if datatype == "hassigmas" and binscenelabel == "Sigmas of " + label:
       bindata = self.HKLscene_from_dict(sceneid).sigmas.deep_copy()
@@ -1177,7 +1177,7 @@ class hklview_3d:
       points = flex.vec3_double( [ ] )
       colors = flex.vec3_double( [ ] )
       radii = flex.double( [ ] )
-      self.bin_labels_type_idx = ("Resolution",  "", -1)
+      self.bin_labels_type_idx = self.bin_labels_type_idxs[0]
     else:
       points = self.scene.points
 
@@ -1304,7 +1304,6 @@ class hklview_3d:
       self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 ), precision) )
       self.binstrs.append(mstr)
       self.mprint(mstr, verbose=0)
-
       cntbin += 1
 
     if self.ngl_settings.bin_opacities == "":
@@ -1312,7 +1311,7 @@ class hklview_3d:
 
     self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
                           "bin_infotpls": self.bin_infotpls,
-                          "bin_data_label": self.bin_labels_type_idx[0],
+                          "binner_idx": self.params.binner_idx,
                           "tooltip_opacity": self.ngl_settings.tooltip_alpha
                          } )
     colourgradstr = []
@@ -1863,6 +1862,12 @@ Distance: %s
 
   def set_camera_type(self):
     self.AddToBrowserMsgQueue("SetCameraType", self.ngl_settings.camera_type)
+
+
+  def get_labels_of_data_for_binning(self):
+    self.mprint("\nData can be binned according to:")
+    for i,e in enumerate(self.bin_labels_type_idxs):
+      self.mprint("%d, %s" %(i, e[0]))
 
 
   def SetFontSize(self, fontsize):

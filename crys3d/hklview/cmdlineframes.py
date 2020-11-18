@@ -305,9 +305,6 @@ class HKLViewFrame() :
     kwds['parent'] = self
     self.viewer = view_3d.hklview_3d( **kwds )
     self.ResetPhilandViewer()
-    if 'useGuiSocket' in kwds:
-      self.msgqueuethrd.start()
-
     self.idx_data = None
     self.NewFileLoaded = False
     self.loaded_file_name = ""
@@ -315,6 +312,8 @@ class HKLViewFrame() :
     if 'hklin' in kwds or 'HKLIN' in kwds:
       self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
       self.LoadReflectionsFile(self.hklin)
+    if 'useGuiSocket' in kwds:
+      self.msgqueuethrd.start()
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
@@ -373,7 +372,7 @@ class HKLViewFrame() :
     self.params = self.currentphil.fetch().extract()
     self.viewer.viewerparams = self.params.NGL_HKLviewer.viewer
     self.viewer.params = self.params.NGL_HKLviewer
-    self.params.NGL_HKLviewer.bin_labels_type_idx = "('Resolution', '', -1)"
+    self.params.NGL_HKLviewer.binner_idx = 0
     self.params.NGL_HKLviewer.using_space_subgroup = False
     self.viewer.symops = []
     self.viewer.sg = None
@@ -457,12 +456,12 @@ class HKLViewFrame() :
         self.viewer.lastscene_id = phl.viewer.scene_id
 
       if view_3d.has_phil_path(diff_phil, "scene_id", "merge_data", "show_missing", \
-         "show_only_missing", "show_systematic_absences", "nbins", "bin_labels_type_idx",\
+         "show_only_missing", "show_systematic_absences", "nbins", "binner_idx",\
          "scene_bin_thresholds"):
         if self.set_scene(phl.viewer.scene_id):
           self.update_space_group_choices()
           self.set_scene_bin_thresholds(binvals=phl.scene_bin_thresholds,
-                                         bin_labels_type_idx=phl.bin_labels_type_idx,
+                                         binner_idx=phl.binner_idx,
                                          nbins=phl.nbins )
       if phl.spacegroup_choice == None:
         self.mprint("! spacegroup_choice == None")
@@ -782,7 +781,7 @@ class HKLViewFrame() :
         self.prepare_dataloading()
         if not file_name:
           self.mprint("Filename is None")
-          #time.sleep(15)
+          time.sleep(15)
         hkl_file = any_reflection_file(file_name)
         if hkl_file._file_type == 'cif':
           # use new cif label parser for reflections
@@ -1036,25 +1035,17 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def set_scene_bin_thresholds(self, binvals = None, bin_labels_type_idx = None,  nbins = 6):
-    if bin_labels_type_idx is None:
-      bin_labels_type_idx = "('Resolution', '', -1)"
-    #else:
-    #  bin_labels_type_idx = eval(bin_labels_type_idx)
+  def set_scene_bin_thresholds(self, binvals = None, binner_idx = 0,  nbins = 6):
     if binvals:
       binvals = list( 1.0/flex.double(binvals) )
       nuniquevalues = len(binvals)
     else:
-      binvals, nuniquevalues = self.viewer.calc_bin_thresholds(bin_labels_type_idx, nbins)
+      binvals, nuniquevalues = self.viewer.calc_bin_thresholds(binner_idx, nbins)
     self.viewer.UpdateBinValues( binvals, nuniquevalues )
 
 
-  def SetSceneBinLabel(self, bin_labels_type_idx = None ):
-    if bin_labels_type_idx is None:
-      bin_labels_type_idx = "('Resolution', '', -1)"
-    #else:
-    #  bin_labels_type_idx = eval(bin_labels_type_idx )
-    self.params.NGL_HKLviewer.bin_labels_type_idx = bin_labels_type_idx
+  def SetSceneBinLabel(self, binner_idx = 0 ):
+    self.params.NGL_HKLviewer.binner_idx = binner_idx
     self.update_settings()
 
 
@@ -1389,8 +1380,8 @@ NGL_HKLviewer {
   scene_bin_thresholds = None
     .type = float
     .multiple = True
-  bin_labels_type_idx = "('Resolution', '', -1)"
-    .type = str
+  binner_idx = 0
+    .type = int
   nbins = 1
     .type = int(value_min=1, value_max=40)
   shape_primitive = *'spheres' 'points'
