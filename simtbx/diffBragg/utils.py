@@ -702,8 +702,14 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
     selection_flags = []
     num_roi_negative_bg = 0
     background = np.ones(imgs.shape)*-1
-    for i_roi, roi in enumerate(rois):
+    i_roi = 0
+    import pylab as ply
+    patches = []
+    while i_roi < len(rois):
+    #for i_roi, roi in enumerate(rois):
+        roi = rois[i_roi]
         i1, i2, j1, j2 = roi
+        rect = plt.Rectangle(xy=(i1,j1), width=i2-i1, height=j2-j1, fc='none', ec='w')
         is_selected = True
         if is_on_edge[i_roi] and reject_edge_reflections:
             print("is on edge")
@@ -718,6 +724,10 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                 is_selected = False
 
         dimY, dimX = imgs[pid].shape
+        j1_nopad = j1
+        i1_nopad = i1
+        j2_nopad = j2
+        i2_nopad = i2
         if pad_for_background_estimation is not None:
             j1 = max(0, j1-pad_for_background_estimation)
             i1 = max(0, i1-pad_for_background_estimation)
@@ -753,13 +763,33 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                 print("background is negative")
                 is_selected = False
 
-        assert np.all(background[pid, j1:j2, i1:i2] == -1), "region of interest already accounted for"
-        background[pid, j1:j2, i1:i2] = tilt_plane
+        if not np.all(background[pid, j1_nopad:j2_nopad, i1_nopad:i2_nopad] == -1):
+            print( "region of interest already accounted for roi size= %d %d" % (i2_nopad-i1_nopad, j2_nopad-j1_nopad))
+            rois[i_roi] = i1_nopad+1,i2_nopad,j1_nopad+1,j2_nopad
+            continue
+
+        # unpadded ROI dimension
+        roi_dimY = j2_nopad-j1_nopad
+        roi_dimX = i2_nopad-i1_nopad
+        
+        if roi_dimY <2 or roi_dimX < 2:
+            is_selected = False
+
+        #assert np.all(background[pid, j1_nopad:j2_nopad, i1_nopad:i2_nopad] == -1), "region of interest already accounted for"
+        
+        background[pid, j1_nopad:j2_nopad, i1_nopad:i2_nopad] = \
+            tilt_plane[j1_nopad-j1: j1_nopad-j1+roi_dimY  , i1_nopad-i1: i1_nopad-i1+roi_dimX]
         tilt_abc.append((tilt_a, tilt_b, tilt_c))
         kept_rois.append(roi)
         panel_ids.append(pid)
+        patches.append(rect)
         selection_flags.append(is_selected)
+        i_roi += 1
 
+    #plt.imshow(imgs[0], vmax=100)
+    #for p in patches:
+    #    plt.gca().add_patch(p)
+    #plt.show()
     print("Number of ROI with negative BGs: %d / %d" % (num_roi_negative_bg, len(rois)))
 
     return kept_rois, panel_ids, tilt_abc, selection_flags, background
