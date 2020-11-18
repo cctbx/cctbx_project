@@ -779,9 +779,6 @@ class HKLViewFrame() :
       try :
         self.mprint("Reading file...")
         self.prepare_dataloading()
-        if not file_name:
-          self.mprint("Filename is None")
-          time.sleep(15)
         hkl_file = any_reflection_file(file_name)
         if hkl_file._file_type == 'cif':
           # use new cif label parser for reflections
@@ -1036,12 +1033,14 @@ class HKLViewFrame() :
 
 
   def set_scene_bin_thresholds(self, binvals = None, binner_idx = 0,  nbins = 6):
-    if binvals:
-      binvals = list( 1.0/flex.double(binvals) )
-      nuniquevalues = len(binvals)
-    else:
+    if binvals is None or len(binvals) ==0:
       binvals, nuniquevalues = self.viewer.calc_bin_thresholds(binner_idx, nbins)
-    self.viewer.UpdateBinValues( binvals, nuniquevalues )
+    if binvals and binner_idx == 0:
+      binvals = list( 1.0/flex.double(binvals) )
+      #nuniquevalues = len(binvals)
+    else:
+      nuniquevalues = -1
+    self.viewer.UpdateBinValues(binner_idx, binvals, nuniquevalues)
 
 
   def SetSceneBinLabel(self, binner_idx = 0 ):
@@ -1057,6 +1056,7 @@ class HKLViewFrame() :
 
   def SetSceneBinThresholds(self, binvals=[]):
     self.params.NGL_HKLviewer.scene_bin_thresholds = binvals
+    self.params.NGL_HKLviewer.nbins = len(binvals)
     self.update_settings()
 
 
