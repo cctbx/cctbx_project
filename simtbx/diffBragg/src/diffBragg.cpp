@@ -736,6 +736,7 @@ void diffBragg::initialize_managers(){
         pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[manager_idx]);
         if (pan_rot->refine_me){
             update_panel_deriv_vecs_on_device=true;
+            update_detector_on_device=true;
             pan_rot->initialize(Npix_total, compute_curvatures);
         }
     }
@@ -1409,7 +1410,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     double time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
     if(verbose){
         int n_total_iter = Nsteps*Npix_to_model;
-        if(use_cuda)
+        if(use_cuda || getenv("DIFFBRAGG_USE_CUDA")!= NULL)
             printf("TIME TO RUN DIFFBRAGG -GPU- KERNEL (%d iterations):  %3.10f ms \n",n_total_iter, time);
         else
             printf("TIME TO RUN DIFFBRAGG -CPU-  KERNEL (%d iterations):  %3.10f ms \n",n_total_iter, time);

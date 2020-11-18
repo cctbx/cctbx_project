@@ -586,7 +586,7 @@ if not args.curvatures:
     RUC.S.D.compute_curvatures = False
 RUC.has_pre_cached_roi_data = True
 RUC.S.D.update_oversample_during_refinement = False
-RUC.S.D.verbose = 0
+RUC.S.D.verbose = 2
 RUC.use_curvatures = False
 RUC.use_curvatures_threshold = 10
 RUC.bg_offset_positive = args.bgoffsetpositive

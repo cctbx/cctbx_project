@@ -167,9 +167,9 @@ void diffBragg_loopy(
             cp.cu_phi_pos[i] = phi_pos[i];
             cp.cu_source_pos[i] = source_pos[i];
         }
+        if (verbose>1)
+            printf("H2D Done copying step positions\n");
     }
-    if (verbose >3)
-        printf("Done copying step positions\n");
 //  END step position
     int kaladin_stormblessed = 777;
 
@@ -183,6 +183,8 @@ void diffBragg_loopy(
             cp.cu_source_I[i] = source_I[i];
             cp.cu_source_lambda[i] = source_lambda[i];
         }
+        if(verbose>1 )
+          printf("H2D sources\n");
     }
 //  END sources
 
@@ -195,10 +197,10 @@ void diffBragg_loopy(
             cp.cu_UMATS_RXYZ[i] = UMATS_RXYZ[i];
         for (int i=0; i < UMATS_RXYZ_prime.size(); i++)
             cp.cu_UMATS_RXYZ_prime[i] = UMATS_RXYZ_prime[i];
+        if(verbose>1)
+            printf("H2D Done copying Umats\n") ;
     }
 //  END UMATS
-    if(verbose >3)
-        printf("Done copying Umats\n") ;
 
 
 //  BMATS
@@ -207,10 +209,10 @@ void diffBragg_loopy(
             cp.cu_dB_Mats[i] = dB_Mats[i];
         for (int i=0; i< dB2_Mats.size(); i++)
             cp.cu_dB2_Mats[i] = dB2_Mats[i];
+        if(verbose>1)
+            printf("H2D Done copying dB_Mats\n") ;
     }
 //  END BMATS
-    if(verbose >3)
-        printf("Done copying dB_Mats\n") ;
 
 
 //  ROT MATS
@@ -221,10 +223,10 @@ void diffBragg_loopy(
             cp.cu_dRotMats[i] = dRotMats[i];
         for (int i=0; i<d2RotMats.size(); i++)
             cp.cu_d2RotMats[i] = d2RotMats[i];
+        if (verbose>1)
+          printf("H2D Done copying rotmats\n");
     }
 //  END ROT MATS
-    if (verbose > 3)
-      printf("Done copying rotmats\n");
 
 
 
@@ -236,10 +238,10 @@ void diffBragg_loopy(
             cp.cu_odet_vectors[i] = odet_vectors[i];
             cp.cu_pix0_vectors[i] = pix0_vectors[i];
         }
+        if (verbose>1)
+          printf("H2D Done copying detector vectors\n");
     }
 //  END  DETECTOR VECTORS
-    if (verbose > 3)
-      printf("Done copying detector vectors\n");
 
 
 
@@ -255,10 +257,10 @@ void diffBragg_loopy(
             cp.cu_refine_lambda[i] = refine_lambda[i];
         for(int i=0; i<6; i++)
             cp.cu_refine_Bmat[i] = refine_Bmat[i];
+        if (verbose>1)
+          printf("H2D Done copying refinement flags\n");
     }
 //  END REFINEMENT FLAGS
-    if (verbose > 3)
-      printf("Done copying refinement flags\n");
 
 
 //  BEGIN Fhkl
@@ -268,10 +270,10 @@ void diffBragg_loopy(
           if (complex_miller)
               cp.cu_Fhkl2[i] = _Fhkl2Linear[i];
         }
+        if (verbose>1)
+            printf("H2D Done copying step Fhkl\n");
     }
 //  END Fhkl
-    if (verbose >3)
-        printf("Done copying step Fhkl\n");
 
 //  BEGIN panel derivative vecs
     if(update_panel_deriv_vecs || ALLOC || FORCE_COPY){
@@ -279,10 +281,10 @@ void diffBragg_loopy(
             cp.cu_dF_vecs[i] = dF_vecs[i];
             cp.cu_dS_vecs[i] = dS_vecs[i];
         }
+        if (verbose>1)
+            printf("H2D Done copying step panel derivative vectors\n");
     }
 //  END panel derivative vecs
-    if (verbose >3)
-        printf("Done copying step panel derivative vectors\n");
 
 
 //  BEGIN IMAGES
@@ -307,9 +309,9 @@ void diffBragg_loopy(
     if (update_panels_fasts_slows || ALLOC || FORCE_COPY){
         for (int i=0; i< panels_fasts_slows.size(); i++)
             cp.cu_panels_fasts_slows[i] = panels_fasts_slows[i];
+        if (verbose>1)
+            printf("H2D Done copying panels_fasts_slows\n");
     }
-    if (verbose>3)
-        printf("Done copying panels_fasts_slows\n");
 //  END panels fasts slows
 
 

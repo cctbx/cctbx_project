@@ -41,6 +41,7 @@ from numpy import ones_like as ONES_LIKE
 from numpy import where as WHERE
 from numpy import sqrt as SQRT
 from numpy import array as ARRAY
+from numpy import all as np_all
 from numpy import pi as PI
 from numpy import allclose as ALL_CLOSE
 from numpy import zeros as NP_ZEROS
@@ -1423,6 +1424,10 @@ class LocalRefiner(PixelRefinement):
             self.bg_coef = self._get_bg_coef(self._i_shot)
             (i1, i2), (j1, j2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
             self.tilt_plane = self.bg_coef*self.background_estimate[self._panel_id, j1:j2, i1:i2]
+        elif self.background is not None:
+            (x1, x2), (y1, y2) = self.NANOBRAGG_ROIS[self._i_shot][self._i_spot]
+            self.tilt_plane = self.background[self._i_shot][self._panel_id, y1:y2, x1:x2]
+            assert np_all(self.tilt_plane > 0)
         else:
             xr = self.XREL[self._i_shot][i_spot]
             yr = self.YREL[self._i_shot][i_spot]
@@ -1441,7 +1446,7 @@ class LocalRefiner(PixelRefinement):
         #    "/global/cfs/cdirs/lcls/dermen/d9114_sims/test_ensemble/job2/test_rank2_data18_fluence40018.h5", 'r')
         #(x1,x2), (y1,y2) = self.NANOBRAGG_ROIS[self._i_shot][self._i_spot]
         #self.tilt_plane = bg['background'][self._panel_id, y1:y2, x1:x2]
-        self.tilt_plane = self.tilt_plane.ravel()
+        self.tilt_plane = self.tilt_plane.flatten()
 
     def _update_rotXYZ(self):
         if self.refine_rotX:

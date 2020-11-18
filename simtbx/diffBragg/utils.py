@@ -701,6 +701,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
     panel_ids = []
     selection_flags = []
     num_roi_negative_bg = 0
+    background = np.ones(imgs.shape)*-1
     for i_roi, roi in enumerate(rois):
         i1, i2, j1, j2 = roi
         is_selected = True
@@ -730,26 +731,30 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
         else:
             is_background = label_background_pixels(shoebox,thresh=bg_thresh, iterations=2)
 
+        Ycoords, Xcoords = np.indices((j2-j1, i2-i1))
+
         if use_robust_estimation:
             bg_pixels = shoebox[is_background]
             bg_signal = np.median(bg_pixels)
             if bg_signal < 0:
-                print("neg")
                 num_roi_negative_bg += 1
                 if set_negative_bg_to_zero:
                     bg_signal = 0
                 else:
-                    print("background is negative")
                     is_selected = False
             tilt_a, tilt_b, tilt_c = 0, 0, bg_signal
+            tilt_plane = tilt_a * Xcoords + tilt_b * Ycoords + tilt_c
         else:
             (tilt_a, tilt_b, tilt_c), covariance = fit_plane_equation_to_background_pixels(
                 shoebox_img=shoebox, fit_sel=is_background, sigma_rdout=sigma_rdout)
-            dips_below = check_if_tilt_dips_below_zero((tilt_a, tilt_b, tilt_c), shoebox.shape)
-            if dips_below:
+            tilt_plane = tilt_a * Xcoords + tilt_b * Ycoords + tilt_c
+            if np.min(tilt_plane) < 0:  # dips below
+                num_roi_negative_bg += 1
                 print("background is negative")
                 is_selected = False
 
+        assert np.all(background[pid, j1:j2, i1:i2] == -1), "region of interest already accounted for"
+        background[pid, j1:j2, i1:i2] = tilt_plane
         tilt_abc.append((tilt_a, tilt_b, tilt_c))
         kept_rois.append(roi)
         panel_ids.append(pid)
@@ -757,11 +762,11 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
 
     print("Number of ROI with negative BGs: %d / %d" % (num_roi_negative_bg, len(rois)))
 
-    return kept_rois, panel_ids, tilt_abc, selection_flags
+    return kept_rois, panel_ids, tilt_abc, selection_flags, background
 
 
-def check_if_tilt_dips_below_zero(tilt_coefs, dim_fastslow):
-    fast_dim, slow_dim = dim_fastslow
+def check_if_tilt_dips_below_zero(tilt_coefs, dim_slowfast):
+    slow_dim, fast_dim = dim_slowfast
     tX, tY, tZ = tilt_coefs
     tilt_plane = fast_dim*tX + slow_dim*tY + tZ
     dips_below_zero = False

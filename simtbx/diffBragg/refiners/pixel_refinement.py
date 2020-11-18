@@ -36,7 +36,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.refine_per_spot_scale = False
         self.per_spot_scale_sigma = 1
         self.detector_distance_sigma = 1
-        self.detector_distance_init = 0   # offset
+        self.detector_distance_init = 0  # offset
         self.detector_distance_range = -1e-6, 1e-6
 
         self.panelX_range = -1e-6, 1e-6
@@ -44,6 +44,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.panelZ_range = -1e-6, 1e-6
         self.panelRot_range = [[-1e-6, 1e-6], [-1e-6, 1e-6], [-1e-6, 1e-6]]
         self.panelRot_sigma = [1, 1, 1]
+        self.background = None
         self.full_image_of_model = None
         self.save_model_for_shot = None
         self.pershot_spectra_refine = False
