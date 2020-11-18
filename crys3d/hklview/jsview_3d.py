@@ -410,7 +410,7 @@ class hklview_3d:
                       "nbins",
                       "fontsize",
                       )
-       ):
+       ) and not has_phil_path(diff_phil, "scene_bin_thresholds") :
       self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.binner_idx, 
                                                                curphilparam.nbins)
       self.sceneisdirty = True
@@ -433,7 +433,7 @@ class hklview_3d:
                       "real_space_unit_cell_scale_fraction",
                       "reciprocal_unit_cell_scale_fraction",
                       "clip_plane",
-                      "viewer"): # and self.viewerparams.scene_id is not None:
+                      "viewer") and self.viewerparams.scene_id is not None:
        # any change to parameters in the master phil in display2.py
       self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
       self.DrawNGLJavaScript()
@@ -927,8 +927,8 @@ class hklview_3d:
 
   def calc_bin_thresholds(self, binner_idx, nbins):
     # make default bin thresholds if scene_bin_thresholds is not set
-    self.bin_labels_type_idx = self.bin_labels_type_idxs[binner_idx]
-    binscenelabel = self.bin_labels_type_idx[0]
+    #self.bin_labels_type_idx = self.bin_labels_type_idxs[binner_idx]
+    binscenelabel = self.bin_labels_type_idxs[binner_idx][0]
     self.mprint("Using %s for binning" %binscenelabel)
     if binscenelabel=="Resolution":
       warray = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).work_array
@@ -948,7 +948,7 @@ class hklview_3d:
         binvals = [ -1.5, -0.5, 0.5, 1.5 ]
         nuniquevalues = len(binvals)
     else:
-      bindata, dummy = self.get_matched_binarray()
+      bindata, dummy = self.get_matched_binarray(binner_idx)
       selection = flex.sort_permutation( bindata )
       bindata_sorted = bindata.select(selection)
       # get binvals by dividing bindata_sorted with nbins
@@ -961,18 +961,21 @@ class hklview_3d:
     return binvals, nuniquevalues
 
 
-  def UpdateBinValues(self, binvals = [], nuniquevalues = 0):
+  def UpdateBinValues(self, binner_idx, binvals = [], nuniquevalues = -1):
     if binvals:
       binvals.sort()
       self.binvals = binvals
     else: # ensure default resolution interval includes all data by avoiding rounding errors
       self.binvals = [ 1.0/(self.miller_array.d_max_min()[0]*1.001),
                        1.0/(self.miller_array.d_max_min()[1]*0.999) ]
+    if nuniquevalues == -1:
+      bindata, dummy = self.get_matched_binarray(binner_idx)
+      nuniquevalues = len(set(list(bindata)))
     self.nuniqueval = nuniquevalues
 
 
-  def get_matched_binarray(self):
-    binscenelabel, datatype, sceneid = self.bin_labels_type_idx
+  def get_matched_binarray(self, binner_idx):
+    binscenelabel, datatype, sceneid = self.bin_labels_type_idxs[binner_idx]
     label = self.HKLscene_from_dict(sceneid).work_array.info().label_string()
     if datatype == "hassigmas" and binscenelabel == "Sigmas of " + label:
       bindata = self.HKLscene_from_dict(sceneid).sigmas.deep_copy()
@@ -992,11 +995,11 @@ class hklview_3d:
 
   def MatchBinArrayToSceneArray(self):
     # match bindata with data or sigmas
-    if self.bin_labels_type_idx[0] == "Resolution":
+    if self.bin_labels_type_idxs[self.params.binner_idx][0] == "Resolution":
       return 1.0/self.scene.dres
-    binarraydata, dummy = self.get_matched_binarray()
+    binarraydata, dummy = self.get_matched_binarray(self.params.binner_idx)
     scenearraydata = self.HKLscene_from_dict(self.viewerparams.scene_id).data
-    ibinarray = self.bin_labels_type_idx[2]
+    ibinarray = self.bin_labels_type_idxs[self.params.binner_idx][2]
     matchindices = miller.match_indices(self.HKLscene_from_dict(self.viewerparams.scene_id).indices,
                                         self.HKLscene_from_dict(ibinarray).indices )
     matched_binarray = binarraydata.select( matchindices.pairs().column(1) )
@@ -1173,24 +1176,25 @@ class hklview_3d:
       radii = self.HKLscene_from_dict(self.radii_scene_id).radii
       self.meanradius = flex.mean(radii)
 
+    bin_labels_type_idx = self.bin_labels_type_idxs[self.params.binner_idx]
     if blankscene:
       points = flex.vec3_double( [ ] )
       colors = flex.vec3_double( [ ] )
       radii = flex.double( [ ] )
-      self.bin_labels_type_idx = self.bin_labels_type_idxs[0]
+      bin_labels_type_idx = self.bin_labels_type_idxs[0]
     else:
       points = self.scene.points
 
     nrefls = points.size()
     hkls = self.scene.indices
     dres = self.scene.dres
-    if self.bin_labels_type_idx[0] =="Resolution":
+    if bin_labels_type_idx[0] =="Resolution":
       colstr = "dres"
-    elif self.bin_labels_type_idx[0] =="Singletons":
+    elif bin_labels_type_idx[0] =="Singletons":
       colstr = "Singleton"
     else:
       if not blankscene:
-        colstr = self.HKLscene_from_dict(self.bin_labels_type_idx[2]).work_array.info().label_string()
+        colstr = self.HKLscene_from_dict(bin_labels_type_idx[2]).work_array.info().label_string()
     data = self.scene.data
     if not blankscene:
       colourlabel = self.HKLscene_from_dict(self.colour_scene_id).colourlabel
@@ -1204,14 +1208,14 @@ class hklview_3d:
 
     self.binvalsboundaries = []
     if not blankscene:
-      if self.bin_labels_type_idx[0] =="Resolution":
+      if bin_labels_type_idx[0] =="Resolution":
         self.binvalsboundaries = self.binvals
         self.bindata = 1.0/self.scene.dres
-      elif self.bin_labels_type_idx[0] =="Singletons":
+      elif bin_labels_type_idx[0] =="Singletons":
         self.binvalsboundaries = self.binvals
         self.bindata = self.scene.singletonsiness
       else:
-        dummy, self.binvalsboundaries = self.get_matched_binarray()
+        dummy, self.binvalsboundaries = self.get_matched_binarray(self.params.binner_idx)
         self.binvalsboundaries.extend( self.binvals )
         self.binvalsboundaries.sort()
         if self.binvalsboundaries[0] < 0.0:
