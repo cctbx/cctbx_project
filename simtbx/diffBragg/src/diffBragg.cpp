@@ -1358,6 +1358,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             nopolar, point_pixel, fluence, r_e_sqr, spot_scale);
         }
     else { // we are using cuda
+#ifdef NANOBRAGG_HAVE_CUDA
        diffBragg_loopy(
            Npix_to_model, panels_fasts_slows_vec,
            image,
@@ -1405,6 +1406,9 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
            update_dB_matrices_on_device, update_rotmats_on_device,
            update_Fhkl_on_device, update_detector_on_device, update_refine_flags_on_device,
            update_panel_deriv_vecs_on_device);
+#else
+       // no statement
+#endif
     }
     gettimeofday(&t2, 0);
     double time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;

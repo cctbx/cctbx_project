@@ -273,7 +273,9 @@ namespace boost_python { namespace {
 
       .def("free_Fhkl2",&simtbx::nanoBragg::diffBragg::free_Fhkl2)
       
+#ifdef NANOBRAGG_HAVE_CUDA
       .def("gpu_free",&simtbx::nanoBragg::diffBragg::gpu_free)
+#endif
 
       .def("set_mosaic_blocks_prime",
              &simtbx::nanoBragg::diffBragg::set_mosaic_blocks_prime,
