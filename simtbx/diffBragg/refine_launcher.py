@@ -130,8 +130,9 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
 
   RUC = None
   x_init = None
-  for i_macro_cyc in range(params.refiner.num_macro_cycles):
-    for i_trial in range(n_trials):
+  nmacro = params.refiner.num_macro_cycles
+  for i_macro_cyc in range(1): #params.refiner.num_macro_cycles):
+    for i_trial in range(n_trials*nmacro):
 
       RUC = LocalRefiner(
         n_total_params=n_local_unknowns + n_global_params,
@@ -153,45 +154,45 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
 
       if not params.refiner.only_predict_model:
         if params.refiner.refine_Bmatrix is not None:
-          RUC.refine_Bmatrix = params.refiner.refine_Bmatrix[i_trial]
+          RUC.refine_Bmatrix = (params.refiner.refine_Bmatrix*nmacro)[i_trial]
 
         if params.refiner.refine_Umatrix is not None:
-          RUC.refine_Umatrix = params.refiner.refine_Umatrix[i_trial]
+          RUC.refine_Umatrix = (params.refiner.refine_Umatrix*nmacro)[i_trial]
 
         if params.refiner.refine_ncells is not None:
-          RUC.refine_ncells = params.refiner.refine_ncells[i_trial]
+          RUC.refine_ncells = (params.refiner.refine_ncells*nmacro)[i_trial]
 
         if params.refiner.refine_bg is not None:
-          RUC.refine_background_planes = params.refiner.refine_bg[i_trial]
+          RUC.refine_background_planes = (params.refiner.refine_bg*nmacro)[i_trial]
 
         if params.refiner.refine_spot_scale is not None:
-          RUC.refine_crystal_scale = params.refiner.refine_spot_scale[i_trial]
+          RUC.refine_crystal_scale = (params.refiner.refine_spot_scale*nmacro)[i_trial]
 
         if params.refiner.refine_spectra is not None:
-          RUC.refine_spectra = params.refiner.refine_spectra[i_trial]
+          RUC.refine_spectra = (params.refiner.refine_spectra*nmacro)[i_trial]
 
         if params.refiner.refine_detdist is not None:
-          RUC.refine_detdist = params.refiner.refine_detdist[i_trial]
+          RUC.refine_detdist = (params.refiner.refine_detdist*nmacro)[i_trial]
 
         if params.refiner.refine_panelZ is not None:
-          RUC.refine_panelZ = params.refiner.refine_panelZ[i_trial]
+          RUC.refine_panelZ = (params.refiner.refine_panelZ*nmacro)[i_trial]
 
         if params.refiner.refine_panelRotO is not None:
-          RUC.refine_panelRotO = params.refiner.refine_panelRotO[i_trial]
+          RUC.refine_panelRotO = (params.refiner.refine_panelRotO*nmacro)[i_trial]
         if params.refiner.refine_panelRotF is not None:
-          RUC.refine_panelRotF = params.refiner.refine_panelRotF[i_trial]
+          RUC.refine_panelRotF = (params.refiner.refine_panelRotF*nmacro)[i_trial]
 
         if params.refiner.refine_panelRotS is not None:
-          RUC.refine_panelRotS = params.refiner.refine_panelRotS[i_trial]
+          RUC.refine_panelRotS = (params.refiner.refine_panelRotS*nmacro)[i_trial]
 
         if params.refiner.refine_panelXY is not None:
-          RUC.refine_panelXY = params.refiner.refine_panelXY[i_trial]
+          RUC.refine_panelXY = (params.refiner.refine_panelXY*nmacro)[i_trial]
 
         if params.refiner.refine_per_spot_scale is not None:
-          RUC.refine_per_spot_scale = params.refiner.refine_per_spot_scale[i_trial]
+          RUC.refine_per_spot_scale = (params.refiner.refine_per_spot_scale*nmacro)[i_trial]
 
         if params.refiner.refine_eta is not None:
-          RUC.refine_eta = params.refiner.refine_eta[i_trial]
+          RUC.refine_eta = (params.refiner.refine_eta*nmacro)[i_trial]
 
       if RUC.refine_detdist and RUC.refine_panelZ:
         raise ValueError("Cannot refine panelZ and detdist simultaneously")
@@ -220,7 +221,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
                             [ang*np.pi/180 for ang in params.refiner.ranges.panel_rotS]]
 
       RUC.refine_Fcell = False
-      RUC.max_calls = params.refiner.max_calls[i_trial]
+      RUC.max_calls = (params.refiner.max_calls*nmacro)[i_trial]
 
       RUC.x_init = x_init
       RUC.only_pass_refined_x_to_lbfgs = False
