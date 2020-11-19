@@ -273,8 +273,55 @@ def exercise_has_hd():
       log                       = null_out())
   assert not m.has_hd()
 
+def exercise_ss_creation_crash():
+  pdb_str = """
+CRYST1  145.350  135.090  157.320  90.00  90.00  90.00 P 1
+SCALE1      0.006880  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.007402  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.006356        0.00000
+ATOM      1  N   ASN A   1      47.095 160.279  31.220  1.00 30.00           N
+ATOM      2  CA  ASN A   1      65.985 120.233  34.727  1.00 30.00           C
+ATOM      3  C   ASN A   1      56.657 138.700  33.374  1.00 30.00           C
+ATOM      4  O   ASN A   1      56.353 138.977  34.561  1.00 30.00           O
+ATOM      5  CB  ASN A   1      65.238 120.133  36.068  1.00 30.00           C
+ATOM      6  CG  ASN A   1      66.087 119.360  37.057  1.00 30.00           C
+ATOM      7  OD1 ASN A   1      65.746 118.217  37.441  1.00 30.00           O
+ATOM      8  ND2 ASN A   1      67.240 119.920  37.395  1.00 30.00           N
+ATOM      9  N   ASN A   2      56.939 137.441  33.021  1.00 30.00           N
+ATOM     10  CA  ASN A   2      67.135 117.384  35.354  1.00 30.00           C
+ATOM     11  C   ASN A   2      74.935 104.398  35.546  1.00 30.00           C
+ATOM     12  O   ASN A   2      74.423 104.166  34.444  1.00 30.00           O
+ATOM     13  CB  ASN A   2      65.828 116.703  35.809  1.00 30.00           C
+ATOM     14  CG  ASN A   2      66.092 115.518  36.718  1.00 30.00           C
+ATOM     15  OD1 ASN A   2      66.641 114.515  36.266  1.00 30.00           O
+ATOM     16  ND2 ASN A   2      65.744 115.556  38.000  1.00 30.00           N
+ATOM     17  N   ASN A   3      76.102 103.886  35.920  1.00 30.00           N
+ATOM     18  CA  ASN A   3      68.960 115.076  35.163  1.00 30.00           C
+ATOM     19  C   ASN A   3      86.047  90.376  35.591  1.00 30.00           C
+ATOM     20  O   ASN A   3      87.134  90.903  35.535  1.00 30.00           O
+ATOM     21  CB  ASN A   3      70.251 115.882  34.903  1.00 30.00           C
+ATOM     22  CG  ASN A   3      71.023 116.208  36.192  1.00 30.00           C
+ATOM     23  OD1 ASN A   3      70.637 117.096  36.957  1.00 30.00           O
+ATOM     24  ND2 ASN A   3      72.106 115.481  36.436  1.00 30.00           N
+ATOM     25  OXT ASN A   3      85.912  89.104  36.045  1.00 30.00           O
+TER
+END
+
+
+"""
+  with open("exercise_ss_creation_crash_model.pdb","w") as fo:
+    fo.write(pdb_str)
+  from iotbx.data_manager import DataManager
+  dm=DataManager()
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.secondary_structure.enabled=True
+  model = dm.get_model('exercise_ss_creation_crash_model.pdb')
+  model.set_pdb_interpretation_params(params)
+  model.process_input_model(make_restraints=True)
+
 if (__name__ == "__main__"):
   t0 = time.time()
+  exercise_ss_creation_crash()
   exercise_set_b_iso()
   exercise_convert_to_isotropic()
   run()
