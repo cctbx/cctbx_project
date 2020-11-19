@@ -5,9 +5,10 @@ Most pixels on a typical pattern are far from Bragg spots, so exp() evaluates to
 On GPU (but not CPU) we can save lots of execution time by pretesting the argument,
     for exp(-arg), evaluate to zero if arg >= 35
 Provide a backdoor to the Mullen-Holton kernel, by defining shapetype=GAUSS_ARGCHK
-Test 1) standard C++ result
-     3) exafel api interface to GPU, allowing fast evaluation on many energy channels
-     4) exafel api interface to GPU, with GAUSS_ARGCHK
+
+This test exercises
+1) the standard C++ result, i.e., the simple monochromatic case
+2) the GPU implementation of the simple monochromatic case, if CUDA is enabled
 
 The test is derived from tst_nanoBragg_cbf_write.py
 Makes dxtbx models for detector, beam , crystal
@@ -21,11 +22,10 @@ from libtbx.test_utils import approx_equal
 
 from cctbx import sgtbx, miller
 from cctbx.crystal import symmetry
-import dxtbx
+
 from dxtbx.model.beam import BeamFactory
 from dxtbx.model.crystal import CrystalFactory
 from dxtbx.model.detector import DetectorFactory
-from scitbx.array_family import flex
 from scitbx.matrix import sqr, col
 from simtbx.nanoBragg import nanoBragg, shapetype
 
@@ -172,7 +172,7 @@ class amplitudes:
     #f_model.show_summary()
     return f_model
 
-def simple_monochromatic_case(BEAM, DETECTOR, CRYSTAL, SF_model):
+def simple_monochromatic_case(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False):
   Famp = SF_model.get_amplitudes(at_angstrom=BEAM.get_wavelength())
 
   # do the simulation
@@ -182,7 +182,12 @@ def simple_monochromatic_case(BEAM, DETECTOR, CRYSTAL, SF_model):
   SIM.Fhkl = Famp
   SIM.Amatrix = sqr(CRYSTAL.get_A()).transpose()
   SIM.oversample = 2
-  SIM.xtal_shape = shapetype.Gauss
+  if argchk:
+    print("\nmonochromatic case, CPU argchk")
+    SIM.xtal_shape = shapetype.Gauss_argchk
+  else:
+    print("\nmonochromatic case, CPU no argchk")
+    SIM.xtal_shape = shapetype.Gauss
   SIM.add_nanoBragg_spots()
 
   SIM.Fbg_vs_stol = water
@@ -224,121 +229,6 @@ def simple_monochromatic_case_GPU(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=Fals
   SIM.add_background()
   return SIM
 
-class several_wavelength_case:
- def __init__(self, BEAM, DETECTOR, CRYSTAL, SF_model):
-  SIM = nanoBragg(DETECTOR, BEAM, panel_id=0)
-  print("\nassume three energy channels")
-  self.wavlen = flex.double([BEAM.get_wavelength()-0.002, BEAM.get_wavelength(), BEAM.get_wavelength()+0.002])
-  self.flux = flex.double([(1./6.)*SIM.flux, (3./6.)*SIM.flux, (2./6.)*SIM.flux])
-  self.sfall_channels = {}
-  for x in range(len(self.wavlen)):
-    self.sfall_channels[x] = SF_model.get_amplitudes(at_angstrom = self.wavlen[x])
-  self.DETECTOR = DETECTOR
-  self.BEAM = BEAM
-  self.CRYSTAL = CRYSTAL
-
- def several_wavelength_case_for_CPU(self):
-  SIM = nanoBragg(self.DETECTOR, self.BEAM, panel_id=0)
-  for x in range(len(self.wavlen)):
-    SIM.flux = self.flux[x]
-    SIM.wavelength_A = self.wavlen[x]
-    print("CPUnanoBragg_API+++++++++++++ Wavelength %d=%.6f, Flux %.6e, Fluence %.6e"%(
-            x, SIM.wavelength_A, SIM.flux, SIM.fluence))
-    SIM.Fhkl = self.sfall_channels[x]
-    SIM.Ncells_abc = (20,20,20)
-    SIM.Amatrix = sqr(self.CRYSTAL.get_A()).transpose()
-    SIM.oversample = 2
-    SIM.xtal_shape = shapetype.Gauss
-    SIM.interpolate = 0
-    SIM.add_nanoBragg_spots()
-
-  SIM.wavelength_A = self.BEAM.get_wavelength()
-  SIM.Fbg_vs_stol = water
-  SIM.amorphous_sample_thick_mm = 0.02
-  SIM.amorphous_density_gcm3 = 1
-  SIM.amorphous_molecular_weight_Da = 18
-  SIM.flux=1e12
-  SIM.beamsize_mm=0.003 # square (not user specified)
-  SIM.exposure_s=1.0 # multiplies flux x exposure
-  SIM.progress_meter=False
-  SIM.add_background()
-  return SIM
-
- def several_wavelength_case_exafel_api_for_GPU(self, argchk=False):
-  from simtbx.nanoBragg import gpu_energy_channels
-  gpu_channels_singleton = gpu_energy_channels (deviceId = 0)
-
-  SIM = nanoBragg(self.DETECTOR, self.BEAM, panel_id=0)
-  SIM.device_Id = 0
-
-  assert gpu_channels_singleton.get_deviceID()==SIM.device_Id
-  assert gpu_channels_singleton.get_nchannels() == 0 # uninitialized
-  for x in range(len(self.flux)):
-          gpu_channels_singleton.structure_factors_to_GPU_direct_cuda(
-           x, self.sfall_channels[x].indices(), self.sfall_channels[x].data())
-  assert gpu_channels_singleton.get_nchannels() == len(self.flux)
-  SIM.Ncells_abc = (20,20,20)
-  SIM.Amatrix = sqr(self.CRYSTAL.get_A()).transpose()
-  SIM.oversample = 2
-  if argchk:
-    print("\npolychromatic GPU argchk")
-    SIM.xtal_shape = shapetype.Gauss_argchk
-  else:
-    print("\npolychromatic GPU no argchk")
-    SIM.xtal_shape = shapetype.Gauss
-  SIM.interpolate = 0
-  # allocate GPU arrays
-  SIM.allocate_cuda()
-
-  # loop over energies
-  for x in range(len(self.flux)):
-      SIM.flux = self.flux[x]
-      SIM.wavelength_A = self.wavlen[x]
-      print("USE_EXASCALE_API+++++++++++++ Wavelength %d=%.6f, Flux %.6e, Fluence %.6e"%(
-            x, SIM.wavelength_A, SIM.flux, SIM.fluence))
-      SIM.add_energy_channel_from_gpu_amplitudes_cuda(x,gpu_channels_singleton)
-  per_image_scale_factor = 1.0
-  SIM.scale_in_place_cuda(per_image_scale_factor) # apply scale directly on GPU
-  SIM.wavelength_A = self.BEAM.get_wavelength() # return to canonical energy for subsequent background
-
-  cuda_background = True
-  if cuda_background:
-      SIM.Fbg_vs_stol = water
-      SIM.amorphous_sample_thick_mm = 0.02
-      SIM.amorphous_density_gcm3 = 1
-      SIM.amorphous_molecular_weight_Da = 18
-      SIM.flux=1e12
-      SIM.beamsize_mm=0.003 # square (not user specified)
-      SIM.exposure_s=1.0 # multiplies flux x exposure
-      SIM.add_background_cuda()
-
-      # deallocate GPU arrays
-      SIM.get_raw_pixels_cuda()  # updates SIM.raw_pixels from GPU
-      SIM.deallocate_cuda()
-  else:
-      # deallocate GPU arrays
-      SIM.get_raw_pixels_cuda()  # updates SIM.raw_pixels from GPU
-      SIM.deallocate_cuda()
-
-      SIM.Fbg_vs_stol = water
-      SIM.amorphous_sample_thick_mm = 0.02
-      SIM.amorphous_density_gcm3 = 1
-      SIM.amorphous_molecular_weight_Da = 18
-      SIM.flux=1e12
-      SIM.beamsize_mm=0.003 # square (not user specified)
-      SIM.exposure_s=1.0 # multiplies flux x exposure
-      SIM.progress_meter=False
-      SIM.add_background()
-  return SIM
-
-def diffs(labelA, A, labelB, B):
-  diff = A-B
-  min = flex.min(diff); mean = flex.mean(diff); max = flex.max(diff)
-  print("Pixel differences between %s and %s, minimum=%.4f mean=%.4f maximum=%.4f"%(
-       labelA, labelB, min, mean, max))
-  assert min > -1.0
-  assert max < 1.0
-
 if __name__=="__main__":
   # make the dxtbx objects
   BEAM = basic_beam()
@@ -348,29 +238,21 @@ if __name__=="__main__":
   # Famp = SF_model.Famp # simple uniform amplitudes
   SF_model.random_structure(CRYSTAL)
   SF_model.ersatz_correct_to_P1()
+  import sys
+  runmode = sys.argv[1]
+  assert runmode in ["CPU","GPU"]
 
   # Use case 1.  Simple monochromatic X-rays
-  SIM = simple_monochromatic_case(BEAM, DETECTOR, CRYSTAL, SF_model)
+  SIM = simple_monochromatic_case(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False)
+  SIM2 = simple_monochromatic_case(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=True)
   SIM.to_smv_format(fileout="test_full_001.img")
   SIM.to_cbf("test_full_001.cbf")
-
-  SIM2 = simple_monochromatic_case_GPU(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False)
-  SIM3 = simple_monochromatic_case_GPU(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=True)
   assert approx_equal(SIM.raw_pixels, SIM2.raw_pixels)
-  assert approx_equal(SIM.raw_pixels, SIM3.raw_pixels)
 
-  # Use case 2.  Three-wavelength polychromatic source
-  SWC = several_wavelength_case(BEAM, DETECTOR, CRYSTAL, SF_model)
-  SIM = SWC.several_wavelength_case_for_CPU()
-  SIM.to_smv_format(fileout="test_full_002.img")
-  SIM.to_cbf("test_full_002.cbf")
+  if runmode=="GPU":
+    SIM2 = simple_monochromatic_case_GPU(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False)
+    SIM3 = simple_monochromatic_case_GPU(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=True)
+    assert approx_equal(SIM.raw_pixels, SIM2.raw_pixels)
+    assert approx_equal(SIM.raw_pixels, SIM3.raw_pixels)
 
-  SIM2 = SWC.several_wavelength_case_exafel_api_for_GPU(argchk=False)
-  SIM2.to_cbf("test_full_0022.cbf")
-  diffs("CPU",SIM.raw_pixels, "GPU",SIM2.raw_pixels)
-  SIM3 = SWC.several_wavelength_case_exafel_api_for_GPU(argchk=True)
-  diffs("CPU",SIM.raw_pixels, "GPU argchk",SIM3.raw_pixels)
-  #assert approx_equal(SIM.raw_pixels, SIM2.raw_pixels)
-  #assert approx_equal(SIM.raw_pixels, SIM3.raw_pixels)
-
-print("OK")
+  print("OK")
