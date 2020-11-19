@@ -499,7 +499,9 @@ def load_includes(global_line_index_generator, stripped_source_lines):
 
 def load(global_line_index_generator, file_name, skip_load_includes=False):
   source_lines = []
-  for i_line,line in enumerate(open(file_name).read().splitlines()):
+  with open(file_name) as f:
+    lines = f.read().splitlines()
+  for i_line,line in enumerate(lines):
     source_lines.append(source_line(
       global_line_index_generator=global_line_index_generator,
       file_name=file_name,

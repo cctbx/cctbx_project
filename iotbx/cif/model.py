@@ -514,6 +514,8 @@ class loop(MutableMapping):
       raise Sorry("%s is not a valid data name" %key)
     if len(self) > 0:
       assert len(value) == self.size()
+    if isinstance(value, flex.size_t):
+      value = value.as_int()
     if not isinstance(value, flex.std_string):
       for flex_numeric_type in (flex.int, flex.double):
         if isinstance(value, flex_numeric_type):

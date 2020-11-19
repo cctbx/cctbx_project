@@ -19,6 +19,7 @@ import iotbx.phil
 import mmtbx.masks
 from libtbx.utils import Sorry
 from six.moves import range
+import mmtbx.model
 
 if(1):
   random.seed(0)
@@ -380,40 +381,24 @@ def run(args, log = sys.stdout):
     # easy_run.go("phenix.reduce %s > %s"% (pdb_file_name, pdb_file_name_r))
     run_reduce_with_timeout(file_name=pdb_file_name, parameters=" > %s" % pdb_file_name_r)
     pdb_file_name = pdb_file_name_r
-  pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
-  pdbi_params = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
+  pdbi_params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   if(params.f_obs.f_calc.atomic_model.use_ramachandran_plot_restraints):
-    pdbi_params.peptide_link.ramachandran_restraints=True
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    pdb_inp     = pdb_inp,
-    mon_lib_srv = monomer_library.server.server(),
-    ener_lib    = monomer_library.server.ener_lib(),
-    params      = pdbi_params)
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  pdb_hierarchy.atoms().reset_i_seq()
-  xray_structure = processed_pdb_file.xray_structure()
-  mmtbx.utils.assert_xray_structures_equal(x1 = xray_structure,
-    x2 = pdb_inp.xray_structure_simple())
-  sctr_keys=xray_structure.scattering_type_registry().type_count_dict()
-  has_hd = "H" in sctr_keys or "D" in sctr_keys
-  geometry = processed_pdb_file.geometry_restraints_manager(
-    show_energies                = False,
-    plain_pairs_radius           = 5,
-    assume_hydrogens_all_missing = not has_hd)
-  restraints_manager = mmtbx.restraints.manager(
-    geometry      = geometry,
-    normalization = True)
+    pdbi_params.pdb_interpretation.ramachandran_plot_restraints.enabled=True
+  model = mmtbx.model.manager(
+    model_input               = iotbx.pdb.input(file_name = pdb_file_name),
+    pdb_interpretation_params = pdbi_params)
+  model.process_input_model(make_restraints=True)
   root = iotbx.pdb.hierarchy.root()
   loop_1(
-    params = params,
-    root = root,
-    xray_structure = xray_structure,
-    pdb_hierarchy = pdb_hierarchy,
-    restraints_manager = restraints_manager)
+    params             = params,
+    root               = root,
+    xray_structure     = model.get_xray_structure(),
+    pdb_hierarchy      = model.get_hierarchy(),
+    restraints_manager = model.get_restraints_manager())
   root.write_pdb_file(
     file_name = params.f_obs.f_calc.atomic_model.output_file_name,
-    crystal_symmetry = xray_structure.crystal_symmetry())
-  simulate_f_obs(root=root, crystal_symmetry=xray_structure.crystal_symmetry(),
+    crystal_symmetry = model.crystal_symmetry())
+  simulate_f_obs(root=root, crystal_symmetry=model.crystal_symmetry(),
     params = params)
 
 if (__name__ == "__main__"):

@@ -466,18 +466,20 @@ class DataManagerBase(object):
       filename
     '''
     basename, ext = os.path.splitext(filename)
-    if basename == self._default_output_filename:
-      if ext in self._used_output_ext:
-        if (self._program is not None and
-            self._program.params.output.serial is not None):
+    if (basename.startswith(self._default_output_filename)
+        and os.path.exists(filename)
+        and not self._overwrite):
+      if (self._program is not None and
+          self._program.params.output.serial is not None):
+        while os.path.exists(filename):
           self._program.params.output.serial += 1
+          old_default = self._default_output_filename
           self.set_default_output_filename(
             self._program.get_default_output_filename())
-          basename = self.get_default_output_filename()
-          self._used_output_ext = set()
-      else:
+          basename = basename.replace(old_default, self.get_default_output_filename())
+          filename = basename + ext
+      else:  # filename cannot be automatically updated, just return
         self._used_output_ext.add(ext)
-      filename = basename + ext
     return filename
 
   def _write_text(self, datatype, text_str, filename=Auto, overwrite=Auto):

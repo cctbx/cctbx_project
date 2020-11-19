@@ -14,7 +14,7 @@ class ProcessingFrame(wx.Frame):
   def __init__(self, *args, **kwds):
     wx.Frame.__init__(self, *args, **kwds)
     self.viewer = None
-    self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS|wx.TB_TEXT)
+    self.toolbar = self.CreateToolBar(style=wx.TB_TEXT)
     btn = self.toolbar.AddLabelTool(id=-1,
       label="Image viewer",
       bitmap=icons.hkl_file.GetBitmap(),

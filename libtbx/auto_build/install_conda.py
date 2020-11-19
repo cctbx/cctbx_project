@@ -156,7 +156,7 @@ class conda_manager(object):
     'phenix': os.path.join('phenix', 'conda_envs',
       default_format.format(builder='phenix', version=version,
                             platform=conda_platform[platform.system()])),
-    'phenix_tng': os.path.join('phenix', 'conda_envs',
+    'phenix_voyager': os.path.join('phenix', 'conda_envs',
       default_format.format(builder='phenix', version=version,
                             platform=conda_platform[platform.system()])),
     'xfel': os.path.join('dials', '.conda-envs',
@@ -177,7 +177,7 @@ class conda_manager(object):
     'molprobity': default_file,
     'qrefine': default_file,
     'phaser': default_file,
-    'phasertng': os.path.join('phaser', 'conda_envs',
+    'voyager': os.path.join('phaser', 'conda_envs',
       default_format.format(builder='phaser_tng', version=version,
                             platform=conda_platform[platform.system()]))
   }
@@ -715,7 +715,7 @@ builder.""".format(filename=filename, builder=builder))
       command_list.append('--copy')
     if offline and not yaml_format:
       command_list.append('--offline')
-    if builder in ("dials", "dials-old", "xfel") and command != "create":
+    if builder in ("dials", "dials-old", "xfel") and not yaml_format:
       command_list.append("-y")
     if builder in self.env_without_python:
       python_version = tuple(int(i) for i in (python or "36"))

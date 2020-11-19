@@ -40,7 +40,6 @@ env.SharedLibrary(
   "flex_bool.cpp",
   "flex_size_t.cpp",
   "flex_int.cpp",
-  "flex_long.cpp",
   "flex_float.cpp",
   "flex_double.cpp",
   "flex_double_matrix.cpp",

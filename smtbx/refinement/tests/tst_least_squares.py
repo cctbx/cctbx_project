@@ -335,7 +335,7 @@ class adp_refinement_test(refinement_test):
       import re
       m = re.search(
         r'^cctbx::adptbx::debye_waller_factor_exp: \s* arg_limit \s+ exceeded'
-        '.* arg \s* = \s* ([\d.eE+-]+)', str(err), re.X)
+        r'.* arg \s* = \s* ([\d.eE+-]+)', str(err), re.X)
       assert m is not None, eval
       print("Warning: refinement of ADP's diverged")
       print('         argument to debye_waller_factor_exp reached %s' % m.group(1))

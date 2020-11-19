@@ -30,9 +30,17 @@ class integrate(worker):
     # Re-generate the image sets using their format classes so we can read the raw data
     # Integrate the experiments one at a time to not use up memory
     all_integrated = flex.reflection_table()
+    current_imageset = None
+    current_imageset_path = None
     for expt_id, expt in enumerate(experiments):
-      expt.imageset = ImageSetFactory.make_imageset(expt.imageset.paths(), single_file_indices=expt.imageset.indices())
+      assert len(expt.imageset.paths()) == 1 and len(expt.imageset) == 1
+      self.logger.log("Starting integration experiment %d"%expt_id)
       refls = reflections.select(reflections['exp_id'] == expt.identifier)
+      if expt.imageset.paths()[0] != current_imageset_path:
+        current_imageset_path = expt.imageset.paths()[0]
+        current_imageset = ImageSetFactory.make_imageset(expt.imageset.paths())
+      idx = expt.imageset.indices()[0]
+      expt.imageset = current_imageset[idx:idx+1]
       idents = refls.experiment_identifiers()
       del idents[expt_id]
       idents[0] = expt.identifier
@@ -45,9 +53,9 @@ class integrate(worker):
       idents[expt_id] = expt.identifier
       integrated['id'] = flex.int(len(integrated), expt_id)
       all_integrated.extend(integrated)
-      expt.imageset.clear_cache()
 
-    return experiments, reflections
+    self.logger.log("Integration done, %d experiments, %d reflections"%(len(experiments), len(all_integrated)))
+    return experiments, all_integrated
 
 if __name__ == '__main__':
   from xfel.merging.application.worker import exercise_worker

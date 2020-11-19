@@ -260,7 +260,7 @@ def exercise_around_model():
   assert approx_equal(
      (mask_mm.map_data().count(0), mask_mm.map_data().count(1),
       mask_mm.map_data().size()),
-     (19214, 19186, 38400))
+     (19184, 19216, 38400))
 
   # Box around the mask
   box = cctbx.maptbx.box.around_mask(

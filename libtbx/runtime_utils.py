@@ -272,6 +272,10 @@ class detached_process_client(detached_base):
     self._process_pid = None
     self.update_progress = True
 
+  def __del__(self):
+    if self._logfile is not None:
+      self._logfile.close()
+
   def isAlive(self):
     return (not self.finished)
 
@@ -291,7 +295,8 @@ class detached_process_client(detached_base):
   def update(self):
     if not self.running and os.path.exists(self.start_file):
       self.running = True
-      data = open(self.start_file, "r").read()
+      with open(self.start_file, "r") as f:
+        data = f.read()
       try :
         host, pid = data.split()
         self._process_host = host

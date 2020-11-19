@@ -20,6 +20,7 @@ steps:
 - script: |
     cd $(Pipeline.Workspace)
     tar -xf modules.tar
+    rm modules.tar
   displayName: Extract modules tarball
 
 - script: |

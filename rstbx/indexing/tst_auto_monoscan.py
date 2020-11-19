@@ -12,9 +12,9 @@ def get_token(name,buf):
   return float(buf[token_positions[name][0]:token_positions[name][1]])
 
 def parse_input(filename):
-  G = open(filename,"r")
+  with open(filename,"r") as G:
+    lines = G.readlines()
   reciprocal_vectors = flex.vec3_double()
-  lines = G.readlines()
   qvec = ('qx','qy','qz')
   for line in lines[1:len(lines)]:
     l_buffer = line.rstrip()

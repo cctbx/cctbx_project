@@ -541,7 +541,9 @@ def exercise_all():
       print("Skipping some tests: reference file not available:", path)
       return None
     result = {}
-    for line in open(path).read().splitlines():
+    with open(path) as f:
+      lines = f.read().splitlines()
+    for line in lines:
       tag, data = line.split()
       assert not tag in result
       result[tag] = data
@@ -558,7 +560,8 @@ def exercise_all():
     else:
       file_names.append(path)
   for file_name in file_names:
-    strudat_entries = strudat.read_all_entries(open(file_name))
+    with open(file_name) as f:
+      strudat_entries = strudat.read_all_entries(f)
     for i_entry,entry in enumerate(strudat_entries.entries):
       if (    file_name.endswith("strudat_zeolite_atlas")
           and not ("--full" in sys.argv[1:] or i_entry % 20 == 0)):

@@ -1,0 +1,70 @@
+name: psana_env
+channels:
+ - file:///reg/g/psdm/sw/conda1/channels/system-rhel7
+ - lcls-i
+ - conda-forge
+ - cctbx
+ - defaults
+dependencies:
+ # conda compilers
+ - c-compiler
+ - cxx-compiler
+
+ # mpi
+ - mpi4py
+ - openmpi
+
+ # psana
+ - psana-conda  >= 2.0.9
+
+ # python
+ - biopython
+ - ipython
+
+ # testing
+ - pytest
+ - pytest-xdist
+ - pytest-mock
+
+ # documentation
+ - docutils
+ - sphinx
+
+ # graphics
+ - pillow
+ - reportlab
+ - wxpython
+ - pyopengl
+
+ # HDF5 (main libraries come with psana)
+ - hdf5_plugins                      # [unix]
+
+ # other
+ - libsvm
+ - mrcfile
+ - psutil
+ - distro
+
+ # cctbx channel
+ - libsvm_py
+
+ # dials
+ - jinja2
+ - msgpack-python
+ - orderedset
+ - procrunner
+ - python-blosc
+ - scikit-learn
+ - tqdm
+ - eigen
+ - dials-data
+
+ # xia2
+ - tabulate
+
+ # Phenix
+ - PyRTF
+
+ # xfel gui
+ - mysql
+ - mysql-connector-python

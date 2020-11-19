@@ -1,14 +1,10 @@
-{% extends "cctbx/header_new.html" %}
+{% extends "cctbx/header.html" %}
 
 {% load static %}
 
 {% block content %}
 
-<div class="container">
-
-<div class="row">
-
-<div class="col-sm-9">
+<div class="col-sm-9 main">
 <!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
 <!-- EDIT START -->
 
@@ -25,7 +21,7 @@
 
 <h3 class="mt-3">Preparation: Get a library model</h3>
 
-<p>Let’s work with a library model that we can obtain with the map_model_manager (revisit <a href="{% url 'doc_high_level_objects' %}">this page</a> if you need a refresher on high level objects):</p>
+<p>Let’s work with a library model that we can obtain with the map_model_manager (revisit <a href="{% url 'doc_hlo_intro' %}">this page</a> if you need a refresher on high level objects):</p>
 
 <pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager      #   load in the map_model_manager
 mmm=map_model_manager()         #   get an initialized instance of the map_model_manager
@@ -167,12 +163,9 @@ labels                    # print out the first label string
 
 <!-- automatic table of contents
      located in the sidebar; will move to the top on a small screen -->
-<div class="col-sm-3">
+<div class="col-sm-3 mt-5">
   <nav id="toc" data-toggle="toc"></nav>
 </div> <!-- end col-sm-3 -->
 
-</div> <!-- end row -->
-
-</div> <!-- end container -->
 
 {% endblock %}

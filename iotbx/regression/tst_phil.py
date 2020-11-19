@@ -96,11 +96,11 @@ sel = None
   clai = master.command_line_argument_interpreter()
   assert not show_diff(clai.process(
     "sel=altloc  ' ' or  name C\\* ").as_str(), """\
-sel = altloc ' ' or name C\*
+sel = altloc ' ' or name C\\*
 """)
   user = iotbx.phil.parse(input_string="""\
-sel = "altloc ' ' or name C\*"
-sel = altloc ' ' or name D\*
+sel = "altloc ' ' or name C\\*"
+sel = altloc ' ' or name D\\*
 """)
   work = master.fetch(user)
   assert not show_diff(work.as_str(), """\
@@ -109,8 +109,8 @@ sel = altloc ' ' or name D\\*
 """)
   ex = work.extract()
   assert len(ex.sel) == 2
-  assert ex.sel[0] == "altloc ' ' or name C\*"
-  assert ex.sel[1] == "altloc ' ' or name D\*"
+  assert ex.sel[0] == "altloc ' ' or name C\\*"
+  assert ex.sel[1] == "altloc ' ' or name D\\*"
   #
   pcl = iotbx.phil.process_command_line(args=["s = 230"], master_string="""\
 s=None
@@ -124,7 +124,8 @@ model = None
 use_geometry_restraints = False
   .type = bool
 """
-  open("model.pdb", "w").write("""\
+  with open("model.pdb", "w") as f:
+    f.write("""\
 ATOM      1  O   HOH     1      53.448  18.599 -10.134  1.00 20.00
 """)
   pcl = iotbx.phil.process_command_line_with_files(
@@ -158,7 +159,8 @@ nproc = None
   assert (params.d_min == 3.0)
   assert (params.nproc == 5)
   # shelx file hack
-  open("tst_iotbx_phil.hkl", "w").write("""\
+  with open("tst_iotbx_phil.hkl", "w") as f:
+    f.write("""\
    1   2  -1  -23.34    4.56   1
    2  -3   9   12.45    6.12   2
 99999999999999999.9999999.999999
@@ -204,7 +206,8 @@ unit_cell = None
   assert ma.is_xray_amplitude_array()
   assert ma.anomalous_flag() is False
 
-  open("tst_iotbx_phil.ncs", "w").write("""
+  with open("tst_iotbx_phil.ncs", "w") as f:
+    f.write("""
 REMARK 350   BIOMT1   1  1.000000  0.000000  0.000000        0.00000
 REMARK 350   BIOMT2   1  0.000000  1.000000  0.000000        0.00000
 REMARK 350   BIOMT3   1  0.000000  0.000000  1.000000        0.00000
@@ -226,8 +229,8 @@ ncs_file = None
   params = pcl.work.extract()
   assert (os.path.split(str(params.ncs_file))[-1] == "tst_iotbx_phil.ncs")
 
-
-  open("tst_iotbx_phil.ncs_spec", "w").write("""
+  with open("tst_iotbx_phil.ncs_spec", "w") as f:
+    f.write("""
 Summary of NCS information
 Wed Mar 16 15:02:22 2016
 /Users/terwill/Desktop/working/Jan_2015/phenix/cryo-pdb/3j9c/build

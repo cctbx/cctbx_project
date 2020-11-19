@@ -356,7 +356,7 @@ output {
     filename=Auto):
     '''
     Given the output.prefix, output.suffix, and output.serial PHIL parameters,
-    return the default output filename. The filename is constructe as
+    return the default output filename. The filename is constructed as
 
       {prefix}{suffix}_{serial:03d}
 

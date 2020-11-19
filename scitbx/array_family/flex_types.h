@@ -2,6 +2,7 @@
 #define SCITBX_ARRAY_FAMILY_FLEX_TYPES_H
 
 #include <complex>
+#include <stdint.h>
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/versa.h>
 
@@ -37,6 +38,18 @@ namespace scitbx { namespace af {
   SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(float, float)
   SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(double, double)
   SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(std::complex<double>, complex_double)
+
+  // fixed width integer types
+  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(int8_t, int8_t)
+  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(int16_t, int16_t)
+  // SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(int32_t, int32_t)
+  #if defined(_MSC_VER)
+  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(int64_t, int64_t)
+  #endif
+  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(uint8_t, uint8_t)
+  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(uint16_t, uint16_t)
+  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(uint32_t, uint32_t)
+  // SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(uint64_t, uint64_t)
 
 #undef SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS
 

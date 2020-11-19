@@ -140,7 +140,8 @@ def exercise_zeolite_atlas(distance_cutoff=3.5):
   if (atlas_file is None):
     print("Skipping exercise_zeolite_atlas(): input file not available")
     return
-  all_entries = strudat.read_all_entries(open(atlas_file))
+  with open(atlas_file) as f:
+    all_entries = strudat.read_all_entries(f)
   for i,entry in enumerate(all_entries.entries):
     structure = entry.as_xray_structure()
     if ("--full" in sys.argv[1:] or i % 20 == 0):

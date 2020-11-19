@@ -790,7 +790,7 @@ class process_arrays(object):
         "console.")
     i = 0
     used = dict([ (label, 0) for label in labels ])
-    invalid_chars = re.compile("[^A-Za-z0-9_\-+\(\)]")
+    invalid_chars = re.compile(r"[^A-Za-z0-9_\-+\(\)]")
     for column in self.mtz_object.columns():
       if (labels[i] is not None) and (column.label() != labels[i]):
         label = labels[i]

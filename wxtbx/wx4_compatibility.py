@@ -34,7 +34,7 @@ class MyFrame(wx.Frame):
   def __init__(self, parent, id, title, *args, **kwargs):
     wx.Frame.__init__(self, parent, id, title, *args, **kwargs)
 
-    self.toolbar = wx4c.ToolBar(self, style=wx.TB_3DBUTTONS | wx.TB_TEXT)
+    self.toolbar = wx4c.ToolBar(self, style=wx.TB_TEXT)
     self.quit_button = self.toolbar.AddTool(toolId=wx.ID_ANY,
                                              label='Quit',
                                              kind=wx.ITEM_NORMAL,

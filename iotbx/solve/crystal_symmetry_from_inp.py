@@ -6,10 +6,12 @@ def extract_from(file_name=None, file=None, monitor_initial=None):
   assert [file_name, file].count(None) == 1
   if (file is None):
     file = open(file_name)
+  lines = file.readlines()
+  file.close()
   detect_binary = detect_binary_file(monitor_initial=monitor_initial)
   unit_cell = None
   space_group_symbol = None
-  for line in file:
+  for line in lines:
     if (detect_binary is not None):
       is_binary = detect_binary.is_binary_file(block=line)
       if (is_binary is not None):

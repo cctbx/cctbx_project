@@ -196,7 +196,8 @@ def process_zeolite_atlas(args):
     out = sys.stdout
   else:
     out = StringIO()
-  all_entries = strudat.read_all_entries(open(atlas_file))
+  with open(atlas_file) as f:
+    all_entries = strudat.read_all_entries(f)
   for i,entry in enumerate(all_entries.entries):
     structure = entry.as_xray_structure()
     if (command_line.options.tag is not None):

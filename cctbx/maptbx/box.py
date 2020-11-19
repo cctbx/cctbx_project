@@ -973,13 +973,16 @@ def copy_and_zero_map_outside_bounds(map_data, bounds_info):
   return new_map
 
 def shift_and_box_model(model = None,
-    box_cushion = 5, shift_model = True):
+    box_cushion = 5, shift_model = True,
+    crystal_symmetry = None):
   '''
     Shift a model near the origin and box around it
+    Use crystal_symmetry if supplied
   '''
   from mmtbx.model import manager as model_manager
   from scitbx.matrix import col
   from cctbx import crystal
+
   ph=model.get_hierarchy()
   sites_cart=ph.atoms().extract_xyz()
   if shift_model:
@@ -987,8 +990,9 @@ def shift_and_box_model(model = None,
       (box_cushion,box_cushion,box_cushion))
 
   box_end=col(sites_cart.max())+col((box_cushion,box_cushion,box_cushion))
-  a,b,c=box_end
-  crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
+  if not crystal_symmetry:
+    a,b,c=box_end
+    crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
   ph.atoms().set_xyz(sites_cart)
 
   return model_manager(
@@ -1000,29 +1004,54 @@ def get_boxes_to_tile_map(target_for_boxes = 24,
       n_real = None,
       crystal_symmetry = None,
       cushion_nx_ny_nz = None,
-      wrapping = False):
+      wrapping = False,
+      do_not_go_over_target = None,
+      target_xyz_center_list = None,
+     ):
 
     '''
       Get a set of boxes that tile the map
       If cushion_nx_ny_nz is set ... create a second set of boxes that are
         expanded by cushion_nx_ny_nz in each direction
       Try to make boxes symmetrical in full map
+      If target_xyz_center_list is set, try to use them as centers but keep
+       size the same as would otherwise be used
     '''
     nx,ny,nz = n_real
     smallest = min(nx,ny,nz)
     largest = max(nx,ny,nz)
     target_volume_per_box = (nx*ny*nz)/target_for_boxes
     target_length = target_volume_per_box**0.33
-
-    if target_for_boxes == 1:
+    if target_xyz_center_list:
+      lower_bounds_list = []
+      upper_bounds_list = []
+      uc = crystal_symmetry.unit_cell()
+      for site_frac in uc.fractionalize(target_xyz_center_list):
+        center_ijk = tuple([ int(0.5+x * n) for x,n in zip(site_frac, n_real)])
+        lower_bounds_list.append(
+          tuple( [
+             int(max(1,min(n-2,(i - (1+target_length)//2)))) for i,n in
+            zip(center_ijk,n_real)
+             ]
+          ))
+        upper_bounds_list.append(
+          tuple( [
+             int(max(1,min(n-2,(i + (1+target_length)//2)))) for i,n in
+            zip(center_ijk,n_real)
+             ]
+          ))
+    elif target_for_boxes == 1:
       lower_bounds_list = [(0,0,0)]
       upper_bounds_list = [tuple([i - 1 for i in n_real])]
     else:
       lower_bounds_list = []
       upper_bounds_list = []
-      for x_info in get_bounds_list(nx, target_length):
-        for y_info in get_bounds_list(ny, target_length):
-          for z_info in get_bounds_list(nz, target_length):
+      for x_info in get_bounds_list(nx, target_length,
+        do_not_go_over_target = do_not_go_over_target):
+        for y_info in get_bounds_list(ny, target_length,
+           do_not_go_over_target = do_not_go_over_target):
+          for z_info in get_bounds_list(nz, target_length,
+             do_not_go_over_target = do_not_go_over_target):
             lower_bounds_list.append(
                [x_info.lower_bound,
                 y_info.lower_bound,
@@ -1050,6 +1079,20 @@ def get_boxes_to_tile_map(target_for_boxes = 24,
     else:
       lower_bounds_with_cushion_list = lower_bounds_list
       upper_bounds_with_cushion_list = upper_bounds_list
+
+    # Now remove any duplicates
+    lb_ub_list = []
+    new_lb_list = []
+    new_ub_list = []
+    for lb,ub in zip (
+         lower_bounds_with_cushion_list,upper_bounds_with_cushion_list):
+       if [lb,ub] in lb_ub_list: continue
+       lb_ub_list.append([lb,ub])
+       new_lb_list.append(lb)
+       new_ub_list.append(ub)
+    lower_bounds_with_cushion_list = new_lb_list
+    upper_bounds_with_cushion_list = new_ub_list
+
     return group_args(
       lower_bounds_list = lower_bounds_list,
       upper_bounds_list = upper_bounds_list,
@@ -1059,7 +1102,8 @@ def get_boxes_to_tile_map(target_for_boxes = 24,
       crystal_symmetry = crystal_symmetry,
      )
 
-def get_bounds_list(nx, target_length):
+def get_bounds_list(nx, target_length,
+     do_not_go_over_target = None,):
   '''
     Return start, end that are about the length target_length and that
     collectively cover exactly nx grid units.
@@ -1076,7 +1120,10 @@ def get_bounds_list(nx, target_length):
       )
   else:  # take as many as fit
     n_target = nx/target_length  # how many we want (float)
-    n = max(1,int(0.5 + n_target)) # int ... how many can fit
+    if do_not_go_over_target:
+      n = max(1,int(n_target)) # int ... how many can fit
+    else: # usual
+      n = max(1,int(0.5 + n_target)) # int ... how many can fit
     exact_target_length =  nx/n  # float length of each group
 
     last_end_point = -1

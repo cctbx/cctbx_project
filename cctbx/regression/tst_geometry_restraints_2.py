@@ -29,7 +29,8 @@ def exercise_with_zeolite(verbose):
   if (atlas_file is None):
     print("Skipping exercise_with_zeolite(): input file not available")
     return
-  strudat_contents = strudat.read_all_entries(open(atlas_file))
+  with open(atlas_file) as f:
+    strudat_contents = strudat.read_all_entries(f)
   strudat_entry = strudat_contents.get("YUG")
   si_structure = strudat_entry.as_xray_structure()
   if (verbose):

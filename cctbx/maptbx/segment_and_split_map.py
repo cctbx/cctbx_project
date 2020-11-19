@@ -8607,6 +8607,10 @@ def get_overall_mask(
     out = sys.stdout):
 
 
+  # This routine cannot use mask_data with origin != (0,0,0)
+  if map_data.origin() != (0,0,0):
+    return None, None, None
+
   # Make a local SD map from our map-data
   from cctbx.maptbx import crystal_gridding
   from cctbx import sgtbx
@@ -8643,7 +8647,6 @@ def get_overall_mask(
   import math
   w = 4 * stol * math.pi * smoothing_radius
   sphere_reciprocal = 3 * (flex.sin(w) - w * flex.cos(w))/flex.pow(w, 3)
-
   try:
     temp = complete_set.structure_factors_from_map(
       flex.pow2(map_data-map_data.as_1d().min_max_mean().mean))
@@ -9059,6 +9062,8 @@ def get_solvent_fraction_from_low_res_mask(
     crystal_symmetry = crystal_symmetry,
     resolution = mask_resolution,
     out = out)
+  if overall_mask is None:
+    return None
 
   solvent_fraction = overall_mask.count(False)/overall_mask.size()
   print("Solvent fraction from overall mask: %.3f " %(solvent_fraction), file = out)

@@ -2851,5 +2851,26 @@ def run():
   for res_group_type in sorted(omega_database):
     print(res_group_type, len(omega_database[res_group_type]))
 
+  for aat, item in omega_database.items():
+    if 1: break
+    print(aat)
+    ideals = []
+    esds = []
+    for key, value in item.items():
+      if value[0]=='I': continue
+      ideals.append(str(value[2]))
+      esds.append(str(value[3]))
+    df = '%s_ideals.dat' % aat
+    f=file(df, 'wb')
+    f.write('\n'.join(ideals))
+    f.write('\n')
+    del f
+    df = '%s_esds.dat' % aat
+    f=file(df, 'wb')
+    f.write('\n'.join(esds))
+    f.write('\n')
+    del f
+
+
 if __name__=="__main__":
   run()

@@ -1,7 +1,7 @@
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 from scitbx.math import dihedral_angle
 from mmtbx.ligands.ready_set_basics import construct_xyz
-from mmtbx.ligands.hierarchy_utils import generate_atom_group_atom_names
+from mmtbx.ligands.ready_set_basics import generate_atom_group_atom_names
 from mmtbx.ligands.hierarchy_utils import new_atom_with_inheritance
 from mmtbx.ligands.hierarchy_utils import add_hydrogens_to_atom_group_using_bad
 
