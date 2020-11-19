@@ -822,9 +822,10 @@ class manager(Base_geometry):
         pdb_hierarchy=hierarchy,
         grm=self,
         log=log)
+    # print ('Total proxies:', len(hb_proxies))
     # for p in hb_proxies:
-    #   print p.i_seqs[0], p.i_seqs[1], hierarchy.atoms()[p.i_seqs[0]].id_str(), '<-->', hierarchy.atoms()[p.i_seqs[1]].id_str(),
-    #   print hierarchy.atoms()[p.i_seqs[0]].distance(hierarchy.atoms()[p.i_seqs[1]])
+    #   print (p.i_seqs[0], p.i_seqs[1], hierarchy.atoms()[p.i_seqs[0]].id_str(), '<-->', hierarchy.atoms()[p.i_seqs[1]].id_str())
+    #   print ("  ", hierarchy.atoms()[p.i_seqs[0]].distance(hierarchy.atoms()[p.i_seqs[1]]))
     self.add_new_hbond_restraints_in_place(
         proxies=hb_proxies,
         sites_cart=hierarchy.atoms().extract_xyz(),
@@ -1009,6 +1010,8 @@ class manager(Base_geometry):
     paired atoms is determined here, therefore the proxy.rt_mx_ji may be
     anything."""
     import time
+    if len(proxies) == 0:
+      return
     rt_mx_ji_options = [[] for x in proxies]
     # Get current max bond distance, copied from pair_proxies()
     t0 = time.time()
