@@ -3007,7 +3007,7 @@ class LocalRefiner(PixelRefinement):
             Bmat = self.UCELL_MAN[i_shot].B_recipspace
 
             bg_coef = -1
-            C = self.CRYSTAL_MODELS[i_shot]
+            C = deepcopy(self.CRYSTAL_MODELS[i_shot])
             a_init, b_init, c_init, al_init, be_init, ga_init = C.get_unit_cell().parameters()
             C.set_B(Bmat)
             try:

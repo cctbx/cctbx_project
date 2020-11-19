@@ -125,6 +125,7 @@ class Script:
             continue
           if len(line_split) == 2:
             exp, ref = line_split
+            print(exp, ref)
           elif len(line_split) == 3:
             exp, ref, spec_file = line_split
             self.input_spectrumnames.append(spec_file)
@@ -153,7 +154,10 @@ class Script:
         El = ExperimentList()
         El.append(exper)
         El = ExperimentListFactory.from_dict(El.to_dict())
-        exp_filename = self.params.input.experiments[self.i_exp].filename
+        if len(self.params.input.experiments)==1:
+          exp_filename = self.params.input.experiments[0].filename + "_%d" % self.i_exp
+        else:
+          exp_filename = self.params.input.experiments[self.i_exp].filename
         yield exp_filename, El[0], refls_for_exper
 
     elif self.params.exper_refls_file is not None:
@@ -191,15 +195,13 @@ class Script:
 
     new_json = {'__id__': "ExperimentList", "experiment": [deepcopy(this_exper)]}
 
-    for model in ['beam', 'detector', 'crystal', 'imageset']:
+    for model in ['beam', 'detector', 'crystal', 'imageset', 'profile', 'scan', 'goniometer', 'scaling_model']:
       if model in this_exper:
         model_index = this_exper[model]
         new_json[model] = [exper_json[model][model_index]]
         new_json["experiment"][0][model] = 0
-    new_json["scan"] = []
-    new_json["goniometer"] = []
-    new_json["profile"] = []
-    new_json["scaling_model"] = []
+      else:
+        new_json[model] = []
     explist = ExperimentListFactory.from_dict(new_json)
     assert len(explist) == 1
     return explist[0]
@@ -308,7 +310,9 @@ class Script:
           os.makedirs(pandas_outdir)
         outpath = os.path.join(pandas_outdir, "%s_%s_%d.pkl" % (self.params.output.tag.pandas,basename, i_processed))
         #TODO add beamsize_mm, mtz_file, mtz_col, pinkstride, oversample, spectrum_file to the pandas dataframe
+
         data_frame = refiner.get_lbfgs_x_array_as_dataframe()
+
         if self.params.simulator.spectrum.filename is not None:
           data_frame["spectrum_filename"] = os.path.abspath(self.params.simulator.spectrum.filename)
           data_frame["spectrum_stride"] = self.params.simulator.spectrum.stride

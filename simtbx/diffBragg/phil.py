@@ -292,6 +292,9 @@ refiner {
 
 roi_phil = """
 roi {
+  fit_tilt = False
+    .type = bool
+    .help = fit tilt plane, or else background is simply an offset
   force_negative_background_to_zero = False
     .type = bool
     .help = if True and the background model evaluates to a negative number
