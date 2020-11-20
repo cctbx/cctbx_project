@@ -1497,6 +1497,9 @@ class map_model_manager(object):
         of the map_model_manager.
     '''
 
+    if model_id is None:
+      model_id = 'model'
+
     print("\nMerging coordinates from %s boxed models into working model" %(
       len(box_info.selection_list)), file = self.log)
 
@@ -2512,6 +2515,9 @@ class map_model_manager(object):
          iter+1,iterations), file = self.log)
         result = self.tls_from_map(**all_kw_use)
       print("\nDone running extra iterations of TLS from map ",file = self.log)
+
+    if model_id is None:
+      model_id = 'model'
 
     # Save all keywords we want to pass on in kw
     kw['map_id_1'] = map_id_1
@@ -3959,6 +3965,9 @@ class map_model_manager(object):
      model_id = None,
     ):
 
+    if model_id is None:
+      model_id = 'model'
+
     # Replace aniso information with values from tlso_group_info
     # Get uaniso in middle of molecule
     tlso_value = tlso(
@@ -4115,6 +4124,8 @@ class map_model_manager(object):
         Create a mask around density corresponding to atoms selected by
        selection_string.  If no model, just create a mask around all density
       '''
+      if model_id is None:
+        model_id = 'model'
 
       mask_id = self._generate_new_map_id(prefix = 'mask_around_density')
       if self.get_model_by_id(model_id):
@@ -7313,6 +7324,9 @@ def get_selections_and_boxes_to_split_model(
 
   # Get selection info for waters and hetero atoms
   info = get_skip_waters_and_hetero_lines(skip_waters, skip_hetero)
+
+  if model_id is None:
+    model_id = 'model'
 
   model = map_model_manager.get_model_by_id(model_id)
   map_manager = map_model_manager.get_any_map_manager()
