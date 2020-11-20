@@ -1107,12 +1107,9 @@ def get_aniso_info(
      overall_si.rms_fo_list *
      (1. + overall_si.ssqr_values))
 
-  # Match choice in target_scale_factors if present
-  if overall_si.target_scale_factors:
-    normalization = overall_si.target_scale_factors[0]/overall_si.qq_values[0]
-  else:
-    normalization = 1/overall_si.qq_values[0]
-  overall_si.qq_values *= normalization
+  # Match scale factor choice in target_scale_factors
+  normalization = overall_si.target_scale_factors.min_max_mean().mean/ \
+         overall_si.qq_values.min_max_mean().mean
 
   overall_si.target_scale_factors.set_selected(
     overall_si.target_scale_factors < 1.e-10, 1.e-10)
@@ -1132,10 +1129,8 @@ def get_aniso_info(
      si.rms_fo_list *
      (1. + si.ssqr_values))
     # Match choice in target_scale_factors if present
-    if si.target_scale_factors:
-      normalization = si.target_scale_factors[0]/si.qq_values[0]
-    else:
-      normalization = 1/si.qq_values[0]
+    normalization = si.target_scale_factors.min_max_mean().mean/ \
+      si.qq_values.min_max_mean().mean
 
     # Target scale factors: Q
     si.qq_values *= normalization
