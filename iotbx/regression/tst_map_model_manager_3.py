@@ -444,7 +444,7 @@ def exercise(file_name, out = sys.stdout):
       selection_string="(name ca or name cb or name c or name o) "+
         "and resseq 221:221", box_cushion=0)
   cc=dc.map_model_cc(resolution=3)
-  assert approx_equal (cc, 0.502531660036)
+  assert approx_equal (cc, 0.817089390421)
 
   # Remove model outside map
   dc.remove_model_outside_map(boundary=0)
