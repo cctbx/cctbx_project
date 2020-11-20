@@ -729,7 +729,7 @@ class Ui_MainWindow(object):
     self.label_12.setText(QtWidgets.QApplication.translate("MainWindow", "Number of bins:", None, -1))
     self.Nbins_spinBox.setToolTip(QtWidgets.QApplication.translate("MainWindow", "<html><head/><body><p>Select the number of bins for ordering the currently displayed data set. More than about 10-15 bins will slow down the HKLviewer when working with large data sets.</p></body></html>", None, -1))
     self.OpaqueAllCheckbox.setText(QtWidgets.QApplication.translate("MainWindow", "Show/hide all data", None, -1))
-    self.binstable.setToolTip(QtWidgets.QApplication.translate("MainWindow", "<html><head/><body><p>Change the visibility of selected bins either by ticking or unticking the check boxes or by entering an opacity value between 0 and 1</p></body></html>", None, -1))
+    #self.binstable.setToolTip(QtWidgets.QApplication.translate("MainWindow", "<html><head/><body><p>Change the visibility of selected bins either by ticking or unticking the check boxes or by entering an opacity value between 0 and 1</p></body></html>", None, -1))
     self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_4), QtWidgets.QApplication.translate("MainWindow", "Binning", None, -1))
     self.groupBox_6.setTitle(QtWidgets.QApplication.translate("MainWindow", "Geometry", None, -1))
     self.DrawReciprocUnitCellBox.setToolTip(QtWidgets.QApplication.translate("MainWindow", "<html><head/><body><p>The reciprocal unit cell spanning a*,b*,c* from (0,0,0) to (1,1,1) is located in the centre of the displayed reflections. and is therefore quite small. Adjust the slider to scale its outline to become compatible with the sphere of displayed reflections.</p></body></html>", None, -1))

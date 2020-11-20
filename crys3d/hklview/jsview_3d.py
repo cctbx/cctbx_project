@@ -414,6 +414,8 @@ class hklview_3d:
       self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.binner_idx, 
                                                                curphilparam.nbins)
       self.sceneisdirty = True
+    if has_phil_path(diff_phil, "scene_bin_thresholds"):
+      self.sceneisdirty = True
 
     if has_phil_path(diff_phil, "camera_type"):
       self.set_camera_type()
@@ -958,6 +960,7 @@ class hklview_3d:
         binvals[idiv] = e
       nuniquevalues = len(set(list(bindata)))
     binvals.sort()
+    self.mprint("Bin thresholds are:\n" + str(binvals))
     return binvals, nuniquevalues
 
 
@@ -969,8 +972,11 @@ class hklview_3d:
       self.binvals = [ 1.0/(self.miller_array.d_max_min()[0]*1.001),
                        1.0/(self.miller_array.d_max_min()[1]*0.999) ]
     if nuniquevalues == -1:
-      bindata, dummy = self.get_matched_binarray(binner_idx)
-      nuniquevalues = len(set(list(bindata)))
+      if binner_idx==0:
+        nuniquevalues = len(set(list( self.HKLscene_from_dict(int(self.viewerparams.scene_id)).dres )))
+      else:
+        bindata, dummy = self.get_matched_binarray(binner_idx)
+        nuniquevalues = len(set(list(bindata)))
     self.nuniqueval = nuniquevalues
 
 
@@ -1869,7 +1875,7 @@ Distance: %s
 
 
   def get_labels_of_data_for_binning(self):
-    self.mprint("\nData can be binned according to:")
+    self.mprint("Data can be binned according to:")
     for i,e in enumerate(self.bin_labels_type_idxs):
       self.mprint("%d, %s" %(i, e[0]))
 
@@ -2035,8 +2041,6 @@ Distance: %s
     strdata += "%s\n\n" %str(Klabelpos)
     strdata += "%s\n\n" %str(Llabelpos)
     self.AddToBrowserMsgQueue("DefineHKL_Axes", strdata)
-
-
 
 
   def SendCoordinates2Browser(self, positions, colours, radii, ttipids ):
