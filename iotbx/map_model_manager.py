@@ -4406,7 +4406,7 @@ class map_model_manager(object):
       for key in ('aa_b_cart_as_u_cart',
         'fo_b_cart_as_u_cart','uu_b_cart_as_u_cart',
         'bb_b_cart_as_u_cart', 'ss_b_cart_as_u_cart',
-	):
+        ):
 
         if not average_scaling_group_info.get(key):
           average_scaling_group_info.add(key=key,value=flex.double(
