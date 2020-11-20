@@ -39,7 +39,7 @@ def get_experimental_pdb_info(pdbids, site="rcsb"):
   pdb_list = "%s" % pdbids
   pdb_list = pdb_list.replace("'", '"')
   request = request.format(pdb_list=pdb_list)
-  r = requests.post(url, json={"query":request})
+  r = requests.post(url, json={"query":request}, timeout=10)
   r_json = r.json()
   for res in r_json["data"]["entries"]:
     pdb_id = str(res["rcsb_id"])
