@@ -3975,17 +3975,12 @@ class map_model_manager(object):
          sites_cart = sites_cart,
          zeroize_trace=False)
 
-    average_dd_b_cart_as_u_cart = flex.double((0,0,0,0,0,0))
     average_overall_scale = None
     value_list = scale_factor_info.value_list
     for values in value_list:  # find a std value to us
       if not average_overall_scale:
         average_overall_scale = flex.double(values.overall_scale.size(),0)
       average_overall_scale += values.overall_scale
-      average_dd_b_cart_as_u_cart += flex.double(
-         values.dd_b_cart_as_u_cart)
-    average_dd_b_cart_as_u_cart = tuple(average_dd_b_cart_as_u_cart/
-        len(value_list))
     average_overall_scale = average_overall_scale/len(value_list)
     center_overall_u_cart = tuple(-flex.double(center_uanisos[0]) )
 
@@ -3993,8 +3988,6 @@ class map_model_manager(object):
     # Get a standard values so we can edit it later
     # Could be better to use closest value
     std_values = group_args(
-      dd_b_cart_as_u_cart = tuple(
-      2.*flex.double(average_dd_b_cart_as_u_cart)),  # square for TLS from model
       ss_b_cart_as_u_cart = (0,0,0,0,0,0),
       overall_scale = None,
            )
@@ -4013,10 +4006,6 @@ class map_model_manager(object):
 
     print("\nUsing values from supplied TLS to set target scale factors",
         file = self.log)
-    if self.verbose:
-      print("\nOverall correction factor as U: %s" %str(
-        average_dd_b_cart_as_u_cart),
-          file = self.log)
     for T,L,S,origin,selection,other_shift_cart in zip(
        tlso_group_info.T_list,
        tlso_group_info.L_list,
@@ -4105,8 +4094,6 @@ class map_model_manager(object):
             print("\n   XYZ from sites ",xyz,
               file = self.log)
             print("   U from TLS:%s"  %str(u_cart_from_tls),
-              file = self.log)
-            print("   DD correction: %s" %str(values.dd_b_cart_as_u_cart),
               file = self.log)
             print("   S aniso :  %s" %str(values.ss_b_cart_as_u_cart),
               file = self.log)
@@ -4399,7 +4386,6 @@ class map_model_manager(object):
       overall_si = None,
       aa_b_cart_as_u_cart = None,
       bb_b_cart_as_u_cart = None,
-      dd_b_cart_as_u_cart = None,
       ss_b_cart_as_u_cart = None,
       uu_b_cart_as_u_cart = None,
      )
@@ -4419,7 +4405,7 @@ class map_model_manager(object):
 
       for key in ('aa_b_cart_as_u_cart',
         'fo_b_cart_as_u_cart','uu_b_cart_as_u_cart',
-        'dd_b_cart_as_u_cart', 'bb_b_cart_as_u_cart', 'ss_b_cart_as_u_cart',
+        'bb_b_cart_as_u_cart', 'ss_b_cart_as_u_cart',
 	):
 
         if not average_scaling_group_info.get(key):
@@ -4460,7 +4446,7 @@ class map_model_manager(object):
 
       for key in ('aa_b_cart_as_u_cart','fo_b_cart_as_u_cart',
         'uu_b_cart_as_u_cart',
-        'dd_b_cart_as_u_cart', 'bb_b_cart_as_u_cart', 'ss_b_cart_as_u_cart',
+        'bb_b_cart_as_u_cart', 'ss_b_cart_as_u_cart',
         ):
         xx = average_scaling_group_info.get(key)
         if xx:
@@ -4481,6 +4467,7 @@ class map_model_manager(object):
       text = 'Scale factors',
       extra_text = '',
       overall_text = ' ALL ',
+      decimal_places = 2,
       ):
 
     assert len(list(direction_vectors))==len(si_list)
@@ -4504,11 +4491,19 @@ class map_model_manager(object):
 
     for i in range(n_bins):
       dd = 0.5/sthol2_list[i]**0.5
-      print ("%6.2f  %7.1f " %(dd,overall_values[i]),
+      if decimal_places == 1:
+        print ("%6.1f  %7.1f " %(dd,overall_values[i]),
+         file = self.log, end = "")
+      else:
+        print ("%6.2f  %7.2f " %(dd,overall_values[i]),
          file = self.log, end = "")
       for k in range(n):
-        print (" %5.2f " %(si_list[k].get(key)[i]),
-          file = self.log, end= "")
+        if decimal_places == 1:
+          print (" %5.1f " %(si_list[k].get(key)[i]),
+            file = self.log, end= "")
+        else:
+          print (" %5.2f " %(si_list[k].get(key)[i]),
+            file = self.log, end= "")
       print("", file = self.log)
 
 
@@ -4578,6 +4573,7 @@ class map_model_manager(object):
       key = 'rms_fo_list',
       text = 'RMS Fobs ',
       overall_text = 'RMS Fc',
+      decimal_places = 1,
      )
 
     self._display_scale_values(
@@ -4587,12 +4583,18 @@ class map_model_manager(object):
       text = 'Estimated CC*',
       extra_text = " (Mean CC*: %.2f)" %(
        self._get_average_cc_star_list(scaling_group_info).min_max_mean().mean),
+      decimal_places = 2,
      )
 
     self._display_scale_values(
       si_list = scaling_group_info.scaling_info_list,
       direction_vectors = scaling_group_info.direction_vectors,
       overall_values = scaling_group_info.overall_si.target_scale_factors,
+      key = 'target_scale_factors',
+      text = 'Scale factors',
+      extra_text = '',
+      overall_text = ' ALL ',
+      decimal_places = 2,
      )
 
     aa_b_cart_as_u_cart = scaling_group_info.get('aa_b_cart_as_u_cart')
