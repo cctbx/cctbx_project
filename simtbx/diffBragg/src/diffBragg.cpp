@@ -498,6 +498,9 @@ void diffBragg::update_dxtbx_geoms(
     double panel_rot_angS, double panel_offsetX, double panel_offsetY, double panel_offsetZ,
     bool force){
 
+    int old_verbose = verbose;
+    verbose = 0;
+
     /* BEAM properties first */
     detector_panel_id = panel_id;
 
@@ -677,6 +680,7 @@ void diffBragg::update_dxtbx_geoms(
     //SCITBX_EXAMINE(close_distance);
     //printf("Done updating!\n");
     SCITBX_ASSERT(close_distance > 0);
+    verbose = old_verbose;
     }
 
 void diffBragg::init_raw_pixels_roi(){

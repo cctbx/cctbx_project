@@ -81,6 +81,9 @@ void diffBragg_loopy(
     if (verbose > 1)
         printf("Found %d CUDA-capable devices\n", cuda_devices);
 
+    //if (device_Id <= cuda_devices)
+    gpuErr(cudaSetDevice(device_Id));
+
     double time;
     struct timeval t1, t2, t3 ,t4;
     gettimeofday(&t1, 0);
