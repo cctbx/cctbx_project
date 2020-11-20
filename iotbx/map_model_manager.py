@@ -4033,8 +4033,7 @@ class map_model_manager(object):
       working_scale_factor_info = self._get_scale_factor_info_inside_mask(
          scale_factor_info,
          mask_map_manager = mask_map_manager,
-         inside = True,
-         skip_u_cart_of_zero = True)
+         inside = True)
 
       xyz_list = working_scale_factor_info.xyz_list
       print("\nAdding info from tls for %s" %(selection), file = self.log)
@@ -4240,8 +4239,7 @@ class map_model_manager(object):
          inside = inside,
          everything_is_inside = (everything_is_inside or (
            len(inside_list)==1 and len(scale_factor_info.xyz_list)==1)),
-         skip_u_cart_of_zero = True)
-
+        )
       if working_scale_factor_info.xyz_list.size() < 1: continue
 
       scaling_group_info = working_scale_factor_info.value_list[0]
@@ -5137,8 +5135,7 @@ class map_model_manager(object):
      scale_factor_info,
      mask_map_manager = None,
      inside = True,
-     everything_is_inside = None,
-     skip_u_cart_of_zero = None):
+     everything_is_inside = None):
     new_xyz_list = flex.vec3_double()
     new_value_list = []
     for xyz, value in zip (scale_factor_info.xyz_list,
@@ -5149,10 +5146,6 @@ class map_model_manager(object):
           else:
             new_xyz_list.append((0,0,0))
           new_value_list.append(value)
-      elif skip_u_cart_of_zero and value.overall_u_cart_to_apply and \
-          flex.pow2(flex.double(
-          tuple(value.overall_u_cart_to_apply))).min_max_mean().max ==0:
-         pass
       else: #check if inside
         site_frac=mask_map_manager.crystal_symmetry(
           ).unit_cell().fractionalize(xyz)
