@@ -401,6 +401,7 @@ class HKLViewFrame() :
     for parm in unusedphilparms:
       self.mprint( "Received unrecognised phil parameter: " + parm.path, verbose=1)
     diffphil = oldcurrentphil.fetch_diff(source = pyphilobj)
+    """
     oldcolbintrshld = oldcurrentphil.extract().NGL_HKLviewer.scene_bin_thresholds
     newcolbintrshld = oldcolbintrshld
     if hasattr(pyphilobj.extract().NGL_HKLviewer, "scene_bin_thresholds"):
@@ -414,6 +415,7 @@ class HKLViewFrame() :
       newcurrentphil = self.master_phil.format(python_object = params)
       diffphil = self.master_phil.fetch_diff(source = newcurrentphil)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    """
     return newcurrentphil, diffphil
 
 
@@ -460,7 +462,7 @@ class HKLViewFrame() :
          "scene_bin_thresholds"):
         if self.set_scene(phl.viewer.scene_id):
           self.update_space_group_choices()
-          self.set_scene_bin_thresholds(binvals=phl.scene_bin_thresholds,
+          self.set_scene_bin_thresholds(strbinvals=phl.scene_bin_thresholds,
                                          binner_idx=phl.binner_idx,
                                          nbins=phl.nbins )
       if phl.spacegroup_choice == None:
@@ -1032,14 +1034,14 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def set_scene_bin_thresholds(self, binvals = None, binner_idx = 0,  nbins = 6):
-    if binvals is None or len(binvals) ==0:
+  def set_scene_bin_thresholds(self, strbinvals = "", binner_idx = 0,  nbins = 6):
+    nuniquevalues = -1
+    if not strbinvals:
       binvals, nuniquevalues = self.viewer.calc_bin_thresholds(binner_idx, nbins)
+    else:
+      binvals = eval(strbinvals)
     if binvals and binner_idx == 0:
       binvals = list( 1.0/flex.double(binvals) )
-      #nuniquevalues = len(binvals)
-    else:
-      nuniquevalues = -1
     self.viewer.UpdateBinValues(binner_idx, binvals, nuniquevalues)
 
 
@@ -1055,7 +1057,7 @@ class HKLViewFrame() :
 
 
   def SetSceneBinThresholds(self, binvals=[]):
-    self.params.NGL_HKLviewer.scene_bin_thresholds = binvals
+    self.params.NGL_HKLviewer.scene_bin_thresholds = str(binvals)
     self.params.NGL_HKLviewer.nbins = len(binvals)
     self.update_settings()
 
@@ -1377,9 +1379,8 @@ NGL_HKLviewer {
     bequiet = False
       .type = bool
   }
-  scene_bin_thresholds = None
-    .type = float
-    .multiple = True
+  scene_bin_thresholds = ''
+    .type = str
   binner_idx = 0
     .type = int
   nbins = 1

@@ -272,6 +272,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.matching_arrays = []
     self.bin_infotpls = None
     self.bin_opacities= None
+    self.lowerbinvals = []
+    self.upperbinvals = []
     self.html_url = None
     self.spacegroups = {}
     self.info = []
@@ -477,18 +479,33 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
             self.updatingNbins = False
             self.binstable.clearContents()
             self.binstable.setRowCount(self.nbins)
+            self.lowerbinvals = []
+            self.upperbinvals = []
+            self.binstable_isready = False
             for row,bin_infotpl in enumerate(self.bin_infotpls):
               for col,elm in enumerate(bin_infotpl):
                 # only allow changing the last column with opacity values
-                if col != 3:
+                if col == 0:
                   item = QTableWidgetItem(str(elm))
-                else:
+                  item.setFlags(item.flags() ^ Qt.ItemIsEnabled)
+                if col==1:
+                  self.lowerbinvals.append(elm)
+                if col==2:
+                  item = QTableWidgetItem(str(elm))
+                  item.setFlags(item.flags() ^ Qt.ItemIsEnabled)
+                  self.upperbinvals.append(elm)
+                if col == 1: # allow changing bin thresholds
+                  item = QTableWidgetItem(str(elm))
+                  item.setFlags(item.flags() | Qt.ItemIsEditable)
+                  item.setToolTip("Change value for adjusting the number of reflections in this bin")
+                if col == 3:
                   item = QTableWidgetItem()
                   item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
                   item.setCheckState(Qt.Checked)
-                item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-                item.setFlags(item.flags() ^ Qt.ItemIsSelectable )
+                  item.setToolTip("Change visibility of this bin either by ticking or unticking the " +  
+                                   "check box or by entering an opacity value between 0 and 1")
                 self.binstable.setItem(row, col, item)
+            self.binstable_isready = True
             if self.bin_opacities:
               self.update_table_opacities()
 
@@ -976,15 +993,15 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
   def onBinsTableItemChanged(self, item):
     #print( "in itemChanged %s,  %s" %(item.text(), str( item.checkState())) )
-    bin = item.row()
-    column = item.column()
+    row = item.row()
+    col = item.column()
     try:
       if not self.bin_opacities:
         return
       bin_opacitieslst = eval(self.bin_opacities)
       alpha = max(0.0, min(1.0, float(item.text()) ) ) # between 0 and 1 only
       try:
-        (oldalpha, bin) = bin_opacitieslst[bin]
+        (oldalpha, row) = bin_opacitieslst[row]
         if oldalpha == float(item.text()):
           if item.checkState()==Qt.Unchecked:
             alpha = 0.0
@@ -993,23 +1010,41 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       except Exception as e:
         pass
 
-      if column==3 and self.binstable_isready: # changing opacity
-        bin_opacitieslst[bin] = (alpha, bin)
+      if col==3 and self.binstable_isready: # changing opacity
+        bin_opacitieslst[row] = (alpha, row)
         self.bin_opacities = str(bin_opacitieslst)
         self.SetAllOpaqueCheckboxes()
         self.PhilToJsRender('NGL_HKLviewer.NGL.bin_opacities = "%s"' %self.bin_opacities )
+      
+      if col==1 and self.binstable_isready: # changing scene_bin_thresholds
+        aboveitem = self.binstable.item(row-1, 1)
+        belowitem = self.binstable.item(row+1, 1)
+        if aboveitem is None:
+          aboveval = -9e99
+        else:
+          aboveval = float(aboveitem.text())
+        if belowitem is None:
+          belowval = 9e99
+        else:
+          belowval = float(belowitem.text())
+        # the new value must be between above and below values only
+        newval = min(belowval, max(aboveval, float(item.text()) ) ) 
+        # but the other way round if binning against resolution
+        if self.BinDataComboBox.currentIndex() == 0:
+          newval = min(aboveval, max(belowval, float(item.text()) ) )
+        self.binstable.item(row,col).setText(str(newval))
+        #nbins = len(self.bin_infotpls)
+        self.lowerbinvals[row] = newval
+        allbinvals = self.lowerbinvals + [ self.upperbinvals[-1] ]
+        nbins = len(allbinvals)
+        self.PhilToJsRender('''
+        NGL_HKLviewer.scene_bin_thresholds = \"%s\"
+        NGL_HKLviewer.nbins = %d
+        ''' %(allbinvals, nbins) )
+      
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
 
-  """
-  def onBinsTableItemSelectionChanged(self):
-    item = self.binstable.currentItem()
-    #print( "in SelectionChanged %s,  %s" %(item.text(), str( item.checkState())) )
-    try:
-      self.currentSelectedBinsTableVal = float(item.text())
-    except Exception as e:
-      pass
-  """
 
   def onOpaqueAll(self):
     self.binstableitemchanges = True
