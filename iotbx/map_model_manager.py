@@ -4340,49 +4340,6 @@ class map_model_manager(object):
       average_cc_star_list /= len(scaling_group_info.scaling_info_list)
     return average_cc_star_list
 
-  def _average_scale_factor_info_over_directions(self,scale_factor_info,
-      dv_id = None):
-    '''
-     Average scale_factor_info over directions to get a single overall
-      scaling_info_object (si)
-     If dv_id is set, return value for that si
-
-    '''
-    scaling_group_info_list = scale_factor_info.value_list
-    xyz_list = scale_factor_info.xyz_list
-
-    assert len(scaling_group_info_list) == 1  # just one xyz allowed
-
-    # Just average info over the N entries in scaling_group_info_list
-    scaling_group_info = scaling_group_info_list[0]
-
-    # Create an average scale_factor_info object
-    average_scaling_group_info = deepcopy(scaling_group_info)
-
-    average_scaling_group_info.group_args_type = \
-        'averaged (over direction) scaling_info_object'
-    average_scaling_group_info.direction_vectors = [None]
-
-
-    average_si = deepcopy(scaling_group_info.scaling_info_list[0])
-    if dv_id is not None:
-      if len(scaling_group_info.scaling_info_list) < dv_id -1:
-         return None # out of range
-      average_scaling_group_info.scaling_info_list = [
-        deepcopy(scaling_group_info.scaling_info_list[dv_id])]
-    else:
-      average_scaling_group_info.scaling_info_list = [average_si]
-
-      for scaling_group_info in scaling_group_info_list[1:]:
-        average_si.target_scale_factors += si.target_scale_factors
-      average_si.target_scale_factors /= len(scaling_group_info_list)
-
-    return group_args(
-      group_args_type = 'average scale_factor_info (averaged over directions)',
-      value_list = [average_scaling_group_info],
-      xyz_list = xyz_list,
-     )
-
   def _average_scale_factor_info_over_xyz(self, scale_factor_info):
     '''
     Average scale_factor_info over xyz
@@ -4393,7 +4350,7 @@ class map_model_manager(object):
     average_scaling_group_info = group_args(
       group_args_type = 'averaged (over xyz) scaling_info_object',
       direction_vectors = None,
-      scaling_info_list = [],
+      scaling_info_list = None,
       overall_si = None,
       aa_b_cart_as_u_cart = None,
       bb_b_cart_as_u_cart = None,
@@ -4413,7 +4370,6 @@ class map_model_manager(object):
         average_scaling_group_info.direction_vectors = \
            scaling_group_info.direction_vectors
 
-
       for key in ('aa_b_cart_as_u_cart',
         'fo_b_cart_as_u_cart','uu_b_cart_as_u_cart',
         'bb_b_cart_as_u_cart', 'ss_b_cart_as_u_cart',
@@ -4422,13 +4378,15 @@ class map_model_manager(object):
         if not average_scaling_group_info.get(key):
           average_scaling_group_info.add(key=key,value=flex.double(
             scaling_group_info.get(key)))
+
         elif scaling_group_info.get(key):
           xx = average_scaling_group_info.get(key)
           xx += flex.double(scaling_group_info.get(key))
 
       if not average_scaling_group_info.scaling_info_list:
-        average_scaling_group_info.scaling_info_list = deepcopy(
-          scaling_group_info.scaling_info_list)
+        average_scaling_group_info.scaling_info_list = []
+        for x in scaling_group_info.scaling_info_list:
+          average_scaling_group_info.scaling_info_list.append(deepcopy(x))
       else:
         for si, average_si in zip(
             scaling_group_info.scaling_info_list,
@@ -4443,7 +4401,7 @@ class map_model_manager(object):
       else:
         for key in ('target_scale_factors','cc_list','rms_fo_list'):
           setattr(average_scaling_group_info.overall_si,key,
-          getattr(average_scaling_group_info.overall_si,key) +
+            getattr(average_scaling_group_info.overall_si,key) +
              getattr(scaling_group_info.overall_si,key))
 
     if scaling_group_info_list:
