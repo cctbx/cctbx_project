@@ -209,6 +209,8 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
                0,0,1;
     psi = 0;
 
+    allocate_sausages();
+
     RotMats.push_back(EYE);
     RotMats.push_back(EYE);
     RotMats.push_back(EYE);
@@ -744,6 +746,15 @@ void diffBragg::initialize_managers(){
             pan_rot->initialize(Npix_total, compute_curvatures);
         }
     }
+    if (refining_sausages){
+        for (int i=0; i< num_sausages; i++){
+            sausage_managers[i*3]->initialize(Npix_total, compute_curvatures);
+            sausage_managers[i*3+1]->initialize(Npix_total, compute_curvatures);
+            sausage_managers[i*3+2]->initialize(Npix_total, compute_curvatures);
+            sausage_scale_managers[i]->initialize(Npix_total, compute_curvatures);
+        }
+
+    }
 }
 
 void diffBragg::vectorize_umats(){
@@ -876,6 +887,20 @@ void diffBragg::refine(int refine_id){
         eta_man->initialize(Npix_total, compute_curvatures);
         update_umats_on_device = true;
     }
+    else if (refine_id==20){
+        refining_sausages=true;
+        for(int i=0; i < num_sausages; i++){
+            sausage_managers[i*3]->refine_me=true;
+            sausage_managers[i*3+1]->refine_me=true;
+            sausage_managers[i*3+2]->refine_me=true;
+            sausage_scale_managers[i]->refine_me=true;
+            sausage_managers[i*3]->initialize(Npix_total, compute_curvatures);
+            sausage_managers[i*3+1]->initialize(Npix_total, compute_curvatures);
+            sausage_managers[i*3+2]->initialize(Npix_total, compute_curvatures);
+            sausage_scale_managers[i]->initialize(Npix_total, compute_curvatures);
+        }
+        update_sausages_on_device=true;
+    }
 }
 
 void diffBragg::init_Fhkl2()
@@ -977,6 +1002,23 @@ boost::python::tuple diffBragg::get_ncells_values(){
     boost::python::tuple values;
     values = boost::python::make_tuple( NABC(0,0),  NABC(1,1), NABC(2,2));
     return values;
+}
+
+
+void diffBragg::set_sausages(af::flex_double x, af::flex_double y, af::flex_double z, af::flex_double scale){
+    if (x.size() != num_sausages || y.size() != num_sausages || z.size() != num_sausages || scale.size() != num_sausages){
+        printf("ERROR, NUMBER OF SAUSAGES is %d so x,y,z should be the same length\n", num_sausages);
+        SCITBX_ASSERT(false);
+    }
+    for (int i=0; i< num_sausages; i++){
+        sausage_managers[i*3]->value=x[i];
+        sausage_managers[i*3+1]->value=y[i];
+        sausage_managers[i*3+2]->value=z[i];
+        sausage_managers[i*3]->set_R();
+        sausage_managers[i*3+1]->set_R();
+        sausage_managers[i*3+2]->set_R();
+        sausage_scale_managers[i]->value = scale[i];
+    }
 }
 
 
@@ -1099,6 +1141,25 @@ boost::python::tuple diffBragg::get_ncells_derivative_pixels(){
     derivative_pixels = boost::python::make_tuple(Ncells_managers[0]->raw_pixels,
         Ncells_managers[1]->raw_pixels, Ncells_managers[2]->raw_pixels);
     return derivative_pixels;
+}
+
+
+boost::python::list diffBragg::get_sausage_derivative_pixels(){
+    boost::python::list sausage_derivs;
+    for (int i=0; i<num_sausages; i++ ){
+        sausage_derivs.append( sausage_managers[i*3]->raw_pixels);
+        sausage_derivs.append( sausage_managers[i*3+1]->raw_pixels);
+        sausage_derivs.append( sausage_managers[i*3+2]->raw_pixels);
+        sausage_derivs.append( sausage_scale_managers[i]->raw_pixels);
+    }
+    return sausage_derivs;
+}
+
+boost::python::list diffBragg::get_sausage_scale_derivative_pixels(){
+    boost::python::list sausage_scale_derivs;
+    for (int i=0; i<num_sausages; i++ )
+        sausage_scale_derivs.append( sausage_scale_managers[i]->raw_pixels);
+    return sausage_scale_derivs;
 }
 
 boost::python::tuple diffBragg::get_lambda_derivative_pixels(){
@@ -1228,19 +1289,23 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     double * floatimage_roi = raw_pixels_roi.begin();
 
     diffBragg_rot_mats();
-
+    if (refining_sausages){
+        for (int i=0; i < num_sausages; i++)
+            sausages_scale[i] = sausage_scale_managers[i]->value;
+    }
     /* make sure we are normalizing with the right number of sub-steps */
     steps = phisteps*mosaic_domains*oversample*oversample;
     subpixel_size = pixel_size/oversample;
-    const int Nsteps = oversample*oversample*detector_thicksteps*sources*phisteps*mosaic_domains;
+    const int Nsteps = oversample*oversample*detector_thicksteps*sources*phisteps*mosaic_domains*num_sausages;
     int* subS_pos = new int[Nsteps];
     int* subF_pos = new int[Nsteps];
     int* thick_pos = new int[Nsteps];
     int* source_pos = new int[Nsteps];
     int* phi_pos = new int[Nsteps];
     int* mos_pos = new int[Nsteps];
+    int* sausage_pos = new int[Nsteps];
 
-    diffBragg_list_steps(subS_pos, subF_pos, thick_pos, source_pos, phi_pos, mos_pos);
+    diffBragg_list_steps(subS_pos, subF_pos, thick_pos, source_pos, phi_pos, mos_pos, sausage_pos);
 
     int pan_rot_ids[3] = {0,4,5};
     int pan_orig_ids[3] = {1,2,3};
@@ -1316,6 +1381,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     image_type d2_panel_rot_images(Npix_to_model*3,0.0);
     image_type d_panel_orig_images(Npix_to_model*3,0.0);
     image_type d2_panel_orig_images(Npix_to_model*3,0.0);
+    image_type d_sausage_XYZ_scale_images(Npix_to_model*num_sausages*4,0.0);
 
     struct timeval t1,t2;
     gettimeofday(&t1,0 );
@@ -1331,8 +1397,9 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             d_lambda_images, d2_lambda_images,
             d_panel_rot_images,  d2_panel_rot_images,
             d_panel_orig_images,  d2_panel_orig_images,
+            d_sausage_XYZ_scale_images,
             subS_pos,  subF_pos,  thick_pos,
-            source_pos,  phi_pos,  mos_pos,
+            source_pos,  phi_pos,  mos_pos, sausage_pos,
             Nsteps, _printout_fpixel, _printout_spixel, _printout, _default_F,
             oversample, oversample_omega, subpixel_size, pixel_size,
             detector_thickstep, detector_thick, close_distance, detector_attnlen,
@@ -1345,6 +1412,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             RotMats, dRotMats, d2RotMats,
             UMATS,
             dB_Mats, dB2_Mats,
+            sausages_RXYZ, d_sausages_RXYZ, sausages_U, sausages_scale,
             source_X,  source_Y,  source_Z,  source_lambda,  source_I,
             polarization,
             Na, Nb, Nc,
@@ -1357,6 +1425,8 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             FhklLinear, Fhkl2Linear,
             refine_Bmat, refine_Ncells, refine_pan_orig, refine_pan_rot,
             fcell_man->refine_me, refine_lambda, eta_man->refine_me, refine_Umat,
+            refining_sausages,
+            num_sausages,
             fdet_vectors, sdet_vectors,
             odet_vectors, pix0_vectors,
             nopolar, point_pixel, fluence, r_e_sqr, spot_scale);
@@ -1426,6 +1496,19 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     // TODO behold inefficient
     for (int i_pix=0; i_pix< Npix_to_model; i_pix++){
         floatimage_roi[i_pix] = image[i_pix];
+
+        if (refining_sausages){
+            for(int i_sausage=0; i_sausage< num_sausages; i_sausage++){
+                int i_param, idx;
+                for (i_param=0; i_param<3; i_param++){
+                    idx = (4*i_sausage+i_param)*Npix_to_model + i_pix;
+                    sausage_managers[i_sausage*3+i_param]->increment_image(i_pix, d_sausage_XYZ_scale_images[idx], 0, compute_curvatures);
+                }
+                idx = (4*i_sausage+3)*Npix_to_model + i_pix;
+                sausage_scale_managers[i_sausage]->increment_image(i_pix, d_sausage_XYZ_scale_images[idx], 0, compute_curvatures);
+            }
+        }
+
         for (int i_rot=0; i_rot<3; i_rot++){
             if (rot_managers[i_rot]->refine_me){
                 int idx = i_rot*Npix_to_model + i_pix;
@@ -1482,6 +1565,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     delete[] source_pos;
     delete[] phi_pos;
     delete[] mos_pos;
+    delete[] sausage_pos;
     if(verbose) printf("done with pixel loop\n");
 } // END  of add_diffBragg_spots
 
@@ -1497,6 +1581,20 @@ void diffBragg::diffBragg_rot_mats(){
         }
     }
     RXYZ = RotMats[0]*RotMats[1]*RotMats[2];
+
+    // update sausage rot mats
+    if (refining_sausages){
+        for(int i=0; i< num_sausages; i++){
+            sausages_RXYZ[i*3] =   sausage_managers[i*3]->R;
+            sausages_RXYZ[i*3+1] = sausage_managers[i*3+1]->R;
+            sausages_RXYZ[i*3+2] = sausage_managers[i*3+2]->R;
+            sausages_U[i] = sausages_RXYZ[i*3]*sausages_RXYZ[i*3+1]*sausages_RXYZ[i*3+2];
+
+            d_sausages_RXYZ[i*3] = sausage_managers[i*3]->dR;
+            d_sausages_RXYZ[i*3+1] = sausage_managers[i*3+1]->dR;
+            d_sausages_RXYZ[i*3+2] = sausage_managers[i*3+2]->dR;
+        }
+    }
     /*  update Umats to be U*RXYZ   */
     for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
         UMATS_RXYZ[mos_tic] = UMATS[mos_tic] * RXYZ;
@@ -1510,7 +1608,7 @@ void diffBragg::diffBragg_rot_mats(){
 
 void diffBragg::diffBragg_list_steps(
                 int* subS_pos,  int* subF_pos,  int* thick_pos,
-                int* source_pos,  int* phi_pos,  int* mos_pos ){
+                int* source_pos,  int* phi_pos,  int* mos_pos , int* sausage_pos){
     /* TODO theres probably a clever way to do this, but oh well */
     // TODO: time me
     int i_step = 0;
@@ -1520,13 +1618,16 @@ void diffBragg::diffBragg_list_steps(
                 for(source=0;source<sources;++source){
                     for(phi_tic = 0; phi_tic < phisteps; ++phi_tic){
                         for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
-                            subS_pos[i_step] = subS;
-                            subF_pos[i_step] = subF;
-                            thick_pos[i_step] = thick_tic;
-                            source_pos[i_step] = source;
-                            phi_pos[i_step] = phi_tic;
-                            mos_pos[i_step] = mos_tic;
-                            i_step ++;
+                            for (int i=0; i< num_sausages; i++){
+                                subS_pos[i_step] = subS;
+                                subF_pos[i_step] = subF;
+                                thick_pos[i_step] = thick_tic;
+                                source_pos[i_step] = source;
+                                phi_pos[i_step] = phi_tic;
+                                mos_pos[i_step] = mos_tic;
+                                sausage_pos[i_step] = i;
+                                i_step ++;
+                            }
                         }
                     }
                 }
@@ -1550,6 +1651,42 @@ void diffBragg::linearize_Fhkl(){
 	}
 }
 
+void diffBragg::update_number_of_sausages(int _num_sausages){
+    num_sausages = _num_sausages;
+    allocate_sausages();
+}
+
+void diffBragg::allocate_sausages(){
+    sausages_RXYZ.clear();
+    sausages_U.clear();
+    d_sausages_RXYZ.clear();
+    sausages_scale.clear();
+    sausage_managers.clear();
+    sausage_scale_managers.clear();
+    for (int i=-1; i < num_sausages; i++){
+        sausages_RXYZ.push_back(EYE);
+        sausages_RXYZ.push_back(EYE);
+        sausages_RXYZ.push_back(EYE);
+        sausages_U.push_back(EYE);
+
+        d_sausages_RXYZ.push_back(EYE);
+        d_sausages_RXYZ.push_back(EYE);
+        d_sausages_RXYZ.push_back(EYE);
+        sausages_scale.push_back(1);
+        boost::shared_ptr<rot_manager> sausage_rotX = boost::shared_ptr<rot_manager>(new rotX_manager());
+        boost::shared_ptr<rot_manager> sausage_rotY = boost::shared_ptr<rot_manager>(new rotY_manager());
+        boost::shared_ptr<rot_manager> sausage_rotZ = boost::shared_ptr<rot_manager>(new rotZ_manager());
+        boost::shared_ptr<derivative_manager> sausage_scale_man = boost::shared_ptr<derivative_manager>(new derivative_manager());
+        sausage_rotX->refine_me = false;
+        sausage_rotY->refine_me = false;
+        sausage_rotZ->refine_me = false;
+        sausage_scale_man->refine_me = false;
+        sausage_managers.push_back(sausage_rotX);
+        sausage_managers.push_back(sausage_rotY);
+        sausage_managers.push_back(sausage_rotZ);
+        sausage_scale_managers.push_back(sausage_scale_man);
+    }
+}
 
 } // end of namespace nanoBragg
 } // end of namespace simtbx

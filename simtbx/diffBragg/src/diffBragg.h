@@ -150,8 +150,9 @@ class diffBragg: public nanoBragg{
         image_type& d_lambda_images, image_type& d2_lambda_images,
         image_type& d_panel_rot_images, image_type& d2_panel_rot_images,
         image_type& d_panel_orig_images, image_type& d2_panel_orig_images,
+        image_type& d_sausage_RXYZ_scale_images,
         int* subS_pos, int* subF_pos, int* thick_pos,
-        int* source_pos, int* phi_pos, int* mos_pos,
+        int* source_pos, int* phi_pos, int* mos_pos, int* sausage_pos,
         const int Nsteps, int _printout_fpixel, int _printout_spixel, bool _printout, double _default_F,
         int oversample, bool _oversample_omega, double subpixel_size, double pixel_size,
         double detector_thickstep, double _detector_thick, double close_distance, double detector_attnlen,
@@ -167,6 +168,10 @@ class diffBragg: public nanoBragg{
         std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& UMATS,
         std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& dB_Mats,
         std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& dB2_Mats,
+        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& sausages_RXYZ,
+        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& d_sausages_RXYZ,
+        std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> >& sausages_U,
+        std::vector<double>& sausages_scale,
         double* source_X, double* source_Y, double* source_Z, double* source_lambda, double* source_I,
         double kahn_factor,
         double Na, double Nb, double Nc,
@@ -179,6 +184,8 @@ class diffBragg: public nanoBragg{
         std::vector<double>& _FhklLinear, std::vector<double>& _Fhkl2Linear,
         std::vector<bool>& refine_Bmat, std::vector<bool>& refine_Ncells, std::vector<bool>& refine_panel_origin, std::vector<bool>& refine_panel_rot,
         bool refine_fcell, std::vector<bool>& refine_lambda, bool refine_eta, std::vector<bool>& refine_Umat,
+        bool refine_sausages,
+        int num_sausages,
         std::vector<double>& fdet_vectors, std::vector<double>& sdet_vectors,
         std::vector<double>& odet_vectors, std::vector<double>& pix0_vectors,
         bool _nopolar, bool _point_pixel, double _fluence, double _r_e_sqr, double _spot_scale);
@@ -187,7 +194,7 @@ class diffBragg: public nanoBragg{
   void linearize_Fhkl();
   void diffBragg_list_steps(
                 int* subS_pos,  int* subF_pos,  int* thick_pos,
-                int* source_pos,  int* phi_pos,  int* mos_pos );
+                int* source_pos,  int* phi_pos,  int* mos_pos , int* sausage_pos);
   ~diffBragg(){};
   void diffBragg_sum_over_steps_cuda();
 
@@ -235,8 +242,12 @@ class diffBragg: public nanoBragg{
         double panel_rot_angF=0,  double panel_rot_angS=0, double panel_offsetX=0,
         double panel_offsetY=0, double panel_offsetZ=0, bool force=true);
   void set_value( int refine_id, double value);
+  void set_sausages(af::flex_double x, af::flex_double y, af::flex_double z, af::flex_double scale);
   void set_ncells_values( boost::python::tuple const& values);
   boost::python::tuple get_ncells_values();
+  boost::python::list get_sausage_derivative_pixels();
+  boost::python::list get_sausage_scale_derivative_pixels();
+  bool refining_sausages=false;
   double get_value( int refine_id);
   af::flex_double get_derivative_pixels(int refine_id);
   af::flex_double get_second_derivative_pixels(int refine_id);
@@ -302,6 +313,8 @@ class diffBragg: public nanoBragg{
   //bool vectorized_umats;
 
   /* derivative managers */
+  std::vector<boost::shared_ptr<rot_manager> > sausage_managers;
+  std::vector<boost::shared_ptr<derivative_manager> > sausage_scale_managers;
   std::vector<boost::shared_ptr<rot_manager> > rot_managers;
   std::vector<boost::shared_ptr<ucell_manager> > ucell_managers;
   std::vector<boost::shared_ptr<Ncells_manager> > Ncells_managers;
@@ -395,6 +408,7 @@ class diffBragg: public nanoBragg{
   bool update_dB_matrices_on_device=false;
   bool update_detector_on_device=false;
   bool update_rotmats_on_device=false;
+  bool update_sausages_on_device=false;
   bool update_umats_on_device=false;
   bool update_panels_fasts_slows_on_device=false;
   bool update_sources_on_device=false;
@@ -404,6 +418,11 @@ class diffBragg: public nanoBragg{
   bool update_panel_deriv_vecs_on_device=false;
   bool use_cuda=false;
 
+  void update_number_of_sausages(int _num_sausages);
+  void allocate_sausages();
+  int num_sausages=1;
+  std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > sausages_RXYZ, d_sausages_RXYZ, sausages_U;
+  std::vector<double> sausages_scale;
 }; // end of diffBragg
 
 } // end of namespace nanoBragg
