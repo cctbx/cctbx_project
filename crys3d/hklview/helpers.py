@@ -1,10 +1,18 @@
 from __future__ import absolute_import, division, print_function
 # helper module for our own classes and widgets
 
+import numpy as np
+import matplotlib.pyplot as plt
+from PySide2 import QtWidgets
+from PySide2.QtCore import Qt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+
 from PySide2.QtCore import Qt, QEvent, QAbstractTableModel, QModelIndex
 from PySide2.QtGui import QCursor
 from PySide2.QtWidgets import ( QCheckBox, QTableWidget, QAction, QMenu,
-      QTableView, QDialog,  QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox
+      QTableView, QDialog,  QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
+      QScrollArea, QVBoxLayout
      )
 import math, csv
 from io import StringIO
@@ -167,3 +175,74 @@ class MillerArrayTableModel(QAbstractTableModel):
       #print(self.columnheaderdata[col] + " sort DescendingOrder")
       self._data = sorted(self._data, key= lambda data: self.minvals[col] if math.isnan(data[col]) else data[col], reverse=True)
     self.layoutChanged.emit()
+
+
+
+# Dialog box with MatPlotLib colour gradient charts from 
+# http://matplotlib.org/examples/color/colormaps_reference.html
+
+cmaps = [  'viridis', 'plasma', 'inferno', 'magma',
+            'Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds',
+            'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu',
+            'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn',
+            'binary', 'gist_yarg', 'gist_gray', 'gray', 'bone', 'pink',
+            'spring', 'summer', 'autumn', 'winter', 'cool', 'Wistia',
+            'hot', 'afmhot', 'gist_heat', 'copper',
+            'PiYG', 'PRGn', 'BrBG', 'PuOr', 'RdGy', 'RdBu',
+            'RdYlBu', 'RdYlGn', 'Spectral', 'coolwarm', 'bwr', 'seismic',
+            'Pastel1', 'Pastel2', 'Paired', 'Accent',
+            'Dark2', 'Set1', 'Set2', 'Set3',
+            'tab10', 'tab20', 'tab20b', 'tab20c',
+            'flag', 'prism', 'ocean', 'gist_earth', 'terrain', 'gist_stern',
+            'gnuplot', 'gnuplot2', 'CMRmap', 'cubehelix', 'brg', 'hsv',
+            'gist_rainbow', 'rainbow', 'jet', 'nipy_spectral', 'gist_ncar'
+          ]
+
+gradient = np.linspace(0, 1, 256)
+gradient = np.vstack((gradient, gradient))
+
+dpi=80
+
+class MplCanvas(FigureCanvas):
+  def __init__(self, parent=None, width=5, height=4, dpi=dpi):
+    self.fig = Figure(figsize=(10, 40), dpi=dpi, facecolor=(1, 1, 1), edgecolor=(0.5, 0, 0))
+    self.axes = self.fig.subplots(len(cmaps), 1)
+    self.fig.subplots_adjust(top=0.95, bottom=0.01, left=0.2, right=0.99)
+    super(MplCanvas, self).__init__(self.fig)
+    cid = self.fig.canvas.mpl_connect('button_press_event', self.on_press)
+    self.labeltxt = QLabel()
+    self.labeltxt.setText("waffle")
+  def on_press(self, event):
+    if event.inaxes is not None:
+      print('Colourmap: ', cmaps[event.inaxes.get_subplotspec().rowspan.start] )
+
+
+class MPLColourSchemes(QDialog):
+  def __init__(self, *args, **kwargs):
+    super(MPLColourSchemes, self).__init__(*args, **kwargs)
+    # Create the maptlotlib FigureCanvas object, 
+    # which defines a single set of axes as self.axes.
+    sc = MplCanvas(self, width=5, height=7, dpi=dpi)
+    for ax, name in zip(sc.axes, cmaps):
+      ax.imshow(gradient, aspect='auto', cmap=plt.get_cmap(name))
+      pos = list(ax.get_position().bounds)
+      x_text = pos[0] - 0.01
+      y_text = pos[1] + pos[3]/2.
+      sc.fig.text(x_text, y_text, name, va='center', ha='right', fontsize=20)
+    #time.sleep(15)
+    for ax in sc.axes:
+      ax.set_axis_off()
+    scroll = QScrollArea()
+    scroll.setWidget(sc.fig.canvas)
+    scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+    #scroll.setWidgetResizable(True)
+    vbox = QVBoxLayout() 
+    vbox.addWidget(sc.labeltxt)
+    vbox.addWidget(scroll)
+    self.setLayout(vbox)
+    #self.setFixedSize( self.sizeHint() )
+    self.show()
+
+
+

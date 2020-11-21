@@ -1349,11 +1349,9 @@ class hklview_3d:
     if not blankscene:
       self.RemoveStageObjects()
       for ibin in range(self.nbinvalsboundaries+1):
-        mstr =""
         nreflsinbin = len(self.radii2[ibin])
         if nreflsinbin == 0:
           continue
-
         self.SetBrowserDebug(str(self.verbose>=2).lower())
         self.SetFontSize(self.ngl_settings.fontsize)
         self.DefineHKL_Axes(str(Hstararrowstart), str(Hstararrowend),
