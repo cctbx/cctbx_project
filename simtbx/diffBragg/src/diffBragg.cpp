@@ -1663,7 +1663,7 @@ void diffBragg::allocate_sausages(){
     sausages_scale.clear();
     sausage_managers.clear();
     sausage_scale_managers.clear();
-    for (int i=-1; i < num_sausages; i++){
+    for (int i=0; i < num_sausages; i++){
         sausages_RXYZ.push_back(EYE);
         sausages_RXYZ.push_back(EYE);
         sausages_RXYZ.push_back(EYE);
@@ -1677,6 +1677,7 @@ void diffBragg::allocate_sausages(){
         boost::shared_ptr<rot_manager> sausage_rotY = boost::shared_ptr<rot_manager>(new rotY_manager());
         boost::shared_ptr<rot_manager> sausage_rotZ = boost::shared_ptr<rot_manager>(new rotZ_manager());
         boost::shared_ptr<derivative_manager> sausage_scale_man = boost::shared_ptr<derivative_manager>(new derivative_manager());
+        sausage_scale_man->value = 1;
         sausage_rotX->refine_me = false;
         sausage_rotY->refine_me = false;
         sausage_rotZ->refine_me = false;

@@ -118,8 +118,13 @@ SIM.D.raw_pixels_roi *= 0
 NUM_SAUSAGES = 3
 SIM.D.update_number_of_sausages(NUM_SAUSAGES)
 SIM.D.refine(SAUSAGE_ID)
+SIM.D.printout_pixel_fastslow = 100,100
 SIM.D.add_diffBragg_spots()
 derivs = SIM.D.get_sausage_derivative_pixels()
+if np.allclose( derivs[0], derivs[4]):
+  print(1)
+else:
+  print(2)
 
 SIM.D.raw_pixels_roi *= 0
 SIM.D.raw_pixels *= 0
@@ -201,7 +206,6 @@ if args.finitediff:
       assert l.slope > 0, "%f" % l.slope
       assert l.pvalue < 1e-6, "%f" % l.pvalue
       print("OK")
-  sys.exit()
 
 
 from simtbx.diffBragg import utils
@@ -214,26 +218,28 @@ E = Experiment()
 E.detector = DET_gt
 E.beam = SIM.beam.nanoBragg_constructor_beam
 E.crystal = C
-E.imageset = make_imageset([img], E.beam, E.detector)
+E.imageset = make_imageset([img.reshape(img_sh)], E.beam, E.detector)
 
-refls = utils.refls_from_sims([SPOTS], E.detector, E.beam, thresh=2000)
+refls = utils.refls_from_sims([all_spots.reshape(img_sh)], E.detector, E.beam, thresh=100)
 print("Found %d spots for refinement" % len(refls))
 
 P = phil_scope.extract()
 P.roi.shoebox_size = 25
 P.roi.reject_edge_reflections = False
-P.refiner.refine_eta = [1]
+P.refiner.refine_blueSausages = [1]
+P.simulator.crystal.num_sausages = 3
+P.refiner.init.sausages = [0,0,0,1] * 3
 P.simulator.beam.size_mm = SIM.beam.size_mm
 total_flux = SIM.beam.spectrum[0][1]
 print("total flux %f " % total_flux)
 P.simulator.total_flux = total_flux
 P.simulator.oversample = 1
-P.refiner.max_calls = [20]
+P.refiner.max_calls = [100]
 P.refiner.tradeps = 1e-7
 P.refiner.curvatures = False
 P.refiner.use_curvatures_threshold = 0
 P.refiner.poissononly = False
-P.refiner.verbose = True
+P.refiner.verbose = 0
 P.refiner.big_dump = False
 P.refiner.sigma_r = SIM.D.readout_noise_adu
 if args.plot:
@@ -245,9 +251,36 @@ P.simulator.crystal.ncells_abc = Ncells_gt
 P.refiner.ncells_mask = "111"
 
 RUC = refine_launcher.local_refiner_from_parameters(refls, E, P, miller_data=SIM.crystal.miller_array)
-eta_refined = RUC._get_eta(i_shot=0)
-print("Refined eta: %10.7f" % eta_refined)
-print("GT eta: %10.7f" % MOS_SPREAD)
-assert abs(eta_refined - MOS_SPREAD) < 0.001
+sausage_params = RUC._get_sausage_parameters(0)
+
+
+rotX = flex.double(sausage_params[0::4])
+rotY = flex.double(sausage_params[1::4])
+rotZ = flex.double(sausage_params[2::4])
+scales = flex.double(sausage_params[3::4])
+SIM.D.set_sausages(rotX, rotY, rotZ, scales)
+SIM.D.raw_pixels_roi*= 0
+SIM.D.add_diffBragg_spots()
+img_after_refinement = SIM.D.raw_pixels_roi.as_numpy_array().reshape(img_sh)
+
+# check pre-refinement image
+rotX = flex.double([0,0,0])
+rotY = flex.double([0,0,0])
+rotZ = flex.double([0,0,0])
+scales = flex.double([1,1,1])
+SIM.D.set_sausages(rotX, rotY, rotZ, scales)
+SIM.D.raw_pixels_roi*= 0
+SIM.D.add_diffBragg_spots()
+img_before_refinement =SIM.D.raw_pixels_roi.as_numpy_array().reshape(img_sh)
+
+from scipy.stats import pearsonr
+a = pearsonr(manual_adding.ravel(), img_after_refinement.ravel())[0]
+b = pearsonr(manual_adding.ravel(), img_before_refinement.ravel())[0]
+assert a > b, "a/b %f/%f" % (a, b)
+assert a > 0.998, "a/b %f/%f" % (a, b)  # this is with 100 iterations - more iterations will give higher correlation (max_calls)
+
+# first test results
+# a = 0.998
+# b = 0.92
 
 print("OK")

@@ -33,6 +33,9 @@ simulator {
     num_mosaicity_samples = 1
       .type = int
       .help = the number of mosaic domains to use when simulating mosaic spread
+    num_sausages = 1
+      .type = int
+      .help = the number of blocks that make up the mosaic texture
   }
   structure_factors {
     mtz_name = None
@@ -81,6 +84,9 @@ refiner {
     .type = int
     .help = number of cuda devices on current node
     .help = (a device will be chosen at random)
+  refine_blueSausages = None
+    .type = ints(size_min=1)
+    .help = whether to refine the mosaic texture (blue sausages) 
   refine_eta = None
     .type = ints(size_min=1)
     .help = whether to refine the mosaic spread parameter, eta
@@ -142,6 +148,10 @@ refiner {
     .help = a text file with 2 columns, the first column is the panel_id and the second 
     .help = column is the panel_group_id. Panels geometries in the same group are refined together
   init {
+    sausages = [0,0,0,1]
+      .type = floats
+      .help = the initial parameters for the sausage, should be multiples of (rotX, rotY, rotZ, scale) 
+      .help = , one for each mosaic block (sausage) making up texture
     eta = 0
       .type = float
       .help = mosaic spread sigma in degrees

@@ -73,6 +73,19 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
         params.simulator.crystal.has_isotropic_ncells = False
 
     SIM = utils.simulator_from_expt_and_params(expt, params)
+
+    # sausages
+    if params.refiner.refine_blueSausages:
+        from scitbx.array_family import flex
+        assert len(params.refiner.init.sausages) % 4 == 0  # 4 parameters per mosaic texture block (sausage)
+        init = params.refiner.init.sausages
+        SIM.D.update_number_of_sausages(params.simulator.crystal.num_sausages)
+        x = flex.double(init[0::4])
+        y = flex.double(init[1::4])
+        z = flex.double(init[2::4])
+        scale = flex.double(init[3::4])
+        SIM.D.set_sausages(x, y, z, scale)
+
     if miller_data is not None:
         SIM.crystal.miller_array = miller_data.as_amplitude_array()
         SIM.update_Fhkl_tuple()
@@ -104,8 +117,9 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
     n_originZ_params = 1
     n_eta_params = 1
     n_tilt_params = 3 * len(nanoBragg_rois)
+    n_sausage_params = 4*params.simulator.crystal.num_sausages
     n_local_unknowns = nrot_params + n_unitcell_params + n_ncells_param + n_spotscale_params + n_originZ_params \
-                       + n_tilt_params + n_eta_params
+                       + n_tilt_params + n_eta_params + n_sausage_params
 
     import os
     if os.environ.get("DIFFBRAGG_CUDA") is not None:
@@ -193,6 +207,9 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
 
                 if params.refiner.refine_eta is not None:
                     RUC.refine_eta = (params.refiner.refine_eta*nmacro)[i_trial]
+
+                if params.refiner.refine_blueSausages is not None:
+                    RUC.refine_blueSausages = (params.refiner.refine_blueSausages*nmacro)[i_trial]
 
             if RUC.refine_detdist and RUC.refine_panelZ:
                 raise ValueError("Cannot refine panelZ and detdist simultaneously")
@@ -301,6 +318,9 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
             RUC.big_dump = params.refiner.big_dump
             RUC.request_diag_once = False
             RUC.S = SIM
+            if RUC.refine_blueSausages:
+                RUC.num_sausages = params.simulator.crystal.num_sausages
+                #RUC.S.update_nanoBragg_instance("num_sausages", RUC.num_sausages)
             RUC.restart_file = params.refiner.io.restart_file
             RUC.has_pre_cached_roi_data = True
             RUC.trad_conv = True

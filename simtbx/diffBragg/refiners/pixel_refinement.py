@@ -30,6 +30,11 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
     run_on_init = False
 
     def __init__(self):
+        self.num_sausages = 1
+        self.refine_blueSausages = False
+        self.sausages_init = {0: [0, 0, 0, 1]}
+        self.sausages_sigma = [1, 1, 1, 1]
+
         self.refine_eta = False
         self.eta_init = {0: 0}
         self.eta_sigma = 1

@@ -250,6 +250,7 @@ class LocalRefiner(PixelRefinement):
         self._eta_id = 19  # diffBragg internal index for eta derivative manager
         self._lambda0_id = 12  # diffBragg interneal index for lambda derivatives
         self._lambda1_id = 13  # diffBragg interneal index for lambda derivatives
+        self._sausage_id = 20
 
         if log_of_init_crystal_scales is None:
             log_of_init_crystal_scales = {s: 0 for s in self.shot_ids}
@@ -437,6 +438,7 @@ class LocalRefiner(PixelRefinement):
         self.bg_coef_xpos = {}
         self.ucell_params = {}
         self.per_spot_scale_xpos = {}
+        self.sausages_xpos = {}
 
         self.panelX_params = [RangedParameter()] * self.n_panel_groups
         self.panelY_params = [RangedParameter()] * self.n_panel_groups
@@ -611,6 +613,16 @@ class LocalRefiner(PixelRefinement):
                     self.Xall[x] = 1
                 _local_pos += n_spots
 
+            if self.refine_blueSausages:
+                assert self.rescale_params
+            self.sausages_xpos[i_shot] = []
+            for i_sausage in range(self.num_sausages):
+                for i_sausage_param in range(4):
+                    self.sausages_xpos[i_shot].append(_local_pos)
+                    self.Xall[_local_pos] = 1+i_sausage
+                    self.is_being_refined[_local_pos] = True
+                    _local_pos += 1
+
         self.fcell_xstart = _global_pos
 
         self.spectra_coef_xstart = self.fcell_xstart + self.n_global_fcell
@@ -732,6 +744,8 @@ class LocalRefiner(PixelRefinement):
             self.D.refine(self._lambda1_id)
         if self.refine_eta:
             self.D.refine(self._eta_id)
+        if self.refine_blueSausages:
+            self.D.refine(self._sausage_id)
         self.D.initialize_managers()
 
     def _MPI_setup_global_params(self):
@@ -1051,6 +1065,18 @@ class LocalRefiner(PixelRefinement):
 
         for i_fcell in range(self.n_global_fcell):
             self.Fcell_sel[self.fcell_xstart + i_fcell] = False
+
+    def _get_sausage_parameters(self, i_shot):
+        vals = []
+        for i_sausage in range(self.num_sausages):
+            for i_param in range(4):
+                idx = i_sausage*4 + i_param
+                xpos = self.sausages_xpos[i_shot][idx]
+                sigma = self.sausages_sigma[i_param]
+                init = self.sausages_init[i_shot][i_param]
+                val = sigma*(self.Xall[xpos] - 1-i_sausage) + init
+                vals.append(val)
+        return vals
 
     def _get_rotX(self, i_shot):
         if self.rescale_params:
@@ -1448,6 +1474,15 @@ class LocalRefiner(PixelRefinement):
         #self.tilt_plane = bg['background'][self._panel_id, y1:y2, x1:x2]
         self.tilt_plane = self.tilt_plane.flatten()
 
+    def _update_sausages(self):
+        if self.refine_blueSausages:
+            sausage_vals = self._get_sausage_parameters(self._i_shot)
+            rotX = flex_double(sausage_vals[0::4])
+            rotY = flex_double(sausage_vals[1::4])
+            rotZ = flex_double(sausage_vals[2::4])
+            scales = flex_double(sausage_vals[3::4])
+            self.D.set_sausages(rotX, rotY, rotZ, scales)
+
     def _update_rotXYZ(self):
         if self.refine_rotX:
             self.D.set_value(0, self._get_rotX(self._i_shot))
@@ -1495,6 +1530,17 @@ class LocalRefiner(PixelRefinement):
                 self.spectra_derivs[0] = SG*self.D.get_derivative_pixels(12)[self.roi_slice].as_numpy_array()
             if self.refine_lambda1:
                 self.spectra_derivs[1] = SG*self.D.get_derivative_pixels(13)[self.roi_slice].as_numpy_array()
+
+    def _pre_extract_deriv_arrays(self):
+        self._sausage_derivs = self.D.get_sausage_derivative_pixels()
+
+    def _extract_sausage_derivs(self):
+        self.sausages_dI_dtheta = [0]*(self.num_sausages*4)
+        SG = self.scale_fac*self.G2
+        for i_sausage in range(self.num_sausages):
+            for i_param in range(4):
+                idx = i_sausage*4 + i_param
+                self.sausages_dI_dtheta[idx] = SG*self._sausage_derivs[idx][self.roi_slice].as_numpy_array()
 
     def _extract_Umatrix_derivative_pixels(self):
         self.rotX_dI_dtheta = self.rotY_dI_dtheta = self.rotZ_dI_dtheta = 0
@@ -1638,6 +1684,7 @@ class LocalRefiner(PixelRefinement):
         self.model_bragg_spots = self.scale_fac*self.D.raw_pixels_roi[self.roi_slice].as_numpy_array()
         self.model_bragg_spots *= self._get_per_spot_scale(self._i_shot, self._i_spot)
         self._extract_Umatrix_derivative_pixels()
+        self._extract_sausage_derivs()
         self._extract_Bmatrix_derivative_pixels()
         self._extract_mosaic_parameter_m_derivative_pixels()
         self._extract_detector_distance_derivative_pixels()
@@ -1740,11 +1787,15 @@ class LocalRefiner(PixelRefinement):
                 self._update_rotXYZ()
                 self._update_eta()  # mosaic spread
                 self._update_dxtbx_detector()
+                self._update_sausages()
                 n_spots = len(self.NANOBRAGG_ROIS[self._i_shot])
                 printed_geom_updates = False
 
                 # CREATE THE PANEL FAST SLOW ARRAY AND RUN DIFFBRAGG
                 self._run_diffBragg_current()
+
+                # TODO pre-extractions for all parameters
+                self._pre_extract_deriv_arrays()
 
                 for i_spot in range(n_spots):
                     self._i_spot = i_spot
@@ -1816,6 +1867,7 @@ class LocalRefiner(PixelRefinement):
                     self._gain_factor_derivatives()
                     self._Fcell_derivatives(i_spot)
                     self._spectra_derivatives()
+                    self._sausage_derivatives()
                     # Done with derivative accumulation
 
             #    self.image_corr[self._i_shot] = self.image_corr[self._i_shot] / self.image_corr_norm[self._i_shot]
@@ -2027,6 +2079,15 @@ class LocalRefiner(PixelRefinement):
                 self.grad[xstart + i_coef] += self._grad_accumulate(d)
                 if self.calc_curvatures:
                     raise NotImplementedError
+
+    def _sausage_derivatives(self):
+        if self.refine_blueSausages:
+            for i_sausage in range(self.num_sausages):
+                for i_param in range(4):
+                    idx = i_sausage*4 + i_param
+                    xpos = self.sausages_xpos[self._i_shot][idx]
+                    d = self.sausages_dI_dtheta[idx] * self.sausages_sigma[i_param]
+                    self.grad[xpos] += self._grad_accumulate(d)
 
     def _Umatrix_derivatives(self):
         if self.refine_Umatrix:
@@ -3104,8 +3165,6 @@ class LocalRefiner(PixelRefinement):
             x1, x2, y1, y2 = self.ROIS[self._i_shot][self._i_spot]
             roi_shape = y2-y1, x2-x1
             Y, X = np_indices(roi_shape)
-            #from IPython import embed
-            #embed()
             Y = Y.ravel() + y1
             X = X.ravel() + x1
             # this is the calculated (predicted) centroid for this spot
