@@ -44,6 +44,7 @@ port={port}
 # Disabling symbolic-links is recommended to prevent assorted security risks
 symbolic-links=0
 max_connections=10000
+default_authentication_plugin=mysql_native_password
 
 [mysqld_safe]
 log-error={basedir}{sep}mysqld.log
