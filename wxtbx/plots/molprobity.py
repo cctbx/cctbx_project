@@ -108,8 +108,6 @@ class ramalyze_frame(rotarama_frame):
     grid.Add(utils.bold_text(self.top_panel, "Show data points:"), 0,
       utils.std_sizer_flags, 5)
     default = ramalyze.RAMALYZE_ANY
-    if (self._validation.n_total > 2500):
-      default = ramalyze.RAMALYZE_NOT_FAVORED
     pt_choice = wx.Choice(parent=self.top_panel,
       choices=ramalyze.rama_type_labels)
     pt_choice.SetSelection(default)
