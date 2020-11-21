@@ -753,7 +753,6 @@ void diffBragg::initialize_managers(){
             sausage_managers[i*3+2]->initialize(Npix_total, compute_curvatures);
             sausage_scale_managers[i]->initialize(Npix_total, compute_curvatures);
         }
-
     }
 }
 
@@ -1500,10 +1499,14 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         if (refining_sausages){
             for(int i_sausage=0; i_sausage< num_sausages; i_sausage++){
                 int i_param, idx;
+                if (verbose > 5)
+                  printf("Updating sausage rots %d\n", i_sausage);
                 for (i_param=0; i_param<3; i_param++){
                     idx = (4*i_sausage+i_param)*Npix_to_model + i_pix;
                     sausage_managers[i_sausage*3+i_param]->increment_image(i_pix, d_sausage_XYZ_scale_images[idx], 0, compute_curvatures);
                 }
+                if (verbose > 5)
+                  printf("Updating scale %d\n", i_sausage);
                 idx = (4*i_sausage+3)*Npix_to_model + i_pix;
                 sausage_scale_managers[i_sausage]->increment_image(i_pix, d_sausage_XYZ_scale_images[idx], 0, compute_curvatures);
             }
@@ -1654,6 +1657,7 @@ void diffBragg::linearize_Fhkl(){
 void diffBragg::update_number_of_sausages(int _num_sausages){
     num_sausages = _num_sausages;
     allocate_sausages();
+    initialize_managers();
 }
 
 void diffBragg::allocate_sausages(){

@@ -227,8 +227,9 @@ P = phil_scope.extract()
 P.roi.shoebox_size = 25
 P.roi.reject_edge_reflections = False
 P.refiner.refine_blueSausages = [1]
-P.simulator.crystal.num_sausages = 3
-P.refiner.init.sausages = [0,0,0,1] * 3
+num_sausages_guess = 5
+P.simulator.crystal.num_sausages = num_sausages_guess
+P.refiner.init.sausages = [0, 0, 0, 1] * num_sausages_guess
 P.simulator.beam.size_mm = SIM.beam.size_mm
 total_flux = SIM.beam.spectrum[0][1]
 print("total flux %f " % total_flux)
@@ -258,16 +259,17 @@ rotX = flex.double(sausage_params[0::4])
 rotY = flex.double(sausage_params[1::4])
 rotZ = flex.double(sausage_params[2::4])
 scales = flex.double(sausage_params[3::4])
+SIM.D.update_number_of_sausages(num_sausages_guess)
 SIM.D.set_sausages(rotX, rotY, rotZ, scales)
 SIM.D.raw_pixels_roi*= 0
 SIM.D.add_diffBragg_spots()
 img_after_refinement = SIM.D.raw_pixels_roi.as_numpy_array().reshape(img_sh)
 
 # check pre-refinement image
-rotX = flex.double([0,0,0])
-rotY = flex.double([0,0,0])
-rotZ = flex.double([0,0,0])
-scales = flex.double([1,1,1])
+rotX = flex.double([0]*num_sausages_guess)
+rotY = flex.double([0]*num_sausages_guess)
+rotZ = flex.double([0]*num_sausages_guess)
+scales = flex.double([1]*num_sausages_guess)
 SIM.D.set_sausages(rotX, rotY, rotZ, scales)
 SIM.D.raw_pixels_roi*= 0
 SIM.D.add_diffBragg_spots()
@@ -276,6 +278,8 @@ img_before_refinement =SIM.D.raw_pixels_roi.as_numpy_array().reshape(img_sh)
 from scipy.stats import pearsonr
 a = pearsonr(manual_adding.ravel(), img_after_refinement.ravel())[0]
 b = pearsonr(manual_adding.ravel(), img_before_refinement.ravel())[0]
+print("Before refinement img/model pearsonR: %f" %b)
+print("After refinement img/model pearsonR: %f" %a)
 assert a > b, "a/b %f/%f" % (a, b)
 assert a > 0.998, "a/b %f/%f" % (a, b)  # this is with 100 iterations - more iterations will give higher correlation (max_calls)
 
@@ -283,4 +287,4 @@ assert a > 0.998, "a/b %f/%f" % (a, b)  # this is with 100 iterations - more ite
 # a = 0.998
 # b = 0.92
 
-print("OK")
+print("OK!")
