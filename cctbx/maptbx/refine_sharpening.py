@@ -590,6 +590,8 @@ def calculate_fsc(**kw):
         m1a=m1.customized_copy(data = m1.data() * weights_para_sel_sqrt)
         m2a=m2.customized_copy(data = m2.data() * weights_para_sel_sqrt)
         cca        = m1a.map_correlation(other = m2a)
+        if external_map_coeffs: # only for no direction vectors
+          cc=1.
         if cca is None:
           cca=0.
         cc_dict_by_dv[i].append(cca)
@@ -2059,7 +2061,6 @@ def get_target_scale_factors(
     weighted += n_list[index]*rms_fo_list[index] * scale_on_fo
 
   weighted_cc = weighted_cc/max(1.e-10,weighted)
-
   if not pseudo_likelihood and not skip_scale_factor: # normalize
     avg_scale_on_fo = (sum_w_scale/max(1.e-10,sum_w))**0.5
     if equalize_power and avg_scale_on_fo>1.e-10:

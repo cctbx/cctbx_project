@@ -747,7 +747,7 @@ class map_model_manager(object):
 
   def set_minimum_resolution(self, d_min):
     ''' Set minimum resolution used in calculations'''
-    self._minimum_resolution = minimum_resolution
+    self._minimum_resolution = d_min
 
   def set_scattering_table(self, scattering_table):
     '''
@@ -2302,7 +2302,7 @@ class map_model_manager(object):
         boundary = 3, return_as_new_model=False):
     '''
      Remove all the atoms in the model that are well outside the map (more
-     than boundary)
+     than boundary). Boundary can be negative (remove inside box near edges)
     '''
     assert boundary is not None
 
@@ -3197,9 +3197,9 @@ class map_model_manager(object):
     # Checks
     assert self.get_map_manager_by_id(map_id)
     assert (
-    (self.get_map_manager_by_id(map_id_1) or
-        is_model_based or is_external_based) and
-       self.get_map_manager_by_id(map_id_2))
+    self.get_map_manager_by_id(map_id_1) or
+        is_model_based or (
+        is_external_based) and self.get_map_manager_by_id(map_id_2))
 
     # remove any extra models and maps to speed up boxing and not modify orig
     map_id_list = [map_id,map_id_1,map_id_2]
