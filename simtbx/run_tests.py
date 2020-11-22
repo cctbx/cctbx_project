@@ -14,7 +14,7 @@ OPT = libtbx.env.build_options
 if OPT.enable_cuda:
 
   tst_list_parallel = [
-    ["$D/nanoBragg/tst_gauss_argchk_gpu.py","GPU"] # tests CPU+GPU, argchk optimization
+    ["$D/nanoBragg/tst_gauss_argchk.py","GPU"], # tests CPU+GPU, argchk optimization
   ]
 else:
   tst_list.append(

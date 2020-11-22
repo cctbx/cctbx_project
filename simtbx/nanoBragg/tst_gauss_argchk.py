@@ -176,7 +176,6 @@ def simple_monochromatic_case(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False):
   Famp = SF_model.get_amplitudes(at_angstrom=BEAM.get_wavelength())
 
   # do the simulation
-  print("\nsimple_monochromatic_case, CPU")
   SIM = nanoBragg(DETECTOR, BEAM, panel_id=0)
   SIM.Ncells_abc = (20,20,20)
   SIM.Fhkl = Famp
@@ -250,9 +249,10 @@ if __name__=="__main__":
   assert approx_equal(SIM.raw_pixels, SIM2.raw_pixels)
 
   if runmode=="GPU":
-    SIM2 = simple_monochromatic_case_GPU(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False)
-    SIM3 = simple_monochromatic_case_GPU(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=True)
-    assert approx_equal(SIM.raw_pixels, SIM2.raw_pixels)
+    SIM3 = simple_monochromatic_case_GPU(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False)
+    SIM3.to_cbf("test_full_003.cbf")
+    SIM4 = simple_monochromatic_case_GPU(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=True)
     assert approx_equal(SIM.raw_pixels, SIM3.raw_pixels)
+    assert approx_equal(SIM.raw_pixels, SIM4.raw_pixels)
 
   print("OK")
