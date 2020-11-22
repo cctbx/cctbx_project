@@ -15,6 +15,7 @@ if OPT.enable_cuda:
 
   tst_list_parallel = [
     ["$D/nanoBragg/tst_gauss_argchk.py","GPU"], # tests CPU+GPU, argchk optimization
+    "$D/gpu/tst_exafel_api.py",                 # CPU / GPU, polychromatic beam, monolithic detector
   ]
 else:
   tst_list.append(
