@@ -12,8 +12,9 @@ void gpu_sum_over_steps(
         CUDAREAL* d_lambda_images, CUDAREAL* d2_lambda_images,
         CUDAREAL* d_panel_rot_images, CUDAREAL* d2_panel_rot_images,
         CUDAREAL* d_panel_orig_images, CUDAREAL* d2_panel_orig_images,
+        CUDAREAL* d_sausage_XYZ_scale_images,
         int* subS_pos, int* subF_pos, int* thick_pos,
-        int* source_pos, int* phi_pos, int* mos_pos,
+        int* source_pos, int* phi_pos, int* mos_pos, int* sausage_pos,
         const int Nsteps, int _printout_fpixel, int _printout_spixel, bool _printout, CUDAREAL _default_F,
         int oversample, bool _oversample_omega, CUDAREAL subpixel_size, CUDAREAL pixel_size,
         CUDAREAL detector_thickstep, CUDAREAL _detector_thick, CUDAREAL close_distance, CUDAREAL detector_attnlen,
@@ -29,6 +30,7 @@ void gpu_sum_over_steps(
         MAT3* UMATS,
         MAT3* dB_mats,
         MAT3* dB2_mats,
+        MAT3* sausages_RXYZ, MAT3* d_sausages_RXYZ, MAT3* sausages_U, CUDAREAL* sausages_scale,
         CUDAREAL* source_X, CUDAREAL* source_Y, CUDAREAL* source_Z, CUDAREAL* source_lambda, CUDAREAL* source_I,
         CUDAREAL kahn_factor,
         CUDAREAL Na, CUDAREAL Nb, CUDAREAL Nc,
@@ -41,6 +43,7 @@ void gpu_sum_over_steps(
         CUDAREAL* _FhklLinear, CUDAREAL* _Fhkl2Linear,
         bool* refine_Bmat, bool* refine_Ncells, bool* refine_panel_origin, bool* refine_panel_rot,
         bool refine_fcell, bool* refine_lambda, bool refine_eta, bool* refine_Umat,
+        bool refine_sausages, int num_sausages,
         CUDAREAL* fdet_vectors, CUDAREAL* sdet_vectors,
         CUDAREAL* odet_vectors, CUDAREAL* pix0_vectors,
         bool _nopolar, bool _point_pixel, CUDAREAL _fluence, CUDAREAL _r_e_sqr, CUDAREAL _spot_scale)
@@ -73,6 +76,12 @@ void gpu_sum_over_steps(
        CUDAREAL lambda_manager_dI[2] = {0,0};
        CUDAREAL lambda_manager_dI2[2] = {0,0};
 
+       CUDAREAL sausage_manager_dI[24] = {0,0,0,0,0, // TODO use shared memory determined at runtime to increase max sausages
+                                          0,0,0,0,0,
+                                          0,0,0,0,0,
+                                          0,0,0,0,0,
+                                          0,0,0,0}; // maximum of 6 sausages!
+
        for (int _i_step=0; _i_step < Nsteps; _i_step++){
 
            int _subS = subS_pos[_i_step];
@@ -81,6 +90,7 @@ void gpu_sum_over_steps(
            int _source = source_pos[_i_step];
            int _phi_tic = phi_pos[_i_step];
            int _mos_tic = mos_pos[_i_step];
+           int _sausage_tic = sausage_pos[_i_step];
 
            // absolute mm position on detector (relative to its origin)
            CUDAREAL _Fdet = subpixel_size*(_fpixel*oversample + _subF ) + subpixel_size/2.0;
@@ -159,7 +169,8 @@ void gpu_sum_over_steps(
           }
           Bmat_realspace *= 1e10;
 
-          MAT3 UBO = (UMATS_RXYZ[_mos_tic] * eig_U*Bmat_realspace*(eig_O.transpose())).transpose();
+          MAT3 U = sausages_U[_sausage_tic] * eig_U;
+          MAT3 UBO = (UMATS_RXYZ[_mos_tic] * U*Bmat_realspace*(eig_O.transpose())).transpose();
 
           VEC3 q_vec(_scattering[0], _scattering[1], _scattering[2]);
           q_vec *= 1e-10;
@@ -205,13 +216,14 @@ void gpu_sum_over_steps(
               _omega_pixel = 1;
 
           CUDAREAL Iincrement = _F_cell*_F_cell*_F_latt*_F_latt*source_I[_source]*_capture_fraction*_omega_pixel;
+          Iincrement *= sausages_scale[_sausage_tic]*sausages_scale[_sausage_tic];
           _I += Iincrement;
 
           if(verbose > 3)
               printf("hkl= %f %f %f  hkl1= %d %d %d  Fcell=%f\n", _h,_k,_l,_h0,_k0,_l0, _F_cell);
 
           CUDAREAL two_C = 2*C;
-          MAT3 UBOt = eig_U*Bmat_realspace*(eig_O.transpose());
+          MAT3 UBOt = U*Bmat_realspace*(eig_O.transpose());
           if (refine_Umat[0]){
               MAT3 RyRzUBOt = RotMats[1]*RotMats[2]*UBOt;
               VEC3 delta_H_prime = (UMATS[_mos_tic]*dRotMats[0]*RyRzUBOt).transpose()*q_vec;
@@ -264,7 +276,7 @@ void gpu_sum_over_steps(
           MAT3 Ot = eig_O.transpose();
           for(int i_uc=0; i_uc < 6; i_uc++ ){
               if (refine_Bmat[i_uc]){
-                  MAT3 UmosRxRyRzU = UMATS_RXYZ[_mos_tic]*eig_U;
+                  MAT3 UmosRxRyRzU = UMATS_RXYZ[_mos_tic]*U;
                   VEC3 delta_H_prime = ((UmosRxRyRzU*(dB_mats[i_uc])*Ot).transpose()*q_vec);
                   CUDAREAL V_dot_dV = V.dot(_NABC*delta_H_prime);
                   CUDAREAL value = -two_C * V_dot_dV * Iincrement;
@@ -376,6 +388,32 @@ void gpu_sum_over_steps(
               eta_manager_dI += value;
           } // end of eta man deriv
 
+            // sausage deriv
+          if (refine_sausages){
+              MAT3 UBOt = U*Bmat_realspace*(eig_O.transpose());
+              int x = _sausage_tic*3;
+              int y = _sausage_tic*3+1;
+              int z = _sausage_tic*3+2;
+              double value=0;
+              for (int i=0;i<3; i++){
+                  MAT3 UprimeBOt;
+                  if (i==0)
+                      UprimeBOt = d_sausages_RXYZ[x] * sausages_RXYZ[y] * sausages_RXYZ[z] * UBOt;
+                  else if (i==1)
+                      UprimeBOt = sausages_RXYZ[x] * d_sausages_RXYZ[y] * sausages_RXYZ[z] * UBOt;
+                  else
+                      UprimeBOt = sausages_RXYZ[x] * sausages_RXYZ[y] * d_sausages_RXYZ[z] * UBOt;
+
+                  VEC3 DeltaH_deriv = (UMATS_RXYZ[_mos_tic]*UprimeBOt).transpose()*q_vec;
+                  value = -two_C*(V.dot(_NABC*DeltaH_deriv))*Iincrement;
+                  sausage_manager_dI[_sausage_tic*4 + i] += value;
+              }
+              // sausage scale derivative
+              value = 2* Iincrement / sausages_scale[_sausage_tic];
+              sausage_manager_dI[_sausage_tic*4 + 3] += value;
+          }
+          // end of sausage deriv
+
           // checkpoint for lambda manager
           for(int i_lam=0; i_lam < 2; i_lam++){
               if (refine_lambda[i_lam]){
@@ -457,7 +495,7 @@ void gpu_sum_over_steps(
        if (!_oversample_omega)
            _om=_omega_pixel_ave;
        // final scale term to being everything to photon number units
-       CUDAREAL _scale_term = _r_e_sqr*_fluence*_spot_scale*_polar*_om / Nsteps;
+       CUDAREAL _scale_term = _r_e_sqr*_fluence*_spot_scale*_polar*_om / Nsteps*num_sausages;
 
        floatimage[i_pix] = _scale_term*_I;
 
@@ -531,6 +569,19 @@ void gpu_sum_over_steps(
                //d2_lambda_images[idx] = value2;
            }
        }// end lambda deriv image increment
+
+       // sausage increment
+       if (refine_sausages){
+           for (int i_sausage=0; i_sausage<num_sausages; i_sausage++){
+               for (int i=0; i < 4; i++){
+                   int sausage_parameter_i = i_sausage*4+i;
+                   double value = _scale_term*sausage_manager_dI[sausage_parameter_i];
+                   int idx = sausage_parameter_i*Npix_to_model + i_pix;
+                   d_sausage_XYZ_scale_images[idx] = value;
+               }
+           }
+       }
+       // end sausage
 
        for (int i_pan_rot=0; i_pan_rot < 3; i_pan_rot++){
            if(refine_panel_rot[i_pan_rot]){

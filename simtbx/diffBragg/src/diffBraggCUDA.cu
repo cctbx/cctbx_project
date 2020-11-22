@@ -34,8 +34,9 @@ void diffBragg_loopy(
         image_type& d_lambda_images, image_type& d2_lambda_images,
         image_type& d_panel_rot_images, image_type& d2_panel_rot_images,
         image_type& d_panel_orig_images, image_type& d2_panel_orig_images,
+        image_type& d_sausage_XYZ_scale_images,
         int* subS_pos, int* subF_pos, int* thick_pos,
-        int* source_pos, int* phi_pos, int* mos_pos,
+        int* source_pos, int* phi_pos, int* mos_pos, int* sausage_pos,
         const int Nsteps, int _printout_fpixel, int _printout_spixel, bool _printout, CUDAREAL _default_F,
         int oversample, bool _oversample_omega, CUDAREAL subpixel_size, CUDAREAL pixel_size,
         CUDAREAL detector_thickstep, CUDAREAL _detector_thick, CUDAREAL close_distance, CUDAREAL detector_attnlen,
@@ -51,6 +52,8 @@ void diffBragg_loopy(
         std::vector<MAT3,Eigen::aligned_allocator<MAT3> >& UMATS,
         std::vector<MAT3,Eigen::aligned_allocator<MAT3> >& dB_Mats,
         std::vector<MAT3,Eigen::aligned_allocator<MAT3> >& dB2_Mats,
+        eigMat3_vec& sausages_RXYZ, eigMat3_vec& d_sausages_RXYZ, eigMat3_vec& sausages_U,
+        image_type& sausages_scale, // TODO adjust sausages_scale type
         CUDAREAL* source_X, CUDAREAL* source_Y, CUDAREAL* source_Z, CUDAREAL* source_lambda, CUDAREAL* source_I,
         CUDAREAL kahn_factor,
         CUDAREAL Na, CUDAREAL Nb, CUDAREAL Nc,
@@ -61,8 +64,10 @@ void diffBragg_loopy(
         CUDAREAL fudge, bool complex_miller, int verbose, bool only_save_omega_kahn,
         bool isotropic_ncells, bool compute_curvatures,
         std::vector<CUDAREAL>& _FhklLinear, std::vector<CUDAREAL>& _Fhkl2Linear,
-        std::vector<bool>& refine_Bmat, std::vector<bool>& refine_Ncells, std::vector<bool>& refine_panel_origin, std::vector<bool>& refine_panel_rot,
+        std::vector<bool>& refine_Bmat, std::vector<bool>& refine_Ncells, std::vector<bool>& refine_panel_origin,
+        std::vector<bool>& refine_panel_rot,
         bool refine_fcell, std::vector<bool>& refine_lambda, bool refine_eta, std::vector<bool>& refine_Umat,
+        bool refine_sausages, int num_sausages,
         std::vector<CUDAREAL>& fdet_vectors, std::vector<CUDAREAL>& sdet_vectors,
         std::vector<CUDAREAL>& odet_vectors, std::vector<CUDAREAL>& pix0_vectors,
         bool _nopolar, bool _point_pixel, CUDAREAL _fluence, CUDAREAL _r_e_sqr, CUDAREAL _spot_scale,
@@ -70,12 +75,17 @@ void diffBragg_loopy(
         diffBragg_cudaPointers& cp,
         bool update_step_positions, bool update_panels_fasts_slows, bool update_sources, bool update_umats,
         bool update_dB_mats, bool update_rotmats, bool update_Fhkl, bool update_detector, bool update_refine_flags ,
-        bool update_panel_deriv_vecs){ // diffBragg cuda loopy
+        bool update_panel_deriv_vecs, bool update_sausages_on_device){ // diffBragg cuda loopy
 
     bool ALLOC = !cp.device_is_allocated;
 
     int cuda_devices;
     cudaGetDeviceCount(&cuda_devices);
+
+    if (num_sausages > 6){
+        printf("Too many sausages! Should be less than 6 to run on GPU\n");
+        exit(-1);
+    }
 
     error_msg(cudaGetLastError(), "after device count");
     if (verbose > 1)
@@ -96,6 +106,7 @@ void diffBragg_loopy(
         gpuErr(cudaMallocManaged(&cp.cu_source_pos, Nsteps*sizeof(int)));
         gpuErr(cudaMallocManaged(&cp.cu_mos_pos, Nsteps*sizeof(int)));
         gpuErr(cudaMallocManaged(&cp.cu_phi_pos, Nsteps*sizeof(int)));
+        gpuErr(cudaMallocManaged(&cp.cu_sausage_pos, Nsteps*sizeof(int)));
 
         gpuErr(cudaMallocManaged(&cp.cu_source_X, number_of_sources*sizeof(CUDAREAL)));
         gpuErr(cudaMallocManaged(&cp.cu_source_Y, number_of_sources*sizeof(CUDAREAL)));
@@ -134,7 +145,11 @@ void diffBragg_loopy(
         gpuErr(cudaMallocManaged((void **)&cp.cu_dF_vecs, dF_vecs.size()*sizeof(VEC3)));
         gpuErr(cudaMallocManaged((void **)&cp.cu_dS_vecs, dF_vecs.size()*sizeof(VEC3)));
 
-    
+        gpuErr(cudaMallocManaged( (void**)&cp.cu_sausages_RXYZ, sausages_RXYZ.size()*sizeof(MAT3) ));
+        gpuErr(cudaMallocManaged( (void**)&cp.cu_d_sausages_RXYZ, d_sausages_RXYZ.size()*sizeof(MAT3) ));
+        gpuErr(cudaMallocManaged( (void**)&cp.cu_sausages_U, sausages_U.size()*sizeof(MAT3) ));
+        gpuErr(cudaMallocManaged( &cp.cu_sausages_scale, sausages_scale.size()*sizeof(CUDAREAL) ));
+
         //gettimeofday(&t3, 0));
         gpuErr(cudaMallocManaged(&cp.cu_floatimage, Npix_to_model*sizeof(CUDAREAL) ));
         gpuErr(cudaMallocManaged(&cp.cu_d_fcell_images, Npix_to_model*sizeof(CUDAREAL)));
@@ -145,6 +160,7 @@ void diffBragg_loopy(
         gpuErr(cudaMallocManaged(&cp.cu_d_panel_orig_images, Npix_to_model*3*sizeof(CUDAREAL)));
         gpuErr(cudaMallocManaged(&cp.cu_d_lambda_images, Npix_to_model*2*sizeof(CUDAREAL)));
         gpuErr(cudaMallocManaged(&cp.cu_d_Bmat_images, Npix_to_model*6*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images, Npix_to_model*4*num_sausages*sizeof(CUDAREAL)));
         //gettimeofday(&t4, 0);
         //time = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
         //printf("TIME SPENT ALLOCATING (IMAGES ONLY):  %3.10f ms \n", time);
@@ -169,6 +185,7 @@ void diffBragg_loopy(
             cp.cu_mos_pos[i] = mos_pos[i];
             cp.cu_phi_pos[i] = phi_pos[i];
             cp.cu_source_pos[i] = source_pos[i];
+            cp.cu_sausage_pos[i] = sausage_pos[i];
         }
         if (verbose>1)
             printf("H2D Done copying step positions\n");
@@ -231,6 +248,20 @@ void diffBragg_loopy(
     }
 //  END ROT MATS
 
+//  sausages
+    if(update_sausages_on_device || ALLOC || FORCE_COPY){
+        for (int i=0; i<sausages_RXYZ.size(); i++)
+            cp.cu_sausages_RXYZ[i] = sausages_RXYZ[i];
+        for (int i=0; i<sausages_U.size(); i++)
+            cp.cu_sausages_U[i] = sausages_U[i];
+        for (int i=0; i<d_sausages_RXYZ.size(); i++)
+            cp.cu_d_sausages_RXYZ[i] = d_sausages_RXYZ[i];
+        for (int i=0; i< sausages_scale.size(); i++)
+            cp.cu_sausages_scale[i] = sausages_scale[i];
+        if (verbose>1)
+          printf("H2D Done copying sausages\n");
+    }
+//  END ROT MATS
 
 
 //  DETECTOR VECTORS
@@ -338,8 +369,9 @@ void diffBragg_loopy(
         cp.cu_d_lambda_images, cp.cu_d2_lambda_images,
         cp.cu_d_panel_rot_images, cp.cu_d2_panel_rot_images,
         cp.cu_d_panel_orig_images, cp.cu_d2_panel_orig_images,
+        cp.cu_d_sausage_XYZ_scale_images,
         cp.cu_subS_pos, cp.cu_subF_pos, cp.cu_thick_pos,
-        cp.cu_source_pos, cp.cu_phi_pos, cp.cu_mos_pos,
+        cp.cu_source_pos, cp.cu_phi_pos, cp.cu_mos_pos, cp.cu_sausage_pos,
         Nsteps, _printout_fpixel, _printout_spixel, _printout, _default_F,
         oversample,  _oversample_omega, subpixel_size, pixel_size,
         detector_thickstep, _detector_thick, close_distance, detector_attnlen,
@@ -355,6 +387,7 @@ void diffBragg_loopy(
         cp.cu_UMATS,
         cp.cu_dB_Mats,
         cp.cu_dB2_Mats,
+        cp.cu_sausages_RXYZ, cp.cu_d_sausages_RXYZ, cp.cu_sausages_U, cp.cu_sausages_scale,
         cp.cu_source_X, cp.cu_source_Y, cp.cu_source_Z, cp.cu_source_lambda, cp.cu_source_I,
         kahn_factor,
         Na, Nb, Nc,
@@ -367,6 +400,7 @@ void diffBragg_loopy(
         cp.cu_Fhkl, cp.cu_Fhkl2,
         cp.cu_refine_Bmat, cp.cu_refine_Ncells, cp.cu_refine_panel_origin, cp.cu_refine_panel_rot,
         refine_fcell, cp.cu_refine_lambda, refine_eta, cp.cu_refine_Umat,
+        refine_sausages, num_sausages,
         cp.cu_fdet_vectors, cp.cu_sdet_vectors,
         cp.cu_odet_vectors, cp.cu_pix0_vectors,
         _nopolar, _point_pixel, _fluence, _r_e_sqr, _spot_scale);
@@ -402,6 +436,9 @@ void diffBragg_loopy(
     for(int i=0; i<2*Npix_to_model; i++)
         d_lambda_images[i] = cp.cu_d_lambda_images[i];
 
+    for (int i=0; i< 4*num_sausages*Npix_to_model;i++)
+        d_sausage_XYZ_scale_images[i] = cp.cu_d_sausage_XYZ_scale_images[i];
+
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
     if(verbose>1)
@@ -421,6 +458,7 @@ void freedom(diffBragg_cudaPointers& cp){
     gpuErr(cudaFree( cp.cu_d_lambda_images));
     gpuErr(cudaFree( cp.cu_d_panel_rot_images));
     gpuErr(cudaFree( cp.cu_d_panel_orig_images));
+    gpuErr(cudaFree( cp.cu_d_sausage_XYZ_scale_images));
 
     gpuErr(cudaFree( cp.cu_subS_pos));
     gpuErr(cudaFree( cp.cu_subF_pos));
@@ -428,6 +466,8 @@ void freedom(diffBragg_cudaPointers& cp){
     gpuErr(cudaFree( cp.cu_mos_pos));
     gpuErr(cudaFree( cp.cu_phi_pos));
     gpuErr(cudaFree( cp.cu_source_pos));
+    gpuErr(cudaFree( cp.cu_sausage_pos));
+
 
     gpuErr(cudaFree(cp.cu_Fhkl));
     if (cp.cu_Fhkl2 != NULL)
@@ -453,6 +493,10 @@ void freedom(diffBragg_cudaPointers& cp){
     gpuErr(cudaFree(cp.cu_d2RotMats));
     gpuErr(cudaFree(cp.cu_dB_Mats));
     gpuErr(cudaFree(cp.cu_dB2_Mats));
+    gpuErr(cudaFree(cp.cu_sausages_RXYZ));
+    gpuErr(cudaFree(cp.cu_d_sausages_RXYZ));
+    gpuErr(cudaFree(cp.cu_sausages_U));
+    gpuErr(cudaFree(cp.cu_sausages_scale));
 
     gpuErr(cudaFree(cp.cu_dF_vecs));
     gpuErr(cudaFree(cp.cu_dS_vecs));

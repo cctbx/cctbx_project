@@ -1443,8 +1443,9 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
            d_lambda_images, d2_lambda_images,
            d_panel_rot_images,  d2_panel_rot_images,
            d_panel_orig_images,  d2_panel_orig_images,
+           d_sausage_XYZ_scale_images,
            subS_pos,  subF_pos,  thick_pos,
-           source_pos,  phi_pos,  mos_pos,
+           source_pos,  phi_pos,  mos_pos, sausage_pos,
            Nsteps, _printout_fpixel, _printout_spixel, _printout, _default_F,
            oversample, oversample_omega, subpixel_size, pixel_size,
            detector_thickstep, detector_thick, close_distance, detector_attnlen,
@@ -1457,6 +1458,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
            RotMats, dRotMats, d2RotMats,
            UMATS,
            dB_Mats, dB2_Mats,
+           sausages_RXYZ, d_sausages_RXYZ, sausages_U, sausages_scale,
            source_X,  source_Y,  source_Z,  source_lambda,  source_I,
            polarization,
            Na, Nb, Nc,
@@ -1469,6 +1471,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
            FhklLinear, Fhkl2Linear,
            refine_Bmat, refine_Ncells, refine_pan_orig, refine_pan_rot,
            fcell_man->refine_me, refine_lambda, eta_man->refine_me, refine_Umat,
+           refining_sausages, num_sausages,
            fdet_vectors, sdet_vectors,
            odet_vectors, pix0_vectors,
            nopolar, point_pixel, fluence, r_e_sqr, spot_scale,
@@ -1478,7 +1481,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
            update_sources_on_device, update_umats_on_device,
            update_dB_matrices_on_device, update_rotmats_on_device,
            update_Fhkl_on_device, update_detector_on_device, update_refine_flags_on_device,
-           update_panel_deriv_vecs_on_device);
+           update_panel_deriv_vecs_on_device, update_sausages_on_device);
 #else
        // no statement
 #endif

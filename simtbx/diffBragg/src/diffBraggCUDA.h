@@ -38,6 +38,7 @@ struct diffBragg_cudaPointers {
   CUDAREAL* cu_d2_lambda_images;
   CUDAREAL* cu_d2_panel_rot_images;
   CUDAREAL* cu_d2_panel_orig_images;
+  CUDAREAL* cu_d_sausage_XYZ_scale_images;
 
   int* cu_subS_pos;
   int* cu_subF_pos;
@@ -45,6 +46,7 @@ struct diffBragg_cudaPointers {
   int* cu_source_pos;
   int* cu_mos_pos;
   int* cu_phi_pos;
+  int* cu_sausage_pos;
 
   CUDAREAL * cu_Fhkl;
   CUDAREAL * cu_Fhkl2=NULL;
@@ -71,6 +73,11 @@ struct diffBragg_cudaPointers {
   Eigen::Vector3d* cu_dF_vecs;
   Eigen::Vector3d* cu_dS_vecs;
 
+  Eigen::Matrix3d* cu_sausages_RXYZ;
+  Eigen::Matrix3d* cu_d_sausages_RXYZ;
+  Eigen::Matrix3d* cu_sausages_U;
+  CUDAREAL* cu_sausages_scale;
+
   bool* cu_refine_Bmat;
   bool* cu_refine_Umat;
   bool* cu_refine_Ncells;
@@ -92,8 +99,9 @@ void diffBragg_loopy(
         image_type& d_lambda_images, image_type& d2_lambda_images,
         image_type& d_panel_rot_images, image_type& d2_panel_rot_images,
         image_type& d_panel_orig_images, image_type& d2_panel_orig_images,
+        image_type& d_sausage_XYZ_scale_images,
         int* subS_pos, int* subF_pos, int* thick_pos,
-        int* source_pos, int* phi_pos, int* mos_pos,
+        int* source_pos, int* phi_pos, int* mos_pos, int* sausage_pos,
         const int Nsteps, int _printout_fpixel, int _printout_spixel, bool _printout, CUDAREAL _default_F,
         int oversample, bool _oversample_omega, CUDAREAL subpixel_size, CUDAREAL pixel_size,
         CUDAREAL detector_thickstep, CUDAREAL _detector_thick, CUDAREAL close_distance, CUDAREAL detector_attnlen,
@@ -109,6 +117,8 @@ void diffBragg_loopy(
         eigMat3_vec& UMATS,
         eigMat3_vec& dB_Mats,
         eigMat3_vec& dB2_Mats,
+        eigMat3_vec& sausages_RXYZ, eigMat3_vec& d_sausages_RXYZ,
+        eigMat3_vec& sausages_U, image_type& sausages_scale,
         CUDAREAL* source_X, CUDAREAL* source_Y, CUDAREAL* source_Z, CUDAREAL* source_lambda, CUDAREAL* source_I,
         CUDAREAL kahn_factor,
         CUDAREAL Na, CUDAREAL Nb, CUDAREAL Nc,
@@ -121,6 +131,7 @@ void diffBragg_loopy(
         std::vector<CUDAREAL>& _FhklLinear, std::vector<CUDAREAL>& _Fhkl2Linear,
         std::vector<bool>& refine_Bmat, std::vector<bool>& refine_Ncells, std::vector<bool>& refine_panel_origin, std::vector<bool>& refine_panel_rot,
         bool refine_fcell, std::vector<bool>& refine_lambda, bool refine_eta, std::vector<bool>& refine_Umat,
+        bool refine_sausages, int num_sausages,
         std::vector<CUDAREAL>& fdet_vectors, std::vector<CUDAREAL>& sdet_vectors,
         std::vector<CUDAREAL>& odet_vectors, std::vector<CUDAREAL>& pix0_vectors,
         bool _nopolar, bool _point_pixel, CUDAREAL _fluence, CUDAREAL _r_e_sqr, CUDAREAL _spot_scale,
@@ -128,7 +139,7 @@ void diffBragg_loopy(
         diffBragg_cudaPointers& cp,
         bool update_step_positions, bool update_panels_fasts_slows, bool update_sources, bool update_umats,
         bool update_dB_mats, bool update_rotmats, bool update_Fhkl, bool update_detector, bool update_refine_flags,
-        bool update_panel_deriv_vecs);
+        bool update_panel_deriv_vecs, bool update_sausages_on_device);
 
 
 void freedom(diffBragg_cudaPointers& cp);

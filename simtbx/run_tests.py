@@ -50,6 +50,7 @@ tst_list = (
     ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel x"],
     ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel y"],
     ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel z"],
+    ["$D/diffBragg/tests/tst_diffBragg_blue_sausages.py", "--finitediff"],
     )
 
 
