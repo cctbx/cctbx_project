@@ -198,51 +198,80 @@ cmaps = [  'viridis', 'plasma', 'inferno', 'magma',
             'gist_rainbow', 'rainbow', 'jet', 'nipy_spectral', 'gist_ncar'
           ]
 
+import numpy as np
+import sys, time
+import matplotlib.pyplot as plt
+from PySide2 import QtWidgets
+from PySide2.QtCore import Qt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+
+
 gradient = np.linspace(0, 1, 256)
 gradient = np.vstack((gradient, gradient))
 
-dpi=80
+dpi=100
+
 
 class MplCanvas(FigureCanvas):
   def __init__(self, parent=None, width=5, height=4, dpi=dpi):
-    self.fig = Figure(figsize=(10, 40), dpi=dpi, facecolor=(1, 1, 1), edgecolor=(0.5, 0, 0))
-    self.axes = self.fig.subplots(len(cmaps), 1)
-    self.fig.subplots_adjust(top=0.95, bottom=0.01, left=0.2, right=0.99)
+    self.selcolmap = ""
+    self.parent=parent
+    self.fig = Figure(figsize=(10, 20), dpi=dpi, facecolor=(1, 1, 1), edgecolor=(0.5, 0, 0))
+    self.axes = self.fig.subplots(nrows=len(cmaps), ncols=1)
+    self.fig.subplots_adjust(top=0.995, bottom=0.01, left=0.20, right=0.98)
+    self.fig.set_size_inches(7,40)
     super(MplCanvas, self).__init__(self.fig)
     cid = self.fig.canvas.mpl_connect('button_press_event', self.on_press)
-    self.labeltxt = QLabel()
-    self.labeltxt.setText("waffle")
+
   def on_press(self, event):
+    print("waffle")
     if event.inaxes is not None:
-      print('Colourmap: ', cmaps[event.inaxes.get_subplotspec().rowspan.start] )
+      self.selcolmap = cmaps[event.inaxes.get_subplotspec().rowspan.start]
+      self.parent.labeltxt.setText('Selected colour gradient map: %s' %self.selcolmap )
+
+app = QtWidgets.QApplication(sys.argv)
 
 
-class MPLColourSchemes(QDialog):
+class MPLColourSchemes(QtWidgets.QDialog):
   def __init__(self, *args, **kwargs):
     super(MPLColourSchemes, self).__init__(*args, **kwargs)
+    #self.setWindowFlags(Qt.Tool)
     # Create the maptlotlib FigureCanvas object, 
     # which defines a single set of axes as self.axes.
-    sc = MplCanvas(self, width=5, height=7, dpi=dpi)
+    self.labeltxt = QtWidgets.QLabel()
+    self.labeltxt.setText("Select a colour gradient mapping for data values")
+    sc = MplCanvas(self, dpi=dpi)
     for ax, name in zip(sc.axes, cmaps):
       ax.imshow(gradient, aspect='auto', cmap=plt.get_cmap(name))
-      pos = list(ax.get_position().bounds)
-      x_text = pos[0] - 0.01
-      y_text = pos[1] + pos[3]/2.
-      sc.fig.text(x_text, y_text, name, va='center', ha='right', fontsize=20)
-    #time.sleep(15)
-    for ax in sc.axes:
       ax.set_axis_off()
-    scroll = QScrollArea()
-    scroll.setWidget(sc.fig.canvas)
+      pos = list(ax.get_position().bounds)
+      x_text = pos[0] - 0.19
+      y_text = pos[1] + pos[3]/2.
+      sc.fig.text(x_text, y_text, name, va='center', ha='left', fontsize=15)
+    #sc.fig.tight_layout()
+    scroll = QtWidgets.QScrollArea()
+    scroll.setWidget(sc)
     scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
     scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-    #scroll.setWidgetResizable(True)
-    vbox = QVBoxLayout() 
-    vbox.addWidget(sc.labeltxt)
+    OKbtn = QtWidgets.QPushButton("OK")
+    Cancelbtn =  QtWidgets.QPushButton("Cancel")
+    vbox = QtWidgets.QVBoxLayout() 
+    vbox.addWidget(self.labeltxt)
     vbox.addWidget(scroll)
+    vbox.addWidget(OKbtn)
+    vbox.addWidget(Cancelbtn)
+
     self.setLayout(vbox)
-    #self.setFixedSize( self.sizeHint() )
+    scw = app.style().pixelMetric(QtWidgets.QStyle.PM_ScrollBarExtent)
+    self.setFixedWidth(sc.width() + scw*2 )
+    #self.setFixedWidth(sc.width() +scroll.verticalScrollBar().width() )
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.show()
+
+
+
+
 
 
 
