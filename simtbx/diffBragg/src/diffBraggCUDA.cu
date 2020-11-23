@@ -162,12 +162,7 @@ void diffBragg_loopy(
         gpuErr(cudaMallocManaged(&cp.cu_d_panel_orig_images, Npix_to_model*3*sizeof(CUDAREAL)));
         gpuErr(cudaMallocManaged(&cp.cu_d_lambda_images, Npix_to_model*2*sizeof(CUDAREAL)));
         gpuErr(cudaMallocManaged(&cp.cu_d_Bmat_images, Npix_to_model*6*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images, Npix_to_model*4*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images2, Npix_to_model*4*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images3, Npix_to_model*4*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images4, Npix_to_model*4*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images5, Npix_to_model*4*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images6, Npix_to_model*4*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images, num_sausages*Npix_to_model*4*sizeof(CUDAREAL)));
         //gettimeofday(&t4, 0);
         //time = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
         //printf("TIME SPENT ALLOCATING (IMAGES ONLY):  %3.10f ms \n", time);
@@ -358,11 +353,6 @@ void diffBragg_loopy(
         cp.cu_d_panel_rot_images, cp.cu_d2_panel_rot_images,
         cp.cu_d_panel_orig_images, cp.cu_d2_panel_orig_images,
         cp.cu_d_sausage_XYZ_scale_images,
-        cp.cu_d_sausage_XYZ_scale_images2,
-        cp.cu_d_sausage_XYZ_scale_images3,
-        cp.cu_d_sausage_XYZ_scale_images4,
-        cp.cu_d_sausage_XYZ_scale_images5,
-        cp.cu_d_sausage_XYZ_scale_images6,
         cp.cu_subS_pos, cp.cu_subF_pos, cp.cu_thick_pos,
         cp.cu_source_pos, cp.cu_phi_pos, cp.cu_mos_pos, cp.cu_sausage_pos,
         Nsteps, _printout_fpixel, _printout_spixel, _printout, _default_F,
@@ -429,33 +419,8 @@ void diffBragg_loopy(
     for(int i=0; i<2*Npix_to_model; i++)
         d_lambda_images[i] = cp.cu_d_lambda_images[i];
 
-    for (int i=0; i< 4*Npix_to_model; i++)
+    for (int i=0; i< num_sausages*4*Npix_to_model; i++)
         d_sausage_XYZ_scale_images[i] = cp.cu_d_sausage_XYZ_scale_images[i];
-
-    if( num_sausages>1){
-        for (int i=0; i< 4*Npix_to_model; i++)
-            d_sausage_XYZ_scale_images[4*Npix_to_model+ i] = cp.cu_d_sausage_XYZ_scale_images2[i];
-    }
-    if( num_sausages >2){
-        for (int i=0; i< 4*Npix_to_model; i++)
-            d_sausage_XYZ_scale_images[4*Npix_to_model*2 + i] = cp.cu_d_sausage_XYZ_scale_images3[i];
-    }
-    if( num_sausages >3){
-        for (int i=0; i< 4*Npix_to_model; i++)
-            d_sausage_XYZ_scale_images[4*Npix_to_model*3+i] = cp.cu_d_sausage_XYZ_scale_images4[i];
-    }
-    if( num_sausages >4){
-        for (int i=0; i< 4*Npix_to_model; i++)
-            d_sausage_XYZ_scale_images[4*Npix_to_model*4+ i] = cp.cu_d_sausage_XYZ_scale_images5[i];
-    }
-    if( num_sausages >5){
-        for (int i=0; i< 4*Npix_to_model; i++)
-            d_sausage_XYZ_scale_images[4*Npix_to_model*5+i] = cp.cu_d_sausage_XYZ_scale_images6[i];
-    }
-    //gpuErr(
-    //    cudaMemcpy(&d_sausage_XYZ_scale_images[0], cp.cu_d_sausage_XYZ_scale_images,
-    //        4*Npix_to_model*num_sausages*sizeof(CUDAREAL), cudaMemcpyDeviceToHost)
-    //    );
 
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
@@ -478,11 +443,6 @@ void freedom(diffBragg_cudaPointers& cp){
         gpuErr(cudaFree( cp.cu_d_panel_rot_images));
         gpuErr(cudaFree( cp.cu_d_panel_orig_images));
         gpuErr(cudaFree( cp.cu_d_sausage_XYZ_scale_images));
-        gpuErr(cudaFree( cp.cu_d_sausage_XYZ_scale_images2));
-        gpuErr(cudaFree( cp.cu_d_sausage_XYZ_scale_images3));
-        gpuErr(cudaFree( cp.cu_d_sausage_XYZ_scale_images4));
-        gpuErr(cudaFree( cp.cu_d_sausage_XYZ_scale_images5));
-        gpuErr(cudaFree( cp.cu_d_sausage_XYZ_scale_images6));
 
         gpuErr(cudaFree( cp.cu_subS_pos));
         gpuErr(cudaFree( cp.cu_subF_pos));

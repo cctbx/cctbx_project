@@ -40,11 +40,6 @@ struct diffBragg_cudaPointers {
   CUDAREAL* cu_d2_panel_orig_images;
 
   CUDAREAL* cu_d_sausage_XYZ_scale_images;
-  CUDAREAL* cu_d_sausage_XYZ_scale_images2;
-  CUDAREAL* cu_d_sausage_XYZ_scale_images3;
-  CUDAREAL* cu_d_sausage_XYZ_scale_images4;
-  CUDAREAL* cu_d_sausage_XYZ_scale_images5;
-  CUDAREAL* cu_d_sausage_XYZ_scale_images6;
 
   int* cu_subS_pos;
   int* cu_subF_pos;

@@ -13,11 +13,6 @@ void gpu_sum_over_steps(
         CUDAREAL* d_panel_rot_images, CUDAREAL* d2_panel_rot_images,
         CUDAREAL* d_panel_orig_images, CUDAREAL* d2_panel_orig_images,
         CUDAREAL* d_sausage_XYZ_scale_images,
-        CUDAREAL* d_sausage_XYZ_scale_images2,
-        CUDAREAL* d_sausage_XYZ_scale_images3,
-        CUDAREAL* d_sausage_XYZ_scale_images4,
-        CUDAREAL* d_sausage_XYZ_scale_images5,
-        CUDAREAL* d_sausage_XYZ_scale_images6,
         int* subS_pos, int* subF_pos, int* thick_pos,
         int* source_pos, int* phi_pos, int* mos_pos, int* sausage_pos,
         const int Nsteps, int _printout_fpixel, int _printout_spixel, bool _printout, CUDAREAL _default_F,
@@ -588,20 +583,8 @@ void gpu_sum_over_steps(
                for (int i=0; i < 4; i++){
                    int sausage_parameter_i = i_sausage*4+i;
                    double value = _scale_term*sausage_manager_dI[sausage_parameter_i];
-                   //int idx = sausage_parameter_i*Npix_to_model + i_pix;
-                   int idx = i*Npix_to_model + i_pix;
-                   if (i_sausage==0)
-                       d_sausage_XYZ_scale_images[idx] = value;
-                   else if (i_sausage==1)
-                       d_sausage_XYZ_scale_images2[idx] = value;
-                   else if (i_sausage==2)
-                       d_sausage_XYZ_scale_images3[idx] = value;
-                   else if (i_sausage==3)
-                       d_sausage_XYZ_scale_images4[idx] = value;
-                   else if (i_sausage==4)
-                       d_sausage_XYZ_scale_images5[idx] = value;
-                   else if (i_sausage==5)
-                       d_sausage_XYZ_scale_images6[idx] = value;
+                   int idx = sausage_parameter_i*Npix_to_model + i_pix;
+                   d_sausage_XYZ_scale_images[idx] = value;
                    }
            }
        }
