@@ -68,8 +68,10 @@ def exercise_sort():
   i_obs=i_obs.sort(by_value="asu_indices")
   i_obs.export_as_scalepack_unmerged(file_name='sorted.sca',
      scale_intensities_for_scalepack_merge=True)
-  unsorted=open('unsorted.sca').read()
-  sorted=open('sorted.sca').read()
+  with open('unsorted.sca') as f:
+    unsorted = f.read()
+  with open('sorted.sca') as f:
+    sorted = f.read()
   assert unsorted==expected_unsorted_data
   assert sorted==expected_sorted_data
 

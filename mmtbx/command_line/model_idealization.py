@@ -215,6 +215,7 @@ class model_idealization():
     params.pdb_interpretation.secondary_structure = self.params.secondary_structure
     self.params_for_model = params
     self.model.set_pdb_interpretation_params(params)
+    self.model.process_input_model(make_restraints=True)
 
 
     self.original_hierarchy = self.model.get_hierarchy().deep_copy() # original pdb_h, without any processing
@@ -501,8 +502,7 @@ class model_idealization():
 
   def _update_model_from_model_h(self):
     self.model.set_sites_cart(
-        sites_cart = self.model_h.get_hierarchy().select(~self.model_h.get_hd_selection()).atoms().extract_xyz(),
-        update_grm = True)
+      sites_cart = self.model_h.get_hierarchy().select(~self.model_h.get_hd_selection()).atoms().extract_xyz())
     self.model.set_sites_cart_from_hierarchy(multiply_ncs=True)
 
   def idealize_rotamers(self):
@@ -516,6 +516,7 @@ class model_idealization():
     self._update_model_h()
     rotman = mmtbx.idealized_aa_residues.rotamer_manager.load(
           rotamers="favored")
+    self.model_h.process_input_model(make_restraints=True)
     o = mmtbx.refinement.real_space.side_chain_fit_evaluator(
       pdb_hierarchy      = self.model_h.get_hierarchy(),
       crystal_symmetry   = self.model.crystal_symmetry(),
@@ -546,7 +547,7 @@ class model_idealization():
     self._setup_model_h()
     self.model.set_restraint_objects(self.model_h.get_restraint_objects())
 
-    self.model.get_restraints_manager()
+    self.model.process_input_model(make_restraints=True)
     # set SS restratins
     self.set_ss_restraints(self.ann)
 

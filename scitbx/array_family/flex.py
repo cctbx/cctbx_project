@@ -193,12 +193,18 @@ def _standard_deviation_of_the_sample(self):
 def _sample_standard_deviation(self):
   return _standard_deviation_helper(self, 1)
 
+def _rms(data):
+  den = data.size()
+  if den <= 0: return None
+  return (sum(pow2(data)) / den)**0.5
+
 double.format_min = _format_min
 double.format_max = _format_max
 double.format_mean = _format_mean
 double.min_max_mean = _min_max_mean_double_init
 double.standard_deviation_of_the_sample = _standard_deviation_of_the_sample
 double.sample_standard_deviation = _sample_standard_deviation
+double.rms = _rms
 
 def select(sequence, permutation=None, flags=None):
   result = []
@@ -585,3 +591,19 @@ def _vec3_double_as_numpy_array(flex_array):
     return flex_array.as_double().as_numpy_array().reshape(-1, 3)
 
 vec3_double.as_numpy_array = _vec3_double_as_numpy_array
+
+# for modern 64-bit platforms, int and int32_t are the same
+int32 = ext.int
+int32_from_byte_str = ext.int_from_byte_str
+int32_range = ext.int_range
+
+# int64_t is the same as long, but not on Windows
+if sys.platform != 'win32':
+  int64 = ext.long
+  int64_from_byte_str = ext.long_from_byte_str
+  int64_range = ext.long_range
+
+# uint64_t is the same as size_t
+uint64 = ext.size_t
+uint64_from_byte_str = ext.size_t_from_byte_str
+uint64_range = ext.size_t_range

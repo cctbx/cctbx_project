@@ -242,7 +242,7 @@ class ramachandran_manager(object):
           w_params.outlier = 'emsley'
 
     self.params = w_params
-
+    self.rama_eval = rama_eval()
     self.hierarchy = pdb_hierarchy # only for def select()
     self.log = log
     self._oldfield_proxies = ext.shared_phi_psi_proxy()
@@ -320,7 +320,6 @@ class ramachandran_manager(object):
     self._emsley8k_proxies = ext.shared_phi_psi_proxy()
     # it would be great to save rama_eval, but the fact that this is called in
     # pdb_interpretation, not in mmtbx.model makes it impossible
-    self.rama_eval = rama_eval()
     for three in generate_protein_threes(hierarchy=selected_h, geometry=None):
       rc = three.get_phi_psi_atoms()
       if rc is None: continue
@@ -403,15 +402,16 @@ class ramachandran_manager(object):
 
   def update_phi_psi_targets_on_init(self, hierarchy):
     if 'oldfield' in [self.params.favored, self.params.allowed, self.params.outlier]:
+      sites_cart = hierarchy.atoms().extract_xyz()
       self.target_phi_psi = phi_psi_targets(
-          sites_cart=hierarchy.atoms().extract_xyz(),
-          proxies=self._oldfield_proxies,
-          general_table=self._oldfield_tables.general,
-          gly_table=self._oldfield_tables.gly,
-          cispro_table=self._oldfield_tables.cispro,
-          transpro_table=self._oldfield_tables.transpro,
-          prepro_table=self._oldfield_tables.prepro,
-          ileval_table=self._oldfield_tables.ileval)
+        sites_cart     = hierarchy.atoms().extract_xyz(),
+        proxies        = self._oldfield_proxies,
+        general_table  = self._oldfield_tables.general,
+        gly_table      = self._oldfield_tables.gly,
+        cispro_table   = self._oldfield_tables.cispro,
+        transpro_table = self._oldfield_tables.transpro,
+        prepro_table   = self._oldfield_tables.prepro,
+        ileval_table   = self._oldfield_tables.ileval)
       return self.target_phi_psi
     return None
 

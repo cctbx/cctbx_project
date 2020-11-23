@@ -126,14 +126,15 @@ def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
                 ("by_chain",True,1,86,),
                 ("by_segment",True,1,86,),
                 ("supplied_selections",True,1,86,),
+                ("boxes",True,7,9),
+                ("boxes",False,12,0,),
                 ("boxes",True,13,1,),
                 ("boxes",False,36,0,),
-                ("boxes",True,13,1,),
-                ("boxes",False,36,0,),
-                ]
-
-
-
+                ], 'failed to find %s %s %s %s' % (
+                    selection_method,
+                    skip_empty_boxes,
+                    len(box_info.selection_list),
+                    box_info.selection_list[0].count(True))
 
           # Change the coordinates in one box
           small_model = box_info.mmm_list[0].model()

@@ -1,9 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.math import dihedral_angle
-from mmtbx.ligands.ready_set_utils import construct_xyz
-from mmtbx.ligands.ready_set_utils import generate_atom_group_atom_names
-from mmtbx.ligands.ready_set_utils import new_atom_with_inheritance
-from mmtbx.ligands.ready_set_utils import _add_hydrogens_to_atom_group_using_bad
+from mmtbx.ligands.ready_set_basics import construct_xyz
+from mmtbx.ligands.ready_set_basics import generate_atom_group_atom_names
+from mmtbx.ligands.hierarchy_utils import new_atom_with_inheritance
+from mmtbx.ligands.hierarchy_utils import add_hydrogens_to_atom_group_using_bad
 
 from cctbx.geometry_restraints.linking_class import linking_class
 origin_ids = linking_class()
@@ -142,7 +142,7 @@ def add_cys_hg_to_atom_group(atom_group,
       TYPE: New chains, if any
   """
   assert element in ['H', 'D']
-  rc = _add_hydrogens_to_atom_group_using_bad(
+  rc = add_hydrogens_to_atom_group_using_bad(
     atom_group,
     ' HG '.replace('H', element),
     element,

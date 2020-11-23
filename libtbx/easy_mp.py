@@ -772,11 +772,13 @@ def run_parallel(
    target_function=None,      # the method to run
    kw_list=None,           # list of kw dictionaries for target_function
    preserve_order=True,
-   break_condition = None):
+   break_condition = None,
+   try_single_processor_on_failure = False,):
 
   '''
   :param preserve_order: keeps original order of results
   :param break_condition:  if break_condition(result) is True, break
+  :param try_single_processor_on_failure:  Try nproc=1 if nproc>1 fails
   '''
   n=len(kw_list)  # number of jobs to run, one per kw dict
 
@@ -785,6 +787,27 @@ def run_parallel(
     ra=run_anything(kw_list=kw_list,target_function=target_function)
     for i in range(n):
       results.append(ra(i))
+  elif try_single_processor_on_failure:
+    try:  # Try as is, then use nproc=1 if it fails for any reason
+      return run_parallel(
+         method=method,
+         qsub_command=qsub_command,
+         nproc=nproc,
+         target_function=target_function,
+         kw_list=kw_list,
+         preserve_order=preserve_order,
+         break_condition=break_condition)
+    except Exception as e:
+      return run_parallel(
+         method=method,
+         qsub_command=qsub_command,
+         nproc=1,
+         target_function=target_function,
+         kw_list=kw_list,
+         preserve_order=preserve_order,
+         break_condition=break_condition)
+
+
   elif 0:  #(method == "multiprocessing") and (sys.platform != "win32"):
     # XXX Can crash 2015-10-13 TT so don't use it
     from libtbx.easy_mp import  pool_map

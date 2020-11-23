@@ -8,9 +8,11 @@ def extract_from(file_name=None, file=None, monitor_initial=None):
   assert [file_name, file].count(None) == 1
   if (file is None):
     file = smart_open.for_reading(file_name=file_name)
+  lines = file.readlines()
+  file.close()
   detect_binary = detect_binary_file(monitor_initial=monitor_initial)
   line_number = 0
-  for line in file:
+  for line in lines:
     line_number += 1
     if (detect_binary is not None):
       is_binary = detect_binary.is_binary_file(block=line)

@@ -69,7 +69,7 @@ def tst_02():
   import iotbx.pdb
   import sys
   pdb_inp = iotbx.pdb.input(lines=pdb_poor.splitlines(),source_info='None')
-  model=  mmtbx.model.manager( model_input= pdb_inp,)
+  model=  mmtbx.model.manager( model_input= pdb_inp, build_grm=True)
 
   model.set_log(log = null_out())
 

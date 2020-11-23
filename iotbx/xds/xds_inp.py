@@ -68,7 +68,8 @@ class reader:
 
     # Check and read file
     if reader.is_xds_inp_file(filename):
-      lines = open(filename, 'r').readlines()
+      with open(filename, 'r') as fh:
+        lines = fh.readlines()
     else:
       raise IOError("{0} is not a XDS.INP file".format(filename))
 

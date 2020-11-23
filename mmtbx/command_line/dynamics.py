@@ -58,6 +58,7 @@ def run_cartesian_dynamics(
   rmsd = sites_cart_end.rms_difference(sites_cart_start)
   print("", file=log)
   print("RMSD from starting structure: %.3f" % rmsd, file=log)
+  return sites_cart_end
 
 class run(geometry_minimization.run):
   _pdb_suffix = "shaken"
@@ -92,7 +93,7 @@ Usage examples:
     geometry_minimization.broadcast(m=prefix, log = self.log)
     self.sites_cart = self.model.get_sites_cart()
     if (self.params.dynamics_type == "cartesian"):
-      run_cartesian_dynamics(
+      sites_cart_result = run_cartesian_dynamics(
         xray_structure=self.model.get_xray_structure(),
         restraints_manager=self.model.get_restraints_manager(),
         states_collector=self.states_collector,
@@ -101,7 +102,7 @@ Usage examples:
         log=self.log)
     else : # TODO
       raise NotImplementedError()
-    self.model.set_sites_cart_from_xrs()
+    self.model.set_sites_cart(sites_cart=sites_cart_result)
 
 class launcher(runtime_utils.target_with_save_result):
   def run(self):

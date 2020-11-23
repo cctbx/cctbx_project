@@ -34,6 +34,19 @@ class load_balancer(worker):
       mpi_split_comm = self.mpi_helper.comm.Split(mpi_color, mpi_new_rank)
       new_experiments, new_reflections = self.distribute_over_ranks(experiments, reflections, mpi_split_comm, self.params.input.parallel_file_load.ranks_per_node)
 
+    if self.params.input.parallel_file_load.reset_experiment_id_column:
+      self.logger.log('Starting id column reset')
+      id_map = new_reflections.experiment_identifiers()
+      reverse_map = {}
+      for expt_id, experiment in enumerate(new_experiments):
+        id_map[expt_id] = experiment.identifier
+        reverse_map[experiment.identifier] = expt_id
+      id_col = new_reflections['id']
+      ident_col = new_reflections['exp_id']
+      for i in range(len(new_reflections)):
+        id_col[i] = reverse_map[ident_col[i]]
+      self.logger.log('Column reset done')
+
     # Do we have any data?
     from xfel.merging.application.utils.data_counter import data_counter
     data_counter(self.params).count(new_experiments, new_reflections)

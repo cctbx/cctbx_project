@@ -159,8 +159,9 @@ class run(object):
       model = get_model_adhoc(crystal_symmetry = self.cs, ph = ph)
       # Pre-refine original placement
       for it in [1,2]:
-        if(it==1): model.set_nonbonded_weight(value=1)
-        else:      model.set_nonbonded_weight(value=1000)
+        # XXX This invalidates grm with no way to get it back!
+        #if(it==1): model.set_nonbonded_weight(value=1)
+        #else:      model.set_nonbonded_weight(value=1000)
         model = sa_simple(model=model, map_data=self.map_data, log=None)
         model = refine(model=model, map_data=self.map_data)
       self.states.add(hierarchy = model.get_hierarchy())
@@ -529,6 +530,7 @@ def get_model_adhoc(crystal_symmetry, ph=None, pdb_inp=None):
       crystal_symmetry          = crystal_symmetry,
       pdb_interpretation_params = params,
       process_input             = True,
+      build_grm                 = True,
       log                       = null_out())
   else:
     return mmtbx.model.manager(
@@ -536,5 +538,6 @@ def get_model_adhoc(crystal_symmetry, ph=None, pdb_inp=None):
        crystal_symmetry          = crystal_symmetry,
        pdb_interpretation_params = params,
        process_input             = True,
+       build_grm                 = True,
        log                       = null_out(),
        pdb_hierarchy             = ph)

@@ -773,6 +773,9 @@ int main() {
       cc = os.environ.get('CLANG', '')
       cxx = os.environ.get('CLANGXX', '')
     if not os.path.isfile(cc) or not os.path.isfile(cxx):
+      print("Compiler settings:")
+      print("  CC: ", cc)
+      print("  CXX:", cxx)
       raise RuntimeError('conda compilers are not installed.')
 
     # use environment flags

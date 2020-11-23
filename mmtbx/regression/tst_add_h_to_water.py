@@ -102,7 +102,6 @@ def exercise_01():
   ####
   model.add_hydrogens(correct_special_position_tolerance=1.0)
   result = StringIO()
-  model.set_sites_cart_from_xrs()
   pdb_str = model.model_as_pdb()
   result.write(pdb_str)
   result = result.getvalue().splitlines()

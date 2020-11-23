@@ -2339,7 +2339,7 @@ links = {
   "linking_test_ASN_A-NAG_B.pdb" : [21, 22],
   "linking_test_nstd_rna_dna_h_bond.pdb" : [0,0],
   "linking_test_nstd_rna_dna.pdb" : [0,1],
-  "linking_test_Mg_HOH.pdb" : [0,5],                 #6], # metal coordination
+  "linking_test_Mg_HOH.pdb" : [0,6],                 #6], # metal coordination
   "linking_test_Mg_HOH_CRYST1.pdb" : [0,6],
   "linking_test_Mg_EDT.pdb" : [19,25],               #25],
   "linking_test_1jbe_ALA-SNN-ACY-ALA.pdb" : [10,13],

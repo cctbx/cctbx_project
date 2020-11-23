@@ -12,6 +12,8 @@ PHIL scope and citations for a program.
 
 import argparse, getpass, logging, os, sys, time
 
+from six.moves import cStringIO as StringIO
+
 import iotbx.phil
 import libtbx.phil
 
@@ -45,6 +47,7 @@ def run_program(program_class=None, custom_process_arguments=None,
   if (logger is None):
     logger = multi_out()
     logger.register('stdout', sys.stdout)
+    logger.register('parser_log', StringIO())
 
   # start timer
   t = show_times(out=logger)
@@ -61,9 +64,6 @@ def run_program(program_class=None, custom_process_arguments=None,
   task = program_class(parser.data_manager, parser.working_phil.extract(),
                        master_phil=parser.master_phil,
                        logger=logger)
-
-  # custom constructor (optional)
-  task.custom_init()
 
   # validate inputs
   task.validate()
@@ -246,7 +246,7 @@ class CCTBXParser(ParserBase):
     self.add_argument(
       '--attributes-level', '--attributes_level',
       nargs='?', const=1, type=int, choices=list(range(0,4)),
-      help='show parameters with attributes (default=0)'
+      help='show parameters with attributes (default=1)'
     )
 
     # --write-data
@@ -304,6 +304,8 @@ class CCTBXParser(ParserBase):
       if (self.namespace.show_defaults is None):
         self.error('--attributes-level requires --show-defaults to be set')
     if (self.namespace.show_defaults is not None):
+      if (self.namespace.attributes_level is None):
+        self.namespace.attributes_level = 1
       self.master_phil.show(expert_level=self.namespace.show_defaults,
                             attributes_level=self.namespace.attributes_level,
                             out=self.logger)

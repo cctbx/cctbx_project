@@ -5,7 +5,9 @@ def extract_from(file_name=None, file=None):
   assert [file_name, file].count(None) == 1
   if (file is None):
     file = open(file_name)
-  sdb_files = sdb_reader.multi_sdb_parser(file)
+  lines = file.readlines()
+  file.close()
+  sdb_files = sdb_reader.multi_sdb_parser(lines)
   assert len(sdb_files) > 0
   crystal_symmetry = sdb_files[0].crystal_symmetry()
   assert [crystal_symmetry.unit_cell(),

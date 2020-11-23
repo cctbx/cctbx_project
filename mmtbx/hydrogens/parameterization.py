@@ -11,11 +11,13 @@ class manager(object):
       h_connectivity,
       sites_cart,
       use_ideal_bonds_angles,
-      site_labels):
+      site_labels,
+      use_ideal_dihedral=False):
     self.h_connectivity = h_connectivity
     self.sites_cart = sites_cart
     self.use_ideal_bonds_angles = use_ideal_bonds_angles
     self.site_labels = site_labels
+    self.use_ideal_dihedral = use_ideal_dihedral
     self.determine_parameterization()
 
 #-------------------------------------------------------------------------------
@@ -41,19 +43,32 @@ class manager(object):
         self.process_3_neighbors(neighbors = neighbors)
       # Free rotation and propeller groups
       elif(number_non_h_neighbors == 1 and
-        (number_h_neighbors == 0 or number_h_neighbors ==2)):
+        (number_h_neighbors == 0 or number_h_neighbors == 2)):
         self.process_1_neighbor(neighbors = neighbors)
       # planar Y-X-H2 groups such as in ARG head
       elif(number_non_h_neighbors == 1 and number_h_neighbors == 1):
         self.process_1_neighbor_type_arg(neighbors = neighbors)
       else:
         self.unk_list.append(ih)
-    #return self.h_parameterization
 
 #-------------------------------------------------------------------------------
 
   def process_1_neighbor(self, neighbors):
     ih = neighbors.ih
+    # if used for hydrogenate, make sure that first we use the H with dihedral angle
+    # However, this needs some tweaking for neutron H/D situations
+    if (neighbors.number_h_neighbors == 2):
+      i_h1, i_h2 = neighbors.h1['iseq'], neighbors.h2['iseq']
+      if ('dihedral_ideal' in neighbors.b1):
+        neighbors = self.h_connectivity[ih]
+      elif ('dihedral_ideal' in self.h_connectivity[i_h1].b1):
+        if self.h_parameterization[i_h1] is None:
+          neighbors = self.h_connectivity[i_h1]
+      elif ('dihedral_ideal' in self.h_connectivity[i_h2].b1):
+        if self.h_parameterization[i_h2] is None:
+          neighbors = self.h_connectivity[i_h2]
+    ih = neighbors.ih
+    #print(self.site_labels[ih])
     i_a0 = neighbors.a0['iseq']
     rh = matrix.col(self.sites_cart[ih])
     r0 = matrix.col(self.sites_cart[i_a0])
@@ -78,11 +93,15 @@ class manager(object):
     if self.use_ideal_bonds_angles:
       alpha = math.radians(neighbors.a1['angle_ideal'])
       #allow for rotation even for idealize = True
-      #phi = math.radians(b1.dihedral_ideal)
       phi = dihedral
+      if self.use_ideal_dihedral:
+        #phi = math.radians(b1.dihedral_ideal)
+        if 'dihedral_ideal' in neighbors.b1:
+          phi = math.radians(neighbors.b1['dihedral_ideal'])
     else:
       alpha = (u10).angle(uh0)
       phi = dihedral
+    #print(math.degrees(phi))
     u1 = (r0 - r1).normalize()
     rb10 = rb1 - r1
     # TODO check needed?

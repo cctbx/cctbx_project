@@ -27,13 +27,15 @@ class reader(object):
     assert [file_name, file_object].count(None) == 1
     if (file_object is None):
       file_object = open(file_name)
+    lines = file_object.readlines()
+    file_object.close()
     self._names = None
     self._indices = flex.miller_index()
     self._data = flex.double()
     self._sigmas = flex.double()
     have_data = False
     self.n_lines = 0
-    for raw_line in file_object:
+    for raw_line in lines:
       self.n_lines += 1
       ifs = index_fobs_sigma_line(raw_line)
       if (not ifs.is_complete):

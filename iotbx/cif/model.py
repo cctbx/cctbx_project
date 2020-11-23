@@ -5,7 +5,11 @@ import sys
 import string
 import copy
 from six.moves import cStringIO as StringIO
-from collections import MutableMapping, Counter
+from collections import Counter
+try:
+  from collections.abc import MutableMapping
+except ImportError:
+  from collections import MutableMapping
 from cctbx.array_family import flex
 from six.moves import range
 from six.moves import zip
@@ -510,6 +514,8 @@ class loop(MutableMapping):
       raise Sorry("%s is not a valid data name" %key)
     if len(self) > 0:
       assert len(value) == self.size()
+    if isinstance(value, flex.size_t):
+      value = value.as_int()
     if not isinstance(value, flex.std_string):
       for flex_numeric_type in (flex.int, flex.double):
         if isinstance(value, flex_numeric_type):

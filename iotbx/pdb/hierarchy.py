@@ -517,7 +517,12 @@ class _():
       n_water      = rc("water"),
       n_hd         = rc(sel_str="element H or element D",as_atoms=True),
       n_other      = rc(sel_str_other),
-      other_cnts   = other_cnts)
+      other_cnts   = other_cnts,
+      # atom counts for Table 1
+      n_protein_atoms    = rc("protein and not (element H or element D)", as_atoms=True),
+      n_nucleotide_atoms = rc("nucleotide and not (element H or element D)", as_atoms=True),
+      n_water_atoms      = rc("water", as_atoms=True),
+      n_other_atoms      = rc(sel_str_other, as_atoms=True))
 
   def show(self,
         out=None,
@@ -875,16 +880,18 @@ class _():
     if link_records:
       if (open_append): mode = "a"
       else:             mode = "w"
-      print(link_records, file=open(file_name, mode))
+      with open(file_name, mode) as f:
+        print(link_records, file=f)
       open_append = True
     if (crystal_symmetry is not None or cryst1_z is not None):
       if (open_append): mode = "a"
       else:             mode = "w"
       from iotbx.pdb import format_cryst1_and_scale_records
-      print(format_cryst1_and_scale_records(
-        crystal_symmetry=crystal_symmetry,
-        cryst1_z=cryst1_z,
-        write_scale_records=write_scale_records), file=open(file_name, mode))
+      with open(file_name, mode) as f:
+        print(format_cryst1_and_scale_records(
+          crystal_symmetry=crystal_symmetry,
+          cryst1_z=cryst1_z,
+          write_scale_records=write_scale_records), file=f)
       open_append = True
     self._write_pdb_file(
       file_name=file_name,
@@ -913,7 +920,7 @@ class _():
 
   def get_auth_asym_id(self, chain):
     auth_asym_id = chain.id
-    if chain.atoms()[0].segid.strip() != '':
+    if len(chain.atoms()[0].segid.strip()) > len(auth_asym_id):
       auth_asym_id = chain.atoms()[0].segid.strip()
     if auth_asym_id.strip() == '':
       # chain id is empty, segid is empty, just duplicate label_asym_id
@@ -932,15 +939,17 @@ class _():
       # fill self._lai_lookup for the whole hierarchy
       number_label_asym_id = 0
       label_asym_ids = all_label_asym_ids()
-      previous = None
       for model in self.models():
         for chain in model.chains():
+          previous = None
           for rg in chain.residue_groups():
             resname = rg.atom_groups()[0].resname.strip()
             residue_class = common_residue_names_get_class(resname)
             rg_mid = rg.memory_id()
             if residue_class in ['common_amino_acid', 'modified_amino_acid',
                 'common_rna_dna', 'modified_rna_dna']:
+              if previous != 'poly' and previous is not None:
+                number_label_asym_id += 1
               self._lai_lookup[rg_mid] = label_asym_ids[number_label_asym_id]
               previous = 'poly'
             elif residue_class in ['common_water']:
@@ -1220,9 +1229,8 @@ class _():
       data_block_name = "phenix"
     cif_object[data_block_name] = self.as_cif_block(
       crystal_symmetry=crystal_symmetry)
-    f = open(file_name, "w")
-    print(cif_object, file=f)
-    f.close()
+    with open(file_name, "w") as f:
+      print(cif_object, file=f)
 
   def atoms_with_labels(self):
     """
@@ -2679,8 +2687,9 @@ def get_residue_and_fragment_count(pdb_file=None, pdb_hierarchy=None):
   from libtbx import smart_open
   if (pdb_file is not None):
     raw_records = flex.std_string()
-    f = smart_open.for_reading(file_name=pdb_file)
-    raw_records.extend(flex.split_lines(f.read()))
+    with smart_open.for_reading(file_name=pdb_file) as f:
+      lines = f.read()
+    raw_records.extend(flex.split_lines(lines))
     pdb_in = iotbx.pdb.input(source_info=pdb_file, lines=raw_records)
     pdb_hierarchy = pdb_in.construct_hierarchy()
   assert (pdb_hierarchy is not None)

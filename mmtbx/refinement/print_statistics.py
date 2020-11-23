@@ -408,7 +408,7 @@ class trajectory_output(object):
     import iotbx.map_tools
     self._i_trajectory += 1
     file_base = "%s_traj_%d" % (self.file_base, self._i_trajectory)
-    pdb_hierarchy = model.get_hierarchy(sync_with_xray_structure=True)
+    pdb_hierarchy = model.get_hierarchy()
     two_fofc_map_coeffs = fmodel.map_coefficients(map_type="2mFo-DFc",
       fill_missing=self.filled_maps)
     fofc_map_coeffs = fmodel.map_coefficients(map_type="mFo-DFc")

@@ -2,123 +2,145 @@ from __future__ import absolute_import, division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
-import mmtbx.hydrogens
+from mmtbx.hydrogens import reduce_hydrogen
 from libtbx.utils import null_out
-#from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 
+# ------------------------------------------------------------------------------
 
 def run():
-  incomplete_peptide_unit()
-  CD1_TYR_missing()
-  no_H_on_disulfides()
-  add_H_to_lone_CYS()
-  peptide_unit_N_missing()
-  no_H_on_coordinating_CYS()
-  sym_related_disulfide()
+  test_000()
+  test_001()
+  test_002()
+  test_003()
+  test_004()
+  test_006()
+  test_005()
 
-
-def get_model(pdb_str):
-  pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
-  model = mmtbx.model.manager(model_input = pdb_inp,
-                              log         = null_out())
-  model_with_h = mmtbx.hydrogens.add(model = model)
-  return model_with_h
-
+# ------------------------------------------------------------------------------
 
 def compare_models(pdb_str,
                    contains     = None,
-                   not_contains = None,
-                   number_h     = None):
+                   not_contains = None):
+  '''
+    Function to compare model with new H to the known answer (pdb_str)
+  '''
   #
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
-  model_initial = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
-  xrs = model_initial.get_xray_structure()
+  model_initial = mmtbx.model.manager(model_input = pdb_inp,
+                                      log         = null_out())
   hd_sel_initial = model_initial.get_hd_selection()
   number_h_expected = hd_sel_initial.count(True)
+
 
   model_without_h = model_initial.select(~hd_sel_initial)
   hd_sel_without_h = model_without_h.get_hd_selection()
   assert (hd_sel_without_h is not None)
   assert (hd_sel_without_h.count(True) == 0)
 
-  model_h_added = mmtbx.hydrogens.add(model = model_without_h)
+  #model_h_added = reduce.add(model = model_without_h)
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model_without_h)
+  reduce_add_h_obj.run()
+  model_h_added = reduce_add_h_obj.get_model()
+
   hd_sel_h_added = model_h_added.get_hd_selection()
-  number_h_added = hd_sel_h_added.count(True)
+
   ph_initial = model_initial.get_hierarchy()
+  h_atoms_initial = ph_initial.select(hd_sel_initial).atoms()
+  h_names_initial = list(h_atoms_initial.extract_name())
   ph_h_added = model_h_added.get_hierarchy()
   assert ph_initial.is_similar_hierarchy(other=ph_h_added)
 
-  if number_h:
-    assert(number_h == number_h_added)
+  number_h_added = hd_sel_h_added.count(True)
+  assert(number_h_expected == number_h_added)
+
+  h_atoms_added = ph_h_added.select(hd_sel_h_added).atoms()
+  h_names_added = list(h_atoms_added.extract_name())
 
   if not_contains:
-    h_atoms_added = model_h_added.get_hierarchy().select(hd_sel_h_added).atoms()
-    h_names_added = list(h_atoms_added.extract_name())
     assert (not_contains not in h_names_added)
 
   if contains:
-    h_atoms_added = model_h_added.get_hierarchy().select(hd_sel_h_added).atoms()
-    h_names_added = list(h_atoms_added.extract_name())
     assert (contains in h_names_added)
 
+  sc_h_initial = model_initial.select(hd_sel_initial).get_sites_cart()
+  sc_h_added = model_h_added.select(hd_sel_h_added).get_sites_cart()
 
-def incomplete_peptide_unit():
-  """Incomplete peptide unit (N-terminal) --> H should not be placed."""
-  compare_models(pdb_str = pdb_str_1)
+  d1 = {h_names_initial[i]: sc_h_initial[i] for i in range(len(h_names_initial))}
+  d2 = {h_names_added[i]: sc_h_added[i] for i in range(len(h_names_added))}
 
+  for name, sc in d2.items():
+    assert(name in d1)
+    assert approx_equal(sc, d1[name], 0.01)
 
-def CD1_TYR_missing():
-  """Atom CD1 is missing --> HE1 should not be placed
+# ------------------------------------------------------------------------------
 
-     H, HD1, HE1 cannot be parameterized and are not added.
-  """
-  compare_models(pdb_str = pdb_str_2,
-                 number_h = 6,
+def test_000():
+  '''
+    Incomplete peptide unit at the N-terminal --> H should not be placed.
+  '''
+  compare_models(pdb_str = pdb_str_000)
+
+# ------------------------------------------------------------------------------
+
+def test_001():
+  '''
+    CD1 is missing --> H, HD1, HE1 can't be parameterized --> should not be added.
+  '''
+  compare_models(pdb_str      = pdb_str_001,
                  not_contains = ' HE1')
 
+# ------------------------------------------------------------------------------
 
-def no_H_on_disulfides():
-  """Don't put H on disulfides."""
-  model_h_added = compare_models(pdb_str = pdb_str_3,
-                                 number_h = 6,
-                                 not_contains = ' HG ')
+def test_002():
+  '''
+    If there is a disulfide bond --> don't add H on CYS
+  '''
+  compare_models(pdb_str      = pdb_str_002,
+                 not_contains = ' HG ')
 
+# ------------------------------------------------------------------------------
 
-def add_H_to_lone_CYS():
-  """Make sure to add HG on lone Cys."""
-  compare_models(pdb_str = pdb_str_4,
-                 number_h = 4,
+def test_003():
+  '''
+    If CYS is not in disulfide or does not coordinate --> place HG
+  '''
+  compare_models(pdb_str  = pdb_str_003,
                  contains = ' HG ')
 
+# ------------------------------------------------------------------------------
 
-def peptide_unit_N_missing():
-  """N atom is missing, make sure peptide H is not placed"""
-  compare_models(pdb_str = pdb_str_5,
-                 number_h = 8,
+def test_004():
+  '''
+    N atom is missing --> make sure peptide H is not placed
+  '''
+  compare_models(pdb_str      = pdb_str_004,
                  not_contains = ' H  ')
 
+# ------------------------------------------------------------------------------
 
-def no_H_on_coordinating_CYS():
-  """Don't put H on Cys coordinating a metal"""
-  compare_models(pdb_str = pdb_str_6,
-                 number_h = 3,
+def test_005():
+  '''
+    CYS coordinates a metal --> HG should not be placed
+  '''
+  compare_models(pdb_str      = pdb_str_005,
                  not_contains = ' HG ')
 
+# ------------------------------------------------------------------------------
 
-def sym_related_disulfide():
-  """Don't put H on Cys forming a disulfide bond with symmetry related molecule"""
-  compare_models(pdb_str = pdb_str_7,
-                 number_h = 3,
+def test_006():
+  '''
+    CYS forms a disulfid with symmetry mate --> don't place HG
+  '''
+  compare_models(pdb_str      = pdb_str_006,
                  not_contains = ' HG ')
 
+# ------------------------------------------------------------------------------
 
 
-
-pdb_str_1 = """
+pdb_str_000 = """
+REMARK two AA fragments, GLY peptide H atom is not expected to be placed
 CRYST1   14.074   14.385   15.410  90.00  90.00  90.00 P 1
-SCALE1      0.071053  0.000000  0.000000        0.00000
-SCALE2      0.000000  0.069517  0.000000        0.00000
-SCALE3      0.000000  0.000000  0.064893        0.00000
 ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
 ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
 ATOM      3  C   GLY A   1      -8.015   3.140   4.419  1.00 16.16           C
@@ -142,11 +164,9 @@ ATOM     21  HB2 ASN A   2      -5.618   1.264   1.168  1.00 15.38           H
 TER
 """
 
-pdb_str_2 = """
+pdb_str_001 = """
+REMARK CD1 is missing --> HD1, HE1 cannot not be placed; H is not placed
 CRYST1   17.955   13.272   13.095  90.00  90.00  90.00 P 1
-SCALE1      0.055695  0.000000  0.000000        0.00000
-SCALE2      0.000000  0.075347  0.000000        0.00000
-SCALE3      0.000000  0.000000  0.076365        0.00000
 ATOM      1  N   TYR A 139      10.241   7.920   5.000  1.00 10.00           N
 ATOM      2  CA  TYR A 139      10.853   7.555   6.271  1.00 10.00           C
 ATOM      3  C   TYR A 139      12.362   7.771   6.227  1.00 10.00           C
@@ -160,18 +180,16 @@ ATOM     10  CZ  TYR A 139       6.345   5.266   6.993  1.00 10.00           C
 ATOM     11  OH  TYR A 139       5.000   5.000   7.113  1.00 10.00           O
 ATOM     12  HE2 TYR A 139       6.643   5.772   8.919  1.00 10.00           H
 ATOM     13  HD2 TYR A 139       8.896   6.220   8.714  1.00 10.00           H
-ATOM     17  HH  TYR A 139       4.565   5.718   7.120  1.00 10.00           H
+ATOM     17  HH  TYR A 139       4.752   5.127   7.905  1.00 10.00           H
 ATOM     18  HA  TYR A 139      10.487   8.115   6.973  1.00 10.00           H
 ATOM     19  HB1 TYR A 139      10.961   5.881   7.464  1.00 10.00           H
 ATOM     20  HB2 TYR A 139      10.893   5.529   5.916  1.00 10.00           H
 TER
 """
 
-pdb_str_3 = """
+pdb_str_002 = """
+REMARK fragment of disulfide bridge --> don't place H on Cys SG atom
 CRYST1   14.197   15.507   16.075  90.00  90.00  90.00 P 1
-SCALE1      0.070437  0.000000  0.000000        0.00000
-SCALE2      0.000000  0.064487  0.000000        0.00000
-SCALE3      0.000000  0.000000  0.062208        0.00000
 ATOM      1  N   CYS A 128      14.558 -30.378 -19.478  1.00 11.73           N
 ATOM      2  CA  CYS A 128      13.499 -29.511 -19.901  1.00 11.51           C
 ATOM      3  C   CYS A 128      12.454 -30.316 -20.640  1.00 11.99           C
@@ -193,11 +211,9 @@ ATOM     22  HB2 CYS A 232      13.378 -28.042 -16.761  1.00  6.69           H
 TER
 """
 
-pdb_str_4 = """
+pdb_str_003 = """
+REMARK fragment of lone CYS --> place the HG atom
 CRYST1   14.197   15.507   16.075  90.00  90.00  90.00 P 1
-SCALE1      0.070437  0.000000  0.000000        0.00000
-SCALE2      0.000000  0.064487  0.000000        0.00000
-SCALE3      0.000000  0.000000  0.062208        0.00000
 ATOM      1  N   CYS A 128      14.558 -30.378 -19.478  1.00 11.73           N
 ATOM      2  CA  CYS A 128      13.499 -29.511 -19.901  1.00 11.51           C
 ATOM      3  C   CYS A 128      12.454 -30.316 -20.640  1.00 11.99           C
@@ -206,16 +222,14 @@ ATOM      5  CB  CYS A 128      14.059 -28.357 -20.691  1.00 12.94           C
 ATOM      6  SG  CYS A 128      15.213 -27.350 -19.760  1.00 12.36           S
 ATOM      8  HA  CYS A 128      13.044 -29.102 -19.148  1.00 11.51           H
 ATOM      9  HB1 CYS A 128      14.526 -28.706 -21.466  1.00 12.94           H
-ATOM     10  HG  CYS A 128      15.585 -27.968 -18.801  1.00 12.36           H
+ATOM     10  HG  CYS A 128      16.134 -28.034 -19.410  1.00 12.36           H
 ATOM     11  HB2 CYS A 128      13.327 -27.787 -20.974  1.00 12.94           H
 TER
 """
 
-pdb_str_5 = """
+pdb_str_004 = """
+REMARK peptide N is missing --> peptide H atom should not be placed
 CRYST1   15.000   15.000   15.000  90.00  90.00  90.00 P 1
-SCALE1      0.066667  0.000000  0.000000        0.00000
-SCALE2      0.000000  0.066667  0.000000        0.00000
-SCALE3      0.000000  0.000000  0.066667        0.00000
 ATOM      1  CA  PHE H   1       7.000   7.000   7.000  1.00 15.00           C
 ATOM      2  C   PHE H   1       7.956   7.811   6.133  1.00 15.00           C
 ATOM      3  O   PHE H   1       8.506   7.237   5.169  1.00 15.00           O
@@ -237,11 +251,9 @@ ATOM     19  HB2 PHE H   1       8.507   6.227   8.174  1.00 15.00           H
 TER
 """
 
-pdb_str_6 = """
+pdb_str_005 = """
+REMARK CYS coordinates a metal --> HG should not be placed
 CRYST1  108.910  108.910  108.910  90.00  90.00  90.00 I 4 3 2
-SCALE1      0.009182  0.000000  0.000000        0.00000
-SCALE2      0.000000  0.009182  0.000000        0.00000
-SCALE3      0.000000  0.000000  0.009182        0.00000
 ATOM      1  N   CYS A  48     -40.561 -16.057   6.830  1.00 99.72           N
 ATOM      2  CA  CYS A  48     -41.351 -14.915   6.380  1.00106.82           C
 ATOM      3  C   CYS A  48     -41.146 -13.719   7.305  1.00104.36           C
@@ -256,11 +268,9 @@ HETATM   12 ZN    ZN A 102     -44.322 -17.446   8.351  1.00 98.67          Zn
 END
 """
 
-pdb_str_7 = """
+pdb_str_006 = """
+REMARK CYS forms a disulfid with symmetry mate --> don't place HG
 CRYST1  108.910  108.910  108.910  90.00  90.00  90.00 I 4 3 2
-SCALE1      0.009182  0.000000  0.000000        0.00000
-SCALE2      0.000000  0.009182  0.000000        0.00000
-SCALE3      0.000000  0.000000  0.009182        0.00000
 ATOM      1  N   CYS A  12     -50.777 -13.205 -12.246  1.00 95.50           N
 ATOM      2  CA  CYS A  12     -51.774 -13.797 -13.124  1.00103.68           C
 ATOM      3  C   CYS A  12     -51.135 -14.327 -14.399  1.00101.77           C

@@ -1,0 +1,193 @@
+{% extends "cctbx/header.html" %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="col-sm-9 main">
+
+
+
+
+
+<h2><center>Advanced features of flex arrays</center></h2>
+
+<p class="lead mt-4">Learn how to change the views of flex 3D arrays with the <code>reshape()</code>, <code>as_1d()</code> and <code>shift_origin()</code> functions.</p>
+
+<h3 class="mt-3">Introduction</h3>
+
+<p>A 3D flex.double() array is an object that contains N items of data (the array elements) and an accessor (an object that tells how to view those numbers). This arrangement is very powerful because you can have more than one view of the array without changing the data.</p>
+
+<p>Let’s see how this works using an example array. Let’s generate a model and map and then get the map as a flex 3D array:</p>
+
+<pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager # load map_model_manager
+mmm=map_model_manager() # get an initialized instance of the map_model_manager
+mmm.generate_map()# get a model from a small library model and calculate a map
+map_data = mmm.map_manager().map_data()  # the map as flex.double() 3D array)
+</code></pre>
+
+<p>Now let’s have a look at the accessor for this array:</p>
+
+<pre class="codeDL"><code>acc = map_data.accessor() #  gridding for map_data
+acc.show_summary()        # summarize
+</code></pre>
+
+<p>which yields:</p>
+
+<pre class="CodeGreen"><code>origin: (0, 0, 0)
+last: (30, 40, 32)
+focus: (30, 40, 32)
+all: (30, 40, 32)</code></pre>
+
+<p>This array starts at (0,0,0) and goes to (29,39,31). The dimensions of the array are (30,40,32).  The values of “last” and “focus” are a little confusing sometimes. The value of last is one more than the actual last element in each direction. The value of last is the same as focus if the map is unpadded (as in most maps), and is larger if the map is padded (in maps just created by an FFT).</p>
+
+<p>Note that the value of “last” is just the origin (position of first element in map) plus all (size of map in each direction). You can get the value of last with the last() function of map_data:</p>
+
+<pre class="codeDL"><code>print(map_data.last()) # prints (30, 40, 32)  corner of unit cell of map
+</code></pre>
+
+<p>You can get the value of the actual end of the array if you supply the argument False to  the last() function of map_data:</p>
+
+<pre class="codeDL"><code>print(map_data.last(False)) # prints (29, 39, 31) corner of available map
+</code></pre>
+
+<p>Let’s notice the total size of this array:</p>
+
+<pre class="codeDL"><code>print(map_data.size())    # prints 38400 = 30 x 40 x 32
+</code></pre>
+
+<p>The origin, focus, last, and all of a 3D flex.double() array all are properties of the accessor for the array and do not affect the data in the array.  The accessor describes how to interpret a one-dimensional array of numbers as a 3D array.</p>
+
+<p>The “reshape” function allows changing the view of the map in almost any way without changing the data in the array. This function changes the accessor to the array so that the view changes.  It modifies the array object and does not return anything.</p>
+
+<p>The related “as_1d()” function allows viewing the array as a one-dimensional array, again without changing the data in the array. It does not modify the array itself. It only returns a new view of the array.</p>
+
+<p>The “shift_origin()” function returns a view of the array where the origin of the array is shifted to (0,0,0), again without changing the data in the array, and also without changing the array itself.</p>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">The as_1d() function</h3>
+
+<p>Let’s see how these work with our example array.  First let’s just look at this data as if it were one-dimensional:</p>
+
+<pre class="codeDL"><code>map_data_as_1d = map_data.as_1d()   # 1D view of map_data
+</code></pre>
+
+
+<p>Let’s notice the total size of this 1D view of the data which will be identical to the original map_data array:</p>
+
+<pre class="codeDL"><code>print(map_data_as_1d.size())    # prints 38400, same as the original map_data
+</code></pre>
+
+
+<p>This 1d view of the map is a flex.double() array and it has lots of useful functions that the original map_data object did not have.  Let’s set the value of the 0th element of map_data_as_1d to 100:</p>
+
+<pre class="codeDL"><code>map_data_as_1d[0] = 100.   # set a value in map_data_as_1d
+print (map_data_as_1d[0])  # prints 100.
+</code></pre>
+
+<p>The 0th element of this 1d array (map_data_as_1d) is the same data as the [0,0,0] element of the array when viewed as a 3D array (map_data). We can print that out too and it has  the same value:</p>
+
+<pre class="codeDL"><code>print (map_data[0,0,0])  # prints 100.
+</code></pre>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">The reshape() function</h3>
+
+<p>If we would like to shift the origin of this map to (10,0,0) we can construct a new accessor that has the origin we want and then use the reshape function to reshape this map. The “grid” function is the way to construct a new accessor:</p>
+
+<pre class="codeDL"><code>from scitbx.array_family.flex import grid
+new_acc = grid((10,0,0), (40,40,32))  # now from (10,0,0) to (40,40,32)
+</code></pre>
+
+<p>The first tuple (10,0,0) specifies the origin of the map and the second tuple (40,40,32) specifies the “last” of the map.  Note that “last” is one more than the ending grid point in each direction, so this map is going to end at (39,39,31).   The number of elements in the map are (39 - 10 + 1) along x, (39 - 0 + 1) along y and (31 - 0 + 1) along z, for a total of 30x40x32 or 38400 grid points.</p>
+
+<p>Then we set the accessor in map_data with the reshape function:</p>
+
+<pre class="codeDL"><code>map_data.reshape(new_acc) #  reshape map_data
+map_data.accessor().show_summary()  # summarize map_data now
+</code></pre>
+
+<p>which yields:</p>
+
+<pre class="CodeGreen"><code>origin: (10, 0, 0)
+last: (40, 40, 32)
+focus: (40, 40, 32)
+all: (30, 40, 32)
+</code></pre>
+
+<p>The new view of map_data has an origin at (10,0,0) and ends at (39,39,31) instead of (29,39,31). Keep in mind that the data in map_data is actually exactly the same before and after this reshaping.  All that is happening is that the accessor is changed, so our view of map_data is different. Note that the new accessor has to have the same size as the original one (the value of map_data.size()) representing the total number of elements in the map).</p>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">The shift_origin() function</h3>
+
+<p>We can shift the origin of an array that is not at (0,0,0) to an origin of (0,0,0) if we want using the shift_origin() function.  Note that this function does not work quite the way you might imagine:  it returns an array that has a new accessor but the same data as the original array.  The original array is unchanged by the shift_origin() function.</p>
+
+<p>Let’s see how this works by setting a value in our original array and seeing what happens to the value in our new array.  We will use 1-dimensional views of the array to make it easy to see what element in the arrays to look at.</p>
+
+<p>Let’s set the value of the 27th element of map_data_as_1d to 100:</p>
+
+<pre class="codeDL"><code>map_data_as_1d = map_data.as_1d()   # 1D view of map_data
+map_data_as_1d[27] = 100.   # set a value in map_data_as_1d
+print (map_data_as_1d[27])  # prints 100.
+</code></pre>
+
+<p>Now let’s get a new view of map_data where the origin is shifted to (0,0,0). The 27th element is still 100:</p>
+
+<pre class="codeDL"><code>map_data_new_origin = map_data.shift_origin()  # shift and make new array
+map_data_new_origin_as_1d = map_data_new_origin.as_1d() # 1D view
+print (map_data_new_origin_as_1d[27])  # prints 100 again
+</code></pre>
+
+<p>If we change the 27th element of map_data, it changes map_data_new_origin too:</p>
+
+<pre class="codeDL"><code>map_data_as_1d[27] = 200   # set a new value in map_data
+print (map_data_new_origin_as_1d[27])  # prints 200
+</code></pre>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-3">Getting indices of selected elements with iselection</h3>
+
+<p>Let’s suppose we want to create a list of all the elements in a 3D flex array that have values bigger than 100. (Perhaps these points define a region in the map that we are interested in working with later).  Let’s set a few (notice that we can use one-dimensional indices in brackets or three-dimensional indices in brackets to read or set map_data):</p>
+
+<pre class="codeDL"><code>map_data[0] = 200   # set a few values to 200
+map_data[27] = 200   # set a few values to 200
+map_data[3973] = 200   # set a few values to 200
+</code></pre>
+
+<p>We can find all these elements with a selection:</p>
+
+<pre class="codeDL"><code>sel = (map_data > 100)   #  select all map data elements > 100
+</code></pre>
+
+<p>The selection sel is a 3D bool (logical) array of the same size and shape as map_data. Its values are True wherever the value of map_data is bigger than 100.  Let’s see how many are True:</p>
+
+<pre class="codeDL"><code>print (sel.count(True))   # prints 3, the number of True elements
+</code></pre>
+
+<p>Now we get a list of the indices where sel is True using the iselection function:</p>
+
+<pre class="codeDL"><code>isel = sel.iselection()  # list of indices the elements in sel that are True
+print (isel.size())   # prints 3, how many elements are in isel
+print (list(isel))   # prints [0, 27, 3973]
+</code></pre>
+
+<p>If we wanted to, we could set the values of all these selected elements of our array to some new value:</p>
+
+<pre class="codeDL"><code>map_data.set_selected(sel, 300)  # set selected elements of map_data to 300
+</code></pre>
+
+
+</div>
+
+<!-- sidebar, which will move to the top on a small screen -->
+<div class="col-sm-3 mt-5">
+  <nav id="toc" data-toggle="toc"></nav>
+</div>
+
+
+
+{% endblock %}

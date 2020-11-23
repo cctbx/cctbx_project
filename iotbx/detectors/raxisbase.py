@@ -74,34 +74,35 @@ class Raxis(object):
     self.file = file
 
   def readHeader(self,verbose=0):
-    self.F = open(self.file,'rb')
-    self.head={}
-    seek = 0
-    for item in header_struct:
-      if item[0]==None:
-        self.F.read(item[1])
-      elif item[2]=='s':
-        self.head[item[0]]=self.F.read(item[1])[0:item[1]]
-        if verbose:print(item[0],self.head[item[0]])
-      elif len(item[2])>2:
-        rawdata = self.F.read(item[1])
-        assert len(rawdata)==struct.calcsize(item[2])
-        self.head[item[0]] = struct.unpack(item[2],rawdata)
-        if verbose:print(item[0],self.head[item[0]])
-      else:
-        rawdata = self.F.read(item[1])
-        assert len(rawdata)==struct.calcsize(item[2])
-        self.head[item[0]] = struct.unpack(item[2],rawdata)[0]
-        if verbose:print(item[0],self.head[item[0]])
-      seek+=item[1]
+    with open(self.file,'rb') as F:
+      self.head={}
+      seek = 0
+      for item in header_struct:
+        if item[0]==None:
+          F.read(item[1])
+        elif item[2]=='s':
+          self.head[item[0]]=F.read(item[1])[0:item[1]]
+          if verbose:print(item[0],self.head[item[0]])
+        elif len(item[2])>2:
+          rawdata = F.read(item[1])
+          assert len(rawdata)==struct.calcsize(item[2])
+          self.head[item[0]] = struct.unpack(item[2],rawdata)
+          if verbose:print(item[0],self.head[item[0]])
+        else:
+          rawdata = F.read(item[1])
+          assert len(rawdata)==struct.calcsize(item[2])
+          self.head[item[0]] = struct.unpack(item[2],rawdata)[0]
+          if verbose:print(item[0],self.head[item[0]])
+        seek+=item[1]
 
   def data(self):
     Dim0 = self.head['nFast'] #number of fast pixels
     ToRead = self.head['record_length']
     ReadLines = self.head['number_records']
 
-    self.F.seek(ToRead)
-    raw_data = self.F.read(ToRead * ReadLines)
+    with open(self.file,'rb') as F:
+      F.seek(ToRead)
+      raw_data = F.read(ToRead * ReadLines)
 
     # For a normal image, there should be no padding per line
     # Each line might be padded, so figure this out

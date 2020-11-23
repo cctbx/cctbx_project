@@ -64,8 +64,7 @@ class cablam_idealization(object):
     if not self.params.enabled:
       return
 
-    # with open("in.pdb",'w') as f:
-    #   f.write(self.model.model_as_pdb())
+    self.model.process_input_model(make_restraints=True)
 
     print("CaBLAM idealization", file=self.log)
 

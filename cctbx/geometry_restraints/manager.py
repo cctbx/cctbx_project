@@ -23,37 +23,6 @@ from cctbx.geometry_restraints.linking_class import linking_class
 origin_ids = linking_class()
 from cctbx.geometry_restraints.base_geometry import Base_geometry
 
-#from mmtbx.geometry_restraints.hbond import get_simple_bonds
-
-# All proxies have attribute "origin_id" which should reflect the origin of
-# corresponding proxy. E.g. origin_id=0 (Default value) will correspond to the
-# most basic proxies, from covalent geometry. origin_id=1 will correspond to
-# h-bonds, h-angles restraints etc. Ideally, only this manager should be
-# aware of this separation. 'Knowledge' about origin_id values and their meaning
-# should NOT be used in any other place except when creating proxies!
-# Everything needed should be implemented as methods of this class.
-# Ideally, nobody should access proxies directly and call any of their methods.
-# So the list of origin_id:
-# bonds: 0 - covalent geometry
-#        1 - hydrogen bonds: both for protein SS and for NA basepairs
-#        2 - metal coordination
-#        3 - geometry_resraints.edits from users
-# angles: 0 - covalent geometry
-#         1 - angle restraints associated with NA basepair hydrogen bonds
-#         2 - metal coordination
-#         3 - geometry_resraints.edits from users
-# dihedral(torsion): 0 - covalent geometry
-#                    1 - C-beta restraints
-#                    2 - Torsion restraints on chi angles (side-chain rotamers)
-#                    3 - geometry_resraints.edits from users
-# chirality: 0 - covalent geometry
-# planarity: 0 - covalent geometry
-#            1 - planarity restraints for NA basepairs
-#            3 - geometry_resraints.edits from users
-# parallelity: 0 - stacking interaction for NA
-#              1 - restraint for NA basepairs
-#              3 - geometry_resraints.edits from users
-
 class manager(Base_geometry):
 # This class is documented in
 # http://www.phenix-online.org/papers/iucrcompcomm_aug2004.pdf
@@ -853,9 +822,10 @@ class manager(Base_geometry):
         pdb_hierarchy=hierarchy,
         grm=self,
         log=log)
+    # print ('Total proxies:', len(hb_proxies))
     # for p in hb_proxies:
-    #   print p.i_seqs[0], p.i_seqs[1], hierarchy.atoms()[p.i_seqs[0]].id_str(), '<-->', hierarchy.atoms()[p.i_seqs[1]].id_str(),
-    #   print hierarchy.atoms()[p.i_seqs[0]].distance(hierarchy.atoms()[p.i_seqs[1]])
+    #   print (p.i_seqs[0], p.i_seqs[1], hierarchy.atoms()[p.i_seqs[0]].id_str(), '<-->', hierarchy.atoms()[p.i_seqs[1]].id_str())
+    #   print ("  ", hierarchy.atoms()[p.i_seqs[0]].distance(hierarchy.atoms()[p.i_seqs[1]]))
     self.add_new_hbond_restraints_in_place(
         proxies=hb_proxies,
         sites_cart=hierarchy.atoms().extract_xyz(),
@@ -1040,6 +1010,8 @@ class manager(Base_geometry):
     paired atoms is determined here, therefore the proxy.rt_mx_ji may be
     anything."""
     import time
+    if len(proxies) == 0:
+      return
     rt_mx_ji_options = [[] for x in proxies]
     # Get current max bond distance, copied from pair_proxies()
     t0 = time.time()
@@ -1776,18 +1748,16 @@ class manager(Base_geometry):
       yield bond
 
   def get_struct_conn_mmcif(self, hierarchy):
-    from iotbx.pdb.utils import all_label_asym_ids
     atoms = hierarchy.atoms()
-    label_asym_ids = all_label_asym_ids()
     def _atom_info(atom):
       return [  # auth
-                atom.parent().resname,
+                atom.parent().resname.strip(),
                 atom.parent().parent().parent().id,
                 atom.parent().parent().resseq.strip(),
                 atom.name.strip(),
                 # label
-                atom.parent().resname,
-                label_asym_ids[atom.tmp],
+                atom.parent().resname.strip(),
+                hierarchy.get_label_asym_id(atom.parent().parent()),
                 hierarchy.get_label_seq_id(atom.parent()),
                 atom.name.strip(),
                 '.', # role
@@ -1837,6 +1807,7 @@ class manager(Base_geometry):
       assert origin_id_info
       if origin_id_info[0]=='SS BOND': row.append('disulf')
       elif origin_id_info[0]=='metal coordination': row.append('metalc')
+      elif origin_id_info[0]=='hydrogen bonds': row.append('hydrog')
       else: row.append('covale')
       row += _atom_info_grouped(bond)
       if len(origin_id_info)>2 and origin_id_info[2]:
@@ -1849,6 +1820,13 @@ class manager(Base_geometry):
   def get_cif_link_entries(self, mon_lib_srv):
     from cctbx.geometry_restraints.auto_linking_types import origin_ids
     links = iotbx.cif.model.cif()
+    # not sure why this is the case but these are missing from origin_ids
+    done = ['POST-BETA-TRANS',
+            'PRE-BETA-TRANS',
+            'SSRAD',
+            'rna2p',
+            'rna3p',
+            ]
     for i, bond in enumerate(self._bond_generator()):
       row = ['C%05d' % (i+1)]
       origin_id_info = origin_ids[0].get(bond.origin_id, None)
@@ -1857,8 +1835,17 @@ class manager(Base_geometry):
       link_key = 'link_%s' % origin_id_info[0]
       if origin_id_info[0]=='SS BOND':
         links['link_SS'] = mon_lib_srv.link_link_id_dict['SS'].as_cif_block()
-      elif origin_id_info[0]=='Misc. bond':
-        pass
+      elif origin_id_info[0]=='User supplied cif_link':
+        tlinks = []
+        for origin_id in origin_ids:
+          for oi, item in origin_id.items():
+            tlinks.append(item[0])
+          break
+        for tkey, item in sorted(mon_lib_srv.link_link_id_dict.items()):
+          if tkey in done: continue
+          done.append(tkey)
+          if tkey not in tlinks and 'link_%s' % tkey not in tlinks:
+            links['link_%s' % tkey] = item.as_cif_block()
       elif key in mon_lib_srv.link_link_id_dict:
         links['link_%s' % key] = mon_lib_srv.link_link_id_dict[key].as_cif_block()
       elif origin_id_info[0] in ['hydrogen bonds',

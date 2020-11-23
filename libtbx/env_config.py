@@ -876,7 +876,7 @@ Wait for the command to finish, then try again.""" % vars())
   def process_module(self, dependent_module, module_name, optional):
     dist_path = self.find_dist_path(module_name, optional=optional)
     if (dist_path is None): return False
-    if abs(dist_path).startswith(sys.prefix):
+    if self.module_is_installed(module_name):
       print("{module_name} is already installed".format(module_name=module_name))
       installed_env = get_installed_env()
       if module_name in installed_env.module_dict:
@@ -971,6 +971,11 @@ Wait for the command to finish, then try again.""" % vars())
         enable_cxx11=command_line.options.enable_cxx11,
         skip_phenix_dispatchers=command_line.options.skip_phenix_dispatchers)
       self.build_options.get_flags_from_environment()
+      # if an installed environment exists, override with build_options
+      # from installed environment
+      installed_env = get_installed_env()
+      if installed_env is not None:
+        self.build_options = installed_env.build_options
       if (self.build_options.use_conda):
         get_conda_prefix()
       if (command_line.options.command_version_suffix is not None):
@@ -997,7 +1002,8 @@ Wait for the command to finish, then try again.""" % vars())
             if module_name not in installed_module_names \
               and module_name != 'boost':
               from libtbx.env_config import module
-              dist_path = installed_env.as_relocatable_path(dist_path)
+              if dist_path is not None:
+                dist_path = installed_env.as_relocatable_path(dist_path)
               installed_module = module(env=self, name=module_name, dist_path=dist_path)
               self.installed_modules.append(installed_module)
               installed_module_names.add(module_name)
@@ -2222,17 +2228,6 @@ selfx:
         # Reload the libtbx_config in case dependencies have changed
         module.process_libtbx_config()
 
-      # Resolve python dependencies in advance of potential use in refresh scripts
-      # Lazy-load the import here as we might not have an environment before this
-      try:
-        from . import pkg_utils
-      except ImportError:
-        from libtbx import pkg_utils
-      if self.build_options.use_conda:
-        pkg_utils.resolve_module_conda_dependencies(self.module_list)
-      else:
-        pkg_utils.resolve_module_python_dependencies(self.module_list)
-
       for path in self.pythonpath:
         sys.path.insert(0, abs(path))
       for module in self.module_list:
@@ -3121,13 +3116,27 @@ def get_installed_env():
   """
   return _get_env(get_installed_path())
 
-def get_local_env():
+def get_local_env(build_dir=None):
   """
-  Returns the local environment in the current working directory or None
-  if it does not exist.
+  Returns the local environment from build_dir or None
+  if it does not exist. By default, build_dir is set to the current
+  working directory.
+
+  Parameters
+  ----------
+    build_dir: str
+      The directory with the local environment. Defaults to the current
+      working directory
+
+  Returns
+  -------
+    env: libtbx.env_config.environment or None
+      The environment loaded from build_dir or None if it does not
   """
+  if build_dir is None:
+    build_dir = os.getcwd()
   env = None
-  for p in [os.getcwd()] + sys.path:
+  for p in [build_dir] + sys.path:
     e = _get_env(p)
     if e is not None:
       env = e

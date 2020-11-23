@@ -88,17 +88,17 @@ def write_plots(method, rot_scale=2, rot_step=1, c_truncate_at=-2e4):
     def write(deriv, plots):
       file_name = "angle_%d_%s_%s.xy" % (angle_ideal, deriv, method)
       plot_file_names.append(file_name)
-      f = open(file_name, "w")
-      print("@with g0", file=f)
-      print('@ title "%s ideal=%d method=%s"' % (
-        deriv, angle_ideal, method), file=f)
-      for j in range(3):
-        print('@ s%d legend "%s"' % (j, "xyz"[j]), file=f)
-      for plot in plots:
-        for x,y in plot:
-          if (deriv == "curv" and y < c_truncate_at): y = c_truncate_at
-          print(x,y, file=f)
-        print("&", file=f)
+      with open(file_name, "w") as f:
+        print("@with g0", file=f)
+        print('@ title "%s ideal=%d method=%s"' % (
+          deriv, angle_ideal, method), file=f)
+        for j in range(3):
+          print('@ s%d legend "%s"' % (j, "xyz"[j]), file=f)
+        for plot in plots:
+          for x,y in plot:
+            if (deriv == "curv" and y < c_truncate_at): y = c_truncate_at
+            print(x,y, file=f)
+          print("&", file=f)
     write(deriv="grad", plots=g_plots)
     write(deriv="curv", plots=c_plots)
   return plot_file_names
