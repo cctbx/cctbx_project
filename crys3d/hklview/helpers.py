@@ -177,26 +177,8 @@ class MillerArrayTableModel(QAbstractTableModel):
     self.layoutChanged.emit()
 
 
-
 # Dialog box with MatPlotLib colour gradient charts from 
 # http://matplotlib.org/examples/color/colormaps_reference.html
-
-cmaps = [  'viridis', 'plasma', 'inferno', 'magma',
-            'Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds',
-            'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu',
-            'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn',
-            'binary', 'gist_yarg', 'gist_gray', 'gray', 'bone', 'pink',
-            'spring', 'summer', 'autumn', 'winter', 'cool', 'Wistia',
-            'hot', 'afmhot', 'gist_heat', 'copper',
-            'PiYG', 'PRGn', 'BrBG', 'PuOr', 'RdGy', 'RdBu',
-            'RdYlBu', 'RdYlGn', 'Spectral', 'coolwarm', 'bwr', 'seismic',
-            'Pastel1', 'Pastel2', 'Paired', 'Accent',
-            'Dark2', 'Set1', 'Set2', 'Set3',
-            'tab10', 'tab20', 'tab20b', 'tab20c',
-            'flag', 'prism', 'ocean', 'gist_earth', 'terrain', 'gist_stern',
-            'gnuplot', 'gnuplot2', 'CMRmap', 'cubehelix', 'brg', 'hsv',
-            'gist_rainbow', 'rainbow', 'jet', 'nipy_spectral', 'gist_ncar'
-          ]
 
 import numpy as np
 import sys, time
@@ -206,47 +188,54 @@ from PySide2.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-
+# list all colour maps except their reverse which end with "_r"
+cmaps = [ c for c in plt.colormaps() if "_r" not in c]
 gradient = np.linspace(0, 1, 256)
 gradient = np.vstack((gradient, gradient))
 
-dpi=100
+dpi=50
 
 
 class MplCanvas(FigureCanvas):
   def __init__(self, parent=None, width=5, height=4, dpi=dpi):
-    self.selcolmap = ""
     self.parent=parent
     self.fig = Figure(figsize=(10, 20), dpi=dpi, facecolor=(1, 1, 1), edgecolor=(0.5, 0, 0))
     self.axes = self.fig.subplots(nrows=len(cmaps), ncols=1)
-    self.fig.subplots_adjust(top=0.995, bottom=0.01, left=0.20, right=0.98)
-    self.fig.set_size_inches(7,40)
+    # alignment of each subplot.
+    self.fig.subplots_adjust(top=0.995, 
+                             bottom=0.01, 
+                             left=0.22, # leave room for the label naming this colour map
+                             right=0.98 # leave a small gap before edge of canvas
+                             )
+    # total size of canvas
+    self.fig.set_size_inches(7,40) # total size of canvas
     super(MplCanvas, self).__init__(self.fig)
     cid = self.fig.canvas.mpl_connect('button_press_event', self.on_press)
 
   def on_press(self, event):
-    print("waffle")
     if event.inaxes is not None:
-      self.selcolmap = cmaps[event.inaxes.get_subplotspec().rowspan.start]
-      self.parent.labeltxt.setText('Selected colour gradient map: %s' %self.selcolmap )
+      self.parent.selcolmap = cmaps[event.inaxes.get_subplotspec().rowspan.start]
+      self.parent.labeltxt.setText('Selected colour gradient map: %s' %self.parent.selcolmap )
 
-app = QtWidgets.QApplication(sys.argv)
-
-
+# TODO work out scaling of canvas to match QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+# and
 class MPLColourSchemes(QtWidgets.QDialog):
-  def __init__(self, *args, **kwargs):
-    super(MPLColourSchemes, self).__init__(*args, **kwargs)
+  def __init__(self, parent=None):
+    super(MPLColourSchemes, self).__init__(parent.window)
+    self.parent = parent
+    self.isOK = False
+    self.selcolmap = ""
     #self.setWindowFlags(Qt.Tool)
     # Create the maptlotlib FigureCanvas object, 
     # which defines a single set of axes as self.axes.
     self.labeltxt = QtWidgets.QLabel()
-    self.labeltxt.setText("Select a colour gradient mapping for data values")
+    self.labeltxt.setText("Select a gradient map for colouring data values")
     sc = MplCanvas(self, dpi=dpi)
     for ax, name in zip(sc.axes, cmaps):
       ax.imshow(gradient, aspect='auto', cmap=plt.get_cmap(name))
       ax.set_axis_off()
       pos = list(ax.get_position().bounds)
-      x_text = pos[0] - 0.19
+      x_text = pos[0] - 0.21
       y_text = pos[1] + pos[3]/2.
       sc.fig.text(x_text, y_text, name, va='center', ha='left', fontsize=15)
     #sc.fig.tight_layout()
@@ -254,23 +243,43 @@ class MPLColourSchemes(QtWidgets.QDialog):
     scroll.setWidget(sc)
     scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
     scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-    OKbtn = QtWidgets.QPushButton("OK")
-    Cancelbtn =  QtWidgets.QPushButton("Cancel")
-    vbox = QtWidgets.QVBoxLayout() 
-    vbox.addWidget(self.labeltxt)
-    vbox.addWidget(scroll)
-    vbox.addWidget(OKbtn)
-    vbox.addWidget(Cancelbtn)
-
-    self.setLayout(vbox)
-    scw = app.style().pixelMetric(QtWidgets.QStyle.PM_ScrollBarExtent)
-    self.setFixedWidth(sc.width() + scw*2 )
+    self.reversecheckbox = QtWidgets.QCheckBox()
+    self.reversecheckbox.setText("Reverse colour mapping")
+    self.reversecheckbox.clicked.connect(self.onReverseMap)
+    self.OKbtn = QtWidgets.QPushButton("OK")
+    self.OKbtn.clicked.connect(self.onOK)
+    self.Cancelbtn =  QtWidgets.QPushButton("Cancel")
+    self.Cancelbtn.clicked.connect(self.onCancel)
+    gridlayout = QtWidgets.QGridLayout() 
+    gridlayout.addWidget(self.labeltxt,          0, 0, 1, 2)
+    gridlayout.addWidget(self.reversecheckbox,   1, 0, 1, 2)
+    gridlayout.addWidget(scroll,                 2, 0, 1, 2)
+    gridlayout.addWidget(self.OKbtn,             3, 0, 1, 1)
+    gridlayout.addWidget(self.Cancelbtn,         3, 1, 1, 1)
+    self.setLayout(gridlayout)
+    scw = self.parent.app.style().pixelMetric(QtWidgets.QStyle.PM_ScrollBarExtent)
+    self.setFixedWidth(sc.width() + scw*2 ) # fudge
     #self.setFixedWidth(sc.width() +scroll.verticalScrollBar().width() )
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    self.show()
 
+  def onOK(self):
+    self.isOK = True
+    if hasattr(self.parent,"onColourChartSelect"):
+      self.parent.onColourChartSelect(self.selcolmap)
+    self.hide()
 
+  def onCancel(self):
+    self.isOK = False
+    self.hide()
 
+  def onReverseMap(self):
+    if self.reversecheckbox.isChecked():
+      if not self.selcolmap.endswith( "_r"):
+        self.selcolmap = self.selcolmap + "_r"
+    else:
+      if self.selcolmap.endswith( "_r"):
+        self.selcolmap = self.selcolmap[:-2]
+    self.labeltxt.setText('Selected colour gradient map: %s' %self.selcolmap )
 
 
 

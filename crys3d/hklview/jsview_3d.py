@@ -1453,6 +1453,8 @@ class hklview_3d:
             hklid = hklid % len(hkls)
             ttip = self.GetTooltipOnTheFly(hklid, sym_id, anomalous=True)
           self.AddToBrowserMsgQueue("ShowThisTooltip", ttip)
+        elif "doubleclick colour chart" in message:
+          self.onDoubleClickColourChart()
         else:
           if "Ready " in message:
             self.mprint( message, verbose=5)
@@ -2057,6 +2059,11 @@ Distance: %s
   def MakeColourChart(self, ctop, cleft, label, fomlabel, colourgradarray):
     msg = "%s\n\n%s\n\n%s\n\n%s\n\n%s" %(ctop, cleft, label, fomlabel, str(colourgradarray) )
     self.AddToBrowserMsgQueue("MakeColourChart", msg )
+
+
+  def onDoubleClickColourChart(self):
+    self.SendInfoToGUI( { "ColourChart":  self.viewerparams.color_scheme } )
+
 
 
 

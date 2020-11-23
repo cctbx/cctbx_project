@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
+ <author>Robert Oeffner</author>
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
   <property name="geometry">
@@ -90,7 +91,7 @@
                   <enum>QAbstractItemView::ScrollPerPixel</enum>
                  </property>
                  <property name="rowCount">
-                  <number>5</number>
+                  <number>1</number>
                  </property>
                  <property name="columnCount">
                   <number>10</number>
@@ -98,10 +99,6 @@
                  <attribute name="horizontalHeaderMinimumSectionSize">
                   <number>5</number>
                  </attribute>
-                 <row/>
-                 <row/>
-                 <row/>
-                 <row/>
                  <row/>
                  <column/>
                  <column/>
@@ -1317,6 +1314,9 @@
    <header>headerdatatablewidget.h</header>
   </customwidget>
  </customwidgets>
+ <includes>
+  <include location="local">waffle wibble</include>
+ </includes>
  <resources/>
  <connections/>
  <designerdata>
