@@ -1258,6 +1258,25 @@ function ColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays)
       addDiv2Container(container, null, topv, leftp, wp2, ih, rgbcol);
     }
   }
+
+  container.onselectstart = function ()
+  { // don't select numbers or labels on chart when double clicking the coulour chart
+    return false;
+  }
+
+  container.oncontextmenu = function (e) 
+  { // oncontextmenu captures right clicks
+    e.preventDefault()
+    alert("in oncontextmenu")
+    return false;
+  };
+
+  container.ondblclick = function (e)
+  {
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    WebsockSendMsg('doubleclick colour chart');
+  };
 }
 
 

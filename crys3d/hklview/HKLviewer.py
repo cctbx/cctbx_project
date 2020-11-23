@@ -26,7 +26,8 @@ import sys, zmq, subprocess, time, traceback, zlib, io, os
 
 try: # if invoked by cctbx.python or some such
   from crys3d.hklview import HKLviewerGui, QtChromiumCheck
-  from crys3d.hklview.helpers import MillerArrayTableView, MillerArrayTableForm, MillerArrayTableModel
+  from crys3d.hklview.helpers import ( MillerArrayTableView, MillerArrayTableForm, 
+                                     MillerArrayTableModel, MPLColourSchemes )
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
   import HKLviewerGui, QtChromiumCheck
   from helpers import MillerArrayTableView, MillerArrayTableForm, MillerArrayTableModel
@@ -213,6 +214,9 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.ttipalpha_labeltxt = QLabel()
     self.ttipalpha_labeltxt.setText("Tooltip Opacity:")
     self.ttip_click_invoke = "hover"
+
+    self.ColourMapSelectDlg = MPLColourSchemes(self)
+    self.ColourMapSelectDlg.setWindowTitle("HKL-viewer Colour Gradient Maps")
 
     self.settingsform = SettingsForm(self)
     self.webpagedebugform = None
@@ -404,6 +408,11 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
 
 
+  def onColourChartSelect(self, selcolmap): # called when user clicks OK in ColourMapSelectDlg
+    if selcolmap != "":
+      self.PhilToJsRender('NGL_HKLviewer.viewer.color_scheme = %s' %selcolmap )
+
+
   def ProcessMessages(self):
     """
     Deal with the messages posted to this GUI by cmdlineframes.py
@@ -585,6 +594,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
           if self.infodict.get("NewMillerArray"):
             self.NewMillerArray = self.infodict.get("NewMillerArray",False)
 
+          if self.infodict.get("ColourChart"):
+            self.ColourMapSelectDlg.selcolmap = self.infodict.get("ColourChart",False)
+            self.ColourMapSelectDlg.show()
+
           if self.infodict.get("bin_labels_type_idxs"):
             bin_labels_type_idxs = self.infodict.get("bin_labels_type_idxs",False)
             self.BinDataComboBox.clear() 
@@ -765,6 +778,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.fontsize = val
     self.app.setFont(font);
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
+    self.ColourMapSelectDlg.setFixedHeight( self.ColourMapSelectDlg.sizeHint().height() )
 
 
   def onBrowserFontsizeChanged(self, val):
