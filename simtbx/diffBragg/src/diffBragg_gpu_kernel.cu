@@ -13,6 +13,11 @@ void gpu_sum_over_steps(
         CUDAREAL* d_panel_rot_images, CUDAREAL* d2_panel_rot_images,
         CUDAREAL* d_panel_orig_images, CUDAREAL* d2_panel_orig_images,
         CUDAREAL* d_sausage_XYZ_scale_images,
+        CUDAREAL* d_sausage_XYZ_scale_images2,
+        CUDAREAL* d_sausage_XYZ_scale_images3,
+        CUDAREAL* d_sausage_XYZ_scale_images4,
+        CUDAREAL* d_sausage_XYZ_scale_images5,
+        CUDAREAL* d_sausage_XYZ_scale_images6,
         int* subS_pos, int* subF_pos, int* thick_pos,
         int* source_pos, int* phi_pos, int* mos_pos, int* sausage_pos,
         const int Nsteps, int _printout_fpixel, int _printout_spixel, bool _printout, CUDAREAL _default_F,
@@ -390,7 +395,7 @@ void gpu_sum_over_steps(
 
             // sausage deriv
           if (refine_sausages){
-              MAT3 UBOt = U*Bmat_realspace*(eig_O.transpose());
+              MAT3 UBOt = eig_U*Bmat_realspace*(eig_O.transpose());
               int x = _sausage_tic*3;
               int y = _sausage_tic*3+1;
               int z = _sausage_tic*3+2;
@@ -445,6 +450,13 @@ void gpu_sum_over_steps(
                  printf("default_F= %f\n", _default_F);
                  printf("Incident[0]=%g, Incident[1]=%g, Incident[2]=%g\n", _incident[0], _incident[1], _incident[2]);
                  printf("source_path %g\n", _source_path);
+                 for (int i_saus=0; i_saus<num_sausages; i_saus++){
+                   printf("Sausages U (i_sausage=%d, scale=%f) :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
+                    i_saus,sausages_scale[i_saus],
+                    sausages_U[i_saus](0,0),  sausages_U[i_saus](0,1), sausages_U[i_saus](0,2),
+                    sausages_U[i_saus](1,0),  sausages_U[i_saus](1,1), sausages_U[i_saus](1,2),
+                    sausages_U[i_saus](2,0),  sausages_U[i_saus](2,1), sausages_U[i_saus](2,2));
+                 }
               }
           }
 
@@ -576,9 +588,21 @@ void gpu_sum_over_steps(
                for (int i=0; i < 4; i++){
                    int sausage_parameter_i = i_sausage*4+i;
                    double value = _scale_term*sausage_manager_dI[sausage_parameter_i];
-                   int idx = sausage_parameter_i*Npix_to_model + i_pix;
-                   d_sausage_XYZ_scale_images[idx] = value;
-               }
+                   //int idx = sausage_parameter_i*Npix_to_model + i_pix;
+                   int idx = i*Npix_to_model + i_pix;
+                   if (i_sausage==0)
+                       d_sausage_XYZ_scale_images[idx] = value;
+                   else if (i_sausage==1)
+                       d_sausage_XYZ_scale_images2[idx] = value;
+                   else if (i_sausage==2)
+                       d_sausage_XYZ_scale_images3[idx] = value;
+                   else if (i_sausage==3)
+                       d_sausage_XYZ_scale_images4[idx] = value;
+                   else if (i_sausage==4)
+                       d_sausage_XYZ_scale_images5[idx] = value;
+                   else if (i_sausage==5)
+                       d_sausage_XYZ_scale_images6[idx] = value;
+                   }
            }
        }
        // end sausage

@@ -99,6 +99,7 @@ SIM.add_air = True
 SIM.add_water = True
 SIM.include_noise = True
 SIM.D.use_cuda = args.cuda
+SIM.D.printout_pixel_fastslow = 100, 100
 SIM.D.add_diffBragg_spots()
 SPOTS = SIM.D.raw_pixels_roi.as_numpy_array()
 sausages_scale = 0.5, 0.1
@@ -118,8 +119,9 @@ SIM.D.raw_pixels_roi *= 0
 NUM_SAUSAGES = 3
 SIM.D.update_number_of_sausages(NUM_SAUSAGES)
 SIM.D.refine(SAUSAGE_ID)
-SIM.D.printout_pixel_fastslow = 100,100
+SIM.D.printout_pixel_fastslow = 100, 100
 SIM.D.add_diffBragg_spots()
+
 derivs = SIM.D.get_sausage_derivative_pixels()
 if np.allclose( derivs[0], derivs[4]):
   print(1)

@@ -1694,6 +1694,11 @@ void diffBragg::allocate_sausages(){
         sausage_managers.push_back(sausage_rotZ);
         sausage_scale_managers.push_back(sausage_scale_man);
     }
+    #ifdef NANOBRAGG_HAVE_CUDA
+    if (use_cuda || getenv("DIFFBRAGG_USE_CUDA") != NULL){
+        gpu_free();  // free to ensure we re-allocate space for new mosaic textures (sausages)
+    }
+    #endif
 }
 
 } // end of namespace nanoBragg

@@ -52,7 +52,9 @@ void diffBragg_loopy(
         std::vector<MAT3,Eigen::aligned_allocator<MAT3> >& UMATS,
         std::vector<MAT3,Eigen::aligned_allocator<MAT3> >& dB_Mats,
         std::vector<MAT3,Eigen::aligned_allocator<MAT3> >& dB2_Mats,
-        eigMat3_vec& sausages_RXYZ, eigMat3_vec& d_sausages_RXYZ, eigMat3_vec& sausages_U,
+        std::vector<MAT3,Eigen::aligned_allocator<MAT3> >&sausages_RXYZ,
+        std::vector<MAT3,Eigen::aligned_allocator<MAT3> >& d_sausages_RXYZ,
+        std::vector<MAT3,Eigen::aligned_allocator<MAT3> >& sausages_U,
         image_type& sausages_scale, // TODO adjust sausages_scale type
         CUDAREAL* source_X, CUDAREAL* source_Y, CUDAREAL* source_Z, CUDAREAL* source_lambda, CUDAREAL* source_I,
         CUDAREAL kahn_factor,
@@ -160,7 +162,12 @@ void diffBragg_loopy(
         gpuErr(cudaMallocManaged(&cp.cu_d_panel_orig_images, Npix_to_model*3*sizeof(CUDAREAL)));
         gpuErr(cudaMallocManaged(&cp.cu_d_lambda_images, Npix_to_model*2*sizeof(CUDAREAL)));
         gpuErr(cudaMallocManaged(&cp.cu_d_Bmat_images, Npix_to_model*6*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images, Npix_to_model*4*num_sausages*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images, Npix_to_model*4*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images2, Npix_to_model*4*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images3, Npix_to_model*4*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images4, Npix_to_model*4*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images5, Npix_to_model*4*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images6, Npix_to_model*4*sizeof(CUDAREAL)));
         //gettimeofday(&t4, 0);
         //time = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
         //printf("TIME SPENT ALLOCATING (IMAGES ONLY):  %3.10f ms \n", time);
@@ -320,25 +327,6 @@ void diffBragg_loopy(
     }
 //  END panel derivative vecs
 
-
-//  BEGIN IMAGES
-    //for (int i = 0; i < N; i++){
-    //    cp.cu_floatimage[i] = floatimage[i];
-    //    cp.cu_d_fcell_images[i] = d_fcell_images[i];
-    //    cp.cu_d_eta_images[i] = d_eta_images[i];
-    //}
-    //for(int i=0; i<3*N; i++){
-    //    cp.cu_d_Umat_images[i] = d_Umat_images[i];
-    //    cp.cu_d_Ncells_images[i] = d_Ncells_images[i];
-    //    cp.cu_d_panel_rot_images[i] = d_panel_rot_images[i];
-    //    cp.cu_d_panel_orig_images[i] = d_panel_orig_images[i];
-    //}
-    //for(int i=0; i<2*N; i++)
-    //    cp.cu_d_lambda_images[i] = d_lambda_images[i];
-    //for(int i=0; i<6*N;i++)
-    //    cp.cu_d_Bmat_images[i] = d_Bmat_images[i];
-//  END IMAGES
-
 //  BEGIN panels fasts slows
     if (update_panels_fasts_slows || ALLOC || FORCE_COPY){
         for (int i=0; i< panels_fasts_slows.size(); i++)
@@ -370,6 +358,11 @@ void diffBragg_loopy(
         cp.cu_d_panel_rot_images, cp.cu_d2_panel_rot_images,
         cp.cu_d_panel_orig_images, cp.cu_d2_panel_orig_images,
         cp.cu_d_sausage_XYZ_scale_images,
+        cp.cu_d_sausage_XYZ_scale_images2,
+        cp.cu_d_sausage_XYZ_scale_images3,
+        cp.cu_d_sausage_XYZ_scale_images4,
+        cp.cu_d_sausage_XYZ_scale_images5,
+        cp.cu_d_sausage_XYZ_scale_images6,
         cp.cu_subS_pos, cp.cu_subF_pos, cp.cu_thick_pos,
         cp.cu_source_pos, cp.cu_phi_pos, cp.cu_mos_pos, cp.cu_sausage_pos,
         Nsteps, _printout_fpixel, _printout_spixel, _printout, _default_F,
@@ -436,8 +429,33 @@ void diffBragg_loopy(
     for(int i=0; i<2*Npix_to_model; i++)
         d_lambda_images[i] = cp.cu_d_lambda_images[i];
 
-    for (int i=0; i< 4*num_sausages*Npix_to_model;i++)
+    for (int i=0; i< 4*Npix_to_model; i++)
         d_sausage_XYZ_scale_images[i] = cp.cu_d_sausage_XYZ_scale_images[i];
+
+    if( num_sausages>1){
+        for (int i=0; i< 4*Npix_to_model; i++)
+            d_sausage_XYZ_scale_images[4*Npix_to_model+ i] = cp.cu_d_sausage_XYZ_scale_images2[i];
+    }
+    if( num_sausages >2){
+        for (int i=0; i< 4*Npix_to_model; i++)
+            d_sausage_XYZ_scale_images[4*Npix_to_model*2 + i] = cp.cu_d_sausage_XYZ_scale_images3[i];
+    }
+    if( num_sausages >3){
+        for (int i=0; i< 4*Npix_to_model; i++)
+            d_sausage_XYZ_scale_images[4*Npix_to_model*3+i] = cp.cu_d_sausage_XYZ_scale_images4[i];
+    }
+    if( num_sausages >4){
+        for (int i=0; i< 4*Npix_to_model; i++)
+            d_sausage_XYZ_scale_images[4*Npix_to_model*4+ i] = cp.cu_d_sausage_XYZ_scale_images5[i];
+    }
+    if( num_sausages >5){
+        for (int i=0; i< 4*Npix_to_model; i++)
+            d_sausage_XYZ_scale_images[4*Npix_to_model*5+i] = cp.cu_d_sausage_XYZ_scale_images6[i];
+    }
+    //gpuErr(
+    //    cudaMemcpy(&d_sausage_XYZ_scale_images[0], cp.cu_d_sausage_XYZ_scale_images,
+    //        4*Npix_to_model*num_sausages*sizeof(CUDAREAL), cudaMemcpyDeviceToHost)
+    //    );
 
     gettimeofday(&t2, 0);
     time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
@@ -449,68 +467,75 @@ void diffBragg_loopy(
 
 void freedom(diffBragg_cudaPointers& cp){
 
-    gpuErr(cudaFree( cp.cu_floatimage));
-    gpuErr(cudaFree( cp.cu_d_Umat_images));
-    gpuErr(cudaFree( cp.cu_d_Bmat_images));
-    gpuErr(cudaFree( cp.cu_d_Ncells_images));
-    gpuErr(cudaFree( cp.cu_d_eta_images));
-    gpuErr(cudaFree( cp.cu_d_fcell_images));
-    gpuErr(cudaFree( cp.cu_d_lambda_images));
-    gpuErr(cudaFree( cp.cu_d_panel_rot_images));
-    gpuErr(cudaFree( cp.cu_d_panel_orig_images));
-    gpuErr(cudaFree( cp.cu_d_sausage_XYZ_scale_images));
+    if (cp.device_is_allocated){
+        gpuErr(cudaFree( cp.cu_floatimage));
+        gpuErr(cudaFree( cp.cu_d_Umat_images));
+        gpuErr(cudaFree( cp.cu_d_Bmat_images));
+        gpuErr(cudaFree( cp.cu_d_Ncells_images));
+        gpuErr(cudaFree( cp.cu_d_eta_images));
+        gpuErr(cudaFree( cp.cu_d_fcell_images));
+        gpuErr(cudaFree( cp.cu_d_lambda_images));
+        gpuErr(cudaFree( cp.cu_d_panel_rot_images));
+        gpuErr(cudaFree( cp.cu_d_panel_orig_images));
+        gpuErr(cudaFree( cp.cu_d_sausage_XYZ_scale_images));
+        gpuErr(cudaFree( cp.cu_d_sausage_XYZ_scale_images2));
+        gpuErr(cudaFree( cp.cu_d_sausage_XYZ_scale_images3));
+        gpuErr(cudaFree( cp.cu_d_sausage_XYZ_scale_images4));
+        gpuErr(cudaFree( cp.cu_d_sausage_XYZ_scale_images5));
+        gpuErr(cudaFree( cp.cu_d_sausage_XYZ_scale_images6));
 
-    gpuErr(cudaFree( cp.cu_subS_pos));
-    gpuErr(cudaFree( cp.cu_subF_pos));
-    gpuErr(cudaFree( cp.cu_thick_pos));
-    gpuErr(cudaFree( cp.cu_mos_pos));
-    gpuErr(cudaFree( cp.cu_phi_pos));
-    gpuErr(cudaFree( cp.cu_source_pos));
-    gpuErr(cudaFree( cp.cu_sausage_pos));
+        gpuErr(cudaFree( cp.cu_subS_pos));
+        gpuErr(cudaFree( cp.cu_subF_pos));
+        gpuErr(cudaFree( cp.cu_thick_pos));
+        gpuErr(cudaFree( cp.cu_mos_pos));
+        gpuErr(cudaFree( cp.cu_phi_pos));
+        gpuErr(cudaFree( cp.cu_source_pos));
+        gpuErr(cudaFree( cp.cu_sausage_pos));
 
 
-    gpuErr(cudaFree(cp.cu_Fhkl));
-    if (cp.cu_Fhkl2 != NULL)
-        gpuErr(cudaFree(cp.cu_Fhkl2));
+        gpuErr(cudaFree(cp.cu_Fhkl));
+        if (cp.cu_Fhkl2 != NULL)
+            gpuErr(cudaFree(cp.cu_Fhkl2));
 
-    gpuErr(cudaFree(cp.cu_fdet_vectors));
-    gpuErr(cudaFree(cp.cu_sdet_vectors));
-    gpuErr(cudaFree(cp.cu_odet_vectors));
-    gpuErr(cudaFree(cp.cu_pix0_vectors));
+        gpuErr(cudaFree(cp.cu_fdet_vectors));
+        gpuErr(cudaFree(cp.cu_sdet_vectors));
+        gpuErr(cudaFree(cp.cu_odet_vectors));
+        gpuErr(cudaFree(cp.cu_pix0_vectors));
 
-    gpuErr(cudaFree(cp.cu_source_X));
-    gpuErr(cudaFree(cp.cu_source_Y));
-    gpuErr(cudaFree(cp.cu_source_Z));
-    gpuErr(cudaFree(cp.cu_source_I));
-    gpuErr(cudaFree(cp.cu_source_lambda));
+        gpuErr(cudaFree(cp.cu_source_X));
+        gpuErr(cudaFree(cp.cu_source_Y));
+        gpuErr(cudaFree(cp.cu_source_Z));
+        gpuErr(cudaFree(cp.cu_source_I));
+        gpuErr(cudaFree(cp.cu_source_lambda));
 
-    gpuErr(cudaFree(cp.cu_UMATS));
-    gpuErr(cudaFree(cp.cu_UMATS_RXYZ));
-    if(cp.cu_UMATS_RXYZ_prime != NULL)
-        gpuErr(cudaFree(cp.cu_UMATS_RXYZ_prime));
-    gpuErr(cudaFree(cp.cu_RotMats));
-    gpuErr(cudaFree(cp.cu_dRotMats));
-    gpuErr(cudaFree(cp.cu_d2RotMats));
-    gpuErr(cudaFree(cp.cu_dB_Mats));
-    gpuErr(cudaFree(cp.cu_dB2_Mats));
-    gpuErr(cudaFree(cp.cu_sausages_RXYZ));
-    gpuErr(cudaFree(cp.cu_d_sausages_RXYZ));
-    gpuErr(cudaFree(cp.cu_sausages_U));
-    gpuErr(cudaFree(cp.cu_sausages_scale));
+        gpuErr(cudaFree(cp.cu_UMATS));
+        gpuErr(cudaFree(cp.cu_UMATS_RXYZ));
+        if(cp.cu_UMATS_RXYZ_prime != NULL)
+            gpuErr(cudaFree(cp.cu_UMATS_RXYZ_prime));
+        gpuErr(cudaFree(cp.cu_RotMats));
+        gpuErr(cudaFree(cp.cu_dRotMats));
+        gpuErr(cudaFree(cp.cu_d2RotMats));
+        gpuErr(cudaFree(cp.cu_dB_Mats));
+        gpuErr(cudaFree(cp.cu_dB2_Mats));
+        gpuErr(cudaFree(cp.cu_sausages_RXYZ));
+        gpuErr(cudaFree(cp.cu_d_sausages_RXYZ));
+        gpuErr(cudaFree(cp.cu_sausages_U));
+        gpuErr(cudaFree(cp.cu_sausages_scale));
 
-    gpuErr(cudaFree(cp.cu_dF_vecs));
-    gpuErr(cudaFree(cp.cu_dS_vecs));
+        gpuErr(cudaFree(cp.cu_dF_vecs));
+        gpuErr(cudaFree(cp.cu_dS_vecs));
 
-    gpuErr(cudaFree(cp.cu_refine_Bmat));
-    gpuErr(cudaFree(cp.cu_refine_Umat));
-    gpuErr(cudaFree(cp.cu_refine_Ncells));
-    gpuErr(cudaFree(cp.cu_refine_lambda));
-    gpuErr(cudaFree(cp.cu_refine_panel_origin));
-    gpuErr(cudaFree(cp.cu_refine_panel_rot));
+        gpuErr(cudaFree(cp.cu_refine_Bmat));
+        gpuErr(cudaFree(cp.cu_refine_Umat));
+        gpuErr(cudaFree(cp.cu_refine_Ncells));
+        gpuErr(cudaFree(cp.cu_refine_lambda));
+        gpuErr(cudaFree(cp.cu_refine_panel_origin));
+        gpuErr(cudaFree(cp.cu_refine_panel_rot));
 
-    gpuErr(cudaFree(cp.cu_panels_fasts_slows));
+        gpuErr(cudaFree(cp.cu_panels_fasts_slows));
 
-    cp.device_is_allocated = false;
+        cp.device_is_allocated = false;
+    }
 }
 
 
