@@ -5479,8 +5479,8 @@ class map_model_manager(object):
       xyz_list = xyz_list,
       value_list = d_min_list,
       smoothing_radius = setup_info.smoothing_radius,
-      n_boxes = box_info.n_boxes,
-      small_n_real = box_info.small_n_real,
+      n_boxes = setup_info.n_boxes,
+      small_n_real = setup_info.small_n_real,
      )
 
   def _create_full_size_map_manager_with_value_list(self,
