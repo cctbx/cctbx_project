@@ -459,10 +459,9 @@ class merging_stats(object):
             self.completeness*100, self.i_mean, self.i_over_sigma_mean,
             self.r_merge, self.r_meas, self.r_pim, self.r_anom, self.cc_one_half,
             self.cc_one_half_significance, self.cc_one_half_critical_value,
-            self.cc_anom]
-    if (self.cc_work is not None):
-      table.extend([self.cc_star, self.cc_work, self.cc_free, self.r_work,
-        self.r_free])
+            self.cc_anom, self.cc_star,
+            # may be None if reflections not available, see cc_work_and_free
+            self.cc_work, self.cc_free, self.r_work, self.r_free]
     return table
 
   def show_summary(self, out=sys.stdout, prefix=""):
