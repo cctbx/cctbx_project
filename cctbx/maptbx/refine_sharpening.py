@@ -444,6 +444,7 @@ def calculate_fsc(**kw):
   equalize_power = kw.get('equalize_power',False)
   verbose = kw.get('verbose',None)
   maximum_scale_factor = kw.get('maximum_scale_factor',None)
+  maximum_ratio = kw.get('maximum_ratio', 25)
   use_dv_weighting = kw.get('use_dv_weighting',None)
   run_analyze_anisotropy = kw.get('run_analyze_anisotropy',None)
   pseudo_likelihood = kw.get('pseudo_likelihood',False)
@@ -554,6 +555,8 @@ def calculate_fsc(**kw):
     set_n_bins_use = True
   else:
     set_n_bins_use = False
+
+  ratio_fo_to_fc_zero = None
   for i_bin in f_array.binner().range_used():
     sel       = f_array.binner().selection(i_bin)
     d         = dsd.select(sel)
@@ -611,6 +614,11 @@ def calculate_fsc(**kw):
           rms_fc=normalization *f_array_fc.data().rms()
         else:
           rms_fc=1.
+        # Normalize rms_fc to make rms_fc[0] == rms_fo[0]
+        if rms_fo and rms_fc and not ratio_fo_to_fc_zero:
+          ratio_fo_to_fc_zero = rms_fo/rms_fc
+        rms_fc *= ratio_fo_to_fc_zero
+
 
         rms_fo_dict_by_dv[i].append(rms_fo)
         rms_fc_dict_by_dv[i].append(rms_fc)
@@ -638,10 +646,17 @@ def calculate_fsc(**kw):
           f_array_fc=map_coeffs_to_fp(fc)
           rms_fc=f_array_fc.data().rms()
         else:
-          rms_fc=1.
+          rms_fc=1.4
+
+        # Normalize rms_fc to make rms_fc[0] == rms_fo[0]
+        if rms_fo and rms_fc and not ratio_fo_to_fc_zero:
+          ratio_fo_to_fc_zero = rms_fo/rms_fc
+        rms_fc *= ratio_fo_to_fc_zero
+
         rms_fo_dict_by_dv[i].append(rms_fo)
         rms_fc_dict_by_dv[i].append(rms_fc)
         ratio_dict_by_dv[i].append(max(1.e-10,rms_fc)/max(1.e-10,rms_fo))
+
 
     sthol2=0.25/d_avg**2 # note this is 0.25 * s_value
     target_sthol2.append(sthol2)
@@ -747,6 +762,7 @@ def calculate_fsc(**kw):
         n_bins_use,
         use_dv_weighting,
         expected_ssqr_list,
+        maximum_ratio = maximum_ratio,
         out = out)
   else:
     aniso_info = group_args(
@@ -783,7 +799,7 @@ def analyze_anisotropy(
   n_display = 6,
   weight_by_variance = True,
   minimum_sd = 0.1, # ratio to average
-  maximum_ratio = 10, # maximum ratio of target_scale_factor to overall
+  maximum_ratio = None, # maximum ratio of target_scale_factor to overall
   update_scale_values_to_match_s_matrix = False,
   update_scale_values_to_match_qq_values= True,
   out = sys.stdout):
@@ -1052,7 +1068,7 @@ def get_aniso_info(
     resolution = None,  # nominal resolution
     weight_by_variance = None,
     minimum_sd = None,
-    maximum_ratio = 10.,
+    maximum_ratio = None,
     small_ssqr_for_maximum_ratio = 5.,
     use_dv_weighting= None,
     cc_b_cart = None,
@@ -1109,9 +1125,9 @@ def get_aniso_info(
      overall_si.rms_fo_list *
      (1. + overall_si.ssqr_values))
 
-  # Match scale factor choice in target_scale_factors
-  normalization = overall_si.target_scale_factors.min_max_mean().mean/ \
+  overall_normalization = overall_si.target_scale_factors.min_max_mean().mean/ \
          overall_si.qq_values.min_max_mean().mean
+  overall_si.target_scale_factors *= overall_normalization
 
   overall_si.target_scale_factors.set_selected(
     overall_si.target_scale_factors < 1.e-10, 1.e-10)
@@ -1130,12 +1146,19 @@ def get_aniso_info(
      si.dd_values ) / (
      si.rms_fo_list *
      (1. + si.ssqr_values))
-    # Match choice in target_scale_factors if present
-    normalization = si.target_scale_factors.min_max_mean().mean/ \
-      si.qq_values.min_max_mean().mean
 
-    # Target scale factors: Q
-    si.qq_values *= normalization
+    # Normalize to overall_si.target_scale_factors[0] if possible
+    local_normalization=\
+        overall_si.qq_values.min_max_mean().mean/si.qq_values.min_max_mean().mean
+    si.qq_values *= local_normalization
+
+    if overall_si.qq_values[0] > 1.e-10 and \
+       si.qq_values[0] > 1.e-10 and \
+       si.qq_values[0]/overall_si.qq_values[0] > 0.1 and\
+       si.qq_values[0]/overall_si.qq_values[0] < 10:
+      local_normalization = \
+         overall_si.qq_values[0]/si.qq_values[0]
+      si.qq_values *= local_normalization
 
     # Anisotropy of the data: A
     si.aa_values = ( si.rms_fo_list * si.dd_values ) / (
