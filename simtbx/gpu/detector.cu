@@ -1,4 +1,4 @@
-#include <scitbx/array_family/boost_python/flex_fwd.h>
+/*#include <scitbx/array_family/boost_python/flex_fwd.h>*/
 #include <cudatbx/cuda_base.cuh>
 #include <simtbx/gpu/detector.h>
 #include <simtbx/gpu/detector.cuh>
@@ -66,7 +66,9 @@ namespace gpu {
     SCITBX_ASSERT(nB.spixels == cu_slow_pixels);
     SCITBX_ASSERT(nB.fpixels == cu_fast_pixels);
     SCITBX_ASSERT(cu_n_panels == 1);
-    nB.raw_pixels = af::flex_double(af::flex_grid<>(nB.spixels,nB.fpixels));
+    /* nB.raw_pixels = af::flex_double(af::flex_grid<>(nB.spixels,nB.fpixels));
+       do not reallocate CPU memory for the data write, as it is not needed
+     */
     double * double_floatimage = nB.raw_pixels.begin();
     cudaSafeCall(cudaSetDevice(nB.device_Id));
     cudaSafeCall(cudaMemcpy(
