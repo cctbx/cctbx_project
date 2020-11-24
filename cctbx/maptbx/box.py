@@ -323,11 +323,14 @@ class around_model(with_bounds):
     undefined.  If a box is specified that uses points outside the defined
     region, those points are set to zero.
 
-
+  Bounds:
+    if model_can_be_outside_bounds, allow model to be outside the bounds
+    if stay_inside_current_map, adjust bounds to not go outside current map
   """
   def __init__(self, map_manager, model, box_cushion,
       wrapping = None,
       model_can_be_outside_bounds = False,
+      stay_inside_current_map = None,
       log = sys.stdout):
 
     self._map_manager = map_manager
@@ -360,7 +363,8 @@ class around_model(with_bounds):
     info = get_bounds_around_model(
       map_manager = map_manager,
       model = model,
-      box_cushion = box_cushion)
+      box_cushion = box_cushion,
+      stay_inside_current_map = stay_inside_current_map)
     self.gridding_first = info.lower_bounds
     self.gridding_last = info.upper_bounds
 
@@ -1194,11 +1198,12 @@ def get_bounds_around_model(
       map_manager = None,
       model = None,
       box_cushion = None,
+      stay_inside_current_map = None,
      ):
     '''
       Calculate the lower and upper bounds to box around a model
-      Allow bounds to go outside the available box (this has to be
-        dealt with at the boxing stage)
+      Allow bounds to go outside the available box unless
+      stay_inside_current_map (this has to be dealt with at the boxing stage)
     '''
 
     # get items needed to do the shift
@@ -1219,6 +1224,9 @@ def get_bounds_around_model(
 
     lower_bounds = [ifloor(f*n) for f, n in zip(frac_min, all_orig)]
     upper_bounds = [ iceil(f*n) for f, n in zip(frac_max, all_orig)]
+    if stay_inside_current_map:
+      lower_bounds = [ max (0,lb) for lb in lower_bounds]
+      upper_bounds = [ min (ub, n-1) for ub,n in zip(upper_bounds,all_orig)]
     return group_args(
       lower_bounds = lower_bounds,
       upper_bounds = upper_bounds,

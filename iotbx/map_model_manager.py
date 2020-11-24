@@ -1071,6 +1071,7 @@ class map_model_manager(object):
      selection = None,
      select_unique_by_ncs = False,
      model_can_be_outside_bounds = None,
+     stay_inside_current_map = None,
      box_cushion = 5.):
     '''
       Runs box_all_maps_around_model_and_shift_origin with extract_box=True
@@ -1082,6 +1083,7 @@ class map_model_manager(object):
       box_cushion = box_cushion,
       select_unique_by_ncs = select_unique_by_ncs,
       model_can_be_outside_bounds = model_can_be_outside_bounds,
+      stay_inside_current_map = stay_inside_current_map,
       extract_box = True)
 
   def box_all_maps_around_model_and_shift_origin(self,
@@ -1090,6 +1092,7 @@ class map_model_manager(object):
      box_cushion = 5.,
      select_unique_by_ncs = False,
      model_can_be_outside_bounds = None,
+     stay_inside_current_map = None,
      extract_box = False):
     '''
        Box all maps around the model, shift origin of maps, model
@@ -1145,6 +1148,7 @@ class map_model_manager(object):
       box_cushion = box_cushion,
       wrapping = self._force_wrapping,
       model_can_be_outside_bounds = model_can_be_outside_bounds,
+      stay_inside_current_map = stay_inside_current_map,
       log = self.log)
     # Now box is a copy of map_manager and model that is boxed
 
@@ -2472,6 +2476,7 @@ class map_model_manager(object):
         sel       = target_map_coeffs.binner().selection(i_bin)
         cc1 = map_coeffs.select(sel).map_correlation(
            target_map_coeffs.select(sel))
+        cc1 = (0 if cc1 is None else cc1)
         sum_cc.append(cc1)
       cc = sum_cc.min_max_mean().mean
       if best_cc is None or cc > best_cc:
@@ -2946,6 +2951,7 @@ class map_model_manager(object):
     # Set what maps are going to be sharpened and new names
     kw = self.set_map_id_lists(kw)
 
+
     print ("\nRunning model-based sharpening ", file = self.log)
     if local_sharpen:
       print("Sharpening will be local",file = self.log)
@@ -2989,10 +2995,14 @@ class map_model_manager(object):
          tlso_group_info.selection_as_text_list
       tlso_group_info.tlso_shift_cart_list = len(
          tlso_group_info.tlso_selection_list) *[None]
+      if get_tls_from_u is None:
+        get_tls_from_u = True
     elif find_tls_from_model:
       # If we are going to use TLS groups from the model, check them here
       if not self.model():
         raise Sorry("Need model for find_tls_from_model")
+      if get_tls_from_u is None:
+        get_tls_from_u = True
       tlso_group_info = get_tlso_group_info_from_model(
          self.model(),
          nproc = nproc,
@@ -3045,7 +3055,8 @@ class map_model_manager(object):
 
     if find_k_sol_b_sol and (k_sol is None) and (b_sol is None):
       # Find k_sol and b_sol
-      local_mmm = working_mmm.extract_all_maps_around_model()
+      local_mmm = working_mmm.extract_all_maps_around_model(
+        stay_inside_current_map = True)
       local_mmm.mask_all_maps_around_atoms(
          mask_atoms_atom_radius = 2.* d_min,
          soft_mask =True)
@@ -3209,6 +3220,12 @@ class map_model_manager(object):
     self.get_map_manager_by_id(map_id_1) or
         is_model_based or (
         is_external_based) and self.get_map_manager_by_id(map_id_2))
+
+    # Set get_scale_as_aniso_u if not set already
+    if get_scale_as_aniso_u is None:
+      if replace_aniso_with_tls_equiv or tlso_group_info:
+        get_scale_as_aniso_u = True
+        print("Getting scale factors as aniso U values", file = self.log)
 
     # remove any extra models and maps to speed up boxing and not modify orig
     map_id_list = [map_id,map_id_1,map_id_2]
@@ -4115,7 +4132,8 @@ class map_model_manager(object):
               file = self.log)
             print("   U from TLS:%s"  %str(u_cart_from_tls),
               file = self.log)
-            print("   S aniso :  %s" %str(values.ss_b_cart_as_u_cart),
+            print("   S aniso :  %s" %str(
+              scaling_group_info.ss_b_cart_as_u_cart),
               file = self.log)
 
         if self.verbose:
@@ -4171,7 +4189,8 @@ class map_model_manager(object):
               file = self.log)
             print("   U from TLS:%s"  %str(u_cart_from_tls),
               file = self.log)
-            print("   S aniso :  %s" %str(values.ss_b_cart_as_u_cart),
+            print("   S aniso :  %s" %str(
+             scaling_group_info.ss_b_cart_as_u_cart),
               file = self.log)
         print("\nDone adding %s u_cart values from TLS and model directly" %(
            new_xyz_list.size()), file = self.log)
@@ -4257,11 +4276,14 @@ class map_model_manager(object):
 
     # Apply external values if supplied
     if tlso_group_info:
-       return self._analyze_aniso_replace_with_supplied(
+       result = self._analyze_aniso_replace_with_supplied(
          scale_factor_info,
          map_id = map_id,
          tlso_group_info = tlso_group_info,
          get_tls_from_u = get_tls_from_u)
+       self._summarize_scale_factor_info(scale_factor_info)
+       return result
+
     # Get a mask around the map if not already supplied as mask_id
     if (not everything_is_inside):
       if (not mask_id) or (not self.get_map_manager_by_id(mask_id)):
@@ -4598,6 +4620,13 @@ class map_model_manager(object):
         self._summarize_scale_factor_info(average_scale_factor_info)
 
       # Anisotropy values vs position
+      print("\nAnisotropy vs position", file = self.log)
+      n_max = len(scale_factor_info.value_list)
+      if n_max > 50 and not self.verbose:
+        n_use = 50
+        print ("First 50 listed...use verbose=True for remainder",
+            file = self.log)
+
       for text, kw in (
           ['Estimated anisotropic fall-off of the data relative to ideal',
              'uu_b_cart_as_u_cart'],
@@ -4605,7 +4634,7 @@ class map_model_manager(object):
           ['Anisotropy of the errors', 'bb_b_cart_as_u_cart'],
           ['Anisotropy of the scale_factors', 'ss_b_cart_as_u_cart'],
            ):
-        self._print_aniso_by_xyz(text, kw, scale_factor_info)
+        self._print_aniso_by_xyz(text, kw, scale_factor_info, n_use = n_use)
 
       #  Overall
       print("\nSummary of overall average scaling information ",
@@ -4692,15 +4721,15 @@ class map_model_manager(object):
        "(%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(
        tuple(ss_b_cart_as_u_cart)), file = self.log)
 
-  def _print_aniso_by_xyz(self, text, kw, scale_factor_info):
-      print("\n %s vs position" %(text), file = self.log)
+  def _print_aniso_by_xyz(self, text, kw, scale_factor_info, n_use):
+
       print("\n      Box center                       U values","\n",
            "   X      Y      Z          ",
            "  X      Y      Z     XY     XZ     YZ\n", file = self.log)
 
       for xyz, scaling_group_info in zip(
           scale_factor_info.xyz_list,
-          scale_factor_info.value_list):
+          scale_factor_info.value_list[:n_use]):
         u_cart = scaling_group_info.get(kw)
         if not u_cart: continue
         print( "%7.1f %7.1f %7.1f " %(xyz),
@@ -4751,10 +4780,10 @@ class map_model_manager(object):
       print("\nSummary of scaling as TLS",file = self.log)
 
       if get_tls_from_u:
-        print("\nSupplied TLS assumed to be overall fall-off with resolution",
+        print("\nTLS is overall fall-off with resolution",
            file = self.log)
       else:
-       print("\nSupplied TLS assumed to be desired anisotropy of scale factors",
+       print("\nTLS is desired anisotropy of scale factors",
            file = self.log)
 
       for xyz,scaling_group_info in zip(xyz_list,scaling_group_info_list):
@@ -4990,13 +5019,14 @@ class map_model_manager(object):
       everything_is_inside = True
     else:
       everything_is_inside = None
+    replace_inside = (replace_aniso_with_tls_equiv and get_scale_as_aniso_u)
     # Summarize U vs xyz and vs inside/outside
     tls_info = self._analyze_aniso(scale_factor_info,
       tlso_group_info = tlso_group_info,
       get_tls_from_u = get_tls_from_u,
       map_id=map_id,
       mask_id=mask_id,  # can supply mask_id
-      replace_inside = (replace_aniso_with_tls_equiv and get_scale_as_aniso_u),
+      replace_inside = replace_inside,
       coordinate_shift_to_apply_before_tlso =
            coordinate_shift_to_apply_before_tlso,
       everything_is_inside = (everything_is_inside or len(xyz_list) ==1),
@@ -5004,7 +5034,7 @@ class map_model_manager(object):
     if get_tls_info_only:
       return tls_info
 
-    if get_scale_as_aniso_u:
+    if replace_inside:
       self._update_scale_factor_info_from_aniso(scale_factor_info,
         max_abs_b = max_abs_b,
         get_tls_from_u = get_tls_from_u)

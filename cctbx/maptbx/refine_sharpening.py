@@ -617,7 +617,7 @@ def calculate_fsc(**kw):
         # Normalize rms_fc to make rms_fc[0] == rms_fo[0]
         if rms_fo and rms_fc and not ratio_fo_to_fc_zero:
           ratio_fo_to_fc_zero = rms_fo/rms_fc
-        rms_fc *= ratio_fo_to_fc_zero
+        rms_fc *= (1 if ratio_fo_to_fc_zero is None else ratio_fo_to_fc_zero)
 
 
         rms_fo_dict_by_dv[i].append(rms_fo)
@@ -651,7 +651,7 @@ def calculate_fsc(**kw):
         # Normalize rms_fc to make rms_fc[0] == rms_fo[0]
         if rms_fo and rms_fc and not ratio_fo_to_fc_zero:
           ratio_fo_to_fc_zero = rms_fo/rms_fc
-        rms_fc *= ratio_fo_to_fc_zero
+        rms_fc *= (1 if ratio_fo_to_fc_zero is None else ratio_fo_to_fc_zero)
 
         rms_fo_dict_by_dv[i].append(rms_fo)
         rms_fc_dict_by_dv[i].append(rms_fc)
@@ -1126,7 +1126,7 @@ def get_aniso_info(
      (1. + overall_si.ssqr_values))
 
   overall_normalization = overall_si.target_scale_factors.min_max_mean().mean/ \
-         overall_si.qq_values.min_max_mean().mean
+         max(1.e-10,overall_si.qq_values.min_max_mean().mean)
   overall_si.target_scale_factors *= overall_normalization
 
   overall_si.target_scale_factors.set_selected(
@@ -1149,7 +1149,8 @@ def get_aniso_info(
 
     # Normalize to overall_si.target_scale_factors[0] if possible
     local_normalization=\
-        overall_si.qq_values.min_max_mean().mean/si.qq_values.min_max_mean().mean
+        overall_si.qq_values.min_max_mean().mean/max(1.e-10,
+       si.qq_values.min_max_mean().mean)
     si.qq_values *= local_normalization
 
     if overall_si.qq_values[0] > 1.e-10 and \
