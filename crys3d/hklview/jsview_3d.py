@@ -208,7 +208,6 @@ class hklview_3d:
     self.scene = None
     self.lastscene_id = None
     self.merge = False
-    self.NGLscriptstr = ""
     self.primitivetype = "SphereBuffer"
     self.url = ""
     self.bin_labels_type_idxs = []
@@ -269,6 +268,7 @@ class hklview_3d:
     self.imagename = None
     self.imgdatastr = ""
     self.hkl_scenes_info = []
+    self.hkl_scenes_infos = []
     self.match_valarrays = []
     self.array_infostrs = []
     self.array_infotpls = []
@@ -316,6 +316,9 @@ class hklview_3d:
 </body></html>
 
     """
+    NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
+    HKLjscriptpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","HKLJavaScripts.js") )
+    self.htmlstr = self.hklhtml %(self.websockport, NGLlibpath, os.path.abspath( HKLjscriptpath))
     self.colourgradientvalues = []
     self.UseOSBrowser = ""
     ldic=locals()
@@ -712,7 +715,7 @@ class hklview_3d:
     self.mprint("Constructing HKL scenes", verbose=0)
     assert(self.proc_arrays)
     if scene_id is None:
-      hkl_scenes_info = []
+      hkl_scenes_infos = []
       self.HKLscenes = []
       sceneid = 0
       for (idx, arr) in enumerate(self.proc_arrays):
@@ -745,10 +748,10 @@ class hklview_3d:
                                 )
           self.HKLscenedict[self.HKLsceneKey] = ( hklscenes[i], scenemaxdata[i],
           scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
-          hkl_scenes_info.append(inf)
+          hkl_scenes_infos.append(inf)
           self.HKLscenes.append(hklscenes[i])
           sceneid += 1
-      self.hkl_scenes_info = hkl_scenes_info
+      self.hkl_scenes_infos = hkl_scenes_infos
       if self.viewerparams.scene_id is not None:
         self.HKLsceneKey = (curphilparam.spacegroup_choice,
                               curphilparam.using_space_subgroup,
@@ -770,7 +773,7 @@ class hklview_3d:
                               self.viewerparams.scale,
                               self.viewerparams.nth_power_scale_radii
                               )
-      scenearraylabeltypes = [ (e[3], e[4], e[1], sceneid) for sceneid,e in enumerate(hkl_scenes_info) ]
+      scenearraylabeltypes = [ (e[3], e[4], e[1], sceneid) for sceneid,e in enumerate(hkl_scenes_infos) ]
       self.SendInfoToGUI({ "scene_array_label_types": scenearraylabeltypes, "NewHKLscenes" : True })
 
       self.bin_labels_type_idxs = []
@@ -1455,6 +1458,9 @@ class hklview_3d:
           self.AddToBrowserMsgQueue("ShowThisTooltip", ttip)
         elif "doubleclick colour chart" in message:
           self.onDoubleClickColourChart()
+        elif "SelectedBrowserDataColumnComboBox" in message:
+          sceneid = int(message.split(":")[1])
+          self.parent.SetScene(sceneid)
         else:
           if "Ready " in message:
             self.mprint( message, verbose=5)
@@ -1546,11 +1552,8 @@ Distance: %s
   def OpenBrowser(self):
     if self.viewerparams.scene_id is not None and not self.WBmessenger.websockclient \
        and not self.WBmessenger.browserisopen or self.isnewfile:
-      NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
-      NGLjscriptpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","HKLJavaScripts.js") )
-      htmlstr = self.hklhtml %(self.websockport, NGLlibpath, os.path.abspath( NGLjscriptpath))
       with open(self.hklfname, "w") as f:
-        f.write( htmlstr )
+        f.write( self.htmlstr )
       self.url = "file:///" + os.path.abspath( self.hklfname )
       self.url = self.url.replace("\\", "/")
       self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname, verbose=1)
@@ -1979,7 +1982,6 @@ Distance: %s
       self.AddToBrowserMsgQueue("SetAutoView", self.viewmtrx)
 
 
-
   def Euler2RotMatrix(self, eulerangles):
     eulerangles1 = eulerangles
     radangles = [e*math.pi/180.0 for e in eulerangles1]
@@ -2062,7 +2064,18 @@ Distance: %s
 
 
   def onDoubleClickColourChart(self):
+    # if running the GUI show the colour chart selection dialog
     self.SendInfoToGUI( { "ColourChart":  self.viewerparams.color_scheme } )
+
+  
+  def MakeBrowserDataColumnComboBox(self):
+    datcolstr =""
+    for i,lbl in enumerate(self.hkl_scenes_infos):
+      datcolstr = datcolstr + ",".join(lbl[3]) + "\n" + str(i)
+      if i < len(self.hkl_scenes_infos)-1:
+        datcolstr = datcolstr + "\n\n"
+
+    self.AddToBrowserMsgQueue("MakeBrowserDataColumnComboBox", datcolstr)
 
 
 
