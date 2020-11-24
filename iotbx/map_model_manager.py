@@ -4563,13 +4563,6 @@ class map_model_manager(object):
 
 
     if len(scale_factor_info.value_list) > 1:
-      #  Overall
-      print("\nSummary of overall average scaling information ",
-          file = self.log)
-      average_scale_factor_info = self._average_scale_factor_info_over_xyz(
-          scale_factor_info)
-      self._summarize_scale_factor_info(average_scale_factor_info)
-
       # Highest resolution
       average_scale_factor_info = self._get_scale_factor_info_best_resolution(
           scale_factor_info)
@@ -4603,6 +4596,24 @@ class map_model_manager(object):
          " (Mean abs(anisotropy)): %.2f )" %(cc_abs),
            file = self.log)
         self._summarize_scale_factor_info(average_scale_factor_info)
+
+      # Anisotropy values vs position
+      for text, kw in (
+          ['Estimated anisotropic fall-off of the data relative to ideal',
+             'uu_b_cart_as_u_cart'],
+          ['Anisotropy of the data', 'aa_b_cart_as_u_cart'],
+          ['Anisotropy of the errors', 'bb_b_cart_as_u_cart'],
+          ['Anisotropy of the scale_factors', 'ss_b_cart_as_u_cart'],
+           ):
+        self._print_aniso_by_xyz(text, kw, scale_factor_info)
+
+      #  Overall
+      print("\nSummary of overall average scaling information ",
+          file = self.log)
+      average_scale_factor_info = self._average_scale_factor_info_over_xyz(
+          scale_factor_info)
+      self._summarize_scale_factor_info(average_scale_factor_info)
+
 
       return
 
@@ -4680,6 +4691,21 @@ class map_model_manager(object):
        "(  X,      Y,      Z,    XY,    XZ,    YZ)\n"+
        "(%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(
        tuple(ss_b_cart_as_u_cart)), file = self.log)
+
+  def _print_aniso_by_xyz(self, text, kw, scale_factor_info):
+      print("\n %s vs position" %(text), file = self.log)
+      print("\n      Box center                       U values","\n",
+           "   X      Y      Z          ",
+           "  X      Y      Z     XY     XZ     YZ\n", file = self.log)
+
+      for xyz, scaling_group_info in zip(
+          scale_factor_info.xyz_list,
+          scale_factor_info.value_list):
+        u_cart = scaling_group_info.get(kw)
+        if not u_cart: continue
+        print( "%7.1f %7.1f %7.1f " %(xyz),
+          "   %6.1f %6.1f %6.1f %6.1f %6.1f %6.1f  " %(
+            tuple(u_cart)), file = self.log)
 
   def _analyze_scale_factor_info(self,
         scale_factor_info,
@@ -7473,6 +7499,7 @@ def get_selections_and_boxes_to_split_model(
       mask_map_manager = None
 
     if exclude_points_outside_density and mask_map_manager:
+      # Make sure we have some points inside the density
       inside = (mask_map_manager.map_data() > 0.5)
       fraction_inside = inside.count(True)/inside.size()
       target_n = max(minimum_boxes_inside_density,
@@ -7505,7 +7532,8 @@ def get_selections_and_boxes_to_split_model(
       dist_min = dist_min,
       target_xyz_center_list = target_xyz_center_list,
       )
-
+    print("Ready with %s boxes to check" %(len(box_info.lower_bounds_list)),
+      file = log)
     box_info = get_selections_from_boxes(
        box_info = box_info,
        model = model,
@@ -7513,6 +7541,8 @@ def get_selections_and_boxes_to_split_model(
        skip_empty_boxes = skip_empty_boxes,
        exclude_points_outside_density = exclude_points_outside_density,
        mask_map_manager = mask_map_manager)
+    print("Ready with %s ok boxes " %(len(box_info.lower_bounds_list)),
+      file = log)
 
   if select_final_boxes_based_on_model or (
      not box_info.lower_bounds_list): # get bounds now:
