@@ -2641,6 +2641,7 @@ class map_model_manager(object):
       # Set up list of maps to be scaled
       kw = self.set_map_id_lists(kw)
       kw['overall_sharpen_before_and_after_local'] = False
+      kw['sharpen_all_maps'] = True
 
       # run sharpening without local sharpening first
       #  Then set maps to scale as the scaled maps from this run
@@ -2720,7 +2721,8 @@ class map_model_manager(object):
       kw['map_id'] = 'map_manager'
     if kw.get('map_id_to_be_scaled_list') is None:
       kw['map_id_to_be_scaled_list'] = [kw['map_id']]
-      if kw.get('map_id_1') and kw.get('map_id_2'): # half-map sharpening
+      if kw.get('sharpen_all_maps') and \
+            kw.get('map_id_1') and kw.get('map_id_2'): # half-map sharpening
          kw['map_id_to_be_scaled_list'].append(kw['map_id_1'])
          kw['map_id_to_be_scaled_list'].append(kw['map_id_2'])
     if kw.get('map_id_scaled_list') is None:
@@ -2756,6 +2758,7 @@ class map_model_manager(object):
       use_dv_weighting = None,
       n_direction_vectors = None,
       run_analyze_anisotropy = True,
+      sharpen_all_maps = False,
       nproc = None,
     ):
     '''
@@ -2835,6 +2838,7 @@ class map_model_manager(object):
       overall_sharpen_before_and_after_local = False,
       get_tls_info_only = None,
       coordinate_shift_to_apply_before_tlso = None,
+      sharpen_all_maps = False,
     ):
     '''
      Scale map_id with scale factors identified from map_id_1 vs map_id_2
@@ -2930,6 +2934,7 @@ class map_model_manager(object):
       mask_around_model = True,
       get_tls_info_only = None,
       coordinate_shift_to_apply_before_tlso = None,
+      sharpen_all_maps = False,
     ):
     '''
      Scale map_id with scale factors identified from map_id vs model
@@ -3182,6 +3187,7 @@ class map_model_manager(object):
       get_tls_info_only = None,
       coordinate_shift_to_apply_before_tlso = None,
       overall_sharpen_before_and_after_local = None, # ignored
+      sharpen_all_maps = False,
     ):
     '''
      Scale map_id with scale factors identified from map_id_1 and map_id_2
@@ -3230,6 +3236,8 @@ class map_model_manager(object):
     self.get_map_manager_by_id(map_id_1) or
         is_model_based or (
         is_external_based) and self.get_map_manager_by_id(map_id_2))
+    if get_tls_from_u and n_boxes == 1:
+      raise Sorry("Cannot get TLS with n_boxes==1")
 
     # Set get_scale_as_aniso_u if not set already
     if get_scale_as_aniso_u is None:
@@ -4935,6 +4943,7 @@ class map_model_manager(object):
       max_abs_b = None,
       get_tls_info_only = None,
       coordinate_shift_to_apply_before_tlso = None,
+      sharpen_all_maps = None,
       temp_dir = 'TEMP_ANISO_LOCAL',
      ):
     '''
@@ -5155,6 +5164,7 @@ class map_model_manager(object):
       max_abs_b = None,
       get_tls_info_only = None,
       coordinate_shift_to_apply_before_tlso = None,
+      sharpen_all_maps= None,
      ):
 
     '''
@@ -5399,7 +5409,9 @@ class map_model_manager(object):
       max_abs_b = None,
       get_tls_info_only = None,
       coordinate_shift_to_apply_before_tlso = None,
-      n_bins_default = 2000):
+      sharpen_all_maps = None,
+      n_bins_default = 2000,
+      ):
 
     '''
       Calculates local Fourier Shell Correlations to estimate local resolution
