@@ -4471,10 +4471,11 @@ class map_model_manager(object):
     average_overall_scale = None
 
     for scaling_group_info in scaling_group_info_list:
-      if not average_overall_scale:
-        average_overall_scale = flex.double(
-          scaling_group_info.overall_scale.size(),0)
-      average_overall_scale += scaling_group_info.overall_scale
+      if scaling_group_info.get('overall_scale'):
+        if not average_overall_scale:
+          average_overall_scale = flex.double(
+            scaling_group_info.overall_scale.size(),0)
+        average_overall_scale += scaling_group_info.overall_scale
 
       if not average_scaling_group_info.direction_vectors:
         average_scaling_group_info.direction_vectors = \
@@ -4522,8 +4523,9 @@ class map_model_manager(object):
         setattr(average_scaling_group_info.overall_si,key,
            getattr(average_scaling_group_info.overall_si,key)/
            len(scaling_group_info_list))
-      average_scaling_group_info.overall_scale = \
-        average_overall_scale/len(scaling_group_info_list)
+      if average_scaling_group_info.overall_scale:
+        average_scaling_group_info.overall_scale = \
+          average_overall_scale/len(scaling_group_info_list)
 
 
       for key in ('aa_b_cart_as_u_cart','fo_b_cart_as_u_cart',
@@ -4631,8 +4633,8 @@ class map_model_manager(object):
 
       # Anisotropy values vs position
       print("\nAnisotropy vs position", file = self.log)
-      n_max = len(scale_factor_info.value_list)
-      if n_max > 50 and not self.verbose:
+      n_use = len(scale_factor_info.value_list)
+      if n_use > 50 and not self.verbose:
         n_use = 50
         print ("First 50 listed...use verbose=True for remainder",
             file = self.log)
