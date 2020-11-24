@@ -2763,6 +2763,8 @@ class map_model_manager(object):
       map_id_external_map
      Changes the working map_manager
 
+     resolution is nominal resolution of map
+     d_min is minimum resolution to use in calculation of Fourier coefficients
     '''
 
     from libtbx import adopt_init_args
@@ -2842,6 +2844,8 @@ class map_model_manager(object):
         local_sharpen are set. It limits range of anisotropic B.  Default is
         100 at 4 A, proportional to resolution squared
 
+     resolution is nominal resolution of map
+     d_min is minimum resolution to use in calculation of Fourier coefficients
     '''
 
     from libtbx import adopt_init_args
@@ -2934,6 +2938,9 @@ class map_model_manager(object):
      max_abs_b applies if get_scale_as_aniso_u and anisotropic_sharpen and
         local_sharpen are set. It limits range of anisotropic B.  Default is
         100 at 4 A, proportional to resolution squared
+
+     resolution is nominal resolution of map
+     d_min is minimum resolution to use in calculation of Fourier coefficients
 
     '''
 
@@ -3196,6 +3203,9 @@ class map_model_manager(object):
      max_abs_b applies if get_scale_as_aniso_u and anisotropic_sharpen and
         local_sharpen are set. It limits range of anisotropic B.  Default is
         100 at 4 A, proportional to resolution squared
+
+     resolution is nominal resolution of map
+     d_min is minimum resolution to use in calculation of Fourier coefficients
     '''
 
     from libtbx import adopt_init_args
@@ -4723,6 +4733,7 @@ class map_model_manager(object):
 
   def _print_aniso_by_xyz(self, text, kw, scale_factor_info, n_use):
 
+      print("\n    %s by position" %(text), file = self.log)
       print("\n      Box center                       U values","\n",
            "   X      Y      Z          ",
            "  X      Y      Z     XY     XZ     YZ\n", file = self.log)
