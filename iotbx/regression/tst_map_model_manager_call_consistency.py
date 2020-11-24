@@ -79,7 +79,7 @@ def test_01():
   # Args that should be in common for all calls to specific methods
   method_args_dict = {
     'with_bounds': ['lower_bounds', 'upper_bounds','model_can_be_outside_bounds'],
-    'around_model':[ 'box_cushion','model_can_be_outside_bounds'],
+    'around_model':[ 'box_cushion','model_can_be_outside_bounds','stay_inside_current_map'],
     'around_density':[ 'box_cushion','threshold', 'get_half_height_width',
        'model_can_be_outside_bounds'],
     'around_mask':[ 'box_cushion','model_can_be_outside_bounds'],
