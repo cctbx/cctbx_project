@@ -585,8 +585,10 @@ class scene(object):
     return (hkl, d_min, value)
 
 
+# list of all colour maps from https://matplotlib.org/examples/color/colormaps_reference.html
 colormaps = " ".join(plt.colormaps())
-colormaps = colormaps.replace("brg ", "*brg ")
+# set the default selected colour map to "brg" for phil attribute "color_scheme" below
+colormaps = colormaps.replace("brg ", "*brg ") 
 
 philstr = """
   data = None

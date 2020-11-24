@@ -1295,8 +1295,8 @@ class HKLViewFrame() :
     return self.viewer.url
 
 
-  def GetNGLstring(self):
-    return self.viewer.NGLscriptstr
+  def GetHtmlstring(self):
+    return self.viewer.htmlstr
 
 
   def GetArrayInfotpls(self):
@@ -1306,13 +1306,17 @@ class HKLViewFrame() :
     return self.array_infotpls
 
 
-  def GetHklScenesInfo(self):
+  def GetSceneDataLabels(self):
+    return [ e[3][0] for e in myHKLview.viewer.hkl_scenes_infos ]
+
+
+  def GetHklScenesInfos(self):
     """
     return array of strings with information on each processed miller array
     which may have been expanded with anomalous reflections or truncated to non-anomalous reflections
     as to match the currently selected miller array
     """
-    return self.viewer.hkl_scenes_info
+    return self.viewer.hkl_scenes_infos
 
 
   def GetBinInfo(self):

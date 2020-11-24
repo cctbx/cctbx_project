@@ -67,9 +67,10 @@ var current_ttip_ids;
 var isdebug = false;
 var tdelay = 100;
 var displaytooltips = true;
-var container = null;
+var colourchart = null;
 var sockwaitcount = 0;
 var ready_for_closing = false;
+var columnSelect = null;
 
 var Hstarstart = null;
 var Hstarend = null;
@@ -102,6 +103,17 @@ function createElement(name, properties, style, fsize=10)
   }
   );
   return el;
+}
+
+
+function createSelect(options, properties, style)
+{
+  var select = createElement("select", properties, style);
+  options.forEach(function (d)
+  {
+    select.add(createElement("option", { value: d[0], text: d[1] }));
+  })
+  return select;
 }
 
 
@@ -922,7 +934,7 @@ function onMessage(e)
       label = msg[2];
       fomlabel = msg[3];
       colourgradvalarrays = eval(msg[4]);
-      ColourChart(ctop, cleft, label, fomlabel, colourgradvalarrays);
+      MakeColourChart(ctop, cleft, label, fomlabel, colourgradvalarrays);
       RenderRequest();
     }
 
@@ -966,6 +978,43 @@ function onMessage(e)
 
               WebsockSendMsg('ImageWritten ' + pagename);
         } );
+    }
+
+    if (msgtype === "MakeBrowserDataColumnComboBox")
+    {
+      if (columnSelect != null)
+        columnSelect.remove(); 
+
+      msg = datval[1].split("\n\n");
+      var columnSelect = createElement("select", {
+        onchange: function (e)
+        {
+          WebsockSendMsg('SelectedBrowserDataColumnComboBox: ' + e.target.value);
+        }
+      }, { top: "25px", right: "10px", width: "130px", position: "absolute" }, fsize = fontsize);
+
+      for (i = 0; i < msg.length; i++)
+      {
+        labelval = msg[i].split("\n");
+        columnSelect.add(createElement("option", { text: labelval[0], value: labelval[1] }, fsize = fontsize));
+      }
+      addElement(columnSelect);
+
+      // 
+      divlabel = createElement("div",
+        {
+          innerText: "Select Data"
+        },
+        {
+          backgroundColor: "rgba(255, 255, 255, 1.0)",
+          color: "rgba(0, 0, 0, 1.0)",
+          top: "10px", right: "10px", width: "130px",
+          position: "absolute"
+        },
+        fsize = fontsize
+      );
+      addElement(divlabel);
+
     }
 
     if (msgtype === "Testing")
@@ -1032,6 +1081,7 @@ if (isdebug)
   script.src='https://rawgit.com/paulirish/memory-stats.js/master/bookmarklet.js';
   document.head.appendChild(script);
 }
+
 
 
 // define tooltip element
@@ -1170,7 +1220,7 @@ function getTextWidth(text, fsize=8)
 }
 
 
-function ColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays)
+function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays)
 {
   /* colourgradvalarrays is a list of colour charts. If only one list then it's one colour chart.
   Otherwise it's usually a list of colour charts that constitute a gradient across colours,
@@ -1203,18 +1253,18 @@ function ColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays)
 
   totalheight = ih*colourgradvalarrays[0].length + 35 + fomlabelheight;
 
-  if (container != null)
-    container.remove(); // delete previous colour chart if any
-  container = addDivBox(null, ctop, cleft, wp3, totalheight, bgcolour="rgba(255, 255, 255, 1.0)");
+  if (colourchart != null)
+    colourchart.remove(); // delete previous colour chart if any
+  colourchart = addDivBox(null, ctop, cleft, wp3, totalheight, bgcolour="rgba(255, 255, 255, 1.0)");
 
   // make a white box on top of which boxes with transparent background are placed
   // containing the colour values at regular intervals as well as label legend of
   // the displayed miller array
-  addDiv2Container(container, null, topr2, lp, wp3, totalheight, 'rgba(255, 255, 255, 1.0)');
+  addDiv2Container(colourchart, null, topr2, lp, wp3, totalheight, 'rgba(255, 255, 255, 1.0)');
 
   // print label of the miller array used for colouring
   lblwidth = getTextWidth(millerlabel, fontsize);
-  addDiv2Container(container, millerlabel, topr2, lp, lblwidth + 5, 20, 'rgba(255, 255, 255, 1.0)', fsize=fontsize);
+  addDiv2Container(colourchart, millerlabel, topr2, lp, lblwidth + 5, 20, 'rgba(255, 255, 255, 1.0)', fsize=fontsize);
 
   if (fomlabel != "" )
   {
@@ -1224,15 +1274,15 @@ function ColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays)
     fomwp = wp3;
     fomtop2 = fomtop - 13;
     // print the 1 number
-    addDiv2Container(container, 1, fomtop2, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
+    addDiv2Container(colourchart, 1, fomtop2, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
     // print the 0.5 number
     leftp = fomlp + 0.48 * gl * colourgradvalarrays.length;
-    addDiv2Container(container, 0.5, fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
+    addDiv2Container(colourchart, 0.5, fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
     // print the FOM label
-    addDiv2Container(container, fomlabel, fomtop, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
+    addDiv2Container(colourchart, fomlabel, fomtop, fomlp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
     // print the 0 number
     leftp = fomlp + 0.96 * gl * colourgradvalarrays.length;
-    addDiv2Container(container, 0, fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
+    addDiv2Container(colourchart, 0, fomtop2, leftp, fomwp, 20, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
   }
 
   for (j = 0; j < colourgradvalarrays[0].length; j++)
@@ -1241,7 +1291,7 @@ function ColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays)
     topv = j*ih + topr;
     toptxt = topv - 5;
     // print value of miller array if present in colourgradvalarrays[0][j][0]
-    addDiv2Container(container,val, toptxt, lp, wp, ih, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
+    addDiv2Container(colourchart,val, toptxt, lp, wp, ih, 'rgba(255, 255, 255, 0.0)', fsize=fontsize);
   }
 
   // if colourgradvalarrays is an array of arrays then draw each array next to the previous one
@@ -1255,26 +1305,26 @@ function ColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays)
       B = colourgradvalarrays[g][j][3];
       rgbcol = 'rgba(' + R.toString() + ',' + G.toString() + ',' + B.toString() + ', 1.0)'
       topv = j*ih + topr;
-      addDiv2Container(container, null, topv, leftp, wp2, ih, rgbcol);
+      addDiv2Container(colourchart, null, topv, leftp, wp2, ih, rgbcol);
     }
   }
 
-  container.onselectstart = function ()
+  colourchart.onselectstart = function ()
   { // don't select numbers or labels on chart when double clicking the coulour chart
     return false;
   }
 
-  container.oncontextmenu = function (e) 
+  colourchart.oncontextmenu = function (e) 
   { // oncontextmenu captures right clicks
     e.preventDefault()
     alert("in oncontextmenu")
     return false;
   };
 
-  container.ondblclick = function (e)
+  colourchart.ondblclick = function (e)
   {
     var sel = window.getSelection();
-    sel.removeAllRanges();
+    sel.removeAllRanges(); // don't select numbers or labels on chart when double clicking the coulour chart
     WebsockSendMsg('doubleclick colour chart');
   };
 }
@@ -1440,7 +1490,9 @@ function PageLoad()
     document.addEventListener('wheel', function(e) { OnUpdateOrientation() }, false );
     document.addEventListener('scroll', function(e) { OnUpdateOrientation() }, false );
     // mitigate flickering on some PCs when resizing
-    document.addEventListener('resize', function() { RenderRequest() }, false );
+    document.addEventListener('resize', function () { RenderRequest() }, false);
+
+
   }
   catch(err)
   {
