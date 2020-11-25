@@ -71,7 +71,8 @@ nbcryst.Ncells_abc = (7, 7, 7)
 # STEP5: make an instance of diffBRagg, use the simData wrapper
 SIM = SimData()
 # overwrite the default detector with a smaller pixels one
-SIM.detector = SimData.simple_detector(300, 0.1, (700, 700))
+img_sh = 700,700
+SIM.detector = SimData.simple_detector(300, 0.1, img_sh)
 SIM.crystal = nbcryst
 SIM.instantiate_diffBragg(oversample=0, verbose=0)
 # D is an instance of diffBragg with reasonable parameters
@@ -94,6 +95,7 @@ D.initialize_managers()
 # STEP7:
 # compute the scattering and its derivative
 print("Adding diffBragg spots")
+#D.printout_pixel_fastslow =150, 351
 D.add_diffBragg_spots()
 print("Done!")
 img = D.raw_pixels_roi.as_numpy_array()

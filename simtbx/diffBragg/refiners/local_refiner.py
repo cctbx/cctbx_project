@@ -2594,6 +2594,8 @@ class LocalRefiner(PixelRefinement):
             refine_str += "Per-spot scales, "
         if self.refine_eta:
             refine_str += "Eta, "
+        if self.refine_blueSausages:
+            refine_str += "Mosaic texture, "
         return refine_str
 
     def _print_iteration_header(self):

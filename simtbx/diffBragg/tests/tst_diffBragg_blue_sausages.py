@@ -231,7 +231,7 @@ P.roi.reject_edge_reflections = False
 P.refiner.refine_blueSausages = [1]
 num_sausages_guess = 5
 P.simulator.crystal.num_sausages = num_sausages_guess
-P.refiner.init.sausages = [0, 0, 0, 1] * num_sausages_guess
+#P.refiner.init.sausages = [0, 0, 0, 1] * num_sausages_guess
 P.simulator.beam.size_mm = SIM.beam.size_mm
 total_flux = SIM.beam.spectrum[0][1]
 print("total flux %f " % total_flux)

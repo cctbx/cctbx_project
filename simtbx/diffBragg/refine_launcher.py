@@ -7,6 +7,7 @@ from copy import deepcopy
 
 def local_refiner_from_parameters(refls, expt, params, miller_data=None):
 
+    #TODO multi shot
     for model in ["crystal", "detector", "beam", "imageset"]:
         if not hasattr(expt, model):
             print("No %s in experiment, exiting. " % model)
@@ -17,6 +18,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
         print("No trials available")
         return
 
+    #TODO multi shot
     img_data = utils.image_data_from_expt(expt)
     if params.refiner.adu_per_photon is not None:
         img_data /= params.refiner.adu_per_photon
@@ -33,6 +35,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
         for i_pid, pid in enumerate(refls['panel']):
             panel_selection[i_pid] = pid in keeper_panels
 
+    #TODO multi shot
     rois, pids, tilt_abc, selection_flags, background = utils.get_roi_background_and_selection_flags(
         refls, img_data, shoebox_sz=params.roi.shoebox_size,
         reject_edge_reflections=params.roi.reject_edge_reflections,
@@ -43,6 +46,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
         set_negative_bg_to_zero=params.roi.force_negative_background_to_zero,
         pad_for_background_estimation=params.roi.pad_shoebox_for_background_estimation)
 
+    #TODO multi shot
     selection_flags = [sel1 and sel2 for sel1, sel2 in zip(selection_flags, panel_selection)]
     if not np.any(selection_flags):
         print("No spots for refinement")
@@ -50,6 +54,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
 
         # TODO consider panel selection combine here instead of select above
 
+    #TODO multi shot
     nanoBragg_rois, xrel, yrel, roi_imgs = [], [], [], []
     for i_roi, (x1, x2, y1, y2) in enumerate(rois):
         nanoBragg_rois.append(((int(x1), int(x2)), (int(y1), int(y2))))
@@ -60,6 +65,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
         roi_imgs.append(img_data[panel_id, y1:y2, x1:x2])
 
     # preprare arguments for refinement class instance
+    #TODO multi shot
     UcellMan = utils.manager_from_crystal(expt.crystal)
 
     NCELLS_MASK = utils.get_ncells_mask_from_string(params.refiner.ncells_mask)
@@ -77,8 +83,12 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
     # sausages
     if params.refiner.refine_blueSausages:
         from scitbx.array_family import flex
-        assert len(params.refiner.init.sausages) % 4 == 0  # 4 parameters per mosaic texture block (sausage)
         init = params.refiner.init.sausages
+        if init is None:
+            init = [0, 0, 0, 1]*params.simulator.crystal.num_sausages
+        else:
+            assert len(init) % 4 == 0  # 4 parameters per mosaic texture block (sausage)
+
         SIM.D.update_number_of_sausages(params.simulator.crystal.num_sausages)
         x = flex.double(init[0::4])
         y = flex.double(init[1::4])
@@ -89,6 +99,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
     if miller_data is not None:
         SIM.crystal.miller_array = miller_data.as_amplitude_array()
         SIM.update_Fhkl_tuple()
+    #TODO multi shot
     shot_ucell_managers = {0: UcellMan}
     shot_rois = {0: rois}
     shot_nanoBragg_rois = {0: nanoBragg_rois}
@@ -111,6 +122,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
     else:
         n_ncells_param = 2
 
+    #TODO multi shot
     nrot_params = 3
     n_unitcell_params = len(UcellMan.variables)
     n_spotscale_params = 1
@@ -137,6 +149,7 @@ def local_refiner_from_parameters(refls, expt, params, miller_data=None):
         group_id = panel_group_from_id[pid]
         panels_per_group[group_id].append(pid)
 
+    #TODO multi shot
     n_spectra_params = 2 if params.refiner.refine_spectra is not None else 0
     n_panelRot_params = 3*n_panel_groups
     n_panelXYZ_params = 3*n_panel_groups

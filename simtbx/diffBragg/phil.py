@@ -148,7 +148,7 @@ refiner {
     .help = a text file with 2 columns, the first column is the panel_id and the second 
     .help = column is the panel_group_id. Panels geometries in the same group are refined together
   init {
-    sausages = [0,0,0,1]
+    sausages = None
       .type = floats
       .help = the initial parameters for the sausage, should be multiples of (rotX, rotY, rotZ, scale) 
       .help = , one for each mosaic block (sausage) making up texture
