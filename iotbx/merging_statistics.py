@@ -351,7 +351,9 @@ class merging_stats(object):
         self.cc_star = mult * sqrt((2*abs(self.cc_one_half)) /
                                    (1 + self.cc_one_half))
     self.cc_work = self.cc_free = self.r_work = self.r_free = None
+    self.has_cc_work = False
     if (model_arrays is not None) and (self.n_uniq > 0):
+      self.has_cc_work = True
       self.cc_work, self.cc_free, self.r_work, self.r_free = \
         model_arrays.cc_work_and_free(array_merged)
 
@@ -459,9 +461,10 @@ class merging_stats(object):
             self.completeness*100, self.i_mean, self.i_over_sigma_mean,
             self.r_merge, self.r_meas, self.r_pim, self.r_anom, self.cc_one_half,
             self.cc_one_half_significance, self.cc_one_half_critical_value,
-            self.cc_anom, self.cc_star,
-            # may be None if reflections not available, see cc_work_and_free
-            self.cc_work, self.cc_free, self.r_work, self.r_free]
+            self.cc_anom]
+    if self.has_cc_work:
+      table.extend([self.cc_star, self.cc_work, self.cc_free, self.r_work,
+        self.r_free])
     return table
 
   def show_summary(self, out=sys.stdout, prefix=""):
