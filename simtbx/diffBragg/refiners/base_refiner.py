@@ -3,10 +3,7 @@ import scitbx
 import numpy as np
 from abc import ABCMeta, abstractproperty, abstractmethod
 from scitbx.array_family import flex
-from scitbx.lbfgs.tst_curvatures import lbfgs_with_curvatures_mix_in
-from simtbx.diffBragg.nanoBragg_crystal import nanoBragg_crystal
 from scitbx.lbfgs import core_parameters
-from cctbx import miller
 
 
 # used in pixel refinement
@@ -18,11 +15,9 @@ class ReachedMaxIterations(Exception):
     pass
 
 
-class PixelRefinement(lbfgs_with_curvatures_mix_in):
+class BaseRefiner:
     """
-    This is the base class for pixel refinement based on
-    ROI sub-images, where its understood that each sub-image
-    contains Bragg scattering
+    This is the base class for pixel refinement
     """
 
     __metaclass__ = ABCMeta
@@ -217,7 +212,7 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.use_ucell_priors = False  # (not yet supported) whether to include priors for the unit cell constants
         self.use_rot_priors = False  # (not yet supported) whether to inc;ude priors for misset corrections
         self._refinement_millers = None  # flex array of refinement miller indices (computed by GlobalRefiner _setup method)
-        lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
+        #lbfgs_with_curvatures_mix_in.__init__(self, run_on_init=False)
 
     #@property
     #def m_init(self):
@@ -721,4 +716,10 @@ class PixelRefinement(lbfgs_with_curvatures_mix_in):
         self.d = flex.double(self.curv.as_numpy_array())
         self._verify_diag()
         return self.f, self.g, self.d
+
+    def _verify_diag(self):
+        sel = (self.g != 0)
+        self.d.set_selected(~sel, 1000)
+        assert self.d.select(sel).all_gt(0)
+        self.d = 1 / self.d
 

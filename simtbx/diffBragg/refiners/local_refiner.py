@@ -58,7 +58,7 @@ flex_miller_index = cctbx_flex.miller_index
 flex_double = flex.double
 FLEX_BOOL = flex.bool
 from scitbx.matrix import col
-from simtbx.diffBragg.refiners import PixelRefinement
+from simtbx.diffBragg.refiners import BaseRefiner
 from scipy.optimize import minimize
 from collections import Counter
 import pylab as plt
@@ -72,7 +72,7 @@ import itertools
 warnings.filterwarnings("ignore")
 
 
-class LocalRefiner(PixelRefinement):
+class LocalRefiner(BaseRefiner):
 
     def __init__(self, n_total_params, n_local_params, local_idx_start,
                  shot_ucell_managers, shot_rois, shot_nanoBragg_rois,
@@ -120,7 +120,7 @@ class LocalRefiner(PixelRefinement):
         :param global_detector_distance: do we refine a single detector Z position for all shots (default is True)
         :param omega_kahn: omega and kahn correction term for each panel
         """
-        PixelRefinement.__init__(self)
+        BaseRefiner.__init__(self)
         assert global_param_idx_start is not None
         assert shot_panel_ids is not None
 
@@ -308,7 +308,7 @@ class LocalRefiner(PixelRefinement):
 
     def __call__(self, *args, **kwargs):
         _, _ = self.compute_functional_and_gradients()
-        return self.x, self._f, self._g, self.d  #NOTEX
+        return self.x, self._f, self._g, self.d
 
     @property
     def n(self):
