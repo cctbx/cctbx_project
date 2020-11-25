@@ -103,12 +103,12 @@ void gpu_sum_over_steps(
 
         Bmat_realspace = eig_B*1e10;
         s_Ot = eig_O.transpose();
+        Amat_init = eig_U*Bmat_realspace*s_Ot;
         _NABC << Na,0,0,
                 0,Nb,0,
                 0,0,Nc;
         C = 2 / 0.63 * fudge;
         two_C = 2*C;
-        Amat_init = eig_U*Bmat_realspace*s_Ot;
         s_Na = Na;
         s_Nb = Nb;
         s_Nc = Nc;
@@ -296,10 +296,10 @@ void gpu_sum_over_steps(
             VEC3 delta_H = H_vec - H0;
             VEC3 V = _NABC*delta_H;
             CUDAREAL _hrad_sqr = V.dot(V);
-            CUDAREAL exparg = _hrad_sqr*C/2; ///0.63*fudge;
-            CUDAREAL _I_latt =0;
+            CUDAREAL exparg = _hrad_sqr*C/2;
+            CUDAREAL I0 =0;
             if (exparg< 35) // speed things up?
-                _I_latt = s_NaNbNc_squared*exp(-C*exparg);
+                I0 = s_NaNbNc_squared*exp(-2*exparg);
 
             CUDAREAL _F_cell = s_default_F;
             CUDAREAL _F_cell2 = 0;
@@ -319,7 +319,7 @@ void gpu_sum_over_steps(
                 _omega_pixel = 1;
 
             CUDAREAL _I_cell = _F_cell*_F_cell;
-            CUDAREAL _I_total = _I_cell *_I_latt;
+            CUDAREAL _I_total = _I_cell *I0;
             CUDAREAL Iincrement = _I_total*source_I[_source];
             Iincrement *= texture_scale;
             Iincrement *= _capture_fraction;
@@ -330,13 +330,8 @@ void gpu_sum_over_steps(
                 printf("hkl= %f %f %f  hkl1= %d %d %d  Fcell=%f\n", _h,_k,_l,_h0,_k0,_l0, _F_cell);
 
             MAT3 UBOt;
-            if (s_refine_Umat[0] ||s_refine_Umat[1] ||s_refine_Umat[2] || s_refine_eta){
+            if (s_refine_Umat[0] || s_refine_Umat[1] ||s_refine_Umat[2] || s_refine_eta){
                 UBOt = U*Amat_init;
-            }
-            else{
-                UBOt << 1,0,0,
-                        0,1,0,
-                        0,0,1;
             }
             if (s_refine_Umat[0]){
                 MAT3 RyRzUBOt = RotMats[1]*RotMats[2]*UBOt;
@@ -388,10 +383,12 @@ void gpu_sum_over_steps(
             }
             //Checkpoint for unit cell derivatives
             //MAT3 Ot = eig_O.transpose();
+            MAT3 UmosRxRyRzU;
+            VEC3 delta_H_prime;
             for(int i_uc=0; i_uc < 6; i_uc++ ){
                 if (s_refine_Bmat[i_uc]){
-                    MAT3 UmosRxRyRzU = UMATS_RXYZ[_mos_tic]*U;
-                    VEC3 delta_H_prime = ((UmosRxRyRzU*(dB_mats[i_uc])*s_Ot).transpose()*q_vec);
+                    UmosRxRyRzU = UMATS_RXYZ[_mos_tic]*U*eig_U;
+                    delta_H_prime = ((UmosRxRyRzU*(dB_mats[i_uc])*s_Ot).transpose()*q_vec);
                     CUDAREAL V_dot_dV = V.dot(_NABC*delta_H_prime);
                     CUDAREAL value = -two_C * V_dot_dV * Iincrement;
                     CUDAREAL value2 =0;
@@ -574,8 +571,24 @@ void gpu_sum_over_steps(
                       UU(0,0),  UU(0,1), UU(0,2),
                       UU(1,0),  UU(1,1), UU(1,2),
                       UU(2,0),  UU(2,1), UU(2,2));
+
+                   UU = UBOt;
+                     printf("UBOt :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
+                      UU(0,0),  UU(0,1), UU(0,2),
+                      UU(1,0),  UU(1,1), UU(1,2),
+                      UU(2,0),  UU(2,1), UU(2,2));
+
+                   UU = UmosRxRyRzU;
+                    printf("UmosRxRyRzU :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
+                        UU(0,0),  UU(0,1), UU(0,2),
+                        UU(1,0),  UU(1,1), UU(1,2),
+                        UU(2,0),  UU(2,1), UU(2,2));
+                   VEC3 AA = delta_H_prime;
+                   printf("delta_H_prime :\n%f  %f  %f\n",
+                        AA[0],  AA[1], AA[2]);
+                   printf("Iincrement: %f\n", Iincrement);
                    printf("hkl= %f %f %f  hkl0= %d %d %d\n", _h,_k,_l,_h0,_k0,_l0);
-                   printf(" F_cell=%g  I_latt=%g   I = %g\n", _F_cell,_I_latt,_I);
+                   printf(" F_cell=%g  I_latt=%g   I = %g\n", _F_cell,I0,_I);
                    printf("I/steps %15.10g\n", _I/s_Nsteps);
                    printf("omega   %15.10g\n", _omega_pixel);
                    printf("default_F= %f\n", s_default_F);

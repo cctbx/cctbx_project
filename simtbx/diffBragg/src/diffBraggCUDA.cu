@@ -78,6 +78,10 @@ void diffBragg_loopy(
         bool update_panel_deriv_vecs, bool update_sausages_on_device, int detector_thicksteps, int phisteps){ // diffBragg cuda loopy
 
     bool ALLOC = !cp.device_is_allocated;
+    if (phi0 != 0 || phisteps > 1){
+        printf("PHI (goniometer position) not supported in GPU code: phi0=%f phisteps=%d phistep=%f\n", phi0, phisteps, phistep);
+        exit(-1);
+    }
 
     int cuda_devices;
     cudaGetDeviceCount(&cuda_devices);

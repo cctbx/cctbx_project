@@ -284,10 +284,12 @@ void diffBragg::diffBragg_sum_over_steps(
             }
             /*Checkpoint for unit cell derivatives*/
             Eigen::Matrix3d Ot = eig_O.transpose();
+            Eigen::Matrix3d UmosRxRyRzU ;
+            Eigen::Vector3d delta_H_prime;
             for(int i_uc=0; i_uc < 6; i_uc++ ){
                 if (refine_Bmat[i_uc]){
-                    Eigen::Matrix3d UmosRxRyRzU = UMATS_RXYZ[_mos_tic]*U;
-                    Eigen::Vector3d delta_H_prime = ((UmosRxRyRzU*dB_Mats[i_uc]*Ot).transpose()*q_vec);
+                    UmosRxRyRzU = UMATS_RXYZ[_mos_tic]*U;
+                    delta_H_prime = ((UmosRxRyRzU*dB_Mats[i_uc]*Ot).transpose()*q_vec);
                     double V_dot_dV = V.dot(_NABC*delta_H_prime);
                     double value = -two_C * V_dot_dV * Iincrement;
                     double value2 =0;
@@ -455,6 +457,13 @@ void diffBragg::diffBragg_sum_over_steps(
                     std::cout << Bmat_realspace << std::endl;
                     printf("UBO\n");
                     std::cout << UBO << std::endl;
+                    printf("UBOt\n");
+                    std::cout << UBOt << std::endl;
+                    printf("UmosRxRyRzU\n");
+                    std::cout << UmosRxRyRzU << std::endl;
+                    printf("deltaHprime\n");
+                    std::cout << delta_H_prime << std::endl;
+                    printf("Iincrement: %f\n", Iincrement);
                     printf("pid_x=%d, pid_y=%d; pid_z=%d\n", pid_x, pid_y, pid_z);
                     SCITBX_EXAMINE(fdet_vectors[0]);
                     SCITBX_EXAMINE(fdet_vectors[1]);
