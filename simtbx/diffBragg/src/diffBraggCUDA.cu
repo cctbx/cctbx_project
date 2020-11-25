@@ -35,8 +35,6 @@ void diffBragg_loopy(
         image_type& d_panel_rot_images, image_type& d2_panel_rot_images,
         image_type& d_panel_orig_images, image_type& d2_panel_orig_images,
         image_type& d_sausage_XYZ_scale_images,
-        int* subS_pos, int* subF_pos, int* thick_pos,
-        int* source_pos, int* phi_pos, int* mos_pos, int* sausage_pos,
         const int Nsteps, int _printout_fpixel, int _printout_spixel, bool _printout, CUDAREAL _default_F,
         int oversample, bool _oversample_omega, CUDAREAL subpixel_size, CUDAREAL pixel_size,
         CUDAREAL detector_thickstep, CUDAREAL _detector_thick, CUDAREAL close_distance, CUDAREAL detector_attnlen,
@@ -102,14 +100,6 @@ void diffBragg_loopy(
 
 
     if (ALLOC){
-        gpuErr(cudaMallocManaged(&cp.cu_subS_pos, Nsteps*sizeof(int)));
-        gpuErr(cudaMallocManaged(&cp.cu_subF_pos, Nsteps*sizeof(int)));
-        gpuErr(cudaMallocManaged(&cp.cu_thick_pos, Nsteps*sizeof(int)));
-        gpuErr(cudaMallocManaged(&cp.cu_source_pos, Nsteps*sizeof(int)));
-        gpuErr(cudaMallocManaged(&cp.cu_mos_pos, Nsteps*sizeof(int)));
-        gpuErr(cudaMallocManaged(&cp.cu_phi_pos, Nsteps*sizeof(int)));
-        gpuErr(cudaMallocManaged(&cp.cu_sausage_pos, Nsteps*sizeof(int)));
-
         gpuErr(cudaMallocManaged(&cp.cu_source_X, number_of_sources*sizeof(CUDAREAL)));
         gpuErr(cudaMallocManaged(&cp.cu_source_Y, number_of_sources*sizeof(CUDAREAL)));
         gpuErr(cudaMallocManaged(&cp.cu_source_Z, number_of_sources*sizeof(CUDAREAL)));
@@ -180,19 +170,6 @@ void diffBragg_loopy(
     gettimeofday(&t1, 0);
     bool FORCE_COPY=true;
 
-    if (update_step_positions || ALLOC || FORCE_COPY){
-        for(int i=0; i< Nsteps;i++){
-            cp.cu_subS_pos[i] = subS_pos[i];
-            cp.cu_subF_pos[i] = subF_pos[i];
-            cp.cu_thick_pos[i] = thick_pos[i];
-            cp.cu_mos_pos[i] = mos_pos[i];
-            cp.cu_phi_pos[i] = phi_pos[i];
-            cp.cu_source_pos[i] = source_pos[i];
-            cp.cu_sausage_pos[i] = sausage_pos[i];
-        }
-        if (verbose>1)
-            printf("H2D Done copying step positions\n");
-    }
 //  END step position
     int kaladin_stormblessed = 777;
 
@@ -377,7 +354,8 @@ void diffBragg_loopy(
         numblocks = atoi(diffBragg_blocks);
 
     int Npanels = fdet_vectors.size()/3;
-    //int sm_size = Npanels*3*4*sizeof(CUDAREAL);
+    //int sm_size = Npanels*3*2*sizeof(CUDAREAL);
+    //gpu_sum_over_steps<<<numblocks, blocksize, sm_size >>>(
     gpu_sum_over_steps<<<numblocks, blocksize >>>(
         Npix_to_model, cp.cu_panels_fasts_slows,
         cp.cu_floatimage,
@@ -390,8 +368,6 @@ void diffBragg_loopy(
         cp.cu_d_panel_rot_images, cp.cu_d2_panel_rot_images,
         cp.cu_d_panel_orig_images, cp.cu_d2_panel_orig_images,
         cp.cu_d_sausage_XYZ_scale_images,
-        cp.cu_subS_pos, cp.cu_subF_pos, cp.cu_thick_pos,
-        cp.cu_source_pos, cp.cu_phi_pos, cp.cu_mos_pos, cp.cu_sausage_pos,
         Nsteps, _printout_fpixel, _printout_spixel, _printout, _default_F,
         oversample,  _oversample_omega, subpixel_size, pixel_size,
         detector_thickstep, _detector_thick, close_distance, detector_attnlen,
@@ -482,15 +458,6 @@ void freedom(diffBragg_cudaPointers& cp){
         gpuErr(cudaFree( cp.cu_d_panel_rot_images));
         gpuErr(cudaFree( cp.cu_d_panel_orig_images));
         gpuErr(cudaFree( cp.cu_d_sausage_XYZ_scale_images));
-
-        gpuErr(cudaFree( cp.cu_subS_pos));
-        gpuErr(cudaFree( cp.cu_subF_pos));
-        gpuErr(cudaFree( cp.cu_thick_pos));
-        gpuErr(cudaFree( cp.cu_mos_pos));
-        gpuErr(cudaFree( cp.cu_phi_pos));
-        gpuErr(cudaFree( cp.cu_source_pos));
-        gpuErr(cudaFree( cp.cu_sausage_pos));
-
 
         gpuErr(cudaFree(cp.cu_Fhkl));
         if (cp.cu_Fhkl2 != NULL)

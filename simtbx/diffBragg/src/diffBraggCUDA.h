@@ -90,7 +90,7 @@ struct diffBragg_cudaPointers {
 
 };
 
-
+//TODO can loopy take a diffBragg object as argument ?
 void diffBragg_loopy(
         int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,
         image_type& floatimage,
@@ -103,8 +103,6 @@ void diffBragg_loopy(
         image_type& d_panel_rot_images, image_type& d2_panel_rot_images,
         image_type& d_panel_orig_images, image_type& d2_panel_orig_images,
         image_type& d_sausage_XYZ_scale_images,
-        int* subS_pos, int* subF_pos, int* thick_pos,
-        int* source_pos, int* phi_pos, int* mos_pos, int* sausage_pos,
         const int Nsteps, int _printout_fpixel, int _printout_spixel, bool _printout, CUDAREAL _default_F,
         int oversample, bool _oversample_omega, CUDAREAL subpixel_size, CUDAREAL pixel_size,
         CUDAREAL detector_thickstep, CUDAREAL _detector_thick, CUDAREAL close_distance, CUDAREAL detector_attnlen,

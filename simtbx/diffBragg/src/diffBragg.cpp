@@ -1444,8 +1444,6 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
            d_panel_rot_images,  d2_panel_rot_images,
            d_panel_orig_images,  d2_panel_orig_images,
            d_sausage_XYZ_scale_images,
-           subS_pos,  subF_pos,  thick_pos,
-           source_pos,  phi_pos,  mos_pos, sausage_pos,
            Nsteps, _printout_fpixel, _printout_spixel, _printout, _default_F,
            oversample, oversample_omega, subpixel_size, pixel_size,
            detector_thickstep, detector_thick, close_distance, detector_attnlen,
