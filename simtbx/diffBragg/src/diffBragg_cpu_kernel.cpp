@@ -437,12 +437,25 @@ void diffBragg::diffBragg_sum_over_steps(
                 if((_fpixel==_printout_fpixel && _spixel==_printout_spixel) || _printout_fpixel < 0)
                 {
                     printf("%4d %4d : stol = %g, lambda = %g\n", _fpixel,_spixel,_stol, _lambda);
-                    printf("at %g %g %g\n", _pixel_pos[1],_pixel_pos[2],_pixel_pos[3]);
+                    printf("at %g %g %g\n", _pixel_pos[0],_pixel_pos[1],_pixel_pos[2]);
                     printf("hkl= %f %f %f  hkl0= %d %d %d\n", _h,_k,_l,_h0,_k0,_l0);
                     printf(" F_cell=%g  F_latt=%g   I = %g\n", _F_cell,_F_latt,_I);
                     printf("I/steps %15.10g\n", _I/steps);
+                    printf("Fdet= %g; Sdet= %g ; Odet= %g\n", _Fdet, _Sdet, _Odet);
                     printf("omega   %15.10g\n", _omega_pixel);
                     printf("default_F= %f\n", _default_F);
+                    printf("PIX0: %f %f %f\n" , pix0_vectors[pid_x], pix0_vectors[pid_y], pix0_vectors[pid_z]);
+                    printf("F: %f %f %f\n" , fdet_vectors[pid_x], fdet_vectors[pid_y], fdet_vectors[pid_z]);
+                    printf("S: %f %f %f\n" , sdet_vectors[pid_x], sdet_vectors[pid_y], sdet_vectors[pid_z]);
+                    printf("O: %f %f %f\n" , odet_vectors[pid_x], odet_vectors[pid_y], odet_vectors[pid_z]);
+                    printf("QVECTOR: %f %f %f\n" , q_vec[0], q_vec[1], q_vec[2]);
+                    printf("MOSAIC UMAT RXYZ\n");
+                    std::cout << UMATS_RXYZ[_mos_tic] << std::endl;
+                    printf("Bmat_realspace\n");
+                    std::cout << Bmat_realspace << std::endl;
+                    printf("UBO\n");
+                    std::cout << UBO << std::endl;
+                    printf("pid_x=%d, pid_y=%d; pid_z=%d\n", pid_x, pid_y, pid_z);
                     SCITBX_EXAMINE(fdet_vectors[0]);
                     SCITBX_EXAMINE(fdet_vectors[1]);
                     SCITBX_EXAMINE(fdet_vectors[2]);

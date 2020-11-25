@@ -71,6 +71,8 @@ struct diffBragg_cudaPointers {
   Eigen::Matrix3d* cu_dRotMats;
   Eigen::Matrix3d* cu_d2RotMats;
 
+  Eigen::Matrix3d* cu_AMATS;
+
   Eigen::Vector3d* cu_dF_vecs;
   Eigen::Vector3d* cu_dS_vecs;
 
@@ -140,7 +142,8 @@ void diffBragg_loopy(
         diffBragg_cudaPointers& cp,
         bool update_step_positions, bool update_panels_fasts_slows, bool update_sources, bool update_umats,
         bool update_dB_mats, bool update_rotmats, bool update_Fhkl, bool update_detector, bool update_refine_flags,
-        bool update_panel_deriv_vecs, bool update_sausages_on_device);
+        bool update_panel_deriv_vecs, bool update_sausages_on_device,
+        int detector_thicksteps, int phisteps);
 
 
 void freedom(diffBragg_cudaPointers& cp);

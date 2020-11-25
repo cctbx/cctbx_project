@@ -1481,7 +1481,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
            update_sources_on_device, update_umats_on_device,
            update_dB_matrices_on_device, update_rotmats_on_device,
            update_Fhkl_on_device, update_detector_on_device, update_refine_flags_on_device,
-           update_panel_deriv_vecs_on_device, update_sausages_on_device);
+           update_panel_deriv_vecs_on_device, update_sausages_on_device, detector_thicksteps, phisteps);
 #else
        // no statement
 #endif
@@ -1489,11 +1489,11 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     gettimeofday(&t2, 0);
     double time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
     if(verbose){
-        int n_total_iter = Nsteps*Npix_to_model;
+        long int n_total_iter = Nsteps*Npix_to_model;
         if(use_cuda || getenv("DIFFBRAGG_USE_CUDA")!= NULL)
-            printf("TIME TO RUN DIFFBRAGG -GPU- KERNEL (%d iterations):  %3.10f ms \n",n_total_iter, time);
+            printf("TIME TO RUN DIFFBRAGG -GPU- KERNEL (%ld iterations):  %3.10f ms \n",n_total_iter, time);
         else
-            printf("TIME TO RUN DIFFBRAGG -CPU-  KERNEL (%d iterations):  %3.10f ms \n",n_total_iter, time);
+            printf("TIME TO RUN DIFFBRAGG -CPU- KERNEL (%ld iterations):  %3.10f ms \n",n_total_iter, time);
     }
     // TODO behold inefficient
     for (int i_pix=0; i_pix< Npix_to_model; i_pix++){

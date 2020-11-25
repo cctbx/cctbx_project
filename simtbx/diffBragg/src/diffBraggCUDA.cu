@@ -2,8 +2,8 @@
 #include "diffBraggCUDA.h"
 #include "diffBragg_gpu_kernel.h"
 
-#define BLOCKSIZE 128
-#define NUMBLOCKS 128
+//#define BLOCKSIZE 128
+//#define NUMBLOCKS 128
 
 //https://stackoverflow.com/a/14038590/2077270
 #define gpuErr(ans) { gpuAssert((ans), __FILE__, __LINE__); }
@@ -77,7 +77,7 @@ void diffBragg_loopy(
         diffBragg_cudaPointers& cp,
         bool update_step_positions, bool update_panels_fasts_slows, bool update_sources, bool update_umats,
         bool update_dB_mats, bool update_rotmats, bool update_Fhkl, bool update_detector, bool update_refine_flags ,
-        bool update_panel_deriv_vecs, bool update_sausages_on_device){ // diffBragg cuda loopy
+        bool update_panel_deriv_vecs, bool update_sausages_on_device, int detector_thicksteps, int phisteps){ // diffBragg cuda loopy
 
     bool ALLOC = !cp.device_is_allocated;
 
@@ -118,6 +118,7 @@ void diffBragg_loopy(
 
         gpuErr(cudaMallocManaged((void **)&cp.cu_UMATS, UMATS.size()*sizeof(MAT3)));
         gpuErr(cudaMallocManaged((void **)&cp.cu_UMATS_RXYZ, UMATS_RXYZ.size()*sizeof(MAT3)));
+        gpuErr(cudaMallocManaged((void **)&cp.cu_AMATS, UMATS_RXYZ.size()*sausages_U.size()*sizeof(MAT3)));
         if (UMATS_RXYZ_prime.size()>0)
             gpuErr(cudaMallocManaged((void **)&cp.cu_UMATS_RXYZ_prime, UMATS_RXYZ_prime.size()*sizeof(MAT3)));
 
@@ -215,6 +216,13 @@ void diffBragg_loopy(
     if (update_umats || ALLOC||FORCE_COPY){
         for (int i=0; i< UMATS.size(); i++)
             cp.cu_UMATS[i] = UMATS[i];
+        //int idx=0;
+        //for (int i=0; i < UMATS_RXYZ.size(); i++){
+        //    for (auto elem: UMATS_RXYZ[i].reshaped()){
+        //        cp.cu_UMATS_RXYZ[idx] = elem;
+        //        idx ++;
+        //    }
+        //}
         for (int i=0; i < UMATS_RXYZ.size(); i++)
             cp.cu_UMATS_RXYZ[i] = UMATS_RXYZ[i];
         for (int i=0; i < UMATS_RXYZ_prime.size(); i++)
@@ -223,6 +231,19 @@ void diffBragg_loopy(
             printf("H2D Done copying Umats\n") ;
     }
 //  END UMATS
+
+
+    if (update_umats || update_sausages_on_device|| ALLOC||FORCE_COPY){
+        MAT3 Amat_init = eig_U*eig_B*1e10*(eig_O.transpose());
+        for (int i_sausage=0; i_sausage< sausages_U.size(); i_sausage++){
+            for(int i_mos =0; i_mos< UMATS_RXYZ.size(); i_mos++){
+                int idx = UMATS_RXYZ.size()*i_sausage + i_mos;
+                cp.cu_AMATS[idx] = (UMATS_RXYZ[i_mos]*sausages_U[i_sausage]*Amat_init).transpose();
+            }
+        }
+        if(verbose>1)
+            printf("H2D Done copying Amats\n") ;
+    }
 
 
 //  BMATS
@@ -341,7 +362,23 @@ void diffBragg_loopy(
     error_msg(cudaGetLastError(), "after copy to device");
 
     gettimeofday(&t1, 0);
-    gpu_sum_over_steps<<<NUMBLOCKS, BLOCKSIZE>>>(
+    int numblocks;
+    int blocksize;
+    char* diffBragg_blocks = getenv("DIFFBRAGG_NUM_BLOCKS");
+    char* diffBragg_threads = getenv("DIFFBRAGG_THREADS_PER_BLOCK");
+    if (diffBragg_threads==NULL)
+        blocksize=128;
+    else
+        blocksize=atoi(diffBragg_threads);
+
+    if (diffBragg_blocks==NULL)
+        numblocks = (Npix_to_model+blocksize-1)/blocksize;
+    else
+        numblocks = atoi(diffBragg_blocks);
+
+    int Npanels = fdet_vectors.size()/3;
+    //int sm_size = Npanels*3*4*sizeof(CUDAREAL);
+    gpu_sum_over_steps<<<numblocks, blocksize >>>(
         Npix_to_model, cp.cu_panels_fasts_slows,
         cp.cu_floatimage,
         cp.cu_d_Umat_images, cp.cu_d2_Umat_images,
@@ -358,6 +395,7 @@ void diffBragg_loopy(
         Nsteps, _printout_fpixel, _printout_spixel, _printout, _default_F,
         oversample,  _oversample_omega, subpixel_size, pixel_size,
         detector_thickstep, _detector_thick, close_distance, detector_attnlen,
+        detector_thicksteps, number_of_sources, phisteps, UMATS.size(),
         use_lambda_coefficients, lambda0, lambda1,
         eig_U, eig_O, eig_B, RXYZ,
         cp.cu_dF_vecs,
@@ -370,6 +408,7 @@ void diffBragg_loopy(
         cp.cu_UMATS,
         cp.cu_dB_Mats,
         cp.cu_dB2_Mats,
+        cp.cu_AMATS,
         cp.cu_sausages_RXYZ, cp.cu_d_sausages_RXYZ, cp.cu_sausages_U, cp.cu_sausages_scale,
         cp.cu_source_X, cp.cu_source_Y, cp.cu_source_Z, cp.cu_source_lambda, cp.cu_source_I,
         kahn_factor,
@@ -386,7 +425,7 @@ void diffBragg_loopy(
         refine_sausages, num_sausages,
         cp.cu_fdet_vectors, cp.cu_sdet_vectors,
         cp.cu_odet_vectors, cp.cu_pix0_vectors,
-        _nopolar, _point_pixel, _fluence, _r_e_sqr, _spot_scale);
+        _nopolar, _point_pixel, _fluence, _r_e_sqr, _spot_scale, Npanels);
 
     error_msg(cudaGetLastError(), "after kernel call");
 
@@ -470,6 +509,7 @@ void freedom(diffBragg_cudaPointers& cp){
 
         gpuErr(cudaFree(cp.cu_UMATS));
         gpuErr(cudaFree(cp.cu_UMATS_RXYZ));
+        gpuErr(cudaFree(cp.cu_AMATS));
         if(cp.cu_UMATS_RXYZ_prime != NULL)
             gpuErr(cudaFree(cp.cu_UMATS_RXYZ_prime));
         gpuErr(cudaFree(cp.cu_RotMats));

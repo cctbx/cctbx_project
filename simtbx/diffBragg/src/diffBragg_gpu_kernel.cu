@@ -13,16 +13,17 @@ void gpu_sum_over_steps(
         CUDAREAL* d_panel_rot_images, CUDAREAL* d2_panel_rot_images,
         CUDAREAL* d_panel_orig_images, CUDAREAL* d2_panel_orig_images,
         CUDAREAL* d_sausage_XYZ_scale_images,
-        int* subS_pos, int* subF_pos, int* thick_pos,
-        int* source_pos, int* phi_pos, int* mos_pos, int* sausage_pos,
+        const int* __restrict__ subS_pos, const int* __restrict__ subF_pos, const int*  __restrict__ thick_pos,
+        const int* __restrict__ source_pos, const int* __restrict__ phi_pos, const int* __restrict__ mos_pos, const int* __restrict__ sausage_pos,
         const int Nsteps, int _printout_fpixel, int _printout_spixel, bool _printout, CUDAREAL _default_F,
         int oversample, bool _oversample_omega, CUDAREAL subpixel_size, CUDAREAL pixel_size,
         CUDAREAL detector_thickstep, CUDAREAL _detector_thick, CUDAREAL close_distance, CUDAREAL detector_attnlen,
+        int detector_thicksteps, int sources, int phisteps, int mosaic_domains,
         bool use_lambda_coefficients, CUDAREAL lambda0, CUDAREAL lambda1,
         MAT3 eig_U, MAT3 eig_O, MAT3 eig_B, MAT3 RXYZ,
         VEC3* dF_vecs,
         VEC3* dS_vecs,
-        MAT3* UMATS_RXYZ,
+        const MAT3* __restrict__ UMATS_RXYZ,
         MAT3* UMATS_RXYZ_prime,
         MAT3* RotMats,
         MAT3* dRotMats,
@@ -30,8 +31,12 @@ void gpu_sum_over_steps(
         MAT3* UMATS,
         MAT3* dB_mats,
         MAT3* dB2_mats,
-        MAT3* sausages_RXYZ, MAT3* d_sausages_RXYZ, MAT3* sausages_U, CUDAREAL* sausages_scale,
-        CUDAREAL* source_X, CUDAREAL* source_Y, CUDAREAL* source_Z, CUDAREAL* source_lambda, CUDAREAL* source_I,
+        MAT3* Amatrices,
+        MAT3* sausages_RXYZ, MAT3* d_sausages_RXYZ, const MAT3* __restrict__ sausages_U,
+        const CUDAREAL* __restrict__ sausages_scale,
+        const CUDAREAL* __restrict__ source_X, const CUDAREAL* __restrict__ source_Y,
+        const CUDAREAL* __restrict__ source_Z, const CUDAREAL* __restrict__ source_lambda,
+        const CUDAREAL* __restrict__ source_I,
         CUDAREAL kahn_factor,
         CUDAREAL Na, CUDAREAL Nb, CUDAREAL Nc,
         CUDAREAL phi0, CUDAREAL phistep,
@@ -40,17 +45,50 @@ void gpu_sum_over_steps(
         int h_max, int h_min, int k_max, int k_min, int l_max, int l_min, CUDAREAL dmin,
         CUDAREAL fudge, bool complex_miller, int verbose, bool only_save_omega_kahn,
         bool isotropic_ncells, bool compute_curvatures,
-        CUDAREAL* _FhklLinear, CUDAREAL* _Fhkl2Linear,
+        const CUDAREAL* __restrict__ _FhklLinear, const CUDAREAL* __restrict__ _Fhkl2Linear,
         bool* refine_Bmat, bool* refine_Ncells, bool* refine_panel_origin, bool* refine_panel_rot,
         bool refine_fcell, bool* refine_lambda, bool refine_eta, bool* refine_Umat,
         bool refine_sausages, int num_sausages,
-        CUDAREAL* fdet_vectors, CUDAREAL* sdet_vectors,
-        CUDAREAL* odet_vectors, CUDAREAL* pix0_vectors,
-        bool _nopolar, bool _point_pixel, CUDAREAL _fluence, CUDAREAL _r_e_sqr, CUDAREAL _spot_scale)
+        const CUDAREAL* __restrict__ fdet_vectors, const CUDAREAL* __restrict__ sdet_vectors,
+        const CUDAREAL* __restrict__ odet_vectors, const CUDAREAL* __restrict__ pix0_vectors,
+        bool _nopolar, bool _point_pixel, CUDAREAL _fluence, CUDAREAL _r_e_sqr, CUDAREAL _spot_scale, int Npanels)
 { // BEGIN GPU kernel
 
+    //extern __shared__ CUDAREAL detector_vectors[];
+    //int stride = Npanels*3; // detector vectors stride in shared mem
+
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    //if (tid==0){
+    //    for (int i=0; i<stride; i++){
+    //        detector_vectors[i] = fdet_vectors[i];
+    //        detector_vectors[stride+i] = sdet_vectors[i];
+    //        detector_vectors[2*stride+i] = odet_vectors[i];
+    //        detector_vectors[3*stride+i] = pix0_vectors[i];
+    //    }
+    //}
+    //__syncthreads();
     int thread_stride = blockDim.x * gridDim.x;
+    __shared__ MAT3 s_Ot;
+    __shared__ MAT3 s_Amat;
+    MAT3 Bmat_realspace = eig_B*1e10;
+    if (threadIdx.x==0){
+        s_Ot = eig_O.transpose();
+        s_Amat = eig_U*eig_B*1e10*s_Ot;
+    }
+    __syncthreads();
+
+    MAT3 _NABC;
+    _NABC << Na,0,0,
+            0,Nb,0,
+            0,0,Nc;
+    CUDAREAL C = 2 / 0.63 * fudge;
+    CUDAREAL two_C = 2*C;
+    //MAT3 U;
+    //U << 1,0,0,
+    //     0,1,0,
+    //     0,0,1; //= sausages_U[_sausage_tic] * eig_U;
+    //__syncthreads();
+
     for (int i_pix=tid; i_pix < Npix_to_model; i_pix+= thread_stride){
        int _pid = panels_fasts_slows[i_pix*3];
        int _fpixel = panels_fasts_slows[i_pix*3+1];
@@ -82,30 +120,42 @@ void gpu_sum_over_steps(
                                           0,0,0,0,0,
                                           0,0,0,0}; // maximum of 6 sausages!
 
-       for (int _i_step=0; _i_step < Nsteps; _i_step++){
-
-           int _subS = subS_pos[_i_step];
-           int _subF = subF_pos[_i_step];
-           int _thick_tic = thick_pos[_i_step];
-           int _source = source_pos[_i_step];
-           int _phi_tic = phi_pos[_i_step];
-           int _mos_tic = mos_pos[_i_step];
-           int _sausage_tic = sausage_pos[_i_step];
+       for(int _subS=0;_subS<oversample;++_subS){
+       for(int _subF=0;_subF<oversample;++_subF){
 
            // absolute mm position on detector (relative to its origin)
            CUDAREAL _Fdet = subpixel_size*(_fpixel*oversample + _subF ) + subpixel_size/2.0;
            CUDAREAL _Sdet = subpixel_size*(_spixel*oversample + _subS ) + subpixel_size/2.0;
 
            // assume "distance" is to the front of the detector sensor layer
-           CUDAREAL _Odet = _thick_tic*detector_thickstep;
            int pid_x = _pid*3;
            int pid_y = _pid*3+1;
            int pid_z = _pid*3+2;
-           VEC3 _o_vec(odet_vectors[pid_x], odet_vectors[pid_y], odet_vectors[pid_z]);
 
-           CUDAREAL pixposX = _Fdet*fdet_vectors[pid_x]+_Sdet*sdet_vectors[pid_x]+_Odet*odet_vectors[pid_x]+pix0_vectors[pid_x];
-           CUDAREAL pixposY = _Fdet*fdet_vectors[pid_y]+_Sdet*sdet_vectors[pid_y]+_Odet*odet_vectors[pid_y]+pix0_vectors[pid_y];
-           CUDAREAL pixposZ = _Fdet*fdet_vectors[pid_z]+_Sdet*sdet_vectors[pid_z]+_Odet*odet_vectors[pid_z]+pix0_vectors[pid_z];
+           CUDAREAL fx = fdet_vectors[pid_x];
+           CUDAREAL fy = fdet_vectors[pid_y];
+           CUDAREAL fz = fdet_vectors[pid_z];
+
+           CUDAREAL sx = sdet_vectors[pid_x];
+           CUDAREAL sy = sdet_vectors[pid_y];
+           CUDAREAL sz = sdet_vectors[pid_z];
+
+           CUDAREAL ox = odet_vectors[pid_x];
+           CUDAREAL oy = odet_vectors[pid_y];
+           CUDAREAL oz = odet_vectors[pid_z];
+
+           CUDAREAL p0x =pix0_vectors[pid_x];
+           CUDAREAL p0y =pix0_vectors[pid_y];
+           CUDAREAL p0z =pix0_vectors[pid_z];
+
+           VEC3 _o_vec(ox, oy, oz);
+
+    for(int _thick_tic=0;_thick_tic<detector_thicksteps;++_thick_tic){
+           CUDAREAL _Odet = _thick_tic*detector_thickstep;
+
+           CUDAREAL pixposX = _Fdet*fx + _Sdet*sx + _Odet*ox + p0x;
+           CUDAREAL pixposY = _Fdet*fy + _Sdet*sy + _Odet*oy + p0y;
+           CUDAREAL pixposZ = _Fdet*fz + _Sdet*sz + _Odet*oz + p0z;
            VEC3 _pixel_pos(pixposX, pixposY, pixposZ);
 
            CUDAREAL _airpath = _pixel_pos.norm();
@@ -119,6 +169,7 @@ void gpu_sum_over_steps(
 
            // now calculate detector thickness effects
            CUDAREAL _capture_fraction = 1;
+
            if(_detector_thick > 0.0 && detector_attnlen > 0.0)
            {
                // inverse of effective thickness increase
@@ -126,8 +177,18 @@ void gpu_sum_over_steps(
                _capture_fraction = exp(-_thick_tic*detector_thickstep/detector_attnlen/_parallax)
                                  -exp(-(_thick_tic+1)*detector_thickstep/detector_attnlen/_parallax);
            }
-           VEC3 _incident(-source_X[_source], -source_Y[_source], -source_Z[_source]);
-           CUDAREAL _lambda = source_lambda[_source];
+
+           // TODO source loop
+
+      for(int _source=0;_source<sources;++_source){
+           //VEC3 _incident(-__ldg(&source_X[_source]),
+           //               -__ldg(&source_Y[_source]),
+           //               -__ldg(&source_Z[_source]));
+           VEC3 _incident(-source_X[_source],
+                          -source_Y[_source],
+                          -source_Z[_source]);
+           CUDAREAL _lambda =source_lambda[_source];
+           //CUDAREAL _lambda = __ldg(&source_lambda[_source]);
            CUDAREAL lambda_ang = _lambda*1e10;
            if (use_lambda_coefficients){
                lambda_ang = lambda0 + lambda1*lambda_ang;
@@ -141,41 +202,18 @@ void gpu_sum_over_steps(
 
            CUDAREAL _stol = 0.5*(_scattering.norm()); //magnitude(scattering);
 
-           //if(dmin > 0.0 && _stol > 0.0)
-           //{
-           //    if(dmin > 0.5/_stol)
-           //    {
-           //        continue;
-           //    }
-           //}
+           VEC3 q_vec(_scattering[0], _scattering[1], _scattering[2]);
+           q_vec *= 1e-10;
 
-          CUDAREAL _phi = phi0 + phistep*_phi_tic;
-          MAT3 Bmat_realspace = eig_B;
-          if( _phi != 0.0 )
-          {
-              CUDAREAL cosphi = cos(_phi);
-              CUDAREAL sinphi = sin(_phi);
-              VEC3 ap_vec(eig_B(0,0), eig_B(1,0), eig_B(2,0));
-              VEC3 bp_vec(eig_B(0,1), eig_B(1,1), eig_B(2,1));
-              VEC3 cp_vec(eig_B(0,2), eig_B(1,2), eig_B(2,2));
+     for (int _sausage_tic=0; _sausage_tic< num_sausages; ++_sausage_tic){
 
-              ap_vec = ap_vec*cosphi + spindle_vec.cross(ap_vec)*sinphi + spindle_vec*(spindle_vec.dot(ap_vec))*(1-cosphi);
-              bp_vec = bp_vec*cosphi + spindle_vec.cross(bp_vec)*sinphi + spindle_vec*(spindle_vec.dot(bp_vec))*(1-cosphi);
-              cp_vec = cp_vec*cosphi + spindle_vec.cross(cp_vec)*sinphi + spindle_vec*(spindle_vec.dot(cp_vec))*(1-cosphi);
+          MAT3 U = sausages_U[_sausage_tic];
 
-              Bmat_realspace << ap_vec[0], bp_vec[0], cp_vec[0],
-                                  ap_vec[1], bp_vec[1], cp_vec[1],
-                                  ap_vec[2], bp_vec[2], cp_vec[2];
-          }
-          Bmat_realspace *= 1e10;
+    for(int _mos_tic=0;_mos_tic<mosaic_domains;++_mos_tic){
+          int amat_idx = mosaic_domains*_sausage_tic+_mos_tic;
+          MAT3 UBO = Amatrices[amat_idx];
 
-          MAT3 U = sausages_U[_sausage_tic] * eig_U;
-          MAT3 UBO = (UMATS_RXYZ[_mos_tic] * U*Bmat_realspace*(eig_O.transpose())).transpose();
-
-          VEC3 q_vec(_scattering[0], _scattering[1], _scattering[2]);
-          q_vec *= 1e-10;
           VEC3 H_vec = UBO*q_vec;
-
           CUDAREAL _h = H_vec[0];
           CUDAREAL _k = H_vec[1];
           CUDAREAL _l = H_vec[2];
@@ -185,27 +223,26 @@ void gpu_sum_over_steps(
           int _l0 = ceil(_l - 0.5);
 
           VEC3 H0(_h0, _k0, _l0);
-          MAT3 _NABC;
-          _NABC << Na,0,0,
-                  0,Nb,0,
-                  0,0,Nc;
 
-          CUDAREAL C = 2 / 0.63 * fudge;
           VEC3 delta_H = H_vec - H0;
           VEC3 V = _NABC*delta_H;
           CUDAREAL _hrad_sqr = V.dot(V);
-          CUDAREAL _F_latt = Na*Nb*Nc*exp(-( _hrad_sqr / 0.63 * fudge ));
+          CUDAREAL exparg = _hrad_sqr/0.63*fudge;
+          CUDAREAL _F_latt =0;
+          if (exparg< 35) // speed things up?
+              _F_latt = Na*Nb*Nc*exp(-exparg);
 
           //if(_F_latt == 0.0 && ! only_save_omega_kahn) {
           //    continue;
           //}
-
           CUDAREAL _F_cell = _default_F;
           CUDAREAL _F_cell2 = 0;
 
           if ( (_h0<=h_max) && (_h0>=h_min) && (_k0<=k_max) && (_k0>=k_min) && (_l0<=l_max) && (_l0>=l_min)  ) {
               int Fhkl_linear_index = (_h0-h_min) * k_range * l_range + (_k0-k_min) * l_range + (_l0-l_min);
+              //_F_cell = __ldg(&_FhklLinear[Fhkl_linear_index]);
               _F_cell = _FhklLinear[Fhkl_linear_index];
+              //if (complex_miller) _F_cell2 = __ldg(&_Fhkl2Linear[Fhkl_linear_index]);
               if (complex_miller) _F_cell2 = _Fhkl2Linear[Fhkl_linear_index];
           }
 
@@ -215,15 +252,18 @@ void gpu_sum_over_steps(
           if (!_oversample_omega)
               _omega_pixel = 1;
 
+          //CUDAREAL sI = __ldg(&source_I[_source]);
+          //CUDAREAL Iincrement = _F_cell*_F_cell*_F_latt*_F_latt*sI*_capture_fraction*_omega_pixel;
           CUDAREAL Iincrement = _F_cell*_F_cell*_F_latt*_F_latt*source_I[_source]*_capture_fraction*_omega_pixel;
-          Iincrement *= sausages_scale[_sausage_tic]*sausages_scale[_sausage_tic];
+          //CUDAREAL texture_scale= __ldg(&sausages_scale[_sausage_tic]);
+          CUDAREAL texture_scale= sausages_scale[_sausage_tic];
+          Iincrement *= texture_scale*texture_scale;
           _I += Iincrement;
 
           if(verbose > 3)
               printf("hkl= %f %f %f  hkl1= %d %d %d  Fcell=%f\n", _h,_k,_l,_h0,_k0,_l0, _F_cell);
 
-          CUDAREAL two_C = 2*C;
-          MAT3 UBOt = U*Bmat_realspace*(eig_O.transpose());
+          MAT3 UBOt; //  = U*Bmat_realspace*(eig_O.transpose());
           if (refine_Umat[0]){
               MAT3 RyRzUBOt = RotMats[1]*RotMats[2]*UBOt;
               VEC3 delta_H_prime = (UMATS[_mos_tic]*dRotMats[0]*RyRzUBOt).transpose()*q_vec;
@@ -273,16 +313,16 @@ void gpu_sum_over_steps(
               rot_manager_dI2[2] += value2;
           }
           //Checkpoint for unit cell derivatives
-          MAT3 Ot = eig_O.transpose();
+          //MAT3 Ot = eig_O.transpose();
           for(int i_uc=0; i_uc < 6; i_uc++ ){
               if (refine_Bmat[i_uc]){
                   MAT3 UmosRxRyRzU = UMATS_RXYZ[_mos_tic]*U;
-                  VEC3 delta_H_prime = ((UmosRxRyRzU*(dB_mats[i_uc])*Ot).transpose()*q_vec);
+                  VEC3 delta_H_prime = ((UmosRxRyRzU*(dB_mats[i_uc])*s_Ot).transpose()*q_vec);
                   CUDAREAL V_dot_dV = V.dot(_NABC*delta_H_prime);
                   CUDAREAL value = -two_C * V_dot_dV * Iincrement;
                   CUDAREAL value2 =0;
                   if (compute_curvatures){
-                      VEC3 delta_H_dbl_prime = ((UmosRxRyRzU*(dB2_mats[i_uc])*Ot).transpose()*q_vec);
+                      VEC3 delta_H_dbl_prime = ((UmosRxRyRzU*(dB2_mats[i_uc])*s_Ot).transpose()*q_vec);
                       CUDAREAL dV_dot_dV = (_NABC*delta_H_prime).dot(_NABC*delta_H_prime);
                       CUDAREAL dV2_dot_V = (_NABC*delta_H).dot(_NABC*delta_H_dbl_prime);
                       value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
@@ -432,12 +472,36 @@ void gpu_sum_over_steps(
               }
           }
           //end of lambda deriv
-          if( _printout && _i_step==0 ){
-              if((_fpixel==_printout_fpixel && _spixel==_printout_spixel) || _printout_fpixel < 0)
-              {
+          if( _printout){
+           if( _subS==0 && _subF==0 && _thick_tic==0 && _source==0 &&  _mos_tic==0 && _sausage_tic==0){
+            if((_fpixel==_printout_fpixel && _spixel==_printout_spixel) || _printout_fpixel < 0){
+               //if( _i_step==0){
                  printf("%4d %4d : stol = %g, lambda = %g\n", _fpixel,_spixel,_stol, _lambda);
                  printf("at %g %g %g\n", _pixel_pos[0],_pixel_pos[1],_pixel_pos[2]);
-                 printf("source XYZ %g %g %g\n", source_X[0],source_Y[0],source_Z[0]);
+                 printf("Fdet= %g; Sdet= %g ; Odet= %g\n", _Fdet, _Sdet, _Odet);
+                 printf("PIX0: %f %f %f\n" , pix0_vectors[pid_x], pix0_vectors[pid_y], pix0_vectors[pid_z]);
+                 printf("F: %f %f %f\n" , fdet_vectors[pid_x], fdet_vectors[pid_y], fdet_vectors[pid_z]);
+                 printf("S: %f %f %f\n" , sdet_vectors[pid_x], sdet_vectors[pid_y], sdet_vectors[pid_z]);
+                 printf("O: %f %f %f\n" , odet_vectors[pid_x], odet_vectors[pid_y], odet_vectors[pid_z]);
+                 printf("pid_x=%d, pid_y=%d; pid_z=%d\n", pid_x, pid_y, pid_z);
+
+                 printf("QVECTOR: %f %f %f\n" , q_vec[0], q_vec[1], q_vec[2]);
+                 MAT3 UU = UMATS_RXYZ[_mos_tic];
+                   printf("UMAT_RXYZ :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
+                    UU(0,0),  UU(0,1), UU(0,2),
+                    UU(1,0),  UU(1,1), UU(1,2),
+                    UU(2,0),  UU(2,1), UU(2,2));
+                 UU = Bmat_realspace;
+                   printf("Bmat_realspace :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
+                    UU(0,0),  UU(0,1), UU(0,2),
+                    UU(1,0),  UU(1,1), UU(1,2),
+                    UU(2,0),  UU(2,1), UU(2,2));
+                 UU = UBO;
+                   printf("UBO :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
+                    UU(0,0),  UU(0,1), UU(0,2),
+                    UU(1,0),  UU(1,1), UU(1,2),
+                    UU(2,0),  UU(2,1), UU(2,2));
+                 //printf("source XYZ %g %g %g\n", source_X[0],source_Y[0],source_Z[0]);
                  printf("hkl= %f %f %f  hkl0= %d %d %d\n", _h,_k,_l,_h0,_k0,_l0);
                  printf(" F_cell=%g  F_latt=%g   I = %g\n", _F_cell,_F_latt,_I);
                  printf("I/steps %15.10g\n", _I/Nsteps);
@@ -445,17 +509,25 @@ void gpu_sum_over_steps(
                  printf("default_F= %f\n", _default_F);
                  printf("Incident[0]=%g, Incident[1]=%g, Incident[2]=%g\n", _incident[0], _incident[1], _incident[2]);
                  printf("source_path %g\n", _source_path);
-                 for (int i_saus=0; i_saus<num_sausages; i_saus++){
-                   printf("Sausages U (i_sausage=%d, scale=%f) :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
-                    i_saus,sausages_scale[i_saus],
-                    sausages_U[i_saus](0,0),  sausages_U[i_saus](0,1), sausages_U[i_saus](0,2),
-                    sausages_U[i_saus](1,0),  sausages_U[i_saus](1,1), sausages_U[i_saus](1,2),
-                    sausages_U[i_saus](2,0),  sausages_U[i_saus](2,1), sausages_U[i_saus](2,2));
-                 }
+                 //for (int i_saus=0; i_saus<num_sausages; i_saus++){
+                 //  printf("Sausages U (i_sausage=%d, scale=%f) :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
+                 //   i_saus,sausages_scale[i_saus],
+                 //   sausages_U[i_saus](0,0),  sausages_U[i_saus](0,1), sausages_U[i_saus](0,2),
+                 //   sausages_U[i_saus](1,0),  sausages_U[i_saus](1,1), sausages_U[i_saus](1,2),
+                 //   sausages_U[i_saus](2,0),  sausages_U[i_saus](2,1), sausages_U[i_saus](2,2));
+                 //}
               }
+            }
           }
 
-       } // end of i_steps loop
+       //} // end of i_steps loop
+             }
+            }
+           }
+          }
+         }
+        }
+       //} // leaving out olf phi
 
        CUDAREAL _Fdet_ave = pixel_size*_fpixel + pixel_size/2.0;
        CUDAREAL _Sdet_ave = pixel_size*_spixel + pixel_size/2.0;
@@ -465,9 +537,58 @@ void gpu_sum_over_steps(
        int pid_x = _pid*3;
        int pid_y = _pid*3+1;
        int pid_z = _pid*3+2;
-       _pixel_pos_ave[0] = _Fdet_ave * fdet_vectors[pid_x]+_Sdet_ave*sdet_vectors[pid_x]+_Odet_ave*odet_vectors[pid_x]+pix0_vectors[pid_x];
-       _pixel_pos_ave[1] = _Fdet_ave * fdet_vectors[pid_y]+_Sdet_ave*sdet_vectors[pid_y]+_Odet_ave*odet_vectors[pid_y]+pix0_vectors[pid_y];
-       _pixel_pos_ave[2] = _Fdet_ave * fdet_vectors[pid_z]+_Sdet_ave*sdet_vectors[pid_z]+_Odet_ave*odet_vectors[pid_z]+pix0_vectors[pid_z];
+       //CUDAREAL fx = detector_vectors[pid_x];
+       //CUDAREAL fy = detector_vectors[pid_y];
+       //CUDAREAL fz = detector_vectors[pid_z];
+
+       //CUDAREAL sx = detector_vectors[stride+pid_x];
+       //CUDAREAL sy = detector_vectors[stride+pid_y];
+       //CUDAREAL sz = detector_vectors[stride+pid_z];
+
+       //CUDAREAL ox = detector_vectors[stride*2+pid_x];
+       //CUDAREAL oy = detector_vectors[stride*2+pid_y];
+       //CUDAREAL oz = detector_vectors[stride*2+pid_z];
+
+       //CUDAREAL p0x = detector_vectors[stride*3+pid_x];
+       //CUDAREAL p0y = detector_vectors[stride*3+pid_y];
+       //CUDAREAL p0z = detector_vectors[stride*3+pid_z];
+
+           CUDAREAL fx = fdet_vectors[pid_x];
+           CUDAREAL fy = fdet_vectors[pid_y];
+           CUDAREAL fz = fdet_vectors[pid_z];
+
+           CUDAREAL sx = sdet_vectors[pid_x];
+           CUDAREAL sy = sdet_vectors[pid_y];
+           CUDAREAL sz = sdet_vectors[pid_z];
+
+           CUDAREAL ox = odet_vectors[pid_x];
+           CUDAREAL oy = odet_vectors[pid_y];
+           CUDAREAL oz = odet_vectors[pid_z];
+
+           CUDAREAL p0x =pix0_vectors[pid_x];
+           CUDAREAL p0y =pix0_vectors[pid_y];
+           CUDAREAL p0z =pix0_vectors[pid_z];
+
+
+       //CUDAREAL fx = __ldg(&fdet_vectors[pid_x]);
+       //CUDAREAL fy = __ldg(&fdet_vectors[pid_y]);
+       //CUDAREAL fz = __ldg(&fdet_vectors[pid_z]);
+
+       //CUDAREAL sx = __ldg(&sdet_vectors[pid_x]);
+       //CUDAREAL sy = __ldg(&sdet_vectors[pid_y]);
+       //CUDAREAL sz = __ldg(&sdet_vectors[pid_z]);
+
+       //CUDAREAL ox = __ldg(&odet_vectors[pid_x]);
+       //CUDAREAL oy = __ldg(&odet_vectors[pid_y]);
+       //CUDAREAL oz = __ldg(&odet_vectors[pid_z]);
+
+       //CUDAREAL p0x = __ldg(&pix0_vectors[pid_x]);
+       //CUDAREAL p0y = __ldg(&pix0_vectors[pid_y]);
+       //CUDAREAL p0z = __ldg(&pix0_vectors[pid_z]);
+
+       _pixel_pos_ave[0] = _Fdet_ave * fx+_Sdet_ave*sx+_Odet_ave*ox+p0x;
+       _pixel_pos_ave[1] = _Fdet_ave * fy+_Sdet_ave*sy+_Odet_ave*oy+p0y;
+       _pixel_pos_ave[2] = _Fdet_ave * fz+_Sdet_ave*sz+_Odet_ave*oz+p0z;
 
        CUDAREAL _airpath_ave = _pixel_pos_ave.norm();
        VEC3 _diffracted_ave = _pixel_pos_ave/_airpath_ave;
@@ -475,6 +596,7 @@ void gpu_sum_over_steps(
 
        CUDAREAL _polar = 1;
        if (!_nopolar){
+           //VEC3 _incident(-__ldg(&source_X[0]), -__ldg(&source_Y[0]), -__ldg(&source_Z[0]));
            VEC3 _incident(-source_X[0], -source_Y[0], -source_Z[0]);
            _incident = _incident / _incident.norm();
            // component of diffracted unit vector along incident beam unit vector
