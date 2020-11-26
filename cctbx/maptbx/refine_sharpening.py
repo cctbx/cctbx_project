@@ -778,6 +778,7 @@ def calculate_fsc(**kw):
        overall_si,
        out)
     si_list.append(working_si)
+
   if direction_vectors == [None]:
     return si_list[0]
 
@@ -1593,13 +1594,17 @@ class aniso_refinery:
         return
 
     else:
-      best_b = self.get_b(self.x)
-      resid=self.residual(self.x)
-      scitbx.lbfgs.run(target_evaluator=self,
-      termination_params=scitbx.lbfgs.termination_parameters(
-        traditional_convergence_test_eps=self.tol,
+
+      try:
+        scitbx.lbfgs.run(target_evaluator=self,
+          termination_params=scitbx.lbfgs.termination_parameters(
+          traditional_convergence_test_eps=self.tol,
                      max_iterations=self.max_iterations,
-       ))
+         ))
+      except Exception as e:
+        resid = self.residual(self.x)
+
+
 
   def grid_search(self):
     best_b = self.get_b()

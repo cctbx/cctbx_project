@@ -2912,7 +2912,7 @@ class map_model_manager(object):
       rmsd = None,
       local_sharpen = None,
       anisotropic_sharpen = None,
-      minimum_low_res_cc = None,
+      minimum_low_res_cc = 0.1,
       get_scale_as_aniso_u = None,
       use_dv_weighting = None,
       n_direction_vectors = None,
@@ -3888,11 +3888,13 @@ class map_model_manager(object):
         expected_rms_fc_list = expected_rms_fc_list,)
 
     # Set anything with too-low low-res CC to None for model-based run
-    for si in result.scaling_info_list:
-      if is_model_based and si.low_res_cc < minimum_low_res_cc:
-        print("Skipping scaling with low_res_cc = %.2f" %(si.low_res_cc),
-          file = self.log)
-        si.target_scale_factors = None
+    ok_si = True
+    if is_model_based and (minimum_low_res_cc is not None):
+      for si in result.scaling_info_list:
+        if si.low_res_cc < minimum_low_res_cc:
+          print("Skipping scaling with low_res_cc = %.2f" %(si.low_res_cc),
+            file = self.log)
+          return None
 
     """
     scaling_group_info group_args object:
