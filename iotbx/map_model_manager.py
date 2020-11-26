@@ -2387,12 +2387,12 @@ class map_model_manager(object):
 
 
     if have_previous_scaled_data:
-      if previous_kw.get('map_id_1'):
+      # Expect map_id_1 to be in previous_kw['map_id_to_be_scaled_list']...
+      if previous_kw.get('map_id_1') and previous_kw.get('map_id_2'):
         local_kw['map_id_1'] = previous_kw['map_id_scaled_list'][
          previous_kw['map_id_to_be_scaled_list'].index(previous_kw['map_id_1'])]
         print("Map 1 to use in determining scaling: '%s' " %(
           local_kw['map_id_1']), file = self.log)
-      if previous_kw.get('map_id_2'):
         local_kw['map_id_2'] = previous_kw['map_id_scaled_list'][
          previous_kw['map_id_to_be_scaled_list'].index(previous_kw['map_id_2'])]
         print("Map 2 to use in determining scaling: '%s' " %(
@@ -2420,7 +2420,7 @@ class map_model_manager(object):
     print("Sharpened maps will be in: %s " %(
        local_kw['map_id_scaled_list']), file = self.log)
 
-    if self.model():
+    if local_kw.get('model_id') and self.get_model_by_id(local_kw['model_id']):
       cc = self.map_model_cc(map_id=local_kw['map_id'])
       print ("Current map-model CC for '%s': %.3f " %(local_kw['map_id'],cc),
          file = self.log)
@@ -2639,9 +2639,9 @@ class map_model_manager(object):
         kw['map_id']  in kw['map_id_to_be_scaled_list']) # map_id_to_be_scaled not ok
 
       # Set up list of maps to be scaled
-      kw = self.set_map_id_lists(kw)
+      kw['sharpen_all_maps'] = True # REQUIRED
+      kw = self.set_map_id_lists(kw) # MUST COME AFTER sharpen_all_maps
       kw['overall_sharpen_before_and_after_local'] = False
-      kw['sharpen_all_maps'] = True
 
       # run sharpening without local sharpening first
       #  Then set maps to scale as the scaled maps from this run
@@ -2707,7 +2707,7 @@ class map_model_manager(object):
       print("\nFinal sharpened map is in '%s' in '%s' " %(
          scaled_map_id, self.name), file = self.log)
 
-      if self.model():
+      if self.get_model_by_id(model_id):
         cc = self.map_model_cc(map_id = scaled_map_id)
         print ("Current map-model CC for '%s': %.3f " %(scaled_map_id,cc),
            file = self.log)
@@ -2716,7 +2716,8 @@ class map_model_manager(object):
            file = self.log)
 
   def set_map_id_lists(self,kw):
-
+    if kw.get('overall_sharpen_before_and_after_local'):
+      kw['sharpen_all_maps'] = True
     if kw.get('map_id') is None:
       kw['map_id'] = 'map_manager'
     if kw.get('map_id_to_be_scaled_list') is None:
@@ -3011,12 +3012,12 @@ class map_model_manager(object):
         get_tls_from_u = True
     elif find_tls_from_model:
       # If we are going to use TLS groups from the model, check them here
-      if not self.model():
+      if not self.get_model_by_id(model_id):
         raise Sorry("Need model for find_tls_from_model")
       if get_tls_from_u is None:
         get_tls_from_u = True
       tlso_group_info = get_tlso_group_info_from_model(
-         self.model(),
+         self.get_model_by_id(model_id),
          nproc = nproc,
          log = self.log)
       kw['tlso_group_info'] = tlso_group_info
@@ -3073,7 +3074,7 @@ class map_model_manager(object):
          mask_atoms_atom_radius = 2.* d_min,
          soft_mask =True)
       d_min_for_k_sol_b_sol = max(d_min, d_min_for_k_sol_b_sol)
-      kb_info = local_mmm.find_k_sol_b_sol(local_mmm.model(),
+      kb_info = local_mmm.find_k_sol_b_sol(local_mmm.get_model_by_id(model_id),
         d_min = d_min_for_k_sol_b_sol,
         model_map_id = map_id_model_map,
         comparison_map_id = map_id)
@@ -3250,8 +3251,9 @@ class map_model_manager(object):
     working_mmm = self._get_map_model_manager_with_selected(
       map_id_list = map_id_list, deep_copy=True)
     working_mmm.set_log(self.log)
-    if is_model_based and self.model():
-      working_mmm.add_model_by_id(model_id = 'model', model = self.model()) # maybe use model_id
+    if is_model_based and self.get_model_by_id(model_id_for_rms_fc):
+      working_mmm.add_model_by_id(model_id = model_id_for_rms_fc,
+          model = self.get_model_by_id(model_id_for_rms_fc))
 
     # Note the map that is going to be scaled
     assert kw['map_id_to_be_scaled_list']
@@ -6970,11 +6972,12 @@ def get_tlso_group_info_from_model(model, nproc = 1, log = sys.stdout):
 
   ok = False
   for u in u_cart:
-    if tuple(u_cart) != (0,0,0,0,0,0) and tuple(u_cart) != (-1,-1,-1,-1,-1,-1):
+    if tuple(u) != (0,0,0,0,0,0) and tuple(u) != (-1,-1,-1,-1,-1,-1):
       ok = True
+      break
   if not ok:
-    raise Sorry("Aniso U values from model are all zero or missing...cannot get TLS")
-
+    raise Sorry(
+      "Aniso U values from model are all zero or missing...cannot get TLS")
 
   # Get the groups in this file
   from mmtbx.command_line.find_tls_groups import find_tls, master_phil

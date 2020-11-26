@@ -418,6 +418,39 @@ def get_calculated_scale_factors(
       scale_values = scale_values,
       original_scale_values = original_scale_values)
 
+def get_rms_fo_values(fo = None, direction_vectors = None, d_avg = None,
+     first_bin = None):
+    '''  For first bin everything is just the average'''
+
+    abs_fo_data = flex.abs(fo.data())
+    sqr_fo = fo.customized_copy(data=flex.pow2(abs_fo_data))
+    rms_fo= sqr_fo.data().min_max_mean().mean**0.5
+
+    if first_bin:
+      return flex.double(direction_vectors.size(), rms_fo)
+
+    abs_fo = fo.customized_copy(data = abs_fo_data)
+    sar = shell_aniso_refinery(abs_fo)
+    sar.run()
+    # Now apply the values to a dummy array with indices for our dv vectors
+    recip_space_vectors = flex.vec3_double()
+    for dv in direction_vectors:
+      s = 1/d_avg
+      recip_space_vectors.append(matrix.col(dv) * s)
+    from iotbx.map_model_manager import create_fine_spacing_array
+    fo_to_get_values = create_fine_spacing_array( abs_fo.crystal_symmetry().unit_cell())
+    indices = flex.miller_index(tuple(get_nearest_lattice_points(
+        fo_to_get_values.crystal_symmetry().unit_cell(),recip_space_vectors)))
+
+    fo_to_get_values = fo_to_get_values.customized_copy(indices = indices,
+      data = flex.double(indices.size(),1))
+    values_array = sar.get_calc_array(
+      sar.x,
+      array_with_indices=fo_to_get_values)
+    # Return estimates of rms F in each direction
+    values = values_array.data() * (1./.785)**0.5  # expect: <F>**2/<F**2> = 0.785
+    return values
+
 def calculate_fsc(**kw):
   '''
     Calculate FSC of 2 maps and estimate scale factors
@@ -586,7 +619,17 @@ def calculate_fsc(**kw):
     else:
       fo = None
 
-    for dv, weights_para in zip(direction_vectors, weights_para_list):
+    # Let's fit rms fo in just this shell
+    if direction_vectors and direction_vectors[0] != None:
+      rms_fo_values = get_rms_fo_values(
+       fo = fo, direction_vectors = direction_vectors,
+       d_avg = d_avg,
+       first_bin = first_bin)
+    else:
+      rms_fo_values = len(direction_vectors) * [None]
+
+    for dv, weights_para, rms_fo in zip(direction_vectors, weights_para_list,
+         rms_fo_values):
       if dv:
         weights_para_sel = weights_para.select(sel)
         weights_para_sel_sqrt = flex.sqrt(weights_para_sel)
@@ -599,11 +642,11 @@ def calculate_fsc(**kw):
           cca=0.
         cc_dict_by_dv[i].append(cca)
         normalization = 1./max(1.e-10,weights_para_sel.rms())
-        if fo_map:
+        if (not rms_fo) and fo_map:
           fo_a = fo.customized_copy(data=fo.data()*weights_para_sel)
           f_array_fo=map_coeffs_to_fp(fo_a)
           rms_fo=normalization * f_array_fo.data().rms()
-        else:
+        elif (not rms_fo):
           rms_fo=1.
 
         if expected_rms_fc_list:
@@ -658,7 +701,7 @@ def calculate_fsc(**kw):
         ratio_dict_by_dv[i].append(max(1.e-10,rms_fc)/max(1.e-10,rms_fo))
 
 
-    sthol2=0.25/d_avg**2 # note this is 0.25 * s_value
+    sthol2=0.25/d_avg**2 # note this is 0.25 * s_value**2
     target_sthol2.append(sthol2)
     s_value_list.append(1/d_avg)
     d_min_list.append(d_min)
@@ -906,7 +949,7 @@ def analyze_anisotropy(
     # overall true fall-off
 
   The scale factor to apply to Fobs is:
-  Q(s) = (rmsFc(|s|)/rmsFo(|s|))  * (1 +  0.5 * ssqr(s))/(1 + ssqr(s))
+  Q(s) = (rmsFc(|s|)/rmsFo(s))  * sqrt(1 +  0.5 * ssqr(s))/(1 + ssqr(s))
 
   Normalize these to Q(s=0).
   """
@@ -1119,9 +1162,11 @@ def get_aniso_info(
   #   (1 +  0.5 * ssqr(s))**2/(1 + ssqr(s))
   #  ... which has a value of 1 for ssqr=0 and 1.04 for ssqr=5...
 
+  #  dd_values = 1/sqrt(1+0.5*ssqr)
+
   overall_si.qq_values = (
      overall_si.rms_fc_list *
-     overall_si.dd_values ) / (
+     flex.sqrt(1. + 0.5 * overall_si.ssqr_values)) / (
      overall_si.rms_fo_list *
      (1. + overall_si.ssqr_values))
 
@@ -1143,7 +1188,7 @@ def get_aniso_info(
     si.ssqr_values = 2. * ( -1 + 1./si.cc_list)  # cc* is in cc_list
     si.qq_values = (
      si.rms_fc_list *
-     si.dd_values ) / (
+     flex.sqrt(1. + 0.5 * si.ssqr_values)) / (
      si.rms_fo_list *
      (1. + si.ssqr_values))
 
@@ -1180,7 +1225,7 @@ def get_aniso_info(
            1/maximum_ratio)
 
     # Estimate of true fall-off of data relative to ideal U
-    # U(s) = rmsFo(s) / (rmsFc(|s|) (1 +  0.5* ssqr(s)))
+    # U(s) = rmsFo(s) / (rmsFc(|s|) sqrt(1 +  0.5* ssqr(s)))
     si.uu_values = si.rms_fo_list * si.dd_values / overall_si.rms_fc_list
 
     info = get_calculated_scale_factors( # get the indices
@@ -1357,6 +1402,7 @@ def get_scale_from_aniso_b_cart(f_array = None,
     data = flex.double(indices.size(),1),
     indices = indices)
   from mmtbx.scaling import absolute_scaling
+  scale_values_array.set_observation_type_xray_amplitude()
 
   # NOTE: this removes b_cart from data. To apply it,  use apply_b=True
   if apply_b:
@@ -1497,6 +1543,9 @@ def get_aniso_from_scale_values(
   ar.run()
   b_cart = ar.get_b()
 
+  # If we want overall scale factor, it is here:
+  # overall_scale = ar.get_overall_scale()
+  # resid=ar.residual(b_cart)
 
   return b_cart
 
@@ -1506,22 +1555,26 @@ class aniso_refinery:
     b_cart,
     scale_values,
     sd_values,
+    overall_scale = 1.0,
     eps=0.01,
     tol=1.e-6,
     max_iterations=20,
     start_with_grid_search = True,
     grid_delta = 10,
     grid_n = 2,
+    get_overall_scale_factor = True,
     ):
 
     self.aniso_info = aniso_info
     self.b_cart=b_cart
+    self.overall_scale=overall_scale
     self.scale_values=scale_values
     self.sd_values=sd_values
 
     self.tol=tol
     self.eps=eps
     self.max_iterations=max_iterations
+    self.get_overall_scale_factor=get_overall_scale_factor
 
     self.x = flex.double(b_cart)
     self.start_with_grid_search = start_with_grid_search
@@ -1540,6 +1593,8 @@ class aniso_refinery:
         return
 
     else:
+      best_b = self.get_b(self.x)
+      resid=self.residual(self.x)
       scitbx.lbfgs.run(target_evaluator=self,
       termination_params=scitbx.lbfgs.termination_parameters(
         traditional_convergence_test_eps=self.tol,
@@ -1576,6 +1631,13 @@ class aniso_refinery:
     g = self.gradients(b)
     return f, g
 
+  def calculate_overall_scale(self,calc_values):
+     if self.get_overall_scale_factor:
+       return max(0, self.scale_values.min_max_mean().mean/max(1.e-10,
+         calc_values.min_max_mean().mean))
+     else:
+       return 1
+
   def residual(self,b):
     calc_values_by_dv = get_calc_values(
       aniso_info = self.aniso_info,
@@ -1586,7 +1648,10 @@ class aniso_refinery:
     for c in calc_values_by_dv:
       calc_values.extend(c)
 
-    diffs = calc_values - self.scale_values
+    # Get overall scale
+    self.overall_scale = self.calculate_overall_scale(calc_values)
+
+    diffs = calc_values*self.overall_scale - self.scale_values
     if self.aniso_info.weight_by_variance:
       diffs = diffs/self.sd_values
     diffs_dc=diffs.deep_copy()
@@ -1614,11 +1679,105 @@ class aniso_refinery:
       result.append((rs[0]-rs[1])/(2*self.eps))
     return result
 
+  def get_overall_scale(self):
+    return self.overall_scale
+
   def get_b(self):
     return list(self.x)
 
   def callback_after_step(self, minimizer):
     pass # can do anything here
+
+class shell_aniso_refinery(aniso_refinery):
+  def __init__(self,
+    f_array,
+    power = 1.,
+    b_cart = None,
+    overall_scale = None,
+    eps=.1,
+    tol=1.e-6,
+    max_iterations=20,
+    ):
+
+    if not b_cart:
+      b_cart = (0,0,0,0,0,0)
+    if not overall_scale:
+      overall_scale = f_array.data().min_max_mean().mean
+
+    self.f_array = f_array.deep_copy()
+
+    self.power=power
+    self.tol=tol
+    self.eps=eps
+    self.max_iterations=max_iterations
+
+    self.x = self.get_x(b_cart,overall_scale)
+
+    self.start_with_grid_search = False
+
+  def get_b(self, x = None):
+    if x is None:
+      x = self.x
+    return [x[0],x[1],-1.*(x[0]+x[1]),x[2],x[3],x[4]]
+
+  def get_overall_scale(self, x = None):
+    if x is None:
+      x = self.x
+    return x[5]
+
+
+  def get_x(self, b_cart, overall_scale):
+    return flex.double((b_cart[0],b_cart[1],b_cart[3],b_cart[4],b_cart[5],
+      overall_scale))
+
+  def compute_functional_and_gradients(self):
+    x = self.x
+    f = self.residual(x)
+    g = self.gradients(x)
+    return f, g
+
+  def gradients(self,x):
+
+    result = flex.double()
+    for i in range(len(list(x))):
+      rs = []
+      for signed_eps in [self.eps, -self.eps]:
+        params_eps = deepcopy(x)
+        params_eps[i] += signed_eps
+        rs.append(self.residual(params_eps))
+      result.append((rs[0]-rs[1])/(2*self.eps))
+    return result
+
+
+  def get_calc_array(self, x,  array_with_indices = None):
+    b = self.get_b(x)
+    overall_scale = self.get_overall_scale(x)
+    from mmtbx.scaling import absolute_scaling
+    overall_u_cart_to_apply = adptbx.b_as_u(tuple(
+       -1*self.power*flex.double(tuple(b))))
+
+    if not array_with_indices:
+      array_with_indices = self.f_array
+
+    u_star= adptbx.u_cart_as_u_star(
+      array_with_indices.unit_cell(),
+       tuple(matrix.col(overall_u_cart_to_apply)))
+    fit_array = array_with_indices.customized_copy(
+       data=flex.double(array_with_indices.size(),overall_scale))
+    fit_array.set_observation_type_xray_amplitude()
+    calc_array = absolute_scaling.anisotropic_correction(
+          fit_array,0.0, u_star ,must_be_greater_than=-0.0001)
+
+    return calc_array
+
+  def residual(self,x):
+    calc_array = self.get_calc_array(x)
+    if not calc_array or calc_array.size()==0:
+       return 1.e+30
+    diffs = calc_array.data()-self.f_array.data()
+    residual = flex.pow2(diffs).min_max_mean().mean
+    rms = residual**0.5
+    return rms
 
 class iso_refinery(aniso_refinery):
   def __init__(self,
@@ -2476,12 +2635,15 @@ class analyze_aniso_object:
     u_star= adptbx.u_cart_as_u_star(
       f_array.unit_cell(), adptbx.b_as_u( self.b_cart) )
 
+    f_array.set_observation_type_xray_amplitude()
+
     u_star_aniso_removed = adptbx.u_cart_as_u_star(
       f_array.unit_cell(), adptbx.b_as_u( self.b_cart_aniso_removed  ) )
 
     no_aniso_array = absolute_scaling.anisotropic_correction(
       f_array,0.0, u_star ,must_be_greater_than=-0.0001)
 
+    no_aniso_array.set_observation_type_xray_amplitude()
     no_aniso_array = absolute_scaling.anisotropic_correction(
       no_aniso_array,0.0,u_star_aniso_removed,must_be_greater_than=-0.0001)
 
