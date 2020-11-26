@@ -2707,8 +2707,9 @@ class map_model_manager(object):
       print("\nFinal sharpened map is in '%s' in '%s' " %(
          scaled_map_id, self.name), file = self.log)
 
-      if self.get_model_by_id(model_id):
-        cc = self.map_model_cc(map_id = scaled_map_id)
+      if local_kw.get('model_id') and self.get_model_by_id(local_kw['model_id']):
+        cc = self.map_model_cc(model_id = local_kw['model_id'],
+           map_id = scaled_map_id)
         print ("Current map-model CC for '%s': %.3f " %(scaled_map_id,cc),
            file = self.log)
 
