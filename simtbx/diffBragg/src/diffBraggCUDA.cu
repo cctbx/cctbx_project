@@ -83,6 +83,20 @@ void diffBragg_loopy(
         exit(-1);
     }
 
+    int numblocks;
+    int blocksize;
+    char* diffBragg_blocks = getenv("DIFFBRAGG_NUM_BLOCKS");
+    char* diffBragg_threads = getenv("DIFFBRAGG_THREADS_PER_BLOCK");
+    if (diffBragg_threads==NULL)
+        blocksize=128;
+    else
+        blocksize=atoi(diffBragg_threads);
+
+    if (diffBragg_blocks==NULL)
+        numblocks = (Npix_to_model+blocksize-1)/blocksize;
+    else
+        numblocks = atoi(diffBragg_blocks);
+
     int cuda_devices;
     cudaGetDeviceCount(&cuda_devices);
 
@@ -181,9 +195,11 @@ void diffBragg_loopy(
 //  BEGIN sources
     if (update_sources || ALLOC || FORCE_COPY){
         for (int i=0; i< number_of_sources; i++){
-            cp.cu_source_X[i] = source_X[i];
-            cp.cu_source_Y[i] = source_Y[i];
-            cp.cu_source_Z[i] = source_Z[i];
+            VEC3 incident(source_X[i], source_Y[i], source_Z[i]);
+            incident /= incident.norm();
+            cp.cu_source_X[i] = incident[0];
+            cp.cu_source_Y[i] = incident[1];
+            cp.cu_source_Z[i] = incident[2];
             cp.cu_source_I[i] = source_I[i];
             cp.cu_source_lambda[i] = source_lambda[i];
         }
@@ -343,24 +359,10 @@ void diffBragg_loopy(
     error_msg(cudaGetLastError(), "after copy to device");
 
     gettimeofday(&t1, 0);
-    int numblocks;
-    int blocksize;
-    char* diffBragg_blocks = getenv("DIFFBRAGG_NUM_BLOCKS");
-    char* diffBragg_threads = getenv("DIFFBRAGG_THREADS_PER_BLOCK");
-    if (diffBragg_threads==NULL)
-        blocksize=128;
-    else
-        blocksize=atoi(diffBragg_threads);
-
-    if (diffBragg_blocks==NULL)
-        numblocks = (Npix_to_model+blocksize-1)/blocksize;
-    else
-        numblocks = atoi(diffBragg_blocks);
 
     int Npanels = fdet_vectors.size()/3;
-    //int sm_size = Npanels*3*2*sizeof(CUDAREAL);
-    //gpu_sum_over_steps<<<numblocks, blocksize, sm_size >>>(
-    gpu_sum_over_steps<<<numblocks, blocksize >>>(
+    int sm_size = number_of_sources*5*sizeof(CUDAREAL);
+    gpu_sum_over_steps<<<numblocks, blocksize, sm_size >>>(
         Npix_to_model, cp.cu_panels_fasts_slows,
         cp.cu_floatimage,
         cp.cu_d_Umat_images, cp.cu_d2_Umat_images,

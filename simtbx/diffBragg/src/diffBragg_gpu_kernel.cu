@@ -159,6 +159,24 @@ void gpu_sum_over_steps(
         //    det_vecs[i+det_stride] = sdet_vectors[i];
         //}
     }
+
+    extern __shared__ CUDAREAL source_data[];
+    int threads_per_block = blockDim.x;
+    int num_source_blocks = (sources + threads_per_block-1)/threads_per_block;
+    int tx = threadIdx.x;
+    if (tx < threads_per_block){
+        for (int i_source_block=0; i_source_block < num_source_blocks; i_source_block++){
+            int idx = i_source_block*threads_per_block + tx;
+            if (idx< sources){
+                source_data[idx] = source_X[idx];
+                source_data[sources+idx] = source_Y[idx];
+                source_data[sources*2+idx] = source_Z[idx];
+                source_data[sources*3+idx] = source_lambda[idx];
+                source_data[sources*4+idx] = source_I[idx];
+            }
+        }
+    }
+
     __syncthreads();
 
     for (int i_pix=tid; i_pix < Npix_to_model; i_pix+= thread_stride){
@@ -252,19 +270,17 @@ void gpu_sum_over_steps(
             //VEC3 _incident(-__ldg(&source_X[_source]),
             //               -__ldg(&source_Y[_source]),
             //               -__ldg(&source_Z[_source]));
-            VEC3 _incident(-source_X[_source],
-                           -source_Y[_source],
-                           -source_Z[_source]);
-            CUDAREAL _lambda =source_lambda[_source];
+            VEC3 _incident(-source_data[_source],
+                           -source_data[sources+_source],
+                           -source_data[2*sources+_source]);
+            CUDAREAL _lambda = source_data[3*sources+_source];
+            CUDAREAL sI = source_data[4*sources+_source];
             //CUDAREAL _lambda = __ldg(&source_lambda[_source]);
             CUDAREAL lambda_ang = _lambda*1e10;
             if (use_lambda_coefficients){
                 lambda_ang = s_lambda0 + s_lambda1*lambda_ang;
                 _lambda = lambda_ang*1e-10;
             }
-
-            CUDAREAL _source_path = _incident.norm();
-            _incident /= _source_path;
 
             VEC3 _scattering = (_diffracted - _incident) / _lambda;
 
@@ -320,7 +336,7 @@ void gpu_sum_over_steps(
 
             CUDAREAL _I_cell = _F_cell*_F_cell;
             CUDAREAL _I_total = _I_cell *I0;
-            CUDAREAL Iincrement = _I_total*source_I[_source];
+            CUDAREAL Iincrement = _I_total*sI;
             Iincrement *= texture_scale;
             Iincrement *= _capture_fraction;
             Iincrement *= _omega_pixel;
@@ -593,7 +609,6 @@ void gpu_sum_over_steps(
                    printf("omega   %15.10g\n", _omega_pixel);
                    printf("default_F= %f\n", s_default_F);
                    printf("Incident[0]=%g, Incident[1]=%g, Incident[2]=%g\n", _incident[0], _incident[1], _incident[2]);
-                   printf("source_path %g\n", _source_path);
                 }
               }
             }
