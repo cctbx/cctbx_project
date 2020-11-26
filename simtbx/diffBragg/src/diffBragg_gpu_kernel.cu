@@ -265,16 +265,17 @@ void gpu_sum_over_steps(
                 _capture_fraction = exp(-_thick_tic*s_detector_thickstep/s_detector_attnlen/_parallax)
                                   -exp(-(_thick_tic+1)*s_detector_thickstep/s_detector_attnlen/_parallax);
             }
+            CUDAREAL cap_frac_times_omega = _capture_fraction * _omega_pixel;
 
         for(int _source=0;_source<s_sources;++_source){
             //VEC3 _incident(-__ldg(&source_X[_source]),
             //               -__ldg(&source_Y[_source]),
             //               -__ldg(&source_Z[_source]));
             VEC3 _incident(-source_data[_source],
-                           -source_data[sources+_source],
-                           -source_data[2*sources+_source]);
-            CUDAREAL _lambda = source_data[3*sources+_source];
-            CUDAREAL sI = source_data[4*sources+_source];
+                           -source_data[s_sources+_source],
+                           -source_data[2*s_sources+_source]);
+            CUDAREAL _lambda = source_data[3*s_sources+_source];
+            CUDAREAL sI = source_data[4*s_sources+_source];
             //CUDAREAL _lambda = __ldg(&source_lambda[_source]);
             CUDAREAL lambda_ang = _lambda*1e10;
             if (use_lambda_coefficients){
@@ -292,6 +293,8 @@ void gpu_sum_over_steps(
             MAT3 U = sausages_U[_sausage_tic];
             CUDAREAL texture_scale= sausages_scale[_sausage_tic];
             texture_scale *= texture_scale;
+            texture_scale *= cap_frac_times_omega;
+            texture_scale *= sI;
 
         for(int _mos_tic=0;_mos_tic<s_mosaic_domains;++_mos_tic){
 
@@ -336,10 +339,7 @@ void gpu_sum_over_steps(
 
             CUDAREAL _I_cell = _F_cell*_F_cell;
             CUDAREAL _I_total = _I_cell *I0;
-            CUDAREAL Iincrement = _I_total*sI;
-            Iincrement *= texture_scale;
-            Iincrement *= _capture_fraction;
-            Iincrement *= _omega_pixel;
+            CUDAREAL Iincrement = _I_total*texture_scale;
             _I += Iincrement;
 
             if(s_verbose > 3)
