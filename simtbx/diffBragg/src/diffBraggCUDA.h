@@ -141,7 +141,7 @@ void diffBragg_loopy(
         bool update_step_positions, bool update_panels_fasts_slows, bool update_sources, bool update_umats,
         bool update_dB_mats, bool update_rotmats, bool update_Fhkl, bool update_detector, bool update_refine_flags,
         bool update_panel_deriv_vecs, bool update_sausages_on_device,
-        int detector_thicksteps, int phisteps);
+        int detector_thicksteps, int phisteps, int Npix_to_allocate);
 
 
 void freedom(diffBragg_cudaPointers& cp);

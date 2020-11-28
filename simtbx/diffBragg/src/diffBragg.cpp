@@ -1479,7 +1479,8 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
            update_sources_on_device, update_umats_on_device,
            update_dB_matrices_on_device, update_rotmats_on_device,
            update_Fhkl_on_device, update_detector_on_device, update_refine_flags_on_device,
-           update_panel_deriv_vecs_on_device, update_sausages_on_device, detector_thicksteps, phisteps);
+           update_panel_deriv_vecs_on_device, update_sausages_on_device, detector_thicksteps, phisteps,
+           Npix_to_allocate);
 #else
        // no statement
 #endif

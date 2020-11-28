@@ -417,6 +417,7 @@ class diffBragg: public nanoBragg{
   bool update_step_positions_on_device=false;
   bool update_panel_deriv_vecs_on_device=false;
   bool use_cuda=false;
+  int Npix_to_allocate=-1; // got GPU allocation, -1 is auto mode
 
   void update_number_of_sausages(int _num_sausages);
   void allocate_sausages();

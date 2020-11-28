@@ -1,5 +1,6 @@
 
 from copy import deepcopy
+import numpy as np
 
 import os
 from libtbx.mpi4py import MPI
@@ -135,6 +136,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         self.n_ncells_param = n_ncells_param
         self.n_spectra_params = n_spectra_params
 
+        self.NPIX_TO_ALLOC = self._determine_per_rank_max_num_pix()
         self._launch(total_local_param_on_rank, n_global_params,
                      local_idx_start=local_param_offset_per_rank,
                      global_idx_start=total_local_unknowns_all_ranks)
@@ -214,3 +216,14 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             if selection_flags[i] and self.panel_group_from_id[pid] not in refined_groups:
                 refined_groups.append(self.panel_group_from_id[pid])
         return refined_groups
+
+    def _determine_per_rank_max_num_pix(self):
+        max_npix = 0
+        for i_shot in self.shot_rois:
+            rois = self.shot_rois[i_shot]
+            x1, x2, y1, y2 = map(np.array, zip(*rois))
+            npix = np.sum((x2-x1)*(y2-y1))
+            max_npix = max(npix, max_npix)
+            print("Rank %d, shot %d has %d pixels" % (COMM.rank, i_shot+1, npix))
+        print("Rank %d, max pix to be modeled: %d" % (COMM.rank, max_npix))
+        return max_npix

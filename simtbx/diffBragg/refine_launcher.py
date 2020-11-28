@@ -39,6 +39,7 @@ class LocalRefinerLauncher:
         self.RUC = None
         self.SIM = None
         self.NCELLS_MASK = None
+        self.NPIX_TO_ALLOC = -1
 
         self.n_local_unknowns = None
         self.n_global_unknowns = None
@@ -46,6 +47,15 @@ class LocalRefinerLauncher:
         self.global_idx_start = None
 
         self._rationalize_ncells_refinement_protocol()
+
+    @property
+    def NPIX_TO_ALLOC(self):
+        return self._NPIX_TO_ALLOC
+
+    @NPIX_TO_ALLOC.setter
+    def NPIX_TO_ALLOC(self, val):
+        assert val> 0 or val == -1
+        self._NPIX_TO_ALLOC = int(val)
 
     def _alias_refiner(self):
         self._Refiner = LocalRefiner
@@ -261,6 +271,7 @@ class LocalRefinerLauncher:
             self.RUC.trad_conv = True
             self.RUC.S.update_nanoBragg_instance('update_oversample_during_refinement', False)
             self.RUC.S.update_nanoBragg_instance('use_cuda', self.params.refiner.use_cuda)
+            self.RUC.S.update_nanoBragg_instance("Npix_to_allocate", self.NPIX_TO_ALLOC)
             if self.params.refiner.use_cuda:
                 #TODO ensemble
                 self.RUC.S.update_nanoBragg_instance('device_Id', np.random.choice(self.params.refiner.num_devices))

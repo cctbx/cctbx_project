@@ -75,9 +75,11 @@ void diffBragg_loopy(
         diffBragg_cudaPointers& cp,
         bool update_step_positions, bool update_panels_fasts_slows, bool update_sources, bool update_umats,
         bool update_dB_mats, bool update_rotmats, bool update_Fhkl, bool update_detector, bool update_refine_flags ,
-        bool update_panel_deriv_vecs, bool update_sausages_on_device, int detector_thicksteps, int phisteps){ // diffBragg cuda loopy
+        bool update_panel_deriv_vecs, bool update_sausages_on_device, int detector_thicksteps, int phisteps,
+        int Npix_to_allocate){ // diffBragg cuda loopy
 
     bool ALLOC = !cp.device_is_allocated;
+
     if (phi0 != 0 || phisteps > 1){
         printf("PHI (goniometer position) not supported in GPU code: phi0=%f phisteps=%d phistep=%f\n", phi0, phisteps, phistep);
         exit(-1);
@@ -116,8 +118,20 @@ void diffBragg_loopy(
     struct timeval t1, t2, t3 ,t4;
     gettimeofday(&t1, 0);
 
+    if (Npix_to_allocate==-1){
+        Npix_to_allocate = Npix_to_model;
+    }
+    else if (Npix_to_model > Npix_to_allocate){
+        printf("Npix to model=%d is greater than the number of pixel requested for allocation (%d)!\n",
+            Npix_to_model, Npix_to_allocate);
+        exit(-1);
+    }
+
 
     if (ALLOC){
+        if (verbose){
+            printf("Will model %d pixels and allocate %d pix\n", Npix_to_model, Npix_to_allocate);
+        }
         gpuErr(cudaMallocManaged(&cp.cu_source_X, number_of_sources*sizeof(CUDAREAL)));
         gpuErr(cudaMallocManaged(&cp.cu_source_Y, number_of_sources*sizeof(CUDAREAL)));
         gpuErr(cudaMallocManaged(&cp.cu_source_Z, number_of_sources*sizeof(CUDAREAL)));
@@ -162,16 +176,16 @@ void diffBragg_loopy(
         gpuErr(cudaMallocManaged( &cp.cu_sausages_scale, sausages_scale.size()*sizeof(CUDAREAL) ));
 
         //gettimeofday(&t3, 0));
-        gpuErr(cudaMallocManaged(&cp.cu_floatimage, Npix_to_model*sizeof(CUDAREAL) ));
-        gpuErr(cudaMallocManaged(&cp.cu_d_fcell_images, Npix_to_model*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_eta_images, Npix_to_model*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_Umat_images, Npix_to_model*3*sizeof(CUDAREAL) ));
-        gpuErr(cudaMallocManaged(&cp.cu_d_Ncells_images, Npix_to_model*3*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_panel_rot_images, Npix_to_model*3*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_panel_orig_images, Npix_to_model*3*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_lambda_images, Npix_to_model*2*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_Bmat_images, Npix_to_model*6*sizeof(CUDAREAL)));
-        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images, num_sausages*Npix_to_model*4*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_floatimage, Npix_to_allocate*sizeof(CUDAREAL) ));
+        gpuErr(cudaMallocManaged(&cp.cu_d_fcell_images, Npix_to_allocate*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_eta_images, Npix_to_allocate*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_Umat_images, Npix_to_allocate*3*sizeof(CUDAREAL) ));
+        gpuErr(cudaMallocManaged(&cp.cu_d_Ncells_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_panel_rot_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_panel_orig_images, Npix_to_allocate*3*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_lambda_images, Npix_to_allocate*2*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_Bmat_images, Npix_to_allocate*6*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_d_sausage_XYZ_scale_images, num_sausages*Npix_to_allocate*4*sizeof(CUDAREAL)));
         //gettimeofday(&t4, 0);
         //time = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
         //printf("TIME SPENT ALLOCATING (IMAGES ONLY):  %3.10f ms \n", time);

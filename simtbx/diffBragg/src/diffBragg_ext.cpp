@@ -278,7 +278,7 @@ namespace boost_python { namespace {
            "update the geometries with new dxtbx models, number of pixels should remain constant")
 
       .def("free_Fhkl2",&simtbx::nanoBragg::diffBragg::free_Fhkl2)
-      
+
 #ifdef NANOBRAGG_HAVE_CUDA
       .def("gpu_free",&simtbx::nanoBragg::diffBragg::gpu_free)
 #endif
@@ -382,6 +382,11 @@ namespace boost_python { namespace {
              make_getter(&simtbx::nanoBragg::diffBragg::use_cuda,rbv()),
              make_setter(&simtbx::nanoBragg::diffBragg::use_cuda,dcp()),
              "use GPU acceleration")
+
+      .add_property("Npix_to_allocate",
+            make_getter(&simtbx::nanoBragg::diffBragg::Npix_to_allocate,rbv()),
+            make_setter(&simtbx::nanoBragg::diffBragg::Npix_to_allocate,dcp()),
+            "number of pixels per parameter to allocate in the GPU (default value of -1 means auto-determine)")
 
     ; // end of diffBragg extention
 
