@@ -53,7 +53,7 @@ class BaseRefiner:
         self.xy_calc = {}  # container for recording model predictions
         self.ucell_maxs = None
         self.ucell_mins = None
-        #self.ucell_inits = None #{0: [79.1, 38.2]} # deprecated, just uses UCELL MANAGERS now
+        self.ucell_inits = None
         self.use_ucell_ranges = False
         self.init_R1 = -1
         self.save_model = False
