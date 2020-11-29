@@ -127,7 +127,7 @@ class create_mask_around_atoms(object):
     self._map_manager = self._map_manager.customized_copy(map_data = self._mask)
     self._map_manager.set_is_mask(True)
     self._is_soft_mask_around_edges = True
-   
+
   def apply_mask_to_other_map_manager(self, other_map_manager = None,
      set_outside_to_mean_inside = False,
      set_mean_to_zero = False):
@@ -383,4 +383,3 @@ class expand_mask(create_mask_around_atoms):
     # Initialize soft mask
     self._is_soft_mask = False
     self._is_soft_mask_around_edges = False
-
