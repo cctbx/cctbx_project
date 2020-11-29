@@ -182,25 +182,25 @@ def exercise(file_name, out = sys.stdout):
   mam1.mask_all_maps_around_density(solvent_content=0.5,
     soft_mask=True,)
   s = (mam1.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (1024,2048))
+  assert approx_equal( (s.count(True),s.size()), (984,2048))
 
   # Create mask around edges and apply to all maps
   mam1=new_mam.deep_copy()
   mam1.mask_all_maps_around_edges()
   s = (mam1.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (1176,2048))
+  assert approx_equal( (s.count(True),s.size()), (1560,2048))
 
   # Create a soft mask around model and apply to all maps
   new_mam.mask_all_maps_around_atoms(mask_atoms_atom_radius=8,
       soft_mask=True)
   s = (new_mam.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (1944,2048))
+  assert approx_equal( (s.count(True),s.size()), (1722,2048))
 
   # Create a soft mask around model and do not do anything with it
   new_mam.create_mask_around_atoms(mask_atoms_atom_radius=8,
       soft_mask=True)
   s = (new_mam.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (1944,2048))
+  assert approx_equal( (s.count(True),s.size()), (1722,2048))
 
   # Create a soft mask around model and do not do anything with it, wrapping =true
   dummy_mam=new_mam.deep_copy()
@@ -208,7 +208,7 @@ def exercise(file_name, out = sys.stdout):
   dummy_mam.create_mask_around_atoms(mask_atoms_atom_radius=8,
       soft_mask=True)
   s = (dummy_mam.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (1944,2048))
+  assert approx_equal( (s.count(True),s.size()), (1722,2048))
 
   # Create a sharp mask around model and do not do anything with it
   new_mam.create_mask_around_atoms(soft_mask=False,
@@ -220,42 +220,42 @@ def exercise(file_name, out = sys.stdout):
   mam=dc.deep_copy()
   mam.create_mask_around_edges()
   s = (mam.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (1176,2048))
+  assert approx_equal( (s.count(True),s.size()), (1560,2048))
 
   # Mask around density and to not do anything with it
   mam=dc.deep_copy()
   mam.create_mask_around_density(soft_mask=False)
   s = (mam.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (1000,2048))
+  assert approx_equal( (s.count(True),s.size()), (856,2048))
 
   # Apply the current mask to one map
   mam.apply_mask_to_map('map_manager')
   s = (mam.map_manager().map_data() > 0.)
-  assert approx_equal( (s.count(True),s.size()), (640,2048))
+  assert approx_equal( (s.count(True),s.size()), (424,2048))
   s = (mam.map_manager().map_data() != 0.)
-  assert approx_equal( (s.count(True),s.size()), (1000,2048))
+  assert approx_equal( (s.count(True),s.size()), (856,2048))
   assert approx_equal ((mam.map_manager().map_data()[225]),-0.0418027862906)
 
   # Apply any mask to one map
   mam.apply_mask_to_map('map_manager',mask_id='mask')
   s = (mam.map_manager().map_data() > 0.)
-  assert approx_equal( (s.count(True),s.size()), (640,2048))
+  assert approx_equal( (s.count(True),s.size()), (424,2048))
   s = (mam.map_manager().map_data() != 0.)
-  assert approx_equal( (s.count(True),s.size()), (1000,2048))
+  assert approx_equal( (s.count(True),s.size()), (856,2048))
   assert approx_equal ((mam.map_manager().map_data()[225]),-0.0418027862906)
 
   # Apply the mask to all maps
   mam.apply_mask_to_maps()
   s = (mam.map_manager().map_data() > 0.)
-  assert approx_equal( (s.count(True),s.size()), (640,2048))
+  assert approx_equal( (s.count(True),s.size()), (424,2048))
   s = (mam.map_manager().map_data() != 0.)
-  assert approx_equal( (s.count(True),s.size()), (1000,2048))
+  assert approx_equal( (s.count(True),s.size()), (856,2048))
   assert approx_equal ((mam.map_manager().map_data()[225]),-0.0418027862906)
 
   # Apply the mask to all maps, setting outside value to mean inside
   mam.apply_mask_to_maps(set_outside_to_mean_inside=True)
   s = (mam.map_manager().map_data() > 0.)
-  assert approx_equal( (s.count(True),s.size()), (1688,2048))
+  assert approx_equal( (s.count(True),s.size()), (424,2048))
   s = (mam.map_manager().map_data() != 0.)
   assert approx_equal( (s.count(True),s.size()), (2048,2048))
   assert approx_equal ((mam.map_manager().map_data()[2047]),-0.0759598612785)
@@ -263,7 +263,7 @@ def exercise(file_name, out = sys.stdout):
   inside = mam.map_manager().map_data().as_1d().select(s)
   outside = mam.map_manager().map_data().as_1d().select(~s)
   assert approx_equal ((inside.min_max_mean().max,outside.min_max_mean().max),
-   (0.335603952408,0.0239064293122))
+   (0.317014873028,-0.0159585822888))
 
 
   # Make a new map and model, get mam and box with selection
@@ -323,7 +323,7 @@ def exercise(file_name, out = sys.stdout):
   dc.duplicate_map_manager(map_id='map_manager',new_map_id='filtered')
   dc.create_mask_around_density(mask_id='filtered')
   cc=dc.map_map_cc('map_manager','filtered',mask_id='mask')
-  assert approx_equal(cc , 0.422523947639)
+  assert approx_equal(cc , 0.443401641784)
 
   # box around model
   mam=mam_dc.deep_copy()
