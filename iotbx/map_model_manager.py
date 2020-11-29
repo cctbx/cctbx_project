@@ -6036,17 +6036,18 @@ class map_model_manager(object):
       raise Sorry("There is no map with id='%s' available for map_model_cc" %(
          map_id))
 
-    # As five_cc is going to get the map cc without resolution cutoff on the
-    #  map, do it here
-
-    map_manager = map_manager.deep_copy()
-    map_manager.resolution_filter(d_min=resolution)
 
     assert model and map_manager
     if not resolution:
       resolution = self.resolution()
     assert resolution is not None
     print("Resolution for map-model CC: %.3f A" %(resolution), file = self.log)
+
+    # As five_cc is going to get the map cc without resolution cutoff on the
+    #  map, do it here
+
+    map_manager = map_manager.deep_copy()
+    map_manager.resolution_filter(d_min=resolution)
 
     if selection_string:
       sel = model.selection(selection_string)
