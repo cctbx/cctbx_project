@@ -695,6 +695,7 @@ class map_model_manager(object):
     use_fsc_if_no_resolution_available_and_maps_available = True,
     map_id_1 = 'map_manager_1',
     map_id_2 = 'map_manager_2',
+    fsc_cutoff = 0.143,
      ):
     if self._resolution: # have it already
       return self._resolution
@@ -704,12 +705,21 @@ class map_model_manager(object):
       if use_fsc_if_no_resolution_available_and_maps_available and \
           self.get_map_manager_by_id(map_id_1) and \
           self.get_map_manager_by_id(map_id_2):
-        resolution = self.map_map_fsc(  # get resolution from FSC
+        fsc_info = self.map_map_fsc(  # get resolution from FSC
           map_id_1 = map_id_1,
-          map_id_2 = map_id_2).d_min
-        if resolution:
+          map_id_2 = map_id_2)
+        resolution = fsc_info.d_min
+        if resolution is not None:
           print("\nResolution estimated from FSC of '%s' and '%s: %.3f A " %(
            map_id_1, map_id_2, resolution), file = self.log)
+        elif fsc_info.fsc.fsc.min_max_mean().min > fsc_cutoff:
+          print("\nResolution estimated from minimum_resolution ",
+            "\nbecause FSC of '%s' and '%s is undefined" %(
+           map_id_1, map_id_2), file = self.log)
+          resolution = self.minimum_resolution()
+        else:
+          print("\nCould not obtain resolution from FSC", file = self.log)
+
 
       if (not resolution) and self.map_manager():
         # get resolution from map_manager
