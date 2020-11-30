@@ -157,7 +157,7 @@ def test_01():
 
     expected_args = common_args + method_args_dict[base_method_name] + \
        manager_method_args_dict[base_method_name] + box_all_maps_args
-    check_args(text,method,expected_args,group_text, 
+    check_args(text,method,expected_args,group_text,
        allow_extra_in_found = True)
 
     # Check call in iotbx.map_model_manager extract_all_maps_xxx
