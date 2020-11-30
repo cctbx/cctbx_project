@@ -3,7 +3,7 @@
 
 ## Introduction
 
-The Computational Crystallography Toolbox (cctbx) is being developed as the open source component of the PHENIX system. The goal of the PHENIX project is to advance automation of macromolecular structure determination. PHENIX depends on the cctbx, but not vice versa. This hierarchical approach enforces a clean design as a reusable library. The cctbx is therefore also useful for small-molecule crystallography and even general scientific applications.
+The Computational Crystallography Toolbox (cctbx) is being developed as the open source component of the [Phenix project](https://phenix-online.org). The goal of the Phenix project is to advance automation of macromolecular structure determination. Phenix depends on the cctbx, but not vice versa. This hierarchical approach enforces a clean design as a reusable library. The cctbx is therefore also useful for small-molecule crystallography and even general scientific applications.
 
 The cctbx also provides some of the key component of the Olex 2 software. Olex 2 is dedicated to the workflow of small molecule crystallographic studies. It features a powerful and flexible refinement engine, olex2.refine, which is developed as part of the cctbx,
 in the smtbx top-module.
@@ -45,6 +45,6 @@ The `python` package with a specific version can be added to change the version 
 
 1. Download https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py in the directory where the cctbx and its dependencies shall be installed
 2. Run `python bootstrap.py` (you may want to run it with the `--help` option first to discover the available options).
-  - For better compatibility with newer operating systems, you will want to use `conda` packages for dependencies. Add the `--use-conda` flag and the command becomes `python bootstrap.py --use-conda`. This will run the `miniconda` installer if `conda` cannot be found. The environment with the dependencies will be located in the `conda_base` directory. See the description of the `--use-conda` flag from the `--help` output for more details.
+  - For better compatibility with newer operating systems, `conda` packages can be used for dependencies. Add the `--use-conda` flag and the command becomes `python bootstrap.py --use-conda`. This will run the `miniconda` installer if `conda` cannot be found. The environment with the dependencies will be located in the `conda_base` directory. See the description of the `--use-conda` flag from the `--help` output for more details.
 
 The installation will take a long while but the script will verbosely describe what it does.
