@@ -2107,7 +2107,7 @@ class map_model_manager(object):
     if not soft_mask_radius:
       soft_mask_radius = self.resolution()
     if not boundary_radius:
-      boundary_radius = boundary_to_smoothing_ratio * soft_mask_radius 
+      boundary_radius = boundary_to_smoothing_ratio * soft_mask_radius
     from cctbx.maptbx.mask import create_mask_around_edges
     cm = create_mask_around_edges(map_manager = self.map_manager(),
       boundary_radius = boundary_radius)
