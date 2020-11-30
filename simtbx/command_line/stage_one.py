@@ -40,6 +40,9 @@ exper_refls_file = None
 usempi = False
   .type = bool
   .help = process using mpi
+squash_errors = False
+  .type = bool
+  .help = if True, skip expts that fail (useful when processing many expts with mpi)
 show_timing = True
   .type = bool
   .help = print a refinement duration for each iteration experiment
@@ -238,105 +241,114 @@ class Script:
 
         i_processed = 0
         for exper_filename, exper, refls_for_exper in self._generate_exp_refl_pairs():
-            if self.input_spectrumnames:
-                self.params.simulator.spectrum.filename = self.input_spectrumnames[self.i_exp]
-            if self.panel_strings:
-                self.params.roi.panels = self.panel_strings[self.i_exp]
-                print(self.params.roi.panels)
+            try:
+                if self.input_spectrumnames:
+                    self.params.simulator.spectrum.filename = self.input_spectrumnames[self.i_exp]
+                if self.panel_strings:
+                    self.params.roi.panels = self.panel_strings[self.i_exp]
+                    print(self.params.roi.panels)
 
-            assert len(set(refls_for_exper['id'])) == 1
+                assert len(set(refls_for_exper['id'])) == 1
 
-            exp_id = refls_for_exper['id'][0]
+                exp_id = refls_for_exper['id'][0]
 
-            print(exper_filename, COMM.rank, set(refls_for_exper['id']))
+                print(exper_filename, COMM.rank, set(refls_for_exper['id']))
 
-            det_ref_exp = self.params.reference_from_experiment.detector
-            if det_ref_exp is not None:
-                new_detector = ExperimentListFactory.from_json_file(det_ref_exp, check_format=False)[0].detector
-                assert new_detector is not None
-                assert len(new_detector) == len(exper.detector)
-                exper.detector = new_detector
+                det_ref_exp = self.params.reference_from_experiment.detector
+                if det_ref_exp is not None:
+                    new_detector = ExperimentListFactory.from_json_file(det_ref_exp, check_format=False)[0].detector
+                    assert new_detector is not None
+                    assert len(new_detector) == len(exper.detector)
+                    exper.detector = new_detector
 
-            if self.params.output.save.reflections:
-                self.params.refiner.record_xy_calc = True
+                if self.params.output.save.reflections:
+                    self.params.refiner.record_xy_calc = True
 
-            refine_starttime = time.time()
-            refiner = refine_launcher.local_refiner_from_parameters(refls_for_exper, exper, self.params)
-            if self.params.show_timing:
-                print("Time to refine experiment: %f" % (time.time()- refine_starttime))
+                refine_starttime = time.time()
+                refiner = refine_launcher.local_refiner_from_parameters(refls_for_exper, exper, self.params)
+                if self.params.show_timing:
+                    print("Time to refine experiment: %f" % (time.time()- refine_starttime))
 
-            basename,_ = os.path.splitext(os.path.basename(exper_filename))
+                basename,_ = os.path.splitext(os.path.basename(exper_filename))
 
-            # Save model image
-            if self.params.output.save.images is not None:
-                images_outdir = os.path.join(self.params.output.directory, "model_images", "rank%d" % COMM.rank)
-                if not os.path.exists(images_outdir):
-                    os.makedirs(images_outdir)
-                img_path = os.path.join(images_outdir, "%s_%s_%d.h5" % (self.params.output.tag.images, basename, i_processed))
-                panel_Xdim, panel_Ydim = exper.detector[0].get_image_size()
-                img_shape = len(exper.detector), panel_Ydim, panel_Xdim
-                writer_args = {"filename": img_path ,
-                               "image_shape": img_shape,
-                               "num_images":1 if self.params.output.save.images=="model" else 3,
-                               "detector": exper.detector , "beam": exper.beam}
-                model_img = refiner.get_model_image()
-                with H5AttributeGeomWriter(**writer_args) as writer:
-                    if self.params.output.save.images=="model_and_data":
-                        model_img *= self.params.refiner.adu_per_photon
-                        data = image_data_from_expt(exper)
-                        pids, ys, xs = np.where(model_img==0)
-                        model_img[pids, ys, xs] = data[pids, ys, xs]
-                        writer.add_image(model_img)
-                        writer.add_image(data)
-                        writer.add_image(model_img-data)
-                    else:
-                        writer.add_image(model_img)
+                # Save model image
+                if self.params.output.save.images is not None:
+                    images_outdir = os.path.join(self.params.output.directory, "model_images", "rank%d" % COMM.rank)
+                    if not os.path.exists(images_outdir):
+                        os.makedirs(images_outdir)
+                    img_path = os.path.join(images_outdir, "%s_%s_%d.h5" % (self.params.output.tag.images, basename, i_processed))
+                    panel_Xdim, panel_Ydim = exper.detector[0].get_image_size()
+                    img_shape = len(exper.detector), panel_Ydim, panel_Xdim
+                    writer_args = {"filename": img_path ,
+                                   "image_shape": img_shape,
+                                   "num_images":1 if self.params.output.save.images=="model" else 3,
+                                   "detector": exper.detector , "beam": exper.beam}
+                    model_img = refiner.get_model_image()
+                    with H5AttributeGeomWriter(**writer_args) as writer:
+                        if self.params.output.save.images=="model_and_data":
+                            model_img *= self.params.refiner.adu_per_photon
+                            data = image_data_from_expt(exper)
+                            pids, ys, xs = np.where(model_img==0)
+                            model_img[pids, ys, xs] = data[pids, ys, xs]
+                            writer.add_image(model_img)
+                            writer.add_image(data)
+                            writer.add_image(model_img-data)
+                        else:
+                            writer.add_image(model_img)
 
-            # Save reflections
-            if self.params.output.save.reflections:
-                refined_refls = refiner.get_refined_reflections(refls_for_exper)
-                #NOTE do we really need to reset the id ?
-                refined_refls['id'] = flex.int(len(refined_refls), 0)
-                refls_outdir = os.path.join(self.params.output.directory, "reflections_after_stage1", "rank%d" % COMM.rank)
-                if not os.path.exists(refls_outdir):
-                    os.makedirs(refls_outdir)
-                refls_path = os.path.join(refls_outdir, "%s_%s_%d.refl" % (self.params.output.tag.reflections, basename, i_processed))
-                refined_refls.as_file(refls_path)
+                # Save reflections
+                if self.params.output.save.reflections:
+                    refined_refls = refiner.get_refined_reflections(refls_for_exper)
+                    #NOTE do we really need to reset the id ?
+                    refined_refls['id'] = flex.int(len(refined_refls), 0)
+                    refls_outdir = os.path.join(self.params.output.directory, "reflections_after_stage1", "rank%d" % COMM.rank)
+                    if not os.path.exists(refls_outdir):
+                        os.makedirs(refls_outdir)
+                    refls_path = os.path.join(refls_outdir, "%s_%s_%d.refl" % (self.params.output.tag.reflections, basename, i_processed))
+                    refined_refls.as_file(refls_path)
 
-            # save pandas
-            if self.params.output.save.pandas:
-                pandas_outdir = os.path.join(self.params.output.directory, "pandas_pickles", "rank%d" % COMM.rank)
-                if not os.path.exists(pandas_outdir):
-                    os.makedirs(pandas_outdir)
-                outpath = os.path.join(pandas_outdir, "%s_%s_%d.pkl" % (self.params.output.tag.pandas,basename, i_processed))
-                #TODO add beamsize_mm, mtz_file, mtz_col, pinkstride, oversample, spectrum_file to the pandas dataframe
+                # save pandas
+                if self.params.output.save.pandas:
+                    pandas_outdir = os.path.join(self.params.output.directory, "pandas_pickles", "rank%d" % COMM.rank)
+                    if not os.path.exists(pandas_outdir):
+                        os.makedirs(pandas_outdir)
+                    outpath = os.path.join(pandas_outdir, "%s_%s_%d.pkl" % (self.params.output.tag.pandas,basename, i_processed))
+                    #TODO add beamsize_mm, mtz_file, mtz_col, pinkstride, oversample, spectrum_file to the pandas dataframe
 
-                data_frame = refiner.get_lbfgs_x_array_as_dataframe()
+                    data_frame = refiner.get_lbfgs_x_array_as_dataframe()
 
-                if self.params.simulator.spectrum.filename is not None:
-                    data_frame["spectrum_filename"] = os.path.abspath(self.params.simulator.spectrum.filename)
-                    data_frame["spectrum_stride"] = self.params.simulator.spectrum.stride
-                data_frame["total_flux"] = self.params.simulator.total_flux
-                data_frame["beamsize_mm"] = refiner.S.beam.size_mm
-                data_frame["exp_name"] = os.path.abspath(exper_filename)
-                if self.params.roi.panels is not None:
-                    data_frame["roi_panels"] = self.params.roi.panels
-                data_frame.to_pickle(outpath)
+                    if self.params.simulator.spectrum.filename is not None:
+                        data_frame["spectrum_filename"] = os.path.abspath(self.params.simulator.spectrum.filename)
+                        data_frame["spectrum_stride"] = self.params.simulator.spectrum.stride
+                    data_frame["total_flux"] = self.params.simulator.total_flux
+                    data_frame["beamsize_mm"] = refiner.S.beam.size_mm
+                    data_frame["exp_name"] = os.path.abspath(exper_filename)
+                    if self.params.roi.panels is not None:
+                        data_frame["roi_panels"] = self.params.roi.panels
+                    data_frame.to_pickle(outpath)
 
-            # save experiment
-            if self.params.output.save.experiments:
-                exp_outdir = os.path.join(self.params.output.directory, "experiments_after_stage1", "rank%d" % COMM.rank)
-                if not os.path.exists(exp_outdir):
-                    os.makedirs(exp_outdir)
+                # save experiment
+                if self.params.output.save.experiments:
+                    exp_outdir = os.path.join(self.params.output.directory, "experiments_after_stage1", "rank%d" % COMM.rank)
+                    if not os.path.exists(exp_outdir):
+                        os.makedirs(exp_outdir)
 
-                exp_path = os.path.join(exp_outdir, "%s_%s_%d.expt" % (self.params.output.tag.experiments, basename, exp_id))
-                exper.crystal = refiner.get_corrected_crystal(i_shot=0)
-                exper.detector = refiner.get_optimized_detector()
-                new_exp_list = ExperimentList()
-                new_exp_list.append(exper)
-                new_exp_list.as_file(exp_path)
+                    exp_path = os.path.join(exp_outdir, "%s_%s_%d.expt" % (self.params.output.tag.experiments, basename, exp_id))
+                    exper.crystal = refiner.get_corrected_crystal(i_shot=0)
+                    exper.detector = refiner.get_optimized_detector()
+                    new_exp_list = ExperimentList()
+                    new_exp_list.append(exper)
+                    new_exp_list.as_file(exp_path)
 
-            i_processed += 1
+                i_processed += 1
+            except Exception as err:
+                print("Encounter exception %s" % err)
+                if self.params.squash_errors:
+                    i_processed += 1
+                    continue
+                else:
+                    raise RuntimeError("Process failed")
+
 
 if __name__ == '__main__':
     with show_mail_on_error():

@@ -185,26 +185,26 @@ void gpu_sum_over_steps(
         int _spixel = panels_fasts_slows[i_pix*3+2];
 
         // reset photon count for this pixel
-        CUDAREAL _I=0;
+        double _I=0;
 
         // reset derivative photon counts for the various parameters
-        CUDAREAL rot_manager_dI[3] = {0,0,0};
-        CUDAREAL rot_manager_dI2[3] = {0,0,0};
-        CUDAREAL ucell_manager_dI[6]= {0,0,0,0,0,0};
-        CUDAREAL ucell_manager_dI2[6]= {0,0,0,0,0,0};
-        CUDAREAL Ncells_manager_dI[3]= {0,0,0};
-        CUDAREAL Ncells_manager_dI2[3]= {0,0,0};
-        CUDAREAL pan_orig_manager_dI[3]= {0,0,0};
-        CUDAREAL pan_orig_manager_dI2[3]= {0,0,0};
-        CUDAREAL pan_rot_manager_dI[3]= {0,0,0};
-        CUDAREAL pan_rot_manager_dI2[3]= {0,0,0};
-        CUDAREAL fcell_manager_dI=0;
-        CUDAREAL fcell_manager_dI2=0;
-        CUDAREAL eta_manager_dI = 0;
-        CUDAREAL lambda_manager_dI[2] = {0,0};
-        CUDAREAL lambda_manager_dI2[2] = {0,0};
+        double rot_manager_dI[3] = {0,0,0};
+        double rot_manager_dI2[3] = {0,0,0};
+        double ucell_manager_dI[6]= {0,0,0,0,0,0};
+        double ucell_manager_dI2[6]= {0,0,0,0,0,0};
+        double Ncells_manager_dI[3]= {0,0,0};
+        double Ncells_manager_dI2[3]= {0,0,0};
+        double pan_orig_manager_dI[3]= {0,0,0};
+        double pan_orig_manager_dI2[3]= {0,0,0};
+        double pan_rot_manager_dI[3]= {0,0,0};
+        double pan_rot_manager_dI2[3]= {0,0,0};
+        double fcell_manager_dI=0;
+        double fcell_manager_dI2=0;
+        double eta_manager_dI = 0;
+        double lambda_manager_dI[2] = {0,0};
+        double lambda_manager_dI2[2] = {0,0};
 
-        CUDAREAL sausage_manager_dI[24] = {0,0,0,0,0, // TODO use shared memory determined at runtime to increase max sausages
+        double sausage_manager_dI[24] = {0,0,0,0,0, // TODO use shared memory determined at runtime to increase max sausages
                                            0,0,0,0,0,
                                            0,0,0,0,0,
                                            0,0,0,0,0,
@@ -521,7 +521,7 @@ void gpu_sum_over_steps(
                 int x = _sausage_tic*3;
                 int y = _sausage_tic*3+1;
                 int z = _sausage_tic*3+2;
-                double value=0;
+                CUDAREAL value=0;
                 for (int i=0;i<3; i++){
                     MAT3 UprimeBOt;
                     if (i==0)
@@ -761,7 +761,7 @@ void gpu_sum_over_steps(
             for (int i_sausage=0; i_sausage<num_sausages; i_sausage++){
                 for (int i=0; i < 4; i++){
                     int sausage_parameter_i = i_sausage*4+i;
-                    double value = _scale_term*sausage_manager_dI[sausage_parameter_i];
+                    CUDAREAL value = _scale_term*sausage_manager_dI[sausage_parameter_i];
                     int idx = sausage_parameter_i*Npix_to_model + i_pix;
                     d_sausage_XYZ_scale_images[idx] = value;
                     }

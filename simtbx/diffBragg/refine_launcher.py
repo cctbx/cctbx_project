@@ -216,6 +216,8 @@ class LocalRefinerLauncher:
 
             self.RUC.refine_Fcell = False
             self.RUC.max_calls = (self.params.refiner.max_calls*nmacro)[i_trial]
+            if self.params.refiner.refine_eta is not None and any(self.params.refiner.refine_eta):
+                self.RUC.update_eta = any(self.params.refiner.refine_eta)
 
             self.RUC.x_init = x_init
             self.RUC.only_pass_refined_x_to_lbfgs = False

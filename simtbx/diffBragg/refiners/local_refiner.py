@@ -1437,7 +1437,7 @@ class LocalRefiner(BaseRefiner):
             self.D.lambda_coefficients = tuple(coeffs)
 
     def _update_eta(self):
-        if self.refine_eta:
+        if self.update_eta or self.refine_eta:  # TODO think of a better interface
             eta_val = self._get_eta(self._i_shot)
             print("updating ETA as %f deg sampled from %d blocks" % (eta_val, self.D.mosaic_domains))
             from simtbx.nanoBragg.tst_gaussian_mosaicity2 import run_uniform

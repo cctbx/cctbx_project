@@ -30,6 +30,7 @@ class BaseRefiner:
         self.num_sausages = 0
         self.refine_blueSausages = False
         self.sausages_init = {0: [0, 0, 0, 1]}
+        self.update_eta = False
         self.sausages_sigma = [1, 1, 1, 1]
 
         self.refine_eta = False

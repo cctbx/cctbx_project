@@ -1382,6 +1382,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     image_type d2_panel_orig_images(Npix_to_model*3,0.0);
     image_type d_sausage_XYZ_scale_images(Npix_to_model*num_sausages*4,0.0);
 
+    //fudge = 1.1013986013; // from manuscript computation
     struct timeval t1,t2;
     gettimeofday(&t1,0 );
     if (! use_cuda && getenv("DIFFBRAGG_USE_CUDA")==NULL){
