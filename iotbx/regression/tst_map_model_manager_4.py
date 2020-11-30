@@ -181,7 +181,7 @@ def exercise( out = sys.stdout):
   dc.expand_mask(buffer_radius = 2)
   count = dc.get_map_manager_by_id('mask').map_data().count(1)
   print(count)
-  assert 20000 < count < 30000
+  assert count == 0
 
 if __name__ == "__main__":
   try:

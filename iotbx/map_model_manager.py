@@ -2772,7 +2772,6 @@ class map_model_manager(object):
       n_direction_vectors = None,
       run_analyze_anisotropy = True,
       sharpen_all_maps = False,
-      remove_overall_anisotropy = True,
       nproc = None,
     ):
     '''
@@ -2808,6 +2807,7 @@ class map_model_manager(object):
 
     kw['map_id_2'] = map_id_external_map
     kw['is_external_based'] = True
+    kw['remove_overall_anisotropy'] = False # REQUIRED
     del kw['map_id_external_map']
 
     self._sharpen_map(**kw)
