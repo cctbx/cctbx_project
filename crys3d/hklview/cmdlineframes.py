@@ -294,7 +294,7 @@ class HKLViewFrame() :
       self.STOP = False
       self.mprint("starting socketthread", 1)
       # name this thread to ensure any asyncio functions are called only from main thread
-      self.msgqueuethrd = threading.Thread(target = self.zmq_listen, name="zmq_thread" )
+      self.msgqueuethrd = threading.Thread(target = self.zmq_listen, name="HKLviewerZmqThread" )
       self.msgqueuethrd.daemon = True
       #self.msgqueuethrd.start()
       kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by hklview_3d
@@ -318,10 +318,10 @@ class HKLViewFrame() :
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
     self.viewer.__exit__(exc_type, exc_value, traceback)
-    del self.viewer
     self.mprint("Destroying HKLViewFrame", verbose=0) # this string is expected by HKLviewer.py so don't change
     self.STOP = True
     del self
+    sys.exit()
 
 
   def mprint(self, msg, verbose=0):
@@ -354,7 +354,7 @@ class HKLViewFrame() :
       except Exception as e:
         self.mprint( str(e) + traceback.format_exc(limit=10), verbose=1)
     self.mprint( "Shutting down zmq_listen() thread", 1)
-    del self.guisocket
+    #del self.guisocket
     self.guiSocketPort=None
 
 
@@ -1261,8 +1261,6 @@ class HKLViewFrame() :
 
   def GetMouseSpeed(self):
     self.viewer.GetMouseSpeed()
-    while self.params.NGL.mouse_sensitivity is None:
-      time.sleep(0.1)
     return self.params.NGL.mouse_sensitivity
 
 

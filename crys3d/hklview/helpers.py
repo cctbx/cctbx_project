@@ -215,7 +215,7 @@ class MplCanvas(FigureCanvas):
   def on_press(self, event):
     if event.inaxes is not None:
       self.parent.selcolmap = cmaps[event.inaxes.get_subplotspec().rowspan.start]
-      self.parent.labeltxt.setText('Colour gradient map is: %s, Click a map to select a different one' %self.parent.selcolmap )
+      self.parent.labeltxt.setText('Colour gradient map is: %s. Click a map to select a different one' %self.parent.selcolmap )
 
 # TODO work out scaling of canvas to match QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
 # and

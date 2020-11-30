@@ -1590,13 +1590,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.socket.bind("tcp://127.0.0.1:%s" %self.sockport)
     try: msg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
     except Exception as e: pass
-    """
-    cmdargs = 'cctbx.python -i -c "from crys3d.hklview import cmdlineframes;' \
-     + ' cmdlineframes.HKLViewFrame(useGuiSocket=%s, high_quality=True,' %self.sockport \
-     + ' jscriptfname = \'%s\', ' %self.jscriptfname \
-     + ' verbose=%s, UseOSBrowser=%s, htmlfname=\'%s\', handshakewait=%s )"\n'\
-       %(self.verbose, str(self.UseOSbrowser), self.hklfname, self.handshakewait)
-    """
 
     guiargs = [ 'useGuiSocket=' + str(self.sockport),
                'high_quality=True',

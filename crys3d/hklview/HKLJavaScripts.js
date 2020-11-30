@@ -197,6 +197,10 @@ function RemoveStageObjects()
     // remove shapecomp from stage first
     stage.removeAllComponents();
   }
+  if (colourchart != null) {
+    colourchart.remove(); // delete previous colour chart if any
+    colourchart = null;
+  }
   ttips = [];
   vectorreprs = [];
   vectorshapeComps = [];
@@ -350,8 +354,12 @@ function onClose(e)
 function onMessage(e)
 {
   var c,
-  si;
-  WebsockSendMsg('\n    Browser: Got ' + e.data ); // tell server what it sent us
+    si;
+  var showdata = e.data;
+  if (showdata.length > 400)
+    showdata = e.data.slice(0, 200) + '\n...\n' + e.data.slice(e.data.length - 200, -1);
+
+  WebsockSendMsg('Browser: Got ' + showdata ); // tell server what it sent us
   try
   {
     var datval = e.data.split(":\n");
@@ -471,8 +479,6 @@ function onMessage(e)
 
     if (msgtype.includes("Expand") )
     {
-      WebsockSendMsg( 'Expanding data...' );
-
       if (msgtype == "Expand" && expstate == "")
         return;
 
@@ -485,6 +491,7 @@ function onMessage(e)
       if (msgtype == "ExpandP1Friedel" && expstate == "isP1FriedelExpanded")
         return;
 
+      WebsockSendMsg('Expanding data...');
       // delete the shapebufs[] that holds the positions[] arrays
       shapeComp.removeRepresentation(repr);
       // remove shapecomp from stage first
@@ -990,7 +997,7 @@ function onMessage(e)
         onchange: function (e)
         {
           WebsockSendMsg('SelectedBrowserDataColumnComboBox: ' + e.target.value);
-        }
+        },
       }, { top: "25px", right: "10px", width: "130px", position: "absolute" }, fsize = fontsize);
 
       for (i = 0; i < msg.length; i++)
