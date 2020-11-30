@@ -563,7 +563,7 @@ class around_unique(with_bounds):
       map_manager.soft_mask(soft_mask_radius = resolution)
       map_manager.apply_mask()
       # Now mask around edges
-      map_manager.create_mask_around_edges(soft_mask_radius = resolution)
+      map_manager.create_mask_around_edges(boundary_radius = resolution)
       map_manager.soft_mask(soft_mask_radius = resolution)
       map_manager.apply_mask()
 

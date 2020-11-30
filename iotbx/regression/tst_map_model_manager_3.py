@@ -186,23 +186,23 @@ def exercise(file_name, out = sys.stdout):
 
   # Create mask around edges and apply to all maps
   mam1=new_mam.deep_copy()
-  mam1.mask_all_maps_around_edges()
+  mam1.mask_all_maps_around_edges(soft_mask_radius=12)
   s = (mam1.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (1560,2048))
+  assert approx_equal( (s.count(True),s.size()), (1658,2048))
 
-  # Create a soft mask around model and apply to all maps
+  # Create a soft mask around atoms and apply to all maps
   new_mam.mask_all_maps_around_atoms(mask_atoms_atom_radius=8,
       soft_mask=True)
   s = (new_mam.get_map_manager_by_id('mask').map_data() > 0.5)
   assert approx_equal( (s.count(True),s.size()), (1722,2048))
 
-  # Create a soft mask around model and do not do anything with it
+  # Create a soft mask around atoms and do not do anything with it
   new_mam.create_mask_around_atoms(mask_atoms_atom_radius=8,
       soft_mask=True)
   s = (new_mam.get_map_manager_by_id('mask').map_data() > 0.5)
   assert approx_equal( (s.count(True),s.size()), (1722,2048))
 
-  # Create a soft mask around model and do not do anything with it, wrapping =true
+  # Create a soft mask around atoms; do not do anything with it, wrapping =true
   dummy_mam=new_mam.deep_copy()
   dummy_mam.map_manager().set_wrapping(True)
   dummy_mam.create_mask_around_atoms(mask_atoms_atom_radius=8,
@@ -210,7 +210,7 @@ def exercise(file_name, out = sys.stdout):
   s = (dummy_mam.get_map_manager_by_id('mask').map_data() > 0.5)
   assert approx_equal( (s.count(True),s.size()), (1722,2048))
 
-  # Create a sharp mask around model and do not do anything with it
+  # Create a sharp mask around atoms and do not do anything with it
   new_mam.create_mask_around_atoms(soft_mask=False,
      mask_atoms_atom_radius=8)
   s = (new_mam.get_map_manager_by_id('mask').map_data() > 0.5)

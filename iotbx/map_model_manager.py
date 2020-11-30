@@ -1026,6 +1026,9 @@ class map_model_manager(object):
      lower_bounds,
      upper_bounds,
      model_can_be_outside_bounds = None,
+     soft_mask_radius = None,
+     soft_mask_around_edges = None,
+     boundary_to_smoothing_ratio = 2.,
      extract_box = False):
     '''
        Box all maps using specified bounds, shift origin of maps, model
@@ -1059,6 +1062,10 @@ class map_model_manager(object):
     if extract_box and model: # make sure everything is deep_copy
       model = model.deep_copy()
 
+
+    if soft_mask_around_edges: # make the cushion bigger
+      pass # Here we fix the bounds based on what is requested
+
     # Make box with bounds and apply it to model, first map
     box = with_bounds(
       map_manager = self._map_dict[map_info.map_id],
@@ -1075,6 +1082,9 @@ class map_model_manager(object):
     #  or create and return a new map_model_manager object (extract_box=True)
     return self._finish_boxing(box = box, model_info = model_info,
       map_info = map_info,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       extract_box = extract_box)
 
   def extract_all_maps_around_model(self,
@@ -1083,10 +1093,19 @@ class map_model_manager(object):
      select_unique_by_ncs = False,
      model_can_be_outside_bounds = None,
      stay_inside_current_map = None,
-     box_cushion = 5.):
+     box_cushion = 5.,
+     boundary_to_smoothing_ratio = 2.,
+     soft_mask_around_edges = False,
+     soft_mask_radius = None,
+     ):
     '''
       Runs box_all_maps_around_model_and_shift_origin with extract_box=True
       Use either selection_string or selection if present
+
+      if soft_mask_around_edges, make a bigger box and make a soft mask around
+       the edges.  Use this option if you are going to calculate a FT of
+       the map or otherwise manipulate it in reciprocal space.
+
     '''
     return self.box_all_maps_around_model_and_shift_origin(
       selection_string = selection_string,
@@ -1095,6 +1114,9 @@ class map_model_manager(object):
       select_unique_by_ncs = select_unique_by_ncs,
       model_can_be_outside_bounds = model_can_be_outside_bounds,
       stay_inside_current_map = stay_inside_current_map,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       extract_box = True)
 
   def box_all_maps_around_model_and_shift_origin(self,
@@ -1104,6 +1126,9 @@ class map_model_manager(object):
      select_unique_by_ncs = False,
      model_can_be_outside_bounds = None,
      stay_inside_current_map = None,
+     soft_mask_radius = None,
+     soft_mask_around_edges = None,
+     boundary_to_smoothing_ratio = 2.,
      extract_box = False):
     '''
        Box all maps around the model, shift origin of maps, model
@@ -1127,6 +1152,13 @@ class map_model_manager(object):
        If select_unique_by_ncs is set, select the unique part of the model
        automatically.  Any selection in selection_string or selection
         will not be applied.
+
+       if soft_mask_around_edges, make a bigger box and make a soft mask around
+        the edges.  Use this option if you are going to calculate a FT of
+        the map or otherwise manipulate it in reciprocal space.
+        box_cushion increased by boundary_to_smoothing_ratio*resolution
+
+
     '''
     assert isinstance(self.model(), model_manager)
     assert box_cushion is not None
@@ -1151,6 +1183,10 @@ class map_model_manager(object):
     elif extract_box: # make sure everything is deep_copy
       model = model.deep_copy()
 
+
+    if soft_mask_around_edges: # make the cushion bigger
+      box_cushion += boundary_to_smoothing_ratio * self.resolution()
+
     # Make box around model and apply it to model, first map
     # This step modifies model in place and creates a new map_manager
     box = around_model(
@@ -1163,12 +1199,18 @@ class map_model_manager(object):
       log = self.log)
     # Now box is a copy of map_manager and model that is boxed
 
+
     # Now apply boxing to other maps and models and then insert them into
-    #  either this map_model_manager object, replacing what is there (extract_box=False)
+    #  either this map_model_manager object, replacing what
+    #  is there (extract_box=False)
     #  or create and return a new map_model_manager object (extract_box=True)
     return self._finish_boxing(box = box, model_info = model_info,
       map_info = map_info,
-      extract_box = extract_box)
+      extract_box = extract_box,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
+     )
 
   def extract_all_maps_around_density(self,
      box_cushion = 5.,
@@ -1193,6 +1235,9 @@ class map_model_manager(object):
      map_id = 'map_manager',
      get_half_height_width = True,
      model_can_be_outside_bounds = None,
+     soft_mask_radius = None,
+     soft_mask_around_edges = None,
+     boundary_to_smoothing_ratio = 2.,
      extract_box = False):
     '''
        Box all maps around the density in map_id map (default is map_manager)
@@ -1231,6 +1276,9 @@ class map_model_manager(object):
     if extract_box: # make sure everything is deep_copy
       model = model.deep_copy()
 
+    if soft_mask_around_edges: # make the cushion bigger
+      box_cushion += boundary_to_smoothing_ratio * self.resolution()
+
     # Make box around model and apply it to model, first map
     box = around_density(
       map_manager = self._map_dict[map_info.map_id],
@@ -1248,6 +1296,9 @@ class map_model_manager(object):
     #  or create and return a new map_model_manager object (extract_box=True)
     return self._finish_boxing(box = box, model_info = model_info,
       map_info = map_info,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       extract_box = extract_box)
 
   def extract_all_maps_around_mask(self,
@@ -1267,6 +1318,9 @@ class map_model_manager(object):
      box_cushion = 5.,
      mask_id = 'mask',
      model_can_be_outside_bounds = None,
+     soft_mask_radius = None,
+     soft_mask_around_edges = None,
+     boundary_to_smoothing_ratio = 2.,
      extract_box = False):
     '''
        Box all maps around specified mask, shift origin of maps, model
@@ -1303,6 +1357,9 @@ class map_model_manager(object):
     if extract_box: # make sure everything is deep_copy
       model = model.deep_copy()
 
+    if soft_mask_around_edges: # make the cushion bigger
+      box_cushion += boundary_to_smoothing_ratio * self.resolution()
+
     # Make box around mask and apply it to model, first map
     box = around_mask(
       map_manager = map_manager,
@@ -1319,6 +1376,9 @@ class map_model_manager(object):
     #  or create and return a new map_model_manager object (extract_box=True)
     return self._finish_boxing(box = box, model_info = model_info,
       map_info = map_info,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       extract_box = extract_box)
 
   def extract_all_maps_around_unique(self,
@@ -1366,6 +1426,9 @@ class map_model_manager(object):
      keep_low_density = True,
      symmetry = None,
      mask_expand_ratio = 1,
+     soft_mask_radius = None,
+     soft_mask_around_edges = None,
+     boundary_to_smoothing_ratio = 2.,
      extract_box = False):
     '''
        Box all maps using bounds obtained with around_unique,
@@ -1421,6 +1484,9 @@ class map_model_manager(object):
     if extract_box: # make sure everything is deep_copy
       model = model.deep_copy()
 
+    if soft_mask_around_edges: # make the cushion bigger
+      box_cushion += boundary_to_smoothing_ratio * self.resolution()
+
     # Make box with around_unique and apply it to model, first map
     box = around_unique(
       map_manager = map_manager,
@@ -1446,6 +1512,9 @@ class map_model_manager(object):
     #  or create and return a new map_model_manager object (extract_box=True)
     other = self._finish_boxing(box = box, model_info = model_info,
       map_info = map_info,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       extract_box = extract_box)
 
     if not extract_box:
@@ -1462,6 +1531,9 @@ class map_model_manager(object):
       return other
 
   def _finish_boxing(self, box, model_info, map_info,
+    soft_mask_radius = None,
+    soft_mask_around_edges = None,
+    boundary_to_smoothing_ratio = None,
     extract_box = False):
 
     '''
@@ -1496,6 +1568,11 @@ class map_model_manager(object):
     # Copy default information over
     name = '%s_boxed' %(self.name)
     self._set_default_parameters(other, name = name)
+
+    if soft_mask_around_edges:
+      other.mask_all_maps_around_edges(
+        soft_mask_radius = soft_mask_radius,
+        boundary_to_smoothing_ratio = boundary_to_smoothing_ratio)
 
     if extract_box:
       return other
@@ -1882,9 +1959,9 @@ class map_model_manager(object):
           from gridding)
         If soft mask is set, mask_atoms_atom_radius increased by
 
+
     '''
-    if soft_mask:
-      if not soft_mask_radius:
+    if soft_mask and (not soft_mask_radius):
         soft_mask_radius = self.resolution()
     self.create_mask_around_atoms(
          soft_mask = soft_mask,
@@ -1897,6 +1974,7 @@ class map_model_manager(object):
 
   def mask_all_maps_around_edges(self,
       soft_mask_radius = None,
+      boundary_to_smoothing_ratio = 2.,
       mask_id = 'mask'):
     '''
       Apply a soft mask around edges of all maps. Overwrites values in maps
@@ -1905,6 +1983,7 @@ class map_model_manager(object):
       NOTE: Does not change the gridding or shift_cart of the maps and model
     '''
     self.create_mask_around_edges(soft_mask_radius = soft_mask_radius,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       mask_id = mask_id)
     self.apply_mask_to_maps(mask_id = mask_id)
 
@@ -2009,6 +2088,8 @@ class map_model_manager(object):
 
   def create_mask_around_edges(self,
      soft_mask_radius = None,
+     boundary_to_smoothing_ratio = 2.,
+     boundary_radius = None,
      mask_id = 'mask' ):
     '''
       Generate new mask map_manager with soft mask around edges of mask
@@ -2025,10 +2106,11 @@ class map_model_manager(object):
 
     if not soft_mask_radius:
       soft_mask_radius = self.resolution()
-
+    if not boundary_radius:
+      boundary_radius = boundary_to_smoothing_ratio * soft_mask_radius 
     from cctbx.maptbx.mask import create_mask_around_edges
     cm = create_mask_around_edges(map_manager = self.map_manager(),
-      soft_mask_radius = soft_mask_radius)
+      boundary_radius = boundary_radius)
     cm.soft_mask(soft_mask_radius = soft_mask_radius)
 
     # Put the mask in map_dict ided with mask_id

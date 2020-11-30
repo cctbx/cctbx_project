@@ -817,22 +817,22 @@ class map_manager(map_reader, write_ccp4_map):
         sequence = sequence,
         solvent_content = solvent_content, )
 
-  def create_mask_around_edges(self, soft_mask_radius = None):
+  def create_mask_around_edges(self, boundary_radius = None):
     '''
       Use cctbx.maptbx.mask.create_mask_around_edges to create a mask around
       edges of map.  Does not make a soft mask.  For a soft mask,
-      follow with soft_mask(soft_mask_radius =soft_mask_radius)
+      follow with soft_mask(boundary_radius =boundary_radius)
       The radius is to define the boundary around the map.
 
       Does not apply the mask (use apply_mask_to_map etc for that)
     '''
 
-    if soft_mask_radius is None:
-      soft_mask_radius = self.resolution()
+    if boundary_radius is None:
+      boundary_radius = self.resolution()
 
     from cctbx.maptbx.mask import create_mask_around_edges as cm
     self._created_mask = cm(map_manager = self,
-      soft_mask_radius = soft_mask_radius)
+      boundary_radius = boundary_radius)
 
   def create_mask_around_atoms(self, model, mask_atoms_atom_radius = None):
     '''

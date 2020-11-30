@@ -195,7 +195,7 @@ class create_mask_around_edges(create_mask_around_atoms):
   '''
 
   def __init__(self,
-      soft_mask_radius = None,
+      boundary_radius = None,
       map_manager = None):
 
     '''
@@ -205,12 +205,12 @@ class create_mask_around_edges(create_mask_around_atoms):
        soft_mask(soft_mask_radius = soft_mask_radius)
 
      Parameters are:
-       soft_mask_radius:  radius for masking
+       boundary_radius:  radius for masking
        map_manager: source of information for n_real and crystal_symmetryi
           . origin (0, 0, 0)
     '''
 
-    assert soft_mask_radius is not None
+    assert boundary_radius is not None
     assert (map_manager is not None)
 
     n_real = map_manager.map_data().all()
@@ -222,7 +222,7 @@ class create_mask_around_edges(create_mask_around_atoms):
     self._mask = get_zero_boundary_map(
       map_data = map_manager.map_data(),
       crystal_symmetry = self._crystal_symmetry,
-      radius = soft_mask_radius)
+      radius = boundary_radius)
     # Set up map_manager with this mask
     self._map_manager = map_manager.customized_copy(map_data = self._mask)
     self._map_manager.set_is_mask(True)

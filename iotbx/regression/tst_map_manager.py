@@ -194,7 +194,7 @@ def test_01():
                           mm.map_data().as_1d().min_max_mean().max)
   assert approx_equal( (new_mm.map_data()[0], mm.map_data()[0]),
          (0.0, 0.0))
-  new_mm.create_mask_around_edges(soft_mask_radius = 3)
+  new_mm.create_mask_around_edges(boundary_radius = 3)
   new_mm.soft_mask(soft_mask_radius = 3)
   assert approx_equal(new_mm.map_data().as_1d().min_max_mean().max,
                           mm.map_data().as_1d().min_max_mean().max)
