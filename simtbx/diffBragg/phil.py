@@ -61,6 +61,9 @@ simulator {
     stride = 1
       .type = int 
       .help = stride of the spectrum (e.g. set to 10 to keep every 10th value in the spectrum file data)
+    filename_list = None
+      .type = str
+      .help = path to a file containing 1 .lam filename per line
   }
   beam {
     size_mm = 1
@@ -80,10 +83,12 @@ refiner {
   use_cuda = False
     .type = bool
     .help = Use GPU acceleration during refinement (requires a CCTBX cuda build)
+  randomize_devices = True 
+    .type = bool
+    .help = randomly select a device Id 
   num_devices = 1
     .type = int
     .help = number of cuda devices on current node
-    .help = (a device will be chosen at random)
   refine_blueSausages = None
     .type = ints(size_min=1)
     .help = whether to refine the mosaic texture (blue sausages) 
@@ -301,6 +306,9 @@ refiner {
     .type = choice
     .help = a mask specifying which ncells parameters should be the same
     .help = e.g. 110 specifies Na and Nb are refined together as one parameter
+  reference_geom = None
+    .type = str
+    .help = path to expt list file containing a detector model
 }
 """
 

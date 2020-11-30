@@ -40,6 +40,8 @@ class LocalRefinerLauncher:
         self.SIM = None
         self.NCELLS_MASK = None
         self.NPIX_TO_ALLOC = -1
+        self.DEVICE_ID = 0
+        self.WATCH_MISORIENTATION = None
 
         self.n_local_unknowns = None
         self.n_global_unknowns = None
@@ -274,7 +276,11 @@ class LocalRefinerLauncher:
             self.RUC.S.update_nanoBragg_instance("Npix_to_allocate", self.NPIX_TO_ALLOC)
             if self.params.refiner.use_cuda:
                 #TODO ensemble
-                self.RUC.S.update_nanoBragg_instance('device_Id', np.random.choice(self.params.refiner.num_devices))
+                if self.params.refiner.randomize_devices:
+                    self.RUC.S.update_nanoBragg_instance('device_Id', np.random.choice(self.params.refiner.num_devices))
+                    #self.RUC.randomize_devices = self.params.refiner.num_devices
+                else:
+                    self.RUC.S.update_nanoBragg_instance('device_Id', self.DEVICE_ID)
             self.RUC.refine_gain_fac = False
             self.RUC.use_curvatures_threshold = self.params.refiner.use_curvatures_threshold
             if not self.params.refiner.curvatures:
@@ -356,7 +362,6 @@ class LocalRefinerLauncher:
         if hotpix_mask is not None:
             hotpix_mask = ~hotpix_mask
 
-        # TODO multi shot
         img_data = utils.image_data_from_expt(expt)
         if self.params.refiner.adu_per_photon is not None:
             img_data /= self.params.refiner.adu_per_photon
@@ -368,7 +373,6 @@ class LocalRefinerLauncher:
             for i_pid, pid in enumerate(refls['panel']):
                 panel_selection[i_pid] = pid in keeper_panels
 
-        #TODO multi shot
         rois, pids, tilt_abc, selection_flags, background = utils.get_roi_background_and_selection_flags(
             refls, img_data, shoebox_sz=self.params.roi.shoebox_size,
             reject_edge_reflections=self.params.roi.reject_edge_reflections,
@@ -379,13 +383,11 @@ class LocalRefinerLauncher:
             set_negative_bg_to_zero=self.params.roi.force_negative_background_to_zero,
             pad_for_background_estimation=self.params.roi.pad_shoebox_for_background_estimation)
 
-        #TODO multi shot
         selection_flags = [sel1 and sel2 for sel1, sel2 in zip(selection_flags, panel_selection)]
         if not np.any(selection_flags):
             print("No spots for refinement")
             return None
 
-        # TODO multi shot
         nanoBragg_rois, xrel, yrel, roi_imgs = [], [], [], []
         for i_roi, (x1, x2, y1, y2) in enumerate(rois):
             nanoBragg_rois.append(((int(x1), int(x2)), (int(y1), int(y2))))
@@ -484,6 +486,9 @@ class LocalRefinerLauncher:
         return refined_groups
 
     def _init_refiner(self, n_local_unknowns, n_global_unknowns, local_idx_start, global_idx_start):
+        ref_crystals = None
+        if self.WATCH_MISORIENTATION:
+            ref_crystals = self.shot_crystal_model_refs
         RUC = self._Refiner(
             n_total_params=global_idx_start + n_global_unknowns,
             n_local_params=n_local_unknowns,
@@ -492,7 +497,7 @@ class LocalRefinerLauncher:
             shot_rois=self.shot_rois,
             shot_nanoBragg_rois=self.shot_nanoBragg_rois,
             shot_roi_imgs=self.shot_roi_imgs, shot_spectra=self.shot_spectra,
-            shot_crystal_GTs=self.shot_crystal_model_refs, shot_crystal_models=self.shot_crystal_models,
+            shot_crystal_GTs=ref_crystals, shot_crystal_models=self.shot_crystal_models,
             shot_xrel=self.shot_xrel, shot_yrel=self.shot_yrel, shot_abc_inits=self.shot_abc_inits,
             shot_asu=None,
             # sgsymbol=#TODO

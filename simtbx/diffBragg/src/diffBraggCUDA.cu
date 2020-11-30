@@ -189,7 +189,7 @@ void diffBragg_loopy(
         //gettimeofday(&t4, 0);
         //time = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
         //printf("TIME SPENT ALLOCATING (IMAGES ONLY):  %3.10f ms \n", time);
-        gpuErr(cudaMallocManaged(&cp.cu_panels_fasts_slows, panels_fasts_slows.size()*sizeof(panels_fasts_slows[0])));
+        gpuErr(cudaMallocManaged(&cp.cu_panels_fasts_slows, Npix_to_allocate*3*sizeof(panels_fasts_slows[0])));
     } // END ALLOC
 
     gettimeofday(&t2, 0);
@@ -568,10 +568,3 @@ int phat_main(void)
 
   return 0;
 }
-
-
-
-
-
-
-

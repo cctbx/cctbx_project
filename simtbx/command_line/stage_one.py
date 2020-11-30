@@ -90,6 +90,7 @@ output {
 philz = script_phil + philz
 phil_scope = parse(philz)
 
+
 class Script:
 
     def __init__(self):
@@ -172,12 +173,13 @@ class Script:
                     if self.params.usempi and count % COMM.size != COMM.rank:
                         count += 1
                         continue
-                    exper = self._exper_json_single_file(exp_f, list_i_exp)
+                    exper = self.exper_json_single_file(exp_f, list_i_exp)
                     refls_for_exper = refls.select(refls['id'] == list_i_exp)
                     count += 1
                     yield exp_f, exper, refls_for_exper
 
-    def _exper_json_single_file(self, exp_file, i_exp=0):
+    @staticmethod
+    def exper_json_single_file(exp_file, i_exp=0):
         """
         load a single experiment from an exp_file
         If working with large combined experiment files, we only want to load
