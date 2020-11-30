@@ -15,7 +15,6 @@ if sys.version_info[0] > 2: # using websockets which is superior to websocket_se
 else: # using websocket_server
   from crys3d.hklview.WebBrowserMessengerPy2 import WBmessenger
 
-from time import sleep
 import os.path, time, copy
 import libtbx
 import webbrowser, tempfile
@@ -247,7 +246,7 @@ class hklview_3d:
     self.normal_lh = None
     self.isnewfile = False
     self.has_new_miller_array = False
-    self.sleeptime = 0.025
+    self.sleeptime = 0.01 # 0.025
     self.colstraliases = ""
     self.binvals = []
     self.binvalsboundaries = []
@@ -333,6 +332,9 @@ class hklview_3d:
     if 'handshakewait' in kwds:
       self.handshakewait = eval(kwds['handshakewait'])
     self.lastmsg = "" # "Ready"
+    self.boundingbox_msg_sem = threading.Semaphore()
+    self.clipplane_msg_sem = threading.Semaphore()
+    self.mousespeed_msg_sem = threading.Semaphore()
     self.WBmessenger = WBmessenger(self)
     self.AddToBrowserMsgQueue = self.WBmessenger.AddToBrowserMsgQueue
     self.WBmessenger.StartWebsocket()
@@ -344,13 +346,10 @@ class hklview_3d:
     self.JavaScriptCleanUp()
     nwait = 0
     while not self.WBmessenger.isterminating and nwait < 5:
-      #sleep(self.sleeptime)
-      self.WBmessenger.Sleep(self.sleeptime)
+      time.sleep(self.sleeptime)
       nwait += self.sleeptime
     if os.path.isfile(self.hklfname):
       os.remove(self.hklfname)
-    #if os.path.isfile(self.jscriptfname):
-    #  os.remove(self.jscriptfname)
     self.mprint("Destroying hklview_3d", 1)
 
 
@@ -423,6 +422,16 @@ class hklview_3d:
     if has_phil_path(diff_phil, "camera_type"):
       self.set_camera_type()
 
+    if has_phil_path(diff_phil, "show_tooltips"):
+      self.set_show_tooltips()
+
+    if has_phil_path(diff_phil, "fixorientation"):
+      self.fix_orientation()
+
+    if has_phil_path(diff_phil, "expand_to_p1", "expand_anomalous") \
+     and self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
+      self.ExpandInBrowser()
+
     if has_phil_path(diff_phil, "miller_array_operations"):
       self.viewerparams.scene_id = len(self.HKLscenedict)-1
       self.set_scene(self.viewerparams.scene_id)
@@ -454,7 +463,7 @@ class hklview_3d:
     if self.viewerparams.scene_id is not None:
       if has_phil_path(self.diff_phil, "angle_around_vector"): # no need to redraw any clip plane
         return
-      self.fix_orientation(self.ngl_settings.fixorientation)
+      self.fix_orientation()
       self.SetMouseSpeed(self.ngl_settings.mouse_sensitivity)
       R = flex.vec3_double( [(0,0,0)])
       hkldist = -1
@@ -476,8 +485,7 @@ class hklview_3d:
           clipwidth, self.ngl_settings.fixorientation, self.params.clip_plane.is_parallel,
           isreciprocal)
       if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
-        self.ExpandInBrowser(P1= self.viewerparams.expand_to_p1,
-                              friedel_mate= self.viewerparams.expand_anomalous)
+        self.ExpandInBrowser()
       self.SetOpacities(self.ngl_settings.bin_opacities )
       if self.params.real_space_unit_cell_scale_fraction is None:
         scale = None
@@ -1369,8 +1377,7 @@ class hklview_3d:
       if self.WaitforHandshake():
         nwait = 0
         while self.viewmtrx is None and nwait < self.handshakewait:
-          #time.sleep(self.sleeptime)
-          self.WBmessenger.Sleep(self.sleeptime)
+          time.sleep(self.sleeptime)
           nwait += self.sleeptime
       self.GetClipPlaneDistances()
       self.GetBoundingBox()
@@ -1399,16 +1406,18 @@ class hklview_3d:
           self.ProcessOrientationMessage(message)
         elif 'Received message:' in message:
           self.mprint( message, verbose=2)
+        elif 'Browser: Got' in message:
+          self.mprint( message, verbose=2)
         elif "websocket" in message:
           self.mprint( message, verbose=1)
         elif "Refreshing" in message or "disconnecting" in message:
           self.mprint( message, verbose=1)
-          self.WBmessenger.Sleep(self.sleeptime)
+          time.sleep(self.sleeptime)
         elif "AutoViewSet" in message:
           self.set_volatile_params()
         elif "JavaScriptCleanUpDone:" in message:
           self.mprint( message, verbose=1)
-          self.WBmessenger.Sleep(0.5) # time for browser to clean up
+          time.sleep(0.5) # time for browser to clean up
           if not self.isnewfile:
             self.WBmessenger.StopWebsocket()
         elif "JavaScriptError:" in message:
@@ -1430,6 +1439,7 @@ class hklview_3d:
           self.clipNear = flst[0]
           self.clipFar = flst[1]
           self.cameraPosZ = flst[2]
+          self.clipplane_msg_sem.release()
         elif "ReturnBoundingBox:" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
@@ -1437,12 +1447,14 @@ class hklview_3d:
           self.boundingX = flst[0]
           self.boundingY = flst[1]
           self.boundingZ = flst[2]
+          self.boundingbox_msg_sem.release()
         elif "ReturnMouseSpeed" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
           flst = [float(e) for e in lst]
           if flst[0] is not None and not cmath.isnan(flst[0]):
             self.ngl_settings.mouse_sensitivity = flst[0]
+          self.mousespeed_msg_sem.release()
         elif "tooltip_id:" in message:
           ttipids = message.split("tooltip_id:")[1]
           hklid = eval(message.split("tooltip_id:")[1])[0]
@@ -1508,7 +1520,6 @@ Distance: %s
     if message.find("NaN")>=0 or message.find("undefined")>=0:
       return
     if "OrientationBeforeReload:" in message:
-      #sleep(0.2)
       if not self.isnewfile:
         self.viewmtrx = message[ message.find("\n") + 1: ]
         self.lastviewmtrx = self.viewmtrx
@@ -1542,7 +1553,7 @@ Distance: %s
   def WaitforHandshake(self, sec=5):
     nwait = 0
     while not self.WBmessenger.browserisopen:
-      self.WBmessenger.Sleep(self.sleeptime)
+      time.sleep(self.sleeptime)
       nwait += self.sleeptime
       if nwait > sec:
         return False
@@ -1618,7 +1629,7 @@ Distance: %s
     self.AddToBrowserMsgQueue("JavaScriptCleanUp")
 
 
-  def ExpandInBrowser(self, P1=True, friedel_mate=True):
+  def ExpandInBrowser(self):
     if self.sceneisdirty:
       self.mprint( "Not expanding in browser", verbose=1)
       return
@@ -1628,7 +1639,7 @@ Distance: %s
     msgtype = "Expand"
     msg = ""
     unique_rot_ops = []
-    if P1:
+    if self.viewerparams.expand_to_p1:
       msgtype += "P1"
       unique_rot_ops = self.symops[ 0 : self.sg.order_p() ] # avoid duplicate rotation matrices
       retmsg = "Expanding to P1 in browser"
@@ -1638,7 +1649,7 @@ Distance: %s
       self.mprint( retmsg, verbose=1)
     else:
       unique_rot_ops = [ self.symops[0] ] # No P1 expansion. So only submit the identity matrix
-    if friedel_mate and not self.miller_array.anomalous_flag():
+    if self.viewerparams.expand_anomalous and not self.miller_array.anomalous_flag():
       msgtype += "Friedel"
       self.mprint( "Expanding Friedel mates in browser", verbose=1)
     for i, symop in enumerate(unique_rot_ops):
@@ -1653,7 +1664,6 @@ Distance: %s
       msg += str_rot + "\n" # add rotation matrix to end of message string
     self.AddToBrowserMsgQueue(msgtype, msg)
     self.GetBoundingBox() # bounding box changes when the extent of the displayed lattice changes
-
 
 
   def AddVector(self, s1, s2, s3, t1, t2, t3, isreciprocal=True, label="",
@@ -1828,8 +1838,8 @@ Distance: %s
     self.realspace_scale = self.scene.renderscale * reciprocspan_length / bodydiagonal_length
 
 
-  def fix_orientation(self, val):
-    if val:
+  def fix_orientation(self):
+    if self.ngl_settings.fixorientation:
       self.DisableMouseRotation()
     else:
       self.EnableMouseRotation()
@@ -1901,13 +1911,14 @@ Distance: %s
 
   def GetMouseSpeed(self):
     self.ngl_settings.mouse_sensitivity = None
+    self.mousespeed_msg_sem.acquire()
     self.AddToBrowserMsgQueue("GetMouseSpeed", "")
     if self.WaitforHandshake():
       nwait = 0
-      while self.ngl_settings.mouse_sensitivity is None and nwait < 5:
-        #time.sleep(self.sleeptime)
-        self.WBmessenger.Sleep(self.sleeptime)
+      if not self.mousespeed_msg_sem.acquire(blocking=False) and nwait < 5:
         nwait += self.sleeptime
+        self.mprint("mousespeed_msg_sem, wait= %s" %nwait, verbose=2)
+    self.mousespeed_msg_sem.release()
 
 
   def SetClipPlaneDistances(self, near, far, cameraPosZ=None):
@@ -1921,15 +1932,16 @@ Distance: %s
     self.clipNear = None
     self.clipFar = None
     self.cameraPosZ = None
-    self.AddToBrowserMsgQueue("GetClipPlaneDistances", "")
+    self.clipplane_msg_sem.acquire()
+    self.AddToBrowserMsgQueue("GetClipPlaneDistances", "") # 
     if self.WaitforHandshake():
       nwait = 0
-      while self.clipFar is None and nwait < self.handshakewait:
-        #time.sleep(self.sleeptime)
-        self.WBmessenger.Sleep(self.sleeptime)
+      if not self.clipplane_msg_sem.acquire(blocking=False) and nwait < 5:
         nwait += self.sleeptime
+        self.mprint("clipplane_msg_sem, wait= %s" %nwait, verbose=2)
       self.mprint("clipnear, clipfar, cameraPosZ: %s, %s %s" \
                  %(self.clipNear, self.clipFar, self.cameraPosZ), 2)
+    self.clipplane_msg_sem.release()
     return (self.clipNear, self.clipFar, self.cameraPosZ)
 
 
@@ -1937,15 +1949,16 @@ Distance: %s
     self.boundingX = 0.0
     self.boundingY = 0.0
     self.boundingZ = 0.0
+    self.boundingbox_msg_sem.acquire()
     self.AddToBrowserMsgQueue("GetBoundingBox", "")
     if self.WaitforHandshake():
       nwait = 0
-      while self.boundingX is None and nwait < self.handshakewait:
-        #time.sleep(self.sleeptime)
-        self.WBmessenger.Sleep(self.sleeptime)
+      if not self.boundingbox_msg_sem.acquire(blocking=False) and nwait < 5:
         nwait += self.sleeptime
+        self.mprint("boundingbox_msg_sem, wait= %s" %nwait, verbose=2)
       self.mprint("boundingXYZ: %s, %s %s" \
          %(self.boundingX, self.boundingY, self.boundingZ), verbose=2)
+    self.boundingbox_msg_sem.release()
     return (self.boundingX, self.boundingY, self.boundingZ)
 
 

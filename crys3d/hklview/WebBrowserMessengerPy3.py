@@ -50,6 +50,7 @@ class WBmessenger(object):
     self.parent.lastviewmtrx
     self.browserisopen = False
     self.msgqueue = []
+    self.clientmsgqueue = []
     self.msgdelim = ":\n"
     self.ishandling = False
     self.websockclient = None
@@ -59,16 +60,9 @@ class WBmessenger(object):
     self.websockeventloop = None
 
 
-  def Sleep(self, t):
-    async def asyncsleep(t):
-      await asyncio.sleep(t) # time for browser to clean up
-    if sys.version_info[0] > 2:
-      if threading.current_thread().name == "zmq_thread":
-        asyncio.run( asyncsleep(t) )
-      else: # is main thread
-        time.sleep(t)
-    else:
-      time.sleep(t)
+  def start_server_loop(self):
+    self.websockeventloop.run_until_complete(self.server)
+    self.websockeventloop.run_forever()
 
 
   def StartWebsocket(self):
@@ -87,12 +81,18 @@ class WBmessenger(object):
                                       self.websockport,
                                       create_protocol=MyWebSocketServerProtocol
                                       )
-      self.websockeventloop.run_until_complete(self.server)
       self.mprint("starting WebSockHandler on port %s" %str(self.websockport), verbose=1)
+      time.sleep(0.2)
       # run_forever() blocks execution so put in a separate thread
-      self.wst = threading.Thread(target=self.websockeventloop.run_forever)
-      self.wst.daemon = True
+      self.wst = threading.Thread(target=self.start_server_loop, name="HKLviewerWebSockServerThread" )
+      self.wst.daemon = True # ensure thread dies whenever program terminates through sys.exit()
       self.wst.start()
+
+      self.websocketclientmsgthrd = threading.Thread(target = self.ProcessClientMessageLoop,  
+                                                     name="WebsocketClientMessageThread")
+      self.websocketclientmsgthrd.daemon = True # ensure thread dies whenever program terminates through sys.exit()
+      self.websocketclientmsgthrd.start()
+
       if not self.server:
         raise Sorry("Could not connect to web browser")
     except Exception as e:
@@ -108,17 +108,10 @@ class WBmessenger(object):
 
   async def WebSockHandler(self, mywebsock, path):
     self.mprint("Entering WebSockHandler", verbose=1)
-    #if self.was_disconnected == 1006:
-    #  await mywebsock.close()
-    #if self.mywebsock:
-    #  await self.mywebsock.wait_closed()
-
     if hasattr(self.mywebsock, "state") and self.mywebsock.state == 2 \
                                         and self.websockclient is not None:
       await self.mywebsock.wait_closed()
     if self.websockclient is not None or self.ishandling:
-      #self.was_disconnected = 1006
-      #await mywebsock.wait_closed()
       await asyncio.sleep(0.5)
       return
     self.ishandling = True
@@ -129,8 +122,7 @@ class WBmessenger(object):
     self.mywebsock = mywebsock
     getmsgtask = asyncio.ensure_future(self.ReceiveMessage())
     sendmsgtask = asyncio.ensure_future(self.WebBrowserMsgQueue())
-    done, pending = await asyncio.wait(
-      [getmsgtask, sendmsgtask],
+    done, pending = await asyncio.wait( [getmsgtask, sendmsgtask],
       return_when=asyncio.FIRST_COMPLETED,
     )
     for task in pending:
@@ -160,8 +152,7 @@ class WBmessenger(object):
       except Exception as e:
         if self.was_disconnected != 4242:
           self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=1)
-        #continue
-      await self.OnWebsocketClientMessage(None, None, message)
+      self.clientmsgqueue.append(message)
 
 
   async def WebBrowserMsgQueue(self):
@@ -176,9 +167,9 @@ class WBmessenger(object):
                                       1005,
                                       1000
                                       ]:
+          self.mprint("WebBrowserMsgQueue shutdown", verbose=1)
           return # shutdown
         if self.parent.javascriptcleaned or self.was_disconnected == 4241: # or self.was_disconnected == 1001:
-          self.mprint("Shutting down WebBrowser message queue", verbose=1)
           return
         if len(self.msgqueue):
           pendingmessagetype, pendingmessage = self.msgqueue[0]
@@ -194,8 +185,14 @@ class WBmessenger(object):
         self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
 
 
-  async def OnWebsocketClientMessage(self, client, server, message):
-    self.ProcessMessage(message)
+  def ProcessClientMessageLoop(self):
+    while self.isterminating == False:
+      if len(self.clientmsgqueue):
+        pendingmessage = self.clientmsgqueue[0]
+        self.ProcessMessage(pendingmessage)
+        self.clientmsgqueue.remove( self.clientmsgqueue[0] )
+      time.sleep(self.sleeptime)
+    self.mprint("Shutting down WebsocketClientMessageThread", verbose=1)
 
 
   def AddToBrowserMsgQueue(self, msgtype, msg=""):
@@ -258,5 +255,4 @@ class WBmessenger(object):
         self.websockclient = None
         return False
     else:
-      return self.parent.OpenBrowser()
-    #return False
+      return False
