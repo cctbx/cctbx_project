@@ -886,6 +886,8 @@ class AdvancedSettingsDialog(BaseDialog):
 
   def onStagingChoice(self, e):
     self.params.mp.shifter.staging = self.staging_methods[self.log_staging.ctr.GetSelection()]
+    self.staging_help.SetLabel(self.staging_descriptions[self.back_end.ctr.GetSelection()])
+    self.staging_help.Wrap(600)
 
 
   def onBackendChoice(self, e):
