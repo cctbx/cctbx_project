@@ -990,7 +990,7 @@ class suitename_module(SourceModule):
 
 class reduce_module(SourceModule):
   module = 'reduce'
-  anonymous = ['git', '-b master',
+  anonymous = ['git', '-b v3.7.2',
                'https://github.com/rlabduke/reduce.git']
 
 class king_module(SourceModule):
