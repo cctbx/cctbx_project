@@ -10,7 +10,7 @@ Last Changed: 06/02/2016
 Description : XFEL UI startup module.
 '''
 
-import wx
+import wx, sys
 import matplotlib as mp
 mp.use('PS')
 
@@ -53,6 +53,21 @@ class MainApp(wx.App):
     else:
       return False
 
-if __name__ == '__main__':
+def run(args):
+  if '-h' in args or '--help' in args or '-c' in args:
+    from xfel.ui import master_phil_str
+    from libtbx.phil import parse
+    print("""
+Runs the cctbx.xfel GUI. For more information see:
+http://cci.lbl.gov/publications/download/CCN_2019_p22_Brewster.pdf
+
+Configuration options:
+
+""")
+    parse(master_phil_str, process_includes = True).show(attributes_level=2)
+    return
   app = MainApp(0)
   app.MainLoop()
+
+if __name__ == '__main__':
+  run(sys.argv[1:])
