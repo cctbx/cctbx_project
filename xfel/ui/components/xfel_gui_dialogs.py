@@ -746,6 +746,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                        label_style='bold',
                                        ctrl_size=(-1, -1),
                                        choices=self.staging_methods)
+    self.Bind(wx.EVT_CHOICE, self.onStagingChoice, self.log_staging.ctr)
     self.mp_sizer.Add(self.log_staging, flag=wx.EXPAND | wx.ALL, border=10)
     self.staging_help = wx.StaticText(self, label=self.staging_descriptions[self.log_staging.ctr.GetSelection()], size=(600,80))
     self.staging_help.Wrap(600)
