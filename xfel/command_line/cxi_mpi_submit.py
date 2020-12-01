@@ -359,7 +359,7 @@ class Script(object):
     os.mkdir(stdoutdir)
     logging_str = ""
     if params.output.split_logs:# test parameter for split_log then open and close log file and loop over nprocs
-      if params.mp.method == 'shifter':
+      if params.mp.method=='shifter' and params.mp.shifter.staging=='DataWarp':
         bbdirstr = "${DW_JOB_STRIPED}/stdout"
         logging_str = "output.logging_dir=%s"%bbdirstr
       else:

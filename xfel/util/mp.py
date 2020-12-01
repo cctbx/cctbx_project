@@ -88,6 +88,10 @@ mp_phil_str = '''
       constraint = haswell
         .type = str
         .help = Haswell or KNL
+      staging = DataWarp *None
+        .type = choice
+        .help = Optionally stage logs to the DataWarp burst buffer. Only works \
+                when writing to Cori cscratch.
     }
     htcondor {
       executable_path = None
@@ -166,6 +170,10 @@ class get_submit_command(object):
       return template.replace(marker, value)
     else:
       return template
+
+  def delete(self, template, marker):
+    template_lines = template.split('\n')
+    return '\n'.join([l for l in template_lines if marker not in l])
 
   def make_executable(self, file):
     import stat
@@ -504,19 +512,23 @@ class get_shifter_submit_command(get_submit_command):
   def customize_for_method(self):
     # template for sbatch.sh
     self.sbatch_template = self.params.shifter.sbatch_script_template
-    if self.sbatch_template is None:
-      raise Sorry("sbatch script template required for shifter")
-    with open(self.sbatch_template, "r") as sb:
-      self.sbatch_contents = sb.read()
-      self.destination = os.path.dirname(self.submit_path)
+    self.destination = os.path.dirname(self.submit_path)
+    if not self.sbatch_template:
+      from xfel.ui.db.cfgs import shifter_templates
+      self.sbatch_contents = shifter_templates.sbatch_template
+    else:
+      with open(self.sbatch_template, "r") as sb:
+        self.sbatch_contents = sb.read()
     self.sbatch_path = os.path.join(self.destination, "sbatch.sh")
 
     # template for srun.sh
     self.srun_template = self.params.shifter.srun_script_template
-    if self.srun_template is None:
-      raise Sorry("srun script template required for shifter")
-    with open(self.srun_template, "r") as sr:
-      self.srun_contents = sr.read()
+    if not self.srun_template:
+      from xfel.ui.db.cfgs import shifter_templates
+      self.srun_contents = shifter_templates.sbatch_template
+    else:
+      with open(self.srun_template, "r") as sr:
+        self.srun_contents = sr.read()
     if self.params.use_mpi:
       self.command = "%s mp.method=mpi" % (self.command)
     self.srun_path = os.path.join(self.destination, "srun.sh")
@@ -563,10 +575,13 @@ class get_shifter_submit_command(get_submit_command):
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<project>",
       self.params.shifter.project)
 
-    #TODO: find a way to toggle reservations off
     # --reservation
-    self.sbatch_contents = self.substitute(self.sbatch_contents, "<reservation>",
-      self.params.shifter.reservation)
+    if self.params.shifter.reservation:
+      self.sbatch_contents = self.substitute(
+          self.sbatch_contents, "<reservation>", self.params.shifter.reservation
+      )
+    else:
+      self.sbatch_contents = self.delete(self.sbatch_contents, "<reservation>")
 
     # --constraint
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<constraint>",
@@ -580,6 +595,10 @@ class get_shifter_submit_command(get_submit_command):
 
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<output_dir>",
       self.destination)
+
+    # Delete datawarp instructions if we're not staging logs
+    if self.params.shifter.staging != "DataWarp":
+      self.sbatch_contents = self.delete(self.sbatch_contents, "#DW")
 
     # <srun_script>
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<srun_script>",

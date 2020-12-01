@@ -32,5 +32,6 @@ mp {{
     project = {nersc_project}
     reservation = {nersc_reservation}
     constraint = {nersc_constraint}
+    staging = {nersc_staging}
   }}
 }}

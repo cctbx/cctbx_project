@@ -205,6 +205,7 @@ class IndexingJob(Job):
       nersc_project             = self.app.params.mp.shifter.project,
       nersc_constraint          = self.app.params.mp.shifter.constraint,
       nersc_reservation         = self.app.params.mp.shifter.reservation,
+      nersc_staging             = self.app.params.mp.shifter.staging,
       target                    = target_phil_path,
       host                      = self.app.params.db.host,
       dbname                    = self.app.params.db.name,
@@ -625,6 +626,7 @@ class ScalingJob(Job):
       nersc_project             = self.app.params.mp.shifter.project,
       nersc_constraint          = self.app.params.mp.shifter.constraint,
       nersc_reservation         = self.app.params.mp.shifter.reservation,
+      nersc_staging             = self.app.params.mp.shifter.staging,
       target                    = target_phil_path,
       # always use mpi for 'lcls'
       use_mpi                   = self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls'),
