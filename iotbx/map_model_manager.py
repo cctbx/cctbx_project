@@ -1012,6 +1012,9 @@ class map_model_manager(object):
   def extract_all_maps_with_bounds(self,
      lower_bounds,
      upper_bounds,
+     boundary_to_smoothing_ratio = 2.,
+     soft_mask_around_edges = None,
+     soft_mask_radius = None,
      model_can_be_outside_bounds = None):
     '''
       Runs box_all_maps_with_bounds_and_shift_origin with extract_box=True
@@ -1020,6 +1023,9 @@ class map_model_manager(object):
       lower_bounds = lower_bounds,
       upper_bounds = upper_bounds,
       model_can_be_outside_bounds = model_can_be_outside_bounds,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       extract_box = True)
 
   def box_all_maps_with_bounds_and_shift_origin(self,
@@ -1044,6 +1050,15 @@ class map_model_manager(object):
 
        The lower_bounds and upper_bounds define the region to be boxed. These
        bounds are relative to the current map with origin at (0, 0, 0).
+
+       if soft_mask_around_edges, still uses the same bounds, but makes
+         a soft mask around the edges.  Use this option if you are going
+         to calculate a FT of the map or otherwise manipulate it in
+         reciprocal space. Do not use this option if you are going to
+         mask around atoms, density, mask or anything
+         else afterwards as you should apply a mask only once.
+
+
 
     '''
     assert lower_bounds is not None and upper_bounds is not None
@@ -1095,17 +1110,11 @@ class map_model_manager(object):
      stay_inside_current_map = None,
      box_cushion = 5.,
      boundary_to_smoothing_ratio = 2.,
-     soft_mask_around_edges = False,
+     soft_mask_around_edges = None,
      soft_mask_radius = None,
      ):
     '''
       Runs box_all_maps_around_model_and_shift_origin with extract_box=True
-      Use either selection_string or selection if present
-
-      if soft_mask_around_edges, make a bigger box and make a soft mask around
-       the edges.  Use this option if you are going to calculate a FT of
-       the map or otherwise manipulate it in reciprocal space.
-
     '''
     return self.box_all_maps_around_model_and_shift_origin(
       selection_string = selection_string,
@@ -1153,11 +1162,11 @@ class map_model_manager(object):
        automatically.  Any selection in selection_string or selection
         will not be applied.
 
-       if soft_mask_around_edges, make a bigger box and make a soft mask around
-        the edges.  Use this option if you are going to calculate a FT of
-        the map or otherwise manipulate it in reciprocal space.
-        box_cushion increased by boundary_to_smoothing_ratio*resolution
-
+      if soft_mask_around_edges, makes a bigger box and makes a soft mask around
+       the edges.  Use this option if you are going to calculate a FT of
+       the map or otherwise manipulate it in reciprocal space. Do not use this
+       option if you are going to mask around atoms, density, mask or anything
+       else afterwards as you should apply a mask only once.
 
     '''
     assert isinstance(self.model(), model_manager)
@@ -1206,28 +1215,33 @@ class map_model_manager(object):
     #  or create and return a new map_model_manager object (extract_box=True)
     return self._finish_boxing(box = box, model_info = model_info,
       map_info = map_info,
-      extract_box = extract_box,
       soft_mask_radius = soft_mask_radius,
       soft_mask_around_edges = soft_mask_around_edges,
       boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
-     )
+      extract_box = extract_box)
 
   def extract_all_maps_around_density(self,
      box_cushion = 5.,
      threshold = 0.05,
      get_half_height_width = True,
      model_can_be_outside_bounds = None,
+     boundary_to_smoothing_ratio = 2.,
+     soft_mask_around_edges = None,
+     soft_mask_radius = None,
      map_id = 'map_manager'):
     '''
       Runs box_all_maps_around_density_and_shift_origin with extract_box=True
     '''
     return self.box_all_maps_around_density_and_shift_origin(
-     box_cushion = box_cushion,
-     threshold = threshold,
-     get_half_height_width = get_half_height_width,
+      box_cushion = box_cushion,
+      threshold = threshold,
+      get_half_height_width = get_half_height_width,
       model_can_be_outside_bounds = model_can_be_outside_bounds,
-     map_id = map_id,
-     extract_box = True)
+      map_id = map_id,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
+      extract_box = True)
 
   def box_all_maps_around_density_and_shift_origin(self,
      box_cushion = 5.,
@@ -1263,6 +1277,10 @@ class map_model_manager(object):
 
        The threshold defines how much (relative to maximum in map)  above
        mean value of map near edges is significant and should count as density.
+
+      if soft_mask_around_edges, makes a bigger box and makes a soft mask around
+       the edges.  Use this option if you are going to calculate a FT of
+       the map or otherwise manipulate it in reciprocal space.
 
     '''
     assert box_cushion is not None
@@ -1304,15 +1322,21 @@ class map_model_manager(object):
   def extract_all_maps_around_mask(self,
      box_cushion = 5.,
      model_can_be_outside_bounds = None,
+     boundary_to_smoothing_ratio = 2.,
+     soft_mask_around_edges = None,
+     soft_mask_radius = None,
      mask_id = 'mask'):
     '''
       Runs box_all_maps_around_mask_and_shift_origin with extract_box=True
     '''
     return self.box_all_maps_around_mask_and_shift_origin(
-     box_cushion = 5.,
-     mask_id = mask_id,
+      box_cushion = 5.,
+      mask_id = mask_id,
       model_can_be_outside_bounds = model_can_be_outside_bounds,
-     extract_box = True)
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
+      extract_box = True)
 
   def box_all_maps_around_mask_and_shift_origin(self,
      box_cushion = 5.,
@@ -1335,6 +1359,10 @@ class map_model_manager(object):
 
        The box_cushion defines how far away from the edge of the mask the new
        box boundaries will be placed
+
+      if soft_mask_around_edges, makes a bigger box and makes a soft mask around
+       the edges.  Use this option if you are going to calculate a FT of
+       the map or otherwise manipulate it in reciprocal space.
 
     '''
     assert isinstance(self.model(), model_manager)
@@ -1393,25 +1421,31 @@ class map_model_manager(object):
      regions_to_keep = None,
      keep_low_density = True,
      symmetry = None,
+     boundary_to_smoothing_ratio = 2.,
+     soft_mask_around_edges = None,
+     soft_mask_radius = None,
      mask_expand_ratio = 1):
 
     '''
       Runs box_all_maps_around_mask_and_shift_origin with extract_box=True
     '''
     return self.box_all_maps_around_unique_and_shift_origin(
-     resolution = resolution,
-     solvent_content = solvent_content,
-     sequence = sequence,
-     molecular_mass = molecular_mass,
-     soft_mask = soft_mask,
-     chain_type = chain_type,
-     box_cushion = box_cushion,
-     target_ncs_au_model = target_ncs_au_model,
-     regions_to_keep = regions_to_keep,
-     keep_low_density = keep_low_density,
-     symmetry = symmetry,
-     mask_expand_ratio = mask_expand_ratio,
-     extract_box = True)
+      resolution = resolution,
+      solvent_content = solvent_content,
+      sequence = sequence,
+      molecular_mass = molecular_mass,
+      soft_mask = soft_mask,
+      chain_type = chain_type,
+      box_cushion = box_cushion,
+      target_ncs_au_model = target_ncs_au_model,
+      regions_to_keep = regions_to_keep,
+      keep_low_density = keep_low_density,
+      symmetry = symmetry,
+      mask_expand_ratio = mask_expand_ratio,
+      soft_mask_radius = soft_mask_radius,
+      soft_mask_around_edges = soft_mask_around_edges,
+      boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
+      extract_box = True)
 
   def box_all_maps_around_unique_and_shift_origin(self,
      resolution = None,
@@ -1451,6 +1485,9 @@ class map_model_manager(object):
        Symmetry is optional symmetry (i.e., D7 or C1). Used as alternative to
        ncs_object supplied in map_manager
 
+      if soft_mask_around_edges, makes a bigger box and makes a soft mask around
+       the edges.  Use this option if you are going to calculate a FT of
+       the map or otherwise manipulate it in reciprocal space.
 
        Additional parameters:
          mask_expand_ratio:   allows increasing masking radius beyond default at

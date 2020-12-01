@@ -180,6 +180,13 @@ def exercise(file_name, out = sys.stdout):
   # Create mask around density and apply to all maps
   mam1=new_mam.deep_copy()
   mam1.mask_all_maps_around_density(solvent_content=0.5,
+    soft_mask=False,)
+  s = (mam1.get_map_manager_by_id('mask').map_data() > 0.5)
+  assert approx_equal( (s.count(True),s.size()), (1024,2048))
+
+  # Create soft mask around density and apply to all maps
+  mam1=new_mam.deep_copy()
+  mam1.mask_all_maps_around_density(solvent_content=0.5,
     soft_mask=True,)
   s = (mam1.get_map_manager_by_id('mask').map_data() > 0.5)
   assert approx_equal( (s.count(True),s.size()), (984,2048))
@@ -189,6 +196,12 @@ def exercise(file_name, out = sys.stdout):
   mam1.mask_all_maps_around_edges(soft_mask_radius=12)
   s = (mam1.get_map_manager_by_id('mask').map_data() > 0.5)
   assert approx_equal( (s.count(True),s.size()), (1658,2048))
+
+  # Create a  mask around atoms and apply to all maps
+  new_mam.mask_all_maps_around_atoms(mask_atoms_atom_radius=8,
+      soft_mask=False)
+  s = (new_mam.get_map_manager_by_id('mask').map_data() > 0.5)
+  assert approx_equal( (s.count(True),s.size()), (138,2048))
 
   # Create a soft mask around atoms and apply to all maps
   new_mam.mask_all_maps_around_atoms(mask_atoms_atom_radius=8,
@@ -209,12 +222,6 @@ def exercise(file_name, out = sys.stdout):
       soft_mask=True)
   s = (dummy_mam.get_map_manager_by_id('mask').map_data() > 0.5)
   assert approx_equal( (s.count(True),s.size()), (1722,2048))
-
-  # Create a sharp mask around atoms and do not do anything with it
-  new_mam.create_mask_around_atoms(soft_mask=False,
-     mask_atoms_atom_radius=8)
-  s = (new_mam.get_map_manager_by_id('mask').map_data() > 0.5)
-  assert approx_equal( (s.count(True),s.size()), (138,2048))
 
   # Mask around edges and do not do anything with it
   mam=dc.deep_copy()
@@ -330,29 +337,46 @@ def exercise(file_name, out = sys.stdout):
   mam.box_all_maps_around_model_and_shift_origin(
       selection_string="resseq 221:221")
   new_mm_1=mam.map_manager()
-  assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
+  assert approx_equal( (mam_dc.map_data().all(),new_mm_1.map_data().all()),
     ((18, 25, 20),(24, 20, 20)))
+
+  # box around model and add soft mask to edges
+  mam=mam_dc.deep_copy()
+  mam.box_all_maps_around_model_and_shift_origin(
+      selection_string="resseq 221:221",
+      soft_mask_around_edges = True)
+  new_mm_2=mam.map_manager()
+  assert approx_equal( (mam_dc.map_data().all(),new_mm_2.map_data().all()),
+    ((18, 25, 20),(41,36,38)))
 
   # extract_around_model (get new mam)
   new_mam_dc=mam_dc.extract_all_maps_around_model(
       selection_string="resseq 221:221")
   new_mm_1a=new_mam_dc.map_manager()
-  assert approx_equal( (mmm.map_data().all(),new_mm_1a.map_data().all()),
+  assert approx_equal( (mam_dc.map_data().all(),new_mm_1a.map_data().all()),
     ((18, 25, 20),(24, 20, 20)))
   assert approx_equal(new_mm_1.map_data(),new_mm_1a.map_data())
+
+  # extract_around_model (get new mam) and soft_mask_around_edges
+  new_mam_dc=mam_dc.extract_all_maps_around_model(
+      selection_string="resseq 221:221", soft_mask_around_edges = True)
+  new_mm_2a=new_mam_dc.map_manager()
+  assert approx_equal( (mam_dc.map_data().all(),new_mm_2a.map_data().all()),
+    ((18, 25, 20),(41,36,38)))
+  assert approx_equal(new_mm_2.map_data(),new_mm_2a.map_data())
 
   # box around_density
   mam2=mam_dc.deep_copy()
   mam2.box_all_maps_around_density_and_shift_origin(box_cushion=0)
   new_mm_2=mam2.map_manager()
-  assert approx_equal( (mmm.map_data().all(),new_mm_2.map_data().all()),
+  assert approx_equal( (mam_dc.map_data().all(),new_mm_2.map_data().all()),
     ((18, 25, 20),(16, 23, 18)))
 
   # extract_around_density (get new mam)
   mam2=mam_dc.deep_copy()
   mam2_b=mam2.extract_all_maps_around_density(box_cushion=0)
   new_mm_2=mam2_b.map_manager()
-  assert approx_equal( (mmm.map_data().all(),new_mm_2.map_data().all()),
+  assert approx_equal( (mam_dc.map_data().all(),new_mm_2.map_data().all()),
     ((18, 25, 20),(16, 23, 18)))
 
   # Repeat as map_model_manager:
@@ -360,29 +384,38 @@ def exercise(file_name, out = sys.stdout):
   mmm.box_all_maps_around_model_and_shift_origin(
       selection_string="resseq 221:221")
   new_mm_1a=mmm.map_manager()
-  assert approx_equal( (mmm.map_data().all(),new_mm_1a.map_data().all()),
-    ((24, 20, 20),(24, 20, 20)))
+  assert approx_equal( (mam_dc.map_data().all(),new_mm_1a.map_data().all()),
+    ((18, 25, 20),(24, 20, 20)))
   assert approx_equal(new_mm_1.map_data(),new_mm_1a.map_data())
 
   # box around density
-  mam.box_all_maps_around_density_and_shift_origin(box_cushion=0)
+  mam = mam_dc.deep_copy()
+  mam.box_all_maps_around_density_and_shift_origin(box_cushion=0,soft_mask_around_edges=False)
   new_mm_1=mam.map_manager()
-  assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
-    ((24, 20 , 20),(22, 18, 18)))
+  assert approx_equal( (mam_dc.map_data().all(),new_mm_1.map_data().all()),
+    ((18,25 , 20),(16, 23, 18)))
+
+  # box around density and soft mask edges
+  mam = mam_dc.deep_copy()
+  mam.box_all_maps_around_density_and_shift_origin(box_cushion=0,
+   soft_mask_around_edges=True)
+  new_mm_1=mam.map_manager()
+  assert approx_equal( (mam_dc.map_data().all(),new_mm_1.map_data().all()),
+    ((18, 25 , 20),(18, 25, 20)))
 
   # extract around density (get new mam)
   mam1=mam_dc.deep_copy()
   mam1.extract_all_maps_around_density(box_cushion=0)
   new_mm_1=mam1.map_manager()
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
-    ((24, 20 , 20),(18, 25, 20)))
+    ((24, 20, 20),(18, 25, 20)))
 
   # create mask around density, then box around mask (i.e., box around density)
   mam.create_mask_around_density(soft_mask=False)
   mam.box_all_maps_around_mask_and_shift_origin(box_cushion=3)
   new_mm_1=mam.map_manager()
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
-    ((24, 20 , 20),(22, 18, 18)))
+    ((24, 20, 20),(18, 25, 20)))
 
   # box with bounds
   mam.box_all_maps_with_bounds_and_shift_origin(lower_bounds=(10,10,10),
@@ -413,7 +446,7 @@ def exercise(file_name, out = sys.stdout):
       molecular_mass=2500,resolution=3)
   new_mm_1=mam_1.map_manager()
   assert approx_equal( (mmm.map_data().all(),new_mm_1.map_data().all()),
-    ((24, 20, 20),(18, 25, 20)))
+    ((24,20, 20),(18, 25, 20)))
 
   # extract a box and then restore model into same reference as current mam
   mam=mam_dc.deep_copy()
