@@ -736,6 +736,23 @@ class AdvancedSettingsDialog(BaseDialog):
                                                   if params.mp.shifter.constraint is not None else '')
     self.mp_sizer.Add(self.shifter_constraint, flag=wx.EXPAND | wx.ALL, border=10)
 
+    self.staging_methods = ["DataWarp", "None"]
+    self.staging_descriptions = [
+        'Stage logs to the DataWarp burst buffer. WARNING: Results must be on /global/cscratch1. Otherwise logs will be lost.',
+        'Write logs directly to disk.']
+    self.log_staging = gctr.ChoiceCtrl(self,
+                                       label="Log staging",
+                                       label_size=(240, -1),
+                                       label_style='bold',
+                                       ctrl_size=(-1, -1),
+                                       choices=self.staging_methods)
+    self.mp_sizer.Add(self.log_staging, flag=wx.EXPAND | wx.ALL, border=10)
+    self.staging_help = wx.StaticText(self, label=self.staging_descriptions[self.log_staging.ctr.GetSelection()], size=(600,80))
+    self.staging_help.Wrap(600)
+    self.mp_sizer.Add(self.staging_help, flag=wx.EXPAND | wx.ALL, border=10)
+
+
+
 
     # Data analysis settings
     analysis_box = wx.StaticBox(self, label='Data Analysis Options')
@@ -866,6 +883,10 @@ class AdvancedSettingsDialog(BaseDialog):
     else:
       self.nproc.ctr.SetValue(1)
       self.nproc.ctr.SetIncrement(1)
+
+  def onStagingChoice(self, e):
+    self.params.mp.shifter.staging = self.staging_methods[self.log_staging.ctr.GetSelection()]
+
 
   def onBackendChoice(self, e):
     self.params.dispatcher = self.dispatchers[self.back_end.ctr.GetSelection()]
