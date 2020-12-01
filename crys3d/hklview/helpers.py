@@ -216,6 +216,7 @@ class MplCanvas(FigureCanvas):
     if event.inaxes is not None:
       self.parent.selcolmap = cmaps[event.inaxes.get_subplotspec().rowspan.start]
       self.parent.labeltxt.setText('Colour gradient map is: %s. Click a map to select a different one' %self.parent.selcolmap )
+      self.parent.EnactColourMapSelection()
 
 # TODO work out scaling of canvas to match QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
 # and
@@ -225,6 +226,7 @@ class MPLColourSchemes(QtWidgets.QDialog):
     self.parent = parent
     self.isOK = False
     self.selcolmap = ""
+    self.powscale = 1
     #self.setWindowFlags(Qt.Tool)
     # Create the maptlotlib FigureCanvas object, 
     # which defines a single set of axes as self.axes.
@@ -246,26 +248,46 @@ class MPLColourSchemes(QtWidgets.QDialog):
     self.reversecheckbox = QtWidgets.QCheckBox()
     self.reversecheckbox.setText("Reverse colour mapping")
     self.reversecheckbox.clicked.connect(self.onReverseMap)
+
+    self.powscale_label = QtWidgets.QLabel()
+    self.powscale_label.setText("Power factor for map scaling:")
+    self.powscaleslider = QtWidgets.QSlider(Qt.Horizontal)
+    self.powscaleslider.setMinimum(-10)
+    self.powscaleslider.setMaximum(10)
+    self.powscaleslider.sliderReleased.connect(self.onReleasePowscaleslider)
+    self.powscaleslider.valueChanged.connect(self.onValueChangedPowscaleslider)
+    self.powscaletxtbox = QtWidgets.QLineEdit('')
+    self.powscaletxtbox.setReadOnly(True)
     self.OKbtn = QtWidgets.QPushButton("OK")
     self.OKbtn.clicked.connect(self.onOK)
     self.Cancelbtn =  QtWidgets.QPushButton("Cancel")
     self.Cancelbtn.clicked.connect(self.onCancel)
     gridlayout = QtWidgets.QGridLayout() 
     gridlayout.addWidget(self.labeltxt,          0, 0, 1, 2)
-    gridlayout.addWidget(self.reversecheckbox,   1, 0, 1, 2)
-    gridlayout.addWidget(scroll,                 2, 0, 1, 2)
-    gridlayout.addWidget(self.OKbtn,             3, 0, 1, 1)
-    gridlayout.addWidget(self.Cancelbtn,         3, 1, 1, 1)
+    gridlayout.addWidget(self.reversecheckbox,   1, 0, 1, 1)
+    gridlayout.addWidget(self.powscale_label,    2, 0, 1, 1)
+    gridlayout.addWidget(self.powscaleslider,    2, 1, 1, 1)
+    gridlayout.addWidget(self.powscaletxtbox,    2, 2, 1, 1)
+    gridlayout.addWidget(scroll,                 3, 0, 1, 3)
+    gridlayout.addWidget(self.OKbtn,             4, 0, 1, 1)
+    gridlayout.addWidget(self.Cancelbtn,         4, 2, 1, 1)
     self.setLayout(gridlayout)
     scw = self.parent.app.style().pixelMetric(QtWidgets.QStyle.PM_ScrollBarExtent)
     self.setFixedWidth(sc.width() + scw*2 ) # fudge
     #self.setFixedWidth(sc.width() +scroll.verticalScrollBar().width() )
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
+  def EnactColourMapSelection(self):
+    if hasattr(self.parent,"onColourChartSelect"):
+      self.parent.onColourChartSelect(self.selcolmap, self.powscale)
+
+  def showEvent(self, event):
+    self.labeltxt.setText('Selected colour gradient map: %s' %self.selcolmap )
+    self.powscaletxtbox.setText("%2.2f" %self.powscale )
+
   def onOK(self):
     self.isOK = True
-    if hasattr(self.parent,"onColourChartSelect"):
-      self.parent.onColourChartSelect(self.selcolmap)
+    self.EnactColourMapSelection()
     self.hide()
 
   def onCancel(self):
@@ -280,7 +302,17 @@ class MPLColourSchemes(QtWidgets.QDialog):
       if self.selcolmap.endswith( "_r"):
         self.selcolmap = self.selcolmap[:-2]
     self.labeltxt.setText('Selected colour gradient map: %s' %self.selcolmap )
+    self.EnactColourMapSelection()
 
+  def onReleasePowscaleslider(self):
+    self.EnactColourMapSelection()
+
+  def onValueChangedPowscaleslider(self):
+    val= self.powscaleslider.value()
+    # want to raise the colour scaling to a power bigger than 0
+    # so compute powscale from an exponential of the slider value
+    self.powscale = math.pow(1.2, val) # 1.2 varies sufficiently slowly for the slider range [-10,10]
+    self.powscaletxtbox.setText("%2.2f" %self.powscale )
 
 
 

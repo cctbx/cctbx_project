@@ -385,6 +385,7 @@ class hklview_3d:
                        "sigma_radius",
                        "scene_id",
                        "color_scheme",
+                       "color_powscale",
                        "scale",
                        "nth_power_scale_radii"
                        ) \
@@ -708,6 +709,7 @@ class hklview_3d:
                          self.viewerparams.sigma_radius,
                          self.viewerparams.sigma_color,
                          self.viewerparams.color_scheme,
+                         self.viewerparams.color_powscale,
                          self.ngl_settings.fontsize,
                          sceneid,
                          self.viewerparams.scale,
@@ -749,6 +751,7 @@ class hklview_3d:
                                 self.viewerparams.sigma_radius,
                                 self.viewerparams.sigma_color,
                                 self.viewerparams.color_scheme,
+                                self.viewerparams.color_powscale,
                                 self.ngl_settings.fontsize,
                                 sceneid,
                                 self.viewerparams.scale,
@@ -776,6 +779,7 @@ class hklview_3d:
                               self.viewerparams.sigma_radius,
                               self.viewerparams.sigma_color,
                               self.viewerparams.color_scheme,
+                              self.viewerparams.color_powscale,
                               self.ngl_settings.fontsize,
                               self.viewerparams.scene_id,
                               self.viewerparams.scale,
@@ -821,6 +825,7 @@ class hklview_3d:
                               self.viewerparams.sigma_radius,
                               self.viewerparams.sigma_color,
                               self.viewerparams.color_scheme,
+                              self.viewerparams.color_powscale,
                               self.ngl_settings.fontsize,
                               sceneid,
                               self.viewerparams.scale,
@@ -858,6 +863,7 @@ class hklview_3d:
                       self.viewerparams.sigma_radius,
                       self.viewerparams.sigma_color,
                       self.viewerparams.color_scheme,
+                      self.viewerparams.color_powscale,
                       self.ngl_settings.fontsize,
                       sceneid,
                       self.viewerparams.scale,
@@ -1168,19 +1174,19 @@ class hklview_3d:
             fom -= fomdecr
           for j in range(fomln):
             arr = graphics_utils.map_to_rgb_colourmap(
-              data_for_colors= colourscalararray,
-              colormap= rgbcolarray,
-              selection=flex.bool(colourscalararray.size(), True),
-              attenuation = fomarrays[j]
+                data_for_colors= colourscalararray,
+                colormap= rgbcolarray,
+                selection=flex.bool(colourscalararray.size(), True),
+                attenuation = fomarrays[j]
               )
             colourgradarrays.append( arr*256 )
         else:
           fomln =1
           fomarrays = [1.0]
           arr = graphics_utils.map_to_rgb_colourmap(
-            data_for_colors= colourscalararray,
-            colormap= rgbcolarray,
-            selection=flex.bool(colourscalararray.size(), True)
+              data_for_colors= colourscalararray,
+              colormap = rgbcolarray,
+              selection=flex.bool(colourscalararray.size(), True),
             )
           colourgradarrays.append(  arr*256 )
       else:
@@ -1188,7 +1194,15 @@ class hklview_3d:
         fomarrays = [1.0]
         COL = display.MplColorHelper(self.viewerparams.color_scheme, mincolourscalar, maxcolourscalar)
         rgbcolarray = flex.vec3_double( [ COL.get_rgb(d)[0:3] for d in colourscalararray ])
-        colourgradarrays.append(rgbcolarray*256)
+
+        arr = graphics_utils.map_to_rgb_colourmap(
+            data_for_colors= colourscalararray,
+            colormap = rgbcolarray,
+            selection=flex.bool(colourscalararray.size(), True),
+            powscale = self.viewerparams.color_powscale
+          )
+
+        colourgradarrays.append(arr*256)
       colors = self.HKLscene_from_dict(self.colour_scene_id).colors
       radii = self.HKLscene_from_dict(self.radii_scene_id).radii
       self.meanradius = flex.mean(radii)
@@ -2078,7 +2092,8 @@ Distance: %s
 
   def onDoubleClickColourChart(self):
     # if running the GUI show the colour chart selection dialog
-    self.SendInfoToGUI( { "ColourChart":  self.viewerparams.color_scheme } )
+    self.SendInfoToGUI( { "ColourChart": self.viewerparams.color_scheme, 
+                          "ColourPowerScale": self.viewerparams.color_powscale } )
 
   
   def MakeBrowserDataColumnComboBox(self):
@@ -2094,7 +2109,7 @@ Distance: %s
 
 
 ngl_philstr = """
-  mouse_sensitivity = 0.2
+  mouse_sensitivity = 0.04
     .type = float
   bin_opacities = ""
     .type = str

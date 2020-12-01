@@ -421,16 +421,10 @@ class scene(object):
         data_for_colors=data_for_colors,
         colormap=colorgradientarray,
         selection=flex.bool(data_for_colors.size(), True),
+        powscale = settings.color_powscale,
         attenuation = None,
         color_all=False
         )
-      """
-      colors = graphics_utils.color_by_property(
-        properties=data_for_colors,
-        selection=flex.bool(data_for_colors.size(), True),
-        color_all=False,
-        gradient_type=settings.color_scheme)
-      """
 
     if (settings.slice_mode) and (settings.keep_constant_scale):
       colors = colors.select(self.slice_selection)
@@ -636,6 +630,8 @@ philstr = """
     .type = int
   color_scheme = %s
     .type = choice
+  color_powscale = 1.0
+    .type = float
   show_labels = True
     .type = bool
   uniform_size = False
