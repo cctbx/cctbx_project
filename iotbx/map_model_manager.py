@@ -691,6 +691,9 @@ class map_model_manager(object):
 
     return self._minimum_resolution
 
+  def nproc(self):
+    return self._nproc
+
   def resolution(self,
     use_fsc_if_no_resolution_available_and_maps_available = True,
     map_id_1 = 'map_manager_1',
@@ -6718,7 +6721,7 @@ class map_model_manager(object):
       self.get_any_map_manager().shift_model_to_match_map(model)
 
   def model_building(self,
-     nproc = 1,
+     nproc = None,
      soft_zero_boundary_mask = True,
      soft_zero_boundary_mask_radius = None,
      ):
@@ -6734,14 +6737,19 @@ class map_model_manager(object):
     resolution = self.resolution()
     assert resolution is not None
 
+    if not nproc:
+      nproc = self.nproc()
+
     from phenix.model_building import local_model_building
-    return local_model_building(
+    mb =local_model_building(
      map_model_manager = self, # map_model manager
      soft_zero_boundary_mask = soft_zero_boundary_mask,
      soft_zero_boundary_mask_radius = soft_zero_boundary_mask_radius,
      nproc= nproc,
      log = self.log,
     )
+    mb.set_defaults(debug = self.verbose)
+    return mb
 
   def as_map_model_manager(self):
     '''
