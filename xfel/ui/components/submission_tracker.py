@@ -11,7 +11,10 @@ class JobStopper(object):
       self.command = "qdel %s"
     elif self.queueing_system == 'local':
       pass
-    elif self.queueing_system == 'slurm':
+    elif self.queueing_system == 'slurm' or self.queueing_system == 'shifter':
+      # The current implementation of the shifter mp method assumes that we're
+      # running on NERSC's systems => jobs should be tracked using the _slurm_
+      # submission tracker.
       self.command = "scancel %s"
     elif self.queueing_system == 'htcondor':
       self.command = "condor_rm %s"
@@ -47,7 +50,10 @@ class QueueInterrogator(object):
       self.command = "qstat -H %s | tail -n 1 | awk '{ print $10 }'"
     elif self.queueing_system == 'local':
       pass
-    elif self.queueing_system == 'slurm':
+    elif self.queueing_system == 'slurm' or  self.queueing_system == 'shifter':
+      # The current implementation of the shifter mp method assumes that we're
+      # running on NERSC's systems => jobs should be tracked using the _slurm_
+      # submission tracker.
       self.command = "sacct --job %s --format state --noheader"
     elif self.queueing_system == 'htcondor':
       self.command1 = "condor_q %s -nobatch | grep -A 1 OWNER | tail -n 1"
@@ -74,7 +80,10 @@ class QueueInterrogator(object):
       # zombie jobs can be left because the GUI process that forked them is still running
       if len(statuses) == 1 and statuses[0] == 'zombie': return "DONE"
       return ", ".join(statuses)
-    elif self.queueing_system == 'slurm':
+    elif self.queueing_system == 'slurm' or self.queueing_system == "shifter":
+      # The current implementation of the shifter mp method assumes that we're
+      # running on NERSC's systems => jobs should be tracked using the _slurm_
+      # submission tracker.
       result = easy_run.fully_buffered(command=self.command%submission_id)
       if len(result.stdout_lines) == 0: return 'UNKWN'
       status = result.stdout_lines[0].strip().rstrip('+')
@@ -125,7 +134,7 @@ class LogReader(object):
     self.queueing_system = queueing_system
     if self.queueing_system in ["mpi", "lsf", "pbs", "local"]:
       self.command = "tail -17 %s | head -1"
-    elif self.queueing_system in ["slurm", "htcondor"]:
+    elif self.queueing_system in ["slurm", "shifter", "htcondor"]:
       pass # no log reader used
     else:
       raise NotImplementedError(
@@ -208,6 +217,11 @@ class TrackerFactory(object):
     elif params.mp.method == 'local':
       return LocalSubmissionTracker(params)
     elif params.mp.method == 'slurm':
+      return SlurmSubmissionTracker(params)
+    elif params.mp.method == 'shifter':
+      # The current implementation of the shifter mp method assumes that we're
+      # running on NERSC's systems => jobs should be tracked using the _slurm_
+      # submission tracker.
       return SlurmSubmissionTracker(params)
     elif params.mp.method == 'htcondor':
       return HTCondorSubmissionTracker(params)

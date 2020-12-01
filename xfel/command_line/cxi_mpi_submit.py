@@ -266,7 +266,8 @@ def get_submission_id(result, method):
     submission_id = "".join(result.stdout_lines).strip()
     print(submission_id)
     return submission_id
-  elif method == 'slurm':
+  elif method == 'slurm' or method == "shifter":
+    # Assumign that all shifter instances are running on NERSC (slurm) systems
     return result.stdout_lines[0].split()[-1].strip()
   elif method == 'htcondor':
     return result.stdout_lines[-1].split()[-1].rstrip('.')

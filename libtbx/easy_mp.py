@@ -440,8 +440,8 @@ qsub_command = None
   .short_caption = qsub command
 """
 
-parallel_methods = ["*multiprocessing", "sge", "lsf", "pbs", "condor", "slurm"]
-parallel_captions = ["Multiprocessing", "Sun_Grid_Engine", "LSF", "PBS", "Condor", "SLURM"]
+parallel_methods = ["*multiprocessing", "sge", "lsf", "pbs", "condor", "slurm", "shifter"]
+parallel_captions = ["Multiprocessing", "Sun_Grid_Engine", "LSF", "PBS", "Condor", "SLURM", "Shifter"]
 
 parallel_phil_str = parallel_phil_str_base % (
   " ".join(parallel_methods + ["threading"]),
