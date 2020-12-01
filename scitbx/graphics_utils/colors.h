@@ -362,6 +362,7 @@ namespace scitbx { namespace graphics_utils {
       af::shared< scitbx::vec3<double> > const& colourmap,
       af::const_ref< bool > const& selection,
       af::const_ref< double > const& attenuation,
+      double powscale = 1.0,
       bool map_directly = false,
       bool color_all = false
       )
@@ -415,7 +416,9 @@ namespace scitbx { namespace graphics_utils {
       {
         if (boost::math::isfinite(data_for_colors[i_seq]))
         {
-          double colindex = (nrgbcolours - 1) * ((data_for_colors[i_seq] - vmin) / (vmax - vmin));
+          // applying a power scaling skews the colour mapping towards the smaller numbers for powscale > 1 
+          // but skews it towards the larger numbers for 0 < powscale < 1
+          double colindex = (nrgbcolours - 1) * pow(((data_for_colors[i_seq] - vmin) / (vmax - vmin)), powscale);
           int indx = int(colindex);
           SCITBX_ASSERT(indx >= 0 && indx < nrgbcolours);
           colors[i_seq][0] = colourmap[indx][0] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);

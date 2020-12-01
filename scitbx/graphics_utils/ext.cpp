@@ -73,6 +73,7 @@ namespace {
       arg("colourmap"),
       arg("selection"),
       arg("attenuation"),
+      arg("powscale"),
       arg("map_directly"),
       arg("color_all") = true));
     def("color_by_phi_fom_", color_by_phi_fom, (

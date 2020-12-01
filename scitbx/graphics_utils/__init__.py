@@ -25,6 +25,7 @@ def map_to_rgb_colourmap(
     colormap,
     selection,
     attenuation=None,
+    powscale=1.0,
     map_directly=False,
     color_all=False):
   if attenuation is None:
@@ -34,6 +35,7 @@ def map_to_rgb_colourmap(
     colourmap=colormap,
     selection=selection,
     attenuation=attenuation,
+    powscale=powscale,
     map_directly = map_directly,
     color_all=color_all)
 

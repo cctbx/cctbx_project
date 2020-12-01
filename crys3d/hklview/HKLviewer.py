@@ -408,9 +408,10 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
 
 
-  def onColourChartSelect(self, selcolmap): # called when user clicks OK in ColourMapSelectDlg
+  def onColourChartSelect(self, selcolmap, powscale): # called when user clicks OK in ColourMapSelectDlg
     if selcolmap != "":
-      self.PhilToJsRender('NGL_HKLviewer.viewer.color_scheme = %s' %selcolmap )
+      self.PhilToJsRender('''NGL_HKLviewer.viewer.color_scheme = %s
+NGL_HKLviewer.viewer.color_powscale = %s''' %(selcolmap, powscale) )
 
 
   def ProcessMessages(self):
@@ -594,8 +595,9 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
           if self.infodict.get("NewMillerArray"):
             self.NewMillerArray = self.infodict.get("NewMillerArray",False)
 
-          if self.infodict.get("ColourChart"):
+          if self.infodict.get("ColourChart") and self.infodict.get("ColourPowerScale"):
             self.ColourMapSelectDlg.selcolmap = self.infodict.get("ColourChart",False)
+            self.ColourMapSelectDlg.powscale = self.infodict.get("ColourPowerScale",False)
             self.ColourMapSelectDlg.show()
 
           if self.infodict.get("bin_labels_type_idxs"):
