@@ -56,6 +56,13 @@ def run(parent_dir):
   '''
   # this is one directory up: /cctbx_project/cctbx_website/
   #parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+  msg = '''#********************************************************************
+# This script is automatically generated when running libtbx.refresh (or bootstrap.py)
+# It is not part of the GitHub repository
+# So if this script is manually changed, the changes will be lost when updating
+#********************************************************************\n'''
+
   directory = os.path.join(parent_dir, 'html_files')
 
   for filename in os.listdir(directory):
@@ -77,6 +84,7 @@ def run(parent_dir):
       script_filename = os.path.join(dest_dir, base+'.py')
       with open(script_filename, 'w', encoding='utf-8') as file:
         file.write(to_unicode('from __future__ import absolute_import, division, print_function\n'))
+        file.write(to_unicode(msg))
         file.write(to_unicode(code_str.strip()))
         file.write(to_unicode('\n'))
     else:
