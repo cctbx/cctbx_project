@@ -48,6 +48,6 @@ if (env_etc.enable_cuda):
   env.SharedLibrary(
     target="#lib/simtbx_gpu_ext",
     source=[
-      simtbx_gpu_obj
+      simtbx_gpu_obj,"#simtbx/nanoBragg/nanoBragg"
     ]
   )

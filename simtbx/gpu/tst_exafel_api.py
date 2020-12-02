@@ -84,7 +84,7 @@ class several_wavelength_case:
   gpu_simulation.allocate_cuda()
 
   from simtbx.gpu import gpu_detector as gpud
-  gpu_detector = gpud(deviceId=SIM.device_Id, detector=self.DETECTOR)
+  gpu_detector = gpud(deviceId=SIM.device_Id, detector=self.DETECTOR, beam=self.BEAM)
   gpu_detector.each_image_allocate_cuda()
 
   # loop over energies

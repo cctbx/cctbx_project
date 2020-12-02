@@ -13,6 +13,7 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/flex_types.h>
 #include <dxtbx/model/detector.h>
+#include <dxtbx/model/beam.h>
 #include <simtbx/nanoBragg/nanoBragg.h>
 #include <iostream>
 
@@ -21,18 +22,34 @@ namespace gpu {
 
 namespace af = scitbx::af;
 
+struct packed_metrology{
+  packed_metrology(){/*printf("NO OPERATION")*/;};
+  packed_metrology(dxtbx::model::Detector const &,dxtbx::model::Beam const &);
+  packed_metrology(const simtbx::nanoBragg::nanoBragg& nB);
+  void show() const;
+  af::shared<double>sdet;
+  af::shared<double>fdet;
+  af::shared<double>odet;
+  af::shared<double>pix0;
+  af::shared<double>Xbeam;
+  af::shared<double>Ybeam;
+};
+
 struct gpu_detector{
-  gpu_detector(){printf("NO OPERATION, NO DEVICE NUMBER");};
-  gpu_detector(int const&, dxtbx::model::Detector const &);
+  inline gpu_detector(){printf("NO OPERATION, DEVICE NUMBER IS NEEDED");};
+  gpu_detector(int const&, const simtbx::nanoBragg::nanoBragg& nB);
+  gpu_detector(int const&, dxtbx::model::Detector const &, dxtbx::model::Beam const &);
+  void construct_detail(int const&, dxtbx::model::Detector const &);
 
   inline int get_deviceID(){return h_deviceID;}
   inline void show_summary(){
-    std::cout << "Detector size" << detector.size() <<std::endl;
-    std::cout << "Detector panel 2\n" << detector[2] << std::endl;
+    std::cout << "Detector size" << cu_n_panels <<std::endl;
+    metrology.show();
   }
   void each_image_allocate_cuda();
   void scale_in_place_cuda(const double&);
   void write_raw_pixels_cuda(simtbx::nanoBragg::nanoBragg&);
+  af::flex_double get_raw_pixels_cuda();
   void each_image_free_cuda();
 
   void free_detail();
@@ -52,6 +69,11 @@ struct gpu_detector{
   bool * cu_rangemap;
   float * cu_floatimage; //most important output, stores the simulated pixel data
 
+  /* all-panel packed GPU representation of the multi-panel metrology */
+  CUDAREAL * cu_sdet_vector, * cu_fdet_vector;
+  CUDAREAL * cu_odet_vector, * cu_pix0_vector;
+
+  packed_metrology const metrology;
   private:
   int _image_size;
 };

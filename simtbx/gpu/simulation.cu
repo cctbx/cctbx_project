@@ -49,7 +49,40 @@ namespace af = scitbx::af;
 
   void
   exascale_api::show(){
-    std::cout << "SIM.phisteps" << SIM.phisteps << std::endl;
+    SCITBX_EXAMINE(SIM.roi_xmin);
+    SCITBX_EXAMINE(SIM.roi_xmax);
+    SCITBX_EXAMINE(SIM.roi_ymin);
+    SCITBX_EXAMINE(SIM.roi_ymax);
+    SCITBX_EXAMINE(SIM.oversample);
+    SCITBX_EXAMINE(SIM.point_pixel);
+    SCITBX_EXAMINE(SIM.pixel_size);
+    SCITBX_EXAMINE(cu_subpixel_size);
+    SCITBX_EXAMINE(cu_steps);
+    SCITBX_EXAMINE(SIM.detector_thickstep);
+    SCITBX_EXAMINE(SIM.detector_thicksteps);
+    SCITBX_EXAMINE(SIM.detector_thick);
+    SCITBX_EXAMINE(SIM.detector_attnlen);
+    SCITBX_EXAMINE(SIM.curved_detector);
+    SCITBX_EXAMINE(SIM.distance);
+    SCITBX_EXAMINE(SIM.close_distance);
+    SCITBX_EXAMINE(SIM.dmin);
+    SCITBX_EXAMINE(SIM.phi0);
+    SCITBX_EXAMINE(SIM.phistep);
+    SCITBX_EXAMINE(SIM.phisteps);
+    SCITBX_EXAMINE(SIM.sources);
+    SCITBX_EXAMINE(SIM.mosaic_spread);
+    SCITBX_EXAMINE(SIM.mosaic_domains);
+    SCITBX_EXAMINE(SIM.Na);
+    SCITBX_EXAMINE(SIM.Nb);
+    SCITBX_EXAMINE(SIM.Nc);
+    SCITBX_EXAMINE(SIM.fluence);
+    SCITBX_EXAMINE(SIM.spot_scale);
+    SCITBX_EXAMINE(SIM.integral_form);
+    SCITBX_EXAMINE(SIM.default_F);
+    SCITBX_EXAMINE(SIM.interpolate);
+    SCITBX_EXAMINE(SIM.nopolar);
+    SCITBX_EXAMINE(SIM.polarization);
+    SCITBX_EXAMINE(SIM.fudge);
   }
 
   void
@@ -74,14 +107,24 @@ namespace af = scitbx::af;
         dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
         dim3 numBlocks(smCount * 8, 1);
 
-        // want to loop thru panels and increment the array ptrs XXX FIXME
-        nanoBraggSpotsCUDAKernel<<<numBlocks, threadsPerBlock>>>(
+        std::size_t panel_size = gdt.cu_slow_pixels * gdt.cu_fast_pixels;
+        const int vec_len = 4;
+
+        // the for loop around panels.  Offsets given.
+        for (std::size_t idx_p = 0; idx_p < gdt.cu_n_panels; idx_p++){
+          // loop thru panels and increment the array ptrs
+          nanoBraggSpotsCUDAKernel<<<numBlocks, threadsPerBlock>>>(
           gdt.cu_slow_pixels, gdt.cu_fast_pixels, SIM.roi_xmin,
           SIM.roi_xmax, SIM.roi_ymin, SIM.roi_ymax, SIM.oversample, SIM.point_pixel,
           SIM.pixel_size, cu_subpixel_size, cu_steps, SIM.detector_thickstep, SIM.detector_thicksteps,
-          SIM.detector_thick, SIM.detector_attnlen, cu_sdet_vector, cu_fdet_vector, cu_odet_vector,
-          cu_pix0_vector, SIM.curved_detector, SIM.distance, SIM.close_distance, cu_beam_vector,
-          SIM.Xbeam, SIM.Ybeam, SIM.dmin, SIM.phi0, SIM.phistep, SIM.phisteps, cu_spindle_vector,
+          SIM.detector_thick, SIM.detector_attnlen,
+          &(gdt.cu_sdet_vector[vec_len * idx_p]),
+          &(gdt.cu_fdet_vector[vec_len * idx_p]),
+          &(gdt.cu_odet_vector[vec_len * idx_p]),
+          &(gdt.cu_pix0_vector[vec_len * idx_p]),
+          SIM.curved_detector, SIM.distance, SIM.close_distance, cu_beam_vector,
+          gdt.metrology.Xbeam[idx_p], gdt.metrology.Ybeam[idx_p],
+          SIM.dmin, SIM.phi0, SIM.phistep, SIM.phisteps, cu_spindle_vector,
           SIM.sources, cu_source_X, cu_source_Y, cu_source_Z,
           cu_source_I, cu_source_lambda, cu_a0, cu_b0,
           cu_c0, SIM.xtal_shape, SIM.mosaic_spread, SIM.mosaic_domains, cu_mosaic_umats,
@@ -90,14 +133,20 @@ namespace af = scitbx::af;
           simtbx::nanoBragg::Avogadro, SIM.spot_scale, SIM.integral_form, SIM.default_F,
           SIM.interpolate, cu_current_channel_Fhkl, gec.cu_FhklParams, SIM.nopolar,
           cu_polar_vector, SIM.polarization, SIM.fudge,
-          gdt.cu_maskimage, gdt.cu_floatimage /*out*/, gdt.cu_omega_reduction/*out*/,
-          gdt.cu_max_I_x_reduction/*out*/, gdt.cu_max_I_y_reduction /*out*/, gdt.cu_rangemap /*out*/);
+          /* &(gdt.cu_maskimage[panel_size * idx_p]), */
+          NULL,
+          &(gdt.cu_floatimage[panel_size * idx_p]) /*out*/,
+          &(gdt.cu_omega_reduction[panel_size * idx_p]) /*out*/,
+          &(gdt.cu_max_I_x_reduction[panel_size * idx_p]) /*out*/,
+          &(gdt.cu_max_I_y_reduction[panel_size * idx_p]) /*out*/,
+          &(gdt.cu_rangemap[panel_size * idx_p]) /*out*/);
+
+          cudaSafeCall(cudaPeekAtLastError());
+        }
+        cudaSafeCall(cudaDeviceSynchronize());
 
         //don't want to free the gec data when the nanoBragg goes out of scope, so switch the pointer
         cu_current_channel_Fhkl = NULL;
-
-        cudaSafeCall(cudaPeekAtLastError());
-        cudaSafeCall(cudaDeviceSynchronize());
 
         add_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(gdt.cu_accumulate_floatimage,
           gdt.cu_floatimage,
@@ -127,30 +176,39 @@ namespace af = scitbx::af;
         dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
         dim3 numBlocks(smCount * 8, 1);
 
-        // the for loop around panels will go here.  Offsets will be given.
-
-        //  initialize the device memory within a kernel. //havn't analyzed to see if initialization is needed
+        //  initialize the device memory within a kernel.
+        //  modify the arguments to initialize multipanel detector.
         nanoBraggSpotsInitCUDAKernel<<<numBlocks, threadsPerBlock>>>(
-          gdt.cu_slow_pixels, gdt.cu_fast_pixels,
-          gdt.cu_floatimage, gdt.cu_omega_reduction, gdt.cu_max_I_x_reduction, gdt.cu_max_I_y_reduction,
+          gdt.cu_n_panels * gdt.cu_slow_pixels, gdt.cu_fast_pixels,
+          gdt.cu_floatimage, gdt.cu_omega_reduction,
+          gdt.cu_max_I_x_reduction, gdt.cu_max_I_y_reduction,
           gdt.cu_rangemap);
         cudaSafeCall(cudaPeekAtLastError());
         cudaSafeCall(cudaDeviceSynchronize());
 
-        add_background_CUDAKernel<<<numBlocks, threadsPerBlock>>>(SIM.sources,
+        std::size_t panel_size = gdt.cu_slow_pixels * gdt.cu_fast_pixels;
+        const int vec_len = 4;
+
+        // the for loop around panels.  Offsets given.
+        for (std::size_t idx_p = 0; idx_p < gdt.cu_n_panels; idx_p++){
+          add_background_CUDAKernel<<<numBlocks, threadsPerBlock>>>(SIM.sources,
           SIM.oversample,
           SIM.pixel_size, gdt.cu_slow_pixels, gdt.cu_fast_pixels, SIM.detector_thicksteps,
           SIM.detector_thickstep, SIM.detector_attnlen,
-          cu_sdet_vector, cu_fdet_vector, cu_odet_vector, cu_pix0_vector,
+          &(gdt.cu_sdet_vector[vec_len * idx_p]),
+          &(gdt.cu_fdet_vector[vec_len * idx_p]),
+          &(gdt.cu_odet_vector[vec_len * idx_p]),
+          &(gdt.cu_pix0_vector[vec_len * idx_p]),
           SIM.close_distance, SIM.point_pixel, SIM.detector_thick,
           cu_source_X, cu_source_Y, cu_source_Z,
           cu_source_lambda, cu_source_I,
           SIM.stols, cu_stol_of, cu_Fbg_of,
           SIM.nopolar, SIM.polarization, cu_polar_vector,
           simtbx::nanoBragg::r_e_sqr, SIM.fluence, SIM.amorphous_molecules,
-          gdt.cu_floatimage /*out*/);
+          &(gdt.cu_floatimage[panel_size * idx_p]) /*out*/);
 
-        cudaSafeCall(cudaPeekAtLastError());
+          cudaSafeCall(cudaPeekAtLastError());
+        }
         cudaSafeCall(cudaDeviceSynchronize());
         add_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(gdt.cu_accumulate_floatimage,
           gdt.cu_floatimage,
@@ -191,21 +249,6 @@ namespace af = scitbx::af;
         const int vector_length = 4;
         int cu_sources = SIM.sources;
         int cu_mosaic_domains = SIM.mosaic_domains;
-
-        /* presumably should come from detector class */
-        cudaSafeCall(cudaMalloc((void ** )&cu_sdet_vector, sizeof(*cu_sdet_vector) * vector_length));
-        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_sdet_vector, SIM.sdet_vector, vector_length));
-
-        /* presumably should come from detector class */
-        cudaSafeCall(cudaMalloc((void ** )&cu_fdet_vector, sizeof(*cu_fdet_vector) * vector_length));
-        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_fdet_vector, SIM.fdet_vector, vector_length));
-
-        /* presumably should come from detector class */
-        cudaSafeCall(cudaMalloc((void ** )&cu_odet_vector, sizeof(*cu_odet_vector) * vector_length));
-        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_odet_vector, SIM.odet_vector, vector_length));
-
-        cudaSafeCall(cudaMalloc((void ** )&cu_pix0_vector, sizeof(*cu_pix0_vector) * vector_length));
-        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_pix0_vector, SIM.pix0_vector, vector_length));
 
         cudaSafeCall(cudaMalloc((void ** )&cu_beam_vector, sizeof(*cu_beam_vector) * vector_length));
         cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_beam_vector, SIM.beam_vector, vector_length));
@@ -251,10 +294,6 @@ namespace af = scitbx::af;
   exascale_api::~exascale_api(){
     cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
-        cudaSafeCall(cudaFree(cu_sdet_vector));
-        cudaSafeCall(cudaFree(cu_fdet_vector));
-        cudaSafeCall(cudaFree(cu_odet_vector));
-        cudaSafeCall(cudaFree(cu_pix0_vector));
         cudaSafeCall(cudaFree(cu_beam_vector));
         cudaSafeCall(cudaFree(cu_spindle_vector));
         cudaSafeCall(cudaFree(cu_source_X));

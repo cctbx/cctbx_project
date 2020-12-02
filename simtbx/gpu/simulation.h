@@ -32,8 +32,6 @@ struct exascale_api {
   CUDAREAL cu_subpixel_size;
   int cu_steps;
 
-  CUDAREAL * cu_sdet_vector, * cu_fdet_vector;
-  CUDAREAL * cu_odet_vector, * cu_pix0_vector;
   CUDAREAL * cu_beam_vector;
   CUDAREAL * cu_spindle_vector;
   CUDAREAL * cu_source_X, * cu_source_Y, * cu_source_Z, * cu_source_I;

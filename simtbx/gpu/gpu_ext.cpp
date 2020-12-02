@@ -38,8 +38,12 @@ namespace simtbx { namespace gpu {
     {
       using namespace boost::python;
       class_<simtbx::gpu::gpu_detector>("gpu_detector",init<>() )
-        .def(init<int const&, dxtbx::model::Detector const &>(
-            ( arg("deviceId"),arg("detector"))))
+        .def(init<int const&, const simtbx::nanoBragg::nanoBragg&>(
+            ( arg("deviceId"),arg("nanoBragg"))))
+//             "Single panel constructor with data taken from nanoBragg instance")
+        .def(init<int const&, dxtbx::model::Detector const &, dxtbx::model::Beam const &>(
+            ( arg("deviceId"),arg("detector"),arg("beam"))))
+//             "Multipanel constructor with data taken from dxtbx objects")
         .def("get_deviceID", &simtbx::gpu::gpu_detector::get_deviceID
             )
         .def("show_summary",&simtbx::gpu::gpu_detector::show_summary)
@@ -50,6 +54,8 @@ namespace simtbx { namespace gpu {
              "Apply a scale factor directly on the GPU")
         .def("write_raw_pixels_cuda",&simtbx::gpu::gpu_detector::write_raw_pixels_cuda,
              "Update raw_pixels on host with array from GPU")
+        .def("get_raw_pixels_cuda",&simtbx::gpu::gpu_detector::get_raw_pixels_cuda,
+             "return multipanel detector raw pixels as a flex array")
         .def("each_image_free_cuda", &simtbx::gpu::gpu_detector::each_image_free_cuda)
         ;
     }

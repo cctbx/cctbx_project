@@ -1,7 +1,9 @@
-/*#include <scitbx/array_family/boost_python/flex_fwd.h>*/
+#include <scitbx/array_family/boost_python/flex_fwd.h>
 #include <cudatbx/cuda_base.cuh>
 #include <simtbx/gpu/detector.h>
 #include <simtbx/gpu/detector.cuh>
+#include <scitbx/vec3.h>
+#include <scitbx/vec2.h>
 #define THREADS_PER_BLOCK_X 128
 #define THREADS_PER_BLOCK_Y 1
 #define THREADS_PER_BLOCK_TOTAL (THREADS_PER_BLOCK_X * THREADS_PER_BLOCK_Y)
@@ -9,11 +11,95 @@
 namespace simtbx {
 namespace gpu {
 
-  gpu_detector::gpu_detector(int const& arg_device_id,
-                             dxtbx::model::Detector const & arg_detector):
-    h_deviceID(arg_device_id),
-    detector(arg_detector),
-    cu_accumulate_floatimage(NULL) {
+//refactor later into helper file
+  static cudaError_t detMemcpyVectorDoubleToDevice(CUDAREAL *dst, const double *src, size_t vector_items) {
+        CUDAREAL * temp = new CUDAREAL[vector_items];
+        for (size_t i = 0; i < vector_items; i++) {
+                temp[i] = src[i];
+        }
+        cudaError_t ret = cudaMemcpy(dst, temp, sizeof(*dst) * vector_items, cudaMemcpyHostToDevice);
+        delete temp;
+        return ret;
+  }
+
+  packed_metrology::packed_metrology(dxtbx::model::Detector const & arg_detector,
+                                   dxtbx::model::Beam const & arg_beam) {
+
+    for (std::size_t panel_id = 0; panel_id < arg_detector.size(); panel_id++){
+          // helper code arising from the nanoBragg constructor, with user_beam=True
+      typedef scitbx::vec3<double> vec3;
+
+      /* DETECTOR properties */
+      /* typically: 1 0 0 */
+      vec3 fdet_vector = arg_detector[panel_id].get_fast_axis();
+      fdet_vector = fdet_vector.normalize();
+
+      /* typically: 0 -1 0 */
+      vec3 sdet_vector = arg_detector[panel_id].get_slow_axis();
+      sdet_vector = sdet_vector.normalize();
+
+      /* set orthogonal vector to the detector pixel array */
+      vec3 odet_vector = fdet_vector.cross(sdet_vector);
+      odet_vector = odet_vector.normalize();
+
+      /* dxtbx origin is location of outer corner of the first pixel */
+      vec3 pix0_vector = arg_detector[panel_id].get_origin()/1000.0;
+
+      /* what is the point of closest approach between sample and detector? */
+      double close_distance = pix0_vector * odet_vector;
+      if (close_distance < 0){
+        bool verbose = false;
+        if(verbose)printf("WARNING: dxtbx model is lefthanded. Inverting odet_vector.\n");
+        odet_vector = -1. * odet_vector;
+      }
+
+      sdet.push_back(sdet_vector.length());
+      fdet.push_back(fdet_vector.length());
+      odet.push_back(odet_vector.length());
+      pix0.push_back(0.);
+      for (std::size_t idx_vec = 0; idx_vec < 3; idx_vec++){
+            sdet.push_back(sdet_vector[idx_vec]);
+            fdet.push_back(fdet_vector[idx_vec]);
+            odet.push_back(odet_vector[idx_vec]);
+            pix0.push_back(pix0_vector[idx_vec]);
+      }
+      /* set beam centre */
+      scitbx::vec2<double> dials_bc=arg_detector[panel_id].get_beam_centre(arg_beam.get_s0());
+      Xbeam.push_back(dials_bc[0]/1000.0);
+      Ybeam.push_back(dials_bc[1]/1000.0);
+    }
+  };
+
+  packed_metrology::packed_metrology(const simtbx::nanoBragg::nanoBragg& nB){
+      for (std::size_t idx_vec = 0; idx_vec < 4; idx_vec++){
+            sdet.push_back(nB.sdet_vector[idx_vec]);
+            fdet.push_back(nB.fdet_vector[idx_vec]);
+            odet.push_back(nB.odet_vector[idx_vec]);
+            pix0.push_back(nB.pix0_vector[idx_vec]);
+      }
+      Xbeam.push_back(nB.Xbeam);
+      Ybeam.push_back(nB.Ybeam);
+  }
+
+  void
+  packed_metrology::show() const {
+    for (std::size_t idx_p = 0; idx_p < Xbeam.size(); idx_p++){
+      printf(" Panel %3d\n",idx_p);
+      printf(" Panel %3d sdet %9.6f %9.6f %9.6f %9.6f fdet %9.6f %9.6f %9.6f %9.6f\n",
+             idx_p,sdet[4*idx_p+0],sdet[4*idx_p+1],sdet[4*idx_p+2],sdet[4*idx_p+3],
+                          fdet[4*idx_p+0],fdet[4*idx_p+1],fdet[4*idx_p+2],fdet[4*idx_p+3]
+      );
+      printf(" Panel %3d odet %9.6f %9.6f %9.6f %9.6f pix0 %9.6f %9.6f %9.6f %9.6f\n",
+             idx_p,odet[4*idx_p+0],odet[4*idx_p+1],odet[4*idx_p+2],odet[4*idx_p+3],
+                          pix0[4*idx_p+0],pix0[4*idx_p+1],pix0[4*idx_p+2],pix0[4*idx_p+3]
+      );
+      printf(" Panel %3d beam %11.8f %11.8f\n",idx_p,Xbeam[idx_p],Ybeam[idx_p]);
+    }
+  }
+
+  void
+  gpu_detector::construct_detail(int const& arg_device_id,
+                                 dxtbx::model::Detector const & arg_detector){
     cudaSetDevice(arg_device_id);
 
     //1) determine the size
@@ -38,6 +124,41 @@ namespace gpu {
     cudaSafeCall(cudaMemset((void *)cu_accumulate_floatimage, 0,
                             sizeof(*cu_accumulate_floatimage) * _image_size));
   };
+
+  gpu_detector::gpu_detector(int const& arg_device_id,
+                             dxtbx::model::Detector const & arg_detector,
+                             dxtbx::model::Beam const& arg_beam):
+    h_deviceID(arg_device_id),
+    detector(arg_detector),
+    cu_accumulate_floatimage(NULL),
+    metrology(arg_detector, arg_beam){
+    construct_detail(arg_device_id, arg_detector);
+  }
+
+  gpu_detector::gpu_detector(int const& arg_device_id,
+                             const simtbx::nanoBragg::nanoBragg& nB):
+    h_deviceID(arg_device_id),
+    metrology(nB),
+    cu_accumulate_floatimage(NULL){
+    cudaSetDevice(arg_device_id);
+
+    //1) determine the size
+    cu_n_panels = 1;
+
+    //2) confirm that array dimensions are similar for each size
+    cu_slow_pixels = nB.spixels;
+    cu_fast_pixels = nB.fpixels;
+    _image_size = cu_n_panels * cu_slow_pixels * cu_fast_pixels;
+
+    //3) allocate a cuda array with these dimensions
+    /* separate accumulator image outside the usual nanoBragg data structure.
+           1. accumulate contributions from a sequence of source energy channels computed separately
+           2. represent multiple panels, all same rectangular shape; slowest dimension = n_panels */
+    cudaSafeCall(cudaMalloc((void ** )&cu_accumulate_floatimage,
+                            sizeof(*cu_accumulate_floatimage) * _image_size));
+    cudaSafeCall(cudaMemset((void *)cu_accumulate_floatimage, 0,
+                            sizeof(*cu_accumulate_floatimage) * _image_size));
+  }
 
   void gpu_detector::free_detail(){
     cudaSetDevice(h_deviceID);
@@ -76,6 +197,20 @@ namespace gpu {
      cu_accumulate_floatimage,
      sizeof(*cu_accumulate_floatimage) * _image_size,
      cudaMemcpyDeviceToHost));
+  }
+
+  af::flex_double
+  gpu_detector::get_raw_pixels_cuda(){
+    //return the data array for the multipanel detector case
+    af::flex_double z(af::flex_grid<>(cu_n_panels,cu_slow_pixels,cu_fast_pixels));
+    double* begin = z.begin();
+    cudaSafeCall(cudaSetDevice(h_deviceID));
+    cudaSafeCall(cudaMemcpy(
+     begin,
+     cu_accumulate_floatimage,
+     sizeof(*cu_accumulate_floatimage) * _image_size,
+     cudaMemcpyDeviceToHost));
+    return z;
   }
 
   void
@@ -130,6 +265,18 @@ namespace gpu {
     cu_floatimage = NULL;
     cudaSafeCall(cudaMalloc((void ** )&cu_floatimage, sizeof(*cu_floatimage) * _image_size));
 
+        const int met_length = metrology.sdet.size();
+        cudaSafeCall(cudaMalloc((void ** )&cu_sdet_vector, sizeof(*cu_sdet_vector) * met_length));
+        cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_sdet_vector, metrology.sdet.begin(), met_length));
+
+        cudaSafeCall(cudaMalloc((void ** )&cu_fdet_vector, sizeof(*cu_fdet_vector) * met_length));
+        cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_fdet_vector, metrology.fdet.begin(), met_length));
+
+        cudaSafeCall(cudaMalloc((void ** )&cu_odet_vector, sizeof(*cu_odet_vector) * met_length));
+        cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_odet_vector, metrology.odet.begin(), met_length));
+
+        cudaSafeCall(cudaMalloc((void ** )&cu_pix0_vector, sizeof(*cu_pix0_vector) * met_length));
+        cudaSafeCall(detMemcpyVectorDoubleToDevice(cu_pix0_vector, metrology.pix0.begin(), met_length));
   }
 
   void
@@ -142,6 +289,10 @@ namespace gpu {
     cudaSafeCall(cudaFree(cu_rangemap));
     cudaSafeCall(cudaFree(cu_maskimage));
     cudaSafeCall(cudaFree(cu_floatimage));
+    cudaSafeCall(cudaFree(cu_sdet_vector));
+    cudaSafeCall(cudaFree(cu_fdet_vector));
+    cudaSafeCall(cudaFree(cu_odet_vector));
+    cudaSafeCall(cudaFree(cu_pix0_vector));
   }
 
 } // gpu
