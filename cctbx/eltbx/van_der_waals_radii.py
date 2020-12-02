@@ -1,6 +1,14 @@
 from __future__ import absolute_import, division, print_function
 # Van-der-Waals radii for known elements.
 #
+# ******************               NOTE                *********************
+# vdW radii vary for the same element depending on chemical context
+# The list below may be therefore too simplistic
+# A complete list of vdW radii is in chem_data/mon_lib/ener_lib.cif
+# See method get_vdw_radii() of model class (mmtbx/model/model.py)
+# how to get the vdw radii from ener_lib
+# ****************** ******************* ******************* *******************
+#
 # Created: Pavel Afonine.
 #
 # Sources:
