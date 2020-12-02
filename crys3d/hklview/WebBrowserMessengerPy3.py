@@ -61,6 +61,7 @@ class WBmessenger(object):
 
 
   def start_server_loop(self):
+    #time.sleep(20)
     self.websockeventloop.run_until_complete(self.server)
     self.websockeventloop.run_forever()
 
@@ -79,9 +80,10 @@ class WBmessenger(object):
           logging.getLogger("asyncio").setLevel(logging.WARNING)
       self.server = websockets.serve(self.WebSockHandler, '127.0.0.1',
                                       self.websockport,
-                                      create_protocol=MyWebSocketServerProtocol
+                                      create_protocol=MyWebSocketServerProtocol,
                                       )
       self.mprint("starting WebSockHandler on port %s" %str(self.websockport), verbose=1)
+      #time.sleep(20)
       time.sleep(0.2)
       # run_forever() blocks execution so put in a separate thread
       self.wst = threading.Thread(target=self.start_server_loop, name="HKLviewerWebSockServerThread" )

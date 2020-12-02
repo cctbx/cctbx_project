@@ -410,8 +410,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
   def onColourChartSelect(self, selcolmap, powscale): # called when user clicks OK in ColourMapSelectDlg
     if selcolmap != "":
-      self.PhilToJsRender('''NGL_HKLviewer.viewer.color_scheme = %s
-NGL_HKLviewer.viewer.color_powscale = %s''' %(selcolmap, powscale) )
+      self.PhilToJsRender("""NGL_HKLviewer.viewer.color_scheme = %s
+NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def ProcessMessages(self):

@@ -5,6 +5,9 @@
 // https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
 // to enable websocket connection
 
+if ((typeof isHKLviewer) != "boolean")
+  var isHKLviewer = false;
+
 var pagename = location.pathname.substring(1);
 
 if ((typeof websocket_portnumber) != "number")
@@ -23,9 +26,6 @@ C:/Users/Oeffner/AppData/Local/Temp/hkl_42673.htm"
 
 var mysocket;
 var socket_intentionally_closed = false;
-
-//var stage = null;
-//var shape = null;
 
 var shape = new NGL.Shape('shape');
 var stage = new NGL.Stage('viewport', {  backgroundColor: "rgb(128, 128, 128)",
@@ -398,7 +398,6 @@ function onMessage(e)
         shapebufs[bin].setParameters({opacity: alphas[bin]});
         for (var g=0; g < nrots; g++ )
           br_shapebufs[bin][g].setParameters({opacity: alphas[bin]});
-        //stage.viewer.requestRender();
         RenderRequest();
       }
     }
@@ -421,7 +420,6 @@ function onMessage(e)
           br_colours[bin][3*si+2] = parseFloat(val[4]);
           br_shapebufs[bin][g].setAttributes({ color: br_colours[bin] });
         }
-        //stage.viewer.requestRender();
         RenderRequest();
       }
     }
@@ -1000,14 +998,14 @@ function onMessage(e)
         },
       }, { top: "25px", right: "10px", width: "130px", position: "absolute" }, fsize = fontsize);
 
-      for (i = 0; i < msg.length; i++)
+      for (i = 0; i < msg.length - 1; i++) // last element is index of currently selected item
       {
         labelval = msg[i].split("\n");
         columnSelect.add(createElement("option", { text: labelval[0], value: labelval[1] }, fsize = fontsize));
       }
       addElement(columnSelect);
+      columnSelect.options[ parseInt(msg[msg.length - 1]) ].selected = "true"; // display the selected element
 
-      // 
       divlabel = createElement("div",
         {
           innerText: "Select Data"
@@ -1262,7 +1260,7 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
 
   if (colourchart != null)
     colourchart.remove(); // delete previous colour chart if any
-  colourchart = addDivBox(null, ctop, cleft, wp3, totalheight, bgcolour="rgba(255, 255, 255, 1.0)");
+  colourchart = addDivBox(null, ctop, cleft, wp3, totalheight, bgcolour = "rgba(255, 255, 255, 1.0)");
 
   // make a white box on top of which boxes with transparent background are placed
   // containing the colour values at regular intervals as well as label legend of
@@ -1316,24 +1314,28 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
     }
   }
 
-  colourchart.onselectstart = function ()
-  { // don't select numbers or labels on chart when double clicking the coulour chart
+
+  colourchart.oncontextmenu = function (e) { // oncontextmenu captures right clicks
+    e.preventDefault()
+    //alert("in oncontextmenu")
+    return false;
+  };
+  
+  colourchart.onselectstart = function () { // don't select numbers or labels on chart when double clicking the coulour chart
     return false;
   }
 
-  colourchart.oncontextmenu = function (e) 
-  { // oncontextmenu captures right clicks
-    e.preventDefault()
-    alert("in oncontextmenu")
-    return false;
-  };
+  if (isHKLviewer == true)
+    colourchart.style.cursor = "pointer";
 
-  colourchart.ondblclick = function (e)
-  {
+  colourchart.onclick = function (e) {
     var sel = window.getSelection();
     sel.removeAllRanges(); // don't select numbers or labels on chart when double clicking the coulour chart
-    WebsockSendMsg('doubleclick colour chart');
+    if (isHKLviewer == true)
+      WebsockSendMsg('onClick colour chart');
   };
+  
+
 }
 
 
