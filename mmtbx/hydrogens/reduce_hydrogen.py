@@ -79,7 +79,7 @@ class place_hydrogens():
     # TODO temporary fix until the code is moved to model class
     # check if box cussion of 5 A is enough to prevent symm contacts
     cs = self.model.crystal_symmetry()
-    if cs is None:
+    if (cs is None) or (cs.unit_cell() is None):
       self.model = shift_and_box_model(model = self.model)
       model_has_bogus_cs = True
 
