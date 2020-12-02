@@ -300,14 +300,17 @@ class hklview_3d:
     if 'htmlfname' in kwds and kwds['htmlfname']:
       self.hklfname = kwds['htmlfname']
     self.hklfname = os.path.abspath( self.hklfname )
+    self.isHKLviewer= "false"
     self.send_info_to_gui = None
     if 'send_info_to_gui' in kwds:
       self.send_info_to_gui = kwds['send_info_to_gui']
+      self.isHKLviewer= "true"
     self.mprint('Output will be written to \"%s\"'  %self.hklfname)
     self.hklhtml = r"""
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html><head><meta charset="utf-8" /></head>
 <body>
+<script>var isHKLviewer = %s; </script>
 <script>var websocket_portnumber = %s; </script>
 <script src="%s" type="text/javascript"></script>
 <script src="%s" type="text/javascript"></script>
@@ -317,7 +320,7 @@ class hklview_3d:
     """
     NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
     HKLjscriptpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","HKLJavaScripts.js") )
-    self.htmlstr = self.hklhtml %(self.websockport, NGLlibpath, os.path.abspath( HKLjscriptpath))
+    self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, NGLlibpath, os.path.abspath( HKLjscriptpath))
     self.colourgradientvalues = []
     self.UseOSBrowser = ""
     ldic=locals()
@@ -1482,8 +1485,8 @@ class hklview_3d:
             hklid = hklid % len(hkls)
             ttip = self.GetTooltipOnTheFly(hklid, sym_id, anomalous=True)
           self.AddToBrowserMsgQueue("ShowThisTooltip", ttip)
-        elif "doubleclick colour chart" in message:
-          self.onDoubleClickColourChart()
+        elif "onClick colour chart" in message:
+          self.onClickColourChart()
         elif "SelectedBrowserDataColumnComboBox" in message:
           sceneid = int(message.split(":")[1])
           self.parent.SetScene(sceneid)
@@ -2090,19 +2093,19 @@ Distance: %s
     self.AddToBrowserMsgQueue("MakeColourChart", msg )
 
 
-  def onDoubleClickColourChart(self):
+  def onClickColourChart(self):
     # if running the GUI show the colour chart selection dialog
     self.SendInfoToGUI( { "ColourChart": self.viewerparams.color_scheme, 
                           "ColourPowerScale": self.viewerparams.color_powscale } )
 
   
   def MakeBrowserDataColumnComboBox(self):
-    datcolstr =""
+    datcolstr = ""
     for i,lbl in enumerate(self.hkl_scenes_infos):
       datcolstr = datcolstr + ",".join(lbl[3]) + "\n" + str(i)
       if i < len(self.hkl_scenes_infos)-1:
         datcolstr = datcolstr + "\n\n"
-
+    datcolstr = datcolstr + "\n\n" + str(self.viewerparams.scene_id)
     self.AddToBrowserMsgQueue("MakeBrowserDataColumnComboBox", datcolstr)
 
 
