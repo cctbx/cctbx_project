@@ -3376,7 +3376,7 @@ class map_model_manager(object):
 
     # remove any extra models and maps to speed up boxing and not modify orig
     map_id_list = [map_id,map_id_1,map_id_2]+kw['map_id_to_be_scaled_list']
-    working_mmm = self._get_map_model_manager_with_selected(
+    working_mmm = self.get_map_model_manager_with_selected(
       map_id_list = map_id_list,
       model_id_list =
           [model_id_for_rms_fc] if is_model_based and self.get_model_by_id(
@@ -3782,7 +3782,7 @@ class map_model_manager(object):
 
 
 
-  def _get_map_model_manager_with_selected(self,
+  def get_map_model_manager_with_selected(self,
       map_id_list=None, model_id_list = None,
       deep_copy = False):
     # Create a new map_model_manager with just what we need
@@ -6724,6 +6724,7 @@ class map_model_manager(object):
      nproc = None,
      soft_zero_boundary_mask = True,
      soft_zero_boundary_mask_radius = None,
+     model_id = 'model',
      ):
     '''
      Return this object as a local_model_building object
@@ -6741,11 +6742,12 @@ class map_model_manager(object):
       nproc = self.nproc()
 
     from phenix.model_building import local_model_building
-    mb =local_model_building(
+    mb = local_model_building(
      map_model_manager = self, # map_model manager
      soft_zero_boundary_mask = soft_zero_boundary_mask,
      soft_zero_boundary_mask_radius = soft_zero_boundary_mask_radius,
      nproc= nproc,
+     model_id = model_id,
      log = self.log,
     )
     mb.set_defaults(debug = self.verbose)
