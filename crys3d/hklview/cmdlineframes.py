@@ -1168,6 +1168,8 @@ NGL_HKLviewer {
   viewer {
     scene_id = None
       .type = int
+    ncolourlabels = 6
+      .type = int
     %s
   }
   NGL {

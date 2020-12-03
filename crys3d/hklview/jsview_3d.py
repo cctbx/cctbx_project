@@ -432,6 +432,9 @@ class hklview_3d:
     if has_phil_path(diff_phil, "fixorientation"):
       self.fix_orientation()
 
+    if has_phil_path(diff_phil, "tooltip_alpha"):
+      self.set_tooltip_opacity()
+
     if has_phil_path(diff_phil, "expand_to_p1", "expand_anomalous") \
      and self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
       self.ExpandInBrowser()
@@ -1144,7 +1147,7 @@ class hklview_3d:
         mincolourscalar = self.HKLMinSigmas_from_dict(self.colour_scene_id)
         maxcolourscalar = self.HKLMaxSigmas_from_dict(self.colour_scene_id)
       span = maxcolourscalar - mincolourscalar
-      ln = 60
+      ln = 120
       incr = span/ln
       colourgradarrays = []
       val = mincolourscalar
@@ -1354,6 +1357,7 @@ class hklview_3d:
                          } )
     colourgradstr = []
     if not blankscene:
+      nvaluelabels = int(ln/self.viewerparams.ncolourlabels )
       colourgradstrs = []
       # if displaying phases from map coefficients together with fom values then
       for g,colourgradarray in enumerate(colourgradarrays):
@@ -1367,7 +1371,7 @@ class hklview_3d:
           vstr = "null"
           alpha = 1.0
           rgb = (int(val[1][0]), int(val[1][1]), int(val[1][2]) )
-          if j%10 == 0 or j==len(self.colourgradientvalues)-1 :
+          if j % nvaluelabels == 0 or j==(len(self.colourgradientvalues)-1) :
             vstr = roundoff(val[0], 2)
           colourgradstr.append([vstr, rgb[0], rgb[1], rgb[2] ])
         colourgradstrs.append(colourgradstr)  
