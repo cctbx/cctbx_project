@@ -1778,22 +1778,40 @@ class map_manager(map_reader, write_ccp4_map):
     if hasattr(self,'_ncs_cc'):
        return self._ncs_cc
 
-  def absolute_center_cart(self, use_assumed_end = False):
+  def absolute_center_cart(self, 
+       use_assumed_end = False,
+       place_on_grid_point = False,
+       use_unit_cell_grid = False):
     '''
      Return center of map (absolute position) in Cartesian coordinates
      A little tricky because for example the map goes from 0 to nx-1, not nx
        If use_assumed_end, go to nx
      Also map could start at non-zero origin
+     If place_on_grid_point then guess the end by whether the center ends
+       on a grid point
+     If use_unit_cell_grid just find center of full unit cell
     '''
-    if use_assumed_end:
-      n_end = 0
+    if use_unit_cell_grid:  # Find center of unit cell
+      return tuple([a*0.5 for a in 
+        self.unit_cell_crystal_symmetry().unit_cell().parameters()[:3] ])
+
+    elif place_on_grid_point:
+      return tuple([a*(int (0.5*n)/n + o/n)  - sc for a,n,o,sc in zip(
+        self.crystal_symmetry().unit_cell().parameters()[:3],
+        self.map_data().all(),
+        self.map_data().origin(),
+        self.shift_cart())])
+
     else:
-      n_end = 1
-    return tuple([a*(0.5*(n-n_end)/n + o/n)  - sc for a,n,o,sc in zip(
-      self.crystal_symmetry().unit_cell().parameters()[:3],
-      self.map_data().all(),
-      self.map_data().origin(),
-      self.shift_cart())])
+      if use_assumed_end:
+        n_end = 0
+      else:
+        n_end = 1
+      return tuple([a*(0.5*(n-n_end)/n + o/n)  - sc for a,n,o,sc in zip(
+        self.crystal_symmetry().unit_cell().parameters()[:3],
+        self.map_data().all(),
+        self.map_data().origin(),
+        self.shift_cart())])
 
   def map_map_cc(self, other_map_manager):
    ''' Return simple map correlation to other map_manager'''

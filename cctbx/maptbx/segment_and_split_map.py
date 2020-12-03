@@ -2956,14 +2956,15 @@ def run_get_ncs_from_map(params = None,
       crystal_symmetry = None,
       map_symmetry_center = None,
       ncs_obj = None,
+      fourier_filter = False,
       out = sys.stdout,
       ):
 
   # Get or check NCS operators. Try various possibilities for center of NCS
 
   # First Fourier filter map if resolution is set
-  if params.crystal_info.resolution:
-    print("Fourier filtering at resoluion of %.2f A" %(
+  if fourier_filter and params.crystal_info.resolution:
+    print("Fourier filtering at resolution of %.2f A" %(
       params.crystal_info.resolution), file = out)
     from iotbx.map_manager import map_manager
     mm = map_manager(map_data= map_data,
