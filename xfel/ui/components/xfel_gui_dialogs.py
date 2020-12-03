@@ -828,6 +828,8 @@ class AdvancedSettingsDialog(BaseDialog):
       self.shifter_project.Hide()
       self.shifter_reservation.Hide()
       self.shifter_constraint.Hide()
+      self.log_staging.Hide()
+      self.staging_help.Hide()
     elif self.mp_option.ctr.GetStringSelection() == 'shifter':
       self.queue.Show()
       self.nproc.Hide()
@@ -843,6 +845,8 @@ class AdvancedSettingsDialog(BaseDialog):
       self.shifter_project.Show()
       self.shifter_reservation.Show()
       self.shifter_constraint.Show()
+      self.log_staging.Show()
+      self.staging_help.Show()
     elif self.mp_option.ctr.GetStringSelection() == 'htcondor':
       self.queue.Hide()
       self.nnodes.Hide()
@@ -856,6 +860,8 @@ class AdvancedSettingsDialog(BaseDialog):
       self.shifter_project.Hide()
       self.shifter_reservation.Hide()
       self.shifter_constraint.Hide()
+      self.log_staging.Hide()
+      self.staging_help.Hide()
     else:
       self.queue.Show()
       self.nnodes.Hide()
@@ -869,6 +875,8 @@ class AdvancedSettingsDialog(BaseDialog):
       self.shifter_project.Hide()
       self.shifter_reservation.Hide()
       self.shifter_constraint.Hide()
+      self.log_staging.Hide()
+      self.staging_help.Hide()
 
     self.Layout()
     self.Fit()
