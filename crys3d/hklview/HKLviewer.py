@@ -26,7 +26,7 @@ import sys, zmq, subprocess, time, traceback, zlib, io, os
 
 try: # if invoked by cctbx.python or some such
   from crys3d.hklview import HKLviewerGui, QtChromiumCheck
-  from crys3d.hklview.helpers import ( MillerArrayTableView, MillerArrayTableForm, 
+  from crys3d.hklview.helpers import ( MillerArrayTableView, MillerArrayTableForm,
                                      MillerArrayTableModel, MPLColourSchemes )
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
   import HKLviewerGui, QtChromiumCheck
@@ -512,7 +512,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
                   item = QTableWidgetItem()
                   item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
                   item.setCheckState(Qt.Checked)
-                  item.setToolTip("Change visibility of this bin either by ticking or unticking the " +  
+                  item.setToolTip("Change visibility of this bin either by ticking or unticking the " +
                                    "check box or by entering an opacity value between 0 and 1")
                 self.binstable.setItem(row, col, item)
             self.binstable_isready = True
@@ -602,7 +602,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
           if self.infodict.get("bin_labels_type_idxs"):
             bin_labels_type_idxs = self.infodict.get("bin_labels_type_idxs",False)
-            self.BinDataComboBox.clear() 
+            self.BinDataComboBox.clear()
             # fill combobox with labels of data that can be used for binning
             for label,labeltype,idx in bin_labels_type_idxs:
               self.BinDataComboBox.addItem(label, (labeltype, idx) )
@@ -1031,7 +1031,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
         self.bin_opacities = str(bin_opacitieslst)
         self.SetAllOpaqueCheckboxes()
         self.PhilToJsRender('NGL_HKLviewer.NGL.bin_opacities = "%s"' %self.bin_opacities )
-      
+
       if col==1 and self.binstable_isready: # changing scene_bin_thresholds
         aboveitem = self.binstable.item(row-1, 1)
         belowitem = self.binstable.item(row+1, 1)
@@ -1044,7 +1044,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
         else:
           belowval = float(belowitem.text())
         # the new value must be between above and below values only
-        newval = min(belowval, max(aboveval, float(item.text()) ) ) 
+        newval = min(belowval, max(aboveval, float(item.text()) ) )
         # but the other way round if binning against resolution
         if self.BinDataComboBox.currentIndex() == 0:
           newval = min(aboveval, max(belowval, float(item.text()) ) )
@@ -1057,7 +1057,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
         NGL_HKLviewer.scene_bin_thresholds = \"%s\"
         NGL_HKLviewer.nbins = %d
         ''' %(allbinvals, nbins) )
-      
+
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
 

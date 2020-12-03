@@ -90,7 +90,7 @@ class WBmessenger(object):
       self.wst.daemon = True # ensure thread dies whenever program terminates through sys.exit()
       self.wst.start()
 
-      self.websocketclientmsgthrd = threading.Thread(target = self.ProcessClientMessageLoop,  
+      self.websocketclientmsgthrd = threading.Thread(target = self.ProcessClientMessageLoop,
                                                      name="WebsocketClientMessageThread")
       self.websocketclientmsgthrd.daemon = True # ensure thread dies whenever program terminates through sys.exit()
       self.websocketclientmsgthrd.start()

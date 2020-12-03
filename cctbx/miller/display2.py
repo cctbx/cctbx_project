@@ -389,7 +389,7 @@ class scene(object):
         data_for_radii = data_for_radii.select(self.slice_selection)
         data_for_colors = data_for_colors.select(self.slice_selection)
         foms_for_colours = foms_for_colours.select(self.slice_selection)
-    # Computing rgb colours of each reflection is slow so make a small array 
+    # Computing rgb colours of each reflection is slow so make a small array
     # of precomputed colours to use as a lookup table for each reflection
     if isinstance(data, flex.complex_double):
       COL = MplColorHelper(settings.color_scheme, 0, 360)
@@ -416,7 +416,7 @@ class scene(object):
       # Use a colour gradient from matplotlib
       COL = MplColorHelper(settings.color_scheme, 0, 199)
       colorgradientarray = flex.vec3_double([COL.get_rgb(d)[0:3] for d in range(200) ])
-      # Do the table lookup in C++ for speed improvement     
+      # Do the table lookup in C++ for speed improvement
       colors = graphics_utils.map_to_rgb_colourmap(
         data_for_colors=data_for_colors,
         colormap=colorgradientarray,
@@ -582,7 +582,7 @@ class scene(object):
 # list of all colour maps from https://matplotlib.org/examples/color/colormaps_reference.html
 colormaps = " ".join(plt.colormaps())
 # set the default selected colour map to "brg" for phil attribute "color_scheme" below
-colormaps = colormaps.replace("brg ", "*brg ") 
+colormaps = colormaps.replace("brg ", "*brg ")
 
 philstr = """
   data = None
