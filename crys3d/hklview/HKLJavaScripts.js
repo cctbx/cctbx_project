@@ -1231,10 +1231,11 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
   Otherwise it's usually a list of colour charts that constitute a gradient across colours,
   typically used for illustrating figure of merits attenuating phase values in map coefficients
   */
-  var ih = 3,
-  topr = 25,
-  topr2 = 0,
-  lp = 10;
+  var hfac = 60.0 / colourgradvalarrays[0].length;
+  var ih = 3.0*hfac,
+  topr = 25.0,
+  topr2 = 0.0,
+  lp = 10.0;
 
   var maxnumberwidth = 0;
   for (j = 0; j < colourgradvalarrays[0].length; j++)
@@ -1243,7 +1244,6 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
     maxnumberwidth = Math.max( getTextWidth(val, fontsize), maxnumberwidth );
   }
   wp = maxnumberwidth + 5,
-  //wp = 60,
   lp2 = lp + wp,
   gl = 3,
   wp2 = gl,
@@ -1256,7 +1256,8 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
   }
   var wp3 = wp + colourgradvalarrays.length * wp2 + 2;
 
-  totalheight = ih*colourgradvalarrays[0].length + 35 + fomlabelheight;
+  totalheight = ih * colourgradvalarrays[0].length + 35 + fomlabelheight;
+  //totalheight = ih * 60 + 35 + fomlabelheight;
 
   if (colourchart != null)
     colourchart.remove(); // delete previous colour chart if any
@@ -1309,8 +1310,9 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
       G = colourgradvalarrays[g][j][2];
       B = colourgradvalarrays[g][j][3];
       rgbcol = 'rgba(' + R.toString() + ',' + G.toString() + ',' + B.toString() + ', 1.0)'
-      topv = j*ih + topr;
-      addDiv2Container(colourchart, null, topv, leftp, wp2, ih, rgbcol);
+      topv = j * ih + topr;
+      // add an extra pixel to height to ensure no white lines accidentally emerge from roundoff errors
+      addDiv2Container(colourchart, null, topv, leftp, wp2, ih + 1, rgbcol);
     }
   }
 
