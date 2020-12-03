@@ -1778,7 +1778,7 @@ class map_manager(map_reader, write_ccp4_map):
     if hasattr(self,'_ncs_cc'):
        return self._ncs_cc
 
-  def absolute_center_cart(self, 
+  def absolute_center_cart(self,
        use_assumed_end = False,
        place_on_grid_point = False,
        use_unit_cell_grid = False):
@@ -1792,7 +1792,7 @@ class map_manager(map_reader, write_ccp4_map):
      If use_unit_cell_grid just find center of full unit cell
     '''
     if use_unit_cell_grid:  # Find center of unit cell
-      return tuple([a*0.5 for a in 
+      return tuple([a*0.5 for a in
         self.unit_cell_crystal_symmetry().unit_cell().parameters()[:3] ])
 
     elif place_on_grid_point:
