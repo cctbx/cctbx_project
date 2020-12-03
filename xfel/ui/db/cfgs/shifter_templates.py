@@ -1,3 +1,4 @@
+from __future__ import division
 sbatch_template = \
 """#!/bin/bash -l
 #SBATCH --qos=<queue>
