@@ -58,5 +58,5 @@ jobs:
   - script: |
       source activate py$(PYTHON_VERSION)
       source $(Pipeline.Workspace)/build/setpaths.sh
-      libtbx.find_clutter
+      libtbx.find_clutter --verbose
     displayName: Check for clutter

@@ -32,7 +32,8 @@ class reader:
       True/False Is the file an INTEGRATE.HKL file
 
     '''
-    return open(filename, 'r').read(26) == '!OUTPUT_FILE=INTEGRATE.HKL'
+    with open(filename, 'r') as fh:
+      return fh.read(26) == '!OUTPUT_FILE=INTEGRATE.HKL'
 
   def read_file(self, filename):
     """Read the INTEGRATE.HKL file.
@@ -50,7 +51,8 @@ class reader:
       raise IOError("{0} is not an INTEGRATE.HKL file".format(filename))
 
     # Read the lines from the file
-    lines = open(filename, 'r').readlines()
+    with open(filename, 'r') as fh:
+      lines = fh.readlines()
 
     # Loop through the lines in the file. First off, parse the header
     # lines until we reach !END_OF_HEADER. Then parse the data lines

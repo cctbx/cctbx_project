@@ -2459,6 +2459,7 @@ nanoBragg::show_params()
     if(xtal_shape == ROUND)  printf("ellipsoidal");
     if(xtal_shape == SQUARE) printf("parallelpiped");
     if(xtal_shape == GAUSS ) printf("gaussian");
+    if(xtal_shape == GAUSS_ARGCHK ) printf("gaussian_argchk");
     if(xtal_shape == TOPHAT) printf("tophat-spot");
     printf(" xtal: %.0fx%.0fx%.0f cells\n",Na,Nb,Nc);
     printf("Unit Cell: %g %g %g %g %g %g\n", a_A[0],b_A[0],c_A[0],alpha*RTD,beta*RTD,gamma*RTD);
@@ -2745,6 +2746,14 @@ nanoBragg::add_nanoBragg_spots()
                                         /* fudge the radius so that volume and FWHM are similar to square_xtal spots */
                                         F_latt = Na*Nb*Nc*exp(-( hrad_sqr / 0.63 * fudge ));
                                     }
+                                    if (xtal_shape == GAUSS_ARGCHK)
+                                    {
+                                        /* fudge the radius so that volume and FWHM are similar to square_xtal spots */
+                                        double my_arg = hrad_sqr / 0.63 * fudge; // pre-calculate to check for no Bragg signal
+                                        if (my_arg<35.){ F_latt = Na * Nb * Nc * exp(-(my_arg));}
+                                        else { F_latt = 0.; } // not expected to give performance gain on optimized C++, only on GPU
+                                    }
+
                                     if(xtal_shape == TOPHAT)
                                     {
                                         /* make a flat-top spot of same height and volume as square_xtal spots */

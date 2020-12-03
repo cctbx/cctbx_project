@@ -632,7 +632,7 @@ Residue classes
       class_key = tuple(class_key)
       if verbose: print('class_key',class_key)
       #
-      if not link_metals and "metal" in class_key: continue
+      if link_metals!=True and "metal" in class_key: continue
       #atoms_must_be = {}
       if not link_residues:
         if class_key in [

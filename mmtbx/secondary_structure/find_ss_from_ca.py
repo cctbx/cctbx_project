@@ -415,7 +415,9 @@ def sort_models_and_sequences(models,sequences):
 def merge_hierarchies_from_models(models=None,resid_offset=None,
     renumber=None,first_residue_number=None,
     sequences=None,chain_id=None,trim_side_chains=None,
-    remove_ter_records=False,):
+    remove_ter_records=False,
+    remove_break_records=False,
+     ):
   # assumes one chain from each model
   # if resid_offset, space by to next even n of this number of residues
   # otherwise if renumber, start at first_residue_number and sequence
@@ -489,10 +491,11 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
       "name ca or name c or name o or name n or (name cb and not resname gly)"
     new_hierarchy=apply_atom_selection(atom_selection,hierarchy=new_hierarchy)
 
-  if remove_ter_records:
+  if remove_ter_records or remove_break_records:
     new_records=flex.split_lines("")
     for line in new_hierarchy.as_pdb_string().splitlines():
-      if not line.startswith("TER"):
+      if  ( ((not remove_ter_records)   or (not line.startswith("TER"  )) ) and
+            ((not remove_break_records) or (not line.startswith("BREAK")) )  ):
         new_records.append(line)
 
     new_hierarchy=iotbx.pdb.input(

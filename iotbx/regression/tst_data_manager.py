@@ -655,7 +655,7 @@ def test_map_mixins():
 # -----------------------------------------------------------------------------
 def test_default_filenames():
   datatypes = ['model', 'ncs_spec', 'phil', 'real_map', 'restraint', 'sequence']
-  extensions = ['cif', 'ncs_spec', 'eff', 'mrc', 'cif', 'seq']
+  extensions = ['cif', 'ncs_spec', 'eff', 'ccp4', 'cif', 'seq']
   dm = DataManager(datatypes)
   for datatype, extension in zip(datatypes, extensions):
     filename = getattr(dm, 'get_default_output_{datatype}_filename'.

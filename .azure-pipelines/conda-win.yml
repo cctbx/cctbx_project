@@ -117,9 +117,9 @@ jobs:
     displayName: Copy bootstrap.py
 
   # create conda environment
-  - script: |
-      call %CONDA%\condabin\conda.bat install -y -n base conda=4.7
-    displayName: Update conda
+  # - script: |
+  #     call %CONDA%\condabin\conda.bat install -y -n base conda=4.7
+  #   displayName: Update conda
 
   # - task: DownloadPipelineArtifact@2
   #   displayName: Download conda packages
@@ -242,6 +242,8 @@ jobs:
       call .\build\setpaths.bat
       mkdir tests
       cd tests
+      SET PYTHONDEVMODE=1
+      SET PYTHONTRACEMALLOC=1
       call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cctbx_website module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx nproc=4
     failOnStderr: false
     condition: and(eq(variables['PYTHON_VERSION'], 'py27'),

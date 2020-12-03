@@ -239,7 +239,7 @@ master_params_str = """\
       .type = bool
       .short_caption = Overrides all automatic linking
       .style = noauto
-    link_metals = False
+    link_metals = Auto
       .type = bool
     link_residues = False
       .type = bool
@@ -1874,6 +1874,7 @@ class add_bond_proxies(object):
         sites_cart=None,
         distance_cutoff=None,
         use_neutron_distances=False,
+        origin_id=0,
         ):
     if (m_i.i_conformer != 0 and m_j.i_conformer != 0):
       assert m_i.i_conformer == m_j.i_conformer
@@ -1911,10 +1912,13 @@ class add_bond_proxies(object):
       else:
         counters.resolved += 1
         i_seqs = [atom.i_seq for atom in atoms]
+        self.atoms = atoms
         proxy = geometry_restraints.bond_simple_proxy(
           i_seqs=i_seqs,
           distance_ideal=getattr(bond, value),
-          weight=1/bond.value_dist_esd**2)
+          weight=1/bond.value_dist_esd**2,
+          origin_id=origin_id,
+          )
         is_large_distance = False
         if (sites_cart is not None):
           r = geometry_restraints.bond(sites_cart=sites_cart, proxy=proxy)
@@ -1942,7 +1946,8 @@ class add_angle_proxies(object):
         angle_list,
         angle_proxy_registry,
         special_position_dict,
-        broken_bond_i_seq_pairs=None):
+        broken_bond_i_seq_pairs=None,
+        origin_id=0):
     self.counters = counters
     if (m_j is None):
       m_1,m_2,m_3 = m_i,m_i,m_i
@@ -1990,7 +1995,9 @@ class add_angle_proxies(object):
             proxy=geometry_restraints.angle_proxy(
               i_seqs=i_seqs,
               angle_ideal=angle.value_angle,
-              weight=1/angle.value_angle_esd**2))
+              weight=1/angle.value_angle_esd**2,
+              origin_id=origin_id,
+              ))
           evaluate_registry_process_result(
             proxy_label="angle", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
             registry_process_result=registry_process_result)
@@ -2010,6 +2017,7 @@ class add_dihedral_proxies(object):
         chem_link_id=None,
         broken_bond_i_seq_pairs=None,
         cis_trans_specifications=None,
+        origin_id=0,
         ):
     self.counters = counters
     self.chem_link_id = chem_link_id
@@ -2096,7 +2104,9 @@ class add_dihedral_proxies(object):
             i_seqs=i_seqs,
             angle_ideal=tor.value_angle,
             weight=1/tor.value_angle_esd**2,
-            periodicity=periodicity, alt_angle_ideals=alt_value_angle)
+            periodicity=periodicity,
+            origin_id=origin_id,
+            alt_angle_ideals=alt_value_angle)
           if (sites_cart is not None and tor.id == "omega"):
             assert abs(tor.value_angle - 180) < 1.e-6
             if (peptide_link_params.omega_esd_override_value is not None):
@@ -2147,6 +2157,7 @@ class add_chirality_proxies(object):
         special_position_dict,
         chir_volume_esd,
         lib_link=None,
+        origin_id=0,
         broken_bond_i_seq_pairs=None):
     self.counters = counters
     self.counters.unsupported_volume_sign = dicts.with_default_value(0)
@@ -2219,6 +2230,7 @@ class add_chirality_proxies(object):
                 i_seqs=i_seqs,
                 volume_ideal=volume_ideal,
                 both_signs=(volume_sign == "both"),
+                origin_id=origin_id,
                 weight=1/chir_volume_esd**2))
             evaluate_registry_process_result(
               proxy_label="chirality", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
@@ -2234,6 +2246,7 @@ class add_planarity_proxies(object):
         planarity_proxy_registry,
         special_position_dict,
         peptide_link_params=None,
+        origin_id=0,
         broken_bond_i_seq_pairs=None):
     self.counters = counters
     self.counters.less_than_four_sites = dicts.with_default_value(0)
@@ -2283,6 +2296,7 @@ class add_planarity_proxies(object):
           source_info=source_info_server(m_i=m_i, m_j=m_j),
           proxy=geometry_restraints.planarity_proxy(
             i_seqs=flex.size_t(i_seqs),
+            origin_id=origin_id,
             weights=flex.double(weights)))
         evaluate_registry_process_result(
           proxy_label="planarity", m_i=m_i, m_j=m_j, i_seqs=i_seqs,
@@ -3593,7 +3607,12 @@ class build_all_chain_proxies(linking_mixins):
               bond_simple_proxy_registry=self.geometry_proxy_registries
                 .bond_simple,
               sites_cart=self.sites_cart,
+              origin_id=origin_ids.get_origin_id('User supplied cif_link'),
               distance_cutoff=self.params.link_distance_cutoff)
+            if hasattr(link_resolution, 'atoms'):
+              atom1, atom2 = link_resolution.atoms
+              self.pdb_link_records.setdefault('LINK', [])
+              self.pdb_link_records["LINK"].append([atom1, atom2, 'x,y,z'])
             raise_if_corrupt(link_resolution)
             n_unresolved_apply_cif_link_bonds \
               += link_resolution.counters.unresolved_non_hydrogen
@@ -3603,6 +3622,7 @@ class build_all_chain_proxies(linking_mixins):
               m_j=m_j,
               angle_list=link.angle_list,
               angle_proxy_registry=self.geometry_proxy_registries.angle,
+              origin_id=origin_ids.get_origin_id('User supplied cif_link'),
               special_position_dict=self.special_position_dict)
             raise_if_corrupt(link_resolution)
             n_unresolved_apply_cif_link_angles \
@@ -3615,6 +3635,7 @@ class build_all_chain_proxies(linking_mixins):
               dihedral_function_type=self.params.dihedral_function_type,
               peptide_link_params=self.params.peptide_link,
               dihedral_proxy_registry=self.geometry_proxy_registries.dihedral,
+              origin_id=origin_ids.get_origin_id('User supplied cif_link'),
               special_position_dict=self.special_position_dict,
               sites_cart=self.sites_cart,
               chem_link_id=link.chem_link.id)
@@ -3627,6 +3648,7 @@ class build_all_chain_proxies(linking_mixins):
               m_j=m_j,
               chir_list=link.chir_list,
               chirality_proxy_registry=self.geometry_proxy_registries.chirality,
+              origin_id=origin_ids.get_origin_id('User supplied cif_link'),
               special_position_dict=self.special_position_dict,
               chir_volume_esd=self.params.chir_volume_esd,
               lib_link=link)
@@ -3639,6 +3661,7 @@ class build_all_chain_proxies(linking_mixins):
               m_j=m_j,
               plane_list=link.get_planes(),
               planarity_proxy_registry=self.geometry_proxy_registries.planarity,
+              origin_id=origin_ids.get_origin_id('User supplied cif_link'),
               special_position_dict=self.special_position_dict)
             raise_if_corrupt(link_resolution)
             n_unresolved_apply_cif_link_planarities \
@@ -5681,10 +5704,12 @@ class process(object):
 
       # improved metal coordination
       automatic_linking = self.all_chain_proxies.params.automatic_linking
-      if self.all_chain_proxies.params.restraints_library.mcl:
+      if(self.all_chain_proxies.params.restraints_library.mcl and
+         automatic_linking.link_metals in [Auto, True]):
         from mmtbx.conformation_dependent_library import mcl
         mcl.update(self._geometry_restraints_manager,
                    self.all_chain_proxies.pdb_hierarchy,
+                   link_records=self.all_chain_proxies.pdb_link_records,
                    log=self.log,
                   )
 

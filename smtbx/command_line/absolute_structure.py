@@ -128,7 +128,7 @@ def structure_factors_from_ins_res(file_path):
   xs.set_inelastic_form_factors(
     photon=builder.wavelength_in_angstrom, table="sasaki")
   return structure_factors_from_hkl(
-    xs, hkl_path, weighting_scheme=builder.weighting_scheme)
+    hkl_path, xs, weighting_scheme=builder.weighting_scheme)
 
 def absolute_structure_analysis(xs, fo2, fc, scale, nu=None, log=None,
                                 outlier_cutoff_factor=None):

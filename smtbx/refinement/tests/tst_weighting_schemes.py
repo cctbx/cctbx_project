@@ -73,7 +73,7 @@ def exercise_weighting_schemes():
   assert shelx_weighting.type() == "calc"
   assert not show_diff(
     str(shelx_weighting),
-    "w=1/[\s^2^(Fo^2^)+(0.1234P)^2^+0.5678P] where P=(Fo^2^+2Fc^2^)/3")
+    "w=1/[\\s^2^(Fo^2^)+(0.1234P)^2^+0.5678P] where P=(Fo^2^+2Fc^2^)/3")
   try:
     shelx_weighting(fo_sq=1, sigma=1, fc_sq=1, scale_factor=None)
   except RuntimeError as e:

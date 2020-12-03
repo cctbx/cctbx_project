@@ -193,7 +193,8 @@ def exercise_combine_unique_pdb_files():
                       ("tmp3", "1\t"),
                       ("tmp4", " \t2"),
                       ("tmp5", "1  ")]:
-    open(file_name, "w").write(s)
+    with open(file_name, "w") as f:
+      f.write(s)
   for file_names in [[], ["tmp1"], ["tmp1", "tmp2"]]:
     c = pdb.combine_unique_pdb_files(file_names=file_names)
     assert len(c.file_name_registry) == len(file_names)

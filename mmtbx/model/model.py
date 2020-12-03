@@ -371,7 +371,6 @@ class manager(object):
     """
     return self._pdb_interpretation_params
 
-
   def get_xray_structure(self):
     if(self._xray_structure is None):
       cs = self.crystal_symmetry()
@@ -381,8 +380,6 @@ class manager(object):
       self._xray_structure = self.get_hierarchy().extract_xray_structure(
         crystal_symmetry = cs)
     return self._xray_structure
-
-  # Setters
 
   def set_sites_cart(self, sites_cart, selection=None):
     if(sites_cart is None): return
@@ -405,7 +402,25 @@ class manager(object):
       b_iso = values
     if(self._xray_structure is not None):
       self.get_xray_structure().set_b_iso(values = b_iso, selection=selection)
+      u_iso = self.get_xray_structure().scatterers().extract_u_iso()
+      b_iso = u_iso * adptbx.u_as_b(1)
+      b_iso = b_iso.set_selected(~self.get_xray_structure().use_u_iso(), -1)
     self.get_hierarchy().atoms().set_b(b_iso)
+
+  def convert_to_isotropic(self, selection=None):
+    if(selection is not None and isinstance(selection, flex.bool)):
+      selection = selection.iselection()
+    if(self._xray_structure is not None):
+      self._xray_structure.convert_to_isotropic(selection = selection)
+    atoms = self.get_hierarchy().atoms()
+    if(selection is None):
+      selection = flex.bool(atoms.size(), True).iselection()
+    for i in selection:
+      a = atoms[i]
+      u_cart = a.uij
+      if(u_cart != (-1,-1,-1,-1,-1,-1)):
+        a.set_uij((-1,-1,-1,-1,-1,-1))
+        a.set_b( adptbx.u_as_b(adptbx.u_cart_as_u_iso(u_cart)) )
 
   def set_occupancies(self, values, selection=None):
     if(values is None): return
@@ -417,8 +432,6 @@ class manager(object):
     if(self._xray_structure is not None):
       self.get_xray_structure().set_occupancies(value = occ)
     self.get_hierarchy().atoms().set_occ(occ)
-
-  # Getters
 
   def get_b_iso(self):
     return self.get_hierarchy().atoms().extract_b()
@@ -652,7 +665,6 @@ class manager(object):
      shift_cart = shift_cart_to_apply,
      crystal_symmetry = self._unit_cell_crystal_symmetry)
 
-
   def set_unit_cell_crystal_symmetry(self, crystal_symmetry):
     '''
       Set the unit_cell_crystal_symmetry (original crystal symmetry)
@@ -665,7 +677,7 @@ class manager(object):
     if self._shift_cart is None:
       self._shift_cart = (0, 0, 0)
     else:
-      assert self._shift_cart == (0 ,0 ,0)
+      assert tuple(self._shift_cart) == (0 ,0 ,0)
 
     self._unit_cell_crystal_symmetry = crystal_symmetry
 
@@ -706,15 +718,9 @@ class manager(object):
 
     assert crystal_symmetry is not None  # must supply crystal_symmetry
 
-
-    # Save existing sites_cart
-    if self._xray_structure:
-      existing_sites_cart = self._xray_structure.sites_cart()
-    else:
-      existing_sites_cart = None
-
     # Check for missing _crystal_symmetry
-    if(self._crystal_symmetry is None):
+    if(self._crystal_symmetry is None \
+         or self._crystal_symmetry.unit_cell() is None):
       # Set self._crystal_symmetry.
       assert self._xray_structure is None # can't have xrs without crystal sym
       self._crystal_symmetry = crystal_symmetry
@@ -731,36 +737,60 @@ class manager(object):
       self._crystal_symmetry = xrs.crystal_symmetry()
 
       # set the sites_cart if supplied
-      self.set_sites_cart(sites_cart = sites_cart)
+      if sites_cart:
+        self.set_sites_cart(sites_cart = sites_cart)
       self._update_has_hd()
 
     else:  # Make a new xray_structure with new symmetry and put in sites
 
       xrs=self.get_xray_structure() # Make sure xrs is set up
 
+      # Save existing sites_cart and iso or aniso u_cart
+      # Note that u_iso and u_cart are separate entities
+      uc = self._xray_structure.crystal_symmetry().unit_cell()
+      existing_u_cart = self._xray_structure.scatterers().extract_u_cart(uc)
+      existing_u_iso= self._xray_structure.scatterers().extract_u_iso()
+
       if sites_cart is None:
-        sites_cart = existing_sites_cart
+        sites_cart = self._xray_structure.sites_cart()
 
       # Changing crystal_symmetry changes sites_frac but keeps sites_cart same
+      # Also u_iso and u_cart are the same numbers
 
       # Reset _crystal_symmetry
       scattering_table = xrs.scattering_type_registry().last_table()
       scatterers = xrs.scatterers()
       sp = crystal.special_position_settings(crystal_symmetry)
-      self._xray_structure = xray.structure(sp, scatterers)
+      self._xray_structure = xray.structure(sp, scatterers) # new symmetry
       self._crystal_symmetry = \
         self._xray_structure.crystal_symmetry() # make it identical
-      self.set_sites_cart(sites_cart = sites_cart)
 
-      if scattering_table: # if not there, were not any scattering tables before
+      # Set sites_cart u_cart, u_iso in xray_structure
+      new_uc = self._xray_structure.crystal_symmetry().unit_cell()
+      self._xray_structure.set_sites_cart(sites_cart = sites_cart)
+      self._xray_structure.set_u_iso(values = existing_u_iso)
+      self._xray_structure.set_u_cart(existing_u_cart)
+
+      # Transfer xray_structure info to hierarchy if present
+      if self.get_hierarchy():
+        self.get_hierarchy().adopt_xray_structure(self._xray_structure)
+
+      # Set up scattering table if there was one before
+      if scattering_table:
         self.setup_scattering_dictionaries(scattering_table = scattering_table)
-      # GRM is not valid if the symmetry is changed
-      self.unset_restraints_manager()
+      #
+      if(self.get_restraints_manager() is not None):
+        self.get_restraints_manager().geometry.replace_site_symmetry(
+          new_site_symmetry_table = self._xray_structure.site_symmetry_table())
+        # Not sure if this is needed.
+        self.get_restraints_manager().geometry.crystal_symmetry=crystal_symmetry
+        # This updates some of internals
+        self.get_restraints_manager().geometry.pair_proxies(
+          sites_cart = self.get_sites_cart())
 
   def unit_cell_crystal_symmetry(self):
     if self._unit_cell_crystal_symmetry is not None:
       return self._unit_cell_crystal_symmetry
-
     else:
       return None
 
@@ -1853,7 +1883,7 @@ class manager(object):
     self.riding_h_manager = riding.manager(
       pdb_hierarchy       = self.get_hierarchy(),
       geometry_restraints = self.get_restraints_manager().geometry,
-      use_ideal_dihedral = use_ideal_dihedral)
+      use_ideal_dihedral  = use_ideal_dihedral)
     if(idealize):
       self.idealize_h_riding()
 

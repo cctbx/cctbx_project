@@ -451,12 +451,14 @@ class any_file_input(object):
     self._file_object = map_object
 
   def _try_as_pkl(self):
-    pkl_object = pickle.load(open(self.file_name, "rb"))
+    with open(self.file_name, "rb") as fh:
+      pkl_object = pickle.load(fh)
     self._file_type = "pkl"
     self._file_object = pkl_object
 
   def _try_as_txt(self):
-    file_as_string = open(self.file_name).read()
+    with open(self.file_name) as fh:
+      file_as_string = fh.read()
     file_as_ascii = to_str(file_as_string)
     self._file_type = "txt"
     self._file_object = file_as_string

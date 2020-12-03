@@ -2960,6 +2960,19 @@ def run_get_ncs_from_map(params = None,
       ):
 
   # Get or check NCS operators. Try various possibilities for center of NCS
+
+  # First Fourier filter map if resolution is set
+  if params.crystal_info.resolution:
+    print("Fourier filtering at resoluion of %.2f A" %(
+      params.crystal_info.resolution), file = out)
+    from iotbx.map_manager import map_manager
+    mm = map_manager(map_data= map_data,
+      unit_cell_crystal_symmetry = crystal_symmetry,
+      unit_cell_grid = map_data.all(),
+      wrapping=False)
+    mm.resolution_filter(d_min=params.crystal_info.resolution)
+    map_data = mm.map_data()
+
   ncs_obj_to_check = None
   if params.reconstruction_symmetry.symmetry and (
      not ncs_obj or ncs_obj.max_operators()<2):
@@ -8607,6 +8620,10 @@ def get_overall_mask(
     out = sys.stdout):
 
 
+  # This routine cannot use mask_data with origin != (0,0,0)
+  if map_data.origin() != (0,0,0):
+    return None, None, None
+
   # Make a local SD map from our map-data
   from cctbx.maptbx import crystal_gridding
   from cctbx import sgtbx
@@ -8643,7 +8660,6 @@ def get_overall_mask(
   import math
   w = 4 * stol * math.pi * smoothing_radius
   sphere_reciprocal = 3 * (flex.sin(w) - w * flex.cos(w))/flex.pow(w, 3)
-
   try:
     temp = complete_set.structure_factors_from_map(
       flex.pow2(map_data-map_data.as_1d().min_max_mean().mean))
@@ -9059,6 +9075,8 @@ def get_solvent_fraction_from_low_res_mask(
     crystal_symmetry = crystal_symmetry,
     resolution = mask_resolution,
     out = out)
+  if overall_mask is None:
+    return None
 
   solvent_fraction = overall_mask.count(False)/overall_mask.size()
   print("Solvent fraction from overall mask: %.3f " %(solvent_fraction), file = out)

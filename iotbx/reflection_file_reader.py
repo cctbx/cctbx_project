@@ -91,24 +91,27 @@ def try_all_readers(file_name):
     except KeyboardInterrupt: raise
     except Exception: pass
     else: return ("cctbx.miller.array", content)
-  try: content = cns_reflection_reader.cns_reflection_file(
-    open(file_name))
+  try:
+    with open(file_name) as fh:
+      content = cns_reflection_reader.cns_reflection_file(fh)
   except cns_reflection_reader.CNS_input_Error: pass
   else: return ("cns_reflection_file", content)
   try: content = cns_index_fobs_sigma_reader.reader(
     file_name=file_name)
   except RuntimeError: pass
   else: return ("cns_index_fobs_sigma", content)
-  try: content = scalepack_merge.reader(
-    open(file_name))
+  try:
+    with open(file_name) as fh:
+      content = scalepack_merge.reader(fh)
   except scalepack_merge.FormatError: pass
   else: return ("scalepack_merge", content)
   try: content = scalepack_no_merge.reader(file_name)
   except KeyboardInterrupt: raise
   except Exception: pass
   else: return ("scalepack_no_merge_original_index", content)
-  try: content = dtrek_reflnlist_reader.reflnlist(
-    open(file_name))
+  try:
+    with open(file_name) as fh:
+      content = dtrek_reflnlist_reader.reflnlist(fh)
   except KeyboardInterrupt: raise
   except Exception: pass
   else: return ("dtrek_reflnlist", content)
@@ -129,8 +132,9 @@ def try_all_readers(file_name):
   except KeyboardInterrupt: raise
   except Exception: pass
   else: return ("cif", content)
-  try: content = xds_ascii_reader(
-    open(file_name))
+  try:
+    with open(file_name) as fh:
+      content = xds_ascii_reader(fh)
   except KeyboardInterrupt: raise
   except Exception: pass
   else: return ("xds_ascii", content)
@@ -187,7 +191,8 @@ class any_reflection_file(object):
     self._file_type = None
     file_name = self._file_name
     try:
-      open(file_name) # test read access
+      with open(file_name): # test read access
+        pass
     except IOError as e:
       if (ensure_read_access):
         raise Sorry(str(e))

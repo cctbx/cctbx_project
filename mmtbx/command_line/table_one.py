@@ -205,6 +205,11 @@ class _(oop.injector, molprobity.molprobity):
         re_compute_r_factors=not use_header_values)
       if (use_header_values):
         n_refl_refine = data_stats.n_refl
+    adp_result = self.adp_stats.result()
+    adp_mean = [None for i in range(4)]
+    for i,prop in enumerate(['overall', 'protein', 'other', 'water']):
+      if getattr(adp_result, prop) is not None:
+        adp_mean[i] = getattr(adp_result, prop).mean
     return iotbx.table_one.column(
       label=label,
       space_group=self.space_group_info(),
@@ -231,11 +236,11 @@ class _(oop.injector, molprobity.molprobity):
       cc_work=merging_stats.cc_work,
       cc_free=merging_stats.cc_free,
       # model properties
-      n_atoms=self.model_stats.all.n_non_hd,
-      n_macro_atoms=self.model_stats.macromolecules.n_non_hd,
-      n_ligand_atoms=self.model_stats.ligands.n_non_hd,
-      n_waters=self.model_stats.water.n_non_hd,
-      n_residues=self.model_stats.n_protein,
+      n_atoms=self.model_stats_new.result().n_atoms - self.model_stats_new.result().n_hd,
+      n_macro_atoms=self.model_stats_new.result().n_protein_atoms + self.model_stats_new.result().n_nucleotide_atoms,
+      n_ligand_atoms=self.model_stats_new.result().n_other_atoms,
+      n_waters=self.model_stats_new.result().n_water_atoms,
+      n_residues=self.model_stats_new.result().n_protein,
       bond_rmsd=self.rms_bonds(),
       angle_rmsd=self.rms_angles(),
       rama_favored=self.rama_favored(),
@@ -243,10 +248,10 @@ class _(oop.injector, molprobity.molprobity):
       rama_outliers=self.rama_outliers(),
       rota_outliers=self.rota_outliers(),
       clashscore=self.clashscore(),
-      adp_mean=self.model_stats.all.b_mean,
-      adp_mean_mm=self.model_stats.macromolecules.b_mean,
-      adp_mean_lig=self.model_stats.ligands.b_mean,
-      adp_mean_wat=self.model_stats.water.b_mean,
+      adp_mean=adp_mean[0],
+      adp_mean_mm=adp_mean[1],
+      adp_mean_lig=adp_mean[2],
+      adp_mean_wat=adp_mean[3],
       n_tls_groups=n_tls_groups,
       anomalous_flag=data_stats.anomalous_flag,
       ).add_outer_shell(

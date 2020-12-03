@@ -118,6 +118,7 @@ tst_list_base = [
   "$D/bioinformatics/test/tst_alignment_as_hsearch.py",
   "$D/bioinformatics/test/tst_ebi_wu_blast_xml.py",
   "$D/bioinformatics/test/tst_ncbi_blast_xml.py",
+  "$D/bioinformatics/pdb_info.py",
   "$D/regression/tst_cif_as_pdb_1atom.py",
   "$D/regression/tst_split_data_cif.py",
   "$D/regression/tst_all_chain_ids.py",

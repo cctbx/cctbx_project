@@ -67,7 +67,7 @@ class RefineTG(RefineBase):
 def run():
   """
   Run the dtmin minimizer with only the target() implemented.
-  (no target_gradient orr target_gradient hessian).
+  (no target_gradient or target_gradient_hessian).
   The target function is simply x**2 + y**2.
   Gradients are done by finite difference and the hessian is estimated
   by one over large_shifts squared. (This is handled by the minimizer)

@@ -1,0 +1,163 @@
+{% extends "cctbx/header.html" %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="col-sm-9 main">
+<!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
+<!----------------------- EDIT START ---------------------------->
+
+<h2><center>Introduction to maps in cctbx</center></h2>
+
+<p class="lead mt-4">This tutorial summarizes some important map properties, such as gridding and padding. Learn how to convert between grid points and (fractional or cartesian) coordinates and how to get map values at specific positions.</p>
+
+<h3 class="mt-4">Map properties</h3>
+
+<!----------------------------------------------------------------------------->
+
+<h4 class="mt-3">A map is a 3D box of density on a grid</h4>
+
+<p>A “map” (density map) in CCTBX is a three-dimensional box of “density” (values) sampled on a regular grid.  In this section we are going to consider a full-size map.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h4 class="mt-3">Unit cell of a map</h4>
+
+<p>The parallelepiped corresponding to the full-size map is the “unit cell” of the map.  The term “unit cell” comes from crystallography where the unit cell is repeated indefinitely in all directions.  The unit cell has dimensions along its sides (a, b, c)  and three angles (alpha, beta, gamma) specifying the directions of a, b, and c.  For cryo-EM maps, normally the angles are all 90 degrees and a is along x, b along y, and c along z.  For specifications of axes for crystallographic maps see <a href="http://www.wwpdb.org/documentation/file-format-content/format33/sect8.html">here</a>.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h4 class="mt-3">Space-group symmetry and reconstruction symmetry of maps</h4>
+
+<p>A crystallographic map often has internal symmetry (one of the 230 space groups).  This is referred to as the “space group” of the map.  Note that crystallographic maps also repeat indefinitely in all directions. Consequently the space group symmetry applies everywhere in the map. That means you can go to any point in the map, apply any space group symmetry element to get a symmetry-related point in the map, and the values at the original and symmetry-related points will always be the same. This will be true whether or not the points are inside the unit cell of the map.</p>
+
+<p>A cryo-EM map does not have the symmetry of a crystal. It is not defined outside the boundaries of the map. However it can have internal symmetry owing to the application of symmetry during the reconstruction process. This internal symmetry is typically referred to as “reconstruction symmetry”. For cryo-EM maps, the “space-group symmetry” is always “P1” (no symmetry elements other than unity).</p>
+
+<!----------------------------------------------------------------------------->
+
+<h4 class="mt-3">Crystal_symmetry is the combination of unit cell and space group</h4>
+
+<p>The unit cell (dimensions and angles) and space group (crystallographic symmetry) of a map are combined into a CCTBX object called “crystal_symmetry”.  This object is typically used to specify how the values in a map (just a 3D array of numbers) are related to density values at 3D coordinates in space.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h4 class="mt-3">Map gridding</h4>
+
+<p>Each edge of the unit cell is sampled on a regular grid.  The number of grid points along each axis can be confusing.  Let’s consider a specific example to understand how they work.  Suppose we have a map that is 100 A in each direction, the cell axes are all at right angles,  and we sample them at 1 A intervals (a grid spacing of 1 A).  The number of grid intervals along each direction is 100.  However, if we go from the very beginning to the very end of the unit cell there would be 101 grid points along each direction (it is 101 because there is a grid point on each end).</p>
+
+<p>For this 100 A x 100 A by 100 A box of density sampled at 1 A intervals along a, b and c, the unit cell dimensions are (100, 100, 100) A, and the cell angles are (90, 90, 90).   The unit cell grid is (100, 100, 100), which means that there are 100 repeats of the grid spacing of 1 A along each direction.</p>
+
+<p>Each grid point in the map has Cartesian coordinates and fractional coordinates as well as grid coordinates.  In our 100 A x 100 A by 100 A rectangular box of density, the (0,0,0) grid point has Cartesian and fractional coordinates of (0,0,0) as well.  The grid point (100, 100, 100) has cartesian coordinates of (100, 100, 100) in Angstroms, and fractional coordinates of (1, 1, 1).</p>
+
+<!----------------------------------------------------------------------------->
+
+<h4 class="mt-3">Unpadded CCTBX maps</h4>
+
+<p>In this discussion we will describe CCTBX maps that are “unpadded”.  These are maps where there are not any extra grid points in the map added for purposes of calculating Fourier transforms. They can be obtained from padded maps with a method such as real_map_unpadded().</p>
+
+<p>In CCTBX, the 100 A x 100 A by 100 A box of density described above will normally be represented by a map object with gridding from 0 to 99 in each direction, leaving off the grid point at position 100. This comes from crystallography, where the map repeats and the density one full cell length along x would have a value identical to the value at the origin.  (If you wanted to keep the grid point at position 100, you would make a map 1 bigger in each direction so that your box of density would be 101 x 101 x 101 A).</p>
+
+<p>The first grid point in a CCTBX map object is referred to as the “origin”.  Normally for a full-size map this origin is at the grid point (0,0,0) but it can start anywhere (the other most common position is (-½, -½, -½) in fractional coordinates).  The number of grid points in the map along each direction is referred to as the “all” of the map. In this case all will be (100, 100, 100), going from 0 to 99 in each direction.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">Example of an unpadded CCTBX map</h3>
+
+<p>Let’s set up a DataManager and create a 3D map object. We can work with a library model and calculate a map for it. We can obtain the example model with the map_model_manager after starting up python with “libtbx.python”:</p>
+
+<pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager # load map_model_manager
+mmm=map_model_manager()  # get initialized instance of the map_model_manager
+mmm.generate_map() # get a model and calculate a map for it
+map_data = mmm.map_data()  #  our 3D map object
+</code></pre>
+
+<p>Let’s get the number of grid points along x,y,z (nx, ny, nz):</p>
+
+<pre class="codeDL"><code>print(map_data.all())     # prints (30, 40, 32)
+</code></pre>
+
+<p>And the size of the map (total grid points, same as nx * ny * nz:</p>
+
+<pre class="codeDL"><code>print(map_data.size(), 30*40*32)     # prints 38400, 38400
+</code></pre>
+
+<p>Let’s get the grid point corresponding to the origin:</p>
+
+<pre class="codeDL"><code>print(map_data.origin())   # prints (0, 0, 0)
+</code></pre>
+
+
+<p>Now the grid point corresponding to the last available point in the map is available with the last(False) member function of map_data. If we leave the last() function empty or specify True, we will get the grid point 1 greater in each direction.)</p>
+
+<pre class="codeDL"><code>print(map_data.last(False))     # prints (29, 39, 31) last available point
+print(map_data.last())          # prints (30, 40, 32) start of next unit cell
+</code></pre>
+
+<p>To summarize this map, it runs from (0,0,0) through (29, 39, 31).  The dimensions of the map in grid units are (30, 42, 32).  We can get the value of the map at grid point (1, 2, 3) using square brackets:</p>
+
+<pre class="codeDL"><code>print(map_data[1,2,3])    # prints -0.0164242834519
+</code></pre>
+
+<p>Note that you cannot print the value of the map at (30,40,32) because this is outside of the part of the map that is defined.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">Converting between grid points, fractional coordinates and Cartesian coordinates</h3>
+
+<p>The fractional coordinates of a grid point are just the ratios of its indices to the unit cell grid. Let’s get the fractional coordinates of the grid point (11,12,13).  This formula sequentially takes each value from (11,12,13) as i and each value from map_data.all() as n, divides them, and makes a list of the 3 resulting ratios:</p>
+
+<pre class="codeDL"><code>site_frac = [i/n for i,n in zip ((11,12,13), map_data.all())] # fractional
+print(site_frac) # prints [0.36666666666666664, 0.3, 0.40625]
+</code></pre>
+
+<p>The conversion between fractional and Cartesian coordinates is easy if the cell angles are all 90 degrees, but if they are not it is a little tricky. The CCTBX unit_cell object, part of the crystal_symmetry object described above, has functions to do this conversion:</p>
+
+<pre class="codeDL"><code>uc = mmm.crystal_symmetry().unit_cell()  # unit_cell object for our model
+site_cart = uc.orthogonalize(site_frac)  # convert to orthogonal Angstroms
+print(site_cart) # prints (8.217366666666667, 8.676899999999998, 9.5866875)
+</code></pre>
+
+<p>And back to fractional coordinates:</p>
+
+<pre class="codeDL"><code>site_frac_again = uc.fractionalize(site_cart)  # convert to fractional
+print(site_frac_again) # prints ((0.3666666666666667, 0.3, 0.40625)
+</code></pre>
+
+<p>And finally back to grid units:</p>
+
+<pre class="codeDL"><code>grid_point =  [n * f for n,f in zip(map_data.all(), site_frac_again)] # grid
+print(grid_point) # prints [11.0, 12.0, 13.0]
+</code></pre>
+
+<p>Note that the grid point came out as integers because we started with integers.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-4">Getting map values at positions specified by 3D coordinates</h3>
+
+<p>A model object represents the molecules that are present in a structure. The central element in a model is the set of 3D coordinates of all the atoms in the model. If the model is associated with a map, the coordinates in the model should be in the same reference frame as the coordinates of grid points in the map.</p>
+
+<p>If your model coordinates are in the same reference frame as your map,  you can obtain the values of your map at the coordinates of the atoms in your model by converting the Cartesian coordinates to fractional coordinates, then converting fractional coordinates to grid units, then obtaining values from nearby grid points in the map.  The simplest version of this is just taking the value at the nearest grid point with the function value_at_closest_grid_point, which operates on fractional coordinates (another choice is tricubic_interpolation):</p>
+
+<pre class="codeDL"><code>print(map_data.value_at_closest_grid_point(site_frac)) #  0.0416163499881
+</code></pre>
+
+<p>Note that this gives the same answer as looking directly at the grid point corresponding to site_frac because site_frac sits exactly on a grid point:</p>
+
+<pre class="codeDL"><code>print(map_data[11,12,13]) #  0.0416163499881
+</code></pre>
+
+
+<!----------------------- EDIT END ---------------------------->
+<!-- DO NOT EDIT ANYTHING BELOW!!!! -->
+</div> <!-- end col-sm-9 -->
+
+<!-- automatic table of contents
+     located in the sidebar; will move to the top on a small screen -->
+<div class="col-sm-3 mt-5">
+  <nav id="toc" data-toggle="toc"></nav>
+</div> <!-- end col-sm-3 -->
+
+
+{% endblock %}

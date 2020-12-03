@@ -126,8 +126,8 @@ def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
                 ("by_chain",True,1,86,),
                 ("by_segment",True,1,86,),
                 ("supplied_selections",True,1,86,),
-                ("boxes",True,11,7,),
-                ("boxes",False,36,0,),
+                ("boxes",True,7,9),
+                ("boxes",False,12,0,),
                 ("boxes",True,13,1,),
                 ("boxes",False,36,0,),
                 ], 'failed to find %s %s %s %s' % (
@@ -185,30 +185,30 @@ def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
     soft_mask_radius = 5, set_outside_to_mean_inside=True)
   print ("Mean after first masking", mam.map_data().as_1d().min_max_mean().mean)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().mean,
-      -0.00177661714805)
+      0, eps= 0.05)
   print ("Max after first masking", mam.map_data().as_1d().min_max_mean().max)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().max,
-       0.236853733659)
+       0.10, eps = 0.05)
 
   # Mask map around atoms again
   mam.mask_all_maps_around_atoms(mask_atoms_atom_radius = 3,
      set_outside_to_mean_inside = True, soft_mask=False)
   print ("Mean after second masking", mam.map_data().as_1d().min_max_mean().mean)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().mean,
-     -0.0585683621466)
+     0, eps=0.1)
   print ("Max after second masking", mam.map_data().as_1d().min_max_mean().max)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().max,
-      -0.0585683621466)
+      0, eps=0.1)
 
   # Mask around edges
   mam=mam_dc.deep_copy()
   mam.mask_all_maps_around_edges( soft_mask_radius = 3)
   print ("Mean after masking edges", mam.map_data().as_1d().min_max_mean().mean)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().mean,
-      0.0155055604192)
+      0, eps=0.05)
   print ("Max after masking edges", mam.map_data().as_1d().min_max_mean().max)
   assert approx_equal(mam.map_data().as_1d().min_max_mean().max,
-      0.249827131629)
+      0.20, eps= 0.05)
 
 
   print ("\nWriting map_data and model in shifted position (origin at 0, 0, 0)")

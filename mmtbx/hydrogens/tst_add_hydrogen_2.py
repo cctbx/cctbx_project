@@ -2,59 +2,64 @@ from __future__ import absolute_import, division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
-from mmtbx.hydrogens import reduce
+from mmtbx.hydrogens import reduce_hydrogen
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
 
+# ------------------------------------------------------------------------------
 
 def run():
-  correct_H_position_with_cdl()
-  snippet_with_clashing_H()
-  multi_model()
-  normal_and_modified_nucleic_acid()
+  test_000()
+  test_001()
+  test_002()
+  test_003()
+  test_004()
+  test_005()
+  test_006()
+  test_007()
 
+# ------------------------------------------------------------------------------
 
 def compare_models(pdb_str,
                    contains     = None,
-                   not_contains = None,
-                   number_h     = None):
+                   not_contains = None):
   #
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+  # initial model
   model_initial = mmtbx.model.manager(model_input = pdb_inp,
                                       log         = null_out())
   hd_sel_initial = model_initial.get_hd_selection()
   number_h_expected = hd_sel_initial.count(True)
-
-
+  ph_initial = model_initial.get_hierarchy()
+  h_atoms_initial = ph_initial.select(hd_sel_initial).atoms()
+  h_names_initial = list(h_atoms_initial.extract_name())
+  # remove H atoms
   model_without_h = model_initial.select(~hd_sel_initial)
   hd_sel_without_h = model_without_h.get_hd_selection()
   assert (hd_sel_without_h is not None)
   assert (hd_sel_without_h.count(True) == 0)
-
-  model_h_added = reduce.add(model = model_without_h)
+  # place H atoms again
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model_without_h)
+  reduce_add_h_obj.run()
+  #
+  model_h_added = reduce_add_h_obj.get_model()
   hd_sel_h_added = model_h_added.get_hd_selection()
-
-  ph_initial = model_initial.get_hierarchy()
-  h_atoms_initial = ph_initial.select(hd_sel_initial).atoms()
-  h_names_initial = list(h_atoms_initial.extract_name())
   ph_h_added = model_h_added.get_hierarchy()
-  assert ph_initial.is_similar_hierarchy(other=ph_h_added)
-
-  number_h_added = hd_sel_h_added.count(True)
-  if number_h:
-    assert(number_h == number_h_added)
-
   h_atoms_added = ph_h_added.select(hd_sel_h_added).atoms()
   h_names_added = list(h_atoms_added.extract_name())
+  number_h_added = hd_sel_h_added.count(True)
+  #
+  assert ph_initial.is_similar_hierarchy(other=ph_h_added)
+
+  assert(number_h_expected == number_h_added)
 
   if not_contains:
     assert (not_contains not in h_names_added)
-
   if contains:
     assert (contains in h_names_added)
 
   sc_h_initial = model_initial.select(hd_sel_initial).get_sites_cart()
-  sc_h_added = model_h_added.select(hd_sel_h_added).get_sites_cart()
+  sc_h_added   = model_h_added.select(hd_sel_h_added).get_sites_cart()
 
   d1 = {h_names_initial[i]: sc_h_initial[i] for i in range(len(h_names_initial))}
   d2 = {h_names_added[i]: sc_h_added[i] for i in range(len(h_names_added))}
@@ -63,37 +68,76 @@ def compare_models(pdb_str,
     assert(name in d1)
     assert approx_equal(sc, d1[name], 0.01)
 
+# ------------------------------------------------------------------------------
 
-def correct_H_position_with_cdl():
-  compare_models(pdb_str = pdb_str_1)
-
-
-def snippet_with_clashing_H():
+def test_000():
   '''
-  This is an example for a file that fails with REDUCE.
+    CDL is true by default. Will crash for this example if is False.
+  '''
+  compare_models(pdb_str = pdb_str_000)
 
-  The NZ atom of Lys 246 and the C5 atom of Tam 2 are extremely close together,
-  which seems to give Reduce a problem.
+# ------------------------------------------------------------------------------
+
+def test_001():
+  '''
+  clash between LYS 246 NZ & Tam 2 C5 --> fails in REDUCE
 
   Removing either Lys 246 NZ, or TAM 2 C5, or both of Lys 246 HZ1 and HZ3 will
   allow Reduce to run to completion and produce a usable result.
   However, Lys 246 HZ1 and HZ3 will not be added back by Reduce.
   '''
-  compare_models(pdb_str = pdb_str_2)
+  compare_models(pdb_str = pdb_str_001)
 
+# ------------------------------------------------------------------------------
 
-def multi_model():
+def test_002():
   '''
     Test if multi-model file is supported
   '''
-  compare_models(pdb_str = pdb_str_3)
+  compare_models(pdb_str = pdb_str_002)
 
+# ------------------------------------------------------------------------------
 
-def normal_and_modified_nucleic_acid():
-  compare_models(pdb_str = pdb_str_4)
+def test_003():
+  '''
+    Check if normal and modified nucleic acid work.
+  '''
+  compare_models(pdb_str = pdb_str_003)
 
+# ------------------------------------------------------------------------------
 
-pdb_str_1 = """
+def test_004():
+  '''
+    Check if dc is processed correctly: TYR dc with every atom in either A or B
+  '''
+  compare_models(pdb_str = pdb_str_004)
+
+# ------------------------------------------------------------------------------
+
+def test_005():
+  '''
+    Check if dc is processed correctly: Glu dc with atoms in A or B or '' (blank)
+  '''
+  compare_models(pdb_str = pdb_str_005)
+
+# ------------------------------------------------------------------------------
+
+def test_006():
+  '''
+    Check if model without H to be placed is correctly processed
+  '''
+  compare_models(pdb_str = pdb_str_006)
+
+def test_007():
+  '''
+    Check if model without H to be placed is correctly processed
+  '''
+  compare_models(pdb_str = pdb_str_007)
+
+# ------------------------------------------------------------------------------
+
+pdb_str_000 = """
+REMARK This will crash if CDL is set to FALSE
 CRYST1   72.240   72.010   86.990  90.00  90.00  90.00 P 21 21 21
 ATOM      1  N   PRO H  14      52.628 -74.147  33.427  1.00 20.43           N
 ATOM      2  CA  PRO H  14      53.440 -73.630  34.533  1.00 20.01           C
@@ -139,22 +183,16 @@ ATOM     41  HB1 GLN H  16      51.871 -68.665  31.056  1.00 31.67           H
 ATOM     42  HB2 GLN H  16      51.761 -69.970  31.957  1.00 31.67           H
 """
 
-pdb_str_2 = """
+pdb_str_001 = """
+REMARK this fails in REDUCE because of clash between LYS 246 NZ & Tam 2 C5
 CRYST1   24.984   25.729   23.590  90.00  90.00  90.00 P 1
 ATOM      1  N   PRO A 245      13.194  10.192  16.658  1.00 41.32           N
-ANISOU    1  N   PRO A 245     5445   5107   5149   -761   -337   -188       N
 ATOM      2  CA  PRO A 245      12.939  11.276  15.705  1.00 43.09           C
-ANISOU    2  CA  PRO A 245     5616   5296   5462   -703   -345   -192       C
 ATOM      3  C   PRO A 245      13.983  11.305  14.601  1.00 46.16           C
-ANISOU    3  C   PRO A 245     6029   5612   5898   -683   -379   -133       C
 ATOM      4  O   PRO A 245      15.086  10.768  14.728  1.00 44.69           O
-ANISOU    4  O   PRO A 245     5890   5400   5691   -698   -398   -108       O
 ATOM      5  CB  PRO A 245      13.007  12.541  16.569  1.00 42.50           C
-ANISOU    5  CB  PRO A 245     5520   5200   5429   -665   -331   -270       C
 ATOM      6  CG  PRO A 245      13.795  12.147  17.772  1.00 47.69           C
-ANISOU    6  CG  PRO A 245     6219   5884   6018   -710   -338   -300       C
 ATOM      7  CD  PRO A 245      13.504  10.698  18.006  1.00 45.37           C
-ANISOU    7  CD  PRO A 245     5958   5649   5630   -763   -332   -248       C
 ATOM      8  HD2 PRO A 245      14.279  10.246  18.375  1.00 45.37           H
 ATOM      9  HD1 PRO A 245      12.744  10.590  18.598  1.00 45.37           H
 ATOM     10  HG2 PRO A 245      14.740  12.283  17.601  1.00 47.69           H
@@ -163,23 +201,14 @@ ATOM     12  HA  PRO A 245      12.051  11.211  15.320  1.00 43.09           H
 ATOM     13  HB1 PRO A 245      13.452  13.251  16.080  1.00 42.50           H
 ATOM     14  HB2 PRO A 245      12.112  12.820  16.817  1.00 42.50           H
 ATOM     15  N   LYS A 246      13.611  11.942  13.495  1.00 42.99           N
-ANISOU   15  N   LYS A 246     5586   5194   5553   -642   -384   -103       N
 ATOM     16  CA  LYS A 246      14.551  12.132  12.404  1.00 43.44           C
-ANISOU   16  CA  LYS A 246     5657   5196   5651   -626   -410    -46       C
 ATOM     17  C   LYS A 246      15.633  13.122  12.832  1.00 46.25           C
-ANISOU   17  C   LYS A 246     6029   5476   6066   -612   -418    -67       C
 ATOM     18  O   LYS A 246      15.332  14.110  13.510  1.00 45.93           O
-ANISOU   18  O   LYS A 246     5978   5405   6070   -590   -399   -123       O
 ATOM     19  CB  LYS A 246      13.837  12.652  11.156  1.00 49.81           C
-ANISOU   19  CB  LYS A 246     6412   6022   6492   -584   -414      4       C
 ATOM     20  CG  LYS A 246      12.652  11.809  10.713  1.00 54.70           C
-ANISOU   20  CG  LYS A 246     6990   6749   7043   -615   -407      9       C
 ATOM     21  CD  LYS A 246      13.071  10.649   9.829  1.00 62.40           C
-ANISOU   21  CD  LYS A 246     8002   7745   7964   -674   -416     37       C
 ATOM     22  CE  LYS A 246      11.928   9.661   9.640  1.00 71.25           C
-ANISOU   22  CE  LYS A 246     9098   8967   9007   -746   -399     13       C
 ATOM     23  NZ  LYS A 246      10.594  10.329   9.556  1.00 76.52           N
-ANISOU   23  NZ  LYS A 246     9661   9743   9672   -714   -398     10       N
 ATOM     24  HE1 LYS A 246      11.910   9.050  10.393  1.00 71.25           H
 ATOM     25  HE2 LYS A 246      12.069   9.168   8.816  1.00 71.25           H
 ATOM     26  H   LYS A 246      12.828  12.269  13.355  1.00 42.99           H
@@ -187,26 +216,19 @@ ATOM     27  HG2 LYS A 246      12.208  11.447  11.496  1.00 54.70           H
 ATOM     28  HG1 LYS A 246      12.036  12.365  10.210  1.00 54.70           H
 ATOM     29  HD1 LYS A 246      13.815  10.182  10.241  1.00 62.40           H
 ATOM     30  HD2 LYS A 246      13.332  10.985   8.958  1.00 62.40           H
-ATOM     31  HZ1 LYS A 246      10.608  11.094  10.010  1.00 76.52           H
-ATOM     32  HZ3 LYS A 246       9.966   9.800   9.900  1.00 76.52           H
-ATOM     33  HZ2 LYS A 246      10.393  10.501   8.706  1.00 76.52           H
+ATOM     31  HZ1 LYS A 246       9.955   9.720   9.446  1.00 76.52           H
+ATOM     32  HZ3 LYS A 246      10.434  10.784  10.304  1.00 76.52           H
+ATOM     33  HZ2 LYS A 246      10.578  10.892   8.867  1.00 76.52           H
 ATOM     34  HA  LYS A 246      14.966  11.285  12.179  1.00 43.44           H
 ATOM     35  HB1 LYS A 246      14.472  12.674  10.423  1.00 49.81           H
 ATOM     36  HB2 LYS A 246      13.509  13.547  11.338  1.00 49.81           H
 ATOM     37  N   PRO A 247      16.897  12.890  12.459  1.00 44.07           N
-ANISOU   37  N   PRO A 247     5777   5176   5792   -629   -439    -35       N
 ATOM     38  CA  PRO A 247      17.961  13.810  12.905  1.00 39.69           C
-ANISOU   38  CA  PRO A 247     5226   4573   5283   -643   -446    -65       C
 ATOM     39  C   PRO A 247      17.659  15.272  12.622  1.00 41.96           C
-ANISOU   39  C   PRO A 247     5505   4774   5665   -619   -425    -77       C
 ATOM     40  O   PRO A 247      17.848  16.127  13.497  1.00 43.51           O
-ANISOU   40  O   PRO A 247     5712   4925   5896   -637   -407   -153       O
 ATOM     41  CB  PRO A 247      19.188  13.316  12.126  1.00 43.94           C
-ANISOU   41  CB  PRO A 247     5766   5120   5808   -656   -468     -8       C
 ATOM     42  CG  PRO A 247      18.912  11.884  11.852  1.00 47.67           C
-ANISOU   42  CG  PRO A 247     6260   5641   6212   -648   -469     24       C
 ATOM     43  CD  PRO A 247      17.430  11.781  11.650  1.00 44.76           C
-ANISOU   43  CD  PRO A 247     5884   5287   5837   -641   -451     19       C
 ATOM     44  HD2 PRO A 247      17.201  11.896  10.714  1.00 44.76           H
 ATOM     45  HD1 PRO A 247      17.097  10.929  11.971  1.00 44.76           H
 ATOM     46  HG2 PRO A 247      19.193  11.346  12.609  1.00 47.67           H
@@ -226,10 +248,10 @@ HETATM   58  C6  TAM H   2       5.660  11.992   7.821  1.00 20.00           C
 HETATM   59  O4  TAM H   2       5.710  14.391   6.585  1.00 20.00           O
 HETATM   60  O5  TAM H   2       7.872   9.487   9.299  1.00 20.00           O
 HETATM   61  O6  TAM H   2       5.714  12.262   9.200  1.00 20.00           O
-END
 """
 
-pdb_str_3 = """
+pdb_str_002 = """
+REMARK This is a multi model file --> check if this works
 CRYST1   16.760   20.171   17.648  90.00  90.00  90.00 P 1
 MODEL        1
 ATOM      1  N   GLY A  -3      14.573   7.304   5.082  1.00 23.20           N
@@ -301,7 +323,8 @@ TER
 ENDMDL
 """
 
-pdb_str_4 = """
+pdb_str_003 = """
+REMARK PDB snippet with a normal and a modified nucleic acid
 CRYST1   17.826   22.060   19.146  90.00  90.00  90.00 P 1
 ATOM      1  P     U A   2       7.236  16.525   9.726  1.00 37.21           P
 ATOM      2  OP1   U A   2       6.663  17.060  10.993  1.00 38.75           O
@@ -354,7 +377,157 @@ HETATM   48  C5  UMS A   3      11.323  11.402   9.046  1.00 33.90           C
 HETATM   49  C6  UMS A   3      10.817  10.354   9.743  1.00 34.62           C
 HETATM   50  CA' UMS A   3      11.776   5.000  13.480  1.00 46.26           C
 HETATM   51 SE2' UMS A   3      10.815   5.400  11.905  1.00 48.17          Se
+HETATM   53  H3* UMS A   3      11.022   9.152  12.279  1.00 40.33           H
+HETATM   54  H3  UMS A   3      13.140   9.648   7.179  1.00 33.98           H
+HETATM   55  H1* UMS A   3      10.387   7.156   9.525  1.00 38.75           H
+HETATM   56  H6  UMS A   3      10.252  10.527  10.462  1.00 34.62           H
+HETATM   57  H4* UMS A   3       8.782   7.553  12.369  1.00 39.11           H
+HETATM   58  H5* UMS A   3       7.481   9.448  12.109  1.00 36.88           H
+HETATM   59  H5  UMS A   3      11.056  12.270   9.246  1.00 33.90           H
+HETATM   60 H5*2 UMS A   3       8.158   9.276  13.531  1.00 36.88           H
+HETATM   64  H2* UMS A   3      12.022   6.833  11.440  1.00 40.93           H
 """
+
+pdb_str_004 = '''
+REMARK TYR double conformation where *every* atom is in either A or B
+CRYST1   15.639   15.148   16.657  90.00  90.00  90.00 P 1
+ATOM      1  N  ATYR A  59       5.624   5.492   5.997  0.63  5.05           N
+ATOM      2  CA ATYR A  59       6.283   5.821   7.250  0.63  5.48           C
+ATOM      3  C  ATYR A  59       5.451   6.841   8.030  0.63  6.01           C
+ATOM      4  O  ATYR A  59       5.000   7.863   7.506  0.63  6.38           O
+ATOM      5  CB ATYR A  59       7.724   6.421   6.963  0.63  5.57           C
+ATOM      6  CG ATYR A  59       8.212   7.215   8.170  0.63  6.71           C
+ATOM      7  CD1ATYR A  59       8.690   6.541   9.297  0.63  7.05           C
+ATOM      8  CD2ATYR A  59       8.071   8.583   8.242  0.63  8.31           C
+ATOM      9  CE1ATYR A  59       9.100   7.172  10.481  0.63  7.99           C
+ATOM     10  CE2ATYR A  59       8.408   9.230   9.447  0.63  9.07           C
+ATOM     11  CZ ATYR A  59       8.919   8.547  10.507  0.63  9.01           C
+ATOM     12  OH ATYR A  59       9.211   9.255  11.657  0.63 12.31           O
+ATOM     13  HE2ATYR A  59       8.278  10.148   9.520  0.63  9.07           H
+ATOM     14  HD2ATYR A  59       7.760   9.068   7.512  0.63  8.31           H
+ATOM     15  HD1ATYR A  59       8.740   5.613   9.260  0.63  7.05           H
+ATOM     17  HE1ATYR A  59       9.466   6.703  11.196  0.63  7.99           H
+ATOM     18  HH ATYR A  59       9.058  10.072  11.538  0.63 12.31           H
+ATOM     19  HA ATYR A  59       6.384   5.020   7.788  0.63  5.48           H
+ATOM     20  HB1ATYR A  59       7.683   7.014   6.196  0.63  5.57           H
+ATOM     21  HB2ATYR A  59       8.349   5.699   6.792  0.63  5.57           H
+ATOM     22  N  BTYR A  59       5.613   5.513   5.963  0.37  5.75           N
+ATOM     23  CA BTYR A  59       6.322   5.809   7.211  0.37  5.49           C
+ATOM     24  C  BTYR A  59       5.795   6.953   8.094  0.37  5.14           C
+ATOM     25  O  BTYR A  59       5.668   8.090   7.641  0.37  6.42           O
+ATOM     26  CB BTYR A  59       7.798   6.076   6.900  0.37  7.77           C
+ATOM     27  CG BTYR A  59       8.556   6.722   8.038  0.37  5.20           C
+ATOM     28  CD1BTYR A  59       9.162   5.951   9.021  0.37  8.94           C
+ATOM     29  CD2BTYR A  59       8.665   8.103   8.129  0.37  6.25           C
+ATOM     30  CE1BTYR A  59       9.856   6.537  10.063  0.37 11.97           C
+ATOM     31  CE2BTYR A  59       9.357   8.699   9.167  0.37  9.52           C
+ATOM     32  CZ BTYR A  59       9.950   7.911  10.131  0.37 12.68           C
+ATOM     33  OH BTYR A  59      10.639   8.500  11.166  0.37 26.50           O
+ATOM     34  HE2BTYR A  59       9.422   9.625   9.215  0.37  9.52           H
+ATOM     35  HD2BTYR A  59       8.266   8.637   7.480  0.37  6.25           H
+ATOM     36  HD1BTYR A  59       9.100   5.024   8.978  0.37  8.94           H
+ATOM     38  HE1BTYR A  59      10.257   6.008  10.714  0.37 11.97           H
+ATOM     39  HH BTYR A  59      10.618   9.336  11.086  0.37 26.50           H
+ATOM     40  HA BTYR A  59       6.185   5.019   7.758  0.37  5.49           H
+ATOM     41  HB1BTYR A  59       7.853   6.669   6.134  0.37  7.77           H
+ATOM     42  HB2BTYR A  59       8.231   5.232   6.698  0.37  7.77           H
+'''
+
+pdb_str_005 = '''
+REMARK Glu double conformation where atoms are either A, B or '' (blank)
+CRYST1   13.702   13.985   14.985  90.00  90.00  90.00 P 1
+ATOM      1  N   GLU A  78       8.702   8.360   5.570  1.00 35.65           N
+ATOM      2  C   GLU A  78       6.379   7.842   5.202  1.00 35.59           C
+ATOM      3  O   GLU A  78       5.975   8.985   5.000  1.00 35.38           O
+ATOM      4  CA AGLU A  78       7.598   7.571   6.076  0.70 35.57           C
+ATOM      5  CB AGLU A  78       7.301   7.887   7.536  0.70 35.75           C
+ATOM      6  CG AGLU A  78       6.481   6.798   8.188  0.70 36.10           C
+ATOM      7  CD AGLU A  78       5.833   7.232   9.476  0.70 37.70           C
+ATOM      8  OE1AGLU A  78       6.155   8.333   9.982  0.70 38.74           O
+ATOM      9  OE2AGLU A  78       5.000   6.456   9.985  0.70 37.65           O
+ATOM     11  HG2AGLU A  78       5.778   6.526   7.578  0.70 36.10           H
+ATOM     12  HG1AGLU A  78       7.059   6.044   8.385  0.70 36.10           H
+ATOM     13  HA AGLU A  78       7.819   6.627   6.051  0.70 35.57           H
+ATOM     14  HB1AGLU A  78       6.802   8.717   7.588  0.70 35.75           H
+ATOM     15  HB2AGLU A  78       8.137   7.971   8.021  0.70 35.75           H
+ATOM     16  CA BGLU A  78       7.581   7.608   6.115  0.30 35.61           C
+ATOM     17  CB BGLU A  78       7.269   8.093   7.534  0.30 35.70           C
+ATOM     18  CG BGLU A  78       6.166   7.322   8.245  0.30 36.05           C
+ATOM     19  CD BGLU A  78       6.683   6.115   9.003  0.30 36.79           C
+ATOM     20  OE1BGLU A  78       7.585   6.285   9.856  0.30 37.19           O
+ATOM     21  OE2BGLU A  78       6.173   5.000   8.760  0.30 37.31           O
+ATOM     23  HG2BGLU A  78       5.525   7.010   7.587  0.30 36.05           H
+ATOM     24  HG1BGLU A  78       5.730   7.910   8.881  0.30 36.05           H
+ATOM     25  HA BGLU A  78       7.779   6.660   6.170  0.30 35.61           H
+ATOM     26  HB1BGLU A  78       8.073   8.013   8.070  0.30 35.70           H
+ATOM     27  HB2BGLU A  78       6.992   9.022   7.488  0.30 35.70           H
+'''
+
+pdb_str_006 = '''
+REMARK Hg, Sr and HOH: no H atoms are expected to be placed
+CRYST1   10.286   24.260   13.089  90.00  90.00  90.00 P 1
+HETATM    1 HG    HG A 101       5.000   7.056   5.951  0.60 17.71          HG
+HETATM    2 SR    SR A 102       5.182  10.793   8.089  0.85 18.78          SR
+HETATM    3  O   HOH A 201       5.093   5.000   5.000  1.00 25.34           O
+HETATM    4  O   HOH A 202       5.286  19.260   7.818  1.00 28.43           O
+'''
+
+pdb_str_007 = '''
+data_1UBQ
+#
+_entry.id   1UBQ
+#
+_cell.entry_id           1UBQ
+_cell.length_a           50.840
+_cell.length_b           42.770
+_cell.length_c           28.950
+_cell.angle_alpha        90.00
+_cell.angle_beta         90.00
+_cell.angle_gamma        90.00
+_cell.Z_PDB              4
+#
+_symmetry.entry_id                         1UBQ
+_symmetry.space_group_name_H-M             'P 21 21 21'
+_symmetry.Int_Tables_number                19
+#
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+ATOM   594 N N   . GLY A 1 75 ? 41.165 35.531 31.898 0.25 36.31 ? 75  GLY A N   1
+ATOM   595 C CA  . GLY A 1 75 ? 41.845 36.550 32.686 0.25 36.07 ? 75  GLY A CA  1
+ATOM   596 C C   . GLY A 1 75 ? 41.251 37.941 32.588 0.25 36.16 ? 75  GLY A C   1
+ATOM   597 O O   . GLY A 1 75 ? 41.102 38.523 31.500 0.25 36.26 ? 75  GLY A O   1
+ATOM   598 H HA2 . GLY A 1 75 ? 42.768 36.603 32.393 0.25 36.07 ? 75  GLY A HA1 1
+ATOM   599 H HA1 . GLY A 1 75 ? 41.823 36.286 33.619 0.25 36.07 ? 75  GLY A HA2 1
+ATOM   600 N N   . GLY A 1 76 ? 40.946 38.472 33.757 0.25 36.05 ? 76  GLY A N   1
+ATOM   601 C CA  . GLY A 1 76 ? 40.373 39.813 33.944 0.25 36.19 ? 76  GLY A CA  1
+ATOM   602 C C   . GLY A 1 76 ? 40.031 39.992 35.432 0.25 36.20 ? 76  GLY A C   1
+ATOM   603 O O   . GLY A 1 76 ? 38.933 40.525 35.687 0.25 36.13 ? 76  GLY A O   1
+ATOM   604 O OXT . GLY A 1 76 ? 40.862 39.575 36.251 0.25 36.27 ? 76  GLY A OXT 1
+ATOM   605 H H   . GLY A 1 76 ? 41.063 38.062 34.504 0.25 36.05 ? 76  GLY A H   1
+ATOM   606 H HA2 . GLY A 1 76 ? 39.566 39.910 33.413 0.25 36.19 ? 76  GLY A HA2 1
+ATOM   607 H HA1 . GLY A 1 76 ? 41.011 40.491 33.675 0.25 36.19 ? 76  GLY A HA1 1
+HETATM 608 O O   . HOH B 2 .  ? 45.747 30.081 19.708 1.00 12.43 ? 77  HOH A O   1
+'''
 
 if (__name__ == "__main__"):
   t0 = time.time()

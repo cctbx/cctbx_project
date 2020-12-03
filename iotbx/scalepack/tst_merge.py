@@ -9,7 +9,8 @@ import sys
 
 def recycle(miller_array):
   merge.write(file_name="tmp.sca", miller_array=miller_array)
-  read_back_file = merge.reader(file_handle=open("tmp.sca"))
+  with open("tmp.sca") as f:
+    read_back_file = merge.reader(file_handle=f)
   read_back_arrays = read_back_file.as_miller_arrays()
   assert len(read_back_arrays) == 1
   read_back_array = read_back_arrays[0]
@@ -58,7 +59,8 @@ def run_call_back(flags, space_group_info):
       verbose=flags.Verbose)
 
 def exercise_overloads():
-  open("overloads.sca", "w").write("""\
+  with open("overloads.sca", "w") as f:
+    f.write("""\
     1
  -987
     50.000    50.000    80.000    90.000    90.000   120.000 p3121
@@ -67,7 +69,8 @@ def exercise_overloads():
   19   2   1 49448.5 24728.9 28427.6 18873.9
   19   2   0 34296.1 24479.1 25846.4 22660.4
   19   2  -1 27513.6 23318.8 30341.0 19273.1""")
-  file_in = merge.reader(file_handle=open("overloads.sca"))
+  with open("overloads.sca") as f:
+    file_in = merge.reader(file_handle=f)
   arrays = file_in.as_miller_arrays()
   assert (len(arrays[0].indices()) == 8)
 

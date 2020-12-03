@@ -63,6 +63,7 @@ def exercise_symop_lib_recycling():
       if (len(sgroup) > 11):
         print("ccp4 symop.lib setting leads to pdb CRYST1 overflow:",\
           ccp4_id, given_ccp4_symbol, sgroup)
+  file_iter.close()
   for ccp4_id,count in ccp4_id_counts.items():
     if (count != 1):
       raise RuntimeError(
@@ -78,7 +79,8 @@ def exercise_symop_lib_recycling():
 def exercise_mmdb_cryst1_interpretation(sgi_hall, pdb_str):
   if (os.name == "nt"):
     return # unknown mmdb problem 2010-10-31
-  print(pdb_str, file=open("tmp.pdb", "w"))
+  with open("tmp.pdb", "w") as f:
+    print(pdb_str, file=f)
   mgr = ccp4io_adaptbx.mmdb.Manager()
   mgr.ReadPDBASCII(fileName="tmp.pdb",
     gzipMode=ccp4io_adaptbx.mmdb.IO_GZ_MODE.NONE)

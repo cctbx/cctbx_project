@@ -339,6 +339,8 @@ class determine_connectivity(object):
         dihedral = dihedral_angle(
               sites = [self.sites_cart[i1], self.sites_cart[i2],
               self.sites_cart[i3],self.sites_cart[i4]])
+        if dihedral is None:
+          return
         dihedral_id = dp.angle_ideal
         delta = geometry_restraints.angle_delta_deg(
           angle_1 = math.degrees(dihedral),

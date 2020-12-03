@@ -113,7 +113,7 @@ def test_01():
   mm=mmm.map_manager()
   assert approx_equal(
      model.get_sites_cart()[0], (14.476, 10.57, 8.34) ,eps=0.01)
-  assert approx_equal(mm.map_data()[10,10,10],-0.0195,eps=0.001)
+  assert approx_equal(mm.map_data()[10,10,10],-0.0506,eps=0.001)
   # Save it
   mmm_dc=mmm.deep_copy()
 

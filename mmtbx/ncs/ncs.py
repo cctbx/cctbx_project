@@ -3880,7 +3880,8 @@ class ncs:
       if not os.path.isfile(file_name):
         raise Sorry("The file "+str(file_name)+" does not seem to exist?")
       else:
-        lines=open(file_name).readlines()
+        with open(file_name) as f:
+          lines=f.readlines()
     self.init_ncs_group()
 
     read_something=False

@@ -13,6 +13,9 @@ def extract_from_no_merge_original_index(file_name):
     space_group_info=scalepack_file.space_group_info())
 
 def extract_from(file_name):
-  try: return extract_from_merge(open(file_name))
+  try:
+    with open(file_name) as f:
+      result = extract_from_merge(f)
+    return result
   except merge.FormatError: pass
   return extract_from_no_merge_original_index(file_name)

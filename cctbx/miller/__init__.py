@@ -517,10 +517,10 @@ class set(crystal.symmetry):
     rp = self.unit_cell().reciprocal_parameters()
     c1fmt = "CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f P1        "
     fmt = "HETATM%5d  O   HOH %5d    %8.3f%8.3f%8.3f  1.00  1.00           O  "
-    of = open(file_name, "w")
-    for i_mi, mi in enumerate(indices):
-      rsv = uc.reciprocal_space_vector(mi)
-      print(fmt%(i_mi, i_mi, rsv[0]*scale, rsv[1]*scale, rsv[2]*scale), file=of)
+    with open(file_name, "w") as of:
+      for i_mi, mi in enumerate(indices):
+        rsv = uc.reciprocal_space_vector(mi)
+        print(fmt%(i_mi, i_mi, rsv[0]*scale, rsv[1]*scale, rsv[2]*scale), file=of)
 
   def show_comprehensive_summary(self, f=None, prefix=""):
     """Display comprehensive Miller set or array summary"""
@@ -4279,6 +4279,28 @@ class array(set):
       return flex.sum( d1 * d2 * flex.cos(p2 - p1) ) / factor
     return None
 
+  def as_map_manager(self,
+                     resolution_factor=1/4.,
+                     crystal_gridding=None,
+                     grid_step=None,
+                     d_min=None,
+                     d_max=None,
+                     apply_sigma_scaling=True,
+                     apply_volume_scaling=False,
+                     wrapping=True):
+    assert isinstance(self.data(), flex.complex_double)
+    assert [apply_sigma_scaling, apply_volume_scaling].count(True) in [0,1]
+    mc = self
+    if([d_max, d_min].count(None)>0):
+      mc = self.resolution_filter(d_min=d_min, d_max=d_max)
+    fft_map_ = mc.fft_map(
+      resolution_factor = resolution_factor,
+      crystal_gridding  = crystal_gridding,
+      grid_step         = grid_step)
+    if(apply_sigma_scaling):  fft_map_.apply_sigma_scaling()
+    if(apply_volume_scaling): fft_map_.apply_volume_scaling()
+    return fft_map_.as_map_manager(wrapping=wrapping)
+
   def fft_map(self, resolution_factor=1/3,
                     d_min=None,
                     grid_step=None,
@@ -5908,7 +5930,7 @@ class fft_map(maptbx.crystal_gridding):
     else:
       return flex.real(self._complex_map)
 
-  def as_map_manager(self,in_place=True):
+  def as_map_manager(self, in_place=True, wrapping=True):
     '''
      Create a map_manager object from real_map_unpadded version of this map
     '''
@@ -5917,7 +5939,7 @@ class fft_map(maptbx.crystal_gridding):
     return map_manager(map_data=map_data,
       unit_cell_crystal_symmetry=self.crystal_symmetry(),
       unit_cell_grid=map_data.all(),
-      wrapping=True)
+      wrapping=wrapping)
 
   def real_map_unpadded(self, in_place=True):
     """

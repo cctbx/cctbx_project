@@ -21,10 +21,9 @@ class container(object):
   def validate(self):
     raise_sorry = False
     for i, r in enumerate(self.r):
-      if not self.coordinates_present[i]:
-        if(not r.is_r3_rotation_matrix(rms_tolerance=1.e-4)):
-          raise_sorry = True
-          print ('  ERROR: matrix with serial number %d is not proper' % self.serial_number[i])
+      if(not r.is_r3_rotation_matrix(rms_tolerance=1.e-4)):
+        raise_sorry = True
+        print ('  ERROR: matrix with serial number %s is not proper' % self.serial_number[i])
     if raise_sorry:
       raise Sorry("One or more rotation matrices is not proper. See the log for details.")
     present = False
