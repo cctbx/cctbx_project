@@ -25,6 +25,7 @@ mp {{
     executable_path = {htcondor_executable_path}
   }}
   shifter {{
+    shifter_image = {nersc_shifter_image}
     sbatch_script_template  = {sbatch_script_template}
     srun_script_template  = {srun_script_template}
     partition  = {nersc_partition}
