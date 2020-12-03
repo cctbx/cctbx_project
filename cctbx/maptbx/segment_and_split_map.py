@@ -2894,10 +2894,16 @@ def find_symmetry_center(map_data, crystal_symmetry = None, out = sys.stdout):
     tuple(xyz_cart)), file = out)
   return xyz_cart
 
-def get_center_of_map(map_data, crystal_symmetry):
+def get_center_of_map(map_data, crystal_symmetry,
+    place_on_grid_point = True):
   all = list(map_data.all())
   origin = list(map_data.origin())
-  sx, sy, sz = [all[0]/2+origin[0], all[1]/2+origin[1], all[2]/2+origin[2]]
+  if place_on_grid_point:
+    sx, sy, sz = [int(all[0]/2)+origin[0], int(all[1]/2)+origin[1],
+       int(all[2]/2)+origin[2]]
+  else:
+    sx, sy, sz = [all[0]/2+origin[0], all[1]/2+origin[1],
+  all[2]/2+origin[2]]
   site_fract = matrix.col((sx/all[0], sy/all[1], sz/all[2], ))
   return crystal_symmetry.unit_cell().orthogonalize(site_fract)
 
