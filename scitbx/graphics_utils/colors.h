@@ -378,7 +378,7 @@ namespace scitbx { namespace graphics_utils {
     double vmax = -9e99;
     double vmin = 9e99;
     int nrgbcolours = colourmap.size();
-    for (unsigned i_seq = 0; i_seq < data_for_colors.size(); i_seq++) 
+    for (unsigned i_seq = 0; i_seq < data_for_colors.size(); i_seq++)
     {
       if ((!color_all) && (!selection[i_seq])) continue;
       if (!boost::math::isfinite(data_for_colors[i_seq])) continue;
@@ -416,7 +416,7 @@ namespace scitbx { namespace graphics_utils {
       {
         if (boost::math::isfinite(data_for_colors[i_seq]))
         {
-          // applying a power scaling skews the colour mapping towards the smaller numbers for powscale > 1 
+          // applying a power scaling skews the colour mapping towards the smaller numbers for powscale > 1
           // but skews it towards the larger numbers for 0 < powscale < 1
           double colindex = (nrgbcolours - 1) * pow(((data_for_colors[i_seq] - vmin) / (vmax - vmin)), powscale);
           int indx = int(colindex);
@@ -425,7 +425,7 @@ namespace scitbx { namespace graphics_utils {
           colors[i_seq][1] = colourmap[indx][1] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
           colors[i_seq][2] = colourmap[indx][2] * attenuation[i_seq] + 0.5 * (1.0 - attenuation[i_seq]);
         }
-        else 
+        else
         {
           colors[i_seq][0] = FP_NAN;
           colors[i_seq][1] = FP_NAN;

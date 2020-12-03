@@ -576,7 +576,8 @@ function onMessage(e)
           br_shapebufs[bin].push( [] );
           br_ttips[bin].push( [] );
           Object.assign(br_ttips[bin][rotmxidx], ttips[bin]); // deep copy the ttips[bin] object
-          br_ttips[bin][rotmxidx][0] = rotmxidx;
+          br_ttips[bin][rotmxidx].ids = ttips[bin].ids.slice(0); // deep copy the ttips[bin].ids object
+          br_ttips[bin][rotmxidx].ids[0] = rotmxidx; // id number of rotation used by PickingProxyfunc
           br_positions[bin][rotmxidx] = new Float32Array( csize );
           nexpandrefls += csize;
 
@@ -1178,27 +1179,28 @@ function PickingProxyfunc(pickingProxy)
     var hkl_id = -1;
     var ttipid = "";
     if (pickingProxy.picker["ids"].length > 0)
-    { // get stored id number of symmetry operator applied to this hkl
-      sym_id = pickingProxy.picker["ids"][0];
-      var ids = pickingProxy.picker["ids"].slice(1);
+    { // get stored id number of rotation applied to this hkl
+      sym_id = pickingProxy.picker["ids"][0]; // id of rotation stored when expanding to P1
+      var ids = pickingProxy.picker["ids"].slice(1); // ids of reflection
       var is_friedel_mate = 0;
-      hkl_id = ids[ pickingProxy.pid % ids.length ];
+      hkl_id = ids[ pickingProxy.pid % ids.length ]; // id of reflection if it's not a friedel mate
       if (pickingProxy.pid >= ids.length)
         is_friedel_mate = 1;
     }
-    // tell python the id of the hkl and id number of the symmetry operator
+    // tell python the id of the hkl and id of the rotation operator
     rightnow = timefunc();
     if (rightnow - timenow > tdelay)
     { // only post every 50 milli second as not to overwhelm python
       ttipid = String([hkl_id, sym_id, is_friedel_mate]);
-      WebsockSendMsg( 'tooltip_id: [' + ttipid + ']' );
+      // send this to python which will send back a tooltip text
+      WebsockSendMsg( 'tooltip_id: [' + ttipid + ']' ); 
       timenow = timefunc();
     }
 
     if (isdebug)
       console.log( "current_ttip_ids: " + String(current_ttip_ids) + ", ttipid: " + String(ttipid) );
-    if (current_ttip !== "" && current_ttip_ids == ttipid )
-    {
+    if (current_ttip !== "" && current_ttip_ids == ttipid) // received from python in onMessage() ShowThisTooltip
+    { 
       tooltip.innerText = current_ttip;
       tooltip.style.bottom = cp.y + 7 + "px";
       tooltip.style.left = cp.x + 8 + "px";
@@ -1343,7 +1345,11 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
 
 function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids) 
 {
-  ttiplst = [-1].concat(ttipids);
+  // Tooltip ids is a list of numbers matching the array index of the radiiarray 
+  ttiplst = [-1].concat(ttipids); 
+  // Prepend this list with -1. This value will be reassigned with an id nummber of 
+  // a rotation operator when expanding to P1. PickingProxyfunc() will send back to python the 
+  // id number of the rotation operator and number in ttiplst matching the reflection that was clicked.
   ttips.push( { ids: ttiplst,
        getPosition: function() { return { x:0, y:0 }; } // dummy function to avoid crash
   }  );
@@ -1352,9 +1358,9 @@ function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids)
   radii.push( new Float32Array( radiiarray ) );
   curridx = positions.length -1;
   shapebufs.push( new NGL.SphereBuffer({
-    position: positions[curridx],
-    color: colours[curridx], 
-    radius: radii[curridx],
+    position: positions[curridx], // 1dim array [x0, y0, z0, x1, y1, z1,...] for all reflections
+    color: colours[curridx], // 1dim array [R0, G0, B0, R1, G1, B1,...] for all reflections
+    radius: radii[curridx], // 1dim array [r0, r1, r3,...]for all reflections
     picking: ttips[curridx],
     })
   );

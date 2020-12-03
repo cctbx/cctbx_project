@@ -177,7 +177,7 @@ class MillerArrayTableModel(QAbstractTableModel):
     self.layoutChanged.emit()
 
 
-# Dialog box with MatPlotLib colour gradient charts from 
+# Dialog box with MatPlotLib colour gradient charts from
 # http://matplotlib.org/examples/color/colormaps_reference.html
 
 import numpy as np
@@ -202,8 +202,8 @@ class MplCanvas(FigureCanvas):
     self.fig = Figure(figsize=(10, 20), dpi=dpi, facecolor=(1, 1, 1), edgecolor=(0.5, 0, 0))
     self.axes = self.fig.subplots(nrows=len(cmaps), ncols=1)
     # alignment of each subplot.
-    self.fig.subplots_adjust(top=0.995, 
-                             bottom=0.01, 
+    self.fig.subplots_adjust(top=0.995,
+                             bottom=0.01,
                              left=0.22, # leave room for the label naming this colour map
                              right=0.98 # leave a small gap before edge of canvas
                              )
@@ -228,7 +228,7 @@ class MPLColourSchemes(QtWidgets.QDialog):
     self.selcolmap = ""
     self.powscale = 1
     #self.setWindowFlags(Qt.Tool)
-    # Create the maptlotlib FigureCanvas object, 
+    # Create the maptlotlib FigureCanvas object,
     # which defines a single set of axes as self.axes.
     self.labeltxt = QtWidgets.QLabel()
     self.labeltxt.setText("Click on a gradient map for colouring data values")
@@ -262,7 +262,7 @@ class MPLColourSchemes(QtWidgets.QDialog):
     self.OKbtn.clicked.connect(self.onOK)
     self.Cancelbtn =  QtWidgets.QPushButton("Cancel")
     self.Cancelbtn.clicked.connect(self.onCancel)
-    gridlayout = QtWidgets.QGridLayout() 
+    gridlayout = QtWidgets.QGridLayout()
     gridlayout.addWidget(self.labeltxt,          0, 0, 1, 2)
     gridlayout.addWidget(self.reversecheckbox,   1, 0, 1, 1)
     gridlayout.addWidget(self.powscale_label,    2, 0, 1, 1)
@@ -313,6 +313,3 @@ class MPLColourSchemes(QtWidgets.QDialog):
     # so compute powscale from an exponential of the slider value
     self.powscale = math.pow(1.2, val) # 1.2 varies sufficiently slowly for the slider range [-10,10]
     self.powscaletxtbox.setText("%2.2f" %self.powscale )
-
-
-

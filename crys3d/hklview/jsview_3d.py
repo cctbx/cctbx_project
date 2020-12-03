@@ -417,7 +417,7 @@ class hklview_3d:
                       "fontsize",
                       )
        ) and not has_phil_path(diff_phil, "scene_bin_thresholds") :
-      self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.binner_idx, 
+      self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.binner_idx,
                                                                curphilparam.nbins)
       self.sceneisdirty = True
     if has_phil_path(diff_phil, "scene_bin_thresholds"):
@@ -444,7 +444,7 @@ class hklview_3d:
       self.set_scene(self.viewerparams.scene_id)
       self.params.miller_array_operations = ""
 
-    if has_phil_path(diff_phil, 
+    if has_phil_path(diff_phil,
                       "scene_bin_thresholds", # TODO: group bin phil parameters together in subscope
                       "bin_opacities",
                       "binner_idx",
@@ -1374,7 +1374,7 @@ class hklview_3d:
           if j % nvaluelabels == 0 or j==(len(self.colourgradientvalues)-1) :
             vstr = roundoff(val[0], 2)
           colourgradstr.append([vstr, rgb[0], rgb[1], rgb[2] ])
-        colourgradstrs.append(colourgradstr)  
+        colourgradstrs.append(colourgradstr)
 
     if not self.WBmessenger.browserisopen:
       self.ReloadNGL()
@@ -1387,10 +1387,10 @@ class hklview_3d:
         self.SetBrowserDebug(str(self.verbose>=2).lower())
         self.SetFontSize(self.ngl_settings.fontsize)
         self.DefineHKL_Axes(str(Hstararrowstart), str(Hstararrowend),
-          str(Kstararrowstart), str(Kstararrowend), 
-          str(Lstararrowstart), str(Lstararrowend), 
+          str(Kstararrowstart), str(Kstararrowend),
+          str(Lstararrowstart), str(Lstararrowend),
           Hstararrowtxt, Kstararrowtxt, Lstararrowtxt )
-        self.SendCoordinates2Browser(self.positions[ibin], self.colours[ibin], 
+        self.SendCoordinates2Browser(self.positions[ibin], self.colours[ibin],
                                      self.radii2[ibin], self.spbufttips[ibin] )
       self.RenderStageObjects()
       self.MakeColourChart(10, 10, colourlabel, fomlabel, colourgradstrs)
@@ -1954,7 +1954,7 @@ Distance: %s
     self.clipFar = None
     self.cameraPosZ = None
     self.clipplane_msg_sem.acquire()
-    self.AddToBrowserMsgQueue("GetClipPlaneDistances", "") # 
+    self.AddToBrowserMsgQueue("GetClipPlaneDistances", "") #
     if self.WaitforHandshake():
       nwait = 0
       if not self.clipplane_msg_sem.acquire(blocking=False) and nwait < 5:
@@ -2063,8 +2063,8 @@ Distance: %s
     self.AddToBrowserMsgQueue("RemoveStageObjects")
 
 
-  def DefineHKL_Axes(self, Hstararrowstart, Hstararrowend, Kstararrowstart, 
-                     Kstararrowend, Lstararrowstart, Lstararrowend, 
+  def DefineHKL_Axes(self, Hstararrowstart, Hstararrowend, Kstararrowstart,
+                     Kstararrowend, Lstararrowstart, Lstararrowend,
                      Hlabelpos, Klabelpos, Llabelpos):
     strdata = ""
     strdata += "%s\n\n" %str(Hstararrowstart)
@@ -2099,10 +2099,10 @@ Distance: %s
 
   def onClickColourChart(self):
     # if running the GUI show the colour chart selection dialog
-    self.SendInfoToGUI( { "ColourChart": self.viewerparams.color_scheme, 
+    self.SendInfoToGUI( { "ColourChart": self.viewerparams.color_scheme,
                           "ColourPowerScale": self.viewerparams.color_powscale } )
 
-  
+
   def MakeBrowserDataColumnComboBox(self):
     datcolstr = ""
     for i,lbl in enumerate(self.hkl_scenes_infos):
