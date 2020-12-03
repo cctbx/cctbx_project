@@ -15,7 +15,6 @@ class map_symmetry:
       map_data=None,
       map_coeffs=None,
       crystal_symmetry=None,
-      likely_map_center_locations_grid_units=None,
       ncs_object=None,
       fourier_filter = None,
       log=sys.stdout):
