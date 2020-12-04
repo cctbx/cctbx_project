@@ -217,6 +217,13 @@ class create_mask_around_edges(create_mask_around_atoms):
 
     self._crystal_symmetry = map_manager.crystal_symmetry()
 
+    if self._crystal_symmetry.space_group_number() != 1:
+       print("You cannot make a mask around edges of a map with symmetry")
+       print("You can first change the symmetry or use map_model_manager",
+         "and box_all_maps_with_bounds_and_shift_origin setting the",
+         "lower_bounds as map_data.origin() and upper_bounds as map_data.all()")
+    assert self._crystal_symmetry.space_group_number() ==1
+
     from cctbx.maptbx.segment_and_split_map import get_zero_boundary_map
 
     self._mask = get_zero_boundary_map(

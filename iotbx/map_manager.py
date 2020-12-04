@@ -1174,7 +1174,9 @@ class map_manager(map_reader, write_ccp4_map):
     return self.customized_copy(map_data = self.map_data())
 
   def customized_copy(self, map_data = None, origin_shift_grid_units = None,
-      use_deep_copy_for_map_data = True):
+      use_deep_copy_for_map_data = True,
+      crystal_symmetry_space_group_number = None,
+      wrapping = None,):
     '''
       Return a customized deep_copy of this map_manager, replacing map_data with
       supplied map_data.
@@ -1207,6 +1209,7 @@ class map_manager(map_reader, write_ccp4_map):
        NOTE: wrapping is normally copied from original map, but if new map is
        not full size then wrapping is always set to False.
 
+      If crystal_symmetry_space_group_number is specified, use it
     '''
 
     # Make a deep_copy of map_data and _created_mask unless
@@ -1248,11 +1251,17 @@ class map_manager(map_reader, write_ccp4_map):
     mm.data = map_data  # using self.data or a deepcopy (specified above)
     mm._created_mask = created_mask  # using self._created_mask or a
                                      #deepcopy (specified above)
+    if wrapping is not None:
+      mm.set_wrapping(wrapping)
+
     if not mm.is_full_size():
       mm.set_wrapping(False)
 
     # Set up _crystal_symmetry for the new object
-    mm.set_crystal_symmetry_of_partial_map() # Required and must be last
+    mm.set_crystal_symmetry_of_partial_map(
+      space_group_number = crystal_symmetry_space_group_number)
+      # Required and must be last
+
 
     # Keep track of change in shift_cart
     delta_origin_shift_grid_units = tuple([new - orig for new, orig in zip (
@@ -1268,7 +1277,6 @@ class map_manager(map_reader, write_ccp4_map):
       assert approx_equal(mm.shift_cart(),mm._ncs_object.shift_cart())
     else:
       mm._ncs_object = None
-
 
     return mm
 

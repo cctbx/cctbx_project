@@ -1047,6 +1047,7 @@ class map_model_manager(object):
        Otherwise: replaces existing map_managers and shifts model in place
 
        NOTE: This changes the gridding and shift_cart of the maps and model
+       Also changes space group to p1
 
        Can be used in map_model_manager to work with boxed maps
        and model or in map_model_manager to re-box all maps and model
@@ -1591,7 +1592,6 @@ class map_model_manager(object):
       other = self._empty_copy() # making a new object
     else:
       other = self #  modifying this object
-
 
     other._map_dict[map_info.map_id] = box.map_manager()
     other._model_dict[model_info.model_id] = box.model()
@@ -2200,6 +2200,7 @@ class map_model_manager(object):
     self.add_map_manager_by_id(map_manager = cm.map_manager(),
       map_id = mask_id)
 
+
   def create_mask_around_density(self,
      resolution = None,
      solvent_content = None,
@@ -2248,6 +2249,93 @@ class map_model_manager(object):
       cm.soft_mask(soft_mask_radius = soft_mask_radius)
 
     # Put the mask in map_dict id'ed with mask_id
+    self.add_map_manager_by_id(map_manager = cm.map_manager(),
+      map_id = mask_id)
+
+  def create_spherical_mask(self,
+     soft_mask = True,
+     mask_center_cart = None,
+     mask_radius = None,
+     soft_mask_radius = None,
+     boundary_radius = None,
+     boundary_to_smoothing_ratio = 2.,
+     mask_id = 'mask' ):
+
+    '''
+      Generate spherical mask with radius mask_radius around the
+      cartesian point mask_center_cart.  The value of
+        mask_center_cart is relative to the
+      shifted (origin at (0,0,0) ) position of the map.
+      Does not apply the mask to anything.
+      Normally follow with apply_mask_to_map or apply_mask_to_maps
+      Default: calculate spherical soft mask centered at center of map
+        soft_mask radius default is resolution()
+        boundary between mask and closest edge is
+            soft_mask_radius * boundary_to_smoothing_ratio
+
+      Optional:  not soft mask.  Same as soft mask in dimensions but the
+       soft_mask will not be applied
+
+      Optional: mask_center_cart  (default is center of map)
+
+
+      Generates new entry in map_manager dictionary with id of
+      mask_id (default='mask') replacing any existing entry with that id
+    '''
+
+    if not soft_mask_radius:
+      soft_mask_radius = self.resolution()
+
+    if not boundary_radius:
+      boundary_radius = boundary_to_smoothing_ratio * soft_mask_radius
+
+    inner_boundary_radius = soft_mask_radius
+
+    if not mask_center_cart:
+      mask_center_cart = self.map_info(quiet=True).working_center_cart
+
+    if not mask_radius:
+      # Radius to edge of map:
+      mask_radius = flex.double(mask_center_cart).min_max_mean().min
+
+      # Back off by boundary_radius
+      mask_radius -= boundary_radius
+
+    if mask_radius <= 0:
+      print("\nUnable to auto-generate a mask radius for spherical mask",
+        "\nwith center at (%.3f, %.3f, %.3f) A " %(tuple(mask_center_cart)),
+        "\nand boundary radius of %.3f A " %( boundary_radius, ),
+         file = self.log)
+      return
+
+    print("\nGenerating spherical mask ",
+        "with center at (%.3f, %.3f, %.3f) A " %(tuple(mask_center_cart)),
+        "\n and radius of %.1f A" %(mask_radius), file = self.log)
+    if soft_mask:
+      print("Mask will be a soft mask", file = self.log)
+      print("Boundary radius around "+
+        "mask for smoothing: %.1f A  Smoothing radius: %.1f A" %(
+          boundary_radius, soft_mask_radius), file = self.log)
+
+
+    sites_cart = flex.vec3_double()
+    sites_cart.append(mask_center_cart)
+
+    model = mmtbx.model.manager.from_sites_cart(
+         sites_cart = sites_cart,
+         crystal_symmetry = self.crystal_symmetry())
+
+    # Get the same origin shift in model as in our maps
+    self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(model)
+    from cctbx.maptbx.mask import create_mask_around_atoms
+    cm = create_mask_around_atoms(map_manager = self.map_manager(),
+      model = model,
+      mask_atoms_atom_radius = mask_radius)
+
+    if soft_mask: # Make the create_mask object contain a soft mask
+      cm.soft_mask(soft_mask_radius = soft_mask_radius)
+
+    # Put the mask in map_dict ided with mask_id
     self.add_map_manager_by_id(map_manager = cm.map_manager(),
       map_id = mask_id)
 
@@ -6478,6 +6566,71 @@ class map_model_manager(object):
     return self._map_histograms
 
   #  Convenience methods
+
+  def mask_info(self,
+    mask_id = 'mask',
+    cutoff = 0.5,
+    quiet = False,
+    ):
+    '''  Summarizes info about mask and returns group_args'''
+
+    mask_mm = self.get_map_manager_by_id(map_id = mask_id)
+    if not mask_mm:
+      return None
+    mask_info = self.map_info(quiet=True, map_id = mask_id) # basic map info
+
+    # Change title
+    mask_info.group_args_type = "Summary of mask info about mask '%s' " %(
+      mask_id)
+
+    # Add mask-specific information
+    mask_info.cutoff = cutoff
+    mask_info.is_mask = mask_mm.is_mask()
+    mask_info.marked_points = (mask_mm.map_data() >= cutoff ).count(True)
+    mask_info.fraction_marked = mask_info.marked_points/max(1.,
+        mask_mm.map_data().size())
+
+    if not quiet:
+      print (mask_info, file = self.log)
+    return mask_info
+
+  def map_info(self,
+    map_id = 'map_manager',
+    sigma_cutoff = 1,
+    quiet = False,
+    ):
+    '''  Summarizes info about map and returns group_args'''
+
+    map_mm = self.get_map_manager_by_id(map_id = map_id)
+    if not map_mm:
+      return None
+
+    mmm = map_mm.map_data().as_1d().min_max_mean()
+    standard_deviation = map_mm.map_data(
+       ).as_1d().sample_standard_deviation()
+    cutoff = mmm.mean + sigma_cutoff * standard_deviation
+
+    points_above_sigma_cutoff = (map_mm.map_data() >= cutoff ).count(True)
+
+    map_info = group_args(
+      group_args_type = "Summary of map info about map '%s' " %(map_id),
+      cutoff = cutoff,
+      mean = mmm.mean,
+      min = mmm.min,
+      max = mmm.max,
+      standard_deviation = standard_deviation,
+      size = map_mm.map_data().size(),
+      points_above_sigma_cutoff = points_above_sigma_cutoff,
+      fraction_above_sigma_cutoff= points_above_sigma_cutoff/max(
+         1., map_mm.map_data().size()),
+      absolute_center_cart = map_mm.absolute_center_cart(),
+      working_center_cart = tuple(flex.double(map_mm.absolute_center_cart()) +
+          flex.double(map_mm.shift_cart())),
+      )
+    if not quiet:
+      print (map_info, file = self.log)
+    return map_info
+
 
   def shift_aware_rt(self,
      from_obj = None,

@@ -137,7 +137,7 @@ class with_bounds(object):
     p = full_uc.parameters()
     abc = [p[i] * self.box_all[i]/full_all_orig[i] for i in range(3)]
     box_uc = uctbx.unit_cell(parameters = (abc[0], abc[1], abc[2], p[3], p[4], p[5]))
-    self.crystal_symmetry = crystal.symmetry(
+    self.new_crystal_symmetry = crystal.symmetry(
       unit_cell = box_uc, space_group = "P1")
 
     self._warning_message = ""
@@ -238,8 +238,12 @@ class with_bounds(object):
     #  Set up new map_manager. This will contain new data and not overwrite
     #   original
     #  NOTE: origin_shift_grid_units is required as bounds have changed
+
+    # Crystal symmetry is now always P1 and wrapping is False
     new_map_manager = map_manager.customized_copy(map_data = map_box,
-      origin_shift_grid_units = origin_shift_grid_units)
+      origin_shift_grid_units = origin_shift_grid_units,
+      crystal_symmetry_space_group_number = 1,
+      wrapping = False)
     if self._force_wrapping:
       # Set the wrapping of the new map if it is possible
       if (self._force_wrapping and (new_map_manager.is_full_size())) or \
@@ -276,7 +280,7 @@ class with_bounds(object):
     # Shift the model and add self.shift_cart on to whatever shift was there
     model.shift_model_and_set_crystal_symmetry(
        shift_cart = self.shift_cart, # shift to apply
-       crystal_symmetry = self.crystal_symmetry, # new crystal_symmetry
+       crystal_symmetry = self.new_crystal_symmetry, # new crystal_symmetry
        )
 
     # if wrapping is False, check to see if model is outside the box
@@ -476,7 +480,7 @@ class around_unique(with_bounds):
       assert map_manager.unit_cell_grid == map_manager.map_data().all()
 
     # Get crystal_symmetry
-    self.crystal_symmetry = map_manager.crystal_symmetry()
+    crystal_symmetry = map_manager.crystal_symmetry()
     # Convert to map_data
 
     from cctbx.maptbx.segment_and_split_map import run as segment_and_split_map
@@ -487,7 +491,7 @@ class around_unique(with_bounds):
     ncs_group_obj, remainder_ncs_group_obj, tracking_data  = \
       segment_and_split_map(args,
         map_data = self._map_manager.map_data(),
-        crystal_symmetry = self.crystal_symmetry,
+        crystal_symmetry = crystal_symmetry,
         ncs_obj = self._map_manager.ncs_object(),
         target_model = target_ncs_au_model,
         write_files = False,

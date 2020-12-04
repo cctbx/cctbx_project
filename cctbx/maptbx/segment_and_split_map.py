@@ -4306,8 +4306,11 @@ def apply_soft_mask(map_data = None,
 
 def smooth_mask_data(mask_data = None,
     crystal_symmetry = None,
-    threshold = 0.5,
+    threshold = None,
     rad_smooth = None):
+
+  if threshold is None:
+    threshold = mask_data.as_1d().min_max_mean().max * 0.5
 
   # Smooth a mask in place. First make it a binary mask
   s = mask_data > threshold  # s marks inside mask
@@ -4322,7 +4325,7 @@ def smooth_mask_data(mask_data = None,
 
     # Make sure that mask_data max value is now 1, scale if not
     max_mask_data_value = mask_data.as_1d().min_max_mean().max
-    if max_mask_data_value < 1.e-30 and max_mask_data_value!= 1.0: # XXX
+    if max_mask_data_value > 1.e-30 and max_mask_data_value!= 1.0:
       mask_data = mask_data*(1./max_mask_data_value)
   else:
     pass
