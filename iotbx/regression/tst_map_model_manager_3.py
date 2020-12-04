@@ -192,9 +192,7 @@ def exercise(file_name, out = sys.stdout):
 
   # Create mask around edges and apply to all maps
   mam1=new_mam.deep_copy()
-  mam1.box_all_maps_with_bounds_and_shift_origin(
-     lower_bounds=mam.map_manager().map_data().origin(),
-     upper_bounds=tuple([a-1 for a in mam.map_manager().map_data().all()]))
+  mam1.set_crystal_symmetry_to_p1()
   mam1.mask_all_maps_around_edges(soft_mask_radius=8)
   s = (mam1.get_map_manager_by_id('mask').map_data() > 0.5)
   assert approx_equal( (s.count(True),s.size()), (1496, 2048))
@@ -227,9 +225,7 @@ def exercise(file_name, out = sys.stdout):
 
   # Mask around edges and do not do anything with it
   mam=dc.deep_copy()
-  mam.box_all_maps_with_bounds_and_shift_origin(
-     lower_bounds=mam.map_manager().map_data().origin(),
-     upper_bounds=tuple([a-1 for a in mam.map_manager().map_data().all()]))
+  mam.set_crystal_symmetry_to_p1()  # Not actually necessary but just test it
   mam.create_mask_around_edges()
   s = (mam.get_map_manager_by_id('mask').map_data() > 0.5)
   mam.write_map(map_id='mask',file_name='edge.ccp4')

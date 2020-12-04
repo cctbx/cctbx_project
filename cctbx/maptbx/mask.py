@@ -114,15 +114,26 @@ class create_mask_around_atoms(object):
     Make the mask a soft mask
     Parameter:
       soft_mask_radius:   defines distance over which mask is smoothed
+    This has to be done in P1 as the mask might not follow map symmetry
+      (for example a mask around edges does not)
     '''
     assert soft_mask_radius is not None
     assert not self.is_soft_mask()  # do not do it twice
 
     from cctbx.maptbx.segment_and_split_map import smooth_mask_data
 
+    if self._crystal_symmetry.space_group_number() != 1:
+      from cctbx import crystal
+      crystal_symmetry = crystal.symmetry(
+          self._crystal_symmetry.unit_cell().parameters(), 1)
+    else:
+      crystal_symmetry = self._crystal_symmetry
+
     self._mask = smooth_mask_data(mask_data = self._mask,
-      crystal_symmetry = self._crystal_symmetry,
+      crystal_symmetry = crystal_symmetry,
        rad_smooth = soft_mask_radius)
+
+    # Note that mask still might not follow map symmetry if it did not before 
 
     self._map_manager = self._map_manager.customized_copy(map_data = self._mask)
     self._map_manager.set_is_mask(True)
@@ -216,13 +227,6 @@ class create_mask_around_edges(create_mask_around_atoms):
     n_real = map_manager.map_data().all()
 
     self._crystal_symmetry = map_manager.crystal_symmetry()
-
-    if self._crystal_symmetry.space_group_number() != 1:
-       print("You cannot make a mask around edges of a map with symmetry")
-       print("You can first change the symmetry or use map_model_manager",
-         "and box_all_maps_with_bounds_and_shift_origin setting the",
-         "lower_bounds as map_data.origin() and upper_bounds as map_data.all()")
-    assert self._crystal_symmetry.space_group_number() ==1
 
     from cctbx.maptbx.segment_and_split_map import get_zero_boundary_map
 

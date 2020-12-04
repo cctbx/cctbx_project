@@ -1593,6 +1593,21 @@ class map_manager(map_reader, write_ccp4_map):
     #   map (shift of origin is opposite of shift applied)
     ncs_object.set_shift_cart(self.shift_cart())
 
+  def set_crystal_symmetry_to_p1(self,
+     space_group_number = 1):
+    ''' 
+      Change the working crystal symmetry to P1
+      This changes map in place
+      Do a deep_copy first if you do not want it changed
+      (Actually can set space group number to anything so you can set it back)
+    '''
+    print("\nSetting working crystal symmetry to P1 so "+
+       "that edges can be masked", file = self.log)
+
+    self.set_crystal_symmetry_of_partial_map(
+      space_group_number = space_group_number)
+
+  
   def set_model_symmetries_and_shift_cart_to_match_map(self,model):
     '''
       Set the model original and working crystal_symmetry to match map.

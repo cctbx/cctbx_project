@@ -6464,6 +6464,22 @@ class map_model_manager(object):
 
   # General methods
 
+  def set_crystal_symmetry_to_p1(self):
+    ''' 
+      Change the working crystal symmetry to P1
+      This changes all maps and models in place
+      Do a deep_copy first if you do not want them changed
+    '''
+    print("\nSetting working crystal symmetry to P1 so "+
+       "that edges can be masked", file = self.log)
+
+    for map_manager in self.map_managers():
+      map_manager.set_crystal_symmetry_of_partial_map(
+      space_group_number = 1)
+
+    for model in self.models():
+      self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(model)
+
   def set_original_origin_grid_units(self, original_origin_grid_units = None):
     '''
      Reset (redefine) the original origin of the maps and models (apply an
