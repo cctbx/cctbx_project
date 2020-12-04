@@ -59,6 +59,10 @@ mp_phil_str = '''
       submit_command = "sbatch "
         .type = str
         .help = Command used to run the zero-level script sbatch.sh.
+      shifter_image = None
+        .type = str
+        .help = Name of Shifter image to use for processing, as you would use \
+                in an sbatch script. Example: docker:dwpaley/cctbx-xfel:fix18
       sbatch_script_template = None
         .type = path
         .help = Script template to be run with sbatch. The script will be copied \
@@ -535,6 +539,17 @@ class get_shifter_submit_command(get_submit_command):
 
 
   def eval_params(self):
+
+    # --image <shifter_image>
+    if self.params.shifter.shifter_image:
+      self.sbatch_contents = self.substitute(
+          self.sbatch_contents,
+          "<shifter_image>",
+          self.params.shifter.shifter_image
+      )
+    else:
+      raise Sorry("Must supply a shifter image")
+
     # -N <nnodes>
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<nnodes>",
       str(self.params.nnodes))

@@ -688,6 +688,14 @@ class AdvancedSettingsDialog(BaseDialog):
     self.main_sizer.Add(self.mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Shifter-specific settings
+    self.shifter_image = gctr.TextButtonCtrl(self,
+                                             label='Shifter image:',
+                                             label_style='bold',
+                                             label_size=(200, -1),
+                                             value=params.mp.shifter.shifter_image \
+                                             if params.mp.shifter.shifter_image is not None else '')
+    self.mp_sizer.Add(self.shifter_image, flag=wx.EXPAND | wx.ALL, border=10)
+
     self.shifter_srun_template = gctr.TextButtonCtrl(self,
                                                      label='Srun Script Template Path:',
                                                      label_style='bold',
@@ -822,6 +830,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.env_script.Hide()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
+      self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
       self.shifter_sbatch_template.Hide()
       self.shifter_jobname.Hide()
@@ -839,6 +848,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.env_script.Hide()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
+      self.shifter_image.Show()
       self.shifter_srun_template.Show()
       self.shifter_sbatch_template.Show()
       self.shifter_jobname.Show()
@@ -854,6 +864,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.env_script.Show()
       self.htcondor_executable_path.Show()
       self.htcondor_filesystemdomain.Show()
+      self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
       self.shifter_sbatch_template.Hide()
       self.shifter_jobname.Hide()
@@ -869,6 +880,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.env_script.Show()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
+      self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
       self.shifter_sbatch_template.Hide()
       self.shifter_jobname.Hide()
@@ -943,6 +955,8 @@ class AdvancedSettingsDialog(BaseDialog):
     self.params.mp.shifter.sbatch_script_template = self.shifter_sbatch_template.ctr.GetValue() \
       if len(self.shifter_sbatch_template.ctr.GetValue()) > 0 else None
 
+    self.params.mp.shifter.shifter_image = self.shifter_image.ctr.GetValue() \
+      if len(self.shifter_image.ctr.GetValue()) > 0 else None
     self.params.mp.shifter.srun_script_template = self.shifter_srun_template.ctr.GetValue() \
       if len(self.shifter_srun_template.ctr.GetValue()) > 0 else None
     self.params.mp.shifter.jobname=self.shifter_jobname.ctr.GetValue() \

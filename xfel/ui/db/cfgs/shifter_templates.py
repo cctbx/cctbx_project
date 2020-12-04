@@ -8,7 +8,7 @@ sbatch_template = \
 #SBATCH --nodes=<nnodes>
 #SBATCH --tasks-per-node=<nproc_per_node>
 #SBATCH --constraint=<constraint>
-#SBATCH --image=docker:dwpaley/cctbx-xfel:fix12
+#SBATCH --image=<shifter_image>
 #SBATCH --mail-type=NONE
 #SBATCH -A <project>
 #SBATCH -o <out_log>
