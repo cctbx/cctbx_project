@@ -529,7 +529,7 @@ class get_shifter_submit_command(get_submit_command):
     self.srun_template = self.params.shifter.srun_script_template
     if not self.srun_template:
       from xfel.ui.db.cfgs import shifter_templates
-      self.srun_contents = shifter_templates.sbatch_template
+      self.srun_contents = shifter_templates.srun_template
     else:
       with open(self.srun_template, "r") as sr:
         self.srun_contents = sr.read()
