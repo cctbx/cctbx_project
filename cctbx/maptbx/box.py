@@ -137,7 +137,7 @@ class with_bounds(object):
     p = full_uc.parameters()
     abc = [p[i] * self.box_all[i]/full_all_orig[i] for i in range(3)]
     box_uc = uctbx.unit_cell(parameters = (abc[0], abc[1], abc[2], p[3], p[4], p[5]))
-    self.new_crystal_symmetry = crystal.symmetry(
+    self.crystal_symmetry = crystal.symmetry(
       unit_cell = box_uc, space_group = "P1")
 
     self._warning_message = ""
@@ -280,7 +280,7 @@ class with_bounds(object):
     # Shift the model and add self.shift_cart on to whatever shift was there
     model.shift_model_and_set_crystal_symmetry(
        shift_cart = self.shift_cart, # shift to apply
-       crystal_symmetry = self.new_crystal_symmetry, # new crystal_symmetry
+       crystal_symmetry = self.crystal_symmetry, # new crystal_symmetry
        )
 
     # if wrapping is False, check to see if model is outside the box
