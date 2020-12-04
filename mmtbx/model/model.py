@@ -1196,12 +1196,44 @@ class manager(object):
       ss_ann.remove_empty_annotations(self.get_hierarchy())
     return ss_ann
 
+  def can_be_reduced_with_biomt(self):
+    if not self.ncs_constraints_present():
+      return False
+    original_nrgl = self.get_ncs_groups()
+    if len(original_nrgl) > 1:
+      return False
+    filtered_nrgl = original_nrgl.filter_ncs_restraints_group_list(
+        self.get_hierarchy(), self.get_ncs_obj())
+    if not (original_nrgl == filtered_nrgl):
+      return False
+    if not original_nrgl.check_for_max_rmsd(self.get_sites_cart(), 0.01, null_out()):
+      return False
+    return True
+
   def model_as_mmcif(self,
       cif_block_name = "default",
       output_cs = True,
       additional_blocks = None,
       align_columns = False,
-      do_not_shift_back = False):
+      do_not_shift_back = False,
+      try_reduce_with_biomt = False):
+    if try_reduce_with_biomt:
+      if not self.can_be_reduced_with_biomt():
+        return ""
+      sel, cb = self.get_ncs_groups().reduce_with_biomt(self.get_hierarchy())
+      cutted_m = self.select(sel)
+      ab = additional_blocks
+      if additional_blocks is not None:
+        ab.append(cb)
+      else:
+        ab = [cb]
+      return cutted_m.model_as_mmcif(
+          cif_block_name = cif_block_name,
+          output_cs = output_cs,
+          additional_blocks = ab,
+          align_columns = align_columns,
+          do_not_shift_back = do_not_shift_back,
+          try_reduce_with_biomt = False)
     out = StringIO()
     cif = iotbx.cif.model.cif()
     cif_block = None

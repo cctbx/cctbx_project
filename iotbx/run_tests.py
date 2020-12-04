@@ -104,6 +104,7 @@ tst_list_base = [
   "$D/regression/tst_export_scalepack_unmerged.py",
   ["$D/dsn6/tst.py", "P31"],
   "$D/regression/ncs/tst_mtrix_biomt_cmdl.py",
+  "$D/regression/ncs/tst_mmcif_biomt_reduction_output.py",
   "$D/regression/ncs/tst_ncs_search_ligs.py",
   "$D/regression/ncs/tst_ncs_search_broken_chain.py",
   "$D/regression/ncs/tst_ncs_groups_preprocessing.py",
