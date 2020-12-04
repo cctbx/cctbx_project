@@ -453,10 +453,17 @@ class Script(object):
     if hasattr(dispatcher_params, 'input') and hasattr(dispatcher_params.input, 'rungroup') and params.input.rungroup is not None:
       data_str += " input.rungroup=%d" % params.input.rungroup
 
-    command = "%s %s output.output_dir=%s %s %s" % (
-      params.input.dispatcher, data_str, output_dir,
-      logging_str, extra_str
-    )
+    if os.getenv("CCTBX_BB_ALL")=="TRUE":
+      command = "%s %s output.output_dir=$DW_JOB_STRIPED/out %s %s" % (
+        params.input.dispatcher, data_str,
+        logging_str, extra_str
+      )
+
+    else:
+      command = "%s %s output.output_dir=%s %s %s" % (
+        params.input.dispatcher, data_str, output_dir,
+        logging_str, extra_str
+      )
 
     job_name = "r%s"%params.input.run_num
 

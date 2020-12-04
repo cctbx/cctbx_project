@@ -13,7 +13,8 @@ sbatch_template = \
 #SBATCH -A <project>
 #SBATCH -o <out_log>
 #SBATCH -e <err_log>
-#DW jobdw capacity=10GB access_mode=striped type=scratch
+#DW jobdw capacity=100GB access_mode=striped type=scratch
+#DW stage_out source=$DW_JOB_STRIPED/out destination=<output_dir>/out type=directory
 #DW stage_out source=$DW_JOB_STRIPED/stdout destination=<output_dir>/stdout type=directory
 # base directory
 
