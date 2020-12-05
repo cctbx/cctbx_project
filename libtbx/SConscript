@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -772,7 +773,8 @@ int main() {
     if sys.platform.startswith("darwin"):
       cc = os.environ.get('CLANG', '')
       cxx = os.environ.get('CLANGXX', '')
-    if not os.path.isfile(cc) or not os.path.isfile(cxx):
+    validate = getattr(shutil, "which", os.path.isfile)
+    if not validate(cc) or not validate(cxx):
       print("Compiler settings:")
       print("  CC: ", cc)
       print("  CXX:", cxx)
