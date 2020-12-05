@@ -69,6 +69,10 @@ def test_2():
   assert "" == model.model_as_mmcif(try_reduce_with_biomt=True)
 
 if __name__ == '__main__':
-  test_1()
-  test_2()
-  print('OK')
+  import libtbx.load_env
+  if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
+    test_1()
+    test_2()
+    print('OK')
+  else:
+    print('chem_data is not available, skipping')
