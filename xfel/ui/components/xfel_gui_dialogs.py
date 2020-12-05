@@ -1696,6 +1696,7 @@ class RunBlockDialog(BaseDialog):
       config_box = wx.StaticBox(self.config_panel, label='Configuration')
       self.config_sizer = wx.StaticBoxSizer(config_box)
       self.config_panel.SetSizer(self.config_sizer)
+      self.config_panel.Hide()
 
     self.phil_panel = wx.Panel(self)
     phil_box = wx.StaticBox(self.phil_panel, label='Extra phil parameters')
@@ -2023,12 +2024,12 @@ class RunBlockDialog(BaseDialog):
       self.parent.trial.add_rungroup(self.block)
     else:
       # if all the parameters are unchanged, do nothing
-      all_the_same = [str(rg_dict[key]) == str(getattr(self.block, key)) for key in rg_dict].count(False) == 0
+      all_the_same = [str(rg_dict[key]).strip() == str(getattr(self.block, key)).strip() for key in rg_dict].count(False) == 0
       all_the_same &= self.first_run == self.orig_first_run and self.last_run == self.orig_last_run
       if not all_the_same:
         # if all the parameters except open and comment are the same,
         # only update those fields
-        keep_old_run_group = [str(rg_dict[key]) == str(getattr(self.block, key)) for key in rg_dict \
+        keep_old_run_group = [str(rg_dict[key]).strip() == str(getattr(self.block, key)).strip() for key in rg_dict \
                               if key not in ['open', 'comment']].count(False) == 0
         if keep_old_run_group:
           main = self.parent.parent.GetParent().main
