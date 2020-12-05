@@ -133,7 +133,7 @@ class create_mask_around_atoms(object):
       crystal_symmetry = crystal_symmetry,
        rad_smooth = soft_mask_radius)
 
-    # Note that mask still might not follow map symmetry if it did not before 
+    # Note that mask still might not follow map symmetry if it did not before
 
     self._map_manager = self._map_manager.customized_copy(map_data = self._mask)
     self._map_manager.set_is_mask(True)

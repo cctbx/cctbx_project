@@ -6465,7 +6465,7 @@ class map_model_manager(object):
   # General methods
 
   def set_crystal_symmetry_to_p1(self):
-    ''' 
+    '''
       Change the working crystal symmetry to P1
       This changes all maps and models in place
       Do a deep_copy first if you do not want them changed

@@ -1,3 +1,8 @@
+2020.11
+=======
+
+* Updated API for fetching data from RCSB
+
 2020.10
 =======
 
