@@ -22,36 +22,6 @@ Computational Crystallography Toolbox
 Welcome to CCTBX's documentation!
 =================================
 
-The Computational Crystallography Toolbox (cctbx) is being developed as the open
-source component of the PHENIX_ system. The goal of the PHENIX project is to
-advance automation of macromolecular structure determination. PHENIX depends on
-the cctbx, but not vice versa. This hierarchical approach enforces a clean
-design as a reusable library. The cctbx is therefore also useful for
-small-molecule crystallography and even general scientific applications.
-
-To maximize reusability and, maybe even more importantly, to give individual
-developers a notion of privacy, the cctbx is organized as a set of smaller
-modules. This is very much like a village (the cctbx project) with individual
-houses (modules) for each family (groups of developers, of any size including
-one).
-
-The cctbx code base is available without restrictions and free of charge to all
-interested developers, both academic and commercial. The entire community is
-invited to actively participate in the development of the code base. A
-sophisticated technical infrastructure that enables community based software
-development is provided by GitHub_. This service is also free of charge and
-open to the entire world.
-
-The cctbx is designed with an open and flexible architecture to promote
-extendability and easy incorporation into other software environments. The
-package is organized as a set of ISO C++ classes with Python_ bindings. This
-organization combines the computational efficiency of a strongly typed compiled
-language with the convenience and flexibility of a dynamically typed scripting
-language in a strikingly uniform and very maintainable way.
-
-Use of the Python interfaces is highly recommended, but optional. The cctbx can
-also be used purely as a C++ class library.
-
 .. contents:: Table of Contents
 
 High level organization
