@@ -58,18 +58,23 @@ def params_from_phil(args):
 
 def run(params):
   counter = 0
-  reference = None
   root=params.input_path
   fig_object = plt.figure()
   good_total = fail_total = 0
+  all_psanats = []
+  all_deltas = []
+  fail_deltas = []
+  good_deltas = []
   for filename in os.listdir(root):
     if os.path.splitext(filename)[1] != '.txt': continue
     if 'debug' not in filename: continue
+    reference = None
     fail_timepoints = []
     good_timepoints = []
     rank = int(filename.split('_')[1].split('.')[0])
     counter += 1
     print (filename)
+    run_timepoints = []
     for line in open(os.path.join(root,filename)):
       try:
         hostname, psanats, ts, status, result = line.strip().split(',')
@@ -78,13 +83,20 @@ def run(params):
       if reference is None:
         sec, ms = reverse_timestamp(ts)
         reference = sec+ms*1e-3
+        run_timepoints.append(0)
+        assert status not in ['stop','done','fail']
 
       if status in ['stop','done','fail']:
         sec, ms = reverse_timestamp(ts)
+        run_timepoints.append((sec + ms*1.e-3)-reference)
         if status == 'done':
           good_timepoints.append((sec + ms*1.e-3)-reference)
+          good_deltas.append(good_timepoints[-1] - run_timepoints[-2])
         else:
           fail_timepoints.append((sec + ms*1.e-3)-reference)
+          fail_deltas.append(fail_timepoints[-1] - run_timepoints[-2])
+        all_psanats.append(psanats)
+        all_deltas.append(run_timepoints[-1] - run_timepoints[-2])
         ok = True
       else:
         ok = False
@@ -97,8 +109,6 @@ def run(params):
       plt.plot([(sec+ms*1e-3) - reference], [rank], 'rx')
     #if counter > 100: break
 
-  fail_deltas = [fail_timepoints[i+1] - fail_timepoints[i] for i in range(len(fail_timepoints)-1)]
-  good_deltas = [good_timepoints[i+1] - good_timepoints[i] for i in range(len(good_timepoints)-1)]
   if fail_deltas: print("Five number summary of %d fail image processing times:"%fail_total, five_number_summary(flex.double(fail_deltas)))
   if good_deltas: print("Five number summary of %d good image processing times:"%good_total, five_number_summary(flex.double(good_deltas)))
 
