@@ -826,6 +826,7 @@ class AdvancedSettingsDialog(BaseDialog):
     if self.mp_option.ctr.GetStringSelection() == 'local':
       self.queue.Hide()
       self.nnodes.Hide()
+      self.nproc.Show()
       self.nproc_per_node.Hide()
       self.env_script.Hide()
       self.htcondor_executable_path.Hide()
@@ -859,6 +860,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.staging_help.Show()
     elif self.mp_option.ctr.GetStringSelection() == 'htcondor':
       self.queue.Hide()
+      self.nproc.Show()
       self.nnodes.Hide()
       self.nproc_per_node.Hide()
       self.env_script.Show()
@@ -875,8 +877,10 @@ class AdvancedSettingsDialog(BaseDialog):
       self.staging_help.Hide()
     else:
       self.queue.Show()
+      self.nproc.Show()
       self.nnodes.Hide()
-      self.nproc_per_node.Show()
+      self.nproc_per_node.Hide()
+      self.wall_time.Hide()
       self.env_script.Show()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
@@ -930,6 +934,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.params.dispatcher = self.custom_dispatcher.ctr.GetValue()
 
     self.params.mp.method = self.mp_option.ctr.GetStringSelection()
+    self.params.mp.nproc = int(self.nproc.ctr.GetValue())
 
     if self.params.facility.name == 'lcls' and self.params.mp.method == "lsf":
       self.params.mp.queue = self.queue.ctr.GetStringSelection()
