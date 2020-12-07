@@ -630,6 +630,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                ctrl_max=1000)
     self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
 
+    
     self.nnodes = gctr.SpinCtrl(self,
                                 label='Total number of nodes:',
                                 label_size=(240, -1),
@@ -688,6 +689,44 @@ class AdvancedSettingsDialog(BaseDialog):
     self.main_sizer.Add(self.mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Shifter-specific settings
+
+    self.shifter_nnodes_box = wx.StaticBox(self, label='Nodes per job')
+    self.shifter_nnodes_sizer = wx.StaticBoxSizer(self.shifter_nnodes_box, wx.HORIZONTAL)
+
+    self.nnodes_index = gctr.SpinCtrl(self,
+                                      label='Indexing:',
+                                      label_size=(80, -1),
+                                      label_style='normal',
+                                      ctrl_size=(100, -1),
+                                      ctrl_value='%d'%(params.mp.nnodes_index or 1),
+                                      ctrl_min=1,
+                                      ctrl_max=1000)
+    self.shifter_nnodes_sizer.Add(self.nnodes_index, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.nnodes_scale = gctr.SpinCtrl(self,
+                                      label='Scaling:',
+                                      label_size=(80, -1),
+                                      label_style='normal',
+                                      ctrl_size=(100, -1),
+                                      ctrl_value='%d'%(params.mp.nnodes_scale or 1),
+                                      ctrl_min=1,
+                                      ctrl_max=1000)
+    self.shifter_nnodes_sizer.Add(self.nnodes_scale, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.nnodes_merge = gctr.SpinCtrl(self,
+                                      label='Merging:',
+                                      label_size=(80, -1),
+                                      label_style='normal',
+                                      ctrl_size=(100, -1),
+                                      ctrl_value='%d'%(params.mp.nnodes_merge or 1),
+                                      ctrl_min=1,
+                                      ctrl_max=1000)
+    self.shifter_nnodes_sizer.Add(self.nnodes_merge, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.mp_sizer.Add(self.shifter_nnodes_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+
+
     self.shifter_image = gctr.TextButtonCtrl(self,
                                              label='Shifter image:',
                                              label_style='bold',
@@ -832,6 +871,10 @@ class AdvancedSettingsDialog(BaseDialog):
       self.env_script.Hide()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
+      self.shifter_nnodes_box.Hide()
+      self.nnodes_index.Hide()
+      self.nnodes_scale.Hide()
+      self.nnodes_merge.Hide()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
       self.shifter_sbatch_template.Hide()
@@ -850,6 +893,10 @@ class AdvancedSettingsDialog(BaseDialog):
       self.env_script.Hide()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
+      self.nnodes_index.Show()
+      self.nnodes_scale.Show()
+      self.nnodes_merge.Show()
+      self.shifter_nnodes_box.Show()
       self.shifter_image.Show()
       self.shifter_srun_template.Show()
       self.shifter_sbatch_template.Show()
@@ -868,6 +915,10 @@ class AdvancedSettingsDialog(BaseDialog):
       self.env_script.Show()
       self.htcondor_executable_path.Show()
       self.htcondor_filesystemdomain.Show()
+      self.nnodes_index.Hide()
+      self.nnodes_scale.Hide()
+      self.nnodes_merge.Hide()
+      self.shifter_nnodes_box.Hide()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
       self.shifter_sbatch_template.Hide()
@@ -886,6 +937,10 @@ class AdvancedSettingsDialog(BaseDialog):
       self.env_script.Show()
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
+      self.nnodes_index.Hide()
+      self.nnodes_scale.Hide()
+      self.nnodes_merge.Hide()
+      self.shifter_nnodes_box.Hide()
       self.shifter_image.Hide()
       self.shifter_srun_template.Hide()
       self.shifter_sbatch_template.Hide()
@@ -944,6 +999,9 @@ class AdvancedSettingsDialog(BaseDialog):
       if self.mp_option.ctr.GetStringSelection() == 'shifter':
         self.params.mp.queue = self.queue.ctr.GetValue()
         self.params.mp.nnodes = int(self.nnodes.ctr.GetValue())
+        self.params.mp.nnodes_index = int(self.nnodes_index.ctr.GetValue())
+        self.params.mp.nnodes_scale = int(self.nnodes_scale.ctr.GetValue())
+        self.params.mp.nnodes_merge = int(self.nnodes_merge.ctr.GetValue())
         self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
         self.params.mp.wall_time = int(self.wall_time.ctr.GetValue())
       else:
@@ -961,7 +1019,6 @@ class AdvancedSettingsDialog(BaseDialog):
     # Copy shfiter settings into the shifter phil
     self.params.mp.shifter.sbatch_script_template = self.shifter_sbatch_template.ctr.GetValue() \
       if len(self.shifter_sbatch_template.ctr.GetValue()) > 0 else None
-
     self.params.mp.shifter.shifter_image = self.shifter_image.ctr.GetValue() \
       if len(self.shifter_image.ctr.GetValue()) > 0 else None
     self.params.mp.shifter.srun_script_template = self.shifter_srun_template.ctr.GetValue() \
