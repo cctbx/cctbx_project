@@ -2378,6 +2378,318 @@ class map_model_manager(object):
 
   # Methods for recombining models
 
+  def rmsd_of_matching_residues(self,
+      target_model_id = 'model',
+      matching_model_id = None,
+      target_model = None,
+      matching_model = None,
+      max_dist = None,
+      chain_type = None,
+      atom_name = None,
+      element = None,
+      ca_only = True,
+      quiet = True):
+    '''
+    Get rmsd of all or ca(P) atoms in matching residues
+    '''
+    from libtbx import adopt_init_args
+    kw_obj = group_args()
+    adopt_init_args(kw_obj, locals())
+    all_kw = kw_obj() # save calling parameters in kw as dict
+    del all_kw['adopt_init_args'] # REQUIRED
+    del all_kw['kw_obj']  # REQUIRED
+    del all_kw['ca_only']  # REQUIRED
+
+    matching_info = self.select_matching_segments(
+      max_gap = 0,
+      one_to_one = True,
+      **all_kw)
+
+    target_model = matching_info.target_model
+    matching_model = matching_info.matching_model
+    chain_type = matching_info.chain_type
+    atom_name = matching_info.atom_name
+    element = matching_info.element
+
+    if (not atom_name) or (not element):
+      if chain_type.upper() == "PROTEIN":
+        atom_name = 'CA'
+        element = 'C'
+        if max_dist is None:
+          max_dist = max(self.resolution(), 3.)
+      else:
+        atom_name = 'P'
+        element = 'P'
+    if ca_only:
+      target_model = target_model.apply_selection_string(
+        "name %s and element %s" %(atom_name, element))
+      matching_model = matching_model.apply_selection_string(
+        "name %s and element %s" %(atom_name, element))
+      # use CA
+    elif (target_model.get_sites_cart().size() != \
+         matching_model.get_sites_cart().size() )  or ( not
+       target_model.get_hierarchy().atoms().extract_name().all_eq(
+       matching_model.get_hierarchy().atoms().extract_name())):
+      if self.verbose:
+        for x,y in zip(
+          target_model.get_hierarchy().atoms().extract_name(),
+          matching_model.get_hierarchy().atoms().extract_name()):
+          print(x,y, file = self.log)
+
+      print("Target and matching model do not have the same atoms...cannot",
+        "use ca_only=False in rmsd_of_matching_residues", file = self.log)
+      return None
+
+    target_sites = target_model.get_sites_cart()
+    matching_sites = matching_model.get_sites_cart()
+    if target_sites.size() != matching_sites.size():
+      return None
+    else:
+      diffs = target_sites - matching_sites
+      return diffs.rms_length()
+
+
+
+  def select_matching_segments(self,
+      target_model_id = 'model',
+      matching_model_id = None,
+      target_model = None,
+      matching_model = None,
+      max_dist = None,
+      max_gap = 5,
+      chain_type = None,
+      atom_name = None,
+      element = None,
+      one_to_one = False,
+      quiet = True):
+    '''
+    Select the parts of matching_model that best match target_model
+    without using matching model or target model more than once
+
+    Allow gaps of up to max_gap (and keep residues in the gaps)
+
+    If one-to-one, then select only residues in each that match the other
+    '''
+
+    if one_to_one:
+       max_gap = 0
+
+    if not target_model:
+      target_model = self.get_model_by_id(target_model_id)
+    if not matching_model:
+      matching_model = self.get_model_by_id(matching_model_id)
+    if not target_model or not matching_model:
+      print("No models to match", file = self.log)
+      assert target_model and matching_model # target_model and matching_model
+
+    if not quiet:
+      print("\nFinding parts of %s that match %s " %(
+       matching_model_id, target_model_id), file = self.log)
+
+    # Get the chain type
+    if chain_type is None:
+      from iotbx.bioinformatics import get_chain_type
+      try:
+        chain_type = get_chain_type(model = target_model)
+      except Exception as e:
+       chain_type = None
+    if not chain_type:
+      print("Unable to identify chain_type of '%s' ... please set chain_type" %(
+        target_model_id), file = self.log)
+      assert chain_type # need to set chain type
+
+    if not atom_name or not element:
+      if chain_type.upper() == "PROTEIN":
+        atom_name = 'CA'
+        element = 'C'
+        if max_dist is None:
+          max_dist = max(self.resolution(), 3.)
+      else:
+        atom_name = 'P'
+        element = 'P'
+      if max_dist is None:
+        max_dist = max(self.resolution(), 7.)
+
+    # Select the atoms to try and match
+    target_model_ca = target_model.apply_selection_string(
+      "name %s and element %s" %(atom_name, element))
+    matching_model_ca = matching_model.apply_selection_string(
+      "name %s and element %s" %(atom_name, element))
+    matching_cb_as_list=self.match_cb_to_ca(
+      ca_sites=target_model_ca.get_sites_cart(),
+      cb_as_list = list(matching_model_ca.get_sites_cart()),
+      max_dist = max_dist,)
+
+    cb_sites_list = list(matching_model_ca.get_sites_cart())
+    cb_atoms = list (matching_model_ca.get_hierarchy().atoms())
+    cb_atoms_dict = {}
+    for cb_site, cb_atom in zip(cb_sites_list,cb_atoms):
+     cb_atoms_dict[cb_site] = cb_atom
+
+
+    chain_dict = {}
+    for cb_site in matching_cb_as_list:
+      if not cb_site:  continue
+      cb = cb_atoms_dict[cb_site]
+      chain_id = cb.parent().parent().parent().id
+      resseq = cb.parent().parent().resseq_as_int()
+      if not chain_id in chain_dict: chain_dict[chain_id] = []
+      chain_dict[chain_id].append(resseq)
+    selection_string = self.get_selection_string_from_chain_dict(
+     chain_dict= chain_dict, max_gap = max_gap)
+
+    matched = matching_model.apply_selection_string(selection_string)
+
+    if one_to_one:  # do it backwards to filter residues only in one
+      backwards_info = self.select_matching_segments(
+        target_model = matched,
+        matching_model = target_model,
+        max_gap = 0,
+        one_to_one = False,
+        chain_type = chain_type,
+        atom_name = atom_name,
+        element = element,
+        quiet = quiet,
+         )
+      if not quiet:
+        print(
+         "%s model has %s residues used to exactly match %s residues in %s" %(
+         matching_model_id,
+          matched.get_hierarchy().overall_counts().n_residues,
+          backwards_info.matching_model.get_hierarchy(
+             ).overall_counts().n_residues,
+          target_model_id), file = self.log)
+      return group_args(
+        target_model = backwards_info.matching_model,
+        matching_model = matched,
+        chain_type = chain_type,
+        atom_name = atom_name,
+        element = element)
+
+    if matching_model_id:
+      if not quiet:
+        print("%s model has %s residues used to match the %s residues in %s" %(
+          matching_model_id,
+          matched.get_hierarchy().overall_counts().n_residues,
+          target_model.get_hierarchy().overall_counts().n_residues,
+          target_model_id), file = self.log)
+
+
+    return group_args(
+      group_args_type = 'target and matching residues from other',
+        target_model = target_model,
+        matching_model = matched,
+        chain_type = chain_type,
+        atom_name = atom_name,
+        element = element)
+
+  def get_selection_string_from_chain_dict(self,
+     chain_dict = None,
+     max_gap = None):
+   '''
+     Return a selection string for the segments represented in chain_dict,
+     allowing gaps of up to max-gap (fill them in)
+   '''
+   selection_string_list = []
+   for chain_id in chain_dict.keys():
+     resseq_list = chain_dict[chain_id]
+     resseq_list.sort()
+     groups = []
+     previous_resseq = None
+     first_resseq = None
+     for resseq,next_resseq in zip(resseq_list,resseq_list[1:]+[None]):
+       if previous_resseq is None:
+         first_resseq = resseq
+
+       if next_resseq is None or next_resseq > resseq + max_gap: # break
+         groups.append(
+           group_args(first_resseq = first_resseq, last_resseq= resseq))
+         previous_resseq = None
+       else:
+         previous_resseq = resseq
+     for group in groups:
+       selection_string_list.append("(chain %s and resseq %s:%s)" %(
+          chain_id, group.first_resseq, group.last_resseq))
+   return " or ".join(selection_string_list)
+
+
+  def choose_best_set(self,dd):
+    # dd is a dict
+    # values for dd are lists of group args, each has a member value of dist
+    #   and a member value of id.  Choose the one that has the smallest dist
+    for key in dd.keys():
+      groups = dd[key]
+      best_group = None
+      for group in groups:
+        if best_group is None or group.dist < best_group.dist:
+          best_group = group
+      dd[key] = best_group
+
+    # Now remove any duplicate id's
+    target_id = self.duplicate_id(dd)
+    while target_id:
+      duplicate_list = []
+      for key in dd.keys():
+        if dd[key] and dd[key].id == target_id:
+          duplicate_list.append(key)
+      assert duplicate_list
+      best_key = None
+      for key in duplicate_list:
+        if not best_key or dd[key].dist < dd[best_key].dist:
+          best_key = key
+      for key in duplicate_list:
+        if key != best_key:
+          dd[key] = None
+      target_id = self.duplicate_id(dd)
+    return dd
+
+  def duplicate_id(self,dd):
+    id_list = []
+    for key in dd.keys():
+      if dd[key]:
+        id = dd[key].id
+        if not id in id_list:
+          id_list.append(id)
+        else:
+          return id
+    return None
+
+  def match_cb_to_ca(self, ca_sites=None, cb_as_list = None,
+     max_dist = 2.,):
+    cb_dict = {}
+    ca_dict = {}
+    for cb in cb_as_list:
+      if cb is not None and cb != (-9999, -9999, -9999):
+        cb_sites = flex.vec3_double()
+        cb_sites.append(cb)
+        dist, id1, id2 = cb_sites.min_distance_between_any_pair_with_id(
+          ca_sites)
+        ca = ca_sites[id2]
+        if not (ca in cb_dict.keys()):
+          cb_dict[ca] = []
+        cb_dict[ca].append(group_args(dist=dist,id=cb))
+        if not cb in ca_dict.keys():
+          ca_dict[cb] = []
+        ca_dict[cb].append(group_args(dist=dist,id = ca))
+    cb_dict=self.choose_best_set(cb_dict)
+    ca_dict=self.choose_best_set(ca_dict)
+    cb_as_list = []
+    i=-1
+    for ca in ca_sites:
+      i+=1
+      if cb_dict.get(ca):
+        cb_as_list.append(cb_dict[ca].id)
+      else:
+        cb_as_list.append(None)
+
+    return cb_as_list
+
+
+
+
+
+
+
   def propagate_model_from_other(self, other,
      model_id = 'model',
      other_model_id = 'model'):
@@ -6463,22 +6775,6 @@ class map_model_manager(object):
 
 
   # General methods
-
-  def set_crystal_symmetry_to_p1(self):
-    '''
-      Change the working crystal symmetry to P1
-      This changes all maps and models in place
-      Do a deep_copy first if you do not want them changed
-    '''
-    print("\nSetting working crystal symmetry to P1 so "+
-       "that edges can be masked", file = self.log)
-
-    for map_manager in self.map_managers():
-      map_manager.set_crystal_symmetry_of_partial_map(
-      space_group_number = 1)
-
-    for model in self.models():
-      self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(model)
 
   def set_original_origin_grid_units(self, original_origin_grid_units = None):
     '''

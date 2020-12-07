@@ -303,6 +303,7 @@ class manager(object):
   def from_sites_cart(cls,
       sites_cart,
       atom_name=' CA ',
+      atom_name_list = None,
       resname='GLY',
       chain_id='A',
       b_iso=30.,
@@ -311,6 +312,8 @@ class manager(object):
       count=0,
       occ_list=None,
       scatterer='C',
+      scatterer_list = None,
+      resseq_list = None,
       crystal_symmetry=None):
     assert sites_cart is not None
     hierarchy = iotbx.pdb.hierarchy.root()
@@ -323,23 +326,39 @@ class manager(object):
       b_iso_list=sites_cart.size()*[b_iso]
     if not occ_list:
       occ_list=sites_cart.size()*[occ]
+    if not atom_name_list:
+      atom_name_list = sites_cart.size()*[atom_name]
+    if not scatterer_list:
+      scatterer_list = sites_cart.size()*[scatterer]
+
     assert len(occ_list) == len(b_iso_list) == sites_cart.size()
-    for sc, b_iso, occ in zip(sites_cart,b_iso_list,occ_list):
+    if not resseq_list:
+       resseq_list = []
+       for i in range(1,sites_cart.size()+1):
+         resseq_list.append(iotbx.pdb.resseq_encode(i))
+
+    last_resseq=None
+    for sc, b_iso, occ, name, resseq, scatterer in zip(
+        sites_cart,b_iso_list,occ_list,atom_name_list, resseq_list,
+        scatterer_list):
       count+=1
-      rg=iotbx.pdb.hierarchy.residue_group()
-      c.append_residue_group(rg)
+      if last_resseq is None or resseq != last_resseq:
+        rg=iotbx.pdb.hierarchy.residue_group()
+        c.append_residue_group(rg)
       ag=iotbx.pdb.hierarchy.atom_group()
       rg.append_atom_group(ag)
       a=iotbx.pdb.hierarchy.atom()
       ag.append_atom(a)
-      rg.resseq = iotbx.pdb.resseq_encode(count)
+      rg.resseq = resseq
       ag.resname=resname
       a.set_b(b_iso)
       a.set_element(scatterer)
       a.set_occ(occ)
-      a.set_name(atom_name)
+      a.set_name(name)
       a.set_xyz(sc)
       a.set_serial(count)
+      last_resseq = resseq
+
     return cls(model_input = None, pdb_hierarchy=hierarchy,
        crystal_symmetry=crystal_symmetry)
 
