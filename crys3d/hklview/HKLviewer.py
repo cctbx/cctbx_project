@@ -152,9 +152,9 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.mousespeed_labeltxt = QLabel()
     self.mousespeed_labeltxt.setText("Mouse speed:")
     self.mousemoveslider = QSlider(Qt.Horizontal)
-    self.mousemoveslider.setMinimum(0)
+    self.mousemoveslider.setMinimum(2)
     self.mousemoveslider.setMaximum(200)
-    self.mousemoveslider.setValue(0)
+    self.mousemoveslider.setValue(2)
     self.mousemoveslider.sliderReleased.connect(self.onFinalMouseSensitivity)
     self.mousemoveslider.valueChanged.connect(self.onMouseSensitivity)
     self.mousesensitxtbox = QLineEdit('')
@@ -299,6 +299,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
     #self.resize(QSize(self.FileInfoBox.size().width()*2, self.size().height() ))
     self.functionTabWidget.setDisabled(True)
+    self.window.statusBar().showMessage("Waffle Wibble")
     self.window.show()
 
 
@@ -594,6 +595,9 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
           if self.infodict.get("NewMillerArray"):
             self.NewMillerArray = self.infodict.get("NewMillerArray",False)
+
+          if self.infodict.get("StatusBar"):
+            self.window.statusBar().showMessage( self.infodict.get("StatusBar", "") )
 
           if self.infodict.get("ColourChart") and self.infodict.get("ColourPowerScale"):
             self.ColourMapSelectDlg.selcolmap = self.infodict.get("ColourChart",False)

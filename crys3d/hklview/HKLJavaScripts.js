@@ -317,6 +317,24 @@ function ReturnClipPlaneDistances()
   WebsockSendMsg('ReturnClipPlaneDistances:\n' + msg );
 }
 
+async function RotateComponents(r, inc) {
+  while (inc < 10)
+  {
+    //sleep(100); //then(() => {
+    //await sleep(100);
+    var e = new NGL.Euler(inc, 0, 0);
+    var m = new NGL.Matrix4();
+    m.makeRotationFromEuler(e);
+    shapeComp.setTransform(m);
+    //RenderRequest();
+    stage.viewer.requestRender();
+    msg = String(shapeComp.matrix.elements);
+    WebsockSendMsg('CurrentComponentRotation:\n' + msg);
+    await sleep(100);
+    inc = inc + 0.02;
+  }
+}
+
 
 async function RenderRequest()
 {
@@ -657,31 +675,56 @@ function onMessage(e)
       stage.mouseControls.add("scroll-shift", NGL.MouseActions.scrollShift);
     }
 
-    if (msgtype === "RotateStage")
-    {
-      WebsockSendMsg( 'Rotating stage ' + pagename );
+    if (msgtype === "RotateStage") {
+      WebsockSendMsg('Rotating stage ' + pagename);
 
       var sm = new Float32Array(9);
       var m4 = new NGL.Matrix4();
 
-      for (j=0; j<9; j++)
+      for (j = 0; j < 9; j++)
         sm[j] = parseFloat(val[j]);
 
       // GL matrices are the transpose of conventional rotation matrices
-      m4.set( sm[0], sm[3], sm[6], 0.0,
-              sm[1], sm[4], sm[7], 0.0,
-              sm[2], sm[5], sm[8], 0.0,
-              0.0,   0.0,   0.0,   1.0
+      m4.set(sm[0], sm[3], sm[6], 0.0,
+        sm[1], sm[4], sm[7], 0.0,
+        sm[2], sm[5], sm[8], 0.0,
+        0.0, 0.0, 0.0, 1.0
       );
       stage.viewerControls.orient(m4);
-      if (val[9]=="verbose")
+      if (val[9] == "verbose")
         postrotmxflag = true;
       ReturnClipPlaneDistances();
       RenderRequest();
-      sleep(100).then(()=> {
-          msg = getOrientMsg();
-          WebsockSendMsg('CurrentViewOrientation:\n' + msg );
-        }
+      sleep(100).then(() => {
+        msg = getOrientMsg();
+        WebsockSendMsg('CurrentViewOrientation:\n' + msg);
+      }
+      );
+    }
+
+    if (msgtype === "RotateComponents") {
+      WebsockSendMsg('Rotating components ' + pagename);
+
+      var sm = new Float32Array(9);
+      var m4 = new NGL.Matrix4();
+
+      for (j = 0; j < 9; j++)
+        sm[j] = parseFloat(val[j]);
+
+      // GL matrices are the transpose of conventional rotation matrices
+      m4.set(sm[0], sm[3], sm[6], 0.0,
+        sm[1], sm[4], sm[7], 0.0,
+        sm[2], sm[5], sm[8], 0.0,
+        0.0, 0.0, 0.0, 1.0
+      );
+      shapeComp.setTransform(m);
+      if (val[9] == "verbose")
+        postrotmxflag = true;
+      RenderRequest();
+      sleep(100).then(() => {
+        msg = String(shapeComp.matrix.elements);
+        WebsockSendMsg('CurrentComponentRotation:\n' + msg);
+      }
       );
     }
 
@@ -709,8 +752,28 @@ function onMessage(e)
       }
       else
       {
-        stage.spinAnimation.axis.set(r[0], r[1], r[2]);
+        //stage.spinAnimation.axis.set(r[0], r[1], r[2]);
+        //stage.animationControls.spinComponent(shapeComp, [r[0], r[1], r[2]], 0.005, 10000);
+        var inc = 0.0;
+        //while (r[0] != 0.0 || r[1] != 0.0 || r[2] != 0.0)
+        //{
+          //sleep(100); //then(() => {
+          /*var e = new NGL.Euler(inc, 0, 0);
+          var m = new NGL.Matrix4();
+          m.makeRotationFromEuler(e);
+          shapeComp.setTransform(m);
+          inc = inc + 0.01;
+          RenderRequest();
+          msg = String(shapeComp.matrix.elements);
+          WebsockSendMsg('CurrentComponentRotation:\n' + msg);
+          */
+          RotateComponents(r, inc);
+          //inc = inc + 0.1;
 
+          //}
+          //);
+        //}
+        /*
         stage.mouseControls.remove("drag-ctrl-left");
         stage.mouseControls.remove("drag-ctrl-right");
         stage.mouseControls.remove("drag-shift-left");
@@ -721,6 +784,7 @@ function onMessage(e)
         stage.mouseControls.remove("scroll-ctrl");
         stage.mouseControls.remove("scroll-shift");
         stage.setSpin(true);
+        */
       }
     }
 
@@ -1378,11 +1442,6 @@ function HKLscene()
                                     fogNear: 100, fogFar: 100 });
 
   stage.setParameters( { cameraType: camtype } );
-
-  //MakeHKL_Axis(shape);
-
-//  placeholder for spherebufferstr
-  
 
 // create tooltip element and add to the viewer canvas
   stage.viewer.container.appendChild(tooltip);

@@ -1405,6 +1405,8 @@ class hklview_3d:
       self.OrigClipFar = self.clipFar
       self.OrigClipNear = self.clipNear
       self.SetMouseSpeed( self.ngl_settings.mouse_sensitivity )
+      if self.isnewfile:
+        self.SetAutoView()
       self.isnewfile = False
 
     self.sceneisdirty = False
@@ -1532,6 +1534,7 @@ Distance: %s
     if cameradist > 0.0:
       currentRotmx = ScaleRotMx/cameradist
       cameraPosZ = cameradist
+    self.SendInfoToGUI( { "StatusBar": str(list(currentRotmx)) } )
     return cameraPosZ, currentRotmx, cameratranslation
 
 
@@ -2035,6 +2038,20 @@ Distance: %s
     if not quietbrowser:
       msg = str_rot + ", verbose\n"
     self.AddToBrowserMsgQueue("RotateStage", msg)
+
+
+  def RotateMxComponents(self, rotmx, quietbrowser=True):
+    if self.cameraPosZ is None:
+      return
+    scaleRot = rotmx * self.cameraPosZ
+    ortrot = scaleRot.as_mat3()
+    str_rot = str(ortrot)
+    str_rot = str_rot.replace("(", "")
+    str_rot = str_rot.replace(")", "")
+    msg = str_rot + ", quiet\n"
+    if not quietbrowser:
+      msg = str_rot + ", verbose\n"
+    self.AddToBrowserMsgQueue("RotateComponents", msg)
 
 
   def TranslateHKLpoints(self, h, k, l, mag):
