@@ -1,7 +1,7 @@
 
 """
 Module for querying the RCSB web server using the REST API, as described here:
-http://www.rcsb.org/pdb/software/rest.do
+https://search.rcsb.org/index.html#search-api
 
 There is some overlap with iotbx.pdb.fetch, which really should have gone here
 instead, but this module is intended to be used in higher-level automation
@@ -199,12 +199,27 @@ def chemical_id_search(resname, **kwds):
         "type": "terminal",
         "service": "text",
         "parameters": {
-          "operator": "in",
-          "negation": false,
-          "value": [
-            "%s"
-          ],
-          "attribute": "rcsb_chem_comp_container_identifiers.comp_id"
+          "attribute": "rcsb_nonpolymer_instance_feature_summary.comp_id",
+          "operator": "exact_match",
+          "value": "%s"
+        }
+      },
+      {
+        "type": "terminal",
+        "service": "text",
+        "parameters": {
+          "attribute": "rcsb_nonpolymer_instance_feature_summary.type",
+          "operator": "exact_match",
+          "value": "HAS_COVALENT_LINKAGE"
+        }
+      },
+      {
+        "type": "terminal",
+        "service": "text",
+        "parameters": {
+          "attribute": "rcsb_nonpolymer_instance_feature_summary.count",
+          "value": 0,
+          "operator": "greater_or_equal"
         }
       }
     ]
@@ -220,7 +235,8 @@ def chemical_id_search(resname, **kwds):
       }
     ]
   }
-}"""
+}
+"""
   assert (1 <= len(resname) <= 3)
   sqr = chem_comp_query % (resname)
   jsq = json.loads(sqr)
