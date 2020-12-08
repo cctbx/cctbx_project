@@ -1644,7 +1644,8 @@ class replace_with_segments_from_pdb:
     models=self.find_ss_from_pdb(params,pdb_hierarchy=pdb_hierarchy,out=out)
 
     # see if we can replace any secondary structure
-    all_replacement_models=self.replace_secondary_structure(params,models=models,
+    all_replacement_models=self.replace_secondary_structure(
+        params,models=models,
         helix_lib=helix_lib,strand_lib=strand_lib,other_lib=other_lib,
          out=out)
     replacement_model=merge_hierarchies_from_models(
@@ -2387,7 +2388,8 @@ class replace_with_segments_from_pdb:
             model.info['chain_number'],
             model.hierarchy.overall_counts().n_residues)+\
             " %d - %d) ..." %(
-           get_first_resno(model.hierarchy),get_last_resno(model.hierarchy)), file=out)
+             get_first_resno(model.hierarchy),
+             get_last_resno(model.hierarchy)), file=out)
 
         connected_groups=self.assemble_segments(params,model=model,
           other_lib=other_lib,
@@ -2422,7 +2424,8 @@ class replace_with_segments_from_pdb:
               model.info['chain_number'],
               replacement_model.hierarchy.overall_counts().n_residues) + \
              " from %d to %d:" %(
-             get_first_resno(model.hierarchy),get_last_resno(model.hierarchy)), file=out)
+             get_first_resno(model.hierarchy),
+             get_last_resno(model.hierarchy)), file=out)
         else:
           print("No replacement model found for this segment", file=out)
           all_replacement_models.append(None)
