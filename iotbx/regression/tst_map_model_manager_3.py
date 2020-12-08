@@ -192,7 +192,10 @@ def exercise(file_name, out = sys.stdout):
 
   # Create mask around edges and apply to all maps
   mam1=new_mam.deep_copy()
+  mam1.write_map('before.ccp4')
   mam1.mask_all_maps_around_edges(soft_mask_radius=8)
+  mam1.write_map('after.ccp4')
+  mam1.write_map(map_id = 'mask',file_name='mask.ccp4')
   s = (mam1.get_map_manager_by_id('mask').map_data() > 0.5)
   assert approx_equal( (s.count(True),s.size()), (1496, 2048))
 

@@ -16,6 +16,7 @@ from libtbx.test_utils import approx_equal
 from copy import deepcopy
 from cctbx import adptbx
 from mmtbx_tls_ext import tlso, uaniso_from_tls_one_group
+from iotbx.bioinformatics import get_sequence_from_hierarchy
 
 # Reserved phil scope for MapModelManager
 map_model_phil_str = '''
@@ -137,6 +138,9 @@ class map_model_manager(object):
     self._force_wrapping = wrapping
     self._warning_message = None
     self._scattering_table = None
+    self._info = group_args(
+      group_args_type = 'Information about this map_model_manager',
+      )
 
     # If no map_manager now, do not do anything and make sure there
     #    was nothing else supplied except possibly a model
@@ -466,6 +470,19 @@ class map_model_manager(object):
     '''
     self.verbose = verbose
 
+  # Methods to get and set info object (any information about this object)
+
+  def set_info(self, info):
+    self._info = info
+
+  def get_info(self, item_name = None):
+    if not item_name:
+      return self._info
+    else:
+      return self._info.get(item_name)
+
+  def add_to_info(self, item_name = None, item = None):
+    setattr(self._info,item_name, item)
 
   # Methods for printing
 
@@ -2376,7 +2393,23 @@ class map_model_manager(object):
       "%.1f A ... fraction inside changed from %.4f to %.4f" %(
      buffer_radius, fraction_old,fraction_new), file = self.log)
 
-  # Methods for recombining models
+  # Methods for recombining and manipulating models
+
+  def sequence(self,
+    model = None,
+    model_id = 'model',
+    selection_string = None,
+      ):
+    '''
+      Return sequence of model
+    '''
+    if not model:
+      model = self.get_model_by_id(model_id = model_id)
+
+    if selection_string:
+      model = model.apply_selection_string(selection_string)
+
+    return get_sequence_from_hierarchy(model.get_hierarchy())
 
   def rmsd_of_matching_residues(self,
       target_model_id = 'model',
@@ -2384,10 +2417,12 @@ class map_model_manager(object):
       target_model = None,
       matching_model = None,
       max_dist = None,
+      minimum_length = None,
       chain_type = None,
       atom_name = None,
       element = None,
       ca_only = True,
+      matching_info_list = None,
       quiet = True):
     '''
     Get rmsd of all or ca(P) atoms in matching residues
@@ -2399,12 +2434,32 @@ class map_model_manager(object):
     del all_kw['adopt_init_args'] # REQUIRED
     del all_kw['kw_obj']  # REQUIRED
     del all_kw['ca_only']  # REQUIRED
+    del all_kw['matching_info_list']  # REQUIRED
 
-    matching_info = self.select_matching_segments(
-      max_gap = 0,
-      one_to_one = True,
-      **all_kw)
+    if not matching_info_list:
+      matching_info_list = self.select_matching_segments(
+        max_gap = 0,
+        one_to_one = True,
+        **all_kw)
 
+    overall_diffs = flex.vec3_double()
+    for matching_info in matching_info_list:
+      diffs = self.get_diffs_for_matching_target_and_model(
+         matching_info = matching_info,
+         ca_only = ca_only,
+         max_dist = max_dist)
+      if diffs:
+         overall_diffs.extend(diffs)
+    if overall_diffs.size() > 0:
+      return overall_diffs.rms_length()
+    else:
+      return None
+
+  def get_diffs_for_matching_target_and_model(self,
+      matching_info = None,
+      max_dist = None,
+      ca_only = None,
+       ):
     target_model = matching_info.target_model
     matching_model = matching_info.matching_model
     chain_type = matching_info.chain_type
@@ -2446,21 +2501,21 @@ class map_model_manager(object):
       return None
     else:
       diffs = target_sites - matching_sites
-      return diffs.rms_length()
-
-
+      return diffs
 
   def select_matching_segments(self,
       target_model_id = 'model',
       matching_model_id = None,
       target_model = None,
       matching_model = None,
-      max_dist = None,
-      max_gap = 5,
       chain_type = None,
       atom_name = None,
       element = None,
+      max_dist = None,
+      minimum_length = None,
+      max_gap = 5,
       one_to_one = False,
+      residue_names_must_match = False,
       quiet = True):
     '''
     Select the parts of matching_model that best match target_model
@@ -2469,7 +2524,15 @@ class map_model_manager(object):
     Allow gaps of up to max_gap (and keep residues in the gaps)
 
     If one-to-one, then select only residues in each that match the other
+
+    If residue_names_must_match, select only residues that match by name as
+      well as position
+
+     Return a group_args object with a list of paired sements
     '''
+
+    from mmtbx.secondary_structure.find_ss_from_ca import \
+       get_first_resno,get_last_resno, get_chain_id
 
     if one_to_one:
        max_gap = 0
@@ -2515,82 +2578,198 @@ class map_model_manager(object):
       "name %s and element %s" %(atom_name, element))
     matching_model_ca = matching_model.apply_selection_string(
       "name %s and element %s" %(atom_name, element))
+
+    # Make sure we have something to work with
+    if target_model_ca.get_sites_cart() < 1:
+      print("Target model has no sites...skipping select_matching_segments",
+         file = self.log)
+      return None
+    if matching_model_ca.get_sites_cart() < 1:
+      print("Matching model has no sites...skipping select_matching_segments",
+         file = self.log)
+      return None
+
+    if residue_names_must_match:
+      ca_residue_names = get_sequence_from_hierarchy(
+        target_model_ca.get_hierarchy())
+      cb_residue_names = get_sequence_from_hierarchy(
+        matching_model_ca.get_hierarchy())
+      assert len(ca_residue_names) == target_model_ca.get_sites_cart().size()
+      assert len(cb_residue_names) == matching_model_ca.get_sites_cart().size()
+    else:
+      ca_residue_names = None
+      cb_residue_names = None
+
     matching_cb_as_list=self.match_cb_to_ca(
       ca_sites=target_model_ca.get_sites_cart(),
       cb_as_list = list(matching_model_ca.get_sites_cart()),
+      ca_residue_names = ca_residue_names,
+      cb_residue_names = cb_residue_names,
       max_dist = max_dist,)
 
     cb_sites_list = list(matching_model_ca.get_sites_cart())
     cb_atoms = list (matching_model_ca.get_hierarchy().atoms())
+
     cb_atoms_dict = {}
     for cb_site, cb_atom in zip(cb_sites_list,cb_atoms):
      cb_atoms_dict[cb_site] = cb_atom
 
+    ca_sites_list = list(target_model_ca.get_sites_cart())
+    ca_atoms = list (target_model_ca.get_hierarchy().atoms())
 
-    chain_dict = {}
-    for cb_site in matching_cb_as_list:
-      if not cb_site:  continue
-      cb = cb_atoms_dict[cb_site]
-      chain_id = cb.parent().parent().parent().id
-      resseq = cb.parent().parent().resseq_as_int()
-      if not chain_id in chain_dict: chain_dict[chain_id] = []
-      chain_dict[chain_id].append(resseq)
-    selection_string = self.get_selection_string_from_chain_dict(
-     chain_dict= chain_dict, max_gap = max_gap)
+    ca_atoms_dict = {}
+    for ca_site, ca_atom in zip(ca_sites_list,ca_atoms):
+     ca_atoms_dict[ca_site] = ca_atom
 
-    matched = matching_model.apply_selection_string(selection_string)
+    if one_to_one:   # take only matching parts and group
+      new_ca_sites_list = []
+      new_matching_cb_as_list = []
+      for ca_site, cb_site in zip(ca_sites_list,
+          matching_cb_as_list):
+        if not cb_site:  continue
+        new_ca_sites_list.append(ca_site)
+        new_matching_cb_as_list.append(cb_site)
+      ca_sites_list = new_ca_sites_list
+      matching_cb_as_list = new_matching_cb_as_list
 
-    if one_to_one:  # do it backwards to filter residues only in one
-      backwards_info = self.select_matching_segments(
-        target_model = matched,
-        matching_model = target_model,
-        max_gap = 0,
-        one_to_one = False,
-        chain_type = chain_type,
-        atom_name = atom_name,
-        element = element,
-        quiet = quiet,
-         )
-      if not quiet:
-        print(
-         "%s model has %s residues used to exactly match %s residues in %s" %(
-         matching_model_id,
-          matched.get_hierarchy().overall_counts().n_residues,
-          backwards_info.matching_model.get_hierarchy(
-             ).overall_counts().n_residues,
-          target_model_id), file = self.log)
-      return group_args(
-        target_model = backwards_info.matching_model,
-        matching_model = matched,
-        chain_type = chain_type,
-        atom_name = atom_name,
-        element = element)
+      assert len(matching_cb_as_list) == len(ca_sites_list)
 
-    if matching_model_id:
-      if not quiet:
-        print("%s model has %s residues used to match the %s residues in %s" %(
-          matching_model_id,
-          matched.get_hierarchy().overall_counts().n_residues,
-          target_model.get_hierarchy().overall_counts().n_residues,
-          target_model_id), file = self.log)
+      # Select all the residues in ca_sites_list and group by segments
+      ca_chain_dict = {}
+      for ca_site in ca_sites_list:
+        ca = ca_atoms_dict[ca_site]
+        ca_chain_id = ca.parent().parent().parent().id
+        ca_resseq = ca.parent().parent().resseq_as_int()
+        if not ca_chain_id in ca_chain_dict: ca_chain_dict[ca_chain_id] = []
+        ca_chain_dict[ca_chain_id].append(ca_resseq)
+      ca_selection_list = self.get_selection_string_from_chain_dict(
+        chain_dict= ca_chain_dict,
+        max_gap = max_gap,
+        minimum_length = minimum_length,
+        return_as_group_args_list = True)
+
+      ca_sites_groups = []
+      matching_cb_as_list_groups = []
+
+      residue_groups = []
+
+      for segment_info in ca_selection_list:
+        selection_string ="(chain %s and resseq %s:%s)" %(segment_info.chain_id,
+           segment_info.first_resseq, segment_info.last_resseq)
+        segment_model_ca = target_model_ca.apply_selection_string(
+          selection_string)
+        local_ca_sites_list = segment_model_ca.get_sites_cart()
+        local_matching_cb_as_list = [] # list of cb coordinates
+        for ca, ca_site_cart in zip(segment_model_ca.get_hierarchy().atoms(),
+           local_ca_sites_list):
+          index = ca_sites_list.index(ca_site_cart)
+          local_matching_cb_as_list.append(matching_cb_as_list[index])
+        residue_groups.append(group_args(
+          starting_ca_resseq = segment_info.first_resseq,
+          ca_sites_list = local_ca_sites_list,
+          matching_cb_as_list = local_matching_cb_as_list))
+
+    else:
+      residue_groups = [
+        group_args(
+         starting_ca_resseq = None,
+         ca_sites_list = ca_sites_list,
+         matching_cb_as_list = matching_cb_as_list)
+       ]
+    sort_list = []
+    for rg in residue_groups:
+      sort_list.append([rg.starting_ca_resseq,rg])
+    sort_list.sort()
+    residue_groups = []
+    for resseq,rg in sort_list:
+      residue_groups.append(rg)
+
+    # Sort the groups by starting numbers
+
+    # Now run through matching as groups
+
+    target_and_matching_list = []
+    for residue_group in residue_groups:
+      ca_sites_list = residue_group.ca_sites_list
+      matching_cb_as_list = residue_group.matching_cb_as_list
+      ca_chain_dict = {}
+      cb_chain_dict = {}
+      for ca_site, cb_site in zip(ca_sites_list,
+          matching_cb_as_list):
+        if not cb_site:  continue
+        cb = cb_atoms_dict[cb_site]
+        cb_chain_id = cb.parent().parent().parent().id
+        cb_resseq = cb.parent().parent().resseq_as_int()
+
+        ca = ca_atoms_dict[ca_site]
+        ca_chain_id = ca.parent().parent().parent().id
+        ca_resseq = ca.parent().parent().resseq_as_int()
+        if residue_names_must_match:
+          assert ca.parent().resname == cb.parent().resname
 
 
-    return group_args(
-      group_args_type = 'target and matching residues from other',
-        target_model = target_model,
-        matching_model = matched,
-        chain_type = chain_type,
-        atom_name = atom_name,
-        element = element)
+        if not cb_chain_id in cb_chain_dict: cb_chain_dict[cb_chain_id] = []
+        if not ca_chain_id in ca_chain_dict: ca_chain_dict[ca_chain_id] = []
+        cb_chain_dict[cb_chain_id].append(cb_resseq)
+        ca_chain_dict[ca_chain_id].append(ca_resseq)
+
+      cb_selection_string = self.get_selection_string_from_chain_dict(
+       chain_dict= cb_chain_dict, max_gap = max_gap)
+      local_matching_model = matching_model.apply_selection_string(
+         cb_selection_string)
+
+      if one_to_one:   # take only matching parts Note they may be in different orders
+        ca_selection_string = self.get_selection_string_from_chain_dict(
+          chain_dict= ca_chain_dict, max_gap = max_gap)
+        local_target_model = target_model.apply_selection_string(ca_selection_string)
+
+        target_seq = get_sequence_from_hierarchy(local_target_model.get_hierarchy())
+        matching_seq = get_sequence_from_hierarchy(local_matching_model.get_hierarchy())
+        target_seq=list(target_seq)
+        matching_seq=list(matching_seq)
+        target_seq.sort()
+        matching_seq.sort()
+        if residue_names_must_match:
+          assert target_seq == matching_seq  # same but could be different order
+      else:
+        local_target_model = target_model
+        local_matching_model = matching_model
+
+      target_and_matching = group_args(
+        group_args_type = 'target and matching residues from other',
+          id = len(target_and_matching_list),
+          target_model = local_target_model,
+          target_model_chain_id = get_chain_id(
+            local_target_model.get_hierarchy()),
+          target_model_start_resseq = get_first_resno(
+            local_target_model.get_hierarchy()),
+          target_model_end_resseq = get_last_resno(
+            local_target_model.get_hierarchy()),
+          matching_model = local_matching_model,
+          matching_model_chain_id = get_chain_id(
+            local_matching_model.get_hierarchy()),
+          matching_model_start_resseq = get_first_resno(
+            local_matching_model.get_hierarchy()),
+          matching_model_end_resseq = get_last_resno(
+            local_matching_model.get_hierarchy()),
+          chain_type = chain_type,
+          atom_name = atom_name,
+          element = element)
+      target_and_matching_list.append(target_and_matching)
+    return target_and_matching_list
 
   def get_selection_string_from_chain_dict(self,
      chain_dict = None,
-     max_gap = None):
+     max_gap = None,
+     minimum_length = None,
+     return_as_group_args_list = False):
    '''
      Return a selection string for the segments represented in chain_dict,
      allowing gaps of up to max-gap (fill them in)
+     Require minimum_length if set
    '''
    selection_string_list = []
+   selection_group_args_list = []
    for chain_id in chain_dict.keys():
      resseq_list = chain_dict[chain_id]
      resseq_list.sort()
@@ -2601,26 +2780,49 @@ class map_model_manager(object):
        if previous_resseq is None:
          first_resseq = resseq
 
-       if next_resseq is None or next_resseq > resseq + max_gap: # break
+       if next_resseq is None or next_resseq > resseq + max_gap+1: # break
          groups.append(
            group_args(first_resseq = first_resseq, last_resseq= resseq))
          previous_resseq = None
        else:
          previous_resseq = resseq
      for group in groups:
+       if minimum_length is not None and (
+          group.last_resseq-group.first_resseq+1) < minimum_length:
+         continue
        selection_string_list.append("(chain %s and resseq %s:%s)" %(
           chain_id, group.first_resseq, group.last_resseq))
-   return " or ".join(selection_string_list)
+       selection_group_args_list.append(
+         group_args( chain_id = chain_id,
+             first_resseq = group.first_resseq,
+             last_resseq = group.last_resseq,) )
+
+   if return_as_group_args_list:
+     return selection_group_args_list
+   else:
+     return " or ".join(selection_string_list)
 
 
-  def choose_best_set(self,dd):
+  def choose_best_set(self,dd, max_dist = None):
     # dd is a dict
     # values for dd are lists of group args, each has a member value of dist
     #   and a member value of id.  Choose the one that has the smallest dist
+
+    #   ca_dict[cb].append(group_args(
+    #     dist=dist,
+    #     id = ca,
+    #     resname_id = ca_residue_names[id2], # resname of ca atom
+    #     index_id = id2,  #index of ca atom
+    #     other_resname_id = cb_residue_names[index_cb],  # name of cb atom
+    #     other_index_id =  index_cb,  #  index of cb atob
+
+
     for key in dd.keys():
       groups = dd[key]
       best_group = None
       for group in groups:
+        if (max_dist is not None) and (group.dist > max_dist):
+          continue
         if best_group is None or group.dist < best_group.dist:
           best_group = group
       dd[key] = best_group
@@ -2654,11 +2856,27 @@ class map_model_manager(object):
           return id
     return None
 
-  def match_cb_to_ca(self, ca_sites=None, cb_as_list = None,
+  def match_cb_to_ca(self,
+     ca_sites=None,
+     cb_as_list = None,
+     ca_residue_names = None,
+     cb_residue_names = None,
      max_dist = 2.,):
+
+    '''
+     Identify cb sites that match ca sites
+     If ca_residue_names and cb_residue names, require that residue names match
+    '''
+
     cb_dict = {}
     ca_dict = {}
-    for cb in cb_as_list:
+
+    if not ca_residue_names:
+      ca_residue_names = ca_sites.size() * ['CA']
+    if not cb_residue_names:
+      cb_residue_names = len(cb_as_list) * ['CA']
+    for index_cb in range(len(cb_as_list)):
+      cb = cb_as_list[index_cb]
       if cb is not None and cb != (-9999, -9999, -9999):
         cb_sites = flex.vec3_double()
         cb_sites.append(cb)
@@ -2667,27 +2885,43 @@ class map_model_manager(object):
         ca = ca_sites[id2]
         if not (ca in cb_dict.keys()):
           cb_dict[ca] = []
-        cb_dict[ca].append(group_args(dist=dist,id=cb))
+
+        if ca_residue_names[id2] != cb_residue_names[index_cb]:
+          dist = 1.e+30 # do not match them
+        cb_dict[ca].append(
+          group_args(
+            dist=dist,
+            id=cb,
+            resname_id = cb_residue_names[index_cb],  # name of cb atom
+            index_id =  index_cb,  #  index of cb atob
+            other_resname_id = ca_residue_names[id2], # resname of ca atom
+            other_index_id = id2,  #index of ca atom
+           ))
         if not cb in ca_dict.keys():
           ca_dict[cb] = []
-        ca_dict[cb].append(group_args(dist=dist,id = ca))
-    cb_dict=self.choose_best_set(cb_dict)
-    ca_dict=self.choose_best_set(ca_dict)
+        ca_dict[cb].append(group_args(
+          dist=dist,
+          id = ca,
+          resname_id = ca_residue_names[id2], # resname of ca atom
+          index_id = id2,  #index of ca atom
+          other_resname_id = cb_residue_names[index_cb],  # name of cb atom
+          other_index_id =  index_cb,  #  index of cb atob
+          ))
+    cb_dict=self.choose_best_set(cb_dict, max_dist = max_dist)
+    ca_dict=self.choose_best_set(ca_dict, max_dist = max_dist)
     cb_as_list = []
-    i=-1
-    for ca in ca_sites:
-      i+=1
-      if cb_dict.get(ca):
-        cb_as_list.append(cb_dict[ca].id)
+    if not ca_residue_names:
+      ca_residue_names = [None]*ca_sites.size()
+    for ca,ca_resname in zip(ca_sites, ca_residue_names):
+      group = cb_dict.get(ca)
+      if group:
+        cb_as_list.append(group.id)
+        assert (not ca_resname) or (ca_resname == group.resname_id and
+           ca_resname == group.other_resname_id)
       else:
         cb_as_list.append(None)
 
     return cb_as_list
-
-
-
-
-
 
 
   def propagate_model_from_other(self, other,
@@ -7168,6 +7402,7 @@ class map_model_manager(object):
 
     new_mmm._model_dict = new_model_dict
     new_mmm._map_dict = new_map_dict
+    new_mmm._info = deepcopy(self._info)
 
     self._set_default_parameters(new_mmm, name = name)
 
