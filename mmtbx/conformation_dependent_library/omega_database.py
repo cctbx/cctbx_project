@@ -2843,6 +2843,11 @@ for res_type_group, res_type_db in sorted(omega_database.items()):
       if key not in res_type_db:
         res_type_db[key] = default_values
 
+def mean(array):
+  m=0
+  for value in array:
+    m+=float(value)
+  return m/len(array)
 
 def run():
   print(omega_database["Pro_nonxpro"][(-180,-180)])
@@ -2856,10 +2861,15 @@ def run():
     print(aat)
     ideals = []
     esds = []
+    outl = None
     for key, value in item.items():
-      if value[0]=='I': continue
+      if value[0]=='I':
+        outl = value
+        continue
       ideals.append(str(value[2]))
       esds.append(str(value[3]))
+    print(outl)
+    print(mean(ideals))
     df = '%s_ideals.dat' % aat
     f=file(df, 'wb')
     f.write('\n'.join(ideals))

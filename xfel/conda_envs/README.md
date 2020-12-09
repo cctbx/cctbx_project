@@ -21,7 +21,7 @@ bootstrap.py step you should adjust nproc to suit your environment.
 $ mkdir cctbx; cd cctbx
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_environment.yml
-$ python bootstrap.py --builder=dials --use-conda=psana_environment.yml --nproc=64
+$ python bootstrap.py --builder=dials --use-conda=psana_environment.yml --nproc=64 --python=36
 $ source build/conda_setpaths.sh
 $ libtbx.python -c "import psana" # Should exit with no output
 ```

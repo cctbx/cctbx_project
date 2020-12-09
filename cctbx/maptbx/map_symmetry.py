@@ -15,8 +15,8 @@ class map_symmetry:
       map_data=None,
       map_coeffs=None,
       crystal_symmetry=None,
-      likely_map_center_locations_grid_units=None,
       ncs_object=None,
+      fourier_filter = None,
       log=sys.stdout):
     adopt_init_args(self, locals())
     self.cc=None
@@ -82,6 +82,7 @@ class map_symmetry:
         map_data=self.map_data,
         crystal_symmetry=self.crystal_symmetry,
         ncs_obj=self.ncs_object,
+        fourier_filter = self.fourier_filter,
         out=self.log)
 
     if not new_ncs_obj:

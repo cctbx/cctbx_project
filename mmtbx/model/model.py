@@ -303,6 +303,7 @@ class manager(object):
   def from_sites_cart(cls,
       sites_cart,
       atom_name=' CA ',
+      atom_name_list = None,
       resname='GLY',
       chain_id='A',
       b_iso=30.,
@@ -311,6 +312,8 @@ class manager(object):
       count=0,
       occ_list=None,
       scatterer='C',
+      scatterer_list = None,
+      resseq_list = None,
       crystal_symmetry=None):
     assert sites_cart is not None
     hierarchy = iotbx.pdb.hierarchy.root()
@@ -323,23 +326,39 @@ class manager(object):
       b_iso_list=sites_cart.size()*[b_iso]
     if not occ_list:
       occ_list=sites_cart.size()*[occ]
+    if not atom_name_list:
+      atom_name_list = sites_cart.size()*[atom_name]
+    if not scatterer_list:
+      scatterer_list = sites_cart.size()*[scatterer]
+
     assert len(occ_list) == len(b_iso_list) == sites_cart.size()
-    for sc, b_iso, occ in zip(sites_cart,b_iso_list,occ_list):
+    if not resseq_list:
+       resseq_list = []
+       for i in range(1,sites_cart.size()+1):
+         resseq_list.append(iotbx.pdb.resseq_encode(i))
+
+    last_resseq=None
+    for sc, b_iso, occ, name, resseq, scatterer in zip(
+        sites_cart,b_iso_list,occ_list,atom_name_list, resseq_list,
+        scatterer_list):
       count+=1
-      rg=iotbx.pdb.hierarchy.residue_group()
-      c.append_residue_group(rg)
+      if last_resseq is None or resseq != last_resseq:
+        rg=iotbx.pdb.hierarchy.residue_group()
+        c.append_residue_group(rg)
       ag=iotbx.pdb.hierarchy.atom_group()
       rg.append_atom_group(ag)
       a=iotbx.pdb.hierarchy.atom()
       ag.append_atom(a)
-      rg.resseq = iotbx.pdb.resseq_encode(count)
+      rg.resseq = resseq
       ag.resname=resname
       a.set_b(b_iso)
       a.set_element(scatterer)
       a.set_occ(occ)
-      a.set_name(atom_name)
+      a.set_name(name)
       a.set_xyz(sc)
       a.set_serial(count)
+      last_resseq = resseq
+
     return cls(model_input = None, pdb_hierarchy=hierarchy,
        crystal_symmetry=crystal_symmetry)
 
@@ -1196,12 +1215,44 @@ class manager(object):
       ss_ann.remove_empty_annotations(self.get_hierarchy())
     return ss_ann
 
+  def can_be_reduced_with_biomt(self):
+    if not self.ncs_constraints_present():
+      return False
+    original_nrgl = self.get_ncs_groups()
+    if len(original_nrgl) > 1:
+      return False
+    filtered_nrgl = original_nrgl.filter_ncs_restraints_group_list(
+        self.get_hierarchy(), self.get_ncs_obj())
+    if not (original_nrgl == filtered_nrgl):
+      return False
+    if not original_nrgl.check_for_max_rmsd(self.get_sites_cart(), 0.01, null_out()):
+      return False
+    return True
+
   def model_as_mmcif(self,
       cif_block_name = "default",
       output_cs = True,
       additional_blocks = None,
       align_columns = False,
-      do_not_shift_back = False):
+      do_not_shift_back = False,
+      try_reduce_with_biomt = False):
+    if try_reduce_with_biomt:
+      if not self.can_be_reduced_with_biomt():
+        return ""
+      sel, cb = self.get_ncs_groups().reduce_with_biomt(self.get_hierarchy())
+      cutted_m = self.select(sel)
+      ab = additional_blocks
+      if additional_blocks is not None:
+        ab.append(cb)
+      else:
+        ab = [cb]
+      return cutted_m.model_as_mmcif(
+          cif_block_name = cif_block_name,
+          output_cs = output_cs,
+          additional_blocks = ab,
+          align_columns = align_columns,
+          do_not_shift_back = do_not_shift_back,
+          try_reduce_with_biomt = False)
     out = StringIO()
     cif = iotbx.cif.model.cif()
     cif_block = None

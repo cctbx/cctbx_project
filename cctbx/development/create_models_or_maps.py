@@ -173,7 +173,7 @@ def generate_model(
   dm.process_model_file(file_name)
   model = dm.get_model(file_name)
 
-  if not model.crystal_symmetry():
+  if not model.crystal_symmetry() or not model.crystal_symmetry().unit_cell():
     from cctbx.maptbx.box import shift_and_box_model
     model = shift_and_box_model(model = model,
       box_cushion = box_cushion)

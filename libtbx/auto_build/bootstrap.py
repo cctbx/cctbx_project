@@ -990,7 +990,8 @@ class suitename_module(SourceModule):
 
 class reduce_module(SourceModule):
   module = 'reduce'
-  anonymous = ['svn', 'https://github.com/rlabduke/reduce.git/trunk']
+  anonymous = ['git', '-b v3.7.2',
+               'https://github.com/rlabduke/reduce.git']
 
 class king_module(SourceModule):
   module = 'king'
@@ -1902,6 +1903,7 @@ class CCIBuilder(Builder):
     'tntbx',
     'clipper',
     'eigen',
+    'reduce',
   ]
   CODEBASES_EXTRA = []
   # Copy these sources from cci.lbl.gov
@@ -1989,6 +1991,7 @@ class PhaserBuilder(CCIBuilder):
     'tntbx',
     'phaser_regression',
     'phaser',
+    'reduce',
   ]
   # Configure for these cctbx packages
   LIBTBX = [

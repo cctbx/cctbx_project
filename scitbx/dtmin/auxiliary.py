@@ -6,7 +6,7 @@ class Auxiliary:
   def get_reparameterized_parameters(self):
     "Return the vector of parameters with necessary reparameterisations performed"
     repar = self.reparameterize()
-    reparameterized_x = self.get_macrocycle_parameters()
+    reparameterized_x = self.get_macrocycle_parameters()[:] #the slicing is to ensure a deep copy
 
     if len(repar) != 0:
       for i in range(self.nmp):
@@ -65,6 +65,7 @@ class Auxiliary:
 
   def reparameterized_bounds(self):
     """Returns the reparameterized bounds"""
+    unrepar_bounds = self.bounds()
     reparameterized_bounds = self.bounds()
     repar = self.reparameterize()
 
@@ -76,9 +77,9 @@ class Auxiliary:
       for i in range(self.nmp):
         if repar[i].reparamed:
           if reparameterized_bounds[i].lower_bounded():
-            reparameterized_bounds[i].lower_on( log( reparameterized_bounds[i].lower_limit() + repar[i].offset ) )
+            reparameterized_bounds[i].lower_on(log(unrepar_bounds[i].lower_limit() + repar[i].offset))
           if reparameterized_bounds[i].upper_bounded():
-            reparameterized_bounds[i].upper_on( log( reparameterized_bounds[i].upper_limit() + repar[i].offset ) )
+            reparameterized_bounds[i].upper_on(log(unrepar_bounds[i].upper_limit() + repar[i].offset))
       return reparameterized_bounds
 
   def reparameterized_target_gradient(self):

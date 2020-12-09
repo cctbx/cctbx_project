@@ -50,7 +50,13 @@ def exercise():
         'Nc1ncnc2n(cnc12)[CH]3O[CH](CO[P](O)(=O)O[P](O)(=O)O[P](O)(O)=S)[CH](O)[CH]3O'],
     ['1MRU', 'B', 'AGS', 523.247, 'C10 H16 N5 O12 P3 S', 'PHOSPHOTHIOPHOSPHORIC ACID-ADENYLATE ESTER',
         'Nc1ncnc2n(cnc12)[CH]3O[CH](CO[P](O)(=O)O[P](O)(=O)O[P](O)(O)=S)[CH](O)[CH]3O']]
-  print("OK")
+
+def exercise_2():
+  fes_binding = rcsb_web_services.chemical_id_search("FES", xray_only=False)
+  assert len(fes_binding) > 765, len(fes_binding)
 
 if (__name__ == "__main__"):
+  # thorough_exercise()
   exercise()
+  exercise_2()
+  print("OK")

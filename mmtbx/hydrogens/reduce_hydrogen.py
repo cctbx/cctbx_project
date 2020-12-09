@@ -79,7 +79,7 @@ class place_hydrogens():
     # TODO temporary fix until the code is moved to model class
     # check if box cussion of 5 A is enough to prevent symm contacts
     cs = self.model.crystal_symmetry()
-    if cs is None:
+    if (cs is None) or (cs.unit_cell() is None):
       self.model = shift_and_box_model(model = self.model)
       model_has_bogus_cs = True
 
@@ -148,6 +148,7 @@ class place_hydrogens():
     #
     self.n_H_final = self.model.get_hd_selection().count(True)
 
+
 # ------------------------------------------------------------------------------
 
   def add_missing_H_atoms_at_bogus_position(self):
@@ -191,6 +192,8 @@ class place_hydrogens():
             if 0: print(ag.resname, missing_h)
             new_xyz = ag.atoms().extract_xyz().mean()
             hetero = ag.atoms()[0].hetero
+            segid = ag.atoms()[0].segid
+
             for mh in missing_h:
               # TODO: this should be probably in a central place
               if len(mh) < 4: mh = (' ' + mh).ljust(4)
@@ -198,7 +201,8 @@ class place_hydrogens():
                 .set_name(new_name=mh)
                 .set_element(new_element="H")
                 .set_xyz(new_xyz=new_xyz)
-                .set_hetero(new_hetero=hetero))
+                .set_hetero(new_hetero=hetero)
+                .set_segid(new_segid=segid))
 
               ag.append_atom(a)
 

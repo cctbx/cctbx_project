@@ -16,6 +16,7 @@ def run():
   test_004()
   test_005()
   test_006()
+  test_007()
 
 # ------------------------------------------------------------------------------
 
@@ -126,6 +127,12 @@ def test_006():
     Check if model without H to be placed is correctly processed
   '''
   compare_models(pdb_str = pdb_str_006)
+
+def test_007():
+  '''
+    Check if model without H to be placed is correctly processed
+  '''
+  compare_models(pdb_str = pdb_str_007)
 
 # ------------------------------------------------------------------------------
 
@@ -465,6 +472,62 @@ HETATM    3  O   HOH A 201       5.093   5.000   5.000  1.00 25.34           O
 HETATM    4  O   HOH A 202       5.286  19.260   7.818  1.00 28.43           O
 '''
 
+pdb_str_007 = '''
+data_1UBQ
+#
+_entry.id   1UBQ
+#
+_cell.entry_id           1UBQ
+_cell.length_a           50.840
+_cell.length_b           42.770
+_cell.length_c           28.950
+_cell.angle_alpha        90.00
+_cell.angle_beta         90.00
+_cell.angle_gamma        90.00
+_cell.Z_PDB              4
+#
+_symmetry.entry_id                         1UBQ
+_symmetry.space_group_name_H-M             'P 21 21 21'
+_symmetry.Int_Tables_number                19
+#
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+ATOM   594 N N   . GLY A 1 75 ? 41.165 35.531 31.898 0.25 36.31 ? 75  GLY A N   1
+ATOM   595 C CA  . GLY A 1 75 ? 41.845 36.550 32.686 0.25 36.07 ? 75  GLY A CA  1
+ATOM   596 C C   . GLY A 1 75 ? 41.251 37.941 32.588 0.25 36.16 ? 75  GLY A C   1
+ATOM   597 O O   . GLY A 1 75 ? 41.102 38.523 31.500 0.25 36.26 ? 75  GLY A O   1
+ATOM   598 H HA2 . GLY A 1 75 ? 42.768 36.603 32.393 0.25 36.07 ? 75  GLY A HA1 1
+ATOM   599 H HA1 . GLY A 1 75 ? 41.823 36.286 33.619 0.25 36.07 ? 75  GLY A HA2 1
+ATOM   600 N N   . GLY A 1 76 ? 40.946 38.472 33.757 0.25 36.05 ? 76  GLY A N   1
+ATOM   601 C CA  . GLY A 1 76 ? 40.373 39.813 33.944 0.25 36.19 ? 76  GLY A CA  1
+ATOM   602 C C   . GLY A 1 76 ? 40.031 39.992 35.432 0.25 36.20 ? 76  GLY A C   1
+ATOM   603 O O   . GLY A 1 76 ? 38.933 40.525 35.687 0.25 36.13 ? 76  GLY A O   1
+ATOM   604 O OXT . GLY A 1 76 ? 40.862 39.575 36.251 0.25 36.27 ? 76  GLY A OXT 1
+ATOM   605 H H   . GLY A 1 76 ? 41.063 38.062 34.504 0.25 36.05 ? 76  GLY A H   1
+ATOM   606 H HA2 . GLY A 1 76 ? 39.566 39.910 33.413 0.25 36.19 ? 76  GLY A HA2 1
+ATOM   607 H HA1 . GLY A 1 76 ? 41.011 40.491 33.675 0.25 36.19 ? 76  GLY A HA1 1
+HETATM 608 O O   . HOH B 2 .  ? 45.747 30.081 19.708 1.00 12.43 ? 77  HOH A O   1
+'''
 
 if (__name__ == "__main__"):
   t0 = time.time()

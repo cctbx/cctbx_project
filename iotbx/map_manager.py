@@ -817,22 +817,22 @@ class map_manager(map_reader, write_ccp4_map):
         sequence = sequence,
         solvent_content = solvent_content, )
 
-  def create_mask_around_edges(self, soft_mask_radius = None):
+  def create_mask_around_edges(self, boundary_radius = None):
     '''
       Use cctbx.maptbx.mask.create_mask_around_edges to create a mask around
       edges of map.  Does not make a soft mask.  For a soft mask,
-      follow with soft_mask(soft_mask_radius =soft_mask_radius)
+      follow with soft_mask(boundary_radius =boundary_radius)
       The radius is to define the boundary around the map.
 
       Does not apply the mask (use apply_mask_to_map etc for that)
     '''
 
-    if soft_mask_radius is None:
-      soft_mask_radius = self.resolution()
+    if boundary_radius is None:
+      boundary_radius = self.resolution()
 
     from cctbx.maptbx.mask import create_mask_around_edges as cm
     self._created_mask = cm(map_manager = self,
-      soft_mask_radius = soft_mask_radius)
+      boundary_radius = boundary_radius)
 
   def create_mask_around_atoms(self, model, mask_atoms_atom_radius = None):
     '''
@@ -1174,7 +1174,9 @@ class map_manager(map_reader, write_ccp4_map):
     return self.customized_copy(map_data = self.map_data())
 
   def customized_copy(self, map_data = None, origin_shift_grid_units = None,
-      use_deep_copy_for_map_data = True):
+      use_deep_copy_for_map_data = True,
+      crystal_symmetry_space_group_number = None,
+      wrapping = None,):
     '''
       Return a customized deep_copy of this map_manager, replacing map_data with
       supplied map_data.
@@ -1207,6 +1209,7 @@ class map_manager(map_reader, write_ccp4_map):
        NOTE: wrapping is normally copied from original map, but if new map is
        not full size then wrapping is always set to False.
 
+      If crystal_symmetry_space_group_number is specified, use it
     '''
 
     # Make a deep_copy of map_data and _created_mask unless
@@ -1248,11 +1251,17 @@ class map_manager(map_reader, write_ccp4_map):
     mm.data = map_data  # using self.data or a deepcopy (specified above)
     mm._created_mask = created_mask  # using self._created_mask or a
                                      #deepcopy (specified above)
+    if wrapping is not None:
+      mm.set_wrapping(wrapping)
+
     if not mm.is_full_size():
       mm.set_wrapping(False)
 
     # Set up _crystal_symmetry for the new object
-    mm.set_crystal_symmetry_of_partial_map() # Required and must be last
+    mm.set_crystal_symmetry_of_partial_map(
+      space_group_number = crystal_symmetry_space_group_number)
+      # Required and must be last
+
 
     # Keep track of change in shift_cart
     delta_origin_shift_grid_units = tuple([new - orig for new, orig in zip (
@@ -1268,7 +1277,6 @@ class map_manager(map_reader, write_ccp4_map):
       assert approx_equal(mm.shift_cart(),mm._ncs_object.shift_cart())
     else:
       mm._ncs_object = None
-
 
     return mm
 
@@ -1585,6 +1593,21 @@ class map_manager(map_reader, write_ccp4_map):
     #   map (shift of origin is opposite of shift applied)
     ncs_object.set_shift_cart(self.shift_cart())
 
+  def set_crystal_symmetry_to_p1(self,
+     space_group_number = 1):
+    '''
+      Change the working crystal symmetry to P1
+      This changes map in place
+      Do a deep_copy first if you do not want it changed
+      (Actually can set space group number to anything so you can set it back)
+    '''
+    print("\nSetting working crystal symmetry to P1 so "+
+       "that edges can be masked", file = self.log)
+
+    self.set_crystal_symmetry_of_partial_map(
+      space_group_number = space_group_number)
+
+
   def set_model_symmetries_and_shift_cart_to_match_map(self,model):
     '''
       Set the model original and working crystal_symmetry to match map.
@@ -1778,22 +1801,40 @@ class map_manager(map_reader, write_ccp4_map):
     if hasattr(self,'_ncs_cc'):
        return self._ncs_cc
 
-  def absolute_center_cart(self, use_assumed_end = False):
+  def absolute_center_cart(self,
+       use_assumed_end = False,
+       place_on_grid_point = False,
+       use_unit_cell_grid = False):
     '''
      Return center of map (absolute position) in Cartesian coordinates
      A little tricky because for example the map goes from 0 to nx-1, not nx
        If use_assumed_end, go to nx
      Also map could start at non-zero origin
+     If place_on_grid_point then guess the end by whether the center ends
+       on a grid point
+     If use_unit_cell_grid just find center of full unit cell
     '''
-    if use_assumed_end:
-      n_end = 0
+    if use_unit_cell_grid:  # Find center of unit cell
+      return tuple([a*0.5 for a in
+        self.unit_cell_crystal_symmetry().unit_cell().parameters()[:3] ])
+
+    elif place_on_grid_point:
+      return tuple([a*(int (0.5*n)/n + o/n)  - sc for a,n,o,sc in zip(
+        self.crystal_symmetry().unit_cell().parameters()[:3],
+        self.map_data().all(),
+        self.map_data().origin(),
+        self.shift_cart())])
+
     else:
-      n_end = 1
-    return tuple([a*(0.5*(n-n_end)/n + o/n)  - sc for a,n,o,sc in zip(
-      self.crystal_symmetry().unit_cell().parameters()[:3],
-      self.map_data().all(),
-      self.map_data().origin(),
-      self.shift_cart())])
+      if use_assumed_end:
+        n_end = 0
+      else:
+        n_end = 1
+      return tuple([a*(0.5*(n-n_end)/n + o/n)  - sc for a,n,o,sc in zip(
+        self.crystal_symmetry().unit_cell().parameters()[:3],
+        self.map_data().all(),
+        self.map_data().origin(),
+        self.shift_cart())])
 
   def map_map_cc(self, other_map_manager):
    ''' Return simple map correlation to other map_manager'''

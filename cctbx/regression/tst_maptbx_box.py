@@ -279,7 +279,7 @@ def exercise_around_model():
   import inspect
   r = inspect.getargspec(cctbx.maptbx.box.around_model.__init__)
   assert r.args  ==  ['self', 'map_manager', 'model', 'box_cushion', 'wrapping',
-      'model_can_be_outside_bounds', 'log'], r.args
+      'model_can_be_outside_bounds','stay_inside_current_map', 'log'], r.args
   r = inspect.getargspec(cctbx.maptbx.box.with_bounds.__init__)
   assert r.args  ==  ['self', 'map_manager', 'lower_bounds', 'upper_bounds', 'model',
     'wrapping', 'model_can_be_outside_bounds', 'log'], r.args

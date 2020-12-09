@@ -1922,6 +1922,9 @@ def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None,
           stop_for_unknowns = False)
     hierarchy=mm.get_hierarchy()
 
+  if hierarchy.overall_counts().n_residues == 0:
+    return ""  # nothing there
+
   if not chain_type:
     chain_type = get_chain_type(hierarchy = hierarchy)
 

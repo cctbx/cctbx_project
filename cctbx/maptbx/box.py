@@ -238,8 +238,12 @@ class with_bounds(object):
     #  Set up new map_manager. This will contain new data and not overwrite
     #   original
     #  NOTE: origin_shift_grid_units is required as bounds have changed
+
+    # Crystal symmetry is now always P1 and wrapping is False
     new_map_manager = map_manager.customized_copy(map_data = map_box,
-      origin_shift_grid_units = origin_shift_grid_units)
+      origin_shift_grid_units = origin_shift_grid_units,
+      crystal_symmetry_space_group_number = 1,
+      wrapping = False)
     if self._force_wrapping:
       # Set the wrapping of the new map if it is possible
       if (self._force_wrapping and (new_map_manager.is_full_size())) or \
@@ -323,11 +327,14 @@ class around_model(with_bounds):
     undefined.  If a box is specified that uses points outside the defined
     region, those points are set to zero.
 
-
+  Bounds:
+    if model_can_be_outside_bounds, allow model to be outside the bounds
+    if stay_inside_current_map, adjust bounds to not go outside current map
   """
   def __init__(self, map_manager, model, box_cushion,
       wrapping = None,
       model_can_be_outside_bounds = False,
+      stay_inside_current_map = None,
       log = sys.stdout):
 
     self._map_manager = map_manager
@@ -360,7 +367,8 @@ class around_model(with_bounds):
     info = get_bounds_around_model(
       map_manager = map_manager,
       model = model,
-      box_cushion = box_cushion)
+      box_cushion = box_cushion,
+      stay_inside_current_map = stay_inside_current_map)
     self.gridding_first = info.lower_bounds
     self.gridding_last = info.upper_bounds
 
@@ -472,7 +480,7 @@ class around_unique(with_bounds):
       assert map_manager.unit_cell_grid == map_manager.map_data().all()
 
     # Get crystal_symmetry
-    self.crystal_symmetry = map_manager.crystal_symmetry()
+    crystal_symmetry = map_manager.crystal_symmetry()
     # Convert to map_data
 
     from cctbx.maptbx.segment_and_split_map import run as segment_and_split_map
@@ -483,7 +491,7 @@ class around_unique(with_bounds):
     ncs_group_obj, remainder_ncs_group_obj, tracking_data  = \
       segment_and_split_map(args,
         map_data = self._map_manager.map_data(),
-        crystal_symmetry = self.crystal_symmetry,
+        crystal_symmetry = crystal_symmetry,
         ncs_obj = self._map_manager.ncs_object(),
         target_model = target_ncs_au_model,
         write_files = False,
@@ -559,7 +567,7 @@ class around_unique(with_bounds):
       map_manager.soft_mask(soft_mask_radius = resolution)
       map_manager.apply_mask()
       # Now mask around edges
-      map_manager.create_mask_around_edges(soft_mask_radius = resolution)
+      map_manager.create_mask_around_edges(boundary_radius = resolution)
       map_manager.soft_mask(soft_mask_radius = resolution)
       map_manager.apply_mask()
 
@@ -1194,11 +1202,12 @@ def get_bounds_around_model(
       map_manager = None,
       model = None,
       box_cushion = None,
+      stay_inside_current_map = None,
      ):
     '''
       Calculate the lower and upper bounds to box around a model
-      Allow bounds to go outside the available box (this has to be
-        dealt with at the boxing stage)
+      Allow bounds to go outside the available box unless
+      stay_inside_current_map (this has to be dealt with at the boxing stage)
     '''
 
     # get items needed to do the shift
@@ -1219,6 +1228,9 @@ def get_bounds_around_model(
 
     lower_bounds = [ifloor(f*n) for f, n in zip(frac_min, all_orig)]
     upper_bounds = [ iceil(f*n) for f, n in zip(frac_max, all_orig)]
+    if stay_inside_current_map:
+      lower_bounds = [ max (0,lb) for lb in lower_bounds]
+      upper_bounds = [ min (ub, n-1) for ub,n in zip(upper_bounds,all_orig)]
     return group_args(
       lower_bounds = lower_bounds,
       upper_bounds = upper_bounds,

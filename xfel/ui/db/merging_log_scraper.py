@@ -163,6 +163,8 @@ class Scraper(object):
       if 'Multiplicity' in r:
         last = last_res = 0
         for row in r['Multiplicity']:
+          if row[0]=='All':
+            break
           row_n, d_max, d_min, mult = row
           if mult >= 10:
             last = mult; last_res = (d_max + d_min) / 2

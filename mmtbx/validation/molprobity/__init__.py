@@ -11,6 +11,7 @@ from iotbx.cli_parser import CCTBXParser
 from libtbx.program_template import ProgramTemplate
 from mmtbx.rotamer import rotamer_eval
 from mmtbx.validation import validation, residue
+from mmtbx.validation import model_properties
 from mmtbx.validation import experimental
 from mmtbx.validation import rna_validate
 from mmtbx.validation import clashscore
@@ -123,6 +124,7 @@ class molprobity(slots_getstate_setstate):
     "pdb_hierarchy",
     "crystal_symmetry",
     "model_stats",
+    "model_stats_new",
     "adp_stats",
     "waters",
     "header_info",
@@ -259,8 +261,15 @@ class molprobity(slots_getstate_setstate):
           outliers_only=outliers_only,
           params=None)
     if (flags.model_stats) and (self.model is not None):
+      # keep for backwards compatibility
+      self.model_stats = model_properties.model_statistics(
+        pdb_hierarchy=pdb_hierarchy,
+        xray_structure=xray_structure,
+        all_chain_proxies=all_chain_proxies,
+        ignore_hd=(not nuclear),
+        ligand_selection=ligand_selection)
       # ligand_selection is no longer available
-      self.model_stats = self.model.composition()
+      self.model_stats_new = self.model.composition()
       self.adp_stats = self.model.adp_statistics()
     if (geometry_restraints_manager is not None) and (flags.restraints):
       assert (xray_structure is not None)
@@ -375,9 +384,9 @@ class molprobity(slots_getstate_setstate):
       if (self.waters is not None):
         make_sub_header("Suspicious water molecules", out=out)
         self.waters.show(out=out, prefix="  ")
-    if (self.model_stats is not None):
+    if (self.model_stats_new is not None):
       make_header("Model properties", out=out)
-      self.model_stats.show(out, prefix="  ")
+      self.model_stats_new.show(out, prefix="  ")
     if (self.sequence is not None):
       make_header("Sequence validation", out=out)
       self.sequence.show(out=out)
@@ -563,9 +572,9 @@ class molprobity(slots_getstate_setstate):
     return None
 
   def atoms_to_observations_ratio(self, assume_riding_hydrogens=True):
-    n_atoms = self.model_stats.result().n_atoms
+    n_atoms = self.model_stats_new.result().n_atoms
     if (assume_riding_hydrogens):
-      n_atoms -= self.model_stats.result().n_hd
+      n_atoms -= self.model_stats_new.result().n_hd
     n_refl = self.data_stats.n_refl
     assert (n_refl > 0)
     return n_atoms / n_refl

@@ -232,12 +232,14 @@ class map_reader:
       self.space_group_number=self.unit_cell_crystal_symmetry(
          ).space_group_number()
 
-  def set_crystal_symmetry_of_partial_map(self):
+  def set_crystal_symmetry_of_partial_map(self,
+     space_group_number  = None):
     '''
       This sets the crystal_symmetry of a partial map based on the
       gridding of the part of the map that is present.
-      If exactly the entire map is present, use space group of
-      current self._crystal_symmetry, otherwise use space group P1
+      If space_group_number is specified, use it. Otherwise,
+        if exactly the entire map is present, use space group of
+        current self._crystal_symmetry, otherwise use space group P1
 
       Note that self._crystal_symmetry space group might not match
       self._unit_cell_crystal_symmetry (space group of entire map) because
@@ -252,8 +254,10 @@ class map_reader:
     c = c * map_all[2]/self.unit_cell_grid[2]
 
     if tuple(map_all) == tuple(self.unit_cell_grid[:3]):
+      if space_group_number:
+        space_group_number_use=space_group_number
       # Take space group we have...
-      if self.crystal_symmetry():  # use sg of existing box crystal symmetry
+      elif self.crystal_symmetry():  # use sg of existing box crystal symmetry
         space_group_number_use=self.crystal_symmetry(
           ).space_group_number()
       else:  # otherwise take the sg of crystal symmetry of full cell
@@ -265,8 +269,6 @@ class map_reader:
     from cctbx import crystal
     self._crystal_symmetry=crystal.symmetry((a,b,c, al,be,ga),
          space_group_number_use)
-
-
 
   # Code to check for specific text in map labels limiting the use of the map
 
