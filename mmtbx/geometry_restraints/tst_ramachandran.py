@@ -420,6 +420,9 @@ phi-psi angles formed by             residual
 Ramachandran plot restraints (emsley8k): 0
 Sorted by residual:
 
+Ramachandran plot restraints (phi/psi/2): 0
+Sorted by residual:
+
 """)
 
   params.favored = 'oldfield'
@@ -493,6 +496,9 @@ Ramachandran plot restraints (Emsley): 0
 Sorted by residual:
 
 Ramachandran plot restraints (emsley8k): 0
+Sorted by residual:
+
+Ramachandran plot restraints (phi/psi/2): 0
 Sorted by residual:
 
 """)
@@ -569,6 +575,9 @@ phi-psi angles formed by             residual
     pdb=" N   ALA     7 "
 
 Ramachandran plot restraints (emsley8k): 0
+Sorted by residual:
+
+Ramachandran plot restraints (phi/psi/2): 0
 Sorted by residual:
 
 """)
