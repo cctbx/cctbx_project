@@ -282,6 +282,14 @@ class CCTBXParser(ParserBase):
       self.all_filename
     )
 
+    # --diff-params
+    # switch for writing the differences between the input PHIL files and
+    # the current defaults
+    self.add_argument(
+      '--diff-params', '--diff_params', action='store_true',
+      help='similar to --write-modified, but stops program execution after writing and always overwrites'
+    )
+
     # --overwrite
     # switch for overwriting files, takes precedence over PHIL definition
     self.add_argument(
@@ -622,15 +630,18 @@ class CCTBXParser(ParserBase):
         file=self.logger)
 
     # write differences
-    if (self.namespace.write_modified):
+    if self.namespace.write_modified or self.namespace.diff_params:
       if (phil_is_different):
+        ow = overwrite or self.namespace.diff_params
         self.data_manager.write_phil_file(
           phil_diff.as_str(), filename=self.modified_filename,
-          overwrite=overwrite)
+          overwrite=ow)
         print('  Modified PHIL parameters written to %s.' %
               self.modified_filename, file=self.logger)
       else:
         print('  No PHIL modifications to write', file=self.logger)
+      if self.namespace.diff_params:
+        sys.exit(0)
 
     # write all parameters (DataManager + Program)
     if (self.namespace.write_all):
