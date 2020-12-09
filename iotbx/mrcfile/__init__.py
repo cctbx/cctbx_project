@@ -561,9 +561,15 @@ class write_ccp4_map:
       external_origin=None, # Do not use this unless required
       output_axis_order=INTERNAL_STANDARD_ORDER,
       internal_standard_order=INTERNAL_STANDARD_ORDER,
+      replace_backslash = True,
       verbose=None,
       out=sys.stdout,
       ):
+
+    '''
+     Write mrc/ccp4 format file
+     if replace_backslash then replace backslashes in labels with forward slash
+    '''
 
 
     assert map_data  # should never be called without map_data
@@ -674,7 +680,8 @@ class write_ccp4_map:
 
     # Labels
     # Keep all limitations labels and other labels up to total of 10 or fewer
-    output_labels=select_output_labels(labels)
+    output_labels=select_output_labels(labels,
+       replace_backslash = replace_backslash)
 
     mrc.header.nlabl=len(output_labels)
     for i in range(min(10,len(output_labels))):
@@ -784,7 +791,7 @@ def create_output_labels(
   final_labels=select_output_labels(final_labels)
   return final_labels
 
-def select_output_labels(labels,max_labels=10):
+def select_output_labels(labels,max_labels=10, replace_backslash = None):
   n_limitations=0
   used_labels=[]
   for label in labels:
@@ -803,6 +810,12 @@ def select_output_labels(labels,max_labels=10):
     elif n_general < n_available:
       n_general+=1
       output_labels.append(label)
+
+  if replace_backslash:
+    new_labels = []
+    for label in output_labels:
+      new_labels.append(label.replace("\\","/"))
+    output_labels = new_labels
   return output_labels
 
 def get_standard_order(mapc,mapr,maps,internal_standard_order=None,

@@ -349,11 +349,16 @@ master_phil = libtbx.phil.parse("""
     .help = Choose mean and SD of output CCP4 map
     .short_caption = SD of output CCP4 map
 
-  output_map_labels = None
+  output_map_label = None
     .type = str
     .multiple = True
     .help = Add this label to output map
     .short_caption = Add label
+
+  remove_output_map_labels = None
+    .type = bool
+    .help = Remove all output map labels
+    .short_caption = Remove labels
 
   gui
     .help = "GUI-specific parameter required for output directory"
@@ -1098,6 +1103,14 @@ def run(args,
        not mam.map_manager().is_consistent_with_wrapping()):
       print("\nWARNING: This map is not consistent with wrapping but wrapping"+
         " is set to True",file = log)
+
+  # Adjust labels
+  if params.output_map_label:  # add it
+    for label in params.output_map_label:
+      mam.map_manager().add_label(label)
+
+  if params.remove_output_map_labels:
+    mam.map_manager().remove_labels()
 
   # Print out any notes about the output files
   print_notes(params = params, mam = mam,

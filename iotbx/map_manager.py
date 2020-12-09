@@ -677,6 +677,12 @@ class map_manager(map_reader, write_ccp4_map):
     self._print("Limitation of %s ('%s') added to map_manager" %(
       limitation, STANDARD_LIMITATIONS_DICT[limitation]))
 
+  def remove_labels(self):
+    '''
+     Remove all labels
+    '''
+    self.labels = []
+
   def add_label(self, label = None, verbose = False):
     '''
      Add a label (up to 80-character string) to write to output map.
