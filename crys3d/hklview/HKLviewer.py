@@ -132,6 +132,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
     self.actiondebug.triggered.connect(self.DebugInteractively)
+    self.actionSave_Current_Image.triggered.connect(self.onSaveImage)
     self.actionSettings.triggered.connect(self.SettingsDialog)
     self.actionExit.triggered.connect(self.window.close)
     self.actionSave_reflection_file.triggered.connect(self.onSaveReflectionFile)
@@ -1148,7 +1149,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def CreateSliceTabs(self):
-    self.SliceReflectionsBox.clicked.connect(self.onSliceReflectionsBoxclicked)
+    #self.SliceReflectionsBox.clicked.connect(self.onSliceReflectionsBoxclicked)
     self.showsliceGroupCheckbox.clicked.connect(self.showSlice)
 
     self.sliceindex = 0
@@ -1212,7 +1213,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.clipNormalBtn.clicked.connect(self.onClipPlaneChkBox)
     self.clipParallelBtn.setChecked(True)
 
-
+  '''
   def onSliceReflectionsBoxclicked(self):
     if self.unfeedback:
       return
@@ -1232,6 +1233,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
                                               NGL.fixorientation = False
                                            }
                           """)
+  '''
 
 
   def onClipPlaneChkBox(self):
@@ -1519,15 +1521,15 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.DrawReciprocUnitCellBox.clicked.connect(self.onDrawReciprocUnitCellBoxClick)
     self.unitcellslider.sliderReleased.connect(self.onUnitcellScale)
     self.reciprocunitcellslider.sliderReleased.connect(self.onReciprocUnitcellScale)
-    self.ResetViewBtn.clicked.connect(self.onResetViewBtn)
-    self.SaveImageBtn.clicked.connect(self.onSaveImageBtn)
+    #self.ResetViewBtn.clicked.connect(self.onResetViewBtn)
+    #self.SaveImageBtn.clicked.connect(self.onSaveImage)
 
 
-  def onResetViewBtn(self):
-    self.PhilToJsRender('NGL_HKLviewer.action = reset_view')
+  #def onResetViewBtn(self):
+  #  self.PhilToJsRender('NGL_HKLviewer.action = reset_view')
 
 
-  def onSaveImageBtn(self):
+  def onSaveImage(self):
     if self.cctbxpythonversion == 'cctbx.python.version: 3': # streaming image over websockets
       options = QFileDialog.Options()
       fileName, filtr = QFileDialog.getSaveFileName(self.window,

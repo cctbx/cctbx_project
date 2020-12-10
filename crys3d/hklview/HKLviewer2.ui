@@ -7,7 +7,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>600</width>
+    <width>790</width>
     <height>904</height>
    </rect>
   </property>
@@ -122,7 +122,7 @@
              </widget>
              <widget class="QTabWidget" name="functionTabWidget">
               <property name="currentIndex">
-               <number>1</number>
+               <number>4</number>
               </property>
               <widget class="QWidget" name="tab">
                <attribute name="title">
@@ -397,7 +397,7 @@
                           </widget>
                          </item>
                          <item row="0" column="1">
-                          <widget class="QDoubleSpinBox" name="hvec_spinBox_2">
+                          <widget class="QDoubleSpinBox" name="hvec_spinBox">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                              <horstretch>0</horstretch>
@@ -450,7 +450,7 @@
                           </widget>
                          </item>
                          <item row="0" column="1">
-                          <widget class="QDoubleSpinBox" name="kvec_spinBox_2">
+                          <widget class="QDoubleSpinBox" name="kvec_spinBox">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                              <horstretch>0</horstretch>
@@ -503,7 +503,7 @@
                           </widget>
                          </item>
                          <item row="0" column="1">
-                          <widget class="QDoubleSpinBox" name="lvec_spinBox_2">
+                          <widget class="QDoubleSpinBox" name="lvec_spinBox">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                              <horstretch>0</horstretch>
@@ -519,9 +519,12 @@
                     </widget>
                    </item>
                    <item row="0" column="1">
-                    <widget class="QCheckBox" name="checkBox">
+                    <widget class="QCheckBox" name="fixedorientcheckbox">
                      <property name="text">
-                      <string>Mouse rotate</string>
+                      <string>Fix orientation</string>
+                     </property>
+                     <property name="checked">
+                      <bool>true</bool>
                      </property>
                     </widget>
                    </item>
@@ -563,7 +566,7 @@
                        </widget>
                       </item>
                       <item row="0" column="1">
-                       <widget class="QDoubleSpinBox" name="hkldist_spinBox_2">
+                       <widget class="QDoubleSpinBox" name="hkldist_spinBox">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                           <horstretch>0</horstretch>
@@ -573,7 +576,7 @@
                        </widget>
                       </item>
                       <item row="0" column="4">
-                       <widget class="QDoubleSpinBox" name="clipwidth_spinBox_2">
+                       <widget class="QDoubleSpinBox" name="clipwidth_spinBox">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                           <horstretch>0</horstretch>
@@ -878,183 +881,13 @@
                   <property name="checkable">
                    <bool>true</bool>
                   </property>
-                  <layout class="QGridLayout" name="gridLayout_21" rowstretch="0,0,0,0,0">
-                   <property name="sizeConstraint">
-                    <enum>QLayout::SetDefaultConstraint</enum>
-                   </property>
+                  <layout class="QGridLayout" name="gridLayout_16">
                    <property name="leftMargin">
-                    <number>3</number>
-                   </property>
-                   <property name="topMargin">
                     <number>3</number>
                    </property>
                    <property name="rightMargin">
                     <number>3</number>
                    </property>
-                   <property name="bottomMargin">
-                    <number>3</number>
-                   </property>
-                   <item row="3" column="0">
-                    <widget class="QFrame" name="frame_6">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                       <horstretch>0</horstretch>
-                       <verstretch>1</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="frameShape">
-                      <enum>QFrame::StyledPanel</enum>
-                     </property>
-                     <property name="frameShadow">
-                      <enum>QFrame::Raised</enum>
-                     </property>
-                     <layout class="QGridLayout" name="gridLayout_18">
-                      <property name="leftMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="topMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="rightMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="bottomMargin">
-                       <number>0</number>
-                      </property>
-                      <item row="0" column="1">
-                       <widget class="QSlider" name="rotavecangle_slider">
-                        <property name="sizePolicy">
-                         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                          <horstretch>1</horstretch>
-                          <verstretch>0</verstretch>
-                         </sizepolicy>
-                        </property>
-                        <property name="maximum">
-                         <number>359</number>
-                        </property>
-                        <property name="orientation">
-                         <enum>Qt::Horizontal</enum>
-                        </property>
-                        <property name="tickPosition">
-                         <enum>QSlider::TicksAbove</enum>
-                        </property>
-                        <property name="tickInterval">
-                         <number>18</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="0">
-                       <widget class="QLabel" name="rotavecangle_labeltxt">
-                        <property name="sizePolicy">
-                         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                          <horstretch>1</horstretch>
-                          <verstretch>0</verstretch>
-                         </sizepolicy>
-                        </property>
-                        <property name="text">
-                         <string>Rotate Reflections around Vector with Angle</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </widget>
-                   </item>
-                   <item row="1" column="0">
-                    <widget class="QFrame" name="frame_4">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="frameShape">
-                      <enum>QFrame::StyledPanel</enum>
-                     </property>
-                     <property name="frameShadow">
-                      <enum>QFrame::Raised</enum>
-                     </property>
-                     <layout class="QGridLayout" name="gridLayout_8">
-                      <property name="topMargin">
-                       <number>3</number>
-                      </property>
-                      <property name="bottomMargin">
-                       <number>3</number>
-                      </property>
-                      <item row="0" column="0">
-                       <widget class="QRadioButton" name="recipvecBtn">
-                        <property name="text">
-                         <string>in Reciprocal Space Coordinates</string>
-                        </property>
-                        <property name="checked">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="1" rowspan="3">
-                       <widget class="QGroupBox" name="groupBox">
-                        <property name="title">
-                         <string>Align Vector to Screen</string>
-                        </property>
-                        <property name="checkable">
-                         <bool>true</bool>
-                        </property>
-                        <layout class="QVBoxLayout" name="verticalLayout">
-                         <property name="topMargin">
-                          <number>3</number>
-                         </property>
-                         <property name="bottomMargin">
-                          <number>3</number>
-                         </property>
-                         <item>
-                          <widget class="QRadioButton" name="clipParallelBtn">
-                           <property name="text">
-                            <string>Parallel</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QRadioButton" name="clipNormalBtn">
-                           <property name="text">
-                            <string>Perpendicular</string>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </widget>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QRadioButton" name="realspacevecBtn">
-                        <property name="text">
-                         <string>in Real Space Coordinates</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="0">
-                       <widget class="QRadioButton" name="clipTNCSBtn">
-                        <property name="text">
-                         <string>TNCS Vector in File Header</string>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </widget>
-                   </item>
-                   <item row="4" column="0">
-                    <widget class="QCheckBox" name="checkBox_4">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                       <horstretch>0</horstretch>
-                       <verstretch>1</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="text">
-                      <string>Rotate continuously</string>
-                     </property>
-                    </widget>
-                   </item>
                    <item row="0" column="0">
                     <widget class="QFrame" name="frame_7">
                      <property name="sizePolicy">
@@ -1123,7 +956,7 @@
                           </widget>
                          </item>
                          <item row="0" column="1">
-                          <widget class="QDoubleSpinBox" name="hvec_spinBox_3">
+                          <widget class="QDoubleSpinBox" name="R1_spinBox">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                              <horstretch>0</horstretch>
@@ -1176,7 +1009,7 @@
                           </widget>
                          </item>
                          <item row="0" column="1">
-                          <widget class="QDoubleSpinBox" name="kvec_spinBox_3">
+                          <widget class="QDoubleSpinBox" name="R2_spinBox">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                              <horstretch>0</horstretch>
@@ -1216,7 +1049,7 @@
                           <number>0</number>
                          </property>
                          <item row="0" column="1">
-                          <widget class="QDoubleSpinBox" name="lvec_spinBox_3">
+                          <widget class="QDoubleSpinBox" name="R3_spinBox">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                              <horstretch>0</horstretch>
@@ -1242,6 +1075,180 @@
                        </widget>
                       </item>
                      </layout>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QComboBox" name="TwinAxisComboBox">
+                     <property name="currentText">
+                      <string/>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0" colspan="2">
+                    <widget class="QFrame" name="frame_4">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="frameShape">
+                      <enum>QFrame::StyledPanel</enum>
+                     </property>
+                     <property name="frameShadow">
+                      <enum>QFrame::Raised</enum>
+                     </property>
+                     <layout class="QGridLayout" name="gridLayout_8">
+                      <property name="leftMargin">
+                       <number>3</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>3</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>3</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>3</number>
+                      </property>
+                      <item row="0" column="0">
+                       <widget class="QRadioButton" name="recipvecBtn">
+                        <property name="text">
+                         <string>in Reciprocal Space Coordinates</string>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1" rowspan="3">
+                       <widget class="QGroupBox" name="groupBox">
+                        <property name="title">
+                         <string>Align Vector to Screen</string>
+                        </property>
+                        <property name="checkable">
+                         <bool>true</bool>
+                        </property>
+                        <layout class="QVBoxLayout" name="verticalLayout">
+                         <property name="topMargin">
+                          <number>3</number>
+                         </property>
+                         <property name="bottomMargin">
+                          <number>3</number>
+                         </property>
+                         <item>
+                          <widget class="QRadioButton" name="clipParallelBtn">
+                           <property name="text">
+                            <string>Parallel</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QRadioButton" name="clipNormalBtn">
+                           <property name="text">
+                            <string>Perpendicular</string>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QRadioButton" name="realspacevecBtn">
+                        <property name="text">
+                         <string>in Real Space Coordinates</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QRadioButton" name="clipTNCSBtn">
+                        <property name="text">
+                         <string>TNCS Vector in File Header</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item row="2" column="0" colspan="2">
+                    <widget class="QFrame" name="frame_6">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                       <horstretch>0</horstretch>
+                       <verstretch>1</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="frameShape">
+                      <enum>QFrame::StyledPanel</enum>
+                     </property>
+                     <property name="frameShadow">
+                      <enum>QFrame::Raised</enum>
+                     </property>
+                     <layout class="QGridLayout" name="gridLayout_18">
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item row="0" column="1">
+                       <widget class="QSlider" name="rotavecangle_slider">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                          <horstretch>1</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="maximum">
+                         <number>359</number>
+                        </property>
+                        <property name="orientation">
+                         <enum>Qt::Horizontal</enum>
+                        </property>
+                        <property name="tickPosition">
+                         <enum>QSlider::TicksAbove</enum>
+                        </property>
+                        <property name="tickInterval">
+                         <number>18</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="0">
+                       <widget class="QLabel" name="rotavecangle_labeltxt">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                          <horstretch>1</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="text">
+                         <string>Rotate Reflections around Vector with Angle</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item row="3" column="0">
+                    <widget class="QCheckBox" name="AnimaRotCheckBox">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                       <horstretch>0</horstretch>
+                       <verstretch>1</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="text">
+                      <string>Rotate continuously</string>
+                     </property>
                     </widget>
                    </item>
                   </layout>
@@ -1417,7 +1424,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>600</width>
+     <width>790</width>
      <height>22</height>
     </rect>
    </property>

@@ -7,6 +7,7 @@ from cctbx.array_family import flex
 from cctbx import miller
 from scitbx import graphics_utils
 from scitbx import matrix
+from scitbx.linalg import eigensystem
 import scitbx.math
 from libtbx.utils import Sorry, to_str
 import threading, math, sys, cmath
@@ -434,6 +435,9 @@ class hklview_3d:
 
     if has_phil_path(diff_phil, "tooltip_alpha"):
       self.set_tooltip_opacity()
+
+    if has_phil_path(diff_phil, "symmetry_rotation_axes"):
+      self.show_rotation_axes()
 
     if has_phil_path(diff_phil, "expand_to_p1", "expand_anomalous") \
      and self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
@@ -1562,7 +1566,7 @@ Distance: %s
       # Round off matrix elements to avoid machine imprecision errors that might cast
       # any matrix element into a number strictly larger than 1 which would
       # crash r3_rotation_matrix_as_x_y_z_angles()
-      self.currentRotmx = matrix.sqr(roundoff(self.currentRotmx.elems, 9) )
+      self.currentRotmx = matrix.sqr(roundoff(self.currentRotmx.elems, 8) )
       angles = self.currentRotmx.r3_rotation_matrix_as_x_y_z_angles(deg=True)
       self.mprint("angles: %s" %str(roundoff(angles)), verbose=3)
       z_vec = flex.vec3_double( [(0,0,1)])
@@ -1708,15 +1712,20 @@ Distance: %s
       vec2 = list( vec2 * matrix.sqr(uc.fractionalization_matrix()).transpose() )
       svec1 = [ vec1[0], vec1[1], vec1[2] ]
       svec2 = [ vec2[0], vec2[1], vec2[2] ]
-    else:
+    else: # real space fractional values
       vec1 = list( vec1 * matrix.sqr(uc.orthogonalization_matrix()) )
       vec2 = list( vec2 * matrix.sqr(uc.orthogonalization_matrix()) )
       vscale =  1.0/self.scene.renderscale
       # TODO: find suitable scale factor for displaying real space vector together with reciprocal vectors
       svec1 = [ vscale*vec1[0], vscale*vec1[1], vscale*vec1[2] ]
       svec2 = [ vscale*vec2[0], vscale*vec2[1], vscale*vec2[2] ]
-    self.mprint("cartesian vector is: %s to %s" %(str(roundoff(svec1)), str(roundoff(svec2))), verbose=2)
-    svec = [svec2[0]-svec1[0], svec2[1]-svec1[1], svec2[2]-svec1[2] ]
+    self.AddCartesianVector(svec1[0], svec1[1], svec1[2], svec2[0], svec2[1], svec2[2], 
+                            label, r, g, b, name, radius )
+
+
+  def AddCartesianVector(self, s1, s2, s3, t1, t2, t3, label="", r=0, g=0, b=0, name="", radius = 0.15):
+    self.mprint("cartesian vector is: %s to %s" %(str(roundoff([s1, s2, s3])), str(roundoff([t1, t2, t3]))), verbose=2)
+    svec = [t1-s1, t2-s2, t3-s3]
     xyvec = svec[:] # deep copying
     xyvec[2] = 0.0 # projection vector of svec in the xy plane
     xyvecnorm = math.sqrt( xyvec[0]*xyvec[0] + xyvec[1]*xyvec[1] )
@@ -1746,7 +1755,7 @@ Distance: %s
     self.mprint("angles to x,y,z axis are: %s, %s, %s" %(angle_x_svec, angle_y_svec, angle_z_svec ), verbose=2)
     self.mprint("deferred rendering vector from (%s, %s, %s) to (%s, %s, %s)" %(s1, s2, s3, t1, t2, t3), verbose=2)
     self.AddToBrowserMsgQueue("AddVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
-         %tuple(svec1 + svec2 + [r, g, b, label, name, radius]) )
+         %(s1, s2, s3, t1, t2, t3, r, g, b, label, name, radius) ) 
     return angle_x_xyvec, angle_z_svec
 
 
@@ -1768,6 +1777,57 @@ Distance: %s
     self.currentRotmx = rotmx
     self.RotateMxStage(rotmx)
     return rotmx
+
+
+  def GetVectorAndAngleFromRotationMx(self, rot):
+    RotMx = matrix.sqr(rot.as_double())
+    uc = self.miller_array.unit_cell()
+    OrtMx = matrix.sqr( uc.orthogonalization_matrix())
+    InvMx = OrtMx.inverse()
+    ortrot = (OrtMx * RotMx * InvMx).as_mat3()
+    r11,r12,r13,r21,r22,r23,r31,r32,r33 = ortrot
+    theta =  math.acos((r11+r22+r33-1.0)*0.5)
+    sint = math.sin(theta)
+    e1, e2, e3 = (0,0,0)
+    eps = 0.000000001
+    # see https://en.wikipedia.org/wiki/Rotation_matrix for details
+    if abs(sint) > eps: # doesn't work if matrix is symmetric
+      s = 0.5/sint
+      e1 = (r32-r23)*s
+      e2 = (r13-r31)*s
+      e3 = (r21-r12)*s
+    else:
+      # diagonalise if matrix is symmetric to find eigenvectors
+      assert ( abs(r32- r23)<eps and abs(r13- r31)<eps and abs(r21- r12)<eps )
+      oRtmx = flex.double(ortrot)
+      oRtmx.reshape(flex.grid(3,3))
+      es = eigensystem.real_symmetric(oRtmx)
+      evalues =  list(es.values())
+      evectors = list(es.vectors())
+      for i,eval in enumerate(evalues):
+        if eval == 1.0: 
+          # eigenvector with eigenvalue=1 is the rotation axis
+          # eigenvetors come as a concatenated list of vector elements so get the i-th vector
+          e1,e2,e3 = evectors[(0+3*i):(3+3*i)]
+          break
+    return (e1,e2,e3), theta
+
+
+  def show_rotation_axes(self):
+    if self.params.symmetry_rotation_axes:
+      unique_rot_ops = self.symops[ 0 : self.sg.order_p() ] # avoid duplicate rotation matrices
+      s = self.scene.renderscale
+      for i,op in enumerate(unique_rot_ops): # skip the last op for javascript drawing purposes
+        (v, a) = self.GetVectorAndAngleFromRotationMx( op.r() )
+        if abs(a) > 0.0001 and (abs(v[0])+abs(v[1])+abs(v[2])) > 0.0001: # avoid nullvector
+          lab = "%s-fold" %str(int(roundoff(2*math.pi/a, 0)))
+          self.mprint( str(i) + ": " + str(roundoff(v)) + ", " + lab)
+          if i < len(unique_rot_ops)-1:
+            self.AddCartesianVector(0, 0, 0, s*v[0], s*v[1], s*v[2], label=lab, radius=0.2 )
+          else: # supplying name draws all these vectors 
+            self.AddCartesianVector(0, 0, 0, s*v[0], s*v[1], s*v[2], label=lab, name="SymRotAxes", radius=0.2 )
+    else:
+      self.RemoveVectors("SymRotAxes")
 
 
   def RotateAroundFracVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3), isreciprocal=False, quietbrowser=True):
