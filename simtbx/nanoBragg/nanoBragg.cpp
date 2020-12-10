@@ -1320,7 +1320,9 @@ void nanoBragg::set_dxtbx_detector_panel(const dxtbx::model::Panel& panel, const
     int fpixels_new = panel.get_image_size()[0];
     if (spixels_new != spixels || fpixels_new != fpixels){
         printf("New panel has different dimension than allocated panel!\n");
-        /* allocate all the other arrays */
+        pixel_size = panel.get_pixel_size()[0]/1000.;
+        spixels = panel.get_image_size()[1];
+        fpixels = panel.get_image_size()[0];
         init_detector();
     }
 
