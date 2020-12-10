@@ -1373,6 +1373,7 @@ nanoBragg::init_interpolator()
         }
         if(verbose>6) printf("freeing %d %ld-byte double** Fhkl at %p\n",5,sizeof(double**),sub_Fhkl);
         free(sub_Fhkl);
+        sub_Fhkl = NULL;
     }
 
     if(interpolate > 1){
