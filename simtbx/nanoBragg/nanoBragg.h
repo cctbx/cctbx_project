@@ -553,6 +553,7 @@ class nanoBragg {
     /* member functions for reconciling inter-related parameters */
     void update_oversample();   // automatic oversampling decision based on xtal size and pixel size
     void update_beamcenter();   // beam center, Xbeam, Fbeam, ORGX using selected convention
+    void set_dxtbx_detector_panel(const dxtbx::model::Panel& panel, const vec3& s0_vector);
 
     /* member functions for debugging */
     void show_phisteps();       // print out everything to screen, enumerate all phi steps
