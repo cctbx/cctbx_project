@@ -958,6 +958,11 @@ class HKLViewFrame() :
     #self.update_settings()
 
 
+  def ShowRotationAxes(self, val):
+    self.params.NGL_HKLviewer.symmetry_rotation_axes = val
+    self.update_settings()
+
+
   def ShowUnitCell(self, val):
     self.params.NGL_HKLviewer.show_real_space_unit_cell = val
     self.update_settings()
@@ -1132,6 +1137,8 @@ NGL_HKLviewer {
   using_space_subgroup = False
     .type = bool
   mouse_moved = False
+    .type = bool
+  symmetry_rotation_axes = False
     .type = bool
   real_space_unit_cell_scale_fraction = None
     .type = float
