@@ -45,6 +45,8 @@ class reflection_filter(worker):
     new_experiments = ExperimentList()
     new_reflections = flex.reflection_table()
 
+    kap = 'kapton_absorption_correction' in reflections
+
     for expt_id, experiment in enumerate(experiments):
       exp_reflections = reflections.select(reflections['exp_id'] == experiment.identifier)
       if not len(exp_reflections): continue
@@ -57,59 +59,73 @@ class reflection_filter(worker):
       # Ensure there is at least one bin.
       N_bins = max([min([self.params.select.significance_filter.n_bins,N_bins_small_set]), N_bins_large_set, 1])
 
+      if kap:
+        unattenuated = exp_reflections['kapton_absorption_correction'] == 1.0
+        iterable = [exp_reflections.select(unattenuated), exp_reflections.select(~unattenuated)]
+        exp_miller_indices = miller.set(target_symm, exp_reflections['miller_index'], True)
+        exp_observations = miller.array(exp_miller_indices, exp_reflections['intensity.sum.value'], flex.sqrt(exp_reflections['intensity.sum.variance']))
+        binner = exp_observations.setup_binner(n_bins = N_bins)
+        N_bins = None
+      else:
+        iterable = [exp_reflections]
+
       #print ("\nN_obs_pre_filter %d"%N_obs_pre_filter)
       #print >> out, "Total obs %d Choose n bins = %d"%(N_obs_pre_filter,N_bins)
       #if indices_to_edge is not None:
       #  print >> out, "Total preds %d to edge of detector"%indices_to_edge.size()
 
-      # Build a miller array for the experiment reflections
-      exp_miller_indices = miller.set(target_symm, exp_reflections['miller_index'], True)
-      exp_observations = miller.array(exp_miller_indices, exp_reflections['intensity.sum.value'], flex.sqrt(exp_reflections['intensity.sum.variance']))
+      new_exp_reflections = flex.reflection_table()
+      for refls in iterable:
+        # Build a miller array for the experiment reflections
+        exp_miller_indices = miller.set(target_symm, refls['miller_index'], True)
+        exp_observations = miller.array(exp_miller_indices, refls['intensity.sum.value'], flex.sqrt(refls['intensity.sum.variance']))
+        if kap:
+          exp_observations.use_binning(binner)
 
-      assert exp_observations.size() == exp_reflections.size()
+        assert exp_observations.size() == refls.size()
 
-      out = StringIO()
-      bin_results = show_observations(exp_observations, out=out, n_bins=N_bins)
+        out = StringIO()
+        bin_results = show_observations(exp_observations, out=out, n_bins=N_bins)
 
-      if self.params.output.log_level == 0:
-        self.logger.log(out.getvalue())
-
-      acceptable_resolution_bins = [bin.mean_I_sigI > self.params.select.significance_filter.sigma for bin in bin_results]
-
-      acceptable_nested_bin_sequences = [i for i in range(len(acceptable_resolution_bins)) if False not in acceptable_resolution_bins[:i+1]]
-
-      if len(acceptable_nested_bin_sequences) == 0:
-        continue
-      else:
-        N_acceptable_bins = max(acceptable_nested_bin_sequences) + 1
-
-        imposed_res_filter = float(bin_results[N_acceptable_bins-1].d_range.split()[2])
         if self.params.output.log_level == 0:
-          ident = experiment.identifier
-          self.logger.log(
-            "Experiment id %d, resolution cutoff %f, experiment identifier %s\n"
-            %(expt_id, imposed_res_filter, ident)
-          )
+          self.logger.log(out.getvalue())
+
+        acceptable_resolution_bins = [bin.mean_I_sigI > self.params.select.significance_filter.sigma for bin in bin_results]
+
+        acceptable_nested_bin_sequences = [i for i in range(len(acceptable_resolution_bins)) if False not in acceptable_resolution_bins[:i+1]]
+
+        if len(acceptable_nested_bin_sequences) == 0:
+          continue
         else:
-          self.logger.log(
-            "Experiment id %d, resolution cutoff %f\n"
-            %(expt_id, imposed_res_filter)
-          )
+          N_acceptable_bins = max(acceptable_nested_bin_sequences) + 1
 
-        imposed_res_sel = exp_observations.resolution_filter_selection(d_min=imposed_res_filter)
+          imposed_res_filter = float(bin_results[N_acceptable_bins-1].d_range.split()[2])
+          if self.params.output.log_level == 0:
+            ident = experiment.identifier
+            self.logger.log(
+              "Experiment id %d, resolution cutoff %f, experiment identifier %s\n"
+              %(expt_id, imposed_res_filter, ident)
+            )
+          else:
+            self.logger.log(
+              "Experiment id %d, resolution cutoff %f\n"
+              %(expt_id, imposed_res_filter)
+            )
 
-        assert imposed_res_sel.size() == exp_reflections.size()
+          imposed_res_sel = exp_observations.resolution_filter_selection(d_min=imposed_res_filter)
 
-        new_exp_reflections = exp_reflections.select(imposed_res_sel)
+          assert imposed_res_sel.size() == refls.size()
 
-        if new_exp_reflections.size() > 0:
-          new_experiments.append(experiment)
-          new_reflections.extend(new_exp_reflections)
+          new_exp_reflections.extend(refls.select(imposed_res_sel))
 
-        #self.logger.log("N acceptable bins %d"%N_acceptable_bins)
-        #self.logger.log("Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter, exp_observations.size()))
-        #if indices_to_edge is not None:
-        #  print >> out, "Total preds %d to edge of detector"%indices_to_edge.size()
+      if new_exp_reflections.size() > 0:
+        new_experiments.append(experiment)
+        new_reflections.extend(new_exp_reflections)
+
+      #self.logger.log("N acceptable bins %d"%N_acceptable_bins)
+      #self.logger.log("Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter, exp_observations.size()))
+      #if indices_to_edge is not None:
+      #  print >> out, "Total preds %d to edge of detector"%indices_to_edge.size()
 
     removed_reflections = len(reflections) - len(new_reflections)
     removed_experiments = len(experiments) - len(new_experiments)
