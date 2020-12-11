@@ -254,7 +254,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.CreateSliceTabs()
     self.createRadiiScaleGroupBox()
     self.createBinsBox()
-    self.CreateOtherBox()
+    self.CreateVectorsBox()
     self.functionTabWidget.setDisabled(True)
 
     self.cpath = ""
@@ -580,10 +580,24 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
           if self.infodict.get("tncsvec"):
             self.tncsvec = self.infodict.get("tncsvec",[])
-          if len(self.tncsvec) == 0:
-            self.clipTNCSBtn.setDisabled(True)
-          else:
-            self.clipTNCSBtn.setEnabled(True)
+          #if len(self.tncsvec) == 0:
+          #  self.clipTNCSBtn.setDisabled(True)
+          #else:
+          #  self.clipTNCSBtn.setEnabled(True)
+
+          if self.infodict.get("rotation_operators"):
+            self.rotation_operators = self.infodict.get("rotation_operators",[])
+
+            self.vectortable2.clearContents()
+            self.vectortable2.setRowCount(len(self.rotation_operators))
+            for row, (opnr, label, v, xyzop, hklop) in enumerate(self.rotation_operators):
+              for col,elm in enumerate((opnr, label, xyzop, hklop)):
+                item = QTableWidgetItem(str(elm))
+                if col == 0:
+                  item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled ^ Qt.ItemIsEditable)
+                  item.setCheckState(Qt.Unchecked)
+                item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+                self.vectortable2.setItem(row, col, item)
 
           if self.infodict.get("file_name"):
             self.window.setWindowTitle("HKL-viewer: " + self.infodict.get("file_name", "") )
@@ -674,9 +688,9 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.ManualPowerScalecheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.nth_power_scale_radii'] >= 0.0 )
     self.radii_scale_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.scale'])
     self.showsliceGroupCheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_mode'])
-    self.hvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.h'])
-    self.kvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.k'])
-    self.lvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.l'])
+    #self.hvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.h'])
+    #self.kvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.k'])
+    #self.lvec_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.l'])
     self.expandP1checkbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.expand_to_p1'])
     self.expandAnomalouscheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.expand_anomalous'])
     self.sysabsentcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_systematic_absences'])
@@ -706,9 +720,9 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth']:
       self.clipwidth_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'])
     self.hkldist_spinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.hkldist'])
-    self.realspacevecBtn.setChecked( "realspace" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
-    self.recipvecBtn.setChecked( "reciprocal" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
-    self.clipTNCSBtn.setChecked( "tncs" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
+    #self.realspacevecBtn.setChecked( "realspace" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
+    #self.recipvecBtn.setChecked( "reciprocal" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
+    #self.clipTNCSBtn.setChecked( "tncs" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
     self.fixedorientcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.NGL.fixorientation'])
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_only_missing'])
     if self.currentphilstringdict['NGL_HKLviewer.real_space_unit_cell_scale_fraction'] is not None:
@@ -1007,11 +1021,6 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.bintableAlpha = float(item.text())
 
 
-  def onBinsTableitemClicked(self, item):
-    #print( "in itemClicked  %s,  %s" %(item.text(), str( item.checkState())) )
-    pass
-
-
   def onBinsTableItemChanged(self, item):
     #print( "in itemChanged %s,  %s" %(item.text(), str( item.checkState())) )
     row = item.row()
@@ -1138,6 +1147,70 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       #self.power_scale_spinBox.setEnabled(False)
 
 
+  def onVectorTableItemChanged(self, item):
+    row = item.row()
+    col = item.column()
+
+    if col==0:
+      for i, (opnr, label, v, xyzop, hklop) in enumerate(self.rotation_operators):
+        if int(item.text()) == i:
+          if item.checkState()==Qt.Checked:
+            self.PhilToJsRender(" NGL_HKLviewer.viewer.show_rotation_axis = '[%d, %s]'" %(i, True ))
+          else:
+            self.PhilToJsRender(" NGL_HKLviewer.viewer.show_rotation_axis = '[%d, %s]'" %(i, False ))
+
+    try:
+      if not self.bin_opacities:
+        return
+      bin_opacitieslst = eval(self.bin_opacities)
+      alpha = max(0.0, min(1.0, float(item.text()) ) ) # between 0 and 1 only
+      try:
+        (oldalpha, row) = bin_opacitieslst[row]
+        if oldalpha == float(item.text()):
+          if item.checkState()==Qt.Unchecked:
+            alpha = 0.0
+          else:
+            alpha = 1.0
+      except Exception as e:
+        pass
+
+      if col==3 and self.binstable_isready: # changing opacity
+        bin_opacitieslst[row] = (alpha, row)
+        self.bin_opacities = str(bin_opacitieslst)
+        self.SetAllOpaqueCheckboxes()
+        self.PhilToJsRender('NGL_HKLviewer.NGL.bin_opacities = "%s"' %self.bin_opacities )
+
+      if col==1 and self.binstable_isready: # changing scene_bin_thresholds
+        aboveitem = self.binstable.item(row-1, 1)
+        belowitem = self.binstable.item(row+1, 1)
+        if aboveitem is None:
+          aboveval = -9e99
+        else:
+          aboveval = float(aboveitem.text())
+        if belowitem is None:
+          belowval = 9e99
+        else:
+          belowval = float(belowitem.text())
+        # the new value must be between above and below values only
+        newval = min(belowval, max(aboveval, float(item.text()) ) )
+        # but the other way round if binning against resolution
+        if self.BinDataComboBox.currentIndex() == 0:
+          newval = min(aboveval, max(belowval, float(item.text()) ) )
+        self.binstable.item(row,col).setText(str(newval))
+        #nbins = len(self.bin_infotpls)
+        self.lowerbinvals[row] = newval
+        allbinvals = self.lowerbinvals + [ self.upperbinvals[-1] ]
+        nbins = len(allbinvals)
+        self.PhilToJsRender('''
+        NGL_HKLviewer.scene_bin_thresholds = \"%s\"
+        NGL_HKLviewer.nbins = %d
+        ''' %(allbinvals, nbins) )
+
+    except Exception as e:
+      print( str(e)  +  traceback.format_exc(limit=10) )
+
+
+
   def createExpansionBox(self):
     self.SpaceGroupComboBox.activated.connect(self.SpacegroupSelchange)
     self.expandP1checkbox.clicked.connect(self.ExpandToP1)
@@ -1162,17 +1235,18 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.sliceaxis = { 0:"h", 1:"k", 2:"l" }
     self.SliceLabelComboBox.addItems( list( self.sliceaxis.values()) )
     self.fixedorientcheckbox.clicked.connect(self.onFixedorient)
-    self.recipvecBtn.setText("as fractional values in reciprocal space")
-    self.recipvecBtn.setChecked(False)
-    self.recipvecBtn.clicked.connect(self.onClipPlaneChkBox)
-    self.realspacevecBtn.setText("as fractional values in real space")
-    self.realspacevecBtn.setChecked(True)
-    self.realspacevecBtn.clicked.connect(self.onClipPlaneChkBox)
-    self.clipTNCSBtn.setText("as tNCS vector")
-    self.clipTNCSBtn.setChecked(False)
-    self.clipTNCSBtn.clicked.connect(self.onClipPlaneChkBox)
+    #self.recipvecBtn.setText("as fractional values in reciprocal space")
+    #self.recipvecBtn.setChecked(False)
+    #self.recipvecBtn.clicked.connect(self.onClipPlaneChkBox)
+    #self.realspacevecBtn.setText("as fractional values in real space")
+    #self.realspacevecBtn.setChecked(True)
+    #self.realspacevecBtn.clicked.connect(self.onClipPlaneChkBox)
+    #self.clipTNCSBtn.setText("as tNCS vector")
+    #self.clipTNCSBtn.setChecked(False)
+    #self.clipTNCSBtn.clicked.connect(self.onClipPlaneChkBox)
 
     vprec = 2
+    """
     self.hvec_spinBox.setValue(2.0)
     self.hvec_spinBox.setDecimals(vprec)
     self.hvec_spinBox.setRange(-100.0, 100.0)
@@ -1187,6 +1261,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.lvec_spinBox.setSingleStep(0.5)
     self.lvec_spinBox.setRange(-100.0, 100.0)
     self.lvec_spinBox.valueChanged.connect(self.onLvecChanged)
+    """
     self.hkldistval = 0.0
     self.hkldist_spinBox.setValue(self.hkldistval)
     self.hkldist_spinBox.setDecimals(vprec)
@@ -1204,11 +1279,11 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
     self.rotavecangle_slider.valueChanged.connect(self.onRotaVecAngleChanged)
     self.ClipPlaneChkGroupBox.clicked.connect(self.onClipPlaneChkBox)
-    self.clipParallelBtn.setText("parallel to vector below")
+    #self.clipParallelBtn.setText("parallel to vector below")
     self.clipParallelBtn.setChecked(False)
     self.clipParallelBtn.clicked.connect(self.onClipPlaneChkBox)
 
-    self.clipNormalBtn.setText("perpendicular to vector below")
+    #self.clipNormalBtn.setText("perpendicular to vector below")
     self.clipNormalBtn.setChecked(True)
     self.clipNormalBtn.clicked.connect(self.onClipPlaneChkBox)
     self.clipParallelBtn.setChecked(True)
@@ -1511,18 +1586,22 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.OpaqueAllCheckbox.clicked.connect(self.onOpaqueAll)
 
     self.binstable.itemChanged.connect(self.onBinsTableItemChanged  )
-    self.binstable.itemClicked.connect(self.onBinsTableitemClicked  )
     self.binstable.itemPressed.connect(self.onBinsTableitemPressed  )
     self.BinDataComboBox.activated.connect(self.onBindataComboSelchange)
 
 
-  def CreateOtherBox(self):
+  def CreateVectorsBox(self):
     self.DrawRealUnitCellBox.clicked.connect(self.onDrawUnitCellBoxClick)
     self.DrawReciprocUnitCellBox.clicked.connect(self.onDrawReciprocUnitCellBoxClick)
     self.unitcellslider.sliderReleased.connect(self.onUnitcellScale)
     self.reciprocunitcellslider.sliderReleased.connect(self.onReciprocUnitcellScale)
     #self.ResetViewBtn.clicked.connect(self.onResetViewBtn)
     #self.SaveImageBtn.clicked.connect(self.onSaveImage)
+    labels = ["draw", "Operator", "As xyz", "as hkl"]
+    self.vectortable2.setHorizontalHeaderLabels(labels)
+    self.vectortable2.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
+    self.vectortable2.itemChanged.connect(self.onVectorTableItemChanged  )
+    #self.vectortable2.itemPressed.connect(self.onVectorTableitemPressed  )
 
 
   #def onResetViewBtn(self):

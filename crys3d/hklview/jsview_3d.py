@@ -273,6 +273,7 @@ class hklview_3d:
     self.array_infostrs = []
     self.array_infotpls = []
     self.binstrs = []
+    self.rotation_operators = []
     self.nuniqueval = 0
     self.bin_infotpls = []
     self.mapcoef_fom_dict = {}
@@ -1353,7 +1354,8 @@ class hklview_3d:
 
     if self.ngl_settings.bin_opacities == "":
       self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
-
+    
+    self.calc_rotation_axes()
     self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
                           "bin_infotpls": self.bin_infotpls,
                           "binner_idx": self.params.binner_idx,
@@ -1538,7 +1540,6 @@ Distance: %s
     if cameradist > 0.0:
       currentRotmx = ScaleRotMx/cameradist
       cameraPosZ = cameradist
-    self.SendInfoToGUI( { "StatusBar": str(list(currentRotmx)) } )
     return cameraPosZ, currentRotmx, cameratranslation
 
 
@@ -1554,12 +1555,13 @@ Distance: %s
       self.isnewfile = False
     self.viewmtrx = message[ message.find("\n") + 1: ]
     self.cameraPosZ, self.currentRotmx, self.cameratranslation = self.GetCameraPosRotTrans( self.viewmtrx)
-    rotlst = roundoff(self.currentRotmx.elems)
+    rotlst = roundoff(self.currentRotmx.elems, 4)
     self.mprint("""Rotation matrix:
   %s,  %s,  %s
   %s,  %s,  %s
   %s,  %s,  %s
     """ %rotlst, verbose=3)
+    self.SendInfoToGUI( { "StatusBar": str(rotlst) } )
     if "MouseMovedOrientation:" in message:
       self.params.mouse_moved = True
     if self.currentRotmx.is_r3_rotation_matrix():
@@ -1815,19 +1817,26 @@ Distance: %s
 
   def show_rotation_axes(self):
     if self.params.symmetry_rotation_axes:
-      unique_rot_ops = self.symops[ 0 : self.sg.order_p() ] # avoid duplicate rotation matrices
       s = self.scene.renderscale
-      for i,op in enumerate(unique_rot_ops): # skip the last op for javascript drawing purposes
-        (v, a) = self.GetVectorAndAngleFromRotationMx( op.r() )
-        if abs(a) > 0.0001 and (abs(v[0])+abs(v[1])+abs(v[2])) > 0.0001: # avoid nullvector
-          lab = "%s-fold" %str(int(roundoff(2*math.pi/a, 0)))
-          self.mprint( str(i) + ": " + str(roundoff(v)) + ", " + lab)
-          if i < len(unique_rot_ops)-1:
-            self.AddCartesianVector(0, 0, 0, s*v[0], s*v[1], s*v[2], label=lab, radius=0.2 )
-          else: # supplying name draws all these vectors 
-            self.AddCartesianVector(0, 0, 0, s*v[0], s*v[1], s*v[2], label=lab, name="SymRotAxes", radius=0.2 )
+      for i, (opnr, label, v, xyzop, hklop) in enumerate( self.rotation_operators ): # skip the last op for javascript drawing purposes
+          if i < len(self.rotation_operators)-1:
+            self.AddCartesianVector(0, 0, 0, s*v[0], s*v[1], s*v[2], label=label, radius=0.2 )
+          else: # supply name to tell javascript to draw all these vectors 
+            self.AddCartesianVector(0, 0, 0, s*v[0], s*v[1], s*v[2], label=label, name="SymRotAxes", radius=0.2 )
     else:
       self.RemoveVectors("SymRotAxes")
+
+
+  def calc_rotation_axes(self):
+    unique_rot_ops = self.symops[ 0 : self.sg.order_p() ] # avoid duplicate rotation matrices
+    self.rotation_operators = []
+    for i,op in enumerate(unique_rot_ops): # skip the last op for javascript drawing purposes
+      (v, a) = self.GetVectorAndAngleFromRotationMx( op.r() )
+      if abs(a) > 0.0001 and (abs(v[0])+abs(v[1])+abs(v[2])) > 0.0001: # avoid nullvector
+        label = "%s-fold" %str(int(roundoff(2*math.pi/a, 0)))
+        self.mprint( str(i) + ": " + str(roundoff(v)) + ", " + label)
+        self.rotation_operators.append( (i, label, v, op.r().as_xyz(), op.r().as_hkl() ) )
+    self.SendInfoToGUI( { "rotation_operators": self.rotation_operators } )
 
 
   def RotateAroundFracVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3), isreciprocal=False, quietbrowser=True):
