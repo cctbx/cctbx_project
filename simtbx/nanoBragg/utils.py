@@ -11,7 +11,6 @@ from simtbx.nanoBragg.sim_data import SimData
 
 ENERGY_CONV = 10000000000.0 * constants.c * constants.h / constants.electron_volt
 
-
 def flexBeam_sim_colors(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                         pids=None, cuda=False, oversample=0, Ncells_abc=(50, 50, 50),
                         mos_dom=1, mos_spread=0, beamsize_mm=0.001, device_Id=0, omp=False,
@@ -88,37 +87,38 @@ def flexBeam_sim_colors(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
 
   panel_images = []
 
-  for pid in pids:
-    tinit = time.time()
-    S = SimData()
-    S.detector = DETECTOR
-    S.beam = nbBeam
-    S.crystal = nbCrystal
-    S.panel_id = pid
-    S.using_cuda = cuda
-    S.using_omp = omp
-    S.add_air = add_air
-    S.air_path_mm = air_path_mm
-    S.add_water = add_water
-    S.water_path_mm = water_path_mm
-    S.background_raw_pixels = background_raw_pixels[pid]
-    S.rois = rois_perpanel[pid]
-    S.readout_noise = readout_noise
-    S.gain = gain
-    S.psf_fwhm = psf_fwhm
-    S.include_noise = include_noise
+  tinit = time.time()
+  S = SimData()
+  S.detector = DETECTOR
+  S.beam = nbBeam
+  S.crystal = nbCrystal
+  S.using_cuda = cuda
+  S.using_omp = omp
+  S.add_air = add_air
+  S.air_path_mm = air_path_mm
+  S.add_water = add_water
+  S.water_path_mm = water_path_mm
+  S.readout_noise = readout_noise
+  S.gain = gain
+  S.psf_fwhm = psf_fwhm
+  S.include_noise = include_noise
 
-    if mosaicity_random_seeds is not None:
-      S.mosaic_seeds = mosaicity_random_seeds
+  if mosaicity_random_seeds is not None:
+    S.mosaic_seeds = mosaicity_random_seeds
 
-    S.instantiate_nanoBragg(verbose=verbose, oversample=oversample, interpolate=interpolate, device_Id=device_Id,
+  S.instantiate_nanoBragg(verbose=verbose, oversample=oversample, interpolate=interpolate, device_Id=device_Id,
                             default_F=default_F, adc_offset=adc_offset)
-    if recenter:
-      S.update_nanoBragg_instance("beam_center_mm", DETECTOR[int(pid)].get_beam_centre(BEAM.get_s0()))
-    if printout_pix is not None:
-      S.update_nanoBragg_instance("printout_pixel_fastslow", printout_pix)
-    if spot_scale_override is not None:
-      S.update_nanoBragg_instance("spot_scale", spot_scale_override)
+
+  if printout_pix is not None:
+    S.update_nanoBragg_instance("printout_pixel_fastslow", printout_pix)
+  if spot_scale_override is not None:
+    S.update_nanoBragg_instance("spot_scale", spot_scale_override)
+
+  for pid in pids:
+    t_panel = time.time()
+    S.background_raw_pixels = background_raw_pixels[pid]
+    S.panel_id = pid
+    S.rois = rois_perpanel[pid]
 
     S.generate_simulated_image()
 
@@ -127,11 +127,13 @@ def flexBeam_sim_colors(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
       print('spot scale: %2.7g' % S.D.spot_scale)
     panel_image = S.D.raw_pixels.as_numpy_array()
     panel_images.append([pid, panel_image])
-    S.D.free_all()
+    S.D.raw_pixels*=0
     if time_panels:
       tdone = time.time() - tinit
-      print('Panel %d took %.4f seconds' % (pid, tdone))
-    del S.D
+      t_panel = time.time() - t_panel
+      print('Panel %d took %.4f seconds (Total sim time = %.4f seconds)' % (pid,t_panel, tdone))
+
+  S.D.free_all()
 
   return panel_images
 
@@ -161,7 +163,7 @@ def sim_background(DETECTOR, BEAM, wavelengths, wavelength_weights, total_flux, 
   SIM.xray_beams = xray_beams
   if Fbg_vs_stol is None:
     Fbg_vs_stol = flex.vec2_double([
-      (0, 2.57), (0.0365, 2.58), (0.07, 2.8), (0.12, 5), (0.162, 8), (0.2, 6.75), (0.18, 7.32),
+      (0, 2.57), (0.0365, 2.58), (0.07, 2.8), (0.12, 5), (0.162, 8), (0.18, 7.32), (0.2, 6.75),
       (0.216, 6.75), (0.236, 6.5), (0.28, 4.5), (0.3, 4.3), (0.345, 4.36), (0.436, 3.77), (0.5, 3.17)])
   SIM.flux = sum(weights)
   SIM.Fbg_vs_stol = Fbg_vs_stol
