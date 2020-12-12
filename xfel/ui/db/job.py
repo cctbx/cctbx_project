@@ -255,6 +255,10 @@ class IndexingJob(Job):
           locator.write("detector_address=%s\n"%self.rungroup.detector_address)
           if self.rungroup.wavelength_offset:
             locator.write("wavelength_offset=%s\n"%self.rungroup.wavelength_offset)
+          if self.rungroup.spectrum_eV_per_pixel:
+            locator.write("spectrum_eV_per_pixel=%s\n"%self.rungroup.spectrum_eV_per_pixel)
+          if self.rungroup.spectrum_eV_offset:
+            locator.write("spectrum_eV_offset=%s\n"%self.rungroup.spectrum_eV_offset)
           if self.app.params.facility.lcls.use_ffb:
             locator.write("use_ffb=True\n")
 

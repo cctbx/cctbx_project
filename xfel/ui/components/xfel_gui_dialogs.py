@@ -1666,7 +1666,8 @@ class RunBlockDialog(BaseDialog):
             return 22.8 # Defaults are from kapton tape experiments (this is water ring)
           elif item in ["extra_phil_str", "calib_dir", "dark_avg_path", "dark_stddev_path",
             "gain_map_path", "beamx", "beamy", "gain_mask_level", "untrusted_pixel_mask_path",
-            "binning", "energy", "wavelength_offset", "comment", "config_str"]:
+            "binning", "energy", "wavelength_offset", "spectrum_eV_per_pixel", "spectrum_eV_offset",
+            "comment", "config_str"]:
             return None
           else:
             raise AttributeError(item)
@@ -1815,6 +1816,11 @@ class RunBlockDialog(BaseDialog):
                                                ctrl_size=(80, -1),
                                                items=[('wavelength_offset', block.wavelength_offset)])
       self.runblock_sizer.Add(self.wavelength_offset, flag=wx.EXPAND | wx.ALL, border=10)
+      self.spectrum_calibration = gctr.OptionCtrl(self.runblock_panel,
+                                          ctrl_size=(80, -1),
+                                          items=[('spectrum_eV_per_pixel', block.spectrum_eV_per_pixel),
+                                                 ('spectrum_eV_offset', block.spectrum_eV_offset)])
+      self.runblock_sizer.Add(self.spectrum_calibration, flag=wx.EXPAND | wx.ALL, border=10)
     else:
       self.energy = gctr.TextButtonCtrl(self.runblock_panel,
                                         label='Energy override',
@@ -2014,6 +2020,8 @@ class RunBlockDialog(BaseDialog):
       rg_dict['binning']=self.bin_nrg_gain.binning.GetValue()
       rg_dict['detector_address']=self.address.ctr.GetValue()
       rg_dict['config_str']=self.config.ctr.GetValue()
+      rg_dict['spectrum_eV_per_pixel']=self.spectrum_calibration.spectrum_eV_per_pixel.GetValue()
+      rg_dict['spectrum_eV_offset']=self.spectrum_calibration.spectrum_eV_offset.GetValue()
     else:
       rg_dict['energy']=self.energy.ctr.GetValue()
 
@@ -2073,6 +2081,8 @@ class RunBlockDialog(BaseDialog):
         self.bin_nrg_gain.energy.SetValue(str(last.energy))
         self.bin_nrg_gain.gain_mask_level.SetValue(str(last.gain_mask_level))
         self.wavelength_offset.wavelength_offset.SetValue(str(last.wavelength_offset))
+        self.spectrum_calibration.spectrum_eV_per_pixel.SetValue(str(last.spectrum_eV_per_pixel))
+        self.spectrum_calibration.spectrum_eV_offset.SetValue(str(last.spectrum_eV_offset))
         self.dark_avg_path.ctr.SetValue(str(last.dark_avg_path))
         self.dark_stddev_path.ctr.SetValue(str(last.dark_stddev_path))
         self.gain_map_path.ctr.SetValue(str(last.gain_map_path))
