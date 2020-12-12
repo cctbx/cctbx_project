@@ -43,6 +43,11 @@ class DialsProcessorWithLogging(Processor):
     if self.params.radial_average.enable:
       from dxtbx.command_line.radial_average import run as radial_run
       from scitbx.array_family import flex
+
+      if self.params.radial_average.verbose:
+        run, timestamp = self.get_run_and_timestamp(experiments)
+        print("Radial average of run %s, timestamp %s"%(str(run), timestamp))
+
       imageset = experiments.imagesets()[0]
       two_thetas, radial_average_values = radial_run(self.params.radial_average, imageset = imageset)
 
@@ -55,6 +60,9 @@ class DialsProcessorWithLogging(Processor):
 
       if self.params.radial_average.two_theta_high is not None:
         self.tt_high = radial_average_values[get_closest_idx(two_thetas, self.params.radial_average.two_theta_high)]
+
+      if self.params.radial_average.verbose:
+        print("Two theta low and high for run %s, timestamp %s: %f, %f"%(str(run), timestamp, self.tt_low, self.tt_high))
 
   def find_spots(self, experiments):
     observed = super(DialsProcessorWithLogging, self).find_spots(experiments)

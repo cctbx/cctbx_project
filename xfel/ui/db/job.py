@@ -130,8 +130,9 @@ class IndexingJob(Job):
           show_plots = False
           verbose = False
           output_bins = False
+          mask = %s
         }
-        """
+        """%(self.rungroup.untrusted_pixel_mask_path)
         phil_scope = orig_phil_scope.fetch(parse(override_str))
       else:
         phil_scope = orig_phil_scope
