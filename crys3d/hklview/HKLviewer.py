@@ -585,12 +585,12 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
           #else:
           #  self.clipTNCSBtn.setEnabled(True)
 
-          if self.infodict.get("rotation_operators"):
-            self.rotation_operators = self.infodict.get("rotation_operators",[])
+          if self.infodict.get("all_vectors"):
+            self.all_vectors = self.infodict.get("all_vectors",[])
 
             self.vectortable2.clearContents()
-            self.vectortable2.setRowCount(len(self.rotation_operators))
-            for row, (opnr, label, v, xyzop, hklop) in enumerate(self.rotation_operators):
+            self.vectortable2.setRowCount(len(self.all_vectors))
+            for row, (opnr, label, v, xyzop, hklop) in enumerate(self.all_vectors):
               for col,elm in enumerate((opnr, label, xyzop, hklop)):
                 item = QTableWidgetItem(str(elm))
                 if col == 0:
@@ -1150,65 +1150,15 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
   def onVectorTableItemChanged(self, item):
     row = item.row()
     col = item.column()
-
-    if col==0:
-      for i, (opnr, label, v, xyzop, hklop) in enumerate(self.rotation_operators):
-        if int(item.text()) == i:
-          if item.checkState()==Qt.Checked:
-            self.PhilToJsRender(" NGL_HKLviewer.viewer.show_rotation_axis = '[%d, %s]'" %(i, True ))
-          else:
-            self.PhilToJsRender(" NGL_HKLviewer.viewer.show_rotation_axis = '[%d, %s]'" %(i, False ))
-
     try:
-      if not self.bin_opacities:
-        return
-      bin_opacitieslst = eval(self.bin_opacities)
-      alpha = max(0.0, min(1.0, float(item.text()) ) ) # between 0 and 1 only
-      try:
-        (oldalpha, row) = bin_opacitieslst[row]
-        if oldalpha == float(item.text()):
-          if item.checkState()==Qt.Unchecked:
-            alpha = 0.0
-          else:
-            alpha = 1.0
-      except Exception as e:
-        pass
-
-      if col==3 and self.binstable_isready: # changing opacity
-        bin_opacitieslst[row] = (alpha, row)
-        self.bin_opacities = str(bin_opacitieslst)
-        self.SetAllOpaqueCheckboxes()
-        self.PhilToJsRender('NGL_HKLviewer.NGL.bin_opacities = "%s"' %self.bin_opacities )
-
-      if col==1 and self.binstable_isready: # changing scene_bin_thresholds
-        aboveitem = self.binstable.item(row-1, 1)
-        belowitem = self.binstable.item(row+1, 1)
-        if aboveitem is None:
-          aboveval = -9e99
+      if col==0:
+        #for i, (opnr, label, v, xyzop, hklop) in enumerate(self.all_vectors):
+        if item.checkState()==Qt.Checked:
+          self.PhilToJsRender(" NGL_HKLviewer.viewer.show_vector = '[%d, %s]'" %(row, True ))
         else:
-          aboveval = float(aboveitem.text())
-        if belowitem is None:
-          belowval = 9e99
-        else:
-          belowval = float(belowitem.text())
-        # the new value must be between above and below values only
-        newval = min(belowval, max(aboveval, float(item.text()) ) )
-        # but the other way round if binning against resolution
-        if self.BinDataComboBox.currentIndex() == 0:
-          newval = min(aboveval, max(belowval, float(item.text()) ) )
-        self.binstable.item(row,col).setText(str(newval))
-        #nbins = len(self.bin_infotpls)
-        self.lowerbinvals[row] = newval
-        allbinvals = self.lowerbinvals + [ self.upperbinvals[-1] ]
-        nbins = len(allbinvals)
-        self.PhilToJsRender('''
-        NGL_HKLviewer.scene_bin_thresholds = \"%s\"
-        NGL_HKLviewer.nbins = %d
-        ''' %(allbinvals, nbins) )
-
+          self.PhilToJsRender(" NGL_HKLviewer.viewer.show_vector = '[%d, %s]'" %(row, False ))
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
-
 
 
   def createExpansionBox(self):

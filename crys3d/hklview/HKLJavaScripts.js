@@ -821,7 +821,7 @@ function onMessage(e)
       return wasremoved;
     };
 
-    if (msgtype === "AddVector")
+    if (msgtype === "DrawVector")
     {
       var r1 = new Float32Array(3);
       var r2 = new Float32Array(3);

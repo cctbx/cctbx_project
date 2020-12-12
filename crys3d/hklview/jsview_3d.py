@@ -274,6 +274,7 @@ class hklview_3d:
     self.array_infotpls = []
     self.binstrs = []
     self.rotation_operators = []
+    self.all_vectors = []
     self.nuniqueval = 0
     self.bin_infotpls = []
     self.mapcoef_fom_dict = {}
@@ -437,8 +438,11 @@ class hklview_3d:
     if has_phil_path(diff_phil, "tooltip_alpha"):
       self.set_tooltip_opacity()
 
-    if has_phil_path(diff_phil, "symmetry_rotation_axes"):
+    if has_phil_path(diff_phil, "show_symmetry_rotation_axes"):
       self.show_rotation_axes()
+
+    if has_phil_path(diff_phil, "show_vector"):
+      self.show_vector()
 
     if has_phil_path(diff_phil, "expand_to_p1", "expand_anomalous") \
      and self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
@@ -1355,7 +1359,6 @@ class hklview_3d:
     if self.ngl_settings.bin_opacities == "":
       self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
     
-    self.calc_rotation_axes()
     self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
                           "bin_infotpls": self.bin_infotpls,
                           "binner_idx": self.params.binner_idx,
@@ -1363,6 +1366,7 @@ class hklview_3d:
                          } )
     colourgradstr = []
     if not blankscene:
+      self.calc_rotation_axes()
       nvaluelabels = int(ln/self.viewerparams.ncolourlabels )
       colourgradstrs = []
       # if displaying phases from map coefficients together with fom values then
@@ -1696,11 +1700,11 @@ Distance: %s
     self.GetBoundingBox() # bounding box changes when the extent of the displayed lattice changes
 
 
-  def AddVector(self, s1, s2, s3, t1, t2, t3, isreciprocal=True, label="",
+  def draw_vector(self, s1, s2, s3, t1, t2, t3, isreciprocal=True, label="",
                   r=0, g=0, b=0, name="", radius = 0.15):
     """
     Place vector from {s1, s2, s3] to [t1, t2, t3] with colour r,g,b and label
-    If name=="" creation is deferred until AddVector is eventually called with name != ""
+    If name=="" creation is deferred until draw_vector is eventually called with name != ""
     These vectors are then joined in the same NGL representation
     """
     uc = self.miller_array.unit_cell()
@@ -1721,11 +1725,11 @@ Distance: %s
       # TODO: find suitable scale factor for displaying real space vector together with reciprocal vectors
       svec1 = [ vscale*vec1[0], vscale*vec1[1], vscale*vec1[2] ]
       svec2 = [ vscale*vec2[0], vscale*vec2[1], vscale*vec2[2] ]
-    self.AddCartesianVector(svec1[0], svec1[1], svec1[2], svec2[0], svec2[1], svec2[2], 
+    self.draw_cartesian_vector(svec1[0], svec1[1], svec1[2], svec2[0], svec2[1], svec2[2], 
                             label, r, g, b, name, radius )
 
 
-  def AddCartesianVector(self, s1, s2, s3, t1, t2, t3, label="", r=0, g=0, b=0, name="", radius = 0.15):
+  def draw_cartesian_vector(self, s1, s2, s3, t1, t2, t3, label="", r=0, g=0, b=0, name="", radius = 0.15):
     self.mprint("cartesian vector is: %s to %s" %(str(roundoff([s1, s2, s3])), str(roundoff([t1, t2, t3]))), verbose=2)
     svec = [t1-s1, t2-s2, t3-s3]
     xyvec = svec[:] # deep copying
@@ -1756,7 +1760,7 @@ Distance: %s
     self.mprint("angles in yz plane to y,z axis are: %s, %s" %(angle_y_yzvec, angle_z_yzvec), verbose=2)
     self.mprint("angles to x,y,z axis are: %s, %s, %s" %(angle_x_svec, angle_y_svec, angle_z_svec ), verbose=2)
     self.mprint("deferred rendering vector from (%s, %s, %s) to (%s, %s, %s)" %(s1, s2, s3, t1, t2, t3), verbose=2)
-    self.AddToBrowserMsgQueue("AddVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
+    self.AddToBrowserMsgQueue("DrawVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
          %(s1, s2, s3, t1, t2, t3, r, g, b, label, name, radius) ) 
     return angle_x_xyvec, angle_z_svec
 
@@ -1812,17 +1816,18 @@ Distance: %s
           # eigenvetors come as a concatenated list of vector elements so get the i-th vector
           e1,e2,e3 = evectors[(0+3*i):(3+3*i)]
           break
-    return (e1,e2,e3), theta
+    s = self.scene.renderscale
+    return (s*e1,s*e2,s*e3), theta
 
 
   def show_rotation_axes(self):
-    if self.params.symmetry_rotation_axes:
+    if self.viewerparams.show_symmetry_rotation_axes:
       s = self.scene.renderscale
       for i, (opnr, label, v, xyzop, hklop) in enumerate( self.rotation_operators ): # skip the last op for javascript drawing purposes
-          if i < len(self.rotation_operators)-1:
-            self.AddCartesianVector(0, 0, 0, s*v[0], s*v[1], s*v[2], label=label, radius=0.2 )
-          else: # supply name to tell javascript to draw all these vectors 
-            self.AddCartesianVector(0, 0, 0, s*v[0], s*v[1], s*v[2], label=label, name="SymRotAxes", radius=0.2 )
+        if i < len(self.rotation_operators)-1:
+          self.draw_cartesian_vector(0, 0, 0, s*v[0], s*v[1], s*v[2], label=label, radius=0.2 )
+        else: # supply name to tell javascript to draw all these vectors 
+          self.draw_cartesian_vector(0, 0, 0, s*v[0], s*v[1], s*v[2], label=label, name="SymRotAxes", radius=0.2 )
     else:
       self.RemoveVectors("SymRotAxes")
 
@@ -1836,7 +1841,21 @@ Distance: %s
         label = "%s-fold" %str(int(roundoff(2*math.pi/a, 0)))
         self.mprint( str(i) + ": " + str(roundoff(v)) + ", " + label)
         self.rotation_operators.append( (i, label, v, op.r().as_xyz(), op.r().as_hkl() ) )
-    self.SendInfoToGUI( { "rotation_operators": self.rotation_operators } )
+    #self.SendInfoToGUI( { "rotation_operators": self.rotation_operators } )
+
+
+  def show_vector(self):
+    [i, val] = eval(self.viewerparams.show_vector)
+    (opnr, label, v, xyzop, hklop) = self.all_vectors[i]
+    if val:
+      #s = self.scene.renderscale
+      # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas
+      xyzop = xyzop.replace(",", "_")
+      #self.draw_cartesian_vector(0, 0, 0, s*v[0], s*v[1], s*v[2], r=0.1, g=0.1,b=0.1,
+      self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], r=0.1, g=0.1,b=0.1,
+                                label=label, name=xyzop, radius=0.2 )
+    else:
+      self.RemoveVectors(xyzop)
 
 
   def RotateAroundFracVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3), isreciprocal=False, quietbrowser=True):
@@ -1874,18 +1893,18 @@ Distance: %s
       return
     uc = self.miller_array.unit_cell()
     rad = 0.2 # scale # * 0.05 #  1000/ uc.volume()
-    self.AddVector(0,0,0, scale,0,0, False, label="a", r=0.5, g=0.8, b=0.8, radius=rad)
-    self.AddVector(0,0,0, 0,scale,0, False, label="b", r=0.8, g=0.5, b=0.8, radius=rad)
-    self.AddVector(0,0,0, 0,0,scale, False, label="c", r=0.8, g=0.8, b=0.5, radius=rad)
-    self.AddVector(scale,0,0, scale,scale,0, False, r=0.8, g=0.5, b=0.8, radius=rad)
-    self.AddVector(0,scale,0, scale,scale,0, False, r=0.5, g=0.8, b=0.8, radius=rad)
-    self.AddVector(0,0,scale, scale,0,scale, False, r=0.5, g=0.8, b=0.8, radius=rad)
-    self.AddVector(0,0,scale, 0,scale,scale, False, r=0.8, g=0.5, b=0.8, radius=rad)
-    self.AddVector(0,scale,scale, scale,scale,scale, False, r=0.5, g=0.8, b=0.8, radius=rad)
-    self.AddVector(scale,0,scale, scale,scale,scale, False, r=0.8, g=0.5, b=0.8, radius=rad)
-    self.AddVector(scale,0,0, scale,0,scale, False, r=0.8, g=0.8, b=0.5, radius=rad)
-    self.AddVector(0,scale,0, 0,scale,scale, False, r=0.8, g=0.8, b=0.5, radius=rad)
-    self.AddVector(scale,scale,0, scale,scale,scale, False, r=0.8, g=0.8, b=0.5, radius=rad, name="unitcell")
+    self.draw_vector(0,0,0, scale,0,0, False, label="a", r=0.5, g=0.8, b=0.8, radius=rad)
+    self.draw_vector(0,0,0, 0,scale,0, False, label="b", r=0.8, g=0.5, b=0.8, radius=rad)
+    self.draw_vector(0,0,0, 0,0,scale, False, label="c", r=0.8, g=0.8, b=0.5, radius=rad)
+    self.draw_vector(scale,0,0, scale,scale,0, False, r=0.8, g=0.5, b=0.8, radius=rad)
+    self.draw_vector(0,scale,0, scale,scale,0, False, r=0.5, g=0.8, b=0.8, radius=rad)
+    self.draw_vector(0,0,scale, scale,0,scale, False, r=0.5, g=0.8, b=0.8, radius=rad)
+    self.draw_vector(0,0,scale, 0,scale,scale, False, r=0.8, g=0.5, b=0.8, radius=rad)
+    self.draw_vector(0,scale,scale, scale,scale,scale, False, r=0.5, g=0.8, b=0.8, radius=rad)
+    self.draw_vector(scale,0,scale, scale,scale,scale, False, r=0.8, g=0.5, b=0.8, radius=rad)
+    self.draw_vector(scale,0,0, scale,0,scale, False, r=0.8, g=0.8, b=0.5, radius=rad)
+    self.draw_vector(0,scale,0, 0,scale,scale, False, r=0.8, g=0.8, b=0.5, radius=rad)
+    self.draw_vector(scale,scale,0, scale,scale,scale, False, r=0.8, g=0.8, b=0.5, radius=rad, name="unitcell")
     self.mprint( "Adding real space unit cell", verbose=1)
 
 
@@ -1896,18 +1915,18 @@ Distance: %s
       self.mprint( "Removing reciprocal unit cell", verbose=1)
       return
     rad = 0.2 # 0.05 * scale
-    self.AddVector(0,0,0, scale,0,0, label="a*", r=0.5, g=0.3, b=0.3, radius=rad)
-    self.AddVector(0,0,0, 0,scale,0, label="b*", r=0.3, g=0.5, b=0.3, radius=rad)
-    self.AddVector(0,0,0, 0,0,scale, label="c*", r=0.3, g=0.3, b=0.5, radius=rad)
-    self.AddVector(scale,0,0, scale,scale,0, r=0.3, g=0.5, b=0.3, radius=rad)
-    self.AddVector(0,scale,0, scale,scale,0, r=0.5, g=0.3, b=0.3, radius=rad)
-    self.AddVector(0,0,scale, scale,0,scale, r=0.5, g=0.3, b=0.3, radius=rad)
-    self.AddVector(0,0,scale, 0,scale,scale, r=0.3, g=0.5, b=0.3, radius=rad)
-    self.AddVector(0,scale,scale, scale,scale,scale, r=0.5, g=0.3, b=0.3, radius=rad)
-    self.AddVector(scale,0,scale, scale,scale,scale, r=0.3, g=0.5, b=0.3, radius=rad)
-    self.AddVector(scale,0,0, scale,0,scale, r=0.3, g=0.3, b=0.5, radius=rad)
-    self.AddVector(0,scale,0, 0,scale,scale, r=0.3, g=0.3, b=0.5, radius=rad)
-    self.AddVector(scale,scale,0, scale,scale,scale, r=0.3, g=0.3, b=0.5, radius=rad, name="reciprocal_unitcell")
+    self.draw_vector(0,0,0, scale,0,0, label="a*", r=0.5, g=0.3, b=0.3, radius=rad)
+    self.draw_vector(0,0,0, 0,scale,0, label="b*", r=0.3, g=0.5, b=0.3, radius=rad)
+    self.draw_vector(0,0,0, 0,0,scale, label="c*", r=0.3, g=0.3, b=0.5, radius=rad)
+    self.draw_vector(scale,0,0, scale,scale,0, r=0.3, g=0.5, b=0.3, radius=rad)
+    self.draw_vector(0,scale,0, scale,scale,0, r=0.5, g=0.3, b=0.3, radius=rad)
+    self.draw_vector(0,0,scale, scale,0,scale, r=0.5, g=0.3, b=0.3, radius=rad)
+    self.draw_vector(0,0,scale, 0,scale,scale, r=0.3, g=0.5, b=0.3, radius=rad)
+    self.draw_vector(0,scale,scale, scale,scale,scale, r=0.5, g=0.3, b=0.3, radius=rad)
+    self.draw_vector(scale,0,scale, scale,scale,scale, r=0.3, g=0.5, b=0.3, radius=rad)
+    self.draw_vector(scale,0,0, scale,0,scale, r=0.3, g=0.3, b=0.5, radius=rad)
+    self.draw_vector(0,scale,0, 0,scale,scale, r=0.3, g=0.3, b=0.5, radius=rad)
+    self.draw_vector(scale,scale,0, scale,scale,scale, r=0.3, g=0.3, b=0.5, radius=rad, name="reciprocal_unitcell")
     self.mprint( "Adding reciprocal unit cell", verbose=1)
 
 
@@ -1946,7 +1965,7 @@ Distance: %s
       return
     self.mprint("Applying clip plane to reflections", verbose=1)
     self.RemoveVectors("clip_vector")
-    self.angle_x_xyvec, self.angle_z_svec = self.AddVector(0, 0, 0,
+    self.angle_x_xyvec, self.angle_z_svec = self.draw_vector(0, 0, 0,
                             a, b, c, isreciprocal=isreciprocal, name="clip_vector")
     if fixorientation:
       self.DisableMouseRotation()

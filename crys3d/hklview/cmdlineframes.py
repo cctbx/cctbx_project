@@ -8,6 +8,7 @@ from crys3d.hklview.jsview_3d import ArrayInfo
 from libtbx.str_utils import format_value
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, to_str
+from scitbx import matrix
 from libtbx import group_args
 import libtbx
 import traceback
@@ -61,6 +62,7 @@ class HKLViewFrame() :
     self.infostr = ""
     self.hklfile_history = []
     self.tncsvec = None
+    self.uservectors = []
     self.new_miller_array_operations_lst = []
     self.zmqsleeptime = 0.1
     if 'useGuiSocket' in kwds:
@@ -264,6 +266,9 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "shape_primitive"):
         self.set_shape_primitive(phl.shape_primitive)
 
+      if view_3d.has_phil_path(diff_phil, "user_vector"):
+        self.add_user_vector()
+
       if view_3d.has_phil_path(diff_phil, "save_image_name"):
         self.SaveImageName(phl.save_image_name)
         phl.save_image_name = None
@@ -283,6 +288,8 @@ class HKLViewFrame() :
         self.settings = phl.viewer
 
       self.params.NGL_HKLviewer = self.viewer.update_settings(diff_phil, phl)
+      if view_3d.has_phil_path(diff_phil, "scene_id"):
+        self.ListVectors()
       # parameters might have been changed. So update self.currentphil accordingly
       self.currentphil = self.master_phil.format(python_object = self.params)
       self.NewFileLoaded = False
@@ -596,7 +603,7 @@ class HKLViewFrame() :
               t2 = float(svec[1])
               t3 = float(svec[2])
               if (t1*t1 + t2*t2 + t3*t3) > 0.0:
-                self.tncsvec = [ t1, t2, t3 ]
+                self.tncsvec = (t1, t2, t3)
                 self.mprint("tNCS vector found in header of mtz file: %s" %str(svec) )
           from iotbx import mtz
           mtzobj = mtz.object(file_name)
@@ -955,11 +962,39 @@ class HKLViewFrame() :
   def SetFontSize(self, val):
     self.params.NGL_HKLviewer.NGL.fontsize = val
     self.viewer.SetFontSize(val)
-    #self.update_settings()
+
+
+  def ListVectors(self):
+    self.viewer.all_vectors = self.viewer.rotation_operators[:]
+    if self.tncsvec is not None:
+      uc = self.viewer.miller_array.unit_cell()
+      vec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
+      vscale =  1.0/self.viewer.scene.renderscale
+      svec1 = [ vscale*vec[0], vscale*vec[1], vscale*vec[2] ]
+      self.viewer.all_vectors.append( (-1, "TNCS", vec, "tncs", "") )
+    self.viewer.all_vectors.extend(self.uservectors)
+    self.SendInfoToGUI( { "all_vectors": self.viewer.all_vectors } )
+
+
+  def add_user_vector(self):
+    self.uservectors.append( (-1, self.params.NGL_HKLviewer.viewer.user_label, 
+                          eval(self.params.NGL_HKLviewer.viewer.user_vector), 
+                          "", "") )
+
+
+  def AddUserVector(self, vec, label=""):
+    self.params.NGL_HKLviewer.viewer.user_label = label
+    self.params.NGL_HKLviewer.viewer.user_vector = str(vec)
+    self.update_settings()
 
 
   def ShowRotationAxes(self, val):
-    self.params.NGL_HKLviewer.symmetry_rotation_axes = val
+    self.params.NGL_HKLviewer.viewer.show_symmetry_rotation_axes = val
+    self.update_settings()
+
+
+  def ShowVector(self, i, val=True):
+    self.params.NGL_HKLviewer.viewer.show_vector = str([i, val])
     self.update_settings()
 
 
@@ -1138,8 +1173,6 @@ NGL_HKLviewer {
     .type = bool
   mouse_moved = False
     .type = bool
-  symmetry_rotation_axes = False
-    .type = bool
   real_space_unit_cell_scale_fraction = None
     .type = float
   reciprocal_unit_cell_scale_fraction = None
@@ -1177,6 +1210,10 @@ NGL_HKLviewer {
       .type = int
     ncolourlabels = 6
       .type = int
+    show_symmetry_rotation_axes = False
+      .type = bool
+    show_vector = ''
+      .type=str
     %s
   }
   NGL {
