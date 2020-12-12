@@ -375,8 +375,9 @@ void diffBragg_loopy(
     gettimeofday(&t1, 0);
 
     int Npanels = fdet_vectors.size()/3;
-    int sm_size = number_of_sources*5*sizeof(CUDAREAL);
-    gpu_sum_over_steps<<<numblocks, blocksize, sm_size >>>(
+    //int sm_size = number_of_sources*5*sizeof(CUDAREAL);
+    //gpu_sum_over_steps<<<numblocks, blocksize, sm_size >>>(
+    gpu_sum_over_steps<<<numblocks, blocksize>>>(
         Npix_to_model, cp.cu_panels_fasts_slows,
         cp.cu_floatimage,
         cp.cu_d_Umat_images, cp.cu_d2_Umat_images,

@@ -160,22 +160,22 @@ void gpu_sum_over_steps(
         //}
     }
 
-    extern __shared__ CUDAREAL source_data[];
-    int threads_per_block = blockDim.x;
-    int num_source_blocks = (sources + threads_per_block-1)/threads_per_block;
-    int tx = threadIdx.x;
-    if (tx < threads_per_block){
-        for (int i_source_block=0; i_source_block < num_source_blocks; i_source_block++){
-            int idx = i_source_block*threads_per_block + tx;
-            if (idx< sources){
-                source_data[idx] = source_X[idx];
-                source_data[sources+idx] = source_Y[idx];
-                source_data[sources*2+idx] = source_Z[idx];
-                source_data[sources*3+idx] = source_lambda[idx];
-                source_data[sources*4+idx] = source_I[idx];
-            }
-        }
-    }
+    //extern __shared__ CUDAREAL source_data[];
+    //int threads_per_block = blockDim.x;
+    //int num_source_blocks = (sources + threads_per_block-1)/threads_per_block;
+    //int tx = threadIdx.x;
+    //if (tx < threads_per_block){
+    //    for (int i_source_block=0; i_source_block < num_source_blocks; i_source_block++){
+    //        int idx = i_source_block*threads_per_block + tx;
+    //        if (idx< sources){
+    //            source_data[idx] = source_X[idx];
+    //            source_data[sources+idx] = source_Y[idx];
+    //            source_data[sources*2+idx] = source_Z[idx];
+    //            source_data[sources*3+idx] = source_lambda[idx];
+    //            source_data[sources*4+idx] = source_I[idx];
+    //        }
+    //    }
+    //}
 
     __syncthreads();
 
@@ -271,11 +271,16 @@ void gpu_sum_over_steps(
             //VEC3 _incident(-__ldg(&source_X[_source]),
             //               -__ldg(&source_Y[_source]),
             //               -__ldg(&source_Z[_source]));
-            VEC3 _incident(-source_data[_source],
-                           -source_data[s_sources+_source],
-                           -source_data[2*s_sources+_source]);
-            CUDAREAL _lambda = source_data[3*s_sources+_source];
-            CUDAREAL sI = source_data[4*s_sources+_source];
+            //VEC3 _incident(-source_data[_source],
+            //               -source_data[s_sources+_source],
+            //               -source_data[2*s_sources+_source]);
+            //CUDAREAL _lambda = source_data[3*s_sources+_source];
+            //CUDAREAL sI = source_data[4*s_sources+_source];
+            VEC3 _incident(-source_X[_source],
+                           -source_Y[_source],
+                           -source_Z[_source]);
+            CUDAREAL _lambda = source_lambda[_source];
+            CUDAREAL sI = source_I[_source];
             //CUDAREAL _lambda = __ldg(&source_lambda[_source]);
             CUDAREAL lambda_ang = _lambda*1e10;
             if (use_lambda_coefficients){

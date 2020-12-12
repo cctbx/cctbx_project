@@ -1364,18 +1364,13 @@ class LocalRefiner(BaseRefiner):
                 self.D.set_ucell_second_derivative_matrix(
                     i + 3, self.UCELL_MAN[self._i_shot].second_derivative_matrices[i])
 
-    def _run_diffBragg_current(self):# , i_spot):
-        """needs to be called each time the ROI is changed"""
-        #(i1, i2), (j1, j2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
-        #self.D.region_of_interest = (int(i1), int(i2)), (int(j1), int(j2))
-        #self.D.printout_pixel_fastslow = int(i1)+2, int(j1)+2
+    def _run_diffBragg_current(self):
         if self.panels_fasts_slows[self._i_shot] is None:
             self.panels_fasts_slows[self._i_shot], self.roi_ids[self._i_shot] = self._get_panels_fasts_slows()
             self.roi_ids_reverse[self._i_shot] = self.roi_ids[self._i_shot][::-1]
         if self.randomize_devices is not None:
             dev = np_random_choice(self.randomize_devices)
             self.D.device_Id = dev
-            print("\n\n\tRANDOMIZINGDEVICE  %d !!!\n\n\t" % dev)
         self.D.add_diffBragg_spots(self.panels_fasts_slows[self._i_shot])
 
     def _get_fcell_val(self, i_fcell):
@@ -2978,14 +2973,14 @@ class LocalRefiner(BaseRefiner):
         """
         if anglesXYZ is None:
             assert i_shot is not None
-            rx = ry = rz = 0
-            if self.refine_Umatrix:
-                if self.refine_rotX:
-                    rx = self._get_rotX(i_shot)
-                if self.refine_rotY:
-                    ry = self._get_rotY(i_shot)
-                if self.refine_rotZ:
-                    rz = self._get_rotZ(i_shot)
+            #rx = ry = rz = 0
+            #if self.refine_Umatrix:
+            #    if self.refine_rotX:
+            rx = self._get_rotX(i_shot)
+            #    if self.refine_rotY:
+            ry = self._get_rotY(i_shot)
+            #    if self.refine_rotZ:
+            rz = self._get_rotZ(i_shot)
             anglesXYZ = rx, ry, rz
 
         x = col((-1, 0, 0))

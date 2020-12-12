@@ -82,6 +82,8 @@ class LocalRefinerLauncher:
         self._alias_refiner()
         self._check_experiment_integrity(expt)
 
+        self.DEVICE_ID = self.params.simulator.device_id
+
         shot_data = self.load_roi_data(refls, expt)
         if shot_data is None:
             raise ValueError("Cannot refine!")
@@ -273,14 +275,14 @@ class LocalRefinerLauncher:
             self.RUC.restart_file = self.params.refiner.io.restart_file
             self.RUC.has_pre_cached_roi_data = True
             self.RUC.trad_conv = True
-            self.RUC.S.update_nanoBragg_instance('update_oversample_during_refinement', False)
+            self.RUC.S.update_nanoBragg_instance('update_oversample_during_refinement',
+                                                 self.params.refiner.update_oversample_during_refinement)
             self.RUC.S.update_nanoBragg_instance('use_cuda', self.params.refiner.use_cuda)
             self.RUC.S.update_nanoBragg_instance("Npix_to_allocate", self.NPIX_TO_ALLOC)
             if self.params.refiner.use_cuda:
                 #TODO ensemble
                 if self.params.refiner.randomize_devices:
                     self.RUC.S.update_nanoBragg_instance('device_Id', np.random.choice(self.params.refiner.num_devices))
-                    #self.RUC.randomize_devices = self.params.refiner.num_devices
                 else:
                     self.RUC.S.update_nanoBragg_instance('device_Id', self.DEVICE_ID)
             self.RUC.refine_gain_fac = False

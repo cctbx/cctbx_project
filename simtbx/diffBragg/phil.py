@@ -244,6 +244,9 @@ refiner {
       .type = floats(size=2)
       .help = range of values in degrees for rotation of panel about its slow-axis 
   }
+  update_oversample_during_refinement = False
+    .type = bool
+    .help = whether to update the oversample parameter as ncells changes
   compute_image_model_correlation = False
     .type = bool
     .help = whether to compute model image intensity correlations

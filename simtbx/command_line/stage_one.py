@@ -51,13 +51,16 @@ reference_from_experiment
   detector = None
     .type = str
     .help = path to experiment containing a reference detector model to use during refinement
+  crystal = None
+    .type = str
+    .help = path to experiment containing a reference crystal model to use during refinement
 }
 output {
   directory = .
     .type = str
     .help = path where output files and folders will be written
   save {
-    images = None* model model_and_data
+    images = *None model model_and_data
       .type = choice
       .help = if model, output an image of the model pixels at the ROIs that
       .help = were used during refinement. If model_and_data, then output
@@ -261,10 +264,17 @@ class Script:
                     assert len(new_detector) == len(exper.detector)
                     exper.detector = new_detector
 
+                cryst_ref_exp = self.params.reference_from_experiment.crystal
+                if cryst_ref_exp is not None:
+                    new_crystal = ExperimentListFactory.from_json_file(cryst_ref_exp, check_format=False)[0].crystal
+                    exper.crystal = new_crystal
+
                 if self.params.output.save.reflections:
                     self.params.refiner.record_xy_calc = True
 
                 refine_starttime = time.time()
+                if not self.params.refiner.randomize_devices:
+                    self.params.simulator.device_id = COMM.rank % self.params.refiner.num_devices
                 refiner = refine_launcher.local_refiner_from_parameters(refls_for_exper, exper, self.params)
                 if self.params.show_timing:
                     print("Time to refine experiment: %f" % (time.time()- refine_starttime))

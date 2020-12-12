@@ -2,6 +2,7 @@ from itertools import zip_longest
 import math
 import pickle
 from simtbx.diffBragg.refiners.crystal_systems import OrthorhombicManager, TetragonalManager, MonoclinicManager, HexagonalManager
+from scipy.spatial import cKDTree
 from scipy.optimize import minimize
 from dials.algorithms.image.filter import convolve
 from scipy.interpolate import SmoothBivariateSpline
@@ -998,6 +999,12 @@ def save_spectra_file(spec_file, wavelengths, weights):
 
 def load_spectra_file(spec_file, total_flux=1., pinkstride=1, as_spectrum=False):
     wavelengths, weights = np.loadtxt(spec_file, float, delimiter=',', skiprows=1).T
+    if isinstance(wavelengths, float) and isinstance(weights, float):
+        # the file had one entry:
+        wavelengths = np.array([wavelengths])
+        weights = np.array([weights])
+    if pinkstride > len(wavelengths) or pinkstride == 0:
+        raise ValueError("Incorrect value for pinkstride")
     wavelengths = wavelengths[::pinkstride]
     weights = weights[::pinkstride]
     energies = ENERGY_CONV/wavelengths
@@ -1211,7 +1218,7 @@ def load_panel_group_file(panel_group_file):
 def spots_from_pandas_and_experiment(expt, pandas_pickle, mtz_file=None, mtz_col=None,
                                      spectrum_file=None, total_flux=1e12, pink_stride=1,
                                      beamsize_mm=0.001, oversample=0, d_max=999, d_min=1.5, defaultF=1e3,
-                                     cuda=False, ngpu=1, time_panels=True,
+                                     cuda=False, device_Id=0, time_panels=True,
                                      output_img=None, njobs=1, save_expt_data=False,
                                      as_numpy_array=False):
     import pandas
@@ -1255,7 +1262,6 @@ def spots_from_pandas_and_experiment(expt, pandas_pickle, mtz_file=None, mtz_col
     pids_per_job = np.array_split(panel_list, njobs)
 
     def main(pids):
-        device_Id = int(np.random.choice(ngpu))
         results = flexBeam_sim_colors(CRYSTAL=expt.crystal, DETECTOR=expt.detector, BEAM=expt.beam, Famp=Famp,
                                       fluxes=fluxes, energies=energies, beamsize_mm=beamsize_mm,
                                       Ncells_abc=Ncells_abc, spot_scale_override=spot_scale,
@@ -1319,11 +1325,9 @@ def index_refls(refls, exper, tolerance=0.333):
 
 
 def indexed_from_model(strong_refls, model_images, expt, thresh=1, tolerance=0.333, Qdist_cutoff=0.003):
-    from scipy.spatial import cKDTree
     model_refls = refls_from_sims(model_images, expt.detector, expt.beam, thresh=thresh)
     model_refls['id'] = flex.int(len(model_refls), 0)
     model_refls['imageset_id'] = flex.int(len(model_refls), 0)
-    pids = set(strong_refls['panel'])
 
     El = ExperimentList()
     El.append(expt)
@@ -1331,10 +1335,15 @@ def indexed_from_model(strong_refls, model_images, expt, thresh=1, tolerance=0.3
     model_refls = index_refls(model_refls, expt, tolerance=tolerance)
     print("Indexed %d / %d spots from the model using the nominal wavelength"
           % (sum(model_refls['id'] == 0), len(model_refls)))
+    if strong_refls is None:
+        model_refls['xyzcal.mm'] = model_refls['xyzobs.mm.value']
+        model_refls['xyzcal.px'] = model_refls['xyzobs.px.value']
+        return model_refls
 
     strong_refls.centroid_px_to_mm(El)
     strong_refls.map_centroids_to_reciprocal_space(El)
 
+    pids = set(strong_refls['panel'])
     Rindexed = None
     for pid in pids:
         Rmodel = model_refls.select(model_refls['panel'] == pid)
