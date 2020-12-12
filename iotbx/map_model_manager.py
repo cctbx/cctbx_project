@@ -2477,9 +2477,11 @@ class map_model_manager(object):
         element = 'P'
     if ca_only:
       target_model = target_model.apply_selection_string(
-        "name %s and element %s" %(atom_name, element))
+        "(altloc ' ' or altloc A) and name %s and element %s" %(
+      atom_name, element))
       matching_model = matching_model.apply_selection_string(
-        "name %s and element %s" %(atom_name, element))
+        "(altloc ' ' or altloc A) and name %s and element %s" %(
+       atom_name, element))
       # use CA
     elif (target_model.get_sites_cart().size() != \
          matching_model.get_sites_cart().size() )  or ( not
@@ -2575,9 +2577,11 @@ class map_model_manager(object):
 
     # Select the atoms to try and match
     target_model_ca = target_model.apply_selection_string(
-      "name %s and element %s" %(atom_name, element))
+      "(altloc ' ' or altloc A) and name %s and element %s" %(
+         atom_name, element))
     matching_model_ca = matching_model.apply_selection_string(
-      "name %s and element %s" %(atom_name, element))
+      "(altloc ' ' or altloc A) and name %s and element %s" %(
+        atom_name, element))
 
     # Make sure we have something to work with
     if target_model_ca.get_sites_cart() < 1:
