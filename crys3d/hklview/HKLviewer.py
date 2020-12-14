@@ -132,6 +132,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
     self.actiondebug.triggered.connect(self.DebugInteractively)
+    self.actionReset_View.triggered.connect(self.onResetView)
     self.actionSave_Current_Image.triggered.connect(self.onSaveImage)
     self.actionSettings.triggered.connect(self.SettingsDialog)
     self.actionExit.triggered.connect(self.window.close)
@@ -589,7 +590,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
             self.all_vectors = self.infodict.get("all_vectors",[])
 
             self.vectortable2.clearContents()
-            self.vectortable2.setRowCount(len(self.all_vectors))
+            self.vectortable2.setRowCount(len(self.all_vectors)+1)
             for row, (opnr, label, v, xyzop, hklop) in enumerate(self.all_vectors):
               for col,elm in enumerate((opnr, label, xyzop, hklop)):
                 item = QTableWidgetItem(str(elm))
@@ -598,12 +599,31 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
                   item.setCheckState(Qt.Unchecked)
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 self.vectortable2.setItem(row, col, item)
+            rc = self.vectortable2.rowCount()-1 # last row is for user defined vector
+            item = QTableWidgetItem(str(rc+1))
+            item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled ^ Qt.ItemIsEditable)
+            item.setCheckState(Qt.Unchecked)
+            self.vectortable2.setItem(rc, 0, item)
+
+            item = QTableWidgetItem("user vector")
+            item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+            self.vectortable2.setItem(rc, 1, item)
+
+            item = QTableWidgetItem()
+            item.setFlags(item.flags() | Qt.ItemIsEditable)
+            self.vectortable2.setItem(rc, 2, item)
+
+            item = QTableWidgetItem()
+            item.setFlags(item.flags() | Qt.ItemIsEditable)
+            self.vectortable2.setItem(rc, 3, item)
+
 
           if self.infodict.get("file_name"):
             self.window.setWindowTitle("HKL-viewer: " + self.infodict.get("file_name", "") )
 
           if self.infodict.get("NewFileLoaded"):
             self.NewFileLoaded = self.infodict.get("NewFileLoaded",False)
+            self.vectortable2.clearContents()
 
           if self.infodict.get("NewHKLscenes"):
             self.NewHKLscenes = self.infodict.get("NewHKLscenes",False)
@@ -632,6 +652,12 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
             self.power_scale_spinBox.setValue( self.infodict.get("used_nth_power_scale_radii", 0.0))
             self.unfeedback = False
 
+          if self.infodict.get("spacegroup_info"):
+            spacegroup_info = self.infodict.get("spacegroup_info",False)
+            unitcell_info = self.infodict.get("unitcell_info",False)
+            htmlstr = '''<html><head/><body><p><span style=" font-weight:600;">Space group: \t
+            </span>%s<span style=" font-weight:600;"><br/>Unit cell: \t</span>%s</p></body></html> '''
+            self.SpaceGrpUCellText.setText(htmlstr %(spacegroup_info, unitcell_info) )
           self.fileisvalid = True
           #print("ngl_hkl_infodict: " + str(ngl_hkl_infodict))
 
@@ -661,14 +687,9 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
             self.millertable.clearContents()
             self.millertable.setRowCount(len(self.array_infotpls))
-            for n,millarr in enumerate(self.array_infotpls):
-              for m,elm in enumerate(millarr):
-                if m == 0:
-                  #label = ",".join(elm)
-                  label = elm
-                  self.millertable.setItem(n, m, QTableWidgetItem(label))
-                else:
-                  self.millertable.setItem(n, m, QTableWidgetItem(str(elm)))
+            for row,millarr in enumerate(self.array_infotpls):
+              for col,elm in enumerate(millarr):
+                self.millertable.setItem(row, col, QTableWidgetItem(str(elm)))
             #self.functionTabWidget.setDisabled(True)
             self.NewFileLoaded = False
 
@@ -1152,11 +1173,19 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     col = item.column()
     try:
       if col==0:
-        #for i, (opnr, label, v, xyzop, hklop) in enumerate(self.all_vectors):
-        if item.checkState()==Qt.Checked:
-          self.PhilToJsRender(" NGL_HKLviewer.viewer.show_vector = '[%d, %s]'" %(row, True ))
-        else:
-          self.PhilToJsRender(" NGL_HKLviewer.viewer.show_vector = '[%d, %s]'" %(row, False ))
+        rc = self.vectortable2.rowCount()
+        if row < (rc-1): # one of the rotation axes
+          if item.checkState()==Qt.Checked:
+            self.PhilToJsRender(" NGL_HKLviewer.viewer.show_vector = '[%d, %s]'" %(row, True ))
+          else:
+            self.PhilToJsRender(" NGL_HKLviewer.viewer.show_vector = '[%d, %s]'" %(row, False ))
+        else: # a user defined vector
+          userhklstr = self.vectortable2.item(rc, 3).text()
+          if item.checkState()==Qt.Checked:
+            self.PhilToJsRender(" NGL_HKLviewer.viewer.show_user_vector = '[(%s), %d, %s]'" %(userhklstr, row, True ))
+          else:
+            self.PhilToJsRender(" NGL_HKLviewer.viewer.show_user_vector = '[%d, %s]'" %(row, False ))
+
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
 
@@ -1510,7 +1539,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def createFileInfoBox(self):
-    labels = ["Column label", "Type", "Space group", "# HKLs", "Span of HKLs",
+    labels = ["Column label", "Type", "# HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max", "Symmetry unique", "Anomalous"]
     self.millertable.setHorizontalHeaderLabels(labels)
     self.millertable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
@@ -1547,15 +1576,15 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.reciprocunitcellslider.sliderReleased.connect(self.onReciprocUnitcellScale)
     #self.ResetViewBtn.clicked.connect(self.onResetViewBtn)
     #self.SaveImageBtn.clicked.connect(self.onSaveImage)
-    labels = ["draw", "Operator", "As xyz", "as hkl"]
+    labels = ["draw", "operator", "as xyz", "as hkl"]
     self.vectortable2.setHorizontalHeaderLabels(labels)
     self.vectortable2.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.vectortable2.itemChanged.connect(self.onVectorTableItemChanged  )
-    #self.vectortable2.itemPressed.connect(self.onVectorTableitemPressed  )
+    #self.vectortable2.itemPressed.connect(self.onVectorTableItemChanged  )
 
 
-  #def onResetViewBtn(self):
-  #  self.PhilToJsRender('NGL_HKLviewer.action = reset_view')
+  def onResetView(self):
+    self.PhilToJsRender('NGL_HKLviewer.action = reset_view')
 
 
   def onSaveImage(self):

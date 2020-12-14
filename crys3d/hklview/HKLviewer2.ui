@@ -7,8 +7,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>988</width>
-    <height>824</height>
+    <width>1093</width>
+    <height>862</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -39,22 +39,25 @@
        </property>
        <item row="0" column="0">
         <widget class="QSplitter" name="splitter">
+         <property name="midLineWidth">
+          <number>0</number>
+         </property>
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
          </property>
+         <property name="handleWidth">
+          <number>5</number>
+         </property>
          <widget class="QWidget" name="widget_2" native="true">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <layout class="QGridLayout" name="gridLayout_4">
            <item row="0" column="0">
             <widget class="QSplitter" name="splitter_2">
-             <property name="frameShape">
-              <enum>QFrame::NoFrame</enum>
-             </property>
-             <property name="frameShadow">
-              <enum>QFrame::Plain</enum>
-             </property>
-             <property name="midLineWidth">
-              <number>0</number>
-             </property>
              <property name="orientation">
               <enum>Qt::Vertical</enum>
              </property>
@@ -70,11 +73,55 @@
                 <number>0</number>
                </property>
                <property name="topMargin">
-                <number>6</number>
+                <number>3</number>
                </property>
                <property name="rightMargin">
                 <number>0</number>
                </property>
+               <property name="bottomMargin">
+                <number>3</number>
+               </property>
+               <item row="1" column="0">
+                <widget class="HeaderDataTableWidget" name="millertable">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                   <horstretch>0</horstretch>
+                   <verstretch>2</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="verticalScrollMode">
+                  <enum>QAbstractItemView::ScrollPerPixel</enum>
+                 </property>
+                 <property name="horizontalScrollMode">
+                  <enum>QAbstractItemView::ScrollPerPixel</enum>
+                 </property>
+                 <property name="rowCount">
+                  <number>1</number>
+                 </property>
+                 <property name="columnCount">
+                  <number>9</number>
+                 </property>
+                 <attribute name="horizontalHeaderMinimumSectionSize">
+                  <number>5</number>
+                 </attribute>
+                 <attribute name="horizontalHeaderStretchLastSection">
+                  <bool>false</bool>
+                 </attribute>
+                 <attribute name="verticalHeaderDefaultSectionSize">
+                  <number>24</number>
+                 </attribute>
+                 <row/>
+                 <column/>
+                 <column/>
+                 <column/>
+                 <column/>
+                 <column/>
+                 <column/>
+                 <column/>
+                 <column/>
+                 <column/>
+                </widget>
+               </item>
                <item row="0" column="0">
                 <widget class="QLabel" name="label">
                  <property name="sizePolicy">
@@ -88,48 +135,45 @@
                  </property>
                 </widget>
                </item>
-               <item row="1" column="0">
-                <widget class="HeaderDataTableWidget" name="millertable">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="verticalScrollMode">
-                  <enum>QAbstractItemView::ScrollPerPixel</enum>
-                 </property>
-                 <property name="horizontalScrollMode">
-                  <enum>QAbstractItemView::ScrollPerPixel</enum>
-                 </property>
-                 <property name="rowCount">
-                  <number>1</number>
-                 </property>
-                 <property name="columnCount">
-                  <number>10</number>
-                 </property>
-                 <attribute name="horizontalHeaderMinimumSectionSize">
-                  <number>5</number>
-                 </attribute>
-                 <attribute name="horizontalHeaderStretchLastSection">
-                  <bool>false</bool>
-                 </attribute>
-                 <row/>
-                 <column/>
-                 <column/>
-                 <column/>
-                 <column/>
-                 <column/>
-                 <column/>
-                 <column/>
-                 <column/>
-                 <column/>
-                 <column/>
-                </widget>
-               </item>
               </layout>
              </widget>
+             <widget class="QTextEdit" name="SpaceGrpUCellText">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>1</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>35</height>
+               </size>
+              </property>
+              <property name="verticalScrollBarPolicy">
+               <enum>Qt::ScrollBarAlwaysOff</enum>
+              </property>
+              <property name="horizontalScrollBarPolicy">
+               <enum>Qt::ScrollBarAlwaysOff</enum>
+              </property>
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+              <property name="html">
+               <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Space group: &lt;/span&gt;P21 21 21&lt;span style=&quot; font-weight:600;&quot;&gt;&lt;br /&gt;Unit cell: &lt;/span&gt;(98.371, 98.371, 263.131, 90, 90, 120)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+             </widget>
              <widget class="QTabWidget" name="functionTabWidget">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                <horstretch>0</horstretch>
+                <verstretch>1</verstretch>
+               </sizepolicy>
+              </property>
               <property name="currentIndex">
                <number>4</number>
               </property>
@@ -795,8 +839,8 @@
                    <item row="0" column="2">
                     <widget class="QFrame" name="frame">
                      <property name="sizePolicy">
-                      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                       <horstretch>0</horstretch>
+                      <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+                       <horstretch>1</horstretch>
                        <verstretch>0</verstretch>
                       </sizepolicy>
                      </property>
@@ -810,10 +854,16 @@
                       <item row="0" column="0">
                        <widget class="QLabel" name="rotavecangle_labeltxt">
                         <property name="sizePolicy">
-                         <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
-                          <horstretch>1</horstretch>
+                         <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                          <horstretch>0</horstretch>
                           <verstretch>0</verstretch>
                          </sizepolicy>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>120</width>
+                          <height>0</height>
+                         </size>
                         </property>
                         <property name="text">
                          <string>Rotate Reflections around Vector with Angle</string>
@@ -826,10 +876,16 @@
                       <item row="1" column="0">
                        <widget class="QSlider" name="rotavecangle_slider">
                         <property name="sizePolicy">
-                         <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
-                          <horstretch>1</horstretch>
+                         <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+                          <horstretch>0</horstretch>
                           <verstretch>0</verstretch>
                          </sizepolicy>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>120</width>
+                          <height>0</height>
+                         </size>
                         </property>
                         <property name="maximum">
                          <number>359</number>
@@ -850,7 +906,7 @@
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                           <horstretch>0</horstretch>
-                          <verstretch>1</verstretch>
+                          <verstretch>0</verstretch>
                          </sizepolicy>
                         </property>
                         <property name="text">
@@ -894,8 +950,8 @@
                    <item row="0" column="0" colspan="2">
                     <widget class="QTableWidget" name="vectortable2">
                      <property name="sizePolicy">
-                      <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-                       <horstretch>0</horstretch>
+                      <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+                       <horstretch>3</horstretch>
                        <verstretch>0</verstretch>
                       </sizepolicy>
                      </property>
@@ -916,6 +972,9 @@
                      </property>
                      <attribute name="horizontalHeaderDefaultSectionSize">
                       <number>60</number>
+                     </attribute>
+                     <attribute name="verticalHeaderVisible">
+                      <bool>false</bool>
                      </attribute>
                      <attribute name="verticalHeaderDefaultSectionSize">
                       <number>24</number>
@@ -1066,7 +1125,7 @@
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
-                <verstretch>1</verstretch>
+                <verstretch>2</verstretch>
                </sizepolicy>
               </property>
               <property name="verticalScrollBarPolicy">
@@ -1103,7 +1162,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>988</width>
+     <width>1093</width>
      <height>22</height>
     </rect>
    </property>
