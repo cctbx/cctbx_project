@@ -6,6 +6,7 @@ from libtbx.utils import format_cpu_times
 from libtbx.str_utils import show_string
 from mmtbx.rotamer.n_dim_table import NDimTable
 import os, sys
+# NB:  this can be run from the command line as "mmtbx.rebuild_cablam_cache"
 
 file_suffixes = [
   'expected.general',
@@ -60,7 +61,7 @@ def rebuild_pickle_files(data_dir, file_prefix, target_db, suffixes):
       target_path=pickle_file,
       path_prefix=data_dir)
     print("  %s -> %s:" % (data_file, pickle_file), end=' ')
-    if not pair_info.needs_update: print("alreadt up to date.")
+    if not pair_info.needs_update: print("already up to date.")
     else:
       print("converting ...", end=' ')
       sys.stdout.flush()
