@@ -82,6 +82,7 @@ class ArrayInfo:
       self.desc = get_array_description(millarr)
     self.span = ("?" , "?")
     self.spginf = millarr.space_group_info().symbol_and_number()
+    self.ucellinf = str(millarr.unit_cell())
     dmin = 0.0
     dmax = 0.0
     try:
@@ -93,9 +94,9 @@ class ArrayInfo:
     issymunique = millarr.is_unique_set_under_symmetry()
     isanomalous = millarr.anomalous_flag()
 
-    self.infotpl = ( ",".join(self.labels), self.desc, self.spginf, arrsize, self.span,
+    self.infotpl = ( ",".join(self.labels), self.desc, arrsize, self.span,
      self.minmaxdata, self.minmaxsigs, (roundoff(dmin), roundoff(dmax)), issymunique, isanomalous )
-    self.infostr = "%s (%s), space group: %s, %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
+    self.infostr = "%s (%s), %s HKLs: %s, MinMax: %s, MinMaxSigs: %s, d_minmax: %s, SymUnique: %d, Anomalous: %d" %self.infotpl
 
 
 def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.stdout.write):
@@ -1847,11 +1848,9 @@ Distance: %s
   def show_vector(self):
     [i, val] = eval(self.viewerparams.show_vector)
     (opnr, label, v, xyzop, hklop) = self.all_vectors[i]
+    # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
+    xyzop = xyzop.replace(",", "_")
     if val:
-      #s = self.scene.renderscale
-      # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas
-      xyzop = xyzop.replace(",", "_")
-      #self.draw_cartesian_vector(0, 0, 0, s*v[0], s*v[1], s*v[2], r=0.1, g=0.1,b=0.1,
       self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], r=0.1, g=0.1,b=0.1,
                                 label=label, name=xyzop, radius=0.2 )
     else:

@@ -5,6 +5,7 @@ from iotbx.reflection_file_reader import any_reflection_file
 from cctbx.miller import display2 as display
 from crys3d.hklview import jsview_3d as view_3d
 from crys3d.hklview.jsview_3d import ArrayInfo
+from libtbx.math_utils import roundoff
 from libtbx.str_utils import format_value
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, to_str
@@ -266,8 +267,8 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "shape_primitive"):
         self.set_shape_primitive(phl.shape_primitive)
 
-      if view_3d.has_phil_path(diff_phil, "user_vector"):
-        self.add_user_vector()
+      if view_3d.has_phil_path(diff_phil, "show_user_vector"):
+        self.show_user_vector()
 
       if view_3d.has_phil_path(diff_phil, "save_image_name"):
         self.SaveImageName(phl.save_image_name)
@@ -526,9 +527,13 @@ class HKLViewFrame() :
     valid_arrays = []
     self.viewer.array_infostrs = []
     self.viewer.array_infotpls = []
-    for array in arrays :
-      self.viewer.array_infostrs.append( ArrayInfo(array, self.mprint).infostr )
-      self.viewer.array_infotpls.append( ArrayInfo(array, self.mprint).infotpl )
+    for i,array in enumerate(arrays) :
+      arrayinfo = ArrayInfo(array, self.mprint)
+      self.viewer.array_infostrs.append( arrayinfo.infostr )
+      self.viewer.array_infotpls.append( arrayinfo.infotpl )
+      if i==0:
+        mydict = { "spacegroup_info": arrayinfo.spginf, "unitcell_info": arrayinfo.ucellinf }
+        self.SendInfoToGUI(mydict)
       valid_arrays.append(array)
     self.valid_arrays = valid_arrays
     self.mprint("%d Miller arrays in this data set:" %len(arrays))
@@ -604,7 +609,7 @@ class HKLViewFrame() :
               t3 = float(svec[2])
               if (t1*t1 + t2*t2 + t3*t3) > 0.0:
                 self.tncsvec = (t1, t2, t3)
-                self.mprint("tNCS vector found in header of mtz file: %s" %str(svec) )
+                self.mprint("tNCS vector found in header of mtz file: %s" %str(self.tncsvec) )
           from iotbx import mtz
           mtzobj = mtz.object(file_name)
           nanval = float("nan")
@@ -969,22 +974,22 @@ class HKLViewFrame() :
     if self.tncsvec is not None:
       uc = self.viewer.miller_array.unit_cell()
       vec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
-      vscale =  1.0/self.viewer.scene.renderscale
-      svec1 = [ vscale*vec[0], vscale*vec[1], vscale*vec[2] ]
-      self.viewer.all_vectors.append( (-1, "TNCS", vec, "tncs", "") )
+      #vscale =  1.0/self.viewer.scene.renderscale
+      #svec1 = [ vscale*vec[0], vscale*vec[1], vscale*vec[2] ]
+      self.viewer.all_vectors.append( (-1, "TNCS", vec, str(roundoff(self.tncsvec, 5)), "") )
     self.viewer.all_vectors.extend(self.uservectors)
     self.SendInfoToGUI( { "all_vectors": self.viewer.all_vectors } )
 
 
-  def add_user_vector(self):
-    self.uservectors.append( (-1, self.params.NGL_HKLviewer.viewer.user_label, 
-                          eval(self.params.NGL_HKLviewer.viewer.user_vector), 
-                          "", "") )
+  def show_user_vector(self):
+    self.uservectors = [(-1, self.params.NGL_HKLviewer.viewer.user_label, 
+                          eval(self.params.NGL_HKLviewer.viewer.show_user_vector), 
+                          "", "")]
 
 
-  def AddUserVector(self, vec, label=""):
+  def ShowUserVector(self, vec, label=""):
     self.params.NGL_HKLviewer.viewer.user_label = label
-    self.params.NGL_HKLviewer.viewer.user_vector = str(vec)
+    self.params.NGL_HKLviewer.viewer.show_user_vector = str(vec)
     self.update_settings()
 
 
@@ -1213,7 +1218,11 @@ NGL_HKLviewer {
     show_symmetry_rotation_axes = False
       .type = bool
     show_vector = ''
-      .type=str
+      .type = str
+    show_user_vector = ""
+      .type = str
+    user_label = ""
+      .type = str
     %s
   }
   NGL {
