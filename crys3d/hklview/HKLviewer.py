@@ -599,14 +599,15 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
                   item.setCheckState(Qt.Unchecked)
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 self.vectortable2.setItem(row, col, item)
+
             rc = self.vectortable2.rowCount()-1 # last row is for user defined vector
             item = QTableWidgetItem(str(rc+1))
             item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled ^ Qt.ItemIsEditable)
             item.setCheckState(Qt.Unchecked)
             self.vectortable2.setItem(rc, 0, item)
 
-            item = QTableWidgetItem("user vector")
-            item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+            item = QTableWidgetItem("new vector")
+            item.setFlags(item.flags() | Qt.ItemIsEditable)
             self.vectortable2.setItem(rc, 1, item)
 
             item = QTableWidgetItem()
@@ -720,7 +721,8 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     #self.setWindowTitle("HKL-viewer: " + self.currentphilstringdict['NGL_HKLviewer.filename'])
     self.mousemoveslider.setValue( 2000*self.currentphilstringdict['NGL_HKLviewer.NGL.mouse_sensitivity'])
     #self.rotavecangle_slider.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
-    self.rotavecangle_labeltxt.setText("Angle rotated: %2.fº" %self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
+    vecnr, dgr = self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector']
+    self.rotavecangle_labeltxt.setText("Angle rotated: %2.fº" %dgr)
 
 
     self.sliceindexspinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_index'])
@@ -1172,19 +1174,38 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     row = item.row()
     col = item.column()
     try:
+      rc = self.vectortable2.rowCount()-1
+      if self.vectortable2.item(row, 3) is None:
+        return
+      hklstr = self.vectortable2.item(row, 3).text()
+      label = self.vectortable2.item(row, 1).text()
+      if label == "new vector" or hklstr == "":
+        return
+
       if col==0:
-        rc = self.vectortable2.rowCount()
-        if row < (rc-1): # one of the rotation axes
-          if item.checkState()==Qt.Checked:
-            self.PhilToJsRender(" NGL_HKLviewer.viewer.show_vector = '[%d, %s]'" %(row, True ))
-          else:
-            self.PhilToJsRender(" NGL_HKLviewer.viewer.show_vector = '[%d, %s]'" %(row, False ))
-        else: # a user defined vector
-          userhklstr = self.vectortable2.item(rc, 3).text()
-          if item.checkState()==Qt.Checked:
-            self.PhilToJsRender(" NGL_HKLviewer.viewer.show_user_vector = '[(%s), %d, %s]'" %(userhklstr, row, True ))
-          else:
-            self.PhilToJsRender(" NGL_HKLviewer.viewer.show_user_vector = '[%d, %s]'" %(row, False ))
+        #if row < (rc-1): # one of the rotation axes
+        if item.checkState()==Qt.Checked:
+          self.PhilToJsRender(" NGL_HKLviewer.viewer.show_vector = '[%d, %s]'" %(row, True ))
+        else:
+          self.PhilToJsRender(" NGL_HKLviewer.viewer.show_vector = '[%d, %s]'" %(row, False ))
+        
+        self.rotvec = None
+        cn = 0
+        for rvrow in range(self.vectortable2.rowCount()):
+          if self.vectortable2.item(rvrow, 0).checkState()==Qt.Checked:
+            self.rotvec = rvrow
+            cn +=1
+          if cn > 1: # select only one vector to rotate around
+            self.rotvec = None
+            break
+        if self.rotvec is not None:
+          self.RotateAroundframe.setEnabled(True)
+        else:
+          self.RotateAroundframe.setDisabled(True)
+
+      if col==3 and row==rc: # a user defined vector
+         self.PhilToJsRender("""NGL_HKLviewer.viewer.add_user_vector = '(%s)'
+         NGL_HKLviewer.viewer.user_label = %s """ %(hklstr, label))
 
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
@@ -1350,9 +1371,10 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     if self.unfeedback:
       return
     self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
-    angle_around_vector = %f
+    angle_around_vector = '[%d, %f]'
     bequiet = False
-}""" %val)
+}""" %(self.rotvec, val))
+
 
 
   def onFinalRotaVecAngle(self):
@@ -1360,9 +1382,9 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       return
     val = self.rotavecangle_slider.value()
     self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
-    angle_around_vector = %f
+    angle_around_vector = '[%d, %f]'
     bequiet = False
-}""" %val)
+}""" %(self.rotvec, val))
 
 
   def onClipwidthChanged(self, val):
@@ -1581,6 +1603,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.vectortable2.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.vectortable2.itemChanged.connect(self.onVectorTableItemChanged  )
     #self.vectortable2.itemPressed.connect(self.onVectorTableItemChanged  )
+    self.RotateAroundframe.setDisabled(True)
 
 
   def onResetView(self):

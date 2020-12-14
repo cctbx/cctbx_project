@@ -675,7 +675,8 @@ function onMessage(e)
       stage.mouseControls.add("scroll-shift", NGL.MouseActions.scrollShift);
     }
 
-    if (msgtype === "RotateStage") {
+    if (msgtype === "RotateStage")
+    {
       WebsockSendMsg('Rotating stage ' + pagename);
 
       var sm = new Float32Array(9);
@@ -702,22 +703,47 @@ function onMessage(e)
       );
     }
 
-    if (msgtype === "RotateComponents") {
+    if (msgtype === "RotateComponents")
+    {
       WebsockSendMsg('Rotating components ' + pagename);
 
       var sm = new Float32Array(9);
       var m4 = new NGL.Matrix4();
+      stm4 = stage.viewerControls.getOrientation().elements;
 
       for (j = 0; j < 9; j++)
         sm[j] = parseFloat(val[j]);
 
       // GL matrices are the transpose of conventional rotation matrices
-      m4.set(sm[0], sm[3], sm[6], 0.0,
-        sm[1], sm[4], sm[7], 0.0,
-        sm[2], sm[5], sm[8], 0.0,
-        0.0, 0.0, 0.0, 1.0
+      m4.set(sm[0], sm[3], sm[6], stm4[3],
+        sm[1], sm[4], sm[7], stm4[7],
+        sm[2], sm[5], sm[8], stm4[11],
+
+        stm4[12], stm4[13], stm4[14], stm4[15]
       );
-      shapeComp.setTransform(m);
+      shapeComp.setTransform(m4);
+      if (val[9] == "verbose")
+        postrotmxflag = true;
+      RenderRequest();
+      sleep(100).then(() => {
+        msg = String(shapeComp.matrix.elements);
+        WebsockSendMsg('CurrentComponentRotation:\n' + msg);
+      }
+      );
+    }
+
+    if (msgtype === "RotateAxisComponents")
+    {
+      WebsockSendMsg('Rotating components around axis ' + pagename);
+      var sm = new Float32Array(9);
+      var m4 = new NGL.Matrix4();
+      var axis = new NGL.Vector3();
+      var theta = parseFloat(val[3]);
+      axis.x = parseFloat(val[0]);
+      axis.y = parseFloat(val[1]);
+      axis.z = parseFloat(val[2]);
+      m4.makeRotationAxis(axis, theta);
+      shapeComp.setTransform(m4);
       if (val[9] == "verbose")
         postrotmxflag = true;
       RenderRequest();

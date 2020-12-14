@@ -157,6 +157,7 @@ class HKLViewFrame() :
     self.viewer.sg = None
     self.viewer.proc_arrays = []
     self.viewer.HKLscenedict = {}
+    self.uservectors = []
     self.viewer.sceneisdirty = True
     self.viewer.isnewfile = True
     if self.viewer.miller_array:
@@ -258,8 +259,8 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "miller_array_operations"):
         self.make_new_miller_array()
 
-      if view_3d.has_phil_path(diff_phil, "angle_around_vector", "bequiet"):
-        self.rotate_around_vector(phl.clip_plane.angle_around_vector)
+      if view_3d.has_phil_path(diff_phil, "angle_around_vector"):
+        self.rotate_around_vector2(phl.clip_plane.angle_around_vector)
 
       if view_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
         self.set_default_spacegroup()
@@ -267,8 +268,8 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "shape_primitive"):
         self.set_shape_primitive(phl.shape_primitive)
 
-      if view_3d.has_phil_path(diff_phil, "show_user_vector"):
-        self.show_user_vector()
+      if view_3d.has_phil_path(diff_phil, "add_user_vector"):
+        self.add_user_vector()
 
       if view_3d.has_phil_path(diff_phil, "save_image_name"):
         self.SaveImageName(phl.save_image_name)
@@ -290,7 +291,7 @@ class HKLViewFrame() :
 
       self.params.NGL_HKLviewer = self.viewer.update_settings(diff_phil, phl)
       if view_3d.has_phil_path(diff_phil, "scene_id"):
-        self.ListVectors()
+        self.list_vectors()
       # parameters might have been changed. So update self.currentphil accordingly
       self.currentphil = self.master_phil.format(python_object = self.params)
       self.NewFileLoaded = False
@@ -969,27 +970,39 @@ class HKLViewFrame() :
     self.viewer.SetFontSize(val)
 
 
-  def ListVectors(self):
+  def list_vectors(self):
     self.viewer.all_vectors = self.viewer.rotation_operators[:]
     if self.tncsvec is not None:
       uc = self.viewer.miller_array.unit_cell()
       vec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
       #vscale =  1.0/self.viewer.scene.renderscale
       #svec1 = [ vscale*vec[0], vscale*vec[1], vscale*vec[2] ]
-      self.viewer.all_vectors.append( (-1, "TNCS", vec, str(roundoff(self.tncsvec, 5)), "") )
+      ln = len(self.viewer.all_vectors)
+      self.viewer.all_vectors.append( (ln, "TNCS", vec, str(roundoff(self.tncsvec, 5)), "") )
     self.viewer.all_vectors.extend(self.uservectors)
+    for (opnr, label, v, xyzop, hklop) in self.viewer.all_vectors:
+      # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
+      name = label + xyzop.replace(",", "_")
+      self.viewer.RemoveVectors(name)
+
     self.SendInfoToGUI( { "all_vectors": self.viewer.all_vectors } )
 
 
-  def show_user_vector(self):
-    self.uservectors = [(-1, self.params.NGL_HKLviewer.viewer.user_label, 
-                          eval(self.params.NGL_HKLviewer.viewer.show_user_vector), 
-                          "", "")]
+  def add_user_vector(self):
+    vec = eval(self.params.NGL_HKLviewer.viewer.add_user_vector)
+    uc = self.viewer.miller_array.unit_cell()
+    s = self.viewer.scene.renderscale
+    ln = len(self.viewer.all_vectors)
+    vec = list( self.viewer.scene.renderscale*(vec * matrix.sqr(uc.fractionalization_matrix()).transpose()) )
+    self.uservectors.append( (ln, self.params.NGL_HKLviewer.viewer.user_label, 
+                          vec, self.params.NGL_HKLviewer.viewer.user_label, 
+                          self.params.NGL_HKLviewer.viewer.add_user_vector) )
+    self.list_vectors()
 
 
-  def ShowUserVector(self, vec, label=""):
+  def AddUserVector(self, vec, label=""):
     self.params.NGL_HKLviewer.viewer.user_label = label
-    self.params.NGL_HKLviewer.viewer.show_user_vector = str(vec)
+    self.params.NGL_HKLviewer.viewer.add_user_vector = str(vec)
     self.update_settings()
 
 
@@ -1068,6 +1081,15 @@ class HKLViewFrame() :
                   self.params.NGL_HKLviewer.clip_plane.bequiet)
     else:
       self.mprint("First specify vector around which to rotate")
+
+
+  def rotate_around_vector2(self, vecnr_dgr):
+    vecnr, dgr = eval(vecnr_dgr)
+    hklvec = self.viewer.all_vectors[vecnr][4]
+    phi = cmath.pi*dgr/180
+    R = flex.vec3_double([eval(hklvec)])
+    self.viewer.RotateAroundFracVector(phi, R[0][0], R[0][1], R[0][2], isreciprocal=True)
+    #self.mprint("First specify vector around which to rotate")
 
 
   def RotateAroundVector(self, dgr, bequiet):
@@ -1189,8 +1211,8 @@ NGL_HKLviewer {
       .type = float
     l = 0
       .type = float
-    angle_around_vector = 0.0
-      .type = float
+    angle_around_vector = \"[0,0]\"
+      .type = str
     hkldist = 0.0
       .type = float
     clipwidth = None
@@ -1219,7 +1241,7 @@ NGL_HKLviewer {
       .type = bool
     show_vector = ''
       .type = str
-    show_user_vector = ""
+    add_user_vector = ""
       .type = str
     user_label = ""
       .type = str

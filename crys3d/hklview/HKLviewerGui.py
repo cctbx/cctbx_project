@@ -546,20 +546,20 @@ class Ui_MainWindow(object):
         self.gridLayout_8.setSpacing(4)
         self.gridLayout_8.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_8.setObjectName(u"gridLayout_8")
-        self.frame = QFrame(self.groupBox_2)
-        self.frame.setObjectName(u"frame")
+        self.RotateAroundframe = QFrame(self.groupBox_2)
+        self.RotateAroundframe.setObjectName(u"RotateAroundframe")
         sizePolicy18 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         sizePolicy18.setHorizontalStretch(1)
         sizePolicy18.setVerticalStretch(0)
-        sizePolicy18.setHeightForWidth(self.frame.sizePolicy().hasHeightForWidth())
-        self.frame.setSizePolicy(sizePolicy18)
-        self.frame.setFrameShape(QFrame.StyledPanel)
-        self.frame.setFrameShadow(QFrame.Raised)
-        self.gridLayout_17 = QGridLayout(self.frame)
+        sizePolicy18.setHeightForWidth(self.RotateAroundframe.sizePolicy().hasHeightForWidth())
+        self.RotateAroundframe.setSizePolicy(sizePolicy18)
+        self.RotateAroundframe.setFrameShape(QFrame.StyledPanel)
+        self.RotateAroundframe.setFrameShadow(QFrame.Raised)
+        self.gridLayout_17 = QGridLayout(self.RotateAroundframe)
         self.gridLayout_17.setSpacing(4)
         self.gridLayout_17.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_17.setObjectName(u"gridLayout_17")
-        self.rotavecangle_labeltxt = QLabel(self.frame)
+        self.rotavecangle_labeltxt = QLabel(self.RotateAroundframe)
         self.rotavecangle_labeltxt.setObjectName(u"rotavecangle_labeltxt")
         sizePolicy19 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         sizePolicy19.setHorizontalStretch(0)
@@ -571,7 +571,7 @@ class Ui_MainWindow(object):
 
         self.gridLayout_17.addWidget(self.rotavecangle_labeltxt, 0, 0, 1, 1)
 
-        self.rotavecangle_slider = QSlider(self.frame)
+        self.rotavecangle_slider = QSlider(self.RotateAroundframe)
         self.rotavecangle_slider.setObjectName(u"rotavecangle_slider")
         sizePolicy13.setHeightForWidth(self.rotavecangle_slider.sizePolicy().hasHeightForWidth())
         self.rotavecangle_slider.setSizePolicy(sizePolicy13)
@@ -583,7 +583,7 @@ class Ui_MainWindow(object):
 
         self.gridLayout_17.addWidget(self.rotavecangle_slider, 1, 0, 1, 1)
 
-        self.AnimaRotCheckBox = QCheckBox(self.frame)
+        self.AnimaRotCheckBox = QCheckBox(self.RotateAroundframe)
         self.AnimaRotCheckBox.setObjectName(u"AnimaRotCheckBox")
         sizePolicy13.setHeightForWidth(self.AnimaRotCheckBox.sizePolicy().hasHeightForWidth())
         self.AnimaRotCheckBox.setSizePolicy(sizePolicy13)
@@ -591,7 +591,7 @@ class Ui_MainWindow(object):
         self.gridLayout_17.addWidget(self.AnimaRotCheckBox, 2, 0, 1, 1)
 
 
-        self.gridLayout_8.addWidget(self.frame, 0, 2, 1, 1)
+        self.gridLayout_8.addWidget(self.RotateAroundframe, 0, 2, 1, 1)
 
         self.frame_6 = QFrame(self.groupBox_2)
         self.frame_6.setObjectName(u"frame_6")
