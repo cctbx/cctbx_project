@@ -219,14 +219,15 @@ class SimData:
         self.crystal.miller_array.indices(), self.crystal.miller_array.data())
 
   def _crystal_properties(self):
-    self.D.xtal_shape = self.crystal.xtal_shape
-    self.update_Fhkl_tuple()
-    self.D.Amatrix = Amatrix_dials2nanoBragg(self.crystal.dxtbx_crystal)
-    self.D.Ncells_abc = self.crystal.Ncells_abc
-    self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
-    self.D.mosaic_domains = self.crystal.n_mos_domains
-    self.D.set_mosaic_blocks(SimData.Umats(self.crystal.mos_spread_deg, self.crystal.n_mos_domains,
-                                           seed=self.mosaic_seeds[0], norm_dist_seed=self.mosaic_seeds[1]) )
+    if self.crystal is not None:
+      self.D.xtal_shape = self.crystal.xtal_shape
+      self.update_Fhkl_tuple()
+      self.D.Amatrix = Amatrix_dials2nanoBragg(self.crystal.dxtbx_crystal)
+      self.D.Ncells_abc = self.crystal.Ncells_abc
+      self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
+      self.D.mosaic_domains = self.crystal.n_mos_domains
+      self.D.set_mosaic_blocks(SimData.Umats(self.crystal.mos_spread_deg, self.crystal.n_mos_domains,
+                                             seed=self.mosaic_seeds[0], norm_dist_seed=self.mosaic_seeds[1]) )
 
   def _beam_properties(self):
     self.D.xray_beams = self.beam.xray_beams
@@ -238,6 +239,8 @@ class SimData:
     self.D.mosaic_seed = self.seed
 
   def determine_spot_scale(self):
+    if self.crystal is None:
+      return 1
     if self.beam.size_mm <= self.crystal.thick_mm:
       illum_xtal_vol = self.crystal.thick_mm * self.beam.size_mm ** 2
     else:
@@ -261,8 +264,8 @@ class SimData:
     if self.D is None:
       self._panel_id = 0
     else:
-      self.D.set_dxtbx_detector_panel(self.detector[val], self.beam.nanoBragg_constructor_beam.get_s0())
-      self._panel_id = val
+      self.D.set_dxtbx_detector_panel(self.detector[int(val)], self.beam.nanoBragg_constructor_beam.get_s0())
+      self._panel_id = int(val)
 
   def instantiate_nanoBragg(self, verbose=0, oversample=0, device_Id=0, adc_offset=0, default_F=1000.0, interpolate=0,
                             pid=0):
