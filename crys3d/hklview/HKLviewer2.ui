@@ -837,7 +837,7 @@ p, li { white-space: pre-wrap; }
                   </property>
                   <layout class="QGridLayout" name="gridLayout_8">
                    <item row="0" column="2">
-                    <widget class="QFrame" name="frame">
+                    <widget class="QFrame" name="RotateAroundframe">
                      <property name="sizePolicy">
                       <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
                        <horstretch>1</horstretch>

@@ -1823,7 +1823,8 @@ Distance: %s
 
   def show_rotation_axes(self):
     if self.viewerparams.show_symmetry_rotation_axes:
-      s = self.scene.renderscale
+      #s = self.scene.renderscale
+      s = self.reciproc_scale
       for i, (opnr, label, v, xyzop, hklop) in enumerate( self.rotation_operators ): # skip the last op for javascript drawing purposes
         if i < len(self.rotation_operators)-1:
           self.draw_cartesian_vector(0, 0, 0, s*v[0], s*v[1], s*v[2], label=label, radius=0.2 )
@@ -1847,17 +1848,19 @@ Distance: %s
 
   def show_vector(self):
     [i, val] = eval(self.viewerparams.show_vector)
-    (opnr, label, v, xyzop, hklop) = self.all_vectors[i]
-    # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
-    xyzop = xyzop.replace(",", "_")
-    if val:
-      self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], r=0.1, g=0.1,b=0.1,
-                                label=label, name=xyzop, radius=0.2 )
-    else:
-      self.RemoveVectors(xyzop)
+    if i < len(self.all_vectors):
+      (opnr, label, v, xyzop, hklop) = self.all_vectors[i]
+      # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
+      name = label + xyzop.replace(",", "_")
+      if val:
+        self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], r=0.1, g=0.1,b=0.1,
+                                  label=label, name=name, radius=0.2 )
+      else:
+        self.RemoveVectors(name)
 
 
-  def RotateAroundFracVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3), isreciprocal=False, quietbrowser=True):
+  def RotateAroundFracVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3), 
+                             isreciprocal=False, quietbrowser=True):
     if isreciprocal:
     # Assuming vector is in reciprocal space coordinates turn it into cartesian
       cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().fractionalization_matrix()).transpose() )
@@ -1876,8 +1879,10 @@ Distance: %s
     sin2phi2 = math.sin(phi/2)
     sin2phi2 *= sin2phi2
     RotMx = I + math.sin(phi)*W + 2* sin2phi2 * W*W
-    self.currentRotmx = RotMx * prevrotmx # impose any other rotation already performed
-    self.RotateMxStage(self.currentRotmx, quietbrowser)
+    #self.currentRotmx = RotMx * prevrotmx # impose any other rotation already performed
+    #self.RotateMxStage(self.currentRotmx, quietbrowser)
+    #self.RotateMxComponents(RotMx, quietbrowser)
+    self.RotateAxisComponents([ux,uy,uz], phi, quietbrowser)
     return self.currentRotmx, [ux, uy, uz]
 
 
@@ -2139,6 +2144,18 @@ Distance: %s
     if not quietbrowser:
       msg = str_rot + ", verbose\n"
     self.AddToBrowserMsgQueue("RotateComponents", msg)
+
+
+  def RotateAxisComponents(self, vec, theta, quietbrowser=True):
+    if self.cameraPosZ is None:
+      return
+    str_rot = str(list(vec)) + "," + str(theta)
+    str_rot = str_rot.replace("[", "")
+    str_rot = str_rot.replace("]", "")
+    msg = str_rot + ", quiet\n"
+    if not quietbrowser:
+      msg = str_rot + ", verbose\n"
+    self.AddToBrowserMsgQueue("RotateAxisComponents", msg)
 
 
   def TranslateHKLpoints(self, h, k, l, mag):
