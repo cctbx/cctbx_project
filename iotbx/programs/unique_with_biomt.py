@@ -11,12 +11,13 @@ import os
 class Program(ProgramTemplate):
 
   description = '''
-iotbx.reduce_model_with_biomt: Tool to make an mmCIF file with only part of model
+iotbx.unique_with_biomt: Tool to make an mmCIF file with only part of model
   and _pdbx_struct_assembly* records defining symmetry operations to reconstruct
   the rest of the model.
 
 Usage examples:
-  iotbx.reduce_model_with_biomt model.pdb
+  iotbx.unique_with_biomt model.pdb
+  iotbx.unique_with_biomt model.pdb chain_id_to_leave='A'
   '''
 
   datatypes = ['model', 'phil']
@@ -24,6 +25,8 @@ Usage examples:
   master_phil_str = """\
   chain_id_to_leave = ''
     .type = str
+    .help = If chain with this id is present, it will be kept as a unique part \
+      of the model.
 """
 
   # ---------------------------------------------------------------------------
@@ -40,7 +43,7 @@ Usage examples:
     m = self.data_manager.get_model()
     m.search_for_ncs()
     m.setup_ncs_constraints_groups(filter_groups=False)
-    if not m.can_be_reduced_with_biomt():
+    if not m.can_be_unique_with_biomt():
       print("Model cannot be reduced.", file=self.logger)
       return
 
@@ -58,11 +61,11 @@ Usage examples:
       if not found:
         print("Chain id specified in chain_id_to_leave not found.", file=self.logger)
         print("Proceeding with a default value.", file=self.logger)
-    cif_txt = m.model_as_mmcif(try_reduce_with_biomt=True)
+    cif_txt = m.model_as_mmcif(try_unique_with_biomt=True)
     inp_fn = os.path.basename(self.data_manager.get_default_model_name())[:-4]
     fn = "%s.cif" % self.get_default_output_filename(
         prefix='%s_' % inp_fn,
-        suffix='reduced',
+        suffix='unique_biomt',
         serial=Auto)
     print("Saving:", fn, file=self.logger)
     self.data_manager.write_model_file(model_str=cif_txt, filename=fn, format='cif')

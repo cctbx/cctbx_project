@@ -579,7 +579,7 @@ class class_ncs_restraints_group_list(list):
       result.append(group)
     return result
 
-  def reduce_with_biomt(self, hierarchy):
+  def unique_with_biomt(self, hierarchy):
     # first we need to check if it is possible.
     # Criteria:
     # - all model is covered by NCS

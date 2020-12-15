@@ -26,8 +26,8 @@ def test_1():
   assert len(nrgl[0].master_iselection) == 72
   assert len(nrgl[0].copies) == 8
   # nrgl._show()
-  # print (model.can_be_reduced_with_biomt())
-  cif_txt = model.model_as_mmcif(try_reduce_with_biomt=True)
+  # print (model.can_be_unique_with_biomt())
+  cif_txt = model.model_as_mmcif(try_unique_with_biomt=True)
   # print (cif_txt)
   assert_lines_in_text(cif_txt, """
 loop_
@@ -67,11 +67,11 @@ def test_2():
   model.search_for_ncs()
   model.setup_ncs_constraints_groups(filter_groups=True)
   assert model.ncs_constraints_present()
-  assert not model.can_be_reduced_with_biomt()
-  assert "" == model.model_as_mmcif(try_reduce_with_biomt=True)
+  assert not model.can_be_unique_with_biomt()
+  assert "" == model.model_as_mmcif(try_unique_with_biomt=True)
 
 def test_3():
-  """ test for command-line tool iotbx.reduce_model_with_biomt"""
+  """ test for command-line tool iotbx.unique_with_biomt"""
   inp = iotbx.pdb.input(source_info=None, lines=pdb_str_0)
   model = mmtbx.model.manager(model_input=inp)
   model.expand_with_BIOMT_records()
@@ -85,20 +85,20 @@ def test_3():
     f.write(pdb_str)
   assert os.path.isfile(fname)
 
-  cmd = "iotbx.reduce_model_with_biomt %s" % fname
+  cmd = "iotbx.unique_with_biomt %s" % fname
   print(cmd)
   easy_run.call(cmd)
-  res_fname = 'tst_reduce_model_with_biomt_test3_reduced_000.cif'
+  res_fname = 'tst_reduce_model_with_biomt_test3_unique_biomt_000.cif'
   assert_lines_in_file(res_fname, """
       ATOM 1 N . LYS 0 151 ? 72.74200 43.65400 193.22800 14.010 14.01000 N ? A ? 1 1""")
   assert_lines_in_file(res_fname, """
       _pdbx_struct_assembly_gen.asym_id_list
        1 (1-9) A""")
 
-  cmd = "iotbx.reduce_model_with_biomt %s chain_id_to_leave='C' output.serial=1" % fname
+  cmd = "iotbx.unique_with_biomt %s chain_id_to_leave='C' output.serial=1" % fname
   print(cmd)
   easy_run.call(cmd)
-  res_fname = 'tst_reduce_model_with_biomt_test3_reduced_001.cif'
+  res_fname = 'tst_reduce_model_with_biomt_test3_unique_biomt_001.cif'
   assert_lines_in_file(res_fname, """
       ATOM 1 N . LYS C 151 ? 186.74500 185.38200 236.77300 14.010 14.01000 N ? A ? 1 1""")
   assert_lines_in_file(res_fname, """

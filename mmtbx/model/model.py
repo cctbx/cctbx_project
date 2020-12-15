@@ -1216,7 +1216,7 @@ class manager(object):
       ss_ann.remove_empty_annotations(self.get_hierarchy())
     return ss_ann
 
-  def can_be_reduced_with_biomt(self):
+  def can_be_unique_with_biomt(self):
     if not self.ncs_constraints_present():
       return False
     original_nrgl = self.get_ncs_groups()
@@ -1236,11 +1236,11 @@ class manager(object):
       additional_blocks = None,
       align_columns = False,
       do_not_shift_back = False,
-      try_reduce_with_biomt = False):
-    if try_reduce_with_biomt:
-      if not self.can_be_reduced_with_biomt():
+      try_unique_with_biomt = False):
+    if try_unique_with_biomt:
+      if not self.can_be_unique_with_biomt():
         return ""
-      sel, cb = self.get_ncs_groups().reduce_with_biomt(self.get_hierarchy())
+      sel, cb = self.get_ncs_groups().unique_with_biomt(self.get_hierarchy())
       cutted_m = self.select(sel)
       cutted_m.get_hierarchy().atoms_reset_serial()
       ab = additional_blocks
@@ -1254,7 +1254,7 @@ class manager(object):
           additional_blocks = ab,
           align_columns = align_columns,
           do_not_shift_back = do_not_shift_back,
-          try_reduce_with_biomt = False)
+          try_unique_with_biomt = False)
     out = StringIO()
     cif = iotbx.cif.model.cif()
     cif_block = None
