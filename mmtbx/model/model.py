@@ -532,6 +532,7 @@ class manager(object):
 
   def set_nonbonded_weight(self, value):
     params = self.get_current_pdb_interpretation_params()
+    if(params.pdb_interpretation.nonbonded_weight == value): return
     params.pdb_interpretation.nonbonded_weight = value
     self.set_pdb_interpretation_params(params = params)
 
