@@ -1382,9 +1382,9 @@ def remove_multiple_indexed(R):
     obs = R['xyzobs.px.value']
     cal = R['xyzcal.px']
     dists = (obs-cal).norms()
-    h,k,l = zip(*R['miller_index'])
-    df = pandas.DataFrame({"dist": dists, "h":h, "k":k, "l":l})
-    gb = df.groupby(["h","k","l"])
+    h, k, l = zip(*R['miller_index'])
+    df = pandas.DataFrame({"dist": dists, "h": h, "k": k, "l": l})
+    gb = df.groupby(["h", "k", "l"])
     hkls = set(R["miller_index"])
     selected_rows = []
     for hkl in hkls:
@@ -1412,7 +1412,7 @@ def fit_tiltplanes_to_bboxes(refls, exper, params, is_bg_pixel=None):
     tiltnation.delta_Q = params.deltaq  # 0.085
     tiltnation.zinger_zscore = params.Z
     detector_node = exper.detector[0]  # all nodes should have same pixel size, detector distance, and dimension
-    tiltnation.pixsize_mm = detector_node.get_pixel_size()[0]
+    tiltnation.pixsize_mm = detector_node.gt_pixel_size()[0]
     tiltnation.detdist_mm = detector_node.get_distance()
     tiltnation.ave_wavelength_A = exper.beam.get_wavelength()
     tiltnation.min_background_pix_for_fit = 10

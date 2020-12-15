@@ -317,6 +317,19 @@ class Script:
                     refls_path = os.path.join(refls_outdir, "%s_%s_%d.refl" % (self.params.output.tag.reflections, basename, i_processed))
                     refined_refls.as_file(refls_path)
 
+                # save experiment
+                if self.params.output.save.experiments:
+                    exp_outdir = os.path.join(self.params.output.directory, "experiments_after_stage1", "rank%d" % COMM.rank)
+                    if not os.path.exists(exp_outdir):
+                        os.makedirs(exp_outdir)
+
+                    opt_exp_path = os.path.join(exp_outdir, "%s_%s_%d.expt" % (self.params.output.tag.experiments, basename, exp_id))
+                    exper.crystal = refiner.get_corrected_crystal(i_shot=0)
+                    exper.detector = refiner.get_optimized_detector()
+                    new_exp_list = ExperimentList()
+                    new_exp_list.append(exper)
+                    new_exp_list.as_file(opt_exp_path)
+
                 # save pandas
                 if self.params.output.save.pandas:
                     pandas_outdir = os.path.join(self.params.output.directory, "pandas_pickles", "rank%d" % COMM.rank)
@@ -333,22 +346,12 @@ class Script:
                     data_frame["total_flux"] = self.params.simulator.total_flux
                     data_frame["beamsize_mm"] = refiner.S.beam.size_mm
                     data_frame["exp_name"] = os.path.abspath(exper_filename)
+                    data_frame["oversample"] = self.params.simulator.oversample
                     if self.params.roi.panels is not None:
                         data_frame["roi_panels"] = self.params.roi.panels
+                    if self.params.output.save.experiments:
+                        data_frame["opt_exp_name"] = opt_exp_path
                     data_frame.to_pickle(outpath)
-
-                # save experiment
-                if self.params.output.save.experiments:
-                    exp_outdir = os.path.join(self.params.output.directory, "experiments_after_stage1", "rank%d" % COMM.rank)
-                    if not os.path.exists(exp_outdir):
-                        os.makedirs(exp_outdir)
-
-                    exp_path = os.path.join(exp_outdir, "%s_%s_%d.expt" % (self.params.output.tag.experiments, basename, exp_id))
-                    exper.crystal = refiner.get_corrected_crystal(i_shot=0)
-                    exper.detector = refiner.get_optimized_detector()
-                    new_exp_list = ExperimentList()
-                    new_exp_list.append(exper)
-                    new_exp_list.as_file(exp_path)
 
                 i_processed += 1
             except Exception as err:

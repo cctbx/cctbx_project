@@ -2,6 +2,7 @@
 from copy import deepcopy
 import numpy as np
 from simtbx.command_line.stage_one import Script as stage_one_Script
+import pandas
 
 import os
 from libtbx.mpi4py import MPI
@@ -14,16 +15,19 @@ from simtbx.diffBragg import utils
 from dxtbx.model.experiment_list import ExperimentListFactory
 
 
-def global_refiner_from_parameters(refl_tbl, expt_list, params):
-    launcher = GlobalRefinerLauncher(params)
-    return launcher.launch_refiner(refl_tbl, expt_list)
+def global_refiner_from_parameters(refl_tbl, expt_list, params, pandas_list=None):
+    launcher = GlobalRefinerLauncher(params, pandas_list)
+    return launcher.launch_refiner(refl_tbl, expt_list, pandas_list)
 
 
 class GlobalRefinerLauncher(LocalRefinerLauncher):
 
-    def __init__(self, params):
+    def __init__(self, params, pandas_list=None):
         super().__init__(params)
         self.n_shots_on_rank = None
+        self.df = None
+        if pandas_list is not None:
+            self.df = pandas.read_pickle(pandas_list)
         self.WATCH_MISORIENTAION = False   # TODO add a phil
 
     @property
@@ -33,7 +37,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
     def _alias_refiner(self):
         self._Refiner = GlobalRefiner
 
-    def launch_refiner(self, refl_tbl, expt_list, miller_data=None):
+    def launch_refiner(self, refl_tbl, expt_list, miller_data=None, pandas_list=None):
         self._alias_refiner()
 
         file_path_input = False
@@ -191,7 +195,6 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             self.RUC.ncells_mask = INVERTED_NCELLS_MASK
             m_init = [m_init[i_ncell] for i_ncell in sorted(set(INVERTED_NCELLS_MASK))]
 
-
         # UNITCELL
         ucell_maxs, ucell_mins = [], []
         if self.params.refiner.ranges.ucell_edge_percentage is not None:
@@ -213,7 +216,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         self.RUC.sausages_init = {}
         self.RUC.m_init = {}
         self.RUC.spot_scale_init = {}
-        self.RUC.eta_init ={}
+        self.RUC.eta_init = {}
         self.RUC.ucell_inits = {}
         self.RUC.ucell_mins = {}
         self.RUC.ucell_maxs = {}
