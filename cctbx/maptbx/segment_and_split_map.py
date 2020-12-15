@@ -9086,7 +9086,10 @@ def get_solvent_fraction_from_low_res_mask(
     resolution = mask_resolution,
     out = out)
   if overall_mask is None:
-    return None
+    if return_mask_and_solvent_fraction:
+      return None, None
+    else:
+      return None
 
   solvent_fraction = overall_mask.count(False)/overall_mask.size()
   print("Solvent fraction from overall mask: %.3f " %(solvent_fraction), file = out)
