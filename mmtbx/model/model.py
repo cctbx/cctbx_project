@@ -1242,6 +1242,7 @@ class manager(object):
         return ""
       sel, cb = self.get_ncs_groups().reduce_with_biomt(self.get_hierarchy())
       cutted_m = self.select(sel)
+      cutted_m.get_hierarchy().atoms_reset_serial()
       ab = additional_blocks
       if additional_blocks is not None:
         ab.append(cb)
