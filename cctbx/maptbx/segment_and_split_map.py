@@ -8632,7 +8632,8 @@ def get_overall_mask(
 
   # This routine cannot use mask_data with origin != (0,0,0)
   if map_data.origin() != (0,0,0):
-    return None, None, None
+    print("Map origin must be at (0,0,0) for get_overall_mask")
+    assert map_data.origin() == (0,0,0)  # Map origin must be at (0,0,0)
 
   # Make a local SD map from our map-data
   from cctbx.maptbx import crystal_gridding
