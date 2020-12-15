@@ -50,6 +50,8 @@ def update(grm,
            log=sys.stdout,
            verbose=False,
            ):
+  def _atom_id(a):
+    return '%s (%5d)' % (a.id_str(), a.i_seq)
   if link_records is None: link_records={}
   link_records.setdefault('LINK', [])
   hooks = [
@@ -86,12 +88,16 @@ def update(grm,
       for sf4, aas in sorted(sf4_coordination.items()):
         outl += '%spdb="%s"\n' % (' '*6, sf4)
         for aa in sorted(aas):
-          outl += '%s%s - %s\n' % (' '*8, aa[0].id_str(), aa[1].id_str())
+          outl += '%s%s - %s\n' % (' '*8, _atom_id(aa[0]), _atom_id(aa[1]))
     if bproxies:
-      grm.add_new_bond_restraints_in_place(
-        proxies=bproxies,
-        sites_cart=pdb_hierarchy.atoms().extract_xyz(),
-      )
+      try:
+        grm.add_new_bond_restraints_in_place(
+          proxies=bproxies,
+          sites_cart=pdb_hierarchy.atoms().extract_xyz(),
+        )
+      except RuntimeError, e:
+        print('\n\n%s' % outl)
+        raise e
     #
     done = []
     remove = []
