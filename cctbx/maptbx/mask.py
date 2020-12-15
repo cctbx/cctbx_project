@@ -306,6 +306,7 @@ class create_mask_around_density(create_mask_around_atoms):
           out = null_out())
 
     if self._solvent_content is None:
+      from libtbx.utils import Sorry
       raise Sorry("Unable to get solvent content in auto-masking")
 
 
