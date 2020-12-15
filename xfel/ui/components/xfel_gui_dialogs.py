@@ -1172,7 +1172,7 @@ class CalibrationDialog(BaseDialog):
                              defaultDir=os.curdir,
                              defaultFile="*.phil",
                              wildcard="*.phil",
-                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
                              )
     if load_dlg.ShowModal() == wx.ID_OK:
       target_file = load_dlg.GetPaths()[0]
@@ -1741,7 +1741,8 @@ class RunBlockDialog(BaseDialog):
     self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Image format choice
-    if self.is_lcls:
+    if self.is_lcls and self.parent.trial.app.params.dispatcher in \
+        ["cxi.xtc_process", "cctbx.xfel.xtc_process"]:
       if self.parent.trial.app.params.dispatcher == "cxi.xtc_process":
         image_choices = ['pickle']
       else:
@@ -1751,10 +1752,14 @@ class RunBlockDialog(BaseDialog):
                                         label_size=(100, -1),
                                         ctrl_size=(150, -1),
                                         choices=image_choices)
-      try:
-        self.img_format.ctr.SetSelection(image_choices.index(block.format))
-      except Exception:
-        pass #in case of selecting an unavailable default
+      if block.format:
+        try:
+          format_idx = image_choices.index(block.format)
+        except ValueError:
+          format_idx = 0 #in case of selecting an unavailable default
+      else:
+        format_idx = 0
+      self.img_format.ctr.SetSelection(format_idx)
       self.runblock_sizer.Add(self.img_format, flag=wx.TOP | wx.LEFT, border=10)
 
     self.start_stop_sizer = wx.FlexGridSizer(1, 3, 60, 20)
@@ -1848,7 +1853,8 @@ class RunBlockDialog(BaseDialog):
     self.runblock_sizer.Add(self.untrusted_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
-    if self.is_lcls:
+    if self.is_lcls and self.parent.trial.app.params.dispatcher in \
+        ["cxi.xtc_process", "cctbx.xfel.xtc_process"]:
       # Calibration folder
       self.calib_dir = gctr.TextButtonCtrl(self.runblock_panel,
                                            label='Calibration:',
@@ -1916,7 +1922,8 @@ class RunBlockDialog(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onImportPhil, self.phil.btn_import)
     self.Bind(wx.EVT_BUTTON, self.onUntrustedBrowse,
               id=self.untrusted_path.btn_big.GetId())
-    if self.is_lcls:
+    if self.is_lcls and self.parent.trial.app.params.dispatcher in \
+        ["cxi.xtc_process", "cctbx.xfel.xtc_process"]:
       self.Bind(wx.EVT_BUTTON, self.onDarkAvgBrowse,
                 id=self.dark_avg_path.btn_big.GetId())
       self.Bind(wx.EVT_BUTTON, self.onImportConfig, self.config.btn_import)
@@ -1949,7 +1956,7 @@ class RunBlockDialog(BaseDialog):
                             defaultDir=os.curdir,
                             defaultFile="*",
                             wildcard="*",
-                            style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
                             )
     if cfg_dlg.ShowModal() == wx.ID_OK:
       config_file = cfg_dlg.GetPaths()[0]
@@ -1964,7 +1971,7 @@ class RunBlockDialog(BaseDialog):
                              defaultDir=os.curdir,
                              defaultFile="*",
                              wildcard="*.phil",
-                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
                              )
     if phil_dlg.ShowModal() == wx.ID_OK:
       phil_file = phil_dlg.GetPaths()[0]
@@ -2011,14 +2018,16 @@ class RunBlockDialog(BaseDialog):
       rg_dict['detz_parameter']=self.beam_xyz.DetZ.GetValue()
       rg_dict['beamx']=self.beam_xyz.X.GetValue()
       rg_dict['beamy']=self.beam_xyz.Y.GetValue()
-      rg_dict['format']=self.img_format.ctr.GetStringSelection()
       rg_dict['energy']=self.bin_nrg_gain.energy.GetValue()
       rg_dict['wavelength_offset']=self.wavelength_offset.wavelength_offset.GetValue()
-      rg_dict['dark_avg_path']=self.dark_avg_path.ctr.GetValue()
-      rg_dict['dark_stddev_path']=self.dark_stddev_path.ctr.GetValue()
-      rg_dict['gain_map_path']=self.gain_map_path.ctr.GetValue()
-      rg_dict['gain_mask_level']=self.bin_nrg_gain.gain_mask_level.GetValue()
-      rg_dict['calib_dir']=self.calib_dir.ctr.GetValue()
+      if self.parent.trial.app.params.dispatcher in \
+          ["cxi.xtc_process", "cctbx.xfel.xtc_process"]:
+        rg_dict['format']=self.img_format.ctr.GetStringSelection()
+        rg_dict['dark_avg_path']=self.dark_avg_path.ctr.GetValue()
+        rg_dict['dark_stddev_path']=self.dark_stddev_path.ctr.GetValue()
+        rg_dict['gain_map_path']=self.gain_map_path.ctr.GetValue()
+        rg_dict['gain_mask_level']=self.bin_nrg_gain.gain_mask_level.GetValue()
+        rg_dict['calib_dir']=self.calib_dir.ctr.GetValue()
       rg_dict['binning']=self.bin_nrg_gain.binning.GetValue()
       rg_dict['detector_address']=self.address.ctr.GetValue()
       rg_dict['config_str']=self.config.ctr.GetValue()
@@ -2108,7 +2117,7 @@ class RunBlockDialog(BaseDialog):
                              defaultDir=os.curdir,
                              defaultFile="*.cbf",
                              wildcard="*.cbf",
-                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
                              )
 
     if dark_dlg.ShowModal() == wx.ID_OK:
@@ -2121,7 +2130,7 @@ class RunBlockDialog(BaseDialog):
                              defaultDir=os.curdir,
                              defaultFile="*.cbf",
                              wildcard="*.cbf",
-                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
                              )
 
     if dark_dlg.ShowModal() == wx.ID_OK:
@@ -2134,7 +2143,7 @@ class RunBlockDialog(BaseDialog):
                              defaultDir=os.curdir,
                              defaultFile="*.cbf",
                              wildcard="*.cbf",
-                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
                              )
 
     if dark_dlg.ShowModal() == wx.ID_OK:
@@ -2147,7 +2156,7 @@ class RunBlockDialog(BaseDialog):
                              defaultDir=os.curdir,
                              defaultFile="*.mask",
                              wildcard="*.mask",
-                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
                              )
 
     if dlg.ShowModal() == wx.ID_OK:
@@ -2424,7 +2433,7 @@ class TrialDialog(BaseDialog):
                              defaultDir=os.curdir,
                              defaultFile="*.phil",
                              wildcard="*.phil",
-                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
                              )
     if load_dlg.ShowModal() == wx.ID_OK:
       target_file = load_dlg.GetPaths()[0]
