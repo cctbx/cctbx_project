@@ -104,7 +104,7 @@ def update(grm,
           proxies=bproxies,
           sites_cart=pdb_hierarchy.atoms().extract_xyz(),
         )
-      except RuntimeError, e:
+      except RuntimeError as e:
         print('\n\n%s' % outl_debug)
         raise e
     #
