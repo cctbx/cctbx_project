@@ -2523,6 +2523,10 @@ class map_model_manager(object):
     Select the parts of matching_model that best match target_model
     without using matching model or target model more than once
 
+    Only use contiguous segments of target_model (i.e., a sequence of residues
+     with sequential residue numbers is a contiguous segment).  Does not
+     break based on distances (assumes input numbering reflects chain breaks).
+
     Allow gaps of up to max_gap (and keep residues in the gaps)
 
     If one-to-one, then select only residues in each that match the other
