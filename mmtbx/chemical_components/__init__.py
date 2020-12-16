@@ -125,6 +125,17 @@ def get_hydrogen_names(code,
         tmp.append(item.atom_id)
   return tmp
 
+def get_atom_names(code, alternate=False):
+  cif = get_cif_dictionary(code)
+  if not cif: return cif
+  tmp = []
+  for item in cif["_chem_comp_atom"]:
+    if alternate:
+      tmp.append(item.alt_atom_id)
+    else:
+      tmp.append(item.atom_id)
+  return tmp
+
 def get_bond_pairs(code, alternate=False):
   cif = get_cif_dictionary(code)
   if not cif: return cif
