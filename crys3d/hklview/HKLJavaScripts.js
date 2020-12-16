@@ -703,6 +703,31 @@ function onMessage(e)
       );
     }
 
+    if (msgtype === "RotateAxisStage")
+    {
+      WebsockSendMsg('Rotating stage around axis' + pagename);
+
+      var sm = new Float32Array(9);
+      var m4 = new NGL.Matrix4();
+      var axis = new NGL.Vector3();
+      var theta = parseFloat(val[3]);
+      axis.x = parseFloat(val[0]);
+      axis.y = parseFloat(val[1]);
+      axis.z = parseFloat(val[2]);
+      m4.makeRotationAxis(axis, theta);
+
+      stage.viewerControls.orient(m4);
+      if (val[4] == "verbose")
+        postrotmxflag = true;
+      ReturnClipPlaneDistances();
+      RenderRequest();
+      sleep(100).then(() => {
+        msg = getOrientMsg();
+        WebsockSendMsg('CurrentViewOrientation:\n' + msg);
+      }
+      );
+    }
+
     if (msgtype === "RotateComponents")
     {
       WebsockSendMsg('Rotating components ' + pagename);
@@ -743,8 +768,15 @@ function onMessage(e)
       axis.y = parseFloat(val[1]);
       axis.z = parseFloat(val[2]);
       m4.makeRotationAxis(axis, theta);
+      
       shapeComp.setTransform(m4);
-      if (val[9] == "verbose")
+      for (i = 0; i < vectorshapeComps.length; i++)
+      {
+        if (typeof vectorshapeComps[i].reprList != "undefined")
+          vectorshapeComps[i].setTransform(m4);
+      }
+      
+      if (val[4] == "verbose")
         postrotmxflag = true;
       RenderRequest();
       sleep(100).then(() => {
@@ -865,7 +897,7 @@ function onMessage(e)
 
       vectorshape.addArrow( r1, r2 , [rgb[0], rgb[1], rgb[2]], radius);
       if (val[6] !== "") {
-        var txtR = [ (r1[0] + r2[0])/2.0, (r1[1] + r2[1])/2.0, (r1[2] + r2[2])/2.0 ];
+        var txtR = [(r1[0] + r2[0]) * 0.8, (r1[1] + r2[1]) * 0.8, (r1[2] + r2[2]) * 0.8 ];
         vectorshape.addText( txtR, [rgb[0], rgb[1], rgb[2]], fontsize, val[9] );
       }
       // if reprname is supplied with a vector then make a representation named reprname
