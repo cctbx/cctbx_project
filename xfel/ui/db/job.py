@@ -140,15 +140,14 @@ class IndexingJob(Job):
       trial_params = phil_scope.fetch(parse(phil_str)).extract()
 
       image_format = self.rungroup.format
-      if image_format == 'cbf':
-        if "rayonix" in self.rungroup.detector_address.lower():
-          mode = "rayonix"
-        elif "cspad" in self.rungroup.detector_address.lower():
-          mode = "cspad"
-        elif "jungfrau" in self.rungroup.detector_address.lower():
-          mode = "jungfrau"
-        else:
-          mode = "other"
+      if "rayonix" in self.rungroup.detector_address.lower():
+        mode = "rayonix"
+      elif "cspad" in self.rungroup.detector_address.lower():
+        mode = "cspad"
+      elif "jungfrau" in self.rungroup.detector_address.lower():
+        mode = "jungfrau"
+      else:
+        mode = "other"
       if hasattr(trial_params, 'format'):
         trial_params.format.file_format = image_format
         trial_params.format.cbf.mode = mode
@@ -263,16 +262,15 @@ class IndexingJob(Job):
           if self.app.params.facility.lcls.use_ffb:
             locator.write("use_ffb=True\n")
 
-          if image_format == "cbf":
-            if mode == 'rayonix':
-              from xfel.cxi.cspad_ana import rayonix_tbx
-              pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.rungroup.binning)
-              extra_scope = parse("geometry { detector { panel { origin = (%f, %f, %f) } } }"%(-self.rungroup.beamx * pixel_size,
-                                                                                                self.rungroup.beamy * pixel_size,
-                                                                                               -self.rungroup.detz_parameter))
-              locator.write("rayonix.bin_size=%s\n"%self.rungroup.binning)
-            elif mode == 'cspad':
-              locator.write("cspad.detz_offset=%s\n"%self.rungroup.detz_parameter)
+          if mode == 'rayonix':
+            from xfel.cxi.cspad_ana import rayonix_tbx
+            pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.rungroup.binning)
+            extra_scope = parse("geometry { detector { panel { origin = (%f, %f, %f) } } }"%(-self.rungroup.beamx * pixel_size,
+                                                                                              self.rungroup.beamy * pixel_size,
+                                                                                             -self.rungroup.detz_parameter))
+            locator.write("rayonix.bin_size=%s\n"%self.rungroup.binning)
+          elif mode == 'cspad':
+            locator.write("cspad.detz_offset=%s\n"%self.rungroup.detz_parameter)
           locator.close()
           d['locator'] = locator_path
         else:

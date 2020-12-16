@@ -2094,10 +2094,12 @@ class RunBlockDialog(BaseDialog):
         self.wavelength_offset.wavelength_offset.SetValue(str(last.wavelength_offset))
         self.spectrum_calibration.spectrum_eV_per_pixel.SetValue(str(last.spectrum_eV_per_pixel))
         self.spectrum_calibration.spectrum_eV_offset.SetValue(str(last.spectrum_eV_offset))
-        self.dark_avg_path.ctr.SetValue(str(last.dark_avg_path))
-        self.dark_stddev_path.ctr.SetValue(str(last.dark_stddev_path))
-        self.gain_map_path.ctr.SetValue(str(last.gain_map_path))
-        self.calib_dir.ctr.SetValue(str(last.calib_dir))
+        if self.parent.trial.app.params.dispatcher in \
+            ["cxi.xtc_process", "cctbx.xfel.xtc_process"]:
+          self.dark_avg_path.ctr.SetValue(str(last.dark_avg_path))
+          self.dark_stddev_path.ctr.SetValue(str(last.dark_stddev_path))
+          self.gain_map_path.ctr.SetValue(str(last.gain_map_path))
+          self.calib_dir.ctr.SetValue(str(last.calib_dir))
       self.two_thetas.two_theta_low.SetValue(str(last.two_theta_low))
       self.two_thetas.two_theta_high.SetValue(str(last.two_theta_high))
       self.untrusted_path.ctr.SetValue(str(last.untrusted_pixel_mask_path))
