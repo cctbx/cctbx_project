@@ -498,9 +498,9 @@ class hklview_3d:
         R = flex.vec3_double( [(self.params.clip_plane.h, self.params.clip_plane.k, self.params.clip_plane.l)])
         if self.params.clip_plane.fractional_vector == "realspace" or self.params.clip_plane.fractional_vector == "tncs":
           isreciprocal = False
-      self.clip_plane_vector(R[0][0], R[0][1], R[0][2], hkldist,
-          clipwidth, self.ngl_settings.fixorientation, self.params.clip_plane.is_parallel,
-          isreciprocal)
+      #self.clip_plane_vector(R[0][0], R[0][1], R[0][2], hkldist,
+      #    clipwidth, self.ngl_settings.fixorientation, self.params.clip_plane.is_parallel,
+      #    isreciprocal)
       if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
         self.ExpandInBrowser()
       self.SetOpacities(self.ngl_settings.bin_opacities )
@@ -1732,6 +1732,13 @@ Distance: %s
 
   def draw_cartesian_vector(self, s1, s2, s3, t1, t2, t3, label="", r=0, g=0, b=0, name="", radius = 0.15):
     self.mprint("cartesian vector is: %s to %s" %(str(roundoff([s1, s2, s3])), str(roundoff([t1, t2, t3]))), verbose=2)
+    self.AddToBrowserMsgQueue("DrawVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
+         %(s1, s2, s3, t1, t2, t3, r, g, b, label, name, radius) ) 
+    if name=="":
+      self.mprint("deferred rendering vector from (%s, %s, %s) to (%s, %s, %s)" %(s1, s2, s3, t1, t2, t3), verbose=2)
+
+
+  def get_cartesian_vector_angles(self, s1, s2, s3, t1, t2, t3):
     svec = [t1-s1, t2-s2, t3-s3]
     xyvec = svec[:] # deep copying
     xyvec[2] = 0.0 # projection vector of svec in the xy plane
@@ -1760,14 +1767,11 @@ Distance: %s
     self.mprint("angles in xy plane to x,y axis are: %s, %s" %(angle_x_xyvec, angle_y_xyvec), verbose=2)
     self.mprint("angles in yz plane to y,z axis are: %s, %s" %(angle_y_yzvec, angle_z_yzvec), verbose=2)
     self.mprint("angles to x,y,z axis are: %s, %s, %s" %(angle_x_svec, angle_y_svec, angle_z_svec ), verbose=2)
-    self.mprint("deferred rendering vector from (%s, %s, %s) to (%s, %s, %s)" %(s1, s2, s3, t1, t2, t3), verbose=2)
-    self.AddToBrowserMsgQueue("DrawVector", "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" \
-         %(s1, s2, s3, t1, t2, t3, r, g, b, label, name, radius) ) 
     return angle_x_xyvec, angle_z_svec
 
 
-  def PointVectorPerpendicularToClipPlane(self):
-    rotmx = self.Euler2RotMatrix(( self.angle_x_xyvec, self.angle_z_svec, 0.0 ))
+  def PointVectorPerpendicularToClipPlane(self, angle_x_xyvec, angle_z_svec):
+    rotmx = self.Euler2RotMatrix(( angle_x_xyvec, angle_z_svec, 0.0 ))
     if rotmx.determinant() < 0.99999:
       self.mprint("Rotation matrix determinant is less than 1")
       return rotmx
@@ -1776,8 +1780,8 @@ Distance: %s
     return rotmx
 
 
-  def PointVectorParallelToClipPlane(self):
-    rotmx = self.Euler2RotMatrix(( self.angle_x_xyvec, self.angle_z_svec+90.0, 90.0 ))
+  def PointVectorParallelToClipPlane(self, angle_x_xyvec, angle_z_svec):
+    rotmx = self.Euler2RotMatrix(( angle_x_xyvec, angle_z_svec + 90.0, 90.0 ))
     if rotmx.determinant() < 0.99999:
       self.mprint("Rotation matrix determinant is less than 1")
       return rotmx
@@ -1793,7 +1797,8 @@ Distance: %s
     InvMx = OrtMx.inverse()
     ortrot = (OrtMx * RotMx * InvMx).as_mat3()
     r11,r12,r13,r21,r22,r23,r31,r32,r33 = ortrot
-    theta =  math.acos((r11+r22+r33-1.0)*0.5)
+    # workaround for occasional machine precision errors yielding argument greater than 1.0 
+    theta =  math.acos(roundoff((r11+r22+r33-1.0)*0.5, 10)) 
     sint = math.sin(theta)
     e1, e2, e3 = (0,0,0)
     eps = 0.000000001
@@ -1817,7 +1822,7 @@ Distance: %s
           # eigenvetors come as a concatenated list of vector elements so get the i-th vector
           e1,e2,e3 = evectors[(0+3*i):(3+3*i)]
           break
-    s = self.scene.renderscale
+    s = self.reciproc_scale * 2
     return (s*e1,s*e2,s*e3), theta
 
 
@@ -1827,9 +1832,9 @@ Distance: %s
       s = self.reciproc_scale
       for i, (opnr, label, v, xyzop, hklop) in enumerate( self.rotation_operators ): # skip the last op for javascript drawing purposes
         if i < len(self.rotation_operators)-1:
-          self.draw_cartesian_vector(0, 0, 0, s*v[0], s*v[1], s*v[2], label=label, radius=0.2 )
+          self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], label=label, radius=0.2 )
         else: # supply name to tell javascript to draw all these vectors 
-          self.draw_cartesian_vector(0, 0, 0, s*v[0], s*v[1], s*v[2], label=label, name="SymRotAxes", radius=0.2 )
+          self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], label=label, name="SymRotAxes", radius=0.2 )
     else:
       self.RemoveVectors("SymRotAxes")
 
@@ -1860,13 +1865,18 @@ Distance: %s
 
 
   def RotateAroundFracVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3), 
-                             isreciprocal=False, quietbrowser=True):
-    if isreciprocal:
+                             vectortype="cartesian", quietbrowser=True):
+    if vectortype == "cartesian":
+      cartvec = list( (r1,r2,r3))
+    elif vectortype == "reciprocal":
     # Assuming vector is in reciprocal space coordinates turn it into cartesian
       cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().fractionalization_matrix()).transpose() )
-    else:
+    elif vectortype == "fractional":
       # Assuming vector is in real space fractional coordinates turn it into cartesian
       cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().orthogonalization_matrix()) )
+    else:
+      raise Sorry("Set vectortype to either 'cartesian', 'reciprocal' or 'fractional'.")
+    self.currentrotvec = cartvec
     #  Rodrigues rotation formula for rotation by phi angle around a vector going through origo
     #  See http://mathworld.wolfram.com/RodriguesRotationFormula.html
     # \mathbf I+\left(\sin\,\varphi\right)\mathbf W+\left(2\sin^2\frac{\varphi}{2}\right)\mathbf W^2
@@ -1883,6 +1893,7 @@ Distance: %s
     #self.RotateMxStage(self.currentRotmx, quietbrowser)
     #self.RotateMxComponents(RotMx, quietbrowser)
     self.RotateAxisComponents([ux,uy,uz], phi, quietbrowser)
+    #self.RotateAxisMx([ux,uy,uz], phi, quietbrowser)
     return self.currentRotmx, [ux, uy, uz]
 
 
@@ -1955,8 +1966,16 @@ Distance: %s
 
 
   def fix_orientation(self):
-    if self.ngl_settings.fixorientation:
+    if self.viewerparams.fixorientation:
       self.DisableMouseRotation()
+      angle_x_xyvec, angle_z_svec = self.get_cartesian_vector_angles(0, 0, 0, 
+                                                                     self.currentrotvec[0], 
+                                                                     self.currentrotvec[1], 
+                                                                     self.currentrotvec[2])
+      if self.viewerparams.is_parallel:
+        self.PointVectorParallelToClipPlane(angle_x_xyvec, angle_z_svec)
+      else:
+        self.PointVectorPerpendicularToClipPlane(angle_x_xyvec, angle_z_svec)
     else:
       self.EnableMouseRotation()
 
@@ -1969,8 +1988,7 @@ Distance: %s
       return
     self.mprint("Applying clip plane to reflections", verbose=1)
     self.RemoveVectors("clip_vector")
-    self.angle_x_xyvec, self.angle_z_svec = self.draw_vector(0, 0, 0,
-                            a, b, c, isreciprocal=isreciprocal, name="clip_vector")
+    self.angle_x_xyvec, self.angle_z_svec = self.get_cartesian_vector_angles(0, 0, 0, a, b, c)
     if fixorientation:
       self.DisableMouseRotation()
     else:
@@ -2132,11 +2150,23 @@ Distance: %s
     self.AddToBrowserMsgQueue("RotateStage", msg)
 
 
+  def RotateAxisMx(self, vec, theta, quietbrowser=True):
+    if self.cameraPosZ is None:
+      return
+    str_rot = str(list(vec)) + ", " + str(theta)
+    str_rot = str_rot.replace("[", "")
+    str_rot = str_rot.replace("]", "")
+    msg = str_rot + ", quiet\n"
+    if not quietbrowser:
+      msg = str_rot + ", verbose\n"
+    self.AddToBrowserMsgQueue("RotateAxisStage", msg)
+
+
   def RotateMxComponents(self, rotmx, quietbrowser=True):
     if self.cameraPosZ is None:
       return
-    scaleRot = rotmx * self.cameraPosZ
-    ortrot = scaleRot.as_mat3()
+    #scaleRot = rotmx * self.cameraPosZ
+    ortrot = rotmx.as_mat3()
     str_rot = str(ortrot)
     str_rot = str_rot.replace("(", "")
     str_rot = str_rot.replace(")", "")
@@ -2149,7 +2179,7 @@ Distance: %s
   def RotateAxisComponents(self, vec, theta, quietbrowser=True):
     if self.cameraPosZ is None:
       return
-    str_rot = str(list(vec)) + "," + str(theta)
+    str_rot = str(list(vec)) + ", " + str(theta)
     str_rot = str_rot.replace("[", "")
     str_rot = str_rot.replace("]", "")
     msg = str_rot + ", quiet\n"
@@ -2247,8 +2277,6 @@ ngl_philstr = """
     .type = int
   show_tooltips = none *click hover
     .type = choice
-  fixorientation = False
-    .type = bool
   camera_type = *orthographic perspective
     .type = choice
 """

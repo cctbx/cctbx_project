@@ -974,6 +974,7 @@ class HKLViewFrame() :
     self.viewer.all_vectors = self.viewer.rotation_operators[:]
     if self.tncsvec is not None:
       uc = self.viewer.miller_array.unit_cell()
+      # TNCS vector is specified in realspace fractional coordinates. Convert it to cartesian
       vec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
       #vscale =  1.0/self.viewer.scene.renderscale
       #svec1 = [ vscale*vec[0], vscale*vec[1], vscale*vec[2] ]
@@ -984,8 +985,8 @@ class HKLViewFrame() :
       # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
       name = label + xyzop.replace(",", "_")
       self.viewer.RemoveVectors(name)
-
     self.SendInfoToGUI( { "all_vectors": self.viewer.all_vectors } )
+    return self.viewer.all_vectors
 
 
   def add_user_vector(self):
@@ -1085,10 +1086,10 @@ class HKLViewFrame() :
 
   def rotate_around_vector2(self, vecnr_dgr):
     vecnr, dgr = eval(vecnr_dgr)
-    hklvec = self.viewer.all_vectors[vecnr][4]
+    cartvec = self.viewer.all_vectors[vecnr][2]
     phi = cmath.pi*dgr/180
-    R = flex.vec3_double([eval(hklvec)])
-    self.viewer.RotateAroundFracVector(phi, R[0][0], R[0][1], R[0][2], isreciprocal=True)
+    R = flex.vec3_double([cartvec])
+    self.viewer.RotateAroundFracVector(phi, R[0][0], R[0][1], R[0][2], vectortype="cartesian")
     #self.mprint("First specify vector around which to rotate")
 
 
@@ -1219,8 +1220,6 @@ NGL_HKLviewer {
       .type = float
     fractional_vector = reciprocal *realspace tncs
       .type = choice
-    is_parallel = False
-      .type = bool
     bequiet = False
       .type = bool
   }
@@ -1245,6 +1244,10 @@ NGL_HKLviewer {
       .type = str
     user_label = ""
       .type = str
+    is_parallel = False
+      .type = bool
+    fixorientation = False
+      .type = bool
     %s
   }
   NGL {
