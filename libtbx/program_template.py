@@ -47,11 +47,12 @@ Program Description
 
   # datatypes for program
   # see iotbx/data_manager/<datatype>.py for list of supported datatypes
-  # default datatypes are set in iotbx/data_manager/__init__.py
+  # default datatypes are set in iotbx/data_manager/__init__.py (default_datatypes)
   datatypes = None
 
   # DataManager options
   # customization for how the DataManager processes files
+  # available options are set in iotbx/data_manager/__init__.py (data_manager_options)
   data_manager_options = None
 
   # master PHIL string for the program (required)

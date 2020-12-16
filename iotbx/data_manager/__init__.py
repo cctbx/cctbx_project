@@ -189,7 +189,10 @@ class DataManagerBase(object):
     if self.custom_options is not None:
       for option in self.custom_options:
         if option not in data_manager_options:
-          raise Sorry('{option} is not a valid custom option for the DataManager.'.format(option=option))
+          raise Sorry('''\
+{option} is not a valid custom option for the DataManager. The available
+options are {options}.\
+'''.format(option=option, options=', '.join(data_manager_options)))
     else:
       self.custom_options = []
 
