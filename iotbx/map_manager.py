@@ -1689,6 +1689,9 @@ class map_manager(map_reader, write_ccp4_map):
     ok=None
     text=""
 
+    if not model:
+      return None
+
     model_uc=model.unit_cell_crystal_symmetry()
     model_sym=model.crystal_symmetry()
     map_uc=self.unit_cell_crystal_symmetry()
