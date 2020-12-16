@@ -189,6 +189,12 @@ class map_model_manager(object):
     # if the incoming model is simply shifted relative to the maps...make them
     #  match by adjusting the model shift
 
+    if map_manager and model:
+      for m in [model] + extra_model_list:
+       if (not m.crystal_symmetry()) or \
+          (not m.crystal_symmetry().unit_cell()):  # Put in crystal symmetry
+         any_map_manager.set_model_symmetries_and_shift_cart_to_match_map(m)
+
     if model and map_manager and model.crystal_symmetry() and \
         model.shift_cart() and model.shift_cart() != map_manager.shift_cart():
       if extra_model_list:  # make sure extras have same shift as model
@@ -892,6 +898,11 @@ class map_model_manager(object):
     assert isinstance(model, mmtbx.model.manager)
     if not overwrite:
       assert not model_id in self.model_id_list() # must not duplicate
+    if self.map_manager() and (not model.crystal_symmetry()) or \
+          (not model.crystal_symmetry().unit_cell()):  # Put in crystal symmetry
+       self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(model)
+
+
     if self.map_manager() and not self.map_manager().is_compatible_model(model):
       # needs shifting
       self.shift_any_model_to_match(model)
