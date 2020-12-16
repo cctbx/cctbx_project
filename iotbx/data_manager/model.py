@@ -143,9 +143,13 @@ model
         raise Sorry('%s is not a recognized model file' % filename)
       else:
         model_in = iotbx.pdb.input(a.file_name)
+        expand_with_mtrix = True  # default
+        if 'model_skip_expand_with_mtrix' in self.custom_options:
+          expand_with_mtrix = False
         model = mmtbx.model.manager(
           model_input=model_in,
           pdb_interpretation_params=pdb_interpretation_extract,
+          expand_with_mtrix=expand_with_mtrix,
           log=self.logger)
         self.add_model(filename, model)
 

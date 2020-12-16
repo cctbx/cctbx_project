@@ -50,6 +50,10 @@ Program Description
   # default datatypes are set in iotbx/data_manager/__init__.py
   datatypes = None
 
+  # DataManager options
+  # customization for how the DataManager processes files
+  data_manager_options = None
+
   # master PHIL string for the program (required)
   master_phil_str = '''
 # example
@@ -65,7 +69,7 @@ program {
 
   # common citations used by the program that exist in libtbx/citations.params
   # list of article_id strings, e.g. ["polder", "elbow"]).
-  known_article_ids = list()
+  known_article_ids = []
 
   # text shown at the end of the command-line program
   epilog = '''

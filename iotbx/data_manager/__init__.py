@@ -49,6 +49,12 @@ for i in range(len(supported_datatypes)):
 default_datatypes = ['map_coefficients', 'miller_array', 'model', 'ncs_spec',
                      'phil', 'real_map', 'restraint', 'sequence']
 
+# custom options for processing data
+# generally the format is <datatype>_<custom option>
+data_manager_options = [
+  'model_skip_expand_with_mtrix',  # does not expand a model using MTRIX
+  ]
+
 # =============================================================================
 def load_datatype_modules(datatypes=None):
   '''
@@ -96,7 +102,7 @@ def load_datatype_modules(datatypes=None):
   return modules
 
 # =============================================================================
-def DataManager(datatypes=None, phil=None, logger=None):
+def DataManager(datatypes=None, phil=None, custom_options=None, logger=None):
   '''
   Function for dynamically creating a DataManager instance that supports a
   specific set of datatypes.
@@ -158,12 +164,16 @@ def DataManager(datatypes=None, phil=None, logger=None):
   # construct new class and return instance
   classes = tuple(manager_classes + parent_classes + mixin_classes)
   data_manager_class = type('DataManager', classes, dict())
-  return data_manager_class(datatypes=datatypes, phil=phil, logger=logger)
+  return data_manager_class(
+    datatypes=datatypes,
+    phil=phil,
+    custom_options=custom_options,
+    logger=logger)
 
 # =============================================================================
 class DataManagerBase(object):
 
-  def __init__(self, datatypes=None, phil=None, logger=None):
+  def __init__(self, datatypes=None, phil=None, custom_options=None, logger=None):
     '''
     Base DataManager class
     '''
@@ -173,6 +183,15 @@ class DataManagerBase(object):
       self.datatypes = []
     if hasattr(self, 'datatype') and (self.datatype not in self.datatypes):
       self.datatypes.append(self.datatype)
+
+    # custom data processing options
+    self.custom_options = custom_options
+    if self.custom_options is not None:
+      for option in self.custom_options:
+        if option not in data_manager_options:
+          raise Sorry('{option} is not a valid custom option for the DataManager.'.format(option=option))
+    else:
+      self.custom_options = []
 
     # functions for custom PHIL
     self.add_custom_phil_str = 'add_%s_phil_str'
