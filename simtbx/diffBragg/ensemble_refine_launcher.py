@@ -2,12 +2,12 @@
 from copy import deepcopy
 from dials.array_family import flex
 import numpy as np
-from simtbx.command_line.stage_one import Script as stage_one_Script
 import pandas
+from xfel.merging.application.utils.memory_usage import get_memory_usage
 
-import os
+from simtbx.diffBragg.utils import map_hkl_list
+
 from libtbx.mpi4py import MPI
-#from mpi4py import MPI
 COMM = MPI.COMM_WORLD
 
 from simtbx.diffBragg.refiners.global_refiner import GlobalRefiner
@@ -30,6 +30,12 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         if pandas_list is not None:
             self.df = pandas.read_pickle(pandas_list)
         self.WATCH_MISORIENTAION = False   # TODO add a phil
+        self.Hi = {}
+        self.Hi_asu = {}
+        self.asu_from_idx = {}
+        self.idx_from_asu = {}
+        self.symbol = None
+        self.num_hkl_global = 0
 
     @property
     def num_shots_on_rank(self):
@@ -48,7 +54,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         # TODO verify all shots have the same detector ?
         if self.params.refiner.reference_geom is not None:
             detector = ExperimentListFactory.from_json_file(self.params.refiner.reference_geom, check_format=False)[0].detector
-            print("USING REFERENCE GEOMZ!!!")
+            print("Using reference geom from expt %s" % self.params.refiner.reference_geom)
 
         if COMM.size > num_exp:
             raise ValueError("Requested %d MPI ranks to process %d shots. Reduce number of ranks to %d"
@@ -63,13 +69,22 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         for i_exp, exper_name in enumerate(exper_names):
             if i_exp % COMM.size != COMM.rank:
                 continue
-            expt = ExperimentListFactory.from_json_file(exper_name, check_format=False)
+            expt = ExperimentListFactory.from_json_file(exper_name, check_format=True)
             expt.detector = detector  # in case of supplied ref geom
             self._check_experiment_integrity(expt)
 
             exper_dataframe = pandas_table.query("opt_exp_name=='%s'" % exper_name)
             refl_name = exper_dataframe.predictions.values[0]
             refls = flex.reflection_table.from_file(refl_name)
+
+            Hi = list(refls["miller_index"])
+            self.Hi[shot_idx] = Hi
+            if self.symbol is None:
+                self.symbol = expt.crystal.get_space_group().type().lookup_symbol()
+            else:
+                if self.symbol != expt.crystal.get_space_group().type().lookup_symbol():
+                    raise ValueError("Crystals should all have the same space group symmetry")
+            self.Hi_asu[shot_idx] = map_hkl_list(self.Hi, True, self.symbol)
 
             shot_data = self.load_roi_data(refls, expt)
             if shot_data is None:
@@ -86,7 +101,6 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             self.shot_roi_imgs[shot_idx] = shot_data.roi_imgs
             if "spectrum_filename" in list(exper_dataframe):
                 self.shot_spectra[shot_idx] = utils.load_spectra_from_dataframe(exper_dataframe)
-                print("Loaded spectra!!")
             else:
                 self.shot_spectra[shot_idx] = [(expt.beam.get_wavelength(), self.params.simulator.total_flux)]
             self.shot_crystal_models[shot_idx] = expt.crystal
@@ -125,7 +139,8 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
 
             rank_local_parameters.append(n_local_unknowns)
 
-        assert self.shot_rois, "cannot refine without shots! Probably Ranks than shots!"
+        if not self.shot_rois:
+            raise RuntimeError("Cannot refine without shots! Probably Ranks than shots!")
 
         # TODO warn that per_spot_scale refinement not recommended in ensemble mode
 
@@ -151,10 +166,15 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
 
         self.panel_groups_refined = list(COMM.bcast(panel_groups_refined))
 
+        self._gather_Hi_information()
+
         n_spectra_params = 2 if self.params.refiner.refine_spectra is not None else 0
         n_panelRot_params = 3*self.n_panel_groups
         n_panelXYZ_params = 3*self.n_panel_groups
         n_global_params = n_spectra_params + n_panelRot_params + n_panelXYZ_params
+
+        if self.params.refiner.refine_Fcell is not None and any(self.params.refiner.refine_Fcell):
+            n_global_params += self.num_hkl_global
 
         self._init_refiner(n_local_unknowns=total_local_param_on_rank,
                            n_global_unknowns=n_global_params,
@@ -170,11 +190,20 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         if not self.params.refiner.randomize_devices:
             self.DEVICE_ID = COMM.rank % self.params.refiner.num_devices
 
+        self._mem_usage()
+
         self._launch(total_local_param_on_rank, n_global_params,
                      local_idx_start=local_param_offset_per_rank,
                      global_idx_start=total_local_unknowns_all_ranks)
 
         return self.RUC
+
+    def _mem_usage(self):
+        memMB = COMM.reduce(get_memory_usage())
+        if COMM.rank == 0:
+            import socket
+            host = socket.gethostname()
+            print("Rank 0 reporting memory usage: %f GB on Rank 0 node %s" % (memMB / 1e3, host))
 
     def _initialize_some_refinement_parameters(self):
         # TODO provide interface for taking inital conditions from all shots (in the event of restarting a simulation)
@@ -273,12 +302,13 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         return file_list
 
     def _gather_Hi_information(self):
-        nshots_on_this_rank = len(self.Hi_per_rank)
+        nshots_on_this_rank = len(self.Hi)
         # aggregate all miller indices
         self.Hi_all_ranks, self.Hi_asu_all_ranks = [], []
-        for i in range(nshots_on_this_rank):
-            self.Hi_all_ranks += self.Hi_per_rank[i]
-            self.Hi_asu_all_ranks += self.Hi_asu_per_rank[i]
+        # TODO assert list types are stored in Hi and Hi_asu
+        for i_shot in range(nshots_on_this_rank):
+            self.Hi_all_ranks += self.Hi[i_shot]
+            self.Hi_asu_all_ranks += self.Hi_asu[i_shot]
         self.Hi_all_ranks = COMM.reduce(self.Hi_all_ranks, root=0)
         self.Hi_all_ranks = COMM.bcast(self.Hi_all_ranks, root=0)
         self.Hi_asu_all_ranks = COMM.reduce(self.Hi_asu_all_ranks, root=0)
@@ -291,19 +321,10 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         # we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
         self.asu_from_idx = {i: h for i, h in enumerate(set(self.Hi_asu_all_ranks))}
 
+        self.num_hkl_global = len(self.idx_from_asu)
+
         fres = marr_unique_h.d_spacings()
         self.res_from_asu = {h: res for h, res in zip(fres.indices(), fres.data())}
-        # will we only refine a range of miller indices ?
-        self.freeze_idx = None
-        #if self.fcellrange is not None:
-        #    self.freeze_idx = {}
-        #    resmax, resmin = self.fcellrange
-        #    for h in self.idx_from_asu:
-        #        res = self.res_from_asu[h]
-        #        if res >= resmin and res < resmax:
-        #            self.freeze_idx[h] = False
-        #        else:
-        #            self.freeze_idx[h] = True
 
     def _get_unique_Hi(self):
         if COMM.rank == 0:
@@ -325,7 +346,6 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             for i_bin in range(n_bin - 1):
                 dmax, dmin = binner.bin_d_range(i_bin + 1)
                 F_in_bin = marr.resolution_filter(d_max=dmax, d_min=dmin)
-                # multi_data = in_bin.data().as_numpy_array()
                 multi_in_bin = np.array(list(Counter(F_in_bin.indices()).values()))
                 print("%2.5g-%2.5g : Multiplicity=%.4f" % (dmax, dmin, multi_in_bin.mean()))
                 for ii in range(1, 100, 8):
@@ -335,7 +355,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             symm = symmetry(unit_cell=params, space_group_symbol=self.symbol)
             hi_flex_unique = cctbx_flex.miller_index(list(set(self.Hi_asu_all_ranks)))
             mset = miller.set(symm, hi_flex_unique, anomalous_flag=True)
-            binner = mset.setup_binner(d_min=self.params.d_min, d_max=self.params.d_max, n_bins=self.params.n_bins)
+            self.binner = mset.setup_binner(d_min=self.params.d_min, d_max=self.params.d_max, n_bins=self.params.n_bins)
             mset.completeness(use_binning=True).show()
             marr_unique_h = miller.array(mset)
             print("Rank %d: total miller vars=%d" % (COMM.rank, len(set(self.Hi_asu_all_ranks))))

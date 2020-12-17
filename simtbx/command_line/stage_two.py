@@ -33,6 +33,9 @@ d_min = 2
 d_max = 999
  .type = float
  .help = low res lim for binner
+n_bins = 10
+  .type = int
+  .help = number of binner bins
 """
 
 philz = script_phil + philz
