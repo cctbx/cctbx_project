@@ -95,6 +95,9 @@ refiner {
   refine_eta = None
     .type = ints(size_min=1)
     .help = whether to refine the mosaic spread parameter, eta
+  refine_fcell = False
+    .type = ints(size_min=1)
+    .help = whether to refine the structure factor amplitudes
   refine_per_spot_scale = None
     .type = ints(size_min=1)
     .help = whether to refine scale factors per spot, per shot

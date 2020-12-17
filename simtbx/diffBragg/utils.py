@@ -1222,6 +1222,86 @@ def load_panel_group_file(panel_group_file):
     return groups
 
 
+def spots_from_pandas(pandas_frame, mtz_file=None, mtz_col=None,
+                      oversample_override=None,
+                      Ncells_abc_override=None,
+                      cuda=False, device_Id=0, time_panels=False,
+                      d_max=999, d_min=1.5, defaultF=1e3,
+                      njobs=1,
+                      output_img=None):
+    from joblib import Parallel, delayed
+    from simtbx.nanoBragg.utils import flexBeam_sim_colors
+
+    df = pandas_frame
+
+    print("Loading experiment models")
+    expt_name = df.opt_exp_name.values[0]
+    El = ExperimentListFactory.from_json_file(expt_name, check_format=False)
+    expt = El[0]
+    print("Done loading models!")
+    assert len(df) == 1
+    Ncells_abc = tuple(map(lambda x: int(round(x)), df.ncells.values[0]))
+    if Ncells_abc_override is not None:
+        Ncells_abc = Ncells_abc_override
+    spot_scale = df.spot_scales.values[0]
+    beamsize_mm = df.beamsize_mm.values[0]
+    total_flux = df.total_flux.values[0]
+    oversample = df.oversample.values[0]
+    if oversample_override is not None:
+        oversample = oversample_override
+
+    # get the optimized spectra
+    if "spectrum_filename" in list(df):
+        spectrum_file = df.spectrum_filename.values[0]
+        pink_stride = df.spectrum_stride.values[0]
+        fluxes, energies = load_spectra_file(spectrum_file, total_flux=total_flux,
+                                             pinkstride=pink_stride)
+    else:
+        fluxes = np.array([total_flux])
+        energies = np.array([ENERGY_CONV/expt.beam.get_wavelength()])
+    lam0 = df.lam0.values[0]
+    lam1 = df.lam1.values[0]
+    if lam0 == -1:
+        lam0 = 0
+    if lam1 == -1:
+        lam1 = 1
+    wavelens = ENERGY_CONV / energies
+    wavelens = lam0 + lam1*wavelens
+    energies = ENERGY_CONV / wavelens
+
+    if mtz_file is not None:
+        assert mtz_col is not None
+        Famp = open_mtz(mtz_file, mtz_col)
+    else:
+        Famp = make_miller_array_from_crystal(expt.crystal, dmin=d_min, dmax=d_max, defaultF=defaultF)
+
+    crystal = expt.crystal
+    crystal.set_A(df.Amats.values[0])
+
+    panel_list = list(range(len(expt.detector)))
+    pids_per_job = np.array_split(panel_list, njobs)
+
+    def main(pids):
+        results = flexBeam_sim_colors(CRYSTAL=expt.crystal, DETECTOR=expt.detector, BEAM=expt.beam, Famp=Famp,
+                                      fluxes=fluxes, energies=energies, beamsize_mm=beamsize_mm,
+                                      Ncells_abc=Ncells_abc, spot_scale_override=spot_scale,
+                                      cuda=cuda, device_Id=device_Id, oversample=oversample, time_panels=time_panels,
+                                      pids=pids)
+        return results
+
+    results = Parallel(n_jobs=njobs)(delayed(main)(pids_per_job[jid]) for jid in range(njobs))
+    results = [result for job_results in results for result in job_results]
+
+    if output_img is not None:
+        save_model_to_image(expt, results, output_img, save_experiment_data=save_expt_data)
+
+    pids, imgs = zip(*results)
+    order = np.argsort(pids)
+    results = np.array([imgs[i] for i in order])
+
+    return results
+
+
 def spots_from_pandas_and_experiment(expt, pandas_pickle, mtz_file=None, mtz_col=None,
                                      spectrum_file=None, total_flux=1e12, pink_stride=1,
                                      beamsize_mm=0.001, oversample=0, d_max=999, d_min=1.5, defaultF=1e3,
@@ -1492,3 +1572,12 @@ def fit_tiltplanes_to_bboxes(refls, exper, params, is_bg_pixel=None):
         for i_sel, sel in enumerate(all_fit_sel):
             ydim, xdim = sel.shape
             master_fit_sel[i_sel, :ydim, :xdim] = sel
+
+
+def load_spectra_from_dataframe(df):
+    total_flux = df.total_flux.values[0]
+    spectrum_file = df.spectrum_filename.values[0]
+    pink_stride = df.spectrum_stride.values[0]
+    spec = load_spectra_file(spectrum_file, total_flux=total_flux,
+                            pinkstride=pink_stride, as_spectrum=True)
+    return spec

@@ -70,24 +70,24 @@ output {
       .type = bool
       .help = if True, output a refined reflections table with xyz.calc 
       .help = computed by the diffBragg model
-    pandas = False       
+    pandas = True       
       .type = bool
       .help = whether to save a pandas output file
-    experiments = False
+    experiments = True
       .type = bool
-      .help = whether to save a refined experients output file
+      .help = whether to save a refined experiments output file
   } 
   tag {
-    images = after_stage_ine
+    images = stg1
       .type = str
       .help = output file tag for model images
-    reflections = after_stage_one
+    reflections = stg1 
       .type = str
       .help = output file tag for reflections 
-    pandas = info
+    pandas = stg1
       .type = str
       .help = output file tag for pandas
-    experiments = after_stage_one
+    experiments = stg1
       .type = str
       .help = output file tag for experiments
   }
@@ -284,7 +284,7 @@ class Script:
 
                 # Save model image
                 if self.params.output.save.model or self.params.output.save.model_and_data:
-                    images_outdir = os.path.join(self.params.output.directory, "model_images", "rank%d" % COMM.rank)
+                    images_outdir = os.path.join(self.params.output.directory, "imgs", "rank%d" % COMM.rank)
                     if not os.path.exists(images_outdir):
                         os.makedirs(images_outdir)
                     img_path = os.path.join(images_outdir, "%s_%s_%d.h5" % (self.params.output.tag.images, basename, i_processed))
@@ -315,7 +315,7 @@ class Script:
                     refined_refls = refiner.get_refined_reflections(refls_for_exper)
                     #NOTE do we really need to reset the id ?
                     refined_refls['id'] = flex.int(len(refined_refls), 0)
-                    refls_outdir = os.path.join(self.params.output.directory, "reflections_after_stage1", "rank%d" % COMM.rank)
+                    refls_outdir = os.path.join(self.params.output.directory, "refls", "rank%d" % COMM.rank)
                     if not os.path.exists(refls_outdir):
                         os.makedirs(refls_outdir)
                     refls_path = os.path.join(refls_outdir, "%s_%s_%d.refl" % (self.params.output.tag.reflections, basename, i_processed))
@@ -323,7 +323,7 @@ class Script:
 
                 # save experiment
                 if self.params.output.save.experiments:
-                    exp_outdir = os.path.join(self.params.output.directory, "experiments_after_stage1", "rank%d" % COMM.rank)
+                    exp_outdir = os.path.join(self.params.output.directory, "expers", "rank%d" % COMM.rank)
                     if not os.path.exists(exp_outdir):
                         os.makedirs(exp_outdir)
 
@@ -336,7 +336,7 @@ class Script:
 
                 # save pandas
                 if self.params.output.save.pandas:
-                    pandas_outdir = os.path.join(self.params.output.directory, "pandas_pickles", "rank%d" % COMM.rank)
+                    pandas_outdir = os.path.join(self.params.output.directory, "pandas", "rank%d" % COMM.rank)
                     if not os.path.exists(pandas_outdir):
                         os.makedirs(pandas_outdir)
                     outpath = os.path.join(pandas_outdir, "%s_%s_%d.pkl" % (self.params.output.tag.pandas,basename, i_processed))
@@ -354,7 +354,7 @@ class Script:
                     if self.params.roi.panels is not None:
                         data_frame["roi_panels"] = self.params.roi.panels
                     if self.params.output.save.experiments:
-                        data_frame["opt_exp_name"] = opt_exp_path
+                        data_frame["opt_exp_name"] = os.path.abspath(opt_exp_path)
                     data_frame.to_pickle(outpath)
 
                 i_processed += 1

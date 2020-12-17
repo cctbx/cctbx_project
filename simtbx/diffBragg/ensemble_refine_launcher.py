@@ -1,5 +1,6 @@
 
 from copy import deepcopy
+from dials.array_family import flex
 import numpy as np
 from simtbx.command_line.stage_one import Script as stage_one_Script
 import pandas
@@ -37,17 +38,14 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
     def _alias_refiner(self):
         self._Refiner = GlobalRefiner
 
-    def launch_refiner(self, refl_tbl, expt_list, miller_data=None, pandas_list=None):
+    def launch_refiner(self, pandas_table, miller_data=None):
         self._alias_refiner()
-
-        file_path_input = False
-        num_exp = len(set(refl_tbl["id"]))
-        if not isinstance(expt_list, str):
-            assert num_exp == len(expt_list)
-            detector = expt_list[0].detector  # TODO verify all shots have the same detector
-        else:
-            detector = ExperimentListFactory.from_json_file(expt_list, check_format=False)[0].detector
-            file_path_input = True
+        if not "opt_exp_name" in list(pandas_table) or not "predictions" in list(pandas_table):
+            raise KeyError("Pandas table needs opt_exp_name and predicictions columns")
+        num_exp = len(pandas_table)
+        first_exper_file = pandas_table.opt_exp_name.values[0]
+        detector = ExperimentListFactory.from_json_file(first_exper_file, check_format=False)[0].detector
+        # TODO verify all shots have the same detector ?
         if self.params.refiner.reference_geom is not None:
             detector = ExperimentListFactory.from_json_file(self.params.refiner.reference_geom, check_format=False)[0].detector
             print("USING REFERENCE GEOMZ!!!")
@@ -57,23 +55,21 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
                              % (COMM.size, num_exp, num_exp))
         self._init_panel_group_information(detector)
 
-        spectra_list = self._try_loading_spectrum_filelist()
-        if spectra_list is not None:
-            assert len(spectra_list) == num_exp
-
         shot_idx = 0  # each rank keeps index of the shots local to it
         rank_panel_groups_refined = set()
         rank_local_parameters = []
-        for i_exp in range(num_exp):
+        exper_names = pandas_table.opt_exp_name.unique()
+        # TODO assert all exper are single-file, probably way before this point
+        for i_exp, exper_name in enumerate(exper_names):
             if i_exp % COMM.size != COMM.rank:
                 continue
-            if file_path_input:
-                expt = stage_one_Script.exper_json_single_file(expt_list, i_exp=i_exp)
-            else:
-                expt = expt_list[i_exp]
+            expt = ExperimentListFactory.from_json_file(exper_name, check_format=False)
             expt.detector = detector  # in case of supplied ref geom
-            refls = refl_tbl.select(refl_tbl['id'] == i_exp)
             self._check_experiment_integrity(expt)
+
+            exper_dataframe = pandas_table.query("opt_exp_name=='%s'" % exper_name)
+            refl_name = exper_dataframe.predictions.values[0]
+            refls = flex.reflection_table.from_file(refl_name)
 
             shot_data = self.load_roi_data(refls, expt)
             if shot_data is None:
@@ -88,14 +84,8 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             self.shot_rois[shot_idx] = shot_data.rois
             self.shot_nanoBragg_rois[shot_idx] = shot_data.nanoBragg_rois
             self.shot_roi_imgs[shot_idx] = shot_data.roi_imgs
-            # TODO spectra ensemble
-            #self.shot_spectra[shot_idx] = self.SIM.beam.spectrum
-            if spectra_list is not None:
-                self.shot_spectra[shot_idx] = utils.load_spectra_file(
-                    spectra_list[i_exp],
-                    self.params.simulator.total_flux,
-                    self.params.simulator.spectrum.stride,
-                    as_spectrum=True)
+            if "spectrum_filename" in list(exper_dataframe):
+                self.shot_spectra[shot_idx] = utils.load_spectra_from_dataframe(exper_dataframe)
                 print("Loaded spectra!!")
             else:
                 self.shot_spectra[shot_idx] = [(expt.beam.get_wavelength(), self.params.simulator.total_flux)]
@@ -282,3 +272,75 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             assert all([len(l.split()) == 1 for l in file_list]), "weird spectrum file %s"% fpath
         return file_list
 
+    def _gather_Hi_information(self):
+        nshots_on_this_rank = len(self.Hi_per_rank)
+        # aggregate all miller indices
+        self.Hi_all_ranks, self.Hi_asu_all_ranks = [], []
+        for i in range(nshots_on_this_rank):
+            self.Hi_all_ranks += self.Hi_per_rank[i]
+            self.Hi_asu_all_ranks += self.Hi_asu_per_rank[i]
+        self.Hi_all_ranks = COMM.reduce(self.Hi_all_ranks, root=0)
+        self.Hi_all_ranks = COMM.bcast(self.Hi_all_ranks, root=0)
+        self.Hi_asu_all_ranks = COMM.reduce(self.Hi_asu_all_ranks, root=0)
+        self.Hi_asu_all_ranks = COMM.bcast(self.Hi_asu_all_ranks, root=0)
+
+        marr_unique_h = self._get_unique_Hi()
+
+        # this will map the measured miller indices to their index in the LBFGS parameter array self.x
+        self.idx_from_asu = {h: i for i, h in enumerate(set(self.Hi_asu_all_ranks))}
+        # we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
+        self.asu_from_idx = {i: h for i, h in enumerate(set(self.Hi_asu_all_ranks))}
+
+        fres = marr_unique_h.d_spacings()
+        self.res_from_asu = {h: res for h, res in zip(fres.indices(), fres.data())}
+        # will we only refine a range of miller indices ?
+        self.freeze_idx = None
+        #if self.fcellrange is not None:
+        #    self.freeze_idx = {}
+        #    resmax, resmin = self.fcellrange
+        #    for h in self.idx_from_asu:
+        #        res = self.res_from_asu[h]
+        #        if res >= resmin and res < resmax:
+        #            self.freeze_idx[h] = False
+        #        else:
+        #            self.freeze_idx[h] = True
+
+    def _get_unique_Hi(self):
+        if COMM.rank == 0:
+            from cctbx.crystal import symmetry
+            from cctbx import miller
+            from cctbx.array_family import flex as cctbx_flex
+
+            uc = self.all_ucell_mans[0]
+            params = uc.a, uc.b, uc.c, uc.al * 180 / np.pi, uc.be * 180 / np.pi, uc.ga * 180 / np.pi
+            symm = symmetry(unit_cell=params, space_group_symbol=self.symbol)
+            hi_asu_flex = cctbx_flex.miller_index(self.Hi_asu_all_ranks)
+            mset = miller.set(symm, hi_asu_flex, anomalous_flag=True)
+            marr = miller.array(mset)  # ,data=flex.double(len(hi_asu_felx),0))
+            n_bin = 10
+            binner = marr.setup_binner(d_max=999, d_min=2.125, n_bins=n_bin)
+            from collections import Counter
+            print("Average multiplicities:")
+            print("<><><><><><><><><><><><>")
+            for i_bin in range(n_bin - 1):
+                dmax, dmin = binner.bin_d_range(i_bin + 1)
+                F_in_bin = marr.resolution_filter(d_max=dmax, d_min=dmin)
+                # multi_data = in_bin.data().as_numpy_array()
+                multi_in_bin = np.array(list(Counter(F_in_bin.indices()).values()))
+                print("%2.5g-%2.5g : Multiplicity=%.4f" % (dmax, dmin, multi_in_bin.mean()))
+                for ii in range(1, 100, 8):
+                    print("\t %d refls with multi %d" % (sum(multi_in_bin == ii), ii))
+
+            print("Overall completeness\n<><><><><><><><>")
+            symm = symmetry(unit_cell=params, space_group_symbol=self.symbol)
+            hi_flex_unique = cctbx_flex.miller_index(list(set(self.Hi_asu_all_ranks)))
+            mset = miller.set(symm, hi_flex_unique, anomalous_flag=True)
+            binner = mset.setup_binner(d_min=self.params.d_min, d_max=self.params.d_max, n_bins=self.params.n_bins)
+            mset.completeness(use_binning=True).show()
+            marr_unique_h = miller.array(mset)
+            print("Rank %d: total miller vars=%d" % (COMM.rank, len(set(self.Hi_asu_all_ranks))))
+        else:
+            marr_unique_h = None
+
+        marr_unique_h = COMM.bcast(marr_unique_h)
+        return marr_unique_h
