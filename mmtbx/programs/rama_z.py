@@ -24,6 +24,7 @@ Usage examples:
   '''
 
   datatypes = ['model', 'phil']
+  data_manager_options = ['model_skip_expand_with_mtrix']
 
   master_phil_str = """\
   write_HSL_models = False
