@@ -64,7 +64,10 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         for i_exp, exper_name in enumerate(exper_names):
             if i_exp % COMM.size != COMM.rank:
                 continue
-            expt = ExperimentListFactory.from_json_file(exper_name, check_format=True)
+            expt_list = ExperimentListFactory.from_json_file(exper_name, check_format=True)
+            if len(expt_list) != 1:
+                print("Input experiments need to have length 1, %s does not" % exper_name)
+            expt = expt_list[0]
             expt.detector = detector  # in case of supplied ref geom
             self._check_experiment_integrity(expt)
 
@@ -79,7 +82,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             else:
                 if self.symbol != expt.crystal.get_space_group().type().lookup_symbol():
                     raise ValueError("Crystals should all have the same space group symmetry")
-            self.Hi_asu[shot_idx] = map_hkl_list(self.Hi, True, self.symbol)
+            self.Hi_asu[shot_idx] = map_hkl_list(Hi, True, self.symbol)
 
             shot_data = self.load_roi_data(refls, expt)
             if shot_data is None:
@@ -330,7 +333,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             from cctbx import miller
             from cctbx.array_family import flex as cctbx_flex
 
-            uc = self.all_ucell_mans[0]
+            uc = self.shot_ucell_managers[0] #TODO allow an override, or an average over all Crystals
             params = uc.a, uc.b, uc.c, uc.al * 180 / np.pi, uc.be * 180 / np.pi, uc.ga * 180 / np.pi
             symm = symmetry(unit_cell=params, space_group_symbol=self.symbol)
             hi_asu_flex = cctbx_flex.miller_index(self.Hi_asu_all_ranks)
@@ -353,7 +356,9 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             symm = symmetry(unit_cell=params, space_group_symbol=self.symbol)
             hi_flex_unique = cctbx_flex.miller_index(list(set(self.Hi_asu_all_ranks)))
             mset = miller.set(symm, hi_flex_unique, anomalous_flag=True)
-            self.binner = mset.setup_binner(d_min=self.params.d_min, d_max=self.params.d_max, n_bins=self.params.n_bins)
+            self.binner = mset.setup_binner(d_min=self.params.refiner.stage_two.d_min,
+                                            d_max=self.params.refiner.stage_two.d_max,
+                                            n_bins=self.params.refiner.stage_two.n_bin)
             mset.completeness(use_binning=True).show()
             marr_unique_h = miller.array(mset)
             print("Rank %d: total miller vars=%d" % (COMM.rank, len(set(self.Hi_asu_all_ranks))))

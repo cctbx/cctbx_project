@@ -95,7 +95,7 @@ refiner {
   refine_eta = None
     .type = ints(size_min=1)
     .help = whether to refine the mosaic spread parameter, eta
-  refine_Fcell = False
+  refine_Fcell = None
     .type = ints(size_min=1)
     .help = whether to refine the structure factor amplitudes
   refine_per_spot_scale = None
@@ -330,7 +330,7 @@ refiner {
       .type = str
       .help = path to a reference MTZ file. if passed, this is used solely to 
       .help = observe the R-factor and CC between it and the Fobs being optimized
-    Fhkl_mtzcol = "Famp(+),Famp(-)"
+    Fref_mtzcol = "Famp(+),Famp(-)"
       .type = str
       .help = column in the mtz file containing the data
     d_min = 2
@@ -339,7 +339,7 @@ refiner {
     d_max = 999
       .type = float
       .help = low res lim for binner
-    n_bins = 10
+    n_bin = 10
       .type = int
       .help = number of binner bins
   }
