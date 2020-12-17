@@ -25,13 +25,13 @@ class crystal_model(worker):
     self.logger.log_step_time("CREATE_CRYSTAL_MODEL")
 
     # perform some run-time validation
-    assert self.purpose in ["scaling", "statistics"]
+    assert self.purpose in ["scaling", "statistics", "cosym"]
     if self.purpose == "statistics" and self.params.merging.set_average_unit_cell: # without this flag the average unit cell wouldn't have been generated
       assert 'average_unit_cell' in (self.params.statistics).__dict__ # the worker, tasked with averaging the unit cell, would put it there
 
     # Generate the reference, or model, intensities
     i_model = None
-    if self.purpose == "scaling":
+    if self.purpose in ["scaling","cosym"]:
       model_file_path = str(self.params.scaling.model)
       if model_file_path is not None:
         self.logger.log("Scaling model: " + model_file_path)
@@ -59,6 +59,9 @@ class crystal_model(worker):
         i_model = self.create_model_from_pdb(model_file_path)
       elif model_file_path.endswith(".cif"):
         i_model = self.create_model_from_structure_file(model_file_path)
+
+    if self.purpose == "cosym":
+      return i_model
 
     # Generate a full miller set. If the purpose is scaling and i_model is available, then the miller set has to be consistent with the model
     miller_set, i_model = self.consistent_set_and_model(i_model=i_model)
