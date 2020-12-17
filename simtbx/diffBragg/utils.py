@@ -756,13 +756,20 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
             tilt_a, tilt_b, tilt_c = 0, 0, bg_signal
             tilt_plane = tilt_a * Xcoords + tilt_b * Ycoords + tilt_c
         else:
-            (tilt_a, tilt_b, tilt_c), covariance = fit_plane_equation_to_background_pixels(
+            fit_results = fit_plane_equation_to_background_pixels(
                 shoebox_img=shoebox, fit_sel=is_background, sigma_rdout=sigma_rdout)
-            tilt_plane = tilt_a * Xcoords + tilt_b * Ycoords + tilt_c
-            if np.min(tilt_plane) < 0:  # dips below
-                num_roi_negative_bg += 1
-                print("background is negative")
-                is_selected = False
+            if fit_results is None:
+                tilt_a = tilt_b = tilt_c = covariance = 0 
+                is_selected=False
+                print("tilt fit failed, probably too few pixels")
+                tilt_plane = np.zeros_like(Xcoords)
+            else:
+                (tilt_a, tilt_b, tilt_c), covariance = fit_results
+                tilt_plane = tilt_a * Xcoords + tilt_b * Ycoords + tilt_c
+                if np.min(tilt_plane) < 0:  # dips below
+                    num_roi_negative_bg += 1
+                    print("background is negative")
+                    is_selected = False
 
         if not np.all(background[pid, j1_nopad:j2_nopad, i1_nopad:i2_nopad] == -1):
             print( "region of interest already accounted for roi size= %d %d" % (i2_nopad-i1_nopad, j2_nopad-j1_nopad))
