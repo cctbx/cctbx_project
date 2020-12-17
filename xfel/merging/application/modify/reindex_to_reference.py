@@ -18,6 +18,23 @@ class reindex_to_reference(worker):
   def __repr__(self):
     return 'Resolve indexing ambiguity'
 
+  def process_dataframe(self, raw):
+    #two purposes: 1) write table to disk, 2) make plot
+    from pandas import DataFrame as df
+    data = df(raw)
+    from matplotlib import pyplot as plt
+    symops = list(data.keys())[1:]
+    data["max"] = data[symops].max(axis=1)
+    data["min"] = data[symops].min(axis=1)
+    data['diff'] = data["max"] - data["min"]
+    data["reindex_op"] = data[symops].idxmax(axis=1)
+    data.to_pickle(path = "myfile") # XXX
+    # XXX rank 0 should write one unified file to params.output.prefix + _reindex_op.pandas
+    plt.hist(data["min"], bins=24, range=[-0.5,1], )
+    plt.hist(data["max"], bins=24, range=[-0.5,1], alpha=0.75)
+    plt.show()
+    # later change this plot to produce PDF file
+
   def run(self, experiments, reflections):
 
     self.logger.log_step_time("REINDEX")
@@ -29,6 +46,14 @@ class reindex_to_reference(worker):
       return experiments, reflections
     self.logger.log("Resolving indexing ambiguity using operators h,k,l, %s"%", ".join( \
       [op.operator.r().as_hkl() for op in operators]))
+    if self.params.modify.reindex_to_reference.dataframe:
+      from collections import OrderedDict
+      keyval = [("experiment",[]),("h,k,l", [])]
+      for op in operators:
+        keyval.append((op.operator.r().as_hkl(), []))
+      raw = OrderedDict(keyval)
+      keys = list(raw.keys())
+
     operators = [sgtbx.change_of_basis_op(op.operator.r().as_hkl()) for op in operators]
 
     result = flex.reflection_table()
@@ -73,6 +98,13 @@ class reindex_to_reference(worker):
       result.extend(exp_reflections)
 
       self.logger.log("Expt %d, reindexing op correlations: %s"%(expt_id, ", ".join(["%6.3f"%c for c in all_correlations])))
+      if self.params.modify.reindex_to_reference.dataframe:
+        raw["experiment"].append(experiment.identifier)
+        for ix in range(len(all_correlations)):
+          raw[keys[ix+1]].append(all_correlations[ix])
+
+    if self.params.modify.reindex_to_reference.dataframe:
+      self.process_dataframe(raw)
 
     self.logger.log_step_time("REINDEX", True)
     self.logger.log("Memory usage: %d MB"%get_memory_usage())
