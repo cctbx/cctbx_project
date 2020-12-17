@@ -78,26 +78,39 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             good_sel = flex.bool([h != (0, 0, 0) for h in list(refls["miller_index"])])
             refls = refls.select(good_sel)
 
-            Hi = list(refls["miller_index"])
-            self.Hi[shot_idx] = Hi
+            UcellMan = utils.manager_from_crystal(expt.crystal)
+
             if self.symbol is None:
                 self.symbol = expt.crystal.get_space_group().type().lookup_symbol()
             else:
                 if self.symbol != expt.crystal.get_space_group().type().lookup_symbol():
                     raise ValueError("Crystals should all have the same space group symmetry")
-            self.Hi_asu[shot_idx] = map_hkl_list(Hi, True, self.symbol)
-
-            shot_data = self.load_roi_data(refls, expt)
-            if shot_data is None:
-                raise ValueError("Cannot refine!")
-
-            UcellMan = utils.manager_from_crystal(expt.crystal)
 
             if shot_idx == 0:  # each rank initializes a simulator only once
                 self._init_simulator(expt, miller_data)
                 if self.params.refiner.stage_two.Fref_mtzname is not None:
                     self.Fref = utils.open_mtz(self.params.refiner.stage_two.Fref_mtzname,
                                                self.params.refiner.stage_two.Fref_mtzcol)
+
+            # FIXME what if a prediction doesnt have an observed structure factor amplitude
+            observed_Hi_p1, _ = map(list, self.SIM.D.Fhkl_tuple)
+            good_sel = []
+            for h in refls["miller_index"]:
+                if h not in observed_Hi_p1:
+                    print("WARNING: No observed intensity for miller index %d %d %d\n it will not be refined" % h)
+                    good_sel.append(False)
+                else:
+                    good_sel.append(True)
+            refls = refls.select(flex.bool(good_sel))
+
+            Hi = list(refls["miller_index"])
+            self.Hi[shot_idx] = Hi
+            self.Hi_asu[shot_idx] = map_hkl_list(Hi, True, self.symbol)
+
+            shot_data = self.load_roi_data(refls, expt)
+            if shot_data is None:
+                raise ValueError("Cannot refine!")
+
 
             self.shot_ucell_managers[shot_idx] = UcellMan
             self.shot_rois[shot_idx] = shot_data.rois
@@ -313,8 +326,10 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         for i_shot in range(nshots_on_this_rank):
             self.Hi_all_ranks += self.Hi[i_shot]
             self.Hi_asu_all_ranks += self.Hi_asu[i_shot]
+
         self.Hi_all_ranks = COMM.reduce(self.Hi_all_ranks, root=0)
         self.Hi_all_ranks = COMM.bcast(self.Hi_all_ranks, root=0)
+
         self.Hi_asu_all_ranks = COMM.reduce(self.Hi_asu_all_ranks, root=0)
         self.Hi_asu_all_ranks = COMM.bcast(self.Hi_asu_all_ranks, root=0)
 

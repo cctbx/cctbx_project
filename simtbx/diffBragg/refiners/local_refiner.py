@@ -406,6 +406,8 @@ class LocalRefiner(BaseRefiner):
         if self.refine_Fcell:
             idx, data = self.S.D.Fhkl_tuple
             self.idx_from_p1 = {h: i for i, h in enumerate(idx)}
+            from IPython import embed
+            embed()
             # self.p1_from_idx = {i: h for i, h in zip(idx, data)}
 
         # Make a mapping of panel id to parameter index and backwards
@@ -2940,7 +2942,7 @@ class LocalRefiner(BaseRefiner):
                 s = std(vals)
                 print("Per spot scales shot %d: \n\tmin=%10.7f, \n\tmax=%10.7f, \n\tmedian=%10.7f, \n\tstdev=%10.7f" % (i_shot, mn, mx, m, s))
 
-        if self.Fref is not None and self.iterations % self.merge_stat_frequency == 0:
+        if self.Fref is not None and self.iterations % self.merge_stat_frequency == 0 and self.I_AM_ROOT:
             self.R_overall = self.Fobs_Fref_Rfactor(use_binning=False, auto_scale=self.scale_r1)
             self.CC_overall = self.Fobs.correlation(self.Fref_aligned).coefficient()
             print("R-factor overall: %.4f, CC overall: %.4f" % (self.R_overall, self.CC_overall))
