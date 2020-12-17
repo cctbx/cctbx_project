@@ -60,9 +60,8 @@ class Script:
         refine_starttime = time.time()
         if not self.params.refiner.randomize_devices:
             self.params.simulator.device_id = COMM.rank % self.params.refiner.num_devices
-        refiner = ensemble_refine_launcher.global_refiner_from_parameters(refls, pandas_list, self.params)
-        if self.params.show_timing:
-            print("Time to refine experiment: %f" % (time.time()- refine_starttime))
+        refiner = ensemble_refine_launcher.global_refiner_from_parameters(self.params)
+        print("Time to refine experiment: %f" % (time.time()- refine_starttime))
 
         #TODO save MTZ
 

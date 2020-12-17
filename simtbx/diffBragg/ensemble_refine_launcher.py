@@ -1,34 +1,35 @@
 
 from copy import deepcopy
+from libtbx.mpi4py import MPI
+
+COMM = MPI.COMM_WORLD
 from dials.array_family import flex
 import numpy as np
 import pandas
 from xfel.merging.application.utils.memory_usage import get_memory_usage
 
+
+
 from simtbx.diffBragg.utils import map_hkl_list
-
-from libtbx.mpi4py import MPI
-COMM = MPI.COMM_WORLD
-
 from simtbx.diffBragg.refiners.global_refiner import GlobalRefiner
 from simtbx.diffBragg.refine_launcher import LocalRefinerLauncher, ShotData
 from simtbx.diffBragg import utils
 from dxtbx.model.experiment_list import ExperimentListFactory
 
 
-def global_refiner_from_parameters(refl_tbl, expt_list, params, pandas_list=None):
-    launcher = GlobalRefinerLauncher(params, pandas_list)
-    return launcher.launch_refiner(refl_tbl, expt_list, pandas_list)
+def global_refiner_from_parameters(params):
+    launcher = GlobalRefinerLauncher(params)
+    # TODO read on each rank, or read and broadcast ?
+    pandas_table = pandas.read_pickle(params.pandas_table)
+    return launcher.launch_refiner(pandas_table)
 
 
 class GlobalRefinerLauncher(LocalRefinerLauncher):
 
-    def __init__(self, params, pandas_list=None):
+    def __init__(self, params):
         super().__init__(params)
         self.n_shots_on_rank = None
         self.df = None
-        if pandas_list is not None:
-            self.df = pandas.read_pickle(pandas_list)
         self.WATCH_MISORIENTAION = False   # TODO add a phil
 
     @property

@@ -74,6 +74,9 @@ njobs = 1
 max_process = None
   .type = int
   .help = maximum number of imgs to predict
+pandas_outfile = None
+  .type = str
+  .help = output file name (this file is suitable input to stage_two refinement, e.g. the pandas_table parameter)
 """
 
 phil_scope = parse(script_phil)
@@ -128,12 +131,12 @@ class Script:
             if i_exp % COMM.size != COMM.rank:
                 continue
 
+            if self.params.max_process is not None and i_exp >= self.params.max_process:
+                break
+
             print("<><><><><><><><><><><><><><><><><><>")
             print("\tRank %d : iter %d / %d" % (COMM.rank, i_exp+1, NUM_EXPER))
             print("<><><><><><><><><><><><><><><><><><>")
-
-            if self.params.max_process is not None and i_exp >= self.params.max_process:
-                break
 
             El = ExperimentListFactory.from_json_file(exper_file, check_format=False)
             exper = El[0]
@@ -177,8 +180,11 @@ class Script:
         if using_pandas_table:
             processed_frames = COMM.reduce(processed_frames)
             if COMM.rank == 0:
+                if self.params.pandas_outfile is None:
+                    master_outfile = os.path.splitext(self.params.pandas_table)[0] + "_predictions.pkl"
+                else:
+                    master_outfile = self.params.pandas_outfile
                 master_frame = pandas.concat(processed_frames)
-                master_outfile = os.path.splitext(self.params.pandas_table)[0] + "_predictions.pkl"
                 master_frame.to_pickle(master_outfile)
                 print("Saved predictions dataframe : %s" % master_outfile)
 
