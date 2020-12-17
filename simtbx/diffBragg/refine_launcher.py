@@ -36,6 +36,13 @@ class LocalRefinerLauncher:
         self.panel_reference_from_id = None
         self.n_panel_groups = None
 
+        self.asu_from_idx = {}
+        self.idx_from_asu = {}
+        self.Hi = {}
+        self.Hi_asu = {}
+        self.num_hkl_global = 0
+        self.Fref = None
+
         self.RUC = None
         self.SIM = None
         self.NCELLS_MASK = None
@@ -47,6 +54,8 @@ class LocalRefinerLauncher:
         self.n_global_unknowns = None
         self.local_idx_start = 0
         self.global_idx_start = None
+
+        self.symbol = None
 
         self._rationalize_ncells_refinement_protocol()
 
@@ -108,6 +117,8 @@ class LocalRefinerLauncher:
         self.shot_originZ_init = {0: 0}
         self.shot_selection_flags = {0: shot_data.selection_flags}
         self.shot_background = {0: shot_data.background}
+
+        self.symbol = expt.crystal.get_space_group().type().lookup_symbol()
 
         # <><><><><><>><><><><><><><><><>
         # determine number of parameters:
@@ -199,6 +210,9 @@ class LocalRefinerLauncher:
                 if self.params.refiner.refine_blueSausages is not None:
                     self.RUC.refine_blueSausages = (self.params.refiner.refine_blueSausages*nmacro)[i_trial]
 
+                if self.params.refiner.refine_Fcell is not None:
+                    self.RUC.refine_Fcell = (self.params.refiner.refine_Fcell*nmacro)[i_trial]
+
             if self.RUC.refine_detdist and self.RUC.refine_panelZ:
                 raise ValueError("Cannot refine panelZ and detdist simultaneously")
 
@@ -216,7 +230,7 @@ class LocalRefinerLauncher:
                                   [ang*np.pi/180 for ang in self.params.refiner.ranges.panel_rotF],
                                   [ang*np.pi/180 for ang in self.params.refiner.ranges.panel_rotS]]
 
-            self.RUC.refine_Fcell = False
+            # TODO verify not refining Fcell in case of local refiner
             self.RUC.max_calls = (self.params.refiner.max_calls*nmacro)[i_trial]
             if self.params.refiner.refine_eta is not None and any(self.params.refiner.refine_eta):
                 self.RUC.update_eta = any(self.params.refiner.refine_eta)
@@ -229,7 +243,6 @@ class LocalRefinerLauncher:
             self.RUC.n_ncells_param = self.n_ncells_param
             self.RUC.recenter = True
             self.RUC.rescale_params = True
-            self.RUC.rescale_fcell_by_resolution = self.params.refiner.rescale_fcell_by_resolution
 
             self.RUC.ignore_line_search_failed_step_at_lower_bound = True
 
@@ -254,7 +267,6 @@ class LocalRefinerLauncher:
             self.RUC.lambda_coef_ranges = [self.params.refiner.ranges.spectra0, self.params.refiner.ranges.spectra1]
             self.RUC.detector_distance_range = self.params.refiner.ranges.originZ
 
-            self.RUC.fcell_resolution_bin_Id = None
             self.RUC.compute_image_model_correlation = self.params.refiner.compute_image_model_correlation
 
             # plot things
@@ -265,7 +277,27 @@ class LocalRefinerLauncher:
             self.RUC.plot_residuals = self.params.refiner.plot.as_residuals
             self.RUC.plot_stride = self.params.refiner.plot.iteration_stride
             self.RUC.setup_plots()
+
+            # Fcell stuff
+            self.RUC.rescale_fcell_by_resolution = self.params.refiner.rescale_fcell_by_resolution
+            self.RUC.Fref = self.Fref
+            self.RUC.merge_stat_frequency = self.params.refiner.stage_two.merge_stat_freq
+            self.RUC.min_multiplicity = self.params.refiner.stage_two.min_multiplicity
+            self.RUC.print_resolution_bins = self.params.refiner.stage_two.print_reso_bins
+            if self.RUC.print_resolution_bins and self.RUC.Fref is None:
+                raise ValueError("Fref cannot be None when printing resolution bins")
+            if self.Hi:  # if miller indices stored per-shot
+                self.RUC.Hi = self.Hi
+            self.RUC.fcell_resolution_bin_Id = None
             self.RUC.log_fcells = True
+            self.RUC.idx_from_asu = self.idx_from_asu
+            self.RUC.asu_from_idx = self.asu_from_idx
+            self.RUC.scale_r1 = True
+            self.RUC.binner_dmax = self.params.refiner.stage_two.d_max
+            self.RUC.binner_dmin = self.params.refiner.stage_two.d_min
+            self.RUC.binner_nbin = self.params.refiner.stage_two.n_bin
+            # end Fcell stuff
+
             self.RUC.big_dump = self.params.refiner.big_dump
             self.RUC.request_diag_once = False
             self.RUC.S = self.SIM
@@ -503,8 +535,8 @@ class LocalRefinerLauncher:
             shot_roi_imgs=self.shot_roi_imgs, shot_spectra=self.shot_spectra,
             shot_crystal_GTs=ref_crystals, shot_crystal_models=self.shot_crystal_models,
             shot_xrel=self.shot_xrel, shot_yrel=self.shot_yrel, shot_abc_inits=self.shot_abc_inits,
-            shot_asu=None,
-            # sgsymbol=#TODO
+            shot_asu=self.Hi_asu if self.Hi_asu else None,
+            sgsymbol=self.symbol,
             global_param_idx_start=global_idx_start,
             shot_panel_ids=self.shot_panel_ids,
             all_crystal_scales=None,

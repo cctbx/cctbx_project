@@ -30,12 +30,6 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         if pandas_list is not None:
             self.df = pandas.read_pickle(pandas_list)
         self.WATCH_MISORIENTAION = False   # TODO add a phil
-        self.Hi = {}
-        self.Hi_asu = {}
-        self.asu_from_idx = {}
-        self.idx_from_asu = {}
-        self.symbol = None
-        self.num_hkl_global = 0
 
     @property
     def num_shots_on_rank(self):
@@ -94,6 +88,9 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
 
             if shot_idx == 0:  # each rank initializes a simulator only once
                 self._init_simulator(expt, miller_data)
+                if self.params.refiner.stage_two.Fref_mtzname is not None:
+                    self.Fref = utils.open_mtz(self.params.refiner.stage_two.Fref_mtzname,
+                                               self.params.refiner.stage_two.Fref_mtzcol)
 
             self.shot_ucell_managers[shot_idx] = UcellMan
             self.shot_rois[shot_idx] = shot_data.rois

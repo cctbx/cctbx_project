@@ -24,23 +24,13 @@ from dials.util import show_mail_on_error
 help_message = "stage 2 (global) diffBragg refinement"
 
 script_phil = """
-show_timing = True
-  .type = bool
-  .help = print a refinement duration for each iteration experiment
-d_min = 2
- .type = float
- .help = high res lim for binner
-d_max = 999
- .type = float
- .help = low res lim for binner
-n_bins = 10
-  .type = int
-  .help = number of binner bins
+pandas_table = None
+  .type = str 
+  .help = path to an input pandas table (usually output by simtbx.diffBragg.predictions) 
 """
 
 philz = script_phil + philz
 phil_scope = parse(philz)
-
 
 class Script:
 
@@ -64,6 +54,8 @@ class Script:
         if COMM.rank == 0:
             self.params, _ = self.parser.parse_args(show_diff_phil=True)
         self.params = COMM.bcast(self.params)
+        if self.params.pandas_table is None:
+            raise ValueError("Pandas table input required")
 
         refine_starttime = time.time()
         if not self.params.refiner.randomize_devices:

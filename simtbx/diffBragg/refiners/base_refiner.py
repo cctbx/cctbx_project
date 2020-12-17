@@ -25,6 +25,7 @@ class BaseRefiner:
     run_on_init = False
 
     def __init__(self):
+        self.Hi = {}
         self.update_detector_during_refinement = True
         self.randomize_devices = None  # if integer N, then choose a random GPU device between 0 and N-1 for each iteration
         self.num_sausages = 0

@@ -95,7 +95,7 @@ refiner {
   refine_eta = None
     .type = ints(size_min=1)
     .help = whether to refine the mosaic spread parameter, eta
-  refine_fcell = False
+  refine_Fcell = False
     .type = ints(size_min=1)
     .help = whether to refine the structure factor amplitudes
   refine_per_spot_scale = None
@@ -315,6 +315,34 @@ refiner {
   reference_geom = None
     .type = str
     .help = path to expt list file containing a detector model
+  stage_two {
+    merge_stat_freq = 3
+      .type = int
+      .help = show merge stats after this many iterations
+    min_multiplicity = 1
+      .type = int
+      .help = structure factors whose multiplicity falls below this value
+      .help = will not be refined
+    print_reso_bins = False
+      .type = bool
+      .help = whether to show merge stats in resolution bins
+    Fref_mtzname = None
+      .type = str
+      .help = path to a reference MTZ file. if passed, this is used solely to 
+      .help = observe the R-factor and CC between it and the Fobs being optimized
+    Fhkl_mtzcol = "Famp(+),Famp(-)"
+      .type = str
+      .help = column in the mtz file containing the data
+    d_min = 2
+      .type = float
+      .help = high res lim for binner
+    d_max = 999
+      .type = float
+      .help = low res lim for binner
+    n_bins = 10
+      .type = int
+      .help = number of binner bins
+  }
 }
 """
 
