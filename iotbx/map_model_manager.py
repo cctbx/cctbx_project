@@ -69,7 +69,7 @@ class map_model_manager(object):
         map_manager_mask:  a mask as a map_manager
       All other ids are any strings and are assumed to correspond to other maps
 
-    Note:  It is permissible to call with no map_manger, but supplying
+    Note:  It is permissible to call with no map_manager, but supplying
       both map_manager_1 and map_manager_2.  In this case, the working
       map_manager will be the average of map_manager_1 and map_manager_2. This
       will be created the first time map_manager is referenced.
@@ -89,6 +89,10 @@ class map_model_manager(object):
 
     Note: set wrapping of all maps to match map_manager if they differ. Set
     all to be wrapping if it is set
+
+    If a model has no crystal_symmetry or not unit_cell, it receives the
+     crystal symmetry of the map_manager and the shift_cart of the map_manager
+     The same result is obtained if ignore_symmetry_conflicts is set.
 
   '''
 
@@ -189,33 +193,16 @@ class map_model_manager(object):
     # if the incoming model is simply shifted relative to the maps...make them
     #  match by adjusting the model shift
 
-    if map_manager and model:
+    if any_map_manager:
       for m in [model] + extra_model_list:
-       if (not m.crystal_symmetry()) or \
-          (not m.crystal_symmetry().unit_cell()):  # Put in crystal symmetry
-         any_map_manager.set_model_symmetries_and_shift_cart_to_match_map(m)
+        self.add_crystal_symmetry_if_necessary(m, map_manager = any_map_manager)
 
-    if model and map_manager and model.crystal_symmetry() and \
-        model.shift_cart() and model.shift_cart() != map_manager.shift_cart():
-      if extra_model_list:  # make sure extras have same shift as model
-        for m in extra_model_list:
-          assert m.shift_cart() == model.shift_cart() # all models same shift
-      # Shift everything to match map
-      map_manager.shift_model_to_match_map(model)
-      if extra_model_list:
-        for m in extra_model_list:
-          map_manager.shift_model_to_match_map(m)
-
-    # if ignore_symmetry_conflicts, take all symmetry information from
-    #  any_map_manager and apply it to everything
     if ignore_symmetry_conflicts:
-      if ncs_object:
-        ncs_object.set_shift_cart(any_map_manager.shift_cart())
-      if model:
-        any_map_manager.set_model_symmetries_and_shift_cart_to_match_map(model)
-      if extra_model_list:
-        for m in extra_model_list:
-          any_map_manager.set_model_symmetries_and_shift_cart_to_match_map(m)
+      # Take all symmetry information from
+      #  any_map_manager and apply it to everything
+
+      for m in [model] + extra_model_list:
+        self.shift_any_model_to_match(m, map_manager = any_map_manager)
 
       if map_manager_1 and (map_manager_1 is not any_map_manager):
         map_manager_1 = any_map_manager.customized_copy(
@@ -229,6 +216,9 @@ class map_model_manager(object):
         new_extra_map_manager_list.append(any_map_manager.customized_copy(
           map_data=m.map_data()))
       extra_map_manager_list = new_extra_map_manager_list
+
+      if ncs_object:
+        ncs_object.set_shift_cart(any_map_manager.shift_cart())
 
     # CHECKS
 
@@ -895,13 +885,14 @@ class map_model_manager(object):
      Must be similar to existing map_managers
      Overwrites any existing with the same id unless overwrite = False
     '''
+    if not model:
+      print("No model supplied for '%s' ... skipping addition" %(
+        model_id), file = self.log)
+      return
+
     assert isinstance(model, mmtbx.model.manager)
     if not overwrite:
       assert not model_id in self.model_id_list() # must not duplicate
-    if self.map_manager() and (not model.crystal_symmetry()) or \
-          (not model.crystal_symmetry().unit_cell()):  # Put in crystal symmetry
-       self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(model)
-
 
     if self.map_manager() and not self.map_manager().is_compatible_model(model):
       # needs shifting
@@ -922,6 +913,11 @@ class map_model_manager(object):
      Overwrites any existing with the same id unless overwrite = False
      Is a mask if is_mask is set
     '''
+    if not map_manager:
+      print("No map_manager supplied for '%s' ... skipping addition" %(
+        map_id), file = self.log)
+      return
+
     assert isinstance(map_manager, MapManager)
     assert isinstance(overwrite, bool)
     if not overwrite:
@@ -2420,7 +2416,8 @@ class map_model_manager(object):
     if selection_string:
       model = model.apply_selection_string(selection_string)
 
-    return get_sequence_from_hierarchy(model.get_hierarchy())
+    return get_sequence_from_hierarchy(
+        model.get_hierarchy(), remove_white_space=True)
 
   def rmsd_of_matching_residues(self,
       target_model_id = 'model',
@@ -2488,10 +2485,10 @@ class map_model_manager(object):
         element = 'P'
     if ca_only:
       target_model = target_model.apply_selection_string(
-        "(altloc ' ' or altloc A) and name %s and element %s" %(
+        "(not hetero) and  (altloc ' ' or altloc A) and name %s and element %s" %(
       atom_name, element))
       matching_model = matching_model.apply_selection_string(
-        "(altloc ' ' or altloc A) and name %s and element %s" %(
+        "(not hetero) and (altloc ' ' or altloc A) and name %s and element %s" %(
        atom_name, element))
       # use CA
     elif (target_model.get_sites_cart().size() != \
@@ -2592,10 +2589,10 @@ class map_model_manager(object):
 
     # Select the atoms to try and match
     target_model_ca = target_model.apply_selection_string(
-      "(altloc ' ' or altloc A) and name %s and element %s" %(
+      "(not hetero) and (altloc ' ' or altloc A) and name %s and element %s" %(
          atom_name, element))
     matching_model_ca = matching_model.apply_selection_string(
-      "(altloc ' ' or altloc A) and name %s and element %s" %(
+      "(not hetero) and  (altloc ' ' or altloc A) and name %s and element %s" %(
         atom_name, element))
 
     # Make sure we have something to work with
@@ -2610,9 +2607,9 @@ class map_model_manager(object):
 
     if residue_names_must_match:
       ca_residue_names = get_sequence_from_hierarchy(
-        target_model_ca.get_hierarchy())
+        target_model_ca.get_hierarchy(), remove_white_space=True)
       cb_residue_names = get_sequence_from_hierarchy(
-        matching_model_ca.get_hierarchy())
+        matching_model_ca.get_hierarchy(), remove_white_space=True)
       assert len(ca_residue_names) == target_model_ca.get_sites_cart().size()
       assert len(cb_residue_names) == matching_model_ca.get_sites_cart().size()
     else:
@@ -2742,8 +2739,10 @@ class map_model_manager(object):
           chain_dict= ca_chain_dict, max_gap = max_gap)
         local_target_model = target_model.apply_selection_string(ca_selection_string)
 
-        target_seq = get_sequence_from_hierarchy(local_target_model.get_hierarchy())
-        matching_seq = get_sequence_from_hierarchy(local_matching_model.get_hierarchy())
+        target_seq = get_sequence_from_hierarchy(
+          local_target_model.get_hierarchy(), remove_white_space=True)
+        matching_seq = get_sequence_from_hierarchy(
+           local_matching_model.get_hierarchy(), remove_white_space=True)
         target_seq=list(target_seq)
         matching_seq=list(matching_seq)
         target_seq.sort()
@@ -2980,7 +2979,25 @@ class map_model_manager(object):
     # And propagate these sites to rest of molecule with internal ncs
     model.set_sites_cart_from_hierarchy(multiply_ncs=True)
 
-  def shift_any_model_to_match(self, model):
+  def add_crystal_symmetry_if_necessary(self, model, map_manager = None):
+    '''
+    Take any model and add crystal symmetry if it is missing
+    Changes model in place
+     Parameters:  model
+    '''
+    if not model:
+      return
+    if not map_manager:
+      map_manager = self.any_map_manager()
+    assert map_manager is not None
+
+    assert isinstance(model, mmtbx.model.manager)
+    if (not model.crystal_symmetry()) or (
+        not model.crystal_symmetry().unit_cell()):
+      map_manager.set_model_symmetries_and_shift_cart_to_match_map(model)
+      model.set_shift_cart((0, 0, 0))
+
+  def shift_any_model_to_match(self, model, map_manager = None):
     '''
     Take any model and shift it to match the working shift_cart
     Also sets crystal_symmetry.
@@ -2988,14 +3005,28 @@ class map_model_manager(object):
 
      Parameters:  model
     '''
+    if not model:
+      return
     assert isinstance(model, mmtbx.model.manager)
+
+    if not map_manager:
+      map_manager = self.get_any_map_manager()
+
+    assert map_manager is not None
+
+    self.add_crystal_symmetry_if_necessary(model, map_manager = map_manager)
+
     if not model.shift_cart():
       model.set_shift_cart((0, 0, 0))
+
     coordinate_shift = tuple(
-      [s - o for s,o in zip(self.shift_cart(),model.shift_cart())])
-    model.shift_model_and_set_crystal_symmetry(
+      [s - o for s,o in zip(map_manager.shift_cart(),model.shift_cart())])
+
+    if coordinate_shift != (0,0,0):
+      model.shift_model_and_set_crystal_symmetry(
         shift_cart = coordinate_shift,
         crystal_symmetry=self.crystal_symmetry())
+
 
   def get_model_from_other(self, other,
      other_model_id = 'model'):
