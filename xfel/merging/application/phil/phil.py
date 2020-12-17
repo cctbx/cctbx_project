@@ -208,6 +208,32 @@ modify
   algorithm = *polarization
     .type = choice
     .multiple = True
+  reindex_to_reference
+    .help = An algorithm to match input experiments against a reference model to
+    .help = break an indexing ambiguity
+    {
+    dataframe = False
+      .type = bool
+      .help = save a list of which experiments were reindexed (requires pandas)
+      .help = and plot a histogram of correlation coefficients (matplotlib)
+    }
+  cosym
+    .help = Implement the ideas of Gildea and Winter doi:10.1107/S2059798318002978
+    .help = to determine Laue symmetry from individual symops
+    {
+    include scope dials.command_line.cosym.phil_scope
+    dataframe = False
+      .type = bool
+      .help = save a list of which experiments were reindexed (requires pandas)
+      .help = and plot a histogram of correlation coefficients (matplotlib)
+    anchor = False
+      .type = bool
+      .help = Once the patterns are mutually aligned with the Gildea/Winter/Brehm/Diederichs methodology
+      .help = flip the whole set so that it is aligned with a reference model.  For simplicity, the
+      .help = reference model from scaling.model is used.  It should be emphasized that the scaling.model
+      .help = is only used to choose the twinning operator, which may be chosen arbitrarily, it does not
+      .help = bias the mutual alignment of the experimental diffraction patterns.
+    }
 }
 """
 
@@ -493,7 +519,7 @@ parallel {
 master_phil = dispatch_phil + input_phil + tdata_phil + filter_phil + modify_phil + \
               select_phil + scaling_phil + postrefinement_phil + merging_phil + \
               output_phil + statistics_phil + group_phil
-phil_scope = parse(master_phil)
+phil_scope = parse(master_phil, process_includes = True)
 
 class Script(object):
   '''A class for running the script.'''
