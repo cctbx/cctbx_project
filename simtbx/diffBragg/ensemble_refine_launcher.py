@@ -74,6 +74,9 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             exper_dataframe = pandas_table.query("opt_exp_name=='%s'" % exper_name)
             refl_name = exper_dataframe.predictions.values[0]
             refls = flex.reflection_table.from_file(refl_name)
+            # FIXME need to remove (0,0,0) bboxes
+            good_sel = flex.bool([h != (0, 0, 0) for h in list(refls["miller_index"])])
+            refls = refls.select(good_sel)
 
             Hi = list(refls["miller_index"])
             self.Hi[shot_idx] = Hi
