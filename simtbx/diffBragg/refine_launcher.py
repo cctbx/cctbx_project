@@ -328,10 +328,10 @@ class LocalRefinerLauncher:
             self.RUC.verbose = self.params.refiner.verbose is not None
             self.RUC.background = self.shot_background
             # TODO optional properties.. make this obvious
-            self.RUC.FNAMES = []
-            self.RUC.PROC_FNAMES = []
-            self.RUC.PROC_IDX = []
-            self.RUC.BBOX_IDX = []
+            self.RUC.FNAMES = None
+            self.RUC.PROC_FNAMES = None
+            self.RUC.PROC_IDX = None
+            self.RUC.BBOX_IDX = None
             self.RUC.output_dir = self.params.refiner.io.output_dir
             #self.RUC.iterations=0
             self.RUC.run(setup_only=True)
