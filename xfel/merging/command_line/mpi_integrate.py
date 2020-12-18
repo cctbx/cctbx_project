@@ -47,6 +47,12 @@ integrate_phil_str = '''
                 "in combination with debug.output=True enables intermediate"
                 "processing steps to make use of shoeboxes."
     }
+    integration_only_overrides {
+      trusted_range = None
+        .type = floats(size=2)
+        .help = "Override the panel trusted range (underload and saturation) during integration."
+        .short_caption = "Panel trusted range"
+    }
   }
 
   output {

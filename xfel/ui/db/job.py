@@ -525,7 +525,12 @@ class EnsembleRefinementJob(Job):
 
   def get_output_files(self):
     run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
-    return os.path.join(run_path, 'combine_experiments_t%03d'%self.trial.trial, 'intermediates'), '_reintegrated.expt', '_reintegrated.refl'
+    return os.path.join(run_path, 'combine_experiments_t%03d'%self.trial.trial, 'intermediates', "*reintegrated*"), '.expt', '.refl'
+
+  def get_log_path(self):
+    run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run, self.task)
+    return os.path.join(run_path, 'combine_experiments_t%03d'%self.trial.trial, 'intermediates',
+      "combine_t%03d_rg%03d_chunk000.out"%(self.trial.trial, self.rungroup.id)) # XXX there can be multiple chunks or multiple clusters
 
   def submit(self, previous_job = None):
     from xfel.command_line.striping import Script
@@ -802,6 +807,7 @@ def submit_all_jobs(app):
     assert trial, "No trial found in task list, don't know where to save the results"
     trial_tags_ids = [t.id for t in trial.tags]
     dataset_tags = [t for t in dataset.tags if t.id in trial_tags_ids]
+    if not dataset_tags: continue
     runs_rungroups = []
     for rungroup in trial.rungroups:
       for run in rungroup.runs:
