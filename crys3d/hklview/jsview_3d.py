@@ -240,6 +240,7 @@ class hklview_3d:
     #self.angle_y_xyvec = 0.0
     self.angle_x_xyvec = 0.0
     self.vecrotmx = None
+    self.currentrotvec = None
     self.unit_h_axis = None
     self.unit_k_axis = None
     self.unit_l_axis = None
@@ -498,6 +499,7 @@ class hklview_3d:
         R = flex.vec3_double( [(self.params.clip_plane.h, self.params.clip_plane.k, self.params.clip_plane.l)])
         if self.params.clip_plane.fractional_vector == "realspace" or self.params.clip_plane.fractional_vector == "tncs":
           isreciprocal = False
+      self.make_clip_plane(hkldist, clipwidth)
       #self.clip_plane_vector(R[0][0], R[0][1], R[0][2], hkldist,
       #    clipwidth, self.ngl_settings.fixorientation, self.params.clip_plane.is_parallel,
       #    isreciprocal)
@@ -1795,7 +1797,11 @@ Distance: %s
     uc = self.miller_array.unit_cell()
     OrtMx = matrix.sqr( uc.orthogonalization_matrix())
     InvMx = OrtMx.inverse()
-    ortrot = (OrtMx * RotMx * InvMx).as_mat3()
+    ortrotmx = (OrtMx * RotMx * InvMx)
+    if not ortrotmx.is_r3_rotation_matrix():
+      raise Sorry("The operation '%s' is not a rotation in the space group %s" \
+        %(rot.as_hkl(), self.miller_array.space_group().info().symbol_and_number() ))
+    ortrot = ortrotmx.as_mat3()
     r11,r12,r13,r21,r22,r23,r31,r32,r33 = ortrot
     # workaround for occasional machine precision errors yielding argument greater than 1.0 
     theta =  math.acos(roundoff((r11+r22+r33-1.0)*0.5, 10)) 
@@ -1817,13 +1823,16 @@ Distance: %s
       evalues =  list(es.values())
       evectors = list(es.vectors())
       for i,eval in enumerate(evalues):
-        if eval == 1.0: 
+        if abs(eval-1.0) <= eps: 
           # eigenvector with eigenvalue=1 is the rotation axis
           # eigenvetors come as a concatenated list of vector elements so get the i-th vector
           e1,e2,e3 = evectors[(0+3*i):(3+3*i)]
           break
-    s = self.reciproc_scale * 2
-    return (s*e1,s*e2,s*e3), theta
+    s = 0.5*self.scene.renderscale/self.realspace_scale
+    label=""
+    if abs(theta) > 0.0001 and (abs(e1)+abs(e2)+abs(e3)) > 0.0001: # avoid nullvector
+      label = "%s-fold" %str(int(roundoff(2*math.pi/theta, 0)))
+    return (s*e1,s*e2,s*e3), theta, label
 
 
   def show_rotation_axes(self):
@@ -1843,23 +1852,22 @@ Distance: %s
     unique_rot_ops = self.symops[ 0 : self.sg.order_p() ] # avoid duplicate rotation matrices
     self.rotation_operators = []
     for i,op in enumerate(unique_rot_ops): # skip the last op for javascript drawing purposes
-      (v, a) = self.GetVectorAndAngleFromRotationMx( op.r() )
-      if abs(a) > 0.0001 and (abs(v[0])+abs(v[1])+abs(v[2])) > 0.0001: # avoid nullvector
-        label = "%s-fold" %str(int(roundoff(2*math.pi/a, 0)))
-        self.mprint( str(i) + ": " + str(roundoff(v)) + ", " + label)
-        self.rotation_operators.append( (i, label, v, op.r().as_xyz(), op.r().as_hkl() ) )
-    #self.SendInfoToGUI( { "rotation_operators": self.rotation_operators } )
+      (cartvec, a, label) = self.GetVectorAndAngleFromRotationMx( op.r() )
+      if label != "":
+        self.mprint( str(i) + ": " + str(roundoff(cartvec)) + ", " + label)
+        self.rotation_operators.append( (i, label + "#%d"%i , cartvec, op.r().as_hkl(), "", "") )
 
 
   def show_vector(self):
     [i, val] = eval(self.viewerparams.show_vector)
     if i < len(self.all_vectors):
-      (opnr, label, v, xyzop, hklop) = self.all_vectors[i]
+      (opnr, label, v, hklop, hkl, abc) = self.all_vectors[i]
       # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
-      name = label + xyzop.replace(",", "_")
+      name = label + hklop.replace(",", "_")
       if val:
         self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], r=0.1, g=0.1,b=0.1,
                                   label=label, name=name, radius=0.2 )
+        self.currentrotvec = v
       else:
         self.RemoveVectors(name)
 
@@ -1868,6 +1876,7 @@ Distance: %s
                              vectortype="cartesian", quietbrowser=True):
     if vectortype == "cartesian":
       cartvec = list( (r1,r2,r3))
+      self.currentrotvec = cartvec # assuming angle_around_vector is the trigger
     elif vectortype == "reciprocal":
     # Assuming vector is in reciprocal space coordinates turn it into cartesian
       cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().fractionalization_matrix()).transpose() )
@@ -1876,7 +1885,6 @@ Distance: %s
       cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().orthogonalization_matrix()) )
     else:
       raise Sorry("Set vectortype to either 'cartesian', 'reciprocal' or 'fractional'.")
-    self.currentrotvec = cartvec
     #  Rodrigues rotation formula for rotation by phi angle around a vector going through origo
     #  See http://mathworld.wolfram.com/RodriguesRotationFormula.html
     # \mathbf I+\left(\sin\,\varphi\right)\mathbf W+\left(2\sin^2\frac{\varphi}{2}\right)\mathbf W^2
@@ -2005,9 +2013,23 @@ Distance: %s
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
     self.SetClipPlaneDistances(clipNear, clipFar, -self.cameraPosZ)
-    #if hkldist < 0.0:
-    #  self.TranslateHKLpoints(a, b, c, hkldist)
-    scale = max(self.miller_array.index_span().max())/10
+
+
+  def make_clip_plane(self, hkldist=0.0, clipwidth=None):
+    # create clip plane oriented parallel or perpendicular to abc vector
+    if hkldist < 0.0 or clipwidth is None:
+      self.RemoveVectorsNoClipPlane()
+      return
+    self.mprint("Applying clip plane to reflections", verbose=1)
+    self.RemoveVectors("clip_vector")
+    if self.cameraPosZ is None and self.viewmtrx is not None:
+      self.cameraPosZ, self.currentRotmx, self.cameratranslation = self.GetCameraPosRotTrans( self.viewmtrx)
+    halfdist = self.cameraPosZ  + hkldist # self.viewer.boundingZ*0.5
+    if clipwidth == 0.0:
+      clipwidth = self.meanradius
+    clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
+    clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
+    self.SetClipPlaneDistances(clipNear, clipFar, -self.cameraPosZ)
 
 
   def RemoveVectorsNoClipPlane(self):
