@@ -175,7 +175,7 @@ p, li { white-space: pre-wrap; }
                </sizepolicy>
               </property>
               <property name="currentIndex">
-               <number>4</number>
+               <number>0</number>
               </property>
               <widget class="QWidget" name="tab">
                <attribute name="title">
@@ -313,7 +313,7 @@ p, li { white-space: pre-wrap; }
                    <bool>true</bool>
                   </property>
                   <property name="checked">
-                   <bool>true</bool>
+                   <bool>false</bool>
                   </property>
                   <layout class="QGridLayout" name="gridLayout_6">
                    <property name="leftMargin">
@@ -328,6 +328,16 @@ p, li { white-space: pre-wrap; }
                    <property name="bottomMargin">
                     <number>3</number>
                    </property>
+                   <item row="0" column="0">
+                    <widget class="QComboBox" name="SliceLabelComboBox">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                    </widget>
+                   </item>
                    <item row="0" column="2">
                     <widget class="QSpinBox" name="sliceindexspinBox">
                      <property name="sizePolicy">
@@ -360,16 +370,6 @@ p, li { white-space: pre-wrap; }
                      </property>
                     </widget>
                    </item>
-                   <item row="0" column="0">
-                    <widget class="QComboBox" name="SliceLabelComboBox">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                    </widget>
-                   </item>
                   </layout>
                  </widget>
                 </item>
@@ -382,10 +382,13 @@ p, li { white-space: pre-wrap; }
                    </sizepolicy>
                   </property>
                   <property name="title">
-                   <string>Slice with a clip plane normal to:</string>
+                   <string>Slice with a clip plane defined by:</string>
                   </property>
                   <property name="checkable">
                    <bool>true</bool>
+                  </property>
+                  <property name="checked">
+                   <bool>false</bool>
                   </property>
                   <layout class="QGridLayout" name="gridLayout_16">
                    <property name="leftMargin">
@@ -400,17 +403,7 @@ p, li { white-space: pre-wrap; }
                    <property name="bottomMargin">
                     <number>3</number>
                    </property>
-                   <item row="1" column="1">
-                    <widget class="QCheckBox" name="fixedorientcheckbox">
-                     <property name="text">
-                      <string>Fix orientation</string>
-                     </property>
-                     <property name="checked">
-                      <bool>true</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="2" column="0" colspan="2">
+                   <item row="1" column="1" colspan="2">
                     <widget class="QFrame" name="frame_2">
                      <property name="sizePolicy">
                       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -475,52 +468,18 @@ p, li { white-space: pre-wrap; }
                       </item>
                       <item row="0" column="0">
                        <widget class="QLabel" name="label_17">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                          <horstretch>0</horstretch>
+                          <verstretch>1</verstretch>
+                         </sizepolicy>
+                        </property>
                         <property name="text">
                          <string>Distance from origin:</string>
                         </property>
                        </widget>
                       </item>
                      </layout>
-                    </widget>
-                   </item>
-                   <item row="0" column="0">
-                    <widget class="QTableWidget" name="vectortable1">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                       <horstretch>0</horstretch>
-                       <verstretch>1</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="verticalScrollMode">
-                      <enum>QAbstractItemView::ScrollPerPixel</enum>
-                     </property>
-                     <property name="horizontalScrollMode">
-                      <enum>QAbstractItemView::ScrollPerPixel</enum>
-                     </property>
-                     <property name="wordWrap">
-                      <bool>false</bool>
-                     </property>
-                     <property name="rowCount">
-                      <number>5</number>
-                     </property>
-                     <property name="columnCount">
-                      <number>4</number>
-                     </property>
-                     <attribute name="horizontalHeaderDefaultSectionSize">
-                      <number>70</number>
-                     </attribute>
-                     <attribute name="verticalHeaderDefaultSectionSize">
-                      <number>24</number>
-                     </attribute>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <column/>
-                     <column/>
-                     <column/>
-                     <column/>
                     </widget>
                    </item>
                   </layout>
@@ -548,6 +507,82 @@ p, li { white-space: pre-wrap; }
                    <bool>false</bool>
                   </property>
                   <layout class="QGridLayout" name="gridLayout_10">
+                   <item row="2" column="1">
+                    <widget class="QDoubleSpinBox" name="radii_scale_spinBox">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
+                       <horstretch>0</horstretch>
+                       <verstretch>1</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="toolTip">
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A linear scale factor of 1 means that if two reflectiions with the largest data values happen to be next to each other their spheres will touch but not overlap.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                     </property>
+                     <property name="maximum">
+                      <double>5.000000000000000</double>
+                     </property>
+                     <property name="singleStep">
+                      <double>0.100000000000000</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0" colspan="2">
+                    <widget class="QCheckBox" name="ManualPowerScalecheckbox">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Minimum" vsizetype="Maximum">
+                       <horstretch>0</horstretch>
+                       <verstretch>1</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="toolTip">
+                      <string/>
+                     </property>
+                     <property name="text">
+                      <string>User defined power scaling</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="2">
+                    <widget class="QLabel" name="label_10">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Minimum" vsizetype="Maximum">
+                       <horstretch>0</horstretch>
+                       <verstretch>1</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="text">
+                      <string>Power scale factor:</string>
+                     </property>
+                     <property name="alignment">
+                      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                     </property>
+                     <property name="indent">
+                      <number>1</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="3">
+                    <widget class="QDoubleSpinBox" name="power_scale_spinBox">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
+                       <horstretch>0</horstretch>
+                       <verstretch>1</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="toolTip">
+                      <string extracomment="Exponent of 1 means the size of a sphere for each reflection is proportional to its data value. Exponent of 0 means all spheres will have the same size irrespective of their data values."/>
+                     </property>
+                     <property name="maximum">
+                      <double>1.000000000000000</double>
+                     </property>
+                     <property name="singleStep">
+                      <double>0.050000000000000</double>
+                     </property>
+                     <property name="value">
+                      <double>0.350000000000000</double>
+                     </property>
+                    </widget>
+                   </item>
                    <item row="0" column="0" colspan="4">
                     <widget class="QLabel" name="label_7">
                      <property name="sizePolicy">
@@ -573,69 +608,12 @@ p, li { white-space: pre-wrap; }
                      </property>
                     </widget>
                    </item>
-                   <item row="1" column="0" colspan="2">
-                    <widget class="QCheckBox" name="ManualPowerScalecheckbox">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="toolTip">
-                      <string/>
-                     </property>
-                     <property name="text">
-                      <string>User defined power scaling</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="2">
-                    <widget class="QLabel" name="label_10">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="text">
-                      <string>Power scale factor:</string>
-                     </property>
-                     <property name="alignment">
-                      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                     </property>
-                     <property name="indent">
-                      <number>1</number>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="3">
-                    <widget class="QDoubleSpinBox" name="power_scale_spinBox">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="toolTip">
-                      <string extracomment="Exponent of 1 means the size of a sphere for each reflection is proportional to its data value. Exponent of 0 means all spheres will have the same size irrespective of their data values."/>
-                     </property>
-                     <property name="maximum">
-                      <double>1.000000000000000</double>
-                     </property>
-                     <property name="singleStep">
-                      <double>0.050000000000000</double>
-                     </property>
-                     <property name="value">
-                      <double>0.350000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
                    <item row="2" column="0">
                     <widget class="QLabel" name="label_11">
                      <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+                      <sizepolicy hsizetype="Minimum" vsizetype="Maximum">
                        <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
+                       <verstretch>1</verstretch>
                       </sizepolicy>
                      </property>
                      <property name="toolTip">
@@ -643,25 +621,6 @@ p, li { white-space: pre-wrap; }
                      </property>
                      <property name="text">
                       <string>Linear scale factor</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="2" column="1">
-                    <widget class="QDoubleSpinBox" name="radii_scale_spinBox">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="toolTip">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A linear scale factor of 1 means that if two reflectiions with the largest data values happen to be next to each other their spheres will touch but not overlap.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                     </property>
-                     <property name="maximum">
-                      <double>5.000000000000000</double>
-                     </property>
-                     <property name="singleStep">
-                      <double>0.100000000000000</double>
                      </property>
                     </widget>
                    </item>
@@ -810,10 +769,10 @@ p, li { white-space: pre-wrap; }
                    </size>
                   </property>
                   <property name="title">
-                   <string>Show Rotation Axes or Vector(s)</string>
+                   <string>Rotation Operators or Vector(s)</string>
                   </property>
                   <property name="checkable">
-                   <bool>true</bool>
+                   <bool>false</bool>
                   </property>
                   <layout class="QGridLayout" name="gridLayout_8">
                    <property name="leftMargin">
@@ -828,49 +787,17 @@ p, li { white-space: pre-wrap; }
                    <property name="bottomMargin">
                     <number>3</number>
                    </property>
-                   <item row="0" column="0" colspan="2">
-                    <widget class="QTableWidget" name="vectortable2">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                       <horstretch>3</horstretch>
-                       <verstretch>3</verstretch>
-                      </sizepolicy>
+                   <item row="0" column="0">
+                    <widget class="QCheckBox" name="ShowAllVectorsBtn">
+                     <property name="text">
+                      <string>Show All</string>
                      </property>
-                     <property name="verticalScrollMode">
-                      <enum>QAbstractItemView::ScrollPerPixel</enum>
+                     <property name="tristate">
+                      <bool>true</bool>
                      </property>
-                     <property name="horizontalScrollMode">
-                      <enum>QAbstractItemView::ScrollPerPixel</enum>
-                     </property>
-                     <property name="wordWrap">
-                      <bool>false</bool>
-                     </property>
-                     <property name="rowCount">
-                      <number>4</number>
-                     </property>
-                     <property name="columnCount">
-                      <number>4</number>
-                     </property>
-                     <attribute name="horizontalHeaderDefaultSectionSize">
-                      <number>60</number>
-                     </attribute>
-                     <attribute name="verticalHeaderVisible">
-                      <bool>false</bool>
-                     </attribute>
-                     <attribute name="verticalHeaderDefaultSectionSize">
-                      <number>24</number>
-                     </attribute>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <column/>
-                     <column/>
-                     <column/>
-                     <column/>
                     </widget>
                    </item>
-                   <item row="0" column="2">
+                   <item row="0" column="1" rowspan="2">
                     <widget class="QFrame" name="RotateAroundframe">
                      <property name="sizePolicy">
                       <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
@@ -969,7 +896,7 @@ p, li { white-space: pre-wrap; }
                          </sizepolicy>
                         </property>
                         <property name="title">
-                         <string>Align Vector to Screen</string>
+                         <string>Align Vector</string>
                         </property>
                         <property name="checkable">
                          <bool>true</bool>
@@ -990,14 +917,14 @@ p, li { white-space: pre-wrap; }
                          <item row="0" column="0">
                           <widget class="QRadioButton" name="AlignParallelBtn">
                            <property name="text">
-                            <string>Parallel</string>
+                            <string>Parallel to Screen</string>
                            </property>
                           </widget>
                          </item>
                          <item row="1" column="0">
                           <widget class="QRadioButton" name="AlignNormalBtn">
                            <property name="text">
-                            <string>Perpendicular</string>
+                            <string>Normal to Screen</string>
                            </property>
                           </widget>
                          </item>
@@ -1005,6 +932,49 @@ p, li { white-space: pre-wrap; }
                        </widget>
                       </item>
                      </layout>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QTableWidget" name="vectortable2">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                       <horstretch>3</horstretch>
+                       <verstretch>3</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="verticalScrollMode">
+                      <enum>QAbstractItemView::ScrollPerPixel</enum>
+                     </property>
+                     <property name="horizontalScrollMode">
+                      <enum>QAbstractItemView::ScrollPerPixel</enum>
+                     </property>
+                     <property name="wordWrap">
+                      <bool>false</bool>
+                     </property>
+                     <property name="rowCount">
+                      <number>4</number>
+                     </property>
+                     <property name="columnCount">
+                      <number>5</number>
+                     </property>
+                     <attribute name="horizontalHeaderDefaultSectionSize">
+                      <number>60</number>
+                     </attribute>
+                     <attribute name="verticalHeaderVisible">
+                      <bool>false</bool>
+                     </attribute>
+                     <attribute name="verticalHeaderDefaultSectionSize">
+                      <number>24</number>
+                     </attribute>
+                     <row/>
+                     <row/>
+                     <row/>
+                     <row/>
+                     <column/>
+                     <column/>
+                     <column/>
+                     <column/>
+                     <column/>
                     </widget>
                    </item>
                   </layout>

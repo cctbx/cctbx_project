@@ -585,14 +585,15 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
           #  self.clipTNCSBtn.setDisabled(True)
           #else:
           #  self.clipTNCSBtn.setEnabled(True)
+          self.unfeedback = True
           if self.infodict.get("all_vectors"):
             self.rotvec = None
             self.all_vectors = self.infodict.get("all_vectors",[])
 
             self.vectortable2.clearContents()
             self.vectortable2.setRowCount(len(self.all_vectors)+1)
-            for row, (opnr, label, v, xyzop, hklop) in enumerate(self.all_vectors):
-              for col,elm in enumerate((opnr, label, xyzop, hklop)):
+            for row, (opnr, label, v, hklop, hkls, abcs) in enumerate(self.all_vectors):
+              for col,elm in enumerate((opnr, label, hklop, hkls, abcs)):
                 item = QTableWidgetItem(str(elm))
                 if col == 0:
                   item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled ^ Qt.ItemIsEditable)
@@ -618,7 +619,10 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
             item.setFlags(item.flags() | Qt.ItemIsEditable)
             self.vectortable2.setItem(rc, 3, item)
 
-
+            item = QTableWidgetItem()
+            item.setFlags(item.flags() | Qt.ItemIsEditable)
+            self.vectortable2.setItem(rc, 4, item)
+          self.unfeedback = False
           if self.infodict.get("file_name"):
             self.window.setWindowTitle("HKL-viewer: " + self.infodict.get("file_name", "") )
 
@@ -746,7 +750,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     #self.realspacevecBtn.setChecked( "realspace" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
     #self.recipvecBtn.setChecked( "reciprocal" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
     #self.clipTNCSBtn.setChecked( "tncs" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
-    self.fixedorientcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.fixorientation'])
+    #self.fixedorientcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.fixorientation'])
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_only_missing'])
     if self.currentphilstringdict['NGL_HKLviewer.real_space_unit_cell_scale_fraction'] is not None:
       self.DrawRealUnitCellBox.setChecked(True)
@@ -758,6 +762,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       self.reciprocunitcellslider.setValue( self.currentphilstringdict['NGL_HKLviewer.reciprocal_unit_cell_scale_fraction'] * self.reciprocunitcellslider.maximum())
     else:
       self.DrawReciprocUnitCellBox.setChecked(False)
+
     self.unfeedback = False
 
 
@@ -1171,23 +1176,23 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def onShowAllVectors(self):
-    self.unfeedback = True
-    if self.RotationVectorsBox.isChecked():
+    #self.unfeedback = True
+    if self.ShowAllVectorsBtn.checkState()==Qt.Checked:
       for rvrow in range(self.vectortable2.rowCount()):
         self.vectortable2.item(rvrow, 0).setCheckState(Qt.Checked)
-    else:
+    if self.ShowAllVectorsBtn.checkState()==Qt.Unchecked:
       for rvrow in range(self.vectortable2.rowCount()):
         self.vectortable2.item(rvrow, 0).setCheckState(Qt.Unchecked)
-    self.unfeedback = False
+    #self.unfeedback = False
 
 
   def onVectorTableItemChanged(self, item):
+    if self.unfeedback:
+      return
     row = item.row()
     col = item.column()
     try:
       rc = self.vectortable2.rowCount()
-      if self.vectortable2.item(row, 3) is not None:
-        hklstr = self.vectortable2.item(row, 3).text()
       label = None
       if self.vectortable2.item(row, 1) is not None:
         label = self.vectortable2.item(row, 1).text()
@@ -1197,7 +1202,6 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
           return
 
         if col==0:
-          #if row < (rc-1): # one of the rotation axes
           if item.checkState()==Qt.Checked:
             self.PhilToJsRender(" NGL_HKLviewer.viewer.show_vector = '[%d, %s]'" %(row, True ))
           else:
@@ -1211,35 +1215,42 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
               self.rotavecangle_slider.setValue(0)
         
           self.rotvec = None
-          cn = 0
           sum = 0
           for rvrow in range(self.vectortable2.rowCount()):
-            sum = sum+1
-            if self.vectortable2.item(rvrow, 0) is None:
-              continue
-            if self.vectortable2.item(rvrow, 0).checkState()==Qt.Checked:
-              self.rotvec = rvrow
-              cn +=1
-            if cn > 1: # can only use one vector to rotate around. so if more are selected then deselect them altogether
-              self.rotvec = None
-              #break
+            if self.vectortable2.item(rvrow, 0) is not None:
+              if self.vectortable2.item(rvrow, 0).checkState()==Qt.Checked:
+                self.rotvec = rvrow
+                sum +=1
+              if sum > 1: # can only use one vector to rotate around. so if more are selected then deselect them altogether
+                self.rotvec = None
 
           if self.rotvec is not None:
             self.RotateAroundframe.setEnabled(True)
+            # notify cctbx which is the curently selected vector
+            self.PhilToJsRender("NGL_HKLviewer.clip_plane.angle_around_vector = '[%d, 0.0]'" %self.rotvec)
           else:
             self.RotateAroundframe.setDisabled(True)
-
           if not self.unfeedback:
             if sum >= rc:
-              self.RotationVectorsBox.setChecked(Qt.Checked)
+              self.ShowAllVectorsBtn.setCheckState(Qt.Checked)
             if sum == 0:
-              self.RotationVectorsBox.setChecked(Qt.Unchecked)
+              self.ShowAllVectorsBtn.setCheckState(Qt.Unchecked)
             if sum >0.0 and sum < rc:
-              self.RotationVectorsBox.setChecked(Qt.PartiallyChecked)
+              self.ShowAllVectorsBtn.setCheckState(Qt.PartiallyChecked)
 
-      if col==3 and row==(rc-1) and hklstr !="" and label !="": # a user defined vector
-         self.PhilToJsRender("""NGL_HKLviewer.viewer.add_user_vector = '(%s)'
-         NGL_HKLviewer.viewer.user_label = %s """ %(hklstr, label))
+      if row==(rc-1) and label !="": # a user defined vector
+        if col==2:
+          hklop = self.vectortable2.item(row, 2).text()
+          self.PhilToJsRender("""NGL_HKLviewer.viewer.add_user_vector_hkl_op = '%s'
+          NGL_HKLviewer.viewer.user_label = %s """ %(hklop, label))
+        if col==3:
+          hklvec = self.vectortable2.item(row, 3).text()
+          self.PhilToJsRender("""NGL_HKLviewer.viewer.add_user_vector_hkl = '(%s)'
+          NGL_HKLviewer.viewer.user_label = %s """ %(hklvec, label))
+        if col==4:
+          abcvec = self.vectortable2.item(row, 4).text()
+          self.PhilToJsRender("""NGL_HKLviewer.viewer.add_user_vector_abc = '(%s)'
+          NGL_HKLviewer.viewer.user_label = %s """ %(abcvec, label))
 
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
@@ -1264,11 +1275,10 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.sliceindexspinBox.setSingleStep(1)
     self.sliceindexspinBox.setRange(-100, 100)
     self.sliceindexspinBox.valueChanged.connect(self.onSliceIndexChanged)
-
-    self.SliceLabelComboBox.activated.connect(self.onSliceComboSelchange)
     self.sliceaxis = { 0:"h", 1:"k", 2:"l" }
     self.SliceLabelComboBox.addItems( list( self.sliceaxis.values()) )
-    self.fixedorientcheckbox.clicked.connect(self.onFixedorient)
+
+    #self.fixedorientcheckbox.clicked.connect(self.onFixedorient)
     #self.recipvecBtn.setText("as fractional values in reciprocal space")
     #self.recipvecBtn.setChecked(False)
     #self.recipvecBtn.clicked.connect(self.onClipPlaneChkBox)
@@ -1312,7 +1322,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.rotavecangle_slider.setSingleStep(3)
     self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
     self.rotavecangle_slider.valueChanged.connect(self.onRotaVecAngleChanged)
-    #self.ClipPlaneChkGroupBox.clicked.connect(self.onClipPlaneChkBox)
+    self.ClipPlaneChkGroupBox.clicked.connect(self.onClipPlaneChkBox)
     #self.clipParallelBtn.setChecked(False)
     #self.clipParallelBtn.clicked.connect(self.onClipPlaneChkBox)
 
@@ -1354,59 +1364,33 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
   def onClipPlaneChkBox(self):
     if self.unfeedback:
       return
-    if 0: #self.ClipPlaneChkGroupBox.isChecked():
-      #if self.showsliceGroupCheckbox.isChecked() == False:
-      #self.showsliceGroupCheckbox.setChecked(False)
-      self.showsliceGroupCheckbox.setChecked(False)
-      self.PhilToJsRender("""NGL_HKLviewer.viewer {
+    if self.ClipPlaneChkGroupBox.isChecked():
+      if self.showsliceGroupCheckbox.isChecked() == False:
+        self.showsliceGroupCheckbox.setChecked(False)
+        self.showsliceGroupCheckbox.setChecked(False)
+        self.PhilToJsRender("""NGL_HKLviewer.viewer {
                                                       slice_mode = False
                                                       inbrowser = True
                                                   }
                             """)
-      if len(self.tncsvec):
-        self.clipTNCSBtn.setDisabled(False)
-        self.clipwidth_spinBox.setValue(4)
-      if self.realspacevecBtn.isChecked(): fracvectype = "realspace"
-      if self.recipvecBtn.isChecked(): fracvectype = "reciprocal"
-      if self.clipTNCSBtn.isChecked(): fracvectype = "tncs"
-      if self.clipTNCSBtn.isChecked() and len(self.tncsvec):
-        fracvectype = "tncs"
-        self.hvec_spinBox.setValue(self.tncsvec[0])
-        self.kvec_spinBox.setValue(self.tncsvec[1])
-        self.lvec_spinBox.setValue(self.tncsvec[2])
-        self.hvec_spinBox.setDisabled(True)
-        self.kvec_spinBox.setDisabled(True)
-        self.lvec_spinBox.setDisabled(True)
-      else:
-        self.hvec_spinBox.setDisabled(False)
-        self.kvec_spinBox.setDisabled(False)
-        self.lvec_spinBox.setDisabled(False)
+      self.clipwidth_spinBox.setValue(4)
       philstr = """NGL_HKLviewer.clip_plane {
-  h = %s
-  k = %s
-  l = %s
   hkldist = %s
   clipwidth = %s
-  is_parallel = %s
-  fractional_vector = %s
 }
-  NGL_HKLviewer.NGL.fixorientation = %s
-        """ %(self.hvec_spinBox.value(), self.kvec_spinBox.value(), self.lvec_spinBox.value(),\
-              self.hkldistval, self.clipwidth_spinBox.value(), \
-              str(self.clipParallelBtn.isChecked()), fracvectype, \
-              str(self.fixedorientcheckbox.isChecked()) )
+        """ %(self.hkldistval, self.clipwidth_spinBox.value() )
 
       self.PhilToJsRender(philstr)
-    else:
-      self.showsliceGroupCheckbox.setChecked(True)
-      self.PhilToJsRender("""NGL_HKLviewer.viewer.slice_mode = True
-                             NGL_HKLviewer.viewer.inbrowser = False
-                             NGL_HKLviewer.clip_plane.clipwidth = None
-                           """)
+    #else:
+    #  self.showsliceGroupCheckbox.setChecked(True)
+    #  self.PhilToJsRender("""NGL_HKLviewer.viewer.slice_mode = True
+    #                         NGL_HKLviewer.viewer.inbrowser = False
+    #                         NGL_HKLviewer.clip_plane.clipwidth = None
+    #                       """)
 
 
   def onRotaVecAngleChanged(self, val):
-    if self.unfeedback:
+    if self.unfeedback or self.rotvec is None:
       return
     self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
     angle_around_vector = '[%d, %f]'
@@ -1416,7 +1400,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
 
   def onFinalRotaVecAngle(self):
-    if self.unfeedback:
+    if self.unfeedback or self.rotvec is None:
       return
     val = self.rotavecangle_slider.value()
     self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
@@ -1636,13 +1620,13 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.reciprocunitcellslider.sliderReleased.connect(self.onReciprocUnitcellScale)
     #self.ResetViewBtn.clicked.connect(self.onResetViewBtn)
     #self.SaveImageBtn.clicked.connect(self.onSaveImage)
-    labels = ["draw", "operator", "as xyz", "as hkl"]
+    labels = ["draw", "name", "rotation operator", "as hkl", "as abc"]
     self.vectortable2.setHorizontalHeaderLabels(labels)
     self.vectortable2.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.vectortable2.itemChanged.connect(self.onVectorTableItemChanged  )
     #self.vectortable2.itemPressed.connect(self.onVectorTableItemChanged  )
     self.RotateAroundframe.setDisabled(True)
-    self.RotationVectorsBox.clicked.connect(self.onShowAllVectors)
+    self.ShowAllVectorsBtn.clicked.connect(self.onShowAllVectors)
     self.AlignParallelBtn.clicked.connect(self.onAlignedVector)
     self.AlignNormalBtn.clicked.connect(self.onAlignedVector)
     self.AlignVectorGroupBox.clicked.connect(self.onAlignedVector)

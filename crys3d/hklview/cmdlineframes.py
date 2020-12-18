@@ -10,10 +10,11 @@ from libtbx.str_utils import format_value
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, to_str
 from scitbx import matrix
+from cctbx import sgtbx
 from libtbx import group_args
 import libtbx
 import traceback
-import sys, zmq, threading,  time, cmath, zlib, os.path
+import sys, zmq, threading,  time, cmath, zlib, os.path, math
 
 from six.moves import input
 
@@ -268,7 +269,9 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "shape_primitive"):
         self.set_shape_primitive(phl.shape_primitive)
 
-      if view_3d.has_phil_path(diff_phil, "add_user_vector"):
+      if view_3d.has_phil_path(diff_phil, "add_user_vector_hkl_op", 
+                                         "add_user_vector_abc", 
+                                         "add_user_vector_hkl"):
         self.add_user_vector()
 
       if view_3d.has_phil_path(diff_phil, "save_image_name"):
@@ -981,29 +984,52 @@ class HKLViewFrame() :
       ln = len(self.viewer.all_vectors)
       self.viewer.all_vectors.append( (ln, "TNCS", vec, str(roundoff(self.tncsvec, 5)), "") )
     self.viewer.all_vectors.extend(self.uservectors)
-    for (opnr, label, v, xyzop, hklop) in self.viewer.all_vectors:
+    for (opnr, label, cartvec, hkl_op, hkl, abc) in self.viewer.all_vectors:
       # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
-      name = label + xyzop.replace(",", "_")
+      name = label + hkl_op.replace(",", "_")
       self.viewer.RemoveVectors(name)
     self.SendInfoToGUI( { "all_vectors": self.viewer.all_vectors } )
     return self.viewer.all_vectors
 
 
   def add_user_vector(self):
-    vec = eval(self.params.NGL_HKLviewer.viewer.add_user_vector)
     uc = self.viewer.miller_array.unit_cell()
     s = self.viewer.scene.renderscale
     ln = len(self.viewer.all_vectors)
-    vec = list( self.viewer.scene.renderscale*(vec * matrix.sqr(uc.fractionalization_matrix()).transpose()) )
-    self.uservectors.append( (ln, self.params.NGL_HKLviewer.viewer.user_label, 
-                          vec, self.params.NGL_HKLviewer.viewer.user_label, 
-                          self.params.NGL_HKLviewer.viewer.add_user_vector) )
+    label = self.params.NGL_HKLviewer.viewer.user_label
+    if self.params.NGL_HKLviewer.viewer.add_user_vector_hkl not in [None, "", "()"]:
+      hklvec = eval(self.params.NGL_HKLviewer.viewer.add_user_vector_hkl)
+      # convert into cartesian space
+      cartvec = list( self.viewer.scene.renderscale*(hklvec * matrix.sqr(uc.fractionalization_matrix()).transpose()) )
+    elif self.params.NGL_HKLviewer.viewer.add_user_vector_abc not in [None, "", "()"]:
+      abcvec = eval(self.params.NGL_HKLviewer.viewer.add_user_vector_abc)
+      # convert into cartesian space
+      cartvec = list(abcvec * matrix.sqr(uc.orthogonalization_matrix())*(1.0/self.viewer.scene.renderscale))
+    elif self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op not in [None, ""]:
+      rt = sgtbx.rt_mx(symbol=self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op, r_den=12, t_den=144)
+      rt.r().as_double()
+      (cartvec, a, label) = self.viewer.GetVectorAndAngleFromRotationMx( rt.r() )
+      if label:
+        label = "%s-fold_%s" %(str(int(roundoff(2*math.pi/a, 0))), self.params.NGL_HKLviewer.viewer.user_label)
+
+    if (self.params.NGL_HKLviewer.viewer.add_user_vector_hkl in [None, "", "()"] \
+     and self.params.NGL_HKLviewer.viewer.add_user_vector_abc in [None, "", "()"] \
+     and self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op) in [None, ""]:
+      raise Sorry("No vector was specified")
+    self.uservectors.append( (ln, 
+                              label, 
+                              cartvec,
+                              self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op, 
+                              self.params.NGL_HKLviewer.viewer.add_user_vector_hkl,
+                              self.params.NGL_HKLviewer.viewer.add_user_vector_abc) )
     self.list_vectors()
 
 
-  def AddUserVector(self, vec, label=""):
+  def AddUserVector(self, hkl_op="", abc="", hkl="", label=""):
     self.params.NGL_HKLviewer.viewer.user_label = label
-    self.params.NGL_HKLviewer.viewer.add_user_vector = str(vec)
+    self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op = str(hkl_op)
+    self.params.NGL_HKLviewer.viewer.add_user_vector_abc = str(abc)
+    self.params.NGL_HKLviewer.viewer.add_user_vector_hkl = str(hkl)
     self.update_settings()
 
 
@@ -1086,11 +1112,12 @@ class HKLViewFrame() :
 
   def rotate_around_vector2(self, vecnr_dgr):
     vecnr, dgr = eval(vecnr_dgr)
-    cartvec = self.viewer.all_vectors[vecnr][2]
-    phi = cmath.pi*dgr/180
-    R = flex.vec3_double([cartvec])
-    self.viewer.RotateAroundFracVector(phi, R[0][0], R[0][1], R[0][2], vectortype="cartesian")
-    #self.mprint("First specify vector around which to rotate")
+    if vecnr < len(self.viewer.all_vectors):
+      cartvec = self.viewer.all_vectors[vecnr][2]
+      phi = cmath.pi*dgr/180
+      R = flex.vec3_double([cartvec])
+      self.viewer.RotateAroundFracVector(phi, R[0][0], R[0][1], R[0][2], vectortype="cartesian")
+      #self.mprint("First specify vector around which to rotate")
 
 
   def RotateAroundVector(self, dgr, bequiet):
@@ -1240,7 +1267,11 @@ NGL_HKLviewer {
       .type = bool
     show_vector = ''
       .type = str
-    add_user_vector = ""
+    add_user_vector_hkl_op = ""
+      .type = str
+    add_user_vector_abc = ""
+      .type = str
+    add_user_vector_hkl = ""
       .type = str
     user_label = ""
       .type = str
