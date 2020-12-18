@@ -812,6 +812,7 @@ def submit_all_jobs(app):
     for rungroup in trial.rungroups:
       for run in rungroup.runs:
         run_tags_ids = [t.id for t in run.tags]
+        if not run_tags_ids: continue
         if dataset.tag_operator == "union":
           if any([t.id in run_tags_ids for t in dataset_tags]):
             runs_rungroups.append((run, rungroup))
