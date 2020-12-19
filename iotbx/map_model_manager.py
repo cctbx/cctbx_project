@@ -3615,7 +3615,7 @@ class map_model_manager(object):
     kw['is_external_based'] = True
     kw['remove_overall_anisotropy'] = False # REQUIRED
     del kw['map_id_external_map']
-
+    kw['model_map_ids_to_leave_as_is'] = [map_id_external_map] # do not remove aniso
     self._sharpen_map(**kw)
 
   def half_map_sharpen(self,
@@ -3904,7 +3904,6 @@ class map_model_manager(object):
        k_sol = k_sol,
        b_sol = b_sol)
 
-
     # Save unmodified copy of map to be scaled
     mm_dc_list = []
     unmasked_map_id_list = []
@@ -3928,6 +3927,7 @@ class map_model_manager(object):
     kw['map_id_2'] = map_id_model_map
     kw['is_model_based'] = True
     kw['map_id_to_be_scaled_list'] = unmasked_map_id_list
+    kw['model_map_ids_to_leave_as_is'] = [map_id_model_map] # do not remove aniso
 
     # Now get scaling from comparison of working_map_id_to_be_scaled and
     #   map_id_model_map, and
@@ -3999,6 +3999,7 @@ class map_model_manager(object):
       coordinate_shift_to_apply_before_tlso = None,
       overall_sharpen_before_and_after_local = None, # ignored
       sharpen_all_maps = False,
+      model_map_ids_to_leave_as_is = None,
       remove_overall_anisotropy = None,
     ):
     '''
@@ -4041,6 +4042,7 @@ class map_model_manager(object):
     del kw['n_bins_default']  # REQUIRED
     del kw['n_bins_default_local']  # REQUIRED
     del kw['remove_overall_anisotropy']  # REQUIRED
+    del kw['model_map_ids_to_leave_as_is']  # REQUIRED
 
 
     # Checks
@@ -4142,7 +4144,8 @@ class map_model_manager(object):
       aniso_b_cart = working_mmm.remove_anisotropy(map_id = map_id,
         d_min = d_min,
         b_iso = b_iso,
-        remove_from_all_maps = True)
+        remove_from_all_maps = True,
+        model_map_ids_to_leave_as_is = model_map_ids_to_leave_as_is)
     else:
       aniso_b_cart = None
       b_iso = None
@@ -4207,7 +4210,6 @@ class map_model_manager(object):
       print("Estimating scale factors ", file = self.log)
 
     # Analyze spectrum in map_id (will apply it to map_id_to_be_scaled)
-
     scaling_group_info = working_mmm._get_weights_in_shells(n_bins,
         d_min,
         map_id = map_id,
@@ -4305,6 +4307,7 @@ class map_model_manager(object):
         map_id = 'map_manager',
         map_ids = None,
         remove_from_all_maps = False,
+        model_map_ids_to_leave_as_is  = None,
         b_iso = None):
    '''
    Remove anisotropy from map, optionally remove anisotropy specified by
@@ -4327,6 +4330,7 @@ class map_model_manager(object):
 
    if remove_from_all_maps:  # remove in place from all maps
      print("Removing anisotropy from all maps", file = self.log)
+     # Note: do not remove anisotropy from model-based maps..
      self._print_overall_u(aniso_b_cart,b_iso)
 
      if map_ids is None:
@@ -4335,6 +4339,8 @@ class map_model_manager(object):
        mm=self.get_map_manager_by_id(map_id)
        if mm.is_mask():
          continue # do not apply to masks
+       elif map_id in model_map_ids_to_leave_as_is:
+         continue # skip model maps
        map_coeffs = mm.map_as_fourier_coefficients(d_min = d_min)
        from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
        f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
@@ -6134,6 +6140,7 @@ class map_model_manager(object):
     del kw['aniso_b_cart']  # REQUIRED
     del kw['b_iso']  # REQUIRED
 
+
     # Get scale factors vs resolution and location
     scale_factor_info = self.local_fsc(
       direction_vectors = [None],
@@ -7379,13 +7386,17 @@ class map_model_manager(object):
         space_group_number = 1,
         log = null_out())
 
+    if self.map_manager():  #  make sure model matches
+      if not self.map_manager().is_compatible_model(model):
+         self.shift_any_model_to_match(model)
+
     map_coeffs = generate_map_coefficients(model = model,
         d_min = d_min,
         k_sol = k_sol,
         b_sol = b_sol,
         scattering_table = scattering_table,
-        f_obs_array = f_obs_array,
-        log = null_out())
+	f_obs_array = f_obs_array,
+	log = null_out())
 
     mm = generate_map_data(
       map_coeffs = map_coeffs,
