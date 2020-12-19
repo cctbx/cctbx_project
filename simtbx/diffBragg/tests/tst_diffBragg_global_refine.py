@@ -36,6 +36,7 @@ parser.add_argument("--spectra", action="store_true", help="test with a refinabl
 parser.add_argument("--perturbSpectra", action="store_true", help="perturb the spectrum")
 parser.add_argument("--refineSpectra", action="store_true", help="refine the spectrum")
 parser.add_argument("--testSpectra", action="store_true", help="test average energy after spectrum refinement")
+parser.add_argument("--sz", type=float, help="shoebox size", default=15)
 args = parser.parse_args()
 
 
@@ -72,6 +73,7 @@ shot_xrel={}
 shot_yrel={}
 shot_abc_inits={}
 shot_asu={}
+sel_flags ={}
 shot_hkl={}
 shot_panel_ids={}
 nspot_per_shot = {}
@@ -339,10 +341,15 @@ for i_shot in range(N_SHOTS):
 
     else:
         if args.predictwithtruth:
-            spot_roi, tilt_abc = utils.process_simdata(SPOTS, img, thresh=20, plot=args.plot, shoebox_sz=20)
+            _spots = SPOTS
         else:
-            spot_roi, tilt_abc = utils.process_simdata(SPOTS2, img, thresh=20, plot=args.plot, shoebox_sz=20)
-        #spot_roi, tilt_abc = utils.process_simdata(SPOTS, img, thresh=20, plot=args.plot, shoebox_sz=20)
+            _spots = SPOTS2
+
+        spot_refls = utils.refls_from_sims(np.array([_spots]), SIM.detector, SIM.beam.nanoBragg_constructor_beam,
+                                           thresh=20)
+        out = utils.get_roi_background_and_selection_flags(spot_refls, np.array([img]), shoebox_sz=args.sz,
+                                                           reject_edge_reflections=True, use_robust_estimation=True)
+        spot_roi, panel_ids, tilt_abc, selection_flags, background = out
 
     if args.shufflebg:
         tilt_abc[:, 2] = np.random.permutation(tilt_abc[:, 2])
@@ -417,6 +424,7 @@ for i_shot in range(N_SHOTS):
     shot_asu[i_shot]= Hi_asu  # TODO Im weird fix me
     shot_hkl[i_shot]= HKLi  # TODO Im weird fix me
     shot_panel_ids[i_shot]= [0]*nspot
+    sel_flags[i_shot] = selection_flags
 
     if i_shot < N_SHOTS-1:
         SIM.D.free_all()  # CLEANGIUAGE
@@ -570,6 +578,7 @@ else:
 RUC.trad_conv_eps = 1e-7
 RUC.trad_conv = True
 RUC.trial_id = 0
+RUC.selection_flags = sel_flags
 
 RUC.plot_stride = 4
 RUC.plot_spot_stride = 10

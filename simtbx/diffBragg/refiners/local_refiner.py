@@ -26,6 +26,8 @@ except ImportError:
 from numpy import mean, median, unique, std
 from simtbx.diffBragg.utils import makeMoffat_integPSF, convolve_with_psf
 from scipy.stats import pearsonr
+from numpy import vstack as np_vstack
+from numpy import ascontiguousarray as np_ascontiguousarray
 from numpy import log as np_log
 from numpy.random import choice as np_random_choice
 from numpy import sin as SIN
@@ -406,8 +408,6 @@ class LocalRefiner(BaseRefiner):
         if self.refine_Fcell:
             idx, data = self.S.D.Fhkl_tuple
             self.idx_from_p1 = {h: i for i, h in enumerate(idx)}
-            from IPython import embed
-            embed()
             # self.p1_from_idx = {i: h for i, h in zip(idx, data)}
 
         # Make a mapping of panel id to parameter index and backwards
@@ -449,16 +449,12 @@ class LocalRefiner(BaseRefiner):
         self.panelRot_params = [[RangedParameter(), RangedParameter(), RangedParameter()]] * self.n_panel_groups
         self.detector_distance_params = {}  # per shot offset to all panels
         if self.I_AM_ROOT:
-            print("--1 Setting up per shot parameters")
+            print("--1 Setting up per shot parameters", flush=True)
 
         # this is a sliding parameter that points to the latest local (per-shot) parameter in the x-array
         _local_pos = self.local_idx_start
 
         self.panels_fasts_slows = {i_shot: None for i_shot in self.shot_ids}
-        self.roi_ids = {i_shot: None for i_shot in self.shot_ids}
-        self.roi_ids_reverse = {i_shot: None for i_shot in self.shot_ids}
-        self.first = {i_shot: {} for i_shot in self.shot_ids}
-        self.last = {i_shot: {} for i_shot in self.shot_ids}
         for i_shot in self.shot_ids:
             self.pid_from_idx[i_shot] = {i: pid for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
             self.idx_from_pid[i_shot] = {pid: i for i, pid in enumerate(unique(self.PANEL_IDS[i_shot]))}
@@ -676,7 +672,6 @@ class LocalRefiner(BaseRefiner):
         assert np.all([isinstance(x, np.bool_) for x in self.is_being_refined]), "problem with is being refined5 %d" % self.rank
         self.is_being_refined = FLEX_BOOL(self.is_being_refined)
 
-        print("RANK77 yes", self.rank)
         #self._MPI_barrier()
         # set the BFGS parameter array
         self.x = self.x_for_lbfgs
@@ -1367,13 +1362,11 @@ class LocalRefiner(BaseRefiner):
                     i + 3, self.UCELL_MAN[self._i_shot].second_derivative_matrices[i])
 
     def _run_diffBragg_current(self):
-        if self.panels_fasts_slows[self._i_shot] is None:
-            self.panels_fasts_slows[self._i_shot], self.roi_ids[self._i_shot] = self._get_panels_fasts_slows()
-            self.roi_ids_reverse[self._i_shot] = self.roi_ids[self._i_shot][::-1]
+        self.pfs, self.roi_ids, _ = self._get_panels_fasts_slows()
         if self.randomize_devices is not None:
             dev = np_random_choice(self.randomize_devices)
             self.D.device_Id = dev
-        self.D.add_diffBragg_spots(self.panels_fasts_slows[self._i_shot])
+        self.D.add_diffBragg_spots(self.pfs)
 
     def _get_fcell_val(self, i_fcell):
         # TODO vectorize me
@@ -1535,11 +1528,12 @@ class LocalRefiner(BaseRefiner):
                 self.spectra_derivs[1] = SG*self._lam1_deriv[self.roi_slice]
 
     def _pre_extract_deriv_arrays(self):
-        self._model_pix = self.D.raw_pixels_roi.as_numpy_array()
+        npix = int(len(self.pfs) / 3)
+        self._model_pix = self.D.raw_pixels_roi.as_numpy_array()[:npix]
 
         if self.refine_blueSausages:
             self._sausage_derivs = self.D.get_sausage_derivative_pixels()
-            self._sausage_derivs = [d.as_numpy_array() for d in self._sausage_derivs]
+            self._sausage_derivs = [d.as_numpy_array()[:npix] for d in self._sausage_derivs]
 
 
         ## UMAT
@@ -1548,29 +1542,29 @@ class LocalRefiner(BaseRefiner):
 
         if self.refine_Umatrix:
 
-            self._UmatX_deriv_pixels = self.D.get_derivative_pixels(0).as_numpy_array()
-            self._UmatY_deriv_pixels = self.D.get_derivative_pixels(1).as_numpy_array()
-            self._UmatZ_deriv_pixels = self.D.get_derivative_pixels(2).as_numpy_array()
+            self._UmatX_deriv_pixels = self.D.get_derivative_pixels(0).as_numpy_array()[:npix]
+            self._UmatY_deriv_pixels = self.D.get_derivative_pixels(1).as_numpy_array()[:npix]
+            self._UmatZ_deriv_pixels = self.D.get_derivative_pixels(2).as_numpy_array()[:npix]
 
             if self.calc_curvatures:
-                self._UmatX_second_deriv_pixels = self.D.get_second_derivative_pixels(0).as_numpy_array()
-                self._UmatY_second_deriv_pixels = self.D.get_second_derivative_pixels(1).as_numpy_array()
-                self._UmatZ_second_deriv_pixels = self.D.get_second_derivative_pixels(2).as_numpy_array()
+                self._UmatX_second_deriv_pixels = self.D.get_second_derivative_pixels(0).as_numpy_array()[:npix]
+                self._UmatY_second_deriv_pixels = self.D.get_second_derivative_pixels(1).as_numpy_array()[:npix]
+                self._UmatZ_second_deriv_pixels = self.D.get_second_derivative_pixels(2).as_numpy_array()[:npix]
 
         # BMAT
         self._Bmat_derivs = [0] * self.n_ucell_param
         self._Bmat_second_derivs = [0] * self.n_ucell_param
         if self.refine_Bmatrix:
             for i in range(self.n_ucell_param):
-                self._Bmat_derivs[i] = self.D.get_derivative_pixels(i+3).as_numpy_array()
+                self._Bmat_derivs[i] = self.D.get_derivative_pixels(i+3).as_numpy_array()[:npix]
                 if self.calc_curvatures:
-                    self._Bmat_second_derivs[i] = self.D.get_second_derivative_pixels(i+3).as_numpy_array()
+                    self._Bmat_second_derivs[i] = self.D.get_second_derivative_pixels(i+3).as_numpy_array()[:npix]
 
         self._lam0_deriv = self._lam1_deriv = 0
         if self.refine_lambda0:
-            self._lam0_deriv = self.D.get_derivative_pixels(12).as_numpy_array()
+            self._lam0_deriv = self.D.get_derivative_pixels(12).as_numpy_array()[:npix]
         if self.refine_lambda1:
-            self._lam1_deriv = self.D.get_derivative_pixels(13).as_numpy_array()
+            self._lam1_deriv = self.D.get_derivative_pixels(13).as_numpy_array()[:npix]
 
         refining_pan_rot = [self.refine_panelRotO, self.refine_panelRotF, self.refine_panelRotS]
         refining_pan_XYZ = [self.refine_panelXY, self.refine_panelXY, self.refine_panelZ or self.refine_detdist]
@@ -1584,40 +1578,40 @@ class LocalRefiner(BaseRefiner):
         for i_pan in range(3):
             if refining_pan_rot[i_pan]:
                 rot_man_id = rot_manager_ids[i_pan]
-                self._panRot_deriv[i_pan] = self.D.get_derivative_pixels(rot_man_id).as_numpy_array()
+                self._panRot_deriv[i_pan] = self.D.get_derivative_pixels(rot_man_id).as_numpy_array()[:npix]
                 if self.calc_curvatures:
-                    self._panelRot_second_deriv[i_pan] = self.D.get_second_derivative_pixels(rot_man_id).as_numpy_array()
+                    self._panelRot_second_deriv[i_pan] = self.D.get_second_derivative_pixels(rot_man_id).as_numpy_array()[:npix]
 
             if refining_pan_XYZ[i_pan]:
                 xyz_man_id = xyz_manager_ids[i_pan]
-                self._panXYZ_deriv[i_pan] = self.D.get_derivative_pixels(xyz_man_id).as_numpy_array()
+                self._panXYZ_deriv[i_pan] = self.D.get_derivative_pixels(xyz_man_id).as_numpy_array()[:npix]
                 if self.calc_curvatures:
-                    self._panXYZ_second_deriv[i_pan] = self.D.get_second_derivative_pixels(xyz_man_id).as_numpy_array()
+                    self._panXYZ_second_deriv[i_pan] = self.D.get_second_derivative_pixels(xyz_man_id).as_numpy_array()[:npix]
 
         if self.refine_Fcell:
             dF = self.D.get_derivative_pixels(self._fcell_id)
 
             self._extracted_fcell_deriv = dF.set_selected(dF != dF, 0)
-            self._extracted_fcell_deriv = self._extracted_fcell_deriv.as_numpy_array()
+            self._extracted_fcell_deriv = self._extracted_fcell_deriv.as_numpy_array()[:npix]
             if self.calc_curvatures:
                 d2F = self.D.get_second_derivative_pixels(self._fcell_id)
                 self._extracted_fcell_second_deriv = d2F.set_selected(d2F != d2F, 0)
-                self._extracted_fcell_second_deriv = self._extracted_fcell_second_deriv.as_numpy_array()
+                self._extracted_fcell_second_deriv = self._extracted_fcell_second_deriv.as_numpy_array()[:npix]
 
         if self.refine_ncells:
             if self.D.isotropic_ncells:
-                self._iso_ncells_deriv = self.D.get_derivative_pixels(self._ncells_id).as_numpy_array()
+                self._iso_ncells_deriv = self.D.get_derivative_pixels(self._ncells_id).as_numpy_array()[:npix]
                 if self.calc_curvatures:
-                    self._iso_ncells_second_deriv = self.D.get_second_derivative_pixels(self._ncells_id).as_numpy_array()
+                    self._iso_ncells_second_deriv = self.D.get_second_derivative_pixels(self._ncells_id).as_numpy_array()[:npix]
             else:
                 self._aniso_ncells_derivs = self.D.get_ncells_derivative_pixels()
-                self._aniso_ncells_derivs = [d.as_numpy_array() for d in self._aniso_ncells_derivs]
+                self._aniso_ncells_derivs = [d.as_numpy_array()[:npix]for d in self._aniso_ncells_derivs]
                 if self.calc_curvatures:
                     self._aniso_ncells_second_derivs = self.D.get_ncells_second_derivative_pixels()
-                    self._aniso_ncells_second_derivs = [d.as_numpy_array() for d in self._aniso_ncells_second_derivs]
+                    self._aniso_ncells_second_derivs = [d.as_numpy_array()[:npix]for d in self._aniso_ncells_second_derivs]
 
         if self.refine_eta:
-            self._eta_deriv = self.D.get_derivative_pixels(self._eta_id).as_numpy_array()
+            self._eta_deriv = self.D.get_derivative_pixels(self._eta_id).as_numpy_array()[:npix]
 
     def _extract_sausage_derivs(self):
         if self.refine_blueSausages:
@@ -1757,13 +1751,7 @@ class LocalRefiner(BaseRefiner):
         return val
 
     def _extract_pixel_data(self):
-        if self.iterations == 0:
-            self.first[self._i_shot][self._i_spot] = self.roi_ids[self._i_shot].index(self._i_spot)
-            self.last[self._i_shot][self._i_spot] = len(self.roi_ids[self._i_shot]) - 1 - self.roi_ids_reverse[self._i_shot].index(self._i_spot)
-        first = self.first[self._i_shot][self._i_spot]
-        last = self.last[self._i_shot][self._i_spot]
-
-        self.roi_slice = slice(first, last + 1, 1)
+        self.roi_slice = self.roi_ids == self._i_spot
         self.model_bragg_spots = self.scale_fac*self._model_pix[self.roi_slice]
         self.model_bragg_spots *= self._get_per_spot_scale(self._i_shot, self._i_spot)
         self._extract_Umatrix_derivative_pixels()
@@ -1799,27 +1787,26 @@ class LocalRefiner(BaseRefiner):
         self.D.xray_beams = self.S.beam.xray_beams
 
     def _get_panels_fasts_slows(self):
-        roi_ids = []
-        panels_fasts_slows = []
-        n_spots = len(self.NANOBRAGG_ROIS[self._i_shot])
-        for i_spot in range(n_spots):
-            if self.selection_flags is not None:
-                if self._i_shot not in self.selection_flags:
-                    continue
-                elif not self.selection_flags[self._i_shot][i_spot]:
-                    continue
+        npan = len(self.S.detector)
+        nfast, nslow = self.S.detector[0].get_image_size()
+        MASK = NP_ZEROS((npan, nslow, nfast), bool)
+        ROI_ID = NP_ZEROS((npan, nslow, nfast), 'uint16')
+        #DATA = NP_ZEROS((npan, nslow, nfast), "float32")
+        nspots = len(self.NANOBRAGG_ROIS[self._i_shot])
+        for i_spot in range(nspots):
             (x1, x2), (y1, y2) = self.NANOBRAGG_ROIS[self._i_shot][i_spot]
-            roi_shape = self.ROI_IMGS[self._i_shot][i_spot].shape
-            slows, fasts = np_indices(roi_shape)
-            slows += y1
-            fasts += x1
-            fasts = list(map(int, fasts.ravel()))
-            slows = list(map(int, slows.ravel()))
-            npix = len(fasts)
-            roi_ids += [i_spot] * npix
-            pids = [self.PANEL_IDS[self._i_shot][i_spot]] * npix
-            panels_fasts_slows += [val for sublst in zip(pids, fasts, slows) for val in sublst]
-        return flex.size_t(panels_fasts_slows), roi_ids
+            pid = self.PANEL_IDS[self._i_shot][i_spot]
+            MASK[pid, y1:y2, x1:x2] = True
+            ROI_ID[pid, y1:y2, x1:x2] = i_spot
+            #DATA[pid, y1:y2, x1:x2] = self.ROI_IMGS[self._i_shot][i_spot]
+        p,s,f = WHERE(MASK)
+        roi_id = ROI_ID[p,s,f]
+        #data = DATA[p,s,f]
+        data = None
+        pan_fast_slow = np_ascontiguousarray((np_vstack([p,f,s]).T).ravel())
+        pan_fast_slow = flex.size_t(pan_fast_slow)
+
+        return pan_fast_slow, roi_id, data
 
     def compute_functional_gradients_diag(self):
         self.compute_functional_and_gradients()
@@ -1897,7 +1884,7 @@ class LocalRefiner(BaseRefiner):
 
                     if self.verbose and i_spot % self.spot_print_stride == 0:
                         print("diffBragg: img %d/%d; spot %d/%d; panel %d" \
-                              % (self._i_shot + 1, self.n_shots, i_spot + 1, n_spots, self._panel_id)) #, flush=True)
+                              % (self._i_shot + 1, self.n_shots, i_spot + 1, n_spots, self._panel_id), flush=True)
 
                     self.Imeas = self.ROI_IMGS[self._i_shot][i_spot].ravel()
                     if not printed_geom_updates and self._i_shot == 0:
@@ -2956,7 +2943,7 @@ class LocalRefiner(BaseRefiner):
             "%s\n\t%s, F=%2.7g, |G|=%2.7g, eps*|X|=%2.7g,%s R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n"
             % (scale_stats_string, Bcolors.OKBLUE, self._f, self.gnorm, Xnorm * self.trad_conv_eps, Bcolors.ENDC, self.R_overall, self.init_R1,
                self.tot_fcell_kludge, self.tot_neg_curv, ncurv,
-               ", ".join(map(str, self.neg_curv_shots))))
+               ", ".join(map(str, self.neg_curv_shots))), flush=True)
         #print("<><><><><><><><> TOP GUN <><><><><><><><>")
         #print("                 End of iteration.")
         if self.testing_mode:

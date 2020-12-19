@@ -159,7 +159,9 @@ SIM.D.raw_pixels *= 0
 
 # spot_rois, abc_init , these are inputs to the refiner
 # <><><><><><><><><><><><><><><><><><><><><><><><><>
-spot_roi, tilt_abc = utils.process_simdata(spots, img, thresh=20, plot=args.plot, shoebox_sz=30)
+spot_refls = utils.refls_from_sims(np.array([spots]), SIM.detector, SIM.beam.nanoBragg_constructor_beam, thresh=20)
+out = utils.get_roi_background_and_selection_flags(spot_refls, np.array([img]), shoebox_sz=10, reject_edge_reflections=True, use_robust_estimation=True)
+spot_roi, panel_ids, tilt_abc, selection_flags, background = out
 
 UcellMan = MonoclinicManager(
     a=ucell2[0],
@@ -173,7 +175,6 @@ init_Bmat_norm = np.abs(np.array(C2.get_B()) - np.array(C.get_B())).sum()
 if args.gain:
     img = img*1.1
 
-
 # TODO: the following need to be embedded in the refiner init function..
 nspot = len(spot_roi)
 
@@ -182,10 +183,10 @@ xrel, yrel, roi_imgs = [], [], []
 xcom, ycom = [],[]
 for i_roi, (x1, x2, y1, y2) in enumerate(spot_roi):
     nanoBragg_rois.append(((x1, x2), (y1, y2)))
-    yr, xr = np.indices((y2 - y1 + 1, x2 - x1 + 1))
+    yr, xr = np.indices((y2 - y1, x2 - x1))
     xrel.append(xr)
     yrel.append(yr)
-    roi_imgs.append(img[y1:y2 + 1, x1:x2 + 1])
+    roi_imgs.append(img[y1:y2, x1:x2])
 
     xcom.append(.5*(x1 + x2))
     ycom.append(.5*(x1 + x2))
@@ -250,6 +251,7 @@ RUC.refine_Bmatrix = args.bmatrix
 RUC.refine_ncells = args.ncells
 RUC.refine_crystal_scale = args.spotscale
 RUC.refine_Fcell = False
+RUC.selection_flags = {0: selection_flags}
 RUC.refine_detdist = args.detdist
 RUC.refine_gain_fac = args.gain
 RUC.ucell_sigmas = [.1, .1, .3, .005]

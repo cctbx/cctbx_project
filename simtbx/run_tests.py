@@ -38,7 +38,7 @@ tst_list = (
     ["$D/diffBragg/tests/tst_diffBragg_Fcell_deriv.py", "--curvatures"],
     ["$D/diffBragg/tests/tst_diffBragg_global_refine.py",
         "--nshots 1 --rescale --spotscale --umatrix --ncells " +
-        "--bmatrix --bg --fcell --testbg --testfcell --testUmatrix --maxcalls 50"],
+        "--bmatrix --bg --fcell --testbg --testfcell --testUmatrix --maxcalls 50 --sz 18"],
     ["$D/diffBragg/tests/tst_diffBragg_global_refine.py",
         "--nshots 1 --rescale --umatrix --bmatrix --curvatures --testUmatrix"],
     ["$D/diffBragg/tests/tst_diffBragg_global_refine.py",
