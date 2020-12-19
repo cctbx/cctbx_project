@@ -768,7 +768,6 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                 tilt_plane = tilt_a * Xcoords + tilt_b * Ycoords + tilt_c
                 if np.min(tilt_plane) < 0:  # dips below
                     num_roi_negative_bg += 1
-                    print("background is negative")
                     is_selected = False
 
         if not np.all(background[pid, j1_nopad:j2_nopad, i1_nopad:i2_nopad] == -1):

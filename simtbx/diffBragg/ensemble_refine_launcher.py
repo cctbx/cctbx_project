@@ -156,6 +156,11 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
 
             rank_local_parameters.append(n_local_unknowns)
 
+            if COMM.rank == 0:
+                print("Finished loading image %d / %d" % (i_exp+1, len(exper_names)))
+            # periodically print memory consumption:
+            self._mem_usage()
+
         if not self.shot_rois:
             raise RuntimeError("Cannot refine without shots! Probably Ranks than shots!")
 
@@ -220,7 +225,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         if COMM.rank == 0:
             import socket
             host = socket.gethostname()
-            print("Rank 0 reporting memory usage: %f GB on Rank 0 node %s" % (memMB / 1e3, host))
+            print("Rank 0 reporting memory usage: %f GB on Rank 0 node %s" % (memMB / 1e3, host), flush=True)
 
     def _initialize_some_refinement_parameters(self):
         # TODO provide interface for taking inital conditions from all shots (in the event of restarting a simulation)

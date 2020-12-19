@@ -401,6 +401,7 @@ class LocalRefinerLauncher:
         img_data = utils.image_data_from_expt(expt)
         if self.params.refiner.adu_per_photon is not None:
             img_data /= self.params.refiner.adu_per_photon
+        img_data = img_data.astype("float32")
 
         # prepare ROI information
         panel_selection = [True]*len(refls)
@@ -443,6 +444,9 @@ class LocalRefinerLauncher:
         shot_data.yrel = yrel
         shot_data.tilt_abc = tilt_abc
         shot_data.selection_flags = selection_flags
+
+        img_data = None
+        del img_data
 
         return shot_data
 
