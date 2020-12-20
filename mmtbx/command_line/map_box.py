@@ -1087,6 +1087,11 @@ def run(args,
     mam.map_manager().set_original_origin_and_gridding(
        original_origin = params.output_origin_grid_units,
        gridding = params.output_unit_cell_grid)
+    if mam.map_manager().ncs_object():
+      mam.map_manager().ncs_object().display_all()
+      from scitbx.array_family import flex
+      mam.map_manager().ncs_object().set_shift_cart(
+        mam.map_manager().shift_cart())
 
     if mam.model():
       mam.model().shift_model_and_set_crystal_symmetry(
@@ -1185,6 +1190,7 @@ def run(args,
         filename =  "%s.ncs_spec"%params.output_file_name_prefix
       dm.write_ncs_spec_file(ncs_object, filename = filename)
       print("\nWriting symmetry to %s" %( filename), file = log)
+      # we are writing out new location
 
     # Write ccp4 map.
     if("ccp4" in params.output_format):

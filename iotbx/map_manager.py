@@ -585,7 +585,8 @@ class map_manager(map_reader, write_ccp4_map):
 
     # If there is an associated ncs_object, shift it too
     if self._ncs_object:
-      self._ncs_object=self._ncs_object.coordinate_offset(shift_info.shift_to_apply_cart)
+      self._ncs_object=self._ncs_object.coordinate_offset(
+        shift_info.shift_to_apply_cart)
 
   def _get_shift_info(self, desired_origin = None):
     '''
@@ -1567,9 +1568,9 @@ class map_manager(map_reader, write_ccp4_map):
     if ncs_object.shift_cart():
       offset = tuple(
         [s - n for s, n in zip(self.shift_cart(), ncs_object.shift_cart())])
-      ncs_object.coordinate_shift(offset)
+      ncs_object = ncs_object.coordinate_offset(offset)
     else:
-      ncs_object.coordinate_shift(self.shift_cart())
+      ncs_object = ncs_object.coordinate_offset(self.shift_cart())
 
   def shift_model_to_match_map(self, model):
     '''
@@ -1592,7 +1593,7 @@ class map_manager(map_reader, write_ccp4_map):
       Modifies ncs_object in place
 
       Do not use this to try to shift the ncs object. That is done in
-      the ncs object itself with ncs_object.coordinate_shift(shift_cart)
+      the ncs object itself with ncs_object.coordinate_offset(shift_cart)
     '''
 
     # Set shift_cart (shift since readin) to match shift_cart for
