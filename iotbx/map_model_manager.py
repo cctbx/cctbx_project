@@ -7395,8 +7395,8 @@ class map_model_manager(object):
         k_sol = k_sol,
         b_sol = b_sol,
         scattering_table = scattering_table,
-	f_obs_array = f_obs_array,
-	log = null_out())
+        f_obs_array = f_obs_array,
+        log = null_out())
 
     mm = generate_map_data(
       map_coeffs = map_coeffs,
