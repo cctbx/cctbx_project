@@ -4315,6 +4315,9 @@ class map_model_manager(object):
    '''
    assert map_coeffs or d_min or map_id
 
+   if not model_map_ids_to_leave_as_is:
+     model_map_ids_to_leave_as_is = []
+
    if not map_coeffs:
       assert self.get_map_manager_by_id(map_id)
       map_coeffs = self.get_map_manager_by_id(map_id
