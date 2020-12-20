@@ -50,6 +50,8 @@ class LocalRefinerLauncher:
         self.NPIX_TO_ALLOC = -1
         self.DEVICE_ID = 0
         self.WATCH_MISORIENTATION = None
+        self.SCALE_INIT_PER_SHOT = None
+        self.NCELLS_INIT_PER_SHOT = None
 
         self.n_local_unknowns = None
         self.n_global_unknowns = None

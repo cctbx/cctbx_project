@@ -32,6 +32,9 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         self.df = None
         self.WATCH_MISORIENTAION = False   # TODO add a phil
 
+        self.SCALE_INIT_PER_SHOT = {}
+        self.NCELLS_INIT_PER_SHOT = {}
+
     @property
     def num_shots_on_rank(self):
         return len(self.shot_rois)
@@ -73,6 +76,9 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             self._check_experiment_integrity(expt)
 
             exper_dataframe = pandas_table.query("opt_exp_name=='%s'" % exper_name)
+
+            self._set_initial_model_for_shot(shot_idx, exper_dataframe)
+
             refl_name = exper_dataframe.predictions.values[0]
             refls = flex.reflection_table.from_file(refl_name)
             # FIXME need to remove (0,0,0) bboxes
@@ -88,6 +94,10 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
                     raise ValueError("Crystals should all have the same space group symmetry")
 
             if shot_idx == 0:  # each rank initializes a simulator only once
+                if self.params.simulator.init_scale != 1:
+                    print("WARNING: For stage_two , it is assumed that total scale is stored in the pandas dataframe")
+                    print("WARNING: resetting params.simulator.init_scale to 1!")
+                    self.params.simulator.init_scale = 1
                 self._init_simulator(expt, miller_data)
                 if self.params.refiner.stage_two.Fref_mtzname is not None:
                     self.Fref = utils.open_mtz(self.params.refiner.stage_two.Fref_mtzname,
@@ -206,6 +216,11 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
 
         # in case of GPU
         self.NPIX_TO_ALLOC = self._determine_per_rank_max_num_pix()
+        # TODO in case of randomize devices, shouldnt this be total max across all ranks?
+        n = COMM.gather(self.NPIX_TO_ALLOC)
+        if COMM.rank == 0:
+            n = max(n)
+        self.NPIX_TO_ALLOC = COMM.bcast(n)
 
         if not self.params.refiner.randomize_devices:
             self.DEVICE_ID = COMM.rank % self.params.refiner.num_devices
@@ -252,16 +267,16 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             self.RUC.use_ucell_ranges = True
 
         self.RUC.sausages_init = {}
-        self.RUC.m_init = {}
-        self.RUC.spot_scale_init = {}
+        #self.RUC.m_init = {}
+        #self.RUC.spot_scale_init = {}
         self.RUC.eta_init = {}
         self.RUC.ucell_inits = {}
         self.RUC.ucell_mins = {}
         self.RUC.ucell_maxs = {}
         for i_shot in range(self.num_shots_on_rank):
             self.RUC.sausages_init[i_shot] = [0, 0, 0, 1]
-            self.RUC.m_init[i_shot] = m_init
-            self.RUC.spot_scale_init[i_shot] = self.params.refiner.init.spot_scale
+            #self.RUC.m_init[i_shot] = m_init
+            #self.RUC.spot_scale_init[i_shot] = self.params.refiner.init.spot_scale
             self.RUC.eta_init[i_shot] = self.params.simulator.crystal.mosaicity
             self.RUC.ucell_inits[i_shot] = self.shot_ucell_managers[i_shot].variables
 
@@ -269,11 +284,8 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
                 self.RUC.ucell_mins[i_shot] = ucell_mins
                 self.RUC.ucell_maxs[i_shot] = ucell_maxs
 
-        #self.RUC.sausages_init = {i: [0, 0, 0, 1] for i in range(self.num_shots_on_rank)}
-        #self.RUC.m_init = {i: m_init for i in range(self.num_shots_on_rank)}
-        #self.RUC.spot_scale_init = {i: self.params.refiner.init.spot_scale for i in range(self.num_shots_on_rank)}
-        #self.RUC.eta_init = {i: self.params.simulator.crystal.mosaicity for i in range(self.num_shots_on_rank)}
-        #self.RUC.ucell_inits = {i: self.shot_ucell_managers[i].variables for i in range(self.num_shots_on_rank)}
+        self.RUC.m_init = self.NCELLS_INIT_PER_SHOT  # enfore these are not None?
+        self.RUC.spot_scale_init = self.SCALE_INIT_PER_SHOT
 
     def _prep_blue_sausages(self):
         if self.params.refiner.refine_blueSausages:
@@ -387,3 +399,15 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
 
         marr_unique_h = COMM.bcast(marr_unique_h)
         return marr_unique_h
+
+    def _set_initial_model_for_shot(self, shot_idx, dataframe):
+        if shot_idx in self.SCALE_INIT_PER_SHOT or shot_idx in self.NCELLS_INIT_PER_SHOT:
+            raise KeyError("Already set initial model for shot %d on rank %d" % (shot_idx, COMM.rank))
+
+        self.SCALE_INIT_PER_SHOT[shot_idx] = dataframe.spot_scales.values[0]
+
+        ncells_init = dataframe.ncells.values[0]  # either a 1-tuple or a 3-tuple
+        if len(ncells_init) == 1:
+            ncells_init += (ncells_init[0], ncells_init[0])
+        self.NCELLS_INIT_PER_SHOT[shot_idx] = ncells_init
+
