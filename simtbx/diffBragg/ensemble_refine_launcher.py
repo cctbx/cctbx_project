@@ -56,6 +56,7 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
                              % (COMM.size, num_exp, num_exp))
         self._init_panel_group_information(detector)
 
+        self.verbose = self.params.refiner.verbose is not None and COMM.rank == 0
         shot_idx = 0  # each rank keeps index of the shots local to it
         rank_panel_groups_refined = set()
         rank_local_parameters = []
@@ -111,7 +112,6 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             if shot_data is None:
                 raise ValueError("Cannot refine!")
 
-
             self.shot_ucell_managers[shot_idx] = UcellMan
             self.shot_rois[shot_idx] = shot_data.rois
             self.shot_nanoBragg_rois[shot_idx] = shot_data.nanoBragg_rois
@@ -129,7 +129,6 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
             self.shot_originZ_init[shot_idx] = 0
             self.shot_selection_flags[shot_idx] = shot_data.selection_flags
             self.shot_background[shot_idx] = shot_data.background
-            shot_idx += 1
 
             shot_panel_groups_refined = self.determine_refined_panel_groups(shot_data.pids, shot_data.selection_flags)
             rank_panel_groups_refined = rank_panel_groups_refined.union(set(shot_panel_groups_refined))
@@ -155,11 +154,10 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
                                + n_tilt_params + n_eta_params + n_sausage_params
 
             rank_local_parameters.append(n_local_unknowns)
-
+            shot_idx += 1
             if COMM.rank == 0:
-                print("Finished loading image %d / %d" % (i_exp+1, len(exper_names)))
-            # periodically print memory consumption:
-            self._mem_usage()
+                self._mem_usage()
+                print("Finished loading image %d / %d" % (i_exp+1, len(exper_names)), flush=True)
 
         if not self.shot_rois:
             raise RuntimeError("Cannot refine without shots! Probably Ranks than shots!")
@@ -221,11 +219,10 @@ class GlobalRefinerLauncher(LocalRefinerLauncher):
         return self.RUC
 
     def _mem_usage(self):
-        memMB = COMM.reduce(get_memory_usage())
-        if COMM.rank == 0:
-            import socket
-            host = socket.gethostname()
-            print("Rank 0 reporting memory usage: %f GB on Rank 0 node %s" % (memMB / 1e3, host), flush=True)
+        memMB = get_memory_usage()
+        import socket
+        host = socket.gethostname()
+        print("Rank 0 reporting memory usage: %f GB on Rank 0 node %s" % (memMB / 1e3, host))
 
     def _initialize_some_refinement_parameters(self):
         # TODO provide interface for taking inital conditions from all shots (in the event of restarting a simulation)

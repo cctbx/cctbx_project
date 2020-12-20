@@ -35,6 +35,7 @@ class LocalRefinerLauncher:
         self.panel_group_from_id = None
         self.panel_reference_from_id = None
         self.n_panel_groups = None
+        self.verbose = False
 
         self.asu_from_idx = {}
         self.idx_from_asu = {}
@@ -91,6 +92,7 @@ class LocalRefinerLauncher:
         self._alias_refiner()
         self._check_experiment_integrity(expt)
 
+        self.verbose = self.params.refiner.verbose is not None
         self.DEVICE_ID = self.params.simulator.device_id
 
         shot_data = self.load_roi_data(refls, expt)
@@ -216,6 +218,9 @@ class LocalRefinerLauncher:
             if self.RUC.refine_detdist and self.RUC.refine_panelZ:
                 raise ValueError("Cannot refine panelZ and detdist simultaneously")
 
+            if self.params.refiner.io.output_dir is not None:
+                self.RUC.output_dir = self.params.refiner.io.output_dir
+
             self.RUC.panel_group_from_id = self.panel_group_from_id
 
             self.RUC.panel_reference_from_id = self.panel_reference_from_id
@@ -325,7 +330,7 @@ class LocalRefinerLauncher:
             self.RUC.calc_curvatures = self.params.refiner.curvatures
             self.RUC.poisson_only = self.params.refiner.poissononly
             self.RUC.trad_conv_eps = self.params.refiner.tradeps
-            self.RUC.verbose = self.params.refiner.verbose is not None
+            self.RUC.verbose = self.verbose
             self.RUC.background = self.shot_background
             # TODO optional properties.. make this obvious
             self.RUC.FNAMES = None

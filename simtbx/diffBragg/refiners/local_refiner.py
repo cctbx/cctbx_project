@@ -1780,7 +1780,7 @@ class LocalRefiner(BaseRefiner):
     def _update_beams(self):
         # sim_data instance has a nanoBragg beam object, which takes spectra and converts to nanoBragg xray_beams
         self.S.beam.spectra = self.SPECTRA[self._i_shot]
-        if self.verbose:
+        if self.verbose and self._i_shot == 0:
             print("Using %d BEAMZ!" % len(self.SPECTRA[self._i_shot]))
             print("Using %d mosaicities" % (self.S.D.mosaic_domains))
             print("Using %dx%d oversample rate" % (self.S.D.oversample, self.S.D.oversample))
@@ -2933,11 +2933,11 @@ class LocalRefiner(BaseRefiner):
             self.R_overall = self.Fobs_Fref_Rfactor(use_binning=False, auto_scale=self.scale_r1)
             self.CC_overall = self.Fobs.correlation(self.Fref_aligned).coefficient()
             print("R-factor overall: %.4f, CC overall: %.4f" % (self.R_overall, self.CC_overall))
-            if self.print_resolution_bins:
-                print("R-factor (shells):")
-                print(self.Fobs_Fref_Rfactor(use_binning=True, auto_scale=self.scale_r1).show())
-                print("CC (shells):")
-                self.Fobs.correlation(self.Fref_aligned, use_binning=True).show()
+            #if self.print_resolution_bins:
+            #    print("R-factor (shells):")
+            #    print(self.Fobs_Fref_Rfactor(use_binning=True, auto_scale=self.scale_r1).show())
+            #    print("CC (shells):")
+            #    self.Fobs.correlation(self.Fref_aligned, use_binning=True).show()
 
         print(
             "%s\n\t%s, F=%2.7g, |G|=%2.7g, eps*|X|=%2.7g,%s R1=%2.7g (R1 at start=%2.7g), Fcell kludges=%d, Neg. Curv.: %d/%d on shots=%s\n"

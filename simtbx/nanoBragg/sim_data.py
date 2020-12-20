@@ -233,7 +233,11 @@ class SimData:
     self.D.xtal_shape = self.crystal.xtal_shape
     self.update_Fhkl_tuple()
     self.D.Amatrix = Amatrix_dials2nanoBragg(self.crystal.dxtbx_crystal)
-    self.D.Ncells_abc = self.crystal.Ncells_abc
+    Nabc = tuple([int(round(x)) for x in self.crystal.Ncells_abc])
+    if len(Nabc) == 1:
+      Nabc = Nabc[0], Nabc[0], Nabc[0]
+
+    self.D.Ncells_abc = Nabc
     self.D.mosaic_spread_deg = self.crystal.mos_spread_deg
     self.D.mosaic_domains = self.crystal.n_mos_domains
     self.D.set_mosaic_blocks(SimData.Umats(self.crystal.mos_spread_deg, self.crystal.n_mos_domains,
