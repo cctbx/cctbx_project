@@ -1,0 +1,216 @@
+from __future__ import absolute_import, division, print_function
+from cctbx import miller, sgtbx
+from cctbx.array_family import flex
+from libtbx import easy_mp
+from scipy import sparse
+import math
+
+class Reproducer:
+    def _lattice_lower_upper_index(self, lattice_id):
+        lower_index = self._lattices[lattice_id]
+        upper_index = None
+        if lattice_id < len(self._lattices) - 1:
+            upper_index = self._lattices[lattice_id + 1]
+        else:
+            assert lattice_id == len(self._lattices) - 1
+        return lower_index, upper_index
+
+    def compute_rij_wij_Gildea(self, use_cache=True):
+        """Compute the rij_wij matrix."""
+        n_lattices = self._lattices.size()
+        n_sym_ops = len(self.sym_ops)
+
+        NN = n_lattices * n_sym_ops
+
+        self.rij_matrix = flex.double(flex.grid(NN, NN), 0.0)
+        if self._weights is None:
+            self.wij_matrix = None
+        else:
+            self.wij_matrix = flex.double(flex.grid(NN, NN), 0.0)
+
+        indices = {}
+        space_group_type = self._data.space_group().type()
+        for cb_op in self.sym_ops:
+            cb_op = sgtbx.change_of_basis_op(cb_op)
+            indices_reindexed = cb_op.apply(self._data.indices())
+            miller.map_to_asu(space_group_type, False, indices_reindexed)
+            indices[cb_op.as_xyz()] = indices_reindexed
+
+        def _compute_rij_matrix_one_row_block(i):
+            rij_cache = {}
+
+            n_sym_ops = len(self.sym_ops)
+            NN = n_lattices * n_sym_ops
+
+            rij_row = []
+            rij_col = []
+            rij_data = []
+            if self._weights is not None:
+                wij_row = []
+                wij_col = []
+                wij_data = []
+            else:
+                wij = None
+
+            i_lower, i_upper = self._lattice_lower_upper_index(i)
+            intensities_i = self._data.data()[i_lower:i_upper]
+
+            for j in range(n_lattices):
+
+                j_lower, j_upper = self._lattice_lower_upper_index(j)
+                intensities_j = self._data.data()[j_lower:j_upper]
+
+                for k, cb_op_k in enumerate(self.sym_ops):
+                    cb_op_k = sgtbx.change_of_basis_op(cb_op_k)
+
+                    indices_i = indices[cb_op_k.as_xyz()][i_lower:i_upper]
+
+                    for kk, cb_op_kk in enumerate(self.sym_ops):
+                        if i == j and k == kk:
+                            # don't include correlation of dataset with itself
+                            continue
+                        cb_op_kk = sgtbx.change_of_basis_op(cb_op_kk)
+
+                        ik = i + (n_lattices * k)
+                        jk = j + (n_lattices * kk)
+
+                        key = (i, j, str(cb_op_k.inverse() * cb_op_kk))
+                        if use_cache and key in rij_cache:
+                            cc, n = rij_cache[key]
+                        else:
+                            indices_j = indices[cb_op_kk.as_xyz()][j_lower:j_upper]
+
+                            matches = miller.match_indices(indices_i, indices_j)
+                            pairs = matches.pairs()
+                            isel_i = pairs.column(0)
+                            isel_j = pairs.column(1)
+                            isel_i = isel_i.select(
+                                self._patterson_group.epsilon(indices_i.select(isel_i))
+                                == 1
+                            )
+                            isel_j = isel_j.select(
+                                self._patterson_group.epsilon(indices_j.select(isel_j))
+                                == 1
+                            )
+                            corr = flex.linear_correlation(
+                                intensities_i.select(isel_i),
+                                intensities_j.select(isel_j),
+                            )
+
+                            if corr.is_well_defined():
+                                cc = corr.coefficient()
+                                n = corr.n()
+                                rij_cache[key] = (cc, n)
+                            else:
+                                cc = None
+                                n = None
+
+                        if (
+                            n is None
+                            or cc is None
+                            or (self._min_pairs is not None and n < self._min_pairs)
+                        ):
+                            continue
+
+                        if self._weights == "count":
+                            wij_row.extend([ik, jk])
+                            wij_col.extend([jk, ik])
+                            wij_data.extend([n, n])
+                        elif self._weights == "standard_error":
+                            assert n > 2
+                            # http://www.sjsu.edu/faculty/gerstman/StatPrimer/correlation.pdf
+                            se = math.sqrt((1 - cc ** 2) / (n - 2))
+                            wij = 1 / se
+                            wij_row.extend([ik, jk])
+                            wij_col.extend([jk, ik])
+                            wij_data.extend([wij, wij])
+
+                        rij_row.append(ik)
+                        rij_col.append(jk)
+                        rij_data.append(cc)
+
+            rij = sparse.coo_matrix((rij_data, (rij_row, rij_col)), shape=(NN, NN))
+            if self._weights is not None:
+                wij = sparse.coo_matrix((wij_data, (wij_row, wij_col)), shape=(NN, NN))
+
+            return rij, wij
+
+        args = [(i,) for i in range(n_lattices)]
+        results = easy_mp.parallel_map(
+            _compute_rij_matrix_one_row_block,
+            args,
+            processes=self._nproc,
+            iterable_type=easy_mp.posiargs,
+            method="multiprocessing",
+        )
+
+        rij_matrix = None
+        wij_matrix = None
+        for i, (rij, wij) in enumerate(results):
+            if rij_matrix is None:
+                rij_matrix = rij
+            else:
+                rij_matrix += rij
+            if wij is not None:
+                if wij_matrix is None:
+                    wij_matrix = wij
+                else:
+                    wij_matrix += wij
+
+        self.rij_matrix = flex.double(rij_matrix.todense())
+        if wij_matrix is not None:
+            import numpy as np
+
+            self.wij_matrix = flex.double(wij_matrix.todense().astype(np.float64))
+
+        return self.rij_matrix, self.wij_matrix
+
+    def compute_rij_wij_cplusplus(self, use_cache=True):
+        print("""Compute the rij_wij matrix in C++""")
+        lower_i = flex.int()
+        upper_i = flex.int()
+        for lidx in range(self._lattices.size()):
+          LL,UU = self._lattice_lower_upper_index(lidx)
+          print(lidx,LL,UU)
+          lower_i.append(LL)
+          if UU is None:  UU = self._data.data().size()
+          upper_i.append(UU)
+        indices = {}
+        space_group_type = self._data.space_group().type()
+        print (space_group_type.lookup_symbol(), "weight mode", self._weights)
+        from xfel.merging import compute_rij_wij_detail
+        CC = compute_rij_wij_detail()
+        for cb_op in self.sym_ops:
+            cb_op = sgtbx.change_of_basis_op(cb_op)
+            indices_reindexed = cb_op.apply(self._data.indices())
+            miller.map_to_asu(space_group_type, False, indices_reindexed)
+            indices[cb_op.as_xyz()] = indices_reindexed
+            CC.set_indices(cb_op, indices_reindexed)
+        print(CC.foo(self._lattices.size(), lower_i, upper_i, self._data.data()))
+
+
+    def __init__(self):
+      import pickle
+      with open("big_data","rb") as F:
+        self._lattices = pickle.load(F)
+        self.sym_ops = pickle.load(F)
+        self._weights = pickle.load(F)
+        self._data = pickle.load(F)
+        self._patterson_group = pickle.load(F)
+        self._min_pairs = 3 # minimum number of mutual miller indices for a match
+
+if __name__=="__main__":
+  REP = Reproducer()
+  REP.compute_rij_wij_cplusplus()
+  # set nproc to 64 for Gildea algorithm
+  REP._nproc =  64
+  Rij, Wij = REP.compute_rij_wij_Gildea()
+  if True:
+        # debugging code useful for understanding the overall matrix structure
+        from matplotlib import pyplot as plt
+        plt.imshow(Rij.as_numpy_array())
+        plt.show()
+        plt.imshow(Wij.as_numpy_array(), vmin=0, vmax=20)
+        plt.show()
+
+  print("OK")
