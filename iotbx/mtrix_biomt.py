@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from scitbx import matrix
 import iotbx.pdb
 from libtbx.utils import Sorry
+from six import string_types
 from six.moves import range, zip
 
 class container(object):
@@ -58,8 +59,109 @@ class container(object):
   def is_empty(self):
     return len(self.r) == 0
 
+def process_BIOMT_records_cif(cif_block, eps=1e-4):
+  # this is temporarily work-around. Whole thing for matrices need to be
+  # rewritten to be able to carry all the info from mmCIF, see
+  # https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/biological-assemblies#Anchor-Biol
+  # Therefore massive copy-paste from below process_mtrix_records()
+  t_trans = []
+  t_rots = []
+  t_serial_number = []
+  t_coordinates_present = []
+  ncs_oper = cif_block.get('_pdbx_struct_oper_list.id')
+  if ncs_oper is not None:
+    for i, sn in enumerate(ncs_oper):
+      t_serial_number.append((sn, i))
+      t_coordinates_present.append(False) # no way to figure out
 
-def process_BIOMT_records(lines, eps=1e-4):
+      r = [(cif_block.get('_pdbx_struct_oper_list.matrix[%s][%s]' %(x,y))[i])
+        for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
+      t_rots.append(matrix.sqr([float(r_elem) for r_elem in r] ))
+      t = [(cif_block.get('_pdbx_struct_oper_list.vector[%s]' %x)[i])
+        for x in '123']
+      t_trans.append(matrix.col([float(t_elem) for t_elem in t] ))
+
+  # filter everything for X0 and P here:
+  # Why??? Nobody promised that id would be integer, it is a 'single word':
+  # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_pdbx_struct_oper_list.id.html
+  trans = []
+  rots = []
+  serial_number = []
+  coordinates_present = []
+  for sn, r, t, cp in zip(t_serial_number, t_rots, t_trans, t_coordinates_present):
+    if sn[0] != "P" and sn[0] != "X0" and sn[0] != "H":
+      trans.append(t)
+      rots.append(r)
+      serial_number.append((sn[0], int(sn[0])-1 ))
+      coordinates_present.append(cp)
+  items_order = [i for (_,i) in serial_number]
+  trans = [trans[i] for i in items_order]
+  rots = [rots[i] for i in items_order]
+  coordinates_present = [coordinates_present[i] for i in items_order]
+  serial_number = [j for (j,_) in serial_number]
+  # collect results
+  result = iotbx.mtrix_biomt.container()
+  for sn,r,t,cp in zip(serial_number,rots,trans,coordinates_present):
+    # if not r.is_r3_rotation_matrix(rms_tolerance=eps):
+    #   if error_handle:
+    #     raise Sorry('Rotation matrices are not proper! ')
+    #   else:
+    #     print(Sorry('Rotation matrices are not proper! '))
+    ignore_transform = r.is_r3_identity_matrix() and t.is_col_zero()
+    result.add(
+      r=r, t=t,
+      coordinates_present=(cp or ignore_transform),
+      serial_number=sn)
+  return result
+
+def process_MTRIX_records_cif(cif_block, eps=1e-4):
+  trans = []
+  rots = []
+  serial_number = []
+  coordinates_present = []
+  ncs_oper = cif_block.get('_struct_ncs_oper.id')
+  if ncs_oper is not None:
+    for i,sn in enumerate(ncs_oper):
+      serial_number.append((sn,i))
+      coordinates_present.append(
+        cif_block.get('_struct_ncs_oper.code')[i] == 'given')
+      r = [(cif_block.get('_struct_ncs_oper.matrix[%s][%s]' %(x,y)))
+        for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
+      if not isinstance(r[0], string_types):
+        r = [elem[i] for elem in r]
+      try:
+        rots.append(matrix.sqr([float(r_elem) for r_elem in r]) )
+        t = [(cif_block.get('_struct_ncs_oper.vector[%s]' %x))
+          for x in '123']
+        if not isinstance(t[0], string_types):
+          t = [elem[i] for elem in t]
+        trans.append(matrix.col([float(t_elem) for t_elem in t]))
+      except ValueError:
+        raise Sorry("Error in _struct_ncs information. Likely '?' instead of a number.")
+  # sort records by serial number
+  serial_number.sort()
+  items_order = [i for (_,i) in serial_number]
+  trans = [trans[i] for i in items_order]
+  rots = [rots[i] for i in items_order]
+  coordinates_present = [coordinates_present[i] for i in items_order]
+  serial_number = [j for (j,_) in serial_number]
+  # collect results
+  result = iotbx.mtrix_biomt.container()
+  for sn,r,t,cp in zip(serial_number,rots,trans,coordinates_present):
+    # if not r.is_r3_rotation_matrix(rms_tolerance=eps):
+    #   if error_handle:
+    #     assert 0
+    #     raise Sorry('Rotation matrices are not proper! ')
+    #   else:
+    #     print(Sorry('Rotation matrices are not proper! '))
+    ignore_transform = r.is_r3_identity_matrix() and t.is_col_zero()
+    result.add(
+      r=r, t=t,
+      coordinates_present=(cp or ignore_transform),
+      serial_number=sn)
+  return result
+
+def process_BIOMT_records_pdb(lines, eps=1e-4):
   '''(pdb_data,boolean,float) -> group of lists
   extract REMARK 350 BIOMT information, information that provides rotation matrices
   and translation  data, required for generating  a complete multimer from the asymmetric unit.
@@ -131,7 +233,7 @@ def process_BIOMT_records(lines, eps=1e-4):
         serial_number=i+1)
   return result
 
-def process_MTRIX_records(lines, eps=1e-4):
+def process_MTRIX_records_pdb(lines, eps=1e-4):
   """
   Read MTRIX records from a pdb file
   """

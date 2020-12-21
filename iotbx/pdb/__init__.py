@@ -1253,15 +1253,15 @@ class _():
           "Improper set of PDB SCALE records%s" % source_info)
     return self._scale_matrix
 
-  def process_BIOMT_records(self,error_handle=True,eps=1e-4):
+  def process_BIOMT_records(self,eps=1e-4):
     import iotbx.mtrix_biomt
-    return iotbx.mtrix_biomt.process_BIOMT_records(
+    return iotbx.mtrix_biomt.process_BIOMT_records_pdb(
       lines = self.extract_remark_iii_records(350),
       eps=eps)
 
   def process_MTRIX_records(self, eps=1e-4):
     import iotbx.mtrix_biomt
-    return iotbx.mtrix_biomt.process_MTRIX_records(
+    return iotbx.mtrix_biomt.process_MTRIX_records_pdb(
       lines=self.crystallographic_section(),
       eps=eps)
 
