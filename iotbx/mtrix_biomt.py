@@ -102,11 +102,6 @@ def process_BIOMT_records_cif(cif_block, eps=1e-4):
   # collect results
   result = iotbx.mtrix_biomt.container()
   for sn,r,t,cp in zip(serial_number,rots,trans,coordinates_present):
-    # if not r.is_r3_rotation_matrix(rms_tolerance=eps):
-    #   if error_handle:
-    #     raise Sorry('Rotation matrices are not proper! ')
-    #   else:
-    #     print(Sorry('Rotation matrices are not proper! '))
     ignore_transform = r.is_r3_identity_matrix() and t.is_col_zero()
     result.add(
       r=r, t=t,
@@ -148,12 +143,6 @@ def process_MTRIX_records_cif(cif_block, eps=1e-4):
   # collect results
   result = iotbx.mtrix_biomt.container()
   for sn,r,t,cp in zip(serial_number,rots,trans,coordinates_present):
-    # if not r.is_r3_rotation_matrix(rms_tolerance=eps):
-    #   if error_handle:
-    #     assert 0
-    #     raise Sorry('Rotation matrices are not proper! ')
-    #   else:
-    #     print(Sorry('Rotation matrices are not proper! '))
     ignore_transform = r.is_r3_identity_matrix() and t.is_col_zero()
     result.add(
       r=r, t=t,
