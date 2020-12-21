@@ -175,7 +175,7 @@ p, li { white-space: pre-wrap; }
                </sizepolicy>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>1</number>
               </property>
               <widget class="QWidget" name="tab">
                <attribute name="title">
@@ -367,6 +367,13 @@ p, li { white-space: pre-wrap; }
                      </property>
                      <property name="indent">
                       <number>1</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QCheckBox" name="PlaneParallelCheckbox">
+                     <property name="text">
+                      <string>Oriented Parallel to Screen</string>
                      </property>
                     </widget>
                    </item>
@@ -787,6 +794,49 @@ p, li { white-space: pre-wrap; }
                    <property name="bottomMargin">
                     <number>3</number>
                    </property>
+                   <item row="1" column="0">
+                    <widget class="QTableWidget" name="vectortable2">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                       <horstretch>3</horstretch>
+                       <verstretch>3</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="verticalScrollMode">
+                      <enum>QAbstractItemView::ScrollPerPixel</enum>
+                     </property>
+                     <property name="horizontalScrollMode">
+                      <enum>QAbstractItemView::ScrollPerPixel</enum>
+                     </property>
+                     <property name="wordWrap">
+                      <bool>false</bool>
+                     </property>
+                     <property name="rowCount">
+                      <number>4</number>
+                     </property>
+                     <property name="columnCount">
+                      <number>5</number>
+                     </property>
+                     <attribute name="horizontalHeaderDefaultSectionSize">
+                      <number>60</number>
+                     </attribute>
+                     <attribute name="verticalHeaderVisible">
+                      <bool>false</bool>
+                     </attribute>
+                     <attribute name="verticalHeaderDefaultSectionSize">
+                      <number>24</number>
+                     </attribute>
+                     <row/>
+                     <row/>
+                     <row/>
+                     <row/>
+                     <column/>
+                     <column/>
+                     <column/>
+                     <column/>
+                     <column/>
+                    </widget>
+                   </item>
                    <item row="0" column="0">
                     <widget class="QCheckBox" name="ShowAllVectorsBtn">
                      <property name="text">
@@ -812,19 +862,7 @@ p, li { white-space: pre-wrap; }
                       <enum>QFrame::Raised</enum>
                      </property>
                      <layout class="QGridLayout" name="gridLayout_18">
-                      <property name="leftMargin">
-                       <number>3</number>
-                      </property>
-                      <property name="topMargin">
-                       <number>3</number>
-                      </property>
-                      <property name="rightMargin">
-                       <number>3</number>
-                      </property>
-                      <property name="bottomMargin">
-                       <number>3</number>
-                      </property>
-                      <item row="0" column="0">
+                      <item row="0" column="0" colspan="2">
                        <widget class="QLabel" name="rotavecangle_labeltxt">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
@@ -846,7 +884,7 @@ p, li { white-space: pre-wrap; }
                         </property>
                        </widget>
                       </item>
-                      <item row="1" column="0">
+                      <item row="1" column="0" colspan="2">
                        <widget class="QSlider" name="rotavecangle_slider">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
@@ -874,20 +912,7 @@ p, li { white-space: pre-wrap; }
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="0">
-                       <widget class="QCheckBox" name="AnimaRotCheckBox">
-                        <property name="sizePolicy">
-                         <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                          <horstretch>0</horstretch>
-                          <verstretch>0</verstretch>
-                         </sizepolicy>
-                        </property>
-                        <property name="text">
-                         <string>Rotate continuously</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="0">
+                      <item row="2" column="0" colspan="2">
                        <widget class="QGroupBox" name="AlignVectorGroupBox">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
@@ -931,50 +956,55 @@ p, li { white-space: pre-wrap; }
                         </layout>
                        </widget>
                       </item>
+                      <item row="3" column="0" colspan="2">
+                       <widget class="QCheckBox" name="AnimaRotCheckBox">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="text">
+                         <string>Rotate continuously</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QLabel" name="label_8">
+                        <property name="text">
+                         <string>Speed</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QSlider" name="AnimateSpeedSlider">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>20</number>
+                        </property>
+                        <property name="pageStep">
+                         <number>1</number>
+                        </property>
+                        <property name="value">
+                         <number>5</number>
+                        </property>
+                        <property name="sliderPosition">
+                         <number>5</number>
+                        </property>
+                        <property name="orientation">
+                         <enum>Qt::Horizontal</enum>
+                        </property>
+                        <property name="tickPosition">
+                         <enum>QSlider::TicksAbove</enum>
+                        </property>
+                        <property name="tickInterval">
+                         <number>1</number>
+                        </property>
+                       </widget>
+                      </item>
                      </layout>
-                    </widget>
-                   </item>
-                   <item row="1" column="0">
-                    <widget class="QTableWidget" name="vectortable2">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                       <horstretch>3</horstretch>
-                       <verstretch>3</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="verticalScrollMode">
-                      <enum>QAbstractItemView::ScrollPerPixel</enum>
-                     </property>
-                     <property name="horizontalScrollMode">
-                      <enum>QAbstractItemView::ScrollPerPixel</enum>
-                     </property>
-                     <property name="wordWrap">
-                      <bool>false</bool>
-                     </property>
-                     <property name="rowCount">
-                      <number>4</number>
-                     </property>
-                     <property name="columnCount">
-                      <number>5</number>
-                     </property>
-                     <attribute name="horizontalHeaderDefaultSectionSize">
-                      <number>60</number>
-                     </attribute>
-                     <attribute name="verticalHeaderVisible">
-                      <bool>false</bool>
-                     </attribute>
-                     <attribute name="verticalHeaderDefaultSectionSize">
-                      <number>24</number>
-                     </attribute>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <row/>
-                     <column/>
-                     <column/>
-                     <column/>
-                     <column/>
-                     <column/>
                     </widget>
                    </item>
                   </layout>

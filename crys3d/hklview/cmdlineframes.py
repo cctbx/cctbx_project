@@ -264,7 +264,7 @@ class HKLViewFrame() :
         self.rotate_around_vector2(phl.clip_plane.angle_around_vector)
 
       if view_3d.has_phil_path(diff_phil, "animate_rotation_around_vector"):
-        self.animate_rotate_around_vector(phl.clip_plane.animate_rotation_around_vector)
+        self.animate_rotate_around_vector()
 
       if view_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
         self.set_default_spacegroup()
@@ -1122,8 +1122,8 @@ class HKLViewFrame() :
       self.viewer.RotateAroundFracVector(phi, R[0][0], R[0][1], R[0][2], vectortype="cartesian")
 
 
-  def animate_rotate_around_vector(self, vecnr_speed):
-    vecnr, speed = eval(vecnr_speed)
+  def animate_rotate_around_vector(self):
+    vecnr, speed = eval(self.params.NGL_HKLviewer.clip_plane.animate_rotation_around_vector)
     if vecnr < len(self.viewer.all_vectors):
       cartvec = self.viewer.all_vectors[vecnr][2]
       R = flex.vec3_double([cartvec])
