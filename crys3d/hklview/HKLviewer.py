@@ -741,7 +741,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       if c in self.currentphilstringdict['NGL_HKLviewer.viewer.slice_axis']:
         break
 
-    #self.SliceLabelComboBox.setCurrentIndex( axidx )
+    self.SliceLabelComboBox.setCurrentIndex( axidx )
     self.cameraPerspectCheckBox.setChecked( "perspective" in self.currentphilstringdict['NGL_HKLviewer.NGL.camera_type'])
     #self.ClipPlaneChkGroupBox.setChecked( self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth'] != None and not self.showsliceGroupCheckbox.isChecked() )
     if self.currentphilstringdict['NGL_HKLviewer.clip_plane.clipwidth']:
@@ -980,14 +980,16 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
   def onSliceComboSelchange(self,i):
     if self.unfeedback:
       return
-    # 4th element in each table row is the min-max span of hkls.
-    rmin = self.array_infotpls[self.MillerComboBox.currentIndex()][4][0][i]
-    rmax = self.array_infotpls[self.MillerComboBox.currentIndex()][4][1][i]
+    # 3th element in each table row is the min-max span of hkls.
+    rmin = self.array_infotpls[self.MillerComboBox.currentIndex()][3][0][i]
+    rmax = self.array_infotpls[self.MillerComboBox.currentIndex()][3][1][i]
     self.sliceindexspinBox.setRange(rmin, rmax)
     self.PhilToJsRender("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis[i] )
 
 
   def onSliceIndexChanged(self, val):
+    if self.unfeedback:
+      return
     self.sliceindex = val
     self.PhilToJsRender("NGL_HKLviewer.viewer.slice_index = %d" %self.sliceindex)
 
@@ -1275,6 +1277,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.sliceindexspinBox.setSingleStep(1)
     self.sliceindexspinBox.setRange(-100, 100)
     self.sliceindexspinBox.valueChanged.connect(self.onSliceIndexChanged)
+    self.SliceLabelComboBox.activated.connect(self.onSliceComboSelchange)
     self.sliceaxis = { 0:"h", 1:"k", 2:"l" }
     self.SliceLabelComboBox.addItems( list( self.sliceaxis.values()) )
 
@@ -1312,7 +1315,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.hkldist_spinBox.setSingleStep(0.5)
     self.hkldist_spinBox.setRange(-100.0, 100.0)
     self.hkldist_spinBox.valueChanged.connect(self.onHKLdistChanged)
-    self.clipwidth_spinBox.setValue(0.5 )
+    self.clipwidth_spinBox.setValue(4 )
     self.clipwidth_spinBox.setDecimals(vprec)
     self.clipwidth_spinBox.setSingleStep(0.05)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
@@ -1364,6 +1367,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
   def onClipPlaneChkBox(self):
     if self.unfeedback:
       return
+    hkldist, clipwidth = -1, None
     if self.ClipPlaneChkGroupBox.isChecked():
       if self.showsliceGroupCheckbox.isChecked() == False:
         self.showsliceGroupCheckbox.setChecked(False)
@@ -1373,14 +1377,15 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
                                                       inbrowser = True
                                                   }
                             """)
-      self.clipwidth_spinBox.setValue(4)
-      philstr = """NGL_HKLviewer.clip_plane {
+      #self.clipwidth_spinBox.setValue(4)
+      hkldist, clipwidth = self.hkldistval, self.clipwidth_spinBox.value()
+    philstr = """NGL_HKLviewer.clip_plane {
   hkldist = %s
   clipwidth = %s
 }
-        """ %(self.hkldistval, self.clipwidth_spinBox.value() )
+        """ %(hkldist, clipwidth )
 
-      self.PhilToJsRender(philstr)
+    self.PhilToJsRender(philstr)
     #else:
     #  self.showsliceGroupCheckbox.setChecked(True)
     #  self.PhilToJsRender("""NGL_HKLviewer.viewer.slice_mode = True
@@ -1407,6 +1412,19 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     angle_around_vector = '[%d, %f]'
     bequiet = False
 }""" %(self.rotvec, val))
+
+
+  def onAnimateRotation(self):
+    if self.AnimaRotCheckBox.isChecked() == True:
+      speed = self.rotavecangle_slider.value()
+      self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
+      animate_rotation_around_vector = '[%d, %f]'
+}""" %(self.rotvec, speed))
+    else:
+      speed = self.rotavecangle_slider.value()
+      self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
+      animate_rotation_around_vector = '[%d, %f]'
+}""" %(self.rotvec, -1.0))
 
 
   def onClipwidthChanged(self, val):
@@ -1630,6 +1648,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.AlignParallelBtn.clicked.connect(self.onAlignedVector)
     self.AlignNormalBtn.clicked.connect(self.onAlignedVector)
     self.AlignVectorGroupBox.clicked.connect(self.onAlignedVector)
+    self.AnimaRotCheckBox.clicked.connect(self.onAnimateRotation)
 
 
   def onResetView(self):

@@ -1905,6 +1905,26 @@ Distance: %s
     return self.currentRotmx, [ux, uy, uz]
 
 
+  def AnimateRotateAroundFracVector(self, speed, r1,r2,r3,
+                             vectortype="cartesian", quietbrowser=True):
+    if vectortype == "cartesian":
+      cartvec = list( (r1,r2,r3))
+      self.currentrotvec = cartvec # assuming angle_around_vector is the trigger
+    elif vectortype == "reciprocal":
+    # Assuming vector is in reciprocal space coordinates turn it into cartesian
+      cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().fractionalization_matrix()).transpose() )
+    elif vectortype == "fractional":
+      # Assuming vector is in real space fractional coordinates turn it into cartesian
+      cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().orthogonalization_matrix()) )
+    else:
+      raise Sorry("Set vectortype to either 'cartesian', 'reciprocal' or 'fractional'.")
+    normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+    ux = cartvec[0]/normR
+    uy = cartvec[1]/normR
+    uz = cartvec[2]/normR
+    self.AnimateRotateAxisComponents([ux,uy,uz], speed, quietbrowser)
+
+
   def SpinAnimate(self, r1, r2, r3):
     self.AddToBrowserMsgQueue("SpinAnimate", "%s, %s, %s" %(r1, r2, r3) )
 
@@ -2208,6 +2228,18 @@ Distance: %s
     if not quietbrowser:
       msg = str_rot + ", verbose\n"
     self.AddToBrowserMsgQueue("RotateAxisComponents", msg)
+
+
+  def AnimateRotateAxisComponents(self, vec, speed, quietbrowser=True):
+    if self.cameraPosZ is None:
+      return
+    str_rot = str(list(vec)) + ", " + str(speed)
+    str_rot = str_rot.replace("[", "")
+    str_rot = str_rot.replace("]", "")
+    msg = str_rot + ", quiet\n"
+    if not quietbrowser:
+      msg = str_rot + ", verbose\n"
+    self.AddToBrowserMsgQueue("AnimateRotateAxisComponents", msg)
 
 
   def TranslateHKLpoints(self, h, k, l, mag):

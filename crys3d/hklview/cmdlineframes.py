@@ -263,6 +263,9 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "angle_around_vector"):
         self.rotate_around_vector2(phl.clip_plane.angle_around_vector)
 
+      if view_3d.has_phil_path(diff_phil, "animate_rotation_around_vector"):
+        self.animate_rotate_around_vector(phl.clip_plane.animate_rotation_around_vector)
+
       if view_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
         self.set_default_spacegroup()
 
@@ -978,12 +981,12 @@ class HKLViewFrame() :
     if self.tncsvec is not None:
       uc = self.viewer.miller_array.unit_cell()
       # TNCS vector is specified in realspace fractional coordinates. Convert it to cartesian
-      vec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
+      cartvec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
       #vscale =  1.0/self.viewer.scene.renderscale
       #svec1 = [ vscale*vec[0], vscale*vec[1], vscale*vec[2] ]
       ln = len(self.viewer.all_vectors)
-      self.viewer.all_vectors.append( (ln, "TNCS", vec, str(roundoff(self.tncsvec, 5)), "") )
-    self.viewer.all_vectors.extend(self.uservectors)
+      self.viewer.all_vectors.append( (ln, "TNCS", cartvec, "", "", str(roundoff(self.tncsvec, 5)) ) )
+    self.viewer.all_vectors = self.viewer.all_vectors + self.uservectors
     for (opnr, label, cartvec, hkl_op, hkl, abc) in self.viewer.all_vectors:
       # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
       name = label + hkl_op.replace(",", "_")
@@ -1117,7 +1120,14 @@ class HKLViewFrame() :
       phi = cmath.pi*dgr/180
       R = flex.vec3_double([cartvec])
       self.viewer.RotateAroundFracVector(phi, R[0][0], R[0][1], R[0][2], vectortype="cartesian")
-      #self.mprint("First specify vector around which to rotate")
+
+
+  def animate_rotate_around_vector(self, vecnr_speed):
+    vecnr, speed = eval(vecnr_speed)
+    if vecnr < len(self.viewer.all_vectors):
+      cartvec = self.viewer.all_vectors[vecnr][2]
+      R = flex.vec3_double([cartvec])
+      self.viewer.AnimateRotateAroundFracVector(speed, R[0][0], R[0][1], R[0][2], vectortype="cartesian")
 
 
   def RotateAroundVector(self, dgr, bequiet):
@@ -1240,6 +1250,8 @@ NGL_HKLviewer {
     l = 0
       .type = float
     angle_around_vector = \"[0,0]\"
+      .type = str
+    animate_rotation_around_vector = \"[0,0]\"
       .type = str
     hkldist = 0.0
       .type = float
