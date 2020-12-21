@@ -757,8 +757,7 @@ function onMessage(e)
       );
     }
 
-    if (msgtype === "RotateAxisComponents")
-    {
+    if (msgtype === "RotateAxisComponents") {
       WebsockSendMsg('Rotating components around axis ' + pagename);
       var sm = new Float32Array(9);
       var m4 = new NGL.Matrix4();
@@ -768,17 +767,58 @@ function onMessage(e)
       axis.y = parseFloat(val[1]);
       axis.z = parseFloat(val[2]);
       m4.makeRotationAxis(axis, theta);
-      
+
       shapeComp.setTransform(m4);
-      for (i = 0; i < vectorshapeComps.length; i++)
-      {
+      for (i = 0; i < vectorshapeComps.length; i++) {
         if (typeof vectorshapeComps[i].reprList != "undefined")
           vectorshapeComps[i].setTransform(m4);
       }
-      
+
       if (val[4] == "verbose")
         postrotmxflag = true;
       RenderRequest();
+      sleep(100).then(() => {
+        msg = String(shapeComp.matrix.elements);
+        WebsockSendMsg('CurrentComponentRotation:\n' + msg);
+      }
+      );
+    }
+
+    if (msgtype === "AnimateRotateAxisComponents") {
+      WebsockSendMsg('Animate rotating components around axis ' + pagename);
+      var sm = new Float32Array(9);
+      var m4 = new NGL.Matrix4();
+      var axis = new NGL.Vector3();
+      var speed = parseFloat(val[3])*0.005;
+      axis.x = parseFloat(val[0]);
+      axis.y = parseFloat(val[1]);
+      axis.z = parseFloat(val[2]);
+
+      var then = 0;
+      var theta = 0.0;
+      function render(now)
+      {
+        now *= 0.001;
+        const deltaTime = now - then;
+        then = now;
+
+        theta = (theta + deltaTime*speed) % 360;
+        m4.makeRotationAxis(axis, theta);
+        shapeComp.setTransform(m4);
+        for (i = 0; i < vectorshapeComps.length; i++) {
+          if (typeof vectorshapeComps[i].reprList != "undefined")
+            vectorshapeComps[i].setTransform(m4);
+        }
+
+        if (speed > 0)
+        {
+          stage.viewer.requestRender();
+          requestAnimationFrame(render);
+        }
+      }
+      if (speed > 0)
+        requestAnimationFrame(render);
+
       sleep(100).then(() => {
         msg = String(shapeComp.matrix.elements);
         WebsockSendMsg('CurrentComponentRotation:\n' + msg);
