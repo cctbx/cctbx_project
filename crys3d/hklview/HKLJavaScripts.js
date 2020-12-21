@@ -71,7 +71,7 @@ var colourchart = null;
 var sockwaitcount = 0;
 var ready_for_closing = false;
 var columnSelect = null;
-
+var animationspeed = -1.0;
 var Hstarstart = null;
 var Hstarend = null;
 var Kstarstart = null;
@@ -789,7 +789,7 @@ function onMessage(e)
       var sm = new Float32Array(9);
       var m4 = new NGL.Matrix4();
       var axis = new NGL.Vector3();
-      var speed = parseFloat(val[3])*0.005;
+      animationspeed = parseFloat(val[3])*0.05;
       axis.x = parseFloat(val[0]);
       axis.y = parseFloat(val[1]);
       axis.z = parseFloat(val[2]);
@@ -802,21 +802,23 @@ function onMessage(e)
         const deltaTime = now - then;
         then = now;
 
-        theta = (theta + deltaTime*speed) % 360;
+        if (animationspeed > 0)
+          theta = (theta + deltaTime * animationspeed) % 360;
+        else
+          theta = 0.0;
+
         m4.makeRotationAxis(axis, theta);
         shapeComp.setTransform(m4);
         for (i = 0; i < vectorshapeComps.length; i++) {
           if (typeof vectorshapeComps[i].reprList != "undefined")
             vectorshapeComps[i].setTransform(m4);
         }
+        stage.viewer.requestRender();
 
-        if (speed > 0)
-        {
-          stage.viewer.requestRender();
+        if (animationspeed > 0)
           requestAnimationFrame(render);
-        }
       }
-      if (speed > 0)
+      if (animationspeed > 0)
         requestAnimationFrame(render);
 
       sleep(100).then(() => {

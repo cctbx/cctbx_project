@@ -24,6 +24,7 @@ from PySide2.QtGui import (QBrush, QColor, QConicalGradient, QCursor, QFont,
 from PySide2.QtWidgets import *
 
 
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if MainWindow.objectName():
@@ -262,6 +263,11 @@ class Ui_MainWindow(object):
         self.label_3.setIndent(1)
 
         self.gridLayout_6.addWidget(self.label_3, 0, 1, 1, 1)
+
+        self.PlaneParallelCheckbox = QCheckBox(self.showsliceGroupCheckbox)
+        self.PlaneParallelCheckbox.setObjectName(u"PlaneParallelCheckbox")
+
+        self.gridLayout_6.addWidget(self.PlaneParallelCheckbox, 1, 0, 1, 1)
 
 
         self.gridLayout_9.addWidget(self.showsliceGroupCheckbox, 1, 0, 1, 2)
@@ -506,6 +512,28 @@ class Ui_MainWindow(object):
         self.gridLayout_8.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_8.setObjectName(u"gridLayout_8")
         self.gridLayout_8.setContentsMargins(3, 3, 3, 3)
+        self.vectortable2 = QTableWidget(self.RotationVectorsBox)
+        if (self.vectortable2.columnCount() < 5):
+            self.vectortable2.setColumnCount(5)
+        if (self.vectortable2.rowCount() < 4):
+            self.vectortable2.setRowCount(4)
+        self.vectortable2.setObjectName(u"vectortable2")
+        sizePolicy18 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        sizePolicy18.setHorizontalStretch(3)
+        sizePolicy18.setVerticalStretch(3)
+        sizePolicy18.setHeightForWidth(self.vectortable2.sizePolicy().hasHeightForWidth())
+        self.vectortable2.setSizePolicy(sizePolicy18)
+        self.vectortable2.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.vectortable2.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.vectortable2.setWordWrap(False)
+        self.vectortable2.setRowCount(4)
+        self.vectortable2.setColumnCount(5)
+        self.vectortable2.horizontalHeader().setDefaultSectionSize(60)
+        self.vectortable2.verticalHeader().setVisible(False)
+        self.vectortable2.verticalHeader().setDefaultSectionSize(24)
+
+        self.gridLayout_8.addWidget(self.vectortable2, 1, 0, 1, 1)
+
         self.ShowAllVectorsBtn = QCheckBox(self.RotationVectorsBox)
         self.ShowAllVectorsBtn.setObjectName(u"ShowAllVectorsBtn")
         self.ShowAllVectorsBtn.setTristate(True)
@@ -514,51 +542,43 @@ class Ui_MainWindow(object):
 
         self.RotateAroundframe = QFrame(self.RotationVectorsBox)
         self.RotateAroundframe.setObjectName(u"RotateAroundframe")
-        sizePolicy18 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-        sizePolicy18.setHorizontalStretch(1)
-        sizePolicy18.setVerticalStretch(0)
-        sizePolicy18.setHeightForWidth(self.RotateAroundframe.sizePolicy().hasHeightForWidth())
-        self.RotateAroundframe.setSizePolicy(sizePolicy18)
+        sizePolicy19 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        sizePolicy19.setHorizontalStretch(1)
+        sizePolicy19.setVerticalStretch(0)
+        sizePolicy19.setHeightForWidth(self.RotateAroundframe.sizePolicy().hasHeightForWidth())
+        self.RotateAroundframe.setSizePolicy(sizePolicy19)
         self.RotateAroundframe.setFrameShape(QFrame.StyledPanel)
         self.RotateAroundframe.setFrameShadow(QFrame.Raised)
         self.gridLayout_18 = QGridLayout(self.RotateAroundframe)
         self.gridLayout_18.setSpacing(4)
         self.gridLayout_18.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_18.setObjectName(u"gridLayout_18")
-        self.gridLayout_18.setContentsMargins(3, 3, 3, 3)
         self.rotavecangle_labeltxt = QLabel(self.RotateAroundframe)
         self.rotavecangle_labeltxt.setObjectName(u"rotavecangle_labeltxt")
-        sizePolicy19 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        sizePolicy19.setHorizontalStretch(0)
-        sizePolicy19.setVerticalStretch(0)
-        sizePolicy19.setHeightForWidth(self.rotavecangle_labeltxt.sizePolicy().hasHeightForWidth())
-        self.rotavecangle_labeltxt.setSizePolicy(sizePolicy19)
+        sizePolicy20 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        sizePolicy20.setHorizontalStretch(0)
+        sizePolicy20.setVerticalStretch(0)
+        sizePolicy20.setHeightForWidth(self.rotavecangle_labeltxt.sizePolicy().hasHeightForWidth())
+        self.rotavecangle_labeltxt.setSizePolicy(sizePolicy20)
         self.rotavecangle_labeltxt.setMinimumSize(QSize(120, 0))
         self.rotavecangle_labeltxt.setWordWrap(True)
 
-        self.gridLayout_18.addWidget(self.rotavecangle_labeltxt, 0, 0, 1, 1)
+        self.gridLayout_18.addWidget(self.rotavecangle_labeltxt, 0, 0, 1, 2)
 
         self.rotavecangle_slider = QSlider(self.RotateAroundframe)
         self.rotavecangle_slider.setObjectName(u"rotavecangle_slider")
-        sizePolicy20 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
-        sizePolicy20.setHorizontalStretch(0)
-        sizePolicy20.setVerticalStretch(0)
-        sizePolicy20.setHeightForWidth(self.rotavecangle_slider.sizePolicy().hasHeightForWidth())
-        self.rotavecangle_slider.setSizePolicy(sizePolicy20)
+        sizePolicy21 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
+        sizePolicy21.setHorizontalStretch(0)
+        sizePolicy21.setVerticalStretch(0)
+        sizePolicy21.setHeightForWidth(self.rotavecangle_slider.sizePolicy().hasHeightForWidth())
+        self.rotavecangle_slider.setSizePolicy(sizePolicy21)
         self.rotavecangle_slider.setMinimumSize(QSize(120, 0))
         self.rotavecangle_slider.setMaximum(359)
         self.rotavecangle_slider.setOrientation(Qt.Horizontal)
         self.rotavecangle_slider.setTickPosition(QSlider.TicksAbove)
         self.rotavecangle_slider.setTickInterval(18)
 
-        self.gridLayout_18.addWidget(self.rotavecangle_slider, 1, 0, 1, 1)
-
-        self.AnimaRotCheckBox = QCheckBox(self.RotateAroundframe)
-        self.AnimaRotCheckBox.setObjectName(u"AnimaRotCheckBox")
-        sizePolicy20.setHeightForWidth(self.AnimaRotCheckBox.sizePolicy().hasHeightForWidth())
-        self.AnimaRotCheckBox.setSizePolicy(sizePolicy20)
-
-        self.gridLayout_18.addWidget(self.AnimaRotCheckBox, 2, 0, 1, 1)
+        self.gridLayout_18.addWidget(self.rotavecangle_slider, 1, 0, 1, 2)
 
         self.AlignVectorGroupBox = QGroupBox(self.RotateAroundframe)
         self.AlignVectorGroupBox.setObjectName(u"AlignVectorGroupBox")
@@ -581,32 +601,35 @@ class Ui_MainWindow(object):
         self.gridLayout_17.addWidget(self.AlignNormalBtn, 1, 0, 1, 1)
 
 
-        self.gridLayout_18.addWidget(self.AlignVectorGroupBox, 3, 0, 1, 1)
+        self.gridLayout_18.addWidget(self.AlignVectorGroupBox, 2, 0, 1, 2)
+
+        self.AnimaRotCheckBox = QCheckBox(self.RotateAroundframe)
+        self.AnimaRotCheckBox.setObjectName(u"AnimaRotCheckBox")
+        sizePolicy21.setHeightForWidth(self.AnimaRotCheckBox.sizePolicy().hasHeightForWidth())
+        self.AnimaRotCheckBox.setSizePolicy(sizePolicy21)
+
+        self.gridLayout_18.addWidget(self.AnimaRotCheckBox, 3, 0, 1, 2)
+
+        self.label_8 = QLabel(self.RotateAroundframe)
+        self.label_8.setObjectName(u"label_8")
+
+        self.gridLayout_18.addWidget(self.label_8, 4, 0, 1, 1)
+
+        self.AnimateSpeedSlider = QSlider(self.RotateAroundframe)
+        self.AnimateSpeedSlider.setObjectName(u"AnimateSpeedSlider")
+        self.AnimateSpeedSlider.setMinimum(1)
+        self.AnimateSpeedSlider.setMaximum(20)
+        self.AnimateSpeedSlider.setPageStep(1)
+        self.AnimateSpeedSlider.setValue(5)
+        self.AnimateSpeedSlider.setSliderPosition(5)
+        self.AnimateSpeedSlider.setOrientation(Qt.Horizontal)
+        self.AnimateSpeedSlider.setTickPosition(QSlider.TicksAbove)
+        self.AnimateSpeedSlider.setTickInterval(1)
+
+        self.gridLayout_18.addWidget(self.AnimateSpeedSlider, 4, 1, 1, 1)
 
 
         self.gridLayout_8.addWidget(self.RotateAroundframe, 0, 1, 2, 1)
-
-        self.vectortable2 = QTableWidget(self.RotationVectorsBox)
-        if (self.vectortable2.columnCount() < 5):
-            self.vectortable2.setColumnCount(5)
-        if (self.vectortable2.rowCount() < 4):
-            self.vectortable2.setRowCount(4)
-        self.vectortable2.setObjectName(u"vectortable2")
-        sizePolicy21 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        sizePolicy21.setHorizontalStretch(3)
-        sizePolicy21.setVerticalStretch(3)
-        sizePolicy21.setHeightForWidth(self.vectortable2.sizePolicy().hasHeightForWidth())
-        self.vectortable2.setSizePolicy(sizePolicy21)
-        self.vectortable2.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self.vectortable2.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self.vectortable2.setWordWrap(False)
-        self.vectortable2.setRowCount(4)
-        self.vectortable2.setColumnCount(5)
-        self.vectortable2.horizontalHeader().setDefaultSectionSize(60)
-        self.vectortable2.verticalHeader().setVisible(False)
-        self.vectortable2.verticalHeader().setDefaultSectionSize(24)
-
-        self.gridLayout_8.addWidget(self.vectortable2, 1, 0, 1, 1)
 
 
         self.gridLayout_14.addWidget(self.RotationVectorsBox, 0, 0, 1, 1)
@@ -729,7 +752,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.functionTabWidget.setCurrentIndex(0)
+        self.functionTabWidget.setCurrentIndex(1)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -760,6 +783,7 @@ class Ui_MainWindow(object):
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab), QCoreApplication.translate("MainWindow", u"Expansion", None))
         self.showsliceGroupCheckbox.setTitle(QCoreApplication.translate("MainWindow", u"Explicitly with a plane at", None))
         self.label_3.setText(QCoreApplication.translate("MainWindow", u"equal to", None))
+        self.PlaneParallelCheckbox.setText(QCoreApplication.translate("MainWindow", u"Oriented Parallel to Screen", None))
         self.ClipPlaneChkGroupBox.setTitle(QCoreApplication.translate("MainWindow", u"Slice with a clip plane defined by:", None))
         self.label_16.setText(QCoreApplication.translate("MainWindow", u"Clip Plane Width:", None))
         self.label_17.setText(QCoreApplication.translate("MainWindow", u"Distance from origin:", None))
@@ -798,10 +822,11 @@ class Ui_MainWindow(object):
         self.RotationVectorsBox.setTitle(QCoreApplication.translate("MainWindow", u"Rotation Operators or Vector(s)", None))
         self.ShowAllVectorsBtn.setText(QCoreApplication.translate("MainWindow", u"Show All", None))
         self.rotavecangle_labeltxt.setText(QCoreApplication.translate("MainWindow", u"Rotate Reflections around Vector with Angle", None))
-        self.AnimaRotCheckBox.setText(QCoreApplication.translate("MainWindow", u"Rotate continuously", None))
         self.AlignVectorGroupBox.setTitle(QCoreApplication.translate("MainWindow", u"Align Vector", None))
         self.AlignParallelBtn.setText(QCoreApplication.translate("MainWindow", u"Parallel to Screen", None))
         self.AlignNormalBtn.setText(QCoreApplication.translate("MainWindow", u"Normal to Screen", None))
+        self.AnimaRotCheckBox.setText(QCoreApplication.translate("MainWindow", u"Rotate continuously", None))
+        self.label_8.setText(QCoreApplication.translate("MainWindow", u"Speed", None))
 #if QT_CONFIG(tooltip)
         self.DrawReciprocUnitCellBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>The reciprocal unit cell spanning a*,b*,c* from (0,0,0) to (1,1,1) is located in the centre of the displayed reflections. and is therefore quite small. Adjust the slider to scale its outline to become compatible with the sphere of displayed reflections.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)

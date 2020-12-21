@@ -434,8 +434,9 @@ class hklview_3d:
     if has_phil_path(diff_phil, "show_tooltips"):
       self.set_show_tooltips()
 
-    if has_phil_path(diff_phil, "fixorientation"):
-      self.fix_orientation()
+    #if has_phil_path(diff_phil, "fixorientation"):
+    #  self.fix_orientation()
+    #  #self.orient_vector_parallel_with_screen(self.currentrotvec)
 
     if has_phil_path(diff_phil, "tooltip_alpha"):
       self.set_tooltip_opacity()
@@ -446,15 +447,18 @@ class hklview_3d:
     if has_phil_path(diff_phil, "show_vector"):
       self.show_vector()
 
-    if has_phil_path(diff_phil, "expand_to_p1", "expand_anomalous") \
-     and self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
-      self.ExpandInBrowser()
-
     if has_phil_path(diff_phil, "miller_array_operations"):
       self.viewerparams.scene_id = len(self.HKLscenedict)-1
       self.set_scene(self.viewerparams.scene_id)
       self.params.miller_array_operations = ""
-
+    
+    if self.viewerparams.slice_mode: # explicit slicing is not volatile
+      if self.viewerparams.slice_axis=="h": hkl = [1,0,0]
+      if self.viewerparams.slice_axis=="k": hkl = [0,1,0]
+      if self.viewerparams.slice_axis=="l": hkl = [0,0,1]
+      R = hkl[0] * self.normal_kl + hkl[1] * self.normal_lh - hkl[2] * self.normal_hk
+      self.orient_vector_parallel_with_screen(R[0])
+    
     if has_phil_path(diff_phil,
                       "scene_bin_thresholds", # TODO: group bin phil parameters together in subscope
                       "bin_opacities",
@@ -481,18 +485,13 @@ class hklview_3d:
     if self.viewerparams.scene_id is not None:
       if has_phil_path(self.diff_phil, "angle_around_vector"): # no need to redraw any clip plane
         return
-      self.fix_orientation()
+      self.orient_vector_parallel_with_screen(self.currentrotvec)
       self.SetMouseSpeed(self.ngl_settings.mouse_sensitivity)
       R = flex.vec3_double( [(0,0,0)])
       hkldist = -1
       clipwidth = None
       isreciprocal = True
-      if self.viewerparams.slice_mode: # explicit slicing
-        if self.viewerparams.slice_axis=="h": hkl = [1,0,0]
-        if self.viewerparams.slice_axis=="k": hkl = [0,1,0]
-        if self.viewerparams.slice_axis=="l": hkl = [0,0,1]
-        R = hkl[0] * self.normal_kl + hkl[1] * self.normal_lh - hkl[2] * self.normal_hk
-        clipwidth = 200
+      self.fix_orientation()
       if self.params.clip_plane.clipwidth and not self.viewerparams.slice_mode:
         clipwidth = self.params.clip_plane.clipwidth
         hkldist = self.params.clip_plane.hkldist
@@ -500,9 +499,6 @@ class hklview_3d:
         if self.params.clip_plane.fractional_vector == "realspace" or self.params.clip_plane.fractional_vector == "tncs":
           isreciprocal = False
       self.make_clip_plane(hkldist, clipwidth)
-      #self.clip_plane_vector(R[0][0], R[0][1], R[0][2], hkldist,
-      #    clipwidth, self.ngl_settings.fixorientation, self.params.clip_plane.is_parallel,
-      #    isreciprocal)
       if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
         self.ExpandInBrowser()
       self.SetOpacities(self.ngl_settings.bin_opacities )
@@ -1772,7 +1768,7 @@ Distance: %s
     return angle_x_xyvec, angle_z_svec
 
 
-  def PointVectorPerpendicularToClipPlane(self, angle_x_xyvec, angle_z_svec):
+  def PointVectorPerpendicularToScreen(self, angle_x_xyvec, angle_z_svec):
     rotmx = self.Euler2RotMatrix(( angle_x_xyvec, angle_z_svec, 0.0 ))
     if rotmx.determinant() < 0.99999:
       self.mprint("Rotation matrix determinant is less than 1")
@@ -1782,7 +1778,7 @@ Distance: %s
     return rotmx
 
 
-  def PointVectorParallelToClipPlane(self, angle_x_xyvec, angle_z_svec):
+  def PointVectorParallelToScreen(self, angle_x_xyvec, angle_z_svec):
     rotmx = self.Euler2RotMatrix(( angle_x_xyvec, angle_z_svec + 90.0, 90.0 ))
     if rotmx.determinant() < 0.99999:
       self.mprint("Rotation matrix determinant is less than 1")
@@ -1993,52 +1989,32 @@ Distance: %s
     self.realspace_scale = self.scene.renderscale * reciprocspan_length / bodydiagonal_length
 
 
+  def orient_vector_parallel_with_screen(self, cartvec):
+    if cartvec is None:
+      return
+    angle_x_xyvec, angle_z_svec = self.get_cartesian_vector_angles(0, 0, 0, 
+                                                                    cartvec[0], 
+                                                                    cartvec[1], 
+                                                                    cartvec[2])
+    if self.viewerparams.is_parallel:
+      self.PointVectorParallelToScreen(angle_x_xyvec, angle_z_svec)
+    else:
+      self.PointVectorPerpendicularToScreen(angle_x_xyvec, angle_z_svec)
+
+
   def fix_orientation(self):
     if self.viewerparams.fixorientation:
       self.DisableMouseRotation()
-      angle_x_xyvec, angle_z_svec = self.get_cartesian_vector_angles(0, 0, 0, 
-                                                                     self.currentrotvec[0], 
-                                                                     self.currentrotvec[1], 
-                                                                     self.currentrotvec[2])
-      if self.viewerparams.is_parallel:
-        self.PointVectorParallelToClipPlane(angle_x_xyvec, angle_z_svec)
-      else:
-        self.PointVectorPerpendicularToClipPlane(angle_x_xyvec, angle_z_svec)
     else:
       self.EnableMouseRotation()
-
-
-  def clip_plane_vector(self, a, b, c, hkldist=0.0,
-             clipwidth=None, fixorientation=True, is_parallel=False, isreciprocal=False):
-    # create clip plane oriented parallel or perpendicular to abc vector
-    if a==0.0 and b==0.0 and c==0.0 or clipwidth is None:
-      self.RemoveVectorsNoClipPlane()
-      return
-    self.mprint("Applying clip plane to reflections", verbose=1)
-    self.RemoveVectors("clip_vector")
-    self.angle_x_xyvec, self.angle_z_svec = self.get_cartesian_vector_angles(0, 0, 0, a, b, c)
-    if fixorientation:
-      self.DisableMouseRotation()
-    else:
-      self.EnableMouseRotation()
-    if is_parallel:
-      self.vecrotmx = self.PointVectorParallelToClipPlane()
-    else:
-      self.vecrotmx = self.PointVectorPerpendicularToClipPlane()
-    if self.cameraPosZ is None and self.viewmtrx is not None:
-      self.cameraPosZ, self.currentRotmx, self.cameratranslation = self.GetCameraPosRotTrans( self.viewmtrx)
-    halfdist = self.cameraPosZ  + hkldist # self.viewer.boundingZ*0.5
-    if clipwidth == 0.0:
-      clipwidth = self.meanradius
-    clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
-    clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
-    self.SetClipPlaneDistances(clipNear, clipFar, -self.cameraPosZ)
 
 
   def make_clip_plane(self, hkldist=0.0, clipwidth=None):
     # create clip plane oriented parallel or perpendicular to abc vector
     if hkldist < 0.0 or clipwidth is None:
-      self.RemoveVectorsNoClipPlane()
+      self.RemoveVectors()
+      self.SetClipPlaneDistances(0, 0)
+      self.TranslateHKLpoints(0, 0, 0, 0.0)
       return
     self.mprint("Applying clip plane to reflections", verbose=1)
     self.RemoveVectors("clip_vector")
@@ -2050,13 +2026,6 @@ Distance: %s
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
     self.SetClipPlaneDistances(clipNear, clipFar, -self.cameraPosZ)
-
-
-  def RemoveVectorsNoClipPlane(self):
-    self.EnableMouseRotation()
-    self.RemoveVectors()
-    self.SetClipPlaneDistances(0, 0)
-    self.TranslateHKLpoints(0, 0, 0, 0.0)
 
 
   def set_camera_type(self):

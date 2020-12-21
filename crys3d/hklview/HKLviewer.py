@@ -984,7 +984,11 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     rmin = self.array_infotpls[self.MillerComboBox.currentIndex()][3][0][i]
     rmax = self.array_infotpls[self.MillerComboBox.currentIndex()][3][1][i]
     self.sliceindexspinBox.setRange(rmin, rmax)
-    self.PhilToJsRender("NGL_HKLviewer.viewer.slice_axis = %s" % self.sliceaxis[i] )
+    self.PhilToJsRender("""NGL_HKLviewer.viewer {
+    slice_axis = %s
+    is_parallel = False
+    fixorientation = %s
+}""" %(self.sliceaxis[i], str(self.PlaneParallelCheckbox.isChecked())))
 
 
   def onSliceIndexChanged(self, val):
@@ -1223,8 +1227,13 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
               if self.vectortable2.item(rvrow, 0).checkState()==Qt.Checked:
                 self.rotvec = rvrow
                 sum +=1
-              if sum > 1: # can only use one vector to rotate around. so if more are selected then deselect them altogether
-                self.rotvec = None
+          if sum > 1 or sum == 0: # can only use one vector to rotate around. so if more are selected then deselect them altogether
+            self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
+  animate_rotation_around_vector = '[%d, %f]'
+}""" %(0, -1.0)) # 
+            self.PhilToJsRender('NGL_HKLviewer.viewer.fixorientation = False')
+            self.AnimaRotCheckBox.setCheckState(Qt.Unchecked)
+            self.rotvec = None
 
           if self.rotvec is not None:
             self.RotateAroundframe.setEnabled(True)
@@ -1291,6 +1300,8 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     #self.clipTNCSBtn.setText("as tNCS vector")
     #self.clipTNCSBtn.setChecked(False)
     #self.clipTNCSBtn.clicked.connect(self.onClipPlaneChkBox)
+
+    self.PlaneParallelCheckbox.clicked.connect(self.onPlaneParallelCheckbox)
 
     vprec = 2
     """
@@ -1416,12 +1427,15 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
   def onAnimateRotation(self):
     if self.AnimaRotCheckBox.isChecked() == True:
-      speed = self.rotavecangle_slider.value()
+      self.AnimateSpeedSlider.setEnabled(True)
+      self.rotavecangle_slider.setDisabled(True)
+      speed = self.AnimateSpeedSlider.value()
       self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
       animate_rotation_around_vector = '[%d, %f]'
 }""" %(self.rotvec, speed))
     else:
-      speed = self.rotavecangle_slider.value()
+      self.rotavecangle_slider.setEnabled(True)
+      self.AnimateSpeedSlider.setDisabled(True)
       self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
       animate_rotation_around_vector = '[%d, %f]'
 }""" %(self.rotvec, -1.0))
@@ -1453,10 +1467,10 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       self.PhilToJsRender("NGL_HKLviewer.clip_plane.l = %f" %self.lvec_spinBox.value())
 
 
-  def onFixedorient(self):
+  def onPlaneParallelCheckbox(self):
     if not self.unfeedback:
-      self.PhilToJsRender('NGL_HKLviewer.NGL.fixorientation = %s' \
-                                    %str(self.fixedorientcheckbox.isChecked()))
+      self.PhilToJsRender('NGL_HKLviewer.viewer.fixorientation = %s' \
+                                    %str(self.PlaneParallelCheckbox.isChecked()))
 
 
   def onMillerTableCellPressed(self, row, col):
@@ -1649,6 +1663,8 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.AlignNormalBtn.clicked.connect(self.onAlignedVector)
     self.AlignVectorGroupBox.clicked.connect(self.onAlignedVector)
     self.AnimaRotCheckBox.clicked.connect(self.onAnimateRotation)
+    self.AnimateSpeedSlider.sliderReleased.connect(self.onAnimateRotation)
+    self.AnimateSpeedSlider.setDisabled(True)
 
 
   def onResetView(self):
