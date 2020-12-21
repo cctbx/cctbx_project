@@ -533,34 +533,26 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
       exptl_method = "; ".join(list(exptl_method))
     return exptl_method
 
-  def process_BIOMT_records(self, eps=1e-4):
+  def process_BIOMT_records(self):
     import iotbx.mtrix_biomt
     return iotbx.mtrix_biomt.process_BIOMT_records_cif(
-      cif_block = self.cif_block,
-      eps=eps)
+      cif_block = self.cif_block)
 
-  def process_MTRIX_records(self,error_handle=True,eps=1e-4):
+  def process_MTRIX_records(self):
     """
     Read MTRIX records from a pdb file
 
     Arguments:
     ----------
-    error_handle -- True: will stop execution on improper rotation matrices
-                    False: will continue execution but will replace the values in the
-                           rotation matrix with [0,0,0,0,0,0,0,0,0]
-    eps -- Rounding accuracy for avoiding numerical issue when when testing proper rotation
-
-    error_handle can be use if one does not want a 'Sorry' to be raised. The program will continue to execute
-    but all coordinates of the bad rotation matrix will zero out
 
     Returns:
     --------
     result : object containing information on all NCS operations
+             iotbx.mtrix_biomt.container
     """
     import iotbx.mtrix_biomt
     return iotbx.mtrix_biomt.process_MTRIX_records_cif(
-      cif_block = self.cif_block,
-      eps=eps)
+      cif_block = self.cif_block)
 
   def get_restraints_used(self):
     return {'CDL' : self.used_cdl_restraints(),

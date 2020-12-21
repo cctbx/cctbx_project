@@ -19,10 +19,10 @@ class container(object):
     self.coordinates_present.append(coordinates_present)
     self.serial_number.append(serial_number)
 
-  def validate(self):
+  def validate(self, eps=1e-4):
     raise_sorry = False
     for i, r in enumerate(self.r):
-      if(not r.is_r3_rotation_matrix(rms_tolerance=1.e-4)):
+      if(not r.is_r3_rotation_matrix(rms_tolerance=eps)):
         raise_sorry = True
         print ('  ERROR: matrix with serial number %s is not proper' % self.serial_number[i])
     if raise_sorry:
@@ -59,7 +59,7 @@ class container(object):
   def is_empty(self):
     return len(self.r) == 0
 
-def process_BIOMT_records_cif(cif_block, eps=1e-4):
+def process_BIOMT_records_cif(cif_block):
   # this is temporarily work-around. Whole thing for matrices need to be
   # rewritten to be able to carry all the info from mmCIF, see
   # https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/biological-assemblies#Anchor-Biol
@@ -109,7 +109,7 @@ def process_BIOMT_records_cif(cif_block, eps=1e-4):
       serial_number=sn)
   return result
 
-def process_MTRIX_records_cif(cif_block, eps=1e-4):
+def process_MTRIX_records_cif(cif_block):
   trans = []
   rots = []
   serial_number = []
@@ -150,7 +150,7 @@ def process_MTRIX_records_cif(cif_block, eps=1e-4):
       serial_number=sn)
   return result
 
-def process_BIOMT_records_pdb(lines, eps=1e-4):
+def process_BIOMT_records_pdb(lines):
   '''(pdb_data,boolean,float) -> group of lists
   extract REMARK 350 BIOMT information, information that provides rotation matrices
   and translation  data, required for generating  a complete multimer from the asymmetric unit.
@@ -222,7 +222,7 @@ def process_BIOMT_records_pdb(lines, eps=1e-4):
         serial_number=i+1)
   return result
 
-def process_MTRIX_records_pdb(lines, eps=1e-4):
+def process_MTRIX_records_pdb(lines):
   """
   Read MTRIX records from a pdb file
   """
