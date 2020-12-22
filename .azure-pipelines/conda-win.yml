@@ -5,7 +5,7 @@
 #
 # Parameters:
 #   vmImage: vs2017-win2016, windows-2019
-#   vs: vs2015, vs2017
+#   vs: vs2015, vs2017, vs2019
 #   modules: <modules artifact name>
 
 jobs:
@@ -190,8 +190,9 @@ jobs:
       cd $(Pipeline.Workspace)\modules
       rmdir /Q /S cbflib
       rmdir /Q /S dxtbx
-    displayName: Remove modules for cctbxlite builder (vs2017)
-    condition: eq('${{ parameters.vs }}', 'vs2017')
+    displayName: Remove modules for cctbxlite builder (vs2017 or vs2019)
+    condition: or(eq('${{ parameters.vs }}', 'vs2017'),
+                  eq('${{ parameters.vs }}', 'vs2019'))
 
   - script: |
       cd $(Pipeline.Workspace)
@@ -235,6 +236,20 @@ jobs:
                    eq('${{ parameters.vs }}', 'vs2017'))
     displayName: Configure and Build (Python 3, vs2017)
 
+  - script: |
+      cd $(Pipeline.Workspace)
+      call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
+      python bootstrap.py build --builder=cctbxlite --use-conda=%CONDA_PREFIX% --nproc=4
+      call .\build\setpaths.bat
+      call libtbx.configure cma_es fable phenix_regression phenix_examples
+      cd build
+      call libtbx.scons -j 4
+      call libtbx.scons -j 4
+    condition: and(not(eq(variables['PYTHON_VERSION'], 'py27')),
+                   eq('${{ parameters.vs }}', 'vs2019'))
+    displayName: Configure and Build (Python 3, vs2019)
+
   # test
   - script: |
       cd $(Pipeline.Workspace)
@@ -275,6 +290,19 @@ jobs:
     condition: and(not(eq(variables['PYTHON_VERSION'], 'py27')),
                    eq('${{ parameters.vs }}', 'vs2017'))
     displayName: Test (Python 3, vs2017)
+
+  - script: |
+      SET PYTHONLEGACYWINDOWSSTDIO=1
+      cd $(Pipeline.Workspace)
+      call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      call .\build\setpaths.bat
+      mkdir tests
+      cd tests
+      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=scitbx module=smtbx nproc=4
+    failOnStderr: false
+    condition: and(not(eq(variables['PYTHON_VERSION'], 'py27')),
+                  eq('${{ parameters.vs }}', 'vs2019'))
+    displayName: Test (Python 3, vs2019)
 
   - task: PublishTestResults@2
     condition: succeededOrFailed()
