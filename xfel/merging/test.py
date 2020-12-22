@@ -5,6 +5,10 @@ from libtbx import easy_mp
 from scipy import sparse
 import math
 
+try:
+    from line_profiler import LineProfiler as profile
+except ImportError:
+    profile = None
 class Reproducer:
     def _lattice_lower_upper_index(self, lattice_id):
         lower_index = self._lattices[lattice_id]
@@ -15,7 +19,7 @@ class Reproducer:
             assert lattice_id == len(self._lattices) - 1
         return lower_index, upper_index
 
-    def compute_rij_wij_Gildea(self, use_cache=True):
+    def compute_rij_wij_Gildea(self, use_cache=True, lineprof=-1):
         """Compute the rij_wij matrix."""
         n_lattices = self._lattices.size()
         n_sym_ops = len(self.sym_ops)
@@ -136,13 +140,23 @@ class Reproducer:
             return rij, wij
 
         args = [(i,) for i in range(n_lattices)]
-        results = easy_mp.parallel_map(
-            _compute_rij_matrix_one_row_block,
-            args,
-            processes=self._nproc,
-            iterable_type=easy_mp.posiargs,
-            method="multiprocessing",
-        )
+        if lineprof >= 0:
+            assert profile is not None
+            pr = profile(_compute_rij_matrix_one_row_block)
+            pr.enable()
+            _compute_rij_matrix_one_row_block(lineprof)
+            pr.disable()
+            pr.print_stats()
+            quit()
+        else:
+            results = easy_mp.parallel_map(
+                _compute_rij_matrix_one_row_block,
+                args,
+                processes=self._nproc,
+                iterable_type=easy_mp.posiargs,
+                method="multiprocessing",
+            )
+
 
         rij_matrix = None
         wij_matrix = None
