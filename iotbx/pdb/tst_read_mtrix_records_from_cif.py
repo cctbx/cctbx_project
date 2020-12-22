@@ -289,7 +289,7 @@ MTRIX3   1 -0.004354  0.608886  0.793246        0.70450
 
 def exercise_ncs_loop_1_elem():
   """
-  Exercise the cae when _struct_ncs_oper is a loop but contains only one row.
+  Exercise the case when _struct_ncs_oper is a loop but contains only one row.
   See the difference between test_cif2 and test_cif2_1
   """
   pdb_inp = iotbx.pdb.input(source_info=None, lines=test_cif2_1)
