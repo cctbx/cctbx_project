@@ -465,11 +465,11 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
           if self.infodict.get("current_phil_strings"):
             philstringdict = self.infodict.get("current_phil_strings", {})
-            for k, v in philstringdict.items():
+            for unlikely_dict_keyname, val in philstringdict.items():
               try:
-                self.currentphilstringdict[k] = eval(v)
+                self.currentphilstringdict[unlikely_dict_keyname] = eval(val)
               except Exception as e:
-                self.currentphilstringdict[k] = v
+                self.currentphilstringdict[unlikely_dict_keyname] = val
             self.UpdateGUI()
 
           if self.infodict.get("scene_array_label_types"):
@@ -750,7 +750,8 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     #self.realspacevecBtn.setChecked( "realspace" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
     #self.recipvecBtn.setChecked( "reciprocal" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
     #self.clipTNCSBtn.setChecked( "tncs" in self.currentphilstringdict['NGL_HKLviewer.clip_plane.fractional_vector'])
-    #self.fixedorientcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.fixorientation'])
+    self.PlaneParallelCheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.fixorientation']== "reflection_slice")
+    self.AlignVectorGroupBox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.fixorientation']== "vector")
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['NGL_HKLviewer.viewer.show_only_missing'])
     if self.currentphilstringdict['NGL_HKLviewer.real_space_unit_cell_scale_fraction'] is not None:
       self.DrawRealUnitCellBox.setChecked(True)
@@ -974,6 +975,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       #self.ClipPlaneChkGroupBox.setChecked(True)
       self.PhilToJsRender("""NGL_HKLviewer.viewer.slice_mode = False
                              NGL_HKLviewer.viewer.inbrowser = True
+                             NGL_HKLviewer.viewer.fixorientation = "None"
                             """)
 
 
@@ -984,11 +986,14 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     rmin = self.array_infotpls[self.MillerComboBox.currentIndex()][3][0][i]
     rmax = self.array_infotpls[self.MillerComboBox.currentIndex()][3][1][i]
     self.sliceindexspinBox.setRange(rmin, rmax)
+    val = "None"
+    if self.PlaneParallelCheckbox.isChecked():
+      val = "reflection_slice"
     self.PhilToJsRender("""NGL_HKLviewer.viewer {
     slice_axis = %s
     is_parallel = False
-    fixorientation = %s
-}""" %(self.sliceaxis[i], str(self.PlaneParallelCheckbox.isChecked())))
+    fixorientation = "%s"
+}""" %(self.sliceaxis[i], val))
 
 
   def onSliceIndexChanged(self, val):
@@ -1204,7 +1209,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
         label = self.vectortable2.item(row, 1).text()
 
       if row < len(self.all_vectors):
-        if label is None or label == "new vector":
+        if label is None:
           return
 
         if col==0:
@@ -1231,7 +1236,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
             self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
   animate_rotation_around_vector = '[%d, %f]'
 }""" %(0, -1.0)) # 
-            self.PhilToJsRender('NGL_HKLviewer.viewer.fixorientation = False')
+            self.PhilToJsRender('NGL_HKLviewer.viewer.fixorientation = "None"')
             self.AnimaRotCheckBox.setCheckState(Qt.Unchecked)
             self.rotvec = None
 
@@ -1249,7 +1254,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
             if sum >0.0 and sum < rc:
               self.ShowAllVectorsBtn.setCheckState(Qt.PartiallyChecked)
 
-      if row==(rc-1) and label !="": # a user defined vector
+      if row==(rc-1) and label !="" and label != "new vector": # a user defined vector
         if col==2:
           hklop = self.vectortable2.item(row, 2).text()
           self.PhilToJsRender("""NGL_HKLviewer.viewer.add_user_vector_hkl_op = '%s'
@@ -1337,41 +1342,18 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
     self.rotavecangle_slider.valueChanged.connect(self.onRotaVecAngleChanged)
     self.ClipPlaneChkGroupBox.clicked.connect(self.onClipPlaneChkBox)
-    #self.clipParallelBtn.setChecked(False)
-    #self.clipParallelBtn.clicked.connect(self.onClipPlaneChkBox)
-
-    #self.clipNormalBtn.setChecked(True)
-    #self.clipNormalBtn.clicked.connect(self.onClipPlaneChkBox)
-    #self.clipParallelBtn.setChecked(True)
-
-  '''
-  def onSliceReflectionsBoxclicked(self):
-    if self.unfeedback:
-      return
-    if self.SliceReflectionsBox.isChecked():
-      self.showsliceGroupCheckbox.setEnabled(True)
-      self.ClipPlaneChkGroupBox.setEnabled(True)
-      self.fixedorientcheckbox.setEnabled(True)
-      self.ClipPlaneChkGroupBox.setChecked(True)
-      self.onClipPlaneChkBox()
-    else:
-      self.showsliceGroupCheckbox.setEnabled(False)
-      self.ClipPlaneChkGroupBox.setEnabled(False)
-      self.fixedorientcheckbox.setEnabled(False)
-      self.PhilToJsRender("""NGL_HKLviewer {
-                                              clip_plane.clipwidth = None
-                                              viewer.slice_mode = False
-                                              NGL.fixorientation = False
-                                           }
-                          """)
-  '''
 
 
   def onAlignedVector(self):
+    if self.unfeedback:
+      return
+    val = "None"
+    if self.AlignVectorGroupBox.isChecked():
+      val = "vector"
     philstr = """NGL_HKLviewer.viewer {
         is_parallel = %s
-        fixorientation = %s
-      } """ %(str(self.AlignParallelBtn.isChecked()), str(self.AlignVectorGroupBox.isChecked()) )
+        fixorientation = "%s"
+      } """ %(str(self.AlignParallelBtn.isChecked()), val )
     self.PhilToJsRender(philstr)
 
 
@@ -1469,8 +1451,10 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
   def onPlaneParallelCheckbox(self):
     if not self.unfeedback:
-      self.PhilToJsRender('NGL_HKLviewer.viewer.fixorientation = %s' \
-                                    %str(self.PlaneParallelCheckbox.isChecked()))
+      val = "None"
+      if self.PlaneParallelCheckbox.isChecked():
+        val = "reflection_slice"
+      self.PhilToJsRender('NGL_HKLviewer.viewer.fixorientation = "%s"' %val)
 
 
   def onMillerTableCellPressed(self, row, col):

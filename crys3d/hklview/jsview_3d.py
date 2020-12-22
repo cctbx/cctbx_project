@@ -452,7 +452,9 @@ class hklview_3d:
       self.set_scene(self.viewerparams.scene_id)
       self.params.miller_array_operations = ""
     
-    if self.viewerparams.slice_mode: # explicit slicing is not volatile
+    if has_phil_path(diff_phil, "fixorientation") and \
+     self.viewerparams.slice_mode and self.viewerparams.fixorientation == "reflection_slice":
+     # explicit slicing is not volatile
       if self.viewerparams.slice_axis=="h": hkl = [1,0,0]
       if self.viewerparams.slice_axis=="k": hkl = [0,1,0]
       if self.viewerparams.slice_axis=="l": hkl = [0,0,1]
@@ -485,7 +487,10 @@ class hklview_3d:
     if self.viewerparams.scene_id is not None:
       if has_phil_path(self.diff_phil, "angle_around_vector"): # no need to redraw any clip plane
         return
-      self.orient_vector_parallel_with_screen(self.currentrotvec)
+      if self.viewerparams.fixorientation == "vector":
+        self.orient_vector_parallel_with_screen(self.currentrotvec)
+      #if self.viewerparams.fixorientation == reflection_slice:
+      #  self.orient_vector_parallel_with_screen(self.currentrotvec)
       self.SetMouseSpeed(self.ngl_settings.mouse_sensitivity)
       R = flex.vec3_double( [(0,0,0)])
       hkldist = -1
@@ -1868,11 +1873,10 @@ Distance: %s
         self.RemoveVectors(name)
 
 
-  def RotateAroundFracVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3), 
+  def RotateAroundVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3), 
                              vectortype="cartesian", quietbrowser=True):
     if vectortype == "cartesian":
       cartvec = list( (r1,r2,r3))
-      self.currentrotvec = cartvec # assuming angle_around_vector is the trigger
     elif vectortype == "reciprocal":
     # Assuming vector is in reciprocal space coordinates turn it into cartesian
       cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().fractionalization_matrix()).transpose() )
@@ -1881,6 +1885,7 @@ Distance: %s
       cartvec = list( (r1,r2,r3) * matrix.sqr(self.miller_array.unit_cell().orthogonalization_matrix()) )
     else:
       raise Sorry("Set vectortype to either 'cartesian', 'reciprocal' or 'fractional'.")
+    self.currentrotvec = cartvec # assuming angle_around_vector is the trigger
     #  Rodrigues rotation formula for rotation by phi angle around a vector going through origo
     #  See http://mathworld.wolfram.com/RodriguesRotationFormula.html
     # \mathbf I+\left(\sin\,\varphi\right)\mathbf W+\left(2\sin^2\frac{\varphi}{2}\right)\mathbf W^2
@@ -1901,7 +1906,7 @@ Distance: %s
     return self.currentRotmx, [ux, uy, uz]
 
 
-  def AnimateRotateAroundFracVector(self, speed, r1,r2,r3,
+  def AnimateRotateAroundVector(self, speed, r1,r2,r3,
                              vectortype="cartesian", quietbrowser=True):
     if vectortype == "cartesian":
       cartvec = list( (r1,r2,r3))
@@ -2003,7 +2008,7 @@ Distance: %s
 
 
   def fix_orientation(self):
-    if self.viewerparams.fixorientation:
+    if self.viewerparams.fixorientation != "None":
       self.DisableMouseRotation()
     else:
       self.EnableMouseRotation()

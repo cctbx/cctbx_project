@@ -982,8 +982,6 @@ class HKLViewFrame() :
       uc = self.viewer.miller_array.unit_cell()
       # TNCS vector is specified in realspace fractional coordinates. Convert it to cartesian
       cartvec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
-      #vscale =  1.0/self.viewer.scene.renderscale
-      #svec1 = [ vscale*vec[0], vscale*vec[1], vscale*vec[2] ]
       ln = len(self.viewer.all_vectors)
       self.viewer.all_vectors.append( (ln, "TNCS", cartvec, "", "", str(roundoff(self.tncsvec, 5)) ) )
     self.viewer.all_vectors = self.viewer.all_vectors + self.uservectors
@@ -997,35 +995,42 @@ class HKLViewFrame() :
 
   def add_user_vector(self):
     uc = self.viewer.miller_array.unit_cell()
-    s = self.viewer.scene.renderscale
     ln = len(self.viewer.all_vectors)
     label = self.params.NGL_HKLviewer.viewer.user_label
-    if self.params.NGL_HKLviewer.viewer.add_user_vector_hkl not in [None, "", "()"]:
-      hklvec = eval(self.params.NGL_HKLviewer.viewer.add_user_vector_hkl)
-      # convert into cartesian space
-      cartvec = list( self.viewer.scene.renderscale*(hklvec * matrix.sqr(uc.fractionalization_matrix()).transpose()) )
-    elif self.params.NGL_HKLviewer.viewer.add_user_vector_abc not in [None, "", "()"]:
-      abcvec = eval(self.params.NGL_HKLviewer.viewer.add_user_vector_abc)
-      # convert into cartesian space
-      cartvec = list(abcvec * matrix.sqr(uc.orthogonalization_matrix())*(1.0/self.viewer.scene.renderscale))
-    elif self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op not in [None, ""]:
-      rt = sgtbx.rt_mx(symbol=self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op, r_den=12, t_den=144)
-      rt.r().as_double()
-      (cartvec, a, label) = self.viewer.GetVectorAndAngleFromRotationMx( rt.r() )
-      if label:
-        label = "%s-fold_%s" %(str(int(roundoff(2*math.pi/a, 0))), self.params.NGL_HKLviewer.viewer.user_label)
+    try:
+      if self.params.NGL_HKLviewer.viewer.add_user_vector_hkl not in [None, "", "()"]:
+        hklvec = eval(self.params.NGL_HKLviewer.viewer.add_user_vector_hkl)
+        # convert into cartesian space
+        cartvec = list( self.viewer.scene.renderscale*(hklvec * matrix.sqr(uc.fractionalization_matrix()).transpose()) )
+      elif self.params.NGL_HKLviewer.viewer.add_user_vector_abc not in [None, "", "()"]:
+        abcvec = eval(self.params.NGL_HKLviewer.viewer.add_user_vector_abc)
+        # convert into cartesian space
+        cartvec = list(abcvec * matrix.sqr(uc.orthogonalization_matrix()))
+      elif self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op not in [None, ""]:
+        rt = sgtbx.rt_mx(symbol=self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op, r_den=12, t_den=144)
+        rt.r().as_double()
+        (cartvec, a, label) = self.viewer.GetVectorAndAngleFromRotationMx( rt.r() )
+        if label:
+          label = "%s-fold_%s" %(str(int(roundoff(2*math.pi/a, 0))), self.params.NGL_HKLviewer.viewer.user_label)
 
-    if (self.params.NGL_HKLviewer.viewer.add_user_vector_hkl in [None, "", "()"] \
-     and self.params.NGL_HKLviewer.viewer.add_user_vector_abc in [None, "", "()"] \
-     and self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op) in [None, ""]:
-      raise Sorry("No vector was specified")
-    self.uservectors.append( (ln, 
-                              label, 
-                              cartvec,
-                              self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op, 
-                              self.params.NGL_HKLviewer.viewer.add_user_vector_hkl,
-                              self.params.NGL_HKLviewer.viewer.add_user_vector_abc) )
-    self.list_vectors()
+      if (self.params.NGL_HKLviewer.viewer.add_user_vector_hkl in [None, "", "()"] \
+       and self.params.NGL_HKLviewer.viewer.add_user_vector_abc in [None, "", "()"] \
+       and self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op) in [None, ""]:
+        self.mprint("No vector was specified")
+      self.uservectors.append( (ln, 
+                                label, 
+                                cartvec,
+                                self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op, 
+                                self.params.NGL_HKLviewer.viewer.add_user_vector_hkl,
+                                self.params.NGL_HKLviewer.viewer.add_user_vector_abc) )
+      self.list_vectors()
+
+    except Exception as e:
+      self.mprint( str(e), verbose=0)
+
+    self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op = ""
+    self.params.NGL_HKLviewer.viewer.add_user_vector_hkl = ""
+    self.params.NGL_HKLviewer.viewer.add_user_vector_abc = ""
 
 
   def AddUserVector(self, hkl_op="", abc="", hkl="", label=""):
@@ -1057,10 +1062,10 @@ class HKLViewFrame() :
 
 
   def NormalVectorToClipPlane(self, h, k, l, hkldist=0.0,
-                           clipNear=None, clipFar=None, fixorientation=True):
+                           clipNear=None, clipFar=None, fixorientation="vector"):
     self.viewer.RemoveAllReciprocalVectors()
     self.viewer.AddVector(h, k, l)
-    if fixorientation:
+    if fixorientation != "None":
       self.viewer.DisableMouseRotation()
     else:
       self.viewer.EnableMouseRotation()
@@ -1075,7 +1080,7 @@ class HKLViewFrame() :
 
 
   def ClipPlaneAndVector(self, h, k, l, hkldist=0.0, clipwidth=None,
-   fixorientation=True, fractional_vector = "reciprocal", is_parallel=False):
+   fixorientation="reflection_slice", fractional_vector = "reciprocal", is_parallel=False):
     # clip planes are removed if h,k,l = 0,0,0
     self.params.NGL_HKLviewer.clip_plane.h = h
     self.params.NGL_HKLviewer.clip_plane.k = k
@@ -1091,13 +1096,13 @@ class HKLViewFrame() :
   def ShowTNCSModulation(self, vectorparallel=True, clipwidth=4):
     if self.tncsvec:
       self.ClipPlaneAndVector( self.tncsvec[0], self.tncsvec[1], self.tncsvec[2],
-                              hkldist=0.0, clipwidth=clipwidth, fixorientation=True,
+                              hkldist=0.0, clipwidth=clipwidth, fixorientation="vector",
                               is_parallel=vectorparallel, fractional_vector = "realspace")
 
 
   def SpinAnimateAroundTNCSVecParallel(self):
     self.viewer.clip_plane_abc_vector( self.tncsvec[0], self.tncsvec[1], self.tncsvec[2],
-             hkldist=0.0, clipwidth=6, fixorientation=True, is_parallel=True)
+             hkldist=0.0, clipwidth=6, fixorientation="vector", is_parallel=True)
     self.viewer.SpinAnimate(0,1,0)
 
 
@@ -1105,7 +1110,7 @@ class HKLViewFrame() :
     phi = cmath.pi*dgr/180
     if self.viewer.vecrotmx is not None:
       R = flex.vec3_double( [(self.params.NGL_HKLviewer.clip_plane.h, self.params.NGL_HKLviewer.clip_plane.k, self.params.NGL_HKLviewer.clip_plane.l)])
-      self.viewer.RotateAroundFracVector(phi, R[0][0], R[0][1], R[0][2],
+      self.viewer.RotateAroundVector(phi, R[0][0], R[0][1], R[0][2],
                   self.viewer.vecrotmx,
                   self.params.NGL_HKLviewer.clip_plane.fractional_vector == "reciprocal",
                   self.params.NGL_HKLviewer.clip_plane.bequiet)
@@ -1119,7 +1124,7 @@ class HKLViewFrame() :
       cartvec = self.viewer.all_vectors[vecnr][2]
       phi = cmath.pi*dgr/180
       R = flex.vec3_double([cartvec])
-      self.viewer.RotateAroundFracVector(phi, R[0][0], R[0][1], R[0][2], vectortype="cartesian")
+      self.viewer.RotateAroundVector(phi, R[0][0], R[0][1], R[0][2], vectortype="cartesian")
 
 
   def animate_rotate_around_vector(self):
@@ -1127,7 +1132,7 @@ class HKLViewFrame() :
     if vecnr < len(self.viewer.all_vectors):
       cartvec = self.viewer.all_vectors[vecnr][2]
       R = flex.vec3_double([cartvec])
-      self.viewer.AnimateRotateAroundFracVector(speed, R[0][0], R[0][1], R[0][2], vectortype="cartesian")
+      self.viewer.AnimateRotateAroundVector(speed, R[0][0], R[0][1], R[0][2], vectortype="cartesian")
 
 
   def RotateAroundVector(self, dgr, bequiet):
@@ -1289,8 +1294,8 @@ NGL_HKLviewer {
       .type = str
     is_parallel = False
       .type = bool
-    fixorientation = False
-      .type = bool
+    fixorientation = vector reflection_slice *None
+      .type = choice
     %s
   }
   NGL {

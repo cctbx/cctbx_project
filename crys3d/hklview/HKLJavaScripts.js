@@ -413,9 +413,10 @@ function onMessage(e)
       if (bin < shapebufs.length)
       {
         alphas[bin] = parseFloat(val[1]);
-        shapebufs[bin].setParameters({opacity: alphas[bin]});
-        for (var g=0; g < nrots; g++ )
-          br_shapebufs[bin][g].setParameters({opacity: alphas[bin]});
+        shapebufs[bin].setParameters({ opacity: alphas[bin] });
+        if (br_shapebufs.length)
+          for (var g=0; g < nrots; g++ )
+            br_shapebufs[bin][g].setParameters({opacity: alphas[bin]});
         RenderRequest();
       }
     }
@@ -431,13 +432,14 @@ function onMessage(e)
         colours[bin][3*si+2] = parseFloat(val[4]);
         shapebufs[bin].setAttributes({ color: colours[bin] });
 
-        for (var g=0; g < nrots; g++ )
-        {
-          br_colours[bin][3*si] = parseFloat(val[2]);
-          br_colours[bin][3*si+1] = parseFloat(val[3]);
-          br_colours[bin][3*si+2] = parseFloat(val[4]);
-          br_shapebufs[bin][g].setAttributes({ color: br_colours[bin] });
-        }
+        if (br_shapebufs.length)
+          for (var g=0; g < nrots; g++ )
+          {
+            br_colours[bin][3*si] = parseFloat(val[2]);
+            br_colours[bin][3*si+1] = parseFloat(val[3]);
+            br_colours[bin][3*si+2] = parseFloat(val[4]);
+            br_shapebufs[bin][g].setAttributes({ color: br_colours[bin] });
+          }
         RenderRequest();
       }
     }
@@ -797,7 +799,7 @@ function onMessage(e)
       var then = 0;
       var theta = 0.0;
       function render(now)
-      {
+      { // as in https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Animating_objects_with_WebGL
         now *= 0.001;
         const deltaTime = now - then;
         then = now;

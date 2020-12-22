@@ -24,7 +24,6 @@ from PySide2.QtGui import (QBrush, QColor, QConicalGradient, QCursor, QFont,
 from PySide2.QtWidgets import *
 
 
-
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if MainWindow.objectName():
@@ -266,6 +265,7 @@ class Ui_MainWindow(object):
 
         self.PlaneParallelCheckbox = QCheckBox(self.showsliceGroupCheckbox)
         self.PlaneParallelCheckbox.setObjectName(u"PlaneParallelCheckbox")
+        self.PlaneParallelCheckbox.setChecked(False)
 
         self.gridLayout_6.addWidget(self.PlaneParallelCheckbox, 1, 0, 1, 1)
 
@@ -530,6 +530,7 @@ class Ui_MainWindow(object):
         self.vectortable2.setColumnCount(5)
         self.vectortable2.horizontalHeader().setDefaultSectionSize(60)
         self.vectortable2.verticalHeader().setVisible(False)
+        self.vectortable2.verticalHeader().setMinimumSectionSize(10)
         self.vectortable2.verticalHeader().setDefaultSectionSize(24)
 
         self.gridLayout_8.addWidget(self.vectortable2, 1, 0, 1, 1)
@@ -582,9 +583,11 @@ class Ui_MainWindow(object):
 
         self.AlignVectorGroupBox = QGroupBox(self.RotateAroundframe)
         self.AlignVectorGroupBox.setObjectName(u"AlignVectorGroupBox")
+        self.AlignVectorGroupBox.setEnabled(True)
         sizePolicy4.setHeightForWidth(self.AlignVectorGroupBox.sizePolicy().hasHeightForWidth())
         self.AlignVectorGroupBox.setSizePolicy(sizePolicy4)
         self.AlignVectorGroupBox.setCheckable(True)
+        self.AlignVectorGroupBox.setChecked(False)
         self.gridLayout_17 = QGridLayout(self.AlignVectorGroupBox)
         self.gridLayout_17.setSpacing(4)
         self.gridLayout_17.setContentsMargins(3, 3, 3, 3)
@@ -752,7 +755,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.functionTabWidget.setCurrentIndex(1)
+        self.functionTabWidget.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -783,7 +786,7 @@ class Ui_MainWindow(object):
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab), QCoreApplication.translate("MainWindow", u"Expansion", None))
         self.showsliceGroupCheckbox.setTitle(QCoreApplication.translate("MainWindow", u"Explicitly with a plane at", None))
         self.label_3.setText(QCoreApplication.translate("MainWindow", u"equal to", None))
-        self.PlaneParallelCheckbox.setText(QCoreApplication.translate("MainWindow", u"Oriented Parallel to Screen", None))
+        self.PlaneParallelCheckbox.setText(QCoreApplication.translate("MainWindow", u"Align Parallel to Screen", None))
         self.ClipPlaneChkGroupBox.setTitle(QCoreApplication.translate("MainWindow", u"Slice with a clip plane defined by:", None))
         self.label_16.setText(QCoreApplication.translate("MainWindow", u"Clip Plane Width:", None))
         self.label_17.setText(QCoreApplication.translate("MainWindow", u"Distance from origin:", None))
