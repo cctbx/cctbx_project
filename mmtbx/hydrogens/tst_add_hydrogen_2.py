@@ -17,6 +17,7 @@ def run():
   test_005()
   test_006()
   test_007()
+  test_008()
 
 # ------------------------------------------------------------------------------
 
@@ -130,9 +131,15 @@ def test_006():
 
 def test_007():
   '''
-    Check if model without H to be placed is correctly processed
+    Check if mmCIF file format works
   '''
   compare_models(pdb_str = pdb_str_007)
+
+def test_008():
+  '''
+    Test CYS-CYS disulfide with double conformation
+  '''
+  compare_models(pdb_str = pdb_str_008)
 
 # ------------------------------------------------------------------------------
 
@@ -472,6 +479,7 @@ HETATM    3  O   HOH A 201       5.093   5.000   5.000  1.00 25.34           O
 HETATM    4  O   HOH A 202       5.286  19.260   7.818  1.00 28.43           O
 '''
 
+# check if mmCIF file works
 pdb_str_007 = '''
 data_1UBQ
 #
@@ -527,6 +535,38 @@ ATOM   605 H H   . GLY A 1 76 ? 41.063 38.062 34.504 0.25 36.05 ? 76  GLY A H   
 ATOM   606 H HA2 . GLY A 1 76 ? 39.566 39.910 33.413 0.25 36.19 ? 76  GLY A HA2 1
 ATOM   607 H HA3 . GLY A 1 76 ? 41.011 40.491 33.675 0.25 36.19 ? 76  GLY A HA3 1
 HETATM 608 O O   . HOH B 2 .  ? 45.747 30.081 19.708 1.00 12.43 ? 77  HOH A O   1
+'''
+
+pdb_str_008 = '''
+REMARK disulfide bond with altloc
+CRYST1   13.626   15.799   17.617  90.00  90.00  90.00 P 1
+ATOM      1  N   CYS A  27      17.541   4.439  12.897  1.00 13.99           N
+ATOM      2  CA  CYS A  27      16.566   5.527  12.862  1.00 14.57           C
+ATOM      3  C   CYS A  27      16.236   6.026  11.467  1.00 14.53           C
+ATOM      4  O   CYS A  27      15.254   6.760  11.351  1.00 16.95           O
+ATOM      5  CB  CYS A  27      17.114   6.698  13.662  1.00 15.77           C
+ATOM      6  SG  CYS A  27      17.230   6.332  15.443  1.00 17.57           S
+ATOM      8  HA  CYS A  27      15.739   5.186  13.237  1.00 14.57           H
+ATOM      9  HB2 CYS A  27      16.526   7.461  13.549  1.00 15.77           H
+ATOM     10  HB3 CYS A  27      18.003   6.913  13.340  1.00 15.77           H
+ATOM     12  CB  CYS A 123      14.607   7.591  16.260  1.00 24.16           C
+ATOM     13  SG  CYS A 123      15.316   5.939  15.946  1.00 20.05           S
+ATOM     14  N  ACYS A 123      15.023   7.279  18.624  0.58 26.40           N
+ATOM     15  CA ACYS A 123      15.266   8.190  17.491  0.58 25.69           C
+ATOM     16  C  ACYS A 123      14.764   9.599  17.776  0.58 26.33           C
+ATOM     17  O  ACYS A 123      14.197  10.238  16.886  0.58 28.70           O
+ATOM     18  OXTACYS A 123      14.975  10.081  18.878  0.58 28.31           O
+ATOM     20  HA ACYS A 123      16.217   8.287  17.324  0.58 25.69           H
+ATOM     21  HB2ACYS A 123      13.652   7.502  16.408  1.00 24.16           H
+ATOM     22  HB3ACYS A 123      14.772   8.157  15.490  1.00 24.16           H
+ATOM     24  N  BCYS A 123      15.023   7.288  18.685  0.42 25.68           N
+ATOM     25  CA BCYS A 123      15.108   8.205  17.548  0.42 25.86           C
+ATOM     26  C  BCYS A 123      14.270   9.460  17.813  0.42 26.42           C
+ATOM     27  O  BCYS A 123      13.915  10.125  16.837  0.42 27.75           O
+ATOM     28  OXTBCYS A 123      13.981   9.728  18.968  0.42 28.04           O
+ATOM     30  HA BCYS A 123      16.045   8.426  17.432  0.42 25.86           H
+ATOM     31  HB2BCYS A 123      13.642   7.500  16.307  1.00 24.16           H
+ATOM     32  HB3BCYS A 123      14.850   8.168  15.519  1.00 24.16           H
 '''
 
 if (__name__ == "__main__"):
