@@ -175,7 +175,7 @@ p, li { white-space: pre-wrap; }
                </sizepolicy>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>0</number>
               </property>
               <widget class="QWidget" name="tab">
                <attribute name="title">
@@ -373,7 +373,10 @@ p, li { white-space: pre-wrap; }
                    <item row="1" column="0">
                     <widget class="QCheckBox" name="PlaneParallelCheckbox">
                      <property name="text">
-                      <string>Oriented Parallel to Screen</string>
+                      <string>Align Parallel to Screen</string>
+                     </property>
+                     <property name="checked">
+                      <bool>false</bool>
                      </property>
                     </widget>
                    </item>
@@ -823,6 +826,9 @@ p, li { white-space: pre-wrap; }
                      <attribute name="verticalHeaderVisible">
                       <bool>false</bool>
                      </attribute>
+                     <attribute name="verticalHeaderMinimumSectionSize">
+                      <number>10</number>
+                     </attribute>
                      <attribute name="verticalHeaderDefaultSectionSize">
                       <number>24</number>
                      </attribute>
@@ -914,6 +920,9 @@ p, li { white-space: pre-wrap; }
                       </item>
                       <item row="2" column="0" colspan="2">
                        <widget class="QGroupBox" name="AlignVectorGroupBox">
+                        <property name="enabled">
+                         <bool>true</bool>
+                        </property>
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
                           <horstretch>0</horstretch>
@@ -925,6 +934,9 @@ p, li { white-space: pre-wrap; }
                         </property>
                         <property name="checkable">
                          <bool>true</bool>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
                         </property>
                         <layout class="QGridLayout" name="gridLayout_17">
                          <property name="leftMargin">
