@@ -105,7 +105,7 @@ def smart_split_cif_line(line):
       line = line[len(item)+3:].strip()
   return tmp
 
-def run(filename):
+def run2(filename):
   if not os.path.exists(filename): return None
   lines = []
   with open(filename) as f:
@@ -240,11 +240,46 @@ def run(filename):
 
   return complete_cif_data
 
+def run(filename):
+  from iotbx import cif
+  complete_cif_data = {}
+  cm = cif.reader(filename, strict=False, raise_if_errors=False).model()
+  for code, rc in cm.iteritems():
+    for key, item in rc.iteritems():
+      cif_key = key.split('.')[0]
+      sk = key.split(".")[1].strip()
+      complete_cif_data.setdefault(cif_key, [])
+      if type(item)==type(''):
+        item=[item]
+      for i, row in enumerate(item):
+        if len(complete_cif_data[cif_key])<i+1:
+          complete_cif_data[cif_key].append(empty())
+        setattr(complete_cif_data[cif_key][i], sk, row)
+    for i, loop in enumerate(rc.iterloops()):
+      break
+      print(i, loop)
+      if not loop: continue
+      for j, (key, item) in enumerate(loop.iteritems()):
+        if not j:
+          objs=[]
+          for k in range(len(item)):
+            objs.append(empty())
+          cif_key = key.split('.')[0]
+        sk = key.split(".")[1].strip()
+        for k in range(len(item)):
+          setattr(objs[k], sk, item[k])
+      complete_cif_data.setdefault(cif_key,objs)
+  return complete_cif_data
+
 if __name__=="__main__":
   import os, sys
   cif = run(sys.argv[1])
+  cif2 = run2(sys.argv[1])
   for key in cif:
     print('_'*80)
     print(key)
     for item in cif[key]:
       print(item)
+
+  print(cif)
+  assert cif.keys()==cif2.keys(), '%s!=%s' % (cif.keys(), cif2.keys())
