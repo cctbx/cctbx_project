@@ -1,9 +1,9 @@
-#include <include/cbf.h>
-#include <include/cbf_simple.h>
 #include <cstdio>
 #include <string>
 #include <exception>
 #include <iostream>
+#include <include/cbf.h>
+#include <include/cbf_simple.h>
 
 struct Error : public std::exception {
   std::string s;
