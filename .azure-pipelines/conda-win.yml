@@ -184,16 +184,6 @@ jobs:
     continueOnError: true
     failOnStderr: false
 
-  # build (cctbx for vs2008 and vs2015, cctbxlite for vs2017)
-  - script: |
-      ECHO ON
-      cd $(Pipeline.Workspace)\modules
-      rmdir /Q /S cbflib
-      rmdir /Q /S dxtbx
-    displayName: Remove modules for cctbxlite builder (vs2017 or vs2019)
-    condition: or(eq('${{ parameters.vs }}', 'vs2017'),
-                  eq('${{ parameters.vs }}', 'vs2019'))
-
   - script: |
       cd $(Pipeline.Workspace)
       call "C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0\vcvarsall.bat" amd64
@@ -226,7 +216,7 @@ jobs:
       cd $(Pipeline.Workspace)
       call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
-      python bootstrap.py build --builder=cctbxlite --use-conda=%CONDA_PREFIX% --nproc=4
+      python bootstrap.py build --builder=cctbx --use-conda=%CONDA_PREFIX% --nproc=4
       call .\build\setpaths.bat
       call libtbx.configure cma_es fable phenix_regression phenix_examples
       cd build
@@ -240,7 +230,7 @@ jobs:
       cd $(Pipeline.Workspace)
       call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
-      python bootstrap.py build --builder=cctbxlite --use-conda=%CONDA_PREFIX% --nproc=4
+      python bootstrap.py build --builder=cctbx --use-conda=%CONDA_PREFIX% --nproc=4
       call .\build\setpaths.bat
       call libtbx.configure cma_es fable phenix_regression phenix_examples
       cd build
