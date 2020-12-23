@@ -59,6 +59,13 @@ class Reproducer:
             i_lower, i_upper = self._lattice_lower_upper_index(i)
             intensities_i = self._data.data()[i_lower:i_upper]
 
+            idx_matchers = []
+            for op in self.sym_ops:
+                cb_op = sgtbx.change_of_basis_op(op)
+                indices_i = indices[cb_op.as_xyz()][i_lower:i_upper]
+                idx_matchers.append(miller.match_indices(indices_i))
+
+
             for j in range(n_lattices):
 
                 j_lower, j_upper = self._lattice_lower_upper_index(j)
@@ -68,6 +75,7 @@ class Reproducer:
                     cb_op_k = sgtbx.change_of_basis_op(cb_op_k)
 
                     indices_i = indices[cb_op_k.as_xyz()][i_lower:i_upper]
+                    matcher = idx_matchers[k]
 
                     for kk, cb_op_kk in enumerate(self.sym_ops):
                         if i == j and k == kk:
@@ -84,8 +92,8 @@ class Reproducer:
                         else:
                             indices_j = indices[cb_op_kk.as_xyz()][j_lower:j_upper]
 
-                            matches = miller.match_indices(indices_i, indices_j)
-                            pairs = matches.pairs()
+                            matcher.match_cached(indices_j)
+                            pairs = matcher.pairs()
                             isel_i = pairs.column(0)
                             isel_j = pairs.column(1)
                             isel_i = isel_i.select(
