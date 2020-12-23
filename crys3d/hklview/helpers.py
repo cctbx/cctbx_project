@@ -9,7 +9,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from PySide2.QtCore import Qt, QEvent, QAbstractTableModel, QModelIndex
-from PySide2.QtGui import QCursor
+from PySide2.QtGui import QCursor, QResizeEvent
 from PySide2.QtWidgets import ( QCheckBox, QTableWidget, QAction, QMenu,
       QTableView, QDialog,  QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
       QScrollArea, QVBoxLayout
@@ -232,23 +232,15 @@ class MPLColourSchemes(QtWidgets.QDialog):
     # which defines a single set of axes as self.axes.
     self.labeltxt = QtWidgets.QLabel()
     self.labeltxt.setText("Click on a gradient map for colouring data values")
-    sc = MplCanvas(self, dpi=dpi)
-    for ax, name in zip(sc.axes, cmaps):
-      ax.imshow(gradient, aspect='auto', cmap=plt.get_cmap(name))
-      ax.set_axis_off()
-      pos = list(ax.get_position().bounds)
-      x_text = pos[0] - 0.21
-      y_text = pos[1] + pos[3]/2.
-      sc.fig.text(x_text, y_text, name, va='center', ha='left', fontsize=15)
-    #sc.fig.tight_layout()
+    self.mycanvas = MplCanvas(self, dpi=dpi)
+    self.draw_axes_and_text()
     scroll = QtWidgets.QScrollArea()
-    scroll.setWidget(sc)
+    scroll.setWidget(self.mycanvas)
     scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
     scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
     self.reversecheckbox = QtWidgets.QCheckBox()
     self.reversecheckbox.setText("Reverse colour mapping")
     self.reversecheckbox.clicked.connect(self.onReverseMap)
-
     self.powscale_label = QtWidgets.QLabel()
     self.powscale_label.setText("Power factor for map scaling:")
     self.powscaleslider = QtWidgets.QSlider(Qt.Horizontal)
@@ -275,9 +267,29 @@ class MPLColourSchemes(QtWidgets.QDialog):
     gridlayout.addWidget(self.Cancelbtn,         4, 2, 1, 1)
     self.setLayout(gridlayout)
     scw = self.parent.app.style().pixelMetric(QtWidgets.QStyle.PM_ScrollBarExtent)
-    self.setFixedWidth(sc.width() + scw*2 ) # fudge
-    #self.setFixedWidth(sc.width() +scroll.verticalScrollBar().width() )
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+
+  def draw_axes_and_text(self):
+    for ax, name in zip(self.mycanvas.axes, cmaps):
+      ax.imshow(gradient, aspect='auto', cmap=plt.get_cmap(name))
+      ax.set_axis_off()
+      pos = list(ax.get_position().bounds)
+      x_text = pos[0] - 0.21
+      y_text = pos[1] + pos[3]/2.
+      self.mycanvas.fig.text(x_text, y_text, name, va='center', ha='left', 
+                             fontsize= self.parent.app.font().pointSize()*1.5 )
+
+
+  def resizeEvent(self, event):
+    # MplCanvas doesn't resize with the rest of QtWidgets whenever 
+    # triggered by a font size changes from the main GUI. So resize here instead
+    if event.type() == QEvent.Type.Resize:
+      ltxt = len(self.mycanvas.fig.texts)
+      for i in range(ltxt): # delete from the end as the lists is changed
+        self.mycanvas.fig.texts[ltxt-(i+1)].remove()
+      self.draw_axes_and_text()
+      qs = self.sizeHint()
+      self.mycanvas.resize(qs.width()*0.93, qs.height()*4)
+    QtWidgets.QDialog.resizeEvent(self, event)
 
   def EnactColourMapSelection(self):
     if hasattr(self.parent,"onColourChartSelect"):

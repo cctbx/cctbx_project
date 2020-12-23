@@ -68,6 +68,7 @@ var isdebug = false;
 var tdelay = 100;
 var displaytooltips = true;
 var colourchart = null;
+var ResetViewBtn = null;
 var sockwaitcount = 0;
 var ready_for_closing = false;
 var columnSelect = null;
@@ -201,6 +202,12 @@ function RemoveStageObjects()
     colourchart.remove(); // delete previous colour chart if any
     colourchart = null;
   }
+  /*
+  if (ResetViewBtn != null) {
+    ResetViewBtn.remove();
+    ResetViewBtn = null;
+  }
+  */
   ttips = [];
   vectorreprs = [];
   vectorshapeComps = [];
@@ -1649,6 +1656,31 @@ function HKLscene()
   stage.viewer.requestRender();
   if (isdebug)
     debugmessage.innerText = dbgmsg;
+
+
+  ResetViewBtn = createElement("input", {
+    value: "Reset view",
+    type: "button",
+    onclick: function () {
+      var m4 = new NGL.Matrix4();
+      var axis = new NGL.Vector3();
+      axis.x = 0.0;
+      axis.y = 1.0;
+      axis.z = 0.0;
+      m4.makeRotationAxis(axis, 0.0);
+      stage.viewerControls.orient(m4);
+      shapeComp.autoView();
+      RenderRequest();
+      sleep(100).then(() => {
+        msg = getOrientMsg();
+        WebsockSendMsg('CurrentViewOrientation:\n' + msg);
+      }
+      );
+    },
+  }, { bottom: "10px", left: "10px", width: "90px", position: "absolute" }, fsize = fontsize);
+  addElement(ResetViewBtn);
+
+
 }
 
 

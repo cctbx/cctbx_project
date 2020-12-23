@@ -749,7 +749,6 @@ class Ui_MainWindow(object):
         self.menuFile.addAction(self.actionSave_reflection_file)
         self.menuFile.addAction(self.actionSettings)
         self.menuFile.addAction(self.actiondebug)
-        self.menuFile.addAction(self.actionReset_View)
         self.menuFile.addAction(self.actionSave_Current_Image)
         self.menuFile.addAction(self.actionExit)
 
