@@ -1204,7 +1204,6 @@ p, li { white-space: pre-wrap; }
     <addaction name="actionSave_reflection_file"/>
     <addaction name="actionSettings"/>
     <addaction name="actiondebug"/>
-    <addaction name="actionReset_View"/>
     <addaction name="actionSave_Current_Image"/>
     <addaction name="actionExit"/>
    </widget>

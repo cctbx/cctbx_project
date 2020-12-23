@@ -132,7 +132,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
 
     self.actionOpen_reflection_file.triggered.connect(self.onOpenReflectionFile)
     self.actiondebug.triggered.connect(self.DebugInteractively)
-    self.actionReset_View.triggered.connect(self.onResetView)
     self.actionSave_Current_Image.triggered.connect(self.onSaveImage)
     self.actionSettings.triggered.connect(self.SettingsDialog)
     self.actionExit.triggered.connect(self.window.close)
@@ -301,7 +300,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.millertablemenu.triggered.connect(self.onMillerTableMenuAction)
     #self.resize(QSize(self.FileInfoBox.size().width()*2, self.size().height() ))
     self.functionTabWidget.setDisabled(True)
-    self.window.statusBar().showMessage("Waffle Wibble")
+    self.window.statusBar().showMessage("")
     self.window.show()
 
 
@@ -828,7 +827,8 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.fontsize = val
     self.app.setFont(font);
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
-    self.ColourMapSelectDlg.setFixedHeight( self.ColourMapSelectDlg.sizeHint().height() )
+    #self.ColourMapSelectDlg.setFixedHeight( self.ColourMapSelectDlg.sizeHint().height() )
+    self.ColourMapSelectDlg.setFixedSize( self.ColourMapSelectDlg.sizeHint() )
 
 
   def onBrowserFontsizeChanged(self, val):
@@ -970,6 +970,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
       #self.ClipPlaneChkGroupBox.setChecked(False)
       self.PhilToJsRender("""NGL_HKLviewer.viewer.slice_mode = True
                              NGL_HKLviewer.viewer.inbrowser = False
+                             NGL_HKLviewer.viewer.fixorientation = "reflection_slice"
                        """)
     else:
       #self.ClipPlaneChkGroupBox.setChecked(True)
@@ -1331,7 +1332,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.hkldist_spinBox.setSingleStep(0.5)
     self.hkldist_spinBox.setRange(-100.0, 100.0)
     self.hkldist_spinBox.valueChanged.connect(self.onHKLdistChanged)
-    self.clipwidth_spinBox.setValue(4 )
+    self.clipwidth_spinBox.setValue(2 )
     self.clipwidth_spinBox.setDecimals(vprec)
     self.clipwidth_spinBox.setSingleStep(0.05)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
@@ -1651,8 +1652,8 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.AnimateSpeedSlider.setDisabled(True)
 
 
-  def onResetView(self):
-    self.PhilToJsRender('NGL_HKLviewer.action = reset_view')
+  #def onResetView(self):
+  #  self.PhilToJsRender('NGL_HKLviewer.action = reset_view')
 
 
   def onSaveImage(self):

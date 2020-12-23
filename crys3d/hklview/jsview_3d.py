@@ -117,8 +117,8 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
     #settings = copy.deepcopy(settings)
     settings.expand_anomalous = False
     settings.expand_to_p1 = False
-    mprint("The " + proc_array.info().label_string() + \
-         " array is not symmetry unique and therefore won't be expanded")
+    mprint("Alert! The " + proc_array.info().label_string() + \
+         " array is not symmetry unique and therefore won't be expanded crystallographically.")
   if (settings.inbrowser==True):
     settings.expand_anomalous = False
     settings.expand_to_p1 = False
@@ -452,7 +452,7 @@ class hklview_3d:
       self.set_scene(self.viewerparams.scene_id)
       self.params.miller_array_operations = ""
     
-    if has_phil_path(diff_phil, "fixorientation") and \
+    if has_phil_path(diff_phil, "fixorientation", "slice_axis") and \
      self.viewerparams.slice_mode and self.viewerparams.fixorientation == "reflection_slice":
      # explicit slicing is not volatile
       if self.viewerparams.slice_axis=="h": hkl = [1,0,0]
@@ -1569,7 +1569,7 @@ Distance: %s
   %s,  %s,  %s
   %s,  %s,  %s
     """ %rotlst, verbose=3)
-    self.SendInfoToGUI( { "StatusBar": str(rotlst) } )
+    self.SendInfoToGUI( { "StatusBar": "rotation matrix: " + str(rotlst) } )
     if "MouseMovedOrientation:" in message:
       self.params.mouse_moved = True
     if self.currentRotmx.is_r3_rotation_matrix():
