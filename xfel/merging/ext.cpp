@@ -9,9 +9,12 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <cctbx/miller.h>
+#include <cctbx/miller/match_indices.h>
 #include <cctbx/sgtbx/change_of_basis_op.h>
 #include <dials/array_family/reflection_table.h>
 #include <algorithm>
+#include <tuple>
+#include <string>
 
 typedef cctbx::miller::index<> miller_index_t;
 namespace af = scitbx::af;
@@ -189,22 +192,104 @@ namespace sx_merging {
 
   struct compute_rij_wij_detail {
     typedef cctbx::sgtbx::change_of_basis_op cbop_t;
-    compute_rij_wij_detail(){
+
+    compute_rij_wij_detail(
+        const af::shared<int> &lower_i,
+        const af::shared<int> &upper_i,
+        const af::shared<double> &data
+        ) :
+      lower_i_(lower_i),
+      upper_i_(upper_i),
+      data_(data) {
     }
+
     af::shared<cbop_t> cb_ops;
     af::shared<af::shared<cctbx::miller::index<> > > indices;
+    af::shared<double> data_;
+    af::shared<int> lower_i_;
+    af::shared<int> upper_i_;
     int n_sym_ops;
 
-    void set_indices(cbop_t cb_op_set,
+    void set_indices(cbop_t cb_op,
                      af::shared<cctbx::miller::index<> > index_set){
-      cb_ops.push_back(cb_op_set);
+      cb_ops.push_back(cb_op);
       indices.push_back(index_set);
-      n_sym_ops = indices.size();
+      n_sym_ops = cb_ops.size();
+    }
+
+    /*
+    void store_data(const af::shared<double> &data) {
+      data_ = data; // consider if we need to copy it instead?
+    }
+    */
+
+
+
+    std::tuple<af::shared<int>, af::shared<int>, af::shared<double> >
+    compute_one_row(
+        const int &n_lattices,
+        const int &i_row,
+        const af::shared<int> &lower_indices,
+        const af::shared<int> &upper_indices) const
+    {
+      // WIP port of _compute_rij_matrix_one_row_block from test.py
+      std::map< std::tuple<long, long, std::string>, std::tuple<double, int> > rij_cache;
+
+      af::shared<int> rij_row, rij_col;
+      af::shared<double> rij_data;
+
+      int i_lower = lower_indices[i_row];
+      int i_upper = upper_indices[i_row];
+
+      af::shared<cctbx::miller::match_indices> matchers;
+      for (int i=0; i<n_sym_ops; ++i) {
+        af::shared<cctbx::miller::index<> > indices_i;
+        for (int ii=i_lower; ii<i_upper; ++ii) {
+          indices_i.push_back(indices[i][ii]);
+        }
+        matchers.push_back(cctbx::miller::match_indices(indices_i));
+      }
+
+      for (int j_col=0; j_col<n_lattices; ++j_col) {
+        int j_lower = lower_indices[j_col], j_upper = upper_indices[j_col];
+
+        for (int k=0; k<n_sym_ops; ++k) {
+          cctbx::miller::match_indices matcher = matchers[k];
+
+          for (int kk=0; kk<n_sym_ops; ++kk) {
+
+            if (i_row==j_col && k==kk) continue;
+
+            int ik = i_row + (n_lattices * k);
+            int jk = j_col + (n_lattices * kk);
+
+            //TODO: handle caching as below
+            /*
+            key = (i, j, str(cb_op_k.inverse() * cb_op_kk))
+            if use_cache and key in rij_cache:
+                cc, n = rij_cache[key]
+                */
+
+
+          }
+        }
+
+        
+
+      }
+
+
+
+
+
+
     }
 
     std::string foo(const int& n_lattices,
-                  af::shared<int> lower_i, af::shared<int> upper_i,
-                  af::shared<double> data){
+                  af::shared<int> lower_i, 
+                  af::shared<int> upper_i,
+                  af::shared<double> data)
+    {
     int NN = n_lattices * n_sym_ops;
     af::flex_double wij(af::flex_grid<>(NN,NN));
     double* wijbegin = wij.begin();
@@ -343,10 +428,16 @@ namespace boost_python { namespace {
     def("split_reflections_by_experiment_chunks_cpp",&sx_merging::split_reflections_by_experiment_chunks_cpp);
 
     class_<compute_rij_wij_detail>("compute_rij_wij_detail", no_init)
-      .def(init<>())
+      .def(init<
+        const af::shared<int>,
+        const af::shared<int>,
+        const af::shared<double> >())
       .def("set_indices",&sx_merging::compute_rij_wij_detail::set_indices)
-      .def("foo",&sx_merging::compute_rij_wij_detail::foo);
+      .def("foo",&sx_merging::compute_rij_wij_detail::foo)
+      .def("compute_one_row",&sx_merging::compute_rij_wij_detail::compute_one_row)
     ;
+
+
   }
 
 }
