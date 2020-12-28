@@ -4,7 +4,7 @@ from libtbx.math_utils import roundoff
 import traceback
 from cctbx.miller import display2 as display
 from cctbx.array_family import flex
-from cctbx import miller
+from cctbx import miller, sgtbx
 from scitbx import graphics_utils
 from scitbx import matrix
 from scitbx.linalg import eigensystem
@@ -266,6 +266,8 @@ class hklview_3d:
     self.bindata = None
     self.reciproc_scale = 1.0
     self.realspace_scale = 1.0
+    self.visual_symHKLs = []
+    self.visual_symmxs= []
     self.sceneisdirty = True
     self.imagename = None
     self.imgdatastr = ""
@@ -592,6 +594,13 @@ class hklview_3d:
     # resolution and angstrom character
     spbufttip += '\\ndres: %s \'+ String.fromCharCode(197) +\'' \
       %str(roundoff(self.miller_array.unit_cell().d(hkl), 2) )
+    if self.visual_symmxs:
+      self.visual_symHKLs = []
+      uc = self.miller_array.unit_cell()
+      for symmx in self.visual_symmxs:
+        vissymrothkl = rothkl * symmx.transpose()
+        self.visual_symHKLs.append( vissymrothkl )
+
     for hklscene in self.HKLscenes:
       if hklscene.isUsingFOMs():
         continue # already have tooltips for the scene without the associated fom
@@ -1505,6 +1514,7 @@ class hklview_3d:
             hklid = hklid % len(hkls)
             ttip = self.GetTooltipOnTheFly(hklid, sym_id, anomalous=True)
           self.AddToBrowserMsgQueue("ShowThisTooltip", ttip)
+          self.visualise_sym_HKLs(sym_id)
         elif "onClick colour chart" in message:
           self.onClickColourChart()
         elif "SelectedBrowserDataColumnComboBox" in message:
@@ -1829,11 +1839,14 @@ Distance: %s
           # eigenvetors come as a concatenated list of vector elements so get the i-th vector
           e1,e2,e3 = evectors[(0+3*i):(3+3*i)]
           break
-    s = 0.5*self.scene.renderscale/self.realspace_scale
+    # adjust the scale of the rotation vectors to be compatible with the sphere of reflections
+    s = math.sqrt(OrtMx.transpose().norm_sq())*self.realspace_scale
     label=""
+    order = 0
     if abs(theta) > 0.0001 and (abs(e1)+abs(e2)+abs(e3)) > 0.0001: # avoid nullvector
-      label = "%s-fold" %str(int(roundoff(2*math.pi/theta, 0)))
-    return (s*e1,s*e2,s*e3), theta, label
+      order = int(roundoff(2*math.pi/theta, 0)) # how many times to rotate before its the identity operator
+      label = "%s-fold" %str(order)
+    return (s*e1,s*e2,s*e3), theta, label, order
 
 
   def show_rotation_axes(self):
@@ -1853,24 +1866,47 @@ Distance: %s
     unique_rot_ops = self.symops[ 0 : self.sg.order_p() ] # avoid duplicate rotation matrices
     self.rotation_operators = []
     for i,op in enumerate(unique_rot_ops): # skip the last op for javascript drawing purposes
-      (cartvec, a, label) = self.GetVectorAndAngleFromRotationMx( op.r() )
+      (cartvec, a, label, order) = self.GetVectorAndAngleFromRotationMx( op.r() )
       if label != "":
         self.mprint( str(i) + ": " + str(roundoff(cartvec)) + ", " + label)
-        self.rotation_operators.append( (i, label + "#%d"%i , cartvec, op.r().as_hkl(), "", "") )
+        self.rotation_operators.append( (i, label + "#%d"%i, order , cartvec, op.r().as_hkl(), "", "") )
 
 
   def show_vector(self):
     [i, val] = eval(self.viewerparams.show_vector)
+    self.visual_symmxs = []
+
     if i < len(self.all_vectors):
-      (opnr, label, v, hklop, hkl, abc) = self.all_vectors[i]
+      (opnr, label, order, v, hklop, hkl, abc) = self.all_vectors[i]
       # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
       name = label + hklop.replace(",", "_")
       if val:
         self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], r=0.1, g=0.1,b=0.1,
                                   label=label, name=name, radius=0.2 )
         self.currentrotvec = v
+
+        if order > 0 and hklop != "":
+          rt = sgtbx.rt_mx(symbol= hklop, r_den=12, t_den=144)
+          RotMx = matrix.sqr(rt.r().as_double() )
+          self.visual_symmxs.append( RotMx )
+          nfoldrotmx = RotMx
+          for ord in range(order -1): # skip identity operator
+            nfoldrotmx = RotMx * nfoldrotmx
+            self.visual_symmxs.append( nfoldrotmx )
       else:
         self.RemoveVectors(name)
+        self.visual_symmxs = []
+
+
+  def visualise_sym_HKLs(self, sym_id):
+    if len(self.visual_symHKLs):
+      self.RemoveVectors("wibble")
+      for i,hkl in enumerate(self.visual_symHKLs):
+        hklstr = str(list(hkl)).replace(",","_")
+        if i < len(self.visual_symHKLs)-1:
+          self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label=hklstr, r=0.5, g=0.3, b=0.3, radius=0.3)
+        else: # supplying a name for the vector last graphics primitive draws them all
+          self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label=hklstr, name="wibble", r=0.5, g=0.3, b=0.3, radius=0.3)
 
 
   def RotateAroundVector(self, phi, r1,r2,r3, prevrotmx = matrix.identity(3), 

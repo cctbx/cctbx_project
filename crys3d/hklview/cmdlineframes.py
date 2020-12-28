@@ -985,7 +985,7 @@ class HKLViewFrame() :
       ln = len(self.viewer.all_vectors)
       self.viewer.all_vectors.append( (ln, "TNCS", cartvec, "", "", str(roundoff(self.tncsvec, 5)) ) )
     self.viewer.all_vectors = self.viewer.all_vectors + self.uservectors
-    for (opnr, label, cartvec, hkl_op, hkl, abc) in self.viewer.all_vectors:
+    for (opnr, label, order, cartvec, hkl_op, hkl, abc) in self.viewer.all_vectors:
       # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
       name = label + hkl_op.replace(",", "_")
       self.viewer.RemoveVectors(name)
@@ -997,6 +997,7 @@ class HKLViewFrame() :
     uc = self.viewer.miller_array.unit_cell()
     ln = len(self.viewer.all_vectors)
     label = self.params.NGL_HKLviewer.viewer.user_label
+    order = 0
     try:
       if self.params.NGL_HKLviewer.viewer.add_user_vector_hkl not in [None, "", "()"]:
         hklvec = eval(self.params.NGL_HKLviewer.viewer.add_user_vector_hkl)
@@ -1009,7 +1010,7 @@ class HKLViewFrame() :
       elif self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op not in [None, ""]:
         rt = sgtbx.rt_mx(symbol=self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op, r_den=12, t_den=144)
         rt.r().as_double()
-        (cartvec, a, label) = self.viewer.GetVectorAndAngleFromRotationMx( rt.r() )
+        (cartvec, a, label, order) = self.viewer.GetVectorAndAngleFromRotationMx( rt.r() )
         if label:
           label = "%s-fold_%s" %(str(int(roundoff(2*math.pi/a, 0))), self.params.NGL_HKLviewer.viewer.user_label)
 
@@ -1019,6 +1020,7 @@ class HKLViewFrame() :
         self.mprint("No vector was specified")
       self.uservectors.append( (ln, 
                                 label, 
+                                order,
                                 cartvec,
                                 self.params.NGL_HKLviewer.viewer.add_user_vector_hkl_op, 
                                 self.params.NGL_HKLviewer.viewer.add_user_vector_hkl,
@@ -1121,7 +1123,7 @@ class HKLViewFrame() :
   def rotate_around_vector2(self, vecnr_dgr):
     vecnr, dgr = eval(vecnr_dgr)
     if vecnr < len(self.viewer.all_vectors):
-      cartvec = self.viewer.all_vectors[vecnr][2]
+      cartvec = self.viewer.all_vectors[vecnr][3]
       phi = cmath.pi*dgr/180
       R = flex.vec3_double([cartvec])
       self.viewer.RotateAroundVector(phi, R[0][0], R[0][1], R[0][2], vectortype="cartesian")
@@ -1130,7 +1132,7 @@ class HKLViewFrame() :
   def animate_rotate_around_vector(self):
     vecnr, speed = eval(self.params.NGL_HKLviewer.clip_plane.animate_rotation_around_vector)
     if vecnr < len(self.viewer.all_vectors):
-      cartvec = self.viewer.all_vectors[vecnr][2]
+      cartvec = self.viewer.all_vectors[vecnr][3]
       R = flex.vec3_double([cartvec])
       self.viewer.AnimateRotateAroundVector(speed, R[0][0], R[0][1], R[0][2], vectortype="cartesian")
 
