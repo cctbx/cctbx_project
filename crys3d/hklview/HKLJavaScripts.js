@@ -615,7 +615,7 @@ function onMessage(e)
             r.y = positions[bin][idx+1];
             r.z = positions[bin][idx+2];
 
-            r.applyMatrix3(Rotmats[rotmxidx])
+            r.applyMatrix3(Rotmats[rotmxidx]);
 
             br_positions[bin][rotmxidx][idx] = r.x;
             br_positions[bin][rotmxidx][idx + 1] = r.y;

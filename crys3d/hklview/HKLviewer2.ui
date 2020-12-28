@@ -86,7 +86,7 @@
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                    <horstretch>0</horstretch>
-                   <verstretch>2</verstretch>
+                   <verstretch>1</verstretch>
                   </sizepolicy>
                  </property>
                  <property name="verticalScrollMode">
@@ -139,15 +139,21 @@
              </widget>
              <widget class="QTextEdit" name="SpaceGrpUCellText">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+               <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
                 <horstretch>0</horstretch>
-                <verstretch>1</verstretch>
+                <verstretch>0</verstretch>
                </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>30</height>
+               </size>
               </property>
               <property name="maximumSize">
                <size>
                 <width>16777215</width>
-                <height>35</height>
+                <height>16777215</height>
                </size>
               </property>
               <property name="verticalScrollBarPolicy">
@@ -171,7 +177,7 @@ p, li { white-space: pre-wrap; }
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
-                <verstretch>1</verstretch>
+                <verstretch>0</verstretch>
                </sizepolicy>
               </property>
               <property name="currentIndex">
@@ -914,7 +920,7 @@ p, li { white-space: pre-wrap; }
                          <enum>QSlider::TicksAbove</enum>
                         </property>
                         <property name="tickInterval">
-                         <number>18</number>
+                         <number>20</number>
                         </property>
                        </widget>
                       </item>

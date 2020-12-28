@@ -591,7 +591,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
 
             self.vectortable2.clearContents()
             self.vectortable2.setRowCount(len(self.all_vectors)+1)
-            for row, (opnr, label, v, hklop, hkls, abcs) in enumerate(self.all_vectors):
+            for row, (opnr, label, order, v, hklop, hkls, abcs) in enumerate(self.all_vectors):
               for col,elm in enumerate((opnr, label, hklop, hkls, abcs)):
                 item = QTableWidgetItem(str(elm))
                 if col == 0:
@@ -725,7 +725,7 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.mousemoveslider.setValue( 2000*self.currentphilstringdict['NGL_HKLviewer.NGL.mouse_sensitivity'])
     #self.rotavecangle_slider.setValue( self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector'])
     vecnr, dgr = self.currentphilstringdict['NGL_HKLviewer.clip_plane.angle_around_vector']
-    self.rotavecangle_labeltxt.setText("Angle rotated: %2.fº" %dgr)
+    self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %2.fº" %dgr)
 
 
     self.sliceindexspinBox.setValue( self.currentphilstringdict['NGL_HKLviewer.viewer.slice_index'])
@@ -1337,11 +1337,12 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
     self.clipwidth_spinBox.setSingleStep(0.05)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
     self.clipwidth_spinBox.valueChanged.connect(self.onClipwidthChanged)
-    self.rotavecangle_labeltxt.setText("Angle rotated: 0 º")
-    self.rotavecangle_slider.setValue(0)
-    self.rotavecangle_slider.setSingleStep(3)
+    self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: 0º")
+    #self.rotavecangle_slider.setValue(0)
+    #self.rotavecangle_slider.setSingleStep(1)
     self.rotavecangle_slider.sliderReleased.connect(self.onFinalRotaVecAngle)
     self.rotavecangle_slider.valueChanged.connect(self.onRotaVecAngleChanged)
+    self.rotavecangle_slider.setTracking(False)
     self.ClipPlaneChkGroupBox.clicked.connect(self.onClipPlaneChkBox)
 
 
@@ -1391,11 +1392,11 @@ NGL_HKLviewer.viewer.color_powscale = %s""" %(selcolmap, powscale) )
   def onRotaVecAngleChanged(self, val):
     if self.unfeedback or self.rotvec is None:
       return
+    #self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %dº" %val)
     self.PhilToJsRender("""NGL_HKLviewer.clip_plane {
     angle_around_vector = '[%d, %f]'
     bequiet = False
 }""" %(self.rotvec, val))
-
 
 
   def onFinalRotaVecAngle(self):
