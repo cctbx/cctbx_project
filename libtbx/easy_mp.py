@@ -842,11 +842,11 @@ def run_jobs_with_large_fixed_objects(
        nproc = None,
        verbose = None,
        kw_dict = None,           # all the common kw for the function to run
-       run_info_list = None,     # list of group_args, each with info of what 
+       run_info_list = None,     # list of group_args, each with info of what
                                  # to do for one run
        job_to_run = None,   # the function to run
        multiprocessing_method = 'multiprocessing',  # how to run
-       qsub_command='qsub',       # queue command, 
+       qsub_command='qsub',       # queue command,
        break_condition = None,
        try_single_processor_on_failure = False,
        log = sys.stdout):
@@ -860,7 +860,7 @@ def run_jobs_with_large_fixed_objects(
     cannot be pickled.
 
     NOTE: Your job_to_run should always return the smallest possible result
-    object as a result. Anything very large (like a full-size density map) 
+    object as a result. Anything very large (like a full-size density map)
     should be written to disk and a file name returned.  Models are ok to be
     returned (except possibly very large ones).
 
@@ -954,7 +954,7 @@ class run_one_job_as_class:
     # Save the log if not already written out
 
     if log_type == 'StringIO':
-      result.log_as_text = log.getvalue() # save the log as text 
+      result.log_as_text = log.getvalue() # save the log as text
     else:
       result.log_as_text = '' # already sent it to stream
 

@@ -7897,7 +7897,7 @@ class match_map_model_ncs(object):
            self._map_manager.unit_cell_crystal_symmetry(),
         model = self._model)
 
-  def shift_ncs_to_match_working_map(self, ncs_object = None, 
+  def shift_ncs_to_match_working_map(self, ncs_object = None,
     reverse = False,
     coordinate_shift = None,
     new_shift_cart = None):

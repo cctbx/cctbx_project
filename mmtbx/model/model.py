@@ -219,7 +219,7 @@ class manager(object):
     self._ncs_groups = None
     self._anomalous_scatterer_groups = []
     self.log = log
-    self._model_id = None 
+    self._model_id = None
     self.exchangable_hd_groups = []
     self.original_xh_lengths = None
     self.riding_h_manager = None
@@ -484,7 +484,7 @@ class manager(object):
     self._model_id = model_id
 
   def model_id(self):
-    return self._model_id 
+    return self._model_id
 
   def __getstate__(self):
     ''' The _ss_manager is not pickleable. Remove it before pickling
@@ -525,7 +525,7 @@ class manager(object):
       sc = tuple(self.shift_cart())
     else:
       sc = (0, 0, 0)
-      
+
     return "Model manager "+\
       "%s" %(self.model_id()) if self.model_id() else "" + \
       "\n%s\nChains: %s Residues %s (%s - %s)\nWorking coordinate shift %s)" %(
@@ -2878,7 +2878,7 @@ class manager(object):
     new.restraints_manager = new_restraints_manager
     new._xray_structure    = xrs_new
     new.tls_groups = sel_tls
-    new._model_id = self._model_id 
+    new._model_id = self._model_id
 
     if new_riding_h_manager is not None:
       new.riding_h_manager = new_riding_h_manager
