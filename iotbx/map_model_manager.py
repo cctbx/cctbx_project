@@ -7113,6 +7113,69 @@ class map_model_manager(object):
 
   # General methods
 
+  def model_from_sites_cart(self, 
+    sites_cart, 
+    model_id = 'model_from_sites',
+    **kw):
+    '''
+      Convenience method to use the from_sites_cart method of model manager to
+      create a model.
+
+      Model is saved with the id of model_id (default 'model_from_sites')
+
+      Unique feature of this method is that it sets up the crystal_symmetry,
+        unit_cell_crystal_symmetry, and shift_cart in the model to match
+        this map_model_manager.
+
+      Note:  sites_cart are assumed to be in the same coordinate frame as this
+        map_model_manager.
+
+      Any keywords used in from_sites_cart are allowed (i.e., 
+        atom_name and scatterer or atom_name_list and scatterer_list
+        occ or occ_list
+        b_iso or b_iso_list
+        resname or resname_list
+        resseq_list 
+    '''
+
+
+    from mmtbx.model import manager as model_manager
+    model = model_manager.from_sites_cart(
+       sites_cart = sites_cart,
+       crystal_symmetry = self.crystal_symmetry(),
+       **kw)
+
+    self.set_model_symmetries_and_shift_cart_to_match_map(model)
+    self.add_model_by_id(model = model, model_id=model_id)
+
+  def set_model_symmetries_and_shift_cart_to_match_map(self,
+     model):
+    '''
+      Method to set the crystal_symmetry, unit_cell_crystal_symmetry and
+      shift_cart of any model to match those of this map_model_manager
+
+      This method changes the model in place.
+
+      Assumes that the sites in this model are already in the same coordinate
+      system as this map_model_manager
+
+      This is the preferred method of making sure that a model has the
+      same symmetry and shifts as a map_model_manager if the model coordinates
+      already match the map_model_manager.
+
+      If you have a model that is relative to some other coordinate system,
+      first make sure that model has a complete set of symmetry and shifts
+      for that coordinate system (any model coming from a map_model_manager
+      will have these).  Then use either self.shift_any_model_to_match(model) to
+      shift that model directly to match this map_model_manager, or use
+      self.add_model_by_id(model_id=model_id, model=model) which will import
+      that model into this manager and shift it to match in the process.
+      
+    '''
+
+    self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(model)
+
+
   def set_original_origin_grid_units(self, original_origin_grid_units = None):
     '''
      Reset (redefine) the original origin of the maps and models (apply an

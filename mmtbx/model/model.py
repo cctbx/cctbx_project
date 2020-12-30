@@ -306,8 +306,10 @@ class manager(object):
   @classmethod
   def from_sites_cart(cls,
       sites_cart,
-      atom_name=' CA ',
+      atom_name = None,
       atom_name_list = None,
+      scatterer = None,
+      scatterer_list = None,
       resname='GLY',
       resname_list = None,
       chain_id='A',
@@ -316,11 +318,32 @@ class manager(object):
       occ=1.,
       count=0,
       occ_list=None,
-      scatterer='C',
-      scatterer_list = None,
       resseq_list = None,
       crystal_symmetry=None):
+
+    '''
+     Convenience function to create a model from a list of cartesian coordinates
+     Default is to use atom name CA, scatterer C, occ 1, b_iso 30, resname GLY,
+       residue numbers starting with 1
+     Can supply:
+       atom_name and scatterer or atom_name_list and scatterer_list
+       occ or occ_list
+       b_iso or b_iso_list
+       resname or resname_list
+       resseq_list
+    '''
+
     assert sites_cart is not None
+    if atom_name is None and atom_name_list is None:
+      atom_name = ' CA '
+      scatterer = 'C'
+      scatterer_list = None
+    elif atom_name:
+      assert scatterer is not None
+      assert scatterer_list is None
+    elif atom_name_list:
+      assert scatterer_list is not None
+ 
     hierarchy = iotbx.pdb.hierarchy.root()
     m = iotbx.pdb.hierarchy.model()
     c = iotbx.pdb.hierarchy.chain()
