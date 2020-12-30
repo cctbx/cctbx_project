@@ -122,18 +122,18 @@ def test_01():
   from scitbx.array_family import flex
   sites_cart = flex.vec3_double()
   sites_cart.append((3,4,5))
-  mmm_sites.model_from_sites_cart(sites_cart = sites_cart, 
+  mmm_sites.model_from_sites_cart(sites_cart = sites_cart,
     model_id = 'new_model')
   assert mmm_sites.get_model_by_id('new_model').get_sites_cart()[0] == (3,4,5)
 
   # Set crystal_symmetry and unit_cell_crystal_symmetry and shift_cart
-  # Box and shift the map_model_manager so we have new coordinate system 
-  mmm_sites.box_all_maps_around_model_and_shift_origin() 
+  # Box and shift the map_model_manager so we have new coordinate system
+  mmm_sites.box_all_maps_around_model_and_shift_origin()
   new_model = mmm_sites.get_model_by_id('new_model')
   assert approx_equal((3.747033333333334, 4.723075000000001, 5.0),
      mmm_sites.get_model_by_id('new_model').get_sites_cart()[0])
 
-  # arbitrarily set unit_cell crystal symmetry of model to 
+  # arbitrarily set unit_cell crystal symmetry of model to
   #  match crystal_symmetry. First have to set shift_cart to None
   new_model.set_shift_cart(shift_cart = None)
   new_model.set_unit_cell_crystal_symmetry_and_shift_cart()
@@ -146,7 +146,7 @@ def test_01():
   assert new_model.unit_cell_crystal_symmetry().is_similar_symmetry(
     mmm_sites.unit_cell_crystal_symmetry())
   assert new_model.shift_cart() == mmm_sites.shift_cart()
-  
+
 
 
   # Check on wrapping
@@ -267,4 +267,3 @@ if (__name__ == '__main__'):
   else:
     print('Skip test_01, chem_data not available')
   print ("OK")
-

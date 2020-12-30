@@ -7113,8 +7113,8 @@ class map_model_manager(object):
 
   # General methods
 
-  def model_from_sites_cart(self, 
-    sites_cart, 
+  def model_from_sites_cart(self,
+    sites_cart,
     model_id = 'model_from_sites',
     **kw):
     '''
@@ -7130,12 +7130,12 @@ class map_model_manager(object):
       Note:  sites_cart are assumed to be in the same coordinate frame as this
         map_model_manager.
 
-      Any keywords used in from_sites_cart are allowed (i.e., 
+      Any keywords used in from_sites_cart are allowed (i.e.,
         atom_name and scatterer or atom_name_list and scatterer_list
         occ or occ_list
         b_iso or b_iso_list
         resname or resname_list
-        resseq_list 
+        resseq_list
     '''
 
 
@@ -7170,7 +7170,7 @@ class map_model_manager(object):
       shift that model directly to match this map_model_manager, or use
       self.add_model_by_id(model_id=model_id, model=model) which will import
       that model into this manager and shift it to match in the process.
-      
+
     '''
 
     self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(model)

@@ -343,7 +343,7 @@ class manager(object):
       assert scatterer_list is None
     elif atom_name_list:
       assert scatterer_list is not None
- 
+
     hierarchy = iotbx.pdb.hierarchy.root()
     m = iotbx.pdb.hierarchy.model()
     c = iotbx.pdb.hierarchy.chain()
