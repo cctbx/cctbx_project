@@ -518,6 +518,25 @@ def get_average_direction(diffs=None, i=None,j=None):
     average_direction/=nn
     return average_direction.normalize()
 
+def get_first_chain_id_and_resno(hierarchy):
+  text = ""
+  if not hierarchy:
+    return text
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        return "%s%s" %(chain.id,rg.resseq_as_int())
+
+def get_last_chain_id_and_resno(hierarchy):
+  text = ""
+  if not hierarchy:
+    return text
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        text = "%s%s" %(chain.id,rg.resseq_as_int())
+  return text
+
 def get_chain_ids(hierarchy,unique_only=None):
   chain_ids=[]
   if not hierarchy:

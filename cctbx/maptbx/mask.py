@@ -17,6 +17,7 @@ class create_mask_around_atoms(object):
       model = None,
       xray_structure = None,
       mask_atoms_atom_radius = None,
+      invert_mask = None,
       n_real = None,
       map_manager = None,
       wrapping = None):
@@ -28,6 +29,7 @@ class create_mask_around_atoms(object):
        model:   required source of information about where atoms are
        xray_structure:   alternate source of information about where atoms are
        mask_atoms_atom_radius:  radius around atoms to mask
+       invert_mask:  outside is 1 and inside is 0
        n_real:  dimensions of map to create, e.g., existing map_data.all()
        map_manager: alternate source of information for n_real. origin (0, 0, 0)
          and source of wrapping
@@ -66,12 +68,18 @@ class create_mask_around_atoms(object):
     cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
     radii = flex.double(
       sites_frac.size(), mask_atoms_atom_radius)
+    if invert_mask:
+      mask_value_inside_molecule = 0
+      mask_value_outside_molecule = 1
+    else: # usual
+      mask_value_inside_molecule = 1
+      mask_value_outside_molecule = 0
     self._mask = cctbx_maptbx_ext.mask(
       sites_frac                  = sites_frac,
       unit_cell                   = xray_structure.unit_cell(),
       n_real                      = n_real,
-      mask_value_inside_molecule  = 1,
-      mask_value_outside_molecule = 0,
+      mask_value_inside_molecule  = mask_value_inside_molecule,
+      mask_value_outside_molecule = mask_value_outside_molecule,
       radii                       = radii,
       wrapping                    = wrapping)
     # Set up map_manager with this mask

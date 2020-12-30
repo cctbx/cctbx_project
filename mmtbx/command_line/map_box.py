@@ -214,6 +214,11 @@ master_phil = libtbx.phil.parse("""
     .help = Use Gaussian mask in mask_atoms and on outside surface of box
     .short_caption = Soft mask
 
+  invert_mask = False
+    .type = bool
+    .help = Make mask with 1 outside model (only applies to mask_around_atoms)
+    .short_caption = Invert mask to outside atoms
+
   soft_mask_radius = 3
     .type = float
     .help = Gaussian mask smoothing radius
@@ -1412,8 +1417,12 @@ def apply_mask_around_atoms(mam, params = None, log = None):
        mask_atoms_atom_radius), file = log)
     if params.set_outside_to_mean_inside:
       print("Value outside mask will be set to mean inside", file = log)
+    if params.invert_mask:
+      print("Mask will be inverted (zero inside region of atoms, one outside)",
+        file=log)
     mam.map_manager().create_mask_around_atoms(model = mam.model(),
-        mask_atoms_atom_radius = mask_atoms_atom_radius)
+        mask_atoms_atom_radius = mask_atoms_atom_radius,
+        invert_mask = params.invert_mask)
     if (params.soft_mask): # make it a soft mask
       mam.map_manager().soft_mask(soft_mask_radius = params.soft_mask_radius)
       print ("Mask will be soft with radius of %.1f A" %(

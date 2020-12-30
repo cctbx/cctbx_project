@@ -841,7 +841,8 @@ class map_manager(map_reader, write_ccp4_map):
     self._created_mask = cm(map_manager = self,
       boundary_radius = boundary_radius)
 
-  def create_mask_around_atoms(self, model, mask_atoms_atom_radius = None):
+  def create_mask_around_atoms(self, model, mask_atoms_atom_radius = None,
+      invert_mask = None):
     '''
       Use cctbx.maptbx.mask.create_mask_around_atoms to create a mask around
       atoms in model
@@ -849,6 +850,8 @@ class map_manager(map_reader, write_ccp4_map):
       Does not apply the mask (use apply_mask_to_map etc for that)
 
       mask_atoms_atom_radius default is max(3, resolution)
+
+      invert_mask makes outside 1 and inside 0
     '''
 
     assert model is not None
@@ -858,7 +861,8 @@ class map_manager(map_reader, write_ccp4_map):
     from cctbx.maptbx.mask import create_mask_around_atoms as cm
     self._created_mask = cm(map_manager = self,
       model = model,
-      mask_atoms_atom_radius = mask_atoms_atom_radius)
+      mask_atoms_atom_radius = mask_atoms_atom_radius,
+      invert_mask = invert_mask)
 
   def soft_mask(self, soft_mask_radius = None):
     '''

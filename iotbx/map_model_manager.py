@@ -961,21 +961,25 @@ class map_model_manager(object):
   def write_model(self,
      file_name,
      model_id = None,
+     model = None,
      ):
-    if not model_id:
-       model_id = 'model'
-    if not self.get_model_by_id(model_id = model_id):
-      self._print ("No model to write out")
+
+    if not model:
+      if not model_id:
+        model_id = 'model'
+      model = self.get_model_by_id(model_id = model_id)
+    if not model:
+        self._print ("No model to write out")
     elif not file_name:
       self._print ("Need file name to write model")
     else:
       # Write out model
 
       f = open(file_name, 'w')
-      print(self.get_model_by_id(model_id = model_id).model_as_pdb(), file = f)
+      print(model.model_as_pdb(), file = f)
       f.close()
       self._print("Wrote model with %s residues to %s" %(
-         self.model().get_hierarchy().overall_counts().n_residues,
+         model.get_hierarchy().overall_counts().n_residues,
          file_name))
 
   # Methods for identifying which map_manager and model to use
@@ -1999,19 +2003,22 @@ class map_model_manager(object):
   #  create a new object)
 
   def mask_all_maps_around_atoms(self,
+      model = None,
       mask_atoms_atom_radius = 3,
       set_outside_to_mean_inside = False,
       soft_mask = False,
       soft_mask_radius = None,
+      skip_n_residues_on_ends = None,
+      invert_mask = None,
       mask_id = 'mask'):
     assert mask_atoms_atom_radius is not None
-    assert self.model() is not None
     '''
       Generate mask around atoms and apply to all maps.
       Overwrites values in these maps
 
       NOTE: Does not change the gridding or shift_cart of the maps and model
 
+      Optional: specify model to use
       Optionally set the value outside the mask equal to the mean inside,
         changing smoothly from actual values inside the mask to the constant
         value outside (otherwise outside everything is set to zero)
@@ -2022,15 +2029,30 @@ class map_model_manager(object):
         (default radius is self.resolution() or resolution calculated
           from gridding)
         If soft mask is set, mask_atoms_atom_radius increased by
-
+      Optional: invert_mask:  keep outside atoms instead of inside
+      Optional: skip_n_residues_on_ends: any residues within
+        skip_n_residues_on_ends of ends of segments
+         (consecutive residue numbers or close N/P atoms) are excluded
 
     '''
+    if not model:
+      model = self.model()
+
+    assert model is not None
+
+    if skip_n_residues_on_ends:
+      selection_string = " or ".join(get_selections_for_segments(model,
+         skip_n_residues_on_ends = skip_n_residues_on_ends))
+      model = model.apply_selection_string(selection_string)
+
     if soft_mask and (not soft_mask_radius):
         soft_mask_radius = self.resolution()
     self.create_mask_around_atoms(
+         model = model,
          soft_mask = soft_mask,
          soft_mask_radius = soft_mask_radius,
          mask_atoms_atom_radius = mask_atoms_atom_radius,
+         invert_mask = invert_mask,
          mask_id = mask_id)
     self.apply_mask_to_maps(mask_id = mask_id,
          set_outside_to_mean_inside = \
@@ -2186,6 +2208,7 @@ class map_model_manager(object):
      mask_atoms_atom_radius = 3,
      soft_mask = False,
      soft_mask_radius = None,
+     invert_mask = None,
      mask_id = 'mask' ):
 
     '''
@@ -2199,6 +2222,7 @@ class map_model_manager(object):
            from gridding)
         If soft mask is set, mask_atoms_atom_radius increased by
           soft_mask_radius
+      Optional: invert_mask:  keep outside atoms instead of inside
 
       Generates new entry in map_manager dictionary with id of
       mask_id (default='mask') replacing any existing entry with that id
@@ -2215,6 +2239,7 @@ class map_model_manager(object):
     from cctbx.maptbx.mask import create_mask_around_atoms
     cm = create_mask_around_atoms(map_manager = self.map_manager(),
       model = model,
+      invert_mask = invert_mask,
       mask_atoms_atom_radius = mask_atoms_atom_radius)
 
     if soft_mask: # Make the create_mask object contain a soft mask
@@ -2431,6 +2456,7 @@ class map_model_manager(object):
       element = None,
       ca_only = True,
       matching_info_list = None,
+      allow_reverse = None,
       quiet = True):
     '''
     Get rmsd of all or ca(P) atoms in matching residues
@@ -2442,6 +2468,7 @@ class map_model_manager(object):
     del all_kw['adopt_init_args'] # REQUIRED
     del all_kw['kw_obj']  # REQUIRED
     del all_kw['ca_only']  # REQUIRED
+    del all_kw['allow_reverse']  # REQUIRED
     del all_kw['matching_info_list']  # REQUIRED
 
     if not matching_info_list:
@@ -2449,13 +2476,21 @@ class map_model_manager(object):
         max_gap = 0,
         one_to_one = True,
         **all_kw)
-
     overall_diffs = flex.vec3_double()
     for matching_info in matching_info_list:
       diffs = self.get_diffs_for_matching_target_and_model(
          matching_info = matching_info,
          ca_only = ca_only,
          max_dist = max_dist)
+      if allow_reverse:
+        reverse_diffs = self.get_diffs_for_matching_target_and_model(
+         matching_info = matching_info,
+         ca_only = ca_only,
+         max_dist = max_dist,
+         reverse = True)
+        if reverse_diffs and reverse_diffs.size()>0 and \
+          reverse_diffs.rms_length() < diffs.rms_length():
+          diffs = reverse_diffs
       if diffs:
          overall_diffs.extend(diffs)
     if overall_diffs.size() > 0:
@@ -2467,7 +2502,11 @@ class map_model_manager(object):
       matching_info = None,
       max_dist = None,
       ca_only = None,
+      reverse = False
        ):
+
+    if reverse and not ca_only:
+      return None # cannot do reverse for full chain
     target_model = matching_info.target_model
     matching_model = matching_info.matching_model
     chain_type = matching_info.chain_type
@@ -2509,9 +2548,12 @@ class map_model_manager(object):
     matching_sites = matching_model.get_sites_cart()
     if target_sites.size() != matching_sites.size():
       return None
-    else:
-      diffs = target_sites - matching_sites
-      return diffs
+    elif reverse:
+      matching_sites = list(matching_sites)
+      matching_sites.reverse()
+      matching_sites = flex.vec3_double(matching_sites)
+    diffs = target_sites - matching_sites
+    return diffs
 
   def select_matching_segments(self,
       target_model_id = 'model',
@@ -6863,7 +6905,8 @@ class map_model_manager(object):
          map_id))
 
 
-    assert model and map_manager
+    assert self.map_manager().is_compatible_model(model) # model must match
+
     if not resolution:
       resolution = self.resolution()
     assert resolution is not None
@@ -7854,7 +7897,8 @@ class match_map_model_ncs(object):
            self._map_manager.unit_cell_crystal_symmetry(),
         model = self._model)
 
-  def shift_ncs_to_match_working_map(self, ncs_object = None, reverse = False,
+  def shift_ncs_to_match_working_map(self, ncs_object = None, 
+    reverse = False,
     coordinate_shift = None,
     new_shift_cart = None):
 
@@ -8797,7 +8841,7 @@ def get_selection_inside_box(
          )
   return ~s
 
-def get_skip_waters_and_hetero_lines(skip_waters, skip_hetero):
+def get_skip_waters_and_hetero_lines(skip_waters = True, skip_hetero = True):
   if skip_waters and skip_hetero:
     no_water_or_het = "( (not hetero ) and (not water)) "
   elif skip_waters:
@@ -8816,15 +8860,29 @@ def get_skip_waters_and_hetero_lines(skip_waters, skip_hetero):
      no_water_or_het_with_and = no_water_or_het_with_and,
      )
 
-def get_selections_for_segments(model, no_water_or_het_with_and = ''):
-  '''
+def get_selections_for_segments(model,
+     skip_waters = True,
+     skip_hetero = True,
+     no_water_or_het_with_and = None,
+     skip_n_residues_on_ends = None,
+     minimum_length = 1):
+  ''''
     Generate selections corresponding to each segment (chain or part of a chain
     that is separate from remainder of chain)
+
+    Use skip_waters and skip_hetero to specify whether to include them
+    If skip_n_residues_on_ends is set, skip residues within
+      skip_n_residues_on_ends of an end
   '''
   assert isinstance(model, mmtbx.model.manager)
 
+  if no_water_or_het_with_and is None:
+    water_het_info = get_skip_waters_and_hetero_lines(
+        skip_waters = skip_waters, skip_hetero = skip_hetero)
+    no_water_or_het_with_and = water_het_info.no_water_or_het_with_and
+
   from iotbx.pdb import resseq_encode
-  selection_list = []
+  selection_info_list = []
   ph = model.get_hierarchy()
   for m in ph.models()[:1]:
     for chain in m.chains():
@@ -8834,11 +8892,13 @@ def get_selections_for_segments(model, no_water_or_het_with_and = ''):
       previous_rg = None
       for rg in chain.residue_groups():
         if previous_rg and ( (not rg.link_to_previous) or (not
-           residue_group_is_linked_to_previous(rg, previous_rg))):
+           residue_group_is_linked_to_previous(rg, previous_rg)) or
+         (previous_rg.resseq_as_int() + 1 != rg.resseq_as_int())):
           # break here
-          selection_list.append("%s ( chain %s and resseq %s:%s ) " %(
-           no_water_or_het_with_and,
-            chain_id, resseq_encode(first_resno), resseq_encode(last_resno)))
+          selection_info_list.append( group_args(
+            chain_id = chain_id,
+            first_resno = first_resno,
+            last_resno = last_resno))
           first_resno = None
           last_resno = None
         if not first_resno:
@@ -8846,9 +8906,24 @@ def get_selections_for_segments(model, no_water_or_het_with_and = ''):
         last_resno = rg.resseq_as_int()
         previous_rg = rg
       if first_resno is not None and last_resno is not None:
-        selection_list.append(" %s ( chain %s and resseq %s:%s ) " %(
-            no_water_or_het_with_and, chain_id,
-           resseq_encode(first_resno), resseq_encode(last_resno)))
+        selection_info_list.append( group_args(
+            chain_id = chain_id,
+            first_resno = first_resno,
+            last_resno = last_resno))
+
+  selection_list = []
+  for si in selection_info_list:
+    if skip_n_residues_on_ends:
+      first_resno = si.first_resno + skip_n_residues_on_ends
+      last_resno = si.last_resno - skip_n_residues_on_ends
+    else:
+      first_resno = si.first_resno
+      last_resno = si.last_resno
+    if (last_resno - first_resno) + 1 < max(1,minimum_length):
+      continue
+    selection_list.append(" %s ( chain %s and resseq %s:%s ) " %(
+        no_water_or_het_with_and, si.chain_id,
+        resseq_encode(first_resno).strip(), resseq_encode(last_resno).strip()))
   return selection_list
 
 def residue_group_is_linked_to_previous(rg, previous_rg):
